@@ -23,7 +23,7 @@ for (const id of ids) {
     let hi = -Infinity, lo = Infinity; for (let i = 0; i < info.H.length; i++) { if (info.H[i] > hi) hi = info.H[i]; if (info.H[i] < lo) lo = info.H[i]; }
     const traps = D.hqTerrainTraps(info), rescues = info.rescues || [];   // THE RETURN GUARANTEE (2026-09-17): what still traps, and the rescue ramps the compiler cut
     const rec = { id, w: info.S.w, d: info.S.d, res: info.res, grid: info.nx + '×' + info.nz, lo: +lo.toFixed(2), hi: +hi.toFixed(2), reach: reach.size, doors: landings.map(L => L.id + '@' + L.y), unreached, trees: info.trees.length, scatter: info.scatter.length, fluids: info.fluids.length, walls: info.walls.length,
-                  plan: info.gen ? { kind: info.gen.kind, open: +info.gen.open.toFixed(2), carved: info.gen.carved, sealed: info.gen.sealed, wallH: info.gen.wallH, thicket: (info.thicket || []).length, planWalls: (info.planWalls || []).length } : null, traps, rescues };
+                  plan: info.gen ? { kind: info.gen.kind, open: +info.gen.open.toFixed(2), carved: info.gen.carved, sealed: info.gen.sealed, wallH: info.gen.wallH, thicket: (info.thicket || []).length, planWalls: (info.planWalls || []).length, deadEnds: (info.genPlan && info.genPlan.deadEnds) ? info.genPlan.deadEnds.length : 0 } : null, traps, rescues };
     if (json) { out.push(rec); continue; }
     console.log('\n== ' + id + ' — ' + (room.label || '') + '  ' + rec.w + '×' + rec.d + ' m, res ' + rec.res + ' (' + rec.grid + '), heights ' + rec.lo + '…' + rec.hi);
     console.log('   doors: ' + rec.doors.join(' · ') + '   reach from ' + (landings[0] ? landings[0].id : '—') + ': ' + rec.reach + ' nodes' + (unreached.length ? '   UNREACHED: ' + unreached.join(', ') : '   (every door reached)'));

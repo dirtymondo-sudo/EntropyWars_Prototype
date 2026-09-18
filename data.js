@@ -14160,6 +14160,10 @@ const HQ_ROOM_LOOKS = {
     warroom: { name: 'THE WAR ROOM', retro: { enabled: true, preset: 'green', pixelSize: 1, ditherStrength: 0.45, grain: 0.04, tintAmount: 0.45, levels: 20 }, cin: { vignette: true, vigAmount: 0.6, vigSize: 0.44 }, nightMood: 0.7, bloom: 0.3 },
     bunker: { name: 'THE BUNKER', retro: { enabled: true, preset: 'amber', pixelSize: 1, ditherStrength: 0.35, grain: 0.025, tintAmount: 0.35, levels: 26 }, cin: { vignette: true, vigAmount: 0.35, vigSize: 0.55 }, nightMood: 0.3, bloom: 0.28 },
     cern: { name: 'CERN', retro: { enabled: true, preset: 'teal', pixelSize: 1, ditherStrength: 0.42, grain: 0.035, tintAmount: 0.45, levels: 22 }, cin: { vignette: true, vigAmount: 0.5, vigSize: 0.48 }, nightMood: 0.6, bloom: 0.4 },
+    /* AREA 51 (2026-09-18): the hangar cold and floodlit; the white rooms overexposed, barely vignetted, no night; the flight line the desert night under the wheel of lights */
+    hangar: { name: 'HANGAR 18', retro: { enabled: true, preset: 'teal', pixelSize: 1, ditherStrength: 0.42, grain: 0.04, tintAmount: 0.4, levels: 22 }, cin: { vignette: true, vigAmount: 0.5, vigSize: 0.48 }, nightMood: 0.55, bloom: 0.3 },
+    white: { name: 'THE WHITE ROOMS', retro: { enabled: true, preset: 'faded', pixelSize: 1, ditherStrength: 0.3, grain: 0.03, tintAmount: 0.25, levels: 30 }, cin: { vignette: true, vigAmount: 0.3, vigSize: 0.62 }, nightMood: 0.0, bloom: 0.55 },
+    flightline: { name: 'THE FLIGHT LINE', retro: { enabled: true, preset: 'teal', pixelSize: 1, ditherStrength: 0.45, grain: 0.045, tintAmount: 0.45, levels: 20 }, cin: { vignette: true, vigAmount: 0.55, vigSize: 0.46 }, nightMood: 0.85, bloom: 0.42 },
 };
 // THE LOOK (2026-09-17): `env.look` on a row = a grade (a HQ_ROOM_LOOKS row: retro preset, dither,
 // vignette, night mood, bloom, exposure, dof) laid over the player's video settings for that map —
@@ -18607,6 +18611,34 @@ function hqBunkerShell(o) {
     Object.keys(o).forEach(k => { S[k] = o[k]; });
     return S;
 }
+/* ── AREA 51'S SHELL (2026-09-18) ──────────────────────────────────────────
+   THE FLIGHT LINE is an OPEN room under Area 51's own sky (the EW_MAP_META
+   prebuilt_area51 env row by hand — the wheel of lights, the fenced night;
+   doorhq-style: edit both or the test says so), the dirt apron running out
+   under the fog, no facility walls (the user's rule for every outdoor room),
+   the floodlights as point lights (an open room has no fluorescents), the
+   Groom range as the far weenie on the sky (`landmarks`, a `peak`), the
+   flight line grade. One function so a second outdoor part cannot drift. */
+function hqAirbaseShell(o) {
+    o = Object.assign({}, o || {});
+    const sky = { night: 1, tint: 0x0d1226, tintAmt: 0.50, stars: 1.5, nebula: 0.8, fog: { color: 0x1a2340, amount: 0.5, top: 0.06, band: 0.5, density: 0.02 }, scenery: 'orbs', density: 0.6,
+                  landmarks: [{ kind: 'peak', id: 'prebuilt_area51', deg: 300, dist: 0.9, s: 0.75, label: 'THE RANGE' }] };
+    const S = {
+        w: 0, d: 0, h: 9.0, wallH: 9.0, dadoH: 1.0,
+        open: true, edge: 'open',
+        floor: 'dirt_4', wall: 'metal', dado: 'metal_2', trim: 'metal', ceiling: 'concrete',
+        apron: 'dirt_4', skirt: 'wasteland', apronColor: 0xc8b088,
+        floorColor: 0xc8b088, wallColor: 0xa8a8a4, dadoColor: 0x8a8480,
+        pipes: false, strips: false,
+        lights: [],   // a terrain room lights itself: the flood masts are props (catalogue flood_mast)
+        mood: { lamp: 0xeaf4ff, glow: 0xbfe0ff, strip: 0xffffff, light: 0xe8f0ff, ambient: 0.40, night: 1 },
+        sky: sky,
+        plate: { x: 0, z: -9.8, y: 4.4 },
+        look: HQ_ROOM_LOOKS.flightline,
+    };
+    Object.keys(o).forEach(k => { S[k] = o[k]; });
+    return S;
+}
 const DOOR_HQ = {
     units: 73,
     assets: { models: DOOR_HQ_ASSETS + 'models/', textures: DOOR_HQ_ASSETS + 'textures/' },
@@ -19020,6 +19052,8 @@ const DOOR_HQ = {
         dream_screen:    { proc: 'dream_screen',    h: 1.2,  foot: 0,    wall: true, mount: 1.1, depth: 0.1, glow: { y: 0.6, size: 2.2, color: 0xc0a0ff } },   // Room REM: what the sleepers see (ticker: the drawing drifts)
         iso_tank:        { proc: 'iso_tank',        h: 1.3,  foot: 1.2,  rect: { hw: 1.2, hd: 0.8 }, block: true, glow: { y: 0.9, size: 2.0, color: 0x60a0ff }, light: { color: 0x4080ff, intensity: 0.7, dist: 5, y: 1.0 } },   // Room 0dB: the pod, lid ajar (ticker: it breathes)
         evac_button:     { proc: 'evac_button',     h: 0.3,  foot: 0,    wall: true, mount: 1.2, depth: 0.1, glow: { y: 0.15, size: 0.8, color: 0xff3020 }, light: { color: 0xff3020, intensity: 0.5, dist: 3, y: 0.15 } },   // Room 4B: the red button under its cover
+        flood_mast:      { proc: 'flood_mast',      h: 7.0,  foot: 0.35, block: true, glow: { y: 6.6, size: 5.0, color: 0xeaf4ff }, light: { color: 0xeaf4ff, intensity: 1.2, dist: 26, y: 6.6 } },   // THE FLIGHT LINE (2026-09-18): a floodlight mast — the outdoor room's own light
+        saucer_rig:      { proc: 'saucer_rig',      h: 4.6,  foot: 3.2,  block: true, glow: { y: 2.9, size: 7.0, color: 0xbfe0ff }, light: { color: 0xdfefff, intensity: 1.5, dist: 22, y: 3.4 } },   // HANGAR 18 (2026-09-18): the saucer on its test rig under a tarp, the floodlights on it — the near weenie
         warning_tape:    { proc: 'warning_tape',    h: 0.01, foot: 0 },                                                       // Room 4B: the striped line on the floor you do not cross
         lone_gun:        { proc: 'lone_gun',        h: 0.14, foot: 0 },                                                       // Room II: the gun on the table (tabletop: y = the table top)
         garbage_chute:   { proc: 'garbage_chute',   h: 0.9,  foot: 0,    wall: true, mount: 0.6, depth: 0.2 },                // Room II: the hatch in the wall      // HOME: a domestic flight that ends at the ceiling; foot at +z, climbs toward -z
@@ -19609,17 +19643,26 @@ const DOOR_HQ = {
           why: 'the stair that only goes up hangs in the sky over the dome; the archive filed it as an optical effect and the telescope keeps being pointed at it, and whoever looks long enough is on the first step; the frame at its foot has no door in it because nobody has ever wanted to shut it', note: 'an optical effect', draft: true },
         /* THE BASES */
         { id: 'area51_dumb', route: 'bases', leaf: 'leaf_wired_double',
-          a: { site: 'prebuilt_area51', wall: 'n', x: -5, sub: 'THE HANGAR LIFT · THE TUNNEL TO THE D.U.M.B.' },
+          /* AREA 51 (2026-09-18): RE-POINTED off the board room onto HANGAR 18's east wall — the floor lift is in the hangar */
+          a: { site: 'prebuilt_area51', part: 'hangar', wall: 'e', z: 0, sub: 'THE FLOOR LIFT · THE TUNNEL TO THE D.U.M.B.' },
           /* D.U.M.B. (9.3 stage 8, 2026-09-17): RE-POINTED off the board room onto THE MOTOR POOL's west wall — the tunnel comes up in the motor pool, as the note always said */
           b: { site: 'prebuilt_dumb', part: 'motorpool', wall: 'w', z: 0, sub: 'THE TUNNEL WEST · TO THE HANGAR' },
           why: 'five sides above ground; the sixth is down. The tunnel every base is on; the hangar\'s floor lift comes up in the D.U.M.B.\'s motor pool', note: 'the sixth side', draft: true },
+        /* THE RAMP (2026-09-18 — the user: "I don't know if I like the motor pool being a thing when there is already a parking
+           garage, maybe connect them"): THE GARAGE (P1) ⇄ THE MOTOR POOL (P3) — a facility room seaming into a wild one (the
+           garden well's precedent, never gated); the motor pool is the parking level the car's panel never had */
+        { id: 'garage_motorpool', route: 'bases', leaf: 'leaf_bulkhead',
+          a: { room: 'garage', wall: 'w', z: -2.5, sub: 'THE RAMP DOWN · P3 · THE MOTOR POOL' },
+          b: { site: 'prebuilt_dumb', part: 'motorpool', wall: 's', x: -16, sub: 'THE RAMP UP · P1 · THE GARAGE' },
+          why: 'the ramp in the garage goes up to an exit sign and down to a level the panel does not have; the cars signed out of P1 are parked on P3 and both sheets are fine with it', note: 'the panel stops at P1', draft: true },
         { id: 'dumb_cern', route: 'bases', leaf: 'leaf_wired_double',
           /* D.U.M.B. (9.3 stage 8, 2026-09-17): RE-POINTED — the motor pool's east wall ⇄ THE RING's west wall (the tunnel stops being straight where the ring starts) */
           a: { site: 'prebuilt_dumb', part: 'motorpool', wall: 'e', z: 0, sub: 'THE TUNNEL EAST · TO THE RING' },
           b: { site: 'prebuilt_cern', part: 'ring', wall: 'w', z: 0, sub: 'THE TUNNEL · BACK TO THE MOTOR POOL' },
           why: 'the same tunnel, the Atlantic under it; the ring is where the tunnel stops being straight', note: 'the tunnel turns', draft: true },
         { id: 'cern_backrooms', route: 'bases', leaf: 'leaf_frosted',
-          a: { site: 'prebuilt_cern', wall: 'n', x: -10 },
+          /* 2026-09-18: RE-POINTED off the board room onto THE RING's north wall (a service bay off the control room) — the board is bypassed */
+          a: { site: 'prebuilt_cern', part: 'ring', wall: 'n', x: -12, sub: 'THE SERVICE BAY · NOT ON THE PLAN' },
           b: { site: 'prebuilt_backrooms', wall: 'n', x: -5 },
           why: 'the ring tunnel\'s noclip: an office door in a service bay that no plan shows; behind it the carpet is already humming (the second way into Bay 6\'s site, beside H-Wing)', note: 'not on the plan', draft: true },
         /* THE WOODS (HQ plan 9.3 stage 3, 2026-09-16): the three fence gates of
@@ -19879,7 +19922,8 @@ const DOOR_HQ = {
           note: 'the draught goes down', draft: true },
         { id: 'cave_dumb', route: 'undercroft', leaf: 'leaf_bulkhead',
           a: { site: 'prebuilt_hollow_earth', part: 'blast', wall: 'n', x: 0, y: 1.75 },
-          b: { site: 'prebuilt_dumb', wall: 'n', x: -0.2 },
+          /* 2026-09-18: RE-POINTED off the board room onto SUB-LEVEL 7's north wall — LEVEL −6 by the cave's count is the level that does not exist by the lift's */
+          b: { site: 'prebuilt_dumb', part: 'sublevel7', wall: 'n', x: 0, sub: 'LEVEL −6 · THE BLAST DOOR · UP INTO THE ROCK' },
           why: 'the base has five sides above ground and the sixth is here: rock cut square, a blast door in it, and a camera that has not been dusted since it stopped working',
           note: 'LEVEL −6', draft: true },
         { id: 'cave_agartha', route: 'undercroft', leaf: 'leaf_frame_only',
@@ -19912,6 +19956,13 @@ const DOOR_HQ = {
             prebuilt_cyberpunk: { room: 'site_prebuilt_cyberpunk_streets', door: { id: 'bay', wall: 's', x: 0 } },
             prebuilt_strip:     { room: 'site_prebuilt_strip_streets',     door: { id: 'bay', wall: 's', x: 0 } },
             prebuilt_downtown:  { room: 'site_prebuilt_downtown_streets',  door: { id: 'bay', wall: 's', x: -30 } },
+            /* THE BASES (2026-09-18 — the user: "we don't need the board maps if the place already has an area, like CERN has a
+               ring now"): the three bases stand on their own parts — the freight lift lands you in THE MOTOR POOL, the blast
+               door in THE RING, the hangar man-door in HANGAR 18. The tunnel / cave / backrooms links that stood on these
+               board rooms moved onto the parts the same day (a link door in a bypassed room would land at the bay door). */
+            prebuilt_dumb:      { room: 'site_prebuilt_dumb_motorpool',     door: { id: 'bay', wall: 's', x: 0 } },
+            prebuilt_cern:      { room: 'site_prebuilt_cern_ring',          door: { id: 'bay', wall: 's', x: 0 } },
+            prebuilt_area51:    { room: 'site_prebuilt_area51_hangar',      door: { id: 'bay', wall: 's', x: 0 } },
         },
         backDoors: {
             /* THE WOODS (9.3 stage 3, 2026-09-16): the forest is the board room
@@ -20014,13 +20065,13 @@ const DOOR_HQ = {
             prebuilt_dumb: [
                 { id: 'lift', wall: 'n', x: -5, leaf: 'leaf_bulkhead', wide: true,
                   label: 'THE MOTOR POOL', sub: 'THE FREIGHT LIFT · DOWN',
-                  action: { room: 'site_prebuilt_dumb_motorpool', at: 'lift' },
+                  action: { room: 'site_prebuilt_dumb_motorpool', at: 'bay' },   // 2026-09-18: the motor pool's south door IS the bay's (siteRooms.entry)
                   desc: 'The freight lift behind the blast door. SUB-LEVEL 1 is the only button that works; SUB-LEVEL 7 is the only one that is worn.' },
             ],
             prebuilt_cern: [
                 { id: 'ring', wall: 'n', x: -5, leaf: 'leaf_bulkhead', wide: true,
                   label: 'THE RING', sub: 'THE COLLIDER TUNNEL · BEAM ON',
-                  action: { room: 'site_prebuilt_cern_ring', at: 'hall' },
+                  action: { room: 'site_prebuilt_cern_ring', at: 'bay' },   // 2026-09-18: the ring's south door IS the bay's (siteRooms.entry)
                   desc: 'The blast door at the back of the hall they let you see. Behind it the tunnel curves, which is the point of it, and hums, which is the problem with it.' },
             ],
             prebuilt_haunted: [
@@ -23879,7 +23930,7 @@ const DOOR_HQ = {
         garage: {
             label: 'THE GARAGE',
             sub: 'PARKING · LEVEL P1',
-            roomNo: 'P1', why: 'the first parking level; there is no P2 on the panel and the ramp does not go there either — the stair by the west wall does (H-Wing)',
+            roomNo: 'P1', why: 'the first parking level; there is no P2 on the panel and the ramp does not go there either — the stair by the west wall does (H-Wing); P3 is the D.U.M.B.’s motor pool, down THE RAMP by the same wall (links.garage_motorpool, 2026-09-18)',
             kind: 'box',
             shell: {
                 w: 30, d: 20, h: 2.8,
@@ -30253,6 +30304,270 @@ const DOOR_HQ = {
             spawn: { x: 0, z: 14.5, face: 0 },
         },
         /* ═══════════════════════════════════════════════════════════════════
+           AREA 51 — THE BASE ABOVE THE BASE (2026-09-18 — the user: "still need
+           to add the Area 51 with the hangar and white padded rooms and other
+           stuff"): three parts on Room 51, on THE HALLS blueprint (D.U.M.B.'s)
+           plus one open part on the flight line. The board room is BYPASSED
+           (siteRooms.entry): the hangar man-door lands you in HANGAR 18.
+             site_prebuilt_area51_hangar — HANGAR 18: the floor (an authored
+               hall the BSP wraps with offices and stores), THE RIG (a 1.2 m
+               test rig up a stair, the saucer on it under its tarp — the near
+               weenie, the one lit thing), THE CATWALK (5.5 m along the north
+               side, up a long stair), THE CRANE HOOK (8 m — the tape, the
+               door gun's); THE FLOOR LIFT on the east wall is the tunnel to
+               the D.U.M.B. (links.area51_dumb, RE-POINTED here off the board);
+               the white rooms off the west wall, the flight line's big door
+               on the north.
+             site_prebuilt_area51_ward — THE WHITE ROOMS: a psychiatric wing
+               in white on a fine BSP (leaves 5.5–9 m = cells and closets):
+               the dayroom, the nurses' station, two padded cells (the
+               wall_padding proc standing free on the plan walls), THE
+               OBSERVATION DECK (2.2 m up a stair), THE CAGE (3.8 m — the
+               tape); the exercise yard's gate on the north wall opens on the
+               flight line.
+             site_prebuilt_area51_flightline — THE FLIGHT LINE: open under the
+               base's own night (hqAirbaseShell: the wheel of lights, the range
+               on the sky), a `rooms` plan with no thicket — the aprons joined
+               by taxiways between blast berms — THE RUNWAY (33) painted across
+               it, THE TOWER (4.5 m up a stair, the beacon on it), THE MAST
+               (8 m — the tape), the revetments, the crater, the crew bus, the
+               fire truck; the hangar's big door and the ward's gate on its
+               south wall — every part has two ways out (the cycle rule at the
+               complex's own scale).
+           RULES kept: a part's doors stay inside the site, no part wears a
+           number, every door reaches every other and nothing traps
+           (hq-area51.test.js runs the solver and the return guarantee), lights
+           ≤ HQ_PROP_LIGHT_MAX, never a rank leaf, every wall prop FREE-STANDING
+           in a plan room. Lines are Claude's DRAFT (A15).
+           ═══════════════════════════════════════════════════════════════════ */
+        /* ── HANGAR 18 — the floor, the rig, the catwalk, the crane hook, the floor lift ── */
+        site_prebuilt_area51_hangar: {
+            label: 'AREA 51 · HANGAR 18',
+            sub: 'THE FLOOR · THE RIG · THE CATWALK · THE FLOOR LIFT · EST. 1947',
+            kind: 'box', site: 'prebuilt_area51', part: 'hangar',
+            shell: hqBunkerShell({ w: 72, d: 48, h: 9.0, wallH: 9.0, plate: { x: 0, z: 22.8, y: 3.6 },
+                                   floor: 'urban:ConcreteStriped1b', wall: 'urban:MetalCorrugatedPainted1a', dado: 'urban:MetalCorrugatedPainted1c', ceiling: 'urban:MetalSubwayGrill1a',
+                                   floorColor: 0xb0b4b8, wallColor: 0xa8b0b8, dadoColor: 0x7a848c, ceilColor: 0x6a7078,
+                                   mood: { lamp: 0xeaf4ff, glow: 0xbfe0ff, strip: 0xffffff, light: 0xe8f0ff, ambient: 0.50 }, fog: { color: 0x0c1018, density: 0.014 }, look: HQ_ROOM_LOOKS.hangar }),
+            terrain: {
+                floor: 'urban:ConcreteStriped1b', cliff: 'urban:MetalCorrugatedPainted2a', path: 'urban:TileGeneric3a',
+                noise: { amp: 0, scale: 5 }, crag: false,
+                gen: { kind: 'halls', seed: 51, loops: 3, wallKey: 'urban:MetalCorrugatedPainted2a', leafMin: 7, leafMax: 14,
+                       rooms: [{ id: 'floor', x: -8, z: 0, w: 46, d: 32 }] },                                            // the BSP wraps it: the offices, the stores, the shop
+                features: [
+                    { k: 'plateau', x: -12, z: -2, r: 6.5, h: 1.2, edge: 0.3 },                                         // THE RIG (the saucer stands on it)
+                    { k: 'ramp', x0: -12, z0: 8, x1: -12, z1: 3.8, w: 2.4, h0: 0, h1: 1.2, stairs: true, edge: 0.2 },    // its stair (ends 0.7 m inside the tier — THE RAMP RULE)
+                    { k: 'plateau', x: -8, z: -14, w: 40, d: 3, h: 5.5, edge: 0.35 },                                   // THE CATWALK along the north side
+                    { k: 'ramp', x0: -26, z0: 0, x1: -26, z1: -13.2, w: 2.4, h0: 0, h1: 5.5, stairs: true, edge: 0.2 },  // the long stair up to it (L ≥ 2.2 × h)
+                    { k: 'rail', x0: -24, z0: -12.2, x1: 8, z1: -12.2 },                                                // the catwalk's rail (the grind)
+                    { k: 'plateau', x: 8, z: 6, r: 1.3, h: 8.0, edge: 0.3 },                                            // THE CRANE HOOK (the tape — the door gun's)
+                    { k: 'wall', x0: -4, z0: 12, x1: 10, z1: 12, h: 0.45, t: 0.4, key: 'urban:ConcreteStriped2a' },     // the kerb the trucks park against
+                    { k: 'path', pts: [[0, 23], [0, 12], [0, 0], [-12, 0]], w: 2.6 },                                   // the painted lane door → rig
+                    { k: 'path', pts: [[35, 0], [15, 0]], w: 2.2 },                                                     // the floor lift's lane
+                    { k: 'path', pts: [[18, -23], [18, -8]], w: 3.0 },                                                  // the big door's lane
+                    { k: 'path', pts: [[-35, -12], [-31, -12]], w: 2.0 },                                               // the white rooms' lane
+                ],
+            },
+            doors: [
+                /* the south wall at x 0 is THE BAY DOOR (siteRooms.entry): the board room is bypassed — the man-door lands you here */
+                { id: 'white', wall: 'w', z: -12, leaf: 'leaf_hospital',
+                  label: 'THE WHITE ROOMS', sub: 'THE WING · PSYCHIATRIC · QUIET PLEASE',
+                  action: { room: 'site_prebuilt_area51_ward', at: 'hangar' },
+                  desc: 'A hospital door in a hangar wall, with a porthole painted over from the other side. The sign says PSYCHIATRIC. Under it, in pencil, FOR THE ONES WHO SAW IT.' },
+                { id: 'flightline', wall: 'n', x: 18, leaf: 'leaf_bulkhead', wide: true,
+                  label: 'THE FLIGHT LINE', sub: 'THE BIG DOOR · OUT TO RUNWAY 33',
+                  action: { room: 'site_prebuilt_area51_flightline', at: 'hangar' },
+                  desc: 'The big door, or the man-sized part of it. Beyond it the apron, the runway, the tower, and the lights that go round the base all night for no reason anyone has filed.' },
+            ],
+            counters: [],
+            props: [
+                /* THE RIG: the saucer under its tarp, the tape round it, the sign */
+                { key: 'saucer_rig',      x: -12, z: -2, face: 0 },
+                { key: 'warning_tape',    x: -12, z: 5.5, face: 0 },
+                { key: 'radiation_sign',  x: 14.6, z: -6, face: 270, mount: 1.7 },                                       // free-standing on the floor's east plan wall
+                { key: 'railing_1m',      x: 0, z: -12.6, face: 0 },                                                    // THE PARK RULE's catalogue rail on the catwalk
+                { key: 'monitor_stack',   x: -8, z: -14, face: 180 },                                                    // on the catwalk, watching the rig
+                /* THE FLOOR: the desk under the catwalk, the trucks, the tanks, the clutter */
+                { key: 'steel_table',     x: 2, z: -10, face: 0 }, { key: 'crt_terminal', x: 2, z: -10, y: 0.76, face: 0 }, { key: 'paper_sheet', x: 2.6, z: -9.7, y: 0.76, face: 30 },
+                { key: 'computer_chair_grey', x: 2, z: -8.8, face: 0 },
+                { key: 'fire_truck',      x: -22, z: 9, face: 90 },
+                { key: 'car_truck',       x: 6, z: 8, face: 270 },
+                { key: 'iso_tank',        x: -28, z: 6, face: 90 }, { key: 'iso_tank', x: -28, z: 10, face: 90 },       // the specimen tanks by the west wall
+                { key: 'quarter_pipe',    x: -14, z: 13.5, face: 0 },                                                   // THE PARK RULE's ramp
+                { key: 'traffic_cone',    x: -4.6, z: 13 }, { key: 'traffic_cone', x: 10.6, z: 13 }, { key: 'traffic_cone', x: 12, z: 2 },
+                { key: 'traffic_barrel',  x: 13, z: -2, face: 30 },
+                { key: 'cardboard_boxes', x: -30, z: -6, face: 20 },
+                { key: 'floor_stain',     x: -18, z: 8 },
+                { key: 'evac_button',     x: 14.6, z: 6, face: 270, mount: 1.2 },
+                { key: 'security_camera', x: 14.6, z: -14, face: 225, mount: 2.55 },
+                { key: 'bare_bulb',       x: -20, z: -6, ceil: true }, { key: 'bare_bulb', x: -4, z: 6, ceil: true }, { key: 'bare_bulb', x: 10, z: -8, ceil: true },
+                { key: 'bare_bulb',       x: 24, z: 0, ceil: true }, { key: 'bare_bulb', x: -20, z: 8, ceil: true },
+            ],
+            agents: [],
+            npcSpots: [
+                { x: -2, z: 18, face: 0, race: 'men in black', say: ['“Badge.” “I have a badge.” “I did not ask if you had one.”', '“Photography is prohibited.” “I have no camera.” “Memory is discouraged.”'] },
+                { x: -6, z: -6.5, face: 300, race: 'mad scientist', say: ['“It is under a tarp.” “Why?” “The tarp is the classified part.”', '“It flew once.” “When?” “Tuesday. Do not write down which.”'] },
+                { x: -1, z: -8.6, face: 20, race: 'general', say: ['“Hangar eighteen.” “There are seventeen hangars.” “Then this one is easy to find.”'] },
+                { x: -8.4, z: -2, face: 270, race: 'grey', say: ['“…” “Is it yours?” “…” “Do you want it back?” “…” “That is a no, then.”'] },
+            ],
+            onlineSpots: [],
+            lines: [
+                '“Est. 1947.” “Established what?” “That there was nothing here.”',
+                '“The floor lift goes down.” “To where?” “To the D.U.M.B. Everything that goes down goes there.”',
+                '“The catwalk is for observation.” “Of what?” “Of the tarp.”',
+                '“The crane hook has been up there since ’52.” “Holding what?” “Its position.”',
+            ],
+            spawn: { x: -4, z: 18, face: 0 },
+        },
+        /* ── THE WHITE ROOMS — the dayroom, the station, the cells, the deck, the cage ── */
+        site_prebuilt_area51_ward: {
+            label: 'AREA 51 · THE WHITE ROOMS',
+            sub: 'PSYCHIATRIC · THE DAYROOM · THE CELLS · FOR THE ONES WHO SAW IT',
+            kind: 'box', site: 'prebuilt_area51', part: 'ward',
+            shell: hqBunkerShell({ w: 44, d: 30, h: 4.6, wallH: 4.6, plate: { x: 0, z: -13.8, y: 2.8 },
+                                   floor: 'urban:TileGeneric1a', wall: 'urban:PlasterWallPainted1a', dado: 'urban:PlasterWallPainted1a', ceiling: 'urban:FibreCeilingTile1a',
+                                   floorColor: 0xe8e8ea, wallColor: 0xf0f0f2, dadoColor: 0xe0e0e4, ceilColor: 0xf4f4f6,
+                                   mood: { lamp: 0xffffff, glow: 0xffffff, strip: 0xffffff, light: 0xffffff, ambient: 0.60 }, fog: { color: 0xe8e8ec, density: 0.012 }, look: HQ_ROOM_LOOKS.white }),
+            terrain: {
+                floor: 'urban:TileGeneric1a', cliff: 'urban:PlasterWallPainted1a', path: 'urban:RubberNonSlip2a',
+                noise: { amp: 0, scale: 5 }, crag: false,
+                gen: { kind: 'halls', seed: 5150, loops: 3, wallKey: 'urban:PlasterWallPainted1a', leafMin: 5.5, leafMax: 9, roomInset: 1.0, roomMin: 3.2,   // fine leaves: the cells and the closets
+                       rooms: [{ id: 'dayroom', x: -10, z: 4, w: 14, d: 10 }, { id: 'station', x: 12, z: -6, w: 10, d: 8 },
+                               { id: 'cell_a', x: -16, z: -9, w: 4.4, d: 4.4 }, { id: 'cell_b', x: 14, z: 8, w: 4.4, d: 4.4 }] },
+                features: [
+                    { k: 'plateau', x: -10, z: -3.5, w: 8, d: 3, h: 2.2, edge: 0.3 },                                   // THE OBSERVATION DECK over the dayroom's north side
+                    { k: 'ramp', x0: -1.5, z0: -3.5, x1: -6.7, z1: -3.5, w: 2.2, h0: 0, h1: 2.2, stairs: true, edge: 0.2 },
+                    { k: 'rail', x0: -13, z0: -1.9, x1: -7, z1: -1.9 },
+                    { k: 'plateau', x: 6, z: 0, r: 1.2, h: 3.8, edge: 0.3 },                                            // THE CAGE (the tape — the door gun's)
+                    { k: 'wall', x0: -16, z0: 8.2, x1: -4, z1: 8.2, h: 0.45, t: 0.4, key: 'urban:TileGeneric1a' },      // the dayroom's half wall (a grind)
+                    { k: 'path', pts: [[21, -12], [12, -12], [12, -6]], w: 1.8 },                                        // the rubber lane door → station
+                    { k: 'path', pts: [[12, -6], [-3, -6], [-3, 4], [-10, 4]], w: 1.8 },                                 // … → the dayroom
+                    { k: 'path', pts: [[-14, -14], [-14, -9]], w: 1.8 },                                                 // the yard gate's lane
+                ],
+            },
+            doors: [
+                { id: 'hangar', wall: 'e', z: -12, leaf: 'leaf_hospital',
+                  label: 'HANGAR 18', sub: 'BACK TO THE HANGAR',
+                  action: { room: 'site_prebuilt_area51_hangar', at: 'white' },
+                  desc: 'The hospital door from the quiet side. The porthole is painted over on this side too, in a different white.' },
+                { id: 'yard', wall: 'n', x: -14, leaf: 'leaf_cell',
+                  label: 'THE FLIGHT LINE', sub: 'THE YARD GATE · OUT TO THE APRON',
+                  action: { room: 'site_prebuilt_area51_flightline', at: 'ward' },
+                  desc: 'A barred gate at the end of the cell row. The exercise yard is the apron; the exercise is watching the lights go round.' },
+            ],
+            counters: [],
+            props: [
+                /* THE CELLS: padded on three sides, a cot, the fourth side the corridor */
+                { key: 'wall_padding',    x: -18.0, z: -9, face: 90, mount: 0.1 }, { key: 'wall_padding', x: -16, z: -11.0, face: 0, mount: 0.1 }, { key: 'wall_padding', x: -14.0, z: -9, face: 270, mount: 0.1 },
+                { key: 'cot',             x: -16.8, z: -9, face: 90 },
+                { key: 'wall_padding',    x: 14, z: 5.9, face: 0, mount: 0.1 }, { key: 'wall_padding', x: 16.0, z: 8, face: 270, mount: 0.1 }, { key: 'wall_padding', x: 14, z: 10.1, face: 180, mount: 0.1 },
+                { key: 'cot',             x: 14.8, z: 8, face: 90 },
+                /* THE DAYROOM: the chairs round the table, the plant nobody waters, the tv that shows the yard */
+                { key: 'coffee_table',    x: -13, z: 5 }, { key: 'tube_tv', x: -13, z: 5, y: 0.45, face: 180 },
+                { key: 'molded_chair',    x: -15, z: 3.4, face: 150 }, { key: 'molded_chair', x: -11, z: 3.4, face: 210 }, { key: 'molded_chair', x: -15, z: 6.6, face: 30 }, { key: 'molded_chair', x: -11, z: 6.6, face: 330 },
+                { key: 'rug_round',       x: -13, z: 5 },
+                { key: 'potted_plant',    x: -4.4, z: 7.6 },
+                { key: 'cot',             x: -6, z: 1.4, face: 0 },
+                { key: 'railing_1m',      x: -10, z: -2.3, face: 0 },                                                    // THE PARK RULE's catalogue rail on the deck
+                { key: 'observation_window', x: -10, z: -1.9, face: 180, mount: 1.0 },                                  // the deck's window over the dayroom, free-standing
+                /* THE STATION: the desk, the clipboard, the clock that is right twice a day */
+                { key: 'steel_table',     x: 12, z: -6, face: 0 }, { key: 'clipboard_flat', x: 11.6, z: -6.2, y: 0.76, face: 10 }, { key: 'crt_terminal', x: 12.6, z: -6, y: 0.76, face: 0 },
+                { key: 'computer_chair_grey', x: 12, z: -4.8, face: 0 },
+                { key: 'wall_clock',      x: 12, z: -9.6, face: 0, mount: 2.4 },
+                { key: 'security_camera', x: 16.6, z: -9.6, face: 225, mount: 2.55 },
+                { key: 'evac_button',     x: 16.6, z: -4, face: 270, mount: 1.2 },
+                { key: 'trash_bin',       x: 16.6, z: -2.4, face: 270 },
+                { key: 'wet_floor_sign',  x: 4, z: -6.4, face: 40 },
+                { key: 'bare_bulb',       x: -10, z: 4, ceil: true }, { key: 'bare_bulb', x: -16, z: -9, ceil: true }, { key: 'bare_bulb', x: 14, z: 8, ceil: true },
+                { key: 'bare_bulb',       x: 12, z: -6, ceil: true }, { key: 'bare_bulb', x: 0, z: -6, ceil: true },
+            ],
+            agents: [],
+            npcSpots: [
+                { x: -16, z: -8.2, face: 180, race: 'grey', say: ['“…” “How long have you been here?” “…” “Since before it was here.”'] },
+                { x: 14, z: 7.2, face: 180, race: 'grey', say: ['“…” “Room 5150.” “…” “That is the other building.” “…” “It is every building.”'] },
+                { x: -8, z: 6, face: 300, race: 'telepath', say: ['“They saw it.” “Saw what?” “What you are about to. Sit down.”', '“The white is a choice.” “Whose?” “Not theirs.”'] },
+                { x: 9, z: -4, face: 40, race: 'men in black', say: ['“Visiting hours.” “When are they?” “Over.”', '“Quiet please.” “I did not say anything.” “They heard you think it. Everyone in here does.”'] },
+            ],
+            onlineSpots: [],
+            lines: [
+                '“Two cells.” “Two patients.” “Neither is a patient. Both are here.”',
+                '“The deck is for observation.” “Of what?” “Of whoever is on the deck.”',
+                '“The cage is empty.” “Since when?” “Since it was fed.”',
+                '“Everything is white.” “Why?” “So nothing shows.” “Something shows.” “Yes.”',
+            ],
+            spawn: { x: -6, z: 7, face: 0 },
+        },
+        /* ── THE FLIGHT LINE — the aprons and taxiways between the berms, the runway, the tower, the mast, the pens ── */
+        site_prebuilt_area51_flightline: {
+            label: 'AREA 51 · THE FLIGHT LINE',
+            sub: 'RUNWAY 33 · THE TOWER · THE PENS · THE LIGHTS GO ROUND ALL NIGHT',
+            kind: 'box', site: 'prebuilt_area51', part: 'flightline',
+            shell: hqAirbaseShell({ w: 96, d: 64, plate: { x: 0, z: 30.8, y: 4.4 } }),
+            terrain: {
+                floor: 'dirt_4', cliff: 'wasteland', path: 'urban:PlasterWallPainted1b',                                 // the asphalt is the city's own sheet
+                noise: { amp: 0.12, scale: 7 },
+                gen: { kind: 'rooms', seed: 33, loops: 3, thicket: false, wallH: 1.6, rMin: 7, rMax: 12 },              // the aprons joined by taxiways; the solid = the blast berms
+                features: [
+                    { k: 'path', pts: [[-46, 10], [46, 10]], w: 9 },                                                     // RUNWAY 33
+                    { k: 'path', pts: [[18, 31], [18, 10]], w: 5 },                                                      // the taxiway from the hangar's big door
+                    { k: 'path', pts: [[-30, 31], [-30, 10]], w: 4 },                                                    // the yard gate's lane
+                    { k: 'plateau', x: -10, z: -16, r: 3.2, h: 4.5, edge: 0.35 },                                        // THE TOWER
+                    { k: 'ramp', x0: -10, z0: -3, x1: -10, z1: -13.5, w: 2.4, h0: 0, h1: 4.5, stairs: true, edge: 0.2 },  // its stair (L ≥ 2.2 × h, ends 0.7 m inside)
+                    { k: 'rail', x0: -12, z0: -13, x1: -8, z1: -13 },                                                    // the tower's rim (the grind)
+                    { k: 'plateau', x: -8, z: -17.5, r: 0.8, h: 8.0, edge: 0.25 },                                       // THE MAST on the tower (the tape — the door gun's)
+                    { k: 'wall', x0: -40, z0: -8, x1: -28, z1: -8, h: 1.5, t: 0.6, key: 'wasteland' },                   // the revetments
+                    { k: 'wall', x0: 28, z0: -8, x1: 40, z1: -8, h: 1.5, t: 0.6, key: 'wasteland' },
+                    { k: 'wall', x0: 28, z0: -20, x1: 28, z1: -8, h: 1.5, t: 0.6, key: 'wasteland' },
+                    { k: 'dip', x: 30, z: 22, r: 5, h: 1.8 },                                                            // the crater nobody filed
+                    { k: 'wall', x0: 0, z0: 24, x1: 14, z1: 24, h: 0.45, t: 0.4, key: 'urban:ConcreteStriped2a' },        // the taxiway's kerb (a grind)
+                    { k: 'scatter', key: 'traffic_barrel', n: 6, seed: 1 },
+                    { k: 'scatter', key: 'cinder_block', n: 8, seed: 2 },
+                    { k: 'scatter', key: 'traffic_cone', n: 6, seed: 3 },
+                ],
+            },
+            doors: [
+                { id: 'hangar', wall: 's', x: 18, leaf: 'leaf_bulkhead', wide: true,
+                  label: 'HANGAR 18', sub: 'THE BIG DOOR · BACK INTO THE HANGAR',
+                  action: { room: 'site_prebuilt_area51_hangar', at: 'flightline' },
+                  desc: 'The hangar’s big door from the apron. Eighteen is painted on it in letters taller than the door is; the door is taller than that.' },
+                { id: 'ward', wall: 's', x: -30, leaf: 'leaf_cell',
+                  label: 'THE WHITE ROOMS', sub: 'THE YARD GATE · BACK INTO THE WING',
+                  action: { room: 'site_prebuilt_area51_ward', at: 'yard' },
+                  desc: 'The barred gate into the wing. From out here the white is a light left on.' },
+            ],
+            counters: [],
+            props: [
+                /* THE TOWER: the beacon on it, the rail; the mast stands beside it, unclimbed */
+                { key: 'floating_orb',    x: -11.6, z: -15.2, face: 0 },                                                 // THE BEACON (the near weenie: the light on the tower that is not a light)
+                { key: 'flood_mast',      x: -40, z: 2 }, { key: 'flood_mast', x: 40, z: 16 }, { key: 'flood_mast', x: 6, z: -26 }, { key: 'flood_mast', x: 6, z: 28 },   // the floodlights round the aprons
+                { key: 'railing_1m',      x: -10, z: -13.2, face: 0 },
+                /* THE APRONS: the crew bus, the shelter, the fire truck, the truck, the wreck in its pen */
+                { key: 'school_bus',      x: -20, z: 24, face: 0 },
+                { key: 'bus_shelter',     x: -26, z: 27, face: 0 },
+                { key: 'car_truck',       x: -36, z: 20, face: 90 },
+                { key: 'fire_truck',      x: 40, z: -24, face: 90 },
+                { key: 'crashed_car',     x: 34, z: -2, face: 30 },
+                { key: 'signpost',        x: 10, z: 26 },
+                { key: 'warning_tape',    x: 18, z: 5.5, face: 0 },
+                { key: 'quarter_pipe',    x: 10, z: 20, face: 90 }, { key: 'quarter_pipe', x: 26, z: 20, face: 270 },  // THE PARK RULE: the half pipe on the apron
+            ],
+            agents: [],
+            npcSpots: [
+                { x: -34, z: 24, face: 90, race: 'cowboy', say: ['“Runway thirty-three runs into the desert.” “Then what?” “Then the desert’s problem.”'] },
+                { x: -10.8, z: -17.4, face: 160, race: 'marksman', say: ['“The lights go round.” “Whose are they?” “Ours, on the paperwork.” “And off it?” “Round.”'] },
+                { x: -22, z: 24, face: 270, race: 'men in black', say: ['“The bus leaves at six.” “For where?” “Six.”'] },
+                { x: 44, z: 4, face: 270, race: 'conspiracy theorist', say: ['“I got in.” “How?” “The fence has a gate. It says KEEP OUT. It does not say how.”', '“That is the saucer.” “That is a tarp.” “That is what a saucer would say.”'] },
+            ],
+            onlineSpots: [],
+            lines: [
+                '“Runway thirty-three.” “There is no thirty-three.” “There is no runway. Both are lit.”',
+                '“The tower is manned.” “By whom?” “By the tower.”',
+                '“The mast is for the beacon.” “The beacon is on the tower.” “Then the mast is for the mast.”',
+                '“The crater is not on the plan.” “What made it?” “The plan.”',
+            ],
+            spawn: { x: 18, z: 24, face: 0 },
+        },
+        /* ═══════════════════════════════════════════════════════════════════
            D.U.M.B. — THE BASE UNDER THE BASE (HQ plan 9.3 stage 8 — THE COMPLEX
            CANDIDATES #5, 2026-09-17): the catch-all for every black-budget
            project — Area 51's tunnel, CERN's ring, dream research, psychic
@@ -30304,8 +30619,8 @@ const DOOR_HQ = {
            ═══════════════════════════════════════════════════════════════════ */
         /* ── SUB-LEVEL 1 · THE MOTOR POOL — the tram hall, the platform, the bays, the tunnel both ways ── */
         site_prebuilt_dumb_motorpool: {
-            label: 'D.U.M.B. · THE MOTOR POOL',
-            sub: 'SUB-LEVEL 1 · THE TRAM · THE TUNNEL EVERY BASE IS ON',
+            label: 'D.U.M.B. · LEVEL P3',   // 2026-09-18 (the user: "connect them or call it P2 or something"): the motor pool is the parking level UNDER the garage — P1 the garage, P2 the stair H-Wing took, P3 the level the panel never had; THE RAMP joins them (links.garage_motorpool)
+            sub: 'THE MOTOR POOL · UNDER THE GARAGE · THE TRAM · THE TUNNEL EVERY BASE IS ON',
             kind: 'box', site: 'prebuilt_dumb', part: 'motorpool',
             shell: hqBunkerShell({ w: 64, d: 40, h: 6.0, wallH: 6.0, plate: { x: 0, z: -18.8, y: 3.4 }, floorColor: 0xa8acb0 }),
             terrain: {
@@ -30326,10 +30641,7 @@ const DOOR_HQ = {
                 ],
             },
             doors: [
-                { id: 'lift', wall: 's', x: 0, leaf: 'leaf_bulkhead', wide: true,
-                  label: 'ROOM 555', sub: 'THE FREIGHT LIFT · UP TO THE BOARD',
-                  action: { room: 'site_prebuilt_dumb', at: 'lift' },
-                  desc: 'The freight lift, from below. It says SUB-LEVEL 1 on this side and nothing on the other. Up is the base everyone knows about.' },
+                /* the south wall at x 0 is THE BAY DOOR (siteRooms.entry, 2026-09-18): the board room is bypassed — the freight lift lands you here */
                 { id: 'seven', wall: 'n', x: 0, leaf: 'leaf_wired_double', wide: true,
                   label: 'SUB-LEVEL 7', sub: 'THE STAIR DOWN · THE LEVEL THAT DOES NOT EXIST',
                   action: { room: 'site_prebuilt_dumb_sublevel7', at: 'motorpool' },
@@ -30365,8 +30677,10 @@ const DOOR_HQ = {
             lines: [
                 '“Five sides above ground.” “And the sixth?” “You are standing on it.”',
                 '“Every car is signed out.” “Every car is here.” “Both of those are true and the sheet is fine with it.”',
+                '“Whose cars are these?” “The garage’s.” “The garage is two levels up.” “The garage is a big garage.”',
                 '“The tram is lit.” “The tram is always lit.” “Has anyone been on it?” “Nobody has been off it.”',
                 '“The red light is not an emergency.” “What is it?” “The default.”',
+                '“P3.” “The panel stops at P1.” “The ramp does not.”',
             ],
             spawn: { x: 3, z: 6, face: 0 },
         },
@@ -30500,6 +30814,11 @@ const DOOR_HQ = {
                   label: 'SUB-LEVEL 7', sub: 'BACK TO THE HUB',
                   action: { room: 'site_prebuilt_dumb_sublevel7', at: 'dream' },
                   desc: 'The hospital door from the quiet side. The porthole looks out on the hub. Someone has taped a drawing of an eye over it, from the inside.' },
+                /* THE SERVICE CORRIDOR (2026-09-18 — the user: "too many rooms that don't connect anywhere else"): the ward's back door down to the vat hall — every department has two ways out now */
+                { id: 'service', wall: 's', x: -6, leaf: 'leaf_frosted', wide: true,
+                  label: 'CLONE RESEARCH', sub: 'THE SERVICE CORRIDOR · DOWN TO THE VATS',
+                  action: { room: 'site_prebuilt_dumb_clonevats', at: 'service' },
+                  desc: 'A single frosted door at the back of the ward, warm to the touch like the one on the hub. The sleepers are wheeled through it. Some of them are wheeled back.' },
             ],
             counters: [],
             props: [
@@ -30566,6 +30885,10 @@ const DOOR_HQ = {
                   label: 'SUB-LEVEL 7', sub: 'BACK TO THE HUB',
                   action: { room: 'site_prebuilt_dumb_sublevel7', at: 'clone' },
                   desc: 'The frosted door from the warm side. The glass is fogged from in here, which means someone breathed on it, which the log says nobody did.' },
+                { id: 'service', wall: 'n', x: 12, leaf: 'leaf_frosted', wide: true,
+                  label: 'DREAM RESEARCH', sub: 'THE SERVICE CORRIDOR · UP TO THE WARD',
+                  action: { room: 'site_prebuilt_dumb_dreamlab', at: 'service' },
+                  desc: 'The service corridor up to the ward. A gurney is parked at the foot of it with nobody on it, which is the good outcome.' },
             ],
             counters: [],
             props: [
@@ -30629,6 +30952,11 @@ const DOOR_HQ = {
                   label: 'SUB-LEVEL 7', sub: 'BACK TO THE HUB',
                   action: { room: 'site_prebuilt_dumb_sublevel7', at: 'war' },
                   desc: 'The vault door from inside. Two locks, both open. The keypad on this side has no sticky note; on this side everyone knows the code.' },
+                /* THE PRIVATE STAIR (2026-09-18): off the south gallery (y 3.0 — the door stands on the tier) down to the bunker's pool — he paid for a stair too */
+                { id: 'stair', wall: 's', x: 8, y: 3.0, leaf: 'leaf_coffee',
+                  label: 'THE BUNKER', sub: 'THE PRIVATE STAIR · DOWN TO THE POOL',
+                  action: { room: 'site_prebuilt_dumb_bunker', at: 'stair' },
+                  desc: 'A plain door at the back of the south gallery with a brass number that is not a number here. The stair behind it is carpeted, which nothing else on this level is.' },
             ],
             counters: [],
             props: [
@@ -30699,6 +31027,10 @@ const DOOR_HQ = {
                   label: 'SUB-LEVEL 7', sub: 'THE PRIVATE LIFT · BACK TO THE HUB',
                   action: { room: 'site_prebuilt_dumb_sublevel7', at: 'bunker' },
                   desc: 'The private lift, from the carpeted side. The button says LOBBY. There is no lobby. It goes to the hub, which he has never been told.' },
+                { id: 'stair', wall: 'n', x: 16, leaf: 'leaf_coffee',
+                  label: 'THE WAR ROOM', sub: 'THE PRIVATE STAIR · UP TO THE GALLERY',
+                  action: { room: 'site_prebuilt_dumb_warroom', at: 'stair' },
+                  desc: 'The private stair, from the pool end. It comes out on the war room’s south gallery, behind the clocks, where he can watch the board in a towel.' },
             ],
             counters: [],
             props: [
@@ -30767,10 +31099,7 @@ const DOOR_HQ = {
                 ],
             },
             doors: [
-                { id: 'hall', wall: 's', x: 0, leaf: 'leaf_bulkhead', wide: true,
-                  label: 'ROOM 999', sub: 'THE COLLIDER HALL · BACK TO THE BOARD',
-                  action: { room: 'site_prebuilt_cern', at: 'ring' },
-                  desc: 'The blast door back into the hall they let you see. The hum is louder on this side. The plate says 999 upside down, which is the joke, which nobody laughs at.' },
+                /* the south wall at x 0 is THE BAY DOOR (siteRooms.entry, 2026-09-18): the board room is bypassed — the blast door lands you on the ring */
             ],
             counters: [],
             props: [
@@ -33117,7 +33446,7 @@ const HQ_TERRAIN_GEN = {
        drawn by three-renderer.js _hqBuildTerrain like any wall, never read by the walker (the mass is). `bsp: false` =
        the authored rooms and halls alone (CERN's ring). No thicket, no crag: the walls ARE the plan. */
     halls: { leafMin: 8.0, leafMax: 19.0, roomInset: 1.6, roomMin: 4.2, roomSnap: 0.5, corridor: [2.6, 3.4], loops: 2, wallH: 4.0, edge: 0.3, jitter: 0, topNoise: 0,
-             solidPad: 0.3, wallT: 0.5, wallKey: null, simplify: 0.5, wallInner: 0.75, rim: 1.2, minOpen: 0.12 },   // minOpen: a ring is mostly wall (hq-floor-plan.test.js reads it per kind)
+             solidPad: 0.3, wallT: 0.5, wallKey: null, simplify: 0.5, wallInner: 0.75, rim: 1.2, minOpen: 0.12, minDegree: 2 },   // minOpen: a ring is mostly wall (hq-floor-plan.test.js reads it per kind); minDegree: THE CYCLE RULE (2026-09-18) — every room has two ways out
     forceGrow: 0.8, corridorW: 2.6, rim: 1.2, pathGrow: 1.1, minOpen: 0.28, maxOpen: 0.82, minIsland: 2.2,
 };
 function _hqTRng(seed) { let s = (seed >>> 0) || 1; return () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; }; }
@@ -33500,6 +33829,30 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
             for (let a = 0; a < hallStart; a++) for (let b = a + 1; b < hallStart; b++) if (!has(a, b)) cands.push({ a, b, d: dist(a, b) });
             cands.sort((p, q) => p.d - q.d);
             for (let li = 0; li < loops && li < cands.length; li++) edges.push([cands[li].a, cands[li].b]);
+            /* THE CYCLE RULE (2026-09-18 — the user: "a little too many dead ends or rooms that don't connect anywhere else"):
+               a Prim tree is a tree — every leaf of it is a room with ONE way in. Every ROOM node (BSP or authored; a door
+               pad is an exit, a hall vertex is on its hall) must reach `minDegree` (2) distinct neighbours: a room short of
+               it takes an L-corridor to the NEAREST node it is not already joined to, preferring a node that is not its
+               tree parent's own neighbour (so the second way out goes somewhere ELSE, not round the same corner) —
+               EXPLORABLE_AREAS_GUIDE's cyclic-dungeon rule. `gen.minDegree: 1` restores the tree (a spur is authored). */
+            const minDeg = (gen.minDegree != null) ? gen.minDegree : ((K.minDegree != null) ? K.minDegree : 2);
+            const deg = () => { const d = new Array(nodes.length).fill(0); edges.forEach(e => { d[e[0]]++; d[e[1]]++; }); return d; };
+            const nbrs = (i) => { const out = new Set(); edges.forEach(e => { if (e[0] === i) out.add(e[1]); else if (e[1] === i) out.add(e[0]); }); return out; };
+            for (let pass = 0; pass < 3; pass++) {
+                const d = deg(); let added = 0;
+                for (let i = 0; i < rooms.length; i++) {
+                    if (d[i] >= minDeg || nodes.length < 3) continue;
+                    const mine = nbrs(i), second = new Set(); mine.forEach(n => nbrs(n).forEach(m => second.add(m)));
+                    let best = null;
+                    for (let b = 0; b < nodes.length; b++) {
+                        if (b === i || mine.has(b)) continue;
+                        const dd = dist(i, b) + (second.has(b) ? 6 : 0);   // a neighbour's neighbour costs six metres: elsewhere first
+                        if (!best || dd < best.d) best = { b, d: dd };
+                    }
+                    if (best) { edges.push([i, best.b]); added++; d[i]++; d[best.b]++; }
+                }
+                if (!added) break;
+            }
         }
         const corridors = edges.map(e => {
             const A = nodes[e[0]], B = nodes[e[1]], cw = Math.max(K.corridor[0], Math.min(K.corridor[1], sn(K.corridor[0] + rnd() * (K.corridor[1] - K.corridor[0]))));
@@ -33519,7 +33872,9 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
             for (const c of corridors) { const P = c.pts; if (segIn(px, pz, P[0][0], P[0][1], P[1][0], P[1][1], c.w / 2) || segIn(px, pz, P[1][0], P[1][1], P[2][0], P[2][1], c.w / 2)) { mask[k] = 1; return; } }
             for (const h of halls) if (_hqTPolyDist(px, pz, h.pts).d < h.w / 2) { mask[k] = 1; return; }
         });
-        info.genPlan = { rooms, corridors, halls };
+        const degRooms = new Array(nodes.length).fill(0); edges.forEach(e => { degRooms[e[0]]++; degRooms[e[1]]++; });
+        const deadEnds = rooms.map((r, i) => i).filter(i => degRooms[i] < 2 && nodes.length >= 3);   // THE CYCLE RULE's readout: rooms with one way in (check-terrain prints it; the tests want 0)
+        info.genPlan = { rooms, corridors, halls, edges, deadEnds };
     } else if (gen.kind === 'city') {
         /* THE CITY (2026-09-17): the streets are the corridors — every row a polyline (`loop: true` closes it) `w` wide plus
            the sidewalk `walkW` either side; everything else is the solid = the blocks (the lots are cut after the rise, below) */
@@ -34327,7 +34682,7 @@ const HQ_TAPE_SHEET = {
     prebuilt_dumb:        [['THE LIFT LOG', 'Sub-level 7 does not exist. The lift stops there anyway.', 'facility'], ['THE BLAST DOOR, 03:14', 'Nine seconds of a door opening from the other side. Nobody comes through.', 'evidence']],
     prebuilt_cern:        [['A BADGE ON THE FLOOR', 'Your mother’s badge. The photo has been cut out.', 'parents']],   // THE VATICAN (2026-09-17): BEAM DUMP went to the cortile
     prebuilt_backrooms:   [['HUM, LEVEL 0', 'Forty seconds of carpet. Something in the wallpaper blinks.', 'evidence'], ['THE EXIT SIGN', 'It points the wrong way every time the tape loops.', 'facility']],
-    prebuilt_nuketown:    [['THE MANNEQUINS, 05:29', 'They face the blast. On the second pass they face the camera.', 'evidence'], ['TEST CARD', 'A family at a kitchen table. One chair is empty. It is your chair.', 'parents']],
+    prebuilt_nuketown:    [['THE MANNEQUINS, 05:29', 'They face the blast. On the second pass they face the camera.', 'evidence']],   // AREA 51 (2026-09-18): TEST CARD went to the white rooms
     prebuilt_stadium:     [['THE CROWD NOISE', 'Eighty thousand voices. The seats are empty.', 'evidence']],   // DISASTER CITY (2026-09-17): HALF-TIME went out to the streets
     prebuilt_camelot:     [['THE ROUND TABLE', 'Twelve chairs. Thirteen shadows.', 'evidence']],   // THE VATICAN (2026-09-17): SNOW ON THE BATTLEMENTS went to the basilica
     prebuilt_atlantis:    [['SONAR, 0400', 'Something answers the ping. It answers in a voice.', 'evidence'], ['THE PEARL DIVER', 'A woman surfacing with something in her hand. She is not wearing a suit.', 'parents']],
@@ -34350,7 +34705,7 @@ const HQ_TAPE_SHEET = {
     prebuilt_moon:        [['THE LANDER', 'A footprint beside the lander that was not there in the previous frame.', 'evidence']],   // D.U.M.B. (2026-09-17): its second tape went under the base
     prebuilt_vatican:     [['THE ARCHIVE', 'A reading room with one lamp lit. The book is open to a floor plan of the Bureau.', 'facility']],   // THE DIVINE STAIR (2026-09-17): THE CONFESSIONAL went down to the catacombs
     prebuilt_bohemian_grove: [['THE OWL', 'A statue of an owl. The owl blinks once, at 0:06.', 'evidence']],
-    prebuilt_gobekli:     [['THE PILLARS', 'Carvings of animals. On the loop, one animal has moved.', 'evidence'], ['THE DIG', 'A trench and a trowel. The hand holding the trowel wears your mother’s ring.', 'parents']],
+    prebuilt_gobekli:     [['THE PILLARS', 'Carvings of animals. On the loop, one animal has moved.', 'evidence']],   // AREA 51 (2026-09-18): its second tape went to the hangar
     prebuilt_northpole:   [['THE WORKSHOP', 'Benches, tools, no one. A bell rings on the ceiling.', 'evidence']],   // D.U.M.B. (2026-09-17): its second tape went under the base
     prebuilt_flatlands:   [['THE EDGE', 'A camera on a tripod at the edge. There is an edge.', 'evidence']],   // THE SECOND PASS (2026-09-17): THE FOURTH CORNER went to the supply closet
     prebuilt_revenge:     [['THE HELM', 'The wheel turns itself into the storm. The compass points down.', 'evidence'], ['THE CAPTAIN’S TABLE', 'A log open on the table. The last entry is dated tomorrow.', 'evidence']],
@@ -34394,7 +34749,7 @@ const HQ_TAPE_SHEET = {
     site_prebuilt_cyberpunk_noodle:   [['THE SPECIAL', 'A bowl on the counter, steaming. The steam has a year in it. The year is on the receipt, and the receipt is in your hand.', 'evidence']],
     /* the exploration floors (Phase 8): never the hall, the foyer, a lobby or a corridor — the finds are the reward for going somewhere. A floor room's tape is a BONUS: the laundry, the locker room and the lecture hall gave theirs to the spaceship (rev 18); the boiler room, the server room and the ritual room to the Dutchman (rev 19); the garage, the kitchen, the cold room and the dungeon to THE URBAN BLOCK (9.2 stage 4, 2026-09-16) — the hundred stays a hundred */
     /* 7.7 WAVE 2 (2026-09-16): Room 345's two tapes came off the sacrifice room and Room X (the hundred stays a hundred) */
-    prebuilt_bermuda:     [['FLIGHT 19, 14:10', 'Five aircraft in formation over a flat sea. The lead turns. The others turn with it. The sea does not.', 'evidence'], ['THE BUOY', 'A lantern buoy at the right angle. The tape is level; the horizon behind it is not.', 'facility']],
+    prebuilt_bermuda:     [['FLIGHT 19, 14:10', 'Five aircraft in formation over a flat sea. The lead turns. The others turn with it. The sea does not.', 'evidence']],   // AREA 51 (2026-09-18): its second tape went to the flight line
     /* THE WOODS (9.3 stage 3, 2026-09-16): seven tapes re-homed — the garden's tree (the names are carved in THE OLD TREE now), and six sites' second tapes (Shasta's map on the tree, the ranch's mesa, the forest's lantern, the grove's fire, Babel's climb, Downtown's alley camera) — the hundred stays a hundred; a built site keeps at least one */
     site_prebuilt_fairy_forest_clearing: [['1618', 'A tree in the clearing. Two names carved in it. One is yours, the other is not yet.', 'parents']],
     site_prebuilt_fairy_forest_trail:    [['THE TUNNEL MOUTH', 'A hand-drawn map of the mountain’s inside, pinned to a tree on the trail. Your father’s handwriting.', 'parents']],
@@ -34422,6 +34777,10 @@ const HQ_TAPE_SHEET = {
     site_prebuilt_dumb_warroom:   [['THE HEXAGON', 'The pole’s storm on the big board. It is a door seen edge-on. Someone has circled it in grease pencil.', 'evidence']],
     site_prebuilt_dumb_bunker:    [['EARTHRISE', 'A window eighty metres under. The Earth rises in it, the wrong colour. The window is a screen and the screen is right.', 'evidence']],
     site_prebuilt_cern_ring:      [['BEAM ON', 'The ring at full power for one frame. In the frame the ring is a door, and it is ajar.', 'evidence']],
+    /* AREA 51 (2026-09-18): one per part — three re-homed (Gobekli's, Nuketown's and Bermuda's second; the hundred stays a hundred) */
+    site_prebuilt_area51_hangar:     [['HANGAR 18, 03:00', 'The tarp comes off the rig by itself. Under the tarp, the rig. Under the rig, the floor lift, going down.', 'evidence']],
+    site_prebuilt_area51_ward:       [['ROOM 5150-B', 'A white room with no door. The camera is on the inside. So, on the second pass, are you.', 'parents']],
+    site_prebuilt_area51_flightline: [['RUNWAY 33', 'Landing lights running into the desert. Something lands. It is not on the lights and it is not on the runway.', 'evidence']],
 };
 /* the room a sheet key names: a site key → its generated board room */
 function hqTapeRoomId(key) { return DOOR_HQ.rooms[key] ? key : (DOOR_HQ.rooms['site_' + key] ? 'site_' + key : null); }
@@ -34703,6 +35062,10 @@ DOOR_HQ.findSpots = { coldroom: { tape: { x: 1.3, z: -1.35 }, pay: { x: 0.4, z: 
     site_prebuilt_dumb_warroom:   { tape: { x: 19.0, z: 0.0 } },
     site_prebuilt_dumb_bunker:    { tape: { x: 20.0, z: 9.0 } },
     site_prebuilt_cern_ring:      { tape: { x: 34.0, z: 8.0 } },
+    /* AREA 51 (2026-09-18): the crane hook, the cage, the mast — the door gun's three */
+    site_prebuilt_area51_hangar:     { tape: { x: 8.0, z: 6.0 } },
+    site_prebuilt_area51_ward:       { tape: { x: 6.0, z: 0.0 } },
+    site_prebuilt_area51_flightline: { tape: { x: -8.0, z: -17.5 } },
     site_prebuilt_fairy_forest_ritual:  { tape: { x: 0.0, z: -6.3 } } };    // THE ALTAR STONE   // the deck (SKATEBOARDING 9.8) takes the generator's far corner of Room 26
 Object.defineProperty(DOOR_HQ, 'finds', { configurable: true, enumerable: true, get: _hqFindsAll, set: _hqFindsPin });
 /* ── THE DOOR GUN'S LEARNING SEQUENCE (PHASE9_QUALITY_PLAN §6 D8, 2026-09-16) ──
@@ -38045,7 +38408,7 @@ if (typeof window !== 'undefined') {
     window.HQ_TERRAIN_RULES = HQ_TERRAIN_RULES; window.HQ_TERRAIN_GEN = HQ_TERRAIN_GEN; window.HQ_ROOM_LOOKS = HQ_ROOM_LOOKS; window.hqTerrainMaskAt = hqTerrainMaskAt; window.hqTerrainOpenAt = hqTerrainOpenAt; window.hqTerrainRooms = hqTerrainRooms; window.hqTerrainInfo = hqTerrainInfo; window.hqTerrainTraps = hqTerrainTraps; window.hqTerrainCompile = hqTerrainCompile; window.hqTerrainSolidAt = hqTerrainSolidAt; window.hqTerrainSolidTop = hqTerrainSolidTop;
     window.hqTerrainHeight = hqTerrainHeight; window.hqTerrainSlope = hqTerrainSlope; window.hqTerrainFeet = hqTerrainFeet; window.hqTerrainAir = hqTerrainAir; window.hqTerrainCam = hqTerrainCam;
     window.hqTerrainFluidAt = hqTerrainFluidAt; window.hqTerrainWallAt = hqTerrainWallAt; window.hqTerrainDoorY = hqTerrainDoorY; window.hqTerrainReach = hqTerrainReach; window.hqTerrainNodeKey = hqTerrainNodeKey;
-    window.hqTerrainDoorLanding = hqTerrainDoorLanding; window.hqTerrainDump = hqTerrainDump; window.hqCityShell = hqCityShell; window.hqSiteEntry = hqSiteEntry; window.hqSiteEntryOf = hqSiteEntryOf; window.hqApplySiteEntries = hqApplySiteEntries; window.hqFindHardReachTerrain = hqFindHardReachTerrain; window.hqTerrainFindSpot = hqTerrainFindSpot; window._hqTPolyDist = _hqTPolyDist;
+    window.hqTerrainDoorLanding = hqTerrainDoorLanding; window.hqTerrainDump = hqTerrainDump; window.hqCityShell = hqCityShell; window.hqAirbaseShell = hqAirbaseShell; window.hqSiteEntry = hqSiteEntry; window.hqSiteEntryOf = hqSiteEntryOf; window.hqApplySiteEntries = hqApplySiteEntries; window.hqFindHardReachTerrain = hqFindHardReachTerrain; window.hqTerrainFindSpot = hqTerrainFindSpot; window._hqTPolyDist = _hqTPolyDist;
     /* THE DOOR GUN (HQ plan 9.5, 2026-09-15 rev 13) */
     window.HQ_PORTAL_RULES = HQ_PORTAL_RULES; window.hqPortalRecord = hqPortalRecord; window.hqPortalStatus = hqPortalStatus; window.hqPortalIssue = hqPortalIssue;
     window.hqPortalPlace = hqPortalPlace; window.hqPortalClear = hqPortalClear; window.hqPortalLeaf = hqPortalLeaf; window.hqPortalNextSlot = hqPortalNextSlot; window.hqPortalTwin = hqPortalTwin; window.hqPortalSafeRoom = hqPortalSafeRoom; window.hqPortalDoorsIn = hqPortalDoorsIn;

@@ -496,6 +496,8 @@ the register.
 - **Billboards**: `_hzGlowSprite` / `_hzGlowCore` haloes, `_hzTextTex`
   signs and playing cards, `_nrStreakTex` wakes.
 
+### 8b. AREA 51's procs (2026-09-18) — `saucer_rig` (HANGAR 18: the tripod cradle, the lens, the dome, the tarp, four floodlights — the near weenie; a real saucer GLB with a tarp would replace it: measure it, `base: 'misc'`, keep the key) and `flood_mast` (THE FLIGHT LINE's floodlights — an outdoor terrain room lights itself). Wish-list: a tarped saucer, a floodlight mast, a control tower, a padded-cell wall tile (the `wall_padding` proc stands free on the plan walls).
+
 ## 9. The same-thing rule (one model per thing, everywhere it appears)
 
 | the thing | the model | where |

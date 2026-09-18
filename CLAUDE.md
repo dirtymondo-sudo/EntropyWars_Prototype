@@ -5429,3 +5429,39 @@ dropped corridor ceiling, THE SHAFT ROOM, Area 51's hangar part, the pack on the
 rooms. Ship data.js to Render too. UNSEEN LIVE (RULE #1c): all of it — the traced walls
 at the corners, the strip lights, the tram, the plank, the pit, the windows, the furnace,
 the pool, the orb, the two new plates.
+
+## D.U.M.B. CONTINUED — THE CYCLE RULE · THE BASES BYPASSED · LEVEL P3 · THE LOOPS · AREA 51 (2026-09-18, local delivery)
+**THE CYCLE RULE** (data.js `_hqTGenerate`, the `halls` branch; `HQ_TERRAIN_GEN.halls
+.minDegree` 2): every ROOM node of a halls plan (BSP or authored) takes L-corridors to its
+nearest unjoined nodes until it has TWO — a room with one way in is a dead end the user
+does not want; `gen.minDegree: 1` restores the tree for an authored spur. Readout
+`info.genPlan.edges` / `.deadEnds` (check-terrain's JSON prints `deadEnds`; hq-dumb /
+hq-area51 insist on 0). **THE BASES ARE BYPASSED** (`siteRooms.entry` rows for
+`prebuilt_dumb` / `prebuilt_cern` / `prebuilt_area51` — the user: "we don't need the board
+maps if the place already has an area"): the freight lift lands in the motor pool, the
+blast door on the ring, the hangar man-door in HANGAR 18, each part wearing the board's
+egress as its `bay` door (s x 0) and no door of its own back to the board. RULE: a link on a
+bypassed board lands at the bay door — move every link onto a part FIRST (`area51_dumb.a` →
+the hangar's e wall, `cern_backrooms.a` → the ring's n x −12, `cave_dumb.b` → SUB-LEVEL 7's
+n x 0 = LEVEL −6). KNOWN: a bypassed board's own tapes are unreachable on foot (Cyberpunk /
+the Strip / Downtown too) — hq-finds' 1–2-per-site rule keeps them there; filing them in the
+entry part is the next thing to do. **LEVEL P3**: the motor pool is `D.U.M.B. · LEVEL P3`
+under the garage (P1 the garage, P2 H-Wing's stair, P3 the level the panel never had);
+`links.garage_motorpool` (route `bases`) joins the garage's w wall (z −2.5) to the motor
+pool's s wall (x −16). **THE LOOPS**: dream ⇄ clone THE SERVICE CORRIDOR (`service`,
+`leaf_frosted` wide), war ⇄ bunker THE PRIVATE STAIR (`stair`; the war room's end `y: 3.0`
+ON the south gallery). `leaf_frosted_single` is the L5 RANK leaf — never on a room door.
+**AREA 51** (data.js, the block before D.U.M.B.'s; `hqAirbaseShell(o)` beside the bunker
+shell; looks `hangar` / `white` / `flightline`): `site_prebuilt_area51_hangar` (HANGAR 18:
+`halls` round one authored hall, THE RIG up a stair with the `saucer_rig` proc — the near
+weenie — THE CATWALK, THE CRANE HOOK 8 m = the tape; doors bay / the floor lift (the tunnel)
+/ `white` / `flightline`), `_ward` (THE WHITE ROOMS: `halls` on FINE leaves 5.5–9 m = the
+cells; six `wall_padding` procs standing FREE on the plan walls, `foot 0`; THE DECK, THE
+CAGE = the tape; `hangar` / `yard`), `_flightline` (OPEN under the base's own night — the
+shell copies the EW_MAP_META sky by hand, hq-area51 diffs them; a `rooms` plan with no
+thicket, `wallH` 1.6 = the berms between the aprons; RUNWAY 33, THE TOWER + the beacon, THE
+MAST = the tape; four `flood_mast` procs — an outdoor TERRAIN room lights ITSELF,
+`shell.lights` must be empty (doorhq); `hangar` / `ward`). Every part has two ways out. Tapes:
+Gobekli's, Nuketown's and Bermuda's second re-homed; `findSpots` pins the three. `npm test`
+runs `hq-area51.test.js`; hq-floor-plan 31 planned, hq-terrain 36 rooms, disaster-city-3
+six entries. Ship data.js to Render too. UNSEEN LIVE (RULE #1c): all of it.

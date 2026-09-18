@@ -97,28 +97,33 @@ test('the sheet: seven parts on two sites — six on Room 555, the ring on Room 
     assert.equal(D.hqSiteComplex('prebuilt_cern').length, 2, 'CERN: the board room and the ring');
 });
 
-test('THE WAYS IN + THE TUNNEL: Room 555’s freight lift (n x −5) goes down into the motor pool and Room 999’s blast door (n x −5) opens on the ring — the lanes the two tunnel links gave up; area51_dumb lands on the motor pool’s WEST wall, dumb_cern joins its EAST wall to the ring’s WEST; both live on the bases line; the board rooms keep ≤ 3 link doors', () => {
-    for (const [site, doorId, part, backId] of [['prebuilt_dumb', 'lift', MOTOR, 'lift'], ['prebuilt_cern', 'ring', RING, 'hall']]) {
-        const board = 'site_' + site, d = at(board, doorId);
-        assert.ok(d && d.wall === 'n' && d.x === -5 && d.leaf === 'leaf_bulkhead' && d.wide === true && d.action.room === part && d.action.at === backId, site + ': the back door into ' + part);
-        const b = at(part, backId);
-        assert.ok(b && b.leaf === 'leaf_bulkhead' && b.wide === true && b.action.room === board && b.action.at === doorId, part + ': the way back is the same door');
-        assert.ok(!d.rankDoor && !d.minClearance && D.doorSiteState(d, null) === 'open', site + ': never gated');
-        const links = HQ.rooms[board].doors.filter(x => x.link);
-        assert.ok(links.length <= 3 && links.every(x => x.wall === 'n'), site + ': ≤ 3 link doors, all on the north wall');
-        for (const o of HQ.rooms[board].doors) if (o.id !== d.id && o.wall === 'n') assert.ok(Math.abs(o.x - d.x) >= 4.4, site + ': the back door shares a lane with ' + o.id);
+test('THE WAYS IN = THE ENTRY (2026-09-18): the two board rooms are BYPASSED — the freight lift lands you in the motor pool, the blast door on the ring, each part wearing the board’s egress as its bay door; the tunnel links live on the parts (area51_dumb on the motor pool’s WEST wall from the hangar, dumb_cern EAST to the ring’s WEST, cern_backrooms on the ring, cave_dumb on SUB-LEVEL 7); THE RAMP joins the garage (P1) to the motor pool (P3)', () => {
+    for (const [site, part, backId] of [['prebuilt_dumb', MOTOR, 'lift'], ['prebuilt_cern', RING, 'ring']]) {
+        const board = 'site_' + site, eg = at(board, 'egress'), bay = at(part, 'bay');
+        assert.ok(D.hqSiteEntryOf(site) && D.hqSiteEntryOf(site).room === part, site + ': the entry names ' + part);
+        assert.ok(bay && bay.entry === site && bay.wall === 's' && bay.x === 0 && bay.leaf === eg.leaf && bay.action.room === eg.action.room && bay.action.at === eg.action.at, part + ': the bay door is the board room’s egress');
+        assert.equal(HQ.rooms[part].doors.filter(d => d.id === 'bay').length, 1, part + ': once');
+        assert.ok(!HQ.rooms[part].doors.some(d => d.action && d.action.room === board), part + ': no door of its own back onto the bypassed board');
+        assert.equal(D.hqSiteEntry(board, 'egress').at, 'bay'); assert.equal(D.hqSiteEntry(board, 'crossing').at, 'bay'); assert.equal(D.hqSiteEntry(board, backId).at, 'bay', site + ': the board’s own back door lands at the bay');
+        assert.ok(at(board, backId) && at(board, backId).action.room === part && at(board, backId).action.at === 'bay', site + ': the board’s back door still names the part (unwalked)');
+        assert.ok(!HQ.rooms[board].doors.some(d => d.link), site + ': the bypassed board carries no link door (it would land at the bay)');
     }
-    assert.ok(!at('site_prebuilt_dumb', 'link_area51_dumb') && !at('site_prebuilt_dumb', 'link_dumb_cern') && !at('site_prebuilt_cern', 'link_dumb_cern'), 'the board rooms no longer carry the tunnel');
-    const a51 = HQ.links.find(l => l.id === 'area51_dumb'), dc = HQ.links.find(l => l.id === 'dumb_cern');
-    assert.ok(a51 && D.hqLinkLive(a51) && a51.route === 'bases' && a51.b.site === 'prebuilt_dumb' && a51.b.part === 'motorpool' && a51.b.wall === 'w' && a51.b.sub, 'the hangar tunnel lands on the motor pool’s west wall');
-    assert.ok(a51.a.site === 'prebuilt_area51' && a51.a.wall === 'n' && a51.a.x === -5, 'Area 51 keeps its end');
+    const L = id => HQ.links.find(l => l.id === id);
+    const a51 = L('area51_dumb'), dc = L('dumb_cern'), cb = L('cern_backrooms'), cd = L('cave_dumb'), gm = L('garage_motorpool');
+    assert.ok(a51 && D.hqLinkLive(a51) && a51.route === 'bases' && a51.a.site === 'prebuilt_area51' && a51.a.part === 'hangar' && a51.a.wall === 'e' && a51.b.part === 'motorpool' && a51.b.wall === 'w', 'the hangar’s floor lift ⇄ the motor pool’s west wall');
     assert.ok(dc && D.hqLinkLive(dc) && dc.route === 'bases' && dc.a.part === 'motorpool' && dc.a.wall === 'e' && dc.b.site === 'prebuilt_cern' && dc.b.part === 'ring' && dc.b.wall === 'w', 'the tunnel to the ring');
-    assert.equal(D.hqLinkRoom(a51.b), MOTOR); assert.equal(D.hqLinkRoom(dc.a), MOTOR); assert.equal(D.hqLinkRoom(dc.b), RING);
-    const x = at(MOTOR, 'link_area51_dumb'), y = at(MOTOR, 'link_dumb_cern'), z = at(RING, 'link_dumb_cern');
-    assert.ok(x && x.wall === 'w' && y && y.wall === 'e' && z && z.wall === 'w' && y.action.room === RING && z.action.room === MOTOR, 'the generated doors pair');
-    assert.ok(!(HQ.catalogue[a51.leaf] || {}).rank && !(HQ.catalogue[dc.leaf] || {}).rank, 'never a rank leaf');
+    assert.ok(cb && D.hqLinkLive(cb) && cb.a.site === 'prebuilt_cern' && cb.a.part === 'ring' && cb.a.wall === 'n' && cb.a.sub, 'the backrooms’ office door is on the ring');
+    assert.ok(cd && D.hqLinkLive(cd) && cd.b.site === 'prebuilt_dumb' && cd.b.part === 'sublevel7' && cd.b.wall === 'n' && /LEVEL −6/.test(cd.b.sub), 'LEVEL −6 is the level that does not exist');
+    assert.ok(gm && D.hqLinkLive(gm) && gm.route === 'bases' && gm.a.room === 'garage' && gm.a.wall === 'w' && gm.b.site === 'prebuilt_dumb' && gm.b.part === 'motorpool' && gm.b.wall === 's' && gm.why && gm.draft, 'THE RAMP: the garage ⇄ the motor pool');
+    assert.ok(/P3/.test(HQ.rooms[MOTOR].label) && /MOTOR POOL/.test(HQ.rooms[MOTOR].sub) && /P3/.test(HQ.rooms.garage.why), 'the motor pool is LEVEL P3 under the garage');
+    for (const [room, id, wall] of [[MOTOR, 'link_area51_dumb', 'w'], [MOTOR, 'link_dumb_cern', 'e'], [MOTOR, 'link_garage_motorpool', 's'], [RING, 'link_dumb_cern', 'w'], [RING, 'link_cern_backrooms', 'n'], [SEVEN, 'link_cave_dumb', 'n'], ['garage', 'link_garage_motorpool', 'w']]) {
+        const d = at(room, id); assert.ok(d && d.wall === wall, room + '/' + id + ' on the ' + wall + ' wall');
+        const far = at(d.action.room, d.action.at); assert.ok(far && far.link === d.link && far.action.room === room, room + '/' + id + ' pairs');
+    }
+    for (const l of [a51, dc, cb, cd, gm]) assert.ok(!(HQ.catalogue[l.leaf] || {}).rank, l.id + ': never a rank leaf');
+    assert.ok(!at('garage', 'p2').minClearance && at('garage', 'link_garage_motorpool') && Math.abs(at('garage', 'p2').z - at('garage', 'link_garage_motorpool').z) > 4.4, 'the ramp door and the H-Wing stair share the west wall, lanes apart');
     const line = D.hqWorldRoutes(MOTOR).find(r => r.id === 'bases');
-    assert.ok(line && line.legs.some(l => (l.fromRoom === MOTOR && l.toRoom === RING) || (l.fromRoom === RING && l.toRoom === MOTOR)), 'the bases line runs through the motor pool');
+    assert.ok(line && line.legs.some(l => (l.fromRoom === MOTOR && l.toRoom === RING) || (l.fromRoom === RING && l.toRoom === MOTOR)) && line.legs.some(l => l.fromRoom === 'garage' || l.toRoom === 'garage'), 'the bases line runs through the motor pool and up the ramp');
 });
 
 test('ONE PIECE: from each way in every part is walked; every inside door is a pair with the same leaf; nothing leaves a site but a links row; the hub has the five spokes', () => {
@@ -128,6 +133,7 @@ test('ONE PIECE: from each way in every part is walked; every inside door is a p
         for (const d of HQ.rooms[id].doors) {
             const a = d.action || {};
             assert.ok(a.room && HQ.rooms[a.room], id + '/' + d.id + ' leads to a room');
+            if (d.entry) { assert.ok(HQ.rooms[a.room].kind === 'bay', id + '/' + d.id + ' is the site’s bay door (siteRooms.entry, 2026-09-18)'); continue; }
             if (d.link) { assert.ok(HQ.links.some(l => l.id === d.link), id + '/' + d.id + ' is a links row'); const far = at(a.room, a.at); assert.ok(far && far.link === d.link, id + '/' + d.id + ': the far end pairs'); if (IDS.includes(a.room)) queue.push(a.room); continue; }
             const other = at(a.room, a.at);
             assert.ok(other && other.action.room === id && other.action.at === d.id, id + '/' + d.id + ' ⇄ ' + a.room + ' is a pair');
@@ -138,8 +144,12 @@ test('ONE PIECE: from each way in every part is walked; every inside door is a p
         }
     }
     assert.deepEqual(Array.from(seen).sort().join(','), IDS.slice().sort().join(','), 'every part is walked');
-    assert.deepEqual(HQ.rooms[SEVEN].doors.map(d => d.id).sort().join(','), 'bunker,clone,dream,motorpool,war', 'the hub’s five spokes');
-    for (const id of [DREAM, CLONE, WAR, BUNKER]) assert.equal(HQ.rooms[id].doors.length, 1, id + ': one way in, off the hub');
+    assert.deepEqual(HQ.rooms[SEVEN].doors.map(d => d.id).sort().join(','), 'bunker,clone,dream,link_cave_dumb,motorpool,war', 'the hub’s five spokes + the cave’s blast door');
+    /* THE LOOPS (2026-09-18 — the user: "too many rooms that don't connect anywhere else"): every department has TWO ways out */
+    for (const id of [DREAM, CLONE, WAR, BUNKER]) assert.equal(HQ.rooms[id].doors.length, 2, id + ': two ways out');
+    assert.ok(at(DREAM, 'service').action.room === CLONE && at(CLONE, 'service').action.room === DREAM, 'THE SERVICE CORRIDOR: the ward ⇄ the vats');
+    assert.ok(at(WAR, 'stair').action.room === BUNKER && at(WAR, 'stair').y === 3.0 && at(BUNKER, 'stair').action.room === WAR, 'THE PRIVATE STAIR: the war room’s south gallery ⇄ the bunker');
+    for (const id of PLANNED) assert.equal(D.hqTerrainInfo(id).genPlan.deadEnds.length, 0, id + ': THE CYCLE RULE — no room with one way in');
 });
 
 test('THE HALLS PLAN: BSP rooms inside the shell, every authored room and hall kept open, the door pads joined, L-shaped corridors of right angles, the solid a MASS (refused by the mask, the air and the boom meeting the ceiling), the traced walls in the plan’s sheet with their faces on the boundary, no thicket, no teeth; deterministic and seeded', () => {
@@ -232,7 +242,7 @@ test('THE SOLVER + THE RETURN GUARANTEE + THE PRODUCTION LANDING: in every part 
 
 test('THE ROOMS: the motor pool’s platform is climbed by both stairs and the tram stands lit at its end; the hub’s tower is never walked to, THE DROP is climbed, THE CATWALK’s far tower is reached over the plank, THE PIT is walked down and out, OBSERVATION’s deck is climbed; the ward, the range and the booth; the gantry over the vats; the war room’s galleries; the bunker’s loft, its pool waded, its cellar; the ring walked right round with the gantry climbed', () => {
     const key = (info, x, z) => D.hqTerrainNodeKey(info, x, z), foot = (id, doorId) => { const r = HQ.rooms[id]; return D.hqTerrainDoorLanding(r, at(id, doorId)); };
-    const mi = D.hqTerrainInfo(MOTOR), mf = foot(MOTOR, 'lift'), mR = D.hqTerrainReach(mi, mf.x, mf.z);
+    const mi = D.hqTerrainInfo(MOTOR), mf = foot(MOTOR, 'bay'), mR = D.hqTerrainReach(mi, mf.x, mf.z);
     assert.ok(mR.has(key(mi, -10, -14)) && Math.abs(mR.get(key(mi, -10, -14)) - 1.0) < 0.2 && mR.has(key(mi, 10, -14)), 'the platform, both ends');
     assert.ok(HQ.rooms[MOTOR].props.some(p => p.key === 'train_car' && p.x > 20) && HQ.rooms[MOTOR].props.filter(p => p.key === 'track_bed').length === 4, 'the tram at the east end of its rails');
     assert.ok(!mR.has(key(mi, -8, 6)) && D.hqTerrainHeight(mi, -8, 6) > 4, 'the signal gantry is the door gun’s');
@@ -258,7 +268,7 @@ test('THE ROOMS: the motor pool’s platform is climbed by both stairs and the t
     assert.ok(D.hqTerrainFeet(bi, 14, -9, null) != null && D.hqTerrainFluidAt(bi, 14, -9) && D.hqTerrainFluidAt(bi, 14, -9).key === 'water' && bR.has(key(bi, 14, -9)), 'the pool is waded');
     assert.ok(bR.has(key(bi, 15, 9)) && !bR.has(key(bi, 20, 9)) && D.hqTerrainHeight(bi, 20, 9) > 3.5, 'the cellar, and the safe stack the door gun reaches');
     assert.equal(HQ.rooms[BUNKER].props.filter(p => p.key === 'false_window').length, 3, 'three windows that are screens');
-    const ri = D.hqTerrainInfo(RING), rf = foot(RING, 'hall'), rR = D.hqTerrainReach(ri, rf.x, rf.z);
+    const ri = D.hqTerrainInfo(RING), rf = foot(RING, 'bay'), rR = D.hqTerrainReach(ri, rf.x, rf.z);
     for (const pt of HQ.rooms[RING].terrain.gen.halls[0].pts) assert.ok(rR.has(key(ri, pt[0], pt[1])), 'the ring is walked right round (' + pt.join(',') + ')');
     assert.ok(rR.has(key(ri, 42, -6)) && Math.abs(rR.get(key(ri, 42, -6)) - 3.2) < 0.2, 'the gantry over the detector');
     assert.ok(rR.has(key(ri, 0, -40)) && rR.has(key(ri, -48, 0)), 'the control room and the tunnel’s end');
@@ -301,7 +311,7 @@ test('the shell helper, the looks, the generator table and the source sites: hqB
     assert.ok(O.look === D.HQ_ROOM_LOOKS.cern && O.floor === 'urban:TileMarble1a' && O.wall === S.wall, 'overrides');
     for (const k of ['dumb', 'warroom', 'bunker', 'cern']) { const L = D.HQ_ROOM_LOOKS[k]; assert.ok(L && L.name && L.retro && L.cin && typeof L.bloom === 'number', 'look ' + k); }
     const H = G.halls;
-    assert.ok(H && H.leafMin > 0 && H.leafMax > H.leafMin && H.roomMin > 0 && H.corridor.length === 2 && H.wallT > 0 && H.simplify > 0 && H.solidPad > 0 && H.minOpen < G.minOpen, 'the halls row');
+    assert.ok(H && H.leafMin > 0 && H.leafMax > H.leafMin && H.roomMin > 0 && H.corridor.length === 2 && H.wallT > 0 && H.simplify > 0 && H.solidPad > 0 && H.minOpen < G.minOpen && H.minDegree === 2, 'the halls row');
     for (const s of ["} else if (gen.kind === 'halls') {", 'function _hqTTraceMaskWalls(info, mask, o) {', 'function _hqTRdp(pts, i0, i1, tol, out) {', "|| gen.kind === 'halls';", 'info.planWalls = _hqTTraceMaskWalls(info, mask, {', "if (gen.kind === 'halls') for (let pass = 0; pass < 2; pass++) {"])
         assert.ok(fs.readFileSync(__dirname + '/data.js', 'utf8').includes(s), 'data.js: ' + s);
     for (const s of ['var drawWall = function (w) {', 'info.walls.forEach(drawWall);', '(info.planWalls || []).forEach(drawWall);', 'function _hqBuildHallsLights(room, info, G, TM, rng) {', "if (info.genPlan && info.gen && info.gen.kind === 'halls') { try { _hqBuildHallsLights(room, info, G, TM, rng); }", 'var keyedMat = function (key) {', "if (w.plan) { m._ew_hqPart = 'wall'; m._ew_hqPlanWall = true; }"])

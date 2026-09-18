@@ -43128,6 +43128,66 @@ const ThreeRenderer = (function () {
             if (tx) { var m = new THREE.Mesh(new THREE.PlaneGeometry(0.26 * U, 0.05 * U), new THREE.MeshBasicMaterial({ map: tx, transparent: true })); m.position.set(0, 0.025 * U, 0.032 * U); g.add(m); }
             return g;
         },
+        /* HANGAR 18 (AREA 51, 2026-09-18): THE SAUCER ON ITS TEST RIG — a tripod cradle, the lens (two cones base to base + the
+           dome), THE TARP over it (canvas, its hem breathing), four floodlights on stands round the rig aimed up at it. The near
+           weenie of the hangar: the one lit thing at the end of the painted lane. The catalogue's `light` is the floodlights'. */
+        /* THE FLIGHT LINE (2026-09-18): a floodlight mast — a lattice pole, the head of four lamps aimed down and out, the glow; the light is the catalogue's */
+        flood_mast: function (U) {
+            var g = new THREE.Group();
+            var dark = _hqMat(null, 1, 1, { color: 0x3a3e44, shininess: 30 });
+            var pole = new THREE.Mesh(new THREE.CylinderGeometry(0.1 * U, 0.16 * U, 6.4 * U, 8), dark); pole.position.y = 3.2 * U; g.add(pole);
+            var base = new THREE.Mesh(new THREE.CylinderGeometry(0.4 * U, 0.46 * U, 0.2 * U, 10), dark); base.position.y = 0.1 * U; g.add(base);
+            var bar = new THREE.Mesh(new THREE.BoxGeometry(1.6 * U, 0.08 * U, 0.08 * U), dark); bar.position.y = 6.45 * U; g.add(bar);
+            var lampMat = new THREE.MeshBasicMaterial({ color: 0xeaf4ff });
+            for (var i = 0; i < 4; i++) {
+                var x = (i - 1.5) * 0.44 * U;
+                var head = new THREE.Mesh(new THREE.BoxGeometry(0.34 * U, 0.3 * U, 0.26 * U), dark); head.position.set(x, 6.62 * U, 0.06 * U); head.rotation.x = 0.55; g.add(head);
+                var lens = new THREE.Mesh(new THREE.PlaneGeometry(0.28 * U, 0.24 * U), lampMat); lens.position.set(x, 6.55 * U, 0.2 * U); lens.rotation.x = -Math.PI / 2 + 0.55; g.add(lens);
+            }
+            return g;
+        },
+        saucer_rig: function (U) {
+            var g = new THREE.Group();
+            var steel = _hqMat('metal_3', 2, 1, { color: 0x6e7880, shininess: 60 });
+            var dark = _hqMat(null, 1, 1, { color: 0x2a2e34, shininess: 30 });
+            var hull = new THREE.MeshPhongMaterial({ color: 0xb8c4cc, emissive: 0x203040, emissiveIntensity: 0.25, shininess: 140, specular: 0xffffff });
+            var canvas = new THREE.MeshPhongMaterial({ color: 0x6a6e5c, shininess: 4, side: THREE.DoubleSide });
+            /* the tripod: three legs leaning in to the cradle ring at 1.6 m */
+            for (var i = 0; i < 3; i++) {
+                var a = i * Math.PI * 2 / 3 + 0.5, leg = new THREE.Mesh(new THREE.CylinderGeometry(0.09 * U, 0.12 * U, 2.0 * U, 8), steel);
+                leg.position.set(Math.cos(a) * 2.2 * U, 0.95 * U, Math.sin(a) * 2.2 * U);
+                leg.rotation.z = -Math.cos(a) * 0.42; leg.rotation.x = Math.sin(a) * 0.42; g.add(leg);
+                var foot = new THREE.Mesh(new THREE.CylinderGeometry(0.32 * U, 0.36 * U, 0.12 * U, 10), dark); foot.position.set(Math.cos(a) * 2.6 * U, 0.06 * U, Math.sin(a) * 2.6 * U); g.add(foot);
+            }
+            var cradle = new THREE.Mesh(new THREE.TorusGeometry(1.7 * U, 0.09 * U, 8, 36), steel); cradle.position.y = 1.65 * U; cradle.rotation.x = Math.PI / 2; g.add(cradle);
+            /* the lens: the lower cone (inverted), the upper cone, the dome on top */
+            var lower = new THREE.Mesh(new THREE.ConeGeometry(3.0 * U, 0.7 * U, 28), hull); lower.position.y = 2.05 * U; lower.rotation.x = Math.PI; g.add(lower);
+            var upper = new THREE.Mesh(new THREE.ConeGeometry(3.0 * U, 1.0 * U, 28), hull); upper.position.y = 2.9 * U; g.add(upper);
+            var rim = new THREE.Mesh(new THREE.TorusGeometry(3.0 * U, 0.06 * U, 6, 48), dark); rim.position.y = 2.4 * U; rim.rotation.x = Math.PI / 2; g.add(rim);
+            var domeMat = new THREE.MeshPhongMaterial({ color: 0x9fe8ff, emissive: 0x3fb8ff, emissiveIntensity: 0.6, transparent: true, opacity: 0.8, shininess: 160 });
+            var dome = new THREE.Mesh(new THREE.SphereGeometry(0.8 * U, 20, 14, 0, Math.PI * 2, 0, Math.PI / 2), domeMat); dome.position.y = 3.35 * U; g.add(dome);
+            /* the port lights round the rim */
+            var portMat = new THREE.MeshBasicMaterial({ color: 0xffd080 });
+            for (var k = 0; k < 8; k++) { var b = k * Math.PI / 4, port = new THREE.Mesh(new THREE.SphereGeometry(0.07 * U, 8, 6), portMat); port.position.set(Math.cos(b) * 2.75 * U, 2.42 * U, Math.sin(b) * 2.75 * U); g.add(port); }
+            /* THE TARP: a cone of canvas over the top half, its hem hanging past the rim */
+            var tarp = new THREE.Mesh(new THREE.ConeGeometry(3.45 * U, 1.9 * U, 24, 1, true), canvas); tarp.position.y = 3.25 * U; g.add(tarp);
+            var hem = new THREE.Mesh(new THREE.CylinderGeometry(3.45 * U, 3.3 * U, 0.55 * U, 24, 1, true), canvas); hem.position.y = 2.05 * U; g.add(hem);
+            /* the floodlights: four stands round the rig, the lamps aimed up at the tarp */
+            var lampMat = new THREE.MeshBasicMaterial({ color: 0xeaf4ff });
+            for (var j = 0; j < 4; j++) {
+                var c = j * Math.PI / 2 + Math.PI / 4, sx = Math.cos(c) * 3.9 * U, sz = Math.sin(c) * 3.9 * U;
+                var pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04 * U, 0.05 * U, 1.7 * U, 6), dark); pole.position.set(sx, 0.85 * U, sz); g.add(pole);
+                var base = new THREE.Mesh(new THREE.CylinderGeometry(0.28 * U, 0.3 * U, 0.06 * U, 8), dark); base.position.set(sx, 0.03 * U, sz); g.add(base);
+                var head = new THREE.Mesh(new THREE.CylinderGeometry(0.16 * U, 0.2 * U, 0.22 * U, 10), dark); head.position.set(sx * 0.94, 1.75 * U, sz * 0.94); head.lookAt(new THREE.Vector3(0, 2.9 * U, 0)); head.rotateX(Math.PI / 2); g.add(head);
+                var lens = new THREE.Mesh(new THREE.CircleGeometry(0.15 * U, 10), lampMat); lens.position.set(sx * 0.92, 1.8 * U, sz * 0.92); lens.lookAt(new THREE.Vector3(0, 2.9 * U, 0)); g.add(lens);
+            }
+            if (_hq) _hq.tickers.push(function (dt, now) {
+                var t = now * 0.001;
+                domeMat.emissiveIntensity = 0.45 + 0.2 * Math.sin(t * 1.7);
+                hem.scale.y = 1 + 0.06 * Math.sin(t * 0.8); tarp.position.y = (3.25 + 0.02 * Math.sin(t * 0.8)) * U;
+            });
+            return g;
+        },
         warning_tape: function (U) {
             var g = new THREE.Group();
             var tex = null;

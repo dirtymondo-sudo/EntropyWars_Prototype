@@ -9913,3 +9913,80 @@ strip lights' brightness (`_hqBuildHallsLights`: the tube colour is the mood's `
 the tile, the tram's scale on its rails, the plank between the catwalk towers, the pit's slope under the walker,
 the free-standing windows and screens, the furnace's mouth, the pool's water in marble, the orb on the ring's
 vertex, the two new back doors' plates.
+
+### 2026-09-18 — D.U.M.B. CONTINUED: THE CYCLE RULE, THE BASES BYPASSED, LEVEL P3 + THE RAMP, THE LOOPS, AREA 51 (three parts) (local delivery)
+
+The user's five: "the room generation looks decent but there is a little too much dead ends or rooms
+that don't connect anywhere else"; "I don't know if I like the motor pool being a thing when there is
+already a parking garage, maybe connect them or call it P2 or something"; "we don't need the board maps
+if the place already has an area, like CERN has a ring now"; "still need to add the Area 51 with the
+hangar and white padded rooms and other stuff"; "keep improving the D.U.M.B. overall".
+
+**THE CYCLE RULE** (data.js `_hqTGenerate`, the `halls` branch after the loops; `HQ_TERRAIN_GEN.halls.minDegree`
+2): a Prim tree is a tree — every leaf of it was a room with one way in. Every ROOM node (BSP or authored) now
+takes an L-corridor to the nearest node it is not joined to until it has two, preferring a node that is not its
+neighbour's neighbour (six metres dearer) so the second way out goes somewhere else. `info.genPlan.edges` /
+`.deadEnds` are the readout (check-terrain's JSON prints `deadEnds`; hq-dumb / hq-area51 insist on 0). Measured
+on the five BSP rooms: the tree left 2 / 2 / 2 dead-end rooms in the hub, the ward and the bunker; none now
+(+2 / +2 / +1 corridors). `gen.minDegree: 1` restores the tree for a room that WANTS a spur.
+
+**THE BASES BYPASSED** (`siteRooms.entry` rows for `prebuilt_dumb` / `prebuilt_cern` / `prebuilt_area51`): the
+freight lift lands you in the motor pool, the blast door on the ring, the hangar man-door in HANGAR 18 — each
+part wearing the board's egress as its `bay` door on its south wall; the parts' own doors back to the boards are
+gone (the grid's tenement-door rule). Every link that stood on those boards moved onto a part the same day
+(a link door in a bypassed room would land at the bay door): `area51_dumb.a` → the hangar's EAST wall (the
+floor lift), `cern_backrooms.a` → the ring's north wall at x −12 (a service bay off the control room),
+`cave_dumb.b` → SUB-LEVEL 7's north wall (LEVEL −6 by the cave's count IS the level that does not exist by
+the lift's). The boards still exist (the console, the marker, the register's number, the map's node) — nobody
+walks them. KNOWN: the board rooms' own TAPES (D.U.M.B.'s two, CERN's, Area 51's) are unreachable on foot
+now, exactly as Cyberpunk's / the Strip's / Downtown's have been since the third pass — hq-finds' 1–2-per-site
+rule keeps them there; a rule that files a bypassed board's tape in its entry part is the next thing to do.
+
+**LEVEL P3 + THE RAMP**: the motor pool is `D.U.M.B. · LEVEL P3` — P1 the garage, P2 the stair H-Wing took,
+P3 the level the panel never had — and `links.garage_motorpool` (route `bases`, `leaf_bulkhead`) joins THE
+GARAGE's west wall (z −2.5, lanes clear of the H-Wing stair at z 6.5) to the motor pool's south wall (x −16 —
+x −14 left a corridor parallel to the bays whose thin wall the boundary test reads as open both sides): a
+facility room seaming into a wild one, the garden well's precedent, never gated. The garage's `why` says so.
+
+**THE LOOPS** (the cycle rule at the complex's own scale): every department has two ways out — THE SERVICE
+CORRIDOR (dream `service` s x −6 ⇄ clone `service` n x 12, `leaf_frosted` wide — x 12 clears the gantry's
+cliff, x −6 would have carved into it) and THE PRIVATE STAIR (war `stair` s x 8 `y: 3.0` — the door stands ON
+the south gallery — ⇄ bunker `stair` n x 16, `leaf_coffee`). `leaf_frosted_single` is the L5 rank leaf — never
+on a department door.
+
+**AREA 51** (data.js, the block before D.U.M.B.'s; `hqAirbaseShell(o)` beside the bunker shell; looks
+`HQ_ROOM_LOOKS.hangar` / `.white` / `.flightline`): **HANGAR 18** (`site_prebuilt_area51_hangar`, 72 × 48 × 9,
+`halls` seed 51 round ONE authored hall — the BSP wraps it with offices and stores; THE RIG 1.2 m up a stair
+with the `saucer_rig` proc on it (three-renderer.js: the tripod cradle, the lens, the dome, THE TARP breathing,
+four floodlights aimed up — the near weenie; catalogue `light` / `glow`), THE CATWALK 5.5 m along the north
+side up a 13 m stair, THE CRANE HOOK 8 m (the tape), the specimen tanks, the fire truck; doors: the bay (s),
+the floor lift (e, the tunnel), `white` (w z −12), `flightline` (n x 18)); **THE WHITE ROOMS**
+(`site_prebuilt_area51_ward`, 44 × 30 × 4.6, white plaster / tile / ceiling tile, `halls` seed 5150 with FINE
+leaves 5.5–9 m = the cells and closets; the dayroom, the station, two padded cells — six `wall_padding` procs
+standing FREE on the plan walls (`foot 0`, never a blocker), THE OBSERVATION DECK 2.2 m, THE CAGE 3.8 m (the
+tape); doors: `hangar` (e z −12), `yard` (n x −14, `leaf_cell`) onto the flight line); **THE FLIGHT LINE**
+(`site_prebuilt_area51_flightline`, 96 × 64 OPEN under the base's own night — hqAirbaseShell copies the
+EW_MAP_META row's sky by hand (hq-area51.test.js diffs them), the Groom range as a `peak` landmark; a `rooms`
+plan with no thicket, `wallH` 1.6 = the blast berms between the aprons; RUNWAY 33 a 9 m `path` in the city's
+asphalt sheet, THE TOWER 4.5 m up a 10.5 m stair with the beacon (`floating_orb`) on it, THE MAST 8 m (the
+tape), the revetments, the crater, the crew bus, the shelter, the fire truck, the wreck; four `flood_mast`
+procs (new — an outdoor terrain room lights ITSELF, `shell.lights` must be empty; doorhq.test.js insists);
+doors `hangar` (s x 18) + `ward` (s x −30)). Every part has two ways out: hangar ⇄ ward ⇄ flight line ⇄
+hangar. Tapes: three re-homed (Gobekli's, Nuketown's, Bermuda's second — the hundred stays a hundred; THE
+BADGE PHOTO stays on the board); `findSpots` pins the three hard tapes. Not built: a saucer GLB (the proc
+stands in — MODEL_INDEX §8), the base's fence and gate as a road out, the runway lights as a ticker.
+
+**Tests:** `hq-area51.test.js` (8: the sheet, the entry + the tunnel, one piece + the loop, the plans + the
+cycle rule, the solver + the return guarantee + the production landing, the rooms' climbs, the park rule + the
+lights + the hard tapes, the helper + the procs + check-terrain on all three); hq-dumb amended (the entry, the
+five links, the loops, the cycle rule, the bay feet); hq-floor-plan (31 planned), hq-terrain (36 rooms),
+disaster-city-3 (six entries). `npm test`: 1618 / 1612 / 0 / 6 skipped. `node check-terrain.js` solves all
+ten (every door, traps 0, dead ends 0).
+
+**Delivery:** `ENTROPY_WARS_DUMB_AREA51.zip` — data.js → R2 AND Render (the finds ledger), three-renderer.js →
+R2, index.html → Render (`20260918-dumb-area51-01-cors`), the tests, check-terrain.js and the docs → the repo.
+UNSEEN LIVE (RULE #1c): all of it — the second corridors' read (a room's two doors may sit close together
+where the nearest node was round the corner anyway), the ramp's plate in the garage, the saucer under its
+tarp at the rig's scale, the padding standing free of the plan walls (a corridor may still enter a cell on a
+padded side — the panel is `foot 0`), the white grade's overexposure, the berms' read in `wasteland` at
+1.6 m, the flood masts' throw at 26 m, the runway sheet under the wheel of lights.
