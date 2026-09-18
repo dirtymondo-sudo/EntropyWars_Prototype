@@ -279,7 +279,7 @@ test('THE PARK RULE + THE LIGHT + THE HARD TAPES: a rail and a stair and a tier 
         assert.ok(D.hqFindHardReachTerrain(tape, { terrain: info, reach, S: HQ.rooms[id].shell }).ok, id + ': the door gun has a shot at its lip');
     }
     assert.equal(tapes.filter(t => t.where === BOARD).length, 1, 'THE ROUND TABLE stays on the board');
-    for (const site of ['prebuilt_backrooms', 'prebuilt_atlantis', 'prebuilt_revenge', 'prebuilt_derelict', 'prebuilt_lookingglass']) assert.equal(tapes.filter(t => t.where === 'site_' + site).length, 1, site + ' gave its second tape');
+    for (const where of ['site_prebuilt_backrooms', 'site_prebuilt_atlantis_abyss', 'site_prebuilt_revenge', 'site_prebuilt_derelict', 'site_prebuilt_lookingglass']) assert.equal(tapes.filter(t => t.where === where).length, 1, where + ' gave its second tape');   // THE DEEP (2026-09-18): Atlantis's board is bypassed — its one tape sits in THE ABYSS
     for (const [id, title] of [[WARD, 'THE DRAWBRIDGE, DUSK'], [HALL, 'THE THIRTEENTH CHAIR'], [KEEP, 'THE WATCH'], [DUNGEON, 'MERLIN, BACKWARDS'], [SKY, 'THE CASTLE IN THE SKY']]) assert.ok(tapes.some(t => t.where === id && t.title === title), title);
 });
 

@@ -5570,6 +5570,62 @@ names the far destination again — name the room, put the rest in `sub`. `npm t
 Render too (the finds ledger). Unseen live (RULE #1c): the corn banks, the circles, the butte, the hub rings, the re-plated
 hall.
 
+## THE DEEP — THE OPEN SEA · THE ABYSS · THE TEMPLE (complex candidate #8, HQ plan 9.3 stage 11) — 2026-09-18, local delivery
+The user's pick after the underworld: "a sea that you can sail, an ocean you can swim in or drive a
+submarine in, a whirlpool for the door, the Dutchman connects to the underwater, a swimming
+animation". **THE WATER LAYER** (EXPLORABLE_AREAS_GUIDE §5c is the rule): `terrain.sea = { y, key,
+under }` on a terrain room (data.js `hqTerrainCompile` → `info.sea`) = ONE surface over the field; the
+field is the SEA FLOOR, the ground above `y` is land, the shallows a wade, deeper a SWIM —
+`hqTerrainFeet` floats the walker at `y − HQ_TERRAIN_RULES.swimDraft` (1.1; swim → wade is one step
+under the climb, so the solver / the trap check / the finds cross the water on their own);
+`hqTerrainFluidAt` reports the sea as a pseudo-fluid (`sea: true`; a scatter row under it says `sea:
+true`) and is HEIGHT-AWARE now (ground above a sheet is dry — THE ORACLE rises out of its pool);
+`under: true` = a DROWNED room (the surface over the ceiling, the feet the ground everywhere, NO climb —
+`_hqTClimbLim` — and no fluid: the water is that room's air). A `plateau` out of water blends
+`'ground'` (`blend: 'ground'` — or its edge is a 3.5 m cliff at the waterline). `HQ_SEA_RULES` is the
+table (merged over the renderer's `HQ_SEA_DEFAULT` — keep the keys in step, hq-deep.test.js diffs
+them); `hqSeaShell` / `hqAbyssShell` the shells; `HQ_ROOM_LOOKS.sea / abyss / temple`. **THE RENDERER**
+(three-renderer.js "THE DEEP — THE SWIMMER, THE SKIFF, THE BATHYSCAPHE", before the per-frame section;
+walker MODES, nothing on the match, nothing relayed — RULE #2): `_hqSwimCheck` at the walker tick's
+tail → `_hqTickSwim` (WASD along the camera, SHIFT, C dives, under the surface W swims where you look,
+SPACE up / C down, an idle diver drifts up in the open sea, the shallows hand the walker back;
+`_hqSwimFree` is the body's collision); the clips = sprites.js `HQ_SWIM_CLIPS` (UAL1 Swim_Fwd_Loop /
+Swim_Idle_Loop) baked as `hqSwim` / `hqSwimIdle`, the body pitches with the dive; a catalogue prop with
+`vehicle: 'boat' | 'sub'` is registered by the prop placer (`_hq.boats`; `float: true` rides the
+surface, `hover` hangs over the floor) and offered by `_hqFindTarget` as kind `vehicle` (E =
+`hq.board`; aboard, E = `hq.disembark`) → `_hqTickVehicle` = the helm (W/S, A/D — the camera keeps
+the mouse's offset through the turn; the skiff's `_hqHullFree` refuses water under its draft; the
+bathyscaphe drives the column, SPACE / C for depth); `_hqSeaWayCheck` enters a whirlpool / an
+upwelling by BEING IN ITS MOUTH (`DOOR_HQ.ways` rows `open: true`; the builder returns `mouthY`; the
+two builders live INSIDE the `_hqWayBuilders` literal, stub-safe); `_hqSeaArm` / `_hqTickSea` = the
+look under the surface (the wet fog on the camera's depth, the dome goes, GOD RAYS, MARINE SNOW,
+BUBBLES); the sea's one surface is the battle's animated sheet over the field + the outer ground,
+DoubleSide (`_hqBuildTerrain`). Procs: `skiff` (the misc rowboat + a sail), `submarine`, `lighthouse`
+(the beam turns), `sea_buoy`, `kelp` (`_hqKelpMat` sways in the vertex shader), `coral_brain` /
+`coral_fan` / `coral_tube` / `anemone` / `giant_clam` / `sea_vent` / `fish_school` (forty on one
+InstancedMesh) / `temple_dome`; landmarks `waterspout` / `whale`; audio.js `wayWhirl` / `wayUpwell` /
+`seaDive` / `seaSurface` / `seaBoard`; map.js `_hqSeaEvent` (the `.hq-hints.swim / .helm` lines, the
+toasts); C is a walker key (before E; the pinned `q || p` tail holds); API `hq.board / disembark /
+vehicle / vehicles / swimming / diving / sea`. **THE PARTS** (data.js, the block before THE RANCH):
+`site_prebuilt_bermuda_sea` (150 × 120: THE CAY + the lighthouse rock (the tape) + THE LOOKOUT + THE
+JETTY with the skiff at its end + the sandbar / the wreck islet / the reef + THE MAELSTROM ringed with
+four buoys; the board bypassed — `siteRooms.entry.prebuilt_bermuda`; the weir's tide pool re-pointed
+onto the cay), `site_prebuilt_atlantis_abyss` (170 × 140, drowned: THE TRENCH, THE DROWNED ROAD, THE
+TEMPLE STEPS + the dome, THE STATION + the bathyscaphe (placed FIRST so its lamp keeps under the light
+cap), THE SPIRE (the tape — a swim, never hard), the kelp forest, the coral, THE DUTCHMAN BELOW by the
+west wall with **`revenge_atlantis.b` RE-POINTED onto that wall** (the id kept), the `upwelling` free
+end), `site_prebuilt_atlantis_temple` (36 × 36, closed, family B: THE DAIS, THE ORACLE in its pool (the
+tape, the door gun's), the two dry seams `atlantis_hollow` / `atlantis_agartha` on its north wall, the
+bay door east — `entry.prebuilt_atlantis`). The whirlpool link `bermuda_abyss` (route `deep`) wears a
+DIFFERENT way at each end (`whirlpool` / `upwelling`). `DOOR_HQ.hubs.deep`. TAPES: the bypassed boards'
+into their parts + Heaven's board's into the temple (retitled) — hq-finds' rule reads "a bypassed board
+may carry none". `npm test` runs `hq-deep.test.js`; amended: hq-terrain (49 rooms), hq-finds,
+hq-dutchman, hq-world (the deep line's reach in two halves; the whirlpool in the seams list), hq-ranch
+(ten hubs). Ship data.js to Render too. Second pass = MODEL_INDEX §3n. UNSEEN LIVE (RULE #1c): all of
+it — the build-plan entry lists what to eyeball first.
+
+RULES the tests taught (the same day): a way / a door whose pad lies under an OPEN sea deeper than a wade has its SILL where the swimmer floats (`hqTerrainDoorY` → the surface less `swimDraft`; the pad itself stays on the sea floor so the spot stays a swim — the whirlpool's frame lifts itself to the surface); a body that FALLS into deep water at speed PLUNGES (a dive at once, `_hqSwimStart`), the rest bob up to the surface; an idle body meets 2.3× the drag and `buoyancy` 2.0 (≈ 0.4 m/s up); a FLOATING body rides over the shallows a quarter past `exitDepth` (`_hqSwimFree`), so the hand-over to the walker is always crossed; `hqTerrainFluidAt` is HEIGHT-AWARE (a deck or a tier above a pool's sheet is dry — read the water BESIDE a plank). `hqFindHardReachTerrain` walks the reachable nodes NEAREST FIRST and stops at the first clear shot (an existence proof; the door gun's 160 m reach made the old every-node scan take 202 s on the sea room — hq-map-remembers' D9 is seconds again).
+
 ## THE UNDERWORLD — THE TUNNELS / THE DUNGEONS (complex candidate #3, HQ plan 9.3 stage 10) — 2026-09-18, local delivery
 Four parts UNDER Disaster City on Room 1954's site (data.js, the block before THE RANCH; `hqSewerShell(o)` beside the
 castle shell; every plate reads `DISASTER CITY · <place>` — disaster-city-3 insists — and THE MAP gathers them as

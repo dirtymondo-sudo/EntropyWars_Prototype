@@ -300,6 +300,41 @@ Placement rules:
 Field per part in the build-plan entry: `weenie: { far: <kind or none>, near: <feature>,
 seen from: <door> }`. A part with neither is not finished.
 
+## 5c. WATER — the sea you sail, the ocean you swim (THE DEEP, 2026-09-18)
+
+Water is not a family; it is a LAYER any family's field can wear, and two walker MODES ride on it.
+
+- **`terrain.sea = { y, key, under }`** (data.js hqTerrainCompile) puts ONE water surface over the whole field. The
+  field is the SEA FLOOR. Ground above `y` is land; ground within `wadeMax` under it is a wade (the old pool rule);
+  anything deeper is a SWIM — `hqTerrainFeet` floats the walker at `y − swimDraft` (1.1), a step the climb accepts
+  from the shallows, so the solver, the trap check, the finds and the landings all cross the water on their own.
+  `hqTerrainFluidAt` reports the sea as a pseudo-fluid (`sea: true`): scatter and finds stay dry unless a scatter row
+  says `sea: true` (kelp, coral in the shallows). **`under: true`** = a DROWNED room: the surface is above the
+  ceiling, the whole room is the ocean, the feet rule is the ground everywhere with NO climb (the swimmer flies), no
+  fluid anywhere (the water is that room's air). THE OPEN SEA (Room 345's part) is the first; THE ABYSS (Room H-20's)
+  the first drowned one.
+- **Islands out of the sea floor are `plateau … blend: 'ground'`** (the edge rises from the ground under it) or
+  `hill`s — a plain plateau blends from height 0 and stands a cliff at the waterline (the first cay did). A jetty is
+  a `deck` with ONE bank on purpose: its end is the sea. The whirlpool / the upwelling are `way`s entered by BEING IN
+  them (`open: true`; the builder returns `mouthY`; three-renderer.js `_hqSeaWayCheck`).
+- **THE SWIMMER** (three-renderer.js "THE DEEP"): the walker becomes it at the walker tick's tail when deep water is
+  under the feet (or the room is drowned) — WASD along the camera, SHIFT faster, C dives, under the surface W swims
+  where you look, SPACE up, C down; the shallows hand the walker back. Clips: sprites.js `HQ_SWIM_CLIPS` (UAL1's
+  swim pair) baked onto the walker's rig. **THE HELM**: a catalogue prop with `vehicle: 'boat' | 'sub'` (E within
+  `boardReach`): THE SKIFF sails the surface (a draft it will not cross), THE BATHYSCAPHE drives the column (SPACE /
+  C for depth). `float: true` props ride the surface, `hover` props hang over the floor. `HQ_SEA_RULES` is the table.
+- **THE LOOK**: the sea's ONE surface is the battle's animated sheet over the field and the outer ground, DoubleSide;
+  under it the scene wears a dense teal fog (the sky dome goes), god rays hang from the surface, marine snow drifts
+  round the camera, bubbles rise from a diver / the sub; a drowned room's shell says `underwater: true` and its
+  `sky` is a navy dome with no stars (`hqAbyssShell`). Kelp sways in a vertex shader (`_hqKelpMat`), the coral, the
+  anemones, the clams, the vents and the fish schools are procs (MODEL_INDEX §3n names the models that would replace
+  them).
+- **Building a sea room** = `hqSeaShell` (or your own open shell with the map's sky row) + `terrain.sea` + islands +
+  a jetty + a `skiff` prop + the whirlpool link; **a drowned room** = `hqAbyssShell` + `terrain.sea { under: true }` +
+  the floor's relief + the `submarine` prop + an `upwelling` end. Everything else (the pads, the park rule, the hard
+  tapes, the weenies, check-terrain) is the ordinary checklist (§8). Nothing about the battle changes (§6: the fight is
+  the site's Δ).
+
 ## 6. THE Δ SITE ROOMS — the rework
 
 The user: the rooms that look like the delta maps are abandoned as a LOOK. Keep:
@@ -478,3 +513,14 @@ The design (build in this order; each step is one delivery):
   board bypassed; Nuketown retired; THE HUBS on the map (`DOOR_HQ.hubs`); every door plate reads the room DIRECTLY through it
   (`hqReplateDoors`). Two new sites are owed to the ranch: the Graveyard and a Western map (their gates are held links).
   Log: DOOR_HQ_BUILD_PLAN §9.
+
+- **2026-09-18 — THE DEEP (complex candidate #8, the user's pick).** The WATER layer (§5c): `terrain.sea` — one surface over a
+  field; the feet AFLOAT over deep water (the solver swims), a DROWNED room with no climb; THE SWIMMER, THE SKIFF and THE
+  BATHYSCAPHE as walker modes (three-renderer.js "THE DEEP"); the whirlpool / the upwelling as ways entered by being in them.
+  Three parts: THE OPEN SEA on Room 345 (the cay with the lighthouse, the jetty, the skiff, the islands, the maelstrom ringed
+  with buoys), THE ABYSS on Room H-20 (drowned: the drowned road under the kelp, the wreck of the Dutchman with her hatch — the
+  user's "connect the Dutchman to the underwater" — the trench, the spire, the station, the upwelling) and THE TEMPLE OF THE
+  DEEP (the air pocket, the two dry seams). Both boards bypassed. Rules: an island is a `blend: 'ground'` plateau; a scatter
+  under the sea says `sea: true`; a floating prop is `float: true`; a vehicle prop stands first when its lamp must keep under
+  the cap; the fluid read is height-aware. Not done: the assets (MODEL_INDEX §3n), a wind for the sail, caustics, a breath rule,
+  Agartha / Antarctica / the hold as drowned parts. Log: DOOR_HQ_BUILD_PLAN §9.

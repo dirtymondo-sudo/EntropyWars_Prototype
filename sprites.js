@@ -2254,6 +2254,17 @@ if (typeof window !== 'undefined') window.HQ_SKATE_CLIPS = HQ_SKATE_CLIPS;
 // gun is the one case that wants them.
 const HQ_GUN_CLIPS = { aim: { clip: 'Pistol_Aim_Neutral', lib: 0, ts: 1.0 }, shoot: { clip: 'Pistol_Shoot', lib: 0, ts: 1.6 } };
 if (typeof window !== 'undefined') window.HQ_GUN_CLIPS = HQ_GUN_CLIPS;
+// THE DEEP (2026-09-18): the walker's SWIM clips, baked beside the ride clip on the HQ
+// avatar's rig only (three-renderer.js _hqSpawnCharacter → slots `hqSwim` / `hqSwimIdle`).
+// UAL1 (lib 0) has the swim pair — Swim_Fwd_Loop (the stroke, prone) and Swim_Idle_Loop
+// (the float; the atlantean and the mermaid already idle on it, "the swim loop read as
+// floating on land"). The renderer plays the stroke while the swimmer moves and pitches
+// the body with the dive. THE HELM clips: Sitting_Idle_Loop in the skiff, Driving_Loop in
+// the bathyscaphe (UAL1 has both).
+const HQ_SWIM_CLIPS = { swim: { clip: 'Swim_Fwd_Loop', lib: 0, ts: 1.0 }, idle: { clip: 'Swim_Idle_Loop', lib: 0, ts: 1.0 } };
+if (typeof window !== 'undefined') window.HQ_SWIM_CLIPS = HQ_SWIM_CLIPS;
+const HQ_VEHICLE_CLIPS = { boat: { clip: 'Sitting_Idle_Loop', lib: 0, ts: 1.0 }, sub: { clip: 'Driving_Loop', lib: 0, ts: 1.0 } };
+if (typeof window !== 'undefined') window.HQ_VEHICLE_CLIPS = HQ_VEHICLE_CLIPS;
 // A cast member: the shared library + every building pose + a per-character
 // flavour. `female` picks the female idle/walk (the roster's gendered
 // defaults only sweep RACE_MODELS_3D). `file` overrides the model filename

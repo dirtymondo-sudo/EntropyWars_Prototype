@@ -687,6 +687,8 @@
                 /* SKATEBOARDING (HQ plan 9.8): the issue (standard issue while HQ_SKATE_RULES.free) and the ride's beats (the trick line, the sounds, the banked line) */
                 skate: (typeof _hqSkateOpts === 'function') ? _hqSkateOpts(profile) : null,
                 onSkate: (typeof _hqSkateEvent === 'function') ? _hqSkateEvent : null,
+                /* THE DEEP (2026-09-18): the swimmer's and the helm's beats (the hints, the toasts, the water's sounds) */
+                onSea: (typeof _hqSeaEvent === 'function') ? _hqSeaEvent : null,
                 /* ESC: close the panel, else Settings (plan D6 — an overlay,
                    not a place); EXIT on the strip is how you leave */
                 onEscape: () => { if (_hqTerm) { window._hqTerminalClose(); return; } if (_hqPause) { window._hqClosePause(); return; } if (_hqPanelTarget) window._hqClosePanel(); else window._hqOpenPause(); },
@@ -1588,7 +1590,7 @@
                — CLIMB IN, CLIMB DOWN — unless the END names its own (the well
                room's heads read CLIMB UP: the same rope, the other way) */
             const wayVerb = (t.kind === 'door' && t.door && t.door.way) ? ((t.door.verb) || _hqWayCat(t.door.way).verb) : null;
-            const verb = wayVerb || ((t.kind === 'door' && t.door && t.door.portal) ? 'STEP THROUGH' : t.kind === 'find' ? 'TAKE' : t.kind === 'door' ? ((t.door && t.door.action && t.door.action.mission && !_hqRoomExists(_hqSiteRoomId(t.door.action.mission))) ? 'OPEN' : 'ENTER') : (t.kind === 'counter' ? ((t.counter && t.counter.verb) || 'USE') : 'TALK'));
+            const verb = wayVerb || (t.kind === 'vehicle' ? (t.verb || 'BOARD') : (t.kind === 'door' && t.door && t.door.portal) ? 'STEP THROUGH' : t.kind === 'find' ? 'TAKE' : t.kind === 'door' ? ((t.door && t.door.action && t.door.action.mission && !_hqRoomExists(_hqSiteRoomId(t.door.action.mission))) ? 'OPEN' : 'ENTER') : (t.kind === 'counter' ? ((t.counter && t.counter.verb) || 'USE') : 'TALK'));
             const pNo = _hqNo(t.door || t.counter);
             el.innerHTML = `<b>▸ ${pNo ? 'ROOM ' + _hqEsc(pNo) + ' · ' : ''}${_hqEsc(t.label)}</b><span>${_hqEsc(t.sub || '')}</span><i>[E] ${verb}</i>`;
             el.style.display = '';
@@ -2080,6 +2082,40 @@
                     break;
                 }
                 case 'lapdrop': _hqTrickLine(null); break;
+            }
+        }
+        /* ══ THE DEEP (2026-09-18, complex candidate #8): the swimmer and the helm — three-renderer.js's
+           "THE DEEP" block reports through opts.onSea; the beats here are the hint line (.hq-hints.swim /
+           .helm), a toast the first time each visit, and the water's own sounds (audio.js seaDive /
+           seaSurface / seaBoard; the whirlpool's and the upwelling's cues ride the room change like any way). */
+        let _hqSeaToasted = { swim: false, dive: false, boat: false, sub: false };
+        function _hqSeaEvent(ev) {
+            if (!ev) return;
+            const h = _hqEl('hqHints');
+            switch (ev.kind) {
+                case 'swim':
+                    if (h) h.classList.toggle('swim', !!ev.on);
+                    if (ev.on) {
+                        _hqSkateSfx(ev.under ? 'seaDive' : 'seaSurface', 0.4);
+                        if (!_hqSeaToasted.swim) { _hqSeaToasted.swim = true; _hqToast(ev.under ? '<b>UNDER THE SEA</b><span>WASD SWIM WHERE YOU LOOK · SPACE UP · C DOWN · SHIFT FASTER · THE UPWELLING GOES UP</span>' : '<b>IN THE WATER</b><span>WASD SWIM · SHIFT FASTER · C DIVE · THE SHALLOWS GIVE YOU BACK</span>', 3400); }
+                    }
+                    break;
+                case 'dive':
+                    _hqSkateSfx('seaDive', 0.45);
+                    if (!_hqSeaToasted.dive) { _hqSeaToasted.dive = true; _hqToast('<b>DIVING</b><span>W SWIMS WHERE YOU LOOK · SPACE UP · C DOWN · LET GO AND YOU RISE</span>', 2800); }
+                    break;
+                case 'surface': _hqSkateSfx('seaSurface', 0.4); break;
+                case 'board': {
+                    if (h) h.classList.add('helm');
+                    _hqSkateSfx('seaBoard', 0.5);
+                    const k = ev.vehicle === 'sub' ? 'sub' : 'boat';
+                    if (!_hqSeaToasted[k]) { _hqSeaToasted[k] = true; _hqToast(k === 'sub' ? '<b>THE BATHYSCAPHE</b><span>W / S DRIVE · A / D STEER · SPACE UP · C DOWN · E LEAVES IT</span>' : '<b>THE SKIFF</b><span>W / S SAIL · A / D THE TILLER · PAST THE RED BUOYS IS THE MAELSTROM · E STEPS OFF</span>', 3600); }
+                    _hqFillStrip(_hqProfile());
+                    break;
+                }
+                case 'disembark': if (h) h.classList.remove('helm'); _hqSkateSfx('seaBoard', 0.35); _hqFillStrip(_hqProfile()); break;
+                case 'under': break;
+                case 'throttle': break;
             }
         }
         /* the pill's click = B */
@@ -3825,6 +3861,8 @@
         function _hqInteractTarget(t) {
             /* THE FINDS (9.1): E on a glowing object takes it — no panel, the walk never pauses */
             if (t && t.kind === 'find') { window._hqTakeFind(t); return; }
+            /* THE DEEP (2026-09-18): E on the skiff / the bathyscaphe boards it; aboard, E disembarks — no panel */
+            if (t && t.kind === 'vehicle') { try { ThreeRenderer.hq.board(t.id); } catch (e) { console.warn('[HQ] board failed', e); } return; }
             /* THE DOOR GUN (9.5): a placed threshold — through it, out of its twin */
             if (t && t.kind === 'door' && t.door && t.door.portal) { window._hqPortalStep(t.door.portal); return; }
             if (t && t.kind === 'door' && t.door) {

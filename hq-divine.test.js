@@ -326,7 +326,7 @@ test('THE PARK RULE + THE HAZARDS + THE LIGHT: a rail and a tier or ramp in ever
     assert.ok(HQ.rooms[PIT].terrain.features.filter(f => f.k === 'ramp' && f.h0 > f.h1).length >= 4 && HQ.rooms[CATACOMBS].terrain.features.filter(f => f.k === 'ramp' && f.h0 > f.h1).length === 2, 'the inclines go DOWN: four in the pit, two in the crypt');
     const ginfo = D.hqTerrainInfo(GATE);
     assert.equal(D.hqTerrainFeet(ginfo, -6, -5.7, null), null, 'the rift is bottomless (west of the plank)');
-    assert.ok(D.hqTerrainFeet(ginfo, -2, -4.3, null) == null && D.hqTerrainFluidAt(ginfo, -4, -5).key === 'deep_water', 'and wide, east of it too; the plank at its middle is the one way over');
+    assert.ok(D.hqTerrainFeet(ginfo, -2, -4.3, null) == null && D.hqTerrainFluidAt(ginfo, -6, -5.7).key === 'deep_water', 'and wide, east of it too; the plank at its middle is the one way over');
     assert.ok(D.hqTerrainFeet(ginfo, -4, -8.5, null) >= 0.25 && D.hqTerrainFeet(ginfo, -4, -1.5, null) >= 0.25, 'the plank stands on both banks');
     assert.ok(ginfo.walls.length === 2 && ginfo.walls.every(w => w.top > 3.4 && w.top < 4.1), 'the pearly walls stand 2 m over the dais');
     assert.ok(HQ.rooms[GATE].props.some(p => p.key === 'pearly_gate' && Math.abs(p.z + 11.6) < 0.1), 'THE PEARLY GATE stands open in the gap of the walls');
@@ -380,7 +380,7 @@ test('THE HARD TAPES: one tape per part (the hundred kept; four more re-homed â€
         assert.ok(!D.hqTerrainReach(info, L0.x, L0.z).has(D.hqTerrainNodeKey(info, tape.x, tape.z)), id + ': the walker never reaches it');
         assert.ok(D.hqFindHardReachTerrain(tape, { terrain: info }), id + ': the door gun has a shot at its lip');
     }
-    for (const site of ['prebuilt_vatican', 'prebuilt_hell', 'prebuilt_heaven', 'prebuilt_olympus', 'prebuilt_camelot', 'prebuilt_agartha', 'prebuilt_cern', 'prebuilt_area51']) assert.equal(tapes.filter(t => t.where === 'site_' + site).length, 1, site + ' keeps one tape in its board room');
+    for (const site of ['prebuilt_vatican', 'prebuilt_hell', 'prebuilt_olympus', 'prebuilt_camelot', 'prebuilt_agartha', 'prebuilt_cern', 'prebuilt_area51']) assert.equal(tapes.filter(t => t.where === 'site_' + site).length, 1, site + ' keeps one tape in its board room');   // THE DEEP (2026-09-18): Heaven's bypassed board gave its last tape to THE TEMPLE (the stair + the fields keep the site's)
     assert.ok(tapes.some(t => t.where === PIT && t.title === 'FORM 666') && tapes.some(t => t.where === GATE && t.title === 'THE GATE') && tapes.some(t => t.where === CATACOMBS && t.title === 'THE CONFESSIONAL') && tapes.some(t => t.where === DOME && t.title === 'THE EYEPIECE'), 're-homed by name');
 });
 

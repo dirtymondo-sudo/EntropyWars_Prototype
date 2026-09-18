@@ -2681,3 +2681,11 @@ failures reproduced on untouched main bb51ae4 (hq-stage2, hq-terrain, hq-urban),
 one interrupted hq-map-remembers process after ~8 minutes. Its seven non-exhaustive
 checks subsequently passed; the exhaustive hard-find reachability check remains
 unverified. No browser playtest. Full details are in the ZIP's README.txt.
+
+- **2026-09-18 — THE DEEP (complex candidate #8).** THE OPEN SEA (Room 345's part: the sea floor under one surface — `terrain.sea` —
+  the cay, the lighthouse, the jetty, THE SKIFF you sail, THE MAELSTROM), THE ABYSS (Room H-20's drowned part: you SWIM in three
+  dimensions or drive THE BATHYSCAPHE; the drowned road, the wreck of the Dutchman with her hatch — the hold's `revenge_atlantis`
+  link re-pointed onto it, the user's rule — the trench, the spire, the upwelling) and THE TEMPLE OF THE DEEP (the air pocket; the
+  two dry seams to Hollow Earth and Agartha). Both boards bypassed (`siteRooms.entry`). New walker modes (the swimmer, the helm),
+  new ways (the whirlpool, the upwelling), the `deep` hub. Every line and every tape title is Claude's DRAFT (A15). Log:
+  DOOR_HQ_BUILD_PLAN §9; the water rule: EXPLORABLE_AREAS_GUIDE §5c; the asset wishlist: MODEL_INDEX §3n.

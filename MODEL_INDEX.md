@@ -462,6 +462,62 @@ renderer unless noted):
 9. **a mine cart on rails** and **a mine timber set** (two posts and a cap) — THE OLD WORKINGS' dressing along the boards.
 10. **a hand pump with a bucket** — THE WELL, FROM UNDER's tape stands on the chimney; the bucket would stand under it.
 
+## 3n. THE DEEP (2026-09-18 — complex candidate #8, THE OPEN SEA · THE ABYSS · THE TEMPLE) — what stands there, and the wishlist
+
+No new file. The three parts (DOOR_HQ_BUILD_PLAN §9, 2026-09-18) are dressed from the kit and from PROCS
+(`DOOR_HQ.catalogue` rows with `proc:` → three-renderer.js `_hqProcBuilders`, the "THE DEEP" block) until the
+second pass brings the models. Every new catalogue key, in one place:
+
+| key | what it is today | stands as |
+| --- | --- | --- |
+| `skiff` | a proc: the misc `rowboat` GLB (`Meshy_AI_a_rowboat_0912231059_texture.glb`, its length along X, turned to +Z) under a procedural mast, boom and sail (a stand-in hull until it lands) | THE SKIFF at the jetty's end on the open sea — `vehicle: 'boat'`, `float: true` (E boards it, `hq.board`) |
+| `submarine` | a proc: a brass hull, a conning tower and hatch, a screw that turns, lit portholes, two lamps with light cones | THE BATHYSCAPHE moored off THE STATION in the abyss — `vehicle: 'sub'`, `hover: 1.2` |
+| `lighthouse` | a proc: a tapered white-and-red tower on a rock plinth, the gallery, the lantern room, a BEAM that turns (a ticker) | on THE LIGHTHOUSE ROCK of the cay — the sea's near weenie; the hard tape stands on the rock |
+| `sea_buoy` | a proc: a red can on a float, a caged lamp that blinks | the ring of four round THE MAELSTROM — `float: true` |
+| `ship_wreck` | the misc `wreck` file (`Meshy_AI_a_ghost_ship_wreck_0912231131_texture.glb`) as a catalogue row (span 16) — the same-thing rule (§9) | on THE WRECK ISLET (the sea); THE DUTCHMAN BELOW by the west wall of the abyss, her hatch beside her |
+| `kelp` | a proc: two crossed tapered fronds on ONE material per room that sways in the vertex shader (`_hqKelpMat`) | THE KELP FOREST (the abyss, 70), the kelp off the sandbar (the sea, 18 — `scatter … sea: true`) |
+| `coral_brain` | a proc: a squashed lumpy icosahedron in a warm coral | the reef's shallows, the abyss floor |
+| `coral_fan` | a proc: a lacy fan of ribs on a stalk, swaying | the reef, the abyss's coral field |
+| `coral_tube` | a proc: a cluster of open tubes | the abyss floor |
+| `anemone` | a proc: a ring of soft tentacles that breathe | the abyss floor (24) |
+| `giant_clam` | a proc: two fluted shells open on a pearl | the abyss floor (6) |
+| `sea_vent` | a proc: a black smoker with a glow in the vent and smoke sprites rising (a `light`) | THE TRENCH (3) |
+| `fish_school` | a proc: forty fish on one InstancedMesh looping a lazy figure (a ticker) | the abyss (5), the open sea (3) |
+| `temple_dome` | a proc: a marble dome on a ring of columns, lit from within (a `light`) | over THE TEMPLE STEPS' vault door in the abyss — the abyss's near weenie |
+
+Also standing here from the kit as it was: `greek_column` (the colonnade, both Atlantis parts), `sarcophagus`, `skull_pile`, `sea_chest`,
+`ship_anchor`, `ship_cannon` ×2 (the wreck's), `crystal_cluster` ×7 (the drowned road's lamps, the temple's), `brazier` ×4, `royal_throne`,
+`stained_glass` ×4, `holy_tapestry`, `railing_1m`, `campfire`, `signpost`, `folding_chair`, `cardboard_box`, `wet_floor_sign`,
+`paper_sheet`, `cave_stone` / `fallen_log` / `menhir` (the scatter). The far weenies are LANDMARKS (no file): `waterspout` on the sea's
+sky, `whale` on the abyss's (`_hqLandmarkBuilders`). The whirlpool and the upwelling are WAY builders (`_hqWayBuilders`), no file.
+
+THE WISHLIST (Meshy, unit-normalised; a row = `base: 'misc'` + `h`/`span` + `foot`/`block`, then a prop line — the proc rows above are
+the ones to replace: give the row a `file` and drop the `proc`, nothing in the renderer unless noted):
+1. **a sailing skiff** (a small open boat WITH a mast and a furled or set sail, ~4.8 m, the bow at −X like every measured piece) — replaces
+   the `skiff` proc's hull + sail; the helm's seat and the vehicle registration read the catalogue row, not the mesh.
+2. **a bathyscaphe / a small submarine** (a brass-and-rivets or a research sub with a viewport and two lamps, ~6.5 m) — replaces the
+   `submarine` proc; the lamp positions are the proc's, so a model's own lamps would want the two cones re-hung (renderer: one edit).
+3. **coral, three or four kinds** (a brain coral ~1 m, a fan coral ~1.6 m, a tube / a staghorn cluster ~1.2 m, a table coral) — the
+   procs are simple solids; one Meshy set would carry the reef.
+4. **kelp / seaweed** (a tall frond ~4.5 m, thin — it will still sway only if built as the proc's planes; a GLB frond is static unless the
+   renderer skins it: mark it `kelp: true` and the sway shader could be applied to its material — one edit).
+5. **an anemone** and **a giant clam** (small: 0.5 / 0.7 m).
+6. **a black smoker** (a hydrothermal vent chimney, ~2.4 m, dark rock) — the trench's.
+7. **a fish** (one small fish, ~0.3 m, low-poly — the school is an InstancedMesh: a GLB's geometry would be taken ONCE for all forty:
+   renderer, one edit) and **a shark** (the misc `shark` file exists on the horizon rosters already — a room-scale prop row would swim
+   it through the abyss on a ticker: one proc line).
+8. **a whale** (~40 m, dark) — the `whale` landmark is boxes and spheres; the sky builder would take a GLB through `_hzMiscKit`.
+9. **a sunken statue / an Atlantean head** (~5 m, weathered marble) and **a drowned archway** (a broken marble arch, ~4 m) — THE
+   DROWNED ROAD's ruins are columns; these would make the city read.
+10. **a lighthouse** (a full tower ~11 m, white and red, a lantern room) — the proc is bands and a beam; the beam would want re-hanging
+    at the model's lantern height (renderer: one number).
+11. **a channel buoy** (red, ~2.2 m) and **a mooring post with a rope**.
+12. **a treasure pile** (coins and cups spilling from a chest — the `sea_chest` is closed) and **a diver's helmet** (brass, ~0.4 m).
+13. **an open shipwreck section** (a hull broken open so the walker can swim INTO it — the `wreck` file is a closed hull) — the second
+    pass's set-piece: a room-scale prop with `rect: false` and no foot, its interior a swim.
+14. **a waterspout / a storm cloud** would not help: a landmark is better procedural (it turns); a **Flight 19 Avenger wreck** on the
+    reef WOULD (a ~12 m propeller aircraft, broken) — the Triangle's own story on the sea floor.
+
 ## 4. The older `Assets/misc/` models (`_MISC_GLB` + the OBJ landmarks)
 
 | key | file | kind | stands as |

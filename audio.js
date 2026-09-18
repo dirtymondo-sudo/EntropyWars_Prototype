@@ -1867,6 +1867,7 @@
             wayScope: 0.28,   // THE TELESCOPE (2026-09-17, THE DIVINE STAIR): the brass creak of the tube, a rising shimmer, the step onto cloud
             wayRoad: 0.3,   // THE ROAD (2026-09-17, THE URBAN PACK): a car passing on the road out — a low whoosh with a doppler fall, the tyres' hiss
             wayTime: 0.3, wayGutter: 0.3,   // DISASTER CITY (2026-09-17): the time machine's disc spinning up to a chord and a snap; the gutter's grate, the drop, the splash below
+            wayWhirl: 0.36, wayUpwell: 0.32, seaDive: 0.34, seaSurface: 0.3, seaBoard: 0.3,   // THE DEEP (2026-09-18): the maelstrom's roar and the drop; the upwelling's rush; the diver's plunge / breath; a hull knocked and boarded
             /* SKATEBOARDING (HQ plan 9.8, 2026-09-15): the deck's own kit — quiet, the ride plays them thirty times a minute */
             skatePush: 0.3, skateOllie: 0.4, skateLand: 0.36, skateGrind: 0.3, skateBail: 0.45, skateBank: 0.4,
             /* THE DOOR GUN rev 3 (2026-09-16): the zap, the frame landing, the recall — the building AND the board (the shot VFX voices them) */
@@ -2133,6 +2134,46 @@
                 _doorNoiseSrc(ctx, _doorEnv(ctx, out, ts, vol * 0.45, 0.005, 0.25, 0.6), ts, 0.9, { type: 'lowpass', f0: 2400, f1: 600, slide: 0.8 });
                 _doorOsc(ctx, _doorEnv(ctx, out, ts + 0.15, vol * 0.1, 0.05, 0.6, 0.9), 'sine', 96, ts + 0.15, 1.5, { f1: 64, slide: 1.4 });
                 return ts - t + 1.8;
+            },
+            /* THE DEEP (2026-09-18): THE WHIRLPOOL — the sea's roar rising round you (a swirl of filtered noise), a
+               falling tone as it takes you down, a deep boom at the bottom; THE UPWELLING — a rush of bubbles building,
+               a rising tone, a breath of air at the top; the diver's PLUNGE (a splash and the muffled hum under) and
+               SURFACE (the water clearing, a gasp of air); a hull BOARDED (a hollow wooden knock, the rock of it). */
+            wayWhirl(ctx, t, out, vol) {
+                _doorNoiseSrc(ctx, _doorEnv(ctx, out, t, vol * 0.5, 0.25, 0.9, 0.5), t, 1.8, { type: 'bandpass', f0: 500, f1: 220, slide: 1.6, q: 1.2 });
+                _doorOsc(ctx, _doorEnv(ctx, out, t + 0.2, vol * 0.22, 0.1, 0.8, 0.4), 'sine', 320, t + 0.2, 1.4, { f1: 60, slide: 1.3 });
+                _doorOsc(ctx, _doorEnv(ctx, out, t + 0.5, vol * 0.14, 0.2, 0.6, 0.6), 'sawtooth', 110, t + 0.5, 1.2, { f1: 40, slide: 1.1 });
+                const tb = t + 1.6;
+                _doorOsc(ctx, _doorEnv(ctx, out, tb, vol * 0.3, 0.005, 0.5, 0.9), 'sine', 70, tb, 1.4, { f1: 38, slide: 1.2 });
+                _doorNoiseSrc(ctx, _doorEnv(ctx, out, tb, vol * 0.2, 0.01, 0.4, 0.8), tb, 1.2, { type: 'lowpass', f0: 500, f1: 120, slide: 1.0 });
+                return tb - t + 1.6;
+            },
+            wayUpwell(ctx, t, out, vol) {
+                _doorNoiseSrc(ctx, _doorEnv(ctx, out, t, vol * 0.42, 0.3, 0.8, 0.5), t, 1.7, { type: 'bandpass', f0: 900, f1: 2600, slide: 1.4, q: 0.9 });
+                for (let i = 0; i < 9; i++) { const tb = t + 0.1 + i * 0.13 + (i % 2) * 0.03; _doorOsc(ctx, _doorEnv(ctx, out, tb, vol * 0.12, 0.003, 0.02, 0.07), 'sine', 500 + i * 130, tb, 0.09, { f1: 900 + i * 180, slide: 0.07 }); }
+                _doorOsc(ctx, _doorEnv(ctx, out, t + 0.3, vol * 0.2, 0.2, 0.7, 0.5), 'sine', 90, t + 0.3, 1.3, { f1: 380, slide: 1.2 });
+                const ts = t + 1.5;
+                _doorNoiseSrc(ctx, _doorEnv(ctx, out, ts, vol * 0.3, 0.01, 0.2, 0.6), ts, 0.9, { type: 'highpass', f0: 1400 });
+                _doorOsc(ctx, _doorEnv(ctx, out, ts + 0.05, vol * 0.1, 0.02, 0.3, 0.3), 'triangle', 640, ts + 0.05, 0.4, { f1: 720, slide: 0.3 });
+                return ts - t + 1.2;
+            },
+            seaDive(ctx, t, out, vol) {
+                _doorNoiseSrc(ctx, _doorEnv(ctx, out, t, vol * 0.5, 0.005, 0.15, 0.5), t, 0.7, { type: 'lowpass', f0: 3200, f1: 700, slide: 0.6 });
+                _doorOsc(ctx, _doorEnv(ctx, out, t, vol * 0.3, 0.004, 0.05, 0.25), 'sine', 220, t, 0.3, { f1: 60, slide: 0.25 });
+                _doorOsc(ctx, _doorEnv(ctx, out, t + 0.3, vol * 0.12, 0.3, 0.8, 0.9), 'sine', 55, t + 0.3, 1.8, { f1: 48, slide: 1.6 });
+                return 2.2;
+            },
+            seaSurface(ctx, t, out, vol) {
+                _doorNoiseSrc(ctx, _doorEnv(ctx, out, t, vol * 0.4, 0.004, 0.12, 0.4), t, 0.6, { type: 'highpass', f0: 900 });
+                for (let i = 0; i < 5; i++) { const tb = t + 0.05 + i * 0.08; _doorOsc(ctx, _doorEnv(ctx, out, tb, vol * 0.12, 0.003, 0.02, 0.06), 'sine', 800 + i * 160, tb, 0.08, { f1: 1300, slide: 0.06 }); }
+                _doorNoiseSrc(ctx, _doorEnv(ctx, out, t + 0.35, vol * 0.22, 0.05, 0.25, 0.3), t + 0.35, 0.5, { type: 'bandpass', f0: 600, f1: 300, slide: 0.4, q: 0.8 });
+                return 1.1;
+            },
+            seaBoard(ctx, t, out, vol) {
+                _doorOsc(ctx, _doorEnv(ctx, out, t, vol * 0.4, 0.002, 0.03, 0.16), 'triangle', 180, t, 0.2, { f1: 120, slide: 0.15 });
+                _doorNoiseSrc(ctx, _doorEnv(ctx, out, t, vol * 0.25, 0.002, 0.04, 0.14), t, 0.2, { type: 'lowpass', f0: 1200 });
+                _doorOsc(ctx, _doorEnv(ctx, out, t + 0.25, vol * 0.18, 0.05, 0.4, 0.5), 'sine', 96, t + 0.25, 0.9, { f1: 80, slide: 0.8 });
+                return 1.4;
             },
             wayRoad(ctx, t, out, vol) {
                 /* a car passing on the road out: the engine's low tone rising then falling (the doppler), the tyres' hiss under it, a horn far off */

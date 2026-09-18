@@ -108,9 +108,10 @@ test('THE DEEP goes below the waterline: the Atlantis link’s Dutchman end name
     assert.ok(D.hqLinkLive(link), 'the link is live');
     const hold = HQ.rooms[BOARD + '_hold'];
     const dh = hold.doors.find(d => d.link === 'revenge_atlantis');
-    assert.ok(dh && dh.wall === 'w' && dh.wide === true && dh.leaf === 'leaf_bulkhead' && dh.action.room === 'site_prebuilt_atlantis' && /BELOW THE WATERLINE/.test(dh.sub), 'the hatch: a wide bulkhead below the waterline, its own plate line');
+    /* THE DEEP (2026-09-18): the hatch opens on THE ABYSS — Atlantis's drowned part, where the Dutchman's own wreck lies — not the board */
+    assert.ok(dh && dh.wall === 'w' && dh.wide === true && dh.leaf === 'leaf_bulkhead' && dh.action.room === 'site_prebuilt_atlantis_abyss' && /BELOW THE WATERLINE/.test(dh.sub), 'the hatch: a wide bulkhead below the waterline, its own plate line');
     assert.ok(hold.shell.d / 2 - Math.abs(dh.z) >= 1.65, 'a wide panel needs 1.65 m of wall each side');
-    assert.ok(D.hqLinkDoors('site_prebuilt_atlantis').some(d => d.link === 'revenge_atlantis' && d.action.room === BOARD + '_hold' && d.action.at === dh.id), 'Atlantis’s end comes back to the hold');
+    assert.ok(D.hqLinkDoors('site_prebuilt_atlantis_abyss').some(d => d.link === 'revenge_atlantis' && d.action.room === BOARD + '_hold' && d.action.at === dh.id), 'the abyss’s end comes back to the hold');
     const deep = D.hqWorldRoutes('foyer').find(r => r.id === 'deep');
     assert.strictEqual(deep.stations[0].no, '1717', 'the Dutchman is still the end the deep line is walked from — a station is a SITE');
     assert.strictEqual(deep.stations[0].room, BOARD, 'and its station is the board room');
@@ -208,5 +209,5 @@ test('THE PARK RULE + the light + the kit: a rail on every deck, a stepped ramp 
     assert.ok(HQ.rooms[BOARD + '_hold'].props.some(p => p.key === 'ship_anchor'), 'the spare anchor is stowed in the hold');
     assert.ok(HQ.rooms[BOARD + '_hold'].props.filter(p => p.key === 'floor_drain').length >= 2, 'the bilge');
     assert.match(dataSrc, /prebuilt_revenge: \[\n\s+\{ id: 'companionway', wall: 'n', x: -5, leaf: 'leaf_shabby_wood',/, 'the back-door row');
-    assert.match(dataSrc, /a: \{ site: 'prebuilt_revenge', part: 'hold', wall: 'w', z: 0, sub: 'THE HATCH BELOW THE WATERLINE · TO ATLANTIS' \}/, 'the link end');
+    assert.match(dataSrc, /a: \{ site: 'prebuilt_revenge', part: 'hold', wall: 'w', z: 0, sub: 'THE HATCH BELOW THE WATERLINE · INTO THE DEEP' \}/, 'the link end');
 });

@@ -11246,6 +11246,9 @@ const ThreeRenderer = (function () {
             || ((name === 'hqFall') ? (acts.fall || acts.hit || acts.idle) : null)   // SKATEBOARDING rev 3: the bail's fall (a run into a slide), else the fall slot
             || ((name === 'hqGetup') ? acts.idle : null)                             // SKATEBOARDING rev 3: back on the feet, else the idle
             || ((name === 'hqAim') ? acts.idle : null)                  // THE DOOR GUN rev 4: the pistol hold, else the idle
+            || ((name === 'hqSwim') ? (acts.hqSwimIdle || acts.walk || acts.idle) : null)   // THE DEEP (2026-09-18): the stroke, else the float, else the walk
+            || ((name === 'hqSwimIdle') ? (acts.hqSwim || acts.idle) : null)
+            || ((name === 'hqSit' || name === 'hqDrive') ? acts.idle : null)
             || ((name === 'hqShoot') ? (acts.castRanged || acts.cast || acts.idle) : null)
             || ((name === 'jump') ? (acts.walk || acts.idle) : null);
         if (!next) return false;
@@ -38754,6 +38757,19 @@ const ThreeRenderer = (function () {
             }
             mesh.renderOrder = 2; G.add(mesh);
         });
+        /* THE DEEP (2026-09-18): the sea's ONE surface — over the field AND the outer ground, the battle's animated sheet for the key,
+           DoubleSide so a diver (and the drowned abyss) sees it from below; the sky's fog takes it at the horizon */
+        if (info.sea) {
+            var seaExt = (S.open && room.terrain.outer !== false) ? ((room.terrain.outer && room.terrain.outer.m) || HQ_OUTER_M) : 0;
+            var seaW = (info.halfW - 0.5 + seaExt) * 2 * U, seaD = (info.halfD - 0.5 + seaExt) * 2 * U;
+            var isPlane = (typeof THREE.PlaneGeometry === 'function');
+            var seaGeo = isPlane ? new THREE.PlaneGeometry(seaW, seaD, 1, 1) : new THREE.BoxGeometry(seaW, 0.01, seaD);   // (the terrain test's stub scene has no plane)
+            _hzTileUV(seaGeo, seaW, seaD, TM);
+            var seaMat = fluidMatFor(info.sea.key); seaMat.side = THREE.DoubleSide;
+            var seaMesh = new THREE.Mesh(seaGeo, seaMat); if (isPlane) seaMesh.rotation.x = -Math.PI / 2; seaMesh.position.y = info.sea.y * U + 0.4; seaMesh.renderOrder = 2; seaMesh.frustumCulled = false; seaMesh._ew_hqSea = true;
+            G.add(seaMesh);
+            _hq.seaFx = _hq.seaFx || {}; _hq.seaFx.sheet = seaMesh;
+        }
         if (fluidKeys.length) _hq.moatTick = { key: fluidKeys[0], keys: fluidKeys, tile: TM };
         if (lavaN && _hq.propLights < HQ_PROP_LIGHT_MAX) { var ll = new THREE.PointLight(0xff6a2a, 1.1, 22 * U, 2); ll.position.set((lavaCx / lavaN) * U, (lavaY + 1.6) * U, (lavaCz / lavaN) * U); G.add(ll); _hq.propLights++; }
         /* ── THE DECKS: planks on posts at their height (a rail either side to grind) ── */
@@ -44265,6 +44281,58 @@ const ThreeRenderer = (function () {
             if (_hq) _hq.tickers.push(function (dt, now) { glow.scale.setScalar((0.9 + 0.06 * Math.sin(now * 0.0031)) * U); });
             return { g: g, motion: motion, ow: W, oh: H, plateY: 1.7, blockers: [{ x: 0, z: -0.36, r: 0.5 }] };
         },
+        /* THE DEEP (2026-09-18): THE WHIRLPOOL — a turning funnel cut into the sea's surface (stacked open rings
+           narrowing down 6 m into the dark, the spiral texture spinning), spray on the rim, a light at the bottom;
+           the funnel is LIFTED to the surface whatever the pad's height (the pad is the sea floor's) — mouthY is
+           where a swimmer / the skiff is taken (_hqSeaWayCheck). Built from the stub scene's kinds only. */
+        whirlpool: function (U, ctx) {
+            var g = new THREE.Group(), W = 9;
+            var sea = (typeof _hqSea === 'function') ? _hqSea() : null, lift = sea ? (sea.y - (ctx.y0 || 0)) : 0, LY = lift * U;
+            var tex = (typeof _hqWhirlTex === 'function') ? _hqWhirlTex() : null;
+            var fm = _hqBasic(0x8fd0e8, { transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false, fog: false });
+            if (tex) fm.map = tex;
+            var funnel = new THREE.Group(); funnel.position.y = 0.06 * U + LY; g.add(funnel);
+            var rings = 7;
+            for (var i = 0; i < rings; i++) {
+                var t0 = i / rings, t1 = (i + 1) / rings, r0 = (W / 2) * (1 - 0.94 * t0 * t0), r1 = (W / 2) * (1 - 0.94 * t1 * t1);
+                var seg = new THREE.Mesh(new THREE.CylinderGeometry(r0 * U, r1 * U, (6.2 * (t1 * t1 - t0 * t0)) * U, 40, 1, true), fm);
+                seg.position.y = -(6.2 * (t0 * t0 + t1 * t1) / 2) * U; funnel.add(seg);
+            }
+            var disc = new THREE.Mesh(new THREE.CircleGeometry((W / 2) * U, 48), fm); disc.rotation.x = -Math.PI / 2; disc.position.y = 0.08 * U; funnel.add(disc);
+            var eye = _hzGlowSprite(2.6 * U, 0x9ff0ff, 0.45, 0.15, 0.1, 1.1); eye.position.y = -5.6 * U + LY; g.add(eye);
+            var rim = new THREE.Mesh(new THREE.TorusGeometry((W / 2) * U, 0.18 * U, 8, 48), _hqBasic(0xffffff, { transparent: true, opacity: 0.5, depthWrite: false, fog: false })); rim.rotation.x = Math.PI / 2; rim.position.y = 0.1 * U + LY; g.add(rim);
+            var spray = [];
+            for (var s = 0; s < 14; s++) { var sp = _hzGlowSprite((0.4 + (s % 3) * 0.15) * U, 0xffffff, 0.55, 0, 0, 0); sp.userData = { a: s * 0.45, r: W / 2 - 0.2 + (s % 2) * 0.5 }; sp.position.set(Math.cos(sp.userData.a) * sp.userData.r * U, 0.25 * U + LY, Math.sin(sp.userData.a) * sp.userData.r * U); spray.push(sp); g.add(sp); }
+            var spin = { v: 1 };
+            if (_hq) _hq.tickers.push(function (dt, now) {
+                funnel.rotation.y -= dt * 1.4 * spin.v;
+                for (var k = 0; k < spray.length; k++) { var sp2 = spray[k]; sp2.userData.a += dt * 1.1 * spin.v; sp2.position.set(Math.cos(sp2.userData.a) * sp2.userData.r * U, (0.25 + 0.2 * Math.sin(now * 0.004 + k)) * U + LY, Math.sin(sp2.userData.a) * sp2.userData.r * U); }
+            });
+            var motion = { mode: 'way', ow: W, tick: function (k) { spin.v = 1 + 2.2 * k; eye.position.y = (-5.6 + 1.6 * k) * U + LY; rim.scale.setScalar(1 + 0.12 * k); eye.material.opacity = 0.4 + 0.5 * k; rim.material.opacity = 0.5 + 0.4 * k; } };
+            return { g: g, motion: motion, ow: W, oh: 2.0, plateY: 2.6 + lift, mouthY: sea ? sea.y : (ctx.y0 || 0) };
+        },
+        /* THE UPWELLING — a ring of stones on the sea floor, a column of bubbles rising 8 m into a shaft of light (the same
+           seam's far end: swim into it and it takes you UP) */
+        upwelling: function (U, ctx) {
+            var g = new THREE.Group(), W = 5, H8 = 8;
+            var rock = _hqMat(null, 1, 1, { color: 0x3a4650, shininess: 6 });
+            for (var i = 0; i < 9; i++) { var a = i * Math.PI * 2 / 9, st = new THREE.Mesh(new THREE.SphereGeometry((0.45 + (i % 3) * 0.12) * U, 7, 5), rock); st.position.set(Math.cos(a) * (W / 2 - 0.2) * U, 0.3 * U, Math.sin(a) * (W / 2 - 0.2) * U); st.rotation.x = i; st.rotation.y = i * 0.7; st.scale.set(1, 0.7, 1.15); g.add(st); }
+            var sm = _hqBasic(0xbfffff, { transparent: true, opacity: 0.16, side: THREE.DoubleSide, depthWrite: false, fog: false });
+            if (typeof _hqRayTex === 'function') { var rt = _hqRayTex(); if (rt) sm.map = rt; }
+            if (typeof THREE.AdditiveBlending !== 'undefined') sm.blending = THREE.AdditiveBlending;
+            var shaft = new THREE.Mesh(new THREE.CylinderGeometry((W / 2 - 0.6) * U, (W / 2 - 1.0) * U, H8 * U, 20, 1, true), sm);
+            shaft.position.y = (H8 / 2) * U; shaft.renderOrder = 3; g.add(shaft);
+            var base = _hzGlowSprite(3.0 * U, 0x9ff0ff, 0.35, 0.1, 0.05, 0.9); base.position.y = 0.4 * U; g.add(base);
+            var bubbles = [];
+            for (var b = 0; b < 40; b++) { var bs = _hzGlowSprite((0.1 + (b % 4) * 0.05) * U, 0xdfffff, 0.6, 0, 0, 0); bs.userData = { t: b / 40, a: b * 0.9, r: 0.2 + (b % 5) * 0.32 }; bubbles.push(bs); g.add(bs); }
+            var spd = { v: 1 };
+            if (_hq) _hq.tickers.push(function (dt) {
+                for (var k = 0; k < bubbles.length; k++) { var bb = bubbles[k]; bb.userData.t += dt * 0.22 * spd.v; if (bb.userData.t > 1) bb.userData.t -= 1; bb.userData.a += dt * 0.6; var t = bb.userData.t; bb.position.set(Math.cos(bb.userData.a) * bb.userData.r * U, (0.3 + t * H8) * U, Math.sin(bb.userData.a) * bb.userData.r * U); bb.material.opacity = 0.6 * (1 - t * 0.7); }
+                shaft.rotation.y += dt * 0.15;
+            });
+            var motion = { mode: 'way', ow: W, tick: function (k) { spd.v = 1 + 2.5 * k; base.scale.setScalar((1 + 0.4 * k) * 3.0 * U); shaft.material.opacity = 0.16 + 0.3 * k; base.material.opacity = 0.35 + 0.4 * k; } };
+            return { g: g, motion: motion, ow: W, oh: H8, plateY: 8.6, mouthY: (ctx.y0 || 0) + 1.0 };
+        },
     };
     function _hqTreeWay(U, ctx, dead) {
         var g = new THREE.Group();
@@ -44329,7 +44397,8 @@ const ThreeRenderer = (function () {
             var ob = new THREE.Group(); ob.position.set(bwx * U, y0 * U, bwz * U);
             _hq.blockers.push({ obj: ob, y: y0, top: bl.top || null, rad: bl.r || 0.5, way: kind });
         });
-        var rec = { door: door, group: grp, lens: null, glow: null, plate: plate, plateEl: el, plateChip: chip, state: 'open', level: level, Rw: Rw, y0: y0, wide: !!door.wide, ow: ow, oh: oh, inward: inward, box: box, leaf: null, way: kind, motion: built.motion || null, openT: 0 };
+        var rec = { door: door, group: grp, lens: null, glow: null, plate: plate, plateEl: el, plateChip: chip, state: 'open', level: level, Rw: Rw, y0: y0, wide: !!door.wide, ow: ow, oh: oh, inward: inward, box: box, leaf: null, way: kind, motion: built.motion || null, openT: 0,
+                    mouthY: (built.mouthY != null) ? built.mouthY : null, wayOpen: !!W.open };   // THE DEEP (2026-09-18): a way entered by being IN it (_hqSeaWayCheck) says where its mouth is
         _hq.doors.push(rec);
         _hqLampApply(rec, _hqDoorState(door));
     }
@@ -44784,6 +44853,11 @@ const ThreeRenderer = (function () {
                 /* procedural: built in metres, no async fit */
                 var pg = _hqProcProp(cat.proc, p);
                 if (!pg) return;
+                /* THE DEEP (2026-09-18): a `float` prop rides the sea's surface wherever it stands (the skiff, the buoys — never the floor
+                   under the water), a `hover` prop hangs that far over the floor (the bathyscaphe) */
+                var seaP = (_hq.terrain && _hq.terrain.sea) ? _hq.terrain.sea : null;
+                if (cat.float && seaP) y = seaP.y + (p.y || 0);
+                else if (cat.hover) y = y0 + cat.hover + (p.y || 0);
                 place(onWall ? (cat.depth || 0.1) : 0);
                 if (onCeil && !flip) grp.position.y = y * U - (cat.h || 0.1) * U;
                 if (flip) grp.position.y = y * U;
@@ -44796,6 +44870,7 @@ const ThreeRenderer = (function () {
                 }
                 G.add(grp);
                 _hq.props.push({ key: p.key, grp: grp });
+                if (cat.vehicle) { try { _hqVehicleRegister(p, cat, grp, y); } catch (e) { console.warn('[HQ] vehicle', e); } }   // THE DEEP (2026-09-18): the skiff / the bathyscaphe — E boards it
                 if (tabletop) _hq.tabletops.push({ key: p.key, grp: grp, y: y });   // THE TABLETOP SEAT
                 _hqRegisterPropPark(p, cat, grp, y, U);   // SKATEBOARDING (9.8): a catalogue `rail` / `ramp`
                 /* the blocker's base is the prop's own `y` (Phase 8 stage 2: a stair step stacked by `y` is a column from its base, so the floor under a raised landing stays a floor) */
@@ -44937,6 +45012,15 @@ const ThreeRenderer = (function () {
                 slc[pr[1]] = { clip: C.clip, lib: C.lib || 0 }; if (C.ts) slt[pr[1]] = C.ts;
             });
             def = Object.assign({}, def, { libClips: slc, libTimeScales: slt });
+        }
+        /* THE DEEP (2026-09-18): the walker's SWIM clips (sprites.js HQ_SWIM_CLIPS — the library's Swim_Fwd_Loop /
+           Swim_Idle_Loop) and the HELM clips (HQ_VEHICLE_CLIPS — Sitting_Idle_Loop in the skiff, Driving_Loop in the
+           bathyscaphe) beside the ride clip; the roster keeps its own (the atlantean already idles on the swim loop) */
+        if (spec.kind === 'player' && def.libClips && typeof HQ_SWIM_CLIPS !== 'undefined' && !def.libClips.hqSwim) {
+            var wlc = Object.assign({}, def.libClips), wlt = Object.assign({}, def.libTimeScales);
+            [['swim', 'hqSwim'], ['idle', 'hqSwimIdle']].forEach(function (pr) { var C = HQ_SWIM_CLIPS[pr[0]]; if (!C) return; wlc[pr[1]] = { clip: C.clip, lib: C.lib || 0 }; if (C.ts) wlt[pr[1]] = C.ts; });
+            if (typeof HQ_VEHICLE_CLIPS !== 'undefined') [['boat', 'hqSit'], ['sub', 'hqDrive']].forEach(function (pr) { var C = HQ_VEHICLE_CLIPS[pr[0]]; if (!C) return; wlc[pr[1]] = { clip: C.clip, lib: C.lib || 0 }; if (C.ts) wlt[pr[1]] = C.ts; });
+            def = Object.assign({}, def, { libClips: wlc, libTimeScales: wlt });
         }
         /* THE DOOR GUN rev 4 (2026-09-16): the walker's GUN clips (sprites.js HQ_GUN_CLIPS — the
            library's pistol aim + shot) beside the ride clip; the roster never wears them */
@@ -46809,6 +46893,7 @@ const ThreeRenderer = (function () {
         for (var i = 0; i < ds.length; i++) {
             var d = ds[i];
             if (d.portalSurf && d.portalSurf !== 'wall') continue;   /* a flat threshold is not a doorway the boom must stay out of */
+            if (d.way && d.wayOpen) continue;   /* THE DEEP (2026-09-18): an OPEN way (a whirlpool, an upwelling, a road) has no doorway to keep the boom out of */
             if (py > d.y0 + 3.0 || py < d.y0 - 0.4) continue;
             var hw = (d.ow || 1.2) * 0.5 + 0.6;
             if (d.box) {
@@ -46882,6 +46967,13 @@ const ThreeRenderer = (function () {
         var r = Math.hypot(pl.x, pl.z), deg = _hqNormDeg(Math.atan2(pl.x, -pl.z) * 180 / Math.PI);
         var lvl = _hqLevelOf(S, pl.y);   // THE THIRD RING (2026-09-16): 0 / 1 / 2
         var best = null, bestD = 1e9;
+        /* THE DEEP (2026-09-18): aboard a vehicle the target IS the vehicle (E disembarks); ashore, a moored one within its boardReach */
+        if (_hq.vehicle && _hq.vehicle.on) { var Vr = _hq.vehicle.rec; return { kind: 'vehicle', id: Vr.id, label: Vr.label, sub: 'ABOARD · E DISEMBARKS', verb: 'DISEMBARK', aboard: true, vehicle: _hq.vehicle.kind }; }
+        (_hq.boats || []).forEach(function (b) {
+            var Rb = (_hqSeaRules()[b.kind] || {}), distV = Math.hypot(b.x - pl.x, b.z - pl.z);
+            if (distV > (Rb.boardReach || 3.6) || Math.abs(b.y - pl.y) > 3.5) return;
+            if (distV < bestD) { bestD = distV; best = { kind: 'vehicle', id: b.id, label: b.label, sub: b.sub, verb: 'BOARD', vehicle: b.kind }; }
+        });
         _hq.doors.forEach(function (d) {
             if (d.portalSurf && d.portalSurf !== 'wall') {
                 /* THE DOOR GUN rev 2: a hatch under your feet / over your head — read it in 3D, not through a wall plane */
@@ -47064,7 +47156,7 @@ const ThreeRenderer = (function () {
         if (k === 'arrowright') return 'right';
         if (k === 'shift') return 'shift';
         if (k === ' ' || k === 'spacebar') return 'space';
-        if (k === 'w' || k === 'a' || k === 's' || k === 'd' || k === 'm' || k === 'e' || k === 'b' || k === 'v' || k === 'f' || k === 'q' || k === 'p') return k;   // F = the door gun (9.5; rev 5: LEFT / RIGHT CLICK are its two triggers, no selector keys); B = the skateboard (9.8); M = the map (THE HQ HUD PASS)
+        if (k === 'w' || k === 'a' || k === 's' || k === 'd' || k === 'm' || k === 'c' || k === 'e' || k === 'b' || k === 'v' || k === 'f' || k === 'q' || k === 'p') return k;   // F = the door gun (9.5; rev 5: LEFT / RIGHT CLICK are its two triggers, no selector keys); B = the skateboard (9.8); M = the map (THE HQ HUD PASS); C = dive (THE DEEP, 2026-09-18)
         if (k === 'enter') return 'e';
         if (k === 'escape' || k === 'esc') return 'esc';
         return null;
@@ -47090,7 +47182,7 @@ const ThreeRenderer = (function () {
             /* a gameplay key is a user gesture: grab the pointer so the mouse
                aims edge-free with no click (hover-look covers it until then).
                Throttled — a denied request should not spam the console. */
-            if ((k === 'w' || k === 'a' || k === 's' || k === 'd' || k === 'up' || k === 'down' || k === 'left' || k === 'right' || k === 'space') && document.pointerLockElement !== canvas) {
+            if ((k === 'w' || k === 'a' || k === 's' || k === 'd' || k === 'up' || k === 'down' || k === 'left' || k === 'right' || k === 'space' || k === 'c') && document.pointerLockElement !== canvas) {
                 var nowL = performance.now();
                 if (!H._lockTryAt || nowL - H._lockTryAt > 1500) { H._lockTryAt = nowL; _hqTryLock(); }
             }
@@ -47955,6 +48047,676 @@ const ThreeRenderer = (function () {
         /* the ollie: the deck rises with the feet — nothing to add, it is the group's child */
     }
 
+    /* ══ THE DEEP — THE SWIMMER, THE SKIFF, THE BATHYSCAPHE (HQ plan 9.3 stage 11 / THE COMPLEX
+       CANDIDATES #8, 2026-09-18 — the user: "a sea that you can sail, an ocean you can swim in
+       or drive a submarine in; a whirlpool for the door; a swimming animation") ══
+       Walker MODES, never game modes (nothing on the match, nothing relayed — RULE #2).
+       · THE SEA: a terrain room whose `terrain.sea` (data.js hqTerrainCompile) is ONE water
+         surface. The field is the sea floor; the islands are the ground above it; the renderer
+         draws the surface as the battle's animated sheet over the field AND the outer ground
+         (_hqBuildTerrain), DoubleSide so a diver and the abyss see it from below.
+       · THE SWIMMER (`pl.swim`): the walker walks into water deeper than a wade, the feet rule
+         (hqTerrainFeet) floats it at the surface less swimDraft and the tick becomes
+         _hqTickSwim — WASD along the camera, SHIFT faster, C DIVES; under the surface W swims
+         WHERE YOU LOOK (the camera's pitch), SPACE up, C down, an idle diver drifts up in the
+         open sea (buoyancy) and hangs still in a DROWNED room (`sea.under` — the abyss: the
+         surface is over the ceiling and the walker swims from the first frame). The shallows
+         (exitDepth) hand the walker back. Clips: sprites.js HQ_SWIM_CLIPS — Swim_Fwd_Loop /
+         Swim_Idle_Loop baked onto the walker's rig as hqSwim / hqSwimIdle (the ride clips'
+         pattern); the body pitches with the dive.
+       · THE VEHICLES (`_hq.vehicle`): a catalogue prop with `vehicle: 'boat' | 'sub'` is
+         registered by the prop placer (_hq.boats); E within boardReach BOARDS it (hq.board):
+         the walker sits on it (hqSit / hqDrive), W/S throttle, A/D the tiller (the turn scales
+         with the way on; the camera follows the turn keeping the mouse's offset — the rider's
+         rule), E again DISEMBARKS (into a wade when the ground is there, else a swim). THE
+         SKIFF rides the surface (a bob, a draft it will not cross, four hull probes); THE
+         BATHYSCAPHE drives the column (SPACE / C for depth, five hull probes, two lamps).
+         A moored vehicle stays where you left it for the visit (the room rebuilds per entry).
+       · THE WAYS: a whirlpool / an upwelling (DOOR_HQ.ways, `open`) is entered by BEING IN
+         ITS MOUTH — _hqSeaWayCheck, from the swim tick and the vehicle tick (never the
+         walker's press-in: a swimmer never runs it). The builders below lift the whirlpool's
+         funnel to the surface whatever the pad's height (the pad is the sea floor's).
+       · THE LOOK: under the surface the scene wears a dense teal fog and the sky dome goes
+         (_hqTickSea toggles it on the CAMERA's depth in the open sea; a drowned room is under
+         from the start), GOD RAYS hang from the surface (additive planes on a vertical
+         gradient, swaying), MARINE SNOW drifts round the camera (a Points cloud that re-tiles
+         as you move), BUBBLES rise from a diver / the sub, the kelp sways in a vertex shader
+         (_hqKelpMat), the fish schools loop (a ticker), the vents smoke, the lighthouse's beam
+         turns. The numbers: data.js HQ_SEA_RULES (merged over HQ_SEA_DEFAULT — keep the keys
+         in step; hq-deep.test.js diffs them). Kill-switches: EW_HQ_NO_SEA_FX (no rays / snow /
+         bubbles), EW_HQ_NO_SWIM (the old rule: deep water refuses the walker). */
+    var HQ_SEA_DEFAULT = {
+        swimV: 2.0,
+        swimRunV: 3.2,
+        diveV: 2.4,
+        drag: 2.2,
+        buoyancy: 2.0,
+        surfaceDraft: 1.1,
+        underCap: 1.0,
+        exitDepth: 0.95,
+        boat: { v: 8.5, rev: 2.0, accel: 1.4, drag: 0.6, turn: 1.15, turnMin: 0.35, draft: 0.55, bob: 0.08, boardReach: 3.6, seat: { x: 0, y: 0.5, z: -0.5 }, camDist: 7.0, len: 4.6, beam: 1.7 },
+        sub:  { v: 6.0, rev: 2.5, accel: 1.2, drag: 0.8, turn: 0.95, turnMin: 0.5, vertV: 2.4, r: 1.6, boardReach: 4.0, seat: { x: 0, y: 0.55, z: 0.2 }, camDist: 8.5, len: 6.2 },
+        keys: { dive: 'c', rise: 'space', board: 'e' },
+        labels: { boat: 'THE SKIFF', sub: 'THE BATHYSCAPHE' },
+    };
+    function _hqSeaRules() {
+        var DEF = (typeof HQ_SEA_DEFAULT !== 'undefined') ? HQ_SEA_DEFAULT : { boat: {}, sub: {} };   // a sandbox may eval this alone
+        var R = (typeof HQ_SEA_RULES !== 'undefined') ? HQ_SEA_RULES : ((typeof window !== 'undefined' && window.HQ_SEA_RULES) || null);
+        if (!R) return DEF;
+        var o = Object.assign({}, DEF, R);
+        o.boat = Object.assign({}, DEF.boat, R.boat || {}); o.sub = Object.assign({}, DEF.sub, R.sub || {});
+        o.labels = Object.assign({}, DEF.labels || {}, R.labels || {});
+        return o;
+    }
+    function _hqSea() { return (_hq && _hq.terrain && _hq.terrain.sea) || null; }
+    function _hqSeaFxOff() { return typeof window !== 'undefined' && !!window.EW_HQ_NO_SEA_FX; }
+    function _hqSeaEmit(ev) { var H = _hq; if (!H || !H.opts || !H.opts.onSea) return; try { H.opts.onSea(ev); } catch (e) {} }
+    /* the water column over the ground at (x, z), metres (≤ 0 = land) */
+    function _hqSeaDepthAt(x, z) { var s = _hqSea(); if (!s || !_hq.terrain) return 0; return s.y - hqTerrainHeight(_hq.terrain, x, z); }
+    /* may the swimming body (its bottom at y) be at (x, z)? inside the room, above the ground, out of a wall / a block, clear of furniture */
+    function _hqSwimFree(x, z, y) {
+        var H = _hq, S = H.room.shell, roamA = _hqRoamM(S);
+        if (Math.abs(x) > S.w / 2 + roamA - HQ_BODY_R - 0.08 || Math.abs(z) > S.d / 2 + roamA - HQ_BODY_R - 0.08) return false;
+        var ti = H.terrain; if (!ti) return true;
+        /* a FLOATING body rides over the shallows up to the exit depth (the walker takes it there); a diver never swims into the floor */
+        var sea = _hqSea(), gLim = y;
+        if (sea && !sea.under && y >= sea.y - _hqSeaRules().surfaceDraft - 0.01) gLim = sea.y - (_hqSeaRules().exitDepth - 0.25) + 0.2;   // a quarter past the exit line, so the hand-over is always crossed
+        if (gLim < hqTerrainHeight(ti, x, z) + 0.2) return false;
+        var w = hqTerrainWallAt(ti, x, z, HQ_BODY_R); if (w && y < w.top - 0.05) return false;
+        if (typeof hqTerrainSolidAt === 'function' && hqTerrainSolidAt(ti, x, z, 0) && y < hqTerrainSolidTop(ti, x, z) - 0.05) return false;
+        return _hqAirClearOfBlockers(x, z, y);
+    }
+    /* into the water: the walker becomes the swimmer (a drowned room dives at once) */
+    function _hqSwimStart(pl, why) {
+        var sea = _hqSea(); if (!sea || pl.swim) return;
+        var R = _hqSeaRules();
+        var plunge = !sea.under && (pl.vy || 0) < -5;   // a body that fell in from a height PLUNGES (a dive at once), the rest bob up to the surface
+        pl.swim = true; pl.dive = !!sea.under || plunge; pl.air = false; pl.jumpT = -1;
+        pl.svx = pl.velX || 0; pl.svz = pl.velZ || 0; pl.svy = plunge ? Math.max(-R.diveV * 1.5, pl.vy * 0.5) : 0; pl.mvx = 0; pl.mvz = 0; pl.vy = 0;
+        if (!sea.under) pl.y = plunge ? Math.max(hqTerrainHeight(_hq.terrain, pl.x, pl.z) + 0.3, sea.y - R.surfaceDraft - 1.2) : sea.y - R.surfaceDraft;
+        pl.visY = pl.y;
+        _hqSeaEmit({ kind: 'swim', on: true, why: why || 'water', under: !!sea.under });
+    }
+    function _hqSwimStop(pl, y) {
+        if (!pl.swim) return;
+        pl.swim = false; pl.dive = false; pl.svx = pl.svy = pl.svz = 0;
+        if (y != null && isFinite(y)) pl.y = y;
+        pl.air = false; pl.vy = 0;
+        _hqSeaEmit({ kind: 'swim', on: false });
+    }
+    /* after a walker frame: deep water under the feet (or a drowned room) = the swimmer */
+    function _hqSwimCheck(pl) {
+        var H = _hq, sea = _hqSea(); if (!sea || pl.swim || (H.vehicle && H.vehicle.on)) return;
+        if (typeof window !== 'undefined' && window.EW_HQ_NO_SWIM) return;
+        if (sea.under) { _hqSwimStart(pl, 'drowned'); return; }
+        if (pl.air) return;
+        var R = _hqSeaRules();
+        var depth = _hqSeaDepthAt(pl.x, pl.z);
+        if (depth > R.exitDepth && pl.y < sea.y - 0.3) _hqSwimStart(pl, 'water');
+    }
+    /* THE SWIM, per frame — in place of _hqTickWalker's movement */
+    function _hqTickSwim(dt) {
+        var H = _hq, pl = H.player, k = H.keys, R = _hqSeaRules(), sea = _hqSea();
+        if (!sea) { _hqSwimStop(pl, null); return; }
+        var sx0 = pl.x, sz0 = pl.z, sy0 = pl.y;
+        var moving = false;
+        if (!H.paused) {
+            var ix = ((k.d || k.right) ? 1 : 0) - ((k.a || k.left) ? 1 : 0), iy = ((k.s || k.down) ? 1 : 0) - ((k.w || k.up) ? 1 : 0);
+            var up = k.space ? 1 : 0, down = k.c ? 1 : 0;
+            if (!pl.dive && down) { pl.dive = true; _hqSeaEmit({ kind: 'dive' }); }
+            var cy = H.cam.yaw, cp = H.cam.pitch, fx, fy, fz;
+            if (pl.dive) { fx = Math.sin(cy) * Math.cos(cp); fy = Math.sin(cp); fz = -Math.cos(cy) * Math.cos(cp); }   // W swims where you look
+            else { fx = Math.sin(cy); fy = 0; fz = -Math.cos(cy); }
+            var rx = Math.cos(cy), rz = Math.sin(cy);
+            var dx = fx * (-iy) + rx * ix, dy = fy * (-iy) + (pl.dive ? (up - down) : 0), dz = fz * (-iy) + rz * ix;
+            var L = Math.hypot(dx, dy, dz);
+            moving = L > 0.001;
+            var speed = k.shift ? R.swimRunV : R.swimV;
+            var tx = moving ? dx / L * speed : 0, ty = moving ? dy / L * speed : 0, tz = moving ? dz / L * speed : 0;
+            var a = 1 - Math.exp(-dt * R.drag * (moving || up || down ? 1 : 2.3));   // water stops an idle body fast
+            pl.svx += (tx - pl.svx) * a; pl.svy += (ty - pl.svy) * a; pl.svz += (tz - pl.svz) * a;
+            if (pl.dive && !sea.under && !up && !down && !moving) pl.svy += R.buoyancy * dt;   // an idle diver drifts up in the open sea; the abyss is neutral
+        } else { pl.svx *= 0.9; pl.svy *= 0.9; pl.svz *= 0.9; }
+        var cap = sea.under ? sea.y - R.underCap : sea.y - R.surfaceDraft;
+        var nx = pl.x + pl.svx * dt, nz = pl.z + pl.svz * dt, ny = pl.y + pl.svy * dt;
+        if (_hqSwimFree(nx, pl.z, pl.y)) pl.x = nx; else pl.svx = 0;
+        if (_hqSwimFree(pl.x, nz, pl.y)) pl.z = nz; else pl.svz = 0;
+        if (ny > cap) { ny = cap; if (pl.svy > 0) pl.svy = 0; if (pl.dive && !sea.under) { pl.dive = false; _hqSeaEmit({ kind: 'surface' }); } }
+        var g = hqTerrainHeight(H.terrain, pl.x, pl.z) + 0.25;
+        if (ny < g) { ny = g; if (pl.svy < 0) pl.svy = 0; }
+        if (_hqSwimFree(pl.x, pl.z, ny)) pl.y = ny; else pl.svy = 0;
+        if (!pl.dive) pl.y = Math.min(pl.y, cap);
+        /* the shallows: the feet find the ground → the walker again */
+        if (!sea.under) {
+            var depth = _hqSeaDepthAt(pl.x, pl.z);
+            if (depth <= R.exitDepth) { var fy = _hqSurface(pl.x, pl.z, null, true); _hqSwimStop(pl, (fy != null && isFinite(fy)) ? fy : pl.y); }
+        }
+        pl.moving = moving; pl.running = !!(k.shift && moving);
+        pl.pushX = 0; pl.pushZ = 0;
+        var hsp = Math.hypot(pl.svx, pl.svz);
+        if (hsp > 0.25) pl.targetYaw = Math.atan2(pl.svx, pl.svz);
+        pl.visY += (pl.y - pl.visY) * Math.min(1, dt * 10);
+        if (Math.abs(pl.y - pl.visY) < 0.004) pl.visY = pl.y;
+        if (dt > 0.0005) { pl.velX = (pl.x - sx0) / dt; pl.velZ = (pl.z - sz0) / dt; pl.velY = (pl.y - sy0) / dt; }
+        var dyaw = pl.targetYaw - pl.yaw;
+        while (dyaw > Math.PI) dyaw -= Math.PI * 2;
+        while (dyaw < -Math.PI) dyaw += Math.PI * 2;
+        pl.yaw += dyaw * Math.min(1, dt * 8);
+        var U = _hqUnits();
+        pl.entry.group.position.set(pl.x * U, pl.visY * U, pl.z * U);
+        _hqSeaWayCheck(pl.x, pl.z, pl.y + 0.6);
+    }
+    /* ── THE VEHICLES ── */
+    function _hqVehicleRegister(p, cat, grp, y) {
+        if (!_hq) return;
+        _hq.boats = _hq.boats || [];
+        var U = _hqUnits(), R = _hqSeaRules(), kind = cat.vehicle;
+        _hq.boats.push({ id: 'veh:' + p.key + ':' + _hq.boats.length, kind: kind, key: p.key, grp: grp, x: grp.position.x / U, z: grp.position.z / U, y: y, yaw: grp.rotation.y,
+                         label: (R.labels || {})[kind] || p.key.toUpperCase(), sub: kind === 'sub' ? 'RECORDS’ BATHYSCAPHE · W / S DRIVE · A / D STEER · SPACE UP · C DOWN' : 'THE SEA LENDS IT · W / S SAIL · A / D THE TILLER' });
+    }
+    function _hqVehicleFind(id) { var B = (_hq && _hq.boats) || []; for (var i = 0; i < B.length; i++) if (B[i].id === id) return B[i]; return null; }
+    /* E on a moored vehicle: aboard. E aboard: off. */
+    function _hqBoard(id) {
+        var H = _hq; if (!H || !H.player) return false;
+        if (H.vehicle && H.vehicle.on) return _hqDisembark();
+        var b = id ? _hqVehicleFind(id) : null; if (!b) return false;
+        var pl = H.player;
+        if (H.ride && H.ride.on) _hqRideToggle(false, true);
+        if (H.portal && H.portal.drawn) { try { _hqPortalDraw(false); } catch (e) {} }
+        pl.swim = false; pl.dive = false; pl.air = false; pl.vy = 0; pl.jumpT = -1; pl.mvx = 0; pl.mvz = 0; pl.svx = pl.svy = pl.svz = 0;
+        H.vehicle = { on: true, kind: b.kind, rec: b, x: b.x, z: b.z, y: b.y, yaw: b.yaw, v: 0, vy: 0, pitch: 0, roll: 0, t: 0, latch: null, thr: 0 };
+        H.cam.distSaved = H.cam.dist; H.cam.dist = (_hqSeaRules()[b.kind] || {}).camDist || 7;
+        _hqSeaEmit({ kind: 'board', vehicle: b.kind, label: b.label });
+        H.dirty = true;
+        return true;
+    }
+    function _hqDisembark() {
+        var H = _hq, V = H && H.vehicle; if (!V || !V.on) return false;
+        var pl = H.player, sea = _hqSea(), R = _hqSeaRules();
+        V.on = false; V.rec.x = V.x; V.rec.z = V.z; V.rec.y = V.y; V.rec.yaw = V.yaw;
+        H.cam.dist = H.cam.distSaved || 3.6;
+        /* step off to the side: a wade / the shore when the ground is there, else the water */
+        var rxv = Math.cos(V.yaw), rzv = -Math.sin(V.yaw), best = null;
+        [[1.9, 0], [-1.9, 0], [0, 3.2], [0, -3.2]].forEach(function (o) {
+            var px = V.x + rxv * o[0] + Math.sin(V.yaw) * o[1], pz = V.z + rzv * o[0] + Math.cos(V.yaw) * o[1];
+            var fy = _hqSurface(px, pz, null, true);
+            if (fy === null || !isFinite(fy)) return;
+            var dry = sea ? (_hqSeaDepthAt(px, pz) <= R.exitDepth) : true;
+            var score = (dry ? 10 : 0) - Math.abs(o[0]) * 0.1;
+            if (!best || score > best.score) best = { x: px, z: pz, y: fy, score: score };
+        });
+        if (best) { pl.x = best.x; pl.z = best.z; pl.y = best.y; }
+        else { pl.x = V.x + rxv * 1.9; pl.z = V.z + rzv * 1.9; pl.y = (V.kind === 'sub') ? V.y : (sea ? sea.y - R.surfaceDraft : V.y); }
+        pl.visY = pl.y; pl.air = false; pl.vy = 0;
+        H.vehicle = null;
+        _hqSeaEmit({ kind: 'disembark', vehicle: V.kind });
+        _hqSwimCheck(pl);
+        if (pl.swim && V.kind === 'sub') { pl.dive = true; }
+        H.dirty = true;
+        return true;
+    }
+    /* the hull's probes clear? the skiff: water deeper than its draft; the sub: the column round it */
+    function _hqHullFree(V, R, x, z, y) {
+        var H = _hq, S = H.room.shell, ti = H.terrain, sea = _hqSea(); if (!ti || !sea) return false;
+        var L = (R.len || 4.6) / 2, B = (R.beam || 1.7) / 2, fx = Math.sin(V.yaw), fz = Math.cos(V.yaw), rx = Math.cos(V.yaw), rz = -Math.sin(V.yaw);
+        var probes = [[0, 0], [L, 0], [-L, 0], [0, B], [0, -B]];
+        for (var i = 0; i < probes.length; i++) {
+            var px = x + fx * probes[i][0] + rx * probes[i][1], pz = z + fz * probes[i][0] + rz * probes[i][1];
+            if (Math.abs(px) > S.w / 2 - 0.6 || Math.abs(pz) > S.d / 2 - 0.6) return false;
+            var g = hqTerrainHeight(ti, px, pz);
+            if (V.kind === 'boat') { if (sea.y - g < (R.draft || 0.55)) return false; if (!_hqAirClearOfBlockers(px, pz, sea.y + 0.3)) return false; }
+            else {
+                var yb = y - (R.r || 1.6);
+                if (yb < g + 0.15) return false;
+                var w = hqTerrainWallAt(ti, px, pz, 0.3); if (w && yb < w.top) return false;
+                if (typeof hqTerrainSolidAt === 'function' && hqTerrainSolidAt(ti, px, pz, 0) && yb < hqTerrainSolidTop(ti, px, pz)) return false;
+                if (!_hqAirClearOfBlockers(px, pz, yb)) return false;
+            }
+        }
+        return true;
+    }
+    /* THE HELM, per frame — in place of _hqTickWalker's movement while aboard */
+    function _hqTickVehicle(dt) {
+        var H = _hq, V = H.vehicle, pl = H.player, k = H.keys, sea = _hqSea();
+        if (!V || !V.on) return;
+        var RS = _hqSeaRules(), R = RS[V.kind] || RS.boat, U = _hqUnits();
+        V.t += dt;
+        var thr = 0, turn = 0, vert = 0;
+        if (!H.paused) {
+            thr = ((k.w || k.up) ? 1 : 0) - ((k.s || k.down) ? 1 : 0);
+            turn = ((k.d || k.right) ? 1 : 0) - ((k.a || k.left) ? 1 : 0);
+            vert = (k.space ? 1 : 0) - (k.c ? 1 : 0);
+        }
+        var target = thr > 0 ? R.v : (thr < 0 ? -R.rev : 0);
+        V.v += (target - V.v) * (1 - Math.exp(-dt * (thr ? R.accel : R.drag)));
+        if (Math.abs(V.v) < 0.03 && !thr) V.v = 0;
+        var rate = R.turn * ((R.turnMin != null ? R.turnMin : 0.35) + (1 - (R.turnMin != null ? R.turnMin : 0.35)) * Math.min(1, Math.abs(V.v) / R.v));
+        if (V.kind === 'sub') rate = R.turn;
+        var dl = -turn * rate * dt * (V.v < -0.2 ? -1 : 1);
+        if (dl) { V.yaw += dl; H.cam.yaw -= dl; }
+        var fx = Math.sin(V.yaw), fz = Math.cos(V.yaw);
+        var nx = V.x + fx * V.v * dt, nz = V.z + fz * V.v * dt;
+        if (V.kind === 'sub') {
+            var vt = vert * (R.vertV || 2.4);
+            V.vy += (vt - V.vy) * (1 - Math.exp(-dt * 2.2));
+            var ny = V.y + V.vy * dt, g0 = hqTerrainHeight(H.terrain, V.x, V.z);
+            var lo = g0 + (R.r || 1.6) + 0.25, hi = sea ? sea.y - (sea.under ? 2.0 : 0.9) : ny;
+            if (ny < lo) { ny = lo; if (V.vy < 0) V.vy = 0; }
+            if (ny > hi) { ny = hi; if (V.vy > 0) V.vy = 0; }
+            if (_hqHullFree(V, R, V.x, V.z, ny)) V.y = ny; else V.vy = 0;
+            if (_hqHullFree(V, R, nx, nz, V.y)) { V.x = nx; V.z = nz; }
+            else if (_hqHullFree(V, R, nx, V.z, V.y)) { V.x = nx; V.v *= 0.6; }
+            else if (_hqHullFree(V, R, V.x, nz, V.y)) { V.z = nz; V.v *= 0.6; }
+            else V.v *= 0.15;
+            V.pitch += ((-V.vy / (R.vertV || 2.4)) * 0.22 - V.pitch) * Math.min(1, dt * 3);
+            V.roll += ((-turn * 0.12 * Math.min(1, Math.abs(V.v) / R.v)) - V.roll) * Math.min(1, dt * 3);
+        } else {
+            if (_hqHullFree(V, R, nx, nz, V.y)) { V.x = nx; V.z = nz; }
+            else if (_hqHullFree(V, R, nx, V.z, V.y)) { V.x = nx; V.v *= 0.5; }
+            else if (_hqHullFree(V, R, V.x, nz, V.y)) { V.z = nz; V.v *= 0.5; }
+            else { V.v *= 0.15; if (Math.abs(V.v) < 0.2) V.v = 0; }
+            V.y = (sea ? sea.y : V.y) + (R.bob || 0.08) * Math.sin(V.t * 1.3) + 0.02;
+            V.pitch += ((0.035 * Math.sin(V.t * 1.7) - 0.02 * Math.min(1, Math.abs(V.v) / R.v)) - V.pitch) * Math.min(1, dt * 3);
+            V.roll += ((0.05 * Math.sin(V.t * 0.9) - turn * 0.1 * Math.min(1, Math.abs(V.v) / R.v)) - V.roll) * Math.min(1, dt * 3);
+        }
+        /* the hull */
+        var grp = V.rec.grp;
+        grp.position.set(V.x * U, V.y * U, V.z * U);
+        if (grp.rotation.order !== 'YXZ') grp.rotation.order = 'YXZ';
+        grp.rotation.set(V.pitch, V.yaw, V.roll);
+        /* the officer in the seat */
+        var st = R.seat || { x: 0, y: 0.5, z: 0 }, cY = Math.cos(V.yaw), sY = Math.sin(V.yaw);
+        pl.x = V.x + st.x * cY + st.z * sY; pl.z = V.z - st.x * sY + st.z * cY; pl.y = V.y + st.y;
+        pl.visY = pl.y; pl.yaw = pl.targetYaw = V.yaw; pl.moving = false; pl.running = false; pl.air = false; pl.vy = 0;
+        pl.velX = fx * V.v; pl.velZ = fz * V.v; pl.velY = V.kind === 'sub' ? V.vy : 0;
+        pl.entry.group.position.set(pl.x * U, pl.visY * U, pl.z * U);
+        if ((thr !== 0) !== !!V.thr) { V.thr = thr !== 0; _hqSeaEmit({ kind: 'throttle', on: V.thr, vehicle: V.kind }); }
+        _hqSeaWayCheck(V.x, V.z, V.y);
+    }
+    /* a whirlpool / an upwelling is entered by being in its mouth (way.w wide, mouthY ± its height) — the swimmer's and the helm's press-in */
+    function _hqSeaWayCheck(x, z, y) {
+        var H = _hq; if (!H || H.paused || !H.opts.onEnterDoor) return;
+        var U = _hqUnits(), W = (_hqData() || {}).ways || {};
+        for (var i = 0; i < H.doors.length; i++) {
+            var d = H.doors[i]; if (!d.way) continue;
+            var cat = W[d.way]; if (!cat || !cat.open) continue;
+            if (HQ_DOOR_LOCKED[d.state]) continue;
+            var cx = d.group.position.x / U, cz = d.group.position.z / U, my = (d.mouthY != null) ? d.mouthY : d.y0;
+            var r = (d.ow || cat.w || 4) * 0.42;
+            if (Math.hypot(x - cx, z - cz) > r) continue;
+            if (y < my - 1.6 || y > my + (d.oh || cat.h || 2) + 1.6) continue;
+            if (H.seaWayLatch === d.door.id) return;
+            H.seaWayLatch = d.door.id;
+            try { H.opts.onEnterDoor({ kind: 'door', id: d.door.id, label: d.door.label, sub: d.door.sub, state: d.state, door: d.door, rec: d }); } catch (e) { console.warn('[HQ] the sea way failed', e); }
+            return;
+        }
+        H.seaWayLatch = null;
+    }
+    /* ── THE LOOK UNDER THE SURFACE ── */
+    var _hqRayTexC = null;
+    function _hqRayTex() {
+        if (_hqRayTexC) return _hqRayTexC;
+        if (typeof document === 'undefined') return null;
+        var c = document.createElement('canvas'); c.width = 64; c.height = 256;
+        var ctx = c.getContext('2d');
+        var gv = ctx.createLinearGradient(0, 0, 0, 256);
+        gv.addColorStop(0, 'rgba(255,255,255,0.0)'); gv.addColorStop(0.08, 'rgba(255,255,255,0.9)'); gv.addColorStop(0.6, 'rgba(255,255,255,0.35)'); gv.addColorStop(1, 'rgba(255,255,255,0.0)');
+        ctx.fillStyle = gv; ctx.fillRect(0, 0, 64, 256);
+        var gh = ctx.createLinearGradient(0, 0, 64, 0);
+        gh.addColorStop(0, 'rgba(0,0,0,1)'); gh.addColorStop(0.35, 'rgba(0,0,0,0)'); gh.addColorStop(0.65, 'rgba(0,0,0,0)'); gh.addColorStop(1, 'rgba(0,0,0,1)');
+        ctx.globalCompositeOperation = 'destination-out'; ctx.fillStyle = gh; ctx.fillRect(0, 0, 64, 256);
+        _hqRayTexC = new THREE.CanvasTexture(c); _hqRayTexC.minFilter = THREE.LinearFilter; _hqRayTexC.magFilter = THREE.LinearFilter;
+        return _hqRayTexC;
+    }
+    var _hqWhirlTexC = null;
+    function _hqWhirlTex() {
+        if (_hqWhirlTexC) return _hqWhirlTexC;
+        if (typeof document === 'undefined') return null;
+        var c = document.createElement('canvas'); c.width = c.height = 256;
+        var ctx = c.getContext('2d'), cx = 128, cy = 128;
+        ctx.fillStyle = 'rgba(20,70,90,0.0)'; ctx.fillRect(0, 0, 256, 256);
+        for (var arm = 0; arm < 6; arm++) {
+            ctx.beginPath();
+            for (var t = 0; t < 1; t += 0.01) { var a = arm * Math.PI / 3 + t * 4.2, r = 6 + t * 122; var px = cx + Math.cos(a) * r, py = cy + Math.sin(a) * r; if (t === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py); }
+            ctx.strokeStyle = 'rgba(230,248,255,0.85)'; ctx.lineWidth = 5; ctx.stroke();
+            ctx.strokeStyle = 'rgba(120,200,230,0.45)'; ctx.lineWidth = 12; ctx.stroke();
+        }
+        var g = ctx.createRadialGradient(cx, cy, 0, cx, cy, 128);
+        g.addColorStop(0, 'rgba(0,30,50,0.95)'); g.addColorStop(0.35, 'rgba(0,60,90,0.35)'); g.addColorStop(1, 'rgba(0,60,90,0.0)');
+        ctx.fillStyle = g; ctx.fillRect(0, 0, 256, 256);
+        _hqWhirlTexC = new THREE.CanvasTexture(c); _hqWhirlTexC.wrapS = _hqWhirlTexC.wrapT = THREE.ClampToEdgeWrapping;
+        return _hqWhirlTexC;
+    }
+    /* the kelp's material: ONE per room, a sway in the vertex shader (uv.y² × sin(time + place)); a ticker drives the clock */
+    function _hqKelpMat() {
+        var H = _hq; if (H && H.seaFx && H.seaFx.kelpMat) return H.seaFx.kelpMat;
+        var U = _hqUnits();
+        var m = new THREE.MeshPhongMaterial({ color: 0x2f7a4a, emissive: 0x0b2416, shininess: 24, specular: 0x203028, side: THREE.DoubleSide, transparent: true, opacity: 0.94 });
+        var uT = { value: 0 };
+        m.onBeforeCompile = function (sh) {
+            sh.uniforms.uKelpT = uT;
+            sh.vertexShader = 'uniform float uKelpT;\n' + sh.vertexShader.replace('#include <begin_vertex>',
+                '#include <begin_vertex>\n float kw = uv.y * uv.y; float kp = uKelpT * 1.25 + position.x * 0.013 + position.z * 0.011;\n transformed.x += sin(kp) * kw * ' + (0.38 * U).toFixed(3) + ';\n transformed.z += cos(kp * 0.8 + 1.3) * kw * ' + (0.22 * U).toFixed(3) + ';');
+        };
+        m.customProgramCacheKey = function () { return 'hqKelp'; };
+        if (H) { H.seaFx = H.seaFx || {}; H.seaFx.kelpMat = m; H.tickers.push(function (dt, now) { uT.value = now * 0.001; }); }
+        return m;
+    }
+    /* the room's sea effects: the dry fog kept, the rays, the snow, the bubble pool; the first frame's state */
+    function _hqSeaArm(room) {
+        var H = _hq, sea = _hqSea(); if (!H || !sea) return;
+        var U = _hqUnits(), sc = H.scene;
+        var fx = H.seaFx = H.seaFx || {};
+        fx.dryFog = sc.fog; fx.dryBg = sc.background; fx.under = null; fx.bubbles = []; fx.bubbleT = 0;
+        fx.wetFog = new THREE.FogExp2(0x0b3a4c, 0.045 / U); fx.wetBg = new THREE.Color(0x06283a);
+        if (_hqSeaFxOff()) return;
+        /* GOD RAYS: additive planes hung under the surface round the camera (re-tiled with it) */
+        var rays = new THREE.Group(); rays.name = 'hq_rays';
+        var rt = _hqRayTex();
+        var rayMat = new THREE.MeshBasicMaterial({ map: rt, color: 0xbfefff, transparent: true, opacity: 0.11, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false });
+        var rng = _mulberry32(0x5ea7), n = 18, rayH = Math.min(24, Math.max(6, sea.y - (sea.under ? 0 : -4)));
+        for (var i = 0; i < n; i++) {
+            var m = new THREE.Mesh(new THREE.PlaneGeometry((2.5 + rng() * 3) * U, rayH * U), rayMat);
+            m.position.set((rng() - 0.5) * 56 * U, 0, (rng() - 0.5) * 56 * U); m.rotation.y = rng() * Math.PI; m.rotation.z = (rng() - 0.5) * 0.25;
+            m.userData.ph = rng() * 6.28; m.userData.sp = 0.05 + rng() * 0.08;
+            rays.add(m);
+        }
+        rays.visible = false; sc.add(rays); fx.rays = rays; fx.rayH = rayH;
+        /* MARINE SNOW: a Points cloud in a cube round the camera */
+        var N = 700, pos = new Float32Array(N * 3);
+        for (var j = 0; j < N; j++) { pos[j * 3] = (rng() - 0.5) * 60 * U; pos[j * 3 + 1] = (rng() - 0.5) * 30 * U; pos[j * 3 + 2] = (rng() - 0.5) * 60 * U; }
+        var sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+        var snow = new THREE.Points(sg, new THREE.PointsMaterial({ color: 0xcfeff8, size: 0.07 * U, transparent: true, opacity: 0.5, depthWrite: false, sizeAttenuation: true, fog: true }));
+        snow.visible = false; snow.frustumCulled = false; sc.add(snow); fx.snow = snow;
+        /* the bubble pool */
+        var bg = new THREE.Group(); bg.name = 'hq_bubbles'; sc.add(bg); fx.bubbleGroup = bg;
+        for (var b = 0; b < 30; b++) { var sp = _hzGlowSprite(0.1 * U, 0xdfffff, 0.0, 0, 0, 0); sp.visible = false; bg.add(sp); fx.bubbles.push({ sp: sp, life: 0, vy: 0, ox: 0 }); }
+    }
+    function _hqBubbleAt(x, y, z, big) {
+        var fx = _hq && _hq.seaFx; if (!fx || !fx.bubbles) return;
+        for (var i = 0; i < fx.bubbles.length; i++) {
+            var b = fx.bubbles[i]; if (b.life > 0) continue;
+            var U = _hqUnits();
+            b.life = 1.6 + Math.random() * 1.2; b.vy = 0.9 + Math.random() * 0.8; b.ox = (Math.random() - 0.5) * 0.4;
+            b.sp.position.set((x + (Math.random() - 0.5) * 0.3) * U, y * U, (z + (Math.random() - 0.5) * 0.3) * U);
+            b.sp.scale.setScalar((big ? 0.16 : 0.08 + Math.random() * 0.06) * U); b.sp.material.opacity = 0.55; b.sp.visible = true;
+            return;
+        }
+    }
+    /* per frame: the camera's depth decides the look; the rays / the snow follow the camera; the bubbles rise */
+    function _hqTickSea(dt, now) {
+        var H = _hq, sea = _hqSea(), fx = H && H.seaFx; if (!sea || !fx) return;
+        var U = _hqUnits(), cam = H.camera, sc = H.scene, camY = cam.position.y / U;
+        var under = !!sea.under || camY < sea.y;
+        if (under !== fx.under) {
+            fx.under = under;
+            if (!sea.under) {
+                sc.fog = under ? fx.wetFog : fx.dryFog; sc.background = under ? fx.wetBg : fx.dryBg;
+                if (H.sky && H.sky.dome) H.sky.dome.visible = !under;
+                if (H.sky && H.sky.group) H.sky.group.visible = !under;
+                if (H.sky && H.sky.landmarks) H.sky.landmarks.visible = !under;
+            }
+            if (fx.rays) fx.rays.visible = under; if (fx.snow) fx.snow.visible = under;
+            _hqSeaEmit({ kind: 'under', on: under });
+        }
+        if (under && fx.rays) {
+            var q = 12 * U, cx = Math.round(cam.position.x / q) * q, cz = Math.round(cam.position.z / q) * q;
+            fx.rays.position.set(cx, (sea.y - fx.rayH / 2 + 0.2) * U, cz);
+            var t = now * 0.001;
+            for (var i = 0; i < fx.rays.children.length; i++) { var r = fx.rays.children[i]; r.rotation.y += dt * 0.04 * ((i % 2) ? 1 : -1); r.material.opacity = 0.08 + 0.05 * Math.sin(t * r.userData.sp * 4 + r.userData.ph); }
+            if (fx.snow) { fx.snow.position.set(cx, Math.round(cam.position.y / q) * q, cz); fx.snow.rotation.y += dt * 0.01; }
+        }
+        /* the bubbles: a diver breathes, the bathyscaphe vents */
+        var pl = H.player;
+        if (pl) {
+            var src = null;
+            if (H.vehicle && H.vehicle.on && H.vehicle.kind === 'sub') { var V = H.vehicle; src = { x: V.x - Math.sin(V.yaw) * 2.4, y: V.y + 0.6, z: V.z - Math.cos(V.yaw) * 2.4, rate: 6 + (V.thr ? 10 : 0), big: true }; }
+            else if (pl.swim && pl.dive) src = { x: pl.x, y: pl.y + 1.4, z: pl.z, rate: 4 + (pl.moving ? 4 : 0), big: false };
+            if (src) { fx.bubbleT += dt * src.rate; while (fx.bubbleT > 1) { fx.bubbleT -= 1; _hqBubbleAt(src.x, src.y, src.z, src.big); } }
+        }
+        for (var bi = 0; bi < fx.bubbles.length; bi++) {
+            var bb = fx.bubbles[bi]; if (bb.life <= 0) continue;
+            bb.life -= dt; bb.sp.position.y += bb.vy * dt * U; bb.sp.position.x += Math.sin(now * 0.004 + bi) * bb.ox * dt * U;
+            bb.sp.material.opacity = Math.min(0.55, bb.life * 0.6);
+            if (bb.life <= 0 || bb.sp.position.y / U > sea.y - 0.1) { bb.life = 0; bb.sp.visible = false; }
+        }
+    }
+    /* ── THE PROCS: the sea's kit (metres × U, front +Z, origin on the floor) ── */
+    Object.assign(_hqProcBuilders, {
+        /* THE SKIFF: the rowboat hull (the misc GLB, its length along X → turned to +Z) under a mast, a boom and a sail; a stand-in hull until it lands */
+        skiff: function (U) {
+            var g = new THREE.Group();
+            var wood = _hqMat(null, 1, 1, { color: 0x7a5a3a, shininess: 28, specular: 0x333333 });
+            var canvas = _hqMat(null, 1, 1, { color: 0xf2ecd8, shininess: 6, side: THREE.DoubleSide });
+            var proc = new THREE.Group();
+            var hull = new THREE.Mesh(new THREE.CylinderGeometry(0.85 * U, 0.55 * U, 4.6 * U, 10, 1, false), wood);
+            hull.rotation.x = Math.PI / 2; hull.scale.set(1, 0.42, 1); hull.position.y = 0.2 * U; proc.add(hull);
+            var gun = new THREE.Mesh(new THREE.TorusGeometry(0.86 * U, 0.05 * U, 6, 20), wood); gun.rotation.x = Math.PI / 2; gun.scale.set(1, 2.7, 1); gun.position.y = 0.52 * U; proc.add(gun);
+            g.add(proc);
+            var url = (typeof _MISC_GLB !== 'undefined' && _MISC_GLB.rowboat) ? _R2_MISC + _MISC_GLB.rowboat : null;
+            if (url && typeof THREE.GLTFLoader === 'function' && !(typeof window !== 'undefined' && window.EW_PERF_LOW)) {
+                var piv = new THREE.Group(); piv.rotation.y = Math.PI / 2;   // the GLB's length runs along X (the misc rule); the helm's forward is +Z
+                piv.add(_miscModelInstance(url, true, 4.6 * U, { fit: 'span', matPick: _hqPropMatPick, onDone: function () { proc.visible = false; if (_hq) _hq.dirty = true; } }));
+                g.add(piv);
+            }
+            var mast = new THREE.Mesh(new THREE.CylinderGeometry(0.05 * U, 0.06 * U, 3.4 * U, 8), wood); mast.position.set(0, 2.1 * U, 0.4 * U); g.add(mast);
+            var boom = new THREE.Mesh(new THREE.CylinderGeometry(0.035 * U, 0.035 * U, 2.6 * U, 8), wood); boom.rotation.x = Math.PI / 2; boom.position.set(0, 1.25 * U, -0.8 * U); g.add(boom);
+            var sailShape = new THREE.Shape(); sailShape.moveTo(0, 0); sailShape.lineTo(0, 2.4 * U); sailShape.lineTo(-2.3 * U, 0.05 * U); sailShape.lineTo(0, 0);
+            var sail = new THREE.Mesh(new THREE.ShapeGeometry(sailShape), canvas); sail.rotation.y = Math.PI / 2; sail.position.set(0.02 * U, 1.3 * U, 0.38 * U); g.add(sail);
+            var seed = (_hqProcSeed++) * 1.3;
+            if (_hq) _hq.tickers.push(function (dt, now) { var t = now * 0.001 + seed; sail.rotation.y = Math.PI / 2 + 0.28 * Math.sin(t * 0.7); boom.rotation.y = 0.28 * Math.sin(t * 0.7); });
+            return g;
+        },
+        /* THE BATHYSCAPHE: a brass hull, a conning tower with a hatch, a screw, two lamps with their cones, portholes lit */
+        submarine: function (U) {
+            var g = new THREE.Group();
+            var brass = _hqMat(null, 1, 1, { color: 0x9a7a3c, shininess: 70, specular: 0x886622 });
+            var dark = _hqMat(null, 1, 1, { color: 0x3a3428, shininess: 30 });
+            var glass = new THREE.MeshPhongMaterial({ color: 0xbfefff, emissive: 0x6fc8e0, emissiveIntensity: 0.8, shininess: 90, transparent: true, opacity: 0.9 });
+            var hull = new THREE.Mesh(new THREE.CylinderGeometry(1.05 * U, 1.05 * U, 3.8 * U, 16), brass); hull.rotation.x = Math.PI / 2; hull.position.y = 1.2 * U; g.add(hull);
+            var nose = new THREE.Mesh(new THREE.SphereGeometry(1.05 * U, 16, 12), brass); nose.position.set(0, 1.2 * U, 1.9 * U); nose.scale.z = 1.3; g.add(nose);
+            var tail = new THREE.Mesh(new THREE.SphereGeometry(1.05 * U, 16, 12), brass); tail.position.set(0, 1.2 * U, -1.9 * U); tail.scale.z = 1.1; g.add(tail);
+            var tower = new THREE.Mesh(new THREE.CylinderGeometry(0.5 * U, 0.6 * U, 0.9 * U, 12), brass); tower.position.set(0, 2.5 * U, 0.3 * U); g.add(tower);
+            var hatch = new THREE.Mesh(new THREE.CylinderGeometry(0.34 * U, 0.34 * U, 0.08 * U, 12), dark); hatch.position.set(0, 2.98 * U, 0.3 * U); g.add(hatch);
+            var skidL = _hqBox(0.12, 0.25, 3.0, dark); skidL.position.set(-0.7 * U, 0.12 * U, 0); g.add(skidL);
+            var skidR = _hqBox(0.12, 0.25, 3.0, dark); skidR.position.set(0.7 * U, 0.12 * U, 0); g.add(skidR);
+            var fin = _hqBox(2.4, 0.08, 0.7, brass); fin.position.set(0, 1.2 * U, -2.6 * U); g.add(fin);
+            var finV = _hqBox(0.08, 1.6, 0.7, brass); finV.position.set(0, 1.4 * U, -2.6 * U); g.add(finV);
+            var screw = new THREE.Group(); screw.position.set(0, 1.2 * U, -3.15 * U);
+            for (var i = 0; i < 3; i++) { var bl = _hqBox(0.14, 0.7, 0.05, dark); bl.rotation.z = i * Math.PI * 2 / 3; bl.rotation.y = 0.5; screw.add(bl); }
+            g.add(screw);
+            [-0.9, 0, 0.9].forEach(function (z) { var port = new THREE.Mesh(new THREE.CircleGeometry(0.16 * U, 12), glass); port.position.set(1.06 * U, 1.35 * U, z * U); port.rotation.y = Math.PI / 2; g.add(port); var port2 = port.clone(); port2.position.x = -1.06 * U; port2.rotation.y = -Math.PI / 2; g.add(port2); });
+            var eye = new THREE.Mesh(new THREE.CircleGeometry(0.42 * U, 16), glass); eye.position.set(0, 1.25 * U, 3.28 * U); g.add(eye);
+            var coneMat = new THREE.MeshBasicMaterial({ color: 0xbfefff, transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false });
+            [-0.62, 0.62].forEach(function (x) {
+                var lamp = _hzGlowSprite(0.5 * U, 0xdfffff, 0.75, 0.1, 0.05, 1.1); lamp.position.set(x * U, 0.95 * U, 2.6 * U); g.add(lamp);
+                var cone = new THREE.Mesh(new THREE.ConeGeometry(2.4 * U, 12 * U, 14, 1, true), coneMat); cone.rotation.x = -Math.PI / 2; cone.position.set(x * U, 0.95 * U, (2.6 + 6) * U); g.add(cone);
+            });
+            if (_hq) _hq.tickers.push(function (dt) { var V = _hq && _hq.vehicle; var on = V && V.on && V.rec && V.rec.grp && g.parent && V.rec.grp === g.parent; screw.rotation.z += dt * (on ? (2 + Math.abs(V.v) * 1.5) : 0.4); });
+            return g;
+        },
+        /* THE LIGHTHOUSE: a tapered white-and-red tower on a plinth, the gallery, the lantern room and a BEAM that turns */
+        lighthouse: function (U) {
+            var g = new THREE.Group();
+            var white = _hqMat(null, 1, 1, { color: 0xf2efe6, shininess: 12 }), red = _hqMat(null, 1, 1, { color: 0xc83a3a, shininess: 12 });
+            var rock = _hqMat('rocks_1', 2, 1, { color: 0x8a8478, shininess: 3 }), iron = _hqMat(null, 1, 1, { color: 0x2a2c30, shininess: 40 });
+            var plinth = new THREE.Mesh(new THREE.CylinderGeometry(1.7 * U, 2.1 * U, 0.8 * U, 12), rock); plinth.position.y = 0.4 * U; g.add(plinth);
+            var bands = 5, h = 8.2;
+            for (var i = 0; i < bands; i++) { var seg = new THREE.Mesh(new THREE.CylinderGeometry((1.15 - i * 0.1) * U, (1.25 - i * 0.1) * U, (h / bands) * U, 14), i % 2 ? red : white); seg.position.y = (0.8 + h / bands * (i + 0.5)) * U; g.add(seg); }
+            var gal = new THREE.Mesh(new THREE.CylinderGeometry(1.1 * U, 0.9 * U, 0.16 * U, 14), iron); gal.position.y = (0.8 + h + 0.08) * U; g.add(gal);
+            var rail = new THREE.Mesh(new THREE.TorusGeometry(1.05 * U, 0.03 * U, 6, 24), iron); rail.rotation.x = Math.PI / 2; rail.position.y = (0.8 + h + 0.95) * U; g.add(rail);
+            var lantern = new THREE.Mesh(new THREE.CylinderGeometry(0.62 * U, 0.62 * U, 1.1 * U, 12, 1, true), new THREE.MeshPhongMaterial({ color: 0xfff6d8, emissive: 0xffe0a0, emissiveIntensity: 0.6, transparent: true, opacity: 0.55, side: THREE.DoubleSide }));
+            lantern.position.y = (0.8 + h + 0.7) * U; g.add(lantern);
+            var cap = new THREE.Mesh(new THREE.ConeGeometry(0.75 * U, 0.6 * U, 12), red); cap.position.y = (0.8 + h + 1.55) * U; g.add(cap);
+            var beamMat = new THREE.MeshBasicMaterial({ color: 0xfff1c8, transparent: true, opacity: 0.16, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false });
+            var beams = new THREE.Group(); beams.position.y = (0.8 + h + 0.7) * U;
+            [0, Math.PI].forEach(function (a) { var b = new THREE.Mesh(new THREE.ConeGeometry(2.2 * U, 34 * U, 10, 1, true), beamMat); b.rotation.z = Math.PI / 2; b.rotation.y = a; b.position.set(Math.cos(a) * 17 * U, 0, Math.sin(a) * 17 * U); var piv = new THREE.Group(); piv.rotation.y = a; piv.add(b); b.position.set(17 * U, 0, 0); beams.add(piv); });
+            g.add(beams);
+            if (_hq) _hq.tickers.push(function (dt) { beams.rotation.y += dt * 0.55; });
+            return g;
+        },
+        /* a channel buoy: a red can on a float, a lamp on top */
+        sea_buoy: function (U) {
+            var g = new THREE.Group();
+            var red = _hqMat(null, 1, 1, { color: 0xd8402a, shininess: 30 }), iron = _hqMat(null, 1, 1, { color: 0x2a2c30, shininess: 40 });
+            var fl = new THREE.Mesh(new THREE.CylinderGeometry(0.75 * U, 0.55 * U, 0.5 * U, 12), red); fl.position.y = 0.0; g.add(fl);
+            var can = new THREE.Mesh(new THREE.CylinderGeometry(0.3 * U, 0.42 * U, 1.2 * U, 10), red); can.position.y = 0.85 * U; g.add(can);
+            var cage = new THREE.Mesh(new THREE.CylinderGeometry(0.22 * U, 0.22 * U, 0.6 * U, 6, 1, true), new THREE.MeshBasicMaterial({ color: 0x2a2c30, wireframe: true })); cage.position.y = 1.75 * U; g.add(cage);
+            var lamp = new THREE.Mesh(new THREE.SphereGeometry(0.12 * U, 10, 8), new THREE.MeshBasicMaterial({ color: 0xff5a4a })); lamp.position.y = 2.0 * U; g.add(lamp);
+            var seed = (_hqProcSeed++) * 0.7;
+            if (_hq) _hq.tickers.push(function (dt, now) { var t = now * 0.001 + seed; g.rotation.z = 0.08 * Math.sin(t * 1.1); g.rotation.x = 0.06 * Math.sin(t * 0.8); lamp.material.color.setHex((Math.floor(t * 1.2) % 2) ? 0xff5a4a : 0x5a1a14); });
+            return g;
+        },
+        /* KELP: a cross of two tapered fronds on the room's swaying material (uv.y = the height, the sway's weight) */
+        kelp: function (U) {
+            var g = new THREE.Group(), mat = _hqKelpMat();
+            var h = (3.4 + ((_hqProcSeed++) % 5) * 0.4), w = 0.42;
+            var geo = new THREE.PlaneGeometry(w * U, h * U, 1, 8);
+            var pa = geo.attributes.position, uv = geo.attributes.uv;
+            for (var i = 0; i < pa.count; i++) { var v = uv.getY(i); pa.setY(i, v * h * U); pa.setX(i, pa.getX(i) * (1 - v * 0.55)); }   // the foot at the floor, the frond narrowing
+            pa.needsUpdate = true; geo.computeVertexNormals();
+            var a = new THREE.Mesh(geo, mat); g.add(a);
+            var b = new THREE.Mesh(geo, mat); b.rotation.y = Math.PI / 2; g.add(b);
+            g.rotation.y = Math.random() * Math.PI;
+            return g;
+        },
+        /* BRAIN CORAL: a squashed, lumpy sphere in a warm coral, ridged by a second smaller one */
+        coral_brain: function (U) {
+            var g = new THREE.Group(), pick = [0xd8836a, 0xe8a070, 0xc86a9a, 0xd9c26a][(_hqProcSeed++) % 4];
+            var m = new THREE.MeshPhongMaterial({ color: pick, emissive: pick, emissiveIntensity: 0.12, shininess: 8, flatShading: true });
+            var a = new THREE.Mesh(new THREE.IcosahedronGeometry(0.55 * U, 1), m); a.scale.set(1.1, 0.7, 1); a.position.y = 0.32 * U; g.add(a);
+            var b = new THREE.Mesh(new THREE.IcosahedronGeometry(0.34 * U, 1), m); b.position.set(0.32 * U, 0.4 * U, -0.2 * U); b.scale.set(1, 0.7, 1); g.add(b);
+            return g;
+        },
+        /* FAN CORAL: a thin lacy fan (a ring of flattened boxes on a stalk), swaying a little */
+        coral_fan: function (U) {
+            var g = new THREE.Group(), pick = [0xff7fb0, 0xb070e0, 0xff9a60][(_hqProcSeed++) % 3];
+            var m = new THREE.MeshPhongMaterial({ color: pick, emissive: pick, emissiveIntensity: 0.18, shininess: 10, side: THREE.DoubleSide, transparent: true, opacity: 0.92 });
+            var fan = new THREE.Group();
+            for (var i = 0; i < 9; i++) { var a = -1.2 + i * 0.3; var rib = _hqBox(0.05, 1.3, 0.02, m); rib.position.set(Math.sin(a) * 0.5 * U, 0.75 * U, 0); rib.rotation.z = -a * 0.9; fan.add(rib); }
+            var web = new THREE.Mesh(new THREE.CircleGeometry(0.62 * U, 14, Math.PI * 0.12, Math.PI * 0.76), m); web.position.y = 0.42 * U; fan.add(web);
+            var stalk = _hqBox(0.08, 0.45, 0.08, m); stalk.position.y = 0.22 * U; g.add(stalk);
+            g.add(fan);
+            var seed = (_hqProcSeed++) * 0.9;
+            if (_hq) _hq.tickers.push(function (dt, now) { fan.rotation.x = 0.1 * Math.sin(now * 0.0011 + seed); });
+            g.rotation.y = Math.random() * Math.PI;
+            return g;
+        },
+        /* TUBE CORAL: a cluster of open tubes, lit at the mouths */
+        coral_tube: function (U) {
+            var g = new THREE.Group(), pick = [0xe0b060, 0x70c0c8, 0xe07050][(_hqProcSeed++) % 3];
+            var m = new THREE.MeshPhongMaterial({ color: pick, emissive: pick, emissiveIntensity: 0.14, shininess: 14, side: THREE.DoubleSide });
+            for (var i = 0; i < 6; i++) { var a = i * 1.05, r = (i === 0) ? 0 : 0.18 + (i % 2) * 0.08, h = 0.55 + ((i * 3) % 4) * 0.14; var t = new THREE.Mesh(new THREE.CylinderGeometry(0.09 * U, 0.06 * U, h * U, 8, 1, true), m); t.position.set(Math.cos(a) * r * U, (h / 2) * U, Math.sin(a) * r * U); t.rotation.set(0.15 * Math.cos(a), 0, -0.15 * Math.sin(a)); g.add(t); }
+            return g;
+        },
+        /* AN ANEMONE: a ring of soft tentacles that breathe */
+        anemone: function (U) {
+            var g = new THREE.Group();
+            var m = new THREE.MeshPhongMaterial({ color: 0xff7fb0, emissive: 0xc04080, emissiveIntensity: 0.3, shininess: 20 });
+            var base = new THREE.Mesh(new THREE.CylinderGeometry(0.22 * U, 0.26 * U, 0.16 * U, 10), m); base.position.y = 0.08 * U; g.add(base);
+            var tents = new THREE.Group(); tents.position.y = 0.16 * U;
+            for (var i = 0; i < 14; i++) { var a = i * 0.45, r = 0.06 + (i % 3) * 0.05; var t = new THREE.Mesh(new THREE.CylinderGeometry(0.012 * U, 0.03 * U, 0.34 * U, 5), m); t.position.set(Math.cos(a) * r * U, 0.16 * U, Math.sin(a) * r * U); t.rotation.set(0.35 * Math.cos(a), 0, -0.35 * Math.sin(a)); tents.add(t); }
+            g.add(tents);
+            var seed = (_hqProcSeed++) * 1.1;
+            if (_hq) _hq.tickers.push(function (dt, now) { var s = 1 + 0.12 * Math.sin(now * 0.0016 + seed); tents.scale.set(s, 1 / s, s); });
+            return g;
+        },
+        /* A GIANT CLAM: two fluted shells, open on a pearl light */
+        giant_clam: function (U) {
+            var g = new THREE.Group();
+            var shell = new THREE.MeshPhongMaterial({ color: 0xd8d0c0, shininess: 30, flatShading: true }), lip = new THREE.MeshPhongMaterial({ color: 0x3a7ac8, emissive: 0x2050a0, emissiveIntensity: 0.5, shininess: 40 });
+            var lo = new THREE.Mesh(new THREE.SphereGeometry(0.6 * U, 12, 8, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), shell); lo.scale.set(1, 0.5, 0.85); lo.position.y = 0.3 * U; g.add(lo);
+            var hi = new THREE.Mesh(new THREE.SphereGeometry(0.6 * U, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), shell); hi.scale.set(1, 0.5, 0.85); hi.position.set(0, 0.3 * U, -0.1 * U); hi.rotation.x = -0.6; g.add(hi);
+            var mantle = new THREE.Mesh(new THREE.CircleGeometry(0.5 * U, 14), lip); mantle.rotation.x = -Math.PI / 2; mantle.position.y = 0.31 * U; mantle.scale.set(1, 0.8, 1); g.add(mantle);
+            var pearl = new THREE.Mesh(new THREE.SphereGeometry(0.09 * U, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffffff })); pearl.position.set(0, 0.4 * U, 0.05 * U); g.add(pearl);
+            var seed = (_hqProcSeed++) * 0.8;
+            if (_hq) _hq.tickers.push(function (dt, now) { hi.rotation.x = -0.5 - 0.15 * Math.sin(now * 0.0007 + seed); });
+            return g;
+        },
+        /* A BLACK SMOKER: a chimney of dark rock, a glow in the vent, smoke sprites rising */
+        sea_vent: function (U) {
+            var g = new THREE.Group();
+            var rock = new THREE.MeshPhongMaterial({ color: 0x2a2624, shininess: 6, flatShading: true });
+            var stack = new THREE.Mesh(new THREE.CylinderGeometry(0.28 * U, 0.75 * U, 2.2 * U, 9), rock); stack.position.y = 1.1 * U; g.add(stack);
+            var stub = new THREE.Mesh(new THREE.CylinderGeometry(0.2 * U, 0.42 * U, 1.1 * U, 8), rock); stub.position.set(0.55 * U, 0.55 * U, 0.2 * U); stub.rotation.z = -0.2; g.add(stub);
+            var vent = _hzGlowSprite(0.9 * U, 0xff8a30, 0.6, 0.2, 0.1, 1.3); vent.position.y = 2.25 * U; g.add(vent);
+            var puffs = [];
+            for (var i = 0; i < 6; i++) { var p = new THREE.Sprite(new THREE.SpriteMaterial({ map: _hzGlowTexture(), color: 0x203038, transparent: true, opacity: 0.3, depthWrite: false })); p.userData.t = i / 6; puffs.push(p); g.add(p); }
+            if (_hq) _hq.tickers.push(function (dt) { for (var k = 0; k < puffs.length; k++) { var p = puffs[k]; p.userData.t += dt * 0.28; if (p.userData.t > 1) p.userData.t -= 1; var t = p.userData.t; p.position.set(Math.sin(t * 9 + k) * 0.25 * U, (2.3 + t * 5.5) * U, Math.cos(t * 7 + k) * 0.25 * U); p.scale.setScalar((0.5 + t * 1.6) * U); p.material.opacity = 0.32 * (1 - t); } });
+            return g;
+        },
+        /* A SCHOOL OF FISH: forty on one instanced mesh, looping a lazy figure round the spot (a ticker) */
+        fish_school: function (U) {
+            var g = new THREE.Group(), n = 40;
+            var pick = [0xf0c040, 0x60c8f0, 0xe07090, 0xc8e0f0][(_hqProcSeed++) % 4];
+            var geo = new THREE.ConeGeometry(0.07 * U, 0.34 * U, 5); geo.rotateX(Math.PI / 2);
+            var m = new THREE.MeshPhongMaterial({ color: pick, emissive: pick, emissiveIntensity: 0.25, shininess: 60, specular: 0xffffff, flatShading: true });
+            var inst = new THREE.InstancedMesh(geo, m, n); inst.frustumCulled = false; g.add(inst);
+            var seed = (_hqProcSeed++) * 2.1, ph = [], rr = [], hh = [];
+            for (var i = 0; i < n; i++) { ph.push(Math.random() * 6.28); rr.push(0.6 + Math.random() * 1.2); hh.push(0.8 + Math.random() * 1.6); }
+            var mtx = new THREE.Matrix4(), q = new THREE.Quaternion(), pos = new THREE.Vector3(), scl = new THREE.Vector3(1, 1, 1), up = new THREE.Vector3(0, 1, 0), look = new THREE.Matrix4(), tgt = new THREE.Vector3();
+            var path = function (t, i) { return new THREE.Vector3(Math.sin(t) * (4 + rr[i]) * U, (hh[i] + 0.4 * Math.sin(t * 2 + ph[i])) * U, Math.sin(t * 2) * (2 + rr[i]) * U); };
+            if (_hq) _hq.tickers.push(function (dt, now) {
+                var T = now * 0.00035 + seed;
+                for (var i = 0; i < n; i++) {
+                    var t = T + ph[i] * 0.12;
+                    pos.copy(path(t, i)); tgt.copy(path(t + 0.02, i));
+                    look.lookAt(tgt, pos, up); q.setFromRotationMatrix(look);
+                    mtx.compose(pos, q, scl); inst.setMatrixAt(i, mtx);
+                }
+                inst.instanceMatrix.needsUpdate = true;
+            });
+            return g;
+        },
+        /* THE TEMPLE OF THE DEEP from outside: a marble dome on a ring of columns over the vault door, lit from within (the near weenie) */
+        temple_dome: function (U) {
+            var g = new THREE.Group();
+            var marble = _hqMat('marble_light', 3, 2, { color: 0xd8dcd8, shininess: 20 }), gold = _hqMat(null, 1, 1, { color: 0xc8a850, shininess: 90, specular: 0x886622 });
+            var R = 6.5, H = 5.2;
+            for (var i = 0; i < 12; i++) { var a = i * Math.PI / 6; if (i === 3) continue; var col = new THREE.Mesh(new THREE.CylinderGeometry(0.3 * U, 0.34 * U, H * U, 10), marble); col.position.set(Math.sin(a) * R * U, (H / 2) * U, Math.cos(a) * R * U); g.add(col); }   // the south column left out: the way in under the dome
+            var ring = new THREE.Mesh(new THREE.TorusGeometry(R * U, 0.4 * U, 8, 32), marble); ring.rotation.x = Math.PI / 2; ring.position.y = H * U; g.add(ring);
+            var dome = new THREE.Mesh(new THREE.SphereGeometry((R + 0.2) * U, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), marble); dome.position.y = H * U; dome.scale.y = 0.62; g.add(dome);
+            var lantern = new THREE.Mesh(new THREE.CylinderGeometry(0.9 * U, 1.1 * U, 1.2 * U, 10), gold); lantern.position.y = (H + (R + 0.2) * 0.62 + 0.5) * U; g.add(lantern);
+            var glow = new THREE.Mesh(new THREE.SphereGeometry((R - 0.6) * U, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffe0a0, transparent: true, opacity: 0.16, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.BackSide, fog: false }));
+            glow.position.y = H * U; glow.scale.y = 0.6; g.add(glow);
+            var seed = (_hqProcSeed++) * 0.6;
+            if (_hq) _hq.tickers.push(function (dt, now) { glow.material.opacity = 0.14 + 0.05 * Math.sin(now * 0.0013 + seed); });
+            return g;
+        },
+    });
+    /* ── THE LANDMARKS: the waterspout on the sea's horizon, the whale on the abyss's ── */
+    Object.assign(_hqLandmarkBuilders, {
+        /* THE WATERSPOUT: a twisting funnel from the sea up into a dark cloud (a lathe with a lean, turning) */
+        waterspout: function (U, o, rng) {
+            var g = new THREE.Group(), s = o.s || 1, R = rng || Math.random;
+            var pts = []; for (var i = 0; i <= 18; i++) { var t = i / 18; pts.push(new THREE.Vector2((4 + 26 * t * t + 6 * Math.sin(t * 9)) * s * U, t * 260 * s * U)); }
+            var mat = new THREE.MeshPhongMaterial({ color: 0x9fb4c0, emissive: 0x30404a, emissiveIntensity: 0.4, transparent: true, opacity: 0.78, side: THREE.DoubleSide, shininess: 4 });
+            var funnel = new THREE.Mesh(new THREE.LatheGeometry(pts, 24), mat); g.add(funnel);
+            var cloud = _hqMat('cloud_thick', 3, 2, { color: 0x6a7684, shininess: 2 });
+            for (var c = 0; c < 6; c++) { var a = c * 1.05 + R() * 0.4, rr = (20 + R() * 30) * s; var puff = new THREE.Mesh(new THREE.SphereGeometry((28 + R() * 16) * s * U, 12, 8), cloud); puff.scale.set(1, 0.5, 0.9); puff.position.set(Math.cos(a) * rr * U, (250 + R() * 14) * s * U, Math.sin(a) * rr * U); g.add(puff); }
+            var spray = new THREE.Mesh(new THREE.TorusGeometry(14 * s * U, 3.5 * s * U, 8, 20), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.35, fog: false })); spray.rotation.x = Math.PI / 2; spray.position.y = 2 * s * U; g.add(spray);
+            if (_hq) _hq.tickers.push(function (dt) { funnel.rotation.y += dt * 0.9; funnel.rotation.z = 0.06 * Math.sin(performance.now() * 0.0003); });
+            return g;
+        },
+        /* THE WHALE: a great dark body with flukes and a fin, drifting a slow circle round its post on the horizon */
+        whale: function (U, o, rng) {
+            var g = new THREE.Group(), s = o.s || 1;
+            var skin = new THREE.MeshPhongMaterial({ color: 0x1c2a34, emissive: 0x0a1418, emissiveIntensity: 0.5, shininess: 20 });
+            var body = new THREE.Group();
+            var trunk = new THREE.Mesh(new THREE.SphereGeometry(30 * s * U, 20, 12), skin); trunk.scale.set(1, 0.7, 3.2); body.add(trunk);
+            var head = new THREE.Mesh(new THREE.SphereGeometry(26 * s * U, 16, 10), skin); head.scale.set(1, 0.72, 1.4); head.position.z = 70 * s * U; body.add(head);
+            var tail = new THREE.Mesh(new THREE.CylinderGeometry(6 * s * U, 20 * s * U, 90 * s * U, 10), skin); tail.rotation.x = Math.PI / 2; tail.position.z = -120 * s * U; body.add(tail);
+            var fluke = new THREE.Mesh(new THREE.BoxGeometry(80 * s * U, 3 * s * U, 30 * s * U), skin); fluke.position.z = -168 * s * U; body.add(fluke);
+            var fin = new THREE.Mesh(new THREE.BoxGeometry(4 * s * U, 24 * s * U, 22 * s * U), skin); fin.position.set(0, 24 * s * U, -20 * s * U); fin.rotation.x = 0.4; body.add(fin);
+            [-1, 1].forEach(function (side) { var flip = new THREE.Mesh(new THREE.BoxGeometry(44 * s * U, 3 * s * U, 16 * s * U), skin); flip.position.set(side * 40 * s * U, -8 * s * U, 40 * s * U); flip.rotation.z = side * 0.3; body.add(flip); });
+            var eye = _hzGlowSprite(6 * s * U, 0x9ff0ff, 0.6, 0.1, 0.05, 0.5); eye.position.set(22 * s * U, 6 * s * U, 84 * s * U); body.add(eye);
+            g.add(body);
+            var t0 = Math.random() * 6.28;
+            if (_hq) _hq.tickers.push(function (dt, now) { var t = now * 0.00006 + t0; body.position.set(Math.cos(t) * 260 * s * U, Math.sin(t * 2.3) * 40 * s * U, Math.sin(t) * 260 * s * U); body.rotation.y = -t; fluke.rotation.x = 0.35 * Math.sin(now * 0.0009); });
+            return g;
+        },
+    });
+
     /* ── per-frame ─────────────────────────────────────────────────────── */
     /* THE SLIDE (THE FIELD stage A — Phase 9 Delivery 6, 2026-09-16): between the strike frame and the cut the
        walker and the native EASE onto their cell centres (the user's rule: "slid to the nearest square tile of
@@ -48012,6 +48774,9 @@ const ThreeRenderer = (function () {
         if (H.snap) { _hqTickSnap(dt); return; }
         /* SKATEBOARDING (HQ plan 9.8): on the board the frame is the rider's */
         if (H.ride && H.ride.on) { _hqTickRide(dt); return; }
+        /* THE DEEP (2026-09-18): aboard the skiff / the bathyscaphe the frame is the helm's; in deep water it is the swimmer's */
+        if (H.vehicle && H.vehicle.on) { _hqTickVehicle(dt); return; }
+        if (pl.swim) { _hqTickSwim(dt); return; }
         var sx0 = pl.x, sz0 = pl.z, sy0 = pl.y;   // THE CARRY (rev 4): the frame's displacement is the walk's velocity
         var ix = H.paused ? 0 : (((k.d || k.right) ? 1 : 0) - ((k.a || k.left) ? 1 : 0));
         var iy = H.paused ? 0 : (((k.s || k.down) ? 1 : 0) - ((k.w || k.up) ? 1 : 0));
@@ -48086,6 +48851,7 @@ const ThreeRenderer = (function () {
         pl.yaw += dy * Math.min(1, dt * 14);
         var U = _hqUnits();
         pl.entry.group.position.set(pl.x * U, pl.visY * U, pl.z * U);
+        _hqSwimCheck(pl);   // THE DEEP (2026-09-18): deep water under the feet — or a drowned room — makes the walker the swimmer
         /* NO auto-follow (2026-09-05): the mouse owns the camera outright —
            hover-look and pointer lock both steer it — so walking never swings
            the view behind the runner any more (that swing, kicking in 1.4 s
@@ -48127,12 +48893,16 @@ const ThreeRenderer = (function () {
             if (ch.kind === 'player') {
                 want = (ch.jumpT >= 0) ? 'jump' : (ch.moving ? (ch.running ? 'run' : 'walk') : 'idle');
                 if (H.ride && H.ride.on) { var bph = _hqRideBailPhase(H.ride); want = bph ? (bph === 'fall' ? 'hqFall' : 'hqGetup') : (ch.jumpT >= 0) ? 'jump' : ((H.ride.pushAnim > 0) ? 'hqPush' : ((e.actions && e.actions.hqRide) ? 'hqRide' : 'idle')); }   // SKATEBOARDING (9.8): the push / the kick is a stride (rev 3: the jog, hqPush), the air is the jump clip, the rest is THE RIDE stance (rev 2: Idle_10, sideways on the deck); a bail = the fall clip then the get-up (rev 3)
+                else if (H.vehicle && H.vehicle.on) want = (H.vehicle.kind === 'sub') ? 'hqDrive' : 'hqSit';   // THE DEEP (2026-09-18): at the helm — the library's driving loop in the bathyscaphe, the sitting idle in the skiff
+                else if (ch.swim) want = ch.moving ? 'hqSwim' : 'hqSwimIdle';   // THE DEEP: the swimmer — Swim_Fwd_Loop / Swim_Idle_Loop (sprites.js HQ_SWIM_CLIPS)
                 else if (want === 'idle' && H.portal && H.portal.drawn && e.actions && e.actions.hqAim) want = 'hqAim';   // THE DOOR GUN rev 4: drawn and standing, the officer HOLDS the gun up (the library's pistol aim)
                 /* THE ENCOUNTER (9.4): a thrown attack / cast clip owns the rig until its end */
                 if (ch.strike) { if (performance.now() < ch.strike.until && ch.jumpT < 0) want = ch.strike.name; else ch.strike = null; }
                 var lean = e.model._ew_lean || 0;
                 var leanT = ch.moving ? (ch.running ? 0.16 : 0.07) : 0;
-                lean += (leanT - lean) * Math.min(1, dt * 10);
+                /* THE DEEP (2026-09-18): a DIVER pitches with the way it swims — nose down going down, up coming up (the prone clip pivots about its own root); afloat it lies level */
+                if (ch.swim) { var shs = Math.hypot(ch.svx || 0, ch.svz || 0), svy = ch.svy || 0; leanT = ch.dive ? Math.max(-1.1, Math.min(1.1, -Math.atan2(svy, Math.max(0.35, shs)))) : 0; }
+                lean += (leanT - lean) * Math.min(1, dt * (ch.swim ? 4 : 10));
                 e.model._ew_lean = lean; e.model.rotation.x = lean;
                 if (e.actions && e.actions.walk) {
                     var ts0 = e.actions.walk._ew_ts0 || 1;
@@ -48308,6 +49078,8 @@ const ThreeRenderer = (function () {
            reads shared time / drift uniforms that only the battle loop
            advances — drive them here for the moat's liquid */
         if (H.moatTick) _hqTickMoat(dt);
+        /* THE DEEP (2026-09-18): the look under the surface, the rays, the snow, the bubbles */
+        if (H.seaFx) { try { _hqTickSea(dt, now); } catch (e) {} }
         /* a setting's trees land as their OBJs arrive (HQ plan 7.2 stage 5) —
            and the site board's own trees (2026-09-14), setting or not */
         _nrPollPending();
@@ -48631,6 +49403,7 @@ const ThreeRenderer = (function () {
             doors: [], counters: [], chars: [], blockers: [], landings: [], player: null, fxPulse: [], site: null, sky: null, setting: null,
             gallery: null,   /* THE GALLERY (9.2 stage 2, 2026-09-15 rev 20): the box room's two-floor frame (_hqGalleryFrame), read by _hqSurface / _hqAirOK / _hqCamBlocked / _hqBlockerFloor */
             rails: [], ramps: [], ride: null,   /* SKATEBOARDING (9.8, 2026-09-15): THE PARK RULE's registers (every builder pushes its rails / ramps) and the rider (_hqRideArm) */
+            boats: [], vehicle: null, seaFx: null, seaWayLatch: null,   /* THE DEEP (2026-09-18): the moored vehicles (the prop placer registers a catalogue `vehicle`), the one you are aboard, the water's effects, the whirlpool latch */
             finds: [], findLights: 0,   /* THE FINDS (9.1, 2026-09-15): the takeable objects standing in the room (_hqPlaceFinds) and the count of their point lights */
             portal: { drawn: false, ghost: null, aim: null, placed: {}, lastKey: '', hold: null, cross: null, issued: !!(opts.portal && opts.portal.issued), sight: null, fAt: 0, fFired: false, slot: (opts.portal && (opts.portal.slot === 'b')) ? 'b' : 'a', vm: null },   /* rev 4: `vm` = the first-person viewmodel; rev 5: `slot` = the LAST button pressed (the sights + the selector are gone — LEFT = A, RIGHT = B) */   /* THE DOOR GUN (9.5, rev 13; rev 2 2026-09-15: `hold` = the mouth you came out of, `cross` = the entry's speed): the drawn state, the ghost, the last aim, the placed door records by slot */
             tickers: [], propLights: 0,   /* Phase 8 (2026-09-14): per-frame callbacks registered by procs (the orb, the torches, the shaft); the count of catalogue `light`s placed */
@@ -48755,6 +49528,8 @@ const ThreeRenderer = (function () {
         try { _hqBuildCounters(room); } catch (e) { console.error('[HQ] counters failed', e); }
         try { _hqPlaceProps(room); } catch (e) { console.error('[HQ] props failed', e); }
         try { _hqPlaceFinds(room); } catch (e) { console.error('[HQ] finds failed', e); }
+        /* THE DEEP (2026-09-18): a room with a sea — the underwater look's pieces, the first frame's state */
+        try { _hqSeaArm(room); } catch (e) { console.error('[HQ] sea failed', e); }
         /* THE DOOR GUN (HQ plan 9.5): the pair's doors standing in this room, from the profile record */
         try { _hqBuildPortals(room, opts); } catch (e) { console.error('[HQ] portals failed', e); }
         try { _hqSpawnPopulation(room, opts); } catch (e) { console.error('[HQ] population failed', e); }
@@ -49048,6 +49823,14 @@ const ThreeRenderer = (function () {
         encounterEye: function () { return _hq ? _hqEncounterEye() : null; },
         snapping: function () { return !!(_hq && _hq.snap); },
         /* SKATEBOARDING (HQ plan 9.8, 2026-09-15): B in code — on / off / toggle, the state, THE PARK RULE's registers */
+        /* THE DEEP (2026-09-18): the swimmer and the helm */
+        board: function (id) { return _hqBoard(id); },
+        disembark: function () { return _hqDisembark(); },
+        vehicle: function () { var V = _hq && _hq.vehicle; if (!V || !V.on) return null; return { kind: V.kind, id: V.rec.id, x: V.x, y: V.y, z: V.z, yaw: V.yaw, v: V.v, vy: V.vy }; },
+        vehicles: function () { return _hq ? (_hq.boats || []).map(function (b) { return { id: b.id, kind: b.kind, key: b.key, x: b.x, y: b.y, z: b.z }; }) : []; },
+        swimming: function () { var pl = _hq && _hq.player; return !!(pl && pl.swim); },
+        diving: function () { var pl = _hq && _hq.player; return !!(pl && pl.swim && pl.dive); },
+        sea: function () { var s = _hqSea(); return s ? { y: s.y, key: s.key, under: !!s.under, camUnder: !!(_hq.seaFx && _hq.seaFx.under) } : null; },
         skate: function (on) { return _hqRideToggle(on); },
         skating: function () { return !!(_hq && _hq.ride && _hq.ride.on); },
         skateIssued: function (on) { if (_hq && _hq.ride) { _hq.ride.issued = !!on && !_hqSkateOff(); if (!on) _hqRideToggle(false, true); } return !!(_hq && _hq.ride && _hq.ride.issued); },

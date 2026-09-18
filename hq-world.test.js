@@ -157,7 +157,7 @@ test('an entryway kind the catalogue does not list is held back at BOTH ends; a 
  } finally{HQ.links=saved;}
 });
 test('THE SEAMS THAT ARE NOT DOORS: the wardrobe into Camelot and the well into Hollow Earth are catalogued, paired, plated, voiced and built',()=>{
- assert.deepEqual(SEAMS.map(l=>l.id).sort().join(','),'bureau_vatican,deadtree_lookingglass,downtown_strip,fairy_camelot,haunted_camelot,lodge_olympus,mirror_lookingglass,natatorium_dutchman,northpole_haunted,observatorium_singularity,observatory_stair,ranch_haunted,stadium_downtown,streets_drain,strip_cyberpunk,strip_sewer,subway_downtown,timemachine_cyberpunk,tunnel_cyberpunk,weir_bermuda,well_camelot,well_cellar,well_garden,well_gobekli,well_skinwalker','the wardrobe, the six wells (rev 10: every well drops into the cave), the train (the tunnel\u2019s platform to Cyberpunk\u2019s subway; 9.2 stage 4: Downtown\u2019s platform one stop back) and the second batch (rev 22: the mirror, the plunge pool, two paintings, the hearth, the screen, the closet), and the two trees with holes in them (2026-09-17: the dead tree at the garden gate and on the ritual ground), and DISASTER CITY\u2019s two (2026-09-17: the time machine in the mall\u2019s arcade, the gutter into the storm drain)');
+ assert.deepEqual(SEAMS.map(l=>l.id).sort().join(','),'bermuda_abyss,bureau_vatican,deadtree_lookingglass,downtown_strip,fairy_camelot,haunted_camelot,lodge_olympus,mirror_lookingglass,natatorium_dutchman,northpole_haunted,observatorium_singularity,observatory_stair,ranch_haunted,stadium_downtown,streets_drain,strip_cyberpunk,strip_sewer,subway_downtown,timemachine_cyberpunk,tunnel_cyberpunk,weir_bermuda,well_camelot,well_cellar,well_garden,well_gobekli,well_skinwalker','the wardrobe, the six wells (rev 10: every well drops into the cave), the train (the tunnel\u2019s platform to Cyberpunk\u2019s subway; 9.2 stage 4: Downtown\u2019s platform one stop back) and the second batch (rev 22: the mirror, the plunge pool, two paintings, the hearth, the screen, the closet), and the two trees with holes in them (2026-09-17: the dead tree at the garden gate and on the ritual ground), and DISASTER CITY\u2019s two (2026-09-17: the time machine in the mall\u2019s arcade, the gutter into the storm drain), and THE DEEP\u2019s whirlpool (2026-09-18: the maelstrom on the open sea down to the upwelling on the abyss floor — a way at both ends, each its own kind)');
  for(const k of Object.keys(HQ.ways)) {
   const w=HQ.ways[k];
   assert.ok(w.verb && w.sub && w.sfx && w.w>0 && w.h>0, k+': verb · sub · sfx · w · h');
@@ -174,13 +174,14 @@ test('THE SEAMS THAT ARE NOT DOORS: the wardrobe into Camelot and the well into 
    const rid=D.hqLinkRoom(end), room=HQ.rooms[rid], door=room.doors.find(d=>d.id==='link_'+link.id);
    /* an end that names its own `leaf` takes a plain door back instead of the object (hqLinkEndWear; 9.2 stage 4: the stair mouth on Cyberpunk's street at the far end of Downtown's train) */
    if(end.leaf){assert.ok(door && door.way===undefined && door.leaf===end.leaf,rid+' wears a plain door back ('+end.leaf+')');assert.equal(door.sub,end.sub||'WALK THROUGH');}
-   else {assert.ok(door && door.way===link.way && door.leaf===null,rid+' wears the '+link.way);
-   assert.equal(door.sub,end.sub||HQ.ways[link.way].sub,'the kind\u2019s plate line, unless the end names its own (the well room\u2019s heads)');}
+   else {const ew=end.way||link.way; /* THE DEEP (2026-09-18): an end may wear its OWN way (the whirlpool down, the upwelling up) */
+   assert.ok(door && door.way===ew && door.leaf===null,rid+' wears the '+ew);
+   assert.equal(door.sub,end.sub||HQ.ways[ew].sub,'the kind\u2019s plate line, unless the end names its own (the well room\u2019s heads)');}
    if(end.verb) assert.equal(door.verb,end.verb,'an end may name its own verb (CLIMB UP)');
    assert.equal(door.why,link.why);
    const dest=HQ.rooms[door.action.room], back=dest.doors.find(d=>d.id===door.action.at);
    const otherEnd=end===link.a?link.b:link.a;
-   assert.ok(back && back.action.room===rid && back.action.at===door.id && (otherEnd.leaf ? back.way===undefined : back.way===link.way),'the same object at the far end, or the plain door back the end names');
+   assert.ok(back && back.action.room===rid && back.action.at===door.id && (otherEnd.leaf ? back.way===undefined : back.way===(otherEnd.way||link.way)),'the same object at the far end, or the plain door back the end names');
    assert.equal(D.hqDoorNo(door),D.hqRoomNo(door.action.room),'the plate reads the far site\'s number');
    assert.equal(D.doorSiteState(door,{}),link.gate?'clearance':'open','rev 22: the Bureau\u2019s painting carries the Bureau\u2019s own gate — the Vatican is no way round the Gatekeeper\u2019s door');
    assert.equal(room.doors.filter(d=>d.id===door.id).length,1);
@@ -367,7 +368,10 @@ test('the whole world is one piece: from the foyer every board room and every co
  const linkAdj={};g.edges.filter(e=>e.link).forEach(e=>{(linkAdj[e.from]=linkAdj[e.from]||[]).push(e.to);});
  const reach=(from)=>{const s=new Set([from]),t=[from];while(t.length){const a=t.pop();for(const b of linkAdj[a]||[])if(!s.has(b)){s.add(b);t.push(b);}}return s;};
  assert.ok(reach(BOARD('prebuilt_haunted')).has(BOARD('prebuilt_fairy_forest')),'the woods');
- assert.ok(reach('site_prebuilt_revenge_hold').has(BOARD('prebuilt_northpole')),'the deep, end to end (rev 19: the line ends at the hatch in the Dutchman\'s HOLD — the deck reaches it by an ordinary door, not a link)');
+ /* THE DEEP (2026-09-18): the line's two halves meet in ATLANTIS — the hold's hatch comes out in THE ABYSS, the abyss's vault door (a room door, not a link) opens on THE TEMPLE, and the temple's two dry seams go on to the inner sun and the pole */
+ assert.ok(reach('site_prebuilt_revenge_hold').has('site_prebuilt_atlantis_abyss'),'the deep, from the hold: the hatch comes out on the sea floor');
+ assert.ok(reach('site_prebuilt_revenge_hold').has('site_prebuilt_bermuda_sea'),'… and the upwelling comes up in the Triangle');
+ assert.ok(reach('site_prebuilt_atlantis_temple').has(BOARD('prebuilt_northpole')),'the deep, from the temple: the dry seams reach the pole');
  assert.ok(!reach(BOARD('prebuilt_revenge')).has(BOARD('prebuilt_atlantis')),'no link leaves the main deck any more');
  assert.ok(reach(BOARD('prebuilt_mars')).has(BOARD('prebuilt_singularity')),'the lunar route, end to end');
 });

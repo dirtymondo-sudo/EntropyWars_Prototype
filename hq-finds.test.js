@@ -75,7 +75,8 @@ test('THE HUNDRED: exactly 100 tapes, T001…T100 in order, every one in a real 
     assert.equal(D.hqFindLegacyId('tape:T100'), 'tape:' + TAPES[99].id); assert.equal(D.hqFindLegacyId('pay:garage'), 'pay:garage');
     /* two per built site (in its board room), one per complex part */
     /* THE WOODS (9.3 stage 3, 2026-09-16): a built site keeps at least one tape in its board room — six gave their second to the woods' parts (the hundred stays a hundred) */
-    for (const site of HQ.siteRooms.built) { const n = TAPES.filter(t => t.where === 'site_' + site).length; assert.ok(n >= 1 && n <= 2, site + ': one or two tapes in its board room (' + n + ')'); }
+    /* THE DEEP (2026-09-18): a BYPASSED board (siteRooms.entry — nobody walks it) may carry none: its tape moved into the part its threshold lands in */
+    for (const site of HQ.siteRooms.built) { const n = TAPES.filter(t => t.where === 'site_' + site).length, bypassed = !!(HQ.siteRooms.entry || {})[site]; assert.ok(n <= 2 && (n >= 1 || bypassed), site + ': one or two tapes in its board room (' + n + ')'); }
     for (const part of D.hqComplexRooms()) assert.equal(TAPES.filter(t => t.where === part).length, 1, part + ': one tape');
     assert.equal(TAPES.filter(t => t.site).length, TAPES.filter(t => /^prebuilt_|^site_prebuilt_/.test(t.where) || /^site_/.test(t.where)).length, 'every site / part tape knows its site');
 });

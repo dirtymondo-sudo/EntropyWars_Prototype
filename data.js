@@ -14165,6 +14165,11 @@ const HQ_ROOM_LOOKS = {
     tunnels:    { name: 'THE RUNNING TUNNELS', retro: { enabled: true, preset: 'amber', pixelSize: 1, ditherStrength: 0.46, grain: 0.045, tintAmount: 0.45, levels: 20 }, cin: { vignette: true, vigAmount: 0.55, vigSize: 0.46 }, nightMood: 0.6, bloom: 0.26 },
     cells:      { name: 'THE HOLDING CELLS', retro: { enabled: true, preset: 'teal', pixelSize: 1, ditherStrength: 0.48, grain: 0.04, tintAmount: 0.4, levels: 22 }, cin: { vignette: true, vigAmount: 0.45, vigSize: 0.5 }, nightMood: 0.35, bloom: 0.12 },
     workings:   { name: 'THE OLD WORKINGS', retro: { enabled: true, preset: 'amber', pixelSize: 1, ditherStrength: 0.5, grain: 0.04, tintAmount: 0.5, levels: 18 }, cin: { vignette: true, vigAmount: 0.6, vigSize: 0.42 }, nightMood: 0.75, bloom: 0.2 },
+    /* THE DEEP (2026-09-18 — complex candidate #8, the user's pick): the open sea bleached and sun-struck, a wide vignette (the horizon is the
+       picture); the abyss a soft, bloomed teal (the water is the filter — the god rays want the bloom); the temple's air pocket the same teal, tighter */
+    sea:        { name: 'THE OPEN SEA', retro: { enabled: true, preset: 'faded', pixelSize: 1, ditherStrength: 0.36, grain: 0.03, tintAmount: 0.3, levels: 24 }, cin: { vignette: true, vigAmount: 0.32, vigSize: 0.6 }, nightMood: 0.1, bloom: 0.22 },
+    abyss:      { name: 'THE ABYSS', retro: { enabled: true, preset: 'teal', pixelSize: 1, ditherStrength: 0.42, grain: 0.035, tintAmount: 0.55, levels: 20 }, cin: { vignette: true, vigAmount: 0.5, vigSize: 0.5 }, nightMood: 0.55, bloom: 0.42 },
+    temple:     { name: 'THE TEMPLE OF THE DEEP', retro: { enabled: true, preset: 'teal', pixelSize: 1, ditherStrength: 0.44, grain: 0.035, tintAmount: 0.45, levels: 22 }, cin: { vignette: true, vigAmount: 0.5, vigSize: 0.48 }, nightMood: 0.5, bloom: 0.26 },
 };
 // THE LOOK (2026-09-17): `env.look` on a row = a grade (a HQ_ROOM_LOOKS row: retro preset, dither,
 // vignette, night mood, bloom, exposure, dof) laid over the player's video settings for that map —
@@ -18730,6 +18735,47 @@ function hqSewerShell(o) {
     Object.keys(o).forEach(k => { S[k] = o[k]; });
     return S;
 }
+/* ── THE DEEP'S SHELLS (2026-09-18 — THE COMPLEX CANDIDATES #8, the user's pick: "a sea that you can sail, an ocean you can swim in
+   or drive a submarine in") ── THE OPEN SEA: an open room under the Triangle's own sky (its EW_MAP_META row copied by hand — the `sea`
+   roster, the storm on the horizon, a WATERSPOUT landmark), the field the SEA FLOOR under `terrain.sea` (the islands are the ground
+   above the surface). THE ABYSS: open too, but its "sky" is the water column — a navy dome with no stars, a dense teal fog per metre
+   (the surface is 26 m up and mostly gone in it), a WHALE on the horizon (never a floater). Both light themselves through the sky rig
+   (an open room's hemisphere + sun); the abyss's are dim and blue and its props carry the rest (the crystals, the vents, the temple's
+   own light). `underwater: true` on a shell = the renderer's camera is under from the first frame. */
+function hqSeaShell(o) {
+    o = Object.assign({}, o || {});
+    const S = {
+        w: 0, d: 0, h: 6.0, wallH: 6.0, dadoH: 1.0,
+        open: true, edge: 'open',
+        floor: 'desert', wall: 'rocks_1', dado: 'rocks_1', trim: 'wood', ceiling: 'desert',
+        apron: 'desert', skirt: 'rocks_1', apronColor: 0xe8d8a8, floorColor: 0xe8d8a8, wallColor: 0x8a8478, dadoColor: 0x8a8478,
+        pipes: false, strips: false, lights: [],
+        mood: { lamp: 0xfff1c8, glow: 0x7fe0ea, strip: 0xdff0ff, light: 0xfff0d0, ambient: 0.62, night: 0 },
+        sky: { night: 0, tint: 0x6fa8c8, tintAmt: 0.34, stars: 0.35, nebula: 0.25, fog: { color: 0x9fc4d8, amount: 0.5, top: 0.06, band: 0.5, density: 0.018 }, scenery: 'sea', density: 0.8,
+               landmarks: [{ kind: 'waterspout', id: 'prebuilt_bermuda', deg: 32, dist: 0.72, y: -0.02, s: 1.0, label: 'THE WATERSPOUT' }] },
+        plate: { x: 0, z: 56.5, y: 3.6 },
+        look: HQ_ROOM_LOOKS.sea,
+    };
+    Object.keys(o).forEach(k => { S[k] = o[k]; });
+    return S;
+}
+function hqAbyssShell(o) {
+    o = Object.assign({}, o || {});
+    const S = {
+        w: 0, d: 0, h: 30, wallH: 30, dadoH: 1.0,
+        open: true, edge: 'open', underwater: true,
+        floor: 'desert', wall: 'rocks_1', dado: 'rocks_1', trim: 'gold', ceiling: 'desert',
+        apron: 'desert', skirt: 'rocks_1', apronColor: 0x4a6a78, floorColor: 0x4a6a78, wallColor: 0x3a5060, dadoColor: 0x3a5060,
+        pipes: false, strips: false, lights: [],
+        mood: { lamp: 0x7fe0ea, glow: 0x5fd0e0, strip: 0x9fe8f0, light: 0x8fd8e8, ambient: 0.5, night: 1 },
+        sky: { night: 1, tint: 0x0a3448, tintAmt: 0.92, stars: 0, nebula: 0, fog: { color: 0x06283a, amount: 1.0, top: 0.5, band: 0.9, density: 0.05 }, scenery: 'none', density: 0.5,
+               landmarks: [{ kind: 'whale', id: 'prebuilt_atlantis', deg: 300, dist: 0.5, y: 0.16, s: 1.0, label: 'THE WHALE' }] },
+        plate: { x: 0, z: -66.8, y: 6.0 },
+        look: HQ_ROOM_LOOKS.abyss,
+    };
+    Object.keys(o).forEach(k => { S[k] = o[k]; });
+    return S;
+}
 const DOOR_HQ = {
     units: 73,
     assets: { models: DOOR_HQ_ASSETS + 'models/', textures: DOOR_HQ_ASSETS + 'textures/' },
@@ -18917,6 +18963,24 @@ const DOOR_HQ = {
         traffic_barrel:    { file: 'Meshy_AI_traffic_barrel_0917064936_texture.glb',              base: 'misc', h: 1.0, foot: 0.3 },
         traffic_cone:      { file: 'Meshy_AI_traffic_cone_0917064925_texture.glb',                base: 'misc', h: 0.7, foot: 0.18 },
         white_cloud:        { file: 'Meshy_AI_white_cloud_0917035538_texture.glb',                    base: 'misc', span: 3.0, foot: 0 },
+        /* ── THE DEEP (2026-09-18, complex candidate #8): the sea's and the sea floor's kit. Every row but the wreck is a PROC
+           (three-renderer.js _hqProcBuilders, the "THE DEEP" block) until the second pass brings the models (MODEL_INDEX §3n).
+           `vehicle` = the walker BOARDS it (E → hq.board: 'boat' sails the surface, 'sub' drives the water column); `float` = the
+           prop rides the sea's surface wherever it stands (the placer reads terrain.sea); `hover` = it hangs that far over the floor. ── */
+        skiff:          { proc: 'skiff',          span: 4.8, foot: 0, block: true, vehicle: 'boat', float: true },   // THE SKIFF: the rowboat hull (the misc GLB when it lands) under a mast and a sail
+        submarine:      { proc: 'submarine',      span: 6.5, foot: 0, block: true, vehicle: 'sub', hover: 1.2, light: { color: 0xcfefff, intensity: 0.8, dist: 14, y: 1.0 } },   // THE BATHYSCAPHE: a brass hull, a tower, two lamps
+        lighthouse:     { proc: 'lighthouse',     h: 11, foot: 1.6, block: true, glow: { y: 10.2, size: 5.0, color: 0xfff1c8 }, light: { color: 0xfff1c8, intensity: 1.2, dist: 30, y: 10.2 } },   // the beam turns (a ticker)
+        sea_buoy:       { proc: 'sea_buoy',       h: 2.2, foot: 0, float: true, glow: { y: 2.0, size: 1.6, color: 0xff5a4a }, light: { color: 0xff6a5a, intensity: 0.55, dist: 9, y: 2.0 } },   // the maelstrom's ring of red lamps
+        ship_wreck:     { file: 'Meshy_AI_a_ghost_ship_wreck_0912231131_texture.glb',                 base: 'misc', span: 16, foot: 0 },   // the misc `wreck` file standing on the floor (the same-thing rule — MODEL_INDEX §9)
+        kelp:           { proc: 'kelp',           h: 4.5, foot: 0 },                                                                        // a sway in the vertex shader (_hqKelpMat)
+        coral_brain:    { proc: 'coral_brain',    h: 0.9, foot: 0.5, block: true },
+        coral_fan:      { proc: 'coral_fan',      h: 1.6, foot: 0.2 },
+        coral_tube:     { proc: 'coral_tube',     h: 1.1, foot: 0.35, block: true },
+        anemone:        { proc: 'anemone',        h: 0.5, foot: 0, glow: { y: 0.3, size: 0.9, color: 0xff7fb0 } },
+        giant_clam:     { proc: 'giant_clam',     h: 0.7, foot: 0.6, block: true, glow: { y: 0.4, size: 1.2, color: 0xdff8ff } },
+        sea_vent:       { proc: 'sea_vent',       h: 2.4, foot: 0.7, block: true, glow: { y: 2.2, size: 2.4, color: 0xff9a40 }, light: { color: 0xff8a30, intensity: 0.9, dist: 10, y: 2.0 } },   // a black smoker: the trench's light
+        fish_school:    { proc: 'fish_school',    h: 2.0, foot: 0 },                                                                        // forty fish on a loop (a ticker)
+        temple_dome:    { proc: 'temple_dome',    span: 14, foot: 0, glow: { y: 5.5, size: 6.0, color: 0xffe0a0 }, light: { color: 0xffd890, intensity: 1.0, dist: 18, y: 4.5 } },   // THE TEMPLE OF THE DEEP from outside: the near weenie, lit from within
         wooden_cross:       { file: 'Meshy_AI_wooden_cross_0917035711_texture.glb',                   base: 'misc', h: 3.0, foot: 0, wall: true, mount: 2.6 },
         /* 2026-09-15 THE VEHICLE BATCH (nine Meshy vehicles in the misc bucket —
            MODEL_INDEX §3c): the ones that fit under a 2.8 m garage ceiling park
@@ -19635,6 +19699,14 @@ const DOOR_HQ = {
            _hqWayBuilders.road: the asphalt + the dashes continuing 40 m, the gantry, a LEAVING plate); the opening is the whole
            street (`w` 9) and the press-in is walking on. `pad` = the flat landing's width in the terrain (hqTerrainCompile reads it). */
         road:        { verb: 'WALK ON', sub: 'THE ROAD OUT · KEEP WALKING', sfx: 'wayRoad', w: 9, h: 5.2, pad: 10, open: true },
+        /* THE DEEP (2026-09-18): THE WHIRLPOOL on the open sea — sail or swim into it and it takes you DOWN (the door from the sea to
+           the abyss; three-renderer.js _hqWayBuilders.whirlpool: a turning funnel cut into the water, spray on the rim, a light at the
+           bottom of it) — and THE UPWELLING on the sea floor: a column of bubbles rising out of a ring of stones into a shaft of light;
+           swim into it and it takes you UP (the same seam's far end, _hqWayBuilders.upwelling). Both `open`: the opening is the whole
+           mouth and the press-in is BEING IN IT — the swimmer's and the skiff's own ticks read `w` (_hqSeaWayCheck), never a wall
+           plane. `pad` keeps the sea floor flat under either. */
+        whirlpool:   { verb: 'GO DOWN', sub: 'THE MAELSTROM · IT ONLY GOES DOWN', sfx: 'wayWhirl', w: 9, h: 2.0, pad: 6, open: true },
+        upwelling:   { verb: 'RIDE UP', sub: 'THE UPWELLING · IT ONLY GOES UP', sfx: 'wayUpwell', w: 5, h: 8.0, pad: 5, open: true },
     },
     /* Phase 9.3 pilot: ordinary, reversible doors between existing board
        rooms. Move the Derelict ends to its airlock when that room exists.
@@ -19690,6 +19762,8 @@ const DOOR_HQ = {
         /* THE UNDERWORLD (2026-09-18, complex candidate #3): four parts on Downtown's site that are NOT the city's — an explicit `rooms` list claims them
            before the site rule (hqHubOf reads `rooms` first); the sewers' junction is the anchor */
         underworld: { label: 'THE UNDERWORLD', room: 'site_prebuilt_downtown_sewers', rooms: ['site_prebuilt_downtown_sewers', 'site_prebuilt_downtown_tunnels', 'site_prebuilt_downtown_cells', 'site_prebuilt_downtown_workings'], color: '#7fb8a0' },
+        /* THE DEEP (2026-09-18, complex candidate #8): the open sea and the abyss under it — Bermuda's and Atlantis's parts; the abyss is the anchor */
+        deep:    { label: 'THE DEEP', room: 'site_prebuilt_atlantis_abyss', sites: ['prebuilt_atlantis', 'prebuilt_bermuda'], color: '#4fc3c8' },
     },
     links: [
         /* THE LUNAR ROUTE (the pilot's two, plus Mars and the drop) */
@@ -19722,18 +19796,29 @@ const DOOR_HQ = {
           b: { site: 'prebuilt_singularity', wall: 'n', x: -5 },
           why: 'the plateau ends; so does the arithmetic. A frame with nothing in it, and the Quarantined bay\'s site on the other side', note: 'the drop is the door', draft: true },
         /* THE DEEP */
+        /* THE DEEP (2026-09-18 — the user: "make the Flying Dutchman connect to the underwater, not directly to Atlantis"): the hold's
+           hatch opens on THE ABYSS — the wreck of the Dutchman herself lies on the sea floor by the west wall, and the hatch is one
+           hatch (the ghost ship sails above her own bones). Atlantis's two dry seams moved into THE TEMPLE (its air pocket); the
+           threshold's own door lands there too (siteRooms.entry). The id keeps its name: the abyss is Atlantis's part. */
         { id: 'revenge_atlantis', route: 'deep', leaf: 'leaf_bulkhead',
-          a: { site: 'prebuilt_revenge', part: 'hold', wall: 'w', z: 0, sub: 'THE HATCH BELOW THE WATERLINE · TO ATLANTIS' },   // 9.2 stage 3: the hatch is the hold's, not the deck's
-          b: { site: 'prebuilt_atlantis', wall: 'n', x: -0.2 },
-          why: 'the hatch below the waterline; the Dutchman sails over the drowned city on every pass and something down there keeps the hatch oiled', note: 'wet', draft: true },
+          a: { site: 'prebuilt_revenge', part: 'hold', wall: 'w', z: 0, sub: 'THE HATCH BELOW THE WATERLINE · INTO THE DEEP' },   // 9.2 stage 3: the hatch is the hold's, not the deck's
+          b: { site: 'prebuilt_atlantis', part: 'abyss', wall: 'w', z: 0, sub: 'THE WRECK\'S HATCH · UP INTO THE DUTCHMAN' },
+          why: 'the hatch below the waterline opens on the sea floor, in the side of a wreck that is the same ship; the Dutchman sails over her own bones on every pass and something down there keeps the hatch oiled', note: 'wet, then wetter', draft: true },
         { id: 'atlantis_hollow', route: 'deep', leaf: 'leaf_bulkhead',
-          a: { site: 'prebuilt_atlantis', wall: 'n', x: -5 },
+          a: { site: 'prebuilt_atlantis', part: 'temple', wall: 'n', x: -6, sub: 'THE FLOODED ADIT · DOWNHILL TO THE INNER SUN' },
           b: { site: 'prebuilt_hollow_earth', wall: 'n', x: -10 },
-          why: 'the flooded adit under the drowned hall runs downhill; the water stops where the inner sun starts', note: 'the water stops', draft: true },
+          why: 'the flooded adit behind the temple runs downhill; the water stops where the inner sun starts', note: 'the water stops', draft: true },
         { id: 'atlantis_agartha', route: 'deep', leaf: 'leaf_portcullis',
-          a: { site: 'prebuilt_atlantis', wall: 'n', x: -10 },
+          a: { site: 'prebuilt_atlantis', part: 'temple', wall: 'n', x: 6, sub: 'THE DROWNED STAIR · DRY AT THE BOTTOM' },
           b: { site: 'prebuilt_agartha', wall: 'n', x: -5 },
-          why: 'the drowned stair down from the sunken hall comes up dry in the crystal city; the two builders shared a plan', note: 'the stair is dry at the bottom', draft: true },
+          why: 'the drowned stair down from the temple comes up dry in the crystal city; the two builders shared a plan', note: 'the stair is dry at the bottom', draft: true },
+        /* THE WHIRLPOOL (2026-09-18): the door from the sea to the deep — a `way` at BOTH ends, each its own kind (an end may name its
+           own way): the maelstrom on the open sea, free in deep water east of the cay; the upwelling on the abyss floor at the foot of the
+           drowned road. Sail, swim or fall in. */
+        { id: 'bermuda_abyss', route: 'deep', way: 'whirlpool',
+          a: { site: 'prebuilt_bermuda', part: 'sea', wall: 'free', x: 22, z: -28, face: 180, way: 'whirlpool', sub: 'THE MAELSTROM · DOWN TO THE ABYSS' },
+          b: { site: 'prebuilt_atlantis', part: 'abyss', wall: 'free', x: 40, z: -30, face: 180, way: 'upwelling', sub: 'THE UPWELLING · UP TO THE TRIANGLE' },
+          why: 'the Triangle has always had a hole in it; the sea goes down the hole and comes up somewhere with no sky, and what goes down the hole comes up there too, rearranged', note: 'the compass points down', draft: true },
         { id: 'shasta_agartha', route: 'deep', leaf: 'leaf_cell',
           a: { site: 'prebuilt_shasta', wall: 'n', x: -5 },
           b: { site: 'prebuilt_agartha', wall: 'n', x: -10 },
@@ -20067,7 +20152,8 @@ const DOOR_HQ = {
            north strip (its lanes carry the sea links' doors; a `way` hangs anywhere on the strip). */
         { id: 'weir_bermuda', route: 'deep', way: 'pool',
           a: { room: 'pool', wall: 'free', x: -4.2, z: -3.4, face: 180, sub: 'THE WEIR · OVER THE EDGE' },
-          b: { site: 'prebuilt_bermuda', wall: 'free', x: -7.5, z: -11.0, face: 90, sub: 'THE SHOAL POOL · SURFACE IN ROOM 8' },
+          /* THE DEEP (2026-09-18): RE-POINTED off the bypassed board onto THE OPEN SEA's cay — the tide pool on the beach west of the jetty */
+          b: { site: 'prebuilt_bermuda', part: 'sea', wall: 'free', x: -9.0, z: 46.0, face: 0, sub: 'THE TIDE POOL · SURFACE IN ROOM 8' },
           why: 'the water goes over the weir and nobody said where; the lifeguard is not certified for the edge and the Triangle is where the water was going',
           note: 'you surface in the tide pool by the buoy, dry', draft: true },
         { id: 'lodge_olympus', route: 'seams', way: 'painting',
@@ -20158,6 +20244,13 @@ const DOOR_HQ = {
             /* THE RANCH (2026-09-18 — the woods split): the stable door lands you in THE CORN FIELDS, the ranch's hub; the well and the woods'
                gate that stood on the board moved onto the fields the same day (a link door in a bypassed room would land at the bay door). */
             prebuilt_skinwalker: { room: 'site_prebuilt_skinwalker_fields',   door: { id: 'bay', wall: 's', x: 0 } },
+            /* THE DEEP (2026-09-18 — complex candidate #8): the yacht's cabin door lands you on THE CAY of the open sea (the board room's
+               square of sand and its moat are bypassed — the sea is the place); Atlantis's wet bulkhead lands you DRY in THE TEMPLE, the
+               air pocket under the dome — the vault door on its south wall is the way out into THE ABYSS. The hold's hatch and the two
+               dry seams that stood on Atlantis's board moved onto the parts the same day (a link door in a bypassed room would land at
+               the bay door). */
+            prebuilt_bermuda:   { room: 'site_prebuilt_bermuda_sea',           door: { id: 'bay', wall: 's', x: 0 } },
+            prebuilt_atlantis:  { room: 'site_prebuilt_atlantis_temple',       door: { id: 'bay', wall: 'e', z: 0 } },
         },
         backDoors: {
             /* THE WOODS (9.3 stage 3, 2026-09-16): the forest is the board room
@@ -32249,6 +32342,254 @@ const DOOR_HQ = {
             ],
             spawn: { x: -24, z: -4, face: 90 },
         },
+        /* ══ THE DEEP (THE COMPLEX CANDIDATES #8 — the user's pick, 2026-09-18) ══
+           The user: "I want there to be a sea that you can sail, as well as an
+           ocean that you can swim in or drive a submarine in. The 'door' from the
+           sea to the underwater deep can be a whirlpool in the bermuda triangle.
+           Make the flying dutchman connect to the underwater, not directly to
+           atlantis. There should be a swimming animation for underwater parts."
+           Three parts on two sites, built on THE CAVE / THE WOODS blueprint
+           (EXPLORABLE_AREAS_GUIDE): THE OPEN SEA (Room 345's part — the board
+           bypassed: the yacht's cabin door lands you on the cay), THE ABYSS and
+           THE TEMPLE OF THE DEEP (Room H-20's parts — the board bypassed: the wet
+           bulkhead lands you dry under the dome). The engine that came with them:
+           `terrain.sea` (data.js hqTerrainCompile — the one water surface; the
+           feet AFLOAT over deep water), the SWIMMER / the SKIFF / the BATHYSCAPHE
+           (three-renderer.js "THE DEEP"), the whirlpool + the upwelling `way`s.
+           THE STORY BEATS: the cabin door → the cay (the lighthouse turning over
+           the rock, the jetty, the skiff at its end; the waterspout far out) →
+           sail east past the red buoys into THE MAELSTROM → down: the sea floor,
+           the upwelling's light column behind you, THE DROWNED ROAD under the
+           kelp toward a warm light — THE TEMPLE's dome; the wreck of the Dutchman
+           at the west edge (her hatch opens UP into her own hold), the trench
+           with its smokers and the kraken, THE SPIRE the tape stands on (swim
+           up), the bathyscaphe moored at THE STATION → the vault door → the air
+           pocket: the dais, the throne, THE ORACLE in its pool (the tape, the
+           door gun's), and the two dry seams on to Hollow Earth and Agartha.
+           WEENIES: the sea's far one THE WATERSPOUT (sky), its near one the
+           lighthouse (the tape on its rock); the abyss's far one THE WHALE, its
+           near one the temple dome lit from within; the temple's near one THE
+           ORACLE. Every line is Claude's DRAFT (A15). ══════════════════════ */
+        site_prebuilt_bermuda_sea: {
+            label: 'THE BERMUDA TRIANGLE · THE OPEN SEA',
+            sub: 'THE CAY · THE JETTY · THE SKIFF · THE MAELSTROM · NO FIXED POSITION',
+            kind: 'box', site: 'prebuilt_bermuda', part: 'sea',
+            shell: hqSeaShell({ w: 150, d: 120 }),
+            /* THE FIELD (150 × 120 m): the SEA FLOOR at −3.5 under a surface at 0 (`sea`) — dunes of sand; THE CAY against the south
+               wall (a plateau at +0.5 with an 8 m beach blend: slope 0.75, walked), the dune on it, THE LIGHTHOUSE ROCK (3.4, a cliff —
+               the tape, the door gun's), THE LOOKOUT (2.6, up a stair, the rail: the park rule), THE JETTY (a deck from the beach 16 m
+               out over deep water — walk off its end and you SWIM; the skiff moored at its end); THE SANDBAR (+0.3, waded), THE WRECK
+               ISLET (+2.1, the wreck and the siren), THE REEF (+0.9, coral in its shallows, kelp off it); THE HOLE east of the cay under
+               THE MAELSTROM (the way down — the whirlpool, ringed by four red buoys); the tide pool on the beach (Room 8's weir). */
+            terrain: {
+                floor: 'desert', cliff: 'rocks_1', path: 'wood_planks',
+                base: -3.5, noise: { amp: 0.6, scale: 14 }, crag: false,
+                sea: { y: 0, key: 'water' },
+                outer: { m: 60 },
+                features: [
+                    { k: 'plateau', x: 0, z: 52, w: 50, d: 34, h: 0.5, edge: 8, blend: 'ground' },                               // THE CAY (the beach is its 8 m blend, from the sea floor up — never a cliff at the water)
+                    { k: 'hill', x: 7, z: 52, r: 8, h: 1.3 },                                                                    // the dune on it (after the cay: adds on top)
+                    { k: 'plateau', x: -14, z: 46, r: 3.2, h: 3.4, edge: 0.35 },                                                 // THE LIGHTHOUSE ROCK (never climbed — the tape)
+                    { k: 'plateau', x: 14, z: 48, w: 6, d: 6, h: 2.6, edge: 0.3 },                                               // THE LOOKOUT
+                    { k: 'ramp', x0: 14, z0: 56.6, x1: 14, z1: 50.3, w: 2.2, h0: 0.5, h1: 2.6, stairs: true, edge: 0.2 },        // its stair (ends 0.7 m inside — THE RAMP RULE)
+                    { k: 'rail', x0: 11.2, z0: 45.4, x1: 16.8, z1: 45.4 },                                                       // the lookout's rail (the grind)
+                    { k: 'deck', x0: -2, z0: 44.6, x1: -2, z1: 28, w: 2.4, y: 0.6 },                                             // THE JETTY (one bank on purpose: its end is the sea)
+                    { k: 'rail', x0: -3.3, z0: 44.2, x1: -3.3, z1: 28.4 },                                                       // its rail
+                    { k: 'hill', x: -34, z: 6, r: 11, h: 3.8 },                                                                  // THE SANDBAR (+0.3: waded)
+                    { k: 'hill', x: 44, z: -22, r: 14, h: 5.6 },                                                                 // THE WRECK ISLET (+2.1)
+                    { k: 'hill', x: -38, z: -40, r: 12, h: 4.4 },                                                                // THE REEF (+0.9)
+                    { k: 'dip', x: 22, z: -28, r: 14, h: 3.0 },                                                                  // THE HOLE under the maelstrom
+                    { k: 'path', pts: [[0, 58.5], [0, 50], [-2, 45]], w: 2.0 },                                                  // the boards from the door to the jetty
+                    { k: 'scatter', key: 'cave_stone', n: 6, x: 0, z: 52, r: 18, seed: 5 },
+                    { k: 'scatter', key: 'fallen_log', n: 2, x: 4, z: 54, r: 10, seed: 6 },
+                    { k: 'scatter', key: 'coral_fan', n: 14, x: -38, z: -40, r: 15, seed: 7, sea: true },                        // the reef's shallows
+                    { k: 'scatter', key: 'coral_brain', n: 8, x: -38, z: -40, r: 14, seed: 8, sea: true },
+                    { k: 'scatter', key: 'kelp', n: 18, x: -30, z: 20, r: 16, seed: 9, sea: true },                              // the kelp off the sandbar
+                    { k: 'scatter', key: 'fish_school', n: 3, x: 0, z: 0, r: 40, seed: 10, sea: true },
+                ],
+            },
+            doors: [
+                /* the south wall at x 0 is THE BAY DOOR (siteRooms.entry): the yacht's cabin door lands you on the cay */
+            ],
+            counters: [],
+            props: [
+                { key: 'lighthouse',      x: -14, z: 46, face: 0 },                                                             // on its rock: the near weenie (the beam turns)
+                { key: 'skiff',           x: 0.8, z: 30.5, y: 0.32, face: 90 },                                                  // THE SKIFF at the jetty's end (afloat — `float`; y > 0.3 says it stands in the water on purpose)
+                { key: 'sea_buoy',        x: 31, z: -28, y: 0.32 }, { key: 'sea_buoy', x: 13, z: -28, y: 0.32 },                 // the maelstrom's ring
+                { key: 'sea_buoy',        x: 22, z: -19, y: 0.32 }, { key: 'sea_buoy', x: 22, z: -37, y: 0.32 },
+                { key: 'ship_wreck',      x: 44, z: -22, face: 30 },                                                             // the wreck on its islet
+                { key: 'sea_chest',       x: 41, z: -25, face: 200 },
+                { key: 'skull_pile',      x: 47, z: -19, face: 80 },
+                { key: 'campfire',        x: 5, z: 49 },                                                                         // the fire on the beach
+                { key: 'signpost',        x: 2.6, z: 50.5, face: 340 },
+                { key: 'folding_chair',   x: -1.2, z: 52.4, face: 160 },
+                { key: 'cardboard_box',   x: 3.4, z: 55.2, face: 20 },
+                { key: 'wet_floor_sign',  x: -0.4, z: 46.2, face: 40 },                                                          // Records' contribution, at the jetty's foot
+                { key: 'paper_sheet',     x: 1.2, z: 51.6, y: 0.01, face: 120 },                                                 // the chart, blank
+            ],
+            agents: [],
+            npcSpots: [
+                { x: 6, z: 56, face: 220, race: 'pirate', say: ['“The skiff is at the end of the jetty.” “Whose is it?” “The sea’s. It lends it.”', '“Do not sail past the red buoys.” “What is past them?” “Down.”'] },
+                { x: -4, z: 43.5, face: 20, race: 'mermaid', say: ['“The lighthouse is not on the chart.” “Then how do ships find it?” “They do not. It finds them.”'] },
+                { x: 41, z: -19, face: 250, race: 'siren', say: ['“This was a yacht.” “It looks like a galleon.” “It was a yacht for about a minute.”'] },
+            ],
+            onlineSpots: [],
+            lines: [
+                '“Room 345.” “The sea is bigger than the board allows.” “Continuity has a form for that.” “Continuity is not out here.”',
+                '“The whirlpool is on the form as a door.” “It is a hole.” “It is a door that only goes one way, which is a hole with paperwork.”',
+                '“Five aircraft.” “In formation.” “Over a flat sea.” “The lead turned.” “The sea did not.”',
+                '“The skiff comes back on its own.” “From where?” “From wherever you left it. The tide has a form too.”',
+            ],
+            spawn: { x: 0, z: 56, face: 0 },
+        },
+        site_prebuilt_atlantis_abyss: {
+            label: 'ATLANTIS · THE ABYSS',
+            sub: 'THE SEA FLOOR · THE DROWNED ROAD · THE WRECK · THE TRENCH · THE UPWELLING',
+            kind: 'box', site: 'prebuilt_atlantis', part: 'abyss',
+            shell: hqAbyssShell({ w: 170, d: 140 }),
+            /* THE FIELD (170 × 140 m, DROWNED — `sea.under`: the surface 26 m up, the walker swims everywhere): dunes of grey sand;
+               THE DROWNED ROAD (a marble path) from THE UPWELLING's foot (the way up to the Triangle) west and north under the kelp to
+               THE TEMPLE STEPS (a 1.5 m platform up a broad stair against the north wall — the vault door on it, the dome over it: the
+               near weenie); THE REEF WALL (a ridge north of the road); THE STATION (3 m, a stair, the rail — the park rule) with the
+               bathyscaphe moored beside it; THE SPIRE (15 m — the tape: a swim up, not a shot); THE TRENCH (−9 m) east with its smokers
+               and the kraken; the fallen lintel across the road (a grind); THE WRECK of the Dutchman by the west wall, her hatch in the
+               wall beside her (the hold's link); the kelp forest, the coral, the anemones, the clams, five schools of fish. */
+            terrain: {
+                floor: 'desert', cliff: 'rocks_1', path: 'marble_light',
+                base: 0, noise: { amp: 0.9, scale: 12 }, crag: false,
+                sea: { y: 26, key: 'deep_water', under: true },
+                outer: { m: 60 },
+                features: [
+                    { k: 'dip', x: 44, z: 30, r: 26, h: 9 },                                                                    // THE TRENCH
+                    { k: 'ridge', pts: [[-60, -50], [-30, -30], [-10, -44], [20, -52]], w: 10, h: 3.2 },                         // THE REEF WALL
+                    { k: 'plateau', x: 0, z: -62, w: 22, d: 16, h: 1.5, edge: 0.3 },                                             // THE TEMPLE STEPS' platform (to the wall — the door's pad is its top)
+                    { k: 'ramp', x0: 0, z0: -49.4, x1: 0, z1: -54.7, w: 6, h0: 0, h1: 1.5, stairs: true, edge: 0.2 },            // the broad stair (ends 0.7 m inside)
+                    { k: 'plateau', x: -30, z: -20, w: 10, d: 8, h: 3.0, edge: 0.3 },                                            // THE STATION
+                    { k: 'ramp', x0: -30, z0: -8.6, x1: -30, z1: -16.7, w: 2.4, h0: 0, h1: 3.0, stairs: true, edge: 0.2 },       // its stair
+                    { k: 'rail', x0: -34.9, z0: -23.6, x1: -25.1, z1: -23.6 },                                                   // its rail
+                    { k: 'plateau', x: 20, z: 20, r: 2.2, h: 15, edge: 0.3 },                                                    // THE SPIRE (the tape on top)
+                    { k: 'path', pts: [[40, -30], [22, -22], [4, -28], [0, -40], [0, -49]], w: 3.4 },                            // THE DROWNED ROAD
+                    { k: 'path', pts: [[0, -34], [-30, -8]], w: 2.4 },                                                           // to the station
+                    { k: 'wall', x0: -8, z0: -44, x1: 8, z1: -44, h: 1.0, t: 0.6, key: 'marble_light' },                          // the fallen lintel (a grind)
+                    { k: 'scatter', key: 'kelp', n: 70, x: -24, z: 40, r: 26, seed: 11 },                                        // THE KELP FOREST
+                    { k: 'scatter', key: 'coral_fan', n: 26, x: 30, z: -34, r: 30, seed: 12 },
+                    { k: 'scatter', key: 'coral_brain', n: 18, seed: 13 },
+                    { k: 'scatter', key: 'coral_tube', n: 22, seed: 14 },
+                    { k: 'scatter', key: 'anemone', n: 24, seed: 15 },
+                    { k: 'scatter', key: 'giant_clam', n: 6, seed: 16 },
+                    { k: 'scatter', key: 'fish_school', n: 5, seed: 17 },
+                    { k: 'scatter', key: 'cave_stone', n: 12, seed: 18 },
+                    { k: 'scatter', key: 'menhir', n: 5, x: 30, z: 0, r: 12, seed: 19 },                                         // the drowned circle
+                ],
+            },
+            doors: [
+                { id: 'temple', wall: 'n', x: 0, leaf: 'leaf_vault', wide: true,
+                  label: 'THE TEMPLE OF THE DEEP', sub: 'THE VAULT DOOR · INTO THE AIR POCKET',
+                  action: { room: 'site_prebuilt_atlantis_temple', at: 'abyss' },
+                  desc: 'A round bronze door at the top of the drowned steps, under the dome. It seals. On the other side of it there is air, which is the strangest thing on this floor of the world.' },
+            ],
+            counters: [],
+            props: [
+                { key: 'submarine',       x: -38, z: -22, face: 90 },                                                            // THE BATHYSCAPHE, moored off the station (first: its lamp keeps under the light cap)
+                { key: 'temple_dome',     x: 0, z: -62, face: 180 },                                                             // the dome over the vault door: the near weenie
+                { key: 'crystal_cluster', x: 36, z: -27 }, { key: 'crystal_cluster', x: 20, z: -21 }, { key: 'crystal_cluster', x: 6, z: -30.5 },
+                { key: 'crystal_cluster', x: -2.4, z: -42.5 }, { key: 'crystal_cluster', x: -14, z: -16 },                        // the road's lamps (five: the cap is ten lights)
+                { key: 'sea_vent',        x: 44, z: 30 }, { key: 'sea_vent', x: 50, z: 24 }, { key: 'sea_vent', x: 38, z: 36 }, // the smokers in the trench
+                { key: 'greek_column',    x: -3.6, z: -36 }, { key: 'greek_column', x: 3.6, z: -36 },                             // the colonnade along the road
+                { key: 'greek_column',    x: -3.6, z: -40 }, { key: 'greek_column', x: 3.6, z: -40 },
+                { key: 'greek_column',    x: -3.6, z: -47 }, { key: 'greek_column', x: 3.6, z: -47 },
+                { key: 'greek_column',    x: 8, z: -26, face: 70 }, { key: 'greek_column', x: 26, z: -18, face: 20 },
+                { key: 'sarcophagus',     x: 10, z: -46, face: 100 },
+                { key: 'skull_pile',      x: -6, z: -22, face: 40 }, { key: 'skull_pile', x: 46, z: 20, face: 300 },
+                { key: 'sea_chest',       x: -60, z: 14, face: 20 }, { key: 'sea_chest', x: 18, z: 24, face: 250 }, { key: 'sea_chest', x: 44, z: 26, face: 160 },
+                { key: 'ship_wreck',      x: -66, z: 10, face: 350 },                                                            // THE DUTCHMAN BELOW, on her side by the wall her hatch is in
+                { key: 'ship_anchor',     x: -58, z: 2, face: 30 },
+                { key: 'ship_cannon',     x: -58, z: 10, face: 0 }, { key: 'ship_cannon', x: -62, z: 16, face: 20 },
+                { key: 'railing_1m',      x: -30, z: -23.6, face: 0 },                                                           // the station's catalogue rail
+                { key: 'paper_sheet',     x: -28, z: -19, y: 0.01, face: 140 },                                                  // the station's log, dissolving
+            ],
+            agents: [],
+            npcSpots: [
+                { x: -4, z: -37, face: 180, race: 'atlantean', say: ['“The road goes up to the temple.” “Up?” “Everything here is up. You are at the bottom.”', '“The wreck by the wall is the Dutchman.” “The Dutchman is up there.” “Yes.”'] },
+                { x: -26, z: -6, face: 60, race: 'atlantean', say: ['“The bathyscaphe is Records’.” “Does it work?” “It goes down. It has never been asked to come up.”'] },
+                { x: 12, z: 10, face: 300, race: 'mermaid', say: ['“Do not go in the trench.” “Why?” “Something in the trench keeps the smokers lit.”'] },
+                { x: 44, z: 30, face: 200, race: 'kraken', say: ['“…”', '“THE SHIP.” “Which ship?” “THE SHIP.”'] },
+            ],
+            onlineSpots: [],
+            lines: [
+                '“The sea floor.” “How far down?” “Twenty-six metres to the surface and it does not matter; the surface is not the sea you left.”',
+                '“The upwelling goes up.” “To where?” “The Triangle.” “The whirlpool goes down.” “To here.” “Then the sea is a loop.” “The sea is a form.”',
+                '“That is the Dutchman.” “On her side.” “The hatch in the wall is hers. It opens on her hold.” “Her hold is up there.” “Her hatch does not know that.”',
+                '“Something answers the sonar.” “In a voice?” “In a voice.” “What does it say?” “It asks for the ship.”',
+            ],
+            spawn: { x: 0, z: -47, face: 180 },
+        },
+        site_prebuilt_atlantis_temple: {
+            label: 'ATLANTIS · THE TEMPLE OF THE DEEP',
+            sub: 'THE AIR POCKET · THE DAIS · THE ORACLE · THE TWO DRY SEAMS',
+            kind: 'box', site: 'prebuilt_atlantis', part: 'temple',
+            shell: { w: 36, d: 36, h: 12, wallH: 12, dadoH: 1.4, open: false,
+                     floor: 'marble_light', wall: 'marble_light', dado: 'ruins', trim: 'gold', ceiling: 'marble_light', ceilTile: 1.75,
+                     floorColor: 0xb8c8c8, wallColor: 0x9ab0b4, dadoColor: 0x7a9098, ceilColor: 0x6a8890,
+                     pipes: false, strips: false, lights: [],
+                     mood: { lamp: 0x7fe0ea, glow: 0x9ff0ff, strip: 0xdff8ff, light: 0xbfe8f0, ambient: 0.42 },
+                     fog: { color: 0x0a2830, density: 0.02 },
+                     plate: { x: 0, z: -17.8, y: 5.2 },
+                     look: HQ_ROOM_LOOKS.temple },
+            /* THE FIELD (36 × 36 × 12, family B — its own floor): the air pocket under the dome. THE DAIS (1.2 m) up a broad stair with
+               the throne on it and the rails either side (the park rule); THE ORACLE POOL (waded) with THE ORACLE standing in it (5.5 m —
+               the tape, the door gun's); the colonnade; the bench wall (a grind). The vault door south (the abyss), the wet bulkhead east
+               (the bay door — the board bypassed), the two dry seams north (Hollow Earth, Agartha). */
+            terrain: {
+                floor: 'marble_light', cliff: 'marble_light', path: 'marble_light',
+                noise: { amp: 0 }, crag: false,
+                features: [
+                    { k: 'plateau', x: 0, z: -9, w: 14, d: 8, h: 1.2, edge: 0.3 },                                                // THE DAIS
+                    { k: 'ramp', x0: 0, z0: 0.6, x1: 0, z1: -5.7, w: 5, h0: 0, h1: 1.2, stairs: true, edge: 0.2 },                // its stair (ends 0.7 m inside)
+                    { k: 'pool', x: 0, z: 8, r: 5, y: -0.3, depth: 0.7 },                                                        // THE ORACLE POOL (waded)
+                    { k: 'plateau', x: 0, z: 8, r: 1.3, h: 5.5, edge: 0.3 },                                                     // THE ORACLE (the tape) — after the pool: it rises out of it
+                    { k: 'rail', x0: -6.6, z0: -12.6, x1: -3.0, z1: -12.6 }, { k: 'rail', x0: 3.0, z0: -12.6, x1: 6.6, z1: -12.6 },
+                    { k: 'wall', x0: -12, z0: 2, x1: -12, z1: 12, h: 0.5, t: 0.5, key: 'marble_light' },                          // the bench wall (a grind)
+                ],
+            },
+            doors: [
+                { id: 'abyss', wall: 's', x: 0, leaf: 'leaf_vault', wide: true,
+                  label: 'THE ABYSS', sub: 'THE VAULT DOOR · OUT INTO THE SEA',
+                  action: { room: 'site_prebuilt_atlantis_abyss', at: 'temple' },
+                  desc: 'The round bronze door in the south wall. Beyond it the water starts at the sill and does not stop. Records says to exhale on the way out. Records has never been out.' },
+                /* the east wall at z 0 is THE BAY DOOR (siteRooms.entry): Atlantis's wet bulkhead lands you here, dry */
+            ],
+            counters: [],
+            props: [
+                { key: 'royal_throne',    x: 0, z: -11, face: 0 },                                                               // on the dais (the front measured off the mesh)
+                { key: 'brazier',         x: -5, z: -6.5 }, { key: 'brazier', x: 5, z: -6.5 },                                    // the dais's fires
+                { key: 'brazier',         x: -7, z: 14.5 }, { key: 'brazier', x: 7, z: 14.5 },                                    // the pool's
+                { key: 'crystal_cluster', x: -13, z: -14 }, { key: 'crystal_cluster', x: 13, z: -14 },
+                { key: 'greek_column',    x: -10, z: -12 }, { key: 'greek_column', x: 10, z: -12 },                               // the colonnade
+                { key: 'greek_column',    x: -10, z: -4 }, { key: 'greek_column', x: 10, z: -4 },
+                { key: 'greek_column',    x: -10, z: 4 }, { key: 'greek_column', x: 10, z: 4 },
+                { key: 'greek_column',    x: -10, z: 12 }, { key: 'greek_column', x: 10, z: 12 },
+                { key: 'stained_glass',   wall: 'w', z: -6 }, { key: 'stained_glass', wall: 'w', z: 6 },                          // the windows onto the dark water
+                { key: 'stained_glass',   wall: 'e', z: -8 }, { key: 'stained_glass', wall: 'e', z: 8 },
+                { key: 'holy_tapestry',   wall: 'n', x: 0 },                                                                     // over the dais, between the two seams
+                { key: 'sea_chest',       x: 13.5, z: 8, face: 250 },
+                { key: 'skull_pile',      x: -14, z: 14, face: 40 },
+                { key: 'paper_sheet',     x: 2, z: -8, y: 1.21, face: 140 },                                                     // the oracle's last answer, on the dais
+            ],
+            agents: [],
+            npcSpots: [
+                { x: -3, z: -7, face: 150, race: 'atlantean', say: ['“The pocket holds.” “How?” “The dome is on the form as airtight. The sea has not read the form.”', '“Ask the oracle.” “It is a pillar.” “It answers. Slowly.”'] },
+                { x: -7, z: 13, face: 60, race: 'mermaid', say: ['“The two doors north are dry all the way.” “To where?” “One to a sun under the ground. One to a city of crystal. Both were ours once.”'] },
+            ],
+            onlineSpots: [],
+            lines: [
+                '“Air.” “Under the sea.” “The dome holds it.” “Since when?” “Since before the Department. The Department filed it anyway.”',
+                '“The choir is on the tape.” “There is no choir.” “There is a choir. It is the pool.”',
+                '“The throne is empty.” “It is not empty.” “I see no one on it.” “Sit in it and see who gets up.”',
+                '“Hollow Earth is through the left door, Agartha the right.” “Which is nearer?” “Neither. Both are down.”',
+            ],
+            spawn: { x: 12, z: 0, face: 270 },
+        },
         /* ══ THE RANCH (the woods split, 2026-09-18) ══════════════════════════
            The user: "split the Woods into the Woods and the Ranch. The Ranch
            should have Skinwalker Ranch, the Graveyard, the Haunted House, the
@@ -34598,6 +34939,10 @@ const HQ_TERRAIN_RULES = {
     padW: 3.4, padD: 3.2, padEdge: 1.2, freePadR: 1.7, rim: 1.0,
     cliffFrom: 0.55, cliffTo: 1.3,       // the cliff sheet fades in between these slopes
     bodyR: 0.34, treeR: 0.38, tile: 1.75,
+    /* THE DEEP (2026-09-18): THE SWIMMER — in a room with `terrain.sea`, over water deeper than wadeMax the feet are the SURFACE
+       less swimDraft (the body afloat, the head clear; a cell every other swim cell reaches at no climb); an `under` sea (the whole
+       room drowned — the abyss) has no climb rule at all: the swimmer flies */
+    swimDraft: 1.1,
 };
 function _hqTSmooth(t) { t = t < 0 ? 0 : t > 1 ? 1 : t; return t * t * (3 - 2 * t); }
 function _hqTHash(ix, iz, seed) {
@@ -34748,8 +35093,11 @@ function _hqTMaskDistance(mask, nx, nz, res) {
 }
 /* the walker's reach on the field as it stands (info.H), from grid node (i0, j0); `mask` restricts it (null = the whole field);
    `until` (a Set of keys) stops the walk and returns the path to the first node in it */
+/* THE DEEP (2026-09-18): the climb every walker of the field obeys — none in a DROWNED room (`terrain.sea.under`: the swimmer flies) */
+function _hqTClimbLim(info, climb) { return (info.sea && info.sea.under) ? Infinity : climb; }
 function _hqTReachGrid(info, i0, j0, mask, until) {
     const nx = info.nx, nz = info.nz, res = info.res, seen = new Map(), q = [], from = until ? new Map() : null;
+    const climbLim = _hqTClimbLim(info, info.rules.climb);
     const feet = (i, j, prev) => hqTerrainFeet(info, info.x0 + i * res, info.z0 + j * res, prev);
     const y0 = feet(i0, j0, null); if (y0 == null) return { seen, path: null };
     const k0 = j0 * nx + i0; seen.set(k0, y0); q.push([i0, j0, y0]);
@@ -34763,7 +35111,7 @@ function _hqTReachGrid(info, i0, j0, mask, until) {
             if (i < 0 || j < 0 || i >= nx || j >= nz) continue;
             const k = j * nx + i; if (seen.has(k)) continue;
             if (mask && !mask[k]) continue;
-            const y = feet(i, j, p[2]); if (y == null || y - p[2] > info.rules.climb) continue;
+            const y = feet(i, j, p[2]); if (y == null || y - p[2] > climbLim) continue;
             seen.set(k, y); q.push([i, j, y]);
             if (from) from.set(k, p[1] * nx + p[0]);
             if (until && until.has(k)) { const path = [k]; let c = k; while (from.has(c)) { c = from.get(c); path.push(c); } return { seen, path }; }
@@ -34821,7 +35169,7 @@ function _hqTReturnJump(info, forward, pads, mask, climb) {
     return ret;
 }
 function _hqTTraps(info, padNodes, mask) {
-    const climb = (info.rules.jump != null) ? info.rules.jump : info.rules.climb;
+    const climb = _hqTClimbLim(info, (info.rules.jump != null) ? info.rules.jump : info.rules.climb);
     const forward = _hqTReachJump(info, padNodes, mask, climb);
     const ret = _hqTReturnJump(info, forward, padNodes, mask, climb);
     const nx = info.nx, trapped = new Set();
@@ -35604,6 +35952,11 @@ function hqTerrainCompile(room, roomId) {
     });
     const closed = !S.open;
     const noise = T.noise || null, crag = T.crag || null;
+    /* THE DEEP (2026-09-18): `terrain.sea = { y, key, under }` — ONE water surface over the whole field: the ground above it is land,
+       the shallows (≤ wadeMax under it) a wade, everything deeper a SWIM (hqTerrainFeet → the surface less swimDraft; the renderer's
+       _hqTickSwim owns the body there); `under: true` = the surface is over the ceiling — the room IS the sea floor and the walker swims
+       in three dimensions everywhere (no climb, no wade; hqTerrainFluidAt reports nothing: the water is that room's air) */
+    const sea = T.sea ? { y: (typeof T.sea.y === 'number') ? T.sea.y : 0, key: T.sea.key || 'water', under: !!T.sea.under } : null;
     /* the door pads (every door / way a flat landing at its sill) */
     const doorPads = [];
     (room.doors || []).forEach(d => {
@@ -35648,7 +36001,9 @@ function hqTerrainCompile(room, roomId) {
                 if (f.r) din = (1 - _hqTEllipse(px, pz, f)) * Math.min(f.r, f.rz || f.r); else din = _hqTRectIn(px, pz, f);
                 if (din <= 0) continue;
                 const edge = (f.edge != null) ? f.edge : 0.35;
-                let fh = f.h * _hqTSmooth(din / edge);
+                /* THE DEEP (2026-09-18): `blend: 'ground'` — the edge rises from the GROUND under it to h (an island out of the sea
+                   floor: a beach, not a cliff at the water); the default blends from height 0 (a plateau on the floor is unchanged) */
+                let fh = (f.blend === 'ground' && f.h > h) ? h + (f.h - h) * _hqTSmooth(din / edge) : f.h * _hqTSmooth(din / edge);
                 if (f.dome && din > edge) fh += f.dome * _hqTSmooth((din - edge) / Math.max(0.5, (f.r || Math.min(f.w, f.d) / 2) - edge));
                 if (fh > h) h = fh;
             } else if (f.k === 'ramp') {
@@ -35696,7 +36051,7 @@ function hqTerrainCompile(room, roomId) {
     const H = new Float32Array(nx * nz);
     for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) H[j * nx + i] = hFinal(x0 + i * res, z0 + j * res);
     const info = { room, roomId: roomId || null, S, res, nx, nz, x0, z0, halfW, halfD, H, base, floor: T.floor || S.floor || 'grass_2', cliff: T.cliff || 'rock_wall_1', path: T.path || 'dirt_2',
-                   pads: doorPads, walls: [], planWalls: [], rails: [], paths, decks, fluids, trees: [], scatter: [], tile: T.tile || R.tile, rules: R, closed, hFn: hFinal,
+                   pads: doorPads, walls: [], planWalls: [], rails: [], paths, decks, fluids, trees: [], scatter: [], tile: T.tile || R.tile, rules: R, closed, hFn: hFinal, sea,
                    /* THE FLOATING PIECES (THE DIVINE STAIR, second pass, 2026-09-18): a `plateau` or a stair `ramp` wearing `float: true` is a CLOUD
                       PLATFORM / a flight of FLOATING STEPS — the height rule is untouched (the field carries it like any tier: the walker climbs its
                       low end, never its flank); the renderer (three-renderer.js _hqBuildTerrain) cuts the field's flank / underside away and hangs
@@ -35732,7 +36087,7 @@ function hqTerrainCompile(room, roomId) {
         if (Math.abs(px) > S.w / 2 - 0.6 || Math.abs(pz) > S.d / 2 - 0.6) return false;
         if (hqTerrainFeet(info, px, pz, null) === null) return false;
         if (info.maskD && hqTerrainMaskAt(info, px, pz) < rad + 0.3) return false;   // never on the plan's solid (the thicket / the rock)
-        if (hqTerrainFluidAt(info, px, pz)) return false;
+        if (!opts.sea && hqTerrainFluidAt(info, px, pz)) return false;   // THE DEEP: a row with `sea: true` (kelp, coral) may stand under the surface
         if (hqTerrainSlope(info, px, pz) > (opts.slope || 0.5)) return false;
         for (const p of doorPads) { const din = p.r ? p.r - Math.hypot(px - p.x, pz - p.z) : _hqTRectIn(px, pz, p); if (din > -(rad + 0.4)) return false; }
         if (!opts.onPath) for (const p of paths) if (_hqTPolyDist(px, pz, p.pts).d < p.w / 2 + rad) return false;
@@ -35760,7 +36115,7 @@ function hqTerrainCompile(room, roomId) {
             if (f.x != null && f.r) { const a = rnd() * Math.PI * 2, rr = Math.sqrt(rnd()) * f.r; px = f.x + Math.cos(a) * rr; pz = f.z + Math.sin(a) * rr; }
             else { px = (rnd() - 0.5) * (S.w - 1.6); pz = (rnd() - 0.5) * (S.d - 1.6); }
             px = Math.round(px * 100) / 100; pz = Math.round(pz * 100) / 100;
-            if (!freeFor(px, pz, rad, { slope: f.slope || ((isTree || (f.x != null && f.r)) ? 0.5 : 0.25), onPath: !!f.onPath, apart: isTree ? 0.9 : 0.5, kerb: !isTree && !f.road && !(f.x != null && f.r) })) continue;
+            if (!freeFor(px, pz, rad, { slope: f.slope || ((isTree || (f.x != null && f.r)) ? 0.5 : 0.25), onPath: !!f.onPath, apart: isTree ? 0.9 : 0.5, kerb: !isTree && !f.road && !(f.x != null && f.r), sea: !!f.sea })) continue;
             placed.push({ x: px, z: pz, r: rad }); made++;
             if (isTree) info.trees.push({ x: px, z: pz, kind: kinds[Math.floor(rnd() * kinds.length)], h: f.h || null, r: rad, y: hAt(px, pz) });
             else info.scatter.push({ key: f.key, x: px, z: pz, y: hAt(px, pz), face: Math.round(rnd() * 360), r: rad, foot: (f.foot != null) ? f.foot : undefined });
@@ -35786,9 +36141,16 @@ function hqTerrainSlope(info, x, z) {
 }
 function hqTerrainFluidAt(info, x, z) {
     for (const f of info.fluids) {
-        if (f.kind === 'pool') { if (_hqTEllipse(x, z, f) <= 1) return f; }
-        else if (_hqTPolyDist(x, z, f.pts).d <= f.w / 2) return f;
+        let inF = false;
+        if (f.kind === 'pool') inF = _hqTEllipse(x, z, f) <= 1;
+        else inF = _hqTPolyDist(x, z, f.pts).d <= f.w / 2;
+        /* THE DEEP (2026-09-18): the read is HEIGHT-AWARE — ground that stands above the sheet inside a pool's outline is dry
+           (THE ORACLE rising out of its pool, a bank the carve left high); every feet / air / camera rule already read it so */
+        if (inF && hqTerrainHeight(info, x, z) < f.y - 0.05) return f;
     }
+    /* THE DEEP (2026-09-18): the sea covers whatever lies under its surface — a pseudo-fluid wearing `sea: true` (the scatter, the
+       finds and the dry-ground tests read it like a pool); a drowned room (`under`) reports NONE — the water is its air */
+    if (info.sea && !info.sea.under) { const g = hqTerrainHeight(info, x, z); if (g < info.sea.y - 0.05) return { kind: 'sea', sea: true, y: info.sea.y, key: info.sea.key }; }
     return null;
 }
 function hqTerrainWallAt(info, x, z, pad) {
@@ -35815,15 +36177,20 @@ function hqTerrainFeet(info, x, z, curY) {
     if (Math.abs(x) > info.halfW - 0.5 || Math.abs(z) > info.halfD - 0.5) return null;
     if (hqTerrainSolidAt(info, x, z, 0)) return null;   // a city block is a mass: never stood in
     const g = hqTerrainHeight(info, x, z);
+    /* THE DEEP (2026-09-18): a DROWNED room — the swimmer reaches every cell (the ground, a wall's top); no slope, no climb */
+    if (info.sea && info.sea.under) { const wu = hqTerrainWallAt(info, x, z, R.bodyR); return wu ? wu.top : g; }
     let y = g;
     const w = hqTerrainWallAt(info, x, z, R.bodyR);
     if (w) { if (curY == null || curY >= w.top - R.climb) y = w.top; else return null; }
     else {
         const f = hqTerrainFluidAt(info, x, z);
         if (f && g < f.y - 0.05) {
-            if (f.key !== 'water') return null;
-            if (f.y - g > R.wadeMax) return null;
-            y = Math.max(g, f.y - R.wade);
+            if (f.sea) { y = (f.y - g > R.wadeMax) ? f.y - R.swimDraft : Math.max(g, f.y - R.wade); }   // THE DEEP: the open sea — a wade, else AFLOAT at the surface less the draft
+            else {
+                if (f.key !== 'water') return null;
+                if (f.y - g > R.wadeMax) return null;
+                y = Math.max(g, f.y - R.wade);
+            }
         }
     }
     if (curY != null && y > curY + 0.02 && !w) { if (hqTerrainSlope(info, x, z) > R.maxSlope) return null; }
@@ -35837,7 +36204,7 @@ function hqTerrainAir(info, x, z, y) {
     if (hqTerrainSolidAt(info, x, z, 0) && y < hqTerrainSolidTop(info, x, z) - 0.05) return false;   // inside a block's mass
     const w = hqTerrainWallAt(info, x, z, info.rules.bodyR); if (w && y < w.top - 0.05) return false;
     const f = hqTerrainFluidAt(info, x, z);
-    if (f && g < f.y - 0.05 && (f.key !== 'water' || f.y - g > info.rules.wadeMax) && y < f.y + 0.4) return false;
+    if (f && !f.sea && g < f.y - 0.05 && (f.key !== 'water' || f.y - g > info.rules.wadeMax) && y < f.y + 0.4) return false;   // THE DEEP: the sea is entered (the swimmer's own rule, three-renderer.js _hqSwimFree)
     return true;
 }
 /* the camera boom: inside the ground, a wall, or under a sheet */
@@ -35846,7 +36213,7 @@ function hqTerrainCam(info, x, z, y) {
     if (y < g + 0.24) return true;
     if (hqTerrainSolidAt(info, x, z, -0.15) && y < hqTerrainSolidTop(info, x, z) + 0.2) return true;   // the boom never enters a block
     const w = hqTerrainWallAt(info, x, z, 0.15); if (w && y < w.top + 0.2) return true;
-    const f = hqTerrainFluidAt(info, x, z); if (f && g < f.y && y < f.y + 0.22) return true;
+    const f = hqTerrainFluidAt(info, x, z); if (f && !f.sea && g < f.y && y < f.y + 0.22) return true;   // THE DEEP: the boom follows a diver under the sea
     return false;
 }
 /* a door's SILL: its pad's height (a free way: its own spot's) */
@@ -35855,7 +36222,13 @@ function hqTerrainDoorY(room, door) {
     let info = room._terrainInfo;
     if (!info) { info = hqTerrainCompile(room, room.id || null); Object.defineProperty(room, '_terrainInfo', { value: info, enumerable: false, configurable: true, writable: true }); }
     const p = info.pads.find(q => q.door === door || (q.door.id === door.id && q.door.wall === door.wall));
-    if (p) return Math.round(p.h * 1000) / 1000;
+    if (p) {
+        /* THE DEEP (2026-09-18): a way / a door whose pad lies under an OPEN sea deeper than a wade has its sill where the
+           SWIMMER floats — the surface less the draft (the pad itself stays on the sea floor, so the spot stays a swim) */
+        const sea = info.sea, R = info.rules || HQ_TERRAIN_RULES;
+        if (sea && !sea.under && sea.y - p.h > R.wadeMax) return Math.round((sea.y - R.swimDraft) * 1000) / 1000;
+        return Math.round(p.h * 1000) / 1000;
+    }
     return 0;
 }
 /* THE SOLVER: every grid node the walker reaches from (x, z) under its own rule (4-connected, the feet carried) */
@@ -35866,6 +36239,7 @@ function hqTerrainReach(info, x, z) {
     const y0 = at(i0, j0); if (y0 == null) return seen;
     seen.set(i0 + ',' + j0, y0); q.push([i0, j0, y0]);
     const N = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    const climbLim = _hqTClimbLim(info, info.rules.climb);   // THE DEEP: a drowned room has no climb (the swimmer)
     while (q.length) {
         const p = q.shift();
         for (const n of N) {
@@ -35874,7 +36248,7 @@ function hqTerrainReach(info, x, z) {
             const k = i + ',' + j; if (seen.has(k)) continue;
             const y = hqTerrainFeet(info, info.x0 + i * info.res, info.z0 + j * info.res, p[2]);
             if (y == null) continue;
-            if (y - p[2] > info.rules.climb) continue;
+            if (y - p[2] > climbLim) continue;
             seen.set(k, y); q.push([i, j, y]);
         }
     }
@@ -35912,7 +36286,7 @@ function hqTerrainDump(info, opts) {
             else if (info.maskD && hqTerrainMaskAt(info, x, z) < 0) ch = '#';
             else if (info.trees.some(t => Math.hypot(t.x - x, t.z - z) < step / 2)) ch = 'T';
             else if (info.pads.some(p => (p.r ? p.r - Math.hypot(x - p.x, z - p.z) : _hqTRectIn(x, z, p)) > 0)) ch = 'D';
-            else if (f && g < f.y - 0.05) ch = f.key === 'lava' ? 'L' : (f.y - g > info.rules.wadeMax ? 'W' : '~');
+            else if (f && g < f.y - 0.05) ch = f.key === 'lava' ? 'L' : (f.y - g > info.rules.wadeMax ? (f.sea ? '≈' : 'W') : '~');   // ≈ = the open sea, swum (THE DEEP)
             else if (hqTerrainSlope(info, x, z) > info.rules.maxSlope) ch = '^';
             else { const lv = Math.round(g / 0.875); ch = lv < 0 ? '-' : lv > 9 ? '+' : String(lv); }
             line += ch;
@@ -35961,7 +36335,7 @@ const HQ_TAPE_SHEET = {
     site_prebuilt_skinwalker_fields: [['THE SCARECROWS, 05:29', 'Three of them, facing the house. On the second pass they face the camera.', 'evidence']],   // THE RANCH (2026-09-18): Nuketown's MANNEQUINS re-homed when the site retired
     prebuilt_stadium:     [['THE CROWD NOISE', 'Eighty thousand voices. The seats are empty.', 'evidence']],   // DISASTER CITY (2026-09-17): HALF-TIME went out to the streets
     prebuilt_camelot:     [['THE ROUND TABLE', 'Twelve chairs. Thirteen shadows.', 'evidence']],   // THE VATICAN (2026-09-17): SNOW ON THE BATTLEMENTS went to the basilica
-    prebuilt_atlantis:    [['SONAR, 0400', 'Something answers the ping. It answers in a voice.', 'evidence']],   // CAMELOT CASTLE (2026-09-18): THE PEARL DIVER went to the undercroft
+    site_prebuilt_atlantis_abyss: [['SONAR, 0400', 'Something answers the ping. It answers in a voice.', 'evidence']],   // CAMELOT CASTLE (2026-09-18): THE PEARL DIVER went to the undercroft; THE DEEP (2026-09-18): the board bypassed — its tape is on the sea floor
     prebuilt_hell:        [['THE FISSURE', 'Heat shimmer over the causeway. The shimmer has a face.', 'evidence']],   // THE DIVINE STAIR (2026-09-17): FORM 666 went down to the pit
     prebuilt_technoticlan: [['MOTHER', 'Nine frames of a woman at a console. The console is the one in Room 1337.', 'parents']],   // THE SECOND PASS (2026-09-17): THE UPLINK went to the grid
     prebuilt_agartha:     [['THE ADIT', 'A lamp moving through the crystal. Nobody carries it.', 'evidence']],   // THE VATICAN (2026-09-17): THE GREAT DOOR went to the archive
@@ -35969,7 +36343,7 @@ const HQ_TAPE_SHEET = {
     prebuilt_shasta:      [['THE LENTICULAR', 'A cloud that holds still while the sky moves. Then it does not.', 'evidence']],
     prebuilt_stonehenge:  [['SOLSTICE', 'The stones throw two shadows. The sun is on the wrong side for one of them.', 'evidence']],   // THE SECOND PASS (2026-09-17): THE WHEEL went to the noodle bar
     prebuilt_giza:        [['THE SHAFT', 'A robot camera reaching a door with two copper handles. Then the feed cuts.', 'evidence']],   // D.U.M.B. (2026-09-17): its second tape went under the base
-    prebuilt_heaven:      [['CHOIR', 'Eight seconds of singing with no source. The mic was off.', 'evidence']],   // THE DIVINE STAIR (2026-09-17): THE GATE went out to the fields
+    site_prebuilt_atlantis_temple: [['CHOIR, UNDER THE SEA', 'Eight seconds of singing with no source. The mic was off. The mic was wet.', 'evidence']],   // THE DIVINE STAIR (2026-09-17): THE GATE went out to the fields; THE DEEP (2026-09-18): Heaven's board is bypassed — its choir sings in the temple's air pocket now
     prebuilt_cyberpunk:   [['BILLBOARD', 'An advert for the Department. We have never advertised.', 'facility']],   // DISASTER CITY (2026-09-17): THE NOODLE STAND went back in time to the mall's food court
     prebuilt_babel:       [['ONE VOICE', 'Everyone on the tower says the same word. It is not a word.', 'evidence']],
     prebuilt_olympus:     [['THE FORGE', 'Sparks falling up. A hammer with no hand.', 'evidence']],   // THE DIVINE STAIR (2026-09-17): the second tape went to the stairway
@@ -36025,7 +36399,7 @@ const HQ_TAPE_SHEET = {
     site_prebuilt_cyberpunk_noodle:   [['THE SPECIAL', 'A bowl on the counter, steaming. The steam has a year in it. The year is on the receipt, and the receipt is in your hand.', 'evidence']],
     /* the exploration floors (Phase 8): never the hall, the foyer, a lobby or a corridor — the finds are the reward for going somewhere. A floor room's tape is a BONUS: the laundry, the locker room and the lecture hall gave theirs to the spaceship (rev 18); the boiler room, the server room and the ritual room to the Dutchman (rev 19); the garage, the kitchen, the cold room and the dungeon to THE URBAN BLOCK (9.2 stage 4, 2026-09-16) — the hundred stays a hundred */
     /* 7.7 WAVE 2 (2026-09-16): Room 345's two tapes came off the sacrifice room and Room X (the hundred stays a hundred) */
-    prebuilt_bermuda:     [['FLIGHT 19, 14:10', 'Five aircraft in formation over a flat sea. The lead turns. The others turn with it. The sea does not.', 'evidence']],   // AREA 51 (2026-09-18): its second tape went to the flight line
+    site_prebuilt_bermuda_sea: [['FLIGHT 19, 14:10', 'Five aircraft in formation over a flat sea. The lead turns. The others turn with it. The sea does not.', 'evidence']],   // AREA 51 (2026-09-18): its second tape went to the flight line; THE DEEP (2026-09-18): the board bypassed — the tape is on the lighthouse rock
     /* THE WOODS (9.3 stage 3, 2026-09-16): seven tapes re-homed — the garden's tree (the names are carved in THE OLD TREE now), and six sites' second tapes (Shasta's map on the tree, the ranch's mesa, the forest's lantern, the grove's fire, Babel's climb, Downtown's alley camera) — the hundred stays a hundred; a built site keeps at least one */
     site_prebuilt_fairy_forest_clearing: [['1618', 'A tree in the clearing. Two names carved in it. One is yours, the other is not yet.', 'parents']],
     site_prebuilt_fairy_forest_trail:    [['THE TUNNEL MOUTH', 'A hand-drawn map of the mountain’s inside, pinned to a tree on the trail. Your father’s handwriting.', 'parents']],
@@ -36367,6 +36741,11 @@ DOOR_HQ.findSpots = { coldroom: { tape: { x: 1.3, z: -1.35 }, pay: { x: 0.4, z: 
     site_prebuilt_downtown_tunnels:  { tape: { x: 0.0, z: 0.0 } },
     site_prebuilt_downtown_cells:    { tape: { x: -6.0, z: -2.0 } },
     site_prebuilt_downtown_workings: { tape: { x: 16.0, z: -10.0 } },
+    /* THE DEEP (2026-09-18): the sea's tape on the lighthouse rock (a cliff — the door gun's), the abyss's on THE SPIRE (a swim up:
+       nothing is `hard` for a swimmer), the temple's on THE ORACLE in the pool (the door gun's) */
+    site_prebuilt_bermuda_sea:       { tape: { x: -14.0, z: 43.7 } },
+    site_prebuilt_atlantis_abyss:    { tape: { x: 20.0, z: 20.0 } },
+    site_prebuilt_atlantis_temple:   { tape: { x: 0.0, z: 8.0 } },
     site_prebuilt_fairy_forest_ritual:  { tape: { x: 0.0, z: -6.3 } } };    // THE ALTAR STONE   // the deck (SKATEBOARDING 9.8) takes the generator's far corner of Room 26
 Object.defineProperty(DOOR_HQ, 'finds', { configurable: true, enumerable: true, get: _hqFindsAll, set: _hqFindsPin });
 /* ── THE DOOR GUN'S LEARNING SEQUENCE (PHASE9_QUALITY_PLAN §6 D8, 2026-09-16) ──
@@ -36431,10 +36810,19 @@ function hqFindHardReachTerrain(row, ri) {
     };
     let best = null;
     if (!ri.reach) return { ok: false, reason: 'no reach' };
+    /* THE DEEP (2026-09-18): the proof is an EXISTENCE proof — the nodes are walked NEAREST FIRST and the first clear shot
+       is the answer (the door gun's reach is 160 m now: every node of a 150 m room against sixteen faces took minutes) */
+    const cands = [];
     for (const [k, y] of ri.reach) {
         const [i, j] = k.split(',').map(Number), px = ti.x0 + i * ti.res, pz = ti.z0 + j * ti.res;
-        if (Math.hypot(px - row.x, pz - row.z) > reach) continue;
+        const d = Math.hypot(px - row.x, pz - row.z);
+        if (d > reach) continue;
         if (Math.abs(px) > ri.S.w / 2 - 0.5 || Math.abs(pz) > ri.S.d / 2 - 0.5) continue;
+        cands.push([d, px, pz, y]);
+    }
+    cands.sort((p, q) => p[0] - q[0]);
+    for (const [, px, pz, y] of cands) {
+        if (best) break;
         for (const f of faces) {
             if (!clear(f, px, pz, y + HQ_HARD_REACH.eye)) continue;
             const dist = Math.hypot(f.x - px, f.z - pz);
@@ -37833,6 +38221,23 @@ function hqFieldRegister(roomId, ox, oz, opts) {
    best: { score, text, date }, total, lines, bails }` — hqSkateStatus is
    the ONE read (the pill, the OFFICER sheet, the renderer's issue),
    hqSkateBank the ONE write (map.js, one transaction per banked line). */
+/* ══ THE DEEP — THE SWIMMER, THE SKIFF, THE BATHYSCAPHE (2026-09-18, complex candidate #8) ══
+   The numbers three-renderer.js's "THE DEEP" block reads (merged over its own HQ_SEA_DEFAULT — keep the keys in step; hq-deep.test.js
+   diffs them). THE SWIMMER: over water deeper than wadeMax the walker floats (surfaceDraft under the surface), WASD swims along the
+   camera, SHIFT faster; C dives, and under the surface W swims WHERE YOU LOOK, SPACE up, C down; an idle diver drifts up (buoyancy) in the
+   open sea and hangs still in a drowned room (terrain.sea.under). The shallows (exitDepth) give the walker back. THE SKIFF (a `vehicle: 'boat'` prop, E within boardReach): W/S throttle, A/D the tiller (the turn scales with the way on), the hull bobs, a draft it will not
+   cross; E again steps off (into a wade, else a swim). THE BATHYSCAPHE (`vehicle: 'sub'`): the same helm with SPACE / C for depth,
+   two lamps on the nose. A whirlpool / an upwelling is entered by being in its mouth (way.w). Viewer-local, nothing on the match, nothing
+   relayed (RULE #2). */
+const HQ_SEA_RULES = {
+    swimV: 2.0, swimRunV: 3.2, diveV: 2.4, drag: 2.2, buoyancy: 2.0,
+    surfaceDraft: 1.1, underCap: 1.0, exitDepth: 0.95,
+    boat: { v: 8.5, rev: 2.0, accel: 1.4, drag: 0.6, turn: 1.15, turnMin: 0.35, draft: 0.55, bob: 0.08, boardReach: 3.6, seat: { x: 0, y: 0.5, z: -0.5 }, camDist: 7.0, len: 4.6, beam: 1.7 },
+    sub:  { v: 6.0, rev: 2.5, accel: 1.2, drag: 0.8, turn: 0.95, turnMin: 0.5, vertV: 2.4, r: 1.6, boardReach: 4.0, seat: { x: 0, y: 0.55, z: 0.2 }, camDist: 8.5, len: 6.2 },
+    keys: { dive: 'c', rise: 'space', board: 'e' },
+    labels: { boat: 'THE SKIFF', sub: 'THE BATHYSCAPHE' },
+};
+if (typeof window !== 'undefined') window.HQ_SEA_RULES = HQ_SEA_RULES;
 const HQ_SKATE_RULES = {
     free: true,          // standard issue — every officer holds a board (false = the find in Room 26)
     key: 'b',            // the walker's key: drop the deck / pick it up
