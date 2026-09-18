@@ -10038,3 +10038,33 @@ edge where a float flight meets its tier, the tapestries' facing on the walls (`
 the 8.5 m columns' girth, the pews' new size against the walker, the rim's height over the pit, the lava
 under the causeway, the archive's new light against the wood.
 
+### 2026-09-18 — THE DOOR GUN rev 5: the user's new model, Portal's two buttons, the far preview, the leaf swung open, the fling (local delivery)
+The user's brief: the new Meshy model (`Meshy_AI__0916054803_texture.glb`, R2 `Assets/misc/` + the repo) as the default door
+gun; no right-click aim-down-sights — LEFT CLICK = one door, RIGHT CLICK = the other, straight from Portal (blue on the left
+button, orange on the right); the forecast preview must reach any valid surface however far; the placed door swung open
+more so a crossing from the side never meets the leaf; and Portal's physics — speedy thing goes in, speedy thing comes out.
+- **THE GUN**: `DOOR_HQ.catalogue.door_gun` → the new file, `base: 'misc'`. MEASURED off the vertex profile: the grip hangs
+  at +X (the opposite end from the first gun), so `HQ_PORTAL_RULES.gun.turn: 180` pre-turns the INSTANCE in `_hqAttachHeld`
+  (the walker), `_unitAttachHeld` (the Door Agent on the board) and `_hqViewmodel` (first person) — the glove, the muzzle
+  and the shot keep their +X-barrel frame; `muzzle` y 0.11 = the new barrel line. The first gun stays in its folder unreferenced.
+- **TWO TRIGGERS**: `_hqPortalFire(slot)` — `H.onMouseDown` fires 'a' on button 0 and 'b' on button 2; `_hqPortalSelect`,
+  `_hqPortalAds`, `_hqLookGain`, the R / 1 / 2 keys, `adsK`, the lens narrowing + the boom pull in `_hqTickCamera`, the
+  ADS event in map.js and the `ads` / `adsPos` rules are GONE. The ghost judges the surface for EITHER button (`_hqPortalAim
+  (null)` — THE TWIN only when neither door could take the spot) and wears the verdict's green; the placed frame wears its
+  button's colour as before. `HQ_PORTAL_RULES.buttons = { a: 'LEFT CLICK', b: 'RIGHT CLICK' }`; the hint / toasts / the
+  OFFICER row say LEFT CLICK = A ● · RIGHT CLICK = B ■.
+- **THE REACH**: `reach` 14 → 160 m (the whole of Disaster City); the march's step GROWS with the distance
+  (`HQ_PORTAL_STEP_K` 0.03 × t, capped at `HQ_PORTAL_STEP_MAX` 0.9 — ~250 samples to 160 m against the old 117 to 14 m);
+  the wall hit was already bisected between the last two samples, and a FLOOR hit is now stepped back onto the surface
+  (`bk = (surf − py) / dir.y`) so a coarse far sample never lands the frame past the true point.
+- **THE LEAF**: a placed WALL door swings `leafOpenDeg` 150 (near flat against the wall beside the frame — the leaf's tip
+  stands 0.5 × the opening's width out from the wall, never inside it) and stands open from the landing (`leafAlways`;
+  `_hqTickDoors` reads it — Portal's doors are always open). The room's own doors keep their 83° on the press-in.
+- **THE FLING**: out of a floor hatch the whole entry speed comes out (`Math.min(C.max, up)`; it was capped at 12 m/s) —
+  `_hqPortalMapCarry` already turned the vector and held the magnitude (hq-portal.test.js now proves it on a 14 m/s fall
+  into a floor door with a wall twin: 14 m/s out, horizontal). Air control was already the walk's own WASD in the air.
+- hq-portal.test.js: the rev 4 ONE TRIGGER test is replaced by three REV 5 tests (the buttons, the gun, the reach / leaf /
+  fling). UNSEEN LIVE (RULE #1c): the new gun's grip and barrel in the hand (`gun.turn` / `pos` / `rot` are the edits — a
+  barrel that still lands backward is `turn: 0`), its size in the viewmodel, the 150° leaf against each wall sheet, the far
+  ghost's legibility at 100 m, the fling's feel out of a wall twin.
+

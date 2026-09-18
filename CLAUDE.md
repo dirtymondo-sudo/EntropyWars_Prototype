@@ -5499,3 +5499,19 @@ ten lights. **THE ARCHIVE**: ambient 0.62, fog 0.011, the wood lighter, `HQ_ROOM
 the night mood. hq-divine / hq-world / disaster-city-3 / hq-terrain amended. Ship data.js to Render too.
 UNSEEN LIVE (RULE #1c): all of it — DOOR_HQ_BUILD_PLAN §9 lists what to eyeball first.
 
+## THE DOOR GUN rev 5 — THE NEW MODEL, PORTAL'S TWO BUTTONS, THE FAR PREVIEW, THE LEAF, THE FLING — 2026-09-18, local delivery
+The user's brief, straight from Portal. **THE GUN** is `DOOR_HQ.catalogue.door_gun` = `Meshy_AI__0916054803_texture.glb`
+(`base: 'misc'` — R2 `Assets/misc/`, repo root; MODEL_INDEX §3b). MEASURED (the vertex profile along X): its GRIP hangs at
++X, the opposite end from the first gun, so **`HQ_PORTAL_RULES.gun.turn` (degrees about the gun's own up) pre-turns the
+INSTANCE in every holder** — three-renderer.js `_hqAttachHeld` (the walker), `_unitAttachHeld` (the Door Agent), `_hqViewmodel`
+(first person); the glove / the muzzle / the shot keep the +X-barrel frame. A future gun that lands backward = that ONE field.
+**TWO TRIGGERS** (rev 4's selector + aim-down-sights are GONE — `_hqPortalSelect` / `_hqPortalAds` / `_hqLookGain` / R · 1 · 2 /
+`adsK` / the lens + boom pull / `ads` + `viewmodel.adsPos` no longer exist; never bring a right-click aim back): `H.onMouseDown`
+→ **`_hqPortalFire('a')` on LEFT, `_hqPortalFire('b')` on RIGHT**; `HQ_PORTAL_RULES.buttons = { a, b }`; the ghost judges the
+surface for EITHER button (`_hqPortalAim(null)`) and wears `HQ_PORTAL_COLORS.ok`. **THE REACH**: `reach` 160 m; `_hqPortalAim`'s
+step grows with the distance (`HQ_PORTAL_STEP_K` × t ≤ `HQ_PORTAL_STEP_MAX`) and a floor hit is stepped back onto the surface —
+the preview shows on any surface the eye can see. **THE LEAF**: `leafOpenDeg` 150 / `leafAlways` — a placed wall door swings
+near flat and stands open from the landing (`_hqTickDoors`); the room's own doors are untouched. **THE FLING**: out of a floor
+hatch the whole entry speed comes out (`C.max`, not 12). `npm test` runs hq-portal.test.js (22). UNSEEN LIVE (RULE #1c): the
+grip / barrel on the rigs (`gun.turn` / `pos` / `rot`), the leaf at 150°, the far ghost, the fling.
+

@@ -10241,6 +10241,7 @@ const ThreeRenderer = (function () {
         var url = (cat.base === 'misc') ? _R2_MISC + encodeURIComponent(cat.file) : D.assets.models + encodeURIComponent(cat.file);
         var inst = _miscModelInstance(url, true, target, { fit: (cat.span != null && cat.h == null) ? 'span' : 'height', matPick: _hqPropMatPick,
             onDone: function (g) { g.traverse(function (n) { if (n.isMesh) { n._ew_noTwin = true; n.frustumCulled = false; n.castShadow = true; n.renderOrder = 2; } }); } });
+        if (hold.turn) inst.rotation.y = hold.turn * Math.PI / 180;   // rev 5: the gun's pre-turn (HQ_PORTAL_RULES.gun.turn) — the barrel to +X
         inner.add(inst); holder.add(inner); bone.add(holder);
         return holder;
     }
@@ -44999,8 +45000,21 @@ const ThreeRenderer = (function () {
      *  the pair never re-fires on itself — floor under ceiling is then a
      *  loop: fall in, come out of the ceiling, fall again.
      *  Nothing on `state`, nothing relayed (RULE #2).
+     *
+     *  rev 5 (2026-09-18, the user — straight from Portal): TWO TRIGGERS again,
+     *  LEFT CLICK = THRESHOLD A (cyan), RIGHT CLICK = THRESHOLD B (amber);
+     *  rev 4's selector (R / 1 / 2) and aim-down-sights are gone (`_hqPortalFire
+     *  (slot)`).  The ghost judges the surface for EITHER button and wears
+     *  the verdict's green.  THE REACH: the march runs to HQ_PORTAL_RULES.reach
+     *  (160 m) with a step that grows with the distance (HQ_PORTAL_STEP_K ×
+     *  t, ≤ HQ_PORTAL_STEP_MAX; a floor hit is stepped back onto the surface).
+     *  THE LEAF: a placed wall door swings `leafOpenDeg` (150°, near flat
+     *  against the wall) and stands open from the landing (`leafAlways`).
+     *  THE GUN: the user's second model, pre-turned by `gun.turn` in every
+     *  holder (its grip hangs at +X).  Out of a floor hatch the whole entry
+     *  speed comes out (the carry's cap), not 12 m/s.
      * ══════════════════════════════════════════════════════════════════ */
-    var HQ_PORTAL_REACH = 14, HQ_PORTAL_STEP = 0.12, HQ_PORTAL_GAP = 1.6, HQ_PORTAL_NEAR = 1.2, HQ_PORTAL_FOOT = 0.62;
+    var HQ_PORTAL_REACH = 160, HQ_PORTAL_STEP = 0.12, HQ_PORTAL_STEP_MAX = 0.9, HQ_PORTAL_STEP_K = 0.03, HQ_PORTAL_GAP = 1.6, HQ_PORTAL_NEAR = 1.2, HQ_PORTAL_FOOT = 0.62;
     /* the pair is ALWAYS two colours (the user's rule): A cyan, B amber */
     var HQ_PORTAL_COLORS = { ok: 0x7dffb0, bad: 0xff5a5a, a: 0x49b0ff, b: 0xff8a2b };
     function _hqPortalRules() {
@@ -45008,9 +45022,10 @@ const ThreeRenderer = (function () {
         return { reach: R.reach || HQ_PORTAL_REACH, gap: R.minGap || HQ_PORTAL_GAP, near: R.minFromWalker || HQ_PORTAL_NEAR, foot: R.footprint || HQ_PORTAL_FOOT,
                  shot: R.shot || { msPerM: 28, minMs: 110, maxMs: 380, unfoldMs: 300, kick: 0.045, kickMs: 220 }, shapes: R.shapes || { a: 'circle', b: 'square' },
                  reasons: R.reasons || {}, recallMs: R.recallMs || 600, rearmMs: R.rearmMs || 250, exitNudge: R.exitNudgeM || 0.6,
-                 /* rev 4 (2026-09-16): aim down sights, the first-person viewmodel, the carry through a pair */
-                 ads: R.ads || { fov: 34, sens: 0.55, ms: 160, boom: 1.4 },
-                 viewmodel: R.viewmodel || { pos: [0.22, -0.19, 0.42], rot: [0, 5, 0], adsPos: [0, -0.12, 0.4], bob: 0.012, kick: 0.06, glove: '#15161a', cuff: '#2a2c33' },
+                 /* rev 4 (2026-09-16): the first-person viewmodel, the carry through a pair. rev 5 (2026-09-18): the sights are GONE
+                    (two buttons, Portal's); `leafOpen` (degrees) = how far a placed wall door swings, `leafAlways` = it stands open from the landing */
+                 viewmodel: R.viewmodel || { pos: [0.22, -0.19, 0.42], rot: [0, 5, 0], bob: 0.012, kick: 0.06, glove: '#15161a', cuff: '#2a2c33' },
+                 leafOpen: (R.leafOpenDeg != null) ? R.leafOpenDeg : 150, leafAlways: (R.leafAlways != null) ? !!R.leafAlways : true,
                  carry: R.carry || { minOut: 2.4, max: 18, groundS: 0.55, touchM: 1.05 } };
     }
     /* ── THE GUN ITSELF (rev 3, 2026-09-16 — the user's model) ─────────────
@@ -45022,14 +45037,14 @@ const ThreeRenderer = (function () {
        sight, the shot and the recall all leave from `_hqGunMuzzle()`. */
     function _hqGunRules() {
         var R = (typeof window !== 'undefined' && window.HQ_PORTAL_RULES) || {};
-        return R.gun || { key: 'door_gun', bone: 'RightHand', span: 0.36, pos: [0, 0.05, 0.06], rot: [0, -90, 90], muzzle: [0.5, 0.08, 0] };
+        return R.gun || { key: 'door_gun', bone: 'RightHand', span: 0.36, pos: [0, 0.05, 0.06], rot: [0, -90, 90], turn: 180, muzzle: [0.5, 0.11, 0] };
     }
     function _hqGunAttach() {
         var H = _hq, pl = H && H.player; if (!pl || pl.held || pl._gunTried) return;
         var G = _hqGunRules(), D = _hqData();
         if (!D || !D.catalogue || !D.catalogue[G.key] || !D.catalogue[G.key].file) return;
         pl._gunTried = true;
-        _hqAttachHeld(pl, { key: G.key, bone: G.bone || 'RightHand', pos: G.pos || [0, 0, 0], rot: G.rot || [0, 0, 0], h: G.span || 0.36 });   // rev 4: `h` = the span the holder fits (the catalogue's 0.62 was the board's)
+        _hqAttachHeld(pl, { key: G.key, bone: G.bone || 'RightHand', pos: G.pos || [0, 0, 0], rot: G.rot || [0, 0, 0], turn: G.turn || 0, h: G.span || 0.36 });   // rev 5: `turn` pre-turns the model so its barrel is +X   // rev 4: `h` = the span the holder fits (the catalogue's 0.62 was the board's)
         var tries = 0;
         (function show() { if (_hq !== H) return; if (!pl.held) { if (tries++ < 400) setTimeout(show, 100); return; } pl.held.visible = !!(H.portal && H.portal.drawn); H.dirty = true; })();
     }
@@ -45084,6 +45099,7 @@ const ThreeRenderer = (function () {
         var g = new THREE.Group(); g.name = 'hq-viewmodel'; g.visible = false;
         var gun = new THREE.Group(); gun.rotation.y = Math.PI / 2;   // the gun's +X barrel → the camera's −Z (forward)
         var inst = _miscModelInstance(_hqModelUrl(cat), true, span * U, { fit: 'span', matPick: _hqPropMatPick, onDone: function () { try { g.traverse(function (n) { if (n.isMesh) n.frustumCulled = false; }); } catch (e) {} if (_hq) _hq.dirty = true; } });
+        if (G.turn) inst.rotation.y = _hqRad(G.turn);   // rev 5: the pre-turn — the grip back to −X, the barrel to +X, in the gun frame the glove is built in
         gun.add(inst);
         /* THE HAND: the fist round the grip (the grip is the model's rear, hanging under the axis), four
            fingers over its front, the thumb inside, the forearm running down and back to the frame's corner */
@@ -45111,8 +45127,8 @@ const ThreeRenderer = (function () {
         var vm = H.portal.vm || (show ? _hqViewmodel() : null);
         if (!vm) return;
         vm.visible = show; if (!show) return;
-        var U = _hqUnits(), VM = _hqPortalRules().viewmodel, k = H.portal.adsK || 0, pl = H.player;
-        var P = VM.pos || [0.24, -0.2, 0.46], A = VM.adsPos || [0, -0.12, 0.4], R0 = VM.rot || [0, -6, 0];
+        var U = _hqUnits(), VM = _hqPortalRules().viewmodel, k = 0, pl = H.player;   // rev 5: no sights — k (the sighted share) is 0 for good
+        var P = VM.pos || [0.24, -0.2, 0.46], A = P, R0 = VM.rot || [0, -6, 0];
         var t = performance.now() / 1000;
         var bobA = (pl.moving && !pl.air ? (pl.running ? 1.7 : 1) : 0.22) * (VM.bob || 0.012) * (1 - k * 0.85);
         var hz = pl.running ? 9.5 : 6.5;
@@ -45349,7 +45365,11 @@ const ThreeRenderer = (function () {
            officer's own head, never behind it (a desk the boom hangs over used to catch the ray) */
         var t0 = 0.3;
         if (!H.fp) { var hx = pl.x - eye.x, hy = (pl.visY + (pl.heightM || 1.75) * 0.86) - eye.y, hz = pl.z - eye.z; t0 = Math.max(0.3, hx * dir.x + hy * dir.y + hz * dir.z - 0.2); }
-        for (var t = t0; t <= R.reach; t += HQ_PORTAL_STEP) {
+        /* rev 5 (2026-09-18, the user: "the preview doesn't reach far enough"): the march runs to R.reach (160 m — the
+           whole of a city part) and its STEP grows with the distance (HQ_PORTAL_STEP_K × t, capped at HQ_PORTAL_STEP_MAX)
+           — the wall hit is bisected between the last two samples anyway and a floor hit is stepped back onto the
+           surface below, so a coarse far sample costs nothing in precision and the far march costs what 14 m did */
+        for (var t = t0, step = HQ_PORTAL_STEP; t <= R.reach; t += step, step = Math.min(HQ_PORTAL_STEP_MAX, Math.max(HQ_PORTAL_STEP, t * HQ_PORTAL_STEP_K))) {
             var px = eye.x + dir.x * t, py = eye.y + dir.y * t, pz = eye.z + dir.z * t;
             if (ceil !== null && py >= ceil) {                                    // THE CEILING: step back onto its plane
                 var back = (dir.y > 0.0001) ? (py - ceil) / dir.y : 0;
@@ -45363,7 +45383,10 @@ const ThreeRenderer = (function () {
                 if (!hit) reason = 'wall';
                 break;
             }
-            if (py <= surf + 0.03) { hit = { surf: 'floor', x: px, y: surf, z: pz, dist: t, nx: 0, ny: 1, nz: 0 }; break; }   // THE FLOOR
+            if (py <= surf + 0.03) {                                                   // THE FLOOR: stepped back onto the surface (a coarse far sample lands under it)
+                var bk = (dir.y < -1e-4 && py < surf) ? (surf - py) / dir.y : 0;
+                hit = { surf: 'floor', x: px + dir.x * bk, y: surf, z: pz + dir.z * bk, dist: Math.max(0, t + bk), nx: 0, ny: 1, nz: 0 }; break;
+            }
             prev = { x: px, y: py, z: pz, t: t };
         }
         var out = { ok: false, reason: reason, surf: null, x: 0, y: 0, z: 0, face: 0, nx: 0, ny: 1, nz: 0, dist: 0 };
@@ -45518,8 +45541,7 @@ const ThreeRenderer = (function () {
     function _hqPortalGhostLabel(g, aim) {
         var lbl = g.userData.lbl; if (!lbl) return;
         var R = _hqPortalRules();
-        var selW = ((_hq && _hq.portal && _hq.portal.slot) || 'a').toUpperCase();   // rev 4: the word names the SELECTED threshold
-        var word = aim.ok ? (aim.lip ? (R.reasons.lip || 'THE LIP · ON TOP') + ' · ' + selW : ((aim.surf || 'floor').toUpperCase() + ' · ' + selW)) : (R.reasons[aim.reason] || R.reasons.none || String(aim.reason || '').toUpperCase());
+        var word = aim.ok ? (aim.lip ? (R.reasons.lip || 'THE LIP · ON TOP') : (aim.surf || 'floor').toUpperCase()) : (R.reasons[aim.reason] || R.reasons.none || String(aim.reason || '').toUpperCase());   // rev 5: the surface (either button lays its own door here)
         var key = (aim.ok ? 'ok:' : 'no:') + word;
         if (key !== g.userData.lblKey) {
             g.userData.lblKey = key;
@@ -45533,18 +45555,14 @@ const ThreeRenderer = (function () {
     function _hqPortalTickAim() {
         var H = _hq; if (!H || !H.portal) return;
         _hqPortalTickHold();   // THE RECALL (D3c): F held pulls the pair home, drawn or not
-        /* AIM DOWN SIGHTS (rev 4): eased in / out over ads.ms — read by the camera (the lens, the boom), the mouse (the gain) and the viewmodel */
-        var RA = _hqPortalRules(), dtA = Math.min(0.05, (performance.now() - (H.portal.adsAt || performance.now())) / 1000); H.portal.adsAt = performance.now();
-        var adsT = (H.portal.drawn && H.portal.ads) ? 1 : 0, adsRate = Math.min(1, dtA * 1000 / Math.max(40, RA.ads.ms || 160));
-        H.portal.adsK = (H.portal.adsK || 0) + (adsT - (H.portal.adsK || 0)) * adsRate;
-        if (Math.abs(H.portal.adsK - adsT) < 0.004) H.portal.adsK = adsT;
+        var dtA = Math.min(0.05, (performance.now() - (H.portal.vmAt || performance.now())) / 1000); H.portal.vmAt = performance.now();
         _hqViewmodelTick(dtA);   // FIRST PERSON: the gun under the eye (hidden when holstered / third person)
         if (!H.portal.drawn) return;
-        var aim = _hqPortalAim(H.portal.slot || 'a');   // rev 4: the ghost judges the SELECTED threshold (THE TWIN in red over the other door)
+        var aim = _hqPortalAim(null);   // rev 5: the ONE ghost judges the surface for EITHER button (THE TWIN only when neither door could take it)
         H.portal.aim = aim;
         var g = _hqPortalGhost(); if (!g) return;
         var U = _hqUnits(), pl = H.player;
-        var slotHexSel = HQ_PORTAL_COLORS[H.portal.slot || 'a'] || HQ_PORTAL_COLORS.ok;   // rev 4: the ghost wears the SELECTED threshold's colour
+        var slotHexSel = HQ_PORTAL_COLORS.ok;   // rev 5: the ghost is neither door yet — the verdict's green; the placed frame wears its button's colour
         /* THE STANCE: drawn and standing, the officer squares up on the aim so the gun points where the eye looks */
         if (pl && !pl.moving && !(H.ride && H.ride.on)) pl.targetYaw = Math.atan2(Math.sin(H.cam.yaw), -Math.cos(H.cam.yaw));
         var sight = _hqPortalSight();
@@ -45586,7 +45604,6 @@ const ThreeRenderer = (function () {
         if (H.portal.drawn === on) return on;
         H.portal.drawn = on;
         H.portal.lastKey = '';
-        if (!on) H.portal.ads = false;   // rev 4: holstering drops the sights
         if (!on && H.portal.ghost) H.portal.ghost.visible = false;
         if (!on && H.portal.sight) H.portal.sight.visible = false;
         _hqGunShow(on);   // rev 3: the model in the hand while drawn
@@ -45595,38 +45612,15 @@ const ThreeRenderer = (function () {
         H.dirty = true;
         return on;
     }
-    /* THE SELECTOR (rev 4, 2026-09-16 — the user's question: right click is AIM in a
-       shooter): ONE trigger. LEFT CLICK shoots the SELECTED threshold (`H.portal.slot`,
-       A by default), RIGHT CLICK held = aim down sights, R flips A ⇄ B, 1 / 2 pick
-       one, and every shot advances the selector to the OTHER threshold so two clicks
-       lay a pair. The slot stays explicit end to end — the renderer aims for it,
-       map.js files it, data.js writes that row. */
-    function _hqPortalSelect(slot, opts) {
-        var H = _hq; if (!H || !H.portal) return null;
-        var cur = H.portal.slot || 'a';
-        var next = (slot === 'a' || slot === 'b') ? slot : (cur === 'a' ? 'b' : 'a');
-        if (next === cur && !(opts && opts.force)) return cur;
-        H.portal.slot = next; H.portal.lastKey = '';
-        if (!(opts && opts.quiet)) { try { if (typeof playSfx === 'function') playSfx('uiTick'); } catch (e) {} }
-        if (H.opts.onPortal) { try { H.opts.onPortal({ kind: 'select', slot: next, auto: !!(opts && opts.auto) }); } catch (e) {} }
-        H.dirty = true;
-        return next;
-    }
-    function _hqPortalAds(on) {
-        var H = _hq; if (!H || !H.portal) return false;
-        on = !!on && !!H.portal.drawn;
-        if (H.portal.ads === on) return on;
-        H.portal.ads = on;
-        if (H.opts.onPortal) { try { H.opts.onPortal({ kind: 'ads', on: on }); } catch (e) {} }
-        return on;
-    }
-    /* THE TRIGGER: the selected threshold flies; the selector moves on to the other one */
-    function _hqPortalFire() {
+    /* THE TWO TRIGGERS (rev 5, 2026-09-18 — the user: "go back to left click for one door and right
+       click for the other", Portal's own buttons): LEFT CLICK shoots THRESHOLD A, RIGHT CLICK shoots
+       THRESHOLD B. No selector, no sights (rev 4's R / 1 / 2 and the ADS are gone). The slot stays
+       explicit end to end — the renderer aims for it, map.js files it, data.js writes that row. */
+    function _hqPortalFire(slot) {
         var H = _hq; if (!H || !H.portal || !H.portal.drawn) return false;
-        var slot = H.portal.slot || 'a';
-        var ok = _hqPortalPlaceAim(slot);
-        if (ok) _hqPortalSelect(slot === 'a' ? 'b' : 'a', { auto: true, quiet: true });
-        return ok;
+        slot = (slot === 'b') ? 'b' : 'a';
+        H.portal.slot = slot;   // the last button pressed (the strip pill / a probe reads it)
+        return _hqPortalPlaceAim(slot);
     }
     function _hqPortalPlaceAim(slot) {
         var H = _hq; if (!H || !H.portal || !H.portal.drawn) return false;
@@ -45811,7 +45805,7 @@ const ThreeRenderer = (function () {
         var motion = null;
         if (cat && cat.file) {
             var hingeRight = cat.hinge === 'right';
-            motion = { mode: 'swing', pivot: new THREE.Group(), dir: hingeRight ? 1 : -1, angle: 1.45, ow: ow };
+            motion = { mode: 'swing', pivot: new THREE.Group(), dir: hingeRight ? 1 : -1, angle: _hqRad(_hqPortalRules().leafOpen), ow: ow };   // rev 5: swung near flat against the wall (HQ_PORTAL_RULES.leafOpenDeg) — a body crossing from the side never meets the leaf
             motion.pivot.position.x = motion.dir * (ow / 2 - 0.02) * U;
             leafGroup.add(motion.pivot);
             var targetH = (cat.frame ? oh + 0.03 : oh - 0.015) * U, targetW = (cat.frame ? ow + 0.05 : ow - 0.01) * U;
@@ -45832,7 +45826,7 @@ const ThreeRenderer = (function () {
             motion.pivot.add(lg);
         } else {
             /* no catalogue (a probe): a plain panel */
-            motion = { mode: 'swing', pivot: new THREE.Group(), dir: -1, angle: 1.45, ow: ow };
+            motion = { mode: 'swing', pivot: new THREE.Group(), dir: -1, angle: _hqRad(_hqPortalRules().leafOpen), ow: ow };
             motion.pivot.position.x = -(ow / 2 - 0.02) * U;
             var panel = _hqBox(ow - 0.02, oh - 0.02, 0.06, _hqMat(null, 1, 1, { color: 0x6b4a2e }));
             panel.position.set((ow / 2 - 0.02) * U, (oh / 2) * U, 0);
@@ -46049,7 +46043,7 @@ const ThreeRenderer = (function () {
         } else if (surf === 'floor') {
             pl.x = rec.px; pl.z = rec.pz;
             var up = Math.max(speed, out.y);
-            if (up > 4) { pl.y = rec.py + 0.06; pl.air = true; pl.jumpT = -1; pl.vy = Math.min(12, up); }
+            if (up > 4) { pl.y = rec.py + 0.06; pl.air = true; pl.jumpT = -1; pl.vy = Math.min(C.max || 18, up); }   // rev 5: speedy thing goes in, speedy thing comes out — the fall's whole speed, to the carry's cap
             else { pl.y = rec.py + 0.02; pl.air = false; pl.vy = 0; pl.jumpT = -1; }
             pl.mvx = out.x; pl.mvz = out.z;
         } else {
@@ -46185,7 +46179,9 @@ const ThreeRenderer = (function () {
             inner.position.set(p[0] * U, p[1] * U, p[2] * U);
             inner.rotation.set(_hqRad(r[0]), _hqRad(r[1]), _hqRad(r[2]));
             var target = ((hold.h != null ? hold.h : (cat.h || cat.span)) || 1) * U;
-            inner.add(_miscModelInstance(_hqModelUrl(cat), true, target, { fit: (cat.span != null && cat.h == null) ? 'span' : 'height', matPick: _hqPropMatPick, onDone: function () { try { holder.traverse(function (n) { if (n.isMesh) n.frustumCulled = false; }); } catch (e) {} if (_hq) _hq.dirty = true; } }));   // never culled (rev 4): a bounding sphere under a 0.01-scaled bone misjudged the frustum and the gun vanished from some angles
+            var instH = _miscModelInstance(_hqModelUrl(cat), true, target, { fit: (cat.span != null && cat.h == null) ? 'span' : 'height', matPick: _hqPropMatPick, onDone: function () { try { holder.traverse(function (n) { if (n.isMesh) n.frustumCulled = false; }); } catch (e) {} if (_hq) _hq.dirty = true; } });   // never culled (rev 4): a bounding sphere under a 0.01-scaled bone misjudged the frustum and the gun vanished from some angles
+            if (hold.turn) instH.rotation.y = _hqRad(hold.turn);   // rev 5 (the door gun): the model pre-turned about its own up so its long axis reads the way the holder expects (the new gun's grip hangs at +X)
+            inner.add(instH);
             holder.add(inner);
             bone.add(holder);
             ch.held = holder; ch.heldBone = bone; ch.hold = hold;
@@ -46885,15 +46881,10 @@ const ThreeRenderer = (function () {
         if (k === 'arrowright') return 'right';
         if (k === 'shift') return 'shift';
         if (k === ' ' || k === 'spacebar') return 'space';
-        if (k === 'w' || k === 'a' || k === 's' || k === 'd' || k === 'm' || k === 'e' || k === 'b' || k === 'v' || k === 'f' || k === 'r' || k === '1' || k === '2' || k === 'q' || k === 'p') return k;   // F = the door gun (9.5); R / 1 / 2 = its selector (rev 4); B = the skateboard (9.8); M = the map (THE HQ HUD PASS)
+        if (k === 'w' || k === 'a' || k === 's' || k === 'd' || k === 'm' || k === 'e' || k === 'b' || k === 'v' || k === 'f' || k === 'q' || k === 'p') return k;   // F = the door gun (9.5; rev 5: LEFT / RIGHT CLICK are its two triggers, no selector keys); B = the skateboard (9.8); M = the map (THE HQ HUD PASS)
         if (k === 'enter') return 'e';
         if (k === 'escape' || k === 'esc') return 'esc';
         return null;
-    }
-    function _hqLookGain() {
-        var H = _hq; if (!H || !H.portal) return 1;
-        var k = H.portal.adsK || 0, sens = _hqPortalRules().ads.sens; if (sens == null) sens = 0.55;
-        return 1 - k * (1 - sens);
     }
     function _hqBindInput() {
         var H = _hq;
@@ -46929,7 +46920,6 @@ const ThreeRenderer = (function () {
             if (k === 'f') { e.preventDefault(); if (!e.repeat && H.portal && !H.portal.fAt) { H.portal.fAt = performance.now(); H.portal.fFired = false; } return; }
             if (k === 'q' && H.portal && H.portal.drawn) { e.preventDefault(); _hqPortalDraw(false); return; }
             /* THE SELECTOR (rev 4): R flips A ⇄ B, 1 / 2 pick — drawn only (holstered, the keys are nobody's) */
-            if ((k === 'r' || k === '1' || k === '2') && H.portal && H.portal.drawn) { e.preventDefault(); if (!e.repeat) _hqPortalSelect(k === 'r' ? null : (k === '1' ? 'a' : 'b')); return; }
             /* Q = answer a BELL call from anywhere in the building (HQ plan D2) */
             if (k === 'q') { e.preventDefault(); if (H.opts.onHotkey) H.opts.onHotkey('q'); return; }
             H.keys[k] = true;
@@ -46939,16 +46929,16 @@ const ThreeRenderer = (function () {
             if (!_hq) return; var k = _hqKeyName(e); if (k) H.keys[k] = false;
             if (k === 'f' && H.portal && H.portal.fAt) { var fired = H.portal.fFired; H.portal.fAt = 0; H.portal.fFired = false; if (!fired && !H.paused) _hqPortalDraw(!(H.portal && H.portal.drawn)); }
         };
-        H.onBlur = function () { if (_hq) { H.keys = {}; H.drag = null; if (H.portal) _hqPortalAds(false); } };
+        H.onBlur = function () { if (_hq) { H.keys = {}; H.drag = null; } };
         H.onMouseDown = function (e) {
             if (!_hq || H.paused) return;
-            /* THE DOOR GUN (HQ plan 9.5; rev 2 2026-09-15, the user's brief):
-               drawn, LEFT CLICK places THRESHOLD A and RIGHT CLICK places
-               THRESHOLD B — two buttons, two colours. F / Q holster it. */
+            /* THE DOOR GUN (HQ plan 9.5; rev 2 2026-09-15, the user's brief; rev 5
+               2026-09-18 — back to it, straight from Portal): drawn, LEFT CLICK
+               shoots THRESHOLD A and RIGHT CLICK shoots THRESHOLD B — two
+               buttons, two colours. F / Q holster it. */
             if (H.portal && H.portal.drawn) {
                 _hqTryLock();
-                /* rev 4 (the user's question): ONE trigger — LEFT CLICK shoots the SELECTED threshold, RIGHT CLICK (held) aims down the sights */
-                if (e.button === 0) _hqPortalFire(); else if (e.button === 2) _hqPortalAds(true);
+                if (e.button === 0) _hqPortalFire('a'); else if (e.button === 2) _hqPortalFire('b');
                 e.preventDefault(); return;
             }
             /* THE ENCOUNTER (HQ plan 9.4 rev 17): holstered, LEFT CLICK with the
@@ -46966,7 +46956,7 @@ const ThreeRenderer = (function () {
         };
         H.onMouseMove = function (e) {
             if (!_hq || H.paused) return;
-            var gainL = 0.0032 * _hqLookGain();   // ADS (rev 4): the mouse slows on the sights
+            var gainL = 0.0032;
             if (document.pointerLockElement === canvas) {
                 H.cam.yaw += (e.movementX || 0) * gainL;
                 var pLo = H.fp ? -1.25 : -1.15, pHi = H.fp ? 1.25 : 0.85;
@@ -46997,7 +46987,6 @@ const ThreeRenderer = (function () {
         };
         H.onMouseUp = function (e) {
             if (!_hq) return;
-            if (e && e.button === 2 && H.portal) _hqPortalAds(false);   // rev 4: the sights come down with the button
             var d = H.drag; H.drag = null;
             /* the lock refused (a preview, a denied request): a LEFT CLICK that did not drag is still the attack */
             if (d && d.strike && !d.moved && !H.paused && document.pointerLockElement !== canvas && !(H.portal && H.portal.drawn)) _hqStrikeClick();
@@ -47959,11 +47948,9 @@ const ThreeRenderer = (function () {
         var c = H.cam;
         var headY = pl.visY + pl.heightM * 0.86;
         var lookDir = new THREE.Vector3(Math.sin(c.yaw) * Math.cos(c.pitch), Math.sin(c.pitch), -Math.cos(c.yaw) * Math.cos(c.pitch));
-        /* AIM DOWN SIGHTS (THE DOOR GUN rev 4): the lens narrows to ads.fov and the third-person boom comes in to ads.boom by the eased adsK */
-        var adsK = (H.portal && H.portal.adsK) || 0, adsR = _hqPortalRules().ads;
-        var fovT = 52 + ((adsR.fov || 34) - 52) * adsK;
-        if (Math.abs(cam.fov - fovT) > 0.01) { cam.fov = fovT; cam.updateProjectionMatrix(); }
-        var boomD = c.dist + ((adsR.boom || 1.4) - c.dist) * adsK;
+        /* THE DOOR GUN rev 5: no sights any more — the lens stays at 52 (rev 4 narrowed it on the right button) */
+        if (Math.abs(cam.fov - 52) > 0.01) { cam.fov = 52; cam.updateProjectionMatrix(); }
+        var boomD = c.dist;
         var eye, look;
         if (H.fp) {
             eye = new THREE.Vector3(pl.x, pl.visY + pl.heightM * 0.9, pl.z);
@@ -48188,7 +48175,8 @@ const ThreeRenderer = (function () {
             var d = H.doors[i], mo = d.motion;
             if (!mo) continue;
             /* THE DOOR GUN rev 2: a FLAT threshold (a floor hatch, a ceiling hatch) stands open — it is a hole you fall through, not a door you press into */
-            var want = (d.portalSurf && d.portalSurf !== 'wall') ? 1 : ((targetKey === 'door:' + d.door.id && !HQ_DOOR_LOCKED[d.state]) ? 1 : 0);
+            /* rev 5: a placed WALL door stands open too (HQ_PORTAL_RULES.leafAlways) — Portal's are always open; the leaf lies near flat beside the frame */
+            var want = (d.portalSurf && (d.portalSurf !== 'wall' || _hqPortalRules().leafAlways)) ? 1 : ((targetKey === 'door:' + d.door.id && !HQ_DOOR_LOCKED[d.state]) ? 1 : 0);
             if (d.openT === want && d.openApplied === want) continue;
             var speed = (mo.mode === 'swing') ? 1.9 : (mo.mode === 'way') ? 1.5 : 2.4;
             d.openT = want ? Math.min(1, d.openT + dt * speed) : Math.max(0, d.openT - dt * speed);
@@ -48325,7 +48313,7 @@ const ThreeRenderer = (function () {
                   shellGroup: new THREE.Group(), doorGroup: new THREE.Group(), propGroup: new THREE.Group(), charGroup: new THREE.Group(),
                   doors: [], counters: [], chars: [], blockers: [], landings: [], player: null, fxPulse: [], site: null, sky: null, setting: null, gallery: null,
                   rails: [], ramps: [], ride: null, finds: [], findLights: 0,
-                  portal: { drawn: false, ghost: null, aim: null, placed: {}, lastKey: '', hold: null, cross: null, issued: false, sight: null, fAt: 0, fFired: false, slot: 'a', ads: false, adsK: 0, vm: null },
+                  portal: { drawn: false, ghost: null, aim: null, placed: {}, lastKey: '', hold: null, cross: null, issued: false, sight: null, fAt: 0, fFired: false, slot: 'a', vm: null },
                   tickers: [], propLights: Math.max(0, HQ_PROP_LIGHT_MAX - HQ_BATTLE_ROOM_LIGHTS), props: [], focus: null, tabletops: [],
                   keys: {}, drag: null, lastDragAt: 0, fp: false, paused: true, ready: false, t0: 0, lastMs: 0, lastDebug: 0,
                   cam: { yaw: 0, pitch: 0, dist: 0, init: false }, targetKey: '', w: 0, h: 0, dirty: false };
@@ -48412,7 +48400,7 @@ const ThreeRenderer = (function () {
             gallery: null,   /* THE GALLERY (9.2 stage 2, 2026-09-15 rev 20): the box room's two-floor frame (_hqGalleryFrame), read by _hqSurface / _hqAirOK / _hqCamBlocked / _hqBlockerFloor */
             rails: [], ramps: [], ride: null,   /* SKATEBOARDING (9.8, 2026-09-15): THE PARK RULE's registers (every builder pushes its rails / ramps) and the rider (_hqRideArm) */
             finds: [], findLights: 0,   /* THE FINDS (9.1, 2026-09-15): the takeable objects standing in the room (_hqPlaceFinds) and the count of their point lights */
-            portal: { drawn: false, ghost: null, aim: null, placed: {}, lastKey: '', hold: null, cross: null, issued: !!(opts.portal && opts.portal.issued), sight: null, fAt: 0, fFired: false, slot: (opts.portal && (opts.portal.slot === 'b')) ? 'b' : 'a', ads: false, adsK: 0, vm: null },   /* rev 4: `slot` = the selector (A first), `ads` / `adsK` = the sights, `vm` = the first-person viewmodel */   /* THE DOOR GUN (9.5, rev 13; rev 2 2026-09-15: `hold` = the mouth you came out of, `cross` = the entry's speed): the drawn state, the ghost, the last aim, the placed door records by slot */
+            portal: { drawn: false, ghost: null, aim: null, placed: {}, lastKey: '', hold: null, cross: null, issued: !!(opts.portal && opts.portal.issued), sight: null, fAt: 0, fFired: false, slot: (opts.portal && (opts.portal.slot === 'b')) ? 'b' : 'a', vm: null },   /* rev 4: `vm` = the first-person viewmodel; rev 5: `slot` = the LAST button pressed (the sights + the selector are gone — LEFT = A, RIGHT = B) */   /* THE DOOR GUN (9.5, rev 13; rev 2 2026-09-15: `hold` = the mouth you came out of, `cross` = the entry's speed): the drawn state, the ghost, the last aim, the placed door records by slot */
             tickers: [], propLights: 0,   /* Phase 8 (2026-09-14): per-frame callbacks registered by procs (the orb, the torches, the shaft); the count of catalogue `light`s placed */
             props: [], focus: null,   /* props: { key, grp } per placed catalogue prop (the terminal's camera finds the CRT by key); focus: the screen push (_hqFocusScreen) */
             keys: {}, drag: null, lastDragAt: 0, fp: false, paused: false, ready: false, t0: performance.now(), lastMs: 0, lastDebug: 0,
@@ -48813,10 +48801,8 @@ const ThreeRenderer = (function () {
         portalCross: function (slot) { return _hqPortalHop(slot); },
         portalRemove: _hqPortalRemove,
         portalRecall: _hqPortalRecall,   /* rev 3: both doors back into the gun (the F hold; the pill) */
-        portalSelect: _hqPortalSelect,   /* rev 4: the selector — 'a' / 'b' / null = flip */
         portalSlot: function () { return (_hq && _hq.portal) ? (_hq.portal.slot || 'a') : 'a'; },
-        portalAds: _hqPortalAds,
-        portalFire: _hqPortalFire,
+        portalFire: _hqPortalFire,   /* rev 5: portalFire('a' | 'b') — LEFT CLICK is A, RIGHT CLICK is B */
         portalCarryFor: _hqPortalCarryFor,   /* rev 4: map.js hands the twin's row before a room change so the carry crosses with you */
         portalMapCarry: _hqPortalMapCarry,
         portalViewmodel: function () { return (_hq && _hq.portal) ? _hq.portal.vm : null; },   /* a probe's read (the first-person gun group) */
@@ -48877,7 +48863,7 @@ const ThreeRenderer = (function () {
             },
             playerGroup: function () { return (_hq && _hq.player && _hq.player.entry) ? _hq.player.entry.group : null; },
             press: function (key, on) { if (!_hq) return false; _hq.keys[key] = !!on; return true; },   /* a probe's write: hold a walker key (a headless window blurs on every evaluate and drops real key events) */
-            walk: function () { var H = _hq, pl = H && H.player; return pl ? { paused: !!H.paused, keys: Object.assign({}, H.keys), fp: !!H.fp, x: pl.x, y: pl.y, z: pl.z, air: !!pl.air, vy: pl.vy || 0, fitFail: H.portal && H.portal.fitFail, mvx: pl.mvx || 0, mvz: pl.mvz || 0, velX: pl.velX || 0, velZ: pl.velZ || 0, drawn: !!(H.portal && H.portal.drawn), slot: H.portal && H.portal.slot, adsK: H.portal && H.portal.adsK, camYaw: H.cam.yaw } : null; },   /* a probe's read: the walker's frame (THE CARRY, the keys, the pause) */   /* a probe's read: the walker's group (turn it to photograph the held gun from the front) */
+            walk: function () { var H = _hq, pl = H && H.player; return pl ? { paused: !!H.paused, keys: Object.assign({}, H.keys), fp: !!H.fp, x: pl.x, y: pl.y, z: pl.z, air: !!pl.air, vy: pl.vy || 0, fitFail: H.portal && H.portal.fitFail, mvx: pl.mvx || 0, mvz: pl.mvz || 0, velX: pl.velX || 0, velZ: pl.velZ || 0, drawn: !!(H.portal && H.portal.drawn), slot: H.portal && H.portal.slot, camYaw: H.cam.yaw } : null; },   /* a probe's read: the walker's frame (THE CARRY, the keys, the pause) */   /* a probe's read: the walker's group (turn it to photograph the held gun from the front) */
             chars: function () {
                 if (!_hq) return [];
                 return _hq.chars.map(function (ch) {

@@ -275,7 +275,7 @@ test('THE PARK RULE\'s registers: the catalogue rails / ramps, the garage\'s hal
 
 test('THE SOURCE SITES: the renderer (the keys, the hand-off, the pose, the API, the door landing, the deck GLB), map.js (the issue, the beats, the books, the pill, the officer), index.html, the CSS, audio.js, MODEL_INDEX; nothing on state, nothing relayed', () => {
     assert.ok(/if \(k === 'arrowup'\) return 'up';/.test(TR) && /if \(k === 'arrowleft'\) return 'left';/.test(TR), 'the arrows are their own keys');
-    assert.ok(/k === 'e' \|\| k === 'b' \|\| k === 'v' \|\| k === 'f' \|\| k === 'r' \|\| k === '1' \|\| k === '2' \|\| k === 'q' \|\| k === 'p'\) return k;/.test(TR), 'B is a walker key (before V, so the door gun\'s and P\'s pins hold; rev 4 added R / 1 / 2 for the selector)');
+    assert.ok(/k === 'e' \|\| k === 'b' \|\| k === 'v' \|\| k === 'f' \|\| k === 'q' \|\| k === 'p'\) return k;/.test(TR), 'B is a walker key (before V, so the door gun\'s and P\'s pins hold; the door gun\'s rev 5 dropped R / 1 / 2)');
     assert.ok(/if \(k === 'b'\) \{ e\.preventDefault\(\); _hqRideToggle\(\); return; \}/.test(TR), 'B toggles');
     assert.ok(/\(k\.d \|\| k\.right\) \? 1 : 0\) - \(\(k\.a \|\| k\.left\) \? 1 : 0\)/.test(TR) && /\(k\.w \|\| k\.up\) \? 1 : 0/.test(TR), 'the walker reads the arrows as WASD');
     assert.ok(/if \(H\.ride && H\.ride\.on\) \{ _hqTickRide\(dt\); return; \}/.test(TR), 'the hand-off at the top of the walker\'s tick');

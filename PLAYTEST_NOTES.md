@@ -10681,7 +10681,8 @@ is the same harness (the npm mirror, the stand-in textures) plus every GLB the r
 <X>.glb` → `rigged_animations/Assets_Models_<X>.glb` (the UAL / MAL libraries — the walker is POSED), `Assets/Models/
 charactercreation/<f>` → `charactercreation/<f>` (the avatar is forced to the creator base: `EW_HQ_AVATAR = { race:
 'homosapien', gender: 'male', appearance }` — the cast GLBs are R2-only), `Assets/door/models/<f>` → `doors/<f>` (the
-kit + the ray gun). Two headless truths it works around: (1) `requestPointerLock` is stubbed on init — a refused lock
+kit + the first ray gun; rev 5's gun, `Meshy_AI__0916054803_texture.glb`, is served from the REPO ROOT — the `path.join(REPO, base)`
+fallback — since it lives in Assets/misc/ on R2). Two headless truths it works around: (1) `requestPointerLock` is stubbed on init — a refused lock
 fired `pointerlockchange`, THE PAUSE rule (C-28) read it as the eaten ESC and opened the pause menu over every shot;
 (2) a headless window BLURS on every `page.evaluate` and `H.onBlur` clears the keys, so real key events walk one frame
 — the probe holds a key through `hq.dev.press(key, on)` (a probe-only write) and re-presses it on every sample.

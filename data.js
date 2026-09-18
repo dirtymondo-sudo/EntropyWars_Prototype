@@ -18729,12 +18729,16 @@ const DOOR_HQ = {
         wet_floor_sign:    { file: 'Meshy_AI_a_yellow_wet_floor_sign_0903105220_texture.glb',         h: 0.72, foot: 0.22 },
         mop_bucket:        { file: 'Meshy_AI_a_yellow_mop_bucket_0903105455_texture.glb',             h: 0.90, foot: 0.30 },
         mop:               { file: 'Meshy_AI_a_mop_0903105505_texture.glb',                           h: 1.45, foot: 0 },
-        /* THE DOOR GUN (HQ plan 9.5 rev 3, 2026-09-16): the user's retro ray gun that shoots doors — the
-           walker holds it drawn (F), the Door Agent carries it in every battle (sprites.js `hold`).
-           Measured off the GLB: 1.0 long on X, 0.615 tall, 0.325 wide — a Meshy long-on-X prop, the
-           MUZZLE read as −X like the cannon / the guns (unmeasured: a barrel that lands backward is
-           `HQ_PORTAL_RULES.gun.rot[1]` ± 180, one field). `span` = its real length. MODEL_INDEX §3b. */
-        door_gun:          { file: 'Meshy_AI_a_retro_gun_that_shoo_0916054449_texture.glb',             span: 0.62, foot: 0, gun: true },
+        /* THE DOOR GUN (HQ plan 9.5 rev 3, 2026-09-16; rev 5 2026-09-18 — the user's NEW model): the ray gun
+           that shoots doors — the walker holds it drawn (F), the Door Agent carries it in every battle
+           (sprites.js `hold`). rev 5: the user's Meshy_AI__0916054803 from the SHARED misc bucket (`base:
+           'misc'`). MEASURED off the GLB (the vertex profile along X): 1.0 long on X, 0.744 tall, 0.30 wide,
+           8.3k tris — the GRIP hangs at +X (its bottom at y −0.37 over x 0.2..0.4), the flared MUZZLE dish at
+           −X (y −0.15..0.37) — the OPPOSITE of the first gun (grip −X), so `HQ_PORTAL_RULES.gun.turn` 180
+           pre-turns the model in every holder to put the barrel on +X (the ONE field if a future gun lands
+           backward). `span` = its real length. The first gun (Meshy_AI_a_retro_gun_that_shoo_0916054449,
+           Assets/door/models/) stays in the bucket unreferenced. MODEL_INDEX §3b. */
+        door_gun:          { file: 'Meshy_AI__0916054803_texture.glb',                                  base: 'misc', span: 0.62, foot: 0, gun: true },
         wall_clock:        { file: 'Meshy_AI_a_clock_0903110243_texture.glb',                         h: 0.50, foot: 0, wall: true, mount: 3.05 },
         /* 2026-09-12 from the SHARED misc bucket (`base: 'misc'` → Assets/misc/,
            three-renderer.js _hqModelUrl): the moving-maps batch's pieces that
@@ -35414,7 +35418,9 @@ function hqTapeShelf(profile) {
    the door lies FLAT in the surface's own plane; never a fluid cell, never
    inside a blocker). LEFT CLICK files THRESHOLD A, RIGHT CLICK files
    THRESHOLD B — two buttons, and the pair is always two colours (A cyan, B
-   amber). Walk into one, come out of the other along ITS normal: a floor
+   amber) — rev 5 (2026-09-18, straight from Portal: blue on the left button,
+   orange on the right) put the two buttons BACK after rev 4's one-trigger +
+   aim-down-sights detour; there is no ADS and no selector any more. Walk into one, come out of the other along ITS normal: a floor
    hatch with its twin on the ceiling right above it is a fall that never
    lands (the renderer's `_hqTickPortalCross` / `_hqPortalHop`). Portal's rule: the
    pair is always the LAST TWO placed — an empty slot fills first, then the
@@ -35440,7 +35446,9 @@ const HQ_PORTAL_RULES = {
     free: true,        // standard issue — hqPortalStatus reports it issued for everyone
     cost: 0,           // Keys the Quartermaster asks for the issue (0 while free)
     rank: 1,           // the clearance the issue asks for (L1 = DOORMAT while free)
-    reach: 14,         // metres the aim ray travels before it gives up
+    reach: 160,        // metres the aim ray travels before it gives up — rev 5 (2026-09-18, the user: "I should see the
+                       // preview on a valid surface no matter how far away"): the whole of Disaster City (112 × 88 m; the
+                       // march's step GROWS with the distance — three-renderer.js _hqPortalAim — so it costs what 14 m did)
     minGap: 1.6,       // metres between the two placed doors
     minFromWalker: 1.2,// metres from the officer's own feet (a door under you is a door you are standing in)
     footprint: 0.62,   // half the frame's width the surface must carry either side of the hit
@@ -35455,17 +35463,22 @@ const HQ_PORTAL_RULES = {
     surfaces: ['floor', 'wall', 'ceiling'],
     colors: { a: '#49b0ff', b: '#ff8a2b' },
     colorNames: { a: 'CYAN', b: 'AMBER' },
-    /* rev 4 (2026-09-16, the user's question — "right click is aim in a shooter"): ONE trigger.
-       LEFT CLICK shoots the SELECTED threshold (the ghost wears its colour), RIGHT CLICK (held) is
-       AIM DOWN SIGHTS — the lens narrows, the mouse slows, the viewmodel comes to the centre —
-       R flips the selector A ⇄ B, 1 / 2 pick one outright, and every shot advances the selector
-       to the OTHER threshold so two clicks in a row lay a pair. `a` / `b` = how you get each one. */
-    buttons: { fire: 'LEFT CLICK', aim: 'RIGHT CLICK', select: 'R', a: '1 · LEFT CLICK', b: '2 · LEFT CLICK' },
-    ads: { fov: 34, sens: 0.55, ms: 160, boom: 1.4 },   // aim down sights: the lens (deg), the mouse gain, the ease, the third-person boom (m)
+    /* rev 5 (2026-09-18, the user: "get rid of right click to aim down sights, go back to left click
+       for one door and right click for the other" — Portal's own buttons): LEFT CLICK shoots THRESHOLD A
+       (cyan), RIGHT CLICK shoots THRESHOLD B (amber). No selector, no sights: rev 4's R / 1 / 2 and the
+       ADS are gone (the ghost is the ONE preview, painted in the verdict's colour, and either button
+       moves ITS OWN door). `a` / `b` = how you get each one. */
+    buttons: { a: 'LEFT CLICK', b: 'RIGHT CLICK' },
     /* THE VIEWMODEL (rev 4): in FIRST PERSON the gun is drawn in the officer's own gloved hand under
        the eye like any shooter — `pos` / `rot` = the hip hold (metres right / up / forward of the eye,
-       degrees), `adsPos` the sighted hold, `bob` the walk sway, `kick` the recoil push (m). */
-    viewmodel: { pos: [0.22, -0.19, 0.42], rot: [0, 5, 0], adsPos: [0.0, -0.12, 0.4], bob: 0.012, kick: 0.06, glove: '#15161a', cuff: '#2a2c33' },
+       degrees), `bob` the walk sway, `kick` the recoil push (m). */
+    viewmodel: { pos: [0.22, -0.19, 0.42], rot: [0, 5, 0], bob: 0.012, kick: 0.06, glove: '#15161a', cuff: '#2a2c33' },
+    /* THE LEAF (rev 5, the user: "the door should be swung open more so it doesn't look weird when I go
+       through it from the side"): a placed WALL door stands OPEN at `leafOpenDeg` from its plane — near
+       flat against the wall beside the frame — from the moment it lands (`leafAlways`; the room's own
+       doors still open on the press-in at their 83°). A flat hatch stood open already. */
+    leafOpenDeg: 150,
+    leafAlways: true,
     /* THE CARRY (rev 4): speed goes in, speed comes out. The walker keeps a momentum vector through
        a pair (`_hqPortalMapCarry`: the entry velocity in the entry door's frame, mirrored out of the
        twin's), never below `minOut` m/s out of a wall door (a walk-in is a walk-out), capped at `max`,
@@ -35480,7 +35493,7 @@ const HQ_PORTAL_RULES = {
        the ONE place to tune a gun that sits wrong), `muzzle` the barrel's end in
        the gun's own frame (metres from its centre; +X = the long axis) — the
        laser sight, the shot and the recall all leave from it. */
-    gun: { key: 'door_gun', bone: 'RightHand', span: 0.36, pos: [0, 0.05, 0.06], rot: [0, -90, 90], muzzle: [0.5, 0.08, 0] },   // rev 4: MEASURED (the offline probe): the barrel down the fingers (+Y), the top away from the palm's back (−Z), the grip in the palm; span 0.36 m (0.62 was a rifle)
+    gun: { key: 'door_gun', bone: 'RightHand', span: 0.36, pos: [0, 0.05, 0.06], rot: [0, -90, 90], turn: 180, muzzle: [0.5, 0.11, 0] },   // rev 4: MEASURED (the offline probe): the barrel down the fingers (+Y), the top away from the palm's back (−Z), the grip in the palm; span 0.36 m (0.62 was a rifle). rev 5: `turn` (degrees about the gun's own up, applied to the INSTANCE in every holder + the viewmodel) — the new model's grip hangs at +X, so 180 puts its barrel on +X where the muzzle / the glove / the shot expect it; `muzzle` y 0.11 = the new barrel's centre line
     /* THE SHOT: the door flies out of the gun as a folded frame and UNFOLDS on
        the surface — `msPerM` × the distance, clamped to [minMs, maxMs]; the
        recoil kick on the camera (radians) decays over `kickMs`. */

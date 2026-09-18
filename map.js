@@ -517,9 +517,8 @@
                         pp.style.display = '';
                         pp.classList.toggle('drawn', drawn);
                         pp.classList.toggle('paired', !!ps.paired);
-                        const sel = (() => { try { return ThreeRenderer.hq.portalSlot(); } catch (e) { return 'a'; } })();   // rev 4: the selector on the pill while drawn
-                        pp.innerHTML = `⌂ THRESHOLD <b>${ps.a ? 'A' : '·'}${ps.b ? 'B' : '·'}</b>${drawn ? ' · DRAWN · NEXT ' + (sel === 'b' ? 'B ■' : 'A ●') : ''}`;
-                        pp.title = 'THE PORTABLE THRESHOLD — F draws it, LEFT CLICK shoots the selected threshold (R flips A / B, RIGHT CLICK aims), Q holsters. Walk into one, step out of the other. ' + (ps.a ? 'A in ' + ((DOOR_HQ.rooms[ps.a.room] || {}).label || ps.a.room) + '. ' : '') + (ps.b ? 'B in ' + ((DOOR_HQ.rooms[ps.b.room] || {}).label || ps.b.room) + '. ' : '') + 'Cleared on the next arrival from Play.';
+                        pp.innerHTML = `⌂ THRESHOLD <b>${ps.a ? 'A' : '·'}${ps.b ? 'B' : '·'}</b>${drawn ? ' · DRAWN · L = A ● · R = B ■' : ''}`;   // rev 5: the two buttons on the pill while drawn (no selector)
+                        pp.title = 'THE PORTABLE THRESHOLD — F draws it, LEFT CLICK shoots THRESHOLD A, RIGHT CLICK shoots THRESHOLD B, Q holsters. Walk into one, step out of the other. ' + (ps.a ? 'A in ' + ((DOOR_HQ.rooms[ps.a.room] || {}).label || ps.a.room) + '. ' : '') + (ps.b ? 'B in ' + ((DOOR_HQ.rooms[ps.b.room] || {}).label || ps.b.room) + '. ' : '') + 'Cleared on the next arrival from Play.';
                     } else { pp.style.display = 'none'; pp.innerHTML = ''; }
                 }
                 /* SKATEBOARDING (plan 9.8): the board on the strip — the issue and the best line; click = B */
@@ -1258,7 +1257,7 @@
             if (k) html += row('KEYS', `${k.pickups | 0} RECOVERED${k.issued ? ' + ' + k.issued + ' ISSUED' : ''}`, `${k.keys | 0}`);
             if (mc) html += row('STABILIZED', 'THRESHOLDS WON BY EVERY WIN CONDITION', `${mc.mastered} / ${mc.total}`, mc.mastered === mc.total ? 'stabilized' : 'open');
             { const el = (typeof window.hqEncounterLog === 'function') ? window.hqEncounterLog(profile) : null; if (el && el.count) html += row('ENCOUNTERS', `${el.wins} HELD · ${el.losses} EXITED${el.last ? ' · LAST ' + _hqEsc(String(el.last.race || '').toUpperCase()) + (el.last.room && typeof window.hqEncounterRoomLabel === 'function' && window.hqEncounterRoomLabel(el.last.room) ? ' IN ' + _hqEsc(window.hqEncounterRoomLabel(el.last.room)) : '') + (el.last.won ? ' (HELD)' : ' (EXITED)') : ''}`, String(el.count), el.last && el.last.won ? 'stabilized' : 'open'); }
-            { const ps = _hqPortalStatus(profile); if (ps && ps.issued) html += row('THE THRESHOLD', 'PORTABLE · DOOR ISSUE · F DRAWS · LEFT CLICK SHOOTS · R FLIPS A ● / B ■ · RIGHT CLICK AIMS · Q HOLSTERS · HOLD F RECALLS', `${ps.a ? 'A' : '·'} ${ps.b ? 'B' : '·'}`, ps.paired ? 'stabilized' : 'open'); }
+            { const ps = _hqPortalStatus(profile); if (ps && ps.issued) html += row('THE THRESHOLD', 'PORTABLE · DOOR ISSUE · F DRAWS · LEFT CLICK = A ● · RIGHT CLICK = B ■ · Q HOLSTERS · HOLD F RECALLS', `${ps.a ? 'A' : '·'} ${ps.b ? 'B' : '·'}`, ps.paired ? 'stabilized' : 'open'); }
             { const st = _hqSkateStatus(profile); if (st && st.issued) html += row('THE BOARD', st.best ? `BEST LINE · ${_hqEsc(st.best.text)} · ${st.lines | 0} LANDED · ${st.bails | 0} BAILS` : `B DROPS IT · NOTHING LANDED YET · ${_hqEsc(st.label)}`, st.best ? (st.best.score | 0).toLocaleString() : '—', st.best ? 'stabilized' : 'open');
               /* DISASTER CITY (2026-09-17): the best lap per circuit (hqSkateBank laps — local) */
               if (st && st.issued && st.laps) Object.keys(st.laps).forEach(rid => { const L = st.laps[rid], r = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.rooms[rid]) || null; if (L && L.ms) html += row('THE CIRCUIT', `${_hqEsc((r && r.label) || rid)} · BEST LAP · ${L.date || ''}`, _hqLapFmt(L.ms), 'stabilized'); }); }   // SKATEBOARDING (9.8)
@@ -1959,11 +1958,9 @@
                 _hqFillStrip(_hqProfile());
                 const h = _hqEl('hqHints'); if (h) h.classList.toggle('portal', !!ev.on);
                 try { playSfx(ev.on ? 'uiButtonConfirm' : 'uiCursorMove'); } catch (e) {}
-                if (ev.on) _hqToast('<b>THE PORTABLE THRESHOLD</b><span>ANY SURFACE — FLOOR · WALL · CEILING · LEFT CLICK SHOOTS ' + _hqPortalSlotWord(ev.slot) + ' · R FLIPS A ● / B ■ · RIGHT CLICK AIMS · Q HOLSTERS · HOLD F = RECALL BOTH</span>', 2800);
+                /* rev 5 (2026-09-18, Portal's buttons): LEFT CLICK = A (cyan ●), RIGHT CLICK = B (amber ■) — no selector, no sights */
+                if (ev.on) _hqToast('<b>THE PORTABLE THRESHOLD</b><span>ANY SURFACE — FLOOR · WALL · CEILING · LEFT CLICK = A ● · RIGHT CLICK = B ■ · Q HOLSTERS · HOLD F = RECALL BOTH</span>', 2800);
             }
-            /* THE SELECTOR (rev 4): the ghost changed colour — say which threshold the next shot lays (an auto-advance after a shot stays quiet) */
-            else if (ev.kind === 'select') { _hqFillStrip(_hqProfile()); if (!ev.auto) _hqToast('<b>' + _hqPortalSlotWord(ev.slot) + ' SELECTED</b><span>LEFT CLICK LAYS IT · R FLIPS · 1 / 2 PICK</span>', 1400); }
-            else if (ev.kind === 'ads') { /* the sights: nothing to say */ }
             else if (ev.kind === 'refused') _hqPortalRefused(ev.reason);
             else if (ev.kind === 'unissued') _hqPortalRefused('unissued');
             /* THE RECALL (rev 3, D3c): the renderer pulled both doors home — clear the pair on the record in one transaction */
@@ -2350,7 +2347,7 @@
                 PS.saveProfile(idx, p);
                 try { playSfx('levelUp'); } catch (e) {}
                 try { if (typeof playDoorSfx === 'function') playDoorSfx('doorStamp', { volume: 0.6 }); } catch (e) {}
-                _hqToast(`<b>PORTABLE THRESHOLD · ISSUED</b><span>−${r.cost} KEYS · F DRAWS IT · LEFT CLICK SHOOTS · R FLIPS A / B · RIGHT CLICK AIMS</span>`, 4200);
+                _hqToast(`<b>PORTABLE THRESHOLD · ISSUED</b><span>−${r.cost} KEYS · F DRAWS IT · LEFT CLICK = A · RIGHT CLICK = B</span>`, 4200);
                 _hqFillStrip(p);
                 /* the walker learns it without a rebuild: the renderer's own flag */
                 try { if (ThreeRenderer.hq && ThreeRenderer.hq.active()) ThreeRenderer.hq.portalIssued(true); } catch (e) {}
