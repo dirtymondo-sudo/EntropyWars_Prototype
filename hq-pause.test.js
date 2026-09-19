@@ -144,3 +144,11 @@ test('index.html carries the overlay and the hint; the CSS stacks it over the pa
     assert.match(css, /\.hq-pause \{[^}]*cursor: default;[^}]*pointer-events: auto;/, 'the cursor is ours in the menu');
     assert.match(css, /\.hq-pause-settings\.mm-settings-body \{ max-width: none;/);
 });
+
+test('every _hqPause*Html / _hqParty* helper the pause menu CALLS is DEFINED in map.js (2026-09-19: the head + nav builders were dropped in an upload and the overlay rendered blank)', () => {
+    const src = fs.readFileSync(path.join(__dirname, 'map.js'), 'utf8');
+    const called = new Set((src.match(/\b(_hqPause[A-Za-z]*Html|_hqParty[A-Za-z]+|_hqPause[A-Za-z]+)\s*\(/g) || []).map(m => m.replace(/\s*\($/, '')));
+    const missing = [...called].filter(fn => !new RegExp('function\\s+' + fn + '\\s*\\(|(?:const|let|var|window\\.)\\s*' + fn + '\\s*=').test(src));
+    assert.deepStrictEqual(missing, [], 'called but never defined: ' + missing.join(', '));
+    ['_hqPauseHeadHtml', '_hqPauseNavHtml', '_hqPausePartyHtml', '_hqPauseMemberHtml', '_hqPauseOfficerHtml'].forEach(fn => assert.ok(src.includes('function ' + fn + '('), fn));
+});

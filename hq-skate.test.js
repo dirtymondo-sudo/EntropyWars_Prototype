@@ -170,9 +170,8 @@ test('THE RIDE: a push rolls where the camera looks, friction slows it, S brakes
     assert.ok(c.R().v <= R.maxV + 1e-9, 'capped');
     /* THE OLLIE + THE KICKFLIP */
     c.step({ space: true }, 1 / 60, 1);
-    assert.ok(!c.pl.air && c.R().crouchOn && c.R().crouch > 0, 'rev 4: the press CROUCHES, nothing leaves the ground');
-    c.step({}, 1 / 60, 1);   // the release pops
-    assert.ok(c.pl.air && c.pl.vy > R.ollieTapV - 0.5 && c.pl.vy <= R.ollieTapV + 0.4, 'airborne near the TAP speed on the release (one frame of gravity in): ' + c.pl.vy);
+    assert.ok(c.pl.air && c.pl.vy > R.ollieTapV - 0.5 && c.pl.vy <= R.ollieTapV + 0.4 && c.R().holdOn, 'rev 5: the PRESS jumps at the tap speed and the hold is armed: ' + c.pl.vy);
+    c.step({}, 1 / 60, 1);   // the release ends the hold
     assert.ok(c.events().some(e => e.kind === 'ollie'));
     c.step({ left: true }, 1 / 60, 1); assert.equal(c.R().trick.id, 'kickflip');
     let n = 0; while (c.pl.air && n++ < 300) c.step({}, 1 / 60, 1);
@@ -316,7 +315,7 @@ test('THE SOURCE SITES: the renderer (the keys, the hand-off, the pose, the API,
     assert.ok(/flick: function \(dx, dy, btn\)/.test(TR), 'API flick');
     assert.ok(!/_hqRideStartTrick\(R, 'roll'\)/.test(TR.slice(TR.indexOf('IN THE AIR: the tricks'), TR.indexOf('IN THE AIR: the tricks') + 3000)) || true, 'W is air control');
     for (const k of ['skateCharge', 'skatePop', 'skateTrick', 'skateSick']) { assert.ok(MP.indexOf("'" + k + "'") > 0, 'map.js plays ' + k); assert.ok(new RegExp('            ' + k + '\\(ctx, t, out, vol\\) \\{').test(AU), 'audio.js recipe ' + k); assert.ok(new RegExp(k + ': 0\\.[0-9]+').test(AU), 'audio.js gain ' + k); }
-    assert.ok(/HOLD SPACE crouch, RELEASE pop/.test(IX) && /HOLD MOUSE \+ FLICK = tricks/.test(IX), 'the hint says so');
+    assert.ok(/SPACE jump \(hold = bigger\)/.test(IX) && /HOLD MOUSE \+ FLICK = tricks/.test(IX), 'the hint says so');
     for (const k of ['skatePush', 'skateOllie', 'skateLand', 'skateGrind', 'skateBail', 'skateBank']) { assert.ok(MP.indexOf("'" + k + "'") > 0, 'map.js plays ' + k); assert.ok(new RegExp('            ' + k + '\\(ctx, t, out, vol\\) \\{').test(AU), 'audio.js recipe ' + k); assert.ok(new RegExp(k + ': 0\\.[0-9]+').test(AU), 'audio.js gain ' + k); }
     assert.ok(/const skp = _hqEl\('hqSkate'\);/.test(MP) && /window\._hqSkateToggle = function/.test(MP), 'the pill');
     assert.ok(/row\('THE BOARD'/.test(MP), 'the OFFICER sheet');
@@ -383,33 +382,29 @@ test('grinding updates the visible rider position and facing on curved rails', (
 });
 
 /* ── rev 2 (2026-09-15): the ride stance, skating backwards, the occasional kick, hold to jump ── */
-test('REV 4 — THE CROUCH: SPACE held crouches (nothing leaves the ground, the meter charges over crouchS), the RELEASE pops — a tap is a hop, a full crouch clears the box; a release on the beat is a PERFECT POP on the line; a crouch camped past crouchMaxHoldS deflates; the bail drops the crouch', () => {
+test('REV 5 — HOLD TO JUMP (the user: "a normal jump with holding it to jump bigger; no crouch and release"): the press leaves the ground at once, SPACE held keeps lifting for ollieHoldS — a tap is a hop, a full hold clears the box, a longer hold adds nothing; nothing crouches', () => {
     function apex(holdFrames) {
         const c = sandbox(); c._hqRideToggle(true); c._hq.cam.yaw = 0;
         c.step({ w: true }, 1 / 60, 40);
         let top = 0, n = 0;
-        for (let i = 0; i < holdFrames; i++) c.step({ space: true }, 1 / 60, 1);
-        assert.ok(!c.pl.air && c.R().crouchOn, 'crouched on the ground while held');
-        c.step({}, 1 / 60, 1);
-        assert.ok(c.pl.air, 'airborne on the release');
+        c.step({ space: true }, 1 / 60, 1);
+        assert.ok(c.pl.air, 'airborne on the PRESS (no crouch)'); assert.ok(!c.R().crouchOn && !c.R().crouch, 'nothing crouches');
+        for (let i = 1; i < holdFrames; i++) { c.step({ space: true }, 1 / 60, 1); top = Math.max(top, c.pl.y); }
         while (c.pl.air && n++ < 400) { c.step({}, 1 / 60, 1); top = Math.max(top, c.pl.y); }
         assert.ok(!c.pl.air, 'landed'); assert.ok(!c.events().some(e => e.kind === 'bail'), 'clean');
         return { top, c };
     }
-    const tap = apex(1).top, half = apex(Math.round(R.crouchS * 60 / 2)).top, fullR = apex(Math.round(R.crouchS * 60) + 2), full = fullR.top;
+    const tap = apex(1).top, half = apex(Math.round(R.ollieHoldS * 60 / 2)).top, fullR = apex(Math.round(R.ollieHoldS * 60) + 2), full = fullR.top;
     assert.ok(tap > 0.45 && tap < 0.75, 'a tap is a hop: ' + tap);
-    assert.ok(half > tap + 0.2 && full > half + 0.2, 'the longer the crouch the higher: ' + tap + ' < ' + half + ' < ' + full);
-    assert.ok(full > 1.5 && full < 2.0, 'a full crouch clears a box: ' + full);
-    const ol = fullR.c.events().find(e => e.kind === 'ollie'); assert.ok(ol && ol.perfect && ol.charge === 1, 'released on the beat = perfect: ' + JSON.stringify(ol));
-    const bank = fullR.c.events().find(e => e.kind === 'bank'); assert.ok(bank && bank.text === R.tricks.pop.label && bank.score === R.tricks.pop.pts, 'PERFECT POP banked on its own: ' + JSON.stringify(bank));
-    const ch = fullR.c.events().filter(e => e.kind === 'charge'); assert.ok(ch.length >= 5 && ch.some(e => e.max && e.at) && ch[0].k < 0.2, 'the meter beats: ' + ch.length);
-    /* rev 4b (the user: "hold down space indefinitely"): held three seconds past the top it is STILL the full pop, only the perfect window is missed */
-    const camp = apex(Math.round((R.crouchS + 3.0) * 60));
-    assert.ok(Math.abs(camp.top - full) < 0.05, 'a long hold is the full pop: ' + camp.top + ' vs ' + full);
-    assert.ok(!camp.c.events().some(e => e.kind === 'ollie' && e.perfect) && !camp.c.events().some(e => e.kind === 'charge' && e.over), 'no perfect (the beat was missed), never a deflate');
-    /* the bail drops a crouch */
-    const c = sandbox(); c._hqRideToggle(true); c.step({ w: true }, 1 / 60, 40); c.step({ space: true }, 1 / 60, 5);
-    c._hqRideBail(c.R(), c.pl, 'unfinished'); assert.ok(!c.R().crouchOn && c.R().crouch === 0, 'the bail drops the crouch');
+    assert.ok(half > tap + 0.2 && full > half + 0.2, 'the longer the hold the higher: ' + tap + ' < ' + half + ' < ' + full);
+    assert.ok(full > 1.4 && full < 2.0, 'a full hold clears a box: ' + full);
+    assert.ok(fullR.c.events().some(e => e.kind === 'ollie'), 'the ollie beat');
+    assert.ok(!fullR.c.events().some(e => e.kind === 'charge'), 'no meter beats — the crouch is gone');
+    const camp = apex(Math.round((R.ollieHoldS + 3.0) * 60));
+    assert.ok(Math.abs(camp.top - full) < 0.05, 'a longer hold adds nothing: ' + camp.top + ' vs ' + full);
+    /* the source: the press jumps, the hold lifts in the air branch, no crouch branch */
+    assert.ok(/k\.space && !pl\._jumpLatch\) \{ pl\.air = true; pl\.vy = S\.ollieTapV/.test(TR) && /R\.holdT < \(S\.ollieHoldS/.test(TR), 'the hold in the source');
+    assert.ok(!/if \(!noCtl && k\.space\) \{\s*if \(!R\.crouchOn\)/.test(TR), 'the crouch branch is gone');
 });
 test('REV 4 — THE STICK: a flick\'s direction is the trick (LEFT the eight flips, RIGHT the spins and grabs); the travel accumulates only in the air and fires at flickPx, then resets so a second flick chains; on the ground the travel is thrown away; a varial spins the deck and lands flat; a grab is a timed trick', () => {
     const c = sandbox(); c._hqRideToggle(true);
@@ -428,14 +423,14 @@ test('REV 4 — THE STICK: a flick\'s direction is the trick (LEFT the eight fli
     c._events.length = 0;
     assert.equal(c._hqRideStickDown(0), true); assert.ok(c.R().stick && c.R().stick.btn === 0);
     assert.equal(c._hqRideStickMove(-30, 0), false, 'on the ground the stick does not own the mouse'); assert.equal(c.R().stick.dx, 0);
-    c.step({ w: true }, 1 / 60, 30); c.step({ space: true }, 1 / 60, 40); c.step({}, 1 / 60, 1); assert.ok(c.pl.air);   // a full crouch: air enough for two flips
+    c.step({ w: true }, 1 / 60, 30); c.step({ space: true }, 1 / 60, 4); assert.ok(c.pl.air);   // rev 5: the press jumps — flicked on the way up, air enough for two flips
     assert.equal(c._hqRideStickMove(-20, 0), true, 'in the air the stick owns the mouse'); assert.equal(c.R().trick, null, 'under flickPx nothing fires');
     assert.equal(c._hqRideStickMove(-20, 0), true); assert.equal(c.R().trick.id, 'kickflip', 'over flickPx: the flick'); assert.equal(c.R().stick.dx, 0, 'reset for the next flick');
     c._hqRideStickMove(60, 0); c._hqRideStickMove(60, 0); assert.equal(c.R().queue.length, 0, 'rev 4b: the rest of the same wrist flick is thrown away (flickCoolMs) — ONE trick per flick');
     c.performance.now = () => 1000 + R.flickCoolMs + 5;
     c._hqRideStickMove(60, 0); assert.equal(c.R().queue.length, 1); assert.equal(c.R().queue[0].id, 'heelflip', 'a second flick after the cooldown chains');
     assert.ok(c.R().queue[0].ms > 0 && c.R().queue[0].ms <= R.tricks.heelflip.ms, 'the queued rotation is FITTED to the air left: ' + c.R().queue[0].ms);
-    const fl = c.events().filter(e => e.kind === 'flick'); assert.ok(fl.length === 2 && fl[1].n === fl[0].n + 1, 'the flick beat with its count (a PERFECT POP off the full crouch is already on the line): ' + JSON.stringify(fl.map(e => e.n)));
+    const fl = c.events().filter(e => e.kind === 'flick'); assert.ok(fl.length === 2 && fl[1].n === fl[0].n + 1, 'the flick beat with its count (rev 5: no perfect pop on the line): ' + JSON.stringify(fl.map(e => e.n)));
     c._hqRideStickUp(); assert.equal(c.R().stick, null);
     /* the varial: the deck spins half a turn while it flips, and lands flat */
     const v = sandbox(); v._hqRideToggle(true); v.step({ w: true }, 1 / 60, 30); v.step({ space: true }, 1 / 60, 14); v.step({}, 1 / 60, 1);
@@ -521,8 +516,8 @@ test('REV 2 — THE STANCE + THE CLIP: the ride clip is HQ_RIDE_CLIP (Idle_10) b
     assert.ok(/e\.model\.quaternion\.setFromEuler\(eul\)\.multiply\(qStance\)/.test(pose) && /setFromAxisAngle\(new THREE\.Vector3\(0, 1, 0\), R\.poseYaw\)/.test(pose), 'the stance inside the travel frame');
     assert.ok(/var riding = !\(R\.pushAnim > 0 \|\| R\.bailT > 0 \|\| R\.deckAway > 0\);/.test(pose) && /var poseT = !riding \? 0 : \(R\.fit \? R\.fit\.yaw : /.test(pose) && /function _hqRideFitStance/.test(TR), 'squared up for the stride; on the deck the stance is FITTED to the feet (rev 3)');
     const def = vm.runInContext(TR.slice(TR.indexOf('    var HQ_SKATE_DEFAULT = {'), TR.indexOf('\n    };', TR.indexOf('    var HQ_SKATE_DEFAULT = {')) + 7) + '; HQ_SKATE_DEFAULT', vm.createContext({}));
-    ['reverseMaxV', 'reversePushV', 'kickEvery', 'kickMinV', 'ollieTapV', 'stanceYaw', 'ollieMaxV', 'crouchS', 'popPerfectMs', 'airTurn', 'airAccel', 'flickPx', 'stickDeadPx', 'ranks', 'flickCoolMs', 'trickFitShare', 'trickFitMin', 'trickLateMin'].forEach(k => assert.ok(k in R && k in def, 'the key on both sides: ' + k));
-    assert.ok('ollieHoldS' in R && !('ollieHoldS' in def) && 'crouchMaxHoldS' in R && !('crouchMaxHoldS' in def), 'rev 4 / 4b: the held boost and the crouch deflate are RETIRED from the default (the table keeps the keys for old readers)');
+    ['reverseMaxV', 'reversePushV', 'kickEvery', 'kickMinV', 'ollieTapV', 'stanceYaw', 'ollieHoldS', 'ollieHoldAcc', 'ollieMaxV', 'crouchS', 'popPerfectMs', 'airTurn', 'airAccel', 'flickPx', 'stickDeadPx', 'ranks', 'flickCoolMs', 'trickFitShare', 'trickFitMin', 'trickLateMin'].forEach(k => assert.ok(k in R && k in def, 'the key on both sides: ' + k));
+    assert.ok('crouchMaxHoldS' in R && !('crouchMaxHoldS' in def), 'rev 4b: the crouch deflate is RETIRED from the default (the table keeps the key for old readers)');
     assert.ok(Math.abs(R.stanceYaw) === Math.PI / 2, 'sideways');
 });
 test('REV 3 — SEAMLESS: a rotation ≥ landGrace done at the touchdown lands (the late landing); a walk-off drop of any height is a landing, never a bail; the board carves from a crawl; W at cruise holds the speed without a stride; the table carries the rev 3 keys', () => {
@@ -531,7 +526,7 @@ test('REV 3 — SEAMLESS: a rotation ≥ landGrace done at the touchdown lands (
     /* the late landing: a kickflip pressed on the way down that is ~90 % done when the ground comes up */
     const c = sandbox(); c._hqRideToggle(true); c._hq.cam.yaw = Math.PI / 2;
     c.step({ w: true }, 1 / 60, 60);
-    c.step({ space: true }, 1 / 60, 1); c.step({}, 1 / 60, 1);   // rev 4: the press crouches, the release pops
+    c.step({ space: true }, 1 / 60, 1); c.step({}, 1 / 60, 1);   // rev 5: the press jumps
     let n = 0; while (c.pl.air && c.pl.y < 0.01 && n++ < 10) c.step({}, 1 / 60, 1);
     /* find the frame count of this arc first, then press the flip so that (ms left in the air) ≈ 0.9 × the flip's ms */
     const probe = sandbox(); probe._hqRideToggle(true); probe._hq.cam.yaw = Math.PI / 2; probe.step({ w: true }, 1 / 60, 60); probe.step({ space: true }, 1 / 60, 1); probe.step({}, 1 / 60, 1);

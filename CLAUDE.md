@@ -6044,3 +6044,20 @@ result-literal pins read `party: partyRes`. NOT built: levels / XP (the user's c
 party in the forge / a console crossing, gear or spell editing from the sheet (the forge still owns loadouts), a flee verb.
 UNSEEN LIVE (RULE #1c): the two grids at the pause frame's width, the armed card's glow, the replacement modal firing in a
 no-respawn TDM, the enemy's size against a five-man launch, the carried HP on the first frame, the cot's panel.
+
+## THE PAUSE MENU BACK + SKATEBOARDING rev 5 — HOLD TO JUMP (2026-09-19, local delivery)
+**THE BLANK PAUSE MENU**: the party upload dropped map.js `_hqPauseHeadHtml` / `_hqPauseNavHtml` (the
+overlay's title + vitals row and the command column) while `_hqPauseRender` still called them — a
+ReferenceError on the first line, nothing landed. Both are back (before `_hqPausePartyHtml`), and the
+render is FAULT-TOLERANT now: each section (head · nav · party / member · officer) renders inside its own
+try, a throw prints a DID NOT RENDER plate naming the error instead of a blank frame. hq-pause.test.js
+guards that every `_hqPause*Html` / `_hqParty*` the menu calls is defined. **SKATEBOARDING rev 5** (the
+user: "change the jumps back to a normal jump with holding it to jump bigger; no crouch and release"):
+rev 2's HOLD TO JUMP is the rule again — the PRESS leaves the ground at `ollieTapV` at once, SPACE held
+keeps lifting `ollieHoldAcc` for `ollieHoldS` (the air branch), a tap ≈ 0.6 m, a full hold ≈ 1.65 m;
+`_hqRideAirLeft` counts the lift still to come from a held jump, so a flick thrown on the way up is judged
+against the jump it will be. The rev 4 crouch / `_hqRidePop` / the `#hqOllie` meter / PERFECT POP are
+retired (the function and the element stand unused; `ollieMaxV` / `crouchS` / `popPerfectMs` are dead
+keys in `HQ_SKATE_RULES`, `ollieHoldS` / `ollieHoldAcc` live). hq-skate.test.js's crouch test is the
+hold test. `npm run test:quick` + hq-skate / hq-pause / hq-party green. Unseen live (RULE #1c): the
+pause frame with the party grids, the hold's feel at 60 fps.

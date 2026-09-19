@@ -1169,6 +1169,30 @@
             if (arm.kind === 'swap') { const S = window.hqPartyShifts(_hqProfile()); if (S.members.length < HQ_PARTY_RULES.roster) extra = `<button class="hq-btn hq-btn-sm" data-party-act="swapto:end">TO THE END OF THE ORDER</button>`; }
             return `<div class="hq-pp-arm">${what}${extra}<button class="hq-btn hq-btn-sm" data-party-act="cancel">CANCEL</button></div>`;
         }
+        function _hqPauseHeadHtml() {
+            const profile = _hqProfile(), room = _hqRoom();
+            const cl = (typeof window.doorClearance === 'function') ? window.doorClearance(profile) : { level: 1, title: 'DOORMAT' };
+            const gold = (profile && profile.account && profile.account.gold) || 0;
+            const k = (typeof window.hqKeys === 'function') ? window.hqKeys(profile) : null;
+            const mc = (typeof window.hqMasteryCount === 'function') ? window.hqMasteryCount(profile) : null;
+            const pc = (typeof window.hqPunchClock === 'function') ? window.hqPunchClock(profile) : null;
+            let canon = '';
+            try { canon = (typeof window.hqCanonToday === 'function') ? String(window.hqCanonToday() || '') : ''; } catch (e) {}
+            const where = room ? (((room.roomNo != null) ? 'ROOM ' + room.roomNo + ' · ' : '') + (room.label || '')) : '';
+            return `<div class="hq-pause-title"><img src="https://cdn.entropywars.net/Assets/door/DOOR_Colored_Logo_ForBlackBG.png" alt="" draggable="false"><div><b>PAUSED</b><span>D.O.O.R. HEADQUARTERS${where ? ' · ' + _hqEsc(where) : ''}</span></div></div>`
+                + `<div class="hq-pause-vitals">`
+                + `<span><b>${_hqEsc((profile && profile.username) || 'UNFILED')}</b><i>L${cl.level} · ${_hqEsc(cl.title)}</i></span>`
+                + `<span><b>💰 ${gold.toLocaleString()}</b><i>HAZARD PAY</i></span>`
+                + (k ? `<span><b>🗝 ${k.keys}</b><i>KEYS</i></span>` : '')
+                + (mc ? `<span><b>${mc.mastered} / ${mc.total}</b><i>STABILIZED</i></span>` : '')
+                + (pc ? `<span><b>${pc.streak | 0}</b><i>DAY STREAK</i></span>` : '')
+                + (canon ? `<span><b>${_hqEsc(canon)}</b><i>CANON</i></span>` : '')
+                + `</div>`;
+        }
+        function _hqPauseNavHtml() {
+            const P = _hqPause;
+            return _HQ_PAUSE_CMDS.map((c, i) => `<button class="hq-pause-cmd${P.cmd === c.id ? ' sel' : ''}${i === P.cursor ? ' cur' : ''}${c.id === 'exit' ? ' danger' : ''}" data-cmd="${c.id}" role="menuitem"><b>${c.label}</b><span>${c.sub}</span></button>`).join('');
+        }
         function _hqPausePartyHtml() {
             const rec = _hqParty();
             if (!rec) {
@@ -1421,14 +1445,15 @@
         function _hqPauseRender() {
             const P = _hqPause; if (!P) return;
             const head = _hqEl('hqPauseHead'), nav = _hqEl('hqPauseNav'), body = _hqEl('hqPauseBody'), foot = _hqEl('hqPauseFoot');
-            if (head) head.innerHTML = _hqPauseHeadHtml();
-            if (nav) nav.innerHTML = _hqPauseNavHtml();
+            const safe = (fn, what) => { try { return fn(); } catch (e) { console.warn('[HQ] pause: ' + what, e); return `<div class="hq-panel-hd"><b>${what.toUpperCase()}</b><span>DID NOT RENDER — ${_hqEsc(String(e && e.message || e))}</span></div>`; } };
+            if (head) head.innerHTML = safe(_hqPauseHeadHtml, 'head');
+            if (nav) nav.innerHTML = safe(_hqPauseNavHtml, 'nav');
             window._hqPauseSettingsBody = null;
             if (body) {
                 body.scrollTop = 0;
                 body.setAttribute('data-view', P.cmd + (P.member != null ? '-member' : ''));
-                if (P.cmd === 'party') body.innerHTML = (P.member != null) ? _hqPauseMemberHtml(P.member) : _hqPausePartyHtml();
-                else if (P.cmd === 'officer') body.innerHTML = _hqPauseOfficerHtml();
+                if (P.cmd === 'party') body.innerHTML = safe(() => (P.member != null) ? _hqPauseMemberHtml(P.member) : _hqPausePartyHtml(), 'party');
+                else if (P.cmd === 'officer') body.innerHTML = safe(_hqPauseOfficerHtml, 'officer');
                 else if (P.cmd === 'settings') {
                     body.innerHTML = `<div class="hq-panel-hd"><b>SETTINGS</b><span>AUDIO · DISPLAY · CONTROLS · THE BUILDING</span></div><div class="mm-settings-body hq-pause-settings" id="hqPauseSettingsBody"></div>`;
                     window._hqPauseSettingsBody = _hqEl('hqPauseSettingsBody');
@@ -2222,7 +2247,7 @@
                 case 'on':
                     if (h) h.classList.add('skate');
                     _hqSkateSfx('skatePush', 0.5);
-                    _hqToast('<b>ON THE BOARD</b><span>W PUSH · S BRAKE · A / D CARVE · HOLD SPACE TO CROUCH, RELEASE TO POP (MAX = THE HEIGHT) · IN THE AIR: WASD STEERS · HOLD A MOUSE BUTTON + FLICK = TRICKS (LEFT FLIPS · RIGHT SPINS / GRABS) · LAND ON A RAIL TO GRIND · B OFF</span>', 4200);
+                    _hqToast('<b>ON THE BOARD</b><span>W PUSH · S BRAKE · A / D CARVE · SPACE JUMP (HOLD IT FOR A BIGGER ONE) · IN THE AIR: WASD STEERS · HOLD A MOUSE BUTTON + FLICK = TRICKS (LEFT FLIPS · RIGHT SPINS / GRABS) · LAND ON A RAIL TO GRIND · B OFF</span>', 4200);
                     _hqFillStrip(_hqProfile());
                     break;
                 case 'off':

@@ -40810,16 +40810,16 @@ const HQ_SKATE_RULES = {
     turnMin: 0.4,        // the carve's floor at a crawl (a share of `turn`) — the board turns from a stop too (rev 3)
     ollieV: 7.25,        // the grind's hop-off (× 0.85) — the walker's own jump (HQ_JUMP_V)
     ollieTapV: 4.6,      // m/s up on a bare tap — a hop (≈ 0.6 m)
-    ollieMaxV: 7.9,      // m/s up off a FULL CROUCH — clears ≈ 1.75 m (rev 4: hold SPACE to crouch, release to pop)
-    crouchS: 0.55,       // s of SPACE held to reach the full crouch (the meter fills over it)
-    popPerfectMs: 160,   // a release inside this window after the crouch tops out = PERFECT POP (a bonus on the line, a flash)
+    ollieMaxV: 7.9,      // RETIRED rev 5 (the crouch pop is gone) — kept for old readers
+    crouchS: 0.55,       // RETIRED rev 5 — kept for old readers
+    popPerfectMs: 160,   // RETIRED rev 5 — kept for old readers
     crouchMaxHoldS: 1.6, // RETIRED rev 4b (the user: "hold down space indefinitely") — a full crouch holds for ever; kept for old readers
     flickCoolMs: 220,    // ms after a flick fires during which the stick's travel is thrown away — ONE trick per flick of the wrist (a 100 px flick fired three)
     trickFitShare: 0.9,  // a rotation started in the air is SPED UP to end inside this share of the air left (Tony Hawk's rule: a late flip turns faster)
     trickFitMin: 0.5,    // …but never faster than this share of its own ms
     trickLateMin: 0.45,  // a flick with less air left than this share of the trick's ms is REFUSED (the `late` beat) — never a bail you could not avoid
-    ollieHoldS: 0.42,    // RETIRED rev 4 (the crouch replaced the held boost) — kept for old readers
-    ollieHoldAcc: 13,    // RETIRED rev 4
+    ollieHoldS: 0.42,    // rev 5 (2026-09-19, the user: "a normal jump with holding it to jump bigger"): SPACE held keeps lifting this long
+    ollieHoldAcc: 13,    // m/s² of lift while held (a tap ≈ 0.6 m, a full hold ≈ 1.65 m)
     airTurn: 1.35,       // rad/s A / D steer the heading IN THE AIR (rev 4: WASD is air control, never a trick)
     airAccel: 3.2,       // m/s² W / S nudge the speed in the air (a landing pulled short, a rail reached)
     flickPx: 34,         // px of mouse travel with a button held in the air that fires a trick (THE STICK, rev 4)

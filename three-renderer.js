@@ -47655,7 +47655,7 @@ const ThreeRenderer = (function () {
     var HQ_SKATE_DEFAULT = {
         maxV: 12.5, pushV: 4.2, pushEvery: 0.85, pushMs: 520, cruiseV: 10.5, friction: 0.993, brake: 0.9, turn: 2.4, turnMin: 0.4,
         reverseMaxV: 5.0, reversePushV: 1.8, kickEvery: [2.5, 5.5], kickMinV: 2.5,
-        ollieV: 7.25, ollieTapV: 4.6, ollieMaxV: 7.9, crouchS: 0.55, popPerfectMs: 160, airTurn: 1.35, airAccel: 3.2, flickPx: 34, stickDeadPx: 6,
+        ollieV: 7.25, ollieTapV: 4.6, ollieHoldS: 0.42, ollieHoldAcc: 13, ollieMaxV: 7.9, crouchS: 0.55, popPerfectMs: 160, airTurn: 1.35, airAccel: 3.2, flickPx: 34, stickDeadPx: 6,
         flickCoolMs: 220, trickFitShare: 0.9, trickFitMin: 0.5, trickLateMin: 0.45,
         stanceYaw: -Math.PI / 2, bailV: 4.2, bailDrop: 2.4, bailMs: 1400, bailFall: 0.6, deckBackMs: 1400, wallScrub: 0.15, landGrace: 0.8,
         grindSnap: 0.6, grindDy: 0.5, grindMinV: 1.4, grindFriction: 0.996, grindBalance: 0.75, grindDrift: 0.25,
@@ -47915,6 +47915,10 @@ const ThreeRenderer = (function () {
         try { land = _hqSurface(pl.x, pl.z, null, true); } catch (e) { land = null; }
         if (land === null || land === undefined) land = 0;
         var h = Math.max(0, pl.y - land), vy = pl.vy || 0, g = HQ_GRAV;
+        /* rev 5 (hold to jump): the lift still to come from a held SPACE counts as speed the body has — a flick
+           thrown on the way up in a held jump is judged against the jump it will be, not the tap it began as */
+        var R = _hq && _hq.ride, S = _hqSkateRules();
+        if (R && R.holdOn) vy += (S.ollieHoldAcc || 13) * Math.max(0, (S.ollieHoldS || 0.42) - (R.holdT || 0));
         return (vy + Math.sqrt(vy * vy + 2 * g * h)) / g;
     }
     /* THE FIT (rev 4b): a rotation started in the air is sped up to end inside the air that is left (a late flip
@@ -48105,28 +48109,23 @@ const ThreeRenderer = (function () {
             } else if (Math.abs(R.v) < S.kickMinV) R.kickT = S.kickEvery[0];
             _hqRideTurn(R, R.hd - turnIn * (R.v < 0 ? -1 : 1) * S.turn * Math.max(S.turnMin != null ? S.turnMin : 0.4, Math.min(1, Math.abs(R.v) / 3)) * dt);   // rev 3: a floor — the board turns at a crawl too
             leanT = -turnIn * 0.32 * Math.min(1, Math.abs(R.v) / 4);
-            /* THE CROUCH (rev 4 — the user: hold SPACE to crouch / get ready, release to jump, a meter
-               for the max): SPACE held builds `crouch` 0 → 1 over crouchS (the body squats, the meter
-               fills, the strip reads it through the `charge` beat); the RELEASE pops — the height by the
-               charge (ollieTapV → ollieMaxV), a release inside popPerfectMs of the top = a PERFECT POP.
-               A crouch camped past crouchMaxHoldS deflates to a hop. The roll, the carve and the pushes
-               go on under the crouch. */
-            if (!noCtl && k.space) {
-                if (!R.crouchOn) { R.crouchOn = true; R.crouch = 0; R.crouchFullT = 0; R.crouchEmit = -1; R.crouchOverEmit = false; }
-                var wasFull = R.crouch >= 1;
-                R.crouch = Math.min(1, R.crouch + dt / (S.crouchS || 0.55));
-                if (R.crouch >= 1) { if (!wasFull) _hqRideEmit({ kind: 'charge', k: 1, max: true, at: true }); R.crouchFullT += dt; }
-                if (Math.abs(R.crouch - R.crouchEmit) >= 0.04 || (R.crouch >= 1 && R.crouchEmit < 1)) { R.crouchEmit = R.crouch; _hqRideEmit({ kind: 'charge', k: R.crouch, max: R.crouch >= 1, over: false }); }
-            } else if (R.crouchOn) {
-                if (noCtl) { R.crouchOn = false; R.crouch = 0; R.crouchFullT = 0; _hqRideEmit({ kind: 'charge', k: 0, off: true }); }
-                else _hqRidePop(R, pl, S);
-            }
+            /* THE OLLIE (rev 5, 2026-09-19 — the user: "change the skateboard jumps back to a normal
+               jump with holding it to jump bigger; no crouch and release"): the PRESS pops the tap
+               height (ollieTapV) at once; SPACE held keeps LIFTING for ollieHoldS seconds
+               (ollieHoldAcc against gravity), so a tap is a hop and a hold clears the box — the
+               boost runs in the air branch. The rev 4 crouch / meter / perfect pop are retired. */
+            if (!noCtl && k.space && !pl._jumpLatch) { pl.air = true; pl.vy = S.ollieTapV; pl.jumpT = 0; R.airT = 0; R.airY0 = pl.y; R.rise = 0; R.jumpFromWalkOff = false; R.holdT = 0; R.holdOn = true; R.crouchOn = false; R.crouch = 0; _hqRideEmit({ kind: 'ollie', v: R.v }); }
             pl._jumpLatch = !!k.space;
             R.keyLatch.left = !!k.left; R.keyLatch.right = !!k.right; R.keyLatch.up = !!k.up; R.keyLatch.down = !!k.down; R.keyLatch.a = !!k.a; R.keyLatch.d = !!k.d; R.keyLatch.w = !!k.w; R.keyLatch.shift = !!k.shift;
         } else {
             /* ── IN THE AIR: the tricks ── */
             R.airT += dt;
-            R.holdOn = false; R.crouchOn = false; R.crouch = 0;
+            R.crouchOn = false; R.crouch = 0;
+            /* THE HOLD: SPACE still down lifts until ollieHoldS or the release; a launch / a walk-off never boosts */
+            if (R.holdOn) {
+                if (k.space && !noCtl && R.holdT < (S.ollieHoldS || 0.42) && pl.vy > 0) { pl.vy += (S.ollieHoldAcc || 13) * dt; R.holdT += dt; }
+                else R.holdOn = false;
+            }
             if (!noCtl) {
                 /* AIR CONTROL (rev 4 — the user: "I still need to control my movement in the air with
                    WASD"): A / D steer the heading (airTurn, the camera follows like a carve), W / S nudge
@@ -48381,7 +48380,7 @@ const ThreeRenderer = (function () {
         /* rev 4: the crouch squats the body by its charge (a coil the rider reads), the touchdown squashes it and springs back (squash), a grab tucks it */
         if (R.squash > 0) R.squash = Math.max(0, R.squash - dt);
         var sq = R.squash > 0 ? Math.sin((R.squash / 0.22) * Math.PI) * 0.16 * (R.landK || 0.5) : 0;
-        var crouchK = R.crouchOn ? R.crouch : 0;
+        var crouchK = R.holdOn ? 0.3 : 0;   // rev 5: a small squat while the jump is held (the crouch is gone)
         var tgtScale = R.grab ? 0.84 : Math.max(0.72, 1 - 0.2 * crouchK - sq);
         R.scaleY = (R.scaleY == null) ? tgtScale : R.scaleY + (tgtScale - R.scaleY) * Math.min(1, dt * (R.crouchOn ? 14 : 22));
         e.model.scale.y = R.scaleY; e.model.scale.x = e.model.scale.z = 1 + (1 - R.scaleY) * 0.35;
