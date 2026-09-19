@@ -1541,6 +1541,7 @@
         if (h.type === 'guard') return true;
         // Entropy Strike: same verb, and the same apocalypse when the human named one.
         if (h.type === 'entropyStrike') return !h.strikeType || !c.strikeType || c.strikeType === h.strikeType;
+        if (h.type === 'finisher') return h.targetId == null || c.targetId === h.targetId;
         if (h.type === 'attack') return !!(c.target && c.target.x === h.x && c.target.y === h.y);
         if (h.type === 'spell') {
             if (!c.spell) return false;
@@ -1559,6 +1560,7 @@
         if (c.type === 'attack') return 'attack ' + tn(c.target);
         if (c.type === 'spell') return (c.spell ? c.spell.name : 'spell') + '→' + tn(c.target);
         if (c.type === 'entropyStrike') return 'entropy:' + (c.strikeType || 'best');
+        if (c.type === 'finisher') return 'finisher→' + tn(c.target);
         return c.type;
     }
     window.aiScoreMargin = function (unit, human) {
@@ -1606,6 +1608,7 @@
     function gatherCandidates(unit, v) {
         const candidates = [];
         scoreEntropyStrike(unit, v, candidates);
+        scoreFinisher(unit, v, candidates);
         scoreItems(unit, v, candidates);
         scoreAttacks(unit, v, candidates);
         scoreTowerAttack(unit, v, candidates);
@@ -1919,6 +1922,36 @@
         try { if (typeof g.getEntropyStrikeBestType === 'function') best = g.getEntropyStrikeBestType(unit); } catch (e) { best = null; }
         const mult = (best && best.score > 0) ? best.score : 1;
         out.push({ type: 'entropyStrike', strikeType: best ? best.type : null, score: 300 + targets.length * per * 0.8 * mult, _noDanger: true });
+    }
+
+    // ☠ THE FINISHER (2026-09-19): the gauge's other verb. One candidate
+    // per visible enemy the execution would KILL (a sure removal of the
+    // highest-value body beats spreading the strike thin) plus the single
+    // best non-kill when nothing dies — scored against the strike's own
+    // candidate so the two verbs compete on the same scale: the strike wins
+    // on a crowded board of neutral matchups, the execution wins when one
+    // enemy is the problem. The victim's id rides the candidate (Simul
+    // plan steps carry it; battle.js doFinisher resolves it).
+    function scoreFinisher(unit, v, out) {
+        const g = G();
+        if (typeof g.canUseFinisher !== 'function' || !g.canUseFinisher(unit)) return;
+        const targets = (g.TargetQuery && g.TargetQuery.finisherTargets) ? g.TargetQuery.finisherTargets(unit)
+            : (typeof g.getFinisherTargets === 'function' ? g.getFinisherTargets(unit) : []);
+        if (!targets.length) return;
+        let bestNonKill = null;
+        for (const t of targets) {
+            let fc = null;
+            try { fc = g.getFinisherForecast(unit, t); } catch (e) { fc = null; }
+            if (!fc) continue;
+            const value = (t.maxHp || 0) * 0.5 + (t.atk || 0) * 2 + (t.int || 0) * 2;
+            if (fc.kill) {
+                out.push({ type: 'finisher', targetId: t.id, target: t, score: 340 + fc.dmg * 0.9 + value, _noDanger: true });
+            } else {
+                const s = 220 + fc.dmg * 0.7 * (fc.weak ? 1.15 : 1) * (fc.resist ? 0.6 : 1);
+                if (!bestNonKill || s > bestNonKill.score) bestNonKill = { type: 'finisher', targetId: t.id, target: t, score: s, _noDanger: true };
+            }
+        }
+        if (bestNonKill) out.push(bestNonKill);
     }
 
     function scoreCombos(unit, v, out) {
@@ -5483,6 +5516,17 @@
                 g.showFloatingTextForUnit(unit, '🌀 WARP', 'buff', { durationMs: 1000 });
                 g.state.aiThinking = false;
                 g.maybeTriggerComputerTurn();
+                break;
+            }
+
+            case 'finisher': {
+                const delay = (typeof g.doFinisher === 'function') ? (g.doFinisher(unit, action.targetId != null ? action.targetId : null) || 0) : 0;
+                if (delay > 0) {
+                    window.setTimeout(() => g.finishComputerAction(), delay);
+                } else {
+                    g.state.aiThinking = false;
+                    g.maybeTriggerComputerTurn();
+                }
                 break;
             }
 

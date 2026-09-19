@@ -5749,6 +5749,44 @@ fitted to a full tile wide may read chunky — `_MON_GRID` and the builders'
 widths are the edits), the church_wall GLB's facing as a wall piece.
 
 
+## THE FINISHERS — THE EXECUTIONS (the gauge's other verb) + THE CAMERA A DIRECTOR OWNS (2026-09-19, local delivery)
+The user: "instead of the finishers replacing the capstones they should be an alternative to the Entropy Strike — a
+single-target attack with one unit, or a team attack on the entire enemy team; completely unique finishers for every
+playable unit; the cinematic camera is supposed to enhance, not ruin". **FINISHER_PLAN.md rule 0 is the spec** — read
+it before touching a finisher. A FULL GAUGE buys either the ENTROPY STRIKE (unchanged) or a FINISHER: ONE unit executes
+ONE visible enemy for ~3× the strike's slice (data.js `FINISHER_RULES`), typed by the chart (one of the race's own
+types → STAB), 1 AP + the whole gauge. **THE CATALOGUE** data.js `FINISHERS[race]` = a row for ALL 99 races (`name ·
+glyph · type · tagline · desc · sig · built`); `sig` names a BESPOKE director + signature, `sig: null` = designed, not
+built — it plays the TYPED EXECUTION (`FINISHER_TYPE_DEFAULTS`, battle.js `_finTypedDirector` = the six apocalypse
+directors on one victim). Read it ONLY through battle.js `getFinisherFor(unit)`. **THE ENGINE** (battle.js, the block
+after `_EWS_DIRECTORS`): `canUseFinisher` / `getFinisherTargets` (= the strike's: every visible enemy) /
+`getFinisherDamage` / `getFinisherForecast(unit, target)` (`dmg · kill · weak · resist`) / `getFinisherBestTarget` /
+**`doFinisher(unit, targetId)`** (drains the gauge, `state._finisherCount`, spends all AP, Simul-queues as
+`{ type: 'finisher', targetId }`) → **`_finPlayCinematic(unit, target, hooks)`** = the shared skeleton (the ⚛ banner in
+the type's theme with a FINISHER kicker — `_ewsShowBanner` takes `opts` now —, ONE live pane on the executioner + the
+name slam, the director's `charge` → `cam` + `stage` at CHARGE −120 → `strike` (damage lands) → `resolve`, on FIXED
+`chargeMs / strikeMs / resolveMs`; `camera.save` → `restore` — it NEVER runs the stock two-beat action shot).
+`_FIN_DIRECTORS[sig]` hooks: `siren · charge · cam · stage · strike · resolve` on the strike's ctx + `target · hitAt ·
+shot · dive · slow · freeze · fade · enterVoid`. **THE BUILT SIX**: king arthur WORLD CLEAVE (`_sigWorldCleave3D`, the
+sword falls, the blade sweeps, a wall of light + a fissure edge to edge), anubis THE WEIGHING (`_sigWeighing3D`, the
+scales, the heart vs the feather, Ammit's jaws), santa clause THE NAUGHTY LIST (`_sigNaughtyList3D`, the scroll with
+the name, coal, the house-sized present, the bow last), honda civic HIT AND RUN (`_sigHitAndRun3D`, a misc-cache car
+off the map, the ramp, the tumble, the airbag), kaiju THE STOMP (`_sigKaijuStomp3D`, the shadow first, then the foot),
+ai SEGFAULT (`_sigSegfault3D`, the scan, the cage, the voxel deletion + `cineUnitFade`). three-vfx-effects.js "THE
+FINISHER PASS 2" (one group through `_sigRunOwned`, timers through `_fxDelay`, called INSIDE the relayed cinematic —
+never through `fireGeometry`). **HUD**: the ☠ row LEADS the ⚛ picker (hud.js `_hrlgEntropyBlades`, forecast on the
+best victim) → `chooseActionMenu('finisherTargets')` → `_hrlgFinisherTargetBlades` (face, HP, ≈−dmg, KILL) →
+`doFinisher`; ui.js gates the view like the entropy one. **RULE #2**: online.js wraps `doFinisher` (engine
+game-action, `targetId`) and `_finPlayCinematic` (relay `finisher-cine`; the guest replays with no applyHit, muted).
+**AI**: ai.js `scoreFinisher` (a candidate per victim the execution KILLS + the best non-kill, `_noDanger`), the
+executor case, `_candMatchesHuman` / `_candDesc`; battle.js's Simul conversion / label / resolver know the step.
+**THE CAMERA A DIRECTOR OWNS**: battle.js `cineOwnShot(sequenceId)` — the stock action shot's beat 2 (the cut to the
+victim) and every `_cineRetargetShot` are skipped for an owned sequence; High Noon owns its shot from the clock, To
+the Moon from the fling (the stock cut used to yank the fly-by / sky watch back to a shoulder close-up — why the
+capstone finishers read better with the action camera off). A new bespoke director that composes its own shots MUST
+call it. Adding a finisher = set `sig` on the race's row + a director + a signature + the BUILT table in
+finishers.test.js (14 tests). Unseen live (RULE #1c): all of it — FINISHER_PLAN §7 lists what to eyeball first.
+
 ## SKATE + PORTAL MOVEMENT INTEGRATION — 2026-09-18, local delivery (not uploaded)
 Main bb51ae4 base. three-renderer.js: `_hqTickRide` substeps `_hqTickRideStep` at
 ≤ 1/120 s and records velocity; A/D flip for R.v < 0. `_hqRideSlide` retains the

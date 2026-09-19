@@ -3775,7 +3775,88 @@ function _hrlgEntropyBlades(unit, st) {
       hoverOut: () => hideSpellTooltip(),
     };
   });
-  return { title: { icon: '⚛', text: 'Choose the apocalypse', count: nTargets + ' in sight' }, blades };
+  /* ☠ THE FINISHER (2026-09-19): the gauge's OTHER verb — one unit
+     executes one visible enemy for ~3× the strike's slice. The row leads
+     the picker, wears the race's own execution (data.js FINISHERS; a race
+     without its own plays the typed execution), and forecasts the hit on
+     the best victim (battle.js getFinisherBestTarget). Firing it opens the
+     VICTIM list (_hrlgFinisherTargetBlades), never the strike. */
+  try {
+    const fin = (typeof window.getFinisherFor === 'function') ? window.getFinisherFor(unit) : null;
+    if (fin) {
+      const finReady = typeof window.canUseFinisher === 'function' && window.canUseFinisher(unit);
+      let best = null;
+      try { if (finReady && typeof window.getFinisherBestTarget === 'function') best = window.getFinisherBestTarget(unit); } catch (e) { best = null; }
+      const fc = best ? best.forecast : null;
+      const ftc = TYPE_TEXT_COLORS[fin.type] || '#ff7a7a';
+      const finCard = {
+        _objectCard: true,
+        name: (fin.glyph || '☠') + ' ' + String(fin.name || 'FINISHER').toUpperCase(),
+        _hpLine: 'FINISHER · ' + String(fin.type).toUpperCase() + ' TYPE · ONE TARGET · 1 AP · drains the gauge',
+        desc: (fin.desc || '') + (fc ? '<br><b>~' + fc.dmg + ' on ' + (typeof unitDisplayName === 'function' ? unitDisplayName(best.target) : 'the best target') + (fc.kill ? ' — a KILL' : '') + '</b>' : '')
+          + (fin.sig ? '' : '<br><i>Typed execution — this race\'s own finisher is designed, not yet built.</i>'),
+      };
+      blades.unshift({
+        id: 'fin:pick',
+        icon: fin.glyph || '☠', iconColor: ftc,
+        catColor: TYPE_COLORS[fin.type] || ftc,
+        label: fin.name || 'Finisher',
+        badges: [
+          { label: 'FINISHER', plain: true, title: 'ONE unit executes ONE visible enemy — the alternative to the team strike' },
+          { label: String(fin.type).toUpperCase(), style: typeBadgeStyleFor(fin.type, { fontSize: _HRLG_TYPE_FS, padding: _HRLG_TYPE_PAD }), title: 'The execution\'s damage type — judged by the type chart on the victim' },
+        ],
+        available: finReady,
+        power: fc ? { v: '~' + fc.dmg, color: fc.kill ? '#7dff9a' : (fc.resist ? '#ff7a7a' : '#f0e6c8') } : undefined,
+        meta: fc ? { text: fc.kill ? '☠ KILL' : (fc.weak ? '▲ WEAK' : (fc.resist ? '▼ RESIST' : 'ONE TARGET')), color: fc.kill ? '#7dff9a' : (fc.resist ? '#ff7a7a' : '#9a94ad'), title: 'Projected against the best visible victim' } : undefined,
+        note: 'EXECUTION',
+        superEff: !!(fc && fc.kill),
+        sub: finReady ? null : 'Not ready',
+        fire: () => {
+          hideSpellTooltip();
+          if (finReady && typeof chooseActionMenu === 'function') chooseActionMenu('finisherTargets');
+        },
+        hoverIn: () => showSpellTooltip(finCard),
+        hoverOut: () => hideSpellTooltip(),
+      });
+    }
+  } catch (e) { /* the picker never dies for the row */ }
+  return { title: { icon: '⚛', text: 'The execution — or the apocalypse', count: nTargets + ' in sight' }, blades };
+}
+
+/* ☠ THE VICTIM LIST — one row per enemy the team can see (the strike's own
+   reach), with the face, the HP bar, the projected hit and a KILL chip.
+   Confirming a row IS the finisher (window.doFinisher — the online.js
+   engine wrapper, so a guest's pick emits and the host resolves). */
+function _hrlgFinisherTargetBlades(unit, st) {
+  const fin = (typeof window.getFinisherFor === 'function') ? window.getFinisherFor(unit) : null;
+  const targets = (typeof window.getFinisherTargets === 'function') ? window.getFinisherTargets(unit) : [];
+  const ready = typeof window.canUseFinisher === 'function' && window.canUseFinisher(unit);
+  const blades = targets.map((t, i) => {
+    let fc = null;
+    try { if (typeof window.getFinisherForecast === 'function') fc = window.getFinisherForecast(unit, t); } catch (e) { fc = null; }
+    const portrait = _hrlgPortraitData(t, unit);
+    const dist = Math.max(Math.abs(t.x - unit.x), Math.abs(t.y - unit.y));
+    return {
+      id: 'fin:' + i + ':' + t.id,
+      icon: fc && fc.resist ? '▼' : '☠',
+      iconColor: fc && fc.resist ? EW.bad : undefined,
+      label: typeof unitDisplayName === 'function' ? unitDisplayName(t) : (t.name || t.cls),
+      available: ready,
+      superEff: !!(fc && (fc.kill || fc.weak)),
+      previewDmg: fc ? fc.dmg : 0,
+      power: fc ? { v: '≈−' + fc.dmg, color: fc.kill ? '#7dff9a' : EW.bad } : undefined,
+      note: fc && fc.kill ? 'KILL' : null,
+      portrait: portrait,
+      meta: { text: dist + 't' },
+      fire: () => {
+        hideSpellTooltip();
+        if (typeof window._hrlgNoteAction === 'function') window._hrlgNoteAction();
+        if (ready && typeof window.doFinisher === 'function') window.doFinisher(unit, t.id);
+      },
+    };
+  });
+  if (!blades.length) blades.push({ id: 'none', icon: '☠', available: false, label: 'No visible enemy to execute' });
+  return { title: { icon: fin ? (fin.glyph || '☠') : '☠', text: fin ? fin.name : 'Finisher', count: targets.length + '' }, blades };
 }
 
 function _hrlgSwitchCost() {
@@ -4518,7 +4599,7 @@ function ActionMenu({ st, hidden }) {
       id: 'entropyStrike', glyph: '⚛', label: 'ENTROPY', color: '#c9a5ff',
       hint: 'READY',
       active: menuView === 'entropy',
-      title: 'ENTROPY STRIKE — choose the apocalypse: the whole team hammers every visible enemy with the damage type you pick (1 AP, drains the gauge)',
+      title: 'FULL GAUGE — the EXECUTION (one unit finishes one visible enemy) or the ENTROPY STRIKE (the whole team hammers every visible enemy with the apocalypse you pick); 1 AP, drains the gauge',
       fire: () => { if (typeof chooseActionMenu === 'function') chooseActionMenu('entropy'); },
     });
   }
@@ -4747,6 +4828,10 @@ function ActionMenu({ st, hidden }) {
     panels.push(_mkPanel('switch', _hrlgSwitchBlades(unit, st))); view = 'sub';
   } else if (menuView === 'entropy') {
     panels.push(_mkPanel('entropy', _hrlgEntropyBlades(unit, st), cancelBlade)); view = 'sub';
+  } else if (menuView === 'finisherTargets') {
+    panels.push(_mkPanel('entropy', _hrlgEntropyBlades(unit, st)));
+    panels.push(_mkPanel('finTargets', _hrlgFinisherTargetBlades(unit, st), cancelBlade)); view = 'sub';
+    modeLabel = 'FINISHER — PICK A VICTIM';
   } else if (menuView === 'pings') {
     panels.push(_mkPanel('pings', _hrlgPingBlades())); view = 'sub';
   } else if (menuView === 'spellOrientation') {

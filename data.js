@@ -236,6 +236,163 @@ const ENTROPY_STRIKE_TYPES = {
     },
 };
 
+/* ═══ THE FINISHERS — THE EXECUTIONS (2026-09-19) ═════════════════════════
+   The full Entropy Gauge buys ONE of two things now (the user's rule):
+     · the ENTROPY STRIKE — the whole team hammers EVERY visible enemy with
+       the apocalypse the player picks (ENTROPY_STRIKE_TYPES above), or
+     · a FINISHER — ONE unit executes ONE visible enemy: three times the
+       strike's per-enemy slice, focused. Mortal Kombat's fatality, Looney
+       Tunes' logic, a psychedelic light show — every playable race gets
+       its OWN (the user: "completely unique finishers for every playable
+       unit"). A finisher is NOT a capstone and NOT on the tree: it is a
+       verb of the ⚛ picker, costs 1 AP + the whole gauge, reaches any
+       enemy the team can see, and its type is judged by the chart like
+       the strike (weak ×1.30 / resist ×0.75 + the executioner's STAB).
+   THE CATALOGUE: FINISHERS[race] = { id, name, glyph, type, tagline, desc,
+     sig, built }. `sig` names the BESPOKE director + VFX signature
+     (battle.js _FIN_DIRECTORS[sig] + three-vfx-effects.js sig<Sig>3D);
+     `sig: null` = the race's execution is DESIGNED (name / concept in
+     `desc`) but not yet built — it plays the TYPED EXECUTION of its type
+     (FINISHER_TYPE_DEFAULTS, built off the six apocalypse directors on
+     one victim), so every race has a working finisher today. Building a
+     race's finisher = set `sig`, write the director + the signature, add
+     the row to finishers.test.js. Read the catalogue ONLY through
+     battle.js getFinisherFor(unit). Numbers live in FINISHER_RULES. */
+const FINISHER_RULES = {
+    apCost: 1,           // the executioner's AP (the gauge is the real price)
+    baseDmg: 260,        // the flat slice…
+    atkScale: 1.15,      // …+ this × the executioner's own ATK…
+    teamAtkScale: 0.35,  // …+ this × the team's summed ATK (a cast, not a solo)
+    variance: 40,        // ± roll
+    reach: 'sight',      // any enemy the team can SEE (the strike's rule)
+    onceAllMatch: false, // the gauge refills; the finisher comes back with it
+};
+/* the six TYPED EXECUTIONS every race falls back on until its own is built */
+const FINISHER_TYPE_DEFAULTS = {
+    human:   { id: 'fin_type_human',   name: 'Last Rites',        glyph: '✊', type: 'human',   tagline: 'ONE MAN. ONE BULLET LEFT.',          desc: 'HUMAN-type execution: a bullet storm for one, artillery walked onto a single pair of boots, the whole species taking it personally.' },
+    alien:   { id: 'fin_type_alien',   name: 'Abduction',         glyph: '🛸', type: 'alien',   tagline: 'THEY ONLY WANTED ONE',               desc: 'ALIEN-type execution: the tractor beam takes one, the probe is thorough, the saucer leaves without a word.' },
+    divine:  { id: 'fin_type_divine',  name: 'Smitten',           glyph: '☀', type: 'divine',  tagline: 'THE LIGHT PICKED YOU',               desc: 'DIVINE-type execution: one pillar of judgement, one holy spear, one trumpet — for one sinner.' },
+    unholy:  { id: 'fin_type_unholy',  name: 'Dragged Down',      glyph: '👹', type: 'unholy',  tagline: 'HELL SENT A CAR FOR YOU',            desc: 'UNHOLY-type execution: the pit opens under one pair of feet and every hand in it wants the same ankle.' },
+    tech:    { id: 'fin_type_tech',    name: 'Terminated',        glyph: '🤖', type: 'tech',    tagline: 'TARGET ACQUIRED. TARGET REMOVED.',   desc: 'TECH-type execution: a target lock, a laser grid that closes to a point, chain lightning with one address.' },
+    anomaly: { id: 'fin_type_anomaly', name: 'Erased',            glyph: '🌀', type: 'anomaly', tagline: 'YOU WERE NEVER HERE',                desc: 'ANOMALY-type execution: a black hole the size of one unit, a supernova the size of one ego.' },
+};
+const FINISHERS = {
+    /* ── THE BUILT SIX (sig = a director + a signature) ───────────────── */
+    'king arthur':   { id: 'fin_king_arthur', name: 'World Cleave', glyph: '⚔', type: 'divine', sig: 'worldCleave', built: true,
+        tagline: 'THE SWORD THAT CUTS THE MAP', desc: 'Excalibur falls out of the sky into the king\'s hands; one swing opens a line of light through the victim from one edge of the world to the other, and the halves of the board grind past each other while they fall in.' },
+    'anubis':        { id: 'fin_anubis', name: 'The Weighing', glyph: '⚖', type: 'unholy', sig: 'weighing', built: true,
+        tagline: 'HEAVIER THAN A FEATHER', desc: 'The scales of Ma\'at lower from the sky. The victim\'s heart on one pan, the feather on the other. It is never a close call — and Ammit is hungry.' },
+    'santa clause':  { id: 'fin_santa_clause', name: 'The Naughty List', glyph: '🎁', type: 'anomaly', sig: 'naughtyList', built: true,
+        tagline: 'HE CHECKED IT TWICE', desc: 'A scroll unrolls out of the sky with one name on it, coal rains, and a present the size of a house is delivered from orbit. The bow lands last.' },
+    'honda civic':   { id: 'fin_honda_civic', name: 'Hit and Run', glyph: '🚗', type: 'tech', sig: 'hitAndRun', built: true,
+        tagline: 'NO WITNESSES', desc: 'A car comes in off the edge of the map at a hundred and ten, hits the ramp nobody saw, tumbles end over end across the board and parks on the victim. The airbag deploys. The horn sticks.' },
+    'kaiju':         { id: 'fin_kaiju', name: 'The Stomp', glyph: '🦶', type: 'unholy', sig: 'kaijuStomp', built: true,
+        tagline: 'LOOK UP', desc: 'A shadow grows on the tile. Then the foot that owns it. The victim is a footnote.' },
+    'ai':            { id: 'fin_ai', name: 'Segfault', glyph: '▮', type: 'tech', sig: 'segfault', built: true,
+        tagline: 'CORE DUMPED', desc: 'The victim is scanned, caged in wireframe, deleted a voxel at a time and written to /dev/null. The process exits with a non-zero code.' },
+    /* ── DESIGNED, NOT YET BUILT (the typed execution plays) ──────────── */
+    'homosapien':     { id: 'fin_homosapien', name: 'The Haymaker', glyph: '👊', type: 'human', sig: null, tagline: 'THE PUNCH HEARD ROUND THE WORLD', desc: 'A wind-up that lasts a full second, a punch that sends the victim around the planet and back into the same fist.' },
+    'pirate':         { id: 'fin_pirate', name: 'Keelhauled', glyph: '⚓', type: 'human', sig: null, tagline: 'UNDER THE HULL AND BACK', desc: 'A ship the size of the map sails through the sky; the victim goes under the keel on a rope and comes out the other side.' },
+    'swordfighter':   { id: 'fin_swordfighter', name: 'A Thousand Cuts', glyph: '🗡', type: 'human', sig: null, tagline: 'COUNTED', desc: 'The screen fills with sword strokes faster than the eye; the victim falls apart into a tally.' },
+    'knight':         { id: 'fin_knight', name: 'The Joust', glyph: '🐎', type: 'divine', sig: null, tagline: 'FULL TILT', desc: 'A lance the length of the board, a charge from off the map, the victim carried the whole way back.' },
+    'shaman':         { id: 'fin_shaman', name: 'The Trip', glyph: '🍄', type: 'anomaly', sig: null, tagline: 'THE WALLS ARE BREATHING', desc: 'The victim\'s reality goes fractal, kaleidoscopes inside kaleidoscopes, until there is no victim left to have a reality.' },
+    'mad scientist':  { id: 'fin_mad_scientist', name: 'Shrink Ray', glyph: '🔬', type: 'tech', sig: null, tagline: 'THEN THE ANVIL', desc: 'The victim is shrunk to the size of a mouse. An anvil is dropped from the sky. Science.' },
+    'cowboy':         { id: 'fin_cowboy', name: 'Boot Hill', glyph: '🤠', type: 'human', sig: null, tagline: 'THE COFFIN WAS ALREADY BUILT', desc: 'A lasso from the sky yanks the victim straight up; a coffin drops onto the tile; the victim comes down into it; the lid nails itself shut.' },
+    'men in black':   { id: 'fin_men_in_black', name: 'Neuralyzer', glyph: '🕶', type: 'tech', sig: null, tagline: 'YOU SAW NOTHING', desc: 'The flash that erases the last five seconds — and the victim with them. A black sedan collects the remains.' },
+    'telepath':       { id: 'fin_telepath', name: 'Mind over Matter', glyph: '🧠', type: 'anomaly', sig: null, tagline: 'THE LANDSCAPE IS A WEAPON', desc: 'The tiles round the caster tear out of the board, orbit the head, and slam into the victim one after another.' },
+    'marksman':       { id: 'fin_marksman', name: 'Danger Close', glyph: '🎯', type: 'tech', sig: null, tagline: 'FIRE MISSION, ONE ROUND', desc: 'The map goes to grid, a single shell is walked onto one square, and the marksman does not blink.' },
+    'priest':         { id: 'fin_priest', name: 'Excommunicated', glyph: '✝', type: 'divine', sig: null, tagline: 'CAST OUT', desc: 'A cathedral rises round the victim, the bells ring, the doors slam, and the cathedral leaves with them.' },
+    'wizard':         { id: 'fin_wizard', name: 'Abracadabra', glyph: '🎩', type: 'unholy', sig: null, tagline: 'NOTHING UP MY SLEEVE', desc: 'A hat the size of a house drops over the victim; a wand tap; the hat lifts on nothing; the victim reappears a hundred metres up.' },
+    'fortune teller': { id: 'fin_fortune_teller', name: 'The Tower', glyph: '🃏', type: 'anomaly', sig: null, tagline: 'XVI', desc: 'A tarot card the size of a building lowers over the victim, flips to THE TOWER, and lightning does what the card says.' },
+    'giant':          { id: 'fin_giant', name: 'Fee Fi Fo Fum', glyph: '🦴', type: 'human', sig: null, tagline: 'GROUND INTO BREAD', desc: 'The victim is picked up, examined, and dropped into a mill the size of the map.' },
+    'fairy':          { id: 'fin_fairy', name: 'The Changeling', glyph: '🧚', type: 'anomaly', sig: null, tagline: 'THE RING CLOSES', desc: 'A ring of toadstools grows round the victim, the dance starts, and by the time it ends a hundred years have passed for one unit.' },
+    'martian':        { id: 'fin_martian', name: 'Ack Ack Ack', glyph: '👽', type: 'alien', sig: null, tagline: 'THE HEAT RAY, PERSONALLY', desc: 'The tripod steps over the board, the heat ray finds one unit, and only the skeleton is left to fall over.' },
+    'nordic':         { id: 'fin_nordic', name: 'Ascension Denied', glyph: '✨', type: 'alien', sig: null, tagline: 'NOT THIS ONE', desc: 'The beam of light lifts the victim toward enlightenment, pauses, reconsiders, and drops them from orbit.' },
+    'grey':           { id: 'fin_grey', name: 'The Probe', glyph: '🛸', type: 'alien', sig: null, tagline: 'FOR SCIENCE', desc: 'The saucer, the tractor beam, the table, the probe. The victim is returned in a different order.' },
+    'bigfoot':        { id: 'fin_bigfoot', name: 'Blurry Footage', glyph: '📷', type: 'anomaly', sig: null, tagline: 'FRAME 352', desc: 'The film goes grainy and hand-held; something enormous walks out of the treeline and through the victim; nobody will believe it.' },
+    'shadow entity':  { id: 'fin_shadow_entity', name: 'Sleep Paralysis', glyph: '👤', type: 'anomaly', sig: null, tagline: 'IT IS IN THE CORNER', desc: 'The lights go out, the victim cannot move, and the shape in the corner of the frame gets closer every time the light flickers.' },
+    'reptilian':      { id: 'fin_reptilian', name: 'The Unmasking', glyph: '🦎', type: 'anomaly', sig: null, tagline: 'THEY WERE RIGHT ABOUT US', desc: 'The skin comes off, the real thing underneath is thirty feet long, and it swallows the victim whole on live television.' },
+    'robot':          { id: 'fin_robot', name: 'Compactor', glyph: '🤖', type: 'tech', sig: null, tagline: 'CUBED', desc: 'Two walls of steel close on the victim from either side of the map. What comes out is a cube.' },
+    'android':        { id: 'fin_android', name: 'Factory Reset', glyph: '⏻', type: 'tech', sig: null, tagline: 'RESTORING DEFAULTS', desc: 'The victim is powered down, disassembled into a parts diagram, and reassembled as a crate of parts.' },
+    'angel':          { id: 'fin_angel', name: 'The Rapture, Party of One', glyph: '👼', type: 'divine', sig: null, tagline: 'GOING UP', desc: 'The trumpet sounds for one unit only; they rise into the light, the light closes, and the light was not what they thought.' },
+    'seraphim':       { id: 'fin_seraphim', name: 'Be Not Afraid', glyph: '👁', type: 'divine', sig: null, tagline: 'BIBLICALLY ACCURATE', desc: 'The rings within rings, the thousand eyes, all of them on one victim, who is afraid.' },
+    'orb of light':   { id: 'fin_orb_of_light', name: 'Into the Sun', glyph: '☀', type: 'divine', sig: null, tagline: 'GOING NOVA', desc: 'The victim is thrown into a sun the size of the board as it supernovas. The board is scorched white.' },
+    'demon':          { id: 'fin_demon', name: 'The Contract', glyph: '📜', type: 'unholy', sig: null, tagline: 'READ THE FINE PRINT', desc: 'A contract the size of the sky unrolls; the victim\'s signature is already on it; the pit collects.' },
+    'succubus':       { id: 'fin_succubus', name: 'Kiss of Death', glyph: '💋', type: 'unholy', sig: null, tagline: 'THE LAST ONE', desc: 'A dance, a dip, a kiss, and the victim goes out like a candle with a heart-shaped smoke ring.' },
+    'skeleton':       { id: 'fin_skeleton', name: 'Bone Rattle', glyph: '💀', type: 'unholy', sig: null, tagline: 'SPOOKY, SCARY', desc: 'Every skeleton on Earth pops out of the ground round the victim for one chorus. Then they all point.' },
+    'mech':           { id: 'fin_mech', name: 'Ordnance', glyph: '🚀', type: 'tech', sig: null, tagline: 'ALL OF IT', desc: 'Every hardpoint on the mech opens at once and every missile has the same address.' },
+    'ghost':          { id: 'fin_ghost', name: 'Possessed Photo', glyph: '📸', type: 'anomaly', sig: null, tagline: 'SMILE', desc: 'The board becomes a photograph; the ghost is standing behind the victim in it; the photograph burns from the middle.' },
+    'zombie':         { id: 'fin_zombie', name: 'The Pile-On', glyph: '🧟', type: 'unholy', sig: null, tagline: 'BRAAAINS', desc: 'A horde pours over the edges of the map, dogpiles one unit, and shambles off with the pieces.' },
+    'annunaki':       { id: 'fin_annunaki', name: 'Pyramid Scheme', glyph: '🔺', type: 'alien', sig: null, tagline: 'AS ABOVE, SO BELOW', desc: 'Three inverted pyramids descend, charge their capstones, and converge three lasers on one unit until the tile is glass.' },
+    'skinwalker':     { id: 'fin_skinwalker', name: 'Wearing You', glyph: '🐺', type: 'anomaly', sig: null, tagline: 'IT HAS YOUR FACE NOW', desc: 'The skinwalker becomes the victim; the victim becomes nothing; there is one more of them.' },
+    'werewolf':       { id: 'fin_werewolf', name: 'Full Moon', glyph: '🌕', type: 'unholy', sig: null, tagline: 'THE MOON COMES DOWN TO WATCH', desc: 'The moon drops to just over the board, the howl, and what the moon does to the wolf it does to the victim in reverse.' },
+    'gargoyle':       { id: 'fin_gargoyle', name: 'Petrified', glyph: '🗿', type: 'unholy', sig: null, tagline: 'A LOVELY GARDEN PIECE', desc: 'The victim is turned to stone, lifted to the cathedral roof, and dropped off it.' },
+    'djinn':          { id: 'fin_djinn', name: 'Three Wishes', glyph: '🪔', type: 'divine', sig: null, tagline: 'BE CAREFUL WHAT YOU', desc: 'The victim gets three wishes. All three are granted. Literally.' },
+    'catgirl':        { id: 'fin_catgirl', name: 'Nine Lives', glyph: '🐾', type: 'anomaly', sig: null, tagline: 'ALL AT ONCE', desc: 'The victim is knocked off the table, the counter, the shelf, the roof, the moon — nine times in a row, from nine angles.' },
+    'mantid':         { id: 'fin_mantid', name: 'The Praying', glyph: '🦗', type: 'alien', sig: null, tagline: 'SAY GRACE', desc: 'A mantis the size of a building folds its arms, bows its head, and bites the victim\'s in half.' },
+    'antperson':      { id: 'fin_antperson', name: 'The Colony', glyph: '🐜', type: 'alien', sig: null, tagline: 'A MILLION SMALL PROBLEMS', desc: 'The board goes black with ants; they carry the victim away in pieces to a hole in the map.' },
+    'mothman':        { id: 'fin_mothman', name: 'The Bridge', glyph: '🌉', type: 'anomaly', sig: null, tagline: 'POINT PLEASANT, 1967', desc: 'The red eyes, the warning nobody heeds, and the bridge that collapses under exactly one unit.' },
+    'siren':          { id: 'fin_siren', name: 'The Last Verse', glyph: '🎵', type: 'unholy', sig: null, tagline: 'THE ROCKS ARE RIGHT THERE', desc: 'The song, the walk into the sea, the rocks, the sea gets its own.' },
+    'scarecrow':      { id: 'fin_scarecrow', name: 'A Murder', glyph: '🐦‍⬛', type: 'unholy', sig: null, tagline: 'OF CROWS', desc: 'Every crow in the county lands on one unit and then leaves as one, and so does the unit.' },
+    'glitch':         { id: 'fin_glitch', name: 'Corrupted Save', glyph: '💾', type: 'anomaly', sig: null, tagline: 'FILE NOT FOUND', desc: 'The victim\'s texture goes missing, then the model, then the tile, then the memory of them.' },
+    'machine elves':  { id: 'fin_machine_elves', name: 'The Dose', glyph: '🌈', type: 'alien', sig: null, tagline: 'FIVE MINUTES OF FOREVER', desc: 'The self-transforming machine elves show the victim everything at once, and the victim is not built for everything.' },
+    'cyclops':        { id: 'fin_cyclops', name: 'Nobody', glyph: '👁', type: 'anomaly', sig: null, tagline: 'WHO DID THIS TO YOU', desc: 'The rock over the cave mouth is picked up and brought down on the victim. Twice. Nobody did it.' },
+    'cyborg':         { id: 'fin_cyborg', name: 'Orbital Drop', glyph: '🛰', type: 'tech', sig: null, tagline: 'FROM THE MOON, WITH LOVE', desc: 'The cyborg leaves the board straight up and comes back down on the victim as a meteor with a jetpack.' },
+    'demon prince':   { id: 'fin_demon_prince', name: 'Dark Dominion', glyph: '👑', type: 'unholy', sig: null, tagline: 'THE HORDE CAME FOR ONE', desc: 'A portal ring opens overhead and a horde of winged bodies dives on one victim, one after another, until the portal snaps shut.' },
+    'demon princess': { id: 'fin_demon_princess', name: 'Lullaby', glyph: '🎶', type: 'unholy', sig: null, tagline: 'HUSH NOW', desc: 'The victim is rocked to sleep by the whole underworld, and the underworld does not do wake-ups.' },
+    'dreameater':     { id: 'fin_dreameater', name: 'Devoured', glyph: '🌙', type: 'alien', sig: null, tagline: 'THE DREAM WAS YOU', desc: 'The victim falls asleep standing up and is eaten from the dream outward.' },
+    'fallen angel':   { id: 'fin_fallen_angel', name: 'The Fall', glyph: '🕊', type: 'unholy', sig: null, tagline: 'IT IS A LONG WAY DOWN', desc: 'The victim is carried up into the light and cast out of it, and the fall takes a while.' },
+    'goatman':        { id: 'fin_goatman', name: 'Baphomet\'s Rite', glyph: '🐐', type: 'unholy', sig: null, tagline: 'SOLVE ET COAGULA', desc: 'The sigil, the candles, the chanting, the goat — the victim is the offering and the offering is accepted.' },
+    'halfdemon':      { id: 'fin_halfdemon', name: 'Half Measures', glyph: '🔥', type: 'unholy', sig: null, tagline: 'THE OTHER HALF', desc: 'The human half steps aside and the other half does the thing the human half never lets it do.' },
+    'mermaid':        { id: 'fin_mermaid', name: 'The Wave', glyph: '🌊', type: 'anomaly', sig: null, tagline: 'FROM OFF THE MAP', desc: 'A tsunami taller than the sky rolls in from the edge, and only one unit is standing where it lands.' },
+    'nephilim':       { id: 'fin_nephilim', name: 'The Watchers\' Verdict', glyph: '⚡', type: 'divine', sig: null, tagline: 'THE SKY HAS EYES', desc: 'Two hundred watchers open their eyes over the board and every one of them looks at the victim at once.' },
+    'vampire':        { id: 'fin_vampire', name: 'The Drain', glyph: '🦇', type: 'unholy', sig: null, tagline: 'TO THE LAST DROP', desc: 'A cloud of bats, a cape the size of the night, and the victim is a wine glass.' },
+    'voidweaver':     { id: 'fin_voidweaver', name: 'Event Horizon', glyph: '⚫', type: 'alien', sig: null, tagline: 'SPAGHETTIFIED', desc: 'A black hole the size of one unit; the unit is stretched into a line a mile long and then into nothing.' },
+    'cosmic wraith':  { id: 'fin_cosmic_wraith', name: 'Heat Death', glyph: '❄', type: 'alien', sig: null, tagline: 'THE LAST STAR GOES OUT', desc: 'The victim experiences the end of the universe personally, in about four seconds.' },
+    'superhero':      { id: 'fin_superhero', name: 'Up, Up and Away', glyph: '🦸', type: 'alien', sig: null, tagline: 'AND THEN DOWN', desc: 'The victim is flown into the stratosphere, shown the curve of the Earth, and returned at terminal velocity.' },
+    'general':        { id: 'fin_general', name: 'Air Support', glyph: '✈', type: 'human', sig: null, tagline: 'DANGER CLOSE — AND CLOSER', desc: 'Two jets come in low; one drops the ordnance; the other crashes anyway.' },
+    'droid':          { id: 'fin_droid', name: 'Decommissioned', glyph: '🔧', type: 'tech', sig: null, tagline: 'END OF LIFE', desc: 'The victim is boxed, labelled, stamped OBSOLETE and shipped to the incinerator by conveyor.' },
+    'antihero':       { id: 'fin_antihero', name: 'No Mercy', glyph: '🩸', type: 'human', sig: null, tagline: 'THE CAMERA LOOKS AWAY', desc: 'The frame cuts to black and the audio does the rest.' },
+    'conspiracy theorist': { id: 'fin_conspiracy_theorist', name: 'Wake Up, Sheeple', glyph: '📢', type: 'human', sig: null, tagline: 'IT WAS THE VICTIM ALL ALONG', desc: 'Red string from every corner of the map converges on one unit, and the board of evidence closes on them like a bear trap.' },
+    'overlord':       { id: 'fin_overlord', name: 'Cataclysm Decree', glyph: '☄', type: 'unholy', sig: null, tagline: 'BY ORDER OF', desc: 'The decree is read, the sky agrees, and the victim is the demonstration.' },
+    'chosen one':     { id: 'fin_chosen_one', name: 'Prophecy Fulfilled', glyph: '🌟', type: 'divine', sig: null, tagline: 'IT WAS WRITTEN', desc: 'The scroll was about this moment. The victim is the last line.' },
+    'politician':     { id: 'fin_politician', name: 'The Motion Carries', glyph: '🗳', type: 'human', sig: null, tagline: 'ALL IN FAVOUR', desc: 'A gavel the size of a building. A vote nobody attended. The victim is expelled from reality on a technicality.' },
+    'atlantean':      { id: 'fin_atlantean', name: 'Poseidon\'s Wrath', glyph: '🔱', type: 'anomaly', sig: null, tagline: 'THE TRIDENT, FROM BELOW', desc: 'The board floods to the victim\'s knees, and the trident comes up through the floor.' },
+    'dinosaur':       { id: 'fin_dinosaur', name: 'Extinction Event', glyph: '🦖', type: 'anomaly', sig: null, tagline: 'THAT ONE IS PERSONAL', desc: 'The asteroid that ended the dinosaurs is brought back and aimed at one unit.' },
+    'dragon':         { id: 'fin_dragon', name: 'Hoard', glyph: '🐉', type: 'unholy', sig: null, tagline: 'ADDED TO THE COLLECTION', desc: 'The dragon\'s full size is revealed, the victim is roasted, and the ashes go on the pile.' },
+    'ghoul':          { id: 'fin_ghoul', name: 'Grave Robbery', glyph: '⚰', type: 'unholy', sig: null, tagline: 'THE PLOT WAS PRE-DUG', desc: 'The tile opens into a grave, the victim goes in, and the headstone already has the date on it.' },
+    'gnome':          { id: 'fin_gnome', name: 'Garden Variety', glyph: '🍄', type: 'anomaly', sig: null, tagline: 'A LOVELY LAWN ORNAMENT', desc: 'The victim is painted ceramic, placed in a garden, and hit by a lawnmower.' },
+    'kraken':         { id: 'fin_kraken', name: 'Release the Kraken', glyph: '🐙', type: 'anomaly', sig: null, tagline: 'THE WHOLE THING', desc: 'Eight arms come up through the board round one unit, and the ninth thing is the beak.' },
+    'loch ness monster': { id: 'fin_loch_ness_monster', name: 'Nessie Surfaces', glyph: '🦕', type: 'anomaly', sig: null, tagline: 'ONE BLURRY PHOTO', desc: 'The loch rises through the map, the neck comes up under the victim, and the only evidence is out of focus.' },
+    'yeti':           { id: 'fin_yeti', name: 'Avalanche', glyph: '🏔', type: 'anomaly', sig: null, tagline: 'THE MOUNTAIN CAME TO YOU', desc: 'A mountain\'s worth of snow arrives from off the map and stops exactly on the victim.' },
+    'barbarella':     { id: 'fin_barbarella', name: 'Space Disco', glyph: '🪩', type: 'anomaly', sig: null, tagline: 'THE FINALE', desc: 'Every aerial shell at once, the mirror ball the size of a moon, and the victim has the worst seat in the house.' },
+    'black goo':      { id: 'fin_black_goo', name: 'Assimilated', glyph: '🫧', type: 'anomaly', sig: null, tagline: 'WE ARE MANY', desc: 'The ooze rises from every tile, takes the victim apart, and puts on their face.' },
+    'golem':          { id: 'fin_golem', name: 'Eruption', glyph: '🌋', type: 'divine', sig: null, tagline: 'THE MOUNTAIN OPENS', desc: 'The tile under the victim rises into a volcano and the volcano has one thing to say.' },
+    'ice queen':      { id: 'fin_ice_queen', name: 'Flash Frozen', glyph: '🧊', type: 'divine', sig: null, tagline: 'CENTREPIECE', desc: 'The victim is frozen mid-scream, admired from three angles, and shattered with a fingertip.' },
+    'juggernaut':     { id: 'fin_juggernaut', name: 'Through the Wall', glyph: '🧱', type: 'unholy', sig: null, tagline: 'AND THE NEXT ONE', desc: 'The charge starts three maps over and carries the victim through every wall between here and the edge.' },
+    'ki fighter':     { id: 'fin_ki_fighter', name: 'Spirit Bomb', glyph: '🔵', type: 'human', sig: null, tagline: 'LEND ME YOUR ENERGY', desc: 'Every unit on the board gives a little; the ball is the size of the sky; it comes down on one unit.' },
+    'king kong':      { id: 'fin_king_kong', name: 'Top of the Tower', glyph: '🦍', type: 'anomaly', sig: null, tagline: 'IT WAS BEAUTY', desc: 'The victim is carried up a skyscraper that grows out of the board, swatted at by biplanes, and dropped from the top.' },
+    'minotaur':       { id: 'fin_minotaur', name: 'The Labyrinth', glyph: '🐂', type: 'unholy', sig: null, tagline: 'NO THREAD THIS TIME', desc: 'Walls rise round the victim into a maze; the victim runs; the minotaur does not.' },
+    'necromancer':    { id: 'fin_necromancer', name: 'Recruited', glyph: '🪦', type: 'unholy', sig: null, tagline: 'YOU START MONDAY', desc: 'The victim is killed, raised, and made to walk off the board to join the other side.' },
+    'occulus':        { id: 'fin_occulus', name: 'Sacred Geometry', glyph: '🔯', type: 'anomaly', sig: null, tagline: 'THE ANGLES ARE WRONG', desc: 'The victim is folded through four dimensions along a shape that should not exist.' },
+    'quarterback':    { id: 'fin_quarterback', name: 'The Hail Mary', glyph: '🏈', type: 'human', sig: null, tagline: 'FULL LENGTH OF THE FIELD', desc: 'The victim is thrown the length of the map, caught in the end zone, and spiked.' },
+    'robinhood':      { id: 'fin_robinhood', name: 'Split the Arrow', glyph: '🏹', type: 'human', sig: null, tagline: 'THEN THE ARROW THAT SPLIT IT', desc: 'One arrow, then one that splits it, then one that splits that, and the last one splits the victim.' },
+    'super sentai':   { id: 'fin_super_sentai', name: 'Megazord', glyph: '🤖', type: 'tech', sig: null, tagline: 'IT\'S MORPHIN TIME', desc: 'Five vehicles fly in from five sides and lock into one silhouette; the chest cannon has one target.' },
+    'symbiote':       { id: 'fin_symbiote', name: 'Bonded', glyph: '🕷', type: 'unholy', sig: null, tagline: 'WE ARE VENOM', desc: 'The symbiote leaves its host, wraps the victim, and comes back full.' },
+    'valkraye':       { id: 'fin_valkraye', name: 'Valhalla', glyph: '🛡', type: 'divine', sig: null, tagline: 'CHOSEN', desc: 'The winged rider comes down through the clouds, picks one, and the pick does not survive the ride.' },
+    'watcher':        { id: 'fin_watcher', name: 'Observed', glyph: '👁', type: 'divine', sig: null, tagline: 'THE WAVEFUNCTION COLLAPSES', desc: 'The watcher looks, really looks, and the victim was only ever a probability.' },
+    'gangster':       { id: 'fin_gangster', name: 'Drive-By', glyph: '🔫', type: 'human', sig: null, tagline: 'THE WHOLE CLIP', desc: 'A car rolls past the victim at walking pace with every window down.' },
+    'nun':            { id: 'fin_nun', name: 'Ruler', glyph: '📏', type: 'divine', sig: null, tagline: 'HOLD OUT YOUR HAND', desc: 'A ruler the size of a bridge comes down across the victim\'s knuckles, and the knuckles were the least of it.' },
+    'door agent':     { id: 'fin_door_agent', name: 'Special Delivery', glyph: '🚪', type: 'anomaly', sig: null, tagline: 'RETURN TO SENDER', desc: 'A door opens under the victim, another opens over them, and they fall between the two for ever.' },
+};
+function getFinisherDefForRace(race, types) {
+    const row = FINISHERS[race] || null;
+    if (row) return row;
+    const t = (types && types[0]) || 'anomaly';
+    return FINISHER_TYPE_DEFAULTS[t] || FINISHER_TYPE_DEFAULTS.anomaly;
+}
+
+
 /* ═══ ELEMENTAL AFFINITIES (2026-09-01 — see ELEMENTAL_TYPES_PLAN.md) ═══
    A SECOND, spell-side layer under the type chart above — never a
    replacement for it. Spells carry an optional `element:` tag (doc block
@@ -16753,6 +16910,8 @@ Object.assign(window, {
   getUnitPassives, unitHasPassive, unitPassiveValue, unitPassiveBlocksStatus,
   /* type chart + the Entropy Strike's six apocalypses (2026-09-07) */
   TYPE_CHART, STAB_MULTIPLIER, ENTROPY_STRIKE_TYPE_ORDER, ENTROPY_STRIKE_TYPES,
+  /* THE FINISHERS — the executions (2026-09-19) */
+  FINISHER_RULES, FINISHER_TYPE_DEFAULTS, FINISHERS, getFinisherDefForRace,
   /* elemental affinity system (2026-09-01, ELEMENTAL_TYPES_PLAN.md) */
   SPELL_ELEMENTS, COMBAT_ELEMENTS, ELEMENT_AFFINITY_TIERS, ELEMENT_AFFINITY_MULT,
   ELEMENT_ICONS, ELEMENT_ICON_BASE, ELEMENT_ICON_FILES, elementIconUrl, elementIconHtml,

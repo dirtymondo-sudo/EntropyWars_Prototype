@@ -24,7 +24,44 @@ pillar or a wall is a Meshy 3D object** — a rock, a stone, a pillar, a column
 
 ## 1. The rules
 
-1. **A finisher is a capstone.** It lives on ring 4★ of the race's tree
+**THE RULE CHANGED 2026-09-19 (the user): a finisher is NOT a capstone — it
+is the full gauge's OTHER VERB.** "Instead of the finishers replacing the
+capstones they should just be an alternative to the Entropy Strike. So the
+player can choose to do a single target attack with one player or they can
+choose to do a team attack on the entire enemy team. But yes that means we
+will need completely unique finishers for every playable unit." So:
+
+0. **A finisher is an EXECUTION.** ONE unit, ONE visible enemy, ~3× the
+   strike's per-enemy slice (data.js `FINISHER_RULES`), the finisher's type
+   judged by the chart (always one of the race's own types → STAB rides), 1
+   AP + the WHOLE gauge (the gauge refills; the finisher comes back with
+   it). Every race has a row in data.js `FINISHERS` (name · glyph · type ·
+   tagline · desc · `sig`): `sig` names a BESPOKE director
+   (battle.js `_FIN_DIRECTORS[sig]`) + VFX signature; `sig: null` = the
+   race's finisher is DESIGNED (the row is the brief) and plays the TYPED
+   EXECUTION of its type meanwhile (`FINISHER_TYPE_DEFAULTS`, the six
+   apocalypse directors on one victim). The pipeline is battle.js
+   `doFinisher` → `_finPlayCinematic` (the shared skeleton: the banner in
+   the type theme with the FINISHER kicker, the executioner's single live
+   pane + name slam, the director's charge / cam / stage / strike /
+   resolve on FIXED timings, camera.save → restore) — never doSpell, never
+   the tree, never the stock two-beat action shot. Online: the
+   `doFinisher` engine game-action + the `finisher-cine` relay (the guest
+   replays the same director with no applyHit). AI: ai.js
+   `scoreFinisher` (a kill candidate per victim the execution would kill,
+   the best non-kill otherwise, scored against the strike's own row).
+   Simul: the `finisher` plan step. HUD: the ☠ row leads the ⚛ picker →
+   the victim list. **Building a race's finisher = set `sig` on its row,
+   a director in `_FIN_DIRECTORS` (chargeMs / strikeMs / resolveMs +
+   siren · charge · cam · stage · strike · resolve), a signature in
+   three-vfx-effects.js "THE FINISHER PASS 2" (one group through
+   `_sigRunOwned`, timers through `_fxDelay`, exported), a row in
+   finishers.test.js's BUILT table.** The capstone reworks below (§2, §3)
+   stay what they are — spells on the tree — and are still worth doing for
+   the races whose capstone IS the spectacle; but the finisher brief now
+   lands in `FINISHERS` first.
+
+1. **(superseded by rule 0 for new work) A capstone rework is a capstone.** It lives on ring 4★ of the race's tree
    (`RACE_TREE`, data.js), where `isCapstoneSpellId` already promotes it to
    the `ultimate` staging tier, the charged cast clip, the capstone bloom and
    the ~4.3 s two-beat shot. A race may carry TWO options on the node (a twin:
@@ -34,7 +71,7 @@ pillar or a wall is a Meshy 3D object** — a rock, a stone, a pillar, a column
    keep working, the AI's kind scoring keeps working); add a twin only when
    the old capstone is worth keeping as a build (the general's Nuke ⇄ a plane
    crash).
-2. **The round-10 alternative to the Entropy Strike is NOT this pass.** It
+2. **(built 2026-09-19 as rule 0 — no round gate, the gauge is the gate) The round-10 alternative to the Entropy Strike was NOT the first pass.** It
    would be a mode-level feature (a `FINISHER` row in the ⚛ picker, its own
    game-action + relay, AI scoring for a once-a-match verb, a Simul plan step)
    — twice the surface of a capstone rework for the same spectacle. Revisit
@@ -53,7 +90,7 @@ pillar or a wall is a Meshy 3D object** — a rock, a stone, a pillar, a column
    `fireGeometry` / a relayed global; a helper called from inside a relayed
    global is NEVER also fired through `fireGeometry`, or the guest gets it
    twice) → a row in `finishers.test.js` → the CLAUDE.md line.
-4. **The camera sells it.** Every finisher gets a director. The beats that
+4. **The camera sells it — and a director OWNS it.** Every finisher gets a director; a director that composes its own shots calls `cineOwnShot(sequenceId)` (battle.js, 2026-09-19) so the stock two-beat shot's later beats (the cut to the victim, the drift, the VFX retargets) are skipped under it — the sky watch / fly-by used to be yanked back to a shoulder close-up mid-move (the user: "they look better with the action camera off"). High Noon and To the Moon own their shots now; a finisher verb (rule 0) never runs the stock shot at all. The beats that
    read: the sky watch for anything that falls or flies, a freeze-frame +
    whiteout on the impossible moment, a half-speed clock on the travel, the
    hard slam back to full speed on the hit. Keep the whole thing under ~5 s
@@ -122,7 +159,7 @@ Left: **Sacred Geometry** (occulus, `crystal` terrain, no raise) could stand
 Every OTHER `terrainDeform` in the library is negative (a crater, a trench)
 — nothing else raises a block.
 
-## 4. THE FINAL ROUND (the round-10 alternative) — the sketch, for later
+## 4. THE FINAL ROUND — BUILT 2026-09-19 as THE EXECUTIONS (rule 0); the sketch below is history
 
 - `FINISHER_RULES = { round: 10, apCost: 3, once: true }` (data.js).
 - The ⚛ ENTROPY picker (hud.js `_hrlgEntropyBlades`) grows a FINISHER row
@@ -157,6 +194,27 @@ batch has one — `crashed_car`), a crenellated castle-wall segment (the wall
 spells), a ziggurat tier block, a gothic buttress.
 
 ## 7. Log
+
+- **2026-09-19 — THE EXECUTIONS (delivery 2).** The finisher is the
+  gauge's other verb (rule 0): data.js `FINISHER_RULES` +
+  `FINISHER_TYPE_DEFAULTS` + `FINISHERS` (a designed row for ALL 99
+  races), battle.js `doFinisher` / `_finPlayCinematic` /
+  `_FIN_DIRECTORS` (six typed + six bespoke), the camera ownership
+  (`cineOwnShot`), hud.js (the ☠ row + the victim list), ui.js (the
+  gate), online.js (the action + the `finisher-cine` relay), ai.js
+  (`scoreFinisher`), the Simul step, three-vfx-effects.js "THE FINISHER
+  PASS 2" (WORLD CLEAVE · THE WEIGHING · THE NAUGHTY LIST · HIT AND RUN ·
+  THE STOMP · SEGFAULT), finishers.test.js (+7). THE BUILT SIX: king
+  arthur · anubis · santa clause · honda civic · kaiju · ai. Not
+  playtested (RULE #1c): the executioner's pane, every director's camera
+  path against the real board, the scales' read, the car's facing off the
+  misc cache (a nose that lands backward is the `car.rotation.y` in
+  `_sigHitAndRun3D`), the foot's scale, the wireframe cage on a sprite
+  vessel, the typed executions' strike beats on one victim. NEXT: the
+  other 93 — take the rows in `FINISHERS` in roster order, six a
+  delivery; the ones whose capstone already IS the beat (To the Moon,
+  Meteor Storm, the Trick Shot, Bad Trip / Ego Death, the Tsunami, the
+  Firestorm) can lift their signature straight into a director.
 
 - **2026-09-18 — delivery 1.** THE SPELL-MADE MONUMENTS + THE ROCKS + three
   finishers (TO THE MOON, METEOR STORM, THE TRICK SHOT). Files: data.js,

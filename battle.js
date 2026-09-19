@@ -10360,13 +10360,14 @@
            `.ews-t-<id>` theme (type-coloured title, its own animated backdrop
            — hazard stripes / scanlines / god rays / embers / code rain / hue
            drift) and the kicker + tagline copy. */
-        function _ewsShowBanner(player, totalMs, def) {
+        function _ewsShowBanner(player, totalMs, def, opts) {
+            opts = opts || {};
             const old = document.getElementById('entropyStrikeOverlay');
             if (old) old.remove();
             def = def || getEntropyStrikeType(null);
             const el = document.createElement('div');
             el.id = 'entropyStrikeOverlay';
-            el.className = 'ews-overlay ews-t-' + _ccinEsc(def.id || 'anomaly');
+            el.className = 'ews-overlay ews-t-' + _ccinEsc(def.id || 'anomaly') + (opts.cls ? ' ' + opts.cls : '');
             const mine = player === getViewerPlayer();
             const who = mine ? 'YOUR TEAM' : 'THE ENEMY TEAM';
             el.innerHTML = `
@@ -10374,10 +10375,10 @@
                 <div class="ews-letterbox ews-letterbox-bot"></div>
                 <div class="ews-fx"></div>
                 <div class="ews-center">
-                    <div class="ews-kicker">⚛ ENTROPY STRIKE — ${who}</div>
-                    <div class="ews-glyph">${_ccinEsc(def.glyph || '⚛')}</div>
-                    <div class="ews-title ${mine ? 'ews-p1' : 'ews-p2'}" data-text="${_ccinEsc(def.name || 'ENTROPY STRIKE')}">${_ccinEsc(def.name || 'ENTROPY STRIKE')}</div>
-                    <div class="ews-sub">${_ccinEsc(def.tagline || 'TOTAL ENTROPY')}</div>
+                    <div class="ews-kicker">${_ccinEsc(opts.kicker || ('⚛ ENTROPY STRIKE — ' + who))}</div>
+                    <div class="ews-glyph">${_ccinEsc(opts.glyph || def.glyph || '⚛')}</div>
+                    <div class="ews-title ${mine ? 'ews-p1' : 'ews-p2'}" data-text="${_ccinEsc(opts.name || def.name || 'ENTROPY STRIKE')}">${_ccinEsc(opts.name || def.name || 'ENTROPY STRIKE')}</div>
+                    <div class="ews-sub">${_ccinEsc(opts.tagline || def.tagline || 'TOTAL ENTROPY')}</div>
                     <div class="ews-scanline"></div>
                 </div>`;
             document.body.appendChild(el);
@@ -11335,6 +11336,604 @@
         };
         window._EWS_DIRECTORS = _EWS_DIRECTORS;
 
+        /* ═══════════════════════════════════════════════════════════════════
+           THE FINISHERS — THE EXECUTIONS (2026-09-19)
+           The full gauge's OTHER verb (the user's rule: "instead of the
+           finishers replacing the capstones they should be an alternative to
+           the Entropy Strike — a single-target attack with one unit, or a
+           team attack on the entire enemy team"). ONE unit executes ONE
+           visible enemy for ~3× the strike's per-enemy slice, judged by the
+           type chart like the strike (the finisher's type is one of the
+           race's own, so STAB always rides). Catalogue: data.js FINISHERS
+           (a row per race; `sig` = a bespoke director below + a VFX
+           signature; `sig: null` = the TYPED EXECUTION, built off the six
+           apocalypse directors on one victim). Same contract as the strike:
+           host-authoritative, the cinematic extracted into _finPlayCinematic
+           so online.js relays it ('finisher-cine') and the guest replays the
+           same director with no applyHit; FIXED timings per director.
+           THE CAMERA: the execution NEVER goes through the stock two-beat
+           action shot — _finPlayCinematic owns the camera from the banner to
+           the restore, the director's shots are the only shots (the user:
+           "the cinematic camera is supposed to enhance the experience, not
+           ruin it"). See cineOwnShot for the same rule on the capstones.
+           ═══════════════════════════════════════════════════════════════════ */
+        function _finRules() {
+            const R = (typeof FINISHER_RULES !== 'undefined') ? FINISHER_RULES : null;
+            return R || { apCost: 1, baseDmg: 260, atkScale: 1.15, teamAtkScale: 0.35, variance: 40 };
+        }
+        /* The unit's finisher row — never null (the typed execution of the
+           unit's first type stands in for a race with no row at all). */
+        function getFinisherFor(unit) {
+            if (!unit) return null;
+            const race = String(unit.race || '').toLowerCase();
+            let row = null;
+            try {
+                if (typeof getFinisherDefForRace === 'function') row = getFinisherDefForRace(race, unit.types || []);
+                else if (typeof FINISHERS !== 'undefined') row = FINISHERS[race] || null;
+            } catch (err) { row = null; }
+            if (!row) {
+                const t = (unit.types && unit.types[0]) || 'anomaly';
+                row = (typeof FINISHER_TYPE_DEFAULTS !== 'undefined' && FINISHER_TYPE_DEFAULTS[t])
+                    || { id: 'fin_type_' + t, name: 'Execution', glyph: '☠', type: t, tagline: 'THE END', desc: '', sig: null };
+            }
+            return row;
+        }
+        function getFinisherTargets(unit) { return getEntropyStrikeTargets(unit); }
+        function canUseFinisher(unit) {
+            if (!unit || unit.dead || unit._dying) return false;
+            if (state.phase !== 'battle' || state.winner) return false;
+            if (state._actionExecuting) return false;
+            if (!isEntropyGaugeFull(unit.player)) return false;
+            if ((unit.ap || 0) < _finRules().apCost) return false;
+            return getFinisherTargets(unit).length > 0;
+        }
+        function getFinisherDamage(unit) {
+            const R = _finRules();
+            const allies = (state.units || []).filter(u => u.player === unit.player && !u.dead && !u._dying);
+            const teamAtk = allies.reduce((s, u) => s + (u.atk || 0), 0);
+            return R.baseDmg + Math.round((unit.atk || 0) * R.atkScale) + Math.round(teamAtk * R.teamAtkScale);
+        }
+        /* The picker's intel for one target: the chart multiplier of the
+           finisher's type against it (+ STAB), the projected hit, a KILL flag. */
+        function getFinisherForecast(unit, target) {
+            const def = getFinisherFor(unit);
+            const out = { id: def.id, name: def.name, type: def.type, mult: 1, stab: false, dmg: 0, kill: false, weak: false, resist: false };
+            if (!unit || !target) return out;
+            let m = 1;
+            try { m = getTypeDamageMultiplier(unit, target, def.type); } catch (err) { m = 1; }
+            const stabMult = (typeof STAB_MULTIPLIER !== 'undefined') ? STAB_MULTIPLIER : 1.25;
+            out.stab = (unit.types || []).includes(def.type);
+            const chart = out.stab ? m / stabMult : m;
+            out.weak = chart > 1.001; out.resist = chart < 0.999;
+            out.mult = m;
+            out.dmg = Math.max(1, Math.round(getFinisherDamage(unit) * m));
+            out.kill = (target.hp || 0) <= out.dmg;
+            return out;
+        }
+        function getFinisherBestTarget(unit) {
+            let best = null, bestScore = -1;
+            for (const t of getFinisherTargets(unit)) {
+                const f = getFinisherForecast(unit, t);
+                const score = (f.kill ? 1000 : 0) + f.dmg + (t.maxHp || 0) * 0.1;
+                if (score > bestScore) { bestScore = score; best = { target: t, forecast: f }; }
+            }
+            return best;
+        }
+        window.getFinisherFor = getFinisherFor;
+        window.canUseFinisher = canUseFinisher;
+        window.getFinisherTargets = getFinisherTargets;
+        window.getFinisherDamage = getFinisherDamage;
+        window.getFinisherForecast = getFinisherForecast;
+        window.getFinisherBestTarget = getFinisherBestTarget;
+
+        /* targetId: the victim (a visible enemy). Host-authoritative; the
+           online.js wrapper ships it as the 'doFinisher' engine action. */
+        function doFinisher(unit, targetId) {
+            /* SIMUL plan phase: queue the execution instead of running it. */
+            if (typeof window._isSimulMode === 'function' && window._isSimulMode()
+                && state._simulPhase === 'plan' && !state._simulResolving
+                && typeof SimulEngine !== 'undefined') {
+                return SimulEngine.queueStep(unit, { type: 'finisher', targetId: targetId != null ? targetId : null });
+            }
+            if (!canUseFinisher(unit)) {
+                if (unit && !isEntropyGaugeFull(unit.player)) addLog('☠ The Entropy Gauge is not full yet.');
+                return false;
+            }
+            const targets = getFinisherTargets(unit);
+            let target = (targetId != null) ? targets.find(t => t.id === targetId) : null;
+            if (!target) { const b = getFinisherBestTarget(unit); target = b ? b.target : null; }
+            if (!target) return false;
+            const def = getFinisherFor(unit);
+            const R = _finRules();
+            const fc = getFinisherForecast(unit, target);
+
+            try { if (typeof _imitObserve === 'function') _imitObserve(unit, { type: 'finisher', targetId: target.id, x: target.x, y: target.y }); } catch (err) {}
+            if (typeof window !== 'undefined' && window._tutActive && typeof window._tutEvent === 'function') window._tutEvent('entropy', { uid: unit.id, player: unit.player, finisher: def.id });
+
+            // Spend everything up front (host-authoritative, sync-safe).
+            ensureEntropyGauge();
+            state.entropyGauge[unit.player] = 0;
+            state._finisherCount = state._finisherCount || { 1: 0, 2: 0 };
+            state._finisherCount[unit.player] += 1;
+            state._finisherLast = { player: unit.player, id: def.id, unitId: unit.id, targetId: target.id, round: state.round || 0 };
+            spendAllAP(unit);   // the execution ends the executioner's turn
+            if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache();
+            if (typeof window._updateEntropyGaugeHUD === 'function') window._updateEntropyGaugeHUD();
+
+            state._actionExecuting = true;
+            state.actionMode = null;
+            state.actionMenuView = 'root';
+            state.selectedTool = null;
+
+            addLog(`☠ ${unitDisplayName(unit)} executes ${unitDisplayName(target)} — ${String(def.name || '').toUpperCase()}! (${String(def.type).toUpperCase()}-type finisher)`);
+            if (unitHasStatus(unit, 'invisible')) { clearStatus(unit, 'invisible'); addLog(`${unitDisplayName(unit)} breaks camouflage!`); }
+            try { setUnitFacing(unit, target.x, target.y); } catch (err) {}
+
+            const applyHit = () => {
+                if (!target || target.dead || target._dying) return;
+                const dmg = getFinisherDamage(unit) + Math.floor(engineRng() * (R.variance * 2 + 1)) - R.variance;
+                applyDamageToUnit(target, dmg, def.name + ': ', {
+                    sourceUnit: unit,
+                    damageType: 'magic',
+                    spellType: def.type,
+                    keepFacing: true
+                });
+            };
+            const finish = (delayMs) => {
+                window.setTimeout(() => {
+                    state._actionExecuting = false;
+                    if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache();
+                    if (typeof renderAfterCombat === 'function') renderAfterCombat();
+                    checkWin();
+                    if (!state.winner) endUnitIfDone(unit);
+                }, delayMs);
+            };
+            if (_skipVisuals()) {
+                applyHit();
+                finish(actionMs(200));
+                return actionMs(350);
+            }
+            const totalMs = _finPlayCinematic(unit, target, { applyHit, finisherId: def.id, forecast: fc });
+            finish(totalMs);
+            return totalMs + actionMs(200);
+        }
+        window.doFinisher = doFinisher;
+
+        /* THE EXECUTION'S SKELETON — shared by every finisher, bespoke or
+           typed: the banner, the executioner's cut-in, the director's charge
+           (its own camera), the strike frame (damage lands here), the
+           resolve, the restore. hooks: { applyHit (host only), mute, remote,
+           finisherId }. Timings are FIXED per director (both screens derive
+           the same totalMs). Returns totalMs. */
+        function _finPlayCinematic(unit, target, hooks) {
+            hooks = hooks || {};
+            const def = getFinisherFor(unit);
+            const D = (def.sig && _FIN_DIRECTORS[def.sig]) ? _FIN_DIRECTORS[def.sig]
+                : (_FIN_DIRECTORS['type:' + def.type] || _FIN_DIRECTORS['type:anomaly']);
+            const applyHit = (typeof hooks.applyHit === 'function') ? hooks.applyHit : null;
+            const _snd = hooks.mute ? function () {} : function (k) { playSfx(k); };
+            const _dsnd = function (k) { try { if (typeof window.playDoorSfx === 'function') window.playDoorSfx(k); } catch (err) {} };
+            const _see = (u) => { try { return typeof _shouldCameraFollowUnit !== 'function' || !u || _shouldCameraFollowUnit(u); } catch (err) { return true; } };
+            const ts = (typeof CONFIG !== 'undefined' && CONFIG.tileSize) ? CONFIG.tileSize : 64;
+            const _cineOK = _ccinEligible([unit]);
+            const relayed = !!hooks.remote;
+            const CHARGE_MS  = actionMs(D.chargeMs);
+            const STRIKE_MS  = actionMs(D.strikeMs);   // charge end → the hit frame
+            const RESOLVE_MS = actionMs(D.resolveMs);
+            const totalMs = CHARGE_MS + STRIKE_MS + RESOLVE_MS;
+            const hitAt = CHARGE_MS + STRIKE_MS;
+            const VFX = (typeof ThreeVFXEffects !== 'undefined') ? ThreeVFXEffects : null;
+            const cx = Math.round((bw() - 1) / 2), cy = Math.round((bh() - 1) / 2);
+            const span = Math.max(bw(), bh());
+            const at = (ms, fn) => window.setTimeout(() => { if (state.phase !== 'battle') return; _ewsSafe(fn); }, Math.max(0, ms));
+            const pos = (u) => ({ x: (u && u._dyingX != null) ? u._dyingX : u.x, y: (u && u._dyingY != null) ? u._dyingY : u.y });
+            const grade = (kind, ms) => { try { if (typeof cineGrade === 'function') cineGrade(kind, ms); } catch (err) {} };
+            const insert = (html, kind, ms) => { try { if (typeof cineInsert === 'function') cineInsert(html, kind, ms); } catch (err) {} };
+            const flash = (color, ms, peak) => { if (VFX && VFX.sigScreenFlash) VFX.sigScreenFlash(color, ms, peak); };
+            const ring = (x, y, color, o) => { if (VFX && VFX.sigShockRing3D) VFX.sigShockRing3D(x, y, Object.assign({ r0: ts * 0.2, r1: ts * 1.5, ms: 440, color }, o || {})); };
+            const kick = (px, ms) => { try { if (typeof ThreePost !== 'undefined' && ThreePost.spellGradeKick) ThreePost.spellGradeKick(px, ms); } catch (err) {} };
+            const slow = (k, ms) => { try { if (_cineOK && typeof cineSlowMo === 'function') cineSlowMo(k, ms); } catch (err) {} };
+            const slowClear = () => { try { if (typeof cineSlowMoClear === 'function') cineSlowMoClear(); } catch (err) {} };
+            const freeze = (ms, o) => { try { if (_cineOK && typeof cineFreezeFrame === 'function') cineFreezeFrame(ms, o || {}); } catch (err) {} };
+            const fade = (u, from, to, ms) => { try { if (typeof cineUnitFade === 'function') cineUnitFade(u, from, to, ms); } catch (err) {} };
+            const enterVoid = (palette, caption, ms) => {
+                if (!_cineOK) return false;
+                if (typeof VoidStage === 'undefined' || !VoidStage || window.EW_DISABLE_VOID_STAGE) return false;
+                let actors = [];
+                try { actors = [unit, target].filter(u => u && !u.dead && _cineActorVisible(u)); } catch (err) { actors = []; }
+                if (!actors.length) return false;
+                try { if (VoidStage.active) VoidStage.exit({ instant: true }); } catch (err) {}
+                return VoidStage.enter({ palette, actors, caption, ms: ms || (STRIKE_MS + actionMs(600)), maxMs: 14000 });
+            };
+            const leaveVoid = () => { try { if (typeof VoidStage !== 'undefined' && VoidStage.active) VoidStage.exit(); } catch (err) {} };
+            /* THE SHOTS — every one guarded by _cineOK and the victim's
+               screen-true visibility (fog never leaks a hidden victim). */
+            const shot = (fn) => { if (!_cineOK) return false; if (!_see(target)) return false; try { return fn() !== false; } catch (err) { return false; } };
+            const dive = (u, zoomMul, ms) => {
+                if (!camera.moveTo || !_see(u)) return;
+                const p = pos(u);
+                camera.moveTo({ x: p.x, y: p.y, zoom: (typeof getCloseZoom === 'function' ? getCloseZoom() : 1.4) * (zoomMul || 0.95), duration: actionMs(ms || 260), _fogAllowed: true });
+            };
+            const ctx = {
+                unit, target, targets: [target], allies: [unit], def, hooks, relayed, VFX, ts, cx, cy, span,
+                CHARGE_MS, STRIKE_MS, RESOLVE_MS, hitAt, totalMs, strikesMs: STRIKE_MS,
+                cineOK: _cineOK, see: _see, snd: _snd, dsnd: _dsnd, at, pos, grade, insert, flash, ring, kick,
+                slow, slowClear, freeze, fade, enterVoid, leaveVoid, shot, dive,
+                visAllies: () => [unit].filter(a => !a.dead && _see(a)), nearestAlly: () => (_see(unit) ? unit : null),
+                craneToTargets: () => {}
+            };
+
+            /* the banner: the ⚛ chrome in the finisher's TYPE theme, the
+               FINISHER kicker, the execution's name + tagline */
+            _ewsShowBanner(unit.player, totalMs, getEntropyStrikeType(def.type), {
+                kicker: '☠ FINISHER — ' + unitDisplayName(unit).toUpperCase(),
+                glyph: def.glyph, name: def.name, tagline: def.tagline, cls: 'ews-fin'
+            });
+            _ewsSafe(() => D.siren(ctx));
+            shakeBoard('normal');
+
+            /* the executioner's cut-in: ONE live pane on the caster with the
+               name slam (fog-gated — a hidden executioner gets no camera) */
+            const paneMs = Math.max(actionMs(700), CHARGE_MS - actionMs(500));
+            let panes = false;
+            if (_cineOK && _see(unit) && window.ThreeSplitscreen && ThreeSplitscreen.isAvailable()) _ewsSafe(() => {
+                const ssRes = ThreeSplitscreen.show([{ unitId: unit.id }], { durationMs: paneMs, fov: 30, sideDeg: 24, driftDeg: 7, dist0: 3.0, dist1: 2.1 });
+                if (!ssRes) return;
+                panes = true;
+                _ssqShowChrome([{ unit, accent: (getEntropyStrikeType(def.type).accent) }], ssRes, {
+                    mute: !!hooks.mute, name: def.name.toUpperCase(), sub: def.tagline,
+                    accent: getEntropyStrikeType(def.type).accent,
+                    startAt: actionMs(200), staggerMs: 0, nameAt: actionMs(520),
+                    outAt: Math.max(actionMs(600), paneMs - actionMs(140)), totalMs: paneMs + actionMs(240)
+                });
+                window.setTimeout(() => _ewsSafe(() => ThreeSplitscreen.hide()), Math.max(actionMs(680), paneMs - actionMs(30)));
+                [actionMs(260), actionMs(1100)].forEach(t2 => window.setTimeout(() => _ewsSafe(() => { if (!unit.dead) triggerCastAnim(unit, D.castSpell || { type: 'damage', dmg: 1 }); }), t2));
+            });
+            if (camera.save) camera.save();
+            if (!panes && _cineOK && _see(unit)) {
+                camera.moveTo({ x: unit.x, y: unit.y, zoom: (typeof getCloseZoom === 'function' ? getCloseZoom() : 1.4), duration: actionMs(480), _fogAllowed: true });
+            }
+            at(actionMs(260), () => { if (VFX && !unit.dead && _see(unit)) D.charge(ctx); });
+            _ewsSafe(() => _ewsTweenBloom(
+                (typeof ThreePost !== 'undefined' && ThreePost.getBloomMaxStrength) ? ThreePost.getBloomMaxStrength() : 2.2,
+                CHARGE_MS,
+                { value: (typeof ThreePost !== 'undefined' && ThreePost.getBloomStrength) ? ThreePost.getBloomStrength() : 1.0, ms: RESOLVE_MS, holdMs: STRIKE_MS }
+            ));
+
+            /* THE STAGE: the director takes the camera and the board at the
+               end of the charge (the pane shatters into it), runs its beats
+               through the strike frame. It is the ONLY camera from here. */
+            at(CHARGE_MS - actionMs(120), () => {
+                if (!ctx.shot(() => D.cam(ctx))) dive(target, 0.95, 300);
+                D.stage(ctx);
+            });
+            window.setTimeout(() => {
+                if (state.winner) return;
+                _ewsSafe(() => D.strike(ctx));
+                shakeBoard('hard');
+                if (applyHit) applyHit();
+                scheduleBoardRender();
+            }, hitAt);
+            at(hitAt + actionMs(140), () => { D.resolve(ctx); shakeBoard('hard'); });
+            window.setTimeout(() => {
+                slowClear(); leaveVoid();
+                try { if (typeof cineDollyZoomRelease === 'function') cineDollyZoomRelease(); } catch (err) {}
+                if (camera.restore) camera.restore({ duration: actionMs(700) });
+                else if (typeof camera.softResetToUnit === 'function') camera.softResetToUnit(unit);
+            }, hitAt + RESOLVE_MS - actionMs(500));
+            return totalMs;
+        }
+        window._finPlayCinematic = _finPlayCinematic;
+
+        /* ═══════════════════════════════════════════════════════════════════
+           THE EXECUTION DIRECTORS. Hooks (every one best-effort, the same
+           ctx as the strike's + target / hitAt / shot / dive / slow / freeze
+           / fade / enterVoid):
+             chargeMs / strikeMs / resolveMs   FIXED timings
+             siren(c)      t=0 sound + grade
+             charge(c)     the executioner's charge FX (t≈260)
+             cam(c)        the FIRST shot of the stage (CHARGE − 120); return
+                           false to take the default dive on the victim
+             stage(c)      the board event + every later camera beat,
+                           scheduled with c.at relative to NOW (the hit is
+                           at c.STRIKE_MS + 120 from here)
+             strike(c)     the impact frame (damage lands here)
+             resolve(c)    whiteout + aftermath (hit + 140)
+           'type:<t>' rows are the TYPED EXECUTIONS built off _EWS_DIRECTORS
+           on one victim. Relay rule as the strike's: VFX online.js relays by
+           itself (sigUFOFleet3D, spawnProbeDescent3D, tileGlow) fire only
+           when !c.relayed; everything else fires on both screens.
+           ═══════════════════════════════════════════════════════════════════ */
+        function _finTypedDirector(type, tune) {
+            const E = () => _EWS_DIRECTORS[type] || _EWS_DIRECTORS.anomaly;
+            return Object.assign({
+                chargeMs: 2400, strikeMs: 1500, resolveMs: 1700,
+                castSpell: E().castSpell,
+                siren(c) { E().siren(Object.assign({}, c, { CHARGE_MS: c.CHARGE_MS, strikesMs: c.STRIKE_MS, RESOLVE_MS: c.RESOLVE_MS })); },
+                charge(c) { E().pane(c, c.unit, 0); },
+                cam(c) {
+                    const p = c.pos(c.target);
+                    c.slow(0.4, actionMs(600));
+                    if (typeof cineFaceCam === 'function') cineFaceCam(c.target, { dist: 2.6, tilt: 80 });
+                    c.at(actionMs(520), () => { c.slowClear(); if (typeof cineGodShot === 'function') cineGodShot(p, 7, { cut: false, duration: 520, tilt: 30 }); });
+                    c.at(c.STRIKE_MS - actionMs(200), () => { if (typeof cineWitnessCam === 'function' && !cineWitnessCam(p, [c.target], {})) c.dive(c.target, 0.9, 200); });
+                    return true;
+                },
+                stage(c) {
+                    const W = Object.assign({}, c, { cx: c.pos(c.target).x, cy: c.pos(c.target).y, span: 5, strikesMs: c.STRIKE_MS, craneToTargets: () => {} });
+                    E().world(W);
+                    if (E().lead) E().lead(c, c.target, 0, c.STRIKE_MS + actionMs(120));
+                },
+                strike(c) { E().strike(c, c.target, 0); c.freeze(actionMs(120), { grade: 'whiteout' }); },
+                resolve(c) {
+                    const W = Object.assign({}, c, { cx: c.pos(c.target).x, cy: c.pos(c.target).y, span: 6 });
+                    E().resolve(W);
+                }
+            }, tune || {});
+        }
+        const _FIN_DIRECTORS = {
+            'type:human':   _finTypedDirector('human'),
+            'type:alien':   _finTypedDirector('alien'),
+            'type:divine':  _finTypedDirector('divine'),
+            'type:unholy':  _finTypedDirector('unholy'),
+            'type:tech':    _finTypedDirector('tech'),
+            'type:anomaly': _finTypedDirector('anomaly'),
+
+            /* ── WORLD CLEAVE (king arthur) — Excalibur falls out of the sky
+               into the king's hands, the sky-watch pitches down with it, a
+               low reverse on the king as the blade of light swings, then the
+               god shot as the line opens across the whole board and the
+               halves grind. Freeze + whiteout on the swing frame. ───────── */
+            worldCleave: {
+                chargeMs: 2600, strikeMs: 1700, resolveMs: 2000,
+                castSpell: { type: 'damage', dmg: 1, name: 'World Cleave', kind: 'damage' },
+                siren(c) { c.snd('buff'); c.dsnd('doorBuzz'); c.grade('bone desat', actionMs(900)); },
+                charge(c) {
+                    const V = c.VFX, u = c.unit;
+                    if (V.sigMagicCircle3D) V.sigMagicCircle3D(u.x, u.y, { radiusPx: c.ts * 0.9, growMs: 240, holdMs: c.CHARGE_MS, fadeMs: 400, spin: true, color: 0xffd75a, color2: 0xffffff });
+                    if (V.sigWorldCleave3D) V.sigWorldCleave3D(u.x, u.y, c.pos(c.target).x, c.pos(c.target).y, { phase: 'sword', ms: c.CHARGE_MS - actionMs(200) });
+                    c.snd('buff');
+                },
+                cam(c) {
+                    const u = c.unit;
+                    if (typeof cineSkyWatch === 'function') cineSkyWatch(u, { span: 7, tiltUp: 118, tiltDown: 70, ms: actionMs(520) });
+                    c.at(actionMs(560), () => { c.slow(0.3, actionMs(700)); if (typeof cineFaceCam === 'function') cineFaceCam(u, { dist: 2.4, tilt: 86, cut: false, duration: 300 }); });
+                    c.at(c.STRIKE_MS - actionMs(240), () => { c.slowClear(); c.freeze(actionMs(110), { grade: 'whiteout' }); });
+                    c.at(c.STRIKE_MS + actionMs(30), () => { if (typeof cineGodShot === 'function') cineGodShot(c.pos(c.target), c.span + 2, { tilt: 26 }); });
+                    return true;
+                },
+                stage(c) {
+                    const V = c.VFX, u = c.unit, p = c.pos(c.target);
+                    c.at(actionMs(120), () => { if (V.sigWorldCleave3D) V.sigWorldCleave3D(u.x, u.y, p.x, p.y, { phase: 'swing', ms: c.STRIKE_MS + actionMs(1600) }); c.snd('physicalAbility'); });
+                    c.at(c.STRIKE_MS - actionMs(240), () => { c.flash('#ffffff', 220, 0.8); c.snd('lightningStrike'); });
+                },
+                strike(c) {
+                    const p = c.pos(c.target);
+                    c.ring(p.x, p.y, 0xffd75a, { r1: c.ts * 2.4, ms: 520, torus: true });
+                    c.flash('#fff2c0', 260, 0.7); c.kick(18, 260);
+                    c.snd('explosion'); c.dsnd('slam');
+                },
+                resolve(c) {
+                    const V = c.VFX, p = c.pos(c.target);
+                    if (V.sigWhiteout3D) V.sigWhiteout3D(p.x, p.y, { color: 0xffd75a, ms: 900, peak: 0.8, sizeTiles: c.span, shake: false });
+                    c.grade('whiteout', 300);
+                    c.insert('THE WORLD, IN TWO', 'stamp', actionMs(1100));
+                    c.at(actionMs(300), () => c.snd('quakeRumble'));
+                }
+            },
+
+            /* ── THE WEIGHING (anubis) — the scales lower out of the sky over
+               the victim (sky watch → the pans), the heart against the
+               feather in a slow-mo close reverse, the pan slams, Ammit's
+               jaws rise from the tile and snap on a whiteout. ───────────── */
+            weighing: {
+                chargeMs: 2500, strikeMs: 2300, resolveMs: 1800,
+                castSpell: { type: 'damage', dmg: 1, name: 'The Weighing', kind: 'aoe' },
+                siren(c) { c.snd('discord'); c.dsnd('doorBuzz'); c.grade('sepia', actionMs(1200)); },
+                charge(c) {
+                    const V = c.VFX, u = c.unit;
+                    if (V.sigMagicCircle3D) V.sigMagicCircle3D(u.x, u.y, { radiusPx: c.ts * 0.95, growMs: 260, holdMs: c.CHARGE_MS, fadeMs: 400, spin: true, color: 0xd8a24a, color2: 0x9632b4 });
+                    c.snd('debuff');
+                },
+                cam(c) {
+                    const p = c.pos(c.target);
+                    if (typeof cineSkyWatch === 'function') cineSkyWatch(p, { span: 6, tiltUp: 112, tiltDown: 74, ms: actionMs(900) });
+                    c.at(actionMs(1000), () => { c.slow(0.35, actionMs(900)); if (typeof cineFaceCam === 'function') cineFaceCam(c.target, { dist: 3.2, tilt: 78, cut: false, duration: 360 }); });
+                    c.at(c.STRIKE_MS - actionMs(420), () => { c.slowClear(); if (typeof cineReverseOts === 'function') cineReverseOts(c.target, c.unit, {}); });
+                    return true;
+                },
+                stage(c) {
+                    const V = c.VFX, p = c.pos(c.target);
+                    if (V.sigWeighing3D) V.sigWeighing3D(p.x, p.y, { ms: c.STRIKE_MS + actionMs(1700), jawsAt: c.STRIKE_MS - actionMs(420) });
+                    c.at(actionMs(1000), () => { c.insert('♥ ⚖ 𓆃', 'scripture', actionMs(1000)); c.snd('thunderRumble'); });
+                    c.at(c.STRIKE_MS - actionMs(420), () => { c.flash('#3a0a12', 240, 0.5); c.snd('quakeRumble'); });
+                },
+                strike(c) {
+                    const p = c.pos(c.target);
+                    c.freeze(actionMs(120), { grade: 'whiteout' });
+                    c.ring(p.x, p.y, 0x9632b4, { r1: c.ts * 2.0, ms: 480, torus: true });
+                    c.flash('#7a0f1e', 300, 0.7); c.kick(16, 240);
+                    c.snd('physicalAbilityDamage'); c.dsnd('slam');
+                },
+                resolve(c) {
+                    const V = c.VFX, p = c.pos(c.target);
+                    if (V.sigWhiteout3D) V.sigWhiteout3D(p.x, p.y, { color: 0x9632b4, ms: 800, peak: 0.7, sizeTiles: 6, shake: false });
+                    c.insert('HEAVIER THAN A FEATHER', 'scripture', actionMs(1100));
+                    c.grade('sepia', actionMs(700));
+                    c.at(actionMs(200), () => c.snd('explosion'));
+                }
+            },
+
+            /* ── THE NAUGHTY LIST (santa clause) — the scroll unrolls over
+               the victim, the name is read, coal rains on a witness cam, the
+               present drops from orbit on the sky watch, the bow lands last
+               on the god shot. ───────────────────────────────────────────── */
+            naughtyList: {
+                chargeMs: 2400, strikeMs: 2100, resolveMs: 1900,
+                castSpell: { type: 'damage', dmg: 1, name: 'The Naughty List', kind: 'aoe' },
+                siren(c) { c.snd('levelUp'); c.dsnd('doorBuzz'); c.grade('dim', actionMs(800)); },
+                charge(c) {
+                    const V = c.VFX, u = c.unit;
+                    if (V.sigMagicCircle3D) V.sigMagicCircle3D(u.x, u.y, { radiusPx: c.ts * 0.9, growMs: 240, holdMs: c.CHARGE_MS, fadeMs: 400, spin: true, color: 0xff3a2a, color2: 0x3bd36a });
+                    c.snd('buff');
+                },
+                cam(c) {
+                    const p = c.pos(c.target);
+                    if (typeof cineFaceCam === 'function') cineFaceCam(c.target, { dist: 2.8, tilt: 82 });
+                    c.at(actionMs(700), () => { if (typeof cineSkyWatch === 'function') cineSkyWatch(p, { span: 7, tiltUp: 116, tiltDown: 60, ms: c.STRIKE_MS - actionMs(900) }); });
+                    c.at(c.STRIKE_MS - actionMs(160), () => { c.slow(0.3, actionMs(500)); });
+                    c.at(c.STRIKE_MS + actionMs(340), () => { c.slowClear(); if (typeof cineGodShot === 'function') cineGodShot(p, 6, { cut: false, duration: 480, tilt: 28 }); });
+                    return true;
+                },
+                stage(c) {
+                    const V = c.VFX, p = c.pos(c.target);
+                    if (V.sigNaughtyList3D) V.sigNaughtyList3D(p.x, p.y, { ms: c.STRIKE_MS + actionMs(1800), dropAt: c.STRIKE_MS, name: unitDisplayName(c.target) });
+                    c.at(actionMs(200), () => { c.insert('🎅 NAUGHTY: ' + _ccinEsc(unitDisplayName(c.target)).toUpperCase(), 'stamp', actionMs(1300)); c.snd('uiConfirm'); });
+                    c.at(actionMs(900), () => c.snd('earthImpact'));
+                },
+                strike(c) {
+                    const p = c.pos(c.target);
+                    c.freeze(actionMs(130), { grade: 'whiteout' });
+                    c.ring(p.x, p.y, 0xff3a2a, { r1: c.ts * 2.6, ms: 520, torus: true });
+                    c.flash('#ffffff', 240, 0.75); c.kick(20, 260);
+                    c.snd('explosion'); c.dsnd('slam');
+                },
+                resolve(c) {
+                    const V = c.VFX, p = c.pos(c.target);
+                    if (V.sigWhiteout3D) V.sigWhiteout3D(p.x, p.y, { color: 0xffffff, ms: 700, peak: 0.6, sizeTiles: 6, shake: false });
+                    c.insert('HO HO HO', 'stamp', actionMs(1000));
+                    c.at(actionMs(500), () => c.snd('levelUp'));
+                }
+            },
+
+            /* ── HIT AND RUN (honda civic) — the horn from off the map, a
+               side dolly as the car crosses the board, the sky watch as it
+               launches and tumbles, the slam on the victim, the airbag on a
+               reverse close-up. ─────────────────────────────────────────── */
+            hitAndRun: {
+                chargeMs: 2200, strikeMs: 2000, resolveMs: 1900,
+                castSpell: { type: 'damage', dmg: 1, name: 'Hit and Run', kind: 'dash' },
+                siren(c) { c.snd('nukeAlarm'); c.dsnd('doorBuzz'); c.grade('desat', actionMs(600)); },
+                charge(c) {
+                    const V = c.VFX, u = c.unit;
+                    if (V.sigNeonGrid3D) V.sigNeonGrid3D(u.x, u.y, { ms: c.CHARGE_MS, color: 0x4fd8ff });
+                    c.snd('jetFlyover');
+                },
+                cam(c) {
+                    const p = c.pos(c.target), u = c.unit;
+                    if (typeof cineSideDolly === 'function') cineSideDolly(u, c.target, { mode: 'hold', tilt: 82 });
+                    c.at(actionMs(800), () => { if (typeof cineSkyWatch === 'function') cineSkyWatch(p, { span: 8, tiltUp: 108, tiltDown: 62, ms: c.STRIKE_MS - actionMs(900) }); });
+                    c.at(c.STRIKE_MS - actionMs(300), () => c.slow(0.35, actionMs(420)));
+                    c.at(c.STRIKE_MS + actionMs(200), () => { c.slowClear(); if (typeof cineReverseOts === 'function') cineReverseOts(c.target, u, {}); });
+                    return true;
+                },
+                stage(c) {
+                    const V = c.VFX, p = c.pos(c.target), u = c.unit;
+                    if (V.sigHitAndRun3D) V.sigHitAndRun3D(u.x, u.y, p.x, p.y, { ms: c.STRIKE_MS + actionMs(1800), hitAt: c.STRIKE_MS });
+                    c.at(actionMs(100), () => c.snd('nukeAlarm'));
+                    c.at(actionMs(900), () => c.snd('itemThrow'));
+                    c.at(c.STRIKE_MS - actionMs(60), () => c.insert('🚗 110 MPH', 'signal', actionMs(700)));
+                },
+                strike(c) {
+                    const p = c.pos(c.target);
+                    c.freeze(actionMs(120), { grade: 'whiteout' });
+                    c.ring(p.x, p.y, 0x4fd8ff, { r1: c.ts * 2.2, ms: 480, torus: true });
+                    c.flash('#ffffff', 220, 0.7); c.kick(22, 240);
+                    c.snd('explosion'); c.dsnd('slam');
+                },
+                resolve(c) {
+                    const V = c.VFX, p = c.pos(c.target);
+                    if (V.sigWhiteout3D) V.sigWhiteout3D(p.x, p.y, { color: 0xffffff, ms: 600, peak: 0.5, sizeTiles: 5, shake: false });
+                    c.insert('NO WITNESSES', 'terminal', actionMs(1000));
+                    c.at(actionMs(300), () => c.snd('nukeAlarm'));
+                }
+            },
+
+            /* ── THE STOMP (kaiju) — the shadow grows on a low witness shot,
+               the sky watch finds the foot, the slam, the crater on the god
+               shot. Looney Tunes: the victim looks up first. ───────────── */
+            kaijuStomp: {
+                chargeMs: 2300, strikeMs: 1900, resolveMs: 1900,
+                castSpell: { type: 'damage', dmg: 1, name: 'The Stomp', kind: 'aoe' },
+                siren(c) { c.snd('thunderRumble'); c.dsnd('doorBuzz'); c.grade('dim', actionMs(900)); },
+                charge(c) {
+                    const V = c.VFX, u = c.unit;
+                    if (V.sigMagicCircle3D) V.sigMagicCircle3D(u.x, u.y, { radiusPx: c.ts * 1.0, growMs: 260, holdMs: c.CHARGE_MS, fadeMs: 400, spin: false, color: 0x3bd36a, color2: 0x9632b4 });
+                    c.snd('quakeRumble');
+                },
+                cam(c) {
+                    const p = c.pos(c.target);
+                    if (typeof cineWitnessCam !== 'function' || !cineWitnessCam(p, [c.target], { tilt: 84 })) { if (typeof cineFaceCam === 'function') cineFaceCam(c.target, { dist: 3.0, tilt: 84 }); }
+                    c.at(actionMs(700), () => { if (typeof cineSkyWatch === 'function') cineSkyWatch(p, { span: 9, tiltUp: 122, tiltDown: 66, ms: c.STRIKE_MS - actionMs(760) }); });
+                    c.at(c.STRIKE_MS - actionMs(200), () => c.slow(0.3, actionMs(420)));
+                    c.at(c.STRIKE_MS + actionMs(300), () => { c.slowClear(); if (typeof cineGodShot === 'function') cineGodShot(p, 8, { cut: false, duration: 520, tilt: 24 }); });
+                    return true;
+                },
+                stage(c) {
+                    const V = c.VFX, p = c.pos(c.target);
+                    if (V.sigKaijuStomp3D) V.sigKaijuStomp3D(p.x, p.y, { ms: c.STRIKE_MS + actionMs(1800), hitAt: c.STRIKE_MS });
+                    c.at(actionMs(600), () => c.snd('thunderRumble'));
+                    c.at(c.STRIKE_MS - actionMs(700), () => c.insert('⬆ LOOK UP', 'stamp', actionMs(600)));
+                },
+                strike(c) {
+                    const p = c.pos(c.target);
+                    c.freeze(actionMs(140), { grade: 'whiteout' });
+                    c.ring(p.x, p.y, 0x3bd36a, { r1: c.ts * 3.2, ms: 620, torus: true });
+                    c.flash('#ffffff', 260, 0.8); c.kick(26, 300);
+                    c.snd('explosion'); c.dsnd('slam');
+                },
+                resolve(c) {
+                    const V = c.VFX, p = c.pos(c.target);
+                    if (V.sigWhiteout3D) V.sigWhiteout3D(p.x, p.y, { color: 0x9fd8a0, ms: 800, peak: 0.6, sizeTiles: 7, shake: false });
+                    c.insert('FOOTNOTE', 'stamp', actionMs(1000));
+                    c.at(actionMs(200), () => c.snd('quakeRumble'));
+                }
+            },
+
+            /* ── SEGFAULT (ai) — the scan on a face cam, the wireframe cage
+               on a slow orbit, the deletion voxel by voxel, the terminal
+               insert on the whiteout. The victim's model FADES with the
+               deletion (cineUnitFade), back on the resolve if it lives. ── */
+            segfault: {
+                chargeMs: 2300, strikeMs: 2000, resolveMs: 1800,
+                castSpell: { type: 'damage', dmg: 1, name: 'Segfault', kind: 'magic' },
+                siren(c) { c.snd('empBurst'); c.dsnd('doorBuzz'); c.grade('terminal', actionMs(900)); },
+                charge(c) {
+                    const V = c.VFX, u = c.unit;
+                    if (V.sigNeonGrid3D) V.sigNeonGrid3D(u.x, u.y, { ms: c.CHARGE_MS, color: 0x4fd8ff });
+                    if (V.sigStatRings3D) V.sigStatRings3D(u.x, u.y, { ms: c.CHARGE_MS, color: 0x4fd8ff });
+                    c.snd('taserZap');
+                },
+                cam(c) {
+                    if (typeof cineFaceCam === 'function') cineFaceCam(c.target, { dist: 2.6, tilt: 80 });
+                    c.at(actionMs(600), () => { c.slow(0.5, actionMs(1100)); try { _cineBeatMove({ yaw: (camera._tyaw ?? 0) + 70, duration: actionMs(1300), easing: 'easeInOut', _bypassCap: true, _fogAllowed: true }); } catch (err) {} });
+                    c.at(c.STRIKE_MS - actionMs(300), () => { c.slowClear(); c.freeze(actionMs(100), { grade: 'invert' }); });
+                    return true;
+                },
+                stage(c) {
+                    const V = c.VFX, p = c.pos(c.target);
+                    if (V.sigSegfault3D) V.sigSegfault3D(p.x, p.y, { ms: c.STRIKE_MS + actionMs(1600), deleteAt: c.STRIKE_MS - actionMs(700) });
+                    c.at(actionMs(100), () => c.insert('> scan --target ' + _ccinEsc(unitDisplayName(c.target)), 'terminal', actionMs(900)));
+                    c.at(c.STRIKE_MS - actionMs(700), () => { c.fade(c.target, 1, 0.08, actionMs(680)); c.insert('> rm -rf /unit', 'terminal', actionMs(800)); c.snd('taserZap'); });
+                },
+                strike(c) {
+                    const p = c.pos(c.target);
+                    c.ring(p.x, p.y, 0x4fd8ff, { r1: c.ts * 1.8, ms: 420, torus: true });
+                    c.flash('#c8ffff', 200, 0.6); c.kick(14, 220);
+                    c.snd('empBurst'); c.dsnd('slam');
+                    c.at(actionMs(120), () => { const t = c.target; if (t && !t.dead && !t._dying) c.fade(t, 0.08, 1, actionMs(500)); });
+                },
+                resolve(c) {
+                    const V = c.VFX, p = c.pos(c.target);
+                    if (V.sigWhiteout3D) V.sigWhiteout3D(p.x, p.y, { color: 0x4fd8ff, ms: 700, peak: 0.6, sizeTiles: 5, shake: false });
+                    c.grade('terminal', actionMs(900));
+                    c.insert('Segmentation fault (core dumped)', 'terminal', actionMs(1200));
+                    c.at(actionMs(200), () => c.snd('explosion'));
+                }
+            }
+        };
+        window._FIN_DIRECTORS = _FIN_DIRECTORS;
+
         function awardAssists(victim, killer) {
             if (!killer || !victim) return;
             const assistees = new Set();
@@ -11928,6 +12527,7 @@
                 bump('debuffsApplied', sDebuff);
             }
             bump('entropyStrikes', (state._entropyStrikeCount && state._entropyStrikeCount[viewer]) || 0);
+            bump('finishers', (state._finisherCount && state._finisherCount[viewer]) || 0);
             return { deltas, champs };
         }
 
@@ -19518,6 +20118,7 @@
                     if (camera._cineShotId !== sequenceId) return;
                     if (sequenceId !== boardCameraSequenceId) return;
                     if (state.phase !== 'battle' || state.cameraDisabled) return;
+                    if (_cineShotOwned(sequenceId)) return;   // cineOwnShot: the director composes beat 2 itself
                     // ── Multi-target casts (barrage novae like Requiem, AoE
                     // blasts): beat 2 is a WIDE reverse cut framing EVERY
                     // affected target instead of a close-up of one victim —
@@ -19679,9 +20280,30 @@
         // tilt/yaw unless overridden). Returns false — the caller keeps its
         // tactical fallback — when no cinematic shot owns the camera.
         // ═══════════════════════════════════════════════════════════════════
+        /* ═══════════════════════════════════════════════════════════════════
+           cineOwnShot (2026-09-19) — A DIRECTOR OWNS THE CAMERA. The stock
+           two-beat action shot keeps scheduling its own beats UNDER a bespoke
+           sequence (the cut to the victim at cutMs, the drift, the impact
+           retargets from the VFX) — so a finisher's sky watch or fly-by got
+           yanked back to a shoulder close-up mid-move (the user: "they look
+           better with the action camera off"). A sequence that composes its
+           own shots calls cineOwnShot(sequenceId): from that frame on the
+           stock shot's later beats and every _cineRetargetShot are skipped
+           for that sequence, and only the director moves the camera. The
+           restore at the shot's end is untouched. */
+        function cineOwnShot(sequenceId) {
+            if (sequenceId == null) return false;
+            camera._cineOwnedSeq = sequenceId;
+            return true;
+        }
+        function _cineShotOwned(sequenceId) {
+            return camera._cineOwnedSeq != null && camera._cineOwnedSeq === (sequenceId != null ? sequenceId : camera._cineShotId);
+        }
+        window.cineOwnShot = cineOwnShot;
         function _cineRetargetShot(point, unit, opts = {}) {
             if (state.cameraDisabled || state.phase !== 'battle' || state.winner) return false;
             if (camera._cineShotId == null) return false;
+            if (_cineShotOwned(camera._cineShotId)) return true;   // the director owns this shot — a retarget would yank it
             if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.y)) return false;
             const ts = CONFIG.tileSize || BASE_TILE;
             camera._cineShotTarget = { x: Math.round(point.x), y: Math.round(point.y),
@@ -21242,6 +21864,7 @@
             /* ── #1 High Noon — the delay IS the spell. */
             raceHighNoon(ctx) {
                 const { caster, target, timings, sequenceId } = ctx;
+                cineOwnShot(sequenceId);   // the clock, the fly-by and the slam are the whole shot
                 _cineAt(Math.max(0, timings.sourceHold - actionMs(700)), sequenceId, () => {
                     cineSlowMo(0.25, 1400);
                     cineInsert('🕛', 'clock', 1200);
@@ -21289,6 +21912,7 @@
                 const t0 = Math.max(0, timings.sourceHold);
                 _cineAt(t0 + actionMs(80), sequenceId, () => {
                     const m = M(); if (!m) return;
+                    cineOwnShot(sequenceId);   // from the fling on, the sky watch is the whole shot
                     const fling = m.flingMs || actionMs(1900);
                     const hang = Math.max(0, m.carryMs - (performance.now() - m.t0));
                     _cineAt(hang, sequenceId, () => {
@@ -27346,6 +27970,7 @@
 
             // Living enemies the team-attack can hit (fog-aware).
             entropyStrikeTargets(unit) { return getEntropyStrikeTargets(unit); },
+            finisherTargets(unit) { return getFinisherTargets(unit); },
 
             /* ── affordability / castability (logic lives HERE now) ── */
 
@@ -34610,6 +35235,7 @@
             state._simulAiLastUnit = null;
             state._arenaBountyPts = { 1: 0, 2: 0 };
             state._entropyStrikeCount = { 1: 0, 2: 0 };
+            state._finisherCount = { 1: 0, 2: 0 };
             state._nexusSurgeAnnounced = false;
             state._nexusThreatAnnounced = 0;
             state.suddenDeathActive = false;
@@ -36650,6 +37276,7 @@
             state._simulAiLastUnit = null;
             state._arenaBountyPts = { 1: 0, 2: 0 };
             state._entropyStrikeCount = { 1: 0, 2: 0 };
+            state._finisherCount = { 1: 0, 2: 0 };
             state._nexusSurgeAnnounced = false;
             state._nexusThreatAnnounced = 0;
             state.suddenDeathActive = false;
@@ -37556,6 +38183,7 @@
                     case 'guard': ok = _queueGuard(unit, plan); break;
                     case 'build': ok = _queueBuild(unit, plan, step); break;
                     case 'entropyStrike': ok = _queueEntropy(unit, plan, step); break;
+                    case 'finisher': ok = _queueFinisher(unit, plan, step); break;
                 }
                 if (ok) {
                     state.pendingTarget = null;
@@ -37739,6 +38367,22 @@
                 return 250;
             }
 
+            /* ☠ THE FINISHER (2026-09-19): the execution is queued like the
+               strike; the victim rides the plan step (targetId), resolved
+               against the board at resolve time (a dead victim = a whiff). */
+            function _queueFinisher(unit, plan, step) {
+                if (typeof canUseFinisher === 'function' && !canUseFinisher(unit)) return 0;
+                const _fid = (step && step.targetId != null) ? step.targetId : null;
+                plan.steps.push({ type: 'finisher', targetId: _fid });
+                spendAllAP(unit);
+                const _fdef = (typeof getFinisherFor === 'function') ? getFinisherFor(unit) : null;
+                showFloatingTextForUnit(unit, '☠ ' + String((_fdef && _fdef.name) || 'FINISHER').toUpperCase() + ' LOCKED', 'buff', { durationMs: 1100 });
+                playSfx('uiConfirm');
+                state.actionMode = null;
+                state.actionMenuView = 'root';
+                return 250;
+            }
+
             function _queueEntropy(unit, plan, step) {
                 if (typeof canUseEntropyStrike === 'function' && !canUseEntropyStrike(unit)) return 0;
                 // The chosen apocalypse rides the plan step; a stepless call
@@ -37844,6 +38488,7 @@
                         };
                     case 'guard': return { type: 'guard' };
                     case 'entropyStrike': return { type: 'entropyStrike', strikeType: c.strikeType || null };
+                    case 'finisher': return { type: 'finisher', targetId: c.targetId != null ? c.targetId : null };
                     case 'move': return { type: 'move', x: c.x, y: c.y, z: c.z };
                 }
                 return null;
@@ -37928,6 +38573,7 @@
                         : st.type === 'guard' ? '🛡 Guard'
                         : st.type === 'item' ? `🎒 ${st.tool}`
                         : st.type === 'entropyStrike' ? ('⚛ ' + ((st.strikeType && typeof getEntropyStrikeType === 'function') ? getEntropyStrikeType(st.strikeType).name.toUpperCase() : 'ENTROPY STRIKE'))
+                        : st.type === 'finisher' ? ('☠ ' + ((typeof getFinisherFor === 'function' && getFinisherFor(unit)) ? getFinisherFor(unit).name.toUpperCase() : 'FINISHER'))
                         : st.type === 'build' ? '🔨 Build'
                         : st.type).join(' → ');
                 return `${unitDisplayName(e.unit)} (SPD ${e.speed}): ${verbs}`;
@@ -38043,6 +38689,13 @@
                             return doEntropyStrike(unit, step.strikeType || null) || 0;
                         }
                         _whiff(unit, 'Entropy Strike');
+                        return 400;
+                    case 'finisher':
+                        if (typeof canUseFinisher === 'function' && canUseFinisher(unit)) {
+                            const _fv = (step.targetId != null) ? (state.units || []).find(u => u.id === step.targetId && !u.dead && !u._dying) : null;
+                            return doFinisher(unit, _fv ? _fv.id : null) || 0;
+                        }
+                        _whiff(unit, 'Finisher');
                         return 400;
                     case 'build':
                         return doBuildAction(unit, step.x, step.y, step.tool) || 400;
@@ -41759,6 +42412,8 @@
             getEntropyGauge, isEntropyGaugeFull, addEntropy,
             canUseEntropyStrike, getEntropyStrikeTargets, getEntropyStrikeDamage, doEntropyStrike,
             getEntropyStrikeType, getEntropyStrikeTypeOrder, getEntropyStrikeForecast, getEntropyStrikeBestType,
+            // ☠ THE FINISHERS (2026-09-19) — the gauge's other verb
+            canUseFinisher, getFinisherFor, getFinisherTargets, getFinisherDamage, getFinisherForecast, getFinisherBestTarget, doFinisher,
             isUnitHeatingUp, isUnitOnFire, getUnitBountyGold,
             get ENTROPY_GAUGE_MAX() { return ENTROPY_GAUGE_MAX; },
 

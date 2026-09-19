@@ -4735,7 +4735,7 @@
             }
             /* THE TUTORIAL: the submenus open only when the step allows the verb */
             if (typeof window !== 'undefined' && window._tutActive && typeof window._tutActionAllowed === 'function') {
-                const _tutVerb = { spells: 'spell', items: 'item', entropy: 'entropy', switch: 'switch' }[view];
+                const _tutVerb = { spells: 'spell', items: 'item', entropy: 'entropy', finisherTargets: 'entropy', switch: 'switch' }[view];
                 if (_tutVerb && !window._tutActionAllowed(_tutVerb, unit)) return;
             }
             if (view === 'spells' && unitSpellsBlocked(unit)) {
@@ -4754,6 +4754,13 @@
             if (view === 'entropy' && !(typeof canUseEntropyStrike === 'function' && canUseEntropyStrike(unit))) {
                 addLog(unit && typeof isEntropyGaugeFull === 'function' && !isEntropyGaugeFull(unit.player)
                     ? '⚛ The Entropy Gauge is not full yet.' : '⚛ No visible enemy for the Entropy Strike.');
+                playErrorSfx();
+                return;
+            }
+            // ☠ The victim list opens only when the finisher can fire (same rule).
+            if (view === 'finisherTargets' && !(typeof canUseFinisher === 'function' && canUseFinisher(unit))) {
+                addLog(unit && typeof isEntropyGaugeFull === 'function' && !isEntropyGaugeFull(unit.player)
+                    ? '☠ The Entropy Gauge is not full yet.' : '☠ No visible enemy to execute.');
                 playErrorSfx();
                 return;
             }

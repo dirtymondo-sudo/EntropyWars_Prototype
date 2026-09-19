@@ -685,6 +685,22 @@
             window.doEntropyStrike = doEntropyStrike;
         }
 
+        /* ☠ THE FINISHER (2026-09-19): the gauge's other verb rides the same
+           engine game-action shape as the strike — the victim's id, resolved
+           by the HOST against its own board (a stale id → the engine's best
+           victim, never a mismatch). */
+        const _origDoFinisher = (typeof doFinisher === 'function') ? doFinisher : null;
+        if (_origDoFinisher) {
+            doFinisher = function(unit, targetId) {
+                if (!_isOnline() || state._remoteAction) return _origDoFinisher(unit, targetId);
+                if (_isHost()) return _hostRunAndSync(_origDoFinisher, [unit, targetId]);
+                if (!_guestOwnsAction(unit)) return 0;
+                _emit('game-action', { type: 'engine', fn: 'doFinisher', unitId: unit.id, targetId: targetId != null ? targetId : null });
+                return 1200;
+            };
+            window.doFinisher = doFinisher;
+        }
+
         const _origChannelNexus = (typeof channelNexus === 'function') ? channelNexus : null;
         if (_origChannelNexus) {
             channelNexus = function(unit) {
@@ -1743,6 +1759,9 @@
                             case 'doEntropyStrike':
                                 if (typeof doEntropyStrike === 'function') doEntropyStrike(engUnit, data.strikeType || null);
                                 break;
+                            case 'doFinisher':
+                                if (typeof doFinisher === 'function') doFinisher(engUnit, data.targetId != null ? data.targetId : null);
+                                break;
                             case 'doGuard':
                                 if (typeof doGuard === 'function') doGuard(engUnit);
                                 break;
@@ -2323,6 +2342,26 @@
            Relay the cinematic by id; the guest replays it with no applyHit
            (damage arrives via state-sync) and muted sfx (the 'sfx' relay
            already carries those). */
+        /* ☠ The finisher's cinematic: same contract as the strike's — the
+           host relays the execution by ids ('finisher-cine'), the guest
+           replays the same director with no applyHit, muted sfx. */
+        const _origFinPlayCinematic = (typeof _finPlayCinematic === 'function') ? _finPlayCinematic : null;
+        if (_origFinPlayCinematic) {
+            _finPlayCinematic = function(unit, target, hooks) {
+                var _netOn = window._NET && window._NET.online;
+                if ((_netOn && _isHost() || _ewRecOn()) && unit && target && !(hooks && hooks.remote)) {
+                    _emit('relay', {
+                        type: 'finisher-cine',
+                        unitId: unit.id,
+                        targetId: target.id,
+                        finisherId: (hooks && hooks.finisherId) || null
+                    });
+                }
+                return _origFinPlayCinematic(unit, target, hooks);
+            };
+            window._finPlayCinematic = _finPlayCinematic;
+        }
+
         const _origEwsPlayCinematic = (typeof _ewsPlayCinematic === 'function') ? _ewsPlayCinematic : null;
         if (_origEwsPlayCinematic) {
             _ewsPlayCinematic = function(unit, targets, allies, hooks) {
@@ -4256,6 +4295,18 @@
                        because the host's 'sfx' relay already carries them.
                        Fog gating happens inside _ewsPlayCinematic per
                        anchor, against THIS viewer's visible-tile set. */
+                    /* ☠ The finisher replay (2026-09-19): the executioner + the
+                       victim by id, the director resolved from the executioner's
+                       race on THIS screen; fog-gated inside _finPlayCinematic. */
+                    if (data.type === 'finisher-cine' && _ewMirrorView()) {
+                        try {
+                            var _fcU = (st && st.units) ? st.units.find(function(u) { return u.id === data.unitId; }) : null;
+                            var _fcT = (st && st.units) ? st.units.find(function(u) { return u.id === data.targetId; }) : null;
+                            if (_fcU && _fcT && !st.winner && typeof window._finPlayCinematic === 'function') {
+                                window._finPlayCinematic(_fcU, _fcT, { applyHit: null, mute: true, remote: true, finisherId: data.finisherId || null });
+                            }
+                        } catch (e) { /* cosmetic replay must never break the sync */ }
+                    }
                     if (data.type === 'entropy-cine' && _ewMirrorView()) {
                         try {
                             var _ecFind = function(id) {
