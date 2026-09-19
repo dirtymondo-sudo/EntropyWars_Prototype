@@ -23352,8 +23352,8 @@ const DOOR_HQ = {
                 { deg: 0,   r: 1.4, level: 0, face: 0,   line: 'The agent does not look up. “Take a number.”' },
                 /* the intake clerk on the reception wedge's chair (seated; Rhonda moved to the round desk 2026-09-06) */
                 { deg: 129, r: 18.95, level: 0, face: 309, gender: 'female', pose: 'hqSit', reach: 3.2, label: 'INTAKE CLERK', line: '“Forms are on the left. The left has moved.”' },
-                { deg: 288, r: 18.8, level: 0, face: 108, line: '“It’s 90 degrees.” … “Oh shit.”' },
-                { deg: 45,  r: 22.4, level: 1, face: 225, line: '“Check your corners.” Not a greeting.' },
+                { deg: 288, r: 18.8, level: 0, face: 108, line: '“It’s 90 degrees.” … “Oh shit.”', patrol: true },   // THE ROUNDS (2026-09-19): the floor watch walks a loop
+                { deg: 45,  r: 22.4, level: 1, face: 225, line: '“Check your corners.” Not a greeting.', patrol: true },   // … and the mezzanine's
                 /* THE GALLERY (2026-09-16): the watch on the third ring, at the top of its stair */
                 { deg: 318, r: 22.3, level: 2, face: 138, label: 'THE GALLERY WATCH', line: '“Third ring. Nothing up here launches. Everything up here looks.” They do not say at what.' },
             ],
@@ -41402,6 +41402,182 @@ function hqPortalLeaf(roomId) {
 }
 /* the facility is SAFE by construction: a room with no site is never wild (9.4's rule, shared) — the escape rope's far end */
 function hqPortalSafeRoom(roomId) { return !hqRoomSite(roomId); }
+/* ══ THE POPULATION + THE ROUNDS (2026-09-19) ══
+   Who LIVES in a room, and that they WALK. The user: "each area inhabited by the
+   proper units — they already have map tags; Disaster City and DOOR HQ the most
+   diverse; make them walk in routed loops, even loops between doors or areas."
+   THE TAGS are the ones the game already keeps: DOOR_TEXT.POINT_OF_ENTRY (a race's
+   home site — doorSiteCrossings reads it by map label) and EW_MAP_META `biomes`
+   (a site's neighbours share one). hqSiteResidents(siteId) is the ONE ordered read
+   of a site's people: its NATIVES first (the races whose point of entry it is),
+   then the natives of every site that shares a biome (most shared first), then
+   the rest of its bay's sector — never "anyone"; the roster draw stays the
+   facility's. hqRoomPopulation(roomId, profile) is the ONE read the renderer
+   spawns from: the room's KIND (wild / city / facility), its residents' pool,
+   and how many EXTRA WALKERS stand in it beyond the authored `npcSpots` — by
+   floor area (HQ_POPULATION_RULES.perM2, a terrain room by its open share),
+   clamped, DISASTER CITY (hubs.city) and the D.O.O.R. HQ hub multiplied; a
+   `quiet` room keeps one; the car, a corridor cell none. The draw is seeded by
+   the day + the room (hqHash) so a room's crowd holds for a day. A facility
+   room's pool is the OFFICER'S OWN ROSTER (the account's unlocked races, or the
+   starters offline) — the hall is the whole department passing through; a city
+   part's pool is the three urban sites' residents + every TIME-faction race
+   (ordinary people on a street). The renderer (three-renderer.js "THE ROUNDS")
+   walks every extra walker — and a spot native that draws `roam` — on a LOOP of
+   stops (doors, counters, spots, free cells) at HQ_POPULATION_RULES.walkSpeed,
+   pausing `pauseMs` at each; a stop that is a DOOR into another room is an EXIT:
+   the walker goes through (away `awayMs`) and comes back in by a door, and the
+   TRAVELLER LEDGER hands it to the far room when the officer follows (a race
+   arriving through the door it left by). Viewer-local, nothing on `state`,
+   nothing relayed (RULE #2). Adding a resident = its POINT_OF_ENTRY row; tuning
+   the crowd = this table. hq-population.test.js guards it. */
+const HQ_POPULATION_RULES = {
+    perM2: 230,            // one extra walker per this many m² of OPEN floor in a wild room
+    min: 2, max: 8,        // the clamp on a wild room's extras
+    facilityPerM2: 170, facilityMin: 1, facilityMax: 6,   // a facility room (the roster on the move)
+    cityMul: 1.7, cityMax: 12,   // DISASTER CITY (hubs.city): the most diverse — a street is a crowd
+    hqMul: 1.5, hqMax: 9,        // the hall + the rings (hubs.hq's anchor and the bays' floors): the department passing through
+    quietN: 1,             // a `quiet` room keeps one walker
+    spotRoamShare: 0.5,    // the share of authored spot natives that leave their spot for a loop (a `stay: true` spot never; a posed one never)
+    loopStops: [2, 4],     // stops per loop
+    doorShare: 0.6,        // the chance a loop takes a door out of the room (an EXIT stop)
+    walkSpeed: 1.35,       // m/s (the walker walks 2.4 — a stroll)
+    pauseMs: [2200, 7000], // the pause at a stop
+    awayMs: [6000, 18000], // how long an exit keeps a walker out of the room
+    travelTtlMs: 150000,   // a traveller in the ledger arrives only if the officer follows within this
+    maxTravellers: 4,
+    perfLowMul: 0.5,       // EW_PERF_LOW halves every count
+    stuckS: 1.4,           // a walker that has not moved this long re-paths, then drops the stop
+    yieldM: 1.05,          // the walker holds this far from the officer / another walker in its way
+    wildWeights: [0.5, 0.3, 0.2],   // a wild room's draw: a TRUE native (its point of entry) · a biome-tagged resident · a neighbouring site's native; the first draw is always a native
+    cityWeights: [0.5, 0.3, 0.2],   // a city street's draw: the site's own (natives + the urban-tagged) · ordinary people (a `human` type) · the other cities' natives
+    /* THE UNDERWORLD's own people (hubs.underworld) — the sewers, the tunnels, the cells, the workings */
+    underworld: ['zombie', 'ghoul', 'gangster', 'homosapien', 'conspiracy theorist', 'skeleton', 'reptilian', 'antperson', 'mad scientist', 'shadow entity'],
+};
+/* THE RESIDENTS of a site, by the tags: the NATIVES (POINT_OF_ENTRY) first, then every race whose own
+   RACE_PROFILES `biomes` tags meet the site's EW_MAP_META `biomes` (the most shared first — the terrain
+   preference the roster already carries), then the natives of the sites that share a biome, then the
+   sector's; filtered to rigged 3D races when the sprite table is loaded. `tiers[race]` names the reason. */
+function hqSiteResidents(siteId) {
+    const site = hqSiteId(siteId);
+    const META = (typeof EW_MAP_META !== 'undefined') ? EW_MAP_META : [];
+    const meta = META.find(m => m.id === site);
+    if (!meta) return [];
+    const ready = (r) => (typeof isRace3DReady !== 'function') || isRace3DReady(r);
+    const out = [];
+    out.tiers = {};
+    const push = (list, tier) => { for (const r of list) if (r !== 'men in black' && out.indexOf(r) < 0 && ready(r)) { out.push(r); out.tiers[r] = tier; } };
+    push(doorSiteCrossings(meta.label), 'native');
+    out.natives = out.length;
+    const P = (typeof RACE_PROFILES !== 'undefined') ? RACE_PROFILES : {};
+    const sb = meta.biomes || [];
+    const overlap = (tags) => (tags || []).filter(b => sb.indexOf(b) >= 0).length;
+    const tagged = Object.keys(P).filter(r => overlap(P[r].biomes) > 0).sort((x, y) => overlap(P[y].biomes) - overlap(P[x].biomes) || x.localeCompare(y));
+    push(tagged, 'biome');
+    const shared = (m) => (m.biomes || []).filter(b => sb.indexOf(b) >= 0).length;
+    const nb = META.filter(m => !m.isDelta && !m.area && m.id !== site && shared(m) > 0).sort((x, y) => shared(y) - shared(x));
+    for (const m of nb) push(doorSiteCrossings(m.label), 'neighbour');
+    const sec = (typeof hqSectorOfMap === 'function') ? hqSectorOfMap(site) : null;
+    const ids = (sec && DOOR_HQ.sectors[sec]) ? DOOR_HQ.sectors[sec].maps : [];
+    for (const id of ids) { const m = META.find(x => x.id === id); if (m) push(doorSiteCrossings(m.label), 'sector'); }
+    return out;
+}
+/* the officer's own roster: the account's unlocked races (the starters offline), a 3D-ready walker each */
+function hqRosterRaces(profile) {
+    const unl = (profile && profile.account && profile.account.unlockedUnits) || [];
+    const all = (typeof AVAILABLE_RACES !== 'undefined') ? AVAILABLE_RACES.slice() : Object.keys(DOOR_TEXT.POINT_OF_ENTRY);
+    const ready = (r) => (typeof isRace3DReady !== 'function') || isRace3DReady(r);
+    const devAll = (typeof window !== 'undefined' && window._DEV_UNLOCK_ALL);
+    return all.filter(r => r !== 'men in black' && ready(r) && (devAll || !unl.length || unl.indexOf(r) >= 0));
+}
+/* the floor a crowd is sized by: a box room's w × d (a terrain room × its open share), a rotunda's disc, a ring's annulus */
+function hqRoomFloorM2(room, roomId) {
+    const S = (room && room.shell) || {};
+    if (!room) return 0;
+    if (room.kind === 'box') {
+        let a = (S.w || 0) * (S.d || 0);
+        /* a terrain room: its OPEN share — the compiled plan's when the room is compiled (the renderer compiles it before the
+           population spawns), else an estimate per plan kind (never a compile here: a city plan is a two-minute proof) */
+        if (room.terrain) { const info = room._terrainInfo || null; const kind = room.terrain.gen && room.terrain.gen.kind; const est = { city: 0.45, cave: 0.35, rooms: 0.5, halls: 0.3, ley: 0.3 }[kind] || 0.8; const share = (info && info.gen && isFinite(info.gen.open)) ? info.gen.open : est; a *= Math.max(0.15, share); }
+        return a;
+    }
+    if (room.kind === 'bay') { const rIn = S.rIn || 0, rOut = S.rOut || 0; return Math.PI * (rOut * rOut - rIn * rIn) * ((S.full || !S.arc) ? 1 : Math.max(0.1, Math.abs(S.arc[1] - S.arc[0]) / 360)); }
+    return Math.PI * (S.radius || 0) * (S.radius || 0);
+}
+/* THE ONE READ: { kind, site, hub, pool, tiers, n, draw: [{ id, race }], seed } */
+function hqRoomPopulation(roomId, profile, opts) {
+    opts = opts || {};
+    const R = HQ_POPULATION_RULES, rooms = DOOR_HQ.rooms || {};
+    const room = rooms[roomId]; if (!room) return { kind: 'none', site: null, hub: null, pool: [], tiers: {}, n: 0, draw: [], seed: 0 };
+    const site = hqRoomSite(roomId);
+    const hub = (typeof hqHubOf === 'function') ? hqHubOf(roomId) : null;
+    const hubId = hub ? hub.id : null;
+    let kind = site ? 'wild' : 'facility', pool = [], tiers = {};
+    if (hubId === 'city' || hubId === 'underworld') {
+        kind = 'city';
+        const sites = (DOOR_HQ.hubs.city && DOOR_HQ.hubs.city.sites) || [];
+        const seen = {};
+        const ready = (r) => (typeof isRace3DReady !== 'function') || isRace3DReady(r);
+        const P = (typeof RACE_PROFILES !== 'undefined') ? RACE_PROFILES : {};
+        /* this site's own residents by the tags (natives + the urban-tagged), then the other two cities' natives, then ORDINARY PEOPLE (a `human` type) */
+        const mine = site ? hqSiteResidents(site) : [];
+        mine.forEach(r => { if (!seen[r] && (mine.tiers[r] === 'native' || mine.tiers[r] === 'biome')) { seen[r] = 1; pool.push(r); tiers[r] = mine.tiers[r]; } });
+        sites.forEach(s => { const rs = hqSiteResidents(s); rs.forEach(r => { if (!seen[r] && rs.tiers[r] === 'native') { seen[r] = 1; pool.push(r); tiers[r] = 'city'; } }); });
+        Object.keys(P).forEach(r => { if (!seen[r] && P[r] && (P[r].types || []).indexOf('human') >= 0 && r !== 'men in black' && ready(r)) { seen[r] = 1; pool.push(r); tiers[r] = 'people'; } });
+        /* THE UNDERWORLD: the sewer's own people (the table), never the street's crowd */
+        if (hubId === 'underworld') { pool = R.underworld.filter(r => ready(r)); tiers = {}; pool.forEach(r => { tiers[r] = 'native'; }); }
+    } else if (site) {
+        const res = hqSiteResidents(site);
+        pool = res.slice(); tiers = res.tiers || {};
+    } else {
+        pool = hqRosterRaces(profile);
+        pool.forEach(r => { tiers[r] = 'roster'; });
+    }
+    /* the count */
+    const m2 = hqRoomFloorM2(room, roomId);
+    let n;
+    if (roomId === 'car' || room.kind === 'bay' && room.corridor === false) n = 0;
+    else if (kind === 'facility') n = Math.round(m2 / R.facilityPerM2);
+    else n = Math.round(m2 / R.perM2);
+    let lo = kind === 'facility' ? R.facilityMin : R.min, hi = kind === 'facility' ? R.facilityMax : R.max;
+    if (kind === 'city') { n = Math.round(n * R.cityMul); hi = (hubId === 'underworld') ? R.max : R.cityMax; }
+    if ((hubId === 'hq' || /^ring_/.test(roomId)) && (roomId === 'central_egress' || /^ring_/.test(roomId) || roomId === 'cafeteria' || roomId === 'foyer')) { n = Math.round(n * R.hqMul); hi = R.hqMax; }
+    if (roomId === 'car' || room.kind === 'bay' && room.corridor === false) { lo = 0; hi = 0; }
+    n = Math.max(lo, Math.min(hi, n));
+    if (room.quiet) n = Math.min(n, R.quietN);
+    if (opts.perfLow) n = Math.round(n * R.perfLowMul);
+    if (!pool.length) n = 0;
+    /* the draw: seeded by the day + the room; the natives weighted first (a wild room is mostly its own people), never twice the same race in a row of three */
+    const seed = hqHash((opts.date || hqToday()) + '|' + roomId + '|population');
+    let s = seed || 1;
+    const rnd = () => { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return (s % 100000) / 100000; };
+    const draw = [];
+    const natives = pool.filter(r => tiers[r] === 'native' || tiers[r] === 'biome'), others = pool.filter(r => tiers[r] !== 'native' && tiers[r] !== 'biome');   // the tagged are as much the room's as the natives
+    const people = pool.filter(r => tiers[r] === 'people'), cityFolk = pool.filter(r => tiers[r] === 'city');
+    for (let i = 0; i < n; i++) {
+        let r = null, from;
+        if (kind === 'city' && (people.length || cityFolk.length)) {
+            /* a street: its own natives, ordinary people, the other two cities' folk (R.cityWeights) */
+            const u = rnd(), W = R.cityWeights;
+            from = (u < W[0] && natives.length) ? natives : (u < W[0] + W[1] && people.length) ? people : (cityFolk.length ? cityFolk : (people.length ? people : natives));
+        } else {
+            /* a wild room: a TRUE native (the first draw always), the biome-tagged, a neighbouring site's native (R.wildWeights) */
+            const trueN = pool.filter(r => tiers[r] === 'native'), tagged = pool.filter(r => tiers[r] === 'biome');
+            const u = (i === 0) ? 0 : rnd(), W = R.wildWeights;
+            from = (u < W[0] && trueN.length) ? trueN : (u < W[0] + W[1] && tagged.length) ? tagged : (others.length ? others : (natives.length ? natives : pool));
+        }
+        for (let tries = 0; tries < 6 && (r === null || (draw.length && draw[draw.length - 1].race === r && from.length > 1)); tries++) r = from[Math.floor(rnd() * from.length)];
+        if (r == null) break;
+        draw.push({ id: 'hq-roam-' + i, race: r, tier: tiers[r] || 'native' });
+    }
+    return { kind, site, hub: hubId, pool, tiers, n: draw.length, draw, seed, m2: Math.round(m2) };
+}
+/* a seeded call: does an authored spot native LEAVE its spot for a loop? (never a posed / `stay` spot, never a clone) */
+function hqSpotRoams(roomId, si, spot) {
+    if (!spot || spot.stay || spot.pose || spot.clone) return false;
+    if (spot.roam != null) return !!spot.roam;
+    return (hqHash(hqToday() + '|' + roomId + '|spot' + si) % 1000) / 1000 < HQ_POPULATION_RULES.spotRoamShare;
+}
 /* ══ THE ENCOUNTER (HQ plan 9.4 stage 1, 2026-09-15 rev 16) ══
    The room becomes the board — but NEVER at random (the user's rule, 2026-09-15):
    the officer starts every fight. With THE DOOR GUN DRAWN (9.5 — the gun IS
@@ -44703,6 +44879,7 @@ if (typeof window !== 'undefined') {
     window.HQ_PORTAL_RULES = HQ_PORTAL_RULES; window.hqPortalRecord = hqPortalRecord; window.hqPortalStatus = hqPortalStatus; window.hqPortalIssue = hqPortalIssue;
     window.hqPortalPlace = hqPortalPlace; window.hqPortalClear = hqPortalClear; window.hqPortalLeaf = hqPortalLeaf; window.hqPortalNextSlot = hqPortalNextSlot; window.hqPortalTwin = hqPortalTwin; window.hqPortalSafeRoom = hqPortalSafeRoom; window.hqPortalDoorsIn = hqPortalDoorsIn;
     /* THE ENCOUNTER (HQ plan 9.4 stage 1, 2026-09-15 rev 16) */
+    window.HQ_POPULATION_RULES = HQ_POPULATION_RULES; window.hqSiteResidents = hqSiteResidents; window.hqRosterRaces = hqRosterRaces; window.hqRoomFloorM2 = hqRoomFloorM2; window.hqRoomPopulation = hqRoomPopulation; window.hqSpotRoams = hqSpotRoams;   // THE POPULATION (2026-09-19)
     window.HQ_ENCOUNTER_RULES = HQ_ENCOUNTER_RULES; window.hqEncounterRoomOk = hqEncounterRoomOk; window.hqEncounterCharOk = hqEncounterCharOk; window.hqEncounterGesture = hqEncounterGesture;
     window.hqEncounterConfig = hqEncounterConfig; window.hqEncounterLaunch = hqEncounterLaunch; window.hqEncounterRecord = hqEncounterRecord; window.hqEncounterLog = hqEncounterLog;
     window.hqSyncedHq = hqSyncedHq; window.hqClearedUnion = hqClearedUnion; window.hqEncountersUnion = hqEncountersUnion; window.hqSkateUnion = hqSkateUnion; window.hqDoorSyncFold = hqDoorSyncFold; window.hqClearedRecord = hqClearedRecord;   // THE SYNCED BUILDING (D5)

@@ -6285,3 +6285,46 @@ styles-base.css (+ the HUD pass rows); the panel grid is three columns (the rail
 860 px). **THE ESTATE** is the ranch's name everywhere the player reads it (`hubs.ranch.label`, `routes.ranch.label`, the
 corn fields' plate, the well's plates — the ids stay `ranch`). `npm test` runs hq-map.test.js (THE WORLD OVERVIEW).
 UNSEEN LIVE (RULE #1c): the sheet under the game's fonts / theme, the two-click feel, the world reveal, the rail at 860 px.
+
+## THE POPULATION + THE ROUNDS — every area inhabited by its own, and they WALK (2026-09-19, local delivery)
+The user: "each area inhabited by the proper units — they already have map tags / terrain preferences;
+Disaster City and DOOR HQ the most diverse; make them walk in routed loops, even loops between doors or
+areas — make the game feel more alive." **THE TAGS ARE THE ONES THE GAME KEEPS**: `DOOR_TEXT.POINT_OF_ENTRY`
+(a race's home site) and the `biomes` on every `RACE_PROFILES` row against the site's `EW_MAP_META.biomes`.
+data.js (the block before THE ENCOUNTER): **`HQ_POPULATION_RULES`** (the whole table — counts per m², the
+clamps, `cityMul` / `hqMul`, the draw weights, the walk speed, the pauses, the away time, the ledger's TTL,
+`underworld` = the sewers' own people); **`hqSiteResidents(siteId)`** = the ONE ordered read of a site's
+people (its NATIVES first, then every race whose biome tags meet the site's — `tiers[race]` names the
+reason —, then the natives of the sites that share a biome, then the sector's; never the agency);
+**`hqRoomPopulation(roomId, profile, { perfLow, date })`** = the ONE read the renderer spawns from: the
+room's KIND (`wild` / `city` / `facility`), its pool, and the EXTRA WALKERS beyond the authored `npcSpots`
+(`draw: [{ id: 'hq-roam-<i>', race, tier }]`, seeded by the day + the room — the crowd holds for a day; a
+wild room's first draw is always a true native; a city street draws its own · ordinary people (a `human`
+type) · the other cities' natives by `cityWeights`; a facility room draws the OFFICER'S OWN ROSTER
+(`hqRosterRaces`); the hall / the rings / Room 86 / the foyer wear `hqMul`, hubs.city `cityMul`; a `quiet`
+room keeps one, the car none); `hqRoomFloorM2(room, roomId)` sizes it (a terrain room by its compiled
+plan's open share when compiled, else an estimate per kind — NEVER a compile: a city plan is a
+two-minute proof); `hqSpotRoams(roomId, si, spot)` = does an authored spot native leave its spot (never a
+posed / `stay: true` / clone spot; `roam: true|false` pins it, else `spotRoamShare` by seed). **THE
+ROUNDS** (three-renderer.js, the block before SKATEBOARDING): every extra walker, every roaming spot native
+(its spot = its loop's FIRST stop), a `patrol: true` agent (two in the hall) and every traveller wears
+`ch.rounds` and walks a LOOP OF STOPS — **THE NAV** (`_hqNavStart` / `_hqNavBuild`: a lattice of
+`HQ_NAV_CELL` 0.7 m cells (coarser past `HQ_NAV_MAX_CELLS`) read through **`_hqNavQuery`** = `_hqSurface`
+with the people left OUT of the blockers, built over frames at `HQ_NAV_BUDGET_MS`; `_hqNavPath` = A* on 8
+neighbours, no corner cutting, up AND down ≤ the walker's step — a person takes the stair, never the cliff,
+never a swim; string-pulled), **THE STOPS** (`_hqRoundsStops`: door landings, counter fronts, the spots,
+the spawn, free cells), **THE LOOP** (`_hqRoundsAssign`: 2–4 stops, a door `doorShare` of the time),
+**THE EXIT** (a door stop with an edge in `hqWorldGraph` — `_hqRoundsExits` — and unlocked: the leaf
+swings (`rec.npcOpenUntil`, read by `_hqTickDoors`), the walker is AWAY `awayMs` (hidden, `ch.away`, its
+blocker folded — the aim / E / the finds skip it), then comes back in by ANOTHER door), **THE TRAVELLER
+LEDGER** (`_hqTravellers`, module-level: an exit files `{ race, gender, to, at, from }`; the far room spawns
+that walker at that door WALKING IN when the officer arrives within `travelTtlMs` — follow someone through
+a door and they are ahead of you). Yielding: a walker holds `yieldM` short of the officer, slows behind
+another; stuck `stuckS` → one re-path, then the stop is dropped; a panel (`H.paused`) freezes everyone.
+`_hqTickRounds` runs in `_hqFrame` before `_hqTickChars` (which plays the walk clip at 0.62×). A character
+carries `spot` / `spotIndex` / `patrol` / `rounds` / `away` now. Nothing on `state`, nothing relayed (RULE
+#2). Dev: `EW_HQ_NO_ROUNDS`, `hq.roamers()`, `hq.nav()`, `hq.travellers()`. `npm test` runs
+`hq-population.test.js` (the nav + a full loop with an exit + the ledger in a vm sandbox, every wild room's
+draw, the sites). UNSEEN LIVE (RULE #1c): the nav's build time in the cities (~40k queries over frames),
+the walk clip's pace, the crowd's density against the frame rate (`perM2` / `cityMax` are the edits), the
+landing spot's fit at wide doors, walkers on stairs and ramps.

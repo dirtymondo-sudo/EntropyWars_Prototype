@@ -45281,6 +45281,7 @@ const ThreeRenderer = (function () {
                (a counter needs more than arm's length), the building pose
                (a sprites.js _CAST_POSES slot) and the stage direction */
             sub: spec.sub || null, reach: spec.reach || 1.75, pose: spec.pose || null, cast: spec.cast || null, doing: spec.doing || null,
+            spot: spec.spot || null, spotIndex: (spec.spotIndex != null) ? spec.spotIndex : -1, patrol: !!spec.patrol, rounds: null, away: false,   // THE ROUNDS (2026-09-19): the authored spot it stands at (its loop's first stop), a patrol agent, its loop record
         };
         _hq.chars.push(ch);
         if (spec.hold) _hqAttachHeld(ch, spec.hold);
@@ -46709,7 +46710,7 @@ const ThreeRenderer = (function () {
                     agDef = Object.assign({}, base, { libClips: lc, libTimeScales: lt });
                 }
             }
-            _hqSpawnCharacter({ id: 'hq-agent-' + i, kind: 'agent', race: 'men in black', gender: g, def: agDef || undefined, deg: ag.deg, r: ag.r, x: ag.x, z: ag.z, level: ag.level || 0, y: ag.y || 0, face: ag.face || 0, line: ag.line, label: ag.label || 'D.O.O.R. AGENT', pose: ag.pose || null, reach: ag.reach });
+            _hqSpawnCharacter({ id: 'hq-agent-' + i, kind: 'agent', race: 'men in black', gender: g, def: agDef || undefined, deg: ag.deg, r: ag.r, x: ag.x, z: ag.z, level: ag.level || 0, y: ag.y || 0, face: ag.face || 0, line: ag.line, label: ag.label || 'D.O.O.R. AGENT', pose: ag.pose || null, reach: ag.reach, patrol: !!ag.patrol && !ag.pose });   // `patrol: true` = THE ROUNDS (2026-09-19): the agent walks a loop
         });
         _hqSpawnCast(room, opts);
         /* roster vessels: unlocked races with a rigged model, minus the avatar */
@@ -46756,7 +46757,7 @@ const ThreeRenderer = (function () {
                     var hm = !!getRace3DModel(rh, 'male'), hf = !!getRace3DModel(rh, 'female');
                     var hg = (hm && hf) ? (Math.random() < 0.5 ? 'male' : 'female') : (hm ? 'male' : 'female');
                     var nsp = _hqSettingFreeSpot(spot.x, spot.z);   // off the setting's houses / stands (stage 5)
-                    _hqSpawnCharacter({ id: 'hq-native-' + si, kind: 'npc', race: rh, gender: hg, deg: spot.deg, r: spot.r, x: nsp.x, z: nsp.z, level: spot.level || 0, face: spot.face || 0, line: sayOf(spot) });
+                    _hqSpawnCharacter({ id: 'hq-native-' + si, kind: 'npc', race: rh, gender: hg, deg: spot.deg, r: spot.r, x: nsp.x, z: nsp.z, level: spot.level || 0, face: spot.face || 0, line: sayOf(spot), spot: spot, spotIndex: si });
                     var oi = owned.indexOf(rh); if (oi >= 0) owned.splice(oi, 1);
                 } else free.push(spot);
             });
@@ -46770,7 +46771,7 @@ const ThreeRenderer = (function () {
                 var hasM = !!getRace3DModel(rk2, 'male'), hasF = !!getRace3DModel(rk2, 'female');
                 var g = (hasM && hasF) ? (Math.random() < 0.5 ? 'male' : 'female') : (hasM ? 'male' : 'female');
                 var ksp = _hqSettingFreeSpot(spots[k].x, spots[k].z);
-                _hqSpawnCharacter({ id: 'hq-npc-' + k, kind: 'npc', race: rk2, gender: g, deg: spots[k].deg, r: spots[k].r, x: ksp.x, z: ksp.z, level: spots[k].level || 0, face: spots[k].face || 0, line: sayOf(spots[k]) });
+                _hqSpawnCharacter({ id: 'hq-npc-' + k, kind: 'npc', race: rk2, gender: g, deg: spots[k].deg, r: spots[k].r, x: ksp.x, z: ksp.z, level: spots[k].level || 0, face: spots[k].face || 0, line: sayOf(spots[k]), spot: spots[k], spotIndex: (room.npcSpots || []).indexOf(spots[k]) });
             }
         } catch (e) { console.warn('[HQ] roster NPCs skipped', e); }
         /* THE OTHER OPERATIVES ON SHIFT (Room 86, 2026-09-11; plan §8's open
@@ -46789,6 +46790,8 @@ const ThreeRenderer = (function () {
                                     label: 'OPERATIVE · ON SHIFT', sub: 'ONLINE · ANOTHER TERMINAL' });
             }
         } catch (e) { console.warn('[HQ] online operatives skipped', e); }
+        /* THE ROUNDS (2026-09-19): the extras by the tags, the roaming spot natives, the patrols, the travellers */
+        try { _hqSpawnRounds(room, opts); } catch (e) { console.warn('[HQ] the rounds skipped', e); }
     }
 
     /* ── walkable query: returns the floor height (m) at (x,z) or null ────
@@ -47236,7 +47239,7 @@ const ThreeRenderer = (function () {
             if (dist < bestD) { bestD = dist; best = { kind: 'counter', id: c.counter.id, label: c.counter.label, sub: c.counter.sub, counter: c.counter }; }
         });
         _hq.chars.forEach(function (ch) {
-            if (ch.kind === 'player') return;
+            if (ch.kind === 'player' || ch.away) return;   // THE ROUNDS: a walker out of the room is not here
             if (Math.abs(ch.y - pl.y) > 1) return;
             var dist = Math.hypot(ch.x - pl.x, ch.z - pl.z);
             if (dist > (ch.reach || 1.75)) return;
@@ -47301,7 +47304,7 @@ const ThreeRenderer = (function () {
         var best = null, bestD = 1e9;
         for (var i = 0; i < H.chars.length; i++) {
             var ch = H.chars[i];
-            if (ch === pl || !okFn(ch)) continue;
+            if (ch === pl || ch.away || !okFn(ch)) continue;   // THE ROUNDS: a walker away through a door is not in the room
             var dx = ch.x - pl.x, dz = ch.z - pl.z, d = Math.hypot(dx, dz);
             if (d > (R.reach || 3.4) || Math.abs(ch.y - pl.y) > (R.dy || 1.8)) continue;
             if (d > 0.3 && (dx * fx + dz * fz) / d < cosCone) continue;
@@ -47608,6 +47611,374 @@ const ThreeRenderer = (function () {
         if (_hq.opts.onView) _hq.opts.onView(_hq.fp);
     }
 
+    /* ══ THE ROUNDS — THE POPULATION WALKS (2026-09-19) ══
+       The user: "make them walk in routed loops, even loops between doors or areas —
+       make the game feel more alive." Every EXTRA WALKER (data.js hqRoomPopulation's
+       draw — the site's residents by their tags, the roster in the facility, a crowd in
+       Disaster City), every authored spot native that draws `roam` (hqSpotRoams), a
+       `patrol: true` agent and every TRAVELLER arriving from another room carries a
+       `ch.rounds` record and walks a LOOP OF STOPS. Nothing here is a game mode: a
+       walker's own path over the room's own surface rule, viewer-local, nothing on
+       `state`, nothing relayed (RULE #2).
+       THE NAV: a lattice of HQ_NAV_CELL m cells over the room (coarser in a huge room —
+       HQ_NAV_MAX_CELLS caps it), each cell's floor read through _hqSurface with the
+       people's own bodies left out of the blockers (_hqNavQuery — a person is never a
+       wall to another person's route) — a stepping rule between neighbours (up ≤ the
+       walker's own step, down the same: a walker never steps off a cliff, it takes the
+       ramp / the stair / the flight, and never wades where the walker would swim). Built
+       OVER FRAMES (HQ_NAV_BUDGET_MS per frame — a city is ~40k queries) so the room
+       opens at once; the people stand until it lands. _hqNavPath = A* on 8 neighbours
+       (no corner cutting), string-pulled straight.
+       THE STOPS (_hqRoundsStops): every door's landing (a bay / box / ring door; never a
+       placed threshold, a sea way, a secret slab), every counter's front, every authored
+       spot, the spawn, a few free cells. THE LOOP (_hqRoundsAssign): 2–4 stops seeded by
+       the walker, a door among them `doorShare` of the time; a spot native's own spot
+       is its FIRST stop (it leaves and comes back). THE EXIT: a door stop whose door
+       LEADS somewhere (hqWorldGraph's edge from this room, unlocked) is walked
+       THROUGH — the leaf swings (`rec.npcOpenUntil`), the walker is AWAY (hidden, its
+       blocker folded) for `awayMs`, then comes back in by a door (another one when the
+       room has two) and carries on. THE TRAVELLER LEDGER (`_hqTravellers`, module-level
+       — it outlives the room): an exit files { race, gender, to, at } and the far room
+       SPAWNS that walker at that very door, walking in, when the officer arrives within
+       `travelTtlMs` — follow someone through a door and they are ahead of you.
+       Yielding: a walker HOLDS `yieldM` short of the officer in its way and slows behind
+       another walker; stuck `stuckS` → one re-path, then the stop is dropped. The panel
+       (H.paused) freezes every walker (you talk to a person, not a moving target). The
+       encounter's aim / E / the finds read `ch.x / ch.z / ch.y`, which the tick writes.
+       Dev: window.EW_HQ_NO_ROUNDS (nobody walks), hq.roamers(), hq.nav(), hq.travellers().
+       hq-population.test.js runs the nav + a loop in a vm sandbox and reads the sites. */
+    var HQ_NAV_CELL = 0.7, HQ_NAV_MAX_CELLS = 42000, HQ_NAV_BUDGET_MS = 5, HQ_NAV_MAX_EXPAND = 24000;
+    var HQ_ROUNDS_DEFAULT = { walkSpeed: 1.35, pauseMs: [2200, 7000], awayMs: [6000, 18000], loopStops: [2, 4], doorShare: 0.6, stuckS: 1.4, yieldM: 1.05, travelTtlMs: 150000, maxTravellers: 4, spotRoamShare: 0.5 };
+    var _hqTravellers = [];   // THE TRAVELLER LEDGER: { race, gender, to, at, from, t }
+    function _hqRoundsRules() { var T = (typeof HQ_POPULATION_RULES !== 'undefined' && HQ_POPULATION_RULES) || {}; var o = {}; for (var k in HQ_ROUNDS_DEFAULT) o[k] = (T[k] != null) ? T[k] : HQ_ROUNDS_DEFAULT[k]; return o; }
+    function _hqRoundsOff() { return !!(typeof window !== 'undefined' && window.EW_HQ_NO_ROUNDS); }
+    /* a rig that WALKS: a def with clips (its own or the library's) — a static mesh (the parked sedan) never does the rounds */
+    function _hqDefWalks(def) { return !!(def && (def.libClips || (def.clips && Object.keys(def.clips).length))); }
+    function _hqRoundsRng(seed) { var s = (seed >>> 0) || 1; return function () { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return (s % 100000) / 100000; }; }
+    function _hqRoundsRange(rng, pair) { return pair[0] + (pair[1] - pair[0]) * rng(); }
+    /* ── THE NAV ── */
+    function _hqNavBounds() {
+        var room = _hq.room, S = room.shell || {};
+        if (room.kind === 'box') { var rm = _hqRoamM(S); return { hw: (S.w || 10) / 2 + rm, hd: (S.d || 10) / 2 + rm }; }
+        if (room.kind === 'bay') { var ro = S.rOut || 30; return { hw: ro, hd: ro }; }
+        var R = Math.max(S.radius || 20, (S.mezz && S.mezz.outer) || 0) + 0.5; return { hw: R, hd: R };
+    }
+    function _hqNavStart() {
+        var b = _hqNavBounds(), area = 4 * b.hw * b.hd;
+        var cell = Math.max(HQ_NAV_CELL, Math.sqrt(area / HQ_NAV_MAX_CELLS));
+        var nx = Math.max(2, Math.ceil(2 * b.hw / cell) + 1), nz = Math.max(2, Math.ceil(2 * b.hd / cell) + 1);
+        var y = new Float32Array(nx * nz); for (var i = 0; i < y.length; i++) y[i] = NaN;
+        _hq.nav = { cell: cell, x0: -(nx - 1) * cell / 2, z0: -(nz - 1) * cell / 2, nx: nx, nz: nz, y: y, i: 0, done: false, walk: 0, t0: performance.now(), staticKey: -1, statics: null };
+        return _hq.nav;
+    }
+    /* the blockers without the people (cached by the list's length — a prop that lands later re-filters) */
+    function _hqNavStatics() {
+        var N = _hq.nav; if (!N) return _hq.blockers;
+        if (N.staticKey !== _hq.blockers.length) { N.statics = _hq.blockers.filter(function (b) { return !b.npc; }); N.staticKey = _hq.blockers.length; }
+        return N.statics;
+    }
+    /* the room's floor at (x, z) for a PERSON: the walker's rule with the people left out of the furniture */
+    function _hqNavQuery(x, z, curY) {
+        var B = _hq.blockers; _hq.blockers = _hqNavStatics();
+        try { return _hqSurface(x, z, curY, false); } catch (e) { return null; } finally { _hq.blockers = B; }
+    }
+    function _hqNavBuild(budgetMs) {
+        var N = _hq.nav || _hqNavStart(); if (N.done) return true;
+        var t0 = performance.now(), n = N.nx * N.nz;
+        while (N.i < n) {
+            var i = N.i, cx = N.x0 + (i % N.nx) * N.cell, cz = N.z0 + Math.floor(i / N.nx) * N.cell;
+            var y = _hqNavQuery(cx, cz, null);
+            if (y !== null && y !== undefined && isFinite(y)) { N.y[i] = y; N.walk++; }
+            N.i++;
+            if ((N.i & 63) === 0 && performance.now() - t0 > budgetMs) return false;
+        }
+        N.done = true; N.ms = performance.now() - N.t0;
+        return true;
+    }
+    function _hqNavCellOf(x, z) { var N = _hq.nav; return { i: Math.max(0, Math.min(N.nx - 1, Math.round((x - N.x0) / N.cell))), j: Math.max(0, Math.min(N.nz - 1, Math.round((z - N.z0) / N.cell))) }; }
+    function _hqNavY(i, j) { var N = _hq.nav; if (i < 0 || j < 0 || i >= N.nx || j >= N.nz) return NaN; return N.y[j * N.nx + i]; }
+    /* the stepping rule between two cells: up ≤ the walker's step, down the same (a person takes the stair, never the cliff) */
+    function _hqNavStep(ya, yb) { return isFinite(ya) && isFinite(yb) && (yb - ya) <= HQ_STEP_TOL && (ya - yb) <= HQ_STEP_TOL; }
+    /* the nearest walkable cell to (i, j) within `r` cells — null when none */
+    function _hqNavSnap(i, j, r) {
+        if (isFinite(_hqNavY(i, j))) return { i: i, j: j };
+        for (var d = 1; d <= r; d++) for (var a = -d; a <= d; a++) for (var b = -d; b <= d; b++) { if (Math.max(Math.abs(a), Math.abs(b)) !== d) continue; if (isFinite(_hqNavY(i + a, j + b))) return { i: i + a, j: j + b }; }
+        return null;
+    }
+    /* A* over the lattice, 8 neighbours, no corner cutting; the path as room-metre points ending on the exact target */
+    function _hqNavPath(ax, az, bx, bz) {
+        var N = _hq.nav; if (!N || !N.done) return null;
+        var s = _hqNavSnap(_hqNavCellOf(ax, az).i, _hqNavCellOf(ax, az).j, 2), t = _hqNavSnap(_hqNavCellOf(bx, bz).i, _hqNavCellOf(bx, bz).j, 2);
+        if (!s || !t) return null;
+        var nx = N.nx, si = s.j * nx + s.i, ti = t.j * nx + t.i;
+        if (si === ti) return [{ x: bx, z: bz }];
+        var g = new Map(), came = new Map(), open = [];   // open: a binary heap of [f, idx]
+        var push = function (f, idx) { open.push([f, idx]); var k = open.length - 1; while (k > 0) { var p = (k - 1) >> 1; if (open[p][0] <= open[k][0]) break; var tmp = open[p]; open[p] = open[k]; open[k] = tmp; k = p; } };
+        var pop = function () { var top = open[0], last = open.pop(); if (open.length) { open[0] = last; var k = 0; for (;;) { var l = 2 * k + 1, r = l + 1, m = k; if (l < open.length && open[l][0] < open[m][0]) m = l; if (r < open.length && open[r][0] < open[m][0]) m = r; if (m === k) break; var tmp = open[m]; open[m] = open[k]; open[k] = tmp; k = m; } } return top; };
+        var h = function (idx) { var i = idx % nx, j = (idx - i) / nx; var di = Math.abs(i - t.i), dj = Math.abs(j - t.j); return Math.max(di, dj) + 0.4142 * Math.min(di, dj); };
+        g.set(si, 0); push(h(si), si);
+        var closed = new Set(), expanded = 0, found = false;
+        var DIRS = [[1, 0, 1], [-1, 0, 1], [0, 1, 1], [0, -1, 1], [1, 1, 1.4142], [1, -1, 1.4142], [-1, 1, 1.4142], [-1, -1, 1.4142]];
+        while (open.length) {
+            var cur = pop()[1];
+            if (closed.has(cur)) continue;
+            if (cur === ti) { found = true; break; }
+            closed.add(cur);
+            if (++expanded > HQ_NAV_MAX_EXPAND) break;
+            var ci = cur % nx, cj = (cur - ci) / nx, cy = N.y[cur], gc = g.get(cur);
+            for (var d = 0; d < 8; d++) {
+                var ni = ci + DIRS[d][0], nj = cj + DIRS[d][1];
+                var ny = _hqNavY(ni, nj); if (!_hqNavStep(cy, ny)) continue;
+                if (DIRS[d][0] && DIRS[d][1]) { if (!_hqNavStep(cy, _hqNavY(ci + DIRS[d][0], cj)) || !_hqNavStep(cy, _hqNavY(ci, cj + DIRS[d][1]))) continue; }   // no corner cutting
+                var nidx = nj * nx + ni; if (closed.has(nidx)) continue;
+                var ng = gc + DIRS[d][2] + Math.abs(ny - cy) * 0.6;
+                if (g.has(nidx) && g.get(nidx) <= ng) continue;
+                g.set(nidx, ng); came.set(nidx, cur); push(ng + h(nidx), nidx);
+            }
+        }
+        if (!found) return null;
+        var cells = [], at = ti;
+        while (at !== si && at !== undefined) { cells.push(at); at = came.get(at); }
+        cells.reverse();
+        var pts = cells.map(function (idx) { var i = idx % nx, j = (idx - i) / nx; return { x: N.x0 + i * N.cell, z: N.z0 + j * N.cell, y: N.y[idx] }; });
+        if (pts.length) { pts[pts.length - 1].x = bx; pts[pts.length - 1].z = bz; }
+        return _hqNavSmooth(pts, ax, az);
+    }
+    /* a straight line between two points stays on walkable cells that step into each other (sampled at half a cell) */
+    function _hqNavClear(ax, az, bx, bz) {
+        var N = _hq.nav, L = Math.hypot(bx - ax, bz - az), n = Math.max(1, Math.ceil(L / (N.cell * 0.5)));
+        var c0 = _hqNavCellOf(ax, az), py = _hqNavY(c0.i, c0.j); if (!isFinite(py)) return false;
+        for (var k = 1; k <= n; k++) { var t = k / n, c = _hqNavCellOf(ax + (bx - ax) * t, az + (bz - az) * t), y = _hqNavY(c.i, c.j); if (!_hqNavStep(py, y)) return false; py = y; }
+        return true;
+    }
+    function _hqNavSmooth(pts, ax, az) {
+        if (pts.length < 3) return pts;
+        var out = [], fx = ax, fz = az, i = 0;
+        while (i < pts.length - 1) {
+            var j = pts.length - 1;
+            while (j > i + 1 && !_hqNavClear(fx, fz, pts[j].x, pts[j].z)) j--;
+            out.push(pts[j]); fx = pts[j].x; fz = pts[j].z; i = j;
+        }
+        if (!out.length || out[out.length - 1] !== pts[pts.length - 1]) out.push(pts[pts.length - 1]);
+        return out;
+    }
+    /* a random walkable cell (its centre), or null */
+    function _hqNavRandom(rng) {
+        var N = _hq.nav; if (!N || !N.done || !N.walk) return null;
+        for (var k = 0; k < 40; k++) { var idx = Math.floor(rng() * N.nx * N.nz); if (isFinite(N.y[idx])) { var i = idx % N.nx, j = (idx - i) / N.nx; return { x: N.x0 + i * N.cell, z: N.z0 + j * N.cell, y: N.y[idx] }; } }
+        return null;
+    }
+    /* ── THE STOPS ── */
+    /* where this room's doors LEAD (hqWorldGraph's edges from it): doorId → { to, at }; cached per room record */
+    function _hqRoundsExits() {
+        if (_hq.roundsExits) return _hq.roundsExits;
+        var out = {}, roomId = _hq.opts.room || 'central_egress';
+        try { if (typeof hqWorldGraph === 'function') hqWorldGraph().edges.forEach(function (e) { if (e.from === roomId && e.to && !out[e.door]) out[e.door] = { to: e.to, at: e.at || null }; }); } catch (e) {}
+        _hq.roundsExits = out;
+        return out;
+    }
+    function _hqRoundsDoorLanding(d) {
+        var U = _hqUnits(), pt;
+        if (d.box) pt = { x: d.box.wx + d.box.nx * 1.7, z: d.box.wz + d.box.nz * 1.7, y: d.y0 || 0, face: _hqHeadingOf(-d.box.nx, -d.box.nz) };
+        else { var p = _hqPolarW(d.door.deg, d.inward ? (d.Rw + 2.2) : (d.Rw - 2.2), d.y0 || 0); pt = { x: p.x / U, z: p.z / U, y: d.y0 || 0, face: d.inward ? d.door.deg + 180 : d.door.deg }; }
+        return pt;
+    }
+    function _hqRoundsStops() {
+        if (_hq.roundsStops) return _hq.roundsStops;
+        var out = [], U = _hqUnits(), S = _hq.room.shell, room = _hq.room, exits = _hqRoundsExits();
+        var okY = function (pt) { var y = _hqNavQuery(pt.x, pt.z, null); if (y === null || y === undefined || !isFinite(y)) return false; if (Math.abs(y - (pt.y || 0)) > 0.9) return false; pt.y = y; return true; };
+        _hq.doors.forEach(function (d) {
+            if (!d || !d.door || d.portal || d.wayOpen || d.door.secret) return;
+            var pt = _hqRoundsDoorLanding(d); if (!okY(pt)) return;
+            var ex = exits[d.door.id] || null;
+            out.push({ kind: 'door', x: pt.x, z: pt.z, y: pt.y, face: pt.face, doorId: d.door.id, rec: d, exit: (ex && !HQ_DOOR_LOCKED[d.state]) ? ex : null });
+        });
+        _hq.counters.forEach(function (c) {
+            var cc = c.counter, pt;
+            if (room.kind === 'box') { var cf = (cc.face != null) ? cc.face : 180, ca = _hqRad(cf); pt = { x: (cc.x || 0) + Math.sin(ca) * 1.1, z: (cc.z || 0) - Math.cos(ca) * 1.1, y: c.group.position.y / U, face: cf + 180 }; }
+            else { var cr = (cc.proc === 'board') ? (cc.r - 2.0) : (cc.r + 1.6); var p = _hqPolarW(cc.deg, cr, _hqLevelY(S, c.level)); pt = { x: p.x / U, z: p.z / U, y: _hqLevelY(S, c.level), face: (cc.id === 'dispatch') ? cc.deg + 180 : cc.deg }; }
+            if (!okY(pt)) return;
+            out.push({ kind: 'counter', x: pt.x, z: pt.z, y: pt.y, face: pt.face, counterId: cc.id });
+        });
+        (room.npcSpots || []).concat(room.onlineSpots || []).forEach(function (sp) {
+            if (!sp) return;
+            var pt = (sp.x != null && sp.deg == null) ? { x: sp.x, z: sp.z || 0, y: _hqLevelY(S, sp.level || 0) + (sp.y || 0), face: sp.face || 0 } : (function () { var p = _hqPolarW(sp.deg, sp.r, _hqLevelY(S, sp.level || 0)); return { x: p.x / U, z: p.z / U, y: _hqLevelY(S, sp.level || 0), face: sp.face || 0 }; })();
+            if (_hqHasGround()) { var gy = _hqCaveTop(pt.x, pt.z); if (gy != null) pt.y = gy; }
+            if (!okY(pt)) return;
+            out.push({ kind: 'spot', x: pt.x, z: pt.z, y: pt.y, face: pt.face, spot: sp });
+        });
+        var spw = room.spawn;
+        if (spw) { var sp2 = (spw.x != null && spw.deg == null) ? { x: spw.x, z: spw.z || 0, y: _hqLevelY(S, spw.level || 0), face: spw.face || 0 } : (function () { var p = _hqPolarW(spw.deg, spw.r, _hqLevelY(S, spw.level || 0)); return { x: p.x / U, z: p.z / U, y: _hqLevelY(S, spw.level || 0), face: spw.face || 0 }; })(); if (_hqHasGround()) { var gy2 = _hqCaveTop(sp2.x, sp2.z); if (gy2 != null) sp2.y = gy2; } if (okY(sp2)) out.push({ kind: 'spawn', x: sp2.x, z: sp2.z, y: sp2.y, face: sp2.face }); }
+        _hq.roundsStops = out;
+        return out;
+    }
+    /* ── THE LOOP ── */
+    function _hqRoundsAssign(ch, o) {
+        o = o || {};
+        var R = _hqRoundsRules(), rng = _hqRoundsRng(o.seed || ((ch.id || '').length * 7919 + 1)), stops = _hqRoundsStops();
+        var pool = stops.slice(), k = Math.round(_hqRoundsRange(rng, R.loopStops));
+        for (var i = pool.length - 1; i > 0; i--) { var j = Math.floor(rng() * (i + 1)); var t = pool[i]; pool[i] = pool[j]; pool[j] = t; }
+        var loop = [];
+        if (o.home) loop.push(o.home);
+        var doors = pool.filter(function (s) { return s.kind === 'door'; }), others = pool.filter(function (s) { return s.kind !== 'door'; });
+        if (doors.length && rng() < R.doorShare) { var exits = doors.filter(function (s) { return s.exit; }); loop.push((exits.length && rng() < 0.7) ? exits[Math.floor(rng() * exits.length)] : doors[Math.floor(rng() * doors.length)]); }
+        while (loop.length < k && (others.length || doors.length)) { var src = (others.length && (rng() < 0.75 || !doors.length)) ? others : doors; var pick = src.splice(Math.floor(rng() * src.length), 1)[0]; if (loop.indexOf(pick) < 0) loop.push(pick); }
+        for (var f = 0; f < 3 && loop.length < Math.max(2, k); f++) { var cell = _hqNavRandom(rng); if (cell) loop.push({ kind: 'cell', x: cell.x, z: cell.z, y: cell.y, face: Math.floor(rng() * 360) }); }
+        if (!loop.length) return null;
+        ch.rounds = { stops: loop, i: -1, path: null, pi: 0, state: 'pause', until: performance.now() + (o.arriving ? 0 : _hqRoundsRange(rng, R.pauseMs) * 0.5), rng: rng, stuck: 0, hold: 0, repathed: false, faceYaw: ch.yaw, home: o.home || null, leftBy: null, arriving: !!o.arriving };
+        if (o.arriving) { ch.rounds.state = 'pause'; ch.rounds.until = performance.now(); }
+        return ch.rounds;
+    }
+    function _hqRoundsPath(ch, stop) { return _hqNavPath(ch.x, ch.z, stop.x, stop.z); }
+    /* the next stop of the loop (a stop no path reaches is skipped; nothing reachable = a longer pause) */
+    function _hqRoundsNext(ch, R, o) {
+        var rd = ch.rounds, n = rd.stops.length;
+        if (o && o.drop && n > 2) { rd.stops.splice(rd.i, 1); rd.i = (rd.i - 1 + rd.stops.length) % rd.stops.length; n = rd.stops.length; }
+        for (var t = 0; t < n; t++) {
+            rd.i = (rd.i + 1) % n;
+            var st = rd.stops[rd.i];
+            if (Math.hypot(st.x - ch.x, st.z - ch.z) < 0.4) continue;
+            var path = _hqRoundsPath(ch, st);
+            if (path && path.length) { rd.path = path; rd.pi = 0; rd.state = 'walk'; rd.stuck = 0; rd.hold = 0; rd.repathed = false; return true; }
+        }
+        rd.state = 'pause'; rd.until = performance.now() + 4000 + rd.rng() * 3000;
+        return false;
+    }
+    function _hqRoundsSetVisible(ch, on) {
+        var e = ch.entry; if (e && e.group) e.group.visible = on;
+        for (var i = 0; i < _hq.blockers.length; i++) { var b = _hq.blockers[i]; if (b.obj === e.group) { if (!on) { if (b.rad0 == null) b.rad0 = b.rad; b.rad = 0; } else if (b.rad0 != null) { b.rad = b.rad0; } } }
+        ch.away = !on;
+    }
+    function _hqRoundsSwing(rec, ms) { if (rec) rec.npcOpenUntil = performance.now() + (ms || 1500); }
+    /* arrived at a stop: an EXIT is gone through, anything else is a pause facing the thing */
+    function _hqRoundsArrive(ch, R, now) {
+        var rd = ch.rounds, st = rd.stops[rd.i];
+        if (st.kind === 'door' && st.exit && st.rec && !HQ_DOOR_LOCKED[st.rec.state]) {
+            _hqRoundsSwing(st.rec, 1600);
+            rd.state = 'away'; rd.until = now + _hqRoundsRange(rd.rng, R.awayMs); rd.leftBy = st.doorId;
+            _hqRoundsSetVisible(ch, false);
+            /* THE LEDGER: the far room spawns this walker at the door it arrives by */
+            try {
+                var roomId = _hq.opts.room || 'central_egress';
+                _hqTravellers = _hqTravellers.filter(function (t) { return now - t.t < R.travelTtlMs && !(t.race === ch.race && t.to === st.exit.to); });
+                _hqTravellers.push({ race: ch.race, gender: ch.gender, to: st.exit.to, at: st.exit.at, from: roomId, t: now });
+                while (_hqTravellers.length > R.maxTravellers) _hqTravellers.shift();
+            } catch (e) {}
+            return;
+        }
+        rd.state = 'pause'; rd.until = now + _hqRoundsRange(rd.rng, R.pauseMs);
+        rd.faceYaw = (st.face != null) ? _hqHeadingYaw(st.face) : ch.yaw;
+    }
+    /* back in by a door: another door of the room when it has one, else the one it left by, else where it stands */
+    function _hqRoundsReturn(ch, R, now) {
+        var rd = ch.rounds, doors = _hqRoundsStops().filter(function (s) { return s.kind === 'door' && !(s.rec && HQ_DOOR_LOCKED[s.rec.state]); });
+        var others = doors.filter(function (s) { return s.doorId !== rd.leftBy; });
+        var by = others.length ? others[Math.floor(rd.rng() * others.length)] : (doors.length ? doors[Math.floor(rd.rng() * doors.length)] : null);
+        if (by) { ch.x = by.x; ch.z = by.z; ch.y = by.y; ch.visY = by.y; ch.yaw = ch.targetYaw = _hqHeadingYaw(by.face); _hqRoundsSwing(by.rec, 1600); }
+        _hqRoundsSetVisible(ch, true);
+        var U = _hqUnits(); ch.entry.group.position.set(ch.x * U, ch.visY * U, ch.z * U);
+        rd.state = 'pause'; rd.until = now + 600 + rd.rng() * 900;
+    }
+    function _hqTickRoamer(ch, dt, now, R) {
+        var rd = ch.rounds, e = ch.entry, U = _hqUnits(), H = _hq;
+        ch.moving = false;
+        if (rd.state === 'away') { if (now >= rd.until) _hqRoundsReturn(ch, R, now); return; }
+        if (rd.state === 'pause') {
+            if (now < rd.until) { var dy0 = rd.faceYaw - ch.yaw; while (dy0 > Math.PI) dy0 -= Math.PI * 2; while (dy0 < -Math.PI) dy0 += Math.PI * 2; ch.yaw += dy0 * Math.min(1, dt * 6); return; }
+            _hqRoundsNext(ch, R); return;
+        }
+        var tgt = rd.path && rd.path[rd.pi];
+        if (!tgt) { _hqRoundsArrive(ch, R, now); return; }
+        var dx = tgt.x - ch.x, dz = tgt.z - ch.z, dist = Math.hypot(dx, dz);
+        if (dist < 0.28) { rd.pi++; if (rd.pi >= rd.path.length) _hqRoundsArrive(ch, R, now); return; }
+        var mx = dx / dist, mz = dz / dist, slow = 1;
+        /* yield: the officer in the way → hold; another walker just ahead → slow */
+        var pl = H.player;
+        if (pl && !pl.away) { var px = pl.x - ch.x, pz = pl.z - ch.z, pd = Math.hypot(px, pz); if (pd < R.yieldM && (px * mx + pz * mz) / Math.max(0.01, pd) > 0.3 && Math.abs(pl.y - ch.y) < 1.5) { rd.hold += dt; if (rd.hold > 4) { rd.hold = 0; _hqRoundsNext(ch, R, { drop: true }); } ch.targetYaw = Math.atan2(mx, mz); return; } }
+        for (var i = 0; i < H.chars.length; i++) { var o = H.chars[i]; if (o === ch || o.kind === 'player' || o.away) continue; var ox = o.x - ch.x, oz = o.z - ch.z, od = Math.hypot(ox, oz); if (od < 0.8 && (ox * mx + oz * mz) / Math.max(0.01, od) > 0.5 && Math.abs(o.y - ch.y) < 1.5) { slow = 0.35; break; } }
+        rd.hold = 0;
+        var step = Math.min(dist, R.walkSpeed * slow * dt), nx = ch.x + mx * step, nz = ch.z + mz * step, moved = false;
+        var y1 = _hqNavQuery(nx, nz, ch.y);
+        if (y1 !== null && y1 !== undefined) { ch.x = nx; ch.z = nz; ch.y = y1; moved = true; }
+        else {
+            var yx = _hqNavQuery(nx, ch.z, ch.y); if (yx !== null && yx !== undefined && mx) { ch.x = nx; ch.y = yx; moved = true; }
+            var yz = _hqNavQuery(ch.x, nz, ch.y); if (yz !== null && yz !== undefined && mz) { ch.z = nz; ch.y = yz; moved = true; }
+        }
+        if (!moved || step < 0.002) { rd.stuck += dt; if (rd.stuck > R.stuckS) { rd.stuck = 0; if (!rd.repathed) { rd.repathed = true; var p2 = _hqRoundsPath(ch, rd.stops[rd.i]); if (p2 && p2.length) { rd.path = p2; rd.pi = 0; } else _hqRoundsNext(ch, R, { drop: true }); } else _hqRoundsNext(ch, R, { drop: true }); return; } }
+        else rd.stuck = 0;
+        ch.moving = true; ch.targetYaw = Math.atan2(mx, mz);
+        var dy = ch.targetYaw - ch.yaw; while (dy > Math.PI) dy -= Math.PI * 2; while (dy < -Math.PI) dy += Math.PI * 2; ch.yaw += dy * Math.min(1, dt * 9);
+        ch.visY += (ch.y - ch.visY) * Math.min(1, dt * 14); if (Math.abs(ch.y - ch.visY) < 0.004) ch.visY = ch.y;
+        e.group.position.set(ch.x * U, ch.visY * U, ch.z * U);
+    }
+    function _hqTickRounds(dt) {
+        var H = _hq; if (!H || !H.rounds || !H.rounds.length || _hqRoundsOff()) return;
+        if (!H.nav || !H.nav.done) { _hqNavBuild(HQ_NAV_BUDGET_MS); if (!H.nav.done) return; }
+        if (H.paused) return;   // a panel is up: nobody walks off while you talk to them
+        var R = _hqRoundsRules(), now = performance.now();
+        for (var i = 0; i < H.rounds.length; i++) { var ch = H.rounds[i]; if (!ch || !ch.rounds || !ch.entry || _hq !== H) continue; try { _hqTickRoamer(ch, dt, now, R); } catch (e) { ch.rounds = null; } }
+    }
+    /* ── THE SPAWN: the extras, the roaming spot natives, the patrols, the travellers (from _hqSpawnPopulation) ── */
+    function _hqSpawnRounds(room, opts) {
+        var H = _hq; if (!H) return;
+        H.rounds = H.rounds || [];
+        if (_hqRoundsOff()) return;
+        var roomId = opts.room || 'central_egress', prof = opts.profile, av = opts.avatar || {};
+        var R = _hqRoundsRules(), now = performance.now();
+        _hqNavStart();   // the lattice (built over the next frames) — started first so the stops' floor reads leave the people out of the furniture
+        var gone = [];
+        try { var cl = (prof && typeof hqEncounterCleared === 'function') ? hqEncounterCleared(prof, roomId) : null; if (cl && cl.ids) gone = cl.ids; } catch (e) { gone = []; }
+        var stops = _hqRoundsStops();
+        var genderOf = function (rk, want) { var hm = !!getRace3DModel(rk, 'male'), hf = !!getRace3DModel(rk, 'female'); if (want && ((want === 'male' && hm) || (want === 'female' && hf))) return want; return (hm && hf) ? (Math.random() < 0.5 ? 'male' : 'female') : (hm ? 'male' : 'female'); };
+        var walksRace = function (rk) { return typeof getRace3DModel === 'function' && (_hqDefWalks(getRace3DModel(rk, 'male')) || _hqDefWalks(getRace3DModel(rk, 'female'))); };
+        var spawnAt = function (id, rk, g, st, o) {
+            var jx = (Math.random() - 0.5) * 0.5, jz = (Math.random() - 0.5) * 0.5;
+            var ch = _hqSpawnCharacter({ id: id, kind: 'npc', race: rk, gender: g, x: st.x + jx, z: st.z + jz, y: _hqHasGround() ? undefined : st.y, face: st.face || 0, line: o && o.line || null, label: o && o.label || undefined, sub: o && o.sub || undefined });
+            if (!ch) return null;
+            if (ch.race !== rk && rk !== 'men in black') { /* the stand-in agent took the spot: not this room's person — drop it */ }
+            var rd = _hqRoundsAssign(ch, { seed: (typeof hqHash === 'function') ? hqHash(roomId + '|' + id) : id.length * 131, arriving: o && o.arriving, home: o && o.home });
+            if (rd) H.rounds.push(ch);
+            return ch;
+        };
+        /* 1 · the authored spot natives that roam (their spot is their first stop) + `patrol` agents */
+        H.chars.forEach(function (ch) {
+            if (ch.kind === 'player' || ch.cast || ch.rounds) return;
+            if (ch.kind === 'agent') { if (ch.patrol) _hqRoundsAssign(ch, { seed: (typeof hqHash === 'function') ? hqHash(roomId + '|' + ch.id) : 3 }) && H.rounds.push(ch); return; }
+            if (/^hq-(clone|online)-/.test(ch.id) || !ch.spot) return;
+            var si = ch.spotIndex;
+            var roams = (typeof hqSpotRoams === 'function') ? hqSpotRoams(roomId, si, ch.spot) : (ch.spot.roam != null ? !!ch.spot.roam : false);
+            if (!roams || !_hqDefWalks(ch.def)) return;
+            var home = stops.find(function (s) { return s.kind === 'spot' && s.spot === ch.spot; }) || { kind: 'spot', x: ch.x, z: ch.z, y: ch.y, face: ch.spot.face || 0, spot: ch.spot };
+            if (_hqRoundsAssign(ch, { seed: (typeof hqHash === 'function') ? hqHash(roomId + '|' + ch.id) : 5, home: home })) H.rounds.push(ch);
+        });
+        /* 2 · THE EXTRAS: the room's population by the tags (data.js hqRoomPopulation) */
+        var pop = null;
+        try { pop = (typeof hqRoomPopulation === 'function') ? hqRoomPopulation(roomId, prof, { perfLow: !!(typeof window !== 'undefined' && window.EW_PERF_LOW) }) : null; } catch (e) { console.warn('[HQ] population read failed', e); }
+        if (pop && pop.draw && pop.draw.length && stops.length) {
+            var pool = pop.pool.filter(walksRace), used = {};
+            pop.draw.forEach(function (d, i) {
+                if (gone.indexOf(d.id) >= 0) return;
+                var rk = d.race;
+                if (!walksRace(rk) || rk === av.race) { rk = pool.find(function (r) { return !used[r] && r !== av.race; }) || null; if (!rk) return; }
+                used[rk] = (used[rk] || 0) + 1;
+                var st = stops[Math.floor(Math.random() * stops.length)];
+                var line = null; try { if (room.lines && room.lines.length && Math.random() < 0.5) line = room.lines[Math.floor(Math.random() * room.lines.length)]; } catch (e) {}
+                spawnAt(d.id, rk, genderOf(rk), st, { line: line, sub: pop.kind === 'facility' ? 'PASSING THROUGH' : (d.tier === 'native' || d.tier === 'biome') ? 'A LOCAL' : 'PASSING THROUGH' });
+            });
+        }
+        /* 3 · THE TRAVELLERS: whoever left another room through a door that leads HERE, arriving by it */
+        try {
+            var arriving = _hqTravellers.filter(function (t) { return t.to === roomId && now - t.t < R.travelTtlMs; });
+            _hqTravellers = _hqTravellers.filter(function (t) { return t.to !== roomId && now - t.t < R.travelTtlMs; });
+            arriving.forEach(function (t, i) {
+                if (!walksRace(t.race)) return;
+                var by = stops.find(function (s) { return s.kind === 'door' && s.doorId === t.at; }) || stops.find(function (s) { return s.kind === 'door'; }) || stops[0];
+                if (!by) return;
+                var ch = spawnAt('hq-trav-' + i, t.race, genderOf(t.race, t.gender), by, { arriving: true, sub: 'JUST ARRIVED · FROM ' + String(((_hqData() || {}).rooms || {})[t.from] && ((_hqData() || {}).rooms || {})[t.from].label || t.from).toUpperCase() });
+                if (ch && by.rec) _hqRoundsSwing(by.rec, 1600);
+            });
+        } catch (e) { console.warn('[HQ] travellers skipped', e); }
+    }
     /* ══ SKATEBOARDING — THE RIDER (HQ plan 9.8 stage 1, 2026-09-15) ══
        A walker MODE, never a game mode (nothing on `state`, nothing relayed —
        RULE #2). B drops the deck (data.js HQ_SKATE_RULES is the table; the
@@ -49585,6 +49956,8 @@ const ThreeRenderer = (function () {
             /* a placed cast member holds its building pose (sits, mops,
                kneels…) once the library bake has landed the clip */
             if (ch.pose && ch.kind !== 'player' && e.actions && e.actions[ch.pose]) want = ch.pose;
+            /* THE ROUNDS (2026-09-19): a walker on its loop plays the walk clip at a stroll's pace */
+            if (ch.rounds && ch.kind !== 'player') { want = ch.moving ? 'walk' : 'idle'; if (e.actions && e.actions.walk) { var wts = e.actions.walk._ew_ts0 || 1; e.actions.walk.timeScale = wts * 0.62; } }
             if (ch.kind === 'player') {
                 want = (ch.jumpT >= 0) ? 'jump' : (ch.moving ? (ch.running ? 'run' : 'walk') : 'idle');
                 if (H.ride && H.ride.on) { var bph = _hqRideBailPhase(H.ride); want = bph ? (bph === 'fall' ? 'hqFall' : 'hqGetup') : (ch.jumpT >= 0) ? 'jump' : ((H.ride.pushAnim > 0) ? 'hqPush' : ((e.actions && e.actions.hqRide) ? 'hqRide' : 'idle')); }   // SKATEBOARDING (9.8): the push / the kick is a stride (rev 3: the jog, hqPush), the air is the jump clip, the rest is THE RIDE stance (rev 2: Idle_10, sideways on the deck); a bail = the fall clip then the get-up (rev 3)
@@ -49879,6 +50252,7 @@ const ThreeRenderer = (function () {
             /* THE DOOR GUN rev 2: a FLAT threshold (a floor hatch, a ceiling hatch) stands open — it is a hole you fall through, not a door you press into */
             /* rev 5: a placed WALL door stands open too (HQ_PORTAL_RULES.leafAlways) — Portal's are always open; the leaf lies near flat beside the frame */
             var want = (d.portalSurf && (d.portalSurf !== 'wall' || _hqPortalRules().leafAlways)) ? 1 : ((targetKey === 'door:' + d.door.id && !HQ_DOOR_LOCKED[d.state]) ? 1 : 0);
+            if (!want && d.npcOpenUntil && d.npcOpenUntil > performance.now() && !HQ_DOOR_LOCKED[d.state]) want = 1;   // THE ROUNDS (2026-09-19): a walker going through swings the leaf
             if (d.openT === want && d.openApplied === want) continue;
             var speed = (mo.mode === 'swing') ? 1.9 : (mo.mode === 'way') ? 1.5 : 2.4;
             d.openT = want ? Math.min(1, d.openT + dt * speed) : Math.max(0, d.openT - dt * speed);
@@ -49912,6 +50286,7 @@ const ThreeRenderer = (function () {
         if (_hq !== H) return;
         _hqTickPortalCross(dt);   /* THE DOOR GUN rev 2: a flat threshold is crossed by touch, the same frame the feet land in it */
         if (_hq !== H) return;
+        _hqTickRounds(dt);   /* THE ROUNDS (2026-09-19): the population walks its loops (the nav lattice builds here first, a few ms a frame) */
         _hqTickChars(dt);
         _hqTickCamera(dt);
         _hqTickWorld(dt, now);
@@ -50466,6 +50841,10 @@ const ThreeRenderer = (function () {
         },
         interact: _hqInteract,
         toggleView: _hqToggleView,
+        /* THE ROUNDS (2026-09-19): the walkers on their loops, the nav lattice, the traveller ledger (probes) */
+        roamers: function () { return (_hq && _hq.rounds) ? _hq.rounds.map(function (c) { var rd = c.rounds || {}; return { id: c.id, race: c.race, x: +c.x.toFixed(2), z: +c.z.toFixed(2), y: +c.y.toFixed(2), state: rd.state || null, stop: rd.i, stops: (rd.stops || []).map(function (s) { return s.kind + (s.doorId ? ':' + s.doorId : ''); }), moving: !!c.moving, away: !!c.away }; }) : []; },
+        nav: function () { var N = _hq && _hq.nav; return N ? { cell: N.cell, nx: N.nx, nz: N.nz, done: N.done, walk: N.walk, ms: N.ms || null } : null; },
+        travellers: function () { return _hqTravellers.slice(); },
         isFirstPerson: function () { return !!(_hq && _hq.fp); },
         /* THE TERMINAL (2026-09-08): push the camera onto a console's CRT
            (map.js _hqOpenTerminal), pull it back, and whether it is there */
