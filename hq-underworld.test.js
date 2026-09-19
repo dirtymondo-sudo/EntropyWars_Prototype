@@ -116,7 +116,7 @@ test('THE SEAMS + THE ROUTES: THE PUMPING STATION on Downtown’s east wall pair
     const pump = at(STREETS, 'sewer'), back = at(SEWERS, 'pump');
     assert.ok(pump && pump.wall === 'e' && pump.z === -20 && pump.wide === true && pump.action.room === SEWERS && pump.action.at === 'pump', 'the pumping station');
     assert.ok(back && back.wall === 'n' && back.x === -20 && back.action.room === STREETS && back.action.at === 'sewer' && back.leaf === pump.leaf, 'the pair');
-    assert.ok(HQ.rooms[STREETS].terrain.features.some(f => f.k === 'path' && f.pts[0][1] === -20 && f.pts[1][0] === 56), 'the alley to it');
+    assert.ok(HQ.rooms[STREETS].terrain.features.some(f => f.k === 'path' && f.pts[0][0] === 40 && f.pts[0][1] === -20 && f.pts[f.pts.length - 1][0] >= 112 && f.pts[f.pts.length - 1][1] === -20), 'the alley to it');   // AREA CONTENT D2 (2026-09-19): the alley doglegs to the east wall (R3)
     const ends = {
         strip_sewer:        ['a', STRIP, 'free', null, 'gutter', 'b', SEWERS, 'w', 20],
         sewers_drain:       ['a', SEWERS, 'e', -12, null, 'b', DRAIN, 's', -10],

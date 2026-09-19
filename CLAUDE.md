@@ -5892,3 +5892,29 @@ Reported: iPhone 13 reaches the menu but crashes entering HQ/a match; some SFX s
 `audio.js` leaves music at preload none and plays file SFX through the existing gesture-resumed AudioContext (two decodes, 8 MiB LRU buffer cache, 16 pending URLs, 12 voices; 1.2s stale-event cutoff). The 37 Ogg cues now point to new `_mobile.mp3` files; the delivery includes converted originals, uploaded to R2 `Assets/SFX/`, retained under `mobile-audio/` in the repo. Upload assets BEFORE audio.js. Existing MP3 effects, mixer levels and cooldowns remain. Ogg music is not converted. Shared index token: `20260919-mobile-02-cors`.
 
 Validation: all 204 JS syntax checks, data parity and 21 schema checks pass; targeted suite 65 pass / 3 optional dependency skips / 0 fail. Nine mobile regressions in `mobile-performance.test.js`; `character-creator.test.js` loader sandbox now loads the new helpers. Broader run exposed three pre-existing failures confirmed on original source (Astral obsolete token, DUMB dream-lab exit count, Astral sea column in water). No live playtest, upload or physical iPhone measurement; do not call this shipped or the crash device-confirmed.
+
+## AREA CONTENT PLAN D2 — DISASTER CITY + THE GRID, TWICE THE SIZE (THE DISTRICTS) — 2026-09-19, local delivery
+`AREA_CONTENT_PLAN.md` §7 has the log, EXPLORABLE_AREAS_GUIDE §4b the rule. **THE DISTRICTS**: a `city` plan may carry
+`gen.districts = [{ id, label, rect: [x0, z0, x1, z1], lotW, lotD, lotMinW, lowP, storeys, texP, ruinP, style, fronts, neon,
+fenceKey, fenceH }]` (data.js `_hqTGenerate`'s lot pass): the district is read PER LOT at the run's position along a face,
+every lot row carries its district's look (`district` · `neon` · `texP` · `ruinP` · `style` · `fronts`), the fronts inherit
+it, a yard wall wears its district's fence, `info.districts` counts the lots per district; three-renderer.js `_hqTexPlan` /
+`_hqBuildCityLots` read the LOT before the plan (`lotNeonOf`, a second `_hqTexBatch` for a flipped neon flag, `lot.style`
+when the storeys allow it, `var store = (lot.fronts || gen.fronts) === 'store'` per front). **THE CUT**: `plateau.sink:
+true` = a SUNK tier (THE UNDERCITY, −4) the walker drops into and never climbs at the wall; a plan never forces it open.
+**THE GANGWAY**: `deck.gangway: true` = the forced band is the deck's OWN width (a deck between two roofs across a YARD —
+never across a street: the height field holds one height per point; an overpass over a walked street is a later layer
+mechanic). **THE FIRE ESCAPE**: `climb.look: 'fireescape'` (three-renderer.js `_hqBuildClimbs`: a steel ladder + a grated
+landing cage) chained through a LANDING plateau (1.6 × 2.2, half the height) against a roof's flank in an ALLEY (a `path` —
+no lots on a path; the roof stands ≥ 3.9 m behind the street's lots). RULES the solver taught: a `rail` on a roof stands
+≥ 1.6 m inside its edge, one per roof (its 2.8 m forced band on the mass = a pocket); a canal the walker never enters is
+`deep_water` with a 0.55 m bed (a deep bed leaves a dry ledge at the bank's foot = a rescue scar); lots backing onto a
+canal need ≥ 5.5 m of mass to the bank. **THE ROOMS**: `site_prebuilt_downtown_streets` 224 × 176 (financial · oldtown ·
+docks: the old town's high street / squares / church / THE WAREHOUSE ROOF, the docks' waterfront / THE CANAL under four
+bridges / THE QUAY / THE BASIN + THE CONTAINER ROOF (the second tape, the gun's) / THE FLOODED QUAY + `links.docks_sewer`),
+`site_prebuilt_cyberpunk_streets` 208 × 168 (neon · stacks · undercity: seven roofs, four fire escapes, three gangways;
+THE CUT with THE RAMP ROAD, THE STEPS, THE DRAINS, THE OVERLOOK, the bay door down there, `links.undercity_sewer`), the
+Strip at its size + two rooftops; every pinned core coordinate untouched; `parti` / `typology` on all three. **THE AUDIT**:
+`RULES.R7.districts` 3; a road out is never earned; a tier is judged against the MEDIAN sill. R1 is not met by either city
+(the number was set from 1 500 m² caves — the user's call in AREA_CONTENT_PLAN §6). `npm test` runs
+`hq-city-districts.test.js`. Ship data.js to Render too. UNSEEN LIVE (RULE #1c): all of it.

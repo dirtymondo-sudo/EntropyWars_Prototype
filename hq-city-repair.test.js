@@ -58,7 +58,7 @@ test('traffic yields on straights, around bends and before respawning beside the
 test('following distance uses the actual bus ahead, not the first vehicle in the list',()=>{
  const {c}=sandbox(),first=car(0),follower=car(5),bus=car(15,undefined,false,10);c._hq.traffic=[first,follower,bus];c._hqTickTraffic(.1);assert.equal(follower.s,5);
 });
-test('Disaster City has eight slower cars and the mall explicitly has zero terrain noise',()=>{
- const D=loadGameData(),room=D.DOOR_HQ.rooms.site_prebuilt_downtown_streets;assert.equal(room.terrain.traffic.reduce((n,t)=>n+t.n,0),8);assert.ok(room.terrain.traffic.every(t=>t.speed<=4.5));
+test('Disaster City has fewer, slower cars per square metre than its first cut (eight on 9 856 m²) and the mall explicitly has zero terrain noise',()=>{
+ const D=loadGameData(),room=D.DOOR_HQ.rooms.site_prebuilt_downtown_streets;const cars=room.terrain.traffic.reduce((n,t)=>n+t.n,0),area=room.shell.w*room.shell.d;assert.ok(cars/area<=8/9856+1e-9,'cars per m²: '+cars+' on '+area);assert.ok(cars>=8);assert.ok(room.terrain.traffic.every(t=>t.speed<=4.5));   // AREA CONTENT D2 (2026-09-19): the city is 224 × 176 with twelve cars
  const info=D.hqTerrainCompile({shell:{w:10,d:10},doors:[],terrain:{noise:{amp:0},features:[]}},'zero');assert.ok(Array.from(info.H).every(h=>h===0));
 });

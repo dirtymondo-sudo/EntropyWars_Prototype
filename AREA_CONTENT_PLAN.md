@@ -161,7 +161,7 @@ trap rule, the walker on a stub line, the source sites); the climb's teaching ro
 garage's ramp wall (a ladder to the dock's roof with a plaque). Ship: data.js (R2 + Render),
 three-renderer.js, sprites.js, styles-base.css (the hint), index.html; tests + docs.
 
-**D2 — DISASTER CITY + THE GRID, TWICE THE SIZE.** Downtown's streets → 224 × 176 with three
+**D2 — DISASTER CITY + THE GRID, TWICE THE SIZE.** *(SHIPPED 2026-09-19 as a local delivery — see §7; the overpass over a walked street and the undercity UNDER the skyway were re-shaped because the height field holds one height per point: the bridges span water, the undercity sits BESIDE the overlook.)* Downtown's streets → 224 × 176 with three
 districts (THE FINANCIAL BLOCKS = towers + the parking deck + the overpass; THE OLD TOWN = low
 brick, the market square, the church square (a second weenie); THE DOCKS = the waterfront,
 cranes, the drowned quay = a swim to a container roof), the Grid → 208 × 168 (THE NEON GRID;
@@ -246,3 +246,49 @@ The questions as they were asked:
   walker in a sandbox, the rooms, the sites), `area-content.test.js` (the tool, R9 hard, R1–R8 as warnings — heavy).
   UNSEEN LIVE (RULE #1c): the ladder's look and the walker on it (the stood-up stroke — `HQ_CLIMB_CLIPS.climb.ts` and the
   lean −1.3 in `_hqTickChars` are the edits), the mantle's timing, the platform in the raised garage, the three plates.
+- 2026-09-19 — **D2 SHIPPED (local delivery): DISASTER CITY + THE GRID, TWICE THE SIZE.** THE DISTRICTS on the `city` plan
+  (data.js `_hqTGenerate`: `gen.districts = [{ id, label, rect, lotW, lotD, lotMinW, lowP, storeys, texP, ruinP, style, fronts,
+  neon, fenceKey, fenceH }]` — the district is read PER LOT at the run's position along a face, every lot row carries its
+  district's look (`district`, `neon`, `texP`, `ruinP`, `style`, `fronts`), the fronts inherit it, a yard wall wears its
+  district's fence, `info.districts` counts the lots per district, `info.gen.districts`; three-renderer.js `_hqTexPlan` /
+  `_hqBuildCityLots` read the lot before the plan — a flipped neon flag goes into a second batch, a lot's `style` wins when
+  the storeys allow it, the front's kind is the lot's). THE CUT (`plateau.sink: true` = a sunk tier the walker drops into
+  and never climbs; a plan never forces it open). THE GANGWAY (`deck.gangway: true` = the forced band is the deck's own
+  width — the grown band lay on the yard at ground level and made a pocket). THE FIRE ESCAPE (`climb.look: 'fireescape'`,
+  a steel ladder with a grated landing cage; chained through landing plateaus 1.6 × 2.2 m). **DOWNTOWN 224 × 176** — THE
+  FINANCIAL BLOCKS (the pinned core: the ring road, the plaza, the deck, the rooftop, the collapse — untouched) + THE OLD TOWN
+  (the high street, market square's fountain, church square + the churchyard with the church GLB, THE COURT with THE
+  WAREHOUSE ROOF up a fire escape, the metro's mouth down a dogleg, the tower's door behind a dogleg — R3) + THE DOCKS (the
+  waterfront, THE CANAL behind its warehouses crossed by FOUR BRIDGES, THE QUAY with two cranes, the freight siding, three
+  floodlights, THE CRANE PLATFORM up a gantry stair, THE BASIN of deep water with THE CONTAINER ROOF in it = the second
+  tape, the door gun's, THE FLOODED QUAY waded to THE DROWNED MANHOLE = `links.docks_sewer`, a gutter into the sewers'
+  south wall — an earned exit seen across the water). **THE GRID 208 × 168** — THE NEON GRID (the core) + THE STACKS (seven
+  tenement roofs at 10.5 m behind the terrace, four fire escapes in two alleys, three gangways, the parapet rails) + THE
+  UNDERCITY (THE CUT four metres down: THE RAMP ROAD = the boulevard's own incline the cars take, THE STEPS off both loop
+  corners, THE DRAINS = two pipes down the retaining wall, THE LOWER CROSS, the bay door DOWN THERE, THE OVERLOOK 3 m up a
+  ramp on the grid's south edge looking seven metres down into it — the tease of the lower city's gutter =
+  `links.undercity_sewer` at the east drain's foot). The Strip stays one district (the plan's rule) and gains THE MOTEL
+  ROOF + THE LAUNDRY ROOF, one ladder each. Every room wears `parti` + `typology` (R6). **THE AUDIT** refined: R7 counts
+  districts (`RULES.R7.districts` 3); a road out (`way: 'road'`) is never earned; a door is "on a tier" against the room's
+  MEDIAN sill (the lowest sill made every street door of a city with a sunk district a tier). **THE RULES THE SOLVER
+  TAUGHT**: a rail row's forced band (2.8 m) must not lie past a tier's edge on the mass — rails stand ≥ 1.6 m inside a roof,
+  one per roof (a rail across a yard gap opens the yard); a deep pool's sloped bank leaves a dry ledge at its foot the walker
+  drops onto and cannot leave — a canal the walker never enters is `deep_water` with a SHALLOW bed (0.55 m) under its dark
+  sheet; a fluid's forced band is wider than its water, so lots along a street backing onto a canal need ≥ 5.5 m of mass
+  between the sidewalk and the bank. **MEASURED** (`node check-area-content.js`): Downtown 22 climb rows / 6 kinds / range
+  9.8 m / pull 50 m / 0.9 items per 60 m² / 2 doors exposed at most / every earned exit teased; the Grid 33 rows / 5 kinds /
+  range 14.5 m / 0.7 per 60 m² / 1 exposed / all teased. R1 (0.6 per 100 m²) is NOT met — at 24 000 / 16 000 m² of open floor
+  it asks ~145 / ~96 climb rows per city; the number was set from 1 500 m² cave chambers and reads wrong for a city (the
+  user's call: a per-district count, or a city exemption — §6). R4 stays a warning on Downtown (2 of 10 with the three
+  roads excluded; the tower / metro / mall doors are pinned by older tests at their walls). **NOT BUILT, with the reason**:
+  the overpass OVER a walked street and the undercity UNDER the skyway — a walkable layer over walkable ground needs a
+  second height layer in `hqTerrainFeet` / the solver (every node is (x, z) with one y); the four bridges span water the
+  walker never enters instead, and the undercity sits beside the overlook. Tests: `hq-city-districts.test.js` (the districts
+  on a synthetic city, the cut, the gangway + the fire escape chain, the three cities' sheet, the solver + the roofs + the
+  door gun's roofs + the sewers' grates (heavy), the audit's refinements (heavy), the sources); amended hq-city (the ring
+  is still driven both ways among more routes), hq-city-2 (the shelters ≥ 2), hq-city-repair (cars per m², never more than
+  the first cut's), urban-pack (a yard wall wears its district's fence; the two renderer pins), hq-underworld (the
+  pumping alley doglegs). UNSEEN LIVE (RULE #1c): all of it — the fire-escape cages against the tenement sheets, the
+  gangways over the yards, the ramp road's cars going down, the overlook's rails, the canal's dark sheet at 0.55 m, the
+  church GLB in its yard, the cranes' scale, the flooded quay's grate under the water, the traffic islands' trees on the
+  avenue, the districts' looks side by side (the old town's brick hoardings against the financial glass).

@@ -220,6 +220,39 @@ the truth.
 
 ---
 
+### 4b. THE DISTRICTS (AREA CONTENT D2, 2026-09-19 — R7: a city is ≥ 200 × 160 with ≥ 3 districts)
+
+A city part carries `gen.districts = [{ id, label, rect: [x0, z0, x1, z1], lotW, lotD, lotMinW, lowP, storeys,
+texP, ruinP, style, fronts, neon, fenceKey, fenceH }]` — bands or blocks of the room, each its own look. The
+district is read PER LOT at the run's position along a face (a face may cross a district line); every lot row
+carries its district's look and the renderer reads the lot before the plan (`_hqTexPlan` / `_hqBuildCityLots`:
+neon, ruinP, style, texP, the front's kind; a flipped neon flag goes into a second texture batch); a yard wall
+wears its district's fence; `info.districts` lists them with their lot counts. A district's streets are the
+plan's streets (a `district` label on a street row is documentation). One circuit per room still.
+
+The pieces a city's verticality is built from, and the rules the solver taught:
+- **THE CUT** — `{ k: 'plateau', …, h: −4, sink: true }` = a sunk tier (THE UNDERCITY): the ground is cut down to
+  h with the same cliff sides; the walker drops in and never climbs back at the wall; a plan never forces it open
+  (its streets and blocks are the plan's). Leave it up a `ramp` (a road the cars take), a stair, a `climb`.
+- **THE ROOF** — a `plateau` at the storeys' height (3 × 3.5 = 10.5 for a three-storey terrace) BEHIND the lots of
+  a street face (the lots need ≥ 3.9 m of depth in front of it) and flush to an ALLEY (a `path` — no lots on a
+  path): the roof reads as the terrace's roof and the alley is where the fire escape stands.
+- **THE FIRE ESCAPE** — `climb.look: 'fireescape'` chained through a LANDING plateau (1.6 × 2.2 m, half the height,
+  `edge: 0.15`) standing against the roof's flank in the alley: the lower ladder on the landing's alley face, the
+  upper on the roof's face, 1.2 m apart along the flank; `face` points at the mass.
+- **THE GANGWAY** — `{ k: 'deck', …, y: roof, gangway: true }` between two roofs across a YARD (a mass) — never
+  across a street: the height field holds ONE height per point, so a deck over a walked street blocks the street.
+  `gangway: true` keeps the forced band to the deck's own width (the grown band lay on the yard at ground level and
+  made a pocket the walker dropped into).
+- **THE RAIL ON A ROOF** — a `rail` row's forced band is 2.8 m wide: stand it ≥ 1.6 m inside the roof's edge, one
+  per roof (a rail across a yard gap opens the yard; a rail on the edge opens a strip on the mass below = a trap).
+- **THE CANAL** — water the walker never enters is `deep_water` with a SHALLOW bed (0.55 m) under its dark sheet: a
+  deep bed leaves a dry ledge at the bank's foot the walker drops onto and cannot leave (the compiler rescues it
+  with a ramp — a scar). A fluid's forced band is wider than its water: lots on a street backing onto a canal need
+  ≥ 5.5 m of mass between the sidewalk and the bank. A bridge is a `deck` authored after the canal (a causeway).
+- **THE OVERPASS over a walked street** is NOT buildable yet — it needs a second height layer (the gallery's rule for
+  terrain). Span water, a yard or a cut instead.
+
 ## 5. MULTI-FLOOR AND PLATFORMS (the Portal ask)
 
 What exists for vertical play, per family:
@@ -448,13 +481,13 @@ The prefab parts (family B) take R3 / R4 / R8 only.
   tier ≥ 3 m, a prop ≥ 3 m, the marker).
 - **R3 DOOR EXPOSURE** — from a landing at most ONE other door in a clear line at eye height; two
   doors on a wall ≥ 12 m apart, never three.
-- **R4 THE EARNED EXIT** — ≥ 1 exit that is a draught, a way, a door on a tier (≥ 1.5 m over the
-  lowest sill) or a door under the water; ≥ ⅓ of the exits earned.
+- **R4 THE EARNED EXIT** — ≥ 1 exit that is a draught, a way (a road out excepted — it is the most exposed exit
+  there is), a door on a tier (≥ 1.5 m over the room's MEDIAN sill) or a door under the water; ≥ ⅓ of the exits earned.
 - **R5 THE TEASE** — every earned exit (a draught excepted) is SEEN from a reachable node ≥ 6 m off
   with ≥ 0.8 m of height between them before it is reached.
 - **R6 PARTI + TYPOLOGY** — `parti` (one sentence) and `typology` (bowl · ring · switchback · hub ·
   loop · pearls · corridor) on the spec / the room.
-- **R7 SIZE** — a city part ≥ 200 × 160 with ≥ 3 districts; an open wild part ≥ 60 × 50.
+- **R7 SIZE** — a city part ≥ 200 × 160 with ≥ 3 districts (`gen.districts`, §4b); an open wild part ≥ 60 × 50.
 - **R8 CONTENT DENSITY** — ≥ 1 prop / native / scatter per 60 m² of OPEN floor.
 - **R9 THE TEACHING ROOM** — every walker mechanic has ONE room with a lesson plaque
   (`HQ_GUN_LESSONS` the door gun, `HQ_WALK_LESSONS` the climb / the skate / the swim). Hard.
@@ -608,3 +641,8 @@ climber faces (the mass is that way); the head lands `climbMount` past the tier'
   Next: D2 (Disaster City + the Grid twice the size, three districts each, fire escapes = `climb` chains onto rooftop `deck`
   runs, the overpass, the undercity, the `districts` plumbing on the `city` plan), then D3 (the twenty areas, two or three
   a delivery, each to R1–R8), D4 (the door pass over the complexes), D5 (the facility rooms' purpose).
+- **2026-09-19 — AREA_CONTENT_PLAN D2 (local delivery): Disaster City + the Grid twice the size, three districts each.**
+  §4b is the rule that came with it (the districts on the `city` plan, THE CUT, THE ROOF, THE FIRE ESCAPE, THE GANGWAY, the
+  rail-on-a-roof rule, the canal's shallow bed, the overpass that is not yet buildable). Downtown 224 × 176 (the financial
+  blocks · the old town · the docks), the Grid 208 × 168 (the neon grid · the stacks · the undercity), the Strip's two
+  rooftops; `hq-city-districts.test.js`. Log: AREA_CONTENT_PLAN §7. Next: D3 (the twenty areas, two or three a delivery).

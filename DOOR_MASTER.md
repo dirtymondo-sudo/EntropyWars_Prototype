@@ -2697,3 +2697,7 @@ unverified. No browser playtest. Full details are in the ZIP's README.txt.
   collar; the inner sun, Agartha, Antarctica and the poles keep their designed ways); every `way`, the telescope and the secret
   doors stay. The boards' tapes moved into their parts. Every area's names, natives' lines and tape titles are Claude's DRAFT
   (A15 — the user rewrites). Log: DOOR_HQ_BUILD_PLAN §9; the rule: EXPLORABLE_AREAS_GUIDE §10.
+- **2026-09-19 — AREA CONTENT PLAN D2 (local delivery).** Disaster City (Room 1954) and Cyberpunk City (Room 2047) are twice the
+  size with three districts each — Downtown's old town and docks, the Grid's stacks and undercity — on THE DISTRICTS plumbing of
+  the `city` plan; fire escapes, rooftop gangways, a sunk lower city, a canal under four bridges, two more manholes into the
+  sewers. Every new name, line and tape title is Claude's DRAFT (A15). Log: AREA_CONTENT_PLAN §7; the rule: EXPLORABLE_AREAS_GUIDE §4b.

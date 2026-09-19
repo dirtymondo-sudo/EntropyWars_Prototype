@@ -39088,10 +39088,13 @@ const ThreeRenderer = (function () {
     };
     /* the sheet set of one building: every cell kind → { key, glow?, over? } (a `urban:` key; `over` = a decal laid over `under`) */
     function _hqTexPlan(lot, rng, gen) {
-        var neon = !!(gen && gen.neon), ruin = rng() < ((gen && gen.ruinP != null) ? gen.ruinP : 0.3), st = lot.storeys || 1;
+        /* THE DISTRICTS (AREA CONTENT D2, 2026-09-19): a lot's own row (neon / ruinP / style — its district's) is read before the plan's */
+        var neon = (lot.neon != null) ? !!lot.neon : !!(gen && gen.neon), ruin = rng() < ((lot.ruinP != null) ? lot.ruinP : (gen && gen.ruinP != null) ? gen.ruinP : 0.3), st = lot.storeys || 1;
         var names = Object.keys(_HQ_TEX_STYLES).filter(function (k) { var S = _HQ_TEX_STYLES[k]; return !(S.minS && st < S.minS) && !(S.maxS && st > S.maxS); });
         if (neon) names = names.filter(function (k) { return k !== 'stucco'; });
-        var style = names[Math.floor(rng() * names.length)] || 'office', S = _HQ_TEX_STYLES[style];
+        var style = names[Math.floor(rng() * names.length)] || 'office';
+        if (lot.style && _HQ_TEX_STYLES[lot.style] && names.indexOf(lot.style) >= 0) style = lot.style;   // the district's style, when the storeys allow it
+        var S = _HQ_TEX_STYLES[style];
         var pick = function (fam, f) { return urbanTexPick(fam, rng, f); };
         var U = function (n) { return n ? 'urban:' + n : null; };
         var P = { style: style, ruin: ruin, neon: neon, roof: U(S.roof), st: st };
@@ -39231,7 +39234,9 @@ const ThreeRenderer = (function () {
         var lotById = {}, prevTs = _hzKitTs; _hzKitTs = TM;
         /* THE TEXTURED BUILDINGS (2026-09-17): a `gen.texP` share of the lots (seeded per lot) and every `low` lot are composed from THE URBAN PACK — one merged batch for the room */
         var texP = (gen.texP != null) ? gen.texP : 0, texOn = prisms && typeof URBAN_TEXTURES !== 'undefined' && typeof urbanTexPick === 'function' && !(typeof window !== 'undefined' && window.EW_HQ_NO_TEX_BUILDINGS);
-        var batch = texOn ? _hqTexBatch(G, U, neon) : null, texMade = 0;
+        var batch = texOn ? _hqTexBatch(G, U, neon) : null, batchAlt = null, texMade = 0;   // THE DISTRICTS (D2): a lot whose district flips the neon flag goes into a second batch
+        var batchFor = function (lotNeon) { if (lotNeon === neon) return batch; if (!batchAlt) batchAlt = _hqTexBatch(G, U, lotNeon); return batchAlt; };
+        var lotNeonOf = function (lot) { return (lot.neon != null) ? !!lot.neon : neon; };
         try {
             lots.forEach(function (lot) {
                 lotById[lot.i] = lot;
@@ -39240,22 +39245,22 @@ const ThreeRenderer = (function () {
                 if (!prisms) return;   // the mall: the units ARE the rise, fronted below
                 if (texOn) {
                     var lr = _mulberry32(((lot.seed | 0) * 7 + 11) >>> 0);
-                    if (lot.low || lr() < texP) {
+                    if (lot.low || lr() < ((lot.texP != null) ? lot.texP : texP)) {
                         try {
-                            var tb = _hqTexBuilding(lot, info, batch, lr, gen, U);
+                            var tb = _hqTexBuilding(lot, info, batchFor(lotNeonOf(lot)), lr, gen, U);
                             lot._tex = true; lot._roofY = (lot.base || 0) + tb.H; texMade++;
                             /* the plant on the roof */
                             var grp = new THREE.Group(); grp.position.set(lot.x * U, base, lot.z * U); grp.rotation.y = yaw; G.add(grp);
                             var ac = new THREE.Mesh(new THREE.BoxGeometry(1.2 * U, 0.8 * U, 1.0 * U), acMat); ac.position.set(((lot.seed % 3) - 1) * Math.min(1.2, lot.w * 0.22) * U, (tb.H - HQ_TEXB.parapet + 0.4) * U, (((lot.seed >> 2) % 3) - 1) * Math.min(1.1, lot.d * 0.22) * U); grp.add(ac);
                             if (lot.seed % 2) { var tank = new THREE.Mesh(new THREE.CylinderGeometry(0.55 * U, 0.55 * U, 1.1 * U, 12), acMat); tank.position.set(-lot.w * 0.28 * U, (tb.H - HQ_TEXB.parapet + 0.55) * U, lot.d * 0.24 * U); grp.add(tank); }
-                            if (neon && lot.storeys >= 3) { /* the hologram below still stands on a tall lot */ }
+                            if (lotNeonOf(lot) && lot.storeys >= 3) { /* the hologram below still stands on a tall lot */ }
                             return;
                         } catch (e) { console.warn('[HQ] a textured lot failed', e); }
                     }
                 }
                 if (lot.storeys && TK && typeof _nrSpriteBuilding === 'function') {
                     try {
-                        var b = _nrSpriteBuilding(TK, lot.key, lot.x * U, lot.z * U, { w: (lot.w - 0.16) / info.tile, d: (lot.d - 0.16) / info.tile, stack: lot.storeys, yAbs: base, cast: false, wall: false, lift: neon ? 0.42 : 0.18, roofKit: lot.storeys >= 3, beacon: neon ? 0xff3ad8 : 0xff3030, ry: yaw });
+                        var b = _nrSpriteBuilding(TK, lot.key, lot.x * U, lot.z * U, { w: (lot.w - 0.16) / info.tile, d: (lot.d - 0.16) / info.tile, stack: lot.storeys, yAbs: base, cast: false, wall: false, lift: lotNeonOf(lot) ? 0.42 : 0.18, roofKit: lot.storeys >= 3, beacon: neon ? 0xff3ad8 : 0xff3030, ry: yaw });
                         if (b) { b._ew_hqLot = lot.i; if (b.userData && b.userData.roofY) lot._roofY = (lot.base || 0) + b.userData.roofY / U; }
                     } catch (e) { console.warn('[HQ] a city lot failed', lot.key, e); }
                 } else {
@@ -39269,7 +39274,7 @@ const ThreeRenderer = (function () {
                     if (lot.seed % 2) { var tank = new THREE.Mesh(new THREE.CylinderGeometry(0.55 * U, 0.55 * U, 1.1 * U, 12), acMat); tank.position.set(-lot.w * 0.3 * U, (lot.top + 1.05) * U, lot.d * 0.25 * U); grp.add(tank); }
                 }
                 /* THE HOLOGRAM (neon): a lit name standing over a tall lot's roof, facing its street */
-                if (neon && lot.storeys >= 3 && typeof _hzTextTex === 'function') {
+                if (lotNeonOf(lot) && lot.storeys >= 3 && typeof _hzTextTex === 'function') {
                     var hn = _HQ_NEON_NAMES[(lot.seed >> 3) % _HQ_NEON_NAMES.length], hi = _HQ_NEON_INKS[lot.seed % _HQ_NEON_INKS.length];
                     var ht = _hzTextTex('hq_holo_' + hn, [hn], { w: 512, h: 128, color: '#' + ('000000' + hi.toString(16)).slice(-6), pad: 0.14, weight: 'bold', font: '"Arial Black", Impact, sans-serif' });
                     if (ht) {
@@ -39282,7 +39287,7 @@ const ThreeRenderer = (function () {
                 }
             });
         } finally { _hzKitTs = prevTs; }
-        if (batch) { var nb = batch.flush(); if (typeof window !== 'undefined' && window.EW_HQ_DEBUG) console.log('[HQ] textured buildings', texMade, 'of', lots.length, 'in', nb, 'batches'); }
+        if (batch) { var nb = batch.flush() + (batchAlt ? batchAlt.flush() : 0); if (typeof window !== 'undefined' && window.EW_HQ_DEBUG) console.log('[HQ] textured buildings', texMade, 'of', lots.length, 'in', nb, 'batches'); }
         /* THE FRONTS */
         var glassMat = new THREE.MeshPhongMaterial({ color: neon ? 0x1a2a3a : 0x2a3a4a, shininess: 90, specular: 0x88aacc, transparent: true, opacity: 0.62 }); glassMat.emissive = new THREE.Color(neon ? 0x142838 : 0x0e1822);
         var frameMat = new THREE.MeshPhongMaterial({ color: 0x2a2c30, shininess: 30 });
@@ -39294,6 +39299,7 @@ const ThreeRenderer = (function () {
         try {
             fronts.forEach(function (f, fi) {
                 var lot = lotById[f.lot] || {}, g = _hqCityFrontGroup(f, U), L = f.len, top = (lot._roofY != null ? lot._roofY - (lot.base || 0) : f.top);
+                var store = (lot.fronts || gen.fronts) === 'store';   // THE DISTRICTS (D2): the front's kind is the lot's district's
                 var ink = _HQ_STORE_INKS[(f.lot * 7 + fi) % _HQ_STORE_INKS.length];
                 if (lot._tex) {
                     /* THE TEXTURED BUILDINGS: the pack's own doors and glass are the ground floor — only an awning now and then */
@@ -49080,6 +49086,18 @@ const ThreeRenderer = (function () {
                 [-w / 2, w / 2].forEach(function (lx) { var r = mk(new THREE.BoxGeometry(0.05 * U, (top + 0.1) * U, 0.05 * U), rail); r.position.set(lx * U, (top + 0.1) / 2 * U, 0.06 * U); });
                 for (var y = 0.3; y < L + 0.05; y += 0.3) { var rung = mk(new THREE.CylinderGeometry(0.018 * U, 0.018 * U, w * U, 8), rail); rung.rotation.z = Math.PI / 2; rung.position.set(0, y * U, 0.06 * U); }
                 for (var by = 0.9; by < L; by += 1.8) { var br = mk(new THREE.BoxGeometry(0.04 * U, 0.04 * U, 0.2 * U, 1, 1, 1), iron); br.position.set(0, by * U, 0.16 * U); }
+            } else if (c.look === 'fireescape') {
+                /* THE FIRE ESCAPE (AREA CONTENT D2, 2026-09-19): a steel ladder up the face, a grated LANDING CAGE at its head (a platform
+                   0.9 m deep with a rail round it, brackets under) — chained through landing plateaus it is the tenement's fire escape */
+                [-w / 2, w / 2].forEach(function (lx) { var r = mk(new THREE.BoxGeometry(0.05 * U, (top + 0.1) * U, 0.05 * U), steel); r.position.set(lx * U, (top + 0.1) / 2 * U, 0.06 * U); });
+                for (var fy = 0.3; fy < L + 0.05; fy += 0.3) { var frung = mk(new THREE.CylinderGeometry(0.018 * U, 0.018 * U, w * U, 8), steel); frung.rotation.z = Math.PI / 2; frung.position.set(0, fy * U, 0.06 * U); }
+                var cageW = Math.max(1.4, w + 0.8), cageD = 0.9;
+                var plat = mk(new THREE.BoxGeometry(cageW * U, 0.05 * U, cageD * U), iron); plat.position.set(0, (top + 0.02) * U, -(cageD / 2 - 0.06) * U);
+                for (var gx = -cageW / 2 + 0.12; gx < cageW / 2; gx += 0.12) { var slat = mk(new THREE.BoxGeometry(0.02 * U, 0.03 * U, (cageD - 0.1) * U), steel); slat.position.set(gx * U, (top + 0.06) * U, -(cageD / 2 - 0.06) * U); }
+                [[-cageW / 2, -cageD + 0.06], [cageW / 2, -cageD + 0.06], [-cageW / 2, 0.06], [cageW / 2, 0.06]].forEach(function (pp) { var post = mk(new THREE.BoxGeometry(0.04 * U, 1.0 * U, 0.04 * U), iron); post.position.set(pp[0] * U, (top + 0.52) * U, pp[1] * U); });
+                var railB = mk(new THREE.BoxGeometry(cageW * U, 0.04 * U, 0.04 * U), iron); railB.position.set(0, (top + 1.02) * U, -(cageD - 0.06) * U);
+                [-cageW / 2, cageW / 2].forEach(function (lx) { var railS = mk(new THREE.BoxGeometry(0.04 * U, 0.04 * U, cageD * U), iron); railS.position.set(lx * U, (top + 1.02) * U, -(cageD / 2 - 0.06) * U); });
+                for (var by2 = 1.2; by2 < L; by2 += 2.4) { var brk = mk(new THREE.BoxGeometry(0.05 * U, 0.05 * U, 0.22 * U), iron); brk.position.set(0, by2 * U, 0.17 * U); }
             } else if (c.look === 'rope') {
                 var rope = mk(new THREE.CylinderGeometry(0.028 * U, 0.028 * U, (top + 0.05) * U, 8), hemp); rope.position.set(0, (top + 0.05) / 2 * U, 0.05 * U);
                 for (var ky = 0.35; ky < L; ky += 0.45) { var knot = mk(new THREE.SphereGeometry(0.06 * U, 8, 6), hemp); knot.position.set(0, ky * U, 0.05 * U); knot.scale.y = 0.7; }

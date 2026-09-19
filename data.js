@@ -20235,6 +20235,17 @@ const DOOR_HQ = {
           b: { site: 'prebuilt_downtown', part: 'sewers', wall: 'w', z: 20, leaf: 'leaf_cell', sub: 'THE STRIP\'S GUTTER · UP TO THE BACK LANE', verb: 'CLIMB UP' },
           why: 'the Strip\'s back lane floods every night at closing and drains by morning; the water goes down the east kerb into the main culvert, and the culvert is under a different city',
           note: 'the back lane', draft: true },
+        /* AREA CONTENT D2 (2026-09-19): THE MANHOLES — one gutter per new district, each dropping into THE SEWERS (every gutter drains there) */
+        { id: 'docks_sewer', route: 'sewers', way: 'gutter',
+          a: { site: 'prebuilt_downtown', part: 'streets', wall: 'free', x: -80, z: 78, face: 90, sub: 'THE DROWNED MANHOLE · DOWN INTO THE SEWERS' },
+          b: { site: 'prebuilt_downtown', part: 'sewers', wall: 's', x: -10, leaf: 'leaf_cell', sub: 'THE DOCKS\' OUTFALL · UP TO THE FLOODED QUAY', verb: 'CLIMB UP' },
+          why: 'the quay floods every year and the manhole at the end of it never shuts; the docks drain into the culvert and the culvert drains into the docks, and the Department has stopped asking which way the water goes',
+          note: 'the flooded quay', draft: true },
+        { id: 'undercity_sewer', route: 'sewers', way: 'gutter',
+          a: { site: 'prebuilt_cyberpunk', part: 'streets', wall: 'free', x: 23.6, z: 58, face: 270, sub: 'THE GUTTER · DOWN INTO THE SEWERS' },   // at the foot of THE EAST DRAIN's alley — seen from the top of the pipe (R5)
+          b: { site: 'prebuilt_downtown', part: 'sewers', wall: 'n', x: 20, leaf: 'leaf_cell', sub: 'THE UNDERCITY\'S GUTTER · UP TO THE LOWER STREET', verb: 'CLIMB UP' },
+          why: 'the undercity is four metres down and the sewers are under that; the grate at the lower street\'s kerb opens on the same culvert as Downtown\'s, a hundred years earlier, and the water has not noticed',
+          note: 'the lower street', draft: true },
         { id: 'sewers_drain', route: 'sewers', leaf: 'leaf_cell',
           a: { site: 'prebuilt_downtown', part: 'sewers', wall: 'e', z: -12, sub: 'THE OUTFALL GRATE · INTO THE STORM DRAIN' },
           b: { site: 'prebuilt_fairy_forest', part: 'deadmans', wall: 's', x: -10, sub: 'THE CULVERT\'S GRATE · INTO THE SEWERS' },
@@ -28477,6 +28488,8 @@ const DOOR_HQ = {
             sub: 'THE BOULEVARD · THE BACK LANE · THE FOUNTAIN · THE CHAPEL · OPEN 24 H',
             kind: 'box', site: 'prebuilt_strip', part: 'streets',
             shell: hqCityShell({ strip: true, w: 100, d: 64, plate: { x: 0, z: 28, y: 4.6 } }),
+            parti: 'One bright boulevard between two dark back lanes; the roofs behind the marquees are the only way up.',   // AREA CONTENT D2 (2026-09-19, R6): the Strip stays ONE district (the plan's rule) and gains the back-lot rooftops
+            typology: 'loop',
             terrain: {
                 floor: 'urban:PlasterWallPainted1b', cliff: 'urban:ConcreteStriped2a', path: 'urban:TileGeneric1a',
                 noise: { amp: 0.04, scale: 6 },
@@ -28497,6 +28510,13 @@ const DOOR_HQ = {
                     { k: 'path', pts: [[0, -6], [0, 6]], w: 21 },                                                                                  // THE PLAZA is pavement
                     { k: 'path', pts: [[-10, -32], [-10, -20]], w: 6 },                                                                            // THE CHAPEL's forecourt (the north wall, x −10)
                     { k: 'path', pts: [[0, 20], [0, 32]], w: 6 },                                                                                  // the bay door's street (the south wall, x 0)
+                    /* THE BACK-LOT ROOFTOPS (AREA CONTENT D2, 2026-09-19): two low roofs in the outer blocks behind the back lane, each up ONE fire escape off the lane's sidewalk, a rail along its edge */
+                    { k: 'plateau', x: -28, z: -29.6, w: 10, d: 4.2, h: 4.2, edge: 0.3 },                                                             // THE MOTEL ROOF (north)
+                    { k: 'climb', x: -28, z: -27.5, face: 0, look: 'fireescape' },                                                                     // its fire escape off the north lane's sidewalk
+                    { k: 'rail', x0: -32.8, z0: -27.9, x1: -23.2, z1: -27.9 },                                                                          // the roof's edge (the grind)
+                    { k: 'plateau', x: -10, z: 29.6, w: 10, d: 4.2, h: 4.2, edge: 0.3 },                                                              // THE LAUNDRY ROOF (south)
+                    { k: 'climb', x: -10, z: 27.5, face: 180, look: 'fireescape' },
+                    { k: 'rail', x0: -14.8, z0: 27.9, x1: -5.2, z1: 27.9 },
                     { k: 'scatter', key: 'city_bin', n: 8, seed: 3 },
                     { k: 'scatter', key: 'fire_hydrant', n: 4, seed: 4 },
                     { k: 'scatter', key: 'signpost', n: 4, seed: 5 },
@@ -29502,9 +29522,12 @@ const DOOR_HQ = {
         /* ── THE STREETS — the city round the ring road: the circuit, the traffic, the deck, the collapse ── */
         site_prebuilt_downtown_streets: {
             label: 'DISASTER CITY · DOWNTOWN',
-            sub: 'THE INTERSECTION · THE RING ROAD · THE PLAZA · THE PARKING DECK · THE MALL · THE METRO',
+            sub: 'THE FINANCIAL BLOCKS · THE OLD TOWN · THE DOCKS · THE RING ROAD · THE PLAZA · THE CANAL',
             kind: 'box', site: 'prebuilt_downtown', part: 'streets',
-            shell: hqCityShell({ w: 112, d: 88, plate: { x: -6, z: -7, y: 4.6 } }),
+            shell: hqCityShell({ w: 224, d: 176, plate: { x: -6, z: -7, y: 4.6 } }),
+            /* AREA CONTENT D2 (2026-09-19 — R6): one idea per space */
+            parti: 'A ring you circle in the middle of three towns stacked north to south: the old town above the ring, the docks below it, and every tower seen from the quay.',
+            typology: 'ring',
             /* THE FIELD: the floor plan is a CITY — `gen.streets` are the corridors
                (the ring road, the two avenues, the alleys), everything else the solid
                = the BLOCKS, cut into LOTS the renderer stands the map-builder buildings
@@ -29516,51 +29539,125 @@ const DOOR_HQ = {
                the roof — the rider's big air); THE COLLAPSE by the tower (the rubble
                mound, the fallen pillars); THE ROOFTOP in the south-west block (a 4 m
                low building the walker never climbs — the tape on it is the door gun's,
-               THE LIP snaps a wall shot to its top); THE OVERPASS deck across the west
-               avenue. Every door's side street is a `path` (a forced corridor). */
+               THE LIP snaps a wall shot to its top). Every door's side street is a `path` (a forced corridor).
+               ═══ AREA CONTENT D2 (2026-09-19): TWICE THE SIZE, THREE DISTRICTS (R7) ═══
+               The core (the ring road, the plaza, the deck, the rooftop, the collapse — every
+               pinned coordinate) is THE FINANCIAL BLOCKS, the middle band; north of it THE
+               OLD TOWN (low brick, THE HIGH STREET, MARKET SQUARE round its fountain, CHURCH
+               SQUARE under the church, THE COURT with THE WAREHOUSE ROOF up a fire escape,
+               the metro's mouth down a dogleg off the high street); south of it THE DOCKS
+               (THE WATERFRONT, THE CANAL crossed by FOUR BRIDGES — the avenue's, the two dock
+               lanes', the cross street's east leg — THE QUAY with its cranes and the freight
+               siding, THE BASIN of deep water with the container roofs standing in it (the
+               second tape, the door gun's), THE FLOODED QUAY waded to its drowned manhole
+               (the docks' gutter into the sewers — an earned exit seen across the water).
+               THE TOWER's door hides behind a dogleg (R3), THE EAST YARDS' roof stands up a
+               fire escape off the pumping station's alley. `gen.districts` carries the
+               look per band (the lot rows wear it). The height field holds ONE height per
+               point, so no gangway crosses a street and the bridges span water the walker
+               never enters (a real overpass over a walked street is a later layer mechanic). */
             terrain: {
                 /* THE URBAN PACK (2026-09-17): the asphalt is the floor sheet (the corridors), the pavement slabs the path sheet (the sidewalk band + the door paths), the yards' concrete the cliff sheet (the block interiors + the outer ground); the paint, the kerbs, the manholes and the signs are three-renderer.js _hqBuildRoadMarkings */
                 floor: 'urban:PlasterWallPainted1b', cliff: 'urban:ConcreteStriped2a', path: 'urban:TileGeneric1a',
                 noise: { amp: 0.05, scale: 6 },
                 gen: { kind: 'city', seed: 7, walkW: 2.4, kerb: 0.12, wallH: 3.2, lotPitch: 9.5, lotW: [6.4, 8.2], lowP: 0.22, fronts: 'window', fenceKey: 'urban:MetalCorrugatedPainted1a', fenceH: 1.75, texP: 0.5, ruinP: 0.35,
+                       /* THE DISTRICTS (D2): three bands — the lot rows carry each band's look */
+                       districts: [
+                           { id: 'financial', label: 'THE FINANCIAL BLOCKS', rect: [-112, -44, 112, 44], storeys: [2, 5], style: 'office', texP: 0.5, ruinP: 0.35 },
+                           { id: 'oldtown',   label: 'THE OLD TOWN',         rect: [-112, -88, 112, -44], storeys: [1, 2], lotW: [5.2, 7.4], lotD: [7, 10], lowP: 0.3, style: 'residential', texP: 0.9, ruinP: 0.15, fenceKey: 'bricks_2', fenceH: 1.9 },
+                           { id: 'docks',     label: 'THE DOCKS',            rect: [-112, 44, 112, 88], storeys: [1, 2], lotW: [8, 11], lotD: [9, 12], lowP: 0.35, style: 'factory', texP: 0.85, ruinP: 0.45, fenceKey: 'urban:MetalCorrugatedPainted2a', fenceH: 2.2 },
+                       ],
                        streets: [
                            { pts: [[-40, -29], [40, -29], [40, -6], [31, 4], [40, 14], [40, 29], [12, 29], [-8, 22], [-40, 29], [-40, 4]], w: 9, loop: true },   // THE RING ROAD (the circuit): straight up the north, the chicane on the east leg, the bend on the south
-                           { pts: [[0, -46], [0, 46]], w: 10 },                                                                                                                   // THE AVENUE (north–south; the parking lane either side)
-                           { pts: [[-58, 0], [58, 0]], w: 10 },                                                                                                                   // THE CROSS STREET
+                           { pts: [[0, -90], [0, 90]], w: 10 },                                                                                                   // THE AVENUE (north–south, the whole city: the stadium road at its north end, the mall at its south; the parking lane either side)
+                           { pts: [[-114, 0], [100, 0], [100, 64]], w: 10 },                                                                                      // THE CROSS STREET (the Strip's road at its west end; its east leg turns south to the waterfront)
+                           /* THE OLD TOWN (D2) */
+                           { pts: [[-100, -64], [100, -64]], w: 8 },                                                                                              // THE HIGH STREET
+                           { pts: [[-40, -64], [-40, -29]], w: 6 },                                                                                               // MARKET LANE (the square → the ring's north-west corner)
+                           { pts: [[40, -64], [40, -29]], w: 6 },                                                                                                 // CHURCH LANE (the square → the ring's north-east corner)
+                           { pts: [[-40, -8], [-76, -8], [-76, -64]], w: 6 },                                                                                     // THE TOWER'S STREET (west off the ring, then north to the high street — the tower's door hides off its bend)
+                           /* THE DOCKS (D2) */
+                           { pts: [[-100, 64], [100, 64]], w: 9 },                                                                                                // THE WATERFRONT
+                           { pts: [[-40, 29], [-40, 64]], w: 6 },                                                                                                 // WEST DOCK LANE (the ring's south-west corner → the waterfront, over the canal)
+                           { pts: [[40, 29], [40, 64]], w: 6 },                                                                                                   // EAST DOCK LANE
                        ],
-                       open: [{ x: 0, z: 0, r: 12 }] },                                                                                                                          // THE PLAZA
+                       open: [{ x: 0, z: 0, r: 12 },                                                                                                              // THE PLAZA
+                              { x: -40, z: -64, r: 13 },                                                                                                          // MARKET SQUARE (D2)
+                              { x: 48, z: -64, r: 11 }, { x: 48, z: -79, r: 9 },                                                                                  // CHURCH SQUARE + THE CHURCHYARD (the church stands in it)
+                              { x0: -100, z0: 78, x1: 100, z1: 78, w: 16 }] },                                                                                    // THE QUAY (the open apron south of the waterfront: the cranes, the siding, the basin, the flooded quay)
                 features: [
                     { k: 'pool', x: 0, z: 0, r: 3.2, y: 0, depth: 0.45 },                                                         // THE FOUNTAIN (waded)
                     { k: 'plateau', x: 24, z: -15, w: 12, d: 12, h: 3.0, edge: 0.35 },                                              // THE PARKING DECK's roof (inside the north-east block)
-                    { k: 'ramp', x0: 14.0, z0: -15, x1: 18.5, z1: -15, w: 4.0, h0: 0, h1: 3.0 },                                    // the car ramp up to it (an incline the walker climbs, a launch at speed; its last 0.5 m inside the deck's rect, where it is 2.7 m up already)
+                    { k: 'ramp', x0: 14.0, z0: -15, x1: 18.5, z1: -15, w: 4.0, h0: 0, h1: 3.0 },                                    // the car ramp up to it (an incline the walker climbs, a launch at speed; its last 0.5 m inside the deck's rect, where it is 2.9 → 3.0)
                     { k: 'rail', x0: 18.4, z0: -20.6, x1: 29.6, z1: -20.6 }, { k: 'rail', x0: 29.6, z0: -20.6, x1: 29.6, z1: -9.4 }, { k: 'rail', x0: 18.4, z0: -9.4, x1: 29.6, z1: -9.4 },   // the deck's edge rail (the grind)
                     { k: 'hill', x: -20, z: -14, r: 5.5, h: 1.5, open: true },                                                      // THE COLLAPSE — the rubble mound where the tower came down (inside the north-west block)
                     { k: 'plateau', x: -29.5, z: 15, w: 7, d: 8, h: 4.0, edge: 0.3 },                                               // THE ROOFTOP (the tape's; the door gun's) — flush with the ring road's west sidewalk
-                    { k: 'path', pts: [[0, -5], [0, 5]], w: 21 },                                                                   // THE PLAZA is pavement (THE URBAN PACK, 2026-09-17): the path sheet over the open square — the cars' routes break at ±8, the square is the walker's
-                    { k: 'path', pts: [[-56, -8], [-40, -8]], w: 6 },                                                                // the tower's side street (the AVENUE doors on the west wall, z −8)
-                    { k: 'path', pts: [[0, 29], [0, 45]], w: 6 },                                                                    // THE MALL's forecourt (the south wall, x 0)
-                    { k: 'path', pts: [[-30, 29], [-30, 45]], w: 6 },                                                                // the bay door's street (the south wall, x −30 — siteRooms.entry, 2026-09-17)
-                    { k: 'path', pts: [[12, -29], [12, -45]], w: 5 },                                                                // THE METRO stair's street (the north wall, x 12)
-                    { k: 'path', pts: [[-56, 18], [-40, 18]], w: 6 },                                                                // THE STRIP's road (the west wall, z 18)
-                    { k: 'path', pts: [[40, 14], [56, 14]], w: 5 },                                                                  // the gutter's alley (the east kerb)
-                    { k: 'path', pts: [[40, -20], [56, -20]], w: 5 },                                                                 // THE PUMPING STATION's alley (the east wall, z −20 — THE UNDERWORLD, 2026-09-18)
+                    { k: 'path', pts: [[0, -5], [0, 5]], w: 21 },                                                                   // THE PLAZA is pavement (THE URBAN PACK, 2026-09-17): the path sheet over the open square — the cars' routes break at ±8, the walker crosses it
+                    { k: 'path', pts: [[-76, -8], [-92, -8], [-92, -17], [-106, -17], [-106, -8], [-114, -8]], w: 6 },              // the tower's side street: a DOGLEG off the tower's street (R3 — the AVENUE doors on the west wall, z −8, are not seen from the ring)
+                    { k: 'path', pts: [[0, 29], [0, 45]], w: 6 },                                                                    // THE MALL's forecourt (the avenue's south run; the mall door on the south wall, x 0)
+                    { k: 'path', pts: [[-30, 64], [-30, 88]], w: 6 },                                                                // the bay door's street off the waterfront (the south wall, x −30 — siteRooms.entry, 2026-09-17)
+                    { k: 'path', pts: [[12, -64], [12, -71], [24, -71], [24, -80], [12, -80], [12, -88]], w: 5 },                    // THE METRO's mouth: a DOGLEG off the high street to the stair on the north wall, x 12 (R3)
+                    { k: 'path', pts: [[-114, 18], [-40, 18]], w: 6 },                                                               // THE STRIP's road (the west wall, z 18 — a highway leaves straight)
+                    { k: 'path', pts: [[40, 14], [80, 14]], w: 5 },                                                                  // the gutter's alley (the east kerb — THE ALLEY BEHIND THE HOARDINGS, a dead end with the storm drain's grate)
+                    { k: 'path', pts: [[40, -20], [76, -20], [76, -31], [100, -31], [100, -20], [114, -20]], w: 5 },                 // THE PUMPING STATION's alley (the east wall, z −20 — THE UNDERWORLD, 2026-09-18): a DOGLEG now (R3)
                     { k: 'path', pts: [[6, -15], [14.0, -15]], w: 4 },                                                               // the deck's side street off the avenue
-                    { k: 'tree', x: 5.5, z: 5.5, kind: 'tree_2', h: 3.2 }, { k: 'tree', x: -5.5, z: 5.5, kind: 'tree_2', h: 3.2 }, { k: 'tree', x: 5.5, z: -5.5, kind: 'tree_2', h: 3.2 }, { k: 'tree', x: -5.5, z: -5.5, kind: 'tree_2', h: 3.2 },   // the plaza's four
+                    /* THE EAST YARDS (D2): a 6.8 m roof behind the pumping alley's bend, up a fire escape — a landing at 3.4, two ladders */
+                    { k: 'plateau', x: 63, z: -35, w: 14, d: 10, h: 6.8, edge: 0.35 },                                              // THE EAST YARDS' roof
+                    { k: 'plateau', x: 70.9, z: -34, w: 1.6, d: 2.2, h: 3.4, edge: 0.15 },                                          // the fire escape's landing
+                    { k: 'climb', x: 71.7, z: -33.4, face: 270, look: 'fireescape' },                                                // the alley → the landing
+                    { k: 'climb', x: 70.0, z: -34.6, face: 270, look: 'fireescape' },                                                // the landing → the roof
+                    { k: 'rail', x0: 57.8, z0: -38.4, x1: 68.2, z1: -38.4 },                                                          // the roof's rail (the grind — 1.6 m inside the edge: a rail's forced band never lies past a tier's edge on the mass)
+                    /* THE OLD TOWN (D2): THE COURT off the high street, THE WAREHOUSE ROOF up its fire escape */
+                    { k: 'path', pts: [[-20, -58], [-20, -46]], w: 4 },                                                              // THE COURT (a dead-end court south off the high street)
+                    { k: 'plateau', x: -28, z: -47, w: 12, d: 10, h: 6.0, edge: 0.35 },                                             // THE WAREHOUSE ROOF (west of the court)
+                    { k: 'plateau', x: -21.2, z: -47, w: 1.6, d: 2.2, h: 3.0, edge: 0.15 },                                         // its landing
+                    { k: 'climb', x: -20.4, z: -46.4, face: 270, look: 'fireescape' },                                               // the court → the landing
+                    { k: 'climb', x: -22.0, z: -47.6, face: 270, look: 'fireescape' },                                               // the landing → the roof
+                    { k: 'rail', x0: -32.2, z0: -50.4, x1: -23.8, z1: -50.4 },                                                        // the roof's rail (1.6 m inside the edge)
+                    { k: 'pool', x: -40, z: -64, r: 2.8, y: 0, depth: 0.4 },                                                        // MARKET SQUARE's fountain (waded)
+                    { k: 'tree', x: -52, z: -60, kind: 'tree_2', h: 3.4 }, { k: 'tree', x: -28, z: -60, kind: 'tree_2', h: 3.4 }, { k: 'tree', x: -40, z: -75, kind: 'tree_3', h: 3.8 },   // the square's
+                    { k: 'tree', x: 40, z: -60, kind: 'tree_3', h: 3.6 }, { k: 'tree', x: 56, z: -60, kind: 'tree_3', h: 3.6 },     // the church square's
+                    /* THE DOCKS (D2): THE CANAL from the east wall to the west, deep and never entered; FOUR BRIDGES (decks authored after it = causeways over it) */
+                    { k: 'stream', pts: [[114, 46], [-60, 46]], w: 6, y: 0, depth: 0.55, bank: 0.9, key: 'deep_water' },            // THE CANAL (behind the waterfront's warehouses) (never entered; its bed is a climb under the dark sheet — a deep bed leaves a dry ledge at the bank's foot the walker drops onto and cannot leave)
+                    { k: 'deck', x0: 0, z0: 39.5, x1: 0, z1: 52.5, w: 11, y: 0.3 },                                                  // THE AVENUE BRIDGE (both banks)
+                    { k: 'deck', x0: -40, z0: 39.5, x1: -40, z1: 52.5, w: 7, y: 0.3 },                                                // WEST DOCK LANE's bridge
+                    { k: 'deck', x0: 40, z0: 39.5, x1: 40, z1: 52.5, w: 7, y: 0.3 },                                                  // EAST DOCK LANE's bridge
+                    { k: 'deck', x0: 100, z0: 39.5, x1: 100, z1: 52.5, w: 11, y: 0.3 },                                               // THE CROSS STREET's bridge
+                    { k: 'pool', x: 60, z: 78, r: 13, rz: 6.5, y: 0, depth: 0.55, bank: 0.9, key: 'deep_water' },                     // THE BASIN (the ship canal's turning basin — deep, never entered)
+                    { k: 'plateau', x: 60, z: 78, w: 6.2, d: 2.6, h: 2.6, edge: 0.3, blend: 'ground' },                             // THE CONTAINER ROOF in the basin (the second tape's; the door gun's)
+                    { k: 'plateau', x: 66, z: 80, w: 6.2, d: 2.6, h: 2.6, edge: 0.3, blend: 'ground', rot: 10 },                    // its neighbour, adrift
+                    { k: 'pool', x: -70, z: 78, r: 14, rz: 6, y: 0, depth: 0.9, bank: 0.8 },                                         // THE FLOODED QUAY (waded — the drowned manhole at its far end)
+                    { k: 'plateau', x: -86, z: 79, w: 4, d: 4, h: 1.2, edge: 0.3 },                                                  // THE CONTAINER on the flooded quay's west bank (hopped onto — the tease's perch)
+                    { k: 'ramp', x0: 22, z0: 74, x1: 22, z1: 84.5, w: 4, h0: 0, h1: 3.2, stairs: true },                              // THE GANTRY STAIR up to the crane's platform
+                    { k: 'plateau', x: 22, z: 86.4, w: 8, d: 4, h: 3.2, edge: 0.3 },                                                  // THE CRANE PLATFORM (a 3.2 m tier at the quay's edge — the view up the avenue)
+                    { k: 'rail', x0: 18.6, z0: 86.6, x1: 25.4, z1: 86.6 },                                                            // its rail (the grind)
+                    { k: 'wall', x0: -100, z0: 70.5, x1: -84, z1: 70.5, h: 1.2, t: 0.3, key: 'urban:ConcreteStriped1c' },             // THE QUAY WALL (a low wall between the waterfront and the flooded quay — hopped, grindable)
+                    { k: 'wall', x0: -14, z0: 72.2, x1: -14, z1: 86, h: 1.9, t: 0.3, key: 'urban:MetalCorrugatedPainted1a' },           // THE CUSTOMS FENCE across the quay (R3: the mall's door does not see the bay's and the manhole down one open apron; the way round is the waterfront's kerb)
                     { k: 'scatter', key: 'cave_stone', n: 7, x: -20, z: -14, r: 5, seed: 2 },                                       // THE COLLAPSE's rubble
                     { k: 'scatter', key: 'cinder_block', n: 9, x: -20, z: -14, r: 6, seed: 12 },                                     // THE SECOND PASS (2026-09-17): the user's kit on the kerbs and at the collapse
                     { k: 'scatter', key: 'traffic_cone', n: 5, x: -20, z: -14, r: 5.5, seed: 13 },
-                    { k: 'scatter', key: 'city_bin', n: 10, seed: 3 },
-                    { k: 'scatter', key: 'fire_hydrant', n: 6, seed: 14 },
-                    { k: 'scatter', key: 'street_drain', n: 5, seed: 15 },
-                    { k: 'scatter', key: 'park_bench', n: 6, seed: 4 },
-                    { k: 'scatter', key: 'signpost', n: 5, seed: 5 },
+                    { k: 'tree', x: 0, z: -10.2, kind: 'tree_3', h: 3.6 }, { k: 'tree', x: 0, z: 10.2, kind: 'tree_3', h: 3.6 },   // THE TRAFFIC ISLANDS either side of the plaza (R3: the avenue's far doors are not one sightline)
+                    { k: 'scatter', key: 'city_bin', n: 60, seed: 3 },
+                    { k: 'scatter', key: 'fire_hydrant', n: 26, seed: 14 },
+                    { k: 'scatter', key: 'city_bin', n: 24, seed: 27 },   // (city_bin outside, mall_bin inside — hq-city-2's rule)
+                    { k: 'scatter', key: 'street_drain', n: 18, seed: 15 },
+                    { k: 'scatter', key: 'park_bench', n: 30, seed: 4 },
+                    { k: 'scatter', key: 'signpost', n: 22, seed: 5 },
+                    { k: 'scatter', key: 'traffic_cone', n: 22, seed: 24 },
+                    { k: 'scatter', key: 'potted_plant', n: 14, x: -40, z: -64, r: 12, seed: 21 },                                   // MARKET SQUARE's stalls
+                    { k: 'scatter', key: 'potted_plant', n: 10, x: 48, z: -64, r: 10, seed: 25 },                                    // CHURCH SQUARE's
+                    { k: 'scatter', key: 'cardboard_boxes', n: 22, x: 0, z: 78, r: 90, seed: 22, road: true },                       // THE QUAY's freight (the quay is no kerb — `road` opts out of the kerb rule)
+                    { k: 'scatter', key: 'traffic_barrel', n: 14, x: 0, z: 78, r: 90, seed: 23, road: true },
+                    { k: 'scatter', key: 'cinder_block', n: 12, x: 0, z: 78, r: 90, seed: 26, road: true },
                 ],
-                /* NPC TRAFFIC (2026-09-17): cars on the ring road, both ways, on the right; three-renderer.js _hqBuildTraffic */
+                /* NPC TRAFFIC (2026-09-17): cars on the ring road, both ways, on the right; three-renderer.js _hqBuildTraffic. D2: the high street and the waterfront driven both ways too (fewer cars per m² than before, never faster) */
                 traffic: [
                     { pts: [[-40, -29], [40, -29], [40, -6], [31, 4], [40, 14], [40, 29], [12, 29], [-8, 22], [-40, 29], [-40, 4]], loop: true, n: 2, speed: 4.5, lane: 2.3, kinds: ['suv', 'taxi', 'copcar', 'suv', 'cadillac', 'ambulance', 'schoolbus'] },
                     { pts: [[-40, 4], [-40, 29], [-8, 22], [12, 29], [40, 29], [40, 14], [31, 4], [40, -6], [40, -29], [-40, -29]], loop: true, n: 2, speed: 4.5, lane: 2.3, kinds: ['cadillac', 'taxi', 'copcar', 'truck', 'suv', 'firetruck'] },
-                    { pts: [[0, -46], [0, -8]], loop: false, n: 1, speed: 3.5, lane: 2.2, kinds: ['suv'] }, { pts: [[0, 8], [0, 46]], loop: false, n: 1, speed: 3.5, lane: 2.2, kinds: ['cadillac'] },   // the avenue, either side of the plaza (a car off the end comes back on at the start)
-                    { pts: [[-58, 0], [-8, 0]], loop: false, n: 1, speed: 3.5, lane: 2.2, kinds: ['copcar'] }, { pts: [[8, 0], [58, 0]], loop: false, n: 1, speed: 3.5, lane: 2.2, kinds: ['suv'] },
+                    { pts: [[0, -88], [0, -8]], loop: false, n: 1, speed: 3.5, lane: 2.2, kinds: ['suv'] }, { pts: [[0, 8], [0, 44]], loop: false, n: 1, speed: 3.5, lane: 2.2, kinds: ['cadillac'] },   // the avenue, either side of the plaza (a car off the end starts again at the start)
+                    { pts: [[-112, 0], [-8, 0]], loop: false, n: 1, speed: 3.5, lane: 2.2, kinds: ['copcar'] }, { pts: [[8, 0], [100, 0], [100, 60]], loop: false, n: 1, speed: 3.5, lane: 2.2, kinds: ['suv'] },
+                    { pts: [[-98, -64], [98, -64]], loop: false, n: 1, speed: 3.2, lane: 2.0, kinds: ['cadillac', 'taxi'] }, { pts: [[98, -64], [-98, -64]], loop: false, n: 1, speed: 3.2, lane: 2.0, kinds: ['suv'] },      // THE HIGH STREET (D2)
+                    { pts: [[-98, 64], [98, 64]], loop: false, n: 1, speed: 3.6, lane: 2.2, kinds: ['truck', 'taxi'] }, { pts: [[98, 64], [-98, 64]], loop: false, n: 1, speed: 3.6, lane: 2.2, kinds: ['truck', 'suv'] },     // THE WATERFRONT (D2)
                 ],
                 /* THE CIRCUIT (2026-09-17): the ring road as a lap — the rider crosses the gates in order; the lap is banked (hqSkateBank laps) */
                 race: { label: 'THE DISASTER CITY GRAND PRIX', pts: [[-40, -29], [40, -29], [40, -6], [31, 4], [40, 14], [40, 29], [12, 29], [-8, 22], [-40, 29], [-40, 4]], w: 11, gates: 8 },
@@ -29591,7 +29688,7 @@ const DOOR_HQ = {
                 { key: 'car_suv',       x: 14.5, z: 4.0, face: 270 },                       // the south lane
                 { key: 'car_cadillac',  x: 4.0, z: -18, face: 0 },                          // the avenue's east lane
                 { key: 'car_suv',       x: -4.0, z: 16, face: 180 },
-                { key: 'car_ambulance', x: -46, z: -10.2, face: 90 },                       // at the tower's side street — the evacuation
+                { key: 'car_ambulance', x: -84, z: -10.2, face: 90 },                       // at the tower's side street — the evacuation
                 { key: 'car_cadillac',  x: 10, z: -12.8, face: 90 },                        // on the deck's side street
                 { key: 'crashed_car',     x: -17.5, z: -21.5, face: 300 },                   // THE SECOND PASS (2026-09-17): the wrecks — two under the collapse, one on the chicane
                 { key: 'crashed_car_2',   x: -26.0, z: -8.5, face: 60 },
@@ -29612,6 +29709,39 @@ const DOOR_HQ = {
                 { key: 'quarter_pipe',    x: -9, z: 9, face: 0 },                            // and one on the plaza's south edge
                 { key: 'riser_2',         x: 18, z: 5.6, face: 90 },                         // the loading dock's riser on the cross street's south sidewalk
                 { key: 'cardboard_boxes', x: 19.8, z: 6.3, face: 30 },
+                /* THE OLD TOWN (D2) */
+                { key: 'fountain',        x: -40, z: -64 },                                   // MARKET SQUARE's fountain (the square's own light)
+                { key: 'ticket_booth',    x: -49, z: -70, face: 120 },                        // the market's stalls
+                { key: 'popcorn_cart',    x: -33, z: -71, face: 200 },
+                { key: 'fortune_tent',    x: -46, z: -56, face: 30 },                        // (lit)
+                { key: 'church_building', x: 48, z: -80, face: 180 },                        // THE CHURCH in its yard, its doors to the square
+                { key: 'angel_statue',    x: 48, z: -70, face: 180 },
+                { key: 'brazier',         x: -17, z: -50 },                                  // THE COURT's barrel fire
+                { key: 'car_cadillac',    x: -60, z: -68.8, face: 90 },                      // the high street's parking lanes
+                { key: 'car_suv',         x: 70, z: -59.2, face: 270 },
+                { key: 'planter',         x: -12, z: -59.6, face: 0 }, { key: 'planter', x: 24, z: -59.6, face: 0 },
+                { key: 'railing_1m',      x: -28, z: -47, face: 0 },                         // THE PARK RULE's rail on the warehouse roof
+                { key: 'riser_1',         x: 60, z: -59.4, face: 0 },                        // the church square's step
+                /* THE DOCKS (D2) */
+                { key: 'babel_crane',     x: 30, z: 84, face: 0 },                           // THE CRANES on the quay
+                { key: 'babel_crane',     x: 88, z: 84, face: 20 },
+                { key: 'flood_mast',      x: -52, z: 84 },                                   // the quay's floodlights (the docks' own light)
+                { key: 'flood_mast',      x: 6, z: 84 },
+                { key: 'flood_mast',      x: 96, z: 84 },
+                { key: 'car_truck',       x: -6, z: 76, face: 90 },                          // the freight on the quay
+                { key: 'car_truck',       x: 40, z: 74, face: 100 },
+                { key: 'track_bed',       x: -24, z: 80, face: 90 }, { key: 'train_car', x: -24, z: 80, face: 90 },   // THE FREIGHT SIDING
+                { key: 'brazier',         x: 14, z: 82 },
+                { key: 'railing_1m',      x: 22, z: 86.4, face: 0 },                         // THE PARK RULE's rail on the crane platform
+                { key: 'quarter_pipe',    x: 76, z: 72, face: 0 },                           // the quay's pipe
+                { key: 'car_suv',         x: -60, z: 59.2, face: 270 }, { key: 'car_taxi', x: 60, z: 68.8, face: 90 },   // the waterfront's lanes
+                { key: 'sea_buoy',        x: 60, z: 78, y: -0.2 },                           // THE BASIN's marker (lit)
+                { key: 'bus_shelter',     x: -18, z: 68.9, face: 0 },
+                /* THE PULLS (R2 — a tall thing inside every 50 m of the reach): trees at the far ends of the high street, the cross street and the waterfront */
+                { key: 'garden_tree',     x: -96, z: -58.6 }, { key: 'garden_tree', x: 96, z: -58.6 }, { key: 'garden_tree', x: -100, z: -6.2 }, { key: 'garden_tree', x: 106, z: 26 },
+                { key: 'garden_tree',     x: -96, z: 58.6 }, { key: 'garden_tree', x: 96, z: 58.6 }, { key: 'garden_tree', x: -70, z: -70.2 }, { key: 'garden_tree', x: 70, z: -70.2 },
+                { key: 'high_striker',    x: -46, z: -78, face: 0 },                          // the market's strength tester (the old town's tall thing)
+                { key: 'garden_tree',     x: -102, z: -78 }, { key: 'garden_tree', x: 102, z: -78 }, { key: 'garden_tree', x: -104, z: 50 }, { key: 'garden_tree', x: 104, z: 50 }, { key: 'garden_tree', x: 8, z: -46 }, { key: 'garden_tree', x: -8, z: 46 }, { key: 'flood_mast', x: 46, z: 36 },   // a mast at the east dock lane's mouth
             ],
             agents: [],
             npcSpots: [
@@ -29619,6 +29749,14 @@ const DOOR_HQ = {
                 { x: -12.5, z: 6.2, face: 90, race: 'zombie', say: ['“Walking.” “Where?” “Round.” “Round what?” “Round.”'] },   // on the sidewalk (the second pass: 3.0 was the cross street's lane)
                 { x: 24.0, z: -5.6, face: 0, race: 'antihero', say: ['“The deck is three metres. The rail is the deck’s. The fall is yours.”'] },
                 { x: -34.0, z: -6.0, face: 40, race: 'king kong', say: ['“…” “Was that you?” “…” “The tower.” “…” “Every year?” “…”'] },   // by the collapse, not filing
+                /* THE OLD TOWN (D2) */
+                { x: -36.0, z: -70.0, face: 300, race: 'nun', say: ['“The square was here before the ring.” “And the tower?” “The tower falls on the ring. Never on the square.”'] },
+                { x: 42.0, z: -70.0, face: 0, race: 'politician', say: ['“The church is open.” “Who is in it?” “Nobody. That is why it is open.”'] },
+                { x: -17.5, z: -55.0, face: 180, race: 'conspiracy theorist', say: ['“The fire escape goes to the roof.” “And from the roof?” “You can see the docks. Nobody looks up.”'] },
+                /* THE DOCKS (D2) */
+                { x: 36.0, z: 70.0, face: 180, race: 'gangster', say: ['“The basin is deep.” “How deep?” “Deep enough for the container. Nobody has been on the roof of it.”'] },
+                { x: -62.0, z: 70.0, face: 180, race: 'cowboy', say: ['“The quay flooded.” “When?” “Every year. The hatch is still down there.”'] },
+                { x: 20.0, z: 71.5, face: 0, race: 'antihero', say: ['“Up the stair you can see the avenue to the plaza.” “And past it?” “The old town. All of it. Nobody walks that far.”'] },
             ],
             onlineSpots: [],
             lines: [
@@ -29626,8 +29764,9 @@ const DOOR_HQ = {
                 '“The cars.” “What about them?” “Nobody is driving them.” “Somebody is always driving them.”',
                 '“The tower comes down every year.” “Where does it land?” “Here. Mind the pillars.”',
                 '“Is the mall open?” “The mall is open. The sign says so. The other sign says nothing happened.”',
+                '“Three towns.” “One city.” “Which is which?” “North is old, south is wet, the middle is round.”',
             ],
-            spawn: { x: -50, z: -8, face: 90 },   // on the tower's side street, WEST of the ring road (the second pass: the old spot stood in the traffic's lane)
+            spawn: { x: -50, z: -8, face: 90 },   // on the tower's street, WEST of the ring road (the second pass: the old spot stood in the traffic's lane)
         },
         /* ── THE MALL, THE THIRD PASS (2026-09-17 — the user: "think of the mall as a skating playground, it should be bigger
            and have at least 2 floors with shops; get rid of the mall shop buildings, they are poking out the sides of the walls").
@@ -29842,18 +29981,49 @@ const DOOR_HQ = {
            ═══════════════════════════════════════════════════════════════════ */
         site_prebuilt_cyberpunk_streets: {
             label: 'DISASTER CITY · CYBERPUNK CITY',
-            sub: 'THE GRID · THE LOOP · THE BOULEVARD · THE SKYWAY · THE STATION · THE MARKET',
+            sub: 'THE GRID · THE STACKS · THE UNDERCITY · THE LOOP · THE SKYWAY · THE STATION',
             kind: 'box', site: 'prebuilt_cyberpunk', part: 'streets',
-            shell: hqCityShell({ neon: true, w: 104, d: 84, plate: { x: 0, z: 38, y: 4.6 } }),
+            shell: hqCityShell({ neon: true, w: 208, d: 168, plate: { x: 0, z: 38, y: 4.6 } }),
+            /* AREA CONTENT D2 (2026-09-19 — R6) */
+            parti: 'The neon loop in the middle, the tenements above it with a rooftop road of their own, and the lower city four metres down under the overlook — every level seen from the one above.',
+            typology: 'loop',
+            /* ═══ AREA CONTENT D2 (2026-09-19): TWICE THE SIZE, THREE DISTRICTS (R7) ═══
+               The core (THE LOOP, THE BOULEVARD, THE CROSS, THE STATION's siding, THE
+               SKYWAY, THE BILLBOARD ROOF, THE PUDDLE, THE MARKET ALLEY — every pinned
+               coordinate) is THE NEON GRID, the middle band. North of it THE STACKS:
+               three-storey tenements whose ROOFS are tiers behind the terrace (10.5 m —
+               three of the pack's storeys), reached up FIRE ESCAPES in the alleys (a
+               landing at 5.25 m, two ladders each) and joined roof to roof by GANGWAYS
+               (decks across the yards — never across a street: the height field holds
+               one height per point). South of it THE UNDERCITY: a SUNK tier four metres
+               down (`sink: true`) reached down THE RAMP ROAD (the boulevard's own
+               incline — the cars take it too), THE STEPS (two stair flights off the loop's
+               south corners) and THE DRAINS (pipes down the retaining wall at the ends of
+               two alleys); THE OVERLOOK, a 3 m tier at the grid's south-east edge up a ramp
+               with a rail along the drop, looks seven metres down into it (R5 — the lower
+               city's doors are seen before they are reached); the bay door lands you DOWN
+               THERE and the neon city is the thing you climb up into. THE NOODLE BAR's back
+               door hides at the end of a dogleg (R3); the undercity's gutter drops into
+               the sewers. `gen.districts` carries the look per band. */
             terrain: {
                 floor: 'urban:PlasterWallPainted1b', cliff: 'urban:ConcreteUnderTiles1', path: 'urban:TileGeneric3b',   // THE URBAN PACK (2026-09-17): the wet asphalt, the dark slate sidewalks, the grime under the blocks
                 noise: { amp: 0.05, scale: 6 },
                 gen: { kind: 'city', seed: 21, walkW: 2.4, kerb: 0.12, wallH: 3.6, lotW: [5.8, 8.0], lotD: [8, 11], lowP: 0.12, storeys: [2, 4], fronts: 'window', neon: true, fenceKey: 'urban:MetalCorrugatedPainted2a', fenceH: 1.75, texP: 0.5, ruinP: 0.1,
+                       /* THE DISTRICTS (D2): three bands — the lot rows carry each band's look */
+                       districts: [
+                           { id: 'neon',      label: 'THE NEON GRID', rect: [-104, -42, 104, 42], storeys: [2, 4], texP: 0.5, ruinP: 0.1 },
+                           { id: 'stacks',    label: 'THE STACKS',    rect: [-104, -84, 104, -42], storeys: [3, 3], lotW: [5.6, 7.6], lotD: [7, 9], lowP: 0, style: 'residential', texP: 1, ruinP: 0.3 },
+                           { id: 'undercity', label: 'THE UNDERCITY', rect: [-104, 42, 104, 84], storeys: [2, 4], lotW: [6.5, 9], lowP: 0.2, style: 'factory', texP: 0.7, ruinP: 0.55, fenceKey: 'urban:MetalCorrugatedPainted5a', fenceH: 2.2 },
+                       ],
                        streets: [
                            { pts: [[-34, -24], [34, -24], [34, -4], [26, 4], [34, 12], [34, 24], [10, 24], [-4, 18], [-34, 24], [-34, 4]], w: 9, loop: true },   // THE LOOP (the circuit)
-                           { pts: [[0, -42], [0, 42]], w: 10 },                                                                                                  // THE BOULEVARD
-                           { pts: [[-52, 0], [52, 0]], w: 9 },                                                                                                   // THE CROSS
+                           { pts: [[0, -70], [0, 84]], w: 10 },                                                                                                  // THE BOULEVARD (the back street at its north end; south down THE RAMP ROAD into the undercity to the bay door)
+                           { pts: [[104, 0], [-90, 0], [-90, -70]], w: 9 },                                                                                      // THE CROSS (the Strip's road at its east end; its west leg turns north to the back street)
                            { pts: [[-42, -28], [-42, 22]], w: 7 },                                                                                               // THE STATION's siding, west of the loop
+                           /* THE STACKS (D2) */
+                           { pts: [[-90, -70], [90, -70]], w: 8 },                                                                                               // THE BACK STREET
+                           /* THE UNDERCITY (D2) */
+                           { pts: [[-92, 62], [92, 62]], w: 9 },                                                                                                 // THE LOWER CROSS (four metres down)
                        ],
                        open: [{ x: 0, z: 0, r: 11 }] },                                                                                                          // THE HOLO-PLAZA
                 features: [
@@ -29863,26 +30033,73 @@ const DOOR_HQ = {
                     { k: 'rail', x0: 16.4, z0: -18.6, x1: 27.6, z1: -18.6 }, { k: 'rail', x0: 27.6, z0: -18.6, x1: 27.6, z1: -7.4 }, { k: 'rail', x0: 16.4, z0: -7.4, x1: 27.6, z1: -7.4 },   // the deck's rails (the grind)
                     { k: 'plateau', x: -26, z: -13, w: 7, d: 7, h: 5.0, edge: 0.3 },                                                   // THE BILLBOARD ROOF (the tape's; the door gun's) — flush with the loop's west sidewalk
                     { k: 'pool', x: -22, z: 0, r: 3.4, y: 0, depth: 0.35 },                                                           // THE PUDDLE (the rain pooled on the cross street; waded)
-                    { k: 'path', pts: [[-52, 12], [-34, 12]], w: 5 },                                                                  // THE MARKET ALLEY (the noodle bar's back door on the west wall, z 12)
-                    { k: 'path', pts: [[12, -24], [12, -42]], w: 5 },                                                                  // THE STAIR's street (the north wall, x 12)
+                    { k: 'path', pts: [[-34, 12], [-80, 12], [-80, 4], [-96, 4], [-96, 12], [-104, 12]], w: 5 },                      // THE MARKET ALLEY: a DOGLEG to the noodle bar's back door on the west wall, z 12 (R3)
+                    { k: 'path', pts: [[12, -70], [12, -75], [21, -75], [21, -80], [12, -80], [12, -84]], w: 5 },                     // THE STAIR's mouth: a DOGLEG off the back street to the north wall, x 12 (R3)
                     { k: 'path', pts: [[6, -13], [10.5, -13]], w: 4 },                                                                 // the skyway's side street off the boulevard
+                    /* ── THE STACKS (D2): four tenement blocks between the loop's north leg and the back street; the alleys at x −52 and 44 ── */
+                    { k: 'path', pts: [[-52, -31], [-52, -64]], w: 4.5 },                                                              // THE WEST ALLEY
+                    { k: 'path', pts: [[44, -31], [44, -64]], w: 4.5 },                                                                // THE EAST ALLEY
+                    { k: 'plateau', x: -69, z: -47, w: 22, d: 10, h: 10.5, edge: 0.35 },                                              // STACK W's roof
+                    { k: 'plateau', x: -39, z: -47, w: 14, d: 10, h: 10.5, edge: 0.35 },                                              // STACK A1
+                    { k: 'plateau', x: -20, z: -47, w: 16, d: 10, h: 10.5, edge: 0.35 },                                              // STACK A2
+                    { k: 'plateau', x: 19, z: -47, w: 14, d: 10, h: 10.5, edge: 0.35 },                                               // STACK B1
+                    { k: 'plateau', x: 35, z: -47, w: 10, d: 10, h: 10.5, edge: 0.35 },                                               // STACK B2
+                    { k: 'plateau', x: 56, z: -47, w: 16, d: 10, h: 10.5, edge: 0.35 },                                               // STACK E1
+                    { k: 'plateau', x: 76, z: -47, w: 16, d: 10, h: 10.5, edge: 0.35 },                                               // STACK E2
+                    { k: 'deck', x0: -32.6, z0: -47, x1: -27.4, z1: -47, w: 1.8, y: 10.5, gangway: true },                                          // THE GANGWAY A1 ⇄ A2 (across the yard)
+                    { k: 'deck', x0: 25.4, z0: -47, x1: 30.6, z1: -47, w: 1.8, y: 10.5, gangway: true },                                            // THE GANGWAY B1 ⇄ B2
+                    { k: 'deck', x0: 63.4, z0: -47, x1: 68.6, z1: -47, w: 1.8, y: 10.5, gangway: true },                                            // THE GANGWAY E1 ⇄ E2
+                    /* THE FIRE ESCAPES: a landing at 5.25, two ladders each — in the alleys */
+                    { k: 'plateau', x: -57.1, z: -47, w: 1.6, d: 2.2, h: 5.25, edge: 0.15 },                                          // STACK W's landing (its east flank, the west alley)
+                    { k: 'climb', x: -56.3, z: -46.4, face: 270, look: 'fireescape' }, { k: 'climb', x: -58.0, z: -47.6, face: 270, look: 'fireescape' },
+                    { k: 'plateau', x: -46.9, z: -47, w: 1.6, d: 2.2, h: 5.25, edge: 0.15 },                                          // STACK A1's landing (its west flank, the west alley)
+                    { k: 'climb', x: -47.7, z: -46.4, face: 90, look: 'fireescape' }, { k: 'climb', x: -46.0, z: -47.6, face: 90, look: 'fireescape' },
+                    { k: 'plateau', x: 40.9, z: -47, w: 1.6, d: 2.2, h: 5.25, edge: 0.15 },                                           // STACK B2's landing (its east flank, the east alley)
+                    { k: 'climb', x: 41.7, z: -46.4, face: 270, look: 'fireescape' }, { k: 'climb', x: 40.0, z: -47.6, face: 270, look: 'fireescape' },
+                    { k: 'plateau', x: 47.1, z: -47, w: 1.6, d: 2.2, h: 5.25, edge: 0.15 },                                           // STACK E1's landing (its west flank, the east alley)
+                    { k: 'climb', x: 46.3, z: -46.4, face: 90, look: 'fireescape' }, { k: 'climb', x: 48.0, z: -47.6, face: 90, look: 'fireescape' },
+                    { k: 'rail', x0: -78.4, z0: -50.4, x1: -59.6, z1: -50.4 }, { k: 'rail', x0: -44.4, z0: -50.4, x1: -33.6, z1: -50.4 }, { k: 'rail', x0: -26.4, z0: -50.4, x1: -13.6, z1: -50.4 }, { k: 'rail', x0: 13.6, z0: -50.4, x1: 24.4, z1: -50.4 }, { k: 'rail', x0: 31.6, z0: -50.4, x1: 38.4, z1: -50.4 }, { k: 'rail', x0: 49.6, z0: -50.4, x1: 62.4, z1: -50.4 }, { k: 'rail', x0: 69.6, z0: -50.4, x1: 82.4, z1: -50.4 },   // the roofs' back parapets (the grind — 1.6 m inside the edge, one per roof: a rail across a yard gap opens the yard)
+                    /* ── THE UNDERCITY (D2): the sunk tier, its ramp road, the steps, the drains, the overlook ── */
+                    { k: 'plateau', x: 0, z: 64, w: 196, d: 40, h: -4, sink: true, edge: 0.35 },                                        // THE CUT — four metres down, a retaining wall the walker drops off and never climbs
+                    { k: 'ramp', x0: 0, z0: 42, x1: 0, z1: 56, w: 10, h0: 0, h1: -4 },                                                  // THE RAMP ROAD (the boulevard's own incline; the cars take it)
+                    { k: 'path', pts: [[-42, 22], [-44, 31], [-44, 40]], w: 4 },                                                         // the west steps' approach off the siding's end
+                    { k: 'ramp', x0: -44, z0: 40, x1: -44, z1: 49, w: 3, h0: 0, h1: -4, stairs: true },                                 // THE WEST STEPS down
+                    { k: 'path', pts: [[-44, 49], [-44, 62]], w: 4 },                                                                   // to the lower cross
+                    { k: 'path', pts: [[40, 28], [44, 31], [44, 40]], w: 4 },                                                            // the east steps' approach off the loop's south-east corner
+                    { k: 'ramp', x0: 44, z0: 40, x1: 44, z1: 49, w: 3, h0: 0, h1: -4, stairs: true },                                   // THE EAST STEPS down
+                    { k: 'path', pts: [[44, 49], [44, 62]], w: 4 },
+                    { k: 'path', pts: [[-20, 27], [-20, 44]], w: 3.5 }, { k: 'path', pts: [[-20, 44], [-20, 62]], w: 3.5 },            // THE WEST DRAIN's alleys (above and below the wall)
+                    { k: 'climb', x: -20, z: 44, face: 0, look: 'pipe' },                                                              // THE WEST DRAIN — a pipe down the retaining wall
+                    { k: 'path', pts: [[20, 27], [20, 44]], w: 3.5 }, { k: 'path', pts: [[20, 44], [20, 62]], w: 3.5 },                // THE EAST DRAIN's alleys
+                    { k: 'climb', x: 20, z: 44, face: 0, look: 'pipe' },                                                               // THE EAST DRAIN
+                    { k: 'path', pts: [[40, 37], [52, 37]], w: 4 },                                                                     // the overlook's side street off the loop's east leg
+                    { k: 'ramp', x0: 52, z0: 37, x1: 62.7, z1: 37, w: 4, h0: 0, h1: 3.0 },                                              // up to THE OVERLOOK (its last 0.7 m inside the tier)
+                    { k: 'plateau', x: 70, z: 37, w: 16, d: 12, h: 3.0, edge: 0.35 },                                                  // THE OVERLOOK — seven metres over the lower cross
+                    { k: 'rail', x0: 63.6, z0: 41.4, x1: 76.4, z1: 41.4 }, { k: 'rail', x0: 76.4, z0: 41.4, x1: 76.4, z1: 32.6 },         // its rails (the drop side, the grind — 1.6 m inside the edge)
+                    { k: 'pool', x: -60, z: 62, r: 3.2, rz: 2.6, y: -4, depth: 0.35 },                                                  // THE LOWER PUDDLE (waded)
+                    /* the furniture (the kerb rule: on the sidewalks) */
                     { k: 'scatter', key: 'vending_machine', n: 4, x: -43, z: 12, r: 8, seed: 7 },                                     // THE MARKET's machines
-                    { k: 'scatter', key: 'city_bin', n: 8, seed: 3 },
-                    { k: 'scatter', key: 'fire_hydrant', n: 4, seed: 4 },
-                    { k: 'scatter', key: 'traffic_cone', n: 4, seed: 5 },
-                    { k: 'scatter', key: 'street_drain', n: 5, seed: 6 },
-                    { k: 'scatter', key: 'signpost', n: 3, seed: 8 },
+                    { k: 'scatter', key: 'city_bin', n: 26, seed: 3 },
+                    { k: 'scatter', key: 'fire_hydrant', n: 14, seed: 4 },
+                    { k: 'scatter', key: 'traffic_cone', n: 14, seed: 5 },
+                    { k: 'scatter', key: 'street_drain', n: 16, seed: 6 },
+                    { k: 'scatter', key: 'signpost', n: 12, seed: 8 },
+                    { k: 'scatter', key: 'park_bench', n: 10, seed: 9 },
+                    { k: 'scatter', key: 'cardboard_boxes', n: 16, seed: 10 },
+                    { k: 'scatter', key: 'traffic_barrel', n: 10, seed: 11 },
                 ],
                 traffic: [
                     { pts: [[-34, -24], [34, -24], [34, -4], [26, 4], [34, 12], [34, 24], [10, 24], [-4, 18], [-34, 24], [-34, 4]], loop: true, n: 7, speed: 8.5, lane: 2.3, kinds: ['cybercar', 'taxi', 'copcar', 'cybercar', 'taxi', 'truck', 'suv'] },
                     { pts: [[-34, 4], [-34, 24], [-4, 18], [10, 24], [34, 24], [34, 12], [26, 4], [34, -4], [34, -24], [-34, -24]], loop: true, n: 6, speed: 9.5, lane: 2.3, kinds: ['taxi', 'cybercar', 'copcar', 'cybercar', 'truck', 'cadillac'] },
-                    { pts: [[0, -42], [0, -8]], loop: false, n: 1, speed: 7.5, lane: 2.2, kinds: ['cybercar'] }, { pts: [[0, 8], [0, 42]], loop: false, n: 1, speed: 7.5, lane: 2.2, kinds: ['taxi'] },
-                    { pts: [[-52, 0], [-8, 0]], loop: false, n: 1, speed: 7.0, lane: 2.2, kinds: ['copcar'] }, { pts: [[8, 0], [52, 0]], loop: false, n: 1, speed: 7.0, lane: 2.2, kinds: ['cybercar'] },
+                    { pts: [[0, -68], [0, -8]], loop: false, n: 1, speed: 7.5, lane: 2.2, kinds: ['cybercar'] }, { pts: [[0, 8], [0, 82]], loop: false, n: 2, speed: 7.5, lane: 2.2, kinds: ['taxi', 'cybercar'] },   // the boulevard, either side of the plaza — the south run takes the ramp road down
+                    { pts: [[-88, 0], [-8, 0]], loop: false, n: 1, speed: 7.0, lane: 2.2, kinds: ['copcar'] }, { pts: [[8, 0], [102, 0]], loop: false, n: 1, speed: 7.0, lane: 2.2, kinds: ['cybercar'] },
+                    { pts: [[-88, -70], [88, -70]], loop: false, n: 1, speed: 6.0, lane: 2.0, kinds: ['taxi', 'suv'] }, { pts: [[88, -70], [-88, -70]], loop: false, n: 1, speed: 6.0, lane: 2.0, kinds: ['cybercar'] },   // THE BACK STREET (D2)
+                    { pts: [[-90, 62], [90, 62]], loop: false, n: 1, speed: 6.5, lane: 2.2, kinds: ['truck', 'taxi'] }, { pts: [[90, 62], [-90, 62]], loop: false, n: 1, speed: 6.5, lane: 2.2, kinds: ['cybercar', 'truck'] },   // THE LOWER CROSS (D2)
                 ],
                 race: { label: 'THE NEON GRAND PRIX', pts: [[-34, -24], [34, -24], [34, -4], [26, 4], [34, 12], [34, 24], [10, 24], [-4, 18], [-34, 24], [-34, 4]], w: 11, gates: 8 },
             },
             doors: [
-                /* the tenement's back gate (a door to the board room) retired 2026-09-17: THE GRID IS CYBERPUNK CITY — the way back to the bay is the entry door siteRooms.entry hangs on the south wall */
+                /* the tenement's back gate (a door to the board room) retired 2026-09-17: THE GRID IS CYBERPUNK CITY — the way back to the bay is the entry door siteRooms.entry hangs on the south wall (D2: in THE UNDERCITY) */
                 { id: 'noodle', wall: 'w', z: 12, leaf: 'leaf_exit',
                   label: 'THE NOODLE BAR', sub: 'THE BACK DOOR · THE MARKET ALLEY',
                   action: { room: 'site_prebuilt_cyberpunk_noodle', at: 'alley' },
@@ -29909,6 +30126,22 @@ const DOOR_HQ = {
                 { key: 'signpost',        x: -24.5, z: -9.0, face: 20 },                        // under THE BILLBOARD ROOF
                 { key: 'city_bin',        x: -27.6, z: -14.6 },                                 // on THE BILLBOARD ROOF (the ground read puts it on the roof), off the tape's spot
                 { key: 'wet_floor_sign',  x: -19.0, z: 2.6, face: 200 },                        // by the puddle
+                /* THE STACKS (D2) */
+                { key: 'brazier',         x: -50, z: -58 }, { key: 'brazier', x: 46, z: -58 },   // the alleys' barrel fires
+                { key: 'railing_1m',      x: -69, z: -47, face: 0 },                            // THE PARK RULE's rail on STACK W's roof
+                { key: 'car_taxi',        x: -60, z: -74.8, face: 90 }, { key: 'car_cyber', x: 40, z: -65.2, face: 270 },   // the back street's lanes
+                { key: 'vending_machine', x: -30, z: -66.4, face: 0 }, { key: 'vending_machine', x: 60, z: -66.4, face: 0 },
+                { key: 'flood_mast',      x: -96, z: -76 }, { key: 'flood_mast', x: 96, z: -76 },   // the back street's ends (lit — the pulls)
+                { key: 'garden_tree',     x: -96, z: -12 }, { key: 'garden_tree', x: 98, z: 6.2 },   // the cross street's far ends
+                /* THE UNDERCITY (D2) */
+                { key: 'railing_1m',      x: 70, z: 37, face: 0 },                              // THE PARK RULE's rail on the overlook
+                { key: 'quarter_pipe',    x: 74, z: 33, face: 0 },                              // the overlook's pipe
+                { key: 'brazier',         x: -50, z: 68.2 }, { key: 'brazier', x: 50, z: 55.8 },   // the lower cross's fires
+                { key: 'flood_mast',      x: -94, z: 68.2 }, { key: 'flood_mast', x: 94, z: 68.2 },   // the lower city's floods (the pulls)
+                { key: 'car_truck',       x: -30, z: 67.6, face: 90 }, { key: 'crashed_car_2', x: 30, z: 57.6, face: 200 },
+                { key: 'concrete_pillar', x: -70, z: 56 }, { key: 'concrete_pillar', x: 70, z: 68 },   // the pillars that hold the city up
+                { key: 'signpost',        x: 10, z: 68.4, face: 20 },
+                { key: 'garden_tree',     x: -100, z: 56 }, { key: 'garden_tree', x: 100, z: 56 }, { key: 'garden_tree', x: -60, z: -40 }, { key: 'garden_tree', x: 60, z: -40 }, { key: 'flood_mast', x: 7.4, z: 80 },   // the pulls at the far ends (R2); a mast at the bay door's kerb in the lower city
             ],
             agents: [],
             npcSpots: [
@@ -29917,6 +30150,12 @@ const DOOR_HQ = {
                 { x: 22.0, z: -5.6, face: 0, race: 'gangster', say: ['“The deck is four and a half metres. The rail is the deck’s. The drop is the city’s.”'] },
                 { x: -44.0, z: 10.0, face: 60, race: 'conspiracy theorist', say: ['“The noodle bar has a back room.” “Every noodle bar has a back room.” “This one has a year in it.”'] },
                 { x: -40.0, z: -2.0, face: 90, race: 'catgirl', say: ['“Waiting for the train.” “It came an hour ago.” “Then I am waiting for the next one.”'] },   // at the station
+                /* THE STACKS (D2) */
+                { x: -52.0, z: -36.0, face: 0, race: 'zombie', say: ['“The fire escape.” “Where does it go?” “Up. Then across. Then nowhere. Then down.”'] },
+                { x: 44.0, z: -60.0, face: 180, race: 'catgirl', say: ['“Every roof is joined to the next.” “All of them?” “Every second one. Mind the gap.”'] },
+                /* THE UNDERCITY (D2) */
+                { x: -8.0, z: 70.0, face: 0, race: 'ghoul', say: ['“The city is up the ramp.” “Which city?” “The one that is on top of this one.”'] },
+                { x: 66.0, z: 35.0, face: 180, race: 'android', say: ['“From here you can see the lower street.” “And the gutter at the end of it.” “Everything drains to the same place.”'] },
             ],
             onlineSpots: [],
             lines: [
@@ -29924,6 +30163,7 @@ const DOOR_HQ = {
                 '“Every window is lit.” “Nobody is home.” “That is the whole city.”',
                 '“The train has been at the platform for an hour.” “It goes to every line.” “The first stop is here.”',
                 '“Complaints are filed in advance.” “About what?” “About you. This one is about the rain.”',
+                '“Three levels.” “Which is the real one?” “The middle. The top is where they live and the bottom is where it drains.”',
             ],
             spawn: { x: 7.0, z: 36, face: 0 },   // the boulevard's east sidewalk (the road is the traffic's)
         },
@@ -36896,6 +37136,7 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
     features.forEach(f => {
         switch (f.k) {
             case 'plateau': {
+                if (f.sink) break;   // THE CUT (D2): a sunk district is not a feature to keep open — its streets and blocks are the plan's
                 /* a SMALL tier (a pinnacle, a stand) is forced whole with its lip; a BIG tier keeps only its CORE — the plan
                    may put rock or thicket on the rim band of a terrace (the tier's centre, where the tests look, stays) */
                 const span = f.r ? 2 * Math.min(f.r, f.rz || f.r) : Math.min(f.w, f.d);
@@ -36906,6 +37147,10 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
             case 'ramp': case 'deck': {
                 /* the run and 3 m PAST each end (a ramp's mouth opens onto the tier it climbs; a deck's onto both banks) */
                 const dx = f.x1 - f.x0, dz = f.z1 - f.z0, L = Math.hypot(dx, dz) || 1, ex = dx / L * 3.0, ez = dz / L * 3.0;
+                /* A GANGWAY (AREA CONTENT D2, 2026-09-19): `gangway: true` on a deck between two roofs over a yard — its forced band is
+                   the deck's OWN width and a short step past each end, never the grown band (the band beside the deck lay on the yard
+                   at ground level: a pocket the walker dropped into off the gangway's side and could not leave) */
+                if (f.k === 'deck' && f.gangway) { polys.push({ pts: [[f.x0 - ex * 0.2, f.z0 - ez * 0.2], [f.x1 + ex * 0.2, f.z1 + ez * 0.2]], w: f.w }); break; }
                 polys.push({ pts: [[f.x0 - ex * 0.5, f.z0 - ez * 0.5], [f.x1 + ex, f.z1 + ez]], w: f.w + 2 * grow + 0.6 }); break; }
             case 'pool': discs.push({ x: f.x, z: f.z, r: Math.max(f.r, f.rz || f.r) + (f.bank != null ? f.bank : 0.9) * 0.6 }); break;   // the water and half its bank (a pool may lie against the rock)
             case 'stream': polys.push({ pts: f.pts, w: f.w + 2 * (f.bank != null ? f.bank : 0.9) * 0.7 }); break;
@@ -37318,10 +37563,19 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
                  /* STREET LEVEL rev 2: the solid is a mass (the walker refused by the mask, the air / the boom by info.solidTop), never a rise */
                  solidMass, solidPad };
     /* ── THE LOTS (the city): the solid cut into building lots on a lattice, each edge that looks onto a street a FRONT ── */
-    info.lots = []; info.fronts = [];
+    info.lots = []; info.fronts = []; info.districts = [];
     if (gen.kind === 'city') {
-        const LW = gen.lotW || K.lotW, LD = gen.lotD || K.lotD, minW = (gen.lotMinW != null) ? gen.lotMinW : K.lotMinW, lowP = (gen.lowP != null) ? gen.lowP : K.lowP, st = gen.storeys || K.storeys, fOut = (gen.frontOut != null) ? gen.frontOut : K.frontOut;
+        const LW0 = gen.lotW || K.lotW, LD0 = gen.lotD || K.lotD, minW0 = (gen.lotMinW != null) ? gen.lotMinW : K.lotMinW, lowP0 = (gen.lowP != null) ? gen.lowP : K.lowP, st0 = gen.storeys || K.storeys, fOut = (gen.frontOut != null) ? gen.frontOut : K.frontOut;
         const walkW = info.genPlan.walkW || 0, plan = info.genPlan;
+        /* THE DISTRICTS (AREA CONTENT D2, 2026-09-19 — R7: a city is ≥ 3 districts): `gen.districts` = [{ id, label, rect: [x0, z0, x1, z1],
+           lotW, lotD, lotMinW, lowP, storeys, texP, ruinP, style, fronts, neon, fenceKey, fenceH }] — a lot belongs to the district
+           whose rect holds its face's middle (the first that does; the plan's own numbers where a district says nothing) and
+           CARRIES the district's look on its row (`district`, `neon`, `texP`, `ruinP`, `style`, `fronts` — the renderer reads the
+           lot before the plan); a yard wall wears its district's fence. info.districts lists them with their lot counts. */
+        const districts = (gen.districts || []).filter(d => d && d.id && Array.isArray(d.rect) && d.rect.length === 4).map(d => Object.assign({}, d, { lots: 0 }));
+        const distAt = (px, pz) => districts.find(d => px >= d.rect[0] && px <= d.rect[2] && pz >= d.rect[1] && pz <= d.rect[3]) || null;
+        const dget = (dd, key, dflt) => (dd && dd[key] != null) ? dd[key] : dflt;
+        let LW = LW0, LD = LD0, minW = minW0, lowP = lowP0, st = st0;   // the face's district re-points these per face (tryLot reads LD)
         const solidBy = (px, pz, m) => hqTerrainMaskAt(info, px, pz) < -m;
         let li = 0;
         /* THE TERRACE (STREET LEVEL, 2026-09-17): the lots are laid ALONG EVERY STREET FACE, shoulder to shoulder —
@@ -37380,8 +37634,12 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
         });
         /* deterministic: the faces in street order; the ring road first so its blocks fill from the ring */
         faces.forEach((F) => {
-            let u = 0.3;
-            while (u < F.L - minW) {
+            let u = 0.3, dd = null;
+            while (true) {
+                /* THE DISTRICTS (D2): the district is read PER LOT at the run's position along the face (a face may cross a district line) */
+                dd = distAt(F.x0 + F.tx * (u + 2.0), F.z0 + F.tz * (u + 2.0));
+                LW = dget(dd, 'lotW', LW0); LD = dget(dd, 'lotD', LD0); minW = dget(dd, 'lotMinW', minW0); lowP = dget(dd, 'lowP', lowP0); st = dget(dd, 'storeys', st0);
+                if (!(u < F.L - minW)) break;
                 let w = LW[0] + rnd() * (LW[1] - LW[0]);
                 const dMax = LD[0] + rnd() * (LD[1] - LD[0]);
                 if (F.L - u - w < minW) w = Math.max(minW, Math.min(w, F.L - u - 0.3));   // the last of the run fills to the face's end
@@ -37397,6 +37655,7 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
                 /* the building's base: the sidewalk's own ground under its front (the kerb band's middle, clear of the ramp's sampled cell) */
                 const base = hqTerrainHeight(info, fmx + F.nx * (walkW / 2 + 0.25), fmz + F.nz * (walkW / 2 + 0.25));
                 const row = { i: li++, x: Math.round(lot.x * 100) / 100, z: Math.round(lot.z * 100) / 100, w: Math.round(w * 100) / 100, d: Math.round(lot.d * 100) / 100, rot: Math.round(lot.rot * 1000) / 1000, top: wallH, base: Math.round(base * 100) / 100, storeys, key: 'building_' + (1 + Math.floor(rnd() * 8)), low, seed: Math.floor(rnd() * 1e6), face: F.si };
+                if (dd) { row.district = dd.id; dd.lots++; if (dd.neon != null) row.neon = !!dd.neon; if (dd.texP != null) row.texP = dd.texP; if (dd.ruinP != null) row.ruinP = dd.ruinP; if (dd.style) row.style = dd.style; if (dd.fronts) row.fronts = dd.fronts; }
                 placed.push(row); info.lots.push(row);
                 u += w + 0.04;   // a 4 cm seam between neighbours (the rows are rounded to a centimetre; two touching lots must never round into an overlap)
             }
@@ -37409,6 +37668,9 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
             info.lots.forEach(l => { const R = rectOf(l); if (!kept.some(k => overlaps(k.R, R))) kept.push({ l, R }); });
             if (kept.length !== info.lots.length) { info.lots = kept.map((k, i) => Object.assign(k.l, { i })); placed.length = 0; info.lots.forEach(l => placed.push(l)); }
         }
+        districts.forEach(d => { d.lots = info.lots.filter(l => l.district === d.id).length; });
+        info.districts = districts.map(d => ({ id: d.id, label: d.label || d.id, rect: d.rect.slice(), lots: d.lots, neon: d.neon != null ? !!d.neon : null, style: d.style || null, fronts: d.fronts || null }));
+        info.gen.districts = info.districts.length;
         /* THE FRONTS: every lot edge past which the street lies (the face it was laid on always; a corner lot's side too) */
         info.lots.forEach((lot) => {
             const R = rectOf(lot);
@@ -37418,7 +37680,7 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
                 /* the street lies past it when the mask is open a short step out and stays open a stride further; the façade stands ON the lot's edge (the box face) */
                 if (n[1] !== 1 && (hqTerrainMaskAt(info, ex + wnx * 0.5, ez + wnz * 0.5) < 0.1 || hqTerrainMaskAt(info, ex + wnx * 1.6, ez + wnz * 1.6) < 0.5)) return;
                 const Lf = n[0] ? lot.d : lot.w, tx = -wnz, tz = wnx;
-                info.fronts.push({ lot: lot.i, x0: Math.round((ex - tx * Lf / 2) * 100) / 100, z0: Math.round((ez - tz * Lf / 2) * 100) / 100, x1: Math.round((ex + tx * Lf / 2) * 100) / 100, z1: Math.round((ez + tz * Lf / 2) * 100) / 100, nx: Math.round(wnx * 1000) / 1000, nz: Math.round(wnz * 1000) / 1000, len: Lf, top: wallH, base: lot.base, main: n[1] === 1 });
+                info.fronts.push({ lot: lot.i, x0: Math.round((ex - tx * Lf / 2) * 100) / 100, z0: Math.round((ez - tz * Lf / 2) * 100) / 100, x1: Math.round((ex + tx * Lf / 2) * 100) / 100, z1: Math.round((ez + tz * Lf / 2) * 100) / 100, nx: Math.round(wnx * 1000) / 1000, nz: Math.round(wnz * 1000) / 1000, len: Lf, top: wallH, base: lot.base, main: n[1] === 1, district: lot.district || null, fronts: lot.fronts || null });
             });
         });
         if (solidMass) {
@@ -37447,7 +37709,8 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
             info.yardWalls = [];
             if (fenceH > 0) faces.forEach((F) => {
                 let run = null;
-                const flush = () => { if (run && run.u1 - run.u0 >= minRun) { const row = { x0: Math.round((F.x0 + F.tx * run.u0) * 100) / 100, z0: Math.round((F.z0 + F.tz * run.u0) * 100) / 100, x1: Math.round((F.x0 + F.tx * run.u1) * 100) / 100, z1: Math.round((F.z0 + F.tz * run.u1) * 100) / 100, h: fenceH, t: 0.3, key: fenceKey, yard: true }; info.yardWalls.push(row); } run = null; };
+                const dd = distAt(F.x0 + F.tx * F.L / 2, F.z0 + F.tz * F.L / 2), fH = dget(dd, 'fenceH', fenceH), fK = dget(dd, 'fenceKey', fenceKey);   // THE DISTRICTS (D2): the fence per district
+                const flush = () => { if (run && run.u1 - run.u0 >= minRun) { const row = { x0: Math.round((F.x0 + F.tx * run.u0) * 100) / 100, z0: Math.round((F.z0 + F.tz * run.u0) * 100) / 100, x1: Math.round((F.x0 + F.tx * run.u1) * 100) / 100, z1: Math.round((F.z0 + F.tz * run.u1) * 100) / 100, h: fH, t: 0.3, key: fK, yard: true, district: dd ? dd.id : null }; info.yardWalls.push(row); } run = null; };
                 for (let u = 0.3; u <= F.L - 0.3; u += 0.5) {
                     const px = F.x0 + F.tx * u, pz = F.z0 + F.tz * u;
                     /* behind the face line: solid (never a side street's mouth, never the rim past the shell) and under no lot */
@@ -37668,6 +37931,9 @@ function hqTerrainCompile(room, roomId) {
                    floor: a beach, not a cliff at the water); the default blends from height 0 (a plateau on the floor is unchanged) */
                 let fh = (f.blend === 'ground' && f.h > h) ? h + (f.h - h) * _hqTSmooth(din / edge) : f.h * _hqTSmooth(din / edge);
                 if (f.dome && din > edge) fh += f.dome * _hqTSmooth((din - edge) / Math.max(0.5, (f.r || Math.min(f.w, f.d) / 2) - edge));
+                /* THE CUT (AREA CONTENT D2, 2026-09-19): `sink: true` = a SUNK tier — the ground is CUT DOWN to h (< 0) with the same cliff
+                   sides (a retaining wall the walker drops off and never climbs; THE UNDERCITY under the grid); a plan never forces it open */
+                if (f.sink) { if (fh < h) h = fh; continue; }
                 if (fh > h) h = fh;
             } else if (f.k === 'ramp') {
                 const L = _hqTRamp(px, pz, f), edge = (f.edge != null) ? f.edge : 0.35;
@@ -37800,7 +38066,7 @@ function hqTerrainCompile(room, roomId) {
    on is that way; the walker mounts from the open side (behind the climber) and dismounts at the head ONTO the tier
    (`climbMount` m along the face). The compiled row carries the FOOT spot (`fx, fz` — reach behind the line) and the
    HEAD spot (`hx, hz` — on the tier past the line), both landings on the field. */
-const HQ_CLIMB_LOOKS = ['ladder', 'rope', 'vine', 'chain', 'pipe', 'wall'];
+const HQ_CLIMB_LOOKS = ['ladder', 'rope', 'vine', 'chain', 'pipe', 'wall', 'fireescape'];   // AREA CONTENT D2 (2026-09-19): `fireescape` = a steel ladder with a grated landing cage at its head — chained through landing plateaus it is a tenement's fire escape
 function hqTerrainClimbs(info, rows) {
     const R = info.rules || HQ_TERRAIN_RULES, out = [];
     (rows || []).forEach((f, i) => {
@@ -37818,7 +38084,7 @@ function hqTerrainClimbs(info, rows) {
         const y0 = (typeof f.y0 === 'number') ? f.y0 : gFoot;
         let y1 = (typeof f.y1 === 'number') ? f.y1 : gHead;
         if (y1 - y0 < 0.9) { if (typeof console !== 'undefined') console.warn('[terrain] climb', i, 'in', info.roomId, 'rises', (y1 - y0).toFixed(2), 'm — dropped (a climb rises ≥ 0.9 m)'); return; }
-        out.push({ i, x: f.x, z: f.z, y0, y1, face, look, w: f.w || (look === 'ladder' ? 0.6 : look === 'wall' ? 1.2 : 0.35), ux, uz, fx, fz, hx, hz, len: y1 - y0, id: f.id || (look + ':' + i) });
+        out.push({ i, x: f.x, z: f.z, y0, y1, face, look, w: f.w || ((look === 'ladder' || look === 'fireescape') ? 0.6 : look === 'wall' ? 1.2 : 0.35), ux, uz, fx, fz, hx, hz, len: y1 - y0, id: f.id || (look + ':' + i) });
     });
     return out;
 }

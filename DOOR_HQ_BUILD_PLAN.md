@@ -10843,3 +10843,18 @@ hq-stage2 / hq-map-remembers / hq-skate / hq-deep / hq-portal / hq-encounter / s
   the mantle's overshoot at the top, the hang spot's 0.34 m off the line, the mount's feel at a run (the push test is 0.9 m/s
   along the face), the DOCK OFFICE under the taller garage (the fluorescents hang from 5.4 m now), the three plates' copy
   (A15 — the user's), the W CLIMB hint's timing.
+
+### 2026-09-19 — AREA CONTENT PLAN D2: DISASTER CITY + THE GRID, TWICE THE SIZE (three districts each; local delivery)
+
+- **THE DISTRICTS** on the `city` plan (`gen.districts`, EXPLORABLE_AREAS_GUIDE §4b): the lot rows carry each district's look, the
+  renderer reads the lot before the plan; THE CUT (`sink: true`), THE GANGWAY (`gangway: true`), THE FIRE ESCAPE (`fireescape`).
+- **DOWNTOWN 224 × 176** — the pinned core untouched; THE OLD TOWN north (the high street, two squares, the church in its yard, THE
+  COURT + THE WAREHOUSE ROOF up a fire escape, the metro's dogleg); THE DOCKS south (the waterfront, THE CANAL behind its warehouses
+  under four bridges, THE QUAY: cranes, the siding, THE CRANE PLATFORM, THE BASIN + THE CONTAINER ROOF = the second tape, THE
+  FLOODED QUAY + THE DROWNED MANHOLE into the sewers); THE EAST YARDS' roof off the pumping alley's dogleg; the traffic islands.
+- **THE GRID 208 × 168** — THE STACKS north (seven roofs at 10.5 m, four fire escapes, three gangways); THE UNDERCITY south (four
+  metres down: the ramp road, the steps, the drains, the lower cross, the bay door down there, the gutter into the sewers); THE
+  OVERLOOK on the south edge. The Strip: THE MOTEL ROOF + THE LAUNDRY ROOF.
+- **Ship**: data.js (R2 + Render — the finds ledger), three-renderer.js (R2), index.html (Render); tests + docs to the repo.
+- **UNSEEN LIVE (RULE #1c)**: everything — the fire-escape cages against the pack's tenement sheets, the gangways, the ramp road's
+  cars, the overlook's drop, the canal's sheet, the church GLB, the cranes, the grate under the water, the districts side by side.

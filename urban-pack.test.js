@@ -73,7 +73,7 @@ test('THE STREETS IN THE PACK: the asphalt is the field\'s floor sheet, the pave
 });
 
 test('THE HOARDINGS: a city\'s yard walls wear the corrugated sheet one storey tall with the pack\'s plates on the street face (guarded for the stub scenes)', () => {
-    for (const id of [STREETS, GRID]) { const g = HQ.rooms[id].terrain.gen; assert.ok(/^urban:MetalCorrugatedPainted/.test(g.fenceKey) && g.fenceH === 1.75, id + ': the hoarding'); const info = D.hqTerrainInfo(id); assert.ok(info.yardWalls.length >= 6 && info.yardWalls.every(w => w.key === g.fenceKey && w.h === 1.75), id + ': the rows'); }
+    for (const id of [STREETS, GRID]) { const g = HQ.rooms[id].terrain.gen; assert.ok(/^urban:MetalCorrugatedPainted/.test(g.fenceKey) && g.fenceH === 1.75, id + ': the hoarding'); const info = D.hqTerrainInfo(id); assert.ok(info.yardWalls.length >= 6 && info.yardWalls.every(w => /^(urban:MetalCorrugatedPainted|bricks_2)/.test(w.key) && w.h >= 1.75) && info.yardWalls.some(w => w.key === g.fenceKey && w.h === 1.75), id + ': the rows'); }   // AREA CONTENT D2 (2026-09-19): a yard wall wears its DISTRICT's fence (the old town's brick, the docks' taller corrugated); the core district keeps the plan's
     for (const f of ['function _hqHoardingSigns(w, L, yaw, hM, G, U, info)', "w.yard ? TM * ((typeof HZ_TEX_DENSITY !== 'undefined') ? HZ_TEX_DENSITY : 0.5) : TM", "typeof urbanTexPick !== 'function' || typeof _hzTex !== 'function' || typeof _mulberry32 !== 'function') return;"]) assert.ok(renderer.includes(f), f);
 });
 
@@ -84,7 +84,7 @@ test('THE TEXTURED BUILDINGS: a gen.texP share of the lots (seeded per lot) and 
     assert.ok(/cell: 1\.75, storey: 3\.5/.test(fn), 'one 128 px tile a cell, two a storey');
     const styles = fn.slice(fn.indexOf('var _HQ_TEX_STYLES = {'), fn.indexOf('};', fn.indexOf('var _HQ_TEX_STYLES = {')));
     for (const fam of styles.match(/'([A-Z][A-Za-z]+)'/g).map(x => x.slice(1, -1))) if (!/^(store|window)$/.test(fam)) assert.ok(S.F[fam] || S.U[fam], 'style family ' + fam);
-    for (const f of ['function _hqTexPlan(lot, rng, gen)', 'function _hqTexBatch(G, U, neon)', 'function _hqTexBuilding(lot, info, batch, rng, gen, U)', 'urbanTexGlow(n)', "kind === 'over'", 'emissiveMap = gt', "if (lot.low || lr() < texP) {", 'if (batch) { var nb = batch.flush();', 'if (lot._tex) {', 'window.EW_HQ_NO_TEX_BUILDINGS']) assert.ok(renderer.includes(f), f);
+    for (const f of ['function _hqTexPlan(lot, rng, gen)', 'function _hqTexBatch(G, U, neon)', 'function _hqTexBuilding(lot, info, batch, rng, gen, U)', 'urbanTexGlow(n)', "kind === 'over'", 'emissiveMap = gt', "if (lot.low || lr() < ((lot.texP != null) ? lot.texP : texP)) {", 'if (batch) { var nb = batch.flush() + (batchAlt ? batchAlt.flush() : 0);', 'if (lot._tex) {', 'window.EW_HQ_NO_TEX_BUILDINGS']) assert.ok(renderer.includes(f), f);
     assert.ok(renderer.includes("texP: (gen.texP != null) ? gen.texP : 0, ruinP: (gen.ruinP != null) ? gen.ruinP : 0.3") || /texP: \(gen\.texP != null\)/.test(fs.readFileSync(path.join(REPO, 'data.js'), 'utf8')), 'the compiler copies the shares');
 });
 

@@ -15,7 +15,7 @@ const RULES = {
     R3: { exposed: 1, gap: 12, onWall: 3 },  // other doors in a clear line from a landing; two doors on a wall ≥ 12 m apart; never three
     R4: { earned: 1, share: 1 / 3 },
     R5: { tease: true },
-    R7: { city: [200, 160], open: [60, 50] },
+    R7: { city: [200, 160], open: [60, 50], districts: 3 },   // D2: a city part carries ≥ 3 districts (gen.districts)
     R8: { per: 60 },                        // ≥ 1 prop / native per 60 m² of open floor
 };
 const CLIMB = ['ramp', 'plateau', 'deck', 'wall', 'climb'];
@@ -79,7 +79,7 @@ function auditRoom(D, id, r) {
                   w, d, h, area: Math.round(w * d), openArea: Math.round(w * d), doors: doors.length, maxOnWall, minGap: minGap === Infinity ? null : +minGap.toFixed(1), close, hidden,
                   props: (r.props || []).length, counters: (r.counters || []).length, npcs: (r.npcSpots || []).length, scatter: 0,
                   range: null, climb: 0, kinds: 0, per100: null, floats: 0, climbs: 0,
-                  pullMax: null, pulls: 0, exposed: null, exposedBy: [], earned: 0, earnedIds: [], teased: [], unteased: [], parti: r.parti || null, typology: r.typology || null, per60: null, warn: [] };
+                  pullMax: null, pulls: 0, exposed: null, exposedBy: [], earned: 0, earnedIds: [], teased: [], unteased: [], parti: r.parti || null, typology: r.typology || null, per60: null, districts: (gen && Array.isArray(gen.districts)) ? gen.districts.length : 0, warn: [] };
     let info = null, landings = [];
     if (r.terrain) {
         try {
@@ -103,8 +103,10 @@ function auditRoom(D, id, r) {
         rec.exposed = mx; rec.exposedBy = by;
     } else rec.exposed = 0;
     /* R4 THE EARNED EXIT: a draught, a way, a door on a tier (its sill ≥ 1.5 m over the lowest sill), a door under the water */
-    const lowest = landings.length ? Math.min(...landings.map(L => L.y)) : 0;
-    const earned = landings.filter(L => { const dr = L.door; if (dr.secret || dr.way) return true; if (L.y - lowest >= 1.5) return true; if (info && info.sea && !info.sea.under && info.sea.y - D.hqTerrainHeight(info, L.x, L.z) > info.rules.wadeMax) return true; return false; });
+    /* D2 (2026-09-19): a door is ON A TIER when its sill stands ≥ 1.5 m over the room's MEDIAN sill (the lowest sill made every
+       street door of a city with a sunk district "a tier"); a road out (`way: 'road'`) is the most exposed exit there is — never earned */
+    const sills = landings.map(L => L.y).sort((a, b) => a - b), median = sills.length ? sills[Math.floor(sills.length / 2)] : 0;
+    const earned = landings.filter(L => { const dr = L.door; if (dr.way === 'road') return false; if (dr.secret || dr.way) return true; if (L.y - median >= 1.5) return true; if (info && info.sea && !info.sea.under && info.sea.y - D.hqTerrainHeight(info, L.x, L.z) > info.rules.wadeMax) return true; return false; });
     rec.earned = earned.length; rec.earnedIds = earned.map(L => L.door.id);
     /* R2 THE PULL + R5 THE TEASE need the reach graph (terrain rooms only) */
     if (info && landings.length) {
@@ -156,6 +158,7 @@ function auditRoom(D, id, r) {
     if (rec.unteased.length) rec.warn.push('R5 unteased ' + rec.unteased.join('/'));
     if (!prefab && (!rec.parti || !rec.typology)) rec.warn.push('R6 no parti / typology');
     if (rec.family === 'city' && (w < RULES.R7.city[0] || d < RULES.R7.city[1])) rec.warn.push('R7 city ' + w + '×' + d);
+    else if (rec.family === 'city' && rec.districts < RULES.R7.districts) rec.warn.push('R7 city ' + rec.districts + ' districts < ' + RULES.R7.districts);
     else if (!prefab && sh.open && r.site && (w < RULES.R7.open[0] || d < RULES.R7.open[1])) rec.warn.push('R7 open ' + w + '×' + d);
     if (rec.per60 < 1) rec.warn.push('R8 density ' + rec.per60 + ' per 60 m²');
     return rec;
