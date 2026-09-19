@@ -134,7 +134,7 @@ a board-wide engine change. "Home" = the capstone it reworks (id kept).
 | 6 | The slash that cuts the map in half | king arthur · **Excalibur Strike** (`raceExcaliburStrike`, damage) | after the hit, THE WORLD CLEAVE: a line through the target perpendicular to the caster→target direction, edge to edge — every tile drops 2 (a trench, `chasm` where the base was 0), enemies on the line take half damage and Stagger; `_sigExcalibur3D` grows to a ten-tile blade sweeping the line, a wall of light, the board splits (the voxel version redraws the faces) | new `cleave: { deform: -2, dmgMult: 0.5, status }` on a damage row → battle.js `_runPostEffects` applies `applyTerrainDeform` per tile of `getLinePoints` across the whole board (`isObjectiveTile` / monuments / spawn tiles stand) | L |
 | 7 | Portals in the sky, hordes of demons | demon prince · **Dark Dominion** (`raceDarkDominion`, aoe) | a portal ring opens overhead (the Shadow Realm palette), a horde of winged bodies pours through in a spiral (the `_sigUFOFleet3D` formation with the `demon_statue` misc GLB on wings, or a new demon sprite) and dives on every enemy in the zone one after another (per-enemy camera beats like the Entropy Strike directors), then the portal snaps shut | none (aoe) — the VFX takes `hitTiles` from the intent | M (the horde bodies) |
 | 8 | Crash a plane or two | general · **Nuke** ⇄ NEW twin **Air Support Gone Wrong** (`raceAirCrash`, aoe, tech) — the general keeps the Nuke as a build | the F-22 GLB comes in on the flyover grammar (`descent.flyover` exists), clips the target tile and CRASHES: the jet tumbles down the missile-drop path (`_sigMissileDrop3D` with the `jet` GLB, tumbling), a fuel fireball, wreckage on three tiles (`paintTerrain: 'scorched'`), a second plane for the twin's r4★ cost | a new race ability row + the tree twin; the descent def's `crash: true` swaps the warhead for the jet | M |
-| 9 | Telekinesis lifts the landscape | telepath · **Migraine** (`raceMindCrush`, damage) → **Mind over Matter** | the tiles around the CASTER (r 1) tear out of the board — the VFX clones each column as a cube in its own tile sheet (`_loadCachedTex(TERRAIN_SPRITES[key])`), they rise, hover in a ring round the caster's head, then slam into the target one after another; the board keeps the holes | new `deformAt: 'caster'` + `terrainDeform: { centerDelta: 0, edgeDelta: -1 }` on a damage row (today a damage row's deform lands at the target) | M |
+| 9 | Telekinesis lifts the landscape — **BUILT 2026-09-19 as the telepath's EXECUTION (`mindOverMatter`, delivery 4; VFX-only, no holes)** | telepath · **Migraine** (`raceMindCrush`, damage) → **Mind over Matter** | the tiles around the CASTER (r 1) tear out of the board — the VFX clones each column as a cube in its own tile sheet (`_loadCachedTex(TERRAIN_SPRITES[key])`), they rise, hover in a ring round the caster's head, then slam into the target one after another; the board keeps the holes | new `deformAt: 'caster'` + `terrainDeform: { centerDelta: 0, edgeDelta: -1 }` on a damage row (today a damage row's deform lands at the target) | M |
 | 10 | Volcanic eruption | golem · **Quake** (`raceQuake`, barrage) → **Eruption** | the target tile rises three (`terrainDeform: { centerDelta: 3, edgeDelta: 1 }` — positive deforms already work), lava paints the ring (`paintTerrain: { terrain: 'lava', radius: 1, rounds: 3 }` — the timed-terrain plumbing exists), a lava fountain (flame-hot columns + rock-debris + `_sigAsteroidDrop3D` lava bombs on the 5×5), the world's stability dips (`_wd.stab`) | none — every flag exists | S |
 | 11 | The tsunami from off the map | mermaid · **Great Flood** (`raceFlood`, terrainCreate `elevationFlood` 12) | `_sigTsunami3D` (exists for the atlantean's line) as a BOARD-WIDE wave: it rises past the board's edge on the caster's side, rolls the whole board over ~1.6 s and leaves the basin fill behind; `cineFlyBy` from the edge, the storm sky (`uFogAmount`) for the beat | none — the flood is the existing basin fill; the VFX reads the board's width | S |
 | 12 | Massive explosion pyrotechnics | barbarella · **Space Disco** (`raceSpaceDisco`, barrage) → the finale | a barrage of aerial shells launched from the caster over the zone, chrysanthemum / peony / willow bursts (billboard rings of ember colours), the finale of twenty at once, a whiteout, the mirror-ball light on every unit | none (barrage) | S |
@@ -196,6 +196,56 @@ batch has one — `crashed_car`), a crenellated castle-wall segment (the wall
 spells), a ziggurat tier block, a gothic buttress.
 
 ## 7. Log
+
+- **2026-09-19 — SIX MORE EXECUTIONS in roster order (delivery 4).** The
+  next six rows of `FINISHERS` after the Haymaker / Boot Hill / Shrink Ray,
+  each a director (battle.js `_FIN_DIRECTORS`) + a signature
+  (three-vfx-effects.js "THE FINISHER PASS 2") + a stage script
+  (`_FIN_STAGE[sig]`): pirate **Keelhauled** (`keelhaul` — the misc cache's
+  ghost-ship wreck (else planks, a black sail, the ☠ flag) sails through the
+  sky along the caster→victim line, the rope from the bow hooks the
+  silhouette, it is dragged forward UNDER the keel with spray, comes out
+  astern and is slammed onto the tile; sky watch → slow-mo face cam → a
+  fly-by along the line at half speed → the freeze → a god shot),
+  swordfighter **A Thousand Cuts** (`thousandCuts` — eight afterimages blink
+  round the victim, slash planes at a cadence that rises to a blur, a tally
+  sprite counting to 1000 (forty cached textures), the sheath click lands
+  every cut at once and the victim's column comes apart into slabs; face
+  cam → a side dolly with speedlines at half speed → the freeze → a low
+  reverse), knight **The Joust** (`joust` — a lance the length of the line
+  materialises at the knight, a caparisoned charger of boxes under a banner
+  thunders in from off the map behind the caster, the tip takes the victim
+  and carries the body to the far edge and flings it; reverse OTS → a side
+  dolly down the line with speedlines → the freeze → a fly-by), shaman **The
+  Trip** (`theTrip` — a fairy ring of eight mushrooms grows round the
+  victim, a breathing dome of hue-cycling wireframe rings, fourteen
+  eye-motes spiralling in, the library's kaleidoscope + fractal tunnel on the
+  tile, the victim folds inside out up the tunnel and the ring pops in a
+  spectrum burst; a dolly-zoom face cam under the hue + invert grade → a
+  crane → the freeze on INVERT → a god shot), men in black **Neuralyzer**
+  (`neuralyzer` — the pen rises, the cone of light + a screen-wide white
+  flash straight to camera behind THE EYELIDS, the victim's last five
+  seconds rewind out of them (ghost frames stepping backward + the library's
+  time rewind), then the black sedan (the cadillac clone darkened, else a
+  black box on wheels) drives in along the perpendicular, the body drops
+  into the boot, the lid slams, it drives off; reverse OTS → eyelids + blink
+  → a side dolly → a god shot; the terminal insert `> memory --wipe`),
+  telepath **Mind over Matter** (`mindOverMatter` — the eight tiles round the
+  CASTER tear out of the board as columns in their own terrain sheet
+  (`getTerrainAt` → `TERRAIN_SPRITES`, else the boulder sheet), rise, orbit
+  the caster's head and slam into the victim one after another, the last
+  and largest on the hit — VFX-only, the board keeps every tile; face cam →
+  a god shot over the caster → a side dolly at half speed → the freeze).
+  Fifteen built of 99. Smoke-tested in a stub-THREE harness (every tick of
+  every signature runs; no rendered frame — RULE #1c). Not playtested: the
+  ship's scale and heading off the wreck GLB (`glb.rotation.y` in
+  `_sigKeelhaul3D` is the edit if the bow lands backward), the tally
+  sprite's size, the charger's read against the knight's own model, the
+  mushrooms' colours under the hue grade, the sedan's darkened materials,
+  the tile columns' sheets, every director's camera path on the real board,
+  `cineCrane` / `cineDollyZoom` / `cineEyelids` under a finisher (first use
+  in one). NEXT: the rows in roster order — marksman, priest, wizard,
+  fortune teller, giant, fairy.
 
 - **2026-09-19 — THE FINISHER ON THE CIRCUIT + three more executions
   (delivery 3).** The user: "would still like to see the finishers and

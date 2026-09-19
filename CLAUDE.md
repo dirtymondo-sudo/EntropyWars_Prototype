@@ -6390,3 +6390,30 @@ runs finishers.test.js (THE FORGE test). UNSEEN LIVE (RULE #1c): the strip under
 breakpoints, the wide stage frame on the monitor, each script's timing against the strike frame, the
 fist's facing (`fistPivot.rotation.y`), the lid's swing, the anvil's read, the three directors' camera
 paths on the real board.
+
+## SIX MORE EXECUTIONS — Keelhauled · A Thousand Cuts · The Joust · The Trip · Neuralyzer · Mind over Matter (FINISHER_PLAN delivery 4) — 2026-09-19, local delivery
+The next six `FINISHERS` rows in roster order are BUILT (fifteen of 99): pirate
+`keelhaul` (`_sigKeelhaul3D` — the misc cache's `wreck` GLB sails the sky along
+the line, the hook, the drag under the keel, the slam), swordfighter
+`thousandCuts` (`_sigThousandCuts3D` — afterimages, slash planes at a rising
+cadence, a tally SPRITE to 1000, the column into slabs), knight `joust`
+(`_sigJoust3D` — a procedural charger + a lance the length of the line, the
+carry to the far edge), shaman `theTrip` (`_sigTheTrip3D` — the fairy ring,
+the breathing wireframe dome, the eye-motes, the library's kaleidoscope +
+fractal tunnel + spectrum burst, the fold), men in black `neuralyzer`
+(`_sigNeuralyzer3D` — the pen, the flash, the rewind, the darkened `cadillac`
+clone that takes the body in its boot), telepath `mindOverMatter`
+(`_sigMindOverMatter3D` — the eight tiles round the CASTER lifted as columns
+in their own sheet via `getTerrainAt` / `TERRAIN_SPRITES`, orbited, slammed
+one by one — VFX-only, the board keeps every tile). Each = a director in
+battle.js `_FIN_DIRECTORS` (the first finishers to use `cineCrane`,
+`cineDollyZoom` and `cineEyelids`), the signature in "THE FINISHER PASS 2"
+(`_sigRunOwned` + `_fxDelay`, called inside the relayed cinematic — RULE #2),
+a `_FIN_STAGE[sig]` script for the forge, a row in finishers.test.js's BUILT
+table. RULE learnt: a text plane that must face the camera in that section is
+a `THREE.Sprite` (`_sigDisposeGroup` keeps Sprite geometry; there is no camera
+accessor in the VFX file). Smoke-tested in a scratch stub-THREE harness (every
+tick of every signature; not a render). UNSEEN LIVE (RULE #1c): FINISHER_PLAN
+§7's delivery-4 entry lists what to eyeball first — the wreck's heading, the
+tally's size, the charger, the sedan's tint, the tile sheets, the six camera
+paths.

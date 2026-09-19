@@ -124,9 +124,11 @@ test('RULE #2: nothing new on state, nothing new relayed by hand', () => {
    ═══════════════════════════════════════════════════════════════════════ */
 const HUD = src('hud.js'), UI = src('ui.js'), ONL = src('online.js'), AI = src('ai.js');
 const BUILT = { 'king arthur': 'worldCleave', anubis: 'weighing', 'santa clause': 'naughtyList', 'honda civic': 'hitAndRun', kaiju: 'kaijuStomp', ai: 'segfault',
-    homosapien: 'haymaker', cowboy: 'bootHill', 'mad scientist': 'shrinkRay' };
+    homosapien: 'haymaker', cowboy: 'bootHill', 'mad scientist': 'shrinkRay',
+    pirate: 'keelhaul', swordfighter: 'thousandCuts', knight: 'joust', shaman: 'theTrip', 'men in black': 'neuralyzer', telepath: 'mindOverMatter' };
 const SIG_FN = { worldCleave: '_sigWorldCleave3D', weighing: '_sigWeighing3D', naughtyList: '_sigNaughtyList3D', hitAndRun: '_sigHitAndRun3D', kaijuStomp: '_sigKaijuStomp3D', segfault: '_sigSegfault3D',
-    haymaker: '_sigHaymaker3D', bootHill: '_sigBootHill3D', shrinkRay: '_sigShrinkRay3D' };
+    haymaker: '_sigHaymaker3D', bootHill: '_sigBootHill3D', shrinkRay: '_sigShrinkRay3D',
+    keelhaul: '_sigKeelhaul3D', thousandCuts: '_sigThousandCuts3D', joust: '_sigJoust3D', theTrip: '_sigTheTrip3D', neuralyzer: '_sigNeuralyzer3D', mindOverMatter: '_sigMindOverMatter3D' };
 
 test('THE CATALOGUE: every playable race has a finisher row of its own type; the six typed defaults cover the chart', () => {
     assert.ok(g.FINISHER_RULES && g.FINISHER_RULES.apCost === 1 && g.FINISHER_RULES.baseDmg > 0, 'FINISHER_RULES');

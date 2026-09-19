@@ -26057,6 +26057,437 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         });
     }
 
+    /* ── KEELHAULED (pirate) ─────────────────────────────────────────────
+       A ship the size of the map (the misc cache's ghost-ship wreck, else
+       a procedural hull with a mast and a black sail) sails IN THE SKY along
+       the caster→victim axis, from far behind the victim toward the caster,
+       one tile over the board. A rope drops from the bow at o.hookAt and
+       takes the silhouette; the body is dragged forward UNDER the keel (it
+       dips below the hull, spray and bubbles along the way), comes out
+       astern and is slammed down onto the tile at o.hitAt; the ship sails
+       off over the caster's edge. */
+    function _sigKeelhaul3D(cx, cy, tx, ty, o) {
+        o = o || {};
+        if (!_canSpawn()) return false;
+        var wpC = _worldPos(cx, cy), wpT = _worldPos(tx, ty), ts = wpC.ts;
+        var dx = wpT.x - wpC.x, dz = wpT.z - wpC.z, L = Math.max(1, Math.hypot(dx, dz)), ux = dx / L, uz = dz / L;
+        var ms = o.ms > 0 ? o.ms : 4600;
+        var hookAt = o.hookAt != null ? o.hookAt : 900, hitAt = o.hitAt != null ? o.hitAt : hookAt + 1900;
+        var sailLen = (o.sailTiles || 22) * ts, hullLen = ts * 5.5, keelY = ts * 2.2;
+        var g = new THREE.Group();
+        /* the ship: the wreck GLB (nose −X → turned to local +Z = the bow), else planks */
+        var ship = new THREE.Group(), glb = null;
+        try { if (window.ThreeRenderer && ThreeRenderer.getMiscModelClone) glb = ThreeRenderer.getMiscModelClone('wreck', hullLen, 'center'); } catch (e) { glb = null; }
+        if (glb) { glb.rotation.y = Math.PI / 2; glb.traverse(function (n) { if (n.isMesh && n.material) n.material.transparent = true; }); glb.position.y = ts * 0.9; ship.add(glb); }
+        else {
+            var wood = _finBasic(0x3a2618), sail = _finBasic(0x111318, { opacity: 0.92, side: THREE.DoubleSide });
+            var hull = new THREE.Mesh(new THREE.BoxGeometry(ts * 1.6, ts * 1.1, hullLen), wood); hull.position.y = ts * 0.55; ship.add(hull);
+            var bow = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.8, ts * 1.6, 4), wood); bow.rotation.x = Math.PI / 2; bow.rotation.y = Math.PI / 4; bow.position.set(0, ts * 0.55, hullLen / 2 + ts * 0.7); ship.add(bow);
+            var mast = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.06, ts * 0.08, ts * 4.2, 8), wood); mast.position.y = ts * 3.1; ship.add(mast);
+            var sl = new THREE.Mesh(new THREE.PlaneGeometry(ts * 2.4, ts * 2.2), sail); sl.position.set(0, ts * 3.4, ts * 0.05); ship.add(sl);
+            var flag = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.7, ts * 0.4), _finBasic(0xffffff, { map: _finTextTex('☠', { ink: '#ffffff', bg: '#101010', w: 256, h: 160, fontPx: 120 }), side: THREE.DoubleSide, depthWrite: false })); flag.position.set(ts * 0.36, ts * 5.1, 0); ship.add(flag);
+        }
+        var yaw = Math.atan2(-ux, -uz);   // the bow points from the victim toward the caster (local +Z)
+        ship.rotation.y = yaw; g.add(ship);
+        /* the rope + the body */
+        var rope = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.03, ts * 0.03, ts * 3, 6), _finBasic(0xb08a52)); rope.visible = false; g.add(rope);
+        var body = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.2, ts * 0.24, ts * 0.9, 8), _finBasic(0x111318)); body.visible = false; g.add(body);
+        var c = tilePx(tx, ty), bz = tileZ(tx, ty);
+        var hooked = false, slammed = false, lastSpray = 0;
+        var shipAt = function (el) {
+            /* the ship's centre travels from +sailLen (behind the victim) to −sailLen (past the caster) along −u */
+            var t = _sigClamp01(el / ms);
+            var s = sailLen - t * sailLen * 2;
+            return { x: wpT.x + ux * s, z: wpT.z + uz * s, y: wpT.y + keelY + Math.sin(el * 0.0025) * ts * 0.12 };
+        };
+        return !!_sigRunOwned(g, ms, function (el) {
+            var sp = shipAt(el);
+            ship.position.set(sp.x, sp.y, sp.z); ship.rotation.z = Math.sin(el * 0.0018) * 0.05;
+            var bowX = sp.x + ux * (-hullLen / 2), bowZ = sp.z + uz * (-hullLen / 2);   // the bow leads (toward the caster = −u)
+            if (el >= hookAt - 500 && el < hookAt) {
+                rope.visible = true; var rd = _sigClamp01((el - hookAt + 500) / 500);
+                rope.position.set(bowX, sp.y - ts * 1.5 * rd, bowZ); rope.scale.y = Math.max(0.05, rd);
+            }
+            if (el >= hookAt && !hooked) { hooked = true; body.visible = true; _shake('normal'); _sigShockRing3D(tx, ty, { color: 0x6fb8ff, r0: ts * 0.2, r1: ts * 1.4, ms: 400 }); _finDust(c.x, c.y, bz, 10, { r: 20, op: 0.4 }); }
+            if (hooked && el < hitAt) {
+                /* dragged under the keel: forward with the ship, dipping under the hull's line, out astern */
+                var k = _sigClamp01((el - hookAt) / (hitAt - hookAt));
+                var along = -hullLen / 2 + k * hullLen * 1.3;   // bow → past the stern
+                var dip = Math.sin(k * Math.PI) * ts * 0.7;
+                var bx = sp.x + ux * along, bzz = sp.z + uz * along, by = sp.y - dip - ts * 0.2;
+                body.position.set(bx, by, bzz); body.rotation.x += 0.2; body.rotation.z += 0.13;
+                rope.position.set(bowX, (sp.y + by) / 2, bowZ); rope.scale.y = Math.max(0.05, (sp.y - by) / (ts * 3));
+                if (el - lastSpray > 45 && _canSpawn()) {
+                    lastSpray = el;
+                    _spawn({ x: bx - wpT.x + c.x, y: bzz - wpT.z + c.y, z: by - wpT.y + bz, mode: 'billboard', sprite: 'smoke', ml: rn(300, 600), size0: rn(10, 18), size1: rn(30, 50), vx: rn(-40, 40), vy: rn(-40, 40), vz: rn(-30, 30), opacity0: 0.7, opacity1: 0, tint: 0x9fd8ff });
+                }
+            }
+            if (el >= hitAt && !slammed) {
+                slammed = true; body.visible = false; rope.visible = false;
+                _shake('heavy'); _sigScreenFlash('#cfe8ff', 220, 0.7);
+                _sigShockRing3D(tx, ty, { color: 0x6fb8ff, r0: ts * 0.3, r1: ts * 2.8, ms: 560, torus: true });
+                _finDust(c.x, c.y, bz, 26, { r: 44, op: 0.7 });
+                for (var j = 0; j < 14; j++) _spawn({ x: c.x + rn(-24, 24), y: c.y + rn(-24, 24), z: bz + ts * 0.3, mode: 'billboard', sprite: 'smoke', ml: rn(500, 900), size0: rn(8, 14), size1: rn(20, 34), vx: rn(-80, 80), vy: rn(-80, 80), vz: rn(60, 160), gravity: 140, opacity0: 0.8, opacity1: 0, tint: 0xbfe4ff });
+            }
+        });
+    }
+
+    /* ── A THOUSAND CUTS (swordfighter) ─────────────────────────────────
+       Afterimages of the swordsman blink round the victim (eight stations,
+       one every few frames), each with a slash plane through the victim's
+       column at a rising cadence; a tally plane over the victim counts up
+       in steps to 1000 (the textures are cached per number — forty of
+       them). At o.hitAt the sheath clicks: every cut lands at once, the
+       victim's column comes apart into slabs that slide and fall, a white
+       cross flash. */
+    function _sigThousandCuts3D(cx, cy, tx, ty, o) {
+        o = o || {};
+        if (!_canSpawn()) return false;
+        var wpC = _worldPos(cx, cy), wpT = _worldPos(tx, ty), ts = wpC.ts;
+        var ms = o.ms > 0 ? o.ms : 4200;
+        var cutsAt = o.cutsAt != null ? o.cutsAt : 300, hitAt = o.hitAt != null ? o.hitAt : cutsAt + 2300;
+        var g = new THREE.Group(); g.position.set(wpT.x, wpT.y, wpT.z);
+        var ghostMat = _finBasic(0x9fd8ff, { opacity: 0.55, additive: true });
+        var ghosts = [];
+        for (var i = 0; i < 8; i++) {
+            var gh = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.2, ts * 0.24, ts * 0.95, 8), ghostMat);
+            var a = i / 8 * Math.PI * 2; gh.position.set(Math.cos(a) * ts * 1.1, ts * 0.5, Math.sin(a) * ts * 1.1); gh.visible = false; g.add(gh); ghosts.push(gh);
+        }
+        var slashMat = _finBasic(0xffffff, { opacity: 0.9, additive: true, side: THREE.DoubleSide });
+        var slashes = [];
+        for (var s = 0; s < 12; s++) { var pl = new THREE.Mesh(new THREE.PlaneGeometry(ts * 1.6, ts * 0.06), slashMat); pl.visible = false; pl.position.y = ts * 0.5; g.add(pl); slashes.push({ m: pl, born: -1 }); }
+        var tally = new THREE.Sprite(new THREE.SpriteMaterial({ map: _finTextTex('0', { ink: '#ffffff', w: 256, h: 128, fontPx: 90 }), transparent: true, opacity: 1, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending }));
+        tally.scale.set(ts * 1.2, ts * 0.6, 1); tally.position.y = ts * 1.8; g.add(tally);
+        /* the slabs the column becomes */
+        var slabMat = _finBasic(0x111318), slabs = [];
+        for (var k = 0; k < 7; k++) { var sb = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.22, ts * 0.22, ts * 0.12, 8), slabMat); sb.position.y = ts * 0.1 + k * ts * 0.13; sb.visible = false; g.add(sb); slabs.push({ m: sb, vx: rn(-1, 1), vz: rn(-1, 1), vy: rn(0.6, 1.4), r: rn(-0.2, 0.2) }); }
+        var c = tilePx(tx, ty), bz = tileZ(tx, ty);
+        var nextCut = cutsAt, cutN = 0, lastTally = -1, landed = false;
+        return !!_sigRunOwned(g, ms, function (el) {
+            if (el >= cutsAt && el < hitAt) {
+                var prog = (el - cutsAt) / (hitAt - cutsAt);
+                var gap = 220 - 200 * prog * prog;    // the cadence rises from one every 220 ms to a blur
+                while (el >= nextCut) {
+                    nextCut += Math.max(18, gap); cutN++;
+                    var gi = Math.floor(Math.random() * 8);
+                    for (var q = 0; q < 8; q++) ghosts[q].visible = (q === gi);
+                    var sl = slashes[cutN % slashes.length];
+                    sl.m.visible = true; sl.born = el; sl.m.rotation.set(rn(-0.6, 0.6), rn(0, Math.PI), rn(-1.2, 1.2));
+                    sl.m.position.y = ts * rn(0.15, 0.95);
+                    if (_canSpawn()) _spawn({ x: c.x + rn(-14, 14), y: c.y + rn(-14, 14), z: bz + ts * rn(0.2, 0.9), mode: 'billboard', sprite: 'spark', ml: rn(120, 260), size0: rn(6, 12), size1: 1, vx: rn(-60, 60), vy: rn(-60, 60), vz: rn(-20, 40), opacity0: 1, opacity1: 0 });
+                }
+                var count = Math.min(999, Math.round(prog * prog * 40) * 25);
+                if (count !== lastTally) { lastTally = count; tally.material.map = _finTextTex(String(count), { ink: '#ffffff', w: 256, h: 128, fontPx: 90 }); tally.material.needsUpdate = true; }
+                var tk = 1 + Math.sin(el * 0.05) * 0.04; tally.scale.set(ts * 1.2 * tk, ts * 0.6 * tk, 1);
+            }
+            for (var z = 0; z < slashes.length; z++) { var S = slashes[z]; if (S.born >= 0 && el - S.born > 140) { S.m.visible = false; S.born = -1; } }
+            if (el >= hitAt && !landed) {
+                landed = true;
+                for (var q2 = 0; q2 < 8; q2++) ghosts[q2].visible = false;
+                tally.material.map = _finTextTex('1000', { ink: '#ffffff', w: 256, h: 128, fontPx: 90 }); tally.material.needsUpdate = true; tally.scale.set(ts * 1.9, ts * 0.95, 1);
+                for (var k2 = 0; k2 < slabs.length; k2++) slabs[k2].m.visible = true;
+                _shake('heavy'); _sigScreenFlash('#ffffff', 200, 0.85);
+                _sigShockRing3D(tx, ty, { color: 0xdfe8ff, r0: ts * 0.3, r1: ts * 2.6, ms: 520, torus: true });
+                for (var j = 0; j < 20; j++) _spawn({ x: c.x + rn(-20, 20), y: c.y + rn(-20, 20), z: bz + ts * rn(0.1, 1), mode: 'billboard', sprite: 'spark', ml: rn(300, 700), size0: rn(8, 16), size1: 2, vx: rn(-120, 120), vy: rn(-120, 120), vz: rn(20, 120), gravity: 120, opacity0: 1, opacity1: 0 });
+            }
+            if (landed) {
+                var t = (el - hitAt) / 1000;
+                for (var k3 = 0; k3 < slabs.length; k3++) {
+                    var SB = slabs[k3], hold = 0.18 + k3 * 0.04;   // the slabs hold a beat, then slide apart top first
+                    if (t < hold) continue;
+                    var u = t - hold;
+                    SB.m.position.x = SB.vx * ts * u * 1.2; SB.m.position.z = SB.vz * ts * u * 1.2;
+                    SB.m.position.y = Math.max(ts * 0.06, ts * 0.1 + k3 * ts * 0.13 + SB.vy * ts * u - ts * 2.2 * u * u);
+                    SB.m.rotation.x += SB.r; SB.m.rotation.z += SB.r * 0.7;
+                }
+                tally.material.opacity = Math.max(0, 1 - Math.max(0, t - 0.8));
+            }
+        });
+    }
+
+    /* ── THE JOUST (knight) ─────────────────────────────────────────────
+       A lance the length of the board materialises down the charge line;
+       a caparisoned charger (a procedural horse of boxes under a banner,
+       the knight a silhouette in the saddle) thunders in from off the map
+       behind the caster, through the caster's tile, and the lance tip takes
+       the victim at o.hitAt; the body rides the tip the whole way to the far
+       edge of the board and is flung off it; dust clods the whole way. */
+    function _sigJoust3D(cx, cy, tx, ty, o) {
+        o = o || {};
+        if (!_canSpawn()) return false;
+        var wpC = _worldPos(cx, cy), wpT = _worldPos(tx, ty), ts = wpC.ts;
+        var dx = wpT.x - wpC.x, dz = wpT.z - wpC.z, L = Math.max(1, Math.hypot(dx, dz)), ux = dx / L, uz = dz / L;
+        var ms = o.ms > 0 ? o.ms : 4200;
+        var lanceAt = o.lanceAt != null ? o.lanceAt : 300, chargeAt = o.chargeAt != null ? o.chargeAt : 1000, hitAt = o.hitAt != null ? o.hitAt : chargeAt + 1300;
+        var runTiles = o.runTiles || 9, lanceLen = ts * (o.lanceTiles || 8);
+        var g = new THREE.Group();
+        var yaw = Math.atan2(ux, uz);
+        /* the charger + the rider, local +Z = the way it runs */
+        var horse = new THREE.Group();
+        var cloth = _finBasic(0xc8202a), steel = _finBasic(0xd8dde8), dark = _finBasic(0x2a1a10), gold = _finBasic(0xffd75a);
+        var barrel = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.7, ts * 0.7, ts * 1.6), cloth); barrel.position.y = ts * 0.95; horse.add(barrel);
+        var neck = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.3, ts * 0.8, ts * 0.4), cloth); neck.position.set(0, ts * 1.5, ts * 0.85); neck.rotation.x = -0.5; horse.add(neck);
+        var head = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.28, ts * 0.3, ts * 0.6), steel); head.position.set(0, ts * 1.85, ts * 1.2); horse.add(head);
+        var legs = [];
+        for (var i = 0; i < 4; i++) { var lg = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.14, ts * 0.7, ts * 0.14), dark); lg.position.set(i % 2 ? ts * 0.22 : -ts * 0.22, ts * 0.35, i < 2 ? ts * 0.55 : -ts * 0.55); horse.add(lg); legs.push(lg); }
+        var rider = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.2, ts * 0.24, ts * 0.9, 8), steel); rider.position.y = ts * 1.75; horse.add(rider);
+        var plume = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.08, ts * 0.4, 6), cloth); plume.position.y = ts * 2.4; horse.add(plume);
+        var pole = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.03, ts * 0.03, ts * 1.6, 6), dark); pole.position.set(-ts * 0.4, ts * 1.9, -ts * 0.5); horse.add(pole);
+        var banner = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.6, ts * 0.5), _finBasic(0xffd75a, { side: THREE.DoubleSide })); banner.position.set(-ts * 0.4, ts * 2.5, -ts * 0.2); banner.rotation.y = Math.PI / 2; horse.add(banner);
+        /* the lance: a long cone on the rider's right, tip forward, born pointing down the line */
+        var lance = new THREE.Group();
+        var shaft = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.04, ts * 0.09, lanceLen, 8), gold); shaft.rotation.x = Math.PI / 2; shaft.position.z = lanceLen / 2; lance.add(shaft);
+        var tip = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.07, ts * 0.5, 8), steel); tip.rotation.x = Math.PI / 2; tip.position.z = lanceLen + ts * 0.2; lance.add(tip);
+        var vamp = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.3, ts * 0.4, 12, 1, true), steel); vamp.rotation.x = -Math.PI / 2; lance.add(vamp);
+        lance.position.set(ts * 0.42, ts * 1.7, ts * 0.2); lance.scale.setScalar(0.01); horse.add(lance);
+        horse.rotation.y = yaw; horse.visible = false; g.add(horse);
+        var body = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.2, ts * 0.24, ts * 0.9, 8), _finBasic(0x111318)); body.visible = false; g.add(body);
+        var c = tilePx(tx, ty), bz = tileZ(tx, ty);
+        var hit = false, flung = false, lastClod = 0;
+        var startS = -runTiles * ts;                       // behind the caster
+        var endS = L + runTiles * ts;                      // past the victim, off the board
+        var hitS = L - lanceLen - ts * 0.3;                // the horse's centre when the tip meets the victim
+        var posAt = function (s) { return { x: wpC.x + ux * s, z: wpC.z + uz * s }; };
+        return !!_sigRunOwned(g, ms, function (el) {
+            if (el >= lanceAt && el < chargeAt) {
+                /* the lance materialises at the caster's tile, pointing down the line, sparks */
+                horse.visible = true; var p0 = posAt(startS * 0.15); horse.position.set(p0.x, wpC.y, p0.z);
+                var lk = _sigClamp01((el - lanceAt) / 500); lance.scale.set(1, 1, lk);
+                if (_canSpawn() && el - lastClod > 60) { lastClod = el; _spawn({ x: c.x + (wpC.x - wpT.x) + ux * lanceLen * lk * 0.5, y: c.y + (wpC.z - wpT.z) + uz * lanceLen * lk * 0.5, z: bz + ts * 1.7, mode: 'billboard', sprite: 'spark', ml: rn(200, 400), size0: rn(6, 12), size1: 1, vx: rn(-40, 40), vy: rn(-40, 40), vz: rn(-20, 20), opacity0: 1, opacity1: 0 }); }
+            }
+            if (el >= chargeAt) {
+                lance.scale.set(1, 1, 1);
+                /* the gallop: start → hitS by hitAt, then on to endS */
+                var s;
+                if (el < hitAt) { var t = (el - chargeAt) / (hitAt - chargeAt); s = startS * 0.15 + (hitS - startS * 0.15) * (t * t * (3 - 2 * t)); }
+                else { var t2 = _sigClamp01((el - hitAt) / (ms - hitAt - 300)); s = hitS + (endS - hitS) * t2; }
+                var p = posAt(s); horse.position.set(p.x, wpC.y + Math.abs(Math.sin(el * 0.02)) * ts * 0.12, p.z);
+                for (var q = 0; q < 4; q++) legs[q].rotation.x = Math.sin(el * 0.02 + q * 1.6) * 0.7;
+                if (el - lastClod > 50 && _canSpawn()) { lastClod = el; _finDust(c.x + (p.x - wpT.x), c.y + (p.z - wpT.z), bz, 3, { r: 18, op: 0.5 }); }
+                if (el >= hitAt && !hit) {
+                    hit = true; body.visible = true;
+                    _shake('heavy'); _sigScreenFlash('#ffffff', 180, 0.7);
+                    _sigShockRing3D(tx, ty, { color: 0xffd75a, r0: ts * 0.2, r1: ts * 2.4, ms: 480, torus: true });
+                    _finDust(c.x, c.y, bz, 20, { r: 40, op: 0.7 });
+                }
+                if (hit) {
+                    var tipS = s + lanceLen + ts * 0.2;
+                    if (tipS < endS - ts * 1.5) { var tp = posAt(tipS); body.position.set(tp.x, wpC.y + ts * 1.7, tp.z); body.rotation.z = 1.2; body.rotation.y += 0.3; }
+                    else if (!flung) { flung = true; _finDust(c.x + (posAt(tipS).x - wpT.x), c.y + (posAt(tipS).z - wpT.z), bz, 10, { r: 30, op: 0.5 }); }
+                    if (flung) { body.position.y += ts * 0.08; body.position.x += ux * ts * 0.12; body.position.z += uz * ts * 0.12; body.rotation.x += 0.4; }
+                }
+            }
+        });
+    }
+
+    /* ── THE TRIP (shaman) ──────────────────────────────────────────────
+       A fairy ring of giant mushrooms grows round the victim; a breathing
+       dome of wireframe rings swells and shrinks over the tile (the walls
+       are breathing); eye-motes spiral inward; the kaleidoscope and the
+       fractal tunnel of the library open on the tile; at o.hitAt the
+       victim's silhouette folds inside out down the tunnel (a capsule that
+       inverts its scale and spins away) and the ring of mushrooms pops in a
+       spectrum burst. */
+    function _sigTheTrip3D(tx, ty, o) {
+        o = o || {};
+        if (!_canSpawn()) return false;
+        var wp = _worldPos(tx, ty), ts = wp.ts;
+        var ms = o.ms > 0 ? o.ms : 4400;
+        var growAt = o.growAt != null ? o.growAt : 200, hitAt = o.hitAt != null ? o.hitAt : growAt + 2400;
+        var g = new THREE.Group(); g.position.set(wp.x, wp.y, wp.z);
+        var caps = [], hues = [0.95, 0.12, 0.3, 0.55, 0.75, 0.05, 0.42, 0.85];
+        for (var i = 0; i < 8; i++) {
+            var m = new THREE.Group(), a = i / 8 * Math.PI * 2;
+            var stem = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.08, ts * 0.12, ts * 0.9, 8), _finBasic(0xf2e8d0)); stem.position.y = ts * 0.45; m.add(stem);
+            var cap = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.34, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), _finBasic(new THREE.Color().setHSL(hues[i], 0.85, 0.55).getHex())); cap.position.y = ts * 0.9; m.add(cap);
+            for (var d = 0; d < 4; d++) { var dot = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.05, 6, 4), _finBasic(0xffffff)); var da = d * 1.7; dot.position.set(Math.cos(da) * ts * 0.22, ts * 1.05, Math.sin(da) * ts * 0.22); m.add(dot); }
+            m.position.set(Math.cos(a) * ts * 1.3, 0, Math.sin(a) * ts * 1.3); m.scale.setScalar(0.01); g.add(m); caps.push(m);
+        }
+        var rings = [], wire = new THREE.MeshBasicMaterial({ color: 0xff9ad0, wireframe: true, transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending });
+        for (var r = 0; r < 5; r++) { var rg = new THREE.Mesh(new THREE.TorusGeometry(ts * (0.8 + r * 0.35), ts * 0.02, 4, 32), wire); rg.rotation.x = Math.PI / 2; rg.position.y = ts * (0.2 + r * 0.45); g.add(rg); rings.push(rg); }
+        var eyes = [];
+        for (var e = 0; e < 14; e++) { var ey = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.09, 8, 6), _finBasic(0xffffff)); var pu = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.05, 6, 4), _finBasic(0x111318)); pu.position.z = ts * 0.06; ey.add(pu); ey.visible = false; g.add(ey); eyes.push({ m: ey, a: rn(0, Math.PI * 2), r: rn(1.8, 3.2), h: rn(0.4, 2.2), w: rn(0.6, 1.4) }); }
+        var body = new THREE.Mesh(THREE.CapsuleGeometry ? new THREE.CapsuleGeometry(ts * 0.22, ts * 0.5, 4, 8) : new THREE.CylinderGeometry(ts * 0.22, ts * 0.22, ts * 0.9, 8), _finBasic(0x111318)); body.position.y = ts * 0.5; body.visible = false; g.add(body);
+        var c = tilePx(tx, ty), bz = tileZ(tx, ty);
+        var opened = false, folded = false, popped = false;
+        return !!_sigRunOwned(g, ms, function (el) {
+            var gk = _sigClamp01((el - growAt) / 700);
+            for (var q = 0; q < 8; q++) { var kq = _sigClamp01(gk * 1.4 - q * 0.05); caps[q].scale.setScalar(Math.max(0.01, kq * (1 + Math.sin(el * 0.006 + q) * 0.08))); caps[q].rotation.y = Math.sin(el * 0.002 + q) * 0.2; }
+            var breath = 1 + Math.sin(el * 0.0035) * 0.22;
+            for (var rr = 0; rr < rings.length; rr++) { rings[rr].scale.setScalar(breath * (1 + rr * 0.04)); rings[rr].rotation.z += 0.004 * (rr % 2 ? 1 : -1); }
+            wire.color.setHSL((el * 0.00012) % 1, 0.8, 0.65);
+            if (el > growAt + 600) {
+                for (var ei = 0; ei < eyes.length; ei++) { var E = eyes[ei]; E.m.visible = true; var t = (el - growAt - 600) * 0.001 * E.w; var rad = ts * E.r * Math.max(0.2, 1 - t * 0.12); E.m.position.set(Math.cos(E.a + t) * rad, ts * E.h + Math.sin(t * 2) * ts * 0.2, Math.sin(E.a + t) * rad); E.m.lookAt(0, ts * 0.6, 0); }
+            }
+            if (!opened && el >= growAt + 900) {
+                opened = true;
+                try { _sigKaleidoscope3D(tx, ty, { ms: hitAt - el + 600, radiusPx: ts * 1.5, ceilingH: 2.2 }); } catch (err) {}
+                try { _sigFractalTunnel3D(tx, ty, { sides: 6, rings: 12, ms: hitAt - el + 900, height: 560, radiusPx: ts * 1.5, speed: 1.1 }); } catch (err) {}
+            }
+            if (el >= hitAt && !folded) {
+                folded = true; body.visible = true;
+                _shake('heavy'); _sigScreenFlash('#ff9ad0', 220, 0.7);
+                try { _sigSpectrumBurst3D(tx, ty, { ms: 700, radiusPx: ts * 1.6 }); } catch (err) {}
+            }
+            if (folded) {
+                var f = _sigClamp01((el - hitAt) / 900);
+                /* inside out: the capsule thins to a line, flips, spins away up the tunnel */
+                body.scale.set(Math.max(0.02, 1 - f * 2), 1 + f * 3, Math.max(0.02, 1 - f * 2)); body.rotation.y += 0.5; body.rotation.x = f * Math.PI;
+                body.position.y = ts * 0.5 + f * f * ts * 6;
+                if (!popped && f > 0.5) { popped = true; for (var pi = 0; pi < 8; pi++) { var P = caps[pi].position; for (var j = 0; j < 3; j++) _spawn({ x: c.x + P.x, y: c.y + P.z, z: bz + ts * 0.9, mode: 'billboard', sprite: 'star', ml: rn(500, 900), size0: rn(10, 18), size1: 4, vx: rn(-60, 60), vy: rn(-60, 60), vz: rn(40, 120), gravity: 100, opacity0: 1, opacity1: 0 }); } }
+                if (f > 0.5) for (var q2 = 0; q2 < 8; q2++) caps[q2].scale.setScalar(Math.max(0.01, 1 - (f - 0.5) * 2));
+                for (var e2 = 0; e2 < eyes.length; e2++) eyes[e2].m.visible = f < 0.7;
+            }
+        });
+    }
+
+    /* ── NEURALYZER (men in black) ──────────────────────────────────────
+       The pen rises in the agent's hand (a chrome cylinder with a red cap
+       at the caster's tile); at o.flashAt a cone of light from the pen to
+       the victim, a screen-wide white flash, and the victim's last five
+       seconds rewind out of them (the library's time-rewind on the tile,
+       ghost frames stepping backward away from the body); the silhouette
+       goes grey and stands still. At o.carAt a black sedan (the misc
+       cache's cadillac, else a black box on wheels) drives in along the
+       line from off the map, stops beside the tile at o.hitAt, the body
+       drops into the boot, the lid slams, the sedan drives off. */
+    function _sigNeuralyzer3D(cx, cy, tx, ty, o) {
+        o = o || {};
+        if (!_canSpawn()) return false;
+        var wpC = _worldPos(cx, cy), wpT = _worldPos(tx, ty), ts = wpC.ts;
+        var dx = wpT.x - wpC.x, dz = wpT.z - wpC.z, L = Math.max(1, Math.hypot(dx, dz)), ux = dx / L, uz = dz / L;
+        var px = -uz, pz = ux;   // the perpendicular (the car's lane runs beside the victim)
+        var ms = o.ms > 0 ? o.ms : 4600;
+        var flashAt = o.flashAt != null ? o.flashAt : 700, carAt = o.carAt != null ? o.carAt : flashAt + 900, hitAt = o.hitAt != null ? o.hitAt : carAt + 1000;
+        var g = new THREE.Group();
+        var chrome = _finBasic(0xdfe6ee), red = _finBasic(0xff2a2a, { additive: true });
+        var pen = new THREE.Group();
+        var tube = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.04, ts * 0.04, ts * 0.5, 10), chrome); pen.add(tube);
+        var capm = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.06, 8, 6), red); capm.position.y = ts * 0.28; pen.add(capm);
+        pen.position.set(wpC.x, wpC.y + ts * 0.6, wpC.z); pen.rotation.z = 0.6; g.add(pen);
+        var cone = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.9, L, 20, 1, true), _finBasic(0xffffff, { opacity: 0.0, additive: true, side: THREE.DoubleSide }));
+        cone.rotation.x = Math.PI / 2; cone.position.set((wpC.x + wpT.x) / 2, wpT.y + ts * 0.7, (wpC.z + wpT.z) / 2); cone.lookAt(wpT.x, wpT.y + ts * 0.7, wpT.z); cone.rotateX(-Math.PI / 2); cone.visible = false; g.add(cone);
+        var ghostMat = _finBasic(0xbfd8ff, { opacity: 0.4, additive: true }), ghosts = [];
+        for (var i = 0; i < 6; i++) { var gh = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.2, ts * 0.24, ts * 0.9, 8), ghostMat); gh.visible = false; gh.position.set(wpT.x, wpT.y + ts * 0.5, wpT.z); g.add(gh); ghosts.push(gh); }
+        /* the sedan */
+        var carG = new THREE.Group(), car = null;
+        try { if (window.ThreeRenderer && ThreeRenderer.getMiscModelClone) car = ThreeRenderer.getMiscModelClone('cadillac', ts * 0.72, 'center'); } catch (e) { car = null; }
+        if (car) { car.rotation.y = Math.PI / 2; car.traverse(function (n) { if (n.isMesh && n.material) { n.material = n.material.clone(); n.material.transparent = true; if (n.material.color) n.material.color.multiplyScalar(0.35); } }); carG.add(car); }
+        else {
+            var black = _finBasic(0x0c0c10), glass = _finBasic(0x2a2a30);
+            var bd = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.9, ts * 0.4, ts * 2.1), black); bd.position.y = ts * 0.32; carG.add(bd);
+            var cab = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.8, ts * 0.3, ts * 1.0), glass); cab.position.set(0, ts * 0.66, -ts * 0.05); carG.add(cab);
+            for (var w = 0; w < 4; w++) { var wh = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.16, ts * 0.16, ts * 0.12, 12), black); wh.rotation.z = Math.PI / 2; wh.position.set(w % 2 ? ts * 0.48 : -ts * 0.48, ts * 0.16, w < 2 ? ts * 0.7 : -ts * 0.7); carG.add(wh); }
+        }
+        var lamp = _finBasic(0xfff4c0, { additive: true });
+        for (var hl = 0; hl < 2; hl++) { var lm = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.07, 8, 6), lamp); lm.position.set(hl ? ts * 0.3 : -ts * 0.3, ts * 0.36, ts * 1.02); carG.add(lm); }
+        var boot = new THREE.Group(); boot.position.set(0, ts * 0.52, -ts * 0.55);
+        var lid = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.86, ts * 0.05, ts * 0.9), _finBasic(0x0c0c10)); lid.position.z = -ts * 0.45; boot.add(lid); carG.add(boot);
+        carG.rotation.y = Math.atan2(px, pz); carG.visible = false; g.add(carG);
+        var body = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.2, ts * 0.24, ts * 0.9, 8), _finBasic(0x555a66)); body.visible = false; body.position.set(wpT.x, wpT.y + ts * 0.5, wpT.z); g.add(body);
+        var c = tilePx(tx, ty), bz = tileZ(tx, ty);
+        var flashed = false, stopped = false, bagged = false;
+        var laneOff = ts * 1.1, driveIn = ts * 12;
+        return !!_sigRunOwned(g, ms, function (el) {
+            if (el < flashAt) { var up = _sigClamp01(el / flashAt); pen.position.y = wpC.y + ts * (0.6 + 0.6 * up); pen.rotation.z = 0.6 - 0.6 * up; capm.material.opacity = 0.5 + Math.sin(el * 0.03) * 0.5; }
+            if (el >= flashAt && !flashed) {
+                flashed = true; cone.visible = true; body.visible = true;
+                _sigScreenFlash('#ffffff', 420, 1.0);
+                try { _sigTimeRewind3D(tx, ty, { ms: 1100 }); } catch (err) {}
+                for (var q = 0; q < 6; q++) ghosts[q].visible = true;
+            }
+            if (flashed && el < carAt) {
+                var k = _sigClamp01((el - flashAt) / 600); cone.material.opacity = 0.55 * (1 - k);
+                for (var q2 = 0; q2 < 6; q2++) { var d = (q2 + 1) * ts * 0.35 * k; ghosts[q2].position.set(wpT.x - ux * d, wpT.y + ts * 0.5, wpT.z - uz * d); ghosts[q2].material.opacity = 0.4 * (1 - k); }
+            }
+            if (el >= carAt) {
+                for (var q3 = 0; q3 < 6; q3++) ghosts[q3].visible = false; cone.visible = false;
+                carG.visible = true;
+                var ct = _sigClamp01((el - carAt) / (hitAt - carAt)), ce = 1 - (1 - ct) * (1 - ct);
+                var s = -driveIn + driveIn * ce;    // from off the map along the perpendicular to beside the victim
+                if (el < hitAt) carG.position.set(wpT.x + ux * laneOff + px * s, wpT.y + Math.sin(el * 0.03) * ts * 0.01, wpT.z + uz * laneOff + pz * s);
+                if (el >= hitAt && !stopped) { stopped = true; carG.position.set(wpT.x + ux * laneOff, wpT.y, wpT.z + uz * laneOff); _shake('normal'); _finDust(c.x + ux * laneOff, c.y + uz * laneOff, bz, 8, { r: 24, op: 0.4 }); }
+                if (stopped) {
+                    var bt = _sigClamp01((el - hitAt) / 500);
+                    boot.rotation.x = -1.3 * Math.sin(bt * Math.PI);
+                    if (bt < 1) { body.position.set(wpT.x + ux * laneOff * bt, wpT.y + ts * (0.5 + Math.sin(bt * Math.PI) * 1.2), wpT.z + uz * laneOff * bt); body.rotation.z = bt * 1.5; }
+                    else if (!bagged) { bagged = true; body.visible = false; _shake('normal'); _sigShockRing3D(tx, ty, { color: 0xdfe6ee, r0: ts * 0.2, r1: ts * 1.6, ms: 400 }); }
+                    var drive = _sigClamp01((el - hitAt - 700) / (ms - hitAt - 900));
+                    if (drive > 0) { var s2 = driveIn * drive * drive; carG.position.set(wpT.x + ux * laneOff + px * s2, wpT.y, wpT.z + uz * laneOff + pz * s2); }
+                }
+            }
+        });
+    }
+
+    /* ── MIND OVER MATTER (telepath) ────────────────────────────────────
+       The eight tiles round the CASTER tear out of the board at o.liftAt —
+       each a column in its own terrain sheet (the tile's TERRAIN_SPRITES
+       key, else the boulder sheet), a dark underside, dust and pebbles as
+       it comes free — rise, and orbit the caster's head; from o.slamFrom
+       they slam into the victim one after another, the last and largest at
+       o.hitAt. The board itself keeps every tile (VFX-only: nothing on
+       state, the guest replays the same). */
+    function _sigMindOverMatter3D(cx, cy, tx, ty, o) {
+        o = o || {};
+        if (!_canSpawn()) return false;
+        var wpC = _worldPos(cx, cy), wpT = _worldPos(tx, ty), ts = wpC.ts;
+        var ms = o.ms > 0 ? o.ms : 4600;
+        var liftAt = o.liftAt != null ? o.liftAt : 300, slamFrom = o.slamFrom != null ? o.slamFrom : liftAt + 1300, hitAt = o.hitAt != null ? o.hitAt : slamFrom + 1300;
+        var g = new THREE.Group();
+        var side = _finBasic(0x3a3230), dirt = _finBasic(0x241c18);
+        var tiles = [], n = 0;
+        for (var oy = -1; oy <= 1; oy++) for (var ox = -1; ox <= 1; ox++) {
+            if (!ox && !oy) continue;
+            var gx = cx + ox, gy = cy + oy, key = null;
+            try { key = (typeof getTerrainAt === 'function') ? getTerrainAt(gx, gy) : null; } catch (e) { key = null; }
+            var url = null;
+            try { if (key && typeof TERRAIN_SPRITES !== 'undefined' && TERRAIN_SPRITES[key]) url = Array.isArray(TERRAIN_SPRITES[key]) ? TERRAIN_SPRITES[key][0] : TERRAIN_SPRITES[key]; } catch (e) { url = null; }
+            var topMat = url ? new THREE.MeshBasicMaterial({ map: _loadCachedTex(url), transparent: true }) : new THREE.MeshBasicMaterial({ map: _getBoulderTexture(), transparent: true });
+            var wp = _worldPos(gx, gy);
+            var col = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.92, ts * 0.55, ts * 0.92), [side, side, topMat, dirt, side, side]);
+            col.position.set(wp.x, wp.y - ts * 0.28, wp.z); col.visible = false; g.add(col);
+            tiles.push({ m: col, home: { x: wp.x, y: wp.y - ts * 0.28, z: wp.z }, px: tilePx(gx, gy), bz: tileZ(gx, gy), ang: Math.atan2(oy, ox), idx: n++, lifted: false, slamAt: 0, slammed: false, spin: rn(-0.05, 0.05) });
+        }
+        /* the slam order: nearest to the caster→victim line last? no — random, the last is the biggest beat */
+        var order = tiles.slice().sort(function () { return Math.random() - 0.5; });
+        for (var k = 0; k < order.length; k++) order[k].slamAt = slamFrom + (hitAt - slamFrom) * (k / Math.max(1, order.length - 1));
+        var c = tilePx(tx, ty), bz = tileZ(tx, ty), cc = tilePx(cx, cy), cbz = tileZ(cx, cy);
+        var headY = wpC.y + ts * 2.6, orbitR = ts * 1.5;
+        var big = false;
+        return !!_sigRunOwned(g, ms, function (el) {
+            for (var i = 0; i < tiles.length; i++) {
+                var T = tiles[i];
+                var tl = liftAt + T.idx * 70;
+                if (el < tl) continue;
+                if (!T.lifted) { T.lifted = true; T.m.visible = true; _shake('light'); _finDust(T.px.x, T.px.y, T.bz, 6, { r: 22, op: 0.5 }); for (var p = 0; p < 4; p++) _spawn({ x: T.px.x + rn(-30, 30), y: T.px.y + rn(-30, 30), z: T.bz, mode: 'billboard', sprite: 'smoke', ml: rn(400, 800), size0: rn(4, 8), size1: rn(6, 10), vx: rn(-30, 30), vy: rn(-30, 30), vz: rn(40, 110), gravity: 160, opacity0: 0.9, opacity1: 0, tint: 0x6b5a48 }); }
+                if (T.slammed) continue;
+                var a = T.ang + (el - tl) * 0.0016;
+                var orbit = { x: wpC.x + Math.cos(a) * orbitR, y: headY + Math.sin(el * 0.003 + T.idx) * ts * 0.25, z: wpC.z + Math.sin(a) * orbitR };
+                if (el < T.slamAt - 380) {
+                    var lk = _sigClamp01((el - tl) / 700), le = lk * lk * (3 - 2 * lk);
+                    T.m.position.set(T.home.x + (orbit.x - T.home.x) * le, T.home.y + (orbit.y - T.home.y) * le, T.home.z + (orbit.z - T.home.z) * le);
+                    T.m.rotation.x += T.spin * lk; T.m.rotation.z += T.spin * 0.6 * lk;
+                } else {
+                    /* the slam: a hard arc from the orbit onto the victim */
+                    var sk = _sigClamp01((el - (T.slamAt - 380)) / 380), se = sk * sk;
+                    T.m.position.set(orbit.x + (wpT.x - orbit.x) * se, orbit.y + (wpT.y + ts * 0.3 - orbit.y) * se + Math.sin(sk * Math.PI) * ts * 0.8, orbit.z + (wpT.z - orbit.z) * se);
+                    T.m.rotation.x += 0.25; T.m.rotation.y += 0.18;
+                    if (sk >= 1) {
+                        T.slammed = true; T.m.visible = false;
+                        var last = (T.slamAt >= hitAt - 1);
+                        _shake(last ? 'heavy' : 'normal');
+                        _sigShockRing3D(tx, ty, { color: 0xc46bff, r0: ts * 0.2, r1: ts * (last ? 2.8 : 1.4), ms: last ? 560 : 360, torus: last });
+                        _finDust(c.x, c.y, bz, last ? 26 : 10, { r: last ? 44 : 26, op: 0.6 });
+                        for (var q = 0; q < (last ? 14 : 5); q++) _spawn({ x: c.x + rn(-24, 24), y: c.y + rn(-24, 24), z: bz + ts * 0.3, mode: 'billboard', sprite: 'smoke', ml: rn(400, 800), size0: rn(5, 9), size1: rn(7, 12), vx: rn(-90, 90), vy: rn(-90, 90), vz: rn(40, 140), gravity: 160, opacity0: 0.9, opacity1: 0, tint: 0x6b5a48 });
+                        if (last && !big) { big = true; _sigScreenFlash('#e8c8ff', 240, 0.8); }
+                    }
+                }
+            }
+            /* the strain round the caster's head */
+            if (el >= liftAt && el < hitAt && _canSpawn() && (el % 90) < 17) _spawn({ x: cc.x + rn(-16, 16), y: cc.y + rn(-16, 16), z: cbz + ts * 1.1, mode: 'billboard', sprite: 'spark', ml: rn(200, 400), size0: rn(4, 8), size1: 1, vx: rn(-20, 20), vy: rn(-20, 20), vz: rn(20, 60), opacity0: 0.9, opacity1: 0, tint: 0xc46bff });
+        });
+    }
+
     /* ── THE FORGE'S PREVIEW (2026-09-19) — the finisher on the party
        builder's stage. The user: "I would still like to see the finishers
        and their animations in the party builder in the spell tree
@@ -26155,6 +26586,46 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         P.at(P.CHARGE - 300, function () { _sigShrinkRay3D(P.cx, P.cy, P.tx, P.ty, { ms: P.STRIKE + 2400, rayAt: 300, hitAt: 300 + P.STRIKE }); });
         P.at(P.hitAt, function () { P.flash('#ffffff', 220, 0.75); P.shake('heavy'); P.grade('#9dff5a', 700); });
         P.at(P.hitAt + 300, function () { P.whiteout(0xc8ff9a, 5, { ms: 800, peak: 0.6 }); });
+    };
+    _FIN_STAGE.keelhaul = function (P) {
+        P.circle(0x6fb8ff, 0x1a2a4a, { spin: false });
+        P.at(P.CHARGE - 700, function () { _sigKeelhaul3D(P.cx, P.cy, P.tx, P.ty, { ms: P.STRIKE + 3300, hookAt: 700 + P.STRIKE - 1500, hitAt: 700 + P.STRIKE, sailTiles: 14 }); });
+        P.at(P.hitAt, function () { P.flash('#cfe8ff', 220, 0.7); P.shake('heavy'); P.grade('#6fb8ff', 700); });
+        P.at(P.hitAt + 300, function () { P.whiteout(0xbfe4ff, 6, { ms: 800, peak: 0.6 }); });
+    };
+    _FIN_STAGE.thousandCuts = function (P) {
+        P.circle(0xdfe8ff, 0x9fd8ff, { spin: false });
+        if (typeof _sigStatRings3D === 'function') _sigStatRings3D(P.cx, P.cy, { color: 0x9fd8ff, ms: P.CHARGE });
+        P.at(P.CHARGE - 200, function () { _sigThousandCuts3D(P.cx, P.cy, P.tx, P.ty, { ms: P.STRIKE + 2200, cutsAt: 200, hitAt: 200 + P.STRIKE }); });
+        P.at(P.hitAt, function () { P.ring(0xdfe8ff); P.flash('#ffffff', 200, 0.85); P.shake('heavy'); P.grade('#dfe8ff', 600); });
+        P.at(P.hitAt + 300, function () { P.whiteout(0xffffff, 5, { ms: 700, peak: 0.6 }); });
+    };
+    _FIN_STAGE.joust = function (P) {
+        P.circle(0xffd75a, 0xc8202a, { spin: false });
+        P.at(P.CHARGE - 1300, function () { _sigJoust3D(P.cx, P.cy, P.tx, P.ty, { ms: P.STRIKE + 3100, lanceAt: 200, chargeAt: 1300 + P.STRIKE - 1300, hitAt: 1300 + P.STRIKE, runTiles: 6, lanceTiles: 2.4 }); });
+        P.at(P.hitAt, function () { P.ring(0xffd75a); P.flash('#ffffff', 180, 0.7); P.shake('heavy'); P.grade('#ffd75a', 700); });
+        P.at(P.hitAt + 400, function () { P.whiteout(0xffe6a0, 5, { ms: 800, peak: 0.6 }); });
+    };
+    _FIN_STAGE.theTrip = function (P) {
+        P.circle(0xff9ad0, 0x9632b4);
+        if (typeof _sigTimeRewind3D === 'function') _sigTimeRewind3D(P.cx, P.cy, { ms: 1000 });
+        P.at(P.CHARGE - 900, function () { _sigTheTrip3D(P.tx, P.ty, { ms: P.STRIKE + 2900, growAt: 200, hitAt: 900 + P.STRIKE }); });
+        P.at(P.hitAt, function () { P.flash('#ff9ad0', 220, 0.7); P.shake('heavy'); P.grade('#ff4fa3', 800); });
+        P.at(P.hitAt + 300, function () { P.whiteout(0xff9ad0, 6, { ms: 900, peak: 0.8 }); });
+    };
+    _FIN_STAGE.neuralyzer = function (P) {
+        if (typeof _sigNeonGrid3D === 'function') _sigNeonGrid3D(P.cx, P.cy, { ms: P.CHARGE, color: 0xdfe6ee });
+        P.at(P.CHARGE - 500, function () { _sigNeuralyzer3D(P.cx, P.cy, P.tx, P.ty, { ms: P.STRIKE + 3200, flashAt: 500, carAt: 500 + P.STRIKE - 900, hitAt: 500 + P.STRIKE }); });
+        P.at(P.CHARGE, function () { P.flash('#ffffff', 420, 1.0); P.grade('#ffffff', 500); });
+        P.at(P.hitAt + 500, function () { P.ring(0xdfe6ee, { r1: P.ts * 1.6, torus: false }); P.shake('normal'); });
+        P.at(P.hitAt + 700, function () { P.whiteout(0x0c0c10, 5, { ms: 700, peak: 0.5 }); });
+    };
+    _FIN_STAGE.mindOverMatter = function (P) {
+        P.circle(0xc46bff, 0xe8c8ff);
+        if (typeof _sigStatRings3D === 'function') _sigStatRings3D(P.cx, P.cy, { color: 0xc46bff, ms: P.CHARGE });
+        P.at(P.CHARGE - 1400, function () { _sigMindOverMatter3D(P.cx, P.cy, P.tx, P.ty, { ms: P.STRIKE + 3200, liftAt: 200, slamFrom: 1400 + P.STRIKE - 1100, hitAt: 1400 + P.STRIKE }); });
+        P.at(P.hitAt, function () { P.flash('#e8c8ff', 240, 0.8); P.shake('heavy'); P.grade('#c46bff', 700); });
+        P.at(P.hitAt + 300, function () { P.whiteout(0xc46bff, 6, { ms: 800, peak: 0.6 }); });
     };
     /* THE TYPED EXECUTIONS on the stage — the six apocalypse directors' beats on ONE victim */
     var _FIN_STAGE_TYPE = {
@@ -26415,6 +26886,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         sigHaymaker3D: _sigHaymaker3D,
         sigBootHill3D: _sigBootHill3D,
         sigShrinkRay3D: _sigShrinkRay3D,
+        sigKeelhaul3D: _sigKeelhaul3D,
+        sigThousandCuts3D: _sigThousandCuts3D,
+        sigJoust3D: _sigJoust3D,
+        sigTheTrip3D: _sigTheTrip3D,
+        sigNeuralyzer3D: _sigNeuralyzer3D,
+        sigMindOverMatter3D: _sigMindOverMatter3D,
 
         getDescentTotalMs: getDescentTotalMs,
         getDescentFlyover: getDescentFlyover,
