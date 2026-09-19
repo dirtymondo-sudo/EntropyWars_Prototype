@@ -177,15 +177,16 @@ test('THE SEAMS: the Strip (streets_strip — the chapel’s west wall, a motel 
     for (const l of [strip, stad, tm, gut]) { assert.ok(l && D.hqLinkLive(l) && l.why && l.note && l.draft === true, l && l.id); assert.ok(!(HQ.catalogue[l.leaf] || {}).rank); }
     assert.ok(strip.route === 'highway' && strip.a.part === 'streets' && strip.a.wall === 'w' && strip.a.z === 18 && strip.b.site === 'prebuilt_strip' && strip.b.part === 'chapel' && strip.b.wall === 'w' && strip.leaf === 'leaf_motel');
     assert.equal(D.hqLinkRoom(strip.a), STREETS); assert.equal(D.hqLinkRoom(strip.b), CHAPEL);
-    assert.ok(stad.route === 'highway' && stad.way === 'road' && !stad.leaf && stad.b.part === 'streets' && stad.b.wall === 'n' && stad.b.x === 0 && stad.a.site === 'prebuilt_stadium' && !stad.a.part && stad.a.wall === 'n' && stad.a.x === -5, 'the avenue\'s north end is the stadium road');
-    assert.equal(D.hqLinkRoom(stad.a), STADIUM); assert.equal(D.hqLinkRoom(stad.b), STREETS);
-    for (const o of HQ.rooms[STADIUM].doors) if (o.id !== 'link_stadium_downtown' && o.wall === 'n') assert.ok(Math.abs(o.x - (-5)) >= 4.4, 'the stadium road shares a lane with ' + o.id);
+    assert.ok(stad.route === 'highway' && stad.way === 'road' && !stad.leaf && stad.b.part === 'streets' && stad.b.wall === 'n' && stad.b.x === 0 && stad.a.site === 'prebuilt_stadium' && stad.a.part === 'bowl' && stad.a.wall === 'n' && stad.a.x === -5, 'the avenue\'s north end is the stadium road (THE AREAS, 2026-09-18: out of THE BOWL)');
+    const BOWL = STADIUM + '_bowl';   // THE AREAS (2026-09-18): the stadium is an area — the road leaves the bowl
+    assert.equal(D.hqLinkRoom(stad.a), BOWL); assert.equal(D.hqLinkRoom(stad.b), STREETS);
+    for (const o of HQ.rooms[BOWL].doors) if (o.id !== 'link_stadium_downtown' && o.wall === 'n') assert.ok(Math.abs(o.x - (-5)) >= 4.4, 'the stadium road shares a lane with ' + o.id);
     for (const id of ['downtown_strip', 'strip_cyberpunk']) { const l = L(id); assert.ok(l && l.way === 'road' && D.hqLinkLive(l), id + ': a road way'); }
     const ends = HQ.rooms[STREETS].doors.filter(d => d.way === 'road').map(d => d.wall + ':' + (d.x != null ? d.x : d.z)).sort().join(' ');
     assert.equal(ends, 'n:0 w:0', 'the cross street\'s west end and the avenue\'s north end are roads out (the east end went with Nuketown, 2026-09-18); the avenue\'s south end is the mall\'s door');
     assert.ok(HQ.ways.road && HQ.ways.road.pad >= 9 && HQ.ways.road.w >= 9 && HQ.ways.road.open === true, 'the road is catalogued as a wide, open way');
     for (const d of HQ.rooms[STREETS].doors.filter(d => d.way === 'road')) { const pad = D.hqTerrainInfo(STREETS).pads.find(q => q.door.id === d.id); assert.ok(pad && Math.max(pad.w, pad.d) >= 10, d.id + ': the whole street is the landing'); }
-    assert.ok(HQ.rooms[STADIUM].doors.filter(d => d.link && d.wall === 'n').length <= 3, 'the stadium keeps ≤ 3 link doors on its north wall');
+    assert.ok(HQ.rooms[BOWL].doors.filter(d => d.link && d.wall === 'n').length <= 3, 'the stadium keeps ≤ 3 link doors on its north wall');
     /* THE SECOND PASS (2026-09-17): the machine stands in the mall's SUPPLY CLOSET and comes out in the noodle bar's back room on the grid — both FREE ends on complex parts, both a building in the city */
     assert.ok(tm.route === 'seams' && tm.way === 'timemachine' && tm.a.site === 'prebuilt_downtown' && tm.a.part === 'closet' && tm.a.wall === 'free' && tm.a.face === 180 && tm.b.site === 'prebuilt_cyberpunk' && tm.b.part === 'noodle' && tm.b.wall === 'free' && tm.b.face === 270 && !tm.b.leaf, 'the time machine at both ends');
     const a = at(CLOSET, 'link_timemachine_cyberpunk'), b = at(NOODLE, 'link_timemachine_cyberpunk');
@@ -290,7 +291,7 @@ test('THE PARK RULE + THE PLATFORMING: the streets have the parking deck (a 3 m 
         assert.ok(shot && shot.ok === true && shot.from && shot.hit, id + ': the door gun has a shot at it (' + JSON.stringify(shot) + ')');
         assert.ok(rows.some(r => /^pay:/.test(r.id) && !r.hard), id + ': the envelope is on the ground');
     }
-    assert.equal(D.DOOR_TAPES.filter(t => t.where === STREETS).length, 1); assert.equal(D.DOOR_TAPES.filter(t => t.where === MALL).length, 1);
+    assert.equal(D.DOOR_TAPES.filter(t => t.where === STREETS).length, 2, 'the streets hold their own tape and the bypassed board’s (THE AREAS, 2026-09-18)'); assert.equal(D.DOOR_TAPES.filter(t => t.where === MALL).length, 1);
     assert.equal(D.DOOR_TAPES.length, 100, 'the hundred stays a hundred');
     for (const site of ['prebuilt_stadium']) assert.ok(D.DOOR_TAPES.some(t => t.where === D.hqSiteRoomId(site) || (t.site === site && t.where === D.hqSiteRoomId(site))), site + ' keeps a tape');   // THE LEY LINES (2026-09-18): Cyberpunk's bypassed board gave BILLBOARD to the tunnels
 });

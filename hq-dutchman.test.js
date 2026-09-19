@@ -59,8 +59,9 @@ function propBlocks(room, p, x, z, margin) {
 }
 
 test('the sheet: the Dutchman is a complex of the main deck and three decks below, each wearing site + part and no number; the register lists the ship once', () => {
-    assert.strictEqual(D.hqSiteComplex(SITE).join(','), [BOARD].concat(PART_IDS).join(','), 'hqSiteComplex = the deck, then the decks below in sheet order');
-    assert.strictEqual(D.hqComplexRooms().filter(id => D.hqRoomSite(id) === SITE).join(','), PART_IDS.join(','), 'the ship’s parts');
+    const ALL = PART_IDS.concat([BOARD + '_deck']);   // THE AREAS (2026-09-18): THE MAIN DECK, the generated area (hq-areas.test.js)
+    assert.strictEqual(D.hqSiteComplex(SITE).join(','), [BOARD].concat(ALL).join(','), 'hqSiteComplex = the deck, then the decks below in sheet order');
+    assert.strictEqual(D.hqComplexRooms().filter(id => D.hqRoomSite(id) === SITE).join(','), ALL.join(','), 'the ship’s parts');
     for (const p of PARTS) {
         const id = D.hqComplexRoomId(SITE, p), r = HQ.rooms[id];
         assert.ok(r && r.kind === 'box' && r.site === SITE && r.part === p, id + ': a box room wearing site + part');
@@ -189,7 +190,7 @@ test('THE PARK RULE + the light + the kit: a rail on every deck, a stepped ramp 
         assert.ok(lit >= 1 && lit <= 10, id + ': ' + lit + ' prop lights');
         for (const n of ['floor', 'wall', 'dado', 'trim', 'ceiling']) assert.ok(HQ.textures[S[n]] || TERRAIN_RULES[S[n]], id + ': texture ' + S[n]);
         assert.strictEqual(S.floor, 'wood_planks', id + ': a wooden ship');
-        assert.strictEqual(D.DOOR_TAPES.filter(t => t.where === id).length, 1, id + ': one tape');
+        assert.ok([1, 2].includes(D.DOOR_TAPES.filter(t => t.where === id).length) && (D.DOOR_TAPES.filter(t => t.where === id).length === 1 || Object.values(HQ.siteRooms.entry || {}).some(e => e.room === id)), id + ': one tape (two on the part that stands for a bypassed board — THE AREAS, 2026-09-18)');
     }
     assert.strictEqual(D.DOOR_TAPES.length, 100);
     /* the misc-kit rows: the same files _MISC_GLB names (the same-thing rule, MODEL_INDEX §9) */

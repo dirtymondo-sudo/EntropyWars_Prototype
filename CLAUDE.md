@@ -5795,3 +5795,36 @@ tier's face wants the ledge ≥ 8 m (L ≥ 2.2 h + 0.5 in + 0.7 in); a hard tape
 sees from the floor; a tape that must move comes off a BYPASSED board first (Cyberpunk's BILLBOARD → THE SURVEY). `npm test` runs
 `hq-leylines.test.js`; amended hq-terrain (54), hq-floor-plan (45, the kind), hq-ranch (11 hubs), disaster-city-3, hq-area51 / hq-city / hq-city-2 / hq-dumb (the re-homed tapes, the source pin), hq-deep (the token). Ship data.js to Render
 too (the finds ledger). NOT built: Technoticlan's part, the second-pass assets (MODEL_INDEX §3o). UNSEEN LIVE (RULE #1c): all of it.
+
+## THE AREAS — EVERY BOARD IS AN AREA (Room 64 excepted), THE MARKER, THE DOOR RULE (2026-09-18, local delivery)
+The user: "replace all board maps with areas, except for Room 64 (it is purposely a Δ map); the floating crystal icon somewhere in
+the center of the main area, or right by a weenie, with the option to battle on the delta map; no unnecessary doors to other
+areas — we just spent the time making the worlds / paths that connect them; keep hidden passages and weird doors like draughts
+and the telescope." **EVERY BUILT SITE BUT `prebuilt_training` IS BYPASSED** (`DOOR_HQ.siteRooms.entry`, 38 rows): the bay
+threshold lands you in a PART. The sites that had a complex keep it (the woods → THE CLEARING, whose `forest` hollow tree IS the
+bay door — an entry door row may carry `way` + `leaf: null`); the twenty that were a board room alone got ONE generated AREA each:
+data.js **`HQ_AREA_SPECS[mapId]`** (the block right before the built loop; `part`, size, sheets, `gen`, features, props, natives,
+lines, `plaza` / `marker`, `look`, `landmarks`) → **`hqAreaRoom(mapId, spec)`** (a terrain box room on THE COMPLEX BLUEPRINT: a
+`rooms` / `cave` / `halls` plan, the site's own EW_MAP_META sky through `hqAreaSky` + a fog per metre, a grade, THE PARK RULE, a
+weenie plateau with the hard tape pinned on it in `findSpots`, a `path` from the bay pad to THE PLAZA — never hand-edit the
+generated `site_<id>_<part>`; edit the spec) → **`hqBuildAreas()`** (runs before `hqApplySiteEntries`; a room authored by hand under
+the same id wins). The parts: levels · bowl · templecity · crystalcity · station · slopes · summit · cydonia · mare · grove ·
+village · plain · garden · halls · horizon · hexagon · grounds (the Haunted House's, the hall's `front` door lands on its `house`
+door) · innersun · deck (the Spaceship's, its `airlock` door) · deck (the Dutchman's, its `companionway`). **THE MARKER**: every
+entry part carries ONE counter `battle` (`proc: 'battle_marker'`, `site`, `overlay: 'crossing'` — the same terminal the board's
+console opened; post-match returns you to it) at the area's plaza or a weenie's foot; the older parts read **`HQ_AREA_MARKERS`**
+(measured reachable nodes — hq-areas' tool); **`hqAreaMarker(roomId)`** is the ONE read, `hqAreaRoomOf(mapId)` the entry part. The
+renderer needed nothing: a box room's counter stands on `_hqCaveTop` (the field's ground). **THE DOOR RULE**: a PLAIN-leaf door
+between two sites (`hqLinkPlain`) is gone unless **`HQ_AREA_KEPT_LEAVES`** names it with its reason (a docked collar, a tunnel that
+IS the route — the bases, the ley line, the subway, the highway roads — a site's only line, a facility door); PRUNED: `mars_moon`
+(Mars is the collar's FOURTH course, `mars_derelict`), `vatican_heaven`, `hollow_hell`, `atlantis_hollow`, `atlantis_agartha`,
+`shasta_agartha`, `antarctica_agartha`, `antarctica_northpole`. **A DRAUGHT** = `secret: true` on a links row — `hqLinkDoors` wears
+a hidden door at both ends (`leaf: null`, label A DRAUGHT; the renderer's wall slab; the map shows it once both rooms are seen):
+`vatican_hell` (the crypt's warm wall — "no door to hell in the Vatican") and `cern_backrooms` (NOT ON THE PLAN). Every link that
+stood on a bypassed board was RE-POINTED onto its area (ids kept). **THE TAPES**: no bypassed board keeps a tape — every board's
+row of `HQ_TAPE_SHEET` moved into its entry part (merged onto the part's row where one existed; the hundred stays a hundred; the
+ids changed with the rows — a prototype's claims, nobody's progress). **THE GRAPH**: `hqWorldGraph` sends a door into a bypassed
+board to the part (`hqSiteEntry`), so THE MAP, the directory guard and every reach test walk where the walker lands; the board
+rooms are still generated (the threshold's number, the Δ under the marker) but nobody stands in them. `npm test` runs
+`hq-areas.test.js` (the bypass, the marker on reachable ground (heavy), the door rule, the tapes, the stations). Ship data.js to
+R2 AND Render (the finds ledger). UNSEEN LIVE (RULE #1c): all twenty areas — DOOR_HQ_BUILD_PLAN §9 lists what to eyeball first.

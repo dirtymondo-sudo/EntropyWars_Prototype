@@ -105,19 +105,19 @@ test('legacy H-Wing exit and array back doors both survive repeated room generat
 });
 /* THE PROBE LINK: a plain wall-to-wall link with a Moon end (the Spaceship's two ends are DOCKED on
    the airlock's ONE collar since 2026-09-16 — hq-spaceship.test.js owns that contract) */
-const PLAIN = () => { const l = HQ.links.find(l => l.id === 'mars_moon'); assert.ok(l && !l.a.door && !l.b.door && !l.way, 'mars_moon is the plain probe link'); return l; };
+const PLAIN = () => { const l = HQ.links.find(l => l.id === 'flatlands_backrooms'); assert.ok(l && !l.a.door && !l.b.door && !l.way, 'flatlands_backrooms is the plain probe link'); return l; };   // THE AREAS (2026-09-18): mars_moon is a course on the collar now
 test('invalid or unbuilt link endpoints generate neither half of a broken connection',()=>{
  const saved=HQ.links, L=PLAIN();
  try {for(const patch of [{site:'missing',wall:'n',x:0},{site:'prebuilt_moon',part:'airlock',wall:'n',x:0},{site:'prebuilt_moon',wall:'e',x:0},{site:'prebuilt_moon',wall:'n',x:NaN},{site:'prebuilt_moon',door:'collar'},{site:'prebuilt_moon',door:'egress'}]) {
   HQ.links=[{...L,a:patch}];
   assert.equal(D.hqLinkDoors(D.hqSiteRoomId('prebuilt_moon')).length,0);
-  assert.equal(D.hqLinkDoors(D.hqSiteRoomId('prebuilt_mars')).length,0,'the Mars end is held with it');
+  assert.equal(D.hqLinkDoors(D.hqLinkRoom(L.b)).length,0,'the far end is held with it');
  }} finally{HQ.links=saved;}
 });
 test('THE SHIP\'S ONE DOOR: a DOCKED end generates no door, the far end lands AT the authored door, and only a ship door takes a dock',()=>{
  const saved=HQ.links, L=PLAIN(), AIR='site_prebuilt_derelict_airlock';
  try {
-  HQ.links=[{...L,b:{site:'prebuilt_derelict',part:'airlock',door:'collar'}}];
+  HQ.links=[{...L,leaf:'leaf_bulkhead',b:{site:'prebuilt_derelict',part:'airlock',door:'collar'}}];   // THE AREAS (2026-09-18): the probe wears the collar's leaf (the far end wears the row's)
   assert.equal(D.hqLinkDoors(AIR).length,0,'nothing generated at the docked end');
   const far=D.hqLinkDoors(D.hqLinkRoom(L.a))[0];
   assert.ok(far && far.action.room===AIR && far.action.at==='collar','the far end lands at the collar');
@@ -255,8 +255,8 @@ test('THE SECOND BATCH (rev 22): the mirror, the plunge pool, the two paintings,
  const nat=HQ.rooms.natatorium, plunge=nat.doors.find(d=>d.link==='natatorium_dutchman');
  assert.ok(!propBlocks(nat,nat.props.find(q=>q.key==='lap_pool'),plunge.x,plunge.z,0.9),'the plunge pool is sunk beside the lap pool, not in it');
  /* the Looking-Glass's mirror stands on the walkway strip, off the board, and the site is a station now */
- const lg=HQ.rooms[D.hqSiteRoomId('prebuilt_lookingglass')], mir=lg.doors.find(d=>d.link==='mirror_lookingglass');
- assert.ok(mir && mir.wall==='free' && Math.abs(mir.z)>lg.shell.grid.cells*lg.shell.grid.cell/2+0.4 && Math.abs(mir.z)<lg.shell.d/2-0.6,'the mirror stands on the north strip of the Looking-Glass');
+ const lg=HQ.rooms['site_prebuilt_lookingglass_garden'], mir=lg.doors.find(d=>d.link==='mirror_lookingglass');   // THE AREAS (2026-09-18): the mirror stands free in THE GARDEN
+ assert.ok(mir && mir.wall==='free' && Math.abs(mir.x)<lg.shell.w/2-0.6 && Math.abs(mir.z)<lg.shell.d/2-0.6,'the mirror stands free in the Looking-Glass garden');
  assert.ok(D.hqWorldRoutes('foyer').some(r=>r.stations.some(s=>s.site==='prebuilt_lookingglass')),'E4 is a station');
  /* the Bureau's gate rides the painting at BOTH ends */
  for(const rid of ['continuity','site_prebuilt_vatican_courtyard']){const d=HQ.rooms[rid].doors.find(x=>x.link==='bureau_vatican');   /* THE DIVINE STAIR, second pass (2026-09-18): the painting opens on THE CORTILE (the Vatican's board is bypassed) */assert.equal(d.minClearance,5);assert.equal(d.requiresKeys,24);assert.equal(D.doorSiteState(d,{}),'clearance');}
@@ -269,7 +269,7 @@ test('world graph reflects real directed doors and repeated reads do not change 
  assert.equal(graph.nodes.length,Object.keys(HQ.rooms).length);
  const edges=graph.edges.filter(e=>e.link);assert.equal(edges.length,HQ.links.length*2,'every link is live and makes two directed edges');
  for(const e of edges) {assert.ok(HQ.rooms[e.to].doors.some(d=>d.id===e.at));assert.ok(graph.edges.some(r=>r.from===e.to && r.to===e.from && r.door===e.at));}
- const moon=D.hqSiteRoomId('prebuilt_moon'), saturn=D.hqSiteRoomId('prebuilt_saturn');
+ const moon='site_prebuilt_moon_mare', saturn='site_prebuilt_saturn_hexagon';   // THE AREAS (2026-09-18): the areas, not the boards
  const seen=new Set([moon]), todo=[moon];while(todo.length){const at=todo.pop();for(const e of edges.filter(e=>e.from===at))if(!seen.has(e.to)){seen.add(e.to);todo.push(e.to);}}
  assert.ok(seen.has(saturn));assert.ok(seen.size>=5,'the Moon reaches Saturn and on down the line (rev 7: the lunar route joins the world)');
  const house='site_prebuilt_haunted_upstairs', seen2=new Set([house]), todo2=[house];while(todo2.length){const at=todo2.pop();for(const e of edges.filter(e=>e.from===at))if(!seen2.has(e.to)){seen2.add(e.to);todo2.push(e.to);}}
@@ -354,7 +354,8 @@ test('hqWorldRoutes chains every live link into a line: a leg per link, a statio
  assert.equal(D.hqWorldRoutes(null).flatMap(r=>r.stations).filter(s=>s.here).length,0);
  const sta=deep.stations.map(s=>s.no);
  assert.equal(sta[0],'1717','the Dutchman is the end the deep line is walked from');
- assert.ok(deep.stations.find(s=>s.no==='666').lines.includes('divine'),'Hell is on the deep and the divine lines');
+ assert.ok(!deep.stations.find(s=>s.no==='666'),'Hell left the deep line (THE AREAS, 2026-09-18: the inner sun\'s door to Hell is pruned)');
+ assert.ok(R.find(r=>r.id==='divine').stations.find(s=>s.no==='666').lines.includes('undercroft'),'Hell is on the divine (the draught) and the undercroft (the vent) lines');
  assert.equal(hw.stations.length,4,'Nuketown retired 2026-09-18');assert.ok(hw.stations.every(s=>s.label && !/PREBUILT/.test(s.label)));
  for(const r of R){const seen=new Set();for(const s of r.stations){assert.ok(!seen.has(s.room));seen.add(s.room);}
   for(const l of r.legs){assert.ok(seen.has(l.from)&&seen.has(l.to),r.id+' leg '+l.link+' off its line');}}
@@ -362,18 +363,18 @@ test('hqWorldRoutes chains every live link into a line: a leg per link, a statio
 test('the whole world is one piece: from the foyer every board room and every complex part is reached along doors (gates ignored), and every line is reached from the foyer',()=>{
  const g=D.hqWorldGraph(), adj={};g.edges.forEach(e=>{(adj[e.from]=adj[e.from]||[]).push(e.to);});
  const seen=new Set(['foyer']),todo=['foyer'];while(todo.length){const at=todo.pop();for(const to of adj[at]||[])if(!seen.has(to)){seen.add(to);todo.push(to);}}
- for(const id of HQ.siteRooms.built) assert.ok(seen.has(BOARD(id)),id);
+ for(const id of HQ.siteRooms.built) assert.ok(seen.has(D.hqAreaRoomOf(id)||BOARD(id)),id);   // THE AREAS (2026-09-18): the walker lands in the part
  for(const pid of D.hqComplexRooms()) assert.ok(seen.has(pid),pid);
  /* along the LINKS alone (no bays): the lunar line reaches the deep line only through the hall — the lines are not one line */
  const linkAdj={};g.edges.filter(e=>e.link).forEach(e=>{(linkAdj[e.from]=linkAdj[e.from]||[]).push(e.to);});
  const reach=(from)=>{const s=new Set([from]),t=[from];while(t.length){const a=t.pop();for(const b of linkAdj[a]||[])if(!s.has(b)){s.add(b);t.push(b);}}return s;};
- assert.ok(reach(BOARD('prebuilt_haunted')).has(BOARD('prebuilt_fairy_forest')),'the woods');
+ assert.ok(reach('site_prebuilt_haunted_grounds').has('site_prebuilt_fairy_forest_clearing'),'the woods (THE AREAS, 2026-09-18: from the grounds, through the ranch, into the clearing)');
  /* THE DEEP (2026-09-18): the line's two halves meet in ATLANTIS — the hold's hatch comes out in THE ABYSS, the abyss's vault door (a room door, not a link) opens on THE TEMPLE, and the temple's two dry seams go on to the inner sun and the pole */
  assert.ok(reach('site_prebuilt_revenge_hold').has('site_prebuilt_atlantis_abyss'),'the deep, from the hold: the hatch comes out on the sea floor');
  assert.ok(reach('site_prebuilt_revenge_hold').has('site_prebuilt_bermuda_sea'),'… and the upwelling comes up in the Triangle');
- assert.ok(reach('site_prebuilt_atlantis_temple').has(BOARD('prebuilt_northpole')),'the deep, from the temple: the dry seams reach the pole');
+ assert.ok(reach('site_prebuilt_atlantis_abyss').has('site_prebuilt_bermuda_sea'),'the deep, from the abyss: the upwelling reaches the Triangle (THE AREAS, 2026-09-18: the temple\'s dry seams are pruned)');
  assert.ok(!reach(BOARD('prebuilt_revenge')).has(BOARD('prebuilt_atlantis')),'no link leaves the main deck any more');
- assert.ok(reach(BOARD('prebuilt_mars')).has(BOARD('prebuilt_singularity')),'the lunar route, end to end');
+ assert.ok(reach('site_prebuilt_mars_cydonia').has('site_prebuilt_singularity_horizon'),'the lunar route, end to end (Cydonia → the collar → the hexagon → the drop)');
 });
 test('the directory draws THE WORLD: _hqWorldHtml renders every line as a subway map with a leg per link, a stop per station, the viewer filled, GO to every other station; the CSS carries the classes',()=>{
  const start=map.indexOf('        function _hqWorldHtml()'), end=map.indexOf('\n        }\n',start);

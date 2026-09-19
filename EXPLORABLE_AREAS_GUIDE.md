@@ -543,3 +543,14 @@ The design (build in this order; each step is one delivery):
   unreachable on foot). Not done: Technoticlan's own part (its ley end stays on its board), a Göbekli T-pillar GLB (the proc stands),
   the keystone glyphs as a texture, the niches' finds (an envelope per niche — 9.1's rule wants an inventory owner). Log:
   DOOR_HQ_BUILD_PLAN §9; assets: MODEL_INDEX §3o.
+- **2026-09-18 — THE AREAS (every board is an area, Room 64 excepted).** The rule is now the building's: a launch map is a PLACE
+  the walker stands in, never a box with a board on the floor — `siteRooms.entry` bypasses every built site's board room onto a
+  part, and the twenty sites that had no complex got a generated area each from one spec table (`HQ_AREA_SPECS` → `hqAreaRoom`,
+  data.js). The generator IS §1's blueprint in code: family A (`rooms` / `cave`) for the open ground and the caves, family C
+  (`halls`) for the indoor ones (the Backrooms, the Lodge), the site's own sky off its EW_MAP_META row, a fog per metre, a grade, a
+  path from the bay pad to THE PLAZA, a weenie with the hard tape on it, the park rule. THE MARKER (§4's crystal, the "battle on
+  the Δ" option) stands at the plaza or a weenie's foot in EVERY entry part. THE DOOR RULE (§7's spirit, now a test): a plain door
+  between two sites stays only as a designed seam — a way, a draught (`secret: true` on a links row), a docked collar, a tunnel
+  that is the route, a site's only line; the shortcuts that duplicated a built path are gone (hq-areas.test.js names them).
+  Adding a site today = the 7.10 checklist + an `HQ_AREA_SPECS` row (or a hand-authored complex) + an `entry` row; never a plain
+  door to a neighbour it already reaches by a path. Log: DOOR_HQ_BUILD_PLAN §9.

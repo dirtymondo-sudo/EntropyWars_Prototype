@@ -19834,24 +19834,24 @@ const DOOR_HQ = {
            bridge laid in (hqShipCourse). Adding a destination = another link with
            a docked end on the collar. */
         { id: 'moon_derelict', route: 'lunar', leaf: 'leaf_bulkhead',
-          a: { site: 'prebuilt_moon', wall: 'n', x: -5 },
+          a: { site: 'prebuilt_moon', part: 'mare', wall: 'n', x: -5 },   // THE AREAS (2026-09-18): on THE MARE
           b: { site: 'prebuilt_derelict', part: 'airlock', door: 'collar' },   // docked: the airlock's one collar (9.2 stage 2 had a port collar here)
           why: 'the lander\'s hatch and the docking collar are the same bore; the ship parked here once', note: 'the collar seals', draft: true },
         { id: 'derelict_saturn', route: 'lunar', leaf: 'leaf_bulkhead',
           a: { site: 'prebuilt_derelict', part: 'airlock', door: 'collar' },   // docked: the same collar, a different course
-          b: { site: 'prebuilt_saturn', wall: 'n', x: -5 },
+          b: { site: 'prebuilt_saturn', part: 'hexagon', wall: 'n', x: -5 },   // THE AREAS (2026-09-18): on THE HEXAGON
           why: 'the second collar opens onto the hexagon plateau; the ship swings past Saturn on every orbit', note: 'mind the ring plane', draft: true },
         { id: 'antarctica_derelict', route: 'lunar', leaf: 'leaf_bulkhead',   // 2026-09-18 (the user: "Antarctica is where the Spaceship is"): docked on the same collar — a third course
-          a: { site: 'prebuilt_antarctica', wall: 'n', x: -0.2, sub: 'THE HULL IN THE ICE · THE COLLAR' },
+          a: { site: 'prebuilt_antarctica', part: 'station', wall: 'n', x: -0.2, sub: 'THE HULL IN THE ICE · THE COLLAR' },   // THE AREAS (2026-09-18): on THE STATION
           b: { site: 'prebuilt_derelict', part: 'airlock', door: 'collar' },
           why: 'the ship is IN the ice — the hull under the station is the same hull the airlock is in; the collar opens on the crevasse it was found in', note: 'the ice creaks', draft: true },
-        { id: 'mars_moon', route: 'lunar', leaf: 'leaf_bulkhead',
-          a: { site: 'prebuilt_mars', wall: 'n', x: -5 },
-          b: { site: 'prebuilt_moon', wall: 'n', x: -10 },
+        { id: 'mars_derelict', route: 'lunar', leaf: 'leaf_bulkhead',   // THE AREAS (2026-09-18): the rover bay's hatch to the Moon was a plain door; Mars is a COURSE on the ship's collar now (the fourth)
+          a: { site: 'prebuilt_mars', part: 'cydonia', wall: 'n', x: -5, sub: 'THE ROVER BAY’S HATCH · THE COLLAR' },
+          b: { site: 'prebuilt_derelict', part: 'airlock', door: 'collar' },
           why: 'the rover bay\'s hatch; the rover is on the Martian board and the tracks lead here', note: 'the dust is finer on the far side', draft: true },
         { id: 'saturn_singularity', route: 'lunar', leaf: 'leaf_frame_only',
-          a: { site: 'prebuilt_saturn', wall: 'n', x: -10 },
-          b: { site: 'prebuilt_singularity', wall: 'n', x: -5 },
+          a: { site: 'prebuilt_saturn', part: 'hexagon', wall: 'n', x: -10 },   // THE AREAS (2026-09-18): the drop's frame on the hexagon's rim
+          b: { site: 'prebuilt_singularity', part: 'horizon', wall: 'n', x: -5 },
           why: 'the plateau ends; so does the arithmetic. A frame with nothing in it, and the Quarantined bay\'s site on the other side', note: 'the drop is the door', draft: true },
         /* THE DEEP */
         /* THE DEEP (2026-09-18 — the user: "make the Flying Dutchman connect to the underwater, not directly to Atlantis"): the hold's
@@ -19862,14 +19862,8 @@ const DOOR_HQ = {
           a: { site: 'prebuilt_revenge', part: 'hold', wall: 'w', z: 0, sub: 'THE HATCH BELOW THE WATERLINE · INTO THE DEEP' },   // 9.2 stage 3: the hatch is the hold's, not the deck's
           b: { site: 'prebuilt_atlantis', part: 'abyss', wall: 'w', z: 0, sub: 'THE WRECK\'S HATCH · UP INTO THE DUTCHMAN' },
           why: 'the hatch below the waterline opens on the sea floor, in the side of a wreck that is the same ship; the Dutchman sails over her own bones on every pass and something down there keeps the hatch oiled', note: 'wet, then wetter', draft: true },
-        { id: 'atlantis_hollow', route: 'deep', leaf: 'leaf_bulkhead',
-          a: { site: 'prebuilt_atlantis', part: 'temple', wall: 'n', x: -6, sub: 'THE FLOODED ADIT · DOWNHILL TO THE INNER SUN' },
-          b: { site: 'prebuilt_hollow_earth', wall: 'n', x: -10 },
-          why: 'the flooded adit behind the temple runs downhill; the water stops where the inner sun starts', note: 'the water stops', draft: true },
-        { id: 'atlantis_agartha', route: 'deep', leaf: 'leaf_portcullis',
-          a: { site: 'prebuilt_atlantis', part: 'temple', wall: 'n', x: 6, sub: 'THE DROWNED STAIR · DRY AT THE BOTTOM' },
-          b: { site: 'prebuilt_agartha', wall: 'n', x: -5 },
-          why: 'the drowned stair down from the temple comes up dry in the crystal city; the two builders shared a plan', note: 'the stair is dry at the bottom', draft: true },
+        /* atlantis_hollow — PRUNED 2026-09-18 (THE AREAS): a plain door that shortcut a built path */
+        /* atlantis_agartha — PRUNED 2026-09-18 (THE AREAS): a plain door that shortcut a built path */
         /* THE WHIRLPOOL (2026-09-18): the door from the sea to the deep — a `way` at BOTH ends, each its own kind (an end may name its
            own way): the maelstrom on the open sea, free in deep water east of the cay; the upwelling on the abyss floor at the foot of the
            drowned road. Sail, swim or fall in. */
@@ -19877,38 +19871,21 @@ const DOOR_HQ = {
           a: { site: 'prebuilt_bermuda', part: 'sea', wall: 'free', x: 22, z: -28, face: 180, way: 'whirlpool', sub: 'THE MAELSTROM · DOWN TO THE ABYSS' },
           b: { site: 'prebuilt_atlantis', part: 'abyss', wall: 'free', x: 40, z: -30, face: 180, way: 'upwelling', sub: 'THE UPWELLING · UP TO THE TRIANGLE' },
           why: 'the Triangle has always had a hole in it; the sea goes down the hole and comes up somewhere with no sky, and what goes down the hole comes up there too, rearranged', note: 'the compass points down', draft: true },
-        { id: 'shasta_agartha', route: 'deep', leaf: 'leaf_cell',
-          a: { site: 'prebuilt_shasta', wall: 'n', x: -5 },
-          b: { site: 'prebuilt_agartha', wall: 'n', x: -10 },
-          why: 'the Lemurian tunnel under the mountain; the Lemurians deny it exists and keep it swept', note: 'swept daily', draft: true },
-        { id: 'hollow_hell', route: 'deep', leaf: 'leaf_hell_arch',
-          a: { site: 'prebuilt_hollow_earth', wall: 'n', x: -0.2 },
-          /* THE DIVINE STAIR, second pass (2026-09-18): RE-POINTED off Hell's bypassed board onto THE PIT's east wall, at the floor of the descent */
-          b: { site: 'prebuilt_hell', part: 'pit', wall: 'e', z: 7, sub: 'THE WAY DOWN FROM THE INNER SUN · UP' },
-          why: 'the way down is the way in; below the inner sun the rock is warm and then it is not rock', note: 'the way down is the way in', draft: true },
-        { id: 'antarctica_agartha', route: 'deep', leaf: 'leaf_cell',
-          a: { site: 'prebuilt_antarctica', wall: 'n', x: -10 },
-          b: { site: 'prebuilt_agartha', wall: 'n', x: -0.2 },
-          why: 'the entrance under the ice; the 1947 survey marked it, the map was lost, and the crystal city kept its end of the corridor lit', note: 'the lost map', draft: true },
-        { id: 'antarctica_northpole', route: 'deep', leaf: 'leaf_frame_only',
-          a: { site: 'prebuilt_antarctica', wall: 'n', x: -5 },
-          b: { site: 'prebuilt_northpole', wall: 'n', x: -5 },
-          why: 'the two ends of one hole; the polar entrance is one door with a leaf in both ice walls', note: 'the same hole', draft: true },
+        /* shasta_agartha — PRUNED 2026-09-18 (THE AREAS): a plain door that shortcut a built path */
+        /* hollow_hell — PRUNED 2026-09-18 (THE AREAS): a plain door that shortcut a built path */
+        /* antarctica_agartha — PRUNED 2026-09-18 (THE AREAS): a plain door that shortcut a built path */
+        /* antarctica_northpole — PRUNED 2026-09-18 (THE AREAS): a plain door that shortcut a built path */
         /* THE DIVINE STAIR */
         { id: 'heaven_olympus', route: 'divine', leaf: 'leaf_frame_only',
           /* THE DIVINE STAIR, second pass (2026-09-18): RE-POINTED off Heaven's bypassed board onto THE CLOUD FIELDS' east wall */
           a: { site: 'prebuilt_heaven', part: 'gate', wall: 'e', z: 6, sub: 'A GATE OF CLOUD · THE OTHER MANAGEMENT' },
-          b: { site: 'prebuilt_olympus', wall: 'n', x: -5 },
+          b: { site: 'prebuilt_olympus', part: 'summit', wall: 'n', x: -5 },   // THE AREAS (2026-09-18): on THE SUMMIT
           why: 'a gate of cloud between the two managements; the stair only goes up, which is a problem for whoever is on top', note: 'a gate of cloud', draft: true },
-        { id: 'vatican_heaven', route: 'divine', leaf: 'leaf_vault',
-          /* THE DIVINE STAIR, second pass (2026-09-18): RE-POINTED off the two bypassed boards — the archive's elevator is IN THE ARCHIVE (its west wall) and comes out on the cloud fields' west wall */
-          a: { site: 'prebuilt_vatican', part: 'library', wall: 'w', z: 6, sub: 'THE ARCHIVE’S ELEVATOR · ONE BUTTON · UP' },
-          b: { site: 'prebuilt_heaven', part: 'gate', wall: 'w', z: 6, sub: 'THE ARCHIVE’S ELEVATOR · ONE BUTTON · DOWN' },
-          why: 'the archive\'s elevator has one button and it goes up; the archive filed the fact and sealed the file', note: 'one button', draft: true },
+        /* vatican_heaven — PRUNED 2026-09-18 (THE AREAS): a plain door that shortcut a built path */
         /* THE DIVINE STAIR (9.3 stage 6, 2026-09-17): the crypt link RE-POINTED off the two board rooms onto the
            parts — the catacombs' east wall IS the warm wall, the pit's west wall its other side (one row edit, the
            id kept so a charted route stays charted; both board lanes at x −10 went to the complex's back doors) */
-        { id: 'vatican_hell', route: 'divine', leaf: 'leaf_hell_arch',
+        { id: 'vatican_hell', route: 'divine', leaf: 'leaf_hell_arch', secret: true,   // THE AREAS (2026-09-18, the user: "there shouldn't be a door to hell in the vatican"): a DRAUGHT in the crypt's warm wall — a hidden passage, never a plated door
           a: { site: 'prebuilt_vatican', part: 'catacombs', wall: 'e', z: 4, sub: 'THE WARM WALL · DOWN' },
           /* second pass (2026-09-18): the pit's side of the warm wall is on its NORTH wall now, ON A LEDGE 2.5 m up (the west wall carries the descent's flights) — the crypt comes out high in Hell and goes DOWN again */
           b: { site: 'prebuilt_hell', part: 'pit', wall: 'n', x: 8, y: 2.5, sub: 'THE WARM WALL · UP · THE CRYPT' },
@@ -19939,10 +19916,10 @@ const DOOR_HQ = {
           a: { site: 'prebuilt_dumb', part: 'motorpool', wall: 'e', z: 0, sub: 'THE TUNNEL EAST · TO THE RING' },
           b: { site: 'prebuilt_cern', part: 'ring', wall: 'w', z: 0, sub: 'THE TUNNEL · BACK TO THE MOTOR POOL' },
           why: 'the same tunnel, the Atlantic under it; the ring is where the tunnel stops being straight', note: 'the tunnel turns', draft: true },
-        { id: 'cern_backrooms', route: 'bases', leaf: 'leaf_frosted',
+        { id: 'cern_backrooms', route: 'bases', leaf: 'leaf_frosted', secret: true,   // THE AREAS (2026-09-18): NOT ON THE PLAN — a secret service bay at both ends
           /* 2026-09-18: RE-POINTED off the board room onto THE RING's north wall (a service bay off the control room) — the board is bypassed */
           a: { site: 'prebuilt_cern', part: 'ring', wall: 'n', x: -12, sub: 'THE SERVICE BAY · NOT ON THE PLAN' },
-          b: { site: 'prebuilt_backrooms', wall: 'n', x: -5 },
+          b: { site: 'prebuilt_backrooms', part: 'levels', wall: 'w', z: 6, sub: 'THE SERVICE BAY · NOT ON THE PLAN' },   // THE AREAS (2026-09-18): on THE LEVELS' west wall
           why: 'the ring tunnel\'s noclip: an office door in a service bay that no plan shows; behind it the carpet is already humming (the second way into Bay 6\'s site, beside H-Wing)', note: 'not on the plan', draft: true },
         /* THE WOODS (HQ plan 9.3 stage 3, 2026-09-16): the three fence gates of
            rev 7 (haunted_skinwalker / skinwalker_grove / grove_fairy) RE-POINTED
@@ -19961,26 +19938,26 @@ const DOOR_HQ = {
            FIELDS now (route `ranch`); the pasture keeps its fence, its gap and its clearing door. The Lodge left Camelot's hall (the ley
            line) for the fields; the grove is the interchange — its woods gate stays, its ranch gate is new. */
         { id: 'ranch_haunted', route: 'ranch', way: 'deadtree',
-          a: { site: 'prebuilt_haunted', wall: 'n', x: -2.5 },
+          a: { site: 'prebuilt_haunted', part: 'grounds', wall: 'w', z: 4, sub: 'THE DEAD TREE · BY THE WEST FENCE' },   // THE AREAS (2026-09-18): on THE GROUNDS
           b: { site: 'prebuilt_skinwalker', part: 'fields', wall: 'n', x: -16, sub: 'THE DEAD TREE · THE HOLE LOOKS INTO THE HOUSE' },
           why: 'the dead tree in the corn has a hole in it and the hole is the house\'s garden; the tree stood in the pasture until the ranch fenced it', note: 'mind the hole', draft: true },
         { id: 'ranch_lodge', route: 'ranch', leaf: 'leaf_saloon',
-          a: { site: 'prebuilt_lodge', wall: 'n', x: -5, sub: 'THE BACK DOOR · ONTO THE FIELDS' },
+          a: { site: 'prebuilt_lodge', part: 'halls', wall: 'n', x: -5, sub: 'THE BACK DOOR · ONTO THE FIELDS' },   // THE AREAS (2026-09-18): off THE HALLS
           b: { site: 'prebuilt_skinwalker', part: 'fields', wall: 'n', x: -4, sub: 'THE SALOON DOOR · INTO THE LODGE' },
           why: 'the Lodge\'s back door was Camelot\'s once; the members voted and the door opens on the corn now, where the members are from', note: 'members only, both ways', draft: true },
         { id: 'ranch_grove', route: 'ranch', leaf: 'leaf_shabby_wood',
-          a: { site: 'prebuilt_bohemian_grove', wall: 'n', x: -5, sub: 'THE BACK GATE · ONTO THE FIELDS' },
+          a: { site: 'prebuilt_bohemian_grove', part: 'grove', wall: 'n', x: -5, sub: 'THE BACK GATE · ONTO THE FIELDS' },   // THE AREAS (2026-09-18): on THE GROVE
           b: { site: 'prebuilt_skinwalker', part: 'fields', wall: 'n', x: 8, sub: 'THE GROVE’S GATE · TO THE WOODS, THROUGH THE GROVE' },
           why: 'the grove is the ranch\'s neighbour and the woods\' — its back gate opens on the corn, its owl\'s gate on the redwood trail; the ranch reaches the woods through it', note: 'the owl counts you', draft: true },
         /* THE GRAVEYARD and THE WESTERN MAP (the user's ranch list) are NOT launch maps yet — their gates go on the fields' EAST wall
            (z 2 the lychgate, z −6 the western road) the day the sites are built; the sheet's rule is that every link is LIVE, so no held row */
         { id: 'woods_grove', route: 'woods', leaf: 'leaf_shabby_wood',
-          a: { site: 'prebuilt_bohemian_grove', wall: 'n', x: -10 },
+          a: { site: 'prebuilt_bohemian_grove', part: 'grove', wall: 'w', z: 0, sub: 'THE OWL’S GATE · TO THE WOODS' },   // THE AREAS (2026-09-18): the owl's gate on THE GROVE's west wall
           b: { site: 'prebuilt_fairy_forest', part: 'redwoods', wall: 'e', z: -0.875, sub: 'THE OWL’S GATE · TO THE GROVE' },
           why: 'the owl\'s gate at the back of the grove opens on the redwood trail; the members walk it once a year and come back smaller', note: 'the fourth gate', draft: true },
         { id: 'woods_shasta', route: 'woods', leaf: 'leaf_frame_only',
           a: { site: 'prebuilt_fairy_forest', part: 'trail', wall: 'n', x: -0.875, y: 3.5, sub: 'THE MOUNTAIN · THE LAST SWITCHBACK' },
-          b: { site: 'prebuilt_shasta', wall: 'n', x: -10 },
+          b: { site: 'prebuilt_shasta', part: 'slopes', wall: 'n', x: -10 },   // THE AREAS (2026-09-18): the frame on THE SLOPES
           why: 'the trail up out of the woods tops out at a frame in the snow line; the mountain was over the trees the whole way up, and now it is under your feet', note: 'the white thing over the trees', draft: true },
         { id: 'woods_stair', route: 'woods', leaf: 'leaf_exit',
           a: { site: 'prebuilt_fairy_forest', part: 'stair', wall: 'n', x: -0.875, y: 3.5, sub: 'THE DOOR AT THE TOP · INTO THE BUILDING' },
@@ -19995,18 +19972,18 @@ const DOOR_HQ = {
           b: { room: 'ritual', wall: 'e', z: 0, sub: 'THE CIRCLE · THE RITUAL GROUND' },
           why: 'the chalk circle in Room 333 and the circle between the stones are one circle drawn from two sides; step over the line indoors and you are outdoors, downwind of the candles', note: 'one circle, two sides', draft: true },
         { id: 'fairy_camelot', route: 'woods', way: 'pool',
-          a: { site: 'prebuilt_fairy_forest', wall: 'free', x: 10, z: -11.5, face: 90, sub: 'THE SPRING · SURFACE IN THE MOAT' },
+          a: { site: 'prebuilt_fairy_forest', part: 'clearing', wall: 'free', x: 4, z: 11.5, face: 90, sub: 'THE SPRING · SURFACE IN THE MOAT' },   // THE AREAS (2026-09-18): the spring is IN THE CLEARING, by the stream (the board is bypassed)
           b: { site: 'prebuilt_camelot', part: 'ward', wall: 'free', x: -43, z: -10, face: 90, sub: 'THE MOAT · SURFACE IN THE SPRING' },   // CAMELOT CASTLE (2026-09-18): on the moat's west bank in THE OUTER WARD (the board room is bypassed)
           why: 'the spring in the fairy forest and the castle moat share their water; dive in the woods and surface under the battlements, which the besiegers should have found suspicious', note: 'the same water', draft: true },
         /* THE DEAD TREE'S OTHER SIDE (2026-09-17): the dead tree on the ritual ground — its hole looks onto the Looking-Glass's marble */
         { id: 'deadtree_lookingglass', route: 'seams', way: 'deadtree',
           a: { site: 'prebuilt_fairy_forest', part: 'ritual', wall: 'free', x: 7.0, z: 6.5, face: 300, sub: 'THE DEAD TREE · THE HOLE LOOKS ONTO MARBLE' },
-          b: { site: 'prebuilt_lookingglass', wall: 'free', x: 4.0, z: -8.0, face: 90, sub: 'THE DEAD TREE · BACK TO THE WOODS' },
+          b: { site: 'prebuilt_lookingglass', part: 'garden', wall: 'free', x: 10, z: -14, face: 90, sub: 'THE DEAD TREE · BACK TO THE WOODS' },   // THE AREAS (2026-09-18): free in THE GARDEN
           why: 'the dead tree at the edge of the ritual ground has a hole in it the size of a door, and through it the ground is marble and the sky is a chessboard\'s; the members call it the second circle', note: 'do not agree to a game', draft: true },
         /* THE LEY LINE */
         /* CAMELOT KINGDOM (2026-09-18): the North Pole is the kingdom's — the sleigh road ends at the outer ward's east gate; the Lodge left the ley line for the ranch the same day */
         { id: 'northpole_camelot', route: 'kingdom', leaf: 'leaf_frame_only',
-          a: { site: 'prebuilt_northpole', wall: 'n', x: -0.2, sub: 'THE SLEIGH ROAD · TO CAMELOT' },
+          a: { site: 'prebuilt_northpole', part: 'village', wall: 'n', x: -0.2, sub: 'THE SLEIGH ROAD · TO CAMELOT' },   // THE AREAS (2026-09-18): out of THE VILLAGE
           b: { site: 'prebuilt_camelot', part: 'ward', wall: 'e', z: 24, sub: 'THE EAST GATE · THE SLEIGH ROAD NORTH' },   // on the approach, outside the moat (the moat is never crossed but by the drawbridge)
           why: 'the crown\'s roads run north until the snow; the pole keeps the crown\'s workshop and the crown keeps the pole\'s road', note: 'the snow is the kingdom\'s too', draft: true },
         /* THE LEY LINES (2026-09-18 — complex candidate #9): the four ley links RE-POINTED (their ids kept, one row edit each): every station's tunnel
@@ -20026,7 +20003,7 @@ const DOOR_HQ = {
           why: 'the line ends at the tower; the tower was built to stand on it, which is what went wrong', note: 'the line ends here', draft: true },
         { id: 'babel_technoticlan', route: 'ley', leaf: 'leaf_portcullis',
           a: { site: 'prebuilt_gobekli', part: 'leylines', wall: 'e', z: 20, sub: 'THE EAST MOUTH · UP INTO THE TEMPLE CITY' },
-          b: { site: 'prebuilt_technoticlan', wall: 'n', x: -5, sub: 'THE OTHER STAIR · DOWN THE LINE' },
+          b: { site: 'prebuilt_technoticlan', part: 'templecity', wall: 'n', x: -5, sub: 'THE OTHER STAIR · DOWN THE LINE' },   // THE AREAS (2026-09-18): up into THE TEMPLE CITY
           why: 'the tower\'s other stair comes out in the temple city; the builders kept climbing after the languages went, and the line kept going east under an ocean it does not believe in', note: 'the other stair', draft: true },
         /* THE HIGHWAY */
         /* THE ROADS OUT (2026-09-17, THE URBAN PACK): the highway's doors were hotel / suburban / glass leaves on the Downtown
@@ -20043,15 +20020,15 @@ const DOOR_HQ = {
           b: { site: 'prebuilt_cyberpunk', part: 'streets', wall: 'e', z: 0, sub: 'THE CROSS · EAST · THE STRIP' },
           why: 'the same road, later; the last exit is the city the Strip was practising for', note: 'the last exit', draft: true },
         { id: 'stadium_downtown', route: 'highway', way: 'road',
-          a: { site: 'prebuilt_stadium', wall: 'n', x: -5, sub: 'THE STADIUM ROAD · DISASTER CITY' },
+          a: { site: 'prebuilt_stadium', part: 'bowl', wall: 'n', x: -5, sub: 'THE STADIUM ROAD · DISASTER CITY' },   // THE AREAS (2026-09-18): the road out of THE BOWL
           b: { site: 'prebuilt_downtown', part: 'streets', wall: 'n', x: 0, sub: 'THE AVENUE · NORTH · THE STADIUM' },
           why: 'the parking structure joins the stadium to the block; on game day the road is the crowd', note: 'the parking structure', draft: true },
         /* THE WONDERLAND (the Looking-Glass has no free wall for a landing
            yet — its room is nine metres across and a door would land on the
            board; it joins the route when its room grows or 9.5 reaches it) */
         { id: 'flatlands_backrooms', route: 'wonderland', leaf: 'leaf_frosted',
-          a: { site: 'prebuilt_flatlands', wall: 'n', x: -5 },
-          b: { site: 'prebuilt_backrooms', wall: 'n', x: -10 },
+          a: { site: 'prebuilt_flatlands', part: 'plain', wall: 'n', x: -5 },   // THE AREAS (2026-09-18): THE PLAIN ⇄ THE LEVELS
+          b: { site: 'prebuilt_backrooms', part: 'levels', wall: 'n', x: -10 },
           why: 'a plane onto a carpet; the flat people found a door with no thickness and walked into a room with too much', note: 'no thickness', draft: true },
         /* THE SEAMS (rev 6) */
         { id: 'haunted_camelot', route: 'seams', way: 'wardrobe',
@@ -20199,7 +20176,7 @@ const DOOR_HQ = {
            door. Every line is Claude's DRAFT (A15 — the user rewrites). */
         { id: 'mirror_lookingglass', route: 'seams', way: 'mirror',
           a: { room: 'barbershop', wall: 'e', z: 0.6 },
-          b: { site: 'prebuilt_lookingglass', wall: 'free', x: -7.2, z: -8.0, face: 90, sub: 'THE MIRROR · BACK TO THE BARBERSHOP' },
+          b: { site: 'prebuilt_lookingglass', part: 'garden', wall: 'free', x: -12, z: -14, face: 90, sub: 'THE MIRROR · BACK TO THE BARBERSHOP' },   // THE AREAS (2026-09-18): free in THE GARDEN
           why: 'the full-length mirror by the sink shows a marble floor and a sky with no ceiling; the barber says not to look at it while he is cutting and will not say why',
           note: 'it does not reflect the room', draft: true },
         { id: 'natatorium_dutchman', route: 'seams', way: 'pool',
@@ -20218,8 +20195,8 @@ const DOOR_HQ = {
           why: 'the water goes over the weir and nobody said where; the lifeguard is not certified for the edge and the Triangle is where the water was going',
           note: 'you surface in the tide pool by the buoy, dry', draft: true },
         { id: 'lodge_olympus', route: 'seams', way: 'painting',
-          a: { site: 'prebuilt_lodge', wall: 'n', x: -0.2 },
-          b: { site: 'prebuilt_olympus', wall: 'n', x: -0.2 },
+          a: { site: 'prebuilt_lodge', part: 'halls', wall: 'e', z: 0 },   // THE AREAS (2026-09-18): the painting on THE HALLS' east wall ⇄ THE SUMMIT
+          b: { site: 'prebuilt_olympus', part: 'summit', wall: 'n', x: -0.2 },
           why: 'the painting over the mantel in the sanctum is of a mountain with a city on it; the city has lights on at night, which the painting should not know',
           note: 'the frame is warm', draft: true },
         { id: 'bureau_vatican', route: 'seams', way: 'painting', gate: { minClearance: 5, requiresKeys: 24 },
@@ -20229,13 +20206,13 @@ const DOOR_HQ = {
           why: 'the Bureau keeps one painting for reference: a colonnade and a square, in case the record and the square ever disagree; the square is on the other side of it',
           note: 'the Bureau\'s own gate hangs on it', draft: true },
         { id: 'northpole_haunted', route: 'seams', way: 'fireplace',
-          a: { site: 'prebuilt_northpole', wall: 'n', x: -10 },
+          a: { site: 'prebuilt_northpole', part: 'village', wall: 'n', x: -10 },   // THE AREAS (2026-09-18): the hearth in THE VILLAGE
           b: { site: 'prebuilt_haunted', part: 'hall', wall: 'e', z: 0.1 },
           why: 'the chimney at the Pole comes out in a house that is not on the route; the fire in the hall burns green when it is coming and the soot on the hearth is from a colder place',
           note: 'the flame goes green', draft: true },
         { id: 'observatorium_singularity', route: 'seams', way: 'screen',
           a: { room: 'observatorium', wall: 'w', z: 3.4 },
-          b: { site: 'prebuilt_singularity', wall: 'n', x: -0.2 },
+          b: { site: 'prebuilt_singularity', part: 'horizon', wall: 'n', x: -0.2 },   // THE AREAS (2026-09-18): the screen on THE HORIZON
           why: 'the projection screen shows the feed from Room 0 when the projector is off; the static has a shape in it and the shape has a way in',
           note: 'signal lost', draft: true },
         /* THE FOUR EXITS: the cave has several ways out, and each one is a
@@ -20255,12 +20232,12 @@ const DOOR_HQ = {
           note: 'LEVEL −6', draft: true },
         { id: 'cave_agartha', route: 'undercroft', leaf: 'leaf_frame_only',
           a: { site: 'prebuilt_hollow_earth', part: 'adit', wall: 's', x: 0 },
-          b: { site: 'prebuilt_agartha', wall: 'n', x: -14.5 },
+          b: { site: 'prebuilt_agartha', part: 'crystalcity', wall: 'n', x: -5 },   // THE AREAS (2026-09-18): the adit comes out in THE CRYSTAL CITY
           why: 'the adit the crystal city cut toward the cave and stopped one metre short of; something opened the last metre from this side',
           note: 'one metre, from this side', draft: true },
         { id: 'cave_hollow', route: 'undercroft', leaf: 'leaf_frame_only',
           a: { site: 'prebuilt_hollow_earth', part: 'mouth', wall: 'e', z: -5.25, y: 1.75 },
-          b: { site: 'prebuilt_hollow_earth', wall: 'n', x: -5 },
+          b: { site: 'prebuilt_hollow_earth', part: 'innersun', wall: 'n', x: -5 },   // THE AREAS (2026-09-18): the mouth opens on THE INNER SUN
           why: 'the cave mouth: the complex\'s own way in and out, opening on the inner sun with the whole country under it',
           note: 'the inner sun', draft: true },
     ],
@@ -20320,6 +20297,29 @@ const DOOR_HQ = {
             prebuilt_gobekli:    { room: 'site_prebuilt_gobekli_tell',         door: { id: 'bay', wall: 's', x: 0 } },
             prebuilt_giza:       { room: 'site_prebuilt_giza_plateau',         door: { id: 'bay', wall: 's', x: 0 } },
             prebuilt_babel:      { room: 'site_prebuilt_babel_tower',          door: { id: 'bay', wall: 's', x: 0 } },
+            /* THE AREAS (2026-09-18 — the user: "replace all board maps with areas, except for Room 64"): every remaining board is bypassed —
+               the twenty generated areas (HQ_AREA_SPECS → hqBuildAreas) and the woods' clearing (its hollow tree IS the bay door) */
+            prebuilt_backrooms:           { room: 'site_prebuilt_backrooms_levels',           door: { id: 'bay', wall: 's', x: 0 } },
+            prebuilt_stadium:             { room: 'site_prebuilt_stadium_bowl',               door: { id: 'bay', wall: 's', x: 0 } },
+            prebuilt_technoticlan:        { room: 'site_prebuilt_technoticlan_templecity',    door: { id: 'bay', wall: 's', x: 0 } },
+            prebuilt_agartha:             { room: 'site_prebuilt_agartha_crystalcity',        door: { id: 'bay', wall: 's', x: 0 } },
+            prebuilt_antarctica:          { room: 'site_prebuilt_antarctica_station',         door: { id: 'bay', wall: 's', x: 0 } },
+            prebuilt_shasta:              { room: 'site_prebuilt_shasta_slopes',              door: { id: 'bay', wall: 's', x: 0 } },
+            prebuilt_olympus:             { room: 'site_prebuilt_olympus_summit',             door: { id: 'bay', wall: 's', x: 0 } },
+            prebuilt_mars:                { room: 'site_prebuilt_mars_cydonia',               door: { id: 'bay', wall: 's', x: 0 } },
+            prebuilt_moon:                { room: 'site_prebuilt_moon_mare',                  door: { id: 'bay', wall: 's', x: 0 } },
+            prebuilt_bohemian_grove:      { room: 'site_prebuilt_bohemian_grove_grove',       door: { id: 'bay', wall: 's', x: 0 } },
+            prebuilt_northpole:           { room: 'site_prebuilt_northpole_village',          door: { id: 'bay', wall: 's', x: 0 } },
+            prebuilt_flatlands:           { room: 'site_prebuilt_flatlands_plain',            door: { id: 'bay', wall: 's', x: 0 } },
+            prebuilt_lookingglass:        { room: 'site_prebuilt_lookingglass_garden',        door: { id: 'bay', wall: 's', x: 0 } },
+            prebuilt_lodge:               { room: 'site_prebuilt_lodge_halls',                door: { id: 'bay', wall: 's', x: 0 } },
+            prebuilt_singularity:         { room: 'site_prebuilt_singularity_horizon',        door: { id: 'bay', wall: 's', x: 0 } },
+            prebuilt_saturn:              { room: 'site_prebuilt_saturn_hexagon',             door: { id: 'bay', wall: 's', x: 0 } },
+            prebuilt_haunted:             { room: 'site_prebuilt_haunted_grounds',            door: { id: 'bay', wall: 's', x: 0 } },
+            prebuilt_hollow_earth:        { room: 'site_prebuilt_hollow_earth_innersun',      door: { id: 'bay', wall: 's', x: 0 } },
+            prebuilt_derelict:            { room: 'site_prebuilt_derelict_deck',              door: { id: 'bay', wall: 's', x: 0 } },
+            prebuilt_revenge:             { room: 'site_prebuilt_revenge_deck',               door: { id: 'bay', wall: 's', x: 0 } },
+            prebuilt_fairy_forest: { room: 'site_prebuilt_fairy_forest_clearing', door: { id: 'forest', wall: 's', x: -0.875, way: 'hollowtree', leaf: null } },   // the clearing's hollow tree, worn as the bay door
         },
         backDoors: {
             /* THE WOODS (9.3 stage 3, 2026-09-16): the forest is the board room
@@ -34537,6 +34537,7 @@ function hqLinkDoors(roomId) {
                (the well room's heads: THE GARDEN WELL · CLIMB UP) */
             sub: end.sub || (wear.way ? (wear.cat.sub || 'STEP THROUGH') : 'WALK THROUGH'), action: { room: to, at: other.door ? other.door : 'link_' + link.id } };   // the far end lands AT a docked end's own door
         if (wear.way) d.way = wear.way;
+        if (link.secret || end.secret) { d.secret = true; d.leaf = null; d.label = 'A DRAUGHT'; d.sub = 'A DOOR THAT IS NOT ON A PLATE · ' + String(toRoom.label || to).toUpperCase(); }   // THE AREAS (2026-09-18): a DRAUGHT — a link that is a hidden passage at both ends (the renderer hangs a wall slab; the map shows it once both rooms are seen)
         if (end.verb) d.verb = String(end.verb);
         if (link.why) d.why = link.why;
         if (link.note) d.note = link.note;
@@ -34642,6 +34643,9 @@ function hqWorldGraph() {
                 minClearance: d.minClearance || 0, requiresKeys: d.requiresKeys || 0 }));
             return;
         }
+        /* THE AREAS (2026-09-18): a door into a BYPASSED board room lands in the part that stands for the site (map.js _hqEnter's
+           own redirect, hqSiteEntry) — the graph's edge goes where the walker actually lands, never to the board nobody stands in */
+        if (to && typeof hqSiteEntry === 'function') { const ent = hqSiteEntry(to, at); if (ent && ent.room && rooms[ent.room]) { to = ent.room; at = ent.at; } }
         if (to) edges.push({ from: id, door: d.id, to: to, at: at, link: d.link || null,
             minClearance: d.minClearance || 0, requiresKeys: d.requiresKeys || 0 });
     }));
@@ -34875,7 +34879,7 @@ function hqMapRoomNo(roomId) {
     const r = (DOOR_HQ.rooms || {})[roomId];
     if (!r) return '';
     if (r.roomNo != null) return hqRoomNoStr(r.roomNo);
-    if (r.site && r.part) return '';
+    if (r.site && r.part) { const e = (typeof hqSiteEntryOf === 'function') ? hqSiteEntryOf(r.site) : null; return (e && e.room === roomId) ? (hqRoomNo(hqSiteId(r.site)) || '') : ''; }   // THE AREAS (2026-09-18): the part that stands for a bypassed site wears the site's number on the map; any other part none
     return hqRoomNo(roomId) || '';
 }
 /* THE GRAPH: every room reachable from the foyer (the stage-1 bay rooms
@@ -35007,7 +35011,7 @@ function hqMapLayout(graph) {
     [ringId(0), ringId(1)].forEach(rid => ((rooms[rid] || {}).doors || []).forEach(d => {
         const act = d.action || {};
         if (!act.mission) return;
-        const site = hqSiteId(act.mission), sr = hqSiteRoomId(site);
+        const site = hqSiteId(act.mission), ent = (typeof hqSiteEntryOf === 'function') ? hqSiteEntryOf(site) : null, sr = (ent && rooms[ent.room]) ? ent.room : hqSiteRoomId(site);   // THE AREAS (2026-09-18): a bypassed site's node is its entry part
         if (!rooms[sr] || pos[sr]) return;
         const sR = L.siteR[rid === ringId(1) ? 1 : 0];
         const p = polar(d.deg || 0, sR);
@@ -35020,7 +35024,7 @@ function hqMapLayout(graph) {
     const doorKinds = { door: 1, secret: 1, lift: 1 };
     const walk = (allowSeams) => {
         let q = Object.keys(pos).filter(id => !pos[id].ring).sort((a, b) => seedQ.indexOf(a) - seedQ.indexOf(b));
-        const roomsOrder = id => ((rooms[id] || {}).doors || []).map(d => { const a = d.action || {}; return a.room || (a.sector ? hqBayId(a.sector) : (a.mission ? hqSiteRoomId(hqSiteId(a.mission)) : null)); }).filter(Boolean);
+        const roomsOrder = id => ((rooms[id] || {}).doors || []).map(d => { const a = d.action || {}; return a.room || (a.sector ? hqBayId(a.sector) : (a.mission ? ((typeof hqSiteEntryOf === 'function' && hqSiteEntryOf(a.mission) && rooms[hqSiteEntryOf(a.mission).room]) ? hqSiteEntryOf(a.mission).room : hqSiteRoomId(hqSiteId(a.mission))) : null)); }).filter(Boolean);
         while (q.length) {
             /* level by level across EVERY seed (the nearest walk claims a room, not the earliest seed) */
             let bi = 0; for (let i = 1; i < q.length; i++) if (pos[q[i]].depth < pos[q[bi]].depth) bi = i;
@@ -35198,7 +35202,562 @@ function hqReplateDoors() {
     }));
     return n;
 }
+/* ═══════════════════════════════════════════════════════════════════════
+   THE AREAS — every board map is an AREA (2026-09-18, the user: "replace all
+   board maps with areas, except for Room 64 — there should still be the
+   floating crystal icon somewhere in the center of the main area, or right by
+   a weenie, with the option to battle on the delta map; no unnecessary doors
+   to other areas — we just spent the time making the worlds / paths that
+   connect them")
+   Every built site but the Training Room is BYPASSED (siteRooms.entry): the
+   bay threshold lands you in a PART that stands for the site. The sites that
+   already had a complex keep it (the entry is one of its parts); the twenty
+   that were a board room alone get ONE generated AREA each from the spec
+   table below — HQ_AREA_SPECS → hqAreaRoom(mapId, spec) → a terrain room on
+   the COMPLEX BLUEPRINT (a generated floor plan, the site's own sky off its
+   EW_MAP_META row, a grade, the park rule, a weenie with the hard tape on it)
+   registered as `site_<mapId>_<part>` by hqBuildAreas() before the entries
+   are applied. THE MARKER: every entry part carries the CROSSING's beacon —
+   a counter `battle` (`proc: 'battle_marker'`, `site`, `overlay: 'crossing'`
+   — the same terminal the board room's console opened, the return spot
+   post-match) at the area's PLAZA or at its weenie's foot; hqAreaMarker
+   (roomId) is the ONE read; HQ_AREA_MARKERS pins the spot on the parts that
+   were built before this rule (measured: a reachable node of the walker's
+   own field). hqAreaSites() lists every bypassed site; hqAreaRoomOf(mapId)
+   its entry part. THE DOOR RULE (hqLinkPlain / the test): a plain-leaf door
+   between two sites is gone unless it is the DESIGNED seam — a `way`, a
+   SECRET door (a draught: `secret: true` on a links row — hqLinkDoors wears
+   it at both ends), a DOCKED collar, a tunnel that is the route itself (the
+   bases, the ley line, the subway, the highway roads), or a site's only way
+   onto its line. HQ_AREA_KEPT_LEAVES names the plain links that stay, with
+   the reason; anything else with a `leaf` at both ends fails hq-areas.test.
+   ═══════════════════════════════════════════════════════════════════════ */
+const HQ_AREA_RULES = { markerR: 2.3, plateY: 2.35, plazaR: 5.5, tapeH: 4.2 };
+/* a plain-leaf link between two SITES that stays, and why (everything else plain between two sites is pruned — the test insists) */
+const HQ_AREA_KEPT_LEAVES = {
+    moon_derelict: 'docked on the ship\'s collar — a course, not a door',
+    derelict_saturn: 'docked on the ship\'s collar',
+    antarctica_derelict: 'docked on the ship\'s collar',
+    mars_derelict: 'docked on the ship\'s collar (the fourth course; the rover bay\'s hatch to the Moon is gone)',
+    saturn_singularity: 'THE DROP — the lunar line\'s end; a frame with nothing in it on the plateau\'s rim',
+    revenge_atlantis: 'the hold\'s hatch below the waterline — the Dutchman lies on the abyss floor',
+    area51_dumb: 'THE TUNNEL is the route (the bases)',
+    dumb_cern: 'THE TUNNEL is the route (the bases)',
+    cern_backrooms: 'a SECRET service bay — not on the plan',
+    ranch_lodge: 'THE RANCH: the saloon door onto the corn is the Lodge\'s only gate',
+    ranch_grove: 'THE RANCH: the grove\'s back gate is the interchange to the woods',
+    woods_grove: 'THE WOODS: the owl\'s gate off the redwood trail',
+    woods_shasta: 'THE WOODS: the trail tops out on the mountain — a door you climb to',
+    woods_stair: 'a facility stair', woods_sewer: 'a facility grate', woods_ritual: 'a facility circle',
+    northpole_camelot: 'CAMELOT KINGDOM: the sleigh road is the Pole\'s only road',
+    stonehenge_gobekli: 'THE LEY LINE is the tunnel', gobekli_giza: 'THE LEY LINE is the tunnel', giza_babel: 'THE LEY LINE is the tunnel', babel_technoticlan: 'THE LEY LINE is the tunnel',
+    flatlands_backrooms: 'THE WONDERLAND: a door with no thickness — the plain\'s only way anywhere',
+    heaven_olympus: 'THE DIVINE STAIR: the gate of cloud is Olympus\'s only line',
+    skycastle_stair: 'THE SKY BRIDGE between two things in the same sky',
+    vatican_hell: 'a SECRET draught in the crypt\'s warm wall (the divine stair is the way; the wall is the hint)',
+    garage_motorpool: 'a facility ramp', tunnels_works: 'a facility tunnel', tunnels_platform: 'the subway line', cells_dungeon: 'a facility wall', workings_oubliette: 'THE DUNGEONS', sewers_drain: 'THE SEWERS',
+    cave_hell: 'THE UNDERCROFT: the vent chamber IS the way to Hell', cave_dumb: 'THE UNDERCROFT: the blast chamber', cave_agartha: 'THE UNDERCROFT: the adit', cave_hollow: 'THE UNDERCROFT: the cave\'s own mouth onto the inner sun',
+    streets_strip: 'DISASTER CITY: the chapel\'s parking lot off the streets (one city)',
+    tunnel_cyberpunk: 'the train', subway_downtown: 'the train',
+};
+/* is a link a PLAIN door between two different sites (no way at either end, not docked, not secret)? */
+function hqLinkPlain(link) {
+    if (!link || link.way || link.secret) return false;
+    const ends = [link.a, link.b];
+    if (ends.some(e => !e || e.room || e.door || e.way || e.secret)) return false;
+    const sa = hqSiteId(link.a.site), sb = hqSiteId(link.b.site);
+    return !!(sa && sb && sa !== sb);
+}
+/* THE MARKER on the parts that were built before the rule (a reachable node of the walker's field, measured by hq-areas' tool) */
+const HQ_AREA_MARKERS = {
+    site_prebuilt_cyberpunk_streets: { x: 0, z: 0 },   // THE GRID: the intersection at the plaza
+    site_prebuilt_strip_streets: { x: 0, z: -3.5 },   // THE STRIP: the boulevard
+    site_prebuilt_downtown_streets: { x: -2, z: -2.5 },   // DISASTER CITY: the plaza
+    site_prebuilt_dumb_motorpool: { x: 0, z: 0 },   // LEVEL P3: the hall
+    site_prebuilt_cern_ring: { x: 26, z: 0 },   // THE RING: on the ring hall (the centre is the machine)
+    site_prebuilt_area51_hangar: { x: 0, z: 0 },   // HANGAR 18: the floor under the rig
+    site_prebuilt_vatican_basilica: { x: 0, z: 0 },   // THE BASILICA: the crossing
+    site_prebuilt_hell_pit: { x: -0.5, z: 0 },   // THE PIT: the bowl floor
+    site_prebuilt_heaven_gate: { x: -1.5, z: 1 },   // THE CLOUD FIELDS: under the dais
+    site_prebuilt_camelot_ward: { x: 0, z: -4 },   // THE OUTER WARD: the bailey
+    site_prebuilt_skinwalker_fields: { x: -4, z: 6 },   // THE CORN FIELDS: by the circle
+    site_prebuilt_bermuda_sea: { x: -1, z: 28 },   // THE OPEN SEA: on the cay
+    site_prebuilt_atlantis_temple: { x: 0, z: 0 },   // THE TEMPLE: the dais
+    site_prebuilt_stonehenge_henge: { x: 0, z: -14 },   // THE PLAIN: up the avenue from the circle
+    site_prebuilt_gobekli_tell: { x: 0, z: 0 },   // THE TELL: its top
+    site_prebuilt_giza_plateau: { x: 2, z: 1 },   // THE PLATEAU: at the pyramid's foot
+    site_prebuilt_babel_tower: { x: 0, z: 0 },   // THE TOWER: the top tier (the weenie)
+    site_prebuilt_fairy_forest_clearing: { x: 0.5, z: -1.2 },   // THE CLEARING: the crossroads
+};
+/* the sky of an area = the site's own EW_MAP_META env (the board room's rule, hqSiteRoom) + a fog per metre + the weenies */
+function hqAreaSky(meta, A) {
+    const env = (meta && meta.env) || {};
+    const sky = Object.assign({ night: A.night ? 1 : 0 }, env);
+    sky.fog = Object.assign({}, env.fog || {}, { density: (A.fogD != null) ? A.fogD : 0.022 });
+    if (A.landmarks && A.landmarks.length) sky.landmarks = A.landmarks.map(l => Object.assign({}, l));
+    delete sky.motion;   // the building is still (the renderer zeroes it anyway)
+    return sky;
+}
+function _hqAreaHex(s, dflt) { if (typeof s === 'number') return s; if (typeof s === 'string' && /^#[0-9a-f]{6}$/i.test(s)) return parseInt(s.slice(1), 16); return dflt; }
+/* one AREA from its spec: a terrain room on the blueprint */
+function hqAreaRoom(mapId, A) {
+    const id = hqSiteId(mapId);
+    const META = (typeof EW_MAP_META !== 'undefined') ? EW_MAP_META : [];
+    const meta = META.find(m => m.id === id) || {};
+    const board = (typeof hqSiteBoard === 'function') ? hqSiteBoard(id) : null;
+    const tints = (board && board.terrainTints) || {};
+    const open = A.open !== false, w = A.w, d = A.d;
+    const floor = A.floor, cliff = A.cliff || A.floor, path = A.path || A.floor;
+    const fc = _hqAreaHex(A.floorColor != null ? A.floorColor : tints[floor], 0x8a8a7a), cc = _hqAreaHex(A.cliffColor != null ? A.cliffColor : tints[cliff], 0x6a6a5a);
+    const look = A.look && HQ_ROOM_LOOKS[A.look] ? HQ_ROOM_LOOKS[A.look] : null;
+    const shell = Object.assign({
+        w: w, d: d, h: A.h || (open ? 9.0 : 3.4), wallH: A.wallH || A.h || (open ? 9.0 : 3.4), dadoH: 1.0,
+        open: open, edge: open ? 'open' : 'walls',
+        floor: floor, wall: A.wallSheet || cliff, dado: A.dado || cliff, trim: A.trim || 'wood', ceiling: A.ceiling || (open ? cliff : 'ceiling'),
+        apron: floor, skirt: cliff, apronColor: fc, floorColor: fc, wallColor: cc, dadoColor: cc,
+        pipes: false, strips: false, lights: A.lights || [],
+        mood: Object.assign({ lamp: 0xffb060, glow: 0xff9a40, strip: 0xffd8a0, light: 0xf0e8d8, ambient: open ? 0.42 : 0.36, night: A.night ? 1 : 0 }, A.mood || {}),
+        plate: { x: 0, z: -(d / 2 - 0.2), y: 4.4 },
+    }, look ? { look: look } : {}, open ? { sky: hqAreaSky(meta, A) } : { fog: A.fog || { color: 0x141210, density: 0.02 }, ceilTile: 1.75 }, A.forest ? { forest: A.forest } : {}, A.shell || {});
+    const plaza = A.plaza || { x: 0, z: Math.round((d / 2 - 14) * 10) / 10 };
+    const marker = A.marker || plaza;
+    const features = [
+        /* the way in: the bay door's pad on the south wall at x 0, a track to THE PLAZA (a flat clearing the marker stands in) */
+        { k: 'path', pts: [[0, d / 2 - 1.2], [plaza.x, plaza.z]], w: 3.0 },
+    ].concat((A.features || []).map(f => ((f.k === 'pool' || f.k === 'stream') && f.y == null) ? Object.assign({ y: 0 }, f) : f));   // a fluid's sheet sits at the ground unless the spec says (hqTerrainCompile reads `y - depth` for the bed — no `y`, no number)
+    const gen = A.gen ? Object.assign({}, A.gen) : null;
+    if (gen) gen.open = (gen.open || []).concat([{ x: plaza.x, z: plaza.z, r: A.plazaR || HQ_AREA_RULES.plazaR }]);
+    const terrain = Object.assign({ floor: floor, cliff: cliff, path: path, noise: A.noise || { amp: 0.12, scale: 8 } }, gen ? { gen: gen } : {}, A.crag != null ? { crag: A.crag } : {}, A.sea ? { sea: A.sea } : {}, { features: features });
+    const label = String(meta.label || id).toUpperCase();
+    const room = {
+        label: label + ' · ' + A.label, sub: A.sub || 'THE AREA · THE BOARD IS THE MARKER',
+        kind: 'box', site: id, part: A.part, area: true,
+        shell: shell, terrain: terrain,
+        doors: (A.doors || []).map(x => Object.assign({}, x, { action: Object.assign({}, x.action) })),
+        counters: [Object.assign({ id: 'battle', x: marker.x, z: marker.z, face: 180, plateY: HQ_AREA_RULES.plateY, radius: HQ_AREA_RULES.markerR, verb: 'BATTLE', site: id, proc: 'battle_marker',
+            label: 'BATTLE', sub: label + ' · THE Δ BOARD', action: { overlay: 'crossing' } }, A.markerY != null ? { y: A.markerY } : {})].concat(A.counters || []),
+        props: (A.props || []).map(p => Object.assign({}, p)),
+        npcSpots: (A.npcSpots || []).map(p => Object.assign({}, p)),
+        onlineSpots: [], lines: (A.lines || []).slice(),
+        spawn: A.spawn || { x: 0, z: d / 2 - 2.6, face: 0 },
+    };
+    if (A.quiet) room.quiet = true;
+    return room;
+}
+function hqAreaSites() { const E = (DOOR_HQ.siteRooms || {}).entry || {}; return Object.keys(E); }
+function hqAreaRoomOf(mapId) { const e = hqSiteEntryOf(mapId); return e ? e.room : null; }
+/* THE MARKER of a room (its battle counter) — null when the room has none */
+function hqAreaMarker(roomId) { const r = (DOOR_HQ.rooms || {})[roomId]; return r ? ((r.counters || []).find(c => c && c.proc === 'battle_marker') || null) : null; }
+/* register every spec'd area, then give every entry part its marker; run once at load, before the entries */
+function hqBuildAreas() {
+    Object.keys(HQ_AREA_SPECS).forEach(mapId => {
+        const A = HQ_AREA_SPECS[mapId];
+        const rid = hqComplexRoomId(mapId, A.part);
+        if (DOOR_HQ.rooms[rid]) return;   // authored by hand — the sheet wins
+        DOOR_HQ.rooms[rid] = hqAreaRoom(mapId, A);
+    });
+    const E = (DOOR_HQ.siteRooms || {}).entry || {};
+    Object.keys(E).forEach(mapId => {
+        const rid = E[mapId].room, room = DOOR_HQ.rooms[rid];
+        if (!room || hqAreaMarker(rid)) return;
+        const at = HQ_AREA_MARKERS[rid]; if (!at) return;
+        const META = (typeof EW_MAP_META !== 'undefined') ? EW_MAP_META : [];
+        const meta = META.find(m => m.id === hqSiteId(mapId)) || {};
+        const label = String(meta.label || mapId).toUpperCase();
+        room.counters = (room.counters || []).concat([Object.assign({ id: 'battle', x: at.x, z: at.z, face: at.face != null ? at.face : 180, plateY: HQ_AREA_RULES.plateY, radius: HQ_AREA_RULES.markerR, verb: 'BATTLE',
+            site: hqSiteId(mapId), proc: 'battle_marker', label: 'BATTLE', sub: label + ' · THE Δ BOARD', action: { overlay: 'crossing' } }, at.y != null ? { y: at.y } : {})]);
+    });
+}
+/* ── THE SPECS (Claude's DRAFT layouts — the user rules the names, A15) ── */
+const HQ_AREA_SPECS = {
+    /* ROOM 90 · THE BACKROOMS · THE LEVELS: family C (halls) in the yellow wallpaper — a BSP of damp offices and corridors, the carpet
+       wet in THE POOL ROOMS, THE HUM ROOM a step up under the fluorescents (the tape), H-Wing's exit on the south wall where the
+       board had it, the service bay's SECRET door on the west wall (cern_backrooms), the plane's door with no thickness north */
+    prebuilt_backrooms: { part: 'levels', label: 'THE LEVELS', sub: 'LEVEL 0 · THE HUM · NO CLIP', w: 64, d: 48, open: false, h: 3.0, look: 'backrooms',
+        floor: 'carpet', cliff: 'wallpaper', path: 'carpet', floorColor: 0xc8b878, cliffColor: 0xe8d890, wallSheet: 'wallpaper', ceiling: 'ceiling', crag: false,
+        fog: { color: 0x2a2612, density: 0.026 }, mood: { light: 0xfff0b0, strip: 0xfff4c0, ambient: 0.4 }, noise: { amp: 0, scale: 8 },
+        gen: { kind: 'halls', seed: 90, loops: 3, leafMin: 7, leafMax: 15, wallH: 3.0, wallKey: 'wallpaper', rooms: [{ id: 'hum', x: -18, z: -10, w: 12, d: 10 }, { id: 'pools', x: 16, z: -8, w: 14, d: 12 }] },
+        plaza: { x: 0, z: 8 },
+        features: [
+            { k: 'plateau', x: -18, z: -10, w: 6, d: 5, h: 2.35, edge: 0.3 },                                   // THE HUM ROOM's raised floor (the tape — the door gun's, under a 3 m ceiling)
+            { k: 'pool', x: 16, z: -8, r: 4.2, rz: 3.2, depth: 0.5, key: 'water', bank: 0.6 },                   // THE POOL ROOMS: the carpet is wet
+            { k: 'plateau', x: 14, z: 12, w: 8, d: 4, h: 0.6, edge: 0.3 },                                      // a dais of stacked carpet tiles
+            { k: 'ramp', x0: 14, z0: 17.5, x1: 14, z1: 13.3, w: 2.4, h0: 0, h1: 0.6 },
+            { k: 'wall', x0: -10, z0: 14, x1: -2, z1: 14, h: 0.9, t: 0.3, key: 'wallpaper' },                     // a knee wall (the grind)
+            { k: 'path', pts: [[0, 8], [-8, 0], [-18, -4]], w: 2.6 }, { k: 'path', pts: [[0, 8], [10, 0], [16, -2]], w: 2.6 }, { k: 'path', pts: [[0, 8], [-5, -18], [-5, -23]], w: 2.6 }, { k: 'path', pts: [[0, 8], [12, 18], [12, 23]], w: 2.6 }, { k: 'path', pts: [[-8, 0], [-26, 6], [-31, 6]], w: 2.6 },
+            { k: 'scatter', key: 'wet_floor_sign', n: 4, seed: 9 }, { k: 'scatter', key: 'cardboard_box', n: 5, seed: 3 },
+        ],
+        doors: [{ id: 'hwing', wall: 's', x: 12, leaf: 'leaf_exit', label: 'H-WING', sub: 'EXIT · THIS ONE IS', action: { room: 'hwing_w', at: 'exit' },
+                  desc: 'An EXIT sign over a door that is, for once, an exit. H-Wing is behind it, which is the building, which is not out.' }],
+        props: [{ key: 'railing_1m', x: -6, z: 13.6, face: 0 }, { key: 'riser_1', x: 10, z: 10 }, { key: 'bare_bulb', x: 0, z: 8 }, { key: 'bare_bulb', x: -18, z: -10 }, { key: 'bare_bulb', x: 16, z: -8 }, { key: 'office_chair', x: 17, z: 12, face: 200 }, { key: 'potted_plant', x: -3, z: 5 }],
+        npcSpots: [{ x: 3, z: 5, face: 200, race: 'glitch', say: '“Level 0. There is no level 1. Do not clip.”' }],
+        lines: ['“The carpet is wet.” “The carpet is always wet.” “Where does the water come from?” “The pools.” “Where do the pools come from?” “The carpet.”'] },
+    /* ROOM 50 · THE STADIUM · THE BOWL: the pitch at the plaza, THE STANDS two terraces up their own stairs (the rails the rider grinds),
+       THE PRESS BOX high over the north stand (the tape), the stadium road out the north end (the highway's way) */
+    prebuilt_stadium: { part: 'bowl', label: 'THE BOWL', sub: 'THE PITCH · THE STANDS · THE PRESS BOX', w: 72, d: 58, night: 1, look: 'city', fogD: 0.02,
+        floor: 'grass_2', cliff: 'concrete_floor', path: 'marble_light', floorColor: 0x5ec46a, cliffColor: 0xb0b0b0,
+        gen: { kind: 'rooms', seed: 50, loops: 3, rMin: 9, rMax: 15, wallH: 3.2, thicket: false }, noise: { amp: 0.06, scale: 9 },
+        plaza: { x: 0, z: 6 },
+        features: [
+            { k: 'path', pts: [[-12, 20], [-12, -8], [12, -8], [12, 20], [-12, 20]], w: 1.2 },                       // the touchlines
+            { k: 'plateau', x: -26, z: 4, w: 10, d: 30, h: 3.0, edge: 0.4 },                                      // THE WEST STAND
+            { k: 'ramp', x0: -16.5, z0: 4, x1: -21.7, z1: 4, w: 3.0, h0: 0, h1: 3.0, stairs: true },
+            { k: 'plateau', x: 26, z: 4, w: 10, d: 30, h: 3.0, edge: 0.4 },                                       // THE EAST STAND
+            { k: 'ramp', x0: 16.5, z0: 4, x1: 21.7, z1: 4, w: 3.0, h0: 0, h1: 3.0, stairs: true },
+            { k: 'plateau', x: 0, z: -18, w: 12, d: 6, h: 6.4, edge: 0.4 },                                        // THE PRESS BOX (the tape — no stair; the door gun's)
+            { k: 'rail', x0: -22, z0: -10, x1: -22, z1: 18 }, { k: 'rail', x0: 22, z0: -10, x1: 22, z1: 18 },       // the stands' front rails
+            { k: 'path', pts: [[0, 6], [-5, -14], [-5, -28]], w: 3.0 },
+            { k: 'scatter', key: 'traffic_cone', n: 4, seed: 2 }, { k: 'scatter', key: 'cinder_block', n: 3, seed: 5 },
+        ],
+        props: [{ key: 'railing_1m', x: 0, z: 22, face: 0 }, { key: 'riser_2', x: 8, z: 14 }, { key: 'quarter_pipe', x: -8, z: 22, face: 0 }, { key: 'lifeguard_chair', x: 14, z: -12, face: 180 }, { key: 'bus_shelter', x: 6, z: 24, face: 0 }],
+        npcSpots: [{ x: -2, z: 12, face: 20, race: 'quarterback', say: '“Eighty thousand seats. Count the ones that are looking at you.”' }, { x: 9, z: -4, face: 270, race: 'super sentai', say: '“The press box has the best view of the pitch. The pitch has the best view of the press box.”' }],
+        lines: ['“Who is winning?” “The stadium.”'] },
+    /* ROOM 2012 · TECHNOTICLAN · THE TEMPLE CITY: the step pyramid at the far end of the causeway (three tiers, the stairs up its south
+       face, THE TEMPLE on top = the tape), the canal through the city (a wade), THE BALL COURT's two walls (the grind), the ley
+       line's other stair on the north wall */
+    prebuilt_technoticlan: { part: 'templecity', label: 'THE TEMPLE CITY', sub: 'THE CAUSEWAY · THE CANAL · THE BALL COURT · THE PYRAMID', w: 72, d: 62, night: 1, look: 'tell', fogD: 0.02,
+        floor: 'cobblestone', cliff: 'bricks_3', path: 'cobblestone', floorColor: 0x8fb0b8, cliffColor: 0x7aa0a8,
+        gen: { kind: 'rooms', seed: 2012, loops: 3, rMin: 7, rMax: 13, wallH: 3.0, thicket: false }, noise: { amp: 0.08, scale: 9 },
+        plaza: { x: 0, z: 10 },
+        features: [
+            { k: 'stream', pts: [[-36, -4], [-10, -2], [10, 2], [36, 4]], w: 3.4, depth: 0.7, key: 'water' },       // THE CANAL (waded)
+            { k: 'deck', x0: 0, z0: -1.5, x1: 0, z1: 5.2, w: 3.2, y: 0.25 },                                        // the causeway's plank across the canal
+            { k: 'plateau', x: 0, z: -18, w: 22, d: 18, h: 2.5, edge: 0.4 }, { k: 'plateau', x: 0, z: -18, w: 14, d: 11, h: 5.0, edge: 0.4 }, { k: 'plateau', x: 0, z: -19, w: 6, d: 5, h: 7.5, edge: 0.4 },   // THE PYRAMID
+            { k: 'ramp', x0: 0, z0: -4.5, x1: 0, z1: -9.7, w: 3.0, h0: 0, h1: 2.5, stairs: true }, { k: 'ramp', x0: 0, z0: -9.9, x1: 0, z1: -13.2, w: 2.6, h0: 2.5, h1: 5.0, stairs: true },
+            { k: 'wall', x0: -26, z0: 14, x1: -14, z1: 14, h: 2.2, t: 0.9, key: 'bricks_3' }, { k: 'wall', x0: -26, z0: 22, x1: -14, z1: 22, h: 2.2, t: 0.9, key: 'bricks_3' },   // THE BALL COURT
+            { k: 'path', pts: [[0, 10], [0, -1]], w: 3.2 }, { k: 'path', pts: [[0, 10], [-20, 18]], w: 2.6 }, { k: 'path', pts: [[0, 10], [-5, -26], [-5, -29]], w: 2.6 },
+            { k: 'scatter', key: 'obelisk', n: 3, seed: 7 }, { k: 'scatter', key: 't_pillar', n: 4, seed: 4 },
+        ],
+        props: [{ key: 'railing_1m', x: 4, z: 8, face: 0 }, { key: 'riser_1', x: -22, z: 18 }, { key: 'brazier', x: -3, z: -5.5 }, { key: 'brazier', x: 3, z: -5.5 }, { key: 'stone_altar', x: 0, z: -19, y: 7.5 }],
+        npcSpots: [{ x: -3, z: 6, face: 40, race: 'annunaki', say: '“The calendar did not end. It was turned over.”' }, { x: 20, z: 6, face: 250, race: 'reptilian', say: '“The ball court is not a game. The losing side knows that.”' }],
+        lines: ['“Which stair is the other stair?” “Both of them.”'] },
+    /* ROOM 88 · AGARTHA · THE CRYSTAL CITY: marble terraces under the cavern's lit crystals, THE LAKE with its bridge, THE SPIRE over
+       the city (the tape), the adit to the cave on the north wall */
+    prebuilt_agartha: { part: 'crystalcity', label: 'THE CRYSTAL CITY', sub: 'THE TERRACES · THE LAKE · THE SPIRE', w: 66, d: 56, night: 1, look: 'cave', fogD: 0.024,
+        floor: 'marble_light', cliff: 'rocks_dark_fantasy', path: 'marble_light', floorColor: 0xbfe8c8, cliffColor: 0x8a9a88,
+        gen: { kind: 'rooms', seed: 88, loops: 3, rMin: 6, rMax: 12, wallH: 3.4, thicket: false }, noise: { amp: 0.1, scale: 7 },
+        plaza: { x: 0, z: 8 },
+        features: [
+            { k: 'pool', x: 16, z: -6, r: 8, rz: 6, depth: 1.0, key: 'water', bank: 1.2 },                        // THE LAKE
+            { k: 'deck', x0: 6.5, z0: -6, x1: 25.5, z1: -6, w: 2.4, y: 0.3 },                                       // the bridge over it (both banks)
+            { k: 'plateau', x: -18, z: -6, r: 9, h: 1.6, edge: 0.4 }, { k: 'ramp', x0: -18, z0: 8.5, x1: -18, z1: 3.7, w: 2.8, h0: 0, h1: 1.6, stairs: true },   // THE LOWER TERRACE
+            { k: 'plateau', x: -20, z: -12, r: 5, h: 3.4, edge: 0.4 }, { k: 'ramp', x0: -12.5, z0: -12, x1: -15.7, z1: -12, w: 2.4, h0: 1.6, h1: 3.4, stairs: true },   // THE UPPER TERRACE
+            { k: 'plateau', x: -4, z: -20, r: 2.6, h: 6.2, edge: 0.4 },                                            // THE SPIRE's foot (the tape — the door gun's)
+            { k: 'rail', x0: -26, z0: 2, x1: -10, z1: 2 },
+            { k: 'path', pts: [[0, 8], [-10, 10], [-18, 10]], w: 2.6 }, { k: 'path', pts: [[0, 8], [4, -4]], w: 2.6 }, { k: 'path', pts: [[0, 8], [-5, -22], [-5, -27]], w: 2.6 }, { k: 'path', pts: [[0, 8], [-14.5, -22], [-14.5, -27]], w: 2.4 },
+            { k: 'scatter', key: 'crystal_cluster', n: 8, seed: 5 }, { k: 'scatter', key: 'cave_stone', n: 4, seed: 2 },
+        ],
+        props: [{ key: 'railing_1m', x: -18, z: 3.2, face: 0 }, { key: 'riser_1', x: 8, z: 12 }, { key: 'crystal_cluster', x: -4, z: -20, y: 6.2 }, { key: 'fountain', x: 0, z: 2 }],
+        npcSpots: [{ x: -3, z: 12, face: 30, race: 'nordic', say: '“The crystals keep the time. Ours, not yours.”' }, { x: 12, z: 4, face: 300, race: 'machine elves', say: '“The adit was cut from both sides and met. That should not happen.”' }],
+        lines: ['“Where is the sun?” “Inside.”'] },
+    /* ROOM 90S · ANTARCTICA · THE STATION: the huts on their raised deck, THE CREVASSE (never entered) with a plank over it, THE ICE
+       WALL (the tape) and the collar into the hull under the ice on the north wall */
+    prebuilt_antarctica: { part: 'station', label: 'THE STATION', sub: 'THE HUTS · THE CREVASSE · THE ICE WALL · THE COLLAR', w: 70, d: 56, look: 'white', fogD: 0.028,
+        floor: 'marble_light', cliff: 'ice_1', path: 'ice_1', floorColor: 0xe4f2fc, cliffColor: 0xbfe0ff,
+        gen: { kind: 'rooms', seed: 905, loops: 2, rMin: 8, rMax: 14, wallH: 2.6, thicket: false }, noise: { amp: 0.18, scale: 8 },
+        plaza: { x: 0, z: 8 },
+        landmarks: [{ kind: 'peak', id: 'prebuilt_antarctica', deg: 250, dist: 0.85, s: 1.1, label: 'THE TRANSANTARCTICS' }],
+        features: [
+            { k: 'plateau', x: -16, z: 2, w: 14, d: 10, h: 1.2, edge: 0.35 }, { k: 'ramp', x0: -7.5, z0: 2, x1: -10.3, z1: 2, w: 3.0, h0: 0, h1: 1.2 },   // THE DECK the huts stand on
+            { k: 'stream', pts: [[-34, -12], [-8, -14], [14, -10], [34, -14]], w: 3.6, depth: 4.0, key: 'deep_water' },   // THE CREVASSE (never entered)
+            { k: 'deck', x0: 2, z0: -8.6, x1: 2, z1: -15.4, w: 2.2, y: 0.2 },                                        // the plank across it
+            { k: 'plateau', x: 14, z: -22, w: 16, d: 5, h: 6.0, edge: 0.4 },                                       // THE ICE WALL (the tape — the door gun's)
+            { k: 'hill', x: 20, z: 10, r: 8, h: 1.4 },
+            { k: 'rail', x0: -22, z0: 8, x1: -10, z1: 8 },
+            { k: 'path', pts: [[0, 8], [-8, 4]], w: 2.4 }, { k: 'path', pts: [[0, 8], [2, -6], [2, -18], [-0.2, -27]], w: 2.6 }, { k: 'path', pts: [[0, 8], [-10, -20], [-10, -27]], w: 2.4 },
+            { k: 'scatter', key: 'cave_stone', n: 5, seed: 6 },
+        ],
+        props: [{ key: 'railing_1m', x: -16, z: 8.4, face: 0 }, { key: 'riser_1', x: 8, z: 12 }, { key: 'cot', x: -16, z: 2, y: 1.2, face: 90 }, { key: 'sea_chest', x: -19, z: 0, y: 1.2 }, { key: 'signpost', x: 3, z: 12 }, { key: 'campfire', x: -12, z: 12 }],
+        npcSpots: [{ x: -3, z: 12, face: 20, race: 'yeti', say: '“The ice is a lid. Nobody asks what it is on.”' }, { x: 4, z: -20, face: 180, race: 'men in black', say: '“The 1947 survey marked the hull. Then the survey was marked.”' }],
+        lines: ['“How cold?” “Ninety south.”'] },
+    /* ROOM 14179 · MOUNT SHASTA · THE SLOPES: pines up the mountain's flank, THE MEADOW at the plaza, THE FALLS off the first shelf,
+       THE SHELF up a switchback, THE SUMMIT (the tape — the door gun's), the woods' frame on the north wall */
+    prebuilt_shasta: { part: 'slopes', label: 'THE SLOPES', sub: 'THE MEADOW · THE FALLS · THE SHELF · THE SUMMIT', w: 66, d: 60, look: 'woods', fogD: 0.024,
+        floor: 'grass_2', cliff: 'cliff', path: 'dirt', floorColor: 0x6f9a52, cliffColor: 0xa8b0b8,
+        gen: { kind: 'rooms', seed: 14179, loops: 3, rMin: 6, rMax: 11, wallH: 1.7, kinds: ['pine', 'pine', 'tree_2', 'pine'], spacing: 3.0, maxTrees: 220 }, noise: { amp: 0.14, scale: 8 },
+        forest: { depth: 12, spacing: 3.2, rows: 2.8, start: 1.6, kinds: ['pine', 'pine', 'tree_2'] },
+        plaza: { x: 0, z: 10 },
+        features: [
+            { k: 'hill', x: 0, z: -14, r: 16, h: 2.2 },                                                            // the mountain's flank rising north (short of the meadow)
+            { k: 'plateau', x: 14, z: -10, r: 8, h: 3.6, edge: 0.4 }, { k: 'ramp', x0: 14, z0: 2.5, x1: 14, z1: -2.7, w: 2.6, h0: 0, h1: 3.6 },   // THE SHELF up a switchback
+            { k: 'stream', pts: [[14, -16], [10, -4], [4, 6], [-6, 22]], w: 2.2, depth: 0.6, key: 'water' },        // THE CREEK off the shelf (waded)
+            { k: 'plateau', x: -12, z: -20, r: 4, h: 7.0, edge: 0.4 },                                             // THE SUMMIT (the tape)
+            { k: 'plateau', x: -12, z: -12, r: 5, h: 2.4, edge: 0.4 }, { k: 'ramp', x0: -12, z0: -1.5, x1: -12, z1: -7.7, w: 2.6, h0: 0, h1: 2.4 },   // THE SADDLE under it
+            { k: 'rail', x0: 6, z0: -6, x1: 18, z1: -6 },
+            { k: 'path', pts: [[0, 10], [10, 4]], w: 2.4 }, { k: 'path', pts: [[0, 10], [-8, 2], [-10, -24], [-10, -29]], w: 2.6 },
+            { k: 'scatter', key: 'cave_stone', n: 6, seed: 3 }, { k: 'scatter', key: 'stump', n: 4, seed: 8 },
+        ],
+        props: [{ key: 'railing_1m', x: 12, z: -5.6, face: 0, y: 3.6 }, { key: 'riser_1', x: 6, z: 14 }, { key: 'campfire', x: -6, z: 12 }, { key: 'signpost', x: 3, z: 14 }],
+        npcSpots: [{ x: 6, z: 12, face: 30, race: 'bigfoot', say: '“The lenticular is not a cloud. It is a lid that has not decided.”' }, { x: 17, z: -12, face: 180, race: 'nordic', say: '“Lemuria is under the mountain. So are you, technically.”' }],
+        lines: ['“How high?” “Fourteen thousand one hundred and seventy-nine. The sign is honest.”'] },
+    /* ROOM 12 · MOUNT OLYMPUS · THE SUMMIT: the marble court between the Twelve's columns, THE THRONE DAIS up its stairs, THE FORGE's
+       lava pool, THE LIGHTNING SPIRE (the tape), Heaven's gate of cloud and the Lodge's painting on the north wall */
+    prebuilt_olympus: { part: 'summit', label: 'THE SUMMIT', sub: 'THE COURT · THE THRONE · THE FORGE · THE SPIRE', w: 62, d: 52, look: 'heaven', fogD: 0.022,
+        floor: 'marble_light', cliff: 'cloud_thick', path: 'gold', floorColor: 0xf8f8f2, cliffColor: 0xf0eee8,
+        gen: { kind: 'rooms', seed: 12, loops: 3, rMin: 7, rMax: 13, wallH: 2.2, thicket: false }, noise: { amp: 0.06, scale: 9 },
+        plaza: { x: 0, z: 6 },
+        features: [
+            { k: 'plateau', x: 0, z: -14, w: 12, d: 8, h: 3.0, edge: 0.4 }, { k: 'ramp', x0: 0, z0: -4.5, x1: 0, z1: -10.7, w: 3.2, h0: 0, h1: 3.0, stairs: true },   // THE THRONE DAIS
+            { k: 'pool', x: 18, z: 2, r: 4.5, depth: 1.0, key: 'lava', bank: 1.0 },                               // THE FORGE (never entered)
+            { k: 'plateau', x: -18, z: -6, r: 2.8, h: 6.6, edge: 0.4 },                                            // THE LIGHTNING SPIRE (the tape — the door gun's)
+            { k: 'plateau', x: -16, z: 10, r: 6, h: 1.2, edge: 0.35 }, { k: 'ramp', x0: -7.5, z0: 10, x1: -10.7, z1: 10, w: 2.8, h0: 0, h1: 1.2 },   // THE LOWER COURT
+            { k: 'wall', x0: 8, z0: 14, x1: 20, z1: 14, h: 1.0, t: 0.6, key: 'marble_light' },                      // the balustrade (the grind)
+            { k: 'path', pts: [[0, 6], [0, -4]], w: 3.2 }, { k: 'path', pts: [[0, 6], [-5, -20], [-5, -24]], w: 2.6 }, { k: 'path', pts: [[0, 6], [-0.2, -20], [-0.2, -24]], w: 2.4 },
+            { k: 'scatter', key: 'greek_column', n: 8, seed: 12 }, { k: 'scatter', key: 'white_cloud', n: 3, seed: 4 },
+        ],
+        props: [{ key: 'railing_1m', x: -16, z: 16.4, face: 0 }, { key: 'riser_1', x: 8, z: 10 }, { key: 'royal_throne', x: 0, z: -15, y: 3.0, face: 180 }, { key: 'brazier', x: 8, z: -2 }, { key: 'angel_statue', x: -18, z: -6, y: 6.6 }],
+        npcSpots: [{ x: -3, z: 10, face: 30, race: 'seraphim', say: '“The Twelve are out. The thirteenth is in, and does not use the door.”' }, { x: 12, z: 6, face: 270, race: 'cyclops', say: '“Sparks fall up here. Everything is a matter of which way is down.”' }],
+        lines: ['“Which management?” “The other one.”'] },
+    /* ROOM 4 · MARS · CYDONIA: canyons in the regolith, THE ROVER at the plaza, three craters, THE PYRAMID's tiers up their stair, THE
+       FACE (the tape — the door gun's), the collar of the ship that parked here on the north wall */
+    prebuilt_mars: { part: 'cydonia', label: 'CYDONIA', sub: 'THE CANYONS · THE ROVER · THE PYRAMID · THE FACE', w: 72, d: 60, night: 1, look: 'tell', fogD: 0.02,
+        floor: 'moon_2', cliff: 'mars_2', path: 'moon_2', floorColor: 0xc88a5a, cliffColor: 0xa86048,
+        gen: { kind: 'rooms', seed: 4, loops: 3, rMin: 8, rMax: 14, wallH: 2.6, thicket: false }, noise: { amp: 0.22, scale: 7 },
+        plaza: { x: 0, z: 8 },
+        landmarks: [{ kind: 'peak', id: 'prebuilt_mars', deg: 300, dist: 0.9, s: 1.3, label: 'OLYMPUS MONS' }],
+        features: [
+            { k: 'dip', x: -18, z: 10, r: 6, h: -1.6 }, { k: 'dip', x: 20, z: -4, r: 8, h: -2.0 }, { k: 'dip', x: -8, z: -8, r: 4, h: -1.0 },   // the craters
+            { k: 'plateau', x: 18, z: -20, w: 14, d: 12, h: 2.4, edge: 0.4 }, { k: 'plateau', x: 18, z: -20, w: 7, d: 6, h: 4.8, edge: 0.4 },   // THE PYRAMID
+            { k: 'ramp', x0: 18, z0: -9.5, x1: 18, z1: -14.7, w: 2.8, h0: 0, h1: 2.4, stairs: true },
+            { k: 'plateau', x: -16, z: -18, r: 4.4, h: 6.4, edge: 0.4 },                                           // THE FACE (the tape — a flat top: the door gun wants an open face)
+            { k: 'ridge', pts: [[-30, 0], [-20, -2], [-12, 2]], w: 4, h: 1.2 },
+            { k: 'rail', x0: 8, z0: -14, x1: 8, z1: -2 },
+            { k: 'path', pts: [[0, 8], [14, -4]], w: 2.6 }, { k: 'path', pts: [[0, 8], [-5, -22], [-5, -28]], w: 2.6 },
+            { k: 'scatter', key: 'cave_stone', n: 8, seed: 4 },
+        ],
+        props: [{ key: 'railing_1m', x: 8.8, z: 0, face: 90 }, { key: 'riser_1', x: 4, z: 12 }, { key: 'mars_rover', x: 5, z: 12, face: 220 }, { key: 'signpost', x: -3, z: 14 }],
+        npcSpots: [{ x: 3, z: 6, face: 200, race: 'martian', say: '“The rover looks behind it because we told it to. We were waving.”' }, { x: 18, z: -20, y: 4.8, face: 180, race: 'grey', say: '“The pyramid is a receipt.”' }],
+        lines: ['“The dust is finer on the far side.” “Of what?”'] },
+    /* ROOM 1969 · THE MOON · THE MARE: the flat sea of dust, THE LANDER at the plaza, two craters and THE RIM (the tape — the door
+       gun's), the collar on the north wall */
+    prebuilt_moon: { part: 'mare', label: 'THE MARE', sub: 'THE LANDER · THE CRATERS · THE RIM', w: 66, d: 56, night: 1, look: 'tell', fogD: 0.014,
+        floor: 'moon', cliff: 'moon_3', path: 'moon_2', floorColor: 0xc8ccd8, cliffColor: 0x989cb0,
+        gen: { kind: 'rooms', seed: 1969, loops: 2, rMin: 9, rMax: 15, wallH: 2.0, thicket: false }, noise: { amp: 0.16, scale: 6 },
+        plaza: { x: 0, z: 8 },
+        features: [
+            { k: 'dip', x: 16, z: 4, r: 9, h: -2.2 }, { k: 'dip', x: -18, z: -8, r: 6, h: -1.4 },                  // the craters
+            { k: 'plateau', x: 16, z: -18, w: 20, d: 6, h: 5.6, edge: 0.4 },                                       // THE RIM (the tape)
+            { k: 'plateau', x: -14, z: 8, r: 6, h: 1.4, edge: 0.35 }, { k: 'ramp', x0: -5.5, z0: 8, x1: -8.7, z1: 8, w: 3.0, h0: 0, h1: 1.4 },   // the boulder field's shelf
+            { k: 'ridge', pts: [[-30, -18], [-12, -20], [4, -16]], w: 5, h: 1.6 },
+            { k: 'rail', x0: -20, z0: 14, x1: -8, z1: 14 },
+            { k: 'path', pts: [[0, 8], [-5, -22], [-5, -26]], w: 2.6 },
+            { k: 'scatter', key: 'cave_stone', n: 10, seed: 69 },
+        ],
+        props: [{ key: 'railing_1m', x: -14, z: 14.4, face: 0 }, { key: 'riser_1', x: 6, z: 14 }, { key: 'lunar_lander', x: 6, z: 4, face: 200 }],
+        npcSpots: [{ x: -3, z: 12, face: 30, race: 'grey', say: '“The footprint was there in the previous frame. You were not.”' }],
+        lines: ['“One small step.” “For whom?”'] },
+    /* ROOM 23 · BOHEMIAN GROVE · THE GROVE: redwoods, THE LAKE and THE STAGE across it, THE OWL on its mound up a stair (the tape at
+       its feet — the door gun's), the ranch's back gate and the owl's gate to the woods */
+    prebuilt_bohemian_grove: { part: 'grove', label: 'THE GROVE', sub: 'THE LAKE · THE STAGE · THE OWL', w: 66, d: 58, night: 1, look: 'woods', fogD: 0.028,
+        floor: 'grass_2', cliff: 'dirt', path: 'dirt', floorColor: 0x6a9458, cliffColor: 0x8a7458,
+        gen: { kind: 'rooms', seed: 23, loops: 3, rMin: 6, rMax: 11, wallH: 1.8, kinds: ['tree_3', 'tree', 'tree_3', 'tree_2'], spacing: 3.0, maxTrees: 240 }, noise: { amp: 0.16, scale: 8 },
+        forest: { depth: 12, spacing: 3.0, rows: 2.6, start: 1.6, kinds: ['tree_3', 'tree', 'tree_2'] },
+        plaza: { x: 0, z: 8 },
+        features: [
+            { k: 'pool', x: 8, z: -8, r: 9, rz: 6, depth: 1.0, key: 'water', bank: 1.2 },                          // THE LAKE
+            { k: 'plateau', x: 8, z: -20, w: 14, d: 6, h: 1.4, edge: 0.35 }, { k: 'ramp', x0: 22, z0: -20, x1: 15.7, z1: -20, w: 2.8, h0: 0, h1: 1.4 },   // THE STAGE across the water
+            { k: 'plateau', x: -18, z: -12, r: 6, h: 2.6, edge: 0.4 }, { k: 'ramp', x0: -18, z0: -1.5, x1: -18, z1: -6.7, w: 2.6, h0: 0, h1: 2.6, stairs: true },   // THE MOUND
+            { k: 'plateau', x: -18, z: -13, r: 2.4, h: 6.4, edge: 0.4 },                                            // THE OWL (the tape)
+            { k: 'rail', x0: -2, z0: 0, x1: 14, z1: 0 },
+            { k: 'path', pts: [[0, 8], [18, 2], [24, -14]], w: 2.4 }, { k: 'path', pts: [[0, 8], [-14, 4]], w: 2.4 }, { k: 'path', pts: [[0, 8], [-5, -22], [-5, -27]], w: 2.6 }, { k: 'path', pts: [[-14, 4], [-28, 0], [-31, 0]], w: 2.4 },
+            { k: 'scatter', key: 'campfire', n: 3, seed: 23 }, { k: 'scatter', key: 'fallen_log', n: 4, seed: 5 }, { k: 'scatter', key: 'fern', n: 8, seed: 6 },
+        ],
+        props: [{ key: 'railing_1m', x: 6, z: 0.4, face: 0 }, { key: 'riser_1', x: -6, z: 12 }, { key: 'stone_altar', x: -18, z: -12, y: 2.6 }, { key: 'brazier', x: -15, z: -9, y: 2.6 }, { key: 'brazier', x: -21, z: -9, y: 2.6 }, { key: 'park_bench', x: 4, z: 12, face: 180 }],
+        npcSpots: [{ x: -3, z: 12, face: 30, race: 'politician', say: '“Weaving spiders, come not here.”' }, { x: 8, z: -20, y: 1.4, face: 0, race: 'fortune teller', say: '“The owl blinks once. Count from there.”' }],
+        lines: ['“Members only.” “I am a member.” “Of what?”'] },
+    /* ROOM 1225 · THE NORTH POLE · THE VILLAGE: the workshop on its deck, THE FROZEN LAKE, THE POLE itself (a striped post on its
+       drift — the tape), the sleigh road to Camelot and the hearth to the house on the north wall */
+    prebuilt_northpole: { part: 'village', label: 'THE VILLAGE', sub: 'THE WORKSHOP · THE FROZEN LAKE · THE POLE', w: 64, d: 52, night: 1, look: 'white', fogD: 0.026,
+        floor: 'marble_light', cliff: 'ice_1', path: 'wood_planks', floorColor: 0xe8f4ff, cliffColor: 0xbfe0ff,
+        gen: { kind: 'rooms', seed: 1225, loops: 3, rMin: 6, rMax: 11, wallH: 1.6, kinds: ['pine'], spacing: 3.4, maxTrees: 140 }, noise: { amp: 0.16, scale: 7 },
+        forest: { depth: 10, spacing: 3.6, rows: 3.0, start: 1.6, kinds: ['pine'] },
+        plaza: { x: 0, z: 6 },
+        features: [
+            { k: 'plateau', x: -16, z: 0, w: 14, d: 10, h: 1.0, edge: 0.35 }, { k: 'ramp', x0: -7.5, z0: 0, x1: -10.3, z1: 0, w: 3.0, h0: 0, h1: 1.0 },   // THE WORKSHOP's deck
+            { k: 'pool', x: 16, z: -6, r: 8, rz: 6, depth: 0.5, key: 'water', bank: 1.0 },                         // THE FROZEN LAKE (a wade)
+            { k: 'plateau', x: 4, z: -18, r: 3.2, h: 5.8, edge: 0.4 },                                              // THE POLE's drift (the tape)
+            { k: 'hill', x: -20, z: -14, r: 7, h: 1.6 },
+            { k: 'rail', x0: -22, z0: 6, x1: -10, z1: 6 },
+            { k: 'path', pts: [[0, 6], [-8, 2]], w: 2.4 }, { k: 'path', pts: [[0, 6], [-0.2, -12], [-0.2, -25]], w: 2.4 }, { k: 'path', pts: [[0, 6], [-10, -12], [-10, -25]], w: 2.4 },
+            { k: 'scatter', key: 'cardboard_box', n: 5, seed: 25 },
+        ],
+        props: [{ key: 'railing_1m', x: -16, z: 6.4, face: 0 }, { key: 'riser_1', x: 8, z: 10 }, { key: 'campfire', x: 6, z: 10 }, { key: 'signpost', x: 4, z: -18, y: 5.8 }, { key: 'sea_chest', x: -18, z: 0, y: 1.0 }],
+        npcSpots: [{ x: -3, z: 10, face: 30, race: 'santa clause', say: '“The workshop is empty because everyone is on the list.”' }, { x: 12, z: 2, face: 250, race: 'gnome', say: '“The bell on the ceiling rings when the chimney is in use. It is ringing.”' }],
+        lines: ['“December 25th.” “Every day here.”'] },
+    /* ROOM 2D · THE FLAT LANDS · THE PLAIN: a floor with no height, low hedges for the plan's banks, THE LINE (a knee wall the rider
+       grinds), THE EDGE at the far end — a cliff into nothing (the tape on it), the door with no thickness on the north wall */
+    prebuilt_flatlands: { part: 'plain', label: 'THE PLAIN', sub: 'THE LINE · THE EDGE · TWO DIMENSIONS', w: 80, d: 60, look: 'ranch', fogD: 0.03,
+        floor: 'grass_2', cliff: 'dirt_2', path: 'dirt_2', floorColor: 0xc0c8b8, cliffColor: 0xb0a890,
+        gen: { kind: 'rooms', seed: 2, loops: 4, rMin: 9, rMax: 16, wallH: 1.2, thicket: false }, noise: { amp: 0, scale: 9 },
+        plaza: { x: 0, z: 10 },
+        features: [
+            { k: 'wall', x0: -30, z0: 0, x1: 30, z1: 0, h: 0.35, t: 0.4, key: 'dirt_2' },                          // THE LINE (stepped over, grindable)
+            { k: 'plateau', x: 0, z: -22, w: 40, d: 6, h: 5.0, edge: 0.4 },                                        // THE EDGE (the tape — there is an edge)
+            { k: 'plateau', x: 22, z: 12, w: 10, d: 10, h: 0.6, edge: 0.3 }, { k: 'ramp', x0: 15.5, z0: 12, x1: 17.7, z1: 12, w: 3.0, h0: 0, h1: 0.6 },   // THE SQUARE (a shape with a height, scandalous)
+            { k: 'path', pts: [[0, 10], [-5, -12], [-5, -25]], w: 2.6 }, { k: 'path', pts: [[0, 10], [18, 12]], w: 2.4 },
+            { k: 'scatter', key: 'signpost', n: 3, seed: 2 },
+        ],
+        props: [{ key: 'railing_1m', x: 0, z: 0.5, face: 0 }, { key: 'riser_1', x: -8, z: 14 }, { key: 'lectern', x: 3, z: 13, face: 180 }],
+        npcSpots: [{ x: -3, z: 14, face: 30, race: 'watcher', say: '“Up is not a direction. It is a rumour.”' }],
+        lines: ['“There is an edge.” “We know.”'] },
+    /* ROOM E4 · THE LOOKING-GLASS · THE GARDEN: a hedge maze in marble, THE CHESSBOARD at the plaza, THE TEA TABLE on its lawn, THE
+       CROQUET GROUND, THE CHESHIRE MOON's perch (the tape); the barbershop's mirror and the ritual ground's dead tree stand free */
+    prebuilt_lookingglass: { part: 'garden', label: 'THE GARDEN', sub: 'THE HEDGES · THE CHESSBOARD · THE TEA TABLE · THE MOON', w: 62, d: 54, night: 1, look: 'skycastle', fogD: 0.024,
+        floor: 'marble_light', cliff: 'leaves_3', path: 'marble', floorColor: 0xf2eee6, cliffColor: 0x3a5a34,
+        gen: { kind: 'rooms', seed: 64, loops: 4, rMin: 5, rMax: 9, wallH: 2.2, thicket: false, corridor: [2.2, 3.0] }, noise: { amp: 0.04, scale: 9 },
+        plaza: { x: 0, z: 8 }, plazaR: 7,
+        features: [
+            { k: 'path', pts: [[-7, 15], [7, 15], [7, 1], [-7, 1], [-7, 15]], w: 1.0 },                              // THE CHESSBOARD's rim
+            { k: 'plateau', x: -18, z: -4, r: 6, h: 1.0, edge: 0.35 }, { k: 'ramp', x0: -18, z0: 7.5, x1: -18, z1: 2.7, w: 2.6, h0: 0, h1: 1.0 },   // THE TEA LAWN
+            { k: 'plateau', x: 16, z: -10, w: 14, d: 8, h: 1.6, edge: 0.35 }, { k: 'ramp', x0: 16, z0: -1.5, x1: 16, z1: -6.7, w: 2.6, h0: 0, h1: 1.6, stairs: true },   // THE CROQUET GROUND
+            { k: 'plateau', x: 0, z: -20, r: 2.6, h: 6.4, edge: 0.4, dome: true },                                  // THE CHESHIRE MOON's perch (the tape)
+            { k: 'wall', x0: 4, z0: 18, x1: 14, z1: 18, h: 1.0, t: 0.5, key: 'leaves_3' },                          // a hedge to grind
+            { k: 'path', pts: [[0, 8], [-12, 6], [-18, 8]], w: 2.4 }, { k: 'path', pts: [[0, 8], [10, 2], [16, 0]], w: 2.4 }, { k: 'path', pts: [[0, 8], [-8, -12], [-12, -14]], w: 2.4 }, { k: 'path', pts: [[0, 8], [8, -12], [10, -14]], w: 2.4 },
+            { k: 'scatter', key: 'garden_tree', n: 4, seed: 4 }, { k: 'scatter', key: 'potted_plant', n: 5, seed: 6 },
+        ],
+        props: [{ key: 'railing_1m', x: 9, z: 19.2, face: 0 }, { key: 'riser_1', x: -8, z: 14 }, { key: 'round_table', x: -18, z: -4, y: 1.0 }, { key: 'teal_chair', x: -16, z: -2, y: 1.0, face: 220 }, { key: 'fountain', x: 0, z: -6 }],
+        npcSpots: [{ x: -3, z: 12, face: 30, race: 'catgirl', say: '“We are all mad here. It is on the paperwork.”' }, { x: 16, z: -10, y: 1.6, face: 180, race: 'ice queen', say: '“Off with the heading.”' }],
+        lines: ['“Which move?” “The first one. E4.”'] },
+    /* ROOM 33 · THE LODGE · THE HALLS: family C (halls) in wood and damask — the members' rooms off a corridor, THE SANCTUM, THE
+       GALLERY up its stair (the tape on THE HIGH TABLE, higher still), the saloon door onto the corn, the painting of Olympus */
+    prebuilt_lodge: { part: 'halls', label: 'THE HALLS', sub: 'THE SANCTUM · THE GALLERY · THE HIGH TABLE · MEMBERS ONLY', w: 58, d: 46, open: false, h: 4.2, look: 'greathall',
+        floor: 'checkerboard', cliff: 'damask', path: 'wood', floorColor: 0xd8ccb0, cliffColor: 0x6a2438, wallSheet: 'damask', ceiling: 'wood', crag: false,
+        fog: { color: 0x1a0c10, density: 0.02 }, mood: { light: 0xffd8a0, strip: 0xffc890, ambient: 0.34 }, noise: { amp: 0, scale: 8 },
+        gen: { kind: 'halls', seed: 33, loops: 2, leafMin: 8, leafMax: 16, wallH: 4.2, wallKey: 'wood', rooms: [{ id: 'sanctum', x: 0, z: -12, w: 18, d: 12 }, { id: 'bar', x: 18, z: 6, w: 12, d: 10 }] },
+        plaza: { x: 0, z: 8 },
+        features: [
+            { k: 'plateau', x: -8, z: -12, w: 6, d: 10, h: 1.6, edge: 0.3 }, { k: 'ramp', x0: -8, z0: -3.5, x1: -8, z1: -7.7, w: 2.4, h0: 0, h1: 1.6, stairs: true },   // THE GALLERY in the sanctum
+            { k: 'plateau', x: 6, z: -14, w: 4, d: 3, h: 3.4, edge: 0.3 },                                         // THE HIGH TABLE (the tape — the door gun's)
+            { k: 'wall', x0: 12, z0: 6, x1: 12, z1: 12, h: 1.1, t: 0.4, key: 'wood' },                              // THE BAR (the grind)
+            { k: 'path', pts: [[0, 8], [0, -6]], w: 2.8 }, { k: 'path', pts: [[0, 8], [14, 8]], w: 2.6 }, { k: 'path', pts: [[0, 8], [-5, -18], [-5, -22]], w: 2.6 }, { k: 'path', pts: [[14, 8], [26, 2], [28, 0]], w: 2.4 },
+            { k: 'scatter', key: 'office_chair', n: 4, seed: 33 }, { k: 'scatter', key: 'potted_plant', n: 3, seed: 3 },
+        ],
+        props: [{ key: 'railing_1m', x: -5, z: -12, face: 90, y: 1.6 }, { key: 'riser_1', x: 6, z: 12 }, { key: 'candle_ring', x: 3, z: 10 }, { key: 'candle_ring', x: 18, z: 2 }, { key: 'round_table', x: 0, z: -12 }, { key: 'lectern', x: 6, z: -14, y: 3.4, face: 180 }, { key: 'brazier', x: -4, z: -18 }, { key: 'brazier', x: 4, z: -18 }],
+        npcSpots: [{ x: 3, z: 6, face: 210, race: 'politician', say: '“The thirty-third degree is a floor. The lodge has thirty-two.”' }, { x: 18, z: 6, face: 270, race: 'general', say: '“The painting has the lights on. We have asked it to stop.”' }],
+        lines: ['“Members only.” “Both ways.”'] },
+    /* ROOM 0 · THE SINGULARITY · THE HORIZON: obsidian ground under the void, THE DROP (a bowl to −4 m the rescue ramp climbs out
+       of), THE ACCRETION RIM (the tape — the door gun's), the drop's frame from Saturn and the observatorium's screen on the north
+       wall */
+    prebuilt_singularity: { part: 'horizon', label: 'THE HORIZON', sub: 'THE DROP · THE ACCRETION RIM · ZERO VOLUME', w: 62, d: 60, night: 1, look: 'abyss', fogD: 0.026,
+        floor: 'moon_3', cliff: 'obsidian', path: 'crystal', floorColor: 0x5a4a78, cliffColor: 0x1c1428,
+        gen: { kind: 'rooms', seed: 0, loops: 3, rMin: 7, rMax: 13, wallH: 3.0, thicket: false }, noise: { amp: 0.2, scale: 6 },   // an open room's plan is `rooms` (a cave plan grows rock only under a ceiling — hq-floor-plan's rule); the obsidian banks are the solid
+        plaza: { x: 0, z: 10 },
+        features: [
+            { k: 'dip', x: 0, z: -10, r: 11, h: -4.0, open: true },                                                 // THE DROP
+            { k: 'ramp', x0: 0, z0: 4.5, x1: 0, z1: -4, w: 3.0, h0: 0, h1: -3.2 },                                   // the way down into it (and out)
+            { k: 'plateau', x: 18, z: -18, r: 3.4, h: 6.0, edge: 0.4 },                                             // THE ACCRETION RIM (the tape)
+            { k: 'plateau', x: -18, z: -6, r: 5, h: 1.8, edge: 0.4 }, { k: 'ramp', x0: -18, z0: 5.5, x1: -18, z1: 0.7, w: 2.6, h0: 0, h1: 1.8 },
+            { k: 'rail', x0: -24, z0: 10, x1: -12, z1: 10 },
+            { k: 'path', pts: [[0, 10], [-5, -24], [-5, -28]], w: 2.6 }, { k: 'path', pts: [[0, 10], [-0.2, -24], [-0.2, -28]], w: 2.4 },
+            { k: 'scatter', key: 'crystal_cluster', n: 6, seed: 1 },
+        ],
+        props: [{ key: 'railing_1m', x: -18, z: 10.4, face: 0 }, { key: 'riser_1', x: 8, z: 14 }, { key: 'floating_orb', x: 0, z: -10, y: -2.5 }],
+        npcSpots: [{ x: -3, z: 14, face: 30, race: 'cosmic wraith', say: '“Eight seconds of falling. The ninth is you.”' }],
+        lines: ['“Where does it go?” “Down. Only down.”'] },
+    /* ROOM 6 · SATURN · THE HEXAGON: the plateau under the rings, six low walls in the storm's shape (the grind), THE EYE at the
+       centre, THE RING SHARD (the tape), the collar and the drop's frame on the north wall */
+    prebuilt_saturn: { part: 'hexagon', label: 'THE HEXAGON', sub: 'THE PLATEAU · THE STORM WALLS · THE EYE · THE RING SHARD', w: 70, d: 60, night: 1, look: 'observatory', fogD: 0.02,
+        floor: 'mars_2', cliff: 'storm', path: 'moon_3', floorColor: 0xc8a060, cliffColor: 0x7a6a58,
+        gen: { kind: 'rooms', seed: 6, loops: 3, rMin: 8, rMax: 14, wallH: 2.2, thicket: false }, noise: { amp: 0.14, scale: 8 },
+        plaza: { x: 0, z: 10 },
+        features: [
+            { k: 'wall', x0: 12, z0: -8, x1: 6, z1: 2.4, h: 1.0, t: 0.6, key: 'storm' }, { k: 'wall', x0: -6, z0: 2.4, x1: -12, z1: -8, h: 1.0, t: 0.6, key: 'storm' }, { k: 'wall', x0: -12, z0: -8, x1: -6, z1: -18.4, h: 1.0, t: 0.6, key: 'storm' }, { k: 'wall', x0: -6, z0: -18.4, x1: 6, z1: -18.4, h: 1.0, t: 0.6, key: 'storm' }, { k: 'wall', x0: 6, z0: -18.4, x1: 12, z1: -8, h: 1.0, t: 0.6, key: 'storm' },   // THE HEXAGON (open on the south face)
+            { k: 'dip', x: 0, z: -8, r: 5, h: -1.6 },                                                               // THE EYE
+            { k: 'plateau', x: 20, z: -18, w: 10, d: 4, h: 6.0, edge: 0.4, rot: 25 },                              // THE RING SHARD (the tape)
+            { k: 'plateau', x: -20, z: 4, r: 6, h: 1.6, edge: 0.4 }, { k: 'ramp', x0: -20, z0: 15.5, x1: -20, z1: 10.7, w: 2.8, h0: 0, h1: 1.6 },
+            { k: 'path', pts: [[0, 10], [0, -8]], w: 2.6 }, { k: 'path', pts: [[0, 10], [-5, -24], [-5, -28]], w: 2.6 }, { k: 'path', pts: [[0, 10], [-10, -24], [-10, -28]], w: 2.4 },
+            { k: 'scatter', key: 'cave_stone', n: 6, seed: 6 },
+        ],
+        props: [{ key: 'railing_1m', x: -20, z: 10, face: 0, y: 1.6 }, { key: 'riser_1', x: 8, z: 14 }, { key: 'brass_telescope', x: -4, z: 14, face: 160 }],
+        npcSpots: [{ x: -3, z: 14, face: 30, race: 'grey', say: '“One ice grain in the ring is square. We put it back every orbit.”' }],
+        lines: ['“Mind the ring plane.” “Which side?”'] },
+    /* ROOM 13 · THE HAUNTED HOUSE · THE GROUNDS: the drive up to the porch, THE FAMILY PLOT under the dead oaks, THE CRYPT (its walls
+       the grind), THE GAZEBO's roof (the tape — the door gun's), the house's front door on the north wall, the ranch's dead tree
+       standing free by the west fence */
+    prebuilt_haunted: { part: 'grounds', label: 'THE GROUNDS', sub: 'THE DRIVE · THE FAMILY PLOT · THE CRYPT · THE GAZEBO', w: 62, d: 56, night: 1, look: 'haunted', fogD: 0.03,
+        floor: 'grass_dark_fantasy', cliff: 'dirt_2', path: 'dirt_2', floorColor: 0x3a4a34, cliffColor: 0x4a3e34,
+        gen: { kind: 'rooms', seed: 13, loops: 3, rMin: 6, rMax: 11, wallH: 1.9, kinds: ['tree_5', 'tree_6', 'tree_5'], spacing: 3.2, maxTrees: 200 }, noise: { amp: 0.14, scale: 7 },
+        forest: { depth: 11, spacing: 3.4, rows: 2.8, start: 1.6, kinds: ['tree_5', 'tree_6'] },
+        plaza: { x: 0, z: 8 },
+        features: [
+            { k: 'plateau', x: 0, z: -22, w: 14, d: 5, h: 1.0, edge: 0.35 }, { k: 'ramp', x0: 0, z0: -14.5, x1: 0, z1: -19.3, w: 3.0, h0: 0, h1: 1.0, stairs: true },   // THE PORCH under the front door
+            { k: 'plateau', x: -18, z: -6, r: 6, h: 0.8, edge: 0.35 }, { k: 'ramp', x0: -9.5, z0: -6, x1: -12.7, z1: -6, w: 2.4, h0: 0, h1: 0.8 },   // THE FAMILY PLOT
+            { k: 'wall', x0: 14, z0: -4, x1: 22, z1: -4, h: 2.2, t: 0.8, key: 'bricks_2' }, { k: 'wall', x0: 22, z0: -4, x1: 22, z1: 4, h: 2.2, t: 0.8, key: 'bricks_2' },   // THE CRYPT
+            { k: 'plateau', x: 16, z: 14, r: 3.0, h: 5.6, edge: 0.4 },                                              // THE GAZEBO's roof (the tape)
+            { k: 'pool', x: -14, z: 12, r: 4, depth: 0.6, key: 'water', bank: 0.8 },                                 // the pond
+            { k: 'path', pts: [[0, 8], [0, -14]], w: 3.0 }, { k: 'path', pts: [[0, 8], [-10, 0], [-18, -6]], w: 2.2 }, { k: 'path', pts: [[0, 8], [12, 0]], w: 2.2 }, { k: 'path', pts: [[-10, 0], [-26, 4], [-29, 4]], w: 2.2 },
+            { k: 'scatter', key: 'menhir', n: 6, seed: 13 }, { k: 'scatter', key: 'dead_snag', n: 4, seed: 4 },
+        ],
+        doors: [{ id: 'house', wall: 'n', x: 0, y: 1.0, leaf: 'leaf_wooden', label: 'THE HAUNTED HOUSE · THE HALL', sub: 'THE FRONT DOOR · GO IN',
+                  action: { room: 'site_prebuilt_haunted_hall', at: 'front' },
+                  desc: 'The front door at the top of the porch steps. It is open a crack. It was not, a moment ago.' }],
+        props: [{ key: 'railing_1m', x: 18, z: -3.5, face: 0, y: 0 }, { key: 'riser_1', x: 6, z: 12 }, { key: 'hollow_dead_tree', x: -20, z: -6, y: 0.8, face: 120 }, { key: 'sarcophagus', x: 18, z: 0, face: 90 }, { key: 'cave_torch', x: -4, z: -17 }, { key: 'cave_torch', x: 4, z: -17 }],
+        npcSpots: [{ x: -3, z: 12, face: 30, race: 'ghost', say: '“The house is not haunted. The grounds are. The house is where we go to get away from it.”' }, { x: -16, z: -8, y: 0.8, face: 160, race: 'ghoul', say: '“Every stone in the plot has your surname. Most of them are spelled right.”' }],
+        lines: ['“Which floor?” “The one hotels leave out.”'] },
+    /* ROOM 180 · HOLLOW EARTH · THE INNER SUN: the country under the crust, lit from the middle — THE SUN on its spire (the tape at its
+       foot, the door gun's), THE CRYSTAL FOREST, THE LAKE, the terraces; the cave's mouth on the north wall */
+    prebuilt_hollow_earth: { part: 'innersun', label: 'THE INNER SUN', sub: 'THE COUNTRY UNDER THE CRUST · THE SUN · THE CRYSTAL FOREST', w: 70, d: 60, night: 1, look: 'cave', fogD: 0.02,
+        floor: 'cave_floor', cliff: 'cave_wall', path: 'crystal', floorColor: 0x8a7a9c, cliffColor: 0x6a5a7c,
+        gen: { kind: 'rooms', seed: 180, loops: 3, rMin: 7, rMax: 13, wallH: 2.4, thicket: false }, noise: { amp: 0.2, scale: 7 },
+        plaza: { x: 0, z: 8 },
+        features: [
+            { k: 'plateau', x: 0, z: -16, r: 3.0, h: 6.8, edge: 0.4 },                                              // THE SUN's spire (the tape)
+            { k: 'plateau', x: 0, z: -16, r: 9, h: 1.8, edge: 0.4 }, { k: 'ramp', x0: 0, z0: -1.5, x1: 0, z1: -7.7, w: 3.0, h0: 0, h1: 1.8, stairs: true },   // THE TERRACE round it
+            { k: 'pool', x: 20, z: 4, r: 8, rz: 6, depth: 1.0, key: 'water', bank: 1.2 },                           // THE LAKE
+            { k: 'deck', x0: 10.5, z0: 4, x1: 29.5, z1: 4, w: 2.4, y: 0.3 },
+            { k: 'hill', x: -20, z: 8, r: 8, h: 1.6 },
+            { k: 'rail', x0: -8, z0: -6, x1: 8, z1: -6 },
+            { k: 'path', pts: [[0, 8], [-16, 2], [-24, -8]], w: 2.4 }, { k: 'path', pts: [[-16, 2], [-16, -20], [-5, -26], [-5, -28]], w: 2.6 },   // round the terrace's west side to the mouth (never over its cliff)
+            { k: 'scatter', key: 'crystal_cluster', n: 12, seed: 180 }, { k: 'scatter', key: 'cave_stone', n: 5, seed: 8 },
+        ],
+        props: [{ key: 'railing_1m', x: 0, z: -5.6, face: 0 }, { key: 'riser_1', x: 8, z: 12 }, { key: 'floating_orb', x: 0, z: -16, y: 7.4 }, { key: 'crystal_cluster', x: 2.4, z: -16, y: 6.8 }],
+        npcSpots: [{ x: -3, z: 12, face: 30, race: 'reptilian', say: '“The floor on the far side is the ceiling. Mind your head, in a while.”' }, { x: 16, z: 12, face: 270, race: 'giant', say: '“The sun does not set. It is not allowed.”' }],
+        lines: ['“Which way is down?” “Out.”'] },
+    /* ROOM 426 · THE SPACESHIP · THE DECK: the dorsal hull plate under the wreckage field, THE DORSAL FIN, THE NACELLE (the tape — the
+       door gun's), THE BREACH (a bowl with a rescue ramp), the airlock on the north wall */
+    prebuilt_derelict: { part: 'deck', label: 'THE DECK', sub: 'THE DORSAL PLATE · THE FIN · THE NACELLE · THE BREACH', w: 62, d: 46, night: 1, look: 'observatory', fogD: 0.016,
+        floor: 'aluminium', cliff: 'gunmetal', path: 'metal_2', floorColor: 0x8e98a2, cliffColor: 0x5a6068,
+        gen: { kind: 'rooms', seed: 426, loops: 3, rMin: 7, rMax: 12, wallH: 3.0, thicket: false }, noise: { amp: 0.04, scale: 9 },
+        plaza: { x: 0, z: 6 },
+        features: [
+            { k: 'ridge', pts: [[-26, -2], [-10, -2], [6, -2]], w: 3, h: 1.4 },                                      // THE DORSAL FIN's root
+            { k: 'plateau', x: 18, z: -12, w: 8, d: 16, h: 5.4, edge: 0.4 },                                        // THE NACELLE (the tape)
+            { k: 'dip', x: -16, z: 8, r: 6, h: -2.4 },                                                              // THE BREACH
+            { k: 'plateau', x: -18, z: -12, w: 12, d: 8, h: 1.6, edge: 0.35 }, { k: 'ramp', x0: -18, z0: -3.5, x1: -18, z1: -7.7, w: 3.0, h0: 0, h1: 1.6, stairs: true },   // THE BRIDGE'S ROOF
+            { k: 'wall', x0: 4, z0: 12, x1: 14, z1: 12, h: 1.0, t: 0.5, key: 'gunmetal' },                          // the handrail (the grind)
+            { k: 'path', pts: [[0, 6], [-6, -16], [-6, -22]], w: 2.8 }, { k: 'path', pts: [[0, 6], [12, 0]], w: 2.4 },
+            { k: 'scatter', key: 'cardboard_boxes', n: 4, seed: 26 },
+        ],
+        doors: [{ id: 'airlock', wall: 'n', x: -6, leaf: 'leaf_bulkhead', wide: true, label: 'THE SPACESHIP · THE AIRLOCK', sub: 'THE AIRLOCK · GO IN',
+                  action: { room: 'site_prebuilt_derelict_airlock', at: 'deck' },
+                  desc: 'The dorsal airlock. It cycles on its own, which the manual says it cannot.' }],
+        props: [{ key: 'railing_1m', x: 9, z: 13.2, face: 0 }, { key: 'riser_1', x: 8, z: 4 }],
+        npcSpots: [{ x: -3, z: 10, face: 30, race: 'android', say: '“LV-426. The signal was a warning. We answered it anyway.”' }],
+        lines: ['“Where is the crew?” “In the hold. Some of them.”'] },
+    /* ROOM 1717 · THE FLYING DUTCHMAN · THE MAIN DECK: the weather deck in the storm, THE FORECASTLE and THE POOP up their ladders,
+       the bulwarks (the grind), THE MAINTOP (the tape — the door gun's), the companionway below on the north wall */
+    prebuilt_revenge: { part: 'deck', label: 'THE MAIN DECK', sub: 'THE FORECASTLE · THE WAIST · THE POOP · THE MAINTOP', w: 64, d: 40, night: 1, look: 'sea', fogD: 0.026,
+        floor: 'wood_planks', cliff: 'wood', path: 'wood', floorColor: 0xb9885a, cliffColor: 0x7a5636,
+        gen: { kind: 'rooms', seed: 1717, loops: 2, rMin: 8, rMax: 14, wallH: 1.4, thicket: false }, noise: { amp: 0.06, scale: 9 },
+        plaza: { x: 0, z: 4 },
+        features: [
+            { k: 'plateau', x: 24, z: 0, w: 12, d: 30, h: 2.4, edge: 0.4 }, { k: 'ramp', x0: 12.5, z0: 0, x1: 18.7, z1: 0, w: 2.6, h0: 0, h1: 2.4, stairs: true },   // THE FORECASTLE (the bow east)
+            { k: 'plateau', x: -24, z: 0, w: 12, d: 30, h: 2.4, edge: 0.4 }, { k: 'ramp', x0: -12.5, z0: 0, x1: -18.7, z1: 0, w: 2.6, h0: 0, h1: 2.4, stairs: true },   // THE POOP (the stern west)
+            { k: 'plateau', x: 0, z: -4, r: 1.8, h: 8.4, edge: 0.4 },                                                // THE MAINTOP (the tape; under the room's 9 m)
+            { k: 'wall', x0: -16, z0: 16, x1: 16, z1: 16, h: 1.1, t: 0.4, key: 'wood' }, { k: 'wall', x0: -16, z0: -16, x1: 16, z1: -16, h: 1.1, t: 0.4, key: 'wood' },   // the bulwarks
+            { k: 'path', pts: [[0, 4], [-5, -14], [-5, -17]], w: 2.6 }, { k: 'path', pts: [[0, 4], [12, 0]], w: 2.4 }, { k: 'path', pts: [[0, 4], [-12, 0]], w: 2.4 },
+            { k: 'scatter', key: 'sea_chest', n: 3, seed: 17 },
+        ],
+        doors: [{ id: 'companionway', wall: 'n', x: -5, leaf: 'leaf_shabby_wood', label: 'THE FLYING DUTCHMAN · THE GUN DECK', sub: 'THE COMPANIONWAY · GO BELOW',
+                  action: { room: 'site_prebuilt_revenge_gundeck', at: 'deck' },
+                  desc: 'The companionway down to the gun deck. The steps are wet from below.' }],
+        props: [{ key: 'railing_1m', x: 0, z: 14.6, face: 0 }, { key: 'riser_1', x: 6, z: 8 }, { key: 'ship_cannon', x: 8, z: 13, face: 180 }, { key: 'ship_cannon', x: -8, z: 13, face: 180 }, { key: 'ship_anchor', x: 22, z: 8, y: 2.4 }, { key: 'ship_lantern', x: 0, z: -4, y: 8.2 }],
+        npcSpots: [{ x: -3, z: 8, face: 30, race: 'pirate', say: '“The wheel turns itself into the storm. We just hold on.”' }, { x: -24, z: 0, y: 2.4, face: 90, race: 'ghost', say: '“Logged 1717. Not logged since. Do not log us now.”' }],
+        lines: ['“Where is the captain?” “At the helm. Since 1717.”'] },
+};
+
 ((DOOR_HQ.siteRooms || {}).built || []).forEach(id => { const r = hqSiteRoom(id); if (r) DOOR_HQ.rooms[hqSiteRoomId(id)] = r; });
+hqBuildAreas();          // THE AREAS (2026-09-18): every board is an area — the twenty generated parts + the marker on every entry part, before the entries
 hqApplySiteEntries();   // THE ENTRY (2026-09-17): the bypassed board rooms' egress doors, on their parts
 hqRefreshComplexLinks();
 hqReplateDoors();       // THE PLATE READS THE ROOM THROUGH THE DOOR (2026-09-18) — after the entries and the links
@@ -36936,44 +37495,44 @@ const HQ_TAPE_KINDS = ['evidence', 'parents', 'facility'];
    complex part one, per exploration-floor room one — [room | site, title,
    caption, kind]. A site key (no `site_` prefix) = its generated board room. */
 const HQ_TAPE_SHEET = {
-    prebuilt_dumb:        [['THE LIFT LOG', 'Sub-level 7 does not exist. The lift stops there anyway.', 'facility']],   // THE UNDERWORLD (2026-09-18): THE BLAST DOOR went down the sewers
-    prebuilt_cern:        [['A BADGE ON THE FLOOR', 'Your mother’s badge. The photo has been cut out.', 'parents']],   // THE VATICAN (2026-09-17): BEAM DUMP went to the cortile
-    prebuilt_backrooms:   [['HUM, LEVEL 0', 'Forty seconds of carpet. Something in the wallpaper blinks.', 'evidence']],   // CAMELOT CASTLE (2026-09-18): THE EXIT SIGN went to the outer ward
-    site_prebuilt_skinwalker_fields: [['THE SCARECROWS, 05:29', 'Three of them, facing the house. On the second pass they face the camera.', 'evidence']],   // THE RANCH (2026-09-18): Nuketown's MANNEQUINS re-homed when the site retired
-    prebuilt_stadium:     [['THE CROWD NOISE', 'Eighty thousand voices. The seats are empty.', 'evidence']],   // DISASTER CITY (2026-09-17): HALF-TIME went out to the streets
-    prebuilt_camelot:     [['THE ROUND TABLE', 'Twelve chairs. Thirteen shadows.', 'evidence']],   // THE VATICAN (2026-09-17): SNOW ON THE BATTLEMENTS went to the basilica
+
+
+    site_prebuilt_backrooms_levels: [['HUM, LEVEL 0', 'Forty seconds of carpet. Something in the wallpaper blinks.', 'evidence']],   // CAMELOT CASTLE (2026-09-18): THE EXIT SIGN went to the outer ward   // THE AREAS (2026-09-18): off the bypassed board
+    site_prebuilt_skinwalker_fields: [['THE SCARECROWS, 05:29', 'Three of them, facing the house. On the second pass they face the camera.', 'evidence'], ['THE RANCH HOUSE', 'A woman on the porch, looking into the yard. The yard looks back.', 'parents']],   // THE RANCH (2026-09-18): Nuketown's MANNEQUINS re-homed when the site retired   // + the board's own (THE AREAS, 2026-09-18)
+    site_prebuilt_stadium_bowl: [['THE CROWD NOISE', 'Eighty thousand voices. The seats are empty.', 'evidence']],   // DISASTER CITY (2026-09-17): HALF-TIME went out to the streets   // THE AREAS (2026-09-18): off the bypassed board
+
     site_prebuilt_atlantis_abyss: [['SONAR, 0400', 'Something answers the ping. It answers in a voice.', 'evidence']],   // CAMELOT CASTLE (2026-09-18): THE PEARL DIVER went to the undercroft; THE DEEP (2026-09-18): the board bypassed — its tape is on the sea floor
-    prebuilt_hell:        [['THE FISSURE', 'Heat shimmer over the causeway. The shimmer has a face.', 'evidence']],   // THE DIVINE STAIR (2026-09-17): FORM 666 went down to the pit
-    prebuilt_technoticlan: [['MOTHER', 'Nine frames of a woman at a console. The console is the one in Room 1337.', 'parents']],   // THE SECOND PASS (2026-09-17): THE UPLINK went to the grid
-    prebuilt_agartha:     [['THE ADIT', 'A lamp moving through the crystal. Nobody carries it.', 'evidence']],   // THE VATICAN (2026-09-17): THE GREAT DOOR went to the archive
-    prebuilt_antarctica:  [['THE ICE CORE', 'Something frozen in the core. It is looking at the drill.', 'evidence']],   // D.U.M.B. (2026-09-17): its second tape went under the base (the motor pool)
-    prebuilt_shasta:      [['THE LENTICULAR', 'A cloud that holds still while the sky moves. Then it does not.', 'evidence']],
+
+    site_prebuilt_technoticlan_templecity: [['MOTHER', 'Nine frames of a woman at a console. The console is the one in Room 1337.', 'parents']],   // THE SECOND PASS (2026-09-17): THE UPLINK went to the grid   // THE AREAS (2026-09-18): off the bypassed board
+    site_prebuilt_agartha_crystalcity: [['THE ADIT', 'A lamp moving through the crystal. Nobody carries it.', 'evidence']],   // THE VATICAN (2026-09-17): THE GREAT DOOR went to the archive   // THE AREAS (2026-09-18): off the bypassed board
+    site_prebuilt_antarctica_station: [['THE ICE CORE', 'Something frozen in the core. It is looking at the drill.', 'evidence']],   // D.U.M.B. (2026-09-17): its second tape went under the base (the motor pool)   // THE AREAS (2026-09-18): off the bypassed board
+    site_prebuilt_shasta_slopes: [['THE LENTICULAR', 'A cloud that holds still while the sky moves. Then it does not.', 'evidence']],   // THE AREAS (2026-09-18): off the bypassed board
     site_prebuilt_stonehenge_henge: [['SOLSTICE, FROM THE BANK', 'The stones throw two shadows. The sun is on the wrong side for one of them.', 'evidence']],   // THE SECOND PASS (2026-09-17): THE WHEEL went to the noodle bar
     site_prebuilt_giza_plateau: [['THE SHAFT', 'A robot camera reaching a door with two copper handles. Then the feed cuts.', 'evidence']],   // D.U.M.B. (2026-09-17): its second tape went under the base
     site_prebuilt_atlantis_temple: [['CHOIR, UNDER THE SEA', 'Eight seconds of singing with no source. The mic was off. The mic was wet.', 'evidence']],   // THE DIVINE STAIR (2026-09-17): THE GATE went out to the fields; THE DEEP (2026-09-18): Heaven's board is bypassed — its choir sings in the temple's air pocket now
     site_prebuilt_gobekli_leylines: [['THE SURVEY', 'A chain dragged down a corridor that does not bend. The chain has no end.', 'evidence']],   // THE LEY LINES (2026-09-18): BILLBOARD came off Cyberpunk's bypassed board (unreachable on foot since the grid took the door) and was rewritten for the tunnels; the four ancient boards' tapes moved onto their parts the same day (the boards are bypassed — every part keeps exactly one, the hundred stays a hundred)'s food court
     site_prebuilt_babel_tower: [['ONE VOICE', 'Everyone on the tower says the same word. It is not a word.', 'evidence']],
-    prebuilt_olympus:     [['THE FORGE', 'Sparks falling up. A hammer with no hand.', 'evidence']],   // THE DIVINE STAIR (2026-09-17): the second tape went to the stairway
-    prebuilt_mars:        [['ROVER FEED 07', 'The rover turns to look at something behind it. The something waves.', 'evidence']],   // D.U.M.B. (2026-09-17): its second tape went under the base
-    prebuilt_area51:      [['THE BADGE PHOTO', 'A man in a lab coat at the gate. He is holding a copy of this tape.', 'parents']],   // THE VATICAN (2026-09-17): HANGAR 18 went to the observatory
-    prebuilt_skinwalker:  [['THE RANCH HOUSE', 'A woman on the porch, looking into the yard. The yard looks back.', 'parents']],
-    prebuilt_hollow_earth: [['THE INNER SUN', 'A light under the ground. It has a horizon.', 'evidence']],   // THE UNDERWORLD (2026-09-18): THE WELL went to the old workings
-    prebuilt_fairy_forest: [['THE RING', 'Toadstools in a circle. On the second pass, the circle is one wider.', 'evidence']],
-    prebuilt_moon:        [['THE LANDER', 'A footprint beside the lander that was not there in the previous frame.', 'evidence']],   // D.U.M.B. (2026-09-17): its second tape went under the base
-    prebuilt_vatican:     [['THE ARCHIVE', 'A reading room with one lamp lit. The book is open to a floor plan of the Bureau.', 'facility']],   // THE DIVINE STAIR (2026-09-17): THE CONFESSIONAL went down to the catacombs
-    prebuilt_bohemian_grove: [['THE OWL', 'A statue of an owl. The owl blinks once, at 0:06.', 'evidence']],
+    site_prebuilt_olympus_summit: [['THE FORGE', 'Sparks falling up. A hammer with no hand.', 'evidence']],   // THE DIVINE STAIR (2026-09-17): the second tape went to the stairway   // THE AREAS (2026-09-18): off the bypassed board
+    site_prebuilt_mars_cydonia: [['ROVER FEED 07', 'The rover turns to look at something behind it. The something waves.', 'evidence']],   // D.U.M.B. (2026-09-17): its second tape went under the base   // THE AREAS (2026-09-18): off the bypassed board
+
+
+    site_prebuilt_hollow_earth_innersun: [['THE INNER SUN', 'A light under the ground. It has a horizon.', 'evidence']],   // THE UNDERWORLD (2026-09-18): THE WELL went to the old workings   // THE AREAS (2026-09-18): off the bypassed board
+
+    site_prebuilt_moon_mare: [['THE LANDER', 'A footprint beside the lander that was not there in the previous frame.', 'evidence']],   // D.U.M.B. (2026-09-17): its second tape went under the base   // THE AREAS (2026-09-18): off the bypassed board
+
+    site_prebuilt_bohemian_grove_grove: [['THE OWL', 'A statue of an owl. The owl blinks once, at 0:06.', 'evidence']],   // THE AREAS (2026-09-18): off the bypassed board
     site_prebuilt_gobekli_tell: [['THE PILLARS', 'Carvings of animals. On the loop, one animal has moved.', 'evidence']],   // AREA 51 (2026-09-18): its second tape went to the hangar
-    prebuilt_northpole:   [['THE WORKSHOP', 'Benches, tools, no one. A bell rings on the ceiling.', 'evidence']],   // D.U.M.B. (2026-09-17): its second tape went under the base
-    prebuilt_flatlands:   [['THE EDGE', 'A camera on a tripod at the edge. There is an edge.', 'evidence']],   // THE SECOND PASS (2026-09-17): THE FOURTH CORNER went to the supply closet
-    prebuilt_revenge:     [['THE HELM', 'The wheel turns itself into the storm. The compass points down.', 'evidence']],   // CAMELOT CASTLE (2026-09-18): THE CAPTAIN’S TABLE went to the great hall
-    prebuilt_derelict:    [['THE BRIDGE', 'A dead console lights up when the camera enters. It shows a door.', 'evidence']],   // CAMELOT CASTLE (2026-09-18): CRYO went to the keep
-    prebuilt_lookingglass: [['THE TEA PARTY', 'A table set for four. The cups fill in the wrong order.', 'evidence']],   // CAMELOT CASTLE (2026-09-18): THE MIRROR went to the castle in the sky
-    prebuilt_haunted:     [['THE STAIRCASE', 'A figure on the landing for one frame. The frame is at 0:03 every loop.', 'evidence']],   // THE UNDERWORLD (2026-09-18): THE NURSERY went to the holding cells
-    prebuilt_lodge:       [['THE EYE', 'A painting on the wall. Its eye is a camera. Its camera is this tape.', 'facility']],   // THE UNDERWORLD (2026-09-18): THE MINUTES went to the running tunnels
-    prebuilt_singularity: [['THE DROP', 'Eight seconds of falling. The camera never lands.', 'evidence']],   // D.U.M.B. (2026-09-17): its second tape went under the base
-    prebuilt_saturn:      [['THE RINGS', 'Ice grains in the ring, one of them square.', 'evidence']],   // D.U.M.B. (2026-09-17): its second tape went under the base
-    prebuilt_strip:       [['THE CHAPEL', 'Two people at an altar, out of focus. The register says your surname.', 'parents']],   // THE LUXOR BEAM moved onto THE STRIP's own streets (2026-09-17)
-    prebuilt_downtown:    [['RUSH HOUR', 'A crowd at a crossing. Everyone stops. Everyone looks up.', 'evidence']],
+    site_prebuilt_northpole_village: [['THE WORKSHOP', 'Benches, tools, no one. A bell rings on the ceiling.', 'evidence']],   // D.U.M.B. (2026-09-17): its second tape went under the base   // THE AREAS (2026-09-18): off the bypassed board
+    site_prebuilt_flatlands_plain: [['THE EDGE', 'A camera on a tripod at the edge. There is an edge.', 'evidence']],   // THE SECOND PASS (2026-09-17): THE FOURTH CORNER went to the supply closet   // THE AREAS (2026-09-18): off the bypassed board
+    site_prebuilt_revenge_deck: [['THE HELM', 'The wheel turns itself into the storm. The compass points down.', 'evidence']],   // CAMELOT CASTLE (2026-09-18): THE CAPTAIN’S TABLE went to the great hall   // THE AREAS (2026-09-18): off the bypassed board
+    site_prebuilt_derelict_deck: [['THE BRIDGE', 'A dead console lights up when the camera enters. It shows a door.', 'evidence']],   // CAMELOT CASTLE (2026-09-18): CRYO went to the keep   // THE AREAS (2026-09-18): off the bypassed board
+    site_prebuilt_lookingglass_garden: [['THE TEA PARTY', 'A table set for four. The cups fill in the wrong order.', 'evidence']],   // CAMELOT CASTLE (2026-09-18): THE MIRROR went to the castle in the sky   // THE AREAS (2026-09-18): off the bypassed board
+    site_prebuilt_haunted_grounds: [['THE STAIRCASE', 'A figure on the landing for one frame. The frame is at 0:03 every loop.', 'evidence']],   // THE UNDERWORLD (2026-09-18): THE NURSERY went to the holding cells   // THE AREAS (2026-09-18): off the bypassed board
+    site_prebuilt_lodge_halls: [['THE EYE', 'A painting on the wall. Its eye is a camera. Its camera is this tape.', 'facility']],   // THE UNDERWORLD (2026-09-18): THE MINUTES went to the running tunnels   // THE AREAS (2026-09-18): off the bypassed board
+    site_prebuilt_singularity_horizon: [['THE DROP', 'Eight seconds of falling. The camera never lands.', 'evidence']],   // D.U.M.B. (2026-09-17): its second tape went under the base   // THE AREAS (2026-09-18): off the bypassed board
+    site_prebuilt_saturn_hexagon: [['THE RINGS', 'Ice grains in the ring, one of them square.', 'evidence']],   // D.U.M.B. (2026-09-17): its second tape went under the base   // THE AREAS (2026-09-18): off the bypassed board
+
+
     /* the complexes (9.2 / 9.3): one per part */
     site_prebuilt_haunted_hall:     [['THE FRONT DOOR, INSIDE', 'The hall from the stairs. The door opens for someone who is not there.', 'evidence']],
     site_prebuilt_haunted_upstairs: [['THE WARDROBE', 'A coat hanging in the wardrobe. It is your father’s coat. The label says CAMELOT.', 'parents']],
@@ -36993,12 +37552,12 @@ const HQ_TAPE_SHEET = {
     site_prebuilt_revenge_cabin:     [['THE STERN WINDOWS', 'The sea through the stern windows. A lit city under it, and a woman on a balcony, waving up at the glass.', 'parents']],
     site_prebuilt_revenge_hold:      [['THE BILGE', 'Water rising in the hold, then falling, then rising. It has a rhythm. The rhythm is breathing.', 'evidence']],
     site_prebuilt_strip_chapel:      [['I DO', 'The officiant\'s mouth. It says a name. It is not the name on the register, and the register is in your hand.', 'parents']],
-    site_prebuilt_strip_streets:     [['THE LUXOR BEAM', 'The beam at night. Something climbs it.', 'evidence']],   // DISASTER CITY · THE STRIP (2026-09-17)
+    site_prebuilt_strip_streets:     [['THE LUXOR BEAM', 'The beam at night. Something climbs it.', 'evidence'], ['THE CHAPEL', 'Two people at an altar, out of focus. The register says your surname.', 'parents']],   // DISASTER CITY · THE STRIP (2026-09-17)   // + the board's own (THE AREAS, 2026-09-18)
     site_prebuilt_strip_casino:      [['THE HOUSE', 'A slot machine paying out. The coins are Keys. The eye in the sky blinks first.', 'facility']],
     site_prebuilt_downtown_lobby:    [['THE LOBBY CLOCK', 'The lobby clock at 1954. The second hand goes backward once, and the dust rises off the desk.', 'evidence']],
     site_prebuilt_downtown_subway:   [['THE LAST TRAIN', 'Two people boarding. The doors close on the lens. The destination board reads your surname.', 'parents']],
     /* DISASTER CITY (2026-09-17): the streets' tape came off the stadium (HALF-TIME), the mall's off Cyberpunk (THE NOODLE STAND) — the hundred stays a hundred */
-    site_prebuilt_downtown_streets:  [['HALF-TIME', 'A man in a coat crossing at the light, alone, from a rooftop. He knows where the camera is. The cars do not stop.', 'parents']],
+    site_prebuilt_downtown_streets:  [['HALF-TIME', 'A man in a coat crossing at the light, alone, from a rooftop. He knows where the camera is. The cars do not stop.', 'parents'], ['RUSH HOUR', 'A crowd at a crossing. Everyone stops. Everyone looks up.', 'evidence']],   // + the board's own (THE AREAS, 2026-09-18)
     site_prebuilt_downtown_mall:     [['THE FOOD COURT', 'Two people eating under the skylights. The receipt on the table has your employee number. The third chair is ten feet tall.', 'parents']],
     /* THE SECOND PASS (2026-09-17): the closet's tape came off the Flat Lands, the grid's off Technoticlan, the noodle bar's off Stonehenge — the hundred stays a hundred */
     site_prebuilt_downtown_closet: [['STAFF ONLY', 'A shelf of cleaning products. Between the bottles, a brass lever. A hand pulls it. The shelf is empty on the next pass.', 'facility']],
@@ -37008,7 +37567,7 @@ const HQ_TAPE_SHEET = {
     /* 7.7 WAVE 2 (2026-09-16): Room 345's two tapes came off the sacrifice room and Room X (the hundred stays a hundred) */
     site_prebuilt_bermuda_sea: [['FLIGHT 19, 14:10', 'Five aircraft in formation over a flat sea. The lead turns. The others turn with it. The sea does not.', 'evidence']],   // AREA 51 (2026-09-18): its second tape went to the flight line; THE DEEP (2026-09-18): the board bypassed — the tape is on the lighthouse rock
     /* THE WOODS (9.3 stage 3, 2026-09-16): seven tapes re-homed — the garden's tree (the names are carved in THE OLD TREE now), and six sites' second tapes (Shasta's map on the tree, the ranch's mesa, the forest's lantern, the grove's fire, Babel's climb, Downtown's alley camera) — the hundred stays a hundred; a built site keeps at least one */
-    site_prebuilt_fairy_forest_clearing: [['1618', 'A tree in the clearing. Two names carved in it. One is yours, the other is not yet.', 'parents']],
+    site_prebuilt_fairy_forest_clearing: [['1618', 'A tree in the clearing. Two names carved in it. One is yours, the other is not yet.', 'parents'], ['THE RING', 'Toadstools in a circle. On the second pass, the circle is one wider.', 'evidence']],   // + the board's own (THE AREAS, 2026-09-18)
     site_prebuilt_fairy_forest_trail:    [['THE TUNNEL MOUTH', 'A hand-drawn map of the mountain’s inside, pinned to a tree on the trail. Your father’s handwriting.', 'parents']],
     site_prebuilt_fairy_forest_redwoods: [['THE LANTERN', 'A lantern moving between the redwoods at ankle height. It stops when watched.', 'evidence']],
     site_prebuilt_fairy_forest_pasture:  [['THE MESA', 'A shape on the mesa at dusk, over the pasture fence. It gets closer on every loop.', 'evidence']],
@@ -37019,30 +37578,30 @@ const HQ_TAPE_SHEET = {
        and Olympus's second (the hundred stays a hundred; a built site keeps ≥ 1) */
     site_prebuilt_vatican_catacombs: [['THE CONFESSIONAL', 'A voice through the screen. It says your callsign. The screen is in a wall of skulls.', 'parents']],
     /* THE VATICAN expanded (2026-09-17): four more parts, four tapes re-homed (Camelot's, Agartha's, CERN's and Area 51's second — the hundred stays a hundred, every site keeps one) */
-    site_prebuilt_vatican_basilica:    [['THE HOMILY', 'Forty minutes of a sermon in a language the tape marks UNKNOWN. The congregation nods in the right places.', 'evidence']],
+    site_prebuilt_vatican_basilica:    [['THE HOMILY', 'Forty minutes of a sermon in a language the tape marks UNKNOWN. The congregation nods in the right places.', 'evidence'], ['THE ARCHIVE', 'A reading room with one lamp lit. The book is open to a floor plan of the Bureau.', 'facility']],   // + the board's own (THE AREAS, 2026-09-18)
     site_prebuilt_vatican_library:     [['THE INDEX', 'A card drawer opening by itself. Every card is your callsign. The hand that filed them is in frame for one second.', 'parents']],
     site_prebuilt_vatican_courtyard:   [['THE FOUNTAIN, 0300', 'The water runs up. The gardener rakes gravel that is not there and does not look at the well.', 'evidence']],
     site_prebuilt_vatican_observatory: [['THE EYEPIECE', 'A stair, through the telescope. It is closer than the moon. There is a door at the top and it is open.', 'facility']],
-    site_prebuilt_hell_pit:          [['FORM 666', 'A clearance form filled in by hand. The hand is not anyone in the building. It is chained to the plinth.', 'facility']],
+    site_prebuilt_hell_pit:          [['FORM 666', 'A clearance form filled in by hand. The hand is not anyone in the building. It is chained to the plinth.', 'facility'], ['THE FISSURE', 'Heat shimmer over the causeway. The shimmer has a face.', 'evidence']],   // + the board's own (THE AREAS, 2026-09-18)
     site_prebuilt_heaven_stair:      [['THE CLIMB, 4', 'A stair of cloud. The camera goes up it for an hour. The top does not get closer and then it is there.', 'evidence']],
     site_prebuilt_heaven_gate:       [['THE GATE', 'Clouds part on a corridor. The corridor is the one outside. A hotel door at the end of it, and the book beside it, open.', 'facility']],
     /* D.U.M.B. (9.3 stage 8, 2026-09-17): one per part — seven re-homed (Antarctica's, the North Pole's, the Singularity's, Mars's, Saturn's, the Moon's, Giza's second — the hundred stays a hundred; the base keeps its own two on the board: the shelf's first site) */
-    site_prebuilt_dumb_motorpool: [['THE TRAM, 00:00', 'The tram arriving on the hour. Its doors open; its doors close. The platform clock has not moved.', 'evidence']],
+    site_prebuilt_dumb_motorpool: [['THE TRAM, 00:00', 'The tram arriving on the hour. Its doors open; its doors close. The platform clock has not moved.', 'evidence'], ['THE LIFT LOG', 'Sub-level 7 does not exist. The lift stops there anyway.', 'facility']],   // + the board's own (THE AREAS, 2026-09-18)
     site_prebuilt_dumb_sublevel7: [['SUB-LEVEL 7', 'The lift’s own camera. Seven floors of the same door. On the seventh the door is the floor.', 'facility']],
     site_prebuilt_dumb_dreamlab:  [['REM, NIGHT 40', 'A sleeper’s trace goes flat and the screen keeps drawing. It is drawing this room, with the camera in it.', 'evidence']],
     site_prebuilt_dumb_clonevats: [['BATCH 12', 'Twelve vats, eleven faces. The twelfth is warm, and the tape is you.', 'parents']],
     site_prebuilt_dumb_warroom:   [['THE HEXAGON', 'The pole’s storm on the big board. It is a door seen edge-on. Someone has circled it in grease pencil.', 'evidence']],
     site_prebuilt_dumb_bunker:    [['EARTHRISE', 'A window eighty metres under. The Earth rises in it, the wrong colour. The window is a screen and the screen is right.', 'evidence']],
-    site_prebuilt_cern_ring:      [['BEAM ON', 'The ring at full power for one frame. In the frame the ring is a door, and it is ajar.', 'evidence']],
+    site_prebuilt_cern_ring:      [['BEAM ON', 'The ring at full power for one frame. In the frame the ring is a door, and it is ajar.', 'evidence'], ['A BADGE ON THE FLOOR', 'Your mother’s badge. The photo has been cut out.', 'parents']],   // + the board's own (THE AREAS, 2026-09-18)
     /* CAMELOT CASTLE (2026-09-18 — complex candidate #2): one per part — five re-homed (the Backrooms', Atlantis's, the Dutchman's, the Spaceship's and the
        Looking-Glass's second — the hundred stays a hundred; the castle keeps THE ROUND TABLE on its board) */
-    site_prebuilt_camelot_ward:    [['THE DRAWBRIDGE, DUSK', 'The drawbridge comes down for nobody. Something crosses it anyway; the planks bow under it in order.', 'evidence']],
+    site_prebuilt_camelot_ward:    [['THE DRAWBRIDGE, DUSK', 'The drawbridge comes down for nobody. Something crosses it anyway; the planks bow under it in order.', 'evidence'], ['THE ROUND TABLE', 'Twelve chairs. Thirteen shadows.', 'evidence']],   // + the board's own (THE AREAS, 2026-09-18)
     site_prebuilt_camelot_hall:    [['THE THIRTEENTH CHAIR', 'Twelve chairs at the table, and the camera counts thirteen shadows. In the last frame one of them stands up.', 'evidence']],
     site_prebuilt_camelot_keep:    [['THE WATCH', 'A sentry on the battlements looks up all night. In the last minute something in the sky looks back, and it has windows.', 'facility']],
     site_prebuilt_camelot_dungeon: [['MERLIN, BACKWARDS', 'An old man in the undercroft, speaking. Played in reverse he is saying your callsign, and a date that has not happened.', 'parents']],
     site_prebuilt_camelot_sky:     [['THE CASTLE IN THE SKY', 'A castle over the clouds, filmed from below. Then from above. There was nowhere to film it from above.', 'evidence']],
     /* AREA 51 (2026-09-18): one per part — three re-homed (Gobekli's, Nuketown's and Bermuda's second; the hundred stays a hundred) */
-    site_prebuilt_area51_hangar:     [['HANGAR 18, 03:00', 'The tarp comes off the rig by itself. Under the tarp, the rig. Under the rig, the floor lift, going down.', 'evidence']],
+    site_prebuilt_area51_hangar:     [['HANGAR 18, 03:00', 'The tarp comes off the rig by itself. Under the tarp, the rig. Under the rig, the floor lift, going down.', 'evidence'], ['THE BADGE PHOTO', 'A man in a lab coat at the gate. He is holding a copy of this tape.', 'parents']],   // + the board's own (THE AREAS, 2026-09-18)
     site_prebuilt_area51_ward:       [['ROOM 5150-B', 'A white room with no door. The camera is on the inside. So, on the second pass, are you.', 'parents']],
     site_prebuilt_area51_flightline: [['RUNWAY 33', 'Landing lights running into the desert. Something lands. It is not on the lights and it is not on the runway.', 'evidence']],
     /* THE UNDERWORLD (2026-09-18 — complex candidate #3): one per part — four re-homed (D.U.M.B.'s THE BLAST DOOR, the Lodge's THE MINUTES, the Haunted
@@ -37276,7 +37835,8 @@ function hqBuildFinds(only) {
         const placed = [];
         byRoom[roomId].forEach((t, i) => {
             const onBoard = room.fx === 'site' && i === 1;
-            let sp = onBoard ? (pin.tape2 || hqFindBoardSpot(roomId)) : (pin.tape || hqFindSpot(roomId, 'tape' + i, placed));
+            const pinT = (i === 0) ? pin.tape : pin['tape' + (i + 1)];   // THE AREAS (2026-09-18): a part that stands for a bypassed board holds the board's tape too — `tape2` pins the second off the board as well
+            let sp = onBoard ? (pin.tape2 || hqFindBoardSpot(roomId)) : (pinT || hqFindSpot(roomId, 'tape' + i, placed));
             if (sp && room.terrain) sp = hqTerrainFindSpot(roomId, sp);   // THE TERRAIN ROOM (2026-09-17): the ground under a pin, `hard` when the walker cannot reach it
             if (!sp) return;
             placed.push(sp);
@@ -37322,7 +37882,7 @@ DOOR_HQ.findSpots = { coldroom: { tape: { x: 1.3, z: -1.35 }, pay: { x: 0.4, z: 
     site_prebuilt_hollow_earth_gallery: { tape: { x: 4.0, z: -3.0 } },      // THE NEEDLE mid-cavern
     site_prebuilt_hollow_earth_adit:    { pay: { x: -5.3, z: 7.0 } },       // the envelope on THE CRYSTAL LEDGE
     site_prebuilt_hollow_earth_mouth:   { tape: { x: -6.5, z: 6.5 } },      // THE SHELF in the mouth's south corner
-    site_prebuilt_skinwalker_fields:    { tape: { x: 18.0, z: -14.0 } },     // THE BUTTE — no way up on foot (THE RANCH, 2026-09-18)
+    site_prebuilt_skinwalker_fields:    { tape: { x: 18.0, z: -14.0 }, tape2: { x: 8.0, z: 12.0 } },   // THE AREAS (2026-09-18): the board's tape came onto the fields — by the track     // THE BUTTE — no way up on foot (THE RANCH, 2026-09-18)
     site_prebuilt_fairy_forest_clearing: { tape: { x: 14.5, z: -12.5 } },   // THE CRAG under the staircase's lane
     site_prebuilt_fairy_forest_trail:   { tape: { x: 8.5, z: -12.5 } },     // THE PINNACLE over the top tier
     site_prebuilt_fairy_forest_redwoods: { tape: { x: 10.0, z: 6.0 } },     // THE STAND
@@ -37348,6 +37908,27 @@ DOOR_HQ.findSpots = { coldroom: { tape: { x: 1.3, z: -1.35 }, pay: { x: 0.4, z: 
     site_prebuilt_gobekli_tell:     { tape: { x: 18.5, z: 8 } },
     site_prebuilt_giza_plateau:     { tape: { x: 37, z: 26 } },
     site_prebuilt_babel_tower:      { tape: { x: 3, z: -5.5 } },
+    /* THE AREAS (2026-09-18): the hard tape on every generated area's weenie — the door gun's twenty */
+    site_prebuilt_backrooms_levels: { tape: { x: -18, z: -10 } },
+    site_prebuilt_stadium_bowl: { tape: { x: 0, z: -18 } },
+    site_prebuilt_technoticlan_templecity: { tape: { x: 0, z: -19 } },
+    site_prebuilt_agartha_crystalcity: { tape: { x: -4, z: -20 } },
+    site_prebuilt_antarctica_station: { tape: { x: 14, z: -22 } },
+    site_prebuilt_shasta_slopes: { tape: { x: -12, z: -20 } },
+    site_prebuilt_olympus_summit: { tape: { x: -18, z: -6 } },
+    site_prebuilt_mars_cydonia: { tape: { x: -16, z: -18 } },
+    site_prebuilt_moon_mare: { tape: { x: 16, z: -18 } },
+    site_prebuilt_bohemian_grove_grove: { tape: { x: -18, z: -13 } },
+    site_prebuilt_northpole_village: { tape: { x: 4, z: -18 } },
+    site_prebuilt_flatlands_plain: { tape: { x: 0, z: -22 } },
+    site_prebuilt_lookingglass_garden: { tape: { x: 0, z: -20 } },
+    site_prebuilt_lodge_halls: { tape: { x: 6, z: -14 } },
+    site_prebuilt_singularity_horizon: { tape: { x: 18, z: -18 } },
+    site_prebuilt_saturn_hexagon: { tape: { x: 20, z: -18 } },
+    site_prebuilt_haunted_grounds: { tape: { x: 16, z: 14 } },
+    site_prebuilt_hollow_earth_innersun: { tape: { x: 0, z: -16 } },
+    site_prebuilt_derelict_deck: { tape: { x: 18, z: -12 } },
+    site_prebuilt_revenge_deck: { tape: { x: 0, z: -4 } },
     site_prebuilt_camelot_hall:    { tape: { x: 10.5, z: -9.0 } },
     site_prebuilt_camelot_keep:    { tape: { x: 15.4, z: -19.0 } },
     site_prebuilt_camelot_dungeon: { tape: { x: -14.0, z: -10.0 } },
@@ -40778,6 +41359,9 @@ if (typeof window !== 'undefined') {
     window.hqShipSetCourse = hqShipSetCourse;
     window.hqShipResolve = hqShipResolve;
     window.hqShipApplyCourse = hqShipApplyCourse;
+    /* THE AREAS (2026-09-18) */
+    window.HQ_AREA_SPECS = HQ_AREA_SPECS; window.HQ_AREA_MARKERS = HQ_AREA_MARKERS; window.HQ_AREA_KEPT_LEAVES = HQ_AREA_KEPT_LEAVES; window.HQ_AREA_RULES = HQ_AREA_RULES;
+    window.hqAreaRoom = hqAreaRoom; window.hqAreaSites = hqAreaSites; window.hqAreaRoomOf = hqAreaRoomOf; window.hqAreaMarker = hqAreaMarker; window.hqLinkPlain = hqLinkPlain; window.hqBuildAreas = hqBuildAreas;
     window.hqShipDoor = hqShipDoor;
     window.hqWorldRoutes = hqWorldRoutes;
     window.hqLinksSeenUnion = hqLinksSeenUnion; window.hqLinksSeenRecord = hqLinksSeenRecord;

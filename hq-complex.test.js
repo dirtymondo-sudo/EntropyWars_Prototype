@@ -61,9 +61,10 @@ function propBlocks(room, p, x, z, margin) {
 }
 
 test('the sheet: the Haunted House is a complex of the board room and four parts, each wearing site + part and no number; the register lists the house once', () => {
-    assert.deepStrictEqual(D.hqSiteComplex(SITE).join(','), [BOARD].concat(PART_IDS).join(','), 'hqSiteComplex = the board room, then the parts in sheet order');
-    assert.deepStrictEqual(D.hqSiteComplex(SITE + '_delta').join(','), [BOARD].concat(PART_IDS).join(','), 'a Δ id resolves to the site');
-    assert.deepStrictEqual(D.hqComplexRooms().filter(id => D.hqRoomSite(id) === SITE).join(','), PART_IDS.join(','), 'the house\u2019s parts');
+    const ALL = PART_IDS.concat([BOARD + '_grounds']);   // THE AREAS (2026-09-18): THE GROUNDS, the generated area the front door stands on (hq-areas.test.js)
+    assert.deepStrictEqual(D.hqSiteComplex(SITE).join(','), [BOARD].concat(ALL).join(','), 'hqSiteComplex = the board room, then the parts in sheet order');
+    assert.deepStrictEqual(D.hqSiteComplex(SITE + '_delta').join(','), [BOARD].concat(ALL).join(','), 'a Δ id resolves to the site');
+    assert.deepStrictEqual(D.hqComplexRooms().filter(id => D.hqRoomSite(id) === SITE).join(','), ALL.join(','), 'the house\u2019s parts');
     assert.ok(D.hqComplexRooms().some(id => D.hqRoomSite(id) === 'prebuilt_hollow_earth'), 'the cave is the second complex (hq-cave.test.js guards it)');
     for (const p of PARTS) {
         const id = D.hqComplexRoomId(SITE, p), r = HQ.rooms[id];
@@ -207,7 +208,7 @@ test('the world graph knows the parts: a { site, part } link end resolves only t
     const G = D.hqWorldGraph();
     for (const id of PART_IDS) {
         assert.ok(G.nodes.some(n => n.id === id && n.site === SITE), id + ' is a node wearing its site');
-        for (const d of HQ.rooms[id].doors) assert.ok(G.edges.some(e => e.from === id && e.door === d.id && e.to === d.action.room && e.at === d.action.at), id + '/' + d.id + ' is an edge');
+        for (const d of HQ.rooms[id].doors) { const ent = D.hqSiteEntry(d.action.room, d.action.at), to = ent ? ent.room : d.action.room, at = ent ? ent.at : d.action.at; assert.ok(G.edges.some(e => e.from === id && e.door === d.id && e.to === to && e.at === at), id + '/' + d.id + ' is an edge'); }   // THE AREAS (2026-09-18): a door into the bypassed board is an edge to THE GROUNDS
     }
     assert.ok(G.edges.some(e => e.from === BOARD && e.door === 'house' && e.to === BOARD + '_hall'), 'the front door is an edge');
     /* a temporary link with a part end: it appears on the part, disappears with the row, and repeated refreshes never stack doors */

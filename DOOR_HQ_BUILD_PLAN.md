@@ -10633,3 +10633,67 @@ assets (MODEL_INDEX §3o's twelve). **UNSEEN LIVE (RULE #1c):** all of it — th
 angles from the walker's eye, the keystones' scale, the sarsen walls' sheet against the trilithon GLB, the T-pillar proc's read, the
 pyramid's four flights under the walker, the sphinx's two-tier silhouette, the tower's spiral and the crane's facing (`turn`), the tell's
 enclosure floors (the dome dips' slope at their rims), the well head on the tell's flank, every native's spot.
+
+### 2026-09-18 — THE AREAS: every board map is an area (Room 64 excepted) · THE MARKER · THE DOOR RULE (local delivery)
+The user: "replace all board maps with areas, except for Room 64, since that one is purposely trying to look like a delta map.
+There should still be the floating crystal icon somewhere in the center of the main area, or right by a weenie, with the option
+to battle on the delta map. Make sure these new areas don't have unnecessary doors to other areas — before it was just a bunch of
+rooms connected with doors, but we just spent the time making the worlds / paths that connect them; there shouldn't be a door to
+hell in the vatican because we made the divine stairway with the catacombs. But still keep hidden passages and weird doors like
+draughts and the telescope." **DONE (data.js only; the renderer and map.js needed nothing):**
+- **THE BYPASS.** `siteRooms.entry` has 38 rows — every built site but `prebuilt_training`. The seventeen sites that already had
+  a complex land in one of its parts as before; THE WOODS land in THE CLEARING (its `forest` hollow tree is worn as the bay door
+  — an entry door row may carry `way` + `leaf: null`); the twenty that were a board room alone got ONE generated AREA each.
+- **THE GENERATOR.** `HQ_AREA_SPECS` (a spec per site: part, size, sheets off the board's own tints, a floor plan, features,
+  props, natives, lines, the plaza, a look, landmarks) → `hqAreaRoom` → `hqBuildAreas()` before the entries. Every area is on
+  THE COMPLEX BLUEPRINT: a `rooms` / `cave` / `halls` plan, the site's own EW_MAP_META sky through `hqAreaSky` + a fog per metre
+  (a closed area its own haze), a grade from `HQ_ROOM_LOOKS`, a path from the bay pad to THE PLAZA, a weenie plateau (2.35–9 m)
+  with the hard tape pinned on it (`findSpots`), a rail / a wall top, a ramp or a stair, two natives with a line each. THE
+  TWENTY: THE LEVELS (Backrooms, `halls`, wet carpet, THE HUM ROOM), THE BOWL (the Stadium: two stands up their stairs, THE PRESS
+  BOX, the stadium road out), THE TEMPLE CITY (Technoticlan: the canal, the ball court, the step pyramid), THE CRYSTAL CITY
+  (Agartha: the lake and its bridge, two terraces, THE SPIRE), THE STATION (Antarctica: the huts' deck, THE CREVASSE with a
+  plank, THE ICE WALL, the collar), THE SLOPES (Shasta: pines, the creek, THE SHELF, THE SUMMIT), THE SUMMIT (Olympus: the throne
+  dais, THE FORGE's lava, THE LIGHTNING SPIRE), CYDONIA (Mars: craters, the rover, the pyramid, THE FACE), THE MARE (the Moon: the
+  lander, two craters, THE RIM), THE GROVE (the redwoods, the lake, the stage, THE OWL on its mound), THE VILLAGE (the North Pole:
+  the workshop's deck, the frozen lake, THE POLE on its drift), THE PLAIN (the Flat Lands: THE LINE, THE EDGE — a cliff into
+  nothing), THE GARDEN (the Looking-Glass: a hedge maze, the chessboard, the tea lawn, the croquet ground, THE CHESHIRE MOON's
+  perch; the mirror and the dead tree stand free in it), THE HALLS (the Lodge, `halls` in wood and damask: the sanctum, the
+  gallery, THE HIGH TABLE), THE HORIZON (the Singularity, `cave` in obsidian: THE DROP with its rescue ramp, THE ACCRETION RIM),
+  THE HEXAGON (Saturn: six storm walls to grind, THE EYE, THE RING SHARD), THE GROUNDS (the Haunted House: the porch up to the
+  hall's front door, the family plot, the crypt, THE GAZEBO's roof, the pond; the ranch's dead tree by the west fence), THE INNER
+  SUN (Hollow Earth: the sun on its spire over a terrace, the crystal forest, the lake; the cave's mouth opens on it), THE DECK
+  (the Spaceship: the fin, THE NACELLE, THE BREACH, the airlock), THE MAIN DECK (the Dutchman: forecastle and poop up their
+  ladders, the bulwarks, THE MAINTOP at 9 m, the companionway).
+- **THE MARKER.** Every entry part carries ONE `battle` counter (`proc: 'battle_marker'`, `site`, `overlay: 'crossing'`) — the
+  crossing terminal the board's console opened, the return spot post-match. A generated area's stands at its plaza; the older
+  parts read `HQ_AREA_MARKERS` (measured reachable nodes: the grid's intersection, the boulevard, the plaza, P3's hall, the ring
+  hall, HANGAR 18's floor, the basilica's crossing, the pit's bowl floor, under the dais, the bailey, by the circle, on the cay,
+  the temple dais, up the avenue from the circle, the tell's top, the pyramid's foot, the tower's top tier, the clearing's
+  crossroads). `hqAreaMarker(roomId)` is the ONE read.
+- **THE DOOR RULE.** `hqLinkPlain(link)` = a plain-leaf door between two sites. Such a link stays only when `HQ_AREA_KEPT_LEAVES`
+  names it with its reason (a docked collar, a tunnel that IS the route — the bases, the ley line, the subway, the highway roads —
+  a site's only line, a facility door). PRUNED: `mars_moon` (Mars is the collar's fourth course, `mars_derelict`),
+  `vatican_heaven` (the telescope and the stair are the way up), `hollow_hell` (the vent chamber is the way), `atlantis_hollow`,
+  `atlantis_agartha` (the cave's adit is the way), `shasta_agartha`, `antarctica_agartha`, `antarctica_northpole`. **A DRAUGHT**:
+  `secret: true` on a links row — `hqLinkDoors` wears a hidden door at both ends (leaf null, label A DRAUGHT; the renderer hangs
+  its wall slab; the map shows it once both rooms are seen): `vatican_hell` (the crypt's warm wall) and `cern_backrooms` (NOT ON
+  THE PLAN). Every link that stood on a bypassed board was re-pointed onto its area (the ids kept); the woods' spring pool stands
+  in the clearing now. Kept as the user asked: every `way` (the wardrobe, the wells, the mirror, the pools, the paintings, the
+  hearth, the screen, the trains, the roads, the time machine, the gutters, the whirlpool, the hollow / dead trees, the telescope).
+- **THE TAPES.** No bypassed board keeps a tape — every board's `HQ_TAPE_SHEET` row moved into its entry part (merged onto the
+  part's row where one existed; the hundred stays a hundred). The ids changed with the rows (`<sheetKey>#<slot>`); nobody's live
+  progress was on them. `findSpots` pins the twenty new hard tapes and the fields' second.
+- **THE GRAPH.** `hqWorldGraph` sends a door into a bypassed board to the part (`hqSiteEntry`), so THE MAP, the directory guard and
+  every reach test walk where the walker lands; `hqMapLayout` seats a bypassed site's entry part at its threshold's angle. The
+  board rooms are still generated (the threshold's number, the Δ under the marker, the site's own sky rig) but nobody stands in
+  them, and they are allowed off the walk by design.
+- **TESTS.** `hq-areas.test.js` (the bypass, the marker on reachable ground — heavy, the door rule, the tapes, the stations);
+  amended: hq-terrain (74 rooms), hq-floor-plan (65 planned), disaster-city-3 (38 entries), hq-world (the probe link, the areas'
+  ends, the deep line), hq-map (the mare at its threshold, bypassed boards off the walk), hq-finds (two tapes on an entry part;
+  the shelf pair), hq-divine / hq-deep / hq-spaceship / hq-ranch / hq-woods / hq-city / hq-city-2 / hq-leylines / hq-complex /
+  hq-dutchman / hq-cave / hq-floors (the re-pointed ends, the pruned links, the draughts, the areas as parts).
+- **UNSEEN LIVE (RULE #1c):** all twenty areas. Eyeball first: the sheets under each site's sky (the board's tints drive the
+  floor colour), the weenies' scale against the walker, the two draughts (a wall you press-in to), the markers' spots on the
+  older parts (`HQ_AREA_MARKERS` is the edit), the Haunted House's porch stair to the front door at 1 m, the Dutchman's bulwarks
+  as the grind, the Backrooms' pools, THE DROP's rescue ramp. Next: hubs for the new areas on the map (one row each), natives
+  with user-authored lines (A15), a second pass of props from the kit per area.

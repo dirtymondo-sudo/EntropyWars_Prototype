@@ -140,7 +140,7 @@ test('THE SOLVER + THE RETURN GUARANTEE + THE PRODUCTION LANDING: from the first
     for (const id of IDS) {
         const room = HQ.rooms[id], info = D.hqTerrainInfo(id);
         const L = room.doors.map(d => Object.assign({ d }, D.hqTerrainDoorLanding(room, d)));
-        assert.ok(L.length >= 3, id + ': three ways at least');
+        assert.ok(L.length >= (id === TEMPLE ? 1 : 3), id + ': three ways at least (the temple keeps its bay door and the vault — its two dry seams are pruned, THE AREAS 2026-09-18)');
         const R0 = D.hqTerrainReach(info, L[0].x, L[0].z);
         for (const b of L) assert.ok(R0.has(key(info, b.x, b.z)), id + ': ' + L[0].d.id + ' → ' + b.d.id + ' unreachable');
         assert.equal(D.hqTerrainTraps(info).length, 0, id + ': a trap');
@@ -177,7 +177,7 @@ test('THE ENTRIES + THE TAPES: the yacht\'s cabin door lands on the cay (bay s x
     const T = D.DOOR_TAPES;
     assert.equal(T.length, 100);
     assert.equal(T.filter(t => t.where === 'site_prebuilt_bermuda').length, 0); assert.equal(T.filter(t => t.where === 'site_prebuilt_atlantis').length, 0);
-    for (const id of IDS) assert.equal(T.filter(t => t.where === id).length, 1, id + ': one tape');
+    for (const id of IDS) assert.ok([1, 2].includes(T.filter(t => t.where === id).length) && (T.filter(t => t.where === id).length === 1 || Object.values(HQ.siteRooms.entry || {}).some(e => e.room === id)), id + ': one tape (two on the part that stands for a bypassed board — THE AREAS, 2026-09-18)');
     assert.equal(T.find(t => t.where === SEA).title, 'FLIGHT 19, 14:10'); assert.equal(T.find(t => t.where === ABYSS).title, 'SONAR, 0400'); assert.match(T.find(t => t.where === TEMPLE).title, /CHOIR/);
     const F = HQ.finds;
     const seaT = F.find(f => f.room === SEA && f.kind === 'tape'), abT = F.find(f => f.room === ABYSS && f.kind === 'tape'), tpT = F.find(f => f.room === TEMPLE && f.kind === 'tape');
@@ -206,11 +206,8 @@ test('THE SEAMS + THE ROUTE: the Dutchman\'s hatch opens on THE ABYSS (its west 
     assert.ok(weir.b.site === 'prebuilt_bermuda' && weir.b.part === 'sea' && weir.b.wall === 'free' && D.hqLinkLive(weir), 'the weir surfaces on the sea part');
     const si = D.hqTerrainInfo(SEA);
     assert.ok(D.hqTerrainFeet(si, weir.b.x, weir.b.z, null) > 0.3 && !D.hqTerrainFluidAt(si, weir.b.x, weir.b.z), 'the tide pool stands on the dry cay');
-    for (const [id, x] of [['atlantis_hollow', -6], ['atlantis_agartha', 6]]) {
-        const l = HQ.links.find(q => q.id === id);
-        assert.ok(l.a.site === 'prebuilt_atlantis' && l.a.part === 'temple' && l.a.wall === 'n' && l.a.x === x && D.hqLinkLive(l), id + ' on the temple\'s north wall');
-        assert.ok(at(TEMPLE, 'link_' + id), id + ': the door is generated');
-    }
+    /* THE AREAS (2026-09-18): the temple's two dry seams (atlantis_hollow, atlantis_agartha) are PRUNED — plain doors that shortcut the cave's own adit and mouth (hq-areas.test.js) */
+    for (const id of ['atlantis_hollow', 'atlantis_agartha']) assert.ok(!HQ.links.some(q => q.id === id) && !at(TEMPLE, 'link_' + id), id + ' is pruned');
     const deep = D.hqWorldRoutes('foyer').find(r => r.id === 'deep');
     assert.equal(deep.stations[0].no, '1717', 'the Dutchman is the end the deep line is walked from');
     assert.ok(deep.stations.some(s => s.no === '345') && deep.stations.some(s => s.no === 'H-20'), 'the Triangle and Atlantis are stations on it');

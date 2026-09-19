@@ -78,7 +78,7 @@ test('THE HUNDRED: exactly 100 tapes, T001…T100 in order, every one in a real 
     /* THE WOODS (9.3 stage 3, 2026-09-16): a built site keeps at least one tape in its board room — six gave their second to the woods' parts (the hundred stays a hundred) */
     /* THE DEEP (2026-09-18): a BYPASSED board (siteRooms.entry — nobody walks it) may carry none: its tape moved into the part its threshold lands in */
     for (const site of HQ.siteRooms.built) { const n = TAPES.filter(t => t.where === 'site_' + site).length, bypassed = !!(HQ.siteRooms.entry || {})[site]; assert.ok(n <= 2 && (n >= 1 || bypassed), site + ': one or two tapes in its board room (' + n + ')'); }
-    for (const part of D.hqComplexRooms()) assert.equal(TAPES.filter(t => t.where === part).length, 1, part + ': one tape');
+    for (const part of D.hqComplexRooms()) { const n = TAPES.filter(t => t.where === part).length, entry = Object.values(HQ.siteRooms.entry || {}).some(e => e.room === part); assert.ok(n === 1 || (entry && n === 2), part + ': one tape (two on the part that stands for a bypassed board — THE AREAS, 2026-09-18: ' + n + ')'); }
     assert.equal(TAPES.filter(t => t.site).length, TAPES.filter(t => /^prebuilt_|^site_prebuilt_/.test(t.where) || /^site_/.test(t.where)).length, 'every site / part tape knows its site');
 });
 
@@ -256,8 +256,9 @@ test('THE LEDGER: a take mirrors the claim into progress.hq.finds.taken, a serve
 test('THE SHELF: found / hint / where — an unfound spine reads its room once another tape of the same site is on file', () => {
     const p = profile();
     /* THE UNDERWORLD (2026-09-18): no board carries two tapes any more (every second tape went to a complex part — the hundred is fixed); the pair is the first built site's board tape and the first of its parts' */
-    const site = HQ.siteRooms.built[0], pair = [TAPES.find(t => t.where === 'site_' + site), TAPES.find(t => t.where !== 'site_' + site && D.hqRoomSite(t.where) === site)];
-    assert.ok(pair[0] && pair[1], 'the first built site has a board tape and a part tape');
+    /* THE AREAS (2026-09-18): the boards are bypassed and carry no tape — the pair is the first built site's first two tapes in two of its parts */
+    const site = HQ.siteRooms.built[0], siteT = TAPES.filter(t => D.hqRoomSite(t.where) === site), pair = [siteT[0], siteT.find(t => t.where !== siteT[0].where)];
+    assert.ok(pair[0] && pair[1], 'the first built site has tapes in two of its parts');
     let sh = D.hqTapeShelf(p);
     assert.equal(sh.rows.length, 100); assert.equal(sh.found, 0);
     assert.ok(sh.rows.every(r => !r.found && !r.hint), 'nothing found, nothing hinted');
@@ -275,7 +276,7 @@ test('THE SHELF: found / hint / where — an unfound spine reads its room once a
     D.hqCollectFind(p, 'tape:' + parts[0].id);
     sh = D.hqTapeShelf(p);
     assert.ok(parts.slice(1).every(t => sh.rows.find(r => r.id === t.id).hint), 'the cave\'s other chambers are hinted');
-    assert.ok(sh.rows.find(r => r.where === 'site_prebuilt_hollow_earth').hint, 'and the board room of the same site');
+    assert.ok(['hint', 'found'].some(k => sh.rows.find(r => r.where === 'site_prebuilt_hollow_earth_innersun')[k]), 'and the inner sun, the area of the same site (THE AREAS, 2026-09-18: the board holds no tape)');
 });
 
 test('source sites: the renderer places, scans and takes; map.js takes in one save and shows the shelf; the strip, the toast, the CSS; the shelf is ONE home in Room 360', () => {

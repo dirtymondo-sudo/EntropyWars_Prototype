@@ -99,6 +99,7 @@ test('the woods are one piece: from THE HOLLOW TREE every part is walked, every 
             const a = d.action || {};
             assert.ok(a.room && HQ.rooms[a.room], id + '/' + d.id + ' leads to a room');
             if (d.link) { assert.ok(HQ.links.some(l => l.id === d.link), id + '/' + d.id + ' is a links row'); continue; }
+            if (d.entry) { assert.ok(HQ.rooms[a.room].kind === 'bay' && d.way === 'hollowtree', id + '/' + d.id + ' is the bay door (THE AREAS, 2026-09-18: the hollow tree wears it)'); continue; }
             const other = at(a.room, a.at);
             assert.ok(other && other.action.room === id && other.action.at === d.id, id + '/' + d.id + ' ⇄ ' + a.room + ' is a pair');
             assert.equal(other.leaf, d.leaf, 'the same opening on both sides of ' + d.id);
@@ -107,11 +108,11 @@ test('the woods are one piece: from THE HOLLOW TREE every part is walked, every 
             if (!seen.has(a.room)) { seen.add(a.room); if (a.room !== BOARD) queue.push(a.room); }
         }
     }
-    assert.deepEqual(Array.from(seen).sort().join(','), PART_IDS.concat([BOARD]).sort().join(','), 'every part is reachable from the clearing');
+    assert.deepEqual(Array.from(seen).sort().join(','), PART_IDS.slice().sort().join(','), 'every part is reachable from the clearing (THE AREAS, 2026-09-18: the board is bypassed — the hollow tree is the bay door)');
     const hub = HQ.rooms[HUB];
     for (const id of ['forest', 'trail', 'stair', 'redwoods', 'deadmans', 'pasture', 'ritual']) assert.ok(at(HUB, id), 'the clearing has the ' + id + ' door');
     assert.equal(hub.doors.filter(d => !d.link).length, 7, 'seven ways off the clearing');
-    assert.equal(hub.doors.filter(d => d.link).length, 0, 'no seam on the crossroads itself — the paths carry them');
+    assert.equal(hub.doors.filter(d => d.link && d.way !== 'pool').length, 0, 'no seam on the crossroads itself but the spring (THE AREAS, 2026-09-18: the pool to Camelot stands by the stream) — the paths carry the rest');
 });
 
 test('THE PATHS: nine live links — the house behind THE DEAD TREE in the pasture’s fence, the ranch’s gate beside it, the grove at the redwoods’ end, Shasta at the top of the trail (on the tier), the stairwell behind the staircase’s door (on the landing), the tunnel behind the grate, Room 333 behind the circle, the Looking-Glass through the ritual ground’s dead tree, Camelot through the spring', () => {
@@ -132,20 +133,20 @@ test('THE PATHS: nine live links — the house behind THE DEAD TREE in the pastu
     /* THE WOODS SPLIT (2026-09-18): the house's dead tree and the ranch's gate left the pasture for THE CORN FIELDS (hq-ranch.test.js) */
     assert.ok(!HQ.links.some(l => l.id === 'woods_haunted' || l.id === 'woods_skinwalker'), 'the pasture keeps no gate to the house or the ranch');
     assert.ok(!at(BOARD + '_pasture', 'link_ranch_haunted') && !at(BOARD + '_pasture', 'link_woods_skinwalker'), 'no ranch door on the pasture');
-    assert.equal(D.hqLinkRoom(HQ.links.find(l => l.id === 'woods_grove').a), 'site_prebuilt_bohemian_grove');
-    assert.equal(D.hqLinkRoom(HQ.links.find(l => l.id === 'woods_shasta').b), 'site_prebuilt_shasta');
+    assert.equal(D.hqLinkRoom(HQ.links.find(l => l.id === 'woods_grove').a), 'site_prebuilt_bohemian_grove_grove');   // THE AREAS (2026-09-18): the grove and the slopes are areas
+    assert.equal(D.hqLinkRoom(HQ.links.find(l => l.id === 'woods_shasta').b), 'site_prebuilt_shasta_slopes');
     assert.equal(D.hqLinkRoom(HQ.links.find(l => l.id === 'woods_stair').b), 'stairwell');
     assert.equal(D.hqLinkRoom(HQ.links.find(l => l.id === 'woods_sewer').b), 'tunnel');
     assert.equal(D.hqLinkRoom(HQ.links.find(l => l.id === 'woods_ritual').b), 'ritual');
     const dt = HQ.links.find(l => l.id === 'deadtree_lookingglass');
-    assert.ok(dt.way === 'deadtree' && dt.a.wall === 'free' && dt.b.wall === 'free' && D.hqLinkRoom(dt.b) === D.hqSiteRoomId('prebuilt_lookingglass'), 'the ritual ground’s dead tree looks onto the Looking-Glass, free at both ends');
+    assert.ok(dt.way === 'deadtree' && dt.a.wall === 'free' && dt.b.wall === 'free' && D.hqLinkRoom(dt.b) === 'site_prebuilt_lookingglass_garden', 'the ritual ground’s dead tree looks onto the Looking-Glass garden, free at both ends (THE AREAS, 2026-09-18)');
     /* the tiers: Shasta's frame on the top tier, the EXIT door on the landing (hqLinkDoors copies an end's y) */
     assert.equal(at(BOARD + '_trail', 'link_woods_shasta').y, 3.5, 'Shasta’s door on the top tier');
     assert.equal(at(STAIR, 'link_woods_stair').y, 3.5, 'the EXIT door on the landing');
     /* the spring */
     const sp = HQ.links.find(l => l.id === 'fairy_camelot');
     assert.ok(sp && sp.way === 'pool' && sp.a.wall === 'free' && sp.b.wall === 'free' && D.hqLinkLive(sp), 'the spring is a live pool seam');
-    assert.ok(at(BOARD, 'link_fairy_camelot') && at('site_prebuilt_camelot_ward', 'link_fairy_camelot'), 'both pools stand (CAMELOT CASTLE, 2026-09-18: the castle end surfaces on THE OUTER WARD’s moat bank — the board room is bypassed)');
+    assert.ok(at(HUB, 'link_fairy_camelot') && at('site_prebuilt_camelot_ward', 'link_fairy_camelot'), 'both pools stand (CAMELOT CASTLE, 2026-09-18: the castle end surfaces on THE OUTER WARD’s moat bank — the board room is bypassed)');
     assert.equal(HQ.rooms.site_prebuilt_camelot.doors.filter(d => d.link).length, 0, 'Camelot’s bypassed board carries no link door (every seam moved onto a part)');
     const R = D.hqWorldRoutes('foyer'), woods = R.find(r => r.id === 'woods'), sub = R.find(r => r.id === 'subway'), seams = R.find(r => r.id === 'seams');
     assert.ok(woods.stations.some(s => s.site === SITE) && woods.stations.some(s => s.site === 'prebuilt_shasta') && woods.stations.some(s => s.room === 'stairwell') && woods.stations.some(s => s.room === 'ritual'), 'THE WOODS line calls at the forest, the mountain, the stairwell and Room 333');
@@ -235,7 +236,7 @@ test('THE WEENIES: one sky for the woods (hqWoodsShell), two landmarks on its ho
 test('THE TAPES: one per part, the hundred kept; the crag, the pinnacle, the stand, the tower and the altar stone carry tapes the walker cannot reach (the door gun’s); the renderer plants the trees on a real kit and the treeline past an open edge', heavy, () => {
     const T = D.DOOR_TAPES;
     assert.equal(T.length, 100);
-    for (const id of PART_IDS) assert.equal(T.filter(t => t.where === id).length, 1, id + ': one tape');
+    for (const id of PART_IDS) assert.ok([1, 2].includes(T.filter(t => t.where === id).length) && (T.filter(t => t.where === id).length === 1 || Object.values(HQ.siteRooms.entry || {}).some(e => e.room === id)), id + ': one tape (two on the part that stands for a bypassed board — THE AREAS, 2026-09-18)');
     assert.ok(T.some(t => t.where === HUB && t.title === '1618'), 'the names are carved in the old tree');
     for (const id of PART_IDS) assert.ok(D.DOOR_HQ.finds.some(f => f.room === id && f.kind === 'tape') && D.DOOR_HQ.finds.some(f => f.room === id && f.kind === 'pay'), id + ': a tape and an envelope');
     const hardIn = id => D.DOOR_HQ.finds.some(f => f.room === id && f.kind === 'tape' && f.hard && f.y > 2.0);

@@ -79,7 +79,7 @@ test('THE CAR: the mezzanine elevator opens into it for everyone, every lobby’
 });
 
 test('the secret doors: six panels on no plate, each pointing at a real door on the far side, none in the hall', () => {
-    const secrets = D.hqSecretDoors();
+    const secrets = D.hqSecretDoors().filter(s => !/^link_/.test(s.id));   // THE AREAS (2026-09-18): the links' draughts are hq-areas.test.js's
     assert.strictEqual(secrets.length, 8, 'eight secret doors (the cave\u2019s oubliette shares a wall with Room 24601 — 2026-09-15 rev 10)');
     for (const s of secrets) {
         const d = HQ.rooms[s.room].doors.find(x => x.id === s.id);

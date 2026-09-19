@@ -161,7 +161,7 @@ test('THE ENTRIES + THE LINE + THE HUB: the four boards are bypassed (the frame 
         stonehenge_gobekli:  ['a', HENGE, 'n', -10, 'b', LEY, 'w', -40],
         gobekli_giza:        ['a', LEY, 's', -30, 'b', PLATEAU, 'n', -10],
         giza_babel:          ['a', LEY, 'n', 50, 'b', TOWER, 'n', -10],
-        babel_technoticlan:  ['a', LEY, 'e', 20, 'b', 'site_prebuilt_technoticlan', 'n', -5],
+        babel_technoticlan:  ['a', LEY, 'e', 20, 'b', 'site_prebuilt_technoticlan_templecity', 'n', -5],   // THE AREAS (2026-09-18): up into THE TEMPLE CITY
     };
     const ley = HQ.links.filter(l => l.route === 'ley');
     assert.equal(ley.length, 4, 'four ley links (the ids kept)');
@@ -193,7 +193,7 @@ test('THE WEENIES + THE HARD TAPES: THE OMPHALOS in the nexus (2.3 m under the 3
     assert.equal(T.filter(t => t.where === 'site_prebuilt_cyberpunk').length, 0, 'Cyberpunk\'s bypassed board gave its tape');
     const pins = { [LEY]: [-50, -25, 2.3, 'THE SURVEY'], [HENGE]: [0, 5.6, 6.6, 'SOLSTICE, FROM THE BANK'], [TELL]: [18.5, 8, 5.4, 'THE PILLARS'], [PLATEAU]: [37, 26, 6.8, 'THE SHAFT'], [TOWER]: [3, -5.5, 18.0, 'ONE VOICE'] };
     for (const [id, [x, z, h, title]] of Object.entries(pins)) {
-        const tapes = T.filter(t => t.where === id); assert.equal(tapes.length, 1, id + ': one tape'); assert.equal(tapes[0].title, title);
+        const tapes = T.filter(t => t.where === id); assert.ok(tapes.length === 1 || (tapes.length === 2 && Object.values(HQ.siteRooms.entry || {}).some(e => e.room === id)), id + ': one tape (two on an entry part — THE AREAS, 2026-09-18)'); assert.ok(tapes.some(t => t.title === title), title);
         const f = F.find(f => f.room === id && f.kind === 'tape'); assert.ok(f, id + ': the find');
         assert.ok(Math.abs(f.x - x) < 0.01 && Math.abs(f.z - z) < 0.01 && Math.abs(f.y - h) < 0.05 && f.hard === true, id + ': pinned on the weenie at ' + h + ' m, hard (' + f.x + ',' + f.z + ',' + f.y + ',' + f.hard + ')');
         const info = D.hqTerrainInfo(id), L0 = D.hqTerrainDoorLanding(HQ.rooms[id], HQ.rooms[id].doors[0]);

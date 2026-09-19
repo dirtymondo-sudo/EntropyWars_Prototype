@@ -71,7 +71,7 @@ function propBlocks(room, p, x, z, margin) {
 }
 
 test('the sheet: the cave is Hollow Earth’s complex — seven parts, each site + part, none numbered, the register still lists 180 once; every chamber a terrain room, none a grid', heavy, () => {
-    assert.deepStrictEqual(D.hqSiteComplex(SITE).join(','), [BOARD].concat(PART_IDS).join(','), 'the board room, then the parts in sheet order');
+    assert.deepStrictEqual(D.hqSiteComplex(SITE).join(','), [BOARD].concat(PART_IDS, [BOARD + '_innersun']).join(','), 'the board room, then the parts in sheet order (+ THE INNER SUN, the area — THE AREAS, 2026-09-18)');
     for (const p of PARTS) {
         const id = D.hqComplexRoomId(SITE, p), r = HQ.rooms[id];
         assert.strictEqual(id, BOARD + '_' + p);
@@ -267,7 +267,7 @@ test('THE FIELD: every chamber is solvable from every door; the cavern climbs to
 });
 
 test('THE FOURTH CELL NOBODY COUNTS: the oubliette and Room 24601 share a secret wall — eight secret doors, a pair, on no plate, and the dungeon’s cells moved off the panel', () => {
-    const secrets = D.hqSecretDoors();
+    const secrets = D.hqSecretDoors().filter(s => !/^link_/.test(s.id));   // THE AREAS (2026-09-18): the links' draughts (vatican_hell, cern_backrooms) are hq-areas.test.js's
     assert.strictEqual(secrets.length, 8, 'the seventh and eighth secret doors');
     const a = at('dungeon', 'oubliette'), b = at(BOARD + '_oubliette', 'dungeon');
     for (const d of [a, b]) assert.ok(d && d.secret === true && d.leaf == null && !d.proc && /DRAUGHT/.test(d.label), 'a secret door: no leaf, no plate, a draught');

@@ -210,7 +210,7 @@ test('THE PARK RULE + THE LIGHT + THE HARD TAPES: a rail and a stair in every pa
     const tapes = D.DOOR_TAPES;
     assert.equal(tapes.length, 100);
     for (const id of IDS) {
-        assert.equal(tapes.filter(t => t.where === id).length, 1, id + ': one tape');
+        assert.ok(tapes.filter(t => t.where === id).length === (D.hqSiteEntryOf('prebuilt_area51').room === id ? 2 : 1), id + ': one tape (two on the hangar — the board\'s came in, THE AREAS 2026-09-18)');
         const rows = HQ.finds.filter(f => f.room === id), tape = rows.find(f => f.kind === 'tape'), pay = rows.find(f => f.kind === 'pay');
         assert.ok(tape && pay, id + ': a tape and an envelope');
         assert.ok(tape.hard === true && tape.y >= 3.5, id + ': the tape is the door gun’s (' + tape.y + ' m)');

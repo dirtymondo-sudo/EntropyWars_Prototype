@@ -43,9 +43,9 @@ test('ANTARCTICA IS ON THE LUNAR ROUTE: docked on the Spaceship\'s one collar 鈥
     assert.ok(l && l.route === 'lunar' && D.hqLinkLive(l), 'live, lunar');
     assert.ok(l.b.door === 'collar' && l.b.part === 'airlock' && l.a.site === 'prebuilt_antarctica' && l.a.wall === 'n' && l.a.x === -0.2);
     const dests = D.hqShipDestinations();
-    assert.deepEqual(dests.map(d => d.link).sort().join(','), 'antarctica_derelict,derelict_saturn,moon_derelict', 'three courses');
+    assert.deepEqual(dests.map(d => d.link).sort().join(','), 'antarctica_derelict,derelict_saturn,mars_derelict,moon_derelict', 'four courses (THE AREAS, 2026-09-18: Mars docked)');
     assert.ok(dests.find(d => d.link === 'antarctica_derelict').label === 'ANTARCTICA');
-    const d = at('site_prebuilt_antarctica', 'link_antarctica_derelict');
+    const d = at('site_prebuilt_antarctica_station', 'link_antarctica_derelict');   // THE AREAS (2026-09-18): on THE STATION
     assert.ok(d && d.action.room === 'site_prebuilt_derelict_airlock' && d.action.at === 'collar', 'the far end lands AT the collar');
     assert.ok(!at('site_prebuilt_derelict_airlock', 'link_antarctica_derelict'), 'no door generated at the docked end');
 });
@@ -86,7 +86,7 @@ test('THE RANCH: THE CORN FIELDS is a terrain part on Room 512, the board is byp
 });
 
 test('THE RANCH\'S GATES: the house\'s dead tree, the Lodge\'s saloon door, the grove\'s back gate and the well stand on the fields; the Graveyard and the Western map wait on their sites', heavy, () => {
-    const ends = { ranch_haunted: ['site_prebuilt_haunted', 'n', -16, 'deadtree'], ranch_lodge: ['site_prebuilt_lodge', 'n', -4, null], ranch_grove: ['site_prebuilt_bohemian_grove', 'n', 8, null] };
+    const ends = { ranch_haunted: ['site_prebuilt_haunted_grounds', 'n', -16, 'deadtree'], ranch_lodge: ['site_prebuilt_lodge_halls', 'n', -4, null], ranch_grove: ['site_prebuilt_bohemian_grove_grove', 'n', 8, null] };   // THE AREAS (2026-09-18): the far ends are the areas
     for (const [id, [far, wall, along, way]] of Object.entries(ends)) {
         const l = L(id); assert.ok(l && l.route === 'ranch' && D.hqLinkLive(l), id + ' live on THE RANCH');
         assert.equal(D.hqLinkRoom(l.a), far); assert.equal(D.hqLinkRoom(l.b), FIELDS);
@@ -141,8 +141,8 @@ test('THE PLATE READS THE ROOM THROUGH THE DOOR: every room door wears the label
     assert.equal(at('ring_m', 'site_prebuilt_camelot').label, 'CAMELOT 路 THE OUTER WARD');
     assert.equal(at('central_egress', 'medical').label, 'THE MEDICAL WING');
     assert.equal(at('site_prebuilt_fairy_forest', 'woods').label, 'THE WOODS 路 THE CLEARING'); assert.equal(at('site_prebuilt_fairy_forest', 'woods')._own, 'THE WOODS');
-    assert.equal(at('site_prebuilt_fairy_forest', 'link_fairy_camelot').label, 'CAMELOT 路 THE OUTER WARD', 'a link door reads the part, not the site');
-    assert.equal(at('site_prebuilt_lodge', 'link_ranch_lodge').label, 'THE RANCH 路 THE CORN FIELDS');
-    assert.equal(D.hqDoorThrough({ action: { fn: '_goToShop' } }), null); assert.equal(D.hqDoorThrough({ action: { mission: 'prebuilt_camelot' } }), 'site_prebuilt_camelot_ward'); assert.equal(D.hqDoorThrough({ action: { mission: 'prebuilt_lodge' } }), 'site_prebuilt_lodge');
+    assert.equal(at('site_prebuilt_fairy_forest_clearing', 'link_fairy_camelot').label, 'CAMELOT 路 THE OUTER WARD', 'a link door reads the part, not the site');   // THE AREAS (2026-09-18): the spring stands in the clearing
+    assert.equal(at('site_prebuilt_lodge_halls', 'link_ranch_lodge').label, 'THE RANCH 路 THE CORN FIELDS');   // THE AREAS (2026-09-18): off THE HALLS
+    assert.equal(D.hqDoorThrough({ action: { fn: '_goToShop' } }), null); assert.equal(D.hqDoorThrough({ action: { mission: 'prebuilt_camelot' } }), 'site_prebuilt_camelot_ward'); assert.equal(D.hqDoorThrough({ action: { mission: 'prebuilt_lodge' } }), 'site_prebuilt_lodge_halls');   // THE AREAS (2026-09-18)
     assert.ok(/^hqReplateDoors\(\);/m.test(fs.readFileSync(__dirname + '/data.js', 'utf8')), 'the pass runs at load');
 });

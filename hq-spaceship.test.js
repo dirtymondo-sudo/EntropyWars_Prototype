@@ -58,8 +58,9 @@ function propBlocks(room, p, x, z, margin) {
 }
 
 test('the sheet: the Spaceship is a complex of the deck and three compartments, each wearing site + part and no number; the register lists the ship once', () => {
-    assert.strictEqual(D.hqSiteComplex(SITE).join(','), [BOARD].concat(PART_IDS).join(','), 'hqSiteComplex = the deck, then the compartments in sheet order');
-    assert.strictEqual(D.hqComplexRooms().filter(id => D.hqRoomSite(id) === SITE).join(','), PART_IDS.join(','), 'the ship’s parts');
+    const ALL = PART_IDS.concat([BOARD + '_deck']);   // THE AREAS (2026-09-18): THE DECK, the generated area (hq-areas.test.js)
+    assert.strictEqual(D.hqSiteComplex(SITE).join(','), [BOARD].concat(ALL).join(','), 'hqSiteComplex = the deck, then the compartments in sheet order');
+    assert.strictEqual(D.hqComplexRooms().filter(id => D.hqRoomSite(id) === SITE).join(','), ALL.join(','), 'the ship’s parts');
     for (const p of PARTS) {
         const id = D.hqComplexRoomId(SITE, p), r = HQ.rooms[id];
         assert.ok(r && r.kind === 'box' && r.site === SITE && r.part === p, id + ': a box room wearing site + part');
@@ -117,13 +118,13 @@ test('THE SHIP\'S ONE DOOR (2026-09-16): both Lunar-route ends are DOCKED on the
     const collar = air.doors.find(d => d.id === 'collar');
     assert.ok(collar && collar.wall === 'w' && collar.action && collar.action.ship === true && collar.leaf === 'leaf_bulkhead' && collar.wide === true, 'ONE collar on the port wall, a ship door');
     assert.strictEqual(D.hqShipDoor(), collar);
-    assert.ok(D.hqLinkDoors('site_prebuilt_moon').some(d => d.link === 'moon_derelict' && d.action.room === AIR && d.action.at === 'collar'), 'the Moon\'s end comes back to the collar');
-    assert.ok(D.hqLinkDoors('site_prebuilt_saturn').some(d => d.link === 'derelict_saturn' && d.action.room === AIR && d.action.at === 'collar'), 'Saturn\'s end too');
+    assert.ok(D.hqLinkDoors('site_prebuilt_moon_mare').some(d => d.link === 'moon_derelict' && d.action.room === AIR && d.action.at === 'collar'), 'the Moon\'s end comes back to the collar');   // THE AREAS (2026-09-18): on THE MARE
+    assert.ok(D.hqLinkDoors('site_prebuilt_saturn_hexagon').some(d => d.link === 'derelict_saturn' && d.action.room === AIR && d.action.at === 'collar'), 'Saturn\'s end too');
     /* the destinations = every link docked on the collar, in sheet order */
     const dests = D.hqShipDestinations();
-    assert.strictEqual(dests.map(d => d.link).join(','), 'moon_derelict,derelict_saturn,antarctica_derelict');
-    assert.strictEqual(dests[0].room, 'site_prebuilt_moon'); assert.strictEqual(dests[0].at, 'link_moon_derelict'); assert.strictEqual(dests[0].label, 'MOON');
-    assert.strictEqual(dests[1].room, 'site_prebuilt_saturn'); assert.strictEqual(dests[1].at, 'link_derelict_saturn'); assert.strictEqual(dests[1].label, 'SATURN');
+    assert.strictEqual(dests.map(d => d.link).join(','), 'moon_derelict,derelict_saturn,antarctica_derelict,mars_derelict');   // THE AREAS (2026-09-18): Mars is the fourth course
+    assert.strictEqual(dests[0].room, 'site_prebuilt_moon_mare'); assert.strictEqual(dests[0].at, 'link_moon_derelict'); assert.strictEqual(dests[0].label, 'MOON');
+    assert.strictEqual(dests[1].room, 'site_prebuilt_saturn_hexagon'); assert.strictEqual(dests[1].at, 'link_derelict_saturn'); assert.strictEqual(dests[1].label, 'SATURN');
     assert.ok(dests.every(d => d.no), 'every destination carries its site number');
     /* the course: nothing on file → the collar opens on nothing; SET COURSE → the collar opens there; an unknown port is refused; the plate follows */
     const p = { door: {} };
@@ -132,23 +133,23 @@ test('THE SHIP\'S ONE DOOR (2026-09-16): both Lunar-route ends are DOCKED on the
     const bad = D.hqShipSetCourse(p, 'nowhere'); assert.ok(bad.ok === false && bad.reason === 'unknown' && bad.link === 'nowhere', 'an unknown port is refused');
     assert.ok(D.hqShipSetCourse(p, 'derelict_saturn').ok); assert.strictEqual(p.door.hq.ship.dest, 'derelict_saturn');
     const r = D.hqShipResolve(p);
-    assert.ok(r && r.room === 'site_prebuilt_saturn' && r.at === 'link_derelict_saturn' && r.link === 'derelict_saturn');
+    assert.ok(r && r.room === 'site_prebuilt_saturn_hexagon' && r.at === 'link_derelict_saturn' && r.link === 'derelict_saturn');   // THE AREAS (2026-09-18): THE HEXAGON
     assert.ok(D.hqShipApplyCourse(p)); assert.match(collar.sub, /COURSE LAID IN · ROOM 6 · SATURN/);
-    assert.ok(D.hqShipSetCourse(p, 'moon_derelict').ok); assert.strictEqual(D.hqShipResolve(p).room, 'site_prebuilt_moon');
+    assert.ok(D.hqShipSetCourse(p, 'moon_derelict').ok); assert.strictEqual(D.hqShipResolve(p).room, 'site_prebuilt_moon_mare');
     assert.ok(D.hqShipSetCourse(p, 'none').ok); assert.strictEqual(D.hqShipResolve(p), null);
     D.hqShipApplyCourse(p); assert.match(collar.sub, /NO COURSE/);
-    assert.strictEqual(D.hqShipResolve(p, { force: 'moon_derelict' }).room, 'site_prebuilt_moon', 'a dev force beats the file');
+    assert.strictEqual(D.hqShipResolve(p, { force: 'moon_derelict' }).room, 'site_prebuilt_moon_mare', 'a dev force beats the file');
     /* the bridge's nav console */
     const bridge = HQ.rooms[BOARD + '_bridge'];
     const nav = (bridge.counters || []).find(c => c.id === 'nav');
     assert.ok(nav && nav.action && nav.action.overlay === 'nav', 'THE NAV CONSOLE on the bridge lays the course in');
     /* the world graph: the collar is every destination's edge; the map still reaches both planets from the ship */
     const edges = D.hqWorldGraph().edges.filter(e => e.from === AIR && e.door === 'collar');
-    assert.strictEqual(edges.map(e => e.to).sort().join(','), 'site_prebuilt_antarctica,site_prebuilt_moon,site_prebuilt_saturn');
+    assert.strictEqual(edges.map(e => e.to).sort().join(','), 'site_prebuilt_antarctica_station,site_prebuilt_mars_cydonia,site_prebuilt_moon_mare,site_prebuilt_saturn_hexagon');   // THE AREAS (2026-09-18): four courses onto the areas
     assert.ok(edges.every(e => e.link), 'each edge carries its link');
     const lunar = D.hqWorldRoutes('foyer').find(r => r.id === 'lunar' || r.route === 'lunar');
     const st = (lunar.stations || []).map(s => s.site);
-    assert.strictEqual(st.join(','), 'prebuilt_antarctica,prebuilt_derelict,prebuilt_moon,prebuilt_mars,prebuilt_saturn,prebuilt_singularity', 'the stations are SITES: the ship is one station');
+    assert.strictEqual(st.slice().sort().join(','), 'prebuilt_antarctica,prebuilt_derelict,prebuilt_mars,prebuilt_moon,prebuilt_saturn,prebuilt_singularity', 'the stations are SITES: the ship is one station (THE AREAS, 2026-09-18: the line is walked from the Moon\'s mare now — the order is the walk\'s, the set is the rule)');
     /* the source sites */
     const mapSrc = fs.readFileSync(__dirname + '/map.js', 'utf8');
     for (const needle of ['if (act.ship) {', 'hqShipResolve(_hqProfile())', "act.overlay === 'nav'", 'function _hqNavHtml', 'window._hqSetCourse = function', "closest('[data-course]')", 'hqShipApplyCourse(_hqProfile())', "_hqRecordVisit(act.link ? ('link_' + act.link) : from.id)"]) assert.ok(mapSrc.includes(needle), 'map.js: ' + needle);
@@ -228,7 +229,7 @@ test('THE PARK RULE + the light: a rail in every compartment, a stepped ramp in 
         const lit = room.props.filter(p => (HQ.catalogue[p.key] || {}).light).length;
         assert.ok(lit >= 1 && lit <= 10, id + ': ' + lit + ' prop lights');
         for (const n of ['floor', 'wall', 'dado', 'trim', 'ceiling']) assert.ok(HQ.textures[S[n]] || TERRAIN_RULES[S[n]], id + ': texture ' + S[n]);
-        assert.strictEqual(D.DOOR_TAPES.filter(t => t.where === id).length, 1, id + ': one tape');
+        assert.ok([1, 2].includes(D.DOOR_TAPES.filter(t => t.where === id).length) && (D.DOOR_TAPES.filter(t => t.where === id).length === 1 || Object.values(HQ.siteRooms.entry || {}).some(e => e.room === id)), id + ': one tape (two on the part that stands for a bypassed board — THE AREAS, 2026-09-18)');
     }
     assert.strictEqual(D.DOOR_TAPES.length, 100);
     assert.ok(HQ.rooms[BOARD + '_hold'].props.some(p => p.key === 'iso_tank'), 'THE CRYO POD is still running');

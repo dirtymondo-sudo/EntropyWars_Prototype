@@ -235,7 +235,7 @@ test('THE PARK RULE + the light + the procs: a rail in every room, a stepped ram
         const lit = room.props.filter(p => (HQ.catalogue[p.key] || {}).light).length;
         assert.ok(lit >= 1 && lit <= 10, id + ': ' + lit + ' prop lights (HQ_PROP_LIGHT_MAX is 10)');
         for (const n of ['floor', 'wall', 'dado', 'trim', 'ceiling']) assert.ok(HQ.textures[S[n]] || TERRAIN_RULES[S[n]] || urbanOk(S[n]), id + ': texture ' + S[n]);
-        assert.strictEqual(D.DOOR_TAPES.filter(t => t.where === id).length, 1, id + ': one tape');
+        assert.ok([1, 2].includes(D.DOOR_TAPES.filter(t => t.where === id).length) && (D.DOOR_TAPES.filter(t => t.where === id).length === 1 || Object.values(HQ.siteRooms.entry || {}).some(e => e.room === id)), id + ': one tape (two on the part that stands for a bypassed board — THE AREAS, 2026-09-18)');
         for (const n of room.npcSpots) for (const l of n.say || []) assert.ok(typeof l === 'string' && l.length > 10, id + ': a said line');
     }
     assert.strictEqual(D.DOOR_TAPES.length, 100, 'the hundred stays a hundred');

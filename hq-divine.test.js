@@ -141,11 +141,11 @@ test('THE WAYS IN = THE ENTRY (second pass, 2026-09-18): the three board rooms a
     }
     /* the links that stood on the three boards moved onto the parts */
     const L = id => HQ.links.find(l => l.id === id);
-    assert.ok(L('hollow_hell').b.part === 'pit' && L('hollow_hell').b.wall === 'e' && L('cave_hell').b.part === 'pit' && L('cave_hell').b.wall === 'e', 'the inner sun and the fissure open on the pit’s east wall');
+    assert.ok(!L('hollow_hell') && L('cave_hell').b.part === 'pit' && L('cave_hell').b.wall === 'e', 'the fissure opens on the pit’s east wall (THE AREAS, 2026-09-18: the inner sun’s own door to Hell is pruned — the vent chamber is the way)');
     assert.ok(L('heaven_olympus').a.part === 'gate' && L('heaven_olympus').a.wall === 'e', 'Olympus’s gate of cloud is on the fields’ east wall');
-    assert.ok(L('vatican_heaven').a.part === 'library' && L('vatican_heaven').a.wall === 'w' && L('vatican_heaven').b.part === 'gate' && L('vatican_heaven').b.wall === 'w', 'the archive’s elevator: the archive’s west wall ⇄ the fields’ west wall');
+    assert.ok(!L('vatican_heaven'), 'the archive’s elevator is pruned (THE AREAS, 2026-09-18: the telescope and the stair are the way up)');
     assert.ok(L('bureau_vatican').b.part === 'courtyard' && L('bureau_vatican').b.wall === 'e' && at(CORTILE, 'link_bureau_vatican').minClearance === 5, 'the Bureau’s painting opens on the cortile, its gate on it');
-    for (const [room, id] of [[PIT, 'link_hollow_hell'], [PIT, 'link_cave_hell'], [GATE, 'link_heaven_olympus'], [GATE, 'link_vatican_heaven'], [LIBRARY, 'link_vatican_heaven'], [CORTILE, 'link_bureau_vatican']]) assert.ok(at(room, id), room + '/' + id + ' stands');
+    for (const [room, id] of [[PIT, 'link_cave_hell'], [GATE, 'link_heaven_olympus'], [CORTILE, 'link_bureau_vatican']]) assert.ok(at(room, id), room + '/' + id + ' stands');
     assert.ok(!at('site_prebuilt_vatican', 'crypt'), 'the board room no longer opens on the crypt');
     const crypt = at(BASILICA, 'crypt');
     assert.ok(crypt && crypt.wall === 'n' && crypt.y === 0.9 && crypt.leaf === 'leaf_white_wood' && crypt.action.room === CATACOMBS && crypt.action.at === 'stair', 'the crypt door stands on the chancel behind the altar');
@@ -203,9 +203,9 @@ test('THE SEAMS: the crypt link (vatican_hell) joins the catacombs’ east wall 
     assert.ok(!b.way && b.leaf === 'leaf_frame_only', 'the stair end is the frame');
     assert.equal(a.sub, scope.a.sub);
     assert.ok(HQ.ways.telescope && HQ.ways.telescope.verb === 'LOOK' && HQ.ways.telescope.sfx === 'wayScope', 'the way is catalogued with its verb and its sound');
-    for (const l of [crypt]) { assert.ok(!(HQ.catalogue[l.leaf] || {}).rank, l.id + ': never a rank leaf'); const x = at(D.hqLinkRoom(l.a), 'link_' + l.id), y = at(D.hqLinkRoom(l.b), 'link_' + l.id); assert.equal(x.leaf, l.leaf); assert.equal(y.leaf, l.leaf); }
+    for (const l of [crypt]) { assert.ok(!(HQ.catalogue[l.leaf] || {}).rank, l.id + ': never a rank leaf'); const x = at(D.hqLinkRoom(l.a), 'link_' + l.id), y = at(D.hqLinkRoom(l.b), 'link_' + l.id); assert.ok(l.secret && x.secret && y.secret && x.leaf == null && y.leaf == null, l.id + ': a DRAUGHT at both ends (THE AREAS, 2026-09-18 — "no door to hell in the Vatican")'); }
     const line = D.hqWorldRoutes(CATACOMBS).find(r => r.id === 'divine');
-    assert.ok(line && line.legs.length === 5, 'five legs on the divine line (CAMELOT CASTLE, 2026-09-18: THE SKY BRIDGE from the castle in the sky onto the stairway is the fifth)');
+    assert.ok(line && line.legs.length === 4, 'four legs on the divine line (THE AREAS, 2026-09-18: the archive’s elevator is pruned — Olympus’s gate, the draught to Hell, the telescope, THE SKY BRIDGE)');
     assert.ok(line.legs.some(l => l.fromRoom === CATACOMBS && l.toRoom === PIT) && line.legs.some(l => (l.fromRoom === DOME && l.toRoom === STAIR) || (l.fromRoom === STAIR && l.toRoom === DOME)), 'the crypt’s seam and the telescope’s');
 });
 
@@ -369,7 +369,7 @@ test('THE HARD TAPES: one tape per part (the hundred kept; four more re-homed �
     const tapes = D.DOOR_TAPES;
     assert.equal(tapes.length, 100);
     for (const id of IDS) {
-        assert.equal(tapes.filter(t => t.where === id).length, 1, id + ': one tape');
+        assert.ok([1, 2].includes(tapes.filter(t => t.where === id).length) && (tapes.filter(t => t.where === id).length === 1 || Object.values(HQ.siteRooms.entry || {}).some(e => e.room === id)), id + ': one tape (two on the part that stands for a bypassed board — THE AREAS, 2026-09-18)');
         const rows = HQ.finds.filter(f => f.room === id);
         const tape = rows.find(f => f.kind === 'tape'), pay = rows.find(f => f.kind === 'pay');
         assert.ok(tape && pay, id + ': a tape and an envelope');

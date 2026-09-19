@@ -50,7 +50,7 @@ test('THE LEDGER: hqRoomSee writes both records, the union reads them, the earli
 test('THE GRAPH: every room reachable from the foyer is a node (the stage-1 bay rooms are not), every edge is undirected and typed, the car reaches its stops, a secret door is a secret edge, a seam carries its route colour', () => {
   const G = D.hqMapGraph();
   assert.ok(G.order.length >= 120, 'the building');
-  assert.ok(G.order.includes('foyer') && G.order.includes('central_egress') && G.order.includes('car') && G.order.includes('site_prebuilt_moon') && G.order.includes('hwing_office'));
+  assert.ok(G.order.includes('foyer') && G.order.includes('central_egress') && G.order.includes('car') && G.order.includes('site_prebuilt_moon_mare') && G.order.includes('hwing_office'));
   for (const id of G.order) assert.ok(!/^bay_/.test(id), 'stage-1 bay rooms are off the walk: ' + id);
   for (const e of G.edges) { assert.ok(e.a < e.b, 'sorted pair'); assert.ok(['door', 'lift', 'secret', 'way', 'link'].includes(e.kind), e.kind); assert.ok(G.nodes[e.a] && G.nodes[e.b]); }
   const keys = new Set(G.edges.map(e => e.key)); assert.equal(keys.size, G.edges.length, 'deduped');
@@ -61,11 +61,11 @@ test('THE GRAPH: every room reachable from the foyer is a node (the stage-1 bay 
   assert.ok(G.edges.some(e => e.kind === 'way' && e.way === 'wardrobe'), 'the wardrobe is a way');
   const ph = G.edges.find(e => e.stop === 'PH'); assert.ok(ph.gate && ph.gate.minClearance === 4, 'the penthouse stop keeps its gate');
   /* the node reads */
-  assert.equal(G.nodes.site_prebuilt_haunted.no, D.hqRoomNo('prebuilt_haunted'));
+  assert.equal(G.nodes.reception.no, D.hqRoomNo('reception'));   // THE AREAS (2026-09-18): the haunted board is off the walk — a numbered facility room reads its number
   assert.equal(G.nodes.site_prebuilt_haunted_hall.no, '', 'a part wears no number');
   assert.equal(G.nodes.site_prebuilt_haunted_hall.part, 'hall');
   assert.equal(G.nodes.central_egress.hall, true);
-  assert.equal(G.nodes.foyer.wild, false); assert.equal(G.nodes.site_prebuilt_moon.wild, true);
+  assert.equal(G.nodes.foyer.wild, false); assert.equal(G.nodes.site_prebuilt_moon_mare.wild, true);   // THE AREAS (2026-09-18)
 });
 
 test('THE LAYOUT: deterministic, every node placed, no two nodes within the minimum distance, the hall at the origin inside two rings, the hall\'s doors at their angle, the sites at their threshold\'s angle, the elevator a shaft with a band per stop, H-Wing under the lowest stop, the cave beside Hollow Earth', () => {
@@ -87,18 +87,19 @@ test('THE LAYOUT: deterministic, every node placed, no two nodes within the mini
   assert.equal(P.foyer.where, 'THE GROUND FLOOR');
   /* the sites at their threshold's angle on the ring */
   const moonDoor = HQ.rooms.ring_m.doors.find(d => d.action && d.action.mission === 'prebuilt_moon') || HQ.rooms.ring_g.doors.find(d => d.action && d.action.mission === 'prebuilt_moon');
-  const mAng = Math.atan2(P.site_prebuilt_moon.x, -P.site_prebuilt_moon.y) * 180 / Math.PI;
+  const MOON = 'site_prebuilt_moon_mare';   // THE AREAS (2026-09-18): the threshold lands on THE MARE — the board room is off the walk
+  const mAng = Math.atan2(P[MOON].x, -P[MOON].y) * 180 / Math.PI;
   assert.ok(Math.abs(((mAng - moonDoor.deg) % 360 + 540) % 360 - 180) < 1e-6, 'the Moon at its threshold');
-  assert.ok(P.site_prebuilt_moon.r >= D.HQ_MAP_L.siteR[0] - 1e-9);
-  assert.match(P.site_prebuilt_moon.where, /THE WORLD · BAY \d/);
+  assert.ok(P[MOON].r >= D.HQ_MAP_L.siteR[0] - 1e-9);
+  assert.match(P[MOON].where, /THE WORLD · BAY \d/);
   /* the shaft */
   assert.equal(P.car.x, D.HQ_MAP_L.shaftX); assert.equal(P.car.y, 0);
   const stops = HQ.elevator.stops, mIdx = stops.findIndex(s => s.room === 'central_egress');
   stops.forEach((st, i) => { if (st.room === 'central_egress') return; assert.ok(Math.abs(P[st.room].y - (i - mIdx) * D.HQ_MAP_L.floorDy) < 1e-9, st.id + ' on its band'); assert.ok(P[st.room].x < D.HQ_MAP_L.shaftX, st.id + ' left of the shaft'); });
   assert.ok(P.hwing_lobby.y > P.services.y, 'H-Wing under the lowest stop');
   assert.equal(P.hwing_office.where, P.hwing_lobby.where, 'the wing\'s rooms hang off its lobby');
-  assert.equal(P.site_prebuilt_hollow_earth_gallery.where, P.site_prebuilt_hollow_earth.where, 'the cave is walked from Hollow Earth, not from the garden\'s well');
-  assert.equal(P.site_prebuilt_haunted_attic.where, P.site_prebuilt_haunted.where, 'a complex part hangs off its site');
+  assert.equal(P.site_prebuilt_hollow_earth_gallery.where, P.site_prebuilt_hollow_earth_innersun.where, 'the cave is walked from Hollow Earth (THE INNER SUN, the area), not from the garden\'s well');
+  assert.equal(P.site_prebuilt_haunted_attic.where, P.site_prebuilt_haunted_grounds.where, 'a complex part hangs off its site (THE GROUNDS, the area)');
 });
 
 test('THE MODEL: a stranger in the foyer sees the foyer and a ? for the hall and nothing else; a seen room shows its number; a secret door shows only once both rooms are seen; a seam is charted by hqLinkSee; the box fits what is drawn and grows with discovery', () => {
@@ -270,22 +271,22 @@ test('THE SOURCE: _hqEnter files every room entered (typeof-guarded), the panel 
    only rooms allowed off the walk. */
 test('THE DIRECTORY GUARD: every room in DOOR_HQ.rooms is a node of the map (reachable from the foyer along doors) and placed by the layout; every built site and every complex part is on it; every launch map with a threshold has its site room on the map; the register / the world tab read the same rooms', () => {
   const G = D.hqMapGraph(), L = D.hqMapLayout(), P = L.pos;
-  const allowedOff = id => /^bay_/.test(id);
+  const allowedOff = id => /^bay_/.test(id) || !!(HQ.rooms[id].site && !HQ.rooms[id].part && D.hqSiteEntryOf(HQ.rooms[id].site));   // THE AREAS (2026-09-18): a BYPASSED board room is off the walk by design (the threshold lands in its part)
   const missing = Object.keys(HQ.rooms).filter(id => !allowedOff(id) && !G.nodes[id]);
   assert.equal(missing.join(','), '', 'rooms nobody can walk to (add a door from a room that IS on the map, or a links row): ' + missing.join(', '));
   const unplaced = G.order.filter(id => !P[id] || P[id].where === 'UNPLACED' || !isFinite(P[id].x) || !isFinite(P[id].y));
   assert.equal(unplaced.join(','), '', 'rooms the layout could not place');
-  for (const site of HQ.siteRooms.built) assert.ok(G.nodes['site_' + site], 'the built site ' + site + ' is on the map');
+  for (const site of HQ.siteRooms.built) assert.ok(G.nodes[D.hqAreaRoomOf(site) || 'site_' + site], 'the built site ' + site + ' is on the map');   // THE AREAS (2026-09-18): through its entry part
   for (const part of D.hqComplexRooms()) assert.ok(G.nodes[part], 'the complex part ' + part + ' is on the map');
-  for (const [mapId, th] of Object.entries(HQ.thresholds)) if (HQ.siteRooms.built.includes(mapId)) assert.ok(G.nodes['site_' + mapId] && G.nodes['site_' + mapId].no === th.roomNo, 'the threshold ' + mapId + ' (' + th.roomNo + ') is a numbered site on the map');
+  for (const [mapId, th] of Object.entries(HQ.thresholds)) if (HQ.siteRooms.built.includes(mapId)) assert.ok(G.nodes[D.hqAreaRoomOf(mapId) || 'site_' + mapId] && G.nodes[D.hqAreaRoomOf(mapId) || 'site_' + mapId].no === th.roomNo, 'the threshold ' + mapId + ' (' + th.roomNo + ') is a numbered site on the map');
   /* the register and the world tab never disagree with the map about what exists */
   for (const e of D.hqRoomRegister()) { const rid = e.room || e.id; if (rid && HQ.rooms[rid]) assert.ok(G.nodes[rid], 'the register lists ' + rid + ' but the map cannot reach it'); }
-  for (const r of D.hqWorldRoutes('foyer')) for (const s of r.stations) assert.ok(G.nodes[s.room], 'the world tab calls at ' + s.room + ' but the map cannot reach it');
+  for (const r of D.hqWorldRoutes('foyer')) for (const s of r.stations) assert.ok(G.nodes[(s.site && D.hqAreaRoomOf(s.site)) || s.room], 'the world tab calls at ' + s.room + ' but the map cannot reach it');   // THE AREAS (2026-09-18): GO lands in the entry part
   /* the model with everything drawn is the whole graph */
   const all = D.hqMapModel(null, 'foyer', { all: true });
   assert.equal(all.nodes.length, G.order.length, 'dev: everything drawn = every node');
   /* THE WOODS (9.3 stage 3): the first complex added under this guard hangs off its site */
-  assert.equal(P.site_prebuilt_fairy_forest_clearing.where, P.site_prebuilt_fairy_forest.where, 'the woods hang off the Fairy Forest');
+  assert.equal(P.site_prebuilt_fairy_forest_trail.where, P.site_prebuilt_fairy_forest_clearing.where, 'the woods hang off the clearing (THE AREAS, 2026-09-18: the board is off the walk — the clearing IS the Fairy Forest)');
 });
 
 test('Directory travel survives SVG pointer capture; a drag or cancelled touch never travels', () => {

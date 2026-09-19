@@ -2689,3 +2689,11 @@ unverified. No browser playtest. Full details are in the ZIP's README.txt.
   two dry seams to Hollow Earth and Agartha). Both boards bypassed (`siteRooms.entry`). New walker modes (the swimmer, the helm),
   new ways (the whirlpool, the upwelling), the `deep` hub. Every line and every tape title is Claude's DRAFT (A15). Log:
   DOOR_HQ_BUILD_PLAN §9; the water rule: EXPLORABLE_AREAS_GUIDE §5c; the asset wishlist: MODEL_INDEX §3n.
+
+### 2026-09-18 — THE AREAS: every board map is an area (local delivery)
+- Every built site but Room 64 is BYPASSED onto a part; the twenty board-only sites got a generated area each (`HQ_AREA_SPECS`,
+  data.js). THE MARKER (the crystal, the Δ crossing) stands in every entry part. THE DOOR RULE prunes the plain doors that
+  shortcut a built path (no door to Hell in the Vatican — the crypt's warm wall is a DRAUGHT now; Mars is a course on the ship's
+  collar; the inner sun, Agartha, Antarctica and the poles keep their designed ways); every `way`, the telescope and the secret
+  doors stay. The boards' tapes moved into their parts. Every area's names, natives' lines and tape titles are Claude's DRAFT
+  (A15 — the user rewrites). Log: DOOR_HQ_BUILD_PLAN §9; the rule: EXPLORABLE_AREAS_GUIDE §10.
