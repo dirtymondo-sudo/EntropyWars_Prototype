@@ -179,7 +179,7 @@ scaffolding = `climb` `pipe` + `deck`). The `city` plan gains `districts: [{ id,
 lots, streets }]` and the traffic / race / markings run per district. `check-terrain.js` +
 `playtest_city.js` before anything is claimed.
 
-**D3 — THE TWENTY AREAS, BROUGHT UP TO THE CAVE.** *(FIRST DELIVERY SHIPPED 2026-09-19 — Shasta, the North Pole, Olympus; see §7.)* `HQ_AREA_SPECS` rework, one spec at a time,
+**D3 — THE TWENTY AREAS, BROUGHT UP TO THE CAVE.** *(FIRST DELIVERY SHIPPED 2026-09-19 — Shasta, the North Pole, Olympus; SECOND DELIVERY 2026-09-19 — the Stadium, the Haunted grounds, the Spaceship deck: the six the user sees first are done; see §7.)* `HQ_AREA_SPECS` rework, one spec at a time,
 each to R1–R8: a parti, a typology, ≥ 3 tiers chained by ≥ 2 kinds, a ladder / rope / vine per
 area where it fits the place (vines in the grove, the woods, Agartha; ropes in Shasta, the
 North Pole, Olympus; ladders in the station, the deck, the base; chains in Hell; hand-holds on
@@ -351,3 +351,38 @@ The questions as they were asked:
   the sheet and a plan's bank is a trap the compiler cuts a rescue ramp out of — force the plan open round the pool. Tape pins moved
   with the weenies (`findSpots`). hq-climb.test.js's six-looks pin reads seven (D2's fire escape — the pre-existing red). NEXT: the
   other three of the six (the Stadium, the Haunted grounds, the Spaceship deck), then the rest of the twenty.
+- 2026-09-19 — **D3, SECOND DELIVERY (local): THE BOWL · THE GROUNDS · THE DECK — the other three of the six the user sees first, brought up
+  to the cave.** Each re-specced in `HQ_AREA_SPECS` (data.js) and measured clean on R1–R8 by `node check-area-content.js --rules` (climb rows /
+  kinds / per 100 m² / range / items per 60 m² / earned exits: THE BOWL 24 / 5 / 0.64 / 8.6 m / 1.12 / 2 of 3; THE GROUNDS 22 / 6 / 0.97 / 6.2 m /
+  1.63 / 2 of 3; THE DECK 18 / 5 / 0.76 / 8.5 m / 1.26 / 2 of 3; at most one door exposed anywhere; every earned exit that is not a draught teased;
+  a `parti` + a `typology` on each; `node check-terrain.js` solves every door from every door with no trap and no rescue ramp). **THE BOWL**
+  (ring): the bay door stands ON THE CONCOURSE — the south stand, 3.4 m up (`siteRooms.entry.prebuilt_stadium.door.y`; you come in at the top,
+  the pitch in the bowl below, the press box's tape across it) — two stairs down and the hand-holds at the tunnel mouth; the west / east stands
+  (3.0) up their stairs (the treads were too steep: a stair needs L ≥ 2.2 × h) with a pipe run up the west stand's back from THE SERVICE ROAD; THE
+  NORTH STAND (3.0) up its stair or the hand-holds on its west end, THE PRESS BOX (6.4, the tape — the door gun's) moved onto it (the tape pin
+  moved with it); THREE GANTRIES = level `deck` rows wearing `over: true` (the bridge layer) joining the stands at the corners over the walk-round;
+  two floodlight pylons on plinths (1.8) with ladders; the dugout roofs and the stands' rails (the grind); 53 items (chairs on the stands, the
+  popcorn carts on the concourse, the ticket booth, the linesman's chair, a crashed car behind the west stand); **THE PITCH DRAIN** =
+  `links.stadium_sewers`, a DRAUGHT (`secret: true`, route `sewers`) behind the east stand into the sewers' east return (the earned exit — a road
+  out never is). **THE GROUNDS** (pearls): THE PORCH raised to 1.6 with the front door ON it (a door you climb to — earned) and the ivy up its west
+  corner; THE FAMILY PLOT (0.8) with THE ANGEL; THE CRYPT is a block (2.6) you climb by its ivy, THE GARGOYLE on its roof, the churchyard wall the
+  grind; THE GAZEBO's deck (0.6) round the roof that holds the tape; THE TERRACE (1.4) along the east side up a stair or the hand-holds, the
+  balustrade on it; THE COACH HOUSE roof (3.6, a ladder and a rope); THE TREEHOUSE (3.2, a ladder and a rope) in the old oak by the west fence;
+  THE FOOTBRIDGE over the pond; 62 items. **THE DECK** (corridor, now 62 × 50 — R7): THE AIRLOCK on a TOWER (3.2 — the companion stair, a ladder
+  on its east face, the pipe run up its west; the airlock is a door you climb to, earned); THE BRIDGE'S ROOF (1.6) up its stair or a pipe run; THE
+  SENSOR MAST's platform (2.4, a ladder and a chain); THE ENGINE BELL (4.2, a chain and a pipe run); THE GANGWAY across THE BREACH (`over:
+  true`); three radiator panels (the grind; the aft one 2 m tall so the bay's landing sees ONE other door, R3); **THE CARGO HATCH** = a plain
+  door pair wearing `secret: true` between the deck's east wall and the hold's west wall (a draught inside the site — hq-floors' secret-door count
+  is ten — a pair is two doors); the cryo pods, the lander and the rover lashed on deck, three flood masts; 50 items. **THE RULE THE COMPILER TAUGHT (the one that
+  matters for every area still to do)**: a tier's cliff face rises from its NOMINAL edge INWARD over ~0.5 m (measured: a rect at x 14 rises
+  14.0 → 14.6; a round tier's blend starts ~0.4 m outside its radius), and `hqTerrainClimbs`' head scan starts `climbMount` (0.3) in from the
+  line and breaks the moment the ground stops rising — so **a climb's LINE stands 0.3 m INSIDE the tier's nominal edge**: the scan starts on the
+  top, the foot (`climbReach` 0.6 back) lands 0.3 m outside the edge on the ground. A line 0.6 m OUTSIDE a rect's edge reads a flat head and is
+  DROPPED (fifteen of twenty were, silently in the sandbox — `hqTerrainInfo(id).climbs` is the read, the audit's `climbs` column now); the first
+  delivery's round tiers survived that placement only because their blend reaches out. The other two rules that bit: with TWO doors the audit's
+  median sill is the HIGHER one, so a tier door on a two-door room is never earned — the third door (the draught) is what makes the concourse and
+  the airlock count; and the ground BEHIND a stand against the shell wall is a pocket the walker drops into off the stand's back (three rescue
+  ramps cut) until a `path` (THE SERVICE ROAD) and `gen.open` circles at the corners join it to the open floor. Tests: hq-floors' pin (nine
+  secret doors); the rest hold as written. NEXT: the remaining fourteen areas (Technoticlan, Agartha, Antarctica, Mars, the Moon, the Grove, the
+  Flatlands, the Looking-Glass's garden, the Lodge, the Singularity, Saturn, Hollow Earth, the Dutchman's deck, the Backrooms), two or three a
+  delivery, on the same pattern — then D4, D5.

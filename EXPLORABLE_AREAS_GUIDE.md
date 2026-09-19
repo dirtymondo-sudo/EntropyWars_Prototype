@@ -506,6 +506,13 @@ The prefab parts (family B) take R3 / R4 / R8 only.
 room: `room.climbs`, the head on a blocker top). The solver takes it as an edge — a ladder alone may
 reach a tier, a pit with a ladder out is not a trap, a tape above one is not hard. `face` = the way the
 climber faces (the mass is that way); the head lands `climbMount` past the tier's edge blend.
+**Where the line stands (D3, 2026-09-19, measured):** a tier's cliff face rises from its NOMINAL edge
+INWARD over ~0.5 m, and the head scan starts `climbMount` (0.3) in from the line and stops the moment
+the ground stops rising — so put the LINE 0.3 m INSIDE the nominal edge (a rect at x 14..22 climbed from
+the west: `x: 14.3, face: 90`; a round tier of r 2.4 at z 24 climbed from the north: `z: 21.9, face: 180`).
+The scan then starts on the top and the foot (`climbReach` back) lands 0.3 m outside on the ground. A line
+0.6 m OUTSIDE a rect's edge reads a flat head and is DROPPED without a red — read
+`hqTerrainInfo(id).climbs` (or the audit's `climbs` column) after authoring, never the row count.
 
 ## 10. THE LOG
 
@@ -664,3 +671,8 @@ climber faces (the mass is that way); the head lands `climbMount` past the tier'
   at every seam (`y` on the link end), a draught for Lemuria, the tape's weenie seen from the tier under it, 40–50 items a room.
   The rule that came with it: a `climb` row's line stands ≤ 0.3 m off its mass and its foot off its tier (§4 / AREA_CONTENT_PLAN §7).
   Log: AREA_CONTENT_PLAN §7. Next: the Stadium, the Haunted grounds, the Spaceship deck.
+- 2026-09-19 — AREA CONTENT D3, second delivery: THE BOWL (the concourse arrival — the bay door ON a tier, `entry.door.y`), THE GROUNDS (the porch
+  raised, the crypt a block you climb, the coach house, the treehouse), THE DECK (the airlock on a tower, the cargo hatch a draught inside the
+  site, 62 × 50). Three rules for every area still to do: the climb LINE stands 0.3 m inside the tier's nominal edge (above); a two-door room's
+  tier door is never "earned" (the audit's median sill is the higher one) — give it a third door, a draught; the ground behind a tier against the
+  shell wall is a pocket until a path reaches it. AREA_CONTENT_PLAN §7 has the numbers.

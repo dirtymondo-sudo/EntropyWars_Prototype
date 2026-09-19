@@ -6061,3 +6061,24 @@ retired (the function and the element stand unused; `ollieMaxV` / `crouchS` / `p
 keys in `HQ_SKATE_RULES`, `ollieHoldS` / `ollieHoldAcc` live). hq-skate.test.js's crouch test is the
 hold test. `npm run test:quick` + hq-skate / hq-pause / hq-party green. Unseen live (RULE #1c): the
 pause frame with the party grids, the hold's feel at 60 fps.
+
+## AREA CONTENT PLAN D3, SECOND DELIVERY — THE BOWL · THE GROUNDS · THE DECK to the cave's standard (2026-09-19, local delivery)
+The other three of the six areas the user sees first (`AREA_CONTENT_PLAN.md` §5 D3; §7 has the log and the numbers), re-specced in
+data.js `HQ_AREA_SPECS` (`prebuilt_stadium` / `prebuilt_haunted` / `prebuilt_derelict` — the spec is the edit, never the generated
+`site_<id>_<part>`) and measured clean on R1–R8 by `node check-area-content.js --rules <room>`, solved by `node check-terrain.js`
+(every door from every door, no trap, no rescue ramp). **THE BOWL**: the bay door stands ON THE CONCOURSE (the south stand, 3.4 —
+`siteRooms.entry.prebuilt_stadium.door.y`, Hell's-pit precedent: an entry door may carry `y`), THE PRESS BOX moved onto the north
+stand (the `findSpots` pin moved with it), three GANTRIES (`deck` + `over: true`) join the stands at the corners, THE SERVICE ROAD (a
+`path` ring + `gen.open` corner circles) keeps the ground behind the stands from being a pocket, and THE PITCH DRAIN =
+`links.stadium_sewers` (`secret: true`, route `sewers`, the sewers' east wall z 14) is the earned exit — a draught still names a
+catalogued `leaf` (`hqLinkLive`'s wear rule) or it is held. **THE GROUNDS**: the porch at 1.6 (the `house` door ON it), the crypt a
+block, the coach house, the treehouse, the terrace, the footbridge. **THE DECK** (62 × 50): the airlock ON A TOWER (3.2), the sensor
+mast, the engine bell, THE GANGWAY over the breach, and **THE CARGO HATCH** — a plain door pair wearing `secret: true` between the
+deck's east wall and the hold's west wall (hq-floors.test.js counts TEN secret doors now — a pair is two). **THREE RULES FOR THE FOURTEEN AREAS STILL
+TO DO**: (1) **a climb's LINE stands 0.3 m INSIDE the tier's nominal edge** — the face rises from the edge inward over ~0.5 m and
+`hqTerrainClimbs`' head scan (from `climbMount` in) breaks on the first flat step, so a line 0.6 m outside a rect's edge is DROPPED
+without a red (fifteen of twenty were); read `hqTerrainInfo(id).climbs` / the audit's `climbs` column, never the row count; (2) on a
+TWO-door room the audit's median sill is the HIGHER one, so a tier door is never earned there — the third door (a draught) is what
+makes the concourse and the airlock count; (3) a stair needs L ≥ 2.2 × h (the west / east stands' were too steep). Ship data.js to R2
+AND Render. UNSEEN LIVE (RULE #1c): the concourse arrival and the drop to the pitch, the gantries from below, the raised porch's
+steps, the tower's stair against the bulkhead leaf, the two draughts' slabs, every prop on a tier (`y` is the edit).

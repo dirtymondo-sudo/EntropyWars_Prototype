@@ -80,7 +80,7 @@ test('THE CAR: the mezzanine elevator opens into it for everyone, every lobby’
 
 test('the secret doors: six panels on no plate, each pointing at a real door on the far side, none in the hall', () => {
     const secrets = D.hqSecretDoors().filter(s => !/^link_/.test(s.id));   // THE AREAS (2026-09-18): the links' draughts are hq-areas.test.js's
-    assert.strictEqual(secrets.length, 8, 'eight secret doors (the cave\u2019s oubliette shares a wall with Room 24601 — 2026-09-15 rev 10)');
+    assert.strictEqual(secrets.length, 10, 'ten secret doors (the cave\u2019s oubliette shares a wall with Room 24601 — 2026-09-15 rev 10; THE CARGO HATCH between the Spaceship\u2019s deck and its hold — AREA CONTENT D3, 2026-09-19)');
     for (const s of secrets) {
         const d = HQ.rooms[s.room].doors.find(x => x.id === s.id);
         assert.ok(d.secret === true && d.leaf == null && !d.proc && d.action.room && d.action.at, s.room + '/' + s.id + ': secret, no leaf, a landing');
@@ -90,7 +90,7 @@ test('the secret doors: six panels on no plate, each pointing at a real door on 
     assert.ok(!HQ.rooms.central_egress.doors.some(d => d.secret), 'nothing secret in the hall');
     /* the loops the secret doors close: the cold room ⇄ corridor B, the end of corridor B → the dungeon AND → H-Wing's east leg, the bathroom stall ⇄ the crawlspace */
     const pairs = secrets.map(s => s.room + '→' + s.to).sort().join(' ');
-    assert.strictEqual(pairs, 'bathroom→crawlspace coldroom→corridor_b corridor_b→coldroom crawlspace→bathroom deadend→dungeon deadend→hwing_e dungeon→site_prebuilt_hollow_earth_oubliette site_prebuilt_hollow_earth_oubliette→dungeon');
+    assert.strictEqual(pairs, 'bathroom→crawlspace coldroom→corridor_b corridor_b→coldroom crawlspace→bathroom deadend→dungeon deadend→hwing_e dungeon→site_prebuilt_hollow_earth_oubliette site_prebuilt_derelict_deck→site_prebuilt_derelict_hold site_prebuilt_derelict_hold→site_prebuilt_derelict_deck site_prebuilt_hollow_earth_oubliette→dungeon');
 });
 
 test('the shortcuts and the loops: the training stair, the kitchen stair, the dock, the server stair, the ladder, the garden gate', () => {
