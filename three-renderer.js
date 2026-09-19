@@ -27871,14 +27871,21 @@ const ThreeRenderer = (function () {
        o.mode is 1 (the cavern wall fades UP into the haze). o.dissolve false
        = the material stays whole (the root). Tagged _ew_hzNear so the horizon
        group's altitude fog (_applyHorizonFog) leaves it alone — that fog
-       would dissolve the whole ground, which is BELOW the horizon line. */
+       would dissolve the whole ground, which is BELOW the horizon line.
+       THE ONE FOG (2026-09-19): the material KEEPS scene.fog — the retro
+       filter's distance fog (three-post.js _applySceneFog, FogExp2) is the
+       fog the 8×8 tiles wear, and this used to force `fog = false` here, so
+       on every Δ board the landscape past the apron stood crisp and bright
+       while the board it continues sat in the haze ("the scenery is under a
+       different lighting / not affected by fog like the grid"). The radial
+       haze below is laid OVER the distance fog (both toward the dome's fog
+       colour), never instead of it. */
     function _wdInject(mat, o) {
         if (!mat || mat._ew_wdInjected || !mat.color) return mat;
         o = o || {};
         var U = _wdEnsureUni();
         mat._ew_wdInjected = true;
         mat._ew_hzNear = true;
-        mat.fog = false;
         var own = { uWdR0: { value: o.r0 || 0 }, uWdR1: { value: o.r1 || 1 }, uWdMode: { value: o.mode || 0 }, uWdDissolve: { value: o.dissolve === false ? 0 : 1 } };
         mat._ew_wdOwn = own;
         var prev = mat.onBeforeCompile;
@@ -28134,7 +28141,7 @@ const ThreeRenderer = (function () {
         var tex = row.rootTex || kit.skirt || kit.tex || 'rocks_1', col = row.rootColor != null ? row.rootColor : (kit.skirtColor != null ? kit.skirtColor : 0x8a8078);
         var mat = K.mat(tex, col, { lift: 0.12, transparent: true, side: THREE.DoubleSide });
         mat.color.multiplyScalar(0.62); mat.emissive.multiplyScalar(0.62);   // darker than the skirt it hangs from, so it reads as rock, not more apron
-        mat._ew_hzNear = true; mat.fog = false;
+        mat._ew_hzNear = true;   // keeps scene.fog like the board (THE ONE FOG, 2026-09-19)
         /* a moat map's island is its SHEET (the lake bed the apron stands in), so the root spans the sheet and hangs from its underside */
         var padW = kit.moat ? (kit.moatPad || 0) * ts : 0, topY = kit.moat ? (kit.moatY != null ? kit.moatY : 0) - 0.2 * ts : 0.5;
         var hx = (K.X1 - K.CX) * 1.02 + padW, hz = (K.Z1 - K.CZ) * 1.02 + padW;
@@ -28386,7 +28393,11 @@ const ThreeRenderer = (function () {
             }
             if (!sea && !planet) {   // the land: from the shore to the horizon
                 var gtex = row.ground || kit.tex || 'grass_2', gcol = row.groundColor != null ? row.groundColor : (kit.color != null ? kit.color : 0xffffff);
-                var gm = K.mat(gtex, gcol, { lift: 0.24 });
+                /* THE ONE LIGHT (2026-09-19): the land is a FLAT TOP like the apron's
+                   top and the board's tiles — plain Lambert, no self-lit lift (the 24 %
+                   lift read as a landscape lit by a different sun than the 8×8; the lift
+                   stays on the BANK below, a vertical face on a dusk map) */
+                var gm = K.mat(gtex, gcol, { lift: 0 });
                 var geo = moat ? new THREE.RingGeometry(shore, R, 96, 4) : _wdIslandDisc(K, R, ts);   // a dry island: the board's footprint cut out (THE CRATER FIX)
                 if (moat) _nrUV(geo, R * 2 / ts / 1.5, R * 2 / ts / 1.5);
                 var gd = new THREE.Mesh(geo, gm); gd.rotation.x = -Math.PI / 2; gd.position.set(K.CX, groundY, K.CZ); gd.receiveShadow = true; gd.name = 'world:ground';
