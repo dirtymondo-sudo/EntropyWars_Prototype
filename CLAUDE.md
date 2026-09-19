@@ -6208,3 +6208,19 @@ FLIES**: battle.js `isCameraAutoMoving()` (beside `stopBoardCameraAnimation`; on
 it is true and three-renderer.js `_syncEnemyRangePreview` folds it into its signature so the wash comes back
 when the camera lands. Unseen live (RULE #1c): the plate opacities against the busiest sheets, the
 one-click door pair's near spot on a crowded flank, the greyed rows' reasons, the wash's return timing.
+
+## AREA CONTENT PLAN D3, FOURTH DELIVERY — CYDONIA · THE MARE · THE GROVE to the cave's standard (2026-09-19, local delivery)
+Three more of the fourteen (`AREA_CONTENT_PLAN.md` §5 D3; §7 has the log and the numbers), re-specced in data.js `HQ_AREA_SPECS`
+(`prebuilt_mars` / `prebuilt_moon` / `prebuilt_bohemian_grove` — the spec is the edit, never the generated `site_<id>_<part>`) and measured
+clean on R1–R8 by `node check-area-content.js --rules <room>`, solved by `node check-terrain.js` (every door from every door, no trap, no rescue
+ramp). **CYDONIA**: two mesas joined by THE ARCH (a `bridge` over the canyon floor, the plaza under it), the pyramid's two tiers, the collar ON
+the rover bay's mesa (`mars_derelict.a` `y: 2.6`), the Face moved over the west crater (the pin moved), and **THE FACE'S MOUTH** =
+`links.cydonia_mare` (`secret: true`, route `lunar`) ⇄ **THE FAR SIDE** in the Mare's west wall (the pruned `mars_moon` stays pruned; a
+draught wears a new id). **THE MARE**: the collar ON the terrace (`moon_derelict.a` `y: 2.4`), THE CATWALK (a `bridge`) to the antenna platform
+under the rim's tape (the tease), the lander's pad, the habitat's shelf, the dish, the overlook. **THE GROVE**: the owl's gate ON THE WEST
+TERRACE (`woods_grove.a` `y: 2.2`), the treehouse, the log over the creek, the dock, the camp, and **THE MEMBERS' TUNNEL** =
+`links.grove_lodge` (`secret: true`, route `ranch`) into the Lodge's east wall; four redwoods screen the terrace's sightlines (R3). **THE RULE
+THE SOLVER TAUGHT**: the strip between a tier's cliff and a plan's rock bank is a pocket (a rescue ramp was cut on Cydonia until `gen.open`
+forced the plan open along the mesa's north face) — read `RETURN:` on every room. The suites were not run at the user's word (`npm run
+test:quick` passed; the two tools solved and audited the three rooms). Ship data.js to R2 AND Render. UNSEEN LIVE (RULE #1c): all of it — the
+arch and the catwalk from below, the collars on their tiers, the four redwoods on the terrace's sightlines, the tents' light.

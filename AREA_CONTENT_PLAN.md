@@ -422,3 +422,35 @@ The questions as they were asked:
   this delivery, not touched: doorhq's server-banks count + Camelot's dry board, hq-cave's eight secret doors (ten since the cargo hatch),
   hq-spaceship's deck hatch, hq-terrain's fountain on Downtown, hq-world's seams list (the two sewer gutters). NEXT: Mars, the Moon, the Grove;
   then the Flatlands, the Looking-Glass's garden, the Lodge, the Singularity, Saturn, Hollow Earth, the Dutchman's deck, the Backrooms — then D4, D5.
+- 2026-09-19 — **D3, FOURTH DELIVERY (local): CYDONIA · THE MARE · THE GROVE — brought up to the cave.** Each re-specced in `HQ_AREA_SPECS`
+  (data.js) and measured clean on ALL of R1–R8 by `node check-area-content.js --rules` (climb rows / kinds / per 100 m² / range / items per
+  60 m² / earned exits: CYDONIA 19 / 4 / 0.63 / 6.6 m / 1.33 / 2 of 3; THE MARE 20 / 5 / 0.77 / 7.4 m / 1.47 / 2 of 3; THE GROVE 17 / 6 /
+  0.63 / 7.4 m / 1.88 / 2 of 4; at most one door exposed anywhere; every earned exit that is not a draught teased; a `parti` + a `typology`
+  on each; `node check-terrain.js` solves every door from every door, nothing traps, zero rescue ramps; every authored climb compiled —
+  `hqTerrainInfo(id).climbs` 9 / 8 / 6). **CYDONIA** (pearls): THE CANYON from the bay door to the plaza between TWO MESAS (3.2) — the west
+  one up a long ramp, a rope on its east face and the hand-holds on its north (THE BASE CAMP on it), the east one up a stair off its north
+  side, the hand-holds on its south face and a chain on its east (THE SURVEY on it) — joined by **THE ARCH**, a level span (the bridge layer)
+  over the canyon floor at 3.2 m, the plaza under it; THE PYRAMID's lower tier (2.4, the great stair + the hand-holds on its east face) and
+  upper tier (4.8, a ladder on its west face + the hand-holds on its east); THE ROVER BAY's mesa (2.6) on the north wall with the ship's
+  collar standing ON it (`mars_derelict.a` `y: 2.6` — a stair up its east end, the hand-holds on its south face, a rope on its west); THE
+  FACE (6.4, the tape — the door gun's) moved over the west crater and seen from the west mesa (the pin moved with it); three craters; **THE
+  FACE'S MOUTH** = `links.cydonia_mare` (`secret: true`, route `lunar`, `leaf_bulkhead`): a draught in the west wall the greys bored to the
+  far side of the Moon (the plain `mars_moon` THE AREAS pruned stays pruned — a draught wears a new id; hq-areas pins it); 47 props + 4
+  natives + 17 scattered. **THE MARE** (bowl): THE BIG CRATER (−2.4, a bowl the walker drops into and climbs out of) and the small one;
+  THE LANDING PAD (1.3, a ramp + a ladder) with the lander on it; THE BOULDER SHELF (1.4, a ramp + the hand-holds) with THE HABITAT on it;
+  THE DISH's platform (3.4, a ladder + a chain); THE TERRACE (2.4) on the north wall with the collar standing ON it (`moon_derelict.a`
+  `y: 2.4` — a stair, a ladder on its east end, a rope on its west) and **THE CATWALK** (a level span, the bridge layer) from it to THE
+  ANTENNA PLATFORM (2.4, a ladder) under THE RIM (5.6, the tape — the door gun's, 3.2 m over the platform: the tease); THE OVERLOOK (3.0, a
+  ramp + a rope) over the crater; THE MASS DRIVER's rail (the grind); THE FAR SIDE = the draught's other end in the west wall; 40 props + 4
+  natives + 19 scattered. **THE GROVE** (ring): THE LAKE (waded) fed by THE CREEK (waded) under THE LOG (a deck), THE DOCK onto the water;
+  THE STAGE (1.4, the ramp + a vine on its south face); THE MOUND (2.6, the stair + a vine on its east face + a rope on its north) with THE
+  OWL (6.4, the tape — the door gun's, seen from the stage) and the altar on it; **THE WEST TERRACE** (2.2, a stair from the north + a
+  rope on its south face) with the owl's gate standing ON it (`woods_grove.a` `y: 2.2` — a door you climb to); THE TREEHOUSE (3.4, a
+  ladder + a vine) round the old redwood; THE HOLLOW; THE FENCE (the grind); THE CAMP's three tents; **THE MEMBERS' TUNNEL** =
+  `links.grove_lodge` (`secret: true`, route `ranch`, `leaf_saloon`): a draught in the east wall (z 12, behind a dogleg) into the Lodge's
+  east wall; four redwoods stand on the terrace's two sightlines (the bay's and the tunnel's) so the owl's gate sees one door at most
+  (R3); 46 props + 4 natives + 21 scattered + 2 groves. **THE RULE THE SOLVER TAUGHT**: the strip between a tier's cliff and a plan's rock
+  bank is a pocket the walker drops into off the tier and cannot leave — a rescue ramp was cut at Cydonia's west mesa's north-west corner
+  until a `gen.open` circle forced the plan open along that face; read `RETURN:` on every room before claiming it. The suites were not
+  run at the user's word (the three rooms were solved and audited by the two tools; `npm run test:quick` passed). NEXT: the Flatlands, the
+  Looking-Glass's garden, the Lodge, the Singularity, Saturn, Hollow Earth, the Dutchman's deck, the Backrooms — then D4, D5.
