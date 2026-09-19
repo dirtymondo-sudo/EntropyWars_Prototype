@@ -9752,6 +9752,12 @@ world graph and the 7.10 checklist for any new site it introduces.
    Göbekli's (the new `ley` generator: straight lines that fork, amber veins in the walls), STONEHENGE · THE PLAIN, GÖBEKLI TEPE · THE
    TELL, GIZA · THE PLATEAU, BABEL · THE TOWER (the four boards bypassed, the four ley links re-pointed). Technoticlan's own part is the
    next pass.**
+10. **THE ASTRAL REALM** (the user, 2026-09-19) — "the realm of all possibilities, the home of thought-forms, where ideas exist before
+   they are thought by human minds; creativity is instantaneous, just like your dreams — but that means nightmares as well; bizarre and
+   nightmare fuel mixed with the beautiful and fantastical" — connecting Dream Research, the Looking-Glass, the Haunted House.
+   **STARTED 2026-09-19 (THE ASTRAL REALM, the entry at the end of this file): four parts on Room E4's site — THE WAITING ROOM (prefab),
+   THE SEA OF POSSIBILITY (`rooms`, the hub), THE NIGHTMARE (`cave`, flesh), THE LIBRARY OF UNTHOUGHT THINGS (`ley`, wood) — joined by three
+   SCREENS (Room REM's, the D.U.M.B. ward's, the attic's home movies) and the garden's second frame.**
 **STARTED 2026-09-18 (THE DEEP, the entry at the end of this file): three parts shipped locally — THE OPEN SEA on Room 345 (the
 sea floor under one surface, `terrain.sea`; the cay, the jetty, the skiff you SAIL, the maelstrom ringed with buoys), THE ABYSS on
 Room H-20 (drowned — you SWIM in three dimensions or drive the bathyscaphe; the drowned road, the wreck of the Dutchman with her
@@ -10697,3 +10703,93 @@ draughts and the telescope." **DONE (data.js only; the renderer and map.js neede
   older parts (`HQ_AREA_MARKERS` is the edit), the Haunted House's porch stair to the front door at 1 m, the Dutchman's bulwarks
   as the grind, the Backrooms' pools, THE DROP's rescue ramp. Next: hubs for the new areas on the map (one row each), natives
   with user-authored lines (A15), a second pass of props from the kit per area.
+
+
+### 2026-09-19 — THE ASTRAL REALM (THE COMPLEX CANDIDATES #10): four parts on Room E4, three families, three screens (local delivery)
+
+The user: "Let's add another complex explorable area. The Astral Realm. It can connect the Dream Research, the Looking Glass,
+the Haunted House, etc. Make it the realm of all possibilities. The home of thought-forms. Where ideas exist before they are
+thought by human minds. Creativity is instantaneous in this realm, just like how your dreams are. But that means nightmares as
+well. Bizarre and nightmare fuel mixed with the beautiful and fantastical." Built on THE CAVE / THE WOODS blueprint
+(EXPLORABLE_AREAS_GUIDE §3's order: the beats, a family per part, the weenies, the field, the solver, the look, the ledger).
+
+**THE STORY BEATS (§3 step 1):** the Looking-Glass's garden → a SECOND frame with nothing in it at the back of the hedges →
+THE WAITING ROOM (arrive: a row of chairs facing the wall, three clocks that disagree, NOW SERVING with YOUR employee number on it,
+one thought-form in the corner nobody has called; the sleepers of Room REM are queueing here — its dream screen is the east wall)
+→ the frame under the sign → THE SEA OF POSSIBILITY (arrive: the violet meadow under a sky with the stars and the nebula all the
+way up, the floating islands drifting, THE WATCHER blinking on the horizon and a stair to nowhere the other way — the two
+weenies; walk the path of thought to THE POOL OF IDEAS in its colonnade, wade THE STREAM OF CONSCIOUSNESS, climb THE THREE
+THOUGHTS on their floating stairs to the telescope, find THE SPIRE OF THE UNTHOUGHT you cannot climb — the door gun's tape;
+meet the lady who knows what you will think; the eyes in the meadow turn) → east through a frame into THE LIBRARY OF UNTHOUGHT
+THINGS (the stacks fork and end in nooks, the shelves light themselves, THE READING ROOM's three lecterns, THE CARD CATALOGUE
+with THE TOP SHELF the gun reaches; the D.U.M.B. ward's dream screen is its east wall) → back across the meadow to THE CLOSET
+WITH NO BACK WALL standing alone in the north → THE NIGHTMARE (THE LONG HALL, THE MAW ringed with fangs with THE BED at the
+bottom — you are in it — THE STAGE you forgot the lines on, THE BLOOD that is lava, THE SINKHOLE, the sleepers' tanks, the
+blooms with teeth, the eyes, THE SPINE — the thing under the bed stood up; the attic's home movies are its east wall: crawl
+through the static and you are under the one bulb in the Haunted House).
+
+**THE PARTS (data.js, the block before THE RANCH; `hqAstralShell` / `hqNightmareShell` / `hqUnthoughtShell` beside the deep's
+shells; four looks `HQ_ROOM_LOOKS.astral / waiting / nightmare / unthought`):**
+- `site_prebuilt_lookingglass_waiting` 18 × 12 × 3.2 — family B, no terrain: seven `teal_chair`s at face 270 (the wall), the
+  `now_serving` proc (the profile's number), a lectern, one `thoughtform`, three `wall_clock`s at three heights, the queue rail +
+  a riser (the park rule), a bulb. Doors: `garden` (s x 0, `leaf_frame_only`) ⇄ the garden's new `astral` door (n x 14 — an
+  `HQ_AREA_SPECS.prebuilt_lookingglass.doors` row: a spec may carry doors), `sea` (n x 0); `links.rem_astral` on its east wall.
+- `site_prebuilt_lookingglass_sea` 150 × 120 (perimeter 14 m, open) — family A': `rooms` (seed 1111, loops 5, no thicket, the
+  banks 2.4 m of `crystal`), `purple_grass` underfoot, `marble_light` paths; THE STREAM (waded, 0.7 deep, corner to corner),
+  THE POOL (r 7, waded) in four `greek_column`s with the `floating_orb`, THE MIRROR LAKE (deep, never entered), THE THREE
+  THOUGHTS (`float: true` plateaus r 7 / 5.5 / 5 at 3 / 6 / 9 m up three `float` stairs — every flight starts ≥ 0.4 m inside
+  the lower tier and ends ≥ 0.7 m inside the upper), THE SPIRE (r 1.3, 7.5 m — the tape, pinned), THE PENROSE LEDGE (a 0.5 m
+  wall) + a rail + two `quarter_pipe`s; `impossible_stair`, `carousel`, `fortune_tent`, two `dream_eye`s, `fish_school` at
+  y 2.5, `hollow_tree`, `pearly_gate`, `door_stack`, the menhirs round the spire, clouds hung in the air, 8 `thoughtform`s + 14
+  `crystal_cluster`s + 6 signposts scattered. Doors: `waiting` (s x 0), `nightmare` (n x −30, `way: 'closet'` — a door row may
+  wear a way), `library` (e z −20). THE HUB's anchor. The solver: every door reached, no traps, 9 rescue ramps cut on the way
+  (the crystal banks the walker jumps up onto).
+- `site_prebuilt_lookingglass_nightmare` 100 × 76 × 6.5 (closed) — family A: `cave` (seed 666, cell 1.5, fill 0.47, the rock to
+  the 6.5 m ceiling; `gen.open` keeps THE LONG HALL a hall), `flesh` / `flesh_2` / `plague_flesh`; THE MAW (`dip` r 12 × 2.2,
+  `open`) ringed with SEVEN FANGS (`plateau` r 0.9 h 2.8 — never climbed) round THE BED (a `cot` at the bottom, its note on the
+  pillow at y −1.7), THE STAGE (14 × 10 × 1.6 up a stair, a rail — the dreameater on it), THE BLOOD (`pool` r 8 `lava`), THE
+  SINKHOLE (`dip` r 7 × 2.4 — fallen into, climbed out of), THE RIB (a grind), THE SPINE (r 1.4, 4.6 m — the tape, pinned;
+  the `demon_statue` beside it), three `iso_tank`s in the hall, three bulbs (the attic's rule), two candle rings, skull piles /
+  blooms / eyes / stains scattered. Doors: `sea` (s x 0, the closet's far side); `links.attic_nightmare` on its east wall.
+- `site_prebuilt_lookingglass_library` 140 × 100 × 4.6 (closed) — family C': `ley` (seed 4242, 22 forks, `wallKey: 'wood'`,
+  three lines — THE NAVE from the sea's frame (w z 20) to the ward's screen (e z 0), THE CROSS, THE SPINE — two authored
+  chambers), `carpet_3` under `wood_planks`; THE READING ROOM (a `dip` r 9 × 0.5 round the `conference_table`, four chairs,
+  three lecterns, two candle rings, one thought-form), THE GALLERY (12 × 6 × 2 up a stair + a rail; the `dream_eye` reading
+  you from it), THE LOW STACK (a grind), THE TOP SHELF (r 1.1, 3.4 m — the tape, pinned; the `floating_orb` and three shelves
+  round it); shelves / thought-forms / papers / candles scattered. 322 traced walls. Doors: `sea` (w z 20);
+  `links.dumb_astral` on its east wall.
+
+**THE SEAMS (`routes.astral`, dashed, `#d8b4ff`; a `screen` way at EVERY end — the kind rev 22 built, no new way kind):**
+`rem_astral` (Room REM `dreamlab`'s north wall x 2.4 — a facility end, the garden-well precedent: never gated — ⇄ the waiting
+room's east wall), `dumb_astral` (the D.U.M.B. ward's north wall x −10 ⇄ the library's east wall), `attic_nightmare` (the
+attic's west wall z 0.2 — under its 2.4 m ceiling, the screen's housing is the tallest way that fits; the round picture at
+z −1.6 stays where it is — ⇄ the nightmare's east wall). The Haunted House is a FOUR-LINE interchange now (hq-world's pin).
+The garden ⇄ the waiting room is a door PAIR (the same site — the tell-and-the-tunnels rule). `hubs.astral` claims the four
+parts BY ID (the underworld's rule; the garden stays the Looking-Glass's).
+
+**THE RENDERER (three-renderer.js, "THE ASTRAL REALM — THE THOUGHT-FORMS", the block before the per-frame section):** four procs
++ one landmark, every one on a ticker — `thoughtform` (a sphere whose vertices ride two waves of its own noise, a core, a ring,
+a halo, five colours by instance, a light), `dream_eye` (the shared `_hqAstralEye` helper — a ball with an iris on +Z and two
+lids; it TRACKS `_hq.player`'s head and blinks on its own clock), `impossible_stair` (four flights round a square, the fourth
+stepping back down into the first, on a cloud, turning), `nightmare_bloom` (eight bone cones on a dark bulb opening and closing
+on a breath, a red throat, a light), landmark `eye` (THE WATCHER — a 240 m eye in a fold of dark cloud on the sea's horizon,
+its gaze wandering, a slow blink). Catalogue rows in data.js beside the deep's. doorhq's room-light regex knows the three lit
+ones.
+
+**TAPES:** one per part, four re-homed — Camelot's ward's THE ROUND TABLE → THE SPIRE, Hell's pit's THE FISSURE → NIGHT TERROR,
+03:33, CERN's ring's badge → THE CARD CATALOGUE, the basilica's archive → NOW SERVING (every giver keeps its board's own; the
+hundred stays a hundred). `findSpots` pins the three hard tapes; `hqFindHardReach` proves a shot on each (0.5–0.6 m from a
+reachable node).
+
+**TESTS.** `hq-astral.test.js` (6: the sheet, the solver + the landing (heavy), the pair + the seams + the route + the hub, the
+tapes + the hard tapes (heavy), the park rule + the families (heavy), the renderer — source + a real build of all five on a stub
+scene). Amended: hq-terrain (77 rooms), hq-floor-plan (68 planned), hq-ranch (twelve hubs), hq-world (the seams list + the
+house's four lines), doorhq (the light regex).
+
+- **UNSEEN LIVE (RULE #1c):** all of it. Eyeball first: the thought-forms' breathing at 60 fps (the vertex pass per instance;
+  `EW_PERF_LOW` is not read — halve the scatter `n` if it stutters), the eyes' tracking (the iris should find you; if it looks
+  the wrong way the sign of `_hqAstralEye`'s lerp target is the edit), the impossible stair's read from the ground, the bloom's
+  teeth (their lean is `rotation.z`), THE WATCHER's size against the islands (`s` on the landmark row), the flesh sheets under
+  the green grade, the wood stacks under the veins, the closet standing alone in the meadow, the crystal banks' tops as grinds,
+  the three floating stairs' puffs, the attic's screen under the bulb. Next: a second pass of models (MODEL_INDEX §3p), the
+  natives' lines (A15), the `rooms` plan's rescue cuts on the sea (nine — a bank the walker keeps jumping onto).

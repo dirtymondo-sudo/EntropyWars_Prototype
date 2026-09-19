@@ -111,7 +111,7 @@ test('THE RANCH\'S GATES: the house\'s dead tree, the Lodge\'s saloon door, the 
 
 test('THE HUBS: every hub names a room that exists and gathers its rooms; the graph marks the anchor and the members; the model carries them; map.js draws the ring and the halo', () => {
     const H = HQ.hubs;
-    assert.deepEqual(Object.keys(H).sort().join(','), 'cavern,city,deep,divine,dumb,hq,kingdom,ley,ranch,underworld,woods');   // + THE LEY LINES (2026-09-18)   // + THE UNDERWORLD (2026-09-18) + THE DEEP (2026-09-18) (2026-09-18: a hub that claims its rooms BY ID)
+    assert.deepEqual(Object.keys(H).sort().join(','), 'astral,cavern,city,deep,divine,dumb,hq,kingdom,ley,ranch,underworld,woods');   // + THE ASTRAL REALM (2026-09-19: four parts on the Looking-Glass's site claimed BY ID)   // + THE LEY LINES (2026-09-18)   // + THE UNDERWORLD (2026-09-18) + THE DEEP (2026-09-18) (2026-09-18: a hub that claims its rooms BY ID)
     for (const id of Object.keys(H)) {
         assert.ok(HQ.rooms[H[id].room], id + ': the anchor room exists');
         const a = D.hqHubOf(H[id].room); assert.ok(a && a.id === id && a.anchor, id + ': the anchor knows its hub');
@@ -122,7 +122,7 @@ test('THE HUBS: every hub names a room that exists and gathers its rooms; the gr
     const G = D.hqMapGraph();
     assert.equal(G.nodes.site_prebuilt_hollow_earth_gallery.hub, 'cavern'); assert.equal(G.nodes.site_prebuilt_hollow_earth_adit.hubOf, 'cavern'); assert.equal(G.nodes.site_prebuilt_hollow_earth_adit.hub, null);
     const M = D.hqMapModel({}, 'foyer', { all: true });
-    assert.equal(M.nodes.filter(n => n.hub).length, 11, 'eleven hubs drawn (THE UNDERWORLD, THE DEEP, THE LEY LINES — 2026-09-18)');
+    assert.equal(M.nodes.filter(n => n.hub).length, 12, 'twelve hubs drawn (THE UNDERWORLD, THE DEEP, THE LEY LINES — 2026-09-18; THE ASTRAL REALM — 2026-09-19)');
     const Q = D.hqMapModel({}, 'foyer', {});
     assert.ok(Q.nodes.every(n => n.st !== 'q' || (!n.hub && !n.hubOf && !n.hubLabel)), 'a question mark gives no hub away');
     assert.ok(/hq-map-hubring/.test(map) && /hq-map-halo/.test(map) && /n\.hub \? String\(n\.hubLabel/.test(map), 'map.js draws the hub');

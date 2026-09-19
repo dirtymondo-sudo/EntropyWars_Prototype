@@ -560,6 +560,38 @@ stand on a board piece or a proc are the ones to replace: give the row a `file` 
 12. **a barrow entrance** (a stone-lined passage mouth in a grassy mound, ~5 m) — THE LONG BARROW is a plateau with a wide edge; the ley door would
     hang in its mouth (a `way` kind `barrow`, one builder).
 
+## 3p. THE ASTRAL REALM (2026-09-19 — complex candidate #10: THE WAITING ROOM · THE SEA OF POSSIBILITY · THE NIGHTMARE · THE LIBRARY OF UNTHOUGHT THINGS) — what stands there, and the wishlist
+
+No new file. Four PROCS (three-renderer.js `_hqProcBuilders`, the "THE ASTRAL REALM — THE THOUGHT-FORMS" block) and one landmark:
+
+| catalogue key | proc | stands as |
+| --- | --- | --- |
+| `thoughtform` | a sphere whose vertices breathe on their own noise, a white core, a ring, a halo — five colours by instance, a light | eight scattered on the sea + three placed, one in the waiting room, six + one in the library |
+| `dream_eye` | an eye on a stalk (the shared `_hqAstralEye`: a ball, an iris on +Z, two lids) that TRACKS the walker and blinks | two in the meadow, six scattered + two by the closet in the nightmare, one reading on the library's gallery |
+| `impossible_stair` | four flights round a square, the fourth stepping down into the first, on a cloud puff, turning | one on the sea, north-east |
+| `nightmare_bloom` | eight bone cones on a dark bulb, opening and closing, a red throat, a light | two placed + seven scattered in the nightmare |
+| landmark `eye` | THE WATCHER — a 240 m eye in a fold of dark cloud, its gaze wandering, a slow blink (`_hqLandmarkBuilders.eye`) | on the sea's horizon at 34° |
+
+Also standing here from the kit as it was: `teal_chair` ×7, `now_serving`, `lectern`, `wall_clock` ×3, `door_stack`, `riser_1`, `railing_1m` (the waiting
+room); `greek_column` ×4, `floating_orb`, `pearly_gate`, `carousel`, `fortune_tent`, `fish_school`, `hollow_tree`, `menhir` ×3, `telescope`, `park_bench`,
+`white_cloud` ×4, `quarter_pipe` ×2, `crystal_cluster` + `signpost` scattered (the sea); `cot`, `iso_tank` ×3, `sarcophagus`, `demon_statue`, `candle_ring`,
+`bare_bulb`, `skull_pile` + `floor_stain` scattered (the nightmare); `conference_table`, `office_chair` ×4, `lectern` ×3, `library_shelf` /
+`library_shelf_full`, `floating_orb`, `paper_sheet` + `candle_ring` scattered (the library).
+
+**The wishlist (Meshy, the second pass — every one stands in for a proc today):**
+1. **a thought-form** (an abstract, semi-transparent crystalline body ~1.2 m — a Meshy model would be STATIC; the proc's breathing is the point, so a model
+   here is the CORE only, the vertex pass stays).
+2. **an eye on a stalk** (a fleshy stalk with a lidded eye, ~1.6 m; the lids and the ball as separate meshes so the tracking / blink rig can drive them —
+   name the nodes `ball`, `lidTop`, `lidBot`).
+3. **a flower of teeth** (a Venus-flytrap of bone, ~1.9 m, the petals separate meshes hinged at the rim).
+4. **a Penrose stair** (four marble flights round a square, ~7 m — the proc's lie in geometry).
+5. **a waiting-room chair** (the moulded plastic kind, one colour, ~0.9 m) — `teal_chair` is the office chair.
+6. **a ticket dispenser** (a red pull-tab dispenser on a post, ~1.2 m) — the lectern stands in.
+7. **a bed with something under it** (a single bed, the valance lifted, ~2 m) — `cot` stands in at the bottom of the maw.
+8. **a closet with no back wall** (a wardrobe body with coats and NO back panel, ~2.3 m) — the `closet` way's proc is rev 22's.
+9. **a card catalogue** (a wall of tiny brass-handled drawers, ~2.6 m) — three shelves round the top shelf today.
+10. **a giant eye for the horizon** (the same rig as #2 at any scale — one file for both).
+
 ## 4. The older `Assets/misc/` models (`_MISC_GLB` + the OBJ landmarks)
 
 | key | file | kind | stands as |

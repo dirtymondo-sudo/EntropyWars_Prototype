@@ -48783,6 +48783,156 @@ const ThreeRenderer = (function () {
         },
     });
 
+    /* ══ THE ASTRAL REALM — THE THOUGHT-FORMS (HQ plan 9.3 stage 13 / THE COMPLEX CANDIDATES #10, 2026-09-19 — the user:
+       "the realm of all possibilities, the home of thought-forms, where ideas exist before they are thought; creativity is
+       instantaneous, just like your dreams — but that means nightmares as well; bizarre and nightmare fuel mixed with the
+       beautiful and fantastical"). Four procs (data.js DOOR_HQ.catalogue: thoughtform · dream_eye · impossible_stair ·
+       nightmare_bloom) and one landmark (`eye` — THE WATCHER on the sea's horizon). Every one moves on a ticker; the eyes
+       LOOK AT THE WALKER (_hq.player, room metres) and blink. Nothing on `state`, nothing relayed (RULE #2): the building
+       is viewer-local. Procs only: the second pass brings models (MODEL_INDEX §3p). ══ */
+    /* an eye: a white ball with an iris and a pupil on its +Z, two lids that close on a blink; `track(target)` turns the ball; `R` in units */
+    function _hqAstralEye(R, tint, lidColor) {
+        var g = new THREE.Group();
+        var white = new THREE.MeshPhongMaterial({ color: 0xf6f2ec, shininess: 90, specular: 0xffffff });
+        var ball = new THREE.Mesh(new THREE.SphereGeometry(R, 24, 16), white); g.add(ball);
+        var iris = new THREE.Mesh(new THREE.CircleGeometry(R * 0.44, 24), new THREE.MeshPhongMaterial({ color: tint, emissive: tint, emissiveIntensity: 0.4, shininess: 60 })); iris.position.z = R * 0.99; ball.add(iris);
+        var pupil = new THREE.Mesh(new THREE.CircleGeometry(R * 0.19, 20), _hqBasic(0x050308)); pupil.position.z = R * 1.003; ball.add(pupil);
+        var lidMat = new THREE.MeshPhongMaterial({ color: lidColor || 0xd8a0a8, shininess: 8 });
+        var top = new THREE.Mesh(new THREE.SphereGeometry(R * 1.05, 24, 8, 0, Math.PI * 2, 0, Math.PI / 2), lidMat); g.add(top);
+        var bot = new THREE.Mesh(new THREE.SphereGeometry(R * 1.05, 24, 8, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), lidMat); g.add(bot);
+        var OPEN = 0.95;   // the lids swung back off the front (radians); 0 = shut
+        top.rotation.x = -OPEN; bot.rotation.x = OPEN;
+        var tgt = new THREE.Vector3(), tmpW = new THREE.Vector3(), tmpL = new THREE.Vector3();
+        return { g: g, ball: ball, iris: iris,
+            /* look at a WORLD point (the ball turns in its parent's frame; +Z is the iris) */
+            track: function (wx, wy, wz, ease) {
+                tgt.set(wx, wy, wz); ball.parent.worldToLocal(tgt);
+                tmpL.copy(tgt).sub(ball.position).normalize();
+                tmpW.set(0, 0, 1).applyQuaternion(ball.quaternion).lerp(tmpL, ease == null ? 0.08 : ease).normalize();
+                ball.lookAt(tmpW.clone().add(ball.position));
+            },
+            /* 0 = open, 1 = shut */
+            blink: function (k) { top.rotation.x = -OPEN * (1 - k); bot.rotation.x = OPEN * (1 - k); } };
+    }
+    Object.assign(_hqProcBuilders, {
+        /* A THOUGHT-FORM: an idea before anyone has it — a sphere that breathes (its vertices ride two waves of a noise that is
+           its own), a white core, a ring, a halo; one of five colours per instance; it bobs and turns. Never the same shape twice. */
+        thoughtform: function (U) {
+            var g = new THREE.Group();
+            var pal = [[0xbf8bff, 0x7a3dff], [0x8fe8ff, 0x2fa8ff], [0xffb0e0, 0xff3d9a], [0xc8ffb0, 0x5fdc4a], [0xfff0a0, 0xffb02f]];
+            var c = pal[(_hqProcSeed++) % pal.length];
+            var geo = new THREE.SphereGeometry(0.55 * U, 22, 16);
+            var pos = geo.attributes.position, base = Float32Array.from(pos.array), n = pos.count;
+            var mat = new THREE.MeshPhongMaterial({ color: c[0], emissive: c[1], emissiveIntensity: 0.55, transparent: true, opacity: 0.86, shininess: 120, specular: 0xffffff });
+            var body = new THREE.Mesh(geo, mat); body.position.y = 1.5 * U; body.frustumCulled = false; g.add(body);
+            var core = new THREE.Mesh(new THREE.SphereGeometry(0.16 * U, 12, 8), _hqBasic(0xffffff)); core.position.y = 1.5 * U; g.add(core);
+            var halo = _hzGlowSprite(2.2 * U, c[0], 0.35, 0.12, 0.08, 0.7); halo.position.y = 1.5 * U; g.add(halo);
+            var ring = new THREE.Mesh(new THREE.TorusGeometry(0.8 * U, 0.02 * U, 6, 40), _hqBasic(c[0], { transparent: true, opacity: 0.5, depthWrite: false })); ring.position.y = 1.5 * U; ring.rotation.x = Math.PI / 2 + 0.6; g.add(ring);
+            var seed = (_hqProcSeed++) * 1.7, kx = 0.09 / U, kz = 0.07 / U, ky = 0.11 / U, kx2 = 0.05 / U;
+            if (_hq) _hq.tickers.push(function (dt, now) {
+                var t = now * 0.001 + seed;
+                for (var i = 0; i < n; i++) {
+                    var x = base[i * 3], y = base[i * 3 + 1], z = base[i * 3 + 2];
+                    var s = 1 + 0.22 * Math.sin(t * 1.3 + x * kx + z * kz) + 0.14 * Math.sin(t * 2.1 + y * ky - x * kx2);
+                    pos.setXYZ(i, x * s, y * s, z * s);
+                }
+                pos.needsUpdate = true; geo.computeVertexNormals();
+                var yy = (1.5 + 0.18 * Math.sin(t * 0.8)) * U; body.position.y = core.position.y = halo.position.y = ring.position.y = yy;
+                body.rotation.y += dt * 0.35; ring.rotation.z += dt * 0.5; mat.emissiveIntensity = 0.45 + 0.25 * Math.sin(t * 1.9);
+            });
+            return g;
+        },
+        /* A DREAM EYE: an eye on a stalk out of the ground that looks at YOU and blinks — beautiful when it is blue, not when it is red */
+        dream_eye: function (U) {
+            var g = new THREE.Group(), R = 0.5 * U;
+            var tint = [0x4fa8ff, 0x7fdc6a, 0xd8802a, 0xa060ff, 0xff4a4a][(_hqProcSeed++) % 5];
+            var stalk = new THREE.Mesh(new THREE.CylinderGeometry(0.09 * U, 0.16 * U, 0.5 * U, 10), new THREE.MeshPhongMaterial({ color: 0x8a4a5a, shininess: 8 })); stalk.position.y = 0.25 * U; g.add(stalk);
+            var eye = _hqAstralEye(R, tint, 0xd8a0a8); eye.g.position.y = 1.0 * U; g.add(eye.g);
+            var seed = (_hqProcSeed++) * 0.9, nextBlink = 2 + Math.random() * 4, blinkT = -1;
+            if (_hq) _hq.tickers.push(function (dt, now) {
+                var pl = _hq && _hq.player;
+                if (pl) eye.track(pl.x * U, (pl.y + 1.5) * U, pl.z * U, 0.06);
+                nextBlink -= dt;
+                if (nextBlink <= 0 && blinkT < 0) { blinkT = 0; nextBlink = 2.5 + Math.random() * 5; }
+                if (blinkT >= 0) { blinkT += dt; var k = blinkT < 0.09 ? blinkT / 0.09 : blinkT < 0.2 ? 1 - (blinkT - 0.09) / 0.11 : 0; eye.blink(Math.max(0, Math.min(1, k))); if (blinkT >= 0.2) { blinkT = -1; eye.blink(0); } }
+                eye.g.position.y = (1.0 + 0.04 * Math.sin(now * 0.0012 + seed)) * U;
+            });
+            return g;
+        },
+        /* THE IMPOSSIBLE STAIR: four flights round a square, every one climbing, the fourth ending where the first began (it works
+           anyway); marble treads on a cloud, turning slowly so the lie is never seen from the same side twice */
+        impossible_stair: function (U) {
+            var g = new THREE.Group();
+            var step = _hqMat('marble_light', 2, 1, { color: 0xfff4e0, shininess: 8 });
+            var cloud = _hqMat('cloud_thick', 3, 2, { color: 0xf0e8ff, shininess: 2 });
+            var puff = new THREE.Mesh(new THREE.SphereGeometry(3.2 * U, 14, 9), cloud); puff.scale.set(1, 0.32, 1); puff.position.y = 0.2 * U; g.add(puff);
+            var spin = new THREE.Group(); spin.position.y = 0.9 * U; g.add(spin);
+            var L = 2.6, N = 7, RISE = 0.2, W = 0.8;   // a flight's run (m), treads per flight, the rise per tread, the tread's width
+            var corners = [[-L / 2, -L / 2, 1, 0], [L / 2, -L / 2, 0, 1], [L / 2, L / 2, -1, 0], [-L / 2, L / 2, 0, -1]];
+            corners.forEach(function (c, f) {
+                for (var i = 0; i < N; i++) {
+                    var t = (i + 0.5) / N, tread = _hqBox(W, 0.14, L / N + 0.02, step);
+                    var x = c[0] + c[2] * L * t, z = c[1] + c[3] * L * t;
+                    var yaw = Math.atan2(c[2], c[3]);
+                    tread.position.set(x * U, ((f * N + i) * RISE) * U, z * U); tread.rotation.y = yaw; spin.add(tread);
+                    /* the lie: the last flight's treads step back DOWN into the first (the eye reads the square, not the height) */
+                    if (f === 3) tread.position.y = ((3 * N + i) * RISE - (i / N) * (4 * N * RISE)) * U;
+                }
+            });
+            var post = new THREE.Mesh(new THREE.CylinderGeometry(0.05 * U, 0.05 * U, (4 * N * RISE + 0.3) * U, 8), _hqMat(null, 1, 1, { color: 0xc8b070, shininess: 40 })); post.position.y = ((4 * N * RISE + 0.3) / 2) * U; spin.add(post);
+            var glow = _hzGlowSprite(3.5 * U, 0xd8c8ff, 0.18, 0.06, 0.04, 0.4); glow.position.y = 2.2 * U; g.add(glow);
+            if (_hq) _hq.tickers.push(function (dt, now) { spin.rotation.y += dt * 0.12; puff.position.y = (0.2 + 0.08 * Math.sin(now * 0.0009)) * U; });
+            return g;
+        },
+        /* A NIGHTMARE BLOOM: a flower on a stem whose petals are teeth — eight bone cones on a dark bulb, opening and closing on a
+           breath; a red light in the throat. The pretty one is the closed one. */
+        nightmare_bloom: function (U) {
+            var g = new THREE.Group();
+            var stem = new THREE.Mesh(new THREE.CylinderGeometry(0.06 * U, 0.1 * U, 1.1 * U, 8), new THREE.MeshPhongMaterial({ color: 0x4a1a24, shininess: 6 })); stem.position.y = 0.55 * U; stem.rotation.z = 0.12; g.add(stem);
+            var head = new THREE.Group(); head.position.set(0.06 * U, 1.1 * U, 0); g.add(head);
+            var bulb = new THREE.Mesh(new THREE.SphereGeometry(0.28 * U, 14, 10), new THREE.MeshPhongMaterial({ color: 0x6a1e2a, emissive: 0x3a0810, emissiveIntensity: 0.6, shininess: 30 })); head.add(bulb);
+            var throat = _hzGlowSprite(0.9 * U, 0xff3a4a, 0.35, 0.15, 0.1, 0.9); throat.position.y = 0.15 * U; head.add(throat);
+            var bone = new THREE.MeshPhongMaterial({ color: 0xf2eadc, shininess: 60, specular: 0xffffff });
+            var petals = [];
+            for (var i = 0; i < 8; i++) {
+                var piv = new THREE.Group(); var a = i / 8 * Math.PI * 2;
+                piv.position.set(Math.cos(a) * 0.24 * U, 0.05 * U, Math.sin(a) * 0.24 * U); piv.rotation.y = -a;
+                var tooth = new THREE.Mesh(new THREE.ConeGeometry(0.09 * U, 0.55 * U, 6), bone); tooth.position.y = 0.27 * U; piv.add(tooth);
+                head.add(piv); petals.push(piv);
+            }
+            var seed = (_hqProcSeed++) * 1.3;
+            if (_hq) _hq.tickers.push(function (dt, now) {
+                var t = now * 0.001 + seed, open = 0.55 + 0.45 * Math.sin(t * 0.9);   // 0 shut (a bud of teeth) … 1 wide
+                for (var i = 0; i < petals.length; i++) petals[i].rotation.z = -(0.15 + 1.25 * open) + 0.08 * Math.sin(t * 3 + i);   // the cone leans OUT from the bulb about its own tangent
+                head.rotation.y += dt * 0.15; throat.material.opacity = 0.15 + 0.3 * open;
+            });
+            return g;
+        },
+    });
+    /* ── THE LANDMARK: THE WATCHER — a vast eye on the sea's horizon that blinks and wanders its gaze; it is not looking at you (mostly) ── */
+    Object.assign(_hqLandmarkBuilders, {
+        eye: function (U, o, rng) {
+            var g = new THREE.Group(), s = o.s || 1, R = rng || Math.random;
+            var eye = _hqAstralEye(120 * s * U, 0xa070ff, 0x6a4a7a);
+            eye.g.position.y = 190 * s * U; g.add(eye.g);
+            /* the lids' fold: a ring of dark cloud round it, so it reads as an eye in the sky and not a moon */
+            var cloud = _hqMat('cloud_thick', 3, 2, { color: 0x4a3a6a, shininess: 2 });
+            for (var c = 0; c < 7; c++) { var a = c * 0.9 + R() * 0.4, rr = (120 + R() * 40) * s; var puff = new THREE.Mesh(new THREE.SphereGeometry((60 + R() * 30) * s * U, 12, 8), cloud); puff.scale.set(1, 0.42, 0.9); puff.position.set(Math.cos(a) * rr * U, (190 + (R() - 0.5) * 60) * s * U, Math.sin(a) * rr * 0.4 * U); g.add(puff); }
+            var glow = _hzGlowSprite(420 * s * U, 0xb090ff, 0.16, 0.05, 0.03, 0.2); glow.position.y = 190 * s * U; glow.position.z = 40 * s * U; g.add(glow);
+            var t0 = R() * 6.28, blinkT = -1, nextBlink = 6 + R() * 8;
+            if (_hq) _hq.tickers.push(function (dt, now) {
+                var t = now * 0.0002 + t0;
+                /* the gaze wanders: a world point out in front of the eye, drifting */
+                var w = new THREE.Vector3(Math.sin(t) * 900 * s * U, (120 + Math.sin(t * 1.7) * 160) * s * U, 600 * s * U); eye.g.localToWorld(w);
+                eye.track(w.x, w.y, w.z, 0.02);
+                nextBlink -= dt;
+                if (nextBlink <= 0 && blinkT < 0) { blinkT = 0; nextBlink = 7 + R() * 9; }
+                if (blinkT >= 0) { blinkT += dt; var k = blinkT < 0.5 ? blinkT / 0.5 : blinkT < 1.3 ? 1 - (blinkT - 0.5) / 0.8 : 0; eye.blink(Math.max(0, Math.min(1, k))); if (blinkT >= 1.3) { blinkT = -1; eye.blink(0); } }
+            });
+            return g;
+        },
+    });
+
     /* ── per-frame ─────────────────────────────────────────────────────── */
     /* THE SLIDE (THE FIELD stage A — Phase 9 Delivery 6, 2026-09-16): between the strike frame and the cut the
        walker and the native EASE onto their cell centres (the user's rule: "slid to the nearest square tile of

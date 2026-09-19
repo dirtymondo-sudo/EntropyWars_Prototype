@@ -554,3 +554,18 @@ The design (build in this order; each step is one delivery):
   that is the route, a site's only line; the shortcuts that duplicated a built path are gone (hq-areas.test.js names them).
   Adding a site today = the 7.10 checklist + an `HQ_AREA_SPECS` row (or a hand-authored complex) + an `entry` row; never a plain
   door to a neighbour it already reaches by a path. Log: DOOR_HQ_BUILD_PLAN §9.
+- **2026-09-19 — THE ASTRAL REALM (complex candidate #10, the user: "the realm of all possibilities, the home of thought-forms, where ideas
+  exist before they are thought … creativity is instantaneous, just like your dreams — but that means nightmares as well; bizarre and
+  nightmare fuel mixed with the beautiful and fantastical").** Four parts on the Looking-Glass's site, THREE FAMILIES with the hand-offs at
+  real doors (§1's rule, told as a story): a prefab WAITING ROOM (B) → THE SEA OF POSSIBILITY (A', `rooms` with no thicket — the banks are
+  unformed crystal; three floating tiers up floating stairs, the stream waded, the mirror lake never) → THE LIBRARY OF UNTHOUGHT THINGS (C',
+  `ley` in a WOOD `wallKey`: the stacks fork and end in reading nooks and light themselves — the ley generator is not only for tunnels) and
+  THE NIGHTMARE (A, `cave` in the flesh sheets — a bowl ringed with unclimbable spikes, a lava pool, a stage). The seams are THREE SCREENS
+  on one dashed line (Room REM's, the D.U.M.B. ward's, the attic's home movies — one `way` kind, three places, no new builder) and the
+  garden's second frame (a door pair, the same site). The weenies: THE WATCHER (a new `eye` landmark that blinks) and the divine `stairway`
+  the wrong way up; inside, the spire, the spine, the top shelf — every hard tape a tier the gun can shoot. Four procs that MOVE (a
+  thought-form that breathes, an eye that looks at you, a stair that only goes up, a flower of teeth). Rules learned: an open room's shell
+  `h` is still the ceiling doorhq's prop rule reads — a prop hung at 9 m wants `h` ≥ 10 even with nothing drawn; a wall prop's `mount +
+  h` must clear the shell's `h` (the third clock); a `rooms` plan with 2.4 m crystal banks cuts a rescue ramp wherever the walker's jump
+  reaches a bank top it cannot leave — nine on the sea (read `info.rescues`; a lower `wallH` or a higher bank is the edit if they read
+  as scars). Log: DOOR_HQ_BUILD_PLAN §9; assets: MODEL_INDEX §3p.

@@ -14178,6 +14178,15 @@ const HQ_ROOM_LOOKS = {
     tell:       { name: 'GÖBEKLI TEPE · THE TELL', retro: { enabled: true, preset: 'amber', pixelSize: 1, ditherStrength: 0.4, grain: 0.035, tintAmount: 0.38, levels: 24 }, cin: { vignette: true, vigAmount: 0.34, vigSize: 0.58 }, nightMood: 0.1, bloom: 0.2 },
     plateau:    { name: 'GIZA · THE PLATEAU', retro: { enabled: true, preset: 'faded', pixelSize: 1, ditherStrength: 0.36, grain: 0.03, tintAmount: 0.34, levels: 24 }, cin: { vignette: true, vigAmount: 0.3, vigSize: 0.6 }, nightMood: 0.05, bloom: 0.26 },
     babel:      { name: 'BABEL · THE TOWER', retro: { enabled: true, preset: 'amber', pixelSize: 1, ditherStrength: 0.42, grain: 0.035, tintAmount: 0.44, levels: 22 }, cin: { vignette: true, vigAmount: 0.4, vigSize: 0.54 }, nightMood: 0.35, bloom: 0.28 },
+    /* THE ASTRAL REALM (2026-09-19 — complex candidate #10, the user: "the realm of all possibilities, the home of thought-forms, where ideas exist
+       before they are thought; creativity is instantaneous, just like dreams — but that means nightmares as well"): THE SEA OF POSSIBILITY the
+       dreamiest grade in the building (the dream preset, soft dither, a wide vignette, the bloom high — every thought-form is a lamp); THE
+       WAITING ROOM the flat fluorescent purgatory (faded, no bloom, no night: the room before the idea); THE NIGHTMARE the green print with the
+       hardest dither and the tightest vignette anywhere (the edges of the frame are what you cannot look at); THE LIBRARY the archive's amber, softer */
+    astral:     { name: 'THE SEA OF POSSIBILITY', retro: { enabled: true, preset: 'dream', pixelSize: 1, ditherStrength: 0.3, grain: 0.022, tintAmount: 0.42, levels: 30 }, cin: { vignette: true, vigAmount: 0.3, vigSize: 0.6 }, nightMood: 0.35, bloom: 0.62 },
+    waiting:    { name: 'THE WAITING ROOM', retro: { enabled: true, preset: 'faded', pixelSize: 1, ditherStrength: 0.42, grain: 0.05, tintAmount: 0.38, levels: 18 }, cin: { vignette: true, vigAmount: 0.3, vigSize: 0.6 }, nightMood: 0.0, bloom: 0.08, dof: 0 },
+    nightmare:  { name: 'THE NIGHTMARE', retro: { enabled: true, preset: 'green', pixelSize: 1, ditherStrength: 0.58, grain: 0.06, tintAmount: 0.58, levels: 14 }, cin: { vignette: true, vigAmount: 0.72, vigSize: 0.36 }, nightMood: 0.9, bloom: 0.34 },
+    unthought:  { name: 'THE LIBRARY OF UNTHOUGHT THINGS', retro: { enabled: true, preset: 'amber', pixelSize: 1, ditherStrength: 0.36, grain: 0.028, tintAmount: 0.34, levels: 24 }, cin: { vignette: true, vigAmount: 0.38, vigSize: 0.54 }, nightMood: 0.25, bloom: 0.4 },
 };
 // THE LOOK (2026-09-17): `env.look` on a row = a grade (a HQ_ROOM_LOOKS row: retro preset, dither,
 // vignette, night mood, bloom, exposure, dof) laid over the player's video settings for that map —
@@ -18824,6 +18833,65 @@ function hqAbyssShell(o) {
     Object.keys(o).forEach(k => { S[k] = o[k]; });
     return S;
 }
+/* ── THE ASTRAL REALM'S SHELLS (2026-09-19 — THE COMPLEX CANDIDATES #10, the user: "the realm of all possibilities, the home
+   of thought-forms, where ideas exist before they are thought by human minds; creativity is instantaneous, just like your dreams
+   — but that means nightmares as well; bizarre and nightmare fuel mixed with the beautiful and fantastical") ──
+   THE SEA OF POSSIBILITY (hqAstralShell): an OPEN room under a sky that is NOBODY'S map's — a violet night with the stars and the
+   nebula turned all the way up, the floating-islands roster drifting past, a fog per metre in the same violet, no facility walls,
+   the ground running out under it; THE WATCHER (a landmark `eye` on the horizon that blinks) and A STAIR NOBODY THOUGHT OF (the
+   divine `stairway` landmark, the wrong way up) hung on it; the room lit by the sky and by its thought-forms. THE NIGHTMARE
+   (hqNightmareShell): CLOSED, 6.5 m high, the flesh sheets underfoot and to the ceiling, its own red-black haze, the dimmest mood in
+   the building, no strips (the bulbs and the candles and the blooms are the light). THE LIBRARY (hqUnthoughtShell): CLOSED, 4.6 m,
+   carpet under a wood ceiling, the stacks the traced plan walls in the wood sheet lit by their own veins (the ley rule — the
+   shelves light themselves), an amber haze. One function each so the parts cannot drift; `o` overrides a field. */
+function hqAstralShell(o) {
+    o = Object.assign({}, o || {});
+    const S = {
+        w: 0, d: 0, h: 9.0, wallH: 9.0, dadoH: 1.0,
+        open: true, edge: 'open',
+        floor: 'purple_grass', wall: 'crystal', dado: 'crystal', trim: 'gold', ceiling: 'purple_grass',
+        apron: 'purple_grass', skirt: 'crystal', apronColor: 0x9a7ad0, floorColor: 0x9a7ad0, wallColor: 0xb8a0ff, dadoColor: 0x8a70d8,
+        pipes: false, strips: false, lights: [],
+        mood: { lamp: 0xc8a0ff, glow: 0xb080ff, strip: 0xe0d0ff, light: 0xd8c8ff, ambient: 0.5, night: 1 },
+        sky: { night: 1, tint: 0x2a1650, tintAmt: 0.55, stars: 1.3, nebula: 1.8, fog: { color: 0x3a1e6a, amount: 0.5, top: 0.06, band: 0.5, density: 0.014 }, scenery: 'islands', density: 0.9,
+               landmarks: [{ kind: 'eye', id: 'prebuilt_lookingglass', deg: 34, dist: 0.62, y: 0.05, s: 1.0, label: 'THE WATCHER' },
+                           { kind: 'stairway', id: 'prebuilt_lookingglass', deg: 252, dist: 0.76, y: -0.02, s: 0.8, label: 'A STAIR NOBODY THOUGHT OF' }] },
+        plate: { x: 0, z: 56.5, y: 3.6 },
+        look: HQ_ROOM_LOOKS.astral,
+    };
+    Object.keys(o).forEach(k => { S[k] = o[k]; });
+    return S;
+}
+function hqNightmareShell(o) {
+    o = Object.assign({}, o || {});
+    const S = {
+        w: 0, d: 0, h: 6.5, wallH: 6.5, dadoH: 1.0, open: false,
+        floor: 'flesh', wall: 'flesh_2', dado: 'flesh_3', trim: 'leather', ceiling: 'plague_flesh', ceilTile: 1.75,
+        floorColor: 0x8a3a44, wallColor: 0x7a2c38, dadoColor: 0x5a1e28, ceilColor: 0x4a1620,
+        pipes: false, strips: false, lights: [],
+        mood: { lamp: 0xff6a5a, glow: 0xff3a3a, strip: 0xff8070, light: 0xffb0a0, ambient: 0.22 },
+        fog: { color: 0x160408, density: 0.036 },
+        plate: { x: 0, z: 37.5, y: 3.4 },
+        look: HQ_ROOM_LOOKS.nightmare,
+    };
+    Object.keys(o).forEach(k => { S[k] = o[k]; });
+    return S;
+}
+function hqUnthoughtShell(o) {
+    o = Object.assign({}, o || {});
+    const S = {
+        w: 0, d: 0, h: 4.6, wallH: 4.6, dadoH: 1.0, open: false,
+        floor: 'carpet_3', wall: 'wood', dado: 'wood', trim: 'gold', ceiling: 'wood_planks', ceilTile: 1.75,
+        floorColor: 0x6a4a6a, wallColor: 0xa07850, dadoColor: 0x8a6440, ceilColor: 0x6a4a30,
+        pipes: false, strips: false, lights: [],
+        mood: { lamp: 0xffc070, glow: 0xffb050, strip: 0xffcc80, light: 0xffe0b0, ambient: 0.34 },
+        fog: { color: 0x14100a, density: 0.02 },
+        plate: { x: -69.8, z: 20, y: 3.2 },
+        look: HQ_ROOM_LOOKS.unthought,
+    };
+    Object.keys(o).forEach(k => { S[k] = o[k]; });
+    return S;
+}
 const DOOR_HQ = {
     units: 73,
     assets: { models: DOOR_HQ_ASSETS + 'models/', textures: DOOR_HQ_ASSETS + 'textures/' },
@@ -19037,6 +19105,12 @@ const DOOR_HQ = {
         sea_vent:       { proc: 'sea_vent',       h: 2.4, foot: 0.7, block: true, glow: { y: 2.2, size: 2.4, color: 0xff9a40 }, light: { color: 0xff8a30, intensity: 0.9, dist: 10, y: 2.0 } },   // a black smoker: the trench's light
         fish_school:    { proc: 'fish_school',    h: 2.0, foot: 0 },                                                                        // forty fish on a loop (a ticker)
         temple_dome:    { proc: 'temple_dome',    span: 14, foot: 0, glow: { y: 5.5, size: 6.0, color: 0xffe0a0 }, light: { color: 0xffd890, intensity: 1.0, dist: 18, y: 4.5 } },   // THE TEMPLE OF THE DEEP from outside: the near weenie, lit from within
+        /* ── THE ASTRAL REALM (2026-09-19, complex candidate #10): the thought-forms' kit — every row a PROC (three-renderer.js
+           _hqProcBuilders, the "THE ASTRAL REALM" block) until a second pass brings models (MODEL_INDEX §3p). ── */
+        thoughtform:    { proc: 'thoughtform',    h: 2.3, foot: 0.5, block: true, glow: { y: 1.5, size: 2.6, color: 0xc8a0ff }, light: { color: 0xc0a0ff, intensity: 0.9, dist: 10, y: 1.5 } },   // an idea before anyone has it: a breathing shape, a colour of its own, a ring (a ticker: it morphs)
+        dream_eye:      { proc: 'dream_eye',      h: 1.6, foot: 0.6, block: true, glow: { y: 0.9, size: 1.4, color: 0xffe0e8 } },   // an eye on a stalk that looks at YOU and blinks (a ticker)
+        impossible_stair: { proc: 'impossible_stair', span: 7.0, foot: 2.6, rect: { hw: 3.4, hd: 3.4 }, block: true, glow: { y: 2.0, size: 4.0, color: 0xd8c8ff } },   // a square of four flights that only goes up, floating on its own cloud (a ticker: it turns)
+        nightmare_bloom: { proc: 'nightmare_bloom', h: 1.9, foot: 0.7, block: true, glow: { y: 1.2, size: 2.2, color: 0xff3a4a }, light: { color: 0xff4a4a, intensity: 0.8, dist: 8, y: 1.3 } },   // a flower whose petals are teeth, opening and closing (a ticker)
         wooden_cross:       { file: 'Meshy_AI_wooden_cross_0917035711_texture.glb',                   base: 'misc', h: 3.0, foot: 0, wall: true, mount: 2.6 },
         /* 2026-09-15 THE VEHICLE BATCH (nine Meshy vehicles in the misc bucket —
            MODEL_INDEX §3c): the ones that fit under a 2.8 m garage ceiling park
@@ -19796,6 +19870,7 @@ const DOOR_HQ = {
         subway:     { label: 'THE SUBWAY',       sub: 'ALL LINES · THE TUNNEL IS ONE TUNNEL', color: '#f2d21a' },
         sewers:     { label: 'THE SEWERS',       sub: 'EVERY GUTTER DRAINS INTO THE SAME CULVERT', color: '#7fb8a0', dashed: true },   // DISASTER CITY (2026-09-17): the tunnels' first seam (candidate #3)
         dungeons:   { label: 'THE DUNGEONS',     sub: 'EVERY CELL JOINS UP · THE FOURTH WALL IS A DOOR', color: '#a88fb8', dashed: true },   // THE UNDERWORLD (2026-09-18): the cells ⇄ Room 24601, the workings ⇄ the oubliette — never THE UNDERCROFT's (hq-cave: every undercroft leg touches Hollow Earth)
+        astral:     { label: 'THE ASTRAL PLANE',  sub: 'EVERY IDEA ARRIVES HERE FIRST · SO DOES EVERY NIGHTMARE', color: '#d8b4ff', dashed: true },   // THE ASTRAL REALM (2026-09-19): three screens — Room REM's, the D.U.M.B. ward's, the attic's home movies
     },
     /* THE HUBS (2026-09-18, the user: "the big main areas right now are the
        Cavern, the Woods, the Divine Staircase, Disaster City, the D.U.M.B. and
@@ -19822,6 +19897,8 @@ const DOOR_HQ = {
         deep:    { label: 'THE DEEP', room: 'site_prebuilt_atlantis_abyss', sites: ['prebuilt_atlantis', 'prebuilt_bermuda'], color: '#4fc3c8' },
         /* THE LEY LINES (2026-09-18, complex candidate #9): the tunnels and the four ancient sites' parts — the tunnels are the anchor (Göbekli's part) */
         ley:     { label: 'THE LEY LINES', room: 'site_prebuilt_gobekli_leylines', sites: ['prebuilt_gobekli', 'prebuilt_stonehenge', 'prebuilt_giza', 'prebuilt_babel'], color: '#e0b06a' },
+        /* THE ASTRAL REALM (2026-09-19, complex candidate #10): four parts on the Looking-Glass's site that are NOT the garden's — claimed BY ID (the underworld's rule); the sea is the anchor */
+        astral:  { label: 'THE ASTRAL REALM', room: 'site_prebuilt_lookingglass_sea', rooms: ['site_prebuilt_lookingglass_waiting', 'site_prebuilt_lookingglass_sea', 'site_prebuilt_lookingglass_nightmare', 'site_prebuilt_lookingglass_library'], color: '#d8b4ff' },
     },
     links: [
         /* THE LUNAR ROUTE (the pilot's two, plus Mars and the drop) */
@@ -19980,6 +20057,24 @@ const DOOR_HQ = {
           a: { site: 'prebuilt_fairy_forest', part: 'ritual', wall: 'free', x: 7.0, z: 6.5, face: 300, sub: 'THE DEAD TREE · THE HOLE LOOKS ONTO MARBLE' },
           b: { site: 'prebuilt_lookingglass', part: 'garden', wall: 'free', x: 10, z: -14, face: 90, sub: 'THE DEAD TREE · BACK TO THE WOODS' },   // THE AREAS (2026-09-18): free in THE GARDEN
           why: 'the dead tree at the edge of the ritual ground has a hole in it the size of a door, and through it the ground is marble and the sky is a chessboard\'s; the members call it the second circle', note: 'do not agree to a game', draft: true },
+        /* THE ASTRAL PLANE (2026-09-19 — THE ASTRAL REALM, complex candidate #10: "it can connect the Dream Research, the Looking Glass, the
+           Haunted House"): THREE SCREENS. Every screen the building watches sleepers on shows the same place — Room REM's dream screen draws
+           THE WAITING ROOM (the cots' sleepers are queueing there), the D.U.M.B. ward's draws THE STACKS of THE LIBRARY OF UNTHOUGHT THINGS,
+           and the projector screen in the Haunted House's attic (the home movies) shows THE NIGHTMARE. A `screen` way at every end (rev
+           22's kind: a black hole in the static you crawl through). The Looking-Glass itself is the same SITE as the realm — its garden's
+           frame with nothing in it is a door PAIR (never a link): the tell-and-the-tunnels rule. */
+        { id: 'rem_astral', route: 'astral', way: 'screen',
+          a: { room: 'dreamlab', wall: 'n', x: 2.4, sub: 'THE DREAM SCREEN · WHAT THE SLEEPERS SEE' },
+          b: { site: 'prebuilt_lookingglass', part: 'waiting', wall: 'e', z: 0, sub: 'THE SCREEN · BACK TO THE COTS' },
+          why: 'the screen in Room REM draws what the four sleepers see, and for a month it has drawn the same waiting room with the same number on the sign; the sleep tech will not say whose number it is', note: 'signal lost is the door', draft: true },
+        { id: 'dumb_astral', route: 'astral', way: 'screen',
+          a: { site: 'prebuilt_dumb', part: 'dreamlab', wall: 'n', x: -10, sub: 'THE DREAM SCREEN · THE STACKS BEHIND THE STATIC' },
+          b: { site: 'prebuilt_lookingglass', part: 'library', wall: 'e', z: 0, sub: 'THE SCREEN · BACK TO THE WARD' },
+          why: 'the ward\'s screen draws the library the telepaths read in when they are asleep — the shelves go on past where the wall is, and the sleep study filed the drawing as the room\'s floor plan', note: 'the books are not written yet', draft: true },
+        { id: 'attic_nightmare', route: 'astral', way: 'screen',
+          a: { site: 'prebuilt_haunted', part: 'attic', wall: 'w', z: 0.2, sub: 'THE HOME MOVIES · SIGNAL LOST' },
+          b: { site: 'prebuilt_lookingglass', part: 'nightmare', wall: 'e', z: 0, sub: 'THE SCREEN · UP INTO THE ATTIC' },
+          why: 'a projector screen in the attic under the one bulb, and a reel of home movies nobody in the family remembers shooting; the static after the last reel is where the bad nights come from', note: 'the reel is your childhood', draft: true },
         /* THE LEY LINE */
         /* CAMELOT KINGDOM (2026-09-18): the North Pole is the kingdom's — the sleigh road ends at the outer ward's east gate; the Lodge left the ley line for the ranch the same day */
         { id: 'northpole_camelot', route: 'kingdom', leaf: 'leaf_frame_only',
@@ -33100,6 +33195,363 @@ const DOOR_HQ = {
             ],
             spawn: { x: 12, z: 0, face: 270 },
         },
+        /* ══ THE ASTRAL REALM (THE COMPLEX CANDIDATES #10 — the user, 2026-09-19) ══
+           "Let's add another complex explorable area. The Astral Realm. It can
+           connect the Dream Research, the Looking Glass, the Haunted House, etc.
+           Make it the realm of all possibilities. The home of thought-forms.
+           Where ideas exist before they are thought by human minds. Creativity is
+           instantaneous in this realm, just like how your dreams are. But that
+           means nightmares as well. Bizarre and nightmare fuel mixed with the
+           beautiful and fantastical."
+           Four parts on the Looking-Glass's site (Room E4 — "a void of unfinished
+           shapes" was always the astral's front door; the parts wear `site` +
+           `part`, no `roomNo`, and THE MAP gathers them as their own hub, claimed
+           by id), three families, the hand-offs at real doors:
+             THE WAITING ROOM (family B — a prefab box behind the garden's second
+               frame with nothing in it: chairs that face the wall, three clocks
+               that disagree, NOW SERVING with your own number on it, one
+               thought-form that has not been called yet; Room REM's dream screen
+               comes out on its east wall);
+             THE SEA OF POSSIBILITY (family A' — a `rooms` plan whose solid is
+               banks of unformed crystal; THE STREAM OF CONSCIOUSNESS waded across
+               it, THE POOL OF IDEAS at the centre in a ruined colonnade, THE
+               MIRROR LAKE (deep — it reflects somewhere else), THREE FLOATING
+               THOUGHTS up floating stairs (3 → 6 → 9 m) with a telescope on the
+               highest, THE SPIRE OF THE UNTHOUGHT (7.5 m, the tape — the door
+               gun's), a carousel turning for nobody, the lady who knows what you
+               will think, eyes in the meadow, fish in the air, an impossible
+               stair on its own cloud, the gate of ivory with nothing either
+               side; THE WATCHER and A STAIR NOBODY THOUGHT OF on the horizon;
+               the closet with no back wall in the north line goes to the
+               nightmare, the frame on the east wall to the library);
+             THE NIGHTMARE (family A — a `cave` plan in the flesh sheets: THE
+               LONG HALL from the closet, THE MAW (a bowl ringed with fangs) with
+               THE BED at the bottom of it, THE STAGE you are on and forgot your
+               lines, THE BLOOD (lava — never entered), THE SINKHOLE, the
+               sleepers' tanks, the blooms with teeth, eyes that follow you, THE
+               SPINE (4.6 m, the tape — the thing under the bed stood up); the
+               attic's home movies come out on its east wall);
+             THE LIBRARY OF UNTHOUGHT THINGS (family C' — a `ley` plan: ruler-
+               straight STACKS in the wood sheet that fork and end in reading
+               nooks, a chamber wherever two lines cross, the shelves lit by their
+               own veins; THE READING ROOM sunk round a long table, THE GALLERY up
+               its stair, THE CARD CATALOGUE with THE TOP SHELF (3.4 m under a
+               4.6 m ceiling — the tape, the door gun's); the D.U.M.B. ward's
+               dream screen comes out on its east wall).
+           The seams: DOOR_HQ.links `rem_astral` / `dumb_astral` / `attic_nightmare`
+           (route `astral`, a `screen` way at every end); the garden's door is a
+           pair (`HQ_AREA_SPECS.prebuilt_lookingglass.doors`). Tapes: four re-homed
+           (Camelot's THE ROUND TABLE, Hell's THE FISSURE, CERN's badge, the
+           basilica's archive — the hundred stays a hundred). Lines and `say`
+           rows are Claude's DRAFT (A15). */
+        site_prebuilt_lookingglass_waiting: {
+            label: 'THE ASTRAL REALM · THE WAITING ROOM',
+            sub: 'TAKE A NUMBER · EVERY IDEA WAITS HERE FIRST',
+            kind: 'box', site: 'prebuilt_lookingglass', part: 'waiting',
+            shell: {
+                w: 18, d: 12, h: 3.2,
+                wallH: 3.2, dadoH: 1.05,
+                floor: 'carpet_2', wall: 'drywall_2', dado: 'damask', trim: 'gold', ceiling: 'ceiling',
+                floorColor: 0x6a5a8a, wallColor: 0xd8d0e8, dadoColor: 0x5a4878, ceilColor: 0xc8c0d8,
+                pipes: false,
+                strips: false,
+                lights: [],
+                mood: { light: 0xe8dcff, ambient: 0.5 },
+                fog: { color: 0x2a2040, density: 0.012 },
+                plate: { x: 0, z: -5.75, y: 2.6 },
+                look: HQ_ROOM_LOOKS.waiting,
+            },
+            doors: [
+                { id: 'garden', wall: 's', x: 0, leaf: 'leaf_frame_only',
+                  label: 'THE GARDEN', sub: 'THE FRAME WITH NOTHING IN IT · BACK TO THE GARDEN',
+                  action: { room: 'site_prebuilt_lookingglass_garden', at: 'astral' },
+                  desc: 'The frame you came in by. Through it, the hedges; on this side, a carpet. The frame has no glass in it and never did, which is the only honest thing in the room.' },
+                { id: 'sea', wall: 'n', x: 0, leaf: 'leaf_frame_only',
+                  label: 'THE SEA OF POSSIBILITY', sub: 'NOW SERVING · GO THROUGH',
+                  action: { room: 'site_prebuilt_lookingglass_sea', at: 'waiting' },
+                  desc: 'A frame in the north wall with a violet light behind it and something moving in the light. The sign over it has your number on it. It has had your number on it since before you came in.' },
+            ],
+            counters: [],
+            props: [
+                /* the chairs face the wall (everyone waiting has been told to think of nothing) */
+                { key: 'teal_chair',     x: -7.8, z: -3.4, face: 270 }, { key: 'teal_chair', x: -7.8, z: -2.2, face: 270 }, { key: 'teal_chair', x: -7.8, z: -1.0, face: 270 },
+                { key: 'teal_chair',     x: -7.8, z: 0.2, face: 270 },  { key: 'teal_chair', x: -7.8, z: 1.4, face: 270 },  { key: 'teal_chair', x: -7.8, z: 2.6, face: 270 },
+                { key: 'teal_chair',     x: -7.8, z: 3.8, face: 270 },
+                { key: 'now_serving',    wall: 'n', x: 5.0, mount: 2.15 },                                                 // NOW SERVING: your own number (the proc reads the profile)
+                { key: 'lectern',        x: 4.6, z: -4.2, face: 180 },                                                    // where you take the number you already have
+                { key: 'thoughtform',    x: 3.5, z: -2.0 },                                                               // the one idea in the room; it has not been called
+                { key: 'wall_clock',     wall: 's', x: 4.5, mount: 2.6 }, { key: 'wall_clock', wall: 's', x: -4.5, mount: 1.6 }, { key: 'wall_clock', wall: 'n', x: -5.0, mount: 2.55 },   // three clocks; none agree (Room 247's rule)
+                { key: 'water_cooler',   wall: 'e', z: 4.5 },
+                { key: 'notice_board',   wall: 'e', z: -4.0, mount: 1.2 },
+                { key: 'potted_plant',   x: 7.8, z: -5.0 },
+                { key: 'trash_bin',      x: 7.9, z: 2.0, face: 270 },
+                { key: 'door_stack',     x: 7.0, z: 3.0, face: 0 },                                                       // doors waiting to be doors
+                { key: 'rug_round',      x: 0, z: 1.6 },
+                { key: 'vent_grille',    wall: 'n', x: -7.5, mount: 2.4 },
+                { key: 'security_camera', wall: 's', x: 7.5, mount: 2.6 },
+                { key: 'bare_bulb',      x: 0, z: -1.5, ceil: true },
+                { key: 'paper_sheet',    x: -6.6, z: 2.0, y: 0.01, face: 40 },                                              // a number nobody picked up
+                { key: 'railing_1m',     x: 2.5, z: 3.6, face: 90 },                                                      // THE PARK RULE: the queue rail …
+                { key: 'riser_1',        x: -4.2, z: -5.0, face: 0 },                                                     // … and the step up to the sign
+            ],
+            agents: [],
+            npcSpots: [
+                { x: -7.8, z: 5.0, face: 270, race: 'watcher', say: ['“Take a number.” “I have one.” “Then you are early.” “For what?” “For the number.”', '“Do not think of anything.” “Why?” “It will be called before you are.”'] },
+                { x: 6.2, z: -2.2, face: 200, race: 'telepath', say: ['“You are about to have an idea.” “Which?” “The one on the sign. It is not yours yet. Sit down.”'] },
+            ],
+            onlineSpots: [],
+            lines: [
+                '“The chairs face the wall.” “The wall is where the ideas come from.” “Then why face away from the door?” “The door is where they go.”',
+                '“Three clocks.” “None of them agree.” “Which is right?” “The one that says you are late.”',
+                '“NOW SERVING.” “That is my number.” “It has been your number for a while. Nobody came.”',
+                '“Is the thing in the corner an idea?” “It is a thought-form.” “Whose?” “Not yours. Do not look at it; it will think it is.”',
+            ],
+            spawn: { x: 0, z: 3.4, face: 0 },
+        },
+        site_prebuilt_lookingglass_sea: {
+            label: 'THE ASTRAL REALM · THE SEA OF POSSIBILITY',
+            sub: 'THE HOME OF THOUGHT-FORMS · EVERY IDEA, BEFORE ANYONE HAS IT',
+            kind: 'box', site: 'prebuilt_lookingglass', part: 'sea',
+            shell: hqAstralShell({ w: 150, d: 120, h: 14, wallH: 14 }),   // the perimeter is 14 m (open — nothing is drawn): the telescope stands on the high thought at 9
+            /* THE FIELD (150 × 120 m): a `rooms` plan whose solid is the unformed crystal (2.4 m banks the rider grinds the top of),
+               THE STREAM OF CONSCIOUSNESS wading corner to corner, THE POOL OF IDEAS at the centre in a ruined colonnade (waded — an
+               idea is up to your knees), THE MIRROR LAKE in the east (deep — it reflects somewhere else; never entered), THE THREE
+               THOUGHTS floating in the west (3 → 6 → 9 m up floating stairs that obey THE RAMP RULE at every end), THE SPIRE OF THE
+               UNTHOUGHT in the north-east (7.5 m, the tape — the door gun's), THE PENROSE LEDGE and a rail (the park rule), the
+               paths of thought worn in marble from the way in to everything. */
+            terrain: {
+                floor: 'purple_grass', cliff: 'crystal', path: 'marble_light',
+                noise: { amp: 0.35, scale: 9 },
+                gen: { kind: 'rooms', seed: 1111, loops: 5, thicket: false, wallH: 2.4, rMin: 9, rMax: 18, corridor: [3.0, 5.0] },
+                features: [
+                    { k: 'hill', x: -40, z: 22, r: 18, h: 1.6 },                                                            // the swells of the sea
+                    { k: 'hill', x: 50, z: -50, r: 14, h: 1.2 },
+                    { k: 'dip', x: 30, z: 25, r: 14, h: 1.2 },
+                    { k: 'ridge', pts: [[-70, -30], [-30, -46], [10, -40]], w: 8, h: 1.4 },                                // THE RIDGE OF SECOND THOUGHTS
+                    { k: 'stream', pts: [[-60, 55], [-35, 30], [-12, 12], [16, -6], [40, -30], [60, -55]], w: 3.4, y: 0, depth: 0.7, key: 'water', bank: 1.5 },   // THE STREAM OF CONSCIOUSNESS (waded)
+                    { k: 'pool', x: 0, z: 0, r: 7, y: 0, depth: 0.6, key: 'water', bank: 2 },                             // THE POOL OF IDEAS (waded)
+                    { k: 'pool', x: 45, z: 40, r: 11, y: -0.2, depth: 3, key: 'deep_water', bank: 3 },                    // THE MIRROR LAKE (never entered — it reflects somewhere else)
+                    /* THE THREE THOUGHTS: floating tiers up floating stairs (every flight starts ≥ 0.4 m inside the lower tier and ends ≥ 0.7 m inside the upper) */
+                    { k: 'plateau', x: -30, z: -10, r: 7, h: 3.0, float: true },                                            // THE FIRST THOUGHT
+                    { k: 'ramp', x0: -30, z0: 5, x1: -30, z1: -3.7, w: 3, h0: 0, h1: 3.0, stairs: true, float: true },
+                    { k: 'plateau', x: -45, z: -25, r: 5.5, h: 6.0, float: true },                                          // THE SECOND THOUGHT
+                    { k: 'ramp', x0: -34, z0: -14, x1: -42, z1: -22, w: 2.8, h0: 3.0, h1: 6.0, stairs: true, float: true },
+                    { k: 'plateau', x: -30, z: -40, r: 5, h: 9.0, float: true },                                            // THE HIGH THOUGHT (the telescope)
+                    { k: 'ramp', x0: -45, z0: -29.5, x1: -31, z1: -36, w: 2.8, h0: 6.0, h1: 9.0, stairs: true, float: true },
+                    { k: 'plateau', x: 20, z: -35, r: 1.3, h: 7.5, edge: 0.35 },                                            // THE SPIRE OF THE UNTHOUGHT (the tape — the door gun's)
+                    { k: 'wall', x0: 10, z0: 30, x1: 30, z1: 30, h: 0.5, t: 0.5, key: 'marble_light' },                     // THE PENROSE LEDGE (a grind)
+                    { k: 'rail', x0: -10, z0: 40, x1: 10, z1: 40 },
+                    /* the paths of thought */
+                    { k: 'path', pts: [[0, 58], [0, 9]], w: 3.0 },                                                         // the way in → the pool
+                    { k: 'path', pts: [[7, -3], [40, -12], [72, -20]], w: 2.6 },                                            // the pool → the library's frame
+                    { k: 'path', pts: [[-4, -6], [-20, -30], [-30, -56]], w: 2.4 },                                         // the pool → the closet
+                    { k: 'path', pts: [[-7, 4], [-30, 6]], w: 2.4 },                                                        // the pool → the first thought's stair
+                    { k: 'scatter', key: 'crystal_cluster', n: 14, seed: 3 },
+                    { k: 'scatter', key: 'thoughtform', n: 8, seed: 5 },
+                    { k: 'scatter', key: 'signpost', n: 6, seed: 7 },
+                ],
+            },
+            doors: [
+                { id: 'waiting', wall: 's', x: 0, leaf: 'leaf_frame_only',
+                  label: 'THE WAITING ROOM', sub: 'THE FRAME · BACK TO THE CHAIRS',
+                  action: { room: 'site_prebuilt_lookingglass_waiting', at: 'sea' },
+                  desc: 'The frame you were called through. On the far side of it the carpet, the chairs, the sign with your number still on it. It has not moved on.' },
+                { id: 'nightmare', wall: 'n', x: -30, way: 'closet', leaf: null,
+                  label: 'THE NIGHTMARE', sub: 'THE CLOSET · NO BACK WALL · THE BAD NIGHTS',
+                  action: { room: 'site_prebuilt_lookingglass_nightmare', at: 'sea' },
+                  desc: 'A closet standing on its own in the north of the meadow, the door ajar, coats inside, and no back to it. Every idea has one of these. The coats are yours.' },
+                { id: 'library', wall: 'e', z: -20, leaf: 'leaf_frame_only',
+                  label: 'THE LIBRARY OF UNTHOUGHT THINGS', sub: 'THE FRAME · INTO THE STACKS',
+                  action: { room: 'site_prebuilt_lookingglass_library', at: 'sea' },
+                  desc: 'A frame in the east with lamplight behind it and the smell of paper. The books on the other side have not been written; that is the catalogue\'s problem, not yours.' },
+            ],
+            counters: [],
+            props: [
+                /* THE POOL OF IDEAS: the colonnade, the orb, the book of what you were about to think */
+                { key: 'greek_column',   x: -11, z: 11 }, { key: 'greek_column', x: 11, z: 11 }, { key: 'greek_column', x: -11, z: -11 }, { key: 'greek_column', x: 11, z: -11 },
+                { key: 'floating_orb',   x: 0, z: 20 },
+                { key: 'lectern',        x: 3, z: -12, face: 0 },                                                          // THE BOOK OF WHAT YOU WERE ABOUT TO THINK
+                { key: 'pearly_gate',    x: 0, z: 30, face: 0 },                                                          // THE GATE OF IVORY: nothing either side of it
+                /* the thought-forms nearest the way in; the bench and the telescope on the thoughts */
+                { key: 'thoughtform',    x: -14, z: 46 }, { key: 'thoughtform', x: 14, z: 46 }, { key: 'thoughtform', x: -30, z: -10, y: 3.0 },
+                { key: 'park_bench',     x: -27, z: -8, y: 3.0, face: 180 },
+                { key: 'telescope',      x: -28, z: -41.5, y: 9.0, face: 30 },
+                /* the bizarre and the beautiful */
+                { key: 'impossible_stair', x: 40, z: -45 },                                                               // a stair that only goes up, on its own cloud
+                { key: 'carousel',       x: -15, z: 35 },                                                                 // turning for nobody
+                { key: 'fortune_tent',   x: 55, z: 5 },                                                                   // the lady who knows what you will think
+                { key: 'dream_eye',      x: -55, z: 32 }, { key: 'dream_eye', x: 26, z: 12 },                              // eyes in the meadow
+                { key: 'fish_school',    x: 12, z: -18, y: 2.5 },                                                          // fish in the air
+                { key: 'hollow_tree',    x: -60, z: -6 },                                                                 // THE IDEA TREE (the hole is empty; that is the idea)
+                { key: 'door_stack',     x: 60, z: 30, face: 30 },                                                        // doors that were not thought of
+                { key: 'menhir',         x: 17, z: -32, face: 40 }, { key: 'menhir', x: 23.5, z: -32, face: 300 }, { key: 'menhir', x: 20, z: -38.5, face: 120 },   // the ring round the spire
+                { key: 'white_cloud',    x: 20, z: 40, y: 6.0 }, { key: 'white_cloud', x: -60, z: -40, y: 8.0 }, { key: 'white_cloud', x: 55, z: -40, y: 5.0 }, { key: 'white_cloud', x: -8, z: -28, y: 4.5 },
+                { key: 'quarter_pipe',   x: 18, z: 46, face: 180 }, { key: 'quarter_pipe', x: 18, z: 53, face: 0 },        // THE PARK RULE: two pipes facing each other (Room P1's)
+            ],
+            agents: [],
+            npcSpots: [
+                { x: -8, z: 14, face: 180, race: 'watcher', say: ['“Everything you could think is here already.” “Then why think?” “So that one of them gets out.”', '“The pool is up to your knees.” “What is in it?” “Ideas. Do not drink.”'] },
+                { x: 55, z: 9, face: 180, race: 'fortune teller', say: ['“I know what you will think next.” “What?” “That I am guessing.”', '“Cross my palm.” “With what?” “Something you have not thought of. That is the rate.”'] },
+                { x: -30, z: -6, y: 3.0, face: 0, race: 'telepath', say: ['“The first thought is three metres up.” “Why?” “So you have to climb to it. The good ones are higher.”'] },
+                { x: -52, z: 30, face: 90, race: 'dreameater', say: ['“The eyes are not watching you.” “They turned when I came in.” “They are watching what you are about to think. It is worse.”'] },
+                { x: 44, z: 24, face: 200, race: 'siren', say: ['“The lake reflects somewhere else.” “Where?” “Wherever you were going to go instead. Do not go in; it is deep and it is not water.”'] },
+            ],
+            onlineSpots: [],
+            lines: [
+                '“Where are we?” “Before.” “Before what?” “Before anyone thought of it.”',
+                '“The stair goes up and comes back to the bottom.” “Yes.” “How?” “Nobody has thought of how yet. It works anyway.”',
+                '“The carousel is turning.” “Nobody is on it.” “Somebody thought of it once. It has not stopped.”',
+                '“There is a closet in the middle of the field.” “Do not open it.” “Why?” “That is where the other half of the ideas are.”',
+                '“The eye on the horizon blinked.” “It does that.” “At me?” “At what you were about to think. Try to keep it pleasant.”',
+                '“Creativity is instant here.” “Then why is the spire unfinished?” “Somebody is still not thinking of it.”',
+            ],
+            spawn: { x: 0, z: 54, face: 0 },
+        },
+        site_prebuilt_lookingglass_nightmare: {
+            label: 'THE ASTRAL REALM · THE NIGHTMARE',
+            sub: 'THE BAD NIGHTS · THE MAW · THE BED · THE THING UNDER IT',
+            kind: 'box', site: 'prebuilt_lookingglass', part: 'nightmare',
+            shell: hqNightmareShell({ w: 100, d: 76 }),
+            /* THE FIELD (100 × 76 × 6.5 m): a `cave` plan in the flesh sheets — THE LONG HALL straight in from the closet, THE MAW
+               (a 2.2 m bowl) ringed with FANGS (spikes the walker never climbs) with THE BED at the bottom of it, THE STAGE (1.6 m
+               up its stair, with its rail — you are on and you forgot the lines), THE BLOOD (lava: never entered, the room's red
+               light), THE SINKHOLE (a bowl you fall into and climb out of), THE RIB (a grind), THE SPINE (4.6 m, the tape — the
+               thing under the bed stood up; the door gun's). The rock is to the ceiling; the sheets are the flesh set. */
+            terrain: {
+                floor: 'flesh', cliff: 'flesh_2', path: 'plague_flesh',
+                noise: { amp: 0.3, scale: 6 },
+                gen: { kind: 'cave', seed: 666, wallH: 6.5, cell: 1.5, fill: 0.47,
+                       open: [{ x0: 0, z0: 37, x1: 0, z1: 13, w: 3.2 }] },                                              // THE LONG HALL is always the hall
+                features: [
+                    { k: 'hill', x: -30, z: 20, r: 12, h: 1.0 },
+                    { k: 'dip', x: 0, z: 0, r: 12, h: 2.2, open: true },                                                     // THE MAW
+                    { k: 'plateau', x: 0, z: -13, r: 0.9, h: 2.8, edge: 0.3 }, { k: 'plateau', x: 9.2, z: -9.2, r: 0.9, h: 2.8, edge: 0.3 },   // THE FANGS round its rim
+                    { k: 'plateau', x: 13, z: 0, r: 0.9, h: 2.8, edge: 0.3 }, { k: 'plateau', x: 9.2, z: 9.2, r: 0.9, h: 2.8, edge: 0.3 },
+                    { k: 'plateau', x: -9.2, z: 9.2, r: 0.9, h: 2.8, edge: 0.3 }, { k: 'plateau', x: -13, z: 0, r: 0.9, h: 2.8, edge: 0.3 }, { k: 'plateau', x: -9.2, z: -9.2, r: 0.9, h: 2.8, edge: 0.3 },
+                    { k: 'plateau', x: -30, z: -20, w: 14, d: 10, h: 1.6, edge: 0.35 },                                     // THE STAGE
+                    { k: 'ramp', x0: -17, z0: -20, x1: -23.7, z1: -20, w: 2.6, h0: 0, h1: 1.6, stairs: true },                 // the stage's stair (ends 0.7 m inside)
+                    { k: 'rail', x0: -36, z0: -15.6, x1: -25, z1: -15.6 },                                                     // the stage's front rail
+                    { k: 'pool', x: -28, z: 18, r: 8, y: 0, depth: 1.2, key: 'lava', bank: 2 },                             // THE BLOOD (never entered)
+                    { k: 'dip', x: 30, z: 20, r: 7, h: 2.4 },                                                                // THE SINKHOLE (fallen into, climbed out of)
+                    { k: 'plateau', x: 32, z: -22, r: 1.4, h: 4.6, edge: 0.35 },                                            // THE SPINE (the tape — the door gun's)
+                    { k: 'wall', x0: 10, z0: 26, x1: 26, z1: 26, h: 0.5, t: 0.5, key: 'flesh_3' },                          // THE RIB (a grind)
+                    { k: 'path', pts: [[0, 37], [0, 13]], w: 2.6 },                                                         // THE LONG HALL
+                    { k: 'path', pts: [[0, -12], [16, -22], [30, -22]], w: 2.0 },                                            // the maw → the spine
+                    { k: 'path', pts: [[-12, 2], [-22, -8], [-17, -20]], w: 2.0 },                                          // the maw → the stage's stair
+                    { k: 'scatter', key: 'skull_pile', n: 8, seed: 3 },
+                    { k: 'scatter', key: 'nightmare_bloom', n: 7, seed: 4 },
+                    { k: 'scatter', key: 'dream_eye', n: 6, seed: 5 },
+                    { k: 'scatter', key: 'floor_stain', n: 10, seed: 6 },
+                ],
+            },
+            doors: [
+                { id: 'sea', wall: 's', x: 0, way: 'closet', leaf: null,
+                  label: 'THE SEA OF POSSIBILITY', sub: 'THE CLOSET · BACK THROUGH THE COATS',
+                  action: { room: 'site_prebuilt_lookingglass_sea', at: 'nightmare' },
+                  desc: 'The closet from the wrong side. The coats are still yours. The meadow is through them, violet and quiet; this is the side the coats hang on.' },
+            ],
+            counters: [],
+            props: [
+                { key: 'cot',            x: 0, z: 0, face: 0 },                                                            // THE BED, at the bottom of the maw (you are asleep in it)
+                { key: 'paper_sheet',    x: 0.9, z: 0.6, y: -1.7, face: 20 },                                                // the note on the pillow
+                { key: 'iso_tank',       x: -6, z: 22, face: 90 }, { key: 'iso_tank', x: 6, z: 22, face: 270 }, { key: 'iso_tank', x: 8, z: 30, face: 270 },   // the sleepers' tanks, lid ajar, in the hall
+                { key: 'nightmare_bloom', x: -4, z: 30 }, { key: 'nightmare_bloom', x: 5, z: -14 },
+                { key: 'dream_eye',      x: -3.2, z: 33 }, { key: 'dream_eye', x: 3.2, z: 33 },                              // the two by the closet: they turn as you come in
+                { key: 'sarcophagus',    x: -28, z: -22, y: 1.6, face: 90 },                                                 // on the stage (the props were left out)
+                { key: 'demon_statue',   x: 34.4, z: -19, face: 220 },                                                       // beside the spine
+                { key: 'door_stack',     x: 20, z: 32, face: 60 }, { key: 'door_stack', x: 40, z: 5, face: 300 },           // the doors that do not open
+                { key: 'candle_ring',    x: -12, z: -28 }, { key: 'candle_ring', x: 22, z: 4 },
+                { key: 'bare_bulb',      x: 0, z: 28, ceil: true }, { key: 'bare_bulb', x: 0, z: 0, ceil: true }, { key: 'bare_bulb', x: -30, z: -20, ceil: true },   // one bulb each, the attic's rule
+                { key: 'rug_round',      x: 0, z: 2.2 },
+            ],
+            agents: [],
+            npcSpots: [
+                { x: 2, z: -4, face: 0, race: 'shadow entity', say: ['“You are asleep.” “I am standing.” “In the bed. Look down.”', '“The teeth are not for you.” “What are they for?” “For whatever you were going to say.”'] },
+                { x: -28, z: -23, y: 1.6, face: 90, race: 'dreameater', say: ['“You are on.” “On what?” “The stage. Everybody is watching. You have not learned it.”', '“I only eat the bad ones.” “There are a lot of bad ones.” “I am never hungry.”'] },
+                { x: 14, z: 29, face: 270, race: 'ghoul', say: ['“The tanks are warm.” “Who is in them?” “The people who are in the chairs. They cannot both be right.”'] },
+                { x: -8, z: -30, face: 60, race: 'succubus', say: ['“The bad nights come from a reel.” “Whose?” “Yours. You did not shoot it. Somebody did.”'] },
+            ],
+            onlineSpots: [],
+            lines: [
+                '“Why is there a bed?” “You are in it.” “I am standing.” “That is what you always say, and then you look down.”',
+                '“The blood is not blood.” “What is it?” “Lava. Do not step in it. It does not care what it is called.”',
+                '“The stage.” “What about it?” “You are on it and you forgot the lines.” “Which play?” “That is the line.”',
+                '“The thing under the bed.” “There is nothing under the bed.” “It stood up. That is it, there. It is taller than you thought.”',
+                '“The eyes moved.” “They follow.” “Follow what?” “What you are about to think. Think of the closet.”',
+            ],
+            spawn: { x: 0, z: 32, face: 0 },
+        },
+        site_prebuilt_lookingglass_library: {
+            label: 'THE ASTRAL REALM · THE LIBRARY OF UNTHOUGHT THINGS',
+            sub: 'THE STACKS · THE READING ROOM · THE CARD CATALOGUE · NOT YET WRITTEN',
+            kind: 'box', site: 'prebuilt_lookingglass', part: 'library',
+            shell: hqUnthoughtShell({ w: 140, d: 100 }),
+            /* THE FIELD (140 × 100 × 4.6 m): a `ley` plan — three straight STACKS (THE NAVE from the sea's frame on the west wall to
+               the ward's screen on the east, THE CROSS, THE SPINE), forks at ley angles that end in READING NOOKS, a chamber
+               wherever two stacks cross; THE READING ROOM (sunk half a metre round a long table), THE GALLERY (2 m, up its stair,
+               a rail), THE LOW STACK (a grind), THE CARD CATALOGUE with THE TOP SHELF (3.4 m under a 4.6 m ceiling — the tape,
+               the door gun's from the floor). The plan walls are the shelves (the wood sheet) and light themselves (the ley veins). */
+            terrain: {
+                floor: 'carpet_3', cliff: 'wood', path: 'carpet',
+                noise: { amp: 0.04, scale: 6 }, crag: false,
+                gen: { kind: 'ley', seed: 4242, forks: 22, wallKey: 'wood', wallH: 4.6, forkW: [1.9, 2.5], chamberR: 6, nicheR: 2.4,
+                       lines: [{ id: 'nave', pts: [[-68, 20], [68, 0]], w: 3.2 },                                              // THE NAVE: the sea's frame → the ward's screen
+                               { id: 'cross', pts: [[-20, -48], [30, 48]], w: 2.8 },                                            // THE CROSS
+                               { id: 'spine', pts: [[-60, -40], [60, 40]], w: 2.6 }],                                           // THE SPINE
+                       chambers: [{ id: 'reading', x: 0, z: 10, r: 9.5 }, { id: 'catalogue', x: -40, z: -20, r: 7.5 }] },
+                features: [
+                    { k: 'dip', x: 0, z: 10, r: 9, h: 0.5, open: true },                                                     // THE READING ROOM, sunk
+                    { k: 'plateau', x: 20, z: 12, w: 12, d: 6, h: 2.0, edge: 0.35 },                                        // THE GALLERY
+                    { k: 'ramp', x0: 8, z0: 12, x1: 14.7, z1: 12, w: 2.4, h0: 0, h1: 2.0, stairs: true },                      // its stair (up to the rect, 0.7 m in)
+                    { k: 'rail', x0: 14.6, z0: 9.5, x1: 25.4, z1: 9.5 },
+                    { k: 'plateau', x: -40, z: -20, r: 1.1, h: 3.4, edge: 0.3 },                                            // THE TOP SHELF (the tape — the door gun's)
+                    { k: 'wall', x0: -10, z0: 2, x1: 10, z1: 2, h: 0.45, t: 0.6, key: 'wood' },                              // THE LOW STACK (a grind)
+                    { k: 'path', pts: [[-68, 20], [68, 0]], w: 1.4 },                                                       // the worn line down the nave
+                    { k: 'scatter', key: 'library_shelf_full', n: 10, seed: 2 },
+                    { k: 'scatter', key: 'library_shelf', n: 6, seed: 3 },
+                    { k: 'scatter', key: 'thoughtform', n: 6, seed: 4 },
+                    { k: 'scatter', key: 'paper_sheet', n: 12, seed: 5 },
+                    { k: 'scatter', key: 'candle_ring', n: 6, seed: 6 },
+                ],
+            },
+            doors: [
+                { id: 'sea', wall: 'w', z: 20, leaf: 'leaf_frame_only',
+                  label: 'THE SEA OF POSSIBILITY', sub: 'THE FRAME · BACK TO THE MEADOW',
+                  action: { room: 'site_prebuilt_lookingglass_sea', at: 'library' },
+                  desc: 'The frame at the end of the nave with the violet meadow in it. The catalogue would like it noted that you took nothing out.' },
+            ],
+            counters: [],
+            props: [
+                /* THE READING ROOM: the long table, the chairs, the three lecterns, the candles */
+                { key: 'conference_table', x: 0, z: 10, y: -0.5, face: 0 },
+                { key: 'office_chair',   x: -1.2, z: 8.2, y: -0.5, face: 180 }, { key: 'office_chair', x: 1.2, z: 8.2, y: -0.5, face: 180 }, { key: 'office_chair', x: -1.2, z: 11.8, y: -0.5, face: 0 }, { key: 'office_chair', x: 1.2, z: 11.8, y: -0.5, face: 0 },
+                { key: 'lectern',        x: -6, z: 15, y: -0.3, face: 0 }, { key: 'lectern', x: 0, z: 16.5, y: -0.3, face: 0 }, { key: 'lectern', x: 6, z: 15, y: -0.3, face: 0 },   // what you were about to think · what you will think tomorrow · what nobody will
+                { key: 'candle_ring',    x: -5, z: 5, y: -0.35 }, { key: 'candle_ring', x: 5, z: 5, y: -0.35 },
+                { key: 'thoughtform',    x: 0, z: 3.5, y: -0.3 },
+                /* THE CARD CATALOGUE round the top shelf; the gallery's reader */
+                { key: 'floating_orb',   x: -40, z: -16 },
+                { key: 'library_shelf_full', x: -44.5, z: -22, face: 90 }, { key: 'library_shelf_full', x: -35.5, z: -22, face: 270 }, { key: 'library_shelf', x: -40, z: -25.5, face: 0 },
+                { key: 'dream_eye',      x: 22, z: 13, y: 2.0 },                                                             // the reader on the gallery: it reads you
+                { key: 'park_bench',     x: 18, z: 13.5, y: 2.0, face: 180 },
+                { key: 'door_stack',     x: -62, z: 24, face: 80 },                                                          // the doors not yet written
+                { key: 'signpost',       x: -64, z: 17 },
+            ],
+            agents: [],
+            npcSpots: [
+                { x: -2, z: 14, y: -0.5, face: 0, race: 'telepath', say: ['“Shh.” “I did not say anything.” “You were reading. Out loud. It is not written yet; you were reading ahead.”'] },
+                { x: -40, z: -24, face: 0, race: 'watcher', say: ['“The catalogue.” “Of what?” “Everything not yet thought of. It is alphabetical. It is longer than the room.”', '“The top shelf.” “What is on it?” “The one nobody will. Do not shoot at it; that is what the gun is for.”'] },
+                { x: 21, z: 14, y: 2.0, face: 180, race: 'mad scientist', say: ['“I came for one idea.” “Which?” “The one I was going to have. Somebody has it out.”'] },
+                { x: 20.6, z: 30, face: 200, race: 'fortune teller', say: ['“Every fork ends in a nook.” “Why?” “So the idea has somewhere to sit while it waits for you.”'] },
+            ],
+            onlineSpots: [],
+            lines: [
+                '“The books are blank.” “They are not written yet.” “Then why are they shelved?” “So that they are found.”',
+                '“The shelves go on past the wall.” “Yes.” “How far?” “As far as anyone will ever think. It is a big room.”',
+                '“Three lecterns.” “What you were about to think, what you will think tomorrow, what nobody will.” “Which is the third?” “That is the third.”',
+                '“Quiet, please.” “Why? There is nobody here.” “The ideas are sleeping. If you wake one it is yours and you have to take it.”',
+            ],
+            spawn: { x: -64, z: 20, face: 90 },
+        },
         /* ══ THE RANCH (the woods split, 2026-09-18) ══════════════════════════
            The user: "split the Woods into the Woods and the Ranch. The Ranch
            should have Skinwalker Ranch, the Graveyard, the Haunted House, the
@@ -35617,6 +36069,11 @@ const HQ_AREA_SPECS = {
         ],
         props: [{ key: 'railing_1m', x: 9, z: 19.2, face: 0 }, { key: 'riser_1', x: -8, z: 14 }, { key: 'round_table', x: -18, z: -4, y: 1.0 }, { key: 'teal_chair', x: -16, z: -2, y: 1.0, face: 220 }, { key: 'fountain', x: 0, z: -6 }],
         npcSpots: [{ x: -3, z: 12, face: 30, race: 'catgirl', say: '“We are all mad here. It is on the paperwork.”' }, { x: 16, z: -10, y: 1.6, face: 180, race: 'ice queen', say: '“Off with the heading.”' }],
+        doors: [   // THE ASTRAL REALM (2026-09-19): the garden's own frame with nothing in it (the site's threshold leaf) opens on THE WAITING ROOM — a door PAIR, the same site
+            { id: 'astral', wall: 'n', x: 14, leaf: 'leaf_frame_only', label: 'THE ASTRAL REALM', sub: 'THE FRAME WITH NOTHING IN IT · TAKE A NUMBER',
+              action: { room: 'site_prebuilt_lookingglass_waiting', at: 'garden' },
+              desc: 'A second mirror frame with no glass in it, at the back of the garden where the hedges stop pretending. Through it, a carpet and a row of chairs. The chairs face the wall.' },
+        ],
         lines: ['“Which move?” “The first one. E4.”'] },
     /* ROOM 33 · THE LODGE · THE HALLS: family C (halls) in wood and damask — the members' rooms off a corridor, THE SANCTUM, THE
        GALLERY up its stair (the tape on THE HIGH TABLE, higher still), the saloon door onto the corn, the painting of Olympus */
@@ -37578,11 +38035,11 @@ const HQ_TAPE_SHEET = {
        and Olympus's second (the hundred stays a hundred; a built site keeps ≥ 1) */
     site_prebuilt_vatican_catacombs: [['THE CONFESSIONAL', 'A voice through the screen. It says your callsign. The screen is in a wall of skulls.', 'parents']],
     /* THE VATICAN expanded (2026-09-17): four more parts, four tapes re-homed (Camelot's, Agartha's, CERN's and Area 51's second — the hundred stays a hundred, every site keeps one) */
-    site_prebuilt_vatican_basilica:    [['THE HOMILY', 'Forty minutes of a sermon in a language the tape marks UNKNOWN. The congregation nods in the right places.', 'evidence'], ['THE ARCHIVE', 'A reading room with one lamp lit. The book is open to a floor plan of the Bureau.', 'facility']],   // + the board's own (THE AREAS, 2026-09-18)
+    site_prebuilt_vatican_basilica:    [['THE HOMILY', 'Forty minutes of a sermon in a language the tape marks UNKNOWN. The congregation nods in the right places.', 'evidence']],   // + the board's own (THE AREAS, 2026-09-18); the second went to THE ASTRAL REALM (2026-09-19)
     site_prebuilt_vatican_library:     [['THE INDEX', 'A card drawer opening by itself. Every card is your callsign. The hand that filed them is in frame for one second.', 'parents']],
     site_prebuilt_vatican_courtyard:   [['THE FOUNTAIN, 0300', 'The water runs up. The gardener rakes gravel that is not there and does not look at the well.', 'evidence']],
     site_prebuilt_vatican_observatory: [['THE EYEPIECE', 'A stair, through the telescope. It is closer than the moon. There is a door at the top and it is open.', 'facility']],
-    site_prebuilt_hell_pit:          [['FORM 666', 'A clearance form filled in by hand. The hand is not anyone in the building. It is chained to the plinth.', 'facility'], ['THE FISSURE', 'Heat shimmer over the causeway. The shimmer has a face.', 'evidence']],   // + the board's own (THE AREAS, 2026-09-18)
+    site_prebuilt_hell_pit:          [['FORM 666', 'A clearance form filled in by hand. The hand is not anyone in the building. It is chained to the plinth.', 'facility']],   // + the board's own (THE AREAS, 2026-09-18); the second went to THE ASTRAL REALM (2026-09-19)
     site_prebuilt_heaven_stair:      [['THE CLIMB, 4', 'A stair of cloud. The camera goes up it for an hour. The top does not get closer and then it is there.', 'evidence']],
     site_prebuilt_heaven_gate:       [['THE GATE', 'Clouds part on a corridor. The corridor is the one outside. A hotel door at the end of it, and the book beside it, open.', 'facility']],
     /* D.U.M.B. (9.3 stage 8, 2026-09-17): one per part — seven re-homed (Antarctica's, the North Pole's, the Singularity's, Mars's, Saturn's, the Moon's, Giza's second — the hundred stays a hundred; the base keeps its own two on the board: the shelf's first site) */
@@ -37592,10 +38049,10 @@ const HQ_TAPE_SHEET = {
     site_prebuilt_dumb_clonevats: [['BATCH 12', 'Twelve vats, eleven faces. The twelfth is warm, and the tape is you.', 'parents']],
     site_prebuilt_dumb_warroom:   [['THE HEXAGON', 'The pole’s storm on the big board. It is a door seen edge-on. Someone has circled it in grease pencil.', 'evidence']],
     site_prebuilt_dumb_bunker:    [['EARTHRISE', 'A window eighty metres under. The Earth rises in it, the wrong colour. The window is a screen and the screen is right.', 'evidence']],
-    site_prebuilt_cern_ring:      [['BEAM ON', 'The ring at full power for one frame. In the frame the ring is a door, and it is ajar.', 'evidence'], ['A BADGE ON THE FLOOR', 'Your mother’s badge. The photo has been cut out.', 'parents']],   // + the board's own (THE AREAS, 2026-09-18)
+    site_prebuilt_cern_ring:      [['BEAM ON', 'The ring at full power for one frame. In the frame the ring is a door, and it is ajar.', 'evidence']],   // + the board's own (THE AREAS, 2026-09-18); the second went to THE ASTRAL REALM (2026-09-19)
     /* CAMELOT CASTLE (2026-09-18 — complex candidate #2): one per part — five re-homed (the Backrooms', Atlantis's, the Dutchman's, the Spaceship's and the
        Looking-Glass's second — the hundred stays a hundred; the castle keeps THE ROUND TABLE on its board) */
-    site_prebuilt_camelot_ward:    [['THE DRAWBRIDGE, DUSK', 'The drawbridge comes down for nobody. Something crosses it anyway; the planks bow under it in order.', 'evidence'], ['THE ROUND TABLE', 'Twelve chairs. Thirteen shadows.', 'evidence']],   // + the board's own (THE AREAS, 2026-09-18)
+    site_prebuilt_camelot_ward:    [['THE DRAWBRIDGE, DUSK', 'The drawbridge comes down for nobody. Something crosses it anyway; the planks bow under it in order.', 'evidence']],   // + the board's own (THE AREAS, 2026-09-18); the second went to THE ASTRAL REALM (2026-09-19)
     site_prebuilt_camelot_hall:    [['THE THIRTEENTH CHAIR', 'Twelve chairs at the table, and the camera counts thirteen shadows. In the last frame one of them stands up.', 'evidence']],
     site_prebuilt_camelot_keep:    [['THE WATCH', 'A sentry on the battlements looks up all night. In the last minute something in the sky looks back, and it has windows.', 'facility']],
     site_prebuilt_camelot_dungeon: [['MERLIN, BACKWARDS', 'An old man in the undercroft, speaking. Played in reverse he is saying your callsign, and a date that has not happened.', 'parents']],
@@ -37610,6 +38067,11 @@ const HQ_TAPE_SHEET = {
     site_prebuilt_downtown_tunnels:  [['THE HEADLIGHT', 'A train in the tunnel with its lamp on. Nobody at the controls. The lamp turns to follow the camera down the track.', 'evidence']],
     site_prebuilt_downtown_cells:    [['THE DRUNK TANK', 'A holding cell, one man asleep on the bench under a blanket. Your surname is stitched into the blanket.', 'parents']],
     site_prebuilt_downtown_workings: [['THE WELL, FROM UNDER', 'A bucket coming down a rope into the workings. Something takes it and sends it back up full.', 'evidence']],
+    /* THE ASTRAL REALM (2026-09-19, complex candidate #10): one per part — four re-homed (Camelot's ward's THE ROUND TABLE, Hell's pit's THE FISSURE, CERN's ring's badge, the basilica's archive; every one of those keeps its board's own — the hundred stays a hundred) */
+    site_prebuilt_lookingglass_waiting: [['NOW SERVING', 'A ticket dispenser in a waiting room. It gives every hand the same number. It is your employee number.', 'facility']],
+    site_prebuilt_lookingglass_sea: [['THE SPIRE', 'A camera left on the spire, filming the sky. In the sky, the camera, filming down.', 'evidence']],
+    site_prebuilt_lookingglass_nightmare: [['NIGHT TERROR, 03:33', 'A bed at the bottom of a bowl. Someone is in it. The camera is under it.', 'evidence']],
+    site_prebuilt_lookingglass_library: [['THE CARD CATALOGUE', 'A drawer of index cards in your mother’s hand. Every card is an idea she never had. The last card is you.', 'parents']],
 };
 /* the room a sheet key names: a site key → its generated board room */
 function hqTapeRoomId(key) { return DOOR_HQ.rooms[key] ? key : (DOOR_HQ.rooms['site_' + key] ? 'site_' + key : null); }
@@ -37866,6 +38328,10 @@ function _hqFindsAll() {
 function _hqFindsPin(v) { Object.defineProperty(DOOR_HQ, 'finds', { value: v, writable: true, configurable: true, enumerable: true }); }
 /* hand-pinned spots (the generator's fallback): the cold room is 4 × 4 with hooks over the floor — the tape stands in the NE corner, the envelope lies on the shelving */
 DOOR_HQ.findSpots = { coldroom: { tape: { x: 1.3, z: -1.35 }, pay: { x: 0.4, z: 1.7, y: 1.2 } },
+    /* THE ASTRAL REALM (2026-09-19): THE SPIRE OF THE UNTHOUGHT (7.5 m), THE SPINE (4.6 m), THE TOP SHELF (3.4 m under a 4.6 m ceiling) — the door gun's three */
+    site_prebuilt_lookingglass_sea: { tape: { x: 20, z: -35 } },
+    site_prebuilt_lookingglass_nightmare: { tape: { x: 32, z: -22 } },
+    site_prebuilt_lookingglass_library: { tape: { x: -40, z: -20 } },
     /* DISASTER CITY (2026-09-17): the streets' tape on THE ROOFTOP (the 4 m low building on the ring road's west leg — the door gun's), the mall's on a store roof over the west concourse */
     site_prebuilt_downtown_streets: { tape: { x: -29.5, z: 15.0 } },
     site_prebuilt_cyberpunk_streets: { tape: { x: -26, z: -13 } },   // CYBERPUNK CITY (2026-09-17): the grid's tape on THE BILLBOARD ROOF (5 m, never climbed — the door gun's)

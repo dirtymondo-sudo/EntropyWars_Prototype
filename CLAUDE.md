@@ -5828,3 +5828,33 @@ board to the part (`hqSiteEntry`), so THE MAP, the directory guard and every rea
 rooms are still generated (the threshold's number, the Δ under the marker) but nobody stands in them. `npm test` runs
 `hq-areas.test.js` (the bypass, the marker on reachable ground (heavy), the door rule, the tapes, the stations). Ship data.js to
 R2 AND Render (the finds ledger). UNSEEN LIVE (RULE #1c): all twenty areas — DOOR_HQ_BUILD_PLAN §9 lists what to eyeball first.
+
+## THE ASTRAL REALM — THE WAITING ROOM · THE SEA OF POSSIBILITY · THE NIGHTMARE · THE LIBRARY OF UNTHOUGHT THINGS (complex candidate #10, HQ plan 9.3 stage 13) — 2026-09-19, local delivery
+The user: "the realm of all possibilities, the home of thought-forms, where ideas exist before they are thought by human minds;
+creativity is instantaneous, just like your dreams — but that means nightmares as well; bizarre and nightmare fuel mixed with the
+beautiful and fantastical; it can connect the Dream Research, the Looking Glass, the Haunted House". Four parts on ROOM E4's site
+(data.js, the block before THE RANCH; `site: 'prebuilt_lookingglass'` + `part`, no `roomNo`, every plate `THE ASTRAL REALM · <place>`;
+shells `hqAstralShell` / `hqNightmareShell` / `hqUnthoughtShell` beside the deep's; looks `HQ_ROOM_LOOKS.astral / waiting / nightmare /
+unthought`), THREE FAMILIES with the hand-offs at real doors: **THE WAITING ROOM** (`site_prebuilt_lookingglass_waiting`, family B — a
+prefab box: seven chairs facing the wall, three clocks that disagree, NOW SERVING with your own number, one thought-form nobody has
+called), **THE SEA OF POSSIBILITY** (`_sea`, 150 × 120, OPEN under its own violet night — stars 1.3 / nebula 1.8, the `islands` roster —
+on a `rooms` plan with no thicket whose banks are `crystal`; THE STREAM waded, THE POOL OF IDEAS in a colonnade, THE MIRROR LAKE never
+entered, THREE FLOATING THOUGHTS 3 → 6 → 9 m up `float: true` stairs, THE SPIRE OF THE UNTHOUGHT 7.5 m = the tape; the hub's anchor),
+**THE NIGHTMARE** (`_nightmare`, 100 × 76 × 6.5, closed, a `cave` plan in the FLESH sheets: THE LONG HALL, THE MAW ringed with seven fangs
+round THE BED, THE STAGE, THE BLOOD (lava), THE SINKHOLE, THE SPINE 4.6 m = the tape) and **THE LIBRARY OF UNTHOUGHT THINGS** (`_library`,
+140 × 100 × 4.6, closed, a `ley` plan with `wallKey: 'wood'` — the stacks fork and end in nooks and light themselves; THE READING ROOM,
+THE GALLERY, THE TOP SHELF 3.4 m = the tape). **THE SEAMS = THREE SCREENS** on `routes.astral` (dashed, `#d8b4ff`; the rev 22 `screen`
+way at every end, no new kind): `rem_astral` (Room REM's north wall ⇄ the waiting room — a facility end, never gated), `dumb_astral`
+(the D.U.M.B. ward's north wall ⇄ the library), `attic_nightmare` (the attic's west wall ⇄ the nightmare; the Haunted House is a
+four-line interchange now). The garden ⇄ the waiting room is a DOOR PAIR (the same site; `HQ_AREA_SPECS.prebuilt_lookingglass.doors`
+— a spec may carry doors). THE CLOSET WITH NO BACK WALL joins the sea and the nightmare from both sides (`way: 'closet'` on a door
+row). `hubs.astral` claims the four parts BY ID. **THE RENDERER** (three-renderer.js "THE ASTRAL REALM — THE THOUGHT-FORMS", before the
+per-frame section): four procs on tickers — `thoughtform` (its vertices breathe; a light), `dream_eye` (`_hqAstralEye`, the shared
+ball-iris-lids helper: it TRACKS `_hq.player`'s head and blinks), `impossible_stair` (four flights, the fourth stepping down into the
+first, turning on a cloud), `nightmare_bloom` (bone cones opening and closing; a light) — and landmark `eye` (THE WATCHER on the sea's
+horizon). RULES the tests taught: an open room's shell `h` is still the ceiling doorhq's prop rule reads (the telescope at 9 m wants
+`h` 14); a wall prop's `mount + h` clears the shell's `h`; a `rooms` plan's crystal banks cut rescue ramps where the jump reaches a
+bank top (nine on the sea — `info.rescues`). Tapes: four re-homed (Camelot's ward, Hell's pit, CERN's ring, the basilica — each keeps
+its board's own; the hundred stays a hundred). `npm test` runs `hq-astral.test.js`; amended hq-terrain (77), hq-floor-plan (68),
+hq-ranch (12 hubs), hq-world (the seams + the house's lines), doorhq (the light regex). Ship data.js to Render too (the finds ledger).
+UNSEEN LIVE (RULE #1c): all of it — DOOR_HQ_BUILD_PLAN §9's entry lists what to eyeball first.
