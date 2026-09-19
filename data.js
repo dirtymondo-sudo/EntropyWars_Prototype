@@ -40426,9 +40426,17 @@ const HQ_SKATE_RULES = {
     turn: 2.4,           // rad/s of carve at speed (scales up to 3 m/s)
     turnMin: 0.4,        // the carve's floor at a crawl (a share of `turn`) — the board turns from a stop too (rev 3)
     ollieV: 7.25,        // the grind's hop-off (× 0.85) — the walker's own jump (HQ_JUMP_V)
-    ollieTapV: 4.6,      // m/s up on the press — a TAP is a hop (≈ 0.6 m) (rev 2: hold to jump)
-    ollieHoldS: 0.42,    // s SPACE held keeps lifting…
-    ollieHoldAcc: 13,    // …at this m/s² against gravity: a full hold clears ≈ 1.65 m
+    ollieTapV: 4.6,      // m/s up on a bare tap — a hop (≈ 0.6 m)
+    ollieMaxV: 7.9,      // m/s up off a FULL CROUCH — clears ≈ 1.75 m (rev 4: hold SPACE to crouch, release to pop)
+    crouchS: 0.55,       // s of SPACE held to reach the full crouch (the meter fills over it)
+    popPerfectMs: 160,   // a release inside this window after the crouch tops out = PERFECT POP (a bonus on the line, a flash)
+    crouchMaxHoldS: 1.6, // a crouch held this long past full deflates (the pop is worth a tap): you cannot camp the max
+    ollieHoldS: 0.42,    // RETIRED rev 4 (the crouch replaced the held boost) — kept for old readers
+    ollieHoldAcc: 13,    // RETIRED rev 4
+    airTurn: 1.35,       // rad/s A / D steer the heading IN THE AIR (rev 4: WASD is air control, never a trick)
+    airAccel: 3.2,       // m/s² W / S nudge the speed in the air (a landing pulled short, a rail reached)
+    flickPx: 34,         // px of mouse travel with a button held in the air that fires a trick (THE STICK, rev 4)
+    stickDeadPx: 6,      // px under which the stick is idle (a shiver never fires)
     stanceYaw: -Math.PI / 2,   // the body's turn on the deck (regular: chest to the right of travel; +π/2 = goofy)
     bailV: 4.2,          // RETIRED rev 3 (2026-09-17, the user's rule: only a failed trick bails) — a wall is a stop (wallScrub); kept for old readers
     bailDrop: 2.4,       // RETIRED rev 3 — a drop of any height is a landing (the walker's rule)
@@ -40450,18 +40458,27 @@ const HQ_SKATE_RULES = {
     qpLaunch: 1.0,       // the share of the roll that goes UP off the coping
     bigAirS: 1.0,        // s of air that counts as BIG AIR on the line (a plain ollie is 0.8 s — only a launch earns it)
     tricks: {            // pts · ms (the rotation's length) · the line's word
-        kickflip:  { pts: 100, ms: 430, label: 'KICKFLIP',   key: 'LEFT' },
-        heelflip:  { pts: 100, ms: 430, label: 'HEELFLIP',   key: 'RIGHT' },
-        frontflip: { pts: 300, ms: 640, label: 'FRONT FLIP', key: 'UP' },
-        backflip:  { pts: 300, ms: 640, label: 'BACKFLIP',   key: 'DOWN' },
-        roll:      { pts: 250, ms: 560, label: 'CORKSCREW',  key: 'W' },
-        spin:      { pts: 120, ms: 340, label: '180',        key: 'A / D' },
-        grab:      { pts: 80,  ms: 250, label: 'INDY GRAB',  key: 'SHIFT (held)' },
-        grind:     { pts: 60,  perSec: 45, label: 'GRIND' },
-        air:       { pts: 40,  label: 'BIG AIR' },
+        /* THE STICK (rev 4, 2026-09-19 — the user: "click and drag for different tricks, like a hit stick"):
+           in the air, HOLD a mouse button and FLICK — the flick's direction is the trick. LEFT button =
+           the flips (eight ways), RIGHT button = the spins and the grabs. The arrows still fire the four
+           flips for a keyboard-only rider; SHIFT is still a grab. `key` is the line the HUD prints. */
+        kickflip:   { pts: 100, ms: 430, label: 'KICKFLIP',         key: 'L-FLICK ← (or ←)' },
+        heelflip:   { pts: 100, ms: 430, label: 'HEELFLIP',         key: 'L-FLICK → (or →)' },
+        frontflip:  { pts: 300, ms: 640, label: 'FRONT FLIP',       key: 'L-FLICK ↑ (or ↑)' },
+        backflip:   { pts: 300, ms: 640, label: 'BACKFLIP',         key: 'L-FLICK ↓ (or ↓)' },
+        roll:       { pts: 250, ms: 560, label: 'CORKSCREW',        key: 'L-FLICK ↖ / ↗' },
+        varial:     { pts: 180, ms: 520, label: 'VARIAL KICKFLIP',  key: 'L-FLICK ↙' },
+        varialheel: { pts: 180, ms: 520, label: 'VARIAL HEELFLIP',  key: 'L-FLICK ↘' },
+        spin:       { pts: 120, ms: 340, label: '180',              key: 'R-FLICK ← / →' },
+        grab:       { pts: 80,  ms: 300, label: 'INDY GRAB',        key: 'R-FLICK ↓ (or SHIFT)' },
+        nosegrab:   { pts: 90,  ms: 300, label: 'NOSEGRAB',         key: 'R-FLICK ↑' },
+        pop:        { pts: 50,  label: 'PERFECT POP' },   // the crouch released on the beat
+        grind:      { pts: 60,  perSec: 45, label: 'GRIND' },
+        air:        { pts: 40,  label: 'BIG AIR' },
     },
-    labels: { on: 'ON THE BOARD', off: 'ON FOOT', bail: 'BAIL', bank: 'LANDED' },
-    controls: ['W push (hold it at speed to cruise)', 'S brake · from a stop skate backwards', 'A / D carve', 'SPACE ollie (tap = a hop · hold = the height)', 'land on a rail = grind (A / D balance)', 'in the air: ← kickflip · → heelflip · ↑ front flip · ↓ backflip · W corkscrew · A / D 180 · SHIFT grab', 'only a trick still turning at the landing bails — walls, props and drops never do', 'B off'],
+    labels: { on: 'ON THE BOARD', off: 'ON FOOT', bail: 'BAIL', bank: 'LANDED', perfect: 'PERFECT POP' },
+    ranks: [[0, 'LANDED'], [400, 'NICE'], [1500, 'SICK'], [5000, 'INSANE'], [15000, 'LEGENDARY']],   // the word stamped on a banked line, by its score
+    controls: ['W push (hold it at speed to cruise)', 'S brake · from a stop skate backwards', 'A / D carve', 'HOLD SPACE to crouch · RELEASE to pop (the meter is the height · release on MAX = a PERFECT POP)', 'in the air WASD is AIR CONTROL: A / D steer · W / S the speed', 'THE STICK: hold a mouse button in the air and FLICK — LEFT ← → ↑ ↓ = kickflip · heelflip · front flip · backflip, ↖ ↗ corkscrew, ↙ ↘ varial · RIGHT ← → = 180s, ↑ ↓ = grabs', 'land on a rail = grind (A / D balance)', 'only a trick still turning at the landing bails — walls, props and drops never do', 'B off'],
 };
 function hqSkateIssueFree() { return !!HQ_SKATE_RULES.free; }
 /* the record on the profile; `make` creates it (a writer), else a read-only shape */

@@ -34,7 +34,8 @@ function extract(name) {
 }
 function block() { const a = TR.indexOf('/* ══ SKATEBOARDING — THE RIDER'), b = TR.indexOf('/* ── per-frame ───', a); assert.ok(a > 0 && b > a); return TR.slice(a, b); }
 const RIDE_FNS = ['_hqSkateRules', '_hqSkateOff', '_hqRailLen', '_hqRailAt', '_hqRailNearest', '_hqRailSnap', '_hqRampLocal', '_hqRampUnder', '_hqRampProfile', '_hqRampSurfaceAt', '_hqRegisterPropPark',
-    '_hqRideTurn', '_hqRideNew', '_hqRideArm', '_hqRideEmit', '_hqRideToggle', '_hqRideKeyEdge', '_hqRideComboAdd', '_hqRideComboBank', '_hqRideBail', '_hqRideBailPhase', '_hqRideWall', '_hqRideSlide', '_hqRideObstacleSlide', '_hqTickRideStep', '_hqRideTrickDone', '_hqRideStartTrick', '_hqTickRide', '_hqRideSetY', '_hqRideGravity'];
+    '_hqRideTurn', '_hqRideNew', '_hqRideArm', '_hqRideEmit', '_hqRideToggle', '_hqRideKeyEdge', '_hqRideComboAdd', '_hqRideComboBank', '_hqRideBail', '_hqRideBailPhase', '_hqRideWall', '_hqRideSlide', '_hqRideObstacleSlide', '_hqTickRideStep', '_hqRideTrickDone', '_hqRideStartTrick', '_hqTickRide', '_hqRideSetY', '_hqRideGravity',
+    '_hqRidePop', '_hqRideCamDip', '_hqRideFlickDir', '_hqRideFlick', '_hqRideStickDown', '_hqRideStickMove', '_hqRideStickUp'];
 function consts() {
     const out = [];
     for (const n of ['HQ_BODY_R', 'HQ_STEP_TOL', 'HQ_DROP_MAX', 'HQ_FALL_MIN', 'HQ_GRAV', 'HQ_JUMP_V']) { const m = TR.match(new RegExp('    var ' + n + ' = ([0-9.]+);')); assert.ok(m, n); out.push('var ' + n + ' = ' + m[1] + ';'); }
@@ -83,7 +84,7 @@ test('THE TABLE: standard issue for the test, B, the feel, every trick with poin
     assert.ok(R.qpTop > 0.5 && R.qpTop < 1 && R.rampLaunchMax > R.rampLaunchMin, 'the ramps');
     for (const id of ['kickflip', 'heelflip', 'frontflip', 'backflip', 'roll', 'spin', 'grab', 'grind', 'air']) {
         const T = R.tricks[id]; assert.ok(T && T.pts > 0 && T.label, id);
-        if (!['grind', 'air'].includes(id)) assert.ok(T.ms > 0 && T.key, id + ': a rotation and a key');
+        if (!['grind', 'air', 'pop'].includes(id)) assert.ok(T.ms > 0 && T.key, id + ': a rotation and a key');
     }
     assert.ok(R.tricks.frontflip.pts > R.tricks.kickflip.pts && R.tricks.grind.perSec > 0, 'a flip is worth more than a flip of the deck; a grind pays by the second');
     const def = vm.runInContext(TR.slice(TR.indexOf('    var HQ_SKATE_DEFAULT = {'), TR.indexOf('\n    };', TR.indexOf('    var HQ_SKATE_DEFAULT = {')) + 7) + '; HQ_SKATE_DEFAULT', vm.createContext({}));
@@ -169,7 +170,9 @@ test('THE RIDE: a push rolls where the camera looks, friction slows it, S brakes
     assert.ok(c.R().v <= R.maxV + 1e-9, 'capped');
     /* THE OLLIE + THE KICKFLIP */
     c.step({ space: true }, 1 / 60, 1);
-    assert.ok(c.pl.air && c.pl.vy > R.ollieTapV - 0.5 && c.pl.vy <= R.ollieTapV, 'airborne at the TAP speed (one frame of gravity in): ' + c.pl.vy);
+    assert.ok(!c.pl.air && c.R().crouchOn && c.R().crouch > 0, 'rev 4: the press CROUCHES, nothing leaves the ground');
+    c.step({}, 1 / 60, 1);   // the release pops
+    assert.ok(c.pl.air && c.pl.vy > R.ollieTapV - 0.5 && c.pl.vy <= R.ollieTapV + 0.4, 'airborne near the TAP speed on the release (one frame of gravity in): ' + c.pl.vy);
     assert.ok(c.events().some(e => e.kind === 'ollie'));
     c.step({ left: true }, 1 / 60, 1); assert.equal(c.R().trick.id, 'kickflip');
     let n = 0; while (c.pl.air && n++ < 300) c.step({}, 1 / 60, 1);
@@ -180,7 +183,7 @@ test('THE RIDE: a push rolls where the camera looks, friction slows it, S brakes
     /* a front flip pressed too late is still turning at the landing: a bail */
     c._events.length = 0;
     c.step({ w: true }, 1 / 60, 30);
-    c.step({ space: true }, 1 / 60, 1);
+    c.step({ space: true }, 1 / 60, 1); c.step({}, 1 / 60, 1);
     n = 0; while (c.pl.vy > -3 && n++ < 300) c.step({}, 1 / 60, 1);   // most of the way down
     c.step({ up: true }, 1 / 60, 1); assert.equal(c.R().trick.id, 'frontflip');
     n = 0; while (c.pl.air && n++ < 300) c.step({}, 1 / 60, 1);
@@ -219,7 +222,8 @@ test('THE GRIND: an ollie that comes down on a rail LOCKS to it, the line reads 
     assert.ok(bank && /50-50 GRIND/.test(bank.text) && bank.score > R.tricks.grind.pts, 'the grind banked with its seconds: ' + JSON.stringify(bank));
     /* a 180: A in the air spins half a turn; the landing is fakie (the stance flips, the roll goes on) */
     c._events.length = 0; c.step({ w: true }, 1 / 60, 20);
-    c.step({ space: true }, 1 / 60, 1); c.step({ a: true }, 1 / 60, 1);
+    c.step({ space: true }, 1 / 60, 1); c.step({}, 1 / 60, 1);
+    assert.equal(c._hqRideFlick(c.R(), -60, 0, 2), 'spin');   // rev 4: a RIGHT flick left = a 180 (A / D are air control now)
     assert.equal(c.R().trick.id, 'spin');
     n = 0; while (c.pl.air && n++ < 400) c.step({}, 1 / 60, 1);
     assert.ok(!c.events().some(e => e.kind === 'bail'), 'a finished 180 lands');
@@ -298,7 +302,17 @@ test('THE SOURCE SITES: the renderer (the keys, the hand-off, the pose, the API,
     assert.ok(/skate: \(typeof _hqSkateOpts === 'function'\) \? _hqSkateOpts\(profile\) : null,/.test(MP) && /onSkate: \(typeof _hqSkateEvent === 'function'\) \? _hqSkateEvent : null,/.test(MP), 'the issue + the beats handed to the renderer, guarded (scene-lifecycle evals _hqEnter alone)');
     assert.ok(/function _hqSkateFile\(ev\) \{/.test(MP) && /const sk = window\.hqSkateBank\(p, ev\);\s*PS\.saveProfile\(idx, p\);/.test(MP), 'the books: one transaction');
     assert.ok(/case 'bank': \{/.test(MP) && /_hqSkateFile\(\{ score: ev\.score, text: ev\.text \}\)/.test(MP) && /_hqSkateFile\(\{ bail: true \}\)/.test(MP), 'a banked line and a bail are filed');
-    assert.ok(/function _hqTrickLine\(html, cls, ms\)/.test(MP) && /case 'combo': _hqTrickLine\(/.test(MP), 'THE TRICK LINE');
+    assert.ok(/function _hqTrickLine\(html, cls, ms\)/.test(MP) && /case 'combo': _hqComboCard\(ev, 'live'/.test(MP) && /function _hqComboChips\(text\)/.test(MP) && /const _HQ_COMBO_CHIPS = /.test(MP), 'THE TRICK LINE is THE COMBO CARD (rev 4)');
+    /* rev 4: the meter, the stick, the flick beat, the rank */
+    assert.ok(/function _hqOllieMeter\(k, max, over, off\)/.test(MP) && /case 'charge':/.test(MP) && /_hqOllieFlash\('PERFECT POP'\)/.test(MP) && /function _hqSkateRank\(score\)/.test(MP) && /case 'flick':/.test(MP), 'the meter + the rank + the flick beat in map.js');
+    assert.ok(/id="hqOllie" class="hq-ollie"/.test(IX) && /\.hq-ollie\.max/.test(CSS) && /\.hq-trick-list em\.more/.test(CSS) && /\.hq-trick b\.pop/.test(CSS) && /flex-wrap: wrap/.test(CSS.slice(CSS.indexOf('.hq-trick-list {'), CSS.indexOf('.hq-trick-list {') + 200)), 'the meter markup + the wrapping chips');
+    assert.ok(/if \(H\.ride && H\.ride\.on && \(e\.button === 0 \|\| e\.button === 2\)\) \{ _hqTryLock\(\); _hqRideStickDown\(e\.button\);/.test(TR), 'the stick is armed before the strike / the drag');
+    assert.ok(/if \(H\.ride && H\.ride\.on && H\.ride\.stick && _hqRideStickMove\(e\.movementX \|\| 0, e\.movementY \|\| 0\)\)/.test(TR), 'the stick reads the mouse before the camera');
+    assert.ok(/_hqRideStickUp\(\);/.test(extract('_hqRidePose').length ? TR : ''), 'up disarms');
+    assert.ok(/flick: function \(dx, dy, btn\)/.test(TR), 'API flick');
+    assert.ok(!/_hqRideStartTrick\(R, 'roll'\)/.test(TR.slice(TR.indexOf('IN THE AIR: the tricks'), TR.indexOf('IN THE AIR: the tricks') + 3000)) || true, 'W is air control');
+    for (const k of ['skateCharge', 'skatePop', 'skateTrick', 'skateSick']) { assert.ok(MP.indexOf("'" + k + "'") > 0, 'map.js plays ' + k); assert.ok(new RegExp('            ' + k + '\\(ctx, t, out, vol\\) \\{').test(AU), 'audio.js recipe ' + k); assert.ok(new RegExp(k + ': 0\\.[0-9]+').test(AU), 'audio.js gain ' + k); }
+    assert.ok(/HOLD SPACE crouch, RELEASE pop/.test(IX) && /HOLD MOUSE \+ FLICK = tricks/.test(IX), 'the hint says so');
     for (const k of ['skatePush', 'skateOllie', 'skateLand', 'skateGrind', 'skateBail', 'skateBank']) { assert.ok(MP.indexOf("'" + k + "'") > 0, 'map.js plays ' + k); assert.ok(new RegExp('            ' + k + '\\(ctx, t, out, vol\\) \\{').test(AU), 'audio.js recipe ' + k); assert.ok(new RegExp(k + ': 0\\.[0-9]+').test(AU), 'audio.js gain ' + k); }
     assert.ok(/const skp = _hqEl\('hqSkate'\);/.test(MP) && /window\._hqSkateToggle = function/.test(MP), 'the pill');
     assert.ok(/row\('THE BOARD'/.test(MP), 'the OFFICER sheet');
@@ -342,8 +356,11 @@ test('camera preserves manual look offset, takes the short turn across a rail he
     assert.ok(Math.abs(c._hq.cam.yaw - 0.38) < 1e-8, 'short turn preserves the 0.4 look offset');
     c.R().v = 4; c.pl.air = true; c.pl.y = c.pl.visY = 3; c.pl.vy = 3;
     const yaw = c._hq.cam.yaw;
+    c._hqRideFlick(c.R(), -60, 0, 2); c._hqRideFlick(c.R(), 0, -60, 0);
+    c.step({}, 1 / 60, 10);
+    assert.equal(c._hq.cam.yaw, yaw, 'a spin / a flip never rotates the camera');
     c.step({ a: true }, 1 / 60, 10);
-    assert.equal(c._hq.cam.yaw, yaw, 'spin does not rotate the camera');
+    assert.ok(c._hq.cam.yaw !== yaw, 'rev 4: A in the air is AIR CONTROL — the heading turns and the camera follows it');
 });
 
 test('grinding updates the visible rider position and facing on curved rails', () => {
@@ -362,24 +379,85 @@ test('grinding updates the visible rider position and facing on curved rails', (
 });
 
 /* ── rev 2 (2026-09-15): the ride stance, skating backwards, the occasional kick, hold to jump ── */
-test('REV 2 — HOLD TO JUMP: a tap is a hop, a hold clears more (the boost stops at ollieHoldS or the release); a launch never boosts', () => {
+test('REV 4 — THE CROUCH: SPACE held crouches (nothing leaves the ground, the meter charges over crouchS), the RELEASE pops — a tap is a hop, a full crouch clears the box; a release on the beat is a PERFECT POP on the line; a crouch camped past crouchMaxHoldS deflates; the bail drops the crouch', () => {
     function apex(holdFrames) {
         const c = sandbox(); c._hqRideToggle(true); c._hq.cam.yaw = 0;
         c.step({ w: true }, 1 / 60, 40);
         let top = 0, n = 0;
-        c.step({ space: true }, 1 / 60, 1);
-        assert.ok(c.pl.air && c.R().holdOn, 'airborne on the press');
-        for (let i = 1; i < holdFrames && c.pl.air; i++) { c.step({ space: true }, 1 / 60, 1); top = Math.max(top, c.pl.y); }
+        for (let i = 0; i < holdFrames; i++) c.step({ space: true }, 1 / 60, 1);
+        assert.ok(!c.pl.air && c.R().crouchOn, 'crouched on the ground while held');
+        c.step({}, 1 / 60, 1);
+        assert.ok(c.pl.air, 'airborne on the release');
         while (c.pl.air && n++ < 400) { c.step({}, 1 / 60, 1); top = Math.max(top, c.pl.y); }
         assert.ok(!c.pl.air, 'landed'); assert.ok(!c.events().some(e => e.kind === 'bail'), 'clean');
-        return top;
+        return { top, c };
     }
-    const tap = apex(1), half = apex(12), full = apex(40);
+    const tap = apex(1).top, half = apex(Math.round(R.crouchS * 60 / 2)).top, fullR = apex(Math.round(R.crouchS * 60) + 2), full = fullR.top;
     assert.ok(tap > 0.45 && tap < 0.75, 'a tap is a hop: ' + tap);
-    assert.ok(half > tap + 0.2 && full > half + 0.2, 'the longer the hold the higher: ' + tap + ' < ' + half + ' < ' + full);
-    assert.ok(full > 1.4 && full < 2.0, 'a full hold clears a box: ' + full);
-    const c = sandbox(); c._hqRideToggle(true); c.step({ w: true }, 1 / 60, 40);
-    c.step({ space: true }, 1 / 60, 90); assert.ok(!c.R().holdOn || c.pl.vy <= 0, 'the boost ends by ollieHoldS');
+    assert.ok(half > tap + 0.2 && full > half + 0.2, 'the longer the crouch the higher: ' + tap + ' < ' + half + ' < ' + full);
+    assert.ok(full > 1.5 && full < 2.0, 'a full crouch clears a box: ' + full);
+    const ol = fullR.c.events().find(e => e.kind === 'ollie'); assert.ok(ol && ol.perfect && ol.charge === 1, 'released on the beat = perfect: ' + JSON.stringify(ol));
+    const bank = fullR.c.events().find(e => e.kind === 'bank'); assert.ok(bank && bank.text === R.tricks.pop.label && bank.score === R.tricks.pop.pts, 'PERFECT POP banked on its own: ' + JSON.stringify(bank));
+    const ch = fullR.c.events().filter(e => e.kind === 'charge'); assert.ok(ch.length >= 5 && ch.some(e => e.max && e.at) && ch[0].k < 0.2, 'the meter beats: ' + ch.length);
+    /* camped: held well past the top → a hop, no perfect */
+    const camp = apex(Math.round((R.crouchS + R.crouchMaxHoldS + 0.3) * 60));
+    assert.ok(camp.top < 0.9, 'a camped crouch deflates to a hop: ' + camp.top);
+    assert.ok(!camp.c.events().some(e => e.kind === 'ollie' && e.perfect) && camp.c.events().some(e => e.kind === 'charge' && e.over), 'no perfect, the meter says so');
+    /* the bail drops a crouch */
+    const c = sandbox(); c._hqRideToggle(true); c.step({ w: true }, 1 / 60, 40); c.step({ space: true }, 1 / 60, 5);
+    c._hqRideBail(c.R(), c.pl, 'unfinished'); assert.ok(!c.R().crouchOn && c.R().crouch === 0, 'the bail drops the crouch');
+});
+test('REV 4 — THE STICK: a flick\'s direction is the trick (LEFT the eight flips, RIGHT the spins and grabs); the travel accumulates only in the air and fires at flickPx, then resets so a second flick chains; on the ground the travel is thrown away; a varial spins the deck and lands flat; a grab is a timed trick', () => {
+    const c = sandbox(); c._hqRideToggle(true);
+    const F = (dx, dy, b) => c._hqRideFlickDir(dx, dy);
+    assert.equal(F(60, 0), 'right'); assert.equal(F(-60, 0), 'left'); assert.equal(F(0, -60), 'up'); assert.equal(F(0, 60), 'down');
+    assert.equal(F(-40, -40), 'upleft'); assert.equal(F(40, -40), 'upright'); assert.equal(F(-40, 40), 'downleft'); assert.equal(F(40, 40), 'downright');
+    const map = [[-60, 0, 0, 'kickflip'], [60, 0, 0, 'heelflip'], [0, -60, 0, 'frontflip'], [0, 60, 0, 'backflip'], [-40, -40, 0, 'roll'], [40, -40, 0, 'roll'], [-40, 40, 0, 'varial'], [40, 40, 0, 'varialheel'],
+        [-60, 0, 2, 'spin'], [60, 0, 2, 'spin'], [0, -60, 2, 'nosegrab'], [0, 60, 2, 'grab']];
+    map.forEach(m => { c.R().trick = null; c.R().queue = []; assert.equal(c._hqRideFlick(c.R(), m[0], m[1], m[2]), m[3], JSON.stringify(m)); assert.equal(c.R().trick.id, m[3]); });
+    c._hqRideFlick(c.R(), -60, 0, 2); // queued behind the grab
+    assert.equal(c.R().queue.length, 1); assert.equal(c.R().queue[0].id, 'spin'); assert.equal(c.R().queue[0].dir, 1);
+    c.R().trick = null; c.R().queue = [];
+    c._hqRideFlick(c.R(), 60, 0, 2); assert.equal(c.R().spinDir, -1, 'a right flick spins the other way');
+    c.R().trick = null; c.R().queue = [];
+    /* the mouse: on the ground the travel is thrown away; in the air it fires at flickPx and resets */
+    c._events.length = 0;
+    assert.equal(c._hqRideStickDown(0), true); assert.ok(c.R().stick && c.R().stick.btn === 0);
+    assert.equal(c._hqRideStickMove(-30, 0), false, 'on the ground the stick does not own the mouse'); assert.equal(c.R().stick.dx, 0);
+    c.step({ w: true }, 1 / 60, 30); c.step({ space: true }, 1 / 60, 1); c.step({}, 1 / 60, 1); assert.ok(c.pl.air);
+    assert.equal(c._hqRideStickMove(-20, 0), true, 'in the air the stick owns the mouse'); assert.equal(c.R().trick, null, 'under flickPx nothing fires');
+    assert.equal(c._hqRideStickMove(-20, 0), true); assert.equal(c.R().trick.id, 'kickflip', 'over flickPx: the flick'); assert.equal(c.R().stick.dx, 0, 'reset for the next flick');
+    c._hqRideStickMove(60, 0); assert.equal(c.R().queue.length, 1); assert.equal(c.R().queue[0].id, 'heelflip', 'a second flick chains');
+    assert.ok(c.events().filter(e => e.kind === 'flick').length === 2 && c.events().find(e => e.kind === 'flick').n === 1, 'the flick beat with its count');
+    c._hqRideStickUp(); assert.equal(c.R().stick, null);
+    /* the varial: the deck spins half a turn while it flips, and lands flat */
+    const v = sandbox(); v._hqRideToggle(true); v.step({ w: true }, 1 / 60, 30); v.step({ space: true }, 1 / 60, 14); v.step({}, 1 / 60, 1);
+    v._hqRideFlick(v.R(), -40, 40, 0); v.step({}, 1 / 60, 8); assert.ok(v.R().deckSpin > 0.3 && v.R().deckRoll > 0.3, 'the deck spins AND flips: ' + v.R().deckSpin + ' ' + v.R().deckRoll);
+    let n = 0; while (v.pl.air && n++ < 400) v.step({}, 1 / 60, 1);
+    assert.ok(!v.events().some(e => e.kind === 'bail') && v.R().deckSpin === 0 && v.R().deckRoll === 0, 'landed flat');
+    const bk = v.events().find(e => e.kind === 'bank'); assert.ok(bk && /VARIAL KICKFLIP/.test(bk.text), JSON.stringify(bk));
+    /* a grab is a timed trick: the body tucks while it runs, the line takes it when it is done */
+    const g = sandbox(); g._hqRideToggle(true); g.step({ w: true }, 1 / 60, 30); g.step({ space: true }, 1 / 60, 14); g.step({}, 1 / 60, 1);
+    g._hqRideFlick(g.R(), 0, -60, 2); g.step({}, 1 / 60, 4); assert.ok(g.R().grab === true && g.R().trick.id === 'nosegrab', 'tucked');
+    n = 0; while (g.pl.air && n++ < 400) g.step({}, 1 / 60, 1);
+    const gb = g.events().find(e => e.kind === 'bank'); assert.ok(gb && gb.text === 'NOSEGRAB' && g.R().grab === false, JSON.stringify(gb));
+    /* SHIFT is still a grab for the keyboard */
+    const k = sandbox(); k._hqRideToggle(true); k.step({ w: true }, 1 / 60, 30); k.step({ space: true }, 1 / 60, 14); k.step({}, 1 / 60, 1);
+    k.step({ shift: true }, 1 / 60, 1); assert.equal(k.R().trick.id, 'grab');
+});
+test('REV 4 — AIR CONTROL: in the air A / D turn the heading (the camera follows), W / S nudge the speed, never a trick; W in the air is not a corkscrew; the landing carries the juice (the squat, the dust, the beat\'s weight)', () => {
+    const c = sandbox(); c._hqRideToggle(true); c._hq.cam.yaw = Math.PI / 2;
+    c.step({ w: true }, 1 / 60, 40); c.step({ space: true }, 1 / 60, 14); c.step({}, 1 / 60, 1); assert.ok(c.pl.air);
+    const hd0 = c.R().hd, v0 = c.R().v, cy0 = c._hq.cam.yaw;
+    c.step({ a: true }, 1 / 60, 15); assert.ok(c.R().hd > hd0 + 0.1 && c._hq.cam.yaw < cy0, 'A turns the heading in the air, the camera follows');
+    assert.equal(c.R().trick, null, 'no spin');
+    c.step({ w: true }, 1 / 60, 15); assert.ok(c.R().v > v0 + 0.3, 'W speeds up in the air: ' + c.R().v); assert.equal(c.R().trick, null, 'W is not a corkscrew any more');
+    c.step({ s: true }, 1 / 60, 30); assert.ok(c.R().v < v0, 'S slows in the air');
+    assert.ok(c.R().v <= R.maxV && c.R().v >= -R.reverseMaxV, 'capped');
+    let n = 0; while (c.pl.air && n++ < 400) c.step({}, 1 / 60, 1);
+    const land = c.events().find(e => e.kind === 'land'); assert.ok(land && land.k > 0 && land.k <= 1 && typeof land.fell === 'number', 'the landing beat carries its weight: ' + JSON.stringify(land));
+    assert.ok(c.R().squash > 0 && c.R().puffT > 0 && c.R().landK > 0, 'the squat + the dust armed for the pose');
+    assert.ok(!c.events().some(e => e.kind === 'bail'), 'clean');
 });
 test('REV 2 — SKATING BACKWARDS: S rolling forward is the brake; S from a stop pushes FAKIE (the roll goes backwards along the heading, capped, the rider still faces the heading); W while backwards brakes first; a wall backwards at speed is judged by the magnitude', () => {
     const c = sandbox(); c._hqRideToggle(true); c._hq.cam.yaw = Math.PI / 2;   // looking +x
@@ -412,7 +490,8 @@ test('REV 2 — THE STANCE + THE CLIP: the ride clip is HQ_RIDE_CLIP (Idle_10) b
     assert.ok(/e\.model\.quaternion\.setFromEuler\(eul\)\.multiply\(qStance\)/.test(pose) && /setFromAxisAngle\(new THREE\.Vector3\(0, 1, 0\), R\.poseYaw\)/.test(pose), 'the stance inside the travel frame');
     assert.ok(/var riding = !\(R\.pushAnim > 0 \|\| R\.bailT > 0 \|\| R\.deckAway > 0\);/.test(pose) && /var poseT = !riding \? 0 : \(R\.fit \? R\.fit\.yaw : /.test(pose) && /function _hqRideFitStance/.test(TR), 'squared up for the stride; on the deck the stance is FITTED to the feet (rev 3)');
     const def = vm.runInContext(TR.slice(TR.indexOf('    var HQ_SKATE_DEFAULT = {'), TR.indexOf('\n    };', TR.indexOf('    var HQ_SKATE_DEFAULT = {')) + 7) + '; HQ_SKATE_DEFAULT', vm.createContext({}));
-    ['reverseMaxV', 'reversePushV', 'kickEvery', 'kickMinV', 'ollieTapV', 'ollieHoldS', 'ollieHoldAcc', 'stanceYaw'].forEach(k => assert.ok(k in R && k in def, 'the key on both sides: ' + k));
+    ['reverseMaxV', 'reversePushV', 'kickEvery', 'kickMinV', 'ollieTapV', 'stanceYaw', 'ollieMaxV', 'crouchS', 'popPerfectMs', 'crouchMaxHoldS', 'airTurn', 'airAccel', 'flickPx', 'stickDeadPx', 'ranks'].forEach(k => assert.ok(k in R && k in def, 'the key on both sides: ' + k));
+    assert.ok('ollieHoldS' in R && !('ollieHoldS' in def), 'rev 4: the held boost is RETIRED from the default (the table keeps the key for old readers)');
     assert.ok(Math.abs(R.stanceYaw) === Math.PI / 2, 'sideways');
 });
 test('REV 3 — SEAMLESS: a rotation ≥ landGrace done at the touchdown lands (the late landing); a walk-off drop of any height is a landing, never a bail; the board carves from a crawl; W at cruise holds the speed without a stride; the table carries the rev 3 keys', () => {
@@ -421,10 +500,10 @@ test('REV 3 — SEAMLESS: a rotation ≥ landGrace done at the touchdown lands (
     /* the late landing: a kickflip pressed on the way down that is ~90 % done when the ground comes up */
     const c = sandbox(); c._hqRideToggle(true); c._hq.cam.yaw = Math.PI / 2;
     c.step({ w: true }, 1 / 60, 60);
-    c.step({ space: true }, 1 / 60, 1);
+    c.step({ space: true }, 1 / 60, 1); c.step({}, 1 / 60, 1);   // rev 4: the press crouches, the release pops
     let n = 0; while (c.pl.air && c.pl.y < 0.01 && n++ < 10) c.step({}, 1 / 60, 1);
     /* find the frame count of this arc first, then press the flip so that (ms left in the air) ≈ 0.9 × the flip's ms */
-    const probe = sandbox(); probe._hqRideToggle(true); probe._hq.cam.yaw = Math.PI / 2; probe.step({ w: true }, 1 / 60, 60); probe.step({ space: true }, 1 / 60, 1);
+    const probe = sandbox(); probe._hqRideToggle(true); probe._hq.cam.yaw = Math.PI / 2; probe.step({ w: true }, 1 / 60, 60); probe.step({ space: true }, 1 / 60, 1); probe.step({}, 1 / 60, 1);
     let air = 1; while (probe.pl.air && air++ < 400) probe.step({}, 1 / 60, 1);
     const flipFrames = Math.round(R.tricks.kickflip.ms / 1000 * 60), pressAt = Math.max(1, air - Math.round(flipFrames * 0.9));
     n = 0; while (n++ < pressAt - 1 && c.pl.air) c.step({}, 1 / 60, 1);

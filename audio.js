@@ -1965,6 +1965,7 @@
             wayWhirl: 0.36, wayUpwell: 0.32, seaDive: 0.34, seaSurface: 0.3, seaBoard: 0.3,   // THE DEEP (2026-09-18): the maelstrom's roar and the drop; the upwelling's rush; the diver's plunge / breath; a hull knocked and boarded
             /* SKATEBOARDING (HQ plan 9.8, 2026-09-15): the deck's own kit — quiet, the ride plays them thirty times a minute */
             skatePush: 0.3, skateOllie: 0.4, skateLand: 0.36, skateGrind: 0.3, skateBail: 0.45, skateBank: 0.4,
+            skateCharge: 0.22, skatePop: 0.4, skateTrick: 0.32, skateSick: 0.45,   // rev 4 (2026-09-19): the crouch's tick, the meter topping out, the flick's whoosh, the rank's fanfare
             /* THE DOOR GUN rev 3 (2026-09-16): the zap, the frame landing, the recall — the building AND the board (the shot VFX voices them) */
             doorGunShot: 0.5, doorGunLand: 0.45, doorGunRecall: 0.42,
         };
@@ -2082,6 +2083,40 @@
                     o.connect(g); o.start(t + n[0]); o.stop(t + n[0] + 0.4);
                 });
                 return 0.5;
+            },
+            /* SKATEBOARDING rev 4 (2026-09-19): THE CROUCH ticks as the meter fills (a short click, the volume
+               rides the charge from map.js), THE POP when it tops out (a bright ping), THE FLICK is a whoosh per
+               trick (the volume climbs with the line's count), THE RANK a three-note fanfare on a big line */
+            skateCharge(ctx, t, out, vol) {
+                const g = _doorEnv(ctx, out, t, vol, 0.003, 0.01, 0.04);
+                const o = ctx.createOscillator(); o.type = 'square'; o.frequency.setValueAtTime(900, t); o.frequency.exponentialRampToValueAtTime(1300, t + 0.04);
+                const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1200; bp.Q.value = 3;
+                o.connect(bp).connect(g); o.start(t); o.stop(t + 0.06);
+                return 0.08;
+            },
+            skatePop(ctx, t, out, vol) {
+                [[0, 1320], [0.05, 1980]].forEach(n => {
+                    const g = _doorEnv(ctx, out, t + n[0], vol * 0.6, 0.004, 0.05, 0.16);
+                    const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.value = n[1];
+                    o.connect(g); o.start(t + n[0]); o.stop(t + n[0] + 0.25);
+                });
+                return 0.3;
+            },
+            skateTrick(ctx, t, out, vol) {
+                _doorNoiseSrc(ctx, _doorEnv(ctx, out, t, vol * 0.8, 0.01, 0.06, 0.16), t, 0.3, { type: 'bandpass', f0: 600, f1: 2600, slide: 0.16, q: 1.6 });
+                const g = _doorEnv(ctx, out, t + 0.02, vol * 0.3, 0.01, 0.05, 0.12);
+                const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(440, t + 0.02); o.frequency.exponentialRampToValueAtTime(1100, t + 0.16);
+                o.connect(g); o.start(t + 0.02); o.stop(t + 0.22);
+                return 0.3;
+            },
+            skateSick(ctx, t, out, vol) {
+                [[0, 523], [0.1, 659], [0.2, 784], [0.3, 1046]].forEach(n => {
+                    const g = _doorEnv(ctx, out, t + n[0], vol * 0.45, 0.01, 0.1, 0.3);
+                    const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = n[1];
+                    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2400;
+                    o.connect(lp).connect(g); o.start(t + n[0]); o.stop(t + n[0] + 0.45);
+                });
+                return 0.8;
             },
             wayCreak(ctx, t, out, vol) {
                 const dur = 0.7;

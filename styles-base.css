@@ -4155,16 +4155,49 @@ body.diorama-3d .tile-underpass.jump::before {
 .hq-hints.climbnear .hq-hint-climbnear { display: inline; color: #7dffb0; }
 .hq-hints.climb .hq-hint-climb { display: inline; color: #7dffb0; }
 .hq-hints.climb span:nth-child(1), .hq-hints.climb span:nth-child(2), .hq-hints.climb span:nth-child(3) { display: none; }
-.hq-trick { position: absolute; left: 50%; top: 92px; transform: translateX(-50%) translateY(-8px) scale(0.96); display: flex; align-items: baseline; gap: 14px; padding: 8px 22px; background: rgba(8,8,12,0.78); border: 1px solid rgba(125,255,176,0.45); box-shadow: 0 0 0 1px #000, 0 0 28px rgba(125,255,176,0.18); font-family: 'Cormorant SC', serif; color: #ece7d8; z-index: 21; opacity: 0; transition: opacity 0.16s ease, transform 0.16s ease; pointer-events: none; white-space: nowrap; max-width: 92vw; overflow: hidden; text-overflow: ellipsis; }
+.hq-trick { position: absolute; left: 50%; top: 92px; transform: translateX(-50%) translateY(-8px) scale(0.96); display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px 22px 10px; background: rgba(8,8,12,0.78); border: 1px solid rgba(125,255,176,0.45); box-shadow: 0 0 0 1px #000, 0 0 28px rgba(125,255,176,0.18); font-family: 'Cormorant SC', serif; color: #ece7d8; z-index: 21; opacity: 0; transition: opacity 0.16s ease, transform 0.16s ease; pointer-events: none; max-width: min(760px, 92vw); }
 .hq-trick.show { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+/* THE COMBO CARD (rev 4, 2026-09-19): the score is the headline and pops on every add, the multiplier a badge, the tricks WRAPPING chips (repeats fold to ×n, the oldest to +n MORE) — nothing clips */
+.hq-trick-head { display: flex; align-items: baseline; gap: 14px; white-space: nowrap; }
+.hq-trick-list { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 6px; max-width: 100%; }
+.hq-trick-list em { font-style: normal; font-size: 13px; letter-spacing: 0.14em; color: #d9f5e2; padding: 2px 8px; border: 1px solid rgba(125,255,176,0.3); border-radius: 9px; background: rgba(125,255,176,0.08); white-space: nowrap; }
+.hq-trick-list em u { text-decoration: none; margin-left: 5px; color: #ffd65a; font-family: 'IBM Plex Mono', monospace; font-size: 11px; }
+.hq-trick-list em.more { color: #b8a060; border-style: dashed; }
+.hq-trick-list em.new { animation: hqChipIn 0.22s cubic-bezier(0.2, 1.4, 0.4, 1); border-color: rgba(125,255,176,0.8); }
+@keyframes hqChipIn { 0% { transform: scale(0.4) translateY(6px); opacity: 0; } 100% { transform: none; opacity: 1; } }
 .hq-trick span { font-size: 20px; letter-spacing: 0.16em; color: #d9f5e2; }
-.hq-trick b { font-size: 30px; letter-spacing: 0.08em; color: #7dffb0; font-weight: 600; text-shadow: 0 0 14px rgba(125,255,176,0.55); }
+.hq-trick b { font-size: 34px; letter-spacing: 0.08em; color: #7dffb0; font-weight: 600; text-shadow: 0 0 14px rgba(125,255,176,0.55); display: inline-block; }
+.hq-trick b.pop { animation: hqScorePop 0.28s cubic-bezier(0.2, 1.6, 0.4, 1); }
+@keyframes hqScorePop { 0% { transform: scale(1.35); filter: brightness(1.8); } 100% { transform: scale(1); filter: none; } }
 .hq-trick i { font-family: 'IBM Plex Mono', monospace; font-style: normal; font-size: 10px; letter-spacing: 0.26em; color: #b8a060; }
-.hq-trick.bank { border-color: rgba(255,214,90,0.6); box-shadow: 0 0 0 1px #000, 0 0 34px rgba(255,214,90,0.25); }
+.hq-trick.bank { border-color: rgba(255,214,90,0.6); box-shadow: 0 0 0 1px #000, 0 0 34px rgba(255,214,90,0.25); animation: hqBankIn 0.32s cubic-bezier(0.2, 1.5, 0.4, 1); }
 .hq-trick.bank b { color: #ffd65a; text-shadow: 0 0 16px rgba(255,214,90,0.6); }
-.hq-trick.bail { border-color: rgba(255,90,90,0.6); box-shadow: 0 0 0 1px #000, 0 0 30px rgba(255,90,90,0.25); }
+.hq-trick.bank i { color: #ffd65a; font-size: 12px; }
+.hq-trick.bank.rank-sick, .hq-trick.bank.rank-insane, .hq-trick.bank.rank-legendary { border-color: #ff9a3c; box-shadow: 0 0 0 1px #000, 0 0 44px rgba(255,154,60,0.45); }
+.hq-trick.bank.rank-sick b, .hq-trick.bank.rank-insane b, .hq-trick.bank.rank-legendary b { color: #ffb14a; text-shadow: 0 0 22px rgba(255,154,60,0.8); font-size: 40px; }
+.hq-trick.bank.rank-legendary { animation: hqBankIn 0.32s cubic-bezier(0.2, 1.5, 0.4, 1), hqLegend 0.9s ease-in-out infinite alternate; }
+@keyframes hqBankIn { 0% { transform: translateX(-50%) scale(1.18); } 100% { transform: translateX(-50%) scale(1); } }
+@keyframes hqLegend { 0% { box-shadow: 0 0 0 1px #000, 0 0 30px rgba(255,154,60,0.4); } 100% { box-shadow: 0 0 0 1px #000, 0 0 70px rgba(255,120,200,0.7); } }
+.hq-trick.bail { border-color: rgba(255,90,90,0.6); box-shadow: 0 0 0 1px #000, 0 0 30px rgba(255,90,90,0.25); animation: hqBailShake 0.36s ease-out; }
 .hq-trick.bail span, .hq-trick.bail b { color: #ff7a7a; text-shadow: 0 0 14px rgba(255,90,90,0.5); }
-@media (max-width: 720px) { .hq-trick span { font-size: 15px; } .hq-trick b { font-size: 22px; } }
+@keyframes hqBailShake { 0%, 100% { transform: translateX(-50%); } 20% { transform: translateX(calc(-50% - 9px)); } 45% { transform: translateX(calc(-50% + 7px)); } 70% { transform: translateX(calc(-50% - 4px)); } }
+/* THE OLLIE METER (rev 4): the crouch's charge under the centre of the screen — fills over crouchS, gold + MAX at the top, PERFECT on the beat, red when camped */
+.hq-ollie { position: absolute; left: 50%; top: 58%; width: 150px; height: 9px; transform: translateX(-50%) scaleX(0.8); border: 1px solid rgba(125,255,176,0.55); background: rgba(8,8,12,0.72); box-shadow: 0 0 0 1px #000, 0 0 16px rgba(125,255,176,0.2); border-radius: 6px; z-index: 21; pointer-events: none; opacity: 0; transition: opacity 0.14s ease, transform 0.14s ease; }
+.hq-ollie.show { opacity: 1; transform: translateX(-50%) scaleX(1); }
+.hq-ollie i { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: linear-gradient(90deg, #4bd88a, #7dffb0); border-radius: 6px; transition: width 0.05s linear; }
+.hq-ollie b { position: absolute; left: 50%; top: 13px; transform: translateX(-50%); font-family: 'IBM Plex Mono', monospace; font-weight: 600; font-size: 10px; letter-spacing: 0.26em; color: #9ff0b8; white-space: nowrap; text-shadow: 0 0 8px rgba(0,0,0,0.9); }
+.hq-ollie.max { border-color: #ffd65a; box-shadow: 0 0 0 1px #000, 0 0 22px rgba(255,214,90,0.55); animation: hqOllieMax 0.32s ease-in-out infinite alternate; }
+.hq-ollie.max i { background: linear-gradient(90deg, #ffb14a, #ffe37a); }
+.hq-ollie.max b { color: #ffd65a; }
+.hq-ollie.over { border-color: #ff7a7a; animation: none; }
+.hq-ollie.over i { background: #b04040; }
+.hq-ollie.over b { color: #ff9a9a; }
+.hq-ollie.flash { border-color: #fff; animation: hqOllieFlash 0.5s ease-out; }
+.hq-ollie.flash i { background: #fff; }
+.hq-ollie.flash b { color: #fff; font-size: 13px; }
+@keyframes hqOllieMax { 0% { transform: translateX(-50%) scale(1); } 100% { transform: translateX(-50%) scale(1.08); } }
+@keyframes hqOllieFlash { 0% { transform: translateX(-50%) scale(1.5); opacity: 1; } 100% { transform: translateX(-50%) scale(1); opacity: 1; } }
+@media (max-width: 720px) { .hq-trick span { font-size: 15px; } .hq-trick b { font-size: 24px; } .hq-trick-list em { font-size: 11px; } }
 .hq-plate.hq-plate-portal b { color: #9fe8ff; }
 /* THE DOOR GUN rev 2 (2026-09-15): the pair is ALWAYS two colours — A cyan, B amber (the frame, the lamps and the aperture wear the same two in 3D) */
 .hq-plate.hq-plate-portal-a b { color: #7fd0ff; }
@@ -5572,6 +5605,9 @@ body.diorama-3d .tile-underpass.jump::before {
 #hqPage .hq-hints { left: 18px; bottom: 12px; gap: 6px 12px; font-size: 8px; letter-spacing: 0.18em; color: var(--hq-ink-mute); opacity: 0.8; text-shadow: 0 1px 2px #000, 0 0 6px rgba(0,0,0,0.85); }
 #hqPage .hq-hints span::before { content: ''; margin: 0; display: inline-block; width: 4px; height: 4px; border-radius: 50%; background: var(--hq-sel); margin-right: 7px; vertical-align: 1px; opacity: 0.8; }
 /* ── THE PROMPT / THE TOAST / THE TRICK LINE: plates, rounded, bevelled ── */
+#hqPage .hq-ollie { border-color: var(--hq-row-edge); background: var(--hq-plate-bg); }
+#hqPage .hq-ollie.max { border-color: var(--hq-sel); }
+#hqPage .hq-trick-list em { color: var(--hq-ink); border-color: var(--hq-row-edge); background: var(--hq-row-bg); }
 #hqPage .hq-prompt, #hqPage .hq-toast, #hqPage .hq-trick {
   border-radius: var(--hq-r); background: var(--hq-plate-scan), var(--hq-plate-bg); border: 1px solid var(--hq-plate-edge); box-shadow: var(--hq-frame); color: var(--hq-ink);
 }

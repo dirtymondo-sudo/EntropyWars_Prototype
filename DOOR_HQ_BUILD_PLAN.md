@@ -10872,3 +10872,38 @@ hq-stage2 / hq-map-remembers / hq-skate / hq-deep / hq-portal / hq-encounter / s
 - **Tests**: `hq-bridge-layer.test.js` (new); hq-terrain.test.js's KINDS pin. **Ship**: data.js (R2 + Render), three-renderer.js (R2),
   index.html (Render, token `20260919-bridge-layer-01-cors`); check-terrain.js, tests + docs to the repo.
 - **UNSEEN LIVE (RULE #1c)**: the slab from below, the piers, the rails' height, the headroom under a truck, the fire escape's 7 m.
+
+### 2026-09-19 — SKATEBOARDING rev 4: THE STICK · THE CROUCH POP · AIR CONTROL · THE COMBO CARD · THE JUICE (local delivery)
+- **The brief** (the user): "impossible to move after I jump because WASD is used for tricks — click and drag for
+  tricks, like a hit stick in Madden / Smash; WASD still steers in the air; hold SPACE to crouch, release to jump, a
+  meter for the max; a long line's points get cut off; an overall pass, fun, juice."
+- **THE STICK** (three-renderer.js `_hqRideFlickDir` / `_hqRideFlick` / `_hqRideStickDown / Move / Up`): on the deck the
+  mouse buttons are the trick stick. A button held in the air makes the mouse travel accumulate (`R.stick`); at
+  `flickPx` (34 px) the flick's DIRECTION fires the trick and the accumulator resets (a second flick chains, the queue
+  is three deep). LEFT = the flips: ← kickflip · → heelflip · ↑ front flip · ↓ backflip · ↖ ↗ corkscrew (its way) ·
+  ↙ varial kickflip · ↘ varial heelflip (new: the deck spins a half turn while it flips). RIGHT = ← → a 180 (its way)
+  · ↑ nosegrab (new) · ↓ indy grab (grabs are timed tricks now, 300 ms, the body tucks). On the ground the button is
+  armed but the travel is thrown away each move and the mouse aims as ever; in the air with a button down the camera
+  holds still. No strike from the board (B off to hit a native). The arrows + SHIFT stay for a keyboard-only rider.
+- **AIR CONTROL**: in the air A / D turn the heading at `airTurn` (the camera follows, the carve's rule), W / S nudge
+  the speed at `airAccel`; W is no longer a corkscrew, A / D no longer 180s.
+- **THE CROUCH POP** (`_hqRidePop`): SPACE held on the ground builds `R.crouch` 0 → 1 over `crouchS` (0.55 s) — the
+  body squats by the charge, THE METER (`#hqOllie`, map.js `_hqOllieMeter`, under the screen's centre) fills and
+  goes gold + MAX at the top; the RELEASE pops — `ollieTapV` (a hop) → `ollieMaxV` (7.9, ≈ 1.75 m) by a smoothstep
+  of the charge; released inside `popPerfectMs` (160) of topping out = PERFECT POP (50 pts on the line, a white
+  flash, a ping); camped past `crouchMaxHoldS` (1.6 s) the meter turns red and the pop deflates to a hop. A rail's
+  SPACE is still the instant hop-off. The rev 2 held boost (`ollieHoldS` / `ollieHoldAcc`) is RETIRED.
+- **THE COMBO CARD** (map.js `_hqComboCard` / `_hqComboChips`; CSS `.hq-trick-head` / `.hq-trick-list`): the score
+  is the headline and POPS on every add, the multiplier a badge, the tricks WRAPPING chips — consecutive repeats
+  fold to one chip with ×n, past nine chips the oldest fold into "+n MORE" — nothing is clipped. A banked line wears
+  its RANK (`HQ_SKATE_RULES.ranks`: LANDED / NICE / SICK / INSANE / LEGENDARY by score; SICK+ in orange, LEGENDARY
+  pulses; a fanfare `skateSick`), the bail card shakes.
+- **THE JUICE**: the touchdown squashes the body by the fall (`R.squash` / `R.landK`, the pose springs back), a dust
+  puff at the wheels (`R.puff`), the camera dips (`_hqRideCamDip`, the gun's recoil ticker in reverse); the crouch
+  ticks (`skateCharge`, louder as it fills), the top pings (`skatePop`), every flick whooshes (`skateTrick`, louder
+  down the line), the pop's cue scales with the charge, the landing's with its weight.
+- **Ship**: three-renderer.js (R2), data.js (R2 + Render), map.js (R2), audio.js (R2), styles-base.css (R2),
+  index.html (Render, token `20260919-skate-rev4-01-cors`); hq-skate.test.js + docs to the repo.
+- **UNSEEN LIVE (RULE #1c)**: the flick's threshold at the player's mouse speed (`flickPx` is the edit), the eight
+  sectors' feel on a diagonal, the meter's placement under the reticle, the squat's read on the cast rigs, the dust
+  puff's tint (additive — it reads as a glow), the camera dip's size (`_hqRideCamDip`'s 0.035 rad), the rank words.

@@ -2011,11 +2011,53 @@
             const el = _hqEl('hqTrick'); if (!el) return;
             clearTimeout(_hqTrickT);
             if (!html) { el.classList.remove('show'); setTimeout(() => { if (!el.classList.contains('show')) el.style.display = 'none'; }, 300); return; }
+            if (html.indexOf('<div') !== 0) html = '<div class="hq-trick-head">' + html + '</div>';   // rev 4: the card is a column — a one-row beat (the lap timer) rides in a head row
             el.className = 'hq-trick ' + (cls || ''); el.innerHTML = html; el.style.display = '';
             void el.offsetWidth; el.classList.add('show');
             if (ms) _hqTrickT = setTimeout(() => _hqTrickLine(null), ms);
         }
         function _hqSkateSfx(key, vol) { try { if (typeof playDoorSfx === 'function') playDoorSfx(key, { volume: vol == null ? 0.6 : vol }); } catch (e) {} }
+        /* THE COMBO CARD (rev 4, 2026-09-19 — the user: "when it's a lot of tricks in a row the points get
+           cut off at the end; need a better way to show that"): the score is the HEADLINE (it pops on every
+           add), the multiplier a badge, the tricks a WRAPPING row of chips — consecutive repeats fold into
+           one chip with a ×n count (KICKFLIP ×3), and past `_HQ_COMBO_CHIPS` chips the oldest fold into
+           one "+n MORE" chip at the front — so a forty-trick line still reads. Nothing is ever clipped. */
+        const _HQ_COMBO_CHIPS = 9;
+        function _hqComboChips(text) {
+            const raw = String(text || '').split(' + ').filter(Boolean), folded = [];
+            raw.forEach(t => { const last = folded[folded.length - 1]; if (last && last.t === t) last.n++; else folded.push({ t, n: 1 }); });
+            let chips = folded;
+            let more = 0;
+            if (chips.length > _HQ_COMBO_CHIPS) { const cut = chips.slice(0, chips.length - _HQ_COMBO_CHIPS); more = cut.reduce((a, c) => a + c.n, 0); chips = chips.slice(chips.length - _HQ_COMBO_CHIPS); }
+            let html = more ? `<em class="more">+${more} MORE</em>` : '';
+            chips.forEach((c, i) => { html += `<em${i === chips.length - 1 ? ' class="new"' : ''}>${_hqEsc(c.t)}${c.n > 1 ? `<u>×${c.n}</u>` : ''}</em>`; });
+            return html;
+        }
+        function _hqSkateRank(score) {
+            const R = (typeof HQ_SKATE_RULES !== 'undefined' && HQ_SKATE_RULES.ranks) || [[0, 'LANDED']];
+            let word = R[0][1]; R.forEach(r => { if (score >= r[0]) word = r[1]; }); return word;
+        }
+        function _hqComboCard(ev, cls, tail, ms) {
+            const html = `<div class="hq-trick-head"><b>${(ev.score | 0).toLocaleString()}</b><i>× ${ev.mult | 0}${tail ? ' · ' + tail : ''}</i></div><div class="hq-trick-list">${_hqComboChips(ev.text)}</div>`;
+            _hqTrickLine(html, cls, ms);
+            const el = _hqEl('hqTrick'); if (el && cls === 'live') { const b = el.querySelector('b'); if (b) { b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop'); } }
+        }
+        /* THE METER (rev 4): the crouch's charge under the reticle — fills over crouchS, flashes MAX at the top, PERFECT on the beat */
+        function _hqOllieMeter(k, max, over, off) {
+            const el = _hqEl('hqOllie'); if (!el) return;
+            if (off) { el.classList.remove('show', 'max', 'over'); setTimeout(() => { if (!el.classList.contains('show')) el.style.display = 'none'; }, 220); return; }
+            el.style.display = ''; void el.offsetWidth; el.classList.add('show');
+            const fill = el.querySelector('i'); if (fill) fill.style.width = Math.round(Math.max(0, Math.min(1, k)) * 100) + '%';
+            el.classList.toggle('max', !!max && !over); el.classList.toggle('over', !!over);
+            const lab = el.querySelector('b'); if (lab) lab.textContent = over ? 'TOO LONG' : max ? 'MAX · RELEASE!' : 'CROUCH';
+        }
+        function _hqOllieFlash(word) {
+            const el = _hqEl('hqOllie'); if (!el) return;
+            el.style.display = ''; el.className = 'hq-ollie show flash'; const lab = el.querySelector('b'); if (lab) lab.textContent = word;
+            const fill = el.querySelector('i'); if (fill) fill.style.width = '100%';
+            clearTimeout(_hqOllieT); _hqOllieT = setTimeout(() => _hqOllieMeter(0, false, false, true), 520);
+        }
+        let _hqOllieT = null;
         function _hqSkateEvent(ev) {
             if (!ev) return;
             const h = _hqEl('hqHints');
@@ -2023,33 +2065,47 @@
                 case 'on':
                     if (h) h.classList.add('skate');
                     _hqSkateSfx('skatePush', 0.5);
-                    _hqToast('<b>ON THE BOARD</b><span>W PUSH (HOLD TO CRUISE) · S BRAKE · A / D CARVE · SPACE OLLIE · LAND ON A RAIL TO GRIND · IN THE AIR ← → ↑ ↓ W A D = TRICKS · SHIFT GRAB · B OFF</span>', 3600);
+                    _hqToast('<b>ON THE BOARD</b><span>W PUSH · S BRAKE · A / D CARVE · HOLD SPACE TO CROUCH, RELEASE TO POP (MAX = THE HEIGHT) · IN THE AIR: WASD STEERS · HOLD A MOUSE BUTTON + FLICK = TRICKS (LEFT FLIPS · RIGHT SPINS / GRABS) · LAND ON A RAIL TO GRIND · B OFF</span>', 4200);
                     _hqFillStrip(_hqProfile());
                     break;
                 case 'off':
                     if (h) h.classList.remove('skate');
-                    _hqTrickLine(null);
+                    _hqTrickLine(null); _hqOllieMeter(0, false, false, true);
                     _hqFillStrip(_hqProfile());
+                    break;
+                case 'charge':
+                    if (ev.off) { _hqOllieMeter(0, false, false, true); break; }
+                    _hqOllieMeter(ev.k, ev.max, ev.over, false);
+                    if (ev.at) _hqSkateSfx('skatePop', 0.5); else if (ev.k < 1) _hqSkateSfx('skateCharge', 0.12 + 0.2 * ev.k);
+                    break;
+                case 'flick':
+                    _hqSkateSfx('skateTrick', Math.min(0.7, 0.3 + 0.05 * (ev.n | 0)));
                     break;
                 case 'refused':
                     _hqToast(ev.reason === 'off' ? '<b>NO SKATING</b><span>EW_HQ_NO_SKATE IS SET</span>' : '<b>NO BOARD</b><span>THERE IS ONE LEANING ON A LOCKER IN ROOM 26 · THE ANNEX</span>', 2600);
                     break;
                 case 'push': _hqSkateSfx('skatePush', ev.fakie ? 0.35 : 0.45); break;
                 case 'kick': _hqSkateSfx('skatePush', 0.28); break;   // rev 2: the occasional stride on the coast
-                case 'ollie': _hqSkateSfx('skateOllie', 0.6); break;
+                case 'ollie':
+                    _hqSkateSfx('skateOllie', 0.45 + 0.35 * (ev.charge || 0));
+                    if (ev.perfect) { _hqOllieFlash('PERFECT POP'); _hqSkateSfx('skateBank', 0.35); }
+                    else _hqOllieMeter(0, false, false, true);
+                    break;
                 case 'launch': _hqSkateSfx('skateOllie', 0.35); break;
                 case 'hop': break;
                 case 'grindstart': _hqSkateSfx('skateGrind', 0.5); break;
                 case 'grind': _hqSkateSfx('skateGrind', 0.22); break;
                 case 'trick': try { playSfx('uiCursorMove'); } catch (e) {} break;
-                case 'combo': _hqTrickLine(`<span>${_hqEsc(ev.text)}</span><b>${(ev.score | 0).toLocaleString()}</b><i>× ${ev.mult}</i>`, 'live'); _hqComboLive = true; break;   // DISASTER CITY (2026-09-17): a live combo beats the lap timer's tick
-                case 'land': _hqSkateSfx('skateLand', 0.5); break;
+                case 'combo': _hqComboCard(ev, 'live', null, 0); _hqComboLive = true; break;   // DISASTER CITY (2026-09-17): a live combo beats the lap timer's tick; rev 4: THE COMBO CARD
+                case 'land': _hqSkateSfx('skateLand', 0.3 + 0.4 * (ev.k || 0.5)); break;
                 case 'bank': {
                     _hqComboLive = false;
                     _hqSkateSfx('skateBank', 0.55);
                     const sk = _hqSkateFile({ score: ev.score, text: ev.text });
                     const best = sk && sk.best && sk.best.score === ev.score && sk.best.text === ev.text;
-                    _hqTrickLine(`<span>${_hqEsc(ev.text)}</span><b>${(ev.score | 0).toLocaleString()}</b><i>${best ? 'NEW BEST LINE' : 'LANDED'}</i>`, 'bank', 2600);
+                    const rank = _hqSkateRank(ev.score | 0);
+                    if (rank !== 'LANDED') _hqSkateSfx('skateSick', 0.5);
+                    _hqComboCard({ score: ev.score, mult: ev.count, text: ev.text }, 'bank' + (rank === 'LANDED' ? '' : ' rank-' + rank.toLowerCase()), best ? rank + ' · NEW BEST LINE' : rank, 3000);
                     _hqFillStrip(_hqProfile());
                     break;
                 }
@@ -2057,7 +2113,8 @@
                     _hqSkateSfx('skateBail', 0.6);
                     _hqSkateFile({ bail: true });
                     _hqComboLive = false;
-                    _hqTrickLine(`<span>BAIL</span><b>${ev.lost ? '−' + (ev.lost | 0).toLocaleString() : ''}</b><i>${ev.why === 'balance' ? 'OFF THE RAIL' : ev.why === 'offaxis' ? 'LANDED SIDEWAYS' : 'STILL TURNING'}</i>`, 'bail', 1800);
+                    _hqOllieMeter(0, false, false, true);
+                    _hqTrickLine(`<div class="hq-trick-head"><span>BAIL</span><b>${ev.lost ? '−' + (ev.lost | 0).toLocaleString() : ''}</b><i>${ev.why === 'balance' ? 'OFF THE RAIL' : ev.why === 'offaxis' ? 'LANDED SIDEWAYS' : 'STILL TURNING'}</i></div>`, 'bail', 1800);
                     break;
                 }
                 /* DISASTER CITY (2026-09-17): the traffic and the circuit — three-renderer.js _hqTickTraffic / _hqTickRace */

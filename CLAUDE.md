@@ -5948,3 +5948,26 @@ props on a bridge, the full second floor (EXPLORABLE_AREAS_GUIDE §5 item 3 — 
 before this delivery, not touched: hq-climb's six-looks pin (D2 added `fireescape`) and hq-terrain's "fountain stands in the
 water" on Downtown. Ship data.js to R2 AND Render. UNSEEN LIVE (RULE #1c): the slab from below, the piers, the rails, the
 headroom under a truck, the fire escape's 7 m against the pier.
+
+## SKATEBOARDING rev 4 — THE STICK, THE CROUCH POP, AIR CONTROL, THE COMBO CARD (2026-09-19, local delivery)
+The user: "impossible to move after I jump because WASD is used for tricks — click and drag for tricks like a hit stick;
+WASD still steers in the air; hold SPACE to crouch, release to jump, a meter for the max; a long line's points get cut
+off; make it fun, add juice." three-renderer.js "SKATEBOARDING — THE RIDER": **THE STICK** — on the deck the mouse
+buttons are the trick stick (`_hqRideStickDown / Move / Up`, read in `H.onMouseDown` / `onMouseMove` BEFORE the strike
+and the camera): a button held in the air accumulates the mouse travel and at `flickPx` the flick's DIRECTION fires the
+trick (`_hqRideFlickDir` → `_hqRideFlick`; the accumulator resets, a second flick chains) — LEFT ← → ↑ ↓ = kickflip ·
+heelflip · front flip · backflip, ↖ ↗ corkscrew, ↙ ↘ VARIAL kick / heel (new, the deck spins as it flips); RIGHT ← → =
+180s, ↑ NOSEGRAB / ↓ indy grab (grabs are timed tricks). On the ground the travel is thrown away and the mouse aims;
+there is NO strike from the board. The arrows + SHIFT still fire the flips / a grab for a keyboard-only rider. **AIR
+CONTROL**: in the air A / D turn the heading (`airTurn`, the camera follows), W / S nudge the speed (`airAccel`) —
+never a trick. **THE CROUCH POP** (`_hqRidePop`): SPACE held on the ground charges `R.crouch` over `crouchS` (the body
+squats, the `charge` beat feeds THE METER `#hqOllie` — map.js `_hqOllieMeter`, gold + MAX at the top, red past
+`crouchMaxHoldS`); the RELEASE pops `ollieTapV` → `ollieMaxV` by the charge; a release inside `popPerfectMs` of the top
+= PERFECT POP (`tricks.pop` on the line, a flash). The rev 2 held boost is retired (`ollieHoldS` / `ollieHoldAcc` are
+dead keys in the table). **THE COMBO CARD** (map.js `_hqComboCard` / `_hqComboChips`, CSS `.hq-trick-head` /
+`.hq-trick-list`): the score pops on every add, the tricks are WRAPPING chips (repeats fold to ×n, the oldest past
+nine to "+n MORE" — nothing clips), a banked line wears its RANK (`HQ_SKATE_RULES.ranks`). **THE JUICE**: the landing
+squashes the body by the fall (`R.squash` / `R.landK`), a dust puff, a camera dip (`_hqRideCamDip`); four new cues
+(audio.js `skateCharge` / `skatePop` / `skateTrick` / `skateSick`). The table keys are in data.js `HQ_SKATE_RULES`
+(`flickPx` is the one to tune if flicks fire too eagerly). `npm test` runs hq-skate.test.js (29). Unseen live (RULE
+#1c): the flick threshold at a real mouse, the meter's spot, the squat on the cast rigs, the dip's size.
