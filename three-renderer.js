@@ -11248,6 +11248,9 @@ const ThreeRenderer = (function () {
             || ((name === 'hqAim') ? acts.idle : null)                  // THE DOOR GUN rev 4: the pistol hold, else the idle
             || ((name === 'hqSwim') ? (acts.hqSwimIdle || acts.walk || acts.idle) : null)   // THE DEEP (2026-09-18): the stroke, else the float, else the walk
             || ((name === 'hqSwimIdle') ? (acts.hqSwim || acts.idle) : null)
+            || ((name === 'hqClimb') ? (acts.hqSwim || acts.hqClimbIdle || acts.walk || acts.idle) : null)   // THE CLIMB (2026-09-19): the stroke stood up, else the swim, else the walk
+            || ((name === 'hqClimbIdle') ? (acts.hqSwimIdle || acts.hqClimb || acts.idle) : null)
+            || ((name === 'hqMantle') ? (acts.jump || acts.idle) : null)
             || ((name === 'hqSit' || name === 'hqDrive') ? acts.idle : null)
             || ((name === 'hqShoot') ? (acts.castRanged || acts.cast || acts.idle) : null)
             || ((name === 'jump') ? (acts.walk || acts.idle) : null);
@@ -41665,7 +41668,8 @@ const ThreeRenderer = (function () {
             var W = 1.1, H = 0.7, D = 0.05;
             var standing = !(p && typeof p.wall === 'string');
             var id = (p && p.lesson) || 'floor';
-            var L = (typeof window !== 'undefined' && window.HQ_GUN_LESSONS && window.HQ_GUN_LESSONS[id]) || { n: 0, title: 'LESSON · THE DOOR GUN', lines: ['F DRAWS THE GUN', 'LEFT CLICK · A   RIGHT CLICK · B', 'WALK INTO ONE. YOU ARE AT THE OTHER.'] };
+            var L = (typeof window !== 'undefined' && window.HQ_GUN_LESSONS && window.HQ_GUN_LESSONS[id]) || (typeof window !== 'undefined' && window.HQ_WALK_LESSONS && window.HQ_WALK_LESSONS[id]) || { n: 0, title: 'LESSON · THE DOOR GUN', lines: ['F DRAWS THE GUN', 'LEFT CLICK · A   RIGHT CLICK · B', 'WALK INTO ONE. YOU ARE AT THE OTHER.'] };   // THE TEACHING ROOMS (R9, 2026-09-19): a walk lesson (climb / skate / swim) wears the same plate
+            var walkLesson = !!L.kind;
             var C = (typeof HQ_PORTAL_COLORS !== 'undefined') ? HQ_PORTAL_COLORS : { a: 0x49b0ff, b: 0xff8a2b };
             var steel = _hqMat(null, 1, 1, { color: 0x8c9096, shininess: 90, specular: 0xcfd6dd });
             var y0 = standing ? 1.15 : 0;
@@ -41680,10 +41684,12 @@ const ThreeRenderer = (function () {
             plate.position.set(0, (y0 + H / 2 + 0.05) * U, (D + 0.004) * U); g.add(plate);
             /* the glyph strip along the foot of the plate: A ● cyan, B ■ amber — the shapes the placed frames wear */
             var matA = _hqBasic(C.a), matB = _hqBasic(C.b);
+            if (!walkLesson) {
             var ring = new THREE.Mesh(new THREE.RingGeometry(0.035 * U, 0.05 * U, 24), matA); ring.position.set(-0.18 * U, (y0 + 0.1) * U, (D + 0.006) * U); g.add(ring);
             var sq = new THREE.Mesh(new THREE.RingGeometry(0.035 * U, 0.05 * U, 4), matB); sq.rotation.z = Math.PI / 4; sq.position.set(0.18 * U, (y0 + 0.1) * U, (D + 0.006) * U); g.add(sq);
             var lampA = new THREE.Mesh(new THREE.PlaneGeometry(0.08 * U, 0.012 * U), matA); lampA.position.set(-0.18 * U, (y0 + 0.04) * U, (D + 0.006) * U); g.add(lampA);
             var lampB = new THREE.Mesh(new THREE.PlaneGeometry(0.08 * U, 0.012 * U), matB); lampB.position.set(0.18 * U, (y0 + 0.04) * U, (D + 0.006) * U); g.add(lampB);
+            } else { var strip = new THREE.Mesh(new THREE.PlaneGeometry(0.5 * U, 0.012 * U), _hqBasic(0x7dffb0)); strip.position.set(0, (y0 + 0.06) * U, (D + 0.006) * U); g.add(strip); }   // a walk lesson: the walker's green underline
             var num = (typeof _hzTextTex === 'function') ? _hzTextTex('hq_lesson_no_' + (L.n | 0), [String(L.n | 0)], { w: 128, h: 128, bg: '#e8e2cc', color: '#2b2f36', pad: 0.18, weight: 'bold', font: 'Georgia, serif' }) : null;
             var badge = new THREE.Mesh(new THREE.CircleGeometry(0.075 * U, 24), num ? new THREE.MeshBasicMaterial({ map: num }) : _hqBasic(0xe8e2cc)); badge.position.set((W / 2 - 0.02) * U, (y0 + H - 0.02) * U, (D + 0.008) * U); g.add(badge);
             return g;
@@ -45098,6 +45104,13 @@ const ThreeRenderer = (function () {
             [['swim', 'hqSwim'], ['idle', 'hqSwimIdle']].forEach(function (pr) { var C = HQ_SWIM_CLIPS[pr[0]]; if (!C) return; wlc[pr[1]] = { clip: C.clip, lib: C.lib || 0 }; if (C.ts) wlt[pr[1]] = C.ts; });
             if (typeof HQ_VEHICLE_CLIPS !== 'undefined') [['boat', 'hqSit'], ['sub', 'hqDrive']].forEach(function (pr) { var C = HQ_VEHICLE_CLIPS[pr[0]]; if (!C) return; wlc[pr[1]] = { clip: C.clip, lib: C.lib || 0 }; if (C.ts) wlt[pr[1]] = C.ts; });
             def = Object.assign({}, def, { libClips: wlc, libTimeScales: wlt });
+        }
+        /* THE CLIMB (AREA_CONTENT_PLAN D1, 2026-09-19): the walker's LADDER clips (sprites.js HQ_CLIMB_CLIPS — the swim
+           stroke stood up, the float as the hang, UAL2's ClimbUp_1m as the mantle over the head) */
+        if (spec.kind === 'player' && def.libClips && typeof HQ_CLIMB_CLIPS !== 'undefined' && !def.libClips.hqClimb) {
+            var clc = Object.assign({}, def.libClips), clt = Object.assign({}, def.libTimeScales);
+            [['climb', 'hqClimb'], ['hang', 'hqClimbIdle'], ['mantle', 'hqMantle']].forEach(function (pr) { var C = HQ_CLIMB_CLIPS[pr[0]]; if (!C) return; clc[pr[1]] = { clip: C.clip, lib: C.lib || 0 }; if (C.ts) clt[pr[1]] = C.ts; });
+            def = Object.assign({}, def, { libClips: clc, libTimeScales: clt });
         }
         /* THE DOOR GUN rev 4 (2026-09-16): the walker's GUN clips (sprites.js HQ_GUN_CLIPS — the
            library's pistol aim + shot) beside the ride clip; the roster never wears them */
@@ -48944,6 +48957,168 @@ const ThreeRenderer = (function () {
         },
     });
 
+    /* ══ THE CLIMB — LADDERS, ROPES, VINES, CHAINS, PIPES, THE CLIMBABLE WALL (AREA_CONTENT_PLAN §4 / D1, 2026-09-19) ══
+       ONE feature kind, ONE walker mode, six looks. A `climb` row (a terrain room's `terrain.features`, compiled by data.js
+       hqTerrainClimbs into info.climbs; a plain box room's `room.climbs`, compiled here against the room's own floor and
+       its blocker tops) is a vertical LINE at (x, z) from y0 to y1, `face` = the heading the climber faces (the mass the
+       ladder leans on is that way). THE RULE: walk INTO the foot (the push toward the mass) and the walker is on the line —
+       W / S ride it at HQ_TERRAIN_RULES.climbSpeed (a rope / vine / chain slower), SPACE lets go (a drop, the walker's own
+       fall), the head hands the walker ONTO the tier with a mantle (UAL2 ClimbUp_1m), the foot hands it back to the ground;
+       walking OFF a tier's edge over a ladder's head (the push away from the mass, within reach of the head spot) mounts it
+       from the top. The rider steps off the deck at a foot; the swimmer never climbs (the pool ladder is a wade). The
+       SOLVER already carries the line as an edge (data.js hqTerrainClimbEdges), so nothing here decides reachability.
+       A walker mode, never a game mode: nothing on `state`, nothing relayed (RULE #2). Kill-switch EW_HQ_NO_CLIMB.
+       Clips: sprites.js HQ_CLIMB_CLIPS baked as hqClimb / hqClimbIdle / hqMantle (the swim stroke stood up — _hqTickChars
+       pitches the model nose-up on the line). Beats reach map.js through opts.onClimb ({ kind: 'near' | 'climb', … }). */
+    var HQ_CLIMB_DEFAULT = { reach: 0.6, speed: 1.6, mount: 0.3, hang: 0.34, slow: { rope: 0.8, vine: 0.75, chain: 0.85, wall: 0.7, pipe: 0.9 } };
+    function _hqClimbRules() {
+        var R = (typeof HQ_TERRAIN_RULES !== 'undefined') ? HQ_TERRAIN_RULES : ((typeof window !== 'undefined' && window.HQ_TERRAIN_RULES) || {});
+        return { reach: (R.climbReach != null) ? R.climbReach : HQ_CLIMB_DEFAULT.reach, speed: (R.climbSpeed != null) ? R.climbSpeed : HQ_CLIMB_DEFAULT.speed, mount: (R.climbMount != null) ? R.climbMount : HQ_CLIMB_DEFAULT.mount, hang: HQ_CLIMB_DEFAULT.hang, slow: HQ_CLIMB_DEFAULT.slow };
+    }
+    function _hqClimbOff() { return typeof window !== 'undefined' && !!window.EW_HQ_NO_CLIMB; }
+    function _hqClimbEmit(ev) { var H = _hq; if (!H || !H.opts || !H.opts.onClimb) return; try { H.opts.onClimb(ev); } catch (e) {} }
+    /* a box room's rows compiled like the terrain's: the foot on the floor there, the head on the blocker top at the head spot */
+    function _hqClimbCompileBox(rows) {
+        var out = [], R = _hqClimbRules();
+        (rows || []).forEach(function (f, i) {
+            if (!f || typeof f.x !== 'number' || typeof f.z !== 'number') return;
+            var face = (typeof f.face === 'number') ? ((f.face % 360) + 360) % 360 : 0, fr = face * Math.PI / 180, ux = Math.sin(fr), uz = -Math.cos(fr);
+            var fx = f.x - ux * R.reach, fz = f.z - uz * R.reach, hx = f.x + ux * R.mount, hz = f.z + uz * R.mount;
+            var y0 = (typeof f.y0 === 'number') ? f.y0 : _hqSurface(fx, fz, null, true); if (y0 == null || !isFinite(y0)) y0 = 0;
+            var y1 = (typeof f.y1 === 'number') ? f.y1 : _hqBlockerFloor(hx, hz, 1e6);
+            if (y1 == null || !isFinite(y1) || y1 - y0 < 0.9) { console.warn('[HQ] climb', i, 'has no tier at its head (y1', y1, ') — dropped'); return; }
+            var look = f.look || 'ladder';
+            out.push({ id: f.id || (look + ':' + i), x: f.x, z: f.z, y0: y0, y1: y1, face: face, look: look, w: f.w || (look === 'ladder' ? 0.6 : look === 'wall' ? 1.2 : 0.35), ux: ux, uz: uz, fx: fx, fz: fz, hx: hx, hz: hz, len: y1 - y0, box: true });
+        });
+        return out;
+    }
+    /* the pieces: every look in its own group at the line, local +Z toward the mass, local +X the lateral */
+    function _hqBuildClimbs(room) {
+        var H = _hq; if (!H) return;
+        H.climbs = [];
+        var list = [];
+        if (H.terrain && H.terrain.climbs) list = list.concat(H.terrain.climbs.map(function (c) { return Object.assign({}, c); }));
+        if (room.climbs && room.climbs.length) list = list.concat(_hqClimbCompileBox(room.climbs));
+        if (!list.length) return;
+        var U = _hqUnits(), G = H.shellGroup, rng = _mulberry32(0x5c11 + list.length);
+        var steel = new THREE.MeshPhongMaterial({ color: 0x8e9399, shininess: 70, specular: 0xb9c0c6 }); steel.emissive = new THREE.Color(0x141618);
+        var iron = new THREE.MeshPhongMaterial({ color: 0x4a4d52, shininess: 40, specular: 0x6b7076 }); iron.emissive = new THREE.Color(0x0e0f11);
+        var wood = _hqMat('wood', 1, 1, { color: 0xb08a5a, shininess: 6 });
+        var hemp = new THREE.MeshLambertMaterial({ color: 0xb59a6a }); hemp.emissive = new THREE.Color(0x1a1408);
+        var vineMat = new THREE.MeshLambertMaterial({ color: 0x4f6a2e }); vineMat.emissive = new THREE.Color(0x0c1408);
+        var leafMat = new THREE.MeshLambertMaterial({ color: 0x5e9a3a, side: THREE.DoubleSide }); leafMat.emissive = new THREE.Color(0x0e1c08);
+        var holdMat = new THREE.MeshPhongMaterial({ map: (H.terrain && typeof _hzTex === 'function') ? (_hzTex(H.terrain.cliff) || null) : null, color: 0xc9c2b6, shininess: 3 }); holdMat.emissive = new THREE.Color(0x101010);
+        list.forEach(function (c) {
+            var g = new THREE.Group(); g.position.set(c.x * U, c.y0 * U, c.z * U); g.rotation.y = _hqHeadingYaw(c.face);
+            var L = c.len, w = c.w, top = L + 0.15;
+            var mk = function (geo, mat) { var m = new THREE.Mesh(geo, mat); m.castShadow = true; g.add(m); return m; };
+            if (c.look === 'ladder') {
+                var rail = c.box ? steel : wood;
+                [-w / 2, w / 2].forEach(function (lx) { var r = mk(new THREE.BoxGeometry(0.05 * U, (top + 0.1) * U, 0.05 * U), rail); r.position.set(lx * U, (top + 0.1) / 2 * U, 0.06 * U); });
+                for (var y = 0.3; y < L + 0.05; y += 0.3) { var rung = mk(new THREE.CylinderGeometry(0.018 * U, 0.018 * U, w * U, 8), rail); rung.rotation.z = Math.PI / 2; rung.position.set(0, y * U, 0.06 * U); }
+                for (var by = 0.9; by < L; by += 1.8) { var br = mk(new THREE.BoxGeometry(0.04 * U, 0.04 * U, 0.2 * U, 1, 1, 1), iron); br.position.set(0, by * U, 0.16 * U); }
+            } else if (c.look === 'rope') {
+                var rope = mk(new THREE.CylinderGeometry(0.028 * U, 0.028 * U, (top + 0.05) * U, 8), hemp); rope.position.set(0, (top + 0.05) / 2 * U, 0.05 * U);
+                for (var ky = 0.35; ky < L; ky += 0.45) { var knot = mk(new THREE.SphereGeometry(0.06 * U, 8, 6), hemp); knot.position.set(0, ky * U, 0.05 * U); knot.scale.y = 0.7; }
+                var eye = mk(new THREE.TorusGeometry(0.07 * U, 0.02 * U, 6, 12), iron); eye.position.set(0, (top + 0.05) * U, 0.05 * U); eye.rotation.y = Math.PI / 2;
+                var peg = mk(new THREE.BoxGeometry(0.06 * U, 0.06 * U, 0.34 * U), iron); peg.position.set(0, (top + 0.05) * U, 0.2 * U);
+            } else if (c.look === 'vine') {
+                for (var s = 0; s < 3; s++) { var vn = mk(new THREE.CylinderGeometry(0.022 * U, 0.03 * U, top * U, 6), vineMat); vn.position.set(Math.sin(s * 2.1) * 0.07 * U, top / 2 * U, (0.05 + Math.cos(s * 2.1) * 0.03) * U); vn.rotation.z = (rng() - 0.5) * 0.12; vn.rotation.x = (rng() - 0.5) * 0.08; }
+                for (var ly = 0.25; ly < top; ly += 0.32) { var leaf = mk(new THREE.PlaneGeometry(0.2 * U, 0.13 * U), leafMat); leaf.position.set((rng() - 0.5) * 0.28 * U, ly * U, (0.04 + rng() * 0.06) * U); leaf.rotation.set((rng() - 0.5) * 1.2, rng() * Math.PI * 2, (rng() - 0.5) * 1.0); leaf.castShadow = false; }
+            } else if (c.look === 'chain') {
+                for (var cy = 0.05, n = 0; cy < top; cy += 0.14, n++) { var link = mk(new THREE.TorusGeometry(0.075 * U, 0.017 * U, 6, 12), iron); link.position.set(0, cy * U, 0.05 * U); link.rotation.y = (n % 2) ? Math.PI / 2 : 0; }
+                var ring = mk(new THREE.TorusGeometry(0.1 * U, 0.02 * U, 6, 14), iron); ring.position.set(0, top * U, 0.05 * U); ring.rotation.x = Math.PI / 2;
+                var bolt = mk(new THREE.BoxGeometry(0.08 * U, 0.08 * U, 0.3 * U), iron); bolt.position.set(0, top * U, 0.18 * U);
+            } else if (c.look === 'pipe') {
+                var pipe = mk(new THREE.CylinderGeometry(0.06 * U, 0.06 * U, (top + 0.2) * U, 10), iron); pipe.position.set(0, (top + 0.2) / 2 * U, 0.09 * U);
+                for (var py = 0.5; py < top; py += 1.2) { var bk = mk(new THREE.BoxGeometry(0.2 * U, 0.05 * U, 0.2 * U), iron); bk.position.set(0, py * U, 0.16 * U); }
+                var elbow = mk(new THREE.SphereGeometry(0.065 * U, 8, 6), iron); elbow.position.set(0, (top + 0.2) * U, 0.09 * U);
+            } else {   // the climbable wall: hand-holds up a band
+                for (var hy = 0.25, hn = 0; hy < L + 0.05; hy += 0.38, hn++) { var hold = mk(new THREE.BoxGeometry(0.16 * U, 0.06 * U, 0.09 * U), holdMat); hold.position.set(((hn % 2) ? 0.22 : -0.22) * w * U + (rng() - 0.5) * 0.08 * U, hy * U, 0.03 * U); hold.rotation.z = (rng() - 0.5) * 0.3; }
+            }
+            g.traverse(function (n) { if (n.isMesh) n._ew_pixelate = true; });
+            G.add(g);
+            c.group = g;
+            H.climbs.push(c);
+        });
+    }
+    /* the climb within reach of the walker: { c, end: 'foot' | 'head' } or null */
+    function _hqClimbNear(pl) {
+        var H = _hq, list = H && H.climbs; if (!list || !list.length) return null;
+        var best = null, bd = 1e9;
+        for (var i = 0; i < list.length; i++) {
+            var c = list[i];
+            var df = Math.hypot(pl.x - c.fx, pl.z - c.fz), dh = Math.hypot(pl.x - c.hx, pl.z - c.hz);
+            if (df <= 0.8 && Math.abs(pl.y - c.y0) <= 0.7 && df < bd) { bd = df; best = { c: c, end: 'foot' }; }
+            if (dh <= 0.85 && Math.abs(pl.y - c.y1) <= 0.7 && dh < bd) { bd = dh; best = { c: c, end: 'head' }; }
+        }
+        return best;
+    }
+    /* onto the line: the body hangs `hang` off the line on the open side, facing the mass */
+    function _hqClimbStart(pl, c, end) {
+        var H = _hq, R = _hqClimbRules();
+        if (H.ride && H.ride.on) _hqRideToggle(false, true);   // the rider steps off the deck at a ladder
+        if (H.portal && H.portal.drawn) { try { _hqPortalDraw(false); } catch (e) {} }
+        pl.climb = { c: c, end: end, t: 0, moving: false };
+        pl.x = c.x - c.ux * R.hang; pl.z = c.z - c.uz * R.hang;
+        pl.y = (end === 'head') ? Math.max(c.y0, c.y1 - 0.35) : Math.max(c.y0, Math.min(c.y1, pl.y));
+        pl.visY = pl.y; pl.air = false; pl.vy = 0; pl.jumpT = -1; pl.mvx = 0; pl.mvz = 0; pl.pushX = 0; pl.pushZ = 0;
+        pl.targetYaw = Math.atan2(c.ux, c.uz); pl.yaw = pl.targetYaw;
+        pl._jumpLatch = !!(H.keys && H.keys.space);   // a held SPACE never lets go on the first frame
+        H.climbNear = null;
+        _hqClimbEmit({ kind: 'climb', on: true, end: end, look: c.look, id: c.id });
+    }
+    /* off the line: onto the tier (the mantle), back to the ground, or a drop */
+    function _hqClimbStop(pl, why) {
+        var H = _hq, cl = pl.climb; if (!cl) return;
+        var c = cl.c, U = _hqUnits();
+        pl.climb = null;
+        if (why === 'top') {
+            pl.x = c.hx + c.ux * 0.25; pl.z = c.hz + c.uz * 0.25; pl.y = c.y1; pl.visY = pl.y; pl.air = false; pl.vy = 0;
+            if (pl.entry && pl.entry.actions && pl.entry.actions.hqMantle) { var act = pl.entry.actions.hqMantle, clip = act.getClip(); pl.strike = { name: 'hqMantle', until: performance.now() + Math.min(900, (clip && clip.duration ? clip.duration / (Math.abs(act.timeScale) || 1) * 1000 : 600)), fresh: true }; }
+        } else if (why === 'foot') {
+            pl.x = c.fx - c.ux * 0.1; pl.z = c.fz - c.uz * 0.1; pl.y = c.y0; pl.visY = pl.y; pl.air = false; pl.vy = 0;
+        } else {   // let go: a push off the mass, the walker's own fall
+            pl.air = true; pl.vy = 1.6; pl.jumpT = -1; pl.mvx = -c.ux * 1.4; pl.mvz = -c.uz * 1.4;
+        }
+        pl.entry.group.position.set(pl.x * U, pl.visY * U, pl.z * U);
+        _hqClimbEmit({ kind: 'climb', on: false, why: why, look: c.look, id: c.id, y: pl.y });
+    }
+    /* after a walker frame: a foot walked into, a head walked off — the mount */
+    function _hqClimbCheck(pl) {
+        var H = _hq; if (!H || !H.climbs || !H.climbs.length || pl.climb) return;
+        if (_hqClimbOff() || pl.swim || (H.vehicle && H.vehicle.on) || H.snap || H.paused) return;
+        var near = _hqClimbNear(pl);
+        var key = near ? (near.c.id + ':' + near.end) : null;
+        if (key !== (H.climbNear || null)) { H.climbNear = key; _hqClimbEmit({ kind: 'near', on: !!near, end: near ? near.end : null, look: near ? near.c.look : null }); }
+        if (!near) return;
+        var c = near.c, push = (pl.pushX || 0) * c.ux + (pl.pushZ || 0) * c.uz;
+        if (near.end === 'foot' && push > 0.9 && (!pl.air || pl.vy <= 0.2)) _hqClimbStart(pl, c, 'foot');
+        else if (near.end === 'head' && push < -0.9 && !pl.air) _hqClimbStart(pl, c, 'head');
+    }
+    /* THE CLIMB, per frame — in place of _hqTickWalker's movement */
+    function _hqTickClimb(dt) {
+        var H = _hq, pl = H.player, cl = pl.climb, k = H.keys, R = _hqClimbRules();
+        if (!cl || !cl.c) { pl.climb = null; return; }
+        var c = cl.c, sy0 = pl.y;
+        var dir = H.paused ? 0 : (((k.w || k.up) ? 1 : 0) - ((k.s || k.down) ? 1 : 0));
+        var speed = R.speed * ((R.slow && R.slow[c.look]) || 1);
+        cl.moving = dir !== 0;
+        if (!H.paused && k.space && !pl._jumpLatch) { pl._jumpLatch = true; _hqClimbStop(pl, 'drop'); return; }
+        pl._jumpLatch = !!k.space;
+        pl.y += dir * speed * dt;
+        if (pl.y >= c.y1 - 0.02) { pl.y = c.y1; _hqClimbStop(pl, 'top'); return; }
+        if (pl.y <= c.y0 + 0.02 && dir < 0) { pl.y = c.y0; _hqClimbStop(pl, 'foot'); return; }
+        if (pl.y < c.y0) pl.y = c.y0;
+        cl.t += dt;
+        pl.x = c.x - c.ux * R.hang; pl.z = c.z - c.uz * R.hang;
+        pl.moving = false; pl.running = false; pl.pushX = 0; pl.pushZ = 0; pl.mvx = 0; pl.mvz = 0; pl.air = false; pl.vy = 0;
+        pl.visY += (pl.y - pl.visY) * Math.min(1, dt * 16); if (Math.abs(pl.y - pl.visY) < 0.004) pl.visY = pl.y;
+        if (dt > 0.0005) { pl.velX = 0; pl.velZ = 0; pl.velY = (pl.y - sy0) / dt; }
+        pl.targetYaw = Math.atan2(c.ux, c.uz); pl.yaw = pl.targetYaw;
+        var U = _hqUnits();
+        pl.entry.group.position.set(pl.x * U, pl.visY * U, pl.z * U);
+    }
     /* ── per-frame ─────────────────────────────────────────────────────── */
     /* THE SLIDE (THE FIELD stage A — Phase 9 Delivery 6, 2026-09-16): between the strike frame and the cut the
        walker and the native EASE onto their cell centres (the user's rule: "slid to the nearest square tile of
@@ -49004,6 +49179,7 @@ const ThreeRenderer = (function () {
         /* THE DEEP (2026-09-18): aboard the skiff / the bathyscaphe the frame is the helm's; in deep water it is the swimmer's */
         if (H.vehicle && H.vehicle.on) { _hqTickVehicle(dt); return; }
         if (pl.swim) { _hqTickSwim(dt); return; }
+        if (pl.climb) { _hqTickClimb(dt); return; }   // THE CLIMB (AREA_CONTENT_PLAN D1, 2026-09-19): on a ladder / rope / vine the frame is the climb's
         var sx0 = pl.x, sz0 = pl.z, sy0 = pl.y;   // THE CARRY (rev 4): the frame's displacement is the walk's velocity
         var ix = H.paused ? 0 : (((k.d || k.right) ? 1 : 0) - ((k.a || k.left) ? 1 : 0));
         var iy = H.paused ? 0 : (((k.s || k.down) ? 1 : 0) - ((k.w || k.up) ? 1 : 0));
@@ -49079,6 +49255,7 @@ const ThreeRenderer = (function () {
         var U = _hqUnits();
         pl.entry.group.position.set(pl.x * U, pl.visY * U, pl.z * U);
         _hqSwimCheck(pl);   // THE DEEP (2026-09-18): deep water under the feet — or a drowned room — makes the walker the swimmer
+        _hqClimbCheck(pl);   // THE CLIMB (2026-09-19): a ladder's foot walked into (or its head walked off) puts the walker on the line
         /* NO auto-follow (2026-09-05): the mouse owns the camera outright —
            hover-look and pointer lock both steer it — so walking never swings
            the view behind the runner any more (that swing, kicking in 1.4 s
@@ -49122,6 +49299,7 @@ const ThreeRenderer = (function () {
                 if (H.ride && H.ride.on) { var bph = _hqRideBailPhase(H.ride); want = bph ? (bph === 'fall' ? 'hqFall' : 'hqGetup') : (ch.jumpT >= 0) ? 'jump' : ((H.ride.pushAnim > 0) ? 'hqPush' : ((e.actions && e.actions.hqRide) ? 'hqRide' : 'idle')); }   // SKATEBOARDING (9.8): the push / the kick is a stride (rev 3: the jog, hqPush), the air is the jump clip, the rest is THE RIDE stance (rev 2: Idle_10, sideways on the deck); a bail = the fall clip then the get-up (rev 3)
                 else if (H.vehicle && H.vehicle.on) want = (H.vehicle.kind === 'sub') ? 'hqDrive' : 'hqSit';   // THE DEEP (2026-09-18): at the helm — the library's driving loop in the bathyscaphe, the sitting idle in the skiff
                 else if (ch.swim) want = ch.moving ? 'hqSwim' : 'hqSwimIdle';   // THE DEEP: the swimmer — Swim_Fwd_Loop / Swim_Idle_Loop (sprites.js HQ_SWIM_CLIPS)
+                else if (ch.climb) want = ch.climb.moving ? 'hqClimb' : 'hqClimbIdle';   // THE CLIMB (2026-09-19): the stroke stood up on the line, the hang between rungs (sprites.js HQ_CLIMB_CLIPS)
                 else if (want === 'idle' && H.portal && H.portal.drawn && e.actions && e.actions.hqAim) want = 'hqAim';   // THE DOOR GUN rev 4: drawn and standing, the officer HOLDS the gun up (the library's pistol aim)
                 /* THE ENCOUNTER (9.4): a thrown attack / cast clip owns the rig until its end */
                 if (ch.strike) { if (performance.now() < ch.strike.until && ch.jumpT < 0) want = ch.strike.name; else ch.strike = null; }
@@ -49129,7 +49307,9 @@ const ThreeRenderer = (function () {
                 var leanT = ch.moving ? (ch.running ? 0.16 : 0.07) : 0;
                 /* THE DEEP (2026-09-18): a DIVER pitches with the way it swims — nose down going down, up coming up (the prone clip pivots about its own root); afloat it lies level */
                 if (ch.swim) { var shs = Math.hypot(ch.svx || 0, ch.svz || 0), svy = ch.svy || 0; leanT = ch.dive ? Math.max(-1.1, Math.min(1.1, -Math.atan2(svy, Math.max(0.35, shs)))) : 0; }
-                lean += (leanT - lean) * Math.min(1, dt * (ch.swim ? 4 : 10));
+                /* THE CLIMB (2026-09-19): the prone stroke pitched NOSE-UP on the line — the chest to the rungs, the head up (the mantle at the top plays level) */
+                if (ch.climb && !ch.strike) leanT = -1.3;
+                lean += (leanT - lean) * Math.min(1, dt * (ch.swim ? 4 : ch.climb ? 7 : 10));
                 e.model._ew_lean = lean; e.model.rotation.x = lean;
                 if (e.actions && e.actions.walk) {
                     var ts0 = e.actions.walk._ew_ts0 || 1;
@@ -49543,7 +49723,7 @@ const ThreeRenderer = (function () {
         var H = { ghost: true, opts: {}, host: null, room: copy, profile: null, snap: null, scene: null, camera: null, cube: null,
                   shellGroup: new THREE.Group(), doorGroup: new THREE.Group(), propGroup: new THREE.Group(), charGroup: new THREE.Group(),
                   doors: [], counters: [], chars: [], blockers: [], landings: [], player: null, fxPulse: [], site: null, sky: null, setting: null, gallery: null,
-                  rails: [], ramps: [], ride: null, finds: [], findLights: 0,
+                  rails: [], ramps: [], ride: null, finds: [], findLights: 0, climbs: [], climbNear: null,
                   portal: { drawn: false, ghost: null, aim: null, placed: {}, lastKey: '', hold: null, cross: null, issued: false, sight: null, fAt: 0, fFired: false, slot: 'a', vm: null },
                   tickers: [], propLights: Math.max(0, HQ_PROP_LIGHT_MAX - HQ_BATTLE_ROOM_LIGHTS), props: [], focus: null, tabletops: [],
                   keys: {}, drag: null, lastDragAt: 0, fp: false, paused: true, ready: false, t0: 0, lastMs: 0, lastDebug: 0,
@@ -49630,6 +49810,7 @@ const ThreeRenderer = (function () {
             doors: [], counters: [], chars: [], blockers: [], landings: [], player: null, fxPulse: [], site: null, sky: null, setting: null,
             gallery: null,   /* THE GALLERY (9.2 stage 2, 2026-09-15 rev 20): the box room's two-floor frame (_hqGalleryFrame), read by _hqSurface / _hqAirOK / _hqCamBlocked / _hqBlockerFloor */
             rails: [], ramps: [], ride: null,   /* SKATEBOARDING (9.8, 2026-09-15): THE PARK RULE's registers (every builder pushes its rails / ramps) and the rider (_hqRideArm) */
+            climbs: [], climbNear: null,   /* THE CLIMB (AREA_CONTENT_PLAN D1, 2026-09-19): the room's ladders / ropes / vines (_hqBuildClimbs) and the one within reach */
             boats: [], vehicle: null, seaFx: null, seaWayLatch: null,   /* THE DEEP (2026-09-18): the moored vehicles (the prop placer registers a catalogue `vehicle`), the one you are aboard, the water's effects, the whirlpool latch */
             finds: [], findLights: 0,   /* THE FINDS (9.1, 2026-09-15): the takeable objects standing in the room (_hqPlaceFinds) and the count of their point lights */
             portal: { drawn: false, ghost: null, aim: null, placed: {}, lastKey: '', hold: null, cross: null, issued: !!(opts.portal && opts.portal.issued), sight: null, fAt: 0, fFired: false, slot: (opts.portal && (opts.portal.slot === 'b')) ? 'b' : 'a', vm: null },   /* rev 4: `vm` = the first-person viewmodel; rev 5: `slot` = the LAST button pressed (the sights + the selector are gone — LEFT = A, RIGHT = B) */   /* THE DOOR GUN (9.5, rev 13; rev 2 2026-09-15: `hold` = the mouth you came out of, `cross` = the entry's speed): the drawn state, the ghost, the last aim, the placed door records by slot */
@@ -49754,6 +49935,7 @@ const ThreeRenderer = (function () {
         try { _hqBuildDoors(room); } catch (e) { console.error('[HQ] doors failed', e); }
         try { _hqBuildCounters(room); } catch (e) { console.error('[HQ] counters failed', e); }
         try { _hqPlaceProps(room); } catch (e) { console.error('[HQ] props failed', e); }
+        try { _hqBuildClimbs(room); } catch (e) { console.error('[HQ] climbs failed', e); }   // THE CLIMB (2026-09-19): after the props — a box room's ladder heads on a platform's top
         try { _hqPlaceFinds(room); } catch (e) { console.error('[HQ] finds failed', e); }
         /* THE DEEP (2026-09-18): a room with a sea — the underwater look's pieces, the first frame's state */
         try { _hqSeaArm(room); } catch (e) { console.error('[HQ] sea failed', e); }
@@ -50064,6 +50246,9 @@ const ThreeRenderer = (function () {
         ride: function () { if (!_hq || !_hq.ride) return null; var R = _hq.ride; return { on: R.on, issued: R.issued, v: R.v, hd: R.hd, air: !!(_hq.player && _hq.player.air), grind: R.grind ? { s: R.grind.s, dir: R.grind.dir, t: R.grind.t } : null, trick: R.trick ? R.trick.id : null, combo: R.combo ? { text: R.combo.tricks.join(' + '), pts: R.combo.pts, mult: R.combo.tricks.length } : null, bail: R.bailT > 0 }; },
         rails: function () { return _hq ? (_hq.rails || []).slice() : []; },
         ramps: function () { return _hq ? (_hq.ramps || []).slice() : []; },
+        /* THE CLIMB (AREA_CONTENT_PLAN D1, 2026-09-19): the room's lines and the walker on one */
+        climbs: function () { return _hq ? (_hq.climbs || []).map(function (c) { return { id: c.id, look: c.look, x: c.x, z: c.z, y0: c.y0, y1: c.y1, face: c.face }; }) : []; },
+        climbing: function () { var pl = _hq && _hq.player; return !!(pl && pl.climb); },
         portalDoors: function () { if (!_hq || !_hq.portal) return []; var o = []; for (var s in _hq.portal.placed) { var r = _hq.portal.placed[s]; o.push({ slot: s, x: r.px, y: r.py, z: r.pz, face: r.door.face, surf: r.portalSurf, leaf: r.leaf }); } return o; },
         finds: function () { return _hq ? _hq.finds.map(function (f) { return { id: f.id, kind: f.kind, x: f.x, y: f.y, z: f.z }; }) : []; },
         pos: function () { if (!_hq || !_hq.player) return null; var p = _hq.player; return { x: p.x, z: p.z, y: p.y, deg: _hqNormDeg(Math.atan2(p.x, -p.z) * 180 / Math.PI), r: Math.hypot(p.x, p.z) }; },

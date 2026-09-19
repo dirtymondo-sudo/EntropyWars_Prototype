@@ -436,6 +436,35 @@ The design (build in this order; each step is one delivery):
 
 ---
 
+## 9b. THE CONTENT RULES (AREA_CONTENT_PLAN §3, the user's yes 2026-09-19)
+
+Every explorable part is measured by `node check-area-content.js` (a module: `audit()`, `RULES`) and
+held by `area-content.test.js` — as WARNINGS until D3 brings the twenty areas up to them, then hard.
+The prefab parts (family B) take R3 / R4 / R8 only.
+
+- **R1 CLIMB DENSITY** — ≥ 0.6 climb features per 100 m² of open floor (0.8 closed), ≥ 3 kinds
+  (stairs · ramp · plateau · deck · wall · climb · float), the height range ≥ 6 m open / 4 m closed.
+- **R2 THE 100-METRE PULL** — no reachable node farther than 50 m from a pull (a sky landmark, a
+  tier ≥ 3 m, a prop ≥ 3 m, the marker).
+- **R3 DOOR EXPOSURE** — from a landing at most ONE other door in a clear line at eye height; two
+  doors on a wall ≥ 12 m apart, never three.
+- **R4 THE EARNED EXIT** — ≥ 1 exit that is a draught, a way, a door on a tier (≥ 1.5 m over the
+  lowest sill) or a door under the water; ≥ ⅓ of the exits earned.
+- **R5 THE TEASE** — every earned exit (a draught excepted) is SEEN from a reachable node ≥ 6 m off
+  with ≥ 0.8 m of height between them before it is reached.
+- **R6 PARTI + TYPOLOGY** — `parti` (one sentence) and `typology` (bowl · ring · switchback · hub ·
+  loop · pearls · corridor) on the spec / the room.
+- **R7 SIZE** — a city part ≥ 200 × 160 with ≥ 3 districts; an open wild part ≥ 60 × 50.
+- **R8 CONTENT DENSITY** — ≥ 1 prop / native / scatter per 60 m² of OPEN floor.
+- **R9 THE TEACHING ROOM** — every walker mechanic has ONE room with a lesson plaque
+  (`HQ_GUN_LESSONS` the door gun, `HQ_WALK_LESSONS` the climb / the skate / the swim). Hard.
+
+**THE CLIMB** is the vertical feature the rules count: a `terrain.features` row
+`{ k: 'climb', x, z, y0?, y1?, face, look: ladder | rope | vine | chain | pipe | wall }` (a plain box
+room: `room.climbs`, the head on a blocker top). The solver takes it as an edge — a ladder alone may
+reach a tier, a pit with a ladder out is not a trap, a tape above one is not hard. `face` = the way the
+climber faces (the mass is that way); the head lands `climbMount` past the tier's edge blend.
+
 ## 10. THE LOG
 
 - **2026-09-17 — D.U.M.B. (complex candidate #5): THE HALLS floor plan (family C's generator) and seven
@@ -571,3 +600,11 @@ The design (build in this order; each step is one delivery):
   as scars). Log: DOOR_HQ_BUILD_PLAN §9; assets: MODEL_INDEX §3p.
 
 - **2026-09-19 — AREA_CONTENT_PLAN.md (the user's brief: the rooms feel like boxes; more climbing — ramps, stairs, ladders, vines, ropes; too many doors in view; discovery should reward; bigger cities).** The building was MEASURED (`node check-area-content.js`): the cave chambers carry 0.75 climb features / 100 m², the twenty generated areas 0.23, the cities 0.04; 93 of 132 explorable parts have no hidden exit; the "doors in view" problem is EXPOSURE (flat floor, flat wall), not spacing. The plan's rules R1–R9 (climb density, the 100-metre pull, door exposure, the earned exit, the tease, parti + typology, size, content density, the teaching room) and the `climb` mechanic (ladder · rope · vine · chain · pipe · wall) are in that file, awaiting the user's decisions (§6) before they are added here as rules. The sources: bytecauldron/awesome-level-design (the weenie taxonomy, the door problem, the Level Design Book's layout / typology / blockout chapters, the list's tips).
+- **2026-09-19 — AREA_CONTENT_PLAN D1 (the user: yes to all the questions / the recommended).** The decisions are §6 of that
+  file; the rules are §9b here. Built: THE CLIMB (data.js `climb` rows + the solver's edge; three-renderer.js "THE CLIMB" — the
+  six looks, the mount at a foot walked into / a head walked off, W / S / SPACE, the mantle; sprites.js `HQ_CLIMB_CLIPS`; the
+  hint line), THE TEACHING ROOMS (`HQ_WALK_LESSONS`: the garage's DOCK OFFICE up one ladder under a 5.4 m ceiling, the skate
+  plaque in Room 26, the swim plaque in the natatorium), the audit's R2 / R3 / R5 / R6 / R8 measurements and the warnings test.
+  Next: D2 (Disaster City + the Grid twice the size, three districts each, fire escapes = `climb` chains onto rooftop `deck`
+  runs, the overpass, the undercity, the `districts` plumbing on the `city` plan), then D3 (the twenty areas, two or three
+  a delivery, each to R1–R8), D4 (the door pass over the complexes), D5 (the facility rooms' purpose).

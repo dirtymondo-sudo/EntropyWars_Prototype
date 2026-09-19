@@ -2263,6 +2263,12 @@ if (typeof window !== 'undefined') window.HQ_GUN_CLIPS = HQ_GUN_CLIPS;
 // the bathyscaphe (UAL1 has both).
 const HQ_SWIM_CLIPS = { swim: { clip: 'Swim_Fwd_Loop', lib: 0, ts: 1.0 }, idle: { clip: 'Swim_Idle_Loop', lib: 0, ts: 1.0 } };
 if (typeof window !== 'undefined') window.HQ_SWIM_CLIPS = HQ_SWIM_CLIPS;
+/* THE CLIMB (AREA_CONTENT_PLAN §4, 2026-09-19): the walker's LADDER clips. Neither library carries a ladder loop (UAL2's
+   ClimbUp_1m is a one-shot mantle), so the climb is the breaststroke STOOD UP — Swim_Fwd_Loop pitched vertical with the
+   body facing the rungs reads as a hand-over-hand climb (three-renderer.js _hqTickChars pitches it; a rope / vine runs
+   it slower through `ts`), Swim_Idle_Loop is the hang, ClimbUp_1m the mantle over the head onto the tier. */
+const HQ_CLIMB_CLIPS = { climb: { clip: 'Swim_Fwd_Loop', lib: 0, ts: 0.85 }, hang: { clip: 'Swim_Idle_Loop', lib: 0, ts: 0.7 }, mantle: { clip: 'ClimbUp_1m', lib: 1, ts: 1.3 } };
+if (typeof window !== 'undefined') window.HQ_CLIMB_CLIPS = HQ_CLIMB_CLIPS;
 const HQ_VEHICLE_CLIPS = { boat: { clip: 'Sitting_Idle_Loop', lib: 0, ts: 1.0 }, sub: { clip: 'Driving_Loop', lib: 0, ts: 1.0 } };
 if (typeof window !== 'undefined') window.HQ_VEHICLE_CLIPS = HQ_VEHICLE_CLIPS;
 // A cast member: the shared library + every building pose + a per-character

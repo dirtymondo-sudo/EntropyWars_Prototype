@@ -24362,9 +24362,15 @@ const DOOR_HQ = {
             sub: 'PARKING · LEVEL P1',
             roomNo: 'P1', why: 'the first parking level; there is no P2 on the panel and the ramp does not go there either — the stair by the west wall does (H-Wing); P3 is the D.U.M.B.’s motor pool, down THE RAMP by the same wall (links.garage_motorpool, 2026-09-18)',
             kind: 'box',
+            /* THE CLIMB (AREA_CONTENT_PLAN D1 / R9, 2026-09-19): THE TEACHING ROOM — the ceiling rose 2.8 → 5.4 m for THE DOCK
+               OFFICE, a platform on the west wall reached by ONE ladder (`climbs`: the first climb row in the building, the
+               lesson plaque at its foot); walk off the platform's edge to come down (or S at the head) */
+            climbs: [
+                { id: 'dock_office', x: -12.6, z: -0.42, y1: 3.25, face: 0, look: 'ladder' },   // the climber faces north, the platform's south edge is the mass; the head lands on the landing's top
+            ],
             shell: {
-                w: 30, d: 20, h: 2.8,
-                wallH: 2.8, dadoH: 1.1,
+                w: 30, d: 20, h: 5.4,
+                wallH: 5.4, dadoH: 1.1,
                 floor: 'concrete_floor', wall: 'concrete', dado: 'concrete', trim: 'teal', ceiling: 'concrete',
                 floorColor: 0x9b9a96, wallColor: 0xa8a6a0, dadoColor: 0x6e6c66, ceilColor: 0x8e8c88,
                 pipes: true,
@@ -24435,6 +24441,15 @@ const DOOR_HQ = {
                 { key: 'fire_extinguisher', wall: 'w', z: -6.0 },
                 { key: 'breaker_panel',  wall: 'w', z: 2.0 },
                 { key: 'cardboard_boxes', x: -14.3, z: 0.5, face: 90 },
+                /* THE DOCK OFFICE (THE CLIMB, 2026-09-19): a landing 3 m up the west wall, a desk and a chair on it, a rail on its east edge, the plaque at the ladder's foot */
+                { key: 'stair_landing',  x: -12.6, z: -2.0, y: 3.0 },
+                { key: 'railing_1m',     x: -10.35, z: -2.9, y: 3.25, face: 90 },
+                { key: 'railing_1m',     x: -10.35, z: -1.3, y: 3.25, face: 90 },
+                { key: 'steel_table',    x: -13.6, z: -2.4, y: 3.25, face: 90 },
+                { key: 'folding_chair',  x: -12.7, z: -2.4, y: 3.25, face: 270 },
+                { key: 'papers_b',       x: -13.6, z: -2.2, y: 4.01, face: 10 },
+                { key: 'nameplate',      wall: 'w', z: -2.0, mount: 4.55 },                // THE DOCK OFFICE — the name is on the plate, the office is a desk
+                { key: 'lesson_plaque',  wall: 'w', z: 1.4, mount: 1.35, lesson: 'climb' },
                 { key: 'trash_bin',      x: 13.8, z: 3.5, face: 270 },
                 { key: 'wet_floor_sign', x: -9.5, z: 6.4, face: 200 },
                 { key: 'pipe_run',       x: -8, z: -1.0, face: 90 },
@@ -25702,6 +25717,7 @@ const DOOR_HQ = {
                 { key: 'hook_rail_long', wall: 'e', z: -2.4, mount: 1.8 },
                 { key: 'hook_rail_long', wall: 'e', z: 2.4, mount: 1.8 },
                 { key: 'clipboard',      wall: 'w', z: -2.2, mount: 1.45, rot: -4 },      // the rota; the showers are ticked, the pool is not
+                { key: 'lesson_plaque',  wall: 'w', z: 0.2, mount: 1.35, lesson: 'skate' },   // THE TEACHING ROOMS (R9, 2026-09-19): the deck leans on a locker; the plate says how
                 { key: 'wet_floor_sign', x: -2.9, z: -1.4, face: 30 },
                 { key: 'floor_drain',    x: -3.0, z: -2.1 },
                 { key: 'floor_drain',    x: 1.6, z: 0.2 },
@@ -25762,6 +25778,7 @@ const DOOR_HQ = {
                 { key: 'hook_rail_long', wall: 's', x: 3.0, mount: 1.8 },
                 { key: 'notice_board',   wall: 's', x: 6.5 },                               // THE RULES: no running, no diving, no crossing
                 { key: 'clipboard',      wall: 'e', z: -3.2, mount: 1.45, rot: 5 },
+                { key: 'lesson_plaque',  wall: 'n', x: -2.75, mount: 1.5, lesson: 'swim' },   // THE TEACHING ROOMS (R9, 2026-09-19): the pool teaches the swim
                 { key: 'false_window',   wall: 'n', x: -5.5, mount: 3.1 }, { key: 'false_window', wall: 'n', x: 0, mount: 3.1 }, { key: 'false_window', wall: 'n', x: 5.5, mount: 3.1 },
                 { key: 'floor_drain',    x: -7.4, z: -3.6 }, { key: 'floor_drain', x: 7.4, z: -3.6 }, { key: 'floor_drain', x: -8.3, z: 5.2 }, { key: 'floor_drain', x: 7.4, z: 3.6 },   // rev 22: the south-west drain moved — THE PLUNGE POOL (the seam to the Dutchman's hold) is sunk at (−7.6, 3.4)
                 { key: 'vent_grille',    wall: 'n', x: 8.0, mount: 4.4 },
@@ -35794,6 +35811,8 @@ function hqAreaRoom(mapId, A) {
         spawn: A.spawn || { x: 0, z: d / 2 - 2.6, face: 0 },
     };
     if (A.quiet) room.quiet = true;
+    if (A.parti) room.parti = A.parti;           // AREA_CONTENT_PLAN R6 (2026-09-19): one sentence per space, read by check-area-content.js
+    if (A.typology) room.typology = A.typology;  // … and its typology (bowl · ring · switchback · hub · loop · pearls · corridor)
     return room;
 }
 function hqAreaSites() { const E = (DOOR_HQ.siteRooms || {}).entry || {}; return Object.keys(E); }
@@ -36469,6 +36488,10 @@ const HQ_TERRAIN_RULES = {
        less swimDraft (the body afloat, the head clear; a cell every other swim cell reaches at no climb); an `under` sea (the whole
        room drowned — the abyss) has no climb rule at all: the swimmer flies */
     swimDraft: 1.1,
+    /* THE CLIMB (AREA_CONTENT_PLAN §4, 2026-09-19): a `climb` feature (ladder · rope · vine · chain · pipe · wall) is a vertical
+       LINE the walker rides between two heights — the solver takes it as an EDGE (foot ↔ head), so a tier a ladder alone reaches
+       satisfies every door-reach and return test and a tape above one stops being hard */
+    climbReach: 0.6, climbSpeed: 1.6, climbMount: 0.3,
 };
 function _hqTSmooth(t) { t = t < 0 ? 0 : t > 1 ? 1 : t; return t * t * (3 - 2 * t); }
 function _hqTHash(ix, iz, seed) {
@@ -36643,9 +36666,18 @@ function _hqTReachGrid(info, i0, j0, mask, until) {
     const k0 = j0 * nx + i0; seen.set(k0, y0); q.push([i0, j0, y0]);
     if (until && until.has(k0)) return { seen, path: [k0] };
     const N = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    const CE = hqTerrainClimbEdges(info);   // THE CLIMB (2026-09-19): the edges
     let head = 0;
     while (head < q.length) {
         const p = q[head++];
+        const pk = p[1] * nx + p[0], ce = CE.get(pk);
+        if (ce) for (const e of ce) {
+            const k = e.k; if (seen.has(k)) continue;
+            const i = k % nx, j = (k - i) / nx, y = feet(i, j, null); if (y == null) continue;
+            seen.set(k, y); q.push([i, j, y]);
+            if (from) from.set(k, pk);
+            if (until && until.has(k)) { const path = [k]; let c = k; while (from.has(c)) { c = from.get(c); path.push(c); } return { seen, path }; }
+        }
         for (const n of N) {
             const i = p[0] + n[0], j = p[1] + n[1];
             if (i < 0 || j < 0 || i >= nx || j >= nz) continue;
@@ -36653,7 +36685,7 @@ function _hqTReachGrid(info, i0, j0, mask, until) {
             if (mask && !mask[k]) continue;
             const y = feet(i, j, p[2]); if (y == null || y - p[2] > climbLim) continue;
             seen.set(k, y); q.push([i, j, y]);
-            if (from) from.set(k, p[1] * nx + p[0]);
+            if (from) from.set(k, pk);
             if (until && until.has(k)) { const path = [k]; let c = k; while (from.has(c)) { c = from.get(c); path.push(c); } return { seen, path }; }
         }
     }
@@ -36669,9 +36701,12 @@ function _hqTReachJump(info, seeds, mask, climb) {
     const feet = (i, j, prev) => { const x = info.x0 + i * res, z = info.z0 + j * res; if (Math.abs(x) > bx || Math.abs(z) > bz) return null; return hqTerrainFeet(info, x, z, prev); };
     seeds.forEach(sd => { const k = sd[1] * nx + sd[0]; if (seen.has(k)) return; const y = feet(sd[0], sd[1], null); if (y == null) return; seen.set(k, y); q.push([sd[0], sd[1], y]); });
     const N = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    const CE = hqTerrainClimbEdges(info);   // THE CLIMB (2026-09-19): the edges — a ladder's head is reached from its foot
     let head = 0;
     while (head < q.length) {
         const p = q[head++];
+        const ce = CE.get(p[1] * nx + p[0]);
+        if (ce) for (const e of ce) { const k = e.k; if (seen.has(k)) continue; const i = k % nx, j = (k - i) / nx, y = feet(i, j, null); if (y == null) continue; seen.set(k, y); q.push([i, j, y]); }
         for (const n of N) {
             const i = p[0] + n[0], j = p[1] + n[1];
             if (i < 0 || j < 0 || i >= nx || j >= nz) continue;
@@ -36691,9 +36726,12 @@ function _hqTReturnJump(info, forward, pads, mask, climb) {
     const feet = (i, j, prev) => hqTerrainFeet(info, info.x0 + i * res, info.z0 + j * res, prev);
     pads.forEach(pn => { const k = pn[1] * nx + pn[0]; if (!ret.has(k) && forward.has(k)) { ret.add(k); q.push(k); } });
     const N = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    const CE = hqTerrainClimbEdges(info);   // THE CLIMB (2026-09-19): a ladder's head returns by its foot (the edge runs both ways)
     let head = 0;
     while (head < q.length) {
         const k = q[head++], i = k % nx, j = (k - i) / nx;
+        const ce = CE.get(k);
+        if (ce) for (const e of ce) { const kk = e.k; if (ret.has(kk) || !forward.has(kk)) continue; ret.add(kk); q.push(kk); }
         for (const n of N) {
             const ii = i + n[0], jj = j + n[1];
             if (ii < 0 || jj < 0 || ii >= nx || jj >= nz) continue;
@@ -36876,6 +36914,7 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
             case 'path': polys.push({ pts: f.pts, w: f.w + 2 * ((gen.pathGrow != null) ? gen.pathGrow : G.pathGrow) }); break;
             case 'tree': discs.push({ x: f.x, z: f.z, r: (f.r || 0.4) + grow + 0.6 }); break;
             case 'grove': case 'scatter': if (f.x != null && f.r) discs.push({ x: f.x, z: f.z, r: f.r * 0.6 }); break;
+            case 'climb': discs.push({ x: f.x, z: f.z, r: 1.6 + grow }); break;   // THE CLIMB (2026-09-19): the foot and the head stay open (the mass the ladder leans on is the tier's own, never the plan's)
             default: break;
         }
     });
@@ -37557,7 +37596,7 @@ function hqTerrainCompile(room, roomId) {
     const x0 = -(nx - 1) * res / 2, z0 = -(nz - 1) * res / 2;
     const base = T.base || 0, seed = (typeof hqHash === 'function') ? hqHash(String(roomId || room.label || 'terrain')) : 7;
     const F = T.features || [];
-    const relief = [], standing = [], basins = [], pads = [], walls = [], rails = [], paths = [], decks = [], fluids = [], trees = [], scatterRows = [];
+    const relief = [], standing = [], basins = [], pads = [], walls = [], rails = [], paths = [], decks = [], fluids = [], trees = [], scatterRows = [], climbRows = [];
     F.forEach(f => {
         switch (f.k) {
             case 'hill': case 'dip': case 'ridge': relief.push(f); break;
@@ -37570,6 +37609,7 @@ function hqTerrainCompile(room, roomId) {
             case 'path': paths.push(f); break;
             case 'tree': trees.push({ x: f.x, z: f.z, kind: f.kind || 'tree', h: f.h || null, r: f.r || R.treeR }); break;
             case 'grove': case 'scatter': scatterRows.push(f); break;
+            case 'climb': climbRows.push(f); break;
             default: break;
         }
     });
@@ -37680,11 +37720,13 @@ function hqTerrainCompile(room, roomId) {
                       low end, never its flank); the renderer (three-renderer.js _hqBuildTerrain) cuts the field's flank / underside away and hangs
                       the piece in the air — a puffy underside under a platform, a slab tread + a puff under every step of a flight */
                    floats: F.filter(f => f.float === true && (f.k === 'plateau' || (f.k === 'ramp' && f.stairs))),
+                   climbs: [],   // THE CLIMB (2026-09-19): filled after the field is final (hqTerrainClimbs)
                    /* DISASTER CITY (2026-09-17): NPC TRAFFIC routes ({ pts, loop, n, speed, lane, kinds }) and THE CIRCUIT ({ label, pts, w, gates }) — read by three-renderer.js _hqBuildTraffic / _hqBuildRace */
                    traffic: (T.traffic || []).filter(t => t && Array.isArray(t.pts) && t.pts.length >= 2).map(t => Object.assign({ n: 4, speed: 7, lane: 2.2, loop: false, kinds: ['suv', 'cadillac'] }, t)),
                    race: (T.race && Array.isArray(T.race.pts) && T.race.pts.length >= 3) ? Object.assign({ w: 10, gates: 8, label: 'THE CIRCUIT' }, T.race) : null };
     /* THE GENERATED FLOOR PLAN (2026-09-17): the mask, the rise on the solid, the thicket — before the walls / trees / scatter read the field */
     info.shops = Array.isArray(T.shops) ? T.shops.map(r => Object.assign({}, r)) : [];   // THE SHOPFRONTS (THE MALL, THE THIRD PASS, 2026-09-17): drawn by three-renderer.js _hqBuildShopfronts
+    info.climbs = hqTerrainClimbs(info, climbRows);   // THE CLIMB (2026-09-19): the edges exist BEFORE the plan's guarantee runs (a ladder out of a pit is the return; no rescue ramp is cut for it)
     if (T.gen) { try { _hqTGenerate(info, room, roomId, T.gen, doorPads, F); } catch (e) { console.warn('[terrain] the floor plan failed', roomId, e); } }
     else {
         /* THE RETURN GUARANTEE without a plan (2026-09-17): a room that is its own floor still gets its rescue ramps */
@@ -37704,10 +37746,15 @@ function hqTerrainCompile(room, roomId) {
         const y = (hAt(r.x0, r.z0) + hAt(r.x1, r.z1)) / 2 + (r.h != null ? r.h : 0.98);
         info.rails.push({ x0: r.x0, z0: r.z0, x1: r.x1, z1: r.z1, y, rail: true });
     });
+    /* THE CLIMB (AREA_CONTENT_PLAN §4, 2026-09-19): every climb row on the FINAL field — its foot on the ground it stands on (or its own y0),
+       its head on the tier it reaches (y1 clamped to the ground at the head's landing, so the mount is a step); a row whose head is
+       not above its foot is dropped with a warning */
+    info.climbs = hqTerrainClimbs(info, climbRows); info._climbEdges = null;
     /* the trees + the scatter: seeded, on flat dry ground, clear of pads / paths / water / doors / each other */
     const placed = [];
     const freeFor = (px, pz, rad, opts) => {
         if (Math.abs(px) > S.w / 2 - 0.6 || Math.abs(pz) > S.d / 2 - 0.6) return false;
+        for (const c of info.climbs) if (Math.hypot(px - c.fx, pz - c.fz) < rad + 0.9 || Math.hypot(px - c.hx, pz - c.hz) < rad + 0.9) return false;   // THE CLIMB: nothing stands at a foot or a head
         if (hqTerrainFeet(info, px, pz, null) === null) return false;
         if (info.maskD && hqTerrainMaskAt(info, px, pz) < rad + 0.3) return false;   // never on the plan's solid (the thicket / the rock)
         if (!opts.sea && hqTerrainFluidAt(info, px, pz)) return false;   // THE DEEP: a row with `sea: true` (kelp, coral) may stand under the surface
@@ -37745,6 +37792,45 @@ function hqTerrainCompile(room, roomId) {
         }
     });
     return info;
+}
+/* ── THE CLIMB (AREA_CONTENT_PLAN §4, 2026-09-19) ─────────────────────────────────────────────────────────────
+   A `terrain.features` row { k: 'climb', x, z, y0?, y1?, face, look: 'ladder'|'rope'|'vine'|'chain'|'pipe'|'wall', w? }:
+   a vertical LINE at (x, z) from y0 (the ground there when omitted) to y1 (the tier it reaches). `face` (degrees, the
+   door / prop convention: 0 = north = −z, 90 = east = +x) is the heading the CLIMBER faces — the mass the ladder leans
+   on is that way; the walker mounts from the open side (behind the climber) and dismounts at the head ONTO the tier
+   (`climbMount` m along the face). The compiled row carries the FOOT spot (`fx, fz` — reach behind the line) and the
+   HEAD spot (`hx, hz` — on the tier past the line), both landings on the field. */
+const HQ_CLIMB_LOOKS = ['ladder', 'rope', 'vine', 'chain', 'pipe', 'wall'];
+function hqTerrainClimbs(info, rows) {
+    const R = info.rules || HQ_TERRAIN_RULES, out = [];
+    (rows || []).forEach((f, i) => {
+        if (!f || f.k !== 'climb' || typeof f.x !== 'number' || typeof f.z !== 'number') return;
+        const look = HQ_CLIMB_LOOKS.includes(f.look) ? f.look : 'ladder';
+        const face = (typeof f.face === 'number') ? ((f.face % 360) + 360) % 360 : 0;
+        const fr = face * Math.PI / 180, ux = Math.sin(fr), uz = -Math.cos(fr);   // toward the mass
+        const m = (R.climbMount != null) ? R.climbMount : 0.3, reach = (R.climbReach != null) ? R.climbReach : 0.6;
+        const fx = f.x - ux * reach, fz = f.z - uz * reach;
+        /* the HEAD spot: past the tier's edge blend — the first point along the face (mount … mount + 0.9 m) where the ground stops rising */
+        let hx = f.x + ux * m, hz = f.z + uz * m, gHead = hqTerrainHeight(info, hx, hz);
+        for (let d = m + 0.1; d <= m + 0.9 + 1e-6; d += 0.1) { const px = f.x + ux * d, pz = f.z + uz * d, g = hqTerrainHeight(info, px, pz); if (g > gHead + 0.02) { gHead = g; hx = px; hz = pz; } else break; }
+        hx = Math.round(hx * 100) / 100; hz = Math.round(hz * 100) / 100;
+        const gFoot = hqTerrainHeight(info, fx, fz);
+        const y0 = (typeof f.y0 === 'number') ? f.y0 : gFoot;
+        let y1 = (typeof f.y1 === 'number') ? f.y1 : gHead;
+        if (y1 - y0 < 0.9) { if (typeof console !== 'undefined') console.warn('[terrain] climb', i, 'in', info.roomId, 'rises', (y1 - y0).toFixed(2), 'm — dropped (a climb rises ≥ 0.9 m)'); return; }
+        out.push({ i, x: f.x, z: f.z, y0, y1, face, look, w: f.w || (look === 'ladder' ? 0.6 : look === 'wall' ? 1.2 : 0.35), ux, uz, fx, fz, hx, hz, len: y1 - y0, id: f.id || (look + ':' + i) });
+    });
+    return out;
+}
+/* the solver's EDGES: a climb joins the grid node at its foot to the node at its head (both ways) */
+function hqTerrainClimbEdges(info) {
+    if (info._climbEdges) return info._climbEdges;
+    const nx = info.nx, res = info.res, E = new Map();
+    const node = (x, z) => { const i = Math.max(0, Math.min(nx - 1, Math.round((x - info.x0) / res))), j = Math.max(0, Math.min(info.nz - 1, Math.round((z - info.z0) / res))); return j * nx + i; };
+    const add = (a, b, y) => { if (!E.has(a)) E.set(a, []); E.get(a).push({ k: b, y }); };
+    (info.climbs || []).forEach(c => { const a = node(c.fx, c.fz), b = node(c.hx, c.hz); if (a === b) return; add(a, b, c.y1); add(b, a, c.y0); });
+    Object.defineProperty(info, '_climbEdges', { value: E, enumerable: false, configurable: true, writable: true });
+    return E;
 }
 /* the sampled height at (x, z), bilinear; the edge sample past the grid */
 function hqTerrainHeight(info, x, z) {
@@ -37863,8 +37949,11 @@ function hqTerrainReach(info, x, z) {
     seen.set(i0 + ',' + j0, y0); q.push([i0, j0, y0]);
     const N = [[1, 0], [-1, 0], [0, 1], [0, -1]];
     const climbLim = _hqTClimbLim(info, info.rules.climb);   // THE DEEP: a drowned room has no climb (the swimmer)
+    const CE = hqTerrainClimbEdges(info);   // THE CLIMB (2026-09-19): a ladder's foot reaches its head
     while (q.length) {
         const p = q.shift();
+        const ce = CE.get(p[1] * info.nx + p[0]);
+        if (ce) for (const e of ce) { const ei = e.k % info.nx, ej = (e.k - ei) / info.nx, ek = ei + ',' + ej; if (seen.has(ek)) continue; const ey = hqTerrainFeet(info, info.x0 + ei * info.res, info.z0 + ej * info.res, null); if (ey == null) continue; seen.set(ek, ey); q.push([ei, ej, ey]); }
         for (const n of N) {
             const i = p[0] + n[0], j = p[1] + n[1];
             if (i < 0 || j < 0 || i >= info.nx || j >= info.nz) continue;
@@ -37905,7 +37994,8 @@ function hqTerrainDump(info, opts) {
         for (let x = -info.S.w / 2 + step / 2; x < info.S.w / 2; x += step) {
             const f = hqTerrainFluidAt(info, x, z), g = hqTerrainHeight(info, x, z);
             let ch;
-            if (hqTerrainWallAt(info, x, z, step / 2)) ch = '#';
+            if ((info.climbs || []).some(c => Math.hypot(c.x - x, c.z - z) < step / 2)) ch = '|';   // THE CLIMB: a ladder / rope / vine
+            else if (hqTerrainWallAt(info, x, z, step / 2)) ch = '#';
             else if (info.maskD && hqTerrainMaskAt(info, x, z) < 0) ch = '#';
             else if (info.trees.some(t => Math.hypot(t.x - x, t.z - z) < step / 2)) ch = 'T';
             else if (info.pads.some(p => (p.r ? p.r - Math.hypot(x - p.x, z - p.z) : _hqTRectIn(x, z, p)) > 0)) ch = 'D';
@@ -38437,6 +38527,22 @@ const HQ_GUN_LESSONS = {
     fall:    { n: 5, room: 'stairwell', title: 'LESSON FIVE · THE FALL', lines: ['A ON THE FLOOR UNDER YOU', 'B ON THE CEILING OF THE TOP LANDING', 'FALL. KEEP FALLING. HOLD F WHEN YOU HAVE HAD ENOUGH.'], back: 'the treads', draft: true },
     lip:     { n: 6, room: 'site_prebuilt_singularity', title: 'LESSON SIX · THE LIP', lines: ['THE TAPE IS ON THE RIM. TWO LEVELS. YOU CANNOT CLIMB IT.', 'AIM AT THE LIP OF THE WALL. THE DOOR LANDS ON TOP.', 'B AT YOUR FEET. THE DIRECTORY IS THE WAY DOWN.'], back: 'ESC · DIRECTORY', draft: true },
 };
+/* THE TEACHING ROOMS (AREA_CONTENT_PLAN R9, 2026-09-19): every walker MECHANIC has ONE room that teaches it with the same
+   brushed plate (the prop row's `lesson` names a row here or in HQ_GUN_LESSONS; the proc reads both) — the climb in the
+   garage (the ladder to THE DOCK OFFICE), the skateboard in Room 26 (the deck leans there), the swim in the natatorium.
+   Titles + lines are Claude's DRAFT (A15, `draft: true`). Read through hqWalkLessons(). */
+const HQ_WALK_LESSONS = {
+    climb: { n: 1, kind: 'climb', room: 'garage',     title: 'THE LADDER · CLIMB', lines: ['WALK INTO THE FOOT OF A LADDER. W CLIMBS.', 'S CLIMBS DOWN. SPACE LETS GO.', 'ROPES, VINES, CHAINS AND PIPES ARE LADDERS TOO.'], back: 'the drop off the platform', draft: true },
+    skate: { n: 2, kind: 'skate', room: 'locker',     title: 'THE DECK · RIDE',    lines: ['B DROPS THE DECK. W PUSHES. A / D CARVE.', 'SPACE OLLIES. LAND ON A RAIL TO GRIND.', 'IN THE AIR THE ARROWS ARE TRICKS. LAND CLEAN.'], back: 'B again', draft: true },
+    swim:  { n: 3, kind: 'swim',  room: 'natatorium', title: 'THE POOL · SWIM',    lines: ['WALK IN PAST YOUR WAIST. YOU FLOAT.', 'WASD SWIM · SHIFT FASTER · C DIVES.', 'THE SHALLOWS GIVE YOU BACK.'], back: 'the shallow end', draft: true },
+};
+function hqWalkLessons() {
+    return Object.keys(HQ_WALK_LESSONS).map(id => {
+        const L = HQ_WALK_LESSONS[id], room = DOOR_HQ.rooms[L.room];
+        const prop = room ? (room.props || []).find(p => p.lesson === id) : null;
+        return Object.assign({ id, placed: !!prop, prop: prop || null, roomLabel: room ? room.label : null }, L);
+    }).sort((a, b) => a.n - b.n);
+}
 function hqGunLessons() {
     return Object.keys(HQ_GUN_LESSONS).map(id => {
         const L = HQ_GUN_LESSONS[id], room = DOOR_HQ.rooms[L.room];
@@ -41795,7 +41901,7 @@ if (typeof window !== 'undefined') {
     window.HQ_TERRAIN_RULES = HQ_TERRAIN_RULES; window.HQ_TERRAIN_GEN = HQ_TERRAIN_GEN; window.HQ_ROOM_LOOKS = HQ_ROOM_LOOKS; window.hqTerrainMaskAt = hqTerrainMaskAt; window.hqTerrainOpenAt = hqTerrainOpenAt; window.hqTerrainRooms = hqTerrainRooms; window.hqTerrainInfo = hqTerrainInfo; window.hqTerrainTraps = hqTerrainTraps; window.hqTerrainCompile = hqTerrainCompile; window.hqTerrainSolidAt = hqTerrainSolidAt; window.hqTerrainSolidTop = hqTerrainSolidTop;
     window.hqTerrainHeight = hqTerrainHeight; window.hqTerrainSlope = hqTerrainSlope; window.hqTerrainFeet = hqTerrainFeet; window.hqTerrainAir = hqTerrainAir; window.hqTerrainCam = hqTerrainCam;
     window.hqTerrainFluidAt = hqTerrainFluidAt; window.hqTerrainWallAt = hqTerrainWallAt; window.hqTerrainDoorY = hqTerrainDoorY; window.hqTerrainReach = hqTerrainReach; window.hqTerrainNodeKey = hqTerrainNodeKey;
-    window.hqTerrainDoorLanding = hqTerrainDoorLanding; window.hqTerrainDump = hqTerrainDump; window.hqCityShell = hqCityShell; window.hqAirbaseShell = hqAirbaseShell; window.hqCastleShell = hqCastleShell; window.hqSewerShell = hqSewerShell; window.hqSiteEntry = hqSiteEntry; window.hqSiteEntryOf = hqSiteEntryOf; window.hqApplySiteEntries = hqApplySiteEntries; window.hqFindHardReachTerrain = hqFindHardReachTerrain; window.hqTerrainFindSpot = hqTerrainFindSpot; window._hqTPolyDist = _hqTPolyDist; window._hqTEllipse = _hqTEllipse; window._hqTRectIn = _hqTRectIn; window._hqTRamp = _hqTRamp;   // THE FLOATING PIECES (2026-09-18): the renderer's underFloat cut reads the same frames the compiler does
+    window.hqTerrainDoorLanding = hqTerrainDoorLanding; window.hqTerrainDump = hqTerrainDump; window.hqTerrainClimbs = hqTerrainClimbs; window.hqTerrainClimbEdges = hqTerrainClimbEdges; window.HQ_CLIMB_LOOKS = HQ_CLIMB_LOOKS; window.HQ_WALK_LESSONS = HQ_WALK_LESSONS; window.hqWalkLessons = hqWalkLessons; window.hqCityShell = hqCityShell; window.hqAirbaseShell = hqAirbaseShell; window.hqCastleShell = hqCastleShell; window.hqSewerShell = hqSewerShell; window.hqSiteEntry = hqSiteEntry; window.hqSiteEntryOf = hqSiteEntryOf; window.hqApplySiteEntries = hqApplySiteEntries; window.hqFindHardReachTerrain = hqFindHardReachTerrain; window.hqTerrainFindSpot = hqTerrainFindSpot; window._hqTPolyDist = _hqTPolyDist; window._hqTEllipse = _hqTEllipse; window._hqTRectIn = _hqTRectIn; window._hqTRamp = _hqTRamp;   // THE FLOATING PIECES (2026-09-18): the renderer's underFloat cut reads the same frames the compiler does
     /* THE DOOR GUN (HQ plan 9.5, 2026-09-15 rev 13) */
     window.HQ_PORTAL_RULES = HQ_PORTAL_RULES; window.hqPortalRecord = hqPortalRecord; window.hqPortalStatus = hqPortalStatus; window.hqPortalIssue = hqPortalIssue;
     window.hqPortalPlace = hqPortalPlace; window.hqPortalClear = hqPortalClear; window.hqPortalLeaf = hqPortalLeaf; window.hqPortalNextSlot = hqPortalNextSlot; window.hqPortalTwin = hqPortalTwin; window.hqPortalSafeRoom = hqPortalSafeRoom; window.hqPortalDoorsIn = hqPortalDoorsIn;

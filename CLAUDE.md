@@ -5858,3 +5858,28 @@ bank top (nine on the sea — `info.rescues`). Tapes: four re-homed (Camelot's w
 its board's own; the hundred stays a hundred). `npm test` runs `hq-astral.test.js`; amended hq-terrain (77), hq-floor-plan (68),
 hq-ranch (12 hubs), hq-world (the seams + the house's lines), doorhq (the light regex). Ship data.js to Render too (the finds ledger).
 UNSEEN LIVE (RULE #1c): all of it — DOOR_HQ_BUILD_PLAN §9's entry lists what to eyeball first.
+
+## AREA CONTENT PLAN D1 — THE CLIMB + THE TEACHING ROOMS + THE RULES AS WARNINGS (2026-09-19, local delivery)
+**`AREA_CONTENT_PLAN.md` is THE doc for filling the rooms with purpose** (the user's brief: too boxy, more climbing, doors
+too exposed, discovery should reward, bigger cities); its §6 records the user's decisions (the cave's numbers, D2 before D3,
+six looks, warnings until D3, prefab parts exempt from R1) and EXPLORABLE_AREAS_GUIDE §9b carries the rules R1–R9. **THE
+CLIMB**: a `terrain.features` row `{ k: 'climb', x, z, y0?, y1?, face, look: ladder|rope|vine|chain|pipe|wall }` (a plain box
+room: `room.climbs`, the head on a blocker top) — data.js `hqTerrainClimbs` → `info.climbs` (the head spot found PAST the
+tier's edge blend), `hqTerrainClimbEdges` = THE SOLVER'S EDGE read by every walk (`hqTerrainReach`, `_hqTReachGrid`,
+`_hqTReachJump`, `_hqTReturnJump`) so a ladder alone may reach a tier, a pit with a ladder out is no trap (no rescue ramp),
+a tape above one is not hard; a plan keeps a climb's foot + head open; the scatter stays off them;
+`HQ_TERRAIN_RULES.climbReach / climbSpeed / climbMount`. three-renderer.js "THE CLIMB" (before the per-frame section):
+`_hqBuildClimbs` (the six looks; called after the props), `_hqClimbCheck` at the walker tick's tail (the foot walked INTO
+/ the head walked OFF = the mount; the rider steps off the deck, the swimmer never climbs), `_hqTickClimb` (W / S, SPACE
+lets go, the top MANTLES with UAL2 ClimbUp_1m), `EW_HQ_NO_CLIMB`, `hq.climbs()` / `hq.climbing()`. sprites.js
+`HQ_CLIMB_CLIPS` — NO ladder loop exists in either library: the climb is the swim stroke stood up (`_hqTickChars` lean
+−1.3). map.js `onClimb` → `.hq-hints.climbnear` (W CLIMB) / `.climb`. A walker mode: nothing on `state`, nothing relayed.
+**THE TEACHING ROOMS (R9, hard)**: `HQ_WALK_LESSONS` (climb / skate / swim; `hqWalkLessons()`; the `lesson_plaque` proc
+reads both tables) — THE GARAGE is 5.4 m high now with THE DOCK OFFICE (a `stair_landing` platform + `garage.climbs`, the
+building's first ladder), Room 26 the skate plaque, the natatorium the swim plaque. **THE AUDIT**: `node
+check-area-content.js [--rules] [--all] [room…]` (a module — `audit()`, `RULES`) measures R1–R8 (R2 the pull on the reach
+graph, R3 door exposure by eye-height LOS, R4 the earned exits, R5 the tease, R6 `parti` / `typology` — an `HQ_AREA_SPECS`
+row's ride to the room —, R8 per 60 m² of OPEN floor); `area-content.test.js` prints the offenders as WARNINGS (heavy) and
+never reds until D3. `npm test` runs `hq-climb.test.js`. Next: D2 (the cities twice the size, `districts` on the `city`
+plan, fire escapes as `climb` chains onto rooftop `deck` runs), then D3 / D4 / D5. Ship data.js to Render too. UNSEEN LIVE
+(RULE #1c): the ladder, the stood-up stroke, the mantle, the DOCK OFFICE, the plates.

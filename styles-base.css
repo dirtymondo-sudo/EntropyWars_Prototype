@@ -4150,6 +4150,11 @@ body.diorama-3d .tile-underpass.jump::before {
 .hq-hints.swim .hq-hint-swim { display: inline; color: #7fe0ea; }
 .hq-hints.helm .hq-hint-helm { display: inline; color: #7fe0ea; }
 .hq-hints.swim span:nth-child(1), .hq-hints.swim span:nth-child(3), .hq-hints.helm span:nth-child(1), .hq-hints.helm span:nth-child(2), .hq-hints.helm span:nth-child(3) { display: none; }
+/* THE CLIMB (AREA_CONTENT_PLAN D1, 2026-09-19): W CLIMB at a ladder's foot / head, the climbing line on it */
+.hq-hints .hq-hint-climbnear, .hq-hints .hq-hint-climb { display: none; }
+.hq-hints.climbnear .hq-hint-climbnear { display: inline; color: #7dffb0; }
+.hq-hints.climb .hq-hint-climb { display: inline; color: #7dffb0; }
+.hq-hints.climb span:nth-child(1), .hq-hints.climb span:nth-child(2), .hq-hints.climb span:nth-child(3) { display: none; }
 .hq-trick { position: absolute; left: 50%; top: 92px; transform: translateX(-50%) translateY(-8px) scale(0.96); display: flex; align-items: baseline; gap: 14px; padding: 8px 22px; background: rgba(8,8,12,0.78); border: 1px solid rgba(125,255,176,0.45); box-shadow: 0 0 0 1px #000, 0 0 28px rgba(125,255,176,0.18); font-family: 'Cormorant SC', serif; color: #ece7d8; z-index: 21; opacity: 0; transition: opacity 0.16s ease, transform 0.16s ease; pointer-events: none; white-space: nowrap; max-width: 92vw; overflow: hidden; text-overflow: ellipsis; }
 .hq-trick.show { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
 .hq-trick span { font-size: 20px; letter-spacing: 0.16em; color: #d9f5e2; }

@@ -200,7 +200,17 @@ dock, the corridors). Each gets ONE of: a by-id panel that reads something real 
 profile, a find, a daily line, a cast spot, or it is folded into its neighbour. The list is
 in the audit (`--all`, `counters` 0 and no find). Copy is the user's (A15).
 
-## 6. DECISIONS THAT ARE THE USER'S
+## 6. DECISIONS THAT ARE THE USER'S — TAKEN 2026-09-19 ("yes to all, or the recommended")
+
+1. The numbers stand as set from the cave (R1 0.6 / 100 m² open · 0.8 closed; R7 200 × 160 cities,
+   60 × 50 open parts; R8 a prop per 60 m²). They live in `check-area-content.js` `RULES`.
+2. **D2 before D3.**
+3. The five looks + the climbable wall (six); the lift / moving platform stays deferred.
+4. **Warnings until D3** — `area-content.test.js` prints the offenders per rule and never reds;
+   R9 (the teaching rooms) is hard from D1.
+5. The prefab parts (family B) are exempt from R1; they take R3 / R4 / R8.
+
+The questions as they were asked:
 
 1. **The numbers in R1 / R7 / R8** — 0.6 climbs per 100 m², 200 × 160 cities, a prop per 60
    m². They are set from the cave (the standard the user named) and can be moved.
@@ -216,3 +226,23 @@ in the audit (`--all`, `counters` 0 and no find). Copy is the user's (A15).
 
 ## 7. LOG
 - 2026-09-19 — the plan written; `check-area-content.js` added (read-only audit); EXPLORABLE_AREAS_GUIDE §10 logged. Nothing built.
+- 2026-09-19 — **D1 SHIPPED (local delivery).** THE CLIMB per §4: data.js `climb` feature rows (`hqTerrainClimbs` → `info.climbs`,
+  the head spot found PAST the tier's edge blend; `hqTerrainClimbEdges` = the solver's edge, read by `hqTerrainReach`, the reach
+  grid, the trap check's forward and return walks — a pit with a ladder out needs no rescue ramp; a plan keeps a climb's foot
+  and head OPEN; the scatter stays off them; the dump prints `|`); `HQ_TERRAIN_RULES.climbReach / climbSpeed / climbMount`;
+  three-renderer.js "THE CLIMB" (before the per-frame section: `_hqBuildClimbs` — the six looks, a terrain room's rows + a box
+  room's `room.climbs` compiled against its blocker tops —, `_hqClimbCheck` at the walker tick's tail = the foot walked INTO /
+  the head walked OFF, `_hqTickClimb` = W / S at the speed, SPACE lets go, the top MANTLES (UAL2 ClimbUp_1m) onto the tier; the
+  rider steps off the deck, the swimmer never climbs; `EW_HQ_NO_CLIMB`; `hq.climbs()` / `hq.climbing()`); sprites.js
+  `HQ_CLIMB_CLIPS` (no ladder loop exists in either library — the swim stroke stood up, the float as the hang); map.js
+  `onClimb` → the W CLIMB hint at a foot, the climbing line, a first-time toast. **THE TEACHING ROOMS (R9)**: data.js
+  `HQ_WALK_LESSONS` (climb / skate / swim, `hqWalkLessons()`, the plaque proc reads both tables) — the garage's ceiling rose to
+  5.4 m for THE DOCK OFFICE (a `stair_landing` platform on the west wall, one ladder in `garage.climbs`, the plaque at its
+  foot); the skate plaque in Room 26, the swim plaque in the natatorium. **THE AUDIT** grew R2 (the pull distance on the reach
+  graph), R3 (door exposure by a line of sight at eye height over the field / the props), R4 (the earned exits), R5 (the tease:
+  an earned exit seen from a reachable node ≥ 6 m off with ≥ 0.8 m of height between), R6 (`parti` / `typology` on an
+  `HQ_AREA_SPECS` row ride to the room), R8 (per 60 m² of OPEN floor); `node check-area-content.js [--rules]`; it is a module
+  (`audit()` / `RULES`). Tests: `hq-climb.test.js` (the rules, the compile, the solver both ways, the return guarantee, the
+  walker in a sandbox, the rooms, the sites), `area-content.test.js` (the tool, R9 hard, R1–R8 as warnings — heavy).
+  UNSEEN LIVE (RULE #1c): the ladder's look and the walker on it (the stood-up stroke — `HQ_CLIMB_CLIPS.climb.ts` and the
+  lean −1.3 in `_hqTickChars` are the edits), the mantle's timing, the platform in the raised garage, the three plates.

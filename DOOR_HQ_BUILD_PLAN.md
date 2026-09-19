@@ -10793,3 +10793,53 @@ house's four lines), doorhq (the light regex).
   the green grade, the wood stacks under the veins, the closet standing alone in the meadow, the crystal banks' tops as grinds,
   the three floating stairs' puffs, the attic's screen under the bulb. Next: a second pass of models (MODEL_INDEX §3p), the
   natives' lines (A15), the `rooms` plan's rescue cuts on the sea (nine — a bank the walker keeps jumping onto).
+
+### 2026-09-19 — AREA CONTENT PLAN D1: THE CLIMB · THE TEACHING ROOMS · THE AUDIT'S RULES (local delivery)
+
+**THE USER'S DECISIONS** (AREA_CONTENT_PLAN §6): the cave's numbers stand; D2 before D3; six looks, the lift deferred;
+warnings until D3 (R9 hard from D1); the prefab parts exempt from R1.
+
+**THE CLIMB** — the walker's first vertical mechanic beyond the step and the jump. data.js: a `terrain.features` row
+`{ k: 'climb', x, z, y0?, y1?, face, look }` compiles (`hqTerrainClimbs`) to a line with a FOOT spot behind it (`climbReach`
+0.6 m) and a HEAD spot on the tier (the first point along the face, from `climbMount` 0.3 m to 1.2 m, where the ground stops
+rising — past the tier's 0.35 m edge blend); `hqTerrainClimbEdges` hands the solver an edge foot ↔ head, and all four walks
+read it (`hqTerrainReach`, `_hqTReachGrid`, `_hqTReachJump`, `_hqTReturnJump`) — so THE RETURN GUARANTEE sees a ladder out of a
+pit as the return and cuts no rescue ramp (hq-climb.test.js proves it on a synthetic tier: without the ladder a ramp, with it
+none); a plan forces a climb's foot + head open (a 1.6 m disc); the scatter stays 0.9 m off both; the dump prints `|`. A row
+that rises under 0.9 m is dropped with a warning. three-renderer.js "THE CLIMB" (before the per-frame section):
+`_hqBuildClimbs` draws the six looks (a rung ladder — steel in a box room, wood on a field —, a knotted rope off an eye-bolt, a
+three-strand vine with leaves, a chain of links off a ring, a drain pipe with brackets, hand-holds up a band) in the shell
+group at the line, local +Z the mass; a plain box room's `room.climbs` rows are compiled here (the foot on the floor, the head
+on `_hqBlockerFloor`'s top). `_hqClimbCheck` at the walker tick's tail: the foot walked INTO (the push toward the mass,
+within 0.8 m of the foot spot) or the head walked OFF (the push away, within 0.85 m of the head spot) mounts; `_hqTickClimb`
+rides W / S at `climbSpeed` 1.6 m/s (a rope 0.8 ×, a vine 0.75 ×, a wall 0.7 ×), SPACE lets go (pushed off the mass into the
+walker's own fall), the head hands the walker 0.25 m past the head spot with the MANTLE (`pl.strike` = `hqMantle`, UAL2
+ClimbUp_1m), the foot hands it back to the ground. The rider steps off the deck at a foot; the swimmer never climbs; a room
+change / the pause never leave `pl.climb` set (the tick returns when the record is gone). sprites.js `HQ_CLIMB_CLIPS`: NEITHER
+library has a ladder loop, so the climb is Swim_Fwd_Loop pitched nose-up (`_hqTickChars` lean −1.3) with the chest to the rungs,
+Swim_Idle_Loop the hang. map.js `onClimb`: `near` → `.hq-hints.climbnear` (W CLIMB), `climb` on / off → `.hq-hints.climb`, a
+toast the first time, a low cue. Nothing on `state`, nothing relayed (RULE #2; the test reads the block for `state.`).
+
+**THE TEACHING ROOMS (R9)** — `HQ_WALK_LESSONS` beside `HQ_GUN_LESSONS` (the plaque proc reads both; a walk lesson's plate wears
+the walker's green underline instead of the A / B glyphs): THE GARAGE's ceiling rose 2.8 → 5.4 m and THE DOCK OFFICE stands on
+its west wall — a `stair_landing` at y 3.0 (top 3.25), a desk, a chair, the papers, two rails on its east edge, the nameplate
+over it, ONE ladder (`garage.climbs`, id `dock_office`, face 0 on the platform's south edge, `y1` 3.25) with the plaque at its
+foot; you come down by walking off the edge or S at the head. THE LOCKER ROOM (the deck's own room) wears the skate plaque on
+its west wall, THE NATATORIUM the swim plaque on its north wall between the windows.
+
+**THE AUDIT** — `check-area-content.js` is a module (`audit({ pick, all })`, `auditRoom`, `RULES`, `CLIMB`) and prints the
+offenders per rule: R2 = the farthest reachable node from a pull (a sky landmark counts everywhere in an open room; a tier /
+prop ≥ 3 m; the marker), R3 = the most other landings one landing sees in a clear line at eye height (the field's ground, walls,
+mass, trees; a box room's blocking props), R4 = the earned exits (secret · way · a sill ≥ 1.5 m over the lowest · under the
+sea), R5 = an earned exit seen from a reachable node ≥ 6 m off with ≥ 0.8 m between, R6 = `parti` / `typology` (an
+`HQ_AREA_SPECS` row's ride to the room now), R8 = props + natives + scatter per 60 m² of the mask's OPEN floor.
+`area-content.test.js` prints them as warnings (heavy) and holds R9 hard.
+
+**TESTS.** hq-climb.test.js (7), area-content.test.js (3, one heavy); hq-terrain's kind list grew `climb`; doorhq / hq-floors /
+hq-stage2 / hq-map-remembers / hq-skate / hq-deep / hq-portal / hq-encounter / scene-lifecycle / hq-visual-pass / hq-city pass.
+
+- **UNSEEN LIVE (RULE #1c):** the ladder's scale against the walker, the stood-up stroke on the rungs (if it reads as a
+  swimmer on a wall, `HQ_CLIMB_CLIPS.climb.ts` and the −1.3 lean are the edits; a real ladder loop would be a library add),
+  the mantle's overshoot at the top, the hang spot's 0.34 m off the line, the mount's feel at a run (the push test is 0.9 m/s
+  along the face), the DOCK OFFICE under the taller garage (the fluorescents hang from 5.4 m now), the three plates' copy
+  (A15 — the user's), the W CLIMB hint's timing.

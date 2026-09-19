@@ -689,6 +689,8 @@
                 onSkate: (typeof _hqSkateEvent === 'function') ? _hqSkateEvent : null,
                 /* THE DEEP (2026-09-18): the swimmer's and the helm's beats (the hints, the toasts, the water's sounds) */
                 onSea: (typeof _hqSeaEvent === 'function') ? _hqSeaEvent : null,
+                /* THE CLIMB (AREA_CONTENT_PLAN D1, 2026-09-19): the ladder's beats (the W CLIMB hint at a foot, the first-time toast, a creak) */
+                onClimb: (typeof _hqClimbEvent === 'function') ? _hqClimbEvent : null,
                 /* ESC: close the panel, else Settings (plan D6 — an overlay,
                    not a place); EXIT on the strip is how you leave */
                 onEscape: () => { if (_hqTerm) { window._hqTerminalClose(); return; } if (_hqPause) { window._hqClosePause(); return; } if (_hqPanelTarget) window._hqClosePanel(); else window._hqOpenPause(); },
@@ -2088,6 +2090,21 @@
            "THE DEEP" block reports through opts.onSea; the beats here are the hint line (.hq-hints.swim /
            .helm), a toast the first time each visit, and the water's own sounds (audio.js seaDive /
            seaSurface / seaBoard; the whirlpool's and the upwelling's cues ride the room change like any way). */
+        /* THE CLIMB (AREA_CONTENT_PLAN D1, 2026-09-19): the walker on a ladder / rope / vine — three-renderer.js's
+           "THE CLIMB" block reports through opts.onClimb: `near` toggles the W CLIMB hint (.hq-hints.climbnear), `climb`
+           on / off toggles the climbing hint line, a toast the first time each visit, a cue at the mount. */
+        let _hqClimbToasted = false;
+        function _hqClimbEvent(ev) {
+            if (!ev) return;
+            const h = _hqEl('hqHints');
+            if (ev.kind === 'near') { if (h) h.classList.toggle('climbnear', !!ev.on); return; }
+            if (ev.kind !== 'climb') return;
+            if (h) { h.classList.toggle('climb', !!ev.on); if (ev.on) h.classList.remove('climbnear'); }
+            if (ev.on) {
+                _hqSkateSfx('skatePush', 0.22);
+                if (!_hqClimbToasted) { _hqClimbToasted = true; _hqToast('<b>ON THE ' + String(ev.look || 'ladder').toUpperCase() + '</b><span>W UP · S DOWN · SPACE LETS GO · THE TOP HANDS YOU ONTO THE LEDGE</span>', 3200); }
+            } else if (ev.why === 'top') _hqSkateSfx('skateOllie', 0.2);
+        }
         let _hqSeaToasted = { swim: false, dive: false, boat: false, sub: false };
         function _hqSeaEvent(ev) {
             if (!ev) return;
