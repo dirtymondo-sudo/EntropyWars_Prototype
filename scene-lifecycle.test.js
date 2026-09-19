@@ -23,13 +23,13 @@ function element() {
         toggle: (x, on) => on ? classes.add(x) : classes.delete(x),
     } };
 }
-function hqHarness() {
+function hqHarness(extra) {
     const src = source('map.js');
     const els = Object.fromEntries(['hqStage', 'hqLoad', 'hqLoadNote', 'hqDebug', 'hqHints'].map(id => [id, element()]));
     const entries = [], timers = new Map();
     let next = 0, now = 0, result = true;
     const noop = () => {};
-    const ctx = vm.createContext({
+    const ctx = vm.createContext(Object.assign({
         console: { warn: noop, error: noop }, location: { search: '' },
         performance: { now: () => now },
         setTimeout(fn, ms) { const id = ++next; timers.set(id, { fn, ms, canceled: false }); return id; },
@@ -49,7 +49,7 @@ function hqHarness() {
         } },
         _showTitlePage(id) { ctx.page = id; },
         window: { _hqClosePanel: noop, _hqRelabelMenuButtons: noop },
-    });
+    }, extra || {}));
     vm.runInContext(section(src, '        let _hqEnteredAt = 0;', '\n        let _hqHome = false;').replace('        let _hqHome = false;', '') + '\n' +
         section(src, '        window._hqEnter = function (opts)', '\n        };') + '\n' +
         section(src, '        window._hqLeave = function (opts)', '\n        };'), ctx);
@@ -510,4 +510,73 @@ test('opening pause or rendering a dialog clears a held direction before another
     vm.runInContext(section(source('ui.js'), '        function _renderUiDialogContent() {',
         "            overlay.setAttribute('aria-hidden', 'false');") + '\n}', ctx);
     ctx._renderUiDialogContent(); assert.equal(held.size, 0);
+});
+
+/* THE LOADING SCREEN (2026-09-19): the card is PAINTED before the build — with a
+   requestAnimationFrame on offer the build runs a frame + a macrotask later (the door
+   beat used to end on a frozen frame with the card never painted) */
+test('HQ paints the load card before the build (the build runs after a frame)', () => {
+    const rafs = [], drain = () => rafs.splice(0).forEach(f => f());   // the deferral AND the card's progress ticker queue frames
+    const h = hqHarness({ requestAnimationFrame: fn => rafs.push(fn) });
+    assert.equal(h.enter(), true);
+    assert.equal(h.entries.length, 0, 'nothing is built in the task that showed the card');
+    assert.equal(h.card.style.display, '');
+    assert.equal(h.ctx.page, 'hqPage');
+    assert.ok(rafs.length >= 1);
+    drain();
+    assert.equal(h.entries.length, 0, 'rAF fires before the paint — still nothing built');
+    h.run([...h.timers.keys()].pop());
+    assert.equal(h.entries.length, 1);
+    assert.equal(h.entries[0].room, 'central_egress');
+});
+
+/* THE SURVEY: a terrain room whose floor plan is not compiled waits for the worker's
+   record under the FULL card (never the walk blink); the room builds when it lands */
+test('HQ waits for the survey worker before building a terrain room', async () => {
+    const rafs = [], posts = [], drain = () => rafs.splice(0).forEach(f => f()); let worker = null;
+    class FakeWorker { constructor(url) { worker = this; this.url = url; } postMessage(m) { posts.push(m); } terminate() {} }
+    const rooms = { central_egress: { label: 'Egress' }, cave: { label: 'The Cave', terrain: { features: [] }, doors: [{ id: 'out', action: { room: 'central_egress' } }] } };
+    const noop = () => {};
+    const h = hqHarness({
+        requestAnimationFrame: fn => rafs.push(fn),
+        Worker: FakeWorker, Blob: class Blob { constructor(parts) { this.parts = parts; } }, URL: { createObjectURL: () => 'blob:survey' },
+        DOOR_HQ: { rooms }, _HQ_FOYER: 'foyer',
+        window: { _hqClosePanel: noop, _hqRelabelMenuButtons: noop, EW_HQ_DATA_URL: 'https://cdn.example/data.js?v=1',
+                  hqTerrainAdopt: (id, plain) => { rooms[id]._terrainInfo = plain; return plain; }, hqTerrainRoomPlain: id => ({ id }) },
+    });
+    assert.equal(h.enter({ room: 'cave', from: 'walk' }), true);
+    assert.equal(h.entries.length, 0);
+    assert.equal(h.card.classList.contains('walk'), false, 'a survey shows the full card, not the door blink');
+    assert.equal(h.card.style.display, '');
+    drain(); h.run([...h.timers.keys()].pop());
+    assert.equal(h.entries.length, 0, 'the build waits for the record');
+    assert.equal(posts.length, 1); assert.equal(posts[0].roomId, 'cave'); assert.deepEqual(posts[0].room, { id: 'cave' });
+    assert.ok(worker && worker.url, 'one worker, built from a blob');
+    worker.onmessage({ data: { id: posts[0].id, roomId: 'cave', info: { H: new Float32Array(4), pads: [] }, err: null, ms: 5 } });
+    await new Promise(r => setImmediate(r));
+    assert.equal(h.entries.length, 1);
+    assert.equal(h.entries[0].room, 'cave');
+    assert.ok(rooms.cave._terrainInfo, 'the record was adopted onto the room before the build');
+    /* the same room again: compiled now — a walk blink, no worker call, no wait */
+    assert.equal(h.enter({ room: 'cave', from: 'walk' }), true);
+    assert.equal(h.card.classList.contains('walk'), true);
+    drain(); h.run([...h.timers.keys()].pop());
+    assert.equal(h.entries.length, 2);
+    assert.equal(posts.length, 1, 'no second survey for a compiled room');
+});
+
+/* a worker that dies mid-survey: the build falls back to the inline compile (the old path) */
+test('HQ builds inline when the survey worker fails', async () => {
+    const rafs = [], drain = () => rafs.splice(0).forEach(f => f()); let worker = null;
+    class FakeWorker { constructor() { worker = this; } postMessage() {} terminate() {} }
+    const rooms = { central_egress: { label: 'Egress' }, cave: { label: 'The Cave', terrain: { features: [] }, doors: [] } };
+    const noop = () => {};
+    const h = hqHarness({ requestAnimationFrame: fn => rafs.push(fn), Worker: FakeWorker, Blob: class Blob {}, URL: { createObjectURL: () => 'blob:survey' }, DOOR_HQ: { rooms }, _HQ_FOYER: 'foyer',
+        window: { _hqClosePanel: noop, _hqRelabelMenuButtons: noop, EW_HQ_DATA_URL: 'https://cdn.example/data.js?v=1', hqTerrainRoomPlain: id => ({ id }) } });
+    assert.equal(h.enter({ room: 'cave' }), true);
+    drain(); h.run([...h.timers.keys()].pop());
+    assert.equal(h.entries.length, 0);
+    worker.onerror({ message: 'importScripts failed' });
+    await new Promise(r => setImmediate(r));
+    assert.equal(h.entries.length, 1, 'the room still builds (the renderer compiles inline)');
 });

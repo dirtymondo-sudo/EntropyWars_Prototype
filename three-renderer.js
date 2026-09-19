@@ -50839,6 +50839,45 @@ const ThreeRenderer = (function () {
                browser allows it (hover-look covers it when not) */
             else _hqTryLock();
         },
+        /* THE LOADING SCREEN (2026-09-19): HOLD the room in place without touching the pointer lock — the
+           walk into a door that must wait for THE SURVEY (map.js: the next room's floor plan compiling in
+           the worker) freezes the old room under the load card; a released lock would read as the ESC the
+           browser ate (_hqOnLockChange) and open the pause menu on top of the card */
+        hold: function (on) { if (!_hq) return; _hq.paused = !!on; if (on) { _hq.keys = {}; _hq.drag = null; } },
+        /* THE ARRIVAL WARM (2026-09-19): start the arrival room's downloads while the title / the menu / the
+           door beat play — every door leaf, every catalogue prop, the door gun and the shell's sheets go
+           through the same caches the build reads (_miscModelCache / _hqTexCache), so the build finds
+           them landed or in flight instead of starting 40 requests behind the walker's rig */
+        warmRoom: function (roomId) {
+            var D = _hqData(); var room = D && D.rooms ? D.rooms[roomId] : null;
+            if (!room || !D.catalogue) return 0;
+            if (typeof window !== 'undefined' && window.EW_PERF_LOW) return 0;   // a phone streams the room on entry, one model at a time (the mobile pass)
+            var n = 0, seen = {};
+            function warmCat(cat) { if (!cat || !cat.file) return; var url = _hqModelUrl(cat); if (seen[url]) return; seen[url] = 1; n++; try { _loadMiscModel(url, true, function () {}); } catch (e) {} }
+            (room.doors || []).forEach(function (d) { if (d && d.leaf) warmCat(D.catalogue[d.leaf]); });
+            (room.props || []).forEach(function (p) { if (p && p.key) warmCat(D.catalogue[p.key]); });
+            warmCat(D.catalogue.door_gun);
+            var S = room.shell || {};
+            [S.floor || 'terrazzo', S.wall || 'stone', S.dado || 'oxblood', S.ceiling || 'ceiling', S.trim || 'teal'].forEach(function (k) { try { _hqTex(k, 1, 1); } catch (e) {} });
+            return n;
+        },
+        /* the walker's own rig + the shared animation libraries (the load card waits for exactly this model:
+           H.ready is set when the player's model attaches) — resolved the way _hqSpawnCharacter resolves it */
+        warmAvatar: function (av) {
+            av = av || {};
+            if (typeof window !== 'undefined' && window.EW_DISABLE_3D_UNITS) return 0;
+            var def = av.def || ((av.cast && typeof getCastModel === 'function') ? getCastModel(av.cast) : null);
+            if (!def && typeof getRace3DModel === 'function') {
+                var race = av.race || 'men in black', gender = av.gender || 'male';
+                def = getRace3DModel(race, gender, av.appearance || undefined) || getRace3DModel(race, gender === 'male' ? 'female' : 'male') || getRace3DModel('men in black', 'male');
+            }
+            if (!def || !def.model) return 0;
+            var urls = [def.model];
+            try { if (_animLibActive(def)) _libUrls(def).forEach(function (u) { if (u) urls.push(u); }); else { var clips = def.clips || {}; for (var k in clips) if (clips[k]) urls.push(clips[k]); } } catch (e) {}
+            var n = 0;
+            urls.forEach(function (u) { var e = _unitGlbCache[u]; if (e && (e.root || e.failed || e.loading)) return; n++; try { _loadUnitGLB(u, function () {}); } catch (ex) {} });
+            return n;
+        },
         interact: _hqInteract,
         toggleView: _hqToggleView,
         /* THE ROUNDS (2026-09-19): the walkers on their loops, the nav lattice, the traveller ledger (probes) */
@@ -51461,6 +51500,14 @@ const ThreeRenderer = (function () {
 
         /* Match-start asset gate (battle.js loading screen, ROADMAP §3.1) */
         preloadUnitModels,
+        /* THE LOADING SCREEN (2026-09-19): how many model files are still in flight through the two GLB
+           caches — the HQ load card's progress line (map.js) reads it; textures are not counted */
+        assetsPending: function () {
+            var n = 0, k;
+            for (k in _miscModelCache) { if (_miscModelCache[k] && _miscModelCache[k].loading) n++; }
+            for (k in _unitGlbCache) { if (_unitGlbCache[k] && _unitGlbCache[k].loading) n++; }
+            return n;
+        },
 
         scanSpriteOffset,
 

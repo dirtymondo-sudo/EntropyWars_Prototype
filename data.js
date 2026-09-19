@@ -39948,6 +39948,78 @@ function hqTerrainInfo(roomId) {
     if (!r._terrainInfo) Object.defineProperty(r, '_terrainInfo', { value: hqTerrainCompile(r, roomId), enumerable: false, configurable: true, writable: true });   // non-enumerable: a room is stringified by readers (never a visible field)
     return r._terrainInfo;
 }
+/* ── THE SURVEY (2026-09-19) — the floor-plan compile OFF the main thread ────────────────────────────────
+   hqTerrainCompile takes 3–31 SECONDS on a big room (measured headlessly: Downtown 31 s, the grid 23 s,
+   the astral sea 18 s, the cavern 12 s) — on the main thread that is the freeze after the door, and the
+   finds warm-up used to trigger it on idle for every tape room in turn. map.js runs data.js a second time
+   in a Web Worker (THE SURVEY: a blob script = browser stubs + importScripts(data.js) +
+   hqTerrainWorkerServe(self)) and asks it for a room's record BEFORE the room builds; the load card stands
+   meanwhile. The record crosses the boundary as a PLAIN copy (hqTerrainPlain: no closures, no room / rules
+   back-references, the typed arrays transferred) and is ADOPTED on the main thread (hqTerrainAdopt: the
+   room, its shell and HQ_TERRAIN_RULES re-attached, `hFn` = the SAMPLED field — nothing outside the
+   compiler reads the authored one — the pads' doors re-pointed at the live door rows by id + wall). The
+   sync compile (hqTerrainInfo) stays the fallback wherever a worker cannot run. The worker compiles the
+   ROOM OBJECT the main thread sends (hqTerrainRoomPlain), so a variant room compiles as the variant. */
+function _hqPlainCopy(v, seen, depth) {
+    if (v == null || typeof v !== 'object') return (typeof v === 'function') ? undefined : v;
+    if (ArrayBuffer.isView(v) || v instanceof ArrayBuffer) return v;           // a typed array crosses as-is (structured clone / transfer)
+    if (v instanceof Set || v instanceof Map) return v;                       // structured clone carries them
+    seen = seen || new Set(); depth = depth | 0;
+    if (seen.has(v) || depth > 24) return undefined;                          // a cycle / an absurd depth is cut, never followed
+    seen.add(v);
+    let out;
+    if (Array.isArray(v)) { out = []; for (let i = 0; i < v.length; i++) { const c = _hqPlainCopy(v[i], seen, depth + 1); out.push(c === undefined ? null : c); } }
+    else { out = {}; for (const k in v) { if (!Object.prototype.hasOwnProperty.call(v, k)) continue; const c = _hqPlainCopy(v[k], seen, depth + 1); if (c !== undefined) out[k] = c; } }
+    seen.delete(v);
+    return out;
+}
+const _HQ_TERRAIN_SKIP = { room: 1, S: 1, rules: 1, hFn: 1, _climbEdges: 1 };
+function hqTerrainRoomPlain(roomId) {
+    const r = DOOR_HQ.rooms[roomId];
+    return r ? _hqPlainCopy(r) : null;
+}
+function hqTerrainPlain(info) {
+    if (!info) return null;
+    const out = {};
+    for (const k in info) { if (!Object.prototype.hasOwnProperty.call(info, k) || _HQ_TERRAIN_SKIP[k]) continue; const c = _hqPlainCopy(info[k]); if (c !== undefined) out[k] = c; }
+    out.plain = true;
+    return out;
+}
+function hqTerrainAdopt(roomId, plain, opts) {
+    const r = DOOR_HQ.rooms[roomId];
+    if (!r || !plain || typeof plain !== 'object') return null;
+    if (r._terrainInfo && !(opts && opts.force)) return r._terrainInfo;   // a compile that landed first stands
+    const info = plain;
+    info.room = r; info.S = r.shell || {}; info.rules = HQ_TERRAIN_RULES; info.roomId = roomId;
+    info.hFn = (px, pz) => hqTerrainHeight(info, px, pz); info.hFnSampled = true;
+    info._climbEdges = null;
+    (info.pads || []).forEach(p => { if (!p || !p.door) return; const d = (r.doors || []).find(q => q && q.id === p.door.id && q.wall === p.door.wall); if (d) p.door = d; });
+    delete info.plain;
+    Object.defineProperty(r, '_terrainInfo', { value: info, enumerable: false, configurable: true, writable: true });
+    return info;
+}
+function _hqTerrainBuffers(plain) {
+    const bufs = [], seen = new Set();
+    const take = v => { if (ArrayBuffer.isView(v) && v.buffer && !seen.has(v.buffer)) { seen.add(v.buffer); bufs.push(v.buffer); } };
+    for (const k in plain) { const v = plain[k]; take(v); if (v && typeof v === 'object' && !ArrayBuffer.isView(v)) for (const k2 in v) take(v[k2]); }
+    return bufs;
+}
+function hqTerrainWorkerServe(scope) {
+    scope.onmessage = function (ev) {
+        const m = ev && ev.data;
+        if (!m || !m.roomId) return;
+        const t0 = Date.now();
+        let out = null, err = null;
+        try {
+            const room = m.room || DOOR_HQ.rooms[m.roomId];
+            if (!room || !room.terrain) throw new Error('no terrain room ' + m.roomId);
+            out = hqTerrainPlain(hqTerrainCompile(room, m.roomId));
+        } catch (e) { err = String((e && e.message) || e); }
+        const msg = { id: m.id, roomId: m.roomId, info: out, err, ms: Date.now() - t0 };
+        try { scope.postMessage(msg, out ? _hqTerrainBuffers(out) : []); }
+        catch (e) { try { scope.postMessage(msg); } catch (e2) { scope.postMessage({ id: m.id, roomId: m.roomId, info: null, err: String((e2 && e2.message) || e2), ms: Date.now() - t0 }); } }
+    };
+}
 function hqTerrainCompile(room, roomId) {
     const T = room.terrain, S = room.shell || {}, R = HQ_TERRAIN_RULES;
     const roam = (S.edge === 'open' && S.roam > 0) ? S.roam : 0;
@@ -40819,7 +40891,10 @@ function hqFindsForRoom(roomId) {
 function hqFindsWarm(budgetMs) {
     const byRoom = hqFindsTapesByRoom(), rooms = Object.keys(byRoom);
     if (DOOR_HQ.rooms.locker && rooms.indexOf('locker') < 0) rooms.push('locker');
-    const cold = rooms.filter(id => !_HQ_FINDS_CACHE[id]);
+    /* THE SURVEY (2026-09-19): a terrain room's finds need its compiled field (hqTerrainFindSpot) — a compile
+       that has not landed yet (3–31 s of main-thread time) is never forced here; the room waits for the
+       worker's record (map.js re-kicks the warm when one is adopted) or its own entry */
+    const cold = rooms.filter(id => !_HQ_FINDS_CACHE[id] && !(DOOR_HQ.rooms[id] && DOOR_HQ.rooms[id].terrain && !DOOR_HQ.rooms[id]._terrainInfo));
     const t0 = Date.now(), budget = budgetMs > 0 ? budgetMs : 8;
     for (let i = 0; i < cold.length; i++) {
         hqFindsForRoom(cold[i]);

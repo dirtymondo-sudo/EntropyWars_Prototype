@@ -6328,3 +6328,39 @@ carries `spot` / `spotIndex` / `patrol` / `rounds` / `away` now. Nothing on `sta
 draw, the sites). UNSEEN LIVE (RULE #1c): the nav's build time in the cities (~40k queries over frames),
 the walk clip's pace, the crowd's density against the frame rate (`perM2` / `cityMax` are the edits), the
 landing spot's fit at wide doors, walkers on stairs and ramps.
+
+## THE LOADING SCREEN + THE SURVEY — the freeze after the door, and the floor plans off the main thread (2026-09-19, local delivery)
+The user: "when I click Play it does the door animation and then freezes — there needs to be a loading
+screen there; textures / models load slowly." MEASURED (headless, `node`): a terrain room's floor plan
+(data.js `hqTerrainCompile` — the automata, the reach BFS, the rescue ramps) takes **3–31 s** on a big
+room (Downtown 31 s, the grid 23 s, the astral sea 18 s, the cavern 12 s; 206 s for all 77), and the finds
+warm (`hqFindsWarm`, on idle after arrival) triggered it for every tape room in turn — that was the freeze;
+and map.js `_hqEnter` showed the load card and BUILT THE ROOM IN THE SAME TASK, so the card was never
+painted. Three rules now. **(1) THE PAINT**: map.js `_hqDeferBuild(fn)` runs the build a frame + a macrotask
+after the card / the page switch (inline without rAF — scene-lifecycle.test.js's harness); on a walk the old
+room HOLDS under the card through renderer `hq.hold(true)` (pause WITHOUT releasing the pointer lock — a
+released lock reads as the eaten ESC). **(2) THE SURVEY**: the compile runs in a Web Worker — map.js
+`_hqSurveyWorkerGet` builds a blob script = `_HQ_SURVEY_PRELUDE` (the browser stubs load-data.js's sandbox
+uses) + `importScripts(<the page's own data.js URL>)` + data.js **`hqTerrainWorkerServe(self)`**; one job at
+a time, the room being entered at the FRONT (`_hqSurvey(roomId, true)` — its build waits under the FULL
+card: "surveying <room>… 12 s"), every other room in the background nearest-first (`_hqSurveyWarmAround`:
+the rooms behind this room's doors through `hqDoorThrough`, then theirs, then the building; one hop on
+EW_PERF_LOW). The record crosses as a PLAIN copy — data.js **`hqTerrainPlain(info)`** (no closures, no
+`room` / `S` / `rules`, the typed arrays TRANSFERRED) — and is adopted by **`hqTerrainAdopt(roomId, plain)`**
+(the room / shell / HQ_TERRAIN_RULES re-attached, `hFn` = the SAMPLED field — `hFnSampled: true`; nothing
+outside the compiler reads the authored one —, the pads' doors re-pointed at the live rows by id + wall,
+`_terrainInfo` defined); the worker compiles the ROOM OBJECT the page sends (`hqTerrainRoomPlain`), so a
+variant compiles as the variant. `hqFindsWarm` SKIPS a terrain room whose record has not landed (the
+adoption re-kicks the warm). No worker (file://, EW_HQ_NO_SURVEY, a dead import) = the sync compile under
+the painted card. **(3) THE ARRIVAL WARM**: `window._hqWarmArrival()` (once per page load, from the main
+menu's show and from Play) → renderer `hq.warmAvatar(spec)` (the walker's rig + the UAL libraries — the
+card waits for exactly that model) + `hq.warmRoom(roomId)` (the arrival room's leaves, props, the door gun,
+the shell's sheets through the same caches) + the survey worker set on the arrival's neighbours. The card's
+note is live (`_hqLoadProgressStart`: the survey's clock, then `ThreeRenderer.assetsPending()` = GLB files
+still in flight). RULE: never call `hqTerrainInfo` for a room the officer is not standing in from the main
+thread — ask `_hqSurvey`. THE WEIGHT is the rest of the slowness and is the user's: the hall's furniture is
+~100 MB of GLB (computer_chair_blue 16 MB, Wooden Door 11 MB, the door frame 8 MB, UAL1 + UAL2 16 MB) —
+`gltf-transform optimize` with WebP textures at 1024 px would cut it ~5–10×. `npm test` runs
+scene-lifecycle.test.js (the paint, the survey wait, the dead worker) + hq-terrain.test.js (THE SURVEY ×3).
+UNSEEN LIVE (RULE #1c): the worker on iOS Safari (a blob worker importing a cross-origin classic script),
+the card's clock, the hold on a walk.

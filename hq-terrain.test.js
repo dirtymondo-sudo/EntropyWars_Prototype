@@ -207,3 +207,72 @@ test('THE RENDERER on a stub scene: _hqBuildTerrain builds every terrain room �
         if (info.fluids.length) assert.ok(hq.fxPulse.length >= 1, id + ': the water sheets pulse without the shader');
     }
 });
+
+
+/* ── THE SURVEY (2026-09-19): the floor-plan compile off the main thread ──────────────────────────
+   map.js runs data.js in a Web Worker and asks it for a room's record; the record crosses as a
+   PLAIN copy (no closures, no room / rules back-references) and is ADOPTED on the main thread.
+   Light: one small room, a fresh sandbox (the heavy proofs above compile every room in full mode). */
+test('THE SURVEY: the plain record crosses a structured clone and the walker agrees', () => {
+    const G = loadGameData(), rooms = G.DOOR_HQ.rooms;
+    let id = null, area = Infinity;
+    Object.keys(rooms).forEach(k => { const r = rooms[k]; if (r && r.terrain && r.shell && r.shell.w * r.shell.d < area) { area = r.shell.w * r.shell.d; id = k; } });
+    assert.ok(id);
+    const info = G.hqTerrainInfo(id);
+    const plain = G.hqTerrainPlain(info);
+    assert.equal(plain.room, undefined); assert.equal(plain.rules, undefined); assert.equal(plain.hFn, undefined);
+    const fns = []; (function walk(o, p, d) { if (!o || typeof o !== 'object' || d > 6 || ArrayBuffer.isView(o)) return; for (const k in o) { const v = o[k]; if (typeof v === 'function') fns.push(p + '.' + k); else if (v && typeof v === 'object') walk(v, p + '.' + k, d + 1); } })(plain, 'plain', 0);
+    assert.deepEqual(fns, [], 'no closure crosses the boundary');
+    const cloned = structuredClone(plain);   // the real boundary: v8's serializer, as postMessage uses
+    const adopted = G.hqTerrainAdopt(id, cloned, { force: true });
+    assert.equal(rooms[id]._terrainInfo, adopted);
+    assert.equal(adopted.room, rooms[id]); assert.equal(adopted.rules, G.HQ_TERRAIN_RULES); assert.equal(typeof adopted.hFn, 'function');
+    if (adopted.pads.length) assert.ok(rooms[id].doors.includes(adopted.pads[0].door), 'a pad points at the live door row');
+    const S = rooms[id].shell;
+    for (let i = 0; i < 300; i++) {
+        const x = (Math.random() - 0.5) * S.w, z = (Math.random() - 0.5) * S.d;
+        const a = G.hqTerrainFeet(info, x, z, null), b = G.hqTerrainFeet(adopted, x, z, null);
+        assert.ok(a === b || (typeof a === 'number' && typeof b === 'number' && Math.abs(a - b) < 1e-6), `feet differ at ${x},${z}: ${a} vs ${b}`);
+        assert.equal(!!G.hqTerrainFluidAt(info, x, z), !!G.hqTerrainFluidAt(adopted, x, z));
+    }
+    if (adopted.pads.length) {
+        const p = adopted.pads[0];
+        const ra = G.hqTerrainReach(info, p.x, p.z), rb = G.hqTerrainReach(adopted, p.x, p.z);
+        const n = r => (r && (r.size != null ? r.size : (r.length != null ? r.length : Object.keys(r).length)));
+        assert.equal(n(ra), n(rb), 'the solver walks the adopted record exactly as the compiled one');
+    }
+    assert.equal(G.hqTerrainTraps(adopted).length, G.hqTerrainTraps(info).length);
+});
+
+test('THE SURVEY: hqTerrainWorkerServe answers a job with a transferable record', () => {
+    const G = loadGameData(), rooms = G.DOOR_HQ.rooms;
+    let id = null, area = Infinity;
+    Object.keys(rooms).forEach(k => { const r = rooms[k]; if (r && r.terrain && r.shell && r.shell.w * r.shell.d < area) { area = r.shell.w * r.shell.d; id = k; } });
+    const posted = [];
+    const scope = { postMessage: (m, transfer) => posted.push({ m, transfer }) };
+    G.hqTerrainWorkerServe(scope);
+    scope.onmessage({ data: { id: 3, roomId: id, room: G.hqTerrainRoomPlain(id) } });   // the room object as the main thread sends it (a variant compiles as the variant)
+    assert.equal(posted.length, 1);
+    const { m, transfer } = posted[0];
+    assert.equal(m.id, 3); assert.equal(m.roomId, id); assert.equal(m.err, null);
+    assert.ok(m.info && m.info.plain && m.info.H && m.info.H.length > 0);
+    assert.ok(transfer.length >= 1 && transfer.every(b => b instanceof ArrayBuffer || Object.prototype.toString.call(b) === '[object ArrayBuffer]'), 'the typed arrays are transferred, not copied');
+    scope.onmessage({ data: { id: 4, roomId: 'no_such_room' } });
+    assert.equal(posted[1].m.err && posted[1].m.info, null);
+});
+
+test('THE SURVEY: hqFindsWarm never compiles an unsurveyed terrain room', () => {
+    const G = loadGameData(), rooms = G.DOOR_HQ.rooms;
+    const tapeRooms = Object.keys(G.hqFindsTapesByRoom());
+    const terrainTape = tapeRooms.filter(k => rooms[k] && rooms[k].terrain);
+    assert.ok(terrainTape.length > 10);
+    terrainTape.forEach(k => assert.equal(rooms[k]._terrainInfo, undefined, 'a fresh sandbox has compiled nothing'));
+    let left = 1, guard = 0;
+    while (left > 0 && guard++ < 400) left = G.hqFindsWarm(50);
+    assert.equal(left, 0);
+    terrainTape.forEach(k => assert.equal(rooms[k]._terrainInfo, undefined, k + ' was compiled by the finds warm'));
+    /* the box rooms with a tape were built (the warm still does its job) */
+    const boxTape = tapeRooms.filter(k => rooms[k] && !rooms[k].terrain && !rooms[k].cave);
+    assert.ok(boxTape.length > 0);
+    assert.ok(G.hqFindsInRoom(boxTape[0], null, new Date()).length >= 0);
+});

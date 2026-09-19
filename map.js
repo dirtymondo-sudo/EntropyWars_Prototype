@@ -47,6 +47,8 @@
             });
 
             if (pageId === 'mainMenuPage') {
+                /* THE ARRIVAL WARM (2026-09-19): the building's first downloads start behind the menu */
+                try { if (typeof window._hqWarmArrival === 'function') window._hqWarmArrival(); } catch (e) {}
                 try {
                     const cs = loadCareerStats();
                     const ri = getEloRankInfo(cs.elo);
@@ -118,6 +120,7 @@
 
         window._goToPlayHub = function(opts) {
             opts = opts || {};
+            try { if (typeof window._hqWarmArrival === 'function') window._hqWarmArrival(); } catch (e) {}
             /* THE DOOR BEAT (2026-09-09): Play walks through the menu's lone
                door — the cinematic plays first and the building opens as the
                camera reaches the open leaf. No scene / already open ⇒ nothing
@@ -183,6 +186,152 @@
             const load = _hqEl('hqLoad');
             if (load) { load.style.display = 'none'; load.classList.remove('done', 'walk'); }
             return generation;
+        }
+        /* ══ THE LOADING SCREEN + THE SURVEY (2026-09-19) ══════════════════════════════════════════════
+           The user: "when I click play it does the door animation and then freezes — there needs to be a
+           loading screen there." Two causes, both here. (1) THE PAINT: _hqEnter showed the load card and
+           then built the whole room IN THE SAME TASK, so the browser never painted the card — the door
+           beat's last frame stood frozen until the build ended. _hqDeferBuild lets the card / the page
+           switch reach the screen (rAF → the paint → a macrotask) before the build runs. (2) THE SURVEY:
+           a terrain room's floor plan (data.js hqTerrainCompile — cellular automata, the reach BFS, the
+           rescue ramps) takes 3–31 SECONDS on a big room, and the finds warm-up used to trigger it on idle
+           for every tape room in turn. It runs in a Web Worker now — a blob script = the browser stubs +
+           importScripts(data.js, the same URL the page loaded) + data.js hqTerrainWorkerServe(self) —
+           ONE job at a time; the room being entered goes to the FRONT of the queue and its build waits
+           for the record under the FULL card ("surveying <room>… 12 s"), every other room is warmed in
+           the background nearest-first (_hqSurveyWarmAround). The record crosses as a plain copy and is
+           adopted by data.js hqTerrainAdopt. No worker (file://, a CSP, an old browser, a failed import,
+           window.EW_HQ_NO_SURVEY) = the sync compile under the painted card, as before. Nothing on
+           `state`, nothing relayed (RULE #2). */
+        const _HQ_SURVEY_PRELUDE = "var noop=function(){};var storage={getItem:function(){return null;},setItem:noop,removeItem:noop,clear:noop};self.window=self;self.localStorage=storage;self.sessionStorage=storage;self.document={createElement:function(){return{style:{},getContext:function(){return null;},addEventListener:noop};},addEventListener:noop,removeEventListener:noop,getElementById:function(){return null;},querySelector:function(){return null;},querySelectorAll:function(){return[];},body:{appendChild:noop},scripts:[]};self.Image=function(){return{addEventListener:noop};};self.Audio=function(){return{addEventListener:noop};};self.requestAnimationFrame=noop;self.cancelAnimationFrame=noop;\n";
+        let _hqSurveyWorker = null, _hqSurveyDead = false, _hqSurveySeq = 0, _hqSurveyBusy = null;
+        const _hqSurveyJobs = {};    // roomId -> { promise, resolve, reject, t0 }
+        const _hqSurveyQueue = [];   // roomIds waiting for the worker (an urgent one at the front)
+        function _hqSurveyNeeded(roomId) {
+            const r = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.rooms) ? DOOR_HQ.rooms[roomId] : null;
+            return !!(r && r.terrain && !r._terrainInfo);
+        }
+        function _hqSurveyDataUrl() {
+            try { if (typeof window !== 'undefined' && typeof window.EW_HQ_DATA_URL === 'string') return window.EW_HQ_DATA_URL; } catch (e) {}
+            try {
+                if (typeof document === 'undefined' || !document.scripts) return null;
+                for (let i = 0; i < document.scripts.length; i++) { const src = document.scripts[i].src || ''; if (/\/data\.js(\?|$)/.test(src)) return src; }
+            } catch (e) {}
+            return null;
+        }
+        function _hqSurveyJob() { const j = { t0: 0 }; j.promise = new Promise((res, rej) => { j.resolve = res; j.reject = rej; }); return j; }
+        function _hqSurveyWorkerGet() {
+            if (_hqSurveyWorker || _hqSurveyDead) return _hqSurveyWorker;
+            if (typeof window !== 'undefined' && window.EW_HQ_NO_SURVEY) { _hqSurveyDead = true; return null; }
+            if (typeof Worker !== 'function' || typeof Blob !== 'function' || typeof URL === 'undefined' || !URL.createObjectURL) { _hqSurveyDead = true; return null; }
+            const url = _hqSurveyDataUrl();
+            if (!url) { _hqSurveyDead = true; return null; }
+            try {
+                const src = _HQ_SURVEY_PRELUDE + 'importScripts(' + JSON.stringify(url) + ');\nif (typeof hqTerrainWorkerServe !== "function") throw new Error("data.js has no hqTerrainWorkerServe");\nhqTerrainWorkerServe(self);\n';
+                const w = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
+                w.onmessage = _hqSurveyOnMessage;
+                w.onerror = (e) => { console.warn('[HQ] the survey worker failed — floor plans compile on the main thread', e && e.message); _hqSurveyKill(); };
+                _hqSurveyWorker = w;
+            } catch (e) { console.warn('[HQ] no survey worker', e); _hqSurveyDead = true; _hqSurveyWorker = null; }
+            return _hqSurveyWorker;
+        }
+        function _hqSurveyKill() {
+            const w = _hqSurveyWorker; _hqSurveyWorker = null; _hqSurveyDead = true;
+            try { if (w) w.terminate(); } catch (e) {}
+            _hqSurveyBusy = null; _hqSurveyQueue.length = 0;
+            Object.keys(_hqSurveyJobs).forEach(id => { const j = _hqSurveyJobs[id]; delete _hqSurveyJobs[id]; try { j.reject(new Error('survey worker gone')); } catch (e) {} });
+        }
+        function _hqSurveyOnMessage(ev) {
+            const m = ev && ev.data; if (!m || !m.roomId) return;
+            const j = _hqSurveyJobs[m.roomId]; delete _hqSurveyJobs[m.roomId];
+            if (_hqSurveyBusy === m.roomId) _hqSurveyBusy = null;
+            let info = null;
+            if (m.info && !m.err) { try { info = (typeof window.hqTerrainAdopt === 'function') ? window.hqTerrainAdopt(m.roomId, m.info) : null; } catch (e) { console.warn('[HQ] survey adopt failed', m.roomId, e); } }
+            else if (m.err) console.warn('[HQ] survey failed', m.roomId, m.err);
+            if (info && typeof window !== 'undefined' && window.EW_HQ_DEBUG) console.log('[HQ] surveyed ' + m.roomId + ' in ' + m.ms + ' ms');
+            if (j) { if (info) j.resolve(info); else j.reject(new Error(m.err || 'the survey returned nothing')); }
+            /* a landed record lets the finds warm build that room's finds (data.js hqFindsWarm skips an unsurveyed room) */
+            if (info && typeof window !== 'undefined' && typeof window.hqFindsWarm === 'function' && typeof _hqScheduleFindsWarm === 'function' && typeof state !== 'undefined' && state.gameState === GS.HQ) { try { _hqScheduleFindsWarm(); } catch (e) {} }
+            _hqSurveyPump();
+        }
+        function _hqSurveyPump() {
+            if (_hqSurveyBusy) return;
+            while (_hqSurveyQueue.length) {
+                const id = _hqSurveyQueue.shift();
+                if (!_hqSurveyNeeded(id)) { const j0 = _hqSurveyJobs[id]; if (j0) { delete _hqSurveyJobs[id]; j0.resolve(DOOR_HQ.rooms[id]._terrainInfo || null); } continue; }
+                const w = _hqSurveyWorkerGet(); if (!w) { _hqSurveyKill(); return; }
+                let room = null; try { room = (typeof window.hqTerrainRoomPlain === 'function') ? window.hqTerrainRoomPlain(id) : null; } catch (e) {}
+                if (!_hqSurveyJobs[id]) _hqSurveyJobs[id] = _hqSurveyJob();
+                _hqSurveyJobs[id].t0 = performance.now();
+                _hqSurveyBusy = id;
+                try { w.postMessage({ id: ++_hqSurveySeq, roomId: id, room }); } catch (e) { _hqSurveyKill(); return; }
+                return;
+            }
+        }
+        /* ask for a room's record: a promise (the compile lands off-thread), or null when nothing is needed or no
+           worker can run (the caller compiles inline under the card, the old path) */
+        function _hqSurvey(roomId, urgent) {
+            if (!_hqSurveyNeeded(roomId)) return null;
+            if (!_hqSurveyWorkerGet()) return null;
+            if (!_hqSurveyJobs[roomId]) _hqSurveyJobs[roomId] = _hqSurveyJob();
+            if (_hqSurveyBusy !== roomId) {
+                const qi = _hqSurveyQueue.indexOf(roomId);
+                if (qi >= 0 && urgent) _hqSurveyQueue.splice(qi, 1);
+                if (qi < 0 || urgent) { if (urgent) _hqSurveyQueue.unshift(roomId); else _hqSurveyQueue.push(roomId); }
+            }
+            _hqSurveyPump();
+            return _hqSurveyJobs[roomId].promise;
+        }
+        /* the background warm: the rooms behind this room's doors first (through a bypassed board's entry part —
+           data.js hqDoorThrough), then theirs, then the rest of the building; a phone (EW_PERF_LOW) warms one hop */
+        function _hqSurveyWarmAround(roomId) {
+            if (typeof DOOR_HQ === 'undefined' || !DOOR_HQ.rooms || _hqSurveyDead) return 0;
+            if (typeof window !== 'undefined' && window.EW_HQ_NO_SURVEY_WARM) return 0;
+            const order = [], seen = {};
+            const push = id => { if (id && !seen[id] && DOOR_HQ.rooms[id]) { seen[id] = 1; order.push(id); } };
+            const through = d => { try { if (typeof window !== 'undefined' && typeof window.hqDoorThrough === 'function') return window.hqDoorThrough(d); } catch (e) {} const a = d && d.action; return (a && a.room) ? a.room : null; };
+            const doorsOf = id => ((DOOR_HQ.rooms[id] || {}).doors || []);
+            doorsOf(roomId).forEach(d => push(through(d)));
+            if (!(typeof window !== 'undefined' && window.EW_PERF_LOW)) {
+                order.slice().forEach(id => doorsOf(id).forEach(d => push(through(d))));
+                Object.keys(DOOR_HQ.rooms).forEach(push);
+            }
+            let n = 0;
+            order.forEach(id => { if (id !== roomId && _hqSurveyNeeded(id)) { const p = _hqSurvey(id, false); if (p) { n++; p.catch(() => {}); } } });
+            return n;
+        }
+        /* THE PAINT: let this task's DOM changes (the card, the page) reach the screen before a synchronous
+           room build — rAF fires before the next paint, a macrotask after it. Without rAF (a headless
+           harness) the build runs inline and its own result is returned. */
+        function _hqDeferBuild(fn) {
+            if (typeof requestAnimationFrame !== 'function') return fn();
+            requestAnimationFrame(() => { setTimeout(() => { try { fn(); } catch (e) { console.error('[HQ] the deferred build failed', e); } }, 0); });
+            return true;
+        }
+        /* THE PROGRESS LINE on the card: the survey's clock while a floor plan compiles, then the count of
+           model files still streaming (ThreeRenderer.assetsPending) — read every frame while the card shows */
+        function _hqLoadProgressStart(generation, roomId, roomDef, baseNote) {
+            if (typeof requestAnimationFrame !== 'function') return;
+            const note = _hqEl('hqLoadNote'); if (!note) return;
+            const label = String((roomDef && roomDef.label) || roomId || 'the room').toLowerCase();
+            let last = '';
+            const tick = () => {
+                if (generation !== _hqLoadGeneration) return;
+                const l = _hqEl('hqLoad'); if (!l || l.style.display === 'none' || l.classList.contains('done')) return;
+                let txt = baseNote;
+                const j = _hqSurveyJobs[roomId];
+                if (j && _hqSurveyNeeded(roomId)) {
+                    const sec = j.t0 ? Math.max(0, (performance.now() - j.t0) / 1000) : 0;
+                    const clock = !j.t0 ? 'queued' : (sec < 60 ? Math.floor(sec) + ' s' : Math.floor(sec / 60) + ' min ' + Math.floor(sec % 60) + ' s');
+                    txt = 'surveying ' + label + '… ' + clock + ' — the floor plan is being drawn';
+                } else {
+                    let n = 0; try { n = (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.assetsPending) ? ThreeRenderer.assetsPending() : 0; } catch (e) {}
+                    if (n > 0) txt = baseNote.replace(/…\s*$/, '') + ' · ' + n + ' model' + (n === 1 ? '' : 's') + ' streaming…';
+                }
+                if (txt !== last) { last = txt; note.textContent = txt; }
+                requestAnimationFrame(tick);
+            };
+            requestAnimationFrame(tick);
         }
         let _hqHome = false;        // the player entered through Play → screens return to the building
         let _hqSuspended = false;   // the scene is alive but paused under a modal / settings
@@ -442,6 +591,24 @@
             } catch (e) {}
             return { race: 'men in black', gender: 'male' };
         }
+        /* THE ARRIVAL WARM (2026-09-19): the walker's rig + the shared animation libraries (the load card waits
+           for exactly that model) and the arrival room's leaves, props and sheets start downloading while the
+           title, the menu and the door beat play — once per page load; the survey worker is spun up and set on
+           the arrival's neighbours in the same breath. Play then opens on cached files. */
+        let _hqWarmedArrival = false;
+        window._hqWarmArrival = function () {
+            if (_hqWarmedArrival) return false;
+            if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.hq || typeof DOOR_HQ === 'undefined') return false;
+            if (typeof window._hqEnabled === 'function' && !window._hqEnabled()) return false;
+            _hqWarmedArrival = true;
+            try {
+                const profile = _hqProfile();
+                if (ThreeRenderer.hq.warmAvatar) ThreeRenderer.hq.warmAvatar(_hqAvatar(profile));
+                if (ThreeRenderer.hq.warmRoom) ThreeRenderer.hq.warmRoom(_hqArrivalRoom());
+                _hqSurveyWarmAround(_hqArrivalRoom());
+            } catch (e) { console.warn('[HQ] arrival warm failed', e); }
+            return true;
+        };
         /* THE HQ HUD PASS (2026-09-16): a strip pill that is not LIVE stays off the strip —
            the pause menu's OFFICER sheet carries every count. A pill is shown for
            HQ_STRIP_FLASH_MS after its moment (a tape found, a door placed, the day's
@@ -647,11 +814,15 @@
             window._hqClosePanel();
             _hqSetPrompt(null);
             const load = _hqEl('hqLoad');
+            /* THE SURVEY (2026-09-19): a terrain room whose floor plan is not compiled yet waits for the
+               worker's record under the FULL card; a walk into a compiled room keeps the fast door-blink */
+            const surveying = _hqSurveyNeeded(roomId) && !!_hqSurveyWorkerGet();
             /* walking room-to-room (2026-09-04): no load card — a fast
                door-blink (dip to black) while the next room builds */
-            if (load) { load.style.display = ''; load.classList.remove('done'); load.classList.toggle('walk', walking); }
+            if (load) { load.style.display = ''; load.classList.remove('done'); load.classList.toggle('walk', walking && !surveying); }
             const note = _hqEl('hqLoadNote');
-            if (note) note.textContent = walking ? ('admitting you to ' + String(roomDef.label || roomId).toLowerCase() + '…') : (returning ? 're-admitting… your corners are where you left them' : 'verifying your corners…');
+            const baseNote = surveying ? ('surveying ' + String(roomDef.label || roomId).toLowerCase() + '…') : walking ? ('admitting you to ' + String(roomDef.label || roomId).toLowerCase() + '…') : (returning ? 're-admitting… your corners are where you left them' : 'verifying your corners…');
+            if (note) note.textContent = baseNote;
             /* the motto on the loading card (plan 4.4): the barometer's current form — a poster, not the plaque */
             try { const mo = _hqEl('hqLoadMotto'); if (mo) { const bar = (typeof window.hqMottoBarometer === 'function') ? window.hqMottoBarometer(profile, { force: _hqMottoForce() }) : null; mo.textContent = bar ? bar.form : ''; mo.style.display = bar ? '' : 'none'; } } catch (e) {}
             const debug = /[?&]hqdebug\b/.test(location.search) || !!window.EW_HQ_DEBUG;
@@ -663,106 +834,125 @@
             const enteredAt = _hqEnteredAt;
             let loadReady = false;
             _showTitlePage('hqPage');
-            /* the battle renderer stays alive behind the menu after a match
-               (only the map editor deactivates it) and the HQ needs the shared
-               canvas: put the board away first — the next startMatch
-               re-activates it (battle.js checks isActive before activate). */
-            try { if (ThreeRenderer.isActive && ThreeRenderer.isActive() && state.phase !== 'battle') ThreeRenderer.deactivate(); } catch (e) { console.warn('[HQ] could not park the battle renderer', e); }
-            let ok = false;
-            try { ok = ThreeRenderer.hq.enter({
-                host, room: roomId, profile, avatar: _hqAvatar(profile),
-                onPrompt: _hqSetPrompt,
-                onInteract: _hqInteractTarget,
-                onEnterDoor: _hqWalkThroughDoor,
-                /* THE DOOR GUN (HQ plan 9.5): the pair on file (cleared on a fresh arrival — the rope is for one visit),
-                   the filer a click calls (LEFT = A, RIGHT = B → the slot), the beats (drawn / holstered / refused),
-                   and the TOUCH crossing a flat threshold reports (rev 2: a floor / ceiling hatch is fallen through) */
-                portal: (typeof _hqPortalOpts === 'function') ? _hqPortalOpts(opts, profile) : null,
-                onPortalPlace: (typeof _hqPortalPlaced === 'function') ? _hqPortalPlaced : null,
-                onPortal: (typeof _hqPortalEvent === 'function') ? _hqPortalEvent : null,
-                onPortalCross: function (slot) { try { return window._hqPortalStep(slot); } catch (e) { return false; } },
-                /* THE ENCOUNTER (HQ plan 9.4): a thrown gesture (the beat) and the one that LANDS on a native with the gun drawn (the crossing) */
-                onStrike: (typeof _hqStrikeEvent === 'function') ? _hqStrikeEvent : null,
-                onEncounter: (typeof _hqEncounterFire === 'function') ? _hqEncounterFire : null,
-                /* SKATEBOARDING (HQ plan 9.8): the issue (standard issue while HQ_SKATE_RULES.free) and the ride's beats (the trick line, the sounds, the banked line) */
-                skate: (typeof _hqSkateOpts === 'function') ? _hqSkateOpts(profile) : null,
-                onSkate: (typeof _hqSkateEvent === 'function') ? _hqSkateEvent : null,
-                /* THE DEEP (2026-09-18): the swimmer's and the helm's beats (the hints, the toasts, the water's sounds) */
-                onSea: (typeof _hqSeaEvent === 'function') ? _hqSeaEvent : null,
-                /* THE CLIMB (AREA_CONTENT_PLAN D1, 2026-09-19): the ladder's beats (the W CLIMB hint at a foot, the first-time toast, a creak) */
-                onClimb: (typeof _hqClimbEvent === 'function') ? _hqClimbEvent : null,
-                /* ESC: close the panel, else Settings (plan D6 — an overlay,
-                   not a place); EXIT on the strip is how you leave */
-                onEscape: () => { if (_hqTerm) { window._hqTerminalClose(); return; } if (_hqPause) { window._hqClosePause(); return; } if (_hqPanelTarget) window._hqClosePanel(); else window._hqOpenPause(); },
-                /* Q: answer a BELL call from anywhere in the building (plan D2) */
-                onHotkey: (k) => {
-                    if (k === 'q') _hqOpenCounter('dispatch');
-                    /* M = THE MAP (THE HQ HUD PASS): open the directory; M again closes it. A pause
-                       menu / terminal / another panel keeps the key (ESC is theirs). */
-                    else if (k === 'm') {
-                        if (_hqTerm || _hqPause) return;
-                        if (_hqPanelTarget) { if (_hqPanelIsMap(_hqPanelTarget)) window._hqClosePanel(); return; }
-                        window._hqOpenDirectory();
-                    }
-                },
-                onReady: () => {
-                    if (loadGeneration !== _hqLoadGeneration || loadReady) return;
-                    loadReady = true;
-                    const wait = Math.max(0, (walking ? 150 : 900) - (performance.now() - enteredAt));
-                    _hqLoadFadeTimer = setTimeout(() => {
-                        if (loadGeneration !== _hqLoadGeneration) return;
-                        _hqLoadFadeTimer = null;
-                        const l = _hqEl('hqLoad');
-                        if (l) {
-                            l.classList.add('done');
-                            _hqLoadHideTimer = setTimeout(() => {
-                                if (loadGeneration !== _hqLoadGeneration) return;
-                                _hqLoadHideTimer = null;
-                                l.style.display = 'none';
-                                l.classList.remove('walk');
-                            }, walking ? 320 : 650);
+            /* THE LOADING SCREEN (2026-09-19): the old room HOLDS under the card on a walk — its walker must
+               not re-fire the door while the next room waits for its paint / its survey (hq.hold keeps the
+               pointer lock, unlike setPaused) */
+            if (walking) { try { if (ThreeRenderer.hq.hold) ThreeRenderer.hq.hold(true); } catch (e) {} }
+            _hqLoadProgressStart(loadGeneration, roomId, roomDef, baseNote);
+            const build = () => {
+                if (loadGeneration !== _hqLoadGeneration) return false;   // a newer entry / a leave superseded this one
+                /* the battle renderer stays alive behind the menu after a match
+                   (only the map editor deactivates it) and the HQ needs the shared
+                   canvas: put the board away first — the next startMatch
+                   re-activates it (battle.js checks isActive before activate). */
+                try { if (ThreeRenderer.isActive && ThreeRenderer.isActive() && state.phase !== 'battle') ThreeRenderer.deactivate(); } catch (e) { console.warn('[HQ] could not park the battle renderer', e); }
+                let ok = false;
+                try { ok = ThreeRenderer.hq.enter({
+                    host, room: roomId, profile, avatar: _hqAvatar(profile),
+                    onPrompt: _hqSetPrompt,
+                    onInteract: _hqInteractTarget,
+                    onEnterDoor: _hqWalkThroughDoor,
+                    /* THE DOOR GUN (HQ plan 9.5): the pair on file (cleared on a fresh arrival — the rope is for one visit),
+                       the filer a click calls (LEFT = A, RIGHT = B → the slot), the beats (drawn / holstered / refused),
+                       and the TOUCH crossing a flat threshold reports (rev 2: a floor / ceiling hatch is fallen through) */
+                    portal: (typeof _hqPortalOpts === 'function') ? _hqPortalOpts(opts, profile) : null,
+                    onPortalPlace: (typeof _hqPortalPlaced === 'function') ? _hqPortalPlaced : null,
+                    onPortal: (typeof _hqPortalEvent === 'function') ? _hqPortalEvent : null,
+                    onPortalCross: function (slot) { try { return window._hqPortalStep(slot); } catch (e) { return false; } },
+                    /* THE ENCOUNTER (HQ plan 9.4): a thrown gesture (the beat) and the one that LANDS on a native with the gun drawn (the crossing) */
+                    onStrike: (typeof _hqStrikeEvent === 'function') ? _hqStrikeEvent : null,
+                    onEncounter: (typeof _hqEncounterFire === 'function') ? _hqEncounterFire : null,
+                    /* SKATEBOARDING (HQ plan 9.8): the issue (standard issue while HQ_SKATE_RULES.free) and the ride's beats (the trick line, the sounds, the banked line) */
+                    skate: (typeof _hqSkateOpts === 'function') ? _hqSkateOpts(profile) : null,
+                    onSkate: (typeof _hqSkateEvent === 'function') ? _hqSkateEvent : null,
+                    /* THE DEEP (2026-09-18): the swimmer's and the helm's beats (the hints, the toasts, the water's sounds) */
+                    onSea: (typeof _hqSeaEvent === 'function') ? _hqSeaEvent : null,
+                    /* THE CLIMB (AREA_CONTENT_PLAN D1, 2026-09-19): the ladder's beats (the W CLIMB hint at a foot, the first-time toast, a creak) */
+                    onClimb: (typeof _hqClimbEvent === 'function') ? _hqClimbEvent : null,
+                    /* ESC: close the panel, else Settings (plan D6 — an overlay,
+                       not a place); EXIT on the strip is how you leave */
+                    onEscape: () => { if (_hqTerm) { window._hqTerminalClose(); return; } if (_hqPause) { window._hqClosePause(); return; } if (_hqPanelTarget) window._hqClosePanel(); else window._hqOpenPause(); },
+                    /* Q: answer a BELL call from anywhere in the building (plan D2) */
+                    onHotkey: (k) => {
+                        if (k === 'q') _hqOpenCounter('dispatch');
+                        /* M = THE MAP (THE HQ HUD PASS): open the directory; M again closes it. A pause
+                           menu / terminal / another panel keeps the key (ESC is theirs). */
+                        else if (k === 'm') {
+                            if (_hqTerm || _hqPause) return;
+                            if (_hqPanelTarget) { if (_hqPanelIsMap(_hqPanelTarget)) window._hqClosePanel(); return; }
+                            window._hqOpenDirectory();
                         }
-                    }, wait);
-                },
-                onView: (fp) => { const h = _hqEl('hqHints'); if (h) h.classList.toggle('fp', !!fp); },
-                onDebug: debug ? (d) => { if (dbg) dbg.textContent = `deg ${d.deg} · r ${d.r} · y ${d.y} · L${d.level} · x ${d.x} z ${d.z}${d.fp ? ' · FP' : ''}`; } : null,
-            }); } catch (e) { console.error('[HQ] enter failed', e); }
-            if (!ok) {
-                /* no WebGL / renderer failure: fall back to the classic pages */
-                _hqCancelLoadCard();
-                _hqHome = false;
-                if (load) load.style.display = 'none';
+                    },
+                    onReady: () => {
+                        if (loadGeneration !== _hqLoadGeneration || loadReady) return;
+                        loadReady = true;
+                        const wait = Math.max(0, (walking ? 150 : 900) - (performance.now() - enteredAt));
+                        _hqLoadFadeTimer = setTimeout(() => {
+                            if (loadGeneration !== _hqLoadGeneration) return;
+                            _hqLoadFadeTimer = null;
+                            const l = _hqEl('hqLoad');
+                            if (l) {
+                                l.classList.add('done');
+                                _hqLoadHideTimer = setTimeout(() => {
+                                    if (loadGeneration !== _hqLoadGeneration) return;
+                                    _hqLoadHideTimer = null;
+                                    l.style.display = 'none';
+                                    l.classList.remove('walk');
+                                }, walking ? 320 : 650);
+                            }
+                        }, wait);
+                    },
+                    onView: (fp) => { const h = _hqEl('hqHints'); if (h) h.classList.toggle('fp', !!fp); },
+                    onDebug: debug ? (d) => { if (dbg) dbg.textContent = `deg ${d.deg} · r ${d.r} · y ${d.y} · L${d.level} · x ${d.x} z ${d.z}${d.fp ? ' · FP' : ''}`; } : null,
+                }); } catch (e) { console.error('[HQ] enter failed', e); }
+                if (!ok) {
+                    /* no WebGL / renderer failure: fall back to the classic pages */
+                    _hqCancelLoadCard();
+                    _hqHome = false;
+                    if (load) load.style.display = 'none';
+                    window._hqRelabelMenuButtons();
+                    state.gameState = GS.MAIN_MENU;
+                    _showTitlePage('mainMenuPage');
+                    return false;
+                }
+                /* post-match / post-screen: stand where you left, door at your back */
+                if (opts.at) { try { ThreeRenderer.hq.goTo(opts.at, true); } catch (e) {} }
+                if (opts.from === 'play') { _hqLastRoom = roomId; _hqLastDoor = null; _hqRecordVisit(null); _hqStripFlash('form365', 9000); }   // THE HQ HUD PASS: the day's sheet shows on arrival, then the strip goes quiet
+                else if (returning && window._lastHqForm365) _hqStripFlash('form365', 9000);   // back from a match that ticked a line
+                /* THE MAP (2026-09-16): every room entered is a room SEEN — the directory's map draws it from now on */
+                if (typeof _hqRecordRoomSeen === 'function') _hqRecordRoomSeen(roomId);
                 window._hqRelabelMenuButtons();
-                state.gameState = GS.MAIN_MENU;
-                _showTitlePage('mainMenuPage');
-                return false;
-            }
-            /* post-match / post-screen: stand where you left, door at your back */
-            if (opts.at) { try { ThreeRenderer.hq.goTo(opts.at, true); } catch (e) {} }
-            if (opts.from === 'play') { _hqLastRoom = roomId; _hqLastDoor = null; _hqRecordVisit(null); _hqStripFlash('form365', 9000); }   // THE HQ HUD PASS: the day's sheet shows on arrival, then the strip goes quiet
-            else if (returning && window._lastHqForm365) _hqStripFlash('form365', 9000);   // back from a match that ticked a line
-            /* THE MAP (2026-09-16): every room entered is a room SEEN — the directory's map draws it from now on */
-            if (typeof _hqRecordRoomSeen === 'function') _hqRecordRoomSeen(roomId);
-            window._hqRelabelMenuButtons();
-            try { if (typeof startDoorRoomTone === 'function') startDoorRoomTone(); } catch (e) {}
-            try { syncMusicToState().catch(() => {}); } catch (e) {}
-            /* Code Red (plan 3.3): the doorbell rings once per Code Red per
-               session on the way into the egress — from Play or back from a
-               screen / match, never when walking room to room */
-            if (!walking && (roomId === 'central_egress' || roomId === _HQ_FOYER)) {
-                try {
-                    const cr = (typeof window.hqCodeRed === 'function') ? window.hqCodeRed(profile) : null;
-                    const key = cr && !cr.cleared ? (cr.date + '|' + cr.site) : null;
-                    if (key && _hqBellRungFor !== key) {
-                        _hqBellRungFor = key;
-                        if (typeof playDoorSfx === 'function') playDoorSfx('doorbell', { delay: 1.4, volume: 0.9 });
-                    }
-                } catch (e) {}
-            }
-            /* the promotion moment (plan 3.4): a clearance the building has
-               not acknowledged yet → PA chime + the personnel notice */
-            if (!walking) { try { _hqCheckPromotion(profile); } catch (e) { console.warn('[HQ] promotion check failed', e); } }
-            return true;
+                try { if (typeof startDoorRoomTone === 'function') startDoorRoomTone(); } catch (e) {}
+                try { syncMusicToState().catch(() => {}); } catch (e) {}
+                /* Code Red (plan 3.3): the doorbell rings once per Code Red per
+                   session on the way into the egress — from Play or back from a
+                   screen / match, never when walking room to room */
+                if (!walking && (roomId === 'central_egress' || roomId === _HQ_FOYER)) {
+                    try {
+                        const cr = (typeof window.hqCodeRed === 'function') ? window.hqCodeRed(profile) : null;
+                        const key = cr && !cr.cleared ? (cr.date + '|' + cr.site) : null;
+                        if (key && _hqBellRungFor !== key) {
+                            _hqBellRungFor = key;
+                            if (typeof playDoorSfx === 'function') playDoorSfx('doorbell', { delay: 1.4, volume: 0.9 });
+                        }
+                    } catch (e) {}
+                }
+                /* the promotion moment (plan 3.4): a clearance the building has
+                   not acknowledged yet → PA chime + the personnel notice */
+                if (!walking) { try { _hqCheckPromotion(profile); } catch (e) { console.warn('[HQ] promotion check failed', e); } }
+                /* THE SURVEY's background warm: the rooms behind this room's doors compile off-thread now, so the
+                   next door opens on a drawn floor plan */
+                try { _hqSurveyWarmAround(roomId); } catch (e) {}
+                return true;
+            };
+            return _hqDeferBuild(() => {
+                if (loadGeneration !== _hqLoadGeneration) return false;
+                const p = surveying ? _hqSurvey(roomId, true) : null;
+                if (!p) return build();
+                const go = () => { try { build(); } catch (e) { console.error('[HQ] the build after the survey failed', e); } };
+                p.then(go, go);   // a failed survey compiles inline under the card (the old path)
+                return true;
+            });
         };
         /* ── the promotion moment (HQ plan 3.4 / MASTER B3) ──────────────────
            Whatever promotes the profile (the story track, a directive, the
