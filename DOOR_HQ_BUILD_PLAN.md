@@ -10979,3 +10979,15 @@ hq-stage2 / hq-map-remembers / hq-skate / hq-deep / hq-portal / hq-encounter / s
   key: concrete / tile / metal / rubber), the closed parts' dark ceiling over an 8×8 with no room drawn round it (§10 stage 4
   builds the room only round a FIELD; a part's Δ stands alone in its site's fog), the cloud-bed boards, the `bridge` tiles
   as decks. Next: a `near` builder per closed part (the room's walls round its Δ), the SITE terminal offering a site's area Δs.
+
+### 2026-09-19 — AREA CONTENT D3, third delivery: THE TEMPLE CITY · THE CRYSTAL CITY · THE STATION (local delivery)
+Three more `HQ_AREA_SPECS` rows (data.js `prebuilt_technoticlan` / `prebuilt_agartha` / `prebuilt_antarctica`) brought up to the cave's
+standard and measured clean on R1–R8 (`node check-area-content.js --rules`), solved from every door with nothing trapping (`node
+check-terrain.js`). Doors moved ON tiers: `babel_technoticlan.b` (y 2.0, THE LEY TERRACE), `cave_agartha.b` (y 2.4, THE ADIT TERRACE),
+`antarctica_derelict.a` (y 3.0, THE HULL). New: `routes.hollow` · THE INNER EARTH (dashed) carrying two draughts into the crystal city —
+`antarctica_polar` (the station's west wall ⇄ the city's west wall) and `technoticlan_agartha` (the ball court's west wall ⇄ the city's east
+wall). Tape pins moved with the weenies (`findSpots`: the temple (14, −21), the spire (6, −16), the ice wall (17, −21.5)). No renderer change.
+UNSEEN LIVE (RULE #1c): the aqueduct's span over the waded canal (the piers on the banks), the gallery slab over the lower terrace at 1.95 m of
+headroom, the hull's bulkhead leaf standing 3 m up the ice with its stair and ladder, the crevasse at a 0.55 m bed under the dark sheet (deep
+enough to read as a crevasse?), the pyramid's three tiers against the north wall from the causeway, the observatory's 9 m ramp, every prop on a
+tier (`y` is the edit), the two portcullis / bulkhead draught slabs, THE INNER EARTH's line on THE WORLD tab. Log: AREA_CONTENT_PLAN §7.

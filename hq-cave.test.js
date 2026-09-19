@@ -158,7 +158,7 @@ test('THE FOUR EXITS: a live pair each into Hell (the pit’s east wall since 20
         }
         assert.strictEqual(back.wall, 'n');
         assert.ok(back.x > -(half - (room.shell.open ? 2.6 : 1.4)) && back.x < 0.4, l.id + ': the far lane is inside the wall');
-        for (const o of room.doors.filter(d => d.link && d !== back)) assert.ok(Math.abs(o.x - back.x) >= 4.4, l.id + ': the far lane crowds ' + o.id);
+        for (const o of room.doors.filter(d => d.link && d !== back && d.wall === 'n')) assert.ok(Math.abs(o.x - back.x) >= 4.4, l.id + ': the far lane crowds ' + o.id);   // AREA CONTENT D3 (2026-09-19): the same wall only — a side-wall draught (the polar opening on the crystal city's west wall) has no x
     }
 });
 

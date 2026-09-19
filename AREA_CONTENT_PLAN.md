@@ -179,7 +179,7 @@ scaffolding = `climb` `pipe` + `deck`). The `city` plan gains `districts: [{ id,
 lots, streets }]` and the traffic / race / markings run per district. `check-terrain.js` +
 `playtest_city.js` before anything is claimed.
 
-**D3 — THE TWENTY AREAS, BROUGHT UP TO THE CAVE.** *(FIRST DELIVERY SHIPPED 2026-09-19 — Shasta, the North Pole, Olympus; SECOND DELIVERY 2026-09-19 — the Stadium, the Haunted grounds, the Spaceship deck: the six the user sees first are done; see §7.)* `HQ_AREA_SPECS` rework, one spec at a time,
+**D3 — THE TWENTY AREAS, BROUGHT UP TO THE CAVE.** *(FIRST DELIVERY SHIPPED 2026-09-19 — Shasta, the North Pole, Olympus; SECOND DELIVERY 2026-09-19 — the Stadium, the Haunted grounds, the Spaceship deck: the six the user sees first are done; THIRD DELIVERY 2026-09-19 — Technoticlan, Agartha, Antarctica; see §7.)* `HQ_AREA_SPECS` rework, one spec at a time,
 each to R1–R8: a parti, a typology, ≥ 3 tiers chained by ≥ 2 kinds, a ladder / rope / vine per
 area where it fits the place (vines in the grove, the woods, Agartha; ropes in Shasta, the
 North Pole, Olympus; ladders in the station, the deck, the base; chains in Hell; hand-holds on
@@ -386,3 +386,39 @@ The questions as they were asked:
   secret doors); the rest hold as written. NEXT: the remaining fourteen areas (Technoticlan, Agartha, Antarctica, Mars, the Moon, the Grove, the
   Flatlands, the Looking-Glass's garden, the Lodge, the Singularity, Saturn, Hollow Earth, the Dutchman's deck, the Backrooms), two or three a
   delivery, on the same pattern — then D4, D5.
+- 2026-09-19 — **D3, THIRD DELIVERY (local): THE TEMPLE CITY · THE CRYSTAL CITY · THE STATION — the first three of the remaining fourteen, brought up
+  to the cave.** Each re-specced in `HQ_AREA_SPECS` (data.js) and measured clean on ALL of R1–R8 by `node check-area-content.js --rules` (climb rows /
+  kinds / per 100 m² / range / items per 60 m² / earned exits: THE TEMPLE CITY 27 / 5 / 0.89 / 8.2 m / 1.55 / 2 of 3; THE STATION 20 / 6 / 0.69 / 7.4 m
+  / 1.33 / 2 of 3; THE CRYSTAL CITY 18 / 5 / 0.63 / 8.0 m / 1.42 / 4 of 5; at most one door exposed anywhere; every earned exit that is not a draught
+  teased; a `parti` + a `typology` on each; `node check-terrain.js` solves every door from every door, nothing traps, zero rescue ramps). **THE
+  TEMPLE CITY** (processional): THE PYRAMID moved east of the ley terrace with its back AGAINST the north wall (the 2 m strip behind it was a
+  pocket the walker dropped into off the back — 46 cells), three tiers 2.5 / 5.0 / 7.5 — THE GREAT STAIR up the south face, THE OTHER STAIR up
+  the west flank (the gag made real), the hand-holds up both east faces, THE TEMPLE the tape (the door gun's); THE AQUEDUCT = THE PRIEST HOUSE
+  (3.0, a stair + a rope) north of THE CANAL and THE MARKET TERRACE (3.0, a stair + a vine) south of it joined by a level span the canal is
+  waded under (the bridge layer); THE BALL COURT's STAND (2.4, a stair + a ladder) at its west end; THE OBSERVATORY (4.2, the long ramp down from
+  the north wall's side, a chain up its east face — moved north: the strip between its foot and the canal's bank was a 3-cell pocket); THE LEY
+  TERRACE (2.0) on the north wall with `babel_technoticlan.b` standing ON it (`y: 2.0` — a door you climb to; the x −5 hq-leylines pins is
+  kept), a stair from the west + the hand-holds up its south face; two planks over the canal; XIBALBA = a DRAUGHT (`links.technoticlan_agartha`,
+  `secret: true`, `leaf_portcullis`) under the ball court's west wall into the crystal city's east wall; 46 items. **THE CRYSTAL CITY**
+  (terraces): THE LOWER TERRACE (1.6, a stair + a vine), THE UPPER TERRACE (3.6, a stair + a rope), THE GALLERY = a level span from it east to
+  THE BALCONY (3.6, a ladder from the ground) over the lower terrace (the bridge layer — the upper terrace grew 3.4 → 3.6 so the slab leaves
+  the 1.95 m of headroom over the lower one; a lower slab is a wall to the body beneath), THE ADIT TERRACE (2.4) on the north wall with
+  `cave_agartha.b` standing ON it (`y: 2.4`; a stair + the hand-holds), THE SPIRE moved over the lake's west bank (the tape pin moved with it),
+  THE CRYSTAL FOREST (3.0, a stair + a vine), THE PIER's wall along the lake (the grind); THREE DRAUGHTS come out here now — Lemuria's (the
+  first delivery's), THE POLAR OPENING (`links.antarctica_polar`, `leaf_bulkhead`, the station's west wall ⇄ the city's west wall) and XIBALBA
+  — on a NEW dashed route **`routes.hollow` · THE INNER EARTH** (the pruned plain doors `antarctica_agartha` / `shasta_agartha` stay pruned,
+  hq-areas pins them; a draught wears a new id); 4 of 5 exits earned; 43 items. **THE STATION** (traverse): THE DECK the huts stand on (1.2, the
+  ramp + a ladder + the hand-holds), THE RADIO MAST's plinth (3.2, a ladder + a chain), THE MELT POOL (waded), two PRESSURE RIDGES (the grind),
+  THE CREVASSE (never entered — its bed 0.55 m now, the canal rule) crossed by the one plank, THE ICE SHELF (4.0, the long stair + a rope), THE
+  DRILL RIG (2.2, a chain + a ladder) beside THE ICE WALL (the tape, moved east of the hull; the pin moved), and THE HULL (3.0) rising out of the
+  ice on the north wall with the ship's collar standing ON it (`antarctica_derelict.a` `y: 3.0` — a stair up its east side, a ladder on its
+  west); the polar draught in the west wall; 48 items (the snowcat and the SUV stand in for the traverse's vehicles). **THE RULE THE COMPILER
+  TAUGHT**: a `climb` row's `face` is the direction TOWARD THE MASS (`hqTerrainClimbs`: `ux = sin(face)`, `uz = −cos(face)` — face 0 = the tier
+  is NORTH of the line, 180 = south, 90 = east, 270 = west); a line on a tier's north face wears `face: 180`. Every row of the first draft had the
+  north / south faces inverted and the probe read every one as a drop before a flat head — the read is `hqTerrainInfo(id).climbs` against the
+  authored rows (the scratch probe prints foot / mount / in-1.2 per row). Two pockets the solver found on the crystal city (the forest's back
+  corner, the strip behind the upper terrace) were joined to the open floor with `path` rows, not rescue ramps. Test amended: hq-cave.test.js's
+  far-lane crowding compares north-wall link doors only (a side-wall draught has no `x` — the assertion read NaN). Pre-existing on main before
+  this delivery, not touched: doorhq's server-banks count + Camelot's dry board, hq-cave's eight secret doors (ten since the cargo hatch),
+  hq-spaceship's deck hatch, hq-terrain's fountain on Downtown, hq-world's seams list (the two sewer gutters). NEXT: Mars, the Moon, the Grove;
+  then the Flatlands, the Looking-Glass's garden, the Lodge, the Singularity, Saturn, Hollow Earth, the Dutchman's deck, the Backrooms — then D4, D5.

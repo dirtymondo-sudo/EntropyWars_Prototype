@@ -6154,3 +6154,20 @@ keyed by its room id, nothing else; delta-maps.test.js runs every house rule on 
 has no Δ; the site count stays 38. Ship data.js to R2 AND Render. Unseen live (RULE #1c): every board — the `urban:` sheets
 became the nearest board key, a closed part's Δ stands alone under a dark ceiling (§10 stage 4 draws the room round a FIELD
 only), the cloud-bed boards, the `bridge` decks.
+
+## AREA CONTENT PLAN D3, THIRD DELIVERY — THE TEMPLE CITY · THE CRYSTAL CITY · THE STATION to the cave's standard (2026-09-19, local delivery)
+The first three of the remaining fourteen areas (`AREA_CONTENT_PLAN.md` §5 D3; §7 has the log and the numbers), re-specced in data.js
+`HQ_AREA_SPECS` (`prebuilt_technoticlan` / `prebuilt_agartha` / `prebuilt_antarctica` — the spec is the edit, never the generated
+`site_<id>_<part>`) and measured clean on R1–R8 by `node check-area-content.js --rules <room>`, solved by `node check-terrain.js` (every door from
+every door, no trap, no rescue ramp). **THE TEMPLE CITY**: THE PYRAMID's back stands AGAINST the north wall (the strip behind it was a pocket),
+THE OTHER STAIR up its west flank, THE AQUEDUCT = a `deck` wearing `over: true` from THE PRIEST HOUSE to THE MARKET TERRACE over the waded canal,
+THE LEY TERRACE with `babel_technoticlan.b` ON it (`y: 2.0`; x −5 kept — hq-leylines pins it), XIBALBA = a draught. **THE CRYSTAL CITY**: THE
+GALLERY span from THE UPPER TERRACE (3.6 now — a slab needs 1.95 m of headroom over the lower terrace or it is a wall to the body beneath) to THE
+BALCONY, THE ADIT TERRACE with `cave_agartha.b` ON it (`y: 2.4`), THREE DRAUGHTS come out here on the NEW dashed **`routes.hollow` · THE INNER
+EARTH** (`antarctica_polar` + `technoticlan_agartha` — new ids; the pruned plain doors stay pruned, hq-areas pins them). **THE STATION**: THE HULL
+(3.0) on the north wall with the collar ON it (`antarctica_derelict.a` `y: 3.0`), THE ICE SHELF, THE DRILL RIG, the crevasse's bed 0.55 m (the
+canal rule), the polar draught. **THE RULE**: a `climb` row's **`face` is the direction TOWARD THE MASS** (`hqTerrainClimbs`: face 0 = the tier is
+north of the line, 180 south, 90 east, 270 west); the first draft had every north / south face inverted — read `hqTerrainInfo(id).climbs` back
+against the rows. Two pockets joined with `path` rows, never rescue ramps. hq-cave.test.js's far-lane crowding compares north-wall doors only (a
+side-wall draught has no `x`). Ship data.js to R2 AND Render. UNSEEN LIVE (RULE #1c): all of it — DOOR_HQ_BUILD_PLAN §9's entry lists what to
+eyeball first. NEXT: Mars, the Moon, the Grove.

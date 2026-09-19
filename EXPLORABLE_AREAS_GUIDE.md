@@ -676,3 +676,8 @@ The scan then starts on the top and the foot (`climbReach` back) lands 0.3 m out
   site, 62 × 50). Three rules for every area still to do: the climb LINE stands 0.3 m inside the tier's nominal edge (above); a two-door room's
   tier door is never "earned" (the audit's median sill is the higher one) — give it a third door, a draught; the ground behind a tier against the
   shell wall is a pocket until a path reaches it. AREA_CONTENT_PLAN §7 has the numbers.
+- 2026-09-19 — AREA CONTENT D3, third delivery: THE TEMPLE CITY (the pyramid's back against the wall, the other stair on the west flank, the
+  aqueduct = a level span over the waded canal, the ley door ON a terrace, Xibalba a draught), THE CRYSTAL CITY (the gallery span over the lower
+  terrace, the adit ON a terrace, three draughts on the new dashed `routes.hollow`), THE STATION (the collar ON the hull, the ice shelf, the drill
+  rig, the polar draught). The rule that came with it: a `climb` row's `face` points TOWARD THE MASS (0 = the tier is north of the line, 180 south,
+  90 east, 270 west) — read the compiled rows back, never the row count. AREA_CONTENT_PLAN §7 has the numbers.
