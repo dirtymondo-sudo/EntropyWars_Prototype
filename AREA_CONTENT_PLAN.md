@@ -179,7 +179,7 @@ scaffolding = `climb` `pipe` + `deck`). The `city` plan gains `districts: [{ id,
 lots, streets }]` and the traffic / race / markings run per district. `check-terrain.js` +
 `playtest_city.js` before anything is claimed.
 
-**D3 — THE TWENTY AREAS, BROUGHT UP TO THE CAVE.** `HQ_AREA_SPECS` rework, one spec at a time,
+**D3 — THE TWENTY AREAS, BROUGHT UP TO THE CAVE.** *(FIRST DELIVERY SHIPPED 2026-09-19 — Shasta, the North Pole, Olympus; see §7.)* `HQ_AREA_SPECS` rework, one spec at a time,
 each to R1–R8: a parti, a typology, ≥ 3 tiers chained by ≥ 2 kinds, a ladder / rope / vine per
 area where it fits the place (vines in the grove, the woods, Agartha; ropes in Shasta, the
 North Pole, Olympus; ladders in the station, the deck, the base; chains in Hell; hand-holds on
@@ -325,3 +325,29 @@ The questions as they were asked:
   §5 item 3 — the bridge layer is its pattern). UNSEEN LIVE (RULE #1c): the slab's read from below (the girder, the piers on
   the pier alley's kerbs), the rails' height against the walker, the overpass's headroom under a truck GLB, the fire
   escape's 7 m against the pier's flank, the west landing's cliff on the plaza's corner.
+- 2026-09-19 — **D3, FIRST DELIVERY (local): SHASTA · THE NORTH POLE · OLYMPUS, brought up to the cave.** Three of the six the user
+  sees first (§5 D3's order), each re-specced in `HQ_AREA_SPECS` to R1–R8 and measured clean by `node check-area-content.js --rules`
+  (R1 0.61 / 0.77 / 0.82 climb rows per 100 m² of open floor (16 / 17 / 18 rows, 6 kinds each, ranges 9.6 / 7.8 / 8.6 m); R8 1.36 / 1.32 / 1.09 per 60 m²; R3 nothing exposed; R4 2 of 3 exits earned on the slopes and the summit, the hearth on the village (its drift door is 1.2 m over the median sill); R5 every earned exit teased; R6 a `parti` + a `typology` on each; R8 ≥ 1 per 60 m²). **THE SLOPES** (switchback):
+  THE SHELF (3.6) up the trail or the hand-holds on its south rim, THE LOOKOUT (6.4) up a ladder on it, THE SADDLE (2.4) up a stair off
+  THE FALLS' pool or a rope up its south face, THE CRAG (4.8) by a rope off the saddle, THE SNOWLINE (4.4) up a stair off the saddle
+  or a rope at its east end — the woods' frame stands ON it (`woods_shasta.b` carries `y: 4.4`: a door you climb to), THE SUMMIT (7.2,
+  the tape — the door gun's) on the snowline, seen from the crag and the snowline; THE CREEK (waded) with a plank, the corral wall
+  the rider grinds; **LEMURIA = a DRAUGHT** (`links.shasta_lemuria`, `secret: true`, route `woods`: the west wall's boulders ⇄ THE
+  CRYSTAL CITY's north wall at x 10 — the plain `shasta_agartha` door THE AREAS pruned stays pruned; the hidden passage is the
+  earned exit). **THE SUMMIT** (hub): THE THRONE DAIS (3.0) up its stair or the carved flank's hand-holds, THE HIGH TERRACE (3.0) to
+  the west wall up a stair or over a `deck` wearing `over: true` (THE BRIDGE LAYER) from the dais — Heaven's gate of cloud stands ON
+  it (`heaven_olympus.b` → `wall: 'w', z: -19, y: 3.0`), THE SPIRE (6.6, the tape) off its south edge, THE FORGE's lava (a 0.55 m
+  bed, the canal rule; `gen.open` round it so its bank has no pocket against a cloud bank) under THE ANVIL TERRACE (2.2) and THE LOFT
+  (5.0) up a chain, THE LOWER COURT (1.2) up a ramp or a rope, three stepping clouds (`float: true`) 1.1 → 2.0 → 3.0 to the dais's
+  west side; the Lodge's painting moved to n x 8 (R3: 20 m from nothing, behind the dais from the court). **THE VILLAGE** (pearls):
+  THE WORKSHOP's deck (1.0) runs to the west wall with the hearth ON it (`northpole_haunted.a` → `wall: 'w', z: -2, y: 1.0`) — a
+  ramp or the ice-block hand-holds up, THE LOFT (3.4) up a ladder, THE FROZEN LAKE (waded) with two floes, THE ICE WALL (3.2, the
+  grind) between the plaza and THE DRIFT (2.2) up a stair or a rope with the sleigh road's door ON it (`northpole_camelot.a` → n x 14,
+  y 2.2), THE POLE's cairn (6.2, the tape) off the drift's west edge, THE SLEDGE HILL under THE ICE SHELF (4.0) by a rope, THE GIFT
+  STACK (1.3) with a ladder, the meltwater stream with a plank. **THE RULES THE COMPILER TAUGHT**: a climb's LINE stands ≤ 0.3 m off
+  its mass — the head scan starts `climbMount` (0.3) in and breaks on the FIRST flat step, so a rope 0.6 m short of a tier's rim
+  reads a flat head and is dropped (four of thirteen were; `hqTerrainInfo(id).climbs` is the read — the sandbox swallows the warning);
+  a climb's foot must stand OFF its tier (a wall-holds row on the tier's own top reads 3.6 → 3.6); a dry pocket of a lava bank between
+  the sheet and a plan's bank is a trap the compiler cuts a rescue ramp out of — force the plan open round the pool. Tape pins moved
+  with the weenies (`findSpots`). hq-climb.test.js's six-looks pin reads seven (D2's fire escape — the pre-existing red). NEXT: the
+  other three of the six (the Stadium, the Haunted grounds, the Spaceship deck), then the rest of the twenty.

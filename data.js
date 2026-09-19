@@ -19956,7 +19956,7 @@ const DOOR_HQ = {
         { id: 'heaven_olympus', route: 'divine', leaf: 'leaf_frame_only',
           /* THE DIVINE STAIR, second pass (2026-09-18): RE-POINTED off Heaven's bypassed board onto THE CLOUD FIELDS' east wall */
           a: { site: 'prebuilt_heaven', part: 'gate', wall: 'e', z: 6, sub: 'A GATE OF CLOUD · THE OTHER MANAGEMENT' },
-          b: { site: 'prebuilt_olympus', part: 'summit', wall: 'n', x: -5 },   // THE AREAS (2026-09-18): on THE SUMMIT
+          b: { site: 'prebuilt_olympus', part: 'summit', wall: 'w', z: -19, y: 3.0 },   // THE AREAS (2026-09-18): on THE SUMMIT; AREA CONTENT D3 (2026-09-19): ON THE HIGH TERRACE's west end — a door you climb to
           why: 'a gate of cloud between the two managements; the stair only goes up, which is a problem for whoever is on top', note: 'a gate of cloud', draft: true },
         /* vatican_heaven — PRUNED 2026-09-18 (THE AREAS): a plain door that shortcut a built path */
         /* THE DIVINE STAIR (9.3 stage 6, 2026-09-17): the crypt link RE-POINTED off the two board rooms onto the
@@ -20034,8 +20034,13 @@ const DOOR_HQ = {
           why: 'the owl\'s gate at the back of the grove opens on the redwood trail; the members walk it once a year and come back smaller', note: 'the fourth gate', draft: true },
         { id: 'woods_shasta', route: 'woods', leaf: 'leaf_frame_only',
           a: { site: 'prebuilt_fairy_forest', part: 'trail', wall: 'n', x: -0.875, y: 3.5, sub: 'THE MOUNTAIN · THE LAST SWITCHBACK' },
-          b: { site: 'prebuilt_shasta', part: 'slopes', wall: 'n', x: -10 },   // THE AREAS (2026-09-18): the frame on THE SLOPES
+          b: { site: 'prebuilt_shasta', part: 'slopes', wall: 'n', x: -10, y: 4.4, sub: 'THE SNOWLINE · THE FRAME IN THE SNOW' },   // THE AREAS (2026-09-18): the frame on THE SLOPES; AREA CONTENT D3 (2026-09-19): ON THE SNOWLINE tier — a door you climb to
           why: 'the trail up out of the woods tops out at a frame in the snow line; the mountain was over the trees the whole way up, and now it is under your feet', note: 'the white thing over the trees', draft: true },
+        /* AREA CONTENT D3 (2026-09-19): LEMURIA — a DRAUGHT (the plain door was pruned with THE AREAS; the hidden passage is the earned exit R4 asks for): the ranger says the city is under the mountain, and the adit under the west wall says so too */
+        { id: 'shasta_lemuria', route: 'woods', leaf: 'leaf_coffee', secret: true,
+          a: { site: 'prebuilt_shasta', part: 'slopes', wall: 'w', z: 8, sub: 'LEMURIA · THE ADIT UNDER THE MOUNTAIN' },
+          b: { site: 'prebuilt_agartha', part: 'crystalcity', wall: 'n', x: 10, sub: 'THE MOUNTAIN · THE ADIT UP TO THE SNOW' },
+          why: 'Lemuria is under the mountain, the ranger says, and will not say where the adit is; it is behind the boulders on the west side, under the falls, where the creek goes in and does not come out', note: 'the creek goes in', draft: true },
         { id: 'woods_stair', route: 'woods', leaf: 'leaf_exit',
           a: { site: 'prebuilt_fairy_forest', part: 'stair', wall: 'n', x: -0.875, y: 3.5, sub: 'THE DOOR AT THE TOP · INTO THE BUILDING' },
           b: { room: 'stairwell', wall: 'e', z: -2, sub: 'THE STAIRCASE IN THE WOODS · OUT' },
@@ -20078,7 +20083,7 @@ const DOOR_HQ = {
         /* THE LEY LINE */
         /* CAMELOT KINGDOM (2026-09-18): the North Pole is the kingdom's — the sleigh road ends at the outer ward's east gate; the Lodge left the ley line for the ranch the same day */
         { id: 'northpole_camelot', route: 'kingdom', leaf: 'leaf_frame_only',
-          a: { site: 'prebuilt_northpole', part: 'village', wall: 'n', x: -0.2, sub: 'THE SLEIGH ROAD · TO CAMELOT' },   // THE AREAS (2026-09-18): out of THE VILLAGE
+          a: { site: 'prebuilt_northpole', part: 'village', wall: 'n', x: 14, y: 2.2, sub: 'THE SLEIGH ROAD · TO CAMELOT' },   // THE AREAS (2026-09-18): out of THE VILLAGE; AREA CONTENT D3 (2026-09-19): ON THE DRIFT — a door you climb to
           b: { site: 'prebuilt_camelot', part: 'ward', wall: 'e', z: 24, sub: 'THE EAST GATE · THE SLEIGH ROAD NORTH' },   // on the approach, outside the moat (the moat is never crossed but by the drawbridge)
           why: 'the crown\'s roads run north until the snow; the pole keeps the crown\'s workshop and the crown keeps the pole\'s road', note: 'the snow is the kingdom\'s too', draft: true },
         /* THE LEY LINES (2026-09-18 — complex candidate #9): the four ley links RE-POINTED (their ids kept, one row edit each): every station's tunnel
@@ -20302,7 +20307,7 @@ const DOOR_HQ = {
           note: 'you surface in the tide pool by the buoy, dry', draft: true },
         { id: 'lodge_olympus', route: 'seams', way: 'painting',
           a: { site: 'prebuilt_lodge', part: 'halls', wall: 'e', z: 0 },   // THE AREAS (2026-09-18): the painting on THE HALLS' east wall ⇄ THE SUMMIT
-          b: { site: 'prebuilt_olympus', part: 'summit', wall: 'n', x: -0.2 },
+          b: { site: 'prebuilt_olympus', part: 'summit', wall: 'n', x: 8 },   // AREA CONTENT D3 (2026-09-19): east of the dais, behind it from the court (R3)
           why: 'the painting over the mantel in the sanctum is of a mountain with a city on it; the city has lights on at night, which the painting should not know',
           note: 'the frame is warm', draft: true },
         { id: 'bureau_vatican', route: 'seams', way: 'painting', gate: { minClearance: 5, requiresKeys: 24 },
@@ -20312,7 +20317,7 @@ const DOOR_HQ = {
           why: 'the Bureau keeps one painting for reference: a colonnade and a square, in case the record and the square ever disagree; the square is on the other side of it',
           note: 'the Bureau\'s own gate hangs on it', draft: true },
         { id: 'northpole_haunted', route: 'seams', way: 'fireplace',
-          a: { site: 'prebuilt_northpole', part: 'village', wall: 'n', x: -10 },   // THE AREAS (2026-09-18): the hearth in THE VILLAGE
+          a: { site: 'prebuilt_northpole', part: 'village', wall: 'w', z: -2, y: 1.0 },   // THE AREAS (2026-09-18): the hearth in THE VILLAGE; AREA CONTENT D3 (2026-09-19): ON THE WORKSHOP's deck, the west wall
           b: { site: 'prebuilt_haunted', part: 'hall', wall: 'e', z: 0.1 },
           why: 'the chimney at the Pole comes out in a house that is not on the route; the fire in the hall burns green when it is coming and the soot on the hearth is from a colder place',
           note: 'the flame goes green', draft: true },
@@ -36197,43 +36202,81 @@ const HQ_AREA_SPECS = {
         props: [{ key: 'railing_1m', x: -16, z: 8.4, face: 0 }, { key: 'riser_1', x: 8, z: 12 }, { key: 'cot', x: -16, z: 2, y: 1.2, face: 90 }, { key: 'sea_chest', x: -19, z: 0, y: 1.2 }, { key: 'signpost', x: 3, z: 12 }, { key: 'campfire', x: -12, z: 12 }],
         npcSpots: [{ x: -3, z: 12, face: 20, race: 'yeti', say: '“The ice is a lid. Nobody asks what it is on.”' }, { x: 4, z: -20, face: 180, race: 'men in black', say: '“The 1947 survey marked the hull. Then the survey was marked.”' }],
         lines: ['“How cold?” “Ninety south.”'] },
-    /* ROOM 14179 · MOUNT SHASTA · THE SLOPES: pines up the mountain's flank, THE MEADOW at the plaza, THE FALLS off the first shelf,
-       THE SHELF up a switchback, THE SUMMIT (the tape — the door gun's), the woods' frame on the north wall */
-    prebuilt_shasta: { part: 'slopes', label: 'THE SLOPES', sub: 'THE MEADOW · THE FALLS · THE SHELF · THE SUMMIT', w: 66, d: 60, look: 'woods', fogD: 0.024,
+    /* ROOM 14179 · MOUNT SHASTA · THE SLOPES (AREA CONTENT D3, 2026-09-19 — brought up to the cave): the mountain climbs from THE MEADOW at
+       the bay door to THE SNOWLINE at the woods' frame (a door you climb to), THE SHELF up a trail with THE LOOKOUT's ladder on it, THE SADDLE
+       up a stair with THE CRAG's rope off it, THE SUMMIT's tape seen from both (the door gun's), and LEMURIA under all of it — a draught in the
+       west wall the ranger will not talk about. Every tier is reached two ways (a stair AND a rope; a trail AND the hand-holds). */
+    prebuilt_shasta: { part: 'slopes', label: 'THE SLOPES', sub: 'THE MEADOW · THE FALLS · THE SHELF · THE SNOWLINE', w: 66, d: 60, look: 'woods', fogD: 0.024,
+        parti: 'The mountain climbs from the meadow at the door to the snowline at the frame, and Lemuria is under all of it.', typology: 'switchback',
         floor: 'grass_2', cliff: 'cliff', path: 'dirt', floorColor: 0x6f9a52, cliffColor: 0xa8b0b8,
         gen: { kind: 'rooms', seed: 14179, loops: 3, rMin: 6, rMax: 11, wallH: 1.7, kinds: ['pine', 'pine', 'tree_2', 'pine'], spacing: 3.0, maxTrees: 220 }, noise: { amp: 0.14, scale: 8 },
         forest: { depth: 12, spacing: 3.2, rows: 2.8, start: 1.6, kinds: ['pine', 'pine', 'tree_2'] },
-        plaza: { x: 0, z: 10 },
+        plaza: { x: 0, z: 12 },
         features: [
             { k: 'hill', x: 0, z: -14, r: 16, h: 2.2 },                                                            // the mountain's flank rising north (short of the meadow)
-            { k: 'plateau', x: 14, z: -10, r: 8, h: 3.6, edge: 0.4 }, { k: 'ramp', x0: 14, z0: 2.5, x1: 14, z1: -2.7, w: 2.6, h0: 0, h1: 3.6 },   // THE SHELF up a switchback
-            { k: 'stream', pts: [[14, -16], [10, -4], [4, 6], [-6, 22]], w: 2.2, depth: 0.6, key: 'water' },        // THE CREEK off the shelf (waded)
-            { k: 'plateau', x: -12, z: -20, r: 4, h: 7.0, edge: 0.4 },                                             // THE SUMMIT (the tape)
-            { k: 'plateau', x: -12, z: -12, r: 5, h: 2.4, edge: 0.4 }, { k: 'ramp', x0: -12, z0: -1.5, x1: -12, z1: -7.7, w: 2.6, h0: 0, h1: 2.4 },   // THE SADDLE under it
-            { k: 'rail', x0: 6, z0: -6, x1: 18, z1: -6 },
-            { k: 'path', pts: [[0, 10], [10, 4]], w: 2.4 }, { k: 'path', pts: [[0, 10], [-8, 2], [-10, -24], [-10, -29]], w: 2.6 },
-            { k: 'scatter', key: 'cave_stone', n: 6, seed: 3 }, { k: 'scatter', key: 'stump', n: 4, seed: 8 },
+            /* THE SHELF (3.6) up the trail, THE LOOKOUT (6.4) up its ladder, the hand-holds on the shelf's south face = the second way up */
+            { k: 'plateau', x: 16, z: -4, r: 8, h: 3.6, edge: 0.4 }, { k: 'ramp', x0: 16, z0: 9, x1: 16, z1: 3.3, w: 2.6, h0: 0, h1: 3.6 },
+            { k: 'plateau', x: 22, z: -10, r: 3, h: 6.4, edge: 0.4 }, { k: 'climb', x: 19.6, z: -10, face: 90, look: 'ladder' },
+            { k: 'climb', x: 10.5, z: 2.0, face: 0, look: 'wall' },   // on the shelf's south rim (a climb's line stands ≤ 0.3 m off its mass — the head scan breaks on the first flat step)
+            { k: 'rail', x0: 10, z0: -10.5, x1: 19, z1: -10.5 },
+            /* THE FALLS' pool under THE SADDLE (2.4) — a stair up its east flank, a rope up its south face; THE CRAG (4.8) off it by a rope; THE SUMMIT (7.2, the tape) on THE SNOWLINE (4.4, the frame's door) */
+            { k: 'pool', x: -1, z: -6, r: 3.2, depth: 0.9, key: 'water', bank: 1.0 },
+            { k: 'plateau', x: -12, z: -12, r: 7.5, h: 2.4, edge: 0.4 }, { k: 'ramp', x0: -7, z0: -0.5, x1: -7, z1: -6.2, w: 2.6, h0: 0, h1: 2.4, stairs: true },
+            { k: 'climb', x: -14.5, z: -5.2, face: 0, look: 'rope' },
+            { k: 'plateau', x: -22, z: -13, r: 4.2, h: 4.8, edge: 0.4 }, { k: 'climb', x: -18.4, z: -12, face: 270, look: 'rope' },
+            { k: 'plateau', x: -9, z: -26.5, w: 18, d: 7, h: 4.4, edge: 0.4 }, { k: 'ramp', x0: -6, z0: -15.5, x1: -6, z1: -23.7, w: 2.8, h0: 2.4, h1: 4.4, stairs: true },
+            { k: 'climb', x: -0.1, z: -27, face: 270, look: 'rope' },
+            { k: 'plateau', x: -14, z: -21, r: 3.8, h: 7.2, edge: 0.4 },
+            { k: 'rail', x0: -16, z0: -23.5, x1: -3, z1: -23.5 },
+            /* THE CREEK off the falls (waded) and the plank over it by the meadow; the corral wall the rider grinds */
+            { k: 'stream', pts: [[-3, -2.5], [-9, 6], [-6, 14], [-11, 27]], w: 2.2, depth: 0.6, key: 'water' },
+            { k: 'deck', x0: -11.5, z0: 17, x1: -3.5, z1: 17, w: 1.6, y: 0.35 },
+            { k: 'wall', x0: 4, z0: 19, x1: 13, z1: 19, h: 0.9, t: 0.5, key: 'wood' },
+            { k: 'path', pts: [[0, 12], [16, 12], [16, 9.5]], w: 2.4 }, { k: 'path', pts: [[0, 12], [-7, 6], [-7, 0]], w: 2.6 }, { k: 'path', pts: [[0, 12], [6, -2], [2, -22], [1.2, -27]], w: 2.2 },
+            { k: 'path', pts: [[-7, 6], [-20, 8], [-28.5, 8]], w: 2.4 }, { k: 'path', pts: [[-1, 12], [-12, 22]], w: 2.0 },
+            { k: 'grove', x: -20, z: 22, r: 8, n: 7, kinds: ['pine', 'pine', 'tree_2'] }, { k: 'grove', x: 24, z: 20, r: 7, n: 6, kinds: ['pine', 'tree_2'] }, { k: 'grove', x: 8, z: -18, r: 7, n: 5, kinds: ['pine'] },
+            { k: 'scatter', key: 'cave_stone', n: 8, seed: 3 }, { k: 'scatter', key: 'stump', n: 6, seed: 8 }, { k: 'scatter', key: 'fern', n: 8, seed: 11 }, { k: 'scatter', key: 'fallen_log', n: 4, seed: 4 }, { k: 'scatter', key: 'dead_snag', n: 3, seed: 6 },
         ],
-        props: [{ key: 'railing_1m', x: 12, z: -5.6, face: 0, y: 3.6 }, { key: 'riser_1', x: 6, z: 14 }, { key: 'campfire', x: -6, z: 12 }, { key: 'signpost', x: 3, z: 14 }],
-        npcSpots: [{ x: 6, z: 12, face: 30, race: 'bigfoot', say: '“The lenticular is not a cloud. It is a lid that has not decided.”' }, { x: 17, z: -12, face: 180, race: 'nordic', say: '“Lemuria is under the mountain. So are you, technically.”' }],
+        props: [{ key: 'railing_1m', x: 14, z: -10.6, face: 0, y: 3.6 }, { key: 'railing_1m', x: -12, z: -23.6, face: 0, y: 4.4 }, { key: 'riser_1', x: 6, z: 14 }, { key: 'campfire', x: -4, z: 12 }, { key: 'signpost', x: 3, z: 14 },
+                { key: 'signpost', x: 11, z: -13, y: 3.6 }, { key: 'park_bench', x: -2, z: 8, face: 0 }, { key: 'lesson_sign', x: 8, z: 3, face: 180, lesson: 'climb' }, { key: 'sea_chest', x: 22, z: -10, y: 6.4 }, { key: 'cave_stone', x: -22, z: -13, y: 4.8 }],
+        npcSpots: [{ x: 6, z: 12, face: 30, race: 'bigfoot', say: '“The lenticular is not a cloud. It is a lid that has not decided.”' }, { x: 17, z: -8, face: 180, race: 'nordic', say: '“Lemuria is under the mountain. So are you, technically.”' },
+                   { x: -10, z: -10, face: 90, race: 'yeti', say: '“The rope is older than the mountain. The knots are newer.”' }],
         lines: ['“How high?” “Fourteen thousand one hundred and seventy-nine. The sign is honest.”'] },
-    /* ROOM 12 · MOUNT OLYMPUS · THE SUMMIT: the marble court between the Twelve's columns, THE THRONE DAIS up its stairs, THE FORGE's
-       lava pool, THE LIGHTNING SPIRE (the tape), Heaven's gate of cloud and the Lodge's painting on the north wall */
+    /* ROOM 12 · MOUNT OLYMPUS · THE SUMMIT (AREA CONTENT D3, 2026-09-19): the marble court between the Twelve's columns, THE THRONE DAIS up its
+       stair (or up the carved flank), THE HIGH TERRACE over the west court (a stair, and a cloud bridge from the dais) with Heaven's gate of cloud
+       standing ON it — a door you climb to —, THE LIGHTNING SPIRE's tape seen from the terrace (the door gun's), THE FORGE's lava under THE ANVIL
+       TERRACE with THE LOFT up a chain, the stepping clouds off the court, the Lodge's painting on the north wall */
     prebuilt_olympus: { part: 'summit', label: 'THE SUMMIT', sub: 'THE COURT · THE THRONE · THE FORGE · THE SPIRE', w: 62, d: 52, look: 'heaven', fogD: 0.022,
+        parti: 'A marble court on a cloud where every stair goes up to a throne nobody sits in, and the lightning comes from below.', typology: 'hub',
         floor: 'marble_light', cliff: 'cloud_thick', path: 'gold', floorColor: 0xf8f8f2, cliffColor: 0xf0eee8,
-        gen: { kind: 'rooms', seed: 12, loops: 3, rMin: 7, rMax: 13, wallH: 2.2, thicket: false }, noise: { amp: 0.06, scale: 9 },
+        gen: { kind: 'rooms', seed: 12, loops: 3, rMin: 7, rMax: 13, wallH: 2.2, thicket: false, open: [{ x: 18, z: 2, r: 7.5 }] }, noise: { amp: 0.06, scale: 9 },   // the forge's bank stays clear of the cloud banks (a dry pocket between lava and a bank was a trap the compiler had to cut a ramp out of)
         plaza: { x: 0, z: 6 },
         features: [
-            { k: 'plateau', x: 0, z: -14, w: 12, d: 8, h: 3.0, edge: 0.4 }, { k: 'ramp', x0: 0, z0: -4.5, x1: 0, z1: -10.7, w: 3.2, h0: 0, h1: 3.0, stairs: true },   // THE THRONE DAIS
-            { k: 'pool', x: 18, z: 2, r: 4.5, depth: 1.0, key: 'lava', bank: 1.0 },                               // THE FORGE (never entered)
-            { k: 'plateau', x: -18, z: -6, r: 2.8, h: 6.6, edge: 0.4 },                                            // THE LIGHTNING SPIRE (the tape — the door gun's)
-            { k: 'plateau', x: -16, z: 10, r: 6, h: 1.2, edge: 0.35 }, { k: 'ramp', x0: -7.5, z0: 10, x1: -10.7, z1: 10, w: 2.8, h0: 0, h1: 1.2 },   // THE LOWER COURT
+            /* THE THRONE DAIS (3.0): the stair up its front, the carved flank's hand-holds up its east side */
+            { k: 'plateau', x: 0, z: -14, w: 12, d: 8, h: 3.0, edge: 0.4 }, { k: 'ramp', x0: 0, z0: -4.5, x1: 0, z1: -10.7, w: 3.2, h0: 0, h1: 3.0, stairs: true },
+            { k: 'climb', x: 6.2, z: -15, face: 270, look: 'wall' },
+            /* THE HIGH TERRACE (3.0) to the west wall — the gate of cloud stands on it; a stair up from the west court, a cloud bridge over from the dais */
+            { k: 'plateau', x: -20.5, z: -20, w: 21, d: 10, h: 3.0, edge: 0.4 }, { k: 'ramp', x0: -17, z0: -9.5, x1: -17, z1: -15.7, w: 3.0, h0: 0, h1: 3.0, stairs: true },
+            { k: 'deck', x0: -5.3, z0: -17, x1: -10.7, z1: -17, w: 2.4, y: 3.0, over: true },
+            { k: 'rail', x0: -9, z0: -15.6, x1: -1, z1: -15.6 },
+            /* THE LIGHTNING SPIRE (6.6, the tape — the door gun's) off the terrace's south edge */
+            { k: 'plateau', x: -20, z: -4, r: 2.8, h: 6.6, edge: 0.4 },
+            /* THE FORGE (lava, never entered) under THE ANVIL TERRACE (2.2) up its ramp; THE LOFT (5.0) up Hephaestus's chain */
+            { k: 'pool', x: 18, z: 2, r: 4.5, depth: 0.55, key: 'lava', bank: 1.0 },   // a shallow bed under a sheet the walker never enters (the canal rule: a deep bank leaves a ledge = a rescue scar)
+            { k: 'plateau', x: 21, z: -13, w: 12, d: 10, h: 2.2, edge: 0.4 }, { k: 'ramp', x0: 12, z0: -13, x1: 15.7, z1: -13, w: 2.8, h0: 0, h1: 2.2 },
+            { k: 'plateau', x: 24, z: -20.5, r: 3, h: 5.0, edge: 0.4 }, { k: 'climb', x: 24, z: -17.6, face: 0, look: 'chain' },
+            /* THE LOWER COURT (1.2) up a ramp — or a rope over its lip; the stepping clouds (float) from the court up to the dais's west side */
+            { k: 'plateau', x: -16, z: 10, r: 6, h: 1.2, edge: 0.35 }, { k: 'ramp', x0: -7.5, z0: 10, x1: -10.7, z1: 10, w: 2.8, h0: 0, h1: 1.2 },
+            { k: 'climb', x: -16, z: 4.2, face: 180, look: 'rope' },
+            { k: 'plateau', x: -9, z: -2, r: 1.7, h: 1.1, edge: 0.3, float: true }, { k: 'plateau', x: -11.5, z: -6, r: 1.7, h: 2.0, edge: 0.3, float: true }, { k: 'plateau', x: -9.5, z: -10, r: 1.7, h: 3.0, edge: 0.3, float: true },
             { k: 'wall', x0: 8, z0: 14, x1: 20, z1: 14, h: 1.0, t: 0.6, key: 'marble_light' },                      // the balustrade (the grind)
-            { k: 'path', pts: [[0, 6], [0, -4]], w: 3.2 }, { k: 'path', pts: [[0, 6], [-5, -20], [-5, -24]], w: 2.6 }, { k: 'path', pts: [[0, 6], [-0.2, -20], [-0.2, -24]], w: 2.4 },
-            { k: 'scatter', key: 'greek_column', n: 8, seed: 12 }, { k: 'scatter', key: 'white_cloud', n: 3, seed: 4 },
+            { k: 'path', pts: [[0, 6], [0, -4]], w: 3.2 }, { k: 'path', pts: [[0, 6], [-10, 2], [-17, -9]], w: 2.6 }, { k: 'path', pts: [[0, 6], [8, -2], [10, -20], [8, -23.5]], w: 2.4 }, { k: 'path', pts: [[0, 6], [10, 2], [12, -13]], w: 2.4 },
+            { k: 'scatter', key: 'greek_column', n: 10, seed: 12 }, { k: 'scatter', key: 'white_cloud', n: 4, seed: 4 }, { k: 'scatter', key: 'garden_ring', n: 5, seed: 7 }, { k: 'scatter', key: 'armour_stand', n: 4, seed: 9 }, { k: 'scatter', key: 'brazier', n: 3, seed: 5 },
         ],
-        props: [{ key: 'railing_1m', x: -16, z: 16.4, face: 0 }, { key: 'riser_1', x: 8, z: 10 }, { key: 'royal_throne', x: 0, z: -15, y: 3.0, face: 180 }, { key: 'brazier', x: 8, z: -2 }, { key: 'angel_statue', x: -18, z: -6, y: 6.6 }],
-        npcSpots: [{ x: -3, z: 10, face: 30, race: 'seraphim', say: '“The Twelve are out. The thirteenth is in, and does not use the door.”' }, { x: 12, z: 6, face: 270, race: 'cyclops', say: '“Sparks fall up here. Everything is a matter of which way is down.”' }],
+        props: [{ key: 'railing_1m', x: -16, z: 16.4, face: 0 }, { key: 'railing_1m', x: -14, z: -15.6, face: 0, y: 3.0 }, { key: 'riser_1', x: 8, z: 10 }, { key: 'royal_throne', x: 0, z: -15, y: 3.0, face: 180 }, { key: 'brazier', x: 8, z: -2 },
+                { key: 'angel_statue', x: -20, z: -4, y: 6.6 }, { key: 'stone_altar', x: 21, z: -13, y: 2.2 }, { key: 'lectern', x: -3, z: -15, y: 3.0, face: 180 }, { key: 'fountain', x: 0, z: -1 }, { key: 'armour_stand', x: 24, z: -20.5, y: 5.0 }, { key: 'park_bench', x: -16, z: 10, y: 1.2, face: 180 }],
+        npcSpots: [{ x: -3, z: 10, face: 30, race: 'seraphim', say: '“The Twelve are out. The thirteenth is in, and does not use the door.”' }, { x: 12, z: 6, face: 270, race: 'cyclops', say: '“Sparks fall up here. Everything is a matter of which way is down.”' },
+                   { x: -17, z: -20, face: 90, race: 'angel', say: '“The gate of cloud is on the terrace because the stair only goes up. Think about it.”' }],
         lines: ['“Which management?” “The other one.”'] },
     /* ROOM 4 · MARS · CYDONIA: canyons in the regolith, THE ROVER at the plaza, three craters, THE PYRAMID's tiers up their stair, THE
        FACE (the tape — the door gun's), the collar of the ship that parked here on the north wall */
@@ -36292,24 +36335,44 @@ const HQ_AREA_SPECS = {
         props: [{ key: 'railing_1m', x: 6, z: 0.4, face: 0 }, { key: 'riser_1', x: -6, z: 12 }, { key: 'stone_altar', x: -18, z: -12, y: 2.6 }, { key: 'brazier', x: -15, z: -9, y: 2.6 }, { key: 'brazier', x: -21, z: -9, y: 2.6 }, { key: 'park_bench', x: 4, z: 12, face: 180 }],
         npcSpots: [{ x: -3, z: 12, face: 30, race: 'politician', say: '“Weaving spiders, come not here.”' }, { x: 8, z: -20, y: 1.4, face: 0, race: 'fortune teller', say: '“The owl blinks once. Count from there.”' }],
         lines: ['“Members only.” “I am a member.” “Of what?”'] },
-    /* ROOM 1225 · THE NORTH POLE · THE VILLAGE: the workshop on its deck, THE FROZEN LAKE, THE POLE itself (a striped post on its
-       drift — the tape), the sleigh road to Camelot and the hearth to the house on the north wall */
-    prebuilt_northpole: { part: 'village', label: 'THE VILLAGE', sub: 'THE WORKSHOP · THE FROZEN LAKE · THE POLE', w: 64, d: 52, night: 1, look: 'white', fogD: 0.026,
+    /* ROOM 1225 · THE NORTH POLE · THE VILLAGE (AREA CONTENT D3, 2026-09-19): THE WORKSHOP's deck runs to the west wall with the hearth ON it and
+       THE LOFT up its ladder, THE FROZEN LAKE with its floes, THE ICE WALL the rider grinds, THE SLEDGE HILL under THE ICE SHELF's rope, THE DRIFT
+       the sleigh road leaves from (a door you climb to) with THE POLE's cairn (the tape, the door gun's) seen from it, the gift stacks */
+    prebuilt_northpole: { part: 'village', label: 'THE VILLAGE', sub: 'THE WORKSHOP · THE FROZEN LAKE · THE DRIFT · THE POLE', w: 64, d: 52, night: 1, look: 'white', fogD: 0.026,
+        parti: 'A workshop village on a frozen lake; the sleigh road leaves north over the drift where the pole stands.', typology: 'pearls',
         floor: 'marble_light', cliff: 'ice_1', path: 'wood_planks', floorColor: 0xe8f4ff, cliffColor: 0xbfe0ff,
         gen: { kind: 'rooms', seed: 1225, loops: 3, rMin: 6, rMax: 11, wallH: 1.6, kinds: ['pine'], spacing: 3.4, maxTrees: 140 }, noise: { amp: 0.16, scale: 7 },
         forest: { depth: 10, spacing: 3.6, rows: 3.0, start: 1.6, kinds: ['pine'] },
         plaza: { x: 0, z: 6 },
         features: [
-            { k: 'plateau', x: -16, z: 0, w: 14, d: 10, h: 1.0, edge: 0.35 }, { k: 'ramp', x0: -7.5, z0: 0, x1: -10.3, z1: 0, w: 3.0, h0: 0, h1: 1.0 },   // THE WORKSHOP's deck
-            { k: 'pool', x: 16, z: -6, r: 8, rz: 6, depth: 0.5, key: 'water', bank: 1.0 },                         // THE FROZEN LAKE (a wade)
-            { k: 'plateau', x: 4, z: -18, r: 3.2, h: 5.8, edge: 0.4 },                                              // THE POLE's drift (the tape)
-            { k: 'hill', x: -20, z: -14, r: 7, h: 1.6 },
-            { k: 'rail', x0: -22, z0: 6, x1: -10, z1: 6 },
-            { k: 'path', pts: [[0, 6], [-8, 2]], w: 2.4 }, { k: 'path', pts: [[0, 6], [-0.2, -12], [-0.2, -25]], w: 2.4 }, { k: 'path', pts: [[0, 6], [-10, -12], [-10, -25]], w: 2.4 },
-            { k: 'scatter', key: 'cardboard_box', n: 5, seed: 25 },
+            /* THE WORKSHOP's deck (1.0) to the west wall — the hearth stands on it; the ramp up, the ice-block hand-holds up its south lip; THE LOFT (3.4) up the ladder */
+            { k: 'plateau', x: -21.5, z: 0, w: 21, d: 12, h: 1.0, edge: 0.35 }, { k: 'ramp', x0: -7.5, z0: 0, x1: -11.7, z1: 0, w: 3.0, h0: 0, h1: 1.0 },
+            { k: 'climb', x: -18, z: 5.6, face: 0, look: 'wall' },
+            { k: 'plateau', x: -25, z: 2, r: 3, h: 3.4, edge: 0.4 }, { k: 'climb', x: -22.3, z: 2, face: 270, look: 'ladder' },
+            /* THE FROZEN LAKE (a wade) and two floes to hop; THE ICE WALL between the plaza and the drift (the grind) */
+            { k: 'pool', x: 17, z: -3, r: 8, rz: 6, depth: 0.5, key: 'water', bank: 1.0 },
+            { k: 'plateau', x: 12, z: -3, r: 1.6, h: 0.5, edge: 0.3, float: true }, { k: 'plateau', x: 17, z: -5, r: 1.6, h: 0.9, edge: 0.3, float: true },
+            { k: 'wall', x0: 3, z0: -6, x1: 11, z1: -6, h: 3.2, t: 0.8, key: 'ice_1' },
+            /* THE DRIFT (2.2) up its stair — the sleigh road's door stands on it; THE POLE's cairn (6.2, the tape) off its west edge, seen from the drift */
+            { k: 'plateau', x: 14, z: -20, w: 14, d: 10, h: 2.2, edge: 0.4 }, { k: 'ramp', x0: 14, z0: -9.5, x1: 14, z1: -15.7, w: 3.0, h0: 0, h1: 2.2, stairs: true },
+            { k: 'climb', x: 20.9, z: -18, face: 270, look: 'rope' },
+            { k: 'plateau', x: 3, z: -17, r: 3.2, h: 6.2, edge: 0.4 },
+            { k: 'rail', x0: 8, z0: -15.6, x1: 20, z1: -15.6 },
+            /* THE SLEDGE HILL and THE ICE SHELF (4.0) up a rope off its flank; the meltwater stream from the lake with a plank over it */
+            { k: 'hill', x: -20, z: -16, r: 9, h: 2.4 },
+            { k: 'plateau', x: -23, z: -19, r: 4.5, h: 4.0, edge: 0.4 }, { k: 'climb', x: -18.7, z: -19, face: 270, look: 'rope' },
+            { k: 'stream', pts: [[10, 4], [4, 12], [-2, 24]], w: 1.8, depth: 0.5, key: 'water' },
+            { k: 'deck', x0: 0.5, z0: 15, x1: 8.5, z1: 15, w: 1.6, y: 0.3 },
+            /* THE GIFT STACK (1.3) — a crate pile with a ladder up it */
+            { k: 'plateau', x: 22, z: 12, w: 5, d: 5, h: 1.3, edge: 0.3 }, { k: 'climb', x: 19.3, z: 12, face: 90, look: 'ladder' },
+            { k: 'path', pts: [[0, 6], [-8, 2]], w: 2.4 }, { k: 'path', pts: [[0, 6], [6, -1], [14, -9]], w: 2.4 }, { k: 'path', pts: [[0, 6], [-10, -8], [-18, -12]], w: 2.4 }, { k: 'path', pts: [[0, 6], [14, 8], [22, 8]], w: 2.2 },
+            { k: 'grove', x: -8, z: 18, r: 7, n: 6, kinds: ['pine'] }, { k: 'grove', x: 24, z: -12, r: 5, n: 4, kinds: ['pine'] },
+            { k: 'scatter', key: 'cardboard_box', n: 8, seed: 25 }, { k: 'scatter', key: 'cardboard_boxes', n: 5, seed: 26 }, { k: 'scatter', key: 'cave_stone', n: 5, seed: 2 }, { k: 'scatter', key: 'stump', n: 4, seed: 9 }, { k: 'scatter', key: 'fallen_log', n: 3, seed: 3 },
         ],
-        props: [{ key: 'railing_1m', x: -16, z: 6.4, face: 0 }, { key: 'riser_1', x: 8, z: 10 }, { key: 'campfire', x: 6, z: 10 }, { key: 'signpost', x: 4, z: -18, y: 5.8 }, { key: 'sea_chest', x: -18, z: 0, y: 1.0 }],
-        npcSpots: [{ x: -3, z: 10, face: 30, race: 'santa clause', say: '“The workshop is empty because everyone is on the list.”' }, { x: 12, z: 2, face: 250, race: 'gnome', say: '“The bell on the ceiling rings when the chimney is in use. It is ringing.”' }],
+        props: [{ key: 'railing_1m', x: -16, z: 6.4, face: 0, y: 1.0 }, { key: 'railing_1m', x: 12, z: -15.6, face: 0, y: 2.2 }, { key: 'riser_1', x: 8, z: 10 }, { key: 'campfire', x: 6, z: 10 }, { key: 'signpost', x: 3, z: -17, y: 6.2 },
+                { key: 'sea_chest', x: -18, z: 0, y: 1.0 }, { key: 'sea_chest', x: -25, z: 2, y: 3.4 }, { key: 'park_bench', x: -4, z: 10, face: 0 }, { key: 'candle_ring', x: 14, z: -20, y: 2.2 }, { key: 'cardboard_boxes', x: 22, z: 12, y: 1.3 }, { key: 'signpost', x: -2, z: 2 }],
+        npcSpots: [{ x: -3, z: 10, face: 30, race: 'santa clause', say: '“The workshop is empty because everyone is on the list.”' }, { x: 12, z: 2, face: 250, race: 'gnome', say: '“The bell on the ceiling rings when the chimney is in use. It is ringing.”' },
+                   { x: -20, z: -3, face: 180, race: 'yeti', say: '“The loft is where the wrapping is kept. I am not allowed up the ladder.”' }],
         lines: ['“December 25th.” “Every day here.”'] },
     /* ROOM 2D · THE FLAT LANDS · THE PLAIN: a floor with no height, low hedges for the plan's banks, THE LINE (a knee wall the rider
        grinds), THE EDGE at the far end — a cliff into nothing (the tape on it), the door with no thickness on the north wall */
@@ -38862,12 +38925,12 @@ DOOR_HQ.findSpots = { coldroom: { tape: { x: 1.3, z: -1.35 }, pay: { x: 0.4, z: 
     site_prebuilt_technoticlan_templecity: { tape: { x: 0, z: -19 } },
     site_prebuilt_agartha_crystalcity: { tape: { x: -4, z: -20 } },
     site_prebuilt_antarctica_station: { tape: { x: 14, z: -22 } },
-    site_prebuilt_shasta_slopes: { tape: { x: -12, z: -20 } },
-    site_prebuilt_olympus_summit: { tape: { x: -18, z: -6 } },
+    site_prebuilt_shasta_slopes: { tape: { x: -14, z: -21 } },   // AREA CONTENT D3: THE SUMMIT over the snowline
+    site_prebuilt_olympus_summit: { tape: { x: -20, z: -4 } },   // AREA CONTENT D3: THE SPIRE off the terrace
     site_prebuilt_mars_cydonia: { tape: { x: -16, z: -18 } },
     site_prebuilt_moon_mare: { tape: { x: 16, z: -18 } },
     site_prebuilt_bohemian_grove_grove: { tape: { x: -18, z: -13 } },
-    site_prebuilt_northpole_village: { tape: { x: 4, z: -18 } },
+    site_prebuilt_northpole_village: { tape: { x: 3, z: -17 } },   // AREA CONTENT D3: THE POLE's cairn off the drift
     site_prebuilt_flatlands_plain: { tape: { x: 0, z: -22 } },
     site_prebuilt_lookingglass_garden: { tape: { x: 0, z: -20 } },
     site_prebuilt_lodge_halls: { tape: { x: 6, z: -14 } },

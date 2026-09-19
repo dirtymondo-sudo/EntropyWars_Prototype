@@ -5976,3 +5976,22 @@ squashes the body by the fall (`R.squash` / `R.landK`), a dust puff, a camera di
 started in the air is sped up to end inside `trickFitShare` of the air left, floored at `trickFitMin`; too little air =
 REFUSED with the `late` beat, never a bail — `_hqRideAirLeft` is the ballistic estimate off `_hqSurface`; a queued trick
 carries its fitted ms) and THE TUCK (`R.grabTuck` / `R.deckTuck` pitch the body + the deck on a grab). hq-skate.test.js (30).
+
+## AREA CONTENT PLAN D3, FIRST DELIVERY — SHASTA · THE NORTH POLE · OLYMPUS TO THE CAVE'S STANDARD (2026-09-19, local delivery)
+Three of the six areas the user sees first (`AREA_CONTENT_PLAN.md` §5 D3; §7 has the log), re-specced in data.js `HQ_AREA_SPECS`
+(`prebuilt_shasta` / `prebuilt_olympus` / `prebuilt_northpole` — never hand-edit the generated `site_<id>_<part>`; the spec is the
+edit) and measured clean on ALL of R1–R8 by `node check-area-content.js --rules <room>` (0.73 climb rows per 100 m², 5–6 kinds,
+ranges 7–10 m, at most one door exposed, 2 of 3 exits earned on Shasta and Olympus (the village's is the hearth), every one teased, a `parti` + `typology`, ≥ 1 item per 60 m²). THE
+PATTERN for the seventeen still to do: every tier reached TWO ways (a stair AND a rope / a trail AND the hand-holds), a `climb`
+row per tier where it fits the place, the seam's door ON a tier (`y` on the link END — `hqLinkDoors` copies it: `woods_shasta.b`
+4.4, `heaven_olympus.b` 3.0 on the west wall, `northpole_camelot.a` 2.2, `northpole_haunted.a` 1.0 on the west wall), a DRAUGHT
+where the lore has a hidden way (`links.shasta_lemuria`, `secret: true` — THE SLOPES' west wall ⇄ THE CRYSTAL CITY's north wall;
+the pruned plain door `shasta_agartha` stays pruned, hq-areas pins it), the tape's weenie seen from the tier under it, a `deck`
+wearing `over: true` for a level span between two tiers (Olympus's cloud bridge), `float: true` stepping stones, 40–50 items a
+room (`grove` regions + `scatter` rows + props). **RULES THE COMPILER TAUGHT**: (1) a `climb`'s line stands ≤ 0.3 m OFF its mass —
+`hqTerrainClimbs` scans the head from `climbMount` (0.3) in and breaks on the FIRST flat step, so a rope 0.6 m short of a rim reads
+a flat head and is DROPPED (rise < 0.9) — silently in the vm sandbox: read `hqTerrainInfo(id).climbs` after authoring, never trust
+the row count; (2) a climb's foot stands OFF its tier (a hand-holds row on the tier's own top is 3.6 → 3.6, dropped); (3) a lava
+/ deep pool the walker never enters takes a SHALLOW bed (0.55) AND clear ground round its bank — a dry pocket between the sheet
+and a plan's cloud bank is a trap the compiler cuts a rescue ramp out of; `gen.open: [{ x, z, r }]` on the spec's plan clears it.
+`hq-climb.test.js`'s looks pin reads seven (D2's `fireescape`). Ship data.js to R2 AND Render. Unseen live (RULE #1c): all of it.

@@ -10924,3 +10924,15 @@ hq-stage2 / hq-map-remembers / hq-skate / hq-deep / hq-portal / hq-encounter / s
   `20260919-skate-rev4b-01-cors`); hq-skate.test.js (30) + docs to the repo.
 - **UNSEEN LIVE (RULE #1c)**: the cooldown against a real wrist (`flickCoolMs` is the edit), the sped-up flip's read off a
   tap, the tuck's angle on the cast rigs, the late tick's feel.
+
+### 2026-09-19 — AREA CONTENT D3, first delivery: THE SLOPES · THE SUMMIT · THE VILLAGE (local delivery)
+- Three areas re-specced in data.js `HQ_AREA_SPECS` (Shasta, Olympus, the North Pole) to AREA_CONTENT_PLAN's R1–R8, all eight clean
+  in `node check-area-content.js --rules`; every door solved from every door, nothing traps, no rescue ramps
+  (`node check-terrain.js`). Thirteen `climb` rows (ladders, ropes, a chain, hand-holds), one bridge-layer deck, three floats.
+- Link ends moved (ids kept): `woods_shasta.b` y 4.4 (THE SNOWLINE), `heaven_olympus.b` → the west wall on THE HIGH TERRACE (y 3),
+  `lodge_olympus.b` → n x 8, `northpole_camelot.a` → n x 14 on THE DRIFT (y 2.2), `northpole_haunted.a` → the west wall on THE
+  WORKSHOP's deck (y 1). New: `links.shasta_lemuria` (a draught, THE SLOPES' west wall ⇄ THE CRYSTAL CITY's north wall x 10).
+- Ship: data.js (R2 + Render — the finds ledger + the link table); index.html (Render, token `20260919-area-d3a-01-cors`);
+  hq-climb.test.js (the seven-looks pin) + docs to the repo. No renderer change.
+- UNSEEN LIVE (RULE #1c): the ropes and ladders against each tier, the hand-hold bands, the cloud bridge from the dais, the ice
+  wall's grind, the frame standing on the snowline, the draught's slab in the boulders, the floes on the lake, the stepping clouds.

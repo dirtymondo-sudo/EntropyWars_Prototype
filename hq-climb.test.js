@@ -33,7 +33,7 @@ function tierRoom(o) {
 test('THE RULES: the climb numbers live in HQ_TERRAIN_RULES, the six looks in HQ_CLIMB_LOOKS, the clips in sprites.js, the renderer\'s default agrees', () => {
     const R = D.HQ_TERRAIN_RULES;
     assert.ok(R.climbReach > 0.3 && R.climbReach < 1.0 && R.climbSpeed > 1 && R.climbSpeed < 3 && R.climbMount > 0.2 && R.climbMount < 1.0, JSON.stringify([R.climbReach, R.climbSpeed, R.climbMount]));
-    assert.equal(D.HQ_CLIMB_LOOKS.join(','), 'ladder,rope,vine,chain,pipe,wall');
+    assert.equal(D.HQ_CLIMB_LOOKS.join(','), 'ladder,rope,vine,chain,pipe,wall,fireescape');   // D2 (2026-09-19) added the fire escape — the seventh look
     const m = TR.match(/var HQ_CLIMB_DEFAULT = \{ reach: ([\d.]+), speed: ([\d.]+), mount: ([\d.]+)/);
     assert.ok(m, 'the renderer\'s default');
     assert.equal(+m[1], R.climbReach); assert.equal(+m[2], R.climbSpeed); assert.equal(+m[3], R.climbMount);

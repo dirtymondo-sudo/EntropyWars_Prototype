@@ -659,3 +659,8 @@ climber faces (the mass is that way); the head lands `climbMount` past the tier'
   now: a `bridge` row is a second surface the height field never carries (§4b's rule rewritten below; §5 item 3's pattern
   proven). Downtown's THE OVERPASS over the avenue, the Grid's THE OVERLOOK SPAN over the cut and the lower cross to THE
   PIER. `hq-bridge-layer.test.js`. Log: AREA_CONTENT_PLAN §7.
+- **2026-09-19 — AREA_CONTENT_PLAN D3, first delivery (local): SHASTA · THE NORTH POLE · OLYMPUS to R1–R8.** Three `HQ_AREA_SPECS`
+  rows reworked on the blueprint — every tier reached two ways (a stair AND a rope, a trail AND the hand-holds), a door ON a tier
+  at every seam (`y` on the link end), a draught for Lemuria, the tape's weenie seen from the tier under it, 40–50 items a room.
+  The rule that came with it: a `climb` row's line stands ≤ 0.3 m off its mass and its foot off its tier (§4 / AREA_CONTENT_PLAN §7).
+  Log: AREA_CONTENT_PLAN §7. Next: the Stadium, the Haunted grounds, the Spaceship deck.
