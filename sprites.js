@@ -3216,10 +3216,7 @@ for (let i = 0; i < TORNADO_FRAME_COUNT; i++) {
     const idx = String(i).padStart(2, '0');
     const url = `${TORNADO_FRAME_BASE}${idx}.png`;
     TORNADO_FRAMES.push(url);
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.src = _ewCorsBust(url);
-    TORNADO_IMAGES.push(img);
+    // The renderer requests frames on demand; do not decode 99 images at boot.
 }
 
 function _terrainSvg(inner) {

@@ -5883,3 +5883,12 @@ row's ride to the room —, R8 per 60 m² of OPEN floor); `area-content.test.js`
 never reds until D3. `npm test` runs `hq-climb.test.js`. Next: D2 (the cities twice the size, `districts` on the `city`
 plan, fire escapes as `climb` chains onto rooftop `deck` runs), then D3 / D4 / D5. Ship data.js to Render too. UNSEEN LIVE
 (RULE #1c): the ladder, the stood-up stroke, the mantle, the DOCK OFFICE, the plates.
+
+## MOBILE CRASH / SFX PASS — 2026-09-19 (local delivery, not deployed)
+Reported: iPhone 13 reaches the menu but crashes entering HQ/a match; some SFX silent. `MOBILE_UPLOAD_README.md` records the exact upload paths, checks and remaining device validation.
+
+`three-post.js` Low mode now returns after lighting setup BEFORE composer/bloom allocation; both render paths already fall back to direct rendering. `three-renderer.js` serializes unit/misc model loading in Low mode, caps embedded material textures at 512px, skips all character appearance preload when 3D units are disabled, and samples one in four tornado frames (same cycle duration). `sprites.js` no longer eagerly decodes the 99 tornado images. No board rules/collision/fog/host or guest state changes.
+
+`audio.js` leaves music at preload none and plays file SFX through the existing gesture-resumed AudioContext (two decodes, 8 MiB LRU buffer cache, 16 pending URLs, 12 voices; 1.2s stale-event cutoff). The 37 Ogg cues now point to new `_mobile.mp3` files; the delivery includes converted originals, uploaded to R2 `Assets/SFX/`, retained under `mobile-audio/` in the repo. Upload assets BEFORE audio.js. Existing MP3 effects, mixer levels and cooldowns remain. Ogg music is not converted. Shared index token: `20260919-mobile-02-cors`.
+
+Validation: all 204 JS syntax checks, data parity and 21 schema checks pass; targeted suite 65 pass / 3 optional dependency skips / 0 fail. Nine mobile regressions in `mobile-performance.test.js`; `character-creator.test.js` loader sandbox now loads the new helpers. Broader run exposed three pre-existing failures confirmed on original source (Astral obsolete token, DUMB dream-lab exit count, Astral sea column in water). No live playtest, upload or physical iPhone measurement; do not call this shipped or the crash device-confirmed.

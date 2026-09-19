@@ -10271,6 +10271,26 @@ const ThreeRenderer = (function () {
         _modelAnimState.clear();
     }
 
+    // One model decode at a time in low mode: compressed GLBs expand into
+    // images, typed arrays and GPU resources at once. Shared by units/props.
+    var _mobileModelJobs = [], _mobileModelBusy = false;
+    function _scheduleModelLoad(start) {
+        if (typeof window === 'undefined' || !window.EW_PERF_LOW) { start(function () {}); return; }
+        _mobileModelJobs.push(start);
+        _pumpModelLoads();
+    }
+    function _pumpModelLoads() {
+        if (_mobileModelBusy || !_mobileModelJobs.length) return;
+        _mobileModelBusy = true;
+        var start = _mobileModelJobs.shift(), settled = false;
+        function done() {
+            if (settled) return;
+            settled = true; _mobileModelBusy = false;
+            setTimeout(_pumpModelLoads, 0);
+        }
+        try { start(done); } catch (e) { done(); throw e; }
+    }
+
     function _loadUnitGLB(url, cb) {
         var e = _unitGlbCache[url];
         if (e) {
@@ -10281,10 +10301,13 @@ const ThreeRenderer = (function () {
         e = _unitGlbCache[url] = { root: null, clips: null, bbox: null, loading: true, failed: false, cbs: [cb] };
         if (typeof THREE.GLTFLoader !== 'function') { e.loading = false; e.failed = true; e.cbs.length = 0; _flushGlbDoneCbs(e); return; }
         function loadAttempt(requestUrl, fallbackUsed) {
+          _scheduleModelLoad(function (done) {
           try {
             new THREE.GLTFLoader().load(requestUrl, function (gltf) {
+                done();
                 var root = gltf.scene || (gltf.scenes && gltf.scenes[0]);
                 if (!root) { e.loading = false; e.failed = true; e.cbs.length = 0; _flushGlbDoneCbs(e); return; }
+                _compactMobileModelTextures(root);
                 // Geometry is shared by every clone — protect it from _disposeR.
                 root.traverse(function (n) { if (n.isMesh && n.geometry) n.geometry._ew_shared = true; });
                 e.root = root;
@@ -10296,12 +10319,14 @@ const ThreeRenderer = (function () {
                 _flushGlbDoneCbs(e);
                 invalidateUnits();   // swap placeholders for the model on the next frame
             }, undefined, function () {
+                done();
                 var fallback = !fallbackUsed && typeof getCharacterModelFallback === 'function' && getCharacterModelFallback(url);
                 if (fallback) { loadAttempt(fallback, true); return; }
                 e.loading = false; e.failed = true; e.cbs.length = 0; _flushGlbDoneCbs(e);
                 console.warn('[ThreeRenderer] unit model failed to load:', url);
             });
-          } catch (ex) { e.loading = false; e.failed = true; e.cbs.length = 0; _flushGlbDoneCbs(e); }
+          } catch (ex) { done(); e.loading = false; e.failed = true; e.cbs.length = 0; _flushGlbDoneCbs(e); }
+          });
         }
         loadAttempt(url, false);
     }
@@ -10325,6 +10350,11 @@ const ThreeRenderer = (function () {
        after each file settles. Already-cached files are excluded up front, so
        a rematch with the same roster resolves immediately with total 0. */
     function preloadUnitModels(units, onProgress) {
+        // Include appearance assets in the same opt-out as their base model.
+        if (typeof window !== 'undefined' && window.EW_DISABLE_3D_UNITS) {
+            if (onProgress) onProgress(0, 0);
+            return Promise.resolve({ loaded: 0, total: 0 });
+        }
         var urls = [];
         var seen = {};
         (units || []).forEach(function (u) {
@@ -22011,6 +22041,32 @@ const ThreeRenderer = (function () {
 
     // One-time async load of a misc model. `cb(root)` fires once the normalized
     // root (with a cached _ew_bbox) is ready; ignored on failure.
+    function _compactMobileModelTextures(root) {
+        if (typeof window === 'undefined' || !window.EW_PERF_LOW) return;
+        var images = new Map();
+        root.traverse(function (node) {
+            var mats = node.material ? (Array.isArray(node.material) ? node.material : [node.material]) : [];
+            mats.forEach(function (mat) {
+                Object.keys(mat).forEach(function (key) {
+                    var tex = mat[key], img = tex && tex.isTexture && tex.image;
+                    if (!img || Math.max(img.width || 0, img.height || 0) <= 512) return;
+                    var small = images.get(img);
+                    if (!small) {
+                        small = document.createElement('canvas');
+                        var scale = 512 / Math.max(img.width, img.height);
+                        small.width = Math.max(1, Math.round(img.width * scale));
+                        small.height = Math.max(1, Math.round(img.height * scale));
+                        var ctx = small.getContext('2d');
+                        if (!ctx) return;
+                        ctx.drawImage(img, 0, 0, small.width, small.height);
+                        images.set(img, small);
+                    }
+                    tex.image = small; tex.needsUpdate = true;
+                });
+            });
+        });
+    }
+
     function _loadMiscModel(url, isGLB, cb) {
         var e = _miscModelCache[url];
         if (e) {
@@ -22021,6 +22077,7 @@ const ThreeRenderer = (function () {
         e = _miscModelCache[url] = { root: null, loading: true, failed: false, cbs: [cb] };
         function _onLoad(res) {
             var obj = (res && res.scene) ? res.scene : res;   // GLTF → {scene}, OBJ → Object3D
+            _compactMobileModelTextures(obj);
             obj.traverse(function (n) { if (n.isMesh && n.geometry) n.geometry._ew_shared = true; });
             obj._ew_bbox = new THREE.Box3().setFromObject(obj);
             e.root = obj; e.loading = false;
@@ -22030,15 +22087,19 @@ const ThreeRenderer = (function () {
             _horizonFogDirty = true;   // a horizon misc model (pyramid/eye) just filled in — re-apply fog
         }
         function _onErr() { e.loading = false; e.failed = true; e.cbs.length = 0; }
+        _scheduleModelLoad(function (done) {
+        function loaded(res) { try { _onLoad(res); } finally { done(); } }
+        function failed() { try { _onErr(); } finally { done(); } }
         try {
             if (isGLB) {
-                if (typeof THREE.GLTFLoader !== 'function') { _onErr(); return; }
-                new THREE.GLTFLoader().load(url, _onLoad, undefined, _onErr);
+                if (typeof THREE.GLTFLoader !== 'function') { failed(); return; }
+                new THREE.GLTFLoader().load(url, loaded, undefined, failed);
             } else {
-                if (typeof THREE.OBJLoader !== 'function') { _onErr(); return; }
-                new THREE.OBJLoader().load(url, _onLoad, undefined, _onErr);
+                if (typeof THREE.OBJLoader !== 'function') { failed(); return; }
+                new THREE.OBJLoader().load(url, loaded, undefined, failed);
             }
-        } catch (ex) { _onErr(); }
+        } catch (ex) { failed(); }
+        });
     }
 
     // Return a Group that fills (async) with a normalized instance of a misc
@@ -30071,6 +30132,8 @@ const ThreeRenderer = (function () {
     var _TORNADO_FRAME_MS = 1000 / _TORNADO_FPS;
 
     function _getTornadoFrameTex(idx) {
+        // Keep the original 3.3-second cycle, but retain only 25 frames on phones.
+        if (typeof window !== 'undefined' && window.EW_PERF_LOW) idx -= idx % 4;
         if (_tornadoFrameTextures[idx]) return _tornadoFrameTextures[idx];
         if (typeof TORNADO_FRAMES === 'undefined' || !TORNADO_FRAMES[idx]) return null;
         var tex = getTexture(TORNADO_FRAMES[idx]);

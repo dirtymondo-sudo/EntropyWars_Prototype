@@ -1852,6 +1852,11 @@ const ThreePost = (function () {
 
         _initLighting(scene);
 
+        // Low mode must avoid allocating the composer, not merely disable
+        // passes: bloom alone owns eleven render targets. Both the board and
+        // HQ already support direct rendering with lighting/tone mapping.
+        if (typeof window !== 'undefined' && window.EW_PERF_LOW) return;
+
         if (!THREE.EffectComposer || !THREE.RenderPass || !THREE.UnrealBloomPass || !THREE.ShaderPass) {
             console.warn('[ThreePost] postprocessing classes not found — running without post-fx');
             return;

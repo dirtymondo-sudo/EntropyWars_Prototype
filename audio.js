@@ -137,48 +137,48 @@
         };
 
         const _R2_SFX = {
-            uiConfirm:       `${_R2_BASE}/SFX/ui_confirm.ogg`,
-            uiCursorMove:    `${_R2_BASE}/SFX/ui_cursormove.ogg`,
-            uiCursorFocus:   `${_R2_BASE}/SFX/ui_cursorfocus.ogg`,
-            uiButtonConfirm: `${_R2_BASE}/SFX/ui_buttonconfirm.ogg`,
-            uiError:         `${_R2_BASE}/SFX/ui_error.ogg`,
+            uiConfirm:       `${_R2_BASE}/SFX/ui_confirm_mobile.mp3`,
+            uiCursorMove:    `${_R2_BASE}/SFX/ui_cursormove_mobile.mp3`,
+            uiCursorFocus:   `${_R2_BASE}/SFX/ui_cursorfocus_mobile.mp3`,
+            uiButtonConfirm: `${_R2_BASE}/SFX/ui_buttonconfirm_mobile.mp3`,
+            uiError:         `${_R2_BASE}/SFX/ui_error_mobile.mp3`,
             /* uiBack/arrowShot reuse existing clips until dedicated
                ui_back.ogg / arrow_shot.ogg are uploaded to R2 — swap the
                paths then. */
-            uiBack:          `${_R2_BASE}/SFX/ui_cursormove.ogg`,
-            arrowShot:       `${_R2_BASE}/SFX/item_throw.ogg`,
-            fireball:        `${_R2_BASE}/SFX/fireball.ogg`,
-            healRegen:       `${_R2_BASE}/SFX/heal_regen.ogg`,
-            manaRegen:       `${_R2_BASE}/SFX/mana_regen.ogg`,
-            moveStep:        `${_R2_BASE}/SFX/move_step_v2.ogg`,
-            playerHourglass: `${_R2_BASE}/SFX/player_hourglass_obtained.ogg`,
-            enemyHourglass:  `${_R2_BASE}/SFX/enemy_hourglass_obtained.ogg`,
-            death:           `${_R2_BASE}/SFX/death.ogg`,
-            levelUp:         `${_R2_BASE}/SFX/level_up.ogg`,
-            newRound:        `${_R2_BASE}/SFX/new_round.ogg`,
-            damage:          `${_R2_BASE}/SFX/damage.ogg`,
-            debuff:          `${_R2_BASE}/SFX/debuff.ogg`,
-            buff:            `${_R2_BASE}/SFX/buff.ogg`,
-            nexusCaptured:   `${_R2_BASE}/SFX/nexus_captured.ogg`,
-            physicalAttack:  `${_R2_BASE}/SFX/physical_attack.ogg`,
-            basicAttack:     `${_R2_BASE}/SFX/basic_attack.ogg`,
-            physicalAbility: `${_R2_BASE}/SFX/physical_ability.ogg`,
-            teleport:        `${_R2_BASE}/SFX/teleport.ogg`,
-            spellDamage:     `${_R2_BASE}/SFX/spell_damage.ogg`,
-            itemThrow:       `${_R2_BASE}/SFX/item_throw.ogg`,
-            poisonDamage:    `${_R2_BASE}/SFX/poison_damage.ogg`,
-            burningDamage:   `${_R2_BASE}/SFX/burning_damage.ogg`,
-            drowningDamage:  `${_R2_BASE}/SFX/drowning_damage.ogg`,
-            dodge:           `${_R2_BASE}/SFX/dodge.ogg`,
-            physicalAbilityDamage: `${_R2_BASE}/SFX/physical_ability_damage.ogg`,
-            block:           `${_R2_BASE}/SFX/block.ogg`,
-            gun:             `${_R2_BASE}/SFX/gun.ogg`,
-            doubleShot:      `${_R2_BASE}/SFX/double_shot.ogg`,
-            shootout:        `${_R2_BASE}/SFX/shootout.ogg`,
-            turret:          `${_R2_BASE}/SFX/turret.ogg`,
-            jetFlyover:      `${_R2_BASE}/SFX/jet_flyover.ogg`,
-            nukeAlarm:       `${_R2_BASE}/SFX/nuke_alarm.ogg`,
-            explosion:       `${_R2_BASE}/SFX/explosion.ogg`,
+            uiBack:          `${_R2_BASE}/SFX/ui_cursormove_mobile.mp3`,
+            arrowShot:       `${_R2_BASE}/SFX/item_throw_mobile.mp3`,
+            fireball:        `${_R2_BASE}/SFX/fireball_mobile.mp3`,
+            healRegen:       `${_R2_BASE}/SFX/heal_regen_mobile.mp3`,
+            manaRegen:       `${_R2_BASE}/SFX/mana_regen_mobile.mp3`,
+            moveStep:        `${_R2_BASE}/SFX/move_step_v2_mobile.mp3`,
+            playerHourglass: `${_R2_BASE}/SFX/player_hourglass_obtained_mobile.mp3`,
+            enemyHourglass:  `${_R2_BASE}/SFX/enemy_hourglass_obtained_mobile.mp3`,
+            death:           `${_R2_BASE}/SFX/death_mobile.mp3`,
+            levelUp:         `${_R2_BASE}/SFX/level_up_mobile.mp3`,
+            newRound:        `${_R2_BASE}/SFX/new_round_mobile.mp3`,
+            damage:          `${_R2_BASE}/SFX/damage_mobile.mp3`,
+            debuff:          `${_R2_BASE}/SFX/debuff_mobile.mp3`,
+            buff:            `${_R2_BASE}/SFX/buff_mobile.mp3`,
+            nexusCaptured:   `${_R2_BASE}/SFX/nexus_captured_mobile.mp3`,
+            physicalAttack:  `${_R2_BASE}/SFX/physical_attack_mobile.mp3`,
+            basicAttack:     `${_R2_BASE}/SFX/basic_attack_mobile.mp3`,
+            physicalAbility: `${_R2_BASE}/SFX/physical_ability_mobile.mp3`,
+            teleport:        `${_R2_BASE}/SFX/teleport_mobile.mp3`,
+            spellDamage:     `${_R2_BASE}/SFX/spell_damage_mobile.mp3`,
+            itemThrow:       `${_R2_BASE}/SFX/item_throw_mobile.mp3`,
+            poisonDamage:    `${_R2_BASE}/SFX/poison_damage_mobile.mp3`,
+            burningDamage:   `${_R2_BASE}/SFX/burning_damage_mobile.mp3`,
+            drowningDamage:  `${_R2_BASE}/SFX/drowning_damage_mobile.mp3`,
+            dodge:           `${_R2_BASE}/SFX/dodge_mobile.mp3`,
+            physicalAbilityDamage: `${_R2_BASE}/SFX/physical_ability_damage_mobile.mp3`,
+            block:           `${_R2_BASE}/SFX/block_mobile.mp3`,
+            gun:             `${_R2_BASE}/SFX/gun_mobile.mp3`,
+            doubleShot:      `${_R2_BASE}/SFX/double_shot_mobile.mp3`,
+            shootout:        `${_R2_BASE}/SFX/shootout_mobile.mp3`,
+            turret:          `${_R2_BASE}/SFX/turret_mobile.mp3`,
+            jetFlyover:      `${_R2_BASE}/SFX/jet_flyover_mobile.mp3`,
+            nukeAlarm:       `${_R2_BASE}/SFX/nuke_alarm_mobile.mp3`,
+            explosion:       `${_R2_BASE}/SFX/explosion_mobile.mp3`,
             /* ── Elemental layer (SFX_AUDIT §1, uploaded 2026-08-04) ── */
             elecCast:        `${_R2_BASE}/SFX/elecCast.mp3`,
             lightningStrike: `${_R2_BASE}/SFX/lightningStrike.mp3`,
@@ -1256,7 +1256,7 @@
 
         Object.entries(audioTracks).forEach(([key, track]) => {
             if (!track) return;
-            track.preload = 'auto';
+            track.preload = 'none';
             track.volume = getMusicBaseVolume(key);
         });
         /* THE PLAYLIST (2026-09-16): no song loops on its own any more — a pool of
@@ -1378,6 +1378,9 @@
             if (cooldown > 0 && now - (sfxLastPlayedAt[key] || 0) < cooldown) return false;
             sfxLastPlayedAt[key] = now;
             playSfx._recent.push(now);
+            if (window.AudioContext || window.webkitAudioContext) {
+                return _playBufferedSfx(src, key, opts);
+            }
             try {
                 let audio;
                 if (sfxReusableKeys.has(key)) {
@@ -1417,6 +1420,97 @@
         }
 
         let _audioCtx = null;
+
+        // One gesture-unlocked context serves all one-shots, including events
+        // arriving from the network or a delayed animation on iOS. Decode only
+        // requested sounds, with bounded memory/concurrency instead of a new
+        // HTMLAudioElement (and a new autoplay decision) for every hit.
+        const _sfxBuffers = new Map();
+        const _sfxPending = new Map();
+        const _sfxVoices = new Set();
+        const _sfxQueue = [];
+        let _sfxBytes = 0, _sfxLoads = 0;
+        const _SFX_CACHE_BYTES = 8 * 1024 * 1024;
+
+        let _sfxWarmed = false;
+        function _unlockSfxContext() {
+            try {
+                const ctx = _doorCtx();
+                if (ctx.state !== 'running') ctx.resume().catch(() => {});
+                if (!_sfxWarmed) {
+                    _sfxWarmed = true;
+                    ['uiConfirm', 'uiCursorMove', 'uiButtonConfirm', 'moveStep', 'basicAttack', 'damage'].forEach(key => {
+                        if (sfxLibrary[key]) _getSfxBuffer(sfxLibrary[key]);
+                    });
+                }
+            } catch (_) {}
+        }
+        // Keep these listeners: Safari can suspend/interrupt audio on app switch.
+        ['pointerdown', 'touchend', 'click', 'keydown'].forEach(type => {
+            document.addEventListener(type, _unlockSfxContext, { capture: true, passive: true });
+        });
+
+        function _pumpSfxLoads() {
+            while (_sfxLoads < 2 && _sfxQueue.length) {
+                const job = _sfxQueue.shift();
+                _sfxLoads++;
+                const controller = new AbortController();
+                const timer = setTimeout(() => controller.abort(), 10000);
+                // Use a separate CORS cache entry from legacy HTML audio loads.
+                const url = job.src + (job.src.includes('?') ? '&' : '?') + 'ewaudio=1';
+                fetch(url, { signal: controller.signal }).then(r => {
+                    if (!r.ok) throw new Error('SFX HTTP ' + r.status);
+                    return r.arrayBuffer();
+                }).then(bytes => new Promise((resolve, reject) => {
+                    _doorCtx().decodeAudioData(bytes, resolve, reject);
+                })).then(buffer => {
+                    const bytes = buffer.length * buffer.numberOfChannels * 4;
+                    if (bytes <= _SFX_CACHE_BYTES) {
+                        while (_sfxBytes + bytes > _SFX_CACHE_BYTES && _sfxBuffers.size) {
+                            const oldest = _sfxBuffers.keys().next().value;
+                            _sfxBytes -= _sfxBuffers.get(oldest).bytes;
+                            _sfxBuffers.delete(oldest);
+                        }
+                        _sfxBuffers.set(job.src, { buffer, bytes }); _sfxBytes += bytes;
+                    }
+                    job.resolve(buffer);
+                }).catch(() => job.resolve(null)).finally(() => {
+                    clearTimeout(timer); _sfxPending.delete(job.src); _sfxLoads--; _pumpSfxLoads();
+                });
+            }
+        }
+        function _getSfxBuffer(src) {
+            const cached = _sfxBuffers.get(src);
+            if (cached) {
+                _sfxBuffers.delete(src); _sfxBuffers.set(src, cached);
+                return Promise.resolve(cached.buffer);
+            }
+            if (_sfxPending.has(src)) return _sfxPending.get(src);
+            if (_sfxPending.size >= 16) return Promise.resolve(null);
+            const promise = new Promise(resolve => _sfxQueue.push({ src, resolve }));
+            _sfxPending.set(src, promise); _pumpSfxLoads();
+            return promise;
+        }
+        function _playBufferedSfx(src, key, opts) {
+            let ctx;
+            try { ctx = _doorCtx(); } catch (_) { return false; }
+            if (ctx.state !== 'running') { _unlockSfxContext(); return false; }
+            const requested = performance.now();
+            const volume = Math.max(0, Math.min(1, opts.volume ?? getSfxBaseVolume(key)));
+            if (!volume) return false;
+            _getSfxBuffer(src).then(buffer => {
+                // A cold download should never replay old combat seconds later.
+                if (!buffer || ctx.state !== 'running' || document.hidden || performance.now() - requested > 1200) return;
+                if (_sfxVoices.size >= 12) return;
+                const source = ctx.createBufferSource(), gain = ctx.createGain();
+                source.buffer = buffer; gain.gain.value = volume;
+                source.connect(gain).connect(ctx.destination);
+                _sfxVoices.add(source);
+                source.onended = () => { _sfxVoices.delete(source); source.disconnect(); gain.disconnect(); };
+                source.start();
+            }).catch(() => {});
+            return true;
+        }
 
         function playUnitSwitchChime() {
             if (!state.audioUnlocked) return;
@@ -1617,6 +1711,7 @@
         });
 
         async function unlockAudioAndPlayTitleTheme() {
+            _unlockSfxContext();
             if (state.audioUnlocked) {
                 if ((state.titleScreenVisible || state.phase === 'setup') && !state.winner) {
 

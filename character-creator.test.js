@@ -416,7 +416,8 @@ test('R2 load failure retries only the allowlisted model and settles the existin
             calls.push(url); if (url.startsWith('/api/')) ok({ scene: root, animations: [] }); else fail();
         } } } };
     vm.createContext(c);
-    vm.runInContext(renderer.slice(renderer.indexOf('    function _loadUnitGLB('), renderer.indexOf('    /* Match-start preload gate')), c);
+    vm.runInContext(renderer.slice(renderer.indexOf('    var _mobileModelJobs'), renderer.indexOf('    /* Match-start preload gate')), c);
+    vm.runInContext(renderer.slice(renderer.indexOf('    function _compactMobileModelTextures('), renderer.indexOf('    function _loadMiscModel(')), c);
     const url = context.getCharacterAppearanceModel('homosapien', 'female', {}).model;
     let result; c._loadUnitGLB(url, e => result = e);
     assert.deepEqual(calls, [url, '/api/character-model/female']);
