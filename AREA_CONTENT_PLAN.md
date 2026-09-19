@@ -179,7 +179,7 @@ scaffolding = `climb` `pipe` + `deck`). The `city` plan gains `districts: [{ id,
 lots, streets }]` and the traffic / race / markings run per district. `check-terrain.js` +
 `playtest_city.js` before anything is claimed.
 
-**D3 — THE TWENTY AREAS, BROUGHT UP TO THE CAVE.** *(FIRST DELIVERY SHIPPED 2026-09-19 — Shasta, the North Pole, Olympus; SECOND DELIVERY 2026-09-19 — the Stadium, the Haunted grounds, the Spaceship deck: the six the user sees first are done; THIRD DELIVERY 2026-09-19 — Technoticlan, Agartha, Antarctica; see §7.)* `HQ_AREA_SPECS` rework, one spec at a time,
+**D3 — THE TWENTY AREAS, BROUGHT UP TO THE CAVE.** *(FIRST DELIVERY SHIPPED 2026-09-19 — Shasta, the North Pole, Olympus; SECOND DELIVERY 2026-09-19 — the Stadium, the Haunted grounds, the Spaceship deck: the six the user sees first are done; THIRD DELIVERY 2026-09-19 — Technoticlan, Agartha, Antarctica; FOURTH / FIFTH / SIXTH 2026-09-19 — Cydonia, the Mare, the Grove; the Garden, the Halls, the Horizon; the Hexagon, the Inner Sun, the Main Deck: D3 IS COMPLETE, the Flatlands and the Backrooms skipped at the user's word; see §7.)* `HQ_AREA_SPECS` rework, one spec at a time,
 each to R1–R8: a parti, a typology, ≥ 3 tiers chained by ≥ 2 kinds, a ladder / rope / vine per
 area where it fits the place (vines in the grove, the woods, Agartha; ropes in Shasta, the
 North Pole, Olympus; ladders in the station, the deck, the base; chains in Hell; hand-holds on
@@ -444,6 +444,43 @@ The questions as they were asked:
   direction toward the mass in the room's own axes (0 = −z, 180 = +z, 90 = +x, 270 = −x), whatever the wall is called. The suites and the
   hard-tape proofs were not run at the user's word (`npm run test:quick` passed; the two tools solved and audited the three rooms). NEXT:
   Saturn, Hollow Earth, the Dutchman's deck — then D4, D5 (the Flatlands and the Backrooms are skipped at the user's word).
+- 2026-09-19 — **D3, SIXTH DELIVERY (local): THE HEXAGON · THE INNER SUN · THE MAIN DECK — the last three, brought up to the cave.** Each
+  re-specced in `HQ_AREA_SPECS` (data.js) and measured clean on ALL of R1–R8 by `node check-area-content.js --rules` (climb rows / kinds /
+  per 100 m² / range / items per 60 m² / earned exits: THE HEXAGON 28 / 5 / 0.86 / 8.1 m / 1.27 / 1 of 3; THE INNER SUN 25 / 5 / 0.78 /
+  8.5 m / 1.67 / 2 of 3; THE MAIN DECK 25 / 4 / 0.90 / 8.5 m / 1.26 / 1 of 3; one door exposed at most; every earned exit that is not a
+  draught teased; a `parti` + a `typology` on each; `node check-terrain.js` solves every door from every door, nothing traps, zero rescue
+  ramps; every authored climb compiled — `hqTerrainInfo(id).climbs` 9 / 10 / 9). **THE HEXAGON** (ring): THE EYE is a real 1.6 m bowl (the
+  old `h: -1.6` was a mound) inside the six storm walls, whose NORTH segment is THE EYE WALL (4 m) so the collar's shelf is not seen from the
+  way in; THE DOCKING SHELF (2.4) on the north wall with the ship's collar standing ON it (`derelict_saturn.b` `y: 2.4` — the stair at the
+  door's own x, a ladder on its east end, a rope on its west), THE RING PLANE (a level span, the bridge layer) from it to THE SPOKE (2.4, a
+  chain), THE WEST TERRACE (2.0, the ramp + the hand-holds + a rope, the survey camp), THE RIM WALK (4.2) on the WEST wall with the drop's
+  frame standing ON it (`saturn_singularity.a` moved off the north wall to `w z −14 y 4.2` — a door you climb to, seen from the whole
+  plateau; the stair up from the terrace, a chain, a ladder), THE SHARD'S FOOT (3.0, a stair + a chain + the hand-holds) under THE RING SHARD
+  (6.0, the tape — the pin stays), THE RING GRAINS (three floating stones off the eye's east rim), THE OUTER TOOTH (a 3.2 m storm wall on the
+  approach — the frame is not seen from the way in); 50 props + 4 natives + 14 scattered. **THE INNER SUN** (ring): THE SUN's spire (6.8, the
+  tape) is r 3.9 on THE TERRACE (2.0, a stair + the hand-holds + a vine) moved south to (0, −13) (the pin moved with it) so it stands between
+  the mouth and the way in; THE CRUST LEDGE (2.2) on the north wall with the cave's mouth standing ON it (`cave_hollow.b` `y: 2.2` — a stair
+  at the door's x, a rope, a chain), THE ROOT (a level span) to THE MUSHROOM SHELF (2.2, a vine), THE GIANT'S STEPS (three floating stones,
+  1.2 → 2.4 → 3.4) up to THE OVERHANG (4.4, a ladder + a chain), THE CRYSTAL FOREST (3.0, a stair + a vine + a chain), THE GIANT'S SEAT
+  (2.6, a ramp + a vine), THE LAKE (waded) with THE JETTY, THE HOT SPRING, THE SUNKEN GARDEN (a 1.6 m dip), two OLD TREES on the lake's
+  south shore (`k: 'tree'` rows — the audit's LOS reads trees, never props); **THE POLAR OPENING** = `links.hollow_byrd` (`secret: true`,
+  route `hollow`, `leaf_bulkhead`): a draught in the east wall up to THE STATION's east wall (the pruned plain door `hollow_hell` stays
+  pruned; a draught wears a new id) — the station's EAST PRESSURE RIDGE grew 0.9 → 2.2 m so the crack is not seen from its way in; 55 props +
+  4 natives + 29 scattered. **THE MAIN DECK** (corridor, 64 × 52 — R7 wants ≥ 60 × 50): THE QUARTERDECK (2.4, a stair + a rope + a ladder)
+  with THE POOP (4.4, a stair + the stern lantern's chain) over its stern where **THE CAPTAIN'S SKYLIGHT** is a DRAUGHT down into the great
+  cabin (a secret door PAIR: the deck's `skylight` on the west wall `y: 4.4` ⇄ the cabin's `skylight` on its south wall — the cargo hatch's
+  rule; hq-floors counts twelve secret doors), THE MIZZEN (a 7 m mast column on the quarterdeck — the skylight is not seen from the way in),
+  THE FORECASTLE (2.4, a stair + a rope + a ladder) with THE BOWSPRIT PLATFORM (3.6, a stair + a chain) on its bow, THE BOAT DECK (2.4, a
+  rope) off the starboard bulwark joined to the forecastle by THE GANGWAY (a level span), THE CROSSTREES (4.6, the ratlines' rope + a chain)
+  under THE MAINTOP (8.4, the tape — the pin stays), the bulwarks (the grind) with gangways cut for the companionway and the way in, THE
+  CHAINS outside them (the sea's growth aboard, two rails); 44 props + 4 natives + 7 scattered. **THE RULES THIS ONE TAUGHT**: (1) the audit's
+  R3 LINE OF SIGHT reads the height field, `wall` rows, the plan's solid and `tree` / `grove` / thicket rows — NEVER props: a sightline is
+  broken with a wall, a tree, a mast column (a plateau nothing climbs) or a tier's cliff; (2) every pocket the solver cuts a rescue ramp out
+  of is read off `hqTerrainInfo(id).rescues` (x / z / cells) and killed with a `gen.open` circle or a `path` that joins it to the floor —
+  read `RETURN:` on every room and stop at zero; (3) a floating stone's column stands in the field — two stones and a bank make a pocket
+  between them (open the ground round a stepping-stone chain). D3 IS COMPLETE (the Flatlands and the Backrooms skipped at the user's word);
+  the suites and the hard-tape proofs were not run at the user's word (`npm run test:quick` + the room tests named in the delivery passed;
+  the two tools solved and audited all four rooms). NEXT: D4 (the door pass over the complexes), then D5.
 - 2026-09-19 — **D3, FOURTH DELIVERY (local): CYDONIA · THE MARE · THE GROVE — brought up to the cave.** Each re-specced in `HQ_AREA_SPECS`
   (data.js) and measured clean on ALL of R1–R8 by `node check-area-content.js --rules` (climb rows / kinds / per 100 m² / range / items per
   60 m² / earned exits: CYDONIA 19 / 4 / 0.63 / 6.6 m / 1.33 / 2 of 3; THE MARE 20 / 5 / 0.77 / 7.4 m / 1.47 / 2 of 3; THE GROVE 17 / 6 /

@@ -21124,7 +21124,7 @@ const DOOR_HQ = {
           why: 'the lander\'s hatch and the docking collar are the same bore; the ship parked here once', note: 'the collar seals', draft: true },
         { id: 'derelict_saturn', route: 'lunar', leaf: 'leaf_bulkhead',
           a: { site: 'prebuilt_derelict', part: 'airlock', door: 'collar' },   // docked: the same collar, a different course
-          b: { site: 'prebuilt_saturn', part: 'hexagon', wall: 'n', x: -5 },   // THE AREAS (2026-09-18): on THE HEXAGON
+          b: { site: 'prebuilt_saturn', part: 'hexagon', wall: 'n', x: -5, y: 2.4, sub: 'THE DOCKING SHELF · THE COLLAR' },   // THE AREAS (2026-09-18): on THE HEXAGON; AREA CONTENT D3 (2026-09-19): ON THE DOCKING SHELF — a door you climb to
           why: 'the second collar opens onto the hexagon plateau; the ship swings past Saturn on every orbit', note: 'mind the ring plane', draft: true },
         { id: 'antarctica_derelict', route: 'lunar', leaf: 'leaf_bulkhead',   // 2026-09-18 (the user: "Antarctica is where the Spaceship is"): docked on the same collar — a third course
           a: { site: 'prebuilt_antarctica', part: 'station', wall: 'n', x: -0.2, y: 3.0, sub: 'THE HULL IN THE ICE · THE COLLAR' },   // THE AREAS (2026-09-18): on THE STATION; AREA CONTENT D3 (2026-09-19): ON THE HULL rising out of the ice — a door you climb to
@@ -21135,7 +21135,7 @@ const DOOR_HQ = {
           b: { site: 'prebuilt_derelict', part: 'airlock', door: 'collar' },
           why: 'the rover bay\'s hatch; the rover is on the Martian board and the tracks lead here', note: 'the dust is finer on the far side', draft: true },
         { id: 'saturn_singularity', route: 'lunar', leaf: 'leaf_frame_only',
-          a: { site: 'prebuilt_saturn', part: 'hexagon', wall: 'n', x: -10 },   // THE AREAS (2026-09-18): the drop's frame on the hexagon's rim
+          a: { site: 'prebuilt_saturn', part: 'hexagon', wall: 'w', z: -14, y: 4.2, sub: 'THE RIM WALK · THE DROP’S FRAME' },   // THE AREAS (2026-09-18): the drop's frame on the hexagon's rim; AREA CONTENT D3 (2026-09-19): ON THE RIM WALK, the west wall — a door you climb to, seen from the whole plateau
           b: { site: 'prebuilt_singularity', part: 'horizon', wall: 'n', x: -5 },
           why: 'the plateau ends; so does the arithmetic. A frame with nothing in it, and the Quarantined bay\'s site on the other side', note: 'the drop is the door', draft: true },
         /* THE DEEP */
@@ -21259,6 +21259,12 @@ const DOOR_HQ = {
           a: { site: 'prebuilt_technoticlan', part: 'templecity', wall: 'w', z: 4, sub: 'XIBALBA · THE TUNNEL UNDER THE BALL COURT' },
           b: { site: 'prebuilt_agartha', part: 'crystalcity', wall: 'e', z: 6, sub: 'THE TEMPLE CITY · THE TUNNEL UP TO THE BALL COURT' },
           why: 'the losing side of the ball game went down; the tunnel they went down is under the court\'s west wall and comes out in the crystal city, which is where every road under the earth comes out', note: 'the losing side went down', draft: true },
+        /* AREA CONTENT D3 (2026-09-19, the sixth delivery): THE ADMIRAL'S OTHER END — the polar opening the admiral flew THROUGH comes out under the inner sun (the
+           inner sun's earned exit; the station's east wall — its west wall carries the tunnel to the crystal city). The pruned plain door hollow_hell stays pruned; a draught wears a new id. */
+        { id: 'hollow_byrd', route: 'hollow', leaf: 'leaf_bulkhead', secret: true,
+          a: { site: 'prebuilt_hollow_earth', part: 'innersun', wall: 'e', z: 6, sub: 'THE POLAR OPENING · UP TO THE ICE' },
+          b: { site: 'prebuilt_antarctica', part: 'station', wall: 'e', z: 8, sub: 'THE POLAR OPENING · DOWN INTO THE COUNTRY UNDER THE CRUST' },
+          why: 'the admiral\'s 1947 flight went IN over the pole and came out over a green country with a sun in the middle of it; the opening is behind the station\'s east berm, where the ice is warm to the touch and the compass points down', note: 'warm ice; the wind blows out of it', draft: true },
         /* AREA CONTENT D3 (2026-09-19): two more DRAUGHTS (the earned exits R4 asks for): THE FACE'S MOUTH — the bore the greys made between the Face on Mars
            and the far side of the Moon (the plain door `mars_moon` THE AREAS pruned stays pruned; a draught wears a new id) — and THE MEMBERS' TUNNEL under the grove's lawn to the Lodge */
         { id: 'cydonia_mare', route: 'lunar', leaf: 'leaf_bulkhead', secret: true,
@@ -21581,7 +21587,7 @@ const DOOR_HQ = {
           note: 'one metre, from this side', draft: true },
         { id: 'cave_hollow', route: 'undercroft', leaf: 'leaf_frame_only',
           a: { site: 'prebuilt_hollow_earth', part: 'mouth', wall: 'e', z: -5.25, y: 1.75 },
-          b: { site: 'prebuilt_hollow_earth', part: 'innersun', wall: 'n', x: -5 },   // THE AREAS (2026-09-18): the mouth opens on THE INNER SUN
+          b: { site: 'prebuilt_hollow_earth', part: 'innersun', wall: 'n', x: -5, y: 2.2, sub: 'THE CRUST LEDGE · THE MOUTH' },   // THE AREAS (2026-09-18): the mouth opens on THE INNER SUN; AREA CONTENT D3 (2026-09-19): ON THE CRUST LEDGE — a door you climb to
           why: 'the cave mouth: the complex\'s own way in and out, opening on the inner sun with the whole country under it',
           note: 'the inner sun', draft: true },
     ],
@@ -29598,6 +29604,10 @@ const DOOR_HQ = {
                   label: 'THE GUN DECK', sub: 'FORWARD · TO THE GUNS',
                   action: { room: 'site_prebuilt_revenge_gundeck', at: 'cabin' },
                   desc: 'The cabin door, forward onto the gun deck. The great cabin is the end of the ship; behind the stern windows is the wake, and under the wake is the city.' },
+                /* AREA CONTENT D3 (2026-09-19): THE CAPTAIN’S SKYLIGHT — a draught up onto the poop (the deck's earned exit; the map shows it once both rooms are seen) */
+                { id: 'skylight', wall: 's', x: -1.0, secret: true, leaf: null, label: 'A DRAUGHT', sub: 'THE CAPTAIN’S SKYLIGHT · UP ONTO THE POOP',
+                  action: { room: 'site_prebuilt_revenge_deck', at: 'skylight' },
+                  desc: 'A pane over the table that is not caulked. It lifts onto the poop. The captain went out this way; the log says so, at tomorrow.' },
             ],
             counters: [],
             props: [
@@ -37549,7 +37559,7 @@ const HQ_AREA_SPECS = {
             { k: 'plateau', x: -26, z: 14, r: 2.2, h: 3.2, edge: 0.35 }, { k: 'climb', x: -26, z: 12.1, face: 180, look: 'ladder' }, { k: 'climb', x: -26, z: 15.9, face: 0, look: 'chain' },
             /* THE MELT POOL (waded) and THE PRESSURE RIDGES (the grind) on the east side */
             { k: 'pool', x: 12, z: 4, r: 3, depth: 0.6, key: 'water', bank: 0.8 },
-            { k: 'wall', x0: 4, z0: 12, x1: 18, z1: 12, h: 0.9, t: 0.6, key: 'ice_1' }, { k: 'wall', x0: 20, z0: 18, x1: 30, z1: 8, h: 0.9, t: 0.6, key: 'ice_1' },
+            { k: 'wall', x0: 4, z0: 12, x1: 18, z1: 12, h: 0.9, t: 0.6, key: 'ice_1' }, { k: 'wall', x0: 20, z0: 18, x1: 30, z1: 8, h: 2.2, t: 0.6, key: 'ice_1' },   // THE EAST PRESSURE RIDGE stands 2.2 m since the polar opening (hollow_byrd) came out behind it — the crack is not seen from the way in (R3; AREA CONTENT D3, 2026-09-19)
             /* THE CREVASSE (never entered) and the one plank across it */
             { k: 'stream', pts: [[-34, -12], [-8, -14], [14, -10], [34, -14]], w: 3.6, depth: 0.55, key: 'deep_water' },
             { k: 'deck', x0: 2, z0: -8.6, x1: 2, z1: -15.4, w: 2.2, y: 0.2 },
@@ -38055,28 +38065,64 @@ const HQ_AREA_SPECS = {
         npcSpots: [{ x: -3, z: 14, face: 30, race: 'cosmic wraith', say: '“Eight seconds of falling. The ninth is you.”' }, { x: 23, z: 9, y: 2.4, face: 250, race: 'watcher', say: '“The camp is upstream of the drop. Everything is upstream of the drop.”' },
                    { x: -12, z: -24, y: 3.4, face: 100, race: 'shadow entity', say: '“The lens bends the light round it. It does not bend the fall.”' }, { x: 15, z: -25, y: 2.4, face: 180, race: 'occulus', say: '“The screen shows the drop. The drop shows the screen. Do not stand between them.”' }],
         lines: ['“Where does it go?” “Down. Only down.”'] },
-    /* ROOM 6 · SATURN · THE HEXAGON: the plateau under the rings, six low walls in the storm's shape (the grind), THE EYE at the
-       centre, THE RING SHARD (the tape), the collar and the drop's frame on the north wall */
+    /* ROOM 6 · SATURN · THE HEXAGON (AREA CONTENT D3, 2026-09-19): the plateau under the rings — six low storm walls in the storm's shape
+       (the grind) round THE EYE (a bowl), THE DOCKING SHELF on the north wall with the ship's collar standing ON it (a stair up its south face,
+       a ladder on its east end, a rope on its west — a door you climb to) and THE RING PLANE, a level span from it to THE SPOKE, THE WEST
+       TERRACE up its ramp with THE RIM WALK above it on the west wall where the drop's frame stands (the stair off the terrace, a chain, a
+       ladder — the frame is seen from the whole plateau), THE SHARD'S FOOT under THE RING SHARD (the tape — the door gun's), THE RING GRAINS
+       (three floating stones) stepping up from the eye's rim */
     prebuilt_saturn: { part: 'hexagon', label: 'THE HEXAGON', sub: 'THE PLATEAU · THE STORM WALLS · THE EYE · THE RING SHARD', w: 70, d: 60, night: 1, look: 'observatory', fogD: 0.02,
+        parti: 'A plateau under the rings where the storm has built a six-sided wall round its own eye; every tier stands off the hexagon like a spoke, and the collar and the drop\'s frame are up on the rim, where the ship and the arithmetic both end.', typology: 'ring',
         floor: 'mars_2', cliff: 'storm', path: 'moon_3', floorColor: 0xc8a060, cliffColor: 0x7a6a58,
-        gen: { kind: 'rooms', seed: 6, loops: 3, rMin: 8, rMax: 14, wallH: 2.2, thicket: false }, noise: { amp: 0.14, scale: 8 },
+        gen: { kind: 'rooms', seed: 6, loops: 3, rMin: 8, rMax: 14, wallH: 2.2, thicket: false, open: [{ x: -26, z: -2, r: 4 }, { x: 22, z: -6, r: 3.5 }, { x: 25, z: 21, r: 4 }, { x: 14, z: -26, r: 3 }] }, noise: { amp: 0.14, scale: 8 },   // the open circles: the strip between the terrace and the rim walk, the shard foot's south side, the south-east corner by the rover, the spoke's east foot (pockets the solver cut rescue ramps out of otherwise)
         plaza: { x: 0, z: 10 },
         features: [
-            { k: 'wall', x0: 12, z0: -8, x1: 6, z1: 2.4, h: 1.0, t: 0.6, key: 'storm' }, { k: 'wall', x0: -6, z0: 2.4, x1: -12, z1: -8, h: 1.0, t: 0.6, key: 'storm' }, { k: 'wall', x0: -12, z0: -8, x1: -6, z1: -18.4, h: 1.0, t: 0.6, key: 'storm' }, { k: 'wall', x0: -6, z0: -18.4, x1: 6, z1: -18.4, h: 1.0, t: 0.6, key: 'storm' }, { k: 'wall', x0: 6, z0: -18.4, x1: 12, z1: -8, h: 1.0, t: 0.6, key: 'storm' },   // THE HEXAGON (open on the south face)
-            { k: 'dip', x: 0, z: -8, r: 5, h: -1.6 },                                                               // THE EYE
-            { k: 'plateau', x: 20, z: -18, w: 10, d: 4, h: 6.0, edge: 0.4, rot: 25 },                              // THE RING SHARD (the tape)
-            { k: 'plateau', x: -20, z: 4, r: 6, h: 1.6, edge: 0.4 }, { k: 'ramp', x0: -20, z0: 15.5, x1: -20, z1: 10.7, w: 2.8, h0: 0, h1: 1.6 },
-            { k: 'path', pts: [[0, 10], [0, -8]], w: 2.6 }, { k: 'path', pts: [[0, 10], [-5, -24], [-5, -28]], w: 2.6 }, { k: 'path', pts: [[0, 10], [-10, -24], [-10, -28]], w: 2.4 },
-            { k: 'scatter', key: 'cave_stone', n: 6, seed: 6 },
+            /* THE HEXAGON (open on the south face) round THE EYE — a dip's h is its DEPTH */
+            { k: 'wall', x0: 12, z0: -8, x1: 6, z1: 2.4, h: 1.0, t: 0.6, key: 'storm' }, { k: 'wall', x0: -6, z0: 2.4, x1: -12, z1: -8, h: 1.0, t: 0.6, key: 'storm' }, { k: 'wall', x0: -12, z0: -8, x1: -6, z1: -18.4, h: 1.0, t: 0.6, key: 'storm' }, { k: 'wall', x0: -6, z0: -18.4, x1: 6, z1: -18.4, h: 4.0, t: 0.6, key: 'storm' }, { k: 'wall', x0: 6, z0: -18.4, x1: 12, z1: -8, h: 1.0, t: 0.6, key: 'storm' },   // the north segment is THE EYE WALL (4 m): the collar's shelf is not seen from the way in (R3)
+            { k: 'dip', x: 0, z: -8, r: 5, h: 1.6, open: true },
+            /* THE RING SHARD (6.0, the tape — the door gun's) and THE SHARD'S FOOT (3.0) under its south side: the stair up its east end, a chain on its west face, the hand-holds on its south */
+            { k: 'plateau', x: 20, z: -18, w: 10, d: 4, h: 6.0, edge: 0.4, rot: 25 },
+            { k: 'plateau', x: 20, z: -11, w: 8, d: 5, h: 3.0, edge: 0.4 }, { k: 'ramp', x0: 30.3, z0: -11, x1: 23.3, z1: -11, w: 2.4, h0: 0, h1: 3.0, stairs: true },
+            { k: 'climb', x: 16.3, z: -11, face: 90, look: 'chain' }, { k: 'climb', x: 20, z: -8.8, face: 0, look: 'wall' },
+            /* THE WEST TERRACE (2.0): the ramp up its south side, the hand-holds on its east face, a rope on its north */
+            { k: 'plateau', x: -22, z: 2, r: 6, h: 2.0, edge: 0.4 }, { k: 'ramp', x0: -22, z0: 13, x1: -22, z1: 7.3, w: 2.8, h0: 0, h1: 2.0 },
+            { k: 'climb', x: -15.7, z: 2, face: 270, look: 'wall' }, { k: 'climb', x: -22, z: -3.7, face: 180, look: 'rope' },
+            /* THE RIM WALK (4.2) on the west wall — the drop's frame stands ON it: the stair up from the terrace, a chain on its east face, a ladder on its south */
+            { k: 'plateau', x: -29, z: -14, w: 12, d: 14, h: 4.2, edge: 0.4 }, { k: 'ramp', x0: -24, z0: -2.4, x1: -24, z1: -7.7, w: 2.4, h0: 2.0, h1: 4.2, stairs: true },
+            { k: 'climb', x: -22.7, z: -16, face: 270, look: 'chain' }, { k: 'climb', x: -30, z: -6.7, face: 0, look: 'ladder' },
+            /* THE DOCKING SHELF (2.4) on the north wall — the collar stands ON it: the stair up its south face at the door's own x, a ladder on its east end, a rope on its west */
+            { k: 'plateau', x: -5, z: -26.5, w: 14, d: 7, h: 2.4, edge: 0.4 }, { k: 'ramp', x0: -5, z0: -14.5, x1: -5, z1: -23.7, w: 2.8, h0: 0, h1: 2.4, stairs: true },
+            { k: 'climb', x: 1.7, z: -26.5, face: 270, look: 'ladder' }, { k: 'climb', x: -11.7, z: -26.5, face: 90, look: 'rope' },
+            /* THE SPOKE (2.4) east of the shelf, a chain up its south face; THE RING PLANE from the shelf to it (a level span, the bridge layer) */
+            { k: 'plateau', x: 11, z: -24, r: 3.2, h: 2.4, edge: 0.35 }, { k: 'climb', x: 11, z: -21.1, face: 0, look: 'chain' },
+            { k: 'bridge', x0: 1.3, z0: -26, x1: 8.5, z1: -26, w: 2.2, y: 2.4 },
+            /* THE RING GRAINS: three floating stones stepping up off the eye's east rim */
+            { k: 'plateau', x: 11, z: 3, r: 1.6, h: 0.8, edge: 0.3, float: true }, { k: 'plateau', x: 14.5, z: -1, r: 1.6, h: 1.5, edge: 0.3, float: true }, { k: 'plateau', x: 15.5, z: -5.5, r: 1.6, h: 2.2, edge: 0.3, float: true },
+            { k: 'wall', x0: -12, z0: 17, x1: -4, z1: 17, h: 3.2, t: 0.6, key: 'storm' }, { k: 'rail', x0: 4, z0: 18, x1: 14, z1: 18 },   // THE OUTER TOOTH (3.2 m, the grind on its top): the frame on the rim walk is not seen from the way in (R3)
+            /* THE PATHS: into the eye; round the hexagon's west to the terrace's ramp and on to the shelf's stair; round its east to the shard foot's stair */
+            { k: 'path', pts: [[0, 10], [0, -8]], w: 2.6 }, { k: 'path', pts: [[0, 10], [-12, 8], [-22, 13]], w: 2.6 },
+            { k: 'path', pts: [[-12, 8], [-16, -8], [-16, -20], [-5, -14.5]], w: 2.4 }, { k: 'path', pts: [[-16, -20], [-20, -28]], w: 2.2 },
+            { k: 'path', pts: [[0, 10], [16, 12], [30, 2], [30.3, -11]], w: 2.4 }, { k: 'path', pts: [[30, 2], [16, -6], [11, -20]], w: 2.2 },
+            { k: 'scatter', key: 'cave_stone', n: 8, seed: 6 }, { k: 'scatter', key: 'crystal_cluster', n: 6, seed: 66 },
         ],
-        props: [{ key: 'railing_1m', x: -20, z: 10, face: 0, y: 1.6 }, { key: 'riser_1', x: 8, z: 14 }, { key: 'brass_telescope', x: -4, z: 14, face: 160 }],
-        npcSpots: [{ x: -3, z: 14, face: 30, race: 'grey', say: '“One ice grain in the ring is square. We put it back every orbit.”' }],
+        props: [{ key: 'railing_1m', x: -5, z: -23.1, face: 0, y: 2.4 }, { key: 'railing_1m', x: -27, z: -7.4, face: 0, y: 4.2 }, { key: 'railing_1m', x: -22, z: 7.6, face: 0, y: 2.0 }, { key: 'riser_1', x: 8, z: 14 },
+                /* THE DOCKING SHELF: the collar's gear */
+                { key: 'iso_tank', x: -10, z: -28.5, y: 2.4 }, { key: 'iso_tank', x: -8, z: -28.5, y: 2.4 }, { key: 'steel_table', x: -1.5, z: -28.5, y: 2.4 }, { key: 'crt_terminal', x: -1.5, z: -28.5, y: 3.16 }, { key: 'retro_radio', x: -0.6, z: -28.5, y: 3.16 },
+                { key: 'flood_mast', x: 1.0, z: -29, y: 2.4 }, { key: 'warning_tape', x: -9, z: -24.2, y: 2.4 }, { key: 'signpost', x: -0.5, z: -24, y: 2.4 }, { key: 'sea_chest', x: -11, z: -29, y: 2.4 },
+                /* THE SPOKE */
+                { key: 'brass_telescope', x: 11.5, z: -24.5, y: 2.4, face: 200 }, { key: 'lone_gun', x: 9.8, z: -23, y: 2.4 },
+                /* THE RIM WALK: the drop's watchers */
+                { key: 'telescope', x: -31, z: -12, y: 4.2, face: 100 }, { key: 'star_projector', x: -33, z: -18.5, y: 4.2 }, { key: 'cave_stone', x: -26, z: -19, y: 4.2 }, { key: 'signpost', x: -30, z: -18, y: 4.2 }, { key: 'flood_mast', x: -33.5, z: -8.5, y: 4.2 }, { key: 'sea_chest', x: -32.5, z: -19.5, y: 4.2 }, { key: 'warning_tape', x: -26, z: -12, y: 4.2 },
+                /* THE WEST TERRACE: the survey camp */
+                { key: 'cot', x: -25, z: 4, y: 2.0, face: 90 }, { key: 'cot', x: -25, z: 1, y: 2.0, face: 90 }, { key: 'steel_table', x: -20, z: 4.5, y: 2.0 }, { key: 'crt_terminal', x: -20, z: 4.5, y: 2.76 }, { key: 'folding_chair', x: -20, z: 2.4, y: 2.0, face: 0 }, { key: 'flood_mast', x: -26, z: -1, y: 2.0 }, { key: 'crystal_cluster', x: -18.5, z: -1, y: 2.0 }, { key: 'cardboard_boxes', x: -19, z: 0.5, y: 2.0 },
+                /* THE SHARD'S FOOT */
+                { key: 'iso_tank', x: 22.5, z: -12.5, y: 3.0 }, { key: 'crystal_cluster', x: 17.8, z: -12.5, y: 3.0 }, { key: 'warning_tape', x: 20, z: -9.6, y: 3.0 }, { key: 'signpost', x: 17.5, z: -9.8, y: 3.0 },
+                /* THE PLATEAU: the warning tape round the eye, the beacons at the hexagon's mouth, the rover, the stones */
+                { key: 'warning_tape', x: 0, z: 2 }, { key: 'warning_tape', x: -8, z: -2 }, { key: 'warning_tape', x: 8, z: -2 }, { key: 'flood_mast', x: -6, z: 5.5 }, { key: 'flood_mast', x: 6, z: 5.5 }, { key: 'lesson_sign', x: 5, z: 12, face: 200, lesson: 'climb' },
+                { key: 'mars_rover', x: 24, z: 12, face: 300 }, { key: 'brass_telescope', x: -4, z: 14, face: 160 }, { key: 'cardboard_boxes', x: 27, z: -22 }, { key: 'cardboard_box', x: 25, z: -23.5 }, { key: 'cave_stone', x: -26, z: 22 }, { key: 'cave_stone', x: 26, z: 22 }, { key: 'cave_stone', x: -6, z: -22 }, { key: 'crystal_cluster', x: 20, z: 2 }, { key: 'crystal_cluster', x: -9, z: 22 }, { key: 'signpost', x: 14, z: 12 }, { key: 'sea_chest', x: 30, z: -18 }],
+        npcSpots: [{ x: -3, z: 14, face: 30, race: 'grey', say: '“One ice grain in the ring is square. We put it back every orbit.”' }, { x: -23, z: 3, y: 2.0, face: 250, race: 'grey', say: '“The camp is upwind of the eye. The eye is upwind of everything else.”' },
+                   { x: -30, z: -16, y: 4.2, face: 90, race: 'watcher', say: '“The frame on the rim has nothing in it. Do not look at what is in it.”' }, { x: 12, z: -25.5, y: 2.4, face: 270, race: 'android', say: '“The collar seals. Then the ship is here or it is not. There is no third reading.”' }],
         lines: ['“Mind the ring plane.” “Which side?”'] },
-    /* ROOM 13 · THE HAUNTED HOUSE · THE GROUNDS (AREA CONTENT D3, 2026-09-19): the drive up to THE PORCH (1.6 — the front door stands on it, the
-       ivy up its west corner), THE FAMILY PLOT on its rise with THE ANGEL, THE CRYPT you can stand on (the ivy up its west face, the churchyard
-       wall the rider grinds), THE GAZEBO's deck round the roof that holds the tape (the door gun's), THE TERRACE along the east side up its
-       stair or the balustrade's hand-holds, THE COACH HOUSE roof by the drive (a ladder, a rope), THE TREEHOUSE in the old oak by the west fence
-       (a ladder, a rope), THE POND with THE FOOTBRIDGE; the ranch's dead tree stands in the west fence (the earned exit) */
     prebuilt_haunted: { part: 'grounds', label: 'THE GROUNDS', sub: 'THE DRIVE · THE FAMILY PLOT · THE CRYPT · THE GAZEBO · THE TREEHOUSE', w: 62, d: 56, night: 1, look: 'haunted', fogD: 0.03,
         parti: 'A drive up to a porch that is higher than it was, past a plot with your name on it, a crypt you can stand on, and a treehouse nobody remembers building.', typology: 'pearls',
         floor: 'grass_dark_fantasy', cliff: 'dirt_2', path: 'dirt_2', floorColor: 0x3a4a34, cliffColor: 0x4a3e34,
@@ -38125,29 +38171,67 @@ const HQ_AREA_SPECS = {
         npcSpots: [{ x: -3, z: 12, face: 30, race: 'ghost', say: '“The house is not haunted. The grounds are. The house is where we go to get away from it.”' }, { x: -16, z: -8, y: 0.8, face: 160, race: 'ghoul', say: '“Every stone in the plot has your surname. Most of them are spelled right.”' },
                    { x: 24, z: -19, y: 1.4, face: 270, race: 'vampire', say: '“The terrace was for watching the drive. Nobody comes up the drive. We watch anyway.”' }],
         lines: ['“Which floor?” “The one hotels leave out.”'] },
-    /* ROOM 180 · HOLLOW EARTH · THE INNER SUN: the country under the crust, lit from the middle — THE SUN on its spire (the tape at its
-       foot, the door gun's), THE CRYSTAL FOREST, THE LAKE, the terraces; the cave's mouth on the north wall */
+    /* ROOM 180 · HOLLOW EARTH · THE INNER SUN (AREA CONTENT D3, 2026-09-19): the country under the crust, lit from the middle — THE SUN on its
+       spire (the tape — the door gun's) over THE TERRACE (a stair, the hand-holds, a vine), THE CRUST LEDGE on the north wall with the cave's mouth
+       standing ON it (a stair at the door's own x, a rope, a chain — a door you climb to), THE ROOT (a level span) from it to THE MUSHROOM SHELF,
+       THE GIANT'S STEPS (three floating stones) up to THE OVERHANG (a ladder, a chain), THE CRYSTAL FOREST (a stair, a vine, a chain), THE GIANT'S
+       SEAT (a ramp, a vine), THE LAKE with THE JETTY, THE HOT SPRING, THE SUNKEN GARDEN; THE POLAR OPENING = a draught in the east wall up to the
+       station's ice (the earned exit) */
     prebuilt_hollow_earth: { part: 'innersun', label: 'THE INNER SUN', sub: 'THE COUNTRY UNDER THE CRUST · THE SUN · THE CRYSTAL FOREST', w: 70, d: 60, night: 1, look: 'cave', fogD: 0.02,
+        parti: 'The country under the crust is a ring of terraces round a sun that never sets; every path curves back to it, the crust ledge on the north wall is the cave\'s own mouth, and the pole\'s opening is a crack in the east wall the admiral flew through and nobody drilled.', typology: 'ring',
         floor: 'cave_floor', cliff: 'cave_wall', path: 'crystal', floorColor: 0x8a7a9c, cliffColor: 0x6a5a7c,
-        gen: { kind: 'rooms', seed: 180, loops: 3, rMin: 7, rMax: 13, wallH: 2.4, thicket: false }, noise: { amp: 0.2, scale: 7 },
+        gen: { kind: 'rooms', seed: 180, loops: 3, rMin: 7, rMax: 13, wallH: 2.4, thicket: false, open: [{ x: -18, z: -14, r: 4 }, { x: 12, z: -22, r: 3.5 }, { x: 30, z: -27, r: 3.5 }, { x: 25, z: -11, r: 5.5 }, { x: -28, z: 22, r: 4 }, { x: -19, z: -4, r: 4.5 }, { x: 4, z: -28, r: 2.5 }, { x: -10, z: -21.5, r: 3 }, { x: -15.5, z: 10, r: 5 }] }, noise: { amp: 0.2, scale: 7 },   // the open circles: the floor between the shelf and the ledge, the strip between the forest's stair and the ledge's, the north-east corner behind the forest, the forest's east foot, the south-west corner, the ground round the giant's steps, the ledge's east corner and its south foot, the seat's ramp corners (every one a pocket the solver cut a rescue ramp out of)
         plaza: { x: 0, z: 8 },
         features: [
-            { k: 'plateau', x: 0, z: -16, r: 3.0, h: 6.8, edge: 0.4 },                                              // THE SUN's spire (the tape)
-            { k: 'plateau', x: 0, z: -16, r: 9, h: 1.8, edge: 0.4 }, { k: 'ramp', x0: 0, z0: -1.5, x1: 0, z1: -7.7, w: 3.0, h0: 0, h1: 1.8, stairs: true },   // THE TERRACE round it
-            { k: 'pool', x: 20, z: 4, r: 8, rz: 6, depth: 1.0, key: 'water', bank: 1.2 },                           // THE LAKE
-            { k: 'deck', x0: 10.5, z0: 4, x1: 29.5, z1: 4, w: 2.4, y: 0.3 },
-            { k: 'hill', x: -20, z: 8, r: 8, h: 1.6 },
-            { k: 'rail', x0: -8, z0: -6, x1: 8, z1: -6 },
-            { k: 'path', pts: [[0, 8], [-16, 2], [-24, -8]], w: 2.4 }, { k: 'path', pts: [[-16, 2], [-16, -20], [-5, -26], [-5, -28]], w: 2.6 },   // round the terrace's west side to the mouth (never over its cliff)
-            { k: 'scatter', key: 'crystal_cluster', n: 12, seed: 180 }, { k: 'scatter', key: 'cave_stone', n: 5, seed: 8 },
+            /* THE SUN (6.8, the tape — the door gun's) on its spire over THE TERRACE (2.0): the stair up its south side, the hand-holds on its east face, a vine on its west */
+            { k: 'plateau', x: 0, z: -13, r: 3.9, h: 6.8, edge: 0.4 },   // the spire stands between the mouth on its ledge and the way in (R3)
+            { k: 'plateau', x: 0, z: -13, r: 8, h: 2.0, edge: 0.4 }, { k: 'ramp', x0: 0, z0: 1.5, x1: 0, z1: -4.3, w: 3.0, h0: 0, h1: 2.0, stairs: true },
+            { k: 'climb', x: 7.7, z: -13, face: 270, look: 'wall' }, { k: 'climb', x: -7.7, z: -13, face: 90, look: 'vine' },
+            /* THE LAKE (waded) with THE JETTY across it; THE HOT SPRING by the way in; THE SUNKEN GARDEN east of the terrace */
+            { k: 'pool', x: 20, z: 4, r: 8, rz: 6, depth: 1.0, key: 'water', bank: 1.2 }, { k: 'deck', x0: 10.5, z0: 4, x1: 29.5, z1: 4, w: 2.4, y: 0.3 },
+            { k: 'pool', x: -9, z: 18, r: 3, depth: 0.6, key: 'water', bank: 1.0 },
+            { k: 'dip', x: 14, z: -8, r: 3.5, h: 1.6, open: true },
+            /* THE CRYSTAL FOREST (3.0): the stair up its west end, a vine on its south face, a chain on its east */
+            { k: 'plateau', x: 22, z: -20, w: 10, d: 8, h: 3.0, edge: 0.4 }, { k: 'ramp', x0: 8, z0: -18, x1: 17.7, z1: -18, w: 2.4, h0: 0, h1: 3.0, stairs: true },
+            { k: 'climb', x: 22, z: -16.3, face: 0, look: 'vine' }, { k: 'climb', x: 26.7, z: -20, face: 270, look: 'chain' },
+            /* THE CRUST LEDGE (2.2) on the north wall — the mouth stands ON it: the stair up its south face at the door's own x, a rope on its south, a chain on its west end */
+            { k: 'plateau', x: -5, z: -26.5, w: 14, d: 7, h: 2.2, edge: 0.4 }, { k: 'ramp', x0: -5, z0: -14.9, x1: -5, z1: -23.7, w: 2.8, h0: 0, h1: 2.2, stairs: true },
+            { k: 'climb', x: 0, z: -22.7, face: 0, look: 'rope' }, { k: 'climb', x: -11.7, z: -26.5, face: 90, look: 'chain' },
+            /* THE MUSHROOM SHELF (2.2) west of the ledge, a vine on its south face; THE ROOT from the ledge to it (a level span, the bridge layer) */
+            { k: 'plateau', x: -21, z: -22, r: 3.2, h: 2.2, edge: 0.35 }, { k: 'climb', x: -21, z: -19.1, face: 0, look: 'vine' },
+            { k: 'bridge', x0: -11.3, z0: -24, x1: -19.2, z1: -24, w: 2.2, y: 2.2 },
+            /* THE OVERHANG (4.4) on the west side: a ladder on its east face, a chain on its south; THE GIANT'S STEPS — three floating stones up to it */
+            { k: 'plateau', x: -27, z: -10, r: 4, h: 4.4, edge: 0.4 }, { k: 'climb', x: -22.7, z: -10, face: 270, look: 'ladder' }, { k: 'climb', x: -27, z: -5.7, face: 0, look: 'chain' },
+            { k: 'plateau', x: -16, z: -2, r: 1.6, h: 1.2, edge: 0.3, float: true }, { k: 'plateau', x: -20, z: -5, r: 1.6, h: 2.4, edge: 0.3, float: true }, { k: 'plateau', x: -23.6, z: -6.6, r: 1.6, h: 3.4, edge: 0.3, float: true },
+            /* THE GIANT'S SEAT (2.6) in the south-west: the ramp up its east side, a vine on its north face */
+            { k: 'plateau', x: -20, z: 10, r: 5, h: 2.6, edge: 0.4 }, { k: 'ramp', x0: -8.6, z0: 10, x1: -15.7, z1: 10, w: 2.8, h0: 0, h1: 2.6 },
+            { k: 'climb', x: -20, z: 5.3, face: 180, look: 'vine' },
+            { k: 'rail', x0: -12, z0: 24, x1: -2, z1: 24 }, { k: 'rail', x0: 10, z0: 22, x1: 20, z1: 22 },
+            { k: 'tree', x: 16, z: 16.9, kind: 'tree_4', h: 7.0, r: 0.8 }, { k: 'tree', x: 13, z: 19.0, kind: 'tree_4', h: 6.5, r: 0.8 },   // THE OLD TREES on the lake's south shore: the polar crack is not seen from the way in (R3)
+            /* THE PATHS: up the terrace; round the lake's west to the forest's stair and the ledge's; west to the seat, the steps, the overhang's ladder and the shelf; round the lake's south to the polar crack */
+            { k: 'path', pts: [[0, 8], [0, 1.5]], w: 2.6 }, { k: 'path', pts: [[0, 8], [10, 3], [8, -18], [10, -26.5], [-5, -14.9]], w: 2.4 },
+            { k: 'path', pts: [[0, 8], [-8.6, 10]], w: 2.4 }, { k: 'path', pts: [[0, 8], [-10, 4], [-13, -4], [-13, -16], [-16, -26]], w: 2.4 }, { k: 'path', pts: [[-13, -10], [-21.5, -10]], w: 2.2 },
+            { k: 'path', pts: [[10, 3], [12, 13], [30, 13], [31, 6]], w: 2.4 }, { k: 'path', pts: [[31, 6], [31, -4], [26, -12], [31, -20], [31, -27]], w: 2.4 },   // round the lake's east to the forest's east foot and the corner behind it (pockets otherwise)
+            { k: 'scatter', key: 'crystal_cluster', n: 12, seed: 180 }, { k: 'scatter', key: 'cave_stone', n: 6, seed: 8 }, { k: 'scatter', key: 'fern', n: 8, seed: 18 }, { k: 'scatter', key: 'stump', n: 3, seed: 81 },
         ],
-        props: [{ key: 'railing_1m', x: 0, z: -5.6, face: 0 }, { key: 'riser_1', x: 8, z: 12 }, { key: 'floating_orb', x: 0, z: -16, y: 7.4 }, { key: 'crystal_cluster', x: 2.4, z: -16, y: 6.8 }],
-        npcSpots: [{ x: -3, z: 12, face: 30, race: 'reptilian', say: '“The floor on the far side is the ceiling. Mind your head, in a while.”' }, { x: 16, z: 12, face: 270, race: 'giant', say: '“The sun does not set. It is not allowed.”' }],
+        props: [{ key: 'railing_1m', x: 0, z: -5.6, face: 0, y: 2.0 }, { key: 'railing_1m', x: -5, z: -23.1, face: 0, y: 2.2 }, { key: 'railing_1m', x: 22, z: -16.6, face: 0, y: 3.0 }, { key: 'riser_1', x: 8, z: 12 },
+                /* THE SUN and THE TERRACE: the altar under it, the braziers */
+                { key: 'floating_orb', x: 0, z: -13, y: 7.4 }, { key: 'crystal_cluster', x: 2.4, z: -13, y: 6.8 },
+                { key: 'stone_altar', x: 3.5, z: -7.5, y: 2.0 }, { key: 'brazier', x: -4, z: -7, y: 2.0 }, { key: 'brazier', x: 4.5, z: -17.5, y: 2.0 }, { key: 'crystal_cluster', x: -5, z: -17, y: 2.0 }, { key: 'crystal_cluster', x: 5.5, z: -10, y: 2.0 }, { key: 'skull_pile', x: -4.5, z: -10.5, y: 2.0 },
+                /* THE CRUST LEDGE: the mouth's camp */
+                { key: 'cave_torch', x: -10, z: -24.2, y: 2.2 }, { key: 'cave_torch', x: 1.2, z: -24.2, y: 2.2 }, { key: 'campfire', x: -9, z: -28, y: 2.2 }, { key: 'sea_chest', x: -1, z: -28.6, y: 2.2 }, { key: 'signpost', x: -8, z: -23.8, y: 2.2 }, { key: 'cave_stone', x: 1.2, z: -28.6, y: 2.2 },
+                /* THE CRYSTAL FOREST */
+                { key: 'crystal_cluster', x: 20, z: -22, y: 3.0 }, { key: 'crystal_cluster', x: 24, z: -18.5, y: 3.0 }, { key: 'crystal_cluster', x: 25.5, z: -22.5, y: 3.0 }, { key: 'crystal_cluster', x: 19.5, z: -18, y: 3.0 }, { key: 'cave_torch', x: 22, z: -20, y: 3.0 },
+                /* THE OVERHANG, THE SHELF, THE SEAT */
+                { key: 'crystal_cluster', x: -28, z: -11.5, y: 4.4 }, { key: 'cave_stone', x: -29, z: -8.5, y: 4.4 }, { key: 'fern', x: -22, z: -23.5, y: 2.2 }, { key: 'fern', x: -20, z: -21, y: 2.2 }, { key: 'crystal_cluster', x: -22.5, z: -21, y: 2.2 },
+                { key: 'stone_altar', x: -21, z: 10, y: 2.6 }, { key: 'cave_torch', x: -18, z: 7.5, y: 2.6 }, { key: 'cave_torch', x: -18, z: 12.5, y: 2.6 }, { key: 'skull_pile', x: -23, z: 12, y: 2.6 },
+                /* THE COUNTRY: the fires, the stones, the wood */
+                { key: 'campfire', x: -6, z: 14 }, { key: 'cave_torch', x: -3, z: 4 }, { key: 'cave_torch', x: 3, z: 4 }, { key: 'cave_torch', x: 12, z: 0 }, { key: 'cave_torch', x: 30, z: 4 }, { key: 'lesson_sign', x: 5, z: 12, face: 200, lesson: 'climb' },
+                { key: 'fallen_log', x: -26, z: 18, face: 20 }, { key: 'fallen_log', x: 14, z: 18, face: 110 }, { key: 'stump', x: -30, z: 24 }, { key: 'pine', x: -30, z: -24 }, { key: 'pine', x: 30, z: 22 }, { key: 'pine', x: 30, z: -27 }, { key: 'dead_snag', x: -14, z: 22 }, { key: 'hollow_tree', x: -28, z: 14, face: 90 },
+                { key: 'cave_stone', x: 6, z: 22 }, { key: 'cave_stone', x: -14, z: -22 }, { key: 'cave_stone', x: 30, z: -10 }, { key: 'fern', x: -12, z: 14 }, { key: 'fern', x: 4, z: 26 }, { key: 'signpost', x: 12, z: 10 }, { key: 'signpost', x: 30, z: 10 }, { key: 'sea_chest', x: 8, z: -26 }],
+        npcSpots: [{ x: -3, z: 12, face: 30, race: 'reptilian', say: '“The floor on the far side is the ceiling. Mind your head, in a while.”' }, { x: 16, z: 12, face: 270, race: 'giant', say: '“The sun does not set. It is not allowed.”' },
+                   { x: 3, z: -9, y: 2.0, face: 180, race: 'gnome', say: '“The altar faces the sun. Everything here faces the sun. Turn round and see.”' }, { x: -7, z: -27, y: 2.2, face: 120, race: 'elf', say: '“The mouth is up here because the cave is above us. Yes. Think about it on the stair.”' }],
         lines: ['“Which way is down?” “Out.”'] },
-    /* ROOM 426 · SPACESHIP · THE DECK (AREA CONTENT D3, 2026-09-19): the dorsal plate of the dead ship, bow north — THE AIRLOCK on its TOWER
-       (3.2: the companion stair, a ladder on its east face, the pipe run on its west; a door you climb to), THE BRIDGE'S ROOF, THE NACELLE (the
-       tape — the door gun's), THE SENSOR MAST's platform aft of it, THE ENGINE BELL at the stern, THE BREACH with THE GANGWAY across it (the bridge
-       layer), the radiator panels (the grind); THE CARGO HATCH = a draught in the plate down into the hold (the earned exit) */
     prebuilt_derelict: { part: 'deck', label: 'THE DECK', sub: 'THE DORSAL PLATE · THE AIRLOCK TOWER · THE NACELLE · THE BREACH', w: 62, d: 50, night: 1, look: 'observatory', fogD: 0.016,
         parti: 'The back of a dead ship is a road from the breach at the stern to the airlock at the bow, and the airlock is up a tower because the ship was built for people who could climb.', typology: 'corridor',
         floor: 'aluminium', cliff: 'gunmetal', path: 'metal_2', floorColor: 0x8e98a2, cliffColor: 0x5a6068,
@@ -38192,25 +38276,74 @@ const HQ_AREA_SPECS = {
         npcSpots: [{ x: -3, z: 10, face: 30, race: 'android', say: '“LV-426. The signal was a warning. We answered it anyway.”' }, { x: -18, z: -12, y: 1.6, face: 180, race: 'grey', say: '“The bridge is under here. It has been under here the whole time. So has the course.”' },
                    { x: -11, z: -20, y: 3.2, face: 90, race: 'droid', say: '“The airlock is up the tower because the builders could climb. The crew could not. You can see how that went.”' }],
         lines: ['“Where is the crew?” “In the hold. Some of them.”'] },
-    /* ROOM 1717 · THE FLYING DUTCHMAN · THE MAIN DECK: the weather deck in the storm, THE FORECASTLE and THE POOP up their ladders,
-       the bulwarks (the grind), THE MAINTOP (the tape — the door gun's), the companionway below on the north wall */
-    prebuilt_revenge: { part: 'deck', label: 'THE MAIN DECK', sub: 'THE FORECASTLE · THE WAIST · THE POOP · THE MAINTOP', w: 64, d: 40, night: 1, look: 'sea', fogD: 0.026,
+    /* ROOM 1717 · THE FLYING DUTCHMAN · THE MAIN DECK (AREA CONTENT D3, 2026-09-19): the weather deck in the storm, bow east — THE QUARTERDECK
+       (a stair, a rope, a ladder) with THE POOP over it at the stern (a stair, the lantern's chain) where THE CAPTAIN'S SKYLIGHT is a draught
+       down into the great cabin (the earned exit), THE FORECASTLE (a stair, a rope, a ladder) with THE BOWSPRIT PLATFORM on its bow (a stair, a
+       chain), THE BOAT DECK off the starboard bulwark (a rope) joined to the forecastle by THE GANGWAY (a level span), THE CROSSTREES up the
+       mainmast's ratlines (a rope, a chain) under THE MAINTOP (the tape — the door gun's), the bulwarks (the grind) with the gangways cut for the
+       companionway and the way in, THE CHAINS outside them where the sea's growth has come aboard */
+    prebuilt_revenge: { part: 'deck', label: 'THE MAIN DECK', sub: 'THE FORECASTLE · THE WAIST · THE POOP · THE MAINTOP', w: 64, d: 52, night: 1, look: 'sea', fogD: 0.026,
+        parti: 'A ghost ship\'s weather deck is one corridor from the poop to the forecastle, and everything worth having is UP — the maintop over the waist, the poop over the quarterdeck, the boat deck off the fore chains — because the sea past the bulwarks is not a floor.', typology: 'corridor',
         floor: 'wood_planks', cliff: 'wood', path: 'wood', floorColor: 0xb9885a, cliffColor: 0x7a5636,
-        gen: { kind: 'rooms', seed: 1717, loops: 2, rMin: 8, rMax: 14, wallH: 1.4, thicket: false }, noise: { amp: 0.06, scale: 9 },
+        gen: { kind: 'rooms', seed: 1717, loops: 2, rMin: 8, rMax: 14, wallH: 1.4, thicket: false, open: [{ x: -26, z: 18, r: 3 }, { x: 26, z: 18, r: 3 }, { x: -26, z: -18, r: 3 }, { x: 26, z: -18, r: 3 }] }, noise: { amp: 0.06, scale: 9 },   // the open circles: the strips between the tiers' ends and the bulwarks, round to the chains
         plaza: { x: 0, z: 4 },
         features: [
-            { k: 'plateau', x: 24, z: 0, w: 12, d: 30, h: 2.4, edge: 0.4 }, { k: 'ramp', x0: 12.5, z0: 0, x1: 18.7, z1: 0, w: 2.6, h0: 0, h1: 2.4, stairs: true },   // THE FORECASTLE (the bow east)
-            { k: 'plateau', x: -24, z: 0, w: 12, d: 30, h: 2.4, edge: 0.4 }, { k: 'ramp', x0: -12.5, z0: 0, x1: -18.7, z1: 0, w: 2.6, h0: 0, h1: 2.4, stairs: true },   // THE POOP (the stern west)
-            { k: 'plateau', x: 0, z: -4, r: 1.8, h: 8.4, edge: 0.4 },                                                // THE MAINTOP (the tape; under the room's 9 m)
-            { k: 'wall', x0: -16, z0: 16, x1: 16, z1: 16, h: 1.1, t: 0.4, key: 'wood' }, { k: 'wall', x0: -16, z0: -16, x1: 16, z1: -16, h: 1.1, t: 0.4, key: 'wood' },   // the bulwarks
-            { k: 'path', pts: [[0, 4], [-5, -14], [-5, -17]], w: 2.6 }, { k: 'path', pts: [[0, 4], [12, 0]], w: 2.4 }, { k: 'path', pts: [[0, 4], [-12, 0]], w: 2.4 },
-            { k: 'scatter', key: 'sea_chest', n: 3, seed: 17 },
+            /* THE QUARTERDECK (2.4, the stern west): the stair up from the waist, a rope on its north face, a ladder on its south */
+            { k: 'plateau', x: -22, z: 0, w: 12, d: 34, h: 2.4, edge: 0.4 }, { k: 'ramp', x0: -8.5, z0: 0, x1: -16.7, z1: 0, w: 2.6, h0: 0, h1: 2.4, stairs: true },
+            { k: 'climb', x: -22, z: -16.7, face: 180, look: 'rope' }, { k: 'climb', x: -22, z: 16.7, face: 0, look: 'ladder' },
+            /* THE POOP (4.4) over the quarterdeck's stern — the skylight draught stands ON it: the stair up from the quarterdeck, the stern lantern's chain on its north face */
+            { k: 'plateau', x: -29, z: 0, w: 10, d: 20, h: 4.4, edge: 0.4 }, { k: 'ramp', x0: -26, z0: 16.4, x1: -26, z1: 9.3, w: 2.4, h0: 2.4, h1: 4.4, stairs: true },
+            { k: 'climb', x: -29, z: -9.7, face: 180, look: 'chain' },
+            /* THE FORECASTLE (2.4, the bow east): the stair up from the waist, a rope on its south face, a ladder on its north */
+            { k: 'plateau', x: 22, z: 0, w: 12, d: 34, h: 2.4, edge: 0.4 }, { k: 'ramp', x0: 8.5, z0: 0, x1: 16.7, z1: 0, w: 2.6, h0: 0, h1: 2.4, stairs: true },
+            { k: 'climb', x: 22, z: 16.7, face: 0, look: 'rope' }, { k: 'climb', x: 22, z: -16.7, face: 180, look: 'ladder' },
+            /* THE BOWSPRIT PLATFORM (3.6) on the forecastle's bow: the stair up from the forecastle, a chain on its north face */
+            { k: 'plateau', x: 27, z: 0, w: 6, d: 8, h: 3.6, edge: 0.4 }, { k: 'ramp', x0: 19.5, z0: 0, x1: 24.7, z1: 0, w: 2.2, h0: 2.4, h1: 3.6, stairs: true },
+            { k: 'climb', x: 27, z: -3.7, face: 180, look: 'chain' },
+            /* THE BOAT DECK (2.4) off the starboard bulwark, a rope on its west face; THE GANGWAY from the forecastle to it (a level span, the bridge layer) */
+            { k: 'plateau', x: 8, z: 14, w: 8, d: 6, h: 2.4, edge: 0.4 }, { k: 'climb', x: 4.3, z: 14, face: 90, look: 'rope' },
+            { k: 'bridge', x0: 16.7, z0: 14, x1: 11.3, z1: 14, w: 2.2, y: 2.4 },
+            /* THE MAINMAST: THE CROSSTREES (4.6) up the ratlines — a rope on its south face, a chain on its north — under THE MAINTOP (8.4, the tape — the door gun's) */
+            { k: 'plateau', x: 0, z: -4, r: 3.2, h: 4.6, edge: 0.4 }, { k: 'plateau', x: 0, z: -4, r: 1.8, h: 8.4, edge: 0.4 },
+            { k: 'climb', x: 0, z: -1.1, face: 0, look: 'rope' }, { k: 'climb', x: 0, z: -6.9, face: 180, look: 'chain' },
+            { k: 'plateau', x: -22, z: 6, r: 1.4, h: 7.0, edge: 0.3 },   // THE MIZZEN on the quarterdeck (a mast, nothing climbs it): the skylight is not seen from the way in (R3)
+            /* THE BULWARKS (the grind) — the gangways cut at the companionway (north, x −8..−2) and the way in (south, x −3..3) */
+            { k: 'wall', x0: -24, z0: 19, x1: -8, z1: 19, h: 1.1, t: 0.4, key: 'wood' }, { k: 'wall', x0: -2, z0: 19, x1: 24, z1: 19, h: 1.1, t: 0.4, key: 'wood' },
+            { k: 'wall', x0: -24, z0: -19, x1: -8, z1: -19, h: 1.1, t: 0.4, key: 'wood' }, { k: 'wall', x0: -2, z0: -19, x1: 24, z1: -19, h: 1.1, t: 0.4, key: 'wood' },
+            /* THE CHAINS outside the bulwarks (the grind) */
+            { k: 'rail', x0: -20, z0: 23, x1: 20, z1: 23 }, { k: 'rail', x0: -20, z0: -23, x1: 20, z1: -23 },
+            /* THE PATHS: the two stairs off the waist, the companionway through the port gangway, the boat deck's rope, the ratlines, round the tiers' ends to the chains */
+            { k: 'path', pts: [[0, 4], [-8.5, 0]], w: 2.4 }, { k: 'path', pts: [[0, 4], [8.5, 0]], w: 2.4 }, { k: 'path', pts: [[0, 4], [-5, -22], [-5, -24.8]], w: 2.6 },
+            { k: 'path', pts: [[0, 4], [2.5, 14]], w: 2.2 }, { k: 'path', pts: [[0, 4], [0, -0.5]], w: 2.2 },
+            { k: 'path', pts: [[-8.5, 0], [-14, 17.5], [-26, 17.5], [-26, 23], [-20, 23]], w: 2.2 }, { k: 'path', pts: [[8.5, 0], [14, 17.5], [26, 17.5], [26, 23], [20, 23]], w: 2.2 },
+            { k: 'path', pts: [[-5, -22], [-14, -17.5], [-26, -17.5], [-26, -23], [-20, -23]], w: 2.2 }, { k: 'path', pts: [[8.5, 0], [14, -17.5], [26, -17.5], [26, -23], [20, -23]], w: 2.2 },
+            { k: 'scatter', key: 'sea_chest', n: 3, seed: 17 }, { k: 'scatter', key: 'cardboard_box', n: 4, seed: 71 },
         ],
         doors: [{ id: 'companionway', wall: 'n', x: -5, leaf: 'leaf_shabby_wood', label: 'THE FLYING DUTCHMAN · THE GUN DECK', sub: 'THE COMPANIONWAY · GO BELOW',
                   action: { room: 'site_prebuilt_revenge_gundeck', at: 'deck' },
-                  desc: 'The companionway down to the gun deck. The steps are wet from below.' }],
-        props: [{ key: 'railing_1m', x: 0, z: 14.6, face: 0 }, { key: 'riser_1', x: 6, z: 8 }, { key: 'ship_cannon', x: 8, z: 13, face: 180 }, { key: 'ship_cannon', x: -8, z: 13, face: 180 }, { key: 'ship_anchor', x: 22, z: 8, y: 2.4 }, { key: 'ship_lantern', x: 0, z: -4, y: 8.2 }],
-        npcSpots: [{ x: -3, z: 8, face: 30, race: 'pirate', say: '“The wheel turns itself into the storm. We just hold on.”' }, { x: -24, z: 0, y: 2.4, face: 90, race: 'ghost', say: '“Logged 1717. Not logged since. Do not log us now.”' }],
+                  desc: 'The companionway down to the gun deck. The steps are wet from below.' },
+                /* AREA CONTENT D3 (2026-09-19): THE CAPTAIN'S SKYLIGHT — a draught on the poop down into the great cabin (the deck's earned exit); the map shows it once both rooms are seen */
+                { id: 'skylight', wall: 'w', z: 0, y: 4.4, secret: true, leaf: null, label: 'A DRAUGHT', sub: 'THE CAPTAIN’S SKYLIGHT · DOWN INTO THE CABIN',
+                  action: { room: 'site_prebuilt_revenge_cabin', at: 'skylight' },
+                  desc: 'A pane of the poop that is not caulked. It lifts, and under it is the great cabin, and the log is open on the table below you. Nobody has ever climbed in this way. The captain has climbed out.' }],
+        props: [{ key: 'railing_1m', x: -16, z: 16.6, face: 0, y: 2.4 }, { key: 'railing_1m', x: 16, z: -16.6, face: 0, y: 2.4 }, { key: 'railing_1m', x: -26, z: 9.7, face: 0, y: 4.4 }, { key: 'riser_1', x: 6, z: 8 },
+                /* THE WAIST: the guns run out both sides, the hatch gratings, the hands' hammocks */
+                { key: 'ship_cannon', x: 6, z: 16.5, face: 180 }, { key: 'ship_cannon', x: -6, z: 16.5, face: 180 }, { key: 'ship_cannon', x: -13, z: 16.5, face: 180 }, { key: 'ship_cannon', x: 13, z: -16.5, face: 0 }, { key: 'ship_cannon', x: 6, z: -16.5, face: 0 }, { key: 'ship_cannon', x: -13, z: -16.5, face: 0 },
+                { key: 'cot', x: -6, z: 9, face: 90 }, { key: 'cot', x: -6, z: 12, face: 90 }, { key: 'cardboard_boxes', x: 12, z: 8 }, { key: 'cave_torch', x: -3, z: 17 }, { key: 'cave_torch', x: 3, z: 17 }, { key: 'cave_torch', x: -10, z: -17 }, { key: 'cave_torch', x: 3, z: -17 }, { key: 'lesson_sign', x: 4, z: 6, face: 200, lesson: 'climb' },
+                { key: 'stocks', x: 12, z: -8, face: 180 }, { key: 'skull_pile', x: -13, z: -12 },
+                /* THE QUARTERDECK and THE POOP: the helm, the log at the lectern, the stern lantern */
+                { key: 'lectern', x: -20, z: 0, y: 2.4, face: 90 }, { key: 'candle_ring', x: -20, z: 0, y: 3.5 }, { key: 'brass_telescope', x: -19, z: -6, y: 2.4, face: 120 }, { key: 'sea_chest', x: -19, z: 6, y: 2.4 }, { key: 'lone_gun', x: -22, z: -12, y: 2.4 }, { key: 'lone_gun', x: -22, z: 12, y: 2.4 },
+                { key: 'ship_lantern', x: -31, z: 0, y: 7.0 }, { key: 'brazier', x: -30, z: 6, y: 4.4 }, { key: 'sea_chest', x: -31, z: -6, y: 4.4 }, { key: 'skull_pile', x: -28, z: -7, y: 4.4 },
+                /* THE FORECASTLE and THE BOWSPRIT: the anchor, the bell's gun, the lookout's glass */
+                { key: 'ship_anchor', x: 20, z: -8, y: 2.4 }, { key: 'brazier', x: 20, z: 8, y: 2.4 }, { key: 'lone_gun', x: 22, z: 12, y: 2.4 }, { key: 'sea_chest', x: 24, z: -12, y: 2.4 }, { key: 'brass_telescope', x: 28, z: 2, y: 3.6, face: 90 }, { key: 'ship_lantern', x: 29, z: -2, y: 6.0 },
+                /* THE BOAT DECK: the ship's boat is missing; the chocks are not */
+                { key: 'cardboard_boxes', x: 9, z: 15, y: 2.4 }, { key: 'sea_chest', x: 6, z: 12.5, y: 2.4 },
+                /* THE MAINTOP and THE CROSSTREES */
+                { key: 'ship_lantern', x: 0, z: -4, y: 8.2 }, { key: 'cardboard_box', x: 2.2, z: -4, y: 4.6 },
+                /* THE CHAINS: what the sea left on the channels */
+                { key: 'giant_clam', x: -14, z: 23.5 }, { key: 'anemone', x: 8, z: 23.5 }, { key: 'coral_fan', x: 16, z: -23.5 }, { key: 'kelp', x: -10, z: -23.5 }, { key: 'sea_buoy', x: 24, z: 24 }, { key: 'sea_buoy', x: -24, z: -24 }, { key: 'sea_chest', x: 0, z: 24.5 }],
+        npcSpots: [{ x: -3, z: 8, face: 30, race: 'pirate', say: '“The wheel turns itself into the storm. We just hold on.”' }, { x: -22, z: 3, y: 2.4, face: 90, race: 'ghost', say: '“Logged 1717. Not logged since. Do not log us now.”' },
+                   { x: 22, z: 4, y: 2.4, face: 270, race: 'pirate', say: '“Land off the bow. There is always land off the bow. We never reach it.”' }, { x: -14, z: 21, face: 0, race: 'siren', say: '“The chains are mine. The deck is theirs. The sky is nobody\'s, yet.”' }],
         lines: ['“Where is the captain?” “At the helm. Since 1717.”'] },
 };
 
@@ -40601,7 +40734,7 @@ DOOR_HQ.findSpots = { coldroom: { tape: { x: 1.3, z: -1.35 }, pay: { x: 0.4, z: 
     site_prebuilt_singularity_horizon: { tape: { x: 18, z: -18 } },
     site_prebuilt_saturn_hexagon: { tape: { x: 20, z: -18 } },
     site_prebuilt_haunted_grounds: { tape: { x: 16, z: 14 } },
-    site_prebuilt_hollow_earth_innersun: { tape: { x: 0, z: -16 } },
+    site_prebuilt_hollow_earth_innersun: { tape: { x: 0, z: -13 } },   // AREA CONTENT D3 (2026-09-19): the sun moved south with its terrace
     site_prebuilt_derelict_deck: { tape: { x: 18, z: -12 } },
     site_prebuilt_revenge_deck: { tape: { x: 0, z: -4 } },
     site_prebuilt_camelot_hall:    { tape: { x: 10.5, z: -9.0 } },

@@ -268,7 +268,7 @@ test('THE FIELD: every chamber is solvable from every door; the cavern climbs to
 
 test('THE FOURTH CELL NOBODY COUNTS: the oubliette and Room 24601 share a secret wall — eight secret doors, a pair, on no plate, and the dungeon’s cells moved off the panel', () => {
     const secrets = D.hqSecretDoors().filter(s => !/^link_/.test(s.id));   // THE AREAS (2026-09-18): the links' draughts (vatican_hell, cern_backrooms) are hq-areas.test.js's
-    assert.strictEqual(secrets.length, 8, 'the seventh and eighth secret doors');
+    assert.strictEqual(secrets.length, 12, 'the seventh and eighth secret doors (twelve in all since THE CARGO HATCH and THE CAPTAIN’S SKYLIGHT — AREA CONTENT D3, 2026-09-19; hq-floors.test.js keeps the count)');
     const a = at('dungeon', 'oubliette'), b = at(BOARD + '_oubliette', 'dungeon');
     for (const d of [a, b]) assert.ok(d && d.secret === true && d.leaf == null && !d.proc && /DRAUGHT/.test(d.label), 'a secret door: no leaf, no plate, a draught');
     assert.ok(a.action.room === BOARD + '_oubliette' && a.action.at === 'dungeon' && b.action.room === 'dungeon' && b.action.at === 'oubliette', 'the pair closes');

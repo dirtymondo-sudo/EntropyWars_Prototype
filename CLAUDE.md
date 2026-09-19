@@ -6237,3 +6237,20 @@ shard, the screen ON THE OBSERVATORY LEDGE (`observatorium_singularity.b` `x 14,
 (the old Singularity drop `h: -4` was a mound); (2) a climb's `face` is the direction toward the mass in the room's AXES (0 = −z, 180 = +z, 90 =
 +x, 270 = −x) — read `hqTerrainInfo(id).climbs` back. Remaining in D3: Saturn, Hollow Earth, the Dutchman's deck (the Flatlands and the Backrooms
 are skipped at the user's word). Ship data.js to R2 AND Render. UNSEEN LIVE (RULE #1c): all of it.
+
+## AREA CONTENT PLAN D3, SIXTH DELIVERY — THE HEXAGON · THE INNER SUN · THE MAIN DECK to the cave's standard; D3 COMPLETE (2026-09-19, local delivery)
+The last three areas (`AREA_CONTENT_PLAN.md` §5 D3; §7 has the log and the numbers), re-specced in data.js `HQ_AREA_SPECS` (`prebuilt_saturn` /
+`prebuilt_hollow_earth` / `prebuilt_revenge` — the spec is the edit, never the generated `site_<id>_<part>`) and measured clean on R1–R8 by `node
+check-area-content.js --rules <room>`, solved by `node check-terrain.js` (every door from every door, no trap, no rescue ramp). **THE HEXAGON**: THE
+EYE a real bowl, the collar ON THE DOCKING SHELF (`derelict_saturn.b` `y: 2.4`), the drop's frame ON THE RIM WALK on the WEST wall
+(`saturn_singularity.a` → `w z −14 y 4.2`), THE RING PLANE span, THE EYE WALL (the hexagon's north segment at 4 m) + THE OUTER TOOTH on the
+sightlines. **THE INNER SUN**: the spire r 3.9 on a terrace moved to (0, −13) (the pin moved), the mouth ON THE CRUST LEDGE (`cave_hollow.b`
+`y: 2.2`), THE ROOT span, THE GIANT'S STEPS up to THE OVERHANG, and **THE POLAR OPENING** = `links.hollow_byrd` (`secret: true`, route `hollow`) ⇄
+the station's east wall (its EAST PRESSURE RIDGE is 2.2 m now). **THE MAIN DECK**: 64 × 52 (R7), THE POOP over THE QUARTERDECK with **THE
+CAPTAIN'S SKYLIGHT** — a secret door PAIR `skylight` (the deck's west wall `y: 4.4` ⇄ the cabin's south wall; hq-floors counts TWELVE secret doors,
+hq-dutchman reads the pair), THE MIZZEN column, THE GANGWAY span to THE BOAT DECK, THE CROSSTREES under THE MAINTOP. **THE RULES**: (1) the
+audit's R3 line of sight reads the height field, `wall` rows, the plan's solid and `tree` / `grove` rows — NEVER props; break a sightline with a
+wall, a tree row, a mast column or a cliff; (2) read every pocket off `hqTerrainInfo(id).rescues` (x / z / cells) and kill it with a `gen.open`
+circle or a `path` to the floor — stop at zero rescue ramps; (3) a floating stone's column is a wall in the field: open the ground round a
+stepping-stone chain. The Flatlands and the Backrooms are skipped at the user's word; the slow suites were not run. Ship data.js to R2 AND Render.
+UNSEEN LIVE (RULE #1c): all of it. NEXT: D4, THE DOOR PASS over the complexes; then D5.

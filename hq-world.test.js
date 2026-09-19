@@ -41,7 +41,7 @@ function propBlocks(room, p, x, z, margin) {
 }
 const audio=fs.readFileSync(__dirname+'/audio.js','utf8'), map=fs.readFileSync(__dirname+'/map.js','utf8');
 test('the Lunar pilot connects Moon, Derelict and Saturn both ways with distinct arrival doors',()=>{
- assert.equal(LUNAR.length,5,'the pilot\'s two, Mars, the drop (rev 7) and Antarctica (2026-09-18)');
+ assert.equal(LUNAR.length,6,'the pilot\'s two, Mars, the drop (rev 7), Antarctica (2026-09-18) and THE FACE\'S MOUTH (a draught, AREA CONTENT D3 2026-09-19)');
  for(const link of LUNAR) for(const end of [link.a,link.b]) {
   const rid=D.hqLinkRoom(end), room=HQ.rooms[rid];
   if(end.door){   // THE SHIP'S ONE DOOR (2026-09-16): a DOCKED end is the room's own ship door — the far end lands at it, it opens on the course

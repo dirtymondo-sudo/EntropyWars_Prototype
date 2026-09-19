@@ -10991,3 +10991,7 @@ UNSEEN LIVE (RULE #1c): the aqueduct's span over the waded canal (the piers on t
 headroom, the hull's bulkhead leaf standing 3 m up the ice with its stair and ladder, the crevasse at a 0.55 m bed under the dark sheet (deep
 enough to read as a crevasse?), the pyramid's three tiers against the north wall from the causeway, the observatory's 9 m ramp, every prop on a
 tier (`y` is the edit), the two portcullis / bulkhead draught slabs, THE INNER EARTH's line on THE WORLD tab. Log: AREA_CONTENT_PLAN §7.
+
+### 2026-09-19 — AREA CONTENT D3, sixth delivery: THE HEXAGON · THE INNER SUN · THE MAIN DECK (local delivery)
+
+The last three of the twenty areas brought up to the cave's standard (AREA_CONTENT_PLAN §7 has the numbers and the rules). Saturn's collar stands on THE DOCKING SHELF (2.4) and the drop's frame moved onto THE RIM WALK on the west wall (4.2); Hollow Earth's mouth stands on THE CRUST LEDGE (2.2) and THE POLAR OPENING (`links.hollow_byrd`, a draught) comes out on the station's east wall; the Dutchman's deck grew to 64 × 52 with THE CAPTAIN'S SKYLIGHT (a secret pair down into the great cabin). Eyeball first: the eye wall (4 m of storm) from the plateau, the ring grains' spacing, the spire's width against the terrace, the giant's steps' gaps, the mizzen and the crosstrees under the maintop, the skylight's landing on the poop, the raised pressure ridge on the station. D3 is complete; D4 next.
