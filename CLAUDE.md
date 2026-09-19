@@ -6224,3 +6224,16 @@ THE SOLVER TAUGHT**: the strip between a tier's cliff and a plan's rock bank is 
 forced the plan open along the mesa's north face) — read `RETURN:` on every room. The suites were not run at the user's word (`npm run
 test:quick` passed; the two tools solved and audited the three rooms). Ship data.js to R2 AND Render. UNSEEN LIVE (RULE #1c): all of it — the
 arch and the catwalk from below, the collars on their tiers, the four redwoods on the terrace's sightlines, the tents' light.
+
+## AREA CONTENT PLAN D3, FIFTH DELIVERY — THE GARDEN · THE HALLS · THE HORIZON to the cave's standard (2026-09-19, local delivery)
+Three more of the fourteen (`AREA_CONTENT_PLAN.md` §5 D3; §7 has the log and the numbers), re-specced in data.js `HQ_AREA_SPECS`
+(`prebuilt_lookingglass` / `prebuilt_lodge` / `prebuilt_singularity` — the spec is the edit, never the generated `site_<id>_<part>`) and measured
+clean on R1–R8 by `node check-area-content.js --rules <room>`, solved by `node check-terrain.js` (every door from every door, no trap, no rescue
+ramp). **THE GARDEN**: the two towers joined by THE HEDGE WALK (a `bridge`), the moon's perch seen from the bishop's landing, the mirror and the dead
+tree under the tiers. **THE HALLS** (h 5.0): two galleries over the round table joined by THE MINSTRELS' WALK, THE HIGH TABLE (3.9) between them out
+of a jump's reach (the tape pin moved to (0, −15)), THE SCREEN across the sanctum's mouth, the mezzanine over the bar that sees the painting, THE
+WINE CELLAR; `grove_lodge.b` → `e z 14`. **THE HORIZON**: THE DROP is a real 4 m bowl, the two lenses joined by THE LENSING ARC, THE JET a `float`
+shard, the screen ON THE OBSERVATORY LEDGE (`observatorium_singularity.b` `x 14, y 2.4`). **TWO RULES**: (1) a `dip`'s `h` is its DEPTH — positive
+(the old Singularity drop `h: -4` was a mound); (2) a climb's `face` is the direction toward the mass in the room's AXES (0 = −z, 180 = +z, 90 =
++x, 270 = −x) — read `hqTerrainInfo(id).climbs` back. Remaining in D3: Saturn, Hollow Earth, the Dutchman's deck (the Flatlands and the Backrooms
+are skipped at the user's word). Ship data.js to R2 AND Render. UNSEEN LIVE (RULE #1c): all of it.

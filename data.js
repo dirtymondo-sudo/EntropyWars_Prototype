@@ -21267,7 +21267,7 @@ const DOOR_HQ = {
           why: 'the face has a mouth and the mouth is a bore; it comes out on the side of the Moon nobody is shown, which is why nobody is shown it', note: 'the dust is finer on the far side', draft: true },
         { id: 'grove_lodge', route: 'ranch', leaf: 'leaf_saloon', secret: true,
           a: { site: 'prebuilt_bohemian_grove', part: 'grove', wall: 'e', z: 12, sub: 'THE MEMBERS’ TUNNEL · UNDER THE LAWN TO THE LODGE' },
-          b: { site: 'prebuilt_lodge', part: 'halls', wall: 'e', z: -8, sub: 'THE MEMBERS’ TUNNEL · UNDER THE FIELDS TO THE GROVE' },
+          b: { site: 'prebuilt_lodge', part: 'halls', wall: 'e', z: 14, sub: 'THE MEMBERS’ TUNNEL · UNDER THE FIELDS TO THE GROVE' },   // AREA CONTENT D3 (2026-09-19): behind the bar, 14 m from the painting (R3)
           why: 'there is no tunnel under the lawn to the Lodge; the members are very clear about that, and they come out of the Lodge\'s east wall smelling of redwood', note: 'there is no tunnel', draft: true },
         { id: 'woods_stair', route: 'woods', leaf: 'leaf_exit',
           a: { site: 'prebuilt_fairy_forest', part: 'stair', wall: 'n', x: -0.875, y: 3.5, sub: 'THE DOOR AT THE TOP · INTO THE BUILDING' },
@@ -21556,7 +21556,7 @@ const DOOR_HQ = {
           note: 'the flame goes green', draft: true },
         { id: 'observatorium_singularity', route: 'seams', way: 'screen',
           a: { room: 'observatorium', wall: 'w', z: 3.4 },
-          b: { site: 'prebuilt_singularity', part: 'horizon', wall: 'n', x: -0.2 },   // THE AREAS (2026-09-18): the screen on THE HORIZON
+          b: { site: 'prebuilt_singularity', part: 'horizon', wall: 'n', x: 14, y: 2.4 },   // THE AREAS (2026-09-18): the screen on THE HORIZON; AREA CONTENT D3 (2026-09-19): ON THE OBSERVATORY LEDGE (a door you climb to), 19 m from Saturn's frame (R3)
           why: 'the projection screen shows the feed from Room 0 when the projector is off; the static has a shape in it and the shape has a way in',
           note: 'signal lost', draft: true },
         /* THE FOUR EXITS: the cave has several ways out, and each one is a
@@ -37873,64 +37873,187 @@ const HQ_AREA_SPECS = {
         props: [{ key: 'railing_1m', x: 0, z: 0.5, face: 0 }, { key: 'riser_1', x: -8, z: 14 }, { key: 'lectern', x: 3, z: 13, face: 180 }],
         npcSpots: [{ x: -3, z: 14, face: 30, race: 'watcher', say: '“Up is not a direction. It is a rumour.”' }],
         lines: ['“There is an edge.” “We know.”'] },
-    /* ROOM E4 · THE LOOKING-GLASS · THE GARDEN: a hedge maze in marble, THE CHESSBOARD at the plaza, THE TEA TABLE on its lawn, THE
-       CROQUET GROUND, THE CHESHIRE MOON's perch (the tape); the barbershop's mirror and the ritual ground's dead tree stand free */
+    /* ROOM E4 · THE LOOKING-GLASS · THE GARDEN (AREA CONTENT D3, 2026-09-19 — brought up to the cave): a hedge maze in marble round
+       THE CHESSBOARD; THE TEA LAWN (a ramp, a vine) with the table set for four; THE CROQUET GROUND (a stair, the hand-holds) with the
+       umpire's chair; THE WHITE QUEEN'S TOWER (a stair off the tea lawn, a rope) and THE BISHOP'S LANDING (a stair, a vine) joined by
+       THE HEDGE WALK (a level span, the bridge layer); THE RED KING'S TOWER (a ramp off the croquet ground, two vines) with the throne;
+       THE RABBIT HOLE; THE CHESHIRE MOON's perch (the tape — the door gun's, seen from the bishop's landing under it); the barbershop's
+       mirror stands under the tea lawn and the ritual ground's dead tree under the croquet ground (both seen from above — the tease).
+       Every tier is reached two ways. */
     prebuilt_lookingglass: { part: 'garden', label: 'THE GARDEN', sub: 'THE HEDGES · THE CHESSBOARD · THE TEA TABLE · THE MOON', w: 62, d: 54, night: 1, look: 'skycastle', fogD: 0.024,
+        parti: 'A chessboard between hedges; the pieces are the towers, and the moon perches over the whole game with its grin on.', typology: 'grid',
         floor: 'marble_light', cliff: 'leaves_3', path: 'marble', floorColor: 0xf2eee6, cliffColor: 0x3a5a34,
-        gen: { kind: 'rooms', seed: 64, loops: 4, rMin: 5, rMax: 9, wallH: 2.2, thicket: false, corridor: [2.2, 3.0] }, noise: { amp: 0.04, scale: 9 },
+        gen: { kind: 'rooms', seed: 64, loops: 4, rMin: 5, rMax: 9, wallH: 2.2, thicket: false, corridor: [2.2, 3.0], open: [{ x: 16, z: -14.5, r: 6 }, { x: 25, z: -12, r: 5 }, { x: 9, z: 22, r: 5 }, { x: -4, z: -24, r: 4 }] }, noise: { amp: 0.04, scale: 9 },   // the open circles: the strip north of the croquet ground under the red tower's ramp, its east end, behind the south hedge, and between the bishop's landing and the moon's perch were pockets (rescue ramps)
         plaza: { x: 0, z: 8 }, plazaR: 7,
         features: [
             { k: 'path', pts: [[-7, 15], [7, 15], [7, 1], [-7, 1], [-7, 15]], w: 1.0 },                              // THE CHESSBOARD's rim
-            { k: 'plateau', x: -18, z: -4, r: 6, h: 1.0, edge: 0.35 }, { k: 'ramp', x0: -18, z0: 7.5, x1: -18, z1: 2.7, w: 2.6, h0: 0, h1: 1.0 },   // THE TEA LAWN
-            { k: 'plateau', x: 16, z: -10, w: 14, d: 8, h: 1.6, edge: 0.35 }, { k: 'ramp', x0: 16, z0: -1.5, x1: 16, z1: -6.7, w: 2.6, h0: 0, h1: 1.6, stairs: true },   // THE CROQUET GROUND
-            { k: 'plateau', x: 0, z: -20, r: 2.6, h: 6.4, edge: 0.4, dome: true },                                  // THE CHESHIRE MOON's perch (the tape)
-            { k: 'wall', x0: 4, z0: 18, x1: 14, z1: 18, h: 1.0, t: 0.5, key: 'leaves_3' },                          // a hedge to grind
-            { k: 'path', pts: [[0, 8], [-12, 6], [-18, 8]], w: 2.4 }, { k: 'path', pts: [[0, 8], [10, 2], [16, 0]], w: 2.4 }, { k: 'path', pts: [[0, 8], [-8, -12], [-12, -14]], w: 2.4 }, { k: 'path', pts: [[0, 8], [8, -12], [10, -14]], w: 2.4 },
-            { k: 'scatter', key: 'garden_tree', n: 4, seed: 4 }, { k: 'scatter', key: 'potted_plant', n: 5, seed: 6 },
+            /* THE TEA LAWN (1.6): the ramp up its south side, a vine on its east face — the table is set on it */
+            { k: 'plateau', x: -19, z: -2, r: 6.5, h: 1.6, edge: 0.35 }, { k: 'ramp', x0: -19, z0: 9, x1: -19, z1: 3.8, w: 2.6, h0: 0, h1: 1.6 },
+            { k: 'climb', x: -12.8, z: -2, face: 270, look: 'vine' },
+            /* THE CROQUET GROUND (1.6): the stair up its south side, the hand-holds on its east face — the umpire's chair on it */
+            { k: 'plateau', x: 16, z: -8, w: 14, d: 8, h: 1.6, edge: 0.35 }, { k: 'ramp', x0: 16, z0: 0.5, x1: 16, z1: -4.7, w: 2.6, h0: 0, h1: 1.6, stairs: true },
+            { k: 'climb', x: 22.7, z: -8, face: 270, look: 'wall' },
+            /* THE WHITE QUEEN'S TOWER (3.4): a stair off the tea lawn, a rope on its west face */
+            { k: 'plateau', x: -19, z: -19, r: 4.2, h: 3.4, edge: 0.4 }, { k: 'ramp', x0: -19, z0: -7.9, x1: -19, z1: -15.5, w: 2.4, h0: 1.6, h1: 3.4, stairs: true },
+            { k: 'climb', x: -22.9, z: -19, face: 90, look: 'rope' },
+            /* THE BISHOP'S LANDING (3.4): THE HEDGE WALK from the tower (a level span, the bridge layer), a vine on its east face, the stair down its south side; the moon's perch is seen from it */
+            { k: 'plateau', x: -4, z: -17, r: 3.2, h: 3.4, edge: 0.4 }, { k: 'bridge', x0: -14.2, z0: -18, x1: -6.3, z1: -18, w: 2.2, y: 3.4 },
+            { k: 'climb', x: -1.1, z: -17, face: 270, look: 'vine' }, { k: 'ramp', x0: -4, z0: -5, x1: -4, z1: -13.1, w: 2.4, h0: 0, h1: 3.4, stairs: true },
+            /* THE RED KING'S TOWER (3.4): the ramp up from the croquet ground, a vine on its north and its east — the throne on it */
+            { k: 'plateau', x: 24, z: -20, r: 4, h: 3.4, edge: 0.4 }, { k: 'ramp', x0: 19, z0: -11.4, x1: 22.5, z1: -17.2, w: 2.4, h0: 1.6, h1: 3.4 },
+            { k: 'climb', x: 24, z: -23.7, face: 180, look: 'vine' }, { k: 'climb', x: 27.7, z: -20, face: 270, look: 'vine' },
+            /* THE CHESHIRE MOON's perch (6.4, the tape — the door gun's) */
+            { k: 'plateau', x: 0, z: -22, r: 2.6, h: 6.4, edge: 0.4, dome: true },
+            /* THE RABBIT HOLE: a bowl the walker drops into and climbs out of */
+            { k: 'dip', x: -24, z: 14, r: 5, h: 2.0, open: true }, { k: 'ramp', x0: -24, z0: 21, x1: -24, z1: 15.5, w: 2.4, h0: 0, h1: -1.6 },
+            /* THE HEDGES the rider grinds, the rail on the chessboard's north rim */
+            { k: 'wall', x0: 4, z0: 18, x1: 14, z1: 18, h: 1.0, t: 0.5, key: 'leaves_3' }, { k: 'wall', x0: -14, z0: 20, x1: -4, z1: 20, h: 1.0, t: 0.5, key: 'leaves_3' },
+            { k: 'rail', x0: -8, z0: -2, x1: 8, z1: -2 },
+            /* THE GARDEN PATHS: the plaza to every foot, the two seams, the frame at the back */
+            { k: 'path', pts: [[0, 8], [-12, 8], [-19, 10]], w: 2.4 }, { k: 'path', pts: [[0, 8], [10, 4], [16, 2]], w: 2.4 }, { k: 'path', pts: [[0, 8], [-6, -2], [-4, -4]], w: 2.4 },
+            { k: 'path', pts: [[-12, 8], [-12, -6], [-12, -12]], w: 2.2 }, { k: 'path', pts: [[10, 4], [6, -10], [8, -13]], w: 2.2 }, { k: 'path', pts: [[6, -10], [10, -20], [14, -24.5]], w: 2.4 },
+            { k: 'path', pts: [[-12, 8], [-20, 16], [-24, 22]], w: 2.2 },
+            { k: 'scatter', key: 'garden_tree', n: 7, seed: 4 }, { k: 'scatter', key: 'potted_plant', n: 6, seed: 6 }, { k: 'scatter', key: 'park_bench', n: 3, seed: 9 },
         ],
-        props: [{ key: 'railing_1m', x: 9, z: 19.2, face: 0 }, { key: 'riser_1', x: -8, z: 14 }, { key: 'round_table', x: -18, z: -4, y: 1.0 }, { key: 'teal_chair', x: -16, z: -2, y: 1.0, face: 220 }, { key: 'fountain', x: 0, z: -6 }],
-        npcSpots: [{ x: -3, z: 12, face: 30, race: 'catgirl', say: '“We are all mad here. It is on the paperwork.”' }, { x: 16, z: -10, y: 1.6, face: 180, race: 'ice queen', say: '“Off with the heading.”' }],
+        props: [{ key: 'railing_1m', x: -19, z: -14.6, face: 0, y: 3.4 }, { key: 'railing_1m', x: 24, z: -15.8, face: 0, y: 3.4 }, { key: 'riser_1', x: -8, z: 14 }, { key: 'riser_2', x: 10, z: 22 },
+                /* THE TEA TABLE on the lawn — set for four, the cups fill in the wrong order */
+                { key: 'round_table', x: -19, z: -2, y: 1.6 }, { key: 'teal_chair', x: -16.8, z: 0, y: 1.6, face: 220 }, { key: 'teal_chair', x: -21.2, z: 0, y: 1.6, face: 140 }, { key: 'teal_chair', x: -21.2, z: -4, y: 1.6, face: 40 }, { key: 'teal_chair', x: -16.8, z: -4, y: 1.6, face: 320 },
+                { key: 'coffee_mug', x: -18.3, z: -1.2, y: 2.36 }, { key: 'coffee_mug', x: -19.7, z: -2.6, y: 2.36 }, { key: 'pocket_watch', x: -18.6, z: -3, y: 2.36 }, { key: 'pool_umbrella', x: -23, z: 1, y: 1.6 }, { key: 'candle_ring', x: -15, z: -6, y: 1.6 },
+                /* THE CROQUET GROUND: the umpire's chair, the hoops' plinths */
+                { key: 'lifeguard_chair', x: 21, z: -6, y: 1.6, face: 270 }, { key: 'stone_altar', x: 12, z: -10, y: 1.6 }, { key: 'garden_ring', x: 16, z: -9, y: 1.6 }, { key: 'signpost', x: 10.5, z: -5, y: 1.6 },
+                /* THE WHITE QUEEN'S TOWER + THE BISHOP'S LANDING */
+                { key: 'angel_statue', x: -19, z: -21.5, y: 3.4, face: 180 }, { key: 'candle_ring', x: -16.5, z: -18, y: 3.4 }, { key: 'brass_telescope', x: -3, z: -19, y: 3.4, face: 350 }, { key: 'white_cloud', x: -4, z: -22, y: 5.4 },
+                /* THE RED KING'S TOWER */
+                { key: 'royal_throne', x: 24, z: -21.5, y: 3.4, face: 180 }, { key: 'brazier', x: 21.5, z: -18, y: 3.4 }, { key: 'brazier', x: 26.5, z: -18, y: 3.4 }, { key: 'signpost', x: 20, z: -14, y: 1.6 },
+                /* THE MOON's court */
+                { key: 'white_cloud', x: 3, z: -25, y: 7.6 }, { key: 'white_cloud', x: -3, z: -26, y: 8.2 }, { key: 'white_cloud', x: 5, z: -19, y: 6.9 },
+                /* THE CHESSBOARD: the knights at its gate, the fountain, the benches */
+                { key: 'armour_stand', x: -8.5, z: 17, face: 90 }, { key: 'armour_stand', x: 8.5, z: 17, face: 270 }, { key: 'fountain', x: 0, z: -4.5 }, { key: 'park_bench', x: -9.5, z: 8, face: 90 }, { key: 'park_bench', x: 9.5, z: 8, face: 270 },
+                { key: 'garden_ring', x: -6, z: 22 }, { key: 'garden_ring', x: 6, z: 22 }, { key: 'lesson_sign', x: 4, z: 12, face: 200, lesson: 'climb' }, { key: 'signpost', x: -3, z: 2 }, { key: 'signpost', x: 12, z: -20 },
+                /* THE RABBIT HOLE, the seams, the back hedges */
+                { key: 'pocket_watch', x: -24, z: 13, y: -2.0 }, { key: 'cardboard_boxes', x: -27, z: 22 }, { key: 'garden_tree', x: -22, z: -8 }, { key: 'garden_tree', x: 4, z: -12 }, { key: 'garden_tree', x: 24, z: 12 }, { key: 'garden_tree', x: -26, z: 6 },
+                { key: 'potted_plant', x: -10, z: -16 }, { key: 'potted_plant', x: 12, z: -16 }, { key: 'park_bench', x: 16, z: -24, face: 0 }],
+        npcSpots: [{ x: -3, z: 12, face: 30, race: 'catgirl', say: '“We are all mad here. It is on the paperwork.”' }, { x: 24, z: -19, y: 3.4, face: 180, race: 'ice queen', say: '“Off with the heading.”' },
+                   { x: -17, z: -1, y: 1.6, face: 200, race: 'fairy', say: '“Sit. No, not there. That one is tomorrow’s.”' }, { x: 14, z: -7, y: 1.6, face: 90, race: 'gnome', say: '“Through the hoop, then the mirror, then the hoop again. Nobody has finished a game.”' }],
         doors: [   // THE ASTRAL REALM (2026-09-19): the garden's own frame with nothing in it (the site's threshold leaf) opens on THE WAITING ROOM — a door PAIR, the same site
             { id: 'astral', wall: 'n', x: 14, leaf: 'leaf_frame_only', label: 'THE ASTRAL REALM', sub: 'THE FRAME WITH NOTHING IN IT · TAKE A NUMBER',
               action: { room: 'site_prebuilt_lookingglass_waiting', at: 'garden' },
               desc: 'A second mirror frame with no glass in it, at the back of the garden where the hedges stop pretending. Through it, a carpet and a row of chairs. The chairs face the wall.' },
         ],
         lines: ['“Which move?” “The first one. E4.”'] },
-    /* ROOM 33 · THE LODGE · THE HALLS: family C (halls) in wood and damask — the members' rooms off a corridor, THE SANCTUM, THE
-       GALLERY up its stair (the tape on THE HIGH TABLE, higher still), the saloon door onto the corn, the painting of Olympus */
-    prebuilt_lodge: { part: 'halls', label: 'THE HALLS', sub: 'THE SANCTUM · THE GALLERY · THE HIGH TABLE · MEMBERS ONLY', w: 58, d: 46, open: false, h: 4.2, look: 'greathall',
+    /* ROOM 33 · THE LODGE · THE HALLS (AREA CONTENT D3, 2026-09-19 — brought up to the cave): family C (halls) in wood and damask — THE SANCTUM
+       with THE WEST GALLERY (a stair, a ladder, the bell rope) and THE ORGAN LOFT (a ladder, the organ's pipe) joined over the round table by THE
+       MINSTRELS' WALK (a level span, the bridge layer), THE HIGH TABLE between them (the tape — the door gun's, out of a jump's reach), THE SCREEN
+       across the sanctum's mouth; THE BAR with THE MEZZANINE over it (a stair, a ladder, the panelling's hand-holds — the painting of Olympus on
+       the east wall is seen from it); THE LIBRARY with THE STACKS (a stair, the library ladder, a pipe); THE WINE CELLAR sunk under the east wing
+       (the 322 basement: a stair down); the saloon door onto the corn; THE MEMBERS' TUNNEL from the grove comes out on the east wall */
+    prebuilt_lodge: { part: 'halls', label: 'THE HALLS', sub: 'THE SANCTUM · THE GALLERY · THE HIGH TABLE · MEMBERS ONLY', w: 58, d: 46, open: false, h: 5.0, look: 'greathall',
+        parti: 'A sanctum behind a screen, two galleries facing each other over the round table with a walk between them, and the bar where the members say what the sanctum does not.', typology: 'halls',
         floor: 'checkerboard', cliff: 'damask', path: 'wood', floorColor: 0xd8ccb0, cliffColor: 0x6a2438, wallSheet: 'damask', ceiling: 'wood', crag: false,
         fog: { color: 0x1a0c10, density: 0.02 }, mood: { light: 0xffd8a0, strip: 0xffc890, ambient: 0.34 }, noise: { amp: 0, scale: 8 },
-        gen: { kind: 'halls', seed: 33, loops: 2, leafMin: 8, leafMax: 16, wallH: 4.2, wallKey: 'wood', rooms: [{ id: 'sanctum', x: 0, z: -12, w: 18, d: 12 }, { id: 'bar', x: 18, z: 6, w: 12, d: 10 }] },
+        gen: { kind: 'halls', seed: 33, loops: 2, leafMin: 8, leafMax: 16, wallH: 5.0, wallKey: 'wood',
+              rooms: [{ id: 'sanctum', x: 0, z: -12, w: 22, d: 14 }, { id: 'bar', x: 18, z: 6, w: 16, d: 14 }, { id: 'library', x: -18, z: 6, w: 14, d: 12 }, { id: 'cellar', x: 18, z: -14, w: 12, d: 10 }] },
         plaza: { x: 0, z: 8 },
         features: [
-            { k: 'plateau', x: -8, z: -12, w: 6, d: 10, h: 1.6, edge: 0.3 }, { k: 'ramp', x0: -8, z0: -3.5, x1: -8, z1: -7.7, w: 2.4, h0: 0, h1: 1.6, stairs: true },   // THE GALLERY in the sanctum
-            { k: 'plateau', x: 6, z: -14, w: 4, d: 3, h: 3.4, edge: 0.3 },                                         // THE HIGH TABLE (the tape — the door gun's)
-            { k: 'wall', x0: 12, z0: 6, x1: 12, z1: 12, h: 1.1, t: 0.4, key: 'wood' },                              // THE BAR (the grind)
-            { k: 'path', pts: [[0, 8], [0, -6]], w: 2.8 }, { k: 'path', pts: [[0, 8], [14, 8]], w: 2.6 }, { k: 'path', pts: [[0, 8], [-5, -18], [-5, -22]], w: 2.6 }, { k: 'path', pts: [[14, 8], [26, 2], [28, 0]], w: 2.4 },
-            { k: 'scatter', key: 'office_chair', n: 4, seed: 33 }, { k: 'scatter', key: 'potted_plant', n: 3, seed: 3 },
+            /* THE WEST GALLERY (2.2): the stair up its south end, a ladder on its east face, the bell rope on its north end */
+            { k: 'plateau', x: -8, z: -12, w: 6, d: 10, h: 2.2, edge: 0.3 }, { k: 'ramp', x0: -8, z0: -0.9, x1: -8, z1: -7.7, w: 2.4, h0: 0, h1: 2.2, stairs: true },
+            { k: 'climb', x: -5.3, z: -14, face: 270, look: 'ladder' }, { k: 'climb', x: -8, z: -16.7, face: 180, look: 'rope' },
+            /* THE ORGAN LOFT (2.2): THE MINSTRELS' WALK from the gallery (a level span, the bridge layer), a ladder on its east face, the organ's pipe on its south */
+            { k: 'plateau', x: 8, z: -12, w: 6, d: 10, h: 2.2, edge: 0.3 }, { k: 'bridge', x0: -5.7, z0: -9, x1: 5.7, z1: -9, w: 2.0, y: 2.2 },
+            { k: 'climb', x: 10.7, z: -10, face: 270, look: 'ladder' }, { k: 'climb', x: 8, z: -7.3, face: 0, look: 'pipe' },
+            /* THE HIGH TABLE (3.9, the tape — the door gun's; 1.7 m over the galleries, out of a jump's reach) */
+            { k: 'plateau', x: 0, z: -15, w: 4, d: 3, h: 3.9, edge: 0.3 },
+            /* THE SCREEN across the sanctum's mouth (the door in the corn and the bay door never see each other) */
+            { k: 'wall', x0: -3, z0: -2, x1: 2, z1: -2, h: 2.2, t: 0.3, key: 'wood' },
+            /* THE MEZZANINE over the bar (2.6): the stair up its east end, a ladder on its south face, the panelling's hand-holds on its west */
+            { k: 'plateau', x: 14, z: 10, w: 7, d: 5, h: 2.6, edge: 0.3 }, { k: 'ramp', x0: 25, z0: 10, x1: 16.8, z1: 10, w: 2.4, h0: 0, h1: 2.6, stairs: true },
+            { k: 'climb', x: 14, z: 7.8, face: 180, look: 'ladder' }, { k: 'climb', x: 10.8, z: 10, face: 90, look: 'wall' },
+            { k: 'wall', x0: 12, z0: 2, x1: 12, z1: 7, h: 1.1, t: 0.4, key: 'wood' },                                // THE BAR (the grind)
+            /* THE STACKS in the library (2.4): the stair down its west end, the library ladder on its south face, a pipe at its east end */
+            { k: 'plateau', x: -18, z: 2.5, w: 12, d: 3, h: 2.4, edge: 0.3 }, { k: 'ramp', x0: -22, z0: 10, x1: -22, z1: 3.3, w: 2.2, h0: 0, h1: 2.4, stairs: true },
+            { k: 'climb', x: -15, z: 3.7, face: 0, look: 'ladder' }, { k: 'climb', x: -12.3, z: 2.5, face: 270, look: 'pipe' },
+            /* THE WINE CELLAR (−1.6): the stair down into it from the north */
+            { k: 'dip', x: 18, z: -14, r: 4.5, h: 1.6, open: true }, { k: 'ramp', x0: 18, z0: -8.5, x1: 18, z1: -13, w: 2.2, h0: 0, h1: -1.4, stairs: true },
+            /* THE CORRIDORS the plan keeps: the sanctum both sides of the screen, the bar and the painting, the cellar, the library and the corn door, the tunnel */
+            { k: 'path', pts: [[0, 8], [6, 0], [4, -6]], w: 2.6 }, { k: 'path', pts: [[0, 8], [-6, 0], [-4, -6]], w: 2.6 },
+            { k: 'path', pts: [[0, 8], [14, 6], [24, 4], [27, 0]], w: 2.6 }, { k: 'path', pts: [[24, 4], [24, -4], [18, -8]], w: 2.4 }, { k: 'path', pts: [[24, 12], [27, 14]], w: 2.4 },
+            { k: 'path', pts: [[0, 8], [-12, 8], [-18, 10]], w: 2.6 }, { k: 'path', pts: [[-18, 10], [-24, -4], [-14, -20], [-5, -22.5]], w: 2.4 },
+            { k: 'scatter', key: 'office_chair', n: 4, seed: 33 }, { k: 'scatter', key: 'potted_plant', n: 4, seed: 3 },
         ],
-        props: [{ key: 'railing_1m', x: -5, z: -12, face: 90, y: 1.6 }, { key: 'riser_1', x: 6, z: 12 }, { key: 'candle_ring', x: 3, z: 10 }, { key: 'candle_ring', x: 18, z: 2 }, { key: 'round_table', x: 0, z: -12 }, { key: 'lectern', x: 6, z: -14, y: 3.4, face: 180 }, { key: 'brazier', x: -4, z: -18 }, { key: 'brazier', x: 4, z: -18 }],
-        npcSpots: [{ x: 3, z: 6, face: 210, race: 'politician', say: '“The thirty-third degree is a floor. The lodge has thirty-two.”' }, { x: 18, z: 6, face: 270, race: 'general', say: '“The painting has the lights on. We have asked it to stop.”' }],
+        props: [{ key: 'railing_1m', x: -5, z: -12, face: 90, y: 2.2 }, { key: 'railing_1m', x: 11, z: -14, face: 270, y: 2.2 }, { key: 'railing_1m', x: 14, z: 12.6, face: 180, y: 2.6 }, { key: 'railing_1m', x: -18, z: 1.2, face: 0, y: 2.4 }, { key: 'riser_1', x: 6, z: 14 },
+                /* THE SANCTUM: the round table under the walk, the lectern on the high table, the braziers, the knights at the screen */
+                { key: 'round_table', x: 0, z: -6 }, { key: 'lectern', x: 0, z: -15, y: 3.9, face: 180 }, { key: 'brazier', x: -3, z: -18.5 }, { key: 'brazier', x: 3, z: -18.5 }, { key: 'armour_stand', x: -4.5, z: -3.5, face: 90 }, { key: 'armour_stand', x: 4.5, z: -3.5, face: 270 },
+                { key: 'royal_throne', x: 8, z: -15, y: 2.2, face: 180 }, { key: 'candle_ring', x: -8, z: -10, y: 2.2 }, { key: 'pocket_watch', x: 0.8, z: -6.4, y: 1.25 }, { key: 'manila_folders', x: -0.6, z: -5.6, y: 1.25 }, { key: 'candle_ring', x: 0, z: -11 },
+                /* THE BAR: the counter, the couches, the members' table */
+                { key: 'mobius_bar', x: 16, z: 3.5, face: 0 }, { key: 'curved_couch', x: 21, z: 8, face: 180 }, { key: 'coffee_table', x: 21, z: 5.5 }, { key: 'retro_radio', x: 21, z: 5.5, y: 0.46 }, { key: 'solo_cup', x: 20.2, z: 5.2, y: 0.46 }, { key: 'table_lamp', x: 24.5, z: 2, y: 0 },
+                { key: 'globe_lamp', x: 12, z: 12 }, { key: 'candle_ring', x: 14, z: 10, y: 2.6 }, { key: 'teal_chair', x: 15.5, z: 11.5, y: 2.6, face: 200 }, { key: 'coffee_table', x: 13, z: 9, y: 2.6 }, { key: 'brass_telescope', x: 12, z: 11, y: 2.6, face: 120 },
+                { key: 'cash_register', x: 14.5, z: 3.5, y: 1.05 }, { key: 'coffee_mug', x: 17.5, z: 3.5, y: 1.05 },
+                /* THE LIBRARY: the shelves on the stacks and under them, the reading table */
+                { key: 'library_shelf_full', x: -21, z: 2.5, y: 2.4, face: 0 }, { key: 'library_shelf_full', x: -15, z: 2.5, y: 2.4, face: 0 }, { key: 'library_shelf_full', x: -24, z: 11, face: 0 }, { key: 'library_shelf_full', x: -12, z: 11, face: 0 },
+                { key: 'steel_table', x: -18, z: 7.5 }, { key: 'papers_a', x: -17.5, z: 7.5, y: 0.76 }, { key: 'desk_lamp', x: -19, z: 7, y: 0.76 }, { key: 'office_chair', x: -18, z: 9.5, face: 0 }, { key: 'globe_lamp', x: -12.5, z: 4.5 },
+                /* THE WINE CELLAR: the 322 basement */
+                { key: 'sea_chest', x: 15, z: -14, y: -1.6 }, { key: 'sea_chest', x: 21, z: -15, y: -1.6 }, { key: 'skull_pile', x: 18, z: -16.5, y: -1.6 }, { key: 'candle_ring', x: 18, z: -14, y: -1.6 }, { key: 'cardboard_boxes', x: 21, z: -12, y: -1.4 },
+                /* THE HALLS */
+                { key: 'lesson_sign', x: 4, z: 12, face: 200, lesson: 'climb' }, { key: 'umbrella_stand', x: -3, z: 20 }, { key: 'potted_plant', x: 3, z: 20 }, { key: 'office_plant', x: -26, z: -20 }, { key: 'wet_floor_sign', x: 27, z: 8 }],
+        npcSpots: [{ x: 3, z: 6, face: 210, race: 'politician', say: '“The thirty-third degree is a floor. The lodge has thirty-two.”' }, { x: 18, z: 6, face: 270, race: 'general', say: '“The painting has the lights on. We have asked it to stop.”' },
+                   { x: 19, z: 9, face: 180, race: 'men in black', say: '“You did not see the tunnel. There is no tunnel. Redwood is a cologne.”' }, { x: -20, z: 9, face: 90, race: 'conspiracy theorist', say: '“Every book on the top shelf is about the bottom shelf.”' }],
         lines: ['“Members only.” “Both ways.”'] },
-    /* ROOM 0 · THE SINGULARITY · THE HORIZON: obsidian ground under the void, THE DROP (a bowl to −4 m the rescue ramp climbs out
-       of), THE ACCRETION RIM (the tape — the door gun's), the drop's frame from Saturn and the observatorium's screen on the north
-       wall */
+    /* ROOM 0 · THE SINGULARITY · THE HORIZON (AREA CONTENT D3, 2026-09-19 — brought up to the cave): obsidian ground under the void, everything
+       leaning toward THE DROP (a bowl to −4 m round the point); THE WEST SHELF (a ramp, the hand-holds) and over it THE NEAR LENS (a ramp, a rope)
+       and THE FAR LENS (a chain, a stair) joined by THE LENSING ARC (a level span, the bridge layer); THE EAST TERRACE (a stair, the hand-holds)
+       — the survey camp — under THE JET (a floating shard: a ladder, a chain); THE ORBIT's three floating stones; THE OBSERVATORY LEDGE on the
+       north wall with the observatorium's screen standing ON it (a stair, a ladder, a chain — a door you climb to, seen from the floor); THE
+       ACCRETION RIM (the tape — the door gun's); the drop's frame from Saturn on the north wall, nineteen metres from the screen */
     prebuilt_singularity: { part: 'horizon', label: 'THE HORIZON', sub: 'THE DROP · THE ACCRETION RIM · ZERO VOLUME', w: 62, d: 60, night: 1, look: 'abyss', fogD: 0.026,
+        parti: 'A bowl that falls to the point at its centre; every shelf and shard on the plateau leans toward the drop, and the screen watches it from the ledge.', typology: 'bowl',
         floor: 'moon_3', cliff: 'obsidian', path: 'crystal', floorColor: 0x5a4a78, cliffColor: 0x1c1428,
-        gen: { kind: 'rooms', seed: 0, loops: 3, rMin: 7, rMax: 13, wallH: 3.0, thicket: false }, noise: { amp: 0.2, scale: 6 },   // an open room's plan is `rooms` (a cave plan grows rock only under a ceiling — hq-floor-plan's rule); the obsidian banks are the solid
+        gen: { kind: 'rooms', seed: 0, loops: 3, rMin: 7, rMax: 13, wallH: 3.0, thicket: false, open: [{ x: 23, z: 1, r: 4 }, { x: 15, z: -1, r: 3.5 }] }, noise: { amp: 0.2, scale: 6 },   // the open circles: the terrace's south foot and the gap between the orbit's stones were pockets (rescue ramps); an open room's plan is `rooms` (a cave plan grows rock only under a ceiling — hq-floor-plan's rule); the obsidian banks are the solid
         plaza: { x: 0, z: 10 },
         features: [
-            { k: 'dip', x: 0, z: -10, r: 11, h: -4.0, open: true },                                                 // THE DROP
-            { k: 'ramp', x0: 0, z0: 4.5, x1: 0, z1: -4, w: 3.0, h0: 0, h1: -3.2 },                                   // the way down into it (and out)
-            { k: 'plateau', x: 18, z: -18, r: 3.4, h: 6.0, edge: 0.4 },                                             // THE ACCRETION RIM (the tape)
-            { k: 'plateau', x: -18, z: -6, r: 5, h: 1.8, edge: 0.4 }, { k: 'ramp', x0: -18, z0: 5.5, x1: -18, z1: 0.7, w: 2.6, h0: 0, h1: 1.8 },
-            { k: 'rail', x0: -24, z0: 10, x1: -12, z1: 10 },
-            { k: 'path', pts: [[0, 10], [-5, -24], [-5, -28]], w: 2.6 }, { k: 'path', pts: [[0, 10], [-0.2, -24], [-0.2, -28]], w: 2.4 },
-            { k: 'scatter', key: 'crystal_cluster', n: 6, seed: 1 },
+            { k: 'dip', x: 0, z: -8, r: 9, h: 4.0, open: true },                                                   // THE DROP (a dip's h is its DEPTH)
+            { k: 'ramp', x0: 0, z0: 4.5, x1: 0, z1: -2, w: 3.0, h0: 0, h1: -2.6 },                                   // the way down into it (and out)
+            { k: 'plateau', x: 18, z: -16, r: 3.4, h: 6.0, edge: 0.4 },                                             // THE ACCRETION RIM (the tape)
+            /* THE WEST SHELF (2.2): the ramp up its south side, the hand-holds on its east face */
+            { k: 'plateau', x: -19, z: -4, r: 5, h: 2.2, edge: 0.4 }, { k: 'ramp', x0: -19, z0: 6.5, x1: -19, z1: 0.3, w: 2.6, h0: 0, h1: 2.2 },
+            { k: 'climb', x: -14.3, z: -4, face: 270, look: 'wall' },
+            /* THE NEAR LENS (3.4): the ramp up from the shelf, a rope on its west face */
+            { k: 'plateau', x: -21, z: -17, r: 4, h: 3.4, edge: 0.4 }, { k: 'ramp', x0: -19, z0: -8.4, x1: -19, z1: -12.8, w: 2.4, h0: 2.2, h1: 3.4 },
+            { k: 'climb', x: -24.7, z: -17, face: 90, look: 'rope' },
+            /* THE FAR LENS (3.4): THE LENSING ARC from the near lens (a level span, the bridge layer), a chain on its east face, the stair down its south side */
+            { k: 'plateau', x: -11, z: -23, r: 3.5, h: 3.4, edge: 0.4 }, { k: 'bridge', x0: -18.2, z0: -18.7, x1: -13.4, z1: -21.6, w: 2.2, y: 3.4 },
+            { k: 'climb', x: -7.8, z: -23, face: 270, look: 'chain' }, { k: 'ramp', x0: -11, z0: -12.5, x1: -11, z1: -20.2, w: 2.4, h0: 0, h1: 3.4, stairs: true },
+            /* THE EAST TERRACE (2.4): the stair up its south side, the hand-holds on its west face — the survey camp on it */
+            { k: 'plateau', x: 24, z: 8, w: 10, d: 8, h: 2.4, edge: 0.4 }, { k: 'ramp', x0: 24, z0: 19, x1: 24, z1: 11.3, w: 2.6, h0: 0, h1: 2.4, stairs: true },
+            { k: 'climb', x: 19.3, z: 8, face: 90, look: 'wall' },
+            /* THE JET (4.6, a floating shard): a ladder on its south face, a chain on its west */
+            { k: 'plateau', x: 25, z: -2, r: 2.2, h: 4.6, edge: 0.4, float: true }, { k: 'climb', x: 25, z: -0.1, face: 0, look: 'ladder' }, { k: 'climb', x: 22.9, z: -2, face: 90, look: 'chain' },
+            /* THE ORBIT: three floating stones round the drop's east rim */
+            { k: 'plateau', x: 12, z: 6, r: 1.6, h: 0.8, edge: 0.3, float: true }, { k: 'plateau', x: 14.5, z: 2, r: 1.6, h: 1.5, edge: 0.3, float: true }, { k: 'plateau', x: 13.5, z: -3, r: 1.6, h: 2.2, edge: 0.3, float: true },
+            /* THE OBSERVATORY LEDGE (2.4) on the north wall — the screen stands ON it: the stair up its east end, a ladder on its south face, a chain on its west end */
+            { k: 'plateau', x: 14, z: -27, w: 16, d: 8, h: 2.4, edge: 0.4 }, { k: 'ramp', x0: 29, z0: -26, x1: 21.3, z1: -26, w: 2.4, h0: 0, h1: 2.4, stairs: true },   // the ledge runs to the wall (a strip behind it was a pocket)
+            { k: 'climb', x: 10, z: -23.3, face: 0, look: 'ladder' }, { k: 'climb', x: 6.3, z: -26, face: 90, look: 'chain' },
+            { k: 'rail', x0: -24, z0: 12, x1: -12, z1: 12 }, { k: 'rail', x0: 8, z0: 16, x1: 18, z1: 16 },
+            /* THE PATHS: round the drop's west to Saturn's frame, east to the ledge's stair, the terrace, the shelf */
+            { k: 'path', pts: [[0, 10], [-12, 8], [-12, -12], [-3, -20], [-5, -28]], w: 2.6 }, { k: 'path', pts: [[0, 10], [14, 16], [29, 16], [29, -24]], w: 2.4 },
+            { k: 'path', pts: [[0, 10], [12, 18], [24, 20]], w: 2.4 }, { k: 'path', pts: [[-12, 8], [-19, 8]], w: 2.4 }, { k: 'path', pts: [[-12, -12], [-11, -11]], w: 2.2 },
+            { k: 'scatter', key: 'crystal_cluster', n: 9, seed: 1 }, { k: 'scatter', key: 'cave_stone', n: 8, seed: 5 },
         ],
-        props: [{ key: 'railing_1m', x: -18, z: 10.4, face: 0 }, { key: 'riser_1', x: 8, z: 14 }, { key: 'floating_orb', x: 0, z: -10, y: -2.5 }],
-        npcSpots: [{ x: -3, z: 14, face: 30, race: 'cosmic wraith', say: '“Eight seconds of falling. The ninth is you.”' }],
+        props: [{ key: 'railing_1m', x: 14, z: -22.4, face: 0, y: 2.4 }, { key: 'railing_1m', x: 24, z: 4.4, face: 0, y: 2.4 }, { key: 'railing_1m', x: -21, z: -13.4, face: 0, y: 3.4 }, { key: 'riser_1', x: 8, z: 14 },
+                { key: 'floating_orb', x: 0, z: -8, y: -3.4 },                                                   // the point, at the bottom of the drop
+                /* THE OBSERVATORY LEDGE: the projector, the tanks, the screen's watchers */
+                { key: 'star_projector', x: 10, z: -27, y: 2.4 }, { key: 'iso_tank', x: 19, z: -28, y: 2.4 }, { key: 'iso_tank', x: 20.5, z: -27.5, y: 2.4 }, { key: 'brass_telescope', x: 7.5, z: -25, y: 2.4, face: 160 }, { key: 'steel_table', x: 12, z: -24.5, y: 2.4 },
+                { key: 'crt_terminal', x: 12, z: -24.5, y: 3.16 }, { key: 'signpost', x: 16.5, z: -24, y: 2.4 },
+                /* THE EAST TERRACE: the survey camp */
+                { key: 'cot', x: 21, z: 10, y: 2.4, face: 90 }, { key: 'cot', x: 21, z: 7, y: 2.4, face: 90 }, { key: 'steel_table', x: 26, z: 9, y: 2.4 }, { key: 'crt_terminal', x: 26, z: 9, y: 3.16 }, { key: 'retro_radio', x: 26, z: 8.2, y: 3.16 },
+                { key: 'folding_chair', x: 26, z: 6.5, y: 2.4, face: 0 }, { key: 'flood_mast', x: 27.5, z: 11, y: 2.4 }, { key: 'sea_chest', x: 23, z: 5.5, y: 2.4 }, { key: 'brass_telescope', x: 20, z: 5.5, y: 2.4, face: 250 },
+                /* THE LENSES, THE SHELF, THE JET */
+                { key: 'crystal_cluster', x: -21, z: -19, y: 3.4 }, { key: 'crystal_cluster', x: -11, z: -25, y: 3.4 }, { key: 'telescope', x: -10, z: -22, y: 3.4, face: 30 }, { key: 'crystal_cluster', x: -19, z: -6, y: 2.2 }, { key: 'signpost', x: -16, z: -2, y: 2.2 },
+                { key: 'crystal_cluster', x: 25, z: -2, y: 4.6 }, { key: 'cave_stone', x: 13.5, z: -3, y: 2.2 },
+                /* THE PLATEAU: the warning tape round the drop, the beacons, the stones */
+                { key: 'warning_tape', x: 0, z: 2 }, { key: 'warning_tape', x: -8, z: -2 }, { key: 'warning_tape', x: 8, z: -2 }, { key: 'flood_mast', x: -6, z: 5 }, { key: 'flood_mast', x: 6, z: 5 }, { key: 'lesson_sign', x: 5, z: 12, face: 200, lesson: 'climb' },
+                { key: 'cave_stone', x: -26, z: 6 }, { key: 'cave_stone', x: 26, z: -22 }, { key: 'cave_stone', x: -4, z: 20 }, { key: 'signpost', x: -8, z: -26 }, { key: 'cardboard_boxes', x: 27, z: -20 }],
+        npcSpots: [{ x: -3, z: 14, face: 30, race: 'cosmic wraith', say: '“Eight seconds of falling. The ninth is you.”' }, { x: 23, z: 9, y: 2.4, face: 250, race: 'watcher', say: '“The camp is upstream of the drop. Everything is upstream of the drop.”' },
+                   { x: -12, z: -24, y: 3.4, face: 100, race: 'shadow entity', say: '“The lens bends the light round it. It does not bend the fall.”' }, { x: 15, z: -25, y: 2.4, face: 180, race: 'occulus', say: '“The screen shows the drop. The drop shows the screen. Do not stand between them.”' }],
         lines: ['“Where does it go?” “Down. Only down.”'] },
     /* ROOM 6 · SATURN · THE HEXAGON: the plateau under the rings, six low walls in the storm's shape (the grind), THE EYE at the
        centre, THE RING SHARD (the tape), the collar and the drop's frame on the north wall */
@@ -40474,7 +40597,7 @@ DOOR_HQ.findSpots = { coldroom: { tape: { x: 1.3, z: -1.35 }, pay: { x: 0.4, z: 
     site_prebuilt_northpole_village: { tape: { x: 3, z: -17 } },   // AREA CONTENT D3: THE POLE's cairn off the drift
     site_prebuilt_flatlands_plain: { tape: { x: 0, z: -22 } },
     site_prebuilt_lookingglass_garden: { tape: { x: 0, z: -20 } },
-    site_prebuilt_lodge_halls: { tape: { x: 6, z: -14 } },
+    site_prebuilt_lodge_halls: { tape: { x: 0, z: -15 } },   // AREA CONTENT D3 (2026-09-19): THE HIGH TABLE between the galleries
     site_prebuilt_singularity_horizon: { tape: { x: 18, z: -18 } },
     site_prebuilt_saturn_hexagon: { tape: { x: 20, z: -18 } },
     site_prebuilt_haunted_grounds: { tape: { x: 16, z: 14 } },

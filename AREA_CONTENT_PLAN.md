@@ -422,6 +422,28 @@ The questions as they were asked:
   this delivery, not touched: doorhq's server-banks count + Camelot's dry board, hq-cave's eight secret doors (ten since the cargo hatch),
   hq-spaceship's deck hatch, hq-terrain's fountain on Downtown, hq-world's seams list (the two sewer gutters). NEXT: Mars, the Moon, the Grove;
   then the Flatlands, the Looking-Glass's garden, the Lodge, the Singularity, Saturn, Hollow Earth, the Dutchman's deck, the Backrooms — then D4, D5.
+- 2026-09-19 — **D3, FIFTH DELIVERY (local): THE GARDEN · THE HALLS · THE HORIZON — brought up to the cave.** Each re-specced in `HQ_AREA_SPECS`
+  (data.js) and measured clean on ALL of R1–R8 by `node check-area-content.js --rules` (climb rows / kinds / per 100 m² / range / items per
+  60 m² / earned exits: THE GARDEN 20 / 5 / 0.88 / 9.8 m / 1.80 / 2 of 4; THE HALLS 19 / 4 / 1.09 / 5.5 m / 2.06 / 2 of 4; THE HORIZON 24 / 4 /
+  0.84 / 12.6 m / 1.26 / 1 of 3; one door exposed at most; every earned exit teased; a `parti` + a `typology` on each; `node check-terrain.js`
+  solves every door from every door, nothing traps, zero rescue ramps; every authored climb compiled — `hqTerrainInfo(id).climbs` 6 / 8 / 8).
+  **THE GARDEN** (grid): THE TEA LAWN (1.6, a ramp + a vine, the table set for four), THE CROQUET GROUND (1.6, a stair + the hand-holds, the
+  umpire's chair), THE WHITE QUEEN'S TOWER (3.4, a stair off the tea lawn + a rope) and THE BISHOP'S LANDING (3.4, a stair + a vine) joined by
+  THE HEDGE WALK (the bridge layer), THE RED KING'S TOWER (3.4, a ramp off the croquet ground + two vines, the throne), THE RABBIT HOLE (a
+  2 m bowl), the moon's perch (6.4, the tape) seen from the landing; the mirror and the dead tree stand under the tiers (the tease); four
+  `gen.open` circles kill four pockets. **THE HALLS** (halls, h 5.0): THE WEST GALLERY (2.2, a stair + a ladder + the bell rope) and THE ORGAN
+  LOFT (2.2, a ladder + the organ's pipe) joined over the round table by THE MINSTRELS' WALK (the bridge layer), THE HIGH TABLE (3.9, the tape —
+  out of a jump's reach from either gallery; the pin moved to (0, −15)), THE SCREEN across the sanctum's mouth (R3), THE MEZZANINE over the bar
+  (2.6, a stair + a ladder + the panelling's hand-holds; the painting of Olympus is seen from it), THE STACKS (2.4, a stair + the library ladder
+  + a pipe), THE WINE CELLAR (−1.6, a stair down — the 322 basement); `grove_lodge.b` moved to `e z 14` (14 m from the painting, R3). **THE
+  HORIZON** (bowl): THE DROP is a real 4 m bowl now, THE WEST SHELF (2.2), THE NEAR LENS (3.4, a ramp + a rope) and THE FAR LENS (3.4, a chain +
+  a stair) joined by THE LENSING ARC (the bridge layer), THE EAST TERRACE (2.4, the survey camp) under THE JET (4.6, a floating shard: a ladder
+  + a chain), THE ORBIT's three floating stones, THE OBSERVATORY LEDGE (2.4) on the north wall with the observatorium's screen standing ON it
+  (`observatorium_singularity.b` `x 14, y 2.4` — a door you climb to, seen from the floor, 19 m from Saturn's frame). **THE RULE THE COMPILER
+  TAUGHT**: a `dip`'s `h` is its DEPTH (positive) — the old drop (`h: -4`) and the rabbit hole were MOUNDS; and a climb's `face` is the
+  direction toward the mass in the room's own axes (0 = −z, 180 = +z, 90 = +x, 270 = −x), whatever the wall is called. The suites and the
+  hard-tape proofs were not run at the user's word (`npm run test:quick` passed; the two tools solved and audited the three rooms). NEXT:
+  Saturn, Hollow Earth, the Dutchman's deck — then D4, D5 (the Flatlands and the Backrooms are skipped at the user's word).
 - 2026-09-19 — **D3, FOURTH DELIVERY (local): CYDONIA · THE MARE · THE GROVE — brought up to the cave.** Each re-specced in `HQ_AREA_SPECS`
   (data.js) and measured clean on ALL of R1–R8 by `node check-area-content.js --rules` (climb rows / kinds / per 100 m² / range / items per
   60 m² / earned exits: CYDONIA 19 / 4 / 0.63 / 6.6 m / 1.33 / 2 of 3; THE MARE 20 / 5 / 0.77 / 7.4 m / 1.47 / 2 of 3; THE GROVE 17 / 6 /
