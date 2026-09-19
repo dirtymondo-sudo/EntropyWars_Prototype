@@ -575,3 +575,20 @@ exactly n stand) and reloads through `loadTeamPreset(…, { picked: true })`
 with only the chosen slots — the LOAD list marks such presets "8 ON FILE
 — PICK 4". A reserves match (teamSize 8) loads the whole sheet as before.
 party-builder.test.js guards the control, the cap and the picker.
+
+- **2026-09-19 — THE FINISHER ON THE CIRCUIT.** The user: "would still like
+  to see the finishers and their animations in the party builder in the
+  spell tree somewhere." `SpellTreePanel` ends in THE FINISHER STRIP (`.pb-fin`
+  under the bus: one `.pb-tn.is-finisher` row in the type colour — the race's
+  execution off data.js `FINISHERS` through `pbFinisherDef(race)`, BESPOKE
+  (a pulsing ring) or TYPED EXECUTION (dashed); node key `PB_FIN_KEY` 'FIN',
+  root ↓ walks onto it, ↑ back); `pbTechInfo` answers `st8: 'finisher'` and
+  `TechniquePanel` hands it to `FinisherPanel` (type · name · tagline · brief ·
+  AP 1 / FULL GAUGE / RNG SIGHT / ≈3× STRIKE SLICE / STAB chips · ▶ PREVIEW);
+  `pbPreviewFinisher` (hover debounced, click / ENTER / SPACE / ▶ at once) →
+  `EWCharViewer.previewFinisher(def)` → the charged cast (`_castChainFor
+  ('ultimate')`, `_cvSpellChain` takes `opts.chain`) + `VFX3D.stage.finisher`
+  (three-vfx-effects.js `_FIN_STAGE` / `_FIN_STAGE_TYPE`, the dummy at (3,0),
+  the frame `x0 −1 · x1 5.6 tiles · y1 4.2 tiles`). Never a slot, never a
+  loadout write (finishers.test.js). Unseen live: the strip's height under
+  the lanes at the small breakpoints, the wide frame on the monitor.

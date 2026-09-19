@@ -4977,6 +4977,27 @@ body.diorama-3d .tile-underpass.jump::before {
 .pb-bus-cell.c::before { left: calc(-1 * var(--pb-lane-gap)); right: calc(-1 * var(--pb-lane-gap)); }
 .pb-bus-cell.r::before { left: calc(-1 * var(--pb-lane-gap)); right: calc(100% - var(--pb-disc) / 2); border-radius: 0 2px 2px 0; }
 .pb-bus-cell .pb-tn { position: absolute; left: 0; right: 0; top: calc(var(--pb-disc) / -2 + 1px); height: var(--pb-disc); }
+/* ── THE FINISHER ON THE CIRCUIT (2026-09-19): one ☠ row under the root's
+   bus — the race's execution (data.js FINISHERS), the gauge's other verb.
+   Not a slot: always lit in its TYPE colour, a skull ring round the disc,
+   a slow pulse when it is BESPOKE (built), dashed when it plays the typed
+   execution. The panel under it wears .pb-technique-fin (the tagline in
+   the type colour, the DESIGNED note). ── */
+.pb-fin { display: flex; flex-direction: column; gap: 2px; margin: 6px 0 2px; padding: 6px 8px 6px 4px; border-radius: 12px; border: 1px dashed rgba(255,255,255,0.10); background: linear-gradient(90deg, rgba(0,0,0,0.28), transparent 70%); flex-shrink: 0; }
+.pb-fin-head { display: flex; align-items: baseline; gap: 10px; padding: 0 0 0 6px; }
+.pb-fin-title { font-family: 'Cormorant SC', serif; font-size: 11px; font-weight: 700; letter-spacing: 0.18em; color: var(--ph-gold); white-space: nowrap; }
+.pb-fin-tag { font-size: 8px; letter-spacing: 0.16em; color: var(--ph-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.pb-tn.is-finisher { cursor: pointer; }
+.pb-tn.is-finisher .pb-tn-disc { background: color-mix(in srgb, var(--nc) 28%, #0d0d13); border-color: var(--nc); color: #fff; font-size: 18px; box-shadow: 0 0 10px color-mix(in srgb, var(--nc) 55%, transparent), 0 2px 6px rgba(0,0,0,0.6); }
+.pb-tn.is-finisher .pb-tn-disc::after { content: ''; position: absolute; inset: -6px; border-radius: 50%; border: 1px dashed var(--nc); opacity: 0.75; }
+.pb-tn.is-finisher.built .pb-tn-disc::after { border-style: solid; animation: pbFinPulse 2.4s ease-in-out infinite; }
+.pb-tn.is-finisher.typed .pb-tn-disc { background: #0d0d13; color: var(--nc); }
+.pb-tn.is-finisher .pb-tn-name { color: #fff; }
+.pb-tn.is-finisher:hover .pb-tn-disc, .pb-tn.is-finisher.sel .pb-tn-disc { transform: scale(1.06); filter: brightness(1.15); }
+@keyframes pbFinPulse { 0%, 100% { opacity: 0.45; transform: scale(1); } 50% { opacity: 1; transform: scale(1.08); } }
+.pb-technique-fin .pb-technique-tagline { font-family: 'Cormorant SC', serif; font-size: 12px; font-weight: 700; letter-spacing: 0.14em; line-height: 1.1; }
+.pb-technique-fin .pb-technique-desc.typed-note { font-size: 9px; opacity: 0.6; letter-spacing: 0.04em; -webkit-line-clamp: 2; }
+@media (prefers-reduced-motion: reduce) { .pb-tn.is-finisher.built .pb-tn-disc::after { animation: none; } }
 /* ── THE FORK + THE CASCADE (2026-09-13, the spell-tree UX pass). A twin
    tier is a FORK: both options stand on the tier as their own discs, the
    chain running through the LEFT option's column, an ⇄ bridge to the right

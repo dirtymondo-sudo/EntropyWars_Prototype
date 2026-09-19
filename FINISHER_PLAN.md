@@ -145,6 +145,8 @@ a board-wide engine change. "Home" = the capstone it reworks (id kept).
 | 17 | The plane, part two | honda civic · **Vehicular Manslaughter** (`raceMissileBarrage`, aoe) | the Sedan itself (the car GLB) drives off the board's edge, launches, tumbles across the zone and lands on the target — a stunt jump, the horn, the airbag; then the car stands wrecked on the tile (`crashed_car` misc GLB as a one-round deployable) | a cosmetic deployable (`state._deployedObjects` row with `decor: true`) | M |
 | 18 | Ego Death / the trip | shaman · **Bad Trip** ⇄ **Ego Death** | already bespoke (`_sigBadTrip3D`, `_sigEgoDeath3D`) — leave | — | — |
 
+**THE FORGE (2026-09-19)**: every finisher is SEEN before it is bought — the party builder's TECHNIQUES circuit ends in THE FINISHER strip (the ☠ row under the root), and its ▶ PREVIEW plays the execution on the stage. A finisher is not done until its `_FIN_STAGE[sig]` script exists (§7, delivery 3).
+
 Sequencing: 5 · 10 · 11 · 12 · 13 · 15 first (S — six finishers in two
 deliveries with no engine change), then 4 · 7 · 8 · 9 · 14 · 16 · 17 (M),
 then 6 (L). Every delivery = three finishers + the test + the doc line.
@@ -194,6 +196,36 @@ batch has one — `crashed_car`), a crenellated castle-wall segment (the wall
 spells), a ziggurat tier block, a gothic buttress.
 
 ## 7. Log
+
+- **2026-09-19 — THE FINISHER ON THE CIRCUIT + three more executions
+  (delivery 3).** The user: "would still like to see the finishers and
+  their animations in the party builder in the spell tree somewhere." The
+  forge's TECHNIQUES circuit carries THE FINISHER STRIP under the root's
+  bus (party-builder.js `PB_FIN_KEY` 'FIN' / `pbFinisherDef(race)` = data.js
+  `getFinisherDefForRace` / `finStrip()` in `SpellTreePanel` / `FinisherPanel`
+  under the lanes / `pbPreviewFinisher`; root ↓ walks to it, ENTER · SPACE ·
+  ▶ · hover preview it) — the race's execution, its type colour, BESPOKE or
+  TYPED EXECUTION, never a slot. The preview = three-renderer.js
+  `EWCharViewer.previewFinisher(def)` (the `ultimate` charged-cast chain
+  timed so its strike frame lands on the hit, the frame pulled wide and
+  tall) + three-vfx-effects.js `VFX3D.stage.finisher(def, o)` → `_FIN_STAGE
+  [sig]` (the director's VFX beats on the stage frame — the hero at (0,0),
+  the dummy at (3,0)) or `_FIN_STAGE_TYPE[type]` (the six apocalypse
+  directors' beats on one victim). RULE: a new bespoke finisher = the
+  director + the signature + a `_FIN_STAGE[sig]` script (finishers.test.js
+  insists). Three more BUILT: homosapien **The Haymaker** (`haymaker` —
+  the fist winds up, the body goes round the world on a great ring and
+  comes back into the fist), cowboy **Boot Hill** (`bootHill` — the rope
+  from the sky, the yank, the coffin with the name plate, the lid, the
+  cross, the tumbleweed), mad scientist **Shrink Ray** (`shrinkRay` — the
+  ring beam, the shrink, SIZE: 1/40, the ACME anvil, the spring). Nine
+  built of 99. Not playtested (RULE #1c): the strip's height on the
+  circuit at the small breakpoints, the stage frame's pull-out against the
+  monitor, each stage script's timing against the charged cast's strike
+  frame, the fist's facing down the punch line (`fistPivot.rotation.y` is
+  the edit), the coffin lid's swing, the anvil's silhouette, the three
+  directors' camera paths on the real board. NEXT: the rows in roster
+  order, three or six a delivery, each with its stage script.
 
 - **2026-09-19 — THE EXECUTIONS (delivery 2).** The finisher is the
   gauge's other verb (rule 0): data.js `FINISHER_RULES` +

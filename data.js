@@ -277,7 +277,7 @@ const FINISHER_TYPE_DEFAULTS = {
     anomaly: { id: 'fin_type_anomaly', name: 'Erased',            glyph: '🌀', type: 'anomaly', tagline: 'YOU WERE NEVER HERE',                desc: 'ANOMALY-type execution: a black hole the size of one unit, a supernova the size of one ego.' },
 };
 const FINISHERS = {
-    /* ── THE BUILT SIX (sig = a director + a signature) ───────────────── */
+    /* ── THE BUILT (sig = a director + a signature) — six on 2026-09-19, three more the same day (the Haymaker · Boot Hill · Shrink Ray, below among their rows) ── */
     'king arthur':   { id: 'fin_king_arthur', name: 'World Cleave', glyph: '⚔', type: 'divine', sig: 'worldCleave', built: true,
         tagline: 'THE SWORD THAT CUTS THE MAP', desc: 'Excalibur falls out of the sky into the king\'s hands; one swing opens a line of light through the victim from one edge of the world to the other, and the halves of the board grind past each other while they fall in.' },
     'anubis':        { id: 'fin_anubis', name: 'The Weighing', glyph: '⚖', type: 'unholy', sig: 'weighing', built: true,
@@ -291,13 +291,13 @@ const FINISHERS = {
     'ai':            { id: 'fin_ai', name: 'Segfault', glyph: '▮', type: 'tech', sig: 'segfault', built: true,
         tagline: 'CORE DUMPED', desc: 'The victim is scanned, caged in wireframe, deleted a voxel at a time and written to /dev/null. The process exits with a non-zero code.' },
     /* ── DESIGNED, NOT YET BUILT (the typed execution plays) ──────────── */
-    'homosapien':     { id: 'fin_homosapien', name: 'The Haymaker', glyph: '👊', type: 'human', sig: null, tagline: 'THE PUNCH HEARD ROUND THE WORLD', desc: 'A wind-up that lasts a full second, a punch that sends the victim around the planet and back into the same fist.' },
+    'homosapien':     { id: 'fin_homosapien', name: 'The Haymaker', glyph: '👊', type: 'human', sig: 'haymaker', built: true, tagline: 'THE PUNCH HEARD ROUND THE WORLD', desc: 'A wind-up that lasts a full second, a punch that sends the victim around the planet and back into the same fist.' },
     'pirate':         { id: 'fin_pirate', name: 'Keelhauled', glyph: '⚓', type: 'human', sig: null, tagline: 'UNDER THE HULL AND BACK', desc: 'A ship the size of the map sails through the sky; the victim goes under the keel on a rope and comes out the other side.' },
     'swordfighter':   { id: 'fin_swordfighter', name: 'A Thousand Cuts', glyph: '🗡', type: 'human', sig: null, tagline: 'COUNTED', desc: 'The screen fills with sword strokes faster than the eye; the victim falls apart into a tally.' },
     'knight':         { id: 'fin_knight', name: 'The Joust', glyph: '🐎', type: 'divine', sig: null, tagline: 'FULL TILT', desc: 'A lance the length of the board, a charge from off the map, the victim carried the whole way back.' },
     'shaman':         { id: 'fin_shaman', name: 'The Trip', glyph: '🍄', type: 'anomaly', sig: null, tagline: 'THE WALLS ARE BREATHING', desc: 'The victim\'s reality goes fractal, kaleidoscopes inside kaleidoscopes, until there is no victim left to have a reality.' },
-    'mad scientist':  { id: 'fin_mad_scientist', name: 'Shrink Ray', glyph: '🔬', type: 'tech', sig: null, tagline: 'THEN THE ANVIL', desc: 'The victim is shrunk to the size of a mouse. An anvil is dropped from the sky. Science.' },
-    'cowboy':         { id: 'fin_cowboy', name: 'Boot Hill', glyph: '🤠', type: 'human', sig: null, tagline: 'THE COFFIN WAS ALREADY BUILT', desc: 'A lasso from the sky yanks the victim straight up; a coffin drops onto the tile; the victim comes down into it; the lid nails itself shut.' },
+    'mad scientist':  { id: 'fin_mad_scientist', name: 'Shrink Ray', glyph: '🔬', type: 'tech', sig: 'shrinkRay', built: true, tagline: 'THEN THE ANVIL', desc: 'The victim is shrunk to the size of a mouse. An anvil is dropped from the sky. Science.' },
+    'cowboy':         { id: 'fin_cowboy', name: 'Boot Hill', glyph: '🤠', type: 'human', sig: 'bootHill', built: true, tagline: 'THE COFFIN WAS ALREADY BUILT', desc: 'A lasso from the sky yanks the victim straight up; a coffin drops onto the tile; the victim comes down into it; the lid nails itself shut.' },
     'men in black':   { id: 'fin_men_in_black', name: 'Neuralyzer', glyph: '🕶', type: 'tech', sig: null, tagline: 'YOU SAW NOTHING', desc: 'The flash that erases the last five seconds — and the victim with them. A black sedan collects the remains.' },
     'telepath':       { id: 'fin_telepath', name: 'Mind over Matter', glyph: '🧠', type: 'anomaly', sig: null, tagline: 'THE LANDSCAPE IS A WEAPON', desc: 'The tiles round the caster tear out of the board, orbit the head, and slam into the victim one after another.' },
     'marksman':       { id: 'fin_marksman', name: 'Danger Close', glyph: '🎯', type: 'tech', sig: null, tagline: 'FIRE MISSION, ONE ROUND', desc: 'The map goes to grid, a single shell is walked onto one square, and the marksman does not blink.' },

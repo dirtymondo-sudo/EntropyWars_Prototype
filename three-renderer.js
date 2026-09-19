@@ -36217,6 +36217,7 @@ const ThreeRenderer = (function () {
     function _cvSpellChain(spell, opts) {
         var v = _cv;
         opts = opts || {};
+        if (opts.chain) return opts.chain;                 // an explicit chain (the finisher's charged cast)
         if (!spell || spell.kind === 'basicAttack' || opts.attack) {
             var ak = (v && v.def && v.def.basicAttackKind) || (spell && (spell.range || 1) > 1 ? 'ranged' : 'melee');
             return _attackChainFor(ak);
@@ -36589,6 +36590,63 @@ const ThreeRenderer = (function () {
         return ms0 || clipMs0;
     }
 
+    /* ── THE FINISHER ON THE STAGE (2026-09-19) — the user: "I would still
+       like to see the finishers and their animations in the party builder in
+       the spell tree somewhere." The forge's ☠ row (party-builder.js, the
+       circuit's THE FINISHER strip) previews the race's execution here: the
+       stage's script (three-vfx-effects.js VFX3D.stage.finisher — the built
+       signature's or the typed execution's beats round the hero and a dummy
+       three tiles to screen-right) on the director's charge → strike →
+       resolve clock, and the hero plays THE CHARGED CAST (the `ultimate`
+       chain: Charged_Spell_Cast, arms to the sky) timed so its strike frame
+       lands on the script's hit. No camera cuts (the monitor's frame pulls
+       wide instead), no victim fade, no sounds but the stage's own reactions
+       (grade / kick / flash / shake through onStageFx). `def` = a FINISHERS
+       row (data.js). Returns the beat's ms (0 = no stage and no clip). */
+    var _CV_FIN_TX = 3;                 // the dummy victim's tile on the stage
+    function _cvPreviewFinisher(def, opts) {
+        var v = _cv;
+        opts = opts || {};
+        if (!v || !v.model || !def) return 0;
+        var chain = (typeof _castChainFor === 'function') ? _castChainFor('ultimate') : ['castUltimate', 'castAOE', 'castMagic', 'cast'];
+        var label = opts.name || ('FINISHER · ' + (def.name || '').toUpperCase());
+        if (!_cvStageEnter()) return _cvPlay(chain, { full: true, name: label });   // no stage: the clip alone
+        _cvBeatCancel(true);
+        try { if (window.ThreeVFX && ThreeVFX.clear) ThreeVFX.clear(); } catch (_e) {}
+        try { if (VFX3D.stage.caster) VFX3D.stage.caster(0, 0); } catch (_e) {}
+        var S = VFX3D.stage;
+        if (typeof S.finisher !== 'function') return _cvPlay(chain, { full: true, name: label });
+        var turnMs = 200;
+        var beat = { id: def.id || ('fin:' + (def.sig || def.type)), timers: [] };
+        v.beat = beat;
+        if (v.yawHome == null) v.yawHome = v.yaw;
+        _cvYawTo(_CV_STAGE_YAW, turnMs, false);
+        var later = function (fn, at) {
+            beat.timers.push(setTimeout(function () { if (_cv !== v || v.beat !== beat) return; fn(); }, at));
+        };
+        var tile = v.tile || 1, tx = _CV_FIN_TX;
+        // THE FRAME: the whole execution — the hero, the dummy and the sky the
+        // signatures fall out of (a foot, a present, the scales) — a wide,
+        // tall hold; _cvFrame pulls the lens out to fit it
+        v.frameTo = { x0: -1.0 * tile, x1: (tx + 2.6) * tile, y1: Math.max(v.h * 2.4, tile * 4.2) };
+        var o = { cx: 0, cy: 0, tx: tx, ty: 0, name: opts.victim || 'THE DUMMY', charge: opts.charge > 0 ? opts.charge : 1700, strike: opts.strike > 0 ? opts.strike : 1300, resolve: 1200 };
+        var T = (typeof S.finisherTiming === 'function') ? S.finisherTiming(def, o) : { charge: o.charge, strike: o.strike, hitAt: o.charge + o.strike, total: o.charge + o.strike + 1200 };
+        // the clip: its strike frame on the script's hit when it fits inside
+        // the charge, else it starts with the turn and holds its last frame
+        var sk = _cvStrikeMs(null, { chain: chain });
+        var clipAt = turnMs;
+        if (sk > 0 && T.hitAt - sk > turnMs) clipAt = T.hitAt - sk;
+        later(function () { S.finisher(def, o); }, turnMs);
+        later(function () { _cvPlay(chain, { full: true, name: label }); }, clipAt);
+        later(function () { _cvStageFx('shake', { kind: 'heavy' }); }, turnMs + T.hitAt);
+        later(function () {
+            v.beat = null;
+            v.frameTo = null;
+            if (v.yawHome != null) _cvYawTo(v.yawHome, 320, true);
+        }, turnMs + T.total + 300);
+        return turnMs + T.total;
+    }
+
     var charViewer = {
         supports: _cvSupports,
         /* Mount (or move) the viewer into `host` and show `race`/`gender`.
@@ -36729,6 +36787,10 @@ const ThreeRenderer = (function () {
            onStageFx(fn) receives (kind, o) — 'grade' / 'kick' / 'flash' /
            'shake' — for the monitor's reactions. */
         previewSpell: function (spell, opts) { return _cvPreviewSpell(spell, opts); },
+        /* THE FINISHER (2026-09-19): the race's execution on the stage — the
+           charged cast + the stage script (VFX3D.stage.finisher). `def` = a
+           data.js FINISHERS row. */
+        previewFinisher: function (def, opts) { return _cvPreviewFinisher(def, opts); },
         stageEnter: function () { return _cvStageEnter(); },
         stageExit: function () { _cvStageExit(); },
         isStaged: function () { return !!(_cv && _cv.staged); },

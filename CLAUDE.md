@@ -6364,3 +6364,29 @@ thread — ask `_hqSurvey`. THE WEIGHT is the rest of the slowness and is the us
 scene-lifecycle.test.js (the paint, the survey wait, the dead worker) + hq-terrain.test.js (THE SURVEY ×3).
 UNSEEN LIVE (RULE #1c): the worker on iOS Safari (a blob worker importing a cross-origin classic script),
 the card's clock, the hold on a walk.
+
+## THE FINISHER ON THE CIRCUIT + THREE MORE EXECUTIONS (FINISHER_PLAN delivery 3) — 2026-09-19, local delivery
+The user: "would still like to see the finishers and their animations in the party builder in the
+spell tree somewhere." The forge's TECHNIQUES circuit ends in **THE FINISHER STRIP** (party-builder.js
+`SpellTreePanel` → `finStrip()`, `.pb-fin` under the root's bus): ONE ☠ row — the race's execution off
+data.js `FINISHERS` through **`pbFinisherDef(race)`** (= `getFinisherDefForRace`, the ONE read), in its
+TYPE colour, BESPOKE (a pulsing ring) or TYPED EXECUTION (dashed); its node key is **`PB_FIN_KEY`**
+('FIN'; `treeStepKey`: root ↓ = the strip, ↑ = the root), `pbTechInfo(..., finisher)` answers `st8:
+'finisher'`, `TechniquePanel` hands it to **`FinisherPanel`** (type · name · tagline · brief · the price
+chips · ▶ PREVIEW), and **`pbPreviewFinisher`** (hover debounced, click / ENTER / SPACE / ▶ at once) →
+three-renderer.js **`EWCharViewer.previewFinisher(def)`** = the CHARGED CAST (`_castChainFor
+('ultimate')`; `_cvSpellChain` takes `opts.chain` now) timed so its strike frame lands on the hit, the
+frame pulled wide + tall, and **`VFX3D.stage.finisher(def, o)`** (three-vfx-effects.js, the FINISHER
+PASS 2 section: `_FIN_STAGE[sig]` = the director's VFX beats on the stage frame — the hero at (0,0),
+the dummy at (3,0), `P.at` = `_fxDelay`; `_FIN_STAGE_TYPE[type]` = the six apocalypse directors' beats on
+one victim; `finisherTiming` = its clock). Never a slot, never a loadout write, never the relayed
+`VFX3D.fire` (RULE #2). **RULE: a bespoke finisher = the director + the signature + a `_FIN_STAGE[sig]`
+script** — finishers.test.js insists on all three. THREE MORE BUILT (nine of 99): homosapien **The
+Haymaker** (`haymaker` / `_sigHaymaker3D` — the fist winds up, the body laps the world on a great
+ring, back into the fist), cowboy **Boot Hill** (`bootHill` / `_sigBootHill3D` — the rope from the sky,
+the coffin with the name plate, the lid, the cross, the tumbleweed), mad scientist **Shrink Ray**
+(`shrinkRay` / `_sigShrinkRay3D` — the ring beam, the shrink, SIZE: 1/40, the ACME anvil). `npm test`
+runs finishers.test.js (THE FORGE test). UNSEEN LIVE (RULE #1c): the strip under the lanes at the small
+breakpoints, the wide stage frame on the monitor, each script's timing against the strike frame, the
+fist's facing (`fistPivot.rotation.y`), the lid's swing, the anvil's read, the three directors' camera
+paths on the real board.

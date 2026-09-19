@@ -11972,7 +11972,138 @@
                     c.insert('Segmentation fault (core dumped)', 'terminal', actionMs(1200));
                     c.at(actionMs(200), () => c.snd('explosion'));
                 }
-            }
+            },
+
+            /* ── THE HAYMAKER (homosapien) — a wind-up on a face cam that
+               shakes with it, the punch on a freeze, the sky watch as the
+               body goes over the horizon and the god shot as it comes back
+               round the world into the fist. ──────────────────────────── */
+            haymaker: {
+                chargeMs: 2300, strikeMs: 2200, resolveMs: 1800,
+                castSpell: { type: 'damage', dmg: 1, name: 'The Haymaker', kind: 'damage' },
+                siren(c) { c.snd('buff'); c.dsnd('doorBuzz'); c.grade('bone desat', actionMs(700)); },
+                charge(c) {
+                    const V = c.VFX, u = c.unit;
+                    if (V.sigMagicCircle3D) V.sigMagicCircle3D(u.x, u.y, { radiusPx: c.ts * 0.9, growMs: 240, holdMs: c.CHARGE_MS, fadeMs: 400, spin: false, color: 0xffd080, color2: 0xffffff });
+                    if (V.sigStatRings3D) V.sigStatRings3D(u.x, u.y, { color: 0xffd080, ms: c.CHARGE_MS });
+                    c.snd('physicalAbility');
+                },
+                cam(c) {
+                    const u = c.unit, p = c.pos(c.target);
+                    if (typeof cineFaceCam === 'function') cineFaceCam(u, { dist: 2.4, tilt: 84 });
+                    c.at(actionMs(700), () => { c.slow(0.35, actionMs(500)); });
+                    c.at(actionMs(900), () => { c.slowClear(); c.freeze(actionMs(110), { grade: 'whiteout' }); if (typeof cineSkyWatch === 'function') cineSkyWatch(p, { span: 9, tiltUp: 120, tiltDown: 64, ms: c.STRIKE_MS - actionMs(1100) }); });
+                    c.at(c.STRIKE_MS - actionMs(320), () => { c.slow(0.3, actionMs(420)); });
+                    c.at(c.STRIKE_MS + actionMs(220), () => { c.slowClear(); if (typeof cineGodShot === 'function') cineGodShot(p, 7, { cut: false, duration: 480, tilt: 30 }); });
+                    return true;
+                },
+                stage(c) {
+                    const V = c.VFX, u = c.unit, p = c.pos(c.target);
+                    if (V.sigHaymaker3D) V.sigHaymaker3D(u.x, u.y, p.x, p.y, { ms: c.STRIKE_MS + actionMs(2400), punchAt: actionMs(900), hitAt: c.STRIKE_MS, ringTiles: Math.max(6, Math.round(c.span * 0.6)) });
+                    c.at(actionMs(200), () => c.insert('👊 WIND-UP', 'stamp', actionMs(700)));
+                    c.at(actionMs(900), () => { c.snd('physicalAbilityDamage'); c.flash('#ffffff', 160, 0.6); c.kick(14, 200); c.insert('🌍 ROUND THE WORLD', 'signal', actionMs(1200)); });
+                    c.at(c.STRIKE_MS - actionMs(500), () => c.snd('jetFlyover'));
+                },
+                strike(c) {
+                    const p = c.pos(c.target);
+                    c.freeze(actionMs(120), { grade: 'whiteout' });
+                    c.ring(p.x, p.y, 0xffd080, { r1: c.ts * 2.8, ms: 560, torus: true });
+                    c.flash('#fff6d0', 260, 0.8); c.kick(20, 260);
+                    c.snd('explosion'); c.dsnd('slam');
+                },
+                resolve(c) {
+                    const V = c.VFX, p = c.pos(c.target);
+                    if (V.sigWhiteout3D) V.sigWhiteout3D(p.x, p.y, { color: 0xffe0a0, ms: 800, peak: 0.6, sizeTiles: 6, shake: false });
+                    c.insert('K.O.', 'stamp', actionMs(900));
+                    c.at(actionMs(300), () => c.snd('quakeRumble'));
+                }
+            },
+
+            /* ── BOOT HILL (cowboy) — the rope from the sky on a sky watch,
+               the yank on a slow-mo face cam, the coffin's drop, the lid's
+               slam on the freeze, the cross on a low reverse. ───────────── */
+            bootHill: {
+                chargeMs: 2200, strikeMs: 2400, resolveMs: 1900,
+                castSpell: { type: 'damage', dmg: 1, name: 'Boot Hill', kind: 'damage' },
+                siren(c) { c.snd('buff'); c.dsnd('doorBuzz'); c.grade('dim', actionMs(800)); },
+                charge(c) {
+                    const V = c.VFX, u = c.unit;
+                    if (V.sigMagicCircle3D) V.sigMagicCircle3D(u.x, u.y, { radiusPx: c.ts * 0.9, growMs: 240, holdMs: c.CHARGE_MS, fadeMs: 400, spin: false, color: 0xd8b060, color2: 0x6b4425 });
+                    c.snd('itemThrow');
+                },
+                cam(c) {
+                    const p = c.pos(c.target);
+                    if (typeof cineSkyWatch === 'function') cineSkyWatch(p, { span: 6, tiltUp: 112, tiltDown: 62, ms: actionMs(900) });
+                    c.at(actionMs(1000), () => { c.slow(0.35, actionMs(700)); if (typeof cineFaceCam === 'function') cineFaceCam(c.target, { dist: 3.0, tilt: 80, cut: false, duration: 340 }); });
+                    c.at(c.STRIKE_MS - actionMs(900), () => { c.slowClear(); if (typeof cineSkyWatch === 'function') cineSkyWatch(p, { span: 6, tiltUp: 110, tiltDown: 58, ms: actionMs(800) }); });
+                    c.at(c.STRIKE_MS + actionMs(400), () => { if (typeof cineReverseOts === 'function') cineReverseOts(c.target, c.unit, {}); });
+                    return true;
+                },
+                stage(c) {
+                    const V = c.VFX, p = c.pos(c.target);
+                    if (V.sigBootHill3D) V.sigBootHill3D(p.x, p.y, { ms: c.STRIKE_MS + actionMs(2800), loopAt: actionMs(500), coffinAt: c.STRIKE_MS - actionMs(900), hitAt: c.STRIKE_MS, name: unitDisplayName(c.target) });
+                    c.at(actionMs(1000), () => { c.snd('physicalAbility'); c.insert('🪢 YEEHAW', 'stamp', actionMs(800)); });
+                    c.at(c.STRIKE_MS - actionMs(900), () => c.snd('earthImpact'));
+                    c.at(c.STRIKE_MS - actionMs(300), () => c.insert('⚰ HERE LIES ' + _ccinEsc(unitDisplayName(c.target)).toUpperCase(), 'scripture', actionMs(1400)));
+                },
+                strike(c) {
+                    const p = c.pos(c.target);
+                    c.freeze(actionMs(120), { grade: 'whiteout' });
+                    c.ring(p.x, p.y, 0xd8b060, { r1: c.ts * 2.4, ms: 520, torus: true });
+                    c.flash('#f4e2b0', 220, 0.6); c.kick(16, 240);
+                    c.snd('earthImpact'); c.dsnd('slam');
+                },
+                resolve(c) {
+                    const V = c.VFX, p = c.pos(c.target);
+                    if (V.sigWhiteout3D) V.sigWhiteout3D(p.x, p.y, { color: 0xf4e2b0, ms: 800, peak: 0.5, sizeTiles: 5, shake: false });
+                    c.insert('R.I.P.', 'stamp', actionMs(1000));
+                    c.at(actionMs(400), () => c.snd('quakeRumble'));
+                }
+            },
+
+            /* ── SHRINK RAY (mad scientist) — the ray on a reverse over the
+               scientist's shoulder, the shrink on a dolly in, the caption,
+               the sky watch as the anvil drops, the slam on the freeze. ── */
+            shrinkRay: {
+                chargeMs: 2200, strikeMs: 2300, resolveMs: 1800,
+                castSpell: { type: 'damage', dmg: 1, name: 'Shrink Ray', kind: 'damage' },
+                siren(c) { c.snd('elecCast'); c.dsnd('doorBuzz'); c.grade('dim', actionMs(700)); },
+                charge(c) {
+                    const V = c.VFX, u = c.unit;
+                    if (V.sigTeslaCoil3D) V.sigTeslaCoil3D(u.x, u.y);
+                    if (V.sigMagicCircle3D) V.sigMagicCircle3D(u.x, u.y, { radiusPx: c.ts * 0.9, growMs: 240, holdMs: c.CHARGE_MS, fadeMs: 400, spin: true, color: 0x9dff5a, color2: 0xeaffc0 });
+                    c.snd('elecCast');
+                },
+                cam(c) {
+                    const u = c.unit, p = c.pos(c.target);
+                    if (typeof cineReverseOts === 'function') cineReverseOts(c.target, u, {});
+                    c.at(actionMs(800), () => { c.slow(0.4, actionMs(800)); if (typeof cineFaceCam === 'function') cineFaceCam(c.target, { dist: 2.2, tilt: 84, cut: false, duration: 500 }); });
+                    c.at(c.STRIKE_MS - actionMs(800), () => { c.slowClear(); if (typeof cineSkyWatch === 'function') cineSkyWatch(p, { span: 6, tiltUp: 114, tiltDown: 60, ms: actionMs(700) }); });
+                    c.at(c.STRIKE_MS + actionMs(300), () => { if (typeof cineGodShot === 'function') cineGodShot(p, 5, { cut: false, duration: 480, tilt: 30 }); });
+                    return true;
+                },
+                stage(c) {
+                    const V = c.VFX, u = c.unit, p = c.pos(c.target);
+                    if (V.sigShrinkRay3D) V.sigShrinkRay3D(u.x, u.y, p.x, p.y, { ms: c.STRIKE_MS + actionMs(2200), rayAt: actionMs(300), hitAt: c.STRIKE_MS });
+                    c.at(actionMs(300), () => { c.snd('taserZap'); c.insert('> shrink --target ' + _ccinEsc(unitDisplayName(c.target)), 'terminal', actionMs(900)); });
+                    c.at(actionMs(1000), () => { c.fade(c.target, 1, 0.1, actionMs(600)); c.insert('SIZE: 1/40', 'signal', actionMs(900)); });
+                    c.at(c.STRIKE_MS - actionMs(700), () => { c.snd('itemThrow'); c.insert('⬆ ACME', 'stamp', actionMs(600)); });
+                },
+                strike(c) {
+                    const p = c.pos(c.target);
+                    c.freeze(actionMs(120), { grade: 'whiteout' });
+                    c.ring(p.x, p.y, 0x9dff5a, { r1: c.ts * 2.6, ms: 540, torus: true });
+                    c.flash('#ffffff', 240, 0.75); c.kick(18, 260);
+                    c.snd('earthImpact'); c.dsnd('slam');
+                },
+                resolve(c) {
+                    const V = c.VFX, p = c.pos(c.target);
+                    c.at(actionMs(120), () => { const t = c.target; if (t && !t.dead && !t._dying) c.fade(t, 0.1, 1, actionMs(500)); });
+                    if (V.sigWhiteout3D) V.sigWhiteout3D(p.x, p.y, { color: 0xc8ff9a, ms: 700, peak: 0.6, sizeTiles: 5, shake: false });
+                    c.insert('SCIENCE.', 'stamp', actionMs(900));
+                    c.at(actionMs(300), () => c.snd('explosion'));
+                }
+            },
         };
         window._FIN_DIRECTORS = _FIN_DIRECTORS;
 

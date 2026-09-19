@@ -1582,10 +1582,33 @@ const TREE_PILLAR_ORDER = ['P', 'R', 'S'];
    pillars on the same ring; from the root ← → land on ring 1 of the outer
    pillars, ↓ from ring 1 returns to the root. Skips nothing — an empty node
    is still a place on the circuit (the panel says so). */
+/* ══ THE FINISHER ON THE CIRCUIT (2026-09-19) — the user: "I would still
+   like to see the finishers and their animations in the party builder in
+   the spell tree somewhere." The race's execution (data.js FINISHERS — the
+   gauge's other verb, battle.js doFinisher; never a tree spell, never a
+   slot) stands as ONE row under the root's bus, THE FINISHER strip: the
+   node key is PB_FIN_KEY, it is always "equipped" (the full gauge is its
+   price), it takes the select / hover / ENTER / SPACE like any node, and
+   its preview is the execution on the stage (EWCharViewer.previewFinisher
+   → VFX3D.stage.finisher — the built signature or the typed execution +
+   the charged cast). pbFinisherDef(race) is the ONE read. ══ */
+const PB_FIN_KEY = 'FIN';
+function pbFinisherDef(race) {
+  if (!race) return null;
+  try {
+    if (typeof window.getFinisherDefForRace === 'function') return window.getFinisherDefForRace(race, []) || null;
+    return (window.FINISHERS && window.FINISHERS[race]) || null;
+  } catch (e) { return null; }
+}
+function pbFinisherInfo(key, fin) {
+  return { key, st8: 'finisher', id: null, sp: null, fin: fin || null, ring: 0, path: null, newIds: [], overCap: false,
+    twin: null, alt: null, otherAlt: null, drop: null, dropCount: 0, pillar: null, tiers: null, socketKind: null };
+}
 function treeStepKey(key, dir) {
+  if (key === PB_FIN_KEY) return dir === 'up' ? 'root' : key;      // THE FINISHER strip hangs under the root
   const col = treePillarOf(key), ring = treeRingOf(key);
   if (dir === 'up') return key === 'root' ? 'R1' : (ring < 4 ? col + (ring + 1) : key);
-  if (dir === 'down') return key === 'root' ? key : (ring > 1 ? col + (ring - 1) : 'root');
+  if (dir === 'down') return key === 'root' ? PB_FIN_KEY : (ring > 1 ? col + (ring - 1) : 'root');
   const ci = col ? TREE_PILLAR_ORDER.indexOf(col) : 1;
   const r = Math.max(1, ring);
   if (dir === 'left') return ci > 0 ? TREE_PILLAR_ORDER[ci - 1] + r : key;
@@ -1670,7 +1693,7 @@ function pbNodeMeta(sp) {
 }
 function SpellTreePanel({ tree, sealed, equipped, slotCap, fc, clsName, secJob, raceLabel,
                           onNodeClick, onNodeHoverIn, onNodeHoverOut, hoverPath, dropIds, shakeKey, onOpenSubjob,
-                          onSocketClick, onAltClick, selKey, selAlt, hoverKey, hoverAlt, onSelect }) {
+                          onSocketClick, onAltClick, selKey, selAlt, hoverKey, hoverAlt, onSelect, finisher }) {
   const equippedSet = new Set(equipped || []);
   const connected = (typeof window.treeReachableKeys === 'function')
     ? window.treeReachableKeys(tree, equippedSet) : new Set(['root']);
@@ -1817,7 +1840,38 @@ function SpellTreePanel({ tree, sealed, equipped, slotCap, fc, clsName, secJob, 
     h('div', { className: 'pb-bus' },
       h('div', { className: 'pb-bus-cell l' + busCls('P1') }),
       h('div', { className: 'pb-bus-cell c lit' }, node('root')),
-      h('div', { className: 'pb-bus-cell r' + busCls('S1') })));
+      h('div', { className: 'pb-bus-cell r' + busCls('S1') })),
+    finisher ? finStrip() : null);
+
+  /* THE FINISHER strip (2026-09-19): one ☠ row under the bus — the race's
+     execution, always ready, the full gauge its price. Not a slot, not a
+     node of the tree; the same select / hover / preview gestures. */
+  function finStrip() {
+    const fin = finisher;
+    const t = String(fin.type || 'anomaly').toLowerCase();
+    const nc = TYPE_C[t] || EW.time;
+    const selected = selKey === PB_FIN_KEY;
+    const cls = 'pb-tn pb-tn-fin is-finisher can' + (selected ? ' sel' : '') + (fin.built ? ' built' : ' typed');
+    return h('div', { className: 'pb-fin', 'data-finisher': fin.id || '' },
+      h('div', { className: 'pb-fin-head' },
+        h('span', { className: 'pb-fin-title' }, '☠ THE FINISHER'),
+        h('span', { className: 'pb-fin-tag' }, 'THE GAUGE\u2019S OTHER VERB · ONE UNIT · ONE VICTIM')),
+      h('div', {
+        className: cls, style: { '--nc': nc },
+        onClick: () => { if (onSelect) onSelect(PB_FIN_KEY, null); },
+        onMouseEnter: (e) => onNodeHoverIn(PB_FIN_KEY, null, e, null),
+        onMouseLeave: () => onNodeHoverOut(PB_FIN_KEY),
+        title: fin.name + ' — ' + (fin.tagline || '') + (fin.built ? '' : ' (plays the typed execution until its own is built)'),
+      },
+        h('span', { className: 'pb-tn-disc' }, fin.glyph || '☠'),
+        h('span', { className: 'pb-tn-text' },
+          h('span', { className: 'pb-tn-name' }, fin.name),
+          h('span', { className: 'pb-tn-meta' },
+            h('i', { className: 'pb-tn-type', style: { '--tc': nc }, title: t.toUpperCase() }, PB_TYPE_GLYPH[t] || '?'),
+            h('em', null, fin.tagline || ''),
+            h('em', { style: { color: fin.built ? nc : EW.inkMute } }, fin.built ? 'BESPOKE' : 'TYPED EXECUTION'),
+            h('em', { style: { color: EW.inkMute } }, 'FULL GAUGE + 1 AP')))));
+  }
 }
 
 /* ══ THE TECHNIQUE PANEL (plan §5.2 item 3) — under the circuit: a category
@@ -1825,8 +1879,9 @@ function SpellTreePanel({ tree, sealed, equipped, slotCap, fc, clsName, secJob, 
    the chip row (AP / MP / RNG / AOE / PWR / the type badge / status effects /
    slots) · the verb pill. Follows `techHover || techSel`. Module-level so it
    never remounts per render. `info` = pbTechInfo(...) below. ══ */
-function pbTechInfo(tree, sealed, equipped, key, slotCap, altId) {
+function pbTechInfo(tree, sealed, equipped, key, slotCap, altId, finisher) {
   if (!tree || !key) return null;
+  if (key === PB_FIN_KEY) return pbFinisherInfo(key, finisher);
   const twin = (tree.alts && tree.alts[key]) || null;
   // altId = one OPTION of a twin node (the fork); default = the node's worn face
   const alt = (twin && altId && twin.includes(altId)) ? altId : (twin ? tree.nodes[key] : null);
@@ -1852,6 +1907,7 @@ function flSocketKind(tree, key) {
   return key && key[0] === 'P' ? 'race' : 'job';
 }
 function TechniquePanel({ info, clsName, secJob, raceLabel, fc, onVerb, onPreview, previewLabel, previewOff, previewing, used, slotCap }) {
+  if (info && info.st8 === 'finisher') return h(FinisherPanel, { info, raceLabel, onPreview, previewOff, previewing, used, slotCap });
   if (!info) {
     return h('div', { className: 'pb-technique empty' },
       h('div', { className: 'pb-technique-disc', style: { borderColor: 'rgba(255,255,255,0.18)', color: EW.inkDim } }, '◯'),
@@ -1921,6 +1977,34 @@ function TechniquePanel({ info, clsName, secJob, raceLabel, fc, onVerb, onPrevie
       h('div', { className: 'pb-technique-verbs' },
         verb ? h('button', { className: 'pb-verb ' + verbCls, disabled: verbCls === 'off', onClick: () => onVerb && onVerb(info), title: verbTitle }, verb) : h('span', { className: 'pb-verb-note' }, st8 === 'root' ? 'ALWAYS EQUIPPED' : ''),
         canPreview ? h('button', { className: 'pb-verb ghost' + (previewing ? ' live' : ''), onClick: () => onPreview && onPreview(info), disabled: !!previewOff, title: previewOff ? 'Preview off' : 'Play the cast on the stage (SPACE)' }, previewOff ? '▶ PREVIEW OFF' : (previewing ? '■ PLAYING' : '▶ PREVIEW')) : null,
+        h('span', { className: 'pb-technique-slots' }, used + ' / ' + slotCap + ' SLOTS'))));
+}
+/* THE FINISHER's panel (2026-09-19): the race's execution — the type, the
+   name, the tagline, the brief, the price (the whole gauge + 1 AP), the
+   reach (any enemy the team can see), the slice (~3× the strike's, typed by
+   the chart, STAB) — and ▶ PREVIEW plays it on the stage. A designed row
+   says so: the typed execution plays until its own is built. */
+function FinisherPanel({ info, raceLabel, onPreview, previewOff, previewing, used, slotCap }) {
+  const fin = info.fin;
+  if (!fin) return h('div', { className: 'pb-technique empty' }, h('div', { className: 'pb-technique-main' }, h('div', { className: 'pb-technique-kicker' }, 'THE FINISHER'), h('div', { className: 'pb-technique-name', style: { color: EW.inkMute } }, 'No execution on file')));
+  const t = String(fin.type || 'anomaly').toLowerCase();
+  const nc = TYPE_C[t] || EW.time;
+  const R = window.FINISHER_RULES || {};
+  const chips = [['AP ' + (R.apCost != null ? R.apCost : 1), EW.ink], ['⚛ FULL GAUGE', nc], ['RNG · SIGHT', EW.ink], ['≈3× STRIKE SLICE', '#ff6b6b'], ['STAB', nc]];
+  return h('div', { className: 'pb-technique pb-technique-fin', style: { '--tc': nc } },
+    h('div', { className: 'pb-technique-disc', style: { borderColor: nc, color: TREE_NODE_BG, background: nc } }, fin.glyph || '☠'),
+    h('div', { className: 'pb-technique-main' },
+      h('div', { className: 'pb-technique-kicker' }, ['☠ FINISHER', 'THE GAUGE\u2019S OTHER VERB', (raceLabel || '').toUpperCase(), fin.built ? 'BESPOKE' : 'TYPED EXECUTION'].filter(Boolean).join(' · ')),
+      h('div', { className: 'pb-technique-name' }, fin.name,
+        h('span', { style: { ...pbTypeBadgeStyle(t, 8), borderRadius: 999, marginLeft: 8, verticalAlign: 'middle' } }, t)),
+      fin.tagline ? h('div', { className: 'pb-technique-tagline', style: { color: nc } }, fin.tagline) : null,
+      h('div', { className: 'pb-technique-desc' }, fin.desc || ''),
+      fin.built ? null : h('div', { className: 'pb-technique-desc typed-note' }, 'DESIGNED · until its own is built this race plays the ' + t.toUpperCase() + '-type execution.'),
+      h('div', { className: 'pb-technique-chips' },
+        ...chips.map(([txt, c], i) => h('span', { key: 'c' + i, className: 'pb-technique-chip', style: { color: c } }, txt))),
+      h('div', { className: 'pb-technique-verbs' },
+        h('span', { className: 'pb-verb-note' }, 'ALWAYS READY · A FULL GAUGE BUYS IT OR THE ENTROPY STRIKE'),
+        h('button', { className: 'pb-verb ghost' + (previewing ? ' live' : ''), onClick: () => onPreview && onPreview(info), disabled: !!previewOff, title: previewOff ? 'Preview off' : 'Play the execution on the stage (SPACE)' }, previewOff ? '▶ PREVIEW OFF' : (previewing ? '■ PLAYING' : '▶ PREVIEW')),
         h('span', { className: 'pb-technique-slots' }, used + ' / ' + slotCap + ' SLOTS'))));
 }
 // ── Race traits: passives & terrain rules shown on the hero sheet ──
@@ -2917,6 +3001,29 @@ function PartyBuilder(props) {
     if (opts.hover) previewHoverTimer.current = setTimeout(() => { previewHoverTimer.current = 0; fire(); }, 180);
     else fire();
   };
+  /* THE FINISHER's preview (2026-09-19): the execution on the stage —
+     EWCharViewer.previewFinisher (the charged cast + VFX3D.stage.finisher).
+     The same triggers as pbPreview: hover (debounced, idle only), click /
+     ENTER / SPACE / ▶ at once. */
+  const pbPreviewFinisher = (opts) => {
+    opts = opts || {};
+    const fin = pbFinisherDef(unitRace);
+    if (previewHoverTimer.current) { clearTimeout(previewHoverTimer.current); previewHoverTimer.current = 0; }
+    if (!fin) return;
+    if (previewOff) { if (!opts.hover) pbNote('PREVIEW OFF'); return; }
+    const cv = window.EWCharViewer;
+    if (!cv || typeof cv.previewFinisher !== 'function') { if (!opts.hover) pbNote('NO STAGE FOR THE FINISHER'); return; }
+    const fire = () => {
+      if (!cv.isMounted || !cv.isMounted()) return;
+      if (opts.hover && cv.isPlaying && cv.isPlaying()) return;
+      previewSpellRef.current = null;
+      const ms = cv.previewFinisher(fin, { name: 'FINISHER · ' + String(fin.name || '').toUpperCase(), victim: 'THE DUMMY' });
+      if (!ms && !opts.hover) pbNote(cv.hasClips && cv.hasClips() ? 'NO STAGE FOR THE FINISHER' : 'NO PREVIEW · SPRITE VESSEL');
+      if (ms && !opts.hover) { try { if (typeof window.playDoorSfx === 'function') window.playDoorSfx('crtOn', { volume: 0.3 }); } catch (e) {} }
+    };
+    if (opts.hover) previewHoverTimer.current = setTimeout(() => { previewHoverTimer.current = 0; fire(); }, 180);
+    else fire();
+  };
   const shakeTreeNode = (key) => {
     setTreeShake(key);
     if (treeShakeTimer.current) clearTimeout(treeShakeTimer.current);
@@ -2989,6 +3096,7 @@ function PartyBuilder(props) {
       setTreeHoverPath(path && path.length > 1 ? path : null);
       setTreeDrop(null);
     } else { setTreeHoverPath(null); setTreeDrop(null); }
+    if (nodeKey === PB_FIN_KEY) { pbPreviewFinisher({ hover: true }); return; }
     if (sp || nodeKey === 'root') pbPreview(sp || null, { hover: true });
   };
   const treeNodeHoverOut = () => {
@@ -3164,9 +3272,10 @@ function PartyBuilder(props) {
         const next = techSel ? treeStepKey(techSel, dir) : 'root';
         if (next !== techSel) {
           setTechSel(next); setTechSelAlt(null); setTechHover(null); setTechHoverAlt(null); sfx('uiCursorMove');
-          const nid = next === 'root' ? null : unitTree.nodes[next];
+          const nid = (next === 'root' || next === PB_FIN_KEY) ? null : unitTree.nodes[next];
           const nsp = nid && typeof window.getSpellById === 'function' ? window.getSpellById(nid) : null;
-          if (nsp || next === 'root') pbPreview(nsp, { hover: true });
+          if (next === PB_FIN_KEY) pbPreviewFinisher({ hover: true });
+          else if (nsp || next === 'root') pbPreview(nsp, { hover: true });
         }
       }
       else if (k === 'ArrowLeft') { e.preventDefault(); selectSlot((slot - 1 + teamSize) % teamSize); }
@@ -3181,7 +3290,7 @@ function PartyBuilder(props) {
         const osp = typeof window.getSpellById === 'function' ? window.getSpellById(other) : null;
         if (osp) pbPreview(osp, { hover: true });
       }
-      else if (circuitKeys && techSel && !onButton && k === 'Enter') { e.preventDefault(); techVerb(pbTechInfo(unitTree, treeSealed, customSpells || [], techSel, slotCap, techSelAlt)); }
+      else if (circuitKeys && techSel && !onButton && k === 'Enter') { e.preventDefault(); techVerb(pbTechInfo(unitTree, treeSealed, customSpells || [], techSel, slotCap, techSelAlt, unitFinisher)); }
       else if (circuitKeys && techSel && k === 'Backspace') {
         e.preventDefault();
         if (treeNodeState(unitTree, treeSealed, customSpells || [], techSel) === 'equipped') treeNodeClick(techSel);
@@ -3189,8 +3298,9 @@ function PartyBuilder(props) {
       }
       else if (circuitKeys && !onButton && k === ' ') {
         e.preventDefault();
-        const info = pbTechInfo(unitTree, treeSealed, customSpells || [], techHover || techSel, slotCap, techHover ? techHoverAlt : techSelAlt);
-        if (info && info.st8 !== 'empty' && info.st8 !== 'socket') pbPreview(info.sp || null);
+        const info = pbTechInfo(unitTree, treeSealed, customSpells || [], techHover || techSel, slotCap, techHover ? techHoverAlt : techSelAlt, unitFinisher);
+        if (info && info.st8 === 'finisher') pbPreviewFinisher();
+        else if (info && info.st8 !== 'empty' && info.st8 !== 'socket') pbPreview(info.sp || null);
       }
     };
     document.addEventListener('keydown', onKey);
@@ -3202,6 +3312,7 @@ function PartyBuilder(props) {
   const techVerb = (info) => {
     if (!info || !unitTree) return;
     const { st8, key } = info;
+    if (st8 === 'finisher') { pbPreviewFinisher(); return; }
     if (st8 === 'socket') { if (unitTree.isFreelancer) { setFlSocketPick(key); sfx('uiCursorMove'); } return; }
     if (st8 === 'equipped') { treeNodeClick(key); return; }
     if (st8 === 'swap') { twinPickSpell(key, info.id); return; }
@@ -3214,7 +3325,8 @@ function PartyBuilder(props) {
     else if (st8 === 'blocked') flashTreeNote('NO PATH · FILL THE NODES BELOW IT FIRST');
     sfx('uiError');
   };
-  const techInfo = (useTree && unitTree) ? pbTechInfo(unitTree, treeSealed, customSpells || [], techHover || techSel, slotCap, techHover ? techHoverAlt : techSelAlt) : null;
+  const unitFinisher = pbFinisherDef(unitRace);
+  const techInfo = (useTree && unitTree) ? pbTechInfo(unitTree, treeSealed, customSpells || [], techHover || techSel, slotCap, techHover ? techHoverAlt : techSelAlt, unitFinisher) : null;
   // the slot pips' forecast: +N along the hovered path, −N under the hovered UNEQUIP
   const pipPend = techInfo && (techInfo.st8 === 'reachable' || techInfo.st8 === 'far') ? techInfo.newIds.length : 0;
   const pipDrop = techInfo && techInfo.st8 === 'equipped' && techInfo.drop ? techInfo.drop.size : 0;
@@ -3376,7 +3488,7 @@ function PartyBuilder(props) {
             selKey: techSel, selAlt: techSelAlt, hoverKey: techHover, hoverAlt: techHoverAlt, onSelect: (key, altId) => { setTechSel(key); setTechSelAlt(altId || null); },
             onOpenSubjob: (!isArena && !unitTree.isFreelancer) ? () => { setEquipPicker('subjob'); sfx('uiCursorMove'); } : undefined,
             onSocketClick: unitTree.isFreelancer ? (key) => { setFlSocketPick(key); sfx('uiCursorMove'); } : undefined,
-            onAltClick: treeAltClick })),
+            onAltClick: treeAltClick, finisher: unitFinisher })),
         null),
 
       // ── flat pool — FALLBACK only (tree fns unavailable) ──
@@ -3714,7 +3826,7 @@ function PartyBuilder(props) {
   const panelZone = hasPanel ? h('div', { key: 'panel', className: 'pb-zone pb-zone-panel' },
     h(TechniquePanel, { info: techInfo, clsName, secJob, fc,
       raceLabel: (typeof window.getRaceLabel === 'function' ? window.getRaceLabel(unitRace) : unitRace),
-      onVerb: techVerb, onPreview: (info) => pbPreview(info.sp || null),
+      onVerb: techVerb, onPreview: (info) => (info && info.st8 === 'finisher') ? pbPreviewFinisher() : pbPreview(info.sp || null),
       previewOff, previewing: !!previewState, used: (customSpells || []).length, slotCap })) : null;
   // Cosmetics belong to the selected slot, independent of its job/loadout.
   // THE CHARACTER CREATOR (rev 3, 2026-09-11): every control writes ONE

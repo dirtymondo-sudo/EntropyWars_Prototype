@@ -123,8 +123,10 @@ test('RULE #2: nothing new on state, nothing new relayed by hand', () => {
    THE FINISHERS — THE EXECUTIONS (2026-09-19): the gauge's other verb.
    ═══════════════════════════════════════════════════════════════════════ */
 const HUD = src('hud.js'), UI = src('ui.js'), ONL = src('online.js'), AI = src('ai.js');
-const BUILT = { 'king arthur': 'worldCleave', anubis: 'weighing', 'santa clause': 'naughtyList', 'honda civic': 'hitAndRun', kaiju: 'kaijuStomp', ai: 'segfault' };
-const SIG_FN = { worldCleave: '_sigWorldCleave3D', weighing: '_sigWeighing3D', naughtyList: '_sigNaughtyList3D', hitAndRun: '_sigHitAndRun3D', kaijuStomp: '_sigKaijuStomp3D', segfault: '_sigSegfault3D' };
+const BUILT = { 'king arthur': 'worldCleave', anubis: 'weighing', 'santa clause': 'naughtyList', 'honda civic': 'hitAndRun', kaiju: 'kaijuStomp', ai: 'segfault',
+    homosapien: 'haymaker', cowboy: 'bootHill', 'mad scientist': 'shrinkRay' };
+const SIG_FN = { worldCleave: '_sigWorldCleave3D', weighing: '_sigWeighing3D', naughtyList: '_sigNaughtyList3D', hitAndRun: '_sigHitAndRun3D', kaijuStomp: '_sigKaijuStomp3D', segfault: '_sigSegfault3D',
+    haymaker: '_sigHaymaker3D', bootHill: '_sigBootHill3D', shrinkRay: '_sigShrinkRay3D' };
 
 test('THE CATALOGUE: every playable race has a finisher row of its own type; the six typed defaults cover the chart', () => {
     assert.ok(g.FINISHER_RULES && g.FINISHER_RULES.apCost === 1 && g.FINISHER_RULES.baseDmg > 0, 'FINISHER_RULES');
@@ -244,4 +246,40 @@ test('THE AI: scoreFinisher competes with the strike on the same scale, the exec
     assert.match(AI, /case 'finisher': \{\s*const delay = \(typeof g\.doFinisher === 'function'\)/);
     assert.match(AI, /if \(h\.type === 'finisher'\) return h\.targetId == null \|\| c\.targetId === h\.targetId;/);
     assert.match(AI, /if \(c\.type === 'finisher'\) return 'finisher→' \+ tn\(c\.target\);/);
+});
+
+/* ═══ THE FINISHER ON THE CIRCUIT (2026-09-19) — the forge shows it and plays it ═══ */
+test('THE FORGE: the ☠ FINISHER strip stands on the TECHNIQUES circuit and previews the execution on the stage', () => {
+    const PB = src('party-builder.js'), CSS = src('styles-base.css');
+    /* the strip + the panel + the keys */
+    for (const sym of ["const PB_FIN_KEY = 'FIN';", 'function pbFinisherDef(race)', 'function pbFinisherInfo(key, fin)', "className: 'pb-fin'", "className: 'pb-fin-head'",
+                       "'pb-tn pb-tn-fin is-finisher can'", 'function FinisherPanel(', "if (info && info.st8 === 'finisher') return h(FinisherPanel,",
+                       'const pbPreviewFinisher = (opts) => {', 'cv.previewFinisher(fin, {', "if (nodeKey === PB_FIN_KEY) { pbPreviewFinisher({ hover: true }); return; }",
+                       "if (st8 === 'finisher') { pbPreviewFinisher(); return; }", "if (key === PB_FIN_KEY) return dir === 'up' ? 'root' : key;",
+                       "if (key === PB_FIN_KEY) return pbFinisherInfo(key, finisher);", 'finisher: unitFinisher }))']) {
+        assert.ok(PB.includes(sym), 'party-builder.js: ' + sym);
+    }
+    assert.ok(PB.includes('window.getFinisherDefForRace'), 'the ONE read is data.js getFinisherDefForRace');
+    assert.ok(!/pbFinisherDef[\s\S]{0,400}customSpells\.push/.test(PB), 'the finisher is never written into a loadout');
+    for (const sel of ['.pb-fin ', '.pb-fin-head ', '.pb-tn.is-finisher .pb-tn-disc ', '.pb-tn.is-finisher.built .pb-tn-disc::after', '.pb-technique-fin .pb-technique-tagline']) assert.ok(CSS.includes(sel), 'styles-base.css: ' + sel);
+    /* the viewer's beat */
+    assert.match(TR, /function _cvPreviewFinisher\(def, opts\)/);
+    assert.match(TR, /previewFinisher: function \(def, opts\) \{ return _cvPreviewFinisher\(def, opts\); \},/, 'EWCharViewer.previewFinisher');
+    assert.match(TR, /if \(opts\.chain\) return opts\.chain;/, 'an explicit chain for the charged cast');
+    const beat = TR.slice(TR.indexOf('function _cvPreviewFinisher(def, opts)'), TR.indexOf('var charViewer = {'));
+    assert.ok(beat.includes("_castChainFor('ultimate')"), 'the charged cast');
+    assert.ok(beat.includes('S.finisher(def, o)') && beat.includes('S.finisherTiming'), 'the stage script + its clock');
+    assert.ok(!beat.includes('VFX3D.fire(') && !beat.includes('fireGeometry('), 'never the relayed fire (RULE #2)');
+    /* the stage script: every built sig + every type */
+    const fin2 = VFX.slice(VFX.indexOf('THE FINISHER PASS 2 — THE EXECUTIONS'), VFX.indexOf('END THE FINISHER PASS'));
+    const stage = fin2.slice(fin2.indexOf('var _FIN_STAGE = {'));
+    for (const sig of Object.values(BUILT)) assert.ok(new RegExp('^        ' + sig + ': function \\(P\\) \\{', 'm').test(stage) || stage.includes('_FIN_STAGE.' + sig + ' = function (P) {'), '_FIN_STAGE.' + sig);
+    for (const t of g.ENTROPY_STRIKE_TYPE_ORDER) assert.match(stage, new RegExp('^        ' + t + ': function \\(P\\) \\{', 'm'), '_FIN_STAGE_TYPE.' + t);
+    for (const [sig, fn] of Object.entries(SIG_FN)) assert.ok(stage.includes(fn + '('), '_FIN_STAGE.' + sig + ' fires ' + fn);
+    assert.match(VFX, /finisher: function \(def, o\) \{ return _finStagePlay\(def, o\); \},/, 'VFX3D.stage.finisher');
+    assert.match(VFX, /finisherTiming: function \(def, o\) \{ return _finStageTiming\(def, o\); \},/, 'VFX3D.stage.finisherTiming');
+    assert.ok(stage.includes('if (!_VS.on || !def) return 0;'), 'the script plays on the stage only');
+    /* the script's timing shape: charge → strike → resolve, every beat through P.at (= _fxDelay) */
+    assert.ok(!/setTimeout\(/.test(stage), 'no bare timer in the stage script');
+    assert.ok(fin2.includes('at: function (ms, fn) { _fxDelay('), 'P.at is _fxDelay');
 });
