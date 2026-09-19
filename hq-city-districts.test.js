@@ -111,7 +111,7 @@ test('THE THREE CITIES (data): Downtown 224 × 176 and the Grid 208 × 168 with 
     const cut = gr.terrain.features.find(f => f.k === 'plateau' && f.sink);
     assert.ok(cut && cut.h === -4 && gr.terrain.features.indexOf(gr.terrain.features.find(f => f.k === 'ramp' && f.h1 === -4 && !f.stairs)) > gr.terrain.features.indexOf(cut), 'the ramp road is authored after the cut');
     assert.equal(D.hqTerrainDoorY(gr, at(GRID, 'bay')), -4, 'the bay door lands in the undercity');
-    assert.ok(gr.terrain.features.filter(f => f.k === 'deck' && f.gangway).length === 3 && gr.terrain.features.filter(f => f.k === 'climb' && f.look === 'fireescape').length === 8 && gr.terrain.features.filter(f => f.k === 'climb' && f.look === 'pipe').length === 2, 'three gangways, four fire escapes, two drains');
+    assert.ok(gr.terrain.features.filter(f => f.k === 'deck' && f.gangway).length === 3 && gr.terrain.features.filter(f => f.k === 'climb' && f.look === 'fireescape').length === 9 && gr.terrain.features.filter(f => f.k === 'climb' && f.look === 'pipe').length === 2, 'three gangways, four fire escapes, two drains');
     assert.ok(st.terrain.features.filter(f => f.k === 'climb' && f.look === 'fireescape').length === 4 && st.terrain.features.filter(f => f.k === 'deck').length === 4 && st.terrain.features.some(f => f.k === 'stream' && f.key === 'deep_water'), 'two fire escapes, four bridges over the canal');
     for (const id of ['docks_sewer', 'undercity_sewer']) {
         const l = HQ.links.find(x => x.id === id);

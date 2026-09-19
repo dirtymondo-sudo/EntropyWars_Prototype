@@ -27,7 +27,7 @@ const D = loadGameData(), HQ = D.DOOR_HQ;
 const TR_RULES = vm.runInContext('TERRAIN_RULES', D);
 const renderer = fs.readFileSync(__dirname + '/three-renderer.js', 'utf8');
 const ROOMS = D.hqTerrainRooms();
-const KINDS = ['hill', 'dip', 'ridge', 'plateau', 'ramp', 'deck', 'pool', 'stream', 'wall', 'rail', 'path', 'tree', 'grove', 'scatter', 'climb'];   // + THE CLIMB (AREA_CONTENT_PLAN D1, 2026-09-19)
+const KINDS = ['hill', 'dip', 'ridge', 'plateau', 'ramp', 'deck', 'pool', 'stream', 'wall', 'rail', 'path', 'tree', 'grove', 'scatter', 'climb', 'bridge'];   // + THE CLIMB (AREA_CONTENT_PLAN D1, 2026-09-19) + THE BRIDGE LAYER (D2b)
 const SPRITES_SRC = fs.readFileSync(require('node:path').join(__dirname, 'sprites.js'), 'utf8');
 const sheetOk = k => !!(HQ.textures[k] || TR_RULES[k] || (typeof k === 'string' && k.startsWith('urban:') && SPRITES_SRC.includes("'" + k.slice(6) + "'")));   // THE URBAN PACK (2026-09-17): `urban:<Name>` is a sheet too
 const num = re => { const m = re.exec(renderer); assert.ok(m, String(re)); return parseFloat(m[1]); };

@@ -10858,3 +10858,17 @@ hq-stage2 / hq-map-remembers / hq-skate / hq-deep / hq-portal / hq-encounter / s
 - **Ship**: data.js (R2 + Render — the finds ledger), three-renderer.js (R2), index.html (Render); tests + docs to the repo.
 - **UNSEEN LIVE (RULE #1c)**: everything — the fire-escape cages against the pack's tenement sheets, the gangways, the ramp road's
   cars, the overlook's drop, the canal's sheet, the church GLB, the cranes, the grate under the water, the districts side by side.
+
+### 2026-09-19 — AREA CONTENT PLAN D2b: THE BRIDGE LAYER — THE OVERPASS + THE OVERLOOK SPAN (local delivery)
+- **The ask**: "Why is that limit there and how can we remove it? … Of course we need stacked walkable areas like bridges. Why
+  can't we have 2 floors or even more? … why can't we just use 3D objects as bridges?"
+- **The answer, built**: a `bridge` feature row is a SECOND SURFACE over the terrain field (data.js `hqTerrainBridges` → `info.bridges`,
+  the feet / air / boom rules, every solver keyed by cell + layer; three-renderer.js `_hqBuildBridges`; the door gun's surface read and
+  lip snap). Full log: AREA_CONTENT_PLAN §7 (D2b); the rule: EXPLORABLE_AREAS_GUIDE §4b + §5 item 3.
+- **The rooms**: `site_prebuilt_downtown_streets` — THE OVERPASS (the parking deck ⇄ THE WEST LANDING over THE AVENUE, THE OVERPASS
+  ALLEY + STAIR off the ring road, the landing's rail; the deck's north rail shortened round the mouth); `site_prebuilt_cyberpunk_streets` —
+  THE OVERLOOK SPAN (the overlook ⇄ THE PIER over THE CUT + THE LOWER CROSS, THE PIER ALLEY + a 7 m fire escape; the overlook's
+  drop-side rail in two parts round the mouth). `node check-terrain.js` on both: every door reached, nothing traps, zero rescue ramps.
+- **Tests**: `hq-bridge-layer.test.js` (new); hq-terrain.test.js's KINDS pin. **Ship**: data.js (R2 + Render), three-renderer.js (R2),
+  index.html (Render, token `20260919-bridge-layer-01-cors`); check-terrain.js, tests + docs to the repo.
+- **UNSEEN LIVE (RULE #1c)**: the slab from below, the piers, the rails' height, the headroom under a truck, the fire escape's 7 m.

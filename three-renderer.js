@@ -38769,6 +38769,54 @@ const ThreeRenderer = (function () {
             }
         });
     }
+    /* THE BRIDGE LAYER (2026-09-19): the slabs over the field — see the call site in _hqBuildTerrain */
+    function _hqBuildBridges(room, info, G, TM, U) {
+        var S = room.shell || {};
+        var topMat = new THREE.MeshPhongMaterial({ map: _hzTex(info.path) || null, color: 0xffffff, shininess: 8 }); topMat.emissive = new THREE.Color(0x101010);
+        var sideMat = new THREE.MeshPhongMaterial({ map: _hzTex(info.cliff) || null, color: 0xdcdcdc, shininess: 4 }); sideMat.emissive = new THREE.Color(0x0e0e0e);
+        if (S.wallColor != null) sideMat.color.multiply(new THREE.Color(S.wallColor));
+        var steel = new THREE.MeshPhongMaterial({ color: 0x8a8f94, shininess: 60 });
+        var kerbMat = new THREE.MeshPhongMaterial({ color: 0xb9b6ae, shininess: 10 });
+        _hq.blockers = _hq.blockers || [];
+        info.bridges.forEach(function (b) {
+            var keyMat = b.key ? new THREE.MeshPhongMaterial({ map: _hzTex(b.key) || null, color: 0xffffff, shininess: 8 }) : topMat;
+            var L = b.len, yaw = Math.atan2(b.x1 - b.x0, b.z1 - b.z0), cx = (b.x0 + b.x1) / 2, cz = (b.z0 + b.z1) / 2;
+            var g = new THREE.Group(); g.position.set(cx * U, b.y * U + 0.3, cz * U); g.rotation.y = yaw;
+            /* the slab: six faces, the top in its own sheet */
+            var slabGeo = new THREE.BoxGeometry(b.w * U, b.thick * U, L * U); _hzBoxUV(slabGeo, b.w * U, b.thick * U, L * U, TM);
+            var mats = [sideMat, sideMat, keyMat, sideMat, sideMat, sideMat];   // +x −x +y −y +z −z
+            var slab = new THREE.Mesh(slabGeo, mats); slab.position.y = -b.thick / 2 * U; slab.receiveShadow = true; slab.renderOrder = 1; g.add(slab);
+            /* a deeper girder under the middle (an overpass reads as a box girder from below) */
+            var girder = new THREE.Mesh(new THREE.BoxGeometry(b.w * 0.6 * U, 0.22 * U, Math.max(0.5, L - 1.2) * U), sideMat); girder.position.y = (-b.thick - 0.11) * U; g.add(girder);
+            /* the kerb lips */
+            [-1, 1].forEach(function (sg) { var lip = new THREE.Mesh(new THREE.BoxGeometry(0.16 * U, 0.09 * U, L * U), kerbMat); lip.position.set(sg * (b.w / 2 - 0.08) * U, 0.045 * U, 0); g.add(lip); });
+            /* the rails: posts every 1.6 m, a top bar at 1.05 and a mid bar */
+            if (b.rails) [-1, 1].forEach(function (sg) {
+                var ox = sg * (b.w / 2 - 0.1);
+                [1.05, 0.55].forEach(function (rh) { var bar = new THREE.Mesh(new THREE.CylinderGeometry(0.03 * U, 0.03 * U, L * U, 8), steel); bar.rotation.x = Math.PI / 2; bar.position.set(ox * U, rh * U, 0); g.add(bar); });
+                var np = Math.max(2, Math.round(L / 1.6));
+                for (var pk = 0; pk < np; pk++) { var t = pk / (np - 1); var post = new THREE.Mesh(new THREE.CylinderGeometry(0.035 * U, 0.04 * U, 1.05 * U, 6), steel); post.position.set(ox * U, 0.525 * U, (t - 0.5) * L * U); g.add(post); }
+                var c = Math.cos(yaw), sn = Math.sin(yaw);
+                _hq.rails.push({ x0: b.x0 + ox * c, z0: b.z0 - ox * sn, x1: b.x1 + ox * c, z1: b.z1 - ox * sn, y: b.y + 1.05, bridge: true });
+            });
+            g.renderOrder = 1; G.add(g);
+            /* the piers */
+            var ux = (b.x1 - b.x0) / L, uz = (b.z1 - b.z0) / L, nPier = Math.max(0, Math.floor((L - 2) / 7));
+            var nearRoute = function (px, pz) { var T = info.traffic || []; for (var i = 0; i < T.length; i++) { if (_hqTPolyDist(px, pz, T[i].pts).d < (T[i].lane || 2.2) + 1.6) return true; } return false; };
+            for (var pi = 1; pi <= nPier; pi++) {
+                var t2 = pi / (nPier + 1), bx = b.x0 + ux * L * t2, bz = b.z0 + uz * L * t2;
+                [-1, 1].forEach(function (sg) {
+                    var px = bx + (-uz) * sg * (b.w / 2 - 0.35), pz = bz + ux * sg * (b.w / 2 - 0.35);
+                    var gy = hqTerrainHeight(info, px, pz), under = b.y - b.thick - gy;
+                    if (under < 1.5 || nearRoute(px, pz)) return;
+                    if (typeof hqTerrainSolidAt === 'function' && hqTerrainSolidAt(info, px, pz, 0)) return;
+                    var pier = new THREE.Mesh(new THREE.CylinderGeometry(0.22 * U, 0.26 * U, under * U, 10), sideMat);
+                    pier.position.set(px * U, (gy + under / 2) * U + 0.3, pz * U); pier.renderOrder = 1; G.add(pier);
+                    _hq.blockers.push({ obj: pier, y: gy, top: null, rad: 0.3, pier: true });
+                });
+            }
+        });
+    }
     function _hqBuildTerrain(room) {
         if (typeof hqTerrainInfo !== 'function') return;
         var U = _hqUnits(), S = room.shell, G = _hq.shellGroup;
@@ -38916,6 +38964,12 @@ const ThreeRenderer = (function () {
             });
             g.renderOrder = 1; G.add(g);
         });
+        /* ── THE BRIDGE LAYER (AREA_CONTENT_PLAN D2b, 2026-09-19): a `bridge` row is a SECOND SURFACE the field never carries (data.js
+           hqTerrainBridges — the walker reads it through hqTerrainFeet's layer rule, nothing here is read for the feet). Drawn: the slab
+           (its top in the path sheet — an overpass is pavement — its sides and underside in the cliff sheet), a kerb lip, steel rails on
+           posts either side (grind rails on the park register), and PIERS down to the ground under the span every ~7 m where the ground
+           lies ≥ 1.5 m below and no traffic route runs (a pier in a road would be driven through) — each pier a blocker. ── */
+        if (info.bridges && info.bridges.length) { try { _hqBuildBridges(room, info, G, TM, U); } catch (e) { console.warn('[HQ] the bridges failed', e); } }
         /* ── THE FLOATING PIECES: a cloud platform's puffy underside under every float plateau, a marble tread on its own puff under every step of a float flight ── */
         if (floats.length) { try { _hqBuildFloats(room, info, G, TM, rng, floats); } catch (e) { console.warn('[HQ] the floating pieces failed', e); } }
         /* ── THE WALLS: a slab in the cliff sheet standing on the ground (its top a rail) ── */
@@ -45664,6 +45718,8 @@ const ThreeRenderer = (function () {
     function _hqPortalSurf(x, z, ry) {
         var base = _hqSurface(x, z, null, true);
         if (base === null) return null;
+        /* THE BRIDGE LAYER (2026-09-19): a free query is the ground's — the ray falling onto a bridge's deck lands on the DECK */
+        if (_hq.terrain && _hq.terrain.bridges && _hq.terrain.bridges.length && typeof hqTerrainBridgeBelow === 'function' && ry != null) { var bb = hqTerrainBridgeBelow(_hq.terrain, x, z, ry); if (bb && bb.y > base) base = bb.y; }
         var bf = _hqBlockerFloor(x, z, ry);
         return (bf !== null && bf > base) ? bf : base;
     }
@@ -45860,6 +45916,11 @@ const ThreeRenderer = (function () {
         /* THE LIP on a TERRAIN pinnacle (2026-09-17): a wall hit on a steep face whose top — the flat ground a little inside
            the face — lies within the snap band above the hit is a floor door on that top (the tapes on the crags) */
         if (H.terrain && typeof hqTerrainHeight === 'function') {
+            /* THE BRIDGE LAYER (2026-09-19): a wall hit on a slab's side within the snap band of its deck is a floor door ON the deck */
+            if (H.terrain.bridges && H.terrain.bridges.length && typeof hqTerrainBridgesAt === 'function') {
+                var bl = hqTerrainBridgesAt(H.terrain, hit.x - hit.nx * 0.55, hit.z - hit.nz * 0.55, 0);
+                for (var bi = 0; bi < bl.length; bi++) if (bl[bi].y > hit.y && bl[bi].y - hit.y <= snap) return { surf: 'floor', x: hit.x - hit.nx * 0.55, y: bl[bi].y, z: hit.z - hit.nz * 0.55, dist: hit.dist, nx: 0, ny: 1, nz: 0, lip: true };
+            }
             for (var td = 0.35; td <= 1.25; td += 0.15) {
                 var tx = hit.x - hit.nx * td, tz = hit.z - hit.nz * td, tg = hqTerrainHeight(H.terrain, tx, tz);
                 if (tg > hit.y && tg - hit.y <= snap && hqTerrainSlope(H.terrain, tx, tz) < 0.5 && hqTerrainFeet(H.terrain, tx, tz, null) != null)

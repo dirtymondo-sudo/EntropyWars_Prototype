@@ -250,8 +250,14 @@ The pieces a city's verticality is built from, and the rules the solver taught:
   deep bed leaves a dry ledge at the bank's foot the walker drops onto and cannot leave (the compiler rescues it
   with a ramp — a scar). A fluid's forced band is wider than its water: lots on a street backing onto a canal need
   ≥ 5.5 m of mass between the sidewalk and the bank. A bridge is a `deck` authored after the canal (a causeway).
-- **THE OVERPASS over a walked street** is NOT buildable yet — it needs a second height layer (the gallery's rule for
-  terrain). Span water, a yard or a cut instead.
+- **THE OVERPASS over a walked street** (D2b, 2026-09-19) is a **`bridge`** row — `{ k: 'bridge', x0, z0, x1, z1, w, y, thick?,
+  rails?, key? }` (or a `deck` wearing `over: true`): a SECOND SURFACE the height field never carries (data.js
+  `hqTerrainBridges`; the wall rule generalised — hqTerrainFeet returns its top for feet arriving within a climb of it, the
+  ground under it stays walked while the slab leaves 1.95 m of headroom, the solvers key a node by cell AND layer). Its two
+  ends stand 0.7 m INSIDE the tiers it joins (their heights = its `y`); a `bridge` is LEVEL (a slope is a `ramp` on the
+  field); bridges may stack; never run one over a car ramp that rises to within the headroom of its slab (that strip of
+  the ramp becomes a wall). The renderer draws the slab, the rails (grind rails) and piers where no traffic runs. A
+  `deck` (written INTO the field) is still right over water the walker never enters; over anything WALKED use a bridge.
 
 ## 5. MULTI-FLOOR AND PLATFORMS (the Portal ask)
 
@@ -285,6 +291,9 @@ What is missing, and the plan for it:
    each with its own mask; a stair / a lift / a hole joins them; `hqTerrainFeet` reads the
    floor the feet are on). This is the big one; do it after the shaft room proves the
    surface-layer pattern.
+   **THE PATTERN IS PROVEN (D2b, 2026-09-19): the `bridge` layer (§4b) — a surface the field never carries, read by the
+   feet's arrival height, solid to the air and the boom, a second node per cell in the solvers. A true floor is that with a
+   MASK instead of a slab, plus its own walls; a stair / a hole between the floors is the bridge's mouth rule.**
 
 ---
 
@@ -646,3 +655,7 @@ climber faces (the mass is that way); the head lands `climbMount` past the tier'
   rail-on-a-roof rule, the canal's shallow bed, the overpass that is not yet buildable). Downtown 224 × 176 (the financial
   blocks · the old town · the docks), the Grid 208 × 168 (the neon grid · the stacks · the undercity), the Strip's two
   rooftops; `hq-city-districts.test.js`. Log: AREA_CONTENT_PLAN §7. Next: D3 (the twenty areas, two or three a delivery).
+- **2026-09-19 — AREA_CONTENT_PLAN D2b (local delivery): THE BRIDGE LAYER.** The overpass over a walked street IS buildable
+  now: a `bridge` row is a second surface the height field never carries (§4b's rule rewritten below; §5 item 3's pattern
+  proven). Downtown's THE OVERPASS over the avenue, the Grid's THE OVERLOOK SPAN over the cut and the lower cross to THE
+  PIER. `hq-bridge-layer.test.js`. Log: AREA_CONTENT_PLAN §7.

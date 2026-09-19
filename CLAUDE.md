@@ -5918,3 +5918,33 @@ Strip at its size + two rooftops; every pinned core coordinate untouched; `parti
 `RULES.R7.districts` 3; a road out is never earned; a tier is judged against the MEDIAN sill. R1 is not met by either city
 (the number was set from 1 500 m² caves — the user's call in AREA_CONTENT_PLAN §6). `npm test` runs
 `hq-city-districts.test.js`. Ship data.js to Render too. UNSEEN LIVE (RULE #1c): all of it.
+
+## AREA CONTENT PLAN D2b — THE BRIDGE LAYER (stacked walkable surfaces in a terrain room) — 2026-09-19, local delivery
+The user: "why is that limit there … of course we need stacked walkable areas like bridges … why can't we just use 3D
+objects as bridges?" THE LIMIT was one structure: the terrain field `info.H` holds one height per (x, z), a `deck` was
+WRITTEN INTO it (a deck over a walked street deleted the street) and every solver keyed a node by cell alone. (A 3D object
+always walked — a prop's top is a floor, the stairwell's stacked blockers — but the solvers could not see it, so nothing could
+prove a route across it.) Now a **`bridge`** feature row (`{ k: 'bridge', x0, z0, x1, z1, w, y, thick?, rails?, key? }`, or a
+`deck` wearing `over: true`) is a SECOND SURFACE the field never carries: data.js `hqTerrainBridges` → `info.bridges` (each
+with its `layer`); **`hqTerrainFeet` returns its top for feet that ARRIVE within a climb of it** (`hqTerrainBridgeFor` — the
+wall rule generalised; a fall lands on the first slab under it; a FREE query is the ground's), the ground under it stays
+walked while the slab leaves `HQ_TERRAIN_RULES.headroom` (1.95 m; a lower slab is a wall to the body beneath — never a
+clip), `hqTerrainAir` / `hqTerrainCam` hold the slab solid (`hqTerrainInBridgeSlab`), and EVERY solver keys a node by cell +
+layer × (nx·nz) (`_hqTNodeFeet` = the candidates at a cell — the step's surface, the jump's cliff top, every bridge the jump
+reaches from below — used by `_hqTReachGrid` / `_hqTReachJump` / `_hqTReturnJump` / `hqTerrainReach` (string keys `i,j` /
+`i,j,L`; `hqTerrainNodeKey(info, x, z, y)` names a layer when given a y) / `_hqTTraps` (components over CELLS)). Bridges
+STACK (`hqTerrainLayerAt`). A plan forces only a bridge's two MOUTHS (a short run 0.9–1.6 m INSIDE each tier at 0.7 × the
+width — the raster's round cap must stay inside the tier, or the ground beside it opens and traps). RULES: a bridge is LEVEL
+(a slope is a `ramp` on the field); its ends stand 0.7 m inside the tiers it joins at their height; never run one over a car
+ramp that rises to within the headroom of its slab; over water the walker never enters a `deck` is still right. Renderer:
+three-renderer.js **`_hqBuildBridges`** (from `_hqBuildTerrain`: the slab — the path sheet on top, the cliff sheet on the
+sides — a box girder, kerb lips, steel rails = grind rails on `_hq.rails` (`bridge: true`), PIERS every ~7 m where the ground
+lies ≥ 1.5 m below and no traffic route runs, each a blocker with no top); the door gun's `_hqPortalSurf` lands the ray on a
+deck (`hqTerrainBridgeBelow`) and `_hqPortalLedgeSnap` puts a floor door on one. `check-terrain.js` prints `bridges n` and
+the dump draws a span as `B`. THE TWO: Downtown's **THE OVERPASS** (the parking deck west over THE AVENUE at 3 m to THE WEST
+LANDING + THE OVERPASS STAIR off the ring road) and the Grid's **THE OVERLOOK SPAN** (the overlook south over THE CUT and THE
+LOWER CROSS to THE PIER, down a 7 m fire escape). `npm test` runs `hq-bridge-layer.test.js`. NOT built: a door ON a bridge,
+props on a bridge, the full second floor (EXPLORABLE_AREAS_GUIDE §5 item 3 — this is its pattern). Pre-existing on main
+before this delivery, not touched: hq-climb's six-looks pin (D2 added `fireescape`) and hq-terrain's "fountain stands in the
+water" on Downtown. Ship data.js to R2 AND Render. UNSEEN LIVE (RULE #1c): the slab from below, the piers, the rails, the
+headroom under a truck, the fire escape's 7 m against the pier.

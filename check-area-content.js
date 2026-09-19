@@ -134,6 +134,14 @@ function auditRoom(D, id, r) {
                     if (Math.abs(n.y - L.y) < 0.8 && !(info.sea && !info.sea.under)) continue;
                     if (los({ x: n.x, z: n.z, y: n.y }, { x: L.x, z: L.z, y: L.y - 0.4 })) { seen = true; break; }
                 }
+                /* THE BRIDGE LAYER (D2b, 2026-09-19): the sample above is every 7th node in the reach's insertion order — a solver change reorders
+                   it and a tease found by luck is lost; an exit the sample misses is judged against EVERY reachable node in the band */
+                if (!seen) for (const [key, y] of reach) {
+                    const [i, j] = key.split(',').map(Number), nx = info.x0 + i * info.res, nz = info.z0 + j * info.res;
+                    const dist = Math.hypot(nx - L.x, nz - L.z); if (dist < 6 || dist > 45) continue;
+                    if (Math.abs(y - L.y) < 0.8 && !(info.sea && !info.sea.under)) continue;
+                    if (los({ x: nx, z: nz, y }, { x: L.x, z: L.z, y: L.y - 0.4 })) { seen = true; break; }
+                }
                 (seen ? rec.teased : rec.unteased).push(L.door.id);
             }
         } catch (e) { rec.err2 = e.message.slice(0, 80); }

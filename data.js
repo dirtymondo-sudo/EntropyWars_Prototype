@@ -29589,7 +29589,16 @@ const DOOR_HQ = {
                     { k: 'pool', x: 0, z: 0, r: 3.2, y: 0, depth: 0.45 },                                                         // THE FOUNTAIN (waded)
                     { k: 'plateau', x: 24, z: -15, w: 12, d: 12, h: 3.0, edge: 0.35 },                                              // THE PARKING DECK's roof (inside the north-east block)
                     { k: 'ramp', x0: 14.0, z0: -15, x1: 18.5, z1: -15, w: 4.0, h0: 0, h1: 3.0 },                                    // the car ramp up to it (an incline the walker climbs, a launch at speed; its last 0.5 m inside the deck's rect, where it is 2.9 → 3.0)
-                    { k: 'rail', x0: 18.4, z0: -20.6, x1: 29.6, z1: -20.6 }, { k: 'rail', x0: 29.6, z0: -20.6, x1: 29.6, z1: -9.4 }, { k: 'rail', x0: 18.4, z0: -9.4, x1: 29.6, z1: -9.4 },   // the deck's edge rail (the grind)
+                    { k: 'rail', x0: 22.6, z0: -20.6, x1: 29.6, z1: -20.6 }, { k: 'rail', x0: 29.6, z0: -20.6, x1: 29.6, z1: -9.4 }, { k: 'rail', x0: 18.4, z0: -9.4, x1: 29.6, z1: -9.4 },   // (the north rail starts east of THE OVERPASS's mouth — D2b)
+                    /* ═══ THE OVERPASS (AREA CONTENT D2b — THE BRIDGE LAYER, 2026-09-19): the parking deck's roof crosses THE AVENUE at 3 m on a
+                       `bridge` row — a SECOND SURFACE over the walked street (data.js hqTerrainBridges): the avenue's traffic and walkers pass under
+                       it, the walker on it looks down on both. It lands on THE WEST LANDING, a 3 m tier in the north-west block's corner, whose
+                       stair comes up an alley off the ring road's south sidewalk (the ramp rule: 10.3 m for 3 m, ending 0.7 m inside the tier). ═══ */
+                    { k: 'bridge', x0: -6.7, z0: -19.2, x1: 18.7, z1: -19.2, w: 3.2, y: 3.0 },                                     // THE OVERPASS over THE AVENUE (west landing ⇄ the parking deck)
+                    { k: 'plateau', x: -11, z: -19.2, w: 10, d: 9, h: 3.0, edge: 0.35 },                                            // THE WEST LANDING (x −16..−6, z −23.7..−14.7)
+                    { k: 'path', pts: [[-26, -24.2], [-26, -18]], w: 4 },                                                            // THE OVERPASS ALLEY off the ring road's sidewalk
+                    { k: 'ramp', x0: -27, z0: -19.2, x1: -16.7, z1: -19.2, w: 3, h0: 0, h1: 3.0, stairs: true },                    // THE OVERPASS STAIR up to the landing (its last 0.7 m inside the tier)
+                    { k: 'rail', x0: -14.4, z0: -23.0, x1: -7.6, z1: -23.0 },                                                        // the landing's rail (the drop to the ring road side — 1.6 m inside the edge)   // the deck's edge rail (the grind)
                     { k: 'hill', x: -20, z: -14, r: 5.5, h: 1.5, open: true },                                                      // THE COLLAPSE — the rubble mound where the tower came down (inside the north-west block)
                     { k: 'plateau', x: -29.5, z: 15, w: 7, d: 8, h: 4.0, edge: 0.3 },                                               // THE ROOFTOP (the tape's; the door gun's) — flush with the ring road's west sidewalk
                     { k: 'path', pts: [[0, -5], [0, 5]], w: 21 },                                                                   // THE PLAZA is pavement (THE URBAN PACK, 2026-09-17): the path sheet over the open square — the cars' routes break at ±8, the walker crosses it
@@ -30075,7 +30084,14 @@ const DOOR_HQ = {
                     { k: 'path', pts: [[40, 37], [52, 37]], w: 4 },                                                                     // the overlook's side street off the loop's east leg
                     { k: 'ramp', x0: 52, z0: 37, x1: 62.7, z1: 37, w: 4, h0: 0, h1: 3.0 },                                              // up to THE OVERLOOK (its last 0.7 m inside the tier)
                     { k: 'plateau', x: 70, z: 37, w: 16, d: 12, h: 3.0, edge: 0.35 },                                                  // THE OVERLOOK — seven metres over the lower cross
-                    { k: 'rail', x0: 63.6, z0: 41.4, x1: 76.4, z1: 41.4 }, { k: 'rail', x0: 76.4, z0: 41.4, x1: 76.4, z1: 32.6 },         // its rails (the drop side, the grind — 1.6 m inside the edge)
+                    { k: 'rail', x0: 63.6, z0: 41.4, x1: 67.6, z1: 41.4 }, { k: 'rail', x0: 72.4, z0: 41.4, x1: 76.4, z1: 41.4 }, { k: 'rail', x0: 76.4, z0: 41.4, x1: 76.4, z1: 32.6 },   // (the drop-side rail parts round THE OVERLOOK SPAN's mouth — D2b)
+                    /* ═══ THE OVERLOOK SPAN (AREA CONTENT D2b — THE BRIDGE LAYER, 2026-09-19): the overlook no longer only LOOKS seven metres down —
+                       a `bridge` row carries the walker south over the cut and THE LOWER CROSS (its trucks pass under) to THE PIER, a 3 m tower
+                       standing in the undercity, whose fire escape drops to an alley off the lower cross (a 7 m climb — the undercity's way up). ═══ */
+                    { k: 'bridge', x0: 70, z0: 42.3, x1: 70, z1: 72.7, w: 3.2, y: 3.0 },                                            // THE OVERLOOK SPAN over THE CUT + THE LOWER CROSS
+                    { k: 'plateau', x: 70, z: 76, w: 8, d: 8, h: 3.0, edge: 0.35 },                                                 // THE PIER (x 66..74, z 72..80) — seven metres over the undercity floor
+                    { k: 'path', pts: [[70, 62], [70, 71.4]], w: 4 },                                                                // THE PIER ALLEY off the lower cross
+                    { k: 'climb', x: 70, z: 71.6, face: 180, look: 'fireescape' },                                                  // THE PIER's fire escape: the alley (−4) → the pier's top (3)         // its rails (the drop side, the grind — 1.6 m inside the edge)
                     { k: 'pool', x: -60, z: 62, r: 3.2, rz: 2.6, y: -4, depth: 0.35 },                                                  // THE LOWER PUDDLE (waded)
                     /* the furniture (the kerb rule: on the sidewalks) */
                     { k: 'scatter', key: 'vending_machine', n: 4, x: -43, z: 12, r: 8, seed: 7 },                                     // THE MARKET's machines
@@ -36732,6 +36748,10 @@ const HQ_TERRAIN_RULES = {
        LINE the walker rides between two heights — the solver takes it as an EDGE (foot ↔ head), so a tier a ladder alone reaches
        satisfies every door-reach and return test and a tape above one stops being hard */
     climbReach: 0.6, climbSpeed: 1.6, climbMount: 0.3,
+    /* THE BRIDGE LAYER (AREA_CONTENT_PLAN D2b, 2026-09-19 — "of course we need stacked walkable areas like bridges"): a `bridge` row
+       is a SECOND SURFACE over the field — never written into H. The walker stands on it when its feet ARRIVE near its top (the wall
+       rule); under it the ground stays walked as long as the slab leaves `headroom`; the solver keys a node by cell AND layer */
+    bridgeThick: 0.28, headroom: 1.95, bridgeEdge: 0.12,
 };
 function _hqTSmooth(t) { t = t < 0 ? 0 : t > 1 ? 1 : t; return t * t * (3 - 2 * t); }
 function _hqTHash(ix, iz, seed) {
@@ -36899,34 +36919,39 @@ function _hqTMaskDistance(mask, nx, nz, res) {
 /* THE DEEP (2026-09-18): the climb every walker of the field obeys — none in a DROWNED room (`terrain.sea.under`: the swimmer flies) */
 function _hqTClimbLim(info, climb) { return (info.sea && info.sea.under) ? Infinity : climb; }
 function _hqTReachGrid(info, i0, j0, mask, until) {
-    const nx = info.nx, nz = info.nz, res = info.res, seen = new Map(), q = [], from = until ? new Map() : null;
+    /* THE BRIDGE LAYER (2026-09-19): a node's key is cell + layer × (nx·nz) — `seen` may hold two nodes in one column (the street
+       and the bridge over it); `until` names CELLS and the returned `path` is CELLS (the corridor carver lays ground) */
+    const nx = info.nx, nz = info.nz, NN = nx * nz, res = info.res, seen = new Map(), q = [], from = until ? new Map() : null;
     const climbLim = _hqTClimbLim(info, info.rules.climb);
     const feet = (i, j, prev) => hqTerrainFeet(info, info.x0 + i * res, info.z0 + j * res, prev);
     const y0 = feet(i0, j0, null); if (y0 == null) return { seen, path: null };
-    const k0 = j0 * nx + i0; seen.set(k0, y0); q.push([i0, j0, y0]);
+    const k0 = j0 * nx + i0; seen.set(k0, y0); q.push([i0, j0, y0, k0]);
     if (until && until.has(k0)) return { seen, path: [k0] };
     const N = [[1, 0], [-1, 0], [0, 1], [0, -1]];
     const CE = hqTerrainClimbEdges(info);   // THE CLIMB (2026-09-19): the edges
+    const walkBack = (k) => { const path = [k % NN]; let c = k; while (from.has(c)) { c = from.get(c); path.push(c % NN); } return path; };
     let head = 0;
     while (head < q.length) {
         const p = q[head++];
-        const pk = p[1] * nx + p[0], ce = CE.get(pk);
+        const pk = p[3], ce = CE.get(pk % NN);
         if (ce) for (const e of ce) {
-            const k = e.k; if (seen.has(k)) continue;
-            const i = k % nx, j = (k - i) / nx, y = feet(i, j, null); if (y == null) continue;
-            seen.set(k, y); q.push([i, j, y]);
+            const cell = e.k, i = cell % nx, j = (cell - i) / nx, y = _hqTClimbLand(info, i, j, e.y); if (y == null) continue;   // the head lands where the climb says (a tier, a bridge's deck)
+            const k = cell + hqTerrainLayerAt(info, info.x0 + i * res, info.z0 + j * res, y) * NN; if (seen.has(k)) continue;
+            seen.set(k, y); q.push([i, j, y, k]);
             if (from) from.set(k, pk);
-            if (until && until.has(k)) { const path = [k]; let c = k; while (from.has(c)) { c = from.get(c); path.push(c); } return { seen, path }; }
+            if (until && until.has(cell)) return { seen, path: walkBack(k) };
         }
         for (const n of N) {
             const i = p[0] + n[0], j = p[1] + n[1];
             if (i < 0 || j < 0 || i >= nx || j >= nz) continue;
-            const k = j * nx + i; if (seen.has(k)) continue;
-            if (mask && !mask[k]) continue;
-            const y = feet(i, j, p[2]); if (y == null || y - p[2] > climbLim) continue;
-            seen.set(k, y); q.push([i, j, y]);
-            if (from) from.set(k, pk);
-            if (until && until.has(k)) { const path = [k]; let c = k; while (from.has(c)) { c = from.get(c); path.push(c); } return { seen, path }; }
+            const cell = j * nx + i;
+            if (mask && !mask[cell]) continue;
+            for (const c of _hqTNodeFeet(info, i, j, p[2], climbLim, false)) {
+                const k = cell + c[1] * NN; if (seen.has(k)) continue;
+                seen.set(k, c[0]); q.push([i, j, c[0], k]);
+                if (from) from.set(k, pk);
+                if (until && until.has(cell)) return { seen, path: walkBack(k) };
+            }
         }
     }
     return { seen, path: null };
@@ -36939,6 +36964,7 @@ function _hqTReachJump(info, seeds, mask, climb) {
     /* the body never stands inside the shell's wall band (HQ_BODY_R off the wall): a sliver on a tier's edge blend AT the wall is not a place */
     const bx = info.S.w / 2 - (info.rules.bodyR || 0.34), bz = info.S.d / 2 - (info.rules.bodyR || 0.34);
     const feet = (i, j, prev) => { const x = info.x0 + i * res, z = info.z0 + j * res; if (Math.abs(x) > bx || Math.abs(z) > bz) return null; return hqTerrainFeet(info, x, z, prev); };
+    const NN = nx * nz;   // THE BRIDGE LAYER (2026-09-19): keys are cell + layer × NN
     seeds.forEach(sd => { const k = sd[1] * nx + sd[0]; if (seen.has(k)) return; const y = feet(sd[0], sd[1], null); if (y == null) return; seen.set(k, y); q.push([sd[0], sd[1], y]); });
     const N = [[1, 0], [-1, 0], [0, 1], [0, -1]];
     const CE = hqTerrainClimbEdges(info);   // THE CLIMB (2026-09-19): the edges — a ladder's head is reached from its foot
@@ -36946,42 +36972,42 @@ function _hqTReachJump(info, seeds, mask, climb) {
     while (head < q.length) {
         const p = q[head++];
         const ce = CE.get(p[1] * nx + p[0]);
-        if (ce) for (const e of ce) { const k = e.k; if (seen.has(k)) continue; const i = k % nx, j = (k - i) / nx, y = feet(i, j, null); if (y == null) continue; seen.set(k, y); q.push([i, j, y]); }
+        if (ce) for (const e of ce) { const cell = e.k, i = cell % nx, j = (cell - i) / nx, y = _hqTClimbLand(info, i, j, e.y); if (y == null) continue; const k = cell + hqTerrainLayerAt(info, info.x0 + i * res, info.z0 + j * res, y) * NN; if (seen.has(k)) continue; seen.set(k, y); q.push([i, j, y]); }
         for (const n of N) {
             const i = p[0] + n[0], j = p[1] + n[1];
             if (i < 0 || j < 0 || i >= nx || j >= nz) continue;
-            const k = j * nx + i; if (seen.has(k)) continue;
-            if (mask && !mask[k]) continue;
-            let y = feet(i, j, p[2]);
-            if (y == null) { y = feet(i, j, null); if (y == null || y - p[2] > climb) continue; }   // a cliff the step refuses: the jump lands on its top when it is low enough
-            else if (y - p[2] > climb) continue;
-            seen.set(k, y); q.push([i, j, y]);
+            const cell = j * nx + i;
+            if (mask && !mask[cell]) continue;
+            if (Math.abs(info.x0 + i * res) > bx || Math.abs(info.z0 + j * res) > bz) continue;
+            for (const c of _hqTNodeFeet(info, i, j, p[2], climb, true)) { const k = cell + c[1] * NN; if (seen.has(k)) continue; seen.set(k, c[0]); q.push([i, j, c[0]]); }
         }
     }
     return seen;
 }
 function _hqTReturnJump(info, forward, pads, mask, climb) {
     /* the cells that can step / jump INTO a returning cell: BFS backwards from the pads */
-    const nx = info.nx, nz = info.nz, res = info.res, ret = new Set(), q = [];
-    const feet = (i, j, prev) => hqTerrainFeet(info, info.x0 + i * res, info.z0 + j * res, prev);
+    const nx = info.nx, nz = info.nz, NN = nx * nz, ret = new Set(), q = [];
+    /* THE BRIDGE LAYER (2026-09-19): every node is cell + layer × NN; a neighbour cell may hold several nodes (the street, the
+       bridge over it) — each is asked whether ITS feet reach THIS node's surface */
+    const layersAt = (cell) => { const out = []; for (let L = 0; L * NN + cell < NN * ((info.bridges || []).length + 1); L++) if (forward.has(cell + L * NN)) out.push(cell + L * NN); return out; };
     pads.forEach(pn => { const k = pn[1] * nx + pn[0]; if (!ret.has(k) && forward.has(k)) { ret.add(k); q.push(k); } });
     const N = [[1, 0], [-1, 0], [0, 1], [0, -1]];
     const CE = hqTerrainClimbEdges(info);   // THE CLIMB (2026-09-19): a ladder's head returns by its foot (the edge runs both ways)
     let head = 0;
     while (head < q.length) {
-        const k = q[head++], i = k % nx, j = (k - i) / nx;
-        const ce = CE.get(k);
-        if (ce) for (const e of ce) { const kk = e.k; if (ret.has(kk) || !forward.has(kk)) continue; ret.add(kk); q.push(kk); }
+        const k = q[head++], cell = k % NN, i = cell % nx, j = (cell - i) / nx, y = forward.get(k);
+        const ce = CE.get(cell);
+        if (ce) for (const e of ce) for (const kk of layersAt(e.k)) { if (ret.has(kk)) continue; ret.add(kk); q.push(kk); }
         for (const n of N) {
             const ii = i + n[0], jj = j + n[1];
             if (ii < 0 || jj < 0 || ii >= nx || jj >= nz) continue;
-            const kk = jj * nx + ii; if (ret.has(kk) || !forward.has(kk)) continue;
-            if (mask && !mask[kk]) continue;
-            const yp = forward.get(kk);
-            let yn = feet(i, j, yp);
-            if (yn == null) { yn = feet(i, j, null); if (yn == null || yn - yp > climb) continue; }
-            else if (yn - yp > climb) continue;
-            ret.add(kk); q.push(kk);
+            const ncell = jj * nx + ii;
+            if (mask && !mask[ncell]) continue;
+            for (const kk of layersAt(ncell)) {
+                if (ret.has(kk)) continue;
+                const yp = forward.get(kk);
+                if (_hqTNodeFeet(info, i, j, yp, climb, true).some(c => Math.abs(c[0] - y) < 0.05)) { ret.add(kk); q.push(kk); }
+            }
         }
     }
     return ret;
@@ -36990,8 +37016,8 @@ function _hqTTraps(info, padNodes, mask) {
     const climb = _hqTClimbLim(info, (info.rules.jump != null) ? info.rules.jump : info.rules.climb);
     const forward = _hqTReachJump(info, padNodes, mask, climb);
     const ret = _hqTReturnJump(info, forward, padNodes, mask, climb);
-    const nx = info.nx, trapped = new Set();
-    for (const k of forward.keys()) if (!ret.has(k)) trapped.add(k);
+    const nx = info.nx, NN = nx * info.nz, trapped = new Set();
+    for (const k of forward.keys()) if (!ret.has(k)) trapped.add(k % NN);   // THE BRIDGE LAYER: a trapped node names its CELL (the rescue lays ground; a bridge node that traps is its tier's)
     const comps = [], seen = new Set();
     for (const k0 of trapped) {
         if (seen.has(k0)) continue;
@@ -37152,6 +37178,15 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
                    at ground level: a pocket the walker dropped into off the gangway's side and could not leave) */
                 if (f.k === 'deck' && f.gangway) { polys.push({ pts: [[f.x0 - ex * 0.2, f.z0 - ez * 0.2], [f.x1 + ex * 0.2, f.z1 + ez * 0.2]], w: f.w }); break; }
                 polys.push({ pts: [[f.x0 - ex * 0.5, f.z0 - ez * 0.5], [f.x1 + ex, f.z1 + ez]], w: f.w + 2 * grow + 0.6 }); break; }
+            case 'bridge': {
+                /* THE BRIDGE LAYER (2026-09-19): the span forces NOTHING (the ground under it is whatever it is — a street, a river, a yard);
+                   its two MOUTHS are open ground the walker steps off onto (1.4 m past each end, the slab's width) */
+                const dx = f.x1 - f.x0, dz = f.z1 - f.z0, L = Math.hypot(dx, dz) || 1, ex = dx / L, ez = dz / L;
+                /* (the raster reads a polyline with ROUND caps of w / 2: the mouth is a short run 0.9…1.6 m inside the tier at 0.7 × the width, so its cap
+                   ends ≈ 0.5 m short of the tier's edge — a cap past the edge opened the ground BESIDE the tier and trapped the walker there) */
+                polys.push({ pts: [[f.x0 - ex * 0.9, f.z0 - ez * 0.9], [f.x0 - ex * 1.6, f.z0 - ez * 1.6]], w: f.w * 0.7 });
+                polys.push({ pts: [[f.x1 + ex * 0.9, f.z1 + ez * 0.9], [f.x1 + ex * 1.6, f.z1 + ez * 1.6]], w: f.w * 0.7 });
+                break; }
             case 'pool': discs.push({ x: f.x, z: f.z, r: Math.max(f.r, f.rz || f.r) + (f.bank != null ? f.bank : 0.9) * 0.6 }); break;   // the water and half its bank (a pool may lie against the rock)
             case 'stream': polys.push({ pts: f.pts, w: f.w + 2 * (f.bank != null ? f.bank : 0.9) * 0.7 }); break;
             case 'ridge': if (f.open) polys.push({ pts: f.pts, w: f.w * 0.8 }); break;
@@ -37859,12 +37894,13 @@ function hqTerrainCompile(room, roomId) {
     const x0 = -(nx - 1) * res / 2, z0 = -(nz - 1) * res / 2;
     const base = T.base || 0, seed = (typeof hqHash === 'function') ? hqHash(String(roomId || room.label || 'terrain')) : 7;
     const F = T.features || [];
-    const relief = [], standing = [], basins = [], pads = [], walls = [], rails = [], paths = [], decks = [], fluids = [], trees = [], scatterRows = [], climbRows = [];
+    const relief = [], standing = [], basins = [], pads = [], walls = [], rails = [], paths = [], decks = [], fluids = [], trees = [], scatterRows = [], climbRows = [], bridges = [];
     F.forEach(f => {
         switch (f.k) {
             case 'hill': case 'dip': case 'ridge': relief.push(f); break;
             case 'plateau': case 'ramp': standing.push(f); break;
-            case 'deck': standing.push(f); decks.push(f); break;
+            case 'deck': if (f.over) { bridges.push(f); break; } standing.push(f); decks.push(f); break;   // `over: true` = a bridge (below)
+            case 'bridge': bridges.push(f); break;   // THE BRIDGE LAYER (2026-09-19): a deck OVER walked ground — a layer, never a height
             case 'pool': basins.push(f); fluids.push({ kind: 'pool', x: f.x, z: f.z, r: f.r, rz: f.rz, rot: f.rot, y: f.y, key: f.key || 'water', depth: f.depth || 0.8 }); break;
             case 'stream': basins.push(f); fluids.push({ kind: 'stream', pts: f.pts, w: f.w, y: f.y, key: f.key || 'water', depth: f.depth || 0.6 }); break;
             case 'wall': walls.push(f); break;
@@ -37916,7 +37952,7 @@ function hqTerrainCompile(room, roomId) {
         }
         return h;
     };
-    const ordered = F.filter(f => /^(hill|dip|ridge|plateau|ramp|deck|pool|stream)$/.test(f.k));
+    const ordered = F.filter(f => /^(hill|dip|ridge|plateau|ramp|deck|pool|stream)$/.test(f.k) && !(f.k === 'deck' && f.over));   // THE BRIDGE LAYER: a deck wearing `over` is a bridge — never a height
     const hBefore = (px, pz) => {
         let h = hBase(px, pz);
         for (const f of ordered) {
@@ -37987,12 +38023,14 @@ function hqTerrainCompile(room, roomId) {
                       the piece in the air — a puffy underside under a platform, a slab tread + a puff under every step of a flight */
                    floats: F.filter(f => f.float === true && (f.k === 'plateau' || (f.k === 'ramp' && f.stairs))),
                    climbs: [],   // THE CLIMB (2026-09-19): filled after the field is final (hqTerrainClimbs)
+                   bridges: [],  // THE BRIDGE LAYER (2026-09-19): filled after the field is final (hqTerrainBridges)
                    /* DISASTER CITY (2026-09-17): NPC TRAFFIC routes ({ pts, loop, n, speed, lane, kinds }) and THE CIRCUIT ({ label, pts, w, gates }) — read by three-renderer.js _hqBuildTraffic / _hqBuildRace */
                    traffic: (T.traffic || []).filter(t => t && Array.isArray(t.pts) && t.pts.length >= 2).map(t => Object.assign({ n: 4, speed: 7, lane: 2.2, loop: false, kinds: ['suv', 'cadillac'] }, t)),
                    race: (T.race && Array.isArray(T.race.pts) && T.race.pts.length >= 3) ? Object.assign({ w: 10, gates: 8, label: 'THE CIRCUIT' }, T.race) : null };
     /* THE GENERATED FLOOR PLAN (2026-09-17): the mask, the rise on the solid, the thicket — before the walls / trees / scatter read the field */
     info.shops = Array.isArray(T.shops) ? T.shops.map(r => Object.assign({}, r)) : [];   // THE SHOPFRONTS (THE MALL, THE THIRD PASS, 2026-09-17): drawn by three-renderer.js _hqBuildShopfronts
     info.climbs = hqTerrainClimbs(info, climbRows);   // THE CLIMB (2026-09-19): the edges exist BEFORE the plan's guarantee runs (a ladder out of a pit is the return; no rescue ramp is cut for it)
+    info.bridges = hqTerrainBridges(info, bridges);   // THE BRIDGE LAYER: the plan's guarantee walks the bridges too
     if (T.gen) { try { _hqTGenerate(info, room, roomId, T.gen, doorPads, F); } catch (e) { console.warn('[terrain] the floor plan failed', roomId, e); } }
     else {
         /* THE RETURN GUARANTEE without a plan (2026-09-17): a room that is its own floor still gets its rescue ramps */
@@ -38016,6 +38054,7 @@ function hqTerrainCompile(room, roomId) {
        its head on the tier it reaches (y1 clamped to the ground at the head's landing, so the mount is a step); a row whose head is
        not above its foot is dropped with a warning */
     info.climbs = hqTerrainClimbs(info, climbRows); info._climbEdges = null;
+    info.bridges = hqTerrainBridges(info, bridges);   // THE BRIDGE LAYER (2026-09-19): the second surface, checked against the ground under it
     /* the trees + the scatter: seeded, on flat dry ground, clear of pads / paths / water / doors / each other */
     const placed = [];
     const freeFor = (px, pz, rad, opts) => {
@@ -38028,6 +38067,7 @@ function hqTerrainCompile(room, roomId) {
         for (const p of doorPads) { const din = p.r ? p.r - Math.hypot(px - p.x, pz - p.z) : _hqTRectIn(px, pz, p); if (din > -(rad + 0.4)) return false; }
         if (!opts.onPath) for (const p of paths) if (_hqTPolyDist(px, pz, p.pts).d < p.w / 2 + rad) return false;
         for (const d of decks) { const L = _hqTRamp(px, pz, d); if (L.t > -0.1 && L.t < 1.1 && Math.abs(L.v) < d.w / 2 + rad + 0.3) return false; }
+        for (const b of info.bridges) { const L = _hqTRamp(px, pz, b); if (L.t > -0.1 && L.t < 1.1 && Math.abs(L.v) < b.w / 2 + rad + 0.3) return false; }   // THE BRIDGE LAYER: nothing under a bridge's mouth or its span
         /* THE MALL, THE THIRD PASS (2026-09-17 — the plant pot on the escalator): nothing stands on a ramp, a stair or an escalator, nor on the field's skirt beside it */
         for (const f of F) if (f.k === 'ramp') { const L = _hqTRamp(px, pz, f); if (L.t > -0.15 && L.t < 1.15 && Math.abs(L.v) < f.w / 2 + rad + 0.7) return false; }
         /* THE KERB RULE (2026-09-17 — "the cone and fire hydrant placement feels completely random"): in a city plan the street furniture stands on the SIDEWALK, never in the roadway (the traffic's) and never deep in a yard */
@@ -38088,6 +38128,86 @@ function hqTerrainClimbs(info, rows) {
     });
     return out;
 }
+/* ── THE BRIDGE LAYER (AREA_CONTENT_PLAN D2b, 2026-09-19) ─────────────────────────────────────────────────────────
+   The user: "Of course we need stacked walkable areas like bridges. Why can't we have 2 floors or even more?" The
+   field held ONE height per (x, z) — a `deck` was written into H, so a deck over a walked street deleted the street.
+   A `bridge` row { k: 'bridge', x0, z0, x1, z1, w, y, thick?, rails?, key? } (or a deck wearing `over: true`) is a
+   SECOND SURFACE the field never carries: hqTerrainFeet returns its top for a walker whose feet ARRIVE within a climb
+   of it (the wall rule — a free query is the ground's), the ground under it stays walked while the slab leaves
+   `headroom`, the slab is solid to the airborne body and the boom, and the solver keys a node by cell AND layer
+   (0 = the ground, n = the n-th bridge) so a bridge over a street is two nodes in one column. Any number of bridges
+   may stack. The renderer draws the slab, its rails and its piers (three-renderer.js _hqBuildTerrain). */
+function hqTerrainBridges(info, rows) {
+    const R = info.rules || HQ_TERRAIN_RULES, out = [];
+    (rows || []).forEach((f, i) => {
+        if (!f || typeof f.x0 !== 'number' || typeof f.z0 !== 'number' || typeof f.x1 !== 'number' || typeof f.z1 !== 'number' || typeof f.y !== 'number') return;
+        const L = Math.hypot(f.x1 - f.x0, f.z1 - f.z0); if (L < 0.5) return;
+        const b = { i, layer: out.length + 1, x0: f.x0, z0: f.z0, x1: f.x1, z1: f.z1, w: f.w || 3, y: f.y, thick: (typeof f.thick === 'number') ? f.thick : R.bridgeThick, rails: f.rails !== false, key: f.key || null, len: L, id: f.id || ('bridge:' + i) };
+        /* the ground under the span (the piers' feet, the headroom check): sampled every metre */
+        let gmax = -Infinity, low = 0;
+        for (let k = 0; k <= Math.ceil(L); k++) { const t = Math.min(1, k / Math.max(1, L)); const g = hqTerrainHeight(info, f.x0 + (f.x1 - f.x0) * t, f.z0 + (f.z1 - f.z0) * t); if (g > gmax) gmax = g; if (b.y - b.thick - g < R.headroom && b.y - g > R.climb + 0.05) low++; }
+        b.gmax = gmax;
+        if (low && typeof console !== 'undefined') console.warn('[terrain] bridge', b.id, 'in', info.roomId, 'leaves under', R.headroom, 'm of headroom on', low, 'samples — the ground there is a wall to the walker');
+        out.push(b);
+    });
+    return out;
+}
+/* every bridge whose slab covers (x, z) — `pad` grows (negative shrinks) the half width */
+function hqTerrainBridgesAt(info, x, z, pad) {
+    const B = info.bridges; if (!B || !B.length) return [];
+    const out = [];
+    for (const b of B) { const L = _hqTRamp(x, z, b); if (L.t >= 0 && L.t <= 1 && Math.abs(L.v) <= b.w / 2 + (pad || 0)) out.push(b); }
+    return out;
+}
+/* the bridge a walker whose feet are at curY STANDS on at (x, z): the highest whose top is within a climb of the feet (a
+   body falling from higher lands on the first slab under it; a body on the ground stays under) — else null */
+function hqTerrainBridgeFor(info, x, z, curY) {
+    if (curY == null) return null;
+    const R = info.rules || HQ_TERRAIN_RULES, climb = _hqTClimbLim(info, R.climb);
+    let best = null;
+    for (const b of hqTerrainBridgesAt(info, x, z, -R.bridgeEdge)) if (b.y <= curY + climb && (!best || b.y > best.y)) best = b;
+    return best;
+}
+/* the highest bridge whose top is at or under y — a surface the door gun's ray falls onto */
+function hqTerrainBridgeBelow(info, x, z, y) {
+    let best = null;
+    for (const b of hqTerrainBridgesAt(info, x, z, -0.02)) if (b.y <= y + 0.05 && (!best || b.y > best.y)) best = b;
+    return best;
+}
+/* the LAYER of a node at (x, z) with its feet at y: 0 = the ground (or a wall's top / a deck), n = the n-th bridge */
+function hqTerrainLayerAt(info, x, z, y) {
+    if (!info.bridges || !info.bridges.length || y == null) return 0;
+    for (const b of hqTerrainBridgesAt(info, x, z, 0.05)) if (Math.abs(b.y - y) < 0.25) return b.layer;
+    return 0;
+}
+/* is the point inside a bridge's slab (the airborne body, the boom, a shot)? */
+function hqTerrainInBridgeSlab(info, x, z, y, pad) {
+    for (const b of hqTerrainBridgesAt(info, x, z, pad || 0)) if (y > b.y - b.thick - (pad || 0) && y < b.y + (pad || 0)) return b;
+    return null;
+}
+/* THE SOLVER'S CANDIDATES at cell (i, j) for a walker coming from prevY: the surface the step rule gives (a bridge within a
+   climb, else the ground / a wall's top / a wade), the jump's landing on a cliff's top (`jump` = the climb is the jump's) and
+   every bridge the jump reaches from below. Each row [y, layer]. */
+function _hqTNodeFeet(info, i, j, prevY, climb, jump) {
+    const x = info.x0 + i * info.res, z = info.z0 + j * info.res, R = info.rules, out = [];
+    let y = hqTerrainFeet(info, x, z, prevY);
+    if (y == null && jump) { const y0 = hqTerrainFeet(info, x, z, null); if (y0 != null && y0 - prevY <= climb) y = y0; }   // a cliff the step refuses: the jump lands on its top when it is low enough
+    if (y != null && y - prevY <= climb) out.push([y, hqTerrainLayerAt(info, x, z, y)]);
+    if (info.bridges && info.bridges.length && prevY != null) for (const b of hqTerrainBridgesAt(info, x, z, -R.bridgeEdge)) {
+        if (y != null && Math.abs(b.y - y) < 0.05) continue;
+        if (b.y > prevY && b.y - prevY <= climb) out.push([b.y, b.layer]);   // up onto a bridge (a step onto its end, a jump onto its side)
+    }
+    return out;
+}
+/* a CLIMB's far node: the free query (the ground, a tier — as before), unless a surface nearer the climb's stated height stands there (a bridge's deck) */
+function _hqTClimbLand(info, i, j, ey) {
+    const x = info.x0 + i * info.res, z = info.z0 + j * info.res;
+    const y = hqTerrainFeet(info, x, z, null), yb = hqTerrainFeet(info, x, z, ey);
+    if (yb != null && (y == null || Math.abs(yb - ey) < Math.abs(y - ey))) return yb;
+    return y;
+}
+function _hqTNodeKey(info, i, j, layer) { return j * info.nx + i + (layer || 0) * info.nx * info.nz; }
+function _hqTCellOf(info, key) { return key % (info.nx * info.nz); }
 /* the solver's EDGES: a climb joins the grid node at its foot to the node at its head (both ways) */
 function hqTerrainClimbEdges(info) {
     if (info._climbEdges) return info._climbEdges;
@@ -38150,6 +38270,8 @@ function hqTerrainSolidTop(info, x, z) {
 function hqTerrainFeet(info, x, z, curY) {
     const R = info.rules;
     if (Math.abs(x) > info.halfW - 0.5 || Math.abs(z) > info.halfD - 0.5) return null;
+    /* THE BRIDGE LAYER (2026-09-19): a walker arriving near a bridge's top stands ON it — over whatever lies below (a street, a mass, a river) */
+    if (info.bridges && info.bridges.length) { const b = hqTerrainBridgeFor(info, x, z, curY); if (b) return b.y; }
     if (hqTerrainSolidAt(info, x, z, 0)) return null;   // a city block is a mass: never stood in
     const g = hqTerrainHeight(info, x, z);
     /* THE DEEP (2026-09-18): a DROWNED room — the swimmer reaches every cell (the ground, a wall's top); no slope, no climb */
@@ -38169,6 +38291,8 @@ function hqTerrainFeet(info, x, z, curY) {
         }
     }
     if (curY != null && y > curY + 0.02 && !w) { if (hqTerrainSlope(info, x, z) > R.maxSlope) return null; }
+    /* THE BRIDGE LAYER: the ground under a slab is walked only while the slab leaves the body its headroom */
+    if (info.bridges && info.bridges.length) for (const b of hqTerrainBridgesAt(info, x, z, R.bodyR)) if (b.y - y > R.climb + 0.05 && b.y - b.thick - y < R.headroom) return null;   // (a slab within a climb of the ground is its mouth on a tier — stepped onto, never a wall)
     return y;
 }
 /* the airborne body: never inside the ground, a wall or a hazard's sheet */
@@ -38178,6 +38302,7 @@ function hqTerrainAir(info, x, z, y) {
     if (y < g - 0.05) return false;
     if (hqTerrainSolidAt(info, x, z, 0) && y < hqTerrainSolidTop(info, x, z) - 0.05) return false;   // inside a block's mass
     const w = hqTerrainWallAt(info, x, z, info.rules.bodyR); if (w && y < w.top - 0.05) return false;
+    if (info.bridges && info.bridges.length && hqTerrainInBridgeSlab(info, x, z, y, 0.05)) return false;   // THE BRIDGE LAYER: the slab is solid (the feet never inside it; the head clears it by the headroom rule at the feet)
     const f = hqTerrainFluidAt(info, x, z);
     if (f && !f.sea && g < f.y - 0.05 && (f.key !== 'water' || f.y - g > info.rules.wadeMax) && y < f.y + 0.4) return false;   // THE DEEP: the sea is entered (the swimmer's own rule, three-renderer.js _hqSwimFree)
     return true;
@@ -38188,6 +38313,7 @@ function hqTerrainCam(info, x, z, y) {
     if (y < g + 0.24) return true;
     if (hqTerrainSolidAt(info, x, z, -0.15) && y < hqTerrainSolidTop(info, x, z) + 0.2) return true;   // the boom never enters a block
     const w = hqTerrainWallAt(info, x, z, 0.15); if (w && y < w.top + 0.2) return true;
+    if (info.bridges && info.bridges.length && hqTerrainInBridgeSlab(info, x, z, y, 0.22)) return true;   // THE BRIDGE LAYER: the boom never enters a slab
     const f = hqTerrainFluidAt(info, x, z); if (f && !f.sea && g < f.y && y < f.y + 0.22) return true;   // THE DEEP: the boom follows a diver under the sea
     return false;
 }
@@ -38208,26 +38334,25 @@ function hqTerrainDoorY(room, door) {
 }
 /* THE SOLVER: every grid node the walker reaches from (x, z) under its own rule (4-connected, the feet carried) */
 function hqTerrainReach(info, x, z) {
+    /* THE BRIDGE LAYER (2026-09-19): a ground node's key is 'i,j', a bridge node's 'i,j,L' (L = the bridge's layer) — hqTerrainNodeKey(info, x, z, y) */
     const seen = new Map(), q = [];
     const i0 = Math.round((x - info.x0) / info.res), j0 = Math.round((z - info.z0) / info.res);
     const at = (i, j) => hqTerrainFeet(info, info.x0 + i * info.res, info.z0 + j * info.res, null);
     const y0 = at(i0, j0); if (y0 == null) return seen;
-    seen.set(i0 + ',' + j0, y0); q.push([i0, j0, y0]);
+    const keyOf = (i, j, L) => L ? (i + ',' + j + ',' + L) : (i + ',' + j);
+    seen.set(keyOf(i0, j0, hqTerrainLayerAt(info, info.x0 + i0 * info.res, info.z0 + j0 * info.res, y0)), y0); q.push([i0, j0, y0]);
     const N = [[1, 0], [-1, 0], [0, 1], [0, -1]];
     const climbLim = _hqTClimbLim(info, info.rules.climb);   // THE DEEP: a drowned room has no climb (the swimmer)
     const CE = hqTerrainClimbEdges(info);   // THE CLIMB (2026-09-19): a ladder's foot reaches its head
-    while (q.length) {
-        const p = q.shift();
+    let head = 0;
+    while (head < q.length) {
+        const p = q[head++];
         const ce = CE.get(p[1] * info.nx + p[0]);
-        if (ce) for (const e of ce) { const ei = e.k % info.nx, ej = (e.k - ei) / info.nx, ek = ei + ',' + ej; if (seen.has(ek)) continue; const ey = hqTerrainFeet(info, info.x0 + ei * info.res, info.z0 + ej * info.res, null); if (ey == null) continue; seen.set(ek, ey); q.push([ei, ej, ey]); }
+        if (ce) for (const e of ce) { const ei = e.k % info.nx, ej = (e.k - ei) / info.nx; const ey = _hqTClimbLand(info, ei, ej, e.y); if (ey == null) continue; const ek = keyOf(ei, ej, hqTerrainLayerAt(info, info.x0 + ei * info.res, info.z0 + ej * info.res, ey)); if (seen.has(ek)) continue; seen.set(ek, ey); q.push([ei, ej, ey]); }
         for (const n of N) {
             const i = p[0] + n[0], j = p[1] + n[1];
             if (i < 0 || j < 0 || i >= info.nx || j >= info.nz) continue;
-            const k = i + ',' + j; if (seen.has(k)) continue;
-            const y = hqTerrainFeet(info, info.x0 + i * info.res, info.z0 + j * info.res, p[2]);
-            if (y == null) continue;
-            if (y - p[2] > climbLim) continue;
-            seen.set(k, y); q.push([i, j, y]);
+            for (const c of _hqTNodeFeet(info, i, j, p[2], climbLim, false)) { const k = keyOf(i, j, c[1]); if (seen.has(k)) continue; seen.set(k, c[0]); q.push([i, j, c[0]]); }
         }
     }
     return seen;
@@ -38240,7 +38365,7 @@ function hqTerrainTraps(info) {
     if (!pads.length) return [];
     return _hqTTraps(info, pads, null).map(c => { const k = c[0], i = k % info.nx, j = (k - i) / info.nx; return { cells: c.length, x: +(info.x0 + i * info.res).toFixed(2), z: +(info.z0 + j * info.res).toFixed(2), y: +hqTerrainHeight(info, info.x0 + i * info.res, info.z0 + j * info.res).toFixed(2) }; });
 }
-function hqTerrainNodeKey(info, x, z) { return Math.round((x - info.x0) / info.res) + ',' + Math.round((z - info.z0) / info.res); }
+function hqTerrainNodeKey(info, x, z, y) { const k = Math.round((x - info.x0) / info.res) + ',' + Math.round((z - info.z0) / info.res); const L = (y != null) ? hqTerrainLayerAt(info, x, z, y) : 0; return L ? k + ',' + L : k; }   // THE BRIDGE LAYER: a y on a bridge names its layer
 /* the landing of a door in a terrain room (2.4 m inside its wall / in front of a free way), with its feet */
 function hqTerrainDoorLanding(room, door) {
     const S = room.shell || {}; let x, z;
@@ -38262,6 +38387,7 @@ function hqTerrainDump(info, opts) {
             let ch;
             if ((info.climbs || []).some(c => Math.hypot(c.x - x, c.z - z) < step / 2)) ch = '|';   // THE CLIMB: a ladder / rope / vine
             else if (hqTerrainWallAt(info, x, z, step / 2)) ch = '#';
+            else if (info.bridges && info.bridges.length && hqTerrainBridgesAt(info, x, z, -0.05).length) ch = 'B';   // THE BRIDGE LAYER: a slab over the ground (the ground under it is walked)
             else if (info.maskD && hqTerrainMaskAt(info, x, z) < 0) ch = '#';
             else if (info.trees.some(t => Math.hypot(t.x - x, t.z - z) < step / 2)) ch = 'T';
             else if (info.pads.some(p => (p.r ? p.r - Math.hypot(x - p.x, z - p.z) : _hqTRectIn(x, z, p)) > 0)) ch = 'D';
@@ -38601,7 +38727,7 @@ function hqTerrainFindSpot(roomId, sp) {
     const ri = hqFindRoomInfo(roomId); if (!ri || !ri.terrain) return sp;
     const out = Object.assign({}, sp);
     if (out.y == null) out.y = Math.round(hqTerrainHeight(ri.terrain, out.x, out.z) * 100) / 100;
-    if (out.hard == null && ri.reach && !ri.reach.has(hqTerrainNodeKey(ri.terrain, out.x, out.z))) out.hard = true;
+    if (out.hard == null && ri.reach && !ri.reach.has(hqTerrainNodeKey(ri.terrain, out.x, out.z, out.y))) out.hard = true;   // THE BRIDGE LAYER: a find pinned on a bridge is that layer's node
     if (!out.hard) delete out.hard;
     return out;
 }
@@ -38849,6 +38975,7 @@ function hqFindHardReachTerrain(row, ri) {
             const px = ex + dx * t, pz = ez + dz * t, py = ey + dy * t;
             if (py <= hqTerrainHeight(ti, px, pz) + 0.05) return false;
             const w = hqTerrainWallAt(ti, px, pz, 0); if (w && py < w.top + 0.05) return false;
+            if (ti.bridges && ti.bridges.length && hqTerrainInBridgeSlab(ti, px, pz, py, 0.05)) return false;   // THE BRIDGE LAYER: no shot through a slab
         }
         return dx * f.nx + dz * f.nz < 0;
     };

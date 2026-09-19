@@ -161,7 +161,7 @@ trap rule, the walker on a stub line, the source sites); the climb's teaching ro
 garage's ramp wall (a ladder to the dock's roof with a plaque). Ship: data.js (R2 + Render),
 three-renderer.js, sprites.js, styles-base.css (the hint), index.html; tests + docs.
 
-**D2 — DISASTER CITY + THE GRID, TWICE THE SIZE.** *(SHIPPED 2026-09-19 as a local delivery — see §7; the overpass over a walked street and the undercity UNDER the skyway were re-shaped because the height field holds one height per point: the bridges span water, the undercity sits BESIDE the overlook.)* Downtown's streets → 224 × 176 with three
+**D2 — DISASTER CITY + THE GRID, TWICE THE SIZE.** *(SHIPPED 2026-09-19 as a local delivery — see §7; the overpass over a walked street was first re-shaped because the height field held one height per point — then D2b (§7, the same day) added THE BRIDGE LAYER and built THE OVERPASS over the avenue and THE OVERLOOK SPAN over the undercity.)* Downtown's streets → 224 × 176 with three
 districts (THE FINANCIAL BLOCKS = towers + the parking deck + the overpass; THE OLD TOWN = low
 brick, the market square, the church square (a second weenie); THE DOCKS = the waterfront,
 cranes, the drowned quay = a swim to a container roof), the Grid → 208 × 168 (THE NEON GRID;
@@ -292,3 +292,36 @@ The questions as they were asked:
   gangways over the yards, the ramp road's cars going down, the overlook's rails, the canal's dark sheet at 0.55 m, the
   church GLB in its yard, the cranes' scale, the flooded quay's grate under the water, the traffic islands' trees on the
   avenue, the districts' looks side by side (the old town's brick hoardings against the financial glass).
+- 2026-09-19 — **D2b SHIPPED (local delivery): THE BRIDGE LAYER — the overpass over a walked street.** The user: "Why is
+  that limit there and how can we remove it? Surely we can figure out how to make bridges in the game. Of course we need
+  stacked walkable areas like bridges. Why can't we have 2 floors or even more? … why can't we just use 3D objects as
+  bridges?" THE ANSWER: the limit was one data structure — `info.H` holds one height per (x, z), a `deck` was written into it,
+  and every solver keyed a node by cell alone. The walker never collided with meshes (a prop's top is already a floor: the
+  stairwell's stacked step blockers), so a 3D-object bridge always walked — but the solvers could not SEE it, so no test
+  could prove a route across it. The fix is the wall rule generalised: a **`bridge`** row (`{ k: 'bridge', x0, z0, x1, z1,
+  w, y, thick?, rails?, key? }`, or a `deck` wearing `over: true`) is a SECOND SURFACE the field never carries — data.js
+  `hqTerrainBridges` → `info.bridges` (each with its `layer`); `hqTerrainFeet` returns its top for feet ARRIVING within a
+  climb of it (`hqTerrainBridgeFor` — a fall lands on the first slab under it; a free query is the ground's), the ground
+  under it stays walked while the slab leaves `HQ_TERRAIN_RULES.headroom` (1.95 m — a lower slab is a wall to the body
+  beneath, never a clip), `hqTerrainAir` / `hqTerrainCam` hold the slab solid (`hqTerrainInBridgeSlab`), and EVERY solver
+  keys a node by cell + layer × (nx·nz) (`_hqTNodeFeet` = the candidates at a cell: the step's surface, the jump's cliff
+  top, every bridge the jump reaches from below; `_hqTReachGrid` / `_hqTReachJump` / `_hqTReturnJump` / `hqTerrainReach`
+  (string keys `i,j` / `i,j,L`; `hqTerrainNodeKey(info, x, z, y)`) / `_hqTTraps` (components over cells)). Any number of
+  bridges may stack (`hqTerrainLayerAt`). A plan forces only a bridge's two MOUTHS (a short run inside each tier — the
+  raster's round cap must stay inside the tier or the ground beside it opens and traps). The renderer draws the slab (the
+  path sheet on top, the cliff sheet on the sides), a box girder, kerb lips, steel rails (grind rails on the register) and
+  PIERS where the ground lies ≥ 1.5 m below and no traffic route runs (each a blocker) — `_hqBuildBridges`; the door gun's
+  ray lands on a deck (`_hqPortalSurf` → `hqTerrainBridgeBelow`) and the lip snap puts a floor door on one. THE TWO:
+  Downtown's **THE OVERPASS** (the parking deck's roof west across THE AVENUE at 3 m to THE WEST LANDING, a 3 m tier in the
+  north-west block's corner, up THE OVERPASS STAIR from an alley off the ring road's sidewalk; the avenue's cars and walkers
+  pass under it) and the Grid's **THE OVERLOOK SPAN** (the overlook south over THE CUT and THE LOWER CROSS to THE PIER, a 3 m
+  tower in the undercity, down a 7 m fire escape to an alley off the lower cross — the overlook no longer only looks down).
+  Both cities: every door reached, nothing traps, zero rescue ramps (`node check-terrain.js` prints `bridges n`; the dump
+  draws a span as `B`). Tests: `hq-bridge-layer.test.js` (the rules, the feet under / on / the fall / the stack / the
+  headroom wall, the solver across a span only, the plan's mouths, the two cities (heavy), the renderer on a stub scene,
+  the source sites); hq-terrain's KINDS pin. NOT built: a bridge that SLOPES (a `bridge` is level — a sloped span is a ramp
+  on the field or a chain of level spans), a door standing ON a bridge, props authored on a bridge (`y` on the row stands
+  them; the tabletop seat does not read a deck), the full second floor with its own rooms and walls (EXPLORABLE_AREAS_GUIDE
+  §5 item 3 — the bridge layer is its pattern). UNSEEN LIVE (RULE #1c): the slab's read from below (the girder, the piers on
+  the pier alley's kerbs), the rails' height against the walker, the overpass's headroom under a truck GLB, the fire
+  escape's 7 m against the pier's flank, the west landing's cliff on the plaza's corner.
