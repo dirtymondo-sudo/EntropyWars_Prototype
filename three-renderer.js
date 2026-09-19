@@ -47655,7 +47655,8 @@ const ThreeRenderer = (function () {
     var HQ_SKATE_DEFAULT = {
         maxV: 12.5, pushV: 4.2, pushEvery: 0.85, pushMs: 520, cruiseV: 10.5, friction: 0.993, brake: 0.9, turn: 2.4, turnMin: 0.4,
         reverseMaxV: 5.0, reversePushV: 1.8, kickEvery: [2.5, 5.5], kickMinV: 2.5,
-        ollieV: 7.25, ollieTapV: 4.6, ollieMaxV: 7.9, crouchS: 0.55, popPerfectMs: 160, crouchMaxHoldS: 1.6, airTurn: 1.35, airAccel: 3.2, flickPx: 34, stickDeadPx: 6,
+        ollieV: 7.25, ollieTapV: 4.6, ollieMaxV: 7.9, crouchS: 0.55, popPerfectMs: 160, airTurn: 1.35, airAccel: 3.2, flickPx: 34, stickDeadPx: 6,
+        flickCoolMs: 220, trickFitShare: 0.9, trickFitMin: 0.5, trickLateMin: 0.45,
         stanceYaw: -Math.PI / 2, bailV: 4.2, bailDrop: 2.4, bailMs: 1400, bailFall: 0.6, deckBackMs: 1400, wallScrub: 0.15, landGrace: 0.8,
         grindSnap: 0.6, grindDy: 0.5, grindMinV: 1.4, grindFriction: 0.996, grindBalance: 0.75, grindDrift: 0.25,
         race: { hw: 5.5, tickMs: 250, minLapMs: 8000 },   // THE CIRCUIT (DISASTER CITY, 2026-09-17)
@@ -47663,11 +47664,11 @@ const ThreeRenderer = (function () {
         tricks: {
             kickflip:  { pts: 100, ms: 430, label: 'KICKFLIP' },
             heelflip:  { pts: 100, ms: 430, label: 'HEELFLIP' },
-            frontflip: { pts: 300, ms: 640, label: 'FRONT FLIP' },
-            backflip:  { pts: 300, ms: 640, label: 'BACKFLIP' },
-            roll:      { pts: 250, ms: 560, label: 'CORKSCREW' },
-            varial:    { pts: 180, ms: 520, label: 'VARIAL KICKFLIP' },
-            varialheel:{ pts: 180, ms: 520, label: 'VARIAL HEELFLIP' },
+            frontflip: { pts: 300, ms: 560, label: 'FRONT FLIP' },
+            backflip:  { pts: 300, ms: 560, label: 'BACKFLIP' },
+            roll:      { pts: 250, ms: 500, label: 'CORKSCREW' },
+            varial:    { pts: 180, ms: 480, label: 'VARIAL KICKFLIP' },
+            varialheel:{ pts: 180, ms: 480, label: 'VARIAL HEELFLIP' },
             spin:      { pts: 120, ms: 340, label: '180' },
             grab:      { pts: 80,  ms: 300, label: 'INDY GRAB' },
             nosegrab:  { pts: 90,  ms: 300, label: 'NOSEGRAB' },
@@ -47841,7 +47842,7 @@ const ThreeRenderer = (function () {
         var lost = R.combo ? Math.round(R.combo.pts * R.combo.tricks.length) : 0;
         R.combo = null; R.trick = null; R.queue = []; R.spinAcc = 0; R.grab = false; R.grabDone = false; R.holdOn = false;
         R.flip = 0; R.roll = 0; R.deckRoll = 0; R.deckSpin = 0; R.stance = 0; R.lean = 0;
-        R.crouch = 0; R.crouchOn = false; R.crouchFullT = 0; R.squash = 0; if (R.stick) { R.stick.dx = R.stick.dy = 0; }
+        R.crouch = 0; R.crouchOn = false; R.crouchFullT = 0; R.squash = 0; R.grabTuck = 0; R.deckTuck = 0; if (R.stick) { R.stick.dx = R.stick.dy = 0; }
         if (R.grind) { R.grind = null; pl.air = true; pl.vy = 0.8; pl.jumpT = -1; }
         R.v *= 0.35; R.bailT = R.bailTotal = S.bailMs / 1000; R.deckAway = R.deckTotal = S.deckBackMs / 1000; R.bailSpin = 0;
         _hqRideEmit({ kind: 'bail', why: why, lost: lost });
@@ -47901,21 +47902,44 @@ const ThreeRenderer = (function () {
         if (tk.id === 'kickflip' || tk.id === 'heelflip' || tk.id === 'varial' || tk.id === 'varialheel') { R.deckRoll = 0; R.deckSpin = 0; }
         if (tk.id === 'frontflip' || tk.id === 'backflip') R.flip = 0;
         if (tk.id === 'roll') R.roll = 0;
-        if (tk.id === 'grab' || tk.id === 'nosegrab') R.grab = false;
+        if (tk.id === 'grab' || tk.id === 'nosegrab') { R.grab = false; R.grabTuck = 0; R.deckTuck = 0; }
         if (label) _hqRideComboAdd(R, label, T.pts);
         R.tricksDone = (R.tricksDone || 0) + 1;
         R.trick = null;
         _hqRideEmit({ kind: 'trick', id: tk.id });
     }
+    /* the seconds until the feet meet the ground under them (a ballistic estimate off the current vy; the ground at this xz) */
+    function _hqRideAirLeft(pl) {
+        if (!pl || !pl.air) return 0;
+        var land = null;
+        try { land = _hqSurface(pl.x, pl.z, null, true); } catch (e) { land = null; }
+        if (land === null || land === undefined) land = 0;
+        var h = Math.max(0, pl.y - land), vy = pl.vy || 0, g = HQ_GRAV;
+        return (vy + Math.sqrt(vy * vy + 2 * g * h)) / g;
+    }
+    /* THE FIT (rev 4b): a rotation started in the air is sped up to end inside the air that is left (a late flip
+       turns faster — Tony Hawk's rule); with too little air for even a fast one the flick is REFUSED (`late`) —
+       a bail you could not avoid was the "can't land it" of rev 4. `after` = ms already spoken for by the queue. */
+    function _hqRideFitMs(R, T, after) {
+        var S = _hqSkateRules(), pl = _hq && _hq.player, base = T.ms || 400;
+        if (!pl || !pl.air) return base;
+        var left = _hqRideAirLeft(pl) * 1000 * (S.trickFitShare != null ? S.trickFitShare : 0.9) - (after || 0);
+        if (left < base * (S.trickLateMin != null ? S.trickLateMin : 0.45)) return 0;
+        return Math.max(base * (S.trickFitMin != null ? S.trickFitMin : 0.5), Math.min(base, left));
+    }
+    function _hqRideQueueMs(R) { var t = R.trick ? Math.max(0, R.trick.ms - R.trick.t) : 0; for (var i = 0; i < R.queue.length; i++) t += R.queue[i].ms || 0; return t; }
     function _hqRideStartTrick(R, id, dir) {
-        var S = _hqSkateRules(), T = S.tricks[id]; if (!T) return;
+        var S = _hqSkateRules(), T = S.tricks[id]; if (!T) return null;
         dir = (dir === -1) ? -1 : 1;
-        if (R.trick && R.queue.length >= 3) return;   // three deep is the queue
+        if (R.trick && R.queue.length >= 3) return null;   // three deep is the queue
+        var ms = _hqRideFitMs(R, T, _hqRideQueueMs(R));
+        if (!ms) { _hqRideEmit({ kind: 'late', id: id, label: T.label }); return null; }
         _hqRideEmit({ kind: 'flick', id: id, label: T.label, n: (R.combo ? R.combo.tricks.length : 0) + R.queue.length + (R.trick ? 2 : 1), queued: !!R.trick });
-        if (R.trick) { R.queue.push({ id: id, dir: dir }); return; }
-        R.trick = { id: id, t: 0, ms: T.ms || 400, dir: dir };
+        if (R.trick) { R.queue.push({ id: id, dir: dir, ms: ms }); return id; }
+        R.trick = { id: id, t: 0, ms: ms, dir: dir };
         if (id === 'spin') R.spinDir = dir;
         if (id === 'roll') R.rollDir = dir;
+        return id;
     }
     /* ── THE STICK (rev 4, 2026-09-19 — the user: "click and drag for different tricks, kind of like a hit
        stick in Madden or Smash Bros; I still need to control my movement in the air with WASD") ──
@@ -47945,8 +47969,7 @@ const ThreeRenderer = (function () {
             else if (d === 'upleft') { id = 'roll'; dir = 1; } else if (d === 'upright') { id = 'roll'; dir = -1; }
             else if (d === 'downleft') id = 'varial'; else id = 'varialheel';
         }
-        _hqRideStartTrick(R, id, dir);
-        return id;
+        return _hqRideStartTrick(R, id, dir);
     }
     /* the mouse while riding: down arms the stick, travel feeds it (true = consumed — the camera holds), up disarms */
     function _hqRideStickDown(btn) { var H = _hq; if (!H || !H.ride || !H.ride.on) return false; H.ride.stick = { btn: btn, dx: 0, dy: 0 }; return true; }
@@ -47954,9 +47977,11 @@ const ThreeRenderer = (function () {
         var H = _hq; if (!H || !H.ride || !H.ride.on || !H.ride.stick) return false;
         var R = H.ride, st = R.stick, S = _hqSkateRules();
         if (!H.player.air || R.bailT > 0 || R.grind) { st.dx = st.dy = 0; return false; }   // on the ground the mouse aims; the travel is thrown away
+        var now = (typeof performance !== 'undefined') ? performance.now() : Date.now();
+        if (st.coolUntil && now < st.coolUntil) { st.dx = st.dy = 0; return true; }   // rev 4b: ONE trick per flick — the rest of the wrist's travel is thrown away
         st.dx += dx; st.dy += dy;
         var mag = Math.hypot(st.dx, st.dy);
-        if (mag >= (S.flickPx || 34)) { _hqRideFlick(R, st.dx, st.dy, st.btn); st.dx = st.dy = 0; }
+        if (mag >= (S.flickPx || 34)) { _hqRideFlick(R, st.dx, st.dy, st.btn); st.dx = st.dy = 0; st.coolUntil = now + (S.flickCoolMs != null ? S.flickCoolMs : 220); }
         return true;
     }
     function _hqRideStickUp() { var H = _hq; if (H && H.ride) H.ride.stick = null; }
@@ -47965,9 +47990,8 @@ const ThreeRenderer = (function () {
        popPerfectMs of the meter topping out is a PERFECT POP — a bonus on the line and a flash */
     function _hqRidePop(R, pl, S) {
         var k = Math.max(0, Math.min(1, R.crouch)), full = R.crouch >= 1;
-        var overHeld = full && R.crouchFullT > (S.crouchMaxHoldS != null ? S.crouchMaxHoldS : 1.6);
-        if (overHeld) k = 0.15;   // camped past the deflate: a hop
-        var perfect = full && !overHeld && R.crouchFullT <= (S.popPerfectMs || 160) / 1000;
+        /* rev 4b (the user: "hold down space indefinitely"): a full crouch HOLDS — no deflate, the pop is the full one whenever it comes */
+        var perfect = full && R.crouchFullT <= (S.popPerfectMs || 160) / 1000;
         var ease = k * k * (3 - 2 * k);
         var vy = S.ollieTapV + ((S.ollieMaxV != null ? S.ollieMaxV : 7.9) - S.ollieTapV) * ease;
         pl.air = true; pl.vy = vy; pl.jumpT = 0; R.airT = 0; R.airY0 = pl.y; R.rise = 0; R.jumpFromWalkOff = false; R.holdOn = false;
@@ -48092,14 +48116,13 @@ const ThreeRenderer = (function () {
                 var wasFull = R.crouch >= 1;
                 R.crouch = Math.min(1, R.crouch + dt / (S.crouchS || 0.55));
                 if (R.crouch >= 1) { if (!wasFull) _hqRideEmit({ kind: 'charge', k: 1, max: true, at: true }); R.crouchFullT += dt; }
-                var overC = R.crouchFullT > (S.crouchMaxHoldS != null ? S.crouchMaxHoldS : 1.6);
-                if (Math.abs(R.crouch - R.crouchEmit) >= 0.04 || (R.crouch >= 1 && R.crouchEmit < 1) || overC !== !!R.crouchOverEmit) { R.crouchEmit = R.crouch; R.crouchOverEmit = overC; _hqRideEmit({ kind: 'charge', k: R.crouch, max: R.crouch >= 1, over: overC }); }
+                if (Math.abs(R.crouch - R.crouchEmit) >= 0.04 || (R.crouch >= 1 && R.crouchEmit < 1)) { R.crouchEmit = R.crouch; _hqRideEmit({ kind: 'charge', k: R.crouch, max: R.crouch >= 1, over: false }); }
             } else if (R.crouchOn) {
                 if (noCtl) { R.crouchOn = false; R.crouch = 0; R.crouchFullT = 0; _hqRideEmit({ kind: 'charge', k: 0, off: true }); }
                 else _hqRidePop(R, pl, S);
             }
             pl._jumpLatch = !!k.space;
-            R.keyLatch.left = !!k.left; R.keyLatch.right = !!k.right; R.keyLatch.up = !!k.up; R.keyLatch.down = !!k.down; R.keyLatch.a = !!k.a; R.keyLatch.d = !!k.d; R.keyLatch.w = !!k.w;
+            R.keyLatch.left = !!k.left; R.keyLatch.right = !!k.right; R.keyLatch.up = !!k.up; R.keyLatch.down = !!k.down; R.keyLatch.a = !!k.a; R.keyLatch.d = !!k.d; R.keyLatch.w = !!k.w; R.keyLatch.shift = !!k.shift;
         } else {
             /* ── IN THE AIR: the tricks ── */
             R.airT += dt;
@@ -48133,10 +48156,10 @@ const ThreeRenderer = (function () {
             else if (tk.id === 'varial') { R.deckRoll = ang; R.deckSpin = Math.PI * f; }
             else if (tk.id === 'varialheel') { R.deckRoll = -ang; R.deckSpin = -Math.PI * f; }
             else if (tk.id === 'spin') { R.spinAcc = (tk.base != null ? tk.base : (tk.base = R.spinAcc)) + (tk.dir || R.spinDir || 1) * Math.PI * f; }
-            else if (tk.id === 'grab' || tk.id === 'nosegrab') R.grab = true;
+            else if (tk.id === 'grab' || tk.id === 'nosegrab') { R.grab = true; var gk = Math.sin(f * Math.PI); R.grabTuck = (tk.id === 'nosegrab' ? -0.55 : 0.5) * gk; R.deckTuck = (tk.id === 'nosegrab' ? -0.45 : 0.4) * gk; }
             if (f >= 1) {
                 _hqRideTrickDone(R, TR, tk);
-                if (R.queue.length) { var nq = R.queue.shift(); if (typeof nq === 'string') nq = { id: nq, dir: 1 }; R.trick = { id: nq.id, t: 0, ms: (TR[nq.id] && TR[nq.id].ms) || 400, dir: nq.dir || 1 }; if (nq.id === 'spin') R.spinDir = nq.dir || 1; }
+                if (R.queue.length) { var nq = R.queue.shift(); if (typeof nq === 'string') nq = { id: nq, dir: 1 }; R.trick = { id: nq.id, t: 0, ms: nq.ms || (TR[nq.id] && TR[nq.id].ms) || 400, dir: nq.dir || 1 }; if (nq.id === 'spin') R.spinDir = nq.dir || 1; if (nq.id === 'roll') R.rollDir = nq.dir || 1; }
             }
         }
         R.lean += (leanT - R.lean) * Math.min(1, dt * 8);
@@ -48349,7 +48372,7 @@ const ThreeRenderer = (function () {
         var tx = offT ? (offT.mx * cP + offT.mz * sP) : 0, tz = offT ? (-offT.mx * sP + offT.mz * cP) : 0;
         R.deckOx = (R.deckOx || 0) + (tx - (R.deckOx || 0)) * Math.min(1, dt * 6); R.deckOz = (R.deckOz || 0) + (tz - (R.deckOz || 0)) * Math.min(1, dt * 6);
         /* the body: yaw first, then pitch about its own lateral axis, then roll about its forward — about a pivot at its centre */
-        var eul = new THREE.Euler(flip + (R.pushAnim > 0 ? 0.12 : 0.06 * Math.min(1, Math.abs(R.v) / 6)), yaw, roll + R.lean, 'YXZ');
+        var eul = new THREE.Euler(flip + (R.grabTuck || 0) + (R.pushAnim > 0 ? 0.12 : 0.06 * Math.min(1, Math.abs(R.v) / 6)), yaw, roll + R.lean, 'YXZ');   // rev 4b: a grab TUCKS the body (nose up on a nosegrab, tail up on an indy)
         var qStance = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), R.poseYaw);
         e.model.quaternion.setFromEuler(eul).multiply(qStance);
         var piv = ch.heightM * 0.52;
@@ -48364,7 +48387,7 @@ const ThreeRenderer = (function () {
         e.model.scale.y = R.scaleY; e.model.scale.x = e.model.scale.z = 1 + (1 - R.scaleY) * 0.35;
         /* the deck: rides the same spin / flip / roll, plus its own kickflip roll; a grind's sparks */
         var D = R.deck;
-        D.rotation.set(flip, yaw + (R.deckSpin || 0), roll + R.deckRoll);
+        D.rotation.set(flip + (R.deckTuck || 0), yaw + (R.deckSpin || 0), roll + R.deckRoll);
         var dv = new THREE.Vector3(0, piv * U, 0).applyEuler(D.rotation);
         D.position.set(-dv.x, piv * U - dv.y, -dv.z);
         /* THE FIT's offset, travel frame → the group's (the deck's own rotation.y = yaw, its +Z the roll) */

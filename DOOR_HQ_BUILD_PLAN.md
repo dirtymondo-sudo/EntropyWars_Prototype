@@ -10907,3 +10907,20 @@ hq-stage2 / hq-map-remembers / hq-skate / hq-deep / hq-portal / hq-encounter / s
 - **UNSEEN LIVE (RULE #1c)**: the flick's threshold at the player's mouse speed (`flickPx` is the edit), the eight
   sectors' feel on a diagonal, the meter's placement under the reticle, the squat's read on the cast rigs, the dust
   puff's tint (additive — it reads as a glow), the camera dip's size (`_hqRideCamDip`'s 0.035 rad), the rank words.
+
+### 2026-09-19 — SKATEBOARDING rev 4b: HOLD FOR EVER · ONE TRICK PER FLICK · THE FIT · THE TUCK (local delivery)
+- **The user**: "hold down space indefinitely; some of the flicks are not showing an animation or just not able to be landed."
+- **THE CROUCH HOLDS**: no deflate — `crouchMaxHoldS` is a retired key; a full crouch released at any time is the full pop
+  (the PERFECT window is still the first `popPerfectMs` after the meter tops out; the meter has no red state any more).
+- **ONE TRICK PER FLICK** (`HQ_SKATE_RULES.flickCoolMs` 220): one wrist flick of ~100 px used to fire three tricks (34 px
+  each) and the queue could never land; after a flick fires, the stick's travel is discarded for the cooldown.
+- **THE FIT** (`_hqRideAirLeft` / `_hqRideFitMs` / `_hqRideQueueMs`): a rotation started in the air is sped up to end inside
+  `trickFitShare` (0.9) of the air left, never faster than `trickFitMin` (0.5) of its own ms; a flick with less air than
+  `trickLateMin` (0.45) of the trick is REFUSED with the `late` beat (map.js: a dull tick) — never a bail the rider could
+  not avoid. A queued trick carries its fitted ms. The flips' base ms came down (front / back 560, corkscrew 500, varials 480).
+- **THE TUCK**: a grab was only a squash; now `R.grabTuck` / `R.deckTuck` pitch the body and the deck (nose up on a
+  nosegrab, tail up on an indy) over the trick's arc and reset on the finish / the bail. SHIFT's latch resets on the ground.
+- **Ship**: three-renderer.js (R2), data.js (R2 + Render), map.js (R2), index.html (Render, token
+  `20260919-skate-rev4b-01-cors`); hq-skate.test.js (30) + docs to the repo.
+- **UNSEEN LIVE (RULE #1c)**: the cooldown against a real wrist (`flickCoolMs` is the edit), the sped-up flip's read off a
+  tap, the tuck's angle on the cast rigs, the late tick's feel.

@@ -2081,6 +2081,9 @@
                 case 'flick':
                     _hqSkateSfx('skateTrick', Math.min(0.7, 0.3 + 0.05 * (ev.n | 0)));
                     break;
+                case 'late':   // rev 4b: a flick with no air left for it — refused, never a bail; a dull tick says so
+                    try { playSfx('uiCursorMove'); } catch (e) {}
+                    break;
                 case 'refused':
                     _hqToast(ev.reason === 'off' ? '<b>NO SKATING</b><span>EW_HQ_NO_SKATE IS SET</span>' : '<b>NO BOARD</b><span>THERE IS ONE LEANING ON A LOCKER IN ROOM 26 · THE ANNEX</span>', 2600);
                     break;

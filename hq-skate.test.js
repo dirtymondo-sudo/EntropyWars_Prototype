@@ -35,7 +35,7 @@ function extract(name) {
 function block() { const a = TR.indexOf('/* ══ SKATEBOARDING — THE RIDER'), b = TR.indexOf('/* ── per-frame ───', a); assert.ok(a > 0 && b > a); return TR.slice(a, b); }
 const RIDE_FNS = ['_hqSkateRules', '_hqSkateOff', '_hqRailLen', '_hqRailAt', '_hqRailNearest', '_hqRailSnap', '_hqRampLocal', '_hqRampUnder', '_hqRampProfile', '_hqRampSurfaceAt', '_hqRegisterPropPark',
     '_hqRideTurn', '_hqRideNew', '_hqRideArm', '_hqRideEmit', '_hqRideToggle', '_hqRideKeyEdge', '_hqRideComboAdd', '_hqRideComboBank', '_hqRideBail', '_hqRideBailPhase', '_hqRideWall', '_hqRideSlide', '_hqRideObstacleSlide', '_hqTickRideStep', '_hqRideTrickDone', '_hqRideStartTrick', '_hqTickRide', '_hqRideSetY', '_hqRideGravity',
-    '_hqRidePop', '_hqRideCamDip', '_hqRideFlickDir', '_hqRideFlick', '_hqRideStickDown', '_hqRideStickMove', '_hqRideStickUp'];
+    '_hqRidePop', '_hqRideCamDip', '_hqRideFlickDir', '_hqRideFlick', '_hqRideStickDown', '_hqRideStickMove', '_hqRideStickUp', '_hqRideAirLeft', '_hqRideFitMs', '_hqRideQueueMs'];
 function consts() {
     const out = [];
     for (const n of ['HQ_BODY_R', 'HQ_STEP_TOL', 'HQ_DROP_MAX', 'HQ_FALL_MIN', 'HQ_GRAV', 'HQ_JUMP_V']) { const m = TR.match(new RegExp('    var ' + n + ' = ([0-9.]+);')); assert.ok(m, n); out.push('var ' + n + ' = ' + m[1] + ';'); }
@@ -185,7 +185,11 @@ test('THE RIDE: a push rolls where the camera looks, friction slows it, S brakes
     c.step({ w: true }, 1 / 60, 30);
     c.step({ space: true }, 1 / 60, 1); c.step({}, 1 / 60, 1);
     n = 0; while (c.pl.vy > -3 && n++ < 300) c.step({}, 1 / 60, 1);   // most of the way down
-    c.step({ up: true }, 1 / 60, 1); assert.equal(c.R().trick.id, 'frontflip');
+    c.step({ up: true }, 1 / 60, 1);
+    assert.equal(c.R().trick, null, 'rev 4b: a flip with no air left for it is REFUSED, never started');
+    assert.ok(c.events().some(e => e.kind === 'late' && e.id === 'frontflip'), 'the late beat');
+    /* a rotation that IS still turning at the touchdown (forced in — nothing the fit could refuse) is the bail */
+    c.R().trick = { id: 'frontflip', t: 0, ms: 640, dir: 1 };
     n = 0; while (c.pl.air && n++ < 300) c.step({}, 1 / 60, 1);
     const bail = c.events().find(e => e.kind === 'bail');
     assert.ok(bail && bail.why === 'unfinished', 'still turning = a bail: ' + JSON.stringify(bail));
@@ -399,10 +403,10 @@ test('REV 4 — THE CROUCH: SPACE held crouches (nothing leaves the ground, the 
     const ol = fullR.c.events().find(e => e.kind === 'ollie'); assert.ok(ol && ol.perfect && ol.charge === 1, 'released on the beat = perfect: ' + JSON.stringify(ol));
     const bank = fullR.c.events().find(e => e.kind === 'bank'); assert.ok(bank && bank.text === R.tricks.pop.label && bank.score === R.tricks.pop.pts, 'PERFECT POP banked on its own: ' + JSON.stringify(bank));
     const ch = fullR.c.events().filter(e => e.kind === 'charge'); assert.ok(ch.length >= 5 && ch.some(e => e.max && e.at) && ch[0].k < 0.2, 'the meter beats: ' + ch.length);
-    /* camped: held well past the top → a hop, no perfect */
-    const camp = apex(Math.round((R.crouchS + R.crouchMaxHoldS + 0.3) * 60));
-    assert.ok(camp.top < 0.9, 'a camped crouch deflates to a hop: ' + camp.top);
-    assert.ok(!camp.c.events().some(e => e.kind === 'ollie' && e.perfect) && camp.c.events().some(e => e.kind === 'charge' && e.over), 'no perfect, the meter says so');
+    /* rev 4b (the user: "hold down space indefinitely"): held three seconds past the top it is STILL the full pop, only the perfect window is missed */
+    const camp = apex(Math.round((R.crouchS + 3.0) * 60));
+    assert.ok(Math.abs(camp.top - full) < 0.05, 'a long hold is the full pop: ' + camp.top + ' vs ' + full);
+    assert.ok(!camp.c.events().some(e => e.kind === 'ollie' && e.perfect) && !camp.c.events().some(e => e.kind === 'charge' && e.over), 'no perfect (the beat was missed), never a deflate');
     /* the bail drops a crouch */
     const c = sandbox(); c._hqRideToggle(true); c.step({ w: true }, 1 / 60, 40); c.step({ space: true }, 1 / 60, 5);
     c._hqRideBail(c.R(), c.pl, 'unfinished'); assert.ok(!c.R().crouchOn && c.R().crouch === 0, 'the bail drops the crouch');
@@ -424,11 +428,14 @@ test('REV 4 — THE STICK: a flick\'s direction is the trick (LEFT the eight fli
     c._events.length = 0;
     assert.equal(c._hqRideStickDown(0), true); assert.ok(c.R().stick && c.R().stick.btn === 0);
     assert.equal(c._hqRideStickMove(-30, 0), false, 'on the ground the stick does not own the mouse'); assert.equal(c.R().stick.dx, 0);
-    c.step({ w: true }, 1 / 60, 30); c.step({ space: true }, 1 / 60, 1); c.step({}, 1 / 60, 1); assert.ok(c.pl.air);
+    c.step({ w: true }, 1 / 60, 30); c.step({ space: true }, 1 / 60, 40); c.step({}, 1 / 60, 1); assert.ok(c.pl.air);   // a full crouch: air enough for two flips
     assert.equal(c._hqRideStickMove(-20, 0), true, 'in the air the stick owns the mouse'); assert.equal(c.R().trick, null, 'under flickPx nothing fires');
     assert.equal(c._hqRideStickMove(-20, 0), true); assert.equal(c.R().trick.id, 'kickflip', 'over flickPx: the flick'); assert.equal(c.R().stick.dx, 0, 'reset for the next flick');
-    c._hqRideStickMove(60, 0); assert.equal(c.R().queue.length, 1); assert.equal(c.R().queue[0].id, 'heelflip', 'a second flick chains');
-    assert.ok(c.events().filter(e => e.kind === 'flick').length === 2 && c.events().find(e => e.kind === 'flick').n === 1, 'the flick beat with its count');
+    c._hqRideStickMove(60, 0); c._hqRideStickMove(60, 0); assert.equal(c.R().queue.length, 0, 'rev 4b: the rest of the same wrist flick is thrown away (flickCoolMs) — ONE trick per flick');
+    c.performance.now = () => 1000 + R.flickCoolMs + 5;
+    c._hqRideStickMove(60, 0); assert.equal(c.R().queue.length, 1); assert.equal(c.R().queue[0].id, 'heelflip', 'a second flick after the cooldown chains');
+    assert.ok(c.R().queue[0].ms > 0 && c.R().queue[0].ms <= R.tricks.heelflip.ms, 'the queued rotation is FITTED to the air left: ' + c.R().queue[0].ms);
+    const fl = c.events().filter(e => e.kind === 'flick'); assert.ok(fl.length === 2 && fl[1].n === fl[0].n + 1, 'the flick beat with its count (a PERFECT POP off the full crouch is already on the line): ' + JSON.stringify(fl.map(e => e.n)));
     c._hqRideStickUp(); assert.equal(c.R().stick, null);
     /* the varial: the deck spins half a turn while it flips, and lands flat */
     const v = sandbox(); v._hqRideToggle(true); v.step({ w: true }, 1 / 60, 30); v.step({ space: true }, 1 / 60, 14); v.step({}, 1 / 60, 1);
@@ -444,6 +451,30 @@ test('REV 4 — THE STICK: a flick\'s direction is the trick (LEFT the eight fli
     /* SHIFT is still a grab for the keyboard */
     const k = sandbox(); k._hqRideToggle(true); k.step({ w: true }, 1 / 60, 30); k.step({ space: true }, 1 / 60, 14); k.step({}, 1 / 60, 1);
     k.step({ shift: true }, 1 / 60, 1); assert.equal(k.R().trick.id, 'grab');
+});
+test('REV 4b — THE FIT: a flip off a bare tap turns faster to land inside the hop (never a bail); a flick with no air left is refused with the late beat; a grab tucks the body and the deck and lands clean', () => {
+    /* a front flip (560 ms) off a tap (≈ 0.5 s of air) — it must land */
+    const c = sandbox(); c._hqRideToggle(true); c.step({ w: true }, 1 / 60, 30);
+    c.step({ space: true }, 1 / 60, 1); c.step({}, 1 / 60, 1); assert.ok(c.pl.air);
+    assert.equal(c._hqRideFlick(c.R(), 0, -60, 0), 'frontflip');
+    assert.ok(c.R().trick.ms < R.tricks.frontflip.ms && c.R().trick.ms >= R.tricks.frontflip.ms * R.trickFitMin, 'sped up to fit: ' + c.R().trick.ms);
+    let n = 0; while (c.pl.air && n++ < 400) c.step({}, 1 / 60, 1);
+    assert.ok(!c.events().some(e => e.kind === 'bail'), 'no bail');
+    const bank = c.events().find(e => e.kind === 'bank'); assert.ok(bank && bank.text === 'FRONT FLIP', JSON.stringify(bank));
+    /* on the way down with almost nothing left: refused */
+    c._events.length = 0; c.step({ w: true }, 1 / 60, 20); c.step({ space: true }, 1 / 60, 1); c.step({}, 1 / 60, 1);
+    n = 0; while (c.pl.vy > -3 && n++ < 300) c.step({}, 1 / 60, 1);
+    assert.equal(c._hqRideFlick(c.R(), -60, 0, 0), null); assert.ok(c.events().some(e => e.kind === 'late'), 'refused, the late beat');
+    n = 0; while (c.pl.air && n++ < 400) c.step({}, 1 / 60, 1);
+    assert.ok(!c.events().some(e => e.kind === 'bail'), 'and no bail from it');
+    /* the grab's tuck is a real rotation on the body and the deck */
+    const g = sandbox(); g._hqRideToggle(true); g.step({ w: true }, 1 / 60, 30); g.step({ space: true }, 1 / 60, 30); g.step({}, 1 / 60, 1);
+    g._hqRideFlick(g.R(), 0, -60, 2); g.step({}, 1 / 60, 6);
+    assert.ok(g.R().grab && g.R().grabTuck < -0.2 && g.R().deckTuck < -0.15, 'the nosegrab tucks nose-up: ' + g.R().grabTuck);
+    n = 0; while (g.pl.air && n++ < 400) g.step({}, 1 / 60, 1);
+    assert.ok(g.R().grabTuck === 0 && g.R().deckTuck === 0 && !g.events().some(e => e.kind === 'bail'), 'flat on the landing');
+    assert.ok(/R\.grabTuck \|\| 0/.test(extract('_hqRidePose')) && /R\.deckTuck \|\| 0/.test(extract('_hqRidePose')), 'the pose reads the tuck');
+    assert.ok(/case 'late':/.test(MP), 'map.js hears the late beat');
 });
 test('REV 4 — AIR CONTROL: in the air A / D turn the heading (the camera follows), W / S nudge the speed, never a trick; W in the air is not a corkscrew; the landing carries the juice (the squat, the dust, the beat\'s weight)', () => {
     const c = sandbox(); c._hqRideToggle(true); c._hq.cam.yaw = Math.PI / 2;
@@ -490,8 +521,8 @@ test('REV 2 — THE STANCE + THE CLIP: the ride clip is HQ_RIDE_CLIP (Idle_10) b
     assert.ok(/e\.model\.quaternion\.setFromEuler\(eul\)\.multiply\(qStance\)/.test(pose) && /setFromAxisAngle\(new THREE\.Vector3\(0, 1, 0\), R\.poseYaw\)/.test(pose), 'the stance inside the travel frame');
     assert.ok(/var riding = !\(R\.pushAnim > 0 \|\| R\.bailT > 0 \|\| R\.deckAway > 0\);/.test(pose) && /var poseT = !riding \? 0 : \(R\.fit \? R\.fit\.yaw : /.test(pose) && /function _hqRideFitStance/.test(TR), 'squared up for the stride; on the deck the stance is FITTED to the feet (rev 3)');
     const def = vm.runInContext(TR.slice(TR.indexOf('    var HQ_SKATE_DEFAULT = {'), TR.indexOf('\n    };', TR.indexOf('    var HQ_SKATE_DEFAULT = {')) + 7) + '; HQ_SKATE_DEFAULT', vm.createContext({}));
-    ['reverseMaxV', 'reversePushV', 'kickEvery', 'kickMinV', 'ollieTapV', 'stanceYaw', 'ollieMaxV', 'crouchS', 'popPerfectMs', 'crouchMaxHoldS', 'airTurn', 'airAccel', 'flickPx', 'stickDeadPx', 'ranks'].forEach(k => assert.ok(k in R && k in def, 'the key on both sides: ' + k));
-    assert.ok('ollieHoldS' in R && !('ollieHoldS' in def), 'rev 4: the held boost is RETIRED from the default (the table keeps the key for old readers)');
+    ['reverseMaxV', 'reversePushV', 'kickEvery', 'kickMinV', 'ollieTapV', 'stanceYaw', 'ollieMaxV', 'crouchS', 'popPerfectMs', 'airTurn', 'airAccel', 'flickPx', 'stickDeadPx', 'ranks', 'flickCoolMs', 'trickFitShare', 'trickFitMin', 'trickLateMin'].forEach(k => assert.ok(k in R && k in def, 'the key on both sides: ' + k));
+    assert.ok('ollieHoldS' in R && !('ollieHoldS' in def) && 'crouchMaxHoldS' in R && !('crouchMaxHoldS' in def), 'rev 4 / 4b: the held boost and the crouch deflate are RETIRED from the default (the table keeps the keys for old readers)');
     assert.ok(Math.abs(R.stanceYaw) === Math.PI / 2, 'sideways');
 });
 test('REV 3 — SEAMLESS: a rotation ≥ landGrace done at the touchdown lands (the late landing); a walk-off drop of any height is a landing, never a bail; the board carves from a crawl; W at cruise holds the speed without a stride; the table carries the rev 3 keys', () => {

@@ -40430,7 +40430,11 @@ const HQ_SKATE_RULES = {
     ollieMaxV: 7.9,      // m/s up off a FULL CROUCH — clears ≈ 1.75 m (rev 4: hold SPACE to crouch, release to pop)
     crouchS: 0.55,       // s of SPACE held to reach the full crouch (the meter fills over it)
     popPerfectMs: 160,   // a release inside this window after the crouch tops out = PERFECT POP (a bonus on the line, a flash)
-    crouchMaxHoldS: 1.6, // a crouch held this long past full deflates (the pop is worth a tap): you cannot camp the max
+    crouchMaxHoldS: 1.6, // RETIRED rev 4b (the user: "hold down space indefinitely") — a full crouch holds for ever; kept for old readers
+    flickCoolMs: 220,    // ms after a flick fires during which the stick's travel is thrown away — ONE trick per flick of the wrist (a 100 px flick fired three)
+    trickFitShare: 0.9,  // a rotation started in the air is SPED UP to end inside this share of the air left (Tony Hawk's rule: a late flip turns faster)
+    trickFitMin: 0.5,    // …but never faster than this share of its own ms
+    trickLateMin: 0.45,  // a flick with less air left than this share of the trick's ms is REFUSED (the `late` beat) — never a bail you could not avoid
     ollieHoldS: 0.42,    // RETIRED rev 4 (the crouch replaced the held boost) — kept for old readers
     ollieHoldAcc: 13,    // RETIRED rev 4
     airTurn: 1.35,       // rad/s A / D steer the heading IN THE AIR (rev 4: WASD is air control, never a trick)
@@ -40464,11 +40468,11 @@ const HQ_SKATE_RULES = {
            flips for a keyboard-only rider; SHIFT is still a grab. `key` is the line the HUD prints. */
         kickflip:   { pts: 100, ms: 430, label: 'KICKFLIP',         key: 'L-FLICK ← (or ←)' },
         heelflip:   { pts: 100, ms: 430, label: 'HEELFLIP',         key: 'L-FLICK → (or →)' },
-        frontflip:  { pts: 300, ms: 640, label: 'FRONT FLIP',       key: 'L-FLICK ↑ (or ↑)' },
-        backflip:   { pts: 300, ms: 640, label: 'BACKFLIP',         key: 'L-FLICK ↓ (or ↓)' },
-        roll:       { pts: 250, ms: 560, label: 'CORKSCREW',        key: 'L-FLICK ↖ / ↗' },
-        varial:     { pts: 180, ms: 520, label: 'VARIAL KICKFLIP',  key: 'L-FLICK ↙' },
-        varialheel: { pts: 180, ms: 520, label: 'VARIAL HEELFLIP',  key: 'L-FLICK ↘' },
+        frontflip:  { pts: 300, ms: 560, label: 'FRONT FLIP',       key: 'L-FLICK ↑ (or ↑)' },
+        backflip:   { pts: 300, ms: 560, label: 'BACKFLIP',         key: 'L-FLICK ↓ (or ↓)' },
+        roll:       { pts: 250, ms: 500, label: 'CORKSCREW',        key: 'L-FLICK ↖ / ↗' },
+        varial:     { pts: 180, ms: 480, label: 'VARIAL KICKFLIP',  key: 'L-FLICK ↙' },
+        varialheel: { pts: 180, ms: 480, label: 'VARIAL HEELFLIP',  key: 'L-FLICK ↘' },
         spin:       { pts: 120, ms: 340, label: '180',              key: 'R-FLICK ← / →' },
         grab:       { pts: 80,  ms: 300, label: 'INDY GRAB',        key: 'R-FLICK ↓ (or SHIFT)' },
         nosegrab:   { pts: 90,  ms: 300, label: 'NOSEGRAB',         key: 'R-FLICK ↑' },
@@ -40478,7 +40482,7 @@ const HQ_SKATE_RULES = {
     },
     labels: { on: 'ON THE BOARD', off: 'ON FOOT', bail: 'BAIL', bank: 'LANDED', perfect: 'PERFECT POP' },
     ranks: [[0, 'LANDED'], [400, 'NICE'], [1500, 'SICK'], [5000, 'INSANE'], [15000, 'LEGENDARY']],   // the word stamped on a banked line, by its score
-    controls: ['W push (hold it at speed to cruise)', 'S brake · from a stop skate backwards', 'A / D carve', 'HOLD SPACE to crouch · RELEASE to pop (the meter is the height · release on MAX = a PERFECT POP)', 'in the air WASD is AIR CONTROL: A / D steer · W / S the speed', 'THE STICK: hold a mouse button in the air and FLICK — LEFT ← → ↑ ↓ = kickflip · heelflip · front flip · backflip, ↖ ↗ corkscrew, ↙ ↘ varial · RIGHT ← → = 180s, ↑ ↓ = grabs', 'land on a rail = grind (A / D balance)', 'only a trick still turning at the landing bails — walls, props and drops never do', 'B off'],
+    controls: ['W push (hold it at speed to cruise)', 'S brake · from a stop skate backwards', 'A / D carve', 'HOLD SPACE to crouch (as long as you like) · RELEASE to pop (the meter is the height · release right as it hits MAX = a PERFECT POP)', 'in the air WASD is AIR CONTROL: A / D steer · W / S the speed', 'THE STICK: hold a mouse button in the air and FLICK — LEFT ← → ↑ ↓ = kickflip · heelflip · front flip · backflip, ↖ ↗ corkscrew, ↙ ↘ varial · RIGHT ← → = 180s, ↑ ↓ = grabs', 'land on a rail = grind (A / D balance)', 'only a trick still turning at the landing bails — walls, props and drops never do', 'B off'],
 };
 function hqSkateIssueFree() { return !!HQ_SKATE_RULES.free; }
 /* the record on the profile; `make` creates it (a writer), else a read-only shape */

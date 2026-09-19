@@ -5971,3 +5971,8 @@ squashes the body by the fall (`R.squash` / `R.landK`), a dust puff, a camera di
 (audio.js `skateCharge` / `skatePop` / `skateTrick` / `skateSick`). The table keys are in data.js `HQ_SKATE_RULES`
 (`flickPx` is the one to tune if flicks fire too eagerly). `npm test` runs hq-skate.test.js (29). Unseen live (RULE
 #1c): the flick threshold at a real mouse, the meter's spot, the squat on the cast rigs, the dip's size.
+**rev 4b (same day)**: THE CROUCH HOLDS FOR EVER (no deflate; `crouchMaxHoldS` retired), ONE TRICK PER FLICK
+(`flickCoolMs` — the stick's travel is discarded for 220 ms after a flick fires), THE FIT (`_hqRideFitMs`: a rotation
+started in the air is sped up to end inside `trickFitShare` of the air left, floored at `trickFitMin`; too little air =
+REFUSED with the `late` beat, never a bail — `_hqRideAirLeft` is the ballistic estimate off `_hqSurface`; a queued trick
+carries its fitted ms) and THE TUCK (`R.grabTuck` / `R.deckTuck` pitch the body + the deck on a grab). hq-skate.test.js (30).
