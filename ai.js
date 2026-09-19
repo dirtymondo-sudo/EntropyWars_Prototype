@@ -3082,9 +3082,10 @@
         }
 
         /* ═══ THE DOOR AGENT (DOOR_RACE_DESIGN.md §7, 2026-09-14) ═══════════
-           door (Knock Knock): a pair when the agent has none — B toward the
-           enemy line (findSpellTarget stashes A on unit._aiDoorA), or a
-           toggle: SHUT a friendly open door an enemy stands beside. */
+           door (Knock Knock): a pair when the agent has none — the FAR door
+           toward the enemy line (one click; the engine seats the near door
+           beside the agent), or a toggle: SHUT a friendly open door an
+           enemy stands beside. */
         if (kind === 'door') {
             if (!target) return 0;
             const doorOn = (typeof g.doorAt === 'function') ? g.doorAt(target.x, target.y) : null;
@@ -3095,7 +3096,8 @@
                 if (doorOn.open) return enemiesBeside > 0 && alliesBeside === 0 ? 40 + enemiesBeside * 30 : 0;
                 return enemiesBeside === 0 && alliesBeside > 0 ? 30 : 0;   // reopen the road for a teammate
             }
-            if (!unit._aiDoorA) return 0;
+            if (typeof g.doorTileFree === 'function' && !g.doorTileFree(target.x, target.y)) return 0;
+            if (typeof g._doorNearSpot === 'function' && !g._doorNearSpot(unit, target)) return 0;   // no room beside the agent for the near door
             const mine = (typeof g.doorTeamPairs === 'function') ? g.doorTeamPairs(unit.player).filter(d => d.ownerId === unit.id).length : 0;
             if (mine > 0) return 0;
             const round = g.state.round || 0;
@@ -4640,32 +4642,26 @@
             if (doors.some(d => d.ownerId === unit.id)) return null;
             const free = (typeof g.doorTileFree === 'function') ? g.doorTileFree : null;
             if (!free) return null;
+            /* ONE CLICK (2026-09-19): the AI picks the FAR tile only — up to
+               spell.range out toward the nearest enemy (or the Cube), never
+               under their feet; the engine stands the near door beside the
+               agent (_doorNearSpot) */
+            if (typeof g._doorNearSpot === 'function' && !g._doorNearSpot(unit, null)) return null;
             const goal = v.visibleEnemies.length
                 ? v.visibleEnemies.reduce((b, e) => (Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y)) < (Math.abs(b.x - unit.x) + Math.abs(b.y - unit.y)) ? e : b)
                 : (v.enemyTower && v.enemyTower.hp > 0 ? v.enemyTower : null);
             if (!goal) return null;
-            const R = (typeof g.DOOR_RULES !== 'undefined' && g.DOOR_RULES) ? g.DOOR_RULES.pairRange : 3;
-            let A = null, aBest = 1e9;
-            for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
-                if (!dx && !dy) continue;
-                const ax = unit.x + dx, ay = unit.y + dy;
-                if (!free(ax, ay)) continue;
-                const far = -(Math.abs(ax - goal.x) + Math.abs(ay - goal.y));   // A stays on OUR side
-                if (far < aBest) { aBest = far; A = { x: ax, y: ay }; }
-            }
-            if (!A) return null;
+            const R = _effRange(unit, spell) || 4;
             let B = null, bBest = 1e9;
             for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) {
-                if (Math.abs(dx) + Math.abs(dy) > R) continue;
+                if (Math.abs(dx) + Math.abs(dy) > R || (!dx && !dy)) continue;
                 const bx = unit.x + dx, by = unit.y + dy;
-                if (Math.max(Math.abs(bx - A.x), Math.abs(by - A.y)) < 2) continue;
+                if (Math.abs(dx) + Math.abs(dy) < 2) continue;   // the far door is the FAR one
                 if (!free(bx, by)) continue;
                 const dg = Math.abs(bx - goal.x) + Math.abs(by - goal.y);
                 if (dg < 2) continue;   // not under their feet
                 if (dg < bBest) { bBest = dg; B = { x: bx, y: by }; }
             }
-            if (!B) return null;
-            unit._aiDoorA = { x: A.x, y: A.y };
             return B;
         }
         if (kind === 'doorBreach' || kind === 'doorTrap') {

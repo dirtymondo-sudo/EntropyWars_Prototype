@@ -5029,9 +5029,9 @@ function spellTagline(sp) {
   else if (k === 'cleanseArea') parts.push('Purify ' + (2 * (sp.aoeRadius || 1) + 1) + '×' + (2 * (sp.aoeRadius || 1) + 1) + ' · allies lose debuffs · enemies lose buffs');
   else if (k === 'steal') parts.push('Rob · ' + (sp.stealKeys != null ? sp.stealKeys : 1) + ' Key + ' + (sp.stealItems != null ? sp.stealItems : 1) + ' item');
   // DOOR_RACE_DESIGN (2026-09-14): the door kinds
-  else if (k === 'door') parts.push('Place 2 doors within 3 · or toggle one (0 MP)');
+  else if (k === 'door') parts.push('A door where you point + its twin beside you · or toggle a door (0 MP)');
   else if (k === 'doorBreach') parts.push('Teleport beside · rear hit');
-  else if (k === 'doorDelivery') parts.push('Out of a door within ' + (sp.doorRange != null ? sp.doorRange : 2) + ' · rear hit · ' + (sp.range || 3) + ' from its twin');
+  else if (k === 'doorDelivery') parts.push('Out of your nearest open door · ' + (sp.range || 3) + ' from it · rear hit');
   else if (k === 'doorSlam') parts.push('Shut a door · twin slams 3×3 · push ' + (sp.pushDistance || 1));
   else if (k === 'doorExit') parts.push('Off the board 1 round · back out of the twin');
   else if (k === 'doorTrap') parts.push('Drop out of your farthest door');
@@ -5085,7 +5085,7 @@ function spellTargetMode(sp) {
   if (k === 'pulseLattice') return 'Self · AOE';
   if (k === 'tuneFrequency') return 'Self Target';
   if (k === 'dash' && sp.afterShot) return 'Dash · then Shoot';
-  if (k === 'door') return 'Two Tiles · Door';
+  if (k === 'door') return 'Tile · Door';
   if (k === 'doorSlam') return 'Your Door';
   if (k === 'doorDelivery') return 'Through a Door';
   if (k === 'doorExit') return 'Enemy at a Door';
@@ -5549,7 +5549,13 @@ function _computeEnemyActions(actingUnit, targetUnit) {
     // sweep the whole board), stopping at impassable terrain. So "castable on
     // this enemy from (sx,sy)" = enemy sits on one of the 8 ray headings AND
     // within the capped ray's reach.
-    const beamRayHits = (sxx, syy) => {
+    const beamRayHits = (sxx, syy, szz) => {
+      /* (2026-09-19) the engine's own ray walk — LOS, height and the wide
+         beams' lanes included — so the menu never offers a beam that stops
+         short of the enemy ("Chemtrails hits 0 targets") */
+      if (typeof window.lineSpellHeadingTo === 'function') {
+        return !!window.lineSpellHeadingTo(sp, sxx, syy, (szz === undefined) ? null : szz, tx, ty);
+      }
       const ddx = Math.sign(tx - sxx), ddy = Math.sign(ty - syy);
       if (ddx === 0 && ddy === 0) return false;
       const adx = Math.abs(tx - sxx), ady = Math.abs(ty - syy);
@@ -5614,7 +5620,7 @@ function _computeEnemyActions(actingUnit, targetUnit) {
         : dist <= (sp.aoeRadius || 1);
     } else if (isLine) {
 
-      inSpellRange = dist >= 1 && beamRayHits(actingUnit.x, actingUnit.y);
+      inSpellRange = dist >= 1 && beamRayHits(actingUnit.x, actingUnit.y, actingUnit.z);
     } else if (isDash) {
 
       // Engine parity (doSpell 'dash'): the gate is plain 2D Manhattan range +
@@ -5738,7 +5744,7 @@ function _computeEnemyActions(actingUnit, targetUnit) {
           for (const t of cand) {
             if (typeof unitAt === 'function' && unitAt(t.x, t.y, t.z)) continue;
             if (t.x === tx && t.y === ty) continue;
-            if (!beamRayHits(t.x, t.y)) continue;
+            if (!beamRayHits(t.x, t.y, t.z)) continue;
             const d = Math.abs(t.x - actingUnit.x) + Math.abs(t.y - actingUnit.y);
             if (d < bestD) { bestD = d; best = { moveCost: 1, x: t.x, y: t.y, z: t.z, _jump: !!t._jumpVerb }; }
           }

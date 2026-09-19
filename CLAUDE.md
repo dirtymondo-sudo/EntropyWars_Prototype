@@ -6171,3 +6171,40 @@ north of the line, 180 south, 90 east, 270 west); the first draft had every nort
 against the rows. Two pockets joined with `path` rows, never rescue ramps. hq-cave.test.js's far-lane crowding compares north-wall doors only (a
 side-wall draught has no `x`). Ship data.js to R2 AND Render. UNSEEN LIVE (RULE #1c): all of it — DOOR_HQ_BUILD_PLAN §9's entry lists what to
 eyeball first. NEXT: Mars, the Moon, the Grove.
+
+## THE COMBAT FIXES — solid highlights · the mode holds · the beam heading · the Door Agent's one-click kit · no hover wash while the camera flies (2026-09-19, local delivery)
+Five of the user's combat notes. **SOLID HIGHLIGHTS**: three-renderer.js `HL_OPACITY` / `HL_FILL` /
+`HL_OPACITY_MAP` / the move-tile recipe in `_getSharedHlMat` / `_OVERLAY_STYLE` were all lifted ("THE
+SOLID PASS" comments) — the range washes were a 13 % lattice, they are ~36 % plates now, the move tiles
+~46 %; the three tiers keep their order. Restyle there, never per site. **THE MODE HOLDS** (battle.js
+`clickTile`): an incompatible click while a verb is armed — out of range, wrong team, no effect, a unit
+under a move / jump click — is a beep and a log line and NOTHING else: the mode, the selection and the
+range stay up (it used to `_exitModeAndShowUnitMenu` / `selectUnit`, which dropped the highlights). Two
+latch bugs fixed on the way: the bare `return doMove(…)` and the "No route onto that surface" branch left
+`state._actionExecuting` true, so a refused walk hid the move range and ate the next click (`_execMove`
+wraps it now). **THE BEAM HEADING** (Chemtrails "hits 0 targets in a line"): battle.js
+`lineSpellHeadingTo(spell, fromX, fromY, fromZ, tx, ty)` (right before `getSpellRangeTiles`, on `window`)
+walks the eight rays exactly as `_applyLineDamage` does (range cap, impassable, LOS, the wide beams' lanes;
+no boring) and answers the heading whose spine or lane holds the target, else null. `doSpell`'s line branch
+reads it (a human's click on a tile no ray reaches is refused BEFORE MP is spent; the AI keeps the old
+`Math.sign` snap), `_spellGlowTiles` reads it, and hud.js's enemy quick menu `beamRayHits(sxx, syy, szz)`
+reads it — the menu used to offer a beam whose ray the LOS walk stopped short of, and the cast took
+`Math.sign` of the click, so an enemy at (+3, +1) got a diagonal beam that missed. Never aim a beam with
+`Math.sign` again. **THE DOOR AGENT, ONE CLICK**: Knock Knock places the FAR door where you click (any free
+tile within 4 you can see) and the NEAR door beside you (`_doorNearSpot(unit, far)` = the free adjacent tile
+nearest the far one); `DOOR_RULES.pairRange` / `minGap` and the `_spellPick1` tile pick are GONE (online.js's
+door block emits every click; `pickX / pickY` ride null). A click on your own door still toggles it. Special
+Delivery flies out of ANY of your open doors (the nearest that reaches the target within 3 with LOS —
+`_doorOriginForSpell`; `doorRange` is gone). **THE GREYING**: `hasSpellTargetInRange` has door branches now —
+`door` / `doorSlam` are castable when `getSpellRangeTiles` (→ **`_doorRangeTiles`**: free tiles + your doors ·
+your open doors in reach · the delivery zones round your doors · the tiles beside them) is non-empty;
+`doorDelivery` / `doorExit` when an enemy a door of yours reaches exists; `doorBreach` / `doorTrap` sit in the
+plain single-target list. `_getSpellValidTargets` lists door-reached enemies for Delivery / EXIT and NO unit
+for Knock Knock / Slam (the board is their drum); ui.js paints the door tile sets as placement reach. The
+rows read their rule (data.js descs, hud.js parts / labels, the aim prompts). ai.js picks the far tile only.
+door-race.test.js pins the new delivery rule, the near spot and the reach. **NO HOVER WASH WHILE THE CAMERA
+FLIES**: battle.js `isCameraAutoMoving()` (beside `stopBoardCameraAnimation`; on `window`) = a path tween /
+`_busy` / a cine shot / a 2D cinematic / the encounter's seeded ease; `updateEnemyRangePreview` returns while
+it is true and three-renderer.js `_syncEnemyRangePreview` folds it into its signature so the wash comes back
+when the camera lands. Unseen live (RULE #1c): the plate opacities against the busiest sheets, the
+one-click door pair's near spot on a crowded flank, the greyed rows' reasons, the wash's return timing.

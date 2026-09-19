@@ -156,11 +156,22 @@ test('the door object: place, cap, toggle, wall, sight, hits, step-through, orig
     assert.ok(org[0].x === 6 && org[0].y === 5);
     assert.ok(g.doorCastOriginFor(a1, 6, 6, 2), 'the enemy beside the twin is in reach from it');
     assert.equal(g.doorCastOriginFor(a1, 6, 6, 2, { dist: () => 9 }), null);
-    // Special Delivery reads the door within doorRange, then the twin's reach
-    const sd = { kind: 'doorDelivery', doorRange: 2, range: 3 };
+    // Special Delivery (2026-09-19): the package flies out of ANY of your
+    // open doors — the nearest one that reaches the target — wherever the
+    // agent stands (the old "a door within 2 of the caster" rule is gone)
+    const sd = { kind: 'doorDelivery', range: 3 };
+    const sdo = g._doorOriginForSpell(a1, sd, 6, 6);
+    assert.ok(sdo && sdo.x === 6 && sdo.y === 5, 'out of the door beside the target');
+    a1.x = 0; a1.y = 7;   // far from every door — the doors do the delivering
     assert.ok(g._doorOriginForSpell(a1, sd, 6, 6));
-    a1.x = 0; a1.y = 7;   // too far from any door
-    assert.equal(g._doorOriginForSpell(a1, sd, 6, 6), null);
+    assert.equal(g._doorOriginForSpell(a1, sd, 7, 0), null, 'no door reaches (7,0)');
+    // Knock Knock's near door: the free tile beside the agent nearest the far tile
+    a1.x = 1; a1.y = 1;
+    const near = g._doorNearSpot(a1, { x: 5, y: 1 });
+    assert.ok(near && near.x === 2 && near.y !== 1, 'the near door leans toward the far one (never onto the door already at (2,1))');
+    assert.equal(g._doorNearSpot(a1, { x: 2, y: 1 }).x === 2 && g._doorNearSpot(a1, { x: 2, y: 1 }).y === 1, false, 'never the far tile itself');
+    const reach = g._doorRangeTiles(a1, { kind: 'doorExit', range: 1 });
+    assert.ok(reach.some(t => t.x === 6 && t.y === 6) && !reach.some(t => t.x === 0 && t.y === 0), 'EXIT reaches the tiles beside the open doors only');
     // EXIT: the enemy must stand on or beside one of your open doors
     const ex = { kind: 'doorExit', range: 1 };
     assert.ok(g._doorOriginForSpell(a1, ex, 6, 6));

@@ -598,7 +598,12 @@ const ThreeRenderer = (function () {
         'selected':        0xffd83d,   /* cursor yellow — brackets-only style */
         'placeable':       0x44aaff
     };
-    const HL_OPACITY = 0.62;
+    /* THE SOLID PASS (2026-09-19, the user: "make the tile highlights more
+       solid"): every fill / opacity below was lifted — the range washes were
+       a 13 % lattice you could lose against a busy sheet. The three tiers
+       keep their ORDER (context < options < consequences); only the floor
+       came up. Restyle here, never per site. */
+    const HL_OPACITY = 0.82;
 
     /* Interior-fill strength per type — the VISUAL WEIGHT dial.
        Tier 1 · context ("where I could act"): spell/attack range, inspect —
@@ -609,31 +614,31 @@ const ThreeRenderer = (function () {
                 AoE footprint (overlay styles below) — loudest, with hatching.
        Anything not listed falls back to 0.34 (the old uniform fill). */
     const HL_FILL = {
-        'spell-range':     0.13,
-        'spell-range-bg':  0.08,
-        'spell-range-dmg': 0.12,
-        'heal-range':      0.10,
-        'spell-damage':    0.48,
-        'attack':          0.13,
-        'inspect':         0.12,
+        'spell-range':     0.36,
+        'spell-range-bg':  0.22,
+        'spell-range-dmg': 0.36,
+        'heal-range':      0.34,
+        'spell-damage':    0.62,
+        'attack':          0.36,
+        'inspect':         0.32,
         /* in-range-but-unreachable move tile: a REAL red fill (not the old
            near-invisible 0.08) so blocked ground reads at a glance */
-        'move-edge':       0.30,
-        'attack enemy':    0.55,
-        'heal':            0.58,
-        'move ally':       0.30,
-        'combo-target':    0.48,
-        'placeable':       0.28,
+        'move-edge':       0.40,
+        'attack enemy':    0.66,
+        'heal':            0.66,
+        'move ally':       0.42,
+        'combo-target':    0.58,
+        'placeable':       0.42,
         'selected':        0.05
     };
 
     const HL_OPACITY_MAP = {
-        'move-edge':       0.55,
-        'spell-range-bg':  0.35,
-        'spell-range-dmg': 0.50,
-        'heal-range':      0.48,
-        'spell-damage':    0.72,
-        'attack enemy':    0.75
+        'move-edge':       0.72,
+        'spell-range-bg':  0.62,
+        'spell-range-dmg': 0.80,
+        'heal-range':      0.78,
+        'spell-damage':    0.88,
+        'attack enemy':    0.90
     };
 
     /* AP-cost pip dots removed — every move tile is the same 1-AP move now,
@@ -13035,14 +13040,15 @@ const ThreeRenderer = (function () {
            loudest. No AP pip dots — every move tile is the same 1-AP move. */
         if (baseTok.indexOf('move') === 0 && baseTok !== 'move-edge') {
             dotCount = 0;
-            if (hlType.indexOf(' strike') !== -1)       { color = HL_COLORS['strike'];  opacity = 0.66; edgeGlow = 1.2;  style = { fill: 0.36 }; }
-            else if (hlType.indexOf(' hazard') !== -1)  { color = HL_COLORS['hazard'];  opacity = 0.62; edgeGlow = 1.1;  style = { fill: 0.30 }; }
-            else if (hlType.indexOf(' benefit') !== -1) { color = HL_COLORS['benefit']; opacity = 0.60; edgeGlow = 1.0;  style = { fill: 0.32 }; }
+            /* THE SOLID PASS (2026-09-19): the move tiles read as a plate, not a lattice */
+            if (hlType.indexOf(' strike') !== -1)       { color = HL_COLORS['strike'];  opacity = 0.84; edgeGlow = 1.2;  style = { fill: 0.52 }; }
+            else if (hlType.indexOf(' hazard') !== -1)  { color = HL_COLORS['hazard'];  opacity = 0.80; edgeGlow = 1.1;  style = { fill: 0.48 }; }
+            else if (hlType.indexOf(' benefit') !== -1) { color = HL_COLORS['benefit']; opacity = 0.78; edgeGlow = 1.0;  style = { fill: 0.48 }; }
             else {
                 color = HL_COLORS[baseTok] || HL_COLORS['move'];
-                opacity = 0.5;
+                opacity = 0.74;
                 edgeGlow = 0.95;
-                style = { fill: 0.28 };
+                style = { fill: 0.46 };
             }
         } else {
             color = _getHlColor(matKey);
@@ -13191,14 +13197,15 @@ const ThreeRenderer = (function () {
         'actionPlanAoe':       { fill: 0.45, edgeGlow: 0.9 },
         'actionPlanTarget':    { fill: 0.50, edgeGlow: 1.1 },
         'spellApproachTarget': { fill: 0.50, edgeGlow: 1.1 },
-        'spellRange':          { fill: 0.13, edgeGlow: 1.1 },
-        'attackRange':         { fill: 0.13, edgeGlow: 1.1 },
-        'spellRangeElem':      { fill: 0.30, edgeGlow: 0.9 },
-        'enemyRange':          { fill: 0.14, edgeGlow: 0.55 },
+        /* THE SOLID PASS (2026-09-19): the range washes are plates now */
+        'spellRange':          { fill: 0.36, edgeGlow: 1.1 },
+        'attackRange':         { fill: 0.36, edgeGlow: 1.1 },
+        'spellRangeElem':      { fill: 0.42, edgeGlow: 0.9 },
+        'enemyRange':          { fill: 0.32, edgeGlow: 0.6 },
         /* stat-panel (ⓘ) reach + quick-cast blade-hover reach: quiet
            semi-transparent context washes under the loud target/AoE layer */
-        'infoRange':           { fill: 0.12, edgeGlow: 1.0 },
-        'actionPlanRange':     { fill: 0.10, edgeGlow: 0.9 },
+        'infoRange':           { fill: 0.30, edgeGlow: 1.0 },
+        'actionPlanRange':     { fill: 0.28, edgeGlow: 0.9 },
         'weather':             { fill: 0.30, edgeGlow: 0.15 },
         'movePreview':         { fill: 0.30, edgeGlow: 0.9 },
         'moveHoverDest':       { fill: 0.34, edgeGlow: 1.0 },
@@ -31214,7 +31221,9 @@ const ThreeRenderer = (function () {
                 + (state.activePlayer || 0) + '|' + (state.round || 0)
                 /* targeting mode suppresses the hover range wash — arming or
                    leaving a mode mid-hover must re-fire the preview */
-                + '|' + (state.actionMode || '') + '|' + (state.actionMenuView || '');
+                + '|' + (state.actionMode || '') + '|' + (state.actionMenuView || '')
+                /* the wash stays down while the camera flies (2026-09-19) — and comes back when it lands */
+                + '|' + ((typeof window.isCameraAutoMoving === 'function' && window.isCameraAutoMoving()) ? 1 : 0);
         var tgt = null;
         if (hovId !== '') tgt = _unitById.get(hovId) || null;
         if (!tgt && pinId !== '') tgt = _unitById.get(pinId) || null;

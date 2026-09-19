@@ -3159,7 +3159,7 @@
                       // Tile-targeted DAMAGE (bombs, ground-aimed AoE): faint
                       // red reach — anywhere in here can become a blast zone.
                       _hlCache.set(posKey(cx, cy), 'spell-range-dmg');
-                    } else if (['summonWeather', 'remoteView', 'placeBlock', 'buildStructure', 'placeTrap', 'placeMirror'].includes(spell.kind)) {
+                    } else if (['summonWeather', 'remoteView', 'placeBlock', 'buildStructure', 'placeTrap', 'placeMirror', 'door', 'doorSlam'].includes(spell.kind)) {
                       // Placement kinds paint the neutral build/aim color — they
                       // target TILES, so no enemy-red attack highlighting.
                       _hlCache.set(posKey(cx, cy), 'spell-range');

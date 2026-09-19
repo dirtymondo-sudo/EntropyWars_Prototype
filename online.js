@@ -560,10 +560,11 @@
                    the engine's pick branch here; the second tile travels with
                    pickX / pickY and the host seats it as state._spellPick1. */
                 if (_tcSpell && _tcSpell.kind === 'door') {
-                    var _dpk = (state._spellPick1 && state._spellPick1.tile && state._spellPick1.spellId === _tcSpell.id) ? state._spellPick1 : null;
-                    var _dOn = (typeof doorAt === 'function') ? doorAt(x, y) : null;
-                    if (!_dpk && !_dOn) return _origDoSpell(unit, x, y, z);
-                    if (_dpk) _tcDoorPick = { x: _dpk.x, y: _dpk.y };
+                    /* ONE CLICK since 2026-09-19: the host places BOTH doors
+                       (the near one beside the agent) or toggles the clicked
+                       one — nothing is picked guest-side any more, so the
+                       click always travels. pickX / pickY stay null. */
+                    _tcDoorPick = null;
                 }
             } catch (e) { _tcPick = null; }
             _guestActionFeedback('spell', unit, x, y);

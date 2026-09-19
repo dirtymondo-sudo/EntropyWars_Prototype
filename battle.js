@@ -5690,7 +5690,8 @@
                 } else if (kind === 'line' || kind === 'linePush') {
                     /* the beam lane — same walk as _applyLineDamage (minus
                        breach boring), lit outward from the muzzle */
-                    const dx = Math.sign(tx - unit.x), dy = Math.sign(ty - unit.y);
+                    const _gh = lineSpellHeadingTo(spell, unit.x, unit.y, unit.z ?? null, tx, ty);
+                    const dx = _gh ? _gh.dx : Math.sign(tx - unit.x), dy = _gh ? _gh.dy : Math.sign(ty - unit.y);
                     if (dx !== 0 || dy !== 0) {
                         const lineRange = spell.range || 4;
                         for (let i = 1; i <= lineRange; i++) {
@@ -6195,7 +6196,48 @@
             return tiles;
         }
 
+        /* THE HEADING (2026-09-19 — Chemtrails "hits 0 targets in a line"):
+           a beam fires along ONE of the eight rays. The cast used to take
+           Math.sign of the click, so an enemy at (+3, +1) got a diagonal beam
+           that missed it, and the enemy quick menu offered beams whose ray the
+           LOS walk stops short of. lineSpellHeadingTo walks every ray the way
+           _applyLineDamage does (range cap, impassable, line of sight — no
+           boring) and answers the heading whose spine or lane holds (tx, ty),
+           else null. Every aim reads it: doSpell, the glow preview, the quick
+           menu's beamRayHits. */
+        function lineSpellHeadingTo(spell, fromX, fromY, fromZ, tx, ty) {
+            if (!spell) return null;
+            const lineRange = spell.range || 4;
+            const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
+            const probe = { x: fromX, y: fromY, z: (fromZ === undefined) ? null : fromZ };
+            const adx = tx - fromX, ady = ty - fromY;
+            if (!adx && !ady) return null;
+            for (const [dx, dy] of dirs) {
+                if (adx * dx < 0 || ady * dy < 0) continue;   // the target lies behind this heading
+                const lanes = getLineSpellLaneOffsets(spell, dx, dy);
+                for (let i = 1; i <= lineRange; i++) {
+                    const cx = fromX + dx * i, cy = fromY + dy * i;
+                    if (!isInside(cx, cy)) break;
+                    if (!isTerrainPassable(cx, cy) && !spell.destroysObstacles) break;
+                    if (_lineLosBlocked(probe, spell, cx, cy)) break;
+                    if (cx === tx && cy === ty) return { dx, dy };
+                    for (const [ox, oy] of lanes) {
+                        if (cx + ox === tx && cy + oy === ty && isTerrainPassable(tx, ty)) return { dx, dy };
+                    }
+                }
+            }
+            return null;
+        }
+        window.lineSpellHeadingTo = lineSpellHeadingTo;
+
         function getSpellRangeTiles(unit, spell) {
+            /* THE DOOR AGENT (2026-09-19): the door kinds' reach is a set of
+               tiles the door rules decide (free tiles + your doors, the
+               delivery zones round your doors, the tiles beside them) */
+            if (unit && spell && typeof _doorRangeTiles === 'function') {
+                const _drt = _doorRangeTiles(unit, spell);
+                if (_drt) return _drt;
+            }
             // Self-cast / zero-range abilities (Howl, Reassemble, Siege Mode, …)
             // target the caster's own tile; without this they'd produce an empty
             // range set and any confirm/hover path would wrongly say "out of range".
@@ -16140,6 +16182,23 @@
         window._armActionCamSettle = armActionCamSettle;
 
         function stopBoardCameraAnimation() { camera._stop(); }
+        /* THE CAMERA IS BUSY (2026-09-19, the user: "don't show attack range
+           highlights on hover if the game is doing an automatic camera
+           movement"): true while an AUTOMATIC move owns the frame — a path
+           tween, an action / cine shot, the settle's flight, the encounter's
+           seeded swoop, a 2D cinematic. The hover range wash
+           (updateEnemyRangePreview) stays down while it is, so a pan across
+           the board does not paint every unit the pointer crosses. */
+        function isCameraAutoMoving() {
+            try {
+                if (camera._rafId || camera._busy || (camera._duration > 0) || camera._cineShotId != null) return true;
+                if (typeof isCinematicActive === 'function' && isCinematicActive()) return true;
+                if (typeof ThreeCamera !== 'undefined' && ThreeCamera && typeof ThreeCamera.seedState === 'function'
+                    && ThreeCamera.seedState().easing) return true;
+            } catch (e) { /* cosmetic */ }
+            return false;
+        }
+        window.isCameraAutoMoving = isCameraAutoMoving;
         function setBoardCameraFocusPoint(x, y, opts = {}) {
             if (state.cameraDisabled) return;
             if (camera._fogBlocked(opts._fogAllowed)) return;
@@ -27014,14 +27073,10 @@
                 case 'summonUnit':    return nm + ': select an empty tile beside you to call it to.';
                 case 'cannibalize':   return nm + ': select a fallen unit\'s remains within reach to feed on.';
                 case 'possess':       return nm + ': select an enemy to take control of.';
-                case 'door': {
-                    const _dp = state._spellPick1;
-                    if (_dp && _dp.tile && _dp.spellId === spell.id) return nm + ': first door at <strong>' + coordLabel(_dp.x, _dp.y) + '</strong> — now pick the SECOND tile (within 3, not beside the first).';
-                    return nm + ': pick an empty tile within 3 for the first door, or click one of your doors to open / shut it.';
-                }
+                case 'door':          return nm + ': pick an empty tile within ' + (spell.range || 4) + ' — a door opens there and its twin opens beside you. Or click one of your doors to open / shut it (free).';
                 case 'doorBreach':    return nm + ': select an enemy you can see — you come through beside them and strike from behind.';
-                case 'doorDelivery':  return nm + ': select an enemy within 3 tiles of the twin of an open door beside you (2 tiles).';
-                case 'doorSlam':      return nm + ': select one of your doors — it shuts, and its twin slams everyone on or beside it.';
+                case 'doorDelivery':  return nm + ': select an enemy within ' + (spell.range || 3) + ' tiles of one of your open doors — the package flies out of that door.';
+                case 'doorSlam':      return nm + ': select one of your open doors within ' + (spell.range || 4) + ' — it shuts, and its twin slams everyone on or beside it.';
                 case 'doorExit':      return nm + ': select an enemy standing on or beside one of your open doors.';
                 case 'doorTrap':      return nm + ': select an enemy you can see — the floor gives way under them.';
                 case 'shadowRealm':   return nm + ': select an enemy to drag into the Shadow Realm with you.';
@@ -28932,6 +28987,23 @@
 
             if (kind === 'line' || kind === 'linePush') return true;
 
+            /* THE DOOR AGENT (2026-09-19, the user: "spells show up that
+               require a door when I have no door placed — it lets me select
+               it and then tells me it can't"): a door spell is greyed exactly
+               when nothing on the board takes it. door / doorSlam read their
+               tile set (free tiles + your doors / your open doors in reach);
+               doorDelivery / doorExit need an enemy a door of yours reaches;
+               doorBreach / doorTrap are plain single-target hits (the list
+               below). */
+            if (kind === 'door' || kind === 'doorSlam') return getSpellRangeTiles(unit, spell).length > 0;
+            if (kind === 'doorDelivery' || kind === 'doorExit') {
+                const _dFog = state.fogOfWar && !state.autoPlayers?.[unit.player];
+                return state.units.some(u => !u.dead && u.player !== unit.player
+                    && (!_dFog || isInVision(unit, u.x, u.y))
+                    && spellTargetUsableOn(unit, spell, u)
+                    && !!_doorOriginForSpell(unit, spell, u.x, u.y));
+            }
+
             // Leap-strike spells (e.g. Feral Dive) can only be cast onto an enemy that
             // is BELOW the caster's current standing height. Treat the spell as having a
             // valid target only when such an enemy is in range — otherwise the ability
@@ -28949,7 +29021,7 @@
                 });
             }
 
-            if (['damage', 'ricochet', 'multiHit', 'lifeDrain', 'debuff', 'aoe', 'displacement', 'cross', 'pull', 'swap', 'aoePull', 'splitBeam', 'tackle', 'possess', 'shadowRealm', 'link'].includes(kind)) {
+            if (['damage', 'ricochet', 'multiHit', 'lifeDrain', 'debuff', 'aoe', 'displacement', 'cross', 'pull', 'swap', 'aoePull', 'splitBeam', 'tackle', 'possess', 'shadowRealm', 'link', 'doorBreach', 'doorTrap'].includes(kind)) {
                 const effectiveRange = (kind === 'aoe' && spell.aoeOriginSelf) ? (spell.aoeRadius || 1) : range;
                 const _longRange = isLongRangeSpell(spell);
                 const enemies = state.units.filter(u => !u.dead && u.player !== unit.player);
@@ -30528,6 +30600,7 @@
                 if (state.actionMode) return;                       // targeting armed → suppress
                 if (state.actionMenuView === 'attackTargets'
                     || state.actionMenuView === 'spellTargets') return;
+                if (isCameraAutoMoving()) return;                   // the camera is flying → the pointer is not pointing (2026-09-19)
                 if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive()) return;
                 const unit = (state.units || []).find(u => u.id === hoveredUnitId && !u.dead);
                 if (!unit) return;
@@ -43132,6 +43205,23 @@
                 _orderTargetsByNeed(spell, targets);
                 return targets;
             }
+            /* THE DOOR AGENT (2026-09-19): Knock Knock and Slam aim at TILES
+               (the board is their drum — no unit is ever a valid pick);
+               Special Delivery and EXIT list the enemies a door of yours
+               reaches, never the caster's own disc. */
+            if (spell.kind === 'door' || spell.kind === 'doorSlam') return targets;
+            if (spell.kind === 'doorDelivery' || spell.kind === 'doorExit') {
+                const _dFog = state.fogOfWar && !state.autoPlayers?.[unit.player];
+                for (const u of state.units) {
+                    if (u.dead || u.player === unit.player) continue;
+                    if (_dFog && !isInVision(unit, u.x, u.y)) continue;
+                    if (!spellTargetUsableOn(unit, spell, u)) continue;
+                    if (!_doorOriginForSpell(unit, spell, u.x, u.y)) continue;
+                    targets.push({ x: u.x, y: u.y, dist: Math.abs(u.x - unit.x) + Math.abs(u.y - unit.y), unit: u });
+                }
+                _orderTargetsByNeed(spell, targets);
+                return targets;
+            }
             const _skm = _kindMeta(spell);
             const minRange = _skm.minRange ?? 1;
             const isOffensive = !!_skm.offensive;
@@ -44847,13 +44937,11 @@
                         playErrorSfx();
                         markDirty('board', 'hud');
                         renderIfDirty();
-
-                        if (clickedUnit && !clickedUnit.dead && _exitModeAndShowUnitMenu(actingUnit, clickedUnit)) {
-                            return;
-                        }
-                        if (clickedUnit && clickedUnit.player === state.activePlayer && !clickedUnit.dead) {
-                            selectUnit(clickedUnit.id);
-                        }
+                        /* THE MODE HOLDS (2026-09-19, the user: "if I am moving or
+                           targeting and click somewhere incompatible the highlight
+                           range goes away"): a bad click is a beep and a line,
+                           never an exit — the armed verb and its range stay up.
+                           Right-click / BACK / ESC are the ways out. */
                         return;
                     }
                     // z-snap: clicking the TILE under a flyer resolves to ground
@@ -44895,14 +44983,7 @@
                         playErrorSfx();
                         markDirty('board', 'hud');
                         renderIfDirty();
-
-                        if (clickedUnit && !clickedUnit.dead && _exitModeAndShowUnitMenu(actingUnit, clickedUnit)) {
-                            return;
-                        }
-                        if (clickedUnit && clickedUnit.player === state.activePlayer && !clickedUnit.dead) {
-                            selectUnit(clickedUnit.id);
-                        }
-
+                        /* THE MODE HOLDS (2026-09-19): the armed spell and its range stay up */
                         return;
                     }
                     }
@@ -44916,10 +44997,7 @@
                         playErrorSfx();
                         markDirty('board', 'hud');
                         renderIfDirty();
-                        if (clickedUnit && !clickedUnit.dead && _exitModeAndShowUnitMenu(actingUnit, clickedUnit)) {
-                            return;
-                        }
-                        return;
+                        return;   // THE MODE HOLDS (2026-09-19)
                     }
 
                     // Per-target usability (mirrors the target drum): a full-HP
@@ -44937,10 +45015,7 @@
                         playErrorSfx();
                         markDirty('board', 'hud');
                         renderIfDirty();
-                        if (!clickedUnit.dead && _exitModeAndShowUnitMenu(actingUnit, clickedUnit)) {
-                            return;
-                        }
-                        return;
+                        return;   // THE MODE HOLDS (2026-09-19)
                     }
                 }
             }
@@ -44955,9 +45030,7 @@
                 playErrorSfx();
                 markDirty('board', 'hud');
                 renderIfDirty();
-                if (clickedUnit && !clickedUnit.dead && _exitModeAndShowUnitMenu(actingUnit, clickedUnit)) {
-                    return;
-                }
+                /* THE MODE HOLDS (2026-09-19): the item stays armed */
                 return;
             }
 
@@ -45026,9 +45099,14 @@
                 const _directlyClickedUnit = state._clickedUnitId && clickedUnit &&
                     clickedUnit.id === state._clickedUnitId;
                 if (_directlyClickedUnit && !clickedUnit.dead && clickedUnit.id !== actingUnit.id) {
+                    /* THE MODE HOLDS (2026-09-19): a unit is not a move
+                       destination — say so and keep the move range up (it used
+                       to drop the mode and open that unit's menu). */
                     state._actionExecuting = false;
-                    _exitModeAndShowUnitMenu(actingUnit, clickedUnit);
-                    return;
+                    addLog('Pick a highlighted tile to move to.', actingUnit.player);
+                    playErrorSfx();
+                    scheduleBoardRender();
+                    return false;
                 }
 
                 /* A failed doMove/doJump returns false WITHOUT resetting
@@ -45114,8 +45192,12 @@
                 // walk first, then pick the jump — each leg animates cleanly.
 
                 state._actionExecuting = false;
-                if (clickedUnit && !clickedUnit.dead && _exitModeAndShowUnitMenu(actingUnit, clickedUnit)) {
-                    return;
+                if (clickedUnit && !clickedUnit.dead) {
+                    /* THE MODE HOLDS (2026-09-19): an occupied tile is a miss, not an exit */
+                    addLog('That tile is occupied — pick a highlighted tile.', actingUnit.player);
+                    playErrorSfx();
+                    scheduleBoardRender();
+                    return false;
                 }
 
                 // Out of reach this turn → "Move Towards": walk ONE move action
@@ -45138,10 +45220,14 @@
                     && _r1Tiles.some(t => t.x === x && t.y === y)) {
                     addLog('No route onto that surface this turn.', actingUnit.player);
                     playErrorSfx();
+                    state._actionExecuting = false;   // (2026-09-19) the latch stayed up here and hid the move range
+                    scheduleBoardRender();
                     return false;
                 }
 
-                return doMove(actingUnit, x, y, state._clickedZ);
+                /* _execMove: a refused walk hands the board back with the range
+                   still lit (the bare doMove left _actionExecuting true) */
+                return _execMove(() => doMove(actingUnit, x, y, state._clickedZ));
             }
 
 
@@ -45162,10 +45248,12 @@
                    not the tile beneath an airborne unit */
                 const _jumpDirectClick = state._clickedUnitId && clickedUnit &&
                     clickedUnit.id === state._clickedUnitId;
-                if (_jumpDirectClick && !clickedUnit.dead) {
-                    state._actionExecuting = false;
-                    _exitModeAndShowUnitMenu(actingUnit, clickedUnit);
-                    return;
+                if (_jumpDirectClick && !clickedUnit.dead && clickedUnit.id !== actingUnit.id) {
+                    state._actionExecuting = false;   // THE MODE HOLDS (2026-09-19)
+                    addLog('Pick a highlighted tile to jump to.', actingUnit.player);
+                    playErrorSfx();
+                    scheduleBoardRender();
+                    return false;
                 }
                 return _execAction(() => doJump(actingUnit, x, y, state._clickedZ));
             }
@@ -47243,7 +47331,9 @@
            and doSpell a twin door as the ORIGIN of a cast (range + LOS from the
            twin; the rear-attack rider in applyDamageToUnit prices it).
            ═══════════════════════════════════════════════════════════════════ */
-        const DOOR_RULES = { hits: 3, pairRange: 3, toggleRange: 4, perAgent: 1, perTeam: 2, revealRadius: 1, minGap: 2 };
+        /* (2026-09-19) pairRange + minGap are GONE — Knock Knock is one click:
+           the far door where you point, the near door beside you. */
+        const DOOR_RULES = { hits: 3, toggleRange: 4, perAgent: 1, perTeam: 2, revealRadius: 1 };
         function _doors() { if (!Array.isArray(state.doors)) state.doors = []; return state.doors; }
         function doorAt(x, y) { return _doors().find(d => d.x === x && d.y === y && d.hp > 0) || null; }
         function doorById(id) { return _doors().find(d => d.id === id && d.hp > 0) || null; }
@@ -47288,6 +47378,71 @@
             if (typeof getTerrainRule === 'function' && getTerrainRule(getTerrainAt(x, y)).passable === false) return false;
             if (typeof canOccupy === 'function' && !canOccupy(x, y)) return false;   // objects, turrets, deployed walls
             return true;
+        }
+        /* THE NEAR DOOR (2026-09-19): the free tile beside the agent nearest
+           the far door's tile (never that tile itself) — Knock Knock's own
+           pick. null = no room beside the agent (the spell greys). */
+        function _doorNearSpot(unit, far) {
+            if (!unit) return null;
+            let best = null, bestD = Infinity;
+            for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+                if (!dx && !dy) continue;
+                const x = unit.x + dx, y = unit.y + dy;
+                if (far && far.x === x && far.y === y) continue;
+                if (!doorTileFree(x, y)) continue;
+                const d = far ? (Math.abs(far.x - x) + Math.abs(far.y - y)) * 10 + Math.abs(dx) + Math.abs(dy) : Math.abs(dx) + Math.abs(dy);
+                if (d < bestD) { bestD = d; best = { x, y }; }
+            }
+            return best;
+        }
+        /* THE DOOR KINDS' REACH (2026-09-19): the tile set getSpellRangeTiles
+           answers for a door spell — what the board lights, what a click may
+           land on, what greys the row when empty. null for any other kind. */
+        function _doorRangeTiles(unit, spell) {
+            const k = spell && spell.kind;
+            if (k !== 'door' && k !== 'doorSlam' && k !== 'doorDelivery' && k !== 'doorExit') return null;
+            const out = [], seen = new Set();
+            const push = (x, y) => { const key = x + ',' + y; if (!seen.has(key) && isInside(x, y)) { seen.add(key); out.push({ x, y }); } };
+            const fog = state.fogOfWar && !state.autoPlayers?.[unit.player];
+            const sees = (x, y) => !fog || isInVision(unit, x, y);
+            const mine = _doors().filter(d => d.owner === unit.player && !d.fixed);
+            if (k === 'door') {
+                const r = getEffectiveSpellRange(unit, spell) || DOOR_RULES.toggleRange;
+                if (_doorNearSpot(unit, null)) {
+                    for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+                        if (Math.abs(dx) + Math.abs(dy) > r || (!dx && !dy)) continue;
+                        const x = unit.x + dx, y = unit.y + dy;
+                        if (doorTileFree(x, y) && sees(x, y)) push(x, y);
+                    }
+                }
+                for (const d of mine) if (Math.abs(d.x - unit.x) + Math.abs(d.y - unit.y) <= r) push(d.x, d.y);
+                return out;
+            }
+            if (k === 'doorSlam') {
+                const r = getEffectiveSpellRange(unit, spell) || DOOR_RULES.toggleRange;
+                for (const d of mine) if (d.open && doorTwin(d) && Math.abs(d.x - unit.x) + Math.abs(d.y - unit.y) <= r) push(d.x, d.y);
+                return out;
+            }
+            if (k === 'doorDelivery') {
+                const r = spell.range || 3;
+                for (const d of mine) {
+                    if (!d.open || !doorTwin(d)) continue;
+                    for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+                        if (Math.abs(dx) + Math.abs(dy) > r || (!dx && !dy)) continue;
+                        const x = d.x + dx, y = d.y + dy;
+                        if (!isInside(x, y) || !sees(x, y)) continue;
+                        if (isRangeBlockedByTerrain(d.x, d.y, x, y, d.z || 0)) continue;
+                        push(x, y);
+                    }
+                }
+                return out;
+            }
+            const r = spell.range != null ? spell.range : 1;   // doorExit: on or beside an open door
+            for (const d of mine) {
+                if (!d.open || !doorTwin(d)) continue;
+                for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) push(d.x + dx, d.y + dy);
+            }
+            return out;
         }
         function _doorTouched() {
             state._doorSerial = (state._doorSerial | 0) + 1;
@@ -47405,18 +47560,21 @@
         function _doorOriginForSpell(unit, spell, x, y) {
             if (!unit || !spell) return null;
             if (spell.kind === 'doorDelivery') {
-                const dr = spell.doorRange != null ? spell.doorRange : 2;
+                /* (2026-09-19) the package flies out of ANY of your open doors —
+                   the one nearest the target that reaches it within spell.range
+                   with line of sight. The old "a door within 2 of the caster,
+                   then 3 from its twin" was the rule nobody could read. */
+                let best = null, bestD = Infinity;
                 for (const d of _doors()) {
-                    if (d.owner !== unit.player || !d.open) continue;
-                    if (Math.abs(d.x - unit.x) + Math.abs(d.y - unit.y) > dr) continue;
+                    if (d.owner !== unit.player || !d.open || d.fixed) continue;
                     const tw = doorTwin(d);
-                    if (!tw || !tw.open) continue;
-                    const dd = Math.abs(tw.x - x) + Math.abs(tw.y - y);
+                    if (!tw) continue;
+                    const dd = Math.abs(d.x - x) + Math.abs(d.y - y);
                     if (dd < 1 || dd > (spell.range || 3)) continue;
-                    if (isRangeBlockedByTerrain(tw.x, tw.y, x, y, tw.z || 0)) continue;
-                    return { x: tw.x, y: tw.y, z: tw.z || 0, doorId: d.id, twinId: tw.id };
+                    if (isRangeBlockedByTerrain(d.x, d.y, x, y, d.z || 0)) continue;
+                    if (dd < bestD) { bestD = dd; best = { x: d.x, y: d.y, z: d.z || 0, doorId: d.id, twinId: tw.id }; }
                 }
-                return null;
+                return best;
             }
             if (spell.kind === 'doorExit') {
                 for (const d of _doors()) {
@@ -47435,6 +47593,7 @@
             window.doorAt = doorAt; window.doorById = doorById; window.doorTwin = doorTwin;
             window.doorBlocksMove = doorBlocksMove; window.doorBlocksSightBetween = doorBlocksSightBetween;
             window.doorsBeside = doorsBeside; window.doorTeamPairs = doorTeamPairs; window.doorTileFree = doorTileFree;
+            window._doorNearSpot = _doorNearSpot; window._doorRangeTiles = _doorRangeTiles;
             /* THE DOOR IN THE FRAME (rev 2, 2026-09-14): every door ability
                puts a real catalogue door in its animation — the
                _spell3DGeometry recipes in three-vfx-effects.js ("THE DOOR
@@ -53465,10 +53624,22 @@
 
             else if (spell.kind === 'line' || spell.kind === 'linePush') {
                 // Phase 4 migration: line/linePush uses shared line-damage helper
+                /* THE HEADING (2026-09-19): the ray that actually holds the
+                   target, never Math.sign of the click (a target at (+3, +1)
+                   became a diagonal beam that hit nobody). A human's click on
+                   a tile no ray reaches is refused before anything is spent;
+                   the AI's aim keeps the old snap. */
+                const _hd = lineSpellHeadingTo(spell, unit.x, unit.y, unit.z ?? null, x, y);
+                let dx, dy;
+                if (_hd) { dx = _hd.dx; dy = _hd.dy; }
+                else if (_silentReject) { dx = Math.sign(x - unit.x); dy = Math.sign(y - unit.y); }
+                else {
+                    addLog(`${spell.name} fires in a straight line — along a row, a column or a diagonal — and nothing it can reach stands on that tile.`, unit.player);
+                    playErrorSfx();
+                    return 0;
+                }
                 playSfx(spellLaunchSfx(spell));
                 unit.mp -= effectiveSpellCost;
-                const dx = Math.sign(x - unit.x);
-                const dy = Math.sign(y - unit.y);
 
                 if (dx === 0 && dy === 0) { addLog('Invalid line direction.'); completionDelay = 200; }
                 else {
@@ -54600,16 +54771,22 @@
 
             /* ═══ THE DOOR AGENT (DOOR_RACE_DESIGN.md §4, 2026-09-14) ═══════ */
             else if (spell.kind === 'door') {
-                /* KNOCK KNOCK: two tile clicks place a pair of OPEN doors; one
-                   click on a friendly door toggles it (0 MP; Keyholder makes it
-                   a free action once a turn when the agent stands beside it). */
+                /* KNOCK KNOCK — ONE CLICK (2026-09-19, the user: "why do I have
+                   to place doors a certain number of tiles apart?"): the click
+                   is the FAR door; the near door stands on the free tile beside
+                   the agent closest to it (_doorNearSpot). No corridor rule, no
+                   first pick, nothing to remember. A click on a friendly door
+                   toggles it instead (0 MP; Keyholder makes that a free action
+                   once a turn when the agent stands beside it). */
+                clearSpellPick();
+                delete unit._aiDoorA;
                 const _dTarget = doorAt(x, y);
-                const _dPick = (state._spellPick1 && state._spellPick1.tile && state._spellPick1.spellId === spell.id) ? state._spellPick1 : null;
                 const _dMan = (ax, ay) => Math.abs(unit.x - ax) + Math.abs(unit.y - ay);
-                if (_dTarget && !_dPick) {
+                const _dReach = getEffectiveSpellRange(unit, spell) || DOOR_RULES.toggleRange;
+                if (_dTarget) {
                     if (_dTarget.owner !== unit.player) { if (!_silentReject) { addLog('That is not your door.'); playErrorSfx(); } return 0; }
                     if (_dTarget.fixed) { if (!_silentReject) { addLog('That gate has no leaf to shut.'); playErrorSfx(); } return 0; }
-                    if (_dMan(x, y) > (spell.doorToggleRange || DOOR_RULES.toggleRange)) { if (!_silentReject) { addLog('That door is too far to reach.'); playErrorSfx(); } return 0; }
+                    if (_dMan(x, y) > _dReach) { if (!_silentReject) { addLog('That door is too far to reach.'); playErrorSfx(); } return 0; }
                     const _free = !!(typeof unitPassiveValue === 'function' && unitPassiveValue(unit, 'doorFreeToggle'))
                         && doorsBeside(unit).some(d => d.id === _dTarget.id) && unit._doorFreeRound !== (state.round || 0);
                     _spellFocusCamera(unit, x, y);
@@ -54619,43 +54796,26 @@
                     if (_free) { unit._doorFreeRound = state.round || 0; _doorFreeAction = true; }
                     completionDelay = actionMs(350);
                 } else {
-                    /* AI casters carry their first tile on the unit (ai.js
-                       findSpellTarget) — one doSpell call places the pair. */
-                    let _pickA = _dPick;
-                    if (!_pickA && _silentReject && unit._aiDoorA && doorTileFree(unit._aiDoorA.x, unit._aiDoorA.y)) _pickA = { x: unit._aiDoorA.x, y: unit._aiDoorA.y };
-                    if (!_pickA) {
-                        if (!doorTileFree(x, y) || _dMan(x, y) > DOOR_RULES.pairRange) {
-                            if (!_silentReject) { addLog('Knock Knock: pick an EMPTY tile within 3 for the first door.'); playErrorSfx(); }
-                            return 0;
-                        }
-                        state._spellPick1 = { tile: true, id: null, spellId: spell.id, x, y };
-                        if (!_skipVisuals()) showFloatingTextAtTile(x, y, '① DOOR', 'buff');
-                        playSfx('uiConfirm');
-                        markDirty('hud', 'board');
-                        return 0;   // nothing spent — the second tile completes the pair
-                    }
-                    delete unit._aiDoorA;
-                    if (_pickA.x === x && _pickA.y === y) { clearSpellPick(); playSfx('uiBack'); return 0; }
-                    if (!doorTileFree(x, y) || _dMan(x, y) > DOOR_RULES.pairRange) {
-                        if (!_silentReject) { addLog('Knock Knock: the second door needs an EMPTY tile within 3.'); playErrorSfx(); }
+                    if (!doorTileFree(x, y) || _dMan(x, y) > _dReach) {
+                        if (!_silentReject) { addLog(`Knock Knock: pick an EMPTY tile within ${_dReach} — the far door opens there.`); playErrorSfx(); }
                         return 0;
                     }
-                    if (Math.max(Math.abs(_pickA.x - x), Math.abs(_pickA.y - y)) < DOOR_RULES.minGap) {
-                        if (!_silentReject) { addLog('Knock Knock: the two doors need a corridor between them — not side by side.'); playErrorSfx(); }
+                    const _near = _doorNearSpot(unit, { x, y });
+                    if (!_near) {
+                        if (!_silentReject) { addLog('Knock Knock: no free tile beside you for the near door.'); playErrorSfx(); }
                         return 0;
                     }
-                    clearSpellPick();
                     playSfx('uiConfirm');
                     _spellFocusCamera(unit, x, y);
                     unit.mp -= effectiveSpellCost;
-                    placeDoorPair(unit, _pickA.x, _pickA.y, x, y, { spellName: spell.name });
-                    /* THE DOOR GUN (2026-09-16): both doors are SHOT out of the gun in the agent's hand — the second a beat behind */
-                    window._doorGeom('raceDoorGun:shot', _pickA.x, _pickA.y, { fromX: unit.x, fromY: unit.y });
+                    placeDoorPair(unit, _near.x, _near.y, x, y, { spellName: spell.name });
+                    /* THE DOOR GUN (2026-09-16): both doors are SHOT out of the gun in the agent's hand — the far one a beat behind */
+                    window._doorGeom('raceDoorGun:shot', _near.x, _near.y, { fromX: unit.x, fromY: unit.y });
                     window._doorGeom('raceDoorGun:shot', x, y, { fromX: unit.x, fromY: unit.y, delay: 140 });
-                    window._doorGeom('raceKnockKnock', _pickA.x, _pickA.y, { twinX: x, twinY: y });
-                    window._doorGeom('raceKnockKnock', x, y, { twinX: _pickA.x, twinY: _pickA.y });
+                    window._doorGeom('raceKnockKnock', _near.x, _near.y, { twinX: x, twinY: y });
+                    window._doorGeom('raceKnockKnock', x, y, { twinX: _near.x, twinY: _near.y });
                     if (typeof playDoorSfx === 'function') playDoorSfx('doorbell');
-                    addLog(`🚪 ${unitDisplayName(unit)} knocks twice — doors open at ${coordLabel(_pickA.x, _pickA.y)} and ${coordLabel(x, y)}.`);
+                    addLog(`🚪 ${unitDisplayName(unit)} knocks twice — a door opens at ${coordLabel(x, y)} and its twin beside them at ${coordLabel(_near.x, _near.y)}.`);
                     completionDelay = actionMs(500);
                 }
             }

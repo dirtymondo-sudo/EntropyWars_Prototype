@@ -7024,28 +7024,30 @@ const RACE_ABILITIES = {
        block); `doorRange` is the reach to the friendly door the spell
        reads, `range` the reach FROM ITS TWIN. */
     'door agent': [
+        /* (2026-09-19) ONE CLICK: the far door where you point, the near door
+           beside you (battle.js _doorNearSpot). No spacing rule. */
         { id: 'raceKnockKnock', spellType: 'anomaly', element: 'psychic', name: 'Knock Knock',
-          type: 'utility', cost: 20, range: 4, apCost: 1,   // range 4 = the toggle's reach; placement is within 3 (battle.js DOOR_RULES.pairRange)
-          kind: 'door', doorToggleRange: 4,
-          desc: 'Knock twice. Somewhere, a door answers. Pick two empty tiles within 3 (not next to each other) and a pair of OPEN doors stands on them: whoever ends a move on one steps out of the other. Cast on a friendly door instead to open or shut it (0 MP, range 4). A shut door is a wall. 3 hits break a door and its twin.' },
+          type: 'utility', cost: 20, range: 4, apCost: 1,
+          kind: 'door',
+          desc: 'Knock twice. Somewhere, a door answers. Pick an empty tile within 4: an OPEN door stands there and its twin opens beside you. Whoever ends a move on one door steps out of the other. Click one of your doors instead to open or shut it (free). A shut door is a wall. 3 hits break a door and its twin.' },
         { id: 'raceBreakingEntering', spellType: 'anomaly', element: 'psychic', name: 'Breaking and Entering',
           type: 'damage', cost: 25, dmg: 85, range: 4, apCost: 1,
           kind: 'doorBreach', damageType: 'physical', rearAttack: true,
           desc: 'Nobody said the door had to be yours. Come through a door the enemy did not know was there: teleport beside an enemy within 4 tiles you can see and hit them for WEAK physical damage — always a rear attack.' },
         { id: 'raceSpecialDelivery', spellType: 'anomaly', element: 'psychic', name: 'Special Delivery',
-          type: 'damage', cost: 30, dmg: 105, range: 3, apCost: 1, doorRange: 2,
+          type: 'damage', cost: 30, dmg: 105, range: 3, apCost: 1,
           kind: 'doorDelivery', damageType: 'physical', rearAttack: true,
           statusEffects: [{ id: 'stagger', duration: 1 }],
-          desc: 'Signature required. Pick a friendly OPEN door within 2 tiles, then an enemy within 3 tiles of its twin (line of sight from the twin). The package flies out of the twin: MEDIUM physical damage, always a rear attack, and the target is Staggered.' },
+          desc: 'Signature required. Needs one of your doors on the board. Pick an enemy within 3 tiles of any of your OPEN doors: the package flies out of that door for MEDIUM physical damage, always a rear attack, and the target is Staggered.' },
         { id: 'raceSlam', spellType: 'anomaly', element: 'psychic', name: 'Slam',
           type: 'damage', cost: 30, dmg: 70, range: 4, apCost: 1,
           kind: 'doorSlam', damageType: 'physical', pushDistance: 1,
-          desc: 'When one door closes. Shut a friendly door within 4 tiles — its twin SLAMS: every enemy standing on or beside the twin takes WEAK physical damage and is pushed 1 tile away; allies there are only pushed. Both doors end shut.' },
+          desc: 'When one door closes. Needs one of your doors on the board. Pick one of your OPEN doors within 4 tiles: it shuts and its twin SLAMS — every enemy standing on or beside the twin takes WEAK physical damage and is pushed 1 tile away; allies there are only pushed. Both doors end shut.' },
         { id: 'raceExit', spellType: 'anomaly', element: 'psychic', name: 'EXIT',
           type: 'debuff', cost: 45, range: 1, apCost: 2, tier: 'II',
           kind: 'doorExit',
           statusEffects: [{ id: 'exited', duration: 1 }],
-          desc: 'Extradimensional Incident Transfer. Sign here. An enemy standing on or beside one of your OPEN doors is EXITED: off the board until the start of its next activation (untargetable, cannot act, holds no zone, drops any Key), then comes back out of the twin door, Staggered. Never on bosses or the Cube.' },
+          desc: 'Extradimensional Incident Transfer. Sign here. Needs one of your doors on the board. An enemy standing on or beside one of your OPEN doors is EXITED: off the board until the start of its next activation (untargetable, cannot act, holds no zone, drops any Key), then comes back out of the twin door, Staggered. Never on bosses or the Cube.' },
         { id: 'raceLongWayRound', spellType: 'anomaly', element: 'psychic', name: 'The Long Way Round',
           type: 'buff', cost: 55, range: 0, apCost: 2, tier: 'III',
           kind: 'buff',

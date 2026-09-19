@@ -406,6 +406,40 @@ per catalogue aspect, the hinge side against the swing, the trapdoor's
 flat lie on a raised tile, the parcel's arc, the stamp's size.
 
 
+### 2026-09-19 — THE ONE-CLICK KIT (local delivery, `ENTROPY_WARS_COMBAT_FIXES.zip`)
+
+The user: "the DOOR agent's spells are all messed up and complicated. Why do I have to
+place doors a certain number of tiles apart? Why are spells showing up that require a
+door if I don't have a door placed? It lets me select it and then tells me it can't do
+it. Make the whole kit less confusing, make it actually work, follow the same combat
+menu rules as the rest of the game." What changed:
+
+- **KNOCK KNOCK is one click.** The click is the FAR door (any empty tile within 4 you
+  can see); the NEAR door stands on the free tile beside the agent nearest the far one
+  (battle.js `_doorNearSpot`). `DOOR_RULES.pairRange` and `minGap` are gone, and so is
+  the `state._spellPick1` tile pick (online.js emits every click; `pickX / pickY` ride
+  null). A click on your own door still toggles it (free; Keyholder's free action once
+  a turn beside it stands).
+- **SPECIAL DELIVERY flies out of ANY of your open doors** — the nearest one that
+  reaches the target within 3 with line of sight (`_doorOriginForSpell`). The old
+  "a door within 2 of the caster, then 3 from its twin" rule is gone (`doorRange`
+  deleted from the row).
+- **Every door spell greys when nothing takes it** (`hasSpellTargetInRange`):
+  Knock Knock / Slam when `_doorRangeTiles` is empty (no free tile in reach + no door
+  of yours / no open door of yours in reach), Delivery / EXIT when no enemy stands
+  where a door of yours reaches, Breaking and Entering / Trapdoor when no enemy is in
+  range and sight (the plain single-target rule). `_getSpellValidTargets` lists the
+  door-reached enemies for Delivery / EXIT and no unit at all for Knock Knock / Slam
+  (the board is their drum); the board lights exactly the door tile set
+  (`getSpellRangeTiles` → `_doorRangeTiles`, painted as placement reach in ui.js).
+- The descs (§4 rows), the HUD parts / labels and the aim prompts read the new rules.
+  ai.js picks the far tile only; the engine seats the near door.
+- §4's KNOCK KNOCK / SPECIAL DELIVERY prose above is superseded by this entry where
+  they disagree (two picks, the corridor, `doorRange`).
+
+Tests: door-race.test.js (the delivery rule, the near spot, the reach). Unseen live:
+the near spot on a crowded flank, the greyed rows' reasons.
+
 ## 2026-09-14 — Phase 6 prerequisite: door LOS and production breach evidence
 
 Fixed `doorBlocksSightBetween` skipping the first interior tile: production `getLinePoints` excludes the source. Start at index 0; exclude only the endpoint so doors remain targetable. The existing door test now uses the actual map helper instead of a source-inclusive mock. New door LOS tests exercise the real map/AI/line-walk boundary, eight directions and both seats. 22 new tests pass (18 fail on unchanged battle.js); full suite 1,095 passed, zero failures, four skips; syntax 142/142. No new state/relays, no live test or deployment.
