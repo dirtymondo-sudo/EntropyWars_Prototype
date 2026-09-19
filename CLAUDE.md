@@ -6254,3 +6254,34 @@ wall, a tree row, a mast column or a cliff; (2) read every pocket off `hqTerrain
 circle or a `path` to the floor — stop at zero rescue ramps; (3) a floating stone's column is a wall in the field: open the ground round a
 stepping-stone chain. The Flatlands and the Backrooms are skipped at the user's word; the slow suites were not run. Ship data.js to R2 AND Render.
 UNSEEN LIVE (RULE #1c): all of it. NEXT: D4, THE DOOR PASS over the complexes; then D5.
+
+## THE WORLD OVERVIEW — the directory reorganised round the hubs + THE ESTATE (2026-09-19, local delivery)
+The user, with a reference sheet: "make the map / directory more organized — the main hubs / nodes should be DOOR HQ, The
+Woods, The Estate (rename the ranch), The Cavern, The Deep, The D.U.M.B. …". The directory (M, the kiosk, the pause menu)
+opens on **THE WORLD** now: data.js **`hqWorldOverviewGraph()`** (cached) = ONE node per PLACE — `hq` (the building: every
+facility room, the rings, the car), `hub:<id>` (a `DOOR_HQ.hubs` row), `site:<mapId>` (a wild site no hub claims) —
+**`hqWorldNodeOf(roomId)`** is the ONE read of a room's place; ONE edge per pair of places aggregated from `hqMapGraph`
+(the strongest kind wins: `main` a door / link / lift > `way` a seam that is not a door > `secret` a draught > `bay` the
+ring's thresholds; `links` / `ways` / `n` the ledger; the route's ink). **`hqWorldOverviewLayout()`** places every place
+on an AUTHORED slot (**`HQ_WORLD_L.slots.hub / .site`**, units, HQ at the origin, x right, y down — tune the table, never
+the code; a place the table does not name lands on a fallback ring, and hq-map.test.js fails naming it: ADDING A HUB OR A
+SITE = one slot row) and lists the FLOORS (the elevator's stops top to bottom + H-WING; `hqWorldFloorOf(room)`).
+**`hqWorldOverview(profile, curRoom)`** = the model: a place is `here` / `seen` (a room of it stood in) / `q` (a seen
+place's door leads to it) else off the sheet; rooms seen / total; edges `st` + `charted` (a link walked, else both
+places seen); `secrets` = the graph's secret doors found / total. map.js "THE WORLD OVERVIEW" (before `_hqMapHtml`):
+`_hqWorldSvg` (the building a BLOCK with a band per floor — `data-mapnode="w:floor:<room>"`; a hub a ringed node with a
+glyph from `_HQ_WORLD_GLYPHS`; a lone site its number; OCTILINEAR lines — `_hqWorldRoute`, a 45° run then straight; the
+bay threads only for the place picked), `_hqMapLocsHtml` (the LOCATIONS rail: the facility · THE HUBS · THE LOCATIONS,
+the uncharted a count per group), `_hqMapCrumbHtml` (`MAP | WORLD ▸ CENTRAL OVERVIEW ▸ ALL LOCATIONS` + AREAS CHARTED ·
+SECRETS · CLICK A PLACE TWICE TO TRAVEL), `_hqMapKeyHtml` (THE KEY), `_HQ_MAP_COMPASS`. **THE CLICK RULE**: every world
+element carries `data-mapnode="w:<id>"` → `_hqMapTravel` → `_hqWorldPick`: the first click PICKS (the card: rooms charted,
+GO ▸ the anchor, OPEN THE AREA MAP; the building's card lists the floors), the second on the same place TRAVELS to its
+anchor. **THE AREA sheet** (`_hqMap.mode = 'area'`, `_hqMap.area` a place id; `[data-mapmode]` / `[data-maparea]`; the
+WORLD / THIS AREA tabs on the bar) = `_hqAreaModel(M, place)` — the room map filtered to one place, a room outside it a
+plain question mark (never a ring / the hall), the building on its own layout, every other place a RADIAL TREE round its
+anchor (`_hqAreaLayout`; a room drops the place's name prefix). The reveal keeps a memory PER SHEET (`door.hq.map`:
+`w / we / wbox` beside `n / e / box` + `area`) — switching sheets never replays a pop. CSS "THE WORLD OVERVIEW" in
+styles-base.css (+ the HUD pass rows); the panel grid is three columns (the rail · the stage · the card; stacked under
+860 px). **THE ESTATE** is the ranch's name everywhere the player reads it (`hubs.ranch.label`, `routes.ranch.label`, the
+corn fields' plate, the well's plates — the ids stay `ranch`). `npm test` runs hq-map.test.js (THE WORLD OVERVIEW).
+UNSEEN LIVE (RULE #1c): the sheet under the game's fonts / theme, the two-click feel, the world reveal, the rail at 860 px.

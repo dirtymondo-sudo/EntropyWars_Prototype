@@ -137,12 +137,12 @@ test('THE PLATE READS THE ROOM THROUGH THE DOOR: every room door wears the label
         assert.equal(d.label, String(HQ.rooms[to].label).toUpperCase(), rid + '/' + d.id + ' → ' + to); checked++;
     }
     assert.ok(checked > 300, 'checked ' + checked);
-    assert.equal(at('ring_g', 'site_prebuilt_skinwalker').label, 'THE RANCH · THE CORN FIELDS', 'the ring\'s stable door names the fields');
+    assert.equal(at('ring_g', 'site_prebuilt_skinwalker').label, 'THE ESTATE · THE CORN FIELDS', 'the ring\'s stable door names the fields');
     assert.equal(at('ring_m', 'site_prebuilt_camelot').label, 'CAMELOT · THE OUTER WARD');
     assert.equal(at('central_egress', 'medical').label, 'THE MEDICAL WING');
     assert.equal(at('site_prebuilt_fairy_forest', 'woods').label, 'THE WOODS · THE CLEARING'); assert.equal(at('site_prebuilt_fairy_forest', 'woods')._own, 'THE WOODS');
     assert.equal(at('site_prebuilt_fairy_forest_clearing', 'link_fairy_camelot').label, 'CAMELOT · THE OUTER WARD', 'a link door reads the part, not the site');   // THE AREAS (2026-09-18): the spring stands in the clearing
-    assert.equal(at('site_prebuilt_lodge_halls', 'link_ranch_lodge').label, 'THE RANCH · THE CORN FIELDS');   // THE AREAS (2026-09-18): off THE HALLS
+    assert.equal(at('site_prebuilt_lodge_halls', 'link_ranch_lodge').label, 'THE ESTATE · THE CORN FIELDS');   // THE AREAS (2026-09-18): off THE HALLS
     assert.equal(D.hqDoorThrough({ action: { fn: '_goToShop' } }), null); assert.equal(D.hqDoorThrough({ action: { mission: 'prebuilt_camelot' } }), 'site_prebuilt_camelot_ward'); assert.equal(D.hqDoorThrough({ action: { mission: 'prebuilt_lodge' } }), 'site_prebuilt_lodge_halls');   // THE AREAS (2026-09-18)
     assert.ok(/^hqReplateDoors\(\);/m.test(fs.readFileSync(__dirname + '/data.js', 'utf8')), 'the pass runs at load');
 });

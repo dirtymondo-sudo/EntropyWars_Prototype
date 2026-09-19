@@ -15361,7 +15361,7 @@ const HQ_ROOM_LOOKS = {
     greathall:  { name: 'THE GREAT HALL', retro: { enabled: true, preset: 'amber', pixelSize: 1, ditherStrength: 0.34, grain: 0.024, tintAmount: 0.32, levels: 26 }, cin: { vignette: true, vigAmount: 0.36, vigSize: 0.54 }, nightMood: 0.2, bloom: 0.4 },
     keep:       { name: 'THE KEEP', retro: { enabled: true, preset: 'faded', pixelSize: 1, ditherStrength: 0.42, grain: 0.035, tintAmount: 0.4, levels: 22 }, cin: { vignette: true, vigAmount: 0.5, vigSize: 0.48 }, nightMood: 0.45, bloom: 0.24 },
     undercroft: { name: 'MERLIN’S UNDERCROFT', retro: { enabled: true, preset: 'green', pixelSize: 1, ditherStrength: 0.5, grain: 0.04, tintAmount: 0.5, levels: 18 }, cin: { vignette: true, vigAmount: 0.6, vigSize: 0.42 }, nightMood: 0.75, bloom: 0.22 },
-    ranch:      { name: 'THE RANCH', retro: { enabled: true, preset: 'faded', pixelSize: 1, ditherStrength: 0.44, grain: 0.04, tintAmount: 0.42, levels: 22 }, cin: { vignette: true, vigAmount: 0.5, vigSize: 0.48 }, nightMood: 0.62, bloom: 0.22 },   // THE RANCH (2026-09-18): a night in the corn — the faded film of a 1994 camcorder
+    ranch:      { name: 'THE ESTATE', retro: { enabled: true, preset: 'faded', pixelSize: 1, ditherStrength: 0.44, grain: 0.04, tintAmount: 0.42, levels: 22 }, cin: { vignette: true, vigAmount: 0.5, vigSize: 0.48 }, nightMood: 0.62, bloom: 0.22 },   // THE RANCH (2026-09-18): a night in the corn — the faded film of a 1994 camcorder
     skycastle:  { name: 'THE CASTLE IN THE SKY', retro: { enabled: true, preset: 'dream', pixelSize: 1, ditherStrength: 0.3, grain: 0.02, tintAmount: 0.35, levels: 30 }, cin: { vignette: true, vigAmount: 0.25, vigSize: 0.6 }, nightMood: 0.0, bloom: 0.5 },
     /* THE UNDERWORLD (2026-09-18 — complex candidate #3, THE TUNNELS / THE DUNGEONS): the sewers green-dark under the bulbs (the storm drain's print, tighter);
        the running tunnels the security camera's amber over hot dust; the holding cells the precinct's flat fluorescent teal (hard dither, no bloom to speak of);
@@ -21067,7 +21067,7 @@ const DOOR_HQ = {
         divine:     { label: 'THE DIVINE STAIR', sub: 'THE STAIR THAT ONLY GOES UP; THE CRYPT THAT ONLY GOES DOWN', color: '#ffd28a' },
         bases:      { label: 'THE BASES',        sub: 'FIVE SIDES ABOVE GROUND; THE SIXTH IS DOWN', color: '#b9f27c' },
         woods:      { label: 'THE WOODS',        sub: 'THE SAME WOODS · EVERY PATH COMES OUT IN THE CLEARING', color: '#7fd98c' },
-        ranch:      { label: 'THE RANCH',        sub: 'THE FIELDS · EVERY GATE OPENS ONTO THE CORN', color: '#d9b24c' },   // the woods split (2026-09-18): Skinwalker Ranch · the Haunted House · the Lodge · the Grove (+ the Graveyard and the Western map when built)
+        ranch:      { label: 'THE ESTATE',       sub: 'THE FIELDS · EVERY GATE OPENS ONTO THE CORN', color: '#d9b24c' },   // the woods split (2026-09-18): Skinwalker Ranch · the Haunted House · the Lodge · the Grove (+ the Graveyard and the Western map when built)
         kingdom:    { label: 'CAMELOT KINGDOM',  sub: 'THE CROWN’S ROADS · THE SNOW IS THE KINGDOM’S TOO', color: '#b8c8ff' },   // 2026-09-18: the North Pole joins Camelot (the Lodge left the ley line for the ranch)
         ley:        { label: 'THE LEY LINE',     sub: 'THE LINE THE STONES STAND ON', color: '#e0b06a' },
         highway:    { label: 'THE HIGHWAY',      sub: 'ONE ROAD, A CENTURY LONG', color: '#ff9e6b' },
@@ -21093,7 +21093,7 @@ const DOOR_HQ = {
         hq:      { label: 'D.O.O.R. HEADQUARTERS', room: 'central_egress', facility: true, color: '#f0e6c8' },
         cavern:  { label: 'THE CAVERN', room: 'site_prebuilt_hollow_earth_gallery', sites: ['prebuilt_hollow_earth'], color: '#c8a2e0' },
         woods:   { label: 'THE WOODS', room: 'site_prebuilt_fairy_forest_clearing', sites: ['prebuilt_fairy_forest'], color: '#7fd98c' },
-        ranch:   { label: 'THE RANCH', room: 'site_prebuilt_skinwalker_fields', sites: ['prebuilt_skinwalker'], color: '#d9b24c' },
+        ranch:   { label: 'THE ESTATE', room: 'site_prebuilt_skinwalker_fields', sites: ['prebuilt_skinwalker'], color: '#d9b24c' },
         divine:  { label: 'THE DIVINE STAIR', room: 'site_prebuilt_heaven_stair', sites: ['prebuilt_heaven', 'prebuilt_hell', 'prebuilt_vatican'], color: '#ffd28a' },
         city:    { label: 'DISASTER CITY', room: 'site_prebuilt_downtown_streets', sites: ['prebuilt_downtown', 'prebuilt_strip', 'prebuilt_cyberpunk'], color: '#ff9e6b' },
         dumb:    { label: 'THE D.U.M.B.', room: 'site_prebuilt_dumb_sublevel7', sites: ['prebuilt_dumb', 'prebuilt_cern'], color: '#b9f27c' },
@@ -21407,8 +21407,8 @@ const DOOR_HQ = {
           why: 'a castle in the sky and a stair in the sky are in the same sky; the frame between them has no door because there is nothing to keep out up here',
           note: 'the same sky', draft: true },
         { id: 'well_skinwalker', route: 'undercroft', way: 'well',
-          a: { site: 'prebuilt_skinwalker', part: 'fields', wall: 'free', x: -9.4, z: 11.6, face: 90, sub: 'THE RANCH WELL · DOWN THE ROPE' },   // 2026-09-18: off the bypassed board, into the farmyard
-          b: { site: 'prebuilt_hollow_earth', part: 'shaft', wall: 'free', x: 7.875, z: 6.125, face: 270, sub: 'THE RANCH WELL · CLIMB UP', verb: 'CLIMB UP' },
+          a: { site: 'prebuilt_skinwalker', part: 'fields', wall: 'free', x: -9.4, z: 11.6, face: 90, sub: 'THE ESTATE WELL · DOWN THE ROPE' },   // 2026-09-18: off the bypassed board, into the farmyard
+          b: { site: 'prebuilt_hollow_earth', part: 'shaft', wall: 'free', x: 7.875, z: 6.125, face: 270, sub: 'THE ESTATE WELL · CLIMB UP', verb: 'CLIMB UP' },
           why: 'the well in the yard, boarded over in 1994 by men who did not come back for their tools; the boards are the way',
           note: 'the boards lift', draft: true },
         { id: 'well_gobekli', route: 'undercroft', way: 'well',
@@ -35100,8 +35100,8 @@ const DOOR_HQ = {
            land the day their sites are built (hqLinkLive holds a link whose
            far end is unbuilt at BOTH ends; nothing is manufactured). */
         site_prebuilt_skinwalker_fields: {
-            label: 'THE RANCH · THE CORN FIELDS',
-            sub: 'THE HUB OF THE RANCH · THE CIRCLES ARE FRESH',
+            label: 'THE ESTATE · THE CORN FIELDS',
+            sub: 'THE HUB OF THE ESTATE · THE CIRCLES ARE FRESH',
             kind: 'box', site: 'prebuilt_skinwalker', part: 'fields',
             shell: hqRanchShell({ w: 56, d: 46, plate: { x: 0, z: -22, y: 4.4 } }),
             terrain: {
@@ -37100,6 +37100,209 @@ function hqMapModel(profile, curRoom, opts) {
     const total = G.order.length, nSeen = Object.keys(seen).length, nQ = Object.keys(q).length;
     return { nodes, edges, box, shaft: LY.shaft, total, seen: nSeen, q: nQ, here: curRoom || null };
 }
+/* ── THE WORLD OVERVIEW (the directory's first sheet, 2026-09-19) ─────────
+   The user: "make the map / directory more organized — the main hubs /
+   nodes should be DOOR HQ, The Woods, The Estate, The Cavern, The Deep, the
+   D.U.M.B. …". The room map (hqMapModel, above) drew every room of the
+   building and the world on one sheet — 190 nodes in one tangle. The
+   directory opens on THE WORLD OVERVIEW now: ONE node per PLACE —
+     'hq'            the building, drawn as a BLOCK with a band per floor
+                     (the elevator's stops + H-Wing) — every facility room
+     'hub:<id>'      a DOOR_HQ.hubs row (its anchor + every room it claims)
+     'site:<mapId>'  a wild site no hub claims (its entry part + its parts)
+   and one EDGE per pair of places, aggregated from the room graph's edges
+   (the strongest kind wins: main (a plain door / a link / a lift) > way (a
+   seam that is not a door) > secret > bay (the ring's thresholds — drawn
+   faint, every site has one)), wearing its route's ink. The AREA sheet
+   (map.js filters hqMapModel to one place) is the room map of one place.
+   Reads (pure; on window):
+     hqWorldNodeOf(roomId)              → 'hq' | 'hub:x' | 'site:x' | null
+     hqWorldOverviewGraph()             → { nodes, order, edges } (cached)
+     hqWorldOverviewLayout()            → { pos, block, floors } (cached)
+     hqWorldOverview(profile, curRoom)  → the model the panel draws: every
+                                          place with a STATE ('here' / 'seen'
+                                          = a room of it stood in / 'q' = a
+                                          place a seen place's door leads
+                                          to — the rest are off the sheet),
+                                          rooms seen / total, the edges with
+                                          `st` + `charted`, the box
+   THE LAYOUT is AUTHORED (HQ_WORLD_L.slots — units, HQ at the origin, x
+   right, y down; tune the table, never the code) with a deterministic
+   fallback ring for a place the table does not name (a new hub / site still
+   appears; hq-map.test.js insists nothing lands within minD of another).
+   Viewer-local, nothing on `state`, nothing relayed (RULE #2). */
+const HQ_WORLD_L = {
+    hubR: 0.44, siteR: 0.27, minD: 0.8, autoR: 5.8, autoStep: 0.6,
+    block: { w: 1.7, h: 2.3 },
+    slots: {
+        hub: {
+            woods:      { x: -2.7, y: -2.3 }, kingdom:  { x: 0.2, y: -3.3 }, divine: { x: 2.7, y: -2.9 }, astral: { x: 4.6, y: -2.4 },
+            city:       { x: 3.0, y: -0.9 },  deep:     { x: 4.7, y: 0.9 },  underworld: { x: 2.7, y: 1.4 }, dumb: { x: 0.4, y: 3.4 },
+            ley:        { x: -2.6, y: 3.0 },  ranch:    { x: -4.1, y: 1.4 }, cavern: { x: -3.9, y: -0.6 },
+        },
+        site: {
+            prebuilt_haunted: { x: -1.5, y: -2.1 }, prebuilt_northpole: { x: -1.0, y: -4.4 }, prebuilt_lookingglass: { x: 3.2, y: -4.0 }, prebuilt_olympus: { x: 1.5, y: -4.2 },
+            prebuilt_shasta: { x: -4.7, y: -2.4 }, prebuilt_agartha: { x: -5.6, y: -1.0 }, prebuilt_technoticlan: { x: -4.5, y: 3.4 }, prebuilt_bohemian_grove: { x: -3.2, y: 0.5 },
+            prebuilt_lodge: { x: -2.0, y: 1.6 }, prebuilt_stadium: { x: 4.8, y: -0.5 }, prebuilt_revenge: { x: 3.7, y: 2.4 }, prebuilt_derelict: { x: 3.4, y: 3.6 },
+            prebuilt_mars: { x: 4.7, y: 3.0 }, prebuilt_moon: { x: 5.2, y: 4.0 }, prebuilt_saturn: { x: 4.2, y: 4.8 }, prebuilt_singularity: { x: 5.8, y: 5.0 },
+            prebuilt_antarctica: { x: 2.4, y: 4.7 }, prebuilt_area51: { x: 1.2, y: 4.9 }, prebuilt_backrooms: { x: -1.4, y: 4.6 }, prebuilt_flatlands: { x: -3.0, y: 4.9 },
+        },
+    },
+};
+function hqWorldNodeOf(roomId) {
+    const r = (DOOR_HQ.rooms || {})[roomId];
+    if (!r) return null;
+    const hub = hqHubOf(roomId);
+    if (hub) return hub.id === 'hq' ? 'hq' : 'hub:' + hub.id;
+    const site = r.site ? hqSiteId(r.site) : null;
+    if (site) return 'site:' + site;
+    return 'hq';                                   // the rings, the car, any facility room outside the HQ hub's rule
+}
+let _hqWorldGraphCache = null;
+function hqWorldOverviewGraph() {
+    if (_hqWorldGraphCache && _hqWorldGraphCache.rooms === DOOR_HQ.rooms) return _hqWorldGraphCache.graph;
+    const rooms = DOOR_HQ.rooms || {}, G = hqMapGraph(), H = DOOR_HQ.hubs || {};
+    const nodes = {}, order = [];
+    const siteLabel = id => { try { const m = (typeof EW_MAP_META !== 'undefined' ? EW_MAP_META : []).find(x => x.id === id); return m ? String(m.label) : id; } catch (e) { return id; } };
+    const mk = (id, n) => { if (!nodes[id]) { nodes[id] = Object.assign({ id, rooms: [], sites: [] }, n); order.push(id); } return nodes[id]; };
+    mk('hq', { kind: 'hq', label: (H.hq && H.hq.label) || 'D.O.O.R. HEADQUARTERS', color: (H.hq && H.hq.color) || '#f0e6c8', anchor: 'central_egress', no: '' });
+    Object.keys(H).forEach(id => { if (id === 'hq') return; mk('hub:' + id, { kind: 'hub', hub: id, label: H[id].label, color: H[id].color || null, anchor: H[id].room, no: '' }); });
+    G.order.forEach(rid => {
+        const w = hqWorldNodeOf(rid); if (!w) return;
+        let n = nodes[w];
+        if (!n) {
+            const site = rooms[rid].site ? hqSiteId(rooms[rid].site) : null;
+            const ent = (typeof hqSiteEntryOf === 'function') ? hqSiteEntryOf(site) : null;
+            n = mk(w, { kind: 'site', site, label: siteLabel(site).toUpperCase(), color: null, anchor: (ent && rooms[ent.room]) ? ent.room : ((typeof hqAreaRoomOf === 'function' && hqAreaRoomOf(site)) || hqSiteRoomId(site)), no: hqRoomNo(hqSiteRoomId(site)) || '' });
+            const sector = hqSectorOfMap(site); n.bayNo = sector ? hqBayNo(sector) : null;
+        }
+        n.rooms.push(rid);
+        const s = rooms[rid].site ? hqSiteId(rooms[rid].site) : null;
+        if (s && n.sites.indexOf(s) < 0) n.sites.push(s);
+    });
+    /* a hub whose anchor is not on the walk still stands (empty); a hub node wears its anchor's number when the anchor is a site's entry */
+    order.forEach(id => { const n = nodes[id]; if (n.kind === 'hub' && !n.no) n.no = hqMapRoomNo(n.anchor) || ''; });
+    /* the edges: one per pair of places, the strongest kind, the ledger of what it aggregates */
+    const RANK = { bay: 0, secret: 1, way: 2, main: 3 };
+    const edgeMap = {};
+    G.edges.forEach(e => {
+        const a = hqWorldNodeOf(e.a), b = hqWorldNodeOf(e.b);
+        if (!a || !b || a === b) return;
+        const bay = (rooms[e.a] && rooms[e.a].kind === 'bay') || (rooms[e.b] && rooms[e.b].kind === 'bay');
+        const kind = e.kind === 'way' ? 'way' : e.kind === 'secret' ? 'secret' : bay ? 'bay' : 'main';
+        const key = a < b ? a + '|' + b : b + '|' + a;
+        const cur = edgeMap[key] || (edgeMap[key] = { key, a: a < b ? a : b, b: a < b ? b : a, kind: 'bay', n: 0, links: [], ways: [], routes: [], color: null, route: null, gate: null, rooms: [] });
+        cur.n++; cur.rooms.push(e.a < e.b ? e.a + '|' + e.b : e.b + '|' + e.a);
+        if (e.link && cur.links.indexOf(e.link) < 0) cur.links.push(e.link);
+        if (e.way && cur.ways.indexOf(e.way) < 0) cur.ways.push(e.way);
+        if (e.route && cur.routes.indexOf(e.route) < 0) cur.routes.push(e.route);
+        if (RANK[kind] > RANK[cur.kind] || (RANK[kind] === RANK[cur.kind] && !cur.color && e.color)) { cur.kind = kind; cur.color = e.color || cur.color; cur.route = e.route || cur.route; }
+        if (e.gate && !cur.gate) cur.gate = e.gate;
+    });
+    const edges = Object.keys(edgeMap).sort().map(k => edgeMap[k]);
+    const graph = { nodes, order, edges };
+    _hqWorldGraphCache = { rooms: DOOR_HQ.rooms, graph };
+    return graph;
+}
+let _hqWorldLayoutCache = null;
+function hqWorldOverviewLayout() {
+    if (_hqWorldLayoutCache && _hqWorldLayoutCache.rooms === DOOR_HQ.rooms) return _hqWorldLayoutCache.layout;
+    const W = hqWorldOverviewGraph(), L = HQ_WORLD_L;
+    const pos = {}, placed = [];
+    const block = { x: -L.block.w / 2, y: -L.block.h / 2, w: L.block.w, h: L.block.h };
+    const clear = (x, y, r) => {
+        if (x + r > block.x - 0.25 && x - r < block.x + block.w + 0.25 && y + r > block.y - 0.25 && y - r < block.y + block.h + 0.25) return false;
+        return placed.every(p => Math.hypot(p.x - x, p.y - y) >= L.minD);
+    };
+    const put = (id, x, y, r, slot) => { pos[id] = { x, y, r, slot: !!slot }; placed.push(pos[id]); };
+    pos.hq = { x: 0, y: 0, r: 0, block: true };
+    W.order.forEach(id => {
+        const n = W.nodes[id]; if (n.kind === 'hq') return;
+        const r = n.kind === 'hub' ? L.hubR : L.siteR;
+        const s = n.kind === 'hub' ? L.slots.hub[n.hub] : L.slots.site[n.site];
+        if (s && isFinite(s.x) && isFinite(s.y)) put(id, s.x, s.y, r, true);
+    });
+    /* the fallback ring: a place the table does not name walks the ring clockwise from twelve, outward until clear */
+    W.order.forEach(id => {
+        if (pos[id]) return;
+        const n = W.nodes[id], r = n.kind === 'hub' ? L.hubR : L.siteR;
+        let spot = null;
+        for (let ring = L.autoR; !spot && ring < L.autoR + 12 * L.autoStep; ring += L.autoStep)
+            for (let deg = 0; deg < 360 && !spot; deg += 15) { const a = deg * Math.PI / 180, x = ring * Math.sin(a), y = -ring * Math.cos(a); if (clear(x, y, r)) spot = { x, y }; }
+        if (!spot) spot = { x: L.autoR + placed.length * L.autoStep, y: L.autoR };
+        put(id, spot.x, spot.y, r, false);
+    });
+    /* the floors: the elevator's stops top to bottom, then H-Wing under the lowest */
+    const stops = (DOOR_HQ.elevator && DOOR_HQ.elevator.stops) || [];
+    const floors = stops.map(st => ({ id: String(st.id), label: String(st.label || st.id).toUpperCase(), room: st.room }));
+    if ((DOOR_HQ.rooms || {}).hwing_lobby) floors.push({ id: 'H', label: 'H-WING', room: 'hwing_lobby' });
+    const layout = { pos, block, floors };
+    _hqWorldLayoutCache = { rooms: DOOR_HQ.rooms, layout };
+    return layout;
+}
+function hqWorldOverview(profile, curRoom, opts) {
+    opts = opts || {};
+    const W = hqWorldOverviewGraph(), LY = hqWorldOverviewLayout();
+    const rec = opts.seen || hqRoomsSeenRecord(profile);
+    const links = hqLinksSeenRecord(profile);
+    const roomSeen = id => !!(opts.all || rec[id] || (curRoom && id === curRoom));
+    const seen = {}, cnt = {};
+    W.order.forEach(id => { const n = W.nodes[id]; cnt[id] = n.rooms.filter(roomSeen).length; if (cnt[id] > 0) seen[id] = true; });
+    const hereId = curRoom ? hqWorldNodeOf(curRoom) : null;
+    if (hereId && W.nodes[hereId]) seen[hereId] = true;
+    const q = {};
+    W.edges.forEach(e => { if (e.kind === 'secret') return; if (seen[e.a] && !seen[e.b]) q[e.b] = true; if (seen[e.b] && !seen[e.a]) q[e.a] = true; });
+    const nodes = [];
+    W.order.forEach(id => {
+        const st = (id === hereId) ? 'here' : seen[id] ? 'seen' : q[id] ? 'q' : null;
+        if (!st) return;
+        const n = W.nodes[id], p = LY.pos[id] || { x: 0, y: 0, r: 0 };
+        nodes.push({ id, st, kind: n.kind, x: p.x, y: p.y, r: p.r || 0, block: !!p.block, label: (st === 'q') ? 'UNCHARTED' : n.label, color: (st === 'q') ? null : n.color,
+            no: (st === 'q') ? '' : n.no, anchor: n.anchor, hub: n.hub || null, site: n.site || null, bayNo: n.bayNo || null,
+            rooms: n.rooms.length, roomsSeen: cnt[id], sites: n.sites.length, here: (id === hereId), curRoom: (id === hereId) ? curRoom : null });
+    });
+    const edges = [];
+    W.edges.forEach(e => {
+        const A = seen[e.a] ? 'seen' : q[e.a] ? 'q' : null, B = seen[e.b] ? 'seen' : q[e.b] ? 'q' : null;
+        if (!A || !B || (A === 'q' && B === 'q')) return;
+        if (e.kind === 'secret' && (A !== 'seen' || B !== 'seen')) return;
+        const pa = LY.pos[e.a], pb = LY.pos[e.b];
+        const charted = e.links.length ? e.links.some(l => !!links[l]) : (A === 'seen' && B === 'seen');
+        edges.push({ key: e.key, a: e.a, b: e.b, kind: e.kind, n: e.n, links: e.links.slice(), ways: e.ways.slice(), route: e.route, color: e.color, gate: e.gate,
+            st: (A === 'seen' && B === 'seen') ? 'known' : 'q', charted, ax: pa.x, ay: pa.y, bx: pb.x, by: pb.y });
+    });
+    /* the floors: which the officer has stood on */
+    const floors = LY.floors.map(f => ({ id: f.id, label: f.label, room: f.room, st: (curRoom && (f.room === curRoom || hqWorldNodeOf(curRoom) === 'hq' && _hqWorldFloorOf(curRoom) === f.id)) ? 'here' : roomSeen(f.room) ? 'seen' : 'q' }));
+    let minX = LY.block.x, minY = LY.block.y, maxX = LY.block.x + LY.block.w, maxY = LY.block.y + LY.block.h;
+    nodes.forEach(n => { if (n.block) return; minX = Math.min(minX, n.x - n.r); maxX = Math.max(maxX, n.x + n.r); minY = Math.min(minY, n.y - n.r); maxY = Math.max(maxY, n.y + n.r); });
+    const box = { x: minX, y: minY, w: Math.max(1, maxX - minX), h: Math.max(1, maxY - minY) };
+    /* THE SECRETS: every hidden door of the whole graph (a draught, a cargo hatch) — FOUND once both its rooms are stood in */
+    const secretDoors = hqMapGraph().edges.filter(e => e.kind === 'secret');
+    const secretsFound = secretDoors.filter(e => roomSeen(e.a) && roomSeen(e.b)).length;
+    return { nodes, edges, floors, block: LY.block, box, total: W.order.length, seen: Object.keys(seen).length, q: Object.keys(q).length, here: hereId, secrets: { found: secretsFound, total: secretDoors.length } };
+}
+/* the floor a facility room sits on, by the elevator's stops: the stop whose lobby the room hangs off (walked through the doors, lifts excluded) */
+let _hqWorldFloorCache = null;
+function _hqWorldFloorOf(roomId) {
+    if (!_hqWorldFloorCache || _hqWorldFloorCache.rooms !== DOOR_HQ.rooms) {
+        const G = hqMapGraph(), stops = (DOOR_HQ.elevator && DOOR_HQ.elevator.stops) || [];
+        const floor = {}; const todo = [];
+        stops.forEach(st => { if (G.nodes[st.room]) { floor[st.room] = String(st.id); todo.push(st.room); } });
+        if (G.nodes.hwing_lobby) { floor.hwing_lobby = 'H'; todo.push('hwing_lobby'); }
+        while (todo.length) {
+            const at = todo.shift();
+            G.edges.forEach(e => {
+                if (e.kind === 'lift' || e.kind === 'link' || e.kind === 'way') return;
+                const other = e.a === at ? e.b : e.b === at ? e.a : null;
+                if (!other || floor[other] || hqWorldNodeOf(other) !== 'hq') return;
+                floor[other] = floor[at]; todo.push(other);
+            });
+        }
+        _hqWorldFloorCache = { rooms: DOOR_HQ.rooms, floor };
+    }
+    return _hqWorldFloorCache.floor[roomId] || null;
+}
+function hqWorldFloorOf(roomId) { return _hqWorldFloorOf(roomId); }
 /* ── THE COMPLEXES (HQ plan 9.2 stage 1, 2026-09-15) ─────────────────────
    A site that is several rooms. The GENERATED room (hqSiteRoom) stays the
    board room; a COMPLEX is hand-authored box rooms in DOOR_HQ.rooms with
@@ -44535,7 +44738,7 @@ if (typeof window !== 'undefined') {
     window.hqShipDoor = hqShipDoor;
     window.hqWorldRoutes = hqWorldRoutes;
     window.hqLinksSeenUnion = hqLinksSeenUnion; window.hqLinksSeenRecord = hqLinksSeenRecord;
-    window.hqRoomsSeenUnion = hqRoomsSeenUnion; window.hqRoomsSeenRecord = hqRoomsSeenRecord; window.hqRoomSeen = hqRoomSeen; window.hqRoomSee = hqRoomSee; window.hqMapRoomNo = hqMapRoomNo; window.hqMapGraph = hqMapGraph; window.hqMapLayout = hqMapLayout; window.hqHubOf = hqHubOf; window.hqDoorThrough = hqDoorThrough; window.hqDoorPlateLabel = hqDoorPlateLabel; window.hqReplateDoors = hqReplateDoors; window.hqMapModel = hqMapModel; window.HQ_MAP_L = HQ_MAP_L;
+    window.hqRoomsSeenUnion = hqRoomsSeenUnion; window.hqRoomsSeenRecord = hqRoomsSeenRecord; window.hqRoomSeen = hqRoomSeen; window.hqRoomSee = hqRoomSee; window.hqMapRoomNo = hqMapRoomNo; window.hqMapGraph = hqMapGraph; window.hqMapLayout = hqMapLayout; window.hqHubOf = hqHubOf; window.hqDoorThrough = hqDoorThrough; window.hqDoorPlateLabel = hqDoorPlateLabel; window.hqReplateDoors = hqReplateDoors; window.hqMapModel = hqMapModel; window.HQ_MAP_L = HQ_MAP_L; window.HQ_WORLD_L = HQ_WORLD_L; window.hqWorldNodeOf = hqWorldNodeOf; window.hqWorldOverviewGraph = hqWorldOverviewGraph; window.hqWorldOverviewLayout = hqWorldOverviewLayout; window.hqWorldOverview = hqWorldOverview; window.hqWorldFloorOf = hqWorldFloorOf;
      window.hqLinkSeen = hqLinkSeen; window.hqLinkSee = hqLinkSee; window.hqWorldCharted = hqWorldCharted; window.hqWorldApplyKnown = hqWorldApplyKnown;
     window.hqStarChart = hqStarChart;
     window.doorSiteState = doorSiteState;

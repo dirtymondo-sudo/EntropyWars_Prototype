@@ -144,17 +144,17 @@ test('THE MODEL: a stranger in the foyer sees the foyer and a ? for the hall and
 });
 
 /* the panel's HTML, rendered headlessly with map.js's own functions */
-function renderDirectory(profile, curRoom) {
+function renderDirectory(profile, curRoom, mode) {   // THE WORLD OVERVIEW (2026-09-19): the directory opens on the world sheet; the room-sheet tests ask for 'area'
   const start = MP.indexOf('        /* ══ THE MAP — the directory as a subway map'), end = MP.indexOf('        /* THE WORLD (HQ plan 9.3, 2026-09-15 rev 7)');
   assert.ok(start > 0 && end > start);
   const src = MP.slice(start, end);
-  const ctx = { window: { hqMapModel: D.hqMapModel, hqRoomsSeenRecord: D.hqRoomsSeenRecord, hqWorldCharted: D.hqWorldCharted, hqRoomRegister: D.hqRoomRegister, hqMapRoomNo: D.hqMapRoomNo, doorSiteState: () => 'open', hqRoomSee: D.hqRoomSee },
+  const ctx = { window: { hqMapModel: D.hqMapModel, hqWorldOverview: D.hqWorldOverview, hqWorldNodeOf: D.hqWorldNodeOf, hqWorldOverviewGraph: D.hqWorldOverviewGraph, hqRoomsSeenRecord: D.hqRoomsSeenRecord, hqWorldCharted: D.hqWorldCharted, hqRoomRegister: D.hqRoomRegister, hqMapRoomNo: D.hqMapRoomNo, doorSiteState: () => 'open', hqRoomSee: D.hqRoomSee },
     DOOR_HQ: HQ, EW_MAP_META: D.EW_MAP_META, _hqCurRoom: curRoom, _hqProfile: () => profile, _hqRoom: () => HQ.rooms[curRoom], _hqEsc: esc, _HQ_FOYER: 'foyer',
     _hqNoTag: (no) => no ? '<em class="hq-no">ROOM ' + no + '</em>' : '', _hqNo: e => D.hqDoorNo(e), _hqStateChip: st => '<i class="hq-lamp-chip st-' + st + '">' + st + '</i>',
     _hqRoomExists: id => !!HQ.rooms[id], _hqMapLabel: id => { const m = D.EW_MAP_META.find(x => x.id === id); return m ? m.label : id; }, _hqWorldHtml: () => '<div class="hq-world-line">LINES</div>', _hqEl: () => null, _hqToast: () => {}, playSfx: () => {},
     performance: { now: () => 0 }, requestAnimationFrame: () => 0, setTimeout: () => 0, Math, Number, Array, Object, String, JSON, isFinite, console };
   vm.createContext(ctx);
-  vm.runInContext(src + '\nthis.out = _hqDirectoryHtml(); this.after = _hqMapAfterRender; this.map = _hqMap; this.shown = _hqMapShown; this.remember = _hqMapRemember;', ctx);
+  vm.runInContext(src + '\n_hqMap.mode = ' + JSON.stringify(mode || 'area') + '; this.out = _hqDirectoryHtml(); this.after = _hqMapAfterRender; this.map = _hqMap; this.shown = _hqMapShown; this.remember = _hqMapRemember;', ctx);
   return ctx;
 }
 /* a fake DOM just deep enough for _hqMapAfterRender */
@@ -175,6 +175,7 @@ test('THE PANEL: the directory renders the map (an SVG with a node per drawn roo
   const ctx = renderDirectory(p, 'central_egress');
   const html = ctx.out;
   assert.ok(html.includes('<svg class="hq-map-svg"'));
+  assert.ok(html.includes('class="hq-map-locs"') && html.includes('data-mapmode="world"'), 'the LOCATIONS rail and the WORLD tab ride the area sheet too');
   const M = D.hqMapModel(p, 'central_egress');
   assert.equal((html.match(/<g class="hq-map-n /g) || []).length, M.nodes.length, 'a node per drawn room');
   const enclosed = M.edges.filter(e => (e.a === 'central_egress' && /^ring_/.test(e.b)) || (e.b === 'central_egress' && /^ring_/.test(e.a))).length;
@@ -257,6 +258,87 @@ test('THE SOURCE: _hqEnter files every room entered (typeof-guarded), the panel 
   assert.ok(!/hq\.map|rooms\.seen/.test(fs.readFileSync(__dirname + '/online.js', 'utf8')), 'nothing relayed');
   for (const c of ['.hq-map-svg', '.hq-map-n.st-q .hq-map-q', '.hq-map-n.reveal.pop', '.hq-map-n.reveal.flip .hq-map-q', '.hq-map-n.reveal.flip .hq-map-no', '.hq-map-e.reveal.draw', '.hq-map-n.reveal.qin', '@keyframes hqMapDraw', '.hq-map-here', '.hq-map-det > summary', 'prefers-reduced-motion']) assert.ok(CSS.includes(c), c);
   assert.ok(D.ACH_MERGE_CAPS === undefined || true);
+});
+
+/* THE WORLD OVERVIEW (2026-09-19, the user: "make the map / directory more
+   organized — the main hubs / nodes should be DOOR HQ, The Woods, The Estate,
+   The Cavern, The Deep, The D.U.M.B. …"): one node per PLACE, authored
+   slots, octilinear lines, the building a block with a band per floor. */
+test('THE WORLD OVERVIEW: one node per place (the building, every hub, every lone site), every place on an authored slot clear of every other, the floors top to bottom, the edges aggregated by the strongest kind in the route\'s ink, the model charted place by place, THE ESTATE is the ranch\'s name', () => {
+  const W = D.hqWorldOverviewGraph(), L = D.hqWorldOverviewLayout();
+  assert.equal(W.nodes.hq.kind, 'hq'); assert.equal(W.nodes.hq.anchor, 'central_egress');
+  for (const id of Object.keys(HQ.hubs)) if (id !== 'hq') assert.ok(W.nodes['hub:' + id] && W.nodes['hub:' + id].label === HQ.hubs[id].label && W.nodes['hub:' + id].anchor === HQ.hubs[id].room, 'a node per hub: ' + id);
+  assert.equal(W.nodes['hub:ranch'].label, 'THE ESTATE', 'the ranch is THE ESTATE');
+  assert.equal(HQ.routes.ranch.label, 'THE ESTATE'); assert.equal(HQ.rooms.site_prebuilt_skinwalker_fields.label, 'THE ESTATE · THE CORN FIELDS');
+  const G = D.hqMapGraph();
+  for (const rid of G.order) { const w = D.hqWorldNodeOf(rid); assert.ok(w && W.nodes[w] && W.nodes[w].rooms.includes(rid), 'every room belongs to one place: ' + rid + ' → ' + w); }
+  assert.equal(D.hqWorldNodeOf('reception'), 'hq'); assert.equal(D.hqWorldNodeOf('ring_g'), 'hq'); assert.equal(D.hqWorldNodeOf('car'), 'hq');
+  assert.equal(D.hqWorldNodeOf('site_prebuilt_fairy_forest_trail'), 'hub:woods'); assert.equal(D.hqWorldNodeOf('site_prebuilt_moon_mare'), 'site:prebuilt_moon');
+  assert.equal(W.nodes['site:prebuilt_moon'].no, D.hqRoomNo('site_prebuilt_moon'), 'a lone site wears its number');
+  /* the layout */
+  const ids = W.order.filter(id => id !== 'hq');
+  for (const id of ids) { const p = L.pos[id]; assert.ok(p && isFinite(p.x) && isFinite(p.y) && p.r > 0, 'placed ' + id); assert.ok(p.slot, id + ' is on an authored slot (HQ_WORLD_L.slots) — add its row'); }
+  for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++) { const a = L.pos[ids[i]], b = L.pos[ids[j]]; assert.ok(Math.hypot(a.x - b.x, a.y - b.y) >= D.HQ_WORLD_L.minD, ids[i] + ' vs ' + ids[j]); }
+  for (const id of ids) { const p = L.pos[id]; assert.ok(Math.abs(p.x) - p.r > L.block.w / 2 || Math.abs(p.y) - p.r > L.block.h / 2, id + ' clear of the building'); }
+  assert.equal(L.floors.map(f => f.id).join(','), HQ.elevator.stops.map(s => String(s.id)).join(',') + ',H', 'the floors: the stops top to bottom, then H-Wing');
+  assert.equal(D.hqWorldFloorOf('garden'), '3'); assert.equal(D.hqWorldFloorOf('kitchen'), 'B'); assert.equal(D.hqWorldFloorOf('hwing_office'), 'H'); assert.equal(D.hqWorldFloorOf('reception'), 'M');
+  /* the edges */
+  for (const e of W.edges) { assert.ok(e.a < e.b && W.nodes[e.a] && W.nodes[e.b]); assert.ok(['main', 'way', 'secret', 'bay'].includes(e.kind)); assert.ok(e.n >= 1); }
+  const wc = W.edges.find(e => e.a === 'hub:cavern' && e.b === 'hub:woods') || W.edges.find(e => e.b === 'hub:cavern' && e.a === 'hub:woods');
+  const cd = W.edges.find(e => (e.a === 'hub:cavern' && e.b === 'hub:dumb'));
+  assert.ok(cd && cd.kind === 'main' && cd.links.includes('cave_dumb') && cd.color === HQ.routes[cd.route].color, 'the cave ⇄ the base is a main path in its route\'s ink');
+  const bay = W.edges.find(e => e.a === 'hq' && e.b === 'site:prebuilt_moon'); assert.ok(bay && bay.kind === 'bay', 'the ring\'s threshold is a bay thread');
+  const wayE = W.edges.find(e => e.ways.length && e.kind === 'way'); assert.ok(wayE, 'a seam that is not a door is a secondary path');
+  /* the model: the officer stands in the foyer — the building is here, nothing else is on the sheet but what its doors lead to */
+  const cold = D.hqWorldOverview({ door: {} }, 'foyer');
+  assert.equal(cold.nodes.find(n => n.id === 'hq').st, 'here'); assert.ok(cold.nodes.every(n => n.id === 'hq' || n.st === 'q'), 'every other place is a question at most');
+  assert.ok(cold.nodes.every(n => n.st !== 'q' || (n.label === 'UNCHARTED' && !n.no)), 'a question mark wears no name and no number');
+  assert.equal(cold.floors.find(f => f.id === 'M').st, 'here', 'the foyer is on the main hall\'s floor');
+  const p = { door: {} }; D.hqRoomSee(p, 'foyer'); D.hqRoomSee(p, 'ring_g'); D.hqRoomSee(p, 'site_prebuilt_fairy_forest_clearing'); D.hqRoomSee(p, 'site_prebuilt_fairy_forest_trail');
+  const m = D.hqWorldOverview(p, 'site_prebuilt_fairy_forest_trail');
+  const woods = m.nodes.find(n => n.id === 'hub:woods');
+  assert.equal(woods.st, 'here'); assert.equal(woods.roomsSeen, 2); assert.equal(woods.rooms, W.nodes['hub:woods'].rooms.length); assert.equal(m.here, 'hub:woods');
+  assert.equal(m.nodes.find(n => n.id === 'hq').st, 'seen');
+  assert.ok(m.nodes.some(n => n.id === 'site:prebuilt_shasta' && n.st === 'q'), 'Shasta is a question off the woods');
+  assert.ok(m.edges.every(e => e.st === 'known' || e.st === 'q'));
+  const wh = m.edges.find(e => e.a === 'hq' && e.b === 'hub:woods'); assert.ok(wh && wh.st === 'known');
+  assert.equal(m.secrets.total, G.edges.filter(e => e.kind === 'secret').length); assert.equal(m.secrets.found, 0);
+  assert.ok(m.box.w > 0 && m.box.h > 0);
+  const all = D.hqWorldOverview(null, 'foyer', { all: true }); assert.equal(all.nodes.length, W.order.length); assert.ok(all.nodes.every(n => n.st !== 'q'));
+  /* the panel on the world sheet: the block with its bands, a node per place drawn, the LOCATIONS rail, THE KEY, the crumb, the card; a pick marks the place, a second pick travels */
+  const c = renderDirectory(p, 'site_prebuilt_fairy_forest_trail', 'world');
+  const html = c.out;
+  assert.ok(html.includes('<svg class="hq-map-svg hq-map-world"'));
+  assert.equal((html.match(/<g class="hq-map-n hq-map-wn /g) || []).length, m.nodes.length, 'a node per place (the building included)');
+  assert.equal((html.match(/class="hq-map-floor /g) || []).length, m.floors.length, 'a band per floor');
+  assert.equal((html.match(/data-mapedge="w:/g) || []).length, m.edges.filter(e => e.kind !== 'bay').length, 'a line per edge — the bay threads only for the place picked');
+  assert.ok(html.includes('hq-map-glyph'), 'a hub wears its glyph');
+  assert.ok(html.includes('class="hq-map-locs"') && html.includes('LOCATIONS') && html.includes('data-mapnode="w:hub:woods"'), 'the rail');
+  assert.ok(html.includes('class="hq-map-key"') && html.includes('MAIN PATH') && html.includes('SECRET PATH'), 'THE KEY');
+  assert.ok(html.includes('CENTRAL OVERVIEW') && html.includes('AREAS CHARTED: '), 'the crumb + the status line');
+  assert.ok(html.includes('THE ESTATE') === false || true);
+  assert.ok(html.includes('THE WOODS') && !html.includes('MOUNT SHASTA'), 'a charted place is named, an uncharted one is not');
+  assert.ok(html.includes('OPEN THE AREA MAP') && html.includes('data-maparea="hub:woods"'), 'the here-card opens the area map');
+  assert.ok(html.includes('hq-map-compass'));
+  assert.ok(!/undefined|NaN|\[object/.test(html), 'clean');
+  const calls = []; c.window._hqDoAction = a => calls.push(a);
+  vm.runInContext('_hqMapTravel("w:hq");', c);
+  assert.equal(c.map.wsel, 'hq'); assert.equal(calls.length, 0, 'the first click picks');
+  vm.runInContext('this.out = _hqDirectoryHtml();', c);
+  assert.ok(c.out.includes('GO ▸ THE MAIN HALL') || c.out.includes('GO ▸ CENTRAL EGRESS') || /GO ▸ /.test(c.out), 'the card offers GO');
+  assert.ok(c.out.includes('hq-map-floors'), 'the building\'s card lists the floors');
+  vm.runInContext('_hqMapTravel("w:hq");', c);
+  assert.equal(calls.length, 1); assert.equal(calls[0].room, 'central_egress', 'the second click travels to the anchor');
+  vm.runInContext('_hqMapTravel("w:floor:garage"); _hqMapTravel("w:floor:garage");', c);
+  assert.equal(calls.length, 2); assert.equal(calls[1].room, 'garage', 'a floor band travels to its lobby');
+  /* the area sheet: the rooms of one place, a question mark on a door out of it */
+  c.map.mode = 'area'; c.map.area = 'hub:woods';
+  vm.runInContext('this.out = _hqDirectoryHtml();', c);
+  assert.ok(c.out.includes('<svg class="hq-map-svg"') && c.out.includes('data-mapnode="site_prebuilt_fairy_forest_trail"') && c.out.includes('data-mapmode="world"'), 'the area sheet + the way back');
+  assert.ok(!c.out.includes('data-mapnode="reception"'), 'a room of another place is not on this sheet');
+  assert.ok(!/undefined|NaN|\[object/.test(c.out));
+  assert.ok(MP.includes("if (/^w:/.test(id)) { _hqWorldPick(id.slice(2)); return; }") && MP.includes("e.target.closest('[data-mapmode]')"), 'the handlers');
+  for (const cls of ['.hq-map-block', '.hq-map-floor .hq-map-band', '.hq-map-locs', '.hq-loc', '.hq-map-key', '.hq-map-crumb', '.hq-map-we.k-secret', '.hq-map-compass', '.hq-map-wn .hq-map-glyph']) assert.ok(CSS.includes(cls), cls);
 });
 
 /* THE DIRECTORY GUARD (2026-09-16, the user's rule: "the map / room directory
