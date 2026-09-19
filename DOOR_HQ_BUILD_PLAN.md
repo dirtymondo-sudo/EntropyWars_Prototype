@@ -10936,3 +10936,13 @@ hq-stage2 / hq-map-remembers / hq-skate / hq-deep / hq-portal / hq-encounter / s
   hq-climb.test.js (the seven-looks pin) + docs to the repo. No renderer change.
 - UNSEEN LIVE (RULE #1c): the ropes and ladders against each tier, the hand-hold bands, the cloud bridge from the dais, the ice
   wall's grind, the frame standing on the snowline, the draught's slab in the boulders, the floes on the lake, the stepping clouds.
+
+### 2026-09-19 — THE PARTY: two shifts, the health that carries, field medicine (local delivery)
+- data.js "THE PARTY" (`HQ_PARTY_RULES`, `door.hq.party`, the reads / writes / the launch / the commit / field medicine) + the
+  cot counter in Medical (`cot` → REST); map.js the pause menu's PARTY rewritten round it (two shift grids, ON CALL, DUTY,
+  USE), `_hqPartyLaunch` as the encounter's party, `_msConfirm`'s no-respawn reserves launch, `createUnit`'s carried vitals,
+  `defeatUnit`'s no-respawn rule + the Gauntlet-style seat fill; battle.js the commit's party write + the replacement gate;
+  state.js the repair whitelist + the exact-seat cap; ui.js the flag resets; styles-base.css the sheet's classes.
+- Ship: data.js / map.js / battle.js / state.js / ui.js / styles-base.css → R2 (data.js to Render too); index.html → Render
+  (token `20260919-party-01-cors`); hq-party.test.js + hq-encounter.test.js + docs → the repo.
+- UNSEEN LIVE (RULE #1c): all of it — CLAUDE.md's entry lists what to eyeball first.

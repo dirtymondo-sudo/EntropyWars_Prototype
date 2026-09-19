@@ -23097,6 +23097,10 @@ const DOOR_HQ = {
                 { id: 'chart', x: 3.2, z: -0.1, face: 270, plateY: 1.9, radius: 1.7, verb: 'READ',
                   label: 'THE CHART', sub: 'YOUR RECORD', action: { overlay: 'chart' },
                   desc: 'The clipboard at the foot of the bed. Every crossing the ward counted, every exit it processed, and the line at the bottom that says whether you are fit for duty.' },
+                /* THE COT (THE PARTY, 2026-09-19) → REST: the party's HP / MP restored, the down back on their feet — free, the JRPG inn */
+                { id: 'cot', x: 2.7, z: 1.4, face: 90, plateY: 1.5, radius: 1.6, verb: 'REST',
+                  label: 'THE COT', sub: 'REST THE PARTY', action: {},
+                  desc: 'The second cot, made up. The ward takes the whole party in, no questions, no chart — an hour on the cots and everyone walks out at full. The nurse calls it triage. It is not triage.' },
             ],
             props: [
                 /* ── the north wall: the sink, the shelves, the breaker, the supplies, the cell door ── */
@@ -39872,6 +39876,322 @@ function hqEncounterWakeRoom(profile) {
     const pick = (n % 2 === 1) ? ward : office;
     return pick || ward || office;
 }
+/* ══ THE PARTY — TWO SHIFTS, THE HEALTH THAT CARRIES, FIELD MEDICINE (2026-09-19) ══
+   The user's brief: "a party like a standard JRPG — the units you have unlocked are on
+   call / off duty; four including yourself on FIRST SHIFT (sent out first), four more on
+   SECOND SHIFT (switching in and out during battle), a party of eight; encounters in the
+   explorable areas do not respawn; your health carries over between encounters; heal the
+   party from the pause menu with their own heal spells; no levels / XP yet."
+   ONE RECORD, on the profile: `door.hq.party = { v: 1, at, seq, members: [ … ] }` — the
+   ORDER IS THE SHIFT: members[0..shift-1] are FIRST SHIFT (the board), the rest SECOND
+   SHIFT (the bench — the RESERVES plumbing, battle.js _benchOn / doSwitch / the Gauntlet
+   replacement modal when a seat falls). Member 0 is THE OFFICER (`you: true` — the walker,
+   built off the barbershop's avatar / the mirror's look; never relieved, never moved). A
+   member: { id, you?, cls, name, meta: { race, gender, secondaryJob?, customSpells?,
+   zodiac?, appearance? }, loadout: { spells, items, equipment }, hp, hpMax, mp, mpMax }
+   — `hp === null` means FULL (never fought yet / rested), `hp === 0` means DOWN (a KO'd
+   member stays down until a revive or the ward). The record is LOCAL like the punch clock
+   and the portal (nothing on `state`, nothing relayed — RULE #2; a synced party is a later
+   D5-style union). Every write below is PURE over the profile object handed in — THE
+   CALLER SAVES ONCE (map.js's _hqTakeFind transaction shape). */
+const HQ_PARTY_RULES = {
+    roster: 8,            // the party: FIRST SHIFT + SECOND SHIFT
+    shift: 4,             // on the board at once (= RESERVE_RULES.deploy; the launch caps it there)
+    lossRestore: true,    // an EXIT (a loss) wakes the party TREATED — full HP / MP (the Pokémon rule; the ward does it for free anyway)
+    restRoom: 'medical', restCounter: 'cot',   // where the party is rested for free: THE COT in Room 1111
+    healKinds: ['heal', 'healAll', 'selfHeal', 'revive'],   // the spell kinds FIELD MEDICINE casts outside a battle
+    itemKinds: ['healPotion', 'manaPotion'],               // the pockets' items usable outside a battle
+    officerRace: 'door agent',   // the walker's vessel when no avatar / look says otherwise (the Player cast model is the DOOR Agent's)
+    labels: { first: 'FIRST SHIFT', second: 'SECOND SHIFT', onCall: 'ON CALL', down: 'DOWN', fit: 'FIT', you: 'YOU' },
+};
+function hqPartyRecordRaw(profile) {
+    try { const r = profile && profile.door && profile.door.hq && profile.door.hq.party; return (r && typeof r === 'object' && Array.isArray(r.members)) ? r : null; } catch (e) { return null; }
+}
+function hqPartyEnsureRoot(profile) {
+    if (!profile.door || typeof profile.door !== 'object') profile.door = {};
+    if (!profile.door.hq || typeof profile.door.hq !== 'object') profile.door.hq = { visits: 0, lastDoor: null, variantSeed: null, keys: 0 };
+    return profile.door.hq;
+}
+/* the read: the record with every member NORMALISED (never null once a party exists); null = no party on file yet */
+function hqPartyRecord(profile) {
+    const r = hqPartyRecordRaw(profile);
+    if (!r) return null;
+    r.v = 1; if (!(r.seq >= 1)) r.seq = 1;
+    r.members = r.members.filter(m => m && typeof m === 'object' && m.cls).slice(0, HQ_PARTY_RULES.roster).map(m => hqPartyNormMember(m, r));
+    if (r.members.length && !r.members.some(m => m.you)) r.members[0].you = true;
+    return r;
+}
+function hqPartyNormMember(m, r) {
+    if (!m.id) m.id = 'p' + (r.seq++);
+    m.cls = String(m.cls || 'Freelancer');
+    m.name = typeof m.name === 'string' ? m.name.slice(0, 24) : '';
+    if (!m.meta || typeof m.meta !== 'object') m.meta = {};
+    if (!m.meta.race) m.meta.race = 'homosapien';
+    if (m.meta.customSpells && !Array.isArray(m.meta.customSpells)) delete m.meta.customSpells;
+    if (!m.loadout || typeof m.loadout !== 'object') m.loadout = { spells: [], items: {}, equipment: {} };
+    if (!Array.isArray(m.loadout.spells)) m.loadout.spells = [];
+    if (!m.loadout.items || typeof m.loadout.items !== 'object') m.loadout.items = {};
+    if (!m.loadout.equipment || typeof m.loadout.equipment !== 'object') m.loadout.equipment = {};
+    ['hp', 'hpMax', 'mp', 'mpMax'].forEach(k => { m[k] = (Number.isFinite(+m[k]) && m[k] !== null) ? Math.max(0, Math.round(+m[k])) : null; });
+    if (m.hp != null && m.hpMax != null && m.hp > m.hpMax) m.hp = m.hpMax;
+    if (m.mp != null && m.mpMax != null && m.mp > m.mpMax) m.mp = m.mpMax;
+    return m;
+}
+/* the races the officer may ENLIST: the account's unlocked units (the starters offline), the 3D-only rule kept, the dev switch honoured */
+function hqPartyUnlocked(profile) {
+    const all = (typeof AVAILABLE_RACES !== 'undefined') ? AVAILABLE_RACES : [];
+    const dev = (typeof window !== 'undefined' && window._DEV_UNLOCK_ALL);
+    const acct = profile && profile.account;
+    const owned = (acct && Array.isArray(acct.unlockedUnits) && acct.unlockedUnits.length) ? acct.unlockedUnits : ((typeof ACCT_STARTER_UNITS !== 'undefined') ? ACCT_STARTER_UNITS : []);
+    return all.filter(r => (dev || owned.indexOf(r) >= 0) && (typeof isRace3DReady !== 'function' || isRace3DReady(r)));
+}
+function hqPartyDefaultJob(race) {
+    if (typeof RACE_DEFAULT_JOBS !== 'undefined' && RACE_DEFAULT_JOBS[race]) return RACE_DEFAULT_JOBS[race];
+    return race === 'homosapien' ? 'Freelancer' : 'Warrior';
+}
+function hqPartyGenders(race) {
+    let g = null;
+    try { g = (typeof getAvailableGendersForRace === 'function') ? getAvailableGendersForRace(race) : null; } catch (e) { g = null; }
+    return (Array.isArray(g) && g.length) ? g.slice() : ['male', 'female'];
+}
+/* THE OFFICER: the walker as a member — the mirror's look (Homosapien in the creator's clothes), the barbershop's race pick, else the DOOR Agent */
+function hqPartyOfficer(profile) {
+    let pref = null, look = null;
+    try { pref = (typeof hqAvatarPref === 'function') ? hqAvatarPref(profile) : null; } catch (e) { pref = null; }
+    try { look = (typeof hqLook === 'function') ? hqLook(profile) : null; } catch (e) { look = null; }
+    let race = HQ_PARTY_RULES.officerRace, gender = 'male', appearance = null, name = '';
+    if (pref && pref.mode === 'look' && look) { race = 'homosapien'; gender = look.gender; appearance = look.appearance; name = look.name || ''; }
+    else if (pref && pref.mode === 'race' && pref.race) { race = pref.race; gender = pref.gender || 'male'; }
+    if (typeof AVAILABLE_RACES !== 'undefined' && AVAILABLE_RACES.indexOf(race) < 0) race = 'homosapien';
+    const genders = hqPartyGenders(race); if (genders.indexOf(gender) < 0) gender = genders[0];
+    if (!name) name = String((profile && profile.username) || 'THE OFFICER').slice(0, 24);
+    const meta = { race, gender };
+    if (appearance) meta.appearance = appearance;
+    return { you: true, cls: hqPartyDefaultJob(race), name, meta, loadout: { spells: [], items: { healPotion: 2, manaPotion: 1 }, equipment: {} }, hp: null, hpMax: null, mp: null, mpMax: null };
+}
+/* a member off a LAST ROSTER row (state.js recordLastParty's shape) — the officer's own crossings seed the party */
+function hqPartyMemberFromRoster(m) {
+    if (!m || !m.cls) return null;
+    const meta = {};
+    ['race', 'gender', 'secondaryJob', 'zodiac', 'appearance'].forEach(k => { if (m.meta && m.meta[k]) meta[k] = m.meta[k]; });
+    if (m.meta && Array.isArray(m.meta.customSpells) && m.meta.customSpells.length) meta.customSpells = m.meta.customSpells.filter(Boolean);
+    const lo = m.loadout || {};
+    return { cls: String(m.cls), name: m.name || '', meta, loadout: { spells: Array.isArray(lo.spells) ? lo.spells.slice() : [], items: Object.assign({}, lo.items || {}), equipment: Object.assign({}, lo.equipment || {}) }, hp: null, hpMax: null, mp: null, mpMax: null };
+}
+/* THE FIRST FILING: no party on file → the officer + the last roster's members (one vessel per race), else the officer + three starters */
+function hqPartyEnsure(profile, opts) {
+    if (!profile) return null;
+    const have = hqPartyRecord(profile);
+    if (have && have.members.length) return have;
+    opts = opts || {};
+    const H = hqPartyEnsureRoot(profile);
+    const rec = { v: 1, at: Date.now(), seq: 1, members: [] };
+    const push = spec => { if (!spec) return; if (rec.members.length >= HQ_PARTY_RULES.roster) return; if (rec.members.some(x => x.meta.race === spec.meta.race)) return; spec.id = 'p' + (rec.seq++); rec.members.push(spec); };
+    push(hqPartyOfficer(profile));
+    const last = opts.last && Array.isArray(opts.last.members) ? opts.last.members : [];
+    last.forEach(m => push(hqPartyMemberFromRoster(m)));
+    if (rec.members.length < 2) {
+        const unlocked = hqPartyUnlocked(profile);
+        ['knight', 'wizard', 'fairy', 'catgirl', 'grey', 'marksman', 'werewolf'].forEach(r => { if (rec.members.length < HQ_PARTY_RULES.shift && unlocked.indexOf(r) >= 0) push(hqPartySpec(r, hqPartyGenders(r)[0], null)); });
+    }
+    H.party = rec;
+    return hqPartyRecord(profile);
+}
+function hqPartySpec(race, gender, cls) {
+    const genders = hqPartyGenders(race); if (genders.indexOf(gender) < 0) gender = genders[0];
+    const job = cls || hqPartyDefaultJob(race);
+    let name = '';
+    try { name = (typeof getRaceLabel === 'function') ? String(getRaceLabel(race, gender)).toUpperCase().slice(0, 24) : race.toUpperCase(); } catch (e) { name = race.toUpperCase(); }
+    return { cls: job, name, meta: { race, gender }, loadout: { spells: [], items: { healPotion: 1 }, equipment: {} }, hp: null, hpMax: null, mp: null, mpMax: null };
+}
+function hqPartyMember(profile, id) { const r = hqPartyRecord(profile); return r ? (r.members.find(m => m.id === id) || null) : null; }
+function hqPartyShifts(profile) {
+    const r = hqPartyRecord(profile); const ms = r ? r.members : [];
+    return { first: ms.slice(0, HQ_PARTY_RULES.shift), second: ms.slice(HQ_PARTY_RULES.shift, HQ_PARTY_RULES.roster), members: ms };
+}
+/* the vitals a member reads at: the stored numbers, else the built unit's (a member who never fought is FULL) */
+function hqPartyVitals(m, unit) {
+    const hpMax = (m.hpMax != null) ? m.hpMax : (unit ? (unit.maxHp | 0) : 0);
+    const mpMax = (m.mpMax != null) ? m.mpMax : (unit ? (unit.maxMp | 0) : 0);
+    const hp = (m.hp != null) ? Math.min(m.hp, hpMax || m.hp) : hpMax;
+    const mp = (m.mp != null) ? Math.min(m.mp, mpMax || m.mp) : mpMax;
+    return { hp, hpMax, mp, mpMax, down: m.hp === 0, pct: hpMax > 0 ? hp / hpMax : 1, mpPct: mpMax > 0 ? mp / mpMax : 1 };
+}
+function hqPartyDown(m) { return m.hp === 0; }
+/* the party's condition: who can fight — the launch refuses a party with nobody fit */
+function hqPartyFit(profile) {
+    const S = hqPartyShifts(profile);
+    const fit = S.members.filter(m => !hqPartyDown(m)).length, down = S.members.length - fit;
+    const firstFit = S.first.filter(m => !hqPartyDown(m)).length;
+    const hurt = S.members.filter(m => !hqPartyDown(m) && m.hp != null && m.hpMax != null && m.hp < m.hpMax).length;
+    return { total: S.members.length, fit, down, firstFit, hurt, ready: fit > 0, note: !S.members.length ? 'NO PARTY ON FILE' : fit === 0 ? 'THE WHOLE PARTY IS DOWN' : down ? `${fit} FIT · ${down} DOWN` : hurt ? `${fit} FIT · ${hurt} HURT` : 'ALL FIT' };
+}
+/* ENLIST an on-call vessel: the first free slot (the first shift fills first) */
+function hqPartyEnlist(profile, spec) {
+    const r = hqPartyEnsure(profile);
+    if (!r) return { ok: false, reason: 'noprofile' };
+    spec = spec || {};
+    const race = spec.race;
+    if (!race || (typeof AVAILABLE_RACES !== 'undefined' && AVAILABLE_RACES.indexOf(race) < 0)) return { ok: false, reason: 'race' };
+    if (r.members.length >= HQ_PARTY_RULES.roster) return { ok: false, reason: 'full' };
+    if (hqPartyUnlocked(profile).indexOf(race) < 0) return { ok: false, reason: 'locked' };
+    if (r.members.some(m => m.meta.race === race)) return { ok: false, reason: 'dup' };
+    const m = hqPartySpec(race, spec.gender, spec.cls || null);
+    if (spec.name) m.name = String(spec.name).slice(0, 24);
+    m.id = 'p' + (r.seq++);
+    r.members.push(m); r.at = Date.now();
+    return { ok: true, member: m, index: r.members.length - 1 };
+}
+/* RELIEVE a member (off duty — back on call); never the officer */
+function hqPartyRelieve(profile, id) {
+    const r = hqPartyRecord(profile); if (!r) return { ok: false, reason: 'noparty' };
+    const i = r.members.findIndex(m => m.id === id);
+    if (i < 0) return { ok: false, reason: 'who' };
+    if (r.members[i].you) return { ok: false, reason: 'you' };
+    const [m] = r.members.splice(i, 1); r.at = Date.now();
+    return { ok: true, member: m };
+}
+/* SWAP two slots (a shift change is a swap across the line; a member and an empty slot = a move to the end of the order); the officer holds slot 1 */
+function hqPartySwap(profile, a, b) {
+    const r = hqPartyRecord(profile); if (!r) return { ok: false, reason: 'noparty' };
+    const ia = r.members.findIndex(m => m.id === a), ib = (typeof b === 'number') ? b : r.members.findIndex(m => m.id === b);
+    if (ia < 0 || ib < 0 || ib >= HQ_PARTY_RULES.roster) return { ok: false, reason: 'who' };
+    if (ia === ib) return { ok: false, reason: 'same' };
+    if (ia === 0 || ib === 0) return { ok: false, reason: 'you' };
+    if (ib >= r.members.length) { const [m] = r.members.splice(ia, 1); r.members.push(m); }
+    else { const t = r.members[ia]; r.members[ia] = r.members[ib]; r.members[ib] = t; }
+    r.at = Date.now();
+    return { ok: true };
+}
+/* the ON CALL list: every unlocked vessel not on the party */
+function hqPartyOnCall(profile) {
+    const r = hqPartyRecord(profile); const on = new Set((r ? r.members : []).map(m => m.meta.race));
+    return hqPartyUnlocked(profile).filter(race => !on.has(race)).map(race => {
+        const genders = hqPartyGenders(race);
+        let label = race; try { label = (typeof getRaceLabel === 'function') ? getRaceLabel(race, genders[0]) : race; } catch (e) {}
+        return { race, label, cls: hqPartyDefaultJob(race), genders };
+    });
+}
+/* REST: the ward's cot — every member full, the down back on their feet */
+function hqPartyRestore(profile) {
+    const r = hqPartyRecord(profile); if (!r) return { ok: false, n: 0 };
+    let n = 0;
+    r.members.forEach(m => { if (m.hp !== null || m.mp !== null) n++; m.hp = null; m.mp = null; });
+    r.at = Date.now();
+    return { ok: true, n, restored: n };
+}
+/* THE LAUNCH: the members who FIGHT, in order — the fit of the first shift, then the fit of the second (a downed member stays home, the
+   bench steps up to fill the line); each carries its vitals on its identity (meta.hp / hpMax / mp / mpMax — map.js createUnit scales
+   them to the build's own max) and its id (meta.partyId — the commit writes the fight's result back by it) */
+function hqPartyForLaunch(profile) {
+    const r = hqPartyRecord(profile); if (!r || !r.members.length) return null;
+    const fit = r.members.filter(m => !hqPartyDown(m));
+    if (!fit.length) return null;
+    const members = fit.map(m => {
+        const meta = Object.assign({}, m.meta, { partyId: m.id });
+        if (m.hp != null && m.hpMax != null) { meta.hp = m.hp; meta.hpMax = m.hpMax; }
+        if (m.mp != null && m.mpMax != null) { meta.mp = m.mp; meta.mpMax = m.mpMax; }
+        return { cls: m.cls, name: m.name, meta, loadout: { spells: m.loadout.spells.slice(), items: Object.assign({}, m.loadout.items), equipment: Object.assign({}, m.loadout.equipment) }, id: m.id, you: !!m.you };
+    });
+    return { members, ids: members.map(m => m.id), party: true, exact: true, deploy: Math.min(HQ_PARTY_RULES.shift, members.length), left: r.members.length - fit.length };
+}
+/* THE COMMIT: what the fight did to the party — `ev.units` = [{ partyId, hp, maxHp, mp, maxMp, dead }] off the human seat's units
+   (the board AND the bench); a loss with lossRestore wakes the party treated */
+function hqPartyAfterMatch(profile, ev) {
+    const r = hqPartyRecord(profile); if (!r || !ev) return null;
+    const by = {}; (Array.isArray(ev.units) ? ev.units : []).forEach(u => { if (u && u.partyId) by[u.partyId] = u; });
+    let down = 0, seen = 0;
+    r.members.forEach(m => {
+        const u = by[m.id]; if (!u) { if (hqPartyDown(m)) down++; return; }
+        seen++;
+        const hpMax = Math.max(1, u.maxHp | 0), mpMax = Math.max(0, u.maxMp | 0);
+        m.hpMax = hpMax; m.mpMax = mpMax;
+        if (u.dead || (u.hp | 0) <= 0) { m.hp = 0; m.mp = Math.max(0, Math.min(mpMax, u.mp | 0)); down++; }
+        else { m.hp = Math.max(1, Math.min(hpMax, u.hp | 0)); m.mp = Math.max(0, Math.min(mpMax, u.mp | 0)); }
+    });
+    let restored = false;
+    if (!ev.won && HQ_PARTY_RULES.lossRestore) { hqPartyRestore(profile); restored = true; down = 0; }
+    r.at = Date.now();
+    return { seen, down, fit: r.members.length - down, restored, total: r.members.length };
+}
+/* ── FIELD MEDICINE — the party's own heal spells and potions outside a battle ── */
+function hqPartyIsFieldSpell(sp) { return !!(sp && HQ_PARTY_RULES.healKinds.indexOf(sp.kind) >= 0 && (sp.kind === 'revive' || sp.kind === 'selfHeal' || (sp.healAmt != null ? sp.healAmt : sp.heal) > 0)); }
+/* the spells a built unit may cast in the field (heal · healAll · selfHeal · revive with a real amount) */
+function hqPartyFieldSpells(unit, m) {
+    let sps = (unit && Array.isArray(unit.spells)) ? unit.spells.filter(Boolean) : [];
+    if (!sps.length && m) {
+        const ids = (m.meta && Array.isArray(m.meta.customSpells) && m.meta.customSpells.length) ? m.meta.customSpells : (m.loadout && m.loadout.spells) || [];
+        sps = ids.filter(Boolean).map(id => (typeof SPELL_BY_ID !== 'undefined') ? SPELL_BY_ID[id] : null).filter(Boolean);
+    }
+    return sps.filter(hqPartyIsFieldSpell);
+}
+/* the amount a field cast restores — the battle's own arithmetic without the board: (base + the caster's healBonus) × supportScale(the
+   recipient's level), the low-HP rider, a percent for selfHeal / revive */
+function hqPartyHealAmount(sp, caster, target) {
+    const lvl = (target && target.lvl) || (caster && caster.lvl) || 1;
+    const scale = (typeof supportScale === 'function') ? supportScale(lvl, (caster && caster.lvl) || 0) : 1;
+    const base = (sp.healAmt != null) ? sp.healAmt : (sp.heal || 0);
+    if (sp.kind === 'revive') return Math.max(1, Math.round((target ? target.hpMax : 0) * (sp.revivePct || sp.reviveHpPct || 0.35)));
+    if (sp.kind === 'selfHeal') return sp.selfHealPct ? Math.floor((target ? target.hpMax : 0) * sp.selfHealPct) : Math.round((base || 64) * scale);
+    let amt = base + ((caster && caster.healBonus) || 0);
+    if (sp.lowHpBonus && target && target.hpMax > 0 && target.hp / target.hpMax < 0.4) amt += sp.lowHpBonus;
+    return Math.max(0, Math.round(amt * scale));
+}
+function hqPartyFrame(m, unit) { const v = hqPartyVitals(m, unit); return { id: m.id, hp: v.hp, hpMax: v.hpMax, mp: v.mp, mpMax: v.mpMax, lvl: (unit && (unit.level | 0)) || 1, healBonus: (unit && unit.healBonus) || 0, down: v.down }; }
+/* who a field spell may land on: heal → a fit member short of full; healAll → every such member; selfHeal → the caster; revive → a down member */
+function hqPartyFieldTargets(profile, units, casterId, sp) {
+    const r = hqPartyRecord(profile); if (!r) return [];
+    const caster = r.members.find(m => m.id === casterId); if (!caster) return [];
+    const short = m => { const v = hqPartyVitals(m, units && units[m.id]); return !v.down && v.hp < v.hpMax; };
+    if (sp.kind === 'revive') return r.members.filter(hqPartyDown);
+    if (sp.kind === 'selfHeal') return short(caster) ? [caster] : [];
+    return r.members.filter(short);
+}
+/* CAST in the field: MP off the caster, HP onto the target(s) — the caller saves */
+function hqPartyCast(profile, units, casterId, spellId, targetId) {
+    const r = hqPartyRecord(profile); if (!r) return { ok: false, reason: 'noparty' };
+    const caster = r.members.find(m => m.id === casterId); if (!caster) return { ok: false, reason: 'who' };
+    if (hqPartyDown(caster)) return { ok: false, reason: 'down' };
+    const cu = units && units[casterId];
+    const sp = hqPartyFieldSpells(cu, caster).find(s => s.id === spellId); if (!sp) return { ok: false, reason: 'spell' };
+    const cv = hqPartyVitals(caster, cu);
+    const cost = sp.cost | 0;
+    if (cv.mp < cost) return { ok: false, reason: 'mp', need: cost, have: cv.mp };
+    let targets = hqPartyFieldTargets(profile, units, casterId, sp);
+    if (sp.kind === 'heal' || sp.kind === 'revive') targets = targets.filter(m => m.id === targetId);
+    if (!targets.length) return { ok: false, reason: (sp.kind === 'revive') ? 'nobodydown' : 'full' };
+    const cf = hqPartyFrame(caster, cu);
+    const healed = targets.map(m => {
+        const tf = hqPartyFrame(m, units && units[m.id]);
+        const amt = hqPartyHealAmount(sp, cf, tf);
+        const before = tf.hp;
+        const hp = (sp.kind === 'revive') ? Math.max(1, Math.min(tf.hpMax, amt)) : Math.min(tf.hpMax, tf.hp + amt);
+        m.hp = hp; m.hpMax = tf.hpMax; if (m.mp == null) { m.mp = tf.mp; m.mpMax = tf.mpMax; }
+        return { id: m.id, amount: hp - (sp.kind === 'revive' ? 0 : before), hp, hpMax: tf.hpMax, revived: sp.kind === 'revive' };
+    });
+    caster.mpMax = cv.mpMax; caster.mp = Math.max(0, cv.mp - cost); if (caster.hp == null) { caster.hp = cv.hp; caster.hpMax = cv.hpMax; }
+    r.at = Date.now();
+    return { ok: true, spell: sp, healed, mp: caster.mp, mpMax: caster.mpMax, cost };
+}
+/* a POTION from a member's pockets in the field (ITEM_RULES healPct / mpPct) — the caller saves */
+function hqPartyUseItem(profile, units, ownerId, key, targetId) {
+    const r = hqPartyRecord(profile); if (!r) return { ok: false, reason: 'noparty' };
+    if (HQ_PARTY_RULES.itemKinds.indexOf(key) < 0) return { ok: false, reason: 'item' };
+    const owner = r.members.find(m => m.id === ownerId); if (!owner) return { ok: false, reason: 'who' };
+    if (!((owner.loadout.items[key] | 0) > 0)) return { ok: false, reason: 'none' };
+    const target = r.members.find(m => m.id === (targetId || ownerId)); if (!target) return { ok: false, reason: 'who' };
+    if (hqPartyDown(target)) return { ok: false, reason: 'down' };
+    const rule = (typeof ITEM_RULES !== 'undefined' && ITEM_RULES[key]) || {};
+    const tf = hqPartyFrame(target, units && units[target.id]);
+    let amount = 0, stat = 'hp';
+    if (key === 'healPotion') { if (tf.hp >= tf.hpMax) return { ok: false, reason: 'full' }; amount = Math.max(1, Math.round(tf.hpMax * (rule.healPct || 0.3))); target.hpMax = tf.hpMax; target.hp = Math.min(tf.hpMax, tf.hp + amount); amount = target.hp - tf.hp; if (target.mp == null) { target.mp = tf.mp; target.mpMax = tf.mpMax; } }
+    else { stat = 'mp'; if (tf.mp >= tf.mpMax) return { ok: false, reason: 'full' }; amount = Math.max(1, Math.round(tf.mpMax * (rule.mpPct || 0.35))); target.mpMax = tf.mpMax; target.mp = Math.min(tf.mpMax, tf.mp + amount); amount = target.mp - tf.mp; if (target.hp == null) { target.hp = tf.hp; target.hpMax = tf.hpMax; } }
+    owner.loadout.items[key] = (owner.loadout.items[key] | 0) - 1;
+    r.at = Date.now();
+    return { ok: true, key, stat, amount, target: target.id, left: owner.loadout.items[key], name: rule.name || key };
+}
+/* the pockets a member may open in the field */
+function hqPartyFieldItems(m) { return HQ_PARTY_RULES.itemKinds.filter(k => (m && m.loadout && m.loadout.items && (m.loadout.items[k] | 0)) > 0).map(k => ({ key: k, n: m.loadout.items[k] | 0, name: (typeof ITEM_RULES !== 'undefined' && ITEM_RULES[k] && ITEM_RULES[k].name) || k, icon: (typeof ITEM_RULES !== 'undefined' && ITEM_RULES[k] && ITEM_RULES[k].icon) || '' })); }
 /* ══ THE FIELD, STAGE B — THE RASTERISER ON THE CAVE (PHASE9_QUALITY_PLAN
    §11.3 B — Phase 9 Delivery 8, 2026-09-16) ══
    "Anywhere you stand becomes the 8×8." A cave chamber has no Δ under the
@@ -42390,6 +42710,10 @@ if (typeof window !== 'undefined') {
     window.hqEncounterLead = hqEncounterLead; window.hqEncounterReturnSpot = hqEncounterReturnSpot;
     window.hqFieldTransform = hqFieldTransform; window.hqEncounterZones = hqEncounterZones;
     window.hqEncounterField = hqEncounterField; window.hqEncounterSeats = hqEncounterSeats; window.hqEncounterEyeFromSeats = hqEncounterEyeFromSeats; window.hqEncounterWakeRoom = hqEncounterWakeRoom;
+    /* THE PARTY (2026-09-19): two shifts, the health that carries, field medicine */
+    window.HQ_PARTY_RULES = HQ_PARTY_RULES; window.hqPartyRecord = hqPartyRecord; window.hqPartyEnsure = hqPartyEnsure; window.hqPartyOfficer = hqPartyOfficer; window.hqPartyUnlocked = hqPartyUnlocked; window.hqPartyMember = hqPartyMember; window.hqPartyShifts = hqPartyShifts;
+    window.hqPartyVitals = hqPartyVitals; window.hqPartyFit = hqPartyFit; window.hqPartyEnlist = hqPartyEnlist; window.hqPartyRelieve = hqPartyRelieve; window.hqPartySwap = hqPartySwap; window.hqPartyOnCall = hqPartyOnCall; window.hqPartyRestore = hqPartyRestore;
+    window.hqPartyForLaunch = hqPartyForLaunch; window.hqPartyAfterMatch = hqPartyAfterMatch; window.hqPartyFieldSpells = hqPartyFieldSpells; window.hqPartyFieldTargets = hqPartyFieldTargets; window.hqPartyHealAmount = hqPartyHealAmount; window.hqPartyCast = hqPartyCast; window.hqPartyUseItem = hqPartyUseItem; window.hqPartyFieldItems = hqPartyFieldItems; window.hqPartySpec = hqPartySpec; window.hqPartyGenders = hqPartyGenders; window.hqPartyDefaultJob = hqPartyDefaultJob;
     /* THE FIELD stage B — the rasteriser on the cave (Phase 9 Delivery 8, 2026-09-16) */
     window.HQ_FIELD_RULES = HQ_FIELD_RULES; window.hqFieldRimBox = hqFieldRimBox; window.hqEncounterRoomLabel = hqEncounterRoomLabel; window.hqFieldDump = hqFieldDump; window.hqFieldRoomOk = hqFieldRoomOk; window.hqFieldId = hqFieldId; window.hqFieldParse = hqFieldParse; window.hqFieldRaster = hqFieldRaster; window.hqFieldReach = hqFieldReach;
     window.hqFieldWindow = hqFieldWindow; window.hqFieldBuild = hqFieldBuild; window.hqFieldLayout = hqFieldLayout; window.hqFieldRegister = hqFieldRegister;

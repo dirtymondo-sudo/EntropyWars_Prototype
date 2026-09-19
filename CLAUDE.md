@@ -5995,3 +5995,52 @@ the row count; (2) a climb's foot stands OFF its tier (a hand-holds row on the t
 / deep pool the walker never enters takes a SHALLOW bed (0.55) AND clear ground round its bank — a dry pocket between the sheet
 and a plan's cloud bank is a trap the compiler cuts a rescue ramp out of; `gen.open: [{ x, z, r }]` on the spec's plan clears it.
 `hq-climb.test.js`'s looks pin reads seven (D2's `fireescape`). Ship data.js to R2 AND Render. Unseen live (RULE #1c): all of it.
+
+## THE PARTY — TWO SHIFTS, THE HEALTH THAT CARRIES, FIELD MEDICINE (the JRPG party, 2026-09-19, local delivery)
+The user: "a party like a standard JRPG — the units you have unlocked are on call / off duty; four including yourself on
+FIRST SHIFT (sent out first), four more on SECOND SHIFT (switching in and out during battle), eight in all; encounters in the
+explorable areas do not respawn; health carries over between encounters; heal the party from the pause menu with their heal
+spells; no levels / XP yet." **THE RECORD** (data.js "THE PARTY", the block after `hqEncounterWakeRoom`; `HQ_PARTY_RULES` =
+the numbers: `roster` 8 = RESERVE_RULES.roster, `shift` 4 = RESERVE_RULES.deploy, `lossRestore`, `restRoom` / `restCounter`,
+`healKinds`, `itemKinds`, `officerRace`): `door.hq.party = { v, at, seq, members }` — **THE ORDER IS THE SHIFT**
+(members[0..3] FIRST SHIFT = the board, [4..7] SECOND SHIFT = the bench), member 0 is THE OFFICER (`you: true`: the mirror's
+look → a Homosapien in the creator's clothes, the barbershop's race pick, else the DOOR Agent; never relieved, never moved),
+a member `{ id, cls, name, meta { race, gender, secondaryJob?, customSpells?, zodiac?, appearance? }, loadout, hp, hpMax,
+mp, mpMax }` with **`hp === null` = FULL and `hp === 0` = DOWN** (a KO stays down until a revive or the ward). LOCAL like the
+punch clock (nothing on `state`, nothing relayed — RULE #2). Reads: `hqPartyRecord` / `hqPartyShifts` / `hqPartyVitals(m,
+unit)` / `hqPartyFit` (`ready` = anyone fit) / `hqPartyOnCall` (the unlocked not on the books; `hqPartyUnlocked` = the
+account's `unlockedUnits`, the starters offline, the 3D-only rule, `_DEV_UNLOCK_ALL`). Writes (pure over the profile handed
+in — THE CALLER SAVES ONCE, map.js `_hqPartyTx`): `hqPartyEnsure(profile, { last })` (THE SEED: the officer + the last
+roster one vessel per race, else the officer + three starters), `hqPartyEnlist(profile, { race, gender, cls })` (the first
+free slot; one vessel per race; `full` / `dup` / `locked`), `hqPartyRelieve`, `hqPartySwap(profile, a, b|index)` (a shift
+change is a swap across the line; an empty slot = to the end of the order; slot 1 refuses), `hqPartyRestore` (THE COT),
+`hqPartyAfterMatch(profile, { won, units: [{ partyId, hp, maxHp, mp, maxMp, dead }] })` (THE COMMIT: a dead body is DOWN; a
+loss with `lossRestore` wakes the party treated). **THE LAUNCH**: `hqPartyForLaunch(profile)` = the fit of the first shift,
+then the fit of the second (a downed member stays home, the bench steps up), each member's vitals + id on its identity
+(`meta.hp / hpMax / mp / mpMax / partyId`) — map.js `_hqPartyLaunch()` is `_hqEncounterStart`'s party source (the last
+roster stands in only without a profile), `_hqEncounterFire` refuses a strike when nobody is fit (THE PARTY IS DOWN toast);
+`_msConfirm` peeks the party BEFORE the reserves block: a party encounter is a RESERVES match (`state.reserves`, roster 8 /
+deploy 4, the Gauntlet plumbing) with **`state.noRespawns = true`** (map.js `defeatUnit` sets `_respawnIn = null`; a fallen
+seat is filled the Gauntlet way — the replacement modal / the AI's healthiest — `_gauntletQueueReplacement`'s gate reads
+`state.noRespawns && _benchOn()`; reset beside `state.reserves` at every site), the enemy is the native's group at the
+encounter's team size (P2 truncated after the draw), and the human seat is EXACTLY its members (`party.exact` — never padded;
+`window._ewPartySlots` caps `repairPartyBuilderState`'s pad for that build only). map.js `createUnit` reads
+`identityOverride.hp / hpMax / mp / mpMax` LAST (after the gear tops the max off), scaled to the build's own max, never under
+1; state.js `repairPartyBuilderState`'s whitelist keeps `partyId` + the four. battle.js's commit gathers the human seat's
+bodies (`state.units` + `state.bench[seat]`), maps each unit's index to `state.partyMeta[seat][i].partyId` and calls
+`hqPartyAfterMatch`; the result carries `party` (the return toast reads it: n DOWN / THE PARTY WAS TREATED). TDM's
+`wipeout` win condition ends a no-respawn fight; the round cap still decides by kills. **THE PAUSE MENU · PARTY** (map.js
+`_hqPausePartyHtml` / `_hqPauseMemberHtml` / `_hqPartyAct`; `_hqPause.member` is a member ID now, `arm` = the armed action,
+`msg` = the one-render result line — the HQ toast sits UNDER the pause overlay): FIRST SHIFT · SECOND SHIFT as four-slot
+grids (a card wears HP / MP bars off `hqPartyVitals`, a DOWN stamp, YOU), ON CALL with ENLIST ♂ / ♀, the member sheet's DUTY
+row (⇄ SWAP SLOT arms a swap — pick a card / TO THE END OF THE ORDER; RELIEVE OF DUTY), **FIELD MEDICINE**: USE on a heal /
+healAll / selfHeal / revive row (`hqPartyFieldSpells`; `hqPartyFieldTargets` = the rule; `hqPartyCast(profile, units,
+casterId, spellId, targetId)` — the battle's own arithmetic without the board: `(base + healBonus) × supportScale(the
+recipient's level)`, the low-HP rider, `selfHealPct` / `revivePct`; the caster's OWN MP) and USE on a potion chip
+(`hqPartyUseItem`: healPct / mpPct of the target's max, one fewer in the owner's pocket). **THE COT** (Medical, counter `cot`,
+a by-id panel → `[data-party-rest]` → `window._hqPartyRest` → `hqPartyRestore`): the free inn. The console's crossings keep
+THE LAST ROSTER (the forge); the party is the encounters'. `npm test` runs `hq-party.test.js`; hq-encounter.test.js's two
+result-literal pins read `party: partyRes`. NOT built: levels / XP (the user's call), a synced party (D5-style union), the
+party in the forge / a console crossing, gear or spell editing from the sheet (the forge still owns loadouts), a flee verb.
+UNSEEN LIVE (RULE #1c): the two grids at the pause frame's width, the armed card's glow, the replacement modal firing in a
+no-respawn TDM, the enemy's size against a five-man launch, the carried HP on the first frame, the cot's panel.

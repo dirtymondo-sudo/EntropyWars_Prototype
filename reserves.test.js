@@ -77,7 +77,8 @@ test('rule 1: the bench is a rotation — a switch keeps HP / MP, only stat stag
 
 test('rule 2: death owes the ladder — the seat is handed over only by processRespawns', () => {
     /* defeatUnit: a reserves match keeps the ladder (the Gauntlet / MD branch nulls it) */
-    assert.ok(/if \(\(typeof _isGauntlet === 'function' && _isGauntlet\(\)\) \|\|\s*\(typeof _isDungeonMode === 'function' && _isDungeonMode\(\)\)\) \{[\s\S]*?unit\._respawnIn = null;/.test(map));
+    /* THE PARTY (2026-09-19): an encounter's no-respawn flag (state.noRespawns) joined the Gauntlet / MD branch — a reserves match on its own still keeps the ladder */
+    assert.ok(/if \(\(typeof _isGauntlet === 'function' && _isGauntlet\(\)\) \|\|\s*\(typeof _isDungeonMode === 'function' && _isDungeonMode\(\)\) \|\| state\.noRespawns\) \{[\s\S]*?unit\._respawnIn = null;/.test(map));
     assert.ok(!/_isReservesMatch\(\)\)[\s\S]{0,200}unit\._respawnIn = null/.test(map), 'a reserves match never nulls the ladder');
     assert.ok(/else if \(typeof _reserveQueueSeat === 'function'\) \{\s*_reserveQueueSeat\(unit\);/.test(map), 'the seat is queued at the death');
     /* the swap runs at the END of processRespawns, off a copy, only for a revived unit with a promised seat */
@@ -133,7 +134,9 @@ test('match-select + launch: the RESERVES toggle sizes the roster to RESERVE_RUL
     assert.ok(/let _msReserves = false;/.test(map));
     assert.ok(/state\.reserves = _reservesLaunch;\s*if \(gm\.id === 'gauntlet' \|\| _reservesLaunch\) \{/.test(map));
     assert.ok(/Math\.max\(1, Math\.min\(_RR\.deploy \|\| 4, CONFIG\.teamSize \|\| 4\)\)/.test(map), 'the chosen team size caps the deploy');
-    assert.ok(/!!\(mpMode && mpMode\.respawns && !mpMode\.isFFA && !mpMode\.isClash\)/.test(map));
+    /* THE PARTY (2026-09-19): a party ENCOUNTER is the one reserves launch in a no-respawn fight (_encParty_ peeked before the block) */
+    assert.ok(/!!\(mpMode && \(mpMode\.respawns \|\| _encParty_\) && !mpMode\.isFFA && !mpMode\.isClash\)/.test(map));
+    assert.ok(/state\.noRespawns = _encParty_;/.test(map), 'the no-respawn flag rides the same launch');
     /* every other launch path clears the flag (like trainingMatch) */
     assert.ok((map.match(/state\.reserves = false;/g) || []).length >= 3, 'map.js clears it on the MD / _selectMode / editor paths');
     assert.ok((ui.match(/state\.reserves = false;/g) || []).length >= 2, 'ui.js clears it on the tutorial / campaign paths');

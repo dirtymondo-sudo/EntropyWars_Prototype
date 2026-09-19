@@ -11776,11 +11776,29 @@
                         const PS = window.ProfileSystem;
                         const idx = (PS && typeof PS.getActiveProfileIndex === 'function') ? PS.getActiveProfileIndex() : null;
                         const p = (idx !== null && idx !== undefined && typeof PS.loadProfile === 'function') ? PS.loadProfile(idx) : null;
+                        let partyRes = null;
                         if (p) {
                             hqEncounterRecord(p, { site: erun.site, room: erun.room, race: erun.race, id: erun.id || null, won, date: erun.date || ((typeof hqToday === 'function') ? hqToday() : null) });
+                            /* THE PARTY (2026-09-19): the fight's vitals go home on the members — the board AND the bench of the
+                               human seat, matched by meta.partyId (data.js hqPartyAfterMatch; a loss wakes the party treated) */
+                            try {
+                                if (typeof hqPartyAfterMatch === 'function') {
+                                    const seat = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : 1;
+                                    const bodies = (state.units || []).concat((state.bench && state.bench[seat]) || []);
+                                    const vit = [];
+                                    for (const u of bodies) {
+                                        if (!u || (typeof unitHomePlayer === 'function' ? unitHomePlayer(u) : u.player) !== seat) continue;
+                                        const ui = parseInt(String(u.id).split('-')[1], 10);
+                                        const pm = (Number.isFinite(ui) && state.partyMeta && state.partyMeta[seat]) ? state.partyMeta[seat][ui] : null;
+                                        if (!pm || !pm.partyId) continue;
+                                        vit.push({ partyId: pm.partyId, hp: u.hp | 0, maxHp: u.maxHp | 0, mp: u.mp | 0, maxMp: u.maxMp | 0, dead: !!(u.dead || u._dying) });
+                                    }
+                                    if (vit.length) partyRes = hqPartyAfterMatch(p, { won, units: vit });
+                                }
+                            } catch (e) { console.warn('[HQ] the party record failed', e); }
                             PS.saveProfile(idx, p);
                         }
-                        window._hqEncounterResult = { won, site: erun.site, room: erun.room, race: erun.race, label: erun.label || erun.race, walker: erun.walker || null };   // D1: the swing spot rides home
+                        window._hqEncounterResult = { won, site: erun.site, room: erun.room, race: erun.race, label: erun.label || erun.race, walker: erun.walker || null, party: partyRes };   // D1: the swing spot rides home; THE PARTY: what the fight did to it
                         addLog(won ? `🚪 The encounter is over — ${erun.label || erun.race} is off the room.` : `🚪 EXITED — ${erun.label || erun.race} held the room. You come to elsewhere.`);
                     }
                 } catch (e) { console.warn('[HQ] encounter record failed', e); }
@@ -27991,7 +28009,7 @@
             return (c === CTRL.LOCAL || c === CTRL.REMOTE) && !state.autoPlayers?.[player];
         }
         function _gauntletQueueReplacement(fallen) {
-            if (!_isGauntlet() || !fallen) return;
+            if (!(_isGauntlet() || (state.noRespawns && _benchOn())) || !fallen) return;   // THE PARTY (2026-09-19): a no-respawn bench fills a seat the Gauntlet way
             const player = fallen.player;
             if (_gauntletReservesAlive(player) === 0) return;
             const slot = { player, x: fallen.x, y: fallen.y, z: fallen.z };

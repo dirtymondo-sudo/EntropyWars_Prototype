@@ -3844,7 +3844,10 @@
                 const repairedLoadouts = [];
                 const repairedMeta = [];
 
-                const slotCount = Math.max(CONFIG.teamSize, state.partyBuilds[player].length);
+                /* THE PARTY (2026-09-19): an encounter seats EXACTLY its members — window._ewPartySlots[player] (map.js _msConfirm,
+                   cleared once the units are made) caps the pad below CONFIG.teamSize (the reserves roster) */
+                const _slotsCap = (typeof window !== 'undefined' && window._ewPartySlots && window._ewPartySlots[player] > 0) ? window._ewPartySlots[player] : null;
+                const slotCount = Math.max(_slotsCap || CONFIG.teamSize, state.partyBuilds[player].length);
 
                 for (let idx = 0; idx < slotCount; idx++) {
                     const fallbackCls = DEFAULT_BUILDS[player]?.[idx] || Object.keys(CLASS_TEMPLATES)[0] || 'Warrior';
@@ -3902,6 +3905,9 @@
                         rebuiltMeta.customSpells = repairedLo.spells.filter(Boolean).slice(0, CONFIG.unitSkillSlots);
                     }
 
+                    /* THE PARTY (2026-09-19): the member's id + carried vitals ride the identity into createUnit and out to the commit */
+                    if (priorMeta.partyId) rebuiltMeta.partyId = priorMeta.partyId;
+                    ['hp', 'hpMax', 'mp', 'mpMax'].forEach(k => { if (priorMeta[k] != null && Number.isFinite(+priorMeta[k])) rebuiltMeta[k] = priorMeta[k]; });
                     if (priorMeta._campaignLevel != null) rebuiltMeta._campaignLevel = priorMeta._campaignLevel;
                     if (priorMeta._campaignXp != null) rebuiltMeta._campaignXp = priorMeta._campaignXp;
                     if (priorMeta._campaignRosterId) rebuiltMeta._campaignRosterId = priorMeta._campaignRosterId;

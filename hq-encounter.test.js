@@ -156,7 +156,7 @@ test('SOURCE · battle.js: the intro cinematic is off PER LAUNCH (never the glob
     assert.ok(BT.includes("!(window._hqEncounterRun && window._hqEncounterRun.noIntro) && !state.devAutoSim"), 'the leaf warm-up too');
     assert.ok(!BT.includes("window.EW_DISABLE_INTRO_CINE = true;   // encounter"), 'never the global switch');
     assert.ok(BT.includes("const erun = _encMatch || window._hqEncounterRun;") && BT.includes("hqEncounterRecord(p, { site: erun.site, room: erun.room, race: erun.race, id: erun.id || null, won,"), 'the record on the commit (the latched run first), the native\'s id with it');
-    assert.ok(BT.includes("window._hqEncounterResult = { won, site: erun.site, room: erun.room, race: erun.race, label: erun.label || erun.race, walker: erun.walker || null };"));
+    assert.ok(BT.includes("window._hqEncounterResult = { won, site: erun.site, room: erun.room, race: erun.race, label: erun.label || erun.race, walker: erun.walker || null, party: partyRes };"));   // THE PARTY (2026-09-19): what the fight did to the party rides home too
 });
 
 test('SOURCE · index.html: the hint under the door gun\'s', () => {
@@ -341,7 +341,7 @@ test('D1 · THE RETURN SPOT: the run marker\'s walker (feet + camera yaw in radi
 });
 
 test('D1 · SOURCE: battle.js carries the walker home on the result; map.js lands a WIN in the strike\'s own room at the swing spot (never a loss, never another room); three-renderer.js _hqGoTo takes the free-spot form (surface first, the recorded heading, faceAway ignored)', () => {
-    assert.ok(BT.includes("label: erun.label || erun.race, walker: erun.walker || null };"), 'the result carries the swing');
+    assert.ok(BT.includes("label: erun.label || erun.race, walker: erun.walker || null, party: partyRes };"), 'the result carries the swing (and, since THE PARTY, the party\'s result)');
     assert.ok(MP.includes("if (encRes && encRes.won && enabled && _hqHome && encRes.room && encRes.room === _hqLastRoom && typeof window.hqEncounterReturnSpot === 'function') {"), 'a win in the same room');
     assert.ok(MP.includes("const spot = window.hqEncounterReturnSpot(encRes);") && MP.includes("if (spot) _hqLastDoor = spot;"), 'the spot becomes the landing');
     assert.ok(MP.indexOf("if (spot) _hqLastDoor = spot;") < MP.indexOf("if (window._hqEnter({ room: _hqLastRoom, at: _hqLastDoor, quiet: true, from: 'return' })) {"), 'before the re-entry');

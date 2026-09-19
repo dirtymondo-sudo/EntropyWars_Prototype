@@ -974,7 +974,12 @@
                 if (alive && _hqSuspended && window._hqResume()) return true;
                 if (alive) window._hqLeave();
                 if (window._hqEnter({ room: _hqLastRoom, at: _hqLastDoor, quiet: true, from: 'return' })) {
-                    if (encRes) setTimeout(() => { try { _hqToast(encRes.won ? `<b>THRESHOLD HELD</b><span>${_hqEsc(String(encRes.label || encRes.race || 'THE NATIVE').toUpperCase())} · THE ROOM IS YOURS</span>` : `<b>EXITED</b><span>${encRes.wake === 'office' ? 'YOU CAME TO AT YOUR DESK' : 'YOU CAME TO IN THE WARD'} · ${_hqEsc(String(encRes.label || encRes.race || 'THE NATIVE').toUpperCase())} HAD THE ROOM</span>`, 3600); } catch (e) {} }, 1400);
+                    if (encRes) setTimeout(() => { try {
+                        /* THE PARTY (2026-09-19): the second line reads what the fight did to the party — the down, the treatment */
+                        const pr = encRes.party || null;
+                        const partyLine = pr ? (pr.restored ? ' · THE PARTY WAS TREATED' : pr.down ? ` · ${pr.down} DOWN — HEAL THEM OR REST IN MEDICAL` : ' · THE PARTY STANDS') : '';
+                        _hqToast(encRes.won ? `<b>THRESHOLD HELD</b><span>${_hqEsc(String(encRes.label || encRes.race || 'THE NATIVE').toUpperCase())} · THE ROOM IS YOURS${partyLine}</span>` : `<b>EXITED</b><span>${encRes.wake === 'office' ? 'YOU CAME TO AT YOUR DESK' : 'YOU CAME TO IN THE WARD'} · ${_hqEsc(String(encRes.label || encRes.race || 'THE NATIVE').toUpperCase())} HAD THE ROOM${partyLine}</span>`, 4200);
+                    } catch (e) {} }, 1400);
                     return true;
                 }
             } else if (alive) {
@@ -1007,7 +1012,7 @@
         let _hqPause = null;   // { cmd, cursor, member, units } while the menu is up
         const _HQ_PAUSE_CMDS = [
             { id: 'resume',    label: 'RESUME',    sub: 'BACK TO THE BUILDING' },
-            { id: 'party',     label: 'PARTY',     sub: 'THE LAST ROSTER' },
+            { id: 'party',     label: 'PARTY',     sub: 'TWO SHIFTS · FIELD MEDICINE' },
             { id: 'officer',   label: 'OFFICER',   sub: 'YOUR FILE' },
             { id: 'settings',  label: 'SETTINGS',  sub: 'AUDIO · DISPLAY · CONTROLS' },
             { id: 'directory', label: 'DIRECTORY', sub: 'THE MAP · EVERY ROOM YOU HAVE REACHED' },
@@ -1027,8 +1032,8 @@
                for a lock that lands late — _hqOnLockChange gives it back too */
             try { if (document.pointerLockElement) document.exitPointerLock(); } catch (e) {}
             const fresh = !_hqPause;
-            if (fresh) _hqPause = { cmd: 'party', cursor: 1, member: null, units: {} };
-            if (cmd) { _hqPause.cmd = cmd; _hqPause.member = null; }
+            if (fresh) _hqPause = { cmd: 'party', cursor: 1, member: null, units: {}, arm: null, msg: null };
+            if (cmd) { _hqPause.cmd = cmd; _hqPause.member = null; _hqPause.arm = null; }
             _hqPause.cursor = Math.max(0, _HQ_PAUSE_CMDS.findIndex(c => c.id === _hqPause.cmd));
             el.style.display = '';
             el.setAttribute('aria-hidden', 'false');
@@ -1056,13 +1061,36 @@
         };
         window._hqTogglePause = function () { return _hqPause ? window._hqClosePause() : window._hqOpenPause(); };
         function _hqLastParty() { return (typeof window._ewLoadLastParty === 'function') ? window._ewLoadLastParty() : null; }
-        /* a member of the last roster as a REAL unit (createUnit: level, sec job,
-           tree-legal spells, gear bonuses) — cached per open; null when the
-           build fails (the sheet then reads the record's bare ids) */
+        /* ── THE PARTY (2026-09-19) — the pause menu's PARTY is the officer's PARTY on the profile (data.js "THE PARTY":
+           door.hq.party — two shifts of four, the health that carries, field medicine), seeded from the last roster the
+           first time it is opened. Every write is ONE profile transaction (_hqPartyTx: load → mutate → save), and the
+           built-unit cache is dropped on every write so the sheet re-reads the record. ── */
+        function _hqPartyTx(fn) {
+            try {
+                const PS = window.ProfileSystem;
+                const idx = (PS && typeof PS.getActiveProfileIndex === 'function') ? PS.getActiveProfileIndex() : null;
+                if (idx === null || idx === undefined) return { ok: false, reason: 'nocard' };
+                const p = PS.loadProfile(idx); if (!p) return { ok: false, reason: 'nocard' };
+                const out = fn(p);
+                PS.saveProfile(idx, p);
+                if (_hqPause) _hqPause.units = {};
+                return out;
+            } catch (e) { console.warn('[HQ] party', e); return { ok: false, reason: 'error' }; }
+        }
+        function _hqPartySeed() { return _hqPartyTx(p => (typeof window.hqPartyEnsure === 'function') ? window.hqPartyEnsure(p, { last: _hqLastParty() }) : null); }
+        function _hqParty() {
+            const p = _hqProfile();
+            if (!p || typeof window.hqPartyRecord !== 'function') return null;
+            let rec = window.hqPartyRecord(p);
+            if (!rec) { _hqPartySeed(); rec = window.hqPartyRecord(_hqProfile()); }
+            return rec;
+        }
+        /* a member as a REAL unit (createUnit: level, sec job, tree-legal spells, gear bonuses; its carried vitals ride the
+           identity) — cached per open by member id; null when the build fails (the sheet then reads the record's bare ids) */
         function _hqPauseUnit(i) {
             const P = _hqPause; if (!P) return null;
             if (P.units[i] !== undefined) return P.units[i];
-            const rec = _hqLastParty(); const m = rec && rec.members[i];
+            const rec = _hqParty(); const m = rec && rec.members.find(x => x.id === i);
             let u = null;
             if (m && typeof createUnit === 'function') {
                 try {
@@ -1081,6 +1109,7 @@
             P.units[i] = u;
             return u;
         }
+        function _hqPauseUnits(rec) { const o = {}; (rec ? rec.members : []).forEach(m => { o[m.id] = _hqPauseUnit(m.id); }); return o; }
         function _hqPausePortrait(m, u) {
             let url = null;
             try { if (typeof getUnitPortraitUrl === 'function') url = getUnitPortraitUrl(u || { race: m.meta && m.meta.race, gender: m.meta && m.meta.gender }); } catch (e) {}
@@ -1097,83 +1126,110 @@
         function _hqPauseTypeChips(types) {
             return (types || []).map(t => `<i class="hq-pp-type" style="--tc:${_HQ_TYPE_COLORS[t] || '#aaa'}">${_hqEsc(String(t).toUpperCase())}</i>`).join('');
         }
-        function _hqPauseBar(label, val, max, color) {
+        function _hqPauseBar(label, val, max, color, text) {
             const pct = Math.max(0, Math.min(100, max > 0 ? (val / max) * 100 : 0));
-            return `<div class="hq-pp-stat"><b>${_hqEsc(label)}</b><span class="hq-pp-bar"><i style="width:${pct.toFixed(1)}%;background:${color}"></i></span><em>${_hqEsc(String(val))}</em></div>`;
+            return `<div class="hq-pp-stat"><b>${_hqEsc(label)}</b><span class="hq-pp-bar"><i style="width:${pct.toFixed(1)}%;background:${color}"></i></span><em>${_hqEsc(text != null ? String(text) : String(val))}</em></div>`;
         }
-        function _hqPauseHeadHtml() {
-            const profile = _hqProfile(), room = _hqRoom();
-            const cl = (typeof window.doorClearance === 'function') ? window.doorClearance(profile) : { level: 1, title: 'DOORMAT' };
-            const gold = (profile && profile.account && profile.account.gold) || 0;
-            const k = (typeof window.hqKeys === 'function') ? window.hqKeys(profile) : null;
-            const mc = (typeof window.hqMasteryCount === 'function') ? window.hqMasteryCount(profile) : null;
-            const pc = (typeof window.hqPunchClock === 'function') ? window.hqPunchClock(profile) : null;
-            let canon = '';
-            try { canon = (typeof window.hqCanonToday === 'function') ? String(window.hqCanonToday() || '') : ''; } catch (e) {}
-            const where = room ? (((room.roomNo != null) ? 'ROOM ' + room.roomNo + ' · ' : '') + (room.label || '')) : '';
-            return `<div class="hq-pause-title"><img src="https://cdn.entropywars.net/Assets/door/DOOR_Colored_Logo_ForBlackBG.png" alt="" draggable="false"><div><b>PAUSED</b><span>D.O.O.R. HEADQUARTERS${where ? ' · ' + _hqEsc(where) : ''}</span></div></div>`
-                + `<div class="hq-pause-vitals">`
-                + `<span><b>${_hqEsc((profile && profile.username) || 'UNFILED')}</b><i>L${cl.level} · ${_hqEsc(cl.title)}</i></span>`
-                + `<span><b>💰 ${gold.toLocaleString()}</b><i>HAZARD PAY</i></span>`
-                + (k ? `<span><b>🗝 ${k.keys}</b><i>KEYS</i></span>` : '')
-                + (mc ? `<span><b>${mc.mastered} / ${mc.total}</b><i>STABILIZED</i></span>` : '')
-                + (pc ? `<span><b>${pc.streak | 0}</b><i>DAY STREAK</i></span>` : '')
-                + (canon ? `<span><b>${_hqEsc(canon)}</b><i>CANON</i></span>` : '')
-                + `</div>`;
+        function _hqPauseVitals(m, u) { return (typeof window.hqPartyVitals === 'function') ? window.hqPartyVitals(m, u) : { hp: u ? u.maxHp : 0, hpMax: u ? u.maxHp : 0, mp: u ? u.maxMp : 0, mpMax: u ? u.maxMp : 0, down: false, pct: 1, mpPct: 1 }; }
+        /* is this member a legal TARGET for the armed action? (a swap: any other slot but the officer's; a cast / an item: data.js's rule) */
+        function _hqPauseTargetOk(arm, m, rec, units) {
+            if (!arm || !m) return false;
+            if (arm.kind === 'swap') return m.id !== arm.from && !m.you;
+            if (arm.kind === 'cast') { const sp = arm.spell; if (!sp) return false; if (sp.kind === 'healAll' || sp.kind === 'selfHeal') return false; return (window.hqPartyFieldTargets(_hqProfile(), units, arm.from, sp) || []).some(t => t.id === m.id); }
+            if (arm.kind === 'item') { const v = _hqPauseVitals(m, units[m.id]); if (v.down) return false; return arm.key === 'healPotion' ? v.hp < v.hpMax : v.mp < v.mpMax; }
+            return false;
         }
-        function _hqPauseNavHtml() {
-            const P = _hqPause;
-            return _HQ_PAUSE_CMDS.map((c, i) => `<button class="hq-pause-cmd${P.cmd === c.id ? ' sel' : ''}${i === P.cursor ? ' cur' : ''}${c.id === 'exit' ? ' danger' : ''}" data-cmd="${c.id}" role="menuitem"><b>${c.label}</b><span>${c.sub}</span></button>`).join('');
+        function _hqPauseCardHtml(m, i, rec, units, arm) {
+            const u = units[m.id];
+            const po = _hqPausePortrait(m, u);
+            const v = _hqPauseVitals(m, u);
+            const sec = (u && u._secondaryJob) || (m.meta && m.meta.secondaryJob) || '';
+            const name = m.name || (u && u.name) || m.cls;
+            const tgt = arm ? _hqPauseTargetOk(arm, m, rec, units) : false;
+            const self = arm && arm.from === m.id;
+            const cls = 'hq-pp-card' + (_hqPause.member === m.id ? ' sel' : '') + (v.down ? ' down' : '') + (arm ? (tgt ? ' tgt' : (self ? ' src' : ' dim')) : '') + (m.you ? ' you' : '');
+            const shift = i < HQ_PARTY_RULES.shift ? 1 : 2;
+            return `<button class="${cls}" data-member="${_hqEsc(m.id)}"${arm && !tgt ? ' aria-disabled="true"' : ''}>`
+                + `<span class="hq-pp-face${po && po.kind === 'sprite' ? ' sprite' : ''}"${po ? ` style="background-image:url('${po.url}')"` : ''}>${v.down ? '<i class="hq-pp-downstamp">DOWN</i>' : ''}</span>`
+                + `<span class="hq-pp-id"><b>${_hqEsc(name)}${m.you ? ' <i class="hq-pp-you">YOU</i>' : ''}</b><i>${_hqEsc(_hqPauseRaceLabel(m, u))} · ${_hqEsc(m.cls)}${sec ? ' / ' + _hqEsc(sec) : ''}</i>`
+                + `<span class="hq-pp-vit"><span class="hq-pp-vbar hp"><i style="width:${(v.pct * 100).toFixed(1)}%"></i></span><em>HP ${v.hp} / ${v.hpMax}</em></span>`
+                + `<span class="hq-pp-vit"><span class="hq-pp-vbar mp"><i style="width:${(v.mpPct * 100).toFixed(1)}%"></i></span><em>MP ${v.mp} / ${v.mpMax}</em></span>`
+                + `<small>${_hqPauseTypeChips(u ? u.types : [])}</small></span>`
+                + `<span class="hq-pp-slot">${shift === 1 ? '1ST' : '2ND'} · ${String(i + 1).padStart(2, '0')}</span>`
+                + `</button>`;
+        }
+        function _hqPauseArmHtml(arm, rec, units) {
+            if (!arm) return '';
+            const from = rec.members.find(m => m.id === arm.from); const who = from ? _hqEsc(from.name || from.cls) : '';
+            let what = '';
+            if (arm.kind === 'swap') what = `<b>⇄ SWAP</b><span>${who} TRADES SLOTS WITH… PICK A CARD (AN EMPTY SLOT MOVES THEM TO THE END OF THE ORDER)</span>`;
+            else if (arm.kind === 'cast') what = `<b>♥ ${_hqEsc(arm.spell.name)}</b><span>${who} CASTS ON… PICK A CARD · ${arm.spell.cost | 0} MP</span>`;
+            else if (arm.kind === 'item') what = `<b>${_hqEsc(arm.name)}</b><span>${who} HANDS IT TO… PICK A CARD</span>`;
+            let extra = '';
+            if (arm.kind === 'swap') { const S = window.hqPartyShifts(_hqProfile()); if (S.members.length < HQ_PARTY_RULES.roster) extra = `<button class="hq-btn hq-btn-sm" data-party-act="swapto:end">TO THE END OF THE ORDER</button>`; }
+            return `<div class="hq-pp-arm">${what}${extra}<button class="hq-btn hq-btn-sm" data-party-act="cancel">CANCEL</button></div>`;
         }
         function _hqPausePartyHtml() {
-            const rec = _hqLastParty();
-            if (!rec || !rec.members.length) {
-                return `<div class="hq-panel-hd"><b>THE PARTY</b><span>NO ROSTER ON FILE</span></div>`
-                    + `<p class="hq-panel-desc">The party you take into your next crossing is filed here — whoever walks through a threshold with you, in the order they stood. Cross once and come back.</p>`
-                    + `<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-pause-fn="_goToTeamBuilder">FORGE A TEAM ▸</button><button class="hq-btn" data-cmd="directory">THE BAYS ▸ DIRECTORY</button></div>`;
+            const rec = _hqParty();
+            if (!rec) {
+                return `<div class="hq-panel-hd"><b>THE PARTY</b><span>NO CARD ON FILE</span></div>`
+                    + `<p class="hq-panel-desc">The building files a party to a name. Sign in at Reception and the officer's party is opened — you on First Shift, whoever crossed with you last beside you.</p>`
+                    + `<div class="hq-panel-actions"><button class="hq-btn" data-cmd="directory">RECEPTION ▸ DIRECTORY</button></div>`;
             }
-            const when = rec.at ? new Date(rec.at) : null;
-            let html = `<div class="hq-panel-hd"><b>THE PARTY</b><span>THE LAST ROSTER · ${rec.members.length} ON THE BOOKS${rec.mode ? ' · ' + _hqEsc(String(rec.mode).toUpperCase()) : ''}${when ? ' · FILED ' + _hqEsc(when.toLocaleDateString()) : ''}</span></div>`;
-            html += '<div class="hq-pp-grid">';
-            rec.members.forEach((m, i) => {
-                const u = _hqPauseUnit(i);
-                const po = _hqPausePortrait(m, u);
-                const lvl = u ? ((typeof getUnitLevel === 'function') ? getUnitLevel(u) : (u.level || 1)) : null;
-                const hp = u ? u.maxHp : null, mp = u ? u.maxMp : null;
-                const sec = (u && u._secondaryJob) || (m.meta && m.meta.secondaryJob) || '';
-                const name = m.name || (u && u.name) || m.cls;
-                html += `<button class="hq-pp-card${_hqPause.member === i ? ' sel' : ''}" data-member="${i}">`
-                    + `<span class="hq-pp-face${po && po.kind === 'sprite' ? ' sprite' : ''}"${po ? ` style="background-image:url('${po.url}')"` : ''}></span>`
-                    + `<span class="hq-pp-id"><b>${_hqEsc(name)}</b><i>${_hqEsc(_hqPauseRaceLabel(m, u))} · ${_hqEsc(m.cls)}${sec ? ' / ' + _hqEsc(sec) : ''}</i>`
-                    + `<em>${lvl != null ? 'Lv ' + lvl : ''}${hp != null ? ` · HP ${hp}` : ''}${mp != null ? ` · MP ${mp}` : ''}</em>`
-                    + `<small>${_hqPauseTypeChips(u ? u.types : [])}</small></span>`
-                    + `<span class="hq-pp-slot">${String(i + 1).padStart(2, '0')}</span>`
-                    + `</button>`;
-            });
-            html += '</div>';
-            html += `<p class="hq-panel-note">Click a member for the sheet — stats, abilities, passives, gear. The roster changes when you cross with a different party (the Party Builder on the main menu; the forge before every crossing).</p>`;
+            const P = _hqPause; const units = _hqPauseUnits(rec); const arm = P.arm || null;
+            const S = window.hqPartyShifts(_hqProfile()); const fit = window.hqPartyFit(_hqProfile());
+            const R = HQ_PARTY_RULES;
+            let html = `<div class="hq-panel-hd"><b>THE PARTY</b><span>${rec.members.length} ON THE BOOKS · ${_hqEsc(fit.note)}${rec.at ? ' · FILED ' + _hqEsc(new Date(rec.at).toLocaleDateString()) : ''}</span></div>`;
+            if (P.msg) { html += `<div class="hq-pp-msg${P.msg.bad ? ' bad' : ''}">${P.msg.html}</div>`; P.msg = null; }
+            html += _hqPauseArmHtml(arm, rec, units);
+            const shiftHtml = (label, list, base, sub) => {
+                let h = `<div class="hq-pp-sec"><b>${label}</b><span>${sub}</span></div><div class="hq-pp-grid">`;
+                for (let k = 0; k < R.shift; k++) {
+                    const m = list[k];
+                    if (m) h += _hqPauseCardHtml(m, base + k, rec, units, arm);
+                    else h += `<div class="hq-pp-empty"><b>OPEN SLOT</b><span>${base + k + 1 === 1 ? '' : 'ENLIST FROM ON CALL BELOW'}</span></div>`;
+                }
+                return h + '</div>';
+            };
+            html += shiftHtml(R.labels.first, S.first, 0, 'SENT OUT FIRST · THE BOARD');
+            html += shiftHtml(R.labels.second, S.second, R.shift, 'THE BENCH · ⇄ SWITCH IN AND OUT DURING THE FIGHT');
+            /* ON CALL: every unlocked vessel not on the party */
+            const oc = window.hqPartyOnCall(_hqProfile());
+            html += `<div class="hq-pp-sec"><b>${R.labels.onCall}</b><span>${oc.length} OFF DUTY · DECLASSIFIED VESSELS NOT ON THE PARTY</span></div>`;
+            if (!oc.length) html += `<p class="hq-panel-note">Everyone you have is on the books. The Quartermaster declassifies more.</p>`;
+            else {
+                const full = rec.members.length >= R.roster;
+                html += `<div class="hq-pp-oncall">` + oc.map(o => {
+                    const gs = o.genders.map(g => `<button class="hq-btn hq-btn-sm" data-party-act="enlist:${_hqEsc(o.race)}:${g}"${full || arm ? ' disabled' : ''} title="${full ? 'THE PARTY IS FULL — RELIEVE SOMEONE FIRST' : 'ENLIST'}">${o.genders.length > 1 ? (g === 'female' ? '♀' : '♂') + ' ' : ''}ENLIST</button>`).join('');
+                    return `<div class="hq-pp-oc"><b>${_hqEsc(String(o.label).toUpperCase())}</b><i>${_hqEsc(o.cls)}</i><span>${gs}</span></div>`;
+                }).join('') + `</div>`;
+            }
+            html += `<p class="hq-panel-note">Click a member for the sheet — SWAP a slot, RELIEVE them, or USE a heal spell or a potion on the party (FIELD MEDICINE: the caster's own MP, no board). Health carries between encounters; a member at 0 stays DOWN until a revive or THE COT in Medical (Room 1111), which rests the whole party for free. An EXIT (a loss) wakes the party treated.</p>`;
             return html;
         }
         function _hqPauseMemberHtml(i) {
-            const rec = _hqLastParty(); const m = rec && rec.members[i];
+            const rec = _hqParty(); const m = rec && rec.members.find(x => x.id === i);
             if (!m) return _hqPausePartyHtml();
-            const u = _hqPauseUnit(i);
+            const idx = rec.members.indexOf(m);
+            const units = _hqPauseUnits(rec); const u = units[m.id];
             const po = _hqPausePortrait(m, u);
+            const v = _hqPauseVitals(m, u);
             const name = m.name || (u && u.name) || m.cls;
             const lvl = u ? ((typeof getUnitLevel === 'function') ? getUnitLevel(u) : (u.level || 1)) : null;
             const sec = (u && u._secondaryJob) || (m.meta && m.meta.secondaryJob) || '';
             const n = rec.members.length;
-            let html = `<div class="hq-pp-nav"><button class="hq-btn hq-btn-sm" data-cmd="party">◂ PARTY</button><span>${String(i + 1).padStart(2, '0')} / ${String(n).padStart(2, '0')}</span><span class="hq-pp-nav-r"><button class="hq-btn hq-btn-sm" data-member="${(i + n - 1) % n}" title="← previous">◂</button><button class="hq-btn hq-btn-sm" data-member="${(i + 1) % n}" title="→ next">▸</button></span></div>`;
+            const prev = rec.members[(idx + n - 1) % n], next = rec.members[(idx + 1) % n];
+            let html = `<div class="hq-pp-nav"><button class="hq-btn hq-btn-sm" data-cmd="party">◂ PARTY</button><span>${idx < HQ_PARTY_RULES.shift ? 'FIRST SHIFT' : 'SECOND SHIFT'} · ${String(idx + 1).padStart(2, '0')} / ${String(n).padStart(2, '0')}</span><span class="hq-pp-nav-r"><button class="hq-btn hq-btn-sm" data-member="${_hqEsc(prev.id)}" title="← previous">◂</button><button class="hq-btn hq-btn-sm" data-member="${_hqEsc(next.id)}" title="→ next">▸</button></span></div>`;
+            if (_hqPause.msg) { html += `<div class="hq-pp-msg${_hqPause.msg.bad ? ' bad' : ''}">${_hqPause.msg.html}</div>`; _hqPause.msg = null; }
             html += `<div class="hq-pp-sheet">`;
-            /* left: the face + identity + the stats */
+            /* left: the face + identity + the vitals + the stats + the duty actions */
             html += `<div class="hq-pp-left">`;
-            html += `<div class="hq-pp-face big${po && po.kind === 'sprite' ? ' sprite' : ''}"${po ? ` style="background-image:url('${po.url}')"` : ''}></div>`;
-            html += `<div class="hq-panel-hd"><b>${_hqEsc(name)}</b><span>${_hqEsc(_hqPauseRaceLabel(m, u))} · ${_hqEsc(m.cls)}${sec ? ' / ' + _hqEsc(sec) : ''}${lvl != null ? ' · Lv ' + lvl : ''}</span></div>`;
+            html += `<div class="hq-pp-face big${po && po.kind === 'sprite' ? ' sprite' : ''}"${po ? ` style="background-image:url('${po.url}')"` : ''}>${v.down ? '<i class="hq-pp-downstamp">DOWN</i>' : ''}</div>`;
+            html += `<div class="hq-panel-hd"><b>${_hqEsc(name)}${m.you ? ' <i class="hq-pp-you">YOU</i>' : ''}</b><span>${_hqEsc(_hqPauseRaceLabel(m, u))} · ${_hqEsc(m.cls)}${sec ? ' / ' + _hqEsc(sec) : ''}${lvl != null ? ' · Lv ' + lvl : ''}</span></div>`;
+            html += '<div class="hq-pp-stats">';
+            html += _hqPauseBar('HP', v.hp | 0, Math.max(1, v.hpMax | 0), v.down ? '#ff4a4a' : '#2ed158', `${v.hp} / ${v.hpMax}`);
+            html += _hqPauseBar('MP', v.mp | 0, Math.max(1, v.mpMax | 0), '#2f9dff', `${v.mp} / ${v.mpMax}`);
             if (u) {
-                html += `<div class="hq-chips">${_hqPauseTypeChips(u.types)}<i class="hq-chip dim">${_hqEsc(String(u.faction || '').toUpperCase())}</i>${u.zodiac ? `<i class="hq-chip dim">${_hqEsc(String(u.zodiac).toUpperCase())}</i>` : ''}</div>`;
-                html += '<div class="hq-pp-stats">';
-                html += _hqPauseBar('HP', u.maxHp | 0, Math.max(320, u.maxHp | 0), '#2ed158');
-                html += _hqPauseBar('MP', u.maxMp | 0, Math.max(200, u.maxMp | 0), '#2f9dff');
                 html += _hqPauseBar('ATK', u.atk | 0, 100, '#ff6b4a');
                 html += _hqPauseBar('DEF', u.def | 0, 100, '#4fa3ff');
                 html += _hqPauseBar('INT', u.intStat | 0, 100, '#c77dff');
@@ -1181,19 +1237,26 @@
                 html += _hqPauseBar('SPD', u.spd | 0, 100, '#f2c468');
                 html += _hqPauseBar('AWR', u.awr | 0, 100, '#ffd75a');
                 html += `<div class="hq-pp-diamonds"><span><b>${u.move | 0}</b>MOVE</span><span><b>${u.range | 0}</b>RANGE</span><span><b>${u.inspect | 0}</b>INSPECT</span></div>`;
-                html += '</div>';
-            } else {
-                html += `<p class="hq-panel-note">The sheet could not be rebuilt from the record (a retired vessel or job?). The bare loadout is below.</p>`;
             }
+            html += '</div>';
+            if (u) html += `<div class="hq-chips">${_hqPauseTypeChips(u.types)}<i class="hq-chip dim">${_hqEsc(String(u.faction || '').toUpperCase())}</i>${u.zodiac ? `<i class="hq-chip dim">${_hqEsc(String(u.zodiac).toUpperCase())}</i>` : ''}</div>`;
+            else html += `<p class="hq-panel-note">The sheet could not be rebuilt from the record (a retired vessel or job?). The bare loadout is below.</p>`;
+            /* THE DUTY ROSTER: swap the slot (a shift change), relieve (never the officer) */
+            html += `<div class="hq-pp-duty"><b>DUTY</b><span>${v.down ? 'DOWN — A REVIVE OR THE COT IN MEDICAL BRINGS THEM BACK' : idx < HQ_PARTY_RULES.shift ? 'FIRST SHIFT · SENT OUT FIRST' : 'SECOND SHIFT · ON THE BENCH'}</span>`
+                + `<div class="hq-panel-actions">`
+                + (m.you ? `<button class="hq-btn hq-btn-sm" disabled title="You lead the first shift">⇄ SWAP SLOT</button>` : `<button class="hq-btn hq-btn-sm" data-party-act="swap:${_hqEsc(m.id)}">⇄ SWAP SLOT</button>`)
+                + (m.you ? `<button class="hq-btn hq-btn-sm" disabled title="You cannot relieve yourself">RELIEVE</button>` : `<button class="hq-btn hq-btn-sm danger" data-party-act="relieve:${_hqEsc(m.id)}">RELIEVE OF DUTY</button>`)
+                + `</div></div>`;
             html += `</div>`;
-            /* right: abilities · passives · gear · items */
+            /* right: abilities (with FIELD MEDICINE) · passives · gear · items (with the potions) */
             html += `<div class="hq-pp-right">`;
             let spells = u && Array.isArray(u.spells) ? u.spells.filter(Boolean) : [];
             if (!spells.length) {
                 const ids = (m.meta && Array.isArray(m.meta.customSpells) && m.meta.customSpells.length) ? m.meta.customSpells : ((m.loadout && m.loadout.spells) || []);
                 spells = ids.filter(Boolean).map(id => (typeof getSpellById === 'function') ? getSpellById(id) : null).filter(Boolean);
             }
-            html += `<div class="hq-pp-sec"><b>ABILITIES</b><span>${spells.length} EQUIPPED</span></div>`;
+            const field = (typeof window.hqPartyFieldSpells === 'function') ? window.hqPartyFieldSpells(u, m) : [];
+            html += `<div class="hq-pp-sec"><b>ABILITIES</b><span>${spells.length} EQUIPPED${field.length ? ' · ' + field.length + ' USABLE HERE' : ''}</span></div>`;
             if (!spells.length) html += `<p class="hq-panel-note">No abilities on the record.</p>`;
             else {
                 html += '<div class="hq-pp-spells">';
@@ -1208,9 +1271,17 @@
                     if (sp.range != null) bits.push(`RNG ${sp.range}`);
                     if (sp.dmg) bits.push(`PWR ${sp.dmg}`);
                     else if (Array.isArray(sp.hitDamages)) bits.push(`PWR ${sp.hitDamages.reduce((a, b) => a + (b || 0), 0)} × ${sp.hitDamages.length}`);
-                    if (sp.heal) bits.push(`HEAL ${sp.heal}`);
+                    if (sp.heal || sp.healAmt) bits.push(`HEAL ${sp.healAmt != null ? sp.healAmt : sp.heal}`);
                     if (sp.aoeRadius) bits.push(`AOE ${sp.aoeRadius}`);
-                    html += `<div class="hq-pp-spell" style="--cc:${cat.c}"><div class="hq-pp-spell-hd"><i class="hq-pp-cat">${cat.g}</i><b>${_hqEsc(sp.name || sp.id)}</b>${sp.spellType ? `<i class="hq-pp-type" style="--tc:${tc}">${_hqEsc(String(sp.spellType).toUpperCase())}</i>` : ''}<span>${_hqEsc(bits.join(' · '))}</span></div>${desc ? `<p>${_hqEsc(desc)}</p>` : ''}</div>`;
+                    let use = '';
+                    const isField = field.some(f => f.id === sp.id);
+                    if (isField) {
+                        const can = !v.down && v.mp >= (sp.cost | 0);
+                        const targets = window.hqPartyFieldTargets(_hqProfile(), units, m.id, sp);
+                        const why = v.down ? 'DOWN' : v.mp < (sp.cost | 0) ? 'NOT ENOUGH MP' : !targets.length ? (sp.kind === 'revive' ? 'NOBODY IS DOWN' : 'EVERYONE IS FULL') : '';
+                        use = `<button class="hq-btn hq-btn-sm hq-pp-use" data-party-act="cast:${_hqEsc(m.id)}:${_hqEsc(sp.id)}"${can && targets.length ? '' : ' disabled'} title="${_hqEsc(why || 'USE OUTSIDE BATTLE')}">${sp.kind === 'healAll' ? 'USE ON ALL' : sp.kind === 'selfHeal' ? 'USE ON SELF' : 'USE ▸'}</button>${why ? `<i class="hq-pp-why">${_hqEsc(why)}</i>` : ''}`;
+                    }
+                    html += `<div class="hq-pp-spell${isField ? ' field' : ''}" style="--cc:${cat.c}"><div class="hq-pp-spell-hd"><i class="hq-pp-cat">${cat.g}</i><b>${_hqEsc(sp.name || sp.id)}</b>${sp.spellType ? `<i class="hq-pp-type" style="--tc:${tc}">${_hqEsc(String(sp.spellType).toUpperCase())}</i>` : ''}<span>${_hqEsc(bits.join(' · '))}</span>${use}</div>${desc ? `<p>${_hqEsc(desc)}</p>` : ''}</div>`;
                 });
                 html += '</div>';
             }
@@ -1224,13 +1295,87 @@
             const gear = Object.keys(eq).filter(k => eq[k]).map(k => { const d = (typeof EQUIP_DEFS !== 'undefined') ? EQUIP_DEFS[eq[k]] : null; return { slot: k, label: (d && d.label) || String(eq[k]), desc: (d && d.desc) || '' }; });
             html += `<div class="hq-pp-sec"><b>GEAR</b><span>${gear.length}</span></div>`;
             html += gear.length ? '<div class="hq-pp-gear">' + gear.map(g => `<div class="hq-pp-gear-row" title="${_hqEsc(g.desc)}"><i>${_hqEsc(g.slot.replace(/accessory/, 'ACC ').toUpperCase())}</i><b>${_hqEsc(g.label)}</b><span>${_hqEsc(g.desc)}</span></div>`).join('') + '</div>' : `<p class="hq-panel-note">Nothing equipped.</p>`;
-            const items = (u && u.items) || (m.loadout && m.loadout.items) || {};
+            const items = (m.loadout && m.loadout.items) || (u && u.items) || {};
             const carried = Object.keys(items).filter(k => items[k] > 0);
-            html += `<div class="hq-pp-sec"><b>ITEMS</b><span>${carried.reduce((a, k) => a + items[k], 0)} CARRIED</span></div>`;
-            html += carried.length ? '<div class="hq-chips">' + carried.map(k => { const r = (typeof ITEM_RULES !== 'undefined') ? ITEM_RULES[k] : null; const meta = (typeof ITEM_META !== 'undefined') ? ITEM_META[k] : null; return `<i class="hq-chip">${(r && r.icon) || (meta && meta.icon) || ''} ${_hqEsc((r && r.name) || k)} × ${items[k]}</i>`; }).join('') + '</div>' : `<p class="hq-panel-note">Pockets empty.</p>`;
+            const fieldItems = (typeof window.hqPartyFieldItems === 'function') ? window.hqPartyFieldItems(m) : [];
+            html += `<div class="hq-pp-sec"><b>ITEMS</b><span>${carried.reduce((a, k) => a + items[k], 0)} CARRIED${fieldItems.length ? ' · POTIONS USABLE HERE' : ''}</span></div>`;
+            html += carried.length ? '<div class="hq-chips">' + carried.map(k => {
+                const r = (typeof ITEM_RULES !== 'undefined') ? ITEM_RULES[k] : null; const meta = (typeof ITEM_META !== 'undefined') ? ITEM_META[k] : null;
+                const fi = fieldItems.find(f => f.key === k);
+                return `<i class="hq-chip">${(r && r.icon) || (meta && meta.icon) || ''} ${_hqEsc((r && r.name) || k)} × ${items[k]}${fi ? ` <button class="hq-btn hq-btn-xs" data-party-act="item:${_hqEsc(m.id)}:${_hqEsc(k)}"${v.down ? ' disabled' : ''}>USE ▸</button>` : ''}</i>`;
+            }).join('') + '</div>' : `<p class="hq-panel-note">Pockets empty.</p>`;
             html += `</div></div>`;
             return html;
         }
+        /* the PARTY sheet's actions (data-party-act): enlist · relieve · swap / swapto · cast / castto · item / itemto · cancel */
+        function _hqPauseSay(html, bad) { if (_hqPause) _hqPause.msg = { html, bad: !!bad }; }
+        function _hqPartyAct(act) {
+            const P = _hqPause; if (!P) return;
+            const [verb, a, b] = String(act || '').split(':');
+            const rec = _hqParty(); if (!rec && verb !== 'cancel') return;
+            const units = rec ? _hqPauseUnits(rec) : {};
+            const nameOf = id => { const m = rec.members.find(x => x.id === id); return m ? _hqEsc(m.name || m.cls) : ''; };
+            const say = (h, bad) => _hqPauseSay(h, bad);
+            if (verb === 'cancel') { P.arm = null; }
+            else if (verb === 'enlist') {
+                const r = _hqPartyTx(p => window.hqPartyEnlist(p, { race: a, gender: b }));
+                if (r && r.ok) { say(`<b>ENLISTED</b> ${_hqEsc(r.member.name)} · ${r.index < HQ_PARTY_RULES.shift ? 'FIRST' : 'SECOND'} SHIFT · SLOT ${r.index + 1}`); try { playSfx('uiButtonConfirm'); } catch (e) {} }
+                else { say(`<b>NOT ENLISTED</b> ${r && r.reason === 'full' ? 'THE PARTY IS FULL' : r && r.reason === 'dup' ? 'THAT VESSEL IS ON THE BOOKS' : r && r.reason === 'locked' ? 'NOT DECLASSIFIED' : 'THE BUILDING SAID NO'}`, true); try { playSfx('uiError'); } catch (e) {} }
+            }
+            else if (verb === 'relieve') {
+                const r = _hqPartyTx(p => window.hqPartyRelieve(p, a));
+                if (r && r.ok) { say(`<b>RELIEVED</b> ${_hqEsc(r.member.name || r.member.cls)} IS OFF DUTY · ON CALL`); P.member = null; try { playSfx('uiButtonConfirm'); } catch (e) {} }
+                else { say(`<b>NO</b> ${r && r.reason === 'you' ? 'YOU CANNOT RELIEVE YOURSELF' : 'THE BUILDING SAID NO'}`, true); }
+            }
+            else if (verb === 'swap') { P.arm = { kind: 'swap', from: a }; P.member = null; }
+            else if (verb === 'swapto') {
+                const arm = P.arm; if (!arm || arm.kind !== 'swap') return;
+                const r = _hqPartyTx(p => window.hqPartySwap(p, arm.from, a === 'end' ? window.hqPartyRecord(p).members.length : a));
+                P.arm = null;
+                if (r && r.ok) { say(`<b>SWAPPED</b> THE ORDER IS THE SHIFT`); try { playSfx('uiButtonConfirm'); } catch (e) {} }
+                else say(`<b>NO</b> ${r && r.reason === 'you' ? 'YOU LEAD THE FIRST SHIFT' : 'THAT SWAP IS NOT ALLOWED'}`, true);
+            }
+            else if (verb === 'cast') {
+                const m = rec.members.find(x => x.id === a); if (!m) return;
+                const sp = (window.hqPartyFieldSpells(units[a], m) || []).find(s => s.id === b); if (!sp) return;
+                if (sp.kind === 'healAll' || sp.kind === 'selfHeal') { _hqPartyCastTo(a, sp, null); return; }
+                P.arm = { kind: 'cast', from: a, spell: sp }; P.member = null;
+            }
+            else if (verb === 'castto') { const arm = P.arm; if (!arm || arm.kind !== 'cast') return; P.arm = null; _hqPartyCastTo(arm.from, arm.spell, a); return; }
+            else if (verb === 'item') {
+                const m = rec.members.find(x => x.id === a); if (!m) return;
+                const fi = (window.hqPartyFieldItems(m) || []).find(f => f.key === b); if (!fi) return;
+                P.arm = { kind: 'item', from: a, key: b, name: fi.name }; P.member = null;
+            }
+            else if (verb === 'itemto') {
+                const arm = P.arm; if (!arm || arm.kind !== 'item') return; P.arm = null;
+                const r = _hqPartyTx(p => window.hqPartyUseItem(p, units, arm.from, arm.key, a));
+                if (r && r.ok) { say(`<b>${_hqEsc(r.name).toUpperCase()}</b> ${nameOf(r.target)} +${r.amount} ${r.stat.toUpperCase()} · ${r.left} LEFT`); try { playSfx(r.stat === 'mp' ? 'manaRegen' : 'healRegen'); } catch (e) {} }
+                else say(`<b>NO</b> ${r && r.reason === 'full' ? 'ALREADY FULL' : r && r.reason === 'down' ? 'THEY ARE DOWN — A REVIVE FIRST' : 'THE POTION STAYED IN THE POCKET'}`, true);
+            }
+            _hqPauseRender();
+        }
+        function _hqPartyCastTo(casterId, sp, targetId) {
+            const P = _hqPause; if (!P) return;
+            const rec = _hqParty(); const units = _hqPauseUnits(rec);
+            const r = _hqPartyTx(p => window.hqPartyCast(p, units, casterId, sp.id, targetId));
+            if (r && r.ok) {
+                const who = rec.members.find(x => x.id === casterId);
+                const lines = r.healed.map(h => { const m = rec.members.find(x => x.id === h.id); return `${_hqEsc(m ? (m.name || m.cls) : h.id)} ${h.revived ? 'IS UP · ' : '+'}${h.amount} HP` + (h.hp >= h.hpMax ? ' (FULL)' : ''); });
+                _hqPauseSay(`<b>♥ ${_hqEsc(sp.name).toUpperCase()}</b> ${_hqEsc(who ? (who.name || who.cls) : '')} · ${lines.join(' · ')} · ${r.cost} MP (${r.mp} LEFT)`);
+                try { playSfx('healRegen'); } catch (e) {}
+            } else {
+                const why = { mp: 'NOT ENOUGH MP', full: 'EVERYONE IS FULL', nobodydown: 'NOBODY IS DOWN', down: 'THE CASTER IS DOWN' }[r && r.reason] || 'THE SPELL DID NOT TAKE';
+                _hqPauseSay(`<b>NO</b> ${why}`, true); try { playSfx('uiError'); } catch (e) {}
+            }
+            _hqPauseRender();
+        }
+        /* THE COT (Medical): rest the party — the panel's button and the strip */
+        window._hqPartyRest = function () {
+            const r = _hqPartyTx(p => { if (typeof window.hqPartyEnsure === 'function') window.hqPartyEnsure(p, { last: _hqLastParty() }); return window.hqPartyRestore(p); });
+            if (r && r.ok) { try { playSfx('healRegen'); } catch (e) {} _hqToast(`<b>RESTED</b><span>THE PARTY IS AT FULL · ${r.n ? r.n + ' TREATED' : 'NOBODY NEEDED IT'} · BACK ON DUTY</span>`, 3200); }
+            return !!(r && r.ok);
+        };
         function _hqPauseOfficerHtml() {
             const profile = _hqProfile();
             const cl = (typeof window.doorClearance === 'function') ? window.doorClearance(profile) : { level: 1, title: 'DOORMAT' };
@@ -1305,7 +1450,7 @@
                 _hqOpenCounter('directory');
                 return;
             }
-            P.cmd = id; P.member = null;
+            P.cmd = id; P.member = null; P.arm = null;
             P.cursor = Math.max(0, _HQ_PAUSE_CMDS.findIndex(c => c.id === id));
             try { playSfx('uiButtonConfirm'); } catch (e) {}
             _hqPauseRender();
@@ -1323,7 +1468,7 @@
             const t = e.target;
             const typing = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable);
             const k = e.key;
-            if (k === 'Escape') { e.preventDefault(); e.stopPropagation(); if (P.member != null) { P.member = null; _hqPauseRender(); } else window._hqClosePause(); return; }
+            if (k === 'Escape') { e.preventDefault(); e.stopPropagation(); if (P.arm) { P.arm = null; _hqPauseRender(); } else if (P.member != null) { P.member = null; _hqPauseRender(); } else window._hqClosePause(); return; }
             if (typing) return;
             if (k === 'ArrowUp' || k === 'ArrowDown') {
                 e.preventDefault();
@@ -1339,10 +1484,12 @@
                 return;
             }
             if ((k === 'ArrowLeft' || k === 'ArrowRight') && P.cmd === 'party') {
-                const rec = _hqLastParty(); if (!rec || !rec.members.length) return;
+                const rec = _hqParty(); if (!rec || !rec.members.length || P.arm) return;
                 e.preventDefault();
                 const n = rec.members.length, d = (k === 'ArrowRight') ? 1 : n - 1;
-                P.member = (P.member == null) ? (k === 'ArrowRight' ? 0 : n - 1) : (P.member + d) % n;
+                const cur = rec.members.findIndex(m => m.id === P.member);
+                const ni = (cur < 0) ? (k === 'ArrowRight' ? 0 : n - 1) : (cur + d) % n;
+                P.member = rec.members[ni].id;
                 _hqPauseRender();
                 return;
             }
@@ -1353,8 +1500,18 @@
             if (!_hqPause || !root || !root.contains(e.target)) return;
             const cmd = e.target.closest('[data-cmd]');
             if (cmd) { _hqPauseSelect(cmd.getAttribute('data-cmd')); return; }
+            const pact = e.target.closest('[data-party-act]');
+            if (pact) { if (!pact.disabled) _hqPartyAct(pact.getAttribute('data-party-act')); return; }
             const mem = e.target.closest('[data-member]');
-            if (mem) { _hqPause.member = parseInt(mem.getAttribute('data-member'), 10) || 0; try { playSfx('uiButtonConfirm'); } catch (err) {} _hqPauseRender(); return; }
+            if (mem) {
+                const id = mem.getAttribute('data-member');
+                const arm = _hqPause.arm;
+                if (arm) {   // an armed action lands on the card (a target), or bounces
+                    if (mem.getAttribute('aria-disabled') === 'true') { try { playSfx('uiError'); } catch (err) {} return; }
+                    _hqPartyAct((arm.kind === 'swap' ? 'swapto:' : arm.kind === 'cast' ? 'castto:' : 'itemto:') + id); return;
+                }
+                _hqPause.member = id; try { playSfx('uiButtonConfirm'); } catch (err) {} _hqPauseRender(); return;
+            }
             const fn = e.target.closest('[data-pause-fn]');
             if (fn) { _hqPauseFn(fn.getAttribute('data-pause-fn')); return; }
             if (e.target.classList.contains('hq-pause-scrim')) window._hqClosePause();
@@ -2263,6 +2420,11 @@
             if (typeof window.isOnlineMatch === 'function' && window.isOnlineMatch()) return false;   // RULE #2: never from an online seat
             let drawn = false; try { drawn = ThreeRenderer.hq.portalDrawn(); } catch (e) { drawn = false; }
             if (drawn) return false;   // the gun drawn: a click is a threshold, never a fight (rev 17)
+            /* THE PARTY (2026-09-19): a party with nobody fit to fight never crosses — rest at the ward or heal from the pause menu */
+            try {
+                const pf = (typeof window.hqPartyFit === 'function') ? window.hqPartyFit(_hqProfile()) : null;
+                if (pf && pf.total > 0 && !pf.ready) { _hqToast('<b>THE PARTY IS DOWN</b><span>NOBODY FIT TO FIGHT · REST ON THE COT IN MEDICAL (ROOM 1111) OR HEAL FROM THE PAUSE MENU</span>', 3600); try { playSfx('uiError'); } catch (e) {} return false; }
+            } catch (e) {}
             /* THE FIELD stage A (Phase 9 Delivery 6, 2026-09-16 — the user's rules): the mode is TDM, or ARENA
                when the site is today's Code Red (a Cube fight — the encounter IS the response then); the sticky
                config lends its team size only (data.js hqEncounterConfig) */
@@ -2322,7 +2484,7 @@
                 }
                 los.push(lo);
             });
-            while (builds.length < n) {
+            while (!(party && party.exact) && builds.length < n) {   // THE PARTY (2026-09-19): an exact party is never padded with the mode's defaults
                 const cls = (DEFAULT_BUILDS[seat] && DEFAULT_BUILDS[seat][builds.length]) || 'Warrior';
                 builds.push(cls); names.push(getDefaultUnitName(cls)); metas.push({}); los.push(emptyLoadout());
             }
@@ -2331,8 +2493,23 @@
             state.partyMeta[seat] = metas;
             return true;
         }
+        /* THE PARTY (2026-09-19): the encounter's party is the OFFICER'S PARTY on the profile (data.js hqPartyForLaunch —
+           the fit of the first shift, then the fit of the second; the vitals + the member ids ride the identities), seeded
+           from the last roster on the first strike; the last roster alone stands in only where no profile is on file */
+        function _hqPartyLaunch() {
+            let out = null;
+            try {
+                const p = _hqProfile();
+                if (p && typeof window.hqPartyForLaunch === 'function') {
+                    if (typeof window.hqPartyRecord === 'function' && !window.hqPartyRecord(p)) _hqPartySeed();
+                    out = window.hqPartyForLaunch(_hqProfile());
+                }
+            } catch (e) { console.warn('[HQ] the party could not be read', e); out = null; }
+            return out;
+        }
         function _hqEncounterStart(L, ev, field) {
-            let party = _hqLastParty();
+            let party = _hqPartyLaunch() || _hqLastParty();
+            if (party && party.party) party.enemyTeam = L.teamSize;   // the native's group at the encounter's size; the bench is the officer's alone
             _hqLastDoor = L.doorId || 'crossing'; _hqLastRoom = _hqCurRoom; _hqRecordVisit(_hqLastDoor);
             /* the run marker: the intro off PER LAUNCH, the native's spawn id (THE CLEARED ROOM on a win), THE EYE
                (stage 2) — the walker's camera in board tiles, the first battle frame (battle.js → ThreeCamera.seedPose)
@@ -3511,6 +3688,21 @@
                 html += '<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-close="1">SO NOTED</button></div>';
                 return html;
             }
+            /* THE COT (Room 1111, THE PARTY 2026-09-19): REST — the party's HP / MP back to full, the down on their feet; free */
+            if (c.id === 'cot') {
+                const pf = (typeof window.hqPartyFit === 'function') ? window.hqPartyFit(_hqProfile()) : null;
+                const S = (typeof window.hqPartyShifts === 'function') ? window.hqPartyShifts(_hqProfile()) : { members: [] };
+                html += '<p class="hq-panel-desc">' + _hqEsc(c.desc || 'A cot, made up.') + '</p>';
+                if (pf && pf.total) {
+                    html += '<div class="hq-rows">';
+                    S.members.forEach((m, i) => { const v = window.hqPartyVitals(m, null); const hp = v.hpMax ? `${v.hp} / ${v.hpMax}` : 'FULL'; html += `<div class="hq-row hq-row-tray"><b>${i < HQ_PARTY_RULES.shift ? '1ST' : '2ND'} · ${_hqEsc(m.name || m.cls)}</b><span>${_hqEsc(String(m.cls).toUpperCase())}${m.you ? ' · YOU' : ''}</span><i class="hq-lamp-chip st-${v.down ? 'codered' : (v.hpMax && v.hp < v.hpMax) ? 'unstable' : 'open'}">${v.down ? 'DOWN' : 'HP ' + hp}</i></div>`; });
+                    html += '</div>';
+                    html += `<div class="hq-rows"><div class="hq-row hq-row-tray"><b>THE PARTY</b><span>${_hqEsc(pf.note)}</span><i class="hq-lamp-chip st-${pf.fit === pf.total && !pf.hurt ? 'open' : pf.ready ? 'unstable' : 'codered'}">${pf.fit} / ${pf.total} FIT</i></div></div>`;
+                }
+                html += '<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-party-rest="1">REST THE PARTY</button><button class="hq-btn" data-close="1">NOT NOW</button></div>';
+                html += '<p class="hq-panel-note">Everyone walks out at full. Health carries between encounters, so this is where a battered party comes before the next room. The pause menu (ESC) heals with the party\'s own spells and potions; this cot does it for nothing.</p>';
+                return html;
+            }
             /* THE HOLD (Room 5150): a panel and the condition line off the chart; nothing else */
             if (c.id === 'hold') {
                 const mr = (typeof window.hqMedicalRecord === 'function') ? window.hqMedicalRecord(_hqProfile()) : null;
@@ -4090,6 +4282,7 @@
             if (fnBtn && !fnBtn.disabled) { window._hqDoAction({ fn: fnBtn.getAttribute('data-fn') }); return; }
             /* THE DOOR GUN (9.5): the Quartermaster's signature */
             if (e.target.closest('[data-portal-issue]')) { window._hqClosePanel(); window._hqPortalIssue(); return; }
+            if (e.target.closest('[data-party-rest]')) { window._hqClosePanel(); window._hqPartyRest(); return; }   // THE COT (THE PARTY)
             const roomBtn = e.target.closest('[data-room]');
             if (roomBtn && !roomBtn.disabled) { window._hqDoAction({ room: roomBtn.getAttribute('data-room'), at: roomBtn.getAttribute('data-at') || null }); return; }
             const cross = e.target.closest('[data-cross],[data-deep],[data-codered]');
@@ -4446,6 +4639,7 @@
             state.isRankedMatch = false;
             state.trainingMatch = false;
             state.reserves = false;
+            state.noRespawns = false;
             state._customRoundLimit = 0;
             state._mdRun = null;
             state._mdPhase = 'floor';
@@ -6308,8 +6502,14 @@
                it lower); state.reserves is the engine's flag (battle.js
                _isReservesMatch). Never in Clash / FFA / a no-respawn mode. */
             const _RR = (typeof RESERVE_RULES !== 'undefined' && RESERVE_RULES) || { roster: 8, deploy: 4 };
-            const _reservesLaunch = !!_msReserves && gm.id !== 'gauntlet'
-                && !!(mpMode && mpMode.respawns && !mpMode.isFFA && !mpMode.isClash);
+            /* THE PARTY (2026-09-19): an encounter fought by the officer's PARTY is a reserves match — FIRST SHIFT on the
+               board, SECOND SHIFT the bench — with NO respawns (state.noRespawns; the bench fills a fallen seat the
+               Gauntlet way). The party is peeked here (consumed below) so the bench sizes before the seats are laid. */
+            const _encPeek = window._hqEncounterParty || null;
+            const _encParty_ = !!(_encPeek && _encPeek.party);
+            const _reservesLaunch = (!!_msReserves || _encParty_) && gm.id !== 'gauntlet'
+                && !!(mpMode && (mpMode.respawns || _encParty_) && !mpMode.isFFA && !mpMode.isClash);
+            state.noRespawns = _encParty_;
             state.reserves = _reservesLaunch;
             if (gm.id === 'gauntlet' || _reservesLaunch) {
                 const mode = GAME_MODES[launchModeId];
@@ -6402,6 +6602,13 @@
             if (_encParty && typeof _hqApplyLastParty === 'function' && _hqApplyLastParty(_encParty, 1, CONFIG.teamSize)) {
                 if (typeof optimizeRandomizeParty === 'function') optimizeRandomizeParty(2);
                 window._hqEncounterLead = null;   // D2: the pin is spent on this draw — a rematch's reroll never re-seats it
+                /* THE PARTY: the enemy is the native's group at the encounter's own team size (no bench for them — the
+                   reserves roster is the officer's), and the human seat is EXACTLY the members who came (no default pad) */
+                if (_encParty.party) {
+                    const _en = Math.max(1, Math.min(CONFIG.teamSize, _encParty.enemyTeam || _msSelectedTeamSize || 4));
+                    [state.partyBuilds, state.partyNames, state.loadouts, state.partyMeta].forEach(a => { if (a && Array.isArray(a[2]) && a[2].length > _en) a[2].length = _en; });
+                    window._ewPartySlots = { 1: state.partyBuilds[1].length, 2: _en };
+                }
                 /* no roster on file (Delivery 6): the human's stand-in squad gets identities + spell loadouts like the CPU's */
                 if (_encParty.fallback && typeof optimizeRandomizeParty === 'function') {
                     try {
@@ -6415,6 +6622,7 @@
                 state.teamLockedIn = true;
                 let okStart = false;
                 try { okStart = applyPartyBuild(false) !== false; if (okStart) startMatch(); } catch (e) { console.error('[HQ] the encounter could not start', e); okStart = false; }
+                finally { window._ewPartySlots = null; }   // THE PARTY: the exact-seat cap is for this launch's build only
                 if (!okStart) { window._hqEncounterRun = null; dismissTitleScreen(); }
                 render();
                 state.audioUnlocked = true;
@@ -6441,6 +6649,7 @@
             state.isRankedMatch = false;
             state.trainingMatch = false;
             state.reserves = false;
+            state.noRespawns = false;
 
             // Leaving for any non-sim mode clears the sim-mode flags so a
             // stale training/balance/strength session can't keep recording.
@@ -11846,9 +12055,10 @@
                 unit._damageContributors = {};
                 unit._debuffContributors = {};
                 if ((typeof _isGauntlet === 'function' && _isGauntlet()) ||
-                    (typeof _isDungeonMode === 'function' && _isDungeonMode())) {
-                    /* Gauntlet + Mystery Dungeon: no respawns — the fallen stay down
-                       (MD party members return when the run ends, back at the hub). */
+                    (typeof _isDungeonMode === 'function' && _isDungeonMode()) || state.noRespawns) {
+                    /* Gauntlet + Mystery Dungeon + THE ENCOUNTER (state.noRespawns, THE PARTY 2026-09-19):
+                       no respawns — the fallen stay down (MD party members return when the run
+                       ends, back at the hub; a party member stays DOWN until a revive or the ward). */
                     unit._respawnIn = null;
                 } else {
                     /* Respawn ladder 2, 3, 5, 8 (2026-09-07; was 1, 2, 4, 8).
@@ -11927,8 +12137,8 @@
                 });
                 scheduleBoardRender();
 
-                if (_gauntlet && typeof _gauntletQueueReplacement === 'function') {
-                    _gauntletQueueReplacement(unit);
+                if ((_gauntlet || (state.noRespawns && typeof _benchOn === 'function' && _benchOn())) && typeof _gauntletQueueReplacement === 'function') {
+                    _gauntletQueueReplacement(unit);   // THE PARTY: a no-respawn bench fills a fallen seat the Gauntlet way (a pick at the death)
                 } else if (typeof _reserveQueueSeat === 'function') {
                     _reserveQueueSeat(unit);   // no-op outside a reserves match
                 }
@@ -12601,6 +12811,17 @@
                 newUnit.awr = (newUnit.awr || 0) + (_eqB.awr || 0);
                 newUnit.intStat = (newUnit.intStat || 0) + (_eqB.int || 0);
                 newUnit.spd = (newUnit.spd || 0) + (_eqB.spd || 0);
+            }
+            /* THE PARTY (2026-09-19): a member's CARRIED vitals ride its identity (data.js hqPartyForLaunch → meta.hp /
+               hpMax / mp / mpMax — the last write to hp, after every max is settled) — scaled to THIS build's max when
+               the two disagree (a different level rule), never above it, never under 1 (a downed member never launches) */
+            if (identityOverride && identityOverride.hp != null && Number.isFinite(+identityOverride.hp)) {
+                const _pm = (identityOverride.hpMax > 0) ? identityOverride.hpMax : newUnit.maxHp;
+                newUnit.hp = Math.max(1, Math.min(newUnit.maxHp, Math.round((+identityOverride.hp) * (newUnit.maxHp / Math.max(1, _pm)))));
+            }
+            if (identityOverride && identityOverride.mp != null && Number.isFinite(+identityOverride.mp)) {
+                const _pmm = (identityOverride.mpMax > 0) ? identityOverride.mpMax : newUnit.maxMp;
+                newUnit.mp = Math.max(0, Math.min(newUnit.maxMp, Math.round((+identityOverride.mp) * (newUnit.maxMp / Math.max(1, _pmm)))));
             }
             // SPD is settled (job kicker + gear): derive the stored base move.
             // Live movement always re-derives from SPD in getEffectiveMove
@@ -19258,6 +19479,7 @@
             state.isRankedMatch = false;
             state.trainingMatch = false;
             state.reserves = false;
+            state.noRespawns = false;
 
             if (typeof MULTIPLAYER_MODES !== 'undefined') {
                 state.activeMultiplayerMode = 'arena';
