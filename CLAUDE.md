@@ -6082,3 +6082,17 @@ TWO-door room the audit's median sill is the HIGHER one, so a tier door is never
 makes the concourse and the airlock count; (3) a stair needs L ≥ 2.2 × h (the west / east stands' were too steep). Ship data.js to R2
 AND Render. UNSEEN LIVE (RULE #1c): the concourse arrival and the drop to the pitch, the gantries from below, the raised porch's
 steps, the tower's stair against the bulkhead leaf, the two draughts' slabs, every prop on a tier (`y` is the edit).
+
+## LIVE COMBAT IN THE AREAS — the plan (2026-09-19, docs only)
+`LIVE_ACTION_PLAN.md` is THE doc for the Skyrim-style live combat the user asked for
+(dual-wield the seven spells, LEFT / RIGHT click per hand, a roll, a middle-click
+weapon wheel, a HUD health bar). Read it before building any of it. The rule it
+sets: live combat is a SECOND SMALL RESOLVER (THE LIVE ENGINE, a walker mode like
+the ride) that reads the same spell ROWS and applies them to real-time ACTORS in
+`H.chars`, reusing only the pure math (`computeSpellBase`, `getTypeDamageMultiplier`,
+`STATUS_DEFS` fields) and the VFX through the forge stage's `VFX3D.stage` route with a
+ground callback — never `doSpell` / `applyDamageToUnit` / `state`. A tile is 1.75 m:
+`range × 1.75` = reach, `(aoeRadius + 0.5) × 1.75` = the blast radius, a cooldown
+round = 2.5 s. §2.2 maps every kind class to a live delivery; §4 lists the decisions
+the user owns (the roll key, the wheel's bind gesture, live vs tactical toggle,
+followers). Nothing built; VS-CPU only (RULE #2 has nothing to relay).
