@@ -2429,6 +2429,8 @@
            wild room the rasteriser refuses fights the SITE'S Δ from the centre — THE SITE IS THE BOARD */
         function _hqEncounterBoardCopy(board) {
             const room = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.rooms) ? DOOR_HQ.rooms[_hqCurRoom] : null;
+            /* THE AREA BOARDS (2026-09-19): a complex part with a Δ of its own fights it — THE ROOM'S OWN BOARD */
+            if (!board && typeof window.hqAreaDeltaId === 'function' && window.hqAreaDeltaId(_hqCurRoom)) return 'THE ROOM’S OWN BOARD';
             /* THE FIELD stage B / C: a cave chamber or a complex part fights its own window (data.js hqFieldRoomOk) — the renderer reports no board there, the window is the board */
             const fieldRoom = !!(room && typeof window.hqFieldRoomOk === 'function' && window.hqFieldRoomOk(_hqCurRoom));
             const caveField = !!(fieldRoom && room.cave);
@@ -2467,7 +2469,8 @@
                becomes the event's `board`, so the field record, THE SLIDE, THE SEATS and THE EYE below read it exactly
                like a site room's board. The window is rasterised into a map entry at the launch (_hqFieldRegister). */
             let win = null;
-            if (!ev.board && typeof window.hqFieldRoomOk === 'function' && window.hqFieldRoomOk(_hqCurRoom) && typeof window.hqFieldWindow === 'function') {
+            /* THE AREA BOARDS (2026-09-19): a part with its own Δ (L.launchId, data.js hqAreaDeltaId) fights that board — no window is rasterised for it */
+            if (!ev.board && !L.launchId && typeof window.hqFieldRoomOk === 'function' && window.hqFieldRoomOk(_hqCurRoom) && typeof window.hqFieldWindow === 'function') {
                 try { win = window.hqFieldWindow(_hqCurRoom, { x: ev.x, z: ev.z }, { x: ev.target.x, z: ev.target.z }); } catch (e) { console.warn('[HQ] the field window failed', e); win = null; }
                 if (win && win.board) { ev = Object.assign({}, ev, { board: win.board }); L.field = win; }
             }
@@ -2557,8 +2560,8 @@
                registered now under `field:<room>:<ox>,<oz>` (PREBUILT_MAPS / MAP_LAYOUT_PRESETS / GAME_MODES / a hidden
                MS_MAP_LIST row); a site's board room keeps its Δ (stage A); the site's Δ from the centre is the fallback
                when the window cannot be built */
-            let launchId = L.site + '_delta';
-            if (L.field) {
+            let launchId = L.launchId || (L.site + '_delta');   // THE AREA BOARDS (2026-09-19): the part's own Δ when it has one
+            if (L.field && !L.launchId) {
                 const reg = _hqFieldRegister(L.field, field);
                 if (reg) { launchId = reg.id; window._hqEncounterRun.fieldId = reg.id; }
                 else console.warn('[HQ] the field could not be built — the site\'s Δ stands in', L.field.id);
@@ -2567,6 +2570,7 @@
             if (idx < 0) idx = MS_MAP_LIST.findIndex(m => m.modeId === L.site + '_delta');
             if (idx < 0) idx = MS_MAP_LIST.findIndex(m => m.modeId === L.site);
             if (idx < 0) { console.warn('[HQ] no launch entry for the encounter', L.site); return false; }
+            if (L.launchId && MS_MAP_LIST[idx].modeId !== L.launchId) console.warn('[HQ] the area Δ is not on the map list — the site\'s stands in', L.launchId);
             let gi = MS_GAME_MODES.findIndex(g => g.id === L.gm && !g.locked);
             if (gi < 0) gi = 0;
             /* a Code Red site: the encounter IS the response — the run marker the commit reads to clear it and pay the bonus */
@@ -3586,7 +3590,7 @@
             html += '</div>';
             const hist = (profile && Array.isArray(profile.matchHistory)) ? profile.matchHistory.slice(0, 4) : [];
             if (hist.length) {
-                html += `<div class="hq-chips"><span>RECENT CASES</span>${hist.map(m => `<i class="hq-chip ${m.result === 'win' ? '' : 'dim'}">${_hqEsc(_hqMapLabel(String(m.mapId || '').replace(/_delta$/, '')).toUpperCase())} · ${m.result === 'win' ? 'CLOSED' : 'OPEN'}${m.winCondition ? ' · ' + _hqEsc((DOOR_HQ.masteryLabels && DOOR_HQ.masteryLabels[m.winCondition]) || String(m.winCondition).replace(/_/g, ' ').toUpperCase()) : ''}</i>`).join('')}</div>`;
+                html += `<div class="hq-chips"><span>RECENT CASES</span>${hist.map(m => `<i class="hq-chip ${m.result === 'win' ? '' : 'dim'}">${_hqEsc(_hqMapLabel((typeof window.hqSiteId === 'function') ? window.hqSiteId(m.mapId) : String(m.mapId || '').replace(/_delta$/, '')).toUpperCase())} · ${m.result === 'win' ? 'CLOSED' : 'OPEN'}${m.winCondition ? ' · ' + _hqEsc((DOOR_HQ.masteryLabels && DOOR_HQ.masteryLabels[m.winCondition]) || String(m.winCondition).replace(/_/g, ' ').toUpperCase()) : ''}</i>`).join('')}</div>`;
             } else html += '<p class="hq-panel-note">No cases on file. The tray is waiting for field work.</p>';
             html += '<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-fn="_goToQuickPlay">ANSWER A BELL CALL ▸ QUICK PLAY</button><button class="hq-btn" data-close="1">NOTED</button></div>';
             html += '<p class="hq-panel-note">Directives, memos and commendations land in this tray as the story is filed. Field work generates paperwork; paperwork generates directives.</p>';

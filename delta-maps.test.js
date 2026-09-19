@@ -62,7 +62,10 @@ if (ascii) console.log('delta boards: ' + deltas.length);
    the Δ roster too and obey the same house rules, but they have no parent
    full map. */
 const facility = deltas.filter(m => m.facility);
-if (deltas.length - facility.length !== 38) fail('roster', 'expected 38 Δ boards, got ' + (deltas.length - facility.length));
+/* THE AREA BOARDS (2026-09-19): a Δ per explorable PART (data.js _MF_AREA_DELTA_BUILDERS, `area` = the room id on the row) —
+   every house rule below applies to them; the roster count is the SITES' */
+const areas = deltas.filter(m => m.area);
+if (deltas.length - facility.length - areas.length !== 38) fail('roster', 'expected 38 site Δ boards, got ' + (deltas.length - facility.length - areas.length));
 if (facility.length !== 2) fail('roster', 'expected 2 facility boards, got ' + facility.length);
 if (EW_MAP_META.some(m => m.isDeltaArena)) fail('roster', 'isDeltaArena entries still exist');
 
@@ -292,7 +295,30 @@ test('every Δ board obeys the DELTA FORGE house rules', () => {
 });
 test('the Δ roster is exactly one 8×8 board per launch map, plus the facility boards', () => {
     const fulls = EW_MAP_META.filter(m => !m.isDelta);
-    assert.strictEqual(deltas.length - facility.length, fulls.length);
+    assert.strictEqual(deltas.length - facility.length - areas.length, fulls.length);
     for (const f of fulls) assert.ok(PREBUILT_MAPS[f.id + '_delta'], f.id + ' has no Δ');
     for (const f of facility) assert.ok(f.isDelta && !PREBUILT_MAPS[f.id + '_delta'] && PREBUILT_MAPS[f.id], f.id + ' must be a standalone Δ-flagged board');
+});
+
+/* THE AREA BOARDS (2026-09-19): every complex part that is not a site's ENTRY part wears a Δ of its own, keyed by its room id;
+   an area Δ names a real room + its site, is filed under <roomId>_delta, and the site-id read resolves it to the site */
+test('THE AREA BOARDS — a Δ per explorable part, each on a real room of a real site', () => {
+    const { DOOR_HQ, hqSiteId, hqAreaDeltaId, hqRoomSite } = vm.runInContext('({ DOOR_HQ, hqSiteId, hqAreaDeltaId, hqRoomSite })', sb);
+    assert.ok(areas.length >= 50, 'expected the area roster, got ' + areas.length);
+    for (const m of areas) {
+        const room = DOOR_HQ.rooms[m.area];
+        assert.ok(room, m.id + ' names no room');
+        assert.strictEqual(m.id, m.area + '_delta');
+        assert.strictEqual(m.site, hqRoomSite(m.area), m.id + ' site');
+        assert.strictEqual(hqSiteId(m.id), m.site, m.id + ' resolves to its site');
+        assert.strictEqual(hqAreaDeltaId(m.area), m.id);
+        assert.ok(PREBUILT_MAPS[m.id] && PREBUILT_MAPS[m.id].isDelta, m.id + ' is filed');
+        const open = !!(room.shell && room.shell.open);
+        if (!open) assert.strictEqual(m.env && m.env.world && m.env.world.kind, 'room', m.id + ' plays indoors');
+        assert.ok(!(m.env && m.env.near), m.id + ' wears no near setting');
+    }
+    /* every non-entry part of a built site has one */
+    const entries = new Set(Object.keys(DOOR_HQ.siteRooms.entry || {}).map(k => DOOR_HQ.siteRooms.entry[k].room));
+    const missing = Object.keys(DOOR_HQ.rooms).filter(id => DOOR_HQ.rooms[id].site && DOOR_HQ.rooms[id].part && !entries.has(id) && !hqAreaDeltaId(id));
+    assert.deepStrictEqual(missing, [], 'parts without a Δ: ' + missing.join(', '));
 });

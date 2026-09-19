@@ -13663,599 +13663,660 @@ function _mfDeltaNew(cfg) {
 const _MF_DELTA_BUILDERS = {};
 
 /* Tier 1 ───────────────────────────────────────────────────────────────── */
+/* THE AREA PASS (2026-09-19 — the user: "fix and revise the delta maps to look
+   more like their corresponding explorable areas"): every site Δ below is a
+   cut of its ENTRY PART (DOOR_HQ.siteRooms.entry → the terrain room the bay
+   door lands in, HQ_AREA_SPECS / the complexes) — its floor + cliff + path
+   sheets, its named features (the tiers, the pools, the streams, the walls,
+   the weenie) and its props, in the forge's vocabulary. The Δ's tints are the
+   room's tints; the desc names the part. The area rooms are the source of
+   truth — reread the room's spec before retuning a board. */
 
-/* MOUNT SHASTA — timberline meadow: pines, one granite boulder, a grassy
-   terrace above a cold lake shore. */
+/* MOUNT SHASTA — THE SLOPES: the timberline meadow under the cliff tiers, a
+   dirt trail, the cold lake with the plank across its stream, the pines, the
+   crag you climb (the hand-holds), the campfire. */
 _MF_DELTA_BUILDERS.prebuilt_shasta = function () {
     const M = _mfDeltaNew({ name: 'Mount Shasta', base: 'grass_2', seed: 8101,
-        tints: { rocks_1: '#c0c4c8', water: '#5aa8d8' },
-        desc: 'timberline meadow — pines, a granite boulder, a grassy terrace over the cold lake shore' });
-    M.treeL(0, 0, 'tree_2'); M.treeL(6, 1, 'tree_3'); M.treeL(5, 3, 'tree_2');
-    M.block(2, 2, 'rocks_1');                              // granite boulder
-    M.step(0, 2, 'grass_2'); M.step(1, 2, 'grass_2');      // terrace
-    M.lake(0, 3, 'water', 2); M.lake(1, 3, 'water', 1);    // the lake shore
+        tints: { cliff: '#b8b4b0', grass_2: '#7fb26a', dirt: '#9a7c58', water: '#5aa8d8', wood_planks: '#a88458' },
+        desc: 'THE SLOPES — the timberline meadow under the cliff tiers, the dirt trail, the cold lake and its plank, the pines, the crag' });
+    M.rect(3, 1, 4, 2, 'dirt');                              // the trail
+    M.step(1, 2, 'grass_2'); M.step(0, 3, 'grass_2');        // the first tier
+    M.block(0, 2, 'cliff');                                  // the crag (climb it from the tier)
+    M.lake(7, 2, 'water', 2); M.lake(7, 3, 'water', 2); M.lake(6, 2, 'water', 1);   // the lake and its shallows
+    M.t(6, 3, 'wood_planks');                                // the plank over the stream
+    M.treeL(0, 0, 'tree_2'); M.treeL(7, 0, 'tree_3'); M.treeL(5, 3, 'tree_2');
+    M.obj(1, 1, 'torch', { leaf: 'floor' });                 // the campfire
     M.symAll();
     return M.finishDelta();
 };
 
-/* STONEHENGE — four sarsen stones in a diamond around the altar, corner
-   sentinels, ruined ledges on the flanks, a dirt processional. */
+/* STONEHENGE — THE PLAIN: the bank and ditch round the sarsen circle, the
+   processional, the horseshoe of stones, the great trilithon's tier. */
 _MF_DELTA_BUILDERS.prebuilt_stonehenge = function () {
     const M = _mfDeltaNew({ name: 'Stonehenge', base: 'grass_2', seed: 8102,
-        tints: { ruins: '#b8b0a0', dirt: '#a08868' },
-        desc: 'the sarsen diamond — four standing stones around the altar, ruined ledges on the flanks' });
-    M.rect(3, 1, 4, 2, 'dirt');                            // processional
-    M.step(1, 3, 'ruins'); M.step(6, 3, 'ruins');          // fallen lintels
+        tints: { ruins: '#b8b0a0', dirt: '#a08868', rock_wall_1: '#b4aa98', grass_2: '#86a860' },
+        desc: 'THE PLAIN — the bank and the ditch round the circle, the processional, the sarsens in their horseshoe, the great trilithon\'s tier' });
+    M.rect(3, 1, 4, 2, 'dirt');                              // the processional
+    M.lake(1, 2, 'dirt', 1); M.lake(6, 2, 'dirt', 1);        // the ditch
+    M.step(0, 2, 'grass_2'); M.step(0, 3, 'grass_2');        // the bank
+    M.step(6, 3, 'ruins');                                   // the trilithon's tier
     M.symAll();
-    M.pillarSym('monolith', 2, 2, 3); M.pillarSym('monolith', 5, 2, 3);   // the diamond
-    M.pillarSym('monolith', 0, 1, 3);                                     // sentinels
+    M.pillarSym('monolith', 2, 2, 3); M.pillarSym('monolith', 5, 2, 3);   // the horseshoe
+    M.pillarSym('monolith', 1, 3, 3); M.pillarSym('monolith', 7, 1, 3);   // the outer sarsens
     return M.finishDelta();
 };
 
-/* PYRAMIDS OF GIZA — sand, a sandstone causeway, mastaba ledges that stair
-   up onto a sandstone block, twin obelisks. */
+/* PYRAMIDS OF GIZA — THE PLATEAU: the pyramid's stacked tiers up a stair, the
+   sphinx on its plinth, the sandstone causeway, the obelisks. */
 _MF_DELTA_BUILDERS.prebuilt_giza = function () {
-    const M = _mfDeltaNew({ name: 'Pyramids of Giza', base: 'dirt_2', seed: 8103,
-        tints: { dirt_2: '#e0c48c', bricks_1: '#dcb880' },
-        desc: 'the necropolis floor — sandstone causeway, mastaba ledges, a tomb block and twin obelisks' });
-    M.rect(3, 1, 4, 2, 'bricks_1');                        // causeway
-    M.step(2, 2, 'bricks_1'); M.step(5, 2, 'bricks_1');    // mastaba ledges
-    M.block(1, 2, 'bricks_1');                             // tomb block (climb it from the ledge)
-    M.step(6, 3, 'bricks_1');
+    const M = _mfDeltaNew({ name: 'Pyramids of Giza', base: 'desert', seed: 8103,
+        tints: { desert: '#e6d4a0', bricks_1: '#dcb880', dirt_2: '#d8bc88' },
+        desc: 'THE PLATEAU — the pyramid\'s tiers up a stair, the sphinx on its plinth, the sandstone causeway, the obelisks' });
+    M.rect(3, 1, 4, 2, 'dirt_2');                            // the causeway
+    M.step(1, 2, 'bricks_1'); M.block(0, 2, 'bricks_1'); M.block(0, 3, 'bricks_1', 3);   // the pyramid: three tiers up
+    M.block(6, 2, 'bricks_1'); M.step(6, 3, 'bricks_1');     // the sphinx and its plinth
     M.symAll();
-    M.pillarSym('obelisk3d', 0, 1, 3); M.pillarSym('obelisk3d', 7, 2, 3);
+    M.pillarSym('obelisk3d', 7, 0, 3); M.pillarSym('obelisk3d', 2, 3, 3);
     return M.finishDelta();
 };
 
-/* HEAVEN — the gate plaza: a golden processional, the nexus sunk between
-   two marble daises, pillars on the wings. */
+/* HEAVEN — THE CLOUD FIELDS: cloud islands, THE RIFT with THE PLANK over it,
+   THE DAIS with the pearly walls and the gate, the pillar of light, the
+   healing pools. Bed: cloud all the way down. */
 _MF_DELTA_BUILDERS.prebuilt_heaven = function () {
     const M = _mfDeltaNew({ name: 'Heaven', base: 'cloud_2', seed: 8105,
-        tints: { gold: '#ffe9a0', marble_light: '#fdfdf6', cloud_2: '#eef2ff' },
-        desc: 'the gate plaza — a golden processional between marble daises, pillars on the wings' });
-    M.rect(3, 1, 4, 2, 'gold');                            // processional
-    M.step(2, 3, 'marble_light'); M.step(5, 3, 'marble_light');   // daises flanking the nexus
-    M.step(0, 1, 'marble_light'); M.step(1, 1, 'marble_light');
+        strata: ['cloud_thick', 'cloud_thick', 'cloud', 'cloud_thick', 'cloud_thick'], underTop: 'cloud_thick',
+        tints: { gold: '#ffe9a0', marble_light: '#fdfdf6', cloud_2: '#eef2ff', cloud_thick: '#d8e0f8', deep_water: '#8ab4ff', healing_spring: '#bfe8ff' },
+        desc: 'THE CLOUD FIELDS — the islands, THE RIFT and THE PLANK over it, THE DAIS behind the pearly walls, the pillar of light, the healing pools' });
+    M.rect(3, 1, 4, 2, 'gold');                              // the processional
+    M.lake(0, 1, 'deep_water', 2); M.lake(0, 2, 'deep_water', 2); M.lake(1, 2, 'deep_water', 2);   // THE RIFT (never entered)
+    M.t(0, 3, 'marble_light');                               // THE PLANK
+    M.step(5, 2, 'marble_light'); M.step(6, 2, 'marble_light'); M.step(6, 3, 'marble_light');    // THE DAIS
+    M.wall(5, 2, 'N', { h: 2, tex: 'marble_light' }); M.wall(6, 2, 'N', { h: 2, tex: 'marble_light' });   // the pearly walls
+    M.lake(7, 3, 'healing_spring', 1);                       // a healing pool
     M.symAll();
-    M.pillarSym('greekcol', 1, 2, 2); M.pillarSym('greekcol', 6, 2, 2);
+    M.pillarSym('greekcol', 2, 2, 2);                        // the pillar of light
     return M.finishDelta();
 };
 
-/* HELL — scorched rock, lava pools sunk into the bed, obsidian blocks, a
-   basalt step in front of the altar, a spike. */
+/* HELL — THE PIT: THE BOWL down to the lava, THE LAVA RIVER and its obsidian
+   causeway, THE PLINTH, the gallery ledge, the basalt wall, the spike. */
 _MF_DELTA_BUILDERS.prebuilt_hell = function () {
     const M = _mfDeltaNew({ name: 'Hell', base: 'scorched', seed: 8106,
         tints: { scorched: '#e08060', rocks_3: '#b06a50', obsidian: '#584058' },
-        desc: 'the pit floor — lava pools, obsidian blocks, a basalt step before the altar' });
-    M.lake(0, 0, 'lava', 2); M.lake(7, 2, 'lava', 2);      // lava pools
-    M.block(1, 2, 'obsidian'); M.block(6, 3, 'obsidian');
-    M.step(3, 2, 'rocks_3');                               // basalt step in the lane
+        desc: 'THE PIT — the lava river and its obsidian causeway, THE BOWL, THE PLINTH, the gallery ledge, the basalt wall' });
+    M.lake(0, 1, 'lava', 2); M.lake(0, 2, 'lava', 2); M.lake(0, 3, 'lava', 2); M.lake(1, 2, 'lava', 2);   // THE LAVA RIVER
+    M.t(1, 3, 'obsidian');                                   // the causeway
+    M.block(2, 2, 'obsidian', 3);                            // THE PLINTH
+    M.step(5, 2, 'rocks_3'); M.step(6, 2, 'rocks_3'); M.step(6, 3, 'rocks_3');   // the gallery ledge
+    M.wall(5, 3, 'N', { h: 2, tex: 'obsidian' });            // the basalt wall
+    M.lake(7, 1, 'scorched', 1);                             // THE BOWL's lip
     M.symAll();
-    M.pillarSym('monolith', 5, 2, 3);                      // obsidian spike
+    M.pillarSym('monolith', 7, 2, 3);                        // the spike
     return M.finishDelta();
 };
 
-/* CYBERPUNK CITY — alleys: concrete blocks, dumpsters, chain-link you can
-   shoot through, side lanes of asphalt. */
+/* CYBERPUNK CITY — THE GRID: the neon streets, THE CUT sunk below them with
+   THE RAMP ROAD out, a fire escape onto a roof, the chain-link, the
+   dumpsters in the alley. */
 _MF_DELTA_BUILDERS.prebuilt_cyberpunk = function () {
     const M = _mfDeltaNew({ name: 'Cyberpunk City', base: 'urban_street', seed: 8107,
-        tints: { urban_street: '#8a86a0', road: '#6a6a80', urban_wall: '#9a94b0', metal_3: '#8aa0b8' },
-        desc: 'back alleys — concrete blocks, dumpsters, chain-link you shoot through' });
-    M.rect(0, 1, 0, 3, 'road');                            // side alley
-    M.block(1, 2, 'urban_wall'); M.block(6, 2, 'urban_wall');
-    M.wall(1, 3, 'N', { h: 2, tex: 'metal_3', see: true }); // chain-link
-    M.wall(2, 3, 'N', { h: 2, tex: 'metal_3', see: true });
+        tints: { urban_street: '#6a6690', road: '#4a4a66', urban_wall: '#9a94b0', metal_3: '#8aa0b8', holo: '#ff5ad8', concrete_floor: '#8a8aa4' },
+        desc: 'THE GRID — the neon streets, THE CUT sunk under them and THE RAMP ROAD out, a fire escape onto a roof, the chain-link, the dumpsters' });
+    M.rect(0, 0, 0, 3, 'concrete_floor'); M.rect(7, 0, 7, 3, 'concrete_floor');   // the sidewalks
+    M.lake(0, 1, 'road', 1); M.lake(0, 2, 'road', 1); M.lake(1, 2, 'road', 1);   // THE CUT
+    M.block(1, 3, 'urban_wall', 3); M.step(2, 2, 'metal_3');   // the roof and the fire escape's landing
+    M.t(5, 3, 'holo'); M.t(6, 1, 'holo');                    // the neon in the puddles
+    M.wall(5, 2, 'N', { h: 2, tex: 'metal_3', see: true }); M.wall(6, 2, 'N', { h: 2, tex: 'metal_3', see: true });   // the chain-link
     M.symAll();
-    M.mon('dumpster', 5, 3, 2, 1, { rot: 0 });             // (5,3)-(6,3)
-    M.mon('dumpster', 1, 4, 2, 1, { rot: 180 });           // (1,4)-(2,4)
+    M.mon('dumpster', 5, 3, 2, 1, { rot: 0 });               // (5,3)-(6,3)
+    M.mon('dumpster', 1, 4, 2, 1, { rot: 180 });             // (1,4)-(2,4)
     return M.finishDelta();
 };
 
-/* CAMELOT — the courtyard: a crenellated curtain wall to go around, corner
-   towers, a drawbridge of planks, stair terraces. */
+/* CAMELOT — THE OUTER WARD: the moat, the drawbridge, the curtain wall with
+   the gatehouse towers, the bailey's cobbles, the sword in the stone. */
 _MF_DELTA_BUILDERS.prebuilt_camelot = function () {
-    const M = _mfDeltaNew({ name: 'Camelot', base: 'bricks_2', seed: 8108,
-        tints: { bricks_2: '#c8b8a8', wood_planks: '#a88458' },
-        desc: 'the courtyard — a crenellated curtain wall, corner towers and a plank drawbridge' });
-    M.rect(3, 1, 4, 2, 'wood_planks');                     // drawbridge
-    M.wrun(0, 3, 2, 3, 'N', { h: 2, tex: 'bricks_2', cap: 'crenel' });   // curtain wall
-    M.block(0, 2, 'bricks_2'); M.block(7, 1, 'bricks_2');  // towers
-    M.step(5, 2, 'bricks_2'); M.step(6, 2, 'bricks_2');    // terrace
+    const M = _mfDeltaNew({ name: 'Camelot', base: 'grass_2', seed: 8108,
+        tints: { grass_2: '#6e9e58', castle_wall: '#b8b0a4', wood_planks: '#a88458', cobblestone: '#a8a098', deep_water: '#2a4e66' },
+        desc: 'THE OUTER WARD — the moat and the drawbridge, the curtain wall with its gatehouse towers, the bailey, the sword in the stone' });
+    M.lake(0, 1, 'deep_water', 2); M.lake(1, 1, 'deep_water', 2); M.lake(6, 1, 'deep_water', 2); M.lake(7, 1, 'deep_water', 2);   // the moat
+    M.rect(3, 1, 4, 2, 'wood_planks');                       // the drawbridge
+    M.rect(2, 2, 5, 3, 'cobblestone');                       // the bailey
+    M.wrun(0, 2, 2, 2, 'N', { h: 2, tex: 'castle_wall', cap: 'crenel' });   // the curtain wall …
+    M.wrun(5, 2, 7, 2, 'N', { h: 2, tex: 'castle_wall', cap: 'crenel' });   // … with the gate at x 3..4
+    M.block(0, 2, 'castle_wall', 3); M.block(7, 2, 'castle_wall', 3);       // the gatehouse towers
+    M.step(0, 3, 'castle_wall'); M.step(7, 3, 'castle_wall');               // the parapet walk's stairs
     M.symAll();
+    M.pillarSym('monolith', 6, 3, 2);                        // the sword in the stone
     return M.finishDelta();
 };
 
-/* FOOTBALL STADIUM — chalk lines, team end zones, sideline bleacher steps
-   and equipment crates. */
+/* FOOTBALL STADIUM — THE BOWL: the pitch and its chalk, the stands as tiers
+   with the press box on top, the gantry, the flood masts, the crates. */
 _MF_DELTA_BUILDERS.prebuilt_stadium = function () {
     const M = _mfDeltaNew({ name: 'Football Stadium', base: 'grass_2', seed: 8109,
-        tints: { grass_2: '#5ec46a', marble_light: '#f4f4f4', carpet_2: '#5a80ff', carpet: '#ff6a55', metal_2: '#b8bcc4' },
-        desc: 'the gridiron — chalk lines, end zones, bleacher steps and equipment crates' });
-    M.rect(0, 2, 7, 2, 'marble_light');                    // chalk line
-    M.rect(2, 0, 5, 0, 'carpet');                          // north end zone
-    M.step(0, 1, 'metal_2'); M.step(0, 2, 'metal_2'); M.step(0, 3, 'metal_2');   // bleachers
-    M.block(1, 2, 'metal_2'); M.block(5, 3, 'metal_2');    // equipment crates
+        tints: { grass_2: '#5ec46a', marble_light: '#f4f4f4', carpet_2: '#5a80ff', carpet: '#ff6a55', concrete_floor: '#b8bcc4', metal_2: '#9aa2ac' },
+        desc: 'THE BOWL — the pitch and the chalk, the stands as tiers with the press box on top, the gantry, the flood masts' });
+    M.rect(0, 2, 7, 2, 'marble_light');                      // the chalk line
+    M.rect(2, 0, 5, 0, 'carpet');                            // the north end zone
+    M.step(0, 1, 'concrete_floor'); M.step(0, 2, 'concrete_floor'); M.step(0, 3, 'concrete_floor');   // the stand
+    M.block(1, 3, 'concrete_floor');                         // the press box (up from the stand)
+    M.block(6, 2, 'metal_2');                                // the equipment crates
+    M.wall(6, 3, 'N', { h: 2, tex: 'metal_2', see: true });  // the gantry's rail
+    M.obj(7, 0, 'torch', { leaf: 'floor' });                 // a flood mast
     M.symAll();
-    M.rect(2, 7, 5, 7, 'carpet_2');                        // south end zone (other team colour)
+    M.rect(2, 7, 5, 7, 'carpet_2');                          // the south end zone (the other colour)
     return M.finishDelta();
 };
 
 /* Tier 2 ───────────────────────────────────────────────────────────────── */
 
-/* ATLANTIS — a flooded canal along one edge, marble pillars, a low
-   marble wall under the east pillar. */
+/* ATLANTIS — THE TEMPLE OF THE DEEP: the dais up its steps, the oracle's
+   pool, the columns, the throne wall, the braziers. */
 _MF_DELTA_BUILDERS.prebuilt_atlantis = function () {
     const M = _mfDeltaNew({ name: 'Atlantis', base: 'marble_light', seed: 8201,
-        tints: { marble_light: '#c8ecf2', water: '#49c2d8', gold: '#ffe9a0' },
-        desc: 'the sunken plaza — a canal along the edge, marble pillars, a low wall to hold' });
-    M.lake(0, 1, 'water', 2); M.lake(0, 2, 'water', 2); M.lake(0, 3, 'water', 2); M.lake(1, 3, 'water', 1);
-    M.step(6, 1, 'gold');
-    M.wall(5, 3, 'N', { h: 2, tex: 'marble_light' });
+        tints: { marble_light: '#c8ecf2', water: '#49c2d8', gold: '#ffe9a0', crystal: '#9affe4' },
+        desc: 'THE TEMPLE OF THE DEEP — the dais up its steps, the oracle\'s pool, the columns, the throne wall, the braziers' });
+    M.rect(3, 1, 4, 2, 'gold');                              // the processional
+    M.lake(0, 2, 'water', 2); M.lake(1, 2, 'water', 1); M.lake(0, 3, 'water', 1);   // the oracle's pool
+    M.step(5, 2, 'marble_light'); M.step(6, 2, 'marble_light'); M.step(6, 3, 'marble_light');   // the dais
+    M.wall(5, 3, 'N', { h: 2, tex: 'marble_light' });        // the throne wall
+    M.t(7, 3, 'crystal');                                    // a crystal cluster's glow
+    M.obj(7, 1, 'torch', { leaf: 'floor' });                 // a brazier
     M.symAll();
-    M.pillarSym('greekcol', 2, 2, 2); M.pillarSym('greekcol', 5, 2, 2);
+    M.pillarSym('greekcol', 1, 1, 2); M.pillarSym('greekcol', 2, 3, 2);
     return M.finishDelta();
 };
 
-/* TOWER OF BABEL — brick terraces climbing toward the centre, obelisks,
-   one unfinished block. */
+/* TOWER OF BABEL — THE TOWER: the tiers climbing THE SPIRAL, the desert
+   path, the brick parapets, the crane's load as the unfinished block. */
 _MF_DELTA_BUILDERS.prebuilt_babel = function () {
     const M = _mfDeltaNew({ name: 'Tower of Babel', base: 'bricks_1', seed: 8202,
-        tints: { bricks_1: '#d8a878' },
-        desc: 'the ziggurat base — brick terraces beside the centre, obelisks, one unfinished block' });
-    M.step(2, 2, 'bricks_1'); M.step(2, 3, 'bricks_1'); M.step(5, 2, 'bricks_1');
-    M.block(0, 2, 'bricks_1');
+        tints: { bricks_1: '#d8a878', desert: '#e0c89a' },
+        desc: 'THE TOWER — the tiers climbing THE SPIRAL, the desert path round the base, the brick parapets, the crane\'s load' });
+    M.rect(3, 1, 4, 2, 'desert');                            // the path round the base
+    M.step(0, 1, 'bricks_1'); M.block(0, 2, 'bricks_1'); M.block(0, 3, 'bricks_1', 3);   // THE SPIRAL, three tiers up
+    M.step(1, 3, 'bricks_1');
+    M.block(6, 2, 'bricks_1');                               // the crane's load
+    M.wall(5, 3, 'N', { h: 2, tex: 'bricks_1' });            // a parapet
     M.symAll();
-    M.pillarSym('obelisk3d', 1, 1, 3); M.pillarSym('obelisk3d', 6, 2, 3);
+    M.pillarSym('obelisk3d', 6, 0, 3);
     return M.finishDelta();
 };
 
-/* MOUNT OLYMPUS — temple stylobates beside the centre, a golden
-   processional, columns and a marble screen wall. */
+/* MOUNT OLYMPUS — THE SUMMIT: the marble tiers, the golden way, the cloud
+   bridge over the edge, the forge's lava pool, the throne, the columns. */
 _MF_DELTA_BUILDERS.prebuilt_olympus = function () {
     const M = _mfDeltaNew({ name: 'Mount Olympus', base: 'marble_light', seed: 8203,
-        tints: { marble_light: '#f8f8f2', gold: '#ffe27a' },
-        desc: 'the acropolis floor — temple stylobates, a golden processional, columns and a screen wall' });
-    M.rect(3, 1, 4, 2, 'gold');
-    M.step(5, 3, 'marble_light'); M.step(6, 3, 'marble_light');
-    M.block(0, 3, 'marble_light');
-    M.wall(6, 3, 'N', { h: 2, tex: 'marble_light' });
+        tints: { marble_light: '#f8f8f2', gold: '#ffe27a', cloud: '#e8ecff', lava: '#ff8a40' },
+        desc: 'THE SUMMIT — the marble tiers, the golden way, the cloud bridge over the edge, the forge\'s lava pool, the throne' });
+    M.rect(3, 1, 4, 2, 'gold');                              // the golden way
+    M.lake(0, 1, 'cloud', 1); M.lake(0, 2, 'cloud', 1); M.lake(0, 3, 'cloud', 1);   // the cloud past the edge
+    M.t(1, 2, 'marble_light');                               // the cloud bridge's landing
+    M.step(5, 2, 'marble_light'); M.step(6, 2, 'marble_light'); M.block(6, 3, 'marble_light');   // the tiers to the throne
+    M.wall(5, 3, 'N', { h: 2, tex: 'marble_light' });        // the screen wall
+    M.lake(7, 3, 'lava', 2);                                 // the forge's pool
     M.symAll();
-    M.pillarSym('greekcol', 1, 1, 2); M.pillarSym('greekcol', 5, 2, 2);
+    M.pillarSym('greekcol', 1, 1, 2); M.pillarSym('greekcol', 7, 1, 2);
     return M.finishDelta();
 };
 
-/* MARS — red regolith: mesas, a western crater rim, a dust bowl in the lane. */
+/* MARS — CYDONIA: the red regolith, the craters, the ridge, the face's mesa
+   and the pyramid, the rover's tracks. */
 _MF_DELTA_BUILDERS.prebuilt_mars = function () {
     const M = _mfDeltaNew({ name: 'Mars', base: 'moon_2', seed: 8204,
         tints: { moon_2: '#c88a5a', mars: '#c07a58', mars_2: '#a86048' },
-        desc: 'red regolith — mesas, a crater rim, a dust bowl sunk in the lane' });
-    M.block(1, 2, 'mars_2'); M.block(6, 3, 'mars_2');      // mesas
-    M.step(0, 1, 'moon_2'); M.step(0, 2, 'moon_2'); M.step(5, 2, 'moon_2');   // crater rims
-    M.lake(3, 2, 'mars', 1);                               // dust bowl
+        desc: 'CYDONIA — the regolith, the craters, the ridge, the face\'s mesa and the pyramid beside it' });
+    M.lake(6, 1, 'mars', 1); M.lake(7, 2, 'mars', 1); M.lake(1, 3, 'mars', 1);   // the craters
+    M.step(0, 1, 'moon_2'); M.step(0, 2, 'moon_2'); M.step(0, 3, 'moon_2');       // the ridge
+    M.block(1, 2, 'mars_2');                                 // the face's mesa
+    M.block(6, 3, 'mars_2', 3); M.step(5, 3, 'mars_2');      // the pyramid and its foot
     M.symAll();
     return M.finishDelta();
 };
 
-/* AREA 51 — the airstrip, a fenced compound in one corner, hangar crates,
-   a specimen tank beside the centre. */
+/* AREA 51 — HANGAR 18: the hangar floor, THE RIG up its stair with the
+   saucer on it, THE CATWALK's rail, the chain-link, the tanks, the trucks. */
 _MF_DELTA_BUILDERS.prebuilt_area51 = function () {
-    const M = _mfDeltaNew({ name: 'Area 51', base: 'dirt_4', seed: 8205,
-        tints: { dirt_4: '#c8b088', road: '#a8a49a', aluminium: '#cfd8e0', metal_2: '#9fb2bd' },
-        desc: 'the tarmac — an airstrip, a chain-link compound, hangar crates and a specimen tank' });
-    M.rect(3, 1, 4, 2, 'road');                            // airstrip
-    M.wall(0, 2, 'N', { h: 2, tex: 'aluminium', see: true }); M.wall(1, 2, 'N', { h: 2, tex: 'aluminium', see: true });
-    M.wall(2, 2, 'W', { h: 2, tex: 'aluminium', see: true }); M.wall(2, 3, 'W', { h: 2, tex: 'aluminium', see: true });
-    M.block(6, 2, 'metal_2');                              // hangar crate
+    const M = _mfDeltaNew({ name: 'Area 51', base: 'concrete_floor', seed: 8205,
+        tints: { concrete_floor: '#a8acb0', metal_3: '#8aa0b8', aluminium: '#cfd8e0', metal_2: '#9fb2bd', gunmetal: '#6a7078' },
+        desc: 'HANGAR 18 — the hangar floor, THE RIG up its stair, THE CATWALK\'s rail, the chain-link, the tanks, the trucks' });
+    M.rect(3, 1, 4, 2, 'metal_3');                           // the floor's hazard lane
+    M.step(2, 2, 'metal_2'); M.block(1, 2, 'metal_2'); M.block(0, 2, 'metal_2', 3);   // THE RIG's stair, deck and the saucer's cradle
+    M.wall(0, 3, 'N', { h: 2, tex: 'aluminium', see: true }); M.wall(1, 3, 'N', { h: 2, tex: 'aluminium', see: true });   // the chain-link
+    M.block(6, 2, 'gunmetal');                               // the fire truck
+    M.wall(5, 3, 'N', { h: 2, tex: 'metal_2', see: true });  // THE CATWALK's rail
     M.symAll();
-    M.pillarSym('greytube', 5, 3, 3);                      // specimen tank
+    M.pillarSym('greytube', 6, 3, 3);                        // the tanks
     return M.finishDelta();
 };
 
-/* ANTARCTICA — pack ice: a corner of open sea sunk into the bed, iceberg
-   blocks, a floe ledge. */
+/* ANTARCTICA — THE STATION: the snowfield, the crevasse with its plank, the
+   floe tiers, the peak, the huts, the campfire. */
 _MF_DELTA_BUILDERS.prebuilt_antarctica = function () {
     const M = _mfDeltaNew({ name: 'Antarctica', base: 'marble_light', seed: 8206,
-        tints: { marble_light: '#e4f2fc', igloo: '#dcecf8', ice_1: '#bfe0ff', water: '#3a78b8' },
-        desc: 'pack ice — open sea in one corner, iceberg blocks and a floe ledge' });
-    M.lake(0, 0, 'water', 2); M.lake(1, 0, 'water', 2); M.lake(0, 1, 'water', 2);
-    M.block(2, 2, 'igloo'); M.block(6, 3, 'igloo');        // icebergs
-    M.step(0, 2, 'ice_1'); M.step(0, 3, 'ice_1');          // floe ledge
+        tints: { marble_light: '#e4f2fc', igloo: '#dcecf8', ice_1: '#bfe0ff', deep_water: '#2a5a90', wood_planks: '#a88458' },
+        desc: 'THE STATION — the snowfield, the crevasse and its plank, the floe tiers, the peak, the huts, the campfire' });
+    M.lake(0, 1, 'deep_water', 2); M.lake(0, 2, 'deep_water', 2); M.lake(1, 2, 'deep_water', 2); M.lake(0, 3, 'deep_water', 2);   // the crevasse
+    M.t(1, 3, 'wood_planks');                                // the plank
+    M.step(6, 2, 'ice_1'); M.step(6, 3, 'ice_1');            // the floe tiers
+    M.block(7, 2, 'ice_1', 3);                               // the peak
+    M.block(5, 2, 'igloo');                                  // a hut
+    M.obj(7, 0, 'torch', { leaf: 'floor' });                 // the campfire
     M.symAll();
     return M.finishDelta();
 };
 
-/* SKINWALKER RANCH — dry pasture, a ranch fence, hay bales, the mesa
-   corner, dead trees. */
+/* SKINWALKER RANCH — THE CORN FIELDS: the standing corn as the walls, the
+   crop circle, the mesa and THE BUTTE, the fence, the dead tree. */
 _MF_DELTA_BUILDERS.prebuilt_skinwalker = function () {
-    const M = _mfDeltaNew({ name: 'Skinwalker Ranch', base: 'grass_2', seed: 8207,
-        tints: { grass_2: '#b8b878', dirt: '#b89468', wood: '#a88860', rocks_1: '#b09878' },
-        desc: 'the pasture — a ranch fence, hay bales, a mesa corner and dead trees' });
-    M.rect(3, 1, 4, 2, 'dirt');                            // ranch road
-    M.wrun(5, 3, 7, 3, 'N', { h: 2, tex: 'wood_planks', see: true });   // ranch fence
-    M.block(1, 2, 'wood'); M.block(6, 2, 'wood');          // hay bales
-    M.step(0, 2, 'rocks_1'); M.step(0, 3, 'rocks_1');      // mesa
-    M.treeL(7, 0, 'tree_5'); M.treeL(2, 3, 'tree_6');
+    const M = _mfDeltaNew({ name: 'Skinwalker Ranch', base: 'grass_rocky', seed: 8207,
+        tints: { grass_rocky: '#a8a870', grass_3: '#c8b860', dirt_2: '#b89468', wood_planks: '#a88860', rocks_1: '#b09878' },
+        desc: 'THE CORN FIELDS — the standing corn as the walls, the crop circle, the mesa and THE BUTTE, the fence, the dead tree' });
+    M.ring(3.5, 3.5, 1.4, 2.3, 'dirt_2');                    // the crop circle
+    M.block(1, 2, 'grass_3'); M.block(6, 2, 'grass_3'); M.block(2, 3, 'grass_3');   // the corn
+    M.step(0, 2, 'rocks_1'); M.step(0, 3, 'rocks_1'); M.block(0, 1, 'rocks_1', 3);  // the mesa and THE BUTTE
+    M.wrun(5, 3, 7, 3, 'N', { h: 2, tex: 'wood_planks', see: true });   // the fence
+    M.treeL(7, 0, 'tree_5');                                 // the dead tree
     M.symAll();
     return M.finishDelta();
 };
 
-/* HOLLOW EARTH — cave floor under the inner sun: stalagmite walls, glowing
-   mushrooms, a crystal ledge, a lit pool. */
+/* HOLLOW EARTH — THE INNER SUN: the cave floor under the light, the crystal
+   way, the crystal plateau, the lit pool and its deck, the mushrooms. */
 _MF_DELTA_BUILDERS.prebuilt_hollow_earth = function () {
     const M = _mfDeltaNew({ name: 'Hollow Earth', base: 'cave_floor', seed: 8208,
-        tints: { cave_floor: '#8a7a9c', cave_wall: '#6a5a7c', crystal: '#9affe4', water: '#5ae0d0' },
-        desc: 'the inner-earth floor — stalagmite walls, glowing mushrooms, a crystal ledge, a lit pool' });
-    M.block(0, 1, 'cave_wall'); M.block(1, 2, 'cave_wall');
-    M.step(2, 2, 'crystal');
-    M.lake(7, 2, 'water', 2);
+        tints: { cave_floor: '#8a7a9c', cave_wall: '#6a5a7c', crystal: '#9affe4', water: '#5ae0d0', bridge: '#8a6a4a' },
+        desc: 'THE INNER SUN — the cave floor under the light, the crystal way, the crystal plateau, the lit pool and its deck, the mushrooms' });
+    M.rect(3, 1, 4, 2, 'crystal');                           // the crystal way
+    M.step(1, 2, 'crystal'); M.block(0, 2, 'cave_wall'); M.block(0, 3, 'cave_wall', 3);   // the plateau
+    M.lake(6, 2, 'water', 2); M.lake(7, 2, 'water', 2); M.lake(7, 3, 'water', 1);        // the lit pool
+    M.t(6, 3, 'bridge');                                     // the deck
     M.symAll();
-    M.pillarSym('mushroom', 5, 2, 2); M.pillarSym('mushroom', 6, 3, 2);
+    M.pillarSym('mushroom', 5, 3, 2); M.pillarSym('mushroom2', 1, 1, 1);
     return M.finishDelta();
 };
 
-/* FAIRY FOREST — glowing woodland: trees, a giant mushroom, a toadstool
-   platform, a spring. */
+/* FAIRY FOREST — THE CLEARING: the knoll, the stream, the old trees, THE
+   CRAG, the campfire, the toadstools. */
 _MF_DELTA_BUILDERS.prebuilt_fairy_forest = function () {
     const M = _mfDeltaNew({ name: 'Fairy Forest', base: 'grass_2', seed: 8209,
-        tints: { grass_2: '#9fd48a', water: '#7ae0ff' },
-        desc: 'glowing woodland — trees, a giant mushroom, a toadstool platform and a spring' });
-    M.treeL(0, 0, 'tree', 'leaves_2'); M.treeL(1, 1, 'tree_2', 'leaves_3');
-    M.treeL(6, 2, 'tree_3', 'leaves_4'); M.treeL(5, 3, 'tree', 'leaves_5');
-    M.lake(1, 3, 'water', 1);
-    M.obj(0, 2, 'grass_tuft'); M.obj(7, 1, 'grass_tuft');
+        tints: { grass_2: '#9fd48a', water: '#7ae0ff', dirt_2: '#a88860', rock_wall_1: '#8a8a7a' },
+        desc: 'THE CLEARING — the knoll, the stream you wade, the old trees, THE CRAG, the campfire, the toadstools' });
+    M.rect(3, 1, 4, 2, 'dirt_2');                            // the path in
+    M.lake(0, 1, 'water', 1); M.lake(0, 2, 'water', 1); M.lake(0, 3, 'water', 1); M.lake(1, 3, 'water', 1);   // the stream
+    M.step(5, 2, 'grass_2'); M.step(6, 2, 'grass_2'); M.step(6, 3, 'grass_2');   // the knoll
+    M.block(7, 2, 'rock_wall_1');                            // THE CRAG
+    M.treeL(1, 1, 'tree', 'leaves_2'); M.treeL(6, 1, 'tree_2', 'leaves_3'); M.treeL(1, 2, 'tree_3', 'leaves_4');
+    M.obj(7, 0, 'torch', { leaf: 'floor' });                 // the campfire
     M.symAll();
-    M.pillarSym('mushroom', 2, 2, 2); M.pillarSym('mushroom2', 7, 2, 1);
+    M.pillarSym('mushroom', 2, 2, 2);
     return M.finishDelta();
 };
 
-/* MOON — regolith: boulders, a crater with its rim, the black monolith. */
+/* MOON — THE MARE: the craters, the ridge, the lander's platform, the
+   monolith. */
 _MF_DELTA_BUILDERS.prebuilt_moon = function () {
     const M = _mfDeltaNew({ name: 'Moon', base: 'moon', seed: 8210,
-        tints: { moon: '#c8ccd8', moon_2: '#b0b4c4', moon_3: '#989cb0' },
-        desc: 'the sparse regolith — boulders, a crater and its rim, the black monolith' });
-    M.block(1, 2, 'moon_3'); M.block(6, 2, 'moon_3');      // boulders
-    M.lake(0, 3, 'moon_2', 1);                             // crater
-    M.step(0, 2, 'moon_2'); M.step(1, 3, 'moon_2');        // rim
+        tints: { moon: '#c8ccd8', moon_2: '#b0b4c4', moon_3: '#989cb0', aluminium: '#dfe4ea' },
+        desc: 'THE MARE — the craters, the ridge, the lander\'s platform, the monolith' });
+    M.lake(0, 1, 'moon_2', 1); M.lake(1, 1, 'moon_2', 1); M.lake(0, 2, 'moon_2', 1);   // the big crater
+    M.lake(6, 3, 'moon_2', 1);                               // a small one
+    M.step(1, 2, 'moon_2'); M.step(2, 2, 'moon_2'); M.block(0, 3, 'moon_3');   // the ridge
+    M.step(6, 2, 'aluminium'); M.block(7, 2, 'moon_3');      // the lander's platform and a boulder
     M.symAll();
-    M.pillarSym('monolith', 5, 2, 3);
+    M.pillarSym('monolith', 5, 3, 3);
     return M.finishDelta();
 };
 
 /* Tier 3 ───────────────────────────────────────────────────────────────── */
 
-/* TECHNOTICLAN — neon-Aztec: a glowing canal, ziggurat steps, a stone
-   block, torches. */
+/* TECHNOTICLAN — THE TEMPLE CITY: the canal and its deck, the ziggurat's
+   tiers, the brick walls, the braziers, the altar. */
 _MF_DELTA_BUILDERS.prebuilt_technoticlan = function () {
     const M = _mfDeltaNew({ name: 'Technoticlan', base: 'cobblestone', seed: 8301,
-        tints: { cobblestone: '#8fb0b8', bricks_3: '#7aa0a8', water: '#3fe0d8' },
-        desc: 'the canal quarter — a glowing canal, ziggurat steps, a stone block, torches' });
-    M.lake(0, 2, 'water', 2); M.lake(1, 2, 'water', 2); M.lake(0, 3, 'water', 2);
-    M.step(5, 2, 'bricks_3'); M.step(6, 2, 'bricks_3'); M.step(5, 3, 'bricks_3');
-    M.block(2, 2, 'bricks_3');
-    M.obj(7, 1, 'torch', { leaf: 'floor' });
+        tints: { cobblestone: '#8fb0b8', bricks_3: '#7aa0a8', water: '#3fe0d8', bridge: '#6a8890' },
+        desc: 'THE TEMPLE CITY — the canal and its deck, the ziggurat\'s tiers, the brick walls, the braziers, the altar' });
+    M.lake(0, 1, 'water', 2); M.lake(0, 3, 'water', 2); M.lake(1, 2, 'water', 2); M.lake(1, 3, 'water', 2);   // the canal
+    M.t(0, 2, 'bridge');                                     // the deck
+    M.step(5, 2, 'bricks_3'); M.step(6, 2, 'bricks_3'); M.block(6, 3, 'bricks_3'); M.block(7, 2, 'bricks_3', 3);   // the ziggurat
+    M.wall(5, 3, 'N', { h: 2, tex: 'bricks_3' });            // a wall
+    M.obj(7, 1, 'torch', { leaf: 'floor' });                 // a brazier
     M.symAll();
+    M.pillarSym('monolith', 2, 3, 2);                        // the altar
     return M.finishDelta();
 };
 
-/* AGARTHA — jade floor: cave-rock blocks, mushrooms, a crystal ledge, the
-   glowing river along one edge. */
+/* AGARTHA — THE CRYSTAL CITY: the jade terraces, the pool and its deck, the
+   crystal, the fountain, the tiers. */
 _MF_DELTA_BUILDERS.prebuilt_agartha = function () {
     const M = _mfDeltaNew({ name: 'Agartha', base: 'marble_light', seed: 8302,
-        tints: { marble_light: '#bfe8c8', rocks_dark_fantasy: '#8a9a88', crystal: '#9affe4', water: '#4ae0c8' },
-        desc: 'the jade terrace — cave-rock blocks, mushrooms, a crystal ledge, the glowing river' });
-    M.block(0, 2, 'rocks_dark_fantasy'); M.block(6, 3, 'rocks_dark_fantasy');
-    M.step(2, 3, 'crystal');
-    M.lake(7, 1, 'water', 2); M.lake(7, 2, 'water', 2);
+        tints: { marble_light: '#bfe8c8', rocks_dark_fantasy: '#8a9a88', crystal: '#9affe4', water: '#4ae0c8', bridge: '#8aa898' },
+        desc: 'THE CRYSTAL CITY — the jade terraces, the pool and its deck, the crystal, the fountain, the tiers' });
+    M.lake(6, 2, 'water', 2); M.lake(7, 2, 'water', 2); M.lake(7, 3, 'water', 1);   // the pool
+    M.t(6, 3, 'bridge');                                     // the deck
+    M.step(1, 2, 'crystal'); M.block(0, 2, 'rocks_dark_fantasy'); M.block(0, 3, 'rocks_dark_fantasy', 3);   // the tiers
+    M.step(6, 1, 'marble_light');                            // the fountain's plinth
     M.symAll();
-    M.pillarSym('mushroom', 1, 2, 2); M.pillarSym('mushroom2', 5, 2, 1);
+    M.pillarSym('mushroom', 1, 1, 2); M.pillarSym('mushroom2', 5, 3, 1);
     return M.finishDelta();
 };
 
-/* VATICAN CITY — the piazza: a colonnade, basilica steps, an obelisk, a
-   fountain. */
+/* VATICAN CITY — THE BASILICA: the nave's carpet, the pews, the columns,
+   the chancel, the triforium gallery up its stair, the organ loft. */
 _MF_DELTA_BUILDERS.prebuilt_vatican = function () {
-    const M = _mfDeltaNew({ name: 'Vatican City', base: 'cobblestone', seed: 8303,
-        tints: { cobblestone: '#c8beab', marble_light: '#f6f3ea', water: '#8ac8e8' },
-        desc: 'the piazza — a colonnade, basilica steps, an obelisk and a fountain' });
-    M.step(5, 2, 'marble_light'); M.step(6, 2, 'marble_light'); M.step(5, 3, 'marble_light');   // basilica steps
-    M.lake(0, 3, 'water', 1);                              // fountain
+    const M = _mfDeltaNew({ name: 'Vatican City', base: 'marble', seed: 8303,
+        tints: { marble: '#e8e2d4', marble_2: '#cfc6b4', carpet_3: '#8a2030', wood: '#6a4a30', marble_light: '#f6f3ea' },
+        desc: 'THE BASILICA — the nave\'s carpet, the pews, the columns, the chancel, the triforium gallery up its stair, the organ loft' });
+    M.rect(3, 1, 4, 2, 'carpet_3');                          // the nave
+    M.step(2, 2, 'wood'); M.step(5, 2, 'wood');              // the pews
+    M.step(0, 3, 'marble_2'); M.block(0, 2, 'marble_2');     // the gallery's stair and the gallery
+    M.block(7, 1, 'marble_2', 3);                            // the organ loft
+    M.step(6, 3, 'marble_light');                            // the chancel's step
     M.symAll();
-    M.pillarSym('greekcol', 1, 2, 2); M.pillarSym('greekcol', 2, 2, 2);   // colonnade
-    M.pillarSym('obelisk3d', 6, 1, 3);
+    M.pillarSym('greekcol', 1, 1, 2); M.pillarSym('greekcol', 6, 2, 2);   // the columns
     return M.finishDelta();
 };
 
-/* BOHEMIAN GROVE — redwoods around the clearing, a creek, a felled log,
-   the owl altar stone, torches. */
+/* BOHEMIAN GROVE — THE GROVE: the redwoods, the pool, the tiers, the owl
+   altar stone, the braziers. */
 _MF_DELTA_BUILDERS.prebuilt_bohemian_grove = function () {
     const M = _mfDeltaNew({ name: 'Bohemian Grove', base: 'grass_2', seed: 8304,
         tints: { grass_2: '#6a9458', dirt: '#8a7458', wood: '#7a5838', water: '#4a8098' },
-        desc: 'the clearing — redwoods, a creek, a felled log and the owl altar stone' });
-    M.rect(3, 1, 4, 2, 'dirt');                            // lantern trail
-    M.treeL(0, 0, 'tree_3'); M.treeL(1, 2, 'tree_3'); M.treeL(6, 2, 'tree_2'); M.treeL(5, 3, 'tree_3');
-    M.lake(7, 1, 'water', 1); M.lake(7, 2, 'water', 1); M.lake(6, 3, 'water', 1);   // the creek
-    M.block(2, 2, 'wood');                                 // felled log
-    M.obj(0, 3, 'torch', { leaf: 'floor' });
+        desc: 'THE GROVE — the redwoods, the pool, the tiers, the owl altar stone, the braziers' });
+    M.rect(3, 1, 4, 2, 'dirt');                              // the lantern trail
+    M.treeL(0, 0, 'tree_3'); M.treeL(1, 2, 'tree_3'); M.treeL(6, 2, 'tree_3'); M.treeL(5, 3, 'tree_3');
+    M.lake(7, 1, 'water', 1); M.lake(7, 2, 'water', 1); M.lake(6, 3, 'water', 1);   // the pool
+    M.step(0, 2, 'dirt'); M.block(0, 3, 'dirt');             // the tiers
+    M.obj(1, 1, 'torch', { leaf: 'floor' });                 // a brazier
     M.symAll();
-    M.pillarSym('monolith', 0, 2, 2);                      // the altar stone (jumpable)
+    M.pillarSym('monolith', 2, 3, 3);                        // the owl altar stone
     return M.finishDelta();
 };
 
-/* GÖBEKLI TEPE — the compact temple: a ring of waist-high wall with N/S
-   gates, T-pillars, an excavation dip, the grass fringe. */
+/* GÖBEKLI TEPE — THE TELL: the hill, the enclosures sunk with their ring
+   walls, the T-pillars, THE SENTINEL. */
 _MF_DELTA_BUILDERS.prebuilt_gobekli = function () {
     const M = _mfDeltaNew({ name: 'Göbekli Tepe', base: 'dirt_3', seed: 8305,
-        tints: { rock_wall_1: '#d8c098', bricks_2: '#e0d0b0', dirt_3: '#c8a878', grass_2: '#a8b070', ruins: '#c0a888' },
-        desc: 'the first temple — a waist-high ring wall with gates, T-pillar sentinels, an excavation dip' });
-    M.box(0, 0, 7, 7, 'grass_2');                          // the tell's grass fringe
-    [[1, 2], [2, 2], [5, 2], [6, 2], [1, 3], [6, 3]].forEach(p => M.step(p[0], p[1], 'rock_wall_1'));   // ring wall
-    M.lake(0, 3, 'ruins', 1);                              // excavation trench
+        tints: { rock_wall_1: '#d8c098', dirt_3: '#c8a878', dirt_2: '#d8bc88', ruins: '#c0a888' },
+        desc: 'THE TELL — the hill, the enclosures sunk inside their ring walls, the T-pillars, THE SENTINEL' });
+    M.rect(3, 1, 4, 2, 'dirt_2');                            // the way up the tell
+    M.lake(1, 2, 'ruins', 1); M.lake(1, 3, 'ruins', 1);      // an enclosure, sunk
+    M.step(0, 2, 'rock_wall_1'); M.step(0, 3, 'rock_wall_1'); M.step(2, 2, 'rock_wall_1');   // its ring wall
+    M.lake(6, 2, 'ruins', 1);                                // another
+    M.step(6, 3, 'rock_wall_1'); M.step(7, 2, 'rock_wall_1');
     M.symAll();
-    M.pillarSym('tpillar', 5, 3, 3); M.pillarSym('tpillar', 0, 1, 3); M.pillarSym('tpillar', 7, 2, 3);
+    M.pillarSym('tpillar', 5, 2, 3); M.pillarSym('tpillar', 0, 1, 3); M.pillarSym('tpillar', 7, 3, 3);   // the T-pillars; THE SENTINEL at the top
     return M.finishDelta();
 };
 
-/* D.U.M.B. — the tram rail, a walled holding cell in one corner with its
-   specimen, server banks, a bulkhead block. */
+/* D.U.M.B. — LEVEL P3: the tram platform and its rail, the ramp, the parked
+   cars, the barrels, the quarter pipe. */
 _MF_DELTA_BUILDERS.prebuilt_dumb = function () {
-    const M = _mfDeltaNew({ name: 'D.U.M.B.', base: 'tilefloor', seed: 8306,
-        tints: { tilefloor: '#a87878', dungeon_2: '#9a6a6a', metal_2: '#b88484', road: '#8a6a6a' },
-        desc: 'the base floor — the tram rail, a walled holding cell, server banks, a bulkhead' });
-    M.rect(3, 1, 4, 2, 'road');                            // tram rail
-    M.wall(2, 2, 'W', { h: 2, tex: 'dungeon_2' }); M.wall(2, 3, 'W', { h: 2, tex: 'dungeon_2' });   // cell wall
-    M.wall(0, 4, 'N', { h: 2, tex: 'dungeon_2' }); M.wall(1, 4, 'N', { h: 2, tex: 'dungeon_2' });
-    M.step(5, 2, 'metal_2'); M.step(6, 2, 'metal_2');      // server banks
-    M.block(6, 3, 'dungeon_2');                            // bulkhead
+    const M = _mfDeltaNew({ name: 'D.U.M.B.', base: 'concrete_floor', seed: 8306,
+        tints: { concrete_floor: '#9a8a8a', metal_3: '#8a7070', metal_2: '#b88484', gunmetal: '#5a4a50', holo_red: '#ff4a4a' },
+        desc: 'LEVEL P3 — the tram rail and its platform, the ramp, the parked cars, the barrels, the red lamps' });
+    M.rect(3, 1, 4, 2, 'metal_3');                           // the tram rail
+    M.step(5, 2, 'concrete_floor'); M.step(6, 2, 'concrete_floor'); M.step(6, 3, 'concrete_floor');   // THE PLATFORM
+    M.block(1, 2, 'gunmetal'); M.block(1, 3, 'gunmetal');    // the cars
+    M.t(7, 1, 'holo_red'); M.t(2, 3, 'holo_red');            // the red lamps on the floor
+    M.wall(5, 3, 'N', { h: 2, tex: 'metal_2' });             // a bulkhead
     M.symAll();
-    M.pillarSym('greytube', 0, 2, 3);                      // specimen 0 — inside the cell
+    M.pillarSym('greytube', 0, 1, 3);                        // a barrel stack
     return M.finishDelta();
 };
 
-/* CERN — the beamline crossing, tunnel-wall arcs, terminal steps, a
-   containment screen, a checkerboard dais. */
+/* CERN — THE RING: the beamline's copper loop, the server racks, the
+   detector, the containment screen, the orb. */
 _MF_DELTA_BUILDERS.prebuilt_cern = function () {
-    const M = _mfDeltaNew({ name: 'CERN', base: 'tilefloor_2', seed: 8307,
-        tints: { tilefloor_2: '#9fb4c8', aluminium: '#cfd8e0', gold: '#c88a4a', metal_3: '#8aa0b8', checkerboard: '#7ae0ff' },
-        desc: 'the collider hall — the copper beamline, tunnel-wall arcs, terminal steps, a checkerboard dais' });
-    M.rect(3, 1, 4, 2, 'gold');                            // beamline
-    M.block(1, 2, 'aluminium'); M.block(6, 2, 'aluminium'); // tunnel arcs
-    M.step(2, 2, 'metal_3'); M.step(5, 2, 'metal_3');      // terminals
-    M.wall(6, 3, 'N', { h: 2, tex: 'aluminium' });         // containment screen
-    M.step(0, 3, 'checkerboard');
+    const M = _mfDeltaNew({ name: 'CERN', base: 'concrete_floor', seed: 8307,
+        tints: { concrete_floor: '#9fb4c8', aluminium: '#cfd8e0', copper: '#c88a4a', metal_2: '#8aa0b8', holo: '#7ae0ff' },
+        desc: 'THE RING — the beamline\'s copper loop, the server racks, the detector, the containment screen, the orb' });
+    M.ring(3.5, 3.5, 1.4, 2.3, 'copper');                    // the beamline round the detector
+    M.block(1, 2, 'metal_2'); M.block(6, 2, 'metal_2');      // the server racks
+    M.block(0, 2, 'aluminium', 3); M.step(0, 3, 'aluminium');   // the detector and its stair
+    M.wall(5, 3, 'N', { h: 2, tex: 'aluminium' });           // the containment screen
+    M.t(7, 3, 'holo');                                       // the orb's light
     M.symAll();
     return M.finishDelta();
 };
 
-/* BACKROOMS — level 0: wallpaper partitions, a pillar, the flooded
-   corridor, something in the corner. */
+/* BACKROOMS — THE LEVELS: the wallpaper partitions of the plan, the pillar,
+   the flooded corridor, the drop, something in the corner. */
 _MF_DELTA_BUILDERS.prebuilt_backrooms = function () {
     const M = _mfDeltaNew({ name: 'Backrooms', base: 'carpet', seed: 8308,
         tints: { carpet: '#c8b878', wallpaper: '#e8d890', water: '#b8b060' },
-        desc: 'level 0 — wallpaper partitions, a pillar, the flooded corridor, something in the corner' });
+        desc: 'THE LEVELS — the wallpaper partitions, the pillar, the flooded corridor, the drop, something in the corner' });
     M.wall(2, 2, 'W', { h: 2, tex: 'wallpaper' }); M.wall(2, 3, 'W', { h: 2, tex: 'wallpaper' });
     M.wrun(5, 3, 7, 3, 'N', { h: 2, tex: 'wallpaper' });
+    M.wall(6, 2, 'W', { h: 2, tex: 'wallpaper' });
     M.block(0, 1, 'wallpaper'); M.block(7, 1, 'wallpaper');
-    M.lake(0, 3, 'water', 1); M.lake(1, 3, 'water', 1);    // almond water
+    M.lake(0, 3, 'water', 1); M.lake(1, 3, 'water', 1);      // the almond water
+    M.lake(7, 2, 'carpet', 1);                               // the drop
     M.symAll();
-    M.pillarSym('monolith', 5, 2, 2);                      // it is here with you
+    M.pillarSym('monolith', 5, 2, 2);                        // it is here with you
     return M.finishDelta();
 };
 
-/* NORTH POLE — snowfield: present depots, pines, a frozen pond. */
+/* NORTH POLE — THE VILLAGE: the boardwalk, the workshop depots, the frozen
+   pond, the ice wall, the pines, the ice tiers. */
 _MF_DELTA_BUILDERS.prebuilt_northpole = function () {
     const M = _mfDeltaNew({ name: 'North Pole', base: 'marble_light', seed: 8309,
-        tints: { marble_light: '#e8f4ff', wood_planks: '#a86848', water: '#c8e8ff' },
-        desc: 'the snowfield — present depots, pines and a frozen pond' });
-    M.block(1, 2, 'wood_planks'); M.block(6, 3, 'wood_planks');   // present depots
+        tints: { marble_light: '#e8f4ff', wood_planks: '#a86848', water: '#c8e8ff', ice_1: '#bfe0ff' },
+        desc: 'THE VILLAGE — the boardwalk, the workshop depots, the frozen pond, the ice wall, the pines, the ice tiers' });
+    M.rect(3, 1, 4, 2, 'wood_planks');                       // the boardwalk
+    M.block(1, 2, 'wood_planks'); M.block(6, 3, 'wood_planks');   // the depots
     M.treeL(0, 0, 'tree_2'); M.treeL(7, 2, 'tree_2'); M.treeL(5, 3, 'tree_2');
-    M.lake(6, 1, 'water', 2); M.lake(7, 1, 'water', 2);    // frozen pond
+    M.lake(6, 1, 'water', 2); M.lake(7, 1, 'water', 2);      // the frozen pond
+    M.step(0, 2, 'ice_1'); M.step(0, 3, 'ice_1');            // the ice tiers
+    M.wall(1, 3, 'N', { h: 2, tex: 'ice_1' });               // the ice wall
     M.symAll();
     return M.finishDelta();
 };
 
-/* FLAT LANDS — the eerie plane: a faint circle, one dead tree, two
-   shallow dips, two low mounds. Nothing else. You are being watched. */
+/* FLAT LANDS — THE PLAIN: a faint circle, one dead tree, two shallow dips,
+   two low mounds, the low wall. Nothing else. You are being watched. */
 _MF_DELTA_BUILDERS.prebuilt_flatlands = function () {
     const M = _mfDeltaNew({ name: 'Flat Lands', base: 'grass_2', seed: 8310,
         tints: { grass_2: '#c0c8b8', dirt_2: '#b0a890' },
-        desc: 'the eerie plane — a faint circle, one dead tree, two shallow dips, two low mounds' });
-    M.disc(3.5, 3.5, 1.7, 'dirt_2');                       // the circle you can barely see
+        desc: 'THE PLAIN — a faint circle, one dead tree, two shallow dips, two low mounds, the low wall' });
+    M.disc(3.5, 3.5, 1.7, 'dirt_2');                         // the circle you can barely see
     M.treeL(2, 2, 'tree_5');
-    M.lake(5, 2, 'dirt_2', 1); M.lake(6, 2, 'dirt_2', 1);  // shallow dips
-    M.step(0, 2, 'grass_2'); M.step(7, 1, 'grass_2');      // mounds
+    M.lake(5, 2, 'dirt_2', 1); M.lake(6, 2, 'dirt_2', 1);    // the shallow dips
+    M.step(0, 2, 'grass_2'); M.step(7, 1, 'grass_2');        // the mounds
+    M.wall(0, 3, 'N', { h: 2, tex: 'dirt_2' });              // the low wall
     M.symAll();
     return M.finishDelta();
 };
 
 /* MOVING MAPS (2026-09-12) ─────────────────────────────────────────────── */
 
-/* THE FLYING DUTCHMAN — the main deck: the fo'c'sle and quarterdeck
-   corners one step up, the hold hatches flooded (deep water — wade, do
-   not linger), crate stacks, lanterns on the rails. Bed: the sea under
-   the hull's wood, so a dug hatch shows the bilge and then the water. */
+/* THE FLYING DUTCHMAN — THE MAIN DECK: the raised ends, the bulwark, the
+   flooded hatch, the guns at the rail, the anchor, the lanterns. Bed: the
+   sea under the hull's wood, so a dug hatch shows the bilge and the water. */
 _MF_DELTA_BUILDERS.prebuilt_revenge = function () {
     const M = _mfDeltaNew({ name: 'The Flying Dutchman', base: 'wood_planks', seed: 8401,
         strata: ['deep_water', 'deep_water', 'wood', 'wood', 'wood'], underTop: 'wood',
-        tints: { wood_planks: '#b9885a', wood: '#7a5636', deep_water: '#1c3e52' },
-        desc: 'the main deck under way — the raised ends, the flooded hatches, crate stacks, lanterns; the sea streams past faster every round' });
-    M.step(0, 0, 'wood_planks'); M.step(1, 0, 'wood_planks'); M.step(0, 1, 'wood_planks');   // the raised corner
-    M.lake(2, 2, 'deep_water', 2);                                                            // the hatch: the hold below is flooding
-    M.block(6, 2, 'wood'); M.step(5, 2, 'wood');                                              // cargo
-    M.step(0, 3, 'wood');
-    M.obj(7, 1, 'torch', { leaf: 'floor' });
+        tints: { wood_planks: '#b9885a', wood: '#7a5636', deep_water: '#1c3e52', gunmetal: '#3a3a40' },
+        desc: 'THE MAIN DECK under way — the raised ends, the bulwark, the flooded hatch, the guns at the rail, the anchor; the sea streams past faster every round' });
+    M.step(0, 0, 'wood_planks'); M.step(1, 0, 'wood_planks'); M.step(0, 1, 'wood_planks');   // the raised fo'c'sle
+    M.lake(2, 2, 'deep_water', 2);                           // the hatch: the hold below is flooding
+    M.block(6, 2, 'gunmetal'); M.block(1, 3, 'gunmetal');    // the guns at the rails
+    M.step(5, 2, 'wood');                                    // a crate
+    M.wall(6, 3, 'N', { h: 2, tex: 'wood', see: true });     // the bulwark's rail
+    M.obj(7, 1, 'torch', { leaf: 'floor' });                 // a lantern
     M.symAll();
     return M.finishDelta();
 };
 
-/* THE SPACESHIP — the deck plate: breaches scorched black one step down,
-   bulkhead stubs, a console, the coolant slick, the reactor's holo glow,
-   two cargo stacks. Bed: the void under hull plate. The deck is plain
-   brushed aluminium (2026-09-13). */
+/* THE SPACESHIP — THE DECK: the airlock's tower, the breach, the gangway,
+   the sensor mast, the tanks, the cargo stacks. Bed: the void under hull
+   plate. */
 _MF_DELTA_BUILDERS.prebuilt_derelict = function () {
     const M = _mfDeltaNew({ name: 'Spaceship', base: 'aluminium', seed: 8402,
         strata: ['void', 'void', 'gunmetal', 'gunmetal', 'gunmetal'], underTop: 'gunmetal',
         tints: { aluminium: '#8e98a2', gunmetal: '#5a6068', metal_2: '#7a8290', holo: '#7fd8ff', oil: '#101418', void: '#05060d' },
-        desc: 'the dorsal deck of a dead starship — breaches, bulkhead stubs, a console, the coolant slick, the reactor glow; the engines still burn astern, the wreckage field streams past as the hull swings in close to the sun' });
-    M.lake(0, 0, 'void', 1); M.lake(7, 2, 'void', 1);                 // breaches (one step down, black)
-    M.block(1, 2, 'gunmetal'); M.block(2, 2, 'gunmetal');             // a bulkhead stub
-    M.step(6, 2, 'metal_2');                                          // a console
-    M.lake(0, 3, 'oil', 1);                                           // coolant
-    M.t(3, 2, 'holo'); M.t(4, 2, 'holo');                             // the reactor's light
+        desc: 'THE DECK of the dead starship — the airlock\'s tower, the breach, the gangway, the sensor mast, the tanks, the cargo stacks; the engines burn astern' });
+    M.lake(0, 0, 'void', 1); M.lake(7, 2, 'void', 1); M.lake(7, 3, 'void', 1);   // the breaches (one step down, black)
+    M.t(6, 3, 'metal_2');                                    // THE GANGWAY over the breach
+    M.block(1, 2, 'gunmetal'); M.block(0, 2, 'gunmetal', 3); M.step(2, 2, 'metal_2');   // the airlock's tower up its stair
+    M.wall(5, 2, 'N', { h: 2, tex: 'gunmetal' });            // a bulkhead stub
+    M.lake(0, 3, 'oil', 1);                                  // the coolant
+    M.t(3, 2, 'holo'); M.t(4, 2, 'holo');                    // the reactor's light
     M.symAll();
-    M.pillarSym('cargo', 7, 1, 3);                                    // cargo stacks in the corners (were specimen tubes)
+    M.pillarSym('cargo', 7, 1, 3); M.pillarSym('greytube', 6, 2, 3);   // the cargo stacks and the tanks
     return M.finishDelta();
 };
 
-/* THE LOOKING-GLASS — the board itself: marble squares, the PIECES as the
-   cover (chess monuments — a real tile box each, they block the way and the
-   sight: pawns and a knight two high, a rook and a bishop three), the pool
-   of tears. Bed: the void under a slab of marble. */
+/* THE LOOKING-GLASS — THE GARDEN: the chequered marble, the hedge walls,
+   the fountain, the topiary pieces as cover, the tiers up to the table.
+   Bed: the void under a slab of marble. */
 _MF_DELTA_BUILDERS.prebuilt_lookingglass = function () {
     const M = _mfDeltaNew({ name: 'The Looking-Glass', base: 'marble_light', seed: 8403,
         strata: ['void', 'void', 'marble', 'marble', 'marble'], underTop: 'marble',
-        tints: { marble_light: '#f2eee6', marble: '#2c2a38', water: '#8ab4e8', void: '#150a24' },
-        desc: 'the board in play — marble squares, the pieces standing on it as cover (two pawns, a knight, a rook, a bishop a side — they block the way and the line of sight), the pool of tears; the void of shapes streams past and the moon keeps coming round' });
+        tints: { marble_light: '#f2eee6', marble: '#2c2a38', water: '#8ab4e8', void: '#150a24', leaves_3: '#5a9a58' },
+        desc: 'THE GARDEN — the chequered marble, the hedge walls, the fountain, the topiary pieces as cover, the tiers up to the table; the void of shapes streams past' });
     for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) if ((x + y) % 2) M.t(x, y, 'marble');
-    M.lake(7, 3, 'water', 1);                                          // the pool of tears
+    M.lake(7, 3, 'water', 1);                                // the fountain
+    M.wrun(0, 3, 1, 3, 'N', { h: 2, tex: 'leaves_3' }); M.wall(6, 2, 'N', { h: 2, tex: 'leaves_3' });   // the hedges
+    M.step(0, 1, 'marble_light'); M.block(0, 2, 'marble_light');   // the tiers
     M.symAll();
-    M.pieceSym('chess_pawn', 1, 2, 2); M.pieceSym('chess_pawn', 6, 2, 2);   // pawns (two high)
-    M.pieceSym('chess_knight', 3, 2, 2);                                    // the knight (two high)
-    M.pieceSym('chess_rook', 0, 0, 3);                                      // rooks (three)
-    M.pieceSym('chess_bishop', 7, 2, 3);                                    // bishops (three)
+    M.pieceSym('chess_pawn', 1, 2, 2); M.pieceSym('chess_pawn', 6, 3, 2);   // the topiary pawns
+    M.pieceSym('chess_knight', 5, 2, 2);                                    // the knight
+    M.pieceSym('chess_rook', 7, 0, 3);                                      // the rooks
     return M.finishDelta();
 };
 
 
 /* ═══════════════ 7.6 WAVE 1 — THE NEW SITES (2026-09-13) ═══════════════ */
 
-/* THE HAUNTED HOUSE — the parlour: the hearth, a wallpaper partition with
-   its doorway, the window onto the graveyard (shoot through, not walk), a
-   dead tree and an open grave with the rain in it. */
+/* THE HAUNTED HOUSE — THE GROUNDS: the dark lawn, the path to the porch,
+   the crypt, the gravestones, the pond and its footbridge, the coach house,
+   the dead tree, the angel. */
 _MF_DELTA_BUILDERS.prebuilt_haunted = function () {
-    const M = _mfDeltaNew({ name: 'The Haunted House', base: 'wood', seed: 8413,
-        tints: { wood: '#5a3a28', carpet_2: '#5c1a24', bricks_2: '#5a5058', wallpaper: '#4a3a4e', grass_dark_fantasy: '#35402e', water: '#2a3a30' },
-        desc: 'the parlour — the hearth, a partition with a doorway, the window onto the graveyard (shoot through it, not walk), a dead tree and an open grave' });
-    M.rect(6, 0, 7, 3, 'grass_dark_fantasy');                 // the yard past the east wall
-    M.rect(0, 1, 1, 3, 'carpet_2');                           // the rug
-    M.block(0, 1, 'bricks_2');                                // the hearth
-    M.step(1, 2, 'wood');                                     // the piano (climbable)
-    M.wrun(1, 3, 2, 3, 'N', { h: 2, tex: 'wallpaper' });      // the partition; the doorway is at x 0
-    M.wall(6, 2, 'W', { h: 2, tex: 'bricks_2', texIn: 'wallpaper', see: true });   // the window
-    M.wall(6, 3, 'W', { h: 2, tex: 'bricks_2', texIn: 'wallpaper' });              // the wall beside it
-    M.tree(7, 1, 'tree_5');                                   // the dead tree
-    M.lake(7, 3, 'water', 1);                                 // the open grave
+    const M = _mfDeltaNew({ name: 'The Haunted House', base: 'grass_dark_fantasy', seed: 8413,
+        tints: { grass_dark_fantasy: '#35402e', dirt_2: '#5a4e40', bricks_2: '#5a5058', wood: '#5a3a28', water: '#2a3a30', bridge: '#4a3a30' },
+        desc: 'THE GROUNDS — the dark lawn, the path to the porch, the crypt, the gravestones, the pond and its footbridge, the coach house, the dead tree' });
+    M.rect(3, 1, 4, 2, 'dirt_2');                            // the path
+    M.block(1, 2, 'bricks_2'); M.obj(0, 2, 'gravestone'); M.obj(2, 3, 'gravestone');   // the crypt and the graves
+    M.step(5, 2, 'wood'); M.step(6, 2, 'wood'); M.block(6, 3, 'wood');                // the porch up to the coach house
+    M.lake(0, 3, 'water', 1); M.t(1, 3, 'bridge');                                     // the pond and its footbridge
+    M.tree(7, 1, 'tree_5');                                  // the dead tree
     M.symAll();
+    M.pillarSym('monolith', 7, 3, 2);                        // the angel
     return M.finishDelta();
 };
 
-/* THE LODGE — the sanctum: the damask wall with the great door in the
-   middle, a plinth to climb, a pillar, the Tomb sunk in the corner. */
+/* THE LODGE — THE HALLS: the chequered floor, the damask partitions with
+   the great doors, the plinth, the pillars, the round table, the braziers. */
 _MF_DELTA_BUILDERS.prebuilt_lodge = function () {
     const M = _mfDeltaNew({ name: 'The Lodge', base: 'checkerboard', seed: 8433,
-        tints: { checkerboard: '#d8ccb0', damask: '#6a2438', wood: '#6a4a30', marble_light: '#e8e0d0', dungeon_3: '#4a4048', gold: '#d8b050' },
-        desc: 'the sanctum — the damask wall with the great doors in it, a plinth to climb, the pillars, the Tomb sunk in the corner' });
-    M.rect(0, 0, 7, 1, 'wood');                                        // the lodge hall
-    M.wrun(0, 2, 1, 2, 'N', { h: 2, tex: 'damask' }); M.wrun(6, 2, 7, 2, 'N', { h: 2, tex: 'damask' });   // the sanctum wall; the doors x 2..5
-    M.step(1, 3, 'marble_light');                                      // the plinth
-    M.lake(0, 3, 'dungeon_3', 1);                                      // the Tomb (322), a step down
+        tints: { checkerboard: '#d8ccb0', damask: '#6a2438', wood: '#6a4a30', marble_light: '#e8e0d0', gold: '#d8b050' },
+        desc: 'THE HALLS — the chequered floor, the damask partitions with the great doors in them, the plinth, the pillars, the round table' });
+    M.rect(0, 0, 7, 1, 'wood');                              // the lodge hall
+    M.wrun(0, 2, 1, 2, 'N', { h: 2, tex: 'damask' }); M.wrun(6, 2, 7, 2, 'N', { h: 2, tex: 'damask' });   // the partition; the doors x 2..5
+    M.wall(2, 3, 'W', { h: 2, tex: 'damask' });              // a side wall
+    M.step(1, 3, 'marble_light'); M.block(0, 3, 'marble_light');   // the plinth and the dais
     M.rect(3, 3, 4, 3, 'gold');
+    M.obj(7, 3, 'torch', { leaf: 'floor' });                 // a brazier
     M.symAll();
-    M.pillarSym('greekcol', 6, 3, 2);                                  // the pillars
+    M.pillarSym('greekcol', 6, 3, 2);                        // the pillars
     return M.finishDelta();
 };
 
-/* THE SINGULARITY — the core: shards over the void (the gaps are sunk void
-   you can still cross — the full map's arms are the real drop). */
+/* THE SINGULARITY — THE HORIZON: the shards on the rock over nothing, the
+   drop, the crystal way, the orb at the centre. */
 _MF_DELTA_BUILDERS.prebuilt_singularity = function () {
     const M = _mfDeltaNew({ name: 'The Singularity', base: 'moon_3', seed: 8400,
         strata: ['void', 'void', 'void', 'obsidian', 'obsidian'], underTop: 'obsidian',
         tints: { moon_3: '#5a4a78', crystal: '#b08cff', obsidian: '#1c1428', void: '#08040f', holo: '#d0b8ff' },
-        desc: 'the core — crystal shards on the rock over nothing, sunk void between them, the point at the centre' });
-    M.block(0, 1, 'crystal'); M.step(1, 2, 'crystal');                 // a shard and its foot
-    M.block(6, 2, 'crystal');
-    M.lake(7, 0, 'void', 2); M.lake(7, 1, 'void', 2);                  // the void, sunk
+        desc: 'THE HORIZON — the crystal way, the shards on the rock over nothing, the drop, the orb at the centre' });
+    M.rect(3, 1, 4, 2, 'crystal');                           // the crystal way
+    M.block(0, 1, 'crystal'); M.step(1, 2, 'crystal'); M.block(1, 3, 'crystal', 3);   // the shards
+    M.block(6, 2, 'obsidian');
+    M.lake(7, 0, 'void', 2); M.lake(7, 1, 'void', 2); M.lake(7, 2, 'void', 2);        // the drop
     M.lake(0, 3, 'void', 2);
     M.rect(3, 3, 4, 3, 'holo');
     M.symAll();
     return M.finishDelta();
 };
 
-/* SATURN — the hexagon: cubes on the plateau, an oil pool, a storm lane. */
+/* SATURN — THE HEXAGON: the storm walls on the hexagon's edges, the cubes,
+   the hydrocarbon pool, the telescope's plinth. */
 _MF_DELTA_BUILDERS.prebuilt_saturn = function () {
     const M = _mfDeltaNew({ name: 'Saturn', base: 'mars_2', seed: 8406,
         strata: ['cloud_thick', 'cloud_thick', 'cloud', 'cloud_thick', 'cloud_thick'], underTop: 'cloud_thick',
         tints: { mars_2: '#c8a060', storm: '#7a6a58', moon_3: '#b89868', oil: '#2a2418', gunmetal: '#3a3a44', cloud_thick: '#a88a58' },
-        desc: 'the hexagon — the Saturnian cubes as cover, a hydrocarbon pool sunk in the plateau, the storm wall along one edge (slow)' });
-    M.rect(0, 0, 0, 3, 'storm');                                       // the storm wall
-    M.block(1, 2, 'gunmetal'); M.block(6, 2, 'gunmetal');              // the cubes (+2; never beside a spawn tile)
-    M.step(2, 2, 'moon_3');                                            // a lighter vein, one step up
-    M.lake(7, 3, 'oil', 1);                                            // the pool
+        desc: 'THE HEXAGON — the storm walls on its edges, the Saturnian cubes as cover, the hydrocarbon pool, the telescope\'s plinth' });
+    M.wrun(0, 2, 1, 2, 'N', { h: 2, tex: 'storm' }); M.wrun(6, 2, 7, 2, 'N', { h: 2, tex: 'storm' });   // the hexagon's edges
+    M.wall(2, 3, 'W', { h: 2, tex: 'storm' });
+    M.rect(0, 0, 0, 1, 'storm');                             // the storm's floor outside
+    M.block(1, 3, 'gunmetal'); M.block(6, 3, 'gunmetal');    // the cubes
+    M.step(5, 2, 'moon_3');                                  // the telescope's plinth
+    M.lake(7, 3, 'oil', 1);                                  // the pool
     M.symAll();
     return M.finishDelta();
 };
 
-/* THE STRIP — the boulevard: sidewalks, a storefront to climb, the
-   fountain basin, palms, the marquee's obelisk. */
+/* THE STRIP — THE BOULEVARD: the sidewalks, the casino's front and its
+   awning, the valet deck, the parked cars, the fountain, the palms, the
+   marquee's neon. */
 _MF_DELTA_BUILDERS.prebuilt_strip = function () {
     const M = _mfDeltaNew({ name: 'The Strip', base: 'urban_street', seed: 8421,
-        tints: { urban_street: '#4a4a56', concrete_floor: '#8a8a94', water: '#5ad8ff', urban_wall: '#6a6a78', checkerboard: '#e0c070' },
-        desc: 'the boulevard — the sidewalks, a storefront to climb, the fountain basin, palms, the Luxor\'s obelisk' });
+        tints: { urban_street: '#4a4a56', concrete_floor: '#8a8a94', water: '#5ad8ff', urban_wall: '#6a6a78', checkerboard: '#e0c070', gunmetal: '#a03a4a', holo: '#ff4ad0' },
+        desc: 'THE STRIP — the sidewalks, the casino\'s front and its awning, the valet deck, the parked cars, the fountain, the palms, the neon' });
     M.rect(0, 0, 0, 7, 'concrete_floor'); M.rect(7, 0, 7, 7, 'concrete_floor');   // the sidewalks
-    M.block(0, 1, 'urban_wall'); M.step(0, 2, 'urban_wall');           // the storefront and its awning step
-    M.lake(7, 3, 'water', 1);                                          // the fountain basin
-    M.tree(7, 1, 'tree_3');                                            // a palm
-    M.rect(1, 3, 1, 3, 'checkerboard');
+    M.block(0, 1, 'urban_wall', 3); M.step(0, 2, 'urban_wall');   // the casino's front and its awning
+    M.t(0, 3, 'checkerboard'); M.t(1, 3, 'holo');             // the carpet and the neon out front
+    M.block(1, 2, 'gunmetal');                               // a cadillac at the kerb
+    M.step(6, 2, 'concrete_floor'); M.step(6, 3, 'concrete_floor');   // the valet deck
+    M.lake(7, 3, 'water', 1);                                // the fountain basin
+    M.tree(7, 1, 'tree_3');                                  // a palm
     M.symAll();
-    M.pillarSym('obelisk3d', 6, 2, 3);                                 // the obelisk
     return M.finishDelta();
 };
 
-/* DOWNTOWN — the intersection: a building corner, rubble steps where the
-   tower came down, dumpsters in the alleys. */
+/* DOWNTOWN — the intersection: the tower's corner, the rubble where it came
+   down, the canal with its bridge, the parking deck, the dumpsters. */
 _MF_DELTA_BUILDERS.prebuilt_downtown = function () {
     const M = _mfDeltaNew({ name: 'Downtown', base: 'urban_street', seed: 8454,
-        tints: { urban_street: '#5a5a5e', concrete_floor: '#b0aeaa', rubble_1: '#9a9490', rubble_2: '#8a8480', urban_wall: '#9a9aa0' },
-        desc: 'the intersection — a building corner (three high), the rubble where the tower came down (steps), dumpsters in the alleys' });
-    M.rect(0, 0, 1, 3, 'concrete_floor'); M.rect(6, 0, 7, 3, 'concrete_floor');   // the sidewalks
-    M.block(0, 1, 'urban_wall', 3);                                    // the building corner (a wall for everyone)
-    M.step(1, 2, 'rubble_1'); M.step(6, 3, 'rubble_2');                // the rubble
-    M.block(7, 2, 'rubble_1');                                         // the slab that came down
+        tints: { urban_street: '#5a5a5e', concrete_floor: '#b0aeaa', rubble_1: '#9a9490', rubble_2: '#8a8480', urban_wall: '#9a9aa0', deep_water: '#2a3e48', bridge: '#8a8a8a' },
+        desc: 'DOWNTOWN — the tower\'s corner, the rubble where it came down, the canal and its bridge, the parking deck, the dumpsters' });
+    M.rect(0, 0, 1, 3, 'concrete_floor'); M.rect(6, 0, 6, 3, 'concrete_floor');   // the sidewalks
+    M.block(0, 1, 'urban_wall', 3);                          // the tower's corner
+    M.step(1, 2, 'rubble_1'); M.block(0, 2, 'rubble_2');     // the rubble
+    M.lake(7, 1, 'deep_water', 2); M.lake(7, 3, 'deep_water', 2); M.t(7, 2, 'bridge');   // the canal and its bridge
+    M.step(5, 3, 'concrete_floor'); M.step(6, 3, 'concrete_floor');                  // the parking deck
     M.symAll();
-    M.mon('dumpster', 5, 3, 2, 1, { rot: 0 });                         // (5,3)-(6,3)
-    M.mon('dumpster', 1, 4, 2, 1, { rot: 180 });                       // (1,4)-(2,4)
+    M.mon('dumpster', 5, 2, 2, 1, { rot: 0 });               // (5,2)-(6,2)
+    M.mon('dumpster', 1, 5, 2, 1, { rot: 180 });             // (1,5)-(2,5)
     return M.finishDelta();
 };
-/* ═══════════════════════ META — roster, biomes, skies ══════════════════════
-   One row per launch map. Everything downstream is generated from this table:
-   PREBUILT_MAPS + MAP_LAYOUT_PRESETS here; GAME_MODES / compatibleMaps in
-   state.js; MS_MAP_LIST in map.js; ranked MAP_POOL in server.js mirrors it.
-   env → state.mapEnv → the firmament dome (tint/stars/nebula/fog) + the
-   horizon-scenery theme ring (see three-renderer _buildHorizonScenery).    */
 
 /* ═══════════════ 7.7 WAVE 2 — THE NEW SITES (2026-09-16) ═══════════════ */
 
-/* THE BERMUDA TRIANGLE — two right triangles of shoal meeting at the deep
-   hypotenuse (the diagonal from (7,0) to (0,7)); the SANDBAR at the centre
-   (the nexus tiles (3,4) / (4,3) sit on the diagonal) is the one crossing a
-   ground unit has, the two tiles of it the two routes the forge insists on.
-   Each shoal: the wreck's hull and deck, a rock, a tide pool; the corner
-   buoys at the right angles. Bed: the sea under rock under sand. */
+/* THE BERMUDA TRIANGLE — THE OPEN SEA: the beaches, THE CAY at the centre
+   with the X on it, the sandbar, the wreck, the lighthouse rock, the jetty,
+   the buoys. Bed: the sea under rock under sand. */
 _MF_DELTA_BUILDERS.prebuilt_bermuda = function () {
     const M = _mfDeltaNew({ name: 'The Bermuda Triangle', base: 'desert', seed: 8420,
         strata: ['deep_water', 'deep_water', 'rocks_1', 'rocks_1', 'desert'], underTop: 'rocks_1',
-        tints: { desert: '#e8d8a8', water: '#5fc8d0', deep_water: '#123c5a', wood: '#6a4a30', rocks_1: '#8a8478', dirt_2: '#cfae7c' },
-        desc: 'the open sea — a beach each side, the treasure island at the centre with the X on it, a sandbar a side, a wreck and a rock in the shallows, the corner buoys; the sea streams past, the storm comes on' });
-    /* THE ISLANDS (2026-09-16): the top half as a sheet — S sand (the beach,
-       the sandbars, the island), ~ shallows (a wade), D the deep (a swim
-       that drowns), R a rock (+1), B the wreck's hull (+2), X the spot */
-    const ROWS = ['~~SSSS~~', 'D~SSSS~B', 'DRS~~~S~', 'DD~XX~DD'];
+        tints: { desert: '#e8d8a8', water: '#5fc8d0', deep_water: '#123c5a', wood: '#6a4a30', rocks_1: '#8a8478', dirt_2: '#cfae7c', bridge: '#a88860' },
+        desc: 'THE OPEN SEA — a beach each side, THE CAY at the centre with the X on it, the sandbar, the wreck, the lighthouse rock, the jetty, the buoys; the sea streams past, the storm comes on' });
+    /* the top half as a sheet — S sand, ~ shallows (a wade), D the deep (a
+       swim that drowns), R a rock (+1), W the wreck (+2), L the lighthouse
+       rock (+3), J the jetty (a deck over the water), X the spot */
+    const ROWS = ['~~SSSS~~', 'D~SSSSRL', 'DWS~~~SJ', 'DD~XX~DD'];
     ROWS.forEach((row, y) => {
         for (let x = 0; x < 8; x++) {
             const ch = row[x];
             if (ch === '~') M.lake(x, y, 'water', 1);
             else if (ch === 'D') M.lake(x, y, 'deep_water', 2);
             else if (ch === 'R') M.step(x, y, 'rocks_1');
-            else if (ch === 'B') M.block(x, y, 'wood');
+            else if (ch === 'W') M.block(x, y, 'wood');
+            else if (ch === 'L') M.block(x, y, 'rocks_1', 3);
+            else if (ch === 'J') M.t(x, y, 'bridge');
             else if (ch === 'X') M.t(x, y, 'dirt_2');
         }
     });
@@ -14263,6 +14324,991 @@ _MF_DELTA_BUILDERS.prebuilt_bermuda = function () {
     M.symAll();
     return M.finishDelta();
 };
+
+/* ═══════════════════ THE AREA BOARDS — a Δ per explorable PART (2026-09-19) ═══════════════════
+   The user: "make delta maps for the explorable areas that don't have delta
+   maps yet". Every SITE has its Δ (above — a cut of its ENTRY part); every
+   OTHER part of a complex (the cave's chambers, the woods' parts, the crypt,
+   the pit, the sewers, the decks below, the Astral Realm's four…) gets ONE
+   here, keyed by its ROOM id. The forge's house rules are the same (8×8, 4v4,
+   the shared bed unless the part sets its own, the protected rows, 180°
+   symmetry, two routes, cover — delta-maps.test.js runs every one). The
+   registration (_mfRegisterAreaDeltas, called after the rooms exist) files it
+   as PREBUILT_MAPS[roomId + '_delta'] + its layout + an EW_MAP_META row wearing
+   `area: roomId` + `site` — the FULL terminal lists it as a Δ card, the
+   ENCOUNTER in that room fights it (hqEncounterLaunch.launchId), ranked never
+   deals it (check-data-parity skips `area` rows). A closed part plays INDOORS
+   (no near setting, no motion, THE WORLD inert, a dark ceiling); an open part
+   keeps its site's sky. Adding one = a builder here, nothing else. */
+const _MF_AREA_DELTA_BUILDERS = {};
+/* the metres-per-tile the parts are read in is the battle's; the boards are stylised cuts, never rasters */
+function _mfAreaDelta(cfg) { return _mfDeltaNew(cfg); }
+
+/* ── D.U.M.B. (Rooms 555 / 999) ────────────────────────────────────────── */
+
+/* SUB-LEVEL 7 — the hub: THE TOWER, THE DROP with THE CATWALK between the
+   two towers, THE PIT, OBSERVATION's window. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_dumb_sublevel7 = function () {
+    const M = _mfAreaDelta({ name: 'D.U.M.B. · SUB-LEVEL 7', base: 'concrete_floor', seed: 8501,
+        tints: { concrete_floor: '#9a9096', metal_3: '#8a7878', metal_2: '#a89090', gunmetal: '#4a4046', holo_red: '#ff4a4a' },
+        desc: 'SUB-LEVEL 7 — the hub, THE TOWER, THE DROP with THE CATWALK over it, THE PIT, OBSERVATION' });
+    M.rect(3, 1, 4, 2, 'metal_3');                           // the hazard lane
+    M.lake(0, 3, 'concrete_floor', 1); M.lake(1, 3, 'concrete_floor', 1);   // THE PIT
+    M.block(0, 2, 'metal_2', 3); M.block(0, 1, 'metal_2');   // THE TOWER and its landing
+    M.step(5, 2, 'metal_3'); M.step(6, 2, 'metal_3');        // OBSERVATION's deck
+    M.wall(5, 3, 'N', { h: 2, tex: 'metal_2', see: true });  // THE CATWALK's rail
+    M.t(7, 1, 'holo_red');
+    M.symAll();
+    M.pillarSym('greytube', 6, 3, 3);                        // a tank
+    return M.finishDelta();
+};
+
+/* DREAM RESEARCH — the ward: the cots, the iso tanks, the eeg racks, the
+   floating orb, the booth's partition. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_dumb_dreamlab = function () {
+    const M = _mfAreaDelta({ name: 'D.U.M.B. · DREAM RESEARCH', base: 'tilefloor_2', seed: 8502,
+        tints: { tilefloor_2: '#a8b0b8', rubber: '#5a5e68', drywall: '#d8d8d0', metal_2: '#a8b4bc', holo: '#b48cff' },
+        desc: 'DREAM RESEARCH — the ward\'s cots, the iso tanks, the eeg racks, the floating orb, the booth' });
+    M.rect(3, 1, 4, 2, 'rubber');                            // the non-slip lane
+    M.step(1, 2, 'rubber'); M.step(6, 2, 'rubber');          // the cots
+    M.wall(2, 2, 'W', { h: 2, tex: 'drywall' }); M.wall(2, 3, 'W', { h: 2, tex: 'drywall' });   // the booth
+    M.block(6, 3, 'metal_2');                                // an eeg rack
+    M.t(0, 3, 'holo');                                       // the orb's light
+    M.symAll();
+    M.pillarSym('greytube', 0, 2, 3); M.pillarSym('greytube', 7, 1, 3);   // the iso tanks
+    return M.finishDelta();
+};
+
+/* CLONE RESEARCH — the vats under the gantry, the furnace, the chute, the
+   corrugated wall. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_dumb_clonevats = function () {
+    const M = _mfAreaDelta({ name: 'D.U.M.B. · CLONE RESEARCH', base: 'rubber', seed: 8503,
+        tints: { rubber: '#6a6a72', metal_3: '#8a8a94', metal_2: '#9aa4ac', gunmetal: '#3a3438', concrete_floor: '#9a9096' },
+        desc: 'CLONE RESEARCH — six vats under the gantry, the furnace, the chute, the corrugated wall' });
+    M.rect(3, 1, 4, 2, 'concrete_floor');
+    M.block(7, 1, 'gunmetal', 3);                            // the furnace
+    M.step(5, 3, 'metal_2'); M.block(6, 3, 'metal_2');       // the gantry's stair and deck
+    M.wall(1, 3, 'N', { h: 2, tex: 'metal_3' });             // the corrugated wall
+    M.symAll();
+    M.pillarSym('greytube', 1, 2, 3); M.pillarSym('greytube', 6, 2, 3); M.pillarSym('greytube', 2, 3, 3);   // the vats
+    return M.finishDelta();
+};
+
+/* THE WAR ROOM — the two galleries, THE BIG BOARD, the conference tables,
+   the monitor wall. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_dumb_warroom = function () {
+    const M = _mfAreaDelta({ name: 'D.U.M.B. · THE WAR ROOM', base: 'tilefloor', seed: 8504,
+        tints: { tilefloor: '#8a9098', wood: '#6a4a30', metal_3: '#5a6068', concrete_floor: '#9a9096', holo: '#6ae0ff' },
+        desc: 'THE WAR ROOM — the galleries either side, THE BIG BOARD, the conference tables, the monitor wall' });
+    M.rect(3, 1, 4, 2, 'concrete_floor');
+    M.step(0, 1, 'concrete_floor'); M.step(0, 2, 'concrete_floor'); M.step(0, 3, 'concrete_floor');   // a gallery
+    M.step(1, 2, 'wood'); M.step(6, 3, 'wood');              // the tables
+    M.block(7, 2, 'metal_3', 3);                             // THE BIG BOARD's wall
+    M.wall(5, 3, 'N', { h: 2, tex: 'metal_3' });             // the monitor wall
+    M.t(6, 2, 'holo');
+    M.symAll();
+    return M.finishDelta();
+};
+
+/* THE BUNKER — his rooms: the pool, the loft up its step, the shelves, the
+   couch, the throne. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_dumb_bunker = function () {
+    const M = _mfAreaDelta({ name: 'D.U.M.B. · THE BUNKER', base: 'marble', seed: 8505,
+        tints: { marble: '#d8ccb8', carpet_2: '#7a3a3a', wood: '#5a3a28', water: '#6ac8e8', leather: '#5a3828', drywall: '#e8e0d0' },
+        desc: 'THE BUNKER — the pool, the loft up its step, the shelves, the couch, the throne' });
+    M.rect(3, 1, 4, 2, 'carpet_2');                          // the rug
+    M.lake(6, 2, 'water', 1); M.lake(7, 2, 'water', 1); M.lake(7, 3, 'water', 1);   // the pool
+    M.step(0, 2, 'carpet_2'); M.step(1, 2, 'carpet_2'); M.block(0, 3, 'wood');      // the loft and the shelves
+    M.step(5, 3, 'leather');                                 // the couch
+    M.wall(1, 3, 'N', { h: 2, tex: 'drywall' });             // a partition
+    M.symAll();
+    M.pillarSym('monolith', 6, 3, 2);                        // the throne
+    return M.finishDelta();
+};
+
+/* ── CAMELOT CASTLE (Room i) ───────────────────────────────────────────── */
+
+/* THE GREAT HALL — THE ROUND TABLE, THE DAIS under the rose window, THE
+   MINSTRELS' GALLERY, THE LOFT, the pillars, the braziers. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_camelot_hall = function () {
+    const M = _mfAreaDelta({ name: 'CAMELOT · THE GREAT HALL', base: 'cobblestone', seed: 8511,
+        tints: { cobblestone: '#a8a098', wood: '#8a5a38', bricks_2: '#c8b8a8', castle_wall: '#b8b0a4', carpet_3: '#8a2030' },
+        desc: 'THE GREAT HALL — THE ROUND TABLE, THE DAIS under the rose window, THE MINSTRELS\' GALLERY up its stair, THE LOFT, the pillars' });
+    M.rect(3, 1, 4, 2, 'carpet_3');                          // the runner
+    M.ring(3.5, 3.5, 1.4, 2.3, 'wood');                      // THE ROUND TABLE's floor
+    M.step(5, 2, 'bricks_2'); M.step(6, 2, 'bricks_2'); M.block(6, 3, 'wood');   // THE DAIS and THE MINSTRELS' GALLERY
+    M.block(0, 1, 'castle_wall', 3);                         // THE LOFT
+    M.wall(0, 3, 'N', { h: 2, tex: 'wood' });                // a screen
+    M.obj(7, 1, 'torch', { leaf: 'floor' });                 // a brazier
+    M.symAll();
+    M.pillarSym('greekcol', 1, 1, 2); M.pillarSym('greekcol', 2, 3, 2);   // the pillars
+    return M.finishDelta();
+};
+
+/* THE KEEP — the guardroom, THE GREAT STAIR up to THE SOLAR and THE
+   BATTLEMENTS, the armour, the braziers. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_camelot_keep = function () {
+    const M = _mfAreaDelta({ name: 'CAMELOT · THE KEEP', base: 'cobblestone', seed: 8512,
+        tints: { cobblestone: '#a09890', castle_wall: '#b8b0a4', wood_planks: '#a88458', wood: '#6a4a30' },
+        desc: 'THE KEEP — the guardroom, THE GREAT STAIR up to THE SOLAR and THE BATTLEMENTS, the armour, the braziers' });
+    M.rect(3, 1, 4, 2, 'wood_planks');
+    M.step(0, 3, 'wood_planks'); M.block(0, 2, 'castle_wall'); M.block(0, 1, 'castle_wall', 3);   // THE GREAT STAIR
+    M.wall(2, 2, 'W', { h: 2, tex: 'castle_wall' }); M.wall(2, 3, 'W', { h: 2, tex: 'castle_wall' });   // the guardroom's wall
+    M.wrun(5, 2, 6, 2, 'N', { h: 2, tex: 'castle_wall' });   // a corridor's wall
+    M.block(6, 3, 'wood');                                   // an armour stand's chest
+    M.obj(7, 1, 'torch', { leaf: 'floor' });
+    M.symAll();
+    return M.finishDelta();
+};
+
+/* MERLIN'S UNDERCROFT — the cistern you wade, the gaoler's ledge, THE ORB,
+   THE OSSUARY SHELF, the sarcophagus. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_camelot_dungeon = function () {
+    const M = _mfAreaDelta({ name: 'CAMELOT · MERLIN’S UNDERCROFT', base: 'dungeon', seed: 8513,
+        tints: { dungeon: '#5a5860', bricks_2: '#6a6058', water: '#3a6a78', crystal: '#9affe4', holo: '#8affd0' },
+        desc: 'MERLIN’S UNDERCROFT — the cistern you wade, the gaoler\'s ledge, THE ORB, THE OSSUARY SHELF, the sarcophagus' });
+    M.lake(0, 1, 'water', 1); M.lake(0, 2, 'water', 1); M.lake(1, 2, 'water', 1);   // the cistern
+    M.step(6, 2, 'bricks_2'); M.step(6, 3, 'bricks_2'); M.block(7, 2, 'bricks_2', 3);   // the ledge and THE OSSUARY SHELF
+    M.block(1, 3, 'bricks_2');                               // a brick pier
+    M.t(0, 3, 'holo'); M.t(5, 3, 'crystal');                 // THE ORB's light and a crystal
+    M.obj(7, 0, 'torch', { leaf: 'floor' });
+    M.symAll();
+    M.pillarSym('cargo', 2, 2, 3);                           // the sarcophagus
+    return M.finishDelta();
+};
+
+/* THE CASTLE IN THE SKY — the floating pieces up to the spire, the cloud
+   gaps, the fountain, the statues. Bed: cloud all the way down. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_camelot_sky = function () {
+    const M = _mfAreaDelta({ name: 'CAMELOT · THE CASTLE IN THE SKY', base: 'cloud_2', seed: 8514,
+        strata: ['cloud_thick', 'cloud_thick', 'cloud', 'cloud_thick', 'cloud_thick'], underTop: 'cloud_thick',
+        tints: { cloud_2: '#eef2ff', cloud: '#d8e0f8', cobblestone: '#b8b4b0', castle_wall: '#c8c4c0', water: '#8ab4e8' },
+        desc: 'THE CASTLE IN THE SKY — the floating pieces up to the spire, the cloud gaps, the fountain, the statues; dawn above the clouds' });
+    M.rect(3, 1, 4, 2, 'cobblestone');
+    M.step(0, 3, 'cobblestone'); M.block(0, 2, 'castle_wall'); M.block(0, 1, 'castle_wall', 3);   // the pieces, up to the spire
+    M.lake(1, 2, 'cloud', 1); M.lake(6, 1, 'cloud', 1);      // the cloud gaps
+    M.step(6, 3, 'castle_wall');
+    M.lake(7, 3, 'water', 1);                                // the fountain
+    M.symAll();
+    M.pillarSym('monolith', 6, 2, 2); M.pillarSym('greekcol', 1, 1, 2);   // a statue and a column
+    return M.finishDelta();
+};
+
+/* ── ATLANTIS (Room 8) ─────────────────────────────────────────────────── */
+
+/* THE ABYSS — the sea floor: THE TRENCH, THE DROWNED ROAD, THE TEMPLE STEPS
+   and the dome, THE SPIRE, the kelp, the wreck. Bed: the deep. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_atlantis_abyss = function () {
+    const M = _mfAreaDelta({ name: 'ATLANTIS · THE ABYSS', base: 'desert', seed: 8521,
+        strata: ['deep_water', 'deep_water', 'rocks_1', 'rocks_1', 'desert'], underTop: 'rocks_1',
+        tints: { desert: '#5a8a98', marble_light: '#8ac8d0', deep_water: '#082838', rocks_1: '#4a6a70', wood: '#3a4a40', crystal: '#7ae8d8' },
+        desc: 'THE ABYSS — the sea floor: THE TRENCH, THE DROWNED ROAD, THE TEMPLE STEPS and the dome, THE SPIRE, the kelp, the wreck' });
+    M.rect(3, 1, 4, 2, 'marble_light');                      // THE DROWNED ROAD
+    M.lake(0, 1, 'deep_water', 2); M.lake(0, 2, 'deep_water', 2); M.lake(0, 3, 'deep_water', 2); M.lake(1, 2, 'deep_water', 2);   // THE TRENCH
+    M.step(5, 2, 'marble_light'); M.step(6, 2, 'marble_light'); M.block(6, 3, 'marble_light');   // THE TEMPLE STEPS to the dome
+    M.block(1, 3, 'wood');                                   // the wreck
+    M.t(5, 3, 'crystal');
+    M.symAll();
+    M.pillarSym('obelisk3d', 7, 2, 3); M.pillarSym('mushroom', 2, 3, 2);   // THE SPIRE and a coral head
+    return M.finishDelta();
+};
+
+/* ── THE DIVINE STAIR (Rooms 777 / 666 / 1) ────────────────────────────── */
+
+/* THE STAIRWAY — the switchback flights up the cloud, the healing pool on
+   the landing, THE PINNACLE, the columns, the stepping clouds. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_heaven_stair = function () {
+    const M = _mfAreaDelta({ name: 'THE DIVINE STAIR · THE STAIRWAY', base: 'cloud_2', seed: 8531,
+        strata: ['cloud_thick', 'cloud_thick', 'cloud', 'cloud_thick', 'cloud_thick'], underTop: 'cloud_thick',
+        tints: { cloud_2: '#eef2ff', cloud_thick: '#d8e0f8', marble_light: '#fdfdf6', healing_spring: '#bfe8ff', gold: '#ffe9a0' },
+        desc: 'THE STAIRWAY — the switchback flights up the cloud, the healing pool on the landing, THE PINNACLE, the stepping clouds' });
+    M.rect(3, 1, 4, 2, 'gold');
+    M.step(1, 2, 'marble_light'); M.block(0, 2, 'marble_light'); M.block(0, 1, 'marble_light', 3);   // the flights, up
+    M.lake(6, 2, 'healing_spring', 1);                       // the pool on the landing
+    M.step(5, 3, 'cloud_2'); M.step(7, 3, 'cloud_2');        // the stepping clouds
+    M.block(6, 3, 'marble_light');                           // THE PINNACLE's foot
+    M.symAll();
+    M.pillarSym('greekcol', 1, 1, 2); M.pillarSym('greekcol', 7, 1, 2);
+    return M.finishDelta();
+};
+
+/* ── CYBERPUNK CITY (Room 2077) ────────────────────────────────────────── */
+
+/* THE NOODLE BAR — the counter, the vending machine, the boxes out back,
+   the flicker tube. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_cyberpunk_noodle = function () {
+    const M = _mfAreaDelta({ name: 'DISASTER CITY · THE NOODLE BAR', base: 'tilefloor_2', seed: 8541,
+        tints: { tilefloor_2: '#7a9aa0', metal_3: '#6a7a88', metal_2: '#9ab0b8', wood: '#5a4a38', holo: '#ff5ad8' },
+        desc: 'THE NOODLE BAR — the counter, the vending machine, the boxes out back, the neon' });
+    M.rect(3, 1, 4, 2, 'holo');                              // the neon on the floor
+    M.wrun(1, 2, 2, 2, 'N', { h: 2, tex: 'metal_3' });       // the counter
+    M.block(0, 1, 'metal_2');                                // the vending machine
+    M.step(6, 2, 'wood'); M.step(6, 3, 'wood'); M.block(7, 2, 'wood');   // the boxes out back
+    M.symAll();
+    M.mon('dumpster', 5, 3, 2, 1, { rot: 0 });               // (5,3)-(6,3)
+    M.mon('dumpster', 1, 4, 2, 1, { rot: 180 });             // (1,4)-(2,4)
+    return M.finishDelta();
+};
+
+/* ── AREA 51 (Room 51) ─────────────────────────────────────────────────── */
+
+/* THE WHITE ROOMS — the cells and their padding, the cots, THE DECK, THE
+   CAGE. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_area51_ward = function () {
+    const M = _mfAreaDelta({ name: 'AREA 51 · THE WHITE ROOMS', base: 'tilefloor', seed: 8551,
+        tints: { tilefloor: '#e8e8e8', drywall: '#f4f4f4', rubber: '#d0d0d8', metal_2: '#c0c8d0', leather: '#e0dcd8' },
+        desc: 'THE WHITE ROOMS — the cells and their padding, the cots, THE DECK, THE CAGE' });
+    M.rect(3, 1, 4, 2, 'rubber');
+    M.wrun(0, 2, 1, 2, 'N', { h: 2, tex: 'drywall' }); M.wall(2, 2, 'W', { h: 2, tex: 'drywall' }); M.wall(2, 3, 'W', { h: 2, tex: 'drywall' });   // a cell
+    M.step(0, 3, 'leather'); M.step(1, 3, 'leather');        // the cots
+    M.block(7, 1, 'drywall', 3);                             // the padded wall
+    M.step(5, 3, 'metal_2'); M.step(6, 3, 'metal_2');        // THE DECK
+    M.symAll();
+    M.pillarSym('greytube', 6, 2, 3);                        // THE CAGE
+    return M.finishDelta();
+};
+
+/* THE FLIGHT LINE — RUNWAY 33, the berms, THE TOWER, the crater, the
+   trucks and the bus, the flood masts. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_area51_flightline = function () {
+    const M = _mfAreaDelta({ name: 'AREA 51 · THE FLIGHT LINE', base: 'dirt_4', seed: 8552,
+        tints: { dirt_4: '#b8a488', road: '#7a7a78', wasteland: '#a09078', aluminium: '#cfd8e0', gunmetal: '#5a6068', metal_2: '#c8b040' },
+        desc: 'THE FLIGHT LINE — RUNWAY 33, the berms, THE TOWER, the crater, the trucks and the bus, the flood masts' });
+    M.rect(3, 1, 4, 2, 'road');                              // RUNWAY 33
+    M.step(0, 2, 'wasteland'); M.step(1, 2, 'wasteland'); M.step(0, 3, 'wasteland');   // a berm
+    M.block(7, 2, 'aluminium', 3);                           // THE TOWER
+    M.lake(6, 1, 'dirt_4', 1);                               // the crater
+    M.block(1, 3, 'gunmetal'); M.block(6, 3, 'metal_2');     // the fuel truck and the bus
+    M.obj(7, 0, 'torch', { leaf: 'floor' });                 // a flood mast
+    M.symAll();
+    return M.finishDelta();
+};
+
+/* ── THE CAVE (Room 180's chambers) ────────────────────────────────────── */
+
+/* THE WELL ROOM — six well heads over the tiers, the pools, the crag. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_hollow_earth_shaft = function () {
+    const M = _mfAreaDelta({ name: 'THE CAVE · THE WELL ROOM', base: 'cave_floor', seed: 8561,
+        tints: { cave_floor: '#7a6a80', rock_wall_1: '#5a4a60', water: '#4ac8c0', rocks_dark_fantasy: '#6a5a70' },
+        desc: 'THE WELL ROOM — six well heads over the tiers, the pools, the crag' });
+    M.rect(3, 1, 4, 2, 'rocks_dark_fantasy');
+    M.lake(0, 1, 'water', 1); M.lake(0, 2, 'water', 1); M.lake(1, 2, 'water', 2);   // the pools
+    M.step(5, 2, 'cave_floor'); M.step(6, 2, 'cave_floor'); M.block(6, 3, 'rock_wall_1'); M.block(7, 3, 'rock_wall_1', 3);   // the tiers up the crag
+    M.obj(7, 0, 'torch', { leaf: 'floor' });
+    M.symAll();
+    M.pillarSym('greytube', 1, 3, 2); M.pillarSym('greytube', 0, 3, 2);   // the well heads
+    return M.finishDelta();
+};
+
+/* THE CAVERN — the deep river with the ford and the plank, the terrace, the
+   high tier, THE NEEDLE, the lava lake under its obsidian deck. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_hollow_earth_gallery = function () {
+    const M = _mfAreaDelta({ name: 'THE CAVE · THE CAVERN', base: 'cave_floor', seed: 8562,
+        tints: { cave_floor: '#7a6a80', rock_wall_2: '#5a4a60', water: '#4ac8c0', deep_water: '#1a3a48', lava: '#ff8a40', obsidian: '#2a2030', crystal: '#9affe4', bridge: '#8a6a4a' },
+        desc: 'THE CAVERN — the deep river with the ford and the plank, the terrace, the high tier, THE NEEDLE, the lava lake under its obsidian deck' });
+    M.lake(0, 1, 'deep_water', 2); M.lake(0, 2, 'deep_water', 2); M.lake(0, 3, 'water', 1);   // the river and the ford
+    M.t(1, 2, 'bridge');                                     // the plank
+    M.lake(7, 2, 'lava', 2); M.t(7, 3, 'obsidian');          // the lava lake and the obsidian deck
+    M.step(5, 2, 'cave_floor'); M.step(6, 2, 'cave_floor'); M.block(6, 3, 'rock_wall_2');   // the terrace and the high tier
+    M.block(7, 1, 'rock_wall_2', 3);                         // THE NEEDLE
+    M.step(1, 3, 'crystal');                                 // the crystal ledge
+    M.obj(2, 3, 'torch', { leaf: 'floor' });
+    M.symAll();
+    return M.finishDelta();
+};
+
+/* THE FISSURE — the obsidian floor, the lava stream, the hot shelf, the
+   rock. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_hollow_earth_vent = function () {
+    const M = _mfAreaDelta({ name: 'THE CAVE · THE FISSURE', base: 'obsidian', seed: 8563,
+        tints: { obsidian: '#3a2a38', lava: '#ff8a40', rocks_3: '#8a5a48', rock_wall_2: '#5a4a60' },
+        desc: 'THE FISSURE — the obsidian floor, the lava stream, the hot shelf, the rock' });
+    M.lake(0, 2, 'lava', 2); M.lake(1, 2, 'lava', 2); M.lake(1, 3, 'lava', 2);   // the lava stream
+    M.step(5, 2, 'rocks_3'); M.step(6, 2, 'rocks_3'); M.step(6, 3, 'rocks_3');   // the hot shelf
+    M.block(0, 1, 'rock_wall_2'); M.block(7, 2, 'rock_wall_2');
+    M.obj(7, 1, 'torch', { leaf: 'floor' });
+    M.symAll();
+    return M.finishDelta();
+};
+
+/* LEVEL −6 — the blast door's lobby off the cave: the concrete, the crates,
+   the rock. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_hollow_earth_blast = function () {
+    const M = _mfAreaDelta({ name: 'THE CAVE · LEVEL −6', base: 'cave_floor', seed: 8564,
+        tints: { cave_floor: '#7a6a80', concrete_floor: '#9a9096', rock_wall_1: '#5a4a60', wood: '#8a6a48', aluminium: '#b8c0c8' },
+        desc: 'LEVEL −6 — the blast door\'s lobby off the cave: the concrete, the crates, the rock' });
+    M.rect(3, 1, 4, 2, 'concrete_floor');
+    M.wrun(5, 2, 6, 2, 'N', { h: 2, tex: 'aluminium' });     // the blast door's wall
+    M.block(1, 2, 'wood'); M.step(6, 3, 'concrete_floor');   // the crates and a pallet
+    M.block(0, 2, 'rock_wall_1', 3); M.block(0, 3, 'rock_wall_1');   // the rock
+    M.symAll();
+    return M.finishDelta();
+};
+
+/* THE CRYSTAL ADIT — the crystal clusters, the pool and its deck, the
+   ridge. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_hollow_earth_adit = function () {
+    const M = _mfAreaDelta({ name: 'THE CAVE · THE CRYSTAL ADIT', base: 'cave_floor', seed: 8565,
+        tints: { cave_floor: '#7a6a80', crystal: '#9affe4', water: '#4ac8c0', rock_wall_1: '#5a4a60', bridge: '#8a6a4a' },
+        desc: 'THE CRYSTAL ADIT — the crystal clusters, the pool and its deck, the ridge' });
+    M.block(1, 2, 'crystal'); M.block(6, 3, 'crystal');      // the clusters
+    M.lake(0, 2, 'water', 1); M.lake(0, 3, 'water', 2); M.t(1, 3, 'bridge');   // the pool and its deck
+    M.step(5, 2, 'rock_wall_1'); M.step(6, 2, 'rock_wall_1');   // the ridge
+    M.obj(7, 1, 'torch', { leaf: 'floor' });
+    M.symAll();
+    M.pillarSym('mushroom', 7, 3, 2);
+    return M.finishDelta();
+};
+
+/* THE MOUTH — the lip you climb, the dirt path in, the daylight's trees, the
+   rock. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_hollow_earth_mouth = function () {
+    const M = _mfAreaDelta({ name: 'THE CAVE · THE MOUTH', base: 'cave_floor', seed: 8566,
+        tints: { cave_floor: '#7a6a80', dirt_2: '#9a7c58', rock_wall_1: '#6a5a70' },
+        desc: 'THE MOUTH — the lip you climb, the dirt path in, the daylight\'s trees, the rock' });
+    M.rect(3, 1, 4, 2, 'dirt_2');                            // the path
+    M.step(0, 2, 'rock_wall_1'); M.step(1, 2, 'rock_wall_1'); M.step(0, 3, 'rock_wall_1');   // the lip
+    M.block(7, 2, 'rock_wall_1'); M.block(6, 3, 'rock_wall_1');   // the rock
+    M.treeL(7, 0, 'tree_2'); M.treeL(0, 0, 'tree_3');        // the daylight's trees at the mouth
+    M.obj(1, 1, 'torch', { leaf: 'floor' });
+    M.symAll();
+    return M.finishDelta();
+};
+
+/* THE OUBLIETTE — the sunken cells behind their bars, the stocks, the rock. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_hollow_earth_oubliette = function () {
+    const M = _mfAreaDelta({ name: 'THE CAVE · THE OUBLIETTE', base: 'cave_floor', seed: 8567,
+        tints: { cave_floor: '#6a5a70', dungeon: '#4a4048', metal_3: '#6a6a72', rock_wall_2: '#5a4a60' },
+        desc: 'THE OUBLIETTE — the sunken cells behind their bars, the stocks, the rock' });
+    M.lake(0, 1, 'dungeon', 1); M.lake(0, 2, 'dungeon', 1); M.lake(1, 2, 'dungeon', 1);   // the cells, sunk
+    M.wall(1, 2, 'W', { h: 2, tex: 'metal_3', see: true }); M.wall(1, 3, 'W', { h: 2, tex: 'metal_3', see: true }); M.wall(1, 3, 'N', { h: 2, tex: 'metal_3', see: true });   // the bars
+    M.block(6, 2, 'rock_wall_2'); M.block(7, 3, 'rock_wall_2');   // the rock
+    M.step(6, 3, 'dungeon');                                 // the gaoler's step
+    M.obj(7, 1, 'torch', { leaf: 'floor' });
+    M.symAll();
+    M.pillarSym('monolith', 2, 3, 2);                        // the stocks
+    return M.finishDelta();
+};
+
+/* ── THE WOODS (Room 9's parts) ────────────────────────────────────────── */
+
+/* THE MOUNTAIN TRAIL — the two tiers up to Shasta's door, the stream, the
+   pines, the dead snag. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_fairy_forest_trail = function () {
+    const M = _mfAreaDelta({ name: 'THE WOODS · THE MOUNTAIN TRAIL', base: 'grass_2', seed: 8571,
+        tints: { grass_2: '#8fc47a', dirt_2: '#a88860', rock_wall_1: '#8a8a7a', water: '#7ae0ff' },
+        desc: 'THE MOUNTAIN TRAIL — the two tiers up to Shasta\'s door, the stream, the pines, the dead snag' });
+    M.rect(3, 1, 4, 2, 'dirt_2');                            // the trail
+    M.step(1, 3, 'grass_2'); M.step(0, 3, 'grass_2'); M.block(0, 2, 'rock_wall_1'); M.block(0, 1, 'rock_wall_1', 3);   // the tiers
+    M.lake(6, 1, 'water', 1); M.lake(7, 1, 'water', 1); M.lake(7, 2, 'water', 1);   // the stream
+    M.treeL(1, 1, 'tree_2'); M.treeL(6, 3, 'tree_5'); M.treeL(6, 2, 'tree_2');
+    M.symAll();
+    return M.finishDelta();
+};
+
+/* THE REDWOOD TRAIL — the forest floor, the creek and the gully log, THE
+   STAND, the redwoods. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_fairy_forest_redwoods = function () {
+    const M = _mfAreaDelta({ name: 'THE WOODS · THE REDWOOD TRAIL', base: 'forest', seed: 8572,
+        tints: { forest: '#6a9458', dirt_2: '#8a7458', water: '#5aa8c8', wood: '#7a5838', bridge: '#7a5838' },
+        desc: 'THE REDWOOD TRAIL — the forest floor, the creek and the gully log, THE STAND, the redwoods' });
+    M.rect(3, 1, 4, 2, 'dirt_2');
+    M.lake(0, 2, 'water', 1); M.lake(1, 2, 'water', 1); M.lake(0, 3, 'water', 1); M.t(1, 3, 'bridge');   // the creek and the log
+    M.treeL(0, 0, 'tree_3'); M.treeL(1, 1, 'tree_3'); M.treeL(6, 2, 'tree_3'); M.treeL(5, 3, 'tree_3');   // the redwoods
+    M.step(6, 3, 'dirt_2'); M.block(7, 2, 'wood');           // THE STAND
+    M.symAll();
+    return M.finishDelta();
+};
+
+/* THE BACK PASTURE — the dry-stone fence with THE DEAD TREE in its gap, the
+   pool, the hills, the ritual circle. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_fairy_forest_pasture = function () {
+    const M = _mfAreaDelta({ name: 'THE WOODS · THE BACK PASTURE', base: 'grass_2', seed: 8573,
+        tints: { grass_2: '#9fd48a', dirt_2: '#a88860', rocks_1: '#a8a090', water: '#7ae0ff' },
+        desc: 'THE BACK PASTURE — the dry-stone fence with THE DEAD TREE in its gap, the pool, the hills, the ritual circle' });
+    M.ring(3.5, 3.5, 1.4, 2.3, 'dirt_2');                    // the circle
+    M.wrun(0, 2, 1, 2, 'N', { h: 2, tex: 'rocks_1' }); M.wrun(6, 2, 7, 2, 'N', { h: 2, tex: 'rocks_1' });   // the fence
+    M.treeL(2, 2, 'tree_5');                                 // THE DEAD TREE in the gap
+    M.lake(0, 3, 'water', 1); M.lake(1, 3, 'water', 1);      // the pool
+    M.step(6, 3, 'grass_2'); M.step(7, 3, 'grass_2'); M.step(7, 1, 'grass_2');   // the hills
+    M.symAll();
+    return M.finishDelta();
+};
+
+/* THE STAIRCASE — the wooden flights up to the landing and THE TOWER, the
+   quarter pipes, the banisters. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_fairy_forest_stair = function () {
+    const M = _mfAreaDelta({ name: 'THE WOODS · THE STAIRCASE', base: 'grass_2', seed: 8574,
+        tints: { grass_2: '#9fd48a', wood_planks: '#a88458', wood: '#8a6a48' },
+        desc: 'THE STAIRCASE — the wooden flights up to the landing and THE TOWER, the quarter pipes, the banisters' });
+    M.rect(3, 1, 4, 2, 'wood_planks');
+    M.step(0, 3, 'wood_planks'); M.block(0, 2, 'wood_planks'); M.block(0, 1, 'wood_planks', 3);   // the flights and THE TOWER
+    M.wall(1, 3, 'N', { h: 2, tex: 'wood', see: true }); M.wall(1, 2, 'W', { h: 2, tex: 'wood', see: true });   // the banisters
+    M.step(6, 2, 'wood'); M.step(6, 3, 'wood');              // the quarter pipes
+    M.treeL(7, 1, 'tree_2'); M.treeL(1, 1, 'tree_3');
+    M.symAll();
+    return M.finishDelta();
+};
+
+/* DEAD MAN'S CAVE — the storm drain: the channel you wade, the sump, the
+   ledges, the culvert, the grate, the graffiti. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_fairy_forest_deadmans = function () {
+    const M = _mfAreaDelta({ name: 'THE WOODS · DEAD MAN’S CAVE', base: 'bricks_2', seed: 8575,
+        tints: { bricks_2: '#6a6058', concrete_floor: '#8a8a88', water: '#4a7a70', deep_water: '#1a3a38', metal_3: '#6a6a72' },
+        desc: 'DEAD MAN’S CAVE — the storm drain: the channel you wade, the sump, the ledges, the culvert, the grate' });
+    for (let x = 0; x < 8; x++) M.lake(x, 2, 'water', 1);    // the channel
+    M.lake(0, 2, 'deep_water', 2);                           // the sump
+    M.step(0, 1, 'concrete_floor'); M.step(1, 1, 'concrete_floor'); M.step(0, 3, 'concrete_floor'); M.step(1, 3, 'concrete_floor');   // the ledges
+    M.block(7, 1, 'bricks_2', 3);                            // the culvert
+    M.wall(5, 3, 'N', { h: 2, tex: 'bricks_2' }); M.wall(6, 3, 'N', { h: 2, tex: 'metal_3', see: true });   // the graffiti wall and the grate
+    M.symAll();
+    return M.finishDelta();
+};
+
+/* THE RITUAL GROUND — the mound, the ditch, the standing stones, THE ALTAR
+   STONE, the candles. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_fairy_forest_ritual = function () {
+    const M = _mfAreaDelta({ name: 'THE WOODS · THE RITUAL GROUND', base: 'grass_dark_fantasy', seed: 8576,
+        tints: { grass_dark_fantasy: '#3a4a30', dirt_2: '#5a4e40', rock_wall_2: '#6a6a70' },
+        desc: 'THE RITUAL GROUND — the mound, the ditch, the standing stones, THE ALTAR STONE, the candles' });
+    M.ring(3.5, 3.5, 1.4, 2.3, 'dirt_2');                    // the ditch's ring
+    M.lake(1, 2, 'dirt_2', 1); M.lake(6, 2, 'dirt_2', 1);    // the ditch
+    M.step(0, 2, 'grass_dark_fantasy'); M.step(0, 3, 'grass_dark_fantasy'); M.block(7, 2, 'rock_wall_2');   // the mound and the crag
+    M.obj(7, 0, 'torch', { leaf: 'floor' }); M.obj(1, 1, 'torch', { leaf: 'floor' });   // the candles
+    M.symAll();
+    M.pillarSym('menhir', 2, 2, 2); M.pillarSym('menhir', 5, 2, 2); M.pillarSym('menhir', 1, 3, 2);   // the standing stones
+    M.pillarSym('monolith', 6, 3, 2);                        // THE ALTAR STONE
+    return M.finishDelta();
+};
+
+/* ── THE VATICAN (Room 1) ──────────────────────────────────────────────── */
+
+/* THE CATACOMBS — the sunken chapel round its font, THE OSSUARY SHELF up the
+   brick stair, the sarcophagus rows, THE SKULL STACK. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_vatican_catacombs = function () {
+    const M = _mfAreaDelta({ name: 'THE DIVINE STAIR · THE CATACOMBS', base: 'dungeon', seed: 8581,
+        tints: { dungeon: '#5a5860', bricks_3: '#6a6058', bricks_2: '#8a8078', water: '#3a6a78', cobblestone: '#7a7470' },
+        desc: 'THE CATACOMBS — the sunken chapel round its font, THE OSSUARY SHELF up the brick stair, the sarcophagus rows, THE SKULL STACK' });
+    M.rect(3, 1, 4, 2, 'cobblestone');
+    M.lake(6, 2, 'dungeon', 1); M.lake(7, 2, 'dungeon', 1); M.lake(6, 3, 'dungeon', 1); M.lake(7, 3, 'water', 1);   // the chapel and the font
+    M.step(0, 3, 'bricks_3'); M.block(0, 2, 'bricks_3');     // the stair and THE OSSUARY SHELF
+    M.block(1, 2, 'bricks_2', 3);                            // THE SKULL STACK
+    M.wrun(1, 3, 2, 3, 'N', { h: 2, tex: 'bricks_3' });      // a sarcophagus row
+    M.obj(7, 0, 'torch', { leaf: 'floor' });
+    M.symAll();
+    return M.finishDelta();
+};
+
+/* THE ARCHIVE — the stacks, the reading dip, the gallery up its step, the
+   lanterns. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_vatican_library = function () {
+    const M = _mfAreaDelta({ name: 'THE DIVINE STAIR · THE ARCHIVE', base: 'wood_planks', seed: 8582,
+        tints: { wood_planks: '#b08858', wood: '#6a4a30', carpet_2: '#7a2a30' },
+        desc: 'THE ARCHIVE — the stacks, the reading dip, the gallery up its step, the lanterns' });
+    M.rect(3, 1, 4, 2, 'carpet_2');                          // the runner
+    M.block(1, 2, 'wood'); M.block(1, 3, 'wood'); M.block(6, 2, 'wood');   // the stacks
+    M.step(6, 3, 'wood_planks'); M.block(7, 2, 'wood', 3);   // the gallery's step and the tall stack
+    M.lake(0, 3, 'wood_planks', 1);                          // the reading dip
+    M.obj(0, 0, 'torch', { leaf: 'floor' });
+    M.symAll();
+    return M.finishDelta();
+};
+
+/* THE CORTILE — the fountain, the cypresses, the arcade, the loggia, the
+   cistern's well. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_vatican_courtyard = function () {
+    const M = _mfAreaDelta({ name: 'THE DIVINE STAIR · THE CORTILE', base: 'cobblestone', seed: 8583,
+        tints: { cobblestone: '#c8beab', cobblestone_2: '#b8ae9b', marble_light: '#f6f3ea', water: '#8ac8e8' },
+        desc: 'THE CORTILE — the fountain, the cypresses, the arcade, the loggia, the cistern' });
+    M.rect(3, 1, 4, 2, 'cobblestone_2');
+    M.lake(0, 3, 'water', 1); M.lake(1, 3, 'water', 1);      // the fountain
+    M.treeL(0, 1, 'tree_3'); M.treeL(7, 2, 'tree_3'); M.treeL(6, 3, 'tree_3');   // the cypresses
+    M.step(5, 2, 'marble_light'); M.step(6, 2, 'marble_light'); M.block(7, 1, 'marble_light', 3);   // the loggia and a building
+    M.lake(0, 2, 'water', 2);                                // the cistern
+    M.symAll();
+    M.pillarSym('greekcol', 1, 1, 2); M.pillarSym('greekcol', 1, 2, 2);   // the arcade
+    return M.finishDelta();
+};
+
+/* THE OBSERVATORY — the dome's floor, the dais, the columns, the telescope. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_vatican_observatory = function () {
+    const M = _mfAreaDelta({ name: 'THE DIVINE STAIR · THE OBSERVATORY', base: 'marble', seed: 8584,
+        tints: { marble: '#c8c4c8', marble_2: '#a8a4b0', marble_light: '#e8e4e8' },
+        desc: 'THE OBSERVATORY — the dome\'s floor, the dais, the columns, the telescope' });
+    M.ring(3.5, 3.5, 1.4, 2.3, 'marble_2');                  // the dome's ring
+    M.step(5, 2, 'marble_light'); M.step(6, 2, 'marble_light'); M.step(6, 3, 'marble_light');   // the dais
+    M.step(0, 3, 'marble_2'); M.block(0, 2, 'marble_2');     // the stair to the eyepiece
+    M.obj(7, 1, 'torch', { leaf: 'floor' });
+    M.symAll();
+    M.pillarSym('greekcol', 1, 1, 2); M.pillarSym('greekcol', 7, 3, 2);   // the columns
+    M.pillarSym('obelisk3d', 1, 2, 3);                       // the telescope
+    return M.finishDelta();
+};
+
+/* ── THE LEY LINES (Room 12,000) ───────────────────────────────────────── */
+
+/* THE LEY LINES — the tunnels, the crossing chamber, the niches, THE NEXUS
+   round THE OMPHALOS, the veins. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_gobekli_leylines = function () {
+    const M = _mfAreaDelta({ name: 'THE LEY LINES', base: 'bricks_1', seed: 8591,
+        tints: { bricks_1: '#a88458', rock_wall_1: '#7a6a58', dirt_3: '#8a7050', gold: '#ffc860' },
+        desc: 'THE LEY LINES — the tunnels, the crossing chamber, the niches, THE NEXUS round THE OMPHALOS, the veins' });
+    M.rect(3, 1, 4, 2, 'dirt_3');                            // a line
+    M.t(0, 3, 'gold'); M.t(7, 1, 'gold');                    // the veins
+    M.wrun(0, 2, 1, 2, 'N', { h: 2, tex: 'rock_wall_1' }); M.wall(2, 2, 'W', { h: 2, tex: 'rock_wall_1' }); M.wall(2, 3, 'W', { h: 2, tex: 'rock_wall_1' });   // a niche's walls
+    M.wrun(5, 2, 6, 2, 'N', { h: 2, tex: 'rock_wall_1' });
+    M.lake(2, 2, 'dirt_3', 1); M.lake(5, 2, 'dirt_3', 1);    // the chamber, sunk
+    M.block(6, 3, 'rock_wall_1');                            // the rock
+    M.obj(7, 3, 'torch', { leaf: 'floor' });
+    M.symAll();
+    M.pillarSym('menhir', 1, 3, 2);                          // a stone in its niche
+    return M.finishDelta();
+};
+
+/* ── THE FLYING DUTCHMAN (Room 1717) — below decks; bed: the sea under wood ── */
+
+/* THE GUN DECK — the guns at their ports, the powder kegs, the chests, the
+   beams. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_revenge_gundeck = function () {
+    const M = _mfAreaDelta({ name: 'THE FLYING DUTCHMAN · THE GUN DECK', base: 'wood_planks', seed: 8601,
+        strata: ['deep_water', 'deep_water', 'wood', 'wood', 'wood'], underTop: 'wood',
+        tints: { wood_planks: '#a8784a', wood: '#6a4a30', gunmetal: '#3a3a40', deep_water: '#1c3e52' },
+        desc: 'THE GUN DECK — the guns at their ports, the powder kegs, the chests, the beams' });
+    M.block(0, 2, 'gunmetal'); M.block(7, 3, 'gunmetal');    // the guns
+    M.step(1, 2, 'wood'); M.step(6, 3, 'wood');              // the chests
+    M.wall(2, 2, 'W', { h: 2, tex: 'wood' }); M.wall(6, 2, 'N', { h: 2, tex: 'wood' });   // the beams
+    M.obj(0, 3, 'torch', { leaf: 'floor' });
+    M.symAll();
+    M.pillarSym('cargo', 7, 1, 3);                           // the powder kegs
+    return M.finishDelta();
+};
+
+/* THE CAPTAIN'S CABIN — the desk, the cot, the chests, the stern window. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_revenge_cabin = function () {
+    const M = _mfAreaDelta({ name: 'THE FLYING DUTCHMAN · THE CAPTAIN’S CABIN', base: 'wood_planks', seed: 8602,
+        strata: ['deep_water', 'deep_water', 'wood', 'wood', 'wood'], underTop: 'wood',
+        tints: { wood_planks: '#a8784a', wood: '#6a4a30', carpet_2: '#7a2a30', leather: '#5a3828', brokenglass: '#8ab4c8' },
+        desc: 'THE CAPTAIN’S CABIN — the desk, the cot, the chests, the stern window' });
+    M.ring(3.5, 3.5, 1.4, 2.3, 'carpet_2');                  // the rug
+    M.block(1, 2, 'wood');                                   // the desk
+    M.step(6, 2, 'leather'); M.step(0, 3, 'wood'); M.step(7, 1, 'wood');   // the cot and the chests
+    M.wrun(5, 3, 6, 3, 'N', { h: 2, tex: 'wood' });          // the bulkhead
+    M.wall(2, 3, 'W', { h: 2, tex: 'brokenglass', see: true });   // the stern window
+    M.obj(7, 3, 'torch', { leaf: 'floor' });
+    M.symAll();
+    return M.finishDelta();
+};
+
+/* THE HOLD — the bilge you wade, the hatch to the deep, the anchor, the
+   cargo, the chains. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_revenge_hold = function () {
+    const M = _mfAreaDelta({ name: 'THE FLYING DUTCHMAN · THE HOLD', base: 'wood', seed: 8603,
+        strata: ['deep_water', 'deep_water', 'wood', 'wood', 'wood'], underTop: 'wood',
+        tints: { wood: '#6a4a30', wood_planks: '#8a6a48', water: '#2a4a58', deep_water: '#0c2a3a', gunmetal: '#3a3a40', metal_3: '#6a6a72' },
+        desc: 'THE HOLD — the bilge you wade, the hatch to the deep, the anchor, the cargo, the chains' });
+    M.lake(0, 2, 'water', 1); M.lake(0, 3, 'water', 1); M.lake(1, 3, 'water', 1);   // the bilge
+    M.lake(0, 1, 'deep_water', 2);                           // the hatch to the deep
+    M.block(1, 2, 'gunmetal');                               // the anchor
+    M.step(5, 3, 'wood_planks'); M.step(6, 3, 'wood_planks');   // the crates
+    M.wall(6, 2, 'N', { h: 2, tex: 'metal_3', see: true });  // the chains
+    M.obj(7, 1, 'torch', { leaf: 'floor' });
+    M.symAll();
+    M.pillarSym('cargo', 7, 2, 3);                           // the cargo
+    return M.finishDelta();
+};
+
+/* ── THE SPACESHIP (Room 426) — bed: the void under hull plate ─────────── */
+
+/* THE AIRLOCK — the inner door, the lockers, the warning tape, the benches. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_derelict_airlock = function () {
+    const M = _mfAreaDelta({ name: 'THE SPACESHIP · THE AIRLOCK', base: 'aluminium', seed: 8611,
+        strata: ['void', 'void', 'gunmetal', 'gunmetal', 'gunmetal'], underTop: 'gunmetal',
+        tints: { aluminium: '#8e98a2', gunmetal: '#5a6068', metal_2: '#7a8290', holo_red: '#ff5a3a', void: '#05060d' },
+        desc: 'THE AIRLOCK — the inner door, the lockers, the warning tape, the benches' });
+    M.rect(3, 1, 4, 2, 'holo_red');                          // the warning tape
+    M.wrun(0, 2, 2, 2, 'N', { h: 2, tex: 'gunmetal' }); M.wrun(5, 2, 7, 2, 'N', { h: 2, tex: 'gunmetal' });   // the inner door's wall; the door x 3..4
+    M.block(0, 1, 'metal_2'); M.block(7, 3, 'metal_2');      // the lockers
+    M.step(0, 3, 'metal_2'); M.step(7, 1, 'metal_2');        // the benches
+    M.symAll();
+    return M.finishDelta();
+};
+
+/* THE CARGO HOLD — the stacks, the shelving, the tank, the drains. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_derelict_hold = function () {
+    const M = _mfAreaDelta({ name: 'THE SPACESHIP · THE CARGO HOLD', base: 'aluminium', seed: 8612,
+        strata: ['void', 'void', 'gunmetal', 'gunmetal', 'gunmetal'], underTop: 'gunmetal',
+        tints: { aluminium: '#8e98a2', gunmetal: '#5a6068', metal_2: '#7a8290', wood: '#8a6a48', oil: '#101418', void: '#05060d' },
+        desc: 'THE CARGO HOLD — the stacks, the shelving, the tank, the drains' });
+    M.block(0, 2, 'metal_2'); M.block(7, 1, 'metal_2');      // the shelving
+    M.step(5, 2, 'wood'); M.step(6, 2, 'wood');              // the boxes
+    M.lake(7, 3, 'oil', 1); M.lake(0, 3, 'oil', 1);          // the drains
+    M.wall(1, 3, 'N', { h: 2, tex: 'gunmetal' });            // a bulkhead
+    M.symAll();
+    M.pillarSym('cargo', 1, 2, 3); M.pillarSym('greytube', 6, 3, 3);   // the stacks and the tank
+    return M.finishDelta();
+};
+
+/* THE BRIDGE — the viewport, the consoles, the captain's desk, the monitor
+   stacks. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_derelict_bridge = function () {
+    const M = _mfAreaDelta({ name: 'THE SPACESHIP · THE BRIDGE', base: 'aluminium', seed: 8613,
+        strata: ['void', 'void', 'gunmetal', 'gunmetal', 'gunmetal'], underTop: 'gunmetal',
+        tints: { aluminium: '#8e98a2', gunmetal: '#5a6068', metal_2: '#7a8290', holo: '#7fd8ff', void: '#05060d' },
+        desc: 'THE BRIDGE — the viewport, the consoles, the captain\'s desk, the monitor stacks' });
+    M.rect(3, 1, 4, 2, 'holo');                              // the viewport's light on the floor
+    M.step(1, 2, 'metal_2'); M.step(2, 2, 'metal_2'); M.step(5, 2, 'metal_2');   // the consoles
+    M.block(6, 3, 'gunmetal');                               // the captain's desk
+    M.block(0, 1, 'metal_2'); M.block(7, 2, 'metal_2', 3);   // the monitor stacks
+    M.wall(0, 3, 'N', { h: 2, tex: 'gunmetal' });
+    M.symAll();
+    return M.finishDelta();
+};
+
+/* ── THE ASTRAL REALM (Room E4's parts) ────────────────────────────────── */
+
+/* THE WAITING ROOM — the row of chairs facing the wall, the counter, the
+   thought-form nobody has called, the plant. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_lookingglass_waiting = function () {
+    const M = _mfAreaDelta({ name: 'THE ASTRAL REALM · THE WAITING ROOM', base: 'carpet', seed: 8621,
+        tints: { carpet: '#7a9a98', leather: '#3a8a88', drywall: '#e8e8e0', metal_2: '#b8c0c8', holo: '#d8b4ff' },
+        desc: 'THE WAITING ROOM — the row of chairs facing the wall, the counter, the thought-form nobody has called, the plant' });
+    M.step(0, 1, 'leather'); M.step(0, 2, 'leather'); M.step(0, 3, 'leather');   // the chairs
+    M.wrun(5, 2, 6, 2, 'N', { h: 2, tex: 'drywall' });       // the counter
+    M.block(1, 2, 'metal_2');                                // the water cooler
+    M.t(7, 3, 'holo');                                       // NOW SERVING's glow
+    M.treeL(7, 1, 'tree_4');                                 // the plant
+    M.symAll();
+    M.pillarSym('monolith', 6, 3, 2);                        // the thought-form
+    return M.finishDelta();
+};
+
+/* THE SEA OF POSSIBILITY — the violet grass, the crystal banks, THE STREAM,
+   THE POOL OF IDEAS in its colonnade, THE MIRROR LAKE, the floating
+   thoughts, THE SPIRE OF THE UNTHOUGHT. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_lookingglass_sea = function () {
+    const M = _mfAreaDelta({ name: 'THE ASTRAL REALM · THE SEA OF POSSIBILITY', base: 'purple_grass', seed: 8622,
+        strata: ['void', 'void', 'crystal', 'crystal', 'crystal'], underTop: 'crystal',
+        tints: { purple_grass: '#7a5aa8', crystal: '#b08cff', marble_light: '#f2eef8', water: '#8ab4e8', deep_water: '#2a1a58', void: '#150a24' },
+        desc: 'THE SEA OF POSSIBILITY — the violet grass, the crystal banks, THE STREAM, THE POOL OF IDEAS, THE MIRROR LAKE, the floating thoughts, THE SPIRE' });
+    M.rect(3, 1, 4, 2, 'marble_light');                      // the marble path
+    M.lake(6, 1, 'deep_water', 2); M.lake(7, 1, 'deep_water', 2); M.lake(7, 2, 'deep_water', 2);   // THE MIRROR LAKE (never entered)
+    M.lake(1, 3, 'water', 1);                                // THE POOL OF IDEAS
+    M.step(0, 2, 'crystal'); M.block(0, 1, 'crystal'); M.block(1, 2, 'crystal', 3);   // the floating thoughts and THE SPIRE
+    M.step(6, 3, 'crystal');
+    M.symAll();
+    M.pillarSym('greekcol', 2, 3, 2); M.pillarSym('menhir', 6, 2, 2);   // the colonnade and a thought-form
+    return M.finishDelta();
+};
+
+/* THE NIGHTMARE — the flesh, THE BLOOD, THE MAW's fangs round THE BED, the
+   sinkhole, THE SPINE, the stage. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_lookingglass_nightmare = function () {
+    const M = _mfAreaDelta({ name: 'THE ASTRAL REALM · THE NIGHTMARE', base: 'flesh', seed: 8623,
+        tints: { flesh: '#8a4a58', flesh_2: '#6a3040', flesh_3: '#4a2030', lava: '#c81a2a', leather: '#3a2a40' },
+        desc: 'THE NIGHTMARE — the flesh, THE BLOOD, THE MAW\'s fangs round THE BED, the sinkhole, THE SPINE, the stage' });
+    M.rect(3, 1, 4, 2, 'flesh_2');                           // THE LONG HALL
+    M.lake(0, 1, 'lava', 2); M.lake(0, 2, 'lava', 2);        // THE BLOOD
+    M.lake(6, 1, 'flesh_2', 1);                              // the sinkhole
+    M.step(5, 2, 'flesh_2'); M.step(6, 2, 'flesh_2');        // the stage
+    M.block(7, 2, 'flesh_3', 3);                             // THE SPINE
+    M.t(6, 3, 'leather');                                    // THE BED
+    M.symAll();
+    M.pillarSym('monolith', 1, 2, 3); M.pillarSym('monolith', 2, 3, 3); M.pillarSym('monolith', 7, 3, 3);   // THE MAW's fangs
+    return M.finishDelta();
+};
+
+/* THE LIBRARY OF UNTHOUGHT THINGS — the forking stacks, the reading room,
+   the gallery, the top shelf, the orb. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_lookingglass_library = function () {
+    const M = _mfAreaDelta({ name: 'THE ASTRAL REALM · THE LIBRARY OF UNTHOUGHT THINGS', base: 'carpet_3', seed: 8624,
+        tints: { carpet_3: '#4a3a5a', carpet: '#6a4a7a', wood: '#5a3a28', wood_planks: '#7a5a38', holo: '#d8b4ff' },
+        desc: 'THE LIBRARY OF UNTHOUGHT THINGS — the forking stacks, the reading room, the gallery, the top shelf, the orb' });
+    M.rect(3, 1, 4, 2, 'carpet');                            // the reading room's rug
+    M.block(1, 2, 'wood'); M.block(2, 2, 'wood'); M.block(6, 2, 'wood'); M.block(6, 3, 'wood');   // the stacks, forking
+    M.step(0, 2, 'wood_planks'); M.step(0, 3, 'wood_planks'); M.block(0, 1, 'wood', 3);   // the gallery and the top shelf
+    M.wall(5, 3, 'N', { h: 2, tex: 'wood' });
+    M.t(7, 3, 'holo');                                       // the orb
+    M.symAll();
+    return M.finishDelta();
+};
+
+/* ── THE HAUNTED HOUSE (Room 13) — inside ──────────────────────────────── */
+
+/* THE HALL — the landing along the north wall and its flight, the couch,
+   the table, the rug, the banister. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_haunted_hall = function () {
+    const M = _mfAreaDelta({ name: 'THE HAUNTED HOUSE · THE HALL', base: 'wood', seed: 8631,
+        tints: { wood: '#5a3a28', carpet_2: '#5c1a24', leather: '#3a2a28', wallpaper: '#4a3a4e' },
+        desc: 'THE HALL — the landing along the north wall and its flight, the couch, the table, the rug, the banister' });
+    M.rect(3, 1, 4, 2, 'carpet_2');                          // the rug
+    M.step(0, 3, 'wood'); M.block(0, 2, 'wood'); M.block(1, 2, 'wood');   // the flight and the landing
+    M.wall(2, 2, 'W', { h: 2, tex: 'wood', see: true });     // the banister
+    M.step(6, 2, 'leather'); M.step(5, 3, 'wood');           // the couch and the table
+    M.wall(6, 3, 'N', { h: 2, tex: 'wallpaper' });           // a partition
+    M.obj(7, 1, 'torch', { leaf: 'floor' });
+    M.symAll();
+    return M.finishDelta();
+};
+
+/* UPSTAIRS — the bedrooms and their cots, the wallpaper, the wardrobe, the
+   stairs down. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_haunted_upstairs = function () {
+    const M = _mfAreaDelta({ name: 'THE HAUNTED HOUSE · UPSTAIRS', base: 'wood', seed: 8632,
+        tints: { wood: '#5a3a28', leather: '#3a2a28', wallpaper: '#4a3a4e', carpet_2: '#5c1a24' },
+        desc: 'UPSTAIRS — the bedrooms and their cots, the wallpaper, the wardrobe into Camelot, the stairs down' });
+    M.rect(3, 1, 4, 2, 'carpet_2');                          // the runner
+    M.wall(1, 2, 'W', { h: 2, tex: 'wallpaper' }); M.wall(1, 3, 'W', { h: 2, tex: 'wallpaper' }); M.wrun(5, 2, 6, 2, 'N', { h: 2, tex: 'wallpaper' });   // the bedroom walls
+    M.step(0, 2, 'leather'); M.step(0, 3, 'leather'); M.step(6, 3, 'leather');   // the cots
+    M.block(7, 1, 'wood', 3);                                // the wardrobe
+    M.lake(6, 1, 'wood', 1);                                 // the stairwell
+    M.symAll();
+    return M.finishDelta();
+};
+
+/* THE ATTIC — the boxes, the trunk, the cot, the rafters. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_haunted_attic = function () {
+    const M = _mfAreaDelta({ name: 'THE HAUNTED HOUSE · THE ATTIC', base: 'wood_planks', seed: 8633,
+        tints: { wood_planks: '#6a4a30', wood: '#4a3020', leather: '#3a2a28' },
+        desc: 'THE ATTIC — the boxes, the trunk, the cot, the rafters' });
+    M.block(1, 2, 'wood'); M.block(6, 3, 'wood');            // the boxes
+    M.step(7, 1, 'wood'); M.step(0, 3, 'leather');           // the trunk and the cot
+    M.wall(2, 2, 'W', { h: 2, tex: 'wood' }); M.wall(5, 3, 'N', { h: 2, tex: 'wood' });   // the rafters' posts
+    M.obj(0, 0, 'torch', { leaf: 'floor' });                 // the bulb
+    M.symAll();
+    return M.finishDelta();
+};
+
+/* THE CELLAR — the boiler, the shelving, the well, the puddles, the chains. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_haunted_cellar = function () {
+    const M = _mfAreaDelta({ name: 'THE HAUNTED HOUSE · THE CELLAR', base: 'bricks_2', seed: 8634,
+        tints: { bricks_2: '#4a4048', gunmetal: '#3a3a40', metal_2: '#6a6a72', water: '#2a3a38', deep_water: '#0a1a1c', metal_3: '#5a5a62', leather: '#3a2a28' },
+        desc: 'THE CELLAR — the boiler, the shelving, the well into the cave, the puddles, the chains' });
+    M.block(0, 1, 'gunmetal', 3);                            // the boiler
+    M.block(6, 2, 'metal_2'); M.block(7, 3, 'metal_2');      // the shelving
+    M.lake(1, 3, 'deep_water', 2);                           // the well
+    M.lake(6, 3, 'water', 1); M.lake(0, 2, 'water', 1);      // the puddles
+    M.wall(2, 2, 'W', { h: 2, tex: 'metal_3', see: true });  // the chains
+    M.step(5, 3, 'leather');                                 // the cot
+    M.symAll();
+    return M.finishDelta();
+};
+
+/* ── THE STRIP (Room 21) — inside ──────────────────────────────────────── */
+
+/* THE CHAPEL — the pews, the altar, the candles, the stained glass. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_strip_chapel = function () {
+    const M = _mfAreaDelta({ name: 'DISASTER CITY · THE CHAPEL', base: 'carpet', seed: 8641,
+        tints: { carpet: '#7a2a30', carpet_2: '#9a2a34', wood: '#6a4a30', marble_light: '#e8e0d0', brokenglass: '#c8a0ff' },
+        desc: 'THE CHAPEL — the pews, the altar, the candles, the stained glass' });
+    M.rect(3, 1, 4, 2, 'carpet_2');                          // the aisle
+    M.step(1, 2, 'wood'); M.step(2, 2, 'wood'); M.step(5, 2, 'wood'); M.step(6, 2, 'wood');   // the pews
+    M.block(0, 1, 'marble_light');                           // the altar
+    M.wall(5, 3, 'N', { h: 2, tex: 'brokenglass', see: true });   // the stained glass
+    M.obj(7, 1, 'torch', { leaf: 'floor' }); M.obj(0, 3, 'torch', { leaf: 'floor' });   // the candles
+    M.symAll();
+    return M.finishDelta();
+};
+
+/* THE CASINO FLOOR — the slot machines, the mobius bar, the tables, the
+   speakers. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_strip_casino = function () {
+    const M = _mfAreaDelta({ name: 'DISASTER CITY · THE CASINO FLOOR', base: 'carpet_3', seed: 8642,
+        tints: { carpet_3: '#7a2038', checkerboard: '#e0c070', metal_2: '#c8b040', wood: '#4a3020', holo: '#ff4ad0' },
+        desc: 'THE CASINO FLOOR — the slot machines, the mobius bar, the tables, the speakers' });
+    M.rect(3, 1, 4, 2, 'checkerboard');
+    M.block(0, 1, 'metal_2'); M.block(0, 2, 'metal_2'); M.block(1, 2, 'metal_2');   // the slot machines
+    M.wrun(5, 2, 6, 2, 'N', { h: 2, tex: 'wood' }); M.block(7, 2, 'wood');          // the mobius bar
+    M.step(5, 3, 'wood'); M.t(0, 3, 'holo');                 // a table and the neon
+    M.symAll();
+    M.pillarSym('cargo', 6, 3, 3);                           // the speakers
+    return M.finishDelta();
+};
+
+/* ── DISASTER CITY (Room 1954) — the tower, the platform, the mall, the underworld ── */
+
+/* THE TOWER LOBBY — the round desk, the pillars, the couch, the plants, the
+   tape. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_downtown_lobby = function () {
+    const M = _mfAreaDelta({ name: 'DISASTER CITY · THE TOWER LOBBY', base: 'checkerboard_2', seed: 8651,
+        tints: { checkerboard_2: '#c8c4bc', wood: '#6a4a30', leather: '#3a3a44', holo_red: '#ffd040' },
+        desc: 'THE TOWER LOBBY — the round desk, the pillars, the couch, the plants, the tape' });
+    M.rect(3, 1, 4, 2, 'holo_red');                          // the tape across the floor
+    M.step(1, 2, 'wood'); M.step(2, 2, 'wood');              // the round desk
+    M.step(6, 3, 'leather');                                 // the couch
+    M.treeL(0, 3, 'tree_4'); M.treeL(7, 1, 'tree_4');        // the plants
+    M.block(6, 2, 'wood');                                   // the boxes
+    M.symAll();
+    M.pillarSym('greekcol', 0, 1, 2); M.pillarSym('greekcol', 5, 3, 2);   // the pillars
+    return M.finishDelta();
+};
+
+/* THE PLATFORM — the track bed sunk down the middle, the turnstiles, the
+   benches, the pillars. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_downtown_subway = function () {
+    const M = _mfAreaDelta({ name: 'DISASTER CITY · THE PLATFORM', base: 'tilefloor_2', seed: 8652,
+        tints: { tilefloor_2: '#9aa8a8', metal: '#5a5a60', metal_3: '#8a8a94', wood: '#6a4a30', concrete_floor: '#a8a8a4' },
+        desc: 'THE PLATFORM — the track bed sunk down the middle, the turnstiles, the benches, the pillars' });
+    for (let x = 0; x < 8; x++) if (x < 3 || x > 4) M.lake(x, 3, 'metal', 1);   // the track bed (the nexus stands on the crossing)
+    M.wall(0, 2, 'N', { h: 2, tex: 'metal_3', see: true }); M.wall(1, 2, 'N', { h: 2, tex: 'metal_3', see: true });   // the turnstiles
+    M.step(6, 2, 'wood'); M.step(7, 1, 'wood');              // the benches
+    M.block(0, 1, 'concrete_floor');                         // the ticket booth
+    M.symAll();
+    M.pillarSym('greekcol', 6, 3, 2); M.pillarSym('greekcol', 1, 1, 2);   // the pillars
+    return M.finishDelta();
+};
+
+/* THE MALL — the concourse, the galleries up the escalator, the fun box,
+   THE CLOCK TOWER, the planters, the shopfront glass. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_downtown_mall = function () {
+    const M = _mfAreaDelta({ name: 'DISASTER CITY · THE MALL', base: 'marble', seed: 8653,
+        tints: { marble: '#d8d0c8', marble_2: '#c0b8b0', marble_light: '#e8e4e0', concrete_floor: '#a8a8a4', water: '#6ac8e8', brokenglass: '#b8d8e8' },
+        desc: 'THE MALL — the concourse, the galleries up the escalator, the fun box, THE CLOCK TOWER, the planters, the shopfront glass' });
+    M.rect(3, 1, 4, 2, 'marble_2');                          // the concourse
+    M.step(1, 2, 'marble_light'); M.block(0, 2, 'marble_light'); M.block(0, 3, 'marble_light');   // the escalator and the gallery
+    M.block(7, 2, 'marble_light', 3);                        // THE CLOCK TOWER
+    M.step(6, 2, 'concrete_floor');                          // the fun box
+    M.lake(6, 3, 'water', 1);                                // the fountain
+    M.treeL(1, 1, 'tree_4'); M.treeL(6, 1, 'tree_4');        // the planters
+    M.wall(5, 3, 'N', { h: 2, tex: 'brokenglass', see: true });   // a shopfront's glass
+    M.symAll();
+    return M.finishDelta();
+};
+
+/* SUPPLY CLOSET — the shelving, the boxes, the mop bucket, THE TIME
+   MACHINE. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_downtown_closet = function () {
+    const M = _mfAreaDelta({ name: 'DISASTER CITY · SUPPLY CLOSET', base: 'tilefloor', seed: 8654,
+        tints: { tilefloor: '#9a9a94', metal_2: '#8a8a92', wood: '#8a6a48', oil: '#2a3a48', holo: '#7fd8ff' },
+        desc: 'SUPPLY CLOSET — the shelving, the boxes, the mop bucket, THE TIME MACHINE' });
+    M.block(0, 1, 'metal_2'); M.block(0, 2, 'metal_2');      // the shelving
+    M.step(1, 2, 'wood'); M.step(6, 3, 'wood');              // the boxes
+    M.lake(7, 3, 'oil', 1);                                  // the mop bucket's spill
+    M.t(6, 2, 'holo');                                       // THE TIME MACHINE's glow
+    M.wall(5, 2, 'N', { h: 2, tex: 'metal_2' });
+    M.symAll();
+    M.pillarSym('greytube', 7, 1, 3);                        // THE TIME MACHINE
+    return M.finishDelta();
+};
+
+/* THE SEWERS — the culvert channels you wade, THE CISTERN and THE PLANK,
+   THE INSPECTION GALLERY, THE OUTFALL SHAFT, the grates. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_downtown_sewers = function () {
+    const M = _mfAreaDelta({ name: 'DISASTER CITY · THE SEWERS', base: 'concrete_floor', seed: 8655,
+        tints: { concrete_floor: '#6a6a66', bricks_2: '#5a5048', water: '#3a5a48', deep_water: '#0a2a20', metal_3: '#5a5a62', bridge: '#6a5a48' },
+        desc: 'THE SEWERS — the culvert channels you wade, THE CISTERN and THE PLANK, THE INSPECTION GALLERY, THE OUTFALL SHAFT, the grates' });
+    for (let x = 0; x < 8; x++) if (x < 3 || x > 4) M.lake(x, 2, 'water', 1);   // the channel
+    M.lake(0, 1, 'deep_water', 2); M.lake(0, 2, 'deep_water', 2); M.t(0, 3, 'bridge');   // THE CISTERN and THE PLANK
+    M.step(6, 3, 'bricks_2'); M.step(7, 3, 'bricks_2');      // THE INSPECTION GALLERY
+    M.block(7, 1, 'bricks_2', 3);                            // THE OUTFALL SHAFT
+    M.wall(5, 3, 'N', { h: 2, tex: 'metal_3', see: true });  // a grate
+    M.block(1, 3, 'bricks_2');                               // a pier
+    M.symAll();
+    return M.finishDelta();
+};
+
+/* THE RUNNING TUNNELS — the loop line's rails, THE DEPOT's cars, THE GHOST
+   STATION's platform, THE SIGNAL GANTRY. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_downtown_tunnels = function () {
+    const M = _mfAreaDelta({ name: 'DISASTER CITY · THE RUNNING TUNNELS', base: 'concrete_floor', seed: 8656,
+        tints: { concrete_floor: '#7a7470', metal: '#5a5a60', metal_2: '#8a8a92', gunmetal: '#4a4a50' },
+        desc: 'THE RUNNING TUNNELS — the loop line\'s rails, THE DEPOT\'s cars, THE GHOST STATION\'s platform, THE SIGNAL GANTRY' });
+    M.rect(0, 2, 7, 2, 'metal');                             // the rails
+    M.step(5, 3, 'concrete_floor'); M.step(6, 3, 'concrete_floor'); M.step(7, 3, 'concrete_floor');   // THE GHOST STATION's platform
+    M.block(0, 3, 'metal_2', 3);                             // THE SIGNAL GANTRY
+    M.wall(1, 3, 'N', { h: 2, tex: 'gunmetal' });            // a bulkhead
+    M.symAll();
+    M.pillarSym('cargo', 1, 2, 3); M.pillarSym('cargo', 2, 2, 3);   // a car in THE DEPOT
+    return M.finishDelta();
+};
+
+/* THE HOLDING CELLS — the cells behind their bars, the cots, THE CATWALK,
+   THE VENT STACK, the desk. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_downtown_cells = function () {
+    const M = _mfAreaDelta({ name: 'DISASTER CITY · THE HOLDING CELLS', base: 'tilefloor', seed: 8657,
+        tints: { tilefloor: '#9aa4a4', drywall: '#c8c8c0', metal_3: '#6a6a72', leather: '#4a4a52', metal_2: '#8a8a92', wood: '#6a4a30' },
+        desc: 'THE HOLDING CELLS — the cells behind their bars, the cots, THE CATWALK, THE VENT STACK, the desk' });
+    M.wrun(0, 2, 1, 2, 'N', { h: 2, tex: 'drywall' }); M.wall(2, 2, 'W', { h: 2, tex: 'metal_3', see: true }); M.wall(2, 3, 'W', { h: 2, tex: 'metal_3', see: true });   // a cell's front and its bars
+    M.step(0, 3, 'leather'); M.step(1, 3, 'leather');        // the cots
+    M.block(6, 2, 'metal_2'); M.block(7, 3, 'metal_2', 3);   // THE CATWALK and THE VENT STACK
+    M.step(5, 3, 'wood');                                    // the desk
+    M.symAll();
+    return M.finishDelta();
+};
+
+/* THE OLD WORKINGS — the brick cave flooded: THE FLOOD you wade, THE SUMP,
+   the pump ledge, THE CHIMNEY, the planks. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_downtown_workings = function () {
+    const M = _mfAreaDelta({ name: 'DISASTER CITY · THE OLD WORKINGS', base: 'bricks_2', seed: 8658,
+        tints: { bricks_2: '#5a5048', water: '#3a5a58', deep_water: '#0a2028', wood_planks: '#7a5a38', wood: '#5a4a38' },
+        desc: 'THE OLD WORKINGS — the brick cave flooded: THE FLOOD you wade, THE SUMP, the pump ledge, THE CHIMNEY, the planks' });
+    M.lake(0, 1, 'water', 1); M.lake(1, 1, 'water', 1); M.lake(0, 3, 'water', 1); M.lake(1, 2, 'water', 1); M.lake(6, 3, 'water', 1); M.lake(7, 3, 'water', 1);   // THE FLOOD
+    M.lake(0, 2, 'deep_water', 2);                           // THE SUMP
+    M.t(1, 3, 'wood_planks');                                // the planks
+    M.step(6, 2, 'bricks_2'); M.step(7, 2, 'bricks_2');      // the pump ledge
+    M.block(7, 1, 'bricks_2', 3);                            // THE CHIMNEY
+    M.wall(5, 3, 'N', { h: 2, tex: 'wood' });                // a prop
+    M.obj(2, 3, 'torch', { leaf: 'floor' });
+    M.symAll();
+    return M.finishDelta();
+};
+
+/* ── THE REGISTRATION ──────────────────────────────────────────────────── */
+/* the env a part's Δ plays under: the site's own Δ env (the sky, the fog, the
+   tint, the far roster) — a CLOSED part indoors (no near setting round a
+   room, no streaming motion, THE WORLD inert, a dark ceiling: no stars / no
+   nebula / no roster), an OPEN part under its site's sky with the near
+   setting dropped (the site's apron / moat / hull would stand round another
+   place). The room's own `look` grade rides along as env.look. */
+function _mfAreaDeltaEnv(site, room) {
+    const src = (typeof MAP_LAYOUT_PRESETS !== 'undefined') ? (MAP_LAYOUT_PRESETS[site + '_delta'] || MAP_LAYOUT_PRESETS[site]) : null;
+    const env = (src && src.env) ? JSON.parse(JSON.stringify(src.env)) : {};
+    delete env.near; delete env.motion;
+    const open = !!(room && room.shell && room.shell.open);
+    if (!open) { env.world = { kind: 'room' }; env.scenery = 'none'; env.stars = 0; env.nebula = 0; delete env.density; }
+    else { env.world = Object.assign({}, env.world || {}, { kind: (env.world && env.world.kind) || 'plain' }); delete env.world.sea; }   // a sea world wants the moat sheet a setting lays — there is none here
+    if (room && room.shell && room.shell.look && !env.look) env.look = room.shell.look;
+    return env;
+}
+/* file every area board: PREBUILT_MAPS + MAP_LAYOUT_PRESETS under `<roomId>_delta`, an EW_MAP_META row wearing `area` + `site`
+   (state.js GAME_MODES / compatibleMaps, map.js MS_MAP_LIST and the terminal's cards read the roster; hqSiteId reads the id as
+   its room's site; check-data-parity skips `area` rows — ranked never deals a part). Called once the rooms exist (below,
+   after hqReplateDoors). A room the sheet no longer has is skipped with a warning, never registered under a dead id. */
+function _mfRegisterAreaDeltas() {
+    const S = MF_DELTA_S;
+    Object.keys(_MF_AREA_DELTA_BUILDERS).forEach(roomId => {
+        const room = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.rooms) ? DOOR_HQ.rooms[roomId] : null;
+        if (!room) { console.warn('[MapForge] area Δ for an unknown room: ' + roomId); return; }
+        const site = (typeof hqRoomSite === 'function') ? hqRoomSite(roomId) : null;
+        const siteMeta = site ? EW_MAP_META.find(m => m.id === site) : null;
+        if (!site || !siteMeta) { console.warn('[MapForge] area Δ for a room with no site: ' + roomId); return; }
+        let d;
+        try { d = _MF_AREA_DELTA_BUILDERS[roomId](); }
+        catch (e) { console.error('[MapForge] area delta failed: ' + roomId, e); return; }
+        const did = roomId + '_delta';
+        const label = (room.label || d.name || roomId) + ' Δ';
+        d.name = label;
+        PREBUILT_MAPS[did] = d;
+        const env = _mfAreaDeltaEnv(site, room);
+        MAP_LAYOUT_PRESETS[did] = {
+            sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: S - 1, label: 'Earth', baseTerrain: d.base || siteMeta.base }, buffer2: null, below: null },
+            barrierRows: [], barrierOpeningsX: [], hasFloors: false,
+            env, streetLamps: false,
+        };
+        EW_MAP_META.push({
+            id: did, label, w: S, h: S, teamSize: 4, tier: siteMeta.tier || 3,
+            biomes: (siteMeta.biomes || []).slice(), isDelta: true, area: roomId, site, base: d.base || siteMeta.base, env,
+            desc: S + '×' + S + ' Δ, 4v4 — ' + (d.deltaDesc || label),
+        });
+    });
+    if (typeof window !== 'undefined') window.EW_MAP_META = EW_MAP_META;
+}
+/* the ONE read: the Δ a room fights on — its own area board, else null (the caller falls to the site's) */
+function hqAreaDeltaId(roomId) {
+    const did = roomId ? String(roomId) + '_delta' : '';
+    return (did && typeof PREBUILT_MAPS !== 'undefined' && PREBUILT_MAPS && PREBUILT_MAPS[did] && PREBUILT_MAPS[did].isDelta) ? did : null;
+}
+if (typeof window !== 'undefined') { window.hqAreaDeltaId = hqAreaDeltaId; window._MF_AREA_DELTA_BUILDERS = _MF_AREA_DELTA_BUILDERS; }
+
 
 /* ── THE ROOM LOOKS (2026-09-17) — a GRADE per place, laid over the player's video
    settings by ThreePost.setSceneLook while they stand there (three-renderer.js
@@ -17942,7 +18988,7 @@ function doorPointOfEntry(race) {
    {tone, status, juris, summary, id, known:boolean}. */
 function doorSiteFile(modeId) {
     const S = DOOR_TEXT.SITE_FILES;
-    let id = String(modeId || '').replace(/_delta$/, '');
+    let id = (typeof hqSiteId === 'function') ? hqSiteId(modeId) : String(modeId || '').replace(/_delta$/, '');   // an area Δ (2026-09-19) shares its site's file too
     const f = S[id] || null;
     return Object.assign({ id: id, known: !!f }, f || S._default);
 }
@@ -34616,7 +35662,11 @@ function hqSiteId(mapId) {
     const s = String(mapId || '');
     /* THE FIELD (stage B): a synthetic `field:<roomId>:<ox>,<oz>` id is its ROOM'S site — the CPU pool, the Code Red response, the checklist and the stamp all read Hollow Earth for a fight in its cave */
     if (s.indexOf('field:') === 0 && typeof hqFieldParse === 'function') { const f = hqFieldParse(s); const site = f ? hqRoomSite(f.room) : null; if (site) return site; }
-    return s.replace(/_delta$/, '');
+    const bare = s.replace(/_delta$/, '');
+    /* THE AREA BOARDS (2026-09-19): `<roomId>_delta` — a complex part's own Δ — is its ROOM'S site (the CPU pool, the Code Red
+       response, the checklist, the stamp, the site file all read the site the part belongs to) */
+    if (bare.indexOf('site_') === 0 && typeof DOOR_HQ !== 'undefined' && DOOR_HQ.rooms && DOOR_HQ.rooms[bare] && DOOR_HQ.rooms[bare].site) { const site = hqSiteId(DOOR_HQ.rooms[bare].site); if (site) return site; }
+    return bare;
 }
 /* The per-condition checklist behind a threshold's lamp (plan 3.1):
    { have: {cond: true}, done: n, total: n, missing: [cond…], mastered }. */
@@ -36821,6 +37871,7 @@ hqBuildAreas();          // THE AREAS (2026-09-18): every board is an area — t
 hqApplySiteEntries();   // THE ENTRY (2026-09-17): the bypassed board rooms' egress doors, on their parts
 hqRefreshComplexLinks();
 hqReplateDoors();       // THE PLATE READS THE ROOM THROUGH THE DOOR (2026-09-18) — after the entries and the links
+_mfRegisterAreaDeltas(); // THE AREA BOARDS (2026-09-19): a Δ per explorable part, filed once the rooms exist (DELTA FORGE, the block after the site boards)
 /* ── THE CAVE GRID (HQ plan 9.3 stage 2 — 2026-09-15 rev 11) ──────────────
    A box room may carry `cave`: a hand-authored ASCII GRID that IS the room's
    floor — rock, floor at several LEVELS, ramps, bridges, water and lava —
@@ -39733,8 +40784,12 @@ function hqEncounterLaunch(roomId, ch, cfg, opts) {
     const n = c.teamSize;
     const pool = (typeof hqMissionPool === 'function') ? hqMissionPool(site, n) : [];
     const roster = [ch.race].concat(pool.filter(r => r !== ch.race)).slice(0, Math.max(n, 1));
+    /* THE AREA BOARDS (2026-09-19): a part with a Δ of its own (data.js _MF_AREA_DELTA_BUILDERS → hqAreaDeltaId) fights THAT —
+       the encounter in the cavern is on THE CAVERN's board, in the sewers on THE SEWERS'; the site's Δ stands in for a room without one */
+    const launchId = (typeof hqAreaDeltaId === 'function') ? hqAreaDeltaId(roomId) : null;
     return {
         site, delta: true, gm: c.gm, teamSize: n, rounds: c.rounds, roster, codeRed: !!opts.codeRed,
+        launchId, area: launchId ? roomId : null,
         doorId: 'crossing', counterId: 'crossing',
         encounter: { race: ch.race, gender: ch.gender || 'male', id: ch.id || null, room: roomId, x: +(ch.x || 0), z: +(ch.z || 0), gesture: opts.gesture || 'attack', label: ch.label || ch.race,
                      name: ch.label || null },   // D2: the room's own name for the native — the enemy lead wears it on the nameplate

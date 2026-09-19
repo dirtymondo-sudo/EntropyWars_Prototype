@@ -66,7 +66,8 @@ function runParityChecks() {
     try {
         const pool = extractConst(fs.readFileSync(path.join(REPO_ROOT, 'server.js'), 'utf8'), 'MAP_POOL');
         const meta = vm.runInContext('EW_MAP_META', client);
-        const launch = meta.filter(m => !m.facility && m.id !== 'prebuilt_training' && m.id !== 'prebuilt_holosim');
+        // THE AREA BOARDS (2026-09-19): a complex part's Δ (`area` on the row) is never dealt in ranked — it stays out of the pool
+        const launch = meta.filter(m => !m.facility && !m.area && m.id !== 'prebuilt_training' && m.id !== 'prebuilt_holosim');
         const cIds = new Set(launch.map(m => m.id)), sIds = new Set(pool.map(m => m.modeId));
         for (const id of setDiff(cIds, sIds)) problems.push(`MAP_POOL: '${id}' is a launch map in data.js but missing from server.js (never dealt in ranked)`);
         for (const id of setDiff(sIds, cIds)) problems.push(`MAP_POOL: '${id}' in server.js but data.js has no such launch map`);

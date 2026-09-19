@@ -10946,3 +10946,36 @@ hq-stage2 / hq-map-remembers / hq-skate / hq-deep / hq-portal / hq-encounter / s
 - Ship: data.js / map.js / battle.js / state.js / ui.js / styles-base.css → R2 (data.js to Render too); index.html → Render
   (token `20260919-party-01-cors`); hq-party.test.js + hq-encounter.test.js + docs → the repo.
 - UNSEEN LIVE (RULE #1c): all of it — CLAUDE.md's entry lists what to eyeball first.
+
+### 2026-09-19 — THE Δ AREA PASS: every site Δ a cut of its entry part + a Δ per explorable part (local delivery)
+- The user: "fix and revise the delta maps to look more like their corresponding explorable areas, then make delta maps for
+  the explorable areas that don't have delta maps yet."
+- **The 38 site Δs re-authored** (data.js DELTA FORGE, `_MF_DELTA_BUILDERS`): each is now a cut of the part the bay door lands
+  in (`siteRooms.entry`) — its floor / cliff / path sheets as the board's terrain keys, its named features in the forge's
+  vocabulary (a plateau = a step / block, a stream = a wade, a deep pool = deep water, a deck = a `bridge` tile, a wall row =
+  a thin wall, the weenie = the +3 block or the monument), its props (torches for braziers / masts / candles, greytubes for
+  tanks / well heads, cargo for kegs / stacks). The desc names the part. Notable: Camelot is THE OUTER WARD (the moat, the
+  drawbridge, the curtain wall with the gate at x 3..4, the gatehouse towers); Heaven THE CLOUD FIELDS (THE RIFT + THE PLANK,
+  THE DAIS behind the pearly walls) on a cloud bed; the Looking-Glass THE GARDEN (hedges, the fountain, the topiary pieces);
+  D.U.M.B. LEVEL P3; Area 51 HANGAR 18; the Vatican THE BASILICA; Bermuda's sheet grew the lighthouse rock + the jetty.
+- **THE AREA BOARDS — 56 new Δs** (`_MF_AREA_DELTA_BUILDERS[roomId]`, the block right after the site boards): one per
+  complex part that is not a site's entry part — D.U.M.B. ×5, Camelot ×4, the abyss, the stairway, the noodle bar, Area 51 ×2,
+  the cave ×7, the woods ×6, the Vatican ×4, the ley lines, the Dutchman ×3, the Spaceship ×3, the Astral Realm ×4, the Haunted
+  House ×4, the Strip ×2, Downtown ×8. `_mfRegisterAreaDeltas()` (called after `hqReplateDoors()`) files each as
+  `PREBUILT_MAPS[<roomId>_delta]` + a layout + an EW_MAP_META row wearing `area: roomId` + `site`; `_mfAreaDeltaEnv` = the
+  site's Δ env with `near` / `motion` dropped, a CLOSED part indoors (`world.kind 'room'`, no stars / nebula / roster) and an
+  OPEN part under the site's sky (`world.sea` dropped — no setting lays the sheet); the room's `look` rides as `env.look`.
+- **The reads**: `hqAreaDeltaId(roomId)` (on `window`) = the part's board or null; `hqSiteId` resolves `<roomId>_delta` to the
+  room's SITE (the CPU pool, the checklist, the stamp, the site file — `doorSiteFile` goes through it); `hqEncounterLaunch`
+  carries `launchId` / `area`, map.js `_hqEncounterStart` launches it and `_hqEncounterFire` rasterises NO field window for a
+  room that has a board (the copy says THE ROOM’S OWN BOARD). The FULL terminal lists them as Δ cards; the SITE variant keeps
+  the site's pair; ranked never deals them (check-data-parity skips `area` rows — server.js MAP_POOL is untouched).
+- Tests: delta-maps.test.js runs every house rule on all 96 boards (38 sites + 56 areas + 2 facility) and insists every
+  non-entry part has one; world-ground / hq-encounter / hq-areas / hq-field / hq-map / motion-maps / scene-lifecycle green;
+  `npm run test:quick` green.
+- Ship: data.js → R2 AND Render (the server loads it), map.js → R2, index.html → Render (`20260919-area-deltas-01-cors`);
+  delta-maps.test.js + check-data-parity.js + docs → the repo.
+- UNSEEN LIVE (RULE #1c): every board — the tints against the real sheets (a room's `urban:` sheet became the nearest board
+  key: concrete / tile / metal / rubber), the closed parts' dark ceiling over an 8×8 with no room drawn round it (§10 stage 4
+  builds the room only round a FIELD; a part's Δ stands alone in its site's fog), the cloud-bed boards, the `bridge` tiles
+  as decks. Next: a `near` builder per closed part (the room's walls round its Δ), the SITE terminal offering a site's area Δs.

@@ -6134,3 +6134,23 @@ ground callback — never `doSpell` / `applyDamageToUnit` / `state`. A tile is 1
 round = 2.5 s. §2.2 maps every kind class to a live delivery; §4 lists the decisions
 the user owns (the roll key, the wheel's bind gesture, live vs tactical toggle,
 followers). Nothing built; VS-CPU only (RULE #2 has nothing to relay).
+
+## THE Δ AREA PASS — every site Δ is a cut of its entry part + THE AREA BOARDS (a Δ per explorable part) — 2026-09-19, local delivery
+The user: "revise the delta maps to look more like their corresponding explorable areas, then make delta maps for the
+explorable areas that don't have delta maps yet". **The 38 site Δs** (data.js DELTA FORGE `_MF_DELTA_BUILDERS`) are cuts of
+their ENTRY PART (`siteRooms.entry` → the room the bay door lands in): the part's sheets as board keys, its features in the
+forge's vocabulary (plateau = step / block, stream = a wade, deep pool = deep water, deck = a `bridge` tile, wall row = a thin
+wall, the weenie = the +3 block / the monument), its props as torches / greytubes / cargo; the desc names the part. Reread the
+room's spec before retuning a board. **THE AREA BOARDS**: `_MF_AREA_DELTA_BUILDERS[roomId]` (the block after the site boards)
+= 56 Δs, one per complex part that is not an entry part; `_mfRegisterAreaDeltas()` (after `hqReplateDoors()`) files each as
+`PREBUILT_MAPS[<roomId>_delta]` + a layout + an EW_MAP_META row wearing **`area: roomId` + `site`** (`_mfAreaDeltaEnv`: the
+site's Δ env minus `near` / `motion`; a CLOSED part indoors — `world.kind 'room'`, no stars / nebula / roster; an OPEN part
+under its site's sky, `world.sea` dropped; the room's `look` as `env.look`). Reads: **`hqAreaDeltaId(roomId)`** (the part's
+board or null — the ONE read), `hqSiteId('<roomId>_delta')` → the room's SITE (the pool, the checklist, the stamp, the site
+file), `hqEncounterLaunch(...).launchId` / `.area` → map.js `_hqEncounterStart` fights the part's own board and `_hqEncounterFire`
+rasterises no field window for a room that has one (the copy: THE ROOM’S OWN BOARD). The FULL terminal lists them as Δ cards;
+ranked never deals them (check-data-parity skips `area` rows; server.js MAP_POOL untouched). RULES: adding a part = a builder
+keyed by its room id, nothing else; delta-maps.test.js runs every house rule on all 96 boards and FAILS when a non-entry part
+has no Δ; the site count stays 38. Ship data.js to R2 AND Render. Unseen live (RULE #1c): every board — the `urban:` sheets
+became the nearest board key, a closed part's Δ stands alone under a dark ceiling (§10 stage 4 draws the room round a FIELD
+only), the cloud-bed boards, the `bridge` decks.
