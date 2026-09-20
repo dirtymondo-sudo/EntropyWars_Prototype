@@ -861,9 +861,10 @@ test('Phase 6: gangster + nun exist in every race table, with the §6 stats and 
     assert.ok(/'nun': 'female',/.test(spritesSrc) && /'gangster': 'male',/.test(spritesSrc), 'RACE_SPRITE_GENDERS');
     // Both are starters on both sides now (parity) — the 3D-only roster rule
     // has nothing left to shelve in Phase 6.
-    assert.ok(D.ACCT_STARTER_UNITS.includes('nun') && D.ACCT_STARTER_UNITS.includes('gangster'), 'data.js starters');
-    assert.ok(/'nun',\s*\n\s*'yeti', 'skeleton'/.test(serverSrc), 'server.js starters');
-    assert.ok(/'gangster',\s*\n\];/.test(serverSrc), 'server.js gangster starter');
+    /* THE ROSTER LOCK (2026-09-20): the starters are the DOOR Agent + the Homosapien only — the nun and the gangster are BOUGHT (the Quartermaster), on both sides' race tables */
+    assert.ok(!D.ACCT_STARTER_UNITS.includes('nun') && !D.ACCT_STARTER_UNITS.includes('gangster'), 'data.js: the nun and the gangster are not starters any more');
+    assert.ok(/'door agent',\s*\n\s*'homosapien',/.test(serverSrc), 'server.js starters');
+    assert.ok(/AVAILABLE_RACES = new Set\(\[[^\]]*'gangster'/.test(serverSrc), 'server.js knows the gangster (AVAILABLE_RACES)');
     // The Heat Death ladder tops out at the roster size.
     const heat = D.ACH_CATALOG.find(l => l.metric === 'champsMastered');
     assert.strictEqual(heat.tiers[heat.tiers.length - 1], D.AVAILABLE_RACES.length);

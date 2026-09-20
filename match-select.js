@@ -363,8 +363,13 @@ function MatchSelect(props) {
   const [mapIdx, setMapIdx] = useState(() => {
     if (pre && pre.launchId) { const i = mapList.findIndex(m => m.modeId === pre.launchId); if (i >= 0) return i; }
     if (isSite) return deltaIdx >= 0 ? deltaIdx : fullIdx;
-    const di = mapList.findIndex(m => m.isDelta);
-    return di >= 0 ? di : 7;
+    /* THE EARNED DOORS (2026-09-20): a desk that deals only earned sites opens on the first Δ it may deal */
+    const allow = (pre && Array.isArray(pre.allow)) ? new Set(pre.allow) : null;
+    const siteOf0 = (id) => (typeof window.hqSiteId === 'function') ? window.hqSiteId(id) : String(id || '').replace(/_delta$/, '');
+    const di = mapList.findIndex(m => m.isDelta && !m.field && (!allow || allow.has(siteOf0(m.modeId))));
+    if (di >= 0) return di;
+    const ai = allow ? mapList.findIndex(m => !m.field && allow.has(siteOf0(m.modeId))) : -1;
+    return ai >= 0 ? ai : 7;
   });
   const [sizeFilter, setSizeFilter] = useState(null);
   /* the Δ filter opens on the pre-selected board's own kind (the Training
@@ -446,12 +451,16 @@ function MatchSelect(props) {
     return mapList.map((m, i) => mpMode.compatibleMaps.includes(m.modeId) ? i : -1).filter(i => i >= 0);
   }, [gmIdx]);
 
+  const allowSites = (pre && Array.isArray(pre.allow)) ? new Set(pre.allow) : null;
+  const siteOf = (id) => (typeof window.hqSiteId === 'function') ? window.hqSiteId(id) : String(id || '').replace(/_delta$/, '');
   const filteredMaps = useMemo(() => {
     if (pinnedMap) return compatibleMapIndices;
     return compatibleMapIndices.filter(i => {
       const m = mapList[i];
       if (!m) return false;
       if (m.field) return false;   // THE FIELD (Phase 9 stage B): an encounter's rasterised window is never filed from the console
+      /* THE EARNED DOORS (2026-09-20): a console may deal only the sites Otto has built a door to (pre.allow = site ids; the RANGE console passes none = every site) */
+      if (allowSites && !allowSites.has(siteOf(m.modeId))) return false;
       if (deltaOnly && !m.isDelta) return false;
       const w = m.w || 8;
       if (sizeFilter === 'sm' && w > 8) return false;

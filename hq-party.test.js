@@ -53,8 +53,16 @@ test('THE SEED: the officer first (slot 1, YOU), then the last roster one vessel
     assert.equal(g('hqPartyEnsure')(p, { last }), g('hqPartyRecord')(p), 'a second ensure is the same record');
     const q = profile();
     const rec2 = g('hqPartyEnsure')(q, {});
-    assert.equal(rec2.members.length, R.shift, 'no roster: the officer + three starters fill the first shift');
-    assert.ok(rec2.members.slice(1).every(m => ['knight', 'wizard', 'fairy'].includes(m.meta.race)));
+    /* THE ROSTER LOCK (2026-09-20): the seed fills the first shift from what the account OWNS — the two starters (the officer's DOOR Agent + the recruit) offline */
+    const ownedSeed = g('hqPartyUnlocked')(q).filter(r => r !== R.officerRace);
+    assert.equal(rec2.members.length, Math.min(R.shift, 1 + ownedSeed.length), 'no roster: the officer + whatever the account owns fill the first shift');
+    assert.ok(rec2.members.slice(1).every(m => ownedSeed.includes(m.meta.race)));
+    /* an account that owns nothing beyond the starters seeds the officer + the recruit */
+    const bare = profile({ account: { gold: 0, unlockedUnits: [] } });
+    const rec3 = g('hqPartyEnsure')(bare, {});
+    const bareOwned = g('hqPartyUnlocked')(bare).filter(r => r !== R.officerRace);
+    assert.equal(rec3.members.length, Math.min(R.shift, 1 + bareOwned.length), 'the starters fill the first shift: the officer + the recruit + the free hires');
+    assert.ok(rec3.members.some(m => m.meta.race === 'homosapien'), 'the recruit is a starter');
     /* the mirror's look leads: a homosapien in the creator's clothes */
     const r = profile({ door: { clearance: 1, hq: { avatar: { mode: 'look' }, look: { gender: 'female', appearance: {}, name: 'Ada' } } } });
     const off = g('hqPartyOfficer')(r);

@@ -8372,7 +8372,7 @@
                 const classLbl = _CODEX_CLASS_LABELS[cls] || 'UNCLASSIFIED';
                 const selected = race === _codexSelectedRace ? ' selected' : '';
                 const sprUrl = _codexGetSpriteUrl(race);
-                const unlocked = (typeof isUnitUnlocked === 'function') ? isUnitUnlocked(race) : true;
+                const unlocked = (typeof isUnitOwned === 'function') ? isUnitOwned(race) : true;
                 const lockedCls = unlocked ? '' : ' cdx-list-locked';
                 const spriteStyle = unlocked
                     ? `background-image:url('${sprUrl}')`
@@ -8448,7 +8448,7 @@
         // Collection meter — shared by codex + shop toolbars.
         function _codexMeterHtml() {
             const total = AVAILABLE_RACES.length;
-            const owned = AVAILABLE_RACES.filter(r => (typeof isUnitUnlocked === 'function') ? isUnitUnlocked(r) : true).length;
+            const owned = AVAILABLE_RACES.filter(r => (typeof isUnitOwned === 'function') ? isUnitOwned(r) : true).length;
             const pct = Math.round((owned / Math.max(1, total)) * 100);
             return `<div class="cdx-meter" title="${owned} of ${total} vessels declassified">
                 <span class="cdx-meter-label">VESSELS DECLASSIFIED</span>
@@ -8459,7 +8459,7 @@
 
         // Full dossier when owned; fully-redacted dossier when locked.
         function _codexDossierFor(race) {
-            const unlocked = (typeof isUnitUnlocked === 'function') ? isUnitUnlocked(race) : true;
+            const unlocked = (typeof isUnitOwned === 'function') ? isUnitOwned(race) : true;
             return unlocked ? _codexRenderDossier(race) : _codexRenderRedactedDossier(race);
         }
 
@@ -8578,7 +8578,7 @@
         function _shopDailyFeatured() {
             // Deterministic daily rotation by date seed over the locked roster.
             // Only buyable (3D-ready) vessels get featured.
-            const locked = AVAILABLE_RACES.filter(r => _shopBuyable(r) && !((typeof isUnitUnlocked === 'function') ? isUnitUnlocked(r) : true));
+            const locked = AVAILABLE_RACES.filter(r => _shopBuyable(r) && !((typeof isUnitOwned === 'function') ? isUnitOwned(r) : true));
             if (locked.length === 0) return [];
             const d = new Date();
             let seed = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
@@ -8595,7 +8595,7 @@
             opts = opts || {};
             const p = RACE_PROFILES[race];
             if (!p) return '';
-            const unlocked = (typeof isUnitUnlocked === 'function') ? isUnitUnlocked(race) : true;
+            const unlocked = (typeof isUnitOwned === 'function') ? isUnitOwned(race) : true;
             const sprUrl = _codexGetSpriteUrl(race);
             const selected = race === _shopSelectedRace ? ' selected' : '';
             const lockedCls = unlocked ? '' : ' locked';
@@ -8619,7 +8619,7 @@
         // The pinned action bar: whatever state the vessel is in, the button
         // that matters is ALWAYS on screen — never below the fold.
         function _shopActionBar(race) {
-            const unlocked = (typeof isUnitUnlocked === 'function') ? isUnitUnlocked(race) : true;
+            const unlocked = (typeof isUnitOwned === 'function') ? isUnitOwned(race) : true;
             const rk = race.replace(/'/g, "\\'");
             if (unlocked) {
                 return `<div class="cdx-actionbar">
@@ -8669,7 +8669,7 @@
 
         function _shopRenderDetail(race) {
             if (!race || !RACE_PROFILES[race]) return '<div class="cdx-empty" style="margin:auto">Select a vessel to inspect its dossier.</div>';
-            const unlocked = (typeof isUnitUnlocked === 'function') ? isUnitUnlocked(race) : true;
+            const unlocked = (typeof isUnitOwned === 'function') ? isUnitOwned(race) : true;
             const price = (window.ACCT_UNIT_PRICE || 5000).toLocaleString();
             const priceTag = unlocked
                 ? '<div class="cdx-hero-price owned">✓ OWNED</div>'
@@ -8688,14 +8688,14 @@
         function _shopFilteredRaces() {
             let races = AVAILABLE_RACES.filter(r => RACE_PROFILES[r]);
             if (_shopFilterFaction !== 'all') races = races.filter(r => (RACE_PROFILES[r].faction || '') === _shopFilterFaction);
-            if (_shopFilterOwn === 'owned') races = races.filter(r => isUnitUnlocked(r));
-            if (_shopFilterOwn === 'locked') races = races.filter(r => !isUnitUnlocked(r));
+            if (_shopFilterOwn === 'owned') races = races.filter(r => isUnitOwned(r));
+            if (_shopFilterOwn === 'locked') races = races.filter(r => !isUnitOwned(r));
             if (_shopSearch.trim()) {
                 const q = _shopSearch.trim().toLowerCase();
                 races = races.filter(r => (RACE_PROFILES[r].label || r).toLowerCase().includes(q) || r.toLowerCase().includes(q));
             }
             // What you can act on leads: buyable → coming-soon → owned, A→Z within each.
-            const rank = r => isUnitUnlocked(r) ? 2 : (_shopBuyable(r) ? 0 : 1);
+            const rank = r => isUnitOwned(r) ? 2 : (_shopBuyable(r) ? 0 : 1);
             races.sort((a, b) => (rank(a) - rank(b)) || (RACE_PROFILES[a].label || a).localeCompare(RACE_PROFILES[b].label || b));
             return races;
         }
@@ -8716,8 +8716,8 @@
             const body = document.getElementById('shopBody');
             if (!body) return;
             if (!_shopSelectedRace) {
-                const firstBuyable = AVAILABLE_RACES.find(r => _shopBuyable(r) && !isUnitUnlocked(r));
-                _shopSelectedRace = firstBuyable || AVAILABLE_RACES.find(r => !isUnitUnlocked(r)) || AVAILABLE_RACES[0];
+                const firstBuyable = AVAILABLE_RACES.find(r => _shopBuyable(r) && !isUnitOwned(r));
+                _shopSelectedRace = firstBuyable || AVAILABLE_RACES.find(r => !isUnitOwned(r)) || AVAILABLE_RACES[0];
             }
 
             const factionOpts = ['all', 'space', 'time', 'chaos'];

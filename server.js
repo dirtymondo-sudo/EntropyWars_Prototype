@@ -128,44 +128,17 @@ const ACCT_STARTING_GOLD  = 0;
 const ACCT_FREE_TOKENS    = 1;
 const ACCT_MATCH_GOLD_CAP = 5000;
 const ACCT_PVP_MODES = new Set(['arena', 'tdm', 'clash']);
+// THE ROSTER LOCK (2026-09-20): five starters — the DOOR Agent (the officer), the
+// Homosapien (the recruit), the catgirl, bigfoot and the Sedan (the user's free hires). Everything else is bought (Hazard Pay / the free ticket).
+// Mirror of data.js ACCT_STARTER_UNITS (npm run test:parity). NOTE: this list is
+// UNIONED into an existing account on login and never removed — an account that
+// already holds the old all-3D roster keeps it until its unlockedUnits row is reset.
 const ACCT_STARTER_UNITS = [
-    'men in black', 'wizard', 'werewolf', 'mad scientist', 'homosapien', 'catgirl',
-    'fortune teller', 'bigfoot', 'grey', 'marksman', 'knight', 'fairy',
-    'telepath', 'quarterback', 'ki fighter', 'cowboy', 'atlantean', 'pirate', 'vampire',
-    'shaman', 'giant', 'halfdemon',
-    // 2026-07-06: new rigged 3D models wired in sprites.js
-    'martian', 'machine elves', 'nordic', 'annunaki', 'demon',
-    // 2026-07-11: batch-upload wave (sprites.js RACE_MODELS_3D)
-    'scarecrow', 'santa clause', 'mermaid', 'anubis',
-    'robinhood', 'antperson', 'necromancer', 'succubus', 'barbarella',
-    'king arthur', 'mantid', 'mech', 'minotaur', 'mothman', 'reptilian',
-    'robot', 'cyborg',
-    // 2026-07-13 batch (was missing here — client data.js had them already)
-    'swordfighter', 'zombie', 'fallen angel',
-    // 2026-07-19 batch + the never-listed nun (keep in sync with data.js
-    // ACCT_STARTER_UNITS; login unions this list into existing accounts)
-    'priest',
-    // 2026-09-08 CHAMP REWORK Phase 6: the nun is her own race (same
-    // whitemage female model the priest listing was added for)
-    'nun',
-    'yeti', 'skeleton', 'kaiju', 'superhero', 'demon princess',
-    'voidweaver', 'honda civic',
-    // 2026-09-14 DOOR_RACE_DESIGN: the Department's own officers (the cast GLBs)
     'door agent',
-    // 2026-07-22 batch (divine host wave)
-    'valkraye', 'angel', 'ghost', 'nephilim',
-    // 2026-07-24 batch
-    'djinn', 'orb of light',
-    // 2026-07-25 batch (monsters & main characters)
-    'gnome', 'king kong', 'goatman', 'kraken',
-    'politician', 'conspiracy theorist', 'overlord',
-    // 2026-08-06 batch (prehistoric predators)
-    'dinosaur', 'dragon',
-    // 2026-08-13 batch (horrors, cryptids & the general)
-    'black goo', 'cosmic wraith', 'dreameater', 'gargoyle', 'ghoul',
-    'glitch', 'golem', 'loch ness monster', 'general',
-    // 2026-09-10: the gangster's rigged model landed, so he unshelves
-    'gangster',
+    'homosapien',
+    'catgirl',
+    'bigfoot',
+    'honda civic',
 ];
 const AVAILABLE_RACES = new Set(['homosapien', 'pirate', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'swordfighter', 'symbiote', 'valkraye', 'watcher', 'gangster', 'nun', 'door agent']);
 

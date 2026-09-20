@@ -44855,6 +44855,10 @@ const ThreeRenderer = (function () {
         var backMat = _hqMat(null, 1, 1, { color: 0x15161a, shininess: 4 });
         var housingMat = _hqMat(null, 1, 1, { color: 0x2b2d33, shininess: 30 });
         (room.doors || []).forEach(function (door) {
+            /* THE EARNED DOORS (2026-09-20): a bay threshold Otto has not built (data.js hqApplyEarnedDoors → `hidden`) is
+               NOTHING — no frame, no leaf, no plate, no record (the scan, the walk-in, the map and the rounds never see it);
+               the run of wall stands blank until the site is stabilized in the field */
+            if (door.hidden) return;
             var level = door.level || 0;
             var inward = door.side === 'in';       // hangs on a bay's inner wall, faces away from the arc centre
             var Rw = _hqWallR(room, level, door.side);

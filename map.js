@@ -829,6 +829,11 @@
             } catch (e) { console.warn('[HQ] per-entry variant roll failed', e); }
             /* THE SHIP'S ONE DOOR (2026-09-16): the collar's plate reads the course on file (the room builds it) */
             try { if (typeof window.hqShipApplyCourse === 'function') window.hqShipApplyCourse(_hqProfile()); } catch (e) {}
+            /* THE EARNED DOORS (2026-09-20): a bay threshold stands in the ring only for a site the officer has STABILIZED
+               (data.js hqApplyEarnedDoors → `hidden` on the row; the renderer builds nothing for it). Re-read on EVERY
+               entry, so a return from the crossing that filed the last win finds the door Otto built. */
+            try { if (typeof window.hqApplyEarnedDoors === 'function') window.hqApplyEarnedDoors(_hqProfile()); } catch (e) { console.warn('[HQ] earned doors failed', e); }
+            window._ewRosterScope = 'owned';   // THE ROSTER LOCK (2026-09-20): in the building you field what you own (data.js unitRosterScope)
             const roomDef = DOOR_HQ.rooms[roomId];
             try { playSfx('uiButtonConfirm'); } catch (e) {}
             /* the strike plate buzzes on the way IN from Play; a return from a
@@ -973,6 +978,8 @@
                 /* the promotion moment (plan 3.4): a clearance the building has
                    not acknowledged yet → PA chime + the personnel notice */
                 if (!walking) { try { _hqCheckPromotion(profile); } catch (e) { console.warn('[HQ] promotion check failed', e); } }
+                /* OTTO BUILDS A DOOR (THE EARNED DOORS, 2026-09-20): a site stabilized since the last ceremony → the chime + the notice */
+                if (!walking) { try { _hqCheckEarnedDoors(profile); } catch (e) { console.warn('[HQ] earned-door check failed', e); } }
                 /* THE SURVEY's background warm: the rooms behind this room's doors compile off-thread now, so the
                    next door opens on a drawn floor plan */
                 try { _hqSurveyWarmAround(roomId); } catch (e) {}
@@ -1027,6 +1034,36 @@
                     try { if (typeof playDoorSfx === 'function') playDoorSfx('stamp', { delay: 0.35, volume: 0.8 }); } catch (e) {}
                 }, 1500);
             }, Math.max(0, 1700 - (performance.now() - _hqEnteredAt)));
+            return true;
+        }
+        /* OTTO BUILDS A DOOR (THE EARNED DOORS, 2026-09-20): every site the officer has stabilized that the
+           building has not acknowledged (door.hq.earned) — the PA chime, then a toast per site naming its bay;
+           stamped in ONE transaction so it fires once. A profile that arrives with stabilized sites on file
+           gets its ceremony on the first arrival (the doors ARE new to the building). */
+        function _hqCheckEarnedDoors(profile) {
+            if (!profile || typeof window.hqEarnedDoorsNew !== 'function' || typeof window.hqEarnedDoorsStamp !== 'function') return false;
+            const PS = window.ProfileSystem;
+            if (!PS || typeof PS.getActiveProfileIndex !== 'function') return false;
+            const idx = PS.getActiveProfileIndex();
+            if (idx === null || idx === undefined) return false;
+            const p = PS.loadProfile(idx);
+            if (!p) return false;
+            const fresh = window.hqEarnedDoorsNew(p);
+            if (!fresh.length) return false;
+            const r = window.hqEarnedDoorsStamp(p, fresh);
+            if (!r || !r.ok) return false;
+            PS.saveProfile(idx, p);
+            setTimeout(() => {
+                if (state.gameState !== GS.HQ || _hqSuspended) return;
+                try { if (typeof playDoorSfx === 'function') playDoorSfx('paChime', { volume: 0.9 }); } catch (e) {}
+                fresh.forEach((id, i) => setTimeout(() => {
+                    if (state.gameState !== GS.HQ) return;
+                    const sector = (typeof window.hqSectorOfMap === 'function') ? window.hqSectorOfMap(id) : null;
+                    const bayNo = (sector && typeof window.hqBayNo === 'function') ? window.hqBayNo(sector) : null;
+                    _hqToast(`<b>OTTO HAS BUILT A DOOR</b> · ${_hqEsc(_hqMapLabel(id).toUpperCase())}${bayNo ? ' · BAY ' + bayNo : ''}<span>THE SITE IS STABILIZED · ITS THRESHOLD STANDS IN THE RING</span>`, 5200);
+                    try { if (typeof playDoorSfx === 'function') playDoorSfx('stamp', { volume: 0.7 }); } catch (e) {}
+                }, 900 + i * 2800));
+            }, Math.max(0, 2200 - (performance.now() - _hqEnteredAt)));
             return true;
         }
         function _hqNoticePanelHtml(t) {
@@ -1932,6 +1969,19 @@
             if (idx < 0) { launchId = site; idx = MS_MAP_LIST.findIndex(m => m.modeId === launchId); }
             if (idx < 0) { console.warn('[HQ] no launch entry for', mapId); return false; }
             const entry = MS_MAP_LIST[idx];
+            /* THE EARNED DOORS (2026-09-20): a crossing is filed from INSIDE the site (the BATTLE marker / the CROSSING
+               console of the room you stand in — o.variant 'site'), through a door Otto built (the site is stabilized),
+               or at Room 64's range (the FULL desk, every site); never from a plate in the hall for a site still wild */
+            if (o.variant !== 'full' && typeof window.hqSiteEarned === 'function' && !window.hqSiteEarned(site, _hqProfile())) {
+                const here = _hqRoom(); const hereSite = here && here.site && typeof window.hqSiteId === 'function' ? window.hqSiteId(here.site) : null;
+                if (hereSite !== site) {   // standing IN the site (its console / marker / crossing panel) is the natural way to file it
+                    _hqToast(`<b>NO DOOR YET</b> · ${_hqEsc(_hqMapLabel(site).toUpperCase())}<span>STABILIZE THE SITE FROM INSIDE IT · OTTO BUILDS THE THRESHOLD</span>`);
+                    try { playSfx('uiError'); } catch (e) {}
+                    return false;
+                }
+            }
+            /* THE ROSTER LOCK (2026-09-20): the range's desk opens the whole roster (testing); every other crossing from the building fields what you own */
+            window._ewRosterScope = (o.scope === 'all') ? 'all' : 'owned';
             const teamSize = o.teamSize || (delta ? 4 : (entry.team || 4));
             /* a Code Red response (plan 3.3): the out-of-place entity leads the
                CPU roster; the run marker is what the match commit (battle.js)
@@ -2086,7 +2136,7 @@
                 const id = c.site || (room && room.site);
                 if (!id) return false;
                 const th = (DOOR_HQ.thresholds || {})[id] || {};
-                const door = { id: c.id || 'crossing', label: c.label || 'CROSSING CONSOLE', action: { mission: id }, roomNo: (th.roomNo != null) ? String(th.roomNo) : null };
+                const door = { id: c.id || 'crossing', label: c.label || 'CROSSING CONSOLE', action: { mission: id }, roomNo: (th.roomNo != null) ? String(th.roomNo) : null, inSite: true };
                 const st = (typeof window.doorSiteState === 'function') ? window.doorSiteState(door, _hqProfile()) : 'unstable';
                 if (st === 'sealed' || st === 'clearance' || st === 'off') return false;
                 return window._hqLaunchMission(id, { delta: true, doorId: c.id || 'crossing', doorLabel: c.label || 'CROSSING CONSOLE', counterId: c.id || 'crossing', variant: 'site' });
@@ -2101,6 +2151,7 @@
         function _hqRangeTerminal(counterId) {
             return window._hqLaunchMission('prebuilt_training', {
                 delta: true, roster: [], doorId: counterId || 'range', doorLabel: 'RANGE CONSOLE', counterId: counterId || 'range', variant: 'full',
+                scope: 'all',   // THE ROSTER LOCK (2026-09-20): Room 64 is the testing bench — every site, the whole roster
                 /* the facility boards are 8×8 already — they have no Δ cut (launchId = the site) */
                 presets: [
                     { id: 'orientation', label: 'SPARRING · TRAINING ROOM', launchId: 'prebuilt_training', gm: 'arena', teamSize: 4, title: 'Arena · 4v4 on the 8×8 Training Room board · free CPU pool' },
@@ -2112,7 +2163,11 @@
            beyond the Δ default — a simulated crossing on any site */
         function _hqDeskTerminal(counterId, label) {
             if (_hqSuspended) return false;
-            const pre = { doorId: counterId || 'dispatch', doorLabel: label || 'DISPATCH', delta: true, roster: [], locked: false, presets: null };
+            /* THE EARNED DOORS (2026-09-20): the desk deals the sites Otto has built a door to (+ the range's own boards); the rest are found in the field */
+            const allow = (typeof window.hqThresholdSites === 'function' && typeof window.hqSiteEarned === 'function')
+                ? window.hqThresholdSites().filter(id => window.hqSiteEarned(id, _hqProfile())).concat(['prebuilt_training', 'prebuilt_holosim']) : null;
+            const pre = { doorId: counterId || 'dispatch', doorLabel: label || 'DISPATCH', delta: true, roster: [], locked: false, presets: null, allow };
+            window._ewRosterScope = 'owned';   // THE ROSTER LOCK: the desk fields what you own
             if (counterId) { _hqLastDoor = counterId; _hqLastRoom = _hqCurRoom; _hqRecordVisit(counterId); }
             return _hqOpenTerminal({ variant: 'full', counterId: counterId || null, pre });
         }
@@ -3226,11 +3281,17 @@
                 svg += `<line class="hq-sky-spoke" x1="${C}" y1="${C}" x2="${f1(C + Math.cos(b.a0) * R)}" y2="${f1(C + Math.sin(b.a0) * R)}"/>`;
                 const am = (b.a0 + b.a1) / 2;
                 svg += `<text class="hq-sky-bay${b.locked ? ' dim' : ''}" x="${f1(C + Math.cos(am) * (R + 26))}" y="${f1(C + Math.sin(am) * (R + 26))}" text-anchor="middle" dominant-baseline="middle">BAY ${b.bayNo || '?'}</text>`;
-                if (b.stars.length > 1) svg += `<polyline class="hq-sky-line" points="${b.stars.map(st => f1(C + st.x * R) + ',' + f1(C + st.z * R)).join(' ')}"/>`;
+                const drawn = b.stars.filter(st => (st.chart || 'earned') !== 'uncharted');   // the constellation joins only the stars on file
+                if (drawn.length > 1) svg += `<polyline class="hq-sky-line" points="${drawn.map(st => f1(C + st.x * R) + ',' + f1(C + st.z * R)).join(' ')}"/>`;
             });
             chart.stars.forEach(st => {
                 const x = C + st.x * R, y = C + st.z * R, rad = 2.6 + st.done * 1.1;
-                svg += `<g class="hq-star st-${_hqEsc(st.st)}" data-star="${_hqEsc(st.id)}" tabindex="0"><title>ROOM ${_hqEsc(st.no || '—')} · ${_hqEsc(st.label)} · ${st.done}/${st.total}${st.st === 'codered' ? ' · CODE RED' : ''}</title>`
+                /* THE EARNED DOORS (2026-09-20): an UNCHARTED star is a nameless dot (the sky knows it is there; the file does not); a CHARTED
+                   one is named with its checklist but opens no door; only an EARNED one (Otto built its door) answers POINT */
+                const ch = st.chart || 'earned';
+                if (ch === 'uncharted') { svg += `<g class="hq-star st-uncharted"><title>UNCHARTED · A THRESHOLD NOT YET ON FILE</title><circle class="hq-star-dot" cx="${f1(x)}" cy="${f1(y)}" r="1.8"/></g>`; return; }
+                const pointable = ch === 'earned';
+                svg += `<g class="hq-star st-${_hqEsc(st.st)}${pointable ? '' : ' st-charted'}"${pointable ? ` data-star="${_hqEsc(st.id)}" tabindex="0"` : ''}><title>ROOM ${_hqEsc(st.no || '—')} · ${_hqEsc(st.label)} · ${st.done}/${st.total}${st.st === 'codered' ? ' · CODE RED' : ''}${pointable ? '' : ' · NO DOOR YET'}</title>`
                     + `<circle class="hq-star-hit" cx="${f1(x)}" cy="${f1(y)}" r="11"/><circle class="hq-star-dot" cx="${f1(x)}" cy="${f1(y)}" r="${f1(rad)}"/><text x="${f1(x + 7)}" y="${f1(y - 6)}">${_hqEsc(st.no || '')}</text></g>`;
             });
             svg += '</svg>';
@@ -3240,12 +3301,15 @@
             chart.bays.forEach(b => {
                 html += `<div class="hq-chips" style="margin-top:8px"><span>BAY ${b.bayNo || '?'} · ${_hqEsc(b.label)} · ${_hqEsc(b.sub)}${b.locked ? ' · SEALED' : ''}</span></div><div class="hq-rows">`;
                 b.stars.forEach(st => {
+                    const ch = st.chart || 'earned';
+                    if (ch === 'uncharted') { html += '<div class="hq-row dim"><b>UNCHARTED</b><span>A STAR WITH NO FILE · FIND THE SITE IN THE FIELD</span><i class="hq-lamp-chip dim">—</i></div>'; return; }
                     const chip = st.st === 'codered' ? '<i class="hq-lamp-chip st-codered">CODE RED</i>' : `<i class="hq-lamp-chip st-${_hqEsc(st.st)}">${st.st === 'stabilized' ? 'STABILIZED' : (st.st === 'sealed' ? 'SEALED' : `${st.done}/${st.total}`)}</i>`;
-                    html += `<div class="hq-row"><b>${_hqNoTag(st.no)}${_hqEsc(st.label)}</b><span>${st.siteRoom ? 'A ROOM · WALK IT' : 'THRESHOLD'}</span>${chip}<button class="hq-btn hq-btn-sm" data-star="${_hqEsc(st.id)}">POINT ▸</button></div>`;
+                    const tail = (ch === 'earned') ? `<button class="hq-btn hq-btn-sm" data-star="${_hqEsc(st.id)}">POINT ▸</button>` : '<span class="dim">NO DOOR YET · STABILIZE IT FROM INSIDE</span>';
+                    html += `<div class="hq-row"><b>${_hqNoTag(st.no)}${_hqEsc(st.label)}</b><span>${ch === 'earned' ? (st.siteRoom ? 'A ROOM · WALK IT' : 'THRESHOLD') : 'CHARTED · NO THRESHOLD BUILT'}</span>${chip}${tail}</div>`;
                 });
                 html += '</div>';
             });
-            html += '<p class="hq-panel-note">Point at a star and its door opens from here — CROSS ▸ Δ, DEEP, or WALK IN to the room. Bay 1 is at twelve o’clock; the sky goes round the way the building does. The dome overhead is the same chart, painted. Nothing is filed until you cross.</p>';
+            html += '<p class="hq-panel-note">Point at a star whose door Otto has built and it opens from here — CROSS ▸ Δ, DEEP, or WALK IN to the room. A charted star (a site you have walked) is named but opens nothing until it is STABILIZED from inside it; an uncharted one is a dot. Bay 1 is at twelve o’clock; the sky goes round the way the building does. The dome overhead is the same chart, painted.</p>';
             return html;
         }
         window._hqOpenStarmap = function () {
@@ -3264,6 +3328,12 @@
             const id = (typeof window.hqSiteId === 'function') ? window.hqSiteId(mapId) : String(mapId || '').replace(/_delta$/, '');
             const th = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.thresholds && DOOR_HQ.thresholds[id]) || null;
             if (!th) return false;
+            /* THE EARNED DOORS (2026-09-20): no door Otto has not built opens from the chair */
+            if (!o.force && typeof window.hqSiteEarned === 'function' && !window.hqSiteEarned(id, _hqProfile())) {
+                _hqToast(`<b>NO DOOR YET</b> · ${_hqEsc(_hqMapLabel(id).toUpperCase())}<span>STABILIZE THE SITE FROM INSIDE IT · OTTO BUILDS THE THRESHOLD</span>`);
+                try { playSfx('uiError'); } catch (e) {}
+                return false;
+            }
             const sector = (typeof window.hqSectorOfMap === 'function') ? window.hqSectorOfMap(id) : null;
             const sec = (sector && DOOR_HQ.sectors[sector]) || {};
             const bayNo = (sector && typeof window.hqBayNo === 'function') ? window.hqBayNo(sector) : null;
@@ -3308,7 +3378,8 @@
             const sm = (typeof window.hqSiteMastery === 'function') ? window.hqSiteMastery(id, profile) : null;
             const pool = (typeof window.hqMissionPool === 'function') ? window.hqMissionPool(id, 4) : [];
             const nat = pool.natives || 0;
-            const canCross = st !== 'sealed' && st !== 'clearance';
+            const earnedDoor = (typeof window.hqSiteEarned !== 'function') || window.hqSiteEarned(id, profile) || (t.door && t.door.inSite);   // THE EARNED DOORS: the console INSIDE the site always crosses
+            const canCross = st !== 'sealed' && st !== 'clearance' && earnedDoor;
             const caseNo = (typeof window.doorCaseNo === 'function') ? window.doorCaseNo(id) : '';
             const first = (typeof window.doorSiteCanonDate === 'function') ? window.doorSiteCanonDate(id) : '';
             const cr = (st === 'codered' && typeof window.hqCodeRed === 'function') ? window.hqCodeRed(profile) : null;
@@ -3325,6 +3396,7 @@
             html += `<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" ${canCross ? '' : 'disabled'} data-cross="${_hqEsc(id)}" title="Arena · 4v4 on the 8×8 Δ board · CPU fields the site's natives">CROSS ▸ Δ BOARD · 4v4</button><button class="hq-btn" ${canCross ? '' : 'disabled'} data-deep="${_hqEsc(id)}" title="Arena on the full map at its own team size">DEEP CROSSING ▸ FULL SITE${meta && meta.teamSize ? ` · ${meta.teamSize}v${meta.teamSize}` : ''}</button>${walkIn}</div>`;
             if (d.star) html += '<div class="hq-panel-actions"><button class="hq-btn" data-starmap="1">◂ THE CHART · ROOM 360</button></div>';
             if (st === 'sealed') html += '<p class="hq-panel-note">SEALED — this threshold opens with a story chapter.</p>';
+            else if (!earnedDoor) html += '<p class="hq-panel-note">NO DOOR YET — Otto builds a site’s threshold once it is STABILIZED: every win condition filed from INSIDE the site (its BATTLE marker or CROSSING console). Find it in the field.</p>';
             else html += '<p class="hq-panel-note">CROSS ▸ Δ = Arena, 4v4 on the site’s 8×8 board, the CPU fielding the entities on file for it. DEEP = the full map. Each ☐ is a win condition still to be filed; all three turn the lamp green.</p>';
             return html;
         }
@@ -3448,7 +3520,11 @@
                 /* the bay is a corridor you walk (plan 2.6); the rows below are the quick dispatch */
                 if (_hqRoomExists(bayId)) html += `<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" ${canCross ? '' : 'disabled'} data-room="${_hqEsc(bayId)}" data-at="${_hqEsc(act.at || _hqBayEntry(act.sector))}">${act.at ? 'THROUGH THE RING ▸ ' + _hqEsc(sec.label) : 'ENTER THE BAY ▸ WALK THE THRESHOLDS'}</button></div>`;
                 html += '<div class="hq-rows">';
-                sec.maps.forEach(id => {
+                /* THE EARNED DOORS (2026-09-20): the rows are the thresholds Otto has BUILT; the rest are a count — found in the field */
+                const earnedIds = sec.maps.filter(id => (typeof window.hqSiteEarned !== 'function') || window.hqSiteEarned(id, profile));
+                const unbuilt = sec.maps.length - earnedIds.length;
+                if (!earnedIds.length) html += '<div class="hq-row"><b>NO THRESHOLD BUILT YET</b><span>EXPLORE · STABILIZE A SITE FROM INSIDE IT · OTTO BUILDS ITS DOOR HERE</span></div>';
+                earnedIds.forEach(id => {
                     const sf = (typeof window.doorSiteFile === 'function') ? window.doorSiteFile(id) : null;
                     /* mastery checklist (plan 3.1): one tick per win condition on file */
                     const sm = (typeof window.hqSiteMastery === 'function') ? window.hqSiteMastery(id, profile) : null;
@@ -3467,6 +3543,7 @@
                         + (checks ? `<div class="hq-row-checks">${checks}</div>` : '') + '</div>';
                 });
                 html += '</div>';
+                if (unbuilt > 0) html += `<p class="hq-panel-note">${unbuilt} THRESHOLD${unbuilt === 1 ? '' : 'S'} IN THIS BAY NOT YET BUILT — a site’s door is built by Otto once the site is STABILIZED (every win condition filed from inside it). Find the site in the field: the seams, the roads, the hubs.</p>`;
                 if (st === 'sealed') html += '<p class="hq-panel-note">SEALED — this bay opens with a story chapter. The planks stay up.</p>';
                 else if (st === 'clearance') html += `<p class="hq-panel-note">${_hqGateText(d, cl, profile)}</p>`;
                 else html += '<p class="hq-panel-note">CROSS ▸ Δ = Arena, 4v4 on the site’s 8×8 board, the CPU fielding the entities on file for it. DEEP = the full map. Each ☐ is a win condition still to be filed for the threshold; all three turn it green.</p>';
@@ -4378,7 +4455,7 @@
             const id = c.site || (room && room.site);
             if (!id) return `<div class="hq-panel-hd"><b>${_hqEsc(c.label || 'CROSSING CONSOLE')}</b><span>NO SITE ON FILE</span></div><div class="hq-panel-actions"><button class="hq-btn" data-close="1">NOTED</button></div>`;
             const th = (DOOR_HQ.thresholds || {})[id] || {};
-            const door = { id: c.id || 'crossing', label: (c.label || 'CROSSING CONSOLE'), sub: 'BATTLE SETUP' + (room && room.label ? ' · ' + room.label : ''), action: { mission: id },
+            const door = { id: c.id || 'crossing', label: (c.label || 'CROSSING CONSOLE'), sub: 'BATTLE SETUP' + (room && room.label ? ' · ' + room.label : ''), action: { mission: id }, inSite: true,   // THE EARNED DOORS: the console INSIDE the site always crosses
                            note: th.note || '', why: th.why || '', roomNo: (th.roomNo != null) ? String(th.roomNo) : null };
             const st = (typeof window.doorSiteState === 'function') ? window.doorSiteState(door, _hqProfile()) : 'unstable';
             let html = _hqThresholdPanelHtml({ kind: 'door', id: door.id, label: door.label, sub: door.sub, door: door }, st);
@@ -5141,6 +5218,7 @@
         window._goToQuickPlay = function() {
             playSfx('uiButtonConfirm');
             state.gameState = GS.LOBBY;
+            window._ewRosterScope = 'all';   // THE ROSTER LOCK (2026-09-20): online PvP = the whole roster for everyone
 
             _resetLobbyPages('lobbyQuickPlay');
             _showTitlePage('lobbyPage');
@@ -5151,6 +5229,7 @@
         window._goToFriendlyMatch = function() {
             playSfx('uiButtonConfirm');
             state.gameState = GS.LOBBY;
+            window._ewRosterScope = 'all';   // THE ROSTER LOCK (2026-09-20): online PvP = the whole roster for everyone
             _resetLobbyPages('lobbyFriendlyMain');
             _showTitlePage('lobbyPage');
         };
@@ -5160,6 +5239,7 @@
             state.gameState = GS.MODE_SELECT;
 
             window._msCpuOnly = true;
+            window._ewRosterScope = 'all';   // THE ROSTER LOCK (2026-09-20): the classic VS CPU route = the testing bench, the whole roster
             window._hqPreselect = null;   // classic VS CPU: no D.O.O.R. pre-selection / pinned CPU pool
             window._hqCpuPool = null;
             window._hqCodeRedRun = null;

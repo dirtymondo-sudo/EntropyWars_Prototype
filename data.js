@@ -10746,104 +10746,24 @@ const ACCT_MATCH_GOLD_CAP    = 5000;  // server-side sanity cap on banked gold p
 // New accounts own these race keys (each playable in its default job).
 // 2026-07-05: expanded to cover every race with a rigged 3D model wired (or
 // planned) in sprites.js RACE_MODELS_3D.
+// THE ROSTER LOCK (2026-09-20 — the user: "lock all the units, except for
+// during PvP online play (whole roster available to everyone) and VS CPU (so I
+// can test stuff); otherwise you should be restricted to the units you have
+// actually unlocked through Hazard Pay or a ticket"). The STARTERS are the two
+// vessels that are YOU — the DOOR Agent (the officer, THE PARTY's slot 1) and
+// the Homosapien (the recruit, the mirror's look) — plus three free hires the
+// user named: the catgirl, bigfoot and the Sedan. Everything else is bought
+// at the Quartermaster (gold = Hazard Pay, or the free ticket) — the old rule
+// ("every rigged race is a starter") is gone; unitRosterScope() below opens the
+// whole roster for an ONLINE seat and for the classic VS CPU / Room 64 range.
+// Keep server.js ACCT_STARTER_UNITS in sync (npm run test:parity) — the server
+// unions this list into an existing account on login (it never removes).
 const ACCT_STARTER_UNITS = [
-  'men in black',   // Agent
-  'wizard',         // Black Mage
-  'werewolf',       // Raider
-  'mad scientist',  // Engineer
-  'homosapien',     // Freelancer
-  'catgirl',        // Gunslinger
-  'fortune teller', // Harbinger
+  'door agent',     // Agent — the officer
+  'homosapien',     // Freelancer — the recruit
+  'catgirl',        // Gunslinger — the user's three free hires (2026-09-20)
   'bigfoot',        // Harvester
-  'grey',           // Psychic
-  'marksman',       // Sniper
-  'knight',         // Warrior
-  'fairy',          // White Mage
-  'telepath',       // Psychic (human)
-  'quarterback',    // QB — throws footballs
-  'ki fighter',     // Ki Fighter
-  'cowboy',         // Gunslinger (human)
-  'atlantean',      // Atlantean
-  'pirate',         // Raider (human)
-  'vampire',        // Vampire
-  'shaman',         // Harvester (human female 3D)
-  'giant',          // Warrior (colossal 3D)
-  'halfdemon',      // Agent/Assassin (3D)
-  'martian',        // Gunslinger (3D — unlocked 2026-07-06)
-  'machine elves',  // Engineer (3D — DMT clockwork elf)
-  'nordic',         // Harbinger (3D — nordic alien male)
-  'annunaki',       // Sniper (3D — Sumerian god)
-  'demon',          // Black Mage (3D — red demon, male only)
-  'scarecrow',      // Harvester (3D — 2026-07-11 batch, male only)
-  'santa clause',   // White Mage (3D — 2026-07-11 batch, male only)
-  'mermaid',        // White Mage (3D — 2026-07-11 batch, female only)
-  'anubis',         // Black Mage (3D — 2026-07-11 batch, male only)
-  'robinhood',      // Sniper (3D — archer)
-  'antperson',      // Harvester (3D)
-  'necromancer',    // Black Mage (3D — female only)
-  'succubus',       // Psychic (3D — female only)
-  'barbarella',     // Agent (3D — female only)
-  'king arthur',    // Warrior (3D)
-  'mantid',         // Psychic (3D)
-  'mech',           // Gunslinger (3D — walking tank)
-  'minotaur',       // Raider (3D)
-  'mothman',        // Harbinger (3D)
-  'reptilian',      // Agent (3D)
-  'robot',          // Warrior/Tank (3D)
-  'cyborg',         // Raider (3D — female only)
-  'swordfighter',   // Swordmaster (3D — female only, 2026-07-13 batch)
-  'zombie',         // Raider (3D — female only, 2026-07-13 batch)
-  'fallen angel',   // Harbinger (3D — female only, 2026-07-13 batch)
-  'priest',         // White Mage (3D — the whitemage female model; was never
-                    // actually listed here despite the old comment — fixed 2026-07-19)
-  'nun',            // White Mage (3D — female only; her own race since the
-                    // CHAMP REWORK Phase 6, 2026-09-08 — same model as above)
-  'door agent',     // Agent (3D — the Player / Agent Belle cast models; DOOR_RACE_DESIGN, 2026-09-14)
-  // 2026-07-19 batch (sprites.js RACE_MODELS_3D):
-  'yeti',           // bruiser (3D — frost cryptid, male only)
-  'skeleton',       // undead (3D — male only)
-  'kaiju',          // city-stomper (3D — male only)
-  'superhero',      // flying bruiser (3D — female only)
-  'demon princess', // flying hex-caster (3D — female only)
-  'voidweaver',     // giant spider (3D — quadruped rig, male only)
-  'honda civic',    // the transformer (3D — sedan + robot forms)
-  // 2026-07-22 batch (sprites.js RACE_MODELS_3D — divine host wave):
-  'valkraye',       // Swordmaster (3D — female only)
-  'angel',          // White Mage (3D — female only)
-  'ghost',          // White Mage (3D — female only)
-  'nephilim',       // Warrior (3D — male only)
-  // 2026-07-24 batch (sprites.js RACE_MODELS_3D):
-  'djinn',          // Black Mage (3D — male only)
-  'orb of light',   // Harbinger (3D — female only)
-  // 2026-07-25 batch (sprites.js RACE_MODELS_3D — monsters & main characters;
-  // kaiju remodel + halfdemon male land in already-listed races):
-  'gnome',          // Engineer (3D — male only)
-  'king kong',      // Harvester (3D — male only)
-  'goatman',        // Raider (3D — male only)
-  'kraken',         // Harbinger (3D — male only)
-  'politician',     // Freelancer (3D — male only)
-  'conspiracy theorist', // Harbinger (3D — male only)
-  'overlord',       // Warrior (3D — male only)
-  // 2026-08-06 batch (sprites.js RACE_MODELS_3D — prehistoric predators):
-  'dinosaur',       // Raider (3D — male only)
-  'dragon',         // flyer (3D — male only)
-  // 2026-08-13 batch (sprites.js RACE_MODELS_3D — horrors, cryptids & the general):
-  'black goo',      // Psychic (3D — male only)
-  'cosmic wraith',  // Sniper (3D — male only)
-  'dreameater',     // Psychic (3D — male only)
-  'gargoyle',       // Sniper (3D — female only)
-  'ghoul',          // Agent (3D — male only)
-  'glitch',         // Engineer (3D — male only)
-  'golem',          // Tank (3D — male only)
-  'loch ness monster', // Tank (3D — male only)
-  'general',        // Warrior (3D — male only)
-  // 2026-09-10: the gangster's rigged model landed (Races/gangster/) — the
-  // last Phase 6 race comes off the shelf.
-  'gangster',       // Gunslinger (3D — male only)
-  // NOTE: every race with a rigged 3D model in sprites.js RACE_MODELS_3D is a
-  // starter, and the 3D-only gate in isUnitUnlocked() keeps anything listed
-  // here shelved until its model ships. Keep server.js ACCT_STARTER_UNITS in
-  // sync — the server unions this list into existing accounts on login.
+  'honda civic',    // the Sedan
 ];
 
 // PvP modes that bank account gold. Gauntlet/Challenge route through their own
@@ -10852,19 +10772,35 @@ const ACCT_PVP_MODES = ['arena', 'tdm', 'clash'];
 
 // One ownership check everything routes through. View-layer only — purchasing is
 // always server-authoritative; this just decides what shows as owned/selectable.
-function isUnitUnlocked(raceKey) {
+/* THE ROSTER SCOPE (2026-09-20): where the whole roster is open. 'all' = an
+   ONLINE seat (isOnlineMatch — the lobby's setup phase already seats the
+   remote controller), the classic VS CPU route and Room 64's RANGE console
+   (map.js sets window._ewRosterScope = 'all' there), the dev switch;
+   'owned' = everything else — the building, THE PARTY, the encounters, the
+   crossings filed from a site's console or the DISPATCH desk (map.js sets
+   'owned' on every entry / launch). The shop always reads isUnitOwned. */
+function unitRosterScope() {
+  if (typeof window === 'undefined') return 'owned';
+  if (window._DEV_UNLOCK_ALL) return 'all';
+  try { if (typeof window.isOnlineMatch === 'function' && window.isOnlineMatch()) return 'all'; } catch (e) {}
+  try { if (window._NET && window._NET.online) return 'all'; } catch (e) {}   // the online lobby (its forge seats the remote controller only at setup)
+  return window._ewRosterScope === 'all' ? 'all' : 'owned';
+}
+// The LEDGER read: is the vessel on the account (a starter offline)? Never the scope.
+function isUnitOwned(raceKey) {
   if (typeof window !== 'undefined' && window._DEV_UNLOCK_ALL) return true; // dev override, view-layer only
-  // 3D-ONLY ROSTER RULE (2026-07-06): a vessel with no rigged 3D model (any
-  // gender) is locked for EVERYONE — it can't be selected, started with, or
-  // bought — so PvP/VS-CPU matches are always 3D vs 3D. Overrides account
-  // unlocks on purpose: owning a sprite-only race keeps it shelved until its
-  // model ships. (Campaign rosters don't route through this gate.)
   if (typeof isRace3DReady === 'function' && !isRace3DReady(raceKey)) return false;
   const acct = (typeof window !== 'undefined' && window.ProfileSystem && typeof window.ProfileSystem.getActiveProfile === 'function')
     ? (window.ProfileSystem.getActiveProfile() || {}).account
     : null;
   if (!acct || !Array.isArray(acct.unlockedUnits)) return ACCT_STARTER_UNITS.includes(raceKey); // offline fallback
   return acct.unlockedUnits.includes(raceKey);
+}
+function isUnitUnlocked(raceKey) {
+  if (typeof window !== 'undefined' && window._DEV_UNLOCK_ALL) return true; // dev override, view-layer only
+  if (typeof isRace3DReady === 'function' && !isRace3DReady(raceKey)) return false;
+  if (unitRosterScope() === 'all') return true;   // THE ROSTER LOCK: online / the classic VS CPU / the range = the whole roster
+  return isUnitOwned(raceKey);
 }
 
 // Exact reward formula (§0 of the spec). Mirrors what the server clamps on /bank.
@@ -18015,7 +17951,7 @@ Object.assign(window, {
   computeSecJobBonuses, computeEquipBonuses,
   ACCT_UNIT_PRICE, ACCT_BASE_COMPLETE, ACCT_WIN_MULT, ACCT_FLAWLESS_MULT,
   ACCT_WIPEOUT_MULT, ACCT_STARTING_GOLD, ACCT_FREE_TOKENS, ACCT_MATCH_GOLD_CAP,
-  ACCT_STARTER_UNITS, ACCT_PVP_MODES, isUnitUnlocked, computeAccountMatchGold,
+  ACCT_STARTER_UNITS, ACCT_PVP_MODES, isUnitUnlocked, isUnitOwned, unitRosterScope, computeAccountMatchGold,
   ACH_CATALOG, ACH_CHAMP_LINES, ACH_TIER_NAMES, ACH_TIER_COLORS,
   ACH_MASTERY, ACH_TIER_REWARDS, ACH_RECORD_DEFS,
   mergeProgressBlobs, achUnlockKeyReward, achCountMasteredChamps, achComputeSyncRewards, hqFindsSyncPay,
@@ -35880,6 +35816,109 @@ function hqMasteryCount(profile) {
     }
     return { mastered: n, total: total };
 }
+/* ── THE EARNED DOORS (2026-09-20) ─────────────────────────────────────────
+   The user: "get rid of any doors in DOOR HQ that lead straight to battle
+   sites. The only exception is Room 64. The player must go and explore and
+   discover the sites by natural means, and only once they have cleared the
+   site (won with all 3 win conditions) does the area stabilize and Otto
+   builds a door to the site." So a BAY THRESHOLD (a door whose action is
+   `{ mission }`) is EARNED: it stands in the ring only for a site the
+   officer has STABILIZED (hqMapMastered — every masteryConditions win on
+   file); before that the run of wall is blank, the plate is on no map, the
+   star chart draws a nameless dot, and the site is reached the way the
+   world reaches it — the seams (the wardrobe, the wells, the mirror, the
+   train, the draughts, the telescope), the hubs' own doors, the roads. A
+   crossing is filed from INSIDE the site (the BATTLE marker / the CROSSING
+   console of the room you stand in) or through a door Otto built — never
+   from a plate in the hall (map.js _hqLaunchMission reads hqSiteEarned).
+   Room 64 (prebuilt_training) is the exception: its hall door and its
+   RANGE console (the FULL terminal, every site, the whole roster) stay —
+   the training range is the testing bench.
+     hqSiteEarned(mapId, profile)   → the ONE read (free list · dev switch ·
+                                      the site's mastery)
+     hqSiteSeen(mapId, profile)     → any room of the site stood in (the
+                                      map's / the chart's CHARTED state)
+     hqDoorEarned(door, profile)    → true for every door but an unearned
+                                      threshold
+     hqApplyEarnedDoors(profile)    → stamps `hidden` on every threshold row
+                                      in every room (the renderer builds
+                                      nothing for a hidden door; the panels
+                                      skip it) — map.js _hqEnter runs it on
+                                      EVERY entry, before the room builds
+     hqEarnedDoorsNew(profile)      → the sites earned that the ceremony
+                                      has not stamped (door.hq.earned)
+     hqEarnedDoorsStamp(profile, ids) → THE ONE WRITE (the caller saves)
+   Dev: `?alldoors` / window.EW_HQ_ALL_DOORS = every threshold stands (the
+   old building). Viewer-local, nothing on `state`, nothing relayed. */
+const HQ_EARNED_DOOR_RULES = { free: ['prebuilt_training'], hiddenKey: 'hidden' };
+function hqDoorsAllOpen() {
+    if (typeof window === 'undefined') return false;
+    try { if (window.EW_HQ_ALL_DOORS) return true; } catch (e) {}
+    try { if (typeof location !== 'undefined' && /[?&]alldoors\b/.test(location.search)) return true; } catch (e) {}
+    return false;
+}
+function hqSiteEarned(mapId, profile) {
+    const site = hqSiteId(mapId);
+    if (!site) return false;
+    if (HQ_EARNED_DOOR_RULES.free.indexOf(site) >= 0) return true;
+    if (hqDoorsAllOpen()) return true;
+    if (!profile) return false;
+    return hqMapMastered(site, profile);
+}
+function hqSiteSeen(mapId, profile) {
+    const site = hqSiteId(mapId);
+    if (!site || !profile) return false;
+    let rec = null;
+    try { rec = hqRoomsSeenRecord(profile); } catch (e) { rec = null; }
+    if (!rec) return false;
+    const rooms = DOOR_HQ.rooms || {};
+    for (const id in rec) { const r = rooms[id]; if (r && r.site && hqSiteId(r.site) === site) return true; }
+    return false;
+}
+function hqDoorEarned(door, profile) {
+    const act = (door && door.action) || {};
+    if (!act.mission) return true;
+    return hqSiteEarned(act.mission, profile);
+}
+function hqApplyEarnedDoors(profile) {
+    const rooms = DOOR_HQ.rooms || {};
+    const out = { hidden: [], earned: [] };
+    for (const rid in rooms) {
+        const R = rooms[rid];
+        if (!R || !Array.isArray(R.doors)) continue;
+        for (const d of R.doors) {
+            if (!(d && d.action && d.action.mission)) continue;
+            const ok = hqDoorEarned(d, profile);
+            if (ok) { if (d.hidden) delete d.hidden; out.earned.push(rid + '/' + d.id); }
+            else { d.hidden = true; out.hidden.push(rid + '/' + d.id); }
+        }
+    }
+    return out;
+}
+/* the sites with a threshold on the rings, in bay order */
+function hqThresholdSites() {
+    const out = [];
+    for (const k in DOOR_HQ.sectors) for (const id of DOOR_HQ.sectors[k].maps) if (out.indexOf(id) < 0) out.push(id);
+    return out;
+}
+function hqEarnedDoorsRecord(profile) {
+    try { const e = profile && profile.door && profile.door.hq && profile.door.hq.earned; return (e && typeof e === 'object') ? e : {}; } catch (e) { return {}; }
+}
+function hqEarnedDoorsNew(profile) {
+    if (!profile) return [];
+    const rec = hqEarnedDoorsRecord(profile);
+    return hqThresholdSites().filter(id => HQ_EARNED_DOOR_RULES.free.indexOf(id) < 0 && !rec[id] && hqMapMastered(id, profile));
+}
+function hqEarnedDoorsStamp(profile, ids, now) {
+    if (!profile || !Array.isArray(ids) || !ids.length) return { ok: false, stamped: [] };
+    if (!profile.door || typeof profile.door !== 'object') profile.door = {};
+    if (!profile.door.hq || typeof profile.door.hq !== 'object') profile.door.hq = { visits: 0, lastDoor: null, variantSeed: null, keys: 0 };
+    const E = profile.door.hq.earned = Object.assign({}, hqEarnedDoorsRecord(profile));
+    const date = hqToday(now ? new Date(now) : undefined);
+    const stamped = [];
+    ids.forEach(id => { if (!E[id]) { E[id] = date; stamped.push(id); } });
+    return { ok: true, stamped, date };
+}
 /* The CPU roster for a crossing through a bay door (HQ plan D3 / §3.7):
    the site's native entities (doorSiteCrossings — the races whose POINT OF
    ENTRY is this map), padded to at least `n` distinct races from the maps
@@ -36751,7 +36790,9 @@ function hqWorldGraph() {
            own redirect, hqSiteEntry) — the graph's edge goes where the walker actually lands, never to the board nobody stands in */
         if (to && typeof hqSiteEntry === 'function') { const ent = hqSiteEntry(to, at); if (ent && ent.room && rooms[ent.room]) { to = ent.room; at = ent.at; } }
         if (to) edges.push({ from: id, door: d.id, to: to, at: at, link: d.link || null,
-            minClearance: d.minClearance || 0, requiresKeys: d.requiresKeys || 0 });
+            minClearance: d.minClearance || 0, requiresKeys: d.requiresKeys || 0,
+            /* THE EARNED DOORS (2026-09-20): a bay threshold names its site — the map hides the edge until the site is earned */
+            mission: act.mission ? hqSiteId(act.mission) : null });
     }));
     return { nodes: nodes, edges: edges };
 }
@@ -37015,8 +37056,8 @@ function hqMapGraph() {
         if (!rooms[a] || !rooms[b] || a === b) return;
         const key = a < b ? a + '|' + b : b + '|' + a;
         const cur = edgeMap[key];
-        if (cur && RANK[cur.kind] >= RANK[e.kind]) { if (!cur.gate && e.gate) cur.gate = e.gate; if (e.stop && !cur.stop) cur.stop = e.stop; return; }
-        edgeMap[key] = Object.assign({ key, a: a < b ? a : b, b: a < b ? b : a }, e, cur ? { gate: e.gate || cur.gate } : {});
+        if (cur && RANK[cur.kind] >= RANK[e.kind]) { if (!cur.gate && e.gate) cur.gate = e.gate; if (e.stop && !cur.stop) cur.stop = e.stop; if (e.threshold && !cur.threshold) cur.threshold = e.threshold; return; }
+        edgeMap[key] = Object.assign({ key, a: a < b ? a : b, b: a < b ? b : a }, e, cur ? { gate: e.gate || cur.gate, threshold: e.threshold || cur.threshold || null } : {});   // THE EARNED DOORS: the pair keeps its threshold whichever direction carried it (the part's bay door is the way back through the same door)
     };
     const linkOf = id => (DOOR_HQ.links || []).find(l => l.id === id) || null;
     g.edges.forEach(e => {
@@ -37031,7 +37072,7 @@ function hqMapGraph() {
             color = (route && DOOR_HQ.routes && DOOR_HQ.routes[route] && DOOR_HQ.routes[route].color) || null;
         } else if (d.secret) kind = 'secret';
         else if (d.proc === 'elevator' || e.to === 'car' || e.from === 'car') kind = 'lift';
-        add(e.from, e.to, { kind, link: e.link || null, route, color, way, gate, door: e.door });
+        add(e.from, e.to, { kind, link: e.link || null, route, color, way, gate, door: e.door, threshold: e.mission || null });
     });
     /* the car has no doors: its FLOOR PANEL rides to the stops */
     ((DOOR_HQ.elevator && DOOR_HQ.elevator.stops) || []).forEach(st => {
@@ -37184,9 +37225,11 @@ function hqMapModel(profile, curRoom, opts) {
     const seen = {};
     G.order.forEach(id => { if (opts.all || rec[id]) seen[id] = true; });
     if (curRoom && G.nodes[curRoom]) seen[curRoom] = true;
+    /* THE EARNED DOORS (2026-09-20): a bay threshold Otto has not built is a SECRET door to the map — no question mark behind it, no leg until both rooms are stood in */
+    const hidden = e => !!(e.threshold && !opts.all && typeof hqSiteEarned === 'function' && !hqSiteEarned(e.threshold, profile));
     const q = {};
     G.edges.forEach(e => {
-        if (e.kind === 'secret') return;                 // a secret door is on no plate: the far room is not a question, it is nothing
+        if (e.kind === 'secret' || hidden(e)) return;                 // a secret door is on no plate: the far room is not a question, it is nothing
         if (seen[e.a] && !seen[e.b]) q[e.b] = true;
         if (seen[e.b] && !seen[e.a]) q[e.a] = true;
     });
@@ -37205,7 +37248,7 @@ function hqMapModel(profile, curRoom, opts) {
         const A = seen[e.a] ? 'seen' : q[e.a] ? 'q' : null, B = seen[e.b] ? 'seen' : q[e.b] ? 'q' : null;
         if (!A || !B) return;
         if (A === 'q' && B === 'q') return;
-        if (e.kind === 'secret' && (A !== 'seen' || B !== 'seen')) return;
+        if ((e.kind === 'secret' || hidden(e)) && (A !== 'seen' || B !== 'seen')) return;
         const pa = LY.pos[e.a] || { x: 0, y: 0 }, pb = LY.pos[e.b] || { x: 0, y: 0 };
         edges.push({ key: e.key, a: e.a, b: e.b, kind: e.kind, route: e.route, color: e.color, way: e.way, gate: e.gate, stop: e.stop || null,
             st: (A === 'seen' && B === 'seen') ? 'known' : 'q', charted: e.link ? !!links[e.link] : true,
@@ -37310,8 +37353,9 @@ function hqWorldOverviewGraph() {
         const bay = (rooms[e.a] && rooms[e.a].kind === 'bay') || (rooms[e.b] && rooms[e.b].kind === 'bay');
         const kind = e.kind === 'way' ? 'way' : e.kind === 'secret' ? 'secret' : bay ? 'bay' : 'main';
         const key = a < b ? a + '|' + b : b + '|' + a;
-        const cur = edgeMap[key] || (edgeMap[key] = { key, a: a < b ? a : b, b: a < b ? b : a, kind: 'bay', n: 0, links: [], ways: [], routes: [], color: null, route: null, gate: null, rooms: [] });
+        const cur = edgeMap[key] || (edgeMap[key] = { key, a: a < b ? a : b, b: a < b ? b : a, kind: 'bay', n: 0, links: [], ways: [], routes: [], color: null, route: null, gate: null, rooms: [], thresholds: [], plain: 0 });
         cur.n++; cur.rooms.push(e.a < e.b ? e.a + '|' + e.b : e.b + '|' + e.a);
+        if (e.threshold) { if (cur.thresholds.indexOf(e.threshold) < 0) cur.thresholds.push(e.threshold); } else cur.plain++;
         if (e.link && cur.links.indexOf(e.link) < 0) cur.links.push(e.link);
         if (e.way && cur.ways.indexOf(e.way) < 0) cur.ways.push(e.way);
         if (e.route && cur.routes.indexOf(e.route) < 0) cur.routes.push(e.route);
@@ -37369,8 +37413,10 @@ function hqWorldOverview(profile, curRoom, opts) {
     W.order.forEach(id => { const n = W.nodes[id]; cnt[id] = n.rooms.filter(roomSeen).length; if (cnt[id] > 0) seen[id] = true; });
     const hereId = curRoom ? hqWorldNodeOf(curRoom) : null;
     if (hereId && W.nodes[hereId]) seen[hereId] = true;
+    /* THE EARNED DOORS (2026-09-20): a place joined to the building ONLY by thresholds Otto has not built is no question — it is found in the field */
+    const hidden = e => !!(e.thresholds && e.thresholds.length && !e.plain && !opts.all && typeof hqSiteEarned === 'function' && !e.thresholds.some(m => hqSiteEarned(m, profile)));
     const q = {};
-    W.edges.forEach(e => { if (e.kind === 'secret') return; if (seen[e.a] && !seen[e.b]) q[e.b] = true; if (seen[e.b] && !seen[e.a]) q[e.a] = true; });
+    W.edges.forEach(e => { if (e.kind === 'secret' || hidden(e)) return; if (seen[e.a] && !seen[e.b]) q[e.b] = true; if (seen[e.b] && !seen[e.a]) q[e.a] = true; });
     const nodes = [];
     W.order.forEach(id => {
         const st = (id === hereId) ? 'here' : seen[id] ? 'seen' : q[id] ? 'q' : null;
@@ -37384,7 +37430,7 @@ function hqWorldOverview(profile, curRoom, opts) {
     W.edges.forEach(e => {
         const A = seen[e.a] ? 'seen' : q[e.a] ? 'q' : null, B = seen[e.b] ? 'seen' : q[e.b] ? 'q' : null;
         if (!A || !B || (A === 'q' && B === 'q')) return;
-        if (e.kind === 'secret' && (A !== 'seen' || B !== 'seen')) return;
+        if ((e.kind === 'secret' || hidden(e)) && (A !== 'seen' || B !== 'seen')) return;
         const pa = LY.pos[e.a], pb = LY.pos[e.b];
         const charted = e.links.length ? e.links.some(l => !!links[l]) : (A === 'seen' && B === 'seen');
         edges.push({ key: e.key, a: e.a, b: e.b, kind: e.kind, n: e.n, links: e.links.slice(), ways: e.ways.slice(), route: e.route, color: e.color, gate: e.gate,
@@ -42394,7 +42440,7 @@ function hqPartyEnsure(profile, opts) {
     last.forEach(m => push(hqPartyMemberFromRoster(m)));
     if (rec.members.length < 2) {
         const unlocked = hqPartyUnlocked(profile);
-        ['knight', 'wizard', 'fairy', 'catgirl', 'grey', 'marksman', 'werewolf'].forEach(r => { if (rec.members.length < HQ_PARTY_RULES.shift && unlocked.indexOf(r) >= 0) push(hqPartySpec(r, hqPartyGenders(r)[0], null)); });
+        ['knight', 'wizard', 'fairy', 'catgirl', 'grey', 'marksman', 'werewolf'].concat(unlocked).forEach(r => { if (rec.members.length < HQ_PARTY_RULES.shift && unlocked.indexOf(r) >= 0) push(hqPartySpec(r, hqPartyGenders(r)[0], null)); });   // THE ROSTER LOCK (2026-09-20): the named four when owned, else whatever the account owns — two starters seed the officer + the recruit
     }
     H.party = rec;
     return hqPartyRecord(profile);
@@ -43750,8 +43796,10 @@ function hqStarChart(profile) {
             const meta = META.find(x => x.id === id);
             const st = profile ? doorSiteState({ action: { mission: id } }, profile) : (sec.locked ? 'sealed' : 'unstable');
             const sm = profile ? hqSiteMastery(id, profile) : null;
+            /* THE EARNED DOORS (2026-09-20): a star is EARNED (Otto built its door — POINT opens it), CHARTED (a room of the site stood in — named, the checklist, no door) or UNCHARTED (a nameless dot) */
+            const earned = hqSiteEarned(id, profile), seenSite = earned || hqSiteSeen(id, profile);
             const star = { id, no: hqRoomNo(id), label: ((meta && meta.label) || id).toUpperCase(), sector: k, bayNo: bay.bayNo, i: si,
-                           x: Math.cos(ang) * r, z: Math.sin(ang) * r, r, ang, st,
+                           x: Math.cos(ang) * r, z: Math.sin(ang) * r, r, ang, st, earned, seen: seenSite, chart: earned ? 'earned' : (seenSite ? 'charted' : 'uncharted'),
                            done: sm ? sm.done : 0, total: sm ? sm.total : (DOOR_HQ.masteryConditions || []).length,
                            siteRoom: DOOR_HQ.rooms[hqSiteRoomId(id)] ? hqSiteRoomId(id) : null };
             bay.stars.push(star); stars.push(star);
@@ -45236,6 +45284,8 @@ if (typeof window !== 'undefined') {
     window.hqMapMastered = hqMapMastered;
     window.hqSiteChecklist = hqSiteChecklist; window.HQ_MASTERY_HOW = HQ_MASTERY_HOW;
     window.hqMasteryCount = hqMasteryCount;
+    window.hqSiteEarned = hqSiteEarned; window.hqSiteSeen = hqSiteSeen; window.hqDoorEarned = hqDoorEarned; window.hqApplyEarnedDoors = hqApplyEarnedDoors;
+    window.hqEarnedDoorsNew = hqEarnedDoorsNew; window.hqEarnedDoorsStamp = hqEarnedDoorsStamp; window.hqThresholdSites = hqThresholdSites; window.hqDoorsAllOpen = hqDoorsAllOpen;
     window.hqMissionPool = hqMissionPool;
     window.hqBayId = hqBayId;
     window.hqBayRoom = hqBayRoom;

@@ -6629,3 +6629,43 @@ styles-base.css ("THE PARTY'S QUICK ACTIONS"). `npm test` runs hq-party.test.js 
 selling from the pause menu (the hatch only). UNSEEN LIVE (RULE #1c): the quick strip's wrap on a 300 px
 card, the ITEMS sheet, the hatch's rows, the pharmacist's chair behind the counter, the wallet round-trip on
 a server account.
+
+## THE EARNED DOORS + THE ROSTER LOCK (2026-09-20, local delivery)
+The user: "get rid of any doors in DOOR HQ that lead straight to battle sites — the only
+exception is Room 64; the player must explore and discover the sites by natural means, and only
+once they have cleared the site (all 3 win conditions) does the area stabilize and Otto builds a
+door to it; lock all the units except online PvP (the whole roster) and VS CPU (testing) —
+otherwise only what you unlocked through Hazard Pay or a ticket." **THE EARNED DOORS** (data.js,
+the block before `hqMissionPool`): a BAY THRESHOLD (`action.mission`) is EARNED only for a
+STABILIZED site — `hqSiteEarned(mapId, profile)` (the free list `HQ_EARNED_DOOR_RULES.free` =
+`prebuilt_training`; dev `?alldoors` / `EW_HQ_ALL_DOORS`; else `hqMapMastered`) is the ONE read;
+`hqApplyEarnedDoors(profile)` stamps `hidden` on every threshold row (map.js `_hqEnter` runs it
+on EVERY entry before the room builds; three-renderer.js `_hqBuildDoors` builds NOTHING for a
+hidden door — no frame, no plate, no record, so the scan / the walk-in / the rounds never see
+it; the run of wall is blank). The map treats an unearned threshold as a SECRET edge
+(`hqWorldGraph` edges carry `mission`, `hqMapGraph` edges `threshold`; `hqMapModel` /
+`hqWorldOverview` pose no `?` through it — a site behind a facility SEAM (the mirror, the
+natatorium, the screen, H-Wing) is still posed: that IS the exploration). The star chart's stars
+wear `chart: earned | charted | uncharted` (`hqSiteSeen` = a room of the site stood in): an
+uncharted star is a nameless dot, a charted one is named with its checklist and no POINT, only an
+earned one opens its door (`_hqOpenThreshold` refuses the rest). The bay door's panel in the hall
+lists EARNED thresholds only (+ a count of the unbuilt); `_hqThresholdPanelHtml` reads `earnedDoor`
+(the CROSSING console / the crossing panel pass `inSite: true`); **`_hqLaunchMission` refuses a
+wild site unless you stand IN it** (`_hqRoom().site` — the BATTLE marker / the console are the
+natural way to file the three wins) or `o.variant === 'full'` (Room 64's RANGE console = every
+site, the exception); DISPATCH's desk passes `pre.allow` (earned sites + the range's boards) and
+match-select.js's card filter / initial pick honour it. **OTTO BUILDS A DOOR**: map.js
+`_hqCheckEarnedDoors` after the promotion check — `hqEarnedDoorsNew(profile)` (stabilized, not
+yet in `door.hq.earned`) → `hqEarnedDoorsStamp` (ONE write, the caller saves) → the PA chime + a
+toast per site naming its bay. **THE ROSTER LOCK**: `ACCT_STARTER_UNITS` is `door agent` +
+`homosapien` + the user's three free hires `catgirl` · `bigfoot` · `honda civic` on BOTH sides (server.js unions starters into an account on login and never
+removes — an account that already holds the old all-3D roster keeps it until its `unlockedUnits`
+row is reset); `unitRosterScope()` = `'all'` for `_DEV_UNLOCK_ALL`, an online seat
+(`isOnlineMatch` / `_NET.online`) or `window._ewRosterScope === 'all'` (set by `_goToVsCpu`,
+`_goToQuickPlay`, `_goToFriendlyMatch`, the RANGE console's `scope: 'all'`), else `'owned'`
+(`_hqEnter`, `_hqLaunchMission`, the desk); `isUnitOwned(race)` = the LEDGER (never the scope —
+the shop + the codex read it); `isUnitUnlocked(race)` = 3D-ready AND (scope all OR owned). THE
+PARTY's seed fills from what the account owns (the five starters fill the first shift).
+`npm test` runs `earned-doors.test.js`; champ-rework / hq-party amended. Ship data.js to R2 AND
+Render (server.js reads it). UNSEEN LIVE (RULE #1c): the blank runs of ring wall, the ceremony's
+toasts, the chart's dots, the desk's shortened deck, the forge's 🔒 wall in the building.
