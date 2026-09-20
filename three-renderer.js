@@ -10327,64 +10327,68 @@ const ThreeRenderer = (function () {
        marked file is in flight, every OTHER model request is HELD and released together when the rig lands
        (a parallel flush, never the phone's one-at-a-time queue). A held request is never lost: a 12 s
        safety flush releases the lane if a rig file stalls. Kill-switch: window.EW_NO_RIG_LANE. */
-    var _rigLaneUrls = {}, _rigLaneLive = {}, _rigLaneHeld = [], _rigLaneTimer = null;
+    var _rigLaneUrls = {}, _rigLaneLive = {};
     function _rigLaneMark(urls) {
         (urls || []).forEach(function (u) { if (u && typeof u === 'string') _rigLaneUrls[u] = 1; });
     }
-    function _rigLaneCount() { var n = 0; for (var k in _rigLaneLive) n++; return n; }
-    function _rigLaneFlush() {
-        _rigLaneLive = {};   // a set, never a counter (2026-09-20): a late settle can no longer drive it negative
-        if (_rigLaneTimer) { clearTimeout(_rigLaneTimer); _rigLaneTimer = null; }
-        var held = _rigLaneHeld; _rigLaneHeld = [];
-        for (var i = 0; i < held.length; i++) { try { held[i](function () {}); } catch (e) { console.warn('[ThreeRenderer] a held model load threw', e); } }
-        _pumpBgLoads();
+    var _bgLoadDepth = 0;   /* > 0 while a builder spawns background extras (the population) */
+    /* THE MODEL QUEUE (2026-09-20, the 507 MB hall): measured on the live host, entering the hall fired
+       ~110 GLB requests of 5–9 MB in ONE burst (60 props, the cast, 13 roaming natives' rigs) — over
+       HTTP/2 they all share one pipe, so the walker's own rig landed at 109 s, the terrain PNGs took 16 s
+       and the whole building stood black for a minute (the menu's door leaf, a battle's models, the same).
+       Firing everything at once was never "fast": it was everything arriving together at the END.
+       Now every model request goes through ONE priority queue with MODEL_MAX_INFLIGHT files streaming
+       at a time: priority 0 = THE RIG LANE (the walker's model + libraries, _rigLaneMark), 1 = the scene
+       on screen (props, doors, units), 2 = a WARM / the population's extras (bg). A queued bg URL that
+       the scene asks for is promoted (_bgPromote). A job settles through its done() or a 90 s safety
+       timer, so a hung download never wedges the queue. Kill-switch: window.EW_NO_MODEL_QUEUE
+       (= the old burst). The phone (EW_PERF_LOW) keeps its one-at-a-time queue. */
+    var MODEL_MAX_INFLIGHT = 4, MODEL_JOB_TIMEOUT_MS = 90000;
+    var _mqJobs = [], _mqLive = 0, _mqSeq = 0;
+    function _mqPriority(url, bg) {
+        if (url && _rigLaneUrls[url]) return 0;
+        if (bg || _bgLoadDepth > 0) return 2;
+        return 1;
     }
-    /* THE BACKGROUND LANE (2026-09-20): a WARM (the arrival room's props behind the menu, the hall's
-       roaming extras) is filed here — at most BG_MAX files in flight, started only while no rig is
-       streaming — so it never saturates the connection under the scene the player is looking at (the
-       menu's own door leaf used to land 70 s late behind 28 warmed chairs, and the user saw no door).
-       A REAL request for a queued URL (a room build, a spawn) promotes it: it starts at once. */
-    var _bgModelJobs = [], _bgModelLive = 0, BG_MAX = 3, _bgLoadDepth = 0;
-    function _bgStart(job) {
+    function _mqStart(job) {
         if (job.started) return;
-        job.started = true; _bgModelLive++;
-        var settled = false;
-        function done() { if (settled) return; settled = true; _bgModelLive--; setTimeout(_pumpBgLoads, 0); }
-        try { job.start(done); } catch (e) { done(); }
+        job.started = true; _mqLive++;
+        var settled = false, timer = null;
+        function done() {
+            if (settled) return;
+            settled = true; _mqLive--;
+            if (timer) { clearTimeout(timer); timer = null; }
+            if (job.url && _rigLaneLive[job.url]) { delete _rigLaneLive[job.url]; }
+            setTimeout(_mqPump, 0);
+        }
+        timer = setTimeout(function () { if (!settled) { console.warn('[ThreeRenderer] model load did not settle in ' + (MODEL_JOB_TIMEOUT_MS / 1000) + ' s — freeing its slot: ' + job.url); done(); } }, MODEL_JOB_TIMEOUT_MS);
+        if (job.url && _rigLaneUrls[job.url]) _rigLaneLive[job.url] = 1;
+        try { job.start(done); } catch (e) { done(); throw e; }
     }
-    function _pumpBgLoads() {
-        while (_bgModelLive < BG_MAX && _bgModelJobs.length && _rigLaneCount() === 0) _bgStart(_bgModelJobs.shift());
-    }
-    function _bgPromote(url) {
-        for (var i = 0; i < _bgModelJobs.length; i++) if (_bgModelJobs[i].url === url) { _bgStart(_bgModelJobs.splice(i, 1)[0]); return true; }
-        return false;
+    function _mqPump() {
+        while (_mqJobs.length) {
+            _mqJobs.sort(function (a, b) { return a.pri - b.pri || a.seq - b.seq; });
+            if (_mqJobs[0].pri > 0 && _mqLive >= MODEL_MAX_INFLIGHT) break;   // the rig lane (≤ 3 files) never waits for a slot
+            _mqStart(_mqJobs.shift());
+        }
     }
     function _scheduleModelLoad(start, url, bg) {
         if (typeof window === 'undefined' || !window.EW_PERF_LOW) {
-            /* THE LANES ARE OFF (2026-09-20, the user: "everything used to load fast all at once — go
-               back to that"): holding every model behind the walker's rig and trickling the room's props
-               three at a time made the building arrive slower, not faster. On a desktop every request
-               starts the moment it is made, as before the lanes. window.EW_MODEL_LANES = true opts back in. */
-            if (typeof window !== 'undefined' && window.EW_MODEL_LANES && !window.EW_NO_RIG_LANE) {
-                if (url && _rigLaneUrls[url]) {
-                    _rigLaneLive[url] = 1;
-                    if (!_rigLaneTimer) _rigLaneTimer = setTimeout(_rigLaneFlush, 12000);
-                    var settled = false;
-                    start(function () {
-                        if (settled) return;
-                        settled = true;
-                        delete _rigLaneLive[url];
-                        if (_rigLaneCount() === 0) _rigLaneFlush();
-                    });
-                    return;
-                }
-                if (bg || _bgLoadDepth > 0) { _bgModelJobs.push({ start: start, url: url, started: false }); _pumpBgLoads(); return; }
-                if (_rigLaneCount() > 0) { _rigLaneHeld.push(start); return; }
-            }
-            start(function () {}); return;
+            if (typeof window !== 'undefined' && window.EW_NO_MODEL_QUEUE) { start(function () {}); return; }
+            _mqJobs.push({ start: start, url: url || null, pri: _mqPriority(url, bg), seq: _mqSeq++, started: false });
+            _mqPump();
+            return;
         }
         _mobileModelJobs.push(start);
         _pumpModelLoads();
+    }
+    /* Legacy names the older lane sites still call — all routed into the one queue. */
+    function _rigLaneCount() { var n = 0; for (var k in _rigLaneLive) n++; return n; }
+    function _rigLaneFlush() { _mqPump(); }
+    function _pumpBgLoads() { _mqPump(); }
+    function _bgPromote(url) {
+        for (var i = 0; i < _mqJobs.length; i++) if (_mqJobs[i].url === url && _mqJobs[i].pri > 1) { _mqJobs[i].pri = 1; _mqPump(); return true; }
+        return false;
     }
     function _pumpModelLoads() {
         if (_mobileModelBusy || !_mobileModelJobs.length) return;

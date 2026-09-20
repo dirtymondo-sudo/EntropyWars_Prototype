@@ -38,8 +38,8 @@ test('the loading screen warms only what the basic attacks deliver, then drips t
     assert.ok(/warmWeaponsDrip\(4000, \(\) => typeof gameState !== 'undefined' && typeof GS !== 'undefined' && gameState === GS\.BATTLE\)/.test(battle), 'finish() starts the drip, alive = in battle');
 });
 
-test('the menu warms the whole arrival room (the lanes are off); avatarOnly stays available', () => {
-    assert.ok(/window\._hqWarmArrival\(\); \} catch \(e\) \{\} return; \}/.test(map), '_hqWarmArrivalSoon warms the room too');
+test('the menu warms the walker\'s rig ONLY (the model queue); Play warms the room', () => {
+    assert.ok(/window\._hqWarmArrival\(\{ avatarOnly: true \}\); \} catch \(e\) \{\} return; \}/.test(map), '_hqWarmArrivalSoon is avatar-only');
     const warm = map.slice(map.indexOf('window._hqWarmArrival = function (opts)'), map.indexOf('THE HQ HUD PASS (2026-09-16): a strip pill'));
     assert.ok(/if \(opts\.avatarOnly\) return true;/.test(warm), 'the room + the survey wait for Play');
     assert.ok(warm.indexOf('warmAvatar(') < warm.indexOf('if (opts.avatarOnly) return true;'), 'the avatar goes first');

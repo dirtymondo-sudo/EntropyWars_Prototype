@@ -6559,3 +6559,25 @@ waits only for the walker's own rig; the count is information, not the wait. The
 rules on cdn.entropywars.net are the user's to keep or drop; the CORS probe showed the edge keys on Origin
 correctly and every asset carries its header. Still missing from R2: `Assets/door/models/
 Meshy_AI_one_meter_of_railing_0903105339_texture.glb` (a 404 + one retry in every room).
+
+## THE MODEL QUEUE — the 507 MB hall, measured and ordered (2026-09-20, local delivery)
+The user: "still having issues with the loading textures … the whole game … the door frame doesn't
+even load in the main menu." MEASURED on the LIVE host (a Playwright probe against the real CDN,
+every request logged): entering the hall pulled **507 MB in 533 requests** — ~110 GLBs of 5–9 MB fired
+in ONE burst at t = 3 s (60 props, the cast, THE POPULATION's 13 roaming natives' rigs at 7–9 MB
+each — the 2026-09-19 addition), all sharing one HTTP/2 pipe, so the walker's own rig landed at
+**109 s**, a 20 KB terrain PNG took 16 s, and the building stood black for a minute; the menu warmed
+the whole room behind its own door leaf; a battle's models queued behind the same flood. "Everything
+at once" was never fast — it was everything arriving together at the end. RULES now: (1) three-
+renderer.js **`_scheduleModelLoad` is ONE priority queue** (`_mqJobs` / `_mqPump`, `MODEL_MAX_INFLIGHT`
+4): priority 0 = THE RIG LANE (`_rigLaneMark` — the walker's model + libraries; NEVER waits for a
+slot), 1 = the scene on screen (props, doors, units), 2 = a warm / the population's extras (`bg` /
+`_bgLoadDepth`); `_bgPromote(url)` lifts a queued bg file the scene asks for; a job frees its slot on
+`done()` or the 90 s safety timer; `EW_NO_MODEL_QUEUE` = the old burst (`EW_MODEL_LANES` /
+`EW_NO_RIG_LANE` are gone); the phone keeps its serial queue. (2) map.js `_hqWarmArrivalSoon` warms
+the WALKER'S RIG ONLY from the menu (`avatarOnly`); Play warms the room. Measured with the fix
+substituted on the live host: the rig at 21 s (was 109), the terrain sheets in 2–4 s (was 16), the
+population last. STILL THE USER'S: the volume — the hall's furniture is ~300 MB of GLB and the
+population ~100 MB per room on a cold cache; `gltf-transform optimize` (WebP, 1024 px) would cut it
+5–10×, and the population's draw (`HQ_POPULATION_RULES` `hqMul` / `perM2`) is the other edit.
+mobile-performance.test.js pins the queue; load-diet.test.js the avatar-only menu warm.

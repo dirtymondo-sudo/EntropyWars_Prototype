@@ -140,82 +140,57 @@ test('every replacement MP3 referenced by audio.js is included in the delivery',
     for (const file of files) assert.ok(fs.statSync(require('node:path').join(__dirname, 'mobile-audio', file)).size > 0, file);
 });
 
-/* THE RIG LANE (2026-09-20, the desktop load pass): on a desktop a marked rig file starts at once, every
-   other model request is HELD while one is in flight and released TOGETHER (a flush, never the phone's
-   one-at-a-time queue) when the last rig file lands; the safety timer flushes a stalled lane. */
-test('desktop rig lane (opt-in): off by default; when on, the avatar first, everything else held and flushed together', () => {
+/* THE MODEL QUEUE (2026-09-20, the 507 MB hall): on a desktop every model request goes through ONE
+   priority queue, MODEL_MAX_INFLIGHT at a time — the rig lane (priority 0) first, the scene (1), a warm /
+   the population (2) last; a queued bg url the scene asks for is promoted; a hung job frees its slot on
+   the safety timer; EW_NO_MODEL_QUEUE = the old burst. Never again "everything at once". */
+test('desktop model queue: the rig first, the scene four at a time, the warm last, promotion, the safety timer', () => {
     const timers = [], started = [];
-    const c = vm.createContext({ window: {}, console, setTimeout: (f, ms) => { timers.push({ f, ms }); return timers.length; }, clearTimeout() {} });
-    vm.runInContext('var _mobileModelJobs = [], _mobileModelBusy = false;' + fn(renderer, '_rigLaneMark') + fn(renderer, '_rigLaneCount') + fn(renderer, '_rigLaneFlush') + fn(renderer, '_scheduleModelLoad') + fn(renderer, '_pumpModelLoads')
-        + fn(renderer, '_bgStart') + fn(renderer, '_pumpBgLoads') + fn(renderer, '_bgPromote')
-        + ';var _rigLaneUrls = {}, _rigLaneLive = {}, _rigLaneHeld = [], _rigLaneTimer = null; var _bgModelJobs = [], _bgModelLive = 0, BG_MAX = 3, _bgLoadDepth = 0;', c);
-    // THE LANES ARE OFF by default (2026-09-20, the user's rule): a desktop starts every request at
-    // once, marked or not, warm or not — nothing is ever held
-    c._scheduleModelLoad(() => started.push('free'), 'chair.glb');
-    assert.deepEqual(started, ['free']);
+    const c = vm.createContext({ window: {}, console: { warn() {} }, setTimeout: (f, ms) => { timers.push({ f, ms }); return timers.length; }, clearTimeout() {} });
+    vm.runInContext('var _mobileModelJobs = [], _mobileModelBusy = false; var _rigLaneUrls = {}, _rigLaneLive = {}; var _bgLoadDepth = 0; var MODEL_MAX_INFLIGHT = 4, MODEL_JOB_TIMEOUT_MS = 90000; var _mqJobs = [], _mqLive = 0, _mqSeq = 0;'
+        + fn(renderer, '_rigLaneMark') + fn(renderer, '_mqPriority') + fn(renderer, '_mqStart') + fn(renderer, '_mqPump') + fn(renderer, '_scheduleModelLoad') + fn(renderer, '_pumpModelLoads')
+        + fn(renderer, '_rigLaneCount') + fn(renderer, '_bgPromote'), c);
+    const pump = () => { timers.filter(t => t.ms === 0).forEach(t => t.f()); const keep = timers.filter(t => t.ms !== 0); timers.length = 0; timers.push(...keep); };
+    const dones = {};
+    const q = (name, url, bg) => c._scheduleModelLoad(done => { started.push(name); dones[name] = done; }, url, bg);
+    // the burst: 10 props, 3 warm files, then the rig — only four stream at once
+    for (let i = 0; i < 10; i++) q('prop' + i, 'prop' + i + '.glb');
+    for (let i = 0; i < 3; i++) q('warm' + i, 'warm' + i + '.glb', true);
+    assert.deepEqual(started, ['prop0', 'prop1', 'prop2', 'prop3'], 'four in flight, the rest queued');
     c._rigLaneMark(['rig.glb', 'ual1.glb', null]);
-    c._scheduleModelLoad(() => started.push('rig0'), 'rig.glb');
-    c._scheduleModelLoad(() => started.push('prop0'), 'prop0.glb');
-    c._scheduleModelLoad(() => started.push('warm0'), 'warm0.glb', true);
-    assert.deepEqual(started, ['free', 'rig0', 'prop0', 'warm0']);
-    started.length = 0; started.push('free');
-    // the lanes exist only for a page that opts in
-    c.window.EW_MODEL_LANES = true;
-    const dones = [];
-    c._scheduleModelLoad(done => { started.push('rig'); dones.push(done); }, 'rig.glb');
-    c._scheduleModelLoad(done => { started.push('ual1'); dones.push(done); }, 'ual1.glb');
-    c._scheduleModelLoad(() => started.push('prop1'), 'prop1.glb');
-    c._scheduleModelLoad(() => started.push('native'), 'zombie.glb');
-    assert.deepEqual(started, ['free', 'rig', 'ual1']);
-    dones[0](); dones[0]();   // a double done never releases the lane early
-    assert.deepEqual(started, ['free', 'rig', 'ual1']);
-    dones[1]();
-    assert.deepEqual(started, ['free', 'rig', 'ual1', 'prop1', 'native']);
-    assert.equal(vm.runInContext('_rigLaneCount()', c), 0);
-    // after the flush the lane is open again
-    c._scheduleModelLoad(() => started.push('later'), 'later.glb');
-    assert.equal(started.at(-1), 'later');
-    // a stalled rig file: the safety timer releases the held loads
-    c._scheduleModelLoad(() => started.push('rig2'), 'rig.glb');
-    c._scheduleModelLoad(() => started.push('held2'), 'prop2.glb');
-    assert.equal(started.at(-1), 'rig2');
-    const safety = timers.find(t => t.ms === 12000); assert.ok(safety); safety.f();
-    assert.equal(started.at(-1), 'held2');
-    // a settle after the safety flush never drives the lane negative: the next held load is still held
-    c._scheduleModelLoad(done => { started.push('rig4'); dones.push(done); }, 'rig.glb');
-    c._scheduleModelLoad(() => started.push('held4'), 'prop4.glb');
-    assert.equal(started.at(-1), 'rig4');
-    dones.at(-1)();
-    assert.equal(started.at(-1), 'held4');
-    /* THE BACKGROUND LANE (2026-09-20): a warm's files wait for the rig, then run three at a time; a real
-       request for a queued url promotes it; a nested spawn under _bgLoadDepth files itself there too */
-    c._scheduleModelLoad(done => { started.push('rig5'); dones.push(done); }, 'ual1.glb');
-    const bgDones = [];
-    for (let i = 0; i < 5; i++) c._scheduleModelLoad(done => { started.push('bg' + i); bgDones.push(done); }, 'warm' + i + '.glb', true);
-    assert.equal(started.at(-1), 'rig5', 'a warm never starts while the rig streams');
-    assert.ok(c._bgPromote('warm3.glb'));
-    assert.equal(started.at(-1), 'bg3', 'a real request starts a queued warm file at once');
-    dones.at(-1)();   // the rig lands → the promoted file holds a slot, two more start, two still queued
-    assert.deepEqual(started.slice(-2), ['bg0', 'bg1']);
-    assert.equal(vm.runInContext('_bgModelJobs.length', c), 2);
-    assert.equal(c._bgPromote('nothing.glb'), false);
-    bgDones[0]();   // bg3 lands
-    assert.equal(started.at(-1), 'bg1');   // the pump runs on a macrotask
-    timers.filter(t => t.ms === 0).forEach(t => t.f()); timers.length = 0;
-    assert.equal(started.at(-1), 'bg2');
-    bgDones[1](); timers.filter(t => t.ms === 0).forEach(t => t.f()); timers.length = 0;
-    assert.equal(started.at(-1), 'bg4');
-    vm.runInContext('_bgLoadDepth = 1', c);
-    c._scheduleModelLoad(() => started.push('extra'), 'extra.glb');
-    assert.notEqual(started.at(-1), 'extra', 'a spawn under the depth flag is a background file');
-    vm.runInContext('_bgLoadDepth = 0', c);
-    bgDones.forEach(d => d()); timers.filter(t => t.ms === 0).forEach(t => t.f()); timers.length = 0;
-    assert.equal(started.at(-1), 'extra');
-    // the kill-switch: nothing is ever held
-    c.window.EW_NO_RIG_LANE = true;
-    c._scheduleModelLoad(() => started.push('rig3'), 'rig.glb');
-    c._scheduleModelLoad(() => started.push('free3'), 'prop3.glb');
-    assert.deepEqual(started.slice(-2), ['rig3', 'free3']);
+    q('rig', 'rig.glb'); q('ual1', 'ual1.glb');
+    assert.deepEqual(started.slice(-2), ['rig', 'ual1'], 'the rig lane never waits for a slot');
+    assert.equal(vm.runInContext('_rigLaneCount()', c), 2);
+    assert.equal(vm.runInContext('_mqLive', c), 6);
+    dones.prop0(); pump();
+    assert.equal(started.at(-1), 'ual1', 'over the cap: a freed slot starts nothing');
+    dones.prop1(); pump();
+    assert.equal(started.at(-1), 'ual1', 'still at the cap');
+    dones.rig(); dones.rig(); pump();   // a double done frees one slot, once
+    assert.equal(vm.runInContext('_rigLaneCount()', c), 1);
+    assert.equal(started.at(-1), 'prop4');
+    assert.equal(vm.runInContext('_mqLive', c), 4);
+    // the warm waits behind every prop
+    for (const n of ['ual1', 'prop2', 'prop3', 'prop4']) { dones[n](); pump(); }
+    assert.ok(!started.includes('warm0'));
+    // a real request for a queued warm file promotes it into the scene's tier
+    assert.ok(c._bgPromote('warm2.glb')); assert.equal(c._bgPromote('nothing.glb'), false);
+    dones.prop5(); pump(); assert.equal(started.at(-1), 'prop9', 'an earlier prop still goes first');
+    dones.prop6(); pump(); assert.equal(started.at(-1), 'warm2', 'the promoted file runs with the props');
+    assert.ok(!started.includes('warm0'));
+    // a spawn under the depth flag is a background file
+    vm.runInContext('_bgLoadDepth = 1', c); q('extra', 'extra.glb'); vm.runInContext('_bgLoadDepth = 0', c);
+    for (const n of ['prop7', 'prop8', 'prop9', 'warm2']) { dones[n](); pump(); }
+    assert.deepEqual(started.slice(-3), ['warm0', 'warm1', 'extra'], 'the warm and the extras run last, in order');
+    // a hung job frees its slot on the safety timer
+    const live = vm.runInContext('_mqLive', c);
+    const safety = timers.filter(t => t.ms === 90000); assert.equal(safety.length, started.length, 'one safety timer per started job');
+    safety.at(-1).f(); pump();
+    assert.equal(vm.runInContext('_mqLive', c), live - 1);
+    // the kill-switch: the old burst
+    c.window.EW_NO_MODEL_QUEUE = true;
+    for (let i = 0; i < 6; i++) q('burst' + i, 'burst' + i + '.glb');
+    assert.equal(started.filter(n => n.startsWith('burst')).length, 6);
 });
 
 test('the rig lane is marked by the arrival warm and the player spawn in the source', () => {

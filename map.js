@@ -613,7 +613,7 @@
                     const wanted = (typeof window._menuSceneEnabled === 'function') ? !!window._menuSceneEnabled() : !!men;
                     ready = M ? (!!M.leafHot && !!(M.sedan && M.sedan.children.length)) : !wanted;   // a scene still building is waited for
                 } catch (e) { ready = true; }
-                if (ready || performance.now() - t0 > 8000) { try { window._hqWarmArrival(); } catch (e) {} return; }   // the menu warms the WHOLE arrival room again (the user: back to loading everything at once)
+                if (ready || performance.now() - t0 > 8000) { try { window._hqWarmArrival({ avatarOnly: true }); } catch (e) {} return; }   // THE MODEL QUEUE (2026-09-20): the menu warms the WALKER'S RIG only — the room's 300 MB of props buried the menu's own door leaf
                 _hqWarmSoonT = setTimeout(tick, 500);
             };
             _hqWarmSoonT = setTimeout(tick, 1200);
