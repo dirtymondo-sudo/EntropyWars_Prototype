@@ -134,6 +134,7 @@ const BUILT = { 'king arthur': 'worldCleave', anubis: 'weighing', 'santa clause'
     antperson: 'theColony', mothman: 'theBridge', siren: 'theLastVerse', scarecrow: 'aMurder', glitch: 'corruptedSave', 'machine elves': 'theDose',
     cyclops: 'nobody', cyborg: 'orbitalDrop', 'demon prince': 'darkDominion', 'demon princess': 'lullaby', dreameater: 'devoured', 'fallen angel': 'theFall',
     goatman: 'baphometsRite', halfdemon: 'halfMeasures', mermaid: 'theWave', nephilim: 'watchersVerdict', vampire: 'theDrain', voidweaver: 'eventHorizon',
+    'cosmic wraith': 'heatDeath', superhero: 'upUpAndAway', general: 'airSupport', droid: 'decommissioned', antihero: 'noMercy', 'conspiracy theorist': 'wakeUpSheeple',
     'door agent': 'openHouse' };
 const SIG_FN = { worldCleave: '_sigWorldCleave3D', weighing: '_sigWeighing3D', naughtyList: '_sigNaughtyList3D', hitAndRun: '_sigHitAndRun3D', kaijuStomp: '_sigKaijuStomp3D', segfault: '_sigSegfault3D',
     haymaker: '_sigHaymaker3D', bootHill: '_sigBootHill3D', shrinkRay: '_sigShrinkRay3D',
@@ -146,6 +147,7 @@ const SIG_FN = { worldCleave: '_sigWorldCleave3D', weighing: '_sigWeighing3D', n
     theColony: '_sigTheColony3D', theBridge: '_sigTheBridge3D', theLastVerse: '_sigTheLastVerse3D', aMurder: '_sigAMurder3D', corruptedSave: '_sigCorruptedSave3D', theDose: '_sigTheDose3D',
     nobody: '_sigNobody3D', orbitalDrop: '_sigOrbitalDrop3D', darkDominion: '_sigDarkDominion3D', lullaby: '_sigLullaby3D', devoured: '_sigDevoured3D', theFall: '_sigTheFall3D',
     baphometsRite: '_sigBaphometsRite3D', halfMeasures: '_sigHalfMeasures3D', theWave: '_sigTheWave3D', watchersVerdict: '_sigWatchersVerdict3D', theDrain: '_sigTheDrain3D', eventHorizon: '_sigEventHorizon3D',
+    heatDeath: '_sigHeatDeath3D', upUpAndAway: '_sigUpUpAndAway3D', airSupport: '_sigAirSupport3D', decommissioned: '_sigDecommissioned3D', noMercy: '_sigNoMercy3D', wakeUpSheeple: '_sigWakeUpSheeple3D',
     openHouse: '_sigOpenHouse3D' };
 
 test('THE CATALOGUE: every playable race has a finisher row of its own type; the six typed defaults cover the chart', () => {

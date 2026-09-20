@@ -7172,3 +7172,41 @@ optimize` at 1024 px WebP is 5–10×) — the store makes the SECOND visit free
 LIVE (RULE #1c): the store on Safari / iOS (Cache Storage under ITP may be purged after 7 days of
 no use), the first cold-cache card's count, the arrivals' timing through the doors, the notes'
 legibility on the card.
+
+## SIX MORE EXECUTIONS — Heat Death · Up, Up and Away · Air Support · Decommissioned · No Mercy · Wake Up, Sheeple (FINISHER_PLAN delivery 13) — 2026-09-20, local delivery
+The next six `FINISHERS` rows in roster order are BUILT (seventy of 99; 29
+remain): cosmic wraith `heatDeath` (`_sigHeatDeath3D` — a dome of 360 stars
+(Points) that recede and go out one by one to the universe's clock card, frost
+and ice crystals climbing the body, the temperature card to 0 K, THE LAST STAR
+guttering out on the hit, the body into sixteen frozen shards; the director's
+dolly zoom recedes with the expansion), superhero `upUpAndAway`
+(`_sigUpUpAndAway3D` — the caped stand-in streaks in, scoops the body, climbs
+fourteen tiles through the clouds to THE CURVE OF THE EARTH (a globe + an
+atmosphere rim under a black sky at the apex), lets go — the fall beside a
+speed card to TERMINAL · 53 m/s, the crater, the one-knee landing; the real
+model faded for the beat), general `airSupport` (`_sigAirSupport3D` — two
+procedural jets (`_finJet`) low along the line on contrails, the lead's one
+bomb a beat EARLY (SPLASH · ONE), the wingman coughing smoke and crashing on
+the tile anyway = the hit, the tail fin in the wreck, the ejection seat under
+a chute; the first finisher on `cineFlyBy`), droid `decommissioned`
+(`_sigDecommissioned3D` — the conveyor out to a rising incinerator, the crate
+folding shut, the arm's OBSOLETE stamp + the name-and-barcode label, the roll
+into the furnace mouth, the door, the receipt END OF LIFE), antihero `noMercy`
+(`_sigNoMercy3D` — the walk up, THE FRAME CUTS TO BLACK (an opaque dome + the
+director's `cineEyelids`), closed-caption cards [WET SOUNDS] … [A ZIPPER] with
+red spatter on the black while nine sound beats play in the dark, the lights
+back on the antihero wiping their hands, a chalk outline, a body bag),
+conspiracy theorist `wakeUpSheeple` (`_sigWakeUpSheeple3D` — pushpins at the
+board's four corners + two edges (`state.boardHeights`; six tiles out on the
+stage), RED STRING from every pin to the victim's head, cards flying in along
+them, a corkboard rising behind the victim, the strings reeling the body in,
+the two cork leaves snapping shut like a bear trap, IT WAS YOU ALL ALONG).
+Each = a director in battle.js `_FIN_DIRECTORS` (the DELIVERY 13 block), the
+signature in "THE FINISHER PASS 2" (the DELIVERY 13 block; `_sigRunOwned` +
+`_fxDelay`, called inside the relayed cinematic — RULE #2), a `_FIN_STAGE[sig]`
+script for the forge, a row in finishers.test.js's BUILT table. Smoke-tested
+in a stub-THREE harness (every tick; not a render — it caught Heat Death
+zeroing the stars' colours on tick one, fixed). UNSEEN LIVE (RULE #1c):
+FINISHER_PLAN §7's delivery-13 entry lists what to eyeball first — the star
+dome, the globe's scale from the apex, the jets' heading, the belt past the
+rim, the black dome under the eyelids, the pins on a raised corner.

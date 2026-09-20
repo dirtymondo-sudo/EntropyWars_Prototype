@@ -197,6 +197,78 @@ spells), a ziggurat tier block, a gothic buttress.
 
 ## 7. Log
 
+- **2026-09-20 — SIX MORE EXECUTIONS in roster order (delivery 13).** The
+  next six `FINISHERS` rows with `sig: null` in `AVAILABLE_RACES` order are
+  BUILT (seventy of 99; 29 remain): cosmic wraith **Heat Death** (`heatDeath`
+  / `_sigHeatDeath3D` — the sky over the victim goes to a dome of 360 stars
+  (Points, each on its own line with its own hour to die), the universe's
+  clock runs on a card (t = 10^12 … 10^100 yr) while the stars recede and go
+  out faster and faster, frost climbs the body (a white-blue tint + fourteen
+  ice crystals growing off it, the temperature card falling toward 0 K), THE
+  LAST STAR swells, gutters and goes out on the hit, and the brittle body
+  cracks into sixteen frozen shards that fall and lie still; the director's
+  dolly zoom recedes with the expansion), superhero **Up, Up and Away**
+  (`upUpAndAway` / `_sigUpUpAndAway3D` — a caped stand-in streaks from the
+  caster's tile into the victim on a red-and-blue trail, scoops the body and
+  goes straight up fourteen tiles through cloud puffs until THE CURVE OF THE
+  EARTH stands under them (a wide blue globe with a green continent and an
+  atmosphere rim hung at the apex under a black sky), AND THEN DOWN: the body
+  falls the whole height beside a speed card counting to TERMINAL · 53 m/s,
+  the crater, the hero lands on one knee in the dust; the real model is faded
+  for the beat), general **Air Support** (`airSupport` / `_sigAirSupport3D` —
+  two procedural strike jets (`_finJet`: fuselage, swept wings, tail, two
+  burner glows; there is no jet GLB) come in low along the caster → victim
+  line on contrails, the lead releases ONE bomb at its pull-up and it falls on
+  the tile (SPLASH · ONE, a fireball a beat BEFORE the hit), the wingman's
+  engine coughs black smoke, it yaws in and crashes on the same tile anyway —
+  the hit, the bigger fireball, the tail fin standing in the wreck, the
+  ejection seat coming down under a chute well off the tile; the director is
+  the first finisher on `cineFlyBy`), droid **Decommissioned**
+  (`decommissioned` / `_sigDecommissioned3D` — a conveyor rolls out from
+  under the tile toward an incinerator that rises at its far end, a crate
+  folds shut round the body one panel at a time, a robot arm swings down and
+  STAMPS it OBSOLETE, a label with the victim's name and a barcode goes on,
+  the belt carries the crate into the furnace's mouth, the door shuts on it,
+  the flue coughs, a receipt prints END OF LIFE), antihero **No Mercy**
+  (`noMercy` / `_sigNoMercy3D` — the stand-in walks up to the victim, THE
+  FRAME CUTS TO BLACK: an opaque dome over everything, the director's
+  `cineEyelids` shut to a slit and a strip of closed-caption cards [WET
+  SOUNDS] · [SCREAMING] · [SCREAMING INTENSIFIES] · [IT STOPS.] · [A ZIPPER]
+  while red spatter blooms on the black one drop at a time and THE AUDIO
+  DOES THE REST (nine sound beats in the dark); the lights come back on the
+  antihero wiping their hands, a chalk outline on the tile, a zipped body bag
+  beside it), conspiracy theorist **Wake Up, Sheeple** (`wakeUpSheeple` /
+  `_sigWakeUpSheeple3D` — pushpins slam into the board at its four CORNERS
+  and two edge midpoints (read off `state.boardHeights`; six tiles out on the
+  stage), RED STRING (LineSegments) runs from every pin to the victim's head
+  — the whole board is the corkboard —, index cards and clippings fly in
+  along the strings and hang (EXHIBIT A · ? · WHO BENEFITS · FOLLOW THE
+  MONEY · CUI BONO · THEY KNEW · PATSY), a corkboard with its own web rises
+  behind the victim facing the caster, the strings go taut and reel the body
+  to its face, and the board CLOSES ON THEM LIKE A BEAR TRAP — two cork leaves
+  hinge shut with a slam, the pins burst — with the verdict pinned to the
+  front: IT WAS YOU ALL ALONG / <name> = THE SHEEPLE). Each = a director in
+  battle.js `_FIN_DIRECTORS` (the DELIVERY 13 block), the signature in
+  "THE FINISHER PASS 2" (the DELIVERY 13 block; `_sigRunOwned` + `_fxDelay`,
+  called inside the relayed cinematic — RULE #2), a `_FIN_STAGE[sig]` script
+  for the forge, a row in finishers.test.js's BUILT + SIG_FN tables.
+  Smoke-tested in a stub-THREE harness (every tick of every signature at
+  16 ms from three caster / victim placements, no NaN in any position /
+  scale / rotation / opacity / attribute / spawn; not a render) — the
+  harness run caught Heat Death zeroing every star's colour on its first
+  tick (fixed: each star's own g / b is kept in `base` and written back
+  while it lives). Files: data.js, battle.js, three-vfx-effects.js,
+  index.html (`20260920-finishers-13-cors`), finishers.test.js, CLAUDE.md,
+  this plan. Not playtested (RULE #1c): the star dome's density against a
+  night map and the shards' fall, the globe's scale from the apex (`APEX` /
+  the globe's radius are the edits) and the crane's rise against it, the
+  jets' scale and heading (`_finJet` is built nose +Z and turned by the
+  line's yaw), the bomb's fall against the early fireball, the belt's length
+  past the board's rim (`BL` 8 tiles), the black dome against the eyelids
+  (both close; if the captions read too small, `spriteW` is the edit), the
+  pins on a raised-corner map (`_worldPos` gives the corner's surface), the
+  leaves' hinge direction, and the six camera paths.
+
 - **2026-09-20 — SIX MORE EXECUTIONS in roster order (delivery 12).** The
   next six `FINISHERS` rows with `sig: null` in `AVAILABLE_RACES` order are
   BUILT (sixty-four of 99; 35 remain): goatman **Baphomet's Rite**
