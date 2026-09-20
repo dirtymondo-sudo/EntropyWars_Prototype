@@ -4499,6 +4499,13 @@ body.diorama-3d .tile-underpass.jump::before {
    no card, just a quick dip to black while the next room builds */
 .hq-load.walk { transition: opacity 0.26s ease; }
 .hq-load.walk .hq-load-card { display: none; }
+/* THE FIELD NOTES on the HQ card (2026-09-20): the battle card's .ls-hint, shown from the first frame (no
+   entrance animation — the card re-shows on every door), swapped with .ls-hint-fade, hidden on the walk-blink */
+.hq-load .hq-load-hint { animation: none; opacity: 1; z-index: 1; transition: opacity 0.45s ease; }
+.hq-load .hq-load-hint .ls-hint-tag { color: #b8a060; }
+.hq-load .hq-load-hint .ls-hint-text { color: #ece7d8; text-shadow: 0 0 12px rgba(201, 164, 74, 0.18); }
+.hq-load .hq-load-hint .ls-hint-src { color: #7f7a6e; }
+.hq-load.walk .hq-load-hint { display: none; }
 /* main-menu dev pill (isolated entry; hidden unless ?hqdev / localStorage ew_hqdev) */
 .hq-dev-pill { position: absolute; right: 18px; bottom: 44px; z-index: 5; font: 10px 'IBM Plex Mono', monospace; letter-spacing: 0.16em; color: #d59aff; background: rgba(20,4,24,0.85); border: 1px solid #8a3aa5; padding: 6px 10px; cursor: pointer; }
 .hq-dev-pill:hover { background: rgba(138,58,165,0.35); }

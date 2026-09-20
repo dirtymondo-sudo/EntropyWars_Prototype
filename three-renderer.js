@@ -1365,7 +1365,11 @@ const ThreeRenderer = (function () {
     function _alNow() { return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now(); }
     /* file a record for a request that just started; `rec.settle(ok, quiet)` closes it */
     function _alTrack(kind, url) {
-        var rec = { id: ++_alSeq, kind: kind, url: url || '', at: _alNow(), done: false, ok: null, stall: null };
+        var rec = { id: ++_alSeq, kind: kind, url: url || '', at: _alNow(), done: false, ok: null, stall: null, cached: false,
+            /* THE EXTRAS ARRIVE (2026-09-20): a request made while a builder spawns the population's extras
+               (_bgLoadDepth > 0) is a BACKGROUND record — no gate waits for it; a later request for the same
+               file from the scene on screen promotes it (_alJoin) */
+            bg: (typeof _bgLoadDepth === 'number' && _bgLoadDepth > 0) };
         _alLive[rec.id] = rec; _alLiveN++;
         _alLastEventAt = rec.at;
         rec.settle = function (ok, quiet) {
@@ -1383,6 +1387,7 @@ const ThreeRenderer = (function () {
     /* a cache hit on a file still streaming: the open gates wait for it too */
     function _alJoin(rec) {
         if (!rec || rec.done) return;
+        if (rec.bg && !(typeof _bgLoadDepth === 'number' && _bgLoadDepth > 0)) rec.bg = false;   // the scene on screen asks for a file the extras queued: a gate waits for it now
         for (var s = 0; s < _alSessions.length; s++) if (_alSessions[s].open) _alSessions[s].add(rec);
     }
     function _alPending() { return _alLiveN; }
@@ -1392,7 +1397,7 @@ const ThreeRenderer = (function () {
     function _alGateOpen(name, o) {
         o = o || {};
         var G = { name: name || 'gate', open: true, closed: false, has: {}, recs: [], total: 0, done: 0, t0: _alNow(), lastAt: _alNow(), minMs: (o.minMs > 0) ? +o.minMs : 0 };
-        G.add = function (rec) { if (!rec || G.has[rec.id]) return; G.has[rec.id] = 1; G.recs.push(rec); G.total++; G.lastAt = _alNow(); if (rec.done) G.done++; };
+        G.add = function (rec) { if (!rec || G.has[rec.id] || (rec.bg && !o.all)) return; G.has[rec.id] = 1; G.recs.push(rec); G.total++; G.lastAt = _alNow(); if (rec.done) G.done++; };
         G.pending = function () { return G.total - G.done; };
         G.list = function () { var now = _alNow(); return G.recs.filter(function (r) { return !r.done; }).map(function (r) { return { kind: r.kind, url: r.url, ms: Math.round(now - r.at) }; }); };
         G.failed = function () { return G.recs.filter(function (r) { return r.done && !r.ok && !r.quiet; }).map(function (r) { return r.url; }); };
@@ -1403,7 +1408,7 @@ const ThreeRenderer = (function () {
             return (now - Math.max(G.lastAt, _alLastEventAt || 0)) >= AL_SETTLE_MS;   // a beat: a file that just landed may ask for another
         };
         G.close = function () { if (G.closed) return; G.closed = true; G.open = false; var i = _alSessions.indexOf(G); if (i >= 0) _alSessions.splice(i, 1); };
-        G.progress = function () { return { name: G.name, total: G.total, done: G.done, pending: G.pending(), idle: G.idle(), ms: Math.round(_alNow() - G.t0) }; };
+        G.progress = function () { var cached = 0; for (var i = 0; i < G.recs.length; i++) if (G.recs[i].cached) cached++; return { name: G.name, total: G.total, done: G.done, cached: cached, pending: G.pending(), idle: G.idle(), ms: Math.round(_alNow() - G.t0) }; };
         /* wait for idle, or the cap: cb({ ok, pending, progress }) once — polled, the ledger has no event bus */
         G.whenIdle = function (cb, capMs) {
             var cap = (capMs != null) ? +capMs : 75000, fired = false;
@@ -1422,12 +1427,160 @@ const ThreeRenderer = (function () {
     }
     function _alGates() { return _alSessions.map(function (g) { return g.progress(); }); }
     if (typeof window !== 'undefined') { window._ewAssetLedger = { pending: _alPending, list: _alPendingList, gates: _alGates }; }
+    /* THE ASSET STORE (2026-09-20 — the user: "why does it have to re-download everything again? does it
+       not check if it already has some of the things cached? what is the point of having cache if nothing
+       ever stays loaded"). It did not: the game never had a cache of its OWN. The in-memory caches
+       (_hqTexCache / _hzTexCache / _miscModelCache / _unitGlbCache) live for ONE PAGE LOAD, and under
+       them sat only the browser's HTTP cache — a few hundred MB in total, an entry larger than ~1/8 of
+       that never stored at all (a 16 MB chair), everything LRU-evicted by the next room's 100–500 MB of
+       GLB, and a dashboard-uploaded object without cache-control re-validated on a guess. So every
+       session, and every room after the second or third, pulled its files from the CDN like the first
+       time. Now every file the renderer's loaders fetch goes through CACHE STORAGE (the Cache API: a
+       per-origin store the browser sizes in gigabytes, never evicted by other sites' traffic, alive
+       across reloads and deploys): a HIT is read off the disk with no network at all; a MISS is fetched
+       once (`fetch`, high priority for a sheet) and PUT. An index in localStorage (url → last use,
+       bytes) keeps the store under AS_CAP_BYTES by evicting the least recently used. A GLB is parsed
+       from the bytes (GLTFLoader.parse), an OBJ from the text, a sheet decoded from a blob URL. The
+       ledger marks a hit `rec.cached` (the load card says how many files came from the store).
+       Unavailable (an insecure context, file://, a browser without it, window.EW_NO_ASSET_STORE) → the
+       loaders take their old direct paths, byte for byte. window._ewAssetStore = { stats(), clear() }. */
+    var AS_NAME = 'ew-assets-v1', AS_CAP_BYTES = 1536 * 1024 * 1024, AS_INDEX_KEY = 'ew_asset_index', AS_INDEX_MAX = 4000;
+    var _asCache = null, _asOpening = null, _asDead = false, _asIndex = null, _asBytes = 0, _asSaveTimer = null, _asHits = 0, _asMisses = 0, _asPuts = 0, _asEvicting = false;
+    function _asAvailable() {
+        try {
+            if (typeof window === 'undefined' || window.EW_NO_ASSET_STORE || _asDead) return false;
+            if (typeof caches === 'undefined' || !caches || typeof caches.open !== 'function' || typeof fetch !== 'function') return false;
+            if (window.isSecureContext === false) return false;
+            return typeof URL !== 'undefined' && typeof URL.createObjectURL === 'function';
+        } catch (e) { return false; }
+    }
+    function _asIndexLoad() {
+        if (_asIndex) return _asIndex;
+        _asIndex = {}; _asBytes = 0;
+        try {
+            var raw = localStorage.getItem(AS_INDEX_KEY), obj = raw ? JSON.parse(raw) : null;
+            if (obj && typeof obj === 'object') { for (var k in obj) { var v = obj[k]; if (v && v.length === 2) { _asIndex[k] = [+v[0] || 0, +v[1] || 0]; _asBytes += +v[1] || 0; } } }
+        } catch (e) { _asIndex = {}; _asBytes = 0; }
+        return _asIndex;
+    }
+    function _asIndexSave() {
+        if (_asSaveTimer) return;
+        _asSaveTimer = setTimeout(function () {
+            _asSaveTimer = null;
+            try { localStorage.setItem(AS_INDEX_KEY, JSON.stringify(_asIndex || {})); } catch (e) {}
+        }, 800);
+    }
+    function _asTouch(url, size) {
+        var ix = _asIndexLoad(), prev = ix[url];
+        if (prev) _asBytes -= prev[1];
+        ix[url] = [Date.now(), size || (prev ? prev[1] : 0)];
+        _asBytes += ix[url][1];
+        _asIndexSave();
+    }
+    function _asForget(url) { var ix = _asIndexLoad(); if (ix[url]) { _asBytes -= ix[url][1]; delete ix[url]; _asIndexSave(); } }
+    /* evict the least recently used until the store is under the cap (or the index is under its row cap) */
+    function _asEvict(c) {
+        if (_asEvicting || !c) return;
+        var ix = _asIndexLoad(), keys = Object.keys(ix);
+        if (_asBytes <= AS_CAP_BYTES && keys.length <= AS_INDEX_MAX) return;
+        _asEvicting = true;
+        keys.sort(function (a, b) { return ix[a][0] - ix[b][0]; });
+        var victims = [];
+        while (keys.length && (_asBytes > AS_CAP_BYTES * 0.9 || keys.length > AS_INDEX_MAX * 0.9)) { var k = keys.shift(); victims.push(k); _asBytes -= ix[k][1]; delete ix[k]; }
+        _asIndexSave();
+        var i = 0;
+        function next() { if (i >= victims.length) { _asEvicting = false; return; } var u = victims[i++]; c.delete(u).then(next, next); }
+        next();
+    }
+    function _asOpen() {
+        if (_asCache) return Promise.resolve(_asCache);
+        if (_asOpening) return _asOpening;
+        if (!_asAvailable()) return Promise.resolve(null);
+        _asOpening = caches.open(AS_NAME).then(function (c) {
+            _asCache = c; _asIndexLoad();
+            try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(function () {}); } catch (e) {}
+            return c;
+        }).catch(function (e) { _asDead = true; _asOpening = null; try { console.warn('[ThreeRenderer] the asset store could not open — the loaders take the direct path', e); } catch (e2) {} return null; });
+        return _asOpening;
+    }
+    /* fetch a file through the store: resolves a Response (a hit's, or the network's — its clone is
+       PUT), rejects on a network / HTTP failure. o.rec = the ledger record (a hit marks it `cached`),
+       o.priority = the fetch priority hint (a sheet is 'high'). */
+    function _asFetch(url, o) {
+        o = o || {};
+        return _asOpen().then(function (c) {
+            var hit = c ? c.match(url).catch(function () { return null; }) : Promise.resolve(null);
+            return hit.then(function (res) {
+                if (res && res.ok) { _asHits++; if (o.rec) o.rec.cached = true; _asTouch(url); return res; }
+                _asMisses++;
+                var init = { mode: 'cors', credentials: 'omit' };
+                if (o.priority) init.priority = o.priority;
+                return fetch(url, init).then(function (net) {
+                    if (!net || !net.ok) throw new Error('HTTP ' + (net ? net.status : 0) + ' ' + url);
+                    if (c && net.type !== 'opaque') {
+                        var size = +(net.headers && net.headers.get && net.headers.get('content-length')) || 0;
+                        try {
+                            c.put(url, net.clone()).then(function () { _asPuts++; _asTouch(url, size); _asEvict(c); }, function (err) {
+                                /* the quota (or a cache that refuses the response): make room and carry on — the file still lands from `net` */
+                                try { _asEvict(c); } catch (e) {}
+                            });
+                        } catch (e) {}
+                    }
+                    return net;
+                });
+            });
+        });
+    }
+    function _asBasePath(url) { var i = String(url || '').lastIndexOf('/'); return i >= 0 ? String(url).slice(0, i + 1) : ''; }
+    /* a GLB through the store → GLTFLoader.parse; else the loader's own network path */
+    function _asGltf(url, onLoad, onError, o) {
+        if (typeof THREE === 'undefined' || typeof THREE.GLTFLoader !== 'function') { if (onError) onError(new Error('no GLTFLoader')); return; }
+        if (!_asAvailable()) { new THREE.GLTFLoader().load(url, onLoad, undefined, onError); return; }
+        _asFetch(url, o).then(function (res) { return res.arrayBuffer(); }).then(function (buf) {
+            try { new THREE.GLTFLoader().parse(buf, _asBasePath(url), onLoad, onError); } catch (e) { if (onError) onError(e); }
+        }).catch(function (e) { if (onError) onError(e); });
+    }
+    /* an OBJ through the store → OBJLoader.parse; else the loader's own network path */
+    function _asObj(url, onLoad, onError, o) {
+        if (typeof THREE === 'undefined' || typeof THREE.OBJLoader !== 'function') { if (onError) onError(new Error('no OBJLoader')); return; }
+        if (!_asAvailable()) { new THREE.OBJLoader().load(url, onLoad, undefined, onError); return; }
+        _asFetch(url, o).then(function (res) { return res.text(); }).then(function (text) {
+            var root = null;
+            try { root = new THREE.OBJLoader().parse(text); } catch (e) { if (onError) onError(e); return; }
+            onLoad(root);
+        }).catch(function (e) { if (onError) onError(e); });
+    }
+    function _asStats() { var ix = _asIndexLoad(), n = 0; for (var k in ix) n++; return { available: _asAvailable(), files: n, bytes: _asBytes, capBytes: AS_CAP_BYTES, hits: _asHits, misses: _asMisses, puts: _asPuts }; }
+    function _asClear() {
+        _asIndex = {}; _asBytes = 0; try { localStorage.removeItem(AS_INDEX_KEY); } catch (e) {}
+        if (!_asAvailable()) return Promise.resolve(false);
+        _asCache = null; _asOpening = null;
+        return caches.delete(AS_NAME).then(function (ok) { return ok; }, function () { return false; });
+    }
+    if (typeof window !== 'undefined') { window._ewAssetStore = { stats: _asStats, clear: _asClear }; }
     function _texLanded() {
         _texInflight = Math.max(0, _texInflight - 1);
         if (_texInflight === 0 && typeof _mqPump === 'function') { try { setTimeout(_mqPump, 0); } catch (e) {} }
     }
-    function _texFetch(src, onOk, onFail) {
+    function _texFetch(src, onOk, onFail, o) {
         var img;
+        /* THE ASSET STORE (2026-09-20): a sheet is fetched through the store (a hit reads the disk, a miss
+           is PUT) and decoded from a blob URL; the direct <img> path stands when the store is unavailable */
+        if (_asAvailable() && !/^(data|blob):/i.test(String(src))) {
+            _texInflight++;
+            var now0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+            _texHoldUntil = Math.max(_texHoldUntil, now0 + TEX_HOLD_MS);
+            var done0 = false;
+            _asFetch(src, { priority: 'high', rec: o && o.rec }).then(function (res) { return res.blob(); }).then(function (blob) {
+                var objUrl = URL.createObjectURL(blob), im;
+                try { im = document.createElementNS('http://www.w3.org/1999/xhtml', 'img'); } catch (e) { im = new Image(); }
+                try { im.decoding = 'async'; } catch (e) {}
+                im.onload = function () { if (done0) return; done0 = true; try { URL.revokeObjectURL(objUrl); } catch (e) {} _texLanded(); onOk(im); };
+                im.onerror = function (err) { if (done0) return; done0 = true; try { URL.revokeObjectURL(objUrl); } catch (e) {} _asForget(src); _texLanded(); onFail(err); };
+                im.src = objUrl;
+            }).catch(function (err) { if (done0) return; done0 = true; _texLanded(); onFail(err); });
+            return null;
+        }
         try { img = document.createElementNS('http://www.w3.org/1999/xhtml', 'img'); } catch (e) { img = new Image(); }
         img.crossOrigin = 'anonymous';
         try { img.fetchPriority = 'high'; } catch (e) {}
@@ -1458,9 +1611,9 @@ const ThreeRenderer = (function () {
             if (!again) { _ewAssetFailed('texture', u, false); rec.settle(false); if (onError) onError(err); return; }
             _ewAssetFailed('texture', u, true);
             try {
-                _texFetch(again, landed, function (err2) { _ewAssetFailed('texture', again, false); rec.settle(false); if (onError) onError(err2); });
+                _texFetch(again, landed, function (err2) { _ewAssetFailed('texture', again, false); rec.settle(false); if (onError) onError(err2); }, { rec: rec });
             } catch (e) { rec.settle(false); if (onError) onError(err); }
-        });
+        }, { rec: rec });
         return tex;
     };
     var textureCache = new Map();
@@ -4720,7 +4873,7 @@ const ThreeRenderer = (function () {
         var rec = entry._alRec = _alTrack('foliage', _FOLIAGE_OBJ_BASE + name + '.obj');
         function attempt(reqUrl, retried) {
             try {
-                new THREE.OBJLoader().load(
+                _asObj(   // THE ASSET STORE (2026-09-20)
                     reqUrl,
                     function(root) {
                         _normalizeFoliageModel(root);
@@ -4728,13 +4881,13 @@ const ThreeRenderer = (function () {
                         _objectsDirty = true;   /* re-render so the model swaps in */
                         rec.settle(true);
                     },
-                    undefined,
                     function() {
                         var again = !retried ? _ewRetryUrl(reqUrl) : null;   // THE RETRY (2026-09-20)
                         if (again) { _ewAssetFailed('foliage', reqUrl, true); attempt(again, true); return; }
                         entry.loading = false; entry.failed = true; _ewAssetFailed('foliage', reqUrl, false);
                         rec.settle(false);
-                    }
+                    },
+                    { rec: rec }
                 );
             } catch (e) { entry.loading = false; entry.failed = true; rec.settle(false); }
         }
@@ -10571,7 +10724,7 @@ const ThreeRenderer = (function () {
         function loadAttempt(requestUrl, fallbackUsed, retried) {
           _scheduleModelLoad(function (done) {
           try {
-            new THREE.GLTFLoader().load(requestUrl, function (gltf) {
+            _asGltf(requestUrl, function (gltf) {
                 done();
                 var root = gltf.scene || (gltf.scenes && gltf.scenes[0]);
                 if (!root) { e.loading = false; e.failed = true; e.cbs.length = 0; _flushGlbDoneCbs(e); rec.settle(false); return; }
@@ -10587,7 +10740,7 @@ const ThreeRenderer = (function () {
                 _flushGlbDoneCbs(e);
                 rec.settle(true);
                 invalidateUnits();   // swap placeholders for the model on the next frame
-            }, undefined, function () {
+            }, function () {
                 done();
                 var again = !retried ? _ewRetryUrl(requestUrl) : null;   // THE RETRY (2026-09-20): once, under a fresh cache key
                 if (again) { _ewAssetFailed('model', requestUrl, true); loadAttempt(again, fallbackUsed, true); return; }
@@ -10596,7 +10749,7 @@ const ThreeRenderer = (function () {
                 e.loading = false; e.failed = true; e.cbs.length = 0; _flushGlbDoneCbs(e);
                 _ewAssetFailed('model', requestUrl, false);
                 rec.settle(false);
-            });
+            }, { rec: rec });
           } catch (ex) { done(); e.loading = false; e.failed = true; e.cbs.length = 0; _flushGlbDoneCbs(e); rec.settle(false); }
           }, url, false, function () {
               /* dropped unstarted (the room that asked for it was left): forget the entry, settle quietly */
@@ -22401,10 +22554,10 @@ const ThreeRenderer = (function () {
             try {
                 if (isGLB) {
                     if (typeof THREE.GLTFLoader !== 'function') { failed(); return; }
-                    new THREE.GLTFLoader().load(reqUrl, loaded, undefined, err);
+                    _asGltf(reqUrl, loaded, err, { rec: rec });   // THE ASSET STORE (2026-09-20)
                 } else {
                     if (typeof THREE.OBJLoader !== 'function') { failed(); return; }
-                    new THREE.OBJLoader().load(reqUrl, loaded, undefined, err);
+                    _asObj(reqUrl, loaded, err, { rec: rec });
                 }
             } catch (ex) { failed(); }
         }
@@ -48455,6 +48608,7 @@ const ThreeRenderer = (function () {
         try { pop = (typeof hqRoomPopulation === 'function') ? hqRoomPopulation(roomId, prof, { perfLow: !!(typeof window !== 'undefined' && window.EW_PERF_LOW) }) : null; } catch (e) { console.warn('[HQ] population read failed', e); }
         if (pop && pop.draw && pop.draw.length && stops.length) {
             var pool = pop.pool.filter(walksRace), used = {};
+            var doorStops = stops.filter(function (s) { return s.kind === 'door' && s.rec && !HQ_DOOR_LOCKED[s.rec.state]; });
             _bgLoadDepth++;   // THE BACKGROUND LANE (2026-09-20): the extras' rigs stream three at a time behind the room's own props
             try { pop.draw.forEach(function (d, i) {
                 if (gone.indexOf(d.id) >= 0) return;
@@ -48463,7 +48617,22 @@ const ThreeRenderer = (function () {
                 used[rk] = (used[rk] || 0) + 1;
                 var st = stops[Math.floor(Math.random() * stops.length)];
                 var line = null; try { if (room.lines && room.lines.length && Math.random() < 0.5) line = room.lines[Math.floor(Math.random() * room.lines.length)]; } catch (e) {}
-                spawnAt(d.id, rk, genderOf(rk), st, { line: line, sub: pop.kind === 'facility' ? 'PASSING THROUGH' : (d.tier === 'native' || d.tier === 'biome') ? 'A LOCAL' : 'PASSING THROUGH' });
+                var g = genderOf(rk), sub = pop.kind === 'facility' ? 'PASSING THROUGH' : (d.tier === 'native' || d.tier === 'biome') ? 'A LOCAL' : 'PASSING THROUGH';
+                /* THE EXTRAS ARRIVE (2026-09-20 — "why is there a loading screen between every little door"):
+                   the population's rigs (2–6 × 5–9 MB per room, a new draw per room) were the bulk of what every
+                   card waited for. A rig the caches hold stands in the room at once; a rig still to stream never
+                   holds the card — the extra ARRIVES BY A DOOR once it lands (the traveller's own entrance), the
+                   room complete without it. The record is background (rec.bg) so no gate counts it. */
+                var def0 = (typeof getRace3DModel === 'function') ? getRace3DModel(rk, g) : null, murl = def0 && def0.model;
+                var hot = !murl || !!(_unitGlbCache[murl] && _unitGlbCache[murl].root) || (typeof window !== 'undefined' && window.EW_DISABLE_3D_UNITS);
+                if (hot) { spawnAt(d.id, rk, g, st, { line: line, sub: sub }); return; }
+                _loadUnitGLB(murl, function () {
+                    if (_hq !== H) return;   // the room was left while the rig streamed
+                    if (H.chars.some(function (c) { return c.id === d.id; })) return;
+                    var by = doorStops.length ? doorStops[Math.floor(Math.random() * doorStops.length)] : st;
+                    var ch = spawnAt(d.id, rk, g, by, { line: line, sub: sub, arriving: true });
+                    if (ch && by.rec) _hqRoundsSwing(by.rec, 1600);
+                });
             }); } finally { _bgLoadDepth--; }
         }
         /* 3 · THE TRAVELLERS: whoever left another room through a door that leads HERE, arriving by it */
@@ -52123,6 +52292,10 @@ const ThreeRenderer = (function () {
         assetGate: function (name, o) { return _alGateOpen(name, o); },
         /* another module's loader (three-vfx-effects.js) files its request here: assetTrack(kind, url) → rec; rec.settle(ok) */
         assetTrack: function (kind, url) { return _alTrack(kind, url); },
+        /* THE ASSET STORE (2026-09-20): another module's GLB / texture goes through the store too */
+        assetGltf: function (url, onLoad, onError, o) { return _asGltf(url, onLoad, onError, o); },
+        assetTexture: function (url, onLoad, onError) { return textureLoader.load(url, onLoad, undefined, onError); },
+        assetStore: function () { return _asStats(); },
 
         scanSpriteOffset,
 

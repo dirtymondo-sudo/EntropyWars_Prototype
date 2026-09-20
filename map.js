@@ -319,6 +319,50 @@
            landed within HQ_WALK_BLINK_MS) the blink becomes the full card — a black screen with nothing on
            it is not a loading screen. */
         const HQ_WALK_BLINK_MS = 700;
+        /* THE FIELD NOTES on the HQ card (2026-09-20 — the user: "the loading screens need the field notes
+           just like the loading screen before battle"): the room's OWN notes lead (its desc under its number,
+           the SITE FILE of the site it belongs to), then the battle card's shuffled pool (battle.js
+           window._lsHintPool — FIELD MANUAL · INTEL FRAGMENT · the D.O.O.R. memos · the canon notices),
+           rotated at the battle's own cadence; the walk-blink shows none (CSS) */
+        const HQ_LOAD_NOTE_FADE_MS = 450;
+        function _hqLoadNotesPool(roomId, roomDef) {
+            const out = [];
+            try {
+                const no = (typeof window.hqRoomNo === 'function') ? (window.hqRoomNo(roomId) || '') : '';
+                const label = String((roomDef && roomDef.label) || roomId || '').toUpperCase();
+                if (roomDef && roomDef.desc) out.push({ t: (no ? 'ROOM ' + no + ' · ' : '') + label, q: String(roomDef.desc), s: roomDef.sub ? String(roomDef.sub) : 'D.O.O.R. Headquarters' });
+                const site = (roomDef && roomDef.site) || ((typeof window.hqRoomSite === 'function') ? window.hqRoomSite(roomId) : null);
+                if (site && typeof window.doorSiteFile === 'function') {
+                    const sf = window.doorSiteFile(site);
+                    if (sf && sf.summary) {
+                        const sno = (typeof window.hqRoomNo === 'function') ? (window.hqRoomNo(site) || '') : '';
+                        const meta = (typeof EW_MAP_META !== 'undefined' && EW_MAP_META && EW_MAP_META[site]) ? EW_MAP_META[site] : null;
+                        const title = String((meta && meta.label) || site).toUpperCase().replace(/^THE\s+/, '');
+                        out.push({ t: 'SITE FILE · ' + (sno ? 'ROOM ' + sno + ' · ' : '') + title, q: sf.summary, s: (sf.status || '') + (sf.juris ? ' · ' + sf.juris : ''), stamp: sf.status, stampTone: sf.tone, cls: 'ls-memo' });
+                    }
+                }
+            } catch (e) {}
+            try { if (typeof window._lsHintPool === 'function') out.push.apply(out, window._lsHintPool()); } catch (e) {}
+            return out;
+        }
+        function _hqLoadSetHint(box, h) {
+            if (!box || !h) return;
+            const tag = box.querySelector('.ls-hint-tag'), text = box.querySelector('.ls-hint-text'), src = box.querySelector('.ls-hint-src');
+            box.classList.remove('ls-memo', 'ls-canon');
+            if (h.cls) box.classList.add(h.cls);
+            if (tag) {
+                tag.textContent = '◈ ' + h.t;
+                if (h.stamp) {
+                    const st = document.createElement('span');
+                    st.className = 'ls-hint-stamp' + ((h.stamp === 'ADMIT' || h.stampTone === 'admit') ? ' admit' : '');
+                    if (h.stampTone === 'void') st.style.color = 'var(--door-void, #8a8a8a)';
+                    st.textContent = h.stamp;
+                    tag.appendChild(st);
+                }
+            }
+            if (text) text.textContent = h.q || '';
+            if (src) src.textContent = h.s ? '— ' + h.s : '';
+        }
         function _hqLoadProgressStart(generation, roomId, roomDef, baseNote) {
             if (typeof requestAnimationFrame !== 'function') return;
             const note = _hqEl('hqLoadNote'); if (!note) return;
@@ -326,6 +370,12 @@
             const fill = _hqEl('hqLoadFill');
             const t0 = performance.now();
             let last = '', lastW = -1;
+            /* THE FIELD NOTES: the first line at once, the rest on the battle card's clock */
+            const hintBox = _hqEl('hqLoadHint');
+            const notes = hintBox ? _hqLoadNotesPool(roomId, roomDef) : [];
+            const cycleMs = (typeof window.LS_HINT_CYCLE_MS === 'number') ? window.LS_HINT_CYCLE_MS : 9500;
+            let noteIdx = 0, noteNextAt = t0 + cycleMs, noteSwapAt = 0;
+            if (hintBox) { hintBox.classList.remove('ls-hint-fade'); hintBox.style.display = notes.length ? '' : 'none'; if (notes.length) _hqLoadSetHint(hintBox, notes[0]); noteIdx = 1; }
             const tick = () => {
                 if (generation !== _hqLoadGeneration) return;
                 const l = _hqEl('hqLoad'); if (!l || l.style.display === 'none' || l.classList.contains('done')) return;
@@ -339,12 +389,18 @@
                     let g = null; try { g = (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq && ThreeRenderer.hq.gate) ? ThreeRenderer.hq.gate() : null; } catch (e) {}
                     if (g && g.total > 0) {
                         pct = Math.round(100 * g.done / g.total);
-                        txt = 'loading ' + label + ' · ' + g.done + ' / ' + g.total + ' files' + (g.pending === 0 && !g.player ? ' · dressing the officer…' : '');
+                        /* THE ASSET STORE (2026-09-20): how many of the room's files came off the disk, not the network */
+                        txt = 'loading ' + label + ' · ' + g.done + ' / ' + g.total + ' files' + (g.cached ? ' · ' + g.cached + ' from the store' : '') + (g.pending === 0 && !g.player ? ' · dressing the officer…' : '');
                     } else if (g) {
                         txt = baseNote;
                     }
                 }
                 if (l.classList.contains('walk') && performance.now() - t0 > HQ_WALK_BLINK_MS) l.classList.remove('walk');   // a cold room: the blink becomes the card
+                if (hintBox && notes.length > 1 && !l.classList.contains('walk')) {
+                    const nowH = performance.now();
+                    if (noteSwapAt && nowH >= noteSwapAt) { noteSwapAt = 0; _hqLoadSetHint(hintBox, notes[noteIdx % notes.length]); noteIdx++; hintBox.classList.remove('ls-hint-fade'); noteNextAt = nowH + cycleMs; }
+                    else if (!noteSwapAt && nowH >= noteNextAt) { hintBox.classList.add('ls-hint-fade'); noteSwapAt = nowH + HQ_LOAD_NOTE_FADE_MS; }
+                }
                 if (txt !== last) { last = txt; note.textContent = txt; }
                 if (fill) { const w = (pct == null) ? 0 : pct; if (w !== lastW) { lastW = w; fill.style.width = w + '%'; fill.parentNode.style.opacity = (pct == null) ? '0' : '1'; } }
                 requestAnimationFrame(tick);

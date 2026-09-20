@@ -7126,3 +7126,49 @@ one landing); (5) `mobile-audio/` is not in the repo — its test SKIPS when the
 absent (commit the 37 cues or leave it). The workflow's actions are `checkout@v5` /
 `setup-node@v5` (the Node 20 deprecation warning). Once this delivery is on main the run
 is green and the e-mails stop; the next red one is a REAL break in that push.
+
+## THE ASSET STORE + THE EXTRAS ARRIVE + THE FIELD NOTES EVERYWHERE (2026-09-20, local delivery)
+The user: "why are there loading screens between every single little door … why does it have to
+re-download everything again? does it not check if it already has some of the things cached? what
+is the point of having cache if nothing ever stays loaded … the loading screens need the field
+notes like the loading screen before battle." READ OFF THE CODE (the CDN is unreachable from the
+sandbox — nothing measured live this session): (1) the game NEVER HAD A CACHE OF ITS OWN — the
+in-memory caches (`_hqTexCache` / `_hzTexCache` / `_miscModelCache` / `_unitGlbCache`) live for one
+page load, and under them sat only the browser's HTTP cache: a few hundred MB in total, an entry
+over ~1/8 of that never stored (a 16 MB chair), everything LRU-evicted by the next room's 100–500 MB
+of GLB, a dashboard-uploaded object without cache-control re-validated on a guess — so every reload
+and every room past the second pulled from the CDN like the first time; (2) THE LOAD GATE (the
+same day) waits for EVERY file the room asks for, and the POPULATION (2–6 rigs × 5–9 MB, a NEW draw
+per room) was the bulk of it — a walk into a room not yet visited this session became a full card
+after `HQ_WALK_BLINK_MS`; a re-visit in the same session is a memory hit and stays a blink. THREE
+RULES NOW. **THE ASSET STORE** (three-renderer.js, the block after the ledger): every file the
+renderer's loaders fetch goes through CACHE STORAGE (`caches.open('ew-assets-v1')` — a per-origin
+store the browser sizes in GB, alive across reloads and deploys) — `_asFetch(url, { rec, priority })`
+= a hit off the disk (marks `rec.cached`) or ONE fetch + PUT; `_asGltf` (GLTFLoader.parse off the
+bytes), `_asObj` (OBJLoader.parse off the text), `_texFetch`'s store path (a blob URL into the img);
+readers: `_loadUnitGLB`, `_loadMiscModel`, `_loadFoliageModel`, `textureLoader.load` (every sheet),
+and the VFX file's `_wpnLoad` / `_loadCachedTex` through `ThreeRenderer.assetGltf / assetTexture`.
+The index (localStorage `ew_asset_index`: url → last use, bytes) evicts the least recently used past
+`AS_CAP_BYTES` (1.5 GB); `navigator.storage.persist()` is asked once. Unavailable (an insecure
+context, file://, no Cache API, `EW_NO_ASSET_STORE`) → the loaders take their old direct paths byte
+for byte (the harnesses stub `_asAvailable` false). Dev: `window._ewAssetStore.stats()` (hits /
+misses / puts / bytes) / `.clear()`. The load card reads `loading <room> · 12 / 48 files · 30 from
+the store` (`G.progress().cached`). A new loader anywhere = `_asGltf` / `_asObj` / the renderer's
+`textureLoader.load` — never a bare `new THREE.GLTFLoader().load` again. **THE EXTRAS ARRIVE**: a
+ledger record filed while `_bgLoadDepth > 0` (the population's extras) is BACKGROUND (`rec.bg`) —
+no gate counts it (`adoptLive` neither); the scene asking for the same file promotes it (`_alJoin`).
+`_hqSpawnRounds` step 2: a rig the caches hold stands in the room at once; a rig still to stream
+spawns ON LANDING at a random unlocked DOOR, `arriving: true`, the leaf swinging (the traveller's own
+entrance) — guarded by `_hq === H`, so a room left mid-stream spawns nothing. The room is complete
+without them; a person walking in through a door later is a scene event, not a missing asset.
+**THE FIELD NOTES EVERYWHERE**: battle.js `window._lsHintPool()` (a fresh shuffle of `LS_HINTS` +
+the memos / canon notices; the battle card uses it too) + `window.LS_HINT_CYCLE_MS`; the HQ card
+(`#hqLoadHint`, index.html — the battle's `.ls-hint` markup; CSS in styles-base.css beside
+`.hq-load.walk`) rotates map.js `_hqLoadNotesPool(roomId, roomDef)` = the ROOM'S OWN notes first
+(its `desc` under its number, the SITE FILE of its site) then the pool, driven from
+`_hqLoadProgressStart`'s rAF tick (`_hqLoadSetHint`); the walk-blink shows none. `npm test` runs
+`asset-store.test.js`. STILL THE USER'S: the volume (the hall ~300 MB of GLB; `gltf-transform
+optimize` at 1024 px WebP is 5–10×) — the store makes the SECOND visit free, never the first. UNSEEN
+LIVE (RULE #1c): the store on Safari / iOS (Cache Storage under ITP may be purged after 7 days of
+no use), the first cold-cache card's count, the arrivals' timing through the doors, the notes'
+legibility on the card.

@@ -236,6 +236,7 @@ function ledgerContext() {
         textureLoader: {},
     });
     vm.runInContext('var _ewAssetFailures = []; var _retry = null; function _ewRetryUrl() { return _retry; } function _ewAssetFailed() {}\n'
+        + 'function _asAvailable() { return false; }\n'   // THE ASSET STORE (2026-09-20): off in this harness — the direct <img> path is what it measures
         + 'var _mobileModelJobs = [], _mobileModelBusy = false; var _rigLaneUrls = {}, _rigLaneLive = {}; var _bgLoadDepth = 0; var MODEL_MAX_INFLIGHT = 4, MODEL_JOB_TIMEOUT_MS = 90000; var _mqJobs = [], _mqLive = 0, _mqSeq = 0;\n'
         + 'var _texInflight = 0, _texHoldUntil = 0, TEX_HOLD_MS = 2500; var _mqTexTimer = null;\n'
         + 'var AL_SETTLE_MS = 300, AL_STALL_MS = 60000; var _alSeq = 0, _alLive = {}, _alLiveN = 0, _alSessions = [], _alLastEventAt = 0;\n'

@@ -38696,6 +38696,20 @@
             return out;
         }
 
+        /* THE FIELD NOTES EVERYWHERE (2026-09-20 — the user: "the loading screens need the field notes just
+           like the loading screen before battle"): the shuffled pool the battle card rotates, for any other
+           loading card (the HQ's, map.js _hqLoadProgressStart) — a fresh shuffle per call */
+        function _lsHintPool() {
+            const pool = LS_HINTS.concat(_lsDoorHints());
+            for (let i = pool.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                const tmp = pool[i]; pool[i] = pool[j]; pool[j] = tmp;
+            }
+            return pool;
+        }
+        window._lsHintPool = _lsHintPool;
+        window.LS_HINT_CYCLE_MS = LS_HINT_CYCLE_MS;
+
         /* Map title for the card — the bare map name ("MOON" / "PYRAMIDS OF
            GIZA"); the generic random-size boards (Small…Huge) have no name
            worth carving in serif, so they get a lore-safe one. */
@@ -39058,11 +39072,7 @@
 
                 /* Field manual / intel fragments + the DOOR memo & canon cards,
                    shuffled so two memos don't run back to back every time. */
-                const hintPool = LS_HINTS.concat(_lsDoorHints());
-                for (let i = hintPool.length - 1; i > 0; i--) {
-                    const j = Math.floor(Math.random() * (i + 1));
-                    const tmp = hintPool[i]; hintPool[i] = hintPool[j]; hintPool[j] = tmp;
-                }
+                const hintPool = _lsHintPool();
                 /* The SITE FILE for THIS map leads the rotation (data.js
                    DOOR_TEXT.SITE_FILES — the same summary the match-select
                    screen shows), then the shuffled pool. Local on both

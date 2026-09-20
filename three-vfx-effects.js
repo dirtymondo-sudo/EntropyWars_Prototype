@@ -6806,9 +6806,17 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     var _bulletTexCache = null;
 
     function _loadCachedTex(url) {
+        var TRl = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
+        /* THE ASSET STORE (2026-09-20): the renderer's own texture loader — the store, the retry and the
+           ledger record in one — when it is there; the plain loader below stands for a sandbox without it */
+        if (TRl && typeof TRl.assetTexture === 'function') {
+            var t0 = TRl.assetTexture(url, null, null);
+            t0.magFilter = THREE.NearestFilter; t0.minFilter = THREE.NearestFilter;
+            t0.wrapS = THREE.RepeatWrapping; t0.wrapT = THREE.RepeatWrapping;
+            return t0;
+        }
         var loader = new THREE.TextureLoader();
         /* THE ASSET LEDGER (2026-09-20): the renderer's gate (a loading screen) waits for this sheet too */
-        var TRl = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
         var rec = (TRl && typeof TRl.assetTrack === 'function') ? TRl.assetTrack('texture', url) : null;
         /* THE RETRY (2026-09-20, three-renderer.js's rule): a CDN copy frozen without its CORS header or as a
            404 is fetched once more under a fresh cache key onto the same Texture */
@@ -10340,7 +10348,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var rec = (TR && typeof TR.assetTrack === 'function') ? TR.assetTrack('model', url0) : null;
         function attempt(reqUrl, retried) {
           try {
-            new THREE.GLTFLoader().load(reqUrl, function (gltf) {
+            var _viaStore = (TR && typeof TR.assetGltf === 'function');   // THE ASSET STORE (2026-09-20): a weapon GLB is read off the disk the second time
+            var _onGltf = function (gltf) {
                 e.queued = false; _done();
                 var root = gltf.scene || (gltf.scenes && gltf.scenes[0]);
                 if (!root) { e.loading = false; e.failed = true; if (rec) rec.settle(false); return; }
@@ -10353,14 +10362,17 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 e.root = root;
                 e.loading = false;
                 if (rec) rec.settle(true);
-            }, undefined, function () {
+            };
+            var _onFail = function () {
                 /* THE RETRY (2026-09-20): once more under a fresh cache key (three-renderer.js's rule) */
                 var again = (!retried && typeof window !== 'undefined' && typeof window._ewRetryUrl === 'function') ? window._ewRetryUrl(reqUrl) : null;
                 if (again) { attempt(again, true); return; }
                 e.loading = false; e.failed = true; e.queued = false; _done();
                 if (rec) rec.settle(false);
                 try { console.warn('[VFX] weapon GLB failed to load:', def.file); } catch (e2) {}
-            });
+            };
+            if (_viaStore) TR.assetGltf(reqUrl, _onGltf, _onFail, { rec: rec });
+            else new THREE.GLTFLoader().load(reqUrl, _onGltf, undefined, _onFail);
           } catch (ex) { e.loading = false; e.failed = true; e.queued = false; _done(); if (rec) rec.settle(false); }
         }
         /* def.url = absolute override for props living outside the weapons folder (the misc-bucket UFO).

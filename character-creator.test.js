@@ -414,6 +414,7 @@ test('R2 load failure retries only the allowlisted model and settles the existin
         _alTrack: () => ({ settle() {} }), _alJoin() {},   // THE ASSET LEDGER (2026-09-20): the loader files a record and settles it
         _ewRetryUrl: u => u + '&ewretry=t', _ewAssetFailed() {},   // THE RETRY (2026-09-20): one more fetch under a fresh cache key before the fallback
         setTimeout: (fn, ms) => { if (!ms) fn(); return 0; }, clearTimeout() {},   // THE MODEL QUEUE (2026-09-20): the pump runs at once, the slot's safety timer never
+        _asAvailable: () => false, _asGltf: (url, ok, err) => new c.THREE.GLTFLoader().load(url, ok, undefined, err),   // THE ASSET STORE (2026-09-20): off here — the loader's direct path
         getCharacterModelFallback: context.getCharacterModelFallback,
         THREE: { GLTFLoader: class { load(url, ok, progress, fail) {
             calls.push(url); if (url.startsWith('/api/')) ok({ scene: root, animations: [] }); else fail();
