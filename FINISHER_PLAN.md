@@ -197,6 +197,98 @@ spells), a ziggurat tier block, a gothic buttress.
 
 ## 7. Log
 
+- **2026-09-20 — SIX MORE EXECUTIONS in roster order (delivery 10).** The
+  next six rows of `FINISHERS` after the mantid, each a director (battle.js
+  `_FIN_DIRECTORS`, the DELIVERY 10 block) + a signature (three-vfx-effects.js
+  "THE FINISHER PASS 2", the DELIVERY 10 block) + a stage script
+  (`_FIN_STAGE[sig]`): antperson **The Colony** (`theColony` — an ANTHILL
+  rises beside the tile (a cone with a dark hole in its crown), eighty ants
+  pour out of it in a column that widens into a black TIDE under the victim's
+  feet, then CLIMB the body (beads riding its surface) until it is black to
+  the crown and shudders; the hit: the body comes apart into SIX PIECES,
+  each hoisted on the tide and carried back to the hill in a column, each
+  dropping into the hole in turn; the tide drains, the hill sinks; witness cam
+  on the hill → god shot on the tide → face cam on the climb → the freeze on
+  `sepia` → a crane with the column → a low reverse; 🐜 THE COLONY HAS BEEN
+  NOTIFIED · A MILLION SMALL PROBLEMS · EVERY ONE ACCOUNTED FOR. · IN
+  PIECES.), mothman **The Bridge** (`theBridge` — two RED EYES open high on
+  the caster's side and hold on the victim (blinking, out of step with the
+  tower lamps); the SILVER BRIDGE builds itself along the line under the
+  victim — two towers, nine plank segments lifting the victim's own segment
+  two and a half tiles up, the eyebar chain drooping between the towers, a
+  ⚠ THE BRIDGE IS NOT SAFE card the victim ignores; one eyebar SNAPS at the
+  near tower (a spark, the chain whips), the segments drop in sequence from
+  that tower toward the victim, each into a splash, the victim's segment
+  last (the hit), the eyes close; reverse OTS on the eyes → god shot on the
+  build → face cam on the span → a crane on the snap → fall follow with the
+  deck → the freeze on `crimson` → a low reverse; 👁 👁 · POINT PLEASANT ·
+  DEC 15 1967 · ⚠ THE WARNING NOBODY HEEDS · EYEBAR 330 · NOBODY HEEDED.),
+  siren **The Last Verse** (`theLastVerse` — THE SEA comes in: a dark sheet
+  floods the board beyond the victim and stops at the tile's edge with a
+  foam line; THREE ROCKS stand up out of it (`_finRockBody` — the asteroid
+  GLBs when they are in); THE SONG: seven note-cards leave the caster's tile
+  and circle the victim's head, its eyes go glassy, and it WALKS off its
+  tile, into the shallows to the waist, up onto the middle rock; THE LAST
+  VERSE: a WAVE the height of a tower rises behind the rocks, curls, and
+  comes down (the hit) — foam over everything, the rocks bare, the victim
+  gone; the sea and the rocks draw back down; god shot on the sea → reverse
+  OTS on the song → a side dolly on the walk → sky watch on the wave → the
+  freeze on `cool` → a crane on the ebb → a low reverse; 🎵 THE ROCKS ARE
+  RIGHT THERE · ♪ COME CLOSER · THE LAST VERSE · THE SEA GETS ITS OWN.),
+  scarecrow **A Murder** (`aMurder` — ONE CROW (a black bead, two flapping
+  wing-planes, a yellow eye) lands on the victim's head; then fifty-six
+  come in from every direction on a widening spiral and LAND one after
+  another until the victim is a black feathered heap to twice its height;
+  a stillness, a CAW, and they lift AS ONE (the hit) in a spiral up and away
+  over the caster — the tile is empty, fourteen black feathers drift down;
+  face cam on the first crow → sky watch on the county → a side dolly round
+  the heap → witness cam on the stillness → the freeze on `desat` → a crane
+  with the flock → a low reverse; 🐦‍⬛ ONE · A MURDER · …OF CROWS · CAW. ·
+  AS ONE.), glitch **Corrupted Save** (`corruptedSave` — the victim's TEXTURE
+  goes missing (the magenta-and-black checker of a missing asset on a
+  canvas, flickering in), then the MODEL (a cyan wireframe over it, sixteen
+  magenta / cyan triangles drifting off-grid), then a FLOPPY DISK the size of
+  a table drops beside the tile (a shutter, a label, a progress bar whose
+  card ticks up and sticks blinking at 99 %), then the TILE goes missing (a
+  black square in a hollow pink outline, the body sinking a little, pink /
+  cyan pixels flickering), then the hit: FILE NOT FOUND, the body deleted in
+  a spray of twenty-six magenta / cyan / black blocks, a 404 card rising;
+  the tile comes back, the disk does not; face cam on the texture → a dolly
+  zoom on the tearing model → god shot on the disk → witness cam on the
+  missing tile → the freeze on `hue` → a low reverse; 💾 TEXTURE: MISSING ·
+  MODEL: MISSING · SAVING… DO NOT POWER OFF · TILE: MISSING · 99% · FILE NOT
+  FOUND · THE MEMORY OF THEM: MISSING — the first finisher on the `terminal`
+  insert kind), machine elves **The Dose** (`theDose` — THE CHAMBER: the
+  library's kaleidoscope dome + two hue-cycling rings round the tile; SIX
+  ELVES — an octahedron core in a ring in a crown of spikes, every part
+  scaling and turning out of step, the colours cycling, a glyph-card
+  chattering over each (∞ ✶ ◈ ⟡ ☉ ✧) — orbit in closer; THE GIFT: a wireframe
+  icosahedron inside a wire dodecahedron turning on every axis GROWS
+  twenty-six-fold until it fills the sky over the board under an EVERYTHING
+  AT ONCE card while the body cycles through every colour and stretches
+  thin; the hit: the object is gone, a rainbow burst, eighteen prismatic
+  shards fall on the tile; the elves wave and rise away; god shot on the
+  chamber → a side dolly round the elves → face cam on the gift → a dolly
+  zoom on the growth → the freeze on `hue` → sky watch on the wave → a low
+  reverse; 🌈 FIVE MINUTES · …OF FOREVER · THEY ARE SO GLAD YOU CAME · A GIFT
+  · EVERYTHING AT ONCE · NOT BUILT FOR EVERYTHING.). Every signature owns ONE
+  group through `_sigRunOwned`, every timer is `_fxDelay`, every text card a
+  Sprite, and each is called INSIDE the relayed cinematic (never
+  `fireGeometry`, RULE #2). finishers.test.js's BUILT + SIG_FN tables carry
+  the six (15 / 15); each signature was ticked end to end in a stub-THREE
+  sandbox (every frame of its whole `ms`, on a real line and on a
+  zero-length one; not a render). FIFTY-ONE of 99 are built; 48 remain (the
+  next six in roster order: cyclops · cyborg · demon prince · demon princess
+  · dreameater · fallen angel). UNSEEN LIVE (RULE #1c): the ants' bead size
+  against a real rig (`ts * 0.028` is the edit) and the tide's read on a
+  bright sheet, the bridge's span past the board's rim on a corner tile (the
+  towers hang in the air — `SPAN` is the edit) and the victim's lift against
+  the real model, the sea sheet's edge against the board's own water, the
+  asteroid rocks' scale as sea stacks, the crows' flap rate, the checker's
+  read on the stand-in capsule (the real rig keeps its own material — the
+  checker is a second shell), the 99 % card's blink, the gift's final scale
+  against the dome (26× is the edit), the six camera paths on the real
+  board.
 - **2026-09-20 — SIX MORE EXECUTIONS in roster order (delivery 9).** The
   next six rows of `FINISHERS` after the annunaki, each a director (battle.js
   `_FIN_DIRECTORS`, the DELIVERY 9 block) + a signature (three-vfx-effects.js

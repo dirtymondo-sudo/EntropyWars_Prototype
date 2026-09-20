@@ -6755,6 +6755,31 @@ UNSEEN LIVE (RULE #1c): every room under the day cycle (a room that now reads FL
 not the grade back), the moon key on the night areas, the eased swap through a door, the subtitle bar
 against the walk.
 
+## SIX MORE EXECUTIONS — The Colony · The Bridge · The Last Verse · A Murder · Corrupted Save · The Dose (FINISHER_PLAN delivery 10) — 2026-09-20, local delivery
+The next six `FINISHERS` rows in roster order are BUILT (fifty-one of 99; 48
+remain): antperson `theColony` (`_sigTheColony3D` — the anthill, eighty
+ants in a column that becomes a tide, the climb, the body carried back to
+the hole in six pieces), mothman `theBridge` (`_sigTheBridge3D` — the red
+eyes, the Silver Bridge building itself under the victim, the eyebar snap,
+the segments into the river, the victim's last), siren `theLastVerse`
+(`_sigTheLastVerse3D` — the sea comes in, three `_finRockBody` rocks stand
+up, the note-cards, the walk into the water, the tower-high wave), scarecrow
+`aMurder` (`_sigAMurder3D` — one crow, then fifty-six, the heap, the CAW,
+the flock lifting as one), glitch `corruptedSave` (`_sigCorruptedSave3D` —
+the missing-texture checker on a canvas, the wireframe + drifting
+triangles, the floppy stuck at 99 %, the missing tile, FILE NOT FOUND, 404;
+the first director on the `terminal` insert kind), machine elves `theDose`
+(`_sigTheDose3D` — the kaleidoscope chamber, six self-transforming elves
+with glyph-cards, the hyper-object growing to fill the sky, the rainbow
+burst, the shards). Each = a director in battle.js `_FIN_DIRECTORS` (the
+DELIVERY 10 block), the signature in "THE FINISHER PASS 2" (the DELIVERY 10
+block; `_sigRunOwned` + `_fxDelay`, called inside the relayed cinematic —
+RULE #2), a `_FIN_STAGE[sig]` script for the forge, a row in
+finishers.test.js's BUILT table. Smoke-tested in a stub-THREE harness (every
+tick; not a render). UNSEEN LIVE (RULE #1c): FINISHER_PLAN §7's delivery-10
+entry lists what to eyeball first — the ants' size, the bridge past the rim,
+the sea's edge, the crows' flap, the checker's read, the gift's final scale.
+
 ## SIX MORE EXECUTIONS — Wearing You · Full Moon · Petrified · Three Wishes · Nine Lives · The Praying (FINISHER_PLAN delivery 9) — 2026-09-20, local delivery
 The next six `FINISHERS` rows in roster order are BUILT (forty-five of 99; 54
 remain): skinwalker `wearingYou` (`_sigWearingYou3D` — the ring of eyes, the
