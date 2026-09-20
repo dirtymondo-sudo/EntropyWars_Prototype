@@ -3750,7 +3750,7 @@
             const normalized = emptyLoadout();
             normalized.spells = [];
             for (const [iKey, iRule] of Object.entries(ITEM_RULES)) {
-                const cap = getItemCapForClass(cls, iKey);
+                const cap = iRule.fieldOnly ? 0 : getItemCapForClass(cls, iKey);   // THE BAG (2026-09-20): a field-only item never enters a battle loadout
                 normalized.items[iKey] = Math.max(0, Math.min(cap, Number(loadout?.items?.[iKey] || 0)));
             }
             let totalItems = Object.values(normalized.items).reduce((a, b) => a + b, 0);

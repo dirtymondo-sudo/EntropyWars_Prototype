@@ -887,6 +887,45 @@ function localPurchaseUnit(raceKey, useToken) {
   return { ok: true, data: { gold: p.account.gold, unlockedUnits: p.account.unlockedUnits.slice(), freeTokens: p.account.freeTokens } };
 }
 
+// ── THE DISPENSARY (2026-09-20): spend (or refund) Hazard Pay on goods. The server's
+// wallet is authoritative when there is one (/api/economy/spend — an atomic debit that
+// refuses an overdraft); a local profile spends its own mirror. A NEGATIVE amount is a
+// refund (a sell-back), capped server-side. Returns { ok, data | error }.
+function localSpendGold(amount) {
+  amount = Math.round(Number(amount) || 0);
+  const idx = getActiveProfileIndex();
+  if (idx === null) return { ok: false, error: 'No profile selected.' };
+  const p = loadProfile(idx);
+  if (!p) return { ok: false, error: 'No profile.' };
+  if (!p.account) p.account = { gold: 0, unlockedUnits: [], freeTokens: 0 };
+  const gold = p.account.gold || 0;
+  if (amount > 0 && gold < amount) return { ok: false, error: 'Not enough Hazard Pay. (' + gold.toLocaleString() + ' / ' + amount.toLocaleString() + ')' };
+  p.account.gold = Math.max(0, gold - amount);
+  saveProfile(idx, p);
+  try { if (typeof window !== 'undefined' && typeof window._refreshWallets === 'function') window._refreshWallets(); } catch {}
+  return { ok: true, data: { gold: p.account.gold, unlockedUnits: (p.account.unlockedUnits || []).slice(), freeTokens: p.account.freeTokens || 0, spent: amount } };
+}
+async function spendGold(amount, reason) {
+  amount = Math.round(Number(amount) || 0);
+  if (!amount) return { ok: true, data: { spent: 0 } };
+  const token = getServerToken();
+  if (!token) return localSpendGold(amount);
+  try {
+    const resp = await fetch('/api/economy/spend', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, amount, reason: String(reason || '').slice(0, 40) }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) return { ok: false, error: data.error || 'The wallet said no.' };
+    _syncEconomyToLocal(data);
+    return { ok: true, data };
+  } catch (err) {
+    console.error('[ECON] Spend error:', err);
+    return { ok: false, error: 'Network error.' };
+  }
+}
+
 async function serverPurchaseUnit(raceKey, useToken) {
   const token = getServerToken();
   // No server account → spend the local wallet so solo/offline play can unlock.
@@ -950,6 +989,8 @@ window.ProfileSystem = {
   scheduleProgressSync,
   serverPurchaseUnit,
   localPurchaseUnit,
+  spendGold,
+  localSpendGold,
   creditLocalGold,
   creditLocalFreeTokens,
 };

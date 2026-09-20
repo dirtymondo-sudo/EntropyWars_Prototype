@@ -5904,3 +5904,56 @@ body.diorama-3d .tile-underpass.jump::before {
 #hqPage .hq-panel.hq-panel-map .hq-panel-card { background: var(--hq-plate-bg); }
 #hqPage .hq-map-side .hq-row > .hq-lamp-chip { grid-column: 2; grid-row: 1; font-size: 9px; }
 #hqPage .hq-map-side .hq-row > .hq-btn { grid-row: 2; }
+
+/* ══ THE PARTY'S QUICK ACTIONS + THE BAG + THE HATCH (2026-09-20) ══
+   The card's quick strip (swap · relieve · the heals · the potions · the sheet), the
+   quick bar over the party (AUTO HEAL · RESTOCK · THE BAG · THE COT · THE DISPENSARY),
+   the ITEMS sheet (the bag's rows, the pockets) and Room 911's hatch. Appended at the
+   end so the HQ HUD pass's plate material carries into them. */
+#hqPage .hq-pp-card { grid-template-rows: auto auto; }
+#hqPage .hq-pp-card:focus-visible { outline: 2px solid var(--ew-sel, #d9b45a); outline-offset: 2px; }
+#hqPage .hq-pp-quick { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 5px; padding-top: 8px; margin-top: 2px; border-top: 1px dashed rgba(184,160,96,0.28); }
+#hqPage .hq-pp-quick .hq-btn-xs { font-size: 8px; letter-spacing: 0.14em; padding: 4px 8px; min-height: 24px; }
+#hqPage .hq-pp-quick .hq-btn-xs.heal { border-color: rgba(88,216,88,0.55); color: #9ff09f; }
+#hqPage .hq-pp-quick .hq-btn-xs.heal:not(:disabled):hover { background: rgba(88,216,88,0.16); }
+#hqPage .hq-pp-quick .hq-btn-xs.item { border-color: rgba(120,190,255,0.5); }
+#hqPage .hq-pp-quick .hq-btn-xs.item.bag { border-style: dashed; }
+#hqPage .hq-pp-quick .hq-btn-xs.sheet { margin-left: auto; }
+#hqPage .hq-pp-quick .hq-btn-xs:disabled { opacity: 0.38; cursor: not-allowed; }
+#hqPage .hq-pp-card.down .hq-pp-quick .hq-btn-xs.heal { opacity: 0.38; }
+#hqPage .hq-pp-quickbar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin: 4px 0 10px; padding: 8px 10px; border: 1px solid var(--ew-plate-edge, rgba(184,160,96,0.35)); border-radius: 8px; background: var(--ew-row-bg, rgba(255,255,255,0.03)); }
+#hqPage .hq-pp-quickbar .hq-btn-sm { min-height: 30px; }
+#hqPage .hq-pp-quickbar .hq-btn-primary { border-color: #58d858; color: #b8ffb8; }
+#hqPage .hq-pp-quickbar .hq-btn-primary:not(:disabled):hover { background: rgba(88,216,88,0.16); }
+#hqPage .hq-pp-quickbar .hq-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+#hqPage .hq-pp-gold { margin-left: auto; font-family: 'Cormorant SC', serif; font-size: 18px; letter-spacing: 0.14em; color: #f0d060; }
+#hqPage .hq-pp-msg em { font-style: normal; color: #ffb0b0; }
+#hqPage .hq-pp-bag { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 8px; margin: 4px 0 10px; }
+#hqPage .hq-pp-bagrow { display: grid; grid-template-columns: 38px 1fr auto; grid-template-rows: auto auto auto; gap: 2px 10px; align-items: center; padding: 8px 12px 8px 8px; border: 1px solid var(--ew-plate-edge, rgba(184,160,96,0.3)); border-radius: 8px; background: var(--ew-row-bg, rgba(255,255,255,0.03)); }
+#hqPage .hq-pp-bagrow .hq-pp-bagicon { grid-row: 1 / 4; font-style: normal; font-size: 26px; text-align: center; line-height: 1; }
+#hqPage .hq-pp-bagrow b { font-family: 'Cormorant SC', serif; font-size: 18px; letter-spacing: 0.12em; }
+#hqPage .hq-pp-bagrow b em { font-style: normal; color: #f0d060; }
+#hqPage .hq-pp-bagrow span { grid-column: 2; font-size: 10px; color: #cfc9b8; line-height: 1.35; }
+#hqPage .hq-pp-bagrow small { grid-column: 2; font-size: 8px; letter-spacing: 0.2em; color: #b8a060; }
+#hqPage .hq-pp-bagrow .hq-btn { grid-column: 3; grid-row: 1 / 4; }
+#hqPage .hq-pp-bagrow:not(.field) { opacity: 0.82; }
+#hqPage .hq-pp-pockets { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 6px; margin: 4px 0 10px; }
+#hqPage .hq-pp-pocket { display: flex; flex-direction: column; gap: 5px; padding: 7px 10px; border: 1px solid var(--ew-plate-edge, rgba(184,160,96,0.28)); border-radius: 8px; }
+#hqPage .hq-pp-pocket b { font-family: 'Cormorant SC', serif; font-size: 15px; letter-spacing: 0.12em; }
+#hqPage .hq-pp-pocket span { display: flex; flex-wrap: wrap; gap: 4px; }
+#hqPage .hq-pp-pocket.down { opacity: 0.55; }
+#hqPage .hq-shop { display: flex; flex-direction: column; gap: 6px; margin: 6px 0 10px; }
+#hqPage .hq-shop-row { display: grid; grid-template-columns: 40px 1fr auto auto; grid-template-rows: auto auto auto; gap: 2px 12px; align-items: center; padding: 8px 12px 8px 8px; border: 1px solid var(--ew-plate-edge, rgba(184,160,96,0.3)); border-radius: 8px; background: var(--ew-row-bg, rgba(255,255,255,0.03)); }
+#hqPage .hq-shop-row .hq-shop-icon { grid-row: 1 / 4; font-style: normal; font-size: 28px; text-align: center; line-height: 1; }
+#hqPage .hq-shop-row b { font-family: 'Cormorant SC', serif; font-size: 19px; letter-spacing: 0.12em; }
+#hqPage .hq-shop-row > span { grid-column: 2; font-size: 10px; color: #cfc9b8; line-height: 1.35; }
+#hqPage .hq-shop-row small { grid-column: 2; font-size: 8px; letter-spacing: 0.2em; color: #b8a060; }
+#hqPage .hq-shop-row .hq-shop-price { grid-column: 3; grid-row: 1 / 4; font-style: normal; font-family: 'Cormorant SC', serif; font-size: 20px; letter-spacing: 0.1em; color: #f0d060; white-space: nowrap; }
+#hqPage .hq-shop-row .hq-shop-btns { grid-column: 4; grid-row: 1 / 4; display: flex; flex-direction: column; gap: 4px; }
+#hqPage .hq-shop-row .hq-btn:disabled { opacity: 0.38; cursor: not-allowed; }
+#hqPage .hq-shop-row.field { border-style: dashed; }
+@media (max-width: 720px) {
+  #hqPage .hq-shop-row { grid-template-columns: 34px 1fr auto; }
+  #hqPage .hq-shop-row .hq-shop-btns { grid-column: 1 / -1; grid-row: 4; flex-direction: row; flex-wrap: wrap; }
+  #hqPage .hq-shop-row .hq-shop-price { grid-column: 3; }
+}

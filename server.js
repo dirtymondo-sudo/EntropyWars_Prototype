@@ -1231,6 +1231,56 @@ app.post('/api/economy/purchase', limitEcon, async (req, res) => {
     }
 });
 
+// ── THE DISPENSARY (2026-09-20): spend Hazard Pay on goods (an atomic debit that
+// refuses an overdraft) or refund it (a sell-back, a NEGATIVE amount, capped). The
+// goods themselves live in the client's local bag (door.hq.bag, like the party);
+// only the wallet is the server's. `reason` is logged, never trusted.
+const SPEND_GOLD_CAP = 100000;   // the most one call may debit
+const SPEND_REFUND_CAP = 1000;   // the most one call may credit back (a sell-back)
+app.post('/api/economy/spend', limitEcon, async (req, res) => {
+    if (!d1.isConfigured()) {
+        return res.status(503).json({ error: 'Database not configured.' });
+    }
+    try {
+        await ensureMigrations();
+        const { token, amount, reason } = req.body || {};
+        if (!token) {
+            return res.status(401).json({ error: 'Authentication required.' });
+        }
+        const amt = Math.round(Number(amount));
+        if (!isFinite(amt) || amt === 0 || amt > SPEND_GOLD_CAP || amt < -SPEND_REFUND_CAP) {
+            return res.status(400).json({ error: 'Bad amount.' });
+        }
+        const player = await findPlayerByToken(token, 'id, gold, unlocked_units, free_tokens');
+        if (!player) {
+            return res.status(401).json({ error: 'Invalid token.' });
+        }
+        await getOrBackfillEconomy(player);
+        let result;
+        if (amt > 0) {
+            // Atomic: WHERE gold >= amount refuses an overdraft and a double-click.
+            result = await d1.execute('UPDATE players SET gold = gold - ?1 WHERE id = ?2 AND gold >= ?1', [amt, player.id]);
+            const changes = result && result.meta ? (result.meta.changes || 0) : 0;
+            if (!changes) {
+                return res.status(402).json({ error: 'Insufficient Hazard Pay.' });
+            }
+        } else {
+            await d1.execute('UPDATE players SET gold = gold + ?1 WHERE id = ?2', [-amt, player.id]);
+        }
+        const updated = await d1.getOne('SELECT gold, unlocked_units, free_tokens FROM players WHERE id = ?1', [player.id]);
+        console.log(`[ECON] ${player.id} ${amt > 0 ? 'spent' : 'refunded'} ${Math.abs(amt)} (${String(reason || '').slice(0, 40)}) → gold=${updated.gold}`);
+        res.json({
+            gold: updated.gold,
+            spent: amt,
+            unlockedUnits: parseUnlocked(updated.unlocked_units),
+            freeTokens: updated.free_tokens,
+        });
+    } catch (err) {
+        console.error('[ECON] Spend error:', err.message);
+        res.status(500).json({ error: 'Failed to spend Hazard Pay.' });
+    }
+});
+
 // ── ACHIEVEMENT PROGRESS ENDPOINTS (ACHIEVEMENTS_PLAN.md §7, Phase 5) ──
 // Durability + multi-device continuity for profile.progress — NOT anti-
 // cheat (§2.2 sets that expectation; a forged blob only pollutes the

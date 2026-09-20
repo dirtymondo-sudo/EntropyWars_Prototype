@@ -13105,7 +13105,7 @@
                                         const ui = parseInt(String(u.id).split('-')[1], 10);
                                         const pm = (Number.isFinite(ui) && state.partyMeta && state.partyMeta[seat]) ? state.partyMeta[seat][ui] : null;
                                         if (!pm || !pm.partyId) continue;
-                                        vit.push({ partyId: pm.partyId, hp: u.hp | 0, maxHp: u.maxHp | 0, mp: u.mp | 0, maxMp: u.maxMp | 0, dead: !!(u.dead || u._dying) });
+                                        vit.push({ partyId: pm.partyId, hp: u.hp | 0, maxHp: u.maxHp | 0, mp: u.mp | 0, maxMp: u.maxMp | 0, dead: !!(u.dead || u._dying), items: Object.assign({}, u.items || {}) });   // THE POCKETS (2026-09-20): what the fight spent stays spent
                                     }
                                     if (vit.length) partyRes = hqPartyAfterMatch(p, { won, units: vit });
                                 }
@@ -26112,7 +26112,7 @@
             normalized.spells = [];
 
             for (const [iKey, iRule] of Object.entries(ITEM_RULES)) {
-                const cap = getItemCapForClass(cls, iKey);
+                const cap = iRule.fieldOnly ? 0 : getItemCapForClass(cls, iKey);   // THE BAG (2026-09-20): a field-only item (a tonic, an elixir) never enters a battle loadout
                 normalized.items[iKey] = Math.max(0, Math.min(cap, Number(loadout?.items?.[iKey] || 0)));
             }
             let totalItems = Object.values(normalized.items).reduce((a, b) => a + b, 0);

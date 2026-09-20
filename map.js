@@ -1236,6 +1236,7 @@
         const _HQ_PAUSE_CMDS = [
             { id: 'resume',    label: 'RESUME',    sub: 'BACK TO THE BUILDING' },
             { id: 'party',     label: 'PARTY',     sub: 'TWO SHIFTS · FIELD MEDICINE' },
+            { id: 'items',     label: 'ITEMS',     sub: 'THE BAG · POTIONS · RESTOCK' },
             { id: 'officer',   label: 'OFFICER',   sub: 'YOUR FILE' },
             { id: 'settings',  label: 'SETTINGS',  sub: 'AUDIO · DISPLAY · CONTROLS' },
             { id: 'directory', label: 'DIRECTORY', sub: 'THE MAP · EVERY ROOM YOU HAVE REACHED' },
@@ -1359,7 +1360,7 @@
             if (!arm || !m) return false;
             if (arm.kind === 'swap') return m.id !== arm.from && !m.you;
             if (arm.kind === 'cast') { const sp = arm.spell; if (!sp) return false; if (sp.kind === 'healAll' || sp.kind === 'selfHeal') return false; return (window.hqPartyFieldTargets(_hqProfile(), units, arm.from, sp) || []).some(t => t.id === m.id); }
-            if (arm.kind === 'item') { const v = _hqPauseVitals(m, units[m.id]); if (v.down) return false; return arm.key === 'healPotion' ? v.hp < v.hpMax : v.mp < v.mpMax; }
+            if (arm.kind === 'item') { const v = _hqPauseVitals(m, units[m.id]); return _hqPauseItemOk(arm.key, v); }
             return false;
         }
         function _hqPauseCardHtml(m, i, rec, units, arm) {
@@ -1372,14 +1373,117 @@
             const self = arm && arm.from === m.id;
             const cls = 'hq-pp-card' + (_hqPause.member === m.id ? ' sel' : '') + (v.down ? ' down' : '') + (arm ? (tgt ? ' tgt' : (self ? ' src' : ' dim')) : '') + (m.you ? ' you' : '');
             const shift = i < HQ_PARTY_RULES.shift ? 1 : 2;
-            return `<button class="${cls}" data-member="${_hqEsc(m.id)}"${arm && !tgt ? ' aria-disabled="true"' : ''}>`
+            return `<div class="${cls}" data-member="${_hqEsc(m.id)}" role="button" tabindex="0"${arm && !tgt ? ' aria-disabled="true"' : ''}>`
                 + `<span class="hq-pp-face${po && po.kind === 'sprite' ? ' sprite' : ''}"${po ? ` style="background-image:url('${po.url}')"` : ''}>${v.down ? '<i class="hq-pp-downstamp">DOWN</i>' : ''}</span>`
                 + `<span class="hq-pp-id"><b>${_hqEsc(name)}${m.you ? ' <i class="hq-pp-you">YOU</i>' : ''}</b><i>${_hqEsc(_hqPauseRaceLabel(m, u))} · ${_hqEsc(m.cls)}${sec ? ' / ' + _hqEsc(sec) : ''}</i>`
                 + `<span class="hq-pp-vit"><span class="hq-pp-vbar hp"><i style="width:${(v.pct * 100).toFixed(1)}%"></i></span><em>HP ${v.hp} / ${v.hpMax}</em></span>`
                 + `<span class="hq-pp-vit"><span class="hq-pp-vbar mp"><i style="width:${(v.mpPct * 100).toFixed(1)}%"></i></span><em>MP ${v.mp} / ${v.mpMax}</em></span>`
                 + `<small>${_hqPauseTypeChips(u ? u.types : [])}</small></span>`
                 + `<span class="hq-pp-slot">${shift === 1 ? '1ST' : '2ND'} · ${String(i + 1).padStart(2, '0')}</span>`
-                + `</button>`;
+                + (arm ? '' : _hqPauseCardQuickHtml(m, rec, units, v, u))
+                + `</div>`;
+        }
+        /* THE QUICK ACTIONS ON THE CARD (2026-09-20): swap · relieve · every heal spell the member can cast here · the potions in their
+           pockets (used on THEM at once) · the bag's potions (on them at once) · the sheet. A heal on ONE target arms the pick like the
+           sheet's USE; healAll / selfHeal cast at once. Every refused button says why in its title. */
+        function _hqPauseCardQuickHtml(m, rec, units, v, u) {
+            const id = _hqEsc(m.id);
+            let h = '<span class="hq-pp-quick">';
+            h += m.you ? '' : `<button class="hq-btn hq-btn-xs" data-party-act="swap:${id}" title="Trade slots — a shift change">⇄ SWAP</button>`;
+            h += m.you ? '' : `<button class="hq-btn hq-btn-xs danger" data-party-act="relieve:${id}" title="Off duty — back on call">RELIEVE</button>`;
+            /* the heal spells */
+            const field = (typeof window.hqPartyFieldSpells === 'function') ? window.hqPartyFieldSpells(u, m) : [];
+            field.slice(0, 4).forEach(sp => {
+                const targets = window.hqPartyFieldTargets(_hqProfile(), units, m.id, sp);
+                const can = !v.down && v.mp >= (sp.cost | 0) && targets.length;
+                const why = v.down ? 'DOWN' : v.mp < (sp.cost | 0) ? 'NOT ENOUGH MP' : !targets.length ? (sp.kind === 'revive' ? 'NOBODY IS DOWN' : 'EVERYONE IS FULL') : '';
+                h += `<button class="hq-btn hq-btn-xs heal" data-party-act="cast:${id}:${_hqEsc(sp.id)}"${can ? '' : ' disabled'} title="${_hqEsc(why || (sp.cost | 0) + ' MP · ' + (sp.kind === 'healAll' ? 'the whole party' : sp.kind === 'selfHeal' ? 'self' : sp.kind === 'revive' ? 'a down member' : 'pick a member'))}">♥ ${_hqEsc(String(sp.name || sp.id).toUpperCase())}${sp.kind === 'healAll' ? ' · ALL' : sp.kind === 'selfHeal' ? ' · SELF' : ''}</button>`;
+            });
+            /* the pockets, on this member at once */
+            const fi = (typeof window.hqPartyFieldItems === 'function') ? window.hqPartyFieldItems(m) : [];
+            fi.forEach(it => {
+                const ok = _hqPauseItemOk(it.key, v), why = _hqPauseItemWhy(it.key, v);
+                h += `<button class="hq-btn hq-btn-xs item" data-party-act="itemon:${id}:${_hqEsc(it.key)}:${id}"${ok ? '' : ' disabled'} title="${_hqEsc(why || it.name + ' from their own pocket')}">${it.icon} ×${it.n}</button>`;
+            });
+            /* the bag, on this member at once */
+            const bag = (typeof window.hqPartyBagItems === 'function') ? window.hqPartyBagItems(_hqProfile()) : [];
+            bag.forEach(it => {
+                const ok = _hqPauseItemOk(it.key, v), why = _hqPauseItemWhy(it.key, v);
+                h += `<button class="hq-btn hq-btn-xs item bag" data-party-act="itemon:bag:${_hqEsc(it.key)}:${id}"${ok ? '' : ' disabled'} title="${_hqEsc(why || it.name + ' from THE BAG')}">${it.icon} BAG ×${it.n}</button>`;
+            });
+            h += `<button class="hq-btn hq-btn-xs sheet" data-member-sheet="${id}" title="The full sheet">SHEET ▸</button>`;
+            return h + '</span>';
+        }
+        /* can THIS item land on a member at these vitals? (the same rule data.js hqPartyUseItem applies) */
+        function _hqPauseItemOk(key, v) {
+            if (key === 'reviveTonic') return !!v.down;
+            if (key === 'elixir') return v.down || v.hp < v.hpMax || v.mp < v.mpMax;
+            if (v.down) return false;
+            return key === 'manaPotion' ? v.mp < v.mpMax : v.hp < v.hpMax;
+        }
+        function _hqPauseItemWhy(key, v) {
+            if (key === 'reviveTonic') return v.down ? '' : 'THEY ARE NOT DOWN';
+            if (key === 'elixir') return (v.down || v.hp < v.hpMax || v.mp < v.mpMax) ? '' : 'ALREADY FULL';
+            if (v.down) return 'DOWN — A REVIVE FIRST';
+            return (key === 'manaPotion' ? v.mp < v.mpMax : v.hp < v.hpMax) ? '' : 'ALREADY FULL';
+        }
+        /* THE QUICK BAR over the party: AUTO HEAL · RESTOCK THE POCKETS · THE BAG · REST AT THE COT */
+        function _hqPauseQuickBarHtml(rec, units, fit) {
+            const p = _hqProfile();
+            const bagN = (typeof window.hqBagTotal === 'function') ? window.hqBagTotal(p) : 0;
+            const gold = (p && p.account && p.account.gold) | 0;
+            const need = fit && (fit.down || fit.hurt);
+            return `<div class="hq-pp-quickbar">`
+                + `<button class="hq-btn hq-btn-sm hq-btn-primary" data-party-act="autoheal"${need ? '' : ' disabled'} title="${need ? 'Revive the down, heal the hurt — spells first, then the potions' : 'Everyone is full'}">♥ AUTO HEAL</button>`
+                + `<button class="hq-btn hq-btn-sm" data-party-act="restock" title="Fill every fit member's battle pockets from the bag (${Object.keys(HQ_PARTY_RULES.pocket).map(k => HQ_PARTY_RULES.pocket[k] + ' ' + ((ITEM_RULES[k] && ITEM_RULES[k].name) || k)).join(' · ')} each)">🎒 RESTOCK POCKETS</button>`
+                + `<button class="hq-btn hq-btn-sm" data-cmd="items" title="The party's shared inventory">THE BAG · ${bagN}</button>`
+                + `<button class="hq-btn hq-btn-sm" data-pause-room="medical" data-pause-at="cot" title="Walk to Room 1111 — the cot rests the whole party for nothing">🛏 THE COT · ROOM 1111</button>`
+                + `<button class="hq-btn hq-btn-sm" data-pause-room="dispensary" data-pause-at="egress" title="Walk to Room 911 — potions for Hazard Pay">🧪 THE DISPENSARY · 911</button>`
+                + `<span class="hq-pp-gold">💰 ${gold.toLocaleString()}</span>`
+                + `</div>`;
+        }
+        /* THE BAG (the pause menu's ITEMS): the shared inventory, the pockets, the ways to fill it */
+        function _hqPauseBagHtml() {
+            const rec = _hqParty(); const P = _hqPause; const p = _hqProfile();
+            const rows = (typeof window.hqBagList === 'function') ? window.hqBagList(p) : [];
+            const gold = (p && p.account && p.account.gold) | 0;
+            const total = rows.reduce((a, r) => a + r.n, 0);
+            let html = `<div class="hq-panel-hd"><b>THE BAG</b><span>${total} ITEM${total === 1 ? '' : 'S'} · ${rows.length} KIND${rows.length === 1 ? '' : 'S'} · 💰 ${gold.toLocaleString()} HAZARD PAY</span></div>`;
+            if (P.msg) { html += `<div class="hq-pp-msg${P.msg.bad ? ' bad' : ''}">${P.msg.html}</div>`; P.msg = null; }
+            const fit = (rec && typeof window.hqPartyFit === 'function') ? window.hqPartyFit(p) : null;
+            html += `<div class="hq-pp-quickbar">`
+                + `<button class="hq-btn hq-btn-sm hq-btn-primary" data-party-act="autoheal"${fit && (fit.down || fit.hurt) ? '' : ' disabled'}>♥ AUTO HEAL</button>`
+                + `<button class="hq-btn hq-btn-sm" data-party-act="restock">🎒 RESTOCK POCKETS</button>`
+                + `<button class="hq-btn hq-btn-sm" data-cmd="party">◂ THE PARTY</button>`
+                + `<button class="hq-btn hq-btn-sm" data-pause-room="dispensary" data-pause-at="egress">🧪 THE DISPENSARY · ROOM 911</button>`
+                + `<button class="hq-btn hq-btn-sm" data-pause-room="medical" data-pause-at="cot">🛏 THE COT · ROOM 1111</button>`
+                + `</div>`;
+            html += `<div class="hq-pp-sec"><b>IN THE BAG</b><span>USE ▸ PICKS A MEMBER · A FIELD-ONLY ITEM NEVER RIDES INTO A BATTLE</span></div>`;
+            if (!rows.length) html += `<p class="hq-panel-note">The bag is empty. Pay caches in the rooms drop a potion each; THE DISPENSARY (Room 911, off the Medical Wing) sells them; anything the party did not use in a fight comes back into it.</p>`;
+            else {
+                html += '<div class="hq-pp-bag">';
+                rows.forEach(r => {
+                    html += `<div class="hq-pp-bagrow${r.field ? ' field' : ''}"><i class="hq-pp-bagicon">${r.icon}</i><b>${_hqEsc(r.name)} <em>× ${r.n}</em></b><span>${_hqEsc(r.desc)}</span>`
+                        + `<small>${r.battle ? 'BATTLE + FIELD' : 'FIELD ONLY'}${r.sell ? ' · SELLS ' + r.sell : ''}</small>`
+                        + (r.field ? `<button class="hq-btn hq-btn-xs" data-party-act="bag:${_hqEsc(r.key)}"${rec ? '' : ' disabled'}>USE ▸</button>` : '')
+                        + `</div>`;
+                });
+                html += '</div>';
+            }
+            /* THE POCKETS: what each member carries into a battle */
+            if (rec) {
+                const units = _hqPauseUnits(rec);
+                html += `<div class="hq-pp-sec"><b>THE POCKETS</b><span>WHAT EACH MEMBER CARRIES INTO A FIGHT · TOPPED UP FROM THE BAG AT EVERY LAUNCH</span></div><div class="hq-pp-pockets">`;
+                rec.members.forEach((m, i) => {
+                    const items = (m.loadout && m.loadout.items) || {};
+                    const keys = Object.keys(items).filter(k => (items[k] | 0) > 0 && ITEM_RULES[k]);
+                    const v = _hqPauseVitals(m, units[m.id]);
+                    html += `<div class="hq-pp-pocket${v.down ? ' down' : ''}"><b>${i < HQ_PARTY_RULES.shift ? '1ST' : '2ND'} · ${_hqEsc(m.name || m.cls)}</b><span>` + (keys.length ? keys.map(k => `<i class="hq-chip">${ITEM_RULES[k].icon || ''} ${_hqEsc(ITEM_RULES[k].name)} × ${items[k]}</i>`).join('') : '<i class="hq-chip dim">EMPTY</i>') + `</span></div>`;
+                });
+                html += '</div>';
+            }
+            html += `<p class="hq-panel-note">AUTO HEAL revives the down first (a revive spell, then a Revival Tonic, then an Elixir), then heals the hurt lowest-first — a heal-all when two or more are hurt, a single heal from the caster with the most MP, then a Healing Potion from the bag, then from anyone's pockets; a Mana Potion goes on a caster only when a heal is wanted and nobody can pay for it. THE COT does it all for nothing.</p>`;
+            return html;
         }
         function _hqPauseArmHtml(arm, rec, units) {
             if (!arm) return '';
@@ -1387,7 +1491,7 @@
             let what = '';
             if (arm.kind === 'swap') what = `<b>⇄ SWAP</b><span>${who} TRADES SLOTS WITH… PICK A CARD (AN EMPTY SLOT MOVES THEM TO THE END OF THE ORDER)</span>`;
             else if (arm.kind === 'cast') what = `<b>♥ ${_hqEsc(arm.spell.name)}</b><span>${who} CASTS ON… PICK A CARD · ${arm.spell.cost | 0} MP</span>`;
-            else if (arm.kind === 'item') what = `<b>${_hqEsc(arm.name)}</b><span>${who} HANDS IT TO… PICK A CARD</span>`;
+            else if (arm.kind === 'item') what = `<b>${_hqEsc(arm.name)}</b><span>${arm.from === 'bag' ? 'FROM THE BAG, ON…' : who + ' HANDS IT TO…'} PICK A CARD</span>`;
             let extra = '';
             if (arm.kind === 'swap') { const S = window.hqPartyShifts(_hqProfile()); if (S.members.length < HQ_PARTY_RULES.roster) extra = `<button class="hq-btn hq-btn-sm" data-party-act="swapto:end">TO THE END OF THE ORDER</button>`; }
             return `<div class="hq-pp-arm">${what}${extra}<button class="hq-btn hq-btn-sm" data-party-act="cancel">CANCEL</button></div>`;
@@ -1429,6 +1533,7 @@
             let html = `<div class="hq-panel-hd"><b>THE PARTY</b><span>${rec.members.length} ON THE BOOKS · ${_hqEsc(fit.note)}${rec.at ? ' · FILED ' + _hqEsc(new Date(rec.at).toLocaleDateString()) : ''}</span></div>`;
             if (P.msg) { html += `<div class="hq-pp-msg${P.msg.bad ? ' bad' : ''}">${P.msg.html}</div>`; P.msg = null; }
             html += _hqPauseArmHtml(arm, rec, units);
+            if (!arm) html += _hqPauseQuickBarHtml(rec, units, fit);   // THE QUICK ACTIONS (2026-09-20): AUTO HEAL · RESTOCK · THE BAG · THE COT
             const shiftHtml = (label, list, base, sub) => {
                 let h = `<div class="hq-pp-sec"><b>${label}</b><span>${sub}</span></div><div class="hq-pp-grid">`;
                 for (let k = 0; k < R.shift; k++) {
@@ -1596,11 +1701,36 @@
             }
             else if (verb === 'itemto') {
                 const arm = P.arm; if (!arm || arm.kind !== 'item') return; P.arm = null;
-                const r = _hqPartyTx(p => window.hqPartyUseItem(p, units, arm.from, arm.key, a));
-                if (r && r.ok) { say(`<b>${_hqEsc(r.name).toUpperCase()}</b> ${nameOf(r.target)} +${r.amount} ${r.stat.toUpperCase()} · ${r.left} LEFT`); try { playSfx(r.stat === 'mp' ? 'manaRegen' : 'healRegen'); } catch (e) {} }
-                else say(`<b>NO</b> ${r && r.reason === 'full' ? 'ALREADY FULL' : r && r.reason === 'down' ? 'THEY ARE DOWN — A REVIVE FIRST' : 'THE POTION STAYED IN THE POCKET'}`, true);
+                _hqPartyItemOn(arm.from, arm.key, a, units, rec);
+            }
+            /* THE QUICK ACTIONS (2026-09-20) */
+            else if (verb === 'itemon') { _hqPartyItemOn(a, b, String(act).split(':')[3], units, rec); }
+            else if (verb === 'bag') {
+                const row = (window.hqPartyBagItems(_hqProfile()) || []).find(x => x.key === a); if (!row) return;
+                P.arm = { kind: 'item', from: 'bag', key: a, name: row.name }; P.member = null; P.cmd = 'party'; P.cursor = Math.max(0, _HQ_PAUSE_CMDS.findIndex(c => c.id === 'party'));
+            }
+            else if (verb === 'restock') {
+                const r = _hqPartyTx(p => window.hqPartyStock(p));
+                if (r && r.ok && r.total) { say(`<b>RESTOCKED</b> ${r.total} POTION${r.total === 1 ? '' : 'S'} FROM THE BAG INTO ${[...new Set(r.moved.map(x => x.id))].length} POCKET${new Set(r.moved.map(x => x.id)).size === 1 ? '' : 'S'}`); try { playSfx('uiButtonConfirm'); } catch (e) {} }
+                else say(`<b>NOTHING MOVED</b> ${(window.hqBagTotal(_hqProfile()) | 0) ? 'EVERY FIT MEMBER ALREADY CARRIES THEIR SHARE' : 'THE BAG IS EMPTY — THE DISPENSARY (ROOM 911) SELLS POTIONS, THE PAY CACHES DROP THEM'}`, true);
+            }
+            else if (verb === 'autoheal') {
+                const r = _hqPartyTx(p => window.hqPartyAutoHeal(p, units));
+                if (r && r.ok) {
+                    const lines = r.steps.filter(x => x.kind !== 'skip').map(x => x.kind === 'cast' ? `♥ ${_hqEsc(x.who)} · ${_hqEsc(String(x.spell).toUpperCase())} → ${_hqEsc(x.target)} +${x.amount}` : `${_hqEsc(String(x.name).toUpperCase())} (${_hqEsc(x.who)}) → ${_hqEsc(x.target)} ${x.revived ? 'IS UP' : '+' + x.amount + ' ' + String(x.stat || 'hp').toUpperCase()}`);
+                    const skipped = r.steps.filter(x => x.kind === 'skip').map(x => `${_hqEsc(x.target)}: ${_hqEsc(x.why)}`);
+                    say(`<b>AUTO HEAL</b> ${_hqEsc(r.note)}${lines.length ? ' · ' + lines.join(' · ') : ''}${skipped.length ? ' · <em>' + skipped.join(' · ') + '</em>' : ''}`, !r.did);
+                    try { playSfx(r.did ? 'healRegen' : 'uiError'); } catch (e) {}
+                } else { say('<b>NO</b> THE BUILDING SAID NO', true); }
             }
             _hqPauseRender();
+        }
+        /* an item from a pocket or THE BAG onto a member, at once (the quick strip; the armed pick lands here too) */
+        function _hqPartyItemOn(owner, key, target, units, rec) {
+            const nameOf = id => { const m = rec.members.find(x => x.id === id); return m ? _hqEsc(m.name || m.cls) : ''; };
+            const r = _hqPartyTx(p => window.hqPartyUseItem(p, units, owner, key, target));
+            if (r && r.ok) { _hqPauseSay(`<b>${_hqEsc(r.name).toUpperCase()}</b> ${r.from === 'bag' ? 'FROM THE BAG · ' : ''}${nameOf(r.target)} ${r.revived ? 'IS UP · ' + r.amount + ' HP' : '+' + r.amount + ' ' + r.stat.toUpperCase()} · ${r.left} LEFT`); try { playSfx(r.revived ? 'levelUp' : r.stat === 'mp' ? 'manaRegen' : 'healRegen'); } catch (e) {} }
+            else _hqPauseSay(`<b>NO</b> ${r && r.reason === 'full' ? 'ALREADY FULL' : r && r.reason === 'down' ? 'THEY ARE DOWN — A REVIVE FIRST' : r && r.reason === 'notdown' ? 'THEY ARE NOT DOWN' : r && r.reason === 'none' ? 'NONE LEFT' : 'THE ITEM STAYED WHERE IT WAS'}`, true);
         }
         function _hqPartyCastTo(casterId, sp, targetId) {
             const P = _hqPause; if (!P) return;
@@ -1676,6 +1806,7 @@
                 body.scrollTop = 0;
                 body.setAttribute('data-view', P.cmd + (P.member != null ? '-member' : ''));
                 if (P.cmd === 'party') body.innerHTML = safe(() => (P.member != null) ? _hqPauseMemberHtml(P.member) : _hqPausePartyHtml(), 'party');
+                else if (P.cmd === 'items') body.innerHTML = safe(_hqPauseBagHtml, 'items');
                 else if (P.cmd === 'officer') body.innerHTML = safe(_hqPauseOfficerHtml, 'officer');
                 else if (P.cmd === 'settings') {
                     body.innerHTML = `<div class="hq-panel-hd"><b>SETTINGS</b><span>AUDIO · DISPLAY · CONTROLS · THE BUILDING</span></div><div class="mm-settings-body hq-pause-settings" id="hqPauseSettingsBody"></div>`;
@@ -1742,6 +1873,7 @@
                 return;
             }
             if (k === 'Backspace' && P.member != null) { e.preventDefault(); P.member = null; _hqPauseRender(); }
+            if ((k === 'Enter' || k === ' ') && document.activeElement && document.activeElement.classList && document.activeElement.classList.contains('hq-pp-card')) { e.preventDefault(); document.activeElement.click(); }
         }
         document.addEventListener('click', (e) => {
             const root = _hqEl('hqPause');
@@ -1750,6 +1882,11 @@
             if (cmd) { _hqPauseSelect(cmd.getAttribute('data-cmd')); return; }
             const pact = e.target.closest('[data-party-act]');
             if (pact) { if (!pact.disabled) _hqPartyAct(pact.getAttribute('data-party-act')); return; }
+            /* THE QUICK ACTIONS (2026-09-20): SHEET ▸ on a card; a WALK-TO button (the cot, the dispensary) drops the menu and goes */
+            const sheet = e.target.closest('[data-member-sheet]');
+            if (sheet) { _hqPause.member = sheet.getAttribute('data-member-sheet'); _hqPause.arm = null; try { playSfx('uiButtonConfirm'); } catch (err) {} _hqPauseRender(); return; }
+            const walk = e.target.closest('[data-pause-room]');
+            if (walk) { const room = walk.getAttribute('data-pause-room'), at = walk.getAttribute('data-pause-at') || null; _hqPauseDrop(); _hqSuspended = false; window._hqDoAction({ room, at }); return; }
             const mem = e.target.closest('[data-member]');
             if (mem) {
                 const id = mem.getAttribute('data-member');
@@ -2158,6 +2295,87 @@
            ward's record of you, read through data.js hqMedicalRecord off the
            profile's career stats + the punch clock; the CONDITION line is the
            one Room 5150's hold panel repeats. Viewer-local (RULE #2). */
+        /* ── THE DISPENSARY (Room 911, THE BAG 2026-09-20): THE HATCH — the stock at ITEM_RULES shopPrice, the bag's own rows sold
+           back at half. The GOLD moves through ProfileSystem.spendGold (the server's wallet through /api/economy/spend when there is
+           one, else the local mirror) BEFORE the goods go into the bag (data.js hqShopBuyApply); a sell credits the refund the
+           same way after the bag gives the item up (hqShopSell). The panel re-renders in place. ── */
+        function _hqPharmacyHtml() {
+            const p = _hqProfile();
+            const gold = (p && p.account && p.account.gold) | 0;
+            const stock = (typeof window.hqShopStock === 'function') ? window.hqShopStock() : [];
+            const bag = (typeof window.hqBagList === 'function') ? window.hqBagList(p) : [];
+            const inBag = k => { const r = bag.find(x => x.key === k); return r ? r.n : 0; };
+            const busy = !!_hqShopBusy;
+            let html = `<div class="hq-panel-hd"><b>THE HATCH</b><span>ROOM 911 · THE DISPENSARY · 💰 ${gold.toLocaleString()} HAZARD PAY · THE BAG ${bag.reduce((a, r) => a + r.n, 0)}</span></div>`;
+            if (_hqShopMsg) { html += `<div class="hq-pp-msg${_hqShopMsg.bad ? ' bad' : ''}">${_hqShopMsg.html}</div>`; _hqShopMsg = null; }
+            html += '<p class="hq-panel-desc">A hatch in the wall, a shelf behind it, a pharmacist behind the shelf. Hazard Pay only. Half back on anything unopened.</p>';
+            if (!p) html += '<p class="hq-panel-note">NO CARD ON FILE — sign in at Reception; the pharmacist sells to a name.</p>';
+            html += '<div class="hq-shop">';
+            stock.forEach(r => {
+                const have = inBag(r.key), room = r.max - have;
+                const q1 = gold >= r.price && room >= 1, q5 = gold >= r.price * 5 && room >= 5;
+                html += `<div class="hq-shop-row${r.battle ? '' : ' field'}"><i class="hq-shop-icon">${r.icon}</i>`
+                    + `<b>${_hqEsc(r.name)}</b><span>${_hqEsc(r.desc)}</span><small>${r.battle ? 'BATTLE + FIELD' : 'FIELD ONLY'} · IN THE BAG × ${have} / ${r.max}</small>`
+                    + `<em class="hq-shop-price">💰 ${r.price}</em>`
+                    + `<span class="hq-shop-btns">`
+                    + `<button class="hq-btn hq-btn-xs hq-btn-primary" data-buy="${_hqEsc(r.key)}" data-n="1"${q1 && !busy && p ? '' : ' disabled'} title="${!p ? 'NO CARD' : room < 1 ? 'THE BAG IS FULL OF THESE' : gold < r.price ? 'NOT ENOUGH HAZARD PAY' : 'BUY ONE'}">BUY 1</button>`
+                    + `<button class="hq-btn hq-btn-xs" data-buy="${_hqEsc(r.key)}" data-n="5"${q5 && !busy && p ? '' : ' disabled'} title="${!p ? 'NO CARD' : room < 5 ? 'NO ROOM FOR FIVE' : gold < r.price * 5 ? 'NOT ENOUGH FOR FIVE' : 'BUY FIVE · ' + (r.price * 5)}">BUY 5</button>`
+                    + (have ? `<button class="hq-btn hq-btn-xs danger" data-sell="${_hqEsc(r.key)}" data-n="1"${busy ? ' disabled' : ''} title="SELL ONE BACK · +${r.sell}">SELL 1 · +${r.sell}</button>` : '')
+                    + `</span></div>`;
+            });
+            html += '</div>';
+            const extra = bag.filter(r => !stock.some(x => x.key === r.key));
+            if (extra.length) {
+                html += `<div class="hq-pp-sec"><b>ALSO IN THE BAG</b><span>THE PHARMACIST BUYS THESE TOO</span></div><div class="hq-shop">`;
+                extra.forEach(r => { html += `<div class="hq-shop-row"><i class="hq-shop-icon">${r.icon}</i><b>${_hqEsc(r.name)} × ${r.n}</b><span>${_hqEsc(r.desc)}</span><small></small><em class="hq-shop-price"></em><span class="hq-shop-btns">${r.sell ? `<button class="hq-btn hq-btn-xs danger" data-sell="${_hqEsc(r.key)}" data-n="1"${busy ? ' disabled' : ''}>SELL 1 · +${r.sell}</button>` : '<i class="hq-chip dim">NO TAKERS</i>'}</span></div>`; });
+                html += '</div>';
+            }
+            html += '<div class="hq-panel-actions"><button class="hq-btn" data-close="1">THAT IS ALL</button></div>';
+            html += '<p class="hq-panel-note">What you buy goes into THE BAG. Every launch tops the party\'s pockets up from it; ESC · ITEMS uses it on the party between fights. Revival Tonics and Elixirs are field-only — they never ride into a battle.</p>';
+            return html;
+        }
+        let _hqShopBusy = false, _hqShopMsg = null;
+        function _hqShopRerender() {
+            const body = _hqEl('hqPanelBody');
+            const t = _hqPanelTarget;
+            if (!body || !t || t.kind !== 'counter' || !t.counter || !t.counter.action || t.counter.action.overlay !== 'pharmacy') return;
+            body.innerHTML = _hqPharmacyHtml() + '<p class="hq-panel-foot">ESC · CLOSE</p>';
+        }
+        window._hqShopBuy = async function (key, n) {
+            if (_hqShopBusy) return false;
+            n = Math.max(1, n | 0);
+            const PS = window.ProfileSystem;
+            const q = (typeof window.hqShopQuote === 'function') ? window.hqShopQuote(_hqProfile(), key, n) : { ok: false, reason: 'stock' };
+            if (!q.ok) { _hqShopMsg = { html: `<b>NO SALE</b> ${q.reason === 'gold' ? 'NOT ENOUGH HAZARD PAY (' + (q.gold | 0).toLocaleString() + ' / ' + (q.cost | 0).toLocaleString() + ')' : q.reason === 'full' ? 'THE BAG IS FULL OF THOSE' : 'NOT ON THE SHELF'}`, bad: true }; _hqShopRerender(); try { playSfx('uiError'); } catch (e) {} return false; }
+            _hqShopBusy = true; _hqShopRerender();
+            let paid = null;
+            try { paid = (PS && typeof PS.spendGold === 'function') ? await PS.spendGold(q.cost, 'dispensary:' + key + 'x' + n) : { ok: false, error: 'No wallet.' }; }
+            catch (e) { paid = { ok: false, error: 'Network error.' }; }
+            _hqShopBusy = false;
+            if (!paid || !paid.ok) { _hqShopMsg = { html: `<b>NO SALE</b> ${_hqEsc(String((paid && paid.error) || 'THE WALLET SAID NO').toUpperCase())}`, bad: true }; _hqShopRerender(); try { playSfx('uiError'); } catch (e) {} return false; }
+            const r = _hqPartyTx(p => window.hqShopBuyApply(p, key, n));
+            if (r && r.ok) { _hqShopMsg = { html: `<b>SOLD</b> ${r.added} × ${_hqEsc(String(r.name).toUpperCase())} · −${q.cost} · ${r.n} IN THE BAG` }; try { playSfx('uiButtonConfirm'); } catch (e) {} }
+            else { _hqShopMsg = { html: `<b>PAID, NOT BAGGED</b> THE BAG REFUSED IT — TELL THE QUARTERMASTER`, bad: true }; }
+            try { if (typeof window._refreshWallets === 'function') window._refreshWallets(); } catch (e) {}
+            _hqShopRerender();
+            return !!(r && r.ok);
+        };
+        window._hqShopSell = async function (key, n) {
+            if (_hqShopBusy) return false;
+            n = Math.max(1, n | 0);
+            const PS = window.ProfileSystem;
+            const r = _hqPartyTx(p => window.hqShopSell(p, key, n));
+            if (!r || !r.ok) { _hqShopMsg = { html: `<b>NO SALE</b> NONE TO SELL`, bad: true }; _hqShopRerender(); return false; }
+            _hqShopBusy = true; _hqShopRerender();
+            let paid = null;
+            try { paid = (PS && typeof PS.spendGold === 'function') ? await PS.spendGold(-r.refund, 'sell:' + key + 'x' + r.sold) : null; } catch (e) { paid = null; }
+            _hqShopBusy = false;
+            _hqShopMsg = { html: `<b>BOUGHT BACK</b> ${r.sold} × ${_hqEsc(String(r.name).toUpperCase())} · +${r.refund}${paid && !paid.ok ? ' (THE WALLET WILL CATCH UP)' : ''} · ${r.left} LEFT` };
+            try { playSfx('uiButtonConfirm'); } catch (e) {}
+            try { if (typeof window._refreshWallets === 'function') window._refreshWallets(); } catch (e) {}
+            _hqShopRerender();
+            return true;
+        };
         function _hqChartHtml() {
             const profile = _hqProfile();
             const mr = (typeof window.hqMedicalRecord === 'function') ? window.hqMedicalRecord(profile) : null;
@@ -2755,6 +2973,7 @@
                 const p = _hqProfile();
                 if (p && typeof window.hqPartyForLaunch === 'function') {
                     if (typeof window.hqPartyRecord === 'function' && !window.hqPartyRecord(p)) _hqPartySeed();
+                    if (typeof window.hqPartyStock === 'function') _hqPartyTx(q => window.hqPartyStock(q));   // THE POCKETS (2026-09-20): topped up from the bag before every fight
                     out = window.hqPartyForLaunch(_hqProfile());
                 }
             } catch (e) { console.warn('[HQ] the party could not be read', e); out = null; }
@@ -4181,6 +4400,7 @@
             if (act.overlay === 'transcript') return _hqTranscriptHtml();
             if (act.overlay === 'chart') return _hqChartHtml();
             if (act.overlay === 'intake') return _hqIntakeHtml();
+            if (act.overlay === 'pharmacy') return _hqPharmacyHtml();   // THE DISPENSARY (Room 911): buy · sell
             if (act.overlay === 'nav') return _hqNavHtml();   // THE SHIP'S ONE DOOR: the bridge's nav console
             if (act.overlay === 'training') return _hqTrainingHtml();
             if (act.overlay === 'crossing') return _hqCrossingHtml(t);
@@ -4247,6 +4467,15 @@
                     html += `<p class="hq-panel-note">${list.length} NOTICE${list.length === 1 ? '' : 'S'} · DATED ${_hqEsc(list[0].date)} · CANON DATE ${_hqEsc(list[0].canon)} · EACH HAS ALWAYS BEEN POSTED.</p>`;
                 }
                 html += '<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-close="1">SO NOTED</button></div>';
+                return html;
+            }
+            /* THE BAG (Room 911, 2026-09-20): the shared inventory on the bench — a read; the pause menu's ITEMS uses it */
+            if (c.id === 'bag') {
+                const rows = (typeof window.hqBagList === 'function') ? window.hqBagList(_hqProfile()) : [];
+                html += '<p class="hq-panel-desc">' + _hqEsc(c.desc || 'The bag.') + '</p>';
+                html += rows.length ? '<div class="hq-rows">' + rows.map(r => `<div class="hq-row hq-row-tray"><b>${r.icon} ${_hqEsc(r.name)}</b><span>${_hqEsc(r.desc)}</span><i class="hq-lamp-chip st-open">× ${r.n}</i></div>`).join('') + '</div>' : '<p class="hq-panel-note">Empty. The hatch is right there.</p>';
+                html += '<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-close="1">CLOSE IT</button></div>';
+                html += '<p class="hq-panel-note">ESC · ITEMS in the pause menu uses what is in it on the party; every launch fills the pockets from it.</p>';
                 return html;
             }
             /* THE COT (Room 1111, THE PARTY 2026-09-19): REST — the party's HP / MP back to full, the down on their feet; free */
@@ -4824,6 +5053,11 @@
             /* THE NAV CONSOLE (THE SHIP'S ONE DOOR): SET COURSE — the console re-renders in place */
             const course = e.target.closest('[data-course]');
             if (course && !course.disabled) { if (window._hqSetCourse(course.getAttribute('data-course'))) body.innerHTML = _hqNavHtml() + '<p class="hq-panel-foot">ESC · CLOSE</p>'; return; }
+            /* THE DISPENSARY (Room 911): buy / sell — the hatch re-renders in place after the wallet answers */
+            const buy = e.target.closest('[data-buy]');
+            if (buy) { if (!buy.disabled) window._hqShopBuy(buy.getAttribute('data-buy'), parseInt(buy.getAttribute('data-n'), 10) || 1); return; }
+            const sell = e.target.closest('[data-sell]');
+            if (sell) { if (!sell.disabled) window._hqShopSell(sell.getAttribute('data-sell'), parseInt(sell.getAttribute('data-n'), 10) || 1); return; }
             const spine = e.target.closest('[data-tape]');
             if (spine) { _hqTapeSel = spine.getAttribute('data-tape'); body.innerHTML = _hqTapesHtml() + '<p class="hq-panel-foot">ESC · CLOSE</p>'; try { playSfx('uiButtonConfirm'); } catch (err) {} return; }
             /* THE STAR CHART (Room 360): a star opens its threshold's door panel; ◂ THE CHART comes back */

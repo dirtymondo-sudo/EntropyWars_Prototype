@@ -6581,3 +6581,51 @@ population last. STILL THE USER'S: the volume — the hall's furniture is ~300 M
 population ~100 MB per room on a cold cache; `gltf-transform optimize` (WebP, 1024 px) would cut it
 5–10×, and the population's draw (`HQ_POPULATION_RULES` `hqMul` / `perM2`) is the other edit.
 mobile-performance.test.js pins the queue; load-diet.test.js the avatar-only menu warm.
+
+## THE PARTY'S QUICK ACTIONS + THE BAG + THE DISPENSARY + AUTO HEAL (the JRPG inventory, 2026-09-20, local delivery)
+The user: "quick actions on the party in the pause menu — click on them and swap / relieve / use any heal
+spells they have; an auto heal button that uses any existing potions or MP and spells; an inventory to
+collect potions and stuff; a room that is a shop that sells potions; heal in the medical bay." **THE BAG**
+(data.js, the block after `hqPartyFieldItems`; `door.hq.bag = { items: { key: n }, at }`, LOCAL like the
+party — RULE #2): `hqBagRecord / hqBagCount / hqBagAdd (capped at HQ_PARTY_RULES.bagStack 20) / hqBagTake /
+hqBagList / hqBagTotal`. Things go IN three ways: every PAY CACHE drops ONE potion beside the Hazard Pay
+(`HQ_FIND_RULES.potionDrop` weights, seeded by the day + the row; `hqCollectFind` returns `potion` and the
+toast names it), a find row of kind `potion` / `item` with an `item` key goes straight in (the collector no
+longer refuses the kind — a row WITHOUT `item` still reads `unsupported`), and THE DISPENSARY sells them.
+Things go OUT two ways: a FIELD USE (`hqPartyUseItem(profile, units, 'bag', key, targetId)` — the bag is an
+owner beside a member's pockets) and **THE POCKETS**: `hqPartyStock(profile)` tops every FIT member's battle
+pockets up to `HQ_PARTY_RULES.pocket` (2 heal · 1 mana) from the bag — map.js `_hqPartyLaunch` runs it in a
+transaction before every encounter and the pause menu's RESTOCK POCKETS button runs it by hand; the commit
+(battle.js, the vit rows carry `items`) writes each unit's battle items back onto its member, so what a fight
+spent stays spent. **TWO FIELD-ONLY ITEMS** in ITEM_RULES / ITEM_META: `reviveTonic` (a down member up at
+half) and `elixir` (full HP + MP, wakes the down) wear `fieldOnly: true` — `normalizeLoadoutForClass` (battle.js
+AND state.js) caps a field-only key to 0, `hqPartyForLaunch` strips them from the pockets, the forge's item
+picker (party-builder.js `allItemKeys`) never offers them; `HQ_PARTY_RULES.itemKinds` lists all four.
+**THE DISPENSARY** = `DOOR_HQ.rooms.dispensary` · ROOM 911, a box room off THE MEDICAL WING's north wall at
+x 2.2 (`leaf_hospital`; hq-suites' SUITES table lists it): counter `pharmacy` → `overlay: 'pharmacy'` → map.js
+`_hqPharmacyHtml` (THE HATCH: `HQ_DISPENSARY.stock` at each row's `shopPrice`, BUY 1 / BUY 5, SELL 1 at
+`sellBack` 0.5; re-renders in place), counter `bag` = a by-id panel. THE GOLD: `hqShopQuote` (a read) → profile.js
+**`ProfileSystem.spendGold(amount, reason)`** (the server's wallet through the NEW server.js
+`POST /api/economy/spend` — an atomic `gold >= amount` debit, a NEGATIVE amount is a refund capped by
+`SPEND_REFUND_CAP`; no token → `localSpendGold` on the mirror) → `hqShopBuyApply` puts the goods in the bag
+ONLY after the wallet answered; a sell is `hqShopSell` then a negative spend. RULE: never touch `account.gold`
+for goods except through spendGold (a local write is overwritten by the next server sync). **AUTO HEAL** =
+`hqPartyAutoHeal(profile, units)`, a greedy planner over the two verbs (`hqPartyCast` / `hqPartyUseItem` — the
+arithmetic is one): the DOWN first (a revive spell from the fit caster with the cheapest cost, then a Revival
+Tonic, then an Elixir; none → a `skip` step naming them), then the HURT lowest-first (a healAll when two or
+more are hurt, the single heal from the caster with the most MP, the member's own selfHeal, a Healing Potion
+from the bag then from anyone's pockets, a Mana Potion on a dry caster ONLY when a heal is wanted and nobody
+can pay, an Elixir last), `autoHeal.maxSteps` 64; returns `{ steps, before, after, healed, revived, still, did,
+note }`. **THE PAUSE MENU** (map.js): every party CARD is a `<div role="button">` now and wears a QUICK STRIP
+(`_hqPauseCardQuickHtml`: ⇄ SWAP · RELIEVE · one ♥ button per heal spell the member can cast here (a
+single-target heal arms the pick, healAll / self cast at once) · their pocket potions and the bag's potions
+used ON THAT MEMBER at once (`itemon:<owner>:<key>:<target>`) · SHEET ▸); THE QUICK BAR over the shifts
+(`_hqPauseQuickBarHtml`: ♥ AUTO HEAL · 🎒 RESTOCK POCKETS · THE BAG · 🛏 THE COT · 🧪 THE DISPENSARY — a
+`data-pause-room` button drops the menu and walks you there through `_hqDoAction`); the new command **ITEMS**
+(`_hqPauseBagHtml`: the bag's rows with USE ▸ = `bag:<key>` arms a target pick on the party sheet, THE
+POCKETS per member, the same bar). THE COT (Medical 1111) is unchanged — the free inn. CSS at the END of
+styles-base.css ("THE PARTY'S QUICK ACTIONS"). `npm test` runs hq-party.test.js (14). NOT built: a synced bag
+(the party is local too), the bag in a console crossing (the forge still owns loadouts), a shop for gear,
+selling from the pause menu (the hatch only). UNSEEN LIVE (RULE #1c): the quick strip's wrap on a 300 px
+card, the ITEMS sheet, the hatch's rows, the pharmacist's chair behind the counter, the wallet round-trip on
+a server account.

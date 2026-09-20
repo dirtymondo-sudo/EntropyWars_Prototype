@@ -35,6 +35,7 @@ const at = (room, id) => (HQ.rooms[room].doors || []).find(d => d.id === id);
 const SUITES = [
     { lobby: 'medwing',  hall: 'medical',   deg: 210, level: 0, leaf: 'leaf_hospital',
       rooms: [{ room: 'medical',       at: 'ward',          no: '1111' },
+              { room: 'dispensary',    at: 'dispensary',    no: '911' },    // THE BAG (2026-09-20): the potion shop joined the wing
               { room: 'interrogation', at: 'interrogation', no: '1984' }] },
     { lobby: 'recwing',  hall: 'records',   deg: 240, level: 0, leaf: 'leaf_wired_double',
       rooms: [{ room: 'records',       at: 'records',       no: '42' },

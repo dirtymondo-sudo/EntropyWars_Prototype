@@ -4059,20 +4059,23 @@ const ITEM_RULES = {
         // Level 100: potions heal a PERCENT of max HP so they stay useful as HP
         // scales from ~500 to ~15k. 30% ≈ the old ~96/~320 feel at low level.
         healPct: 0.30,
-        desc: 'Target any living ally. Restores 30% of max HP.'
+        desc: 'Target any living ally. Restores 30% of max HP.',
+        shopPrice: 40
     },
     manaPotion: {
         name: 'Mana Potion',
         icon: '🔹',
         max: 6,
         mpPct: 0.35,
-        desc: 'Target any living ally. Restores 35% of max MP.'
+        desc: 'Target any living ally. Restores 35% of max MP.',
+        shopPrice: 45
     },
     scanner: {
         name: 'Scanner',
         icon: '📡',
         max: 1,
-        desc: 'Self only. Reveals hidden objects in a 3x3 area.'
+        desc: 'Self only. Reveals hidden objects in a 3x3 area.',
+        shopPrice: 35
     },
     humanBane: {
         name: 'Human Bane',
@@ -4186,6 +4189,28 @@ const ITEM_RULES = {
         desc: 'Self only. +2 M ATK stages for 3 rounds.',
         selfBoost: { int: 2 },
         shopPrice: 55
+    },
+    /* ── THE BAG (2026-09-20): two FIELD-ONLY items — used from the pause menu / the
+       dispensary between encounters, NEVER in a battle (normalizeLoadoutForClass caps a
+       `fieldOnly` rule to 0 and the party launch strips them from every pocket, so no
+       HUD item menu ever lists one). The Phoenix Down and the Elixir of every JRPG. */
+    reviveTonic: {
+        name: 'Revival Tonic',
+        icon: '⚗️',
+        max: 3,
+        fieldOnly: true,
+        revivePct: 0.5,
+        desc: 'Field only. Brings a DOWN party member back on their feet at half HP.',
+        shopPrice: 120
+    },
+    elixir: {
+        name: 'Elixir',
+        icon: '✨',
+        max: 2,
+        fieldOnly: true,
+        elixir: true,
+        desc: 'Field only. Restores a party member to full HP and MP; brings a DOWN member back at full.',
+        shopPrice: 300
     }
 };
 
@@ -4249,6 +4274,14 @@ const ITEM_META = {
     psiStim: {
         icon: '🧠',
         short: 'MATK+'
+    },
+    reviveTonic: {
+        icon: '⚗️',
+        short: 'REVIVE'
+    },
+    elixir: {
+        icon: '✨',
+        short: 'FULL'
     }
 };
 
@@ -24301,6 +24334,87 @@ const DOOR_HQ = {
             ],
             spawn: { x: -2.6, z: 0, face: 90 },
         },
+        /* ── ROOM 911 · THE DISPENSARY (THE BAG, 2026-09-20) — the potion shop off the Medical Wing: THE HATCH sells and buys
+           back (HQ_DISPENSARY's stock at ITEM_RULES shopPrice, half back), THE BAG is a by-id panel of what the party carries.
+           Viewer-local (RULE #2). ── */
+        dispensary: {
+            label: 'THE DISPENSARY',
+            sub: 'BUY POTIONS',
+            roomNo: '911', why: 'the number you dial when the cot is not enough',
+            kind: 'box',
+            shell: {
+                w: 7, d: 5.4, h: 3.2,
+                wallH: 3.2, dadoH: 1.1,
+                floor: 'terrazzo', wall: 'drywall', dado: 'teal', trim: 'teal', ceiling: 'ceiling',
+                floorColor: 0xd9dad2, wallColor: 0xe4ebe2, dadoColor: 0x7fa89a,   // the ward's green, one shade brighter — the pharmacist keeps the lights up
+                pipes: false,
+                light: { x: 0, z: 0 },
+                mood: { light: 0xf2f7f0 },
+                plate: { x: -1.2, z: -2.65, y: 2.75 },
+            },
+            doors: [
+                { id: 'egress', wall: 's', x: -2.2, leaf: 'leaf_hospital',
+                  label: 'THE MEDICAL WING', sub: 'BACK TO THE WING',
+                  action: { room: 'medwing', at: 'dispensary' },
+                  desc: 'The way back to the wing. The frosted glass says DISPENSARY backwards from this side, which is the side the pharmacist reads it from.' },
+            ],
+            counters: [
+                /* THE HATCH → the shop: buy potions, tonics, an elixir; sell back at half */
+                { id: 'pharmacy', x: 0.6, z: -1.7, face: 0, plateY: 1.9, radius: 1.9, verb: 'SHOP',
+                  label: 'THE HATCH', sub: 'BUY · SELL', action: { overlay: 'pharmacy' },
+                  desc: 'A hatch in the wall with a shelf behind it and a pharmacist behind the shelf. Potions, tonics, the odd elixir. Hazard Pay only; half back on anything you return unopened.' },
+                /* THE BAG → the party's shared inventory (a by-id panel; the pause menu has the same sheet under ITEMS) */
+                { id: 'bag', x: 2.4, z: 1.4, face: 270, plateY: 1.5, radius: 1.5, verb: 'OPEN',
+                  label: 'THE BAG', sub: 'PARTY INVENTORY', action: {},
+                  desc: 'The party\'s bag, left on the bench while you shop. Everything the party carries between rooms is in it; the pockets are filled from it before every fight.' },
+            ],
+            props: [
+                /* ── the north wall: THE HATCH — the shelves behind the counter, the ledger, the jars ── */
+                { key: 'metal_shelving', wall: 'n', x: -1.8 },
+                { key: 'metal_shelving', wall: 'n', x: 2.6 },
+                { key: 'wall_shelf',     wall: 'n', x: 0.5, mount: 1.55 },
+                { key: 'wall_shelf',     wall: 'n', x: 0.5, mount: 2.0 },
+                { key: 'solo_cup',       x: 0.15, z: -2.55, y: 1.58, face: 0 },       // the jars
+                { key: 'solo_cup',       x: 0.55, z: -2.55, y: 1.58, face: 20 },
+                { key: 'coffee_mug',     x: 0.95, z: -2.55, y: 1.58, face: 340 },
+                { key: 'cardboard_box',  x: 0.4,  z: -2.55, y: 2.03, face: 10 },
+                { key: 'exec_desk',      x: 0.6,  z: -1.15, face: 180 },              // THE HATCH's counter — the drawers to the pharmacist (−z), the top to the room
+                { key: 'clipboard_flat', x: 0.1,  z: -1.2,  y: 0.76, face: 15 },      // the ledger
+                { key: 'manila_folders', x: 1.2,  z: -1.25, y: 0.76, face: 350 },
+                { key: 'computer_chair_grey', x: 0.6, z: -2.1, face: 0 },             // the pharmacist's chair, behind the counter
+                { key: 'vent_grille',    wall: 'n', x: -3.0, mount: 2.6 },
+                /* ── the east wall: the bench, THE BAG on it, the breaker, the notice ── */
+                { key: 'folding_chair',  x: 3.0, z: 0.5, face: 270 },
+                { key: 'folding_chair',  x: 3.0, z: 1.4, face: 270 },
+                { key: 'cardboard_box',  x: 3.0, z: 2.2, face: 250 },                   // the bag, more or less
+                { key: 'notice_board',   wall: 'e', z: -1.4 },
+                { key: 'breaker_panel',  wall: 'e', z: -2.3 },
+                /* ── the west wall: the sink, the towels, the extinguisher ── */
+                { key: 'sink',           wall: 'w', z: -1.4 },
+                { key: 'hook_rail',      wall: 'w', z: 0.2 },
+                { key: 'fire_extinguisher', wall: 'w', z: 1.6 },
+                { key: 'trash_bin',      x: -3.1, z: 2.3, face: 90 },
+                /* ── the south wall: the way out, the sign over it, the rail (THE PARK RULE) ── */
+                { key: 'exit_sign',      wall: 's', x: -2.2, mount: 2.7 },
+                { key: 'railing_1m',     x: 1.4, z: 2.3, face: 0 },
+                { key: 'railing_1m',     x: 2.4, z: 2.3, face: 0 },
+                { key: 'potted_plant',   x: -0.4, z: 2.4 },
+                { key: 'rug_office',     x: 0.2, z: 0.6, face: 0 },
+                /* ── the ceiling ── */
+                { key: 'fluorescent',    x: -1.5, z: 0.2, ceil: true, face: 90 },
+                { key: 'fluorescent',    x: 1.5,  z: 0.2, ceil: true, face: 90 },
+            ],
+            agents: [
+                { x: 0.6, z: -2.1, face: 180, pose: 'hqSit', gender: 'female', label: 'THE PHARMACIST', reach: 1.9,
+                  line: '“How many?” “How many what?” “That is always the second question.”' },
+            ],
+            lines: [
+                'The pharmacist does not ask what happened. The pharmacist asks how many.',
+                'No credit. The sign has said it since before the building had a ground floor.',
+                'Half back on anything unopened. The pharmacist decides what counts as opened.',
+            ],
+            spawn: { x: -2.2, z: 1.6, face: 0 },
+        },
         medical: {
             label: 'MEDICAL',
             sub: 'CHALLENGE MODE',
@@ -24505,6 +24619,11 @@ const DOOR_HQ = {
                   action: { room: 'medical', at: 'egress' },
                   desc: 'Room 1111. Where EXITED operatives are processed. The services desk files your retries, the chart at the foot of the bed is your record, and the door at the back of the ward is Room 5150. Nobody comments on the door at the back of the ward.' },
                 /* ROOM 1984 · Internal Affairs, at the far end of the corridor */
+                /* ROOM 911 · THE DISPENSARY (THE BAG, 2026-09-20): the potion shop, beside the ward */
+                { id: 'dispensary', wall: 'n', x: 2.2, leaf: 'leaf_hospital',
+                  label: 'THE DISPENSARY', sub: 'BUY POTIONS',
+                  action: { room: 'dispensary', at: 'egress' },
+                  desc: 'Room 911. A hatch, a shelf, a ledger. The pharmacist sells what the ward does not give away — potions for the road, tonics for the fallen, the odd elixir — and buys back what you did not need. Hazard Pay only. No credit. Nobody comments on the smell.' },
                 { id: 'interrogation', wall: 'e', z: 0, leaf: 'leaf_cell',
                   label: 'THE INTERROGATION ROOM', sub: 'CPU TRAINING TRANSCRIPT',
                   action: { room: 'interrogation', at: 'egress' },
@@ -40560,6 +40679,7 @@ const HQ_FIND_RULES = {
     pay: 30,              // a walkway cache
     payDeep: 45,          // a cache off the board rooms (the complexes, the floors)
     dailyMod: 3,          // a pay cache is live on the days hqHash(date|id) % dailyMod === 0
+    potionDrop: { healPotion: 2, manaPotion: 1 },   // THE BAG (2026-09-20): every pay cache also drops ONE potion into the bag — the weights (none = no drop)
     tapes: 100,
     clipBase: 'Assets/door/tapes/',
     minWall: 1.0, awayDoor: 2.3, awayCounter: 0.5, awayProp: 0.9, awayNpc: 1.1, awayLight: 1.2, awaySpawn: 2.0, apart: 2.5,
@@ -41291,7 +41411,8 @@ function hqCollectFind(profile, id, now, opts) {
     const row = hqFindById(hqFindLegacyId(id));
     if (!row) return { ok: false, reason: 'unknown' };
     if (!profile) return { ok: false, reason: 'noprofile' };
-    if (row.kind !== 'tape' && row.kind !== 'pay' && row.kind !== 'deck') return { ok: false, reason: 'unsupported', kind: row.kind };
+    const itemKind = (row.kind === 'potion' || row.kind === 'item') && row.item && typeof ITEM_RULES !== 'undefined' && ITEM_RULES[row.item];   // THE BAG (2026-09-20): a find that IS an item goes into the bag
+    if (row.kind !== 'tape' && row.kind !== 'pay' && row.kind !== 'deck' && !itemKind) return { ok: false, reason: 'unsupported', kind: row.kind };
     const date = hqToday(now ? new Date(now) : undefined), rec = hqFindsRecord(profile);
     if (!hqFindLiveToday(row, date)) return { ok: false, reason: 'notlive' };
     if (hqFindTaken(row, rec, date)) return { ok: false, reason: 'taken' };
@@ -41311,6 +41432,10 @@ function hqCollectFind(profile, id, now, opts) {
         if (R.tapes.indexOf(row.tape) < 0) R.tapes.push(row.tape);
         return { ok: true, kind: 'tape', tape: row.tape, title: t ? t.title : row.tape, count: R.tapes.length, total: HQ_FIND_RULES.tapes, label: 'TAPE ' + R.tapes.length + ' / ' + HQ_FIND_RULES.tapes + ' · ' + (t ? t.title : row.tape) };
     }
+    if (itemKind) {
+        const n = Math.max(1, row.n | 0), a = hqBagAdd(profile, row.item, n);
+        return { ok: true, kind: row.kind, item: row.item, n: a.added, count: hqBagCount(profile, row.item), total: null, label: '+' + a.added + ' ' + String(ITEM_RULES[row.item].name).toUpperCase() + ' · THE BAG' };
+    }
     const amount = Math.max(0, row.amount | 0);
     if (!profile.account || typeof profile.account !== 'object') profile.account = { gold: 0, unlockedUnits: [], freeTokens: 0 };
     /* the pay: the LOCAL mirror only when nobody else owns the wallet (profile.js creditLocalGold's rule — a server
@@ -41319,7 +41444,10 @@ function hqCollectFind(profile, id, now, opts) {
     const serverPays = !!(opts.serverPays && synced);
     if (!serverPays) profile.account.gold = (profile.account.gold | 0) + amount;
     R.pay += amount;
-    return { ok: true, kind: 'pay', amount, gold: profile.account.gold, count: R.pay, total: null, serverPays, label: '+' + amount + ' HAZARD PAY' };
+    /* THE BAG (2026-09-20): a pay cache carries a potion too — seeded by the day and the row, so the same envelope holds the same thing all day */
+    let potion = null;
+    if (typeof ITEM_RULES !== 'undefined' && HQ_FIND_RULES.potionDrop) { const keys = Object.keys(HQ_FIND_RULES.potionDrop), bag = []; keys.forEach(k => { for (let i = 0; i < (HQ_FIND_RULES.potionDrop[k] | 0); i++) bag.push(k); }); const pick = bag.length ? bag[hqHash(date + '|' + row.id + '|potion') % bag.length] : null; if (pick && ITEM_RULES[pick]) { const a = hqBagAdd(profile, pick, 1); if (a.added) potion = { key: pick, name: ITEM_RULES[pick].name, n: a.n }; } }
+    return { ok: true, kind: 'pay', amount, gold: profile.account.gold, count: R.pay, total: null, serverPays, potion, label: '+' + amount + ' HAZARD PAY' + (potion ? ' · +1 ' + String(potion.name).toUpperCase() : '') };
 }
 /* THE LEDGER (B2): the Hazard Pay a sync owes — every `pay:` claim in `after`
    that `before` did not carry at that date (a new envelope, or a daily taken
@@ -42170,7 +42298,11 @@ const HQ_PARTY_RULES = {
     lossRestore: true,    // an EXIT (a loss) wakes the party TREATED — full HP / MP (the Pokémon rule; the ward does it for free anyway)
     restRoom: 'medical', restCounter: 'cot',   // where the party is rested for free: THE COT in Room 1111
     healKinds: ['heal', 'healAll', 'selfHeal', 'revive'],   // the spell kinds FIELD MEDICINE casts outside a battle
-    itemKinds: ['healPotion', 'manaPotion'],               // the pockets' items usable outside a battle
+    itemKinds: ['healPotion', 'manaPotion', 'reviveTonic', 'elixir'],   // the items usable outside a battle (pockets AND the bag; the last two are FIELD-ONLY)
+    pocket: { healPotion: 2, manaPotion: 1 },              // THE POCKETS: what each fighting member carries into a battle, topped up from THE BAG at the launch (hqPartyStock)
+    bagStack: 20,                                          // THE BAG: the most of one item the party carries (per key)
+    sellBack: 0.5,                                         // THE DISPENSARY buys back at half the price
+    autoHeal: { maxSteps: 64, hpFull: 0.999, manaTop: 0.5 },   // AUTO HEAL: the planner's guard, "full" and when a mana potion is spent on a caster
     officerRace: 'door agent',   // the walker's vessel when no avatar / look says otherwise (the Player cast model is the DOOR Agent's)
     labels: { first: 'FIRST SHIFT', second: 'SECOND SHIFT', onCall: 'ON CALL', down: 'DOWN', fit: 'FIT', you: 'YOU' },
 };
@@ -42361,7 +42493,9 @@ function hqPartyForLaunch(profile) {
         const meta = Object.assign({}, m.meta, { partyId: m.id });
         if (m.hp != null && m.hpMax != null) { meta.hp = m.hp; meta.hpMax = m.hpMax; }
         if (m.mp != null && m.mpMax != null) { meta.mp = m.mp; meta.mpMax = m.mpMax; }
-        return { cls: m.cls, name: m.name, meta, loadout: { spells: m.loadout.spells.slice(), items: Object.assign({}, m.loadout.items), equipment: Object.assign({}, m.loadout.equipment) }, id: m.id, you: !!m.you };
+        const items = {};   // THE BAG (2026-09-20): a field-only item never rides into a battle
+        Object.keys(m.loadout.items || {}).forEach(k => { const rule = (typeof ITEM_RULES !== 'undefined') ? ITEM_RULES[k] : null; if (rule && !rule.fieldOnly && (m.loadout.items[k] | 0) > 0) items[k] = m.loadout.items[k] | 0; });
+        return { cls: m.cls, name: m.name, meta, loadout: { spells: m.loadout.spells.slice(), items, equipment: Object.assign({}, m.loadout.equipment) }, id: m.id, you: !!m.you };
     });
     return { members, ids: members.map(m => m.id), party: true, exact: true, deploy: Math.min(HQ_PARTY_RULES.shift, members.length), left: r.members.length - fit.length };
 }
@@ -42378,6 +42512,8 @@ function hqPartyAfterMatch(profile, ev) {
         m.hpMax = hpMax; m.mpMax = mpMax;
         if (u.dead || (u.hp | 0) <= 0) { m.hp = 0; m.mp = Math.max(0, Math.min(mpMax, u.mp | 0)); down++; }
         else { m.hp = Math.max(1, Math.min(hpMax, u.hp | 0)); m.mp = Math.max(0, Math.min(mpMax, u.mp | 0)); }
+        /* THE POCKETS (2026-09-20): what the fight spent stays spent — the unit's battle items overwrite the member's (battle keys only; a field-only item was never on the unit) */
+        if (u.items && typeof u.items === 'object') Object.keys(typeof ITEM_RULES !== 'undefined' ? ITEM_RULES : {}).forEach(k => { if (ITEM_RULES[k].fieldOnly) return; const n = Math.max(0, u.items[k] | 0); if (n) m.loadout.items[k] = n; else delete m.loadout.items[k]; });
     });
     let restored = false;
     if (!ev.won && HQ_PARTY_RULES.lossRestore) { hqPartyRestore(profile); restored = true; down = 0; }
@@ -42447,21 +42583,198 @@ function hqPartyCast(profile, units, casterId, spellId, targetId) {
 function hqPartyUseItem(profile, units, ownerId, key, targetId) {
     const r = hqPartyRecord(profile); if (!r) return { ok: false, reason: 'noparty' };
     if (HQ_PARTY_RULES.itemKinds.indexOf(key) < 0) return { ok: false, reason: 'item' };
-    const owner = r.members.find(m => m.id === ownerId); if (!owner) return { ok: false, reason: 'who' };
-    if (!((owner.loadout.items[key] | 0) > 0)) return { ok: false, reason: 'none' };
+    const fromBag = ownerId === 'bag';   // THE BAG (2026-09-20): the shared inventory is an owner too
+    const owner = fromBag ? null : r.members.find(m => m.id === ownerId); if (!fromBag && !owner) return { ok: false, reason: 'who' };
+    const have = fromBag ? hqBagCount(profile, key) : (owner.loadout.items[key] | 0);
+    if (!(have > 0)) return { ok: false, reason: 'none' };
     const target = r.members.find(m => m.id === (targetId || ownerId)); if (!target) return { ok: false, reason: 'who' };
-    if (hqPartyDown(target)) return { ok: false, reason: 'down' };
     const rule = (typeof ITEM_RULES !== 'undefined' && ITEM_RULES[key]) || {};
     const tf = hqPartyFrame(target, units && units[target.id]);
-    let amount = 0, stat = 'hp';
-    if (key === 'healPotion') { if (tf.hp >= tf.hpMax) return { ok: false, reason: 'full' }; amount = Math.max(1, Math.round(tf.hpMax * (rule.healPct || 0.3))); target.hpMax = tf.hpMax; target.hp = Math.min(tf.hpMax, tf.hp + amount); amount = target.hp - tf.hp; if (target.mp == null) { target.mp = tf.mp; target.mpMax = tf.mpMax; } }
+    let amount = 0, stat = 'hp', revived = false;
+    if (key === 'reviveTonic') { if (!hqPartyDown(target)) return { ok: false, reason: 'notdown' }; target.hpMax = tf.hpMax; target.hp = Math.max(1, Math.round(tf.hpMax * (rule.revivePct || 0.5))); amount = target.hp; revived = true; if (target.mp == null) { target.mp = tf.mp; target.mpMax = tf.mpMax; } }
+    else if (key === 'elixir') { if (!hqPartyDown(target) && tf.hp >= tf.hpMax && tf.mp >= tf.mpMax) return { ok: false, reason: 'full' }; revived = hqPartyDown(target); target.hpMax = tf.hpMax; target.mpMax = tf.mpMax; amount = tf.hpMax - (revived ? 0 : tf.hp); target.hp = tf.hpMax; target.mp = tf.mpMax; }
+    else if (hqPartyDown(target)) return { ok: false, reason: 'down' };
+    else if (key === 'healPotion') { if (tf.hp >= tf.hpMax) return { ok: false, reason: 'full' }; amount = Math.max(1, Math.round(tf.hpMax * (rule.healPct || 0.3))); target.hpMax = tf.hpMax; target.hp = Math.min(tf.hpMax, tf.hp + amount); amount = target.hp - tf.hp; if (target.mp == null) { target.mp = tf.mp; target.mpMax = tf.mpMax; } }
     else { stat = 'mp'; if (tf.mp >= tf.mpMax) return { ok: false, reason: 'full' }; amount = Math.max(1, Math.round(tf.mpMax * (rule.mpPct || 0.35))); target.mpMax = tf.mpMax; target.mp = Math.min(tf.mpMax, tf.mp + amount); amount = target.mp - tf.mp; if (target.hp == null) { target.hp = tf.hp; target.hpMax = tf.hpMax; } }
-    owner.loadout.items[key] = (owner.loadout.items[key] | 0) - 1;
+    let left;
+    if (fromBag) { left = hqBagTake(profile, key, 1).n | 0; }
+    else { owner.loadout.items[key] = (owner.loadout.items[key] | 0) - 1; left = owner.loadout.items[key]; }
     r.at = Date.now();
-    return { ok: true, key, stat, amount, target: target.id, left: owner.loadout.items[key], name: rule.name || key };
+    return { ok: true, key, stat, amount, target: target.id, left, name: rule.name || key, from: fromBag ? 'bag' : owner.id, revived };
 }
 /* the pockets a member may open in the field */
 function hqPartyFieldItems(m) { return HQ_PARTY_RULES.itemKinds.filter(k => (m && m.loadout && m.loadout.items && (m.loadout.items[k] | 0)) > 0).map(k => ({ key: k, n: m.loadout.items[k] | 0, name: (typeof ITEM_RULES !== 'undefined' && ITEM_RULES[k] && ITEM_RULES[k].name) || k, icon: (typeof ITEM_RULES !== 'undefined' && ITEM_RULES[k] && ITEM_RULES[k].icon) || '' })); }
+/* ══ THE BAG + THE DISPENSARY + AUTO HEAL (2026-09-20) ══
+   THE BAG is the party's shared inventory — `door.hq.bag = { items: { key: n }, at }`,
+   LOCAL like the party (nothing on `state`, nothing relayed — RULE #2). Potions and
+   things go INTO the bag (a pay cache drops one, the dispensary sells them, the pockets
+   come home into it) and OUT of it two ways: a FIELD use from the pause menu (the potions
+   + the two field-only items, hqPartyUseItem with ownerId 'bag'), and THE POCKETS — at
+   every launch hqPartyStock tops each fighting member's battle pockets up to
+   HQ_PARTY_RULES.pocket from the bag, and the commit (hqPartyAfterMatch) writes the
+   pockets back so nothing spent in a fight comes home. Every write is PURE over the
+   profile handed in — the caller saves once. THE DISPENSARY (Room 911, off the Medical
+   Wing) is the shop: HQ_DISPENSARY names the stock, hqShopQuote / hqShopBuyApply /
+   hqShopSell are the reads and the writes; the GOLD moves through profile.js spendGold
+   (the server's wallet when there is one — /api/economy/spend — else the local mirror)
+   BEFORE hqShopBuyApply puts the goods in the bag. AUTO HEAL (hqPartyAutoHeal) is a
+   greedy planner over the same two verbs (hqPartyCast / hqPartyUseItem): revive the
+   down first (a revive spell, then a tonic, then an elixir), then the hurt lowest-first
+   (a healAll when two or more are hurt, a single heal from the caster with the most MP,
+   then a healing potion from the bag, then from anyone's pockets), a mana potion on a
+   caster only when a heal is wanted and nobody can pay for it. */
+const HQ_DISPENSARY = {
+    room: 'dispensary', counter: 'pharmacy',
+    stock: ['healPotion', 'manaPotion', 'reviveTonic', 'elixir', 'panacea', 'scanner'],   // ITEM_RULES keys, in the shelf's order (the price is the row's shopPrice)
+    labels: { buy: 'BUY', sell: 'SELL', bag: 'THE BAG' },
+};
+function hqBagRecord(profile, create) {
+    if (!profile) return null;
+    let H = profile.door && profile.door.hq;
+    if (!H) { if (!create) return null; H = hqPartyEnsureRoot(profile); }
+    let b = H.bag;
+    if (!b || typeof b !== 'object' || !b.items || typeof b.items !== 'object') { if (!create) return null; b = H.bag = { items: {}, at: Date.now() }; }
+    Object.keys(b.items).forEach(k => { const n = b.items[k] | 0; if (n <= 0 || typeof ITEM_RULES === 'undefined' || !ITEM_RULES[k]) delete b.items[k]; else b.items[k] = Math.min(n, HQ_PARTY_RULES.bagStack); });
+    return b;
+}
+function hqBagCount(profile, key) { const b = hqBagRecord(profile, false); return b ? (b.items[key] | 0) : 0; }
+/* ADD n of an item to the bag (capped at the stack) — { ok, key, n (in the bag now), added, lost } */
+function hqBagAdd(profile, key, n) {
+    if (!profile) return { ok: false, reason: 'noprofile' };
+    if (typeof ITEM_RULES === 'undefined' || !ITEM_RULES[key]) return { ok: false, reason: 'item' };
+    n = Math.max(0, n | 0); if (!n) return { ok: false, reason: 'none' };
+    const b = hqBagRecord(profile, true);
+    const have = b.items[key] | 0, room = Math.max(0, HQ_PARTY_RULES.bagStack - have), added = Math.min(n, room);
+    b.items[key] = have + added; b.at = Date.now();
+    return { ok: added > 0, reason: added > 0 ? null : 'full', key, n: b.items[key], added, lost: n - added };
+}
+/* TAKE n of an item out of the bag — { ok, key, n (left), taken } */
+function hqBagTake(profile, key, n) {
+    const b = hqBagRecord(profile, false); if (!b) return { ok: false, reason: 'none', taken: 0 };
+    n = Math.max(0, n | 0); const have = b.items[key] | 0, taken = Math.min(n, have);
+    if (!taken) return { ok: false, reason: 'none', taken: 0, n: have };
+    b.items[key] = have - taken; if (!b.items[key]) delete b.items[key]; b.at = Date.now();
+    return { ok: true, key, n: b.items[key] | 0, taken };
+}
+function hqBagItemRow(key, n) {
+    const r = (typeof ITEM_RULES !== 'undefined' && ITEM_RULES[key]) || {};
+    const price = r.shopPrice | 0;
+    return { key, n: n | 0, name: r.name || key, icon: r.icon || '', desc: r.desc || '', field: HQ_PARTY_RULES.itemKinds.indexOf(key) >= 0, battle: !r.fieldOnly, price, sell: Math.floor(price * HQ_PARTY_RULES.sellBack), max: HQ_PARTY_RULES.bagStack };
+}
+/* every row in the bag, the stock's order first, then the rest */
+function hqBagList(profile) {
+    const b = hqBagRecord(profile, false); if (!b) return [];
+    const order = HQ_DISPENSARY.stock.slice();
+    return Object.keys(b.items).filter(k => (b.items[k] | 0) > 0).sort((a, c) => { const ia = order.indexOf(a), ic = order.indexOf(c); return (ia < 0 ? 99 : ia) - (ic < 0 ? 99 : ic) || a.localeCompare(c); }).map(k => hqBagItemRow(k, b.items[k]));
+}
+function hqBagTotal(profile) { return hqBagList(profile).reduce((a, r) => a + r.n, 0); }
+/* THE SHELF: the dispensary's stock with prices */
+function hqShopStock() { return HQ_DISPENSARY.stock.filter(k => typeof ITEM_RULES !== 'undefined' && ITEM_RULES[k]).map(k => hqBagItemRow(k, 0)); }
+/* a QUOTE: can this profile buy n of it? — { ok, cost, reason, gold, room } (nothing written) */
+function hqShopQuote(profile, key, n, opts) {
+    n = Math.max(1, n | 0); opts = opts || {};
+    const row = hqShopStock().find(r => r.key === key); if (!row) return { ok: false, reason: 'stock' };
+    const gold = (profile && profile.account && profile.account.gold) | 0, cost = row.price * n;
+    const room = HQ_PARTY_RULES.bagStack - hqBagCount(profile, key);
+    if (n > room) return { ok: false, reason: 'full', cost, gold, room };
+    if (!opts.paid && gold < cost) return { ok: false, reason: 'gold', cost, gold, room };
+    return { ok: true, cost, gold, room, price: row.price, name: row.name };
+}
+/* the goods into the bag AFTER the gold moved (the caller paid: profile.js spendGold — local mirror or the server) */
+function hqShopBuyApply(profile, key, n) {
+    const q = hqShopQuote(profile, key, n, { paid: true }); if (!q.ok) return q;   // the gold already moved (or is the server's)
+    const a = hqBagAdd(profile, key, n); if (!a.ok) return { ok: false, reason: a.reason };
+    return { ok: true, key, n: a.n, added: a.added, cost: q.cost, name: q.name };
+}
+/* SELL n back out of the bag at sellBack — { ok, refund } (the caller credits the refund: profile.js spendGold(-refund) / creditLocalGold) */
+function hqShopSell(profile, key, n) {
+    n = Math.max(1, n | 0);
+    const row = hqBagItemRow(key, hqBagCount(profile, key)); if (!row.n) return { ok: false, reason: 'none' };
+    const t = hqBagTake(profile, key, n); if (!t.ok) return { ok: false, reason: 'none' };
+    return { ok: true, key, sold: t.taken, left: t.n, refund: row.sell * t.taken, name: row.name };
+}
+/* THE POCKETS: top every FIT member's battle pockets up to HQ_PARTY_RULES.pocket from the bag (a launch, the RESTOCK button) — { moved: [{ id, key, n }], total } */
+function hqPartyStock(profile) {
+    const r = hqPartyRecord(profile); if (!r) return { ok: false, moved: [], total: 0 };
+    const moved = []; let total = 0;
+    r.members.forEach(m => {
+        if (hqPartyDown(m)) return;
+        Object.keys(HQ_PARTY_RULES.pocket).forEach(k => {
+            const want = HQ_PARTY_RULES.pocket[k] | 0, have = m.loadout.items[k] | 0;
+            const cap = (typeof ITEM_RULES !== 'undefined' && ITEM_RULES[k]) ? (ITEM_RULES[k].max | 0) : want;
+            const need = Math.min(want, cap) - have; if (need <= 0) return;
+            const t = hqBagTake(profile, k, need); if (!t.ok) return;
+            m.loadout.items[k] = have + t.taken; moved.push({ id: m.id, key: k, n: t.taken }); total += t.taken;
+        });
+    });
+    if (total) r.at = Date.now();
+    return { ok: true, moved, total };
+}
+/* the bag's rows a FIELD use may open */
+function hqPartyBagItems(profile) { return hqBagList(profile).filter(r => r.field); }
+/* ── AUTO HEAL — the planner ── */
+function hqPartyAutoHeal(profile, units) {
+    const r = hqPartyRecord(profile); if (!r || !r.members.length) return { ok: false, reason: 'noparty', steps: [] };
+    const A = HQ_PARTY_RULES.autoHeal, steps = [];
+    const vit = m => hqPartyVitals(m, units && units[m.id]);
+    const snap = () => r.members.map(m => { const v = vit(m); return { id: m.id, hp: v.hp, hpMax: v.hpMax, mp: v.mp, mpMax: v.mpMax, down: v.down }; });
+    const before = snap();
+    const nameOf = m => m.name || m.cls;
+    const casters = () => r.members.filter(m => !hqPartyDown(m)).map(m => ({ m, sps: hqPartyFieldSpells(units && units[m.id], m), v: vit(m) }));
+    const spellSteps = (kind, filter) => { const out = []; casters().forEach(c => c.sps.forEach(sp => { if (sp.kind === kind && (!filter || filter(sp, c))) out.push({ c, sp }); })); return out; };
+    const bagHas = k => hqBagCount(profile, k) > 0;
+    const pocketOwner = k => r.members.find(m => (m.loadout.items[k] | 0) > 0) || null;
+    const useItem = (k, target) => {
+        let res = null;
+        if (bagHas(k)) res = hqPartyUseItem(profile, units, 'bag', k, target.id);
+        else { const o = pocketOwner(k); if (o) res = hqPartyUseItem(profile, units, o.id, k, target.id); }
+        if (res && res.ok) steps.push({ kind: 'item', key: k, name: res.name, who: res.from === 'bag' ? 'THE BAG' : nameOf(r.members.find(m => m.id === res.from) || target), target: nameOf(target), amount: res.amount, stat: res.stat, revived: !!res.revived });
+        return !!(res && res.ok);
+    };
+    const cast = (c, sp, target) => {
+        const res = hqPartyCast(profile, units, c.m.id, sp.id, target ? target.id : null);
+        if (res && res.ok) steps.push({ kind: 'cast', spell: sp.name, who: nameOf(c.m), target: target ? nameOf(target) : 'THE PARTY', amount: res.healed.reduce((a, h) => a + h.amount, 0), cost: res.cost, revived: res.healed.some(h => h.revived), n: res.healed.length });
+        return !!(res && res.ok);
+    };
+    let guard = A.maxSteps;
+    /* 1 · THE DOWN: a revive spell, then a tonic, then an elixir */
+    for (const m of r.members.slice()) {
+        if (!hqPartyDown(m) || guard-- <= 0) continue;
+        const rv = spellSteps('revive', (sp, c) => c.v.mp >= (sp.cost | 0)).sort((a, b) => (a.sp.cost | 0) - (b.sp.cost | 0))[0];
+        if (rv && cast(rv.c, rv.sp, m)) continue;
+        if (useItem('reviveTonic', m)) continue;
+        if (useItem('elixir', m)) continue;
+        steps.push({ kind: 'skip', target: nameOf(m), why: 'NO REVIVE ON HAND' });
+    }
+    /* 2 · THE HURT, lowest first */
+    const hurt = () => r.members.filter(m => { const v = vit(m); return !v.down && v.hpMax > 0 && v.hp / v.hpMax < A.hpFull; }).sort((a, b) => vit(a).pct - vit(b).pct);
+    let stuck = new Set();
+    while (guard-- > 0) {
+        const list = hurt().filter(m => !stuck.has(m.id)); if (!list.length) break;
+        const target = list[0];
+        if (list.length >= 2) {
+            const ha = spellSteps('healAll', (sp, c) => c.v.mp >= (sp.cost | 0)).sort((a, b) => b.c.v.mp - a.c.v.mp)[0];
+            if (ha && cast(ha.c, ha.sp, null)) continue;
+        }
+        const single = spellSteps('heal', (sp, c) => c.v.mp >= (sp.cost | 0)).sort((a, b) => b.c.v.mp - a.c.v.mp)[0];
+        if (single && cast(single.c, single.sp, target)) continue;
+        const self = spellSteps('selfHeal', (sp, c) => c.m.id === target.id && c.v.mp >= (sp.cost | 0))[0];
+        if (self && cast(self.c, self.sp, null)) continue;
+        if (useItem('healPotion', target)) continue;
+        /* nobody can pay for a heal: a mana potion on the caster with the cheapest heal, then try again */
+        const dry = spellSteps('heal').concat(spellSteps('healAll')).filter(x => x.c.v.mp < (x.sp.cost | 0) && x.c.v.mpMax > 0 && x.c.v.mp / x.c.v.mpMax < A.manaTop).sort((a, b) => (a.sp.cost | 0) - (b.sp.cost | 0))[0];
+        if (dry && (bagHas('manaPotion') || pocketOwner('manaPotion')) && useItem('manaPotion', dry.c.m)) continue;
+        if (useItem('elixir', target)) continue;
+        stuck.add(target.id);
+    }
+    const after = snap();
+    const healed = after.reduce((a, x, i) => a + Math.max(0, x.hp - before[i].hp), 0);
+    const revived = after.filter((x, i) => before[i].down && !x.down).length;
+    const still = after.filter(x => x.down).length + after.filter(x => !x.down && x.hpMax > 0 && x.hp / x.hpMax < A.hpFull).length;
+    const did = steps.filter(s => s.kind !== 'skip');
+    if (did.length) r.at = Date.now();
+    return { ok: true, steps, before, after, healed, revived, still, did: did.length, note: !did.length ? (still ? 'NOTHING ON HAND TO HEAL WITH' : 'EVERYONE IS FULL') : still ? `${did.length} STEP${did.length === 1 ? '' : 'S'} · ${still} STILL SHORT` : 'THE PARTY IS AT FULL' };
+}
 /* ══ THE FIELD, STAGE B — THE RASTERISER ON THE CAVE (PHASE9_QUALITY_PLAN
    §11.3 B — Phase 9 Delivery 8, 2026-09-16) ══
    "Anywhere you stand becomes the 8×8." A cave chamber has no Δ under the
@@ -44984,7 +45297,8 @@ if (typeof window !== 'undefined') {
     /* THE PARTY (2026-09-19): two shifts, the health that carries, field medicine */
     window.HQ_PARTY_RULES = HQ_PARTY_RULES; window.hqPartyRecord = hqPartyRecord; window.hqPartyEnsure = hqPartyEnsure; window.hqPartyOfficer = hqPartyOfficer; window.hqPartyUnlocked = hqPartyUnlocked; window.hqPartyMember = hqPartyMember; window.hqPartyShifts = hqPartyShifts;
     window.hqPartyVitals = hqPartyVitals; window.hqPartyFit = hqPartyFit; window.hqPartyEnlist = hqPartyEnlist; window.hqPartyRelieve = hqPartyRelieve; window.hqPartySwap = hqPartySwap; window.hqPartyOnCall = hqPartyOnCall; window.hqPartyRestore = hqPartyRestore;
-    window.hqPartyForLaunch = hqPartyForLaunch; window.hqPartyAfterMatch = hqPartyAfterMatch; window.hqPartyFieldSpells = hqPartyFieldSpells; window.hqPartyFieldTargets = hqPartyFieldTargets; window.hqPartyHealAmount = hqPartyHealAmount; window.hqPartyCast = hqPartyCast; window.hqPartyUseItem = hqPartyUseItem; window.hqPartyFieldItems = hqPartyFieldItems; window.hqPartySpec = hqPartySpec; window.hqPartyGenders = hqPartyGenders; window.hqPartyDefaultJob = hqPartyDefaultJob;
+    window.hqPartyForLaunch = hqPartyForLaunch; window.hqPartyAfterMatch = hqPartyAfterMatch;
+    window.HQ_DISPENSARY = HQ_DISPENSARY; window.hqBagRecord = hqBagRecord; window.hqBagCount = hqBagCount; window.hqBagAdd = hqBagAdd; window.hqBagTake = hqBagTake; window.hqBagList = hqBagList; window.hqBagTotal = hqBagTotal; window.hqShopStock = hqShopStock; window.hqShopQuote = hqShopQuote; window.hqShopBuyApply = hqShopBuyApply; window.hqShopSell = hqShopSell; window.hqPartyStock = hqPartyStock; window.hqPartyBagItems = hqPartyBagItems; window.hqPartyAutoHeal = hqPartyAutoHeal; window.hqPartyFieldSpells = hqPartyFieldSpells; window.hqPartyFieldTargets = hqPartyFieldTargets; window.hqPartyHealAmount = hqPartyHealAmount; window.hqPartyCast = hqPartyCast; window.hqPartyUseItem = hqPartyUseItem; window.hqPartyFieldItems = hqPartyFieldItems; window.hqPartySpec = hqPartySpec; window.hqPartyGenders = hqPartyGenders; window.hqPartyDefaultJob = hqPartyDefaultJob;
     /* THE FIELD stage B — the rasteriser on the cave (Phase 9 Delivery 8, 2026-09-16) */
     window.HQ_FIELD_RULES = HQ_FIELD_RULES; window.hqFieldRimBox = hqFieldRimBox; window.hqEncounterRoomLabel = hqEncounterRoomLabel; window.hqFieldDump = hqFieldDump; window.hqFieldRoomOk = hqFieldRoomOk; window.hqFieldId = hqFieldId; window.hqFieldParse = hqFieldParse; window.hqFieldRaster = hqFieldRaster; window.hqFieldReach = hqFieldReach;
     window.hqFieldWindow = hqFieldWindow; window.hqFieldBuild = hqFieldBuild; window.hqFieldLayout = hqFieldLayout; window.hqFieldRegister = hqFieldRegister;

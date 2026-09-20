@@ -37,7 +37,7 @@ test('THE RULES: eight in two shifts of four, a loss treats the party, the cot i
     assert.equal(R.roster, 8); assert.equal(R.shift, 4);
     assert.equal(R.roster, D.RESERVE_RULES.roster, 'the party is the reserves roster'); assert.equal(R.shift, D.RESERVE_RULES.deploy, 'the first shift is the deploy');
     assert.equal(R.lossRestore, true); assert.equal(R.restRoom, 'medical'); assert.equal(R.restCounter, 'cot');
-    deq(J(R.healKinds), ['heal', 'healAll', 'selfHeal', 'revive']); deq(J(R.itemKinds), ['healPotion', 'manaPotion']);
+    deq(J(R.healKinds), ['heal', 'healAll', 'selfHeal', 'revive']); deq(J(R.itemKinds), ['healPotion', 'manaPotion', 'reviveTonic', 'elixir']);   // THE BAG (2026-09-20): the two field-only items
     assert.ok(D.AVAILABLE_RACES.includes(R.officerRace) && D.ACCT_STARTER_UNITS.includes(R.officerRace), 'the officer\'s fallback vessel is a starter');
 });
 
@@ -210,4 +210,141 @@ test('THE SOURCE SITES: the engine (no respawns, the bench fills a seat, the car
     ['function _hqPartyTx(fn)', 'function _hqPartySeed()', "data-party-act=\"cast:", "data-party-act=\"swap:", "data-party-act=\"relieve:", "data-party-act=\"enlist:", "data-party-act=\"item:", 'function _hqPartyAct(act)', "window._hqPartyRest = function ()", "if (c.id === 'cot') {", "[data-party-rest]"].forEach(s => assert.ok(MP.includes(s), 'map.js: ' + s));
     assert.ok(MP.includes("sub: 'TWO SHIFTS · FIELD MEDICINE'"));
     ['.hq-pp-card.tgt', '.hq-pp-downstamp', '.hq-pp-vbar.hp i', '.hq-pp-arm', '.hq-pp-oncall', '.hq-pp-duty', '.hq-pp-empty', '.hq-pp-msg.bad'].forEach(s => assert.ok(CSS.includes(s), 'css: ' + s));
+});
+
+/* ══ THE BAG + THE QUICK ACTIONS + THE DISPENSARY + AUTO HEAL (2026-09-20) ══ */
+const SV = fs.readFileSync(__dirname + '/server.js', 'utf8');
+const PF = fs.readFileSync(__dirname + '/profile.js', 'utf8');
+const PB = fs.readFileSync(__dirname + '/party-builder.js', 'utf8');
+
+test('THE BAG: the record, add / take, the stack cap, the list, the field-only items', () => {
+    const p = profile();
+    assert.equal(g('hqBagRecord')(p, false), null, 'no bag until something goes in');
+    assert.equal(g('hqBagCount')(p, 'healPotion'), 0);
+    const a = g('hqBagAdd')(p, 'healPotion', 3); assert.ok(a.ok && a.added === 3 && a.n === 3);
+    assert.equal(g('hqBagAdd')(p, 'nonsense', 1).reason, 'item', 'an unknown key never enters');
+    const over = g('hqBagAdd')(p, 'healPotion', 40); assert.equal(over.n, R.bagStack); assert.equal(over.lost, 40 - (R.bagStack - 3), 'the stack caps and reports what did not fit');
+    const t = g('hqBagTake')(p, 'healPotion', 2); assert.ok(t.ok && t.taken === 2 && t.n === R.bagStack - 2);
+    assert.equal(g('hqBagTake')(p, 'elixir', 1).ok, false, 'nothing to take');
+    g('hqBagAdd')(p, 'elixir', 1); g('hqBagAdd')(p, 'scanner', 2);
+    const rows = g('hqBagList')(p);
+    deq(rows.map(r => r.key), ['healPotion', 'elixir', 'scanner'], 'the shelf order');
+    const el = rows.find(r => r.key === 'elixir'); assert.ok(el.field && !el.battle, 'an elixir is field-only');
+    const sc = rows.find(r => r.key === 'scanner'); assert.ok(!sc.field && sc.battle, 'a scanner is a battle item, never a field use');
+    assert.equal(g('hqBagTotal')(p), R.bagStack - 2 + 3);
+    const META = g('ITEM_META'); ['reviveTonic', 'elixir'].forEach(k => assert.ok(D.ITEM_RULES[k] && D.ITEM_RULES[k].fieldOnly && META[k], k + ' is a field-only ITEM_RULES row with its META'));
+    const back = JSON.parse(JSON.stringify(p)); assert.equal(g('hqBagCount')(back, 'elixir'), 1, 'the bag survives JSON');
+});
+
+test('THE DISPENSARY: the stock, a quote, the buy after the gold moved, the sell-back at half, the room', () => {
+    const stock = g('hqShopStock')();
+    deq(stock.map(r => r.key), J(D.HQ_DISPENSARY.stock), 'the shelf is the table');
+    stock.forEach(r => { assert.ok(r.price > 0, r.key + ' has a price'); assert.equal(r.sell, Math.floor(r.price * R.sellBack), 'half back'); });
+    const p = profile({ account: { gold: 100, unlockedUnits: ['knight'] } });
+    assert.equal(g('hqShopQuote')(p, 'elixir', 1).reason, 'gold');
+    assert.equal(g('hqShopQuote')(p, 'nonsense', 1).reason, 'stock');
+    const q = g('hqShopQuote')(p, 'healPotion', 2); assert.ok(q.ok && q.cost === 2 * D.ITEM_RULES.healPotion.shopPrice);
+    /* the caller pays first (profile.js spendGold); the apply never touches the gold */
+    p.account.gold -= q.cost;
+    const b = g('hqShopBuyApply')(p, 'healPotion', 2); assert.ok(b.ok && b.added === 2 && p.account.gold === 100 - q.cost, 'the goods in, the gold untouched by the apply');
+    g('hqBagAdd')(p, 'healPotion', R.bagStack); assert.equal(g('hqShopQuote')(p, 'healPotion', 1).reason, 'full', 'a full stack refuses');
+    const sell = g('hqShopSell')(p, 'healPotion', 3); assert.ok(sell.ok && sell.sold === 3 && sell.refund === 3 * Math.floor(D.ITEM_RULES.healPotion.shopPrice * R.sellBack), 'three back at half');
+    assert.equal(g('hqShopSell')(p, 'elixir', 1).reason, 'none');
+    /* ROOM 911 off the Medical Wing: the hatch is the overlay's ONE home, the bag a by-id panel, the door lands in the wing */
+    const room = D.DOOR_HQ.rooms.dispensary; assert.ok(room && room.kind === 'box' && room.roomNo === '911');
+    const hatch = room.counters.find(c => c.id === 'pharmacy'); assert.ok(hatch && hatch.action.overlay === 'pharmacy' && hatch.verb === 'SHOP');
+    const bag = room.counters.find(c => c.id === 'bag'); assert.ok(bag && !bag.action.overlay && !bag.action.fn && bag.desc, 'the bag is a by-id panel');
+    const wing = D.DOOR_HQ.rooms.medwing.doors.find(d => d.id === 'dispensary'); assert.ok(wing && wing.action.room === 'dispensary' && wing.action.at === 'egress', 'the wing has the door');
+    const out = room.doors.find(d => d.id === 'egress'); assert.ok(out && out.action.room === 'medwing' && out.action.at === 'dispensary', 'the way out lands on that door');
+    assert.equal(g('hqRoomNo')('dispensary'), '911');
+    assert.ok(room.props.some(p2 => p2.key === 'railing_1m'), 'THE PARK RULE');
+});
+
+test('THE POCKETS: the launch tops every fit member up from the bag, a field-only item never rides, the commit brings the pockets home', () => {
+    const p = profile({ account: { gold: 0, unlockedUnits: ['knight', 'wizard', 'door agent', 'cowboy', 'nun'] } }); g('hqPartyEnsure')(p, { last });
+    const rec = g('hqPartyRecord')(p);
+    rec.members.forEach(m => { m.loadout.items = {}; });
+    rec.members[1].hp = 0; rec.members[1].hpMax = 100;   // Dutch is DOWN: he carries nothing out
+    g('hqBagAdd')(p, 'healPotion', 3); g('hqBagAdd')(p, 'manaPotion', 5); g('hqBagAdd')(p, 'elixir', 1);
+    const st = g('hqPartyStock')(p);
+    assert.ok(st.ok && st.total === 3 + 2, 'three heals (the bag ran out) + two manas moved');
+    assert.equal(rec.members[0].loadout.items.healPotion, R.pocket.healPotion); assert.equal(rec.members[0].loadout.items.manaPotion, R.pocket.manaPotion);
+    assert.equal(rec.members[2].loadout.items.healPotion, 1, 'the third member got what was left');
+    assert.equal(rec.members[1].loadout.items.healPotion, undefined, 'the down carry nothing');
+    assert.equal(g('hqBagCount')(p, 'healPotion'), 0); assert.equal(g('hqBagCount')(p, 'manaPotion'), 3);
+    assert.equal(g('hqPartyStock')(p).total, 0, 'a second stock moves nothing');
+    rec.members[0].loadout.items.elixir = 1;
+    const L = g('hqPartyForLaunch')(p);
+    assert.equal(L.members[0].loadout.items.elixir, undefined, 'the elixir stays home'); assert.equal(L.members[0].loadout.items.healPotion, R.pocket.healPotion);
+    /* the commit: the unit's battle items overwrite the pockets */
+    g('hqPartyAfterMatch')(p, { won: true, units: [{ partyId: rec.members[0].id, hp: 50, maxHp: 100, mp: 5, maxMp: 20, dead: false, items: { healPotion: 0, manaPotion: 1, scanner: 0 } }] });
+    const m0 = g('hqPartyRecord')(p).members[0];
+    assert.equal(m0.loadout.items.healPotion, undefined, 'the spent potions are gone'); assert.equal(m0.loadout.items.manaPotion, 1); assert.equal(m0.loadout.items.elixir, 1, 'a field-only item on the record is untouched by the commit');
+});
+
+test('FIELD MEDICINE from the bag: a potion, a tonic on the down, an elixir', () => {
+    const p = profile({ account: { gold: 0, unlockedUnits: ['knight', 'wizard', 'door agent', 'cowboy', 'nun'] } }); g('hqPartyEnsure')(p, { last });
+    const rec = g('hqPartyRecord')(p); const units = {}; rec.members.forEach(m => { units[m.id] = unitOf(m, 200, 40); });
+    const [me, dutch, sister] = rec.members;
+    dutch.hp = 0; dutch.hpMax = 200; dutch.mp = 0; dutch.mpMax = 40;
+    sister.hp = 20; sister.hpMax = 200; sister.mp = 10; sister.mpMax = 40;
+    assert.equal(g('hqPartyUseItem')(p, units, 'bag', 'healPotion', sister.id).reason, 'none', 'an empty bag');
+    g('hqBagAdd')(p, 'healPotion', 1); g('hqBagAdd')(p, 'reviveTonic', 1); g('hqBagAdd')(p, 'elixir', 1);
+    assert.equal(g('hqPartyUseItem')(p, units, 'bag', 'reviveTonic', sister.id).reason, 'notdown', 'a tonic wants the down');
+    assert.equal(g('hqPartyUseItem')(p, units, 'bag', 'healPotion', dutch.id).reason, 'down', 'a potion never wakes the down');
+    const rv = g('hqPartyUseItem')(p, units, 'bag', 'reviveTonic', dutch.id); assert.ok(rv.ok && rv.revived && rv.from === 'bag' && rv.left === 0); assert.equal(dutch.hp, 100, 'up at half');
+    const hp = g('hqPartyUseItem')(p, units, 'bag', 'healPotion', sister.id); assert.ok(hp.ok && hp.amount === 60 && sister.hp === 80);
+    const ex = g('hqPartyUseItem')(p, units, 'bag', 'elixir', sister.id); assert.ok(ex.ok && sister.hp === 200 && sister.mp === 40, 'an elixir fills both');
+    assert.equal(g('hqPartyUseItem')(p, units, 'bag', 'elixir', me.id).reason, 'none', 'the bag is empty again');
+    deq(g('hqPartyBagItems')(p), [], 'nothing field-usable left');
+});
+
+test('AUTO HEAL: the down first (a revive spell, then a tonic), then the hurt lowest-first (heal-all, a single heal, the potions), a mana potion only for a dry caster', () => {
+    const p = profile({ account: { gold: 0, unlockedUnits: ['knight', 'wizard', 'door agent', 'cowboy', 'nun'] } }); g('hqPartyEnsure')(p, { last });
+    const rec = g('hqPartyRecord')(p); const [me, dutch, sister] = rec.members;
+    const heal = D.SPELL_BY_ID.heal1; assert.ok(heal && heal.kind === 'heal');
+    const units = {}; rec.members.forEach(m => { units[m.id] = unitOf(m, 200, 100); });
+    units[sister.id].spells = [heal];
+    /* nothing to do */
+    let r = g('hqPartyAutoHeal')(p, units); assert.ok(r.ok && r.did === 0 && r.note === 'EVERYONE IS FULL');
+    /* the down with no revive on hand is SKIPPED and said so; the hurt are healed with the sister's spell first */
+    dutch.hp = 0; dutch.hpMax = 200; dutch.mp = 0; dutch.mpMax = 100;
+    me.hp = 40; me.hpMax = 200; me.mp = 100; me.mpMax = 100;
+    sister.hp = 150; sister.hpMax = 200; sister.mp = 100; sister.mpMax = 100;
+    r = g('hqPartyAutoHeal')(p, units);
+    assert.ok(r.steps.some(s => s.kind === 'skip' && s.why === 'NO REVIVE ON HAND'), 'the down without a revive is named');
+    assert.ok(r.steps.filter(s => s.kind === 'cast').length >= 1 && r.steps[1].kind === 'cast', 'the spell before any potion');
+    assert.equal(dutch.hp, 0, 'still down'); assert.ok(me.hp > 40 && r.healed > 0);
+    /* a tonic in the bag wakes him; potions finish what the MP cannot */
+    g('hqBagAdd')(p, 'reviveTonic', 1); g('hqBagAdd')(p, 'healPotion', 6); sister.mp = 0;
+    r = g('hqPartyAutoHeal')(p, units);
+    assert.ok(r.steps[0].kind === 'item' && r.steps[0].key === 'reviveTonic' && r.revived === 1, 'the tonic first');
+    assert.ok(r.steps.some(s => s.kind === 'item' && s.key === 'healPotion'), 'then the potions, the caster being dry');
+    assert.equal(r.still, 0, r.note); assert.equal(g('hqBagCount')(p, 'reviveTonic'), 0);
+    /* the mana potion: a heal wanted, the only caster dry → the potion goes on HER, then she casts */
+    me.hp = 20; sister.mp = 0; g('hqBagTake')(p, 'healPotion', 99); rec.members.forEach(m => { delete m.loadout.items.healPotion; }); g('hqBagAdd')(p, 'manaPotion', 1);   // no potions left anywhere: the caster must be watered
+    r = g('hqPartyAutoHeal')(p, units);
+    const mi = r.steps.findIndex(s => s.kind === 'item' && s.key === 'manaPotion'), ci = r.steps.findIndex(s => s.kind === 'cast');
+    assert.ok(mi >= 0 && ci > mi, 'the mana potion on the caster, then her cast: ' + JSON.stringify(r.steps));
+    assert.ok(r.steps.length <= R.autoHeal.maxSteps);
+});
+
+test('THE SOURCE SITES (2026-09-20): the quick strip, the ITEMS sheet, the walk-to buttons, the hatch, the wallet, the endpoint, the guards', () => {
+    /* map.js — the pause menu */
+    ["{ id: 'items',     label: 'ITEMS',", 'function _hqPauseCardQuickHtml(', 'function _hqPauseQuickBarHtml(', 'function _hqPauseBagHtml()', "data-party-act=\"autoheal\"", "data-party-act=\"restock\"", "data-party-act=\"itemon:", "data-party-act=\"bag:", "data-member-sheet=", "data-pause-room=\"medical\" data-pause-at=\"cot\"", "data-pause-room=\"dispensary\"", "else if (P.cmd === 'items') body.innerHTML = safe(_hqPauseBagHtml, 'items');", "e.target.closest('[data-pause-room]')", "else if (verb === 'autoheal') {", "else if (verb === 'restock') {", 'function _hqPartyItemOn(owner, key, target, units, rec)', "_hqPartyTx(q => window.hqPartyStock(q));"].forEach(s => assert.ok(MP.includes(s), 'map.js: ' + s));
+    assert.ok(MP.includes('return `<div class="${cls}" data-member="${_hqEsc(m.id)}" role="button" tabindex="0"'), 'the card is a div now (buttons inside it)');
+    /* map.js — the dispensary */
+    ["if (act.overlay === 'pharmacy') return _hqPharmacyHtml();", 'function _hqPharmacyHtml()', 'window._hqShopBuy = async function (key, n)', 'window._hqShopSell = async function (key, n)', "e.target.closest('[data-buy]')", "e.target.closest('[data-sell]')", "if (c.id === 'bag') {", "PS.spendGold(q.cost, 'dispensary:'"].forEach(s => assert.ok(MP.includes(s), 'map.js: ' + s));
+    const buyAt = MP.indexOf("await PS.spendGold(q.cost"), applyAt = MP.indexOf("window.hqShopBuyApply(p, key, n)");
+    assert.ok(buyAt > 0 && applyAt > buyAt, 'the gold moves BEFORE the goods go into the bag');
+    /* profile.js + server.js — the wallet */
+    ['function localSpendGold(amount)', 'async function spendGold(amount, reason)', "fetch('/api/economy/spend'", '  spendGold,', '  localSpendGold,'].forEach(s => assert.ok(PF.includes(s), 'profile.js: ' + s));
+    ["app.post('/api/economy/spend', limitEcon, async (req, res) => {", "'UPDATE players SET gold = gold - ?1 WHERE id = ?2 AND gold >= ?1'", 'amt < -SPEND_REFUND_CAP'].forEach(s => assert.ok(SV.includes(s), 'server.js: ' + s));
+    /* the field-only guard at every loadout funnel; the commit carries the pockets */
+    assert.ok(BT.includes("const cap = iRule.fieldOnly ? 0 : getItemCapForClass(cls, iKey);") && ST.includes("const cap = iRule.fieldOnly ? 0 : getItemCapForClass(cls, iKey);"), 'normalizeLoadoutForClass caps a field-only item to 0 on both sides');
+    assert.ok(PB.includes(".filter(k => !(window.ITEM_RULES[k] && window.ITEM_RULES[k].fieldOnly))"), 'the forge never offers one');
+    assert.ok(BT.includes("dead: !!(u.dead || u._dying), items: Object.assign({}, u.items || {}) });"), 'the commit carries the pockets');
+    /* the pay cache drops a potion */
+    assert.ok(D.HQ_FIND_RULES.potionDrop && D.HQ_FIND_RULES.potionDrop.healPotion > 0, 'the drop table');
+    ['.hq-pp-quick', '.hq-pp-quickbar', '.hq-pp-bag', '.hq-pp-bagrow', '.hq-pp-pockets', '.hq-shop-row', '.hq-shop-price'].forEach(s => assert.ok(CSS.includes(s), 'css: ' + s));
 });
