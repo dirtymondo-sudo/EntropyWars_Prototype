@@ -218,6 +218,33 @@
             document.documentElement.classList.add(window.EW_MOBILE ? 'ew-mobile' : 'ew-desktop');
             if (window.EW_PERF_LOW) document.documentElement.classList.add('ew-perf-low');
         } catch (e) {}
+        /* THE CDN CORS PROBE (2026-09-20): every WebGL texture and every GLB is a crossOrigin fetch of
+           cdn.entropywars.net, and the bucket's CORS policy answers only for the origins it names — from any
+           other host the browser blocks them all and the whole building renders BLACK with nothing in the
+           console but per-file lines. One tiny cors fetch at boot names the problem on screen instead. */
+        (function () {
+            try {
+                if (!window.fetch || location.protocol === 'file:') return;
+                var probeUrl = 'https://cdn.entropywars.net/Assets/Sprites/terrain/scorched.png?ewcors=1&ewprobe=' + Date.now();
+                fetch(probeUrl, { mode: 'cors', cache: 'no-store' }).then(function (r) {
+                    if (!r.ok) throw new Error('HTTP ' + r.status);
+                    window._ewCdnCorsBlocked = false;
+                }).catch(function (err) {
+                    window._ewCdnCorsBlocked = true;
+                    var msg = 'CDN BLOCKED: cdn.entropywars.net does not allow cross-origin loads from ' + location.origin +
+                        ' — textures and models will render black. Add this origin to the R2 bucket\'s CORS policy (AllowedOrigins) or play from the allowed host. (' + (err && err.message) + ')';
+                    try { console.error('[EntropyWars] ' + msg); } catch (e) {}
+                    try {
+                        var d = document.createElement('div');
+                        d.id = 'ewCdnCorsBanner';
+                        d.setAttribute('style', 'position:fixed;left:0;right:0;top:0;z-index:2147483647;padding:10px 14px;background:#7a0f1a;color:#fff;font:13px/1.4 monospace;text-align:center;cursor:pointer');
+                        d.textContent = msg + '  [click to dismiss]';
+                        d.onclick = function () { d.remove(); };
+                        (document.body || document.documentElement).appendChild(d);
+                    } catch (e) {}
+                });
+            } catch (e) {}
+        })();
     })();
     </script>
     <link rel="preconnect" href="https://cdn.entropywars.net">
