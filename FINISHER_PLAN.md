@@ -197,6 +197,77 @@ spells), a ziggurat tier block, a gothic buttress.
 
 ## 7. Log
 
+- **2026-09-20 — SIX MORE EXECUTIONS in roster order (delivery 7).** The
+  next six rows of `FINISHERS` after the reptilian, each a director (battle.js
+  `_FIN_DIRECTORS`, the DELIVERY 7 block) + a signature (three-vfx-effects.js
+  "THE FINISHER PASS 2", the DELIVERY 7 block) + a stage script
+  (`_FIN_STAGE[sig]`): robot **Compactor** (`compactor` — two WALLS OF STEEL
+  rise nine tiles out either side of the victim on the perpendicular of the
+  caster → victim line (rail beds, a piston behind each, warning stripe,
+  rust ribs), close on hydraulic rails with sparks off the runners while the
+  silhouette is ground flatter, meet, a PRESS PLATE drops on the seam, the
+  walls part and a CUBE with a stencilled serial (UNIT 1 → CUBE 1) stands on
+  the tile; god shot → a side dolly down the walls' travel → face cam → the
+  freeze → a low reverse; `> compactor: ARMED` terminal, ⚠ STAND CLEAR),
+  android **Factory Reset** (`factoryReset` — a ⏻ hologram over the victim,
+  the body powers down (the tint drains, a flicker), then THE PARTS DIAGRAM:
+  six labelled parts (head · torso · arms · legs) drift out to an exploded
+  view on a wireframe grid with leader lines and [01]…[06] cards, a
+  RESTORING DEFAULTS progress card counts 0 → 100 %, the parts fly up into a
+  CRATE (THIS SIDE UP · FRAGILE) that drops onto the tile with a bounce; face
+  cam → crane → god shot on the diagram → fall follow → a low reverse), angel
+  **The Rapture, Party of One** (`rapture` — a cloud ring parts over the
+  tile, a brass TRUMPET sounds out of it, a column of gold light stands down,
+  feathers drift, the silhouette rises slowly turning with its arms out
+  toward an IRIS of white light — which SHUTS on it (a … clock insert),
+  holds, re-opens RED, a dark HAND comes down through it and takes the body
+  back up, the iris snaps shut and one scorched feather tumbles down onto
+  the tile; face cam → a crane rising with the body → sky watch → the
+  freeze on `crimson` → fall follow with the feather → a low reverse),
+  seraphim **Be Not Afraid** (`beNotAfraid` — THREE RINGS WITHIN RINGS
+  (gold tori with a fire halo each) come down over the victim turning on
+  three axes, fourteen EYES a ring (a white ball, a dark iris), and on the
+  gaze beat every eye turns to the tile at once, a GREAT EYE opens at the
+  hub (its lid rolls back), its light stands down on the body until it is
+  bleached white; sky watch → face cam → a blink + a dolly zoom on the
+  gaze → the freeze on `whiteout` → a low reverse; BE NOT AFRAID scripture),
+  orb of light **Into the Sun** (`intoTheSun` — a SUN the size of the
+  board rises off the far edge beyond the victim (a photosphere, a BackSide
+  chromosphere, a corona sprite, five prominence loops off the limb), the
+  silhouette is FLUNG down the line on a long arc into it (an ember trail,
+  a flare on the photosphere), the sun COLLAPSES for a held breath (shrinks
+  to a cinder, the … clock) and goes NOVA — a white shell out to thirty
+  tiles, two shock rings, starfire raining, the board bleached to the rim
+  (`sizeTiles` = the span); crane on the caster → sky watch on the sunrise
+  → a wide god shot on the throw → the freeze → a low reverse), demon **The
+  Contract** (`contract` — a CONTRACT the size of the sky unrolls off two
+  black rollers over the tile (a canvas parchment: the terms, the fine
+  print, a line for the name), a QUILL comes down and signs the VICTIM'S
+  NAME in fire along the line (a spark trail; `unitDisplayName` rides the
+  `name` opt), the red seal lands, then THE PIT opens under the body (a
+  black disc, embers), four CHAINS climb out of it and spiral round the
+  body, drag it down, the pit slams shut and the contract burns from the
+  foot up; reverse OTS → sky watch on the unroll → face cam on the
+  signature → fall follow to the pit → the freeze on `crimson` → a low
+  reverse; `> status: BINDING` terminal, PAID IN FULL). Thirty-three built
+  of 99. Smoke-tested in a stub-THREE harness (every tick of every
+  signature at the directors' timings and at bare defaults, every spawn
+  coordinate finite — no rendered frame, RULE #1c); finishers.test.js (15)
+  + `npm run test:quick` green. Not playtested: the walls' rotation about
+  the perpendicular (`wg.rotation.y = -atan2(pz, px)` — a wall that lands
+  edge-on to the camera wants the sign flipped), the walls' scale (`W` /
+  `H` / `FAR` in `_sigCompactor3D`) against the board, the press plate's
+  drop, the parts diagram's radius (`R = ts * 1.9`) under the god shot, the
+  crate's read, the cloud ring's height (`CLOUD = ts * 9`) in the crane
+  and whether the trumpet reads as one, the hand's fingers, the rings'
+  spin rate on the gaze, the eyes' `lookAt` (each ring group turns under
+  them — a lag is expected), the sun's radius (`R = ts * 7.5` at `D = ts *
+  16`) against the horizon and the sky dome, the nova shell's size, the
+  parchment's legibility at `PW = ts * 6` under the sky watch, the quill's
+  travel across the sheet's tilt, the chains' wrap, the six camera paths.
+  NEXT: the rows in roster order — succubus, skeleton, mech, ghost,
+  zombie, annunaki.
+
 - **2026-09-20 — SIX MORE EXECUTIONS in roster order (delivery 6).** The
   next six rows of `FINISHERS` after the fairy, each a director (battle.js
   `_FIN_DIRECTORS`, the DELIVERY 6 block) + a signature (three-vfx-effects.js

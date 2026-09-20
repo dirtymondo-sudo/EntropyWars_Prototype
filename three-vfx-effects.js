@@ -27532,6 +27532,456 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         });
     }
 
+    /* ═════════ DELIVERY 7 (2026-09-20) — SIX MORE EXECUTIONS ═════════
+       robot COMPACTOR · android FACTORY RESET · angel THE RAPTURE, PARTY OF
+       ONE · seraphim BE NOT AFRAID · orb of light INTO THE SUN · demon THE
+       CONTRACT. Same ownership as the two passes above (one group through
+       _sigRunOwned, timers through _fxDelay, called INSIDE the relayed
+       cinematic — never fireGeometry; every text card a Sprite). The
+       victim is the dark stand-in capsule (_finBodyMesh) as before. */
+
+    /* ── COMPACTOR (robot) ──────────────────────────────────────────────
+       Two WALLS OF STEEL rise off either side of the victim, nine tiles
+       out, and close on hydraulic rails (a rail bed under each, sparks
+       off the runners, a piston behind each wall), grinding the
+       silhouette flatter until the walls meet; a PRESS PLATE drops on the
+       seam from above; the walls part and what stands on the tile is a
+       CUBE with a stencilled serial. The axis is the perpendicular of the
+       caster → victim line, so the camera's side dolly looks down the
+       walls' travel. o: riseAt · closeAt (the walls start in) · hitAt
+       (they meet) · ms. */
+    function _sigCompactor3D(cx, cy, tx, ty, o) {
+        o = o || {};
+        if (!_canSpawn()) return false;
+        var wpC = _worldPos(cx, cy), wpT = _worldPos(tx, ty), ts = wpT.ts;
+        var ms = o.ms > 0 ? o.ms : 6000;
+        var riseAt = o.riseAt != null ? o.riseAt : 100, closeAt = o.closeAt != null ? o.closeAt : riseAt + 900, hitAt = o.hitAt != null ? o.hitAt : closeAt + 2200;
+        var dx = wpT.x - wpC.x, dz = wpT.z - wpC.z, L = Math.hypot(dx, dz);
+        var ux = L > 1e-3 ? dx / L : 1, uz = L > 1e-3 ? dz / L : 0;
+        var px = -uz, pz = ux;   // the perpendicular: the walls travel along it
+        var g = new THREE.Group(); g.position.set(wpT.x, wpT.y, wpT.z);
+        var W = ts * 5.2, H = ts * 3.0, T = ts * 0.55, FAR = ts * 9;
+        var steel = _finBasic(0x5a6270), dark = _finBasic(0x23272e), rust = _finBasic(0x8a5a30), warn = _finBasic(0xffc21a);
+        var walls = [], pistons = [], beds = [];
+        for (var s = -1; s <= 1; s += 2) {
+            var wg = new THREE.Group();
+            var slab = new THREE.Mesh(new THREE.BoxGeometry(T, H, W), steel); slab.position.y = H / 2; wg.add(slab);
+            var face = new THREE.Mesh(new THREE.BoxGeometry(T * 0.2, H * 0.9, W * 0.92), dark); face.position.set(-s * T * 0.5, H / 2, 0); wg.add(face);
+            for (var r = 0; r < 4; r++) { var rib = new THREE.Mesh(new THREE.BoxGeometry(T * 1.3, ts * 0.12, W), rust); rib.position.y = H * (0.15 + r * 0.23); wg.add(rib); }
+            var stripe = new THREE.Mesh(new THREE.BoxGeometry(T * 1.05, ts * 0.16, W), warn); stripe.position.y = H * 0.96; wg.add(stripe);
+            var pist = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.16, ts * 0.16, FAR, 10), dark); pist.rotation.z = Math.PI / 2; pist.position.set(0, H * 0.55, 0); wg.add(pist); pistons.push(pist);
+            wg.position.set(px * s * FAR, 0, pz * s * FAR); wg.rotation.y = -Math.atan2(pz, px);   // local +X along the perpendicular
+            wg.visible = false; g.add(wg); walls.push(wg);
+            var bed = new THREE.Mesh(new THREE.BoxGeometry(FAR, ts * 0.06, ts * 0.9), dark); bed.rotation.y = -Math.atan2(pz, px); bed.position.set(px * s * FAR / 2, ts * 0.03, pz * s * FAR / 2); bed.visible = false; g.add(bed); beds.push(bed);
+        }
+        var body = _finBodyMesh(ts); g.add(body);
+        var plate = new THREE.Mesh(new THREE.BoxGeometry(ts * 1.6, ts * 0.3, ts * 1.6), steel); plate.position.y = ts * 9; plate.visible = false; g.add(plate);
+        var cubeMat = _finBasic(0x3a3f47), cube = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.62, ts * 0.62, ts * 0.62), cubeMat); cube.position.y = ts * 0.31; cube.visible = false; g.add(cube);
+        var serial = _finTextSprite('UNIT 1 → CUBE 1\n' + String(Math.floor(Math.random() * 9000) + 1000).padStart(4, '0'), { ink: '#ffc21a', font: 'monospace', fontPx: 60, spriteW: ts * 1.8, opacity: 0 }); serial.position.y = ts * 1.3; g.add(serial);
+        var c = tilePx(tx, ty), bz = tileZ(tx, ty), lastSpark = 0, met = false, metAt = 0;
+        return !!_sigRunOwned(g, ms, function (el) {
+            var rk = _sigClamp01((el - riseAt) / 700), re = 1 - Math.pow(1 - rk, 3);
+            for (var i = 0; i < 2; i++) { walls[i].visible = rk > 0; beds[i].visible = rk > 0; walls[i].scale.y = Math.max(0.02, re); }
+            var gap = FAR;
+            if (el >= closeAt && !met) { var ck = _sigClamp01((el - closeAt) / (hitAt - closeAt)); gap = FAR - (FAR - T * 0.5) * ck * ck; }
+            else if (met) { var pk = _sigClamp01((el - metAt - 900) / 900); gap = T * 0.5 + (FAR - T * 0.5) * pk * pk; }
+            for (var j = 0; j < 2; j++) { var sg = j ? 1 : -1; walls[j].position.set(px * sg * gap, 0, pz * sg * gap); pistons[j].scale.x = Math.max(0.02, (FAR - gap) / FAR); pistons[j].position.x = sg * (FAR - gap) / 2; }
+            if (el >= closeAt && !met) {
+                var sq = Math.max(0.06, (gap - T * 0.5) / (ts * 0.5)); body.scale.set(Math.min(1, sq), 1 + (1 - Math.min(1, sq)) * 0.6, 1);
+                if (el - lastSpark > 70 && _canSpawn()) { lastSpark = el; for (var k = 0; k < 2; k++) { var sg2 = k ? 1 : -1; for (var m = 0; m < 3; m++) _spawn({ x: c.x + px * sg2 * gap + rn(-6, 6), y: c.y + pz * sg2 * gap + rn(-6, 6), z: bz + rn(2, 10), mode: 'billboard', sprite: 'spark', ml: rn(200, 400), size0: rn(4, 8), size1: 1, vx: rn(-160, 160), vy: rn(-160, 160), vz: rn(40, 200), gravity: 300, opacity0: 1, opacity1: 0, tint: 0xffd070 }); } }
+            }
+            if (el >= hitAt && !met) {
+                met = true; metAt = el; body.visible = false; plate.visible = true;
+                _shake('heavy'); _sigScreenFlash('#ffffff', 140, 0.6);
+                _sigShockRing3D(tx, ty, { color: 0x9fb4c8, r0: ts * 0.2, r1: ts * 2.4, ms: 520, torus: true });
+                for (var d = 0; d < 16; d++) _spawn({ x: c.x + rn(-10, 10), y: c.y + rn(-10, 10), z: bz + 6, mode: 'billboard', sprite: 'spark', ml: rn(300, 600), size0: rn(5, 9), size1: 1, vx: rn(-220, 220), vy: rn(-220, 220), vz: rn(120, 320), gravity: 320, opacity0: 1, opacity1: 0, tint: 0xffd070 });
+            }
+            if (met) {
+                var dk = _sigClamp01((el - metAt) / 380), de = dk * dk;
+                plate.position.y = ts * 9 - (ts * 9 - H - ts * 0.15) * de;
+                if (el - metAt > 900) { var uk = _sigClamp01((el - metAt - 900) / 700); plate.position.y = H + ts * 0.15 + ts * 9 * uk * uk; plate.visible = uk < 1; cube.visible = true; cube.scale.setScalar(Math.min(1, 0.2 + uk * 0.8)); serial.material.opacity = _sigClamp01((el - metAt - 1300) / 300) * (1 - _sigClamp01((el - metAt - 3200) / 500)); }
+                if (el - metAt > 3000) { var fk = _sigClamp01((el - metAt - 3000) / 700); steel.opacity = 1 - fk; dark.opacity = 1 - fk; rust.opacity = 1 - fk; warn.opacity = 1 - fk; cubeMat.opacity = 1 - fk * 0.4; }
+            }
+        });
+    }
+
+    /* ── FACTORY RESET (android) ────────────────────────────────────────
+       A ⏻ hologram over the victim, the silhouette powers DOWN (the tint
+       drains, a flicker), then the PARTS DIAGRAM: the body comes apart
+       into six labelled parts (head · torso · two arms · two legs) that
+       drift out to their places on an exploded-view grid with leader
+       lines, a progress card counts RESTORING DEFAULTS 0 → 100 %, the
+       parts snap into a CRATE (THIS SIDE UP) that drops onto the tile.
+       o: powerAt · explodeAt · packAt · hitAt (the crate lands) · ms. */
+    function _sigFactoryReset3D(tx, ty, o) {
+        o = o || {};
+        if (!_canSpawn()) return false;
+        var wp = _worldPos(tx, ty), ts = wp.ts;
+        var ms = o.ms > 0 ? o.ms : 6000;
+        var powerAt = o.powerAt != null ? o.powerAt : 100, explodeAt = o.explodeAt != null ? o.explodeAt : powerAt + 900, packAt = o.packAt != null ? o.packAt : explodeAt + 1800, hitAt = o.hitAt != null ? o.hitAt : packAt + 700;
+        var g = new THREE.Group(); g.position.set(wp.x, wp.y, wp.z);
+        var cyan = 0x4fd8ff;
+        var body = _finBodyMesh(ts); g.add(body);
+        var ico = _finTextSprite('⏻', { ink: '#4fd8ff', font: 'monospace', fontPx: 160, spriteW: ts * 1.0, spriteH: ts * 1.0, opacity: 0 }); ico.position.y = ts * 1.7; g.add(ico);
+        var partMat = _finBasic(0x9aa4b0), parts = [], homes = [], labels = [], lines = [];
+        var spec = [['HEAD', 0, ts * 1.15, ts * 0.22, ts * 0.22], ['TORSO', 0, ts * 0.65, ts * 0.24, ts * 0.5], ['ARM L', -ts * 0.32, ts * 0.7, ts * 0.08, ts * 0.45], ['ARM R', ts * 0.32, ts * 0.7, ts * 0.08, ts * 0.45], ['LEG L', -ts * 0.12, ts * 0.22, ts * 0.1, ts * 0.42], ['LEG R', ts * 0.12, ts * 0.22, ts * 0.1, ts * 0.42]];
+        var lineMat = new THREE.LineBasicMaterial({ color: cyan, transparent: true, opacity: 0, depthWrite: false });
+        for (var i = 0; i < spec.length; i++) {
+            var sp = spec[i], m = new THREE.Mesh(i === 0 ? new THREE.SphereGeometry(sp[3], 10, 8) : new THREE.CylinderGeometry(sp[3], sp[3], sp[4], 8), partMat);
+            m.position.set(sp[1], sp[2], 0); m.visible = false; g.add(m); parts.push(m);
+            var ang = (i / spec.length) * Math.PI * 2, R = ts * 1.9;
+            homes.push(new THREE.Vector3(Math.cos(ang) * R, ts * (1.0 + (i % 2) * 0.9), Math.sin(ang) * R));
+            var lb = _finTextSprite(sp[0] + '\n[' + String(i + 1).padStart(2, '0') + ']', { ink: '#4fd8ff', font: 'monospace', fontPx: 64, spriteW: ts * 0.9, opacity: 0 }); g.add(lb); labels.push(lb);
+            var geo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, ts * 0.6, 0), homes[i].clone()]);
+            var ln = new THREE.Line(geo, lineMat); ln.visible = false; g.add(ln); lines.push(ln);
+        }
+        var gridMat = new THREE.MeshBasicMaterial({ color: cyan, wireframe: true, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending });
+        var grid = new THREE.Mesh(new THREE.PlaneGeometry(ts * 5, ts * 5, 5, 5), gridMat); grid.rotation.x = -Math.PI / 2; grid.position.y = ts * 0.04; g.add(grid);
+        var pct = -1, card = null;
+        var crate = new THREE.Group();
+        var crateMat = _finBasic(0x8a6a3a), slat = _finBasic(0x5a4224);
+        var box = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.9, ts * 0.7, ts * 0.9), crateMat); box.position.y = ts * 0.35; crate.add(box);
+        for (var e = 0; e < 4; e++) { var ed = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.94, ts * 0.06, ts * 0.06), slat); ed.position.set(0, ts * 0.05 + (e % 2) * ts * 0.6, (e < 2 ? -1 : 1) * ts * 0.45); crate.add(ed); }
+        var tsu = _finTextSprite('THIS SIDE UP\n↑  FRAGILE  ↑', { ink: '#2a1a0a', font: 'monospace', fontPx: 52, spriteW: ts * 0.85, opacity: 0.95 }); tsu.position.y = ts * 0.4; tsu.position.z = ts * 0.2; crate.add(tsu);
+        crate.visible = false; crate.position.y = ts * 8; g.add(crate);
+        var c = tilePx(tx, ty), bz = tileZ(tx, ty), landed = false, lastFl = 0;
+        function setCard(p) {
+            if (p === pct) return; pct = p;
+            if (card) { g.remove(card); card.material.map = null; card.material.dispose(); }
+            var bar = '', n = Math.round(p / 10); for (var b = 0; b < 10; b++) bar += b < n ? '█' : '░';
+            card = _finTextSprite('RESTORING DEFAULTS\n' + bar + ' ' + p + '%', { ink: '#4fd8ff', font: 'monospace', fontPx: 52, spriteW: ts * 2.4, opacity: 0.95 }); card.position.y = ts * 3.2; g.add(card);
+        }
+        return !!_sigRunOwned(g, ms, function (el) {
+            /* the power-down */
+            if (el >= powerAt && el < explodeAt) { var pk = _sigClamp01((el - powerAt) / 600); ico.material.opacity = (Math.sin(el * 0.03) > -0.6 ? 1 : 0.2) * pk; var flick = (el - powerAt > 300 && Math.sin(el * 0.09) > 0.6) ? 0.4 : 1; body.material.color.setHex(0x111318).lerp(new THREE.Color(0x2a3040), pk * flick); }
+            if (el >= explodeAt) ico.material.opacity = Math.max(0, ico.material.opacity - 0.08);
+            /* the diagram */
+            if (el >= explodeAt && el < packAt) {
+                var xk = _sigClamp01((el - explodeAt) / 900), xe = 1 - Math.pow(1 - xk, 3);
+                body.visible = false; gridMat.opacity = 0.35 * xk;
+                for (var i2 = 0; i2 < parts.length; i2++) {
+                    var sp2 = spec[i2], h = homes[i2]; parts[i2].visible = true;
+                    parts[i2].position.set(sp2[1] * (1 - xe) + h.x * xe, sp2[2] * (1 - xe) + h.y * xe, h.z * xe);
+                    parts[i2].rotation.y = el * 0.001 + i2; parts[i2].rotation.z = xe * 0.6;
+                    labels[i2].position.set(h.x, h.y + ts * 0.45, h.z); labels[i2].material.opacity = _sigClamp01((el - explodeAt - 500 - i2 * 80) / 250);
+                    lines[i2].visible = xk > 0.5; lineMat.opacity = 0.7 * _sigClamp01((el - explodeAt - 400) / 300);
+                }
+                setCard(Math.min(99, Math.floor(_sigClamp01((el - explodeAt) / (packAt - explodeAt)) * 100)));
+            }
+            /* the pack */
+            if (el >= packAt && !landed) {
+                var pk2 = _sigClamp01((el - packAt) / Math.max(1, hitAt - packAt - 200)), pe = pk2 * pk2;
+                lineMat.opacity = Math.max(0, 0.7 - pk2 * 2); gridMat.opacity = Math.max(0, 0.35 - pk2);
+                for (var i3 = 0; i3 < parts.length; i3++) { var h2 = homes[i3]; parts[i3].position.set(h2.x * (1 - pe), h2.y * (1 - pe) + ts * 8 * pe, h2.z * (1 - pe)); parts[i3].visible = pe < 0.98; labels[i3].material.opacity = Math.max(0, 1 - pk2 * 3); }
+                setCard(100);
+                if (pe >= 0.98) { crate.visible = true; var ck = _sigClamp01((el - packAt - (hitAt - packAt - 200)) / 200); crate.position.y = ts * 8 * (1 - ck * ck); }
+            }
+            if (el >= hitAt && !landed) {
+                landed = true; crate.visible = true; crate.position.y = 0; for (var i4 = 0; i4 < parts.length; i4++) parts[i4].visible = false;
+                _shake('heavy'); _sigScreenFlash('#c8f0ff', 160, 0.5);
+                _sigShockRing3D(tx, ty, { color: cyan, r0: ts * 0.2, r1: ts * 2.0, ms: 460, torus: false });
+                for (var d = 0; d < 12; d++) _spawn({ x: c.x + rn(-10, 10), y: c.y + rn(-10, 10), z: bz + 4, mode: 'billboard', sprite: 'dust-puff', ml: rn(300, 600), size0: rn(10, 16), size1: rn(20, 30), vx: rn(-100, 100), vy: rn(-100, 100), vz: rn(20, 90), opacity0: 0.8, opacity1: 0 });
+            }
+            if (landed) { crate.position.y = Math.sin(Math.min(Math.PI, (el - hitAt) * 0.012)) * ts * 0.06; if (card) card.material.opacity = 1 - _sigClamp01((el - hitAt - 800) / 400); if (el - hitAt > 1800) { var fk = _sigClamp01((el - hitAt - 1800) / 600); crateMat.opacity = 1 - fk; slat.opacity = 1 - fk; tsu.material.opacity = 1 - fk; } }
+            void lastFl;
+        });
+    }
+
+    /* ── THE RAPTURE, PARTY OF ONE (angel) ──────────────────────────────
+       A trumpet sounds out of a parted cloud ring over the victim, a
+       column of gold light stands down onto the tile, feathers drift, the
+       silhouette rises slowly turning with its arms out (a soft glow on
+       it) toward an IRIS of white light in the clouds — which closes on
+       the body, holds… and re-opens RED: the light was not what they
+       thought. A dark hand comes down through it, takes the body back up,
+       the iris snaps shut, and one scorched feather falls onto the tile.
+       o: trumpetAt · liftAt · closeAt (the iris shuts) · redAt · hitAt ·
+       ms. */
+    function _sigRapture3D(tx, ty, o) {
+        o = o || {};
+        if (!_canSpawn()) return false;
+        var wp = _worldPos(tx, ty), ts = wp.ts;
+        var ms = o.ms > 0 ? o.ms : 6200;
+        var trumpetAt = o.trumpetAt != null ? o.trumpetAt : 100, liftAt = o.liftAt != null ? o.liftAt : trumpetAt + 700;
+        var closeAt = o.closeAt != null ? o.closeAt : liftAt + 2000, redAt = o.redAt != null ? o.redAt : closeAt + 600, hitAt = o.hitAt != null ? o.hitAt : redAt + 700;
+        var g = new THREE.Group(); g.position.set(wp.x, wp.y, wp.z);
+        var TOP = ts * 8, CLOUD = ts * 9;
+        /* the cloud ring */
+        var cloudMat = _finBasic(0xf4f0e8, { opacity: 0 }), clouds = [];
+        for (var i = 0; i < 14; i++) { var a = i / 14 * Math.PI * 2, cl = new THREE.Mesh(new THREE.SphereGeometry(ts * rn(0.7, 1.2), 8, 6), cloudMat); cl.position.set(Math.cos(a) * ts * 2.8, CLOUD + rn(-0.2, 0.2) * ts, Math.sin(a) * ts * 2.8); g.add(cl); clouds.push(cl); }
+        /* the trumpet */
+        var brass = _finBasic(0xffd75a), trumpet = new THREE.Group();
+        var bell = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.45, ts * 0.08, ts * 1.1, 14, 1, true), brass); bell.rotation.x = Math.PI / 2; bell.position.z = ts * 0.55; trumpet.add(bell);
+        var tube = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.07, ts * 0.07, ts * 1.4, 8), brass); tube.rotation.x = Math.PI / 2; tube.position.z = -ts * 0.6; trumpet.add(tube);
+        trumpet.position.set(ts * 2.2, CLOUD + ts * 0.6, 0); trumpet.rotation.y = Math.PI / 2 + 0.4; trumpet.rotation.x = 0.5; trumpet.visible = false; g.add(trumpet);
+        /* the light */
+        var beamMat = _finBasic(0xffe9a0, { additive: true, opacity: 0, side: THREE.DoubleSide });
+        var beam = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.7, ts * 1.1, CLOUD, 20, 1, true), beamMat); beam.position.y = CLOUD / 2; g.add(beam);
+        var irisMat = _finBasic(0xffffff, { additive: true, opacity: 0, side: THREE.DoubleSide });
+        var iris = new THREE.Mesh(new THREE.RingGeometry(ts * 0.1, ts * 1.6, 32), irisMat); iris.rotation.x = Math.PI / 2; iris.position.y = CLOUD; g.add(iris);
+        var glow = _finSprite(0xfff2c0, _sigGlowTex(), ts * 2.0, 158); g.add(glow);
+        var body = _finBodyMesh(ts); g.add(body);
+        var armMat = _finBasic(0x111318), arms = [];
+        for (var s = -1; s <= 1; s += 2) { var arm = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.05, ts * 0.05, ts * 0.5, 6), armMat); arm.rotation.z = s * Math.PI / 2; arm.position.set(s * ts * 0.35, ts * 0.72, 0); arm.visible = false; g.add(arm); arms.push(arm); }
+        /* the hand */
+        var handMat = _finBasic(0x2a0a12), hand = new THREE.Group();
+        var palm = new THREE.Mesh(new THREE.BoxGeometry(ts * 1.4, ts * 0.35, ts * 1.6), handMat); hand.add(palm);
+        for (var f = 0; f < 4; f++) { var fg = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.14, ts * 0.11, ts * 1.2, 8), handMat); fg.rotation.x = 0.9; fg.position.set(-ts * 0.5 + f * ts * 0.34, -ts * 0.4, ts * 1.0); hand.add(fg); }
+        var thumb = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.14, ts * 0.11, ts * 0.9, 8), handMat); thumb.rotation.z = 1.1; thumb.rotation.x = 0.6; thumb.position.set(-ts * 0.95, -ts * 0.2, ts * 0.3); hand.add(thumb);
+        hand.position.y = CLOUD + ts * 2; hand.visible = false; g.add(hand);
+        var feather = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.18, ts * 0.5), _finBasic(0x2a2622, { side: THREE.DoubleSide })); feather.visible = false; g.add(feather);
+        var c = tilePx(tx, ty), bz = tileZ(tx, ty), lastF = 0, y = 0, taken = false, takenAt = 0;
+        return !!_sigRunOwned(g, ms, function (el) {
+            var tk = _sigClamp01((el - trumpetAt) / 500);
+            cloudMat.opacity = tk * 0.95 * (1 - _sigClamp01((el - hitAt - 900) / 700));
+            for (var i2 = 0; i2 < clouds.length; i2++) { var a2 = i2 / 14 * Math.PI * 2 + el * 0.00015; clouds[i2].position.x = Math.cos(a2) * ts * (2.8 + (1 - tk) * 1.5); clouds[i2].position.z = Math.sin(a2) * ts * (2.8 + (1 - tk) * 1.5); }
+            trumpet.visible = el >= trumpetAt && el < closeAt; trumpet.rotation.z = Math.sin(el * 0.01) * 0.1; brass.opacity = 1 - _sigClamp01((el - closeAt + 300) / 300);
+            var lk = _sigClamp01((el - liftAt) / 400);
+            var red = el >= redAt;
+            beamMat.opacity = (el < hitAt ? lk * 0.4 : Math.max(0, beamMat.opacity - 0.06)) * (el >= closeAt && !red ? 0.35 : 1);
+            if (red) { beamMat.color.setHex(0xff3a2a); irisMat.color.setHex(0xff2a1a); glow.material.color.setHex(0xff5030); }
+            glow.material.opacity = el < hitAt ? lk * 0.7 : 0;
+            /* the iris: open while the body climbs, shut, then red */
+            var ik = el < closeAt ? lk : (red ? _sigClamp01((el - redAt) / 200) : 1 - _sigClamp01((el - closeAt) / 350));
+            iris.scale.setScalar(Math.max(0.05, ik)); irisMat.opacity = lk * 0.9;
+            /* the climb */
+            if (el >= liftAt && el < closeAt) { var ck = _sigClamp01((el - liftAt) / (closeAt - liftAt)); y = TOP * (1 - Math.pow(1 - ck, 2)); body.rotation.y = ck * Math.PI * 1.5; for (var s2 = 0; s2 < 2; s2++) { arms[s2].visible = true; arms[s2].rotation.z = (s2 ? 1 : -1) * (Math.PI / 2) * Math.min(1, ck * 3); } }
+            else if (el >= closeAt && !taken) { y = TOP + Math.sin((el - closeAt) * 0.008) * ts * 0.06; }
+            if (!taken) { body.position.set(0, ts * 0.45 + y, 0); glow.position.y = body.position.y; for (var s3 = 0; s3 < 2; s3++) { arms[s3].position.y = ts * 0.72 + y; arms[s3].rotation.y = body.rotation.y; arms[s3].position.x = Math.cos(body.rotation.y) * (s3 ? 1 : -1) * ts * 0.35; arms[s3].position.z = -Math.sin(body.rotation.y) * (s3 ? 1 : -1) * ts * 0.35; } }
+            /* feathers */
+            if (el >= liftAt && el < closeAt && el - lastF > 90 && _canSpawn()) { lastF = el; _spawn({ x: c.x + rn(-30, 30), y: c.y + rn(-30, 30), z: bz + rn(ts * 2, ts * 7), mode: 'billboard', sprite: 'petal', ml: rn(1200, 2200), size0: rn(6, 10), size1: 5, vx: rn(-30, 30), vy: rn(-30, 30), vz: rn(-40, -15), gravity: 8, opacity0: 1, opacity1: 0, tint: 0xfff6e0 }); }
+            /* the hand */
+            if (red && !taken) { var hk = _sigClamp01((el - redAt) / (hitAt - redAt)), he = hk * hk; hand.visible = true; hand.position.y = CLOUD + ts * 2 - (CLOUD + ts * 2 - TOP - ts * 1.1) * he; hand.rotation.y = el * 0.002; }
+            if (el >= hitAt && !taken) {
+                taken = true; takenAt = el;
+                _shake('heavy'); _sigScreenFlash('#ff3a2a', 220, 0.8);
+                _sigShockRing3D(tx, ty, { color: 0xff5030, r0: ts * 0.3, r1: ts * 2.6, ms: 560, torus: true });
+                for (var d = 0; d < 16; d++) _spawn({ x: c.x + rn(-12, 12), y: c.y + rn(-12, 12), z: bz + TOP, mode: 'billboard', sprite: 'ember', ml: rn(400, 800), size0: rn(6, 12), size1: 2, vx: rn(-160, 160), vy: rn(-160, 160), vz: rn(-200, 60), gravity: 200, opacity0: 1, opacity1: 0, tint: 0xff6a30 });
+            }
+            if (taken) {
+                var uk = _sigClamp01((el - takenAt) / 450), ue = uk * uk;
+                hand.position.y = TOP + ts * 1.1 + (CLOUD + ts * 3 - TOP) * ue; body.position.y = ts * 0.45 + TOP + (CLOUD + ts * 3 - TOP) * ue; body.visible = uk < 1; for (var s4 = 0; s4 < 2; s4++) { arms[s4].position.y = body.position.y + ts * 0.27; arms[s4].visible = uk < 1; }
+                hand.visible = uk < 1; irisMat.opacity = Math.max(0, 0.9 - (uk - 0.7) * 3); iris.scale.setScalar(Math.max(0.05, 1 - _sigClamp01((uk - 0.6) / 0.4)));
+                if (uk >= 1) { var fk = _sigClamp01((el - takenAt - 450) / 1500); feather.visible = true; feather.position.set(Math.sin(fk * 9) * ts * 0.3, TOP * (1 - fk) + ts * 0.02, Math.cos(fk * 7) * ts * 0.2); feather.rotation.set(fk * 6, fk * 4, Math.sin(fk * 12) * 0.8); if (fk >= 1) feather.rotation.set(-Math.PI / 2, 0, 0.6); feather.material.opacity = 1 - _sigClamp01((el - takenAt - 3000) / 600); }
+            }
+        });
+    }
+
+    /* ── BE NOT AFRAID (seraphim) ───────────────────────────────────────
+       Biblically accurate: THREE RINGS WITHIN RINGS come down over the
+       victim, each turning on its own axis, blazing, every ring set with
+       EYES (a white ball and a dark iris a piece) — and on the gaze beat
+       every eye turns to the victim at once; a great eye opens in the
+       centre of the rings and the light of it stands down on the tile
+       until nothing is left but the bleach. o: ringsAt · gazeAt · hitAt ·
+       ms · eyes (per ring, default 14). */
+    function _sigBeNotAfraid3D(tx, ty, o) {
+        o = o || {};
+        if (!_canSpawn()) return false;
+        var wp = _worldPos(tx, ty), ts = wp.ts;
+        var ms = o.ms > 0 ? o.ms : 6000;
+        var ringsAt = o.ringsAt != null ? o.ringsAt : 100, gazeAt = o.gazeAt != null ? o.gazeAt : ringsAt + 1900, hitAt = o.hitAt != null ? o.hitAt : gazeAt + 1300;
+        var NE = o.eyes || 14;
+        var g = new THREE.Group(); g.position.set(wp.x, wp.y, wp.z);
+        var HOV = ts * 4.4;
+        var fire = _finBasic(0xffb040, { additive: true, opacity: 0 }), gold = _finBasic(0xffe08a, { opacity: 0 });
+        var white = _finBasic(0xffffff, { opacity: 0 }), dark = _finBasic(0x120a1a, { opacity: 0 });
+        var rings = [], eyes = [], radii = [ts * 2.6, ts * 1.9, ts * 1.2], axes = [[1, 0, 0], [0, 0, 1], [1, 0, 1]];
+        var hub = new THREE.Group(); hub.position.y = ts * 14; g.add(hub);
+        for (var r = 0; r < 3; r++) {
+            var rg = new THREE.Group();
+            var tor = new THREE.Mesh(new THREE.TorusGeometry(radii[r], ts * 0.09, 10, 48), gold); rg.add(tor);
+            var halo = new THREE.Mesh(new THREE.TorusGeometry(radii[r], ts * 0.2, 8, 48), fire); rg.add(halo);
+            for (var e = 0; e < NE; e++) {
+                var a = e / NE * Math.PI * 2, eg = new THREE.Group();
+                var ball = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.13, 10, 8), white); eg.add(ball);
+                var iris = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.06, 8, 6), dark); iris.position.z = ts * 0.1; eg.add(iris);
+                eg.position.set(Math.cos(a) * radii[r], Math.sin(a) * radii[r], 0); eg.rotation.y = (e % 2) * Math.PI; rg.add(eg); eyes.push(eg);
+            }
+            hub.add(rg); rings.push(rg);
+        }
+        var eyeG = new THREE.Group(); hub.add(eyeG);
+        var big = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.55, 16, 12), white); eyeG.add(big);
+        var bigIris = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.26, 12, 10), _finBasic(0xff9a2a, { opacity: 0 })); bigIris.position.y = -ts * 0.42; eyeG.add(bigIris);
+        var lid = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.58, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2), gold); eyeG.add(lid);
+        var beamMat = _finBasic(0xfff4d0, { additive: true, opacity: 0, side: THREE.DoubleSide });
+        var beam = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.5, ts * 1.0, HOV, 20, 1, true), beamMat); beam.position.y = HOV / 2; g.add(beam);
+        var body = _finBodyMesh(ts); g.add(body);
+        var glow = _finSprite(0xffe9a0, _sigGlowTex(), ts * 3.2, 158); glow.position.y = HOV; g.add(glow);
+        var scr = _finTextSprite('BE NOT AFRAID', { ink: '#ffe9a0', font: 'Georgia, serif', fontPx: 90, spriteW: ts * 3.0, opacity: 0 }); scr.position.y = ts * 1.9; g.add(scr);
+        var c = tilePx(tx, ty), bz = tileZ(tx, ty), target = new THREE.Vector3(0, ts * 0.5, 0), tmp = new THREE.Vector3(), lastE = 0, gone = false;
+        return !!_sigRunOwned(g, ms, function (el) {
+            var rk = _sigClamp01((el - ringsAt) / 1100), re = 1 - Math.pow(1 - rk, 3);
+            hub.position.y = ts * 14 - (ts * 14 - HOV) * re;
+            var op = rk * (1 - _sigClamp01((el - hitAt - 1200) / 900));
+            gold.opacity = op; fire.opacity = op * 0.55; white.opacity = op; dark.opacity = op; bigIris.material.opacity = op;
+            glow.material.opacity = op * 0.6 + (el >= gazeAt ? 0.3 : 0);
+            var spin = el * 0.0012 * (el >= gazeAt ? 2.2 : 1);
+            for (var r2 = 0; r2 < 3; r2++) { var ax = axes[r2]; rings[r2].rotation.set(ax[0] * spin * (r2 + 1) * 0.6, spin * 0.4, ax[2] * spin * (r2 + 1) * 0.5); }
+            /* the gaze: every eye turns to the tile at once */
+            if (el >= gazeAt) { for (var i = 0; i < eyes.length; i++) { eyes[i].parent.updateMatrixWorld(true); tmp.copy(target).add(g.position); eyes[i].lookAt(tmp); } }
+            /* the big eye opens */
+            var ok = _sigClamp01((el - gazeAt) / 500); lid.rotation.x = -ok * 2.2; lid.position.y = ok * ts * 0.1;
+            eyeG.lookAt(tmp.copy(target).add(g.position));
+            beamMat.opacity = el >= gazeAt + 500 && el < hitAt + 400 ? _sigClamp01((el - gazeAt - 500) / 300) * 0.55 : Math.max(0, beamMat.opacity - 0.05);
+            scr.material.opacity = el >= gazeAt ? _sigClamp01((el - gazeAt) / 300) * (1 - _sigClamp01((el - gazeAt - 1600) / 500)) : 0;
+            if (el >= gazeAt + 500 && el < hitAt && el - lastE > 60 && _canSpawn()) { lastE = el; _spawn({ x: c.x + rn(-14, 14), y: c.y + rn(-14, 14), z: bz + rn(0, HOV * 0.6), mode: 'billboard', sprite: 'spark', ml: rn(300, 600), size0: rn(4, 9), size1: 1, vx: rn(-40, 40), vy: rn(-40, 40), vz: rn(60, 200), opacity0: 1, opacity1: 0, tint: 0xfff0c0 }); }
+            if (el >= gazeAt + 500 && !gone) { var bk = _sigClamp01((el - gazeAt - 500) / (hitAt - gazeAt - 500)); body.material.color.setHex(0x111318).lerp(new THREE.Color(0xffffff), bk); body.scale.set(1 + bk * 0.15, 1 - bk * 0.2, 1 + bk * 0.15); }
+            if (el >= hitAt && !gone) {
+                gone = true; body.visible = false;
+                _shake('heavy'); _sigScreenFlash('#fff6dc', 300, 1.0);
+                _sigShockRing3D(tx, ty, { color: 0xffe9a0, r0: ts * 0.3, r1: ts * 3.0, ms: 600, torus: true });
+                for (var d = 0; d < 30; d++) _spawn({ x: c.x + rn(-8, 8), y: c.y + rn(-8, 8), z: bz + rn(0, ts * 0.9), mode: 'billboard', sprite: 'spark', ml: rn(500, 1000), size0: rn(5, 10), size1: 1, vx: rn(-200, 200), vy: rn(-200, 200), vz: rn(100, 400), gravity: 80, opacity0: 1, opacity1: 0, tint: 0xffffff });
+            }
+            if (gone) { var uk = _sigClamp01((el - hitAt - 600) / 1500); hub.position.y = HOV + ts * 14 * uk * uk; }
+        });
+    }
+
+    /* ── INTO THE SUN (orb of light) ────────────────────────────────────
+       A SUN the size of the board rises off the far edge of the map
+       beyond the victim (a photosphere, a corona sprite, prominences
+       looping off the limb), the silhouette is FLUNG along the caster →
+       victim line on a long arc into it — a flare where it hits the
+       photosphere — and the sun COLLAPSES for one held breath (it shrinks,
+       darkens to a cinder) and goes NOVA: a white shell out to the rim of
+       the world, stacked shock rings, starfire raining onto the victim's
+       neighbourhood, the board bleached white. o: riseAt · throwAt ·
+       collapseAt · hitAt (the nova) · ms. */
+    function _sigIntoTheSun3D(cx, cy, tx, ty, o) {
+        o = o || {};
+        if (!_canSpawn()) return false;
+        var wpC = _worldPos(cx, cy), wpT = _worldPos(tx, ty), ts = wpT.ts;
+        var ms = o.ms > 0 ? o.ms : 6800;
+        var riseAt = o.riseAt != null ? o.riseAt : 100, throwAt = o.throwAt != null ? o.throwAt : riseAt + 1300, collapseAt = o.collapseAt != null ? o.collapseAt : throwAt + 1400, hitAt = o.hitAt != null ? o.hitAt : collapseAt + 900;
+        var dx = wpT.x - wpC.x, dz = wpT.z - wpC.z, L = Math.hypot(dx, dz), ux = L > 1e-3 ? dx / L : 1, uz = L > 1e-3 ? dz / L : 0;
+        var g = new THREE.Group(); g.position.set(wpT.x, wpT.y, wpT.z);
+        var R = ts * 7.5, D = ts * 16, SUNY = ts * 5.5;
+        var sunG = new THREE.Group(); sunG.position.set(ux * D, SUNY, uz * D); g.add(sunG);
+        var photo = _finBasic(0xffd24a, { additive: true, opacity: 0 }), sun = new THREE.Mesh(new THREE.SphereGeometry(R, 32, 24), photo); sunG.add(sun);
+        var chromo = _finBasic(0xff7a20, { additive: true, opacity: 0, side: THREE.BackSide }), chrom = new THREE.Mesh(new THREE.SphereGeometry(R * 1.08, 24, 18), chromo); sunG.add(chrom);
+        var corona = _finSprite(0xffb050, _sigGlowTex(), R * 4.2, 157); sunG.add(corona);
+        var promMat = _finBasic(0xff8a30, { additive: true, opacity: 0 }), proms = [];
+        for (var p = 0; p < 5; p++) { var pr = new THREE.Mesh(new THREE.TorusGeometry(R * rn(0.35, 0.6), ts * rn(0.12, 0.22), 8, 30, Math.PI), promMat); var pa = p / 5 * Math.PI * 2; pr.position.set(Math.cos(pa) * R * 0.95, Math.sin(pa) * R * 0.95, 0); pr.rotation.z = pa - Math.PI / 2; sunG.add(pr); proms.push(pr); }
+        var body = _finBodyMesh(ts); g.add(body);
+        var trail = _finSprite(0xffe0a0, _sigGlowTex(), ts * 1.2, 160); g.add(trail);
+        var shellMat = _finBasic(0xffffff, { additive: true, opacity: 0, side: THREE.DoubleSide }), shell = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 24), shellMat); shell.position.copy(sunG.position); shell.visible = false; g.add(shell);
+        var c = tilePx(tx, ty), bz = tileZ(tx, ty), lastT = 0, lastS = 0, flared = false, nova = false, novaAt = 0;
+        return !!_sigRunOwned(g, ms, function (el) {
+            var rk = _sigClamp01((el - riseAt) / 1100), re = 1 - Math.pow(1 - rk, 2);
+            sunG.position.y = -R * 1.2 + (SUNY + R * 1.2) * re;
+            sun.rotation.y = el * 0.0002;
+            var breath = 1 + Math.sin(el * 0.003) * 0.02;
+            if (!nova) {
+                var ck = el >= collapseAt ? _sigClamp01((el - collapseAt) / (hitAt - collapseAt)) : 0;
+                var sc = breath * (1 - ck * 0.72);
+                sunG.scale.setScalar(Math.max(0.05, sc));
+                photo.opacity = rk * (ck > 0 ? (1 - ck * 0.6) : 1); chromo.opacity = rk * 0.35; promMat.opacity = rk * (1 - ck);
+                photo.color.setHex(0xffd24a).lerp(new THREE.Color(0x3a1408), ck * 0.9);
+                corona.material.opacity = rk * 0.8 * (1 - ck * 0.8); corona.scale.setScalar(R * 4.2 * (1 + ck * 0.5));
+                for (var i = 0; i < proms.length; i++) proms[i].rotation.y = Math.sin(el * 0.001 + i) * 0.4;
+            }
+            /* the throw */
+            if (el >= throwAt && !flared) {
+                var tk = _sigClamp01((el - throwAt) / 1000), te = tk * tk;
+                var bx = ux * D * 0.86 * te, bzz = uz * D * 0.86 * te, by = ts * 0.45 + Math.sin(tk * Math.PI) * ts * 5 + SUNY * te;
+                body.position.set(bx, by, bzz); body.rotation.z = tk * 8; body.rotation.x = tk * 5; trail.position.copy(body.position); trail.material.opacity = 0.8;
+                if (el - lastT > 40 && _canSpawn()) { lastT = el; _spawn({ x: c.x + bx + rn(-4, 4), y: c.y + bzz + rn(-4, 4), z: bz + by, mode: 'billboard', sprite: 'ember', ml: rn(300, 600), size0: rn(6, 12), size1: 2, vx: rn(-40, 40), vy: rn(-40, 40), vz: rn(-40, 40), opacity0: 1, opacity1: 0, tint: 0xffd070 }); }
+                if (tk >= 1) { flared = true; body.visible = false; trail.material.opacity = 0; _sigScreenFlash('#fff2c0', 180, 0.7); for (var f = 0; f < 18; f++) _spawn({ x: c.x + rn(-10, 10), y: c.y + rn(-10, 10), z: bz + SUNY, mode: 'billboard', sprite: 'flame', ml: rn(300, 600), size0: rn(14, 26), size1: 4, vx: rn(-200, 200), vy: rn(-200, 200), vz: rn(-100, 200), opacity0: 1, opacity1: 0, tint: 0xffc040 }); }
+            }
+            if (el >= hitAt && !nova) {
+                nova = true; novaAt = el; shell.visible = true;
+                sunG.visible = false;
+                _shake('heavy'); _sigScreenFlash('#ffffff', 420, 1.0);
+                _sigShockRing3D(tx, ty, { color: 0xfff0c0, r0: ts * 0.3, r1: ts * 4.0, ms: 700, torus: true });
+                _sigShockRing3D(tx, ty, { color: 0xffb050, r0: ts * 0.3, r1: ts * 6.0, ms: 900, torus: false });
+                for (var s = 0; s < 40; s++) _spawn({ x: c.x + rn(-40, 40), y: c.y + rn(-40, 40), z: bz + rn(ts * 3, ts * 9), mode: 'billboard', sprite: s % 3 ? 'ember' : 'flame', ml: rn(700, 1400), size0: rn(6, 14), size1: 2, vx: rn(-80, 80), vy: rn(-80, 80), vz: rn(-360, -140), gravity: 120, opacity0: 1, opacity1: 0, tint: 0xfff0b0 });
+            }
+            if (nova) {
+                var nk = _sigClamp01((el - novaAt) / 1100), ne = 1 - Math.pow(1 - nk, 3);
+                shell.scale.setScalar(Math.max(0.1, R * 0.3 + ne * ts * 30)); shellMat.opacity = 0.9 * (1 - nk);
+                if (nk >= 1) shell.visible = false;
+                if (el - lastS > 80 && el - novaAt < 2200 && _canSpawn()) { lastS = el; for (var q = 0; q < 2; q++) _spawn({ x: c.x + rn(-40, 40), y: c.y + rn(-40, 40), z: bz + ts * 8, mode: 'billboard', sprite: 'ember', ml: rn(600, 1100), size0: rn(5, 10), size1: 2, vx: rn(-60, 60), vy: rn(-60, 60), vz: rn(-300, -160), gravity: 100, opacity0: 1, opacity1: 0, tint: 0xfff0b0 }); }
+            }
+        });
+    }
+
+    /* ── THE CONTRACT (demon) ───────────────────────────────────────────
+       A CONTRACT the size of the sky unrolls over the tile off a pair of
+       black rollers (the parchment is a canvas — the terms, the fine
+       print, a line for the name), a QUILL comes down and signs the
+       victim's name in fire (a spark trail along the line), the seal
+       lands red, then THE PIT: the floor under the victim opens (a black
+       disc grows, embers rise), CHAINS come up out of it and wrap the
+       body (four `_finChain`s spiralling), drag it down, the pit slams
+       shut and the contract rolls up and burns. o: unrollAt · signAt ·
+       pitAt · hitAt (the drag) · ms · name. */
+    function _sigContract3D(cx, cy, tx, ty, o) {
+        o = o || {};
+        if (!_canSpawn()) return false;
+        var wp = _worldPos(tx, ty), ts = wp.ts;
+        var ms = o.ms > 0 ? o.ms : 6400;
+        var unrollAt = o.unrollAt != null ? o.unrollAt : 100, signAt = o.signAt != null ? o.signAt : unrollAt + 1100, pitAt = o.pitAt != null ? o.pitAt : signAt + 1200, hitAt = o.hitAt != null ? o.hitAt : pitAt + 900;
+        var name = (o.name || 'THE UNDERSIGNED').toUpperCase();
+        var g = new THREE.Group(); g.position.set(wp.x, wp.y, wp.z);
+        var PW = ts * 6, PH = ts * 8, PY = ts * 3.2;
+        var paper = _finTextTex('CONTRACT\n\nTHE PARTY OF THE FIRST PART\nHEREBY CONVEYS, IN PERPETUITY,\nONE (1) SOUL.\n\nTERMS: SEE FINE PRINT.\nFINE PRINT: SEE TERMS.\n\nSIGNED ______________', { ink: '#2a1408', bg: '#e8d9b0', w: 512, h: 682, fontPx: 34, font: 'Georgia, serif' });
+        var sheetMat = _finBasic(0xffffff, { map: paper, opacity: 0, side: THREE.DoubleSide }), sheet = new THREE.Mesh(new THREE.PlaneGeometry(PW, PH), sheetMat);
+        var sheetG = new THREE.Group(); sheetG.position.y = PY + PH / 2; sheetG.rotation.x = -0.35; sheet.position.y = -PH / 2; sheetG.add(sheet); g.add(sheetG);
+        var rollMat = _finBasic(0x120a0a), rollTop = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.22, ts * 0.22, PW * 1.06, 12), rollMat); rollTop.rotation.z = Math.PI / 2; sheetG.add(rollTop);
+        var rollBot = rollTop.clone(); sheetG.add(rollBot);
+        var quill = new THREE.Group(); var qm = _finBasic(0xf0e8d8); var qs = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.02, ts * 0.05, ts * 1.2, 6), qm); qs.position.y = ts * 0.6; quill.add(qs);
+        var vane = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.3, ts * 0.9), _finBasic(0xf0e8d8, { side: THREE.DoubleSide })); vane.position.set(0, ts * 0.85, 0); quill.add(vane);
+        quill.rotation.z = 0.5; quill.visible = false; g.add(quill);
+        var sig = _finTextSprite(name, { ink: '#ff5a1a', font: 'Georgia, serif', fontPx: 72, spriteW: ts * 3.0, opacity: 0 }); g.add(sig);
+        var seal = new THREE.Mesh(new THREE.CircleGeometry(ts * 0.4, 20), _finBasic(0xb01a1a, { opacity: 0, side: THREE.DoubleSide })); g.add(seal);
+        var pitMat = _finBasic(0x050205, { opacity: 0 }), pit = new THREE.Mesh(new THREE.CircleGeometry(ts * 1.6, 32), pitMat); pit.rotation.x = -Math.PI / 2; pit.position.y = ts * 0.03; g.add(pit);
+        var pitGlow = _finSprite(0xff4010, _sigGlowTex(), ts * 3.0, 158); pitGlow.position.y = ts * 0.1; g.add(pitGlow);
+        var chainMat = _finBasic(0x3a3436), chains = [], NC = 4, NL = 12;
+        for (var ch = 0; ch < NC; ch++) { var segs = _finChain(NL, ts * 0.09, ts * 0.09, chainMat); for (var q = 0; q < NL; q++) g.add(segs[q]); chains.push(segs); }
+        var body = _finBodyMesh(ts); g.add(body);
+        var c = tilePx(tx, ty), bz = tileZ(tx, ty), lastSp = 0, lastEm = 0, taken = false, takenAt = 0, shut = false;
+        var sheetLocal = new THREE.Vector3();
+        return !!_sigRunOwned(g, ms, function (el) {
+            /* the unroll */
+            var uk = _sigClamp01((el - unrollAt) / 900), ue = 1 - Math.pow(1 - uk, 3);
+            var burnk = _sigClamp01((el - hitAt - 700) / 900);
+            sheet.scale.y = Math.max(0.02, ue * (1 - burnk)); sheet.position.y = -PH / 2 * sheet.scale.y; sheetMat.opacity = (uk > 0 ? 1 : 0) * (1 - burnk); rollMat.opacity = 1 - burnk;
+            rollBot.position.y = -PH * sheet.scale.y;
+            if (burnk > 0 && burnk < 1 && el - lastEm > 50 && _canSpawn()) { lastEm = el; for (var b = 0; b < 3; b++) _spawn({ x: c.x + rn(-PW * 0.5, PW * 0.5), y: c.y + rn(-6, 6), z: bz + PY + PH * (1 - burnk) * 0.9, mode: 'billboard', sprite: 'flame', ml: rn(300, 600), size0: rn(10, 18), size1: 3, vx: rn(-30, 30), vy: rn(-30, 30), vz: rn(40, 140), opacity0: 1, opacity1: 0, tint: 0xff7020 }); }
+            /* the signature */
+            if (el >= signAt && el < pitAt + 400) {
+                var sk = _sigClamp01((el - signAt) / 800);
+                sheetLocal.set(-PW * 0.3 + PW * 0.55 * sk, -PH * 0.86, 0.02 * ts); sheetG.localToWorld(sheetLocal); sheetLocal.sub(g.position);
+                quill.visible = sk < 1; quill.position.copy(sheetLocal); quill.rotation.z = 0.5 + Math.sin(el * 0.03) * 0.15;
+                if (sk < 1 && el - lastSp > 35 && _canSpawn()) { lastSp = el; _spawn({ x: c.x + sheetLocal.x + rn(-3, 3), y: c.y + sheetLocal.z + rn(-3, 3), z: bz + sheetLocal.y, mode: 'billboard', sprite: 'spark', ml: rn(300, 700), size0: rn(4, 7), size1: 1, vx: rn(-30, 30), vy: rn(-30, 30), vz: rn(-20, 40), opacity0: 1, opacity1: 0, tint: 0xff6a20 }); }
+                sig.material.opacity = sk * (1 - burnk); sheetLocal.set(0, -PH * 0.86, 0.03 * ts); sheetG.localToWorld(sheetLocal); sheetLocal.sub(g.position); sig.position.copy(sheetLocal);
+                var sealk = _sigClamp01((el - signAt - 850) / 200); seal.material.opacity = sealk * (1 - burnk); sheetLocal.set(PW * 0.36, -PH * 0.86, 0.03 * ts); sheetG.localToWorld(sheetLocal); sheetLocal.sub(g.position); seal.position.copy(sheetLocal); seal.rotation.copy(sheetG.rotation); seal.scale.setScalar(0.5 + (1 - sealk) * 1.5 + 0.5);
+            } else if (el >= pitAt + 400) { sig.material.opacity = 1 - burnk; seal.material.opacity = 1 - burnk; }
+            /* the pit */
+            if (el >= pitAt) {
+                var pk = _sigClamp01((el - pitAt) / 700), pe = 1 - Math.pow(1 - pk, 2);
+                var closek = shut ? _sigClamp01((el - takenAt - 900) / 300) : 0;
+                pit.scale.setScalar(Math.max(0.02, pe * (1 - closek))); pitMat.opacity = pk > 0 ? 1 : 0; pitGlow.material.opacity = 0.7 * pe * (1 - closek);
+                if (el - lastEm > 90 && !shut && _canSpawn()) { lastEm = el; _spawn({ x: c.x + rn(-20, 20), y: c.y + rn(-20, 20), z: bz + 2, mode: 'billboard', sprite: 'ember', ml: rn(500, 1000), size0: rn(4, 8), size1: 1, vx: rn(-20, 20), vy: rn(-20, 20), vz: rn(60, 180), opacity0: 1, opacity1: 0, tint: 0xff5020 }); }
+                /* the chains climb and wrap */
+                var wk = _sigClamp01((el - pitAt - 300) / (hitAt - pitAt - 300));
+                for (var ci = 0; ci < NC; ci++) { var base = ci / NC * Math.PI * 2; for (var li = 0; li < NL; li++) { var t = li / (NL - 1), reach = wk * (1 + 0.2 * Math.sin(el * 0.01 + ci)), on = t < reach; var s2 = chains[ci][li]; s2.visible = on && !shut; if (on) { var ang = base + t * 5 + el * 0.002, rad = ts * (0.9 - t * 0.55); var yy = (taken ? Math.max(0, body.position.y - ts * 0.45) : 0) + t * ts * 1.1 * reach; s2.position.set(Math.cos(ang) * rad, yy, Math.sin(ang) * rad); } } }
+            }
+            if (el >= hitAt && !taken) {
+                taken = true; takenAt = el;
+                _shake('heavy'); _sigScreenFlash('#ff3a10', 200, 0.8);
+                _sigShockRing3D(tx, ty, { color: 0xff4a1a, r0: ts * 0.2, r1: ts * 2.4, ms: 520, torus: true });
+                _finFireball(c.x, c.y, bz, 18, { r: 22, tint: 0xff6020, smoke: 0x1a0a0a });
+            }
+            if (taken) {
+                var dk = _sigClamp01((el - takenAt) / 800), de = dk * dk;
+                body.position.y = ts * 0.45 - ts * 1.6 * de; body.rotation.y = de * 6; body.visible = dk < 1;
+                if (dk >= 1 && !shut) { shut = true; _shake('normal'); _sigShockRing3D(tx, ty, { color: 0x3a0a0a, r0: ts * 0.2, r1: ts * 1.4, ms: 380, torus: false }); for (var d = 0; d < 10; d++) _spawn({ x: c.x + rn(-10, 10), y: c.y + rn(-10, 10), z: bz + 4, mode: 'billboard', sprite: 'dust-puff', ml: rn(300, 600), size0: rn(10, 16), size1: rn(20, 30), vx: rn(-100, 100), vy: rn(-100, 100), vz: rn(20, 80), opacity0: 0.7, opacity1: 0, tint: 0x3a1a1a }); }
+                if (shut) chainMat.opacity = 1 - _sigClamp01((el - takenAt - 900) / 400);
+            }
+        });
+    }
+
     /* ── THE FORGE'S PREVIEW (2026-09-19) — the finisher on the party
        builder's stage. The user: "I would still like to see the finishers
        and their animations in the party builder in the spell tree
@@ -27746,6 +28196,46 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         P.at(P.CHARGE - 1600, function () { _sigUnmasking3D(P.cx, P.cy, P.tx, P.ty, { ms: P.STRIKE + 4000, peelAt: 100, riseAt: 500, lungeAt: 1600 + P.STRIKE - 900, hitAt: 1600 + P.STRIKE }); });
         P.at(P.hitAt, function () { P.ring(0x5ac85a, { r1: P.ts * 2.2, ms: 500 }); P.flash('#ffffff', 160, 0.7); P.shake('heavy'); P.grade('#5ac85a', 700); });
         P.at(P.hitAt + 300, function () { P.whiteout(0x3a8a3a, 5, { ms: 800, peak: 0.5 }); });
+    };
+
+    /* DELIVERY 7 (2026-09-20): the six executions on the stage */
+    _FIN_STAGE.compactor = function (P) {
+        if (typeof _sigNeonGrid3D === 'function') _sigNeonGrid3D(P.cx, P.cy, { ms: P.CHARGE, color: 0x9fb4c8 });
+        if (typeof _sigStatRings3D === 'function') _sigStatRings3D(P.cx, P.cy, { ms: P.CHARGE, color: 0xffc21a });
+        P.at(P.CHARGE - 1200, function () { _sigCompactor3D(P.cx, P.cy, P.tx, P.ty, { ms: P.STRIKE + 4600, riseAt: 100, closeAt: 1000, hitAt: 1200 + P.STRIKE }); });
+        P.at(P.hitAt, function () { P.ring(0x9fb4c8, { r1: P.ts * 2.4, ms: 520 }); P.flash('#ffffff', 140, 0.6); P.shake('heavy'); P.grade('#ffc21a', 700); });
+        P.at(P.hitAt + 400, function () { P.whiteout(0xb8c4d0, 5, { ms: 700, peak: 0.5 }); });
+    };
+    _FIN_STAGE.factoryReset = function (P) {
+        if (typeof _sigNeonGrid3D === 'function') _sigNeonGrid3D(P.cx, P.cy, { ms: P.CHARGE, color: 0x4fd8ff });
+        P.at(P.CHARGE - 1000, function () { _sigFactoryReset3D(P.tx, P.ty, { ms: P.STRIKE + 4000, powerAt: 100, explodeAt: 1000, packAt: 1000 + P.STRIKE - 700, hitAt: 1000 + P.STRIKE }); });
+        P.at(P.hitAt, function () { P.ring(0x4fd8ff, { r1: P.ts * 2.0, ms: 460, torus: false }); P.flash('#c8f0ff', 160, 0.5); P.shake('heavy'); P.grade('#4fd8ff', 600); });
+        P.at(P.hitAt + 300, function () { P.whiteout(0x4fd8ff, 5, { ms: 700, peak: 0.5 }); });
+    };
+    _FIN_STAGE.rapture = function (P) {
+        P.circle(0xffe9a0, 0xffffff);
+        P.at(P.CHARGE - 800, function () { _sigRapture3D(P.tx, P.ty, { ms: P.STRIKE + 4200, trumpetAt: 100, liftAt: 800, closeAt: 800 + P.STRIKE - 1300, redAt: 800 + P.STRIKE - 700, hitAt: 800 + P.STRIKE }); });
+        P.at(P.hitAt, function () { P.ring(0xff5030, { r1: P.ts * 2.6, ms: 560 }); P.flash('#ff3a2a', 220, 0.8); P.shake('heavy'); P.grade('#ff3a2a', 700); });
+        P.at(P.hitAt + 400, function () { P.whiteout(0xff6a40, 5, { ms: 800, peak: 0.55 }); });
+    };
+    _FIN_STAGE.beNotAfraid = function (P) {
+        P.circle(0xffe08a, 0xffffff);
+        _sigLightPillar3D(P.cx, P.cy, { height: 360, radius: P.ts * 0.22, ms: P.CHARGE, color: 0xffe08a, coreColor: 0xffffff });
+        P.at(P.CHARGE - 1100, function () { _sigBeNotAfraid3D(P.tx, P.ty, { ms: P.STRIKE + 4000, ringsAt: 100, gazeAt: 1100 + P.STRIKE - 1300, hitAt: 1100 + P.STRIKE }); });
+        P.at(P.hitAt, function () { P.ring(0xffe9a0, { r1: P.ts * 3.0, ms: 600 }); P.flash('#fff6dc', 300, 1.0); P.shake('heavy'); P.grade('#ffe08a', 700); });
+        P.at(P.hitAt + 300, function () { P.whiteout(0xfff4e0, 6, { ms: 900, peak: 0.7 }); });
+    };
+    _FIN_STAGE.intoTheSun = function (P) {
+        P.circle(0xffd24a, 0xffffff);
+        P.at(P.CHARGE - 1400, function () { _sigIntoTheSun3D(P.cx, P.cy, P.tx, P.ty, { ms: P.STRIKE + 4600, riseAt: 100, throwAt: 1400, collapseAt: 1400 + P.STRIKE - 900, hitAt: 1400 + P.STRIKE }); });
+        P.at(P.hitAt, function () { P.flash('#ffffff', 420, 1.0); P.shake('heavy'); P.grade('#ffd24a', 900); });
+        P.at(P.hitAt + 200, function () { P.whiteout(0xffffff, 8, { ms: 1100, peak: 0.9 }); });
+    };
+    _FIN_STAGE.contract = function (P) {
+        P.circle(0xff4a1a, 0x1a0505);
+        P.at(P.CHARGE - 1200, function () { _sigContract3D(P.cx, P.cy, P.tx, P.ty, { ms: P.STRIKE + 4200, unrollAt: 100, signAt: 1200, pitAt: 1200 + P.STRIKE - 900, hitAt: 1200 + P.STRIKE, name: P.name || 'THE UNDERSIGNED' }); });
+        P.at(P.hitAt, function () { P.ring(0xff4a1a, { r1: P.ts * 2.4, ms: 520 }); P.flash('#ff3a10', 200, 0.8); P.shake('heavy'); P.grade('#ff4a1a', 700); });
+        P.at(P.hitAt + 400, function () { P.whiteout(0x3a0a0a, 5, { ms: 800, peak: 0.6 }); });
     };
     /* THE TYPED EXECUTIONS on the stage — the six apocalypse directors' beats on ONE victim */
     var _FIN_STAGE_TYPE = {
@@ -28024,6 +28514,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         sigBlurryFootage3D: _sigBlurryFootage3D,
         sigSleepParalysis3D: _sigSleepParalysis3D,
         sigUnmasking3D: _sigUnmasking3D,
+        sigCompactor3D: _sigCompactor3D,
+        sigFactoryReset3D: _sigFactoryReset3D,
+        sigRapture3D: _sigRapture3D,
+        sigBeNotAfraid3D: _sigBeNotAfraid3D,
+        sigIntoTheSun3D: _sigIntoTheSun3D,
+        sigContract3D: _sigContract3D,
 
         getDescentTotalMs: getDescentTotalMs,
         getDescentFlyover: getDescentFlyover,

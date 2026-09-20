@@ -6754,3 +6754,33 @@ phase). PRE-EXISTING at HEAD, not touched: doorhq.test.js 60 / 61 (the Δ area p
 UNSEEN LIVE (RULE #1c): every room under the day cycle (a room that now reads FLAT wants its own lights,
 not the grade back), the moon key on the night areas, the eased swap through a door, the subtitle bar
 against the walk.
+
+## SIX MORE EXECUTIONS — Compactor · Factory Reset · The Rapture, Party of One · Be Not Afraid · Into the Sun · The Contract (FINISHER_PLAN delivery 7) — 2026-09-20, local delivery
+The next six `FINISHERS` rows in roster order are BUILT (thirty-three of 99):
+robot `compactor` (`_sigCompactor3D` — two steel walls on hydraulic rails
+close on the victim along the PERPENDICULAR of the caster → victim line,
+the press plate, the serial-stamped cube), android `factoryReset`
+(`_sigFactoryReset3D` — the ⏻ power-down, the exploded PARTS DIAGRAM with
+leader lines and a progress card, the THIS SIDE UP crate), angel `rapture`
+(`_sigRapture3D` — the cloud ring, the trumpet, the gold column, the iris
+that shuts and re-opens RED, the hand, the one scorched feather), seraphim
+`beNotAfraid` (`_sigBeNotAfraid3D` — three rings within rings on three
+axes with fourteen eyes a ring that all turn to the victim on the gaze
+beat, the great eye's lid, the bleach), orb of light `intoTheSun`
+(`_sigIntoTheSun3D` — a board-sized sun off the far edge, the fling down
+the line, the collapse, the NOVA shell out to thirty tiles; the resolve's
+whiteout is `sizeTiles: max(8, c.span)` — the whole board), demon
+`contract` (`_sigContract3D` — a sky-sized parchment off two rollers
+(`_finTextTex` with a `bg`), the quill signing the victim's own name in
+fire, the seal, the pit, four `_finChain` chains, the burn). Each = a
+director in battle.js `_FIN_DIRECTORS` (the DELIVERY 7 block), the
+signature in "THE FINISHER PASS 2" (the DELIVERY 7 block; `_sigRunOwned` +
+`_fxDelay`, called inside the relayed cinematic — RULE #2), a
+`_FIN_STAGE[sig]` script for the forge, a row in finishers.test.js's BUILT
+table. RULE learnt: a signature that spawns particles beside a moving piece
+adds the piece's group-local offset to `tilePx`'s x / y directly — the
+board's world units ARE its pixels (`c.x + px * gap`), never a tile
+conversion. Smoke-tested in a stub-THREE harness (every tick; not a
+render). UNSEEN LIVE (RULE #1c): FINISHER_PLAN §7's delivery-7 entry lists
+what to eyeball first — the walls' facing, the sun's radius against the
+dome, the parchment's legibility, the eyes' lag, the six camera paths.
