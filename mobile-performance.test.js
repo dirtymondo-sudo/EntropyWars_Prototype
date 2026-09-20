@@ -146,8 +146,9 @@ test('every replacement MP3 referenced by audio.js is included in the delivery',
 test('desktop rig lane: the avatar first, everything else held and flushed together', () => {
     const timers = [], started = [];
     const c = vm.createContext({ window: {}, console, setTimeout: (f, ms) => { timers.push({ f, ms }); return timers.length; }, clearTimeout() {} });
-    vm.runInContext('var _mobileModelJobs = [], _mobileModelBusy = false;' + fn(renderer, '_rigLaneMark') + fn(renderer, '_rigLaneFlush') + fn(renderer, '_scheduleModelLoad') + fn(renderer, '_pumpModelLoads')
-        + ';var _rigLaneUrls = {}, _rigLaneInFlight = 0, _rigLaneHeld = [], _rigLaneTimer = null;', c);
+    vm.runInContext('var _mobileModelJobs = [], _mobileModelBusy = false;' + fn(renderer, '_rigLaneMark') + fn(renderer, '_rigLaneCount') + fn(renderer, '_rigLaneFlush') + fn(renderer, '_scheduleModelLoad') + fn(renderer, '_pumpModelLoads')
+        + fn(renderer, '_bgStart') + fn(renderer, '_pumpBgLoads') + fn(renderer, '_bgPromote')
+        + ';var _rigLaneUrls = {}, _rigLaneLive = {}, _rigLaneHeld = [], _rigLaneTimer = null; var _bgModelJobs = [], _bgModelLive = 0, BG_MAX = 3, _bgLoadDepth = 0;', c);
     // nothing marked: every request starts at once (the old desktop behaviour)
     c._scheduleModelLoad(() => started.push('free'), 'chair.glb');
     assert.deepEqual(started, ['free']);
@@ -162,7 +163,7 @@ test('desktop rig lane: the avatar first, everything else held and flushed toget
     assert.deepEqual(started, ['free', 'rig', 'ual1']);
     dones[1]();
     assert.deepEqual(started, ['free', 'rig', 'ual1', 'prop1', 'native']);
-    assert.equal(vm.runInContext('_rigLaneInFlight', c), 0);
+    assert.equal(vm.runInContext('_rigLaneCount()', c), 0);
     // after the flush the lane is open again
     c._scheduleModelLoad(() => started.push('later'), 'later.glb');
     assert.equal(started.at(-1), 'later');
@@ -172,6 +173,36 @@ test('desktop rig lane: the avatar first, everything else held and flushed toget
     assert.equal(started.at(-1), 'rig2');
     const safety = timers.find(t => t.ms === 12000); assert.ok(safety); safety.f();
     assert.equal(started.at(-1), 'held2');
+    // a settle after the safety flush never drives the lane negative: the next held load is still held
+    c._scheduleModelLoad(done => { started.push('rig4'); dones.push(done); }, 'rig.glb');
+    c._scheduleModelLoad(() => started.push('held4'), 'prop4.glb');
+    assert.equal(started.at(-1), 'rig4');
+    dones.at(-1)();
+    assert.equal(started.at(-1), 'held4');
+    /* THE BACKGROUND LANE (2026-09-20): a warm's files wait for the rig, then run three at a time; a real
+       request for a queued url promotes it; a nested spawn under _bgLoadDepth files itself there too */
+    c._scheduleModelLoad(done => { started.push('rig5'); dones.push(done); }, 'ual1.glb');
+    const bgDones = [];
+    for (let i = 0; i < 5; i++) c._scheduleModelLoad(done => { started.push('bg' + i); bgDones.push(done); }, 'warm' + i + '.glb', true);
+    assert.equal(started.at(-1), 'rig5', 'a warm never starts while the rig streams');
+    assert.ok(c._bgPromote('warm3.glb'));
+    assert.equal(started.at(-1), 'bg3', 'a real request starts a queued warm file at once');
+    dones.at(-1)();   // the rig lands → the promoted file holds a slot, two more start, two still queued
+    assert.deepEqual(started.slice(-2), ['bg0', 'bg1']);
+    assert.equal(vm.runInContext('_bgModelJobs.length', c), 2);
+    assert.equal(c._bgPromote('nothing.glb'), false);
+    bgDones[0]();   // bg3 lands
+    assert.equal(started.at(-1), 'bg1');   // the pump runs on a macrotask
+    timers.filter(t => t.ms === 0).forEach(t => t.f()); timers.length = 0;
+    assert.equal(started.at(-1), 'bg2');
+    bgDones[1](); timers.filter(t => t.ms === 0).forEach(t => t.f()); timers.length = 0;
+    assert.equal(started.at(-1), 'bg4');
+    vm.runInContext('_bgLoadDepth = 1', c);
+    c._scheduleModelLoad(() => started.push('extra'), 'extra.glb');
+    assert.notEqual(started.at(-1), 'extra', 'a spawn under the depth flag is a background file');
+    vm.runInContext('_bgLoadDepth = 0', c);
+    bgDones.forEach(d => d()); timers.filter(t => t.ms === 0).forEach(t => t.f()); timers.length = 0;
+    assert.equal(started.at(-1), 'extra');
     // the kill-switch: nothing is ever held
     c.window.EW_NO_RIG_LANE = true;
     c._scheduleModelLoad(() => started.push('rig3'), 'rig.glb');
@@ -184,7 +215,10 @@ test('the rig lane is marked by the arrival warm and the player spawn in the sou
     assert.ok(/_rigLaneMark\(urls\);/.test(warm), 'warmAvatar marks its urls');
     const spawn = fn(renderer, '_hqSpawnCharacter');
     assert.ok(/spec\.kind === 'player' && def\.model[\s\S]*_rigLaneMark\(_lane\)/.test(spawn), 'the player spawn marks its rig');
-    assert.ok(/_scheduleModelLoad\(function \(done\) \{[\s\S]*?\}, url\);/.test(fn(renderer, '_loadMiscModel')), 'the misc loader hands its url to the lane');
+    assert.ok(/_scheduleModelLoad\(function \(done\) \{[\s\S]*?\}, url, bg\);/.test(fn(renderer, '_loadMiscModel')), 'the misc loader hands its url and its lane to the scheduler');
+    const warmRoom = renderer.slice(renderer.indexOf('warmRoom: function (roomId)'), renderer.indexOf('warmAvatar: function (av)'));
+    assert.ok(/_loadMiscModel\(url, true, function \(\) \{\}, \{ bg: true \}\)/.test(warmRoom), 'warmRoom files its props in the background lane');
+    assert.ok(/_bgLoadDepth\+\+;[\s\S]*?pop\.draw\.forEach/.test(fn(renderer, '_hqSpawnRounds')), 'the extras spawn under the background flag');
 });
 
 /* THE FAILURE MEMO (2026-09-20): one free retry, then a minute's back-off — a 404 cue is never a request per play */

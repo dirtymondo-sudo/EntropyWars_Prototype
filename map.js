@@ -47,8 +47,11 @@
             });
 
             if (pageId === 'mainMenuPage') {
-                /* THE ARRIVAL WARM (2026-09-19): the building's first downloads start behind the menu */
-                try { if (typeof window._hqWarmArrival === 'function') window._hqWarmArrival(); } catch (e) {}
+                /* THE ARRIVAL WARM (2026-09-19): the building's first downloads start behind the menu —
+                   2026-09-20: AFTER the menu's own door leaf and car have landed (they used to share the
+                   connection with the warm and land 70 s in — the user saw a menu with no door), else 8 s in;
+                   Play (_goToPlayHub) still warms at once */
+                try { if (typeof window._hqWarmArrivalSoon === 'function') window._hqWarmArrivalSoon(); } catch (e) {}
                 try {
                     const cs = loadCareerStats();
                     const ri = getEloRankInfo(cs.elo);
@@ -596,6 +599,26 @@
            title, the menu and the door beat play — once per page load; the survey worker is spun up and set on
            the arrival's neighbours in the same breath. Play then opens on cached files. */
         let _hqWarmedArrival = false;
+        let _hqWarmSoonT = null;
+        window._hqWarmArrivalSoon = function () {
+            if (_hqWarmedArrival || _hqWarmSoonT) return false;
+            const t0 = performance.now();
+            const tick = () => {
+                _hqWarmSoonT = null;
+                if (_hqWarmedArrival) return;
+                let ready = false;
+                try {
+                    const men = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer.menu : null;
+                    const M = (men && men.active() && men.dev) ? men.dev.rec() : null;
+                    const wanted = (typeof window._menuSceneEnabled === 'function') ? !!window._menuSceneEnabled() : !!men;
+                    ready = M ? (!!M.leafHot && !!(M.sedan && M.sedan.children.length)) : !wanted;   // a scene still building is waited for
+                } catch (e) { ready = true; }
+                if (ready || performance.now() - t0 > 8000) { try { window._hqWarmArrival(); } catch (e) {} return; }
+                _hqWarmSoonT = setTimeout(tick, 500);
+            };
+            _hqWarmSoonT = setTimeout(tick, 1200);
+            return true;
+        };
         window._hqWarmArrival = function () {
             if (_hqWarmedArrival) return false;
             if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.hq || typeof DOOR_HQ === 'undefined') return false;

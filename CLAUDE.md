@@ -6441,3 +6441,32 @@ cache, Edge TTL 1 year (ignore origin), Browser TTL 1 year — or `wrangler r2 o
 on the asset folders. mobile-performance.test.js has the lane + the memo (its "every replacement MP3" test
 fails at HEAD because `mobile-audio/` was never committed — pre-existing). UNSEEN LIVE (RULE #1c): the
 card's wait on a cold cache with the lane, the flush's burst of requests after the rig.
+
+## THE BLACK BUILDING — THE RETRY, THE BACKGROUND LANE, THE MENU'S DOOR FIRST (2026-09-20, local delivery)
+The user: "the door frame is always missing from the title screen, the rotunda stairs have no texture …
+everything is just black". MEASURED (a scratch Playwright probe against the REAL CDN through the egress
+proxy — `shots/.cdn-cache` keeps the files; the CDN is reachable and serves `access-control-allow-origin`
+for the play origin `entropywars-prototype.onrender.com` with `vary: origin`, the edge keys on Origin, every
+live script matches the repo byte for byte): (1) the menu's door leaf landed 70 s in, behind the 28 GLBs
+THE ARRIVAL WARM fired at the same moment plus the VFX file's 20-weapon boot warm — the user never saw a
+door; (2) the CDN is edge-cached for a YEAR now (the cache rule) and the browser keeps every copy as long —
+a copy ever answered without its CORS header (a policy change; Safari's plain <img> of the same URL) or as
+a 404 (a file asked for before its upload — the edge caches a 404 for the year too) is FROZEN, and a
+texture / model that never lands is a black surface until the cache is cleared. Three rules now.
+**THE RETRY** (three-renderer.js, beside `textureLoader`): every failed CDN load is fetched ONCE more under
+`ewretry=<token>` (`_ewRetryUrl` — a new cache key on the edge AND in the browser) — the texture loader's
+wrapper (onto the SAME Texture), `_loadUnitGLB` (before the character fallback), `_loadMiscModel`,
+`_loadFoliageModel`, three-vfx-effects.js `_loadCachedTex` / `_wpnLoad`; every failure is one console line
+(`_ewAssetFailed`) and a row on `window._ewAssetFailures` — READ THAT FIRST on any "black" report. Proven
+by the probe with every first image / model request answered 403: the ground, the leaf and the car landed
+on the second try. **THE BACKGROUND LANE** (`_scheduleModelLoad(start, url, bg)`): a warm — `hq.warmRoom`
+(`_loadMiscModel(…, { bg: true })`), the roaming extras (`_hqSpawnRounds` under `_bgLoadDepth`), the weapon
+boot warm (`_wpnLoad(key, { bg: true })` through `ThreeRenderer.bgModelLoad`) — runs at most `BG_MAX` 3
+files at a time and only while no rig is streaming; a REAL request for a queued URL promotes it
+(`_bgPromote` / `ThreeRenderer.bgPromote`). The rig lane is a SET (`_rigLaneLive`, never a counter).
+**THE MENU'S DOOR FIRST**: map.js `_hqWarmArrivalSoon` — the main menu warms the building only after its
+own leaf and car have landed (else 8 s in); Play still warms at once. mobile-performance.test.js pins the
+lanes. UNSEEN LIVE (RULE #1c): the user's own browser — if a room is still black after this build, the
+console names the URL and the Network tab shows the header (or the 404) the cache froze; a hard reload
+(Ctrl+Shift+R) or clearing the site's cache is the reset, and a Cloudflare cache PURGE after an upload
+that replaces a file that ever 404'd.

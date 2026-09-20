@@ -1319,9 +1319,40 @@ const ThreeRenderer = (function () {
        fetches of the same URL → texture blocked, black tile. _ewCorsBust
        (sprites.js) gives every CORS fetch its own ?ewcors=1 cache entry. */
     var _texLoadRaw = textureLoader.load.bind(textureLoader);
+    /* THE RETRY (2026-09-20, the black building): the CDN is edge-cached for a year now and the browser
+       keeps every copy as long — a copy that was ever answered WITHOUT its CORS header (a policy change,
+       a plain <img> of the same URL on Safari) or as a 404 (a file requested before its upload) is frozen,
+       and a texture / model that never lands is a BLACK surface for a year. Every failed CDN load is
+       fetched ONCE more under a fresh query (`ewretry=<token>` — a new cache key on the edge AND in the
+       browser); a texture retries onto the SAME Texture object so every holder gets its pixels. The
+       failures are listed on window._ewAssetFailures and each is a console line naming the URL. */
+    var _ewRetryToken = null, _ewAssetFailures = [];
+    function _ewRetryUrl(url) {
+        if (typeof url !== 'string' || url.indexOf('cdn.entropywars.net') === -1 || url.indexOf('ewretry=') !== -1) return null;
+        if (!_ewRetryToken) _ewRetryToken = (Date.now() % 1000000000).toString(36);
+        return url + (url.indexOf('?') === -1 ? '?' : '&') + 'ewretry=' + _ewRetryToken;
+    }
+    function _ewAssetFailed(kind, url, retrying) {
+        _ewAssetFailures.push({ kind: kind, url: url, retrying: !!retrying, at: Date.now() });
+        try {
+            console.warn('[ThreeRenderer] ' + kind + ' failed to load' + (retrying ? ' — retrying under a fresh cache key: ' : ' (see the Network tab: no Access-Control-Allow-Origin header, or a 404?): ') + url);
+        } catch (e) {}
+    }
+    if (typeof window !== 'undefined') { window._ewAssetFailures = _ewAssetFailures; window._ewRetryUrl = _ewRetryUrl; }
     textureLoader.load = function (url, onLoad, onProgress, onError) {
-        return _texLoadRaw(window._ewCorsBust ? window._ewCorsBust(url) : url,
-            onLoad, onProgress, onError);
+        var u = window._ewCorsBust ? window._ewCorsBust(url) : url;
+        var tex = _texLoadRaw(u, onLoad, onProgress, function (err) {
+            var again = _ewRetryUrl(u);
+            if (!again) { _ewAssetFailed('texture', u, false); if (onError) onError(err); return; }
+            _ewAssetFailed('texture', u, true);
+            try {
+                new THREE.ImageLoader().setCrossOrigin('anonymous').load(again, function (img) {
+                    tex.image = img; tex.needsUpdate = true;
+                    if (onLoad) { try { onLoad(tex); } catch (e) {} }
+                }, undefined, function (err2) { _ewAssetFailed('texture', again, false); if (onError) onError(err2); });
+            } catch (e) { if (onError) onError(err); }
+        });
+        return tex;
     };
     var textureCache = new Map();
     /* Texture-cache epoch (ROADMAP §4.9): getTexture stamps every texture it
@@ -4571,18 +4602,25 @@ const ThreeRenderer = (function () {
         if (entry) return entry.obj;
         entry = _foliageModelCache[name] = { obj: null, loading: true, failed: false };
         if (typeof THREE.OBJLoader !== 'function') { entry.loading = false; entry.failed = true; return null; }
-        try {
-            new THREE.OBJLoader().load(
-                _FOLIAGE_OBJ_BASE + name + '.obj',
-                function(root) {
-                    _normalizeFoliageModel(root);
-                    entry.obj = root; entry.loading = false;
-                    _objectsDirty = true;   /* re-render so the model swaps in */
-                },
-                undefined,
-                function() { entry.loading = false; entry.failed = true; }
-            );
-        } catch (e) { entry.loading = false; entry.failed = true; }
+        function attempt(reqUrl, retried) {
+            try {
+                new THREE.OBJLoader().load(
+                    reqUrl,
+                    function(root) {
+                        _normalizeFoliageModel(root);
+                        entry.obj = root; entry.loading = false;
+                        _objectsDirty = true;   /* re-render so the model swaps in */
+                    },
+                    undefined,
+                    function() {
+                        var again = !retried ? _ewRetryUrl(reqUrl) : null;   // THE RETRY (2026-09-20)
+                        if (again) { _ewAssetFailed('foliage', reqUrl, true); attempt(again, true); return; }
+                        entry.loading = false; entry.failed = true; _ewAssetFailed('foliage', reqUrl, false);
+                    }
+                );
+            } catch (e) { entry.loading = false; entry.failed = true; }
+        }
+        attempt(_FOLIAGE_OBJ_BASE + name + '.obj', false);
         return null;
     }
 
@@ -10287,31 +10325,55 @@ const ThreeRenderer = (function () {
        marked file is in flight, every OTHER model request is HELD and released together when the rig lands
        (a parallel flush, never the phone's one-at-a-time queue). A held request is never lost: a 12 s
        safety flush releases the lane if a rig file stalls. Kill-switch: window.EW_NO_RIG_LANE. */
-    var _rigLaneUrls = {}, _rigLaneInFlight = 0, _rigLaneHeld = [], _rigLaneTimer = null;
+    var _rigLaneUrls = {}, _rigLaneLive = {}, _rigLaneHeld = [], _rigLaneTimer = null;
     function _rigLaneMark(urls) {
         (urls || []).forEach(function (u) { if (u && typeof u === 'string') _rigLaneUrls[u] = 1; });
     }
+    function _rigLaneCount() { var n = 0; for (var k in _rigLaneLive) n++; return n; }
     function _rigLaneFlush() {
-        _rigLaneInFlight = 0;
+        _rigLaneLive = {};   // a set, never a counter (2026-09-20): a late settle can no longer drive it negative
         if (_rigLaneTimer) { clearTimeout(_rigLaneTimer); _rigLaneTimer = null; }
         var held = _rigLaneHeld; _rigLaneHeld = [];
         for (var i = 0; i < held.length; i++) { try { held[i](function () {}); } catch (e) { console.warn('[ThreeRenderer] a held model load threw', e); } }
+        _pumpBgLoads();
     }
-    function _scheduleModelLoad(start, url) {
+    /* THE BACKGROUND LANE (2026-09-20): a WARM (the arrival room's props behind the menu, the hall's
+       roaming extras) is filed here — at most BG_MAX files in flight, started only while no rig is
+       streaming — so it never saturates the connection under the scene the player is looking at (the
+       menu's own door leaf used to land 70 s late behind 28 warmed chairs, and the user saw no door).
+       A REAL request for a queued URL (a room build, a spawn) promotes it: it starts at once. */
+    var _bgModelJobs = [], _bgModelLive = 0, BG_MAX = 3, _bgLoadDepth = 0;
+    function _bgStart(job) {
+        if (job.started) return;
+        job.started = true; _bgModelLive++;
+        var settled = false;
+        function done() { if (settled) return; settled = true; _bgModelLive--; setTimeout(_pumpBgLoads, 0); }
+        try { job.start(done); } catch (e) { done(); }
+    }
+    function _pumpBgLoads() {
+        while (_bgModelLive < BG_MAX && _bgModelJobs.length && _rigLaneCount() === 0) _bgStart(_bgModelJobs.shift());
+    }
+    function _bgPromote(url) {
+        for (var i = 0; i < _bgModelJobs.length; i++) if (_bgModelJobs[i].url === url) { _bgStart(_bgModelJobs.splice(i, 1)[0]); return true; }
+        return false;
+    }
+    function _scheduleModelLoad(start, url, bg) {
         if (typeof window === 'undefined' || !window.EW_PERF_LOW) {
             if (typeof window !== 'undefined' && !window.EW_NO_RIG_LANE) {
                 if (url && _rigLaneUrls[url]) {
-                    _rigLaneInFlight++;
+                    _rigLaneLive[url] = 1;
                     if (!_rigLaneTimer) _rigLaneTimer = setTimeout(_rigLaneFlush, 12000);
                     var settled = false;
                     start(function () {
                         if (settled) return;
                         settled = true;
-                        if (--_rigLaneInFlight <= 0) _rigLaneFlush();
+                        delete _rigLaneLive[url];
+                        if (_rigLaneCount() === 0) _rigLaneFlush();
                     });
                     return;
                 }
-                if (_rigLaneInFlight > 0) { _rigLaneHeld.push(start); return; }
+                if (bg || _bgLoadDepth > 0) { _bgModelJobs.push({ start: start, url: url, started: false }); _pumpBgLoads(); return; }
+                if (_rigLaneCount() > 0) { _rigLaneHeld.push(start); return; }
             }
             start(function () {}); return;
         }
@@ -10339,7 +10401,7 @@ const ThreeRenderer = (function () {
         }
         e = _unitGlbCache[url] = { root: null, clips: null, bbox: null, loading: true, failed: false, cbs: [cb] };
         if (typeof THREE.GLTFLoader !== 'function') { e.loading = false; e.failed = true; e.cbs.length = 0; _flushGlbDoneCbs(e); return; }
-        function loadAttempt(requestUrl, fallbackUsed) {
+        function loadAttempt(requestUrl, fallbackUsed, retried) {
           _scheduleModelLoad(function (done) {
           try {
             new THREE.GLTFLoader().load(requestUrl, function (gltf) {
@@ -10359,10 +10421,12 @@ const ThreeRenderer = (function () {
                 invalidateUnits();   // swap placeholders for the model on the next frame
             }, undefined, function () {
                 done();
+                var again = !retried ? _ewRetryUrl(requestUrl) : null;   // THE RETRY (2026-09-20): once, under a fresh cache key
+                if (again) { _ewAssetFailed('model', requestUrl, true); loadAttempt(again, fallbackUsed, true); return; }
                 var fallback = !fallbackUsed && typeof getCharacterModelFallback === 'function' && getCharacterModelFallback(url);
-                if (fallback) { loadAttempt(fallback, true); return; }
+                if (fallback) { loadAttempt(fallback, true, false); return; }
                 e.loading = false; e.failed = true; e.cbs.length = 0; _flushGlbDoneCbs(e);
-                console.warn('[ThreeRenderer] unit model failed to load:', url);
+                _ewAssetFailed('model', requestUrl, false);
             });
           } catch (ex) { done(); e.loading = false; e.failed = true; e.cbs.length = 0; _flushGlbDoneCbs(e); }
           }, url);
@@ -22108,12 +22172,15 @@ const ThreeRenderer = (function () {
         });
     }
 
-    function _loadMiscModel(url, isGLB, cb) {
+    function _loadMiscModel(url, isGLB, cb, opts) {
+        var bg = !!(opts && opts.bg);   // THE BACKGROUND LANE (2026-09-20): a warm files itself behind the scene on screen
         var e = _miscModelCache[url];
         if (e) {
             if (e.root) { cb(e.root); return; }
             if (e.failed) return;
-            e.cbs.push(cb); return;
+            e.cbs.push(cb);
+            if (!bg) _bgPromote(url);   // a real request for a file the warm queued starts it now
+            return;
         }
         e = _miscModelCache[url] = { root: null, loading: true, failed: false, cbs: [cb] };
         function _onLoad(res) {
@@ -22131,16 +22198,24 @@ const ThreeRenderer = (function () {
         _scheduleModelLoad(function (done) {
         function loaded(res) { try { _onLoad(res); } finally { done(); } }
         function failed() { try { _onErr(); } finally { done(); } }
-        try {
-            if (isGLB) {
-                if (typeof THREE.GLTFLoader !== 'function') { failed(); return; }
-                new THREE.GLTFLoader().load(url, loaded, undefined, failed);
-            } else {
-                if (typeof THREE.OBJLoader !== 'function') { failed(); return; }
-                new THREE.OBJLoader().load(url, loaded, undefined, failed);
+        function attempt(reqUrl, retried) {
+            function err() {
+                var again = !retried ? _ewRetryUrl(reqUrl) : null;   // THE RETRY (2026-09-20): once, under a fresh cache key
+                if (again) { _ewAssetFailed('model', reqUrl, true); attempt(again, true); return; }
+                _ewAssetFailed('model', reqUrl, false); failed();
             }
-        } catch (ex) { failed(); }
-        }, url);
+            try {
+                if (isGLB) {
+                    if (typeof THREE.GLTFLoader !== 'function') { failed(); return; }
+                    new THREE.GLTFLoader().load(reqUrl, loaded, undefined, err);
+                } else {
+                    if (typeof THREE.OBJLoader !== 'function') { failed(); return; }
+                    new THREE.OBJLoader().load(reqUrl, loaded, undefined, err);
+                }
+            } catch (ex) { failed(); }
+        }
+        attempt(url, false);
+        }, url, bg);
     }
 
     // Return a Group that fills (async) with a normalized instance of a misc
@@ -48082,7 +48157,8 @@ const ThreeRenderer = (function () {
         try { pop = (typeof hqRoomPopulation === 'function') ? hqRoomPopulation(roomId, prof, { perfLow: !!(typeof window !== 'undefined' && window.EW_PERF_LOW) }) : null; } catch (e) { console.warn('[HQ] population read failed', e); }
         if (pop && pop.draw && pop.draw.length && stops.length) {
             var pool = pop.pool.filter(walksRace), used = {};
-            pop.draw.forEach(function (d, i) {
+            _bgLoadDepth++;   // THE BACKGROUND LANE (2026-09-20): the extras' rigs stream three at a time behind the room's own props
+            try { pop.draw.forEach(function (d, i) {
                 if (gone.indexOf(d.id) >= 0) return;
                 var rk = d.race;
                 if (!walksRace(rk) || rk === av.race) { rk = pool.find(function (r) { return !used[r] && r !== av.race; }) || null; if (!rk) return; }
@@ -48090,7 +48166,7 @@ const ThreeRenderer = (function () {
                 var st = stops[Math.floor(Math.random() * stops.length)];
                 var line = null; try { if (room.lines && room.lines.length && Math.random() < 0.5) line = room.lines[Math.floor(Math.random() * room.lines.length)]; } catch (e) {}
                 spawnAt(d.id, rk, genderOf(rk), st, { line: line, sub: pop.kind === 'facility' ? 'PASSING THROUGH' : (d.tier === 'native' || d.tier === 'biome') ? 'A LOCAL' : 'PASSING THROUGH' });
-            });
+            }); } finally { _bgLoadDepth--; }
         }
         /* 3 · THE TRAVELLERS: whoever left another room through a door that leads HERE, arriving by it */
         try {
@@ -50980,7 +51056,7 @@ const ThreeRenderer = (function () {
             if (!room || !D.catalogue) return 0;
             if (typeof window !== 'undefined' && window.EW_PERF_LOW) return 0;   // a phone streams the room on entry, one model at a time (the mobile pass)
             var n = 0, seen = {};
-            function warmCat(cat) { if (!cat || !cat.file) return; var url = _hqModelUrl(cat); if (seen[url]) return; seen[url] = 1; n++; try { _loadMiscModel(url, true, function () {}); } catch (e) {} }
+            function warmCat(cat) { if (!cat || !cat.file) return; var url = _hqModelUrl(cat); if (seen[url]) return; seen[url] = 1; n++; try { _loadMiscModel(url, true, function () {}, { bg: true }); } catch (e) {} }   // the background lane (2026-09-20)
             (room.doors || []).forEach(function (d) { if (d && d.leaf) warmCat(D.catalogue[d.leaf]); });
             (room.props || []).forEach(function (p) { if (p && p.key) warmCat(D.catalogue[p.key]); });
             warmCat(D.catalogue.door_gun);
@@ -51630,6 +51706,10 @@ const ThreeRenderer = (function () {
         preloadUnitModels,
         /* THE LOADING SCREEN (2026-09-19): how many model files are still in flight through the two GLB
            caches — the HQ load card's progress line (map.js) reads it; textures are not counted */
+        /* THE BACKGROUND LANE (2026-09-20): another module's warm (three-vfx-effects.js's weapon props)
+           files its loads here — three at a time, after the rig — and promotes one a real cast needs */
+        bgModelLoad: function (start, url) { _scheduleModelLoad(start, url, true); },
+        bgPromote: function (url) { return _bgPromote(url); },
         assetsPending: function () {
             var n = 0, k;
             for (k in _miscModelCache) { if (_miscModelCache[k] && _miscModelCache[k].loading) n++; }

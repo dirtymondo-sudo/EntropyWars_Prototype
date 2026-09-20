@@ -6799,7 +6799,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
     function _loadCachedTex(url) {
         var loader = new THREE.TextureLoader();
-        var tex = loader.load(url);
+        /* THE RETRY (2026-09-20, three-renderer.js's rule): a CDN copy frozen without its CORS header or as a
+           404 is fetched once more under a fresh cache key onto the same Texture */
+        var tex = loader.load(url, undefined, undefined, function () {
+            var again = (typeof window !== 'undefined' && typeof window._ewRetryUrl === 'function') ? window._ewRetryUrl(url) : null;
+            if (!again) return;
+            try { new THREE.ImageLoader().setCrossOrigin('anonymous').load(again, function (img) { tex.image = img; tex.needsUpdate = true; }); } catch (e) {}
+        });
         tex.magFilter = THREE.NearestFilter;
         tex.minFilter = THREE.NearestFilter;
         tex.wrapS = THREE.RepeatWrapping;
@@ -10305,17 +10311,24 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             || typeof THREE === 'undefined' || typeof THREE.GLTFLoader !== 'function';
     }
 
-    function _wpnLoad(key) {
+    function _wpnLoad(key, opts) {
         if (_wpnGlbOff()) return null;
         var def = _WPN_MODELS[key];
         if (!def) return null;
         var e = _wpnCache[key];
-        if (e) return e;
-        e = _wpnCache[key] = { root: null, size: null, center: null, loading: true, failed: false };
-        try {
-            /* def.url = absolute override for props living outside the
-               weapons folder (the misc-bucket UFO) */
-            new THREE.GLTFLoader().load(def.url || (_WPN_BASE + def.file), function (gltf) {
+        var TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;   // a top-level const, never window.ThreeRenderer
+        if (e) {
+            /* a real cast for a prop the boot warm queued in the background lane starts it now (2026-09-20) */
+            if (e.queued && !(opts && opts.bg) && TR && TR.bgPromote) { try { TR.bgPromote(e.url); } catch (e2) {} }
+            return e;
+        }
+        var url0 = def.url || (_WPN_BASE + def.file);
+        e = _wpnCache[key] = { root: null, size: null, center: null, loading: true, failed: false, url: url0, queued: false };
+        var _done = function () {};
+        function attempt(reqUrl, retried) {
+          try {
+            new THREE.GLTFLoader().load(reqUrl, function (gltf) {
+                e.queued = false; _done();
                 var root = gltf.scene || (gltf.scenes && gltf.scenes[0]);
                 if (!root) { e.loading = false; e.failed = true; return; }
                 root.traverse(function (n) {
@@ -10327,10 +10340,21 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 e.root = root;
                 e.loading = false;
             }, undefined, function () {
-                e.loading = false; e.failed = true;
+                /* THE RETRY (2026-09-20): once more under a fresh cache key (three-renderer.js's rule) */
+                var again = (!retried && typeof window !== 'undefined' && typeof window._ewRetryUrl === 'function') ? window._ewRetryUrl(reqUrl) : null;
+                if (again) { attempt(again, true); return; }
+                e.loading = false; e.failed = true; e.queued = false; _done();
                 try { console.warn('[VFX] weapon GLB failed to load:', def.file); } catch (e2) {}
             });
-        } catch (ex) { e.loading = false; e.failed = true; }
+          } catch (ex) { e.loading = false; e.failed = true; e.queued = false; _done(); }
+        }
+        /* def.url = absolute override for props living outside the weapons folder (the misc-bucket UFO).
+           THE BACKGROUND LANE (2026-09-20): the boot warm ({ bg: true }) files itself behind the scene on
+           screen through the renderer — three at a time, after the walker's rig — a cast loads at once */
+        if (opts && opts.bg && TR && TR.bgModelLoad) {
+            e.queued = true;
+            TR.bgModelLoad(function (done) { _done = done; e.queued = false; attempt(url0, false); }, url0);
+        } else attempt(url0, false);
         return e;
     }
 
@@ -10418,14 +10442,14 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var first = ['bullet', 'missile', 'revolver', 'pistol', 'plasma',
                      'shotgun', 'sniper', 'jet', 'arrow', 'sword',
                      'football', 'cauldron', 'crystalBall'];
-        for (var i = 0; i < first.length; i++) _wpnLoad(first[i]);
+        for (var i = 0; i < first.length; i++) _wpnLoad(first[i], { bg: true });   // the background lane (2026-09-20): never under the menu's own door
         var rest = [];
         for (var k in _WPN_MODELS) {
             if (first.indexOf(k) < 0) rest.push(k);
         }
         for (var j = 0; j < rest.length; j++) {
             (function (key, idx) {
-                window.setTimeout(function () { _wpnLoad(key); }, 4500 + idx * 700);
+                window.setTimeout(function () { _wpnLoad(key, { bg: true }); }, 4500 + idx * 700);
             })(rest[j], j);
         }
     }, 3500);
@@ -25349,7 +25373,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     };
     SPELL_MAP['raceProphecyOfDisaster'] = Object.assign({}, SPELL_MAP['raceProphecyOfDisaster'], { descent: 'raceProphecyOfDisaster_descent' });
     /* warm the rocks (the first meteor of a match otherwise falls as the icosahedron) */
-    try { if (!_wpnGlbOff()) setTimeout(function () { _wpnLoad('asteroid'); _wpnLoad('asteroid2'); }, 3500); } catch (e) {}
+    try { if (!_wpnGlbOff()) setTimeout(function () { _wpnLoad('asteroid', { bg: true }); _wpnLoad('asteroid2', { bg: true }); }, 3500); } catch (e) {}
 
     /* ═══════════════════════════════════════════════════════════════════════
        THE FINISHER PASS 2 — THE EXECUTIONS (2026-09-19)
