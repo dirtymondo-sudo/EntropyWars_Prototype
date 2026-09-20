@@ -6820,3 +6820,17 @@ Adding a hub = its zone appears; a hub whose anchor is no place for it = a `HQ_H
 hq-deep 15, hq-dumb 18, hq-floor-plan 29, hq-terrain 38 (the fountain). UNSEEN LIVE (RULE #1c): the green ring on each
 hub's ground (a spot that lands on a slope or in the water is a `HQ_HEAL_ZONE.rooms` row edit), the marker panel's two
 buttons, the shop's DEFEAT ONE FIRST tags, the 403 on a server account before the first sync lands.
+
+## AREA CONTENT PLAN D4 — THE DOOR PASS over the complexes (2026-09-20, local delivery)
+R3 / R4 / R5 over every pre-plan complex (`AREA_CONTENT_PLAN.md` §7 has the room-by-room list): **fifteen draught PAIRS** as door rows
+(`secret: true, leaf: null, label: 'A DRAUGHT'` at both ends — hq-floors / hq-cave count **42** and hq-floors pins the pair list, regenerated from
+`hqSecretDoors()`) + **six draught LINKS** (`secret: true` on the row: the cave's flue + crawl (a chamber is crossed by nothing but a links row),
+the ley line's three mouths, the wallpaper, the outfall grate); **nine TIER DOORS** (a link END or a door row carries `y`; the gantry is a `plateau`
++ a stair `ramp` in the room, the door's pad on its flat top); **THE BLOCKERS** on the sightlines (0.6 m partitions, pillars = `plateau` r ≤ 1.3,
+`tree` rows, prefab props with a foot / rect ≥ 0.45 and h ≥ 1.7 — the audit reads those and nothing else). RULES: a wall's top is the ground UNDER
+it + h (a parapet goes on the tier's flat top, never its edge blend); a 0.3 m wall slips between the audit's 0.5 m LOS samples; two abutting plateau
+rects leave a solid seam in a halls plan (overlap them a metre); a `bridge` over a door's landing cell keys the landing to the bridge layer — stop
+the slab short of the pad; a draught is never an R3 target nor viewpoint (`check-area-content.js`), a bypassed board room is skipped, the ship's
+collar is earned. Accepted residue: the well room (six wells see each other), the haunted hall's landing, the D2 cities. The final full audit and
+the slow suites were NOT re-run after the last edits (the user's word); `npm run test:quick` and `check-terrain` on every touched room passed.
+Ship data.js to R2 AND Render. Unseen live (RULE #1c): every gantry's stair, the parapets, the fangs, the pillars, the slabs' facings.

@@ -137,7 +137,7 @@ test('every door below decks is reversible, the complex is connected from the ma
             }
             if (HQ.rooms[a.room].kind === 'bay') { assert.strictEqual(id, BOARD, 'only the main deck walks back to the bay'); continue; }
             /* AREA CONTENT D3 (2026-09-19): THE CAPTAIN’S SKYLIGHT is a secret PAIR between the cabin and the deck PART (site_prebuilt_revenge_deck, the area that stands for the board) — a pair, never walked into here (the part’s companionway pairs with the gun deck through the bypassed board room) */
-            if (d.secret) { const far = at(a.room, a.at); assert.ok(far && far.secret && far.action.room === id && far.action.at === d.id, id + '/' + d.id + ' ⇄ ' + a.room + ' is a secret pair'); assert.strictEqual(a.room, BOARD + '_deck', 'the skylight opens onto THE POOP of the deck part'); continue; }
+            if (d.secret) { const far = at(a.room, a.at); assert.ok(far && far.secret && far.action.room === id && far.action.at === d.id, id + '/' + d.id + ' ⇄ ' + a.room + ' is a secret pair'); if (d.id === 'skylight') assert.strictEqual(a.room, BOARD + '_deck', 'the skylight opens onto THE POOP of the deck part'); else assert.ok(id === BOARD + '_gundeck' || id === BOARD + '_hold', 'the only other draught below decks is the hold’s hatch under a gun carriage (AREA CONTENT D4, 2026-09-20)'); if (ROOMS.includes(a.room) && !seen.has(a.room)) { seen.add(a.room); queue.push(a.room); } continue; }
             const back = at(a.room, a.at);
             assert.ok(back && back.action.room === id && back.action.at === d.id, id + '/' + d.id + ' ⇄ ' + a.room + '/' + (back && back.id) + ' is a pair');
             assert.strictEqual(back.leaf, d.leaf, 'the same leaf on both sides of ' + d.id);

@@ -516,6 +516,8 @@ The scan then starts on the top and the foot (`climbReach` back) lands 0.3 m out
 
 ## 10. THE LOG
 
+- **2026-09-20 — AREA CONTENT D4, THE DOOR PASS (local delivery).** R3 / R4 / R5 over every pre-plan complex: fifteen draught pairs + six draught links, nine tier doors, the blockers on the sightlines (AREA_CONTENT_PLAN §7 has the list). Rules learnt: a wall's top is the ground UNDER it + h (a parapet on a tier's edge blend stands a metre low — put it on the flat top); a 0.3 m wall slips between the audit's 0.5 m LOS samples (partitions are 0.6 m); two abutting plateau rects leave a solid seam in a halls plan (overlap them); a `bridge` over a door's landing cell keys the landing to the bridge layer (stop the slab short of the pad); a draught is never a target nor a viewpoint for R3.
+
 - **2026-09-17 — D.U.M.B. (complex candidate #5): THE HALLS floor plan (family C's generator) and seven
   parts on Rooms 555 + 999.** `terrain.gen.kind: 'halls'` (data.js `HQ_TERRAIN_GEN.halls`, the branch in
   `_hqTGenerate`, `_hqTTraceMaskWalls`): BSP rooms + authored rooms + authored halls, a Prim tree + loops of

@@ -105,7 +105,7 @@ test('legacy H-Wing exit and array back doors both survive repeated room generat
 });
 /* THE PROBE LINK: a plain wall-to-wall link with a Moon end (the Spaceship's two ends are DOCKED on
    the airlock's ONE collar since 2026-09-16 — hq-spaceship.test.js owns that contract) */
-const PLAIN = () => { const l = HQ.links.find(l => l.id === 'flatlands_backrooms'); assert.ok(l && !l.a.door && !l.b.door && !l.way, 'flatlands_backrooms is the plain probe link'); return l; };   // THE AREAS (2026-09-18): mars_moon is a course on the collar now
+const PLAIN = () => { const l0 = HQ.links.find(l => l.id === 'flatlands_backrooms'); assert.ok(l0 && !l0.a.door && !l0.b.door && !l0.way, 'flatlands_backrooms is the plain probe link'); const l = { ...l0, secret: undefined }; return l; };   // AREA CONTENT D4 (2026-09-20): the row became a draught — the probe wears it plain   // THE AREAS (2026-09-18): mars_moon is a course on the collar now
 test('invalid or unbuilt link endpoints generate neither half of a broken connection',()=>{
  const saved=HQ.links, L=PLAIN();
  try {for(const patch of [{site:'missing',wall:'n',x:0},{site:'prebuilt_moon',part:'airlock',wall:'n',x:0},{site:'prebuilt_moon',wall:'e',x:0},{site:'prebuilt_moon',wall:'n',x:NaN},{site:'prebuilt_moon',door:'collar'},{site:'prebuilt_moon',door:'egress'}]) {

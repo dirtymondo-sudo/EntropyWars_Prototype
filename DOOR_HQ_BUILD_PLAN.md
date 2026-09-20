@@ -11023,3 +11023,5 @@ the last battle's night grade, which is why rooms "reset" between zones; a look'
 moon key (`HQ_LIGHT_RULES`, data.js); the Brightness slider is per place (three-post.js
 `setExposureContext`, eased). A person's line is a subtitle bar (`.hq-panel-say`). The skateboard has no
 push / kick clip. See CLAUDE.md "THE LIGHT PASS + THE SUBTITLE + SKATEBOARDING rev 7".
+
+- **2026-09-20 — AREA CONTENT D4 · THE DOOR PASS (local delivery).** Every complex built before the plan: fifteen secret door pairs + six secret links (the map's `?` never poses through them; hq-floors counts 42 secret doors), nine doors moved up onto gantries / galleries / daises with their stairs, and walls / pillars / trees / props on the exposed sightlines. The well room and the haunted hall's landing keep their views by design. See AREA_CONTENT_PLAN §7.

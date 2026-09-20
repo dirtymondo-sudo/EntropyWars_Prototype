@@ -188,7 +188,7 @@ plaza, 40–70 props per area from the packs already on R2. Order: the six the u
 (Shasta, the North Pole, Olympus, the Stadium, the Haunted grounds, the Spaceship deck), then
 the rest. Two or three areas per delivery.
 
-**D4 — THE DOOR PASS over the complexes.** Every part built before this plan (the woods, the
+**D4 — THE DOOR PASS over the complexes.** *(SHIPPED 2026-09-20 as a local delivery — see §7.)* Every part built before this plan (the woods, the
 cave, D.U.M.B., Area 51, Camelot, the divine stair, the underworld, the deep, the ley, the
 astral): R3 + R4 + R5 — a third door on a wall moves round a corner or becomes a draught;
 every part gains an earned exit if it has none (the 93); every earned exit gains its tease.
@@ -225,6 +225,33 @@ The questions as they were asked:
    R8 only. Confirm.
 
 ## 7. LOG
+- 2026-09-20 — **D4 SHIPPED (local delivery): THE DOOR PASS over the complexes.** Data-only (door rows, link rows, a feature or two per
+  room) + three audit amendments. **THE AUDIT** (`check-area-content.js`): a draught / a way / a free seam is not a door ON A WALL for the
+  three-on-a-wall count; a draught is never a target NOR a viewpoint for R3 (a wall slab is not an approach); a bypassed board room (nobody stands in
+  it) is skipped from the default set; a box door on the gallery's wall lands on the slab; the ship's course-locked collar is an earned exit (a puzzle door).
+  **THE DRAUGHTS (fifteen door-row pairs + six link rows)**: the woods' DEER PATH (trail ⇄ stair) + THE CULVERT (redwoods ⇄ the storm drain) + THE GAP
+  IN THE HEDGE (clearing ⇄ the ritual ground); the cave's FLUE (vent ⇄ blast, a links row — the cave test lets nothing but a links row cross a chamber)
+  + THE CRAWL (adit ⇄ mouth); Camelot's CHIMNEY (the keep's solar ⇄ the sky, over THE HEARTH GALLERY — a `bridge` from the solar's flat top that STOPS
+  SHORT of the hearth pad: a slab over a door's landing cell keys the landing to the bridge layer and the solver never finds the door) + THE PRIEST HOLE
+  (hall ⇄ undercroft); the Vatican's PASSAGE UNDER THE NAVE (archive ⇄ cortile); Area 51's STORM DRAIN (ward ⇄ flight line) + THE VENT (hangar ⇄ ward);
+  D.U.M.B.'s service corridor + private stair; the underworld's OLD ADIT (sewers ⇄ workings) + THE TRAP (cells ⇄ workings) + the outfall grate
+  (`sewers_drain`); THE DROWNED STAIR (temple ⇄ abyss); the Dutchman's hatch under a gun carriage; the Strip's BACK ROOM (the casino behind the chapel);
+  Downtown's lobby stair; the ley line's three mouths (`stonehenge_gobekli` / `gobekli_giza` / `giza_babel`); THE HOLE IN THE WALLPAPER
+  (`flatlands_backrooms`). **THE TIER DOORS**: the motor pool's TWO GANTRIES (the tunnel links 2.6 m up, parapets on the flat top — a wall's top is the
+  ground UNDER it + h, on the edge blend it stood a metre low), sub-level 7's VAULT GANTRY (war 3.0) + the observation deck run to the bunker (2.4 — two
+  abutting plateau rects leave a solid seam in a halls plan: overlap them), HANGAR 18's FREIGHT GANTRY (3.0), the basilica's two triforium doors (4.6),
+  the sewers' PUMP GANTRY (1.6), the tunnels' WORKS PLATFORM (1.8), the two astral screens' daises (1.2 — the tease). **THE BLOCKERS (R3)**: partitions
+  0.6 m thick (the LOS samples every 0.5 m — a 0.3 m wall slips between two samples), the pit's FANGS, the stairway's CLOUD PILLARS, two clouds in the
+  fields, three cypresses in the cortile, three palms on the cay, seven stalagmite PILLARS in the cavern, the drain's EAST PIER (the channel is the way
+  past it), four trees in the clearing, THE WINDBREAK on the ranch, THE ROOD SCREEN + THE ARCADE in the basilica, and the prefab boxes' props (the airlock's
+  scrubbers, the hold's cargo arm, the bower anchor, the lobby fountain, two ticket booths, three hall bookcases, the waiting room's second idea).
+  **ACCEPTED RESIDUE**: THE WELL ROOM (six wells in one chamber see each other by design), the haunted hall's landing (the gallery looks down on two doors),
+  and the three D2 cities (out of D4's scope). **NOT MEASURED** (the user's word, mid-session: "tests are taking way too long"): the final full audit and
+  the slow suites were not re-run after the last edits — the touched rooms were solved by `node check-terrain.js` room by room as they were built; the
+  amended pins: hq-floors / hq-cave (42 secret doors, the pair list regenerated), hq-cave (EXITS excludes the two draughts, the undercroft's legs),
+  hq-world (the plain probe wears `flatlands_backrooms` un-secret), hq-dutchman (the hatch), hq-divine (five clouds, the screen wall). Pre-existing at HEAD,
+  untouched: hq-dumb 3, hq-deep 9, hq-astral 6, hq-urban 3, hq-spaceship 4, hq-terrain 6 (the Downtown fountain), hq-floor-plan 6, doorhq 60/61, hq-stage2 6.
+  NEXT: D5 (the facility rooms' purpose).
 - 2026-09-19 — the plan written; `check-area-content.js` added (read-only audit); EXPLORABLE_AREAS_GUIDE §10 logged. Nothing built.
 - 2026-09-19 — **D1 SHIPPED (local delivery).** THE CLIMB per §4: data.js `climb` feature rows (`hqTerrainClimbs` → `info.climbs`,
   the head spot found PAST the tier's edge blend; `hqTerrainClimbEdges` = the solver's edge, read by `hqTerrainReach`, the reach

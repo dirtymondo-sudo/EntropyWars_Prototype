@@ -35,7 +35,8 @@ const SHAFT = BOARD + '_shaft';
 const renderer = fs.readFileSync(__dirname + '/three-renderer.js', 'utf8');
 const at = (room, id) => (HQ.rooms[room].doors || []).find(d => d.id === id);
 const WELLS = HQ.links.filter(l => l.way === 'well');
-const EXITS = HQ.links.filter(l => l.route === 'undercroft' && !l.way);
+const EXITS = HQ.links.filter(l => l.route === 'undercroft' && !l.way && !l.secret);   // AREA CONTENT D4 (2026-09-20): the cave's two draughts (cave_flue, cave_crawl) are inside the complex
+const DRAUGHTS = HQ.links.filter(l => l.route === 'undercroft' && !l.way && l.secret);
 
 function extract(name) {
     const start = renderer.indexOf('    function ' + name + '(');
@@ -189,7 +190,7 @@ test('the cave is one piece: from the mouth every chamber is walked, every insid
 test('THE UNDERCROFT: a dashed line whose every leg is a well or an exit, all converging on HOLLOW EARTH, and the world graph carries both halves', () => {
     const R = D.hqWorldRoutes('garden').find(r => r.id === 'undercroft');
     assert.ok(R && R.dashed && R.label && R.sub, 'the route is catalogued and dashed');
-    assert.strictEqual(R.legs.length, WELLS.length + EXITS.length, 'ten legs');
+    assert.strictEqual(R.legs.length, WELLS.length + EXITS.length + DRAUGHTS.length, 'ten legs, plus the cave’s two draughts (AREA CONTENT D4)');
     assert.ok(R.legs.every(l => l.from === BOARD || l.to === BOARD), 'every leg touches HOLLOW EARTH — the wells and the exits are one hub');
     assert.ok(R.stations.some(s => s.no === '180'), 'the hub is a station');
     assert.ok(R.stations.find(s => s.room === 'garden').here, 'the viewer in the garden is filled');
@@ -268,7 +269,7 @@ test('THE FIELD: every chamber is solvable from every door; the cavern climbs to
 
 test('THE FOURTH CELL NOBODY COUNTS: the oubliette and Room 24601 share a secret wall — eight secret doors, a pair, on no plate, and the dungeon’s cells moved off the panel', () => {
     const secrets = D.hqSecretDoors().filter(s => !/^link_/.test(s.id));   // THE AREAS (2026-09-18): the links' draughts (vatican_hell, cern_backrooms) are hq-areas.test.js's
-    assert.strictEqual(secrets.length, 12, 'the seventh and eighth secret doors (twelve in all since THE CARGO HATCH and THE CAPTAIN’S SKYLIGHT — AREA CONTENT D3, 2026-09-19; hq-floors.test.js keeps the count)');
+    assert.strictEqual(secrets.length, 42, 'the seventh and eighth secret doors (forty-two in all since THE DOOR PASS — AREA CONTENT D4, 2026-09-20; hq-floors.test.js keeps the count)');
     const a = at('dungeon', 'oubliette'), b = at(BOARD + '_oubliette', 'dungeon');
     for (const d of [a, b]) assert.ok(d && d.secret === true && d.leaf == null && !d.proc && /DRAUGHT/.test(d.label), 'a secret door: no leaf, no plate, a draught');
     assert.ok(a.action.room === BOARD + '_oubliette' && a.action.at === 'dungeon' && b.action.room === 'dungeon' && b.action.at === 'oubliette', 'the pair closes');

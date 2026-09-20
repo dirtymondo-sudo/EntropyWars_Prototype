@@ -286,7 +286,7 @@ test('THE FLOATING PIECES (second pass, 2026-09-18): the stairway’s four fligh
     assert.ok(sF.filter(f => f.k === 'plateau' && f.r && f.float).length >= 5, 'the stepping clouds float');
     assert.ok(Array.isArray(sinfo.floats) && sinfo.floats.length === sF.filter(f => f.float === true).length && sinfo.floats.every(f => f.k === 'plateau' || (f.k === 'ramp' && f.stairs)), 'the compiler lists them');
     const gF = HQ.rooms[GATE].terrain.features, ginfo = D.hqTerrainInfo(GATE);
-    assert.ok(gF.find(f => f.k === 'plateau' && f.x === 12 && f.z === -8).float === true && gF.filter(f => f.k === 'plateau' && f.r && f.float && f.h < 4).length === 3 && ginfo.floats.length >= 4, 'the pillar of light and three stepping clouds float in the fields');
+    assert.ok(gF.find(f => f.k === 'plateau' && f.x === 12 && f.z === -8).float === true && gF.filter(f => f.k === 'plateau' && f.r && f.float && f.h < 4).length === 5 && ginfo.floats.length >= 6, 'the pillar of light and three stepping clouds float in the fields');
     const jump = D.HQ_TERRAIN_RULES.jump;
     assert.ok(D.hqTerrainHeight(ginfo, -10.5, -1.5) <= jump + 0.4 && D.hqTerrainHeight(ginfo, -12.5, -6.5) - D.hqTerrainHeight(ginfo, -10.5, -1.5) <= jump + 0.05 && D.hqTerrainHeight(ginfo, -13.5, -11.5) - D.hqTerrainHeight(ginfo, -12.5, -6.5) <= jump + 0.05, 'each cloud a hop from the last');
     const foot = D.hqTerrainDoorLanding(HQ.rooms[STAIR], at(STAIR, 'link_observatory_stair')), R = D.hqTerrainReach(sinfo, foot.x, foot.z);
@@ -340,7 +340,7 @@ test('THE PARK RULE + THE HAZARDS + THE LIGHT: a rail and a tier or ramp in ever
     const binfo = D.hqTerrainInfo(BASILICA), bfoot = D.hqTerrainDoorLanding(HQ.rooms[BASILICA], at(BASILICA, 'bay')), bR = D.hqTerrainReach(binfo, bfoot.x, bfoot.z), bk = (x, z) => D.hqTerrainNodeKey(binfo, x, z);
     assert.ok(bR.has(bk(0, -19)) && Math.abs(bR.get(bk(0, -19)) - 0.9) < 0.2, 'the chancel is climbed up the altar steps');
     assert.ok(bR.has(bk(-15, 4)) && Math.abs(bR.get(bk(-15, 4)) - 4.6) < 0.2 && bR.has(bk(15, 4)) && Math.abs(bR.get(bk(15, 4)) - 4.6) < 0.2, 'both triforium galleries are climbed by the stairs behind the chancel');
-    assert.ok(binfo.walls.length === 2 && binfo.walls.every(w => w.top > 0.45 && w.top < 0.75), 'the altar rail is a step the rider grinds');
+    assert.ok(binfo.walls.filter(w => w.h < 1).length === 2 && binfo.walls.filter(w => w.h < 1).every(w => w.top > 0.45 && w.top < 0.75), 'the altar rail is a step the rider grinds');   // AREA CONTENT D4 (2026-09-20): THE ROOD SCREEN is the third wall, 4.2 m
     assert.ok(HQ.rooms[BASILICA].props.filter(p => /pew$/.test(p.key)).length === 14 && HQ.rooms[BASILICA].props.filter(p => p.key === 'stained_glass').length === 6, 'fourteen pews, six windows');
     /* THE SCALE (second pass): a pew is 2.6 m, the nave's columns 8.5 m, the windows 5.5 m high in the wall, the carpet a tapestry on the wall — never on the floor */
     assert.ok(HQ.catalogue.church_pew.span <= 2.8 && HQ.catalogue.catholic_pew.span <= 2.8, 'a pew seats three');
@@ -360,7 +360,7 @@ test('THE PARK RULE + THE HAZARDS + THE LIGHT: a rail and a tier or ramp in ever
     /* the cortile and the dome */
     const coinfo = D.hqTerrainInfo(CORTILE), cofoot = D.hqTerrainDoorLanding(HQ.rooms[CORTILE], at(CORTILE, 'nave')), coR = D.hqTerrainReach(coinfo, cofoot.x, cofoot.z);
     assert.ok(coR.has(D.hqTerrainNodeKey(coinfo, 0, -13)) && Math.abs(coR.get(D.hqTerrainNodeKey(coinfo, 0, -13)) - 1.2) < 0.2, 'the terrace is climbed up its four steps');
-    assert.ok(coinfo.thicket.length >= 10 && coinfo.trees.length === 0, 'the cypress maze grows on the plan’s banks');
+    assert.ok(coinfo.thicket.length >= 10 && coinfo.trees.length === 3, 'the cypress maze grows on the plan’s banks (+ three cypresses on the nave door’s sightlines — AREA CONTENT D4, 2026-09-20)');
     const oinfo = D.hqTerrainInfo(DOME), ofoot = D.hqTerrainDoorLanding(HQ.rooms[DOME], at(DOME, 'stair')), oR = D.hqTerrainReach(oinfo, ofoot.x, ofoot.z);
     assert.ok(oR.has(D.hqTerrainNodeKey(oinfo, 0, -2)) && Math.abs(oR.get(D.hqTerrainNodeKey(oinfo, 0, -2)) - 1.2) < 0.2, 'the dais is climbed');
 });

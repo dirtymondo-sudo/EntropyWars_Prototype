@@ -21167,9 +21167,9 @@ const DOOR_HQ = {
         /* THE BASES */
         { id: 'area51_dumb', route: 'bases', leaf: 'leaf_wired_double',
           /* AREA 51 (2026-09-18): RE-POINTED off the board room onto HANGAR 18's east wall — the floor lift is in the hangar */
-          a: { site: 'prebuilt_area51', part: 'hangar', wall: 'e', z: 0, sub: 'THE FLOOR LIFT · THE TUNNEL TO THE D.U.M.B.' },
+          a: { site: 'prebuilt_area51', part: 'hangar', wall: 'e', z: 0, y: 3.0, sub: 'THE FLOOR LIFT · THE TUNNEL TO THE D.U.M.B.' },
           /* D.U.M.B. (9.3 stage 8, 2026-09-17): RE-POINTED off the board room onto THE MOTOR POOL's west wall — the tunnel comes up in the motor pool, as the note always said */
-          b: { site: 'prebuilt_dumb', part: 'motorpool', wall: 'w', z: 0, sub: 'THE TUNNEL WEST · TO THE HANGAR' },
+          b: { site: 'prebuilt_dumb', part: 'motorpool', wall: 'w', z: 0, y: 2.6, sub: 'THE TUNNEL WEST · TO THE HANGAR' },
           why: 'five sides above ground; the sixth is down. The tunnel every base is on; the hangar\'s floor lift comes up in the D.U.M.B.\'s motor pool', note: 'the sixth side', draft: true },
         /* THE RAMP (2026-09-18 — the user: "I don't know if I like the motor pool being a thing when there is already a parking
            garage, maybe connect them"): THE GARAGE (P1) ⇄ THE MOTOR POOL (P3) — a facility room seaming into a wild one (the
@@ -21180,7 +21180,7 @@ const DOOR_HQ = {
           why: 'the ramp in the garage goes up to an exit sign and down to a level the panel does not have; the cars signed out of P1 are parked on P3 and both sheets are fine with it', note: 'the panel stops at P1', draft: true },
         { id: 'dumb_cern', route: 'bases', leaf: 'leaf_wired_double',
           /* D.U.M.B. (9.3 stage 8, 2026-09-17): RE-POINTED — the motor pool's east wall ⇄ THE RING's west wall (the tunnel stops being straight where the ring starts) */
-          a: { site: 'prebuilt_dumb', part: 'motorpool', wall: 'e', z: 0, sub: 'THE TUNNEL EAST · TO THE RING' },
+          a: { site: 'prebuilt_dumb', part: 'motorpool', wall: 'e', z: 0, y: 2.6, sub: 'THE TUNNEL EAST · TO THE RING' },
           b: { site: 'prebuilt_cern', part: 'ring', wall: 'w', z: 0, sub: 'THE TUNNEL · BACK TO THE MOTOR POOL' },
           why: 'the same tunnel, the Atlantic under it; the ring is where the tunnel stops being straight', note: 'the tunnel turns', draft: true },
         { id: 'cern_backrooms', route: 'bases', leaf: 'leaf_frosted', secret: true,   // THE AREAS (2026-09-18): NOT ON THE PLAN — a secret service bay at both ends
@@ -21289,8 +21289,8 @@ const DOOR_HQ = {
           b: { site: 'prebuilt_lookingglass', part: 'waiting', wall: 'e', z: 0, sub: 'THE SCREEN · BACK TO THE COTS' },
           why: 'the screen in Room REM draws what the four sleepers see, and for a month it has drawn the same waiting room with the same number on the sign; the sleep tech will not say whose number it is', note: 'signal lost is the door', draft: true },
         { id: 'dumb_astral', route: 'astral', way: 'screen',
-          a: { site: 'prebuilt_dumb', part: 'dreamlab', wall: 'n', x: -10, sub: 'THE DREAM SCREEN · THE STACKS BEHIND THE STATIC' },
-          b: { site: 'prebuilt_lookingglass', part: 'library', wall: 'e', z: 0, sub: 'THE SCREEN · BACK TO THE WARD' },
+          a: { site: 'prebuilt_dumb', part: 'dreamlab', wall: 'n', x: -10, y: 1.2, sub: 'THE DREAM SCREEN · THE STACKS BEHIND THE STATIC' },
+          b: { site: 'prebuilt_lookingglass', part: 'library', wall: 'e', z: 0, y: 1.2, sub: 'THE SCREEN · BACK TO THE WARD' },
           why: 'the ward\'s screen draws the library the telepaths read in when they are asleep — the shelves go on past where the wall is, and the sleep study filed the drawing as the room\'s floor plan', note: 'the books are not written yet', draft: true },
         { id: 'attic_nightmare', route: 'astral', way: 'screen',
           a: { site: 'prebuilt_haunted', part: 'attic', wall: 'w', z: 0.2, sub: 'THE HOME MOVIES · SIGNAL LOST' },
@@ -21305,15 +21305,15 @@ const DOOR_HQ = {
         /* THE LEY LINES (2026-09-18 — complex candidate #9): the four ley links RE-POINTED (their ids kept, one row edit each): every station's tunnel
            mouth opens into THE LEY LINES (Göbekli Tepe's part — the oldest doorway is where the line begins; the tell's own mouth is a door pair,
            the same site), Technoticlan's from its board room's north wall as before. A star on the world tab: every leg is Göbekli's. */
-        { id: 'stonehenge_gobekli', route: 'ley', leaf: 'leaf_frame_only',
+        { id: 'stonehenge_gobekli', route: 'ley', leaf: 'leaf_frame_only', secret: true,   // AREA CONTENT D4 (2026-09-20): a DRAUGHT — the line's mouths are on no plan (R4: the henge's, the plateau's, the tower's earned exit)
           a: { site: 'prebuilt_stonehenge', part: 'henge', wall: 'n', x: -10, sub: 'THE LONG BARROW · DOWN THE LINE' },
           b: { site: 'prebuilt_gobekli', part: 'leylines', wall: 'w', z: -40, sub: 'THE WEST MOUTH · UP UNDER THE BARROW' },
           why: 'the line the stones stand on; a frame at each end and nothing in between but the line, four hundred miles of it, dead straight', note: 'a frame at each end', draft: true },
-        { id: 'gobekli_giza', route: 'ley', leaf: 'leaf_frame_only',
+        { id: 'gobekli_giza', route: 'ley', leaf: 'leaf_frame_only', secret: true,   // AREA CONTENT D4 (2026-09-20): a DRAUGHT — the line's mouths are on no plan (R4: the henge's, the plateau's, the tower's earned exit)
           a: { site: 'prebuilt_gobekli', part: 'leylines', wall: 's', x: -30, sub: 'THE SOUTH MOUTH · UP THE ROBBERS’ TUNNEL' },
           b: { site: 'prebuilt_giza', part: 'plateau', wall: 'n', x: -10, sub: 'THE ROBBERS’ TUNNEL · DOWN THE LINE' },
           why: 'the line runs south from the first temple to the last pyramid; the surveyors were the same family, and the robbers dug INWARD', note: 'the same family', draft: true },
-        { id: 'giza_babel', route: 'ley', leaf: 'leaf_frame_only',
+        { id: 'giza_babel', route: 'ley', leaf: 'leaf_frame_only', secret: true,   // AREA CONTENT D4 (2026-09-20): a DRAUGHT — the line's mouths are on no plan (R4: the henge's, the plateau's, the tower's earned exit)
           a: { site: 'prebuilt_gobekli', part: 'leylines', wall: 'n', x: 50, sub: 'THE NORTH-EAST MOUTH · UP THE FOUNDATION SHAFT' },
           b: { site: 'prebuilt_babel', part: 'tower', wall: 'n', x: -10, sub: 'THE FOUNDATION SHAFT · DOWN THE LINE' },
           why: 'the line ends at the tower; the tower was built to stand on it, which is what went wrong', note: 'the line ends here', draft: true },
@@ -21347,7 +21347,7 @@ const DOOR_HQ = {
         /* THE WONDERLAND (the Looking-Glass has no free wall for a landing
            yet — its room is nine metres across and a door would land on the
            board; it joins the route when its room grows or 9.5 reaches it) */
-        { id: 'flatlands_backrooms', route: 'wonderland', leaf: 'leaf_frosted',
+        { id: 'flatlands_backrooms', route: 'wonderland', leaf: 'leaf_frosted', secret: true,   // AREA CONTENT D4 (2026-09-20): THE HOLE IN THE WALLPAPER — a draught at both ends (R4: the levels' second earned exit, the plain's first)
           a: { site: 'prebuilt_flatlands', part: 'plain', wall: 'n', x: -5 },   // THE AREAS (2026-09-18): THE PLAIN ⇄ THE LEVELS
           b: { site: 'prebuilt_backrooms', part: 'levels', wall: 'n', x: -10 },
           why: 'a plane onto a carpet; the flat people found a door with no thickness and walked into a room with too much', note: 'no thickness', draft: true },
@@ -21472,13 +21472,13 @@ const DOOR_HQ = {
           b: { site: 'prebuilt_downtown', part: 'sewers', wall: 'n', x: 20, leaf: 'leaf_cell', sub: 'THE UNDERCITY\'S GUTTER · UP TO THE LOWER STREET', verb: 'CLIMB UP' },
           why: 'the undercity is four metres down and the sewers are under that; the grate at the lower street\'s kerb opens on the same culvert as Downtown\'s, a hundred years earlier, and the water has not noticed',
           note: 'the lower street', draft: true },
-        { id: 'sewers_drain', route: 'sewers', leaf: 'leaf_cell',
+        { id: 'sewers_drain', route: 'sewers', leaf: 'leaf_cell', secret: true,   // AREA CONTENT D4 (2026-09-20): a DRAUGHT — the drain's second earned exit
           a: { site: 'prebuilt_downtown', part: 'sewers', wall: 'e', z: -12, sub: 'THE OUTFALL GRATE · INTO THE STORM DRAIN' },
           b: { site: 'prebuilt_fairy_forest', part: 'deadmans', wall: 's', x: -10, sub: 'THE CULVERT\'S GRATE · INTO THE SEWERS' },
           why: 'the outfall does not go up; it goes sideways through a grate into the storm drain under the woods, which is where every gutter was draining all along',
           note: 'the same culvert', draft: true },
         { id: 'tunnels_works', route: 'subway', leaf: 'leaf_frame_only',
-          a: { site: 'prebuilt_downtown', part: 'tunnels', wall: 'w', z: -16, sub: 'THE TRACK · ON TO THE BUILDING\'S PLATFORM' },
+          a: { site: 'prebuilt_downtown', part: 'tunnels', wall: 'w', z: -16, y: 1.8, sub: 'THE TRACK · ON TO THE BUILDING\'S PLATFORM' },
           b: { room: 'tunnel', wall: 'w', z: -16, sub: 'THE TRACK · PAST THE END OF THE PLATFORM', verb: 'CLIMB DOWN' },
           why: 'the platform ends and the track does not; past the last tube the tunnel runs on to a loop nobody drew on the map, and the loop runs under a city',
           note: 'mind the gap', draft: true },
@@ -21567,6 +21567,15 @@ const DOOR_HQ = {
           b: { site: 'prebuilt_agartha', part: 'crystalcity', wall: 'n', x: -5, y: 2.4 },   // THE AREAS (2026-09-18): the adit comes out in THE CRYSTAL CITY; AREA CONTENT D3 (2026-09-19): ON THE ADIT TERRACE — a door you climb to
           why: 'the adit the crystal city cut toward the cave and stopped one metre short of; something opened the last metre from this side',
           note: 'one metre, from this side', draft: true },
+        /* AREA CONTENT D4 (2026-09-20) — THE DOOR PASS: two draughts inside the cave (R4: the vent's, the blast chamber's, the adit's and the mouth's earned exits) */
+        { id: 'cave_flue', route: 'undercroft', leaf: 'leaf_frame_only', secret: true,
+          a: { site: 'prebuilt_hollow_earth', part: 'vent', wall: 'w', z: 5, sub: 'THE FLUE · A CRACK IN THE HOT WALL · TO THE BLAST CHAMBER' },
+          b: { site: 'prebuilt_hollow_earth', part: 'blast', wall: 'w', z: 3, sub: 'THE FLUE · A CRACK IN THE COLD WALL · TO THE VENT' },
+          why: 'the vent’s heat has to go somewhere; it goes through a crack into the blast chamber, which is why the blast door is warm on the wrong side', note: 'warm on the wrong side', draft: true },
+        { id: 'cave_crawl', route: 'undercroft', leaf: 'leaf_frame_only', secret: true,
+          a: { site: 'prebuilt_hollow_earth', part: 'adit', wall: 'e', z: 0, sub: 'THE CRAWL · UNDER THE CRYSTAL LEDGE · TO THE MOUTH' },
+          b: { site: 'prebuilt_hollow_earth', part: 'mouth', wall: 's', x: 0, sub: 'THE CRAWL · A HOLE IN THE SOUTH ROCK · TO THE ADIT' },
+          why: 'a crawl a miner cut between the adit and the mouth so as not to walk the cavern twice a day; it is not on the survey because he was not on the payroll', note: 'not on the payroll', draft: true },
         { id: 'cave_hollow', route: 'undercroft', leaf: 'leaf_frame_only',
           a: { site: 'prebuilt_hollow_earth', part: 'mouth', wall: 'e', z: -5.25, y: 1.75 },
           b: { site: 'prebuilt_hollow_earth', part: 'innersun', wall: 'n', x: -5, y: 2.2, sub: 'THE CRUST LEDGE · THE MOUTH' },   // THE AREAS (2026-09-18): the mouth opens on THE INNER SUN; AREA CONTENT D3 (2026-09-19): ON THE CRUST LEDGE — a door you climb to
@@ -28565,6 +28574,9 @@ const DOOR_HQ = {
                 { key: 'rug_round',      x: 0, z: 2.8 },
                 { key: 'rug_round',      x: -3.6, z: -1.6 },
                 { key: 'curved_couch',   x: 4.6, z: 2.8, face: 300 },
+                { key: 'library_shelf_full', x: -3.2, z: 2.4, face: 90 },                    // AREA CONTENT D4 (2026-09-20): THE HALL BOOKCASES — the front door sees the landing and nothing else; only the landing looks down on two doors (R3)
+                { key: 'library_shelf_full', x: -2.6, z: 0.2, face: 90 },
+                { key: 'library_shelf_full', x: 2.8, z: 0.6, face: 270 },
                 { key: 'table_lamp',     x: -6.4, z: -0.6, y: 0.0 },                       // on the floor; the bill is unpaid and it is on
                 { key: 'picture_round_a', wall: 'e', z: 1.4, mount: 1.9 },
                 { key: 'picture_round_a', wall: 'e', z: 3.6, mount: 1.9 },
@@ -28630,6 +28642,7 @@ const DOOR_HQ = {
                 { key: 'table_lamp',     x: -4.2, z: 3.3, y: 0.0 },
                 { key: 'candle_ring',    x: 0, z: -1.4, y: 0.46 },
                 { key: 'coffee_table',   x: 0, z: -1.4 },
+                { key: 'library_shelf_full', x: 0.3, z: 0.3, face: 0 },                      // AREA CONTENT D4 (2026-09-20): the bookcase across the landing (the stair does not see the attic hatch — R3)
                 { key: 'wall_torch',     wall: 's', x: -3.0, mount: 1.6 },
                 { key: 'wall_torch',     wall: 'n', x: 1.0, mount: 1.6 },
                 { key: 'picture_round_a', wall: 'n', x: -6.5, mount: 1.8 },   // rev 22: moved off the west wall for THE CLOSET (the seam to Nuketown, retired 2026-09-18) stands there at z 0.4
@@ -28929,6 +28942,11 @@ const DOOR_HQ = {
                     { k: 'deck', x0: 10.4, z0: 12.4, x1: 16.4, z1: 16.5, w: 1.6, y: 0.15 },                 // THE PLANK BRIDGE (past both banks)
                     { k: 'plateau', x: 4, z: -3, r: 1.5, h: 6.0, edge: 0.3 },                               // THE NEEDLE (the tape's)
                     { k: 'wall', x0: 2, z0: 4.5, x1: 8, z1: 4.5, h: 0.9 },                                  // a low wall on the floor (a rail to jump onto)
+                    /* AREA CONTENT D4 (2026-09-20): THE PILLARS — stalagmite columns across the cavern; from LEVEL −6's fissure you see one door, not five (R3) */
+                    { k: 'plateau', x: 3, z: -18.6, r: 1.2, h: 8, edge: 0.3 }, { k: 'plateau', x: 16.6, z: 0, r: 1.2, h: 6, edge: 0.3 }, { k: 'plateau', x: 20.8, z: 1, r: 1.2, h: 6, edge: 0.3 },
+                    { k: 'plateau', x: 0, z: -6.3, r: 1.2, h: 6, edge: 0.3 }, { k: 'plateau', x: -12.6, z: 11.5, r: 1.3, h: 6, edge: 0.3 },
+                    { k: 'plateau', x: -4.8, z: 9.0, r: 1.2, h: 6, edge: 0.3 }, { k: 'plateau', x: -22.8, z: 14.6, r: 1.0, h: 5, edge: 0.3 }, { k: 'plateau', x: -3, z: -3.7, r: 1.2, h: 7, edge: 0.3 },
+                    { k: 'plateau', x: -19.1, z: 3.7, r: 1.2, h: 6, edge: 0.3 }, { k: 'plateau', x: 18.5, z: 15.7, r: 1.2, h: 5, edge: 0.3 },
                     { k: 'rail', x0: -22, z0: 8.7, x1: -18.2, z1: 8.7 },                                   // the terrace's rim
                     { k: 'rail', x0: -13.5, z0: 8.7, x1: -6, z1: 8.7 },
                     { k: 'rail', x0: -15, z0: -4.7, x1: -20.5, z1: -4.7 },                                  // the shelf's rim
@@ -29282,6 +29300,7 @@ const DOOR_HQ = {
                     { k: 'dip', x: -6.2, z: 4.6, r: 1.9, h: 1.0, dome: true },  { k: 'ramp', x0: -3.4, z0: 4.6, x1: -5.8, z1: 4.6, w: 1.6, h0: 0, h1: -0.85 },     // the third
                     { k: 'rail', x0: -3.9, z0: -6.4, x1: -3.9, z1: -2.2 },                                     // the rail along the cells' edge
                     { k: 'wall', x0: -4.2, z0: -2.4, x1: -4.2, z1: 2.4, h: 0.7 },                              // a low wall between the first cells (a rail to hop onto)
+                    { k: 'plateau', x: 3.2, z: -2.2, r: 1.0, h: 3, edge: 0.3 },   // AREA CONTENT D4 (2026-09-20): a pillar between the portcullis and the workings' way (R3)
                     { k: 'path', pts: [[0, -7], [0, 5.5], [3, 6.5]], w: 1.4 },
                 ],
             },
@@ -29380,6 +29399,9 @@ const DOOR_HQ = {
             props: [
                 { key: 'locker',            wall: 'w', z: -3.4 },
                 { key: 'locker',            wall: 'e', z: -2.6 },
+                /* AREA CONTENT D4 (2026-09-20): THE SCRUBBERS — two air units on the port side; from any of the three doors you see one other, not two (R3) */
+                { key: 'boiler',            x: -0.6, z: 1.0, face: 90 },
+                { key: 'boiler',            x: -0.2, z: -1.2, face: 90 },
                 { key: 'railing_1m',        x: 2.4, z: -0.5, face: 90 },                    // the grab rail by the starboard collar (the park rule's rail)
                 { key: 'railing_1m',        x: 2.4, z: 0.5, face: 90 },
                 { key: 'warning_tape',      x: 0, z: 3.6 },                                 // the cycle line on the deck side
@@ -29447,6 +29469,7 @@ const DOOR_HQ = {
                 { key: 'metal_shelving',    wall: 'e', z: 0 },
                 { key: 'metal_shelving',    wall: 'w', z: 2.6 },
                 { key: 'iso_tank',          x: 4.0, z: -0.6, face: 90 },                     // THE CRYO POD: still running, still occupied, not on the manifest
+                { key: 'robot_arm',         x: -1.8, z: 0, face: 180 },                        // AREA CONTENT D4 (2026-09-20): THE CARGO ARM in the middle of the hold (the two bulkheads do not see each other — R3)
                 { key: 'warning_tape',      x: 0, z: 4.4 },
                 { key: 'floor_drain',       x: -2.0, z: 1.2 },
                 { key: 'hook_rail_long',    wall: 'w', z: -2.6, mount: 1.8 },
@@ -29576,8 +29599,8 @@ const DOOR_HQ = {
                   label: 'THE CAPTAIN’S CABIN', sub: 'AFT · THE GREAT CABIN',
                   action: { room: 'site_prebuilt_revenge_cabin', at: 'gundeck' },
                   desc: 'The door aft to the great cabin. It is kept locked. It is open.' },
-                { id: 'hold', wall: 'e', z: 3.5, leaf: 'leaf_shabby_wood',
-                  label: 'THE HOLD', sub: 'DOWN THE LADDER · BELOW THE WATERLINE',
+                { id: 'hold', wall: 'e', z: 3.5, leaf: null, secret: true,
+                  label: 'A DRAUGHT', sub: 'DOWN THE LADDER · BELOW THE WATERLINE',   // AREA CONTENT D4 (2026-09-20): a draught (was THE HOLD)
                   action: { room: 'site_prebuilt_revenge_hold', at: 'gundeck' },
                   desc: 'The hatch and the ladder down into the hold. Records says the hold is flooding on a schedule; the schedule is on the form.' },
             ],
@@ -29592,6 +29615,7 @@ const DOOR_HQ = {
                 { key: 'railing_1m',        x: 0, z: -3.35, face: 0 },
                 { key: 'railing_1m',        x: 1.0, z: -3.35, face: 0 },
                 { key: 'sea_chest',         x: 2.6, z: 2.6, face: 200 },                      // the shot locker
+                { key: 'ship_anchor',       x: -2.8, z: -0.5, face: 340 },                     // AREA CONTENT D4 (2026-09-20): the bower anchor stowed on the gun deck (the companionway does not see the cabin door — R3)
                 { key: 'cardboard_boxes',   x: -3.4, z: 3.4, face: 20 },                      // powder, in the wrong place
                 { key: 'cardboard_box',     x: 4.2, z: -1.4, face: 60 },
                 { key: 'wall_chains',       wall: 'n', x: 5.0, mount: 1.2 },                  // the breeching tackle
@@ -29725,8 +29749,8 @@ const DOOR_HQ = {
                 plate: { x: 4.6, z: 4.75, y: 2.3 },
             },
             doors: [
-                { id: 'gundeck', wall: 'e', z: 0, leaf: 'leaf_shabby_wood',
-                  label: 'THE GUN DECK', sub: 'UP THE LADDER · TO THE GUNS',
+                { id: 'gundeck', wall: 'e', z: 0, leaf: null, secret: true,
+                  label: 'A DRAUGHT', sub: 'UP THE LADDER · TO THE GUNS',   // AREA CONTENT D4 (2026-09-20): a draught (was THE GUN DECK)
                   action: { room: 'site_prebuilt_revenge_gundeck', at: 'hold' },
                   desc: 'The ladder up to the gun deck. Up is the way you came; the other way out of the hold is below the waterline, and it is oiled.' },
             ],
@@ -29915,8 +29939,8 @@ const DOOR_HQ = {
                   label: 'THE STRIP', sub: 'THE MOTEL DOOR · BACK TO THE BOULEVARD',
                   action: { room: 'site_prebuilt_strip_streets', at: 'chapel' },
                   desc: 'The motel door, from the inside. The boulevard is behind it, the console is at the end of the boulevard, and the crossing is at the console. DO NOT DISTURB.' },
-                { id: 'casino', wall: 'e', z: 4.6, leaf: 'leaf_saloon',
-                  label: 'THE CASINO FLOOR', sub: 'THROUGH THE SALOON DOOR · THE TABLES',
+                { id: 'casino', wall: 'e', z: 4.6, leaf: null, secret: true,
+                  label: 'A DRAUGHT', sub: 'THROUGH THE SALOON DOOR · THE TABLES',   // AREA CONTENT D4 (2026-09-20): a draught (was THE CASINO FLOOR)
                   action: { room: 'site_prebuilt_strip_casino', at: 'chapel' },
                   desc: 'A saloon door beside the register. Every chapel on the Strip opens onto a casino floor; the vows are the cover charge.' },
             ],
@@ -29984,8 +30008,8 @@ const DOOR_HQ = {
                 plate: { x: -8.75, z: 2.0, y: 2.4 },
             },
             doors: [
-                { id: 'chapel', wall: 'w', z: 4.6, leaf: 'leaf_saloon',
-                  label: 'THE CHAPEL', sub: 'THROUGH THE SALOON DOOR · THE ALTAR',
+                { id: 'chapel', wall: 'w', z: 4.6, leaf: null, secret: true,
+                  label: 'A DRAUGHT', sub: 'THROUGH THE SALOON DOOR · THE ALTAR',   // AREA CONTENT D4 (2026-09-20): a draught (was THE CHAPEL)
                   action: { room: 'site_prebuilt_strip_chapel', at: 'casino' },
                   desc: 'The saloon door back to the chapel, and through the chapel the boulevard. The floor has no other door you can see, no clock and no window; the exit is the thing they sell least.' },
             ],
@@ -30128,8 +30152,8 @@ const DOOR_HQ = {
                   label: 'DOWNTOWN', sub: 'THE LOBBY DOOR · BACK TO THE INTERSECTION',
                   action: { room: 'site_prebuilt_downtown', at: 'tower' },
                   desc: 'The lobby door, from the inside. The intersection is behind it, the console is across the intersection, and the monster was here first.' },
-                { id: 'subway', wall: 'n', x: 3.5, leaf: 'leaf_frame_only',
-                  label: 'THE PLATFORM', sub: 'THE STAIR DOWN · THE SUBWAY',
+                { id: 'subway', wall: 'n', x: 3.5, leaf: null, secret: true,
+                  label: 'A DRAUGHT', sub: 'THE STAIR DOWN · THE SUBWAY',   // AREA CONTENT D4 (2026-09-20): a draught (was THE PLATFORM)
                   action: { room: 'site_prebuilt_downtown_subway', at: 'lobby' },
                   desc: 'The stair down to the platform, under the tower. The tower comes down every year; the platform has never once been touched. Records has a theory. Records has been asked to keep it.' },
                 /* DISASTER CITY (2026-09-17): the tower's OTHER doors, onto the avenue — the way into THE STREETS */
@@ -30152,6 +30176,7 @@ const DOOR_HQ = {
                 { key: 'potted_plant',      x: 5.8, z: 4.8 },
                 { key: 'concrete_pillar',   x: -2.5, z: -2.5 },                                // the lobby's columns; two of four
                 { key: 'concrete_pillar',   x: 2.5, z: -2.5 },
+                { key: 'fountain',          x: 0, z: -1.2 },                                    // AREA CONTENT D4 (2026-09-20): THE LOBBY FOUNTAIN, dry since 1954 (the street door does not see the avenue's — R3)
                 { key: 'warning_tape',      x: -2.0, z: -4.4, face: 0 },                       // the line before the fallen stair
                 { key: 'railing_1m',        x: -3.0, z: -4.2, face: 0 },                       // THE CORDON (the park rule's rail)
                 { key: 'railing_1m',        x: -2.0, z: -4.2, face: 0 },
@@ -30203,8 +30228,8 @@ const DOOR_HQ = {
                 plate: { x: 1.5, z: 14.75, y: 2.8 },
             },
             doors: [
-                { id: 'lobby', wall: 's', x: 1.5, leaf: 'leaf_frame_only',
-                  label: 'THE TOWER LOBBY', sub: 'THE STAIR UP · THE LOBBY',
+                { id: 'lobby', wall: 's', x: 1.5, leaf: null, secret: true,
+                  label: 'A DRAUGHT', sub: 'THE STAIR UP · THE LOBBY',   // AREA CONTENT D4 (2026-09-20): a draught (was THE TOWER LOBBY)
                   action: { room: 'site_prebuilt_downtown_lobby', at: 'subway' },
                   desc: 'The stair up into the tower\'s lobby. The tower comes down every year; the stair has never once been touched, and neither has the platform. The train has.' },
                 /* DISASTER CITY (2026-09-17): THE METRO — the platform's other stair, up onto the streets */
@@ -30220,6 +30245,8 @@ const DOOR_HQ = {
                 { key: 'turnstile',         x: 0.8, z: 10.5, face: 0 },                        // THE GATES, at the foot of the stair
                 { key: 'turnstile',         x: 1.8, z: 10.5, face: 0 },
                 { key: 'turnstile',         x: 2.8, z: 10.5, face: 0 },
+                { key: 'ticket_booth',      x: 1.5, z: -4, face: 0 },                          // AREA CONTENT D4 (2026-09-20): THE BOOTH on the platform (the street stair does not see the train — R3)
+                { key: 'ticket_booth',      x: -0.4, z: -8, face: 90 },                        // … and the closed one at the platform's edge (the tunnel's end does not see the train)
                 { key: 'departures_board',  wall: 'n', x: -2.4, mount: 2.4 },                  // every line, DELAYED (over the track since the street stair took x 2.2, 2026-09-17)
                 { key: 'tube_map',          wall: 'e', z: -6, mount: 1.1 },
                 { key: 'park_bench',        x: 2.4, z: -6, face: 270 },
@@ -30377,6 +30404,9 @@ const DOOR_HQ = {
                     { k: 'tree', x: 3.0, z: 2.0, kind: 'tree_4', h: 7.5, r: 0.9 },                            // THE OLD TREE
                     { k: 'tree', x: 4.6, z: 3.8, kind: 'tree_4', h: 6.5, r: 0.8 },
                     { k: 'tree', x: 1.6, z: 4.4, kind: 'tree_4', h: 6.0, r: 0.75 },
+                    /* AREA CONTENT D4 (2026-09-20): five trees on the eight doors' sightlines (R3 — the hub sees one door from any door) */
+                    { k: 'tree', x: 18.0, z: 11.2, kind: 'tree_2', h: 7.0, r: 0.9 }, { k: 'tree', x: 4.4, z: 9.6, kind: 'tree_3', h: 6.5, r: 0.8 },
+                    { k: 'tree', x: 5.0, z: 12.5, kind: 'tree_3', h: 6.5, r: 0.8 }, { k: 'tree', x: -6.1, z: -8.0, kind: 'tree', h: 7.0, r: 0.8 },
                     { k: 'rail', x0: 9.0, z0: -16.5, x1: 4.0, z1: -16.5 },                                    // a fence rail by the crag (the park rule's grind)
                     { k: 'path', pts: [[-0.9, 17], [-1, 8], [-4, 0], [-8, -8], [-7.9, -17]], w: 1.8 },        // the path in, over the knoll to the trail
                     { k: 'path', pts: [[-1, 8], [8, 6], [16, 4.5], [22, -1], [22, -7.9]], w: 1.6 },           // to the plank and the redwoods
@@ -30414,8 +30444,8 @@ const DOOR_HQ = {
                   label: 'THE BACK PASTURE', sub: 'WEST · THE FENCE LINE',
                   action: { room: 'site_prebuilt_fairy_forest_pasture', at: 'clearing' },
                   desc: 'The trees thin into grass and a fence, and the fence has two gates, and neither of them is the Department’s.' },
-                { id: 'ritual', wall: 'w', z: 9.625, leaf: null,
-                  label: 'THE RITUAL GROUND', sub: 'THE STONES · THE FIRE',
+                { id: 'ritual', wall: 'w', z: 9.625, leaf: null, secret: true,
+                  label: 'A DRAUGHT', sub: 'THE STONES · THE FIRE',   // AREA CONTENT D4 (2026-09-20): THE GAP IN THE HEDGE — the stones are not on the way to anywhere (was THE RITUAL GROUND)
                   action: { room: 'site_prebuilt_fairy_forest_ritual', at: 'clearing' },
                   desc: 'Candle smoke on the wind, from the west. The stones are older than the candles and the candles are recent.' },
             ],
@@ -30482,6 +30512,10 @@ const DOOR_HQ = {
                   label: 'THE CLEARING', sub: 'BACK DOWN TO THE CROSSROADS',
                   action: { room: 'site_prebuilt_fairy_forest_clearing', at: 'trail' },
                   desc: 'Back down. The clearing is where every path in the woods ends up, including the ones that do not.' },
+                /* AREA CONTENT D4 (2026-09-20) — THE DOOR PASS: THE DEER PATH — a draught through the thicket to THE STAIRCASE (R4: the trail's earned exit) */
+                { id: 'deerpath', wall: 'e', z: 4, secret: true, leaf: null, label: 'A DRAUGHT', sub: 'THE DEER PATH · THROUGH THE THICKET TO THE STAIRCASE',
+                  action: { room: 'site_prebuilt_fairy_forest_stair', at: 'deerpath' },
+                  desc: 'A gap in the thicket a deer would take and a person would not, until they do. It comes out at the foot of the staircase.', draft: true },
             ],
             counters: [],
             props: [
@@ -30539,6 +30573,10 @@ const DOOR_HQ = {
                   label: 'THE CLEARING', sub: 'BACK TO THE CROSSROADS',
                   action: { room: 'site_prebuilt_fairy_forest_clearing', at: 'redwoods' },
                   desc: 'Back west, where the trees are young enough to be trees.' },
+                /* AREA CONTENT D4 (2026-09-20) — THE DOOR PASS: THE CULVERT — the creek goes into a pipe under the bank; the pipe is the storm drain (R4) */
+                { id: 'culvert', wall: 'n', x: 0, secret: true, leaf: null, label: 'A DRAUGHT', sub: 'THE CULVERT · WHERE THE CREEK GOES UNDER',
+                  action: { room: 'site_prebuilt_fairy_forest_deadmans', at: 'culvert' },
+                  desc: 'The creek goes into the bank and does not come out. The pipe it goes into is big enough, if you do not mind the dark.', draft: true },
             ],
             counters: [],
             props: [
@@ -30651,6 +30689,10 @@ const DOOR_HQ = {
                   label: 'THE CLEARING', sub: 'BACK TO THE CROSSROADS',
                   action: { room: 'site_prebuilt_fairy_forest_clearing', at: 'stair' },
                   desc: 'Back past the crag. The stairs stay where they are, which is the most that can be said for them.' },
+                /* AREA CONTENT D4 (2026-09-20) — THE DOOR PASS: THE DEER PATH's other end (R4) */
+                { id: 'deerpath', wall: 'w', z: 4, secret: true, leaf: null, label: 'A DRAUGHT', sub: 'THE DEER PATH · THROUGH THE THICKET TO THE TRAIL',
+                  action: { room: 'site_prebuilt_fairy_forest_trail', at: 'deerpath' },
+                  desc: 'The thicket is thinner here than it looks. The trail is on the other side of it, and so is the mountain.', draft: true },
             ],
             counters: [],
             props: [
@@ -30706,6 +30748,8 @@ const DOOR_HQ = {
                     { k: 'plateau', x: 5.0, z: -3.9, w: 7.0, d: 2.4, h: 1.0, edge: 0.3 },                     // THE LEDGE on the north bank
                     { k: 'ramp', x0: 0.4, z0: -3.9, x1: 2.0, z1: -3.9, w: 2.0, h0: 0, h1: 1.0 },              // its ramp
                     { k: 'rail', x0: 1.8, z0: -2.6, x1: 8.4, z1: -2.6 },                                      // the ledge's handrail over the sump
+                    /* AREA CONTENT D4 (2026-09-20) — THE DOOR PASS: THE EAST PIER — a brick pier across the culvert's dry banks (the channel is the way past it, a wade) breaks the sightline from the street's grate to LEVEL −6's (R3) */
+                    { k: 'wall', x0: 11, z0: -5.25, x1: 11, z1: 1.4, h: 2.6, t: 0.6, key: 'bricks_2' }, { k: 'wall', x0: 11, z0: 4.0, x1: 11, z1: 5.25, h: 2.6, t: 0.6, key: 'bricks_2' },       // the east pier
                     { k: 'path', pts: [[-17, -0.4], [17, -0.4]], w: 1.6 }, { k: 'path', pts: [[-17, 4.4], [17, 4.4]], w: 1.4 },
                 ],
             },
@@ -30714,6 +30758,10 @@ const DOOR_HQ = {
                   label: 'THE CLEARING', sub: 'BACK OUT · INTO THE TREES',
                   action: { room: 'site_prebuilt_fairy_forest_clearing', at: 'deadmans' },
                   desc: 'Back out of the mouth into the trees, where the paint stops and the water keeps going.' },
+                /* AREA CONTENT D4 (2026-09-20) — THE DOOR PASS: THE CULVERT's other end (R4) */
+                { id: 'culvert', wall: 's', x: 5, secret: true, leaf: null, label: 'A DRAUGHT', sub: 'THE CULVERT · OUT UNDER THE REDWOODS',
+                  action: { room: 'site_prebuilt_fairy_forest_redwoods', at: 'culvert' },
+                  desc: 'A pipe in the south wall with daylight at the far end of it and the creek coming down it. The redwoods are up there.', draft: true },
             ],
             counters: [],
             props: [
@@ -30774,8 +30822,8 @@ const DOOR_HQ = {
                 ],
             },
             doors: [
-                { id: 'clearing', wall: 'e', z: -0.875, leaf: null,
-                  label: 'THE CLEARING', sub: 'BACK TO THE CROSSROADS',
+                { id: 'clearing', wall: 'e', z: -0.875, leaf: null, secret: true,
+                  label: 'A DRAUGHT', sub: 'BACK TO THE CROSSROADS',   // AREA CONTENT D4 (2026-09-20): THE GAP IN THE HEDGE (was THE CLEARING)
                   action: { room: 'site_prebuilt_fairy_forest_clearing', at: 'ritual' },
                   desc: 'Back east, downwind of the candles.' },
             ],
@@ -31764,6 +31812,10 @@ const DOOR_HQ = {
                     { k: 'ramp', x0: 15, z0: -22.5, x1: 15, z1: -12.6, w: 3, h0: 0.9, h1: 4.6, stairs: true },    // the east stair
                     { k: 'wall', x0: -11, z0: -13.0, x1: -4.5, z1: -13.0, h: 0.55, t: 0.3, key: 'marble' },        // THE ALTAR RAIL (a step; the park rule's grind)
                     { k: 'wall', x0: 4.5, z0: -13.0, x1: 11, z1: -13.0, h: 0.55, t: 0.3, key: 'marble' },
+                    /* AREA CONTENT D4 (2026-09-20) — THE DOOR PASS: THE ROOD SCREEN — a carved screen across the chancel's east half (the crypt door sees the nave's doors no more, R3) */
+                    { k: 'wall', x0: -9.5, z0: -11.4, x1: 9.5, z1: -11.4, h: 4.2, t: 0.6, key: 'marble' },   // the chancel is entered round its ends (x ±9.5..±12.75)
+                    /* THE ARCADE — two columns of the nave (the west gallery does not see the east gallery's door across the nave) */
+                    { k: 'plateau', x: -5, z: 10, r: 0.8, h: 8, edge: 0.2 }, { k: 'plateau', x: 5, z: 10, r: 0.8, h: 8, edge: 0.2 }, { k: 'plateau', x: -9.4, z: 15.4, r: 0.8, h: 8, edge: 0.2 }, { k: 'plateau', x: 9.4, z: 15.4, r: 0.8, h: 8, edge: 0.2 },
                     { k: 'plateau', x: -9.5, z: 22.5, r: 1.6, h: 6.4, edge: 0.3 },                                 // THE ORGAN LOFT (the tape's)
                     { k: 'rail', x0: -12.75, z0: -12.5, x1: -12.75, z1: 16.5 },                                     // the galleries' balustrades
                     { k: 'rail', x0: 12.75, z0: -12.5, x1: 12.75, z1: 16.5 },
@@ -31774,11 +31826,11 @@ const DOOR_HQ = {
             },
             /* the south wall at x 0 is THE BAY DOOR (siteRooms.entry, 2026-09-18): the board room is bypassed — the white door lands you in the narthex */
             doors: [
-                { id: 'library', wall: 'w', z: 22, leaf: 'leaf_coffee',
+                { id: 'library', wall: 'w', z: 10, y: 4.6, leaf: 'leaf_coffee',
                   label: 'THE ARCHIVE', sub: 'THE SECRET ARCHIVE · THE STACKS',
                   action: { room: 'site_prebuilt_vatican_library', at: 'nave' },
                   desc: 'The archive door. Secret is the name, not the status: the catalogue is public and the index is not.' },
-                { id: 'cloister', wall: 'e', z: 22, leaf: 'leaf_coffee',
+                { id: 'cloister', wall: 'e', z: 10, y: 4.6, leaf: 'leaf_coffee',
                   label: 'THE CORTILE', sub: 'THE COURTYARD · THE FOUNTAIN · THE CISTERN',
                   action: { room: 'site_prebuilt_vatican_courtyard', at: 'nave' },
                   desc: 'The cloister door. Daylight through it, and the fountain, and a well the gardener does not draw from.' },
@@ -31909,6 +31961,10 @@ const DOOR_HQ = {
                   label: 'THE OBSERVATORY', sub: 'THE DOME STAIR · UP · 401 STEPS',
                   action: { room: 'site_prebuilt_vatican_observatory', at: 'stair' },
                   desc: 'An opening at the back of the gallery and a stair inside the dome’s skin. Four hundred and one steps; the archive counted, the archive is not sure.' },
+                /* AREA CONTENT D4 (2026-09-20) — THE DOOR PASS: THE PASSAGE UNDER THE NAVE — from the stacks to the cortile without crossing the basilica (R4) */
+                { id: 'undernave', wall: 's', x: -8, secret: true, leaf: null, label: 'A DRAUGHT', sub: 'THE PASSAGE UNDER THE NAVE · TO THE CORTILE',
+                  action: { room: 'site_prebuilt_vatican_courtyard', at: 'undernave' },
+                  desc: 'A case that is not full of books swings on a pin. The passage behind it goes under the nave, which is why the nave has that one cold flagstone.', draft: true },
             ],
             counters: [],
             props: [
@@ -31977,6 +32033,8 @@ const DOOR_HQ = {
                     { k: 'path', pts: [[0, 4.5], [10, 5], [15, 9]], w: 1.4 },                                          // to the campanile
                     { k: 'scatter', key: 'fern', n: 8, seed: 1 },
                     { k: 'scatter', key: 'potted_plant', n: 6, seed: 2 },
+                    /* AREA CONTENT D4 (2026-09-20): two cypresses on the nave door's sightlines to the well and the painting (R3) */
+                    { k: 'tree', x: -11.5, z: 7.0, kind: 'pine', h: 6.5, r: 0.7 }, { k: 'tree', x: -11.5, z: 9.3, kind: 'pine', h: 6.5, r: 0.7 }, { k: 'tree', x: -3, z: 3.0, kind: 'pine', h: 6.5, r: 0.9 },
                 ],
             },
             doors: [
@@ -31988,6 +32046,10 @@ const DOOR_HQ = {
                   label: 'THE CISTERN', sub: 'THE WELL · DOWN THE ROPE · THE CATACOMBS',
                   action: { room: 'site_prebuilt_vatican_catacombs', at: 'well' },
                   desc: 'The cistern. Consecrated once, then drained, then a rope. It comes up in the catacombs, which the gardener says is why he waters from the fountain.' },
+                /* AREA CONTENT D4 (2026-09-20) — THE DOOR PASS: THE PASSAGE UNDER THE NAVE's garden end (R4) */
+                { id: 'undernave', wall: 's', x: 12, secret: true, leaf: null, label: 'A DRAUGHT', sub: 'THE PASSAGE UNDER THE NAVE · TO THE ARCHIVE',
+                  action: { room: 'site_prebuilt_vatican_library', at: 'undernave' },
+                  desc: 'A gardener’s door in the cloister wall that opens onto a stair going down, not a shed. The stair goes under the nave and comes up in the stacks.', draft: true },
             ],
             counters: [],
             props: [
@@ -32122,6 +32184,9 @@ const DOOR_HQ = {
                     { k: 'ramp', x0: 11, z0: 1.2, x1: 11, z1: 5.7, w: 2.6, h0: 0, h1: 1.75 },                            // its ramp, outside the bowl (ends 0.7 m inside the ledge — THE RAMP RULE)
                     { k: 'plateau', x: -8, z: -12, r: 2.0, h: 3.6, edge: 0.3 },                                         // THE PLINTH (the tape's)
                     { k: 'wall', x0: -4, z0: 9.5, x1: -11, z1: 9.5, h: 1.1, t: 0.6, key: 'obsidian' },                   // THE BASALT WALL under the first flight (the rider's)
+                    /* AREA CONTENT D4 (2026-09-20): THE FANGS — two obsidian spires in the bowl; from the rim you see one door below you, not two (R3) */
+                    { k: 'wall', x0: 3.5, z0: -1.5, x1: 6, z1: -4.5, h: 7, t: 0.8, key: 'obsidian' },
+                    { k: 'wall', x0: 13, z0: 1.8, x1: 14, z1: -0.6, h: 7, t: 0.8, key: 'obsidian' },
                     { k: 'rail', x0: -6, z0: 12.3, x1: 6, z1: 12.3 },                                                    // the rim's front rail over the drop
                     { k: 'rail', x0: 8.4, z0: 10.7, x1: 13.6, z1: 10.7 },                                                // the ledge's chain rail
                     { k: 'path', pts: [[0, 16.5], [-6.3, 15], [-13.6, 15]], w: 1.8 },                                    // the rim, down the first flight
@@ -32226,6 +32291,9 @@ const DOOR_HQ = {
                     { k: 'plateau', x: -12.4, z: -2.6, r: 1.4, h: 5.6, edge: 0.3, float: true },
                     { k: 'plateau', x: 3.0, z: -13.2, r: 1.6, h: 9.4, edge: 0.3, float: true },                                     // the lookout beside flight C
                     { k: 'plateau', x: 17, z: 8, r: 1.4, h: 6.0, edge: 0.3, float: true },                                          // THE PINNACLE on the lower shelf (the tape's)
+                    /* AREA CONTENT D4 (2026-09-20): THE CLOUD PILLARS — two columns of cloud beside the flights; from the gate you look down on one door, not two (R3) */
+                    { k: 'plateau', x: 0, z: -16, r: 1.8, h: 12.6, edge: 0.3, float: true },
+                    { k: 'plateau', x: -11.4, z: 5, r: 1.4, h: 7.0, edge: 0.3, float: true },
                     /* the rails (the park rule) */
                     { k: 'rail', x0: 7.7, z0: 0.8, x1: 7.7, z1: 4.6 },                                               // the first landing's east rim
                     { k: 'rail', x0: -14.5, z0: -19.3, x1: 6, z1: -19.3 },                                            // the top landing's front rail
@@ -32322,6 +32390,9 @@ const DOOR_HQ = {
                     { k: 'plateau', x: -10.5, z: -1.5, r: 1.5, h: 1.2, edge: 0.3, float: true },                      // THE STEPPING CLOUDS west of the rift: three hops up to the lookout
                     { k: 'plateau', x: -12.5, z: -6.5, r: 1.4, h: 2.4, edge: 0.3, float: true },
                     { k: 'plateau', x: -13.5, z: -11.5, r: 1.6, h: 3.4, edge: 0.3, float: true },                     // THE LOOKOUT over the dais
+                    /* AREA CONTENT D4 (2026-09-20): two clouds hung in the fields — the dais sees one door, not two (R3) */
+                    { k: 'plateau', x: 8.5, z: -4, r: 1.3, h: 3.6, edge: 0.3, float: true },
+                    { k: 'plateau', x: 0, z: 4, r: 1.5, h: 3.5, edge: 0.3, float: true },
                     { k: 'pool', x: 12, z: 4, r: 1.6, y: -0.05, depth: 0.5 },                                         // the healing pools (waded)
                     { k: 'pool', x: -14, z: 2, r: 1.3, y: -0.05, depth: 0.5 },
                     { k: 'rail', x0: -8, z0: -16.4, x1: -3, z1: -16.4 },                                              // the dais's back rail
@@ -32482,6 +32553,8 @@ const DOOR_HQ = {
                     { k: 'scatter', key: 'fern', n: 10, seed: 5 },
                     { k: 'scatter', key: 'stump', n: 3, seed: 6 },
                     { k: 'scatter', key: 'cave_stone', n: 4, seed: 7 },
+                    /* AREA CONTENT D4 (2026-09-20) — THE DOOR PASS: the yews along the track outside the moat — the postern sees the wardrobe and the spring’s pool no more (R3) */
+                    { k: 'tree', x: -46.2, z: -8, kind: 'tree_3', h: 6.0, r: 0.7 }, { k: 'tree', x: -42.6, z: -20, kind: 'tree_3', h: 5.5, r: 0.7 }, { k: 'tree', x: -46.4, z: 8, kind: 'tree_2', h: 5.5, r: 0.7 },
                 ],
             },
             doors: [
@@ -32579,6 +32652,10 @@ const DOOR_HQ = {
                   label: 'THE KEEP', sub: 'THE STABLE DOOR · THROUGH TO THE KEEP',
                   action: { room: 'site_prebuilt_camelot_keep', at: 'hall' },
                   desc: 'A stable door in a hall wall, the top half open. Through it the keep’s guardroom and the smell of horses there are none of.' },
+                /* AREA CONTENT D4 (2026-09-20) — THE DOOR PASS: THE PRIEST HOLE — a panel behind the dais down into the undercroft (R4) */
+                { id: 'priesthole', wall: 'e', z: -18, secret: true, leaf: null, label: 'A DRAUGHT', sub: 'THE PRIEST HOLE · BEHIND THE DAIS · DOWN TO THE UNDERCROFT',
+                  action: { room: 'site_prebuilt_camelot_dungeon', at: 'priesthole' },
+                  desc: 'A panel behind the dais that gives when leaned on. The stair behind it is a priest’s width and goes down to Merlin’s.', draft: true },
             ],
             counters: [],
             props: [
@@ -32646,7 +32723,10 @@ const DOOR_HQ = {
                        rooms: [{ id: 'guard', x: 0, z: 12, w: 16, d: 12 }, { id: 'stairhall', x: -2, z: -9, w: 34, d: 24 }] },
                 features: [
                     { k: 'plateau', x: -10, z: -13, w: 12, d: 8, h: 4.5, edge: 0.3 },                                        // THE SOLAR (x −16..−4, z −17..−9)
-                    { k: 'ramp', x0: -10, z0: 0.6, x1: -10, z1: -9.7, w: 3, h0: 0, h1: 4.5, stairs: true, edge: 0.2 },       // THE GREAT STAIR, first flight (L ≥ 2.2 × h; ends 0.7 m inside)
+                    { k: 'ramp', x0: -10, z0: 0.6, x1: -10, z1: -9.7, w: 3, h0: 0, h1: 4.5, stairs: true, edge: 0.2 },
+                    /* AREA CONTENT D4 (2026-09-20): THE HEARTH GALLERY — a timber gallery from the solar's west edge to the hearth on the west wall,
+                       where THE CHIMNEY's rungs go up (the bridge layer: the floor under it stays walked, the strip west of the solar is not a pocket) */
+                    { k: 'bridge', x0: -14.5, z0: -13, x1: -18.7, z1: -13, w: 2.4, y: 4.5, key: 'wood' },   // the east mouth 0.7 m inside the solar's flat top (x −15.2); the west end stops SHORT of the hearth pad (x −19.2) — a slab over the pad's cell puts the landing on the bridge layer and the solver never finds the door       // THE GREAT STAIR, first flight (L ≥ 2.2 × h; ends 0.7 m inside)
                     { k: 'plateau', x: 10, z: -16, w: 8, d: 12, h: 9.0, edge: 0.3 },                                         // THE BATTLEMENTS (x 6..14, z −22..−10 — against the north wall)
                     { k: 'ramp', x0: -4.6, z0: -13, x1: 6.7, z1: -13, w: 3, h0: 4.5, h1: 9.0, stairs: true, edge: 0.2 },      // the second flight, across the hall (starts 0.6 m inside the solar, ends 0.7 m inside the battlements)
                     { k: 'plateau', x: 15.4, z: -19, r: 1.4, h: 12.5, edge: 0.3 },                                           // THE TOWER TOP (the tape — the door gun's, from the battlements)
@@ -32676,6 +32756,10 @@ const DOOR_HQ = {
                   label: 'THE CASTLE IN THE SKY', sub: 'FROM THE BATTLEMENTS · UP',
                   action: { room: 'site_prebuilt_camelot_sky', at: 'keep' },
                   desc: 'An opening in the battlements’ back wall with nothing behind it but cloud, lit from above. The sentry says it is a door. The sentry has not used it.' },
+                /* AREA CONTENT D4 (2026-09-20) — THE DOOR PASS: THE CHIMNEY — the solar's flue climbs into the cloud; the castle in the sky is up it (R4) */
+                { id: 'chimney', wall: 'w', z: -13, y: 4.5, secret: true, leaf: null, label: 'A DRAUGHT', sub: 'THE CHIMNEY · THE SOLAR’S FLUE · UP INTO THE CLOUD',
+                  action: { room: 'site_prebuilt_camelot_sky', at: 'chimney' },
+                  desc: 'The solar’s hearth has no fire and the flue has no smoke. It has a draught, downward, that smells of cloud. The rungs go up.', draft: true },
             ],
             counters: [],
             props: [
@@ -32766,6 +32850,10 @@ const DOOR_HQ = {
                   label: 'THE OUTER WARD', sub: 'THE SALLY PORT · OUT UNDER THE MOAT',
                   action: { room: 'site_prebuilt_camelot_ward', at: 'postern' },
                   desc: 'A low wet door at the end of the passage. It comes out in the trees outside the moat, dry, which is the trick of it.' },
+                /* AREA CONTENT D4 (2026-09-20) — THE DOOR PASS: THE PRIEST HOLE's foot (R4) */
+                { id: 'priesthole', wall: 'n', x: 10, secret: true, leaf: null, label: 'A DRAUGHT', sub: 'THE PRIEST HOLE · THE STAIR UP BEHIND THE DAIS',
+                  action: { room: 'site_prebuilt_camelot_hall', at: 'priesthole' },
+                  desc: 'A stair a priest’s width in the north wall, going up. It comes out behind the dais, behind a panel that nobody leans on.', draft: true },
             ],
             counters: [],
             props: [
@@ -32818,7 +32906,7 @@ const DOOR_HQ = {
             terrain: {
                 floor: 'cloud_2', cliff: 'castle_wall', path: 'cobblestone',
                 noise: { amp: 0.25, scale: 7 },
-                gen: { kind: 'rooms', seed: 777, loops: 2, thicket: false, wallH: 2.4, rMin: 6, rMax: 11 },                 // THE FLOOR PLAN: cloud islands and cloud bridges — no trees in the sky
+                gen: { kind: 'rooms', seed: 777, loops: 2, thicket: false, wallH: 2.4, rMin: 6, rMax: 11, open: [{ x: -20, z: 21.5, r: 4 }] },   // AREA CONTENT D4: the cloud round THE CHIMNEY's pot                 // THE FLOOR PLAN: cloud islands and cloud bridges — no trees in the sky
                 features: [
                     { k: 'hill', x: -18, z: 14, r: 5, h: 0.9 },                                                              // the cloud mounds
                     { k: 'hill', x: 20, z: -16, r: 4, h: 0.7 },
@@ -32846,6 +32934,10 @@ const DOOR_HQ = {
                   label: 'THE KEEP', sub: 'DOWN · TO THE BATTLEMENTS',
                   action: { room: 'site_prebuilt_camelot_keep', at: 'sky' },
                   desc: 'The opening from above: the battlements, the brazier, the sentry looking up at you. From here it is a hole in the cloud with a castle at the bottom of it.' },
+                /* AREA CONTENT D4 (2026-09-20) — THE DOOR PASS: THE CHIMNEY's top — a flue that comes up through the cloud (R4) */
+                { id: 'chimney', wall: 's', x: -20, secret: true, leaf: null, label: 'A DRAUGHT', sub: 'THE CHIMNEY · THE FLUE DOWN INTO THE KEEP’S SOLAR',
+                  action: { room: 'site_prebuilt_camelot_keep', at: 'chimney' },
+                  desc: 'A chimney pot standing on the cloud with no house under it. The rungs inside go down a long way and come out in a room with no fire.', draft: true },
             ],
             counters: [],
             props: [
@@ -32934,7 +33026,7 @@ const DOOR_HQ = {
             terrain: {
                 floor: 'urban:ConcreteStriped1b', cliff: 'urban:MetalCorrugatedPainted2a', path: 'urban:TileGeneric3a',
                 noise: { amp: 0, scale: 5 }, crag: false,
-                gen: { kind: 'halls', seed: 51, loops: 3, wallKey: 'urban:MetalCorrugatedPainted2a', leafMin: 7, leafMax: 14,
+                gen: { kind: 'halls', seed: 51, loops: 3, wallKey: 'urban:MetalCorrugatedPainted2a', leafMin: 7, leafMax: 14, open: [{ x: 32, z: 0, r: 6 }],   // AREA CONTENT D4: the floor round THE FREIGHT GANTRY (no pocket under its flanks)
                        rooms: [{ id: 'floor', x: -8, z: 0, w: 46, d: 32 }] },                                            // the BSP wraps it: the offices, the stores, the shop
                 features: [
                     { k: 'plateau', x: -12, z: -2, r: 6.5, h: 1.2, edge: 0.3 },                                         // THE RIG (the saucer stands on it)
@@ -32948,6 +33040,11 @@ const DOOR_HQ = {
                     { k: 'path', pts: [[35, 0], [15, 0]], w: 2.2 },                                                     // the floor lift's lane
                     { k: 'path', pts: [[18, -23], [18, -8]], w: 3.0 },                                                  // the big door's lane
                     { k: 'path', pts: [[-35, -12], [-31, -12]], w: 2.0 },                                               // the white rooms' lane
+                    /* AREA CONTENT D4 (2026-09-20): THE FREIGHT GANTRY — the tunnel's door (links.area51_dumb.a) stands 3 m up on the east
+                       wall, up a stair along the floor lift's lane (R4: a door you climb to) */
+                    { k: 'plateau', x: 33, z: 0, w: 6, d: 8, h: 3.0, edge: 0.3 },
+                    { k: 'ramp', x0: 23, z0: 0, x1: 30.7, z1: 0, w: 2.4, h0: 0, h1: 3.0, stairs: true, edge: 0.2 },      // L 7.7 ≥ 2.2 × 3; ends 0.7 m inside
+                    { k: 'rail', x0: 35.5, z0: -3.5, x1: 35.5, z1: 3.5 },
                 ],
             },
             doors: [
@@ -32960,6 +33057,10 @@ const DOOR_HQ = {
                   label: 'THE FLIGHT LINE', sub: 'THE BIG DOOR · OUT TO RUNWAY 33',
                   action: { room: 'site_prebuilt_area51_flightline', at: 'hangar' },
                   desc: 'The big door, or the man-sized part of it. Beyond it the apron, the runway, the tower, and the lights that go round the base all night for no reason anyone has filed.' },
+                /* AREA CONTENT D4 (2026-09-20): THE VENT — the hangar's air goes into the white rooms through a duct a person fits (R4: the hangar's second earned exit) */
+                { id: 'vent', wall: 'w', z: 10, secret: true, leaf: null, label: 'A DRAUGHT', sub: 'THE VENT · THE DUCT INTO THE WHITE ROOMS',
+                  action: { room: 'site_prebuilt_area51_ward', at: 'vent' },
+                  desc: 'A vent grille behind the tanks with the screws in a cup beside it. The duct is a person wide and goes to the wing, which is where the air was going anyway.', draft: true },
             ],
             counters: [],
             props: [
@@ -33036,6 +33137,14 @@ const DOOR_HQ = {
                   label: 'THE FLIGHT LINE', sub: 'THE YARD GATE · OUT TO THE APRON',
                   action: { room: 'site_prebuilt_area51_flightline', at: 'ward' },
                   desc: 'A barred gate at the end of the cell row. The exercise yard is the apron; the exercise is watching the lights go round.' },
+                /* AREA CONTENT D4 (2026-09-20) — THE DOOR PASS: THE STORM DRAIN — a culvert under the fence from the yard's corner to the apron (R4) */
+                { id: 'stormdrain', wall: 'n', x: 12, secret: true, leaf: null, label: 'A DRAUGHT', sub: 'THE STORM DRAIN · UNDER THE FENCE TO THE FLIGHT LINE',
+                  action: { room: 'site_prebuilt_area51_flightline', at: 'stormdrain' },
+                  desc: 'A grate in the station corridor that is not screwed down, and a culvert under it that goes under the fence. The base floods once a year and this is where the water went.', draft: true },
+                /* AREA CONTENT D4 (2026-09-20): THE VENT's other end (R4) */
+                { id: 'vent', wall: 'e', z: 8, secret: true, leaf: null, label: 'A DRAUGHT', sub: 'THE VENT · THE DUCT BACK INTO THE HANGAR',
+                  action: { room: 'site_prebuilt_area51_hangar', at: 'vent' },
+                  desc: 'A grille over a cell bed, warm, and behind it the duct that brings the hangar in. The bed is made.', draft: true },
             ],
             counters: [],
             props: [
@@ -33116,6 +33225,10 @@ const DOOR_HQ = {
                   label: 'THE WHITE ROOMS', sub: 'THE YARD GATE · BACK INTO THE WING',
                   action: { room: 'site_prebuilt_area51_ward', at: 'yard' },
                   desc: 'The barred gate into the wing. From out here the white is a light left on.' },
+                /* AREA CONTENT D4 (2026-09-20) — THE DOOR PASS: THE STORM DRAIN's mouth on the apron (R4) */
+                { id: 'stormdrain', wall: 's', x: 0, secret: true, leaf: null, label: 'A DRAUGHT', sub: 'THE STORM DRAIN · UNDER THE FENCE INTO THE WHITE ROOMS',
+                  action: { room: 'site_prebuilt_area51_ward', at: 'stormdrain' },
+                  desc: 'A culvert mouth in the apron’s south berm. It goes under the fence and comes up through a grate in a white corridor.', draft: true },
             ],
             counters: [],
             props: [
@@ -33208,7 +33321,7 @@ const DOOR_HQ = {
             terrain: {
                 floor: 'urban:ConcreteStriped2b', cliff: 'urban:ConcreteStriped1c', path: 'urban:TileGeneric2a',
                 noise: { amp: 0, scale: 5 }, crag: false,
-                gen: { kind: 'halls', seed: 7, loops: 3, wallKey: 'urban:ConcreteStriped1c',
+                gen: { kind: 'halls', seed: 7, loops: 3, wallKey: 'urban:ConcreteStriped1c', open: [{ x: -28, z: 0, r: 6 }, { x: 28, z: 0, r: 6 }],   // AREA CONTENT D4: the floor round THE TWO GANTRIES
                        rooms: [{ id: 'hall', x: 0, z: -9, w: 50, d: 14 }, { id: 'bays', x: 0, z: 11, w: 30, d: 12 }] },
                 features: [
                     { k: 'plateau', x: 0, z: -14, w: 40, d: 4, h: 1.0, edge: 0.3 },                                   // THE PLATFORM along the hall's north side
@@ -33220,6 +33333,24 @@ const DOOR_HQ = {
                     { k: 'path', pts: [[0, 18], [0, 2], [0, -6], [0, -18]], w: 2.2 },                                 // the painted lane lift → tram
                     { k: 'path', pts: [[-30, 0], [-16, 0], [-16, -6]], w: 2.0 },                                      // the tunnel's lane from the west wall
                     { k: 'path', pts: [[30, 0], [16, 0], [16, -6]], w: 2.0 },                                         // … and to the east
+                    /* AREA CONTENT D4 (2026-09-20) — THE DOOR PASS: THE TWO GANTRIES — the tunnel doors stand 2.6 m up on freight gantries
+                       against the end walls (a door you climb to = an earned exit, R4), each up its own stair; THE BOOTH and the
+                       partitions break the bay door's sightlines (R3: from the lift you see one door, not four) */
+                    { k: 'plateau', x: -29, z: 0, w: 6, d: 8, h: 2.6, edge: 0.3 },                                  // THE WEST GANTRY (links.area51_dumb.b stands ON it)
+                    { k: 'ramp', x0: -19.5, z0: 0, x1: -26.7, z1: 0, w: 2.4, h0: 0, h1: 2.6, stairs: true, edge: 0.2 },   // its stair (L 7.2 ≥ 2.2 × 2.6; ends 0.7 m inside)
+                    { k: 'plateau', x: 29, z: 0, w: 6, d: 8, h: 2.6, edge: 0.3 },                                   // THE EAST GANTRY (links.dumb_cern.a stands ON it)
+                    { k: 'ramp', x0: 19.5, z0: 0, x1: 26.7, z1: 0, w: 2.4, h0: 0, h1: 2.6, stairs: true, edge: 0.2 },
+                    { k: 'rail', x0: -31.5, z0: -3.5, x1: -31.5, z1: 3.5 }, { k: 'rail', x0: 31.5, z0: -3.5, x1: 31.5, z1: 3.5 },   // the gantries' back rails (the grind)
+                    { k: 'wall', x0: -2.4, z0: 2.5, x1: 2.4, z1: 2.5, h: 2.2, t: 0.6, key: 'urban:ConcreteStriped1c' },   // THE BOOTH between the lift and the tram
+                    { k: 'wall', x0: -12.5, z0: 14.5, x1: -12.5, z1: 17.5, h: 2.2, t: 0.6, key: 'urban:ConcreteStriped1c' },   // the partition between the lift and THE RAMP's door
+                    { k: 'wall', x0: 13, z0: 7, x1: 17, z1: 10.5, h: 2.2, t: 0.6, key: 'urban:ConcreteStriped1c' },   // the partition on the lift → east gantry line
+                    { k: 'wall', x0: -17, z0: 10.5, x1: -13, z1: 7, h: 2.2, t: 0.6, key: 'urban:ConcreteStriped1c' },   // … and the west
+                    /* AREA CONTENT D4 (2026-09-20): THE PARAPETS — a concrete parapet round each gantry but its stair's mouth: the tunnel doors are seen from the gantry, not from the floor (R3) */
+                    { k: 'wall', x0: -27.0, z0: -3.6, x1: -27.0, z1: -1.5, h: 1.9, t: 0.6, key: 'urban:ConcreteStriped1c' }, { k: 'wall', x0: -27.0, z0: 1.5, x1: -27.0, z1: 3.6, h: 1.9, t: 0.6, key: 'urban:ConcreteStriped1c' },
+                    { k: 'wall', x0: -31.5, z0: -3.4, x1: -27.0, z1: -3.4, h: 1.9, t: 0.6, key: 'urban:ConcreteStriped1c' }, { k: 'wall', x0: -31.5, z0: 3.4, x1: -27.0, z1: 3.4, h: 1.9, t: 0.6, key: 'urban:ConcreteStriped1c' },
+                    { k: 'wall', x0: 27.0, z0: -3.6, x1: 27.0, z1: -1.5, h: 1.9, t: 0.6, key: 'urban:ConcreteStriped1c' }, { k: 'wall', x0: 27.0, z0: 1.5, x1: 27.0, z1: 3.6, h: 1.9, t: 0.6, key: 'urban:ConcreteStriped1c' },
+                    { k: 'wall', x0: 27.0, z0: -3.4, x1: 31.5, z1: -3.4, h: 1.9, t: 0.6, key: 'urban:ConcreteStriped1c' }, { k: 'wall', x0: 27.0, z0: 3.4, x1: 31.5, z1: 3.4, h: 1.9, t: 0.6, key: 'urban:ConcreteStriped1c' },   // on the gantry's flat top (a wall's top is the ground UNDER it + h — on the edge blend it stood a metre low)
+                    { k: 'wall', x0: -14.2, z0: 7.75, x1: -9.8, z1: 9.75, h: 2.2, t: 0.6, key: 'urban:ConcreteStriped1c' },   // the partition on the stair door → THE RAMP line
                 ],
             },
             doors: [
@@ -33290,6 +33421,10 @@ const DOOR_HQ = {
                     { k: 'plateau', x: 38, z: -25, w: 6, d: 6, h: 4.0, edge: 0.35 },
                     { k: 'deck', x0: 24.6, z0: -25, x1: 35.4, z1: -25, w: 1.6, y: 4.0 },
                     { k: 'ramp', x0: 22, z0: -14, x1: 22, z1: -22.7, w: 2.4, h0: 0, h1: 4.0, stairs: true, edge: 0.2 },
+                    /* AREA CONTENT D4 (2026-09-20): THE VAULT GANTRY — the war room's vault door stands 3 m up on the chamber's east wall
+                       (its far side is the war room's south gallery at 3.0), up a stair off the chamber floor (R4: a door you climb to) */
+                    { k: 'plateau', x: 45, z: -18, w: 6, d: 8, h: 3.0, edge: 0.3 },
+                    { k: 'ramp', x0: 35, z0: -16, x1: 42.7, z1: -16, w: 2.4, h0: 0, h1: 3.0, stairs: true, edge: 0.2 },   // L 7.7 ≥ 2.2 × 3; ends 0.7 m inside the gantry (z −16: inside its z range, clear of the far tower)
                     /* CHAMBER 03 · THE PIT: the bowl (walked down, climbed out) and the grind ledge on its lip */
                     { k: 'dip', x: -30, z: 22, r: 6, h: 2.2 },
                     { k: 'wall', x0: -37, z0: 13.5, x1: -23, z1: 13.5, h: 0.45, t: 0.4, key: 'urban:ConcreteStriped2a' },
@@ -33297,6 +33432,8 @@ const DOOR_HQ = {
                     { k: 'plateau', x: 36, z: 20, w: 8, d: 14, h: 2.4, edge: 0.35 },
                     { k: 'ramp', x0: 26, z0: 20, x1: 32.7, z1: 20, w: 2.6, h0: 0, h1: 2.4, stairs: true, edge: 0.2 },
                     { k: 'rail', x0: 32.5, z0: 14, x1: 32.5, z1: 26 },
+                    /* AREA CONTENT D4 (2026-09-20): the observation deck runs on to the east wall — the bunker's hotel door stands ON it (R4) */
+                    { k: 'plateau', x: 43.5, z: 18, w: 9, d: 8, h: 2.4, edge: 0.35 },   // overlaps the deck by a metre: two abutting rects leave a solid seam in a halls plan
                     /* the painted lanes off the hub */
                     { k: 'path', pts: [[0, 34], [0, 14]], w: 2.4 },
                     { k: 'path', pts: [[-13, 0], [-46, 0]], w: 2.0 },
@@ -33316,11 +33453,11 @@ const DOOR_HQ = {
                   label: 'CLONE RESEARCH', sub: 'THE VAT HALL · DISPOSAL',
                   action: { room: 'site_prebuilt_dumb_clonevats', at: 'seven' },
                   desc: 'Frosted glass, warm to the touch. Behind it, a row of blue lights breathing in and out.' },
-                { id: 'war', wall: 'e', z: -18, leaf: 'leaf_vault', wide: true,
+                { id: 'war', wall: 'e', z: -18, y: 3.0, leaf: 'leaf_vault', wide: true,
                   label: 'THE WAR ROOM', sub: 'THE BIG BOARD · THE ROUND TABLE',
                   action: { room: 'site_prebuilt_dumb_warroom', at: 'seven' },
                   desc: 'A round vault door on a concrete wall, with a keypad. The keypad has a sticky note. The sticky note has the code. The code is the room number.' },
-                { id: 'bunker', wall: 'e', z: 18, leaf: 'leaf_hotel',
+                { id: 'bunker', wall: 'e', z: 18, y: 2.4, leaf: 'leaf_hotel',
                   label: 'THE BUNKER', sub: 'THE PRIVATE LIFT · THE BILLIONAIRE’S',
                   action: { room: 'site_prebuilt_dumb_bunker', at: 'seven' },
                   desc: 'A hotel door on a concrete wall, with a brass number that is not a number here. The lift behind it is the only one on this level that is carpeted.' },
@@ -33387,6 +33524,9 @@ const DOOR_HQ = {
                     { k: 'ramp', x0: 6.5, z0: 9, x1: 10.7, z1: 9, w: 2.2, h0: 0, h1: 1.2, stairs: true, edge: 0.15 },
                     { k: 'rail', x0: 10.4, z0: 7.4, x1: 10.4, z1: 10.6 },
                     { k: 'plateau', x: -18, z: -5, r: 1.4, h: 3.6, edge: 0.3 },                                         // THE DREAM TOWER in the ward's corner (the tape — the door gun's)
+                    /* AREA CONTENT D4 (2026-09-20): THE SCREEN'S DAIS — the ward's screen stands 1.2 m up at its corridor's end, seen from the ward floor before it is reached (R5) */
+                    { k: 'plateau', x: -10, z: -14, w: 5, d: 3, h: 1.2, edge: 0.3 },
+                    { k: 'ramp', x0: -10, z0: -9.5, x1: -10, z1: -13.2, w: 2.2, h0: 0, h1: 1.2, stairs: true, edge: 0.15 },
                     { k: 'path', pts: [[22, 0], [12, 0], [12, -4]], w: 1.8 },                                           // the rubber lane door → range
                     { k: 'path', pts: [[12, 0], [-10, 0]], w: 1.8 },
                 ],
@@ -33397,8 +33537,8 @@ const DOOR_HQ = {
                   action: { room: 'site_prebuilt_dumb_sublevel7', at: 'dream' },
                   desc: 'The hospital door from the quiet side. The porthole looks out on the hub. Someone has taped a drawing of an eye over it, from the inside.' },
                 /* THE SERVICE CORRIDOR (2026-09-18 — the user: "too many rooms that don't connect anywhere else"): the ward's back door down to the vat hall — every department has two ways out now */
-                { id: 'service', wall: 's', x: -6, leaf: 'leaf_frosted', wide: true,
-                  label: 'CLONE RESEARCH', sub: 'THE SERVICE CORRIDOR · DOWN TO THE VATS',
+                { id: 'service', wall: 's', x: -6, leaf: null, secret: true,
+                  label: 'A DRAUGHT', sub: 'THE SERVICE CORRIDOR · DOWN TO THE VATS',   // AREA CONTENT D4 (2026-09-20): a draught (was CLONE RESEARCH)
                   action: { room: 'site_prebuilt_dumb_clonevats', at: 'service' },
                   desc: 'A single frosted door at the back of the ward, warm to the touch like the one on the hub. The sleepers are wheeled through it. Some of them are wheeled back.' },
             ],
@@ -33467,8 +33607,8 @@ const DOOR_HQ = {
                   label: 'SUB-LEVEL 7', sub: 'BACK TO THE HUB',
                   action: { room: 'site_prebuilt_dumb_sublevel7', at: 'clone' },
                   desc: 'The frosted door from the warm side. The glass is fogged from in here, which means someone breathed on it, which the log says nobody did.' },
-                { id: 'service', wall: 'n', x: 12, leaf: 'leaf_frosted', wide: true,
-                  label: 'DREAM RESEARCH', sub: 'THE SERVICE CORRIDOR · UP TO THE WARD',
+                { id: 'service', wall: 'n', x: 12, leaf: null, secret: true,
+                  label: 'A DRAUGHT', sub: 'THE SERVICE CORRIDOR · UP TO THE WARD',   // AREA CONTENT D4 (2026-09-20): a draught (was DREAM RESEARCH)
                   action: { room: 'site_prebuilt_dumb_dreamlab', at: 'service' },
                   desc: 'The service corridor up to the ward. A gurney is parked at the foot of it with nobody on it, which is the good outcome.' },
             ],
@@ -33535,8 +33675,8 @@ const DOOR_HQ = {
                   action: { room: 'site_prebuilt_dumb_sublevel7', at: 'war' },
                   desc: 'The vault door from inside. Two locks, both open. The keypad on this side has no sticky note; on this side everyone knows the code.' },
                 /* THE PRIVATE STAIR (2026-09-18): off the south gallery (y 3.0 — the door stands on the tier) down to the bunker's pool — he paid for a stair too */
-                { id: 'stair', wall: 's', x: 8, y: 3.0, leaf: 'leaf_coffee',
-                  label: 'THE BUNKER', sub: 'THE PRIVATE STAIR · DOWN TO THE POOL',
+                { id: 'stair', wall: 's', x: 8, y: 3.0, leaf: null, secret: true,
+                  label: 'A DRAUGHT', sub: 'THE PRIVATE STAIR · DOWN TO THE POOL',   // AREA CONTENT D4 (2026-09-20): a draught (was THE BUNKER)
                   action: { room: 'site_prebuilt_dumb_bunker', at: 'stair' },
                   desc: 'A plain door at the back of the south gallery with a brass number that is not a number here. The stair behind it is carpeted, which nothing else on this level is.' },
             ],
@@ -33609,8 +33749,8 @@ const DOOR_HQ = {
                   label: 'SUB-LEVEL 7', sub: 'THE PRIVATE LIFT · BACK TO THE HUB',
                   action: { room: 'site_prebuilt_dumb_sublevel7', at: 'bunker' },
                   desc: 'The private lift, from the carpeted side. The button says LOBBY. There is no lobby. It goes to the hub, which he has never been told.' },
-                { id: 'stair', wall: 'n', x: 16, leaf: 'leaf_coffee',
-                  label: 'THE WAR ROOM', sub: 'THE PRIVATE STAIR · UP TO THE GALLERY',
+                { id: 'stair', wall: 'n', x: 16, leaf: null, secret: true,
+                  label: 'A DRAUGHT', sub: 'THE PRIVATE STAIR · UP TO THE GALLERY',   // AREA CONTENT D4 (2026-09-20): a draught (was THE WAR ROOM)
                   action: { room: 'site_prebuilt_dumb_warroom', at: 'stair' },
                   desc: 'The private stair, from the pool end. It comes out on the war room’s south gallery, behind the clocks, where he can watch the board in a towel.' },
             ],
@@ -34222,13 +34362,17 @@ const DOOR_HQ = {
                     { k: 'rail', x0: -5.5, z0: -7.15, x1: -1.6, z1: -7.15 }, { k: 'rail', x0: 1.6, z0: -7.15, x1: 5.5, z1: -7.15 },    // the gallery's rail either side of the stair (the grind)
                     { k: 'wall', x0: 4, z0: -4, x1: 10, z1: -4, h: 0.45, t: 0.4, key: 'urban:ConcreteStriped2a' },                       // the kerb ledge on the junction's floor
                     { k: 'plateau', x: 55, z: -18, r: 1.6, h: 4.4, edge: 0.3 },                                                          // THE OUTFALL SHAFT (the tape — the door gun's; the near weenie: lit from above)
+                    /* AREA CONTENT D4 (2026-09-20) — THE DOOR PASS: THE PUMP GANTRY — the pumping station's bulkhead door stands 1.6 m up at the north feeder's head, up a stair (R4: a door you climb to) */
+                    { k: 'plateau', x: -20, z: -39, w: 8, d: 5, h: 1.6, edge: 0.3 },
+                    { k: 'ramp', x0: -20, z0: -30.5, x1: -20, z1: -37.2, w: 2.4, h0: 0, h1: 1.6, stairs: true, edge: 0.2 },   // L 6.7 ≥ 2.2 × 1.6; ends 0.7 m inside
+                    { k: 'rail', x0: -23.5, z0: -36.8, x1: -21.6, z1: -36.8 },
                     { k: 'path', pts: [[-20, -39], [-20, -35]], w: 2.4 }, { k: 'path', pts: [[24, 39], [24, 35]], w: 2.4 },              // the pads' aprons
                     { k: 'scatter', key: 'cinder_block', n: 6, x: 0, z: -3, r: 9, seed: 5 },
                     { k: 'scatter', key: 'cave_stone', n: 5, x: 50, z: -12, r: 6, seed: 6 },
                 ],
             },
             doors: [
-                { id: 'pump', wall: 'n', x: -20, leaf: 'leaf_bulkhead', wide: true,
+                { id: 'pump', wall: 'n', x: -20, y: 1.6, leaf: 'leaf_bulkhead', wide: true,
                   label: 'DOWNTOWN', sub: 'THE PUMPING STATION · UP TO THE STREET',
                   action: { room: 'site_prebuilt_downtown_streets', at: 'sewer' },
                   desc: 'A bulkhead door at the top of the north feeder, the pumps behind it running for a city that is not paying them. The street is up the ladder past them.' },
@@ -34240,8 +34384,8 @@ const DOOR_HQ = {
                   label: 'THE HOLDING CELLS', sub: 'THE PRECINCT DRAIN · INTO THE BASEMENT',
                   action: { room: 'site_prebuilt_downtown_cells', at: 'sewers' },
                   desc: 'A barred door at the end of the cross drain. The precinct\'s basement drains into the sewer; sometimes the precinct does too.' },
-                { id: 'adit', wall: 'n', x: 50, leaf: null,
-                  label: 'THE OLD WORKINGS', sub: 'THE ADIT · DOWN INTO THE OLD MINE',
+                { id: 'adit', wall: 'n', x: 50, leaf: null, secret: true,
+                  label: 'A DRAUGHT', sub: 'THE ADIT · DOWN INTO THE OLD MINE',   // AREA CONTENT D4 (2026-09-20): a draught (was THE OLD WORKINGS)
                   action: { room: 'site_prebuilt_downtown_workings', at: 'sewers' },
                   desc: 'An opening in the brick older than the brick. The city was built on a mine; the mine was built on something else.' },
             ],
@@ -34329,6 +34473,10 @@ const DOOR_HQ = {
                     { k: 'rail', x0: -6, z0: 33.3, x1: 6, z1: 33.3 },
                     /* THE CROSSING: THE SIGNAL GANTRY (the tape — the door gun's; the near weenie of the crossover) */
                     { k: 'plateau', x: 0, z: 0, r: 1.4, h: 5.2, edge: 0.3 },
+                    /* AREA CONTENT D4 (2026-09-20) — THE DOOR PASS: THE WORKS' PLATFORM — the track to the building's platform leaves from a 1.8 m platform at the west spur's end, up a stair beside the rails (R4) */
+                    { k: 'plateau', x: -57, z: -16, w: 6, d: 5, h: 1.8, edge: 0.3 },
+                    { k: 'ramp', x0: -57, z0: -8, x1: -57, z1: -14.2, w: 2.4, h0: 0, h1: 1.8, stairs: true, edge: 0.2 },   // L 6.2 ≥ 2.2 × 1.8; ends 0.7 m inside
+                    { k: 'rail', x0: -56.5, z0: -18.4, x1: -54.4, z1: -18.4 },
                     /* THE DEPOT: the kerb ledge along the pit (the grind) */
                     { k: 'wall', x0: -14, z0: -44.2, x1: 0, z1: -44.2, h: 0.45, t: 0.4, key: 'urban:ConcreteStriped2a' },
                     { k: 'path', pts: [[24, -45], [24, -31]], w: 2.2 }, { k: 'path', pts: [[-59, -16], [-52, -16]], w: 2.2 }, { k: 'path', pts: [[52, -14], [59, -14]], w: 2.2 },   // the walkways to the doors
@@ -34421,8 +34569,8 @@ const DOOR_HQ = {
                   label: 'THE SEWERS', sub: 'THE PRECINCT DRAIN · OUT INTO THE CROSS DRAIN',
                   action: { room: 'site_prebuilt_downtown_sewers', at: 'drain' },
                   desc: 'The barred door at the end of the cell corridor, the one the turnkey says is the drain. It is the drain. It is also a door.' },
-                { id: 'trap', wall: 's', x: -20, leaf: null,
-                  label: 'THE OLD WORKINGS', sub: 'THE TRAP UNDER THE TANK · DOWN',
+                { id: 'trap', wall: 's', x: -20, leaf: null, secret: true,
+                  label: 'A DRAUGHT', sub: 'THE TRAP UNDER THE TANK · DOWN',   // AREA CONTENT D4 (2026-09-20): a draught (was THE OLD WORKINGS)
                   action: { room: 'site_prebuilt_downtown_workings', at: 'trap' },
                   desc: 'An opening in the drunk tank\'s back wall with a rope ladder down it and cold air coming up. The precinct was built on the mine; the mine had cells first.' },
             ],
@@ -34506,12 +34654,12 @@ const DOOR_HQ = {
                 ],
             },
             doors: [
-                { id: 'trap', wall: 'n', x: -20, leaf: null,
-                  label: 'THE HOLDING CELLS', sub: 'THE ROPE LADDER · UP INTO THE TANK',
+                { id: 'trap', wall: 'n', x: -20, leaf: null, secret: true,
+                  label: 'A DRAUGHT', sub: 'THE ROPE LADDER · UP INTO THE TANK',   // AREA CONTENT D4 (2026-09-20): a draught (was THE HOLDING CELLS)
                   action: { room: 'site_prebuilt_downtown_cells', at: 'trap' },
                   desc: 'The rope ladder up into the precinct\'s drunk tank. Somebody hung it from the tank side, which is the wrong side to hang a rope ladder from.' },
-                { id: 'sewers', wall: 'e', z: -12, leaf: null,
-                  label: 'THE SEWERS', sub: 'THE ADIT · UP INTO THE CULVERTS',
+                { id: 'sewers', wall: 'e', z: -12, leaf: null, secret: true,
+                  label: 'A DRAUGHT', sub: 'THE ADIT · UP INTO THE CULVERTS',   // AREA CONTENT D4 (2026-09-20): a draught (was THE SEWERS)
                   action: { room: 'site_prebuilt_downtown_sewers', at: 'adit' },
                   desc: 'The adit the miners drove up into what became the sewer. The bricks change colour halfway; so does the air.' },
             ],
@@ -34596,6 +34744,8 @@ const DOOR_HQ = {
                     { k: 'ramp', x0: 14, z0: 56.6, x1: 14, z1: 50.3, w: 2.2, h0: 0.5, h1: 2.6, stairs: true, edge: 0.2 },        // its stair (ends 0.7 m inside — THE RAMP RULE)
                     { k: 'rail', x0: 11.2, z0: 45.4, x1: 16.8, z1: 45.4 },                                                       // the lookout's rail (the grind)
                     { k: 'deck', x0: -2, z0: 44.6, x1: -2, z1: 28, w: 2.4, y: 0.6 },                                             // THE JETTY (one bank on purpose: its end is the sea)
+                    /* AREA CONTENT D4 (2026-09-20): three palms on the beach — the bay door sees the weir's pool, not the maelstrom across the whole sea (R3) */
+                    { k: 'tree', x: -5, z: 49.8, kind: 'tree_5', h: 7, r: 0.6 }, { k: 'tree', x: 2.0, z: 50, kind: 'tree_5', h: 7, r: 0.6 }, { k: 'tree', x: -7.4, z: 40, kind: 'tree_5', h: 7, r: 0.6 },
                     { k: 'rail', x0: -3.3, z0: 44.2, x1: -3.3, z1: 28.4 },                                                       // its rail
                     { k: 'hill', x: -34, z: 6, r: 11, h: 3.8 },                                                                  // THE SANDBAR (+0.3: waded)
                     { k: 'hill', x: 44, z: -22, r: 14, h: 5.6 },                                                                 // THE WRECK ISLET (+2.1)
@@ -34689,6 +34839,10 @@ const DOOR_HQ = {
                   label: 'THE TEMPLE OF THE DEEP', sub: 'THE VAULT DOOR · INTO THE AIR POCKET',
                   action: { room: 'site_prebuilt_atlantis_temple', at: 'abyss' },
                   desc: 'A round bronze door at the top of the drowned steps, under the dome. It seals. On the other side of it there is air, which is the strangest thing on this floor of the world.' },
+                /* AREA CONTENT D4 (2026-09-20) — THE DOOR PASS: THE DROWNED STAIR's foot on the sea floor (R4) */
+                { id: 'drownedstair', wall: 'n', x: 30, secret: true, leaf: null, label: 'A DRAUGHT', sub: 'THE DROWNED STAIR · UP INTO THE TEMPLE',
+                  action: { room: 'site_prebuilt_atlantis_temple', at: 'drownedstair' },
+                  desc: 'A stair in the trench wall going up out of the water. Somebody built it to be walked down.', draft: true },
             ],
             counters: [],
             props: [
@@ -34760,6 +34914,10 @@ const DOOR_HQ = {
                   action: { room: 'site_prebuilt_atlantis_abyss', at: 'temple' },
                   desc: 'The round bronze door in the south wall. Beyond it the water starts at the sill and does not stop. Records says to exhale on the way out. Records has never been out.' },
                 /* the east wall at z 0 is THE BAY DOOR (siteRooms.entry): Atlantis's wet bulkhead lands you here, dry */
+                /* AREA CONTENT D4 (2026-09-20) — THE DOOR PASS: THE DROWNED STAIR — a stair in the west wall going down into the water (R4) */
+                { id: 'drownedstair', wall: 'w', z: 0, secret: true, leaf: null, label: 'A DRAUGHT', sub: 'THE DROWNED STAIR · DOWN INTO THE ABYSS',
+                  action: { room: 'site_prebuilt_atlantis_abyss', at: 'drownedstair' },
+                  desc: 'A stair behind a hanging that goes down until the water meets it, and then goes on. The temple was built dry.', draft: true },
             ],
             counters: [],
             props: [
@@ -34877,6 +35035,8 @@ const DOOR_HQ = {
                 { key: 'now_serving',    wall: 'n', x: 5.0, mount: 2.15 },                                                 // NOW SERVING: your own number (the proc reads the profile)
                 { key: 'lectern',        x: 4.6, z: -4.2, face: 180 },                                                    // where you take the number you already have
                 { key: 'thoughtform',    x: 3.5, z: -2.0 },                                                               // the one idea in the room; it has not been called
+                { key: 'thoughtform',    x: 3.3, z: 1.8 },                                                               // AREA CONTENT D4 (2026-09-20): a second idea, also uncalled (the garden's door does not see the screen — R3)
+                { key: 'door_stack',     x: 0.2, z: 0, face: 90 },                                                      // doors waiting in the middle of the room (the garden's door does not see the sea's)
                 { key: 'wall_clock',     wall: 's', x: 4.5, mount: 2.6 }, { key: 'wall_clock', wall: 's', x: -4.5, mount: 1.6 }, { key: 'wall_clock', wall: 'n', x: -5.0, mount: 2.55 },   // three clocks; none agree (Room 247's rule)
                 { key: 'water_cooler',   wall: 'e', z: 4.5 },
                 { key: 'notice_board',   wall: 'e', z: -4.0, mount: 1.2 },
@@ -35103,6 +35263,9 @@ const DOOR_HQ = {
                     { k: 'rail', x0: 14.6, z0: 9.5, x1: 25.4, z1: 9.5 },
                     { k: 'plateau', x: -40, z: -20, r: 1.1, h: 3.4, edge: 0.3 },                                            // THE TOP SHELF (the tape — the door gun's)
                     { k: 'wall', x0: -10, z0: 2, x1: 10, z1: 2, h: 0.45, t: 0.6, key: 'wood' },                              // THE LOW STACK (a grind)
+                    /* AREA CONTENT D4 (2026-09-20): THE SCREEN'S DAIS — the ward's screen stands 1.2 m up at the nave's east end, seen down the nave before it is reached (R5) */
+                    { k: 'plateau', x: 66, z: 0.6, w: 4, d: 5, h: 1.2, edge: 0.3 },
+                    { k: 'ramp', x0: 60.5, z0: 0.8, x1: 64.7, z1: 0.8, w: 2.2, h0: 0, h1: 1.2, stairs: true, edge: 0.15 },
                     { k: 'path', pts: [[-68, 20], [68, 0]], w: 1.4 },                                                       // the worn line down the nave
                     { k: 'scatter', key: 'library_shelf_full', n: 10, seed: 2 },
                     { k: 'scatter', key: 'library_shelf', n: 6, seed: 3 },
@@ -35202,6 +35365,9 @@ const DOOR_HQ = {
                     /* THE FENCE LINE: two lengths of split-rail the rider jumps onto and grinds, the corral gap between */
                     { k: 'wall', x0: -22, z0: 16, x1: -9, z1: 16, h: 1.0 },
                     { k: 'wall', x0: -5, z0: 16, x1: 6, z1: 16, h: 1.0 },
+                    /* AREA CONTENT D4 (2026-09-20): THE WINDBREAK — five trees on the stable door's sightlines (R3: from the bay you see one gate, not three) */
+                    { k: 'tree', x: -9.6, z: -4.1, kind: 'tree', h: 6.5, r: 0.8 }, { k: 'tree', x: 4.8, z: -4.1, kind: 'tree', h: 6.5, r: 0.8 }, { k: 'tree', x: -2.8, z: 17.0, kind: 'tree_2', h: 6.0, r: 0.8 },
+                    { k: 'tree', x: -11.5, z: -4.5, kind: 'tree_3', h: 6.5, r: 0.8 }, { k: 'tree', x: 3.5, z: -11.0, kind: 'tree', h: 6.5, r: 0.8 },
                     { k: 'rail', x0: 14, z0: 4, x1: 22, z1: 4, h: 0.9 },                                            // the cattle chute's top rail
                     { k: 'grove', n: 5, kinds: ['tree_5', 'tree_6'], seed: 512 },
                     { k: 'scatter', key: 'dead_snag', n: 2, seed: 513 },

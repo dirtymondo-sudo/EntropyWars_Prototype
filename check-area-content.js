@@ -54,18 +54,22 @@ function losBox(HQ, room, ax, az, ay, bx, bz, by) {
 }
 function boxLanding(room, d) {
     const S = room.shell || {}; let x, z;
+    /* THE GALLERY (rev 20): a door on the gallery's wall stands on the slab (the renderer's _hqDoorFloorY) unless it says y */
+    const G = S.gallery; const onSlab = G && d.wall === G.side && typeof d.y !== 'number';
     if (d.wall === 'free') { const f = (d.face || 0) * Math.PI / 180; x = (d.x || 0) + Math.sin(f) * 2.4; z = (d.z || 0) - Math.cos(f) * 2.4; }
     else if (d.wall === 'n') { x = d.x || 0; z = -S.d / 2 + 2.4; } else if (d.wall === 's') { x = d.x || 0; z = S.d / 2 - 2.4; }
     else if (d.wall === 'e') { x = S.w / 2 - 2.4; z = d.z || 0; } else if (d.wall === 'w') { x = -S.w / 2 + 2.4; z = d.z || 0; } else return null;
-    return { x, z, y: (typeof d.y === 'number') ? d.y : 0 };
+    return { x, z, y: (typeof d.y === 'number') ? d.y : (onSlab ? G.h : 0) };
 }
 
 function auditRoom(D, id, r) {
     const HQ = D.DOOR_HQ;
     const sh = r.shell || {}; const w = sh.w || r.w || 0, d = sh.d || r.d || 0, h = sh.h || r.h || 0;
     const doors = (r.doors || []).filter(x => x && !x.level);
+    /* D4 THE DOOR PASS (2026-09-20): "two doors on a wall ≥ 12 m apart, three never — a third goes round a corner, up a tier, or
+       becomes a way / a draught" — so a draught / a way / a free-standing seam is not a door ON THE WALL for the count */
     const byWall = {};
-    for (const dr of doors) (byWall[dr.wall || '?'] ||= []).push(dr);
+    for (const dr of doors) { if (dr.secret || dr.way || dr.wall === 'free') continue; (byWall[dr.wall || '?'] ||= []).push(dr); }
     let minGap = Infinity, close = 0;
     for (const [wall, ds] of Object.entries(byWall)) {
         if (wall === 'free' || wall === '?') continue;
@@ -99,14 +103,15 @@ function auditRoom(D, id, r) {
     /* R3 EXPOSURE: from each landing, the other landings in a clear line at eye height */
     if (landings.length > 1) {
         let mx = 0, by = [];
-        for (const a of landings) { let n = 0; for (const b of landings) { if (a === b) continue; if (los(a, b)) n++; } if (n > mx) { mx = n; by = [a.door.id]; } else if (n === mx && n > 0) by.push(a.door.id); }
+        /* D4 (2026-09-20): a draught is a wall slab — not a door the eye finds; it is a viewpoint (you arrive there) but never a target */
+        for (const a of landings) { if (a.door.secret) continue; let n = 0; for (const b of landings) { if (a === b || b.door.secret) continue; if (los(a, b)) n++; } if (n > mx) { mx = n; by = [a.door.id]; } else if (n === mx && n > 0) by.push(a.door.id); }
         rec.exposed = mx; rec.exposedBy = by;
     } else rec.exposed = 0;
     /* R4 THE EARNED EXIT: a draught, a way, a door on a tier (its sill ≥ 1.5 m over the lowest sill), a door under the water */
     /* D2 (2026-09-19): a door is ON A TIER when its sill stands ≥ 1.5 m over the room's MEDIAN sill (the lowest sill made every
        street door of a city with a sunk district "a tier"); a road out (`way: 'road'`) is the most exposed exit there is — never earned */
     const sills = landings.map(L => L.y).sort((a, b) => a - b), median = sills.length ? sills[Math.floor(sills.length / 2)] : 0;
-    const earned = landings.filter(L => { const dr = L.door; if (dr.way === 'road') return false; if (dr.secret || dr.way) return true; if (L.y - median >= 1.5) return true; if (info && info.sea && !info.sea.under && info.sea.y - D.hqTerrainHeight(info, L.x, L.z) > info.rules.wadeMax) return true; return false; });
+    const earned = landings.filter(L => { const dr = L.door; if (dr.way === 'road') return false; if (dr.secret || dr.way) return true; if (dr.action && dr.action.ship) return true; /* D4: the ship's collar opens only on a course laid in on the bridge — a puzzle door, earned */ if (L.y - median >= 1.5) return true; if (info && info.sea && !info.sea.under && info.sea.y - D.hqTerrainHeight(info, L.x, L.z) > info.rules.wadeMax) return true; return false; });
     rec.earned = earned.length; rec.earnedIds = earned.map(L => L.door.id);
     /* R2 THE PULL + R5 THE TEASE need the reach graph (terrain rooms only) */
     if (info && landings.length) {
@@ -176,9 +181,11 @@ function audit(opts) {
     opts = opts || {};
     const D = loadOnce(), HQ = D.DOOR_HQ, pick = opts.pick || [], all = !!opts.all;
     const rows = [];
+    const bypassed = new Set(Object.keys((HQ.siteRooms || {}).entry || {}).map(m => D.hqSiteRoomId ? D.hqSiteRoomId(m) : 'site_' + m));
     for (const [id, r] of Object.entries(HQ.rooms)) {
         if (r.kind !== 'box') continue;
         if (pick.length ? !pick.includes(id) : (!all && !r.site)) continue;
+        if (!pick.length && !all && r.site && !r.part && bypassed.has(id)) continue;   // D4: a bypassed board room — nobody stands in it (THE AREAS)
         rows.push(auditRoom(D, id, r));
     }
     rows.sort((a, b) => b.area - a.area);
