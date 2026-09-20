@@ -38606,12 +38606,19 @@ const ThreeRenderer = (function () {
         m.emissive = m.color.clone().multiplyScalar((info.gen && info.gen.neon) ? 0.42 : (S.open ? 0.06 : 0.1));
         m.onBeforeCompile = function (sh) {
             sh.uniforms.tCliff = { value: cliffTex }; sh.uniforms.tPath = { value: pathTex };
-            sh.vertexShader = 'attribute vec2 aBlend;\nvarying vec2 vBlend;\n' + sh.vertexShader.replace('#include <uv_vertex>', '#include <uv_vertex>\nvBlend = aBlend;');
-            sh.fragmentShader = 'uniform sampler2D tCliff;\nuniform sampler2D tPath;\nvarying vec2 vBlend;\n' + sh.fragmentShader
-                .replace('#include <map_fragment>', '#ifdef USE_MAP\n vec4 texelColor = texture2D( map, vUv );\n vec4 cliffColor = texture2D( tCliff, vUv * 0.85 );\n vec4 pathColor = texture2D( tPath, vUv * 1.15 );\n texelColor = mix( texelColor, pathColor, vBlend.y );\n texelColor = mix( texelColor, cliffColor * vec4(0.92, 0.92, 0.92, 1.0), vBlend.x );\n texelColor = mapTexelToLinear( texelColor );\n diffuseColor *= texelColor;\n#endif')
+            sh.uniforms.uTriTM = { value: (info._TM || 1) };
+            /* THE TRIPLANAR CLIFF (2026-09-19): the field's UVs are planar (x, z), so every steep face — a plateau's flank, a
+               city block's mass, a plan's rock wall — stretched its sheet the whole way down. Each sheet is sampled on the
+               three world axes and blended by the face's normal (sharpened ^4): a flat face reads exactly as before, a
+               vertical one tiles DOWN by height at the same tile size, a slope blends the two. World metres / one tile. */
+            sh.vertexShader = 'attribute vec2 aBlend;\nvarying vec2 vBlend;\nvarying vec3 vTriPos;\nvarying vec3 vTriN;\n' + sh.vertexShader
+                .replace('#include <uv_vertex>', '#include <uv_vertex>\nvBlend = aBlend;')
+                .replace('#include <project_vertex>', '#include <project_vertex>\nvTriPos = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvTriN = normalize(mat3(modelMatrix) * objectNormal);');
+            sh.fragmentShader = 'uniform sampler2D tCliff;\nuniform sampler2D tPath;\nuniform float uTriTM;\nvarying vec2 vBlend;\nvarying vec3 vTriPos;\nvarying vec3 vTriN;\n' + sh.fragmentShader
+                .replace('#include <map_fragment>', '#ifdef USE_MAP\n vec3 triW = abs( normalize( vTriN ) ); triW = triW * triW * triW * triW; triW /= ( triW.x + triW.y + triW.z + 0.0001 );\n vec2 triUy = vTriPos.xz / uTriTM; vec2 triUx = vTriPos.zy / uTriTM; vec2 triUz = vTriPos.xy / uTriTM;\n vec4 texelColor = texture2D( map, triUy ) * triW.y + texture2D( map, triUx ) * triW.x + texture2D( map, triUz ) * triW.z;\n vec4 cliffColor = texture2D( tCliff, triUy * 0.85 ) * triW.y + texture2D( tCliff, triUx * 0.85 ) * triW.x + texture2D( tCliff, triUz * 0.85 ) * triW.z;\n vec4 pathColor = texture2D( tPath, triUy * 1.15 ) * triW.y + texture2D( tPath, triUx * 1.15 ) * triW.x + texture2D( tPath, triUz * 1.15 ) * triW.z;\n texelColor = mix( texelColor, pathColor, vBlend.y );\n texelColor = mix( texelColor, cliffColor * vec4(0.92, 0.92, 0.92, 1.0), vBlend.x );\n texelColor = mapTexelToLinear( texelColor );\n diffuseColor *= texelColor;\n#endif')
                 .replace('#include <emissivemap_fragment>', '#ifdef USE_MAP\n totalEmissiveRadiance *= texelColor.rgb;\n#endif');
         };
-        m.customProgramCacheKey = function () { return 'hqTerrain'; };
+        m.customProgramCacheKey = function () { return 'hqTerrainTri'; };
         return m;
     }
     function _hqTerrainGround(x, z) {
@@ -38958,6 +38965,7 @@ const ThreeRenderer = (function () {
         geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
         geo.setAttribute('aBlend', new THREE.BufferAttribute(blend, 2));
         geo.setIndex(idx); geo.computeVertexNormals();
+        info._TM = TM;   // THE TRIPLANAR CLIFF: the sheet's tile in world units (the uv = pos / TM rule, now on every axis)
         var field = new THREE.Mesh(geo, _hqTerrainMat(info, S));
         field.position.y = 0.3; field.receiveShadow = true; field.renderOrder = 1; field._ew_hqPart = 'floor'; field._ew_hqTerrain = true;
         G.add(field);
@@ -47131,6 +47139,13 @@ const ThreeRenderer = (function () {
        landing surface when it beats the floor (null = nothing under you) */
     function _hqBlockerFloor(x, z, feetY) {
         var best = _hqGalleryFloor(x, z, feetY);   // THE GALLERY (9.2 stage 2): the slab / a tread under the feet is a landing too
+        /* THE BRIDGE LAYER (2026-09-19 fix): a body coming DOWN lands on the highest bridge under its feet. The landing's
+           ground read is a FREE query (curY null) and hqTerrainBridgeFor answers nothing to one — so a jump onto a span, a
+           drop off a tier onto a gangway, a fire escape's hop all fell straight through the slab onto the street. */
+        if (_hq.terrain && _hq.terrain.bridges && _hq.terrain.bridges.length && typeof hqTerrainBridgeBelow === 'function') {
+            var bbf = hqTerrainBridgeBelow(_hq.terrain, x, z, feetY + 0.05);
+            if (bbf && (best === null || bbf.y > best)) best = bbf.y;
+        }
         for (var i = 0; i < _hq.blockers.length; i++) {
             var b = _hq.blockers[i], top = _hqBlkTop(b);
             if (b.y != null && b.y > feetY + 1.2) continue;
@@ -47273,7 +47288,7 @@ const ThreeRenderer = (function () {
                 /* THE DOOR GUN rev 2: a hatch under your feet / over your head — read it in 3D, not through a wall plane */
                 var dF = Math.hypot(d.px - pl.x, d.pz - pl.z);
                 if (dF > 1.9 || Math.abs((d.py || 0) - pl.y) > 2.6) return;
-                if (dF < bestD) { bestD = dF; best = { kind: 'door', id: d.door.id, label: d.door.label, sub: d.door.sub, state: d.state, door: d.door, rec: d }; }
+                if (dF < bestD) { bestD = dF; best = { kind: 'door', id: d.door.id, label: d.door.label, sub: d.door.sub, state: d.state, door: d.door, rec: d, walkThrough: _hqDoorWalkThrough(d) }; }
                 return;
             }
             if (d.box) { if (Math.abs(pl.y - d.y0) > 1.2) return; }   // a box door is found by HEIGHT (THE GALLERY's door, the stairwell's landing — 2026-09-15 rev 20), never by the rotunda's level
@@ -47284,14 +47299,14 @@ const ThreeRenderer = (function () {
                 var inF = ox * d.box.nx + oz * d.box.nz, side = Math.abs(ox * d.box.nz - oz * d.box.nx);
                 if (inF < 0 || inF > 2.6 || side > (d.ow || (d.wide ? 2.2 : 1.1)) / 2 + 0.4) return;
                 var distB = inF + side;
-                if (distB < bestD) { bestD = distB; best = { kind: 'door', id: d.door.id, label: d.door.label, sub: d.door.sub, state: d.state, door: d.door, rec: d }; }
+                if (distB < bestD) { bestD = distB; best = { kind: 'door', id: d.door.id, label: d.door.label, sub: d.door.sub, state: d.state, door: d.door, rec: d, walkThrough: _hqDoorWalkThrough(d) }; }
                 return;
             }
             var dd = Math.abs(_hqDegDiff(deg, d.door.deg));
             if (dd > (d.wide ? 7 : 6)) return;
             if (d.inward ? (r > d.Rw + 3.4) : (r < d.Rw - 3.4)) return;
             var dist = (d.inward ? (r - d.Rw - 0.5) : (d.Rw - 0.5 - r)) + _hqRad(dd) * r;
-            if (dist < bestD) { bestD = dist; best = { kind: 'door', id: d.door.id, label: d.door.label, sub: d.door.sub, state: d.state, door: d.door, rec: d }; }
+            if (dist < bestD) { bestD = dist; best = { kind: 'door', id: d.door.id, label: d.door.label, sub: d.door.sub, state: d.state, door: d.door, rec: d, walkThrough: _hqDoorWalkThrough(d) }; }
         });
         _hq.counters.forEach(function (c) {
             if (c.level !== lvl) return;
@@ -47660,6 +47675,17 @@ const ThreeRenderer = (function () {
         } catch (e) {}
     }
     if (typeof document !== 'undefined') document.addEventListener('pointerlockchange', _hqOnLockChange);
+    /* THE WALK-THROUGH DOOR (2026-09-19): a door whose leaf swings open as you face it is crossed by WALKING INTO it
+       (_hqTickAutoEnter) — E on it is a second trigger: the habit was to press E while already walking through, which put
+       you through and then straight back out the other side. A door with a leaf in motion, not locked, not a flat portal,
+       is stamped `walkThrough` on its target; the host's E handler leaves such a door to the press-in. A leafless opening,
+       a gated / sealed door (its panel), a counter, a native keep E. */
+    function _hqDoorWalkThrough(rec) {
+        if (!rec || !rec.motion || !rec.door) return false;
+        if (HQ_DOOR_LOCKED[rec.state]) return false;
+        if (rec.portalSurf && rec.portalSurf !== 'wall') return false;
+        return true;
+    }
     function _hqInteract() {
         if (!_hq || _hq.paused) return;
         var t = _hqFindTarget();
@@ -48356,6 +48382,7 @@ const ThreeRenderer = (function () {
         var land = null;
         try { land = _hqSurface(pl.x, pl.z, null, true); } catch (e) { land = null; }
         if (land === null || land === undefined) land = 0;
+        try { var bfl = _hqBlockerFloor(pl.x, pl.z, pl.y); if (bfl !== null && bfl > land) land = bfl; } catch (e) {}   // THE BRIDGE LAYER: a span under the rider is the ground the air ends on
         var h = Math.max(0, pl.y - land), vy = pl.vy || 0, g = HQ_GRAV;
         /* rev 5 (hold to jump): the lift still to come from a held SPACE counts as speed the body has — a flick
            thrown on the way up in a held jump is judged against the jump it will be, not the tap it began as */

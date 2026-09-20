@@ -1966,7 +1966,9 @@
             const wayVerb = (t.kind === 'door' && t.door && t.door.way) ? ((t.door.verb) || _hqWayCat(t.door.way).verb) : null;
             const verb = wayVerb || (t.kind === 'vehicle' ? (t.verb || 'BOARD') : (t.kind === 'door' && t.door && t.door.portal) ? 'STEP THROUGH' : t.kind === 'find' ? 'TAKE' : t.kind === 'door' ? ((t.door && t.door.action && t.door.action.mission && !_hqRoomExists(_hqSiteRoomId(t.door.action.mission))) ? 'OPEN' : 'ENTER') : (t.kind === 'counter' ? ((t.counter && t.counter.verb) || 'USE') : 'TALK'));
             const pNo = _hqNo(t.door || t.counter);
-            el.innerHTML = `<b>▸ ${pNo ? 'ROOM ' + _hqEsc(pNo) + ' · ' : ''}${_hqEsc(t.label)}</b><span>${_hqEsc(t.sub || '')}</span><i>[E] ${verb}</i>`;
+            /* THE WALK-THROUGH DOOR (2026-09-19): a door the press-in owns says so — no [E] to press */
+            const walkIn = t.kind === 'door' && t.walkThrough && !(t.door && t.door.portal) && !!_hqDoorDirectAction(t);
+            el.innerHTML = `<b>▸ ${pNo ? 'ROOM ' + _hqEsc(pNo) + ' · ' : ''}${_hqEsc(t.label)}</b><span>${_hqEsc(t.sub || '')}</span><i>${walkIn ? '[WALK IN]' : '[E]'} ${verb}</i>`;
             el.style.display = '';
         }
         /* DOOR_HQ.ways[kind] (the seams that are not doors): verb / sub / sfx, never undefined */
@@ -4662,6 +4664,11 @@
             if (t && t.kind === 'door' && t.door && t.door.portal) { window._hqPortalStep(t.door.portal); return; }
             if (t && t.kind === 'door' && t.door) {
                 const act = _hqDoorDirectAction(t);
+                /* THE WALK-THROUGH DOOR (2026-09-19): a direct door whose leaf swings open is crossed by walking into it
+                   (renderer _hqTickAutoEnter → _hqWalkThroughDoor). E on it did the same thing a second time — pressed out
+                   of habit mid-step it put you through and straight back out the other side. E does NOTHING on such a door;
+                   a leafless opening, a gated door (its panel) and every counter keep their E. */
+                if (act && t.walkThrough) return;
                 if (act) { window._hqDoAction(act, t); return; }
             }
             if (t && t.kind === 'counter' && t.counter && t.counter.action && (t.counter.action.overlay === 'crossing' || t.counter.action.overlay === 'training')) {
