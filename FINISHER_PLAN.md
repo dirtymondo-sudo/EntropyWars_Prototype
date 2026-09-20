@@ -197,6 +197,70 @@ spells), a ziggurat tier block, a gothic buttress.
 
 ## 7. Log
 
+- **2026-09-20 — SIX MORE EXECUTIONS in roster order (delivery 11).** The
+  next six rows of `FINISHERS` after the machine elves, each a director
+  (battle.js `_FIN_DIRECTORS`, the DELIVERY 11 block) + a signature
+  (three-vfx-effects.js "THE FINISHER PASS 2", the DELIVERY 11 block) + a
+  stage script (`_FIN_STAGE[sig]`): cyclops **Nobody** (`nobody` — a cave
+  mouth heaves up behind the giant with one great eye in its dark, THE
+  ROCK over the lintel (the misc asteroid through `_finRockBody`, a tile
+  and a half across) is lifted and brought down on the victim ONCE (the
+  body flattens, the eye blinks), lifted higher and brought down again
+  (the hit), the rock settles where the tile was, the cave sinks, the
+  card asks WHO and answers NOBODY; reverse OTS → sky watch → fall follow
+  → face cam on the eye → sky watch → a slower fall follow → god shot),
+  cyborg **Orbital Drop** (`orbitalDrop` — the cyborg's steel stand-in
+  with a jetpack lifts off the caster's tile on a blue exhaust column
+  while the real model fades, a satellite card + a red DESIGNATOR (reticle,
+  ticks, a laser down from orbit, a dot) settle on the victim, then
+  RE-ENTRY: a `_finRockBody` meteor in a plasma shell on an ember trail
+  straight down the column, the crater ring + fireball, the shell cracks
+  off and the cyborg stands in the crater as the real model fades back;
+  face cam on the thrusters → sky watch → god shot from orbit → sky watch
+  → a long fall follow → crane; the altimeter inserts), demon prince
+  **Dark Dominion** (`darkDominion` — a crimson portal torus + black disc
+  opens overhead with `_LT().bolt` lightning crawling across it and the
+  Vatican batch's `demon_statue` (else a horned mask) hanging at its rim,
+  fourteen winged bodies dive on the victim one after another (each a
+  shock ring + a dark burst, the body knocked lower), wheel away and climb
+  back, and the last carries the body UP into the disc and the ring snaps
+  shut on the hit; sky watch → witness cam → a face-cam dive at half speed
+  → crane up with the last → sky watch on the snap), demon princess
+  **Lullaby** (`lullaby` — the tile becomes a black cradle on rockers
+  with the body in it, two clawed hands out of the ground rock it slower
+  and slower, a mobile of skulls turns, ♪ notes drift up, five candles
+  gutter out as a black dome closes down, the rocking stops, the ground
+  opens and the cradle drops in (the hit), a small stone stands up
+  reading zzz; face cam under slowly closing EYELIDS → a slow side dolly
+  → witness cam → god shot), dreameater **Devoured** (`devoured` — the
+  victim sleeps standing up, a hue-drifting dream bubble with a little
+  house / tree / moon / stars rises over the head, two jaws of teeth open
+  round it and take it in three bites (a burst of its colour each), then
+  turn on the sleeper for three bites from the crown down (the body
+  shortens a step each), the last the hit, the pillow is what is left;
+  face cam → dolly zoom on the bubble → witness cam on the jaws → a
+  half-speed face cam → god shot), fallen angel **The Fall** (`theFall` —
+  a column of light on the tile, the body carried ten tiles up past
+  `white_cloud` clones (else puffs) toward the `pearly_gate` (else posts
+  and a bar) in a halo, feathers of light drifting down, then the light
+  snaps off, two black wings open and burn, and the body tumbles the long
+  way down on a trail that goes white → black beside an altimeter sprite
+  (9 000 → 0 FT; `_finTextTex` swapped on the sprite), the crater, black
+  feathers settling; face cam → a 6-tile crane up → sky watch on the
+  gates → a 1.7 s fall follow under two slow-mo steps → god shot).
+  Fifty-eight built of 99. Smoke-tested in a stub-THREE harness (every
+  tick of every signature on three placements, the hit ring fires in
+  each; no rendered frame — RULE #1c). Not playtested: the cave's read
+  behind the caster (its crag stands `max(2.6 tiles, L + 1.2)` back), the
+  rock's scale off the asteroid GLB, the exhaust column's height against
+  the dome, the designator's laser from 16 tiles up, the portal's height
+  (6.5 tiles) against the sky watch, the demon_statue's scale at the rim
+  (`ts * 1.4` is the edit), the crib's scale and the hands' reach, the
+  jaws' teeth rings from the witness cam, the gate GLB's facing on the
+  halo, the altimeter's legibility during the fall, every director's
+  camera path on the real board. NEXT: the rows in roster order —
+  goatman, halfdemon, mermaid, nephilim, vampire, voidweaver.
+
 - **2026-09-20 — SIX MORE EXECUTIONS in roster order (delivery 10).** The
   next six rows of `FINISHERS` after the mantid, each a director (battle.js
   `_FIN_DIRECTORS`, the DELIVERY 10 block) + a signature (three-vfx-effects.js

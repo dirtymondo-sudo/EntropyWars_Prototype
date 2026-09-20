@@ -6947,3 +6947,39 @@ ring, hq-terrain 78 / hq-floor-plan 69. `node check-terrain.js garage` before an
 nothing traps. Ship data.js to R2 AND Render. PRE-EXISTING at HEAD, not touched: hq-dumb's dream-lab exit count,
 hq-stage2's ROOM DIALOGUE scan. UNSEEN LIVE (RULE #1c): the drum's facets, the parapets stepping with the ramp, the rails
 at the chord joints, the stacked rings from below, the alcove's read, the light at 12.4 m.
+
+## SIX MORE EXECUTIONS — Nobody · Orbital Drop · Dark Dominion · Lullaby · Devoured · The Fall (FINISHER_PLAN delivery 11) — 2026-09-20, local delivery
+The next six `FINISHERS` rows in roster order are BUILT (fifty-eight of 99; 41
+remain): cyclops `nobody` (`_sigNobody3D` — the cave mouth heaves up behind
+the giant with one eye in its dark, THE ROCK over the lintel (the misc
+asteroid via `_finRockBody`) comes down on the victim ONCE, is lifted
+higher, comes down again on the hit; WHO DID THIS → NOBODY), cyborg
+`orbitalDrop` (`_sigOrbitalDrop3D` — the jetpack stand-in lifts off the
+caster's tile on an exhaust column while the real model fades (`c.fade`),
+the satellite card + the red DESIGNATOR on the victim, RE-ENTRY as a
+`_finRockBody` meteor in a plasma shell, the crater, the cyborg standing in
+it as the model fades back), demon prince `darkDominion`
+(`_sigDarkDominion3D` — the crimson portal torus overhead with
+`_LT().bolt` lightning and the `demon_statue` clone at its rim, fourteen
+winged bodies diving one after another, the last carries the body up into
+the disc and the ring snaps shut), demon princess `lullaby` (`_sigLullaby3D`
+— the black cradle on rockers, the clawed hands rocking it slower, the skull
+mobile, the notes, five candles guttering under a closing dark dome, the
+ground opens under the crib, a stone reads zzz; the director's face cam
+sits under slowly closing `cineEyelids`), dreameater `devoured`
+(`_sigDevoured3D` — the dream bubble with the little scene inside, two
+jaws of teeth take it in three bites, then the sleeper in three from the
+crown down, the pillow is what is left), fallen angel `theFall`
+(`_sigTheFall3D` — the column of light, the body carried ten tiles up past
+`white_cloud` clones to the `pearly_gate` clone in a halo, the light snaps
+off, black wings burn, the long tumble down beside an altimeter sprite whose
+`_finTextTex` is swapped per step, the crater, black feathers). Each = a
+director in battle.js `_FIN_DIRECTORS` (the DELIVERY 11 block), the
+signature in "THE FINISHER PASS 2" (the DELIVERY 11 block; `_sigRunOwned` +
+`_fxDelay`, called inside the relayed cinematic — RULE #2), a
+`_FIN_STAGE[sig]` script for the forge, a row in finishers.test.js's BUILT
+table. Smoke-tested in a stub-THREE harness (every tick; not a render).
+UNSEEN LIVE (RULE #1c): FINISHER_PLAN §7's delivery-11 entry lists what to
+eyeball first — the cave behind the caster, the rock's scale, the exhaust
+column, the portal's height, the crib, the jaws, the gate's facing, the
+altimeter.
