@@ -197,6 +197,70 @@ spells), a ziggurat tier block, a gothic buttress.
 
 ## 7. Log
 
+- **2026-09-20 — SIX MORE EXECUTIONS in roster order (delivery 12).** The
+  next six `FINISHERS` rows with `sig: null` in `AVAILABLE_RACES` order are
+  BUILT (sixty-four of 99; 35 remain): goatman **Baphomet's Rite**
+  (`baphometsRite` / `_sigBaphometsRite3D` — the inverted pentagram burns
+  in round the victim, five black candles rise and light, seven hooded
+  chanters stand up out of the ground (SOLVE · ET COAGULA), the horned,
+  torch-crowned goat rises three tiles tall behind them with one arm up
+  and one down, the body is lifted off the sigil and taken by a column of
+  black-red fire; the candles snuff one by one), halfdemon **Half
+  Measures** (`halfMeasures` / `_sigHalfMeasures3D` — the caster's
+  stand-in splits into a pale human half that steps aside and turns its
+  back and a crimson other half that grows horns and a wing, lunges, a
+  six-slash flurry at a rising cadence the director shares, the body
+  hauled overhead and slammed through the ground into a fire pit, the
+  halves walk back and rejoin — the real model is faded out for the beat
+  like Orbital Drop's), mermaid **The Wave** (`theWave` / `_sigTheWave3D` —
+  the tide slides in from the rim beyond the victim, the mermaid sings on a
+  `_finRockBody` rock, a LOFTED CURLING WAVE WALL (a hand-built
+  BufferGeometry with vertex colours deep → light → foam, nine tiles tall,
+  twelve wide) rises at the rim and rolls in with spray tearing off its
+  lip, crashes on the tile, the board under a hand of water that drains
+  back and leaves a puddle and one shell), nephilim **The Watchers'
+  Verdict** (`watchersVerdict` / `_sigWatchersVerdict3D` — a dark dome, TWO
+  HUNDRED EYES on one InstancedMesh (`_finEyeTex`, a cached canvas almond)
+  opening in sequence on a hemisphere round the victim, every plane turned
+  on the body by `Matrix4.lookAt`; on the gaze 200 light threads
+  (LineSegments) converge on the head; the verdict = six `_LT().bolt`s out
+  of six eyes, then every eye shuts at once), vampire **The Drain**
+  (`theDrain` / `_sigTheDrain3D` — a bent cape the size of the night unfurls
+  from behind the caster and leans over the board with its crimson lining
+  up, eighty bats on one InstancedMesh spiral in tighter and bite, a wine
+  glass forms round the victim and fills red from the foot as the body
+  pales and shrinks, the glass is lifted on a pivot whose local +X points
+  at the caster and tipped, the wine drains, the glass shatters into
+  fourteen shards, the cape closes and the bats scatter), voidweaver
+  **Event Horizon** (`eventHorizon` / `_sigEventHorizon3D` — a violet seed
+  from the hand hangs over the victim and opens into a true black sphere
+  (a plain non-transparent black material — the one thing that emits
+  nothing) in a photon ring under two counter-tilted accretion discs, the
+  sky dark; the body becomes a `_finChain` of 26 beads on a corkscrew from
+  the feet to the horizon, each thinner, swallowed head first, the 5×5's
+  loose light streaking in; the horizon collapses to a point and lets one
+  flash out — the director's `strike` freezes on the `invert` grade and
+  fires the ring / flash / slam 180 ms later through `c.at`, on the
+  collapse). Each = a director in battle.js `_FIN_DIRECTORS` (the DELIVERY
+  12 block; the wave's `strikeMs` 4600), the signature in "THE FINISHER
+  PASS 2" (the DELIVERY 12 block; `_sigRunOwned` + `_fxDelay`, called inside
+  the relayed cinematic — RULE #2), a `_FIN_STAGE[sig]` script for the
+  forge (the beats as fractions of the stage's hit time), a row in
+  finishers.test.js's BUILT + SIG_FN tables. Smoke-tested in a stub-THREE
+  harness (every tick of every signature at 16 ms, no NaN in any
+  position / scale / opacity / spawn; not a render). Files: data.js,
+  battle.js, three-vfx-effects.js, index.html (`20260920-finishers-12-cors`),
+  finishers.test.js, CLAUDE.md, this plan. Not playtested (RULE #1c): the
+  goat's silhouette against the chanters, the two halves' split read on a
+  sprite vessel (the real model is faded for the beat), the wave's vertex
+  colours and its lip under the board's light (a wall that reads flat wants
+  `wmat` swapped to a Lambert), the eyes' scale on the dome and the 200
+  threads' brightness, the cape's fold over the board and the pivot's tilt
+  direction (`pivot.rotation.z` sign is the edit if the glass tips away from
+  the caster), the black sphere against a dark map, and the six camera
+  paths on the real board. NEXT: the rows in roster order — cosmic wraith,
+  superhero, general, droid, antihero, conspiracy theorist.
+
 - **2026-09-20 — SIX MORE EXECUTIONS in roster order (delivery 11).** The
   next six rows of `FINISHERS` after the machine elves, each a director
   (battle.js `_FIN_DIRECTORS`, the DELIVERY 11 block) + a signature

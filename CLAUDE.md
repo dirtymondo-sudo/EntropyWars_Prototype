@@ -6983,3 +6983,43 @@ UNSEEN LIVE (RULE #1c): FINISHER_PLAN §7's delivery-11 entry lists what to
 eyeball first — the cave behind the caster, the rock's scale, the exhaust
 column, the portal's height, the crib, the jaws, the gate's facing, the
 altimeter.
+
+## SIX MORE EXECUTIONS — Baphomet's Rite · Half Measures · The Wave · The Watchers' Verdict · The Drain · Event Horizon (FINISHER_PLAN delivery 12) — 2026-09-20, local delivery
+The next six `FINISHERS` rows in roster order are BUILT (sixty-four of 99; 35
+remain): goatman `baphometsRite` (`_sigBaphometsRite3D` — the inverted
+pentagram burns in, five black candles rise and light, seven hooded chanters
+stand up out of the ground, the horned torch-crowned goat rises behind the
+victim AS ABOVE / SO BELOW, the body lifted off the sigil into a column of
+black-red fire, the candles snuffed one by one), halfdemon `halfMeasures`
+(`_sigHalfMeasures3D` — the stand-in splits: the pale human half steps aside
+and turns its back, the crimson other half grows horns + a wing, lunges, a
+six-slash flurry at a rising cadence, the body slammed through the ground into
+a fire pit, the halves walk back and rejoin; the real model is faded for the
+beat), mermaid `theWave` (`_sigTheWave3D` — the tide in from the rim, the
+mermaid on a rock singing, a LOFTED CURLING WAVE WALL — a hand-built
+BufferGeometry, vertex colours deep → light → foam, nine tiles tall — rolls in
+with spray off its lip and crashes on the tile; the water drains back off the
+edge and leaves a puddle and a shell), nephilim `watchersVerdict`
+(`_sigWatchersVerdict3D` — a dark dome, TWO HUNDRED EYES on one InstancedMesh
+(`_finEyeTex`, a cached canvas almond) opening in sequence, each turned on the
+victim by `Matrix4.lookAt`; 200 light threads converge on the gaze; six
+`_LT().bolt`s out of six eyes, then every eye shuts at once), vampire
+`theDrain` (`_sigTheDrain3D` — the bent cape the size of the night leaning
+over the board lining-up, eighty bats on one InstancedMesh spiralling in and
+biting, a wine glass round the victim filling red from the foot as the body
+pales and shrinks, lifted on a pivot whose local +X is the caster and tipped,
+drained, shattered into fourteen shards, the cape closing), voidweaver
+`eventHorizon` (`_sigEventHorizon3D` — a violet seed from the hand opens into a
+true black sphere in a photon ring under two accretion discs, the body a
+`_finChain` of 26 beads on a corkscrew into the horizon swallowed head first,
+the collapse to a point, ONE flash out — the director's `strike` freezes on the
+`invert` grade and fires its ring / flash / slam 180 ms later through `c.at`).
+Each = a director in battle.js `_FIN_DIRECTORS` (the DELIVERY 12 block), the
+signature in "THE FINISHER PASS 2" (the DELIVERY 12 block; `_sigRunOwned` +
+`_fxDelay`, called inside the relayed cinematic — RULE #2), a `_FIN_STAGE[sig]`
+script for the forge, a row in finishers.test.js's BUILT table. Smoke-tested
+in a stub-THREE harness (every tick; not a render). UNSEEN LIVE (RULE #1c):
+FINISHER_PLAN §7's delivery-12 entry lists what to eyeball first — the goat's
+silhouette, the split on a sprite vessel, the wave wall's colours under the
+board's light, the eyes' scale on the dome, the glass's tilt direction, the
+black sphere on a dark map, the six camera paths.
