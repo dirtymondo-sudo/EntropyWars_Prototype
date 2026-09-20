@@ -143,16 +143,24 @@ test('every replacement MP3 referenced by audio.js is included in the delivery',
 /* THE RIG LANE (2026-09-20, the desktop load pass): on a desktop a marked rig file starts at once, every
    other model request is HELD while one is in flight and released TOGETHER (a flush, never the phone's
    one-at-a-time queue) when the last rig file lands; the safety timer flushes a stalled lane. */
-test('desktop rig lane: the avatar first, everything else held and flushed together', () => {
+test('desktop rig lane (opt-in): off by default; when on, the avatar first, everything else held and flushed together', () => {
     const timers = [], started = [];
     const c = vm.createContext({ window: {}, console, setTimeout: (f, ms) => { timers.push({ f, ms }); return timers.length; }, clearTimeout() {} });
     vm.runInContext('var _mobileModelJobs = [], _mobileModelBusy = false;' + fn(renderer, '_rigLaneMark') + fn(renderer, '_rigLaneCount') + fn(renderer, '_rigLaneFlush') + fn(renderer, '_scheduleModelLoad') + fn(renderer, '_pumpModelLoads')
         + fn(renderer, '_bgStart') + fn(renderer, '_pumpBgLoads') + fn(renderer, '_bgPromote')
         + ';var _rigLaneUrls = {}, _rigLaneLive = {}, _rigLaneHeld = [], _rigLaneTimer = null; var _bgModelJobs = [], _bgModelLive = 0, BG_MAX = 3, _bgLoadDepth = 0;', c);
-    // nothing marked: every request starts at once (the old desktop behaviour)
+    // THE LANES ARE OFF by default (2026-09-20, the user's rule): a desktop starts every request at
+    // once, marked or not, warm or not — nothing is ever held
     c._scheduleModelLoad(() => started.push('free'), 'chair.glb');
     assert.deepEqual(started, ['free']);
     c._rigLaneMark(['rig.glb', 'ual1.glb', null]);
+    c._scheduleModelLoad(() => started.push('rig0'), 'rig.glb');
+    c._scheduleModelLoad(() => started.push('prop0'), 'prop0.glb');
+    c._scheduleModelLoad(() => started.push('warm0'), 'warm0.glb', true);
+    assert.deepEqual(started, ['free', 'rig0', 'prop0', 'warm0']);
+    started.length = 0; started.push('free');
+    // the lanes exist only for a page that opts in
+    c.window.EW_MODEL_LANES = true;
     const dones = [];
     c._scheduleModelLoad(done => { started.push('rig'); dones.push(done); }, 'rig.glb');
     c._scheduleModelLoad(done => { started.push('ual1'); dones.push(done); }, 'ual1.glb');

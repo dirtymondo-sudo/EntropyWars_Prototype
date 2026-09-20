@@ -613,7 +613,7 @@
                     const wanted = (typeof window._menuSceneEnabled === 'function') ? !!window._menuSceneEnabled() : !!men;
                     ready = M ? (!!M.leafHot && !!(M.sedan && M.sedan.children.length)) : !wanted;   // a scene still building is waited for
                 } catch (e) { ready = true; }
-                if (ready || performance.now() - t0 > 8000) { try { window._hqWarmArrival({ avatarOnly: true }); } catch (e) {} return; }   // the menu warms the RIG only (2026-09-20): the room's ~60 MB of props wait for Play
+                if (ready || performance.now() - t0 > 8000) { try { window._hqWarmArrival(); } catch (e) {} return; }   // the menu warms the WHOLE arrival room again (the user: back to loading everything at once)
                 _hqWarmSoonT = setTimeout(tick, 500);
             };
             _hqWarmSoonT = setTimeout(tick, 1200);

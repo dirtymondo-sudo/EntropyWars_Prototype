@@ -10361,7 +10361,11 @@ const ThreeRenderer = (function () {
     }
     function _scheduleModelLoad(start, url, bg) {
         if (typeof window === 'undefined' || !window.EW_PERF_LOW) {
-            if (typeof window !== 'undefined' && !window.EW_NO_RIG_LANE) {
+            /* THE LANES ARE OFF (2026-09-20, the user: "everything used to load fast all at once — go
+               back to that"): holding every model behind the walker's rig and trickling the room's props
+               three at a time made the building arrive slower, not faster. On a desktop every request
+               starts the moment it is made, as before the lanes. window.EW_MODEL_LANES = true opts back in. */
+            if (typeof window !== 'undefined' && window.EW_MODEL_LANES && !window.EW_NO_RIG_LANE) {
                 if (url && _rigLaneUrls[url]) {
                     _rigLaneLive[url] = 1;
                     if (!_rigLaneTimer) _rigLaneTimer = setTimeout(_rigLaneFlush, 12000);

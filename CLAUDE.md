@@ -6525,3 +6525,19 @@ wears a 28 MB `Pyramid/Textures/TextureBake.png`; the hall's chairs are 16 MB ea
 `Meshy_AI_one_meter_of_railing_0903105339_texture.glb` is NOT in the bucket (a 404 + a retry in every room);
 the Cloudflare cache rule caches a 404 for a year in the browser too — set the rule's Edge/Browser TTL for
 status 200 only (404 → a minute) and PURGE after uploading a file that ever 404'd.
+
+## THE LANES ARE OFF — everything loads at once again + THE CDN CORS PROBE (2026-09-20, local delivery)
+The user, on the two-day-old rig lane + background lane: "everything used to load fast all at once — go back
+to that; still black, everything loading slow." MEASURED on the live Render host (headless, the real CDN):
+zero asset failures, every texture and GLB carries its CORS header, the hall renders textured after 90 s —
+the black was assets not yet arrived, and the LANES were the delay (the walker's rig held every other model,
+the room's props and the natives trickled three at a time). three-renderer.js `_scheduleModelLoad`: on a
+desktop EVERY request starts the moment it is made; the rig lane and the background lane exist only under
+`window.EW_MODEL_LANES = true` (the phone's serial queue under EW_PERF_LOW is untouched; the retry stays).
+map.js `_hqWarmArrivalSoon` warms the WHOLE arrival room from the menu again (`avatarOnly` is still a valid
+opt). index.html gains THE CDN CORS PROBE at boot: one small cors fetch of the CDN; when the page's origin
+is not in the R2 bucket's CORS policy (only the Render host is today — entropywars.net / www get NO
+`access-control-allow-origin`) a red banner names the origin and the fix and `window._ewCdnCorsBlocked` is
+set — a blocked origin renders every texture and model black with nothing else in the console. The bucket's
+policy is the user's (Cloudflare → R2 → bucket → Settings → CORS; `r2-cors-policy.json` in the delivery).
+mobile-performance.test.js's lane test opts in; load-diet's menu test reads the full warm.
