@@ -1763,13 +1763,18 @@ const ThreeRenderer = (function () {
             lenTiles: 0.30, spin: 22.0,
         },
     };
-    /* warm the projectile GLBs shortly after boot (tiny next to unit models) */
-    window.setTimeout(function () {
-        if (window.EW_DISABLE_WEAPON_GLB) return;
-        for (var k in _PROJ_MODELS) {
-            try { _loadMiscModel(_PROJ_MODELS[k].url, true, function () {}); } catch (e) {}
-        }
-    }, 4000);
+    /* THE MATCH WARM (2026-09-20, the loading pass): the projectile GLBs are no longer warmed at boot
+       (14 MB behind the title screen) — battle.js's loading screen calls warmProjectileModels with the
+       keys the parties' basic attacks deliver; a throw before the file lands is the sprite. */
+    function _warmProjectileModels(keys) {
+        if (typeof window !== 'undefined' && window.EW_DISABLE_WEAPON_GLB) return 0;
+        var n = 0;
+        (keys || []).forEach(function (k) {
+            var d = _PROJ_MODELS[k]; if (!d) return;
+            n++; try { _loadMiscModel(d.url, true, function () {}, { bg: true }); } catch (e) {}
+        });
+        return n;
+    }
 
     var floatTextGroup = null;
     var _floatTweens = [];
@@ -7195,12 +7200,9 @@ const ThreeRenderer = (function () {
         ulna:  'https://cdn.entropywars.net/Assets/weapons/Meshy_AI_ulna_bone_realistic_0725070052_texture.glb',
         skull: 'https://cdn.entropywars.net/Assets/weapons/Meshy_AI_skull_realistic_0725070330_texture.glb',
     };
-    window.setTimeout(function () {
-        if (window.EW_DISABLE_WEAPON_GLB) return;
-        for (var bk in _BONE_GLB_URLS) {
-            try { _loadMiscModel(_BONE_GLB_URLS[bk], true, function () {}); } catch (e) {}
-        }
-    }, 6000);
+    /* the bone GLBs are no longer warmed at boot (2026-09-20, the loading pass — 27 MB behind the
+       title screen): _boneGlbClone kicks the load on the first grave and stands the procedural bone
+       in until it lands */
 
     /* Synchronous normalized clone of a cached bone GLB, or null while it
        streams. Center origin; longest axis scaled to targetLen and (when
@@ -36756,6 +36758,40 @@ const ThreeRenderer = (function () {
         return turnMs + T.total;
     }
 
+
+    /* THE HIDDEN STAGE (2026-09-20): a parked EWCharViewer.mount for a host that has no box on screen */
+    var _cvDeferred = null, _cvDeferTimer = null;
+    function _cvHostHidden(host) {
+        try {
+            if (!host || typeof host.getClientRects !== 'function') return false;
+            var rects = host.getClientRects();
+            if (rects.length === 0) return true;
+            /* laid out but COVERED BY ANOTHER PAGE (the pre-match builder lives under the title / menu
+               overlays in .app.setup-mode): the host is hidden when the element at its centre lies outside
+               the host's own page / app root — a window of the same page over it (the forge's locker) is fine */
+            if (typeof document === 'undefined' || typeof document.elementFromPoint !== 'function') return false;
+            var r = rects[0];
+            if (!(r.width > 0 && r.height > 0)) return true;
+            var top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+            if (!top) return false;   // off the viewport: leave it to the rect rule
+            var root = (typeof host.closest === 'function' && host.closest('[id$="Page"], .app')) || host;
+            return !(root === top || root.contains(top));
+        } catch (e) { return false; }
+    }
+    function _cvDeferMount(host, race, gender, opts) {
+        if (_cvDeferTimer) { clearTimeout(_cvDeferTimer); _cvDeferTimer = null; }
+        _cvDeferred = host ? { host: host, race: race, gender: gender, opts: opts } : null;
+        if (!_cvDeferred) return;
+        var tick = function () {
+            _cvDeferTimer = null;
+            var d = _cvDeferred; if (!d) return;
+            if (d.host.isConnected === false) { _cvDeferred = null; return; }
+            if (_cvHostHidden(d.host)) { _cvDeferTimer = setTimeout(tick, 400); return; }
+            _cvDeferred = null;
+            try { window.EWCharViewer.mount(d.host, d.race, d.gender, d.opts); } catch (e) {}
+        };
+        _cvDeferTimer = setTimeout(tick, 400);
+    }
     var charViewer = {
         supports: _cvSupports,
         /* Mount (or move) the viewer into `host` and show `race`/`gender`.
@@ -36766,6 +36802,12 @@ const ThreeRenderer = (function () {
         dev: { state: function () { return _cv; }, model: function () { return _cv ? _cv.model : null; } },
         mount: function (host, race, gender, opts) {
             if (!host || !_cvSupports(race, gender)) return false;
+            /* THE HIDDEN STAGE (2026-09-20, the loading pass): the pre-match builder renders at boot behind
+               the title page and its stage used to stream the first slot's rig + BOTH animation libraries
+               (25 MB) under the title screen. A host with no box on screen (a hidden page) is not mounted:
+               the request is parked and polled, and the stage mounts the moment the page shows. */
+            if (_cvHostHidden(host)) { _cvDeferMount(host, race, gender, opts); return true; }
+            _cvDeferMount(null);
             var v = _cvEnsure();
             if (!v) return false;
             if (v.host && v.host !== host) _cvHostState(v.host, null);
@@ -36856,6 +36898,7 @@ const ThreeRenderer = (function () {
             return out;
         },
         unmount: function () {
+            _cvDeferMount(null);   // a parked mount is dropped with the host (2026-09-20)
             if (!_cv) return;
             _cvStageExit();                        // the pools go home before any match starts (§5.3)
             if (_cv.raf) { cancelAnimationFrame(_cv.raf); _cv.raf = 0; }
@@ -51766,6 +51809,7 @@ const ThreeRenderer = (function () {
 
         /* DOOR 6.3: the Key pickup celebration (battle.js playKeySecuredFx) */
         keyPickupFx, keyFxWarm,
+        warmProjectileModels: _warmProjectileModels,   // THE MATCH WARM (2026-09-20)
 
         hasActiveAnims,
 

@@ -613,20 +613,30 @@
                     const wanted = (typeof window._menuSceneEnabled === 'function') ? !!window._menuSceneEnabled() : !!men;
                     ready = M ? (!!M.leafHot && !!(M.sedan && M.sedan.children.length)) : !wanted;   // a scene still building is waited for
                 } catch (e) { ready = true; }
-                if (ready || performance.now() - t0 > 8000) { try { window._hqWarmArrival(); } catch (e) {} return; }
+                if (ready || performance.now() - t0 > 8000) { try { window._hqWarmArrival({ avatarOnly: true }); } catch (e) {} return; }   // the menu warms the RIG only (2026-09-20): the room's ~60 MB of props wait for Play
                 _hqWarmSoonT = setTimeout(tick, 500);
             };
             _hqWarmSoonT = setTimeout(tick, 1200);
             return true;
         };
-        window._hqWarmArrival = function () {
+        /* 2026-09-20 (the loading pass): TWO steps. The MENU warms the walker's rig + the animation
+           libraries only — the one file the load card waits for. PLAY warms the arrival room's props and
+           spins the survey. The menu used to warm the whole room (60+ MB of props behind the scene the
+           player was looking at). */
+        let _hqWarmedAvatar = false;
+        window._hqWarmArrival = function (opts) {
+            opts = opts || {};
             if (_hqWarmedArrival) return false;
             if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.hq || typeof DOOR_HQ === 'undefined') return false;
             if (typeof window._hqEnabled === 'function' && !window._hqEnabled()) return false;
-            _hqWarmedArrival = true;
             try {
                 const profile = _hqProfile();
-                if (ThreeRenderer.hq.warmAvatar) ThreeRenderer.hq.warmAvatar(_hqAvatar(profile));
+                if (!_hqWarmedAvatar) {
+                    _hqWarmedAvatar = true;
+                    if (ThreeRenderer.hq.warmAvatar) ThreeRenderer.hq.warmAvatar(_hqAvatar(profile));
+                }
+                if (opts.avatarOnly) return true;
+                _hqWarmedArrival = true;
                 if (ThreeRenderer.hq.warmRoom) ThreeRenderer.hq.warmRoom(_hqArrivalRoom());
                 _hqSurveyWarmAround(_hqArrivalRoom());
             } catch (e) { console.warn('[HQ] arrival warm failed', e); }

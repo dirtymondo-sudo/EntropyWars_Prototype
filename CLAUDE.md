@@ -6496,3 +6496,32 @@ called inside the relayed cinematic — RULE #2), a `_FIN_STAGE[sig]` script for
 the forge, a row in finishers.test.js's BUILT table. Smoke-tested in a stub
 THREE harness (every tick; not a render). UNSEEN LIVE (RULE #1c):
 FINISHER_PLAN §7's delivery-5 entry lists what to eyeball first.
+
+## THE LOADING PASS — NOTHING IS WARMED BEHIND THE TITLE (the 330 MB title screen) — 2026-09-20, local delivery
+The user: "the page just loads forever — transferring data from cdn.entropywars.net… the title sprites never
+finish". MEASURED with a headless browser against the REAL CDN (`playtest` scratch probe, request log by
+phase): the TITLE SCREEN alone pulled **330 MB** in 355 requests before any click — the VFX file's boot warm of
+all 29 weapon GLBs (5–13 MB each; the `first` burst at 3.5 s + a 700 ms drip), the renderer's projectile
+(14 MB) and bone (27 MB) boot timers, the finisher rocks (both asteroids, 22 MB), AND the pre-match party
+builder, which React-renders at boot INSIDE `.app.setup-mode` under the title overlay and whose `HeroViewer3D`
+stage streamed the first slot's rig + UAL1 + UAL2 + MAL1 (26 MB); four of the weapon files were fetched TWICE
+(the VFX cache and the renderer's misc cache share URLs). The menu added ~100 MB (the arrival warm's whole
+room). The CDN itself is fast (a 18 MB file in 0.7 s from here) — the tab was simply queueing a third of a
+gigabyte, and on a home line the 466 KB title sprite sheets sat behind it for minutes. THE RULE NOW: **no
+model is ever warmed at boot, on the title or on the menu** — a weapon / a bone / a projectile loads on its
+FIRST USE (every helper degrades gracefully while it streams), the battle's LOADING SCREEN warms only what
+the two parties' basic attacks deliver (battle.js: `basicAttackDelivery` → `ThreeVFXEffects.warmWeapons
+(['bullet' | 'arrow'])` + `ThreeRenderer.warmProjectileModels([dv.proj])`, both in the background lane,
+fire-and-forget) and `finish()` starts **`ThreeVFXEffects.warmWeaponsDrip(4000, alive)`** — the rest of the
+library one file every 4 s through the background lane while `gameState === GS.BATTLE`; `stopWeaponDrip`,
+`EW_NO_WEAPON_WARM`. The menu's `_hqWarmArrivalSoon` warms the WALKER'S RIG only (`_hqWarmArrival({
+avatarOnly: true })` — the one file the load card waits for); Play warms the room + the survey. **THE HIDDEN
+STAGE**: `EWCharViewer.mount` parks a host that has no box OR whose centre is covered by an element outside
+its own page / app root (`_cvHostHidden` — `host.closest('[id$="Page"], .app')`; a window of the SAME page
+over it, the forge's locker, is not a cover) and polls it in (`_cvDeferMount`, 400 ms); `unmount` drops the
+park. AFTER: the title is 22.7 MB (the scripts), the forge from the menu mounts its stage and streams its rig
+on open. `npm test` runs `load-diet.test.js`. STILL THE USER'S (assets, not code): the menu scene's pyramid
+wears a 28 MB `Pyramid/Textures/TextureBake.png`; the hall's chairs are 16 MB each; `railing_1m`'s file
+`Meshy_AI_one_meter_of_railing_0903105339_texture.glb` is NOT in the bucket (a 404 + a retry in every room);
+the Cloudflare cache rule caches a 404 for a year in the browser too — set the rule's Edge/Browser TTL for
+status 200 only (404 → a minute) and PURGE after uploading a file that ever 404'd.

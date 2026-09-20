@@ -10432,27 +10432,51 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         };
     }
 
-    /* warm the cache shortly after boot so the FIRST cast already has its
-       model. 2026-07-25: the library is ~25 props now (a lot of megabytes of
-       GLB) — warm the high-frequency combat models in one burst like before,
-       then drip the big cinematic props in one at a time so boot bandwidth
-       isn't saturated while unit models are still streaming. */
-    window.setTimeout(function () {
-        if (_wpnGlbOff()) return;
-        var first = ['bullet', 'missile', 'revolver', 'pistol', 'plasma',
-                     'shotgun', 'sniper', 'jet', 'arrow', 'sword',
-                     'football', 'cauldron', 'crystalBall'];
-        for (var i = 0; i < first.length; i++) _wpnLoad(first[i], { bg: true });   // the background lane (2026-09-20): never under the menu's own door
-        var rest = [];
-        for (var k in _WPN_MODELS) {
-            if (first.indexOf(k) < 0) rest.push(k);
+    /* THE MATCH WARM (2026-09-20, the loading pass) — there is NO BOOT WARM any more. The library is
+       29 GLBs / ~230 MB, and the old boot burst (with the renderer's projectile + bone warms and the
+       finisher rocks) pulled 330 MB behind the TITLE SCREEN before the player clicked anything; on a
+       home connection the title's own sprite sheets queued behind it for minutes ("transferring data
+       from cdn.entropywars.net…" for ever). A weapon loads on its FIRST CAST (every helper degrades
+       gracefully while it streams — the bolt sprite, the procedural prop) and the battle's loading
+       screen warms only what the two parties' basic attacks need (warmWeapons(keys)); once the match
+       is on, warmWeaponsDrip(ms, alive) streams the rest ONE file at a time through the background
+       lane while alive() holds (the match is the only place a weapon is needed). Never at boot, never
+       on the menu, never in the building. Kill-switch: window.EW_NO_WEAPON_WARM. */
+    var _WPN_DRIP_FIRST = ['bullet', 'arrow', 'missile', 'revolver', 'pistol', 'plasma',
+                           'shotgun', 'sniper', 'jet', 'sword', 'football', 'cauldron', 'crystalBall'];
+    var _wpnDripTimer = null, _wpnDripQueue = [];
+    function _wpnWarmOff() { return _wpnGlbOff() || (typeof window !== 'undefined' && !!window.EW_NO_WEAPON_WARM); }
+    function _wpnWarm(keys, opts) {
+        if (_wpnWarmOff()) return 0;
+        var n = 0;
+        (keys || []).forEach(function (k) { if (_WPN_MODELS[k] && !_wpnCache[k]) { n++; _wpnLoad(k, opts || { bg: true }); } });
+        return n;
+    }
+    function _wpnDripStop() {
+        if (_wpnDripTimer) { clearTimeout(_wpnDripTimer); _wpnDripTimer = null; }
+        _wpnDripQueue = [];
+    }
+    function _wpnDrip(ms, alive) {
+        if (_wpnWarmOff()) return 0;
+        _wpnDripStop();
+        var order = _WPN_DRIP_FIRST.slice();
+        for (var k in _WPN_MODELS) if (order.indexOf(k) < 0) order.push(k);
+        _wpnDripQueue = order.filter(function (key) { return !_wpnCache[key]; });
+        var step = Math.max(500, ms || 4000);
+        function tick() {
+            _wpnDripTimer = null;
+            if (!_wpnDripQueue.length) return;
+            var ok = true;
+            try { ok = (typeof alive === 'function') ? !!alive() : true; } catch (e) { ok = false; }
+            if (!ok) { _wpnDripQueue = []; return; }   // the match ended — nothing else needs a weapon
+            if (typeof document !== 'undefined' && document.hidden) { _wpnDripTimer = setTimeout(tick, step); return; }
+            var key = _wpnDripQueue.shift();
+            if (!_wpnCache[key]) _wpnLoad(key, { bg: true });
+            _wpnDripTimer = setTimeout(tick, step);
         }
-        for (var j = 0; j < rest.length; j++) {
-            (function (key, idx) {
-                window.setTimeout(function () { _wpnLoad(key, { bg: true }); }, 4500 + idx * 700);
-            })(rest[j], j);
-        }
-    }, 3500);
+        _wpnDripTimer = setTimeout(tick, step);
+        return _wpnDripQueue.length;
+    }
 
     /* ═══════════ 2026-07-25 WEAPON GLB BATCH 2 — candles, bones, tarot,
        cross, sleigh, fist, bullet, missile, shotgun, sniper. Every helper
@@ -25372,8 +25396,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         ]
     };
     SPELL_MAP['raceProphecyOfDisaster'] = Object.assign({}, SPELL_MAP['raceProphecyOfDisaster'], { descent: 'raceProphecyOfDisaster_descent' });
-    /* warm the rocks (the first meteor of a match otherwise falls as the icosahedron) */
-    try { if (!_wpnGlbOff()) setTimeout(function () { _wpnLoad('asteroid', { bg: true }); _wpnLoad('asteroid2', { bg: true }); }, 3500); } catch (e) {}
+    /* the rocks are no longer warmed at boot (2026-09-20, the loading pass): the match drip
+       (warmWeaponsDrip) streams them once a match is on; a meteor before that falls as the icosahedron */
 
     /* ═══════════════════════════════════════════════════════════════════════
        THE FINISHER PASS 2 — THE EXECUTIONS (2026-09-19)
@@ -27561,6 +27585,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
         __playFx: __playFx,
         spawnFlameBurst3D: spawnFlameBurst3D,
+
+        /* THE MATCH WARM (2026-09-20): the loading screen's weapon warm + the in-match drip */
+        warmWeapons: _wpnWarm,
+        warmWeaponsDrip: _wpnDrip,
+        stopWeaponDrip: _wpnDripStop,
+        weaponKeys: function () { return Object.keys(_WPN_MODELS); },
 
         _EFFECTS: EFFECTS,
         _SPELL_MAP: SPELL_MAP,

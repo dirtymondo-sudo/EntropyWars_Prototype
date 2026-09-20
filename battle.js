@@ -36762,12 +36762,37 @@
                 if (finished) return;
                 finished = true;
                 if (onDone) onDone();
+                /* THE MATCH WARM's drip (2026-09-20): the rest of the weapon library streams one file
+                   every 4 s in the background lane while this match is on (alive() = still in battle) */
+                try {
+                    if (window.ThreeVFXEffects && typeof window.ThreeVFXEffects.warmWeaponsDrip === 'function') {
+                        window.ThreeVFXEffects.warmWeaponsDrip(4000, () => typeof gameState !== 'undefined' && typeof GS !== 'undefined' && gameState === GS.BATTLE);
+                    }
+                } catch (e) {}
             };
 
             /* ── Asset warmers — fire these even when visuals are skipped, so
                dev-sim and animations-off matches still get a hot cache. ── */
             const prog = { model: [0, 0], img: [0, 0], tex: [0, 0], music: [0, 1] };
             const warmers = [];
+
+            // THE MATCH WARM (2026-09-20, the loading pass): the weapon / projectile GLBs are no longer
+            // warmed at boot (330 MB behind the title screen). Here — and only here — warm the props the
+            // two parties' BASIC ATTACKS deliver (a bullet, an arrow, a football: ≤ 15 MB, fire-and-forget,
+            // the bolt sprite stands in), and finish() starts the slow drip of the rest under the match.
+            try {
+                const wk = new Set(), pk = new Set();
+                for (const u of (state.units || [])) {
+                    if (!u || u.dead) continue;
+                    const dv = (typeof basicAttackDelivery === 'function') ? basicAttackDelivery(u) : null;
+                    if (!dv || dv.mode !== 'shot') continue;
+                    if (dv.kind === 'ranged') wk.add('bullet');
+                    else if (dv.kind === 'arrow') wk.add('arrow');
+                    if (dv.proj) pk.add(dv.proj);
+                }
+                if (wk.size && window.ThreeVFXEffects && typeof window.ThreeVFXEffects.warmWeapons === 'function') window.ThreeVFXEffects.warmWeapons(Array.from(wk));
+                if (pk.size && typeof ThreeRenderer !== 'undefined' && typeof ThreeRenderer.warmProjectileModels === 'function') ThreeRenderer.warmProjectileModels(Array.from(pk));
+            } catch (e) {}
 
             // DOOR 6.3: pre-warm the kit's key GLB so the first Key secured
             // celebrates with the real model, not the procedural stand-in.
