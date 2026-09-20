@@ -197,6 +197,75 @@ spells), a ziggurat tier block, a gothic buttress.
 
 ## 7. Log
 
+- **2026-09-20 — SIX MORE EXECUTIONS in roster order (delivery 6).** The
+  next six rows of `FINISHERS` after the fairy, each a director (battle.js
+  `_FIN_DIRECTORS`, the DELIVERY 6 block) + a signature (three-vfx-effects.js
+  "THE FINISHER PASS 2", the DELIVERY 6 block) + a stage script
+  (`_FIN_STAGE[sig]`): martian **Ack Ack Ack** (`ackAckAck` — a War-of-the-
+  Worlds TRIPOD seven tiles tall steps in from beyond the victim along the
+  line, a shake and a dust burst per footfall, a red eye under the hood; the
+  heat ray leaves the hood aimed two tiles wide, sweeps onto the tile and
+  holds (embers off the ground); on the hit the silhouette is a SKELETON
+  (a bone capsule in rib rings, a skull) that topples and crumbles while the
+  tripod lifts away; sky watch → face cam → a side dolly down the ray → the
+  freeze → a low reverse; ULLA… signals), nordic **Ascension Denied**
+  (`ascensionDenied` — a column of white light sixteen tiles tall, three
+  halos climbing it, the body lifted nine tiles turning slowly; the light
+  STUTTERS (the pause, a `…` clock insert), NOT THIS ONE, the beam snaps
+  off, the body kicks UP then comes down from orbit tumbling on a re-entry
+  trail of flame and smoke and craters the tile (a dark disc, rock debris,
+  the fireball); face cam → a long crane rising with the body → sky watch →
+  `cineFallFollow` → the freeze → a low reverse), grey **The Probe**
+  (`theProbe` — the saucer through `_sigBuildUFO` (the misc-bucket hull
+  when cached) swoops in across the frame and hovers, the green tractor
+  beam takes the body up turning and lays it FLAT on a TABLE that
+  materialises under the hull with a lamp cone, a probe arm jabs three
+  times out of the hull (a flash, sparks and a kick each), then the beam
+  cuts and the body drops in THREE PIECES stacked legs · head · torso;
+  the saucer shoots off after; sky watch → god shot → crane → side dolly →
+  fall follow → a low reverse; the terminal insert `> subject acquired`),
+  bigfoot **Blurry Footage** (`blurryFootage` — a treeline of the misc
+  bucket's pines (else cones on trunks) rises beyond the victim, a ● REC
+  card with the frame counter hangs flickering, VOID-MIST GRAIN drifts across
+  the frame, and a hulking black figure with swinging arms walks out of the
+  trees in slow steps (a shake + dust each), through the tile (the
+  silhouette is flung) and on past the lens; the grade is `desat dim
+  vignette`, the camera is a WITNESS shot with hand-held jolts (`c.kick`
+  every 420 ms) into a linear side dolly, slow-mo to the freeze on `desat`,
+  FRAME 352 as a glitch insert), shadow entity **Sleep Paralysis**
+  (`sleepParalysis` — a black BackSide dome closes round the tile (the
+  lights go out), a bed with the body laid flat under a lamp that FLICKERS
+  five times, a flat black figure with two white eyes in the corner that
+  stands closer and taller after every dark beat, 3:33 AM in red over the
+  bed, the grin (a half torus) as it stands over the bed, the lamp bursts
+  in sparks and the body goes under the bed; the camera is a face cam
+  under THE EYELIDS at 0.55 (a blink per flicker), a dolly-zoom on the last
+  beat, the freeze on `crimson`, a low reverse), reptilian **The
+  Unmasking** (`unmasking` — at the CASTER a green shell splits into six
+  petals in a shower of scale sprites, a 26-segment serpent coils up out of
+  the tile head-first (the segments follow a TRAIL of the head's positions,
+  `_finChain`), a ● LIVE · BREAKING NEWS card rides beside the head, the
+  lunge down the line with the jaws (two half-cones) opening, the snap takes
+  the silhouette whole, a BULGE travels back down the body, the serpent
+  slides home and fades; reverse OTS → a crane on the caster → a side
+  dolly down the line → the freeze → a god shot; ON AIR terminal insert).
+  One shared helper joined the block: `_finChain(n, r0, r1, mat)` (a
+  tapering chain of spheres). Twenty-seven built of 99. Smoke-tested in a
+  stub-THREE harness (every tick of every signature, every spawn finite —
+  no rendered frame, RULE #1c); finishers.test.js (15) + `npm run
+  test:quick` green. Not playtested: the tripod's scale (`H` / `legR` in
+  `_sigAckAckAck3D`) against a low camera and its walk-in from beyond the
+  rim, the heat ray's read under `crimson`, the beam's height (`BH`) in
+  the sky watch, the re-entry trail's density, the saucer's hover against
+  the crane, the table's height (`HOV * 0.62`) in frame, the three pieces'
+  read, the pines' scale from the misc cache (`ts * 2.2–3.0`), the grain's
+  cost (three `void-mist` spawns per 40 ms), the figure's flat plane under
+  the face cam (it is a plane — a camera off its axis sees an edge), the
+  dome's radius (`ts * 7`) against the reverse shot (a camera outside it
+  sees a black ball — the director keeps the lens inside), the serpent's
+  jaw geometry, the six camera paths. NEXT: the rows in roster order —
+  robot, android, angel, seraphim, orb of light, demon.
+
 - **2026-09-20 — SIX MORE EXECUTIONS in roster order (delivery 5).** The
   next six rows of `FINISHERS` after the telepath, each a director (battle.js
   `_FIN_DIRECTORS`) + a signature (three-vfx-effects.js "THE FINISHER PASS

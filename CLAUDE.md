@@ -6693,3 +6693,27 @@ the heading turns toward the keys at `airTurn` and the speed is nudged by `cos(d
 rail bend, wall slide or air control touches `_hq.cam.yaw` (hq-skate.test.js scans the block for a
 yaw write). hq-skate.test.js (30). Unseen live (RULE #1c): the kick's read on the deck (`trim` / `ts`
 are the edits), the carve's tightness at a crawl, the turn-round on S.
+
+## SIX MORE EXECUTIONS — Ack Ack Ack · Ascension Denied · The Probe · Blurry Footage · Sleep Paralysis · The Unmasking (FINISHER_PLAN delivery 6) — 2026-09-20, local delivery
+The next six `FINISHERS` rows in roster order are BUILT (twenty-seven of 99):
+martian `ackAckAck` (`_sigAckAckAck3D` — the seven-tile TRIPOD walks in along
+the line, the heat ray sweeps onto the tile, the skeleton topples), nordic
+`ascensionDenied` (`_sigAscensionDenied3D` — the column of light, the lift,
+the stutter, the drop from orbit on a re-entry trail, the crater), grey
+`theProbe` (`_sigTheProbe3D` — `_sigBuildUFO`'s saucer, the tractor beam,
+the table, three jabs, the body back in three pieces in the wrong order),
+bigfoot `blurryFootage` (`_sigBlurryFootage3D` — the pine treeline, the ● REC
+card, the grain, the thing that walks through the tile; a witness shot with
+hand-held kicks), shadow entity `sleepParalysis` (`_sigSleepParalysis3D` — the
+black dome, the bed, the flickering lamp, the figure in the corner closer
+each time, 3:33 AM, the grin; a face cam under the eyelids), reptilian
+`unmasking` (`_sigUnmasking3D` — the skin peels at the caster, a 26-segment
+serpent on a head trail (`_finChain`), the lunge, the swallow, the bulge, a
+● LIVE card). Each = a director in battle.js `_FIN_DIRECTORS` (the DELIVERY 6
+block), the signature in "THE FINISHER PASS 2" (the DELIVERY 6 block;
+`_sigRunOwned` + `_fxDelay`, called inside the relayed cinematic — RULE #2),
+a `_FIN_STAGE[sig]` script for the forge, a row in finishers.test.js's BUILT
+table. Smoke-tested in a stub-THREE harness (every tick; not a render).
+UNSEEN LIVE (RULE #1c): FINISHER_PLAN §7's delivery-6 entry lists what to
+eyeball first — the tripod's scale, the dome's radius against the reverse
+shot, the flat figure off-axis, the pines' scale, the serpent's jaws.

@@ -12646,6 +12646,257 @@
                     c.at(actionMs(300), () => c.snd('teleport'));
                 }
             },
+            /* ═════════ DELIVERY 6 (2026-09-20) — martian · nordic · grey · bigfoot · shadow entity · reptilian ═════════ */
+            ackAckAck: {
+                chargeMs: 2200, strikeMs: 3400, resolveMs: 1900,
+                castSpell: { type: 'damage', dmg: 1, name: 'Ack Ack Ack', kind: 'damage' },
+                siren(c) { c.snd('nukeAlarm'); c.dsnd('doorBuzz'); c.grade('crimson', actionMs(900)); },
+                charge(c) {
+                    const V = c.VFX, u = c.unit;
+                    if (V.sigLightPillar3D) V.sigLightPillar3D(u.x, u.y, { height: 320, radius: c.ts * 0.24, ms: c.CHARGE_MS, color: 0x58d858, coreColor: 0xeaffee });
+                    if (V.sigStatRings3D) V.sigStatRings3D(u.x, u.y, { color: 0x58d858, ms: c.CHARGE_MS });
+                    c.snd('elecCast');
+                },
+                cam(c) {
+                    const u = c.unit, p = c.pos(c.target);
+                    if (typeof cineSkyWatch === 'function') cineSkyWatch(p, { ms: actionMs(900) }); else c.dive(c.target, 1.2, 300);
+                    c.at(actionMs(1300), () => { if (typeof cineFaceCam === 'function') cineFaceCam(c.target, { dist: 2.6, tilt: 78, cut: false, duration: 400 }); });
+                    c.at(c.STRIKE_MS - actionMs(1100), () => { if (typeof cineSideDolly === 'function') cineSideDolly(u, p, { dist: 4.6, tilt: 72, travelMs: actionMs(900), easing: 'easeOut' }); });
+                    c.at(c.STRIKE_MS - actionMs(260), () => { c.slow(0.5, actionMs(400)); c.dive(c.target, 0.9, 220); });
+                    c.at(c.STRIKE_MS + actionMs(400), () => { c.slowClear(); if (typeof cineEndCapReverse === 'function') cineEndCapReverse(u, c.target, {}); else if (typeof cineGodShot === 'function') cineGodShot(p, 6, { cut: false, duration: 520, tilt: 30 }); });
+                    return true;
+                },
+                stage(c) {
+                    const V = c.VFX, u = c.unit, p = c.pos(c.target);
+                    if (V.sigAckAckAck3D) V.sigAckAckAck3D(u.x, u.y, p.x, p.y, { ms: c.STRIKE_MS + actionMs(2400), stepAt: actionMs(100), rayAt: c.STRIKE_MS - actionMs(1100), hitAt: c.STRIKE_MS });
+                    c.at(actionMs(200), () => { c.snd('thunderRumble'); c.insert('ULLA…', 'signal', actionMs(700)); });
+                    for (let i = 0; i < 5; i++) c.at(actionMs(500 + i * 400), () => c.snd('quakeRumble'));
+                    c.at(actionMs(1500), () => c.insert('ULLA… ULLA…', 'signal', actionMs(700)));
+                    c.at(c.STRIKE_MS - actionMs(1100), () => { c.snd('flameJet'); c.insert('🔴 THE HEAT RAY', 'stamp', actionMs(900)); });
+                },
+                strike(c) {
+                    const p = c.pos(c.target);
+                    c.freeze(actionMs(140), { grade: 'whiteout' });
+                    c.ring(p.x, p.y, 0xff3a20, { r1: c.ts * 2.4, ms: 520, torus: true });
+                    c.flash('#ff5030', 260, 0.9); c.kick(18, 280);
+                    c.snd('explosion'); c.dsnd('slam');
+                },
+                resolve(c) {
+                    const V = c.VFX, p = c.pos(c.target);
+                    if (V.sigWhiteout3D) V.sigWhiteout3D(p.x, p.y, { color: 0xff6a40, ms: 800, peak: 0.55, sizeTiles: 5, shake: false });
+                    c.insert('ACK ACK ACK.', 'stamp', actionMs(1000));
+                    c.at(actionMs(400), () => c.snd('thunderRumble'));
+                }
+            },
+            ascensionDenied: {
+                chargeMs: 2200, strikeMs: 3600, resolveMs: 2000,
+                castSpell: { type: 'damage', dmg: 1, name: 'Ascension Denied', kind: 'damage' },
+                siren(c) { c.snd('buff'); c.dsnd('identSting'); c.grade('bone', actionMs(900)); },
+                charge(c) {
+                    const V = c.VFX, u = c.unit;
+                    if (V.sigMagicCircle3D) V.sigMagicCircle3D(u.x, u.y, { radiusPx: c.ts * 0.9, growMs: 240, holdMs: c.CHARGE_MS, fadeMs: 400, spin: true, color: 0xeef4ff, color2: 0xffffff });
+                    if (V.sigLightPillar3D) V.sigLightPillar3D(u.x, u.y, { height: 420, radius: c.ts * 0.2, ms: c.CHARGE_MS, color: 0xdfe9ff, coreColor: 0xffffff });
+                    c.snd('healRegen');
+                },
+                cam(c) {
+                    const u = c.unit, p = c.pos(c.target);
+                    if (typeof cineFaceCam === 'function') cineFaceCam(c.target, { dist: 2.6, tilt: 80 }); else c.dive(c.target, 1.0, 300);
+                    c.at(actionMs(600), () => { if (typeof cineCrane === 'function') cineCrane(c.target, { duration: c.STRIKE_MS - actionMs(2400), tilt: 60, rise: 4.2 }); });
+                    c.at(c.STRIKE_MS - actionMs(1700), () => { if (typeof cineSkyWatch === 'function') cineSkyWatch(p, { ms: actionMs(600) }); });
+                    c.at(c.STRIKE_MS - actionMs(1000), () => { if (typeof cineFallFollow === 'function') cineFallFollow(p, { ms: actionMs(900), fromPx: c.ts * 9, toPx: c.ts * 0.9 }); });
+                    c.at(c.STRIKE_MS - actionMs(200), () => { c.slow(0.45, actionMs(320)); c.dive(c.target, 0.9, 200); });
+                    c.at(c.STRIKE_MS + actionMs(400), () => { c.slowClear(); if (typeof cineEndCapReverse === 'function') cineEndCapReverse(u, c.target, {}); else if (typeof cineGodShot === 'function') cineGodShot(p, 6, { cut: false, duration: 520, tilt: 30 }); });
+                    return true;
+                },
+                stage(c) {
+                    const V = c.VFX, p = c.pos(c.target);
+                    if (V.sigAscensionDenied3D) V.sigAscensionDenied3D(p.x, p.y, { ms: c.STRIKE_MS + actionMs(2200), beamAt: actionMs(100), liftAt: actionMs(500), pauseAt: c.STRIKE_MS - actionMs(1700), dropAt: c.STRIKE_MS - actionMs(1000), hitAt: c.STRIKE_MS });
+                    c.at(actionMs(100), () => { c.snd('healRegen'); c.insert('✨ ASCEND', 'scripture', actionMs(900)); });
+                    c.at(actionMs(700), () => c.snd('buff'));
+                    c.at(c.STRIKE_MS - actionMs(1700), () => { c.snd('uiError'); c.insert('…', 'clock', actionMs(650)); });
+                    c.at(c.STRIKE_MS - actionMs(1000), () => { c.snd('debuff'); c.insert('NOT THIS ONE.', 'stamp', actionMs(900)); });
+                    c.at(c.STRIKE_MS - actionMs(500), () => c.snd('jetFlyover'));
+                },
+                strike(c) {
+                    const p = c.pos(c.target);
+                    c.freeze(actionMs(140), { grade: 'whiteout' });
+                    c.ring(p.x, p.y, 0xffe0a0, { r1: c.ts * 3.0, ms: 600, torus: true });
+                    c.flash('#fff2d0', 260, 0.9); c.kick(24, 300);
+                    c.snd('earthImpact'); c.dsnd('slam');
+                },
+                resolve(c) {
+                    const V = c.VFX, p = c.pos(c.target);
+                    if (V.sigWhiteout3D) V.sigWhiteout3D(p.x, p.y, { color: 0xfff4e0, ms: 900, peak: 0.6, sizeTiles: 6, shake: false });
+                    c.insert('DENIED.', 'stamp', actionMs(1000));
+                    c.at(actionMs(300), () => c.snd('quakeRumble'));
+                }
+            },
+            theProbe: {
+                chargeMs: 2200, strikeMs: 3800, resolveMs: 2000,
+                castSpell: { type: 'damage', dmg: 1, name: 'The Probe', kind: 'damage' },
+                siren(c) { c.snd('elecCast'); c.dsnd('doorBuzz'); c.grade('cool', actionMs(900)); },
+                charge(c) {
+                    const V = c.VFX, u = c.unit;
+                    if (V.sigLightPillar3D) V.sigLightPillar3D(u.x, u.y, { height: 320, radius: c.ts * 0.24, ms: c.CHARGE_MS, color: 0x58d858, coreColor: 0xeaffee });
+                    if (V.sigStatRings3D) V.sigStatRings3D(u.x, u.y, { color: 0x7dffa0, ms: c.CHARGE_MS });
+                    c.snd('teleport');
+                },
+                cam(c) {
+                    const u = c.unit, p = c.pos(c.target);
+                    if (typeof cineSkyWatch === 'function') cineSkyWatch(p, { ms: actionMs(800) }); else c.dive(c.target, 1.2, 300);
+                    c.at(actionMs(900), () => { if (typeof cineGodShot === 'function') cineGodShot(p, 6, { cut: false, duration: 600, tilt: 40 }); });
+                    c.at(actionMs(1700), () => { if (typeof cineCrane === 'function') cineCrane(c.target, { duration: 1200, tilt: 62, rise: 3.6 }); });
+                    c.at(c.STRIKE_MS - actionMs(1500), () => { if (typeof cineSideDolly === 'function') cineSideDolly(u, p, { dist: 4.2, tilt: 58, travelMs: actionMs(900), easing: 'easeOut' }); });
+                    c.at(c.STRIKE_MS - actionMs(500), () => { if (typeof cineFallFollow === 'function') cineFallFollow(p, { ms: actionMs(500), fromPx: c.ts * 3, toPx: c.ts * 0.9 }); c.slow(0.5, actionMs(400)); });
+                    c.at(c.STRIKE_MS + actionMs(400), () => { c.slowClear(); if (typeof cineEndCapReverse === 'function') cineEndCapReverse(u, c.target, {}); else if (typeof cineGodShot === 'function') cineGodShot(p, 6, { cut: false, duration: 520, tilt: 30 }); });
+                    return true;
+                },
+                stage(c) {
+                    const V = c.VFX, p = c.pos(c.target);
+                    if (V.sigTheProbe3D) V.sigTheProbe3D(p.x, p.y, { ms: c.STRIKE_MS + actionMs(2600), beamAt: actionMs(700), tableAt: actionMs(1500), probeAt: c.STRIKE_MS - actionMs(1500), dropAt: c.STRIKE_MS - actionMs(500), hitAt: c.STRIKE_MS });
+                    c.at(actionMs(100), () => c.snd('jetFlyover'));
+                    c.at(actionMs(700), () => { c.snd('teleport'); c.insert('> subject acquired\n> table: READY\n> probe: ×3', 'terminal', actionMs(1400)); });
+                    c.at(c.STRIKE_MS - actionMs(1500), () => c.insert('🛸 FOR SCIENCE', 'stamp', actionMs(800)));
+                    for (let i = 0; i < 3; i++) c.at(c.STRIKE_MS - actionMs(1500 - 120) + actionMs(i * 300), () => { c.snd('taserZap'); c.kick(8, 160); });
+                    c.at(c.STRIKE_MS - actionMs(500), () => c.snd('debuff'));
+                },
+                strike(c) {
+                    const p = c.pos(c.target);
+                    c.freeze(actionMs(120), { grade: 'whiteout' });
+                    c.ring(p.x, p.y, 0x7dffa0, { r1: c.ts * 1.8, ms: 460 });
+                    c.flash('#b8ffc8', 200, 0.6); c.kick(12, 240);
+                    c.snd('physicalAbilityDamage'); c.dsnd('slam');
+                },
+                resolve(c) {
+                    const V = c.VFX, p = c.pos(c.target);
+                    if (V.sigWhiteout3D) V.sigWhiteout3D(p.x, p.y, { color: 0x9dffb0, ms: 800, peak: 0.5, sizeTiles: 5, shake: false });
+                    c.insert('RETURNED. SOME ASSEMBLY REQUIRED.', 'stamp', actionMs(1100));
+                    c.at(actionMs(500), () => c.snd('jetFlyover'));
+                }
+            },
+            blurryFootage: {
+                chargeMs: 2000, strikeMs: 3400, resolveMs: 1800,
+                castSpell: { type: 'damage', dmg: 1, name: 'Blurry Footage', kind: 'damage' },
+                siren(c) { c.snd('quakeRumble'); c.dsnd('crtOn'); c.grade('desat dim vignette', actionMs(900)); },
+                charge(c) {
+                    const V = c.VFX, u = c.unit;
+                    if (V.sigMagicCircle3D) V.sigMagicCircle3D(u.x, u.y, { radiusPx: c.ts * 1.0, growMs: 240, holdMs: c.CHARGE_MS, fadeMs: 400, spin: false, color: 0x8a7a60, color2: 0xd8d0c0 });
+                    if (V.sigStatRings3D) V.sigStatRings3D(u.x, u.y, { color: 0x8a7a60, ms: c.CHARGE_MS });
+                    c.snd('physicalAbility');
+                },
+                cam(c) {
+                    const u = c.unit, p = c.pos(c.target);
+                    if (typeof cineWitnessCam === 'function' && !cineWitnessCam(p, [c.target], {})) { if (typeof cineGodShot === 'function') cineGodShot(p, 6, { cut: true, duration: 400, tilt: 40 }); }
+                    for (let i = 0; i < 7; i++) c.at(actionMs(500 + i * 420), () => c.kick(5 + (i % 3) * 3, 180));   // the hand-held jolts
+                    c.at(actionMs(1200), () => { if (typeof cineSideDolly === 'function') cineSideDolly(u, p, { dist: 5.0, tilt: 74, travelMs: c.STRIKE_MS - actionMs(1600), easing: 'linear' }); });
+                    c.at(c.STRIKE_MS - actionMs(400), () => { c.slow(0.35, actionMs(500)); c.dive(c.target, 0.95, 220); });
+                    c.at(c.STRIKE_MS + actionMs(500), () => { c.slowClear(); if (typeof cineFaceCam === 'function') cineFaceCam(c.target, { dist: 2.4, tilt: 82, cut: false, duration: 400 }); });
+                    return true;
+                },
+                stage(c) {
+                    const V = c.VFX, u = c.unit, p = c.pos(c.target);
+                    if (V.sigBlurryFootage3D) V.sigBlurryFootage3D(u.x, u.y, p.x, p.y, { ms: c.STRIKE_MS + actionMs(2200), treesAt: actionMs(100), walkAt: actionMs(700), hitAt: c.STRIKE_MS });
+                    c.at(actionMs(100), () => c.insert('● REC  00:10:31:47\n> tape 4 of 4\n> subject: unknown', 'terminal', actionMs(1200)));
+                    for (let i = 0; i < 6; i++) c.at(actionMs(700) + (c.STRIKE_MS - actionMs(700)) * (i + 0.5) / 6, () => { c.snd('quakeRumble'); c.snd('moveStep'); });
+                    c.at(c.STRIKE_MS - actionMs(400), () => { c.snd('debuff'); c.insert('FRAME 352', 'glitch', actionMs(700)); });
+                },
+                strike(c) {
+                    const p = c.pos(c.target);
+                    c.freeze(actionMs(160), { grade: 'desat' });
+                    c.ring(p.x, p.y, 0x8a7a60, { r1: c.ts * 2.0, ms: 460, torus: false });
+                    c.flash('#d8d0c0', 160, 0.4); c.kick(20, 300);
+                    c.snd('physicalAbilityDamage'); c.dsnd('slam');
+                },
+                resolve(c) {
+                    const V = c.VFX, p = c.pos(c.target);
+                    if (V.sigWhiteout3D) V.sigWhiteout3D(p.x, p.y, { color: 0x2a2620, ms: 800, peak: 0.45, sizeTiles: 5, shake: false });
+                    c.insert('NOBODY WILL BELIEVE IT.', 'stamp', actionMs(1000));
+                    c.at(actionMs(500), () => c.snd('quakeRumble'));
+                }
+            },
+            sleepParalysis: {
+                chargeMs: 2200, strikeMs: 3600, resolveMs: 1900,
+                castSpell: { type: 'damage', dmg: 1, name: 'Sleep Paralysis', kind: 'damage' },
+                siren(c) { c.snd('discord'); c.dsnd('doorBuzz'); c.grade('dim desat', actionMs(900)); },
+                charge(c) {
+                    const V = c.VFX, u = c.unit;
+                    if (V.sigMagicCircle3D) V.sigMagicCircle3D(u.x, u.y, { radiusPx: c.ts * 0.9, growMs: 240, holdMs: c.CHARGE_MS, fadeMs: 400, spin: true, color: 0x6a3a9a, color2: 0x1a0a2a });
+                    if (V.sigGasCloud3D) V.sigGasCloud3D(u.x, u.y, { color: 0x0a0612, coreColor: 0x3a1a5a, radiusTiles: 1, ms: c.CHARGE_MS, count: 10 });
+                    c.snd('debuff');
+                },
+                cam(c) {
+                    const u = c.unit, p = c.pos(c.target);
+                    if (typeof cineFaceCam === 'function') cineFaceCam(c.target, { dist: 2.2, tilt: 84 }); else c.dive(c.target, 0.9, 300);
+                    c.at(actionMs(300), () => { try { if (typeof cineEyelids === 'function') cineEyelids(c.STRIKE_MS - actionMs(600), { amt: 0.55, closeMs: 400 }); } catch (err) {} });
+                    for (let i = 1; i <= 5; i++) c.at(actionMs(600) + (c.STRIKE_MS - actionMs(1100)) * i / 6, () => { try { if (typeof cineEyelidsBlink === 'function') cineEyelidsBlink(); } catch (err) {} c.kick(6, 140); });
+                    c.at(c.STRIKE_MS - actionMs(300), () => { try { if (typeof cineEyelidsClear === 'function') cineEyelidsClear(); } catch (err) {} try { if (typeof cineDollyZoom === 'function') cineDollyZoom(28, actionMs(300), {}); } catch (err) {} c.slow(0.4, actionMs(300)); });
+                    c.at(c.STRIKE_MS + actionMs(500), () => { c.slowClear(); try { if (typeof cineDollyZoomRelease === 'function') cineDollyZoomRelease(); } catch (err) {} if (typeof cineEndCapReverse === 'function') cineEndCapReverse(u, c.target, {}); else if (typeof cineGodShot === 'function') cineGodShot(p, 5, { cut: false, duration: 520, tilt: 30 }); });
+                    return true;
+                },
+                stage(c) {
+                    const V = c.VFX, p = c.pos(c.target);
+                    if (V.sigSleepParalysis3D) V.sigSleepParalysis3D(p.x, p.y, { ms: c.STRIKE_MS + actionMs(2200), darkAt: actionMs(100), flickers: 5, hitAt: c.STRIKE_MS });
+                    c.at(actionMs(200), () => { c.snd('discord'); c.insert('3:33 AM', 'clock', actionMs(800)); });
+                    c.at(actionMs(900), () => c.insert('YOU CANNOT MOVE', 'stamp', actionMs(800)));
+                    for (let i = 1; i <= 5; i++) c.at(actionMs(600) + (c.STRIKE_MS - actionMs(1100)) * i / 6, () => c.snd('uiError'));
+                    c.at(c.STRIKE_MS - actionMs(1500), () => c.insert('IT IS IN THE CORNER', 'signal', actionMs(900)));
+                    c.at(c.STRIKE_MS - actionMs(300), () => c.snd('death'));
+                },
+                strike(c) {
+                    const p = c.pos(c.target);
+                    c.freeze(actionMs(160), { grade: 'crimson' });
+                    c.ring(p.x, p.y, 0x6a3a9a, { r1: c.ts * 2.0, ms: 480, torus: true });
+                    c.flash('#ffffff', 90, 0.9); c.kick(20, 280);
+                    c.snd('discord'); c.dsnd('slam');
+                },
+                resolve(c) {
+                    const V = c.VFX, p = c.pos(c.target);
+                    c.at(actionMs(400), () => { if (V.sigWhiteout3D) V.sigWhiteout3D(p.x, p.y, { color: 0x06040a, ms: 800, peak: 0.6, sizeTiles: 5, shake: false }); });
+                    c.insert('IT IS CLOSER NOW.', 'stamp', actionMs(1000));
+                    c.at(actionMs(600), () => c.snd('discord'));
+                }
+            },
+            unmasking: {
+                chargeMs: 2400, strikeMs: 3600, resolveMs: 2000,
+                castSpell: { type: 'damage', dmg: 1, name: 'The Unmasking', kind: 'damage' },
+                siren(c) { c.snd('poisonDamage'); c.dsnd('crtOn'); c.grade('terminal', actionMs(900)); },
+                charge(c) {
+                    const V = c.VFX, u = c.unit;
+                    if (V.sigMagicCircle3D) V.sigMagicCircle3D(u.x, u.y, { radiusPx: c.ts * 0.9, growMs: 240, holdMs: c.CHARGE_MS, fadeMs: 400, spin: true, color: 0x5ac85a, color2: 0x1a3a1a });
+                    if (V.sigStatRings3D) V.sigStatRings3D(u.x, u.y, { color: 0x5ac85a, ms: c.CHARGE_MS });
+                    c.snd('poisonDamage');
+                },
+                cam(c) {
+                    const u = c.unit, p = c.pos(c.target);
+                    if (typeof cineReverseOts === 'function') cineReverseOts(c.target, u, {}); else c.dive(u, 1.0, 300);
+                    c.at(actionMs(500), () => { if (typeof cineCrane === 'function') cineCrane(u, { duration: c.STRIKE_MS - actionMs(1500), tilt: 58, rise: 3.8 }); });
+                    c.at(c.STRIKE_MS - actionMs(900), () => { if (typeof cineSideDolly === 'function') cineSideDolly(u, p, { dist: 4.8, tilt: 70, travelMs: actionMs(800), easing: 'easeOut' }); });
+                    c.at(c.STRIKE_MS - actionMs(240), () => { c.slow(0.5, actionMs(360)); c.dive(c.target, 0.9, 220); });
+                    c.at(c.STRIKE_MS + actionMs(500), () => { c.slowClear(); if (typeof cineGodShot === 'function') cineGodShot(p, 7, { cut: false, duration: 600, tilt: 34 }); });
+                    return true;
+                },
+                stage(c) {
+                    const V = c.VFX, u = c.unit, p = c.pos(c.target);
+                    if (V.sigUnmasking3D) V.sigUnmasking3D(u.x, u.y, p.x, p.y, { ms: c.STRIKE_MS + actionMs(2400), peelAt: actionMs(100), riseAt: actionMs(500), lungeAt: c.STRIKE_MS - actionMs(900), hitAt: c.STRIKE_MS });
+                    c.at(actionMs(100), () => { c.snd('debuff'); c.insert('● ON AIR\n> channel 7 · LIVE', 'terminal', actionMs(1200)); });
+                    c.at(actionMs(300), () => c.insert('THE SKIN COMES OFF', 'stamp', actionMs(800)));
+                    for (let i = 0; i < 4; i++) c.at(actionMs(700 + i * 450), () => c.snd('poisonDamage'));
+                    c.at(c.STRIKE_MS - actionMs(900), () => { c.snd('physicalAbility'); c.insert('BREAKING', 'signal', actionMs(800)); });
+                },
+                strike(c) {
+                    const p = c.pos(c.target);
+                    c.freeze(actionMs(140), { grade: 'whiteout' });
+                    c.ring(p.x, p.y, 0x5ac85a, { r1: c.ts * 2.2, ms: 500, torus: true });
+                    c.flash('#ffffff', 160, 0.7); c.kick(18, 260);
+                    c.snd('physicalAbilityDamage'); c.dsnd('slam');
+                },
+                resolve(c) {
+                    const V = c.VFX, p = c.pos(c.target);
+                    if (V.sigWhiteout3D) V.sigWhiteout3D(p.x, p.y, { color: 0x3a8a3a, ms: 800, peak: 0.5, sizeTiles: 5, shake: false });
+                    c.insert('THEY WERE RIGHT ABOUT US.', 'stamp', actionMs(1100));
+                    c.at(actionMs(500), () => c.snd('poisonDamage'));
+                }
+            },
         };
         window._FIN_DIRECTORS = _FIN_DIRECTORS;
 
