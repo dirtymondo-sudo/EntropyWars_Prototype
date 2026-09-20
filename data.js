@@ -42066,12 +42066,15 @@ function hqPortalSafeRoom(roomId) { return !hqRoomSite(roomId); }
    arriving through the door it left by). Viewer-local, nothing on `state`,
    nothing relayed (RULE #2). Adding a resident = its POINT_OF_ENTRY row; tuning
    the crowd = this table. hq-population.test.js guards it. */
+/* HALVED 2026-09-20 (the user: "there's too many characters loaded in the areas — cut it in half"): every
+   count below is half of the 2026-09-19 table (perM2 230 → 460 · max 8 → 4 · facility 6 → 3 · city 12 → 6 ·
+   the hall 9 → 4). Every extra walker is a rigged 5–9 MB GLB the room's load card now WAITS for. */
 const HQ_POPULATION_RULES = {
-    perM2: 230,            // one extra walker per this many m² of OPEN floor in a wild room
-    min: 2, max: 8,        // the clamp on a wild room's extras
-    facilityPerM2: 170, facilityMin: 1, facilityMax: 6,   // a facility room (the roster on the move)
-    cityMul: 1.7, cityMax: 12,   // DISASTER CITY (hubs.city): the most diverse — a street is a crowd
-    hqMul: 1.5, hqMax: 9,        // the hall + the rings (hubs.hq's anchor and the bays' floors): the department passing through
+    perM2: 460,            // one extra walker per this many m² of OPEN floor in a wild room
+    min: 1, max: 4,        // the clamp on a wild room's extras
+    facilityPerM2: 340, facilityMin: 1, facilityMax: 3,   // a facility room (the roster on the move)
+    cityMul: 1.7, cityMax: 6,    // DISASTER CITY (hubs.city): the most diverse — a street is a crowd
+    hqMul: 1.5, hqMax: 4,        // the hall + the rings (hubs.hq's anchor and the bays' floors): the department passing through
     quietN: 1,             // a `quiet` room keeps one walker
     spotRoamShare: 0.5,    // the share of authored spot natives that leave their spot for a loop (a `stay: true` spot never; a posed one never)
     loopStops: [2, 4],     // stops per loop

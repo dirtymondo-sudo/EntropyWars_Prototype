@@ -198,7 +198,7 @@ test('the rig lane is marked by the arrival warm and the player spawn in the sou
     assert.ok(/_rigLaneMark\(urls\);/.test(warm), 'warmAvatar marks its urls');
     const spawn = fn(renderer, '_hqSpawnCharacter');
     assert.ok(/spec\.kind === 'player' && def\.model[\s\S]*_rigLaneMark\(_lane\)/.test(spawn), 'the player spawn marks its rig');
-    assert.ok(/_scheduleModelLoad\(function \(done\) \{[\s\S]*?\}, url, bg\);/.test(fn(renderer, '_loadMiscModel')), 'the misc loader hands its url and its lane to the scheduler');
+    assert.ok(/_scheduleModelLoad\(function \(done\) \{[\s\S]*?\}, url, bg, _onDrop\);/.test(fn(renderer, '_loadMiscModel')), 'the misc loader hands its url, its lane and its drop to the scheduler');
     const warmRoom = renderer.slice(renderer.indexOf('warmRoom: function (roomId)'), renderer.indexOf('warmAvatar: function (av)'));
     assert.ok(/_loadMiscModel\(url, true, function \(\) \{\}, \{ bg: true \}\)/.test(warmRoom), 'warmRoom files its props in the background lane');
     assert.ok(/_bgLoadDepth\+\+;[\s\S]*?pop\.draw\.forEach/.test(fn(renderer, '_hqSpawnRounds')), 'the extras spawn under the background flag');
@@ -219,69 +219,129 @@ test('a cue that fails twice in a row backs off for a minute, then retries', asy
     assert.equal(vm.runInContext('_sfxFailed.has("gone.mp3")', h.c), false);
 });
 
-/* THE SHEETS FIRST (2026-09-20, "the floors and walls are always black in a new place"): a material whose
-   texture has not landed samples an unbound GPU texture — black — so every tile sheet wears a grey
-   placeholder while it streams; a texture is fetched through our own <img> at fetchPriority 'high'; the
-   sheets in flight hold the model queue's scene / warm jobs (never the rig lane) for TEX_HOLD_MS at most. */
-test('the sheets first: the placeholder, the high-priority fetch, the in-flight count and the queue hold', () => {
+/* THE ASSET LEDGER + THE GATE (2026-09-20, the user: "load screens that actually serve their function … never
+   let the player see a scene with assets missing or stand-in textures"): every request through the renderer's
+   loaders files a record; a gate session records the requests made while it is open and is idle only once every
+   one has settled; the HQ card, the battle card and the menu scene wait on exactly that. THE PLACEHOLDER IS GONE. */
+function ledgerContext() {
     const images = [], timers = [];
-    let now = 1000;
+    const ctx = { now: 1000 };
     class Texture { constructor() { this.image = undefined; this.needsUpdate = false; } }
     const c = vm.createContext({
-        window: {}, console: { warn() {} }, performance: { now: () => now },
+        window: {}, console: { warn() {}, log() {} }, performance: { now: () => ctx.now },
         setTimeout: (f, ms) => { timers.push({ f, ms }); return timers.length; }, clearTimeout() {},
         THREE: { Texture, RGBFormat: 1, RGBAFormat: 2 },
-        document: {
-            createElement: () => ({ width: 0, height: 0, getContext: () => ({ fillRect() {} }) }),
-            createElementNS: () => { const img = {}; images.push(img); return img; },
-        },
+        document: { createElementNS: () => { const img = {}; images.push(img); return img; } },
         textureLoader: {},
     });
-    vm.runInContext('var _ewAssetFailures = []; function _ewRetryUrl() { return null; } function _ewAssetFailed() {}\n'
+    vm.runInContext('var _ewAssetFailures = []; var _retry = null; function _ewRetryUrl() { return _retry; } function _ewAssetFailed() {}\n'
         + 'var _mobileModelJobs = [], _mobileModelBusy = false; var _rigLaneUrls = {}, _rigLaneLive = {}; var _bgLoadDepth = 0; var MODEL_MAX_INFLIGHT = 4, MODEL_JOB_TIMEOUT_MS = 90000; var _mqJobs = [], _mqLive = 0, _mqSeq = 0;\n'
-        + 'var _texInflight = 0, _texHoldUntil = 0, TEX_HOLD_MS = 2500; var _texPlaceholderImg = null; var _mqTexTimer = null;\n'
-        + fn(renderer, '_texPlaceholder') + fn(renderer, '_texShowPlaceholder') + fn(renderer, '_texLanded') + fn(renderer, '_texFetch')
-        + fn(renderer, '_rigLaneMark') + fn(renderer, '_mqPriority') + fn(renderer, '_mqStart') + fn(renderer, '_mqTexHold') + fn(renderer, '_mqPump') + fn(renderer, '_scheduleModelLoad')
+        + 'var _texInflight = 0, _texHoldUntil = 0, TEX_HOLD_MS = 2500; var _mqTexTimer = null;\n'
+        + 'var AL_SETTLE_MS = 300, AL_STALL_MS = 60000; var _alSeq = 0, _alLive = {}, _alLiveN = 0, _alSessions = [], _alLastEventAt = 0;\n'
+        + fn(renderer, '_alNow') + fn(renderer, '_alTrack') + fn(renderer, '_alJoin') + fn(renderer, '_alPending') + fn(renderer, '_alPendingList') + fn(renderer, '_alGateOpen')
+        + fn(renderer, '_texLanded') + fn(renderer, '_texFetch')
+        + fn(renderer, '_rigLaneMark') + fn(renderer, '_mqPriority') + fn(renderer, '_mqStart') + fn(renderer, '_mqTexHold') + fn(renderer, '_mqPump') + fn(renderer, '_scheduleModelLoad') + fn(renderer, '_mqDropQueued') + fn(renderer, '_bgPromote')
         + renderer.slice(renderer.indexOf('textureLoader.load = function (url, onLoad, onProgress, onError) {'), renderer.indexOf('var textureCache = new Map();')), c);
-    const started = [];
-    const q = (name, url) => c._scheduleModelLoad(done => { started.push(name); }, url);
-    // two sheets requested, then the room's props: the props wait, the rig does not
+    return { c, images, timers, ctx };
+}
+
+test('the asset ledger: a record per request, no placeholder, a gate that is idle only once every one of ITS files settled', () => {
+    const { c, images, timers, ctx } = ledgerContext();
+    const G = c._alGateOpen('room:test');
+    assert.equal(G.total, 0); assert.ok(!G.idle(), 'a beat after opening'); ctx.now += 400; assert.ok(G.idle(), 'nothing asked for = idle');
     let landed = 0;
     const t1 = c.textureLoader.load('https://cdn.entropywars.net/Assets/door/textures/a.png', () => landed++);
     const t2 = c.textureLoader.load('https://cdn.entropywars.net/Assets/door/textures/b.jpg');
     assert.equal(images.length, 2);
     assert.equal(images[0].fetchPriority, 'high', 'a sheet is a high-priority fetch');
-    assert.equal(images[0].crossOrigin, 'anonymous');
-    assert.ok(/ewcors=1/.test(images[0].src) || /a\.png/.test(images[0].src));
-    assert.equal(t2.format, 1, 'a jpeg is RGB');
-    assert.equal(vm.runInContext('_texInflight', c), 2);
-    c._texShowPlaceholder(t1);
-    assert.ok(t1.image && t1._ew_placeholder && t1.needsUpdate, 'a placeholder image at once — grey, never black');
-    q('prop0', 'prop0.glb'); q('prop1', 'prop1.glb');
-    assert.deepEqual(started, [], 'the props wait while the sheets stream');
-    assert.ok(timers.some(t => t.ms === 150), 'the pump re-checks');
-    c._rigLaneMark(['rig.glb']); q('rig', 'rig.glb');
-    assert.deepEqual(started, ['rig'], 'the rig lane never waits for a sheet');
-    // the first sheet lands: its image replaces the placeholder, the hold stays for the second
+    assert.equal(t1.image, undefined, 'NO placeholder: a sheet has no image until its file lands');
+    assert.equal(t1._ew_placeholder, undefined);
+    assert.ok(t1._ew_alRec && !t1._ew_alRec.done, 'the texture carries its record');
+    assert.equal(c._alPending(), 2); assert.equal(G.total, 2); assert.equal(G.pending(), 2); assert.ok(!G.idle());
+    assert.ok(timers.some(t => t.ms === 60000), 'a stall timer per record');
+    // the first lands
     images[0].onload();
-    assert.equal(landed, 1); assert.equal(t1._ew_placeholder, false); assert.equal(t1.image, images[0]);
-    c._mqPump(); assert.deepEqual(started, ['rig']);
-    // the second lands: the props start
-    images[1].onerror(new Error('x'));
-    assert.equal(vm.runInContext('_texInflight', c), 0);
-    c._mqPump(); assert.deepEqual(started, ['rig', 'prop0', 'prop1']);
-    // a sheet that never lands holds the queue for TEX_HOLD_MS at most
+    assert.equal(landed, 1); assert.equal(t1.image, images[0]); assert.ok(t1._ew_alRec.done && t1._ew_alRec.ok);
+    assert.equal(G.pending(), 1); assert.ok(!G.idle());
+    // the second fails for good (no retry url): settled as failed — the gate never waits for it again, but names it
+    images[1].onerror(new Error('404'));
+    assert.equal(G.pending(), 0); assert.ok(!G.idle(), 'a beat after the last event before idle');
+    ctx.now += 400; assert.ok(G.idle(), 'idle once the beat passed');
+    assert.equal(G.failed().join(','), 'https://cdn.entropywars.net/Assets/door/textures/b.jpg');   // a vm-realm array: compare joined
+    assert.equal(c._alPending(), 0);
+    // a cache hit on a file still streaming JOINS a later gate; a settled one does not
+    const t3 = c.textureLoader.load('https://cdn.entropywars.net/Assets/door/textures/c.png');
+    const G2 = c._alGateOpen('room:next');
+    c._alJoin(t3._ew_alRec); c._alJoin(t1._ew_alRec);
+    assert.equal(G2.total, 1); assert.ok(!G2.idle());
+    images[2].onload(); ctx.now += 400; assert.ok(G2.idle());
+    // whenIdle fires once, ok on idle; the cap fires !ok and lists what never landed
+    let r1 = null; G2.whenIdle(r => { r1 = r; }, 5000); assert.ok(r1 && r1.ok);
+    const G3 = c._alGateOpen('room:hung');
     c.textureLoader.load('https://cdn.entropywars.net/Assets/door/textures/hung.png');
-    q('prop2', 'prop2.glb'); assert.ok(!started.includes('prop2'));
-    now += 2600; c._mqPump(); assert.ok(started.includes('prop2'), 'the hold runs out');
+    let r3 = null; G3.whenIdle(r => { r3 = r; }, 1000);
+    assert.equal(r3, null);
+    ctx.now += 1200; timers.filter(t => t.ms === 100).forEach(t => t.f());
+    assert.ok(r3 && !r3.ok && r3.pending.length === 1 && /hung\.png/.test(r3.pending[0].url), 'the cap names the file');
+    // the stall timer closes a record that never lands
+    const stall = timers.filter(t => t.ms === 60000).pop(); stall.f();
+    assert.equal(c._alPending(), 0);
+    // minMs: a gate is never idle before its build has had its frame
+    const G4 = c._alGateOpen('battle', { minMs: 1500 }); assert.ok(!G4.idle()); ctx.now += 1600; assert.ok(G4.idle());
+    G.close(); G2.close(); G3.close(); G4.close();
+    assert.equal(vm.runInContext('_alSessions.length', c), 0);
 });
 
-test('the sheets first in the source: the HQ and horizon sheet loaders wear the placeholder, one fetch per HQ file', () => {
-    const hq = fn(renderer, '_hqTex'), hz = fn(renderer, '_hzTex');
-    assert.ok(hq.includes('_texShowPlaceholder(t)'), '_hqTex');
-    assert.ok(hz.includes('_texShowPlaceholder(tex)'), '_hzTex');
-    assert.ok(hq.includes('_hqTexByUrl[url]') && hq.includes('_ew_dependants'), 'a second repeat of one file shares its image');
-    assert.ok(renderer.includes("var _hqTexByUrl = {};"));
-    assert.ok(/tex\.image\.width && !tex\._ew_placeholder\) ar = /.test(renderer), 'an aspect reader skips the placeholder');
+test('the queue: a left room drops its unstarted background jobs (their records settle quietly), the scene promotes what it needs', () => {
+    const { c } = ledgerContext();
+    const started = [], dropped = [];
+    const q = (name, url, bg) => c._scheduleModelLoad(done => { started.push(name); }, url, bg, () => dropped.push(name));
+    for (let i = 0; i < 4; i++) q('scene' + i, 'scene' + i + '.glb');
+    q('pop0', 'pop0.glb', true); q('pop1', 'pop1.glb', true); q('scene4', 'scene4.glb');
+    assert.deepEqual(started, ['scene0', 'scene1', 'scene2', 'scene3'], 'four in flight');
+    assert.ok(c._bgPromote('pop1.glb'), 'the scene asks for a rig the population queued');
+    assert.equal(c._mqDropQueued(2), 1, 'one unstarted background job dropped');
+    assert.deepEqual(dropped, ['pop0']);
+    assert.equal(vm.runInContext('_mqJobs.length', c), 2, 'scene4 and the promoted pop1 stay queued');
+});
+
+test('the gate in the source: no placeholder anywhere, every loader files a record, the HQ card / the menu / the battle card wait on it', () => {
+    assert.ok(!renderer.includes('_texShowPlaceholder') && !renderer.includes('_texPlaceholderImg'), 'THE PLACEHOLDER IS GONE');
+    assert.ok(!renderer.includes('_ew_placeholder = true'));
     assert.ok(!renderer.includes('_texLoadRaw'), 'the raw TextureLoader path is gone');
+    const hq = fn(renderer, '_hqTex'), hz = fn(renderer, '_hzTex');
+    assert.ok(hq.includes('_alJoin(_hqTexCache[key]._ew_alRec)') && hq.includes('_alJoin(base._ew_alRec)') && hq.includes('_ew_dependants'), '_hqTex joins a sheet still streaming, one fetch per file');
+    assert.ok(hz.includes('_alJoin(hit._ew_alRec)'), '_hzTex');
+    assert.ok(fn(renderer, 'getTexture').includes('_alJoin(cached._ew_alRec)'), 'getTexture');
+    for (const [name, kind] of [['_loadUnitGLB', 'model'], ['_loadMiscModel', 'model'], ['_loadFoliageModel', 'foliage'], ['_ccLoadImage', 'image']]) {
+        const src = fn(renderer, name);
+        assert.ok(src.includes("_alTrack('" + kind + "'") && src.includes('_alJoin('), name + ' files a record and joins a hit');
+        assert.ok(kind === 'image' ? src.includes('rec.settle(!!img)') : (src.includes('rec.settle(true)') && src.includes('rec.settle(false)')), name + ' settles both ways');
+    }
+    assert.ok(fn(renderer, '_loadUnitGLB').includes('rec.settle(false, true)') && fn(renderer, '_loadMiscModel').includes('rec.settle(false, true)'), 'a dropped job settles quietly');
+    // the HQ: the gate opens with the room, the walker attaching is one condition, the idle gate the other, no clock
+    const enter = fn(renderer, '_hqEnter');
+    assert.ok(enter.includes("gate: _alGateOpen('room:'") && enter.includes('playerAttached: false'));
+    assert.ok(fn(renderer, '_hqTickChars').includes('H.playerAttached = true') && !fn(renderer, '_hqTickChars').includes('H.ready = true'));
+    assert.ok(fn(renderer, '_hqFrame').includes('_hqGateTick(H, now)') && !/now - H\.t0 > 9000/.test(fn(renderer, '_hqFrame')), 'the 9 s clock is gone');
+    const gt = fn(renderer, '_hqGateTick');
+    assert.ok(gt.includes('G.idle()') && gt.includes('HQ_GATE_CAP_MS') && gt.includes('G.failed()') && gt.includes('H.opts.onReady()'));
+    assert.ok(fn(renderer, '_hqLeave').includes('H.gate.close()') && fn(renderer, '_hqLeave').includes('_mqDropQueued(2)'));
+    assert.ok(renderer.includes("gate: function () { var H = _hq; if (!H) return null;"), 'hq.gate() for the card');
+    // the menu: hidden until complete
+    assert.ok(fn(renderer, '_menuBuild').includes("gate: _alGateOpen('menu'), revealed: false"));
+    assert.ok(fn(renderer, '_menuFrame').includes('_menuGateTick(M, now)'));
+    const mg = fn(renderer, '_menuGateTick');
+    assert.ok(mg.includes('M.leafHot') && mg.includes('G.idle()') && mg.includes('M.revealed = true') && mg.includes('MENU_GATE_CAP_MS'));
+    assert.ok(fn(renderer, '_menuEnter').includes('_menuShowCanvas(_menu, false)') && fn(renderer, '_menuLeave').includes("canvas.style.opacity = ''"));
+    assert.ok(renderer.includes('revealed: function () { return !!(_menu && _menu.revealed); }'));
+    // the public api
+    assert.ok(renderer.includes('assetsPending: function () { return _alPending(); }') && renderer.includes('assetGate: function (name, o) { return _alGateOpen(name, o); }') && renderer.includes('assetTrack: function (kind, url) { return _alTrack(kind, url); }'));
+    // the other files
+    const battle = read('battle.js'), vfx = read('three-vfx-effects.js'), map = read('map.js'), html = read('index.html'), data = read('data.js');
+    assert.ok(battle.includes("ThreeRenderer.assetGate('battle', { adoptLive: true, minMs: 1500 })") && battle.includes('_lsGate.close()') && battle.includes('function _lsBoardBringUp()') && battle.includes('try { _lsBoardBringUp(); }'), 'the battle card gates the board it brings up');
+    assert.ok(vfx.includes("TRl.assetTrack('texture', url)") && vfx.includes("TR.assetTrack('model', url0)"), 'the VFX loaders file records');
+    assert.ok(map.includes('ThreeRenderer.hq.gate()') && map.includes('ready = M ? !!M.revealed : !wanted') && map.includes('HQ_WALK_BLINK_MS'), 'the card reads the gate; the menu warm waits for the reveal; a cold walk shows the card');
+    assert.ok(html.includes('id="hqLoadFill"') && /\?v=20260920-load-gate-01-cors/.test(html) && !html.includes('sheets-first'), 'the bar + the token');
+    assert.ok(/perM2: 460,[\s\S]*?max: 4,[\s\S]*?facilityMax: 3,[\s\S]*?cityMax: 6,[\s\S]*?hqMax: 4,/.test(data), 'the population halved');
 });

@@ -22,6 +22,7 @@ function extract(name) {
 
 test('THE RULES: the table, the residents by the tags — natives first, then the biome-tagged, never the agency', () => {
     assert.ok(R.perM2 > 50 && R.max >= 4 && R.cityMax > R.max && R.walkSpeed > 0.5 && R.walkSpeed < 2.4, 'the table');
+    assert.ok(R.perM2 === 460 && R.max === 4 && R.facilityMax === 3 && R.cityMax === 6 && R.hqMax === 4, 'THE HALVING (2026-09-20): half the 09-19 table — every extra is a rigged GLB the load card waits for');
     assert.equal(R.wildWeights.length, 3); assert.equal(R.cityWeights.length, 3);
     const rs = D.hqSiteResidents('prebuilt_haunted');
     assert.deepEqual(rs.slice(0, rs.natives).sort().join(','), D.doorSiteCrossings('The Haunted House').sort().join(','), 'the natives lead');
@@ -58,9 +59,9 @@ test('DISASTER CITY and D.O.O.R. HQ are the most diverse: the streets a crowd of
     for (const id of ['site_prebuilt_downtown_streets', 'site_prebuilt_strip_streets', 'site_prebuilt_cyberpunk_streets']) {
         const p = D.hqRoomPopulation(id, null, { date: '2026-09-19' });
         assert.equal(p.kind, 'city'); assert.equal(p.hub, 'city');
-        assert.ok(p.n >= 10, id + ' n=' + p.n);
+        assert.ok(p.n >= 5, id + ' n=' + p.n);   // halved 2026-09-20
         const kinds = new Set(p.draw.map(d => d.race));
-        assert.ok(kinds.size >= 7, id + ' ' + kinds.size + ' kinds');
+        assert.ok(kinds.size >= 4, id + ' ' + kinds.size + ' kinds');   // halved 2026-09-20: six walkers a street
         const tiers = new Set(p.draw.map(d => d.tier));
         assert.ok(tiers.has('people') || tiers.has('city'), id + ' has people from beyond the site');
         assert.ok(p.pool.some(r => (D.RACE_PROFILES[r].types || []).indexOf('human') >= 0), 'ordinary people on the street');
@@ -68,8 +69,8 @@ test('DISASTER CITY and D.O.O.R. HQ are the most diverse: the streets a crowd of
     const u = D.hqRoomPopulation('site_prebuilt_downtown_sewers', null);
     assert.equal(u.hub, 'underworld'); for (const d of u.draw) assert.ok(R.underworld.indexOf(d.race) >= 0, 'the sewers: ' + d.race);
     const h = D.hqRoomPopulation('central_egress', null, { date: '2026-09-19' });
-    assert.equal(h.kind, 'facility'); assert.ok(h.n >= 7 && h.n <= R.hqMax, 'the hall n=' + h.n);
-    assert.ok(new Set(h.draw.map(d => d.race)).size >= 6, 'the hall is diverse');
+    assert.equal(h.kind, 'facility'); assert.ok(h.n >= 3 && h.n <= R.hqMax, 'the hall n=' + h.n);   // halved 2026-09-20
+    assert.ok(new Set(h.draw.map(d => d.race)).size >= 3, 'the hall is diverse');   // halved 2026-09-20: four walkers
     const prof = { account: { unlockedUnits: ['knight', 'nun'] } };
     const hp = D.hqRoomPopulation('central_egress', prof, { date: '2026-09-19' });
     for (const d of hp.draw) assert.ok(['knight', 'nun'].indexOf(d.race) >= 0, 'the officer\'s own roster: ' + d.race);

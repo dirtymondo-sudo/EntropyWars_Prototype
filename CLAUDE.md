@@ -7025,6 +7025,7 @@ board's light, the eyes' scale on the dome, the glass's tilt direction, the
 black sphere on a dark map, the six camera paths.
 
 ## THE SHEETS FIRST — why a new place was BLACK, and the texture lane (2026-09-20, local delivery)
+**SUPERSEDED the same day by THE LOAD GATE (the next section): the grey placeholder is GONE — the user: "I do not want stand-in textures, that is even worse." The high-priority image fetch, the one-fetch-per-file rule and the texture hold on the model queue stay.**
 The user: "the floors and walls are always black when I go to a new place". TWO causes, both in
 three-renderer.js. **(1) BLACK IS "NOT LANDED YET"**: a three.js material with a `map` whose image
 has not arrived samples an UNBOUND GPU texture (r128 `setTexture2D` binds `__webglTexture` =
@@ -7051,3 +7052,50 @@ so nothing was measured live — the two mechanisms are read off the code and th
 runs mobile-performance.test.js (THE SHEETS FIRST ×2). UNSEEN LIVE (RULE #1c): the grey-then-textured
 pop on a cold cache, the props' arrival ~2 s later than before in a room with many sheets, the hold's
 feel on a slow line (`TEX_HOLD_MS` is the edit).
+
+## THE LOAD GATE — the loading screens serve their function, the placeholder is gone, the population halved (2026-09-20, local delivery)
+The user: "I do not want stand-in textures, that is even worse. We need load screens that actually serve their
+function and load assets and don't load a scene with assets missing or stand-in assets / textures, EVER. Cut the
+characters in the areas in half." Measured cause (read off the code): every loading screen in the game waited on a
+CLOCK or a SUBSET — the HQ card faded when the walker's rig attached (else 9 s), the battle card waited for the
+unit rigs + a browser-cache warm of the terrain sheets while the BOARD ITSELF was built only after the VS splash
+(the setting's door-kit / vehicle / foliage GLBs and the far roster streamed in behind the fade), and the menu
+scene showed a procedural stand-in door until the 11 MB leaf landed. **THE ASSET LEDGER** (three-renderer.js,
+the block after `_ewAssetFailed`): every request through the renderer's loaders — `textureLoader.load`
+(`_hqTex` / `_hzTex` / `getTexture`), `_loadUnitGLB`, `_loadMiscModel`, `_loadFoliageModel`, `_ccLoadImage`, and
+the VFX file's `_loadCachedTex` / `_wpnLoad` through **`ThreeRenderer.assetTrack(kind, url)`** — files a RECORD
+(`_alTrack` → `rec.settle(ok, quiet)`) when it starts and settles it when the file lands or finally fails
+(after THE RETRY and any fallback); a cache hit on a file still streaming JOINS the record (`_alJoin`, the
+`_ew_alRec` / `_alRec` on the texture / entry). **A GATE SESSION** (`_alGateOpen(name, { adoptLive, minMs })`
+→ `{ total, done, pending(), idle(), list(), failed(), close(), whenIdle(cb, capMs), progress() }`) records every
+request made while open and is IDLE only once each has settled and nothing was asked for or landed within
+`AL_SETTLE_MS` (300); a record that never settles is closed as failed after `AL_STALL_MS` (60 s) with a console
+line naming the URL, so no card hangs for ever — a file that is not in the bucket is the ONE thing a card cannot
+fix (`window._ewAssetFailures`, `window._ewAssetLedger.list()`). THE RULE: **a texture that has not landed is
+BLACK, and nothing is SHOWN until every file it asked for has landed** — never add a placeholder image again.
+**THE HQ**: `_hqEnter` opens `H.gate` before the build (the shell's sheets, the leaves, the props, the setting,
+the natives', the population's and the walker's rigs all record); `_hqTickChars` sets `H.playerAttached`;
+**`_hqGateTick`** (from `_hqFrame`) fires `onReady` — the card's fade — only when the walker attached (or has no
+rig to wait for) AND the gate is idle, else at `HQ_GATE_CAP_MS` (75 s) naming what never landed; `_hqLeave`
+closes the gate and **`_mqDropQueued(2)`** forgets the room's queued-but-unstarted BACKGROUND jobs (its
+population, a warm — a job carries `drop` now: the cache entry is deleted, the record settles quietly, a later
+request re-queues), so a left room never holds the next card. map.js `_hqLoadProgressStart` reads
+**`ThreeRenderer.hq.gate()`** — `loading <room> · 12 / 48 files` + the bar (`#hqLoadFill`, index.html /
+styles-base.css) — and a WALK's door-blink becomes the full card after `HQ_WALK_BLINK_MS` (700) when the next
+room is cold. **THE MENU**: `_menuBuild` opens `M.gate`; the canvas stays at opacity 0 under the classic void
+until the catalogue leaf is hot AND the gate is idle (`_menuGateTick` → `M.revealed`, `_menuShowCanvas` fades it
+in over 0.9 s; `MENU_GATE_CAP_MS` 45 s reveals with the stand-in and a warning); `menu.revealed()`; map.js
+`_hqWarmArrivalSoon` starts the walker's rig only after the reveal (the menu's own door first — the user: "how
+can we load a floating pyramid but the door and frame load late"). **THE BATTLE**: `showBattleLoadingScreen`
+opens `ThreeRenderer.assetGate('battle', { adoptLive: true, minMs: 1500 })` as a warmer and — 520 ms after the
+card's fade-in, behind an OPAQUE card — runs **`_lsBoardBringUp()`** = the opening cinematic's own bring-up
+(`renderBoard()` + `ThreeRenderer.activate()`), so every sheet, setting piece, roster model and rig the board
+asks for is requested UNDER the card and counted in its bar (`prog.gate`); `finish()` closes the session;
+`LS_MAX_WAIT_MS` stays the cap; the encounter / auto-sim / skip-visuals paths are untouched. **THE POPULATION
+HALVED**: data.js `HQ_POPULATION_RULES` `perM2` 460 · `max` 4 · `facilityMax` 3 · `cityMax` 6 · `hqMax` 4 (every
+extra is a 5–9 MB rig the card now waits for; the authored `npcSpots` are the room's design and stand). Dev:
+`window._ewAssetLedger.gates()`. `npm test` runs mobile-performance.test.js (the ledger in a vm + the source
+guards) and hq-population.test.js. NOT touched: the survey worker, the model queue's priorities, the retry.
+UNSEEN LIVE (RULE #1c): the card's count on a cold cache (the hall is ~300 MB of GLB — the card will be HONEST
+about it; `gltf-transform optimize` on the furniture is still the user's lever), the walk-blink turning into the
+card, the menu's fade-in, the battle card's bar growing as the board asks.

@@ -4346,6 +4346,9 @@ body.diorama-3d .tile-underpass.jump::before {
 .hq-load-card i { font-style: normal; font-size: 10px; color: #7f7a6e; margin-top: 12px; animation: hqBlink 1.4s steps(2) infinite; }
 /* THE MOTTO on the loading card (the Bureau's barometer, HQ plan 4.4 — A7: posters, plaques, loading screens) */
 .hq-load-card .hq-load-motto { display: block; font-style: normal; font-family: 'Cormorant SC', serif; font-size: 13px; letter-spacing: 0.22em; color: #c9a44a; margin-top: 14px; opacity: 0.85; }
+/* THE GATE (2026-09-20): the room's own file count as a bar — landed / total, off ThreeRenderer.hq.gate() */
+.hq-load-card .hq-load-bar { width: 240px; height: 3px; margin-top: 10px; background: rgba(255, 255, 255, 0.12); border-radius: 2px; overflow: hidden; transition: opacity 0.3s ease; }
+.hq-load-card .hq-load-fill { display: block; height: 100%; width: 0; background: #c9a44a; transition: width 0.25s ease; }
 @keyframes hqBlink { 50% { opacity: 0.35; } }
 
 /* ═══ THE PAUSE MENU (2026-09-15) — ESC / P over the paused building: a JRPG

@@ -38723,11 +38723,29 @@
             return label;
         }
 
+        /* THE GATE (2026-09-20): the board's bring-up under the loading card — what playOpeningCinematic does
+           behind its veil, run early so the asset ledger sees the board's every request while the card is up */
+        function _lsBoardBringUp() {
+            if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer || typeof renderBoard !== 'function') return false;
+            const _bo = document.getElementById('builderOverlay');
+            if (_bo) _bo.style.display = 'none';
+            const _mr = document.getElementById('mapRow');
+            if (_mr) _mr.style.display = '';
+            try { invalidateLayoutCache(); render(); } catch (e) {}
+            invalidateLayoutCache();
+            renderBoard();
+            if (ThreeRenderer.isActive && !ThreeRenderer.isActive() && typeof ThreeRenderer.activate === 'function') {
+                CONFIG.tileSize = BASE_TILE;
+                ThreeRenderer.activate();
+            }
+            return true;
+        }
         function showBattleLoadingScreen(onDone) {
             let finished = false;
             const finish = () => {
                 if (finished) return;
                 finished = true;
+                try { if (_lsGate) _lsGate.close(); } catch (e) {}
                 if (onDone) onDone();
                 /* THE MATCH WARM's drip (2026-09-20): the rest of the weapon library streams one file
                    every 4 s in the background lane while this match is on (alive() = still in battle) */
@@ -38740,8 +38758,24 @@
 
             /* ── Asset warmers — fire these even when visuals are skipped, so
                dev-sim and animations-off matches still get a hot cache. ── */
-            const prog = { model: [0, 0], img: [0, 0], tex: [0, 0], music: [0, 1] };
+            const prog = { model: [0, 0], img: [0, 0], tex: [0, 0], music: [0, 1], gate: [0, 0] };
             const warmers = [];
+
+            /* THE GATE (2026-09-20, the user: "load screens that actually serve their function"): the card
+               used to wait for the unit rigs, the sprite PNGs, the battle track and a browser-cache warm of
+               the terrain sheets — and the board's SETTING (the near builder's door-kit / vehicle / foliage
+               GLBs, the far roster's models, every texture the renderer pulls on first use) streamed in
+               BEHIND the fade. Now the renderer's asset ledger (three-renderer.js) opens a session here:
+               every file the board build asks for from this moment — plus everything already on the pipe —
+               is a file the card waits for. LS_MAX_WAIT_MS stays the cap (a hung download settles itself
+               inside the ledger at 60 s and is named in the console). */
+            let _lsGate = null;
+            try {
+                if (typeof ThreeRenderer !== 'undefined' && typeof ThreeRenderer.assetGate === 'function') {
+                    _lsGate = ThreeRenderer.assetGate('battle', { adoptLive: true, minMs: 1500 });
+                    warmers.push(new Promise(res => _lsGate.whenIdle(() => res(), Math.max(1000, LS_MAX_WAIT_MS - 1500))));
+                }
+            } catch (e) { _lsGate = null; }
 
             // THE MATCH WARM (2026-09-20, the loading pass): the weapon / projectile GLBs are no longer
             // warmed at boot (330 MB behind the title screen). Here — and only here — warm the props the
@@ -39088,8 +39122,9 @@
 
                 let maxPct = 0;   // monotonic — totals can grow as warmers report in
                 const paintProgress = () => {
-                    const done = prog.model[0] + prog.img[0] + prog.tex[0] + prog.music[0];
-                    const total = Math.max(1, prog.model[1] + prog.img[1] + prog.tex[1] + prog.music[1]);
+                    try { if (_lsGate) { const gp = _lsGate.progress(); prog.gate = [gp.done, gp.total]; } } catch (e) {}
+                    const done = prog.model[0] + prog.img[0] + prog.tex[0] + prog.music[0] + prog.gate[0];
+                    const total = Math.max(1, prog.model[1] + prog.img[1] + prog.tex[1] + prog.music[1] + prog.gate[1]);
                     maxPct = Math.max(maxPct, Math.min(100, Math.round((done / total) * 100)));
                     fill.style.width = maxPct + '%';
                     statusCount.textContent = String(done).padStart(2, '0') + ' / ' + String(total).padStart(2, '0');
@@ -39143,6 +39178,16 @@
 
                 document.body.appendChild(overlay);
                 requestAnimationFrame(() => overlay.classList.add('ls-active'));
+                /* THE GATE (2026-09-20): bring the battlefield up BEHIND the card — the same bring-up the opening
+                   cinematic does behind its own veil (renderBoard + ThreeRenderer.activate) — so every terrain
+                   sheet, setting piece (the door kit, the vehicles, the foliage), far-roster model and unit rig
+                   the board asks for is requested NOW, under the card, and the card waits for it. The board used
+                   to be built after the card had faded, so the setting streamed in during the VS splash / the
+                   first round. The cinematic's and _afterVSSplash's later renderBoard find it built. */
+                setTimeout(() => {   // after the card's 0.45 s fade-in — the board comes up behind an OPAQUE card
+                    if (dismissed || finished) return;
+                    try { _lsBoardBringUp(); } catch (e) { console.warn('[LoadingScreen] early board bring-up failed (the cinematic will build it):', e); }
+                }, 520);
             } catch (err) {
                 // Never let presentation kill a match start.
                 console.warn('[LoadingScreen] failed, continuing without it:', err);

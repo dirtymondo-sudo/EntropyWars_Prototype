@@ -1338,33 +1338,90 @@ const ThreeRenderer = (function () {
         } catch (e) {}
     }
     if (typeof window !== 'undefined') { window._ewAssetFailures = _ewAssetFailures; window._ewRetryUrl = _ewRetryUrl; }
-    /* THE SHEETS FIRST (2026-09-20, "the floors and walls are always black in a new place"):
-       (1) a three.js material whose texture has NOT LANDED samples an unbound GPU texture — BLACK —
-           so a room reads as a black box until its sheets stream in; `_texShowPlaceholder(tex)` gives a
-           tile sheet a 4 × 4 mid-grey image at once (the real image replaces it on load; a reader that
-           measures `tex.image` must skip `tex._ew_placeholder`);
-       (2) every texture is fetched through our OWN <img> with `fetchPriority = 'high'` (a plain image
-           is LOW priority in every browser — the GLB fetches are HIGH, so on one HTTP/2 pipe a 20 KB
-           sheet queued behind four streaming 8 MB models); the count of sheets in flight
-           (`_texInflight`) holds the model queue's scene / warm jobs for up to TEX_HOLD_MS after the
-           last request (`_mqPump`) — the rig lane never waits. */
+    /* THE ASSET LEDGER + THE GATE (2026-09-20 — the user: "we need load screens that actually serve their
+       function and load assets, and don't load a scene with assets missing or stand-in assets / textures,
+       EVER"). THE PLACEHOLDER IS GONE (the previous session's grey 4 × 4 tile): a texture that has not landed
+       is BLACK in three.js, and the rule now is that no scene is SHOWN until every file it asked for has
+       landed. Every request through this file's loaders — a tile sheet (textureLoader.load: _hqTex / _hzTex /
+       getTexture), a rigged GLB (_loadUnitGLB), a misc / door-kit / vehicle GLB or OBJ (_loadMiscModel), a
+       foliage OBJ (_loadFoliageModel), a creator image (_ccLoadImage), and the VFX file's weapon GLBs and
+       textures (ThreeRenderer.assetTrack) — files a RECORD here the moment it starts and settles it when the
+       file lands or finally fails (after THE RETRY and any fallback); a cache hit on a file still in flight
+       JOINS the same record (_alJoin). A GATE SESSION (_alGateOpen) records every request made while it is
+       open and is IDLE once each has settled and nothing has been asked for or landed within AL_SETTLE_MS:
+       the HQ load card (hq.gate — the room build, the population, the walker's rig), the battle loading
+       screen (ThreeRenderer.assetGate('battle')) and the main-menu scene (the canvas hidden until its door,
+       frame, car and sky are complete) all wait on exactly that. A record that never settles (a hung
+       download — THREE's loaders have no network timeout) is closed as FAILED after AL_STALL_MS with a
+       console line naming the URL, so a card can never hang for ever; the one thing a card cannot fix is a
+       file that is not in the bucket — window._ewAssetFailures and the console name it.
+       (2) every texture is still fetched through our OWN <img> with `fetchPriority = 'high'` (a plain image
+       is LOW priority in every browser — the GLB fetches are HIGH), and the count of sheets in flight
+       (`_texInflight`) holds the model queue's scene / warm jobs for up to TEX_HOLD_MS after the last
+       request (`_mqPump`) — the rig lane never waits. */
     var _texInflight = 0, _texHoldUntil = 0, TEX_HOLD_MS = 2500;
-    var _texPlaceholderImg = null;
-    function _texPlaceholder() {
-        if (_texPlaceholderImg !== null) return _texPlaceholderImg || null;
-        try {
-            var c = document.createElement('canvas'); c.width = c.height = 4;
-            var g = c.getContext('2d'); g.fillStyle = '#7c7c7c'; g.fillRect(0, 0, 4, 4);
-            _texPlaceholderImg = c;
-        } catch (e) { _texPlaceholderImg = false; }
-        return _texPlaceholderImg || null;
+    var AL_SETTLE_MS = 300, AL_STALL_MS = 60000;
+    var _alSeq = 0, _alLive = {}, _alLiveN = 0, _alSessions = [], _alLastEventAt = 0;
+    function _alNow() { return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now(); }
+    /* file a record for a request that just started; `rec.settle(ok, quiet)` closes it */
+    function _alTrack(kind, url) {
+        var rec = { id: ++_alSeq, kind: kind, url: url || '', at: _alNow(), done: false, ok: null, stall: null };
+        _alLive[rec.id] = rec; _alLiveN++;
+        _alLastEventAt = rec.at;
+        rec.settle = function (ok, quiet) {
+            if (rec.done) return;
+            rec.done = true; rec.ok = ok !== false; rec.doneAt = _alNow(); rec.quiet = !!quiet;
+            if (rec.stall) { try { clearTimeout(rec.stall); } catch (e) {} rec.stall = null; }
+            delete _alLive[rec.id]; _alLiveN = Math.max(0, _alLiveN - 1);
+            _alLastEventAt = rec.doneAt;
+            for (var i = 0; i < _alSessions.length; i++) if (_alSessions[i].has[rec.id]) _alSessions[i].done++;
+        };
+        try { rec.stall = setTimeout(function () { if (!rec.done) { try { console.warn('[ThreeRenderer] ' + kind + ' did not land in ' + (AL_STALL_MS / 1000) + ' s — the gate stops waiting for it: ' + rec.url); } catch (e) {} rec.settle(false); } }, AL_STALL_MS); } catch (e) {}
+        for (var s = 0; s < _alSessions.length; s++) if (_alSessions[s].open) _alSessions[s].add(rec);
+        return rec;
     }
-    function _texShowPlaceholder(tex) {
-        if (!tex || tex.image) return tex;
-        var img = _texPlaceholder(); if (!img) return tex;
-        tex.image = img; tex._ew_placeholder = true; tex.needsUpdate = true;
-        return tex;
+    /* a cache hit on a file still streaming: the open gates wait for it too */
+    function _alJoin(rec) {
+        if (!rec || rec.done) return;
+        for (var s = 0; s < _alSessions.length; s++) if (_alSessions[s].open) _alSessions[s].add(rec);
     }
+    function _alPending() { return _alLiveN; }
+    function _alPendingList() { var out = [], now = _alNow(); for (var k in _alLive) out.push({ kind: _alLive[k].kind, url: _alLive[k].url, ms: Math.round(now - _alLive[k].at) }); return out; }
+    /* o.adoptLive: every file already in flight joins (the battle card waits for everything on the pipe);
+       o.minMs: the gate is never idle before this long has passed (a scene whose build runs a frame later) */
+    function _alGateOpen(name, o) {
+        o = o || {};
+        var G = { name: name || 'gate', open: true, closed: false, has: {}, recs: [], total: 0, done: 0, t0: _alNow(), lastAt: _alNow(), minMs: (o.minMs > 0) ? +o.minMs : 0 };
+        G.add = function (rec) { if (!rec || G.has[rec.id]) return; G.has[rec.id] = 1; G.recs.push(rec); G.total++; G.lastAt = _alNow(); if (rec.done) G.done++; };
+        G.pending = function () { return G.total - G.done; };
+        G.list = function () { var now = _alNow(); return G.recs.filter(function (r) { return !r.done; }).map(function (r) { return { kind: r.kind, url: r.url, ms: Math.round(now - r.at) }; }); };
+        G.failed = function () { return G.recs.filter(function (r) { return r.done && !r.ok && !r.quiet; }).map(function (r) { return r.url; }); };
+        G.idle = function () {
+            var now = _alNow();
+            if (G.minMs && now - G.t0 < G.minMs) return false;
+            if (G.pending() > 0) return false;
+            return (now - Math.max(G.lastAt, _alLastEventAt || 0)) >= AL_SETTLE_MS;   // a beat: a file that just landed may ask for another
+        };
+        G.close = function () { if (G.closed) return; G.closed = true; G.open = false; var i = _alSessions.indexOf(G); if (i >= 0) _alSessions.splice(i, 1); };
+        G.progress = function () { return { name: G.name, total: G.total, done: G.done, pending: G.pending(), idle: G.idle(), ms: Math.round(_alNow() - G.t0) }; };
+        /* wait for idle, or the cap: cb({ ok, pending, progress }) once — polled, the ledger has no event bus */
+        G.whenIdle = function (cb, capMs) {
+            var cap = (capMs != null) ? +capMs : 75000, fired = false;
+            function fire(ok) {
+                if (fired) return; fired = true;
+                if (!ok) { try { console.warn('[ThreeRenderer] ' + G.name + ': the gate gave up after ' + Math.round(cap / 1000) + ' s with ' + G.pending() + ' file(s) still in flight', G.list().map(function (r) { return r.url; })); } catch (e) {} }
+                try { cb({ ok: ok, pending: G.list(), progress: G.progress() }); } catch (e) {}
+            }
+            function poll() { if (fired || G.closed) { if (!fired) fire(true); return; } if (G.idle()) { fire(true); return; } if (_alNow() - G.t0 >= cap) { fire(false); return; } setTimeout(poll, 100); }
+            poll();
+            return G;
+        };
+        if (o.adoptLive) { for (var k in _alLive) G.add(_alLive[k]); }
+        _alSessions.push(G);
+        return G;
+    }
+    function _alGates() { return _alSessions.map(function (g) { return g.progress(); }); }
+    if (typeof window !== 'undefined') { window._ewAssetLedger = { pending: _alPending, list: _alPendingList, gates: _alGates }; }
     function _texLanded() {
         _texInflight = Math.max(0, _texInflight - 1);
         if (_texInflight === 0 && typeof _mqPump === 'function') { try { setTimeout(_mqPump, 0); } catch (e) {} }
@@ -1389,17 +1446,20 @@ const ThreeRenderer = (function () {
         var tex = new THREE.Texture();
         var isJPEG = /\.jpe?g($|\?)/i.test(u) || u.indexOf('data:image/jpeg') === 0;
         if (THREE.RGBFormat !== undefined) tex.format = isJPEG ? THREE.RGBFormat : THREE.RGBAFormat;
+        var rec = _alTrack('texture', u);   // THE ASSET LEDGER: a gate waits for this sheet
+        tex._ew_alRec = rec;
         function landed(img) {
-            tex.image = img; tex._ew_placeholder = false; tex.needsUpdate = true;
+            tex.image = img; tex.needsUpdate = true;
             if (onLoad) { try { onLoad(tex); } catch (e) { console.warn('[ThreeRenderer] texture onLoad threw', e); } }
+            rec.settle(true);
         }
         _texFetch(u, landed, function (err) {
             var again = _ewRetryUrl(u);
-            if (!again) { _ewAssetFailed('texture', u, false); if (onError) onError(err); return; }
+            if (!again) { _ewAssetFailed('texture', u, false); rec.settle(false); if (onError) onError(err); return; }
             _ewAssetFailed('texture', u, true);
             try {
-                _texFetch(again, landed, function (err2) { _ewAssetFailed('texture', again, false); if (onError) onError(err2); });
-            } catch (e) { if (onError) onError(err); }
+                _texFetch(again, landed, function (err2) { _ewAssetFailed('texture', again, false); rec.settle(false); if (onError) onError(err2); });
+            } catch (e) { rec.settle(false); if (onError) onError(err); }
         });
         return tex;
     };
@@ -1961,6 +2021,7 @@ const ThreeRenderer = (function () {
         if (textureCache.has(url)) {
             var cached = textureCache.get(url);
             cached._ew_epoch = _texEpoch;
+            _alJoin(cached._ew_alRec);   // THE ASSET LEDGER: still streaming → the open gate waits for it
 
             if (onLoad) {
                 if (cached.image && cached.image.complete) {
@@ -4653,9 +4714,10 @@ const ThreeRenderer = (function () {
        still loading / failed. */
     function _loadFoliageModel(name) {
         var entry = _foliageModelCache[name];
-        if (entry) return entry.obj;
+        if (entry) { if (entry.loading) _alJoin(entry._alRec); return entry.obj; }   // THE ASSET LEDGER: still streaming → the open gate waits
         entry = _foliageModelCache[name] = { obj: null, loading: true, failed: false };
         if (typeof THREE.OBJLoader !== 'function') { entry.loading = false; entry.failed = true; return null; }
+        var rec = entry._alRec = _alTrack('foliage', _FOLIAGE_OBJ_BASE + name + '.obj');
         function attempt(reqUrl, retried) {
             try {
                 new THREE.OBJLoader().load(
@@ -4664,15 +4726,17 @@ const ThreeRenderer = (function () {
                         _normalizeFoliageModel(root);
                         entry.obj = root; entry.loading = false;
                         _objectsDirty = true;   /* re-render so the model swaps in */
+                        rec.settle(true);
                     },
                     undefined,
                     function() {
                         var again = !retried ? _ewRetryUrl(reqUrl) : null;   // THE RETRY (2026-09-20)
                         if (again) { _ewAssetFailed('foliage', reqUrl, true); attempt(again, true); return; }
                         entry.loading = false; entry.failed = true; _ewAssetFailed('foliage', reqUrl, false);
+                        rec.settle(false);
                     }
                 );
-            } catch (e) { entry.loading = false; entry.failed = true; }
+            } catch (e) { entry.loading = false; entry.failed = true; rec.settle(false); }
         }
         attempt(_FOLIAGE_OBJ_BASE + name + '.obj', false);
         return null;
@@ -10448,15 +10512,29 @@ const ThreeRenderer = (function () {
             _mqStart(_mqJobs.shift());
         }
     }
-    function _scheduleModelLoad(start, url, bg) {
+    function _scheduleModelLoad(start, url, bg, drop) {
         if (typeof window === 'undefined' || !window.EW_PERF_LOW) {
             if (typeof window !== 'undefined' && window.EW_NO_MODEL_QUEUE) { start(function () {}); return; }
-            _mqJobs.push({ start: start, url: url || null, pri: _mqPriority(url, bg), seq: _mqSeq++, started: false });
+            _mqJobs.push({ start: start, url: url || null, pri: _mqPriority(url, bg), seq: _mqSeq++, started: false, drop: drop || null });
             _mqPump();
             return;
         }
         _mobileModelJobs.push(start);
         _pumpModelLoads();
+    }
+    /* THE ASSET LEDGER (2026-09-20): leaving a room DROPS its queued-but-unstarted BACKGROUND jobs (the
+       population's rigs, a warm) — their cache entries are forgotten so a later request re-queues them,
+       and no gate of the next room or the battle waits for a file nobody on screen asked for. A job
+       already streaming cannot be cancelled (THREE's loaders have no abort) and keeps its record. */
+    function _mqDropQueued(minPri) {
+        var keep = [], n = 0;
+        for (var i = 0; i < _mqJobs.length; i++) {
+            var job = _mqJobs[i];
+            if (!job.started && job.pri >= (minPri == null ? 2 : minPri) && job.drop) { n++; try { job.drop(); } catch (e) {} }
+            else keep.push(job);
+        }
+        _mqJobs = keep;
+        return n;
     }
     /* Legacy names the older lane sites still call — all routed into the one queue. */
     function _rigLaneCount() { var n = 0; for (var k in _rigLaneLive) n++; return n; }
@@ -10483,17 +10561,20 @@ const ThreeRenderer = (function () {
         if (e) {
             if (e.root) { cb(e); return; }
             if (e.failed) return;
+            _alJoin(e._alRec);   // THE ASSET LEDGER: still streaming → the open gate waits for it
+            if (_bgLoadDepth === 0) _bgPromote(url);   // the scene asks for a rig the population queued behind it
             e.cbs.push(cb); return;
         }
         e = _unitGlbCache[url] = { root: null, clips: null, bbox: null, loading: true, failed: false, cbs: [cb] };
         if (typeof THREE.GLTFLoader !== 'function') { e.loading = false; e.failed = true; e.cbs.length = 0; _flushGlbDoneCbs(e); return; }
+        var rec = e._alRec = _alTrack('model', url);
         function loadAttempt(requestUrl, fallbackUsed, retried) {
           _scheduleModelLoad(function (done) {
           try {
             new THREE.GLTFLoader().load(requestUrl, function (gltf) {
                 done();
                 var root = gltf.scene || (gltf.scenes && gltf.scenes[0]);
-                if (!root) { e.loading = false; e.failed = true; e.cbs.length = 0; _flushGlbDoneCbs(e); return; }
+                if (!root) { e.loading = false; e.failed = true; e.cbs.length = 0; _flushGlbDoneCbs(e); rec.settle(false); return; }
                 _compactMobileModelTextures(root);
                 // Geometry is shared by every clone — protect it from _disposeR.
                 root.traverse(function (n) { if (n.isMesh && n.geometry) n.geometry._ew_shared = true; });
@@ -10504,6 +10585,7 @@ const ThreeRenderer = (function () {
                 var cbs = e.cbs; e.cbs = [];
                 for (var i = 0; i < cbs.length; i++) { try { cbs[i](e); } catch (_ex) {} }
                 _flushGlbDoneCbs(e);
+                rec.settle(true);
                 invalidateUnits();   // swap placeholders for the model on the next frame
             }, undefined, function () {
                 done();
@@ -10513,9 +10595,14 @@ const ThreeRenderer = (function () {
                 if (fallback) { loadAttempt(fallback, true, false); return; }
                 e.loading = false; e.failed = true; e.cbs.length = 0; _flushGlbDoneCbs(e);
                 _ewAssetFailed('model', requestUrl, false);
+                rec.settle(false);
             });
-          } catch (ex) { done(); e.loading = false; e.failed = true; e.cbs.length = 0; _flushGlbDoneCbs(e); }
-          }, url);
+          } catch (ex) { done(); e.loading = false; e.failed = true; e.cbs.length = 0; _flushGlbDoneCbs(e); rec.settle(false); }
+          }, url, false, function () {
+              /* dropped unstarted (the room that asked for it was left): forget the entry, settle quietly */
+              if (_unitGlbCache[url] === e) delete _unitGlbCache[url];
+              e.loading = false; e.cbs.length = 0; _flushGlbDoneCbs(e); rec.settle(false, true);
+          });
         }
         loadAttempt(url, false);
     }
@@ -22089,12 +22176,11 @@ const ThreeRenderer = (function () {
     // kills the buzzing. (In-world terrain still uses NearestFilter — unchanged.)
     var _hzTexCache = {};
     function _hzTex(terrainKey) {
-        if (_hzTexCache[terrainKey] !== undefined) return _hzTexCache[terrainKey];
+        if (_hzTexCache[terrainKey] !== undefined) { var hit = _hzTexCache[terrainKey]; if (hit) _alJoin(hit._ew_alRec); return hit; }   // THE ASSET LEDGER: a sheet still streaming is waited for again
         var url = (typeof TERRAIN_SPRITES !== 'undefined' && TERRAIN_SPRITES[terrainKey]) ? TERRAIN_SPRITES[terrainKey][0] : null;
         if (!url && typeof terrainKey === 'string' && terrainKey.indexOf('urban:') === 0 && typeof URBAN_TEXTURES !== 'undefined') url = URBAN_TEXTURES[terrainKey.slice(6)] || null;   // THE URBAN PACK (2026-09-17): `urban:<Name>` reads sprites.js URBAN_TEXTURES
         if (!url) { _hzTexCache[terrainKey] = null; return null; }
-        var tex = textureLoader.load(url);        // fresh instance; onLoad sets image + needsUpdate
-        _texShowPlaceholder(tex);                 // THE SHEETS FIRST (2026-09-20): grey, never black, while it streams
+        var tex = textureLoader.load(url);        // fresh instance; onLoad sets image + needsUpdate (no placeholder — the gate holds the scene until it lands)
         tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
         tex.magFilter = THREE.LinearFilter;
         tex.minFilter = THREE.LinearMipmapLinearFilter;   // trilinear: smooth minification at distance
@@ -22283,10 +22369,12 @@ const ThreeRenderer = (function () {
             if (e.root) { cb(e.root); return; }
             if (e.failed) return;
             e.cbs.push(cb);
+            _alJoin(e._alRec);   // THE ASSET LEDGER: still streaming → the open gate waits for it
             if (!bg) _bgPromote(url);   // a real request for a file the warm queued starts it now
             return;
         }
         e = _miscModelCache[url] = { root: null, loading: true, failed: false, cbs: [cb] };
+        var rec = e._alRec = _alTrack('model', url);
         function _onLoad(res) {
             var obj = (res && res.scene) ? res.scene : res;   // GLTF → {scene}, OBJ → Object3D
             _compactMobileModelTextures(obj);
@@ -22295,10 +22383,12 @@ const ThreeRenderer = (function () {
             e.root = obj; e.loading = false;
             for (var i = 0; i < e.cbs.length; i++) { try { e.cbs[i](obj); } catch (_e) {} }
             e.cbs.length = 0;
+            rec.settle(true);
             _objectsDirty = true;
             _horizonFogDirty = true;   // a horizon misc model (pyramid/eye) just filled in — re-apply fog
         }
-        function _onErr() { e.loading = false; e.failed = true; e.cbs.length = 0; }
+        function _onErr() { e.loading = false; e.failed = true; e.cbs.length = 0; rec.settle(false); }
+        function _onDrop() { if (_miscModelCache[url] === e) delete _miscModelCache[url]; e.loading = false; e.cbs.length = 0; rec.settle(false, true); }
         _scheduleModelLoad(function (done) {
         function loaded(res) { try { _onLoad(res); } finally { done(); } }
         function failed() { try { _onErr(); } finally { done(); } }
@@ -22319,7 +22409,7 @@ const ThreeRenderer = (function () {
             } catch (ex) { failed(); }
         }
         attempt(url, false);
-        }, url, bg);
+        }, url, bg, _onDrop);
     }
 
     // Return a Group that fills (async) with a normalized instance of a misc
@@ -32909,11 +32999,13 @@ const ThreeRenderer = (function () {
        allowlists. cb(img | null). */
     function _ccLoadImage(url, cb) {
         var e = _ccImageCache[url];
-        if (e) { if (e.img) { cb(e.img); return; } if (e.failed) { cb(null); return; } e.cbs.push(cb); return; }
+        if (e) { if (e.img) { cb(e.img); return; } if (e.failed) { cb(null); return; } _alJoin(e._alRec); e.cbs.push(cb); return; }
         e = _ccImageCache[url] = { img: null, cbs: [cb], failed: false };
         if (typeof Image === 'undefined') { e.failed = true; e.cbs.length = 0; cb(null); return; }
+        var rec = e._alRec = (typeof _alTrack === 'function') ? _alTrack('image', url) : null;
         function settle(img) {
             e.img = img; e.failed = !img;
+            if (rec) rec.settle(!!img);
             var cbs = e.cbs; e.cbs = [];
             for (var i = 0; i < cbs.length; i++) { try { cbs[i](img); } catch (_ex) {} }
         }
@@ -37334,22 +37426,22 @@ const ThreeRenderer = (function () {
         if (!url && typeof name === 'string' && name.indexOf('urban:') === 0 && typeof URBAN_TEXTURES !== 'undefined') url = URBAN_TEXTURES[name.slice(6)] || null;   // THE URBAN PACK (2026-09-17): a shell / prop may wear `urban:<Name>` (sprites.js URBAN_TEXTURES)
         if (!url) return null;
         var key = name + '|' + (ru || 1) + '|' + (rv || 1);
-        if (_hqTexCache[key]) return _hqTexCache[key];
-        /* THE SHEETS FIRST (2026-09-20): ONE fetch per file — a second repeat of the same sheet is a
-           Texture that takes the first one's image when it lands (the browser used to be asked for the
-           same PNG once per repeat pair); grey, never black, while it streams. */
+        if (_hqTexCache[key]) { _alJoin(_hqTexCache[key]._ew_alRec); return _hqTexCache[key]; }   // THE ASSET LEDGER: a sheet still streaming is waited for again
+        /* ONE fetch per file (2026-09-20): a second repeat of the same sheet is a Texture that takes the
+           first one's image when it lands (the browser used to be asked for the same PNG once per repeat
+           pair). No placeholder: the gate holds the room until the file lands. */
         var t, base = _hqTexByUrl[url];
         if (base) {
             t = new THREE.Texture();
-            if (base.image && !base._ew_placeholder) { t.image = base.image; t.needsUpdate = true; }
-            else { _texShowPlaceholder(t); (base._ew_dependants = base._ew_dependants || []).push(t); }
+            t._ew_alRec = base._ew_alRec; _alJoin(base._ew_alRec);
+            if (base.image) { t.image = base.image; t.needsUpdate = true; }
+            else (base._ew_dependants = base._ew_dependants || []).push(t);
         } else {
             t = textureLoader.load(url, function (tx) {
                 if (_hq) _hq.dirty = true;
                 var deps = tx._ew_dependants || []; tx._ew_dependants = null;
-                for (var i = 0; i < deps.length; i++) { deps[i].image = tx.image; deps[i]._ew_placeholder = false; deps[i].needsUpdate = true; }
+                for (var i = 0; i < deps.length; i++) { deps[i].image = tx.image; deps[i].needsUpdate = true; }
             });
-            _texShowPlaceholder(t);
             _hqTexByUrl[url] = t;
         }
         t.wrapS = t.wrapT = THREE.RepeatWrapping;
@@ -50379,7 +50471,7 @@ const ThreeRenderer = (function () {
             if (!ch.cleaned && e._ew_modelAttached) {
                 e.group.traverse(function (n) { if (n._ew_silhouette) n.visible = false; });
                 ch.cleaned = true;
-                if (ch.kind === 'player' && !H.ready) { H.ready = true; if (H.opts.onReady) { try { H.opts.onReady(); } catch (er) {} } }
+                if (ch.kind === 'player') H.playerAttached = true;   // THE GATE: the card waits for this AND for every file to land (_hqFrame)
             }
             e.model.rotation.y = ch.yaw;
             if (ch.heldUpright && ch.heldBone) {
@@ -50730,11 +50822,29 @@ const ThreeRenderer = (function () {
         _hqTickChars(dt);
         _hqTickCamera(dt);
         _hqTickWorld(dt, now);
-        if (!H.ready && now - H.t0 > 9000) { H.ready = true; if (H.opts.onReady) { try { H.opts.onReady(); } catch (e) {} } }
+        if (!H.ready) _hqGateTick(H, now);
         var noPost = (typeof window !== 'undefined' && window.EW_HQ_NO_POST);
         if (!noPost && ThreePost && ThreePost.renderScene) ThreePost.renderScene(H.scene, H.camera);
         else renderer.render(H.scene, H.camera);
         if (css2dRenderer) css2dRenderer.render(H.scene, H.camera);
+    }
+    /* THE GATE (2026-09-20): the room is READY — the load card may fade — when the walker's rig has attached
+       (or the walker has no rig to wait for: 3D units off, a model that failed) AND the room's gate is idle:
+       every sheet, leaf, prop, setting piece, native and roaming rig the build asked for has landed (or
+       finally failed, named in the console). No clock ends the wait short of HQ_GATE_CAP_MS, and that cap
+       prints what never landed. The old rule (the walker's rig, else 9 s) showed a room whose props were
+       still streaming in behind the fade. */
+    var HQ_GATE_CAP_MS = 75000;
+    function _hqGateTick(H, now) {
+        var G = H.gate, pd = H.player ? H.player.def : null;
+        var playerOk = H.playerAttached || !pd || !pd.model || (typeof window !== 'undefined' && window.EW_DISABLE_3D_UNITS) || !!(_unitGlbCache[pd.model] && _unitGlbCache[pd.model].failed);
+        var gateOk = !G || G.idle() || G.closed;
+        var capped = now - H.t0 > HQ_GATE_CAP_MS;
+        if (!((playerOk && gateOk) || capped)) return;
+        H.ready = true;
+        if (capped && G && !G.idle()) { try { console.warn('[HQ] the load card gave up after ' + Math.round(HQ_GATE_CAP_MS / 1000) + ' s — still in flight:', G.list().map(function (r) { return r.url; })); } catch (e) {} }
+        if (G) { var failed = G.failed(); if (failed.length) { try { console.warn('[HQ] ' + failed.length + ' file(s) of this room never landed (missing from the bucket? a frozen 404? — window._ewAssetFailures):', failed); } catch (e) {} } G.close(); }
+        if (H.opts.onReady) { try { H.opts.onReady(); } catch (e) {} }
     }
 
     /* ── lifecycle ─────────────────────────────────────────────────────── */
@@ -50924,6 +51034,12 @@ const ThreeRenderer = (function () {
             props: [], focus: null,   /* props: { key, grp } per placed catalogue prop (the terminal's camera finds the CRT by key); focus: the screen push (_hqFocusScreen) */
             keys: {}, drag: null, lastDragAt: 0, fp: false, paused: false, ready: false, t0: performance.now(), lastMs: 0, lastDebug: 0,
             cam: { yaw: 0, pitch: -0.24, dist: 3.6, init: false }, targetKey: '', w: 0, h: 0, dirty: true,
+            /* THE GATE (2026-09-20): every file this room asks for — the shell's sheets, the leaves, the props, the
+               setting, the natives' and the population's rigs, the walker's own — is recorded here from this
+               line on; H.ready (the load card's fade) waits for the walker's rig to attach AND for the gate to
+               go idle (nothing left in flight), never for a clock. The cap (HQ_GATE_CAP_MS) is the only way
+               out short of that, and it names what never landed. */
+            gate: _alGateOpen('room:' + (opts.room || 'central_egress')), playerAttached: false,
         };
         /* stair landings (top of each flight) are needed by the shell + collision */
         (room.stairs || []).forEach(function (st) {
@@ -51132,6 +51248,8 @@ const ThreeRenderer = (function () {
         if (opts && opts.dissolve) { try { _hqDissolveStart(H, (typeof opts.dissolve === 'object') ? opts.dissolve : null); } catch (e) { console.warn('[HQ] the dissolve did not start', e); } }
         _hqUnbindInput();
         _hq = null;
+        try { if (H.gate) H.gate.close(); } catch (e) {}
+        try { _mqDropQueued(2); } catch (e) {}   // THE ASSET LEDGER: this room's unstarted background jobs (its population, a warm) are forgotten with it
         try { if (typeof ThreePost !== 'undefined' && ThreePost.setSceneLook) ThreePost.setSceneLook(null); } catch (e) {}   // the room's look leaves with the room
         try { if (typeof ThreePost !== 'undefined' && ThreePost.setExposureContext) ThreePost.setExposureContext('battle'); } catch (e) {}   // THE TWO BRIGHTNESSES: the battle's / the menu's value, eased
         if (H.sky) _horizonFogDirty = true;   // an outdoor room drove the shared sky uniforms: the battle re-applies its fog
@@ -51300,6 +51418,8 @@ const ThreeRenderer = (function () {
            the worker) freezes the old room under the load card; a released lock would read as the ESC the
            browser ate (_hqOnLockChange) and open the pause menu on top of the card */
         hold: function (on) { if (!_hq) return; _hq.paused = !!on; if (on) { _hq.keys = {}; _hq.drag = null; } },
+        /* THE GATE (2026-09-20): the room's own file count for the load card — { total, done, pending, idle, ms, player } */
+        gate: function () { var H = _hq; if (!H) return null; var p = H.gate ? H.gate.progress() : { total: 0, done: 0, pending: 0, idle: true, ms: 0 }; p.player = !!H.playerAttached; p.ready = !!H.ready; p.list = H.gate ? H.gate.list() : []; return p; },
         /* THE ARRIVAL WARM (2026-09-19): start the arrival room's downloads while the title / the menu / the
            door beat play — every door leaf, every catalogue prop, the door gun and the shell's sheets go
            through the same caches the build reads (_miscModelCache / _hqTexCache), so the build finds
@@ -51582,6 +51702,10 @@ const ThreeRenderer = (function () {
             open: 0, target: 0, swing: null, flash: 0, cine: null, onState: null, lastNow: 0, room: null,
             leafUrl: null, leafHot: false, leafAsked: false, leafLanded: false,
             w: 0, h: 0, t0: performance.now(),
+            /* THE GATE (2026-09-20): the scene stays HIDDEN (the canvas at opacity 0 under the classic void)
+               until its door leaf + frame, the Sedan, the sky's sheets and the far roster have all landed —
+               the door used to stand as a procedural stand-in for a minute while the leaf streamed */
+            gate: _alGateOpen('menu'), revealed: false,
         };
         var sc = M.scene;
         var env = _menuSkyEnv(B);
@@ -51850,6 +51974,7 @@ const ThreeRenderer = (function () {
             if (ThreePost && ThreePost.resize) ThreePost.resize(w, h);
         }
         if (M.leafLanded && !M.leafHot) { M.leafLanded = false; try { _menuBuildDoor(M); } catch (e) { console.error('[MENU] door rebuild failed', e); } }
+        if (!M.revealed) _menuGateTick(M, now);
         _menuTickCamera(M, now);
         _menuTickDoor(M, now);
         if (M.sky) _hqTickSky(now, M);
@@ -51866,6 +51991,29 @@ const ThreeRenderer = (function () {
         var noPost = (typeof window !== 'undefined' && window.EW_MENU_NO_POST);
         if (!noPost && ThreePost && ThreePost.renderScene) ThreePost.renderScene(M.scene, M.camera);
         else renderer.render(M.scene, M.camera);
+    }
+    /* THE GATE (2026-09-20): reveal the scene only when it is COMPLETE — the catalogue leaf hot (the door
+       rebuilt with the real GLB), every file the build asked for landed. A leaf that never lands (a 404)
+       reveals at the cap with the stand-in and a console line naming the file. */
+    var MENU_GATE_CAP_MS = 45000;
+    function _menuGateTick(M, now) {
+        var G = M.gate, capped = now - M.t0 > MENU_GATE_CAP_MS;
+        var leafOk = M.leafHot || !M.leafUrl;   // no catalogue leaf to wait for (no data) counts as hot
+        if (!((leafOk && (!G || G.idle())) || capped)) return;
+        if (capped && (!leafOk || (G && !G.idle()))) { try { console.warn('[MENU] the scene gave up waiting after ' + Math.round(MENU_GATE_CAP_MS / 1000) + ' s — still in flight:', G ? G.list().map(function (r) { return r.url; }) : [], 'leaf hot:', M.leafHot); } catch (e) {} }
+        if (G) { var failed = G.failed(); if (failed.length) { try { console.warn('[MENU] ' + failed.length + ' file(s) of the menu scene never landed:', failed); } catch (e) {} } G.close(); }
+        M.revealed = true;
+        _menuShowCanvas(M, true);
+        _menuNotify(M);
+    }
+    function _menuShowCanvas(M, fade) {
+        if (!canvas) return;
+        try {
+            if (!M.revealed) { canvas.style.transition = ''; canvas.style.opacity = '0'; return; }
+            if (fade) { canvas.style.transition = 'opacity 0.9s ease'; void canvas.offsetWidth; }
+            else canvas.style.transition = '';
+            canvas.style.opacity = '1';
+        } catch (e) {}
     }
     /* ── lifecycle ─────────────────────────────────────────────────────── */
     function _menuEnter(opts) {
@@ -51886,6 +52034,7 @@ const ThreeRenderer = (function () {
         host.appendChild(canvas);
         canvas.style.display = 'block';
         canvas.style.pointerEvents = 'none';          // the menu's buttons live above it
+        _menuShowCanvas(_menu, false);                 // THE GATE: hidden until the scene is complete, shown at once on a return
         var w = host.clientWidth || 960, h = host.clientHeight || 540;
         renderer.setSize(w, h);
         _menu.camera.aspect = w / h; _menu.camera.updateProjectionMatrix();
@@ -51906,6 +52055,7 @@ const ThreeRenderer = (function () {
         if (_menu && _menu.sky) _horizonFogDirty = true;   // the menu drove the shared sky uniforms: the battle re-applies its fog
         try {
             canvas.style.pointerEvents = 'auto';
+            canvas.style.opacity = ''; canvas.style.transition = '';   // THE GATE's hide is the menu's alone
             if (_parentEl) _parentEl.appendChild(canvas);
             if (!active) canvas.style.display = 'none';
         } catch (e) {}
@@ -51914,6 +52064,7 @@ const ThreeRenderer = (function () {
         _menuLeave();
         var M = _menu; if (!M) return;
         _menu = null;
+        try { if (M.gate) M.gate.close(); } catch (e) {}
         if (M.door) M.door.dead = true;
         try {
             for (var i = M.scene.children.length - 1; i >= 0; i--) {
@@ -51944,6 +52095,8 @@ const ThreeRenderer = (function () {
         isOpen: function () { return !!(_menu && _menu.target === 1); },
         busy: function () { return !!(_menu && (_menu.cine || _menu.swing)); },
         state: function () { return _menu ? _menuState(_menu) : 'closed'; },
+        /* THE GATE (2026-09-20): the scene is on screen — complete — (the arrival warm waits for this) */
+        revealed: function () { return !!(_menu && _menu.revealed); },
         /* dev: the live scene graph + record (repo probes) */
         dev: { scene: function () { return _menu ? _menu.scene : null; }, rec: function () { return _menu; } },
     };
@@ -51963,12 +52116,13 @@ const ThreeRenderer = (function () {
            files its loads here — three at a time, after the rig — and promotes one a real cast needs */
         bgModelLoad: function (start, url) { _scheduleModelLoad(start, url, true); },
         bgPromote: function (url) { return _bgPromote(url); },
-        assetsPending: function () {
-            var n = 0, k;
-            for (k in _miscModelCache) { if (_miscModelCache[k] && _miscModelCache[k].loading) n++; }
-            for (k in _unitGlbCache) { if (_unitGlbCache[k] && _unitGlbCache[k].loading) n++; }
-            return n;
-        },
+        /* THE ASSET LEDGER (2026-09-20): every file in flight through this file's loaders — textures too */
+        assetsPending: function () { return _alPending(); },
+        assetsPendingList: function () { return _alPendingList(); },
+        /* a gate session: records every request made while open; whenIdle(cb, capMs) fires once — the battle loading screen's */
+        assetGate: function (name, o) { return _alGateOpen(name, o); },
+        /* another module's loader (three-vfx-effects.js) files its request here: assetTrack(kind, url) → rec; rec.settle(ok) */
+        assetTrack: function (kind, url) { return _alTrack(kind, url); },
 
         scanSpriteOffset,
 

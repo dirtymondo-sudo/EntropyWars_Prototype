@@ -311,27 +311,42 @@
             requestAnimationFrame(() => { setTimeout(() => { try { fn(); } catch (e) { console.error('[HQ] the deferred build failed', e); } }, 0); });
             return true;
         }
-        /* THE PROGRESS LINE on the card: the survey's clock while a floor plan compiles, then the count of
-           model files still streaming (ThreeRenderer.assetsPending) — read every frame while the card shows */
+        /* THE PROGRESS LINE on the card (THE GATE, 2026-09-20): the survey's clock while a floor plan compiles,
+           then THE ROOM'S OWN FILE COUNT off ThreeRenderer.hq.gate() — every sheet, leaf, prop, rig the build
+           asked for, landed / total — and the bar under it; read every frame while the card shows. The card
+           fades only when the renderer says ready (the walker attached + nothing left in flight), never on a
+           clock. A WALK between rooms starts as the fast door-blink; when the next room is cold (nothing
+           landed within HQ_WALK_BLINK_MS) the blink becomes the full card — a black screen with nothing on
+           it is not a loading screen. */
+        const HQ_WALK_BLINK_MS = 700;
         function _hqLoadProgressStart(generation, roomId, roomDef, baseNote) {
             if (typeof requestAnimationFrame !== 'function') return;
             const note = _hqEl('hqLoadNote'); if (!note) return;
             const label = String((roomDef && roomDef.label) || roomId || 'the room').toLowerCase();
-            let last = '';
+            const fill = _hqEl('hqLoadFill');
+            const t0 = performance.now();
+            let last = '', lastW = -1;
             const tick = () => {
                 if (generation !== _hqLoadGeneration) return;
                 const l = _hqEl('hqLoad'); if (!l || l.style.display === 'none' || l.classList.contains('done')) return;
-                let txt = baseNote;
+                let txt = baseNote, pct = null;
                 const j = _hqSurveyJobs[roomId];
                 if (j && _hqSurveyNeeded(roomId)) {
                     const sec = j.t0 ? Math.max(0, (performance.now() - j.t0) / 1000) : 0;
                     const clock = !j.t0 ? 'queued' : (sec < 60 ? Math.floor(sec) + ' s' : Math.floor(sec / 60) + ' min ' + Math.floor(sec % 60) + ' s');
                     txt = 'surveying ' + label + '… ' + clock + ' — the floor plan is being drawn';
                 } else {
-                    let n = 0; try { n = (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.assetsPending) ? ThreeRenderer.assetsPending() : 0; } catch (e) {}
-                    if (n > 0) txt = baseNote.replace(/…\s*$/, '') + ' · ' + n + ' model' + (n === 1 ? '' : 's') + ' streaming…';
+                    let g = null; try { g = (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq && ThreeRenderer.hq.gate) ? ThreeRenderer.hq.gate() : null; } catch (e) {}
+                    if (g && g.total > 0) {
+                        pct = Math.round(100 * g.done / g.total);
+                        txt = 'loading ' + label + ' · ' + g.done + ' / ' + g.total + ' files' + (g.pending === 0 && !g.player ? ' · dressing the officer…' : '');
+                    } else if (g) {
+                        txt = baseNote;
+                    }
                 }
+                if (l.classList.contains('walk') && performance.now() - t0 > HQ_WALK_BLINK_MS) l.classList.remove('walk');   // a cold room: the blink becomes the card
                 if (txt !== last) { last = txt; note.textContent = txt; }
+                if (fill) { const w = (pct == null) ? 0 : pct; if (w !== lastW) { lastW = w; fill.style.width = w + '%'; fill.parentNode.style.opacity = (pct == null) ? '0' : '1'; } }
                 requestAnimationFrame(tick);
             };
             requestAnimationFrame(tick);
@@ -611,7 +626,7 @@
                     const men = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer.menu : null;
                     const M = (men && men.active() && men.dev) ? men.dev.rec() : null;
                     const wanted = (typeof window._menuSceneEnabled === 'function') ? !!window._menuSceneEnabled() : !!men;
-                    ready = M ? (!!M.leafHot && !!(M.sedan && M.sedan.children.length)) : !wanted;   // a scene still building is waited for
+                    ready = M ? !!M.revealed : !wanted;   // THE GATE (2026-09-20): the scene is on screen complete — its door, frame, car and sky landed — before the building's rig starts
                 } catch (e) { ready = true; }
                 if (ready || performance.now() - t0 > 8000) { try { window._hqWarmArrival({ avatarOnly: true }); } catch (e) {} return; }   // THE MODEL QUEUE (2026-09-20): the menu warms the WALKER'S RIG only — the room's 300 MB of props buried the menu's own door leaf
                 _hqWarmSoonT = setTimeout(tick, 500);
@@ -924,7 +939,7 @@
                     onReady: () => {
                         if (loadGeneration !== _hqLoadGeneration || loadReady) return;
                         loadReady = true;
-                        const wait = Math.max(0, (walking ? 150 : 900) - (performance.now() - enteredAt));
+                        const wait = Math.max(0, (walking ? 150 : 900) - (performance.now() - enteredAt));   // THE GATE: enteredAt is when the card went up — the renderer's ready is the real wait
                         _hqLoadFadeTimer = setTimeout(() => {
                             if (loadGeneration !== _hqLoadGeneration) return;
                             _hqLoadFadeTimer = null;

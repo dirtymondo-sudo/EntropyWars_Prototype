@@ -6807,12 +6807,15 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
     function _loadCachedTex(url) {
         var loader = new THREE.TextureLoader();
+        /* THE ASSET LEDGER (2026-09-20): the renderer's gate (a loading screen) waits for this sheet too */
+        var TRl = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
+        var rec = (TRl && typeof TRl.assetTrack === 'function') ? TRl.assetTrack('texture', url) : null;
         /* THE RETRY (2026-09-20, three-renderer.js's rule): a CDN copy frozen without its CORS header or as a
            404 is fetched once more under a fresh cache key onto the same Texture */
-        var tex = loader.load(url, undefined, undefined, function () {
+        var tex = loader.load(url, function () { if (rec) rec.settle(true); }, undefined, function () {
             var again = (typeof window !== 'undefined' && typeof window._ewRetryUrl === 'function') ? window._ewRetryUrl(url) : null;
-            if (!again) return;
-            try { new THREE.ImageLoader().setCrossOrigin('anonymous').load(again, function (img) { tex.image = img; tex.needsUpdate = true; }); } catch (e) {}
+            if (!again) { if (rec) rec.settle(false); return; }
+            try { new THREE.ImageLoader().setCrossOrigin('anonymous').load(again, function (img) { tex.image = img; tex.needsUpdate = true; if (rec) rec.settle(true); }, undefined, function () { if (rec) rec.settle(false); }); } catch (e) { if (rec) rec.settle(false); }
         });
         tex.magFilter = THREE.NearestFilter;
         tex.minFilter = THREE.NearestFilter;
@@ -10333,12 +10336,14 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var url0 = def.url || (_WPN_BASE + def.file);
         e = _wpnCache[key] = { root: null, size: null, center: null, loading: true, failed: false, url: url0, queued: false };
         var _done = function () {};
+        /* THE ASSET LEDGER (2026-09-20): a loading screen's gate waits for this prop too (a bg warm included) */
+        var rec = (TR && typeof TR.assetTrack === 'function') ? TR.assetTrack('model', url0) : null;
         function attempt(reqUrl, retried) {
           try {
             new THREE.GLTFLoader().load(reqUrl, function (gltf) {
                 e.queued = false; _done();
                 var root = gltf.scene || (gltf.scenes && gltf.scenes[0]);
-                if (!root) { e.loading = false; e.failed = true; return; }
+                if (!root) { e.loading = false; e.failed = true; if (rec) rec.settle(false); return; }
                 root.traverse(function (n) {
                     if (n.isMesh && n.geometry) n.geometry._ew_shared = true;
                 });
@@ -10347,14 +10352,16 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 e.center = bb.getCenter(new THREE.Vector3());
                 e.root = root;
                 e.loading = false;
+                if (rec) rec.settle(true);
             }, undefined, function () {
                 /* THE RETRY (2026-09-20): once more under a fresh cache key (three-renderer.js's rule) */
                 var again = (!retried && typeof window !== 'undefined' && typeof window._ewRetryUrl === 'function') ? window._ewRetryUrl(reqUrl) : null;
                 if (again) { attempt(again, true); return; }
                 e.loading = false; e.failed = true; e.queued = false; _done();
+                if (rec) rec.settle(false);
                 try { console.warn('[VFX] weapon GLB failed to load:', def.file); } catch (e2) {}
             });
-          } catch (ex) { e.loading = false; e.failed = true; e.queued = false; _done(); }
+          } catch (ex) { e.loading = false; e.failed = true; e.queued = false; _done(); if (rec) rec.settle(false); }
         }
         /* def.url = absolute override for props living outside the weapons folder (the misc-bucket UFO).
            THE BACKGROUND LANE (2026-09-20): the boot warm ({ bg: true }) files itself behind the scene on
