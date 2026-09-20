@@ -7023,3 +7023,31 @@ FINISHER_PLAN §7's delivery-12 entry lists what to eyeball first — the goat's
 silhouette, the split on a sprite vessel, the wave wall's colours under the
 board's light, the eyes' scale on the dome, the glass's tilt direction, the
 black sphere on a dark map, the six camera paths.
+
+## THE SHEETS FIRST — why a new place was BLACK, and the texture lane (2026-09-20, local delivery)
+The user: "the floors and walls are always black when I go to a new place". TWO causes, both in
+three-renderer.js. **(1) BLACK IS "NOT LANDED YET"**: a three.js material with a `map` whose image
+has not arrived samples an UNBOUND GPU texture (r128 `setTexture2D` binds `__webglTexture` =
+undefined at version 0) — the shader multiplies the diffuse by (0, 0, 0). Every floor / wall / ceiling
+/ terrain / apron sheet in the building and on the board was black for exactly as long as its PNG was
+in flight; a re-visit is instant because `_hqTexCache` / `_hzTexCache` keep the Texture. Now
+**`_texShowPlaceholder(tex)`** (beside the loader wrapper) gives a tile sheet a 4 × 4 mid-grey canvas
+as its image at once (`tex._ew_placeholder = true`; the real image replaces it on load) — `_hqTex`
+and `_hzTex` call it; a room reads as a flat grey box that resolves, never a black one. RULE: a
+reader that measures `tex.image` (an aspect ratio, a canvas copy) skips `tex._ew_placeholder`
+(the two urban sign readers do); the placeholder is NOT applied to `getTexture` (the board's sprites
+/ billboards read `.image` as "loaded"). **(2) THE PIPE**: a plain `<img>` is LOW priority in every
+browser and the GLB fetches (XHR) are HIGH, so on one HTTP/2 connection a 20 KB sheet queued behind
+the four streaming 5–16 MB models the queue keeps in flight. `textureLoader.load` is OUR OWN loader
+now (no `THREE.ImageLoader`): an `<img>` with `crossOrigin` + **`fetchPriority = 'high'`** +
+`decoding = 'async'`, the JPEG → RGB format rule kept, the retry through the same path
+(`_texFetch`); **`_texInflight`** counts the sheets streaming and **`_mqTexHold`** makes `_mqPump`
+hold every scene / warm model job (never the rig lane — the load card waits for that file) until
+they land, `TEX_HOLD_MS` 2.5 s after the LAST sheet request at most (a hung PNG never wedges the
+models). `_hqTex` also fetches ONE image per FILE (`_hqTexByUrl`; a second repeat pair is a
+dependant Texture that takes the first's image — the same PNG used to be asked for once per repeat).
+The CDN could not be reached from the sandbox this session (the egress proxy refused the CONNECT),
+so nothing was measured live — the two mechanisms are read off the code and three r128. `npm test`
+runs mobile-performance.test.js (THE SHEETS FIRST ×2). UNSEEN LIVE (RULE #1c): the grey-then-textured
+pop on a cold cache, the props' arrival ~2 s later than before in a room with many sheets, the hold's
+feel on a slow line (`TEX_HOLD_MS` is the edit).

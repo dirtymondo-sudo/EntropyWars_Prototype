@@ -218,3 +218,70 @@ test('a cue that fails twice in a row backs off for a minute, then retries', asy
     await finishRequests(h); assert.ok(await p);
     assert.equal(vm.runInContext('_sfxFailed.has("gone.mp3")', h.c), false);
 });
+
+/* THE SHEETS FIRST (2026-09-20, "the floors and walls are always black in a new place"): a material whose
+   texture has not landed samples an unbound GPU texture — black — so every tile sheet wears a grey
+   placeholder while it streams; a texture is fetched through our own <img> at fetchPriority 'high'; the
+   sheets in flight hold the model queue's scene / warm jobs (never the rig lane) for TEX_HOLD_MS at most. */
+test('the sheets first: the placeholder, the high-priority fetch, the in-flight count and the queue hold', () => {
+    const images = [], timers = [];
+    let now = 1000;
+    class Texture { constructor() { this.image = undefined; this.needsUpdate = false; } }
+    const c = vm.createContext({
+        window: {}, console: { warn() {} }, performance: { now: () => now },
+        setTimeout: (f, ms) => { timers.push({ f, ms }); return timers.length; }, clearTimeout() {},
+        THREE: { Texture, RGBFormat: 1, RGBAFormat: 2 },
+        document: {
+            createElement: () => ({ width: 0, height: 0, getContext: () => ({ fillRect() {} }) }),
+            createElementNS: () => { const img = {}; images.push(img); return img; },
+        },
+        textureLoader: {},
+    });
+    vm.runInContext('var _ewAssetFailures = []; function _ewRetryUrl() { return null; } function _ewAssetFailed() {}\n'
+        + 'var _mobileModelJobs = [], _mobileModelBusy = false; var _rigLaneUrls = {}, _rigLaneLive = {}; var _bgLoadDepth = 0; var MODEL_MAX_INFLIGHT = 4, MODEL_JOB_TIMEOUT_MS = 90000; var _mqJobs = [], _mqLive = 0, _mqSeq = 0;\n'
+        + 'var _texInflight = 0, _texHoldUntil = 0, TEX_HOLD_MS = 2500; var _texPlaceholderImg = null; var _mqTexTimer = null;\n'
+        + fn(renderer, '_texPlaceholder') + fn(renderer, '_texShowPlaceholder') + fn(renderer, '_texLanded') + fn(renderer, '_texFetch')
+        + fn(renderer, '_rigLaneMark') + fn(renderer, '_mqPriority') + fn(renderer, '_mqStart') + fn(renderer, '_mqTexHold') + fn(renderer, '_mqPump') + fn(renderer, '_scheduleModelLoad')
+        + renderer.slice(renderer.indexOf('textureLoader.load = function (url, onLoad, onProgress, onError) {'), renderer.indexOf('var textureCache = new Map();')), c);
+    const started = [];
+    const q = (name, url) => c._scheduleModelLoad(done => { started.push(name); }, url);
+    // two sheets requested, then the room's props: the props wait, the rig does not
+    let landed = 0;
+    const t1 = c.textureLoader.load('https://cdn.entropywars.net/Assets/door/textures/a.png', () => landed++);
+    const t2 = c.textureLoader.load('https://cdn.entropywars.net/Assets/door/textures/b.jpg');
+    assert.equal(images.length, 2);
+    assert.equal(images[0].fetchPriority, 'high', 'a sheet is a high-priority fetch');
+    assert.equal(images[0].crossOrigin, 'anonymous');
+    assert.ok(/ewcors=1/.test(images[0].src) || /a\.png/.test(images[0].src));
+    assert.equal(t2.format, 1, 'a jpeg is RGB');
+    assert.equal(vm.runInContext('_texInflight', c), 2);
+    c._texShowPlaceholder(t1);
+    assert.ok(t1.image && t1._ew_placeholder && t1.needsUpdate, 'a placeholder image at once — grey, never black');
+    q('prop0', 'prop0.glb'); q('prop1', 'prop1.glb');
+    assert.deepEqual(started, [], 'the props wait while the sheets stream');
+    assert.ok(timers.some(t => t.ms === 150), 'the pump re-checks');
+    c._rigLaneMark(['rig.glb']); q('rig', 'rig.glb');
+    assert.deepEqual(started, ['rig'], 'the rig lane never waits for a sheet');
+    // the first sheet lands: its image replaces the placeholder, the hold stays for the second
+    images[0].onload();
+    assert.equal(landed, 1); assert.equal(t1._ew_placeholder, false); assert.equal(t1.image, images[0]);
+    c._mqPump(); assert.deepEqual(started, ['rig']);
+    // the second lands: the props start
+    images[1].onerror(new Error('x'));
+    assert.equal(vm.runInContext('_texInflight', c), 0);
+    c._mqPump(); assert.deepEqual(started, ['rig', 'prop0', 'prop1']);
+    // a sheet that never lands holds the queue for TEX_HOLD_MS at most
+    c.textureLoader.load('https://cdn.entropywars.net/Assets/door/textures/hung.png');
+    q('prop2', 'prop2.glb'); assert.ok(!started.includes('prop2'));
+    now += 2600; c._mqPump(); assert.ok(started.includes('prop2'), 'the hold runs out');
+});
+
+test('the sheets first in the source: the HQ and horizon sheet loaders wear the placeholder, one fetch per HQ file', () => {
+    const hq = fn(renderer, '_hqTex'), hz = fn(renderer, '_hzTex');
+    assert.ok(hq.includes('_texShowPlaceholder(t)'), '_hqTex');
+    assert.ok(hz.includes('_texShowPlaceholder(tex)'), '_hzTex');
+    assert.ok(hq.includes('_hqTexByUrl[url]') && hq.includes('_ew_dependants'), 'a second repeat of one file shares its image');
+    assert.ok(renderer.includes("var _hqTexByUrl = {};"));
+    assert.ok(/tex\.image\.width && !tex\._ew_placeholder\) ar = /.test(renderer), 'an aspect reader skips the placeholder');
+    assert.ok(!renderer.includes('_texLoadRaw'), 'the raw TextureLoader path is gone');
+});

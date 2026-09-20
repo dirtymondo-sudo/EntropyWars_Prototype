@@ -1318,7 +1318,6 @@ const ThreeRenderer = (function () {
     /* Safari serves CSS-cached (no-CORS, headerless) copies to crossOrigin
        fetches of the same URL → texture blocked, black tile. _ewCorsBust
        (sprites.js) gives every CORS fetch its own ?ewcors=1 cache entry. */
-    var _texLoadRaw = textureLoader.load.bind(textureLoader);
     /* THE RETRY (2026-09-20, the black building): the CDN is edge-cached for a year now and the browser
        keeps every copy as long — a copy that was ever answered WITHOUT its CORS header (a policy change,
        a plain <img> of the same URL on Safari) or as a 404 (a file requested before its upload) is frozen,
@@ -1339,17 +1338,67 @@ const ThreeRenderer = (function () {
         } catch (e) {}
     }
     if (typeof window !== 'undefined') { window._ewAssetFailures = _ewAssetFailures; window._ewRetryUrl = _ewRetryUrl; }
+    /* THE SHEETS FIRST (2026-09-20, "the floors and walls are always black in a new place"):
+       (1) a three.js material whose texture has NOT LANDED samples an unbound GPU texture — BLACK —
+           so a room reads as a black box until its sheets stream in; `_texShowPlaceholder(tex)` gives a
+           tile sheet a 4 × 4 mid-grey image at once (the real image replaces it on load; a reader that
+           measures `tex.image` must skip `tex._ew_placeholder`);
+       (2) every texture is fetched through our OWN <img> with `fetchPriority = 'high'` (a plain image
+           is LOW priority in every browser — the GLB fetches are HIGH, so on one HTTP/2 pipe a 20 KB
+           sheet queued behind four streaming 8 MB models); the count of sheets in flight
+           (`_texInflight`) holds the model queue's scene / warm jobs for up to TEX_HOLD_MS after the
+           last request (`_mqPump`) — the rig lane never waits. */
+    var _texInflight = 0, _texHoldUntil = 0, TEX_HOLD_MS = 2500;
+    var _texPlaceholderImg = null;
+    function _texPlaceholder() {
+        if (_texPlaceholderImg !== null) return _texPlaceholderImg || null;
+        try {
+            var c = document.createElement('canvas'); c.width = c.height = 4;
+            var g = c.getContext('2d'); g.fillStyle = '#7c7c7c'; g.fillRect(0, 0, 4, 4);
+            _texPlaceholderImg = c;
+        } catch (e) { _texPlaceholderImg = false; }
+        return _texPlaceholderImg || null;
+    }
+    function _texShowPlaceholder(tex) {
+        if (!tex || tex.image) return tex;
+        var img = _texPlaceholder(); if (!img) return tex;
+        tex.image = img; tex._ew_placeholder = true; tex.needsUpdate = true;
+        return tex;
+    }
+    function _texLanded() {
+        _texInflight = Math.max(0, _texInflight - 1);
+        if (_texInflight === 0 && typeof _mqPump === 'function') { try { setTimeout(_mqPump, 0); } catch (e) {} }
+    }
+    function _texFetch(src, onOk, onFail) {
+        var img;
+        try { img = document.createElementNS('http://www.w3.org/1999/xhtml', 'img'); } catch (e) { img = new Image(); }
+        img.crossOrigin = 'anonymous';
+        try { img.fetchPriority = 'high'; } catch (e) {}
+        try { img.decoding = 'async'; } catch (e) {}
+        _texInflight++;
+        var now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+        _texHoldUntil = Math.max(_texHoldUntil, now + TEX_HOLD_MS);
+        var settled = false;
+        img.onload = function () { if (settled) return; settled = true; _texLanded(); onOk(img); };
+        img.onerror = function (err) { if (settled) return; settled = true; _texLanded(); onFail(err); };
+        img.src = src;
+        return img;
+    }
     textureLoader.load = function (url, onLoad, onProgress, onError) {
         var u = window._ewCorsBust ? window._ewCorsBust(url) : url;
-        var tex = _texLoadRaw(u, onLoad, onProgress, function (err) {
+        var tex = new THREE.Texture();
+        var isJPEG = /\.jpe?g($|\?)/i.test(u) || u.indexOf('data:image/jpeg') === 0;
+        if (THREE.RGBFormat !== undefined) tex.format = isJPEG ? THREE.RGBFormat : THREE.RGBAFormat;
+        function landed(img) {
+            tex.image = img; tex._ew_placeholder = false; tex.needsUpdate = true;
+            if (onLoad) { try { onLoad(tex); } catch (e) { console.warn('[ThreeRenderer] texture onLoad threw', e); } }
+        }
+        _texFetch(u, landed, function (err) {
             var again = _ewRetryUrl(u);
             if (!again) { _ewAssetFailed('texture', u, false); if (onError) onError(err); return; }
             _ewAssetFailed('texture', u, true);
             try {
-                new THREE.ImageLoader().setCrossOrigin('anonymous').load(again, function (img) {
-                    tex.image = img; tex.needsUpdate = true;
-                    if (onLoad) { try { onLoad(tex); } catch (e) {} }
-                }, undefined, function (err2) { _ewAssetFailed('texture', again, false); if (onError) onError(err2); });
+                _texFetch(again, landed, function (err2) { _ewAssetFailed('texture', again, false); if (onError) onError(err2); });
             } catch (e) { if (onError) onError(err); }
         });
         return tex;
@@ -10380,10 +10429,22 @@ const ThreeRenderer = (function () {
         if (job.url && _rigLaneUrls[job.url]) _rigLaneLive[job.url] = 1;
         try { job.start(done); } catch (e) { done(); throw e; }
     }
+    var _mqTexTimer = null;
+    function _mqTexHold() {
+        /* THE SHEETS FIRST (2026-09-20): while a room's tile sheets are in flight the scene's and the
+           warm's GLBs wait (TEX_HOLD_MS after the last sheet request at most) — a 20 KB PNG lands in
+           a second when four 8 MB models are not on the pipe in front of it. */
+        if (typeof _texInflight !== 'number' || _texInflight <= 0) return false;
+        var now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+        if (now >= _texHoldUntil) return false;
+        if (!_mqTexTimer) _mqTexTimer = setTimeout(function () { _mqTexTimer = null; _mqPump(); }, 150);
+        return true;
+    }
     function _mqPump() {
         while (_mqJobs.length) {
             _mqJobs.sort(function (a, b) { return a.pri - b.pri || a.seq - b.seq; });
             if (_mqJobs[0].pri > 0 && _mqLive >= MODEL_MAX_INFLIGHT) break;   // the rig lane (≤ 3 files) never waits for a slot
+            if (_mqJobs[0].pri > 0 && typeof _mqTexHold === 'function' && _mqTexHold()) break;   // the sheets first
             _mqStart(_mqJobs.shift());
         }
     }
@@ -22033,6 +22094,7 @@ const ThreeRenderer = (function () {
         if (!url && typeof terrainKey === 'string' && terrainKey.indexOf('urban:') === 0 && typeof URBAN_TEXTURES !== 'undefined') url = URBAN_TEXTURES[terrainKey.slice(6)] || null;   // THE URBAN PACK (2026-09-17): `urban:<Name>` reads sprites.js URBAN_TEXTURES
         if (!url) { _hzTexCache[terrainKey] = null; return null; }
         var tex = textureLoader.load(url);        // fresh instance; onLoad sets image + needsUpdate
+        _texShowPlaceholder(tex);                 // THE SHEETS FIRST (2026-09-20): grey, never black, while it streams
         tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
         tex.magFilter = THREE.LinearFilter;
         tex.minFilter = THREE.LinearMipmapLinearFilter;   // trilinear: smooth minification at distance
@@ -37223,6 +37285,7 @@ const ThreeRenderer = (function () {
     var _hq = null;                      // live visit, or null
     var _hqKeepLock = false;             // room-to-room rebuild: hold the pointer lock through leave/enter
     var _hqTexCache = {};                // 'name|ru|rv' -> THREE.Texture
+    var _hqTexByUrl = {};                // url -> the first THREE.Texture of that file (THE SHEETS FIRST, 2026-09-20)
     var _hqPropMatCache = new Map();     // source material uuid -> converted Lambert
     var _hqGlyphTex = null;
     var _hqSealTex = null;
@@ -37272,7 +37335,23 @@ const ThreeRenderer = (function () {
         if (!url) return null;
         var key = name + '|' + (ru || 1) + '|' + (rv || 1);
         if (_hqTexCache[key]) return _hqTexCache[key];
-        var t = textureLoader.load(url, function () { if (_hq) _hq.dirty = true; });
+        /* THE SHEETS FIRST (2026-09-20): ONE fetch per file — a second repeat of the same sheet is a
+           Texture that takes the first one's image when it lands (the browser used to be asked for the
+           same PNG once per repeat pair); grey, never black, while it streams. */
+        var t, base = _hqTexByUrl[url];
+        if (base) {
+            t = new THREE.Texture();
+            if (base.image && !base._ew_placeholder) { t.image = base.image; t.needsUpdate = true; }
+            else { _texShowPlaceholder(t); (base._ew_dependants = base._ew_dependants || []).push(t); }
+        } else {
+            t = textureLoader.load(url, function (tx) {
+                if (_hq) _hq.dirty = true;
+                var deps = tx._ew_dependants || []; tx._ew_dependants = null;
+                for (var i = 0; i < deps.length; i++) { deps[i].image = tx.image; deps[i]._ew_placeholder = false; deps[i].needsUpdate = true; }
+            });
+            _texShowPlaceholder(t);
+            _hqTexByUrl[url] = t;
+        }
         t.wrapS = t.wrapT = THREE.RepeatWrapping;
         t.repeat.set(ru || 1, rv || 1);
         t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearMipmapLinearFilter;
@@ -39956,7 +40035,7 @@ const ThreeRenderer = (function () {
         for (var i = 0; i < n; i++) {
             var fam = fams[Math.floor(rng() * fams.length)], name = urbanTexPick(fam, rng), tex = name ? _hzTex('urban:' + name) : null; if (!tex) continue;
             var at = (n === 1 ? 0 : (i ? 1 : -1) * L * 0.22) + (rng() - 0.5) * L * 0.3, px = mx + dx * at, pz = mz + dz * at;
-            var ar = 0.66; try { if (tex.image && tex.image.width) ar = tex.image.height / tex.image.width; } catch (e) {}
+            var ar = 0.66; try { if (tex.image && tex.image.width && !tex._ew_placeholder) ar = tex.image.height / tex.image.width; } catch (e) {}
             var pw = fam === 'SignHazard' || fam === 'SignProhibited' || fam === 'SignProtective' ? 0.5 : 0.8;
             var pm = new THREE.MeshLambertMaterial({ map: tex, transparent: true, alphaTest: 0.2 }); pm.emissive = new THREE.Color(0x181818); pm.emissiveMap = tex;
             var pl = new THREE.Mesh(new THREE.PlaneGeometry(pw * U, pw * ar * U), pm);
@@ -40117,7 +40196,7 @@ const ThreeRenderer = (function () {
         var poleMat = new THREE.MeshPhongMaterial({ color: 0x5a5e66, shininess: 40 });
         var placePlate = function (name, x, z, yaw, h, wM) {
             var tex = _hzTex('urban:' + name); if (!tex) return;
-            var ar = 80 / 64; try { if (tex.image && tex.image.width) ar = tex.image.height / tex.image.width; } catch (e) {}
+            var ar = 80 / 64; try { if (tex.image && tex.image.width && !tex._ew_placeholder) ar = tex.image.height / tex.image.width; } catch (e) {}
             var gy = hAt(x, z), grp = new THREE.Group(); grp.position.set(x * U, gy * U + 0.3, z * U); grp.rotation.y = yaw;
             var pole = new THREE.Mesh(new THREE.CylinderGeometry(0.035 * U, 0.04 * U, (h + 0.3) * U, 6), poleMat); pole.position.y = (h + 0.3) / 2 * U; grp.add(pole);
             var pw = wM || 0.62, pm = new THREE.MeshLambertMaterial({ map: tex, transparent: true, alphaTest: 0.2 }); pm.emissive = new THREE.Color(0x202020); pm.emissiveMap = tex;
