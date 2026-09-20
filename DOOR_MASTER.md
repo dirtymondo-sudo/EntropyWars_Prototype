@@ -2701,3 +2701,7 @@ unverified. No browser playtest. Full details are in the ZIP's README.txt.
   size with three districts each — Downtown's old town and docks, the Grid's stacks and undercity — on THE DISTRICTS plumbing of
   the `city` plan; fire escapes, rooftop gangways, a sunk lower city, a canal under four bridges, two more manholes into the
   sewers. Every new name, line and tape title is Claude's DRAFT (A15). Log: AREA_CONTENT_PLAN §7; the rule: EXPLORABLE_AREAS_GUIDE §4b.
+- **2026-09-20 — THE ROUND GARAGE (local delivery).** Room P1 is a 48 m drum with three decks in one room (LOWER · UPPER · TOP,
+  every one signed P1 — the panel still has no P2), a spiral ramp round a central core, two bridge rings, a skate loop under them;
+  the H-Wing stair is a secret slab round a dog-leg in a dead-end service alcove. The lines are Claude's DRAFT (A15). Log:
+  DOOR_HQ_BUILD_PLAN §9; the rule: EXPLORABLE_AREAS_GUIDE §10.

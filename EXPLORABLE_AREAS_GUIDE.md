@@ -516,6 +516,8 @@ The scan then starts on the top and the foot (`climbReach` back) lands 0.3 m out
 
 ## 10. THE LOG
 
+- **2026-09-20 — THE ROUND GARAGE (Room P1, the facility's first terrain room).** A `halls` plan whose only open shape is a circle makes a ROUND room (the traced plan wall is the drum); every door's vestibule is an authored hall so the Prim tree carves nothing between the pads. Three decks in one room: the ground, a bridge ring at 3.9 and a second ring at 7.8 stacked over its south half, joined by ONE spiral ramp round a core (`hqHelixRamp` / `hqRingBridges` / `hqRingWalls`, data.js beside `hqRingPts`). Rules: a spiral on one height field climbs the whole way in one turn (it cannot pass over itself — the decks are bridges); a landing's inner edge sits a metre inside the tier it joins (two edge blends meeting make a pocket); a box climb's foot on a bridge carries its own `y0`; a hidden door goes round a corner at the end of a dead-end hall, never on the open wall.
+
 - **2026-09-20 — AREA CONTENT D4, THE DOOR PASS (local delivery).** R3 / R4 / R5 over every pre-plan complex: fifteen draught pairs + six draught links, nine tier doors, the blockers on the sightlines (AREA_CONTENT_PLAN §7 has the list). Rules learnt: a wall's top is the ground UNDER it + h (a parapet on a tier's edge blend stands a metre low — put it on the flat top); a 0.3 m wall slips between the audit's 0.5 m LOS samples (partitions are 0.6 m); two abutting plateau rects leave a solid seam in a halls plan (overlap them); a `bridge` over a door's landing cell keys the landing to the bridge layer (stop the slab short of the pad); a draught is never a target nor a viewpoint for R3.
 
 - **2026-09-17 — D.U.M.B. (complex candidate #5): THE HALLS floor plan (family C's generator) and seven

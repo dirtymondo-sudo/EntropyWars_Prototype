@@ -11025,3 +11025,33 @@ moon key (`HQ_LIGHT_RULES`, data.js); the Brightness slider is per place (three-
 push / kick clip. See CLAUDE.md "THE LIGHT PASS + THE SUBTITLE + SKATEBOARDING rev 7".
 
 - **2026-09-20 — AREA CONTENT D4 · THE DOOR PASS (local delivery).** Every complex built before the plan: fifteen secret door pairs + six secret links (the map's `?` never poses through them; hq-floors counts 42 secret doors), nine doors moved up onto gantries / galleries / daises with their stairs, and walls / pillars / trees / props on the exposed sightlines. The well room and the haunted hall's landing keep their views by design. See AREA_CONTENT_PLAN §7.
+
+### 2026-09-20 — THE ROUND GARAGE (local delivery)
+The user: "make the parking garage bigger and better — a skating playground; a ROUND parking garage since it is
+part of DOOR's facility; multiple floors in one room; the H-Wing door needs to be hidden way better." Room P1 is a
+48 m DRUM now (data.js `rooms.garage`, a terrain room — the facility's first): a `halls` floor plan whose only
+open shape is one circle (r 22.4; the traced plan wall is the round concrete wall, the box's corners solid) with
+an AUTHORED HALL for every door's vestibule (the pads are the tree's nodes, so the Prim tree carves nothing —
+as bare `open` rows the tree ran service corridors along the box walls from pad to pad, one of them straight
+from THE RAMP DOWN's vestibule to the hidden stair's). THREE DECKS in one room, every one signed P1: LOWER (the
+8.5 m annulus, THE LOOP — the half-pipe, two kickers, THE FUN BOX, the kerb ledge, the handrail, the painted
+lane, three cars), UPPER (3.9 — a sixteen-chord bridge ring over the whole annulus with rails both edges, two
+cars, THE DOCK OFFICE up its ladder — the box climb's `y0` is set by hand: a free query reads the ground,
+never a bridge), TOP (7.8 — THE CORE, a 9.9 m disc with a parapet ring = a 60 m grind ring, an eight-chord ring
+over the south half stacked over the upper ring, THE RAMP OUT with the arm that never lifts). THE HELIX
+(`hqHelixRamp`, data.js beside `hqRingPts`, with `hqRingBridges` / `hqRingWalls`) winds ONE turn round the core
+0 → 3.9 → 7.8 in the 4 m band r 9.5–13.5 with a flat landing at the north and the south; the parapets step
+with the ramp. THE RULE: a spiral on one height field cannot pass over itself — one turn is the whole climb,
+every deck above the ground is a bridge ring. Two things the solver taught: the landings' inner edge must sit a
+metre INSIDE the core (two edge blends meeting made a 4.5 m pocket the compiler cut a rescue ramp out of); a
+`halls` plan's Prim tree joins every door pad to SOMETHING — give each pad its own hall or it joins the next
+pad along the wall. THE HIDDEN STAIR: `p2` is `secret: true` (no leaf, lamp or plate) at the end of a dog-leg
+service alcove (a hall `[-12.5, 17.6] → [-22.2, 17.6] → [-22.2, 14]`) with the shelving across its mouth and a
+breaker panel at the dead end; the draught is round the corner. `HQ_ROOM_LOOKS.garage` (amber, grain). Tests:
+hq-floors counts 45 secret doors (the woods' clearing ⇄ ritual pair the pin had missed is in the string now),
+hq-climb reads a deck prop by its ring's height and a free-standing plaque, hq-terrain 78 rooms, hq-floor-plan
+69 planned. `node check-terrain.js garage`: every door from every door, nothing traps, open 66 %, 46 traced
+walls, 26 bridges. UNSEEN LIVE (RULE #1c): the traced drum wall's facets, the helix's parapets stepping, the
+bridge rings' rails at the chord joints, the stacked rings from the loop, the alcove's read, the cars on the
+UPPER ring, the sodium light at 12.4 m over a three-deck drum. Not built: a lift between the decks (the helix
+and the ladder are the ways), signs per deck, the booth's LOT FULL board.

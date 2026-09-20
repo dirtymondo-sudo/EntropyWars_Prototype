@@ -6916,3 +6916,34 @@ DOWN wants `pitch: -30` — one field, unmeasured. `npm test` runs door-race.tes
 sandbox) + door-vfx.test.js; finishers.test.js's BUILT table has the agent. UNSEEN LIVE (RULE #1c): the
 pitch's sign, the swing at range 1, the Air Mail fall vs the damage number, the Drop In beat, the four
 sigils, the six-door ring.
+
+## THE ROUND GARAGE — Room P1 as a drum, three decks in one room, the helix, the hidden stair (2026-09-20, local delivery)
+The user: "make the parking garage bigger and better — a skating playground; a ROUND parking garage since it is part of DOOR's
+facility; multiple floors in one room; the H-Wing door needs to be hidden way better." data.js `rooms.garage` is a TERRAIN
+room now (the facility's first; still `kind: 'box'`, `roomNo` P1, the same door ids): a 48 × 48 × 12.4 box whose `halls` plan
+opens ONE circle (`gen.open` r 22.4 — the traced plan wall in `urban:ConcreteStriped2c` IS the round wall, the box's corners
+solid) and an AUTHORED HALL per door vestibule (`gen.halls`: elevator · tunnel · dock · rampdown · the dog-leg `alcove`).
+RULE: in a `halls` plan every door pad is a Prim node — give each pad its own hall (its wall end = the pad's node, a
+zero-length corridor) or the tree carves service corridors along the box walls from pad to pad (as bare `open` rows the
+garage got one straight from THE RAMP DOWN's vestibule to the hidden stair's). THREE DECKS, every one signed P1 (the panel
+has no P2; the lore keeps it): LOWER = the 8.5 m annulus (THE LOOP: the half-pipe, two `ramp` kickers, THE FUN BOX plateau,
+the kerb-ledge `wall`, a `rail`, the painted `path` lane, three cars), UPPER 3.9 = a 16-chord BRIDGE RING over the whole
+annulus (`hqRingBridges`; rails both edges; two cars at `y: 3.9`; THE DOCK OFFICE `stair_landing` at `y: 6.9` up a box
+`climbs` ladder whose **`y0: 3.9` is set by hand** — `_hqClimbCompileBox`'s free query reads the ground, never a bridge),
+TOP 7.8 = THE CORE (`plateau` r 9.9) + its parapet ring (`hqRingWalls`, a 60 m grind) + an 8-chord ring over the south
+half STACKED over the upper ring + THE RAMP OUT (`garage_ramp` at `y: 7.8`). THE HELIX = **`hqHelixRamp`** (data.js beside
+`hqRingPts`; `hqRingBridges` / `hqRingWalls` too): n straight `ramp` rows on an arc, every joint's outer notch covered by an
+`ext` overlap, an optional parapet `wall` per segment from a given angle — 195° → 345° up to the north landing, 15° → 165°
+up to the south one, ONE turn 0 → 7.8 (13 %). RULES the solver taught: a spiral on one height field cannot pass over itself
+(one turn is the whole climb; every deck above the ground is a bridge ring); a landing's inner edge sits a metre INSIDE the
+tier it joins (two edge blends meeting made a 4.5 m pocket → a rescue ramp); a bridge never lies over ground higher than
+its top less a climb (`hqTerrainBridgeFor` would seat the walker on it). **THE HIDDEN STAIR**: `p2` is `secret: true`
+(`leaf: null`, label A DRAUGHT — a wall slab, no lamp, no plate) at the end of the dog-leg alcove hall on the south-west of
+the loop, the shelving across its mouth, a breaker panel at the dead end; the lobby's stair door is a plain door as before;
+`hqHWingEntries` still reads `garage/p2`. A halls room hangs every wall prop FREE (`x / z / face / mount`) — the lesson
+plaque stands on the drum wall at the ring's edge. `HQ_ROOM_LOOKS.garage`. Tests: hq-floors pins 45 secret doors (the
+woods' clearing ⇄ ritual pair the old pin missed is in the string), hq-climb reads a prop at a ring's height as on the
+ring, hq-terrain 78 / hq-floor-plan 69. `node check-terrain.js garage` before any retune: every door from every door,
+nothing traps. Ship data.js to R2 AND Render. PRE-EXISTING at HEAD, not touched: hq-dumb's dream-lab exit count,
+hq-stage2's ROOM DIALOGUE scan. UNSEEN LIVE (RULE #1c): the drum's facets, the parapets stepping with the ramp, the rails
+at the chord joints, the stacked rings from below, the alcove's read, the light at 12.4 m.

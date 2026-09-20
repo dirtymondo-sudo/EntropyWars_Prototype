@@ -15328,6 +15328,7 @@ const HQ_ROOM_LOOKS = {
     strip: { name: 'THE STRIP', retro: { enabled: true, preset: 'dream', pixelSize: 1, ditherStrength: 0.4, grain: 0.03, tintAmount: 0.4, levels: 24 }, cin: { vignette: true, vigAmount: 0.4, vigSize: 0.5 }, nightMood: 0.7, bloom: 0.42 },
     neon: { name: 'CYBERPUNK CITY', retro: { enabled: true, preset: 'dream', pixelSize: 1, ditherStrength: 0.42, grain: 0.035, tintAmount: 0.45, levels: 24 }, cin: { vignette: true, vigAmount: 0.5, vigSize: 0.46 }, nightMood: 0.9, bloom: 0.55 },
     /* D.U.M.B. (2026-09-17 — complex candidate #5): the base under the base — the security camera's print: cold fluorescent teal-white, hard dither, a tight vignette, red in the shadows; the war room darker and greener (the board's glow); the bunker warm (his tungsten); the ring blue under the beam */
+    garage: { name: 'THE GARAGE', retro: { enabled: true, preset: 'amber', pixelSize: 1, ditherStrength: 0.42, grain: 0.035, tintAmount: 0.35, levels: 22 }, cin: { vignette: true, vigAmount: 0.45, vigSize: 0.5 }, nightMood: 0.35, bloom: 0.22 },   // THE ROUND GARAGE (2026-09-20): sodium light, a little grain, the amber grade
     dumb: { name: 'D.U.M.B.', retro: { enabled: true, preset: 'teal', pixelSize: 1, ditherStrength: 0.48, grain: 0.045, tintAmount: 0.42, levels: 20 }, cin: { vignette: true, vigAmount: 0.5, vigSize: 0.48 }, nightMood: 0.45, bloom: 0.2 },
     warroom: { name: 'THE WAR ROOM', retro: { enabled: true, preset: 'green', pixelSize: 1, ditherStrength: 0.45, grain: 0.04, tintAmount: 0.45, levels: 20 }, cin: { vignette: true, vigAmount: 0.6, vigSize: 0.44 }, nightMood: 0.7, bloom: 0.3 },
     bunker: { name: 'THE BUNKER', retro: { enabled: true, preset: 'amber', pixelSize: 1, ditherStrength: 0.35, grain: 0.025, tintAmount: 0.35, levels: 26 }, cin: { vignette: true, vigAmount: 0.35, vigSize: 0.55 }, nightMood: 0.3, bloom: 0.28 },
@@ -19740,6 +19741,67 @@ function hqRingPts(cx, cz, r, n) {
     for (let i = 0; i <= (n || 24); i++) { const a = i / (n || 24) * Math.PI * 2; out.push([Math.round((cx + Math.sin(a) * r) * 100) / 100, Math.round((cz - Math.cos(a) * r) * 100) / 100]); }
     return out;
 }
+/* ── THE ROUND GARAGE's kit (2026-09-20 — the user: "a round parking garage since it is part of DOOR's facility; multiple
+   floors in one room; a skating playground"). Three generators of terrain feature rows on a CIRCLE (θ in degrees, clockwise
+   from north — hqRingPts' frame: x = r·sin θ, z = −r·cos θ), so a spiral ramp, a ring deck and a ring parapet are one row each
+   in the room's sheet instead of forty hand-typed chords:
+     hqHelixRamp({ r, w, a0, a1, h0, h1, n, ext, edge, wall: { h, from, t, key } })
+       → n straight `ramp` rows along the arc a0 → a1 at radius r, the height h0 → h1 linear in the ARC; every segment but the
+         first is extended `ext` m past its joint (heights extrapolated) so the outer corner of every bend is covered — a bare
+         chain of rects leaves a notch at the outside of each joint the walker falls into; with `wall`, a parapet `wall` row on
+         the OUTER edge (0.3 m inside it) of every segment that starts at or past `from` degrees (the top of a terrain wall is
+         the highest ground under it + h, so a parapet steps with the ramp).
+     hqRingBridges({ r, w, y, a0, a1, n, ext, rails, key })
+       → n chord `bridge` rows at radius r (THE BRIDGE LAYER: a second surface over whatever lies below), each extended `ext` m
+         at both ends so neighbouring chords overlap — a walker crossing a joint is always over a slab.
+     hqRingWalls({ r, h, a0, a1, n, skip, t, key })
+       → n chord `wall` rows at radius r (a parapet ring on a tier's rim = a grind ring), the arcs in `skip` ([a, b] pairs,
+         degrees) left out (where a ramp or a landing joins).
+   The rule these encode: a spiral on ONE height field cannot pass over itself — one turn of the helix is the whole climb, and
+   every deck above the ground is a bridge ring hung over it. */
+function _hqRingPt(r, deg) { const a = deg * Math.PI / 180; return [Math.round(Math.sin(a) * r * 100) / 100, Math.round(-Math.cos(a) * r * 100) / 100]; }
+function _hqArcSkipped(a, b, skip) { const mid = ((a + b) / 2 % 360 + 360) % 360; return (skip || []).some(s => { const lo = (s[0] % 360 + 360) % 360, hi = (s[1] % 360 + 360) % 360; return lo <= hi ? (mid >= lo && mid <= hi) : (mid >= lo || mid <= hi); }); }
+function hqHelixRamp(o) {
+    const n = o.n || 8, ext = (o.ext != null) ? o.ext : 0.7, out = [], span = o.a1 - o.a0, rise = o.h1 - o.h0;
+    for (let i = 0; i < n; i++) {
+        const t0 = i / n, t1 = (i + 1) / n, d0 = o.a0 + span * t0, d1 = o.a0 + span * t1;
+        const p0 = _hqRingPt(o.r, d0), p1 = _hqRingPt(o.r, d1), dx = p1[0] - p0[0], dz = p1[1] - p0[1], c = Math.hypot(dx, dz) || 1, ux = dx / c, uz = dz / c;
+        const e0 = i === 0 ? 0 : ext, e1 = ext, per = rise / n;
+        const row = { k: 'ramp', x0: Math.round((p0[0] - ux * e0) * 100) / 100, z0: Math.round((p0[1] - uz * e0) * 100) / 100, x1: Math.round((p1[0] + ux * e1) * 100) / 100, z1: Math.round((p1[1] + uz * e1) * 100) / 100,
+                      w: o.w, h0: Math.round((o.h0 + rise * t0 - per * e0 / c) * 1000) / 1000, h1: Math.round((o.h0 + rise * t1 + per * e1 / c) * 1000) / 1000, edge: (o.edge != null) ? o.edge : 0.35, helix: o.id || 'helix', seg: i };
+        if (o.stairs) row.stairs = true;
+        out.push(row);
+        if (o.wall && d0 >= o.wall.from - 1e-6) {
+            const rw = o.r + o.w / 2 - 0.3, q0 = _hqRingPt(rw, d0), q1 = _hqRingPt(rw, d1);
+            out.push({ k: 'wall', x0: q0[0], z0: q0[1], x1: q1[0], z1: q1[1], h: o.wall.h || 1.05, t: o.wall.t || 0.35, key: o.wall.key || null, helix: o.id || 'helix', parapet: true });
+        }
+    }
+    return out;
+}
+function hqRingBridges(o) {
+    const n = o.n || 12, ext = (o.ext != null) ? o.ext : 0.35, out = [], span = o.a1 - o.a0;
+    for (let i = 0; i < n; i++) {
+        const d0 = o.a0 + span * i / n, d1 = o.a0 + span * (i + 1) / n;
+        if (_hqArcSkipped(d0, d1, o.skip)) continue;
+        const p0 = _hqRingPt(o.r, d0), p1 = _hqRingPt(o.r, d1), dx = p1[0] - p0[0], dz = p1[1] - p0[1], c = Math.hypot(dx, dz) || 1, ux = dx / c, uz = dz / c;
+        const row = { k: 'bridge', x0: Math.round((p0[0] - ux * ext) * 100) / 100, z0: Math.round((p0[1] - uz * ext) * 100) / 100, x1: Math.round((p1[0] + ux * ext) * 100) / 100, z1: Math.round((p1[1] + uz * ext) * 100) / 100, w: o.w, y: o.y, ring: o.id || 'ring', seg: i };
+        if (o.rails === false) row.rails = false;
+        if (o.key) row.key = o.key;
+        if (o.thick != null) row.thick = o.thick;
+        out.push(row);
+    }
+    return out;
+}
+function hqRingWalls(o) {
+    const n = o.n || 24, out = [], a0 = (o.a0 != null) ? o.a0 : 0, a1 = (o.a1 != null) ? o.a1 : 360, span = a1 - a0;
+    for (let i = 0; i < n; i++) {
+        const d0 = a0 + span * i / n, d1 = a0 + span * (i + 1) / n;
+        if (_hqArcSkipped(d0, d1, o.skip)) continue;
+        const p0 = _hqRingPt(o.r, d0), p1 = _hqRingPt(o.r, d1);
+        out.push({ k: 'wall', x0: p0[0], z0: p0[1], x1: p1[0], z1: p1[1], h: o.h || 1.05, t: o.t || 0.35, key: o.key || null, ring: o.id || 'rim', parapet: true });
+    }
+    return out;
+}
 /* ── THE DIVINE STAIR'S SHELL (HQ plan 9.3 stage 6, 2026-09-17) ──────────
    Heaven's two parts (the stairway, the cloud fields) are OPEN rooms under
    Heaven's own sky (EW_MAP_META prebuilt_heaven env: the cream tint, the
@@ -21174,7 +21236,7 @@ const DOOR_HQ = {
            garage, maybe connect them"): THE GARAGE (P1) ⇄ THE MOTOR POOL (P3) — a facility room seaming into a wild one (the
            garden well's precedent, never gated); the motor pool is the parking level the car's panel never had */
         { id: 'garage_motorpool', route: 'bases', leaf: 'leaf_bulkhead',
-          a: { room: 'garage', wall: 'w', z: -2.5, sub: 'THE RAMP DOWN · P3 · THE MOTOR POOL' },
+          a: { room: 'garage', wall: 'w', z: -2.5, sub: 'THE RAMP DOWN · P3 · THE MOTOR POOL' },   // THE ROUND GARAGE (2026-09-20): its own vestibule off the loop's west side (a `halls` row in the garage's plan)
           b: { site: 'prebuilt_dumb', part: 'motorpool', wall: 's', x: -16, sub: 'THE RAMP UP · P1 · THE GARAGE' },
           why: 'the ramp in the garage goes up to an exit sign and down to a level the panel does not have; the cars signed out of P1 are parked on P3 and both sheets are fine with it', note: 'the panel stops at P1', draft: true },
         { id: 'dumb_cern', route: 'bases', leaf: 'leaf_wired_double',
@@ -25688,132 +25750,204 @@ const DOOR_HQ = {
             ],
             spawn: { x: 0, z: 0.1, face: 180 },
         },
-        /* ── G · THE GARAGE (Room P1) — the biggest room in the building
-           and the first LANDMARK: THE RAMP at the far end climbs into
-           daylight behind a barrier arm you cannot pass. The way on is the
-           loading dock beside it (a loop up into the laundry). ── */
+        /* ── G · THE GARAGE (Room P1) — THE ROUND GARAGE (2026-09-20; the user: "make the parking garage bigger and
+           better — a skating playground; a ROUND parking garage since it is part of DOOR's facility; multiple floors in
+           one room; the H-Wing door needs to be hidden way better"). The biggest room in the building is a DRUM now:
+           a terrain room whose `halls` floor plan opens ONE circle (r 22.4 — the traced plan wall is the round concrete
+           wall; the box's corners are solid) with a short vestibule to every door, and THREE DECKS in the one room —
+           every one signed P1, because the panel has no P2 and the lore likes it that way:
+             P1 · LOWER  (0 m)   the outer annulus, 8.5 m wide and 110 m round: THE LOOP — the half-pipe, the kickers, the
+                                 fun box, the kerb ledge, the handrail, the painted lane, the cars along the wall
+             P1 · UPPER  (3.9 m) THE RING — a bridge ring (THE BRIDGE LAYER, sixteen chords) hung over the whole annulus,
+                                 rails on both edges (grinds), two cars, THE DOCK OFFICE up its ladder
+             P1 · TOP    (7.8 m) THE CORE (a 9.9 m disc with a parapet ring = a grind ring) + a second bridge ring over the
+                                 south half (stacked over the UPPER ring) + THE RAMP OUT that the arm never lifts
+           THE HELIX: one spiral ramp (hqHelixRamp) winds ONE full turn round the core, 0 → 3.9 → 7.8 in the 4 m band
+           r 9.5–13.5, a flat landing at the north (UPPER) and the south (TOP) — the rule: a spiral on one height field
+           climbs the whole way in one turn; the decks above the ground are bridge rings. The parapets step with the ramp.
+           THE HIDDEN STAIR: the H-Wing door is a SECRET slab (no leaf, no lamp, no plate) at the end of a dog-leg
+           service alcove off the south-west of the loop — a dead end to the eye, the door round the corner behind the
+           shelving. THE RAMP DOWN (links.garage_motorpool, P3) stays on the west wall. node check-terrain.js garage
+           solves it (every door from every door, no trap). ── */
         garage: {
             label: 'THE GARAGE',
-            sub: 'PARKING · LEVEL P1',
-            roomNo: 'P1', why: 'the first parking level; there is no P2 on the panel and the ramp does not go there either — the stair by the west wall does (H-Wing); P3 is the D.U.M.B.’s motor pool, down THE RAMP by the same wall (links.garage_motorpool, 2026-09-18)',
+            sub: 'PARKING · LEVEL P1 · THREE DECKS, ALL OF THEM P1',
+            roomNo: 'P1', why: 'the first parking level — three decks in one drum (LOWER · UPPER · TOP) and every one of them signed P1; there is no P2 on the panel and the helix does not go there either — the hidden stair in the service alcove does (H-Wing); P3 is the D.U.M.B.’s motor pool, down THE RAMP by the west wall (links.garage_motorpool, 2026-09-18)',
             kind: 'box',
-            /* THE CLIMB (AREA_CONTENT_PLAN D1 / R9, 2026-09-19): THE TEACHING ROOM — the ceiling rose 2.8 → 5.4 m for THE DOCK
-               OFFICE, a platform on the west wall reached by ONE ladder (`climbs`: the first climb row in the building, the
-               lesson plaque at its foot); walk off the platform's edge to come down (or S at the head) */
+            /* THE CLIMB (AREA_CONTENT_PLAN D1 / R9, 2026-09-19): THE TEACHING ROOM — THE DOCK OFFICE is a platform 3 m over
+               the UPPER deck now (y 6.9 on the ring at the north-east, its top 7.15 under a 12.4 m ceiling), reached by ONE
+               ladder whose foot stands ON the ring (`y0: 3.9` — a box climb's free query reads the ground, never a bridge);
+               the lesson plaque stands at its foot; walk off the platform's edge to come down (or S at the head) */
             climbs: [
-                { id: 'dock_office', x: -12.6, z: -0.42, y1: 3.25, face: 0, look: 'ladder' },   // the climber faces north, the platform's south edge is the mass; the head lands on the landing's top
+                { id: 'dock_office', x: 15.6, z: -8.02, y0: 3.9, y1: 7.15, face: 0, look: 'ladder' },   // the climber faces north, the platform's south edge is the mass; the head lands on the landing's top
             ],
             shell: {
-                w: 30, d: 20, h: 5.4,
-                wallH: 5.4, dadoH: 1.1,
+                w: 48, d: 48, h: 12.4,
+                wallH: 12.4, dadoH: 1.1,
                 floor: 'concrete_floor', wall: 'concrete', dado: 'concrete', trim: 'teal', ceiling: 'concrete',
                 floorColor: 0x9b9a96, wallColor: 0xa8a6a0, dadoColor: 0x6e6c66, ceilColor: 0x8e8c88,
                 pipes: true,
-                lights: [{ x: -10, z: -5 }, { x: 0, z: -5 }, { x: 10, z: -5 }, { x: -10, z: 5 }, { x: 0, z: 5 }, { x: 10, z: 5 }],
-                mood: { light: 0xffe4a8, ambient: 0.75 },      // sodium lamps; nothing in here is white
-                plate: { x: 12, z: 9.5, y: 2.4 },
+                lights: [{ x: 0, z: -18 }, { x: 0, z: 18 }, { x: -18, z: 0 }, { x: 18, z: 0 }, { x: -12.7, z: -12.7 }, { x: 12.7, z: -12.7 }, { x: -12.7, z: 12.7 }, { x: 12.7, z: 12.7 }, { x: 0, z: 0 }],
+                mood: { light: 0xffe4a8, ambient: 0.78 },      // sodium lamps; nothing in here is white
+                fog: { color: 0x2a2620, density: 0.012 },       // the far side of the drum goes soft
+                look: HQ_ROOM_LOOKS.garage,   // the object, never the key (the woods' rule)
+                plate: { x: 20.6, z: 7.6, y: 2.4 },
+            },
+            terrain: {
+                floor: 'concrete_floor', cliff: 'concrete', path: 'urban:ConcreteStriped2a',
+                noise: { amp: 0, scale: 5 }, crag: false,
+                gen: { kind: 'halls', seed: 1971, bsp: false, loops: 0, minDegree: 0, wallKey: 'urban:ConcreteStriped2c', corridor: [3.0, 3.4],
+                       /* THE DRUM: the one open circle (`open`); every door's vestibule is an AUTHORED HALL whose wall end is the pad's own
+                          node — so the Prim tree joins each pad to its own vestibule with a zero-length corridor and carves NOTHING else
+                          (as `open` rows the pads were still nodes, and the tree ran service corridors along the box walls from pad to
+                          pad — one of them straight from THE RAMP DOWN's vestibule to the hidden stair's, which is the one thing the
+                          alcove must never have); the dog-leg alcove to the hidden stair is a hall too */
+                       open: [{ x: 0, z: 0, r: 22.4 }],
+                       halls: [{ id: 'elevator', pts: [[23.6, 4], [19, 4]], w: 4.0 },                   // the elevator's vestibule
+                               { id: 'tunnel', pts: [[23.6, -6], [19, -6]], w: 4.4 },                   // the tunnel hatch's
+                               { id: 'dock', pts: [[-4, -23.6], [-4, -19]], w: 4.4 },                   // the loading dock's
+                               { id: 'rampdown', pts: [[-23.6, -2.5], [-19, -2.5]], w: 4.0 },           // THE RAMP DOWN's (the motor pool link)
+                               { id: 'alcove', pts: [[-12.5, 17.6], [-22.2, 17.6], [-22.2, 14]], w: 2.4 }] },   // THE SERVICE ALCOVE: west into the solid (a dead end to the eye), then north round the corner to the hidden stair's pad
+                features: [
+                    /* THE CORE + THE TWO LANDINGS (the heights the helix climbs to) */
+                    { k: 'plateau', x: 0, z: 0, r: 9.9, h: 7.8, edge: 0.35 },                                   // THE CORE · P1 TOP
+                    { k: 'plateau', x: 0, z: 11.0, w: 9.4, d: 5.2, h: 7.8, edge: 0.35 },                        // THE TOP LANDING (south; its inner edge a metre inside the core — two edge blends meeting made a pocket)
+                    { k: 'plateau', x: 0, z: -11.0, w: 9.4, d: 5.2, h: 3.9, edge: 0.35 },                       // THE UPPER LANDING (north; the same)
+                ].concat(
+                    /* THE HELIX: 195° → 345° up to the upper landing, 15° → 165° up to the top landing (13 % — a car's grade); the parapet on the outer edge from 232° (where the drop is over 0.9 m) */
+                    hqHelixRamp({ id: 'helix_a', r: 11.5, w: 4, a0: 195, a1: 345, h0: 0, h1: 3.9, n: 10, wall: { h: 1.05, from: 232, key: 'urban:ConcreteStriped2c' } }),
+                    hqHelixRamp({ id: 'helix_b', r: 11.5, w: 4, a0: 15, a1: 165, h0: 3.9, h1: 7.8, n: 10, wall: { h: 1.05, from: 15, key: 'urban:ConcreteStriped2c' } }),
+                    /* the landings' parapets (the connector bridges pass through the gaps), the top landing's west wall over the helix's foot */
+                    [{ k: 'wall', x0: -4.4, z0: -13.25, x1: -2.6, z1: -13.25, h: 1.05, t: 0.35, parapet: true }, { k: 'wall', x0: 2.6, z0: -13.25, x1: 4.4, z1: -13.25, h: 1.05, t: 0.35, parapet: true },
+                     { k: 'wall', x0: -4.4, z0: 13.25, x1: -2.6, z1: 13.25, h: 1.05, t: 0.35, parapet: true }, { k: 'wall', x0: 2.6, z0: 13.25, x1: 4.4, z1: 13.25, h: 1.05, t: 0.35, parapet: true },
+                     { k: 'wall', x0: -4.4, z0: 9.7, x1: -4.4, z1: 13.4, h: 1.05, t: 0.35, parapet: true }],
+                    /* THE CORE'S RIM: a parapet ring (a grind ring 60 m round), open where the two landings join */
+                    hqRingWalls({ id: 'core_rim', r: 9.5, h: 1.05, n: 24, skip: [[150, 210], [330, 30]] }),
+                    /* THE UPPER RING (P1 · UPPER, 3.9): sixteen chords over the whole annulus, r 14.2–21.8, rails both edges; the connector from the north landing */
+                    hqRingBridges({ id: 'upper', r: 18.0, w: 7.6, y: 3.9, a0: 0, a1: 360, n: 16 }),
+                    [{ k: 'bridge', x0: 0, z0: -12.6, x1: 0, z1: -15.6, w: 5, y: 3.9, rails: false, ring: 'upper', connector: true }],
+                    /* THE TOP RING (P1 · TOP, 7.8): eight chords over the south half, stacked over the upper ring; the connector from the top landing */
+                    hqRingBridges({ id: 'top', r: 18.0, w: 7.6, y: 7.8, a0: 100, a1: 260, n: 8 }),
+                    [{ k: 'bridge', x0: 0, z0: 12.6, x1: 0, z1: 15.6, w: 5, y: 7.8, rails: false, ring: 'top', connector: true }],
+                    /* THE LOOP (P1 · LOWER): the painted lane, two kickers, THE FUN BOX, the kerb ledge, the handrail */
+                    [{ k: 'path', pts: hqRingPts(0, 0, 17.8, 36), w: 3.2 },                                                    // the lane round the annulus
+                     { k: 'ramp', x0: -16.15, z0: 10.2, x1: -14.65, z1: 7.6, w: 2.6, h0: 0, h1: 0.9, edge: 0.3 },                // THE KICKER (west, at 300°)
+                     { k: 'ramp', x0: 14.65, z0: -10.2, x1: 16.15, z1: -7.6, w: 2.6, h0: 0, h1: 0.9, edge: 0.3 },                // THE KICKER (east, at 60°)
+                     { k: 'plateau', x: 0, z: 18.5, w: 6, d: 2.8, h: 0.5, edge: 0.3 },                                           // THE FUN BOX (south, under the top ring)
+                     { k: 'wall', x0: -7, z0: -18.5, x1: 7, z1: -18.5, h: 0.45, t: 0.4, key: 'urban:ConcreteStriped2a' },        // THE KERB LEDGE (north, under the upper ring)
+                     { k: 'rail', x0: 14.9, z0: 11.3, x1: 11.3, z1: 14.9 },                                                        // THE HANDRAIL (at 135°)
+                     { k: 'scatter', key: 'traffic_cone', n: 7, x: 0, z: 0, r: 20, seed: 3 },
+                     { k: 'scatter', key: 'cinder_block', n: 4, x: -16, z: 14, r: 5, seed: 4 }]
+                ),
             },
             doors: [
-                { id: 'elevator', wall: 'e', z: 7.0, leaf: null, proc: 'elevator',
+                { id: 'elevator', wall: 'e', z: 4, leaf: null, proc: 'elevator',
                   label: 'ELEVATOR', sub: 'THE CAR',
                   action: { room: 'car', at: 'panel' },
                   desc: 'The car. It came down here; it will go anywhere on the panel.' },
-                /* Phase 8 stage 2 (2026-09-15): THE TUNNEL's service hatch — a maintenance door down to the platform (it comes out behind the ramp) */
-                { id: 'tunnel', wall: 'e', z: -7.0, leaf: 'leaf_bulkhead', wide: true,
+                /* Phase 8 stage 2 (2026-09-15): THE TUNNEL's service hatch — a maintenance door down to the platform (it comes out in a vestibule off the loop) */
+                { id: 'tunnel', wall: 'e', z: -6, leaf: 'leaf_bulkhead', wide: true,
                   label: 'THE TUNNEL', sub: 'SERVICE HATCH · THE PLATFORM',
                   action: { room: 'tunnel', at: 'garage' },
-                  desc: 'A maintenance door behind the ramp. Tiles at the bottom of the steps, a draught, a train that is always there.' },
-                { id: 'dock', wall: 'n', x: -11, leaf: 'leaf_wired_double', wide: true,
+                  desc: 'A maintenance door in its own little vestibule off the loop. Tiles at the bottom of the steps, a draught, a train that is always there.' },
+                { id: 'dock', wall: 'n', x: -4, leaf: 'leaf_wired_double', wide: true,
                   label: 'THE LOADING DOCK', sub: 'DELIVERIES · UP TO THE LAUNDRY',
                   action: { room: 'dock', at: 'garage' },
                   desc: 'Deliveries. The dock is a step up into the service side of B; the laundry is through the far side of it.' },
-                /* H-WING (2026-09-14 rev 4): the stair down to the level the ramp does not go to — OPEN for now; the gate goes here (minClearance) when the chapter says so */
-                { id: 'p2', wall: 'w', z: 6.5, leaf: 'leaf_coffee',
-                  label: 'THE STAIR', sub: 'DOWN · P2',
+                /* H-WING (2026-09-14 rev 4; HIDDEN 2026-09-20 — the user: "the H-Wing door needs to be hidden way better"): the stair down to the level the helix does not go to is a SECRET slab at the end of the dog-leg service alcove — no leaf, no lamp, no plate; OPEN for now, the gate goes here (minClearance) when the chapter says so */
+                { id: 'p2', wall: 'w', z: 14, leaf: null, secret: true,
+                  label: 'A DRAUGHT', sub: 'THE SERVICE ALCOVE · A WALL THAT IS NOT',
                   action: { room: 'hwing_lobby', at: 'stair' },
-                  desc: 'A plain door by the west wall with a stair behind it going down. The panel in the car has no P2. The ramp has no P2. The stair has.' },
+                  desc: 'The alcove behind the shelving is a dead end: a wall, a breaker panel, a draught along the floor. The draught has a stair behind it going down. The panel in the car has no P2. The helix has no P2. The draught has.' },
             ],
             counters: [
-                { id: 'booth', x: 3.2, z: -6.6, face: 180, plateY: 1.9, radius: 2.0, verb: 'ASK',
+                { id: 'booth', x: -8.6, z: 15.6, face: 20, plateY: 1.9, radius: 2.0, verb: 'ASK',
                   label: 'THE BOOTH', sub: 'THE ATTENDANT · LOT FULL', action: {},
-                  desc: 'The attendant’s booth at the foot of the ramp. The sign says LOT FULL. There are five cars.' },
+                  desc: 'The attendant’s booth at the foot of the helix. The sign says LOT FULL. There are five cars on three decks.' },
             ],
             props: [
-                /* ── the pillars: four bays across, three deep ── */
-                { key: 'concrete_pillar', x: -9, z: -4 }, { key: 'concrete_pillar', x: -3, z: -4 }, { key: 'concrete_pillar', x: 3, z: -4 }, { key: 'concrete_pillar', x: 9, z: -4 },
-                { key: 'concrete_pillar', x: -9, z: 4 },  { key: 'concrete_pillar', x: -3, z: 4 },  { key: 'concrete_pillar', x: 3, z: 4 },  { key: 'concrete_pillar', x: 9, z: 4 },
-                /* ── THE RAMP against the north wall, the booth at its foot ── */
-                { key: 'garage_ramp',    x: 8.5, z: -7.6, face: 0 },
-                { key: 'steel_table',    x: 3.2, z: -7.6, face: 180 },
-                { key: 'crt_terminal',   x: 3.0, z: -7.7, y: 0.76, face: 180 },
-                { key: 'papers_b',       x: 3.7, z: -7.5, y: 0.76, face: 20 },
-                { key: 'folding_chair',  x: 3.2, z: -8.3, face: 180 },
-                { key: 'railing_1m',     x: 2.2, z: -7.1, face: 90 },
-                { key: 'railing_1m',     x: 4.2, z: -7.1, face: 90 },
-                /* SKATEBOARDING (9.8, 2026-09-15): THE HALF-PIPE — two quarter pipes facing each other down the east side (THE PARK RULE's first ramps that launch) */
-                { key: 'quarter_pipe',   x: 9.5,  z: 8.6,  face: 0 },
-                { key: 'quarter_pipe',   x: 12.6, z: -8.7, face: 180 },
-                { key: 'breaker_panel',  wall: 'n', x: 1.0 },
-                { key: 'exit_sign',      wall: 'n', x: 8.5, mount: 2.55 },              // over the ramp: the way out that is not
-                { key: 'security_camera', wall: 'n', x: 12.5, mount: 2.5 },
-                /* ── the bays: five cars, eight painted bays ── */
-                /* THE VEHICLE BATCH (2026-09-15): five cars — the building's Sedan, the agents' black SUV, the executive's Cadillac, the cop car nobody signed for, Medical's ambulance (the ceiling is 2.8 m: the fire truck and the bus park elsewhere) */
-                { key: 'parking_bay',    x: -12, z: 8.2, face: 0 }, { key: 'parked_car',    x: -12, z: 8.2, face: 0 },
-                { key: 'parking_bay',    x: -9,  z: 8.2, face: 0 },
-                { key: 'parking_bay',    x: -6,  z: 8.2, face: 0 }, { key: 'car_suv',       x: -6, z: 8.2, face: 180 },
-                { key: 'parking_bay',    x: -3,  z: 8.2, face: 0 },
-                { key: 'parking_bay',    x: 0,   z: 8.2, face: 0 }, { key: 'car_cadillac',  x: 0, z: 8.2, face: 0 },
-                { key: 'parking_bay',    x: 3,   z: 8.2, face: 0 },
-                { key: 'parking_bay',    x: 6,   z: 8.2, face: 0 }, { key: 'car_cop',       x: 6, z: 8.2, face: 0 },
-                { key: 'parking_bay',    x: -4,  z: -8.2, face: 180 }, { key: 'car_ambulance', x: -4, z: -8.2, face: 180 },
-                { key: 'parking_bay',    x: -7,  z: -8.2, face: 180 },
-                { key: 'floor_stain',    x: -9,  z: 8.0 },                               // the one that leaks
-                { key: 'floor_stain',    x: 3,   z: 1.0 },
-                /* ── the walls: the dock's clutter, the extinguishers, the pipes ── */
-                { key: 'cardboard_boxes', x: -13.5, z: -8.4, face: 20 },
-                { key: 'metal_shelving', wall: 'n', x: -6.5 },
-                { key: 'fire_extinguisher', wall: 'e', z: 2.0 },
-                { key: 'fire_extinguisher', wall: 'w', z: -6.0 },
-                { key: 'breaker_panel',  wall: 'w', z: 2.0 },
-                { key: 'cardboard_boxes', x: -14.3, z: 0.5, face: 90 },
-                /* THE DOCK OFFICE (THE CLIMB, 2026-09-19): a landing 3 m up the west wall, a desk and a chair on it, a rail on its east edge, the plaque at the ladder's foot */
-                { key: 'stair_landing',  x: -12.6, z: -2.0, y: 3.0 },
-                { key: 'railing_1m',     x: -10.35, z: -2.9, y: 3.25, face: 90 },
-                { key: 'railing_1m',     x: -10.35, z: -1.3, y: 3.25, face: 90 },
-                { key: 'steel_table',    x: -13.6, z: -2.4, y: 3.25, face: 90 },
-                { key: 'folding_chair',  x: -12.7, z: -2.4, y: 3.25, face: 270 },
-                { key: 'papers_b',       x: -13.6, z: -2.2, y: 4.01, face: 10 },
-                { key: 'nameplate',      wall: 'w', z: -2.0, mount: 4.55 },                // THE DOCK OFFICE — the name is on the plate, the office is a desk
-                { key: 'lesson_plaque',  wall: 'w', z: 1.4, mount: 1.35, lesson: 'climb' },
-                { key: 'trash_bin',      x: 13.8, z: 3.5, face: 270 },
-                { key: 'wet_floor_sign', x: -9.5, z: 6.4, face: 200 },
-                { key: 'pipe_run',       x: -8, z: -1.0, face: 90 },
-                { key: 'pipe_run',       x: 6,  z: 1.5,  face: 90 },
-                { key: 'exit_sign',      wall: 'e', z: 7.0, mount: 2.55 },
-                { key: 'nameplate',      wall: 'e', z: 4.7, mount: 1.55 },
-                { key: 'nameplate',      wall: 'w', z: 4.9, mount: 1.55 },                // by the stair down: the plate is blank, like every plate below it
-                { key: 'security_camera', wall: 's', x: -13, mount: 2.5 },
-                /* ── the ceiling: six strips ── */
-                { key: 'fluorescent',    x: -10, z: -5, ceil: true, face: 90 }, { key: 'fluorescent', x: 0, z: -5, ceil: true, face: 90 }, { key: 'fluorescent', x: 10, z: -5, ceil: true, face: 90 },
-                { key: 'fluorescent',    x: -10, z: 5,  ceil: true, face: 90 }, { key: 'fluorescent', x: 0, z: 5,  ceil: true, face: 90 }, { key: 'fluorescent', x: 10, z: 5,  ceil: true, face: 90 },
+                /* ── the pillars: a ring of fourteen under the UPPER ring (none where the connectors pass), six more on the ring under the TOP ring ── */
+                { key: 'concrete_pillar', x: 5.93, z: -14.33 }, { key: 'concrete_pillar', x: 10.96, z: -10.96 }, { key: 'concrete_pillar', x: 14.33, z: -5.93 }, { key: 'concrete_pillar', x: 15.5, z: 0 },
+                { key: 'concrete_pillar', x: 14.33, z: 5.93 }, { key: 'concrete_pillar', x: 10.96, z: 10.96 }, { key: 'concrete_pillar', x: 5.93, z: 14.33 },
+                { key: 'concrete_pillar', x: -5.93, z: 14.33 }, { key: 'concrete_pillar', x: -10.96, z: 10.96 }, { key: 'concrete_pillar', x: -14.33, z: 5.93 }, { key: 'concrete_pillar', x: -15.5, z: 0 },
+                { key: 'concrete_pillar', x: -14.33, z: -5.93 }, { key: 'concrete_pillar', x: -10.96, z: -10.96 }, { key: 'concrete_pillar', x: -5.93, z: -14.33 },
+                { key: 'concrete_pillar', x: 14.33, z: 5.93, y: 3.9 }, { key: 'concrete_pillar', x: 10.96, z: 10.96, y: 3.9 }, { key: 'concrete_pillar', x: 5.93, z: 14.33, y: 3.9 },
+                { key: 'concrete_pillar', x: -5.93, z: 14.33, y: 3.9 }, { key: 'concrete_pillar', x: -10.96, z: 10.96, y: 3.9 }, { key: 'concrete_pillar', x: -14.33, z: 5.93, y: 3.9 },
+                /* ── THE RAMP OUT on the TOP deck's far south: the way out you can see and not take (a barrier arm, daylight at the top of a ramp that goes nowhere), the exit sign standing free over it ── */
+                { key: 'garage_ramp',    x: 0, z: 17.6, y: 7.8, face: 180 },
+                { key: 'exit_sign',      x: 0, z: 21.5, y: 7.8, face: 0, mount: 2.75 },              // over the ramp: the way out that is not
+                /* ── THE BOOTH at the helix's foot ── */
+                { key: 'steel_table',    x: -8.6, z: 16.6, face: 20 },
+                { key: 'crt_terminal',   x: -8.8, z: 16.7, y: 0.76, face: 20 },
+                { key: 'papers_b',       x: -8.1, z: 16.5, y: 0.76, face: 40 },
+                { key: 'folding_chair',  x: -8.9, z: 17.4, face: 20 },
+                { key: 'railing_1m',     x: -10.2, z: 16.0, face: 110 },
+                { key: 'railing_1m',     x: -7.0, z: 17.1, face: 110 },
+                /* SKATEBOARDING (9.8): THE HALF-PIPE — two quarter pipes facing each other down the west side of the loop (THE PARK RULE's first ramps that launch) */
+                { key: 'quarter_pipe',   x: -17.4, z: 7.4,  face: 0 },
+                { key: 'quarter_pipe',   x: -17.4, z: -7.4, face: 180 },
+                /* ── the bays: five cars — three on the LOWER deck along the south-east wall, two on the UPPER ring ── */
+                /* THE VEHICLE BATCH (2026-09-15): the building's Sedan, the agents' black SUV, the executive's Cadillac, the cop car nobody signed for, Medical's ambulance */
+                { key: 'parking_bay',    x: 17.49, z: 10.1, face: 120 }, { key: 'car_ambulance', x: 17.49, z: 10.1, face: 300 },
+                { key: 'parking_bay',    x: 12.98, z: 15.47, face: 140 }, { key: 'parked_car', x: 12.98, z: 15.47, face: 320 },
+                { key: 'parking_bay',    x: 6.91, z: 18.98, face: 160 }, { key: 'car_cop', x: 6.91, z: 18.98, face: 340 },
+                { key: 'parking_bay',    x: 3.45, z: 19.9, face: 170 },
+                { key: 'parking_bay',    x: 11.89, z: -14.17, y: 3.9, face: 40 }, { key: 'car_suv', x: 11.89, z: -14.17, y: 3.9, face: 220 },
+                { key: 'parking_bay',    x: 16.02, z: -9.25, y: 3.9, face: 60 }, { key: 'car_cadillac', x: 16.02, z: -9.25, y: 3.9, face: 240 },
+                { key: 'parking_bay',    x: 18.5, z: -3.25, y: 3.9, face: 80 },
+                { key: 'floor_stain',    x: 12.98, z: 15.47 },                               // the one that leaks
+                { key: 'floor_stain',    x: -6, z: -17 },
+                /* ── THE SERVICE ALCOVE: the shelving across its mouth, the boxes, the tape on the floor, the panel on the wall at the dead end (the draught is round the corner) ── */
+                { key: 'metal_shelving', x: -13.4, z: 16.2, face: 90, mount: 0 },
+                { key: 'cardboard_boxes', x: -14.6, z: 18.6, face: 20 },
+                { key: 'warning_tape',   x: -13.0, z: 17.6, face: 90 },
+                { key: 'breaker_panel',  x: -22.55, z: 17.6, face: 90, mount: 1.25 },
+                { key: 'cardboard_boxes', x: -21.2, z: 18.4, face: 200 },
+                { key: 'wet_floor_sign', x: -18.5, z: 17.0, face: 200 },
+                /* ── the loop's clutter ── */
+                { key: 'fire_extinguisher', x: 21.6, z: -1.6, face: 270, mount: 1.0 },
+                { key: 'pipe_run',       x: -8, z: -19.5, face: 60 },
+                { key: 'pipe_run',       x: 19.5, z: 8, face: 150 },
+                { key: 'trash_bin',      x: 20.0, z: 6.2, face: 270 },
+                { key: 'traffic_barrel', x: -19.0, z: -9.6, face: 30 },
+                { key: 'wet_floor_sign', x: -11.6, z: 8.2, face: 200 },
+                { key: 'security_camera', x: -20.9, z: 14.6, face: 60, mount: 2.5 },        // on the alcove's mouth, looking down the loop — never into the alcove
+                { key: 'nameplate',      x: 21.7, z: 6.4, face: 270, mount: 1.55 },
+                /* ── THE DOCK OFFICE (THE CLIMB, 2026-09-19; on the UPPER ring since 2026-09-20): a landing 3 m over the ring at the north-east, a desk and a chair on it, a rail on its west edge, the plaque at the ladder's foot ── */
+                { key: 'stair_landing',  x: 15.6, z: -9.6, y: 6.9 },
+                { key: 'railing_1m',     x: 13.35, z: -10.5, y: 7.15, face: 90 },
+                { key: 'railing_1m',     x: 13.35, z: -8.9, y: 7.15, face: 90 },
+                { key: 'steel_table',    x: 16.6, z: -10.0, y: 7.15, face: 270 },
+                { key: 'folding_chair',  x: 15.7, z: -10.0, y: 7.15, face: 90 },
+                { key: 'papers_b',       x: 16.6, z: -9.8, y: 7.91, face: 10 },
+                { key: 'nameplate',      x: 17.8, z: -9.6, y: 7.15, face: 250, mount: 1.55 },   // THE DOCK OFFICE — the name is on the plate, the office is a desk
+                { key: 'lesson_plaque',  x: 19.3, z: -11.15, y: 3.9, face: 240, mount: 1.35, lesson: 'climb' },   // on the drum's wall at the ring's edge by the ladder's foot (a halls room hangs its wall props FREE on the plan wall: x / z / face / mount)
+                /* ── the bulbs: a bare bulb over each landing and the loop's four quarters (the strips are 12.4 m up; doorhq's light rule reads the props) ── */
+                { key: 'bare_bulb',      x: 0, z: -11, ceil: true }, { key: 'bare_bulb', x: 0, z: 11, ceil: true },
+                { key: 'bare_bulb',      x: 17.8, z: 0, ceil: true }, { key: 'bare_bulb', x: -17.8, z: 0, ceil: true }, { key: 'bare_bulb', x: 0, z: -17.8, ceil: true }, { key: 'bare_bulb', x: 0, z: 17.8, ceil: true },
+                /* ── the decks' clutter ── */
+                { key: 'traffic_barrel', x: -16.5, z: 6.4, y: 3.9, face: 30 },
+                { key: 'cardboard_boxes', x: -12.4, z: 12.3, y: 7.8, face: 40 },
+                { key: 'trash_bin',      x: 6.2, z: 6.6, y: 7.8, face: 200 },
             ],
             agents: [
-                { x: 3.2, z: -8.3, face: 0, pose: 'hqSit', gender: 'male', label: 'THE ATTENDANT', reach: 2.4,
-                  line: '“Lot’s full.” “There are five cars.” “Lot’s full of five cars.”' },
+                { x: -8.9, z: 17.4, face: 200, pose: 'hqSit', gender: 'male', label: 'THE ATTENDANT', reach: 2.4,
+                  line: '“Lot’s full.” “There are five cars.” “Three decks, five cars, lot’s full.”' },
             ],
             npcSpots: [
-                { x: -11.2, z: 6.2, face: 180 },      // looking for the keys
-                { x: 7.2, z: -5.6, face: 0 },         // looking up the ramp
+                { x: -3.2, z: 15.6, face: 20 },       // at the foot of the helix, looking up it (off the top landing's edge blend — a cliff is a hazard to a body)
+                { x: 8.2, z: -16.4, face: 0 },        // looking at the kerb ledge
             ],
             onlineSpots: [
-                { x: 1.5, z: 6.4, face: 180 },
+                { x: -15.8, z: -14.2, face: 45 },
             ],
             lines: [
-                '“Where does the ramp go?” “Up.” “Up to what?” “The arm is down. Ask the arm.”',
+                '“Where does the helix go?” “Up.” “Up to what?” “P1.” “We are on P1.” “Every deck is P1. The arm is down. Ask the arm.”',
                 '“Whose Sedan is that?” “The building’s.” “The building does not drive.” “It does not need to. It has the ramp.”',
-                '“P2?” “There is no P2.” “The sign says P1.” “Exactly.”',
+                '“P2?” “There is no P2.” “The sign says P1.” “The sign on every deck says P1.” “Exactly.”',
+                '“Why is it round?” “It is part of the facility.” “The facility is round.” “So is the garage.”',
             ],
-            spawn: { x: 12.4, z: 7.0, face: 270 },
+            spawn: { x: 18.6, z: 4, face: 270 },
         },
         /* ── THE LOADING DOCK — the step between the garage (G) and the
            laundry (B); a shortcut round the car. ── */
@@ -35436,7 +35570,7 @@ const DOOR_HQ = {
                 { id: 'stair', wall: 's', x: 0, leaf: 'leaf_coffee',
                   label: 'THE STAIR', sub: 'UP TO P1 · THE GARAGE',
                   action: { room: 'garage', at: 'p2' },
-                  desc: 'The stair up. It comes out by the west wall of the garage, where a stair should not be.' },
+                  desc: 'The stair up. It comes out through a wall at the dead end of a service alcove in the garage, where a stair should not be — and where, from the garage side, there is no door at all.' },
                 { id: 'elevator', wall: 'e', z: 0, leaf: null, proc: 'elevator',
                   label: 'ELEVATOR', sub: 'THE CAR · H IS ON NO BUTTON',
                   action: { room: 'car', at: 'panel' },
