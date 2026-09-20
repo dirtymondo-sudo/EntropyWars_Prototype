@@ -6417,3 +6417,27 @@ tick of every signature; not a render). UNSEEN LIVE (RULE #1c): FINISHER_PLAN
 §7's delivery-4 entry lists what to eyeball first — the wreck's heading, the
 tally's size, the charger, the sedan's tint, the tile sheets, the six camera
 paths.
+
+## THE DESKTOP LOAD PASS — THE RIG LANE, THE SFX FAILURE MEMO, THE CDN CACHE (2026-09-20, local delivery)
+The user: "loading textures really slowly after the iPhone session". MEASURED: the mobile pass (2026-09-18)
+changed nothing for a PC in Auto / High — every renderer / post change is behind `EW_PERF_LOW` (a PC that
+shows LOW in Settings → Performance gets one model at a time, 512 px model textures, sprite units and 30 fps:
+click HIGH). What the same day DID add for everyone: THE POPULATION (2–12 extra rigged GLBs per room) and THE
+ARRIVAL WARM (a whole room of props fired at once), both sharing the connection with the walker's own rig —
+the file the HQ load card WAITS for. And the CDN: `curl -I` shows every object under `Assets/` and `music/`
+(and any dashboard-uploaded js / css) is `cf-cache-status: DYNAMIC` with NO `cache-control` — R2 caches per
+OBJECT, only the wrangler-uploaded files carry `max-age=31536000`; every player pulls textures and 16 MB
+GLBs from origin, and the browser only guesses freshness (10 % of the file's age — a GLB uploaded yesterday
+is re-validated within hours). **THE RIG LANE** (three-renderer.js, beside `_scheduleModelLoad`): a URL
+marked by `_rigLaneMark` (the avatar's model + animation libraries — `hq.warmAvatar` and the player's
+`_hqSpawnCharacter` mark them) starts at once; while any marked file is in flight every other model request
+(`_loadUnitGLB`, `_loadMiscModel` — both hand their `url` to the scheduler now) is HELD and released
+TOGETHER when the rig lands (a flush, never the phone's serial queue; a 12 s safety flush covers a stalled
+file). Kill-switch `EW_NO_RIG_LANE`. **THE SFX FAILURE MEMO** (audio.js `_sfxFailed`): a cue that failed
+twice in a row backs off 60 s instead of a fetch per play. **deploy.js** uploads with `--cache-control
+'public, max-age=31536000, immutable'` (js / css are `?v=`-busted; a renamed asset is its own bust). THE
+USER'S ACTION (the biggest win, no code): a Cloudflare Cache Rule on `cdn.entropywars.net` — Eligible for
+cache, Edge TTL 1 year (ignore origin), Browser TTL 1 year — or `wrangler r2 object put --cache-control`
+on the asset folders. mobile-performance.test.js has the lane + the memo (its "every replacement MP3" test
+fails at HEAD because `mobile-audio/` was never committed — pre-existing). UNSEEN LIVE (RULE #1c): the
+card's wait on a cold cache with the lane, the flush's burst of requests after the rig.

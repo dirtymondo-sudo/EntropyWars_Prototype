@@ -10279,8 +10279,42 @@ const ThreeRenderer = (function () {
     // One model decode at a time in low mode: compressed GLBs expand into
     // images, typed arrays and GPU resources at once. Shared by units/props.
     var _mobileModelJobs = [], _mobileModelBusy = false;
-    function _scheduleModelLoad(start) {
-        if (typeof window === 'undefined' || !window.EW_PERF_LOW) { start(function () {}); return; }
+    /* THE RIG LANE (2026-09-20, the desktop load pass): on a desktop every model request used to fire the
+       moment it was asked for, so the walker's own rig (the file the HQ load card WAITS for — H.ready) shared
+       the connection with the room's 40 props, the door gun and 2–12 roaming natives' rigged GLBs (~100 MB
+       in the hall) and landed last. Now a URL marked through _rigLaneMark (the avatar's model + its
+       animation libraries — hq.warmAvatar and the player's spawn mark them) starts at once and, while any
+       marked file is in flight, every OTHER model request is HELD and released together when the rig lands
+       (a parallel flush, never the phone's one-at-a-time queue). A held request is never lost: a 12 s
+       safety flush releases the lane if a rig file stalls. Kill-switch: window.EW_NO_RIG_LANE. */
+    var _rigLaneUrls = {}, _rigLaneInFlight = 0, _rigLaneHeld = [], _rigLaneTimer = null;
+    function _rigLaneMark(urls) {
+        (urls || []).forEach(function (u) { if (u && typeof u === 'string') _rigLaneUrls[u] = 1; });
+    }
+    function _rigLaneFlush() {
+        _rigLaneInFlight = 0;
+        if (_rigLaneTimer) { clearTimeout(_rigLaneTimer); _rigLaneTimer = null; }
+        var held = _rigLaneHeld; _rigLaneHeld = [];
+        for (var i = 0; i < held.length; i++) { try { held[i](function () {}); } catch (e) { console.warn('[ThreeRenderer] a held model load threw', e); } }
+    }
+    function _scheduleModelLoad(start, url) {
+        if (typeof window === 'undefined' || !window.EW_PERF_LOW) {
+            if (typeof window !== 'undefined' && !window.EW_NO_RIG_LANE) {
+                if (url && _rigLaneUrls[url]) {
+                    _rigLaneInFlight++;
+                    if (!_rigLaneTimer) _rigLaneTimer = setTimeout(_rigLaneFlush, 12000);
+                    var settled = false;
+                    start(function () {
+                        if (settled) return;
+                        settled = true;
+                        if (--_rigLaneInFlight <= 0) _rigLaneFlush();
+                    });
+                    return;
+                }
+                if (_rigLaneInFlight > 0) { _rigLaneHeld.push(start); return; }
+            }
+            start(function () {}); return;
+        }
         _mobileModelJobs.push(start);
         _pumpModelLoads();
     }
@@ -10331,7 +10365,7 @@ const ThreeRenderer = (function () {
                 console.warn('[ThreeRenderer] unit model failed to load:', url);
             });
           } catch (ex) { done(); e.loading = false; e.failed = true; e.cbs.length = 0; _flushGlbDoneCbs(e); }
-          });
+          }, url);
         }
         loadAttempt(url, false);
     }
@@ -22106,7 +22140,7 @@ const ThreeRenderer = (function () {
                 new THREE.OBJLoader().load(url, loaded, undefined, failed);
             }
         } catch (ex) { failed(); }
-        });
+        }, url);
     }
 
     // Return a Group that fills (async) with a normalized instance of a misc
@@ -45282,6 +45316,10 @@ const ThreeRenderer = (function () {
            brawler's loose stance — sideways on the deck it reads as a
            skater's) beside its own slots; a def without the library keeps
            its idle. A clone — the shared def is never written. */
+        if (spec.kind === 'player' && def.model) {
+            /* THE RIG LANE (2026-09-20): the walker's own files outrank the room's props and the natives' rigs */
+            try { var _lane = [def.model]; if (_animLibActive(def)) _libUrls(def).forEach(function (u) { if (u) _lane.push(u); }); else { var _cl = def.clips || {}; for (var _ck in _cl) if (_cl[_ck]) _lane.push(_cl[_ck]); } _rigLaneMark(_lane); } catch (e) {}
+        }
         if (spec.kind === 'player' && def.libClips && typeof HQ_RIDE_CLIP !== 'undefined' && !def.libClips.hqRide) {
             var rlc = Object.assign({}, def.libClips), rlt = Object.assign({}, def.libTimeScales);
             rlc.hqRide = { clip: HQ_RIDE_CLIP.clip, lib: HQ_RIDE_CLIP.lib || 0 }; if (HQ_RIDE_CLIP.ts) rlt.hqRide = HQ_RIDE_CLIP.ts;
@@ -50964,6 +51002,7 @@ const ThreeRenderer = (function () {
             var urls = [def.model];
             try { if (_animLibActive(def)) _libUrls(def).forEach(function (u) { if (u) urls.push(u); }); else { var clips = def.clips || {}; for (var k in clips) if (clips[k]) urls.push(clips[k]); } } catch (e) {}
             var n = 0;
+            _rigLaneMark(urls);   // THE RIG LANE: these files go first, everything else waits for them
             urls.forEach(function (u) { var e = _unitGlbCache[u]; if (e && (e.root || e.failed || e.loading)) return; n++; try { _loadUnitGLB(u, function () {}); } catch (ex) {} });
             return n;
         },

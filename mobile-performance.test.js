@@ -139,3 +139,65 @@ test('every replacement MP3 referenced by audio.js is included in the delivery',
     assert.equal(new Set(files).size, 37);
     for (const file of files) assert.ok(fs.statSync(require('node:path').join(__dirname, 'mobile-audio', file)).size > 0, file);
 });
+
+/* THE RIG LANE (2026-09-20, the desktop load pass): on a desktop a marked rig file starts at once, every
+   other model request is HELD while one is in flight and released TOGETHER (a flush, never the phone's
+   one-at-a-time queue) when the last rig file lands; the safety timer flushes a stalled lane. */
+test('desktop rig lane: the avatar first, everything else held and flushed together', () => {
+    const timers = [], started = [];
+    const c = vm.createContext({ window: {}, console, setTimeout: (f, ms) => { timers.push({ f, ms }); return timers.length; }, clearTimeout() {} });
+    vm.runInContext('var _mobileModelJobs = [], _mobileModelBusy = false;' + fn(renderer, '_rigLaneMark') + fn(renderer, '_rigLaneFlush') + fn(renderer, '_scheduleModelLoad') + fn(renderer, '_pumpModelLoads')
+        + ';var _rigLaneUrls = {}, _rigLaneInFlight = 0, _rigLaneHeld = [], _rigLaneTimer = null;', c);
+    // nothing marked: every request starts at once (the old desktop behaviour)
+    c._scheduleModelLoad(() => started.push('free'), 'chair.glb');
+    assert.deepEqual(started, ['free']);
+    c._rigLaneMark(['rig.glb', 'ual1.glb', null]);
+    const dones = [];
+    c._scheduleModelLoad(done => { started.push('rig'); dones.push(done); }, 'rig.glb');
+    c._scheduleModelLoad(done => { started.push('ual1'); dones.push(done); }, 'ual1.glb');
+    c._scheduleModelLoad(() => started.push('prop1'), 'prop1.glb');
+    c._scheduleModelLoad(() => started.push('native'), 'zombie.glb');
+    assert.deepEqual(started, ['free', 'rig', 'ual1']);
+    dones[0](); dones[0]();   // a double done never releases the lane early
+    assert.deepEqual(started, ['free', 'rig', 'ual1']);
+    dones[1]();
+    assert.deepEqual(started, ['free', 'rig', 'ual1', 'prop1', 'native']);
+    assert.equal(vm.runInContext('_rigLaneInFlight', c), 0);
+    // after the flush the lane is open again
+    c._scheduleModelLoad(() => started.push('later'), 'later.glb');
+    assert.equal(started.at(-1), 'later');
+    // a stalled rig file: the safety timer releases the held loads
+    c._scheduleModelLoad(() => started.push('rig2'), 'rig.glb');
+    c._scheduleModelLoad(() => started.push('held2'), 'prop2.glb');
+    assert.equal(started.at(-1), 'rig2');
+    const safety = timers.find(t => t.ms === 12000); assert.ok(safety); safety.f();
+    assert.equal(started.at(-1), 'held2');
+    // the kill-switch: nothing is ever held
+    c.window.EW_NO_RIG_LANE = true;
+    c._scheduleModelLoad(() => started.push('rig3'), 'rig.glb');
+    c._scheduleModelLoad(() => started.push('free3'), 'prop3.glb');
+    assert.deepEqual(started.slice(-2), ['rig3', 'free3']);
+});
+
+test('the rig lane is marked by the arrival warm and the player spawn in the source', () => {
+    const warm = renderer.slice(renderer.indexOf('warmAvatar: function (av)'), renderer.indexOf('interact: _hqInteract'));
+    assert.ok(/_rigLaneMark\(urls\);/.test(warm), 'warmAvatar marks its urls');
+    const spawn = fn(renderer, '_hqSpawnCharacter');
+    assert.ok(/spec\.kind === 'player' && def\.model[\s\S]*_rigLaneMark\(_lane\)/.test(spawn), 'the player spawn marks its rig');
+    assert.ok(/_scheduleModelLoad\(function \(done\) \{[\s\S]*?\}, url\);/.test(fn(renderer, '_loadMiscModel')), 'the misc loader hands its url to the lane');
+});
+
+/* THE FAILURE MEMO (2026-09-20): one free retry, then a minute's back-off — a 404 cue is never a request per play */
+test('a cue that fails twice in a row backs off for a minute, then retries', async () => {
+    const h = audioHarness(); h.ctx.state = 'running';
+    h.c._getSfxBuffer('gone.mp3'); h.requests.shift().resolve({ok: false, status: 404}); await tick();
+    h.c._getSfxBuffer('gone.mp3'); assert.equal(h.requests.length, 1);   // the free retry fetches
+    h.requests.shift().resolve({ok: false, status: 404}); await tick();
+    for (let i = 0; i < 5; i++) h.c._getSfxBuffer('gone.mp3');
+    assert.equal(h.requests.length, 0, 'backed off: no request per play');
+    assert.equal(await h.c._getSfxBuffer('gone.mp3'), null);
+    h.advance(61000);
+    const p = h.c._getSfxBuffer('gone.mp3'); assert.equal(h.requests.length, 1);
+    await finishRequests(h); assert.ok(await p);
+    assert.equal(vm.runInContext('_sfxFailed.has("gone.mp3")', h.c), false);
+});

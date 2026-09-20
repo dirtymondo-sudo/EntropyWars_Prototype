@@ -1431,6 +1431,12 @@
         const _sfxQueue = [];
         let _sfxBytes = 0, _sfxLoads = 0;
         const _SFX_CACHE_BYTES = 8 * 1024 * 1024;
+        /* THE FAILURE MEMO (2026-09-20, the desktop load pass): a cue whose file 404s / times out used to be
+           re-fetched on EVERY play (a footstep = a request), competing with the textures and models the
+           room is streaming. One retry is free (a cold CDN miss); two failures in a row back the cue off
+           for a minute. */
+        const _sfxFailed = new Map();
+        const _SFX_FAIL_BACKOFF_MS = 60000;
 
         let _sfxWarmed = false;
         function _unlockSfxContext() {
@@ -1473,8 +1479,13 @@
                         }
                         _sfxBuffers.set(job.src, { buffer, bytes }); _sfxBytes += bytes;
                     }
+                    _sfxFailed.delete(job.src);
                     job.resolve(buffer);
-                }).catch(() => job.resolve(null)).finally(() => {
+                }).catch(() => {
+                    const f = _sfxFailed.get(job.src) || { n: 0, at: 0 };
+                    _sfxFailed.set(job.src, { n: f.n + 1, at: performance.now() });
+                    job.resolve(null);
+                }).finally(() => {
                     clearTimeout(timer); _sfxPending.delete(job.src); _sfxLoads--; _pumpSfxLoads();
                 });
             }
@@ -1486,6 +1497,8 @@
                 return Promise.resolve(cached.buffer);
             }
             if (_sfxPending.has(src)) return _sfxPending.get(src);
+            const failed = _sfxFailed.get(src);
+            if (failed && failed.n >= 2 && performance.now() - failed.at < _SFX_FAIL_BACKOFF_MS) return Promise.resolve(null);
             if (_sfxPending.size >= 16) return Promise.resolve(null);
             const promise = new Promise(resolve => _sfxQueue.push({ src, resolve }));
             _sfxPending.set(src, promise); _pumpSfxLoads();

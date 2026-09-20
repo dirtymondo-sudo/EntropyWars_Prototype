@@ -35,6 +35,7 @@ const REPO_ROOT = __dirname;
 const INDEX_HTML = path.join(REPO_ROOT, 'index.html');
 const CDN_HOST = 'cdn.entropywars.net';
 
+const CACHE_CONTROL = 'public, max-age=31536000, immutable';
 const CONTENT_TYPES = {
     '.js': 'application/javascript', '.css': 'text/css', '.html': 'text/html',
     '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp',
@@ -156,6 +157,9 @@ function main() {
             const r = spawnSync('npx', [
                 'wrangler', 'r2', 'object', 'put', `${bucket}/${f}`,
                 '--file', path.join(REPO_ROOT, f), '--content-type', ct, '--remote',
+                // 2026-09-20: R2 caches per OBJECT — a file uploaded without this header is edge-DYNAMIC
+                // (every player pulls it from origin) and the browser only guesses its freshness.
+                '--cache-control', CACHE_CONTROL,
             ], { cwd: REPO_ROOT, stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8' });
             if (r.status === 0) { uploaded++; console.log(`✓ uploaded ${f}`); }
             else {
