@@ -197,6 +197,61 @@ spells), a ziggurat tier block, a gothic buttress.
 
 ## 7. Log
 
+- **2026-09-20 — SIX MORE EXECUTIONS in roster order (delivery 5).** The
+  next six rows of `FINISHERS` after the telepath, each a director (battle.js
+  `_FIN_DIRECTORS`) + a signature (three-vfx-effects.js "THE FINISHER PASS
+  2", the DELIVERY 5 block) + a stage script (`_FIN_STAGE[sig]`): marksman
+  **Danger Close** (`dangerClose` — the board goes to GRID (a wireframe
+  lattice over the victim's 7×7 with the grid reference stamped over it), a
+  red laser designator from the marksman's eye paints the tile, a reticle
+  closes on it, ONE shell drops straight out of the sky on a smoke trail and
+  the tile goes up in a fireball, dust column, debris; god shot → the sniper
+  POV down the line (`cineSniperPov`, released before the fall) → sky watch →
+  the freeze → a crane over the crater; the terminal insert `> fire mission`),
+  priest **Excommunicated** (`excommunicated` — a cathedral RISES round the
+  victim on the 3×3: walls with lancet windows, two towers whose bells swing
+  and toll (a ring per toll), a rose window, a spire with a cross; the doors
+  slam shut, then the whole cathedral lifts into the sky in a column of light,
+  shrinking to a point with the victim inside; face cam → a slow crane → a god
+  shot → the freeze → a sky watch), wizard **Abracadabra** (`abracadabra` — a
+  top hat the size of a house drops over the victim, a wand the length of the
+  line taps the crown three times (stars), the hat lifts on nothing (smoke and
+  doves out of the brim), the victim reappears sixteen tiles up and comes down
+  the hard way, TA-DA!; god shot → reverse OTS → a face cam of the empty tile
+  → sky watch → the freeze), fortune teller **The Tower** (`theTower` — a
+  tarot card the size of a building lowers over the victim back up, flips to
+  XVI · THE TOWER (canvas faces), burns away, a crenellated stone tower rises
+  in its place, lightning out of the sky strikes the crown (`_LT().bolt`, six
+  bolts), the crown blows off, two figures fall, the tower splits and topples
+  in halves; sky watch → a dolly-zoom face cam → a crane → the freeze → a slow
+  side dolly), giant **Fee Fi Fo Fum** (`feeFiFoFum` — a hand the size of a
+  house comes down, the fingers close and lift the body to the sky where a
+  lidded EYE examines it (it blinks), two millstones roll in from off the map,
+  the hand lets go over the hopper, the top stone grinds round in a spray of
+  flour and a loaf rolls out; sky watch → face cam → crane → a low side dolly
+  → the freeze → a crane; FEE · FI · FO · FUM stamps), fairy **The
+  Changeling** (`changeling` — a ring of toadstools (the misc cache's two
+  mushroom GLBs, else caps), twelve dancing lights, a sun and a moon chasing
+  each other over the tile faster and faster, a clock over the ring running
+  its hands forward, the silhouette greying, stooping and shrinking on a
+  stick, the ring closing with a flash on a pile of dust — 100 YEARS; god shot
+  → a crane under the hue grade → a dolly-zoom face cam → the freeze → a low
+  reverse). Two shared helpers in the block: `_finBodyMesh` (the dark
+  stand-in capsule), `_finTextSprite` (a camera-facing text card — a Sprite,
+  the section's rule) and `_finFireball` (embers + smoke + a core).
+  Twenty-one built of 99. Smoke-tested in a stub-THREE harness (every tick of
+  every signature runs — no rendered frame, RULE #1c); finishers.test.js (15)
+  + `npm run test:quick` green. Not playtested: the grid's read against the
+  real board sheet, the shell's fall against a low camera, the cathedral's
+  scale on a 3×3 (the walls are 3.0 tiles — `W` / `D` / `H` in
+  `_sigExcommunicated3D` are the edits), the hat's brim against neighbouring
+  units, the card faces' legibility (`_finTextTex` at 384 × 640), the bolts'
+  colour under the whiteout, the hand's read from below, the mushroom GLBs'
+  scale (`ts * 0.7`), the six camera paths — `cineSniperPov` inside a
+  finisher is a first (it is released by hand before the sky watch). NEXT:
+  the rows in roster order — martian, nordic, grey, bigfoot, shadow entity,
+  reptilian.
+
 - **2026-09-19 — SIX MORE EXECUTIONS in roster order (delivery 4).** The
   next six rows of `FINISHERS` after the Haymaker / Boot Hill / Shrink Ray,
   each a director (battle.js `_FIN_DIRECTORS`) + a signature

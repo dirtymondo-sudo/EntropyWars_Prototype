@@ -6470,3 +6470,29 @@ lanes. UNSEEN LIVE (RULE #1c): the user's own browser — if a room is still bla
 console names the URL and the Network tab shows the header (or the 404) the cache froze; a hard reload
 (Ctrl+Shift+R) or clearing the site's cache is the reset, and a Cloudflare cache PURGE after an upload
 that replaces a file that ever 404'd.
+
+## SIX MORE EXECUTIONS — Danger Close · Excommunicated · Abracadabra · The Tower · Fee Fi Fo Fum · The Changeling (FINISHER_PLAN delivery 5) — 2026-09-20, local delivery
+The next six `FINISHERS` rows in roster order are BUILT (twenty-one of 99):
+marksman `dangerClose` (`_sigDangerClose3D` — the grid lattice + the grid
+reference, the laser designator, the reticle, ONE shell straight down, the
+fireball; the director is the first finisher to use `cineSniperPov`, released
+by hand before the sky watch), priest `excommunicated` (`_sigExcommunicated3D`
+— the cathedral rises on the 3×3, the bells toll, the doors slam, the whole
+thing lifts into the sky with the victim inside), wizard `abracadabra`
+(`_sigAbracadabra3D` — the house-sized top hat, the wand's three taps, the
+lift on nothing, the reappearance sixteen tiles up), fortune teller
+`theTower` (`_sigTheTower3D` — the building-sized card flips to XVI, burns,
+a stone tower rises, six `_LT().bolt` strikes, the crown, the two figures,
+the split), giant `feeFiFoFum` (`_sigFeeFiFoFum3D` — the hand, the grab, the
+blinking eye, the two millstones rolling in, the flour, the loaf), fairy
+`changeling` (`_sigChangeling3D` — the toadstool ring off the misc
+`mushroom` / `mushroom2` clones, the dancing lights, the sun-and-moon
+time-lapse, the clock, the ageing silhouette, 100 YEARS). Three shared
+helpers joined the section: `_finBodyMesh` (the dark stand-in capsule),
+`_finTextSprite` (a camera-facing text card — a Sprite, the section's rule),
+`_finFireball`. Each = a director in battle.js `_FIN_DIRECTORS`, the signature
+in "THE FINISHER PASS 2" (the DELIVERY 5 block; `_sigRunOwned` + `_fxDelay`,
+called inside the relayed cinematic — RULE #2), a `_FIN_STAGE[sig]` script for
+the forge, a row in finishers.test.js's BUILT table. Smoke-tested in a stub
+THREE harness (every tick; not a render). UNSEEN LIVE (RULE #1c):
+FINISHER_PLAN §7's delivery-5 entry lists what to eyeball first.
