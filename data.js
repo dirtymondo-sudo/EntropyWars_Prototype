@@ -10957,7 +10957,7 @@ const ACH_RECORD_DEFS = [
 
 // Hard ceilings so a hostile blob can't balloon the stored row: key-count
 // caps per section plus a universal value clamp.
-const ACH_MERGE_CAPS = { counters: 256, champs: 256, unlocked: 12000, value: 1e9, finds: 4000, links: 512, cleared: 256, clearedIds: 32, rooms: 512 };
+const ACH_MERGE_CAPS = { counters: 256, champs: 256, unlocked: 12000, value: 1e9, finds: 4000, links: 512, cleared: 256, clearedIds: 32, rooms: 512, defeated: 256 };
 
 function mergeProgressBlobs(a, b) {
   const METRIC_RE = /^[A-Za-z0-9_]{1,48}$/;                 // counter metric names
@@ -11006,12 +11006,25 @@ function mergeProgressBlobs(a, b) {
      and `punch` stay local (a visit's rope; a day's clock). */
   const ROOM_RE = /^[A-Za-z0-9_]{1,80}$/;
   const SPOT_RE = /^[A-Za-z0-9_-]{1,48}$/;
+  const RACE_KEY_RE = /^[a-z0-9][a-z0-9 _'-]{0,40}$/;
   const RACE_TXT = v => (typeof v === 'string' && v.length <= 48) ? v : null;
-  const out = { v: 2, counters: {}, champs: {}, records: {}, unlocked: {}, hq: { finds: { taken: {} }, links: { seen: {} }, rooms: { seen: {} }, cleared: {}, encounters: { count: 0, wins: 0, losses: 0, last: null }, skate: { best: null, total: 0, lines: 0, bails: 0 } } };
-  let nCounters = 0, nChamps = 0, nUnlocked = 0, nFinds = 0, nLinks = 0, nCleared = 0, nRooms = 0;
+  const out = { v: 2, counters: {}, champs: {}, records: {}, unlocked: {}, hq: { finds: { taken: {} }, links: { seen: {} }, rooms: { seen: {} }, cleared: {}, encounters: { count: 0, wins: 0, losses: 0, last: null }, skate: { best: null, total: 0, lines: 0, bails: 0 }, defeated: {} } };
+  let nCounters = 0, nChamps = 0, nUnlocked = 0, nFinds = 0, nLinks = 0, nCleared = 0, nRooms = 0, nDefeated = 0;
   for (const src of [a, b]) {
     if (!src || typeof src !== 'object') continue;
     const hqSrc = (src.hq && typeof src.hq === 'object') ? src.hq : {};
+    /* THE DEFEATED LEDGER (2026-09-20, the user: "a unit shouldn't become available for purchase until the player has
+       defeated one in battle"): hq.defeated = { '<race>': 'YYYY-MM-DD' } — the EARLIER day wins, like a link; the server's
+       purchase endpoint reads the merged blob */
+    const defeated = (hqSrc.defeated && typeof hqSrc.defeated === 'object') ? hqSrc.defeated : {};
+    for (const key of Object.keys(defeated)) {
+      if (!RACE_KEY_RE.test(key) || badKey(key)) continue;
+      const v = defeated[key];
+      if (typeof v !== 'string' || !DATE_RE.test(v)) continue;
+      const dst = out.hq.defeated;
+      if (dst[key] === undefined) { if (nDefeated >= ACH_MERGE_CAPS.defeated) continue; nDefeated++; dst[key] = v; continue; }
+      if (v < dst[key]) dst[key] = v;
+    }
     /* hq.cleared */
     const cleared = (hqSrc.cleared && typeof hqSrc.cleared === 'object') ? hqSrc.cleared : {};
     for (const key of Object.keys(cleared)) {
@@ -38716,10 +38729,65 @@ const HQ_AREA_SPECS = {
 };
 
 ((DOOR_HQ.siteRooms || {}).built || []).forEach(id => { const r = hqSiteRoom(id); if (r) DOOR_HQ.rooms[hqSiteRoomId(id)] = r; });
+/* ── THE HEALING ZONES (2026-09-20, the user: "add a healing zone at each major hub — it restores health and mana and
+   revives fallen allies") ─────────────────────────────────────────────────────
+   ONE counter `healzone` (proc `heal_zone`, three-renderer.js _hqBuildHealZone — a green ring + a floating cross the
+   marker's ticker turns) in the ANCHOR room of every DOOR_HQ.hubs row: beside the room's BATTLE marker where it has one
+   (the plaza is open ground), else 2.2 m in front of the spawn on the door's own pad; the D.O.O.R. HQ hub's stands in
+   THE FOURIER FOYER (the hall is a rotunda — its counters are polar). E → REST (map.js: the cot's panel + hqPartyRestore
+   — every member full, the down back up; free). Never hand-edit a room's row for it; the table is the edit. */
+const HQ_HEAL_ZONE = {
+    id: 'healzone', proc: 'heal_zone', verb: 'REST', radius: 2.2, plateY: 2.35,
+    label: 'HEALING ZONE', sub: 'REST THE PARTY · HP · MP · THE FALLEN',
+    beside: 2.8,   // metres off a marker
+    ahead: 2.2,    // metres in front of a spawn
+    rooms: {   // a hub whose anchor's rule lands badly: the room + the spot by hand (measured on the compiled field — reachable, dry, flat)
+        hq:   { room: 'foyer', x: -3.3, z: 0, face: 90 },                              // the hall is polar: the foyer, mirroring the inspection desk
+        city: { room: 'site_prebuilt_downtown_streets', x: -4.8, z: -2.5, face: 90 },   // west of the plaza's marker — east of it is the fountain's water
+        deep: { room: 'site_prebuilt_atlantis_abyss', x: 0, z: -40.5, face: 0 },        // at the foot of the station's slope (2.2 m ahead of the spawn was a 0.75 grade)
+    },
+    desc: 'A ring of soft green light on the floor. Standing in it, the party is treated: health and mana back to full, the fallen back on their feet. Nobody charges for it; nobody has ever explained it.',
+};
+function hqHealZoneRooms() {
+    const out = [];
+    Object.keys(DOOR_HQ.hubs || {}).forEach(hid => {
+        const hub = DOOR_HQ.hubs[hid];
+        const hand = HQ_HEAL_ZONE.rooms[hid];
+        const roomId = hand ? hand.room : hub.room;
+        const room = (DOOR_HQ.rooms || {})[roomId];
+        if (!room || room.kind !== 'box') return;
+        let spot = null;
+        if (hand) spot = { x: hand.x, z: hand.z, face: hand.face || 0 };
+        else {
+            const mk = (room.counters || []).find(c => c && c.proc === 'battle_marker');
+            if (mk) spot = { x: (mk.x || 0) + HQ_HEAL_ZONE.beside, z: mk.z || 0, face: 270, y: mk.y };
+            else if (room.spawn) {
+                const f = ((room.spawn.face || 0) * Math.PI) / 180;
+                spot = { x: room.spawn.x + Math.sin(f) * HQ_HEAL_ZONE.ahead, z: room.spawn.z - Math.cos(f) * HQ_HEAL_ZONE.ahead, face: ((room.spawn.face || 0) + 180) % 360 };
+            }
+        }
+        if (!spot) return;
+        out.push({ hub: hid, room: roomId, spot });
+    });
+    return out;
+}
+function hqBuildHealZones() {
+    hqHealZoneRooms().forEach(z => {
+        const room = DOOR_HQ.rooms[z.room];
+        if (!room.counters) room.counters = [];
+        if (room.counters.some(c => c && c.id === HQ_HEAL_ZONE.id)) return;
+        const row = { id: HQ_HEAL_ZONE.id, x: Math.round(z.spot.x * 100) / 100, z: Math.round(z.spot.z * 100) / 100, face: z.spot.face, plateY: HQ_HEAL_ZONE.plateY, radius: HQ_HEAL_ZONE.radius,
+                      verb: HQ_HEAL_ZONE.verb, proc: HQ_HEAL_ZONE.proc, label: HQ_HEAL_ZONE.label, sub: HQ_HEAL_ZONE.sub, action: {}, desc: HQ_HEAL_ZONE.desc, hub: z.hub };
+        if (z.spot.y != null) row.y = z.spot.y;
+        room.counters.push(row);
+        if (room._terrainInfo) delete room._terrainInfo;   // a compiled field re-reads its counters (the plan forces them open)
+    });
+}
 hqBuildAreas();          // THE AREAS (2026-09-18): every board is an area — the twenty generated parts + the marker on every entry part, before the entries
 hqApplySiteEntries();   // THE ENTRY (2026-09-17): the bypassed board rooms' egress doors, on their parts
 hqRefreshComplexLinks();
 hqReplateDoors();       // THE PLATE READS THE ROOM THROUGH THE DOOR (2026-09-18) — after the entries and the links
+hqBuildHealZones();     // THE HEALING ZONES (2026-09-20): one per hub anchor, beside the marker — after the areas (the markers) and the entries
 _mfRegisterAreaDeltas(); // THE AREA BOARDS (2026-09-19): a Δ per explorable part, filed once the rooms exist (DELTA FORGE, the block after the site boards)
 /* ── THE CAVE GRID (HQ plan 9.3 stage 2 — 2026-09-15 rev 11) ──────────────
    A box room may carry `cave`: a hand-authored ASCII GRID that IS the room's
@@ -41923,6 +41991,31 @@ function hqEncounterLaunch(roomId, ch, cfg, opts) {
                      name: ch.label || null },   // D2: the room's own name for the native — the enemy lead wears it on the nameplate
     };
 }
+/* THE MARKER (2026-09-20, the user: "whenever I do a battle it shows me the full roster — it should just send me into
+   battle with my party; I'm talking about the floating crystal icons in the areas"): the BATTLE marker launches the
+   party-seated fight the encounter launches — no terminal, no builder — on the mode the officer picked at the marker
+   (TDM for the wipeout, ARENA for the Cube and the Keys — the three win conditions the checklist wants), the site's own
+   natives as the enemy (the first native leads), the Δ of the room it stands in. Pure. */
+function hqMarkerLaunch(roomId, cfg, opts) {
+    opts = opts || {};
+    const site = hqRoomSite(roomId);
+    if (!site) return null;
+    const c = hqEncounterConfig(cfg, { codeRed: !!opts.codeRed });
+    const gm = (opts.gm === 'arena' || opts.gm === 'tdm') ? opts.gm : c.gm;
+    const n = c.teamSize;
+    const pool = (typeof hqMissionPool === 'function') ? hqMissionPool(site, n) : [];
+    const roster = pool.slice(0, Math.max(n, 1));
+    const lead = roster[0] || null;
+    const launchId = (typeof hqAreaDeltaId === 'function') ? hqAreaDeltaId(roomId) : null;
+    let label = site;
+    try { const M = (typeof EW_MAP_META !== 'undefined') ? EW_MAP_META.find(m => m.id === site) : null; if (M && M.label) label = M.label; } catch (e) {}
+    return {
+        site, delta: true, gm, teamSize: n, rounds: c.rounds, roster, codeRed: !!opts.codeRed,
+        launchId, area: launchId ? roomId : null,
+        doorId: 'battle', counterId: 'battle', marker: true,
+        encounter: { race: lead, gender: 'male', id: null, room: roomId, x: 0, z: 0, gesture: 'marker', label: label, name: null },
+    };
+}
 /* D2 · THE NATIVE'S IDENTITY (PHASE9_QUALITY_PLAN §6, 2026-09-16): the character you
    hit IS the enemy's lead — state.js optimizeRandomizeParty pins P2's seat 1 to this
    read (race + gender + the room's name for it) off `_hqPreselect.encounter`. Pure:
@@ -42023,7 +42116,64 @@ function hqDoorSyncFold(hq, door) {
     hq.rooms = { seen: hqRoomsSeenUnion(hq.rooms && hq.rooms.seen, L.rooms && L.rooms.seen) };
     const sk = hqSkateUnion(hq.skate, L.skate);
     hq.skate = { best: sk.best, total: sk.total, lines: sk.lines, bails: sk.bails };
+    hq.defeated = hqDefeatedUnion(hq.defeated, L.defeated);   // THE DEFEATED LEDGER (2026-09-20)
     return hq;
+}
+/* ── THE DEFEATED LEDGER (2026-09-20) ──────────────────────────────────────
+   The user: "a unit shouldn't become available for purchase until the player
+   has defeated one in battle." `{ '<race>': 'YYYY-MM-DD' }` (the first day one
+   fell to you), in TWO places like the cleared rooms: `door.hq.defeated` (local)
+   and `progress.hq.defeated` (the SYNCED blob — mergeProgressBlobs carries it,
+   server.js /api/economy/purchase reads it). battle.js's commit marks every
+   enemy body that DIED in a standard match (VS-CPU or online, win or lose)
+   through hqDefeatedMark; the shop (ui.js) and hqUnitBuyable read the union.
+   A starter is always buyable (it is owned anyway); the dev switch opens all. */
+const HQ_DEFEATED_RE = /^[a-z0-9][a-z0-9 _'-]{0,40}$/;
+function hqDefeatedUnion(a, b) {
+    const out = {};
+    [a, b].forEach(src => {
+        if (!src || typeof src !== 'object') return;
+        Object.keys(src).forEach(k => {
+            if (!HQ_DEFEATED_RE.test(k)) return;
+            const v = src[k];
+            if (typeof v !== 'string' || !HQ_SYNC_DATE_RE.test(v)) return;
+            if (out[k] === undefined || v < out[k]) out[k] = v;
+        });
+    });
+    return out;
+}
+function hqDefeatedRecord(profile) {
+    let local = null, synced = null;
+    try { const r = profile && profile.door && profile.door.hq && profile.door.hq.defeated; if (r && typeof r === 'object') local = r; } catch (e) {}
+    try { const h = profile && profile.progress && profile.progress.hq && profile.progress.hq.defeated; if (h && typeof h === 'object') synced = h; } catch (e) {}
+    return hqDefeatedUnion(local, synced);
+}
+function hqUnitDefeated(profile, race) { return !!hqDefeatedRecord(profile)[String(race || '')]; }
+/* the ONE write: the races that fell to the officer today → both records; returns the NEW ones (never filed before) */
+function hqDefeatedMark(profile, races, date) {
+    if (!profile || !Array.isArray(races) || !races.length) return { ok: false, added: [] };
+    const day = (typeof date === 'string' && HQ_SYNC_DATE_RE.test(date)) ? date : ((typeof hqToday === 'function') ? hqToday() : new Date().toISOString().slice(0, 10));
+    const H = hqPartyEnsureRoot(profile);
+    if (!H.defeated || typeof H.defeated !== 'object') H.defeated = {};
+    const have = hqDefeatedRecord(profile);
+    const added = [];
+    races.forEach(r => {
+        r = String(r || '');
+        if (!HQ_DEFEATED_RE.test(r)) return;
+        if (!have[r]) { added.push(r); have[r] = day; }
+        H.defeated[r] = have[r];
+    });
+    const S = hqSyncedHq(profile, true);
+    if (S) { if (!S.defeated || typeof S.defeated !== 'object') S.defeated = {}; Object.keys(have).forEach(k => { S.defeated[k] = have[k]; }); }
+    return { ok: true, added, date: day };
+}
+/* the shop's gate: a starter or an owned vessel is always buyable-or-owned; anything else must have fallen to you once */
+function hqUnitBuyable(profile, race) {
+    if (typeof window !== 'undefined' && window._DEV_UNLOCK_ALL) return true;
+    if (typeof ACCT_STARTER_UNITS !== 'undefined' && ACCT_STARTER_UNITS.indexOf(race) >= 0) return true;
+    const acct = profile && profile.account;
+    if (acct && Array.isArray(acct.unlockedUnits) && acct.unlockedUnits.indexOf(race) >= 0) return true;
+    return hqUnitDefeated(profile, race);
 }
 /* the union reads */
 function hqClearedRecord(profile) {
@@ -42430,20 +42580,35 @@ function hqPartyMemberFromRoster(m) {
 function hqPartyEnsure(profile, opts) {
     if (!profile) return null;
     const have = hqPartyRecord(profile);
-    if (have && have.members.length) return have;
+    if (have && have.members.length) { hqPartyPrune(profile); const kept = hqPartyRecord(profile); if (kept && kept.members.length) return kept; }
     opts = opts || {};
     const H = hqPartyEnsureRoot(profile);
     const rec = { v: 1, at: Date.now(), seq: 1, members: [] };
     const push = spec => { if (!spec) return; if (rec.members.length >= HQ_PARTY_RULES.roster) return; if (rec.members.some(x => x.meta.race === spec.meta.race)) return; spec.id = 'p' + (rec.seq++); rec.members.push(spec); };
     push(hqPartyOfficer(profile));
+    /* THE OWNED SEED (2026-09-20, the user: "my party starts off as random units like a martian and a knight instead of
+       the units unlocked from the beginning"): the last roster was a VS-CPU test roster (the whole roster, scope 'all') and
+       leaked into the party. A roster member joins the seed ONLY when the account OWNS its race; the rest of the first
+       shift is filled from what the account owns, the starters first. */
+    const unlocked = hqPartyUnlocked(profile);
     const last = opts.last && Array.isArray(opts.last.members) ? opts.last.members : [];
-    last.forEach(m => push(hqPartyMemberFromRoster(m)));
-    if (rec.members.length < 2) {
-        const unlocked = hqPartyUnlocked(profile);
-        ['knight', 'wizard', 'fairy', 'catgirl', 'grey', 'marksman', 'werewolf'].concat(unlocked).forEach(r => { if (rec.members.length < HQ_PARTY_RULES.shift && unlocked.indexOf(r) >= 0) push(hqPartySpec(r, hqPartyGenders(r)[0], null)); });   // THE ROSTER LOCK (2026-09-20): the named four when owned, else whatever the account owns — two starters seed the officer + the recruit
+    last.forEach(m => { const spec = hqPartyMemberFromRoster(m); if (spec && unlocked.indexOf(spec.meta.race) >= 0) push(spec); });
+    if (rec.members.length < 2) {   // no roster on file (or none of it owned): the starters + the owned fill the first shift
+        const starters = (typeof ACCT_STARTER_UNITS !== 'undefined') ? ACCT_STARTER_UNITS : [];
+        starters.concat(unlocked).forEach(r => { if (rec.members.length < HQ_PARTY_RULES.shift && unlocked.indexOf(r) >= 0) push(hqPartySpec(r, hqPartyGenders(r)[0], null)); });
     }
     H.party = rec;
     return hqPartyRecord(profile);
+}
+/* THE PRUNE (2026-09-20): a party filed before the owned-seed rule may still carry vessels the account never owned — they
+   are relieved (never the officer) and the record says who left; the caller saves. Pure over the profile handed in. */
+function hqPartyPrune(profile) {
+    const r = hqPartyRecord(profile); if (!r) return { ok: false, dropped: [] };
+    const unlocked = hqPartyUnlocked(profile);
+    const dropped = [];
+    r.members = r.members.filter(m => { if (m.you || unlocked.indexOf(m.meta.race) >= 0) return true; dropped.push({ id: m.id, race: m.meta.race, name: m.name }); return false; });
+    if (dropped.length) r.at = Date.now();
+    return { ok: true, dropped };
 }
 function hqPartySpec(race, gender, cls) {
     const genders = hqPartyGenders(race); if (genders.indexOf(gender) < 0) gender = genders[0];
@@ -45362,14 +45527,14 @@ if (typeof window !== 'undefined') {
     /* THE ENCOUNTER (HQ plan 9.4 stage 1, 2026-09-15 rev 16) */
     window.HQ_POPULATION_RULES = HQ_POPULATION_RULES; window.hqSiteResidents = hqSiteResidents; window.hqRosterRaces = hqRosterRaces; window.hqRoomFloorM2 = hqRoomFloorM2; window.hqRoomPopulation = hqRoomPopulation; window.hqSpotRoams = hqSpotRoams;   // THE POPULATION (2026-09-19)
     window.HQ_ENCOUNTER_RULES = HQ_ENCOUNTER_RULES; window.hqEncounterRoomOk = hqEncounterRoomOk; window.hqEncounterCharOk = hqEncounterCharOk; window.hqEncounterGesture = hqEncounterGesture;
-    window.hqEncounterConfig = hqEncounterConfig; window.hqEncounterLaunch = hqEncounterLaunch; window.hqEncounterRecord = hqEncounterRecord; window.hqEncounterLog = hqEncounterLog;
+    window.hqEncounterConfig = hqEncounterConfig; window.hqEncounterLaunch = hqEncounterLaunch; window.hqMarkerLaunch = hqMarkerLaunch; window.hqDefeatedRecord = hqDefeatedRecord; window.hqUnitDefeated = hqUnitDefeated; window.hqDefeatedMark = hqDefeatedMark; window.hqUnitBuyable = hqUnitBuyable; window.HQ_HEAL_ZONE = HQ_HEAL_ZONE; window.hqHealZoneRooms = hqHealZoneRooms; window.hqEncounterRecord = hqEncounterRecord; window.hqEncounterLog = hqEncounterLog;
     window.hqSyncedHq = hqSyncedHq; window.hqClearedUnion = hqClearedUnion; window.hqEncountersUnion = hqEncountersUnion; window.hqSkateUnion = hqSkateUnion; window.hqDoorSyncFold = hqDoorSyncFold; window.hqClearedRecord = hqClearedRecord;   // THE SYNCED BUILDING (D5)
     window.hqEncounterCleared = hqEncounterCleared; window.hqRoomGuarded = hqRoomGuarded; window.hqEncounterEye = hqEncounterEye;
     window.hqEncounterLead = hqEncounterLead; window.hqEncounterReturnSpot = hqEncounterReturnSpot;
     window.hqFieldTransform = hqFieldTransform; window.hqEncounterZones = hqEncounterZones;
     window.hqEncounterField = hqEncounterField; window.hqEncounterSeats = hqEncounterSeats; window.hqEncounterEyeFromSeats = hqEncounterEyeFromSeats; window.hqEncounterWakeRoom = hqEncounterWakeRoom;
     /* THE PARTY (2026-09-19): two shifts, the health that carries, field medicine */
-    window.HQ_PARTY_RULES = HQ_PARTY_RULES; window.hqPartyRecord = hqPartyRecord; window.hqPartyEnsure = hqPartyEnsure; window.hqPartyOfficer = hqPartyOfficer; window.hqPartyUnlocked = hqPartyUnlocked; window.hqPartyMember = hqPartyMember; window.hqPartyShifts = hqPartyShifts;
+    window.HQ_PARTY_RULES = HQ_PARTY_RULES; window.hqPartyRecord = hqPartyRecord; window.hqPartyEnsure = hqPartyEnsure; window.hqPartyPrune = hqPartyPrune; window.hqPartyOfficer = hqPartyOfficer; window.hqPartyUnlocked = hqPartyUnlocked; window.hqPartyMember = hqPartyMember; window.hqPartyShifts = hqPartyShifts;
     window.hqPartyVitals = hqPartyVitals; window.hqPartyFit = hqPartyFit; window.hqPartyEnlist = hqPartyEnlist; window.hqPartyRelieve = hqPartyRelieve; window.hqPartySwap = hqPartySwap; window.hqPartyOnCall = hqPartyOnCall; window.hqPartyRestore = hqPartyRestore;
     window.hqPartyForLaunch = hqPartyForLaunch; window.hqPartyAfterMatch = hqPartyAfterMatch;
     window.HQ_DISPENSARY = HQ_DISPENSARY; window.hqBagRecord = hqBagRecord; window.hqBagCount = hqBagCount; window.hqBagAdd = hqBagAdd; window.hqBagTake = hqBagTake; window.hqBagList = hqBagList; window.hqBagTotal = hqBagTotal; window.hqShopStock = hqShopStock; window.hqShopQuote = hqShopQuote; window.hqShopBuyApply = hqShopBuyApply; window.hqShopSell = hqShopSell; window.hqPartyStock = hqPartyStock; window.hqPartyBagItems = hqPartyBagItems; window.hqPartyAutoHeal = hqPartyAutoHeal; window.hqPartyFieldSpells = hqPartyFieldSpells; window.hqPartyFieldTargets = hqPartyFieldTargets; window.hqPartyHealAmount = hqPartyHealAmount; window.hqPartyCast = hqPartyCast; window.hqPartyUseItem = hqPartyUseItem; window.hqPartyFieldItems = hqPartyFieldItems; window.hqPartySpec = hqPartySpec; window.hqPartyGenders = hqPartyGenders; window.hqPartyDefaultJob = hqPartyDefaultJob;

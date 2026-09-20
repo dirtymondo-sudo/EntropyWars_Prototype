@@ -6784,3 +6784,39 @@ conversion. Smoke-tested in a stub-THREE harness (every tick; not a
 render). UNSEEN LIVE (RULE #1c): FINISHER_PLAN §7's delivery-7 entry lists
 what to eyeball first — the walls' facing, the sun's radius against the
 dome, the parchment's legibility, the eyes' lag, the six camera paths.
+
+## THE OWNED SEED + THE MARKER'S FIGHT + THE DEFEATED LEDGER + THE HEALING ZONES (2026-09-20, local delivery)
+The user's four. **THE OWNED SEED**: data.js `hqPartyEnsure` seeds the party from what the account OWNS — a last-roster
+member joins only when `hqPartyUnlocked` names its race (a VS-CPU test roster is scope 'all': its martian / knight were
+leaking in), the starters + the owned fill the first shift when the roster gave nothing; **`hqPartyPrune(profile)`**
+relieves a stranger already on the books (never the officer) and every `hqPartyEnsure` on an existing record runs it.
+**THE MARKER'S FIGHT**: E on the floating crystal (`proc: 'battle_marker'`) opens ITS OWN panel (map.js `_hqMarkerHtml`:
+the party's vitals, the site's natives, the checklist, ⚔ FIGHT ▸ WIPEOUT · TDM / ⬡ FIGHT ▸ THE CUBE · THE KEYS · ARENA —
+the two modes the three win conditions need) → `window._hqMarkerFight(gm)` → data.js **`hqMarkerLaunch(roomId, cfg,
+{ gm, codeRed })`** (the encounter's launch shape, the first native as the lead, `doorId: 'battle'` so the return lands at
+the marker) → `_hqEncounterStart(L, null, null)`: the officer's PARTY seated, no terminal, no builder, no roster wall.
+`_hqInteractTarget` routes the marker BEFORE the console branch (doorhq's pins on that branch hold); the CROSSING console
+and DISPATCH still open the terminal. **THE DEFEATED LEDGER** (the user: "a unit shouldn't become available for purchase
+until the player has defeated one in battle"): `{ '<race>': 'YYYY-MM-DD' }` in TWO places like the cleared rooms —
+`door.hq.defeated` + the SYNCED `progress.hq.defeated` (`mergeProgressBlobs`, the EARLIER day wins, `ACH_MERGE_CAPS.
+defeated` 256; `hqDoorSyncFold` folds; **ship data.js to Render — the server merges off it**); `hqDefeatedMark(profile,
+races, date)` is the ONE write — battle.js's commit marks every ENEMY body that DIED in a standard match (VS-CPU, online,
+the areas; win or lose; `unitHomePlayer` ≠ the viewer) and schedules the push; `hqDefeatedRecord` / `hqUnitDefeated` /
+**`hqUnitBuyable(profile, race)`** (a starter or an owned vessel always; else defeated; `_DEV_UNLOCK_ALL` opens all) are
+the reads. The shop (ui.js `_shopLockReason` → 'model' | 'defeat' | null; `_shopBuyable` = no reason; the card / hero /
+action bar say DEFEAT ONE FIRST), the local mirror (profile.js `localPurchaseUnit`) and server.js `/api/economy/purchase`
+(a non-starter needs `player_progress.data.hq.defeated[raceKey]` — 403 "defeat one in battle first") all refuse an unmet
+vessel. **THE HEALING ZONES**: data.js `HQ_HEAL_ZONE` + `hqHealZoneRooms()` / `hqBuildHealZones()` (run at load after the
+areas + the entries) put ONE counter `healzone` (`proc: 'heal_zone'`, verb REST, `action: {}`, `hub`) in every
+`DOOR_HQ.hubs` anchor room — 2.8 m BESIDE the room's BATTLE marker where it has one, else 2.2 m in front of the spawn on
+its pad; `HQ_HEAL_ZONE.rooms` overrides three (the HQ hub's in THE FOURIER FOYER at x −3.3 — the hall is polar; the city's
+west of the plaza's marker — east was the fountain; the deep's at the slope's foot) — all eleven measured on the compiled
+field: reachable from the spawn, dry, flat (a scratch probe; the compile is 1–26 s a room). The
+panel is THE COT's (map.js `if (c.id === 'cot' || c.id === 'healzone')` → `[data-party-rest]` → `hqPartyRestore`: HP / MP
+full, the down back up, free); three-renderer.js `_hqBuildHealZone` = a green floor ring + a column + a turning cross of
+light + a point light (the marker's `{ icon, ring2, y }` record so the marker ticker turns it; no blocker — walked onto).
+Adding a hub = its zone appears; a hub whose anchor is no place for it = a `HQ_HEAL_ZONE.rooms` row. `npm test` runs
+`party-hubs.test.js`; hq-party / achievements amended. PRE-EXISTING at HEAD, not touched: doorhq 84 / 85, hq-astral 6,
+hq-deep 15, hq-dumb 18, hq-floor-plan 29, hq-terrain 38 (the fountain). UNSEEN LIVE (RULE #1c): the green ring on each
+hub's ground (a spot that lands on a slope or in the water is a `HQ_HEAL_ZONE.rooms` row edit), the marker panel's two
+buttons, the shop's DEFEAT ONE FIRST tags, the 403 on a server account before the first sync lands.

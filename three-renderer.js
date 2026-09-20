@@ -45108,6 +45108,13 @@ const ThreeRenderer = (function () {
                     marker = _hqBuildBattleMarker(U);
                     grp.add(marker.g);
                 }
+                /* THE HEALING ZONE (2026-09-20, data.js HQ_HEAL_ZONE / hqBuildHealZones): the hub's green ring — the marker's
+                   ticker turns its icon too (the same { icon, ring2, y } record) */
+                if (c.proc === 'heal_zone') {
+                    if (c.y != null) grp.position.y += c.y * U;
+                    marker = _hqBuildHealZone(U);
+                    grp.add(marker.g);
+                }
             } else if (c.proc === 'board') {
                 grp.position.copy(_hqPolarW(c.deg, Rw - 0.12, y0));
                 grp.rotation.y = _hqFaceCentreYaw(c.deg);
@@ -45174,6 +45181,33 @@ const ThreeRenderer = (function () {
             _hq.fxPulse.push({ mat: halo.material, baseOp: 0.42, opAmp: 0.14, spd: 1.6, phase: 0.6 });
         }
         return { g: g, icon: icon, ring2: ring2, y: 1.45 };
+    }
+
+    /* THE HEALING ZONE (2026-09-20): a green floor ring, a soft column and a slowly turning cross of light — the
+       marker's shape (icon / ring2 / y) so _hqTickWorld's marker ticker turns it; walked onto (no blocker) */
+    function _hqBuildHealZone(U) {
+        var g = new THREE.Group();
+        var ring = new THREE.Mesh(new THREE.RingGeometry(0.9 * U, 1.08 * U, 48), _hzGlowMat(0x7ff0a0, 0.6));
+        ring.rotation.x = -Math.PI / 2; ring.position.y = 0.03 * U; ring.renderOrder = 3; g.add(ring);
+        var ring2 = new THREE.Mesh(new THREE.RingGeometry(1.3 * U, 1.34 * U, 56), _hzGlowMat(0xb0ffd0, 0.3));
+        ring2.rotation.x = -Math.PI / 2; ring2.position.y = 0.025 * U; ring2.renderOrder = 3; g.add(ring2);
+        var disc = new THREE.Mesh(new THREE.CircleGeometry(0.9 * U, 48), _hzGlowMat(0x5fe090, 0.12));
+        disc.rotation.x = -Math.PI / 2; disc.position.y = 0.02 * U; disc.renderOrder = 2; g.add(disc);
+        var beam = new THREE.Mesh(new THREE.CylinderGeometry(0.5 * U, 0.95 * U, 2.4 * U, 18, 1, true), _hzGlowMat(0x9fffc0, 0.09));
+        beam.position.y = 1.2 * U; beam.renderOrder = 2; g.add(beam);
+        var icon = new THREE.Group(); icon.position.y = 1.7 * U;
+        var cm = new THREE.MeshPhongMaterial({ color: 0xd8ffe8, emissive: 0x40e080, emissiveIntensity: 0.9, shininess: 80, transparent: true, opacity: 0.92 });
+        var barV = new THREE.Mesh(new THREE.BoxGeometry(0.14 * U, 0.5 * U, 0.14 * U), cm); icon.add(barV);
+        var barH = new THREE.Mesh(new THREE.BoxGeometry(0.5 * U, 0.14 * U, 0.14 * U), cm); icon.add(barH);
+        var halo = _hzGlowSprite(1.6 * U, 0x7ff0a0, 0.4, 0, 0, 0); icon.add(halo);
+        g.add(icon);
+        var light = new THREE.PointLight(0x80f0a8, 0.9, 6 * U, 2); light.position.y = 1.2 * U; g.add(light);
+        if (_hq && _hq.fxPulse) {
+            _hq.fxPulse.push({ mat: ring.material, baseOp: 0.6, opAmp: 0.22, spd: 1.2, phase: 0 });
+            _hq.fxPulse.push({ mat: beam.material, baseOp: 0.09, opAmp: 0.05, spd: 0.8, phase: 1.0 });
+            _hq.fxPulse.push({ mat: halo.material, baseOp: 0.4, opAmp: 0.14, spd: 1.2, phase: 0.5 });
+        }
+        return { g: g, icon: icon, ring2: ring2, y: 1.7 };
     }
 
     /* ── props: the Meshy kit, placed from the layout table ─────────────── */

@@ -13591,6 +13591,32 @@
                    building's return (window._hqEncounterResult: a loss lands in the ward). The
                    marker is consumed here; a cancelled match never reaches this commit and the
                    next _hqEnter / launch overwrites it. Viewer-local, never on state (RULE #2). */
+                /* THE DEFEATED LEDGER (2026-09-20, the user: "a unit shouldn't become available for purchase until the
+                   player has defeated one in battle"): every ENEMY body that died in a standard match — VS-CPU, online,
+                   the areas; win or lose — goes on the viewer's ledger (data.js hqDefeatedMark: door.hq.defeated + the
+                   synced blob; the shop and the server's purchase read it). Viewer-local, never on state (RULE #2). */
+                try {
+                    if (kind === 'match' && typeof hqDefeatedMark === 'function') {
+                        const fell = [];
+                        for (const u of (state.units || [])) {
+                            if (!u || !(u.dead || u._dying)) continue;
+                            const home = (typeof unitHomePlayer === 'function') ? unitHomePlayer(u) : u.player;
+                            if (home === viewer || home === 0) continue;
+                            const race = u.race || (u.meta && u.meta.race);
+                            if (race && fell.indexOf(race) < 0) fell.push(race);
+                        }
+                        if (fell.length) {
+                            const PS = window.ProfileSystem;
+                            const idx = (PS && typeof PS.getActiveProfileIndex === 'function') ? PS.getActiveProfileIndex() : null;
+                            const p = (idx !== null && idx !== undefined && typeof PS.loadProfile === 'function') ? PS.loadProfile(idx) : null;
+                            if (p) {
+                                const r = hqDefeatedMark(p, fell);
+                                PS.saveProfile(idx, p);
+                                if (r && r.added.length) { addLog(`📇 ON FILE — ${r.added.map(x => String(x).toUpperCase()).join(', ')}: the Quartermaster can sell ${r.added.length === 1 ? 'it' : 'them'} now.`); try { if (typeof PS.scheduleProgressSync === 'function') PS.scheduleProgressSync(); } catch (e) {} }
+                            }
+                        }
+                    }
+                } catch (e) { console.warn('[HQ] the defeated ledger failed', e); }
                 try {
                     const erun = _encMatch || window._hqEncounterRun;
                     window._hqEncounterRun = null; _encMatch = null;

@@ -215,7 +215,7 @@ test('THE SOURCE SITES: the engine (no respawns, the bench fills a seat, the car
     assert.ok(BT.includes("if (vit.length) partyRes = hqPartyAfterMatch(p, { won, units: vit });") && BT.includes("(state.units || []).concat((state.bench && state.bench[seat]) || [])"), 'battle.js: the commit');
     assert.ok(BT.includes("party: partyRes };"), 'the result carries what the fight did to the party');
     /* the pause menu */
-    ['function _hqPartyTx(fn)', 'function _hqPartySeed()', "data-party-act=\"cast:", "data-party-act=\"swap:", "data-party-act=\"relieve:", "data-party-act=\"enlist:", "data-party-act=\"item:", 'function _hqPartyAct(act)', "window._hqPartyRest = function ()", "if (c.id === 'cot') {", "[data-party-rest]"].forEach(s => assert.ok(MP.includes(s), 'map.js: ' + s));
+    ['function _hqPartyTx(fn)', 'function _hqPartySeed()', "data-party-act=\"cast:", "data-party-act=\"swap:", "data-party-act=\"relieve:", "data-party-act=\"enlist:", "data-party-act=\"item:", 'function _hqPartyAct(act)', "window._hqPartyRest = function ()", "if (c.id === 'cot' || c.id === 'healzone') {", "[data-party-rest]"].forEach(s => assert.ok(MP.includes(s), 'map.js: ' + s));
     assert.ok(MP.includes("sub: 'TWO SHIFTS · FIELD MEDICINE'"));
     ['.hq-pp-card.tgt', '.hq-pp-downstamp', '.hq-pp-vbar.hp i', '.hq-pp-arm', '.hq-pp-oncall', '.hq-pp-duty', '.hq-pp-empty', '.hq-pp-msg.bad'].forEach(s => assert.ok(CSS.includes(s), 'css: ' + s));
 });

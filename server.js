@@ -1166,6 +1166,21 @@ app.post('/api/economy/purchase', limitEcon, async (req, res) => {
         if (unlocked.includes(raceKey)) {
             return res.status(409).json({ error: 'Already owned.' });
         }
+        /* THE DEFEATED LEDGER (2026-09-20, the user: "a unit shouldn't become available for purchase until the player
+           has defeated one in battle"): a non-starter is buyable only once the merged progress blob (data.js
+           mergeProgressBlobs carries hq.defeated; the client's commit marks every enemy body that fell) names it. */
+        if (!ECON.ACCT_STARTER_UNITS.includes(raceKey)) {
+            let defeated = false;
+            try {
+                const prow = await d1.getOne('SELECT data FROM player_progress WHERE player_id = ?1', [player.id]);
+                const prog = prow ? JSON.parse(prow.data) : null;
+                const led = prog && prog.hq && prog.hq.defeated;
+                defeated = !!(led && typeof led === 'object' && typeof led[raceKey] === 'string');
+            } catch (e) { defeated = false; }
+            if (!defeated) {
+                return res.status(403).json({ error: 'Not yet on file — defeat one in battle first.' });
+            }
+        }
         const newUnlocked = JSON.stringify(unlocked.concat([raceKey]));
 
         let result;

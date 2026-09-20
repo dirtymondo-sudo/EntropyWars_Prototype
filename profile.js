@@ -872,6 +872,8 @@ function localPurchaseUnit(raceKey, useToken) {
   const races = (typeof window !== 'undefined' && Array.isArray(window.AVAILABLE_RACES)) ? window.AVAILABLE_RACES : null;
   if (races && races.indexOf(raceKey) === -1) return { ok: false, error: 'Unknown unit.' };
   if (p.account.unlockedUnits.includes(raceKey)) return { ok: false, error: 'Already owned.' };
+  /* THE DEFEATED LEDGER (2026-09-20): the local mirror keeps the server's rule — defeat one in battle first */
+  if (typeof window !== 'undefined' && typeof window.hqUnitBuyable === 'function' && !window.hqUnitBuyable(p, raceKey)) return { ok: false, error: 'Not yet on file — defeat one in battle first.' };
 
   const price = (typeof window !== 'undefined' && typeof window.ACCT_UNIT_PRICE === 'number') ? window.ACCT_UNIT_PRICE : 5000;
   if (useToken && (p.account.freeTokens || 0) > 0) {

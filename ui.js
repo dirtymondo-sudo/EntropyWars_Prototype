@@ -8572,7 +8572,19 @@
         // roster rule) — it must not be purchasable, or the gold would buy a
         // unit the unlock gate still refuses to field.
         function _shopBuyable(race) {
-            return (typeof isRace3DReady === 'function') ? isRace3DReady(race) : true;
+            return !_shopLockReason(race);
+        }
+        /* THE DEFEATED LEDGER (2026-09-20, the user: "a unit shouldn't become available for purchase until the player has
+           defeated one in battle"): why a vessel is not for sale — 'model' (no rigged model yet) | 'defeat' (never fell to
+           you: data.js hqUnitBuyable reads the union of door.hq.defeated + the synced blob) | null (buyable) */
+        function _shopLockReason(race) {
+            if (typeof isRace3DReady === 'function' && !isRace3DReady(race)) return 'model';
+            if (typeof isUnitOwned === 'function' && isUnitOwned(race)) return null;
+            if (typeof window.hqUnitBuyable === 'function') {
+                const p = (window.ProfileSystem && typeof window.ProfileSystem.getActiveProfile === 'function') ? window.ProfileSystem.getActiveProfile() : null;
+                if (!window.hqUnitBuyable(p, race)) return 'defeat';
+            }
+            return null;
         }
 
         function _shopDailyFeatured() {
@@ -8606,7 +8618,7 @@
                 ? `<span class="shop-card-tag owned">✓ OWNED</span>`
                 : (_shopBuyable(race)
                     ? `<span class="shop-card-tag price">💰 ${price}</span>`
-                    : `<span class="shop-card-tag soon">🔒 3D MODEL SOON</span>`);
+                    : (_shopLockReason(race) === 'defeat' ? `<span class="shop-card-tag soon">🔒 DEFEAT ONE FIRST</span>` : `<span class="shop-card-tag soon">🔒 3D MODEL SOON</span>`));
             const featuredRibbon = opts.featured ? `<div class="shop-ribbon">FEATURED</div>` : '';
             return `<div class="shop-card${selected}${lockedCls}" onclick="window._shopSelect('${race.replace(/'/g, "\\'")}')">
                 ${featuredRibbon}
@@ -8624,6 +8636,14 @@
             if (unlocked) {
                 return `<div class="cdx-actionbar">
                     <span class="cdx-action-status" style="color:#9fe0a0">✓ DECLASSIFIED — IN YOUR ROSTER</span>
+                    <div class="cdx-actionbar-spacer"></div>
+                    <button class="cdx-btn cdx-btn-ghost" onclick="window._shopViewInCodex('${rk}')">VIEW IN CODEX</button>
+                </div>`;
+            }
+            if (_shopLockReason(race) === 'defeat') {
+                return `<div class="cdx-actionbar">
+                    <span class="cdx-action-status" style="color:#c08050">🔒 NOT YET ON FILE — DEFEAT ONE IN BATTLE FIRST</span>
+                    <span class="cdx-action-note">The Quartermaster sells what the field has met. Beat one of these in a match (VS CPU, online or in the areas) and it goes on sale.</span>
                     <div class="cdx-actionbar-spacer"></div>
                     <button class="cdx-btn cdx-btn-ghost" onclick="window._shopViewInCodex('${rk}')">VIEW IN CODEX</button>
                 </div>`;
@@ -8675,7 +8695,7 @@
                 ? '<div class="cdx-hero-price owned">✓ OWNED</div>'
                 : (_shopBuyable(race)
                     ? `<div class="cdx-hero-price">💰 ${price}</div>`
-                    : '<div class="cdx-hero-price soon">🔒 COMING SOON</div>');
+                    : (_shopLockReason(race) === 'defeat' ? '<div class="cdx-hero-price soon">🔒 DEFEAT ONE FIRST</div>' : '<div class="cdx-hero-price soon">🔒 COMING SOON</div>'));
             // Full preview-before-buy: the shop never hides what you are buying.
             return `
                 ${_codexHeroHtml(race, { priceTag })}

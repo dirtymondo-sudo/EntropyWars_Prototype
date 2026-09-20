@@ -4448,6 +4448,52 @@
            the threshold's number, note and hook; the Code Red brief rides in
            when today's is this site. The launch buttons carry the console as
            the door, so post-match you stand at it again. */
+        /* THE MARKER'S PANEL (2026-09-20, the user: "it should just send me into battle with my party"): who is fit, what is
+           still to file, and ONE click per mode — WIPEOUT (TDM) or THE CUBE + THE KEYS (Arena) — straight into the fight with
+           the officer's party seated (the encounter's own launch: no terminal, no builder, no roster wall). */
+        function _hqMarkerHtml(t) {
+            const room = _hqRoom();
+            const c = t.counter || {};
+            const id = c.site || (room && room.site);
+            const profile = _hqProfile();
+            if (!id) return `<div class="hq-panel-hd"><b>${_hqEsc(c.label || 'BATTLE')}</b><span>NO SITE ON FILE</span></div><div class="hq-panel-actions"><button class="hq-btn" data-close="1">NOTED</button></div>`;
+            const th = (DOOR_HQ.thresholds || {})[id] || {};
+            const meta = (typeof EW_MAP_META !== 'undefined') ? EW_MAP_META.find(m => m.id === id) : null;
+            const pf = (typeof window.hqPartyFit === 'function') ? window.hqPartyFit(profile) : null;
+            const S = (typeof window.hqPartyShifts === 'function') ? window.hqPartyShifts(profile) : { first: [], second: [], members: [] };
+            const L = (typeof window.hqMarkerLaunch === 'function') ? window.hqMarkerLaunch(_hqCurRoom, _hqEncounterCfgRaw(), {}) : null;
+            const ready = !!(pf && pf.total > 0 && pf.ready) && !!L;
+            let html = `<div class="hq-panel-hd">${_hqNoTag(th.roomNo != null ? String(th.roomNo) : '', th.why)}<b>${_hqEsc((meta && meta.label) || c.sub || id)}</b><span>${_hqEsc(L && L.launchId ? 'THIS ROOM\u2019S OWN BOARD' : 'THE SITE\u2019S \u0394 BOARD')} · YOUR PARTY TAKES THE FIELD</span></div>`;
+            html += '<p class="hq-panel-desc">' + _hqEsc(c.desc || 'The crystal. Touch it and the room is the board: your party as it stands, the site\u2019s own natives across from it.') + '</p>';
+            if (S.members.length) {
+                html += '<div class="hq-rows">';
+                S.members.forEach((m, i) => { const v = window.hqPartyVitals(m, null); const hp = v.hpMax ? `${v.hp} / ${v.hpMax}` : 'FULL'; html += `<div class="hq-row hq-row-tray"><b>${i < HQ_PARTY_RULES.shift ? '1ST' : '2ND'} · ${_hqEsc(m.name || m.cls)}</b><span>${_hqEsc(String(m.meta.race || '').toUpperCase())} · ${_hqEsc(String(m.cls).toUpperCase())}${m.you ? ' · YOU' : ''}</span><i class="hq-lamp-chip st-${v.down ? 'codered' : (v.hpMax && v.hp < v.hpMax) ? 'unstable' : 'open'}">${v.down ? 'DOWN' : 'HP ' + hp}</i></div>`; });
+                html += '</div>';
+            } else html += '<p class="hq-panel-note">NO PARTY ON FILE — the officer walks in alone with a stand-in squad; the pause menu (ESC · PARTY) enlists what the account owns.</p>';
+            if (L) html += `<div class="hq-chips"><span>ACROSS THE BOARD · ${L.teamSize}v${L.teamSize}</span>${L.roster.map(r => `<i class="hq-chip">${_hqEsc(String(r).toUpperCase())}</i>`).join('')}</div>`;
+            html += _hqChecklistHtml(id, profile);
+            html += `<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" ${ready ? '' : 'disabled'} data-marker-fight="tdm" title="Team Deathmatch · the WIPEOUT condition">⚔ FIGHT ▸ WIPEOUT · TDM</button><button class="hq-btn" ${ready ? '' : 'disabled'} data-marker-fight="arena" title="Arena · the Cube and the Keys">⬡ FIGHT ▸ THE CUBE · THE KEYS · ARENA</button><button class="hq-btn" data-close="1">NOT NOW</button></div>`;
+            if (pf && pf.total > 0 && !pf.ready) html += '<p class="hq-panel-note">THE PARTY IS DOWN — rest at a HEALING ZONE (every hub) or on the cot in Medical, or heal from the pause menu.</p>';
+            else html += '<p class="hq-panel-note">Health carries between fights and nobody respawns; the second shift fills a fallen seat. A loss wakes you elsewhere. The CROSSING console and DISPATCH still file a full crossing when you want the terminal.</p>';
+            return html;
+        }
+        /* the marker's FIGHT: the party-seated launch the encounter uses, on the mode picked; returns you to the marker */
+        window._hqMarkerFight = function (gm) {
+            if (_hqSuspended || state.gameState !== GS.HQ) return false;
+            if (typeof window.isOnlineMatch === 'function' && window.isOnlineMatch()) return false;   // RULE #2: never from an online seat
+            try {
+                const pf = (typeof window.hqPartyFit === 'function') ? window.hqPartyFit(_hqProfile()) : null;
+                if (pf && pf.total > 0 && !pf.ready) { _hqToast('<b>THE PARTY IS DOWN</b><span>NOBODY FIT TO FIGHT · A HEALING ZONE, THE COT OR THE PAUSE MENU</span>', 3600); try { playSfx('uiError'); } catch (e) {} return false; }
+            } catch (e) {}
+            let cr = null;
+            try { cr = (typeof window.hqCodeRed === 'function') ? window.hqCodeRed(_hqProfile()) : null; } catch (e) { cr = null; }
+            const site = (typeof window.hqRoomSite === 'function') ? window.hqRoomSite(_hqCurRoom) : null;
+            if (!cr || cr.cleared || !site || cr.site !== site) cr = null;
+            const L = (typeof window.hqMarkerLaunch === 'function') ? window.hqMarkerLaunch(_hqCurRoom, _hqEncounterCfgRaw(), { gm: gm, codeRed: !!cr && gm === 'arena' }) : null;
+            if (!L) { _hqToast('<b>NO BOARD</b><span>THIS ROOM HAS NO SITE ON FILE</span>', 2400); return false; }
+            L.codeRedRun = (cr && gm === 'arena') ? { date: cr.date, site: cr.site, race: cr.race, label: cr.label, bonus: cr.bonus } : null;
+            return _hqEncounterStart(L, null, null);
+        };
         function _hqCrossingHtml(t) {
             const room = _hqRoom();
             const c = t.counter || {};
@@ -4479,6 +4525,7 @@
             if (act.overlay === 'pharmacy') return _hqPharmacyHtml();   // THE DISPENSARY (Room 911): buy · sell
             if (act.overlay === 'nav') return _hqNavHtml();   // THE SHIP'S ONE DOOR: the bridge's nav console
             if (act.overlay === 'training') return _hqTrainingHtml();
+            if (act.overlay === 'crossing' && c.proc === 'battle_marker') return _hqMarkerHtml(t);   // THE MARKER (2026-09-20): the party's fight, no terminal
             if (act.overlay === 'crossing') return _hqCrossingHtml(t);
             let html = `<div class="hq-panel-hd"><b>${_hqEsc(c.label)}</b><span>${_hqEsc(c.sub || '')}</span></div>`;
             /* THE PROJECTOR (Room 360): the tape library's projection — the last tape on file */
@@ -4555,7 +4602,7 @@
                 return html;
             }
             /* THE COT (Room 1111, THE PARTY 2026-09-19): REST — the party's HP / MP back to full, the down on their feet; free */
-            if (c.id === 'cot') {
+            if (c.id === 'cot' || c.id === 'healzone') {   // THE HEALING ZONES (2026-09-20): one per hub, the cot's panel
                 const pf = (typeof window.hqPartyFit === 'function') ? window.hqPartyFit(_hqProfile()) : null;
                 const S = (typeof window.hqPartyShifts === 'function') ? window.hqPartyShifts(_hqProfile()) : { members: [] };
                 html += '<p class="hq-panel-desc">' + _hqEsc(c.desc || 'A cot, made up.') + '</p>';
@@ -4565,7 +4612,7 @@
                     html += '</div>';
                     html += `<div class="hq-rows"><div class="hq-row hq-row-tray"><b>THE PARTY</b><span>${_hqEsc(pf.note)}</span><i class="hq-lamp-chip st-${pf.fit === pf.total && !pf.hurt ? 'open' : pf.ready ? 'unstable' : 'codered'}">${pf.fit} / ${pf.total} FIT</i></div></div>`;
                 }
-                html += '<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-party-rest="1">REST THE PARTY</button><button class="hq-btn" data-close="1">NOT NOW</button></div>';
+                html += '<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-party-rest="1">' + (c.id === 'healzone' ? 'REST HERE' : 'REST THE PARTY') + '</button><button class="hq-btn" data-close="1">NOT NOW</button></div>';
                 html += '<p class="hq-panel-note">Everyone walks out at full. Health carries between encounters, so this is where a battered party comes before the next room. The pause menu (ESC) heals with the party\'s own spells and potions; this cot does it for nothing.</p>';
                 return html;
             }
@@ -5009,6 +5056,8 @@
                 if (act && t.walkThrough) return;
                 if (act) { window._hqDoAction(act, t); return; }
             }
+            /* THE MARKER (2026-09-20): the floating crystal opens ITS OWN panel — the party, the checklist, FIGHT — never the terminal */
+            if (t && t.kind === 'counter' && t.counter && t.counter.proc === 'battle_marker') { _hqOpenPanel(t); return; }
             if (t && t.kind === 'counter' && t.counter && t.counter.action && (t.counter.action.overlay === 'crossing' || t.counter.action.overlay === 'training')) {
                 try { if (_hqConsoleTerminal(t)) return; } catch (e) { console.warn('[HQ] terminal failed, panel instead', e); }
             }
@@ -5165,7 +5214,9 @@
             if (fnBtn && !fnBtn.disabled) { window._hqDoAction({ fn: fnBtn.getAttribute('data-fn') }); return; }
             /* THE DOOR GUN (9.5): the Quartermaster's signature */
             if (e.target.closest('[data-portal-issue]')) { window._hqClosePanel(); window._hqPortalIssue(); return; }
-            if (e.target.closest('[data-party-rest]')) { window._hqClosePanel(); window._hqPartyRest(); return; }   // THE COT (THE PARTY)
+            if (e.target.closest('[data-party-rest]')) { window._hqClosePanel(); window._hqPartyRest(); return; }   // THE COT (THE PARTY) + THE HEALING ZONES
+            const mf = e.target.closest('[data-marker-fight]');
+            if (mf) { if (!mf.disabled) window._hqMarkerFight(mf.getAttribute('data-marker-fight')); return; }   // THE MARKER (2026-09-20)
             const roomBtn = e.target.closest('[data-room]');
             if (roomBtn && !roomBtn.disabled) { window._hqDoAction({ room: roomBtn.getAttribute('data-room'), at: roomBtn.getAttribute('data-at') || null }); return; }
             const cross = e.target.closest('[data-cross],[data-deep],[data-codered]');
