@@ -40941,6 +40941,25 @@ function _hqFindsAll() {
     const rooms = Object.keys(hqFindsTapesByRoom());
     if (DOOR_HQ.rooms.locker && rooms.indexOf('locker') < 0) rooms.push('locker');
     const rows = [];
+    /* THE FREEZE AFTER PLAY (2026-09-20): the whole table NEVER compiles a terrain room on the main thread — a
+       terrain room whose survey record has not landed (hqTerrainWorkerServe / hqTerrainAdopt) is left out, and
+       the table is only PINNED (the getter replaced) once every room was in. A reader that needs one room asks
+       hqFindsForRoom(roomId) — the room you stand in is compiled by its own entry. */
+    let complete = true;
+    const inPage = (typeof window !== 'undefined' && typeof Worker === 'function');   // a real page (the survey worker exists); the Node sandbox / the tools compile the lot
+    rooms.forEach(id => {
+        const room = DOOR_HQ.rooms[id];
+        if (inPage && room && room.terrain && !room._terrainInfo && !_HQ_FINDS_CACHE[id]) { complete = false; return; }
+        hqFindsForRoom(id).forEach(r => rows.push(r));
+    });
+    if (complete) _hqFindsPin(rows);
+    return rows;
+}
+/* the WHOLE table, every terrain room compiled on the spot — tooling and tests only (never the game's main thread) */
+function hqFindsBuildAll() {
+    const rooms = Object.keys(hqFindsTapesByRoom());
+    if (DOOR_HQ.rooms.locker && rooms.indexOf('locker') < 0) rooms.push('locker');
+    const rows = [];
     rooms.forEach(id => { hqFindsForRoom(id).forEach(r => rows.push(r)); });
     _hqFindsPin(rows);
     return rows;
@@ -44941,7 +44960,7 @@ if (typeof window !== 'undefined') {
     window.hqCaveTopAt = hqCaveTopAt; window.hqCaveDoorY = hqCaveDoorY; window.hqCaveEdgeH = hqCaveEdgeH; window.hqCaveReach = hqCaveReach;
     /* THE FINDS + THE TAPES (HQ plan 9.1, 2026-09-15 rev 12) */
     window.HQ_GUN_LESSONS = HQ_GUN_LESSONS; window.hqGunLessons = hqGunLessons; window.hqFindHardReach = hqFindHardReach; window.HQ_HARD_REACH = HQ_HARD_REACH;
-    window.DOOR_TAPES = DOOR_TAPES; window.HQ_FIND_RULES = HQ_FIND_RULES; window.hqFindsInRoom = hqFindsInRoom; window.hqCollectFind = hqCollectFind;
+    window.DOOR_TAPES = DOOR_TAPES; window.HQ_FIND_RULES = HQ_FIND_RULES; window.hqFindsInRoom = hqFindsInRoom; window.hqCollectFind = hqCollectFind; window.hqFindsBuildAll = hqFindsBuildAll;
     window.hqFindsSyncPay = hqFindsSyncPay; window.hqTapeLegacyId = hqTapeLegacyId; window.hqFindLegacyId = hqFindLegacyId; window.hqFindsTakenUnion = hqFindsTakenUnion; window.hqFindsSyncedTaken = hqFindsSyncedTaken;
     window.hqTapeShelf = hqTapeShelf; window.hqTapeCount = hqTapeCount; window.hqFindById = hqFindById; window.hqFindsForRoom = hqFindsForRoom; window.hqFindsWarm = hqFindsWarm; window.hqFindsDrop = hqFindsDrop; window.hqTapeById = hqTapeById; window.hqTapeClipUrl = hqTapeClipUrl; window.hqFindsRecord = hqFindsRecord;
     window.hqCaveDoorCell = hqCaveDoorCell; window.hqCaveRooms = hqCaveRooms;

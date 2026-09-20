@@ -45551,8 +45551,11 @@ const ThreeRenderer = (function () {
     function _hqPlaceFinds(room) {
         if (typeof window !== 'undefined' && window.EW_HQ_NO_FINDS) return;
         var D = _hqData(), U = _hqUnits(), G = _hq.propGroup, roomId = _hq.opts.room || 'central_egress';
-        if (!D || !D.finds) return;
-        var rows = (typeof window !== 'undefined' && window.EW_HQ_FINDS_ALL) ? D.finds.filter(function (f) { return f.room === roomId; })
+        /* THE FREEZE AFTER PLAY (2026-09-20): `D.finds` is a LAZY GETTER that builds the finds of EVERY room — every
+           terrain area compiled on the main thread (~30 s under the load card since THE AREAS put a tape in each).
+           Never touch the whole table here: this room's rows come from hqFindsInRoom → hqFindsForRoom(roomId). */
+        if (!D) return;
+        var rows = (typeof window !== 'undefined' && window.EW_HQ_FINDS_ALL) ? (D.finds || []).filter(function (f) { return f.room === roomId; })
                  : ((typeof hqFindsInRoom === 'function') ? hqFindsInRoom(roomId, _hq.profile) : []);
         _hq.findLights = 0;
         rows.forEach(function (f) {

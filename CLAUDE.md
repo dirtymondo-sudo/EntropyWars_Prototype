@@ -6541,3 +6541,21 @@ is not in the R2 bucket's CORS policy (only the Render host is today — entropy
 set — a blocked origin renders every texture and model black with nothing else in the console. The bucket's
 policy is the user's (Cloudflare → R2 → bucket → Settings → CORS; `r2-cors-policy.json` in the delivery).
 mobile-performance.test.js's lane test opts in; load-diet's menu test reads the full warm.
+
+## THE FREEZE AFTER PLAY — the finds table compiled every area on the main thread (2026-09-20, local delivery)
+MEASURED (a headless A/B against the real CDN, the Sept 18 build vs HEAD): Play → the foyer took 13.8 s on
+the old build and 40 s on HEAD, with the main thread BLOCKED ~30 s under the "n models streaming…" card. The
+CPU profile named it: three-renderer.js `_hqPlaceFinds` guarded on `D.finds` — data.js's LAZY GETTER
+`_hqFindsAll`, which builds the finds of EVERY tape room, and since THE AREAS (2026-09-18) every one of the
+twenty generated areas is a TERRAIN room with a tape, so the getter ran `hqTerrainCompile` on all of them
+(3–31 s each) on the main thread, on every first room entry. The survey worker never saw it (the SURVEY
+delivery fixed `hqFindsWarm` and missed this reader). RULES now: (1) NEVER read `DOOR_HQ.finds` / `D.finds`
+in the game — a room's rows are `hqFindsInRoom(roomId)` / `hqFindsForRoom(roomId)`; (2) in a real page (a
+`Worker` exists) the getter SKIPS a terrain room whose survey record has not landed and pins the table only
+once complete; the Node sandbox / the tools still compile the lot (17 suites read the whole table);
+`hqFindsBuildAll()` is the explicit full build for tooling. Not touched: the "models streaming" note on the
+load card is the SURVEY delivery's live count of GLBs in flight (`ThreeRenderer.assetsPending`) — the card
+waits only for the walker's own rig; the count is information, not the wait. The two Cloudflare cache
+rules on cdn.entropywars.net are the user's to keep or drop; the CORS probe showed the edge keys on Origin
+correctly and every asset carries its header. Still missing from R2: `Assets/door/models/
+Meshy_AI_one_meter_of_railing_0903105339_texture.glb` (a 404 + one retry in every room).
