@@ -160,7 +160,7 @@ test('THE OVERLAY in three-post.js: setSceneLook / getSceneLook exported, every 
     const fn = post.slice(post.indexOf('    function setSceneLook(look) {'), post.indexOf('    function getSceneLook() {'));
     assert.ok(fn.length > 100 && !/localStorage|_saveRetro|_saveCinematic/.test(fn), 'no preference is written by the overlay');
     ['var R = _lkRetro();', 'u.uPixelSize.value      = R.pixelSize;', '_retroPass.enabled = !!_lkRetro().enabled;', "var u = _cinematicPass.material.uniforms, C = _lkCin();", "u['uVignetteAmount'].value = C.vignette ? C.vigAmount : 0.0;",
-     "var _ng = _nightF * _lkNum('nightMood', _nightMood) * 0.85;", "_lkNum('exposure', _exposureUser)", "var _bu = _lkNum('bloom', BLOOM_USER_STRENGTH), _bloomOn = _bu > 0;", "var _ds = _lkNum('dof', _dofStrength);",
+     "var _ng = _nightF * _lkNum('nightMood', _nightMood) * 0.85;", "_lkNum('exposure', _expEased)", "var _bu = _lkNum('bloom', BLOOM_USER_STRENGTH), _bloomOn = _bu > 0;", "var _ds = _lkNum('dof', _dofStrength);",
      "_lkRetro().pixelSize > 1.0 && cam"].forEach(f => assert.ok(post.includes(f), 'consumer: ' + f));
     assert.ok(!/_cur\.exposure \* _exposureUser \*/.test(post), 'no bare exposure read survives');
     assert.ok(!/Math\.max\(_cur\.bloomStr, BLOOM_USER_STRENGTH\)/.test(post), 'no bare bloom read survives');

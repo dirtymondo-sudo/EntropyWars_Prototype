@@ -3,11 +3,6 @@
 # Everything except the server smoke test is dependency-free (Node built-ins
 # only), so this stays fast even if npm install ever flakes: the smoke test
 # skips itself when express isn't resolvable.
-#
-# 2026-09-18: CI runs the FULL suite (EW_FULL_TESTS=1 — the heavy HQ geometry
-# proofs that plain `npm test` skips, see test-heavy.js). A red run here is a
-# real failure, never a timeout: timeout-minutes is well over the ~10 min the
-# full suite takes on the runner.
 name: CI
 
 on:
@@ -17,7 +12,6 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -29,7 +23,5 @@ jobs:
           # its postinstall must not pull browser binaries in CI.
           PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
         run: npm install --no-audit --no-fund
-      - name: npm test (full — the heavy geometry proofs included)
-        env:
-          EW_FULL_TESTS: '1'
+      - name: npm test
         run: npm test

@@ -132,8 +132,8 @@ test('the renderer: a box door carries its own floor (`y`), a blocker knows its 
 
 test('ROOM DIALOGUE: a spot’s `say` rides the character as its line (before any roster line); the conspiracy theorist is at the sink; the clone is you', () => {
     assert.match(TR, /var sayOf = function \(spot\) \{ var s = spot && spot\.say;/, 'the say reader');
-    assert.match(TR, /line: sayOf\(spot\) \}\);/, 'a native says the room’s line');
-    assert.match(TR, /face: spots\[k\]\.face \|\| 0, line: sayOf\(spots\[k\]\) \}\);/, 'a roster draw says the room’s line too');
+    assert.match(TR, /line: sayOf\(spot\)[,)]/, 'a native says the room’s line');
+    assert.match(TR, /face: spots\[k\]\.face \|\| 0, line: sayOf\(spots\[k\]\)[,)]/, 'a roster draw says the room’s line too');
     assert.match(TR, /if \(spot\.clone && av\.race\) \{[\s\S]{0,600}?race: av\.race, gender: av\.gender \|\| 'male', appearance: av\.appearance \|\| undefined/, 'clone: true spawns the walker’s own vessel');
     assert.match(MP, /let line = t\.line;/, 'the panel reads the character’s line first');
     const sink = HQ.rooms.bathroom.npcSpots[0];

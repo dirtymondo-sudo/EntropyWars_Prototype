@@ -31224,7 +31224,7 @@ const DOOR_HQ = {
                 { key: 'riser_2',         x: 18, z: 5.6, face: 90 },                         // the loading dock's riser on the cross street's south sidewalk
                 { key: 'cardboard_boxes', x: 19.8, z: 6.3, face: 30 },
                 /* THE OLD TOWN (D2) */
-                { key: 'fountain',        x: -40, z: -64 },                                   // MARKET SQUARE's fountain (the square's own light)
+                { key: 'fountain',        x: -40, z: -64, y: 0.45 },                          // MARKET SQUARE's fountain (the square's own light) — in its basin (the r 2.8 pool): up out of the water
                 { key: 'ticket_booth',    x: -49, z: -70, face: 120 },                        // the market's stalls
                 { key: 'popcorn_cart',    x: -33, z: -71, face: 200 },
                 { key: 'fortune_tent',    x: -46, z: -56, face: 30 },                        // (lit)
@@ -31255,7 +31255,7 @@ const DOOR_HQ = {
                 { key: 'garden_tree',     x: -96, z: -58.6 }, { key: 'garden_tree', x: 96, z: -58.6 }, { key: 'garden_tree', x: -100, z: -6.2 }, { key: 'garden_tree', x: 106, z: 26 },
                 { key: 'garden_tree',     x: -96, z: 58.6 }, { key: 'garden_tree', x: 96, z: 58.6 }, { key: 'garden_tree', x: -70, z: -70.2 }, { key: 'garden_tree', x: 70, z: -70.2 },
                 { key: 'high_striker',    x: -46, z: -78, face: 0 },                          // the market's strength tester (the old town's tall thing)
-                { key: 'garden_tree',     x: -102, z: -78 }, { key: 'garden_tree', x: 102, z: -78 }, { key: 'garden_tree', x: -104, z: 50 }, { key: 'garden_tree', x: 104, z: 50 }, { key: 'garden_tree', x: 8, z: -46 }, { key: 'garden_tree', x: -8, z: 46 }, { key: 'flood_mast', x: 46, z: 36 },   // a mast at the east dock lane's mouth
+                { key: 'garden_tree',     x: -102, z: -78 }, { key: 'garden_tree', x: 102, z: -78 }, { key: 'garden_tree', x: -104, z: 50 }, { key: 'garden_tree', x: 104, z: 50 }, { key: 'garden_tree', x: 8, z: -46 }, { key: 'garden_tree', x: -8, z: 58 },   // 2026-09-20: off THE CANAL (z 46 — it stood in the deep water) onto the quay { key: 'flood_mast', x: 46, z: 36 },   // a mast at the east dock lane's mouth
             ],
             agents: [],
             npcSpots: [
@@ -34878,7 +34878,7 @@ const DOOR_HQ = {
                     { k: 'rail', x0: 11.2, z0: 45.4, x1: 16.8, z1: 45.4 },                                                       // the lookout's rail (the grind)
                     { k: 'deck', x0: -2, z0: 44.6, x1: -2, z1: 28, w: 2.4, y: 0.6 },                                             // THE JETTY (one bank on purpose: its end is the sea)
                     /* AREA CONTENT D4 (2026-09-20): three palms on the beach — the bay door sees the weir's pool, not the maelstrom across the whole sea (R3) */
-                    { k: 'tree', x: -5, z: 49.8, kind: 'tree_5', h: 7, r: 0.6 }, { k: 'tree', x: 2.0, z: 50, kind: 'tree_5', h: 7, r: 0.6 }, { k: 'tree', x: -7.4, z: 40, kind: 'tree_5', h: 7, r: 0.6 },
+                    { k: 'tree', x: -5, z: 49.8, kind: 'tree_5', h: 7, r: 0.6 }, { k: 'tree', x: 2.0, z: 50, kind: 'tree_5', h: 7, r: 0.6 }, { k: 'tree', x: -7.4, z: 46, kind: 'tree_5', h: 7, r: 0.6 },   // 2026-09-20: up the beach (z 40 stood in the sea)
                     { k: 'rail', x0: -3.3, z0: 44.2, x1: -3.3, z1: 28.4 },                                                       // its rail
                     { k: 'hill', x: -34, z: 6, r: 11, h: 3.8 },                                                                  // THE SANDBAR (+0.3: waded)
                     { k: 'hill', x: 44, z: -22, r: 14, h: 5.6 },                                                                 // THE WRECK ISLET (+2.1)
@@ -35258,7 +35258,7 @@ const DOOR_HQ = {
             counters: [],
             props: [
                 /* THE POOL OF IDEAS: the colonnade, the orb, the book of what you were about to think */
-                { key: 'greek_column',   x: -11, z: 11 }, { key: 'greek_column', x: 11, z: 11 }, { key: 'greek_column', x: -11, z: -11 }, { key: 'greek_column', x: 11, z: -11 },
+                { key: 'greek_column',   x: -11, z: 9 }, { key: 'greek_column', x: 11, z: 11 },   // 2026-09-20: the SW column up the bank (−11, 11 stood in THE STREAM) { key: 'greek_column', x: -11, z: -11 }, { key: 'greek_column', x: 11, z: -11 },
                 { key: 'floating_orb',   x: 0, z: 20 },
                 { key: 'lectern',        x: 3, z: -12, face: 0 },                                                          // THE BOOK OF WHAT YOU WERE ABOUT TO THINK
                 { key: 'pearly_gate',    x: 0, z: 30, face: 0 },                                                          // THE GATE OF IVORY: nothing either side of it
@@ -38453,7 +38453,7 @@ const HQ_AREA_SPECS = {
                 { key: 'signpost', x: -3, z: 14 }, { key: 'signpost', x: 12, z: 18 }, { key: 'traffic_barrel', x: -10, z: -12 }, { key: 'traffic_barrel', x: -8, z: 19 }, { key: 'traffic_barrel', x: 20, z: -12 }, { key: 'warning_tape', x: -30, z: 14 },
                 { key: 'cave_stone', x: -28, z: 20 }, { key: 'cave_stone', x: 26, z: 24 }, { key: 'cave_stone', x: 30, z: -8 }, { key: 'cave_stone', x: -20, z: -17 }, { key: 'cinder_block', x: 4, z: 22 }, { key: 'traffic_cone', x: -6, z: -15 }],
         npcSpots: [{ x: -3, z: 12, face: 30, race: 'grey', say: '“The footprint was there in the previous frame. You were not.”' }, { x: -20, z: 12, y: 1.4, face: 90, race: 'men in black', say: '“The habitat is rated for six. There are two of us. Do not ask about the other four.”' },
-                   { x: 14, z: -25.4, y: 2.4, face: 0, race: 'grey', say: '“The rim is up there. The tape is on it. The ladder is not.”' }, { x: -28, z: 14, face: 90, race: 'grey', say: '“There is no far side. There is a side you have not been shown.”' }],
+                   { x: 16, z: -25.4, y: 2.4, face: 0, race: 'grey', say: '“The rim is up there. The tape is on it. The ladder is not.”' }, { x: -28, z: 14, face: 90, race: 'grey', say: '“There is no far side. There is a side you have not been shown.”' }],
         lines: ['“One small step.” “For whom?”'] },
     /* ROOM 23 · BOHEMIAN GROVE · THE GROVE (AREA CONTENT D3, 2026-09-19 — brought up to the cave): THE LAKE in the redwoods with THE STAGE across
        it (a ramp and a vine), THE MOUND up its stair or its vine with THE OWL over it (the tape — the door gun's, seen from the stage), THE WEST
@@ -38542,7 +38542,7 @@ const HQ_AREA_SPECS = {
             { k: 'grove', x: -8, z: 18, r: 7, n: 6, kinds: ['pine'] }, { k: 'grove', x: 24, z: -12, r: 5, n: 4, kinds: ['pine'] },
             { k: 'scatter', key: 'cardboard_box', n: 8, seed: 25 }, { k: 'scatter', key: 'cardboard_boxes', n: 5, seed: 26 }, { k: 'scatter', key: 'cave_stone', n: 5, seed: 2 }, { k: 'scatter', key: 'stump', n: 4, seed: 9 }, { k: 'scatter', key: 'fallen_log', n: 3, seed: 3 },
         ],
-        props: [{ key: 'railing_1m', x: -16, z: 6.4, face: 0, y: 1.0 }, { key: 'railing_1m', x: 12, z: -15.6, face: 0, y: 2.2 }, { key: 'riser_1', x: 8, z: 10 }, { key: 'campfire', x: 6, z: 10 }, { key: 'signpost', x: 3, z: -17, y: 6.2 },
+        props: [{ key: 'railing_1m', x: -16, z: 6.4, face: 0, y: 1.0 }, { key: 'railing_1m', x: 12, z: -15.6, face: 0, y: 2.2 }, { key: 'riser_1', x: 8, z: 10 }, { key: 'campfire', x: 3, z: 10 },   // 2026-09-20: off the brook (6,10 stood in it) { key: 'signpost', x: 3, z: -17, y: 6.2 },
                 { key: 'sea_chest', x: -18, z: 0, y: 1.0 }, { key: 'sea_chest', x: -25, z: 2, y: 3.4 }, { key: 'park_bench', x: -4, z: 10, face: 0 }, { key: 'candle_ring', x: 14, z: -20, y: 2.2 }, { key: 'cardboard_boxes', x: 22, z: 12, y: 1.3 }, { key: 'signpost', x: -2, z: 2 }],
         npcSpots: [{ x: -3, z: 10, face: 30, race: 'santa clause', say: '“The workshop is empty because everyone is on the list.”' }, { x: 12, z: 2, face: 250, race: 'gnome', say: '“The bell on the ceiling rings when the chimney is in use. It is ringing.”' },
                    { x: -20, z: -3, face: 180, race: 'yeti', say: '“The loft is where the wrapping is kept. I am not allowed up the ladder.”' }],
@@ -38686,7 +38686,7 @@ const HQ_AREA_SPECS = {
                 /* THE HALLS */
                 { key: 'lesson_sign', x: 4, z: 12, face: 200, lesson: 'climb' }, { key: 'umbrella_stand', x: -3, z: 20 }, { key: 'potted_plant', x: 3, z: 20 }, { key: 'office_plant', x: -26, z: -20 }, { key: 'wet_floor_sign', x: 27, z: 8 }],
         npcSpots: [{ x: 3, z: 6, face: 210, race: 'politician', say: '“The thirty-third degree is a floor. The lodge has thirty-two.”' }, { x: 18, z: 6, face: 270, race: 'general', say: '“The painting has the lights on. We have asked it to stop.”' },
-                   { x: 19, z: 9, face: 180, race: 'men in black', say: '“You did not see the tunnel. There is no tunnel. Redwood is a cologne.”' }, { x: -20, z: 9, face: 90, race: 'conspiracy theorist', say: '“Every book on the top shelf is about the bottom shelf.”' }],
+                   { x: 16, z: 11, face: 180, race: 'men in black', say:   /* 2026-09-20: onto the mezzanine's flat top (19, 9 was its edge blend) */ '“You did not see the tunnel. There is no tunnel. Redwood is a cologne.”' }, { x: -20, z: 9, face: 90, race: 'conspiracy theorist', say: '“Every book on the top shelf is about the bottom shelf.”' }],
         lines: ['“Members only.” “Both ways.”'] },
     /* ROOM 0 · THE SINGULARITY · THE HORIZON (AREA CONTENT D3, 2026-09-19 — brought up to the cave): obsidian ground under the void, everything
        leaning toward THE DROP (a bowl to −4 m round the point); THE WEST SHELF (a ramp, the hand-holds) and over it THE NEAR LENS (a ramp, a rope)
@@ -43491,9 +43491,10 @@ function hqFieldBoxInfo(roomId) {
                 cols.push(col);
             }
             const score = proudLo * wLo + proudHi * wHi;
+            const sides = (proudLo > 1e-9 ? 1 : 0) + (proudHi > 1e-9 ? 1 : 0);   // 2026-09-20: a residue goes on ONE wall — a tie between a split and a one-sided residue takes the one side (a room whose only door is a draught weights no wall, and the split used to win on |off|)
             const better = !best || score < best.score - 1e-9
-                || (Math.abs(score - best.score) <= 1e-9 && (n > best.n || (n === best.n && Math.abs(off) < Math.abs(best.off) - 1e-9)));
-            if (better) best = { off, cols, n, score, proud: { lo: proudLo, hi: proudHi }, doors: { lo: doorsOn(loSide), hi: doorsOn(hiSide) } };
+                || (Math.abs(score - best.score) <= 1e-9 && (sides < best.sides || (sides === best.sides && (n > best.n || (n === best.n && Math.abs(off) < Math.abs(best.off) - 1e-9)))));
+            if (better) best = { off, cols, n, score, sides, proud: { lo: proudLo, hi: proudHi }, doors: { lo: doorsOn(loSide), hi: doorsOn(hiSide) } };
         }
         best.flush = { lo: best.proud.lo <= B.edgeSnap + 1e-9, hi: best.proud.hi <= B.edgeSnap + 1e-9 };
         return best;

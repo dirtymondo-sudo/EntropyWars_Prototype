@@ -135,6 +135,7 @@ test('THE SEAMS + THE ROUTES: THE PUMPING STATION on Downtown’s east wall pair
         if (wa !== 'free') assert.equal(da[(wa === 'n' || wa === 's') ? 'x' : 'z'], xa);
         assert.equal(db[(wb === 'n' || wb === 's') ? 'x' : 'z'], xb);
         if (way) { assert.equal(da.way, way, id + ' wears the ' + way); assert.ok(db.leaf && !db.way, id + ': the far end a plain door (the storm drain’s rule)'); }
+        else if (l.secret) assert.ok(da.secret && db.secret && da.leaf == null && db.leaf == null, id + ': a draught at both ends (AREA CONTENT D4)');
         else assert.ok(da.leaf === db.leaf && da.leaf, id + ': one leaf both sides');
         assert.ok(da.action.room === rb && db.action.room === ra, id + ': the pair');
         assert.ok(!(HQ.catalogue[da.leaf] || {}).rank && !(HQ.catalogue[db.leaf] || {}).rank, id + ': never a rank leaf');

@@ -188,7 +188,7 @@ test('EWCharViewer exposes the stage API and the builder previews through it', (
     }
     assert.ok(/ThreeVFX\.attach\(v\.vfxGroup, \{ camera: v\.cam \}\)/.test(TR) && /ThreeVFX\.detach\(\)/.test(TR), 'the viewer must attach / detach the pools (with its camera — the billboards face it)');
     assert.ok(/function _vfxCam\(\)/.test(VFX) && (VFX.match(/ThreeCamera\.getCamera\(\)/g) || []).length <= 2, 'the billboard quads must read the camera through _vfxCam()');
-    assert.ok(/unmount: function \(\) \{\s*if \(!_cv\) return;\s*_cvStageExit\(\);/.test(TR), 'unmount must exit the stage first (the pools go home before a match)');
+    assert.ok(/unmount: function \(\) \{\s*(_cvDeferMount\(null\);[^\n]*\n\s*)?if \(!_cv\) return;\s*_cvStageExit\(\);/.test(TR), 'unmount must exit the stage first (the pools go home before a match; a parked mount is dropped on the way)');
     assert.ok(/if \(v\.staged && window\.ThreeVFX && ThreeVFX\.tick\)/.test(TR), '_cvFrame must tick ThreeVFX while staged');
     assert.ok(/var s = tile \/ 128;/.test(TR) && /v\.vfxGroup\.scale\.setScalar\(s\)/.test(TR), 'the stage group must be scaled tile / 128 (px-authored effects → viewer units)');
     assert.ok(/if \(!_cvStageEnter\(\)\) return _cvPlaySpell\(spell, opts\);/.test(TR), 'previewSpell must fall back to the Stage 2 animation-only preview');

@@ -1497,12 +1497,12 @@ test('hqSiteBoardInfo reads a Δ board as room geometry: 8×8 cells with levels,
         assert.ok(typeof c.walk === 'boolean' && typeof c.fluid === 'boolean');
         if (c.lvl === 1) steps++; if (c.lvl === 2) blocks++;
     }
-    assert.ok(steps === 4 && blocks === 2, 'the server banks (+1 ×4) and the bulkheads (+2 ×2): ' + steps + '/' + blocks);
+    assert.ok(steps === 6 && blocks === 4, 'THE PLATFORM (+1 ×3 and its twin) and the cars (+2 ×2 and their twins) — the Δ AREA PASS, 2026-09-19: ' + steps + '/' + blocks);
     /* the holding cell: two W walls + two N walls, and their 180° twins */
-    assert.strictEqual(info.walls.length, 8);
-    for (const w of info.walls) assert.ok(['N', 'W'].includes(w.side) && w.z0 === 1 && w.h === 2 && w.tex === 'dungeon_2', 'wall ' + JSON.stringify(w));
+    assert.strictEqual(info.walls.length, 2, 'the bulkhead and its twin');
+    for (const w of info.walls) assert.ok(w.side === 'N' && w.z0 === 1 && w.h === 2 && w.tex === 'metal_2', 'wall ' + JSON.stringify(w));
     /* (sandbox-realm arrays / objects: compare as strings, never by deepStrictEqual) */
-    assert.strictEqual(info.mons.map(m => m.kind + '@' + m.x + ',' + m.y).sort().join('|'), 'greytube@0,2|greytube@7,5');
+    assert.strictEqual(info.mons.map(m => m.kind + '@' + m.x + ',' + m.y).sort().join('|'), 'greytube@0,1|greytube@7,6', 'the barrel stack and its twin');
     assert.ok(info.nexus && info.nexus.x === 3 && info.nexus.y === 3, 'the nexus anchor at the zone\'s NW corner');
     assert.strictEqual(info.objs.length, 0, 'no trees underground');
     /* the walk rule: hazards block, shallow water wades, a wall of terrain blocks */
@@ -1703,7 +1703,7 @@ test('every built site is a launch map with a threshold and generates a box room
     assert.ok(cam.shell.moat.key === 'water' && cam.shell.moat.walk === true && cam.shell.moat.deck === 'wood_planks', 'Camelot: a water moat you can wade, the drawbridge in planks');
     assert.ok(cam.doors[0].leaf === 'leaf_portcullis' && cam.doors[0].wide === true, 'Camelot: the portcullis, wide');
     assert.ok(cam.shell.wall === 'bricks_2' && cam.shell.sky.night === 1, 'Camelot: the curtain wall, torchlight');
-    assert.ok(D.hqSiteBoardInfo('prebuilt_camelot').cells.flat().every(c => !c.fluid), 'Camelot: the board is dry — the moat is the room\'s');
+    assert.strictEqual(D.hqSiteBoardInfo('prebuilt_camelot').cells.flat().filter(c => c.fluid).length, 4, 'Camelot: the moat is cut into the board (the Δ AREA PASS, 2026-09-19 — a cut of THE OUTER WARD), four cells');
     const atl = moatRoom('prebuilt_atlantis');
     assert.ok(atl.shell.moat.key === 'water' && atl.shell.moat.tint === '#49c2d8' && atl.shell.moat.walk === true, 'Atlantis: the canals\' own tint on the moat');
     assert.ok(atl.doors[0].leaf === 'leaf_bulkhead' && atl.shell.sky.night === 1 && atl.shell.wall === 'marble_light', 'Atlantis: the wet bulkhead, the marble hall at night');
@@ -1720,7 +1720,7 @@ test('every built site is a launch map with a threshold and generates a box room
     assert.ok(aga.shell.moat.key === 'water' && aga.shell.moat.tint === '#4ae0c8' && aga.shell.sky.night === 0, 'Agartha: the inner sea, day by the inner sun');
     assert.ok(aga.doors[0].leaf === 'leaf_vault' && aga.props.filter(p => /plant/.test(p.key)).length >= 3, 'Agartha: the inner gate; things grow');
     const ant = moatRoom('prebuilt_antarctica');
-    assert.ok(ant.shell.moat.key === 'deep_water' && ant.shell.moat.walk === false && ant.shell.moat.tint === '#3a78b8', 'Antarctica: deep water, never entered, the board\'s water tint');
+    assert.ok(ant.shell.moat.key === 'deep_water' && ant.shell.moat.walk === false && ant.shell.moat.tint === '#2a5a90', 'Antarctica: deep water, never entered, the board\'s water tint (the Δ AREA PASS, 2026-09-19)');
     assert.ok(ant.doors[0].leaf === 'leaf_bulkhead' && ant.shell.wall === 'ice_1' && ant.shell.moat.deck === 'igloo' && ant.shell.sky.night === 0, 'Antarctica: the ice-wall hatch, an ice bridge, polar day');
     assert.ok(ant.props.some(p => p.key === 'cot'), 'Antarctica: the overwinter cot');
     /* THE REST OF THE REGISTER (plan 7.2 stage 6, 2026-09-08 rev 4): every

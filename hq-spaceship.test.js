@@ -157,7 +157,8 @@ test('THE SHIP\'S ONE DOOR (2026-09-16): both Lunar-route ends are DOCKED on the
 });
 
 test('every hatch in the ship is reversible, the complex is connected from the deck, and nothing leaves the site but the deck’s egress and the one collar', () => {
-    const ROOMS = [BOARD].concat(PART_IDS);
+    const DECK = BOARD + '_deck';   // AREA CONTENT D3 (2026-09-19): THE MAIN DECK is the entry part — it wears the bay door and THE CARGO HATCH (a secret pair into the hold)
+    const ROOMS = [BOARD, DECK].concat(PART_IDS);
     const seen = new Set([BOARD]), queue = [BOARD];
     while (queue.length) {
         const id = queue.shift();
@@ -181,9 +182,10 @@ test('every hatch in the ship is reversible, the complex is connected from the d
                 assert.ok(far && far.action.room === id && far.action.at === d.id, id + '/' + d.id + ' ⇄ ' + a.room + ' is a pair');
                 continue;
             }
-            if (HQ.rooms[a.room].kind === 'bay') { assert.strictEqual(id, BOARD, 'only the deck walks back to the bay'); continue; }
+            if (HQ.rooms[a.room].kind === 'bay') { assert.ok(id === BOARD || id === DECK, 'only the deck walks back to the bay'); continue; }
             const back = at(a.room, a.at);
-            assert.ok(back && back.action.room === id && back.action.at === d.id, id + '/' + d.id + ' ⇄ ' + a.room + '/' + (back && back.id) + ' is a pair');
+            const same = r => (r === BOARD ? DECK : r);   // THE AREAS (2026-09-18): the board is bypassed — a door into it lands in THE MAIN DECK (hqSiteEntry), so the deck part and the board are one landing
+            assert.ok(back && same(back.action.room) === same(id) && back.action.at === d.id, id + '/' + d.id + ' ⇄ ' + a.room + '/' + (back && back.id) + ' is a pair');
             assert.strictEqual(back.leaf, d.leaf, 'the same leaf on both sides of ' + d.id);
             assert.ok(ROOMS.includes(a.room), id + '/' + d.id + ' stays inside the site');
             if (!seen.has(a.room)) { seen.add(a.room); queue.push(a.room); }

@@ -150,7 +150,7 @@ test('THE SUBWAY’s third station: Downtown’s platform stands its train FREE 
     assert.ok(st.action.room === 'site_prebuilt_downtown_subway' && st.action.at === tr.id && tr.action.at === st.id, 'the pair');
     assert.strictEqual(D.hqDoorNo(st), '1954', 'the stair’s plate reads Downtown’s number');
     assert.strictEqual(D.hqDoorNo(tr), '2047', 'the train’s plate reads Cyberpunk’s number');
-    assert.strictEqual(cy.doors.filter(d => d.link).length, 3, 'the grid carries the stair on its north wall, the tunnel\'s train FREE at its station (the second pass) and the Strip\'s road at its east end (THE ROADS OUT, 2026-09-17)');
+    assert.strictEqual(cy.doors.filter(d => d.link).length, 4, 'the grid carries the stair on its north wall, the tunnel\'s train FREE at its station (the second pass), the Strip\'s road at its east end (THE ROADS OUT, 2026-09-17) and THE UNDERCITY\'s sewer (AREA CONTENT D2, 2026-09-19)');
     assert.strictEqual(HQ.rooms.site_prebuilt_cyberpunk.doors.filter(d => d.link).length, 0, 'the board room carries nothing (the train, the stair, the machine and the highway all moved into the city)');
     assert.strictEqual(cy.doors.filter(d => d.link && d.wall === 'n').length, 1, 'one on the wall');
     for (const o of cy.doors) if (o !== st && o.wall === 'n') assert.ok(Math.abs(o.x - st.x) >= 4.4, 'the stair shares a lane with ' + o.id);

@@ -7099,3 +7099,30 @@ guards) and hq-population.test.js. NOT touched: the survey worker, the model que
 UNSEEN LIVE (RULE #1c): the card's count on a cold cache (the hall is ~300 MB of GLB — the card will be HONEST
 about it; `gltf-transform optimize` on the furniture is still the user's lever), the walk-blink turning into the
 card, the menu's fade-in, the battle card's bar growing as the board asks.
+
+## THE RED CI — why every push e-mailed "All jobs have failed", and the rule that stops it (2026-09-20, local delivery)
+`.github/workflows/ci.yml` runs `npm test` (the FAST suite) on EVERY push, and every push
+to main had been red since at least 2026-09-17 (509 runs, the last dozen all `failure`): the
+same 33 tests failed locally and on GitHub. NOT a flaky runner — ACCUMULATED TEST DEBT: the
+scope rule ("test what you touched") plus "the slow suites were not run at the user's word"
+let deliveries land that broke OTHER files' tests, because most of this repo's tests are
+SOURCE PINS — a regex on another file's source, a hard-coded count (secret doors, link doors,
+Δ cells), the CURRENT `?v=` token — and every later delivery moved what they pinned. Fixed in
+one pass (33 → 0): two REAL fixes (data.js `hqFieldBoxInfo`'s edge tie-break — a room whose
+only door is a draught weighted no wall and the residue split both sides; the Downtown
+canal-side tree, the Astral colonnade's SW column, the Bermuda cay's tree, the North Pole
+campfire, the Mare's grey and the Lodge's man in black all stood in water / on a cliff blend —
+moved), two HARNESS stubs (ai-wide-beam's `window`, character-creator's `_alTrack` /
+`_ewRetryUrl` / `setTimeout` + THE RETRY's URL sequence), and the rest stale pins brought to
+what the shipped code does. THE RULES NOW: (1) **before EVERY delivery run `npm test` ONCE**
+(~3.5 min here; it is exactly what CI runs — a red GitHub e-mail is the only other way the
+user finds out) — the scope rule still says which SLOW suites to skip (`test:full`), never the
+fast one; (2) **never pin the CURRENT `?v=` token** — assert `/\?v=\d{8}[a-z0-9-]*-cors/`
+(and, if it matters, that the PREVIOUS token is gone); (3) **a TOTAL lives in ONE test**
+(secret doors = hq-floors.test.js; a room's link doors = that room's own test) — another
+test asserts its own rows exist, never the sum; (4) a test that walks door pairs on a
+BYPASSED board resolves the board to its entry part (`hqSiteEntry`, the deck ⇄ the board are
+one landing); (5) `mobile-audio/` is not in the repo — its test SKIPS when the folder is
+absent (commit the 37 cues or leave it). The workflow's actions are `checkout@v5` /
+`setup-node@v5` (the Node 20 deprecation warning). Once this delivery is on main the run
+is green and the e-mails stop; the next red one is a REAL break in that push.

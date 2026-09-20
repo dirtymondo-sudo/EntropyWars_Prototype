@@ -38,7 +38,7 @@ function setup(id = 'racePlasmaCannon') {
         const a=battle.indexOf('        function getLineSpellLaneOffsets(');
         const b=battle.indexOf('        function getSpellRangeTiles(',a);
         const code=battle.slice(a,b).replace('const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];',`const dirs = [[${dx},${dy}]];`);
-        return vm.runInNewContext(code+'getLineSpellRayTiles(unit,spell)',{unit:from,spell,
+        return vm.runInNewContext(code+'getLineSpellRayTiles(unit,spell)',{unit:from,spell,window:{},   // the slice publishes lineSpellHeadingTo on window (THE COMBAT FIXES, 2026-09-19)
             isInside:(x,y)=>x>=0&&y>=0&&x<12&&y<12,isTerrainPassable:g.isTerrainPassable,
             _lineLosBlocked:(u,s,x,y)=>!s.ignoresLineOfSight&&g.isRangeBlockedByTerrain(u.x,u.y,x,y,u.z)});
     }

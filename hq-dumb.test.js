@@ -147,7 +147,7 @@ test('ONE PIECE: from each way in every part is walked; every inside door is a p
     assert.deepEqual(Array.from(seen).sort().join(','), IDS.slice().sort().join(','), 'every part is walked');
     assert.deepEqual(HQ.rooms[SEVEN].doors.map(d => d.id).sort().join(','), 'bunker,clone,dream,link_cave_dumb,motorpool,war', 'the hub’s five spokes + the cave’s blast door');
     /* THE LOOPS (2026-09-18 — the user: "too many rooms that don't connect anywhere else"): every department has TWO ways out */
-    for (const id of [DREAM, CLONE, WAR, BUNKER]) assert.equal(HQ.rooms[id].doors.length, 2, id + ': two ways out');
+    for (const id of [DREAM, CLONE, WAR, BUNKER]) assert.equal(HQ.rooms[id].doors.filter(d => !d.link).length, 2, id + ': two ways out (a seam — the dream lab\'s screen into THE ASTRAL REALM — is a links row on top)');
     assert.ok(at(DREAM, 'service').action.room === CLONE && at(CLONE, 'service').action.room === DREAM, 'THE SERVICE CORRIDOR: the ward ⇄ the vats');
     assert.ok(at(WAR, 'stair').action.room === BUNKER && at(WAR, 'stair').y === 3.0 && at(BUNKER, 'stair').action.room === WAR, 'THE PRIVATE STAIR: the war room’s south gallery ⇄ the bunker');
     for (const id of PLANNED) assert.equal(D.hqTerrainInfo(id).genPlan.deadEnds.length, 0, id + ': THE CYCLE RULE — no room with one way in');

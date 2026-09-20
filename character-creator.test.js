@@ -411,6 +411,9 @@ test('R2 load failure retries only the allowlisted model and settles the existin
     const calls = [], cache = {};
     const root = { traverse: () => {} };
     const c = { console, _unitGlbCache: cache, _skinnedBBox: () => ({}), invalidateUnits: () => {},
+        _alTrack: () => ({ settle() {} }), _alJoin() {},   // THE ASSET LEDGER (2026-09-20): the loader files a record and settles it
+        _ewRetryUrl: u => u + '&ewretry=t', _ewAssetFailed() {},   // THE RETRY (2026-09-20): one more fetch under a fresh cache key before the fallback
+        setTimeout: (fn, ms) => { if (!ms) fn(); return 0; }, clearTimeout() {},   // THE MODEL QUEUE (2026-09-20): the pump runs at once, the slot's safety timer never
         getCharacterModelFallback: context.getCharacterModelFallback,
         THREE: { GLTFLoader: class { load(url, ok, progress, fail) {
             calls.push(url); if (url.startsWith('/api/')) ok({ scene: root, animations: [] }); else fail();
@@ -420,13 +423,14 @@ test('R2 load failure retries only the allowlisted model and settles the existin
     vm.runInContext(renderer.slice(renderer.indexOf('    function _compactMobileModelTextures('), renderer.indexOf('    function _loadMiscModel(')), c);
     const url = context.getCharacterAppearanceModel('homosapien', 'female', {}).model;
     let result; c._loadUnitGLB(url, e => result = e);
-    assert.deepEqual(calls, [url, '/api/character-model/female']);
+    assert.equal(calls.length, 3, 'the CDN, THE RETRY under a fresh cache key (2026-09-20), then the same-origin fallback');
+    assert.equal(calls[0], url); assert.ok(calls[1].startsWith(url + '&ewretry='), 'the retry: ' + calls[1]); assert.equal(calls[2], '/api/character-model/female');
     assert.equal(result.root, root); assert.equal(result.loading, false);
     c._loadUnitGLB(url, e => assert.equal(e, result));
-    assert.equal(calls.length, 2, 'second caller should reuse the settled model');
+    assert.equal(calls.length, 3, 'second caller should reuse the settled model');
     const hair = context.window.getHairStyleUrl('hair014');
     c._loadUnitGLB(hair, () => {});
-    assert.deepEqual(calls.slice(2), [hair, '/api/character-model/hair/hair014']);
+    assert.deepEqual(calls.slice(3), [hair, hair + '&ewretry=t', '/api/character-model/hair/hair014'], 'the hair: the CDN, the retry, the fallback');
 });
 
 test('character-rig.js reproduces the rigged bases from the donors (weights transferred, tree kept)', { skip: GENERATED_SKIP }, () => {

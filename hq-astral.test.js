@@ -280,5 +280,5 @@ test('THE RENDERER: four procs (the thought-form breathes on a ticker, the eye t
     assert.ok(/^        screen: function \(U, ctx\)/m.test(renderer) && /^        closet: function \(U, ctx\)/m.test(renderer), 'the screen and the closet builders');
     /* data.js: the shells, the looks, the spec doors, the pins */
     for (const s of ['function hqAstralShell(o)', 'function hqNightmareShell(o)', 'function hqUnthoughtShell(o)', "astral:     { name: 'THE SEA OF POSSIBILITY'", "nightmare:  { name: 'THE NIGHTMARE'", "site_prebuilt_lookingglass_sea: { tape: { x: 20, z: -35 } }", "action: { room: 'site_prebuilt_lookingglass_waiting', at: 'garden' }"]) assert.ok(data.includes(s), 'data.js: ' + s);
-    assert.ok(fs.readFileSync(__dirname + '/index.html', 'utf8').includes('?v=20260919-astral-01-cors'), 'the token bumped (RULE #1b)');
+    assert.ok(/\?v=\d{8}[a-z0-9-]*-cors/.test(fs.readFileSync(__dirname + '/index.html', 'utf8')), 'a live token (RULE #1b — never pin the current token: every delivery bumps it)');
 });
