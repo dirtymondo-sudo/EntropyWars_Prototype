@@ -2243,7 +2243,14 @@ if (typeof window !== 'undefined') window.HQ_RIDE_CLIP = HQ_RIDE_CLIP;
    Slide_Start 0.83 s: a run that goes down into a slide on the floor — read off the contact
    sheet) and the GET-UP (UAL2 Slide_Exit 0.5 s: up off the floor onto the feet). The renderer
    sizes fall / get-up to their share of HQ_SKATE_RULES.bailMs and plays each once. */
-const HQ_SKATE_CLIPS = { push: { clip: 'Jog_Fwd_Loop', lib: 0, ts: 1.15 }, fall: { clip: 'Slide_Start', lib: 1, ts: 1.0 }, getup: { clip: 'Slide_Exit', lib: 1, ts: 1.0 } };
+/* SKATEBOARDING rev 6 (2026-09-20, the user: "my character does a pushing animation with his arms
+   instead of a kick animation"): the push is THE KICK — MAL1's Spartan_Kick (lib 2; the leg comes
+   up and drives out 0.55–0.8 s, the foot is down at 0.93 — PLAYTEST_NOTES' strike table), TRIMMED to
+   its stroke and timed so one stroke fills HQ_SKATE_RULES.pushMs. The bake slot is `hqSkatePush` —
+   NEVER `hqPush`: that is the CAST pose (Push_Loop, leaning into a mop handle with both arms) which
+   the Player cast rig already carries, and rev 3's `!def.libClips.hqPush` guard let it shadow the
+   stride — the arm push the user saw. Neither library has a skate scoot; the kick is the nearest. */
+const HQ_SKATE_CLIPS = { push: { clip: 'Spartan_Kick', lib: 2, ts: 1.15, trim: [0.4, 1.0] }, fall: { clip: 'Slide_Start', lib: 1, ts: 1.0 }, getup: { clip: 'Slide_Exit', lib: 1, ts: 1.0 } };
 if (typeof window !== 'undefined') window.HQ_SKATE_CLIPS = HQ_SKATE_CLIPS;
 // THE DOOR GUN rev 4 (2026-09-16): the walker's GUN clips, baked beside the
 // ride clip on the HQ avatar's rig only (three-renderer.js _hqSpawnCharacter

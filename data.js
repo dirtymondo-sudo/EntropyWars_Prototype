@@ -43427,16 +43427,16 @@ const HQ_SKATE_RULES = {
     maxV: 12.5,          // m/s — the cap on the roll (a run is ~4.6)
     pushV: 4.2,          // m/s a push adds (rev 3: a fuller stroke on the slower cadence — four pushes to cruise)
     pushEvery: 0.85,     // s between pushes (W held) — a real stroke's cadence (rev 3; was 0.42, a sprint)
-    pushMs: 520,         // ms the push STRIDE plays (the jog clip, squared up to the roll), then back on the deck
+    pushMs: 520,         // ms the push KICK plays (rev 6: Spartan_Kick trimmed to its stroke — sprites.js HQ_SKATE_CLIPS; never the cast's mop push), then back on the deck
     cruiseV: 10.5,       // m/s — at cruise W only HOLDS the speed (no friction, no stride): the rider stands on the deck (rev 3)
     friction: 0.993,     // per 60 Hz frame, applied time-based (a long coast — rev 3: longer, a Tony Hawk roll; the pushes settle near the cap)
-    brake: 0.9,          // S, per 60 Hz frame (rolling forward)
-    reverseMaxV: 5.0,    // m/s — S from a stop is the FAKIE push: the roll goes backwards, capped here (rev 2)
-    reversePushV: 1.8,   // m/s a fakie push adds
+    brake: 0.9,          // per 60 Hz frame — a key pointing AGAINST the roll (rev 6: WASD is a camera-relative direction, like walking; S with the camera ahead)
+    reverseMaxV: 5.0,    // m/s — the cap on a BACKWARDS roll (a portal exit's, a bail's); rev 6 retired the fakie push — S from a stop turns the board round and rolls toward the camera
+    reversePushV: 1.8,   // RETIRED rev 6 — kept for old readers
     kickEvery: [3.5, 7], // s — coasting at speed the rider throws in a stride now and then (rev 2)
     kickMinV: 2.5,       // m/s — slower than this no kick
-    turn: 2.4,           // rad/s of carve at speed (scales up to 3 m/s)
-    turnMin: 0.4,        // the carve's floor at a crawl (a share of `turn`) — the board turns from a stop too (rev 3)
+    turn: 2.4,           // rad/s the board CARVES toward the keys' direction at speed (≥ 3 m/s); below that it turns tighter, up to 3.5× (rev 6)
+    turnMin: 0.4,        // the carve's floor at a crawl (a share of `turn`); from a dead stop the first push simply goes where the keys point
     ollieV: 7.25,        // the grind's hop-off (× 0.85) — the walker's own jump (HQ_JUMP_V)
     ollieTapV: 4.6,      // m/s up on a bare tap — a hop (≈ 0.6 m)
     ollieMaxV: 7.9,      // RETIRED rev 5 (the crouch pop is gone) — kept for old readers
@@ -43449,8 +43449,8 @@ const HQ_SKATE_RULES = {
     trickLateMin: 0.45,  // a flick with less air left than this share of the trick's ms is REFUSED (the `late` beat) — never a bail you could not avoid
     ollieHoldS: 0.42,    // rev 5 (2026-09-19, the user: "a normal jump with holding it to jump bigger"): SPACE held keeps lifting this long
     ollieHoldAcc: 13,    // m/s² of lift while held (a tap ≈ 0.6 m, a full hold ≈ 1.65 m)
-    airTurn: 1.35,       // rad/s A / D steer the heading IN THE AIR (rev 4: WASD is air control, never a trick)
-    airAccel: 3.2,       // m/s² W / S nudge the speed in the air (a landing pulled short, a rail reached)
+    airTurn: 1.35,       // rad/s the heading turns toward the keys' direction IN THE AIR (rev 4: WASD is air control, never a trick; rev 6: the camera never follows)
+    airAccel: 3.2,       // m/s² the speed is nudged along the roll in the air — with it speeds up, against it slows (a landing pulled short, a rail reached)
     flickPx: 34,         // px of mouse travel with a button held in the air that fires a trick (THE STICK, rev 4)
     stickDeadPx: 6,      // px under which the stick is idle (a shiver never fires)
     stanceYaw: -Math.PI / 2,   // the body's turn on the deck (regular: chest to the right of travel; +π/2 = goofy)

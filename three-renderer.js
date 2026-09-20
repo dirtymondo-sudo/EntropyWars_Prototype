@@ -11385,7 +11385,8 @@ const ThreeRenderer = (function () {
             || ((name === 'run') ? (acts.walk || acts.idle) : null)     // library-only slot
             || ((name === 'dodge') ? acts.idle : null)                  // library-only slot
             || ((name === 'hqRide') ? acts.idle : null)                 // SKATEBOARDING rev 2: the ride stance, else the idle
-            || ((name === 'hqPush') ? (acts.run || acts.walk || acts.idle) : null)   // SKATEBOARDING rev 3: the push stride (the library's jog), else the run
+            || ((name === 'hqSkatePush') ? (acts.castKick || acts.run || acts.walk || acts.idle) : null)   // SKATEBOARDING rev 6: the push KICK (Spartan_Kick trimmed), else the board's kick slot, else the run
+            || ((name === 'hqPush') ? (acts.run || acts.walk || acts.idle) : null)   // the cast's mop push, else the run
             || ((name === 'hqFall') ? (acts.fall || acts.hit || acts.idle) : null)   // SKATEBOARDING rev 3: the bail's fall (a run into a slide), else the fall slot
             || ((name === 'hqGetup') ? acts.idle : null)                             // SKATEBOARDING rev 3: back on the feet, else the idle
             || ((name === 'hqAim') ? acts.idle : null)                  // THE DOOR GUN rev 4: the pistol hold, else the idle
@@ -45458,11 +45459,13 @@ const ThreeRenderer = (function () {
         /* SKATEBOARDING rev 3 (2026-09-17): the push STRIDE, the bail's FALL and the GET-UP
            (sprites.js HQ_SKATE_CLIPS — the library's jog, Slide_Start, Slide_Exit) beside the
            ride clip; a rig without one falls through _playUnitModelAnim's fallbacks */
-        if (spec.kind === 'player' && def.libClips && typeof HQ_SKATE_CLIPS !== 'undefined' && !def.libClips.hqPush) {
+        if (spec.kind === 'player' && def.libClips && typeof HQ_SKATE_CLIPS !== 'undefined' && !def.libClips.hqSkatePush) {
+            /* rev 6 (2026-09-20): the slot is `hqSkatePush` — `hqPush` is the cast's mop-push pose, already on the
+               Player rig, and the old guard on it left the kick unbaked (the arm push on the deck) */
             var slc = Object.assign({}, def.libClips), slt = Object.assign({}, def.libTimeScales);
-            [['push', 'hqPush'], ['fall', 'hqFall'], ['getup', 'hqGetup']].forEach(function (pr) {
+            [['push', 'hqSkatePush'], ['fall', 'hqFall'], ['getup', 'hqGetup']].forEach(function (pr) {
                 var C = HQ_SKATE_CLIPS[pr[0]]; if (!C) return;
-                slc[pr[1]] = { clip: C.clip, lib: C.lib || 0 }; if (C.ts) slt[pr[1]] = C.ts;
+                slc[pr[1]] = { clip: C.clip, lib: C.lib || 0 }; if (C.trim) slc[pr[1]].trim = C.trim; if (C.ts) slt[pr[1]] = C.ts;
             });
             def = Object.assign({}, def, { libClips: slc, libTimeScales: slt });
         }
@@ -48244,9 +48247,13 @@ const ThreeRenderer = (function () {
        RULE #2). B drops the deck (data.js HQ_SKATE_RULES is the table; the
        issue is `opts.skate.issued` from map.js, standard issue while
        `free: true`). On the board the walker is a RIDER (`_hq.ride`):
-         · MOMENTUM — `v` along a heading `hd`; W pushes on a cadence, S
-           brakes, A / D carve (the turn scales with speed), friction is
-           time-based (≈ 0.99 at 60 Hz), the mouse still owns the camera.
+         · MOMENTUM — `v` along a heading `hd`; WASD is a camera-relative
+           DIRECTION exactly like walking (rev 6, 2026-09-20): the board
+           carves toward it (tighter at a crawl) and pushes on a cadence,
+           a key against the roll brakes, from a stop the first push goes
+           where the keys point; friction is time-based (≈ 0.99 at 60 Hz);
+           the mouse is the camera's ONLY owner — no carve, rail bend or
+           air control ever turns it (`_hqRideTurn` is heading-only).
          · THE OLLIE — SPACE, the walker's own jump arc with the deck.
          · GRINDS — an ollie that comes down within `grindSnap` of a RAIL in
            `_hq.rails` (the mezzanine's arcs, the gallery's banister, the
@@ -48644,13 +48651,30 @@ const ThreeRenderer = (function () {
         if (perfect && S.tricks.pop) _hqRideComboAdd(R, S.tricks.pop.label, S.tricks.pop.pts);
         _hqRideEmit({ kind: 'ollie', v: R.v, charge: k, perfect: perfect, vy: vy });
     }
-    /* Follow a carve/rail bend while preserving the player's mouse-look offset.
-       Camera yaw increases to the right; the +Z-front rider yaw increases left.
-       Airborne trick rotations never change the travel heading or the camera. */
+    /* rev 6 (2026-09-20, the user: "I don't want the camera to move with A and S — I control the
+       camera with the mouse, just like walking"): the heading turns, THE CAMERA NEVER DOES. A carve,
+       a rail bend, a wall slide, air control — every heading write goes through here and none of them
+       touch `_hq.cam.yaw` (the mouse is the camera's only owner, the walker's rule). */
     function _hqRideTurn(R, heading) {
-        var delta = Math.atan2(Math.sin(heading - R.hd), Math.cos(heading - R.hd));
-        _hq.cam.yaw -= delta;
-        R.hd = heading;
+        R.hd = Math.atan2(Math.sin(heading), Math.cos(heading));
+    }
+    /* THE WANTED HEADING (rev 6): WASD on the deck is a DIRECTION relative to the camera, exactly the
+       walker's (`_hqTickWalker`: camera forward / right, flattened) — W away from the camera, S toward
+       it, A / D across it, the diagonals between. Returns null with no key held. `arrows` = the arrow
+       keys count as WASD too (the ground; in the air they are tricks). */
+    function _hqRideWantHeading(H, k, arrows) {
+        var ix = ((k.d || (arrows && k.right)) ? 1 : 0) - ((k.a || (arrows && k.left)) ? 1 : 0);
+        var iy = ((k.s || (arrows && k.down)) ? 1 : 0) - ((k.w || (arrows && k.up)) ? 1 : 0);
+        if (!ix && !iy) return null;
+        var fx = Math.sin(H.cam.yaw), fz = -Math.cos(H.cam.yaw), rx = Math.cos(H.cam.yaw), rz = Math.sin(H.cam.yaw);
+        var mx = fx * (-iy) + rx * ix, mz = fz * (-iy) + rz * ix;
+        return Math.atan2(mx, mz);
+    }
+    /* the shortest signed turn from the roll's heading to `want` (the roll's DIRECTION — a negative
+       R.v rolls backwards along R.hd, so the body's travel heading is R.hd + π there) */
+    function _hqRideDelta(R, want) {
+        var travel = R.v < 0 ? R.hd + Math.PI : R.hd;
+        return Math.atan2(Math.sin(want - travel), Math.cos(want - travel));
     }
     /* THE RIDE, per frame — in place of _hqTickWalker's movement */
     function _hqTickRide(dt) {
@@ -48712,32 +48736,34 @@ const ThreeRenderer = (function () {
             R.sfxT -= dt; if (R.sfxT <= 0) { R.sfxT = 0.22; _hqRideEmit({ kind: 'grind', tick: true }); }
             return;
         }
-        var turnIn = noCtl ? 0 : ((k.d ? 1 : 0) - (k.a ? 1 : 0));
         var leanT = 0;
+        /* THE INPUT (rev 6, 2026-09-20 — the user: "AWSD movement with the skateboard just like walking"):
+           WASD is a camera-relative DIRECTION, never a steering wheel. The board CARVES toward it (the
+           turn rate scales with the speed, tight at a crawl) and PUSHES along the roll on the cadence;
+           a wanted direction behind the roll (S with the camera ahead, W after a fakie landing) is the
+           BRAKE, and from a stop the first push goes exactly where the keys point — S from a standstill
+           turns the board round and rolls toward the camera (the rev 2 fakie push is retired; a
+           negative R.v is a portal exit's or a bail's). No key = coast. The camera is the mouse's. */
+        var want = noCtl ? null : _hqRideWantHeading(H, k, !pl.air);
+        var wDelta = want == null ? 0 : _hqRideDelta(R, want);
+        var backKey = want != null && Math.abs(wDelta) > Math.PI * 0.62;   // pressing against the roll
+        var fwdKey = want != null && !backKey;
+        var carveIn = 0;   // −1 right · +1 left, the lean's read
         if (!pl.air) {
             /* ── ON THE GROUND ── */
-            var fwdKey = !noCtl && (k.w || k.up), backKey = !noCtl && (k.s || k.down);
             var cruising = false;
+            if (want != null && Math.abs(R.v) < 0.3) { R.v = Math.max(0, R.v); R.hd = want; wDelta = 0; backKey = false; fwdKey = true; }   // from a stop: the roll starts where the keys point
             if (fwdKey) {
-                if (Math.abs(R.v) < 0.3) R.hd = Math.atan2(Math.sin(H.cam.yaw), -Math.cos(H.cam.yaw));   // camera -Z forward → rider +Z forward
-                if (R.v < 0) R.v *= Math.pow(S.brake, dt * 60);   // W while rolling backwards = the brake first
-                else if (R.v >= (S.cruiseV != null ? S.cruiseV : 8.5)) { cruising = true; R.pushT = Math.min(R.pushT, 0.2); }   // rev 3: at cruise W only HOLDS the speed — the rider stands on the deck
+                if (R.v < 0) R.v *= Math.pow(S.brake, dt * 60);   // rolling backwards out of a portal / a bail: brake first
+                else if (R.v >= (S.cruiseV != null ? S.cruiseV : 8.5)) { cruising = true; R.pushT = Math.min(R.pushT, 0.2); }   // rev 3: at cruise the keys only HOLD the speed — the rider stands on the deck
                 else {
                     R.pushT -= dt;
                     if (R.pushT <= 0) { R.v = Math.min(S.maxV, R.v + S.pushV); R.pushT = S.pushEvery; R.pushAnim = (S.pushMs || 520) / 1000; R.kickT = 0; _hqRideEmit({ kind: 'push', v: R.v }); }
                 }
             } else if (backKey) {
-                /* S: THE BRAKE while rolling forward; stopped, it is the FAKIE
-                   PUSH — the same cadence, a gentler kick, the roll goes
-                   backwards along the heading (capped at reverseMaxV) and the
-                   rider stays facing forward: skating backwards (rev 2) */
-                if (Math.abs(R.v) < 0.3) R.hd = Math.atan2(Math.sin(H.cam.yaw), -Math.cos(H.cam.yaw));
-                if (R.v > 0.05) R.v *= Math.pow(S.brake, dt * 60);
-                else {
-                    if (R.v > 0) R.v = 0;
-                    R.pushT -= dt;
-                    if (R.pushT <= 0) { R.v = Math.max(-S.reverseMaxV, R.v - S.reversePushV); R.pushT = S.pushEvery; R.pushAnim = (S.pushMs || 520) / 1000; R.kickT = 0; _hqRideEmit({ kind: 'push', v: R.v, fakie: true }); }
-                }
+                /* THE BRAKE: the keys point against the roll — scrub the speed; at a stop the next tick turns the board round */
+                R.v *= Math.pow(S.brake, dt * 60);
+                R.pushT = Math.min(R.pushT, 0.08);
             } else R.pushT = Math.min(R.pushT, 0.08);
             if (!cruising) R.v *= Math.pow(S.friction, dt * 60);
             if (Math.abs(R.v) < 0.05) R.v = 0;
@@ -48748,8 +48774,16 @@ const ThreeRenderer = (function () {
                 R.kickT -= dt;
                 if (R.kickT <= 0) { R.kickT = S.kickEvery[0] + Math.random() * (S.kickEvery[1] - S.kickEvery[0]); R.pushAnim = 0.28; R.v += Math.sign(R.v) * 0.25; _hqRideEmit({ kind: 'kick', v: R.v }); }
             } else if (Math.abs(R.v) < S.kickMinV) R.kickT = S.kickEvery[0];
-            _hqRideTurn(R, R.hd - turnIn * (R.v < 0 ? -1 : 1) * S.turn * Math.max(S.turnMin != null ? S.turnMin : 0.4, Math.min(1, Math.abs(R.v) / 3)) * dt);   // rev 3: a floor — the board turns at a crawl too
-            leanT = -turnIn * 0.32 * Math.min(1, Math.abs(R.v) / 4);
+            /* THE CARVE toward the wanted direction: `turn` rad/s at speed, tighter below 3 m/s (a slow board
+               turns on a dime — rev 6; `turnMin` is the floor share the crawl keeps), never past the target */
+            if (fwdKey && wDelta !== 0 && R.v !== 0) {
+                var sp = Math.abs(R.v);
+                var rate = S.turn * (sp >= 3 ? 1 : Math.max(S.turnMin != null ? S.turnMin : 0.4, Math.min(3.5, 3 / Math.max(0.6, sp))));
+                var applied = Math.max(-rate * dt, Math.min(rate * dt, wDelta));
+                _hqRideTurn(R, R.hd + applied);
+                carveIn = Math.sign(applied);
+            }
+            leanT = carveIn * 0.32 * Math.min(1, Math.abs(R.v) / 4);
             /* THE OLLIE (rev 5, 2026-09-19 — the user: "change the skateboard jumps back to a normal
                jump with holding it to jump bigger; no crouch and release"): the PRESS pops the tap
                height (ollieTapV) at once; SPACE held keeps LIFTING for ollieHoldS seconds
@@ -48769,13 +48803,18 @@ const ThreeRenderer = (function () {
             }
             if (!noCtl) {
                 /* AIR CONTROL (rev 4 — the user: "I still need to control my movement in the air with
-                   WASD"): A / D steer the heading (airTurn, the camera follows like a carve), W / S nudge
-                   the speed (airAccel) — a landing pulled onto the rail, a gap made. Never a trick. */
-                var airTurnIn = (k.d ? 1 : 0) - (k.a ? 1 : 0);
-                if (airTurnIn) _hqRideTurn(R, R.hd - airTurnIn * (R.v < 0 ? -1 : 1) * (S.airTurn != null ? S.airTurn : 1.35) * dt);
-                var airAcc = (k.w ? 1 : 0) - (k.s ? 1 : 0);
-                if (airAcc) R.v = Math.max(-S.reverseMaxV, Math.min(S.maxV, R.v + airAcc * (S.airAccel != null ? S.airAccel : 3.2) * dt));
-                leanT = -airTurnIn * 0.22;
+                   WASD"; rev 6: the same camera-relative DIRECTION as on the ground, the camera untouched):
+                   the heading turns toward the keys at airTurn, and the speed is nudged by airAccel along
+                   the roll (pressing with the roll speeds up, against it slows — a landing pulled onto the
+                   rail, a gap made). Never a trick (the arrows are the tricks up here). */
+                var airWant = _hqRideWantHeading(H, k, false), airIn = 0;
+                if (airWant != null) {
+                    var aDelta = _hqRideDelta(R, airWant), aRate = (S.airTurn != null ? S.airTurn : 1.35) * dt;
+                    var aApplied = Math.max(-aRate, Math.min(aRate, aDelta));
+                    if (aApplied) { _hqRideTurn(R, R.hd + aApplied); airIn = Math.sign(aApplied); }
+                    R.v = Math.max(-S.reverseMaxV, Math.min(S.maxV, R.v + Math.cos(aDelta) * (R.v < 0 ? -1 : 1) * (S.airAccel != null ? S.airAccel : 3.2) * dt));
+                }
+                leanT = airIn * 0.22;
                 /* the keyboard's tricks (the arrows, SHIFT) stay for a rider without a mouse — THE STICK is the mouse (_hqRideStickMove) */
                 if (_hqRideKeyEdge(R, k, 'left')) _hqRideStartTrick(R, 'kickflip');
                 if (_hqRideKeyEdge(R, k, 'right')) _hqRideStartTrick(R, 'heelflip');
@@ -50221,7 +50260,7 @@ const ThreeRenderer = (function () {
             if (ch.rounds && ch.kind !== 'player') { want = ch.moving ? 'walk' : 'idle'; if (e.actions && e.actions.walk) { var wts = e.actions.walk._ew_ts0 || 1; e.actions.walk.timeScale = wts * 0.62; } }
             if (ch.kind === 'player') {
                 want = (ch.jumpT >= 0) ? 'jump' : (ch.moving ? (ch.running ? 'run' : 'walk') : 'idle');
-                if (H.ride && H.ride.on) { var bph = _hqRideBailPhase(H.ride); want = bph ? (bph === 'fall' ? 'hqFall' : 'hqGetup') : (ch.jumpT >= 0) ? 'jump' : ((H.ride.pushAnim > 0) ? 'hqPush' : ((e.actions && e.actions.hqRide) ? 'hqRide' : 'idle')); }   // SKATEBOARDING (9.8): the push / the kick is a stride (rev 3: the jog, hqPush), the air is the jump clip, the rest is THE RIDE stance (rev 2: Idle_10, sideways on the deck); a bail = the fall clip then the get-up (rev 3)
+                if (H.ride && H.ride.on) { var bph = _hqRideBailPhase(H.ride); want = bph ? (bph === 'fall' ? 'hqFall' : 'hqGetup') : (ch.jumpT >= 0) ? 'jump' : ((H.ride.pushAnim > 0) ? 'hqSkatePush' : ((e.actions && e.actions.hqRide) ? 'hqRide' : 'idle')); }   // SKATEBOARDING (9.8): the push / the kick is THE KICK (rev 6: hqSkatePush, never the cast's hqPush), the air is the jump clip, the rest is THE RIDE stance (rev 2: Idle_10, sideways on the deck); a bail = the fall clip then the get-up (rev 3)
                 else if (H.vehicle && H.vehicle.on) want = (H.vehicle.kind === 'sub') ? 'hqDrive' : 'hqSit';   // THE DEEP (2026-09-18): at the helm — the library's driving loop in the bathyscaphe, the sitting idle in the skiff
                 else if (ch.swim) want = ch.moving ? 'hqSwim' : 'hqSwimIdle';   // THE DEEP: the swimmer — Swim_Fwd_Loop / Swim_Idle_Loop (sprites.js HQ_SWIM_CLIPS)
                 else if (ch.climb) want = ch.climb.moving ? 'hqClimb' : 'hqClimbIdle';   // THE CLIMB (2026-09-19): the stroke stood up on the line, the hang between rungs (sprites.js HQ_CLIMB_CLIPS)

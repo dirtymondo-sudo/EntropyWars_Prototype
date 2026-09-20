@@ -6669,3 +6669,27 @@ PARTY's seed fills from what the account owns (the five starters fill the first 
 `npm test` runs `earned-doors.test.js`; champ-rework / hq-party amended. Ship data.js to R2 AND
 Render (server.js reads it). UNSEEN LIVE (RULE #1c): the blank runs of ring wall, the ceremony's
 toasts, the chart's dots, the desk's shortened deck, the forge's 🔒 wall in the building.
+
+## SKATEBOARDING rev 6 — WASD LIKE WALKING, THE CAMERA IS THE MOUSE'S, THE KICK (2026-09-20, local delivery)
+The user: "my character does a pushing animation with his arms instead of a kick animation; I want
+AWSD movement with the skateboard just like walking; I don't want the camera to move with A and S —
+I control the camera with the mouse, just like walking." **THE ARM PUSH** was a slot collision: the
+walker is the Player CAST rig, which already carries `_CAST_POSES.hqPush` = `Push_Loop` (leaning into
+a mop handle), and rev 3's bake guard `!def.libClips.hqPush` left the stride unbaked — the mop push
+played on every stroke. The skate push is slot **`hqSkatePush`** now (three-renderer.js's bake,
+`_playUnitModelAnim`'s fallback → `castKick` → run, the clip picker) and the clip is **THE KICK**:
+sprites.js `HQ_SKATE_CLIPS.push` = MAL1 `Spartan_Kick` (lib 2) `trim: [0.4, 1.0]` at ts 1.15 — one
+stroke fills `pushMs` (a libClips row may carry `trim`; the bake copies it). RULE: never bake a walker
+slot under a `_CAST_POSES` name. **WASD IS A DIRECTION**: `_hqRideWantHeading(H, k, arrows)` = the
+walker's own camera-relative input (forward / right flattened; the arrows count on the ground, in the
+air they are tricks), `_hqRideDelta(R, want)` the shortest turn from the ROLL's direction (a negative
+`R.v` travels along hd + π); on the ground the board CARVES toward it (`turn` at ≥ 3 m/s, up to 3.5×
+tighter below — `turnMin` the crawl's floor), pushes on the cadence, a key more than 0.62π off the
+roll is THE BRAKE, from a stop (|v| < 0.3) the heading snaps to the keys and the first push goes there
+(S with the camera ahead turns the board round and rolls toward the camera — the rev 2 FAKIE PUSH is
+retired, `reversePushV` a dead key; a negative `R.v` is only a portal exit's or a bail's); in the air
+the heading turns toward the keys at `airTurn` and the speed is nudged by `cos(delta) × airAccel`.
+**THE CAMERA NEVER TURNS**: `_hqRideTurn(R, heading)` wraps and writes the heading ONLY — no carve,
+rail bend, wall slide or air control touches `_hq.cam.yaw` (hq-skate.test.js scans the block for a
+yaw write). hq-skate.test.js (30). Unseen live (RULE #1c): the kick's read on the deck (`trim` / `ts`
+are the edits), the carve's tightness at a crawl, the turn-round on S.

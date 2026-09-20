@@ -34,7 +34,7 @@ function extract(name) {
 }
 function block() { const a = TR.indexOf('/* ══ SKATEBOARDING — THE RIDER'), b = TR.indexOf('/* ── per-frame ───', a); assert.ok(a > 0 && b > a); return TR.slice(a, b); }
 const RIDE_FNS = ['_hqSkateRules', '_hqSkateOff', '_hqRailLen', '_hqRailAt', '_hqRailNearest', '_hqRailSnap', '_hqRampLocal', '_hqRampUnder', '_hqRampProfile', '_hqRampSurfaceAt', '_hqRegisterPropPark',
-    '_hqRideTurn', '_hqRideNew', '_hqRideArm', '_hqRideEmit', '_hqRideToggle', '_hqRideKeyEdge', '_hqRideComboAdd', '_hqRideComboBank', '_hqRideBail', '_hqRideBailPhase', '_hqRideWall', '_hqRideSlide', '_hqRideObstacleSlide', '_hqTickRideStep', '_hqRideTrickDone', '_hqRideStartTrick', '_hqTickRide', '_hqRideSetY', '_hqRideGravity',
+    '_hqRideTurn', '_hqRideWantHeading', '_hqRideDelta', '_hqRideNew', '_hqRideArm', '_hqRideEmit', '_hqRideToggle', '_hqRideKeyEdge', '_hqRideComboAdd', '_hqRideComboBank', '_hqRideBail', '_hqRideBailPhase', '_hqRideWall', '_hqRideSlide', '_hqRideObstacleSlide', '_hqTickRideStep', '_hqRideTrickDone', '_hqRideStartTrick', '_hqTickRide', '_hqRideSetY', '_hqRideGravity',
     '_hqRidePop', '_hqRideCamDip', '_hqRideFlickDir', '_hqRideFlick', '_hqRideStickDown', '_hqRideStickMove', '_hqRideStickUp', '_hqRideAirLeft', '_hqRideFitMs', '_hqRideQueueMs'];
 function consts() {
     const out = [];
@@ -164,7 +164,8 @@ test('THE RIDE: a push rolls where the camera looks, friction slows it, S brakes
     assert.ok(c.R().v > 2 && c.pl.x > 0.5 && Math.abs(c.pl.z) < 0.01, 'the push went +x: ' + c.pl.x + ' v ' + c.R().v);
     assert.ok(c.events().some(e => e.kind === 'push'));
     const v1 = c.R().v; c.step({}, 1 / 60, 60); assert.ok(c.R().v < v1 && c.R().v > v1 * 0.3, 'friction, gently');
-    const v2 = c.R().v; c.step({ s: true }, 1 / 60, 30); assert.ok(c.R().v < v2 * 0.2, 'the brake');
+    const v2 = c.R().v; c.step({ s: true }, 1 / 60, 18); assert.ok(c.R().v < v2 * 0.2 && c.R().v >= 0, 'the brake: ' + c.R().v + ' of ' + v2);
+    c.step({ s: true }, 1 / 60, 60); assert.ok(c.pl.velX < -0.5, 'rev 6: S held on rolls the board back toward the camera: ' + c.pl.velX);
     c.step({ w: true }, 1 / 60, 90); assert.ok(c.R().v > 5, 'up to speed');
     const hd0 = c.R().hd; c.step({ a: true }, 1 / 60, 20); assert.ok(c.R().hd > hd0, 'A carves left');
     assert.ok(c.R().v <= R.maxV + 1e-9, 'capped');
@@ -192,7 +193,8 @@ test('THE RIDE: a push rolls where the camera looks, friction slows it, S brakes
     n = 0; while (c.pl.air && n++ < 300) c.step({}, 1 / 60, 1);
     const bail = c.events().find(e => e.kind === 'bail');
     assert.ok(bail && bail.why === 'unfinished', 'still turning = a bail: ' + JSON.stringify(bail));
-    assert.ok(Math.abs(c.R().v) < 3 && c.R().bailT > 0 && c.R().deckAway > 0, 'the slide runs out, the deck away: v ' + c.R().v);
+    assert.ok(c.R().bailT > 0 && c.R().deckAway > 0, 'the deck away');
+    const vBail = Math.abs(c.R().v); c.step({}, 1 / 60, 20); assert.ok(Math.abs(c.R().v) < vBail * 0.5 && Math.abs(c.R().v) < 3, 'the slide runs out: v ' + c.R().v + ' from ' + vBail);
     /* REV 3: the bail RESETS every rotation and the stance — the body never stays on its side */
     assert.ok(c.R().flip === 0 && c.R().roll === 0 && c.R().deckRoll === 0 && c.R().spinAcc === 0 && c.R().stance === 0 && c.R().trick === null, 'upright after the bail');
     assert.equal(c._hqRideBailPhase(c.R()), 'fall');
@@ -289,7 +291,9 @@ test('THE SOURCE SITES: the renderer (the keys, the hand-off, the pose, the API,
     assert.ok(/\(k\.d \|\| k\.right\) \? 1 : 0\) - \(\(k\.a \|\| k\.left\) \? 1 : 0\)/.test(TR) && /\(k\.w \|\| k\.up\) \? 1 : 0/.test(TR), 'the walker reads the arrows as WASD');
     assert.ok(/if \(H\.ride && H\.ride\.on\) \{ _hqTickRide\(dt\); return; \}/.test(TR), 'the hand-off at the top of the walker\'s tick');
     assert.ok(/if \(H\.ride\) _hqRidePose\(ch, e, dt\);/.test(TR), 'the pose after the walker\'s own');
-    assert.ok(/want = bph \? \(bph === 'fall' \? 'hqFall' : 'hqGetup'\) : \(ch\.jumpT >= 0\) \? 'jump' : \(\(H\.ride\.pushAnim > 0\) \? 'hqPush' : \(\(e\.actions && e\.actions\.hqRide\) \? 'hqRide' : 'idle'\)\);/.test(TR), 'the clip: the fall / the get-up on a bail, jump in the air, the jog stride on the push, THE RIDE stance on the deck (rev 3)');
+    assert.ok(/want = bph \? \(bph === 'fall' \? 'hqFall' : 'hqGetup'\) : \(ch\.jumpT >= 0\) \? 'jump' : \(\(H\.ride\.pushAnim > 0\) \? 'hqSkatePush' : \(\(e\.actions && e\.actions\.hqRide\) \? 'hqRide' : 'idle'\)\);/.test(TR), 'the clip: the fall / the get-up on a bail, jump in the air, THE KICK on the push (rev 6: hqSkatePush), THE RIDE stance on the deck');
+    /* rev 6: the push slot is NEVER `hqPush` — that is the cast's mop-push pose (Push_Loop) the Player rig carries, and the rev 3 guard on it left the kick unbaked */
+    assert.ok(!/\? 'hqPush' :/.test(block()) && !/pushAnim > 0\) \? 'hqPush'/.test(TR), 'the rider never plays the cast\'s hqPush');
     assert.ok(/try \{ _hqRideArm\(opts\); \}/.test(TR) && TR.lastIndexOf('_hqRideArm(opts)') > TR.indexOf('_hqSpawnPopulation(room, opts); } catch'), 'armed after the population');
     assert.ok(/if \(_hq\.ride && _hq\.ride\.on\) \{ _hq\.ride\.hd = pl\.yaw; _hq\.ride\.stance = 0; _hq\.ride\.v = Math\.max\(-2\.5, Math\.min\(_hq\.ride\.v, 2\.5\)\); _hq\.ride\.grind = null; \}/.test(TR), 'through a door on the board');
     for (const k of ['skate: function (on)', 'skating: function ()', 'skateIssued: function (on)', 'ride: function ()', 'rails: function ()', 'ramps: function ()']) assert.ok(TR.indexOf(k) > 0, 'API ' + k);
@@ -334,7 +338,7 @@ test('THE SOURCE SITES: the renderer (the keys, the hand-off, the pose, the API,
 });
 
 
-test('W follows the camera at cardinal and diagonal headings; A/D steer screen-left/right and the camera follows', () => {
+test('W follows the camera at cardinal and diagonal headings; A/D carve toward screen-left/right and the camera NEVER moves (rev 6)', () => {
     for (const yaw of [0, Math.PI / 4, Math.PI / 2, Math.PI, -Math.PI / 2, -2.4]) {
         for (const key of ['a', 'd']) {
             const c = sandbox(); c._hqRideToggle(true); c._hq.cam.yaw = yaw;
@@ -346,24 +350,31 @@ test('W follows the camera at cardinal and diagonal headings; A/D steer screen-l
             c.step({ [key]: true }, 1 / 60, 12);
             const side = (c.pl.x - oldX) * rx + (c.pl.z - oldZ) * rz;
             assert.ok(key === 'a' ? side < 0 : side > 0, key + ' turns the correct way');
-            assert.ok(Math.abs(Math.sin(c.R().hd) - Math.sin(c._hq.cam.yaw)) < 1e-8);
-            assert.ok(Math.abs(Math.cos(c.R().hd) + Math.cos(c._hq.cam.yaw)) < 1e-8);
+            assert.equal(c._hq.cam.yaw, yaw, 'the camera is the mouse\'s — a carve never turns it');
+            /* held on, the board carves the whole way round to the key's direction (screen-right = camera right) */
+            c.step({ [key]: true }, 1 / 60, 240);
+            const want = Math.atan2(rx, rz) + (key === 'a' ? Math.PI : 0);
+            assert.ok(Math.abs(Math.atan2(Math.sin(c.R().hd - want), Math.cos(c.R().hd - want))) < 0.05, key + ' ends up rolling across the view at ' + yaw + ': ' + c.R().hd + ' vs ' + want);
+            assert.equal(c._hq.cam.yaw, yaw);
         }
     }
 });
 
-test('camera preserves manual look offset, takes the short turn across a rail heading wrap, and ignores tricks', () => {
+test('rev 6: a heading turn (a carve, a rail bend) never moves the camera; the heading wraps; tricks and air control leave the camera alone', () => {
     const c = sandbox(); c._hqRideToggle(true);
     c.R().hd = Math.PI - 0.02; c._hq.cam.yaw = 0.42;
     c._hqRideTurn(c.R(), -Math.PI + 0.02);
-    assert.ok(Math.abs(c._hq.cam.yaw - 0.38) < 1e-8, 'short turn preserves the 0.4 look offset');
+    assert.ok(Math.abs(c._hq.cam.yaw - 0.42) < 1e-8, 'the camera stays where the mouse left it');
+    assert.ok(Math.abs(c.R().hd - (-Math.PI + 0.02)) < 1e-8, 'the heading is wrapped into (-π, π]');
+    c._hqRideTurn(c.R(), Math.PI * 2 + 0.5); assert.ok(Math.abs(c.R().hd - 0.5) < 1e-8, 'wrapped');
+    assert.ok(!/_hq\.cam\.yaw\s*[-+]?=/.test(block()), 'nothing in the rider block writes the camera yaw');
     c.R().v = 4; c.pl.air = true; c.pl.y = c.pl.visY = 3; c.pl.vy = 3;
     const yaw = c._hq.cam.yaw;
     c._hqRideFlick(c.R(), -60, 0, 2); c._hqRideFlick(c.R(), 0, -60, 0);
     c.step({}, 1 / 60, 10);
     assert.equal(c._hq.cam.yaw, yaw, 'a spin / a flip never rotates the camera');
-    c.step({ a: true }, 1 / 60, 10);
-    assert.ok(c._hq.cam.yaw !== yaw, 'rev 4: A in the air is AIR CONTROL — the heading turns and the camera follows it');
+    const hdA = c.R().hd; c.step({ a: true }, 1 / 60, 10);
+    assert.ok(c.R().hd !== hdA && c._hq.cam.yaw === yaw, 'A in the air is AIR CONTROL — the heading turns, the camera does not (rev 6)');
 });
 
 test('grinding updates the visible rider position and facing on curved rails', () => {
@@ -471,11 +482,11 @@ test('REV 4b — THE FIT: a flip off a bare tap turns faster to land inside the 
     assert.ok(/R\.grabTuck \|\| 0/.test(extract('_hqRidePose')) && /R\.deckTuck \|\| 0/.test(extract('_hqRidePose')), 'the pose reads the tuck');
     assert.ok(/case 'late':/.test(MP), 'map.js hears the late beat');
 });
-test('REV 4 — AIR CONTROL: in the air A / D turn the heading (the camera follows), W / S nudge the speed, never a trick; W in the air is not a corkscrew; the landing carries the juice (the squat, the dust, the beat\'s weight)', () => {
+test('REV 4 — AIR CONTROL: in the air A / D turn the heading (rev 6: the camera stays), W / S nudge the speed, never a trick; W in the air is not a corkscrew; the landing carries the juice (the squat, the dust, the beat\'s weight)', () => {
     const c = sandbox(); c._hqRideToggle(true); c._hq.cam.yaw = Math.PI / 2;
     c.step({ w: true }, 1 / 60, 40); c.step({ space: true }, 1 / 60, 14); c.step({}, 1 / 60, 1); assert.ok(c.pl.air);
     const hd0 = c.R().hd, v0 = c.R().v, cy0 = c._hq.cam.yaw;
-    c.step({ a: true }, 1 / 60, 15); assert.ok(c.R().hd > hd0 + 0.1 && c._hq.cam.yaw < cy0, 'A turns the heading in the air, the camera follows');
+    c.step({ a: true }, 1 / 60, 15); assert.ok(c.R().hd > hd0 + 0.1 && c._hq.cam.yaw === cy0, 'A turns the heading in the air, the camera stays');
     assert.equal(c.R().trick, null, 'no spin');
     c.step({ w: true }, 1 / 60, 15); assert.ok(c.R().v > v0 + 0.3, 'W speeds up in the air: ' + c.R().v); assert.equal(c.R().trick, null, 'W is not a corkscrew any more');
     c.step({ s: true }, 1 / 60, 30); assert.ok(c.R().v < v0, 'S slows in the air');
@@ -485,15 +496,16 @@ test('REV 4 — AIR CONTROL: in the air A / D turn the heading (the camera follo
     assert.ok(c.R().squash > 0 && c.R().puffT > 0 && c.R().landK > 0, 'the squat + the dust armed for the pose');
     assert.ok(!c.events().some(e => e.kind === 'bail'), 'clean');
 });
-test('REV 2 — SKATING BACKWARDS: S rolling forward is the brake; S from a stop pushes FAKIE (the roll goes backwards along the heading, capped, the rider still faces the heading); W while backwards brakes first; a wall backwards at speed is judged by the magnitude', () => {
+test('REV 6 — S IS A DIRECTION: S rolling forward is the brake; S from a stop turns the board round and rolls TOWARD the camera (the rider faces the roll; the fakie push is retired); W then brakes and turns it back; a wall behind is a stop, never a bail', () => {
     const c = sandbox(); c._hqRideToggle(true); c._hq.cam.yaw = Math.PI / 2;   // looking +x
     c.step({ s: true }, 1 / 60, 120);
-    assert.ok(c.R().v < -1 && c.R().v >= -R.reverseMaxV - 1e-9, 'a fakie roll, capped: ' + c.R().v);
-    assert.ok(c.pl.x < -1, 'went −x (backwards along the heading): ' + c.pl.x);
-    assert.ok(Math.abs(c.pl.yaw - Math.PI / 2) < 1e-6, 'the rider still faces +x');
-    assert.ok(c.events().some(e => e.kind === 'push' && e.fakie), 'the fakie push beat');
-    const vb = c.R().v; c.step({ w: true }, 1 / 60, 20); assert.ok(c.R().v > vb && c.R().v <= 0.5, 'W brakes the backwards roll first: ' + c.R().v);
-    c.step({ w: true }, 1 / 60, 60); assert.ok(c.R().v > 3, 'then pushes forward');
+    assert.ok(c.R().v > 1 && c.R().v <= R.maxV, 'a forward roll along the new heading: ' + c.R().v);
+    assert.ok(c.pl.x < -1 && Math.abs(c.pl.z) < 0.01, 'went −x (toward the camera): ' + c.pl.x);
+    assert.ok(Math.abs(Math.atan2(Math.sin(c.pl.yaw + Math.PI / 2), Math.cos(c.pl.yaw + Math.PI / 2))) < 1e-6, 'the rider faces −x, the way it rolls');
+    assert.ok(c.events().some(e => e.kind === 'push' && !e.fakie), 'a plain push beat');
+    assert.equal(c._hq.cam.yaw, Math.PI / 2, 'the camera never turned');
+    const vb = c.R().v; c.step({ w: true }, 1 / 60, 20); assert.ok(c.R().v < vb && c.R().v >= 0, 'W against the roll brakes first: ' + c.R().v);
+    c.step({ w: true }, 1 / 60, 80); assert.ok(c.R().v > 3 && c.pl.velX > 0, 'then rolls +x again');
     const c2 = sandbox({ wallAt: 6 }); c2._hqRideToggle(true); c2._hq.cam.yaw = Math.PI / 2;
     c2.step({ s: true }, 1 / 60, 400);
     assert.ok(!c2.events().some(e => e.kind === 'bail') && c2.pl.x < -5.3 && c2.pl.x >= -6 && Math.abs(c2.R().v) < 0.6, 'the wall behind: a stop, never a bail (rev 3): x ' + c2.pl.x + ' v ' + c2.R().v);
@@ -548,7 +560,8 @@ test('REV 3 — SEAMLESS: a rotation ≥ landGrace done at the touchdown lands (
     /* the carve from a crawl */
     const t = sandbox(); t._hqRideToggle(true); t._hq.cam.yaw = Math.PI / 2;
     t.step({ w: true }, 1 / 60, 1); t.R().v = 0.5;
-    const hd0 = t.R().hd; t.step({ a: true }, 1 / 60, 30); assert.ok(t.R().hd - hd0 > R.turn * R.turnMin * 0.5 * 0.9, 'turned at a crawl: ' + (t.R().hd - hd0));
+    const hd0 = t.R().hd; t.step({ a: true }, 1 / 60, 30); const dCrawl = Math.atan2(Math.sin(t.R().hd - hd0), Math.cos(t.R().hd - hd0));
+    assert.ok(dCrawl > R.turn * R.turnMin * 0.5 * 0.9 && dCrawl <= Math.PI / 2 + 1e-9, 'turned at a crawl (rev 6: tighter, clamped at the wanted direction): ' + dCrawl);
     /* cruise: W above cruiseV is no stride and no friction */
     const k = sandbox(); k._hqRideToggle(true); k._hq.cam.yaw = Math.PI / 2;
     k.step({ w: true }, 1 / 60, 20); k.R().v = R.cruiseV + 0.5; k._events.length = 0; k.R().pushAnim = 0;
@@ -557,8 +570,8 @@ test('REV 3 — SEAMLESS: a rotation ≥ landGrace done at the touchdown lands (
     assert.ok(Math.abs(k.R().v - (R.cruiseV + 0.5)) < 0.3, 'the speed held: ' + k.R().v);
     /* the source: the fall + the get-up clips baked onto the walker, played once; the deck skids and comes back; the traffic knocks, never bails */
     const SP = fs.readFileSync(__dirname + '/sprites.js', 'utf8');
-    assert.ok(/const HQ_SKATE_CLIPS = \{ push: \{ clip: 'Jog_Fwd_Loop', lib: 0/.test(SP) && /fall: \{ clip: 'Slide_Start', lib: 1/.test(SP) && /getup: \{ clip: 'Slide_Exit', lib: 1/.test(SP), 'the three clips');
-    assert.ok(/typeof HQ_SKATE_CLIPS !== 'undefined' && !def\.libClips\.hqPush/.test(TR) && /want === 'hqFall' \|\| want === 'hqGetup'/.test(TR) && /ba\.setLoop\(THREE\.LoopOnce, 1\); ba\.clampWhenFinished = true;/.test(TR), 'baked + one-shot');
+    assert.ok(/const HQ_SKATE_CLIPS = \{ push: \{ clip: 'Spartan_Kick', lib: 2, ts: [0-9.]+, trim: \[0\.4, 1\.0\] \}/.test(SP) && /fall: \{ clip: 'Slide_Start', lib: 1/.test(SP) && /getup: \{ clip: 'Slide_Exit', lib: 1/.test(SP), 'the three clips (rev 6: the push is THE KICK, trimmed to its stroke)');
+    assert.ok(/typeof HQ_SKATE_CLIPS !== 'undefined' && !def\.libClips\.hqSkatePush/.test(TR) && /\[\['push', 'hqSkatePush'\]/.test(TR) && /if \(C\.trim\) slc\[pr\[1\]\]\.trim = C\.trim;/.test(TR) && /want === 'hqFall' \|\| want === 'hqGetup'/.test(TR) && /ba\.setLoop\(THREE\.LoopOnce, 1\); ba\.clampWhenFinished = true;/.test(TR), 'baked + one-shot');
     const pose = extract('_hqRidePose');
     assert.ok(/THE SKID/.test(pose) && !/tumble/.test(pose.replace(/\/\*[\s\S]*?\*\//g, '')), 'the deck skids; no root tumble');
     assert.ok(!/_hqRideBail\(R, pl, 'car'\)/.test(TR) && !/_hqRideBail\(R, pl, 'wall'\)/.test(TR) && !/_hqRideBail\(R, pl, 'drop'\)/.test(TR), 'only a failed trick bails');
@@ -566,7 +579,7 @@ test('REV 3 — SEAMLESS: a rotation ≥ landGrace done at the touchdown lands (
 });
 
 // Movement regressions: exercise the live functions with deterministic room geometry.
-test('reverse roll inverts A/D steering; braking forward with S does not invert early', () => {
+test('rev 6: a backwards roll carves the same key the other way (the keys are a direction, the roll knows its sign); S + D is a diagonal, not a brake', () => {
     for (const key of ['a', 'd']) {
         const a = sandbox(), b = sandbox();
         for (const c of [a, b]) { c._hqRideToggle(true); c.R().hd = 0; c.R().kickT = 100; }
@@ -574,11 +587,12 @@ test('reverse roll inverts A/D steering; braking forward with S does not invert 
         a.step({ [key]: true }, 1 / 60); b.step({ [key]: true }, 1 / 60);
         assert.ok(a.R().hd * b.R().hd < 0);
         assert.ok(Math.abs(a.R().hd + b.R().hd) < 1e-8);
-        assert.ok(Math.abs(b._hq.cam.yaw + b.R().hd) < 1e-8);
+        assert.equal(b._hq.cam.yaw, 0, 'the camera never turns');
     }
+    /* hd 0 rolls +z = toward a camera at yaw 0; S + D wants (+x, +z) = π/4, less than 0.62π off the roll → a carve, no brake */
     const c = sandbox(); c._hqRideToggle(true); c.R().v = 5; c.R().hd = 0;
     c.step({ s: true, d: true }, 1 / 60);
-    assert.ok(c.R().v > 0 && c.R().hd < 0);
+    assert.ok(c.R().v > 4.9 && c.R().hd > 0 && c.R().hd < Math.PI / 4 + 1e-9, 'v ' + c.R().v + ' hd ' + c.R().hd);
 });
 
 test('wall brush retains tangential speed and clears the corner at multiple frame rates', () => {

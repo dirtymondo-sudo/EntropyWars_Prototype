@@ -730,7 +730,7 @@
                         skp.style.display = '';
                         skp.classList.toggle('riding', riding);
                         skp.innerHTML = `🛹 <b>${riding ? 'RIDING' : 'BOARD'}</b>${st.best ? ' · BEST ' + (st.best.score | 0).toLocaleString() : ''}`;
-                        skp.title = 'SKATEBOARDING — B drops the deck. W push · S brake (from a stop: skate backwards) · A / D carve · SPACE ollie (tap = a hop, hold = the height) · land on a rail to grind · in the air ← → ↑ ↓ W A D are tricks, SHIFT the grab. ' + (st.best ? 'Best line: ' + st.best.text + ' = ' + st.best.score + '. ' : '') + (st.lines ? st.lines + ' lines landed, ' + st.bails + ' bails.' : 'Nothing landed yet.');
+                        skp.title = 'SKATEBOARDING — B drops the deck. WASD rides where the keys point, relative to the camera, exactly like walking (a key against the roll is the brake; the mouse owns the camera) · SPACE ollie (tap = a hop, hold = the height) · land on a rail to grind · in the air ← → ↑ ↓ W A D are tricks, SHIFT the grab. ' + (st.best ? 'Best line: ' + st.best.text + ' = ' + st.best.score + '. ' : '') + (st.lines ? st.lines + ' lines landed, ' + st.bails + ' bails.' : 'Nothing landed yet.');
                     } else { skp.style.display = 'none'; skp.innerHTML = ''; }
                 }
                 /* the day's Code Red (plan 3.3): strobes until cleared */
@@ -2745,7 +2745,7 @@
                 case 'on':
                     if (h) h.classList.add('skate');
                     _hqSkateSfx('skatePush', 0.5);
-                    _hqToast('<b>ON THE BOARD</b><span>W PUSH · S BRAKE · A / D CARVE · SPACE JUMP (HOLD IT FOR A BIGGER ONE) · IN THE AIR: WASD STEERS · HOLD A MOUSE BUTTON + FLICK = TRICKS (LEFT FLIPS · RIGHT SPINS / GRABS) · LAND ON A RAIL TO GRIND · B OFF</span>', 4200);
+                    _hqToast('<b>ON THE BOARD</b><span>WASD RIDES WHERE THE KEYS POINT, LIKE WALKING (A KEY AGAINST THE ROLL BRAKES) · MOUSE = CAMERA · SPACE JUMP (HOLD IT FOR A BIGGER ONE) · IN THE AIR: WASD STEERS · HOLD A MOUSE BUTTON + FLICK = TRICKS (LEFT FLIPS · RIGHT SPINS / GRABS) · LAND ON A RAIL TO GRIND · B OFF</span>', 4200);
                     _hqFillStrip(_hqProfile());
                     break;
                 case 'off':
