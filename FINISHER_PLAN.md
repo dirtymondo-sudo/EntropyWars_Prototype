@@ -197,6 +197,104 @@ spells), a ziggurat tier block, a gothic buttress.
 
 ## 7. Log
 
+- **2026-09-20 — SIX MORE EXECUTIONS in roster order (delivery 9).** The
+  next six rows of `FINISHERS` after the annunaki, each a director (battle.js
+  `_FIN_DIRECTORS`, the DELIVERY 9 block) + a signature (three-vfx-effects.js
+  "THE FINISHER PASS 2", the DELIVERY 9 block) + a stage script
+  (`_FIN_STAGE[sig]`): skinwalker **Wearing You** (`wearingYou` — a RING OF
+  EYES opens in the dark round the tile (fourteen yellow pairs at every
+  height, blinking out of step), THE STALKER lopes in from the caster's side
+  on all fours on a trail of void-mist and STANDS UP nose to nose with the
+  victim under a flickering sliver of mirror, THE PEEL: the victim's FACE (a
+  pale glow at head height) detaches and drifts across to the stalker's head
+  on a trail of shadow while the victim stretches and goes glassy; the hit
+  collapses the victim into a SKIN — a flat dark sheet that flutters up off
+  the tile and away — and the stalker, wearing the face, takes the victim's
+  colour and lopes back the way it came while the eyes go out one by one;
+  witness cam → reverse OTS on the lope → face cam nose to nose → a dolly
+  zoom on the peel → the freeze on `hue` → a crane with the skin → a low
+  reverse; 👁 👁 👁 · HELLO. · IT HAS YOUR FACE NOW · THERE IS ONE MORE OF
+  THEM.), werewolf **Full Moon** (`fullMoon` — THE MOON (the misc cache's
+  moon GLB, a grey sphere while it streams, seven tiles across) drops out of
+  the sky to hang just over the board with a silver glow and a moonbeam
+  cone on the tile; THE HOWL: three rings of sound leave the caster's tile
+  and the moon pulses to each; then the change IN REVERSE — twenty dark
+  spikes of fur bristle out of the body, shed as debris, the body pales and
+  shrinks to a man, then smaller — and on the hit the moon goes BLOOD RED for
+  a breath (the GLB's own materials tinted through userData), a red ring, a
+  heap of clothes on the tile; the moon lifts away silver; sky watch on the
+  drop → reverse OTS on the howl → face cam + a dolly zoom on the change →
+  the freeze on `crimson` → a sky watch on the blood moon → a low reverse),
+  gargoyle **Petrified** (`petrified` — THE STONE: the victim greys over,
+  nine cracks web across it, dust falls, a plinth appears; a CATHEDRAL rises
+  out of the ground beside the tile (a 5.5-tile tower, a pitched roof, four
+  pinnacles, a rose window, a parapet with two stone gargoyles crouched on
+  its corners); a LIVE gargoyle swoops off the roof with beating wings, grips
+  the statue and carries it up in an arc onto the parapet's front, lands
+  beside it and folds its wings; a PIGEON lands on the statue's head; the
+  statue TIPS, falls the whole height (the pigeon leaves in a burst of
+  petals) and SHATTERS on the tile into six ballistic chunks + rock debris +
+  dust; the cathedral sinks back; face cam on the stone → god shot on the
+  rising cathedral → a crane with the lift → a sky watch from below → fall
+  follow → the freeze on `bone` → a low reverse; 🗿 STONE · A CATHEDRAL, FOR
+  ONE · 🕊 · OOPS · SOME ASSEMBLY REQUIRED.), djinn **Three Wishes**
+  (`threeWishes` — a brass LAMP (body, spout, handle, lid, foot) drops onto
+  the tile beside the victim and bounces; violet smoke pours out of the
+  spout and gathers into a column with two golden eyes and a grin in it;
+  WISH ONE "I WISH I WERE RICH" — a snap of gold sparks at the eyes, forty-
+  eight coins rain out of the sky until the victim is buried in a growing
+  mound; WISH TWO "I WISH I COULD FLY" — the mound bursts and the victim is
+  flung eight tiles straight up, spinning, on a trail of sparkles; WISH
+  THREE "I WISH IT WOULD STOP" — it stops, mid-air, a ⏸ beside it; then the
+  spout SUCKS: the victim spirals down into the lamp stretched thin on a
+  vortex of void-mist; the lid snaps shut (the hit), the lamp rattles, the
+  eyes close, the lamp floats away; crane on the landing → god shot on the
+  coins → sky watch on the fling → face cam on the pause → fall follow into
+  the spout → the freeze on `sepia` → a low reverse; WISH I / II / III ·
+  GRANTED. · LITERALLY. · NO REFUNDS.), catgirl **Nine Lives** (`nineLives`
+  — NINE PERCHES rise round the tile in a climbing spiral on their own posts
+  (the table · the counter · the shelf · the roof · the ledge · the balcony ·
+  the tower · the cliff · THE MOON, a glowing pale sphere, highest); a small
+  black CAT with green eyes, ears and a tail sits on the first; the victim is
+  set on it, the PAW swipes, the victim is knocked off and tumbles to the
+  tile with a puff, the LIVES card over the tile (one Sprite whose texture
+  is swapped per knock) ticks 9 → 8, it blinks up onto the next perch and
+  the cat hops after it — nine times, each fall longer; the ninth from the
+  moon is the whole height and the victim flattens on the tile (the hit,
+  the card reads 0 in red); the cat washes a paw; the perches sink; god
+  shot on the spiral → a side dolly round it through the knocks → a sky
+  watch on the moon → fall follow on the ninth → the freeze on `hue` → face
+  cam on the flat → a low reverse; the eight counts stamped on the beat),
+  mantid **The Praying** (`thePraying` — a MANTIS the size of a building
+  (abdomen, thorax, a triangular head with two glowing compound eyes and
+  antennae, mandibles, four walking legs, two spiked raptorial forelegs on
+  shoulder / elbow / wrist pivots) steps in from beyond the victim in three
+  footfalls (a shake and a dust ring each), FOLDS its arms before its face
+  (the prayer), BOWS its head over the tile as the body pitches forward and
+  drops, the mandibles open over the victim (a fall of green mist) — and
+  close (the hit): the victim's top half goes into the head, the bottom half
+  stands a beat and topples; the head lifts, a foreleg wipes across the
+  face, the mantis walks back out; reverse OTS over the caster on the step
+  in → a sky watch up at it → witness cam on the prayer → face cam under
+  the head → the freeze on `cool` → a crane on the wipe → a low reverse; IT
+  IS THE SIZE OF A BUILDING · SAY GRACE · AMEN. · BLESS THIS MEAL · THE
+  OTHER HALF IS STILL STANDING.). Every signature owns ONE group through
+  `_sigRunOwned`, every timer is `_fxDelay`, every text card a Sprite, and
+  each is called INSIDE the relayed cinematic (never `fireGeometry`, RULE
+  #2). finishers.test.js's BUILT + SIG_FN tables carry the six (15 / 15);
+  each signature was ticked end to end in a stub-THREE sandbox (every frame
+  of its whole `ms`; not a render). FORTY-FIVE of 99 are built; 54 remain
+  (the next six in roster order: antperson · mothman · siren · scarecrow ·
+  glitch · machine elves). UNSEEN LIVE (RULE #1c): the ring of eyes against
+  a bright map, the face sprite's read on the real rig, the moon GLB's size
+  against the dome and its red tint through the GLB's own materials, the
+  cathedral's scale beside a real unit and the perch's alignment over the
+  tile, the lamp's spout-tip frame after the lamp's yaw (the suck aims at
+  `spoutTip` rotated by `lamp.rotation.y`), the coins' fall against the
+  mound, the nine perches' spiral against the board's edge (a perch past
+  the rim hangs in the air), the mantis's head reaching the victim on the
+  bow (the pitch + drop numbers in `pose` / the bow block are the edits),
+  the six camera paths on the real board.
 - **2026-09-20 — SIX MORE EXECUTIONS in roster order (delivery 8).** The
   next six rows of `FINISHERS` after the demon, each a director (battle.js
   `_FIN_DIRECTORS`, the DELIVERY 8 block) + a signature (three-vfx-effects.js

@@ -6755,30 +6755,32 @@ UNSEEN LIVE (RULE #1c): every room under the day cycle (a room that now reads FL
 not the grade back), the moon key on the night areas, the eased swap through a door, the subtitle bar
 against the walk.
 
-## SIX MORE EXECUTIONS — Kiss of Death · Bone Rattle · Ordnance · Possessed Photo · The Pile-On · Pyramid Scheme (FINISHER_PLAN delivery 8) — 2026-09-20, local delivery
-The next six `FINISHERS` rows in roster order are BUILT (thirty-nine of 99):
-succubus `kissOfDeath` (`_sigKissOfDeath3D` — the dance floor, the mirror
-ball, the dancer, the circling, the dip, the kiss, the candle going out into
-a HEART-SHAPED SMOKE RING), skeleton `boneRattle` (`_sigBoneRattle3D` — two
-rings of stick skeletons pop up, rattle for a chorus, then all POINT; the
-victim drops into a bone pile), mech `ordnance` (`_sigOrdnance3D` — six pod
-doors, three lock rings, thirty missiles on their own beziers with smoke
-trails, a rolling sequence of fireballs, the crater), ghost `possessedPhoto`
-(`_sigPossessedPhoto3D` — the flash, the print that develops facing the
-caster, the taller figure behind, the burn from the middle with flames on
-the print's own plane), zombie `pileOn` (`_sigPileOn3D` — forty over the
-edge from every side, the ring, the three-tier mound, off with the pieces),
-annunaki `pyramidScheme` (`_sigPyramidScheme3D` — three inverted pyramids
-descend, capstones charge, three lasers converge, the tile goes to glass).
-Each = a director in battle.js `_FIN_DIRECTORS` (the DELIVERY 8 block), the
-signature in "THE FINISHER PASS 2" (the DELIVERY 8 block; `_sigRunOwned` +
-`_fxDelay`, called inside the relayed cinematic — RULE #2), a
-`_FIN_STAGE[sig]` script for the forge, a row in finishers.test.js's BUILT
-table. Smoke-tested in a stub-THREE harness (every tick; not a render).
-UNSEEN LIVE (RULE #1c): FINISHER_PLAN §7's delivery-8 entry lists what to
-eyeball first — the print's facing, the beams' axis, the missiles' apexes,
-the skeletons' scale, the horde's pace, the heart ring.
-
+## SIX MORE EXECUTIONS — Wearing You · Full Moon · Petrified · Three Wishes · Nine Lives · The Praying (FINISHER_PLAN delivery 9) — 2026-09-20, local delivery
+The next six `FINISHERS` rows in roster order are BUILT (forty-five of 99; 54
+remain): skinwalker `wearingYou` (`_sigWearingYou3D` — the ring of eyes, the
+stalker's lope on all fours, the mirror, the FACE peeled off the victim and
+worn, the skin fluttering away), werewolf `fullMoon` (`_sigFullMoon3D` — the
+misc `moon` GLB drops to hang over the board, the howl's rings, the change in
+reverse (fur → man → smaller → a heap of clothes), the BLOOD MOON on the hit —
+the GLB's materials tinted through `userData._finBase`), gargoyle `petrified`
+(`_sigPetrified3D` — the stone + cracks + plinth, a CATHEDRAL rising beside the
+tile with two stone gargoyles on its parapet, a live one that carries the
+statue up, the pigeon, the tip and the shatter into ballistic chunks), djinn
+`threeWishes` (`_sigThreeWishes3D` — the brass lamp, the smoke face, the coin
+rain into a mound, the fling, the ⏸, the spiral into the spout, the lid),
+catgirl `nineLives` (`_sigNineLives3D` — nine perches on a climbing spiral
+ending at THE MOON, the cat, nine knocks with a LIVES card whose texture is
+swapped per knock, the flat landing), mantid `thePraying` (`_sigThePraying3D`
+— a building-sized mantis on jointed forelegs steps in, prays, bows, bites the
+victim in half; the top half goes into the head, the bottom topples). Each = a
+director in battle.js `_FIN_DIRECTORS` (the DELIVERY 9 block), the signature
+in "THE FINISHER PASS 2" (the DELIVERY 9 block; `_sigRunOwned` + `_fxDelay`,
+called inside the relayed cinematic — RULE #2), a `_FIN_STAGE[sig]` script for
+the forge, a row in finishers.test.js's BUILT table. Smoke-tested in a
+stub-THREE harness (every tick of every signature; not a render). UNSEEN LIVE
+(RULE #1c): FINISHER_PLAN §7's delivery-9 entry lists what to eyeball first —
+the moon's size, the cathedral's perch over the tile, the lamp's spout frame,
+the perches against the rim, the mantis's head reaching the bow.
 ## SIX MORE EXECUTIONS — Compactor · Factory Reset · The Rapture, Party of One · Be Not Afraid · Into the Sun · The Contract (FINISHER_PLAN delivery 7) — 2026-09-20, local delivery
 The next six `FINISHERS` rows in roster order are BUILT (thirty-three of 99):
 robot `compactor` (`_sigCompactor3D` — two steel walls on hydraulic rails

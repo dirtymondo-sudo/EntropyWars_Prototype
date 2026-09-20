@@ -129,14 +129,16 @@ const BUILT = { 'king arthur': 'worldCleave', anubis: 'weighing', 'santa clause'
     marksman: 'dangerClose', priest: 'excommunicated', wizard: 'abracadabra', 'fortune teller': 'theTower', giant: 'feeFiFoFum', fairy: 'changeling',
     martian: 'ackAckAck', nordic: 'ascensionDenied', grey: 'theProbe', bigfoot: 'blurryFootage', 'shadow entity': 'sleepParalysis', reptilian: 'unmasking',
     robot: 'compactor', android: 'factoryReset', angel: 'rapture', seraphim: 'beNotAfraid', 'orb of light': 'intoTheSun', demon: 'contract',
-    succubus: 'kissOfDeath', skeleton: 'boneRattle', mech: 'ordnance', ghost: 'possessedPhoto', zombie: 'pileOn', annunaki: 'pyramidScheme' };
+    succubus: 'kissOfDeath', skeleton: 'boneRattle', mech: 'ordnance', ghost: 'possessedPhoto', zombie: 'pileOn', annunaki: 'pyramidScheme',
+    skinwalker: 'wearingYou', werewolf: 'fullMoon', gargoyle: 'petrified', djinn: 'threeWishes', catgirl: 'nineLives', mantid: 'thePraying' };
 const SIG_FN = { worldCleave: '_sigWorldCleave3D', weighing: '_sigWeighing3D', naughtyList: '_sigNaughtyList3D', hitAndRun: '_sigHitAndRun3D', kaijuStomp: '_sigKaijuStomp3D', segfault: '_sigSegfault3D',
     haymaker: '_sigHaymaker3D', bootHill: '_sigBootHill3D', shrinkRay: '_sigShrinkRay3D',
     keelhaul: '_sigKeelhaul3D', thousandCuts: '_sigThousandCuts3D', joust: '_sigJoust3D', theTrip: '_sigTheTrip3D', neuralyzer: '_sigNeuralyzer3D', mindOverMatter: '_sigMindOverMatter3D',
     dangerClose: '_sigDangerClose3D', excommunicated: '_sigExcommunicated3D', abracadabra: '_sigAbracadabra3D', theTower: '_sigTheTower3D', feeFiFoFum: '_sigFeeFiFoFum3D', changeling: '_sigChangeling3D',
     ackAckAck: '_sigAckAckAck3D', ascensionDenied: '_sigAscensionDenied3D', theProbe: '_sigTheProbe3D', blurryFootage: '_sigBlurryFootage3D', sleepParalysis: '_sigSleepParalysis3D', unmasking: '_sigUnmasking3D',
     compactor: '_sigCompactor3D', factoryReset: '_sigFactoryReset3D', rapture: '_sigRapture3D', beNotAfraid: '_sigBeNotAfraid3D', intoTheSun: '_sigIntoTheSun3D', contract: '_sigContract3D',
-    kissOfDeath: '_sigKissOfDeath3D', boneRattle: '_sigBoneRattle3D', ordnance: '_sigOrdnance3D', possessedPhoto: '_sigPossessedPhoto3D', pileOn: '_sigPileOn3D', pyramidScheme: '_sigPyramidScheme3D' };
+    kissOfDeath: '_sigKissOfDeath3D', boneRattle: '_sigBoneRattle3D', ordnance: '_sigOrdnance3D', possessedPhoto: '_sigPossessedPhoto3D', pileOn: '_sigPileOn3D', pyramidScheme: '_sigPyramidScheme3D',
+    wearingYou: '_sigWearingYou3D', fullMoon: '_sigFullMoon3D', petrified: '_sigPetrified3D', threeWishes: '_sigThreeWishes3D', nineLives: '_sigNineLives3D', thePraying: '_sigThePraying3D' };
 
 test('THE CATALOGUE: every playable race has a finisher row of its own type; the six typed defaults cover the chart', () => {
     assert.ok(g.FINISHER_RULES && g.FINISHER_RULES.apCost === 1 && g.FINISHER_RULES.baseDmg > 0, 'FINISHER_RULES');
