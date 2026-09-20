@@ -6717,3 +6717,40 @@ table. Smoke-tested in a stub-THREE harness (every tick; not a render).
 UNSEEN LIVE (RULE #1c): FINISHER_PLAN §7's delivery-6 entry lists what to
 eyeball first — the tripod's scale, the dome's radius against the reverse
 shot, the flat figure off-axis, the pines' scale, the serpent's jaws.
+
+## THE LIGHT PASS + THE SUBTITLE + SKATEBOARDING rev 7 (no push clip) — 2026-09-20, local delivery
+The user's three: "the skateboarding uses a weird kick to push — I'd rather have no kick animation at
+all; character dialogue should still look like subtitles, black bar with white text; the map looks
+setting resets between zones and the night mood is too aggressive — more torches or a key light, and the
+brightness I set in a dark area blows out the battle". **THE CYCLE BUG (the root of "it resets")**: the HQ
+never wrote `document.body.dataset.cycle`, so every room inherited the LAST BATTLE's day / night — a night
+map left the night grade (`uNightGrade` × the look's `nightMood`) and the night exposure over a room that
+lights itself, a day map left none; the same room read dark one visit and fine the next. Now
+three-renderer.js `_hqEnter` writes **`HQ_LIGHT_RULES.cycle`** (`'day'`: no grade, exposure 1 — a room's
+mood is its own lights, its fog, its look's retro preset); the battle rewrites the cycle from its map as
+before. **THE NIGHT CAP**: `_sceneLookOf` clamps a look's `nightMood` to `HQ_LIGHT_RULES.nightCap` (0.45)
+wherever it is worn (a battle's `env.look`); the `HQ_ROOM_LOOKS` table keeps its authored values (tests
+pin them) — a mood, never the darkness. **THE KEY LIGHT**: data.js **`HQ_LIGHT_RULES`** (beside
+`HQ_SKATE_RULES`, on `window`; three-renderer.js `_hqLightRules()` merges it over `HQ_LIGHT_DEFAULT` — keep
+the keys in step) = `ambientFloor` 0.55 (a box room's `mood.ambient` never dims the fill below it — the
+torches carry the vibe on top), `fill` / `fillColor` (a cool fill light from behind the key in every box
+and open room — no black side on a face), `open` (an outdoor room's hemisphere / sun / lamps by day and
+night: the night keeps a real MOON key — nightHemi 0.62 / nightSun 0.4, was 0.42 / 0.22). **THE TWO
+BRIGHTNESSES** (three-post.js, the block after `EXPOSURE_MAX`): the Brightness slider is PER PLACE —
+`ew_exposure` the battle's (the old key), `ew_exposure_hq` the building's (follows the battle's until
+moved); `ThreePost.setExposureContext('hq' | 'battle')` (`_hqEnter` / `_hqLeave`) swaps the active value
+and **`_expLk()`** eases the swap over ~0.4 s (`EXPOSURE_EASE_K`) — it is the ONE read every
+`toneMappingExposure` write goes through (never `_lkNum('exposure', …)` directly again); a slider move
+lands at once and files under the active place; ui.js's slider is labelled `Brightness · EXPLORING /
+BATTLE`. **THE SUBTITLE**: map.js `_hqOpenPanel` toggles `hq-panel-say` on `#hqPanel` for every target
+that is a PERSON (not a door / counter / notice); styles-base.css "THE SUBTITLE" (appended at the END, after
+the HUD pass) makes the card a black bar along the foot of the screen — the name small above, the line
+in white — the plate rules never reach it. **SKATEBOARDING rev 7**: NO push clip and NO kick — a push is
+the speed + the sound (`R.pushAnim` stays 0; the picker never plays `hqSkatePush`; sprites.js
+`HQ_SKATE_CLIPS` = the two bail clips only; the bake guard is `hqFall`); `pushMs` / `kickEvery` /
+`kickMinV` are dead keys. hq-skate.test.js (30) pins it; the quarter-pipe test took a longer run-up and
+the air-control test judges S while airborne (the retired kick's bump had hidden a landing inside its S
+phase). PRE-EXISTING at HEAD, not touched: doorhq.test.js 60 / 61 (the Δ area pass's board reads).
+UNSEEN LIVE (RULE #1c): every room under the day cycle (a room that now reads FLAT wants its own lights,
+not the grade back), the moon key on the night areas, the eased swap through a door, the subtitle bar
+against the walk.

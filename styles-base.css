@@ -5965,3 +5965,26 @@ body.diorama-3d .tile-underpass.jump::before {
   #hqPage .hq-shop-row .hq-shop-btns { grid-column: 1 / -1; grid-row: 4; flex-direction: row; flex-wrap: wrap; }
   #hqPage .hq-shop-row .hq-shop-price { grid-column: 3; }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   THE SUBTITLE (2026-09-20) — a person's line in the building is a SUBTITLE:
+   a black bar along the foot of the screen, white text, the speaker's name
+   small above it. map.js _hqOpenPanel toggles .hq-panel-say for every target
+   that is a person (never a door / counter / notice — those keep the plate).
+   Appended after THE HQ HUD PASS on purpose: the plate rules above are beaten
+   by specificity + order here; restyle the subtitle HERE, never upstream.
+   ══════════════════════════════════════════════════════════════════════════ */
+#hqPage .hq-panel.hq-panel-say { align-items: flex-end; justify-content: center; background: transparent; pointer-events: none; padding-bottom: 7vh; }
+#hqPage .hq-panel.hq-panel-say .hq-panel-card { pointer-events: auto; width: min(960px, 92vw); max-height: none; overflow: visible; padding: 14px 40px 12px; border-radius: 4px; border: none; box-shadow: 0 6px 30px rgba(0,0,0,0.6); background: rgba(0,0,0,0.86); color: #fff; text-align: center; animation: hqSubtitleIn 0.18s ease-out; }
+@keyframes hqSubtitleIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+#hqPage .hq-panel.hq-panel-say .hq-panel-x { top: 6px; right: 8px; width: 22px; height: 22px; border-color: rgba(255,255,255,0.25); background: none; color: #fff; }
+#hqPage .hq-panel.hq-panel-say .hq-panel-hd { flex-direction: row; align-items: baseline; justify-content: center; gap: 10px; padding: 0 0 6px; margin: 0 0 6px; border-bottom: none; }
+#hqPage .hq-panel.hq-panel-say .hq-panel-hd b { font-family: 'Cormorant SC', serif; font-size: 15px; letter-spacing: 0.22em; color: #fff; text-shadow: none; text-transform: uppercase; }
+#hqPage .hq-panel.hq-panel-say .hq-panel-hd span { font-size: 9px; letter-spacing: 0.26em; color: rgba(255,255,255,0.55); }
+#hqPage .hq-panel.hq-panel-say .hq-panel-line { font-family: 'Cormorant SC', 'IBM Plex Mono', serif; font-size: 24px; line-height: 1.35; color: #fff; margin: 0 0 8px; text-shadow: 0 1px 2px #000; }
+#hqPage .hq-panel.hq-panel-say .hq-panel-desc { color: rgba(255,255,255,0.7); font-style: italic; margin: 0 0 8px; }
+#hqPage .hq-panel.hq-panel-say .hq-panel-actions { justify-content: center; margin-top: 2px; }
+#hqPage .hq-panel.hq-panel-say .hq-btn { background: none; border: 1px solid rgba(255,255,255,0.35); color: #fff; box-shadow: none; }
+#hqPage .hq-panel.hq-panel-say .hq-btn:hover { border-color: #fff; color: #fff; }
+#hqPage .hq-panel.hq-panel-say .hq-panel-foot { display: none; }
+@media (max-width: 720px) { #hqPage .hq-panel.hq-panel-say .hq-panel-card { padding: 10px 34px 10px; } #hqPage .hq-panel.hq-panel-say .hq-panel-line { font-size: 18px; } }

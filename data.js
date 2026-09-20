@@ -43421,19 +43421,43 @@ const HQ_SEA_RULES = {
     labels: { boat: 'THE SKIFF', sub: 'THE BATHYSCAPHE' },
 };
 if (typeof window !== 'undefined') window.HQ_SEA_RULES = HQ_SEA_RULES;
+/* THE LIGHT RULES (2026-09-20) — the user: "you are just using the night mood too much, it is really aggressive; I have to
+   turn the brightness all the way up in some places that are dark; more torches and other light sources, or maybe a key
+   light; then in a battle in that area I have to turn the brightness down again". ONE table, read by three-renderer.js
+   _hqLightRules() (merged over its HQ_LIGHT_DEFAULT — keep the keys in step):
+   · cycle        the day/night cycle the BUILDING wears (document.body.dataset.cycle). The HQ never wrote it, so every
+                  room inherited the last battle's night grade — the same room read dark after a night map and fine
+                  after a day map. 'day' = no night grade, no night exposure: a room's mood is its own lights + fog +
+                  its look's retro preset.
+   · nightCap     the most night grade a look (HQ_ROOM_LOOKS / env.look nightMood) may add in a battle — a mood, never
+                  the darkness (the table's authored values stand; the cap is applied where the look is worn).
+   · ambientFloor the least fill a box room keeps whatever its mood.ambient says (0.3 = a torch-lit undercroft was
+                  unreadable); the torches carry the vibe on top of it.
+   · fill         a cool fill light from behind the key in every box / open room (no black side on a face).
+   · open         an outdoor room's hemisphere / sun / lamp intensities by day and by night — the night keeps a real
+                  MOON key. The Brightness slider is PER PLACE now (three-post.js THE TWO BRIGHTNESSES): the building's
+                  value and the battle's are separate and the swap eases. */
+const HQ_LIGHT_RULES = {
+    cycle: 'day',
+    nightCap: 0.45,
+    ambientFloor: 0.55,
+    fillColor: 0x9fb4d0,
+    fill: 0.14,
+    open: { nightHemi: 0.62, nightSun: 0.4, dayHemi: 0.78, daySun: 0.6, nightLamp: 0.9, dayLamp: 0.55 },
+};
 const HQ_SKATE_RULES = {
     free: true,          // standard issue — every officer holds a board (false = the find in Room 26)
     key: 'b',            // the walker's key: drop the deck / pick it up
     maxV: 12.5,          // m/s — the cap on the roll (a run is ~4.6)
     pushV: 4.2,          // m/s a push adds (rev 3: a fuller stroke on the slower cadence — four pushes to cruise)
     pushEvery: 0.85,     // s between pushes (W held) — a real stroke's cadence (rev 3; was 0.42, a sprint)
-    pushMs: 520,         // ms the push KICK plays (rev 6: Spartan_Kick trimmed to its stroke — sprites.js HQ_SKATE_CLIPS; never the cast's mop push), then back on the deck
+    pushMs: 520,         // DEAD KEY since rev 7 (2026-09-20): no push clip plays — the rider holds the ride stance through a push (the user)
     cruiseV: 10.5,       // m/s — at cruise W only HOLDS the speed (no friction, no stride): the rider stands on the deck (rev 3)
     friction: 0.993,     // per 60 Hz frame, applied time-based (a long coast — rev 3: longer, a Tony Hawk roll; the pushes settle near the cap)
     brake: 0.9,          // per 60 Hz frame — a key pointing AGAINST the roll (rev 6: WASD is a camera-relative direction, like walking; S with the camera ahead)
     reverseMaxV: 5.0,    // m/s — the cap on a BACKWARDS roll (a portal exit's, a bail's); rev 6 retired the fakie push — S from a stop turns the board round and rolls toward the camera
     reversePushV: 1.8,   // RETIRED rev 6 — kept for old readers
-    kickEvery: [3.5, 7], // s — coasting at speed the rider throws in a stride now and then (rev 2)
+    kickEvery: [3.5, 7], // DEAD KEY since rev 7 (2026-09-20): the occasional kick is retired — no stride, no beat (the user)
     kickMinV: 2.5,       // m/s — slower than this no kick
     turn: 2.4,           // rad/s the board CARVES toward the keys' direction at speed (≥ 3 m/s); below that it turns tighter, up to 3.5× (rev 6)
     turnMin: 0.4,        // the carve's floor at a crawl (a share of `turn`); from a dead stop the first push simply goes where the keys point
@@ -45354,7 +45378,7 @@ if (typeof window !== 'undefined') {
     window.hqFieldWindow = hqFieldWindow; window.hqFieldBuild = hqFieldBuild; window.hqFieldLayout = hqFieldLayout; window.hqFieldRegister = hqFieldRegister;
     window.hqFieldBoxInfo = hqFieldBoxInfo; window.hqFieldGallery = hqFieldGallery; window.hqFieldLattice = hqFieldLattice; window.hqFieldBoxStep = hqFieldBoxStep; window.hqFieldBoxTile = hqFieldBoxTile; window.hqFieldNearestWalk = hqFieldNearestWalk;
     /* SKATEBOARDING (HQ plan 9.8 stage 1, 2026-09-15) */
-    window.HQ_SKATE_RULES = HQ_SKATE_RULES; window.hqSkateStatus = hqSkateStatus; window.hqSkateRecord = hqSkateRecord; window.hqSkateBank = hqSkateBank; window.hqSkateScore = hqSkateScore; window.hqSkateIssueFree = hqSkateIssueFree;
+    window.HQ_SKATE_RULES = HQ_SKATE_RULES; window.HQ_LIGHT_RULES = HQ_LIGHT_RULES; window.hqSkateStatus = hqSkateStatus; window.hqSkateRecord = hqSkateRecord; window.hqSkateBank = hqSkateBank; window.hqSkateScore = hqSkateScore; window.hqSkateIssueFree = hqSkateIssueFree;
     window.hqLinkRoom = hqLinkRoom;
     window.hqLinkDoors = hqLinkDoors;
     window.hqLinkEndOk = hqLinkEndOk;

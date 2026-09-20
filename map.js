@@ -2768,7 +2768,6 @@
                     _hqToast(ev.reason === 'off' ? '<b>NO SKATING</b><span>EW_HQ_NO_SKATE IS SET</span>' : '<b>NO BOARD</b><span>THERE IS ONE LEANING ON A LOCKER IN ROOM 26 · THE ANNEX</span>', 2600);
                     break;
                 case 'push': _hqSkateSfx('skatePush', ev.fakie ? 0.35 : 0.45); break;
-                case 'kick': _hqSkateSfx('skatePush', 0.28); break;   // rev 2: the occasional stride on the coast
                 case 'ollie':
                     _hqSkateSfx('skateOllie', 0.45 + 0.35 * (ev.charge || 0));
                     if (ev.perfect) { _hqOllieFlash('PERFECT POP'); _hqSkateSfx('skateBank', 0.35); }
@@ -5039,6 +5038,10 @@
                stage fills the screen, the card + the register ride a side column
                (styles-base.css .hq-panel-map); every other target keeps the card */
             panel.classList.toggle('hq-panel-map', _hqPanelIsMap(t));
+            /* THE SUBTITLE (2026-09-20, the user: "character dialogue should still look like subtitles, black bar with
+               white text"): a person's line (a native, the roster, the cast, an agent) is a black bar along the foot
+               of the screen with white text — never the themed plate (styles-base.css .hq-panel-say) */
+            panel.classList.toggle('hq-panel-say', !(t.kind === 'door' || t.kind === 'counter' || t.kind === 'notice'));
             if (typeof _hqMapAfterRender === 'function') _hqMapAfterRender(body);   // THE MAP: the reveal + the handlers
             panel.style.display = '';
             _hqSetPrompt(null);
@@ -5056,7 +5059,7 @@
             _hqMap.anim++; _hqMap.ptr = null;
             if (_hqMap.resize) { _hqMap.resize.disconnect(); _hqMap.resize = null; }
             const panel = _hqEl('hqPanel');
-            if (panel) { panel.style.display = 'none'; panel.classList.remove('hq-panel-map'); }
+            if (panel) { panel.style.display = 'none'; panel.classList.remove('hq-panel-map'); panel.classList.remove('hq-panel-say'); }
             _hqPanelTarget = null;
             if (o && o.keepPaused) return;
             try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq && ThreeRenderer.hq.active()) { ThreeRenderer.hq.setPaused(false); _hqSetPrompt(ThreeRenderer.hq.target()); } } catch (e) {}

@@ -7520,7 +7520,7 @@
                         <span class="pm-vol-val">${bloomStr.toFixed(2)}</span>
                     </div>
                     <div class="pm-set-row pm-setting-row" style="margin-top:8px">
-                        <span class="pm-setting-label">Brightness</span>
+                        <span class="pm-setting-label">Brightness · ${(typeof ThreePost!=='undefined'&&ThreePost.getExposureContext&&ThreePost.getExposureContext()==='hq')?'EXPLORING':'BATTLE'}</span>
                         <input type="range" min="${expMinPct}" max="${expMaxPct}" step="1" value="${expPct}" class="pm-vol-slider" oninput="if(typeof ThreePost!=='undefined'&&ThreePost.setExposureScale)ThreePost.setExposureScale(this.value/100);this.nextElementSibling.textContent=(this.value/100).toFixed(2);">
                         <span class="pm-vol-val">${expVal.toFixed(2)}</span>
                     </div>

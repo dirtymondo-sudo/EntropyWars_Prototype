@@ -20963,10 +20963,26 @@ const ThreeRenderer = (function () {
         try { if (typeof localStorage !== 'undefined' && localStorage.getItem('ew_scene_looks') === 'off') return false; } catch (e) {}
         return true;
     }
+    /* THE LIGHT RULES (2026-09-20): data.js HQ_LIGHT_RULES merged over the renderer's defaults — the cycle the
+       building wears, the cap on a look's night grade, the floors under every room's fill. Keep the keys in step. */
+    var HQ_LIGHT_DEFAULT = { cycle: 'day', nightCap: 0.45, ambientFloor: 0.55, fillColor: 0x9fb4d0, fill: 0.14,
+        open: { nightHemi: 0.62, nightSun: 0.4, dayHemi: 0.78, daySun: 0.6, nightLamp: 0.9, dayLamp: 0.55 } };
+    function _hqLightRules() {
+        var R = (typeof HQ_LIGHT_RULES !== 'undefined') ? HQ_LIGHT_RULES : ((typeof window !== 'undefined' && window.HQ_LIGHT_RULES) || null);
+        if (!R) return HQ_LIGHT_DEFAULT;
+        var o = Object.assign({}, HQ_LIGHT_DEFAULT, R);
+        o.open = Object.assign({}, HQ_LIGHT_DEFAULT.open, R.open || {});
+        return o;
+    }
     function _sceneLookOf(look, name) {
         if (!look || typeof look !== 'object' || !_sceneLooksOn()) return null;
         var o = {}; for (var k in look) o[k] = look[k];
         if (!o.name && name) o.name = name;
+        /* THE NIGHT CAP (2026-09-20, the user: "you are using the night mood too much — it is really aggressive"):
+           a look's nightMood is a MOOD, never the darkness — capped at HQ_LIGHT_RULES.nightCap wherever it is worn
+           (a battle's env.look; the building wears the DAY cycle, so its grade never runs there at all) */
+        var LR = _hqLightRules();
+        if (typeof o.nightMood === 'number' && typeof LR.nightCap === 'number') o.nightMood = Math.min(o.nightMood, LR.nightCap);
         return o;
     }
     function _applyEnvLook(me) {
@@ -45459,11 +45475,11 @@ const ThreeRenderer = (function () {
         /* SKATEBOARDING rev 3 (2026-09-17): the push STRIDE, the bail's FALL and the GET-UP
            (sprites.js HQ_SKATE_CLIPS — the library's jog, Slide_Start, Slide_Exit) beside the
            ride clip; a rig without one falls through _playUnitModelAnim's fallbacks */
-        if (spec.kind === 'player' && def.libClips && typeof HQ_SKATE_CLIPS !== 'undefined' && !def.libClips.hqSkatePush) {
-            /* rev 6 (2026-09-20): the slot is `hqSkatePush` — `hqPush` is the cast's mop-push pose, already on the
-               Player rig, and the old guard on it left the kick unbaked (the arm push on the deck) */
+        if (spec.kind === 'player' && def.libClips && typeof HQ_SKATE_CLIPS !== 'undefined' && !def.libClips.hqFall) {
+            /* rev 7 (2026-09-20): NO push clip any more (the user) — only the bail's two clips are baked; the guard
+               is the fall slot (never a `_CAST_POSES` name: `hqPush` is the cast's mop-push pose on the Player rig) */
             var slc = Object.assign({}, def.libClips), slt = Object.assign({}, def.libTimeScales);
-            [['push', 'hqSkatePush'], ['fall', 'hqFall'], ['getup', 'hqGetup']].forEach(function (pr) {
+            [['fall', 'hqFall'], ['getup', 'hqGetup']].forEach(function (pr) {
                 var C = HQ_SKATE_CLIPS[pr[0]]; if (!C) return;
                 slc[pr[1]] = { clip: C.clip, lib: C.lib || 0 }; if (C.trim) slc[pr[1]].trim = C.trim; if (C.ts) slt[pr[1]] = C.ts;
             });
@@ -48758,7 +48774,7 @@ const ThreeRenderer = (function () {
                 else if (R.v >= (S.cruiseV != null ? S.cruiseV : 8.5)) { cruising = true; R.pushT = Math.min(R.pushT, 0.2); }   // rev 3: at cruise the keys only HOLD the speed — the rider stands on the deck
                 else {
                     R.pushT -= dt;
-                    if (R.pushT <= 0) { R.v = Math.min(S.maxV, R.v + S.pushV); R.pushT = S.pushEvery; R.pushAnim = (S.pushMs || 520) / 1000; R.kickT = 0; _hqRideEmit({ kind: 'push', v: R.v }); }
+                    if (R.pushT <= 0) { R.v = Math.min(S.maxV, R.v + S.pushV); R.pushT = S.pushEvery; R.pushAnim = 0; R.kickT = 0; _hqRideEmit({ kind: 'push', v: R.v }); }   // rev 7 (2026-09-20, the user): NO push clip — the rider stays in the ride stance, the push is the speed + the sound (pushAnim stays 0)
                 }
             } else if (backKey) {
                 /* THE BRAKE: the keys point against the roll — scrub the speed; at a stop the next tick turns the board round */
@@ -48767,13 +48783,8 @@ const ThreeRenderer = (function () {
             } else R.pushT = Math.min(R.pushT, 0.08);
             if (!cruising) R.v *= Math.pow(S.friction, dt * 60);
             if (Math.abs(R.v) < 0.05) R.v = 0;
-            /* THE OCCASIONAL KICK (rev 2): coasting at speed the rider throws in
-               a stride now and then — the foot goes down for a beat, a whisper
-               of speed; the cadence is random inside kickEvery */
-            if (!noCtl && !pl.air && Math.abs(R.v) >= S.kickMinV && R.pushAnim <= 0) {
-                R.kickT -= dt;
-                if (R.kickT <= 0) { R.kickT = S.kickEvery[0] + Math.random() * (S.kickEvery[1] - S.kickEvery[0]); R.pushAnim = 0.28; R.v += Math.sign(R.v) * 0.25; _hqRideEmit({ kind: 'kick', v: R.v }); }
-            } else if (Math.abs(R.v) < S.kickMinV) R.kickT = S.kickEvery[0];
+            /* THE OCCASIONAL KICK (rev 2) is RETIRED (rev 7, 2026-09-20 — the user: "I'd rather just not have any kick
+               animation at all"): no stride, no kick beat; kickEvery / kickMinV stay in the table as dead keys */
             /* THE CARVE toward the wanted direction: `turn` rad/s at speed, tighter below 3 m/s (a slow board
                turns on a dime — rev 6; `turnMin` is the floor share the crawl keeps), never past the target */
             if (fwdKey && wDelta !== 0 && R.v !== 0) {
@@ -50260,7 +50271,7 @@ const ThreeRenderer = (function () {
             if (ch.rounds && ch.kind !== 'player') { want = ch.moving ? 'walk' : 'idle'; if (e.actions && e.actions.walk) { var wts = e.actions.walk._ew_ts0 || 1; e.actions.walk.timeScale = wts * 0.62; } }
             if (ch.kind === 'player') {
                 want = (ch.jumpT >= 0) ? 'jump' : (ch.moving ? (ch.running ? 'run' : 'walk') : 'idle');
-                if (H.ride && H.ride.on) { var bph = _hqRideBailPhase(H.ride); want = bph ? (bph === 'fall' ? 'hqFall' : 'hqGetup') : (ch.jumpT >= 0) ? 'jump' : ((H.ride.pushAnim > 0) ? 'hqSkatePush' : ((e.actions && e.actions.hqRide) ? 'hqRide' : 'idle')); }   // SKATEBOARDING (9.8): the push / the kick is THE KICK (rev 6: hqSkatePush, never the cast's hqPush), the air is the jump clip, the rest is THE RIDE stance (rev 2: Idle_10, sideways on the deck); a bail = the fall clip then the get-up (rev 3)
+                if (H.ride && H.ride.on) { var bph = _hqRideBailPhase(H.ride); want = bph ? (bph === 'fall' ? 'hqFall' : 'hqGetup') : (ch.jumpT >= 0) ? 'jump' : ((e.actions && e.actions.hqRide) ? 'hqRide' : 'idle'); }   // SKATEBOARDING (9.8): the air is the jump clip, everything else on the deck is THE RIDE stance (rev 2: Idle_10, sideways on the deck; rev 7: no push / kick clip at all — the user); a bail = the fall clip then the get-up (rev 3)
                 else if (H.vehicle && H.vehicle.on) want = (H.vehicle.kind === 'sub') ? 'hqDrive' : 'hqSit';   // THE DEEP (2026-09-18): at the helm — the library's driving loop in the bathyscaphe, the sitting idle in the skiff
                 else if (ch.swim) want = ch.moving ? 'hqSwim' : 'hqSwimIdle';   // THE DEEP: the swimmer — Swim_Fwd_Loop / Swim_Idle_Loop (sprites.js HQ_SWIM_CLIPS)
                 else if (ch.climb) want = ch.climb.moving ? 'hqClimb' : 'hqClimbIdle';   // THE CLIMB (2026-09-19): the stroke stood up on the line, the hang between rungs (sprites.js HQ_CLIMB_CLIPS)
@@ -50805,11 +50816,15 @@ const ThreeRenderer = (function () {
                fill), and the lamp masts' point lights over the corners; the
                distance fog is the map's, so the apron fades into the dome */
             var skyC = new THREE.Color((S.sky.tint != null) ? S.sky.tint : 0x8090b0), nightO = S.sky.night ? 1 : 0;
-            sc.add(new THREE.HemisphereLight(skyC.clone().lerp(new THREE.Color(0xffffff), nightO ? 0.15 : 0.45), 0x2a2620, nightO ? 0.42 : 0.72));
-            var sun = new THREE.DirectionalLight(nightO ? 0x9fb4d8 : 0xfff1d6, nightO ? 0.22 : 0.55); sun.position.set(0.45, 1, 0.3).multiplyScalar(1000); sc.add(sun);
+            /* THE KEY LIGHT (2026-09-20): the numbers are HQ_LIGHT_RULES.open — a night room keeps a real MOON key
+               (the user: "I have to turn the brightness all the way up in some places that are dark") */
+            var LRo = _hqLightRules().open;
+            sc.add(new THREE.HemisphereLight(skyC.clone().lerp(new THREE.Color(0xffffff), nightO ? 0.22 : 0.45), 0x2a2620, nightO ? LRo.nightHemi : LRo.dayHemi));
+            var sun = new THREE.DirectionalLight(nightO ? 0xaabfe0 : 0xfff1d6, nightO ? LRo.nightSun : LRo.daySun); sun.position.set(0.45, 1, 0.3).multiplyScalar(1000); sc.add(sun);
+            var ofill = new THREE.DirectionalLight(_hqLightRules().fillColor, _hqLightRules().fill); ofill.position.set(-0.55, 0.45, -0.4).multiplyScalar(1000); sc.add(ofill);   // the cool fill from behind: no black side on a face
             var mplC = (S.mood && S.mood.light != null) ? S.mood.light : 0xfff0d0;
             (S.lights || []).forEach(function (Lt) {
-                var ml = new THREE.PointLight(mplC, nightO ? 0.75 : 0.5, 20 * U, 2); ml.position.set(Lt.x * U, (S.h + 1.8) * U, Lt.z * U); sc.add(ml);
+                var ml = new THREE.PointLight(mplC, nightO ? LRo.nightLamp : LRo.dayLamp, 20 * U, 2); ml.position.set(Lt.x * U, (S.h + 1.8) * U, Lt.z * U); sc.add(ml);
             });
             /* THE FOG (2026-09-17): sky.fog.density = per METRE (the woods 0.03 → the treeline at 12 m is a third gone,
                the outer ground's far edge at 54 m is under it); a row without one keeps the thin default */
@@ -50821,8 +50836,12 @@ const ThreeRenderer = (function () {
             /* a small room: one fluorescent overhead, a warm pool at the desk lamp, dim fill */
             /* Phase 8 (2026-09-14): `mood.ambient` scales the fill (0.3 = a torch-lit undercroft, 1 = an office) */
             var amb = (S.mood && S.mood.ambient != null) ? S.mood.ambient : 1;
+            /* THE FLOOR (2026-09-20): a room's mood may dim the fill, never below HQ_LIGHT_RULES.ambientFloor — the
+               torches carry the vibe, the key + a cool fill keep every face readable */
+            var LRb = _hqLightRules(); amb = Math.max(amb, LRb.ambientFloor);
             sc.add(new THREE.HemisphereLight(0xd9d2c0, 0x1c1a1e, 0.5 * amb));
             var bxk = new THREE.DirectionalLight(0xe8ecf5, 0.22 * amb); bxk.position.set(0.3, 1, 0.2).multiplyScalar(1000); sc.add(bxk);
+            var bxf = new THREE.DirectionalLight(LRb.fillColor, LRb.fill * amb); bxf.position.set(-0.55, 0.45, -0.4).multiplyScalar(1000); sc.add(bxf);
             var lightsAt = (S.lights && S.lights.length) ? S.lights : [S.light || { x: 0, z: 0 }];
             var plC = (S.mood && S.mood.light != null) ? S.mood.light : 0xe6eeff;   // a site room's mood (blue under the collider, yellow in the Backrooms)
             lightsAt.forEach(function (Lt) {
@@ -50916,6 +50935,13 @@ const ThreeRenderer = (function () {
         _hqBindInput();
         /* THE ROOM'S LOOK (2026-09-17): shell.look is laid over the player's post settings while they stand here */
         try { if (typeof ThreePost !== 'undefined' && ThreePost.setSceneLook) ThreePost.setSceneLook(_sceneLookOf(S.look, room.label)); } catch (e) {}
+        /* THE BUILDING'S CYCLE (2026-09-20): the HQ never wrote document.body.dataset.cycle, so every room inherited the
+           LAST BATTLE's night — the night grade + the night exposure over a room that lights itself (why the same room
+           read dark one visit and fine the next). The building wears HQ_LIGHT_RULES.cycle (day: no grade, exposure 1);
+           a room's mood is its own lights, its fog and its look's retro preset. The battle rewrites the cycle from its map. */
+        try { var LRc = _hqLightRules(); if (document.body && document.body.dataset) document.body.dataset.cycle = LRc.cycle || 'day'; var bst = document.getElementById('boardStage'); if (bst && bst.dataset) bst.dataset.cycle = LRc.cycle || 'day'; } catch (e) {}
+        /* THE TWO BRIGHTNESSES (2026-09-20): the building's own Brightness value, eased in (three-post.js) */
+        try { if (typeof ThreePost !== 'undefined' && ThreePost.setExposureContext) ThreePost.setExposureContext('hq'); } catch (e) {}
         renderer.setAnimationLoop(_hqFrame);
         console.log('[HQ] entered', opts.room || 'central_egress', '(' + (room.kind || 'rotunda') + ') — doors:', _hq.doors.length, 'props:', (room.props || []).length, 'chars:', _hq.chars.length);
         return true;
@@ -50978,6 +51004,7 @@ const ThreeRenderer = (function () {
         _hqUnbindInput();
         _hq = null;
         try { if (typeof ThreePost !== 'undefined' && ThreePost.setSceneLook) ThreePost.setSceneLook(null); } catch (e) {}   // the room's look leaves with the room
+        try { if (typeof ThreePost !== 'undefined' && ThreePost.setExposureContext) ThreePost.setExposureContext('battle'); } catch (e) {}   // THE TWO BRIGHTNESSES: the battle's / the menu's value, eased
         if (H.sky) _horizonFogDirty = true;   // an outdoor room drove the shared sky uniforms: the battle re-applies its fog
         try { renderer.setAnimationLoop(active ? renderFrame : null); } catch (e) {}
         /* characters: evict their rig-cache records (ids are ours) */

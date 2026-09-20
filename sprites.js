@@ -2250,7 +2250,7 @@ if (typeof window !== 'undefined') window.HQ_RIDE_CLIP = HQ_RIDE_CLIP;
    NEVER `hqPush`: that is the CAST pose (Push_Loop, leaning into a mop handle with both arms) which
    the Player cast rig already carries, and rev 3's `!def.libClips.hqPush` guard let it shadow the
    stride — the arm push the user saw. Neither library has a skate scoot; the kick is the nearest. */
-const HQ_SKATE_CLIPS = { push: { clip: 'Spartan_Kick', lib: 2, ts: 1.15, trim: [0.4, 1.0] }, fall: { clip: 'Slide_Start', lib: 1, ts: 1.0 }, getup: { clip: 'Slide_Exit', lib: 1, ts: 1.0 } };
+const HQ_SKATE_CLIPS = { fall: { clip: 'Slide_Start', lib: 1, ts: 1.0 }, getup: { clip: 'Slide_Exit', lib: 1, ts: 1.0 } };   // rev 7 (2026-09-20): NO push clip — the rider stays in the ride stance through a push (the user)
 if (typeof window !== 'undefined') window.HQ_SKATE_CLIPS = HQ_SKATE_CLIPS;
 // THE DOOR GUN rev 4 (2026-09-16): the walker's GUN clips, baked beside the
 // ride clip on the HQ avatar's rig only (three-renderer.js _hqSpawnCharacter

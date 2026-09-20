@@ -11015,3 +11015,11 @@ bay panels list built thresholds; DISPATCH deals earned sites. The roster is loc
 account owns everywhere but online play, the classic VS CPU and the range (data.js
 `unitRosterScope`); the starters are the DOOR Agent + the Homosapien. See CLAUDE.md "THE EARNED
 DOORS + THE ROSTER LOCK".
+
+### 2026-09-20 — THE LIGHT PASS + THE SUBTITLE + skate rev 7 (local delivery)
+The building wears the DAY cycle (`HQ_LIGHT_RULES.cycle`) — it never wrote `dataset.cycle` and inherited
+the last battle's night grade, which is why rooms "reset" between zones; a look's `nightMood` is capped
+(0.45) where it is worn; every room keeps an ambient floor (0.55), a cool fill and, outdoors at night, a
+moon key (`HQ_LIGHT_RULES`, data.js); the Brightness slider is per place (three-post.js
+`setExposureContext`, eased). A person's line is a subtitle bar (`.hq-panel-say`). The skateboard has no
+push / kick clip. See CLAUDE.md "THE LIGHT PASS + THE SUBTITLE + SKATEBOARDING rev 7".

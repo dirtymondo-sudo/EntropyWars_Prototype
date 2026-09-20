@@ -35,13 +35,47 @@ const ThreePost = (function () {
     var _exposureUser = 1.0;
     var EXPOSURE_FACTORY = 1.0;
     var EXPOSURE_MIN = 0.55, EXPOSURE_MAX = 1.25;
+    /* THE TWO BRIGHTNESSES (2026-09-20): the Brightness slider is kept PER PLACE — one value for
+       the battle (a map with a sun; localStorage ew_exposure, the old key) and one for the
+       building / the explorable areas (ew_exposure_hq). The user turned it all the way up in a
+       dark room and every battle after it was blown out. setExposureContext('hq' | 'battle')
+       swaps the active value (three-renderer.js _hqEnter / _hqLeave); the swap EASES over
+       ~0.4 s (_expLk, EXPOSURE_EASE_K) so a door never pops the exposure; a slider move lands
+       at once. _expLk() is the ONE read every toneMappingExposure write goes through. */
+    var EXPOSURE_CTX_KEYS = { battle: 'ew_exposure', hq: 'ew_exposure_hq' };
+    var EXPOSURE_EASE_K = 2.6;
+    var _expCtx = 'battle', _expByCtx = { battle: 1.0, hq: 1.0 };
     try {
-        var _expSaved = (typeof localStorage !== 'undefined') ? localStorage.getItem('ew_exposure') : null;
-        if (_expSaved !== null) {
-            var _ev = parseFloat(_expSaved);
-            if (!isNaN(_ev)) _exposureUser = Math.max(EXPOSURE_MIN, Math.min(EXPOSURE_MAX, _ev));
+        for (var _ec in EXPOSURE_CTX_KEYS) {
+            var _expSaved = (typeof localStorage !== 'undefined') ? localStorage.getItem(EXPOSURE_CTX_KEYS[_ec]) : null;
+            if (_expSaved !== null) {
+                var _ev = parseFloat(_expSaved);
+                if (!isNaN(_ev)) _expByCtx[_ec] = Math.max(EXPOSURE_MIN, Math.min(EXPOSURE_MAX, _ev));
+            } else if (_ec !== 'battle') _expByCtx[_ec] = null;   // never set: follows the battle's until the player moves it here
         }
     } catch (e) {}
+    if (_expByCtx.hq == null) _expByCtx.hq = _expByCtx.battle;
+    _exposureUser = _expByCtx[_expCtx];
+    var _expEased = _exposureUser, _expEaseAt = 0;
+    function _expLk() {
+        if (_expEased !== _exposureUser) {
+            var now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+            var dt = _expEaseAt ? Math.min(0.1, Math.max(0, (now - _expEaseAt) / 1000)) : 0.016;
+            _expEaseAt = now;
+            _expEased += (_exposureUser - _expEased) * Math.min(1, dt * EXPOSURE_EASE_K);
+            if (Math.abs(_expEased - _exposureUser) < 0.002) _expEased = _exposureUser;
+        } else _expEaseAt = 0;
+        return _lkNum('exposure', _expEased);
+    }
+    function setExposureContext(ctx) {
+        ctx = EXPOSURE_CTX_KEYS[ctx] ? ctx : 'battle';
+        if (ctx === _expCtx) return;
+        _expByCtx[_expCtx] = _exposureUser;
+        _expCtx = ctx;
+        _exposureUser = _expByCtx[ctx];
+        _expEaseAt = 0;   // the ease runs from the value on screen to this place's
+    }
+    function getExposureContext() { return _expCtx; }
 
     // ── HD-2D upgrade state (filmic tone / shadows / tilt-shift DoF) ────
     // Filmic tone mapping (ACESFilmic) — richer contrast + highlight rolloff.
@@ -1020,7 +1054,7 @@ const ThreePost = (function () {
         if (_retroPass) _retroPass.enabled = !!_lkRetro().enabled;
         _applyCinematicUniforms();
         _applyDofUniforms();
-        if (_renderer && _cur) _renderer.toneMappingExposure = _cur.exposure * _lkNum('exposure', _exposureUser) * (_filmic ? FILMIC_EXPOSURE_COMP : 1.0);
+        if (_renderer && _cur) _renderer.toneMappingExposure = _cur.exposure * _expLk() * (_filmic ? FILMIC_EXPOSURE_COMP : 1.0);
     }
     function getSceneLook() { return _look; }
     // Push the full _retro state (including the active preset's tint/sat/contrast)
@@ -1248,7 +1282,7 @@ const ThreePost = (function () {
             _ambientLight.intensity = _cur.ambInt;
         }
         if (_renderer) {
-            _renderer.toneMappingExposure = _cur.exposure * _lkNum('exposure', _exposureUser) * (_filmic ? FILMIC_EXPOSURE_COMP : 1.0);
+            _renderer.toneMappingExposure = _cur.exposure * _expLk() * (_filmic ? FILMIC_EXPOSURE_COMP : 1.0);
         }
         if (_bloomPass) {
             var _bu = _lkNum('bloom', BLOOM_USER_STRENGTH), _bloomOn = _bu > 0;
@@ -1403,7 +1437,7 @@ const ThreePost = (function () {
         _filmic = !!enabled;
         if (_renderer) {
             _renderer.toneMapping = _filmic ? THREE.ACESFilmicToneMapping : THREE.LinearToneMapping;
-            _renderer.toneMappingExposure = _cur.exposure * _lkNum('exposure', _exposureUser) * (_filmic ? FILMIC_EXPOSURE_COMP : 1.0);
+            _renderer.toneMappingExposure = _cur.exposure * _expLk() * (_filmic ? FILMIC_EXPOSURE_COMP : 1.0);
         }
         _recompileSceneMaterials();
         try { if (typeof localStorage !== 'undefined') localStorage.setItem('ew_filmicTone', _filmic ? '1' : '0'); } catch (e) {}
@@ -2008,7 +2042,7 @@ const ThreePost = (function () {
             // Written AFTER syncLighting() (which owns the steady value) so
             // the beat wins for its duration and restores itself on release.
             _renderer.toneMappingExposure =
-                _cur.exposure * _lkNum('exposure', _exposureUser) * (_filmic ? FILMIC_EXPOSURE_COMP : 1.0)
+                _cur.exposure * _expLk() * (_filmic ? FILMIC_EXPOSURE_COMP : 1.0)
                 * (1 - 0.5 * _dim);
         }
 
@@ -2079,7 +2113,7 @@ const ThreePost = (function () {
                 _retroPass.material.uniforms['uMaskMode'].value = 0.0;
             }
             if (_bloomPass && _bloomPass.enabled) _bloomPass.strength = Math.max(BLOOM_USER_STRENGTH, 0.42);
-            _renderer.toneMappingExposure = _lkNum('exposure', _exposureUser) * (_filmic ? FILMIC_EXPOSURE_COMP : 1.0);
+            _renderer.toneMappingExposure = _expLk() * (_filmic ? FILMIC_EXPOSURE_COMP : 1.0);
             _composer.render();
         } finally {
             rp.scene = prevScene;
@@ -2143,10 +2177,11 @@ const ThreePost = (function () {
         var s = parseFloat(v);
         if (isNaN(s)) return;
         _exposureUser = Math.max(EXPOSURE_MIN, Math.min(EXPOSURE_MAX, s));
+        _expEased = _exposureUser; _expByCtx[_expCtx] = _exposureUser;   // a slider move lands at once, on THIS place's value
         // Include the filmic compensation — omitting it made the Brightness
         // slider visibly darken the scene until the next day/night ease.
-        if (_renderer) _renderer.toneMappingExposure = _cur.exposure * _lkNum('exposure', _exposureUser) * (_filmic ? FILMIC_EXPOSURE_COMP : 1.0);
-        try { if (typeof localStorage !== 'undefined') localStorage.setItem('ew_exposure', String(_exposureUser)); } catch (e) {}
+        if (_renderer) _renderer.toneMappingExposure = _cur.exposure * _expLk() * (_filmic ? FILMIC_EXPOSURE_COMP : 1.0);
+        try { if (typeof localStorage !== 'undefined') localStorage.setItem(EXPOSURE_CTX_KEYS[_expCtx] || 'ew_exposure', String(_exposureUser)); } catch (e) {}
     }
     function getExposureScale() { return _exposureUser; }
     function getExposureRange() { return { min: EXPOSURE_MIN, max: EXPOSURE_MAX }; }
@@ -2471,6 +2506,8 @@ const ThreePost = (function () {
         getRetroFogHorizon: getRetroFogHorizon,
         setSceneLook: setSceneLook,
         getSceneLookOwned: getSceneLookOwned,
+        setExposureContext: setExposureContext,
+        getExposureContext: getExposureContext,
         getSceneLook: getSceneLook,
         isReady: isReady,
         dispose: dispose
