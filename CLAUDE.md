@@ -7210,3 +7210,41 @@ zeroing the stars' colours on tick one, fixed). UNSEEN LIVE (RULE #1c):
 FINISHER_PLAN §7's delivery-13 entry lists what to eyeball first — the star
 dome, the globe's scale from the apex, the jets' heading, the belt past the
 rim, the black dome under the eyelids, the pins on a raised corner.
+
+## EIGHT MORE EXECUTIONS — Cataclysm Decree · Prophecy Fulfilled · The Motion Carries · Poseidon's Wrath · Extinction Event · Hoard · Grave Robbery · Garden Variety (FINISHER_PLAN delivery 14) — 2026-09-20, local delivery
+The next eight `FINISHERS` rows in roster order are BUILT (seventy-eight of 99;
+21 remain): overlord `byOrderOf` (`_sigByOrderOf3D` — THE DECREE unrolls in
+the sky on two rollers (`_finScroll`, a new shared helper: a parchment plane
+wearing a `_finTextTex` card, `unroll(k)` / `setText`), the wax seal, the
+red-black dome with a rift at its zenith, six lesser `_finRockBody` comets
+round the tile then THE COMET out of the zenith), chosen one
+`prophecyFulfilled` (`_sigProphecyFulfilled3D` — the scroll rises between
+them and is written a line per beat, the caster's halo, THE STAR down a
+column of light, …SHALL FALL., the body to motes), politician `motionCarries`
+(`_sigMotionCarries3D` — the empty benches, fourteen AYE ballots stacking on
+the podium, the tally card, THE GAVEL the size of a building down on the
+hit, the body flattened, EXPELLED), atlantean `poseidonsWrath`
+(`_sigPoseidonsWrath3D` — the sea to the knees behind a foam wave, THE
+TRIDENT up through the floor lifting the body with lightning on the shaft,
+the whirlpool drain), dinosaur `extinctionEvent` (`_sigExtinctionEvent3D` —
+ferns, dusk, AIMED AT ONE UNIT, the dot that grows into the kit's rock on a
+shallow entry line, the seven-tile impact, the ferns flattened, the ash, a
+fossil plate), dragon `hoard` (`_sigHoard3D` — THE FULL SIZE: a
+`_finChain` neck to a horned head, two wings, the inhale, a cone of fire
+onto the body, the ash cone, forty coins into a heap, the neck curled over
+it), ghoul `graveRobbery` (`_sigGraveRobbery3D` — the pit, the drop, the
+ghoul stand-in shovelling in beats, the hand pulled back under, the
+headstone cut with the name and TODAY'S date, the wreath, the crow), gnome
+`gardenVariety` (`_sigGardenVariety3D` — painted ceramic, the lawn / fence /
+flowers / the kit's mushrooms / a birdbath, THE LAWNMOWER through the gap
+and the ornament, the shards, MULCHED). Each = a director in battle.js
+`_FIN_DIRECTORS` (the DELIVERY 14 block), the signature in "THE FINISHER
+PASS 2" (the DELIVERY 14 block; `_sigRunOwned` + `_fxDelay`, called inside
+the relayed cinematic — RULE #2), a `_FIN_STAGE[sig]` script for the forge,
+a row in finishers.test.js's BUILT + SIG_FN tables. Smoke-tested in a
+stub-THREE harness (every tick from four placements, the caster on the
+victim's tile included; not a render). UNSEEN LIVE (RULE #1c):
+FINISHER_PLAN §7's delivery-14 entry lists what to eyeball first — the
+decree's size, the comets' fall, the gavel from the crane, the flood's edge
+on a raised board, the asteroid's heading, the dragon's silhouette, the
+headstone's text, the mower's lane, the eight camera paths.

@@ -197,6 +197,96 @@ spells), a ziggurat tier block, a gothic buttress.
 
 ## 7. Log
 
+- **2026-09-20 — EIGHT MORE EXECUTIONS in roster order (delivery 14).** The
+  next eight `FINISHERS` rows with `sig: null` in `AVAILABLE_RACES` order are
+  BUILT (seventy-eight of 99; 21 remain): overlord **Cataclysm Decree**
+  (`byOrderOf` / `_sigByOrderOf3D` — THE DECREE unrolls in the sky over the
+  caster between two rollers (`_finScroll`, a new shared helper: a parchment
+  plane wearing a `_finTextTex` card, its unroll = the paper's scale between
+  the rollers) reading BY ORDER OF THE OVERLORD · <name> · IS HEREBY UNMADE,
+  the wax seal slams onto it, the sky goes to a red-black dome with a rift
+  turning at its zenith and AGREES: six lesser comets (`_finRockBody`) fall
+  round the victim in sequence, then THE COMET on a long diagonal out of the
+  zenith lands on the tile — the crater, the ash, the decree rolls shut),
+  chosen one **Prophecy Fulfilled** (`prophecyFulfilled` /
+  `_sigProphecyFulfilled3D` — a scroll of prophecy rises out of the ground
+  between them and is written a line per beat (AND IN THE LAST DAYS · A
+  CHOSEN ONE SHALL RISE · AND THE ONE CALLED · <name>), a gold halo on the
+  caster, THE STAR — a bright core with five turning rays — comes down out of
+  the sky on a column of light, the last line is written (…SHALL FALL.) and
+  the star lands on the victim; the body goes to light and rises as motes,
+  the scroll rolls shut), politician **The Motion Carries** (`motionCarries`
+  / `_sigMotionCarries3D` — two tiers of EMPTY benches and a podium rise
+  round the victim, fourteen AYE ballots fly in from the sky and stack on the
+  podium while the tally card counts them (nobody attended — every vote is
+  in: THE MOTION CARRIES), THE GAVEL the size of a building — a two-and-a-half
+  tile head on a six-tile handle — rises over the tile and comes down on the
+  hit; the body is flattened, a card reads EXPELLED, the paperwork blows
+  away), atlantean **Poseidon's Wrath** (`poseidonsWrath` /
+  `_sigPoseidonsWrath3D` — a sheet of sea rises to the victim's knees over a
+  five-tile disc behind a foam wave rolling in, THE TRIDENT comes up THROUGH
+  THE FLOOR under the victim — tines first, then the shaft, the body lifted
+  on it — with lightning rings wrapping the shaft; the hit is the thrust to
+  full height, the sea drains down a whirlpool round the shaft), dinosaur
+  **Extinction Event** (`extinctionEvent` / `_sigExtinctionEvent3D` — ferns
+  stand up round the tile, the sky goes to dusk, a red reticle on the victim
+  says AIMED AT ONE UNIT, a dot on the far side of the sky grows into THE
+  ASTEROID (the kit's rock, ten tiles wide by the end) coming in on a shallow
+  line with an entry glow and a flame trail; the impact: the fireball, a
+  seven-tile shock ring, the ejecta, every fern flattened away from the
+  tile, the dusk dome goes to ash and ash falls, a fossil plate reads † <name>
+  EXTINCT), dragon **Hoard** (`hoard` / `_sigHoard3D` — THE FULL SIZE stands
+  up on the caster's tile while the real model is faded: a torso, a
+  twelve-sphere neck (`_finChain`) rising to a horned head three tiles up,
+  two wings unfolding eight tiles across; the chest glows on THE INHALE, the
+  breath is a cone of fire from the jaws down onto the victim (the cone's
+  wide end on the body, its tip at the mouth) roasting the body black; on
+  the hit the body crumbles into an ash cone, forty gold coins rain out of
+  the sky into a heap round it and the neck curls down over the pile: ADDED
+  TO THE COLLECTION), ghoul **Grave Robbery** (`graveRobbery` /
+  `_sigGraveRobbery3D` — the tile opens into a pit with the spoil heaped
+  either side, the victim drops in, a ghoul stand-in at the graveside
+  shovels the fill back in beats (the heaps shrink, the dirt flies), a pale
+  hand comes up out of the fill at the middle of the job and is pulled
+  back under, the HEADSTONE rises at the head of the plot cut with R.I.P.
+  <name> and TODAY'S DATE (the director reads the calendar; both screens
+  read the same day), the shovel's flat rings off the stone on the hit, a
+  wreath drops onto it, a crow settles on top), gnome **Garden Variety**
+  (`gardenVariety` / `_sigGardenVariety3D` — the victim is PAINTED CERAMIC:
+  a blue coat, a white beard and a red cone hat fade on over the stand-in
+  under a glaze flash; a garden assembles round them — a lawn disc, a
+  picket fence with a gap on the caster's side, fourteen flowers, three of
+  the kit's mushrooms (`mushroom` / `mushroom2` clones over a procedural
+  stand-in), a birdbath: A LOVELY LAWN ORNAMENT; THE LAWNMOWER (a red deck
+  on four wheels, an engine, a handle, the blade bar a blur under it) comes
+  in through the gap on a spray of clippings, flattens every flower in its
+  lane and goes straight through the ornament: twenty-two painted shards;
+  it carries on out the far side; MULCHED). Each = a director in battle.js
+  `_FIN_DIRECTORS` (the DELIVERY 14 block — Poseidon's Wrath's crane rides
+  the trident up, Hoard's climbs with the neck, Extinction Event's sky
+  watch waits for the dot, Grave Robbery's fall-follow drops into the
+  plot), the signature in "THE FINISHER PASS 2" (the DELIVERY 14 block;
+  `_sigRunOwned` + `_fxDelay`, called inside the relayed cinematic — RULE
+  #2), a `_FIN_STAGE[sig]` script for the forge, a row in
+  finishers.test.js's BUILT + SIG_FN tables. Smoke-tested in a stub-THREE
+  harness (every tick of every signature at 16 ms from four caster / victim
+  placements — the caster ON the victim's tile included —, no NaN in any
+  position / scale / rotation / opacity / attribute / spawn; not a render).
+  Files: data.js, battle.js, three-vfx-effects.js, index.html
+  (`20260920-finishers-14-cors`), finishers.test.js, CLAUDE.md, this plan.
+  Not playtested (RULE #1c): the decree's legibility at its size and the
+  rollers' read, the comets' fall against the dome (`bigFrom` is the
+  edit), the scroll's line cadence against the inserts, the star's rays,
+  the chamber's yaw (the benches stand across the caster → victim line),
+  the gavel's scale from the crane, the flood's edge on a raised board (a
+  flat disc at the victim's tile top), the trident's arcs, the asteroid's
+  entry heading (it comes in from the far side of the victim, away from
+  the caster — `dir` is the edit), the dragon's silhouette (the wings are
+  two triangles a side; the neck's sine may want a longer reach on a big
+  tile), the breath cone's alignment on a tall model, the headstone's
+  text size, the crow, the fence gap's side, the mower's lane (0.45 tile
+  either side of the line), the eight camera paths.
+
 - **2026-09-20 — SIX MORE EXECUTIONS in roster order (delivery 13).** The
   next six `FINISHERS` rows with `sig: null` in `AVAILABLE_RACES` order are
   BUILT (seventy of 99; 29 remain): cosmic wraith **Heat Death** (`heatDeath`
