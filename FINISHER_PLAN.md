@@ -197,6 +197,92 @@ spells), a ziggurat tier block, a gothic buttress.
 
 ## 7. Log
 
+- **2026-09-20 — SIX MORE EXECUTIONS in roster order (delivery 8).** The
+  next six rows of `FINISHERS` after the demon, each a director (battle.js
+  `_FIN_DIRECTORS`, the DELIVERY 8 block) + a signature (three-vfx-effects.js
+  "THE FINISHER PASS 2", the DELIVERY 8 block) + a stage script
+  (`_FIN_STAGE[sig]`): succubus **Kiss of Death** (`kissOfDeath` — a DANCE
+  FLOOR unrolls under the tile (a dark disc, twelve pink floor lamps that
+  chase on the beat), a MIRROR BALL comes down on its wire throwing
+  sparkles, two rose spotlights sweep in and cross, a magenta DANCER steps in
+  from the caster's side and the two CIRCLE each other for the chorus, THE
+  DIP (the victim tilted back over the dancer's arm, a ♥ over them), THE
+  KISS (a pink burst) and the victim goes out LIKE A CANDLE — the body
+  drains to soot, a wisp climbs off it and hangs as a HEART-SHAPED SMOKE RING
+  (forty puffs on the heart curve drifting up together), the dancer bows,
+  the lamps go down one by one; crane → a side dolly round the dancers →
+  face cam on the dip → the freeze on `hue` → a crane up with the ring → a
+  low reverse; ♪ LAST DANCE · MAY I? · OUT LIKE A CANDLE), skeleton **Bone
+  Rattle** (`boneRattle` — TWENTY-TWO SKELETONS pop out of the ground in two
+  rings (skull · spine · three ribs · arms on pivots · legs, a dust burst and
+  a hop each), RATTLE for one chorus (a bob on the beat, the skulls tilt, the
+  arms swing, a ♪ SPOOKY · SCARY ♪ card), on the cue every right arm swings
+  up level and POINTS at the tile at once (a lean-in, a glow at the
+  fingertip, sparkles converging); the hit BONES the victim — it bleaches,
+  drops into a nine-piece bone pile — and the chorus sinks back into the
+  ground; god shot → a side dolly along the chorus line → reverse OTS on
+  the point → face cam → the freeze on `bone` → a low reverse), mech
+  **Ordnance** (`ordnance` — six POD DOORS hinge open off the caster's
+  shoulders and back (a red-lit interior each), three TARGET RINGS tighten
+  on the tile under a LOCK 30 / 30 card, and thirty MISSILES leave in
+  staggered volleys, each on its own bezier through a randomly high apex
+  with a wobble, a smoke trail and a glow off every one, a muzzle flash per
+  launch, and land in a rolling sequence of fireballs — the last and biggest
+  timed to the hit — a smoking crater disc left on the tile; reverse OTS on
+  the pods → sky watch on the volley → fall follow down with it → the
+  freeze on `heat` → god shot on the crater → a low reverse; `> hardpoints:
+  6/6 OPEN` terminal, ▣ LOCK, ALL OF IT), ghost **Possessed Photo**
+  (`possessedPhoto` — a camera FLASH from the caster's side and THE
+  PHOTOGRAPH hangs over the tile facing the caster (a white-bordered print
+  that DEVELOPS from sepia to the picture: the victim's silhouette standing
+  in it), then behind it a pale TALLER figure fades in with a hand on the
+  victim's shoulder (two black eyes), the print shivers, and it BURNS FROM
+  THE MIDDLE — a black hole with an ember rim eats it outward, flames
+  climbing off the rim (spawned on the print's own tilted plane through
+  `localToWorld`), the ghost turns its head as the print goes, and the
+  victim on the tile fades out with it; reverse OTS on the flash → a square
+  face cam on the print → a dolly zoom as the figure appears → the freeze
+  on `sepia` → a low reverse; 📸 SMILE, DEVELOPING… clock, WHO IS THAT
+  BEHIND YOU), zombie **The Pile-On** (`pileOn` — FORTY green silhouettes
+  come up over the board's edge from every direction nine tiles out (arms
+  out, each on its own gait, a lean and a sway), shamble in to a ring round
+  the tile, then DOGPILE: the ring collapses inward into a three-tier
+  heaving MOUND over the victim (the top tier kicking), a BRAAAINS card, the
+  hit inside the pile (a dark burst, a stain), then the horde peels off in
+  every direction — every third one carrying a PIECE held out in front —
+  and shambles back over the edge; a wide god shot on the horde → a witness
+  cam on the ring closing → a crane over the mound → the freeze on
+  `crimson` → a god shot on the exodus → a low reverse), annunaki **Pyramid
+  Scheme** (`pyramidScheme` — THREE INVERTED PYRAMIDS (four-sided cones tip
+  down, a gold band, a CAPSTONE sphere at each tip, an 👁 on every face)
+  descend out of the sky over the tile in a triangle turning slowly, the
+  capstones CHARGE (a gold glow swells, sparkles stream in, a gold triangle
+  lights on the ground joining them, AS ABOVE / SO BELOW), three LASERS
+  (a gold cone + a white core each) leave the tips and converge on the
+  tile, the tile under them rising as a translucent green GLASS slab, the
+  victim bleaching flat; the hit flares the beams, the slab cracks and
+  stands there smoking, the pyramids rise away spinning; sky watch → god
+  shot on the triangle → face cam on the beams → the freeze on `whiteout` →
+  a low reverse → a sky watch on the exit; `> yield: GLASS` terminal).
+  Thirty-nine built of 99. Smoke-tested in a stub-THREE harness (every tick
+  of every signature at the directors' timings and at bare defaults, every
+  spawn coordinate and object position finite — no rendered frame, RULE
+  #1c); finishers.test.js (15) + `npm run test:quick` green. Not playtested:
+  the dance floor's lamps against the board's own light, the dancer's
+  circling radius (`R = ts * 0.55`) against a rigged victim, the heart
+  ring's read (`scl = ts * 0.045`), the skeletons' scale (`skullGeo` ts ×
+  0.1) and whether twenty-two read as a chorus, the point's arm angle
+  (`-Math.PI / 2` on `pivR`), the missiles' apex heights (`ts × 3.5–7.5`)
+  under the sky watch and the trail's density (a spawn every 70 ms per
+  missile — `M.lastSm`), the print's size (`PW = ts * 3.2`) and its facing
+  (`photo.rotation.y` — a print that faces away wants the sign flipped),
+  the ghost figure's legibility, the horde's shamble speed (linear over
+  ~2 s from nine tiles) and the mound's read, the pyramids' hover height
+  (`HOV = ts * 6.2`) and ring (`RING = ts * 3.2`) against the camera, the
+  beams' `lookAt` + `rotateX` alignment (a beam that lies flat wants the
+  axis fix), the glass slab's tint, the six camera paths. NEXT: the rows
+  in roster order — skinwalker, werewolf, gargoyle, djinn, catgirl, mantid.
+
 - **2026-09-20 — SIX MORE EXECUTIONS in roster order (delivery 7).** The
   next six rows of `FINISHERS` after the reptilian, each a director (battle.js
   `_FIN_DIRECTORS`, the DELIVERY 7 block) + a signature (three-vfx-effects.js

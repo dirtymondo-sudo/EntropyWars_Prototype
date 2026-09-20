@@ -6755,6 +6755,30 @@ UNSEEN LIVE (RULE #1c): every room under the day cycle (a room that now reads FL
 not the grade back), the moon key on the night areas, the eased swap through a door, the subtitle bar
 against the walk.
 
+## SIX MORE EXECUTIONS — Kiss of Death · Bone Rattle · Ordnance · Possessed Photo · The Pile-On · Pyramid Scheme (FINISHER_PLAN delivery 8) — 2026-09-20, local delivery
+The next six `FINISHERS` rows in roster order are BUILT (thirty-nine of 99):
+succubus `kissOfDeath` (`_sigKissOfDeath3D` — the dance floor, the mirror
+ball, the dancer, the circling, the dip, the kiss, the candle going out into
+a HEART-SHAPED SMOKE RING), skeleton `boneRattle` (`_sigBoneRattle3D` — two
+rings of stick skeletons pop up, rattle for a chorus, then all POINT; the
+victim drops into a bone pile), mech `ordnance` (`_sigOrdnance3D` — six pod
+doors, three lock rings, thirty missiles on their own beziers with smoke
+trails, a rolling sequence of fireballs, the crater), ghost `possessedPhoto`
+(`_sigPossessedPhoto3D` — the flash, the print that develops facing the
+caster, the taller figure behind, the burn from the middle with flames on
+the print's own plane), zombie `pileOn` (`_sigPileOn3D` — forty over the
+edge from every side, the ring, the three-tier mound, off with the pieces),
+annunaki `pyramidScheme` (`_sigPyramidScheme3D` — three inverted pyramids
+descend, capstones charge, three lasers converge, the tile goes to glass).
+Each = a director in battle.js `_FIN_DIRECTORS` (the DELIVERY 8 block), the
+signature in "THE FINISHER PASS 2" (the DELIVERY 8 block; `_sigRunOwned` +
+`_fxDelay`, called inside the relayed cinematic — RULE #2), a
+`_FIN_STAGE[sig]` script for the forge, a row in finishers.test.js's BUILT
+table. Smoke-tested in a stub-THREE harness (every tick; not a render).
+UNSEEN LIVE (RULE #1c): FINISHER_PLAN §7's delivery-8 entry lists what to
+eyeball first — the print's facing, the beams' axis, the missiles' apexes,
+the skeletons' scale, the horde's pace, the heart ring.
+
 ## SIX MORE EXECUTIONS — Compactor · Factory Reset · The Rapture, Party of One · Be Not Afraid · Into the Sun · The Contract (FINISHER_PLAN delivery 7) — 2026-09-20, local delivery
 The next six `FINISHERS` rows in roster order are BUILT (thirty-three of 99):
 robot `compactor` (`_sigCompactor3D` — two steel walls on hydraulic rails
