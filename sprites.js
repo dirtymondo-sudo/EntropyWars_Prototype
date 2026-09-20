@@ -558,6 +558,10 @@ function classifySpellAnimKind(spell) {
   // Charge-to-target gap closers (Brave Charge, Zombie Rush…) sprint in and
   // strike on arrival — always a melee swing, whatever the listed range.
   if (spell.chargeToTarget) return 'melee';
+  // THE DOOR AGENT rev 3 (2026-09-20): every row that wears `doorGun: true`
+  // is the agent SHOOTING A DOOR out of the door gun — the quick-draw clip,
+  // whatever the kind (the swing, the way in, the trapdoor, the drop).
+  if (spell.doorGun) return 'ranged';
   // 2026-09-09: the MOVE kinds by `kind`, never by text — a `tackle` runs
   // its charge then shoulder-checks on arrival (UAL2 Shield_Dash via
   // castTackle), a `dash` slides its line with a low lunging stab (UAL2
@@ -3288,6 +3292,17 @@ const SEED_TILE_SPRITES = {
    rendered only for the trap's owner (same rule as warp runes). Keyed by
    trapType: spike / frost / tremor / magnet. */
 const TRAP_TILE_SPRITES = {
+    /* THE DOOR AGENT's trapdoor (rev 3, 2026-09-20): one sigil per tile of the
+       hidden 2×2 — a door laid flat, the hinge line, the teal of the kit.
+       Drawn for the OWNER only (the renderer's trap rule). */
+    trapdoor: [
+        _terrainSvg(
+            '<rect x="14" y="10" width="36" height="44" rx="2" fill="rgba(47,107,102,0.28)" stroke="rgba(92,224,208,0.55)" stroke-width="1.6"/>' +
+            '<rect x="18" y="14" width="28" height="36" rx="1" fill="none" stroke="rgba(92,224,208,0.35)" stroke-width="1"/>' +
+            '<line x1="14" y1="10" x2="14" y2="54" stroke="rgba(255,240,204,0.6)" stroke-width="2"/>' +
+            '<circle cx="43" cy="33" r="2" fill="rgba(255,240,204,0.7)"/>'
+        )
+    ],
     spike: [
         _terrainSvg(
             '<circle cx="32" cy="32" r="18" fill="none" stroke="rgba(180,180,170,0.4)" stroke-width="1.5" stroke-dasharray="5 4"/>' +

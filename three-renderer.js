@@ -10275,6 +10275,19 @@ const ThreeRenderer = (function () {
        named hand bone at real scale — the bone's world scale (the model's fit rides the
        skeleton) undone on a holder group; `pos` / `rot` are the grip in the bone's frame
        (metres / degrees, HQ_TILE_M metres to a tile), never twinned by the x-ray pass. */
+    /* THE PITCH (rev 6, 2026-09-20 — the user: "the gun needs to be rotated
+       ~30° counter-clockwise from my point of view, it's not parallel with
+       the ground"): `hold.pitch` = degrees the MUZZLE DROPS about the gun's
+       own lateral axis (Z in the +X-barrel frame every holder builds after
+       `turn`), on a wrapper group so the Euler order never mixes it with the
+       turn. ONE rule for the walker's hand, the Door Agent's on the board and
+       the first-person viewmodel. */
+    function _heldPitchGroup(hold, inst) {
+        var pit = new THREE.Group();
+        if (hold && hold.pitch) pit.rotation.z = -hold.pitch * Math.PI / 180;
+        pit.add(inst);
+        return pit;
+    }
     function _unitAttachHeld(m, hold, ts) {
         var D = (typeof DOOR_HQ !== 'undefined') ? DOOR_HQ : null;
         /* the door gun's grip is tuned in ONE place — data.js HQ_PORTAL_RULES.gun (sprites.js loads before data.js, so its row is the fallback) */
@@ -10297,7 +10310,9 @@ const ThreeRenderer = (function () {
         var inst = _miscModelInstance(url, true, target, { fit: (cat.span != null && cat.h == null) ? 'span' : 'height', matPick: _hqPropMatPick,
             onDone: function (g) { g.traverse(function (n) { if (n.isMesh) { n._ew_noTwin = true; n.frustumCulled = false; n.castShadow = true; n.renderOrder = 2; } }); } });
         if (hold.turn) inst.rotation.y = hold.turn * Math.PI / 180;   // rev 5: the gun's pre-turn (HQ_PORTAL_RULES.gun.turn) — the barrel to +X
-        inner.add(inst); holder.add(inner); bone.add(holder);
+        var pit = _heldPitchGroup(hold, inst);   // rev 6: `pitch` drops the muzzle about the gun's lateral axis (the barrel is +X after the turn)
+        inner.add(pit); holder.add(inner); bone.add(holder);
+        holder.userData.inst = inst;
         return holder;
     }
     function _disposeModelRig(rig) {
@@ -45794,7 +45809,7 @@ const ThreeRenderer = (function () {
         var G = _hqGunRules(), D = _hqData();
         if (!D || !D.catalogue || !D.catalogue[G.key] || !D.catalogue[G.key].file) return;
         pl._gunTried = true;
-        _hqAttachHeld(pl, { key: G.key, bone: G.bone || 'RightHand', pos: G.pos || [0, 0, 0], rot: G.rot || [0, 0, 0], turn: G.turn || 0, h: G.span || 0.36 });   // rev 5: `turn` pre-turns the model so its barrel is +X   // rev 4: `h` = the span the holder fits (the catalogue's 0.62 was the board's)
+        _hqAttachHeld(pl, { key: G.key, bone: G.bone || 'RightHand', pos: G.pos || [0, 0, 0], rot: G.rot || [0, 0, 0], turn: G.turn || 0, pitch: G.pitch || 0, h: G.span || 0.36 });   // rev 5: `turn` pre-turns the model so its barrel is +X   // rev 4: `h` = the span the holder fits (the catalogue's 0.62 was the board's)
         var tries = 0;
         (function show() { if (_hq !== H) return; if (!pl.held) { if (tries++ < 400) setTimeout(show, 100); return; } pl.held.visible = !!(H.portal && H.portal.drawn); H.dirty = true; })();
     }
@@ -45819,7 +45834,7 @@ const ThreeRenderer = (function () {
         }
         if (pl.held && pl.held.visible && pl.held.children[0]) {
             try {
-                var inner = pl.held.children[0], inst = inner.children[0];
+                var inner = pl.held.children[0], inst = pl.held.userData.inst || (inner.children[0] && inner.children[0].children[0]) || inner.children[0];   // rev 6: the instance under the pitch wrapper
                 var mz = G.muzzle || [0.5, 0.08, 0];
                 var v = new THREE.Vector3(mz[0] * U, mz[1] * U, mz[2] * U);
                 (inst || inner).updateWorldMatrix(true, false);
@@ -45850,7 +45865,7 @@ const ThreeRenderer = (function () {
         var gun = new THREE.Group(); gun.rotation.y = Math.PI / 2;   // the gun's +X barrel → the camera's −Z (forward)
         var inst = _miscModelInstance(_hqModelUrl(cat), true, span * U, { fit: 'span', matPick: _hqPropMatPick, onDone: function () { try { g.traverse(function (n) { if (n.isMesh) n.frustumCulled = false; }); } catch (e) {} if (_hq) _hq.dirty = true; } });
         if (G.turn) inst.rotation.y = _hqRad(G.turn);   // rev 5: the pre-turn — the grip back to −X, the barrel to +X, in the gun frame the glove is built in
-        gun.add(inst);
+        gun.add(_heldPitchGroup(G, inst));   // rev 6: the same pitch as the hand (the glove is built round the gun frame, not the barrel)
         /* THE HAND: the fist round the grip (the grip is the model's rear, hanging under the axis), four
            fingers over its front, the thumb inside, the forearm running down and back to the frame's corner */
         var glove = new THREE.MeshLambertMaterial({ color: new THREE.Color(VM.glove || '#15161a') });
@@ -46972,7 +46987,8 @@ const ThreeRenderer = (function () {
             var target = ((hold.h != null ? hold.h : (cat.h || cat.span)) || 1) * U;
             var instH = _miscModelInstance(_hqModelUrl(cat), true, target, { fit: (cat.span != null && cat.h == null) ? 'span' : 'height', matPick: _hqPropMatPick, onDone: function () { try { holder.traverse(function (n) { if (n.isMesh) n.frustumCulled = false; }); } catch (e) {} if (_hq) _hq.dirty = true; } });   // never culled (rev 4): a bounding sphere under a 0.01-scaled bone misjudged the frustum and the gun vanished from some angles
             if (hold.turn) instH.rotation.y = _hqRad(hold.turn);   // rev 5 (the door gun): the model pre-turned about its own up so its long axis reads the way the holder expects (the new gun's grip hangs at +X)
-            inner.add(instH);
+            inner.add(_heldPitchGroup(hold, instH));   // rev 6: the pitch wrapper (HQ_PORTAL_RULES.gun.pitch)
+            holder.userData.inst = instH;
             holder.add(inner);
             bone.add(holder);
             ch.held = holder; ch.heldBone = bone; ch.hold = hold;

@@ -1753,6 +1753,12 @@
             // 2. Profile-specified explicit travel (not 'auto')
             if (profile && profile.travel !== 'auto' && profile.travel) return profile.travel;
 
+            // 2b. THE DOOR AGENT rev 3 (2026-09-20): a `doorGun` damage row's
+            // travel IS the door gun's shot (never a strike leap, never a
+            // bolt) — the door recipe rises where it lands (the geometry
+            // registry, fired by the impact intent).
+            if (spell.doorGun && spell.kind === 'damage') return 'doorGun';
+
             // 3. VFX3D-driven resolution (data-driven, highest specificity)
             const VFX = (typeof window !== 'undefined') ? window.ThreeVFXEffects : null;
             if (VFX) {
@@ -2029,6 +2035,33 @@
                 return { impactDelay, completionDelay };
             },
 
+            /* THE DOOR GUN (rev 3, 2026-09-20): the shot from the agent's hand
+               to the tile the spell needs a door on — the victim's (Air Mail)
+               or the tile between (Door to the Face, `doorAt: 'between'`);
+               the flight is the signature's own (90 ms + 45 per tile, capped
+               at 360). An Air Mail victim (`dropTiles`) is faded out for the
+               recipe's swallow + fall and back in on its landing. */
+            doorGun(ctx) {
+                const { unit, spell, target, cam, projectileDelay } = ctx;
+                const tx = target ? target.x : ctx.tileXY?.x, ty = target ? target.y : ctx.tileXY?.y;
+                const dist = (tx != null) ? Math.max(Math.abs(tx - unit.x), Math.abs(ty - unit.y)) : 1;
+                const flyMs = actionMs(Math.max(120, Math.min(360, 90 + dist * 45)) + 60);
+                const impactDelay = projectileDelay + flyMs;
+                const drop = !!(spell.dropTiles && target);
+                const completionDelay = Math.max(impactDelay + actionMs(drop ? 1400 : 700),
+                    (cam?.totalMs ?? (impactDelay + actionMs(360))) + actionMs(120));
+                window.setTimeout(() => {
+                    if (state.phase !== 'battle' || _skipVisuals() || tx == null) return;
+                    playSfx(spellLaunchSfx(spell));
+                    const at = (spell.doorAt === 'between') ? { x: unit.x + (tx - unit.x) * 0.5, y: unit.y + (ty - unit.y) * 0.5 } : { x: tx, y: ty };
+                    window._doorGeom('raceDoorGun:shot', at.x, at.y, { fromX: unit.x, fromY: unit.y });
+                }, projectileDelay);
+                if (drop) window.setTimeout(() => {
+                    if (state.phase !== 'battle' || _skipVisuals() || target.dead || typeof cineUnitFade !== 'function') return;
+                    cineUnitFade(target, 1, 0, 0, () => { window.setTimeout(() => cineUnitFade(target, 0, 1, 140), actionMs(1150)); });
+                }, impactDelay);
+                return { impactDelay, completionDelay };
+            },
             none(ctx) {
                 const { cam } = ctx;
                 const impactDelay = actionMs(200);
@@ -11978,6 +12011,57 @@
                shakes with it, the punch on a freeze, the sky watch as the
                body goes over the horizon and the god shot as it comes back
                round the world into the fist. ──────────────────────────── */
+            /* ── OPEN HOUSE (door agent) — six doors stand up round the victim
+               (shot there from the gun); the agent comes out of one, hits, and
+               is gone through another — faster each time — until every door
+               opens at once and the last one takes the victim. A face cam on
+               the agent as the gun comes up, the god shot over the ring for
+               the in-and-out, slow-mo into the last two, the dive on the take,
+               the freeze on the slam. ─────────────────────────────────────── */
+            openHouse: {
+                chargeMs: 2200, strikeMs: 3000, resolveMs: 1900,
+                castSpell: { type: 'damage', dmg: 1, name: 'Open House', kind: 'damage', doorGun: true },
+                siren(c) { c.snd('buff'); c.dsnd('doorbell'); c.grade('dim', actionMs(700)); },
+                charge(c) {
+                    const V = c.VFX, u = c.unit, p = c.pos(c.target);
+                    if (V.sigMagicCircle3D) V.sigMagicCircle3D(p.x, p.y, { radiusPx: c.ts * 1.9, growMs: 300, holdMs: c.CHARGE_MS + c.STRIKE_MS, fadeMs: 400, spin: 0.002, color: 0x2f6b66, color2: 0x5ce0d0 });
+                    if (V.sigStatRings3D) V.sigStatRings3D(u.x, u.y, { color: 0x5ce0d0, ms: c.CHARGE_MS });
+                    c.snd('teleport');
+                },
+                cam(c) {
+                    const u = c.unit, p = c.pos(c.target);
+                    if (typeof cineFaceCam === 'function') cineFaceCam(u, { dist: 2.6, tilt: 82 });
+                    c.at(actionMs(900), () => { if (typeof cineGodShot === 'function') cineGodShot(p, 6, { cut: true, duration: 600, tilt: 42 }); });
+                    c.at(c.STRIKE_MS - actionMs(700), () => { c.slow(0.4, actionMs(500)); });
+                    c.at(c.STRIKE_MS - actionMs(180), () => { c.slowClear(); c.dive(c.target, 0.9, 160); });
+                    c.at(c.STRIKE_MS + actionMs(520), () => { if (typeof cineGodShot === 'function') cineGodShot(p, 7, { cut: false, duration: 520, tilt: 32 }); });
+                    return true;
+                },
+                stage(c) {
+                    const V = c.VFX, u = c.unit, p = c.pos(c.target);
+                    const N = 7, firstAt = actionMs(800), lastAt = c.STRIKE_MS - actionMs(320);
+                    if (V.sigOpenHouse3D) V.sigOpenHouse3D(u.x, u.y, p.x, p.y, { ms: c.STRIKE_MS + actionMs(2200), doorsAt: actionMs(200), firstAt, lastAt, hits: N, hitAt: c.STRIKE_MS });
+                    c.at(actionMs(200), () => { c.dsnd('doorGunShot'); c.insert('🚪 OPEN HOUSE', 'stamp', actionMs(800)); });
+                    for (let i = 0; i < N; i++) {
+                        const t = firstAt + (lastAt - firstAt) * (1 - Math.pow(1 - i / (N - 1), 1.6));   // the same accelerating cadence as the signature
+                        c.at(t, () => { c.snd('physicalAbilityDamage'); c.dsnd(i % 2 ? 'stamp' : 'doorGunLand'); c.kick(6 + i, 120); c.insert('🚪 ×' + (i + 1), 'signal', actionMs(320)); });
+                    }
+                },
+                strike(c) {
+                    const p = c.pos(c.target);
+                    c.freeze(actionMs(130), { grade: 'whiteout' });
+                    c.ring(p.x, p.y, 0x5ce0d0, { r1: c.ts * 3.2, ms: 600, torus: true });
+                    c.flash('#e8fffb', 260, 0.85); c.kick(18, 260);
+                    c.snd('explosion'); c.dsnd('stamp');
+                },
+                resolve(c) {
+                    const V = c.VFX, p = c.pos(c.target);
+                    if (V.sigWhiteout3D) V.sigWhiteout3D(p.x, p.y, { color: 0xbff5ec, ms: 800, peak: 0.6, sizeTiles: 6, shake: false });
+                    c.insert('NOBODY HOME', 'stamp', actionMs(900));
+                    c.at(actionMs(300), () => c.dsnd('doorGunRecall'));
+                }
+            },
+
             haymaker: {
                 chargeMs: 2300, strikeMs: 2200, resolveMs: 1800,
                 castSpell: { type: 'damage', dmg: 1, name: 'The Haymaker', kind: 'damage' },
@@ -29113,7 +29197,7 @@
                 case 'remoteView':    return nm + ': select any tile to scry — the fog there is revealed.';
                 case 'placeBlock':    return nm + ': select a tile to stack the block on (lifts an ally standing there; erupts under an enemy).';
                 case 'buildStructure':return nm + ': select where to build — the structure raises away from you. The ghost shows the exact blocks.';
-                case 'placeTrap':     return nm + ': select an empty tile to hide the trap on.';
+                case 'placeTrap':     return nm + (spell.trapSize > 1 ? ': select the north-west tile of ' + spell.trapSize + '×' + spell.trapSize + ' empty tiles to hide the trapdoor on.' : ': select an empty tile to hide the trap on.');
                 case 'placeMirror':   return nm + ': select an empty tile to fold a prism onto — beams link prisms sharing a row or column.';
             }
             const meta = _kindMeta(spell);
@@ -44479,7 +44563,7 @@
             // simulate:true = pure landing-tile prediction (previews / AI).
             resolveForcedSlide, playCollisionImpactFx,
             // placement validity (shared by menus / previews / AI)
-            _placeBlockProblem, _placeTrapProblem, _structurePlanFor,
+            _placeBlockProblem, _placeTrapProblem, _trapFootprint, _structurePlanFor,
             // 🧱 BUILD action (universal place/dig verb, 2026-07-10)
             doBuildAction, _buildProblem, _buildActionProblem, predictBuildChanges,
             unitBuildOpsPerAP, digSalvageMaterial, defaultBuildTool,
@@ -47549,7 +47633,8 @@
         function checkTrapTrigger(unit) {
             if (!state.traps || !state.traps.length || !unit || unit.dead) return false;
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return false;
-            const idx = state.traps.findIndex(t => t.x === unit.x && t.y === unit.y && t.owner !== unit.player);
+            const idx = state.traps.findIndex(t => t.x === unit.x && t.y === unit.y && t.owner !== unit.player
+                && !(t.trapType === 'trapdoor' && typeof unitPassiveValue === 'function' && unitPassiveValue(unit, 'doorImmune')));   // 🗝 Keyholder (rev 3): no trapdoor ever takes the agent
             if (idx < 0) return false;
             const trap = state.traps.splice(idx, 1)[0];
             _springTrap(trap, unit);
@@ -47565,7 +47650,37 @@
             if (typeof shakeBoard === 'function') shakeBoard('normal');
             const dmg = Math.max(1, trap.dmg || 0);
 
-            if (trap.trapType === 'spike') {
+            if (trap.trapType === 'trapdoor') {
+                /* THE DOOR AGENT's TRAPDOOR (rev 3, 2026-09-20): the whole 2×2
+                   goes — every record of the group folds, the WEAK hit lands,
+                   every tile of the footprint sinks TWO levels (applyTerrainDeform
+                   rides a grounded unit down with its tile), the fall is paid on
+                   top, Staggered. The doors swing DOWN one after another — the
+                   victim's tile through the impact intent (the sprite burst + the
+                   flat door recipe), the other three through the recipe alone. */
+                const gid = trap.groupId;
+                const group = gid ? state.traps.filter(t => t.groupId === gid) : [];
+                if (gid) state.traps = state.traps.filter(t => t.groupId !== gid);
+                const tiles = [{ x: trap.x, y: trap.y }].concat(group.map(t => ({ x: t.x, y: t.y })));
+                const _tdVFX = window.ThreeVFXEffects;
+                if (_tdVFX && trap.spellId && _tdVFX.hasMapping(trap.spellId, 'impact') && !_skipVisuals()) _tdVFX.fire('impact', trap.spellId, { tx: trap.x, ty: trap.y });
+                else window._doorGeom('raceTrapdoor', trap.x, trap.y, {});
+                tiles.slice(1).forEach((t, i) => window._doorGeom('raceTrapdoor', t.x, t.y, { delay: 80 + i * 90 }));
+                applyDamageToUnit(victim, dmg, `${trap.spellName || 'Trapdoor'}: `, {
+                    sourceUnit: owner, damageType: 'physical', noRangeMult: true
+                });
+                const _tdFromZ = victim.z ?? getBaseHeightAt(trap.x, trap.y);
+                for (const t of tiles) applyTerrainDeform(t.x, t.y, 0, { centerDelta: -2, edgeDelta: 0 });
+                if (!victim.dead && typeof applyFallDamage === 'function') {
+                    applyFallDamage(victim, _tdFromZ, victim.z ?? 0, `${trap.spellName || 'Trapdoor'}: `, { byEnemy: true });
+                }
+                if (!victim.dead) {
+                    applyStatusEffects(victim, [{ id: 'stagger', duration: 1 }], `${trap.spellName || 'Trapdoor'}: `, owner);
+                    showFloatingTextForUnit(victim, '🚪 DROPPED!', 'debuff', { durationMs: 1100 });
+                }
+                if (typeof playDoorSfx === 'function') playDoorSfx('stamp');
+                addLog(`🚪 The floor gives way — ${tiles.length} tile${tiles.length !== 1 ? 's' : ''} sink two levels under ${unitDisplayName(victim)}!`);
+            } else if (trap.trapType === 'spike') {
                 applyDamageToUnit(victim, dmg, `${trap.spellName || 'Snare Trap'}: `, {
                     sourceUnit: owner, damageType: 'physical', noRangeMult: true
                 });
@@ -51921,6 +52036,23 @@
                 (state.bombs || []).some(b => b.x === x && b.y === y)) return 'Already rigged';
             return null;
         }
+        /* THE TRAPDOOR (DOOR agent rev 3, 2026-09-20): a `trapSize: 2` trap is
+           a 2×2 — the anchor is CLAMPED so the footprint fits the board (the
+           click / the AI's pick may sit on the far edge) and every tile must
+           pass _placeTrapProblem. Returns { x, y, tiles } (the clamped anchor
+           = the north-west tile) or { problem }. Size 1 is the old rule. */
+        function _trapFootprint(x, y, size) {
+            size = Math.max(1, size | 0);
+            if (size === 1) { const p0 = _placeTrapProblem(x, y); return p0 ? { problem: p0 } : { x, y, tiles: [{ x, y }] }; }
+            const ax = Math.max(0, Math.min(x, bw() - size)), ay = Math.max(0, Math.min(y, bh() - size));
+            const tiles = [];
+            for (let dy = 0; dy < size; dy++) for (let dx = 0; dx < size; dx++) {
+                const p = _placeTrapProblem(ax + dx, ay + dy);
+                if (p) return { problem: p + ' (' + coordLabel(ax + dx, ay + dy) + ')' };
+                tiles.push({ x: ax + dx, y: ay + dy });
+            }
+            return { x: ax, y: ay, tiles };
+        }
 
         // ── Terrain-spell preview prediction (2026-07-07 terraforming pass) ──
         // Pure, side-effect-free mirror of the terrain-changing spell handlers
@@ -54918,30 +55050,46 @@
                 // Hidden charge on an empty passable tile; first enemy to land
                 // on it springs it (see _springTrap). Owner-only sigil decal.
                 if (!state.traps) state.traps = [];
-                // Shared validation (also drives spell greying + menu reasons).
-                const _ptProblem = _placeTrapProblem(x, y);
-                if (_ptProblem) {
-                    addLog(`${spell.name}: ${_ptProblem}.`);
+                // Shared validation (also drives spell greying + menu reasons);
+                // a `trapSize` row is a footprint (the trapdoor's 2×2).
+                const _tfp = _trapFootprint(x, y, spell.trapSize || 1);
+                if (_tfp.problem) {
+                    addLog(`${spell.name}: ${_tfp.problem}.`);
                     playErrorSfx();
                     return 0;
                 }
-                const _ownedTraps = state.traps.filter(t => t.casterUnitId === unit.id && t.trapType === spell.trapType);
-                if (_ownedTraps.length >= (spell.maxActivePerCaster || 2)) {
-                    state.traps = state.traps.filter(t => t !== _ownedTraps[0]);
+                /* the cap counts GROUPS (a 2×2 is one trap); a single trap is its own group */
+                const _tGroupOf = t => t.groupId || ('t' + t.x + ',' + t.y);
+                const _ownedGroups = [];
+                for (const t of state.traps) if (t.casterUnitId === unit.id && t.trapType === spell.trapType && !_ownedGroups.includes(_tGroupOf(t))) _ownedGroups.push(_tGroupOf(t));
+                while (_ownedGroups.length >= (spell.maxActivePerCaster || 2)) {
+                    const _oldG = _ownedGroups.shift();
+                    state.traps = state.traps.filter(t => _tGroupOf(t) !== _oldG);
                 }
                 playSfx('uiConfirm');
-                _spellFocusCamera(unit, x, y);
+                _spellFocusCamera(unit, _tfp.x, _tfp.y);
                 unit.mp -= effectiveSpellCost;
-                state.traps.push({
-                    x, y, z,
+                const _gid = 'tg-' + unit.id + '-' + _tfp.x + ',' + _tfp.y + '-' + (state.round || 0);
+                for (const t of _tfp.tiles) state.traps.push({
+                    x: t.x, y: t.y, z,
                     owner: unit.player,
                     casterUnitId: unit.id,
                     trapType: spell.trapType || 'spike',
                     dmg: (spell.dmg || 0) + spellPower,
                     spellId: spell.id,
-                    spellName: spell.name
+                    spellName: spell.name,
+                    groupId: _gid, anchorX: _tfp.x, anchorY: _tfp.y, size: spell.trapSize || 1
                 });
-                addLog(`${unitDisplayName(unit)} hides a ${spell.name} at ${coordLabel(x, y)}.`, unit.player);
+                if (spell.doorGun) {
+                    /* THE DOOR AGENT (rev 3): the trapdoor is SHOT out of the gun
+                       and laid flat over its tiles — for the OWNER's eyes only
+                       (`onlyPlayer` gates the geometry on whichever screen draws
+                       it, the guest owner included — RULE #2; the enemy sees
+                       nothing, the trap is hidden). */
+                    window._doorGeom('raceDoorGun:shot', _tfp.x, _tfp.y, { fromX: unit.x, fromY: unit.y, size: spell.trapSize || 1, onlyPlayer: unit.player });
+                    window._doorGeom('raceTrapdoor:set', _tfp.x, _tfp.y, { size: spell.trapSize || 1, delay: 300, onlyPlayer: unit.player });
+                }
+                addLog(`${unitDisplayName(unit)} hides a ${spell.name} at ${coordLabel(_tfp.x, _tfp.y)}${_tfp.tiles.length > 1 ? ' (' + _tfp.tiles.length + ' tiles)' : ''}.`, unit.player);
             } else if (spell.kind === 'scan') {
                 const effectiveAwr = getEffectiveAwr(unit);
                 if (effectiveAwr <= 0) {
@@ -56868,9 +57016,19 @@
                 playSfx('teleport');
                 unit.mp -= effectiveSpellCost;
                 const fx = unit.x, fy = unit.y;
-                /* the door nobody saw: it stands up on the landing tile, facing the victim, and the agent comes through it (shot there from the gun first) */
-                window._doorGeom('raceDoorGun:shot', land.x, land.y, { fromX: unit.x, fromY: unit.y });
-                window._doorGeom('raceBreakingEntering:door', land.x, land.y, { fromX: target.x, fromY: target.y });
+                const _fromAbove = !!spell.fromAbove;
+                if (_fromAbove) {
+                    /* DROP IN (rev 3, 2026-09-20): the door is shot into the AIR
+                       over the landing and the agent drops out of it — the recipe
+                       carries a stand-in body down; the real one is faded out for
+                       the fall and back in on the landing beat (the hit). */
+                    window._doorGeom('raceDoorGun:shot', land.x, land.y, { fromX: unit.x, fromY: unit.y, lift: spell.dropTiles || 3 });
+                    window._doorGeom('raceDropIn:door', land.x, land.y, { fromX: target.x, fromY: target.y, lift: spell.dropTiles || 3, delay: 260 });
+                } else {
+                    /* the door nobody saw: it stands up on the landing tile, facing the victim, and the agent comes through it (shot there from the gun first) */
+                    window._doorGeom('raceDoorGun:shot', land.x, land.y, { fromX: unit.x, fromY: unit.y });
+                    window._doorGeom('raceBreakingEntering:door', land.x, land.y, { fromX: target.x, fromY: target.y });
+                }
                 if (land.x !== unit.x || land.y !== unit.y) {
                     unit.x = land.x; unit.y = land.y;
                     if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(land.x, land.y, unit.z);
@@ -56878,7 +57036,11 @@
                 }
                 setUnitFacing(unit, target.x - unit.x, target.y - unit.y);
                 _spellFocusCamera(unit, target.x, target.y, { spellName: spell.name, spellId: spell.id });
-                const _beDelay = _skipVisuals() ? 0 : actionMs(260);
+                const _beDelay = _skipVisuals() ? 0 : actionMs(_fromAbove ? 1000 : 260);
+                if (_fromAbove && !_skipVisuals() && typeof cineUnitFade === 'function') {
+                    cineUnitFade(unit, 1, 0, 0);
+                    window.setTimeout(() => cineUnitFade(unit, 0, 1, 120), Math.max(0, _beDelay - actionMs(140)));
+                }
                 window.setTimeout(() => {
                     if (target.dead) return;
                     triggerAttackAnim(unit, target.x, target.y);
@@ -56886,7 +57048,16 @@
                     if (VFX && VFX.hasMapping(spell.id, 'impact') && state.phase === 'battle' && !_skipVisuals()) VFX.fire('impact', spell.id, { tx: target.x, ty: target.y, fromX: unit.x, fromY: unit.y });
                     applyDamageToUnit(target, (spell.dmg || 0) + spellPower, `${spell.name}: `, { sourceUnit: unit, allowMarkBonus: true, damageType: spell.damageType || 'physical', spellId: spell.id, spellType: spell.spellType });
                     if (spell.statusEffects) applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
-                    addLog(`🚪 ${unitDisplayName(unit)} comes through a door nobody saw and hits ${unitDisplayName(target)} from behind.`);
+                    if (_fromAbove && spell.splashDmg) {
+                        /* the slam: every OTHER enemy beside the landing takes the weak hit */
+                        const _sl = state.units.filter(u => !u.dead && u.id !== target.id && u.id !== unit.id && isEnemyUnit(u, unit)
+                            && Math.max(Math.abs(u.x - unit.x), Math.abs(u.y - unit.y)) <= 1);
+                        for (const u of _sl) applyDamageToUnit(u, spell.splashDmg + Math.round(spellPower * 0.5), `${spell.name}: `, { sourceUnit: unit, damageType: spell.damageType || 'physical', spellId: spell.id, spellType: spell.spellType });
+                        if (_sl.length) addLog(`🚪 The landing rattles ${_sl.length} more.`);
+                    }
+                    addLog(_fromAbove
+                        ? `🚪 ${unitDisplayName(unit)} drops out of a door in the air onto ${unitDisplayName(target)} — from behind.`
+                        : `🚪 ${unitDisplayName(unit)} comes through a door nobody saw and hits ${unitDisplayName(target)} from behind.`);
                 }, _beDelay);
                 completionDelay = _beDelay + actionMs(500);
             }

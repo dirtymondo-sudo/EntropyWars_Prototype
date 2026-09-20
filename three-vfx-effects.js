@@ -3713,6 +3713,14 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (_suppressed()) return false;
         var fn = _geom3D(spellId);
         if (typeof fn !== 'function') return false;
+        /* `onlyPlayer` (rev 3, 2026-09-20 — the hidden trapdoor): the geometry
+           is drawn only on the screen of the player it names; the relay still
+           carries it (the wrapper wraps this call), so a guest owner sees it
+           and an enemy viewer never does. `true` either way: the caller's
+           fallback must not draw it for the wrong eyes. */
+        if (extra && extra.onlyPlayer != null && typeof getViewerPlayer === 'function') {
+            try { if (getViewerPlayer() !== extra.onlyPlayer) return true; } catch (e) {}
+        }
         /* extra: optional context bag (e.g. the dash kind passes
            { fromX, fromY } so travel cinematics know the launch tile) */
         try { fn(tx, ty, aoeRadius, extra); } catch (e) { return false; }
@@ -23382,12 +23390,68 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        the buff aura); THE DOOR itself is the _spell3DGeometry recipe of the
        same id (THE DOOR AGENT'S DOORS section, rev 2) — battle.js fires it
        through VFX.fireGeometry beside these. */
+    /* THE DOOR AGENT rev 3 (2026-09-20): five rows, each its OWN impact def
+       (a capstone never shares an id with a sibling on its pillar — the
+       capstone test) — the door recipes ride the geometry registry. */
+    EFFECTS['raceDoorToTheFace_impact'] = {       /* door to the face: the leaf's edge, the dust of the swing */
+        shake: 'normal',
+        layers: [
+            { sprite: 'flash', ml: 100, size0: 46, size1: 12, tint: 0xfff0cc, opacity0: 0.8 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 300, z: 2,
+              tint: 0xa8d8d0, size0: 20, size1: 96, opacity0: 0.5 },
+            { count: 4, anchor: 'floor', sprite: 'dust-puff', ml: [380, 640], offsetXY: 12, z: [2, 10],
+              vxRange: 90, vyRange: 90, vzRange: [20, 60], gravity: 80, drag: 0.9,
+              size0: [12, 20], size1: [30, 46], opacity0: 0.55 },
+            { count: 5, sprite: 'debris', ml: [280, 480], offsetXY: 9, z: [4, 24],
+              vxRange: 120, vyRange: 120, vzRange: [50, 160], gravity: 420, drag: 1.3,
+              size0: [4, 7], size1: 1 },
+        ]
+    };
+    EFFECTS['raceAirMail_impact'] = {             /* air mail: the landing (the fall is the recipe's) */
+        shake: 'hard',
+        layers: [
+            { sprite: 'flash', ml: 120, size0: 54, size1: 14, tint: 0xfff0cc, opacity0: 0.85 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 340, z: 2,
+              tint: 0xd8c6a4, size0: 24, size1: 128, opacity0: 0.6 },
+            { count: 6, anchor: 'floor', sprite: 'dust-puff', ml: [440, 760], offsetXY: 16, z: [2, 12],
+              vxRange: 110, vyRange: 110, vzRange: [20, 70], gravity: 80, drag: 0.9,
+              size0: [16, 26], size1: [40, 60], opacity0: 0.6 },
+            { count: 7, sprite: 'debris', ml: [320, 560], offsetXY: 12, z: [4, 26],
+              vxRange: 140, vyRange: 140, vzRange: [60, 200], gravity: 420, drag: 1.3,
+              size0: [4, 8], size1: 1 },
+        ]
+    };
+    EFFECTS['raceTrapdoor_impact'] = {            /* trapdoor: the victim's tile as the floor goes */
+        shake: 'hard',
+        layers: [
+            { sprite: 'flash', ml: 90, size0: 40, size1: 10, tint: 0xa8f0e4, opacity0: 0.7 },
+            { count: 6, anchor: 'floor', sprite: 'dust-puff', ml: [500, 820], offsetXY: 18, z: [2, 8],
+              vxRange: 80, vyRange: 80, vzRange: [40, 110], gravity: 60, drag: 0.9,
+              size0: [16, 28], size1: [44, 70], opacity0: 0.6 },
+            { count: 8, sprite: 'debris', ml: [360, 620], offsetXY: 14, z: [2, 20],
+              vxRange: 100, vyRange: 100, vzRange: [80, 220], gravity: 440, drag: 1.3,
+              size0: [4, 8], size1: 1 },
+        ]
+    };
+    EFFECTS['raceDropIn_impact'] = {              /* drop in: the slam from three storeys up */
+        shake: 'hard',
+        layers: [
+            { sprite: 'flash', ml: 130, size0: 60, size1: 16, tint: 0xe8fffb, opacity0: 0.9 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 380, z: 2,
+              tint: 0x5ce0d0, size0: 26, size1: 150, opacity0: 0.65 },
+            { count: 7, anchor: 'floor', sprite: 'dust-puff', ml: [460, 800], offsetXY: 18, z: [2, 12],
+              vxRange: 120, vyRange: 120, vzRange: [20, 80], gravity: 80, drag: 0.9,
+              size0: [18, 28], size1: [44, 66], opacity0: 0.6 },
+            { count: 8, sprite: 'debris', ml: [340, 600], offsetXY: 12, z: [4, 28],
+              vxRange: 150, vyRange: 150, vzRange: [70, 220], gravity: 420, drag: 1.3,
+              size0: [4, 8], size1: 1 },
+        ]
+    };
+    SPELL_MAP['raceDoorToTheFace']    = { impact: 'raceDoorToTheFace_impact' };                /* door agent — the swing */
     SPELL_MAP['raceBreakingEntering'] = { impact: 'raceStompOut_impact' };                     /* door agent — the kick-in */
-    SPELL_MAP['raceSpecialDelivery']  = { impact: 'raceDriveBy_impact', muzzle: 'raceDriveBy_muzzle' };   /* door agent — the package */
-    SPELL_MAP['raceSlam']             = { impact: 'raceStompOut_impact' };                     /* door agent — the twin slams */
-    SPELL_MAP['raceExit']             = Object.assign({}, SPELL_MAP['raceAgentVanish']);       /* door agent — filed out */
-    SPELL_MAP['raceLongWayRound']     = Object.assign({}, SPELL_MAP['protect1']);              /* door agent — the network lights up */
-    SPELL_MAP['raceTrapdoor']         = { impact: 'raceHitALick_impact' };                     /* door agent — the floor gives way */
+    SPELL_MAP['raceAirMail']          = { impact: 'raceAirMail_impact' };                      /* door agent — the drop */
+    SPELL_MAP['raceTrapdoor']         = { impact: 'raceTrapdoor_impact' };                     /* door agent — the floor gives way (fired by _springTrap) */
+    SPELL_MAP['raceDropIn']           = { impact: 'raceDropIn_impact' };                       /* door agent — the slam from above */
 
     /* ═════════ END VFX PASS-3 COVERAGE SECTION ═════════ */
 
@@ -24207,10 +24271,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         ow = Math.max(ts * 0.44 * S, Math.min((cat && cat.wide ? 0.98 : 0.78) * ts * S, ow));
         var jw = 0.06 * ts * S, lh = 0.08 * ts * S, pd = 0.09 * ts * S;
         var g = new THREE.Group();
-        g.position.set(wp.x, wp.y + (o.lay ? 3 : 0), wp.z);
+        g.position.set(wp.x, wp.y + (o.lay ? 3 : 0) + (o.lift ? o.lift * ts * 0.95 : 0), wp.z);   // rev 3: `lift` = TILES up in the air (Air Mail, Drop In)
         g.rotation.y = o.yaw || 0;
         var inner = new THREE.Group(); g.add(inner);
-        if (o.lay) inner.rotation.x = -Math.PI / 2;      // local +z (the face) → up, the top of the door → world −z
+        if (o.lay) inner.rotation.x = (o.face === 'down') ? Math.PI / 2 : -Math.PI / 2;      // local +z (the face) → up, the top of the door → world −z; `face: 'down'` = the face to the floor (a door hung in the air)
         var mats = [], fades = [];
         function _reg(m) { m.transparent = true; m._ew_op = (m.opacity != null) ? m.opacity : 1; mats.push(m); return m; }
         var frameMat = _reg(new THREE.MeshLambertMaterial({ color: _DOOR_FX.frame, emissive: new THREE.Color(_DOOR_FX.frame), emissiveIntensity: 0.25 }));
@@ -24343,6 +24407,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var from = (o.fromX != null) ? { x: o.fromX, y: o.fromY } : _sigCasterPos(tx, ty);
         if (!from) return null;
         var fw = _worldPos(from.x, from.y), tw = _worldPos(tx, ty), ts = fw.ts;
+        if (o.size > 1) { tw.x += (o.size - 1) * ts * 0.5; tw.z += (o.size - 1) * ts * 0.5; }   // rev 3: a footprint's centre (the 2×2 trapdoor)
+        var liftY = o.lift ? o.lift * ts * 0.95 : 0;   // rev 3: a shot INTO THE AIR (Drop In's door over the landing)
         var dist = Math.hypot(tw.x - fw.x, tw.z - fw.z) / ts;
         var delay = o.delay || 0, ms = o.ms || Math.max(120, Math.min(360, 90 + dist * 45));
         var total = delay + ms + 420;
@@ -24366,7 +24432,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var t = new THREE.Sprite(tm); var sz = ts * (0.22 - i * 0.014); t.scale.set(sz, sz, 1); g.add(t); trail.push({ m: t, p: null });
         }
         var handY = ts * 0.62, landY = ts * 0.55;
-        var sx = fw.x, sy = fw.y + handY, sz0 = fw.z, ex = tw.x, ey = tw.y + landY, ez = tw.z;
+        var sx = fw.x, sy = fw.y + handY, sz0 = fw.z, ex = tw.x, ey = tw.y + landY + liftY, ez = tw.z;
         var spinAx = new THREE.Vector3(0.3, 1, 0.2).normalize();
         var fired = false, landed = false;
         return _sigRunOwned(g, total, function (el) {
@@ -24389,7 +24455,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             }
             if (!landed) {
                 landed = true;
-                try { _sigShockRing3D(tx, ty, { color: hex, r0: ts * 0.1, r1: ts * 0.8, ms: 300, height: 3 }); } catch (e) {}
+                if (!liftY) { try { _sigShockRing3D(tx + (o.size > 1 ? (o.size - 1) * 0.5 : 0), ty + (o.size > 1 ? (o.size - 1) * 0.5 : 0), { color: hex, r0: ts * 0.1, r1: ts * 0.8, ms: 300, height: 3 }); } catch (e) {} }
                 try { if (typeof window !== 'undefined' && typeof window.playDoorSfx === 'function') window.playDoorSfx('doorGunLand', { volume: 0.5 }); } catch (e) {}
             }
             var u = Math.min(1, (t - ms) / 420), f = 1 - u;
@@ -24541,7 +24607,300 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             }
         });
     }
+    /* ═══ rev 3 (2026-09-20) — THE GUN, NOT THE DOORS ════════════════════
+       The user dropped the placed-door mechanic; every ability is now the
+       agent SHOOTING A DOOR out of the door gun (_sigDoorGunShot3D is the
+       travel of every `doorGun` damage row — battle.js TRAVEL_HANDLERS.doorGun
+       — and the shot before every other door). The new recipes:
+         _sigDoorSwing3D   Door to the Face — a door stands up between the
+                           agent and the victim and its leaf SLAMS into them
+         _sigDoorAirMail3D Air Mail — the victim's own door swallows a body,
+                           a second door hangs three storeys up FACE DOWN,
+                           opens, and the body falls out onto the tile
+         _sigTrapdoorSet3D Trapdoor — the 2×2 laid flat over its tiles for
+                           the OWNER's eyes (fireGeometry's `onlyPlayer`)
+         _sigDoorDropIn3D  Drop In — the door in the air over the landing,
+                           the agent's body drops out of it, the slam
+         _sigOpenHouse3D   the execution — six doors round the victim, the
+                           agent in and out of them faster and faster, every
+                           door open at once, the last one takes the victim
+       The old recipes below them stay registered for the door OBJECT the
+       engine keeps (Grave Passage / Tunnel Network fixed doors). */
+    function _doorBody(ts, hex) {
+        var m = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.19, ts * 0.23, ts * 0.86, 8), new THREE.MeshLambertMaterial({ color: hex != null ? hex : 0x14161c, transparent: true, opacity: 1 }));
+        m.position.y = ts * 0.43; m.castShadow = true;
+        return m;
+    }
+    function _doorSwallowDust(tx, ty, ts, color) {
+        try { _sigShockRing3D(tx, ty, { color: color || _DOOR_FX.sill, r0: ts * 0.12, r1: ts * 1.0, ms: 360, height: 3 }); } catch (e) {}
+    }
+    /* Door to the Face: the door between the two, the leaf into the victim.
+       o: { fromX, fromY } = the caster (fire()'s params). */
+    function _sigDoorSwing3D(tx, ty, o) {
+        o = o || {};
+        if (_catOff('spells')) return null;
+        var from = (o.fromX != null) ? { x: o.fromX, y: o.fromY } : _sigCasterPos(tx, ty);
+        if (!from) from = { x: tx - 1, y: ty };
+        var mx = from.x + (tx - from.x) * 0.45, my = from.y + (ty - from.y) * 0.45;
+        var rig = _sigDoorRig3D(mx, my, { yaw: _doorYaw(mx, my, tx, ty), scale: 1.05 });
+        var ts = rig.ts;
+        var riseMs = 110, swingMs = 150, holdMs = 260, fadeMs = 320, total = riseMs + swingMs + holdMs + fadeMs;
+        var flashMat = _sigMat(0xffffff);
+        var flash = new THREE.Mesh(new THREE.PlaneGeometry(rig.ow, rig.oh), flashMat); flash.position.set(0, rig.oh / 2, 0.02 * ts); flash.renderOrder = 151; rig.inner.add(flash);
+        var struck = false;
+        rig.setRise(0.02); rig.setOpen(0); rig.setLight(0.3); rig.setFade(0);
+        return _sigRunOwned(rig.group, total, function (el) {
+            var t = el;
+            if (t < riseMs) { rig.setRise(_sigEaseOutBack(t / riseMs)); rig.setFade(Math.min(1, t / 60)); return; }
+            rig.setRise(1); rig.setFade(1); t -= riseMs;
+            if (t < swingMs) { var q = _sigEaseInCubic(t / swingMs); rig.setOpen(q); rig.setLight(0.3 + 0.7 * q); return; }
+            rig.setOpen(1); t -= swingMs;
+            if (!struck) {
+                struck = true;
+                try { _sigShockRing3D(tx, ty, { color: _DOOR_FX.light, r0: ts * 0.15, r1: ts * 1.2, ms: 340, height: 4 }); } catch (e) {}
+                if (typeof window !== 'undefined' && typeof window.shakeBoard === 'function') _shake('normal');
+            }
+            if (t < holdMs) { flashMat.opacity = 0.7 * (1 - t / holdMs); return; }
+            t -= holdMs;
+            var f = 1 - _sigClamp01(t / fadeMs);
+            flashMat.opacity = 0; rig.setFade(f); rig.setLight(f);
+        });
+    }
+    /* Air Mail: door A on the victim's tile facing the caster takes a body,
+       door B hangs `lift` tiles up face down and drops it. o: { fromX, fromY,
+       lift }. The real victim is faded out / in by the travel handler. */
+    function _sigDoorAirMail3D(tx, ty, o) {
+        o = o || {};
+        if (_catOff('spells')) return null;
+        var from = (o.fromX != null) ? { x: o.fromX, y: o.fromY } : _sigCasterPos(tx, ty);
+        var yaw = from ? _doorYaw(tx, ty, from.x, from.y) : 0;
+        var lift = o.lift || 3;
+        var A = _sigDoorRig3D(tx, ty, { yaw: yaw, scale: 1.0 });
+        var B = _sigDoorRig3D(tx, ty, { lay: true, face: 'down', lift: lift, scale: 1.0, noWedge: true });
+        var ts = A.ts, wp = _worldPos(tx, ty);
+        var g = new THREE.Group(); g.add(A.group); g.add(B.group);
+        var body = _doorBody(ts, 0x14161c); body.visible = false; g.add(body);
+        var puffMat = new THREE.SpriteMaterial({ map: _sigGlowTex(), color: new THREE.Color(_DOOR_FX.sill), transparent: true, opacity: 0, depthWrite: false });
+        var puff = new THREE.Sprite(puffMat); puff.scale.set(ts * 1.2, ts * 0.7, 1); puff.position.set(wp.x, wp.y + ts * 0.2, wp.z); g.add(puff);
+        var total = 1650, landed = false, dropY0 = lift * ts * 0.95;
+        var cz = Math.cos(yaw), sz = Math.sin(yaw);   // the +z of door A in world (toward the caster)
+        A.setRise(0.02); A.setOpen(0); A.setLight(0); A.setFade(0);
+        B.setRise(0.02); B.setOpen(0); B.setLight(0); B.setFade(0);
+        return _sigRunOwned(g, total, function (el) {
+            /* door A: rise 0–110, open 110–220, the swallow 220–430, shut 430–540, gone by 700 */
+            if (el < 110) { A.setRise(_sigEaseOutBack(el / 110)); A.setFade(Math.min(1, el / 60)); }
+            else if (el < 220) { A.setRise(1); A.setFade(1); var q = _sigEaseOutCubic((el - 110) / 110); A.setOpen(q); A.setLight(q); }
+            else if (el < 430) {
+                var u = (el - 220) / 210; body.visible = true;
+                var d = ts * 0.32 * (1 - u) - ts * 0.12 * u;   // in front of the door → through it
+                body.position.set(wp.x + sz * d, wp.y, wp.z + cz * d); body.scale.setScalar(1 - 0.5 * u); body.material.opacity = 1 - u * 0.6;
+                A.setLight(1);
+            }
+            else if (el < 540) { body.visible = false; var q2 = _sigEaseInCubic((el - 430) / 110); A.setOpen(1 - q2); A.setLight(1 - q2); }
+            else if (el < 700) { A.setOpen(0); A.setFade(1 - (el - 540) / 160); }
+            else A.setFade(0);
+            /* door B: rise 300–420, open 520–660, the body falls 660–1150, lands, shut 1200–1320, gone by 1650 */
+            if (el >= 300 && el < 420) { B.setRise(_sigEaseOutBack((el - 300) / 120)); B.setFade(Math.min(1, (el - 300) / 60)); B.setLight(0.3); }
+            else if (el >= 420 && el < 520) { B.setRise(1); B.setFade(1); }
+            else if (el >= 520 && el < 660) { var q3 = _sigEaseOutCubic((el - 520) / 140); B.setOpen(q3); B.setLight(0.3 + 0.7 * q3); }
+            else if (el >= 660 && el < 1150) {
+                var k = (el - 660) / 490, e = k * k;
+                body.visible = true; body.material.opacity = 1; body.scale.set(1, 1 + 0.25 * k, 1);
+                body.position.set(wp.x, wp.y + dropY0 * (1 - e), wp.z); body.rotation.z = k * 2.4;
+                B.setLight(1 - 0.5 * k);
+            }
+            else if (el >= 1150) {
+                if (!landed) {
+                    landed = true;
+                    try { _sigShockRing3D(tx, ty, { color: _DOOR_FX.light, r0: ts * 0.15, r1: ts * 1.4, ms: 380, height: 4 }); } catch (e) {}
+                    _doorSwallowDust(tx, ty, ts);
+                    if (typeof window !== 'undefined' && typeof window.shakeBoard === 'function') _shake('heavy');
+                }
+                var v = Math.min(1, (el - 1150) / 150);
+                body.position.set(wp.x, wp.y, wp.z); body.rotation.z = 0; body.scale.set(1 + 0.2 * (1 - v), 0.5 + 0.5 * (1 - v), 1 + 0.2 * (1 - v)); body.material.opacity = 1 - v;
+                if (v >= 1) body.visible = false;
+                puffMat.opacity = 0.5 * Math.max(0, 1 - (el - 1150) / 420); puff.scale.set(ts * (1.2 + (el - 1150) / 400), ts * 0.7, 1);
+                if (el >= 1200 && el < 1320) { var q4 = _sigEaseInCubic((el - 1200) / 120); B.setOpen(1 - q4); B.setLight(0.5 * (1 - q4)); }
+                else if (el >= 1320) { B.setOpen(0); B.setFade(Math.max(0, 1 - (el - 1320) / 330)); }
+            }
+        });
+    }
+    /* the trapdoor laid over its footprint — the owner's read of where it is.
+       o: { size } (the anchor is the north-west tile). */
+    function _sigTrapdoorSet3D(tx, ty, o) {
+        o = o || {};
+        if (_catOff('spells')) return null;
+        var size = Math.max(1, o.size || 1), rigs = [];
+        var g = new THREE.Group();
+        for (var dy = 0; dy < size; dy++) for (var dx = 0; dx < size; dx++) {
+            var rig = _sigDoorRig3D(tx + dx, ty + dy, { lay: true, scale: 0.86, noWedge: true });
+            rig.setRise(1); rig.setOpen(0); rig.setLight(0.6); rig.setFade(0);
+            g.add(rig.group); rigs.push(rig);
+        }
+        var total = 1500;
+        return _sigRunOwned(g, total, function (el) {
+            for (var i = 0; i < rigs.length; i++) {
+                var t = el - i * 70;
+                var f = t < 0 ? 0 : t < 220 ? t / 220 : t < 800 ? 1 : Math.max(0, 1 - (t - 800) / 600);
+                rigs[i].setFade(f); rigs[i].setLight(0.6 * f);
+            }
+        });
+    }
+    /* Drop In: the door in the air over the landing tile facing the victim,
+       the agent's body drops out of it, the slam. o: { yaw, lift }. */
+    function _sigDoorDropIn3D(tx, ty, o) {
+        o = o || {};
+        if (_catOff('spells')) return null;
+        var lift = o.lift || 3;
+        var B = _sigDoorRig3D(tx, ty, { lay: true, face: 'down', lift: lift, scale: 1.05, noWedge: true });
+        var ts = B.ts, wp = _worldPos(tx, ty);
+        var g = new THREE.Group(); g.add(B.group);
+        var body = _doorBody(ts, 0x101418); body.visible = false; g.add(body);
+        var visor = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.3, ts * 0.06, ts * 0.12), new THREE.MeshBasicMaterial({ color: _DOOR_FX.teal, transparent: true, opacity: 0.9 })); visor.position.set(0, ts * 0.78, ts * 0.16); body.add(visor);
+        var dropY0 = lift * ts * 0.95, total = 1400, landed = false;
+        B.setRise(0.02); B.setOpen(0); B.setLight(0); B.setFade(0);
+        return _sigRunOwned(g, total, function (el) {
+            if (el < 120) { B.setRise(_sigEaseOutBack(el / 120)); B.setFade(Math.min(1, el / 60)); B.setLight(0.3); }
+            else if (el < 280) { B.setRise(1); B.setFade(1); var q = _sigEaseOutCubic((el - 120) / 160); B.setOpen(q); B.setLight(0.3 + 0.7 * q); }
+            else if (el < 760) {
+                var k = (el - 280) / 480, e = k * k;
+                body.visible = true; body.material.opacity = 1; body.scale.set(1, 1 + 0.3 * k, 1);
+                body.position.set(wp.x, wp.y + dropY0 * (1 - e), wp.z);
+                B.setLight(1 - 0.4 * k);
+            } else {
+                if (!landed) {
+                    landed = true;
+                    try { _sigShockRing3D(tx, ty, { color: _DOOR_FX.teal, r0: ts * 0.2, r1: ts * 1.9, ms: 420, height: 4 }); } catch (e) {}
+                    try { _sigShockRing3D(tx, ty, { color: _DOOR_FX.light, r0: ts * 0.1, r1: ts * 1.2, ms: 300, height: 10 }); } catch (e) {}
+                    _doorSwallowDust(tx, ty, ts);
+                    if (typeof window !== 'undefined' && typeof window.shakeBoard === 'function') _shake('heavy');
+                }
+                var v = Math.min(1, (el - 760) / 160);
+                body.position.set(wp.x, wp.y, wp.z); body.scale.set(1 + 0.25 * (1 - v), 0.6 + 0.4 * (1 - v), 1 + 0.25 * (1 - v)); body.material.opacity = 1 - v;
+                if (v >= 1) body.visible = false;
+                if (el >= 820 && el < 960) { var q2 = _sigEaseInCubic((el - 820) / 140); B.setOpen(1 - q2); B.setLight(0.6 * (1 - q2)); }
+                else if (el >= 960) { B.setOpen(0); B.setFade(Math.max(0, 1 - (el - 960) / 440)); }
+            }
+        });
+    }
+    /* OPEN HOUSE (the execution): six doors round the victim (shot there from
+       the gun), the agent's body in and out of them on an accelerating
+       cadence (o.hits between o.firstAt and o.lastAt — battle.js's director
+       walks the same curve for its beats), every door open at o.hitAt, the
+       victim's body through the door farthest from the caster, every door
+       slams. o: { ms, doorsAt, firstAt, lastAt, hits, hitAt }. */
+    function _sigOpenHouse3D(cx, cy, tx, ty, o) {
+        o = o || {};
+        if (_catOff('spells')) return null;
+        var wpC = _worldPos(cx, cy), wpT = _worldPos(tx, ty), ts = wpT.ts;
+        var ms = o.ms > 0 ? o.ms : 5200, doorsAt = o.doorsAt != null ? o.doorsAt : 200;
+        var N = Math.max(3, o.hits || 7), firstAt = o.firstAt != null ? o.firstAt : 800, lastAt = o.lastAt != null ? o.lastAt : 2500, hitAt = o.hitAt != null ? o.hitAt : 3000;
+        var ND = 6, RT = 1.45;
+        var g = new THREE.Group();
+        var rigs = [], door = [];
+        for (var k = 0; k < ND; k++) {
+            var a = -Math.PI / 2 + k * Math.PI * 2 / ND;
+            var dx = Math.cos(a) * RT, dy = Math.sin(a) * RT;
+            var rig = _sigDoorRig3D(tx + dx, ty + dy, { yaw: _doorYaw(tx + dx, ty + dy, tx, ty), scale: 0.92, noWedge: true });
+            rig.setRise(0.02); rig.setOpen(0); rig.setLight(0); rig.setFade(0);
+            g.add(rig.group); rigs.push(rig);
+            door.push({ tx: tx + dx, ty: ty + dy, x: rig.group.position.x, y: rig.group.position.y, z: rig.group.position.z });
+        }
+        /* the door farthest from the caster is the one that takes the victim */
+        var far = 0, farD = -1;
+        for (var f = 0; f < ND; f++) { var dd = Math.hypot(door[f].x - wpC.x, door[f].z - wpC.z); if (dd > farD) { farD = dd; far = f; } }
+        var agent = _doorBody(ts, 0x101418); agent.visible = false; g.add(agent);
+        var visor = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.3, ts * 0.06, ts * 0.12), new THREE.MeshBasicMaterial({ color: _DOOR_FX.teal, transparent: true, opacity: 0.9 })); visor.position.set(0, ts * 0.78, 0); agent.add(visor);
+        var victim = _doorBody(ts, 0x3a1418); victim.visible = false; g.add(victim);
+        var slashMat = new THREE.SpriteMaterial({ map: _sigGlowTex(), color: new THREE.Color(0xffffff), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
+        var slash = new THREE.Sprite(slashMat); slash.scale.set(ts * 1.1, ts * 1.1, 1); slash.position.set(wpT.x, wpT.y + ts * 0.5, wpT.z); g.add(slash);
+        var bigMat = new THREE.SpriteMaterial({ map: _sigGlowTex(), color: new THREE.Color(_DOOR_FX.light), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
+        var big = new THREE.Sprite(bigMat); big.scale.set(ts * 4, ts * 4, 1); big.position.set(wpT.x, wpT.y + ts * 0.6, wpT.z); g.add(big);
+        /* the cadence: the same curve as the director's beats */
+        var hits = [];
+        for (var i = 0; i < N; i++) {
+            var t = firstAt + (lastAt - firstAt) * (1 - Math.pow(1 - i / (N - 1), 1.6));
+            hits.push({ t: t, kin: (i * 2 + 1) % ND, kout: (i * 2 + 4) % ND, rung: false });
+        }
+        var shot = false, opened = false, slammed = false;
+        var IN_MS = 110, HOLD_MS = 60, OUT_MS = 100;
+        function lerp(a, b, u) { return a + (b - a) * u; }
+        return _sigRunOwned(g, ms, function (el) {
+            /* the shots + the doors standing up */
+            if (!shot && el >= doorsAt) {
+                shot = true;
+                for (var s2 = 0; s2 < ND; s2++) { try { _sigDoorGunShot3D(door[s2].tx, door[s2].ty, { fromX: cx, fromY: cy, delay: s2 * 70 }); } catch (e) {} }
+            }
+            for (var r = 0; r < ND; r++) {
+                var tr = el - doorsAt - 260 - r * 70;
+                if (tr >= 0 && tr < 160) { rigs[r].setRise(_sigEaseOutBack(tr / 160)); rigs[r].setFade(Math.min(1, tr / 60)); }
+                else if (tr >= 160 && el < hitAt + 900) { rigs[r].setRise(1); rigs[r].setFade(1); }
+            }
+            /* the in-and-out */
+            if (el < hitAt - 200) {
+                agent.visible = false; slashMat.opacity *= 0.8;
+                for (var h = 0; h < hits.length; h++) {
+                    var H = hits[h], u = el - H.t;
+                    if (u < -120 || u > IN_MS + HOLD_MS + OUT_MS + 160) continue;
+                    var din = door[H.kin], dout = door[H.kout];
+                    if (u < 0) { rigs[H.kin].setOpen(_sigEaseOutCubic(_sigClamp01((u + 120) / 120))); rigs[H.kin].setLight(_sigClamp01((u + 120) / 120)); continue; }
+                    if (u < IN_MS) {
+                        var q = _sigEaseOutCubic(u / IN_MS);
+                        agent.visible = true; agent.material.opacity = 1;
+                        agent.position.set(lerp(din.x, wpT.x + (din.x - wpT.x) * 0.3, q), wpT.y, lerp(din.z, wpT.z + (din.z - wpT.z) * 0.3, q));
+                        agent.rotation.y = Math.atan2(wpT.x - din.x, wpT.z - din.z);
+                        rigs[H.kin].setOpen(1); rigs[H.kin].setLight(1);
+                    } else if (u < IN_MS + HOLD_MS) {
+                        if (!H.rung) { H.rung = true; slashMat.opacity = 0.95; try { _sigShockRing3D(tx, ty, { color: _DOOR_FX.light, r0: ts * 0.1, r1: ts * 0.9, ms: 220, height: 4 }); } catch (e) {} }
+                        agent.visible = true;
+                        rigs[H.kin].setOpen(1 - (u - IN_MS) / HOLD_MS); rigs[H.kin].setLight(1 - (u - IN_MS) / HOLD_MS);
+                        rigs[H.kout].setOpen(_sigEaseOutCubic((u - IN_MS) / HOLD_MS)); rigs[H.kout].setLight((u - IN_MS) / HOLD_MS);
+                    } else if (u < IN_MS + HOLD_MS + OUT_MS) {
+                        var q2 = _sigEaseInCubic((u - IN_MS - HOLD_MS) / OUT_MS);
+                        agent.visible = true;
+                        agent.position.set(lerp(wpT.x + (dout.x - wpT.x) * 0.3, dout.x, q2), wpT.y, lerp(wpT.z + (dout.z - wpT.z) * 0.3, dout.z, q2));
+                        agent.rotation.y = Math.atan2(dout.x - wpT.x, dout.z - wpT.z);
+                        agent.material.opacity = 1 - q2 * 0.7;
+                        rigs[H.kin].setOpen(0); rigs[H.kin].setLight(0);
+                        rigs[H.kout].setOpen(1); rigs[H.kout].setLight(1);
+                    } else {
+                        var q3 = _sigClamp01((u - IN_MS - HOLD_MS - OUT_MS) / 160);
+                        rigs[H.kout].setOpen(1 - q3); rigs[H.kout].setLight(1 - q3);
+                    }
+                }
+                return;
+            }
+            agent.visible = false;
+            /* the take: every door opens, the light, the victim through the far door, every door slams */
+            var v = el - (hitAt - 200);
+            if (v < 200) { var qo = _sigEaseOutCubic(v / 200); for (var a1 = 0; a1 < ND; a1++) { rigs[a1].setOpen(qo); rigs[a1].setLight(qo); } bigMat.opacity = 0.6 * qo; return; }
+            if (!opened) { opened = true; bigMat.opacity = 1; try { _sigShockRing3D(tx, ty, { color: _DOOR_FX.teal, r0: ts * 0.2, r1: ts * 2.6, ms: 500, height: 6 }); } catch (e) {} }
+            var w = el - hitAt;
+            if (w < 380) {
+                var qv = _sigEaseInCubic(w / 380), dF = door[far];
+                victim.visible = true; victim.material.opacity = 1 - qv * 0.5;
+                victim.position.set(lerp(wpT.x, dF.x, qv), wpT.y, lerp(wpT.z, dF.z, qv)); victim.scale.setScalar(1 - 0.55 * qv);
+                bigMat.opacity = 1 - qv * 0.6;
+                return;
+            }
+            victim.visible = false;
+            if (w < 470) { var qs = _sigEaseInCubic((w - 380) / 90); for (var a2 = 0; a2 < ND; a2++) { rigs[a2].setOpen(1 - qs); rigs[a2].setLight(1 - qs); } bigMat.opacity = 0.4 * (1 - qs); return; }
+            if (!slammed) {
+                slammed = true;
+                try { _sigShockRing3D(tx, ty, { color: _DOOR_FX.stamp, r0: ts * 0.3, r1: ts * 3.4, ms: 560, height: 4 }); } catch (e) {}
+                if (typeof window !== 'undefined' && typeof window.shakeBoard === 'function') _shake('heavy');
+            }
+            bigMat.opacity = 0;
+            var fd = 1 - _sigClamp01((w - 900) / Math.max(200, ms - hitAt - 900));
+            for (var a3 = 0; a3 < ND; a3++) { rigs[a3].setOpen(0); rigs[a3].setLight(0); rigs[a3].setFade(fd); }
+        });
+    }
     Object.assign(_spell3DGeometry, {
+        /* rev 3 (2026-09-20): the new kit — the geometry key IS the spell id for the two damage rows (fire('impact') runs the registry with the caster in params) */
+        'raceDoorToTheFace':         function (tx, ty, r, x) { x = x || {}; _sigDoorSwing3D(tx, ty, { fromX: x.fromX, fromY: x.fromY }); },
+        'raceAirMail':               function (tx, ty, r, x) { x = x || {}; _sigDoorAirMail3D(tx, ty, { fromX: x.fromX, fromY: x.fromY, lift: 3 }); },
+        'raceTrapdoor:set':          function (tx, ty, r, x) { x = x || {}; _fxDelay(function () { try { _sigTrapdoorSet3D(tx, ty, { size: x.size || 1 }); } catch (e) {} }, x.delay || 0); },
+        'raceDropIn:door':           function (tx, ty, r, x) { x = x || {}; _fxDelay(function () { try { _sigDoorDropIn3D(tx, ty, { yaw: _doorYaw(tx, ty, x.fromX, x.fromY), lift: x.lift || 3 }); } catch (e) {} }, x.delay || 0); },
         'raceKnockKnock':            function (tx, ty, r, x) { x = x || {}; _sigDoorKnock3D(tx, ty, { place: !x.toggle, open: x.open !== false, twinX: x.twinX, twinY: x.twinY }); },
         'raceBreakingEntering:door': function (tx, ty, r, x) { x = x || {}; _sigDoorPortal3D(tx, ty, { yaw: _doorYaw(tx, ty, x.fromX, x.fromY), riseMs: 110, openMs: 110, holdMs: 400, shutMs: 110 }); },
         'raceSpecialDelivery':       function (tx, ty, r, x) { x = x || {}; _sigDoorDelivery3D(x.fromX, x.fromY, tx, ty, { ms: x.ms }); },
@@ -24549,10 +24908,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         'raceExit':                  function (tx, ty, r, x) { x = x || {}; _sigDoorPortal3D(tx, ty, { yaw: _doorYaw(tx, ty, x.fromX, x.fromY), riseMs: 160, openMs: 150, holdMs: 260, shutMs: 120, stamp: true, big: true }); },
         'raceExit:out':              function (tx, ty, r, x) { x = x || {}; _sigDoorPortal3D(tx, ty, { yaw: _doorYaw(tx, ty, x.fromX, x.fromY), riseMs: 140, openMs: 140, holdMs: 320, shutMs: 140, out: true }); },
         'raceLongWayRound':          function (tx, ty, r, x) { x = x || {}; _sigDoorNetwork3D(tx, ty, x.doors); },
-        'raceTrapdoor':              function (tx, ty, r, x) { x = x || {}; _sigDoorPortal3D(tx, ty, { lay: true, down: true, riseMs: 200, openMs: 180, holdMs: 300, shutMs: 110, big: true }); },
+        'raceTrapdoor':              function (tx, ty, r, x) { x = x || {}; _fxDelay(function () { try { _sigDoorPortal3D(tx, ty, { lay: true, down: true, riseMs: 200, openMs: 180, holdMs: 300, shutMs: 110, big: true }); } catch (e) {} }, x.delay || 0); },   // rev 3: one per tile of the 2×2, `delay` staggers them
         'raceTrapdoor:out':          function (tx, ty, r, x) { x = x || {}; _sigDoorPortal3D(tx, ty, { yaw: _doorYaw(tx, ty, x.fromX, x.fromY), riseMs: 140, openMs: 140, holdMs: 320, shutMs: 140, out: true }); },
         /* THE DOOR GUN's shot (2026-09-16): fired by battle.js before every placement — Knock Knock's two doors, the way in, EXIT, the trapdoor */
-        'raceDoorGun:shot':          function (tx, ty, r, x) { x = x || {}; _sigDoorGunShot3D(tx, ty, { fromX: x.fromX, fromY: x.fromY, delay: x.delay || 0 }); },
+        'raceDoorGun:shot':          function (tx, ty, r, x) { x = x || {}; _sigDoorGunShot3D(tx, ty, { fromX: x.fromX, fromY: x.fromY, delay: x.delay || 0, lift: x.lift || 0, size: x.size || 1 }); },
     });
 
     /* ── THE BEAM DEFS: Tsunami + the capstone breaths ───────────────────
@@ -29990,6 +30349,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             P.at(P.hitAt + 200, function () { P.whiteout(0xff4fa3, 5, { ms: 1000, peak: 0.95 }); });
         },
     };
+    /* THE DOOR AGENT (2026-09-20): Open House on the stage */
+    _FIN_STAGE.openHouse = function (P) {
+        P.circle(0x2f6b66, 0x5ce0d0);
+        P.at(P.CHARGE - 600, function () { _sigOpenHouse3D(P.cx, P.cy, P.tx, P.ty, { ms: P.STRIKE + 2800, doorsAt: 200, firstAt: 800, lastAt: 600 + P.STRIKE - 320, hits: 7, hitAt: 600 + P.STRIKE }); });
+        P.at(P.hitAt, function () { P.ring(0x5ce0d0); P.flash('#e8fffb', 260, 0.85); P.shake('heavy'); P.grade('#5ce0d0', 700); });
+        P.at(P.hitAt + 300, function () { P.whiteout(0xbff5ec, 6, { ms: 800, peak: 0.6 }); });
+    };
     function _finStagePlay(def, o) {
         if (!_VS.on || !def) return 0;
         if (!_canSpawn()) return 0;
@@ -30192,6 +30558,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         sigKaijuStomp3D: _sigKaijuStomp3D,
         sigSegfault3D: _sigSegfault3D,
         sigHaymaker3D: _sigHaymaker3D,
+        sigOpenHouse3D: _sigOpenHouse3D,   /* the door agent (2026-09-20) */
         sigBootHill3D: _sigBootHill3D,
         sigShrinkRay3D: _sigShrinkRay3D,
         sigKeelhaul3D: _sigKeelhaul3D,

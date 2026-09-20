@@ -5009,7 +5009,7 @@ function spellTagline(sp) {
   else if (k === 'terrainCreate') parts.push('Terrain');
   else if (k === 'placeBlock') parts.push('Build block');
   else if (k === 'buildStructure') parts.push('Structure');
-  else if (k === 'placeTrap') parts.push('Hidden trap');
+  else if (k === 'placeTrap') parts.push(sp.trapSize > 1 ? 'Hidden ' + sp.trapSize + '×' + sp.trapSize + ' trapdoor · sinks 2' : 'Hidden trap');
   else if (k === 'summonWeather') parts.push('Weather');
   else if (k === 'scan' || k === 'remoteView') parts.push('Vision');
   else if (k === 'warpRune') parts.push('Warp rune');
@@ -5030,7 +5030,7 @@ function spellTagline(sp) {
   else if (k === 'steal') parts.push('Rob · ' + (sp.stealKeys != null ? sp.stealKeys : 1) + ' Key + ' + (sp.stealItems != null ? sp.stealItems : 1) + ' item');
   // DOOR_RACE_DESIGN (2026-09-14): the door kinds
   else if (k === 'door') parts.push('A door where you point + its twin beside you · or toggle a door (0 MP)');
-  else if (k === 'doorBreach') parts.push('Teleport beside · rear hit');
+  else if (k === 'doorBreach') parts.push(sp.fromAbove ? 'Drop in from above · rear hit' + (sp.splashDmg ? ' · slam 3×3' : '') : 'Teleport beside · rear hit');
   else if (k === 'doorDelivery') parts.push('Out of your nearest open door · ' + (sp.range || 3) + ' from it · rear hit');
   else if (k === 'doorSlam') parts.push('Shut a door · twin slams 3×3 · push ' + (sp.pushDistance || 1));
   else if (k === 'doorExit') parts.push('Off the board 1 round · back out of the twin');

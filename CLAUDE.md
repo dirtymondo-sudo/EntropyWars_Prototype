@@ -6885,3 +6885,34 @@ the slab short of the pad; a draught is never an R3 target nor viewpoint (`check
 collar is earned. Accepted residue: the well room (six wells see each other), the haunted hall's landing, the D2 cities. The final full audit and
 the slow suites were NOT re-run after the last edits (the user's word); `npm run test:quick` and `check-terrain` on every touched room passed.
 Ship data.js to R2 AND Render. Unseen live (RULE #1c): every gantry's stair, the parapets, the fangs, the pillars, the slabs' facings.
+
+## THE DOOR AGENT rev 3 — THE GUN, NOT THE DOORS (five rows, OPEN HOUSE, the gun's pitch) — 2026-09-20, local delivery
+The user dropped the placed-door mechanic. `RACE_ABILITIES['door agent']` (data.js) is FIVE rows on
+`[[raceDoorToTheFace, raceBreakingEntering], raceAirMail, raceTrapdoor, raceDropIn★]`, every one wearing
+**`doorGun: true`** = the agent SHOOTS A DOOR out of the door gun where the spell needs one (sprites.js
+`classifySpellAnimKind` → `'ranged'`; a `damage` row's travel is **`TRAVEL_HANDLERS.doorGun`** in battle.js —
+the `raceDoorGun:shot` from the hand, `doorAt: 'between'` for the swing; the door recipes ride the geometry
+registry BY SPELL ID through `fire('impact')`). Plain kinds on purpose: **Door to the Face** = `damage` r1 +
+push + Stagger (`_sigDoorSwing3D`); **Breaking and Entering** unchanged; **Air Mail** = `damage` r4 +
+`groundsFlyers` + `dropTiles` (`_sigDoorAirMail3D`: the victim's door swallows, a face-down door three
+storeys up drops the body; the handler fades the real victim out / in); **Trapdoor** = `placeTrap` +
+`trapType: 'trapdoor'` + **`trapSize: 2`** — a HIDDEN 2×2 on the trap arsenal (`_trapFootprint` clamps the
+anchor + validates every tile, four records share a `groupId`, the cap counts groups, `TRAP_TILE_SPRITES.
+trapdoor` for the owner only), sprung by the first enemy to end a move on any tile: `_springTrap`'s
+`trapdoor` branch sinks every tile TWO levels (`applyTerrainDeform` −2) under them + the WEAK hit + the fall +
+Stagger; a Keyholder never falls (`checkTrapTrigger`); the laying recipe (`raceTrapdoor:set`) is gated by
+**`fireGeometry`'s `onlyPlayer`** (drawn only on that player's screen, the relay still carries it — RULE #2);
+NOT a capstone (tier II); **Drop In★** = `doorBreach` + **`fromAbove`** (the shot into the air, `_sigDoorDropIn3D`
+drops the agent's body out of a door over the landing, the real agent faded for the fall) + **`splashDmg`** on
+the neighbours. `FINISHERS['door agent']` = **OPEN HOUSE** (`openHouse` / `_sigOpenHouse3D` / `_FIN_STAGE.
+openHouse`: six doors round the victim, the agent in and out faster and faster, every door open at once, the
+far door takes them). RETIRED: Knock Knock · Special Delivery · Slam · EXIT · The Long Way Round (rows, tree,
+SPELL_MAP); THE DOOR OBJECT in battle.js STAYS (Grave Passage / Tunnel Network `deployPair` fixed doors —
+its kinds / statuses / branches are dormant, never re-add a door-placing row). **THE GUN'S PITCH**:
+`HQ_PORTAL_RULES.gun.pitch` (degrees the MUZZLE DROPS, after `turn`; shipped 30 for the user's "~30° off
+parallel") — three-renderer.js `_heldPitchGroup` in the three holders (the walker, the board's
+`_unitAttachHeld`, the viewmodel); `_hqGunMuzzle` reads `holder.userData.inst`. A barrel that now points
+DOWN wants `pitch: -30` — one field, unmeasured. `npm test` runs door-race.test.js (the trapdoor in a vm
+sandbox) + door-vfx.test.js; finishers.test.js's BUILT table has the agent. UNSEEN LIVE (RULE #1c): the
+pitch's sign, the swing at range 1, the Air Mail fall vs the damage number, the Drop In beat, the four
+sigils, the six-door ring.

@@ -776,3 +776,16 @@ spells), a ziggurat tier block, a gothic buttress.
   plan. Not playtested (RULE #1c) — the moon's size against the sky, the
   storm's density, the ricochet's legibility at half speed and every
   monument's scale in its tile box are the user's to eyeball first.
+
+- **2026-09-20 — the door agent (rev 3 of the race).** ONE bespoke execution
+  with the race's rework: **OPEN HOUSE** (`openHouse` / `_sigOpenHouse3D` —
+  six catalogue-leaf doors round the victim shot there from the door gun, the
+  agent's body in and out of them on an accelerating cadence the director
+  shares, every door open at once, the far door takes the victim, the slam).
+  The director is the first to use the door section's rigs; the signature
+  lives in "THE DOOR AGENT'S DOORS" (its groups through `_sigRunOwned`, its
+  timers through `_fxDelay` like the pass-2 section). 52 of 99 built. Files:
+  data.js, battle.js, three-vfx-effects.js, finishers.test.js, this plan,
+  DOOR_RACE_DESIGN.md. Not playtested (RULE #1c) — the ring's radius (1.45
+  tiles) against a crowded flank, the god shot's tilt over six doors, the
+  body's lunge read at 110 ms, the take through the far door.

@@ -383,7 +383,7 @@ const FINISHERS = {
     'watcher':        { id: 'fin_watcher', name: 'Observed', glyph: '👁', type: 'divine', sig: null, tagline: 'THE WAVEFUNCTION COLLAPSES', desc: 'The watcher looks, really looks, and the victim was only ever a probability.' },
     'gangster':       { id: 'fin_gangster', name: 'Drive-By', glyph: '🔫', type: 'human', sig: null, tagline: 'THE WHOLE CLIP', desc: 'A car rolls past the victim at walking pace with every window down.' },
     'nun':            { id: 'fin_nun', name: 'Ruler', glyph: '📏', type: 'divine', sig: null, tagline: 'HOLD OUT YOUR HAND', desc: 'A ruler the size of a bridge comes down across the victim\'s knuckles, and the knuckles were the least of it.' },
-    'door agent':     { id: 'fin_door_agent', name: 'Special Delivery', glyph: '🚪', type: 'anomaly', sig: null, tagline: 'RETURN TO SENDER', desc: 'A door opens under the victim, another opens over them, and they fall between the two for ever.' },
+    'door agent':     { id: 'fin_door_agent', name: 'Open House', glyph: '🚪', type: 'anomaly', sig: 'openHouse', built: true, tagline: 'EVERY DOOR IS MINE', desc: 'Six doors stand up round the victim. The agent comes out of one, hits them, and is gone through another — again, and again, faster — until every door opens at once and the last one takes the victim.' },
 };
 function getFinisherDefForRace(race, types) {
     const row = FINISHERS[race] || null;
@@ -3058,7 +3058,7 @@ const PASSIVE_DEFS = {
     keyholder: {
         id: 'keyholder', icon: '🗝️', name: 'Keyholder',
         doorHits: 4, doorFreeToggle: true, doorImmune: true,
-        desc: 'A key to every room: once a turn the agent may open or shut a friendly door they stand on or beside for free; doors they own take 4 hits to break; a friendly door never harms, moves or EXITs them.',
+        desc: 'A key to every room: no trapdoor ever takes the agent, a friendly door never harms, moves or EXITs them, and a door they own takes 4 hits to break. (rev 3, 2026-09-20: the agent shoots doors now instead of placing them — the free toggle waits on a door to toggle.)',
     },
     shank: {
         id: 'shank', icon: '🔪', name: 'Shank',
@@ -7050,47 +7050,46 @@ const RACE_ABILITIES = {
           teamStatusEffects: [{ id: 'extendedClips', duration: 3 }],
           desc: 'Everybody reload. Allies within 3 tiles pack Extended Clips for 3 rounds: +1 basic-attack range and +1 ATK stage.' },
     ],
-    /* DOOR_RACE_DESIGN.md §4 (2026-09-14): the DOOR AGENT — a control
-       skirmisher built on DOORS. Knock Knock ⇄ Breaking and Entering →
-       Special Delivery ⇄ Slam → EXIT → The Long Way Round★ ⇄ Trapdoor★.
-       The door object + every `door*` kind live in battle.js ("THE DOOR"
-       block); `doorRange` is the reach to the friendly door the spell
-       reads, `range` the reach FROM ITS TWIN. */
+    /* DOOR_RACE_DESIGN.md §4 rev 3 (2026-09-20): the DOOR AGENT — THE GUN,
+       NOT THE DOORS. The user dropped the placed-door mechanic (Knock Knock,
+       Slam, Special Delivery, EXIT, The Long Way Round are gone; the door
+       OBJECT in battle.js "THE DOOR" stays for Grave Passage / Tunnel
+       Network). Every ability is the agent SHOOTING A DOOR out of the door
+       gun where the spell needs one — for himself or at the enemy — and every
+       row wears `doorGun: true` (sprites.js classifySpellAnimKind → the
+       quick-draw clip; the recipes in three-vfx-effects.js "THE DOOR AGENT'S
+       DOORS"). Door to the Face ⇄ Breaking and Entering → Air Mail →
+       Trapdoor → Drop In★. Plain kinds on purpose: `damage` (the swing, the
+       air drop), `doorBreach` (the way in — `fromAbove` + `splashDmg` for the
+       capstone), `placeTrap` with `trapSize: 2` (the hidden 2×2 trapdoor:
+       battle.js _springTrap's `trapdoor` branch sinks every tile of the
+       group two levels under whoever steps on it). The execution is
+       FINISHERS['door agent'] (Open House). */
     'door agent': [
-        /* (2026-09-19) ONE CLICK: the far door where you point, the near door
-           beside you (battle.js _doorNearSpot). No spacing rule. */
-        { id: 'raceKnockKnock', spellType: 'anomaly', element: 'psychic', name: 'Knock Knock',
-          type: 'utility', cost: 20, range: 4, apCost: 1,
-          kind: 'door',
-          desc: 'Knock twice. Somewhere, a door answers. Pick an empty tile within 4: an OPEN door stands there and its twin opens beside you. Whoever ends a move on one door steps out of the other. Click one of your doors instead to open or shut it (free). A shut door is a wall. 3 hits break a door and its twin.' },
+        { id: 'raceDoorToTheFace', spellType: 'anomaly', element: 'psychic', name: 'Door to the Face',
+          type: 'damage', cost: 20, dmg: 80, range: 1, apCost: 1,
+          kind: 'damage', damageType: 'physical', pushDistance: 1, doorGun: true,
+          statusEffects: [{ id: 'stagger', duration: 1 }],
+          desc: 'Mind the door. Shoot a door down beside you and swing it into an adjacent enemy: WEAK physical damage, the target is pushed 1 tile and Staggered.' },
         { id: 'raceBreakingEntering', spellType: 'anomaly', element: 'psychic', name: 'Breaking and Entering',
           type: 'damage', cost: 25, dmg: 85, range: 4, apCost: 1,
-          kind: 'doorBreach', damageType: 'physical', rearAttack: true,
-          desc: 'Nobody said the door had to be yours. Come through a door the enemy did not know was there: teleport beside an enemy within 4 tiles you can see and hit them for WEAK physical damage — always a rear attack.' },
-        { id: 'raceSpecialDelivery', spellType: 'anomaly', element: 'psychic', name: 'Special Delivery',
-          type: 'damage', cost: 30, dmg: 105, range: 3, apCost: 1,
-          kind: 'doorDelivery', damageType: 'physical', rearAttack: true,
+          kind: 'doorBreach', damageType: 'physical', rearAttack: true, doorGun: true,
+          desc: 'Nobody said the door had to be yours. Shoot a door down beside an enemy within 4 tiles you can see and come through it: WEAK physical damage, always a rear attack.' },
+        { id: 'raceAirMail', spellType: 'anomaly', element: 'psychic', name: 'Air Mail',
+          type: 'damage', cost: 35, dmg: 110, range: 4, apCost: 1,
+          kind: 'damage', damageType: 'physical', groundsFlyers: true, doorGun: true, dropTiles: 3,
           statusEffects: [{ id: 'stagger', duration: 1 }],
-          desc: 'Signature required. Needs one of your doors on the board. Pick an enemy within 3 tiles of any of your OPEN doors: the package flies out of that door for MEDIUM physical damage, always a rear attack, and the target is Staggered.' },
-        { id: 'raceSlam', spellType: 'anomaly', element: 'psychic', name: 'Slam',
-          type: 'damage', cost: 30, dmg: 70, range: 4, apCost: 1,
-          kind: 'doorSlam', damageType: 'physical', pushDistance: 1,
-          desc: 'When one door closes. Needs one of your doors on the board. Pick one of your OPEN doors within 4 tiles: it shuts and its twin SLAMS — every enemy standing on or beside the twin takes WEAK physical damage and is pushed 1 tile away; allies there are only pushed. Both doors end shut.' },
-        { id: 'raceExit', spellType: 'anomaly', element: 'psychic', name: 'EXIT',
-          type: 'debuff', cost: 45, range: 1, apCost: 2, tier: 'II',
-          kind: 'doorExit',
-          statusEffects: [{ id: 'exited', duration: 1 }],
-          desc: 'Extradimensional Incident Transfer. Sign here. Needs one of your doors on the board. An enemy standing on or beside one of your OPEN doors is EXITED: off the board until the start of its next activation (untargetable, cannot act, holds no zone, drops any Key), then comes back out of the twin door, Staggered. Never on bosses or the Cube.' },
-        { id: 'raceLongWayRound', spellType: 'anomaly', element: 'psychic', name: 'The Long Way Round',
-          type: 'buff', cost: 55, range: 0, apCost: 2, tier: 'III',
-          kind: 'buff',
-          statusEffects: [{ id: 'castFromDoors', duration: 2 }],
-          desc: 'Every corner in every room is a door. For 2 rounds the agent may attack or cast from any friendly OPEN door they stand on or beside as if they stood at its twin — range, line of sight and origin are the twin\'s, and every such hit is a rear attack.' },
+          desc: 'Return to sender. Shoot a door at an enemy within 4 tiles: they go in, and a door opens three storeys over their head for them to fall out of. MEDIUM physical damage from the landing, flyers are grounded, the target is Staggered.' },
         { id: 'raceTrapdoor', spellType: 'anomaly', element: 'psychic', name: 'Trapdoor',
-          type: 'damage', cost: 55, dmg: 170, range: 4, apCost: 2, tier: 'III',
-          kind: 'doorTrap', damageType: 'physical',
+          type: 'utility', cost: 35, dmg: 60, range: 4, apCost: 1, tier: 'II',
+          kind: 'placeTrap', trapType: 'trapdoor', trapSize: 2, maxActivePerCaster: 1, damageType: 'physical', doorGun: true,
           statusEffects: [{ id: 'stagger', duration: 1 }],
-          desc: 'Do not stand in corners. HEAVY physical damage to an enemy within 4 tiles you can see; the floor gives way and they drop out of your door farthest from them (or land beside the agent if no door stands), Staggered.' },
+          desc: 'Do not stand in corners. Shoot a hidden 2×2 trapdoor onto four empty tiles within 4. The enemy cannot see it. The first enemy to step onto it drops: the four tiles sink two levels under them for WEAK physical damage plus the fall, and they are Staggered. One trapdoor per agent.' },
+        { id: 'raceDropIn', spellType: 'anomaly', element: 'psychic', name: 'Drop In',
+          type: 'damage', cost: 55, dmg: 165, range: 5, apCost: 2, tier: 'III',
+          kind: 'doorBreach', damageType: 'physical', rearAttack: true, fromAbove: true, splashDmg: 55, doorGun: true, dropTiles: 3,
+          statusEffects: [{ id: 'stagger', duration: 1 }],
+          desc: 'Uninvited. Shoot a door into the air over an enemy within 5 tiles you can see and drop out of it onto them: HEAVY physical damage, always a rear attack, the target is Staggered, and every other enemy beside the landing takes WEAK physical damage from the slam.' },
     ],
     /* CHAMP_REWORK_PLAN §6.20 Phase 6 (2026-09-08): the NUN — the sister of
        mercy, her own race now (was the priest's female form). Purify ⇄ Smite
@@ -16977,7 +16976,7 @@ const RACE_TREE = {
     'priest':        ['raceDivineLight', 'protect1', 'raceSmite', 'exorcism'],
     'gangster':      ['raceStompOut', ['raceDriveBy', 'raceHitALick'], 'raceChoppa', 'raceExtendedClips'],   // §6.19 (Phase 6)
     'nun':           [['racePurify', 'raceSmite'], 'raceBlessing', 'racePrayer', 'raceHallelujah'],           // §6.20 (Phase 6)
-    'door agent':    [['raceKnockKnock', 'raceBreakingEntering'], ['raceSpecialDelivery', 'raceSlam'], 'raceExit', ['raceLongWayRound', 'raceTrapdoor']],   // DOOR_RACE_DESIGN §4 (2026-09-14)
+    'door agent':    [['raceDoorToTheFace', 'raceBreakingEntering'], 'raceAirMail', 'raceTrapdoor', 'raceDropIn'],   // DOOR_RACE_DESIGN §4 rev 3 (2026-09-20): the gun, not the doors
     'fortune teller': ['raceTarotDraw', 'raceSpiritChannel', 'raceCurseOfMisfortune', 'raceCrystalBall'],
     'martian':       ['raceHeatRay', 'sharedLowGravity', 'sharedShrinkRay', 'raceWarOfTheWorlds'],
     'nordic':        ['raceAuroraRay', 'racePleiadianShield', 'raceStasisBeam', 'raceNordicAccord'],
@@ -41847,7 +41846,7 @@ const HQ_PORTAL_RULES = {
        the ONE place to tune a gun that sits wrong), `muzzle` the barrel's end in
        the gun's own frame (metres from its centre; +X = the long axis) — the
        laser sight, the shot and the recall all leave from it. */
-    gun: { key: 'door_gun', bone: 'RightHand', span: 0.36, pos: [0, 0.05, 0.06], rot: [0, -90, 90], turn: 180, muzzle: [0.5, 0.11, 0] },   // rev 4: MEASURED (the offline probe): the barrel down the fingers (+Y), the top away from the palm's back (−Z), the grip in the palm; span 0.36 m (0.62 was a rifle). rev 5: `turn` (degrees about the gun's own up, applied to the INSTANCE in every holder + the viewmodel) — the new model's grip hangs at +X, so 180 puts its barrel on +X where the muzzle / the glove / the shot expect it; `muzzle` y 0.11 = the new barrel's centre line
+    gun: { key: 'door_gun', bone: 'RightHand', span: 0.36, pos: [0, 0.05, 0.06], rot: [0, -90, 90], turn: 180, pitch: 30, muzzle: [0.5, 0.11, 0] },   // rev 6 (2026-09-20, the user: "the gun needs to be rotated ~30° counter-clockwise from my point of view, it's not parallel with the ground"): `pitch` = degrees the MUZZLE DROPS about the gun's own lateral axis, applied to the INSTANCE after `turn` in every holder (the walker's hand, the Door Agent's on the board, the first-person viewmodel); a barrel that now points DOWN 30° wants `pitch: -30` — one field, unmeasured (no probe in the sandbox)   // rev 4: MEASURED (the offline probe): the barrel down the fingers (+Y), the top away from the palm's back (−Z), the grip in the palm; span 0.36 m (0.62 was a rifle). rev 5: `turn` (degrees about the gun's own up, applied to the INSTANCE in every holder + the viewmodel) — the new model's grip hangs at +X, so 180 puts its barrel on +X where the muzzle / the glove / the shot expect it; `muzzle` y 0.11 = the new barrel's centre line
     /* THE SHOT: the door flies out of the gun as a folded frame and UNFOLDS on
        the surface — `msPerM` × the distance, clamped to [minMs, maxMs]; the
        recoil kick on the camera (radians) decays over `kickMs`. */

@@ -1,7 +1,10 @@
-/* THE DOOR AGENT (DOOR_RACE_DESIGN.md, 2026-09-14): the race tables, the
-   seven abilities on their tree, the door object's rules run in a vm
-   sandbox (battle.js "THE DOOR" block with stubs), and source guards on
-   every engine site the door touches (gates, fog, sync, AI, HUD, VFX). */
+/* THE DOOR AGENT rev 3 (DOOR_RACE_DESIGN.md, 2026-09-20 — THE GUN, NOT THE
+   DOORS): the race tables, the five-row kit on its tree (every row a shot
+   from the door gun), the hidden 2×2 TRAPDOOR run for real in a vm sandbox
+   (battle.js _trapFootprint + checkTrapTrigger / _springTrap with stubs),
+   the door OBJECT the engine keeps (Grave Passage / Tunnel Network), and
+   source guards on every engine site the kit touches (the travel, the
+   trap, Drop In, the finisher, the animation rule, the gun's pitch). */
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -13,7 +16,7 @@ const D = loadGameData();
 const read = f => fs.readFileSync(path.join(__dirname, f), 'utf8');
 const battle = read('battle.js'), map = read('map.js'), stateSrc = read('state.js'), online = read('online.js');
 const ai = read('ai.js'), hud = read('hud.js'), ui = read('ui.js'), vfx = read('three-vfx-effects.js'), rend = read('three-renderer.js');
-const sprites = read('sprites.js'), server = read('server.js');
+const sprites = read('sprites.js'), server = read('server.js'), dataSrc = read('data.js');
 
 function between(src, a, b) {
     const i = src.indexOf(a); assert.ok(i >= 0, 'missing anchor ' + a);
@@ -22,10 +25,10 @@ function between(src, a, b) {
 }
 
 const RACE = 'door agent';
-const TREE_IDS = ['raceKnockKnock', 'raceBreakingEntering', 'raceSpecialDelivery', 'raceSlam', 'raceExit', 'raceLongWayRound', 'raceTrapdoor'];
-const KINDS = ['door', 'doorBreach', 'doorDelivery', 'doorSlam', 'doorExit', 'doorTrap'];
+const TREE_IDS = ['raceDoorToTheFace', 'raceBreakingEntering', 'raceAirMail', 'raceTrapdoor', 'raceDropIn'];
+const RETIRED = ['raceKnockKnock', 'raceSpecialDelivery', 'raceSlam', 'raceExit', 'raceLongWayRound'];
 
-test('door agent: every race table, both sides, the passive, the statuses', () => {
+test('door agent: every race table, both sides, the passive, the statuses the engine keeps', () => {
     assert.ok(D.AVAILABLE_RACES.includes(RACE));
     assert.equal(D.RACE_PROFILES[RACE].label, 'DOOR Agent');
     assert.equal(D.RACE_PROFILES[RACE].types.join(','), 'human,anomaly');
@@ -34,43 +37,133 @@ test('door agent: every race table, both sides, the passive, the statuses', () =
     assert.equal(D.RACE_PASSIVES[RACE].join(','), 'keyholder');
     const kh = D.PASSIVE_DEFS.keyholder;
     assert.ok(kh && kh.doorHits === 4 && kh.doorFreeToggle === true && kh.doorImmune === true);
+    assert.ok(/no trapdoor ever takes the agent/.test(kh.desc), 'the passive says what it does now');
     assert.ok(D.ACCT_STARTER_UNITS.includes(RACE));
     assert.ok(/'door agent'\]\);/.test(server) && /'door agent',/.test(server), 'server.js race list + starters');
     assert.ok(/'door agent': \{ folder: 'Homosapien'/.test(sprites) && /RACE_MODELS_3D\['door agent'\] = \{/.test(sprites), 'sprites.js path rule + cast models');
     const heat = D.ACH_CATALOG.find(a => a.id === 'champsMastered');
     assert.equal(heat.tiers[heat.tiers.length - 1], D.AVAILABLE_RACES.length);
-    const dataSrc = read('data.js');
-    for (const id of ['exited', 'castFromDoors']) {
-        assert.ok(D.STATUS_DEFS[id], 'STATUS_DEFS.' + id);
-        assert.ok(new RegExp('^    ' + id + ": '", 'm').test(dataSrc), 'STATUS_LIBRARY_DESCS.' + id);
-    }
-    assert.equal(D.STATUS_DEFS.exited.realm, true);
-    assert.equal(D.STATUS_DEFS.exited.blockMove, true);
-    assert.equal(D.STATUS_DEFS.castFromDoors.castFromDoors, true);
+    for (const id of ['exited', 'castFromDoors']) assert.ok(D.STATUS_DEFS[id], 'STATUS_DEFS.' + id + ' (the engine keeps the door object)');
 });
 
-test('door agent: the tree is the homosapien shape and every row carries its kind', () => {
+test('door agent rev 3: five rows on the homosapien-shaped tree, every one a shot from the gun, no placed door anywhere', () => {
     const tree = D.RACE_TREE[RACE];
     assert.equal(tree.length, 4);
-    assert.ok(Array.isArray(tree[0]) && Array.isArray(tree[1]) && !Array.isArray(tree[2]) && Array.isArray(tree[3]), 'twin · twin · single · twin capstone');
+    assert.ok(Array.isArray(tree[0]) && !Array.isArray(tree[1]) && !Array.isArray(tree[2]) && !Array.isArray(tree[3]), 'twin · single · single · capstone');
+    assert.equal(tree.flat().join(','), TREE_IDS.join(','));
     const rows = D.RACE_ABILITIES[RACE];
+    assert.equal(rows.length, 5);
     const byId = Object.fromEntries(rows.map(r => [r.id, r]));
     for (const id of TREE_IDS) assert.ok(byId[id], id);
-    assert.equal(byId.raceKnockKnock.kind, 'door');
-    assert.equal(byId.raceBreakingEntering.kind, 'doorBreach');
-    assert.equal(byId.raceSpecialDelivery.kind, 'doorDelivery');
-    assert.equal(byId.raceSlam.kind, 'doorSlam');
-    assert.equal(byId.raceExit.kind, 'doorExit');
-    assert.equal(byId.raceLongWayRound.kind, 'buff');
-    assert.equal(byId.raceLongWayRound.statusEffects[0].id, 'castFromDoors');
-    assert.equal(byId.raceTrapdoor.kind, 'doorTrap');
-    assert.ok(byId.raceBreakingEntering.rearAttack && byId.raceSpecialDelivery.rearAttack, 'the rear-attack rider');
-    assert.ok(byId.raceExit.apCost === 2 && byId.raceLongWayRound.apCost === 2 && byId.raceTrapdoor.apCost === 2);
-    for (const k of KINDS) assert.ok(new RegExp('^    ' + k + ':\\s*\\{ simTargeting', 'm').test(read('data.js')), 'SIM_DEFAULTS.' + k);
-    assert.ok(D.isCapstoneSpellId('raceLongWayRound') && D.isCapstoneSpellId('raceTrapdoor'), 'ring-3 capstones');
+    for (const id of RETIRED) assert.ok(!byId[id] && !D.SPELL_BY_ID[id], id + ' is gone');
+    for (const r of rows) {
+        assert.equal(r.doorGun, true, r.id + ' is shot from the door gun');
+        assert.ok(!['door', 'doorSlam', 'doorDelivery', 'doorExit', 'doorTrap'].includes(r.kind), r.id + ' never places a door');
+    }
+    /* the swing: plain damage, adjacent, the push and the stagger */
+    assert.ok(byId.raceDoorToTheFace.kind === 'damage' && byId.raceDoorToTheFace.range === 1 && byId.raceDoorToTheFace.pushDistance === 1 && byId.raceDoorToTheFace.damageType === 'physical');
+    assert.equal(byId.raceDoorToTheFace.statusEffects[0].id, 'stagger');
+    /* the way in stays what it was */
+    assert.ok(byId.raceBreakingEntering.kind === 'doorBreach' && byId.raceBreakingEntering.rearAttack === true && !byId.raceBreakingEntering.fromAbove);
+    /* the drop: a shot at the enemy, the fall from three storeys */
+    assert.ok(byId.raceAirMail.kind === 'damage' && byId.raceAirMail.range >= 3 && byId.raceAirMail.groundsFlyers === true && byId.raceAirMail.dropTiles === 3);
+    assert.equal(byId.raceAirMail.statusEffects[0].id, 'stagger');
+    /* the trapdoor: a hidden 2×2 deployable on the trap arsenal, NOT a capstone */
+    const td = byId.raceTrapdoor;
+    assert.ok(td.kind === 'placeTrap' && td.trapType === 'trapdoor' && td.trapSize === 2 && td.maxActivePerCaster === 1 && td.tier === 'II' && td.apCost === 1);
+    assert.ok(!D.isCapstoneSpellId('raceTrapdoor'), 'definitely not a capstone');
+    /* the capstone: the aerial assault */
+    const di = byId.raceDropIn;
+    assert.ok(di.kind === 'doorBreach' && di.fromAbove === true && di.rearAttack === true && di.splashDmg > 0 && di.tier === 'III' && di.apCost === 2 && di.dmg > byId.raceBreakingEntering.dmg);
+    assert.ok(D.isCapstoneSpellId('raceDropIn') && !D.isCapstoneSpellId('raceBreakingEntering'), 'ring 4 is the capstone');
+    /* the execution */
+    const fin = D.FINISHERS[RACE];
+    assert.ok(fin && fin.sig === 'openHouse' && fin.built === true && fin.type === 'anomaly' && /door/i.test(fin.desc));
 });
 
-/* ── the door object, run for real ────────────────────────────────────── */
+/* ── THE TRAPDOOR, run for real ────────────────────────────────────────── */
+function makeTrapCtx() {
+    const units = [
+        { id: 'a1', player: 1, x: 1, y: 1, z: 0, race: 'door agent', hp: 500 },
+        { id: 'e1', player: 2, x: 6, y: 6, z: 0, race: 'knight', hp: 500 },
+        { id: 'e2', player: 2, x: 7, y: 0, z: 0, race: 'door agent', hp: 500 },
+        { id: 'f1', player: 1, x: 0, y: 7, z: 0, race: 'wizard', hp: 500 },
+    ];
+    const log = [], dmg = [], deform = [], falls = [], statuses = [], geom = [];
+    const ctx = {
+        state: { units, traps: [], bombs: [], round: 3, phase: 'battle' },
+        window: { _doorGeom: (id, x, y, extra) => { geom.push({ id, x, y, extra }); return true; } },
+        console,
+        bw: () => 8, bh: () => 8,
+        isInside: (x, y) => x >= 0 && y >= 0 && x < 8 && y < 8,
+        unitAt: (x, y) => units.find(u => !u.dead && u.x === x && u.y === y) || null,
+        isTerrainPassable: (x, y) => !(x === 3 && y === 0),
+        coordLabel: (x, y) => x + ',' + y, unitDisplayName: u => u.id, addLog: s => log.push(s),
+        showFloatingTextForUnit: () => {}, playSfx: () => {}, playDoorSfx: () => {}, shakeBoard: () => {},
+        isUnitAirborne: () => false,
+        unitPassiveValue: (u, k) => (u && u.race === 'door agent') ? ({ doorHits: 4, doorFreeToggle: true, doorImmune: true })[k] : undefined,
+        applyDamageToUnit: (v, d, label, o) => { dmg.push({ id: v.id, d, label, type: o && o.damageType }); v.hp -= d; },
+        getBaseHeightAt: () => 0,
+        applyTerrainDeform: (x, y, r, dfm) => { deform.push({ x, y, r, delta: dfm.centerDelta }); const u = units.find(u => u.x === x && u.y === y); if (u) u.z = (u.z || 0) + dfm.centerDelta; },
+        applyFallDamage: (v, fromZ, toZ, label) => { falls.push({ id: v.id, fromZ, toZ }); },
+        applyStatusEffects: (v, effs, label) => { statuses.push({ id: v.id, effs: effs.map(e => e.id) }); },
+        _skipVisuals: () => true, scheduleBoardRender: () => {}, invalidateActionPanelCache: () => {}, _balAddSpellEffect: () => {},
+        getSquareArea: () => [], getTerrainAt: () => 'grass', setTerrainAt: () => {}, _invalidateBoardGrid: () => {},
+        canOccupy: () => true, animateDisplacement: () => {}, _applyKnockbackHazard: () => {}, triggerTerrainSpellReaction: () => {},
+        getSpellById: () => null, getUnitWeightClass: () => 'medium', nearestWalkableZ: () => 0,
+        log, dmg, deform, falls, statuses, geom,
+    };
+    vm.createContext(ctx);
+    vm.runInContext(between(battle, '        // placeTrap: null when a trap can hide on (x,y), else the reason.', '        // ── Terrain-spell preview prediction'), ctx);
+    vm.runInContext(between(battle, '        function checkTrapTrigger(unit) {', '        function resolveMovePath('), ctx);
+    vm.runInContext('this._trapFootprint = _trapFootprint; this._placeTrapProblem = _placeTrapProblem; this.checkTrapTrigger = checkTrapTrigger;', ctx);
+    return ctx;
+}
+
+test('the trapdoor: the 2×2 footprint clamps and validates, the first enemy on any tile sinks the four, the Keyholder never falls', () => {
+    const c = makeTrapCtx();
+    /* the footprint */
+    const e1 = c.state.units[1];
+    e1.x = 2; e1.y = 6;   // off the far corner for the clamp read
+    let fp = c._trapFootprint(7, 7, 2);
+    assert.ok(fp.x === 6 && fp.y === 6 && fp.tiles.length === 4, 'clamped to the board: ' + JSON.stringify(fp));
+    e1.x = 6; e1.y = 6;
+    fp = c._trapFootprint(2, 0, 2);
+    assert.ok(fp.problem && /Impassable/.test(fp.problem), 'a wall in the footprint refuses it: ' + fp.problem);
+    fp = c._trapFootprint(6, 5, 2);
+    assert.ok(fp.problem && /empty tile/.test(fp.problem), 'a unit in the footprint refuses it: ' + fp.problem);
+    fp = c._trapFootprint(4, 4, 1);
+    assert.ok(fp.tiles.length === 1 && fp.x === 4, 'size 1 is the old rule');
+    fp = c._trapFootprint(4, 4, 2);
+    assert.equal(fp.tiles.map(t => t.x + ',' + t.y).join(';'), '4,4;5,4;4,5;5,5');
+    /* the placement (the branch's shape) */
+    const gid = 'tg-a1-4,4-3';
+    for (const t of fp.tiles) c.state.traps.push({ x: t.x, y: t.y, z: 0, owner: 1, casterUnitId: 'a1', trapType: 'trapdoor', dmg: 60, spellId: 'raceTrapdoor', spellName: 'Trapdoor', groupId: gid, anchorX: 4, anchorY: 4, size: 2 });
+    assert.equal(c.state.traps.length, 4);
+    assert.ok(c._placeTrapProblem(5, 5) === 'Already rigged', 'the far tile of the footprint is rigged too');
+    /* the owner's ally walks over it */
+    const f1 = c.state.units[3]; f1.x = 5; f1.y = 5;
+    assert.equal(c.checkTrapTrigger(f1), false, 'never the owner\'s team');
+    assert.equal(c.state.traps.length, 4);
+    /* the enemy Keyholder walks over it */
+    const e2 = c.state.units[2]; e2.x = 4; e2.y = 5;
+    assert.equal(c.checkTrapTrigger(e2), false, 'no trapdoor takes a door agent');
+    assert.equal(c.state.traps.length, 4);
+    /* the enemy knight steps on the south-east tile */
+    e1.x = 5; e1.y = 5; e2.x = 7; e2.y = 0;
+    assert.equal(c.checkTrapTrigger(e1), true);
+    assert.equal(c.state.traps.length, 0, 'the whole group folds');
+    assert.equal(c.deform.length, 4, 'every tile of the 2×2 sinks');
+    assert.ok(c.deform.every(d => d.delta === -2 && d.r === 0), 'two levels each, no radius');
+    assert.equal(c.deform[0].x + ',' + c.deform[0].y, '5,5', 'the victim\'s tile first');
+    assert.ok(c.dmg.length === 1 && c.dmg[0].id === 'e1' && c.dmg[0].d === 60 && c.dmg[0].type === 'physical', 'the WEAK physical hit');
+    assert.ok(c.falls.length === 1 && c.falls[0].fromZ === 0 && c.falls[0].toZ === -2, 'the fall is paid on top');
+    assert.ok(c.statuses.some(s => s.id === 'e1' && s.effs.includes('stagger')), 'Staggered');
+    assert.equal(c.geom.filter(g => g.id === 'raceTrapdoor').length, 4, 'a door swings down on every tile');
+    assert.ok(c.log.some(l => /4 tiles sink two levels/.test(l)));
+});
+
+/* ── the door OBJECT the engine keeps (Grave Passage / Tunnel Network) ── */
 function makeDoorCtx() {
     const units = [
         { id: 'a1', player: 1, x: 1, y: 1, z: 0, race: 'door agent', _st: {} },
@@ -83,8 +176,6 @@ function makeDoorCtx() {
         console,
         isInside: (x, y) => x >= 0 && y >= 0 && x < 8 && y < 8,
         unitAt: (x, y) => units.find(u => !u.dead && u.x === x && u.y === y) || null,
-        // Production points exclude the source; a source-inclusive mock hid
-        // the first-interior-door sight leak.
         getLinePoints: vm.runInNewContext(between(map, '        function getLinePoints(',
             '        function isRangeBlockedByTerrain(') + 'getLinePoints'),
         unitPassiveValue: (u, k) => (u && u.race === 'door agent') ? ({ doorHits: 4, doorFreeToggle: true, doorImmune: true })[k] : undefined,
@@ -106,103 +197,72 @@ function makeDoorCtx() {
     return ctx;
 }
 
-test('the door object: place, cap, toggle, wall, sight, hits, step-through, origins', () => {
+test('the door object the engine keeps: place, cap, toggle, wall, sight, hits, step-through', () => {
     const c = makeDoorCtx();
     const g = c.window;
     const a1 = c.state.units[0], e1 = c.state.units[1];
     assert.equal(g.DOOR_RULES.hits, 3);
     assert.ok(g.doorTileFree(2, 1) && !g.doorTileFree(1, 1) && !g.doorTileFree(9, 9));
-    const [A, B] = g.placeDoorPair(a1, 2, 1, 4, 3, { spellName: 'Knock Knock' });
+    const [A, B] = g.placeDoorPair(a1, 2, 1, 4, 3, { spellName: 'Grave Passage', fixed: true });
     assert.equal(c.state.doors.length, 2);
-    assert.equal(A.hp, 4, 'Keyholder: the owner\'s doors take 4 hits');
-    assert.ok(A.open && B.open && A.pairId === B.pairId);
+    assert.ok(A.open && B.open && A.pairId === B.pairId && A.fixed);
     assert.equal(g.doorTwin(g.doorAt(2, 1)).id, B.id);
-    // a second pair by the same agent replaces the first (1 per agent)
-    g.placeDoorPair(a1, 2, 2, 5, 5, { spellName: 'Knock Knock' });
-    assert.equal(c.state.doors.length, 2);
-    assert.equal(g.doorAt(2, 1), null, 'the old pair folded away');
-    const A2 = g.doorAt(2, 2), B2 = g.doorAt(5, 5);
-    // shut = a wall + blocks sight through it; open = neither
-    assert.equal(g.doorBlocksMove(2, 2), false);
-    assert.equal(g.doorBlocksSightBetween(0, 2, 4, 2), false);
-    g.setDoorOpen(A2, false);
-    assert.equal(g.doorBlocksMove(2, 2), true);
-    assert.equal(g.doorBlocksSightBetween(0, 2, 4, 2), true, 'a shut door on the line blocks sight');
-    assert.equal(g.doorBlocksSightBetween(0, 2, 2, 2), false, 'the endpoint itself is not interior');
-    g.setDoorOpen(A2, true);
-    // step-through: a unit ending a move ON an open door comes out of the twin
-    a1.x = 2; a1.y = 2;
+    g.setDoorOpen(A, false);
+    assert.equal(g.doorBlocksMove(2, 1), true);
+    assert.equal(g.doorBlocksSightBetween(0, 1, 4, 1), true, 'a shut door on the line blocks sight');
+    g.setDoorOpen(A, true);
+    a1.x = 2; a1.y = 1;
     assert.equal(g.doorStepThrough(a1), true);
-    assert.ok(a1.x === 5 && a1.y === 5, 'out of the twin');
-    // occupied far side → stays
-    e1.x = 2; e1.y = 2; a1.x = 5; a1.y = 5;
-    assert.equal(g.doorStepThrough(e1), false, 'the far side is occupied');
-    a1.x = 1; a1.y = 1;
-    assert.equal(g.doorStepThrough(e1), true, 'enemies use an open door too (D1)');
-    assert.ok(e1.x === 5 && e1.y === 5);
-    e1.x = 6; e1.y = 6;
-    // hits: an enemy's attack takes one hit; your own door is not yours to break
-    assert.equal(g.damageDoorAt(2, 2, a1), false, 'not your own door');
-    assert.equal(g.damageDoorAt(2, 2, e1), true);
-    assert.equal(g.doorAt(2, 2).hp, 3);
-    g.damageDoorAt(2, 2, e1); g.damageDoorAt(2, 2, e1); g.damageDoorAt(2, 2, e1);
+    assert.ok(a1.x === 4 && a1.y === 3, 'out of the twin');
+    assert.equal(g.damageDoorAt(2, 1, e1), true);
+    assert.equal(g.doorAt(2, 1).hp, 3, 'Keyholder: the agent\'s own doors take 4 hits');
+    g.damageDoorAt(2, 1, e1); g.damageDoorAt(2, 1, e1); g.damageDoorAt(2, 1, e1);
     assert.equal(c.state.doors.length, 0, 'at 0 the door AND its twin are gone');
-    // The Long Way Round: origins are the twins of open doors beside the agent
-    g.placeDoorPair(a1, 2, 1, 6, 5, { spellName: 'Knock Knock' });
-    assert.equal(g.doorCastOrigins(a1).length, 0, 'no status, no origins');
-    a1._st.castFromDoors = true;
-    const org = g.doorCastOrigins(a1);
-    assert.equal(org.length, 1);
-    assert.ok(org[0].x === 6 && org[0].y === 5);
-    assert.ok(g.doorCastOriginFor(a1, 6, 6, 2), 'the enemy beside the twin is in reach from it');
-    assert.equal(g.doorCastOriginFor(a1, 6, 6, 2, { dist: () => 9 }), null);
-    // Special Delivery (2026-09-19): the package flies out of ANY of your
-    // open doors — the nearest one that reaches the target — wherever the
-    // agent stands (the old "a door within 2 of the caster" rule is gone)
-    const sd = { kind: 'doorDelivery', range: 3 };
-    const sdo = g._doorOriginForSpell(a1, sd, 6, 6);
-    assert.ok(sdo && sdo.x === 6 && sdo.y === 5, 'out of the door beside the target');
-    a1.x = 0; a1.y = 7;   // far from every door — the doors do the delivering
-    assert.ok(g._doorOriginForSpell(a1, sd, 6, 6));
-    assert.equal(g._doorOriginForSpell(a1, sd, 7, 0), null, 'no door reaches (7,0)');
-    // Knock Knock's near door: the free tile beside the agent nearest the far tile
-    a1.x = 1; a1.y = 1;
-    const near = g._doorNearSpot(a1, { x: 5, y: 1 });
-    assert.ok(near && near.x === 2 && near.y !== 1, 'the near door leans toward the far one (never onto the door already at (2,1))');
-    assert.equal(g._doorNearSpot(a1, { x: 2, y: 1 }).x === 2 && g._doorNearSpot(a1, { x: 2, y: 1 }).y === 1, false, 'never the far tile itself');
-    const reach = g._doorRangeTiles(a1, { kind: 'doorExit', range: 1 });
-    assert.ok(reach.some(t => t.x === 6 && t.y === 6) && !reach.some(t => t.x === 0 && t.y === 0), 'EXIT reaches the tiles beside the open doors only');
-    // EXIT: the enemy must stand on or beside one of your open doors
-    const ex = { kind: 'doorExit', range: 1 };
-    assert.ok(g._doorOriginForSpell(a1, ex, 6, 6));
-    assert.equal(g._doorOriginForSpell(a1, ex, 3, 7), null);
-    g.setDoorOpen(g.doorAt(6, 5), false);
-    assert.equal(g._doorOriginForSpell(a1, ex, 6, 6), null, 'a shut door EXITs nobody');
 });
 
-test('source guards: every engine site the door touches', () => {
-    for (const k of KINDS) assert.ok(new RegExp('^            ' + k + ':\\s*\\{ minRange', 'm').test(battle), 'SPELL_KIND_META.' + k);
-    for (const k of KINDS) assert.ok(battle.includes("else if (spell.kind === '" + k + "') {"), 'doSpell branch ' + k);
-    assert.ok(/doorBlocksMove\(nx, ny\)\) _deployBlocks = true/.test(battle) && /doorBlocksMove\(nx, ny\)\) _decoyBlocks = true/.test(battle), 'both path gates');
-    assert.ok((map.match(/doorBlocksMove\(x, y\)\) return false/g) || []).length === 2, 'canOccupy + canOccupy3D');
-    assert.ok(/doorBlocksSightBetween\(x1, y1, x2, y2, board\.doors \|\| \[\]\)\) return true;/.test(map), 'isRangeBlockedByTerrain');
-    assert.ok(/for \(const d of state\.doors\) \{\s*if \(d\.owner !== player \|\| !d\.open/.test(map), 'computeVisibleTiles: the twin\'s 3×3');
-    assert.ok(/doorStepThrough\(unit\);/.test(battle) && /_tetherFollow\(unit, _originX, _originY, _fromZ\);\s*\/\/ 🚪/.test(battle), 'finishMoveAt step-through');
-    assert.ok(/if \(unit && unitHasStatus\(unit, 'exited'\)\) return true;/.test(battle), 'EXITED is realm-shielded from everyone');
-    assert.ok(/state\._doorRearCast && state\._doorRearCast\.unitId === sourceUnit\.id/.test(battle), 'the rear rider');
-    assert.ok(/state\._doorRearCast = \(spell\.rearAttack \|\| _doorOrg\)/.test(battle) && /state\._doorRearCast = null;/.test(battle), 'armed at the cast, disarmed at finish');
-    assert.ok(/else if \(!_doorFreeAction\) spendAP\(unit, spellApCost\);/.test(battle), 'Keyholder\'s free toggle');
-    assert.ok(/placeDoorPair\(unit, unit\.x, unit\.y, x, y, \{ spellName: spell\.name, fixed: true/.test(battle), 'deployPair places fixed doors');
-    assert.ok(/damageDoorAt\(tile\.x, tile\.y, unit/.test(battle) && /damageDoorAt\(cx, cy, unit/.test(battle), 'AoE + line sweeps');
-    assert.ok((battle.match(/state\.doors = \[\];/g) || []).length >= 4 && (map.match(/state\.doors = \[\];/g) || []).length === 2, 'the reset blocks');
-    assert.ok(/doors: \[\],/.test(stateSrc) && /doors: state\.doors,/.test(stateSrc) && /key \+= '\|d' \+ d\.x/.test(stateSrc), 'state init + snapshot + vision cache key');
-    assert.ok(/_tcSpell\.kind === 'door'/.test(online) && /pickX: _tcDoorPick/.test(online) && /data\.pickX != null && data\.pickY != null/.test(online), 'online: the guest\'s tile pick');
-    assert.ok(/get DOOR_RULES\(\) \{ return DOOR_RULES; \}, doorAt, doorById, doorTwin, doorTeamPairs, doorTileFree/.test(battle), 'GAME exposes the door reads (DOOR_RULES through a getter — the const is declared after the GAME literal, a bare read is a TDZ throw that killed the whole boot on 2026-09-14)');
-    for (const k of KINDS) {
-        assert.ok(new RegExp("^        if \\(.*kind === '" + k + "'.*\\) \\{", 'm').test(ai), 'ai.js scoreSpell/findSpellTarget dispatch ' + k);
-        assert.ok(new RegExp("k === '" + k + "'").test(hud), 'hud.js part ' + k);
-    }
-    assert.ok(/'door','doorBreach','doorDelivery','doorSlam','doorExit','doorTrap'/.test(ui), 'ui.js library kinds');
-    for (const id of TREE_IDS.filter(i => i !== 'raceKnockKnock')) assert.ok(vfx.includes("SPELL_MAP['" + id + "']"), 'VFX alias ' + id);
-    assert.ok(/function _buildDoor3D\(d\)/.test(rend) && /_buildDoor3D\(dd\)/.test(rend) && /h = _hashInt\(h, 31\); h = _hashInt\(h, dd\.x\)/.test(rend), 'the renderer draws + serials doors');
+test('source guards: every engine site the rev 3 kit touches', () => {
+    /* the travel: a doorGun damage row is the shot from the gun, never a strike leap / a bolt */
+    assert.ok(/if \(spell\.doorGun && spell\.kind === 'damage'\) return 'doorGun';/.test(battle), 'resolveTravel');
+    const trav = between(battle, '            doorGun(ctx) {', '            none(ctx) {');
+    assert.ok(/window\._doorGeom\('raceDoorGun:shot', at\.x, at\.y, \{ fromX: unit\.x, fromY: unit\.y \}\)/.test(trav), 'the handler fires the shot');
+    assert.ok(/spell\.doorAt === 'between'/.test(trav) && /cineUnitFade\(target, 1, 0, 0/.test(trav), 'the tile between for the swing; the Air Mail victim faded for its fall');
+    /* the trapdoor */
+    assert.ok(/function _trapFootprint\(x, y, size\)/.test(battle) && /_placeTrapProblem, _trapFootprint, _structurePlanFor,/.test(battle), 'the footprint helper, on GAME');
+    const place = between(battle, "} else if (spell.kind === 'placeTrap') {", "} else if (spell.kind === 'scan') {");
+    assert.ok(/_trapFootprint\(x, y, spell\.trapSize \|\| 1\)/.test(place) && /groupId: _gid, anchorX: _tfp\.x/.test(place), 'the branch places the footprint as one group');
+    assert.ok(/onlyPlayer: unit\.player/.test(place) && /'raceTrapdoor:set'/.test(place), 'the laying recipe is the owner\'s alone');
+    assert.ok(/t\.trapType === 'trapdoor' && typeof unitPassiveValue === 'function' && unitPassiveValue\(unit, 'doorImmune'\)/.test(battle), 'checkTrapTrigger: the Keyholder');
+    const spring = between(battle, "            if (trap.trapType === 'trapdoor') {", "            } else if (trap.trapType === 'spike') {");
+    assert.ok(/applyTerrainDeform\(t\.x, t\.y, 0, \{ centerDelta: -2, edgeDelta: 0 \}\)/.test(spring) && /applyFallDamage\(victim/.test(spring) && /id: 'stagger'/.test(spring), 'the spring sinks, falls, staggers');
+    assert.ok(/\.fire\('impact', trap\.spellId/.test(spring), 'the victim\'s tile through the impact intent');
+    assert.ok(new RegExp('^    placeTrap:\\s*\\{ simTargeting', 'm').test(dataSrc), 'SIM_DEFAULTS.placeTrap');
+    /* Drop In */
+    const breach = between(battle, "else if (spell.kind === 'doorBreach') {", "else if (spell.kind === 'doorDelivery') {");
+    assert.ok(/const _fromAbove = !!spell\.fromAbove;/.test(breach) && /'raceDropIn:door'/.test(breach) && /lift: spell\.dropTiles \|\| 3/.test(breach), 'the door in the air');
+    assert.ok(/spell\.splashDmg/.test(breach) && /isEnemyUnit\(u, unit\)/.test(breach), 'the slam on the neighbours');
+    assert.ok(/cineUnitFade\(unit, 1, 0, 0\)/.test(breach), 'the agent faded for the drop');
+    /* the door object's gates stay */
+    assert.ok(/doorBlocksMove\(nx, ny\)\) _deployBlocks = true/.test(battle) && (map.match(/doorBlocksMove\(x, y\)\) return false/g) || []).length === 2, 'the door object\'s gates');
+    assert.ok(/placeDoorPair\(unit, unit\.x, unit\.y, x, y, \{ spellName: spell\.name, fixed: true/.test(battle), 'deployPair still places fixed doors');
+    assert.ok(/doors: \[\],/.test(stateSrc) && /doors: state\.doors,/.test(stateSrc), 'state init + snapshot');
+    /* the finisher */
+    assert.ok(/^            openHouse: \{/m.test(battle) && /V\.sigOpenHouse3D\(u\.x, u\.y, p\.x, p\.y/.test(battle), 'the director');
+    assert.ok(/1 - Math\.pow\(1 - i \/ \(N - 1\), 1\.6\)/.test(battle) && /1 - Math\.pow\(1 - i \/ \(N - 1\), 1\.6\)/.test(vfx), 'the director and the signature walk the same cadence');
+    /* the AI reads the kit through the kinds it already knows */
+    assert.ok(/kind === 'placeTrap' && target/.test(ai) && /kind === 'doorBreach' \|\| kind === 'doorTrap'/.test(ai), 'ai.js scores placeTrap + doorBreach');
+    assert.ok(/sp\.trapSize > 1/.test(hud) && /sp\.fromAbove/.test(hud), 'hud.js parts');
+    assert.ok(/'placeTrap'/.test(ui.slice(ui.indexOf('const _SLB_KINDS'), ui.indexOf('const _SLB_KINDS') + 1600)), 'ui.js library kinds');
+    /* the animation: every doorGun row plays the quick draw */
+    assert.ok(/if \(spell\.doorGun\) return 'ranged';/.test(sprites), 'classifySpellAnimKind');
+    assert.ok(/^    trapdoor: \[/m.test(sprites), 'TRAP_TILE_SPRITES.trapdoor (the owner\'s sigil)');
+    /* the gun: held on the board, pitched in every holder */
+    assert.ok(/basicAttackKind: 'punch', hold: _DOOR_AGENT_HOLD/.test(sprites) && /if \(def\.hold\) \{ try \{ _unitAttachHeld\(m, def\.hold, ts\);/.test(rend), 'every Door Agent carries the gun');
+    assert.ok(/function _heldPitchGroup\(hold, inst\)/.test(rend), 'the pitch wrapper');
+    assert.equal((rend.match(/_heldPitchGroup\(/g) || []).length, 4, 'defined once, used in the three holders');
+    assert.ok(typeof D.HQ_PORTAL_RULES.gun.pitch === 'number', 'HQ_PORTAL_RULES.gun.pitch');
+    assert.ok(/pitch: G\.pitch \|\| 0/.test(rend), '_hqGunAttach passes it');
+    /* the geometry gate */
+    assert.ok(/extra && extra\.onlyPlayer != null && typeof getViewerPlayer === 'function'/.test(vfx), 'fireGeometry: onlyPlayer');
+    /* online: nothing new to relay — the trap syncs on state, the recipes ride the impact intent / the geometry wrapper */
+    assert.ok(/fireGeometry:\s*\[\[1, 2\]\]/.test(online), 'the geometry relay');
 });

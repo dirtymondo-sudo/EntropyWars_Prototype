@@ -440,6 +440,100 @@ menu rules as the rest of the game." What changed:
 Tests: door-race.test.js (the delivery rule, the near spot, the reach). Unseen live:
 the near spot on a crowded flank, the greyed rows' reasons.
 
+### 2026-09-20 — rev 3: THE GUN, NOT THE DOORS (local delivery, `ENTROPY_WARS_DOOR_AGENT_REV3.zip`)
+
+The user: "completely rework the DOOR Agent spells. Breaking and Entering can
+stay. Drop the whole mechanic of needing to place doors down individually. All
+of these spells, Breaking and Entering included, should have the agent holding
+the door gun and shooting a door wherever the spell demands — a door for
+himself or at an enemy; strictly cosmetic." Five rows, one execution, the gun
+always in hand, the gun's pitch.
+
+**The kit** (data.js `RACE_ABILITIES['door agent']`, the tree
+`[[Door to the Face, Breaking and Entering], Air Mail, Trapdoor, Drop In★]`;
+every row wears `doorGun: true` → sprites.js `classifySpellAnimKind` returns
+`'ranged'` = the quick-draw clip, and a `damage` row's TRAVEL is the shot —
+battle.js `resolveTravel` → `TRAVEL_HANDLERS.doorGun`, which fires
+`raceDoorGun:shot` from the hand to the tile the spell needs a door on):
+
+- **Door to the Face** — `damage`, range 1, WEAK physical, push 1, Stagger.
+  The recipe `_sigDoorSwing3D` (registered under the spell id — `fire('impact')`
+  runs the geometry registry by id with the caster in params) stands a door
+  between the two and slams its leaf into the victim; the shot lands on the
+  tile between (`doorAt: 'between'`).
+- **Breaking and Entering** — unchanged (`doorBreach`, the way in, rear).
+- **Air Mail** — `damage`, range 4, MEDIUM physical, `groundsFlyers`, Stagger,
+  `dropTiles: 3`. `_sigDoorAirMail3D`: the victim's own door takes a body, a
+  second door hangs three storeys up FACE DOWN (`_sigDoorRig3D` grew `lift`
+  + `face: 'down'`), opens, and the body falls out onto the tile; the travel
+  handler fades the real victim out for the fall and back in on the landing.
+- **Trapdoor** — `placeTrap` (the trap arsenal: hidden from the enemy, the
+  owner's sigil `TRAP_TILE_SPRITES.trapdoor`, sprung by the first enemy to END
+  a move on it, the Dowsing Rod reveals it), `trapType: 'trapdoor'`,
+  **`trapSize: 2`** = a 2×2 (`_trapFootprint(x, y, size)`: the anchor is
+  CLAMPED so the footprint fits the board, every tile must pass
+  `_placeTrapProblem`; the four records share a `groupId` and the cap counts
+  groups), one per agent, tier II — NOT a capstone. The spring
+  (`_springTrap`'s `trapdoor` branch): the whole group folds, the WEAK hit,
+  every tile sinks TWO levels (`applyTerrainDeform` −2 per tile — a grounded
+  unit rides its tile down), the fall is paid on top, Staggered; the victim's
+  tile through the impact intent (the sprite burst + the flat-door recipe),
+  the other three through `raceTrapdoor` with a stagger. The laying
+  (`raceTrapdoor:set`) and its shot are the OWNER's alone: `fireGeometry`'s
+  new **`onlyPlayer`** gate draws a geometry only on that player's screen
+  (the relay still carries it, so a guest owner sees it; an enemy never does).
+  Keyholder: no trapdoor ever takes a door agent (`checkTrapTrigger`).
+- **Drop In★** — `doorBreach` + **`fromAbove`**: the shot goes INTO THE AIR
+  over the landing (`lift`), `_sigDoorDropIn3D` hangs the door face down and
+  drops the agent's body out of it; the real agent is faded for the fall and
+  back in on the hit; HEAVY physical, rear, Stagger, **`splashDmg`** on every
+  other enemy beside the landing. Tier III, 2 AP, range 5.
+
+**The execution** — `FINISHERS['door agent']` = **OPEN HOUSE** (`sig:
+'openHouse'`, built): six doors stand up round the victim (shot there from the
+gun), the agent's body comes out of one, hits, and is gone through another —
+faster each time (the director and `_sigOpenHouse3D` walk the same
+accelerating curve, `1 − (1 − i/(N−1))^1.6`) — until every door opens at once
+and the door farthest from the caster takes the victim; every door slams.
+`_FIN_DIRECTORS.openHouse` (a face cam, the god shot over the ring, slow-mo
+into the last two, the dive, the freeze), `_FIN_STAGE.openHouse` for the
+forge, finishers.test.js's BUILT table (52 of 99).
+
+**Retired**: Knock Knock, Special Delivery, Slam, EXIT, The Long Way Round —
+the rows, the tree slots, the SPELL_MAP rows. The door OBJECT in battle.js
+"THE DOOR" (`state.doors`, the kinds `door` / `doorSlam` / `doorDelivery` /
+`doorExit` / `doorTrap`, `castFromDoors`, `exited`, the `_doorRangeTiles`
+reach, online's tile-pick relay) STAYS — Grave Passage / Tunnel Network
+(`deployPair`) place fixed doors on it and their step-through / wall / sight
+rules are still live; the agent-only branches are dormant, not deleted.
+`PASSIVE_DEFS.keyholder` keeps its fields (its desc reads what is live now).
+
+**The gun**: the Door Agent's hold (`_DOOR_AGENT_HOLD` on both genders,
+`_unitAttachHeld` at rig build) was already in every battle; what changed is
+**THE PITCH** — `HQ_PORTAL_RULES.gun.pitch` (degrees the MUZZLE DROPS about
+the gun's own lateral axis, after `turn`), applied by three-renderer.js
+`_heldPitchGroup` in the three holders (the walker's hand, the board, the
+first-person viewmodel). Shipped at **30** for the user's "~30° off
+parallel"; a barrel that now points DOWN 30° wants `pitch: -30` — one field,
+UNMEASURED (no probe in this sandbox). `_hqGunMuzzle` reads the instance
+through `holder.userData.inst` so the laser sight / the shot leave the pitched
+barrel.
+
+**Files**: data.js (R2 + Render), battle.js, sprites.js, three-renderer.js,
+three-vfx-effects.js, hud.js (R2), index.html (Render, token
+`20260920-door-agent-rev3-01-cors`), door-race.test.js, door-vfx.test.js,
+finishers.test.js, this doc, FINISHER_PLAN.md, CLAUDE.md (repo). Tests:
+door-race (5) · door-vfx (3) · finishers (23) · capstone-vfx · hq-portal ·
+champ-rework · sig-refusal-cleanup · mapped-effect-lifetime ·
+basic-attack-delivery · earned-doors green; `npm run test:quick` green.
+`party-builder.test.js` #15 is red on HEAD before this delivery. NOT
+playtested (RULE #1c): the swing's read at range 1, the Air Mail fall against
+the damage number (the fade-back at +1150 ms vs the recipe's landing at
+1150), the Drop In fade / landing beat, the trapdoor's four sigils on the
+board and the sink, the six-door ring on a crowded flank, the gun's pitch
+sign, the AI placing a 2×2 near an edge (the anchor clamps; a footprint on a
+unit refuses the cast).
+
 ## 2026-09-14 — Phase 6 prerequisite: door LOS and production breach evidence
 
 Fixed `doorBlocksSightBetween` skipping the first interior tile: production `getLinePoints` excludes the source. Start at index 0; exclude only the endpoint so doors remain targetable. The existing door test now uses the actual map helper instead of a source-inclusive mock. New door LOS tests exercise the real map/AI/line-walk boundary, eight directions and both seats. 22 new tests pass (18 fail on unchanged battle.js); full suite 1,095 passed, zero failures, four skips; syntax 142/142. No new state/relays, no live test or deployment.
