@@ -7248,3 +7248,36 @@ FINISHER_PLAN §7's delivery-14 entry lists what to eyeball first — the
 decree's size, the comets' fall, the gavel from the crane, the flood's edge
 on a raised board, the asteroid's heading, the dragon's silhouette, the
 headstone's text, the mower's lane, the eight camera paths.
+
+## EIGHT MORE EXECUTIONS — Release the Kraken · Nessie Surfaces · Avalanche · Space Disco · Assimilated · Eruption · Flash Frozen · Through the Wall (FINISHER_PLAN delivery 15) — 2026-09-20, local delivery
+The next eight `FINISHERS` rows in roster order are BUILT (eighty-six of 99;
+13 remain): kraken `releaseTheKraken` (`_sigReleaseTheKraken3D` — the sea
+round the tile, eight arms up through it (the misc `tentacle` clones over
+chain arms), the lift, THE BEAK out of the centre, the ink), loch ness
+monster `nessieSurfaces` (`_sigNessieSurfaces3D` — the loch, three humps,
+the neck under the tile, the flash, THE PHOTO (`_finPhotoTex`) out of the
+water, the whip down), yeti `avalanche` (`_sigAvalanche3D` — the mountain
+rises beyond the victim, the cap cracks, a wedge of masses races the line
+and STOPS on the tile, the mound, the flag), barbarella `spaceDisco`
+(`_sigSpaceDisco3D` — the moon-sized mirror ball on a cable, the dance
+floor, four sweeping spots, the shells one by one then twelve at once, the
+cable snaps, the ball on the one seat; the spawner has no delay — a shell's
+burst is a `pending` row a later tick spends), black goo `assimilated`
+(`_sigAssimilated3D` — the pools, the tendrils, the shell, the body taken
+apart, nine goo figures wearing THE FACE (`_finMaskTex`)), golem `eruption`
+(`_sigEruption3D` — the tile rises into a cone, the cracks, the column, the
+`_finRockBody` lava bombs, the ash, the body into the crater, NO.), ice queen
+`flashFrozen` (`_sigFlashFrozen3D` — the block, the pedestal, the velvet
+rope, three lamps for the director's three cuts, the fingertip, the shards),
+juggernaut `throughTheWall` (`_sigThroughTheWall3D` — eight brick walls
+(`_finBrickTex`) along the line, the stand-in's accelerating charge through
+every one, the body carried through the four ahead, the last wall's hole).
+Each = a director in battle.js `_FIN_DIRECTORS` (the DELIVERY 15 block), the
+signature in "THE FINISHER PASS 2" (the DELIVERY 15 block; `_sigRunOwned` +
+`_fxDelay`, called inside the relayed cinematic — RULE #2), a
+`_FIN_STAGE[sig]` script for the forge, a row in finishers.test.js's BUILT +
+SIG_FN tables. Smoke-tested in a stub-THREE harness (every tick from four
+placements; not a render). UNSEEN LIVE (RULE #1c): FINISHER_PLAN §7's
+delivery-15 entry lists what to eyeball first — the tentacle GLBs' lean, the
+mountain's distance, the ball's size, the cone under the real model, the
+walls' spacing on a short line, the eight camera paths.

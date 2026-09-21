@@ -197,6 +197,108 @@ spells), a ziggurat tier block, a gothic buttress.
 
 ## 7. Log
 
+- **2026-09-20 — EIGHT MORE EXECUTIONS in roster order (delivery 15).** The
+  next eight `FINISHERS` rows with `sig: null` in `AVAILABLE_RACES` order are
+  BUILT (eighty-six of 99; 13 remain): kraken **Release the Kraken**
+  (`releaseTheKraken` / `_sigReleaseTheKraken3D` — the board goes to sea round
+  the victim (a dark disc that heaves, a foam rim, spray), EIGHT ARMS come up
+  through it one by one on a ring (the misc kit's `tentacle` / `tentacle2`
+  clones rising and leaning in when the cache has them, tapered chains of
+  spheres with suckers under them), sway, close on the body and LIFT it three
+  tiles up turning it over; THE BEAK — two black mandibles on a hinge inside
+  a ring of arm — rises out of the centre under the body, the arms drop the
+  body in, the snap, the INK disc and the arms sink back; the director's
+  crane climbs with the lift, the fall-follow drops to the beak), loch ness
+  monster **Nessie Surfaces** (`nessieSurfaces` / `_sigNessieSurfaces3D` —
+  the loch rises through the map with mist standing on it, three HUMPS
+  surface in an arc behind the victim each on its own ripple ring, THE NECK
+  (a `_finChain` S to a small head with two eyes) comes up UNDER the tile
+  and lifts the body on its brow, a camera FLASH and THE PHOTO rises out of
+  the water — `_finPhotoTex(caption)`, a canvas: a grey field, a dark smudge
+  where the neck was, EXHIBIT A, OUT OF FOCUS — the neck whips down and takes
+  the body under, the humps dive; the director freezes on the flash under a
+  desat grade), yeti **Avalanche** (`avalanche` / `_sigAvalanche3D` — snow
+  falls and the ground goes white, THE MOUNTAIN (a six-tile white cone with
+  three rock bands) rises out of the far side of the board beyond the victim,
+  the cap CRACKS (a dark line, a puff) and THE FRONT — a wedge of forty-two
+  white masses whose origin is its leading face — races along the line on a
+  spray of snow, faster as it comes (an ease that snaps short), and STOPS
+  EXACTLY on the victim's tile, the leading face a half-tile short of the
+  caster's side, the body under a mound with a red marker flag; the director's
+  sky watch waits for the mountain and a fly-by crosses the front),
+  barbarella **Space Disco** (`spaceDisco` / `_sigSpaceDisco3D` — THE MIRROR
+  BALL the size of a moon (`_finDiscoTex`, a tile grid) is lowered on its
+  cable over the victim and turns, glints scattering over the board, a dance
+  floor (the 5×5 cycling six colours) lights up under them, four spotlights on
+  posts sweep to the ball, the AERIAL SHELLS go up one by one from round the
+  board (the spawner has no delay — a shell's burst is a `pending` row
+  spent by a later tick) and burst in the sky, THE FINALE — twelve at once —
+  the cable SNAPS and the ball falls on the one seat under it, one bounce, a
+  roll off the tile; the director's fall-follow rides the ball down), black
+  goo **Assimilated** (`assimilated` / `_sigAssimilated3D` — black pools
+  spread from the victim's tile outward over the 5×5, bubbling; six tendrils
+  arch out of them onto the body and a black shell climbs it from the feet;
+  the body and the shell SINK into the pool, seven pieces float up and go
+  under; then NINE goo figures stand up — the victim's tile first, then the
+  neighbours — every one wearing THE FACE (`_finMaskTex`, a pale oval, two
+  dark eyes, a flat mouth) and turned to the caster, WE ARE MANY; they sink
+  together and the pools shrink; the director's reverse-OTS puts the caster
+  behind the nine), golem **Eruption** (`eruption` / `_sigEruption3D` — the
+  tile RISES into a cone with a crater rim and a glowing throat, the body on
+  its summit, eight cracks glow up the flanks with spurts of ember, the cone
+  jitters; THE ERUPTION: a turning column of fire six tiles high, eight
+  `_finRockBody` lava bombs (a glow sprite on each) arcing out on parabolas
+  and landing in fireballs, an ash sphere swelling over the summit, the body
+  flung up on the column three turns and dropped INTO the crater, a lava
+  flow down the caster's flank, and NO. rises in the smoke; the director's
+  crane climbs with the cone, the sky watch rides the column), ice queen
+  **Flash Frozen** (`flashFrozen` / `_sigFlashFrozen3D` — frost races across
+  the ground, the body is frozen mid-scream in a translucent block (edges
+  lit) that snaps on with a flash and pales the body, a marble pedestal
+  rises under it; THE GALLERY: four brass posts and a velvet rope, three
+  gallery lamps that come on one after another from three angles — the
+  director cuts to each (a witness cam, a reverse OTS, a glam cam) — and a
+  CENTREPIECE plaque; THE FINGERTIP (one bright point) crosses from the
+  queen's hand to the block and the piece shatters into thirty shards, the
+  pedestal left bare), juggernaut **Through the Wall** (`throughTheWall` /
+  `_sigThroughTheWall3D` — eight brick walls (`_finBrickTex`) stand up along
+  the line, four behind the caster out past the board's edge and four beyond
+  the victim; the juggernaut's stand-in (a torso, a helm, a red visor, two
+  pauldrons — the real model faded by the director) starts eight tiles back
+  and charges on an accelerating curve that lands on the victim at the hit,
+  every wall it reaches bursting into fourteen bricks with a shake, the body
+  taken on its shoulder and CARRIED through the four walls ahead off the far
+  edge; the last wall stays standing with a body-shaped hole; AND THE NEXT
+  ONE; the director's fly-by runs the line twice, the charge and the carry).
+  Each = a director in battle.js `_FIN_DIRECTORS` (the DELIVERY 15 block),
+  the signature in "THE FINISHER PASS 2" (the DELIVERY 15 block;
+  `_sigRunOwned` + `_fxDelay`, called inside the relayed cinematic — RULE
+  #2), a `_FIN_STAGE[sig]` script for the forge, a row in finishers.test.js's
+  BUILT + SIG_FN tables. Four cached canvas textures joined the section
+  (`_finMaskTex` · `_finPhotoTex` · `_finDiscoTex` · `_finBrickTex`).
+  Smoke-tested in a stub-THREE harness (every tick of every signature at
+  16 ms from four caster / victim placements — the caster ON the victim's
+  tile included —, no NaN in any position / scale / rotation / opacity /
+  colour / spawn; not a render). Files: data.js, battle.js,
+  three-vfx-effects.js, index.html (`20260920-finishers-15-cors`),
+  finishers.test.js, CLAUDE.md, this plan. Not playtested (RULE #1c): the
+  tentacle GLBs' lean (the clone rises on its base and leans toward the
+  centre by `rotation.x / z` — a file whose root is not at its base stands
+  wrong; the chain arms under it are the fallback look), the beak's read
+  against the arm ring, the neck's S at a big tile, the photo's legibility
+  at 1.6 tiles, the mountain's distance (`MD` 7.5 tiles — off a small board
+  it stands in the sky roster), the front's stop against the caster's tile,
+  the mirror ball's size against the dome and the bounce's height, the
+  shells' spread from `tilePx`, the mask's scale on the nine, the tendrils'
+  arch, the cone's summit height against the victim's model (the body
+  stand-in rides it; the real model stays on the tile under the cone — the
+  director does not fade it), the lava bombs' landing fireballs, the block's
+  translucency over the real model, the three lamps against the three
+  cuts, the fingertip's path, the walls' spacing on a short line (a caster
+  adjacent to the victim puts the first wall behind at 1.5 tiles from the
+  caster), the charge's speed curve, the hole's plane, the eight camera
+  paths.
+
 - **2026-09-20 — EIGHT MORE EXECUTIONS in roster order (delivery 14).** The
   next eight `FINISHERS` rows with `sig: null` in `AVAILABLE_RACES` order are
   BUILT (seventy-eight of 99; 21 remain): overlord **Cataclysm Decree**
