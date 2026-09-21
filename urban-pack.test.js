@@ -78,7 +78,9 @@ test('THE HOARDINGS: a city\'s yard walls wear the corrugated sheet one storey t
 });
 
 test('THE TEXTURED BUILDINGS: a gen.texP share of the lots (seeded per lot) and every low lot are composed from the pack in one batch per sheet; the styles name real families; the fronts skip a textured lot; the shares ride the compiled plan', () => {
-    for (const id of [STREETS, GRID]) { const g = HQ.rooms[id].terrain.gen, info = D.hqTerrainInfo(id); assert.equal(g.texP, 0.5, id); assert.equal(info.gen.texP, 0.5, id + ': the share rides the plan'); assert.ok(info.gen.ruinP >= 0 && info.gen.ruinP <= 1); }
+    /* THE PRISM CITY (2026-09-21 — the user): Disaster City wears MORE of the map-builder prisms than the Grid — its textured share is the lower one */
+    for (const id of [STREETS, GRID]) { const g = HQ.rooms[id].terrain.gen, info = D.hqTerrainInfo(id); assert.ok(g.texP > 0 && g.texP < 1, id); assert.equal(info.gen.texP, g.texP, id + ': the share rides the plan'); assert.ok(info.gen.ruinP >= 0 && info.gen.ruinP <= 1); }
+    assert.ok(HQ.rooms[STREETS].terrain.gen.texP < HQ.rooms[GRID].terrain.gen.texP, 'Disaster City is the prism city');
     assert.ok(HQ.rooms[STREETS].terrain.gen.ruinP > HQ.rooms[GRID].terrain.gen.ruinP, 'Disaster City is the ruined one');
     const fn = renderer.slice(renderer.indexOf('    var HQ_TEXB = {'), renderer.indexOf('    function _hqBuildCityLots(room, info, G, TM, rng, TK) {'));
     assert.ok(/cell: 1\.75, storey: 3\.5/.test(fn), 'one 128 px tile a cell, two a storey');

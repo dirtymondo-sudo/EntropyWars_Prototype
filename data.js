@@ -1563,8 +1563,8 @@ const TERRAIN_RULES = {
     carpet_2: { label: 'Carpet II',  short: 'CP2', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
     carpet_3: { label: 'Carpet III', short: 'CP3', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
     carpet_4: { label: 'Carpet IV',  short: 'CP4', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
-    gold_2:  { label: 'Gilded Floor II',  short: 'GL2', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
-    gold_3:  { label: 'Gilded Floor III', short: 'GL3', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
+    gold_2:  { label: 'Brushed Gilt II',  short: 'GL2', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
+    gold_3:  { label: 'Brushed Gilt III', short: 'GL3', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
     metal_2: { label: 'Metal Grate II',   short: 'MT2', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
     grass_3: { label: 'Grass III', short: 'GR3', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
     grass_4: { label: 'Grass IV',  short: 'GR4', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
@@ -1609,7 +1609,7 @@ const TERRAIN_RULES = {
     drywall_2:  { label: 'Drywall II',  short: 'DY2', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
     drywall_3:  { label: 'Drywall III', short: 'DY3', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
     drywall_4:  { label: 'Drywall IV',  short: 'DY4', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
-    metal_3:    { label: 'Metal Grate III', short: 'MT3', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
+    metal_3:    { label: 'Blued Steel', short: 'MT3', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
     tilefloor:   { label: 'Tile Floor',    short: 'TIL', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
     tilefloor_2: { label: 'Tile Floor II', short: 'TI2', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
     /* 2026-07-08 — the full R2 terrain-folder batch promoted from texture-only
@@ -1636,7 +1636,7 @@ const TERRAIN_RULES = {
     diamond:        { label: 'Diamond Plate',   short: 'DIA', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
     brokenglass:    { label: 'Broken Glass',    short: 'GLS', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
     gunmetal:       { label: 'Gunmetal',        short: 'GUN', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
-    gunmetal_2:     { label: 'Gunmetal II',     short: 'GN2', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
+    gunmetal_2:     { label: 'Gunmetal Plate', short: 'GN2', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
     copper:         { label: 'Copper',          short: 'CPR', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
     concrete_floor: { label: 'Concrete',        short: 'CNC', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
     checkerboard_2: { label: 'Checkerboard II', short: 'CH2', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
@@ -31684,12 +31684,12 @@ const DOOR_HQ = {
                 /* THE URBAN PACK (2026-09-17): the asphalt is the floor sheet (the corridors), the pavement slabs the path sheet (the sidewalk band + the door paths), the yards' concrete the cliff sheet (the block interiors + the outer ground); the paint, the kerbs, the manholes and the signs are three-renderer.js _hqBuildRoadMarkings */
                 floor: 'urban:PlasterWallPainted1b', cliff: 'urban:ConcreteStriped2a', path: 'urban:TileGeneric1a',
                 noise: { amp: 0.05, scale: 6 },
-                gen: { kind: 'city', seed: 7, walkW: 2.4, kerb: 0.12, wallH: 3.2, lotPitch: 9.5, lotW: [6.4, 8.2], lowP: 0.22, fronts: 'window', fenceKey: 'urban:MetalCorrugatedPainted1a', fenceH: 1.75, texP: 0.5, ruinP: 0.35,
+                gen: { kind: 'city', seed: 7, walkW: 2.4, kerb: 0.12, wallH: 3.2, lotPitch: 9.5, lotW: [6.4, 8.2], lowP: 0.16, fronts: 'window', fenceKey: 'urban:MetalCorrugatedPainted1a', fenceH: 1.75, texP: 0.22, ruinP: 0.35,   /* 2026-09-21 (the user): Disaster City is the PRISM city — more of the map-builder buildings than the Grid or the Strip (texP 0.22), fewer flat roofs; THE INFILL fills every block */
                        /* THE DISTRICTS (D2): three bands — the lot rows carry each band's look */
                        districts: [
-                           { id: 'financial', label: 'THE FINANCIAL BLOCKS', rect: [-112, -44, 112, 44], storeys: [2, 5], style: 'office', texP: 0.5, ruinP: 0.35 },
-                           { id: 'oldtown',   label: 'THE OLD TOWN',         rect: [-112, -88, 112, -44], storeys: [1, 2], lotW: [5.2, 7.4], lotD: [7, 10], lowP: 0.3, style: 'residential', texP: 0.9, ruinP: 0.15, fenceKey: 'bricks_2', fenceH: 1.9 },
-                           { id: 'docks',     label: 'THE DOCKS',            rect: [-112, 44, 112, 88], storeys: [1, 2], lotW: [8, 11], lotD: [9, 12], lowP: 0.35, style: 'factory', texP: 0.85, ruinP: 0.45, fenceKey: 'urban:MetalCorrugatedPainted2a', fenceH: 2.2 },
+                           { id: 'financial', label: 'THE FINANCIAL BLOCKS', rect: [-112, -44, 112, 44], storeys: [2, 6], style: 'office', texP: 0.2, ruinP: 0.35 },
+                           { id: 'oldtown',   label: 'THE OLD TOWN',         rect: [-112, -88, 112, -44], storeys: [1, 3], lotW: [5.2, 7.4], lotD: [7, 10], lowP: 0.2, style: 'residential', texP: 0.45, ruinP: 0.15, fenceKey: 'bricks_2', fenceH: 1.9 },
+                           { id: 'docks',     label: 'THE DOCKS',            rect: [-112, 44, 112, 88], storeys: [1, 3], lotW: [8, 11], lotD: [9, 12], lowP: 0.25, style: 'factory', texP: 0.4, ruinP: 0.45, fenceKey: 'urban:MetalCorrugatedPainted2a', fenceH: 2.2 },
                        ],
                        streets: [
                            { pts: [[-40, -29], [40, -29], [40, -6], [31, 4], [40, 14], [40, 29], [12, 29], [-8, 22], [-40, 29], [-40, 4]], w: 9, loop: true },   // THE RING ROAD (the circuit): straight up the north, the chicane on the east leg, the bend on the south
@@ -32553,7 +32553,7 @@ const DOOR_HQ = {
                from the back of the chancel; THE ALTAR RAIL (a step the rider grinds);
                THE ORGAN LOFT in the south-west (6.4 m — the tape's, the door gun's). */
             terrain: {
-                floor: 'marble', cliff: 'marble_2', path: 'carpet_3',
+                floor: 'marble', cliff: 'marble_2', path: 'carpet_4',   /* 2026-09-21 (the user): a different carpet for the Vatican's aisle — carpet_4; the key is the edit */
                 noise: { amp: 0.02, scale: 5 },
                 features: [
                     { k: 'plateau', x: 0, z: -19, w: 30, d: 10, h: 0.9 },                                          // THE CHANCEL
@@ -40239,7 +40239,8 @@ const HQ_TERRAIN_GEN = {
        is an invisible barrier. `podium: true` keeps the extruded solid for a plan whose units ARE the mass (the mall:
        `prisms: false`, the store units to wallH under their storefronts). `riseIn` is read only under a podium. */
     city:  { streetW: 8, walkW: 2.4, kerb: 0.12, lotPitch: 9.5, lotW: [6.4, 8.2], lotD: [8.5, 11.5], lotMinW: 3.2, lowP: 0.2, storeys: [1, 4], wallH: 3.2, edge: 0.3, riseIn: 0.1, jitter: 0.05, topNoise: 0.15, rim: 0.6, frontOut: 0.35,
-             podium: false, solidPad: 0.3, storeyH: 3.4, fenceH: 2.4, fenceKey: 'bricks_2', fenceMinRun: 1.2 },
+             podium: false, solidPad: 0.3, storeyH: 3.4, fenceH: 2.4, fenceKey: 'bricks_2', fenceMinRun: 1.2,
+             infillPitch: 7.5, infillRim: 14 },   /* THE INFILL (2026-09-21): the lattice the bare solid is packed on; a lot within infillRim of the room's edge is tall */
     /* THE HALLS (D.U.M.B., 2026-09-17 — EXPLORABLE_AREAS_GUIDE family C, ROOMS-AND-HALLWAYS): the rogue / Portal dungeon.
        A BSP (binary space partition) of the shell into leaves `leafMin`..`leafMax` m a side, a rectangular ROOM in each
        leaf (inset `roomInset`, never under `roomMin`), plus the AUTHORED rooms `gen.rooms` ({ x, z, w, d } — the prefab
@@ -41085,6 +41086,60 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
             info.lots.forEach(l => { const R = rectOf(l); if (!kept.some(k => overlaps(k.R, R))) kept.push({ l, R }); });
             if (kept.length !== info.lots.length) { info.lots = kept.map((k, i) => Object.assign(k.l, { i })); placed.length = 0; info.lots.forEach(l => placed.push(l)); }
         }
+        /* ── THE INFILL (2026-09-21 — the user: "more buildings in general; I can see the path on the ground but nothing
+           blocks me; the corners of the map don't have buildings blocking the view out"): the terrace lays lots on the
+           STREET faces alone, so every other stretch of the solid — the block interiors behind the terrace, both sides of
+           every alley / plaza / feature pocket, and THE RIM (the room's edge: flat concrete running out into the fog at
+           every corner) — was invisible mass. Now the solid left bare is PACKED with axis-aligned lots on a lattice
+           (`gen.infillPitch`, two passes: the pitch, then the half-pitch for the gaps), each shrunk until its whole rect
+           stands in the solid (0.35 m in) and inside the shell (0.25 m) and overlaps no lot; never within 7.5 m of a door's
+           pad (THE ENTRANCE building stands there). An infill lot wears `infill: true` + `face: -1` (no laid face: its
+           fronts are whichever edges look onto open ground, the FRONTS pass below), its district's storeys, the district's
+           low share halved; a RIM lot (within `gen.infillRim` m of the room's edge) stands ≥ the district's ceiling − 1
+           storeys, never low — the corners are walled by buildings. `gen.infill: false` keeps the terrace alone. */
+        if (gen.infill !== false) {
+            const pitch = gen.infillPitch || K.infillPitch || 7.5, rimM = (gen.infillRim != null) ? gen.infillRim : (K.infillRim || 14);
+            const doorKeep = (px, pz) => (info.pads || []).some(p => p && p.door && Math.hypot(px - p.x, pz - p.z) < 7.5);
+            const inAnyLot = (px, pz) => placed.some((lot) => { const R = rectOf(lot), dx = px - lot.x, dz = pz - lot.z; const lx = dx * R.ax[0] + dz * R.ax[1], lz = dx * R.az[0] + dz * R.az[1]; return Math.abs(lx) <= R.hw + 0.1 && Math.abs(lz) <= R.hd + 0.1; });
+            const fits = (cx, cz, w, d) => {
+                const R = rectOf({ x: cx, z: cz, w, d, rot: 0 });
+                for (const q of [[-1, -1], [1, -1], [-1, 1], [1, 1], [0, -1], [0, 1], [-1, 0], [1, 0], [0, 0]]) {
+                    const px = cx + q[0] * R.hw, pz = cz + q[1] * R.hd;
+                    if (!inShell(px, pz, 0.25) || !solidBy(px, pz, 0.35)) return false;
+                }
+                for (const q of placed) if (overlaps(R, rectOf(q))) return false;
+                return true;
+            };
+            let nInfill = 0;
+            const pass = (offX, offZ) => {
+                for (let gz = -halfD + offZ; gz < halfD; gz += pitch) for (let gx = -halfW + offX; gx < halfW; gx += pitch) {
+                    const cx = Math.round(gx * 100) / 100, cz = Math.round(gz * 100) / 100;
+                    if (!inShell(cx, cz, 0.6) || !solidBy(cx, cz, 1.2) || inAnyLot(cx, cz) || doorKeep(cx, cz)) continue;
+                    const dd = distAt(cx, cz);
+                    const LWd = dget(dd, 'lotW', LW0), minWd = Math.max(minW0, dget(dd, 'lotMinW', minW0)), stD = dget(dd, 'storeys', st0), lowPd = dget(dd, 'lowP', lowP0);
+                    const wMax = Math.min(LWd[1], LW0[1]), dMin = LD0[0] * 0.42, dMax = LD0[1];
+                    let w = Math.min(wMax, LWd[0] + rnd() * (LWd[1] - LWd[0]));
+                    let d = Math.max(dMin, Math.min(dMax, w * (0.8 + rnd() * 0.5)));
+                    let lot = null;
+                    while (w >= minWd - 0.01 && d >= dMin - 0.01) {
+                        if (fits(cx, cz, w, d)) { lot = { w, d }; break; }
+                        if (w >= d) w -= 1.0; else d -= 1.0;
+                    }
+                    if (!lot) continue;
+                    const nearRim = Math.min(halfW - Math.abs(cx), halfD - Math.abs(cz)) < rimM;
+                    let low = !nearRim && rnd() < lowPd * 0.5;
+                    let storeys = low ? 0 : stD[0] + Math.floor(rnd() * (stD[1] - stD[0] + 1));
+                    if (nearRim) storeys = Math.max(storeys, Math.max(stD[0], stD[1] - 1));
+                    const base = hqTerrainHeight(info, cx, cz);
+                    const row = { i: li++, x: cx, z: cz, w: Math.round(lot.w * 100) / 100, d: Math.round(lot.d * 100) / 100, rot: 0, top: wallH, base: Math.round(base * 100) / 100, storeys, key: 'building_' + (1 + Math.floor(rnd() * 8)), low, seed: Math.floor(rnd() * 1e6), face: -1, infill: true };
+                    if (dd) { row.district = dd.id; if (dd.neon != null) row.neon = !!dd.neon; if (dd.texP != null) row.texP = dd.texP; if (dd.ruinP != null) row.ruinP = dd.ruinP; if (dd.style) row.style = dd.style; if (dd.fronts) row.fronts = dd.fronts; }
+                    placed.push(row); info.lots.push(row); nInfill++;
+                }
+            };
+            pass(pitch / 2, pitch / 2);
+            pass(pitch, pitch);
+            info.gen.infill = nInfill;
+        }
         districts.forEach(d => { d.lots = info.lots.filter(l => l.district === d.id).length; });
         info.districts = districts.map(d => ({ id: d.id, label: d.label || d.id, rect: d.rect.slice(), lots: d.lots, neon: d.neon != null ? !!d.neon : null, style: d.style || null, fronts: d.fronts || null }));
         info.gen.districts = info.districts.length;
@@ -41095,9 +41150,11 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
                 const ex = lot.x + R.ax[0] * n[0] * R.hw + R.az[0] * n[1] * R.hd, ez = lot.z + R.ax[1] * n[0] * R.hw + R.az[1] * n[1] * R.hd;
                 const wnx = R.ax[0] * n[0] + R.az[0] * n[1], wnz = R.ax[1] * n[0] + R.az[1] * n[1];   // the edge's outward normal (world)
                 /* the street lies past it when the mask is open a short step out and stays open a stride further; the façade stands ON the lot's edge (the box face) */
-                if (n[1] !== 1 && (hqTerrainMaskAt(info, ex + wnx * 0.5, ez + wnz * 0.5) < 0.1 || hqTerrainMaskAt(info, ex + wnx * 1.6, ez + wnz * 1.6) < 0.5)) return;
+                /* THE INFILL (2026-09-21): an infill lot's edge stands 0.35–1.3 m INSIDE the boundary — it fronts when the ground is open a stride out and the edge is near the line */
+                if (lot.infill) { if (hqTerrainMaskAt(info, ex + wnx * 0.6, ez + wnz * 0.6) < -0.6 || hqTerrainMaskAt(info, ex + wnx * 1.6, ez + wnz * 1.6) < 0.45) return; }
+                else if (n[1] !== 1 && (hqTerrainMaskAt(info, ex + wnx * 0.5, ez + wnz * 0.5) < 0.1 || hqTerrainMaskAt(info, ex + wnx * 1.6, ez + wnz * 1.6) < 0.5)) return;
                 const Lf = n[0] ? lot.d : lot.w, tx = -wnz, tz = wnx;
-                info.fronts.push({ lot: lot.i, x0: Math.round((ex - tx * Lf / 2) * 100) / 100, z0: Math.round((ez - tz * Lf / 2) * 100) / 100, x1: Math.round((ex + tx * Lf / 2) * 100) / 100, z1: Math.round((ez + tz * Lf / 2) * 100) / 100, nx: Math.round(wnx * 1000) / 1000, nz: Math.round(wnz * 1000) / 1000, len: Lf, top: wallH, base: lot.base, main: n[1] === 1, district: lot.district || null, fronts: lot.fronts || null });
+                info.fronts.push({ lot: lot.i, x0: Math.round((ex - tx * Lf / 2) * 100) / 100, z0: Math.round((ez - tz * Lf / 2) * 100) / 100, x1: Math.round((ex + tx * Lf / 2) * 100) / 100, z1: Math.round((ez + tz * Lf / 2) * 100) / 100, nx: Math.round(wnx * 1000) / 1000, nz: Math.round(wnz * 1000) / 1000, len: Lf, top: wallH, base: lot.base, main: n[1] === 1 && !lot.infill, district: lot.district || null, fronts: lot.fronts || null });
             });
         });
         if (solidMass) {
@@ -41139,6 +41196,41 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
                 }
                 flush();
             });
+            /* THE BOUNDARY WALLS (2026-09-21 — the invisible walls): the mask's WHOLE boundary traced (the halls' tracer) and
+               every run that is not a street face (the yard walls above own those), not a lot's own face, not a tier's own
+               cliff and not a door's lane wears the fence too — the sides of an alley / a path / a plaza / a feature pocket,
+               the rim between two rim lots. The walker met an invisible line there; it meets a hoarding now. */
+            if (fenceH > 0 && gen.boundaryWalls !== false && typeof _hqTTraceMaskWalls === 'function') {
+                let traced = [];
+                try { traced = _hqTTraceMaskWalls(info, mask, { t: 0.3, key: fenceKey, top: (info.base || 0) + fenceH, simplify: 0.6, inner: 0.25, inShell }); } catch (e) { console.warn('[terrain] the boundary walls failed', roomId, e); traced = []; }
+                const padNear = (px, pz) => (info.pads || []).some(p => p && ((p.r ? p.r - Math.hypot(px - p.x, pz - p.z) : _hqTRectIn(px, pz, p)) > -1.2));
+                let nB = 0;
+                traced.forEach((w) => {
+                    const L = Math.hypot(w.x1 - w.x0, w.z1 - w.z0); if (L < minRun) return;
+                    const mx = (w.x0 + w.x1) / 2, mz = (w.z0 + w.z1) / 2, nxv = -(w.z1 - w.z0) / L, nzv = (w.x1 - w.x0) / L;
+                    const sA = hqTerrainMaskAt(info, mx + nxv * 0.6, mz + nzv * 0.6), sB = hqTerrainMaskAt(info, mx - nxv * 0.6, mz - nzv * 0.6);
+                    const sg = sA < sB ? 1 : -1;   // +n × sg = into the solid
+                    const bx = mx + nxv * sg * 0.9, bz = mz + nzv * sg * 0.9, fx = mx - nxv * sg * 0.6, fz = mz - nzv * sg * 0.6;
+                    if (Math.max(sA, sB) < 0.1) return;                      // both sides solid: a seam inside the mass, nothing to wall
+                    if (streetsNear(fx, fz, 0.9)) return;                     // a street face
+                    if (inLot(bx, bz) || inLot(mx, mz)) return;                // a building's own face
+                    if (padNear(fx, fz) || padNear(mx, mz)) return;            // a door's lane
+                    /* a tier's own cliff (a rooftop, a deck, a sunk cut) is never fenced — judged at every sample along the run, and a run whose
+                       ground climbs more than a metre is a tier's edge blend (a fence riding it would put a wall top the walker could stand on) */
+                    let tier = false, gmin = Infinity, gmax = -Infinity;
+                    for (let q = 0; q <= 6 && !tier; q++) {
+                        const sx = w.x0 + (w.x1 - w.x0) * q / 6, sz = w.z0 + (w.z1 - w.z0) * q / 6, g = hqTerrainHeight(info, sx, sz);
+                        if (g < gmin) gmin = g; if (g > gmax) gmax = g;
+                        const hf = info.hFn(sx - nxv * sg * 0.6, sz - nzv * sg * 0.6);
+                        if (info.hFn(sx + nxv * sg * 0.9, sz + nzv * sg * 0.9) - hf > 0.9 || info.hFn(sx + nxv * sg * 2.4, sz + nzv * sg * 2.4) - hf > 0.9 || hf - info.hFn(sx + nxv * sg * 0.9, sz + nzv * sg * 0.9) > 0.9) tier = true;
+                    }
+                    if (tier || gmax - gmin > 1.0) return;
+                    const dd = distAt(mx, mz);
+                    info.yardWalls.push({ x0: w.x0, z0: w.z0, x1: w.x1, z1: w.z1, h: dget(dd, 'fenceH', fenceH), t: 0.3, key: dget(dd, 'fenceKey', fenceKey), yard: true, boundary: true, district: dd ? dd.id : null });
+                    nB++;
+                });
+                info.gen.boundaryWalls = nB;
+            }
             /* into info.walls directly (the compiler's own `wall` rows follow; never into the room's authored features — a recompile would stack them) */
             info.yardWalls.forEach((w) => {
                 let gmax = -Infinity, gmin = Infinity;
@@ -45288,7 +45380,7 @@ const HQ_LIGHT_RULES = {
        `shell.arrival`). The renderer's HQ_LIGHT_DEFAULT carries the same keys (premium-polish.test.js diffs them). */
     /* 2.1 the room key casts ONE shadow map: on / off, the map size per Settings → Performance tier (three-post.js's
        knob), the depth bias, and how far past the room's box the ortho frustum reaches (m) */
-    shadows: { on: true, mapLow: 1024, mapHigh: 2048, bias: -0.0005, normalBias: 2.4, pad: 4, everyN: 2,
+    shadows: { on: true, mapLow: 1024, mapHigh: 2048, bias: -0.0005, normalBias: 2.4, pad: 4, everyN: 1,   /* 2026-09-21: every frame — an every-other-frame depth pass shimmered on every thin edge (door frames, rails) as the walker moved */
         /* 2.2 THE HERO LIGHT (2026-09-21): the FIRST prop point light in a room whose key matches `keys` casts a cube shadow map
            (six faces — one per room, never per lamp); `shell.mood.hero: false` opts a room out; off on the phone / with shadows off */
         hero: { on: true, map: 512, bias: -0.004, keys: 'torch|brazier|campfire|furnace|hearth|forge|pyre|candelabra|lava' } },

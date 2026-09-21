@@ -3100,7 +3100,10 @@ const TERRAIN_SPRITES = {
     rocks_4:          [`${_T}/rocks_4.png`],
     rocks_5:          [`${_T}/rocks_5.png`],
     rock_wall_1:      [`${_T}/rock_wall_1.png`],
-    rock_wall_2:      [`${_T}/rock_wall_2.png`],
+    /* 2026-09-21 (the user): rock_wall_2.png has grass along its top edge, so it read wrong on every cliff
+       it dressed (the cavern, Hell); every rock_wall_2 key wears the cave's own rock now. The file stays in the
+       bucket, unreferenced. */
+    rock_wall_2:      [`${_T}/cave_wall.png`],
     dark_woods:       [`${_T}/dark_woods.png`],
     urban_wall:       [`${_T}/urban_wall.png`],
     grass_rocky:      [`${_T}/grass_rocky.png`],
@@ -3120,7 +3123,11 @@ const TERRAIN_SPRITES = {
     // New terrain sprites (Moon / Backrooms / Heaven map set)
     moon:             [`${_T}/moon.png`],
     carpet:           [`${_T}/carpet.png`],
-    gold:             [`${_T}/gold.png`],
+    /* THE GOLD (2026-09-21 — the user: "I don't like any of the three gold textures in the bucket; make your own or
+       tint one of the other textures"): every gold key is the brushed aluminium sheet tinted gold by
+       TERRAIN_BASE_TINT (below) — one brushed gilt for boards, monuments, trims and spell props alike. The three
+       gold_*.png files stay in the bucket, unreferenced. */
+    gold:             [`${_T}/aluminium.png`],
     metal:            [`${_T}/metal.png`],
     leaves:           [`${_T}/leaves.png`],
     wallpaper:        [`${_T}/wallpaper.png`],
@@ -3132,9 +3139,12 @@ const TERRAIN_SPRITES = {
     carpet_2:         [`${_T}/carpet_2.png`],
     carpet_3:         [`${_T}/carpet_3.png`],
     carpet_4:         [`${_T}/carpet_4.png`],
-    gold_2:           [`${_T}/gold_2.png`],
-    gold_3:           [`${_T}/gold_3.png`],
-    metal_2:          [`${_T}/metal_2.png`],
+    gold_2:           [`${_T}/aluminium.png`],
+    gold_3:           [`${_T}/aluminium.png`],
+    /* THE METALS (2026-09-21 — the user: "don't use metal_3, metal_2 or gunmetal_2 anywhere, including the delta
+       maps"): the three keys stay (boards, rooms and the editor's palette name them) but wear the plain sheets —
+       metal_2 / gunmetal_2 the gunmetal plate, metal_3 the brushed aluminium darkened to steel by TERRAIN_BASE_TINT. */
+    metal_2:          [`${_T}/gunmetal.png`],
     grass_3:          [`${_T}/grass_3.png`],
     grass_4:          [`${_T}/grass_4.png`],
     dirt_2:           [`${_T}/dirt_2.png`],
@@ -3171,7 +3181,7 @@ const TERRAIN_SPRITES = {
     drywall_2:        [`${_T}/drywall_2.png`],
     drywall_3:        [`${_T}/drywall_3.png`],
     drywall_4:        [`${_T}/drywall_4.png`],
-    metal_3:          [`${_T}/metal_3.png`],
+    metal_3:          [`${_T}/aluminium.png`],
 
     // 2026-07-08 full R2 terrain-folder registration — texture-only keys (not
     // placeable terrains) so _hzTex()/prop builders can wear any of them.
@@ -3196,7 +3206,7 @@ const TERRAIN_SPRITES = {
     diamond:          [`${_T}/diamond.png`],
     brokenglass:      [`${_T}/brokenglass.png`],
     gunmetal:         [`${_T}/gunmetal.png`],
-    gunmetal_2:       [`${_T}/gunmetal_2.png`],
+    gunmetal_2:       [`${_T}/gunmetal.png`],
     copper:           [`${_T}/copper.png`],
     concrete_floor:   [`${_T}/concrete_floor.png?v=20260915`],   // repainted 2026-09-15 — the ?v busts the immutable edge cache (bump it again on the next repaint)
     checkerboard_2:   [`${_T}/checkerboard_2.png`],
@@ -3226,6 +3236,12 @@ const TERRAIN_SPRITES = {
    asphalt. Add a key here + point its TERRAIN_SPRITES row at the sheet. */
 const TERRAIN_BASE_TINT = {
     urban_street: '#4e4e56',
+    /* THE GOLD (2026-09-21): the brushed aluminium sheet as gilt — three warmths for the three keys */
+    gold: '#e0b048',
+    gold_2: '#d4a238',
+    gold_3: '#c89230',
+    /* THE METALS (2026-09-21): metal_3 = the aluminium sheet as blued steel */
+    metal_3: '#8a949e',
 };
 if (typeof window !== 'undefined') window.TERRAIN_BASE_TINT = TERRAIN_BASE_TINT;
 

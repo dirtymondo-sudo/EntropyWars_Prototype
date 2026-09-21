@@ -11215,3 +11215,54 @@ sheet), three-renderer.js ("THE THREE ROOMS" procs: directory_board · rocking_c
 music_box · price_tag · sale_banner), map.js (THE DIRECTORY · THE TAG · THE RECEIPT panels), index.html
 (the token), hq-three-rooms.test.js + the pins (hq-floors 47 secret doors; hq-complex five parts;
 hq-urban / hq-city / hq-underworld the showroom). Unseen live (RULE #1c) — CLAUDE.md lists what to eyeball.
+
+### 2026-09-21 — THE TEXTURE PASS + DISASTER CITY FILLED IN: the flicker, the banned sheets, the gilt, the garage's glyphs, THE INFILL, THE BOUNDARY WALLS, THE BACKDROP (local delivery)
+The user's list: "door frames and bridges flicker; rock_wall_1 has glyphs (fine for the woods, not the garage);
+rock_wall_2 has grass on its top edge; no metal_3 / metal_2 / gunmetal_2 anywhere, the Δ maps included; none of
+the three gold textures — make your own or tint another; a different carpet in the Vatican; Disaster City with
+more prism buildings than the other cities and more buildings in general; invisible walls where the path is
+painted but nothing blocks; the corners of the map with nothing blocking the view out."
+- **THE FLICKER**: two real z-fights + one shimmer. The door frame's three strips (`frameL / R / T`,
+  `_hqBuildDoors`) stood with their front face EXACTLY on the jambs' / lintel's front plane (`pd / 2`) — they stand
+  2 cm proud now, like the dado bands. A bridge's slab top sat 4 mm over the tier it lands on at either mouth
+  (`_hqBuildBridges`) — the deck rides 2.5 cm over `b.y` (the feet read the data rule, unchanged). And the key
+  light's shadow depth pass pulsed EVERY OTHER FRAME (`HQ_LIGHT_RULES.shadows.everyN` 2): as the walker moved the
+  shadow lagged then jumped on every thin edge; it is every frame now (the renderer's default in step).
+- **THE SHEETS** (sprites.js TERRAIN_SPRITES, the marble / urban_street precedent — the keys stay, the files change):
+  `metal_2` / `gunmetal_2` → `gunmetal.png`, `metal_3` → `aluminium.png` × TERRAIN_BASE_TINT `#8a949e` (blued steel),
+  `gold` / `gold_2` / `gold_3` → `aluminium.png` × `#e0b048` / `#d4a238` / `#c89230` (THE BRUSHED GILT — every
+  board tile, monument, trim and spell prop that names a gold key wears it; `_hzGeoMat`'s own gold colours ride
+  on the brushed sheet), `rock_wall_2` → `cave_wall.png`. The seven old files stay in the bucket, unreferenced.
+  TERRAIN_TYPES labels: Brushed Gilt II / III · Blued Steel · Gunmetal Plate.
+- **THE GARAGE'S GLYPHS** (the real bug): `_hqTerrainMat`'s cliff fell back to `rock_wall_1` whenever a room's
+  `cliff` named a D.O.O.R. HQ texture (`concrete`) — `_hzTex` reads TERRAIN_SPRITES only. `_hzTex` resolves the HQ
+  texture table now (`DOOR_HQ.textures` → `assets.textures`), so THE GARAGE's drum, helix parapets and every
+  `cliff: 'concrete'` wear the cracked concrete; the fallback is the plain `cliff` sheet. rock_wall_1 stays on the
+  woods / the cave / the ley shells (natural or ancient stone — the user's rule).
+- **THE VATICAN**: the basilica's aisle `path` is `carpet_4` (was carpet_3; the key is the edit).
+- **DISASTER CITY, THE PRISM CITY**: `texP` 0.22 on the plan (financial 0.2 · old town 0.45 · docks 0.4 — the
+  Grid keeps 0.5 / 1 / 0.7, the Strip 0.45), `lowP` down, the financial blocks to 6 storeys.
+- **THE INFILL** (data.js, the city branch after THE OVERLAP SWEEP): the terrace lays lots on STREET faces
+  alone, so the block interiors, both sides of every alley / plaza / feature pocket and THE RIM were invisible
+  mass. The bare solid is packed with axis-aligned lots on a lattice (`HQ_TERRAIN_GEN.city.infillPitch` 7.5,
+  two passes), each shrunk until its rect stands 0.35 m in the solid, 0.25 m inside the shell, overlapping no lot,
+  ≥ 7.5 m from a door's pad; `infill: true`, `face: -1`, no main front (a front on any edge that looks onto open
+  ground), the district's storeys, a rim lot (`infillRim` 14 m) ≥ the district's ceiling − 1 and never low.
+  Measured: Downtown 224 lots (95 infill), the Grid 272 (106), the Strip 19 (5). `gen.infill: false` = the terrace alone.
+- **THE BOUNDARY WALLS**: the mask's whole boundary traced (`_hqTTraceMaskWalls`, the halls' tracer) and every
+  run that is not a street face, not a lot's face, not a tier's cliff (judged at seven samples along the run; a run
+  climbing over a metre is a tier's edge blend) and not a door's lane wears the district's fence — the walker met
+  an invisible line there; it meets a hoarding now. Readouts `info.gen.infill` / `.boundaryWalls`; the rows carry
+  `boundary: true` in `info.yardWalls`. (The first cut fenced a rooftop's edge blend and put eight wall tops the
+  walker could stand on in THE STACKS — the per-sample tier test fixed it; `hqTerrainTraps` is 0 on all three.)
+- **THE BACKDROP** (three-renderer.js `_hqBuildCityBackdrop`, after the lots): Downtown's south corners are a
+  thin rim of solid then the docks' open promenade — no lot fits, the eye ran out over the outer ground. A ring
+  of the map-builder prisms stands 4–6 m PAST the shell along all four sides (3–6 storeys, on the outer ground's
+  own height, sunk half a metre), a tall block on each corner's diagonal, a gap round every door (a `road` way runs
+  its asphalt out through it). Pure scenery — no blocker, no lot. `EW_HQ_NO_CITY_BACKDROP`, `terrain.backdrop: false`.
+Files: sprites.js (R2), data.js (R2 + Render — the compiler), three-renderer.js (R2), index.html (Render, token
+`20260921-textures-01-cors`), hq-city.test.js (the terrace-only pins read the terrace; new pins for the infill,
+the boundary walls, the rim), DOOR_HQ_BUILD_PLAN.md + CLAUDE.md. UNSEEN LIVE (RULE #1c): the brushed gilt's warmth
+under each map's tint (the three TERRAIN_BASE_TINT rows are the edit), the blued steel on the Spaceship's deck,
+the cave rock where rock_wall_2 stood, carpet_4 in the nave, the infill prisms' density from the kerb, the
+boundary hoardings' run along the plaza, the backdrop's scale against the terrace, the frames at 2 cm proud.

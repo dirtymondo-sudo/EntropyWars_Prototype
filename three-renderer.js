@@ -21484,7 +21484,7 @@ const ThreeRenderer = (function () {
     var HQ_LIGHT_DEFAULT = { cycle: 'day', nightCap: 0.45, ambientFloor: 0.55, fillColor: 0x9fb4d0, fill: 0.14,
         open: { nightHemi: 0.62, nightSun: 0.4, dayHemi: 0.78, daySun: 0.6, nightLamp: 0.9, dayLamp: 0.55 },
         /* THE PREMIUM POLISH (2026-09-21): the shadow map, the key rig per kind, the AO, the height fog, the atmosphere — data.js owns the numbers */
-        shadows: { on: true, mapLow: 1024, mapHigh: 2048, bias: -0.0005, normalBias: 2.4, pad: 4, everyN: 2, hero: { on: true, map: 512, bias: -0.004, keys: 'torch|brazier|campfire|furnace|hearth|forge|pyre|candelabra|lava' } },
+        shadows: { on: true, mapLow: 1024, mapHigh: 2048, bias: -0.0005, normalBias: 2.4, pad: 4, everyN: 1, hero: { on: true, map: 512, bias: -0.004, keys: 'torch|brazier|campfire|furnace|hearth|forge|pyre|candelabra|lava' } },
         key: { box: { az: 300, el: 58, color: 0xfff1dc, intensity: 0.34 }, open: { az: 305, el: 52 }, bay: { az: 320, el: 62, color: 0xf2f5ff, intensity: 0.3 }, hall: { az: 330, el: 60, color: 0xfff0d8, intensity: 0.42 } },
         ao: { corner: 0.34, r: 0.55, contact: 0.5, contactR: 1.35, terrain: 0.32, foot: 0.7 },
         heightFog: { on: true, box: { h: 1.7, amount: 0.34 }, open: { h: 3.2, amount: 0.5 }, hall: { h: 2.6, amount: 0.3 } },
@@ -22560,6 +22560,9 @@ const ThreeRenderer = (function () {
         if (_hzTexCache[terrainKey] !== undefined) { var hit = _hzTexCache[terrainKey]; if (hit) _alJoin(hit._ew_alRec); return hit; }   // THE ASSET LEDGER: a sheet still streaming is waited for again
         var url = (typeof TERRAIN_SPRITES !== 'undefined' && TERRAIN_SPRITES[terrainKey]) ? TERRAIN_SPRITES[terrainKey][0] : null;
         if (!url && typeof terrainKey === 'string' && terrainKey.indexOf('urban:') === 0 && typeof URBAN_TEXTURES !== 'undefined') url = URBAN_TEXTURES[terrainKey.slice(6)] || null;   // THE URBAN PACK (2026-09-17): `urban:<Name>` reads sprites.js URBAN_TEXTURES
+        /* 2026-09-21: a D.O.O.R. HQ texture name (`concrete`, `stone`, `teal`, `carpet`…) resolves here too — a terrain room's
+           `cliff: 'concrete'` used to miss and fall back to rock_wall_1 (the glyph sheet on THE GARAGE's every wall) */
+        if (!url && typeof terrainKey === 'string') { var HD = _hqData(); if (HD && HD.textures && HD.textures[terrainKey] && HD.assets) url = HD.assets.textures + HD.textures[terrainKey]; }
         if (!url) { _hzTexCache[terrainKey] = null; return null; }
         var tex = textureLoader.load(url);        // fresh instance; onLoad sets image + needsUpdate (no placeholder — the gate holds the scene until it lands)
         tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
@@ -39417,7 +39420,7 @@ const ThreeRenderer = (function () {
        an open room past its edge, stalactites under a closed one. Rails and
        ramps join the park registers (_hq.rails / _hq.ramps) for the rider. */
     function _hqTerrainMat(info, S) {
-        var floorTex = _hzTex(info.floor) || _hzTex('grass_2'), cliffTex = _hzTex(info.cliff) || _hzTex('rock_wall_1') || floorTex, pathTex = _hzTex(info.path) || _hzTex('dirt_2') || floorTex;
+        var floorTex = _hzTex(info.floor) || _hzTex('grass_2'), cliffTex = _hzTex(info.cliff) || _hzTex('cliff') || floorTex, pathTex = _hzTex(info.path) || _hzTex('dirt_2') || floorTex;   // 2026-09-21: the fallback is the plain cliff sheet, never rock_wall_1's glyphs
         var m = new THREE.MeshPhongMaterial({ map: floorTex || null, color: 0xffffff, shininess: S.open ? 4 : 6, specular: S.open ? 0x0e0e0e : 0x161616, vertexColors: false });
         if (S.floorColor != null) m.color.multiply(new THREE.Color(S.floorColor));
         /* THE URBAN PACK (2026-09-17): a neon city's field is self-lit like its sprite prisms (lift 0.42) — the wet asphalt sheet went black under the night mood */
@@ -39678,7 +39681,9 @@ const ThreeRenderer = (function () {
         info.bridges.forEach(function (b) {
             var keyMat = b.key ? new THREE.MeshPhongMaterial({ map: _hzTex(b.key) || null, color: 0xffffff, shininess: 8 }) : topMat;
             var L = b.len, yaw = Math.atan2(b.x1 - b.x0, b.z1 - b.z0), cx = (b.x0 + b.x1) / 2, cz = (b.z0 + b.z1) / 2;
-            var g = new THREE.Group(); g.position.set(cx * U, b.y * U + 0.3, cz * U); g.rotation.y = yaw;
+            /* THE FLICKER (2026-09-21): the slab's top stood 4 mm over the tier it lands on at either mouth — the field's own
+               triangles under it z-fought from any distance. The deck rides 2.5 cm over its height (the feet read the data rule). */
+            var g = new THREE.Group(); g.position.set(cx * U, (b.y + 0.025) * U, cz * U); g.rotation.y = yaw;
             /* the slab: six faces, the top in its own sheet */
             var slabGeo = new THREE.BoxGeometry(b.w * U, b.thick * U, L * U); _hzBoxUV(slabGeo, b.w * U, b.thick * U, L * U, TM);
             var mats = [sideMat, sideMat, keyMat, sideMat, sideMat, sideMat];   // +x −x +y −y +z −z
@@ -39957,6 +39962,7 @@ const ThreeRenderer = (function () {
         _hqBuildEscalators(room, info, G, TM);
         if (info.shops && info.shops.length) { try { _hqBuildShopfronts(room, info, G, TM, rng); } catch (e) { console.warn('[HQ] the shopfronts failed', e); } }   // THE MALL, THE THIRD PASS (2026-09-17)
         if (info.lots && info.lots.length) { try { _hqBuildCityLots(room, info, G, TM, rng, TK); } catch (e) { console.warn('[HQ] the city lots failed', e); } }
+        if (info.gen && info.gen.kind === 'city' && S.open) { try { _hqBuildCityBackdrop(room, info, G, TM, rng, TK); } catch (e) { console.warn('[HQ] the city backdrop failed', e); } }   // THE BACKDROP (2026-09-21): the skyline past the room's edge
         if (info.genPlan && info.genPlan.streets) { try { _hqBuildStreetLamps(room, info, G, TM, rng); } catch (e) { console.warn('[HQ] the street lamps failed', e); } }
         if (info.genPlan && info.genPlan.streets && info.gen && info.gen.kind === 'city') { try { _hqBuildRoadMarkings(room, info, G, TM); } catch (e) { console.warn('[HQ] the road markings failed', e); } }   // THE STREETS IN THE PACK (2026-09-17): the asphalt is the field's floor sheet; the paint, the kerbs, the manholes and the signs stand on it
         if (info.genPlan && info.genPlan.streets && info.gen && info.gen.kind === 'city' && info.gen.sidewalk > 0 && typeof window !== 'undefined' && window.EW_HQ_ROAD_TILES) { try { _hqBuildRoadTiles(room, info, G, TM); } catch (e) { console.warn('[HQ] the road tiles failed', e); } }   // the GLB tiles are opt-in since the pack landed (they distorted on every bend)
@@ -40349,6 +40355,64 @@ const ThreeRenderer = (function () {
             var tx = _hzTextTex('city_entrance_' + door.id, [door.label || 'ENTRANCE'], { w: 1024, h: 128, color: '#fff4de', bg: '#242830', pad: 0.12 });
             if (tx) { var sign = new THREE.Mesh(new THREE.PlaneGeometry(5.5 * U, 0.7 * U), new THREE.MeshBasicMaterial({ map: tx, transparent: true })); sign.position.set(0, 4.05 * U, 0.02 * U); g.add(sign); }
         });
+    }
+    /* THE BACKDROP (2026-09-21 — the user: "the corners of the map don't seem to have buildings blocking the view out").
+       An open city room's field ends at its shell and the outer ground runs 54 m into the fog — from any street that met
+       the edge (the docks' promenade, the ring road's corners) the eye went straight out over flat concrete. A SKYLINE
+       stands past the edge now: a ring of the map-builder prisms (and every fourth a plain box) 4–6 m outside the shell
+       along all four sides, 3–6 storeys, on the outer ground's own height, sunk half a metre so no foot floats; a gap is
+       left round every door (the entrance building stands inside; a `road` way runs its asphalt out through it) and at the
+       room's corners two turn the corner. Pure scenery: no blocker (the field ends at the shell), no lot, no front.
+       `EW_HQ_NO_CITY_BACKDROP` kills it; `room.terrain.backdrop: false` on a room. */
+    function _hqBuildCityBackdrop(room, info, G, TM, rng, TK) {
+        if (!TK || typeof _nrSpriteBuilding !== 'function') return;
+        if (typeof window !== 'undefined' && window.EW_HQ_NO_CITY_BACKDROP) return;
+        if (room.terrain && room.terrain.backdrop === false) return;
+        var U = _hqUnits(), S = room.shell || {}, hw = S.w / 2, hd = S.d / 2, gen = info.gen || {}, neon = !!gen.neon;
+        var yAt = function (x, z) { return (_hq && _hq.outer && _hq.outer.yAt) ? _hq.outer.yAt(x, z) : hqTerrainHeight(info, Math.max(-hw + 0.5, Math.min(hw - 0.5, x)), Math.max(-hd + 0.5, Math.min(hd - 0.5, z))); };
+        /* the gaps: every door's wall point (a road out, a lobby door — the entrance building inside stands in front of it) */
+        var gaps = [];
+        (room.doors || []).forEach(function (d) {
+            if (!d || typeof d.wall !== 'string' || d.wall === 'free') return;
+            try { var f = _hqBoxWall(room, d.wall, d); if (f) gaps.push({ x: f.wx, z: f.wz, r: (d.way === 'road') ? 9 : 7 }); } catch (e) {}
+        });
+        var seed = ((info.nx | 0) * 31 + (info.nz | 0) * 17 + 5) >>> 0, r = _mulberry32(seed);
+        var prevTs = _hzKitTs; _hzKitTs = TM;
+        var n = 0;
+        try {
+            /* the four sides: walk each at a pitch, the building's back to the room (its front faces the street inside) */
+            var sides = [
+                { x0: -hw, z0: -hd, tx: 1, tz: 0, nx: 0, nz: -1, L: S.w, yaw: Math.PI },   // north edge: the buildings stand at z < -hd, facing +z (into the room)
+                { x0: -hw, z0: hd, tx: 1, tz: 0, nx: 0, nz: 1, L: S.w, yaw: 0 },
+                { x0: -hw, z0: -hd, tx: 0, tz: 1, nx: -1, nz: 0, L: S.d, yaw: Math.PI / 2 },
+                { x0: hw, z0: -hd, tx: 0, tz: 1, nx: 1, nz: 0, L: S.d, yaw: -Math.PI / 2 },
+            ];
+            sides.forEach(function (sd) {
+                var u = 1.5;
+                while (u < sd.L - 1.5) {
+                    var w = 7 + r() * 5, d = 6 + r() * 4, out = 4.2 + d / 2 + r() * 1.5;
+                    if (u + w > sd.L - 1.0) w = Math.max(4, sd.L - 1.0 - u);
+                    var cx = sd.x0 + sd.tx * (u + w / 2) + sd.nx * out, cz = sd.z0 + sd.tz * (u + w / 2) + sd.nz * out;
+                    var gapped = gaps.some(function (gp) { return Math.hypot(cx - gp.x, cz - gp.z) < gp.r + w / 2; });
+                    if (!gapped) {
+                        var st = 3 + Math.floor(r() * 4), y = yAt(cx, cz) - 0.5, key = 'building_' + (1 + Math.floor(r() * 8));
+                        try {
+                            var b = _nrSpriteBuilding(TK, key, cx * U, cz * U, { w: w / info.tile, d: d / info.tile, stack: st, yAbs: y * U + 0.3, cast: false, wall: false, lift: neon ? 0.42 : 0.18, roofKit: st >= 4, beacon: neon ? 0xff3ad8 : 0xff3030, ry: sd.yaw });
+                            if (b) { b._ew_hqBackdrop = true; n++; }
+                        } catch (e) {}
+                    }
+                    u += w + 0.6 + r() * 1.2;
+                }
+            });
+            /* the four corners: one tall block on the diagonal past each */
+            [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(function (c) {
+                var cx = c[0] * (hw + 6.5), cz = c[1] * (hd + 6.5);
+                if (gaps.some(function (gp) { return Math.hypot(cx - gp.x, cz - gp.z) < gp.r + 5; })) return;
+                var st = 4 + Math.floor(r() * 3), y = yAt(cx, cz) - 0.5, key = 'building_' + (1 + Math.floor(r() * 8));
+                try { var b = _nrSpriteBuilding(TK, key, cx * U, cz * U, { w: 9 / info.tile, d: 9 / info.tile, stack: st, yAbs: y * U + 0.3, cast: false, wall: false, lift: neon ? 0.42 : 0.18, roofKit: true, beacon: neon ? 0xff3ad8 : 0xff3030, ry: 0 }); if (b) { b._ew_hqBackdrop = true; n++; } } catch (e) {}
+            });
+        } finally { _hzKitTs = prevTs; }
+        if (typeof window !== 'undefined' && window.EW_HQ_DEBUG) console.log('[HQ] the backdrop', n, 'buildings');
     }
     /* ═══════════════════════════════════════════════════════════════════════
        THE SHOPFRONTS (THE MALL, THE THIRD PASS — 2026-09-17; the user: "get rid
@@ -45622,9 +45686,11 @@ const ThreeRenderer = (function () {
             var dR = _hqBox(jw + 0.02, S.dadoH, 0.03, dadoMatS); dR.position.set(jR.position.x, (S.dadoH / 2 + 0.04) * U, (pd / 2 + 0.015) * U);
             var cap = _hqBox(pw + 0.06, 0.12, pd + 0.06, capM); cap.position.set(0, (ph + 0.06) * U, 0);
             var sill = _hqBox(pw + 0.04, 0.05, pd + 0.02, capM); sill.position.set(0, 0.025 * U, 0);
-            var frameL = _hqBox(0.07, oh + 0.06, 0.09, capM); frameL.position.set(-(ow / 2 + 0.035) * U, (oh / 2) * U, (pd / 2 - 0.045) * U);
-            var frameR = _hqBox(0.07, oh + 0.06, 0.09, capM); frameR.position.set((ow / 2 + 0.035) * U, (oh / 2) * U, (pd / 2 - 0.045) * U);
-            var frameT = _hqBox(ow + 0.14, 0.07, 0.09, capM); frameT.position.set(0, (oh + 0.035) * U, (pd / 2 - 0.045) * U);
+            /* THE FLICKER (2026-09-21): the frame's front face sat EXACTLY on the jambs' / the lintel's front plane (pd / 2) — two
+               coplanar faces z-fought on every step. The frame stands 2 cm proud of the jamb now, like the dado bands. */
+            var frameL = _hqBox(0.07, oh + 0.06, 0.09, capM); frameL.position.set(-(ow / 2 + 0.035) * U, (oh / 2) * U, (pd / 2 - 0.025) * U);
+            var frameR = _hqBox(0.07, oh + 0.06, 0.09, capM); frameR.position.set((ow / 2 + 0.035) * U, (oh / 2) * U, (pd / 2 - 0.025) * U);
+            var frameT = _hqBox(ow + 0.14, 0.07, 0.09, capM); frameT.position.set(0, (oh + 0.035) * U, (pd / 2 - 0.025) * U);
             grp.add(jL, jR, lin, back, dL, dR, cap, sill, frameL, frameR, frameT);
             /* lamp housing + lens + glow */
             var housing = _hqBox(0.46, 0.22, 0.12, housingMat); housing.position.set(0, lampY * U, (pd / 2 + 0.04) * U);

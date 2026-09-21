@@ -110,7 +110,7 @@ test('THE PLAN (`city`): the streets are the corridors (the ring road a loop, th
             /* STREET LEVEL: the back corners deep in the solid, the front corners no further out than the face line, the building's base on the sidewalk (never the podium) */
             for (const c of [[-1, -1], [1, -1]]) { const p = corner(lot, c[0], c[1]); assert.ok(D.hqTerrainMaskAt(info, p[0], p[1]) < -0.3, id + ': a back corner in the open'); }
             for (const c of [[-1, 1], [1, 1]]) { const p = corner(lot, c[0], c[1]); assert.ok(D.hqTerrainMaskAt(info, p[0], p[1]) < G.city.frontOut + 0.45, id + ': a front corner past the face line'); }
-            assert.ok(lot.base >= -0.14 && lot.base <= (gen.kerb || 0) + 0.12, id + ': the base is the sidewalk\'s (' + lot.base + ')');
+            if (!lot.infill) assert.ok(lot.base >= -0.14 && lot.base <= (gen.kerb || 0) + 0.12, id + ': the base is the sidewalk\'s (' + lot.base + ')');   // THE INFILL (2026-09-21): an infill lot's base is the ground under it
             for (const q of info.lots) if (q !== lot) assert.ok(!overlaps(rectOf(lot), rectOf(q)), id + ': lots overlap');
             /* STREET LEVEL rev 2 (2026-09-17): no rise — the ground inside a lot is the street's, the lot is a MASS the walker's rule refuses, the air / the boom meet its roof */
             if (info.gen.solidMass) {
@@ -119,8 +119,9 @@ test('THE PLAN (`city`): the streets are the corridors (the ring road a loop, th
                 assert.ok(D.hqTerrainSolidTop(info, lot.x, lot.z) >= gen.wallH - 0.01 && !D.hqTerrainAir(info, lot.x, lot.z, 1.0) && D.hqTerrainCam(info, lot.x, lot.z, 1.5), id + ': the lot is a mass to the air and the boom');
             } else assert.ok(Math.abs(D.hqTerrainHeight(info, lot.x, lot.z) - gen.wallH) < 0.5, id + ': the podium stands inside a unit at wallH (the mall)');
         }
-        const mains = info.fronts.filter(f => f.main);
-        assert.equal(mains.length, info.lots.length, id + ': one main front per lot');
+        const mains = info.fronts.filter(f => f.main), terrace = info.lots.filter(l => !l.infill);
+        assert.equal(mains.length, terrace.length, id + ': one main front per terrace lot');
+        assert.ok(info.fronts.every(f => !(f.main && info.lots[f.lot].infill)), id + ': an infill lot never wears a main front');
         for (const f of info.fronts) {
             const mx = (f.x0 + f.x1) / 2, mz = (f.z0 + f.z1) / 2, md = D.hqTerrainMaskAt(info, mx, mz), lot = info.lots[f.lot];
             if (f.main) assert.ok(md > -0.25 && md < G.city.frontOut + 0.6, id + ': a main front stands on the face line, over the ramp (' + md + ')');
@@ -128,8 +129,16 @@ test('THE PLAN (`city`): the streets are the corridors (the ring road a loop, th
             assert.ok(Math.abs(Math.hypot(f.x1 - f.x0, f.z1 - f.z0) - f.len) < 0.05 && f.top === gen.wallH && f.base === lot.base);
         }
         /* THE TERRACE: the lots stand shoulder to shoulder along their faces — most have a neighbour on the same face touching them */
-        const touching = info.lots.filter(l => info.lots.some(q => q !== l && q.face === l.face && Math.abs(q.rot - l.rot) < 1e-6 && Math.abs((q.x - l.x) * Math.cos(l.rot) - (q.z - l.z) * Math.sin(l.rot)) <= (q.w + l.w) / 2 + 0.35 && Math.abs((q.x - l.x) * Math.sin(l.rot) + (q.z - l.z) * Math.cos(l.rot)) < 2.0));
-        assert.ok(touching.length >= info.lots.length * (id === STREETS ? 0.55 : 0.5), id + ': ' + touching.length + ' of ' + info.lots.length + ' lots have a neighbour on their face');
+        const touching = terrace.filter(l => terrace.some(q => q !== l && q.face === l.face && Math.abs(q.rot - l.rot) < 1e-6 && Math.abs((q.x - l.x) * Math.cos(l.rot) - (q.z - l.z) * Math.sin(l.rot)) <= (q.w + l.w) / 2 + 0.35 && Math.abs((q.x - l.x) * Math.sin(l.rot) + (q.z - l.z) * Math.cos(l.rot)) < 2.0));
+        assert.ok(touching.length >= terrace.length * (id === STREETS ? 0.55 : 0.5), id + ': ' + touching.length + ' of ' + terrace.length + ' terrace lots have a neighbour on their face');
+        /* THE INFILL + THE BOUNDARY WALLS (2026-09-21): the bare solid is packed with axis-aligned lots (face −1, never a main front, never within 7.5 m of a door's pad),
+           the mask's boundary off the street faces wears the fence too, and the room's edge stands built */
+        const infill = info.lots.filter(l => l.infill);
+        assert.ok(infill.length >= 40, id + ': infill lots ' + infill.length);
+        assert.ok(infill.every(l => l.rot === 0 && l.face === -1 && Number.isInteger(l.storeys) && (info.pads || []).every(p => !p.door || Math.hypot(l.x - p.x, l.z - p.z) >= 7.5)), id + ': an infill lot is axis-aligned, faceless and clear of the doors');
+        assert.ok(infill.some(l => Math.min(room.shell.w / 2 - Math.abs(l.x), room.shell.d / 2 - Math.abs(l.z)) < 14 && l.storeys >= 2), id + ': the rim is built tall');
+        assert.ok(info.gen.infill === infill.length && info.gen.boundaryWalls >= 20 && info.yardWalls.filter(w => w.boundary).length === info.gen.boundaryWalls, id + ': the readouts (' + info.gen.infill + ' / ' + info.gen.boundaryWalls + ')');
+        assert.ok(info.yardWalls.filter(w => w.boundary).every(w => w.h >= 1.7 && w.key && w.t === 0.3), id + ': a boundary wall is a fence');
         assert.equal(info.gen.sidewalk, gen.walkW); assert.equal(info.gen.kerb, gen.kerb); assert.equal(info.gen.fronts, gen.fronts); assert.equal(info.gen.prisms, gen.prisms !== false);
         assert.equal((info.thicket || []).length, 0, id + ': no thicket');
         const a = D.hqTerrainCompile(room, id), b = D.hqTerrainCompile(room, id);

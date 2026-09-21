@@ -7945,3 +7945,28 @@ bomb → blast → tornado → fling → zone; the stamps; the sky; the cap; the
 source-guarded). UNSEEN LIVE (RULE #1c): the blast timed to the slide's landing, the fling arc taking
 over a rig mid-shove, the ⛓ float's stacking, the zone's status badge landing under the nameplate on
 contact.
+
+## THE TEXTURE PASS + DISASTER CITY FILLED IN — the flicker, the banned sheets, THE INFILL, THE BOUNDARY WALLS, THE BACKDROP (2026-09-21, local delivery)
+RULES that came with it. **(1) A SHEET IS RETIRED IN THE REGISTRY, NEVER BY HAND** (sprites.js TERRAIN_SPRITES + TERRAIN_BASE_TINT,
+the marble / urban_street precedent): `metal_2` / `gunmetal_2` wear `gunmetal.png`, `metal_3` the aluminium sheet × `#8a949e`
+(BLUED STEEL), `gold` / `gold_2` / `gold_3` the aluminium sheet × three warm tints (THE BRUSHED GILT — every board tile, monument,
+trim, HQ shell and spell prop that names a gold key), `rock_wall_2` the cave rock. The keys stay (boards, rooms, the editor's
+palette, the tests name them); the seven old PNGs stay in the bucket unreferenced. Never point a new row at metal_2.png /
+metal_3.png / gunmetal_2.png / gold*.png / rock_wall_2.png again; rock_wall_1 (the glyph sheet) is for natural / ancient stone
+only — never a man-made room. **(2) `_hzTex` resolves the D.O.O.R. HQ texture table** (`DOOR_HQ.textures` → `assets.textures`)
+after TERRAIN_SPRITES and `urban:` — a terrain room's `cliff: 'concrete'` used to MISS and `_hqTerrainMat` fell back to
+rock_wall_1 (THE GARAGE's every wall wore the glyphs); the fallback is the plain `cliff` sheet now. **(3) THE FLICKER**: a frame
+strip stands PROUD of the plane it decorates (the door frames were coplanar with the jambs — `pd / 2 - 0.025`), a bridge deck
+rides 2.5 cm over its data height at the mouths, and the key shadow's depth pass runs EVERY frame (`HQ_LIGHT_RULES.shadows.
+everyN` 1 — an every-other-frame pass shimmers on every thin edge as the walker moves). **(4) THE INFILL** (data.js, the city
+branch after THE OVERLAP SWEEP): the bare solid — block interiors, both sides of every alley / plaza / feature pocket, THE RIM —
+is packed with axis-aligned lots on a lattice (`HQ_TERRAIN_GEN.city.infillPitch` 7.5, `infillRim` 14: a rim lot is tall, never
+low), `infill: true` + `face: -1`, never a main front (a front on any edge onto open ground), ≥ 7.5 m from a door's pad;
+`gen.infill: false` opts out. **(5) THE BOUNDARY WALLS**: the mask's whole boundary is traced (`_hqTTraceMaskWalls`) and every
+run off a street face that is not a lot's face, a tier's cliff (seven samples along the run; a run climbing > 1 m is an edge
+blend — a fence on it makes a wall top the walker can stand on = a trap) or a door's lane wears the district's fence
+(`boundary: true` in `info.yardWalls`; readouts `info.gen.infill` / `.boundaryWalls`). **(6) THE BACKDROP**: three-renderer.js
+`_hqBuildCityBackdrop` stands a skyline of map-builder prisms 4–6 m PAST an open city's shell on the outer ground (a gap round
+every door; a tall block past each corner) — scenery only; `EW_HQ_NO_CITY_BACKDROP` / `terrain.backdrop: false`. Disaster City
+is THE PRISM CITY (`texP` 0.22; the Grid / the Strip keep theirs). The Vatican's aisle is `carpet_4`. hq-city.test.js pins the
+infill, the boundary walls and the rim. UNSEEN LIVE (RULE #1c): DOOR_HQ_BUILD_PLAN §9's entry lists what to eyeball first.
