@@ -2172,6 +2172,12 @@
                     if (window.GAME && typeof window.GAME.collectMatDropsAt === 'function') {
                         window.GAME.collectMatDropsAt(unit, c.x, c.y);
                     }
+                    // ⛓ THE CHAIN (2026-09-21): blown onto a bomb / trap / zone /
+                    // vortex → it fires now (a caller mid-fling passes noChain
+                    // and resolves the FINAL landing itself).
+                    if (!opts.noChain && window.GAME && typeof window.GAME.resolveTileArrival === 'function') {
+                        window.GAME.resolveTileArrival(unit, { via: 'blown' });
+                    }
                     return {
                         pushed: true,
                         fromX,
@@ -2225,6 +2231,9 @@
                 }
                 if (window.GAME && typeof window.GAME.collectMatDropsAt === 'function') {
                     window.GAME.collectMatDropsAt(unit, _bc.x, _bc.y);
+                }
+                if (!opts.noChain && window.GAME && typeof window.GAME.resolveTileArrival === 'function') {
+                    window.GAME.resolveTileArrival(unit, { via: 'blown' });   // ⛓
                 }
                 return {
                     pushed: true,
@@ -2734,8 +2743,12 @@
                             // "they just snap to where they land").
                             const pushes = def.displaceTiles || 2;
                             const startX = v.x, startY = v.y;
+                            /* ⛓ THE CHAIN: this storm has taken this body this
+                               round — the landing's own chain never re-flings it
+                               (battle.js _chainVortex reads the same stamp). */
+                            (v._vortexStamps || (v._vortexStamps = {}))[String(weather.id || weather.type)] = state.round || 0;
                             for (let p = 0; p < pushes; p++) {
-                                const res = applyBlowback(v, nx, ny, `${def.icon} `, { noAnim: true });
+                                const res = applyBlowback(v, nx, ny, `${def.icon} `, { noAnim: true, noChain: true });
                                 if (!res || !res.pushed) break;
                                 actedVisibly = true;
                             }
@@ -2748,6 +2761,10 @@
                                 } else if (typeof animateDisplacement === 'function') {
                                     // 2D fallback: a single full-path ghost slide.
                                     animateDisplacement(v, startX, startY, v.x, v.y, 320, { delayMs: 150 });
+                                }
+                                // ⛓ the fling's landing is an arrival like any other
+                                if (window.GAME && typeof window.GAME.resolveTileArrival === 'function') {
+                                    window.GAME.resolveTileArrival(v, { via: 'flung' });
                                 }
                             }
                         }

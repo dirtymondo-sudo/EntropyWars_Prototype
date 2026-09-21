@@ -2284,6 +2284,7 @@
                     unit._trackTilesMoved = (unit._trackTilesMoved || 0) + 1;
                     addLog(`${unitDisplayName(unit)} charges to ${coordLabel(landTile.x, landTile.y)}.`);
                     animateDisplacement(unit, fromX, fromY, landTile.x, landTile.y, 200, { leap: true });
+                    resolveTileArrival(unit, { via: 'self' });   // ⛓ the charge's landing
                 }
                 }
 
@@ -2339,6 +2340,7 @@
                                 if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(rx, ry, unit.z);
                                 unit._trackTilesMoved = (unit._trackTilesMoved || 0) + Math.abs(rx - _ufx) + Math.abs(ry - _ufy);
                                 animateDisplacement(unit, _ufx, _ufy, rx, ry, Math.max(200, slide.animMs || 0));
+                                resolveTileArrival(unit, { via: 'self' });   // ⛓ the carrier's landing
                             }
                             addLog(`${unitDisplayName(unit)} carries ${unitDisplayName(target)} ${slide.moved} tile${slide.moved !== 1 ? 's' : ''} down the line!`);
                         }
@@ -2453,6 +2455,7 @@
                 // the last stretch — onto the ledge when the victim stands
                 // higher, off the edge when lower, a leaping strike on the flat.
                 animateDisplacement(unit, fromX, fromY, landTile.x, landTile.y, chargeMs, { leap: true });
+                resolveTileArrival(unit, { via: 'self' });   // ⛓ the charge's landing
                 addLog(`${unitDisplayName(unit)} charges from ${coordLabel(fromX, fromY)} to ${coordLabel(landTile.x, landTile.y)}!`);
                 scheduleBoardRender();
             };
@@ -3552,24 +3555,179 @@
             return true;
         }
 
-        // 🌋 Knockback into hazards — element-agnostic. When a spell shoves or
-        // drags a unit onto lava or deep water, the terrain bites immediately
-        // instead of waiting for end of round. Flyers / terrain-adapted units are
-        // unaffected. Called from the displacement (push/pull/grab) sites.
-        function _applyKnockbackHazard(unit) {
-            if (!unit || unit.dead || unit._dying) return;
-            if (state.phase !== 'battle') return;
-            if (typeof canFly === 'function' && canFly(unit)
-                && typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return;
-            const terr = getTerrainAt(unit.x, unit.y);
-            // 💧 Landing in water puts you out — burn (lava-stoked or not) is
-            // doused the instant a unit is shoved into the drink — and
-            // leaves them Soaked (conductive to the next lightning bolt).
-            if (terr === 'water' || terr === 'deep_water' || _isWetTile(unit.x, unit.y)) {
-                _soakUnit(unit);   // douses burn + applies Soaked
+        // ═══════════════════════════════════════════════════════════════════
+        // ⛓ THE CHAIN REACTION (2026-09-21) — THE ONE ARRIVAL RESOLVER
+        // Every reaction the BOARD has to a body landing on a tile lives here,
+        // in ONE fixed order, and it runs the same whether the body WALKED,
+        // was SHOVED / PULLED / THROWN / BLOWN / DRAGGED, TELEPORTED, or a
+        // flyer was GROUNDED onto the tile. A reaction that moves the body
+        // again (a bomb's blast, a tornado's fling, a warp rune) calls the
+        // resolver again at the new tile with depth + 1 — that is the Rube
+        // Goldberg machine: bomb → blast → tornado → fling → debuff zone.
+        //
+        //  THE ORDER (every step re-reads unit.x / unit.y and bails once the
+        //  body is dead or another step already moved it):
+        //   A  THE SKY   — an airborne unit in a super-gravity field is
+        //                  grounded (forceGroundUnit re-enters the chain on
+        //                  the deck). Any other airborne unit glides over
+        //                  everything below and the chain ends here.
+        //   B  THE GROUND — water soaks (and douses), lava / deep water bite
+        //                  (a shove only — walking in is the terrain's own
+        //                  end-of-turn rule), a burning tile burns, goo coats.
+        //   C  THE PICKUPS — pixie dust, debris cubes.
+        //   D  THE FUSES  — an enemy BOMB detonates (its blast blows bodies
+        //                  → their own chains), a hidden TRAP springs, a
+        //                  deployed detonateOnStep object fires.
+        //   E  THE ZONES  — every enemy DEBUFF zone the tile lies in applies
+        //                  its statuses NOW (once per zone per round — the
+        //                  end-of-round tick then refreshes as before); a
+        //                  friendly smoke cloud re-cloaks.
+        //   F  THE VORTEX — an active tornado / hurricane whose tiles hold
+        //                  the body shreds and FLINGS it now (once per storm
+        //                  per round), and the landing runs its own chain.
+        //   G  THE RUNE   — a warp rune teleports the body; the landing runs
+        //                  its own chain.
+        //  Objectives (Keys, the Nexus tick, wards) are deliberate walk-only
+        //  hooks in completeMoveAlongPath — a shoved body never claims them.
+        //
+        //  opts.via: 'move' | 'displaced' | 'blown' | 'flung' | 'thrown' |
+        //            'dragged' | 'grounded' | 'self' | 'teleport'
+        //  opts.fxDelayMs: the slide tween still playing — VFX beats that can
+        //            wait (a bomb's blast) ride it; state never does.
+        //  Returns the number of reactions that fired at this depth.
+        //  RULE #2: host-only engine work; positions sync, the VFX it fires
+        //  (VFX3D.fire, playVortexFlingFx, the floats) ride their own relays.
+        // ═══════════════════════════════════════════════════════════════════
+        const CHAIN_RULES = { maxDepth: 8, floatMs: 1100 };
+        let _chainDepth = 0;
+        let _chainFired = 0;
+
+        function _chainStampOk(unit, field, key) {
+            /* once per (unit, key) per round — plain data on the unit (an id
+               string → the round), never an object reference (RULE #2) */
+            const r = state.round || 0;
+            const m = unit[field] || (unit[field] = {});
+            if (m[key] === r) return false;
+            m[key] = r;
+            return true;
+        }
+
+        function _chainZoneKey(z) {
+            return (z.spellName || 'zone') + '@' + z.x + ',' + z.y + '#' + (z.ownerPlayer ?? '');
+        }
+
+        // The debuff zones an ENEMY of the zone's owner is standing in.
+        function _chainZonesAt(unit) {
+            const zones = state._activeZones;
+            if (!zones || !zones.length) return [];
+            return zones.filter(z => z && z.type === 'debuff' && !z.gravityField
+                && z.ownerPlayer !== unit.player
+                && Math.abs(unit.x - z.x) <= (z.radius ?? 1) && Math.abs(unit.y - z.y) <= (z.radius ?? 1));
+        }
+        window._chainZonesAt = _chainZonesAt;
+
+        // The active displacing storm (tornado / hurricane) whose tiles hold (x, y).
+        function _chainVortexAt(x, y) {
+            const list = state.activeWeather;
+            if (!list || !list.length || typeof WEATHER_REGISTRY === 'undefined') return null;
+            for (const w of list) {
+                const def = WEATHER_REGISTRY[w.type];
+                if (!def || !def.displaces || !w.tiles) continue;
+                if (w.tiles.some(t => t.x === x && t.y === y)) return { weather: w, def };
             }
-            if (_isLavaTile(unit.x, unit.y)) {
-                if (typeof unitIsLavaAdapted === 'function' && unitIsLavaAdapted(unit)) return;
+            return null;
+        }
+        window._chainVortexAt = _chainVortexAt;
+
+        function _chainFloat(unit, depth) {
+            if (depth < 1 || _skipVisuals()) return;
+            showFloatingTextForUnit(unit, `⛓ CHAIN ×${depth + 1}`, 'streak', { durationMs: CHAIN_RULES.floatMs });
+        }
+
+        function resolveTileArrival(unit, opts = {}) {
+            if (!unit || unit.dead || unit._dying) return 0;
+            if (state.phase !== 'battle') return 0;
+            const via = opts.via || 'displaced';
+            const depth = _chainDepth;
+            if (depth >= CHAIN_RULES.maxDepth) {
+                addLog(`⛓ The chain reaction runs out at ${coordLabel(unit.x, unit.y)} (×${depth}).`);
+                return 0;
+            }
+            const startX = unit.x, startY = unit.y;
+            const moved = () => unit.dead || unit._dying || unit.x !== startX || unit.y !== startY;
+            let fired = 0;
+            _chainDepth = depth + 1;
+            try {
+                const airborne = (typeof canFly === 'function' && canFly(unit)
+                    && typeof isUnitAirborne === 'function' && isUnitAirborne(unit));
+
+                // ── A · THE SKY ─────────────────────────────────────────────
+                if (airborne) {
+                    if (getGravityFieldAt(unit.x, unit.y) === 'super' && typeof forceGroundUnit === 'function') {
+                        // forceGroundUnit re-enters the chain on the deck.
+                        if (forceGroundUnit(unit, { byLabel: 'by the crushing gravity' })) fired++;
+                    }
+                    return fired;
+                }
+
+                // ── B · THE GROUND ──────────────────────────────────────────
+                fired += _chainGround(unit, via);
+                if (moved()) return fired;
+
+                // ── C · THE PICKUPS ─────────────────────────────────────────
+                if (typeof checkPixieDustPickup === 'function' && checkPixieDustPickup(unit)) fired++;
+                collectMatDropsAt(unit, unit.x, unit.y);   // a pickup, not a reaction
+                if (moved()) return fired;
+
+                // ── D · THE FUSES ───────────────────────────────────────────
+                fired += _chainFuses(unit, opts);
+                if (moved()) return fired;
+
+                // ── E · THE ZONES ───────────────────────────────────────────
+                fired += _chainZones(unit);
+                updateSmokeZoneCloak(unit);
+                if (moved()) return fired;
+
+                // ── F · THE VORTEX ──────────────────────────────────────────
+                fired += _chainVortex(unit);
+                if (moved()) return fired;
+
+                // ── G · THE RUNE ────────────────────────────────────────────
+                if (typeof checkWarpRuneTrigger === 'function' && checkWarpRuneTrigger(unit)) {
+                    fired++;
+                    resolveTileArrival(unit, { via: 'teleport' });
+                }
+                return fired;
+            } finally {
+                _chainDepth = depth;
+                if (fired) {
+                    _chainFired += fired;
+                    _chainFloat(unit, depth);
+                }
+                if (depth === 0 && _chainFired) {
+                    if (_chainFired > 1) addLog(`⛓ Chain reaction: ${_chainFired} reactions from ${coordLabel(startX, startY)}.`);
+                    _chainFired = 0;
+                    if (typeof checkWin === 'function') checkWin();
+                    scheduleBoardRender();
+                }
+            }
+        }
+        window.resolveTileArrival = resolveTileArrival;
+
+        // B · the terrain under the body (the old knockback-hazard rule, walk-aware)
+        function _chainGround(unit, via) {
+            let fired = 0;
+            const x = unit.x, y = unit.y;
+            const terr = getTerrainAt(x, y);
+            // 💧 Landing in water puts you out — burn (lava-stoked or not) is
+            // doused the instant a unit lands in the drink — and leaves them
+            // Soaked (conductive to the next lightning bolt).
+            if (terr === 'water' || terr === 'deep_water' || _isWetTile(x, y)) {
+                _soakUnit(unit);   // douses burn + applies Soaked
+                fired++;
+            }
+            if (via !== 'move' && _isLavaTile(x, y)) {
+                if (typeof unitIsLavaAdapted === 'function' && unitIsLavaAdapted(unit)) return fired;
                 /* Lava is fire-element (2026-07-23): the splash damage rides the
                    pipeline with element:'fire', so a Thermal Regen kaiju HEALS
                    from the dunk instead — and skips the burn stacks. */
@@ -3582,31 +3740,166 @@
                 applyDamageToUnit(unit, 60, `${unitDisplayName(unit)} is hurled into molten lava: `, {
                     ignoreArmor: true, damageType: 'dot', consumeMarked: false, flashColor: 'burn', element: 'fire'
                 });
-                if (_lavaDrinker) return;
+                fired++;
+                if (_lavaDrinker) return fired;
                 addLog(`🌋 ${unitDisplayName(unit)} is knocked into the lava — and bursts into flame!`);
                 showFloatingTextForUnit(unit, '🌋 LAVA!', 'damage', { durationMs: 1200 });
                 if (typeof playSfx === 'function') playSfx('burningDamage');
-            } else if (terr === 'deep_water') {
-                if (typeof unitIsDeepWaterAdapted === 'function' && unitIsDeepWaterAdapted(unit)) return;
+            } else if (via !== 'move' && terr === 'deep_water') {
+                if (typeof unitIsDeepWaterAdapted === 'function' && unitIsDeepWaterAdapted(unit)) return fired;
                 ensureUnitStatus(unit).drowning = 3;
                 unit._drowningStacks = (unit._drowningStacks || 0) + 1;
                 applyDamageToUnit(unit, 36, `${unitDisplayName(unit)} is dragged into the depths: `, {
                     ignoreArmor: true, damageType: 'dot', consumeMarked: false, flashColor: 'drowning'
                 });
+                fired++;
                 addLog(`🌊 ${unitDisplayName(unit)} is knocked into deep water and starts to drown!`);
                 showFloatingTextForUnit(unit, '🌊 SINK!', 'damage', { durationMs: 1200 });
                 if (typeof playSfx === 'function') playSfx('drowningDamage');
-            } else if (_tileIsBurning(unit.x, unit.y)) {
-                // Shoved into a burning tile → the flames bite immediately.
-                _burnUnitOnTile(unit, BURNING_KNOCKIN_DAMAGE,
-                    `${unitDisplayName(unit)} is hurled into the flames: `);
-                addLog(`🔥 ${unitDisplayName(unit)} is knocked into the burning ground!`);
+            } else if (_tileIsBurning(x, y)) {
+                if (via === 'move') {
+                    // Walking into ground fire hurts NOW (and sets you burning).
+                    _burnUnitOnTile(unit, BURNING_ENTER_DAMAGE,
+                        `${unitDisplayName(unit)} steps into the flames: `);
+                } else {
+                    // Shoved into a burning tile → the flames bite immediately.
+                    _burnUnitOnTile(unit, BURNING_KNOCKIN_DAMAGE,
+                        `${unitDisplayName(unit)} is hurled into the flames: `);
+                    addLog(`🔥 ${unitDisplayName(unit)} is knocked into the burning ground!`);
+                }
+                fired++;
             }
-            // Shoved/pulled onto a hidden trap → it springs. "Drag them into
-            // the snare" is exactly the play the trap arsenal wants to reward.
-            if (typeof checkTrapTrigger === 'function') checkTrapTrigger(unit);
-            // 🧱 Hurled onto a debris pile → the landing body scoops it up.
-            collectMatDropsAt(unit, unit.x, unit.y);
+            /* wave C: terrain that coats whoever touches it (the goo tile's
+               enterStatus) — the ooze itself walks through clean. */
+            {
+                const _er = (typeof TERRAIN_RULES !== 'undefined') ? TERRAIN_RULES[terr] : null;
+                if (_er && _er.enterStatus && !unit.dead
+                    && !(typeof unitPassiveValue === 'function' && unitPassiveValue(unit, 'contactStatus') === _er.enterStatus.id)) {
+                    applyStatusPayload(unit, { id: _er.enterStatus.id, duration: _er.enterStatus.duration || 2 }, `${_er.label}: `);
+                    fired++;
+                }
+            }
+            return fired;
+        }
+
+        // D · the fuses under the body: an enemy bomb, a hidden trap, a deployed mine
+        function _chainFuses(unit, opts) {
+            let fired = 0;
+            const x = unit.x, y = unit.y;
+            if (state.bombs && state.bombs.length) {
+                const bombIndex = state.bombs.findIndex(b => b.x === x && b.y === y && b.owner !== unit.player);
+                if (bombIndex >= 0) {
+                    const bomb = state.bombs.splice(bombIndex, 1)[0];
+                    detonateBomb(bomb, `💣 Bomb trap detonates under ${unitDisplayName(unit)} at ${coordLabel(x, y)}.`, { fxDelayMs: opts.fxDelayMs || 0 });
+                    fired++;
+                    if (unit.dead || unit.x !== x || unit.y !== y) return fired;
+                }
+            }
+            if (typeof checkTrapTrigger === 'function' && checkTrapTrigger(unit)) {
+                fired++;
+                if (unit.dead || unit.x !== x || unit.y !== y) return fired;
+            }
+            /* ── detonateOnStep: deployed objects that go off underfoot ── */
+            if (state._deployedObjects) {
+                const trapIdx = state._deployedObjects.findIndex(o =>
+                    o.x === x && o.y === y && o.hp > 0 && o.detonateOnStep && o.ownerPlayer !== unit.player && !o._detonated
+                );
+                if (trapIdx >= 0) {
+                    const trap = state._deployedObjects[trapIdx];
+                    trap._detonated = true;
+                    addLog(`${trap.spellName || 'Trap'} triggers on ${unitDisplayName(unit)} at ${coordLabel(x, y)}!`);
+                    /* Blast damage — credited to the trap's OWNER. */
+                    if (trap.blastRadius > 0 && trap.blastDmg > 0) {
+                        const _trapOwner = state.units.find(u => u.id === trap.ownerId && !u.dead) || null;
+                        detonateDeployedObject(trap, _trapOwner);
+                    } else {
+                        /* Apply status effects from the trap's spell data */
+                        const spellDef = (typeof SPELL_BY_ID !== 'undefined') ? SPELL_BY_ID[trap.spellId] : null;
+                        const trapEffects = spellDef?.statusEffects || trap.statusEffects || [];
+                        for (const eff of trapEffects) {
+                            const casterUnit = state.units.find(u => u.id === trap.ownerId);
+                            applyStatusPayload(unit, { id: eff.id, duration: eff.duration || 1 }, `${trap.spellName || 'Trap'} → `, casterUnit || null);
+                        }
+                        if (trapEffects.length) {
+                            showFloatingTextForUnit(unit, trap.spellName || 'TRAPPED!', 'damage');
+                            playSfx('debuff');
+                        }
+                        /* Remove the trap after triggering */
+                        const _ti = state._deployedObjects.indexOf(trap);
+                        if (_ti >= 0) state._deployedObjects.splice(_ti, 1);
+                    }
+                    fired++;
+                    scheduleBoardRender();
+                }
+            }
+            return fired;
+        }
+
+        // E · the enemy debuff zones the body stands in bite on contact
+        function _chainZones(unit) {
+            let fired = 0;
+            for (const zone of _chainZonesAt(unit)) {
+                if (!_chainStampOk(unit, '_zoneEntryStamps', _chainZoneKey(zone))) continue;
+                const _zoneCaster = zone.casterUnitId
+                    ? state.units.find(u => u.id === zone.casterUnitId && !u.dead) || null
+                    : null;
+                let applied = 0;
+                for (const eff of (zone.statusEffects || [])) {
+                    if (!eff || !eff.id) continue;
+                    applyStatusPayload(unit, { id: eff.id, duration: eff.duration || 1, bonusDamage: eff.bonusDamage || 0 }, `${zone.spellName} → `, _zoneCaster);
+                    applied++;
+                }
+                if (!applied) continue;
+                fired++;
+                addLog(`🔮 ${unitDisplayName(unit)} enters the ${zone.spellName} zone at ${coordLabel(unit.x, unit.y)} — afflicted on the spot.`);
+                if (!_skipVisuals()) playSfx('debuff');
+                if (unit.dead) break;
+            }
+            return fired;
+        }
+
+        // F · a tornado / hurricane standing on the tile takes the body NOW
+        function _chainVortex(unit) {
+            const hit = _chainVortexAt(unit.x, unit.y);
+            if (!hit) return 0;
+            const { weather, def } = hit;
+            if (!_chainStampOk(unit, '_vortexStamps', String(weather.id || weather.type))) return 0;
+            if (typeof applyBlowback !== 'function') return 0;
+            const eye = weather.tiles[0] || { x: unit.x, y: unit.y };
+            addLog(`${def.icon} ${unitDisplayName(unit)} lands in the ${def.label} at ${coordLabel(unit.x, unit.y)}!`);
+            const roll = def.homingDamage ? def.homingDamage(unit) : null;
+            if (roll && roll.amount > 0) {
+                applyDamageToUnit(unit, roll.amount, `${roll.text}`, {
+                    ignoreArmor: false, element: def.element || null, scaleByTargetLevel: true
+                });
+                if (unit.dead) return 1;
+            }
+            const startX = unit.x, startY = unit.y;
+            const pushes = def.displaceTiles || 2;
+            for (let p = 0; p < pushes; p++) {
+                const res = applyBlowback(unit, eye.x, eye.y, `${def.icon} `, { noAnim: true, noChain: true });
+                if (!res || !res.pushed) break;
+            }
+            if (!unit.dead && (unit.x !== startX || unit.y !== startY)) {
+                const fling = (typeof window.playVortexFlingFx === 'function')
+                    ? window.playVortexFlingFx(unit, startX, startY, unit.x, unit.y, weather.type)
+                    : { usedArc: false };
+                if (!(fling && fling.usedArc) && typeof animateDisplacement === 'function') {
+                    animateDisplacement(unit, startX, startY, unit.x, unit.y, 320, { delayMs: 150 });
+                }
+                showFloatingTextForUnit(unit, `${def.icon} FLUNG!`, 'debuff', { durationMs: 1000 });
+                // The landing is an arrival like any other.
+                resolveTileArrival(unit, { via: 'flung' });
+            }
+            return 1;
+        }
+
+        // 🌋 Knockback into hazards (the historical name every displacement
+        // site calls) = THE CHAIN with via 'displaced'. Since 2026-09-21 the
+        // shove reads EVERYTHING the walk reads — bombs, deployed mines, debuff
+        // zones, the vortex — not only the liquids and the hidden traps.
+        function _applyKnockbackHazard(unit, opts) {
+            return resolveTileArrival(unit, Object.assign({ via: 'displaced' }, opts || {}));
         }
 
         // 🌊 Water finds its level (2026-07-07): whenever ground is LOWERED next
@@ -4213,7 +4506,7 @@
                         }
                     }
                     if (res.moved > 0) {
-                        _applyKnockbackHazard(target);
+                        _applyKnockbackHazard(target, { fxDelayMs: (opts.animate !== false && !_skipVisuals() && !_bufferingRoundEvents) ? (res.animMs || 0) : 0 });
                         _fanFlamesAlongPush(target, res.steps.filter(s => !s.bump), dx, dy, opts.byUnit || null);
                     }
                 }
@@ -8983,6 +9276,7 @@
                     if (took > 0 && roper.player !== v.player) roper._trackDmgDealt = (roper._trackDmgDealt || 0) + took;
                 }
                 if (typeof markDirty === 'function') markDirty('board');
+                resolveTileArrival(v, { via: 'dragged' });   // ⛓ dragged onto whatever waits there
             }
         }
 
@@ -30504,17 +30798,6 @@
                     dropPixieDust(unit, _originX, _originY, { force: true, blindOnStep: _shed.blindOnStep || 0 });
                 }
             }
-            if (typeof checkPixieDustPickup === 'function') checkPixieDustPickup(unit);
-            /* wave C: terrain that coats whoever steps onto it (the goo tile's
-               enterStatus) — flyers and the ooze itself walk through clean. */
-            {
-                const _er = (typeof TERRAIN_RULES !== 'undefined') ? TERRAIN_RULES[getTerrainAt(unit.x, unit.y)] : null;
-                if (_er && _er.enterStatus && !unit.dead
-                    && !(typeof isUnitAirborne === 'function' ? isUnitAirborne(unit) : canFly(unit))
-                    && !(typeof unitPassiveValue === 'function' && unitPassiveValue(unit, 'contactStatus') === _er.enterStatus.id)) {
-                    applyStatusPayload(unit, { id: _er.enterStatus.id, duration: _er.enterStatus.duration || 2 }, `${_er.label}: `);
-                }
-            }
             // 🪢 Roped victims are dragged into the tile this unit just left.
             _tetherFollow(unit, _originX, _originY, _fromZ);
 
@@ -30525,16 +30808,6 @@
 
             checkOpportunityAttack(unit, _originX, _originY);
 
-            // Walking into (or out of) a friendly smoke cloud toggles the cloak
-            // immediately — no waiting for the end-of-round zone refresh.
-            updateSmokeZoneCloak(unit);
-
-            // 🕳 Flying INTO a Gravity Crush field ends the flight right there —
-            // slammed to the deck with forced fall damage (×3 from the field).
-            if (_wasAirborne && getGravityFieldAt(unit.x, unit.y) === 'super') {
-                forceGroundUnit(unit, { byLabel: 'by the crushing gravity' });
-            }
-
             // 🕯 Hex of Toil: moving feeds the curse.
             _procHexedOnAction(unit, 'moves');
 
@@ -30544,60 +30817,15 @@
                 _onFlyerLanded(unit);
             }
 
-            if (!_wasAirborne) {
-                // 🧱 Debris cubes on the arrival tile are banked on the spot.
-                collectMatDropsAt(unit, x, y);
-                // Walking into ground fire hurts NOW (and sets you burning).
-                if (_tileIsBurning(x, y)) {
-                    _burnUnitOnTile(unit, BURNING_ENTER_DAMAGE,
-                        `${unitDisplayName(unit)} steps into the flames: `);
-                }
-                // 💧 Wading into water soaks you — and puts out any fire on
-                // you (dive in the lake to stop burning; just don't stand in
-                // the pool when a bolt comes down).
-                if (_isWaterTile(x, y)) {
-                    _soakUnit(unit);   // douses burn + applies Soaked
-                }
-                const bombIndex = state.bombs.findIndex(b => b.x === x && b.y === y && b.owner !== unit.player);
-                if (bombIndex >= 0) {
-                    const bomb = state.bombs.splice(bombIndex, 1)[0];
-                    detonateBomb(bomb, `Bomb trap detonates at ${coordLabel(x, y)}.`);
-                }
-                if (typeof checkTrapTrigger === 'function') checkTrapTrigger(unit);
-                /* ── detonateOnStep: trigger traps when a unit steps on them ── */
-                if (state._deployedObjects) {
-                    const trapIdx = state._deployedObjects.findIndex(o =>
-                        o.x === x && o.y === y && o.hp > 0 && o.detonateOnStep && o.ownerPlayer !== unit.player && !o._detonated
-                    );
-                    if (trapIdx >= 0) {
-                        const trap = state._deployedObjects[trapIdx];
-                        trap._detonated = true;
-                        addLog(`${trap.spellName || 'Trap'} triggers on ${unitDisplayName(unit)} at ${coordLabel(x, y)}!`);
-                        /* Apply blast damage if any — credited to the trap's
-                           OWNER (the old code passed the victim who stepped on
-                           it, so mine kills credited nobody). */
-                        if (trap.blastRadius > 0 && trap.blastDmg > 0) {
-                            const _trapOwner = state.units.find(u => u.id === trap.ownerId && !u.dead) || null;
-                            detonateDeployedObject(trap, _trapOwner);
-                        } else {
-                            /* Apply status effects from the trap's spell data */
-                            const spellDef = (typeof SPELL_BY_ID !== 'undefined') ? SPELL_BY_ID[trap.spellId] : null;
-                            const trapEffects = spellDef?.statusEffects || trap.statusEffects || [];
-                            for (const eff of trapEffects) {
-                                const casterUnit = state.units.find(u => u.id === trap.ownerId);
-                                applyStatusPayload(unit, { id: eff.id, duration: eff.duration || 1 }, `${trap.spellName || 'Trap'} → `, casterUnit || null);
-                            }
-                            if (trapEffects.length) {
-                                showFloatingTextForUnit(unit, trap.spellName || 'TRAPPED!', 'damage');
-                                playSfx('debuff');
-                            }
-                            /* Remove the trap after triggering */
-                            state._deployedObjects.splice(trapIdx, 1);
-                        }
-                        scheduleBoardRender();
-                    }
-                }
+            // ⛓ THE CHAIN (2026-09-21): every reaction the board has to a body
+            // landing on a tile — the liquids, the fire, the goo, the pickups,
+            // an enemy bomb / trap / mine, the debuff zones, the vortex, a
+            // warp rune — ONE resolver, ONE order, the same for a walk and a
+            // shove (resolveTileArrival). A flyer that lands at the end of its
+            // move takes it too; one still in the air only meets the gravity field.
+            resolveTileArrival(unit, { via: 'move' });
 
+            if (!_wasAirborne) {
                 /* 🦴 Bone-pile looting — ending a move on an enemy's remains rifles
                    them for items. Ally graves are left intact (their gear stays with
                    them for a revive); allies can still be looted deliberately via scan. */
@@ -47282,6 +47510,9 @@
             // (bounces, crash-through, bowling-pin chains) + its impact FX.
             // simulate:true = pure landing-tile prediction (previews / AI).
             resolveForcedSlide, playCollisionImpactFx,
+            // ⛓ THE CHAIN (2026-09-21): the one arrival resolver + its readers
+            resolveTileArrival, _chainZonesAt, _chainVortexAt,
+            get CHAIN_RULES() { return CHAIN_RULES; },
             // placement validity (shared by menus / previews / AI)
             _placeBlockProblem, _placeTrapProblem, _trapFootprint, _structurePlanFor,
             // 🧱 BUILD action (universal place/dig verb, 2026-07-10)
@@ -50135,14 +50366,20 @@
             }
         }
 
-        function detonateBomb(bomb, triggerText) {
+        function detonateBomb(bomb, triggerText, opts = {}) {
             addLog(triggerText);
 
             if (typeof window !== 'undefined' && window.ThreeVFXEffects
                 && window.ThreeVFXEffects.hasMapping('placeBomb', 'aoe')) {
                 if (state.phase === 'battle' && !_skipVisuals()) {
-                    window.ThreeVFXEffects.fire('aoe', 'placeBomb', { tx: bomb.x, ty: bomb.y });
-                    playSfx('physicalAbility');
+                    /* ⛓ a bomb sprung by a SHOVE: the blast waits for the slide
+                       tween to land the body on it (state never waits). */
+                    const _bvFire = () => {
+                        if (state.phase !== 'battle') return;
+                        window.ThreeVFXEffects.fire('aoe', 'placeBomb', { tx: bomb.x, ty: bomb.y });
+                        playSfx('physicalAbility');
+                    };
+                    if (opts.fxDelayMs > 0) window.setTimeout(_bvFire, opts.fxDelayMs); else _bvFire();
                 }
             }
             const area = getSquareArea(bomb.x, bomb.y, 1);
@@ -51902,6 +52139,9 @@
             // 💧 Slammed down into water → soaked, burn doused. (The unit is
             // logically grounded NOW — only the landing FX ride the tween.)
             _onFlyerLanded(unit);
+            // ⛓ THE CHAIN: a flyer grounded onto a bomb / trap / zone / vortex
+            // takes it now — the grounding IS an arrival (2026-09-21).
+            resolveTileArrival(unit, { via: 'grounded', fxDelayMs: _fgFallMs });
             scheduleBoardRender();
             return true;
         }
@@ -53791,6 +54031,7 @@
                 addLog(`${unitDisplayName(occupant)} is knocked aside to ${coordLabel(t.x, t.y)}${opts.byLabel ? ' ' + opts.byLabel : ''}!`);
                 showFloatingTextForUnit(occupant, 'PUSHED!', 'streak', { durationMs: 800 });
                 if (typeof animateDisplacement === 'function') animateDisplacement(occupant, fx, fy, t.x, t.y, 180);
+                _applyKnockbackHazard(occupant);   // ⛓ knocked aside onto whatever waits there
                 return targetZ;
             }
 
@@ -58934,6 +59175,9 @@
                     unit.x = tx; unit.y = ty;
                     target.x = ux; target.y = uy;
                     if (typeof nearestWalkableZ === 'function') { unit.z = nearestWalkableZ(unit.x, unit.y, unit.z); target.z = nearestWalkableZ(target.x, target.y, target.z); }
+                    // ⛓ both bodies arrive somewhere new
+                    resolveTileArrival(unit, { via: 'self' });
+                    resolveTileArrival(target, { via: 'displaced' });
                     addLog(`${unitDisplayName(unit)} swaps positions with ${unitDisplayName(target)}!`);
                     showFloatingTextForUnit(unit, 'SWAP!', 'streak', { durationMs: 800 });
 
@@ -59298,6 +59542,7 @@
                     const _escFromX = unit.x, _escFromY = unit.y;
                     unit.x = candidates[0].x;
                     unit.y = candidates[0].y;
+                    resolveTileArrival(unit, { via: 'self' });   // ⛓ the escape's landing
                     if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(candidates[0].x, candidates[0].y, unit.z);
                     if (_stealthDecoy) {
                         /* Snap with no visible slide so the move can't be traced from
@@ -60644,6 +60889,7 @@
                             if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(cx, cy, unit.z);
                             unit._trackTilesMoved = (unit._trackTilesMoved || 0) + moved;
                             animateDisplacement(unit, _grSelfFromX, _grSelfFromY, cx, cy, _grSlideMs);
+                            resolveTileArrival(unit, { via: 'self' });   // ⛓ reeled in onto whatever waits there
 
                             if (!state.cameraDisabled && _fogCamTilesVisible({ x: _grSelfFromX, y: _grSelfFromY }, { x: cx, y: cy })) {
                                 stopBoardCameraAnimation();
@@ -60883,9 +61129,14 @@
                     const mpCost = (unit.cls === 'Psychic') ? Math.max(1, effectiveSpellCost - 1) : effectiveSpellCost;
                     unit.mp -= mpCost;
                     const oldLabel = coordLabel(tUnit.x, tUnit.y);
+                    const _tpWasAir = typeof canFly === 'function' && canFly(tUnit) && typeof isUnitAirborne === 'function' && isUnitAirborne(tUnit);
                     tUnit.x = x;
                     tUnit.y = y;
+                    // A grounded body lands on the destination's surface (its z used
+                    // to stay the ORIGIN's — a plateau-to-floor blink read as airborne).
+                    if (!_tpWasAir && typeof nearestWalkableZ === 'function') tUnit.z = nearestWalkableZ(x, y, tUnit.z);
                     addLog(`${unitDisplayName(unit)} teleports ${unitDisplayName(tUnit)} from ${oldLabel} to ${coordLabel(x, y)}.`);
+                    resolveTileArrival(tUnit, { via: tUnit === unit ? 'self' : 'teleport' });   // ⛓ the blink's landing
 
                     if (spell.aoeOnArrival && spell.dmg && tUnit === unit) {
                         const aoeR = spell.aoeRadius || 1;
@@ -61647,6 +61898,7 @@
                             addLog(`${unitDisplayName(destOccupant)} is knocked aside to ${coordLabel(pushTo.x, pushTo.y)}!`);
                             showFloatingTextForUnit(destOccupant, 'PUSHED!', 'streak', { durationMs: 800 });
                             animateDisplacement(destOccupant, _dashPushFromX, _dashPushFromY, pushTo.x, pushTo.y, 180);
+                            _applyKnockbackHazard(destOccupant);   // ⛓ knocked aside onto whatever waits there
                         } else {
 
                             const fullPath = [{ x: casterStartX, y: casterStartY }, ...dashPath];
@@ -61701,6 +61953,7 @@
                     }
 
                     animateDisplacement(unit, casterStartX, casterStartY, x, y, dashAnimMs);
+                    resolveTileArrival(unit, { via: 'self' });   // ⛓ the dash's landing
                     if (dashHitCount > 0) {
                         addLog(`${unitDisplayName(unit)} dashes from ${oldLabel} to ${coordLabel(x, y)}, hitting ${dashHitCount} ${dashHitCount === 1 ? 'enemy' : 'enemies'}!`);
                     } else {
@@ -61960,11 +62213,13 @@
                                 collisionTarget.y = pushTo.y;
                                 if (typeof nearestWalkableZ === 'function') collisionTarget.z = nearestWalkableZ(pushTo.x, pushTo.y, collisionTarget.z);
                                 animateDisplacement(collisionTarget, _pFromX, _pFromY, pushTo.x, pushTo.y, 150);
+                                _applyKnockbackHazard(collisionTarget);   // ⛓
                             }
 
                             throwTarget.x = x;
                             throwTarget.y = y;
                             if (typeof nearestWalkableZ === 'function') throwTarget.z = nearestWalkableZ(x, y, throwTarget.z);
+                            resolveTileArrival(throwTarget, { via: 'thrown' });   // ⛓ the throw's landing
                         } else {
 
                             applyDamageToUnit(throwTarget, totalDmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
@@ -61975,6 +62230,7 @@
                             throwTarget.x = x;
                             throwTarget.y = y;
                             if (typeof nearestWalkableZ === 'function') throwTarget.z = nearestWalkableZ(x, y, throwTarget.z);
+                            resolveTileArrival(throwTarget, { via: 'thrown' });   // ⛓ the throw's landing
                         }
                         const deltaLabel = elevDelta > 0 ? ` (${elevDelta}-level drop!)` : '';
                         addLog(`${unitDisplayName(unit)} hurls ${unitDisplayName(throwTarget)} ${throwDist} tiles!${deltaLabel}`);
@@ -62185,6 +62441,7 @@
                         unit.y = casterFromY;
                     }
                     if (useAnim) animateDisplacement(unit, casterFromX, casterFromY, unit.x, unit.y, 200);
+                    resolveTileArrival(unit, { via: 'self' });   // ⛓ the striker's landing
                     const deltaLabel = elevDelta > 0 ? ` (${elevDelta}-level slam!)` : '';
                     addLog(`${unitDisplayName(unit)} slams ${unitDisplayName(target)} into the ground for ${totalDmg} damage!${deltaLabel}`);
 
@@ -62331,6 +62588,7 @@
                         if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(landTile.x, landTile.y, unit.z);
                     }
                     if (useAnim) animateDisplacement(unit, casterFromX, casterFromY, unit.x, unit.y, 200);
+                    resolveTileArrival(unit, { via: 'self' });   // ⛓ the striker's landing
                     const deltaLabel = elevDelta > 0 ? ` (${elevDelta}-level dive!)` : '';
                     addLog(`${unitDisplayName(unit)} leaps onto ${unitDisplayName(target)} from above for ${totalDmg} damage!${deltaLabel}`);
 

@@ -7893,3 +7893,55 @@ ShaderMaterial re-applies the room's exp² fog itself (no fog chunks — the hei
 plan's entry lists what to eyeball first — the creases, the halo bias, the blur's onset, the puddles at night, the mirror's
 handedness, the group's length in the pause frame.
 
+
+## ⛓ THE CHAIN REACTION — one arrival resolver, every board object fires on contact (2026-09-21, local delivery)
+The user: "if I place a bomb and a couple turns later displace a unit or ground a flyer on it, it should
+explode right then; if that knocks them into a tornado, the tornado should fling them immediately; if
+they land in a debuff zone I placed two rounds ago they get the debuff on the spot — modular, a chain
+reaction, a Rube Goldberg machine, predictable." ROOT CAUSE: the board's reactions were split by HOW
+the body arrived — the walk (`finishMoveAt`) read bombs / traps / mines / goo / fire / water; the shove
+(`_applyKnockbackHazard`, called by every slide / pull / push) read only the liquids and the hidden
+traps; a grounded flyer, a teleport, a swap, a dash, a throw and a drag read NOTHING; debuff zones and
+the tornado bit only at the END OF THE ROUND. NOW: battle.js **`resolveTileArrival(unit, { via,
+fxDelayMs })`** (the block "THE CHAIN REACTION", right before `_applyKnockbackHazard`; on `window` and
+`GAME`) is THE ONE ARRIVAL RESOLVER, in ONE fixed order — **A THE SKY** (an airborne body meets only a
+super-gravity field → `forceGroundUnit` re-enters on the deck; else it glides over everything) · **B THE
+GROUND** (`_chainGround`: water soaks, lava / deep water bite on a shove — a walk keeps the terrain's
+end-of-turn rule —, a burning tile burns, goo coats) · **C THE PICKUPS** (pixie dust, debris) · **D THE
+FUSES** (`_chainFuses`: an enemy BOMB detonates, a hidden TRAP springs, a deployed `detonateOnStep`
+mine fires) · **E THE ZONES** (`_chainZones`: every enemy debuff zone the tile lies in applies its
+statuses NOW — under the nameplate through `applyStatusPayload` —, once per zone per round
+(`unit._zoneEntryStamps`, a plain id → round map; the end-of-round tick still refreshes); the friendly
+smoke cloak re-reads) · **F THE VORTEX** (`_chainVortex`: an active tornado / hurricane whose tiles
+hold the body shreds it and FLINGS it now — `applyBlowback` × `displaceTiles` from the eye with
+`noChain`, then `playVortexFlingFx` (relayed) — once per storm per round (`unit._vortexStamps`; state.js
+`processHomingWeather` writes the same stamp before its own pushes and chains its landing)) · **G THE
+RUNE** (a warp rune teleports; the landing re-enters). Every step re-reads `unit.x / y` and bails once
+the body died or another step moved it; a reaction that moves a body calls the resolver again at
+depth + 1 (`CHAIN_RULES.maxDepth` 8 — "the chain reaction runs out"); a nested landing floats
+`⛓ CHAIN ×n`; the top of the chain logs the count, runs ONE `checkWin`, one render. **THE CALLERS**:
+`finishMoveAt` (`via: 'move'` — its inline bomb / trap / mine / goo / fire / water / pixie / smoke /
+gravity blocks are GONE; `getPathPickupEvent` still STOPS a walk on a bomb / trap; the objectives —
+Keys, the Nexus tick, wards — stay walk-only in `completeMoveAlongPath`, a shoved body never claims
+them), `_applyKnockbackHazard(unit, opts)` = the resolver with `via: 'displaced'` (every slide / pull /
+magnet / ice slide / flood site keeps calling it), `resolveForcedSlide`'s tail hands the tween as
+`fxDelayMs` (a bomb's blast VFX waits for the slide to land the body — `detonateBomb(bomb, text,
+{ fxDelayMs })`; state never waits), `forceGroundUnit` (`'grounded'`), the teleport (`'teleport'` /
+`'self'`; a grounded body's z is the destination's surface now), the swap (both), the escape, the
+dash (the landing + the knocked-aside occupant), the sky throw (the landing + the collision push, both
+inside `_applyThrowLanding`), the slam / dive strikers, the grapple's reel-in, the charges, the carry,
+`_tetherFollow` (`'dragged'`), the descent knock-aside, and state.js `applyBlowback` (`'blown'`, both
+landings; `opts.noChain` for a caller mid-fling). RULES: (1) a new "body lands on a tile" site calls
+`resolveTileArrival` — never re-read `state.bombs` / `state.traps` / `_deployedObjects` /
+`_activeZones` / the weather at a landing; (2) a new board OBJECT = a step in the resolver (the order
+is the contract); (3) a reaction that MOVES a body re-enters the resolver at its landing and stamps
+itself per round when it can fire again (the zone's / the vortex's rule); (4) RULE #2: host-only engine
+work, the stamps are plain data, the VFX it fires ride their own relays. NOT built: the AI's foresight
+(ai.js scores a push by the landing's terrain only — it does not see the bomb / zone / vortex the
+target lands in; `_chainZonesAt` / `_chainVortexAt` are the reads a forecast would use), a push
+preview that marks the object under the landing tile, a walk that stops at a zone or a vortex en
+route (only the LANDING tile reacts). `npm test` runs `chain-reaction.test.js` (the resolver in a vm:
+bomb → blast → tornado → fling → zone; the stamps; the sky; the cap; the owner rule; every site
+source-guarded). UNSEEN LIVE (RULE #1c): the blast timed to the slide's landing, the fling arc taking
+over a rig mid-shove, the ⛓ float's stacking, the zone's status badge landing under the nameplate on
+contact.
