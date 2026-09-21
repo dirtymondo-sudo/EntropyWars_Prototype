@@ -34970,6 +34970,31 @@
             return { usedArc: usedArc, totalMs: usedArc ? (liftMs + hangMs + flingMs + settleMs) : 0 };
         };
 
+        // THE APPROACH FOOTPRINT (2026-09-21): a move+cast preview paints the
+        // spell's WHOLE area, not one tile under the hovered body — the same
+        // footprint the in-range hover shows (ui.js getSpellAoeFootprint),
+        // computed as if the caster already stood on the approach tile (line
+        // beams and self-origin blasts read the caster's position).
+        function _spellApproachAoeTiles(spell, unit, castX, castY, tx, ty) {
+            const isHeal = !!spell && ['heal', 'healAll', 'zoneHeal', 'selfHeal', 'revive', 'cleanse', 'cleanseArea'].includes(spell.kind);
+            const hi = isHeal ? 0x33ff33 : 0xff3333, lo = isHeal ? 0x22cc22 : 0xdd2222;
+            let fp = [];
+            try {
+                if (spell && typeof getSpellAoeFootprint === 'function') {
+                    const pseudo = Object.assign({}, unit, { x: castX, y: castY });
+                    fp = getSpellAoeFootprint(spell, tx, ty, pseudo) || [];
+                }
+            } catch (e) { fp = []; }
+            if (!fp.length) return [{ x: tx, y: ty, color: hi, opacity: 0.6, cursor: true }];
+            const hasCenter = fp.some(t => t.x === tx && t.y === ty);
+            const tiles = fp.map(t => {
+                const c = t.x === tx && t.y === ty;
+                return { x: t.x, y: t.y, color: c ? hi : lo, opacity: c ? 0.6 : 0.5, cursor: c };
+            });
+            if (!hasCenter) tiles.push({ x: tx, y: ty, color: hi, opacity: 0.0, cursor: true });
+            return tiles;
+        }
+
         function _drawSpellApproachPreview(unit, approach, tx, ty) {
             try {
                 if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive()) return;
@@ -34989,7 +35014,7 @@
                 // caster's own tile, so there's no move arrow/ghost, just aim the target.
                 if (approach._heightApproach) {
                     ThreeRenderer.drawArrow3D(unit.x, unit.y, tx, ty, 0xff3333, false, actingY, targetY, { arc: 0.35, flow: true });
-                    ThreeRenderer.setOverlay('spellApproachTarget', [{ x: tx, y: ty, color: 0xff3333, opacity: 0.4 }], 0xff3333, 0.4);
+                    ThreeRenderer.setOverlay('spellApproachTarget', _spellApproachAoeTiles(_spell, unit, unit.x, unit.y, tx, ty), 0xff3333, 0.5);
                     _drawSpellApproachShove(_spell, _target, unit.x, unit.y, targetY);
                     state._spellApproachActive = true;
                     return;
@@ -35031,7 +35056,7 @@
                 }
                 ThreeRenderer.showGhostUnit(unit, approach.x, approach.y, destY, { tag: 'caster', color: ghostTint, opacity: 0.85 });
                 ThreeRenderer.drawArrow3D(approach.x, approach.y, tx, ty, 0xff3333, false, destY, targetY, { arc: 0.35, flow: true });
-                ThreeRenderer.setOverlay('spellApproachTarget', [{ x: tx, y: ty, color: 0xff3333, opacity: 0.4 }], 0xff3333, 0.4);
+                ThreeRenderer.setOverlay('spellApproachTarget', _spellApproachAoeTiles(_spell, unit, approach.x, approach.y, tx, ty), 0xff3333, 0.5);
                 _drawSpellApproachShove(_spell, _target, approach.x, approach.y, targetY);
                 state._spellApproachActive = true;
             } catch (e) { /* preview is cosmetic — never let it break hover */ }

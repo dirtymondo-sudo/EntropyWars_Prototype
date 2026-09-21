@@ -13726,7 +13726,7 @@ const ThreeRenderer = (function () {
         'telegraph':           { fill: 0.55, edgeGlow: 1.1 },
         'actionPlanAoe':       { fill: 0.45, edgeGlow: 0.9 },
         'actionPlanTarget':    { fill: 0.50, edgeGlow: 1.1 },
-        'spellApproachTarget': { fill: 0.50, edgeGlow: 1.1 },
+        'spellApproachTarget': { fill: 0.68, edgeGlow: 1.2 }, /* the move+cast footprint: a solid plate */
         /* THE SOLID PASS (2026-09-19): the range washes are plates now */
         'spellRange':          { fill: 0.36, edgeGlow: 1.1 },
         'attackRange':         { fill: 0.36, edgeGlow: 1.1 },
