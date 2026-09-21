@@ -1415,20 +1415,22 @@ const RACE_MODELS_3D = {
   // Police Officer (Gunslinger, ranged) — Disaster City's law. The regular cops: the black officer is THE
   // model, the fat white officer his ALT (RACE_MODEL_SKINS.alts — the HQ population draws either); the two
   // CYBERPUNK officers are the Cyberpunk City SKIN (RACE_MODEL_SKINS.sites — that site only, the user's rule).
+  // THE IDLE RULE (2026-09-21, the user: "no pointing gun animation for the idle, even the cop"): a
+  // ranged race idles on the library's plain Idle_5 like everyone else — never Pistol_Idle_Loop; the
+  // gun comes up for the shot (castRanged) and goes back down.
   'police officer': {
     male: _mkUAL('police', 'a_black_police_officer', {
       model: `${_S}/Races/police/Meshy_AI_a_black_police_officer_Running.glb`,
       heightRatio: 1.02, basicAttackKind: 'ranged',
-      lib: { idle: { clip: 'Pistol_Idle_Loop', lib: 0 } },
     }),
   },
-  // Jellyfish (Black Mage, caster) — the Bermuda Triangle's drifting king. A biped rig under a bell: it hangs
-  // on the swim loops (never a walk), flies (map.js SKY_RACES), and stings with a typed orb.
+  // Jellyfish (Black Mage, caster) — the Bermuda Triangle's drifting king. A biped rig under a bell: it WALKS
+  // on the library's ordinary loops (the user's rule, 2026-09-21: "a walking animation, not swimming" — the
+  // swim pair was tried and retired), flies (map.js SKY_RACES), and stings with a typed orb.
   'jellyfish': {
     male: _mkUAL('jellyfish', 'a_jellyfish_king', {
       model: `${_S}/Races/jellyfish/Meshy_AI_a_jellyfish_king_Running.glb`,
       heightRatio: 0.92, basicAttackKind: 'magic',
-      lib: { idle: { clip: 'Swim_Idle_Loop', lib: 0, ts: 0.8 }, walk: { clip: 'Swim_Fwd_Loop', lib: 0, ts: 0.9 }, run: { clip: 'Swim_Fwd_Loop', lib: 0, ts: 1.1 } },
     }),
   },
   // Cult Leader (Harbinger, support) — Bohemian Grove's voice. Idles mid-sermon; the family (DOOR_CAST_MODELS
@@ -2415,17 +2417,17 @@ const RACE_MODEL_SKINS = {
       prebuilt_cyberpunk: {
         male:   _mkUAL('police', 'a_cyberpunk_police_officer', {
           model: `${_S}/Races/police/Meshy_AI_a_cyberpunk_police_officer_Running.glb`,
-          heightRatio: 1.02, basicAttackKind: 'ranged', lib: { idle: { clip: 'Pistol_Idle_Loop', lib: 0 } } }),
+          heightRatio: 1.02, basicAttackKind: 'ranged' }),
         female: _mkUAL('police', 'a_cyberpunk_police_officer_female', {
           model: `${_S}/Races/police/Meshy_AI_a_cyberpunk_police_officer_female_Running.glb`,
-          heightRatio: 0.96, basicAttackKind: 'ranged', lib: Object.assign({ idle: { clip: 'Pistol_Idle_Loop', lib: 0 } }, _FEM_SLOT_DEFAULTS) }),
+          heightRatio: 0.96, basicAttackKind: 'ranged', lib: Object.assign({}, _FEM_SLOT_DEFAULTS) }),
       },
     },
     alts: {
       male: [
         _mkUAL('police', 'a_fat_white_police_officer', {
           model: `${_S}/Races/police/Meshy_AI_a_fat_white_police_officer_Running.glb`,
-          heightRatio: 1.0, basicAttackKind: 'ranged', lib: { idle: { clip: 'Pistol_Idle_Loop', lib: 0 } } }),
+          heightRatio: 1.0, basicAttackKind: 'ranged' }),
       ],
     },
   },

@@ -197,6 +197,70 @@ spells), a ziggurat tier block, a gothic buttress.
 
 ## 7. Log
 
+- **2026-09-21 — THE 2026-09-21 BATCH (delivery 17): police officer · jellyfish · cult leader. 102 of 102.**
+  The three races that landed the same day with `sig: null` are BUILT, in roster
+  order: police officer **Book 'Em** (`bookEm` / `_sigBookEm3D` — THE CRUISER (the
+  misc kit's `copcar` clone, else a white-and-black box) rolls up the lane beside
+  the victim with every light going: the bar strobes red / blue at 90 ms, the
+  ground wash follows the live lamp, a spot swings from the bar onto the tile;
+  the officer stand-in steps out, YOU HAVE THE RIGHT TO REMAIN comes up, the
+  CUFFS snap on with a glint (two torus rings + a chain at the body's back); the
+  victim is walked to the rear door (hinged on the car's near side), the door
+  swings, the body goes into the back — the hit is the DOOR SLAM; the cruiser
+  pulls away and leaves the board, an evidence tent (№ 1) grows on the tile, a
+  CITATION № 1954 flutters down after it; BOOKED; the director: the radio call
+  on the caster's face, a god shot as the car rolls in, the witness cam for the
+  step-out, the face cam for the rights + the cuffs, a side dolly for the walk,
+  slow-mo on the door, a god shot as it drives off, the end-cap reverse on the
+  tent), jellyfish **The Bloom** (`theBloom` / `_sigTheBloom3D` — THE SEA COMES
+  UP over the tile: a translucent column 2.3 tiles round rising to 4.2 with a
+  lit top, a floor disc and three expanding caustic rings; the water FILLS WITH
+  JELLYFISH — 44 bells (a hemisphere cap + three tentacle strands + a glow, one
+  in four pink) staggered in by a 1.6-power curve so it is one, then a dozen,
+  then a bloom, each on its own rising spiral pulsing in its own time, wrapping
+  under the surface, the swarm closing 72 % of its radius on the body while the
+  counter climbs ONE OF US → TWELVE → A HUNDRED → A THOUSAND OF US (the sprite's
+  map swapped through `_finTextTex`'s cache); the hit is every cap flashing at
+  once — the sting — and the body coming apart into motes inside the glow; the
+  water DRAINS (the column sinks, the bells go down with it) and a wet PRINT — a
+  body ellipse + a head disc — is what is left; the director: a crane up as the
+  sea rises, a long side dolly through the first bells, a face cam + a dolly zoom
+  in as the bloom closes, slow-mo on the sting, a crane over the drain, the
+  end-cap reverse on the print), cult leader **Ascension Day** (`ascensionDay` /
+  `_sigAscensionDay3D` — NINE CANDLES rise round the tile and light one by one
+  (a spark each); THE FAMILY (eight robes — the cone + hood + a hand candle, the
+  hood bowed) files in from beyond the victim in a single line 140 ms apart and
+  takes the far half of the ring, facing in; THE LEADER stands at the caster's
+  side; THE CUP (a gold chalice, the wine, a glow) rises at the leader and is
+  PASSED hand to hand round the ring — a hop per leg — and offered to the
+  victim, who tilts back and drinks; the hit is the COLUMN OF LIGHT from above:
+  the body lifts 4.5 tiles and comes apart into motes going UP, every robe steps
+  back a pace and lifts its head, and ONE MORE ROBE grows on the tile with a
+  puff; the candles gutter; the director: the last line on the caster's face, a
+  god shot on the candles, the witness cam for the file, a side dolly with the
+  cup, a face cam under half-closed eyelids for the drink, slow-mo, a sky watch
+  up the column, a god shot on the new robe, the end-cap reverse). Each = a
+  director in battle.js `_FIN_DIRECTORS` (the DELIVERY 17 block), the signature
+  in "THE FINISHER PASS 2" (the DELIVERY 17 block; `_sigRunOwned` + `_fxDelay`,
+  called inside the relayed cinematic — RULE #2), a `_FIN_STAGE[sig]` script for
+  the forge, a row in finishers.test.js's BUILT + SIG_FN tables; data.js's three
+  rows wear `sig` + `built: true` and `sig: null` no longer exists in the
+  catalogue. Smoke-tested in a stub-THREE harness (every tick of every signature
+  from four placements, the caster on the victim's tile included; not a render).
+  UNSEEN LIVE (RULE #1c): the cruiser's yaw on the lane (the `copcar` clone wears
+  `rotation.y = π / 2` like the cadillac — a nose that lands backward is that one
+  line), the rear door's hinge against the real GLB's body, the spot cone's read
+  under the board's light, the bells' size against the unit (`ts * 0.13` is the
+  cap), the column's opacity over a bright sheet, the file's spacing on a
+  short line (the members start 7 + 1.1 n tiles beyond the victim — past the rim
+  on a Δ, which is fine, they walk in from the dark), the cup's hop height, the
+  three camera paths.
+  SAME DELIVERY, the two clip rules the user called: the jellyfish WALKS
+  (sprites.js — its Swim_Idle / Swim_Fwd overrides are gone; the library's
+  ordinary loops) and NO GUN-POSE IDLE for the police officer or any of his
+  skins (the four `Pistol_Idle_Loop` idle overrides are gone; the 2026-08-09 rule
+  "nobody mimes holding a gun at rest" holds — the gun comes up for the shot).
+
 - **2026-09-21 — THE LAST THIRTEEN (delivery 16). EVERY FINISHER IS BESPOKE: 99 of 99.**
   The last `FINISHERS` rows with `sig: null`, in roster order, are BUILT: ki
   fighter **Spirit Bomb** (`spiritBomb` / `_sigSpiritBomb3D` — sixteen threads

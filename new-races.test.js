@@ -72,7 +72,7 @@ test('the kits: four-node trees on the twin rule, five rows each, plain kinds, a
         assert.strictEqual(rows.find(x => x.id === tree[2]).tier, 'II', r + ': r3 is tier II');
         assert.ok(D.isCapstoneSpellId(tree[3]), tree[3] + ' is a capstone');
         const f = D.FINISHERS[r];
-        assert.ok(f && f.sig === null && f.built === false, r + ': the finisher is designed, not built (the typed execution plays)');
+        assert.ok(f && typeof f.sig === 'string' && f.built === true, r + ': the finisher is BUILT (delivery 17 — a director + a signature + a stage script; finishers.test.js pins the three)');
         assert.ok(D.RACE_PROFILES[r].types.includes(f.type), r + ': the finisher is typed by the race');
     }
     /* the kinds the engine already runs */

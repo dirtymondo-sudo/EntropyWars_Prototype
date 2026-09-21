@@ -7460,3 +7460,33 @@ exported from the OLD rig — cross-character playback warps). door-race.test.js
 list's last entry. `npm test` runs `new-races.test.js`. Ship data.js to R2 AND Render (server.js reads it). UNSEEN
 LIVE (RULE #1c): every rig's scale + facing (`heightRatio`), the jellyfish on the swim loops, the cyberpunk cops on
 the Grid, the robes on the mound and the stage, the procedural cultist, the catgirl under her old flavour clips.
+
+## THE 2026-09-21 BATCH'S EXECUTIONS — Book 'Em · The Bloom · Ascension Day (FINISHER_PLAN delivery 17) + the jellyfish WALKS + no gun idle (2026-09-21, local delivery)
+The three races that landed the same day with `sig: null` are BUILT — the catalogue is
+102 of 102 and `sig: null` no longer exists in data.js `FINISHERS`: police officer
+`bookEm` (`_sigBookEm3D` — THE CRUISER (the misc `copcar` clone, else a box) up the lane
+beside the victim with the bar strobing red / blue and a spot on the tile, the officer
+steps out, the rights card, the CUFFS with a glint, the walk to the rear door, the body
+into the back; the hit is the DOOR SLAM; the cruiser leaves the board, an evidence tent
+and a CITATION № 1954 flutter down; BOOKED), jellyfish `theBloom` (`_sigTheBloom3D` —
+THE SEA COMES UP over the tile as a translucent column with caustic rings, 44 glowing
+bells on rising spirals arrive one, then a dozen, then a bloom while the counter climbs
+ONE OF US → A THOUSAND OF US and the swarm closes on the body; the hit is every bell
+flashing at once; the water DRAINS and a wet PRINT is what is left), cult leader
+`ascensionDay` (`_sigAscensionDay3D` — nine candles light one by one, THE FAMILY files in
+from beyond the victim in a single line and takes the ring, the leader's CUP is passed
+hand to hand round the circle and drunk; the hit is the COLUMN OF LIGHT — the body goes
+up in motes, every robe steps back, and ONE MORE ROBE grows on the tile). Each = a
+director in battle.js `_FIN_DIRECTORS` (the DELIVERY 17 block), the signature in "THE
+FINISHER PASS 2" (the DELIVERY 17 block; `_sigRunOwned` + `_fxDelay`, called inside the
+relayed cinematic — RULE #2), a `_FIN_STAGE[sig]` script for the forge, a row in
+finishers.test.js's BUILT + SIG_FN tables (new-races.test.js now pins BUILT, not
+designed). Smoke-tested in a stub-THREE harness (every tick from four placements; not a
+render). **THE TWO CLIP RULES** (sprites.js): the jellyfish WALKS — its `Swim_Idle_Loop`
+/ `Swim_Fwd_Loop` overrides are gone, the library's ordinary loops play (the user: "a
+walking animation, not swimming"); and NO GUN-POSE IDLE — the four `Pistol_Idle_Loop`
+idle overrides on the police officer + his three skins are gone (the 2026-08-09 rule
+"nobody mimes holding a gun at rest" holds for every ranged race; the gun comes up for
+the shot through castRanged). UNSEEN LIVE (RULE #1c): FINISHER_PLAN §7's delivery-17
+entry lists what to eyeball first — the cruiser's yaw, the door's hinge on the real GLB,
+the bells' size, the column's opacity, the file's spacing, the three camera paths.

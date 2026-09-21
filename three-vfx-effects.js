@@ -33924,6 +33924,364 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     }
     /* ═════════ END DELIVERY 16 ═════════ */
 
+    /* ═════════ DELIVERY 17 (2026-09-21) — THE 2026-09-21 BATCH: police officer · jellyfish · cult leader ═════════
+       The three races that landed the same day with `sig: null` get their bespoke executions (FINISHER_PLAN
+       rule 0: a director + a signature + a stage script). The section's rules hold: one group through
+       _sigRunOwned, every timer through _fxDelay, called INSIDE the relayed cinematic, a camera-facing text
+       card is a Sprite. */
+
+    /* ── BOOK 'EM (police officer) ─────────────────────────────────────
+       THE CRUISER (the misc kit's cop car, else a white-and-black box)
+       rolls up the lane beside the victim with EVERY LIGHT GOING — the
+       bar strobes red / blue, the spot swings onto the tile; the officer
+       steps out, the rights card comes up (YOU HAVE THE RIGHT TO REMAIN),
+       the CUFFS snap on with a glint; the victim is walked to the rear
+       door, the door swings, the body goes into the back; the hit is the
+       DOOR SLAM; the cruiser pulls away with the siren going and leaves
+       the board — a numbered evidence tent on the tile, a citation
+       fluttering down after it. BOOKED. */
+    function _sigBookEm3D(cx, cy, tx, ty, o) {
+        o = o || {};
+        if (!_canSpawn()) return false;
+        var wpC = _worldPos(cx, cy), wpT = _worldPos(tx, ty), ts = wpT.ts;
+        var ms = o.ms > 0 ? o.ms : 7800;
+        var carAt = o.carAt != null ? o.carAt : 100, rightsAt = o.rightsAt != null ? o.rightsAt : carAt + 1500, walkAt = o.walkAt != null ? o.walkAt : rightsAt + 1500, hitAt = o.hitAt != null ? o.hitAt : walkAt + 1300;
+        var cuffAt = rightsAt + Math.round((walkAt - rightsAt) * 0.55);
+        var g = new THREE.Group(); g.position.set(wpT.x, wpT.y, wpT.z);
+        var dx = wpC.x - wpT.x, dz = wpC.z - wpT.z, L = Math.max(1, Math.hypot(dx, dz)), ux = dx / L, uz = dz / L;
+        var px = -uz, pz = ux;   // the lane runs beside the victim, perpendicular to the line, on the caster's side
+        var LANE = ts * 1.45, laneYaw = Math.atan2(px, pz);
+        var RED = 0xff2a3a, BLUE = 0x3a8aff, AMBER = 0xffe090;
+        /* the cruiser */
+        var car = null;
+        try { if (window.ThreeRenderer && ThreeRenderer.getMiscModelClone) car = ThreeRenderer.getMiscModelClone('copcar', ts * 0.78, 'center'); } catch (e) { car = null; }
+        var carG = new THREE.Group(); g.add(carG);
+        if (car) { car.rotation.y = Math.PI / 2; carG.add(car); }
+        else {
+            var bodyM = new THREE.Mesh(new THREE.BoxGeometry(ts * 1.7, ts * 0.42, ts * 0.72), _finBasic(0xf0f0f4)); bodyM.position.y = ts * 0.4; carG.add(bodyM);
+            var cab = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.86, ts * 0.32, ts * 0.64), _finBasic(0x14141a)); cab.position.set(-ts * 0.08, ts * 0.77, 0); carG.add(cab);
+            var doors = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.9, ts * 0.3, ts * 0.74), _finBasic(0x14141a)); doors.position.set(-ts * 0.1, ts * 0.4, 0); carG.add(doors);
+            for (var w = 0; w < 4; w++) { var wh = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.14, ts * 0.14, ts * 0.1, 10), _finBasic(0x222222)); wh.rotation.x = Math.PI / 2; wh.position.set((w < 2 ? 1 : -1) * ts * 0.52, ts * 0.14, (w % 2 ? 1 : -1) * ts * 0.37); carG.add(wh); }
+            for (var h = -1; h <= 1; h += 2) { var hl = _finSprite(0xfff0c0, _sigGlowTex(), ts * 0.22, 162); hl.material.opacity = 0.8; hl.position.set(ts * 0.86, ts * 0.4, h * ts * 0.25); carG.add(hl); }
+        }
+        /* the light bar: two lamps that strobe against each other + the spot */
+        var bar = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.5, ts * 0.06, ts * 0.16), _finBasic(0x101014)); bar.position.set(-ts * 0.05, ts * 0.98, 0); carG.add(bar);
+        var lamps = [];
+        for (var li = 0; li < 2; li++) { var lp = _finSprite(li ? BLUE : RED, _sigGlowTex(), ts * 0.9, 163); lp.position.set(-ts * 0.05 + (li ? 1 : -1) * ts * 0.16, ts * 1.02, 0); carG.add(lp); lamps.push(lp); }
+        var wash = new THREE.Mesh(new THREE.CircleGeometry(ts * 3.6, 32), _finBasic(RED, { additive: true, opacity: 0, depthWrite: false })); wash.rotation.x = -Math.PI / 2; wash.position.y = ts * 0.04; g.add(wash);
+        var spot = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.55, LANE * 1.15, 16, 1, true), _finBasic(0xfff4d0, { additive: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false })); g.add(spot);
+        var spotDisc = new THREE.Mesh(new THREE.CircleGeometry(ts * 0.6, 24), _finBasic(0xfff4d0, { additive: true, opacity: 0, depthWrite: false })); spotDisc.rotation.x = -Math.PI / 2; spotDisc.position.y = ts * 0.05; g.add(spotDisc);
+        /* the officer + the victim */
+        var cop = new THREE.Group(); cop.visible = false; g.add(cop);
+        cop.add(_finBodyMesh(ts, 0x1a2a4a));
+        var cap = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.16, ts * 0.18, ts * 0.1, 10), _finBasic(0x14203a)); cap.position.y = ts * 1.0; cop.add(cap);
+        var badge = _finSprite(AMBER, _sigGlowTex(), ts * 0.14, 162); badge.material.opacity = 0.9; badge.position.set(ts * 0.12, ts * 0.72, ts * 0.2); cop.add(badge);
+        var bodyG = new THREE.Group(); g.add(bodyG);
+        var body = _finBodyMesh(ts); bodyG.add(body);
+        var cuffMat = _finBasic(0xd8dce4);
+        var cuffs = new THREE.Group(); cuffs.visible = false; cuffs.position.set(0, ts * 0.42, -ts * 0.24); bodyG.add(cuffs);
+        for (var ci = 0; ci < 2; ci++) { var ring = new THREE.Mesh(new THREE.TorusGeometry(ts * 0.07, ts * 0.018, 6, 14), cuffMat); ring.position.x = (ci ? 1 : -1) * ts * 0.08; ring.rotation.y = Math.PI / 2; cuffs.add(ring); }
+        var chain = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.1, ts * 0.016, ts * 0.016), cuffMat); cuffs.add(chain);
+        /* the rear door: hinged on the car's near side, behind the cab */
+        var doorPiv = new THREE.Group(); doorPiv.position.set(-ts * 0.5, ts * 0.45, ts * 0.37); carG.add(doorPiv);
+        var door = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.42, ts * 0.34, ts * 0.04), _finBasic(0x14141a)); door.position.x = ts * 0.21; doorPiv.add(door);
+        /* the cards */
+        var rights = _finTextSprite('YOU HAVE THE RIGHT\nTO REMAIN', { ink: '#ffffff', bg: '#10203a', font: 'Georgia, serif', fontPx: 60, spriteW: ts * 2.8, opacity: 0 }); rights.position.set(0, ts * 2.3, 0); g.add(rights);
+        var booked = _finTextSprite('BOOKED', { ink: '#10203a', bg: '#f4f4f8', font: 'Impact, Georgia, serif', fontPx: 92, spriteW: ts * 2.0, opacity: 0 }); booked.position.set(0, ts * 1.9, 0); g.add(booked);
+        var cite = _finTextSprite('CITATION\n№ 1954', { ink: '#2a2a30', bg: '#fff8d8', font: 'Georgia, serif', fontPx: 56, spriteW: ts * 0.9, opacity: 0 }); g.add(cite);
+        /* the evidence tent */
+        var tent = new THREE.Group(); tent.visible = false; g.add(tent);
+        var tentM = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.14, ts * 0.22, 4), _finBasic(0xffd21a)); tentM.rotation.y = Math.PI / 4; tentM.position.y = ts * 0.11; tent.add(tentM);
+        var one = _finTextSprite('1', { ink: '#101014', fontPx: 160, spriteW: ts * 0.2, opacity: 1 }); one.position.set(0, ts * 0.32, 0); tent.add(one);
+        var c = tilePx(tx, ty), bz = tileZ(tx, ty), hit = false, hitEl = 0, lastS = 0, cuffed = false, lastSpark = 0;
+        var start = -ts * 9, end = ts * 9.5;
+        var seatLocal = new THREE.Vector3(-ts * 0.5, ts * 0.45, ts * 0.42);   // just outside the rear door
+        return !!_sigRunOwned(g, ms, function (el) {
+            /* the roll: fast in, a stop beside the tile, then away after the slam */
+            var along;
+            if (el < carAt) along = start;
+            else if (el < rightsAt) { var ak = _sigClamp01((el - carAt) / Math.max(1, rightsAt - carAt)); along = start * Math.pow(1 - ak, 2.2); }
+            else if (el < hitAt + 350) along = 0;
+            else { var lk = _sigClamp01((el - hitAt - 350) / 2000); along = end * lk * lk; }
+            carG.position.set(ux * LANE + px * along, Math.sin(el * 0.02) * ts * 0.008, uz * LANE + pz * along); carG.rotation.y = laneYaw + Math.PI / 2;
+            if (el >= carAt && el - lastS > 110 && Math.abs(along) > ts * 0.5 && along < end - ts && _canSpawn()) { lastS = el; _spawn({ x: c.x + carG.position.x - px * ts * 0.9, y: c.y + carG.position.z - pz * ts * 0.9, z: bz + 4, mode: 'billboard', sprite: 'smoke', ml: 700, size0: 8, size1: 24, vx: rn(-10, 10), vy: rn(-10, 10), vz: rn(5, 25), opacity0: 0.35, opacity1: 0, tint: 0x444444 }); }
+            /* the lights: alternating 90 ms strobes, the wash follows the live lamp */
+            var on = el >= carAt, ph = Math.floor(el / 90) % 2, live = on ? 1 : 0;
+            lamps[0].material.opacity = live * (ph === 0 ? 1 : 0.15); lamps[1].material.opacity = live * (ph === 1 ? 1 : 0.15);
+            wash.material.color.setHex(ph === 0 ? RED : BLUE); wash.material.opacity = live * 0.16 * (1 - _sigClamp01((along - ts * 3) / (ts * 4)));
+            wash.position.set(carG.position.x, ts * 0.04, carG.position.z);
+            /* the spot: from the bar to the tile once the car has stopped */
+            var sk = _sigClamp01((el - rightsAt + 300) / 400) * (1 - _sigClamp01((el - hitAt - 200) / 300));
+            spot.material.opacity = sk * 0.22; spotDisc.material.opacity = sk * 0.5;
+            var fromV = new THREE.Vector3(carG.position.x - ux * ts * 0.05, ts * 1.0, carG.position.z); var toV = new THREE.Vector3(0, ts * 0.1, 0);
+            spot.position.copy(fromV).lerp(toV, 0.5); spot.lookAt(toV); spot.rotateX(-Math.PI / 2);   // the apex at the bar, the base on the tile
+            /* the officer steps out and stands over the tile */
+            if (el >= rightsAt && el < hitAt) {
+                cop.visible = true;
+                var ok = _sigClamp01((el - rightsAt) / 700), oe = 1 - Math.pow(1 - ok, 2);
+                var standX = ux * ts * 0.62, standZ = uz * ts * 0.62;
+                cop.position.set(carG.position.x + (standX - carG.position.x) * oe, Math.abs(Math.sin(el * 0.012)) * ts * 0.02 * (1 - oe), carG.position.z + (standZ - carG.position.z) * oe);
+                cop.rotation.y = Math.atan2(-standX, -standZ);
+            }
+            rights.material.opacity = _sigClamp01((el - rightsAt - 300) / 300) * (1 - _sigClamp01((el - walkAt) / 300));
+            if (el >= cuffAt && !cuffed) {
+                cuffed = true; cuffs.visible = true; body.rotation.x = 0.12;
+                _sigScreenFlash('#ffffff', 60, 0.25);
+                if (_canSpawn()) for (var q = 0; q < 8; q++) _spawn({ x: c.x + rn(-6, 6), y: c.y + rn(-6, 6), z: bz + ts * 0.42, mode: 'billboard', sprite: 'sparkle', ml: 260, size0: 5, size1: 1, vx: rn(-40, 40), vy: rn(-40, 40), vz: rn(10, 60), gravity: 200, opacity0: 1, opacity1: 0, tint: 0xd8dce4 });
+            }
+            /* the walk to the car: the body and the officer, then the door */
+            if (el >= walkAt && !hit) {
+                var wk = _sigClamp01((el - walkAt) / Math.max(1, hitAt - 250 - walkAt)), we = wk * wk * (3 - 2 * wk);
+                var seat = seatLocal.clone(); carG.localToWorld(seat); g.worldToLocal(seat);
+                bodyG.position.set(seat.x * we, Math.abs(Math.sin(el * 0.014)) * ts * 0.03 * (1 - we), seat.z * we);
+                bodyG.rotation.y = Math.atan2(seat.x, seat.z);
+                cop.position.set(seat.x * we + ux * ts * 0.5 * (1 - we) - px * ts * 0.4 * we, 0, seat.z * we + uz * ts * 0.5 * (1 - we) - pz * ts * 0.4 * we);
+                cop.rotation.y = bodyG.rotation.y;
+                var dk = _sigClamp01((el - walkAt - 500) / 500);
+                doorPiv.rotation.y = -1.35 * dk * (2 - dk);
+                var inK = _sigClamp01((el - (hitAt - 500)) / 380);
+                if (inK > 0) { var into = new THREE.Vector3(-ts * 0.5, ts * 0.32, ts * 0.05); carG.localToWorld(into); g.worldToLocal(into); bodyG.position.lerp(into, inK); body.scale.setScalar(1 - inK * 0.45); cuffs.visible = inK < 0.6; }
+            }
+            if (el >= hitAt && !hit) {
+                hit = true; hitEl = el;
+                bodyG.visible = false; doorPiv.rotation.y = 0; cop.visible = false;
+                _shake('heavy'); _sigScreenFlash('#ffffff', 140, 0.6);
+                _sigShockRing3D(tx, ty, { color: 0x3a8aff, r0: ts * 0.3, r1: ts * 2.4, ms: 520, torus: true });
+                var slam = seatLocal.clone(); carG.localToWorld(slam); g.worldToLocal(slam);
+                if (_canSpawn()) for (var q2 = 0; q2 < 10; q2++) _spawn({ x: c.x + slam.x + rn(-6, 6), y: c.y + slam.z + rn(-6, 6), z: bz + ts * 0.4, mode: 'billboard', sprite: 'sparkle', ml: 240, size0: 5, size1: 1, vx: rn(-60, 60), vy: rn(-60, 60), vz: rn(10, 60), gravity: 200, opacity0: 1, opacity1: 0, tint: 0xd8dce4 });
+                tent.visible = true; tent.scale.setScalar(0.001);
+            }
+            if (hit) {
+                var tk = _sigClamp01((el - hitEl - 400) / 300); tent.scale.setScalar(Math.max(0.001, tk * (1.2 - 0.2 * tk)));
+                /* the citation flutters down onto the tile */
+                var ck = _sigClamp01((el - hitEl - 600) / 1700);
+                cite.material.opacity = _sigClamp01((el - hitEl - 600) / 200) * (1 - _sigClamp01((el - hitEl - 3200) / 500));
+                cite.position.set(Math.sin(ck * Math.PI * 3) * ts * 0.35 + px * ts * 0.4, ts * 2.6 * (1 - ck) + ts * 0.12, Math.cos(ck * Math.PI * 2.2) * ts * 0.2 + pz * ts * 0.4);
+                booked.material.opacity = _sigClamp01((el - hitEl - 900) / 300) * (1 - _sigClamp01((el - hitEl - 2800) / 500));
+                if (el - lastSpark > 140 && along > ts * 0.3 && along < end - ts && _canSpawn()) { lastSpark = el; _spawn({ x: c.x + carG.position.x, y: c.y + carG.position.z, z: bz + ts * 1.02, mode: 'billboard', sprite: 'sparkle', ml: 200, size0: 10, size1: 3, vx: 0, vy: 0, vz: 0, opacity0: 0.9, opacity1: 0, tint: ph === 0 ? RED : BLUE }); }
+            }
+        });
+    }
+
+    /* ── THE BLOOM (jellyfish) ──────────────────────────────────────────
+       THE SEA COMES UP over the tile — a column of water two tiles round
+       rising to four, caustic rings on its floor — and the water FILLS
+       WITH JELLYFISH: one, then a dozen, then a bloom, small glowing
+       bells on rising spirals pulsing in their own time, more and more of
+       them, until the victim is a shape inside a glowing cloud; a counter
+       climbs (A THOUSAND OF US). The hit is every bell flashing at once —
+       the sting — and the body coming apart into motes inside the bloom;
+       the water DRAINS, the bells go down with it, and there is nothing on
+       the tile but a wet PRINT. */
+    function _sigTheBloom3D(cx, cy, tx, ty, o) {
+        o = o || {};
+        if (!_canSpawn()) return false;
+        var wpC = _worldPos(cx, cy), wpT = _worldPos(tx, ty), ts = wpT.ts;
+        var ms = o.ms > 0 ? o.ms : 7800;
+        var seaAt = o.seaAt != null ? o.seaAt : 100, bloomAt = o.bloomAt != null ? o.bloomAt : seaAt + 1000, swarmAt = o.swarmAt != null ? o.swarmAt : bloomAt + 1800, hitAt = o.hitAt != null ? o.hitAt : swarmAt + 1400;
+        var g = new THREE.Group(); g.position.set(wpT.x, wpT.y, wpT.z);
+        var SEA = 0x1e6a9e, LIGHT = 0x5fd4ee, GLOW = 0x9ff4ff, PINK = 0xff9ad8;
+        var R = ts * 2.3, H = ts * 4.2;
+        /* the column of water */
+        var colMat = _finBasic(SEA, { opacity: 0, side: THREE.DoubleSide, depthWrite: false });
+        var column = new THREE.Mesh(new THREE.CylinderGeometry(R, R * 1.06, 1, 40, 1, true), colMat); column.position.y = 0.5; g.add(column);
+        var colTop = new THREE.Mesh(new THREE.CircleGeometry(R, 40), _finBasic(LIGHT, { opacity: 0, side: THREE.DoubleSide, depthWrite: false })); colTop.rotation.x = -Math.PI / 2; g.add(colTop);
+        var floor = new THREE.Mesh(new THREE.CircleGeometry(R * 1.35, 40), _finBasic(SEA, { opacity: 0, depthWrite: false })); floor.rotation.x = -Math.PI / 2; floor.position.y = ts * 0.03; g.add(floor);
+        var caustics = [];
+        for (var ri = 0; ri < 3; ri++) { var cr = new THREE.Mesh(new THREE.RingGeometry(ts * 0.5, ts * 0.56, 40), _finBasic(GLOW, { additive: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false })); cr.rotation.x = -Math.PI / 2; cr.position.y = ts * 0.05; g.add(cr); caustics.push(cr); }
+        /* the body inside, and its glow */
+        var body = _finBodyMesh(ts); g.add(body);
+        var bodyGlow = _finSprite(GLOW, _sigGlowTex(), ts * 1.6, 160); bodyGlow.position.y = ts * 0.5; g.add(bodyGlow);
+        /* the bloom: N bells, each on its own spiral, staggered in — more and more of them */
+        var N = 44;
+        var capGeo = new THREE.SphereGeometry(ts * 0.13, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2);
+        var tentGeo = new THREE.CylinderGeometry(ts * 0.008, ts * 0.004, ts * 0.32, 4);
+        var capMat = _finBasic(LIGHT, { additive: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide });
+        var capMatP = _finBasic(PINK, { additive: true, opacity: 0.5, depthWrite: false, side: THREE.DoubleSide });
+        var tentMat = _finBasic(GLOW, { additive: true, opacity: 0.5, depthWrite: false });
+        var bells = [];
+        for (var i = 0; i < N; i++) {
+            var bg = new THREE.Group(); bg.visible = false; g.add(bg);
+            var cap = new THREE.Mesh(capGeo, i % 4 === 0 ? capMatP : capMat); bg.add(cap);
+            for (var t = 0; t < 3; t++) { var tn = new THREE.Mesh(tentGeo, tentMat); tn.position.set(Math.cos(t * 2.1) * ts * 0.05, -ts * 0.16, Math.sin(t * 2.1) * ts * 0.05); bg.add(tn); }
+            var gl = _finSprite(i % 4 === 0 ? PINK : GLOW, _sigGlowTex(), ts * 0.42, 161); gl.material.opacity = 0.8; gl.position.y = ts * 0.04; bg.add(gl);
+            var frac = i / N;
+            bells.push({ g: bg, cap: cap, t0: bloomAt + Math.pow(frac, 1.6) * (swarmAt - bloomAt) * 1.1, a0: rn(0, Math.PI * 2), w: rn(0.6, 1.4) * (i % 2 ? 1 : -1), r0: rn(R * 0.55, R * 0.95), y0: -ts * 0.4, rise: rn(0.5, 0.9), ph: rn(0, Math.PI * 2), pw: rn(2.2, 3.4), s: rn(0.7, 1.35) });
+        }
+        /* the counter and the print */
+        var counter = _finTextSprite('ONE OF US', { ink: '#9ff4ff', bg: '#082238', font: 'Georgia, serif', fontPx: 64, spriteW: ts * 2.2, opacity: 0 }); counter.position.set(0, H + ts * 0.5, 0); g.add(counter);
+        var counts = [[bloomAt + 400, 'ONE OF US'], [bloomAt + 1100, 'TWELVE OF US'], [swarmAt, 'A HUNDRED OF US'], [swarmAt + 900, 'A THOUSAND OF US']], countN = -1;
+        var printMat = _finBasic(0xbfe0ee, { opacity: 0, depthWrite: false, side: THREE.DoubleSide });
+        var print = new THREE.Group(); print.position.y = ts * 0.035; g.add(print);
+        var pBody = new THREE.Mesh(new THREE.CircleGeometry(ts * 0.22, 24), printMat); pBody.rotation.x = -Math.PI / 2; pBody.scale.set(1, 1.9, 1); pBody.position.z = ts * 0.12; print.add(pBody);
+        var pHead = new THREE.Mesh(new THREE.CircleGeometry(ts * 0.12, 20), printMat); pHead.rotation.x = -Math.PI / 2; pHead.position.z = -ts * 0.4; print.add(pHead);
+        var c = tilePx(tx, ty), bz = tileZ(tx, ty), hit = false, hitEl = 0, lastMote = 0;
+        return !!_sigRunOwned(g, ms, function (el) {
+            /* the sea rises, holds, and drains after the hit */
+            var up = _sigClamp01((el - seaAt) / 1100), ue = 1 - Math.pow(1 - up, 3);
+            var drain = hit ? _sigClamp01((el - hitEl - 700) / 1400) : 0, de = drain * drain;
+            var h = H * ue * (1 - de);
+            column.scale.y = Math.max(0.001, h); column.position.y = h / 2; colTop.position.y = h + 0.01;
+            colMat.opacity = 0.34 * ue * (1 - de); colTop.material.opacity = 0.5 * ue * (1 - de); floor.material.opacity = 0.42 * ue * (1 - drain);
+            floor.scale.setScalar(0.2 + 0.8 * ue);
+            for (var ri2 = 0; ri2 < 3; ri2++) { var ck = ((el * 0.0005 + ri2 / 3) % 1); caustics[ri2].scale.setScalar(0.3 + ck * 4.2); caustics[ri2].material.opacity = 0.35 * ue * (1 - drain) * (1 - ck); }
+            /* the bells */
+            var visible = 0;
+            for (var k = 0; k < N; k++) {
+                var B = bells[k]; if (el < B.t0) continue;
+                var age = (el - B.t0) / 1000; B.g.visible = true; visible++;
+                var pull = hit ? 0 : _sigClamp01((el - swarmAt) / 1400);   // the swarm closes on the body
+                var rad = B.r0 * (1 - pull * 0.72) - (hit ? 0 : 0);
+                var ang = B.a0 + age * B.w;
+                var y = B.y0 + age * B.rise * ts + Math.sin(el * 0.001 * B.pw + B.ph) * ts * 0.06;
+                if (y > h - ts * 0.2) y = h - ts * 0.2 - ((y - (h - ts * 0.2)) % Math.max(0.1, h - ts * 0.3));   // wrap under the surface
+                if (hit) { var dk = _sigClamp01((el - hitEl - 500) / 1500); y = Math.min(y, h - ts * 0.15) * (1 - dk) - ts * 0.4 * dk; }
+                B.g.position.set(Math.cos(ang) * rad, Math.max(-ts * 0.4, y), Math.sin(ang) * rad);
+                var pulse = 0.5 + 0.5 * Math.sin(el * 0.001 * B.pw + B.ph);
+                B.g.scale.set(B.s * (1 + pulse * 0.18), B.s * (1 - pulse * 0.22), B.s * (1 + pulse * 0.18));
+                B.g.rotation.set(Math.sin(ang) * 0.2, 0, Math.cos(ang) * 0.2);
+                if (hit) { var fk = _sigClamp01((el - hitEl) / 220); B.cap.material.opacity = 0.55 + 0.45 * (1 - fk); }
+            }
+            bodyGlow.material.opacity = 0.15 + 0.6 * _sigClamp01(visible / N) * (1 - drain);
+            for (var cn = 0; cn < counts.length; cn++) if (el >= counts[cn][0] && cn > countN) { countN = cn; counter.material.map = _finTextTex(counts[cn][1], { ink: '#9ff4ff', bg: '#082238', font: 'Georgia, serif', fontPx: 64 }); counter.material.needsUpdate = true; }
+            counter.material.opacity = _sigClamp01((el - bloomAt - 400) / 300) * (1 - _sigClamp01((el - (hit ? hitEl + 400 : hitAt + 400)) / 300)) * (0.85 + 0.15 * Math.sin(el * 0.01));
+            if (el >= hitAt && !hit) {
+                hit = true; hitEl = el;
+                _shake('heavy'); _sigScreenFlash('#bff4ff', 220, 0.85);
+                _sigShockRing3D(tx, ty, { color: 0x5fd4ee, r0: ts * 0.3, r1: ts * 2.8, ms: 600, torus: true });
+                if (_canSpawn()) for (var q = 0; q < 24; q++) { var qa = rn(0, Math.PI * 2), qv = rn(20, 90); _spawn({ x: c.x, y: c.y, z: bz + rn(4, ts * 0.9), mode: 'billboard', sprite: 'sparkle', ml: rn(500, 1100), size0: 6, size1: 1, vx: Math.cos(qa) * qv, vy: Math.sin(qa) * qv, vz: rn(30, 120), drag: 0.9, opacity0: 1, opacity1: 0, tint: 0x9ff4ff }); }
+            }
+            if (hit) {
+                var bk = _sigClamp01((el - hitEl) / 900);
+                body.material.opacity = 1 - bk; body.material.transparent = true; body.scale.set(1 - bk * 0.4, 1 - bk * 0.7, 1 - bk * 0.4); body.position.y = ts * 0.45 + bk * ts * 0.6;
+                if (el - lastMote > 60 && bk < 1 && _canSpawn()) { lastMote = el; _spawn({ x: c.x + rn(-8, 8), y: c.y + rn(-8, 8), z: bz + ts * (0.2 + bk * 0.8), mode: 'billboard', sprite: 'sparkle', ml: 700, size0: 5, size1: 1, vx: rn(-15, 15), vy: rn(-15, 15), vz: rn(20, 60), opacity0: 0.9, opacity1: 0, tint: 0x9ff4ff }); }
+                printMat.opacity = _sigClamp01((el - hitEl - 1900) / 500) * 0.75;
+            }
+        });
+    }
+
+    /* ── ASCENSION DAY (cult leader) ────────────────────────────────────
+       NINE CANDLES rise round the victim and light one by one; THE FAMILY
+       files in from beyond the tile in a single line, heads bowed, and
+       takes its places on the ring; THE CUP rises at the leader's side and
+       is PASSED hand to hand round the circle — a hop from robe to robe —
+       and offered to the victim, who drinks. The hit is the column of
+       light from above: the body lifts and comes apart into motes going
+       UP, every robe steps back one pace, and when the light is gone
+       there is ONE MORE ROBE standing on the tile. THE FAMILY IS WAITING. */
+    function _sigAscensionDay3D(cx, cy, tx, ty, o) {
+        o = o || {};
+        if (!_canSpawn()) return false;
+        var wpC = _worldPos(cx, cy), wpT = _worldPos(tx, ty), ts = wpT.ts;
+        var ms = o.ms > 0 ? o.ms : 8000;
+        var candlesAt = o.candlesAt != null ? o.candlesAt : 100, fileAt = o.fileAt != null ? o.fileAt : candlesAt + 900, cupAt = o.cupAt != null ? o.cupAt : fileAt + 1500, hitAt = o.hitAt != null ? o.hitAt : cupAt + 2000;
+        var g = new THREE.Group(); g.position.set(wpT.x, wpT.y, wpT.z);
+        var dx = wpC.x - wpT.x, dz = wpC.z - wpT.z, L = Math.max(1, Math.hypot(dx, dz)), ux = dx / L, uz = dz / L;
+        var FIRE = 0xffb060, HOLY = 0xf4e6c0, WINE = 0x8a1030, ROBE = 0x2a1622;
+        var body = _finBodyMesh(ts); g.add(body);
+        /* the candles */
+        var NC = 9, candles = [], flames = [];
+        for (var k = 0; k < NC; k++) {
+            var ca = k * Math.PI * 2 / NC, cn = new THREE.Group(); cn.position.set(Math.cos(ca) * ts * 1.4, -ts * 0.5, Math.sin(ca) * ts * 1.4); g.add(cn); candles.push(cn);
+            cn.add(new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.06, ts * 0.07, ts * 0.46, 8), _finBasic(0xf0e6d0)));
+            var fl = _finSprite(FIRE, _sigGlowTex(), ts * 0.3, 158); fl.position.y = ts * 0.34; cn.add(fl); flames.push(fl);
+        }
+        var ringGlow = new THREE.Mesh(new THREE.RingGeometry(ts * 1.3, ts * 1.5, 48), _finBasic(FIRE, { additive: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false })); ringGlow.rotation.x = -Math.PI / 2; ringGlow.position.y = ts * 0.03; g.add(ringGlow);
+        /* the family: a single file from beyond the victim onto the ring */
+        var NM = 8, members = [], robeMat = _finBasic(ROBE), hoodMat = _finBasic(0x1a0c16);
+        var RR = ts * 2.5;
+        function mkRobe() {
+            var r = new THREE.Group();
+            var robe = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.25, ts * 0.95, 8), robeMat); robe.position.y = ts * 0.475; r.add(robe);
+            var hoodP = new THREE.Group(); hoodP.position.y = ts * 0.98; r.add(hoodP); r.userData.hood = hoodP;
+            var hood = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.14, 8, 6), hoodMat); hoodP.add(hood);
+            var candle = _finSprite(FIRE, _sigGlowTex(), ts * 0.16, 158); candle.position.set(ts * 0.16, ts * 0.72, ts * 0.12); r.add(candle); r.userData.candle = candle;
+            return r;
+        }
+        for (var m = 0; m < NM; m++) {
+            var slotA = -Math.PI / 2 + (m + 0.5) * Math.PI / NM;   // the far half of the ring, either side of the line beyond the victim
+            var away = new THREE.Vector3(-ux, 0, -uz), side = new THREE.Vector3(uz, 0, -ux);
+            var ang = Math.atan2(away.x, away.z) + (slotA + Math.PI / 2) - Math.PI / 2;
+            var seat = new THREE.Vector3(Math.sin(ang) * RR, 0, Math.cos(ang) * RR);
+            var from = new THREE.Vector3(-ux * ts * (7 + m * 1.1) + side.x * ts * 0.2 * (m % 2 ? 1 : -1), 0, -uz * ts * (7 + m * 1.1) + side.z * ts * 0.2 * (m % 2 ? 1 : -1));
+            var rb = mkRobe(); rb.visible = false; rb.position.copy(from); g.add(rb);
+            members.push({ g: rb, from: from, seat: seat, t0: fileAt + m * 140, dur: 1500 + m * 60, ang: ang });
+        }
+        /* the leader at the caster's side of the ring, and the cup */
+        var leader = mkRobe(); leader.position.set(ux * RR, 0, uz * RR); leader.rotation.y = Math.atan2(-ux, -uz); leader.visible = false; g.add(leader); leader.userData.candle.material.color.setHex(0xffe6a0);
+        var cup = new THREE.Group(); cup.visible = false; g.add(cup);
+        var bowl = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.1, ts * 0.06, ts * 0.12, 10), _finBasic(0xd8b040)); bowl.position.y = ts * 0.12; cup.add(bowl);
+        var stem = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.02, ts * 0.05, ts * 0.12, 8), _finBasic(0xd8b040)); stem.position.y = 0; cup.add(stem);
+        var wine = new THREE.Mesh(new THREE.CircleGeometry(ts * 0.09, 12), _finBasic(WINE)); wine.rotation.x = -Math.PI / 2; wine.position.y = ts * 0.181; cup.add(wine);
+        var cupGlow = _finSprite(0xffe6a0, _sigGlowTex(), ts * 0.5, 160); cupGlow.material.opacity = 0.6; cupGlow.position.y = ts * 0.15; cup.add(cupGlow);
+        /* the column of light + the new robe */
+        var pillar = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.5, ts * 0.7, ts * 9, 24, 1, true), _finBasic(HOLY, { additive: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false })); pillar.position.y = ts * 4.5; g.add(pillar);
+        var pillarGlow = _finSprite(HOLY, _sigGlowTex(), ts * 3.2, 160); pillarGlow.position.y = ts * 0.5; g.add(pillarGlow);
+        var newRobe = mkRobe(); newRobe.visible = false; newRobe.rotation.y = Math.atan2(ux, uz); g.add(newRobe);
+        var waiting = _finTextSprite('THE FAMILY IS WAITING', { ink: '#ffe6a0', bg: '#1a0c16', font: 'Georgia, serif', fontPx: 52, spriteW: ts * 3.0, opacity: 0 }); waiting.position.set(0, ts * 2.4, 0); g.add(waiting);
+        var welcome = _finTextSprite('ONE MORE ROBE', { ink: '#1a0c16', bg: '#ffe6a0', font: 'Georgia, serif', fontPx: 64, spriteW: ts * 2.4, opacity: 0 }); welcome.position.set(0, ts * 2.0, 0); g.add(welcome);
+        var c = tilePx(tx, ty), bz = tileZ(tx, ty), hit = false, hitEl = 0, lastMote = 0, litN = -1, drank = false;
+        var passOrder = [];   // the leader, then round the ring to the last robe, then the victim
+        return !!_sigRunOwned(g, ms, function (el) {
+            /* the candles rise and light, one by one */
+            var cwin = Math.max(1, (fileAt - candlesAt) * 0.9);
+            for (var i = 0; i < NC; i++) {
+                var ck = _sigClamp01((el - candlesAt - i * cwin / NC) / 350), ce = 1 - Math.pow(1 - ck, 3);
+                candles[i].position.y = -ts * 0.5 + ts * 0.5 * ce;
+                var lit = el >= candlesAt + i * cwin / NC + 380;
+                flames[i].material.opacity = lit ? 0.75 + 0.25 * Math.sin(el * 0.02 + i) : 0;
+                if (lit && litN < i) { litN = i; if (_canSpawn()) _spawn({ x: c.x + candles[i].position.x, y: c.y + candles[i].position.z, z: bz + ts * 0.36, mode: 'billboard', sprite: 'sparkle', ml: 300, size0: 6, size1: 1, vx: 0, vy: 0, vz: 30, opacity0: 1, opacity1: 0, tint: FIRE }); }
+            }
+            ringGlow.material.opacity = 0.18 * _sigClamp01((litN + 1) / NC) * (0.8 + 0.2 * Math.sin(el * 0.006));
+            /* the family files in, heads bowed */
+            leader.visible = el >= fileAt;
+            for (var m2 = 0; m2 < NM; m2++) {
+                var M = members[m2]; if (el < M.t0) continue;
+                M.g.visible = true;
+                var wk = _sigClamp01((el - M.t0) / M.dur), we = wk * wk * (3 - 2 * wk);
+                M.g.position.copy(M.from).lerp(M.seat, we);
+                M.g.position.y = Math.abs(Math.sin(el * 0.011 + m2)) * ts * 0.03 * (1 - we);
+                var faceIn = Math.atan2(-M.seat.x, -M.seat.z), walkYaw = Math.atan2(M.seat.x - M.from.x, M.seat.z - M.from.z);
+                M.g.rotation.y = wk < 0.97 ? walkYaw : faceIn;
+                M.g.userData.hood.rotation.x = 0.55;   // bowed
+                if (hit) { var sk = _sigClamp01((el - hitEl) / 600); M.g.position.copy(M.seat).multiplyScalar(1 + 0.22 * sk); M.g.rotation.y = faceIn; M.g.userData.hood.rotation.x = 0.55 - 0.65 * sk; }
+                M.g.userData.candle.material.opacity = 0.7 + 0.3 * Math.sin(el * 0.02 + m2 * 1.3);
+            }
+            leader.userData.candle.material.opacity = 0.9;
+            leader.userData.hood.rotation.x = el >= cupAt ? -0.2 : 0.3;
+            /* the cup: from the leader, round the ring, to the victim */
+            if (el >= cupAt && !drank) {
+                cup.visible = true;
+                if (!passOrder.length) { passOrder.push(leader.position.clone()); for (var pm = NM - 1; pm >= 0; pm--) passOrder.push(members[pm].seat.clone()); passOrder.push(new THREE.Vector3(0, 0, 0)); }
+                var legs = passOrder.length - 1, span = Math.max(1, hitAt - 700 - cupAt), pk = _sigClamp01((el - cupAt) / span) * legs, li = Math.min(legs - 1, Math.floor(pk)), lf = pk - li;
+                var a = passOrder[li], b = passOrder[li + 1];
+                cup.position.set(a.x + (b.x - a.x) * lf, ts * 0.72 + Math.sin(lf * Math.PI) * ts * 0.35, a.z + (b.z - a.z) * lf);
+                if (pk >= legs) { drank = true; cup.position.set(0, ts * 0.72, 0); }
+            }
+            if (drank && !hit) { var dk = _sigClamp01((el - (hitAt - 700)) / 500); body.rotation.x = -0.35 * Math.sin(dk * Math.PI); cup.position.set(0, ts * 0.72 + dk * ts * 0.2, -ts * 0.18); cup.rotation.x = -0.9 * dk; }
+            waiting.material.opacity = _sigClamp01((el - cupAt) / 300) * (1 - _sigClamp01((el - hitAt + 300) / 300)) * (0.85 + 0.15 * Math.sin(el * 0.008));
+            if (el >= hitAt && !hit) {
+                hit = true; hitEl = el; cup.visible = false; body.rotation.x = 0;
+                _shake('heavy'); _sigScreenFlash('#fff4d8', 240, 0.9);
+                _sigShockRing3D(tx, ty, { color: 0xf4e6c0, r0: ts * 0.3, r1: ts * 2.6, ms: 620, torus: true });
+                if (_canSpawn()) for (var q = 0; q < 20; q++) _spawn({ x: c.x + rn(-10, 10), y: c.y + rn(-10, 10), z: bz + rn(4, ts * 0.9), mode: 'billboard', sprite: 'sparkle', ml: rn(600, 1400), size0: 6, size1: 1, vx: rn(-10, 10), vy: rn(-10, 10), vz: rn(80, 220), opacity0: 1, opacity1: 0, tint: 0xffe6a0 });
+            }
+            if (hit) {
+                var hk = _sigClamp01((el - hitEl) / 1100);
+                pillar.material.opacity = 0.42 * Math.sin(Math.min(1, hk * 1.3) * Math.PI) ; pillarGlow.material.opacity = 0.7 * Math.sin(Math.min(1, hk * 1.3) * Math.PI); pillar.rotation.y = el * 0.0008;
+                body.position.y = ts * 0.45 + hk * ts * 4.5; body.material.opacity = 1 - hk; body.material.transparent = true; body.scale.setScalar(1 - hk * 0.6);
+                if (el - lastMote > 50 && hk < 1 && _canSpawn()) { lastMote = el; _spawn({ x: c.x + rn(-8, 8), y: c.y + rn(-8, 8), z: bz + ts * (0.3 + hk * 4), mode: 'billboard', sprite: 'sparkle', ml: 600, size0: 5, size1: 1, vx: rn(-10, 10), vy: rn(-10, 10), vz: rn(60, 140), opacity0: 0.9, opacity1: 0, tint: 0xffe6a0 }); }
+                var nk = _sigClamp01((el - hitEl - 1300) / 500);
+                if (nk > 0) { newRobe.visible = true; newRobe.scale.setScalar(Math.max(0.001, nk * (1.15 - 0.15 * nk))); newRobe.userData.hood.rotation.x = 0.55 * (1 - nk); newRobe.userData.candle.material.opacity = nk; }
+                if (nk >= 1 && !newRobe.userData.puffed) { newRobe.userData.puffed = true; _finDust(c.x, c.y, bz, 10, { r: 16, op: 0.5 }); }
+                welcome.material.opacity = _sigClamp01((el - hitEl - 1900) / 300) * (1 - _sigClamp01((el - hitEl - 3600) / 500));
+                for (var f2 = 0; f2 < NC; f2++) flames[f2].material.opacity *= 1 - 0.6 * _sigClamp01((el - hitEl - 2200) / 1200);
+            }
+        });
+    }
+    /* ═════════ END DELIVERY 17 ═════════ */
+
+
     /* ── THE FORGE'S PREVIEW (2026-09-19) — the finisher on the party
        builder's stage. The user: "I would still like to see the finishers
        and their animations in the party builder in the spell tree
@@ -34638,6 +34996,25 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         P.at(P.hitAt, function () { P.ring(0x8a8a90, { r1: P.ts * 2.4, ms: 520 }); P.flash('#ffe090', 160, 0.7); P.shake('heavy'); P.grade('#ffe090', 700); });
         P.at(P.hitAt + 300, function () { P.whiteout(0x101014, 5, { ms: 800, peak: 0.45 }); });
     };
+    /* DELIVERY 17 (2026-09-21): the 2026-09-21 batch on the stage */
+    _FIN_STAGE.bookEm = function (P) {
+        P.circle(0x10203a, 0x3a8aff, { spin: false });
+        P.at(P.CHARGE - 1500, function () { var H = 1500 + P.STRIKE; _sigBookEm3D(P.cx, P.cy, P.tx, P.ty, { ms: P.STRIKE + 5600, carAt: 100, rightsAt: Math.min(1500, H - 2200), walkAt: H - 1100, hitAt: H }); });
+        P.at(P.hitAt, function () { P.ring(0x3a8aff, { r1: P.ts * 2.4, ms: 520 }); P.flash('#ffffff', 140, 0.6); P.shake('heavy'); P.grade('#3a8aff', 700); });
+        P.at(P.hitAt + 300, function () { P.whiteout(0x10203a, 5, { ms: 800, peak: 0.45 }); });
+    };
+    _FIN_STAGE.theBloom = function (P) {
+        P.circle(0x1e6a9e, 0x9ff4ff);
+        P.at(P.CHARGE - 1500, function () { var H = 1500 + P.STRIKE; _sigTheBloom3D(P.cx, P.cy, P.tx, P.ty, { ms: P.STRIKE + 5600, seaAt: 100, bloomAt: 900, swarmAt: H - 1400, hitAt: H }); });
+        P.at(P.hitAt, function () { P.ring(0x5fd4ee, { r1: P.ts * 2.8, ms: 600 }); P.flash('#bff4ff', 220, 0.85); P.shake('heavy'); P.grade('#5fd4ee', 800); });
+        P.at(P.hitAt + 300, function () { P.whiteout(0x9ff4ff, 6, { ms: 900, peak: 0.6 }); });
+    };
+    _FIN_STAGE.ascensionDay = function (P) {
+        P.circle(0x2a1622, 0xffb060, { spin: false });
+        P.at(P.CHARGE - 1500, function () { var H = 1500 + P.STRIKE; _sigAscensionDay3D(P.cx, P.cy, P.tx, P.ty, { ms: P.STRIKE + 5800, candlesAt: 100, fileAt: 900, cupAt: H - 2000, hitAt: H }); });
+        P.at(P.hitAt, function () { P.ring(0xf4e6c0, { r1: P.ts * 2.6, ms: 620 }); P.flash('#fff4d8', 240, 0.9); P.shake('heavy'); P.grade('#ffb060', 800); });
+        P.at(P.hitAt + 300, function () { P.whiteout(0xf4e6c0, 6, { ms: 900, peak: 0.65 }); });
+    };
     _FIN_STAGE.theRuler = function (P) {
         P.circle(0xf4ecd8, 0xffe080, { spin: false });
         P.at(P.CHARGE - 1500, function () { var H = 1500 + P.STRIKE; _sigTheRuler3D(P.cx, P.cy, P.tx, P.ty, { ms: P.STRIKE + 5400, rulerAt: 100, tapAt: 1200, riseAt: H - 800, hitAt: H }); });
@@ -34938,6 +35315,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         sigObserved3D: _sigObserved3D,
         sigDriveBy3D: _sigDriveBy3D,
         sigTheRuler3D: _sigTheRuler3D,
+        sigBookEm3D: _sigBookEm3D,
+        sigTheBloom3D: _sigTheBloom3D,
+        sigAscensionDay3D: _sigAscensionDay3D,
 
         getDescentTotalMs: getDescentTotalMs,
         getDescentFlyover: getDescentFlyover,
