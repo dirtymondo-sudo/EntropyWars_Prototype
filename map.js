@@ -5427,6 +5427,59 @@
                 html += '<p class="hq-panel-note">Your last crossing is in the log, dreamt by someone who was not there. The details are right.</p>';
                 return html;
             }
+            /* ═══ THE THREE ROOMS (2026-09-21) ═══ */
+            /* THE DIRECTORY (THE THIRTEENTH FLOOR): twelve suites — eleven VACANT, the twelfth is you, EXPECTED */
+            if (c.id === 'thirteen') {
+                const ic = (typeof window.hqIntakeCard === 'function') ? window.hqIntakeCard(_hqProfile()) : null;
+                const who = (ic && ic.callsign) ? String(ic.callsign).toUpperCase() : 'YOU';
+                const no = (ic && ic.empNo) ? String(ic.empNo) : '000-000';
+                let since = '';
+                try { if (ic && ic.issued && typeof window.hqCanonToday === 'function') since = String(window.hqCanonToday(ic.issued) || ''); } catch (e) { since = ''; }
+                html += '<p class="hq-panel-desc">' + _hqEsc(c.desc || '') + '</p><div class="hq-rows">';
+                for (let i = 1; i <= 11; i++) html += `<div class="hq-row hq-row-tray"><b>13-${i < 10 ? '0' : ''}${i}</b><span>—</span><i class="hq-lamp-chip st-open">VACANT</i></div>`;
+                html += `<div class="hq-row hq-row-tray"><b>13-12</b><span>${_hqEsc(who)} · № ${_hqEsc(no)}${since ? ' · SINCE ' + _hqEsc(since) : ''}</span><i class="hq-lamp-chip st-codered">EXPECTED</i></div>`
+                    + '</div><div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-close="1">I AM NOT EXPECTED</button></div>';
+                html += '<p class="hq-panel-note">The letters are pushed into the felt by hand. The twelfth line is in your handwriting. You have not been here before.</p>';
+                return html;
+            }
+            /* THE TAG (THE NURSERY): the card on the fifth cot's rail */
+            if (c.id === 'tag') {
+                const ic = (typeof window.hqIntakeCard === 'function') ? window.hqIntakeCard(_hqProfile()) : null;
+                const no = (ic && ic.empNo) ? String(ic.empNo) : '000-000';
+                const who = (ic && ic.callsign) ? String(ic.callsign).toUpperCase() : 'UNNAMED';
+                let born = '', expected = '';
+                try { if (typeof window.hqCanonToday === 'function') born = String(window.hqCanonToday() || ''); } catch (e) { born = ''; }
+                try { if (ic && ic.issued && typeof window.hqCanonToday === 'function') expected = String(window.hqCanonToday(ic.issued) || ''); } catch (e) { expected = ''; }
+                const days = (ic && ic.days) ? ic.days : 0;
+                html += '<p class="hq-panel-desc">' + _hqEsc(c.desc || '') + '</p><div class="hq-rows">'
+                    + `<div class="hq-row hq-row-tray"><b>NAME</b><span>${_hqEsc(who)}</span><i class="hq-lamp-chip st-unstable">№ ${_hqEsc(no)}</i></div>`
+                    + `<div class="hq-row hq-row-tray"><b>BORN</b><span>${_hqEsc(born || 'TODAY')} · 03:33</span><i class="hq-lamp-chip st-codered">TODAY</i></div>`
+                    + `<div class="hq-row hq-row-tray"><b>EXPECTED</b><span>${_hqEsc(expected || 'THE DAY YOU FIRST PUNCHED IN')}</span><i class="hq-lamp-chip st-open">${days} DAY${days === 1 ? '' : 'S'} AGO</i></div>`
+                    + '<div class="hq-row hq-row-tray"><b>WEIGHT</b><span>THE SAME AS YOU</span><i class="hq-lamp-chip st-stabilized">HELD</i></div>'
+                    + '</div><div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-close="1">DO NOT WAKE IT</button></div>';
+                html += '<p class="hq-panel-note">The blanket rises and falls. Hold your breath. It holds its breath.</p>';
+                return html;
+            }
+            /* THE RECEIPT (THE SHOWROOM): the party, itemised at the roster's prices */
+            if (c.id === 'receipt') {
+                const prof = _hqProfile();
+                let members = [];
+                try { const sh = (prof && typeof window.hqPartyShifts === 'function') ? window.hqPartyShifts(prof) : null; members = (sh && sh.members) ? sh.members.filter(m => m && m.meta) : []; } catch (e) { members = []; }
+                const prices = window.CAMPAIGN_RACE_PRICES || {};
+                let total = 0;
+                html += '<p class="hq-panel-desc">' + _hqEsc(c.desc || '') + '</p><div class="hq-rows">';
+                if (!members.length) html += '<div class="hq-row hq-row-tray"><b>FLOOR MODEL</b><span>YOU · AS WORN IN</span><i class="hq-lamp-chip st-codered">SOLD</i></div>';
+                members.forEach((m, i) => {
+                    const race = (m.meta && m.meta.race) || 'homosapien';
+                    const label = (typeof window.getRaceLabel === 'function') ? String(window.getRaceLabel(race, m.meta && m.meta.gender) || race).toUpperCase() : String(race).toUpperCase();
+                    const price = (typeof prices[race] === 'number') ? prices[race] : 0; total += price;
+                    html += `<div class="hq-row hq-row-tray"><b>${_hqEsc(String(m.name || label))}</b><span>${_hqEsc(label)}${m.you ? ' · THE FLOOR MODEL' : ''}</span><i class="hq-lamp-chip ${m.you ? 'st-codered' : 'st-open'}">${price ? price + ' G' : 'NO CHARGE'}</i></div>`;
+                });
+                html += `<div class="hq-row hq-row-tray"><b>TOTAL</b><span>EVERYTHING MUST GO · NO RETURNS</span><i class="hq-lamp-chip st-codered">${total} G</i></div>`
+                    + '</div><div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-close="1">PUT IT BACK</button></div>';
+                html += '<p class="hq-panel-note">The receipt is made out to the street. The street has not paid. The models are wearing what you wore in.</p>';
+                return html;
+            }
             /* THE LID (Room 0dB): FLOAT / NOT TODAY */
             if (c.id === 'lid') {
                 html += '<p class="hq-panel-desc">' + _hqEsc(c.desc || '') + '</p><div class="hq-rows">'

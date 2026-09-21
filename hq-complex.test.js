@@ -21,7 +21,7 @@ const D = loadGameData(), HQ = D.DOOR_HQ;
 const TERRAIN_RULES = vm.runInContext('TERRAIN_RULES', D);
 const SITE = 'prebuilt_haunted';
 const BOARD = 'site_prebuilt_haunted';
-const PARTS = ['hall', 'upstairs', 'attic', 'cellar'];
+const PARTS = ['hall', 'upstairs', 'attic', 'nursery', 'cellar'];   // THE THREE ROOMS (2026-09-21): THE NURSERY, the fifth bedroom off the landing
 const PART_IDS = PARTS.map(p => BOARD + '_' + p);
 const renderer = fs.readFileSync(__dirname + '/three-renderer.js', 'utf8');
 const dataSrc = fs.readFileSync(__dirname + '/data.js', 'utf8');

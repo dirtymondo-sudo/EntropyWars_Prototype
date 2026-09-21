@@ -50684,6 +50684,149 @@ const ThreeRenderer = (function () {
             return g;
         },
     });
+    /* ═══════════════════════════════════════════════════════════════════════
+       THE THREE ROOMS (2026-09-21 — the user: "weird, dark, trippy, eerie,
+       nightmare-inducing; surprise me with three new rooms scattered
+       throughout the map"): THE THIRTEENTH FLOOR (data.js rooms.thirteenth,
+       behind the crawlspace's second draught), THE NURSERY (the Haunted
+       House's fifth bedroom) and THE SHOWROOM (Disaster City, off the tower
+       lobby). Six procs (data.js DOOR_HQ.catalogue, the same names); every
+       moving one is a room ticker (_hq.tickers); the two text procs read
+       their own placement row (`p.text`, the _hqProcProp(name, p) contract).
+       ═══════════════════════════════════════════════════════════════════════ */
+    Object.assign(_hqProcBuilders, {
+        /* THE DIRECTORY (wall, front +z): a glass-fronted board of white letters
+           pushed into black felt — twelve suites, eleven VACANT, and the twelfth
+           is the officer's own callsign, EXPECTED. The number is read at build
+           (a room is rebuilt per entry), the texture cached per number. */
+        directory_board: function (U) {
+            var g = new THREE.Group(), W = 1.4, H = 1.4, D = 0.06;
+            var who = 'YOU', no = '000-000';
+            try { if (typeof window.hqIntakeCard === 'function' && window.ProfileSystem) { var ic = window.hqIntakeCard(window.ProfileSystem.getActiveProfile()); if (ic) { if (ic.callsign) who = String(ic.callsign).toUpperCase(); if (ic.empNo) no = String(ic.empNo); } } } catch (e) {}
+            var frame = _hqBox(W, H, D, _hqMat(null, 1, 1, { color: 0x5a4a3a, shininess: 30 })); frame.position.set(0, (H / 2) * U, (D / 2) * U); g.add(frame);
+            var lines = ['THE THIRTEENTH FLOOR'];
+            for (var i = 1; i <= 12; i++) lines.push('13-' + (i < 10 ? '0' : '') + i + '   ' + (i === 12 ? (who + ' · EXPECTED') : 'VACANT'));
+            var tex = (typeof _hzTextTex === 'function') ? _hzTextTex('hq_dir13_' + no, lines, { w: 768, h: 768, bg: '#0c0b0a', color: '#e8e2d0', border: '#3a3028', pad: 0.06, sizes: [56], weight: 'normal', font: '"Courier New", Courier, monospace' }) : null;
+            var felt = new THREE.Mesh(new THREE.PlaneGeometry((W - 0.1) * U, (H - 0.1) * U), tex ? new THREE.MeshLambertMaterial({ map: tex, emissive: 0x14120e, emissiveIntensity: 0.6 }) : _hqBasic(0x0c0b0a));
+            felt.position.set(0, (H / 2) * U, (D + 0.003) * U); g.add(felt);
+            var glass = new THREE.Mesh(new THREE.PlaneGeometry((W - 0.08) * U, (H - 0.08) * U), new THREE.MeshPhongMaterial({ color: 0xd8e8f0, transparent: true, opacity: 0.12, shininess: 120, specular: 0xffffff }));
+            glass.position.set(0, (H / 2) * U, (D + 0.02) * U); g.add(glass);
+            return g;
+        },
+        /* THE ROCKING CHAIR (floor, block): a spindle-back chair on two runners.
+           It rocks on a slow breath — a little harder when the officer stands
+           near it — and nobody is in it. */
+        rocking_chair: function (U) {
+            var g = new THREE.Group(), wood = _hqMat('wood', 1, 1, { color: 0x4a3020, shininess: 14 });
+            var rock = new THREE.Group(); rock.position.y = 0.08 * U; g.add(rock);
+            var seat = _hqBox(0.5, 0.05, 0.48, wood); seat.position.set(0, 0.42 * U, 0); rock.add(seat);
+            var back = _hqBox(0.5, 0.05, 0.05, wood); back.position.set(0, 1.02 * U, -0.22 * U); rock.add(back);
+            for (var i = -2; i <= 2; i++) { var sp = new THREE.Mesh(new THREE.CylinderGeometry(0.014 * U, 0.014 * U, 0.6 * U, 6), wood); sp.position.set(i * 0.11 * U, 0.72 * U, -0.22 * U); rock.add(sp); }
+            for (var lx = -1; lx <= 1; lx += 2) for (var lz = -1; lz <= 1; lz += 2) { var leg = new THREE.Mesh(new THREE.CylinderGeometry(0.02 * U, 0.024 * U, 0.42 * U, 6), wood); leg.position.set(lx * 0.21 * U, 0.21 * U, lz * 0.2 * U); rock.add(leg); }
+            for (var rx = -1; rx <= 1; rx += 2) { var rg = new THREE.Group(); var run = new THREE.Mesh(new THREE.TorusGeometry(0.62 * U, 0.02 * U, 6, 20, 0.95), wood); run.rotation.z = 1.5 * Math.PI - 0.475; rg.add(run); rg.rotation.y = Math.PI / 2; rg.position.set(rx * 0.22 * U, 0.62 * U, 0); rock.add(rg); }   // a runner is an arc of a wheel under the legs, its low point on the floor
+            for (var ax = -1; ax <= 1; ax += 2) { var arm = _hqBox(0.04, 0.04, 0.44, wood); arm.position.set(ax * 0.25 * U, 0.66 * U, -0.02 * U); rock.add(arm); var post = new THREE.Mesh(new THREE.CylinderGeometry(0.016 * U, 0.016 * U, 0.24 * U, 6), wood); post.position.set(ax * 0.25 * U, 0.54 * U, 0.16 * U); rock.add(post); }
+            var seed = (_hqProcSeed++) * 1.7, wx = 0, wz = 0;
+            g.userData.rockSpot = function (x, z) { wx = x; wz = z; };
+            if (_hq) _hq.tickers.push(function (dt, now) {
+                var t = now * 0.001 + seed;
+                var near = 0; try { var pl = _hq && _hq.player; if (pl) { var wp = new THREE.Vector3(); g.getWorldPosition(wp); near = Math.max(0, 1 - Math.hypot(pl.x - wp.x / U, pl.z - wp.z / U) / 3.5); } } catch (e) { near = 0; }
+                var amp = 0.09 + 0.12 * near, w = 1.35 + 0.8 * near;
+                rock.rotation.x = amp * Math.sin(t * w) + 0.02 * Math.sin(t * 7.3) * near;
+                rock.position.z = -0.06 * U * Math.sin(t * w);
+            });
+            return g;
+        },
+        /* THE MOBILE (ceiling, built downward): a wooden ring on three threads and
+           six little shapes hung from it — a moon, a star, two birds, a fish, a
+           key — turning on a slow breath with no draught to turn it, each shape
+           swinging on its own thread. */
+        crib_mobile: function (U) {
+            var g = new THREE.Group();
+            var thread = _hqMat(null, 1, 1, { color: 0xe8e0d0 });
+            var wood = _hqMat('wood', 1, 1, { color: 0xb08a60, shininess: 10 });
+            var stem = new THREE.Mesh(new THREE.CylinderGeometry(0.004 * U, 0.004 * U, 0.3 * U, 4), thread); stem.position.y = -0.15 * U; g.add(stem);
+            var spin = new THREE.Group(); spin.position.y = -0.3 * U; g.add(spin);
+            var ring = new THREE.Mesh(new THREE.TorusGeometry(0.28 * U, 0.012 * U, 6, 28), wood); ring.rotation.x = Math.PI / 2; spin.add(ring);
+            var tints = [0xf0e0a0, 0xffd870, 0xd8e8ff, 0xd8e8ff, 0x9ad0c0, 0xc8c0a0], shapes = [], n = 6;
+            for (var i = 0; i < n; i++) {
+                var a = (i / n) * Math.PI * 2, len = 0.22 + 0.12 * ((i * 7) % 3) / 2;
+                var arm = new THREE.Group(); arm.position.set(Math.cos(a) * 0.28 * U, 0, Math.sin(a) * 0.28 * U); spin.add(arm);
+                var th = new THREE.Mesh(new THREE.CylinderGeometry(0.003 * U, 0.003 * U, len * U, 4), thread); th.position.y = -len / 2 * U; arm.add(th);
+                var mat = _hqMat(null, 1, 1, { color: tints[i], shininess: 30, emissive: 0x111008 });
+                var shape;
+                if (i === 0) { shape = new THREE.Mesh(new THREE.TorusGeometry(0.05 * U, 0.018 * U, 6, 14, Math.PI * 1.4), mat); shape.rotation.z = 0.6; }   // a crescent
+                else if (i === 1) { shape = new THREE.Mesh(new THREE.OctahedronGeometry(0.05 * U, 0), mat); }                                             // a star
+                else if (i === 5) { shape = _hqBox(0.03, 0.09, 0.012, mat); }                                                                             // a key
+                else { shape = new THREE.Mesh(new THREE.SphereGeometry(0.038 * U, 8, 6), mat); shape.scale.set(1.5, 0.7, 0.9); }                        // a bird, a bird, a fish
+                shape.position.y = -len * U; arm.add(shape);
+                shapes.push({ arm: arm, ph: i * 1.3 });
+            }
+            var seed = (_hqProcSeed++) * 0.7;
+            if (_hq) _hq.tickers.push(function (dt, now) {
+                var t = now * 0.001 + seed;
+                spin.rotation.y += dt * (0.22 + 0.1 * Math.sin(t * 0.17));
+                for (var k = 0; k < shapes.length; k++) { var sh = shapes[k]; sh.arm.rotation.x = 0.16 * Math.sin(t * 1.9 + sh.ph); sh.arm.rotation.z = 0.12 * Math.cos(t * 1.4 + sh.ph); }
+            });
+            return g;
+        },
+        /* THE MUSIC BOX (a tabletop): a small lacquered box with the lid up and a
+           dancer turning on the pin; a glow off the mirror inside the lid. The
+           dancer stops when the officer is close, and starts again when they
+           are not. */
+        music_box: function (U) {
+            var g = new THREE.Group();
+            var lacquer = _hqMat(null, 1, 1, { color: 0x5a1a22, shininess: 90, specular: 0x886666 });
+            var box = _hqBox(0.22, 0.1, 0.16, lacquer); box.position.set(0, 0.05 * U, 0); g.add(box);
+            var lid = new THREE.Group(); lid.position.set(0, 0.1 * U, -0.08 * U); g.add(lid);
+            var lidM = _hqBox(0.22, 0.012, 0.16, lacquer); lidM.position.set(0, 0.006 * U, 0.08 * U); lid.add(lidM);
+            var mirror = new THREE.Mesh(new THREE.PlaneGeometry(0.18 * U, 0.12 * U), new THREE.MeshPhongMaterial({ color: 0xe8f0ff, shininess: 200, specular: 0xffffff })); mirror.position.set(0, -0.002 * U, 0.08 * U); mirror.rotation.x = Math.PI / 2; lid.add(mirror);
+            lid.rotation.x = -1.75;   // the lid up, past vertical
+            var pin = new THREE.Mesh(new THREE.CylinderGeometry(0.004 * U, 0.004 * U, 0.03 * U, 4), _hqMat(null, 1, 1, { color: 0xc0b090, shininess: 80 })); pin.position.y = 0.115 * U; g.add(pin);
+            var dancer = new THREE.Group(); dancer.position.y = 0.13 * U; g.add(dancer);
+            var skirt = new THREE.Mesh(new THREE.ConeGeometry(0.03 * U, 0.05 * U, 10), _hqMat(null, 1, 1, { color: 0xf0d8e0, shininess: 20 })); skirt.position.y = 0.025 * U; dancer.add(skirt);
+            var body = new THREE.Mesh(new THREE.SphereGeometry(0.014 * U, 8, 6), _hqMat(null, 1, 1, { color: 0xf0d8e0 })); body.position.y = 0.06 * U; dancer.add(body);
+            var head = new THREE.Mesh(new THREE.SphereGeometry(0.012 * U, 8, 6), _hqMat(null, 1, 1, { color: 0xffe8d8 })); head.position.y = 0.085 * U; dancer.add(head);
+            var glow = _hzGlowSprite(0.5 * U, 0xffd8a0, 0.22, 0.06, 0.04, 0.5); glow.position.y = 0.16 * U; g.add(glow);
+            var speed = 1.8, seed = (_hqProcSeed++) * 0.4;
+            if (_hq) _hq.tickers.push(function (dt, now) {
+                var near = 0; try { var pl = _hq && _hq.player; if (pl) { var wp = new THREE.Vector3(); g.getWorldPosition(wp); near = Math.hypot(pl.x - wp.x / U, pl.z - wp.z / U) < 1.6 ? 1 : 0; } } catch (e) { near = 0; }
+                speed += ((near ? 0 : 1.8) - speed) * Math.min(1, dt * 1.2);   // it stops for you
+                dancer.rotation.y += dt * speed;
+                lid.rotation.x = -1.75 + 0.02 * Math.sin(now * 0.001 + seed);
+            });
+            return g;
+        },
+        /* THE PRICE TAG (floor, front +z): a card on a wire stand beside a floor
+           model — SOLD, RESERVED, RETURNED, or whatever the row says. */
+        price_tag: function (U, p) {
+            var g = new THREE.Group(), steel = _hqMat(null, 1, 1, { color: 0x9aa0a8, shininess: 80, specular: 0xcfd6dd });
+            var post = new THREE.Mesh(new THREE.CylinderGeometry(0.008 * U, 0.008 * U, 1.1 * U, 6), steel); post.position.y = 0.55 * U; g.add(post);
+            var foot = new THREE.Mesh(new THREE.CylinderGeometry(0.12 * U, 0.14 * U, 0.02 * U, 12), steel); foot.position.y = 0.01 * U; g.add(foot);
+            var text = (p && Array.isArray(p.text) && p.text.length) ? p.text.map(String) : ['SOLD'];
+            var key = 'hq_pricetag_' + text.join('|').replace(/[^A-Za-z0-9]/g, '_');
+            var tex = (typeof _hzTextTex === 'function') ? _hzTextTex(key, ['$ ---'].concat(text), { w: 256, h: 192, bg: '#f4efe2', color: '#b8241e', border: '#8a1a14', pad: 0.12, sizes: [40, 64], font: '"Arial Narrow", Arial, sans-serif' }) : null;
+            var card = new THREE.Mesh(new THREE.PlaneGeometry(0.26 * U, 0.2 * U), tex ? new THREE.MeshLambertMaterial({ map: tex, emissive: 0x2a2620, emissiveIntensity: 0.3 }) : _hqBasic(0xf4efe2));
+            card.position.set(0, 1.2 * U, 0.01 * U); g.add(card);
+            var back = _hqBox(0.27, 0.21, 0.006, _hqMat(null, 1, 1, { color: 0xd8d0c0 })); back.position.set(0, 1.2 * U, -0.004 * U); g.add(back);
+            return g;
+        },
+        /* THE SALE BANNER (wall, front +z): a red vinyl banner with white block
+           capitals, corded at its corners, sagging a little in the middle. */
+        sale_banner: function (U, p) {
+            var g = new THREE.Group(), W = 2.6, H = 0.6;
+            var text = (p && Array.isArray(p.text) && p.text.length) ? p.text.map(String) : ['EVERYTHING MUST GO'];
+            var key = 'hq_banner_' + text.join('|').replace(/[^A-Za-z0-9]/g, '_');
+            var tex = (typeof _hzTextTex === 'function') ? _hzTextTex(key, text, { w: 1024, h: 256, bg: '#b8241e', color: '#fff6e8', pad: 0.12, sizes: [120, 70], weight: 'bold', font: 'Impact, "Arial Black", sans-serif' }) : null;
+            var geo = new THREE.PlaneGeometry(W * U, H * U, 12, 2), pos = geo.attributes.position;
+            for (var i = 0; i < pos.count; i++) { var x = pos.getX(i) / (W * U); pos.setY(i, pos.getY(i) - 0.05 * U * (1 - 4 * x * x)); }   // the sag
+            geo.computeVertexNormals();
+            var cloth = new THREE.Mesh(geo, tex ? new THREE.MeshLambertMaterial({ map: tex, emissive: 0x3a0c0a, emissiveIntensity: 0.5, side: THREE.DoubleSide }) : _hqBasic(0xb8241e));
+            cloth.position.set(0, (H / 2) * U, 0.03 * U); g.add(cloth);
+            var cord = _hqMat(null, 1, 1, { color: 0xe8e0d0 });
+            for (var cx = -1; cx <= 1; cx += 2) { var c = new THREE.Mesh(new THREE.CylinderGeometry(0.004 * U, 0.004 * U, 0.16 * U, 4), cord); c.position.set(cx * (W / 2 - 0.02) * U, (H + 0.06) * U, 0.03 * U); c.rotation.z = cx * 0.35; g.add(c); }
+            return g;
+        },
+    });
     /* ── THE LANDMARK: THE WATCHER — a vast eye on the sea's horizon that blinks and wanders its gaze; it is not looking at you (mostly) ── */
     Object.assign(_hqLandmarkBuilders, {
         eye: function (U, o, rng) {

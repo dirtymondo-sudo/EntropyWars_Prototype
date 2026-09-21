@@ -15204,6 +15204,21 @@ _MF_AREA_DELTA_BUILDERS.site_prebuilt_haunted_attic = function () {
     return M.finishDelta();
 };
 
+/* THE NURSERY (THE THREE ROOMS, 2026-09-21) — five cots, the chair, the table with the music box, the rug; the fifth cot is the one under the mobile. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_haunted_nursery = function () {
+    const M = _mfAreaDelta({ name: 'THE HAUNTED HOUSE · THE NURSERY', base: 'wood', seed: 8636,
+        tints: { wood: '#6a5040', carpet: '#c8a8b0', leather: '#e8d8dc', wood_planks: '#4a3020' },
+        desc: 'THE NURSERY — the five cots, the rocking chair, the music box on the table, the fifth cot under the mobile' });
+    M.rect(3, 2, 2, 2, 'carpet');                             // the rug in the middle
+    M.step(0, 1, 'leather'); M.step(0, 3, 'leather');         // the cots along the walls
+    M.step(3, 2, 'leather');                                  // the fifth cot, nearest the north wall (rows 0–1 are the spawn lane)
+    M.block(6, 3, 'wood_planks');                             // the rocking chair
+    M.step(2, 3, 'wood_planks');                              // the table with the music box
+    M.obj(1, 0, 'torch', { leaf: 'floor' });                  // the candles
+    M.symAll();
+    return M.finishDelta();
+};
+
 /* THE CELLAR — the boiler, the shelving, the well, the puddles, the chains. */
 _MF_AREA_DELTA_BUILDERS.site_prebuilt_haunted_cellar = function () {
     const M = _mfAreaDelta({ name: 'THE HAUNTED HOUSE · THE CELLAR', base: 'bricks_2', seed: 8634,
@@ -15247,6 +15262,21 @@ _MF_AREA_DELTA_BUILDERS.site_prebuilt_strip_casino = function () {
     M.step(5, 3, 'wood'); M.t(0, 3, 'holo');                 // a table and the neon
     M.symAll();
     M.pillarSym('cargo', 6, 3, 3);                           // the speakers
+    return M.finishDelta();
+};
+
+/* THE SHOWROOM (THE THREE ROOMS, 2026-09-21) — the stage behind the floor models, the till, the stock, the queue rail. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_downtown_showroom = function () {
+    const M = _mfAreaDelta({ name: 'DISASTER CITY · THE SHOWROOM', base: 'checkerboard', seed: 8643,
+        tints: { checkerboard: '#c8c4bc', metal_2: '#9aa0a8', wood: '#4a3020', carpet: '#b8241e', holo: '#fff6e8' },
+        desc: 'THE SHOWROOM — the stage the floor models stand on, the till, the stock that did not go, the queue rail' });
+    M.rect(1, 3, 6, 1, 'carpet');                             // the stage's red runner
+    M.step(1, 2, 'wood'); M.step(3, 2, 'wood'); M.step(5, 2, 'wood');   // the plinths (off the centre tiles and the spawn rows)
+    M.block(0, 1, 'metal_2');                                 // the till
+    M.block(7, 3, 'wood'); M.block(7, 1, 'wood');             // the stock (a +2 never stands beside the spawn lane)
+    M.wall(3, 1, 'N', { h: 1, tex: 'metal_2' });              // the queue rail
+    M.t(4, 0, 'holo');                                        // the banner's light on the floor
+    M.symAll();
     return M.finishDelta();
 };
 
@@ -20621,6 +20651,15 @@ const DOOR_HQ = {
         thoughtform:    { proc: 'thoughtform',    h: 2.3, foot: 0.5, block: true, glow: { y: 1.5, size: 2.6, color: 0xc8a0ff }, light: { color: 0xc0a0ff, intensity: 0.9, dist: 10, y: 1.5 } },   // an idea before anyone has it: a breathing shape, a colour of its own, a ring (a ticker: it morphs)
         dream_eye:      { proc: 'dream_eye',      h: 1.6, foot: 0.6, block: true, glow: { y: 0.9, size: 1.4, color: 0xffe0e8 } },   // an eye on a stalk that looks at YOU and blinks (a ticker)
         impossible_stair: { proc: 'impossible_stair', span: 7.0, foot: 2.6, rect: { hw: 3.4, hd: 3.4 }, block: true, glow: { y: 2.0, size: 4.0, color: 0xd8c8ff } },   // a square of four flights that only goes up, floating on its own cloud (a ticker: it turns)
+        /* ── THE THREE ROOMS (2026-09-21 — the user: "weird, dark, trippy, eerie, nightmare-inducing; three new rooms scattered
+           throughout the map"): THE THIRTEENTH FLOOR (the facility) · THE NURSERY (the Haunted House) · THE SHOWROOM (Disaster
+           City). Six procs, all in three-renderer.js's "THE THREE ROOMS" block. ── */
+        directory_board: { proc: 'directory_board', h: 1.4,  foot: 0,    wall: true, mount: 0.9, depth: 0.06 },   // the tenants of a floor that has no rooms (reads the officer's number)
+        rocking_chair:   { proc: 'rocking_chair',   h: 1.1,  foot: 0.42, block: true },                            // it rocks by itself (a ticker); nobody is in it
+        crib_mobile:     { proc: 'crib_mobile',     h: 0.9,  foot: 0,    ceil: true },                             // over the fifth cot: little shapes on threads, turning (a ticker)
+        music_box:       { proc: 'music_box',       h: 0.16, foot: 0,    glow: { y: 0.18, size: 0.6, color: 0xffd8a0 } },   // a tabletop: the lid up, the dancer turning (a ticker)
+        price_tag:       { proc: 'price_tag',       h: 1.3,  foot: 0 },                                            // a tag on a stand beside a floor model (reads its own row's `text`)
+        sale_banner:     { proc: 'sale_banner',     h: 0.6,  foot: 0,    wall: true, mount: 2.4, depth: 0.03 },    // EVERYTHING MUST GO (reads `text`)
         nightmare_bloom: { proc: 'nightmare_bloom', h: 1.9, foot: 0.7, block: true, glow: { y: 1.2, size: 2.2, color: 0xff3a4a }, light: { color: 0xff4a4a, intensity: 0.8, dist: 8, y: 1.3 } },   // a flower whose petals are teeth, opening and closing (a ticker)
         wooden_cross:       { file: 'Meshy_AI_wooden_cross_0917035711_texture.glb',                   base: 'misc', h: 3.0, foot: 0, wall: true, mount: 2.6 },
         /* 2026-09-15 THE VEHICLE BATCH (nine Meshy vehicles in the misc bucket —
@@ -27414,13 +27453,18 @@ const DOOR_HQ = {
                   label: 'A LADDER', sub: 'DOWN · A LONG WAY',
                   action: { room: 'sacrifice', at: 'hatch' },
                   desc: 'A ladder down. It is longer than three floors. It comes out somewhere with candles.' },
+                /* THE THREE ROOMS (2026-09-21): the panel at the far end of the duct that is not on the clipboard's map either */
+                { id: 'thirteen', wall: 'e', z: 2.2, leaf: null, secret: true,
+                  label: 'A DRAUGHT', sub: 'THE FLOOR THAT IS NOT ON THE PANEL',
+                  action: { room: 'thirteenth', at: 'crawl' },
+                  desc: 'A panel at the far end of the duct, warm to the touch. The building has floors 12 and 14. The duct goes somewhere between them.' },
             ],
             counters: [],
             props: [
                 { key: 'pipe_run',       x: -0.7, z: -2, face: 0 }, { key: 'pipe_run', x: -0.7, z: 0, face: 0 }, { key: 'pipe_run', x: -0.7, z: 2, face: 0 },
                 { key: 'cardboard_box',  x: 0.6, z: -1.4, face: 35 },
                 { key: 'floor_stain',    x: 0.2, z: 1.2 },
-                { key: 'vent_grille',    wall: 'e', z: 1.0, mount: 1.8 },
+                { key: 'vent_grille',    wall: 'e', z: -1.6, mount: 1.8 },              // THE THREE ROOMS (2026-09-21): moved off the far end — the second draught hangs there
                 { key: 'clipboard',      wall: 'w', z: -1.0, mount: 1.3, rot: 10 },      // a map of the building; the crawlspace is not on it
                 { key: 'bare_bulb',      x: 0, z: 0, ceil: true },
             ],
@@ -27431,6 +27475,124 @@ const DOOR_HQ = {
                 '“Mind your head.” “Whose head?” “Mine. I am under you.”',
             ],
             spawn: { x: 0, z: -2.4, face: 180 },
+        },
+        /* ── THE THIRTEENTH FLOOR (THE THREE ROOMS, 2026-09-21) — the floor the
+           elevator panel skips (the hall's door lists 12 and 14). A lobby with
+           nothing on it: dust, three clocks that all say 3:33, chairs facing the
+           walls, nameplates for rooms that have no doors, a directory that lists
+           every tenant as VACANT — but one, and the one is you, EXPECTED. In the
+           corner, with its back to the room, stands YOU (a `clone` spot). Two
+           `each` variants (the Mandela rule): the chairs have TURNED to face the
+           middle and the other one stands there facing the lift; or it is VACANT —
+           gone, a stain where it stood. The lift on the east wall goes DOWN to the
+           car (which has no 13 button, so nothing ever comes back up this way);
+           the way in is the crawlspace's second draught. No number: a floor is not
+           a room, and this one is not a floor. ── */
+        thirteenth: {
+            label: 'THE THIRTEENTH FLOOR',
+            sub: 'BETWEEN 12 AND 14 · VACANT',
+            kind: 'box',
+            shell: {
+                w: 12, d: 9, h: 3.2,
+                wallH: 3.2, dadoH: 1.05,
+                floor: 'carpet', wall: 'drywall', dado: 'oxblood', trim: 'gunmetal', ceiling: 'ceiling',
+                floorColor: 0x8a8478, wallColor: 0xd8d0b8, dadoColor: 0x4a3a34, ceilColor: 0xb0a898,
+                pipes: false,
+                strips: false,
+                lights: [],
+                mood: { light: 0xf0e0b8, ambient: 0.46 },
+                fog: { color: 0x1e1a14, density: 0.05 },
+                plate: { x: 0, z: -4.25, y: 2.6 },
+                look: HQ_ROOM_LOOKS.backrooms,
+            },
+            doors: [
+                { id: 'crawl', wall: 'w', z: 0, leaf: null, secret: true,
+                  label: 'A DRAUGHT', sub: 'THE CRAWLSPACE',
+                  action: { room: 'crawlspace', at: 'thirteen' },
+                  desc: 'The panel you came in by, from this side. It is the only way out that is a way out.' },
+                { id: 'elevator', wall: 'e', z: 0, leaf: null, proc: 'elevator', floors: ['13'],
+                  label: 'ELEVATOR', sub: 'DOWN ONLY',
+                  action: { room: 'car', at: 'panel' },
+                  desc: 'The lift. The call button is lit and has been lit since you came in. The car comes when you press it, and the car has no button for this floor, so whatever goes down does not come back up this way.' },
+            ],
+            counters: [
+                { id: 'thirteen', x: 0, z: -4.1, face: 0, plateY: 1.7, radius: 1.9, verb: 'READ',
+                  label: 'THE DIRECTORY', sub: 'THE TENANTS OF THE THIRTEENTH FLOOR', action: {},
+                  desc: 'A glass-fronted directory, white letters pushed into black felt. Twelve suites. Eleven say VACANT. The twelfth has a name in it, and the name is yours, and the word after it is EXPECTED.' },
+            ],
+            props: [
+                { key: 'directory_board', wall: 'n', x: 0, mount: 0.9 },                          // THE DIRECTORY
+                { key: 'nameplate',       wall: 'n', x: -4.5, mount: 1.55 },                       // 13-01: a plate, no door under it
+                { key: 'nameplate',       wall: 'n', x: 4.5, mount: 1.55 },                        // 13-02
+                { key: 'nameplate',       wall: 's', x: -2.6, mount: 1.55 },                       // 13-03
+                { key: 'nameplate',       wall: 's', x: 2.6, mount: 1.55 },                        // 13-04
+                { key: 'wall_clock',      wall: 'n', x: -2.4, mount: 2.5 },                        // three clocks; 3:33, all of them
+                { key: 'wall_clock',      wall: 'e', z: -3.2, mount: 2.5 },
+                { key: 'wall_clock',      wall: 'w', z: 3.0, mount: 2.5 },
+                { key: 'teal_chair',      x: -4.8, z: -3.6, face: 0 },                              // the chairs face the walls
+                { key: 'teal_chair',      x: -3.9, z: -3.6, face: 0 },
+                { key: 'teal_chair',      x: 3.2, z: 3.6, face: 180 },
+                { key: 'teal_chair',      x: 4.1, z: 3.6, face: 180 },
+                { key: 'teal_chair',      x: -5.2, z: 2.6, face: 270 },
+                { key: 'teal_chair',      x: 5.2, z: -2.8, face: 90 },
+                { key: 'water_cooler',    wall: 's', x: -4.6 },                                     // full; the bottle has never been changed
+                { key: 'rug_office',      x: 0, z: 0.6 },
+                { key: 'coffee_table',    x: 0.6, z: 2.6 },
+                { key: 'papers_b',        x: 0.6, z: 2.6, y: 0.46, face: 30 },                     // the same page, many times
+                { key: 'potted_plant',    x: -5.4, z: -3.8 },                                       // dead since the floor was
+                { key: 'cardboard_boxes', x: 5.2, z: 3.6, face: 20 },
+                { key: 'paper_sheet',     x: 1.8, z: -1.6, y: 0.01, face: 300 },
+                { key: 'paper_sheet',     x: -2.6, z: 2.2, y: 0.01, face: 40 },
+                { key: 'floor_stain',     x: 0, z: -2.4 },
+                { key: 'floor_stain',     x: 4.0, z: 1.6 },
+                { key: 'security_camera', wall: 'n', x: 5.4, mount: 2.9 },                         // it is pointed at the corner
+                { key: 'exit_sign',       wall: 'w', z: 0, mount: 2.6 },                            // over a blank wall
+                { key: 'bare_bulb',       x: -2.5, z: 0, ceil: true },
+                { key: 'bare_bulb',       x: 2.5, z: 0, ceil: true },
+                { key: 'flicker_tube',    x: 0, z: -2.2, ceil: true, face: 90 },
+                { key: 'railing_1m',      x: -4.6, z: 0.2, face: 90 },                              // THE PARK RULE: a rail nobody put in
+                { key: 'riser_1',         x: 0, z: 3.8, face: 0, rect: { hw: 2.0, hd: 0.6 } },      // … and the raised end where a reception desk was going to be
+            ],
+            agents: [],
+            npcSpots: [
+                { x: 5.0, z: -3.8, face: 0, clone: true, say: ['“Don’t.” “Don’t what?” “Don’t turn me round.”', '“I got here first.” “When?” “Before you were expected.”', '“The lift only goes down.” “Then how did you get up?” “I was already up.”'] },   // THE OTHER ONE: in the corner, its back to the room
+            ],
+            onlineSpots: [],
+            lines: [
+                '“Which floor?” “Thirteen.” “There is no thirteen.” “Then where are we standing?”',
+                '“Every clock says 3:33.” “They are right.” “It is not 3:33.” “It is here.”',
+                '“The directory says VACANT.” “Eleven times.” “And the twelfth?” “Don’t read the twelfth.”',
+            ],
+            spawn: { x: -2.6, z: 0.6, face: 90 },
+            variants: {
+                turned: {
+                    when: { each: true },
+                    label: 'THE THIRTEENTH FLOOR', sub: 'BETWEEN 12 AND 14 · THE CHAIRS HAVE TURNED',
+                    why: 'the floor between; today the chairs face the middle and so does it',
+                    drop: ['teal_chair'],
+                    add: [
+                        { key: 'teal_chair', x: -4.8, z: -3.6, face: 180 }, { key: 'teal_chair', x: -3.9, z: -3.6, face: 180 },
+                        { key: 'teal_chair', x: 3.2, z: 3.6, face: 0 },     { key: 'teal_chair', x: 4.1, z: 3.6, face: 0 },
+                        { key: 'teal_chair', x: -5.2, z: 2.6, face: 90 },   { key: 'teal_chair', x: 5.2, z: -2.8, face: 270 },
+                    ],
+                    npcSpots: [{ x: 0.6, z: -1.0, face: 90, clone: true, say: ['“You turned them.” “I did not touch the chairs.” “You turned ME.”', '“Sit.” “Where?” “Any of them. They are all facing you now.”'] }],   // THE OTHER ONE in the middle of the room, facing the lift
+                    lines: ['“The chairs were facing the walls.” “They have always faced the middle.” “Somebody turned them.” “Somebody sat in them.”'],
+                },
+                vacant: {
+                    when: { each: true },
+                    label: 'THE THIRTEENTH FLOOR', sub: 'BETWEEN 12 AND 14 · VACANT',
+                    why: 'the floor between; today it is empty and the stain in the corner is the shape of a person standing',
+                    drop: ['coffee_table', 'papers_b', 'rug_office', 'cardboard_boxes'],
+                    add: [
+                        { key: 'floor_stain', x: 5.0, z: -3.8 },                                    // where it stood
+                        { key: 'paper_sheet', x: 4.6, z: -3.2, y: 0.01, face: 10 },
+                        { key: 'paper_sheet', x: 0.2, z: 0.4, y: 0.01, face: 160 },
+                        { key: 'paper_sheet', x: -1.0, z: -0.6, y: 0.01, face: 250 },
+                    ],
+                    npcSpots: [],
+                    lines: ['“It has gone.” “It was never here.” “Then what is the stain?” “Where it was never standing.”', '“The lift went down.” “The lift has no thirteen.” “It went down from here.”'],
+                },
+            },
         },
         /* ── ROOM 26 · THE LOCKER ROOM — twenty-six lockers, two showers,
            the door through to the pool. ── */
@@ -29048,6 +29210,11 @@ const DOOR_HQ = {
                   label: 'THE HATCH', sub: 'UP TO THE ATTIC',
                   action: { room: 'site_prebuilt_haunted_attic', at: 'hatch' },
                   desc: 'A pull-down ladder to a hatch in the ceiling. The ladder is down. It is always down when you look.' },
+                /* THE THREE ROOMS (2026-09-21): the fifth door on a landing with four bedrooms — the one the lines call 237 */
+                { id: 'nursery', wall: 'n', x: 2.6, leaf: 'leaf_white_wood',
+                  label: 'THE NURSERY', sub: 'THE FIFTH BEDROOM · 237',
+                  action: { room: 'site_prebuilt_haunted_nursery', at: 'landing' },
+                  desc: 'A white door at the raised end of the landing, up one step. Four bedrooms, four beds; this is the fifth door. The number screwed to it is 237 and the house has no 237.' },
             ],
             counters: [],
             props: [
@@ -29132,6 +29299,77 @@ const DOOR_HQ = {
                 '“The trunk is locked.” “From which side?”',
             ],
             spawn: { x: 0, z: 0.6, face: 0 },
+        },
+        /* ── THE NURSERY (THE THREE ROOMS, 2026-09-21) — the fifth bedroom: five
+           cots in faded pink, a mobile turning over the one against the north
+           wall with no draught to turn it, a rocking chair rocking with nobody
+           in it, a music box with its lid up, and a nun who does not leave her
+           spot beside the chair. THE TAG on the fifth cot's rail is a counter:
+           it reads your employee number, born TODAY (the canon date), EXPECTED
+           the day you first punched in. Its tape is THE FIFTH BEDROOM. ── */
+        site_prebuilt_haunted_nursery: {
+            label: 'THE HAUNTED HOUSE · THE NURSERY',
+            sub: 'THE FIFTH BEDROOM · FIVE COTS · THE MOBILE',
+            kind: 'box', site: 'prebuilt_haunted', part: 'nursery',
+            shell: {
+                w: 8, d: 7, h: 3.0,
+                wallH: 3.0, dadoH: 0.9,
+                floor: 'wood', wall: 'drywall_2', dado: 'wood', trim: 'dark_woods', ceiling: 'ceiling',
+                floorColor: 0x6a5040, wallColor: 0xc8a8b0, dadoColor: 0x5a3c2c, ceilColor: 0x9a8a88,
+                pipes: false,
+                strips: false,
+                lights: [],
+                mood: { light: 0xffd0c0, ambient: 0.42 },
+                plate: { x: 0, z: 3.25, y: 2.2 },
+                look: HQ_ROOM_LOOKS.haunted,
+            },
+            doors: [
+                { id: 'landing', wall: 's', x: 0, leaf: 'leaf_white_wood',
+                  label: 'THE LANDING', sub: 'BACK TO THE LANDING',
+                  action: { room: 'site_prebuilt_haunted_upstairs', at: 'nursery' },
+                  desc: 'The white door, from the inside. There is a bolt on this side, at the height of a small hand.' },
+            ],
+            counters: [
+                { id: 'tag', x: 0, z: -1.5, face: 0, plateY: 0.9, radius: 1.7, verb: 'READ',
+                  label: 'THE TAG', sub: 'ON THE RAIL OF THE FIFTH COT', action: {},
+                  desc: 'A card tied to the rail with a ribbon. The blanket in the cot is tucked in round something that is not there, and the tuck rises and falls, slowly, at exactly your pace.' },
+            ],
+            props: [
+                { key: 'cot',            x: -2.9, z: -2.0, face: 90 },                              // the cots: four, and the fifth
+                { key: 'cot',            x: -2.9, z: 0.6, face: 90 },
+                { key: 'cot',            x: 2.9, z: -2.0, face: 270 },
+                { key: 'cot',            x: 2.9, z: 0.6, face: 270 },
+                { key: 'cot',            x: 0, z: -2.4, face: 0 },                                  // THE FIFTH COT, under the mobile — the tag on its rail
+                { key: 'crib_mobile',    x: 0, z: -2.4, ceil: true },                               // it turns; there is no draught
+                { key: 'rocking_chair',  x: 1.4, z: 1.4, face: 300 },                               // it rocks; nobody is in it
+                { key: 'coffee_table',   x: -1.2, z: 1.6 },
+                { key: 'music_box',      x: -1.2, z: 1.6, y: 0.46, face: 20 },                      // the lid is up
+                { key: 'rug_round',      x: 0, z: 0.2 },
+                { key: 'bare_bulb',      x: 0, z: 0, ceil: true },
+                { key: 'candle_ring',    x: 3.4, z: -3.1, y: 0 },
+                { key: 'candle_ring',    x: -3.5, z: 3.0, y: 0 },
+                { key: 'false_window',   wall: 'e', z: 2.0, mount: 1.0 },                           // moonlight; the moon is on the wrong side of the house
+                { key: 'picture_round_a', wall: 'w', z: -1.0, mount: 1.9 },
+                { key: 'picture_round_a', wall: 'n', x: -2.4, mount: 1.9 },
+                { key: 'wall_shelf',     wall: 'n', x: 2.4, mount: 1.5 },
+                { key: 'nameplate',      wall: 's', x: 1.2, mount: 1.55 },                          // 237, from the inside
+                { key: 'paper_sheet',    x: 2.0, z: -0.6, y: 0.01, face: 20 },
+                { key: 'floor_stain',    x: -1.6, z: -0.8 },
+                { key: 'cardboard_box',  x: 3.4, z: 2.8, face: 40 },
+                { key: 'railing_1m',     x: -3.3, z: 2.6, face: 0 },                                // THE PARK RULE: a cot-side rail on the floor, taken off a cot
+                { key: 'vent_grille',    wall: 'w', z: 2.6, mount: 2.4 },
+            ],
+            agents: [],
+            npcSpots: [
+                { x: 2.2, z: 2.0, face: 250, race: 'nun', stay: true, say: ['“Hush. It is asleep.” “What is?” “Hush.”', '“Five beds, four children.” “Where is the fifth?” “You are standing in its room.”', '“The chair rocks it.” “Nobody is in the chair.” “The chair does not need anybody.”'] },   // THE NURSE, beside the chair; she does not leave it
+            ],
+            onlineSpots: [],
+            lines: [
+                '“Whose cot is the fifth?” “Read the tag.” “I would rather not.” “It has your handwriting on it.”',
+                '“The mobile turns.” “The window is shut.” “Then what turns it?” “It is turning to see who came in.”',
+                '“237.” “The house has no 237.” “Then whose door did we just come through?”',
+            ],
+            spawn: { x: 0, z: 1.1, face: 0 },
         },
         /* ── THE CELLAR — the furnace, the racks, the well (the 9.3 link to the
            woods / Hollow Earth stands at the well), the coal chute ── */
@@ -30585,6 +30823,11 @@ const DOOR_HQ = {
                   label: 'THE STREETS', sub: 'THE AVENUE DOORS · OUT INTO THE CITY',
                   action: { room: 'site_prebuilt_downtown_streets', at: 'tower' },
                   desc: 'The lobby\'s other doors, onto the avenue. The intersection is one way out of the tower; the city is the other, and the city is bigger than the intersection lets on.' },
+                /* THE THREE ROOMS (2026-09-21): the ground-floor retail unit off the lobby — EVERYTHING MUST GO */
+                { id: 'showroom', wall: 's', x: 1.0, leaf: 'leaf_glass',
+                  label: 'THE SHOWROOM', sub: 'GROUND-FLOOR RETAIL · EVERYTHING MUST GO',
+                  action: { room: 'site_prebuilt_downtown_showroom', at: 'lobby' },
+                  desc: 'A glass door in the lobby\'s back wall with a sale banner over it. The shop lights are on. Nobody has been in to turn them off since 1954, and nobody has been in to turn them on.' },
             ],
             counters: [],
             props: [
@@ -30634,6 +30877,90 @@ const DOOR_HQ = {
                 '“The stair to the upper floors is gone.” “The upper floors are gone.” “The stair to the platform?” “Never touched.”',
             ],
             spawn: { x: -4.0, z: 0, face: 90 },
+        },
+        /* ── THE SHOWROOM (THE THREE ROOMS, 2026-09-21) — the tower's ground-floor
+           retail unit, mid-liquidation: EVERYTHING MUST GO. Six floor models on the
+           shop floor in a row, and every one of them is YOU (`clone: true` spots —
+           your own vessel, the mirror's look), each with a price tag on a stand;
+           the sixth has stepped out of the line and stands in the corner facing
+           the wall. THE RECEIPT at the till (a counter) itemises your party at the
+           roster's prices and rings up the total; the floor manager (a
+           politician, at the till, never leaves it) will not say what the sale is.
+           Its tape is FLOOR MODEL (RUSH HOUR came off the streets for it). ── */
+        site_prebuilt_downtown_showroom: {
+            label: 'DISASTER CITY · THE SHOWROOM',
+            sub: 'EVERYTHING MUST GO · FLOOR MODELS · THE TILL',
+            kind: 'box', site: 'prebuilt_downtown', part: 'showroom',
+            shell: {
+                w: 12, d: 9, h: 3.6,
+                wallH: 3.6, dadoH: 1.0,
+                floor: 'urban:TileMarble2a', wall: 'urban:PlasterWallPainted2c', dado: 'urban:TileMarble1d', trim: 'gunmetal', ceiling: 'urban:FibreCeilingTile1a',
+                floorColor: 0xc8c4bc, wallColor: 0xd8d0c8, dadoColor: 0xb8b4ac, ceilColor: 0xb8b4ac, ceilTile: 1.75,
+                pipes: false,
+                strips: false,
+                lights: [],
+                mood: { light: 0xf4f0e8, ambient: 0.48 },
+                plate: { x: 0, z: -4.25, y: 2.6 },
+                look: HQ_ROOM_LOOKS.mall,
+            },
+            doors: [
+                { id: 'lobby', wall: 'n', x: 0, leaf: 'leaf_glass',
+                  label: 'THE TOWER LOBBY', sub: 'BACK TO THE LOBBY',
+                  action: { room: 'site_prebuilt_downtown_lobby', at: 'showroom' },
+                  desc: 'The glass door back to the lobby. The sale banner reads the right way round from this side, which means it was hung for the people in here.' },
+            ],
+            counters: [
+                { id: 'receipt', x: -3.8, z: -3.4, face: 270, plateY: 1.3, radius: 1.8, verb: 'READ',
+                  label: 'THE RECEIPT', sub: 'THE TILL · EVERYTHING MUST GO', action: {},
+                  desc: 'A till with the drawer open and nothing in it, and a receipt curling out of the printer. It itemises the floor models. It itemises your party. They are the same list.' },
+            ],
+            props: [
+                { key: 'steel_table',     x: -4.6, z: -3.4, face: 90 },                             // THE TILL
+                { key: 'cash_register',   x: -4.6, z: -3.4, y: 0.76, face: 90 },
+                { key: 'paper_sheet',     x: -4.4, z: -2.9, y: 0.76, face: 290 },                   // the receipt, curling
+                { key: 'sale_banner',     wall: 'n', x: -3.2, mount: 2.4, text: ['EVERYTHING MUST GO', 'FINAL DAYS · ALL STOCK'] },
+                { key: 'sale_banner',     wall: 's', x: 0, mount: 2.4, text: ['FLOOR MODELS', 'AS SEEN · NO RETURNS'] },
+                { key: 'riser_1',         x: 0, z: 2.6, face: 0, rect: { hw: 5.2, hd: 0.6 } },      // THE STAGE behind the models (the park rule's ramp)
+                { key: 'price_tag',       x: -3.6, z: 2.0, face: 0, text: ['SOLD'] },                // a tag beside every model
+                { key: 'price_tag',       x: -1.5, z: 2.0, face: 0, text: ['SOLD'] },
+                { key: 'price_tag',       x: 0.6, z: 2.0, face: 0, text: ['SOLD'] },
+                { key: 'price_tag',       x: 2.7, z: 2.0, face: 0, text: ['SOLD'] },
+                { key: 'price_tag',       x: 4.8, z: 2.0, face: 0, text: ['RESERVED'] },
+                { key: 'price_tag',       x: 4.4, z: -3.8, face: 200, text: ['RETURNED'] },          // the sixth's, in the corner
+                { key: 'warning_tape',    x: 0, z: 0.4, face: 90 },                                 // the line before the display; do not touch the models
+                { key: 'false_window',    wall: 'w', z: -1.5, mount: 1.0 },                          // the shop windows onto the street: the street is looking in
+                { key: 'false_window',    wall: 'w', z: 2.0, mount: 1.0 },
+                { key: 'barber_mirror',   wall: 'e', z: 1.5, mount: 1.05 },                          // the fitting mirror; it is a little slow
+                { key: 'wall_clock',      wall: 'e', z: -3.0, mount: 2.6 },                          // stopped, like the lobby's
+                { key: 'security_camera', wall: 'n', x: 5.0, mount: 3.0 },
+                { key: 'flicker_tube',    x: -2.5, z: 0, ceil: true, face: 90 },
+                { key: 'flicker_tube',    x: 2.5, z: 0, ceil: true, face: 90 },
+                { key: 'bare_bulb',       x: 0, z: -3.0, ceil: true },
+                { key: 'bare_bulb',       x: 0, z: 3.0, ceil: true },
+                { key: 'floor_stain',     x: 2.0, z: -1.2 },
+                { key: 'floor_stain',     x: -1.4, z: 3.6 },
+                { key: 'cardboard_boxes', x: 5.2, z: 3.6, face: 30 },                               // the stock that did not go
+                { key: 'cardboard_box',   x: -5.4, z: 3.8, face: 60 },
+                { key: 'railing_1m',      x: -5.4, z: 0.4, face: 90 },                              // THE PARK RULE: the queue rail
+                { key: 'exit_sign',       wall: 'n', x: 0, mount: 3.1 },
+            ],
+            agents: [],
+            npcSpots: [
+                { x: -4.2, z: 1.4, face: 0, clone: true, race: 'homosapien', say: ['“I was the floor model.” “Of what?” “Of you. I went first.”'] },   // THE FLOOR MODELS: six of you, in a row, facing the door
+                { x: -2.1, z: 1.4, face: 0, clone: true, race: 'homosapien', say: ['“Do not touch the models.” “I am not touching anything.” “You are touching your face. So am I.”'] },
+                { x: 0,    z: 1.4, face: 0, clone: true, race: 'homosapien', say: ['“Sold.” “To whom?” “Read the receipt. It is in your hand.”'] },
+                { x: 2.1,  z: 1.4, face: 0, clone: true, race: 'homosapien', say: ['“We were seven this morning.” “I count six.” “Turn round.”'] },
+                { x: 4.2,  z: 1.4, face: 0, clone: true, race: 'homosapien', say: ['“Reserved.” “For whom?” “It says on the tag. It is a long name. It is yours.”'] },
+                { x: 5.0,  z: -3.6, face: 200, clone: true, race: 'homosapien', say: ['“I stepped out of the line.” “Why?” “To see what you looked like from behind. It is the same.”'] },   // the sixth, in the corner, half-turned
+                { x: 3.6,  z: -3.4, face: 220, race: 'politician', stay: true, say: ['“Everything must go.” “Where?” “That is not on the banner.”', '“Six floor models.” “They look like me.” “They are the display. You are the stock.”'] },   // THE FLOOR MANAGER, at the till
+            ],
+            onlineSpots: [],
+            lines: [
+                '“Everything must go.” “Including us?” “Especially.”',
+                '“The models have my face.” “They are wearing what you wore in.” “I wore this in.” “Then they are wearing it well.”',
+                '“Who is the sale for?” “The street.” “The street is empty.” “The street is looking in.”',
+            ],
+            spawn: { x: -1.6, z: -2.4, face: 180 },
         },
         /* ── THE PLATFORM — under the tower, never once touched; the train stands on the track (the subway route) ── */
         site_prebuilt_downtown_subway: {
@@ -41627,6 +41954,7 @@ const HQ_TAPE_SHEET = {
     site_prebuilt_haunted_hall:     [['THE FRONT DOOR, INSIDE', 'The hall from the stairs. The door opens for someone who is not there.', 'evidence']],
     site_prebuilt_haunted_upstairs: [['THE WARDROBE', 'A coat hanging in the wardrobe. It is your father’s coat. The label says CAMELOT.', 'parents']],
     site_prebuilt_haunted_attic:    [['THE TRUNK', 'A trunk of photographs. Every face has been replaced with yours.', 'parents']],
+    site_prebuilt_haunted_nursery:  [['THE FIFTH BEDROOM', 'A cot, filmed from above, for six hours. The tag on the rail is your employee number. At 03:33 the blanket rises and falls at your pace.', 'parents']],   // THE THREE ROOMS (2026-09-21): the Strip's THE CHAPEL, re-homed
     site_prebuilt_haunted_cellar:   [['THE WELL, FROM BELOW', 'The camera lowered on the rope. Something at the bottom takes it.', 'evidence']],
     site_prebuilt_hollow_earth_shaft:     [['SIX ROPES', 'Six wells, six ropes. One rope is climbing.', 'evidence']],
     site_prebuilt_hollow_earth_gallery:   [['THE FALL', 'The waterfall at the ford. The water falls upward at 0:05.', 'evidence']],
@@ -41642,12 +41970,13 @@ const HQ_TAPE_SHEET = {
     site_prebuilt_revenge_cabin:     [['THE STERN WINDOWS', 'The sea through the stern windows. A lit city under it, and a woman on a balcony, waving up at the glass.', 'parents']],
     site_prebuilt_revenge_hold:      [['THE BILGE', 'Water rising in the hold, then falling, then rising. It has a rhythm. The rhythm is breathing.', 'evidence']],
     site_prebuilt_strip_chapel:      [['I DO', 'The officiant\'s mouth. It says a name. It is not the name on the register, and the register is in your hand.', 'parents']],
-    site_prebuilt_strip_streets:     [['THE LUXOR BEAM', 'The beam at night. Something climbs it.', 'evidence'], ['THE CHAPEL', 'Two people at an altar, out of focus. The register says your surname.', 'parents']],   // DISASTER CITY · THE STRIP (2026-09-17)   // + the board's own (THE AREAS, 2026-09-18)
+    site_prebuilt_strip_streets:     [['THE LUXOR BEAM', 'The beam at night. Something climbs it.', 'evidence']],   // DISASTER CITY · THE STRIP (2026-09-17)   // + the board's own (THE AREAS, 2026-09-18)   // THE THREE ROOMS (2026-09-21): THE CHAPEL went up to the Haunted House's nursery as THE FIFTH BEDROOM
     site_prebuilt_strip_casino:      [['THE HOUSE', 'A slot machine paying out. The coins are Keys. The eye in the sky blinks first.', 'facility']],
     site_prebuilt_downtown_lobby:    [['THE LOBBY CLOCK', 'The lobby clock at 1954. The second hand goes backward once, and the dust rises off the desk.', 'evidence']],
     site_prebuilt_downtown_subway:   [['THE LAST TRAIN', 'Two people boarding. The doors close on the lens. The destination board reads your surname.', 'parents']],
     /* DISASTER CITY (2026-09-17): the streets' tape came off the stadium (HALF-TIME), the mall's off Cyberpunk (THE NOODLE STAND) — the hundred stays a hundred */
-    site_prebuilt_downtown_streets:  [['HALF-TIME', 'A man in a coat crossing at the light, alone, from a rooftop. He knows where the camera is. The cars do not stop.', 'parents'], ['RUSH HOUR', 'A crowd at a crossing. Everyone stops. Everyone looks up.', 'evidence']],   // + the board's own (THE AREAS, 2026-09-18)
+    site_prebuilt_downtown_streets:  [['HALF-TIME', 'A man in a coat crossing at the light, alone, from a rooftop. He knows where the camera is. The cars do not stop.', 'parents']],   // + the board's own (THE AREAS, 2026-09-18)   // THE THREE ROOMS (2026-09-21): RUSH HOUR went into the tower's showroom as FLOOR MODEL
+    site_prebuilt_downtown_showroom: [['FLOOR MODEL', 'Six of you in a shop window at night, on a loop. On the second pass there are seven. The seventh is turning to look at the camera.', 'parents']],   // THE THREE ROOMS (2026-09-21)
     site_prebuilt_downtown_mall:     [['THE FOOD COURT', 'Two people eating under the skylights. The receipt on the table has your employee number. The third chair is ten feet tall.', 'parents']],
     /* THE SECOND PASS (2026-09-17): the closet's tape came off the Flat Lands, the grid's off Technoticlan, the noodle bar's off Stonehenge — the hundred stays a hundred */
     site_prebuilt_downtown_closet: [['STAFF ONLY', 'A shelf of cleaning products. Between the bottles, a brass lever. A hand pulls it. The shelf is empty on the next pass.', 'facility']],

@@ -94,7 +94,7 @@ test('the sheet: four parts on Room 1954 — site + part, none numbered, every o
     const reg = D.hqRoomRegister();
     assert.equal(reg.filter(r => r.mapId === SITE).length, 1, 'the register lists Downtown once');
     assert.ok(!reg.some(r => IDS.includes(r.id) || IDS.includes(r.room)), 'no part is a register entry');
-    assert.equal(D.hqSiteComplex(SITE).length, 10, 'the board room, five city parts and the four underworld parts');
+    assert.equal(D.hqSiteComplex(SITE).length, 11, 'the board room, six city parts (the showroom since 2026-09-21) and the four underworld parts');
 });
 
 test('THE WEENIES: THE OUTFALL SHAFT at the main culvert’s east end wears the bulb (the one lit thing down the culvert); the lit train stands in THE DEPOT at the hatch’s end; THE SIGNAL GANTRY stands at the crossing; the bulb over THE CHIMNEY is the workings’ daylight; THE VENT STACK stands in the guardroom', () => {

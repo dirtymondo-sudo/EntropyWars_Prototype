@@ -28,7 +28,7 @@ const SPRITES_SRC = fs.readFileSync(require('node:path').join(__dirname, 'sprite
 const urbanOk = k => typeof k === 'string' && k.startsWith('urban:') && SPRITES_SRC.includes("'" + k.slice(6) + "'");   // THE URBAN PACK (2026-09-17)
 const SITES = {
     prebuilt_strip:    { no: '21',   board: 'site_prebuilt_strip',    parts: ['streets', 'chapel', 'casino'], back: { id: 'chapel', wall: 'n', x: -0.2, leaf: 'leaf_motel', into: 'chapel', at: 'street', backTo: 'site_prebuilt_strip_streets' } },   // THE THIRD PASS (2026-09-17): the Strip's own streets; the chapel walks back onto them
-    prebuilt_downtown: { no: '1954', board: 'site_prebuilt_downtown', parts: ['lobby', 'subway', 'streets', 'mall', 'closet', 'sewers', 'tunnels', 'cells', 'workings'] /* + THE UNDERWORLD (2026-09-18): four parts under the city */, back: { id: 'tower', wall: 'e', z: 0, leaf: 'leaf_entrance', into: 'lobby', at: 'street' } },   // DISASTER CITY (2026-09-17): THE STREETS + THE MALL hang off the lobby's avenue doors (hq-city.test.js owns them)
+    prebuilt_downtown: { no: '1954', board: 'site_prebuilt_downtown', parts: ['lobby', 'showroom', 'subway', 'streets', 'mall', 'closet', 'sewers', 'tunnels', 'cells', 'workings'] /* THE THREE ROOMS (2026-09-21): THE SHOWROOM off the lobby */ /* + THE UNDERWORLD (2026-09-18): four parts under the city */, back: { id: 'tower', wall: 'e', z: 0, leaf: 'leaf_entrance', into: 'lobby', at: 'street' } },   // DISASTER CITY (2026-09-17): THE STREETS + THE MALL hang off the lobby's avenue doors (hq-city.test.js owns them)
 };
 const PART_IDS = [].concat(...Object.entries(SITES).map(([s, S]) => S.parts.map(p => S.board + '_' + p)));
 const renderer = fs.readFileSync(__dirname + '/three-renderer.js', 'utf8');

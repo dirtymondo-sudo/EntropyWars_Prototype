@@ -7779,3 +7779,41 @@ from the paint pass, so the name is the guard). A model without vertex colours c
 RULE: a self-lit material whose colour lives in vertex colours takes this hook — never a bare white
 emissive again. character-creator.test.js pins it. Ship three-renderer.js to R2 + the bumped index.html.
 UNSEEN LIVE (RULE #1c): the officer's coat / hair against a native in a dark room at night (0.85 glow).
+
+## THE THREE ROOMS — THE THIRTEENTH FLOOR · THE NURSERY · THE SHOWROOM (the user: "weird, dark, trippy, eerie, nightmare-inducing; surprise me with three new rooms scattered throughout the map") — 2026-09-21, local delivery
+Three prefab box rooms (family B), one per part of the world. **THE THIRTEENTH FLOOR** (data.js
+`rooms.thirteenth`, no `roomNo` — a floor is not a room and this is not a floor): behind the
+CRAWLSPACE's SECOND DRAUGHT (its east wall, z 2.6 — a `secret` pair, hq-floors counts 47 now); a
+lobby with nothing on it under `HQ_ROOM_LOOKS.backrooms` and its own haze — three clocks, chairs
+facing the walls, nameplates with no doors under them, THE DIRECTORY (counter `thirteen`, a by-id
+panel: twelve suites, eleven VACANT, the twelfth is the officer's callsign + number, EXPECTED —
+the `directory_board` proc reads `hqIntakeCard` at build like NOW SERVING), and in the corner with
+its back to the room a `clone: true` spot (YOU). Two `each` variants (the Mandela rule, rolled on
+every entry): `turned` (the chairs face the middle; the other one stands there facing the lift)
+and `vacant` (nobody; a `floor_stain` where it stood). Its LIFT is a `proc: 'elevator'` door
+into `car@panel` wearing `floors: ['13']` (map.js's door panel then prints "There is no 13.") —
+the car has no stop here, so nothing ever comes back up this way. **THE NURSERY**
+(`site_prebuilt_haunted_nursery`, the Haunted House's FIFTH part): the fifth door on the landing
+(`upstairs` n x 2.6, `leaf_white_wood`, the door the lines call 237); five cots, a `crib_mobile`
+(ceil, a ticker — no draught turns it), a `rocking_chair` (block, a ticker — it rocks harder when
+you stand near it, nobody in it), a `music_box` on the table (the dancer STOPS when you come
+close), THE TAG (counter `tag`: your number, BORN today's canon date at 03:33, EXPECTED the day
+you first punched in, WEIGHT the same as you), a `nun` on a `stay: true` spot beside the chair.
+hq-complex.test.js's PARTS has five. **THE SHOWROOM** (`site_prebuilt_downtown_showroom`, off
+the TOWER LOBBY's south wall x 1.0, `leaf_glass`, `HQ_ROOM_LOOKS.mall`): EVERYTHING MUST GO —
+six `clone: true` spots in a row facing the door (the sixth in the corner half-turned; every one
+carries `race: 'homosapien'` — hq-urban insists a spot names a race, a clone ignores it), a
+`price_tag` proc beside each (`text` on the row: SOLD · RESERVED · RETURNED), two `sale_banner`s
+(`text`), THE RECEIPT (counter `receipt`: `hqPartyShifts` itemised at `CAMPAIGN_RACE_PRICES`,
+the total), the floor manager (a `politician`, `stay`) at the till. hq-urban's `parts` list has
+`showroom` after `lobby`; hq-city / hq-underworld count Downtown's complex as 11. **THE TAPES**:
+the Strip's second (THE CHAPEL) is THE FIFTH BEDROOM in the nursery, the streets' second (RUSH
+HOUR) is FLOOR MODEL in the showroom (the hundred stays a hundred; every part one). Six procs in
+three-renderer.js "THE THREE ROOMS" (after the astral block; `_hqProcProp(name, p)` hands the
+text procs their row). Three panels in map.js `_hqCounterPanelHtml` (before THE LID). Every line
+is Claude's DRAFT (A15). Both parts wear a Δ board (`_MF_AREA_DELTA_BUILDERS` — the Δ-per-part rule; the
+forge's spawn lane is rows 0–1 / 6–7 at x 2..5 and a +2 block never stands within a tile of it). Viewer-local
+(RULE #2). `npm test` runs `hq-three-rooms.test.js`.
+UNSEEN LIVE (RULE #1c): the clone standing in the corner (the Player rig facing a wall), the
+chair's runners, the mobile's shapes at 2.7 m, the dancer, the directory's legibility, the
+lift's plate on the floor between, the tags beside six copies of the officer.

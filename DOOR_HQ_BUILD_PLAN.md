@@ -11188,3 +11188,30 @@ in your roster, which at this point is none for the player."
   map.js, battle.js, state.js, online.js, hud.js, ui.js, index.html; tests + docs to the repo.
 - UNSEEN LIVE (RULE #1c): the glimmer's size against each room's light, the protractor beat's pace (`HQ_PROTRACTOR_MS`),
   the '?' plates in the hall on a fresh profile, THE BAG panel on the bezel, a potion drunk by the bench.
+
+### 2026-09-21 — THE THREE ROOMS: THE THIRTEENTH FLOOR · THE NURSERY · THE SHOWROOM (local delivery)
+The user: "let's get really weird and dark and creative and trippy and eerie and horror and nightmare
+inducing and creepy and mind racing — surprise me with 3 new rooms scattered throughout the map."
+Three prefab box rooms, one per part of the world, every one a thing that should not be there:
+- **THE THIRTEENTH FLOOR** (the facility): the floor the hall's lift panel skips (12 · 14). The way in is
+  the crawlspace's SECOND draught. A dusty lobby: three clocks at 3:33, chairs facing the walls, nameplates
+  with no doors under them, THE DIRECTORY (eleven VACANT and the officer EXPECTED), and YOU standing in the
+  corner with your back to the room. Every entry rolls it (the Mandela rule): the chairs have TURNED and the
+  other one stands in the middle facing the lift; or it is VACANT, a stain where it stood. The lift goes
+  DOWN into the car — and the car has no 13, so nothing comes back up. Grade: the Backrooms'.
+- **THE NURSERY** (the Haunted House's fifth part): the fifth door on a landing with four bedrooms — the one
+  the landing's lines have called 237 since 2026-09-15. Five cots; a mobile turning over the fifth with no
+  draught; a rocking chair rocking with nobody in it (harder when you come near); a music box whose dancer
+  stops when you come close; a nun beside the chair who does not leave it; THE TAG on the fifth cot's rail:
+  your number, born today (the canon date) at 03:33, expected the day you first punched in, weight the same
+  as you. Its tape (THE FIFTH BEDROOM) came off the Strip's second.
+- **THE SHOWROOM** (Disaster City, off the tower lobby): EVERYTHING MUST GO. Six floor models in a row
+  facing the door, every one YOU (clone spots — the mirror's look), a price tag beside each (SOLD ×4,
+  RESERVED, and the sixth's RETURNED — it has stepped out of the line into the corner, half-turned); THE
+  RECEIPT at the till itemises your party at the roster's prices; the floor manager will not say what the
+  sale is. Its tape (FLOOR MODEL) came off the streets' second.
+Files: data.js (the three rooms, the crawlspace / upstairs / lobby doors, six catalogue rows, the tape
+sheet), three-renderer.js ("THE THREE ROOMS" procs: directory_board · rocking_chair · crib_mobile ·
+music_box · price_tag · sale_banner), map.js (THE DIRECTORY · THE TAG · THE RECEIPT panels), index.html
+(the token), hq-three-rooms.test.js + the pins (hq-floors 47 secret doors; hq-complex five parts;
+hq-urban / hq-city / hq-underworld the showroom). Unseen live (RULE #1c) — CLAUDE.md lists what to eyeball.
