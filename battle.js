@@ -35806,38 +35806,38 @@
         function _renderVicGoldBreakdown(calc, hasAccount) {
             const el = document.getElementById('vicGoldBreakdown');
             if (!el) return;
-            const parts = [];
-            parts.push(`<span style="white-space:nowrap">Match Complete <b style="color:#ffe9a8">+${calc.base}</b></span>`);
-            if (calc.collected > 0) parts.push(`<span style="white-space:nowrap">Hazard Pay Collected <b style="color:#ffe9a8">+${calc.collected}</b></span>`);
-            if (calc.winMult > 1) parts.push(`<span style="white-space:nowrap;color:#9fe0a0">Win ×${calc.winMult}</span>`);
-            if (calc.flawless) parts.push(`<span style="white-space:nowrap;color:#9fe0a0" title="Won without losing a single unit — no friendly deaths all match">Deathless ×1.25</span>`);
-            if (calc.wipeout) parts.push(`<span style="white-space:nowrap;color:#9fe0a0" title="Won by wiping the enemy team">Wipeout ×1.25</span>`);
-            const sep = '<span style="color:#7a6f4a;margin:0 2px">·</span>';
-            const balanceLine = `<div id="vgbBalance" style="font-size:12px;color:#b8a060;margin-top:3px">Adding to wallet…</div>`;
+            /* THE DEBRIEF (2026-09-21): the pay is a LEDGER — one row per line, the
+               multipliers as rows too, the total counted up, the wallet under it */
+            const rows = [];
+            rows.push({ lbl: 'Match complete', val: '+' + calc.base });
+            if (calc.collected > 0) rows.push({ lbl: 'Hazard pay collected', val: '+' + calc.collected });
+            if (calc.winMult > 1) rows.push({ lbl: 'Victory', val: '×' + calc.winMult, cls: 'mult' });
+            if (calc.flawless) rows.push({ lbl: 'Deathless', val: '×1.25', cls: 'mult', tip: 'Won without losing a single unit' });
+            if (calc.wipeout) rows.push({ lbl: 'Wipeout', val: '×1.25', cls: 'mult', tip: 'Won by wiping the enemy team' });
+            if (calc.capped) rows.push({ lbl: 'Match cap', val: 'reached', cls: 'cap' });
             el.innerHTML = `
-                <div style="display:inline-flex;flex-direction:column;align-items:center;gap:5px;background:linear-gradient(168deg,rgba(34,26,10,0.82),rgba(20,16,8,0.82));border:1px solid rgba(184,160,96,0.45);border-radius:10px;padding:12px 26px;margin:0 auto;box-shadow:0 8px 30px rgba(0,0,0,0.45)">
-                    <div style="font-family:Cormorant SC,serif;font-size:12px;letter-spacing:0.2em;color:#ffd86a">💰 HAZARD PAY EARNED</div>
-                    <div style="font-size:38px;font-weight:800;color:#ffd86a;line-height:1;text-shadow:0 0 18px rgba(255,200,80,0.55)">+<span id="vgbTotalNum">0</span></div>
-                    <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:5px;font-size:12px;color:#d8cfa8">${parts.join(sep)}</div>
-                    ${balanceLine}
+                <div class="vic-card vic-pay-card">
+                    <div class="vic-card-cap">💰 HAZARD PAY</div>
+                    <div class="vic-pay-total">+<span id="vgbTotalNum">0</span></div>
+                    <div class="vic-pay-ledger">${rows.map(r => `<div class="vic-pay-row ${r.cls || ''}"${r.tip ? ` title="${r.tip}"` : ''}><span>${r.lbl}</span><b>${r.val}</b></div>`).join('')}</div>
+                    <div id="vgbBalance" class="vic-pay-wallet">Adding to wallet…</div>
                 </div>`;
             el.style.display = 'block';
-            el.style.textAlign = 'center';
 
             const numEl = document.getElementById('vgbTotalNum');
             if (numEl) {
                 const target = calc.matchGold;
                 const startT = (typeof performance !== 'undefined' ? performance.now() : Date.now());
-                const dur = 900;
+                const delay = 1500, dur = 1100;
                 (function tick() {
                     const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
-                    const t = Math.min(1, (now - startT) / dur);
+                    const t = Math.max(0, Math.min(1, (now - startT - delay) / dur));
                     numEl.textContent = Math.round(target * (t * (2 - t))).toLocaleString();
                     if (t < 1) requestAnimationFrame(tick);
-                    else numEl.textContent = target.toLocaleString();
+                    else { numEl.textContent = target.toLocaleString(); el.classList.add('counted'); }
                 })();
             }
-            if (typeof playSfx === 'function') { try { playSfx('levelUp'); } catch (e) {} }
+            if (typeof playSfx === 'function') { try { setTimeout(() => playSfx('levelUp'), 1500); } catch (e) {} }
         }
 
         function _accountBankMatchGold() {
@@ -35886,8 +35886,8 @@
                     const balEl = document.getElementById('vgbBalance');
                     if (!balEl) return;
                     balEl.textContent = text;
-                    balEl.style.color = color || '#ffd86a';
-                    balEl.style.fontStyle = 'normal';
+                    balEl.classList.toggle('offline', /offline|banked/.test(text));
+                    balEl.classList.add('set');
                     if (typeof window._refreshWallets === 'function') window._refreshWallets();
                 }
 
@@ -35941,16 +35941,27 @@
         function _stageVictoryPodium() {
             if (!_canStagePodium() || _podiumState) return false;
             try {
-                const winnerP = state.winner;
-                const cast = (state.units || []).filter(u => u.player === winnerP);
+                /* THE DEBRIEF (2026-09-21): the stage is the VIEWER'S party — on a win the
+                   lineup celebrates, on a loss it is down (the classic JRPG result screen;
+                   the old podium staged whoever won, so a defeat showed the enemy flexing). */
+                const viewer = getViewerPlayer();
+                const playerWon = ONLINE_RULES.active ? (state.winner === viewer) : (state.winner === 1);
+                const seat = ONLINE_RULES.active ? viewer : 1;
+                const cast = (state.units || []).filter(u => u.player === seat);
                 if (!cast.length) return false;
                 const sorted = [...cast].sort((a, b) => {
-                    const ak = (a._matchKills || 0), bk = (b._matchKills || 0);
-                    if (ak !== bk) return bk - ak;
+                    if (playerWon) {
+                        const ak = (a._matchKills || 0), bk = (b._matchKills || 0);
+                        if (ak !== bk) return bk - ak;
+                        return (b._trackDmgDealt || 0) - (a._trackDmgDealt || 0);
+                    }
+                    /* the fallen lie at the back on a loss; the survivors kneel up front */
+                    if (!!a.dead !== !!b.dead) return a.dead ? 1 : -1;
                     return (b._trackDmgDealt || 0) - (a._trackDmgDealt || 0);
                 }).slice(0, 8);
 
                 _podiumState = {
+                    won: playerWon,
                     saved: sorted.map(u => ({
                         u, x: u.x, y: u.y, z: u.z, dead: u.dead,
                         dying: u._dying, hp: u.hp, facing: u.facing,
@@ -35958,8 +35969,10 @@
                     })),
                     fogWas: state.fogOfWar,
                     selWas: state.selectedUnitId,
-                    raf: 0, driftTimer: 0, pulseTimer: 0
+                    raf: 0, driftTimer: 0, pulseTimer: 0, timers: [], held: []
                 };
+                const P = _podiumState;
+                const later = (ms, fn) => { const t = setTimeout(() => { if (_podiumState === P) fn(); }, ms); P.timers.push(t); return t; };
 
                 /* Full post-match reveal — the podium must never be fog-hidden
                    (standard FPS end-screen behavior; the match is decided). */
@@ -35979,71 +35992,110 @@
                     }
                     return z;
                 };
-                /* Chevron: MVP front-and-centre (one row toward the camera),
-                   the rest fan out and back in alternating pairs. */
+                /* Chevron: the lead front-and-centre (one row toward the camera),
+                   the rest fan out and back in alternating pairs. A defeat closes
+                   ranks: the survivors in one row, the fallen a row behind. */
                 for (let i = 0; i < sorted.length; i++) {
                     const u = sorted[i];
                     const side = (i % 2 === 1) ? -1 : 1;
                     const lane = Math.ceil(i / 2);   // 0,1,1,2,2,3,3…
-                    const x = Math.max(0, Math.min(cols - 1, cx + side * lane));
-                    const y = Math.max(0, Math.min(rows - 1, i === 0 ? cy + 1 : cy - (lane - 1)));
+                    let x, y;
+                    if (playerWon) {
+                        x = cx + side * lane;
+                        y = i === 0 ? cy + 1 : cy - (lane - 1);
+                    } else {
+                        x = cx + side * lane;
+                        y = u.dead ? cy - 1 : cy;
+                    }
+                    x = Math.max(0, Math.min(cols - 1, x));
+                    y = Math.max(0, Math.min(rows - 1, y));
                     u.x = x; u.y = y; u.z = _groundZ(x, y);
+                    /* the model must exist to be posed: a corpse is re-spawned and
+                       plays its death clip in place (it lies back down on the stage) */
                     u.dead = false; u._dying = false;
                     u._insideBuildingId = null;
-                    if (u.hp <= 0) u.hp = u.maxHp || 1;   // revived for the bow
+                    if (u.hp <= 0) u.hp = u.maxHp || 1;
                     u.facing = { dx: 0, dy: 1 };          // face the camera
                 }
 
-                /* Near-horizon hero framing, then a slow psychedelic drift. */
+                /* Framing: the debrief panel takes the right of the screen, so the
+                   lineup is centred in the LEFT two thirds — the target sits a little
+                   east of the party (yaw 0: screen-x is board-x). A loss looks down. */
                 const span = Math.min(sorted.length, 7);
-                const zoom = Math.max(1.15, Math.min(2.1, 4.6 / (span + 1.2)));
+                const zoom = Math.max(1.2, Math.min(2.2, 4.8 / (span + 1.2)));
+                const offX = Math.min(2.2, 0.55 + 2.4 / zoom);
                 if (typeof camera !== 'undefined' && camera && camera.moveTo) {
                     camera.moveTo({
-                        x: cx, y: cy + 0.6, zoom,
-                        tilt: 60, yaw: 0,
+                        x: cx + offX, y: cy + (playerWon ? 0.6 : 0.2), zoom: playerWon ? zoom : zoom * 1.08,
+                        tilt: playerWon ? 60 : 52, yaw: playerWon ? 0 : -6,
                         duration: 1500, easing: 'easeInOut',
                         _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
                     });
                 }
                 const t0 = performance.now();
-                _podiumState.driftTimer = setTimeout(() => {
+                P.driftTimer = setTimeout(() => {
                     const drift = () => {
-                        if (!_podiumState) return;
+                        if (_podiumState !== P) return;
                         const t = (performance.now() - t0) / 1000;
                         if (typeof camera !== 'undefined' && camera && camera.snap) {
-                            camera.snap({
-                                yaw: Math.sin(t * 0.13) * 8,
-                                tilt: 60 + Math.sin(t * 0.07) * 2.5
-                            });
+                            camera.snap(playerWon
+                                ? { yaw: Math.sin(t * 0.13) * 8, tilt: 60 + Math.sin(t * 0.07) * 2.5 }
+                                : { yaw: -6 + Math.sin(t * 0.06) * 3, tilt: 52 + Math.sin(t * 0.05) * 1.2 });
                         }
-                        _podiumState.raf = requestAnimationFrame(drift);
+                        P.raf = requestAnimationFrame(drift);
                     };
-                    _podiumState.raf = requestAnimationFrame(drift);
+                    P.raf = requestAnimationFrame(drift);
                 }, 1700);
 
-                /* Celebration flourishes: MVP opens with a charged cast, then
-                   random front-liners keep the stage alive. */
-                const _flourish = () => {
-                    if (!_podiumState) return;
-                    const pick = sorted[Math.floor(Math.random() * Math.min(sorted.length, 5))];
-                    const slots = ['castAOE', 'castSlam', 'jump', 'castSupport', 'castMagic'];
-                    const slot = slots[Math.floor(Math.random() * slots.length)];
-                    try {
-                        if (ThreeRenderer.strikeRT && ThreeRenderer.strikeRT.playAnim) {
-                            ThreeRenderer.strikeRT.playAnim(pick.id, [slot, 'cast']);
-                        }
-                    } catch (e) {}
-                    _podiumState.pulseTimer = setTimeout(_flourish, 2800 + Math.random() * 2600);
+                /* THE POSES (sprites.js PODIUM_POSES, baked on demand by the renderer):
+                   staggered over frames so eight bakes never land in one. A rig with
+                   no library bake keeps its idle and the old cast flourish. */
+                const PD = (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.podium) ? ThreeRenderer.podium : null;
+                const winHold = ['vicArms', 'vicStance', 'vicDance', 'vicArms', 'vicStance', 'vicDance', 'vicArms'];
+                const loseHold = ['defKneel', 'defNo', 'defSit', 'defKneel', 'defNo', 'defKneel', 'defSit'];
+                const _pose = (u, i, attempt) => {
+                    if (!PD) return;
+                    let ok = false;
+                    try { ok = PD.bakePoses(u.id); } catch (e) {}
+                    /* a re-spawned corpse / a rig still attaching has no actions yet — try again
+                       (six times over ~2.4 s), then leave it idling */
+                    const retry = () => { if ((attempt || 0) < 6) later(400, () => _pose(u, i, (attempt || 0) + 1)); };
+                    const savedDead = P.saved[i] && P.saved[i].dead;
+                    if (!playerWon) {
+                        if (savedDead) { if (PD.hold(u.id, ['death'])) P.held.push(u.id); else retry(); return; }
+                        if (ok) { PD.hold(u.id, [loseHold[i % loseHold.length], 'defKneel', 'idle']); P.held.push(u.id); }
+                        else retry();
+                        return;
+                    }
+                    if (!ok) { retry(); return; }
+                    if (i === 0) {
+                        /* the lead: the cheer, then the dance for the rest of the screen */
+                        later(1900, () => { PD.play(u.id, ['vicCheer'], 2600); });
+                        later(1900 + 2500, () => { PD.hold(u.id, ['vicDance', 'vicStance']); });
+                        P.held.push(u.id);
+                    } else {
+                        later(2100 + i * 170, () => { PD.play(u.id, [i % 2 ? 'vicCheer' : 'vicJump'], 2600); });
+                        later(2100 + i * 170 + 1700, () => { PD.hold(u.id, [winHold[i % winHold.length], 'idle']); });
+                        P.held.push(u.id);
+                    }
                 };
-                _podiumState.pulseTimer = setTimeout(() => {
-                    if (!_podiumState) return;
-                    try {
-                        if (ThreeRenderer.strikeRT && ThreeRenderer.strikeRT.playAnim) {
-                            ThreeRenderer.strikeRT.playAnim(sorted[0].id, ['castAOE', 'cast']);
-                        }
-                    } catch (e) {}
-                    _podiumState.pulseTimer = setTimeout(_flourish, 3800);
-                }, 1900);
+                sorted.forEach((u, i) => later(120 + i * 70, () => _pose(u, i, 0)));
+
+                /* Celebration flourishes on a win: someone hops or cheers now and
+                   then, a caster throws a charged cast — the stage never goes still. */
+                if (playerWon) {
+                    const _flourish = () => {
+                        if (_podiumState !== P) return;
+                        const pick = sorted[Math.floor(Math.random() * Math.min(sorted.length, 5))];
+                        const r = Math.random();
+                        const slots = r < 0.45 ? ['vicCheer', 'castSupport', 'cast']
+                            : r < 0.75 ? ['vicJump', 'jump']
+                            : ['castAOE', 'castSlam', 'castMagic', 'cast'];
+                        try { if (PD) PD.play(pick.id, slots, 2600); } catch (e) {}
+                        P.pulseTimer = setTimeout(_flourish, 3200 + Math.random() * 2800);
+                    };
+                    P.pulseTimer = setTimeout(_flourish, 6200);
+                }
 
                 document.body.classList.add('vic-podium');
                 if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
@@ -36063,7 +36115,11 @@
             if (ps.raf) cancelAnimationFrame(ps.raf);
             if (ps.driftTimer) clearTimeout(ps.driftTimer);
             if (ps.pulseTimer) clearTimeout(ps.pulseTimer);
+            (ps.timers || []).forEach(t => clearTimeout(t));
             try {
+                if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.podium) {
+                    (ps.held || []).forEach(id => { try { ThreeRenderer.podium.release(id); } catch (e) {} });
+                }
                 for (const s of ps.saved) {
                     s.u.x = s.x; s.u.y = s.y; s.u.z = s.z;
                     s.u.dead = s.dead; s.u._dying = s.dying;
@@ -36123,6 +36179,13 @@
            `window._lastHqSiteFlag` written by commitAchProgress (never on
            state, so it never rides state-sync); consumed here. */
         function _stampHqSite(flag) {
+            /* THE DEBRIEF (2026-09-21): answers the line it stamped so the head's FIELD
+               REPORT can print it in full (the stamp's tag is small) */
+            _stampHqSiteImpl(flag);
+            const el = document.getElementById('vicDoorStampSite');
+            return (el && el.classList.contains('on')) ? el.textContent : '';
+        }
+        function _stampHqSiteImpl(flag) {
             const stamp = document.getElementById('vicDoorStamp');
             if (!stamp) return;
             let el = document.getElementById('vicDoorStampSite');
@@ -36201,6 +36264,88 @@
             return true;
         }
 
+        /* ══════════ THE DEBRIEF (2026-09-21) — the result screen ══════════
+           ONE layout: the 3D stage on the left two thirds (the viewer's party posed —
+           _stageVictoryPodium), THE HEAD over it (kicker · title · one line of facts),
+           THE PLATES at its foot (the MVP nameplate, the CASE CLOSED stamp), THE DEBRIEF
+           panel on the right — three sheets behind tabs: REWARDS (hazard pay · rank ·
+           achievements · records · almost there · career), HONOURS (the MVP card + the
+           match awards), PERFORMANCE (team damage · the mode's tally · the stats table)
+           — and the command bar along the bottom. Nothing overlaps anything: every block
+           has ONE home. The 2D sprite lineup is the fallback for a renderer that is not
+           running (and the campaign / dungeon result cards, which write the same ids). */
+        const _VIC_SHEETS = [
+            { id: 'rewards', label: 'REWARDS', glyph: '💰' },
+            { id: 'honours', label: 'HONOURS', glyph: '☩' },
+            { id: 'performance', label: 'PERFORMANCE', glyph: '⚔' },
+        ];
+        let _vicTab = 'rewards';
+        function _vicPrepare() {
+            /* the shared result DOM: empty every sheet + the head's extras so a campaign /
+               dungeon / no-contest card never shows a previous match's rows */
+            ['vicGoldBreakdown', 'vicEloBadge', 'vicAwards', 'vicHonours', 'vicTeamDmgBar', 'vicTeamDmgLabels', 'vicModeTally', 'vicStatsTableWrap', 'vicKicker', 'vicMatchInfo', 'vicSubtitle'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.innerHTML = '';
+            });
+            const gb = document.getElementById('vicGoldBreakdown');
+            if (gb) gb.style.display = '';
+            const mvp = document.getElementById('vicMvpTag');
+            if (mvp) { mvp.style.display = 'none'; mvp.innerHTML = ''; }
+            const site = document.getElementById('vicDoorStampSite');
+            if (site) { site.className = 'drs-site'; site.textContent = ''; }
+            const fr = document.getElementById('vicFieldReport');
+            if (fr) { fr.innerHTML = ''; fr.className = 'vic-field-report'; }
+        }
+        function _vicSheetEmpty(id) {
+            const sec = document.querySelector('#vicSheets .vic-sheet[data-sheet="' + id + '"]');
+            return !sec || !sec.textContent.trim();
+        }
+        function _vicSetTab(id, opts) {
+            const avail = _VIC_SHEETS.filter(s => !_vicSheetEmpty(s.id)).map(s => s.id);
+            if (!avail.length) { _vicTab = 'rewards'; }
+            else if (avail.indexOf(id) === -1) id = avail[0];
+            _vicTab = id;
+            document.querySelectorAll('#vicSheets .vic-sheet').forEach(sec => {
+                const on = sec.getAttribute('data-sheet') === _vicTab;
+                sec.classList.toggle('on', on);
+                if (on && !(opts && opts.quiet)) { sec.classList.remove('vic-sheet-in'); void sec.offsetWidth; sec.classList.add('vic-sheet-in'); }
+            });
+            document.querySelectorAll('#vicTabs .vic-tab').forEach(b => {
+                b.classList.toggle('on', b.getAttribute('data-sheet') === _vicTab);
+                b.setAttribute('aria-selected', b.getAttribute('data-sheet') === _vicTab ? 'true' : 'false');
+            });
+            if (!(opts && opts.quiet)) { try { playSfx('uiCursorMove'); } catch (e) {} }
+        }
+        function _vicStepTab(dir) {
+            const avail = _VIC_SHEETS.filter(s => !_vicSheetEmpty(s.id)).map(s => s.id);
+            if (avail.length < 2) return;
+            const i = Math.max(0, avail.indexOf(_vicTab));
+            _vicSetTab(avail[(i + dir + avail.length) % avail.length]);
+        }
+        /* the tab strip + the panel's visibility, from what the sheets hold; called at the
+           end of every result path (PvP / campaign / dungeon) */
+        function _vicLayoutSync(opts) {
+            const tabs = document.getElementById('vicTabs');
+            const panel = document.getElementById('vicDebrief');
+            if (!tabs || !panel) return;
+            const avail = _VIC_SHEETS.filter(s => !_vicSheetEmpty(s.id));
+            tabs.innerHTML = avail.map(s => `<button type="button" class="vic-tab" role="tab" data-sheet="${s.id}"><span class="vic-tab-glyph">${s.glyph}</span>${s.label}</button>`).join('');
+            tabs.querySelectorAll('.vic-tab').forEach(b => { b.onclick = () => _vicSetTab(b.getAttribute('data-sheet')); });
+            panel.classList.toggle('empty', !avail.length);
+            panel.classList.toggle('one', avail.length === 1);
+            _vicSetTab((opts && opts.tab) || _vicTab, { quiet: true });
+            if (!panel._vicKeys) {
+                panel._vicKeys = true;
+                document.addEventListener('keydown', (ev) => {
+                    if (!resultOverlay || resultOverlay.classList.contains('hidden')) return;
+                    if (ev.target && /INPUT|TEXTAREA|SELECT/.test(ev.target.tagName)) return;
+                    if (ev.key === 'ArrowRight' || ev.key === ']') { _vicStepTab(1); ev.preventDefault(); }
+                    else if (ev.key === 'ArrowLeft' || ev.key === '[') { _vicStepTab(-1); ev.preventDefault(); }
+                });
+            }
+        }
+        window._vicSetTab = _vicSetTab;
+
         function showResultOverlay() {
             const viewer = getViewerPlayer();
             const isNoContest = state.winner === 0;
@@ -36208,6 +36353,7 @@
             if (!document.getElementById('nextMatchBtn') && typeof _restoreResultOverlayButtons === 'function') _restoreResultOverlayButtons();
             const playerWon = isNoContest ? false : (ONLINE_RULES.active ? (state.winner === viewer) : (state.winner === 1));
             const wonClass = isNoContest ? 'defeat' : (playerWon ? 'victory' : 'defeat');
+            _vicPrepare();
 
             const vicSky = document.getElementById('vicSky');
             const vicGround = document.getElementById('vicGround');
@@ -36217,12 +36363,15 @@
             const vicParty = document.getElementById('vicParty');
             const vicAwards = document.getElementById('vicAwards');
             const vicParticles = document.getElementById('vicParticles');
+            const vicKicker = document.getElementById('vicKicker');
 
-            /* 3D podium mode: the live battlefield renders the winners — the
-               2D painted sky/ground/sprites become a fallback for when the
-               Three renderer isn't running. Class toggles switch the CSS. */
+            /* 3D podium mode: the live battlefield renders the party — the 2D painted
+               sky/ground/sprites become a fallback for when the Three renderer isn't
+               running. Class toggles switch the CSS. */
             const use3d = _canStagePodium();
             resultOverlay.classList.toggle('vic-3d', use3d);
+            resultOverlay.classList.remove('victory', 'defeat', 'void');
+            resultOverlay.classList.add(isNoContest ? 'void' : wonClass);
 
             vicSky.className = 'vic-sky ' + wonClass;
             vicGround.className = 'vic-ground ' + wonClass;
@@ -36231,16 +36380,30 @@
             /* data-text feeds the chromatic-aberration ghost layers (CSS). */
             vicTitle.setAttribute('data-text', _titleText);
             vicTitle.className = 'vic-title ' + wonClass;
+            /* restart the slam on every result screen */
+            void vicTitle.offsetWidth;
             _stampDoorResult(isNoContest ? 'void' : wonClass);
-            try { _stampHqSite(playerWon ? window._lastHqSiteFlag : null); } catch (e) {}
+            let fieldReport = '';
+            try { fieldReport = _stampHqSite(playerWon ? window._lastHqSiteFlag : null) || ''; } catch (e) {}
+
+            const _mpMode = typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null;
+            /* THE KICKER: match № · mode · site — the facts a JRPG result screen prints once */
+            let siteLabel = '';
+            try { const m = EW_MAP_META.find(x => x.id === (typeof activeGameMode !== 'undefined' ? activeGameMode : null)); if (m) siteLabel = m.label; } catch (e) {}
+            const kick = [];
+            kick.push('MATCH ' + (state.matchNumber || 1));
+            if (_mpMode && _mpMode.label) kick.push(String(_mpMode.label).toUpperCase());
+            if (state.isRankedMatch) kick.push('RANKED');
+            if (siteLabel) kick.push(String(siteLabel).toUpperCase());
+            if (vicKicker) vicKicker.textContent = kick.join(' · ');
 
             const careerStats = loadCareerStats();
             const _profileUsername = (window.ProfileSystem && window.ProfileSystem.getActiveProfile()) ? window.ProfileSystem.getActiveProfile().username : null;
-            const streakHtml = !isNoContest && careerStats.currentWinStreak >= 2 ? ` <span class="vic-streak">🔥 ${careerStats.currentWinStreak} Win Streak</span>` : '';
-            const namePrefix = _profileUsername ? `<span style="color:#5ab0ff;font-weight:700">${_profileUsername}</span> — ` : '';
+            const streakHtml = !isNoContest && playerWon && careerStats.currentWinStreak >= 2 ? `<span class="vic-streak">🔥 ${careerStats.currentWinStreak} WIN STREAK</span>` : '';
+            const namePrefix = _profileUsername ? `<b class="vic-callsign">${escapeHtml(_profileUsername)}</b> ` : '';
             vicSubtitle.innerHTML = isNoContest
-                ? `Match ${state.matchNumber} voided — units could not engage.`
-                : (namePrefix + (playerWon ? 'You won' : 'You lost') + ` match ${state.matchNumber}.` + streakHtml);
+                ? `Match ${state.matchNumber} voided — the units could not engage.`
+                : (namePrefix + (playerWon ? 'holds the field.' : 'is exited.') + ' ' + streakHtml);
 
             let particleHtml = '';
             if (playerWon && !use3d) {
@@ -36258,273 +36421,102 @@
             const loserPlayer = state.winner === 1 ? 2 : 1;
             const winnerUnits = (state.units || []).filter(u => u.player === winnerPlayer);
             const loserUnits = (state.units || []).filter(u => u.player === loserPlayer);
+            const viewerSeat = ONLINE_RULES.active ? viewer : 1;
+            const viewerUnits = (state.units || []).filter(u => u.player === viewerSeat);
 
-            // Two formations facing off across the battlefield. The victors
-            // hold the left field (large, lit); the defeated are pushed to the
-            // right (smaller, greyed). `left` is a per-side anchor so the teams
-            // sit on opposite halves instead of bunching in the centre.
-            const WIN_BASE = '33%';
-            const LOSE_BASE = '69%';
+            /* THE 2D FALLBACK LINEUP — the viewer's party on the painted ground, the
+               winners lit, the losers greyed (only drawn when the 3D stage is off). */
+            const WIN_BASE = '36%';
             const WIN_POS = [
-                { scale: 1.5,  bottom: '7%',  zIdx: 10, mx: '150px'  },
-                { scale: 1.25, bottom: '13%', zIdx: 8,  mx: '10px'   },
-                { scale: 1.15, bottom: '15%', zIdx: 6,  mx: '300px'  },
-                { scale: 1.0,  bottom: '19%', zIdx: 5,  mx: '-80px'  },
-                { scale: 0.9,  bottom: '21%', zIdx: 4,  mx: '200px'  },
-                { scale: 0.8,  bottom: '18%', zIdx: 3,  mx: '70px'   },
+                { scale: 1.5,  bottom: '7%',  zIdx: 10, mx: '0px'    },
+                { scale: 1.25, bottom: '13%', zIdx: 8,  mx: '-150px' },
+                { scale: 1.15, bottom: '15%', zIdx: 6,  mx: '150px'  },
+                { scale: 1.0,  bottom: '19%', zIdx: 5,  mx: '-260px' },
+                { scale: 0.9,  bottom: '21%', zIdx: 4,  mx: '260px'  },
+                { scale: 0.8,  bottom: '18%', zIdx: 3,  mx: '-60px'  },
+                { scale: 0.8,  bottom: '20%', zIdx: 3,  mx: '60px'   },
+                { scale: 0.75, bottom: '23%', zIdx: 2,  mx: '0px'    },
             ];
-            const LOSE_POS = [
-                { scale: 1.1,  bottom: '10%', zIdx: 9, mx: '-170px' },
-                { scale: 0.95, bottom: '15%', zIdx: 7, mx: '-30px'  },
-                { scale: 0.9,  bottom: '16%', zIdx: 5, mx: '-310px' },
-                { scale: 0.82, bottom: '20%', zIdx: 4, mx: '80px'   },
-                { scale: 0.78, bottom: '19%', zIdx: 3, mx: '-210px' },
-                { scale: 0.74, bottom: '22%', zIdx: 2, mx: '140px'  },
-            ];
-
             let partyHtml = '';
-
-            const sortedWinners = [...winnerUnits].sort((a, b) => {
+            const sortedParty = [...viewerUnits].sort((a, b) => {
                 if (a.dead !== b.dead) return a.dead ? 1 : -1;
                 return (b._trackDmgDealt || 0) - (a._trackDmgDealt || 0);
             });
-
-            for (let i = 0; i < sortedWinners.length && i < WIN_POS.length; i++) {
-                const u = sortedWinners[i];
+            for (let i = 0; i < sortedParty.length && i < WIN_POS.length; i++) {
+                const u = sortedParty[i];
                 const p = WIN_POS[i];
                 const sprite = getBattleMapSpriteUrl(u);
                 const px = Math.round(128 * p.scale);
                 const nameClass = u.player === 1 ? 'p1' : 'p2';
-                const deadFilter = u.dead ? 'filter:grayscale(0.85) brightness(0.55) drop-shadow(0 4px 12px rgba(0,0,0,0.5));' : '';
+                const grey = (u.dead || !playerWon) ? 'filter:grayscale(0.8) brightness(0.6) drop-shadow(0 4px 12px rgba(0,0,0,0.5));' : '';
                 partyHtml += `<div class="vic-unit${u.dead ? ' dead' : ''}" style="position:absolute;bottom:${p.bottom};left:${WIN_BASE};margin-left:calc(${p.mx} - ${px/2}px);z-index:${p.zIdx}">
-          <div class="vic-unit-img" style="width:${px}px;height:${px}px;background-image:url('${sprite}');background-size:contain;background-position:center bottom;background-repeat:no-repeat;image-rendering:pixelated;${deadFilter}"></div>
+          <div class="vic-unit-img" style="width:${px}px;height:${px}px;background-image:url('${sprite}');background-size:contain;background-position:center bottom;background-repeat:no-repeat;image-rendering:pixelated;${grey}"></div>
           <div class="vic-unit-shadow" style="width:${px * 0.7}px"></div>
           <div class="vic-unit-name ${nameClass}">${escapeHtml(unitDisplayName(u))}</div>
         </div>`;
             }
-
-            const sortedLosers = [...loserUnits].sort((a, b) => {
-                if (a.dead !== b.dead) return a.dead ? 1 : -1;
-                return (b._trackDmgDealt || 0) - (a._trackDmgDealt || 0);
-            });
-            for (let i = 0; i < sortedLosers.length && i < LOSE_POS.length; i++) {
-                const u = sortedLosers[i];
-                const p = LOSE_POS[i];
-                const sprite = getBattleMapSpriteUrl(u);
-                const px = Math.round(128 * p.scale);
-                const nameClass = u.player === 1 ? 'p1' : 'p2';
-                partyHtml += `<div class="vic-unit dead" style="position:absolute;bottom:${p.bottom};left:${LOSE_BASE};margin-left:calc(${p.mx} - ${px/2}px);z-index:${p.zIdx};opacity:0.92">
-          <div class="vic-unit-img" style="width:${px}px;height:${px}px;background-image:url('${sprite}');background-size:contain;background-position:center bottom;background-repeat:no-repeat;image-rendering:pixelated;filter:grayscale(0.75) brightness(0.6) drop-shadow(0 3px 10px rgba(0,0,0,0.5))"></div>
-          <div class="vic-unit-shadow" style="width:${px * 0.55}px"></div>
-          <div class="vic-unit-name ${nameClass}" style="opacity:0.5">${escapeHtml(unitDisplayName(u))}</div>
-        </div>`;
-            }
-
-            /* In 3D podium mode the real models ARE the party — the painted
-               sprite lineup stays empty (partyHtml is kept as the fallback if
-               staging fails, see bottom of this function). */
             vicParty.innerHTML = use3d ? '' : partyHtml;
 
-            vicAwards.innerHTML = buildVicAwards();
-
-            const matchAchs = [...new Set(state._matchAchievements || [])];
-            if (matchAchs.length > 0) {
-                let achHtml = '<div class="vic-achievements"><div class="vic-ach-title">Achievements Unlocked</div><div class="vic-ach-grid">';
-                for (const id of matchAchs) {
-                    const def = ACHIEVEMENT_DEFS[id];
-                    if (!def) continue;
-                    achHtml += `<div class="vic-ach-item" title="${escapeHtml(def.desc)}"><span class="vic-ach-icon">${def.icon}</span><span class="vic-ach-name">${def.name}</span></div>`;
-                }
-                achHtml += '</div></div>';
-                vicAwards.innerHTML += achHtml;
-            }
-
-            /* Post-match achievements panel (§6.2): full unlock cards +
-               "Almost there" progress rows, from this match's commit. */
-            vicAwards.innerHTML += _achBuildEndOfMatchHtml();
-
-            /* Career progress: one honest line (the store now actually
-               persists — see profile.js ensureActiveProfile), plus a pointer
-               to where the full named list lives, which the bare count never
-               gave players. */
-            const allAchs = loadAchievements();
-            const totalUnlocked = Object.keys(allAchs).length;
-            const totalPossible = Object.keys(ACHIEVEMENT_DEFS).length;
-            vicAwards.innerHTML += `<div class="vic-career-ach">
-                <span class="vic-career-ach-label">✦ Career Achievements</span>
-                <span class="vic-career-ach-count"><b>${totalUnlocked}</b> / ${totalPossible}</span>
-                <div class="vic-career-ach-bar"><div class="vic-career-ach-fill" style="width:${Math.round(totalUnlocked / Math.max(1, totalPossible) * 100)}%"></div></div>
-                <span style="display:block;font-size:11px;color:var(--muted,#8a93a8);margin-top:2px">Full list: Profile → Achievements</span>
-            </div>`;
-
-            /* MVP plate under the podium: top of the winning team. */
+            /* ── THE MVP (the winning side's lead) ── */
+            const sortedWinners = [...winnerUnits].sort((a, b) => {
+                const ak = (a._matchKills || 0), bk = (b._matchKills || 0);
+                if (ak !== bk) return bk - ak;
+                return (b._trackDmgDealt || 0) - (a._trackDmgDealt || 0);
+            });
+            const mvp = (!isNoContest && sortedWinners.length) ? sortedWinners[0] : null;
             const vicMvpTag = document.getElementById('vicMvpTag');
-            if (vicMvpTag) {
-                if (!isNoContest && sortedWinners.length) {
-                    const mvp = [...winnerUnits].sort((a, b) => {
-                        const ak = (a._matchKills || 0), bk = (b._matchKills || 0);
-                        if (ak !== bk) return bk - ak;
-                        return (b._trackDmgDealt || 0) - (a._trackDmgDealt || 0);
-                    })[0];
-                    const mvpPort = (typeof getUnitPortraitUrl === 'function') ? getUnitPortraitUrl(mvp) : null;
-                    const mvpSprite = mvpPort || getBattleMapSpriteUrl(mvp);
-                    const mvpSide = mvp.player === viewer ? 'ally' : 'enemy';
-                    vicMvpTag.className = 'vic-mvp-tag ' + mvpSide;
-                    vicMvpTag.innerHTML = `
-                        <div class="vic-mvp-port" style="background-image:url('${mvpSprite}')"></div>
-                        <div class="vic-mvp-col">
-                            <div class="vic-mvp-label">☩ Match MVP ☩</div>
-                            <div class="vic-mvp-name">${escapeHtml(unitDisplayName(mvp))}</div>
-                            <div class="vic-mvp-stat">${mvp._matchKills || 0} kills · ${mvp._trackDmgDealt || 0} dmg · ${mvp._trackHealDone || 0} heal</div>
-                        </div>`;
-                    vicMvpTag.style.display = '';
-                } else {
-                    vicMvpTag.style.display = 'none';
-                    vicMvpTag.innerHTML = '';
-                }
+            if (vicMvpTag && mvp) {
+                const mvpSide = mvp.player === viewerSeat ? 'ally' : 'enemy';
+                vicMvpTag.className = 'vic-mvp-tag ' + mvpSide;
+                vicMvpTag.innerHTML = `
+                    <div class="vic-mvp-port" style="background-image:url('${_vicPortrait(mvp)}')"></div>
+                    <div class="vic-mvp-col">
+                        <div class="vic-mvp-label">${mvpSide === 'ally' ? 'MATCH MVP' : 'ENEMY MVP'}</div>
+                        <div class="vic-mvp-name">${escapeHtml(unitDisplayName(mvp))}</div>
+                        <div class="vic-mvp-stat">${mvp._matchKills || 0} K · ${(mvp._trackDmgDealt || 0).toLocaleString()} DMG · ${(mvp._trackHealDone || 0).toLocaleString()} HEAL</div>
+                    </div>`;
+                vicMvpTag.style.display = '';
             }
 
+            /* ── THE HEAD'S FACT LINE: round · duration · alive · how it ended ── */
             const durationMs = Date.now() - (state.startTime || Date.now());
             const durationMin = Math.floor(durationMs / 60000);
             const durationSec = Math.floor((durationMs % 60000) / 1000);
             const durationStr = durationMin > 0 ? `${durationMin}m ${durationSec}s` : `${durationSec}s`;
-
             const _vicRl = state.matchClock && state.matchClock.roundLimit ? state.matchClock.roundLimit : 0;
             const _vicPast = _vicRl > 0 && (state.round || 0) > _vicRl;
-            const _vicRoundStr = _vicPast ? '⏱ TIME' : `Round ${state.round || '?'}`;
-            vicMatchInfo.innerHTML = `${_vicRoundStr} · ${durationStr} · <span style="color:var(--p1-score)">${(state.units||[]).filter(u=>u.player===1&&!u.dead).length}</span> vs <span style="color:var(--p2-score)">${(state.units||[]).filter(u=>u.player===2&&!u.dead).length}</span> alive`;
-
+            const _vicRoundStr = _vicPast ? '⏱ TIME' : `ROUND ${state.round || '?'}`;
             const _winCondLabels = {
-                wipeout: '💀 Wipeout',
-                tower_destroyed: '⬡ Cube Destroyed',
-                hourglasses_collected: 'Keys Secured',
-                most_kills: '🗡 Most Kills',
-                most_points: '🚩 Most Points',
-                most_captures: '🏳️ Most Captures',
-                flag_captures: '🏳️ Capture Target Reached',
-                sudden_death: '⚡ Sudden Death',
-                arena_composite: '⏱ Arena Score',
-                nexus_dominance: '⬡ Nexus Dominance',
-                draw: '🤝 Draw',
-                no_contest: '⚖️ No Contest',
+                wipeout: '💀 WIPEOUT',
+                tower_destroyed: '⬡ CUBE DESTROYED',
+                hourglasses_collected: '🗝 KEYS SECURED',
+                most_kills: '🗡 MOST KILLS',
+                most_points: '🚩 MOST POINTS',
+                most_captures: '🏳️ MOST CAPTURES',
+                flag_captures: '🏳️ CAPTURE TARGET',
+                sudden_death: '⚡ SUDDEN DEATH',
+                arena_composite: '⏱ ARENA SCORE',
+                nexus_dominance: '⬡ NEXUS DOMINANCE',
+                draw: '🤝 DRAW',
+                no_contest: '⚖️ NO CONTEST',
             };
-            if (state._winCondition && _winCondLabels[state._winCondition]) {
-                vicMatchInfo.innerHTML += `<br><span style="font-size:12px;color:var(--muted);letter-spacing:0.5px">${_winCondLabels[state._winCondition]}</span>`;
+            const facts = [];
+            facts.push(_vicRoundStr);
+            facts.push(durationStr);
+            facts.push(`<span class="p1">${(state.units||[]).filter(u=>u.player===1&&!u.dead).length}</span> v <span class="p2">${(state.units||[]).filter(u=>u.player===2&&!u.dead).length}</span> STANDING`);
+            if (state._winCondition && _winCondLabels[state._winCondition]) facts.push(_winCondLabels[state._winCondition]);
+            if (state.suddenDeathActive && state._winCondition !== 'sudden_death') facts.push('⚡ SUDDEN DEATH');
+            vicMatchInfo.innerHTML = facts.map(f => `<span class="vic-fact">${f}</span>`).join('<span class="vic-fact-dot">·</span>');
+
+            /* ── THE FIELD REPORT (a filed condition / a stabilized threshold / a cleared
+                  Code Red / an encounter) — one line under the head, the stamp mirrors it ── */
+            const fr = document.getElementById('vicFieldReport');
+            if (fr && fieldReport) {
+                fr.textContent = fieldReport;
+                fr.className = 'vic-field-report on';
             }
 
-            const _mpMode = typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null;
-
-            if (_mpMode && _mpMode.id === 'arena') {
-                const ARENA_PTS = window.ARENA_PTS || { kill: 15, towerDmgPer10: 1, towerDmgCap: 150, hourglass: 35, nexusRound: 6 };
-                function _vicArenaScore(p) {
-                    const enemy = p === 1 ? 2 : 1;
-                    let pts = 0, details = [];
-                    const kills = state.matchKills?.[p] || 0;
-                    const killPts = kills * ARENA_PTS.kill;
-                    pts += killPts;
-                    details.push({ label: 'Kills', raw: kills, pts: killPts, icon: '🗡' });
-
-                    const eTw = state.towers?.[enemy];
-                    let tDmg = 0;
-                    if (eTw) tDmg = Math.max(0, (eTw.maxHp || 1500) - eTw.hp);
-                    // Percent-of-tower form: invariant to level-scaled tower HP
-                    // (full tower = 250 pts × per10, same as the 2500-HP days).
-                    let tDmgPts = Math.floor(tDmg / ((eTw && eTw.maxHp) || 1500) * 250) * ARENA_PTS.towerDmgPer10;
-                    if (ARENA_PTS.towerDmgCap) tDmgPts = Math.min(tDmgPts, ARENA_PTS.towerDmgCap);
-                    pts += tDmgPts;
-                    details.push({ label: 'Tower Dmg', raw: tDmg, pts: tDmgPts, icon: '🏰' });
-
-                    let hgCount = 0;
-                    if (state.hourglasses) {
-                        hgCount = state.hourglasses.filter(h => {
-                            if (!h.carriedBy) return false;
-                            const c = state.units.find(u => u.id === h.carriedBy);
-                            return c && !c.dead && c.player === p;
-                        }).length;
-                    }
-                    const hgPts = hgCount * ARENA_PTS.hourglass;
-                    pts += hgPts;
-                    details.push({ label: 'Keys', raw: hgCount, pts: hgPts, icon: (typeof keyIconHtml === 'function') ? keyIconHtml(11) : '' });
-
-                    const nexRounds = state._arenaNexusControl?.[p] || 0;
-                    const nexPts = nexRounds * ARENA_PTS.nexusRound;
-                    pts += nexPts;
-                    details.push({ label: 'Nexus Rnds', raw: nexRounds, pts: nexPts, icon: '⬡' });
-
-                    const bountyPts = state._arenaBountyPts?.[p] || 0;
-                    if (bountyPts > 0) {
-                        pts += bountyPts;
-                        details.push({ label: 'Bounties', raw: Math.round(bountyPts / (ARENA_PTS.bounty || 10)), pts: bountyPts, icon: '💰' });
-                    }
-
-                    return { pts, details };
-                }
-                const as1 = _vicArenaScore(1), as2 = _vicArenaScore(2);
-
-                let tallyRows = '';
-                /* Rows are matched by LABEL, not index: the Bounties row is
-                   only pushed for a side that earned some, so a per-index zip
-                   crashed the victory screen (d2 undefined) whenever exactly
-                   one side had bounties. */
-                const _tallyLabels = [];
-                for (const d of as1.details.concat(as2.details)) if (!_tallyLabels.includes(d.label)) _tallyLabels.push(d.label);
-                for (const _lbl of _tallyLabels) {
-                    const _f1 = as1.details.find(d => d.label === _lbl), _f2 = as2.details.find(d => d.label === _lbl);
-                    const _tpl = _f1 || _f2;
-                    const d1 = _f1 || { pts: 0, icon: _tpl.icon, label: _lbl }, d2 = _f2 || { pts: 0, icon: _tpl.icon, label: _lbl };
-                    tallyRows += `<tr>
-                        <td style="text-align:right;color:var(--p1-score);padding:1px 6px">${d1.pts}</td>
-                        <td style="text-align:center;color:var(--muted);font-size:10px;padding:1px 4px;white-space:nowrap">${d1.icon} ${d1.label}</td>
-                        <td style="text-align:left;color:var(--p2-score);padding:1px 6px">${d2.pts}</td>
-                    </tr>`;
-                }
-                let sdNote = state.suddenDeathActive ? ' · <span style="color:#ff4444">⚡ Sudden Death</span>' : '';
-                vicMatchInfo.innerHTML += `<br>
-                <div style="margin-top:4px;font-size:13px">
-                    <span style="color:var(--p1-score);font-weight:700;font-size:16px">${as1.pts}</span>
-                    <span style="color:var(--muted);margin:0 4px">–</span>
-                    <span style="color:var(--p2-score);font-weight:700;font-size:16px">${as2.pts}</span>
-                    <span style="color:var(--muted);font-size:11px;margin-left:4px">Arena Score</span>${sdNote}
-                </div>
-                <table style="margin:4px auto 0;border-collapse:collapse;font-size:11px">${tallyRows}</table>`;
-            } else if (_mpMode && _mpMode.id !== 'arena') {
-                let modeLine = '';
-                const k1 = state.matchKills?.[1] || 0, k2 = state.matchKills?.[2] || 0;
-                const s1 = state.matchScores?.[1] || 0, s2 = state.matchScores?.[2] || 0;
-                if (_mpMode.id === 'tdm' || _mpMode.id === 'ffa') {
-                    modeLine = `💀 Kills: <span style="color:var(--p1-score)">${k1}</span> – <span style="color:var(--p2-score)">${k2}</span>`;
-                } else if (_mpMode.id === 'domination' || _mpMode.id === 'hotspot') {
-                    modeLine = `🚩 Points: <span style="color:var(--p1-score)">${s1}</span> – <span style="color:var(--p2-score)">${s2}</span>`;
-                } else if (_mpMode.id === 'ctf') {
-                    modeLine = `🏳️ Captures: <span style="color:var(--p1-score)">${s1}</span> – <span style="color:var(--p2-score)">${s2}</span>`;
-                }
-                if (state.suddenDeathActive) modeLine += ' · <span style="color:#ff4444">⚡ Sudden Death</span>';
-                if (modeLine) {
-                    vicMatchInfo.innerHTML += `<br><span style="font-size:13px">${_mpMode.label} — ${modeLine}</span>`;
-                }
-            }
-
-            const vicEloBadge = document.getElementById('vicEloBadge');
-            if (vicEloBadge) {
-                if (state.isRankedMatch && !isNoContest) {
-                    const ri = getEloRankInfo(_lastEloAfter);
-                    const deltaSign = _lastEloDelta > 0 ? '+' : '';
-                    const deltaClass = _lastEloDelta > 0 ? 'positive' : _lastEloDelta < 0 ? 'negative' : 'neutral';
-                    vicEloBadge.innerHTML = `
-                        <div class="vic-elo-badge">
-                            <span class="vic-elo-rank-icon">${ri.icon}</span>
-                            <div class="vic-elo-info">
-                                <span class="vic-elo-label">${ri.name}</span>
-                                <span class="vic-elo-value">${_lastEloAfter}</span>
-                            </div>
-                        </div>
-                        <div class="vic-elo-delta ${deltaClass}">${deltaSign}${_lastEloDelta}</div>
-                    `;
-                } else {
-                    vicEloBadge.innerHTML = state.isRankedMatch ? '' : '';
-                }
-            }
-
+            /* ── PERFORMANCE: team damage · the mode's tally · the table ── */
             const vicTeamDmgBar = document.getElementById('vicTeamDmgBar');
             const vicTeamDmgLabels = document.getElementById('vicTeamDmgLabels');
             if (vicTeamDmgBar && vicTeamDmgLabels) {
@@ -36534,13 +36526,61 @@
                 const p1Pct = Math.round((p1Dmg / total) * 100);
                 const p2Pct = 100 - p1Pct;
                 vicTeamDmgBar.innerHTML = `<div class="vic-team-dmg-fill-p1" style="width:${p1Pct}%"></div><div class="vic-team-dmg-fill-p2" style="width:${p2Pct}%"></div>`;
-                vicTeamDmgLabels.innerHTML = `<span class="p1-lbl">${p1Dmg} dmg</span><span style="font-size:8px;color:var(--muted)">TEAM DAMAGE</span><span class="p2-lbl">${p2Dmg} dmg</span>`;
+                vicTeamDmgLabels.innerHTML = `<span class="p1-lbl">${p1Dmg.toLocaleString()}</span><span class="vic-dmg-cap">TEAM DAMAGE</span><span class="p2-lbl">${p2Dmg.toLocaleString()}</span>`;
             }
-
+            const tally = document.getElementById('vicModeTally');
+            if (tally) tally.innerHTML = _vicBuildModeTally(_mpMode);
             const vicStatsWrap = document.getElementById('vicStatsTableWrap');
-            if (vicStatsWrap) {
-                vicStatsWrap.innerHTML = buildVicStatsTable();
+            if (vicStatsWrap) vicStatsWrap.innerHTML = buildVicStatsTable();
+
+            /* ── HONOURS: the MVP card + the awards ── */
+            const hon = document.getElementById('vicHonours');
+            if (hon) hon.innerHTML = _vicBuildHonours(mvp, viewerSeat);
+
+            /* ── REWARDS: rank · achievements · records · almost there · career
+                  (the hazard pay card lands first, from _accountBankMatchGold) ── */
+            const vicEloBadge = document.getElementById('vicEloBadge');
+            if (vicEloBadge && state.isRankedMatch && !isNoContest) {
+                const ri = getEloRankInfo(_lastEloAfter);
+                const deltaSign = _lastEloDelta > 0 ? '+' : '';
+                const deltaClass = _lastEloDelta > 0 ? 'positive' : _lastEloDelta < 0 ? 'negative' : 'neutral';
+                vicEloBadge.innerHTML = `
+                    <div class="vic-card vic-rank-card">
+                        <div class="vic-card-cap">RANK</div>
+                        <div class="vic-elo-badge">
+                            <span class="vic-elo-rank-icon">${ri.icon}</span>
+                            <div class="vic-elo-info">
+                                <span class="vic-elo-label">${ri.name}</span>
+                                <span class="vic-elo-value">${_lastEloAfter}</span>
+                            </div>
+                            <div class="vic-elo-delta ${deltaClass}">${deltaSign}${_lastEloDelta}</div>
+                        </div>
+                    </div>`;
             }
+            let achHtml = '';
+            const matchAchs = [...new Set(state._matchAchievements || [])];
+            if (matchAchs.length > 0) {
+                achHtml += '<div class="vic-card vic-achievements"><div class="vic-card-cap">🏆 UNLOCKED THIS MATCH</div><div class="vic-ach-grid">';
+                for (const id of matchAchs) {
+                    const def = ACHIEVEMENT_DEFS[id];
+                    if (!def) continue;
+                    achHtml += `<div class="vic-ach-item" title="${escapeHtml(def.desc)}"><span class="vic-ach-icon">${def.icon}</span><span class="vic-ach-name">${def.name}</span></div>`;
+                }
+                achHtml += '</div></div>';
+            }
+            /* Post-match achievements panel (§6.2): full unlock cards + "Almost there"
+               progress rows, from this match's commit. */
+            achHtml += _achBuildEndOfMatchHtml();
+            const allAchs = loadAchievements();
+            const totalUnlocked = Object.keys(allAchs).length;
+            const totalPossible = Object.keys(ACHIEVEMENT_DEFS).length;
+            achHtml += `<div class="vic-card vic-career-ach">
+                <span class="vic-card-cap">✦ CAREER</span>
+                <span class="vic-career-ach-count"><b>${totalUnlocked}</b> / ${totalPossible}</span>
+                <div class="vic-career-ach-bar"><div class="vic-career-ach-fill" style="width:${Math.round(totalUnlocked / Math.max(1, totalPossible) * 100)}%"></div></div>
+                <span class="vic-career-note">The full list: Profile → Achievements</span>
+            </div>`;
+            vicAwards.innerHTML = achHtml;
 
             if (ONLINE_RULES.active) {
                 if (nextMatchBtn) nextMatchBtn.textContent = 'Request Rematch';
@@ -36552,6 +36592,10 @@
             if (exportMatchHistoryBtn) exportMatchHistoryBtn.disabled = !state.matchHistory.length;
 
             _accountBankMatchGold();
+
+            /* the sheets are filled — build the tab strip; the first sheet with anything in
+               it opens (REWARDS on a paid match, HONOURS on a friendly / a no-contest) */
+            _vicLayoutSync({ tab: 'rewards' });
 
             resultOverlay.classList.remove('hidden');
             try { _encounterResultButtons(); } catch (e) { console.warn('[HQ] the encounter result bar failed', e); }
@@ -36566,102 +36610,135 @@
             }
         }
 
+        function _vicPortrait(u) {
+            const port = (typeof getUnitPortraitUrl === 'function') ? getUnitPortraitUrl(u) : null;
+            return port || getBattleMapSpriteUrl(u);
+        }
+
+        /* THE MODE'S TALLY (the PERFORMANCE sheet): Arena's composite score as two
+           columns of points, the kill / point / capture modes as one score line. */
+        function _vicBuildModeTally(_mpMode) {
+            if (!_mpMode) return '';
+            if (_mpMode.id === 'arena') {
+                const ARENA_PTS = window.ARENA_PTS || { kill: 15, towerDmgPer10: 1, towerDmgCap: 150, hourglass: 35, nexusRound: 6 };
+                function _vicArenaScore(p) {
+                    const enemy = p === 1 ? 2 : 1;
+                    let pts = 0, details = [];
+                    const kills = state.matchKills?.[p] || 0;
+                    const killPts = kills * ARENA_PTS.kill;
+                    pts += killPts;
+                    details.push({ label: 'Kills', raw: kills, pts: killPts, icon: '🗡' });
+                    const eTw = state.towers?.[enemy];
+                    let tDmg = 0;
+                    if (eTw) tDmg = Math.max(0, (eTw.maxHp || 1500) - eTw.hp);
+                    let tDmgPts = Math.floor(tDmg / ((eTw && eTw.maxHp) || 1500) * 250) * ARENA_PTS.towerDmgPer10;
+                    if (ARENA_PTS.towerDmgCap) tDmgPts = Math.min(tDmgPts, ARENA_PTS.towerDmgCap);
+                    pts += tDmgPts;
+                    details.push({ label: 'Cube Dmg', raw: tDmg, pts: tDmgPts, icon: '⬡' });
+                    let hgCount = 0;
+                    if (state.hourglasses) {
+                        hgCount = state.hourglasses.filter(h => {
+                            if (!h.carriedBy) return false;
+                            const c = state.units.find(u => u.id === h.carriedBy);
+                            return c && !c.dead && c.player === p;
+                        }).length;
+                    }
+                    const hgPts = hgCount * ARENA_PTS.hourglass;
+                    pts += hgPts;
+                    details.push({ label: 'Keys', raw: hgCount, pts: hgPts, icon: (typeof keyIconHtml === 'function') ? keyIconHtml(11) : '🗝' });
+                    const nexRounds = state._arenaNexusControl?.[p] || 0;
+                    const nexPts = nexRounds * ARENA_PTS.nexusRound;
+                    pts += nexPts;
+                    details.push({ label: 'Nexus Rounds', raw: nexRounds, pts: nexPts, icon: '⬡' });
+                    const bountyPts = state._arenaBountyPts?.[p] || 0;
+                    if (bountyPts > 0) {
+                        pts += bountyPts;
+                        details.push({ label: 'Bounties', raw: Math.round(bountyPts / (ARENA_PTS.bounty || 10)), pts: bountyPts, icon: '💰' });
+                    }
+                    return { pts, details };
+                }
+                const as1 = _vicArenaScore(1), as2 = _vicArenaScore(2);
+                /* rows matched by LABEL, never index — the Bounties row is only pushed
+                   for a side that earned some */
+                const labels = [];
+                for (const d of as1.details.concat(as2.details)) if (!labels.includes(d.label)) labels.push(d.label);
+                const rows = labels.map(lbl => {
+                    const f1 = as1.details.find(d => d.label === lbl), f2 = as2.details.find(d => d.label === lbl);
+                    const tpl = f1 || f2;
+                    const a = f1 ? f1.pts : 0, b = f2 ? f2.pts : 0;
+                    return `<div class="vic-tally-row"><span class="p1${a > b ? ' lead' : ''}">${a}</span><span class="vic-tally-lbl">${tpl.icon} ${lbl}</span><span class="p2${b > a ? ' lead' : ''}">${b}</span></div>`;
+                }).join('');
+                return `<div class="vic-card vic-tally">
+                    <div class="vic-card-cap">ARENA SCORE${state.suddenDeathActive ? ' · <em class="vic-sd">⚡ SUDDEN DEATH</em>' : ''}</div>
+                    <div class="vic-tally-total"><span class="p1">${as1.pts}</span><span class="vic-tally-vs">–</span><span class="p2">${as2.pts}</span></div>
+                    ${rows}
+                </div>`;
+            }
+            const k1 = state.matchKills?.[1] || 0, k2 = state.matchKills?.[2] || 0;
+            const s1 = state.matchScores?.[1] || 0, s2 = state.matchScores?.[2] || 0;
+            let cap = '', a = null, b = null;
+            if (_mpMode.id === 'tdm' || _mpMode.id === 'ffa') { cap = '💀 KILLS'; a = k1; b = k2; }
+            else if (_mpMode.id === 'domination' || _mpMode.id === 'hotspot') { cap = '🚩 POINTS'; a = s1; b = s2; }
+            else if (_mpMode.id === 'ctf') { cap = '🏳️ CAPTURES'; a = s1; b = s2; }
+            if (a === null) return '';
+            return `<div class="vic-card vic-tally">
+                <div class="vic-card-cap">${escapeHtml(String(_mpMode.label || '').toUpperCase())} · ${cap}${state.suddenDeathActive ? ' · <em class="vic-sd">⚡ SUDDEN DEATH</em>' : ''}</div>
+                <div class="vic-tally-total"><span class="p1">${a}</span><span class="vic-tally-vs">–</span><span class="p2">${b}</span></div>
+            </div>`;
+        }
+
+        /* THE HONOURS SHEET: the MVP card, then the match awards — one row each, the
+           winner's portrait, the label, the name, the number. */
+        function _vicBuildHonours(mvp, viewerSeat) {
+            let html = '';
+            if (mvp) {
+                const side = mvp.player === viewerSeat ? 'ally' : 'enemy';
+                html += `<div class="vic-card vic-mvp-card ${side}">
+                    <div class="vic-mvp-card-port" style="background-image:url('${_vicPortrait(mvp)}')"></div>
+                    <div class="vic-mvp-card-col">
+                        <div class="vic-card-cap">☩ MATCH MVP${side === 'enemy' ? ' · ENEMY' : ''}</div>
+                        <div class="vic-mvp-card-name">${escapeHtml(unitDisplayName(mvp))}</div>
+                        <div class="vic-mvp-card-sub">${escapeHtml(mvp.cls || '')}${mvp._level > 1 ? ' · Lv ' + mvp._level : ''}</div>
+                        <div class="vic-mvp-card-stats">
+                            <span><b>${mvp._matchKills || 0}</b>KILLS</span>
+                            <span><b>${(mvp._trackDmgDealt || 0).toLocaleString()}</b>DAMAGE</span>
+                            <span><b>${(mvp._trackHealDone || 0).toLocaleString()}</b>HEALING</span>
+                        </div>
+                    </div>
+                </div>`;
+            }
+            const awards = buildVicAwards();
+            if (awards) html += `<div class="vic-card vic-awards-card"><div class="vic-card-cap">MATCH AWARDS</div>${awards}</div>`;
+            return html;
+        }
+
         function buildVicAwards() {
             const allUnits = state.units || [];
             if (!allUnits.length) return '';
-
+            const viewerSeat = ONLINE_RULES.active ? getViewerPlayer() : 1;
             const awards = [];
-            const topDmg = [...allUnits].sort((a, b) => (b._trackDmgDealt || 0) - (a._trackDmgDealt || 0))[0];
-            if (topDmg && (topDmg._trackDmgDealt || 0) > 0) {
-                awards.push({
-                    icon: '⚔️',
-                    label: 'Most Damage',
-                    name: unitDisplayName(topDmg),
-                    stat: `${topDmg._trackDmgDealt} dmg`,
-                    player: topDmg.player,
-                    gold: true,
-                    unit: topDmg
-                });
-            }
-            const topKills = [...allUnits].sort((a, b) => (b._matchKills || 0) - (a._matchKills || 0))[0];
-            if (topKills && (topKills._matchKills || 0) > 0) {
-                awards.push({
-                    icon: '💀',
-                    label: 'Most Kills',
-                    name: unitDisplayName(topKills),
-                    stat: `${topKills._matchKills} kill${topKills._matchKills !== 1 ? 's' : ''}`,
-                    player: topKills.player,
-                    unit: topKills
-                });
-            }
-            const topHeal = [...allUnits].sort((a, b) => (b._trackHealDone || 0) - (a._trackHealDone || 0))[0];
-            if (topHeal && (topHeal._trackHealDone || 0) > 0) {
-                awards.push({
-                    icon: '💚',
-                    label: 'Most Healing',
-                    name: unitDisplayName(topHeal),
-                    stat: `${topHeal._trackHealDone} HP`,
-                    player: topHeal.player,
-                    unit: topHeal
-                });
-            }
-            const topStreak = [...allUnits].sort((a, b) => (b._maxKillStreak || 0) - (a._maxKillStreak || 0))[0];
-            if (topStreak && (topStreak._maxKillStreak || 0) >= 2) {
-                awards.push({
-                    icon: '🔥',
-                    label: 'Best Kill Streak',
-                    name: unitDisplayName(topStreak),
-                    stat: `${topStreak._maxKillStreak} kills`,
-                    player: topStreak.player,
-                    unit: topStreak
-                });
-            }
-            const topCrits = [...allUnits].sort((a, b) => (b._matchCrits || 0) - (a._matchCrits || 0))[0];
-            if (topCrits && (topCrits._matchCrits || 0) > 0) {
-                awards.push({
-                    icon: '⚡',
-                    label: 'Most Crits',
-                    name: unitDisplayName(topCrits),
-                    stat: `${topCrits._matchCrits} crit${topCrits._matchCrits !== 1 ? 's' : ''}`,
-                    player: topCrits.player,
-                    unit: topCrits
-                });
-            }
-            const topDodge = [...allUnits].sort((a, b) => (b._matchDodges || 0) - (a._matchDodges || 0))[0];
-            if (topDodge && (topDodge._matchDodges || 0) > 0) {
-                awards.push({
-                    icon: '💨',
-                    label: 'Most Dodges',
-                    name: unitDisplayName(topDodge),
-                    stat: `${topDodge._matchDodges} dodge${topDodge._matchDodges !== 1 ? 's' : ''}`,
-                    player: topDodge.player,
-                    unit: topDodge
-                });
-            }
-            const topTank = [...allUnits].filter(u => !u.dead).sort((a, b) => (b._trackDmgReceived || 0) - (a._trackDmgReceived || 0))[0];
-            if (topTank && (topTank._trackDmgReceived || 0) > 15) {
-                awards.push({
-                    icon: '🛡',
-                    label: 'Most Damage Taken',
-                    name: unitDisplayName(topTank),
-                    stat: `${topTank._trackDmgReceived} tanked`,
-                    player: topTank.player,
-                    unit: topTank
-                });
-            }
-
+            const pick = (key, min, icon, label, fmt, opts) => {
+                const pool = (opts && opts.alive) ? allUnits.filter(u => !u.dead) : allUnits;
+                const top = [...pool].sort((a, b) => (b[key] || 0) - (a[key] || 0))[0];
+                if (top && (top[key] || 0) >= min) awards.push({ icon, label, name: unitDisplayName(top), stat: fmt(top[key] || 0), player: top.player, unit: top, gold: !!(opts && opts.gold) });
+            };
+            pick('_trackDmgDealt', 1, '⚔️', 'Most Damage', v => `${v.toLocaleString()} dmg`, { gold: true });
+            pick('_matchKills', 1, '💀', 'Most Kills', v => `${v} kill${v !== 1 ? 's' : ''}`);
+            pick('_trackHealDone', 1, '💚', 'Most Healing', v => `${v.toLocaleString()} HP`);
+            pick('_maxKillStreak', 2, '🔥', 'Best Kill Streak', v => `${v} in a row`);
+            pick('_matchCrits', 1, '⚡', 'Most Crits', v => `${v} crit${v !== 1 ? 's' : ''}`);
+            pick('_matchDodges', 1, '💨', 'Most Dodges', v => `${v} dodge${v !== 1 ? 's' : ''}`);
+            pick('_trackDmgReceived', 16, '🛡', 'Iron Wall', v => `${v.toLocaleString()} tanked`, { alive: true });
             if (!awards.length) return '';
-
             return awards.map(a => {
-                const spriteHtml = a.unit ? `<div class="vic-award-sprite" style="background-image:url('${getBattleMapSpriteUrl(a.unit)}');background-size:contain;background-position:center;background-repeat:no-repeat;image-rendering:pixelated"></div>` : '';
-                return `<div class="vic-award${a.gold ? ' gold' : ''}">
-          ${spriteHtml}
-          <div class="vic-award-icon">${a.icon}</div>
+                const side = a.player === viewerSeat ? 'ally' : 'enemy';
+                return `<div class="vic-award${a.gold ? ' gold' : ''} ${side}">
+          <div class="vic-award-sprite" style="background-image:url('${_vicPortrait(a.unit)}')"></div>
           <div class="vic-award-detail">
-            <div class="vic-award-label">${a.label}</div>
-            <div class="vic-award-name">${a.name}</div>
-            <div class="vic-award-stat">${a.stat}</div>
+            <div class="vic-award-label">${a.icon} ${a.label}</div>
+            <div class="vic-award-name">${escapeHtml(a.name)}</div>
           </div>
+          <div class="vic-award-stat">${a.stat}</div>
         </div>`;
             }).join('');
         }
@@ -38670,9 +38747,13 @@
             if (!vicTitle || !vicBottom) { window._mdReturnToHub(); return; }
 
             const wonClass = victory ? 'victory' : 'defeat';
+            if (typeof _vicPrepare === 'function') _vicPrepare();
+            resultOverlay.classList.remove('victory', 'defeat', 'void');
+            resultOverlay.classList.add(wonClass);
             if (vicSky) vicSky.className = 'vic-sky ' + wonClass;
             if (vicGround) vicGround.className = 'vic-ground ' + wonClass;
             vicTitle.textContent = victory ? 'Dungeon Cleared!' : 'The Party Has Fallen';
+            vicTitle.setAttribute('data-text', vicTitle.textContent);
             vicTitle.className = 'vic-title ' + wonClass;
             if (vicSubtitle) vicSubtitle.innerHTML = victory
                 ? `${D.label} — all ${D.floors} floors conquered!`
@@ -38739,6 +38820,7 @@
             resultOverlay.classList.remove('vic-3d');
             const _mdMvp = document.getElementById('vicMvpTag');
             if (_mdMvp) { _mdMvp.style.display = 'none'; _mdMvp.innerHTML = ''; }
+            if (typeof _vicLayoutSync === 'function') _vicLayoutSync({ tab: 'rewards' });
             resultOverlay.classList.remove('hidden');
         }
 
@@ -38920,6 +39002,9 @@
             const vicBottom = document.getElementById('vicBottom');
 
             const wonClass = result.playerWon ? 'victory' : 'defeat';
+            if (typeof _vicPrepare === 'function') _vicPrepare();
+            resultOverlay.classList.remove('victory', 'defeat', 'void');
+            resultOverlay.classList.add(wonClass);
             vicSky.className = 'vic-sky ' + wonClass;
             vicGround.className = 'vic-ground ' + wonClass;
 
@@ -39084,6 +39169,7 @@
             resultOverlay.classList.remove('vic-3d');
             const _campMvp = document.getElementById('vicMvpTag');
             if (_campMvp) { _campMvp.style.display = 'none'; _campMvp.innerHTML = ''; }
+            if (typeof _vicLayoutSync === 'function') _vicLayoutSync({ tab: 'rewards' });
             resultOverlay.classList.remove('hidden');
         }
 

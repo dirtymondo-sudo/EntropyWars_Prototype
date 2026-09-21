@@ -2325,6 +2325,36 @@ const HQ_CLIMB_CLIPS = { climb: { clip: 'Swim_Fwd_Loop', lib: 0, ts: 0.85 }, han
 if (typeof window !== 'undefined') window.HQ_CLIMB_CLIPS = HQ_CLIMB_CLIPS;
 const HQ_VEHICLE_CLIPS = { boat: { clip: 'Sitting_Idle_Loop', lib: 0, ts: 1.0 }, sub: { clip: 'Driving_Loop', lib: 0, ts: 1.0 } };
 if (typeof window !== 'undefined') window.HQ_VEHICLE_CLIPS = HQ_VEHICLE_CLIPS;
+/* THE DEBRIEF — THE PARTY'S POSES (2026-09-21): the clips the result screen's 3D stage plays
+   on the VIEWER'S party (battle.js _stageVictoryPodium → ThreeRenderer.podium). Baked LAZILY onto
+   a unit's rig the first time a result screen stages it (three-renderer.js _podiumBakePoses —
+   never a UAL_SLOTS row: that table bakes onto every rig at load), so the board pays nothing
+   for them. Read off the library inventory (rigged_animations/): neither library carries a
+   named "victory" clip — the JRPG lineup is built from the celebration / rest loops it does.
+     VICTORY  vicCheer  UAL2 Yes              2.5 s one-shot — both fists pumped: the MVP's opener
+              vicDance  UAL1 Dance_Loop       1.0 s loop — the victory dance (the FF fanfare shuffle)
+              vicArms   UAL2 Idle_FoldArms    loop — arms folded, unimpressed: the cool one
+              vicStance MAL1 Idle_10          loop — the brawler's loose, feet-apart stance
+              vicJump   MAL1 Regular_Jump     one-shot — a hop for joy (the tween owns no arc here;
+                                              the clip's own hips travel reads as the hop)
+     DEFEAT   defKneel  UAL1 Crouch_Idle_Loop loop, pinXZ — down on one knee, head low
+              defNo     UAL2 Idle_No_Loop     loop — shaking the head
+              defSit    UAL1 Sitting_Idle     loop, pinXZ — slumped on the ground
+     (the fallen play the rig's own `death` slot and stay down — it is already baked.)
+   A pose that reads wrong on a rig = retune here (ts / the clip), never per site. */
+const PODIUM_POSES = {
+  vicCheer:  { clip: 'Yes',                lib: 1, ts: 1.0 },
+  vicDance:  { clip: 'Dance_Loop',         lib: 0, ts: 1.0 },
+  vicArms:   { clip: 'Idle_FoldArms_Loop', lib: 1, ts: 1.0 },
+  vicStance: { clip: 'Idle_10',            lib: 2, ts: 1.0 },
+  vicJump:   { clip: 'Regular_Jump',       lib: 2, ts: 1.6 },
+  defKneel:  { clip: 'Crouch_Idle_Loop',   lib: 0, ts: 0.9, pinXZ: true },
+  defNo:     { clip: 'Idle_No_Loop',       lib: 1, ts: 0.9 },
+  defSit:    { clip: 'Sitting_Idle_Loop',  lib: 0, ts: 0.9, pinXZ: true },
+};
+/* the one-shots among them (LoopOnce + clamp); every other pose loops */
+const PODIUM_POSE_ONESHOT = { vicCheer: true, vicJump: true };
+if (typeof window !== 'undefined') { window.PODIUM_POSES = PODIUM_POSES; window.PODIUM_POSE_ONESHOT = PODIUM_POSE_ONESHOT; }
 // A cast member: the shared library + every building pose + a per-character
 // flavour. `female` picks the female idle/walk (the roster's gendered
 // defaults only sweep RACE_MODELS_3D). `file` overrides the model filename

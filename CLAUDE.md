@@ -7490,3 +7490,36 @@ idle overrides on the police officer + his three skins are gone (the 2026-08-09 
 the shot through castRanged). UNSEEN LIVE (RULE #1c): FINISHER_PLAN §7's delivery-17
 entry lists what to eyeball first — the cruiser's yaw, the door's hinge on the real GLB,
 the bells' size, the column's opacity, the file's spacing, the three camera paths.
+
+## THE DEBRIEF — the result screen rebuilt: the party posed in 3D, one layout, three sheets (2026-09-21, local delivery)
+The user: "a classic JRPG victory / defeat screen with the party flexing on the map; achievements and
+rewards overlap, it's a mess — visual weight, AAA UX". **THE STAGE** (battle.js `_stageVictoryPodium`):
+the VIEWER'S party (never the winner's — a defeat used to show the enemy flexing) teleported into a
+chevron at board centre, the lead one row toward the camera; on a WIN each unit plays a one-shot then
+HOLDS a loop, on a LOSS the survivors kneel / shake their heads / sit and the fallen are re-spawned
+holding their own `death` clip (they lie back down). **THE POSES** = sprites.js `PODIUM_POSES` (`vicCheer`
+UAL2 Yes · `vicDance` UAL1 Dance_Loop · `vicArms` Idle_FoldArms · `vicStance` Idle_10 · `vicJump`
+Regular_Jump · `defKneel` Crouch_Idle · `defNo` Idle_No · `defSit` Sitting_Idle; neither library has a
+named victory clip) baked ON DEMAND by three-renderer.js `_podiumBakePoses` (the same retarget as the
+load-time bake, cached per model — NEVER a `UAL_SLOTS` row: that bakes on every rig at load) through
+**`ThreeRenderer.podium`** `{ bakePoses, hold, release, has, play(uid, slots, maxMs) }`; a HELD pose
+(`entry._ew_hold`) plays under the one-shots in the clip picker; `_maybeStartModelAnim` takes `maxMs`
+(the board's 1400 ms cap stays its default). The camera frames the lineup in the LEFT two thirds (the
+target sits `offX` east of the party; a loss looks down at tilt 52); `_teardownVictoryPodium` releases
+every hold and restores every field. **THE LAYOUT** (index.html `#resultOverlay`, styles-cinematic.css
+"THE DEBRIEF" — the file's first block, replaced whole): `.vic-stage` (left; THE HEAD = `#vicKicker`
+match · mode · site, the title, `#vicSubtitle`, `#vicMatchInfo` as fact pills, `#vicFieldReport` = what
+the crossing filed — `_stampHqSite` RETURNS its line now and the stamp's own tag is hidden; THE PLATES at
+the foot = `#vicMvpTag` + the CASE CLOSED stamp in flow), **`.vic-debrief`** (right, `--vic-panel-w`; the
+HUD's `--ew-*` tokens; three sheets behind tabs — REWARDS `#vicGoldBreakdown` (the pay as a LEDGER, the
+total counts up at 1.5 s) · `#vicEloBadge` · `#vicAwards` (unlocked · records · almost there · career);
+HONOURS `#vicHonours` (`_vicBuildHonours`: the MVP card + `buildVicAwards` rows); PERFORMANCE the team
+damage split · `#vicModeTally` (`_vicBuildModeTally`: Arena's columns, the kill / point / capture line) ·
+the stats table), `.vic-bottom` (the bar; ids unchanged — ui.js / online.js / map.js wire them). A tab
+with an empty sheet is not offered (`_vicLayoutSync`, `_vicSetTab`, ← → / [ ] step them; `_vicPrepare`
+empties every sheet first). The campaign and dungeon result cards write the same ids and call
+`_vicPrepare` / `_vicLayoutSync` — a new result path must too. Under 900 px the panel is the lower half.
+Everything is viewer-local (RULE #2: the match is over; both seats stage their own party). UNSEEN LIVE
+(RULE #1c): all of it — the poses on the cast / Meshy rigs (`PODIUM_POSES` ts is the edit), the cheer
+→ dance hand-off, the corpses' fall on a loss, the framing offset (`offX` in `_stageVictoryPodium`),
+the panel's width against the stage, the pay count-up's timing, the stamp's size at the foot.

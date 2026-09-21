@@ -11831,7 +11831,7 @@ const ThreeRenderer = (function () {
        (time-scaled) duration, capped so long clips can't stall the action
        feel; the state machine then falls back to idle/walk. Returns false for
        sprite units so callers can chain to the sprite-sheet path. */
-    function _maybeStartModelAnim(uid, name) {
+    function _maybeStartModelAnim(uid, name, maxMs) {
         if (_ewAnimsOff()) return true;   // claim it: no clip AND no sprite/tween fallback
         var ue = _getUnitEntry(uid);
         if (!ue || !ue.mixer || !ue.actions) return false;
@@ -11847,7 +11847,9 @@ const ThreeRenderer = (function () {
         var act = ue.actions[name];
         var clip = act.getClip();
         var scale = Math.abs(act.timeScale) || 1;
-        var ms = Math.min((clip.duration / scale) * 1000, 1400);
+        /* maxMs (THE DEBRIEF, 2026-09-21): the result stage plays a 2.5 s cheer whole — the
+           1400 ms cap is the board's (a cast clip never holds a turn hostage) */
+        var ms = Math.min((clip.duration / scale) * 1000, (maxMs > 0) ? maxMs : 1400);
         ue._ew_oneShot = { name: name, until: _animNow() + ms };
         _playUnitModelAnim(ue, name, true);
         return true;
@@ -11985,6 +11987,10 @@ const ThreeRenderer = (function () {
             var want;
             if (_deathTweens.has(uid)) want = 'death';
             else if (entry._ew_oneShot) want = entry._ew_oneShot.name;
+            /* THE DEBRIEF (2026-09-21): a HELD pose — the result stage's victory dance / the
+               defeat's kneel — plays under every one-shot and outranks the locomotion reads
+               (nothing moves on the podium); cleared by ThreeRenderer.podium.release */
+            else if (entry._ew_hold && entry.actions[entry._ew_hold]) want = entry._ew_hold;
             else if (_freeRoam && uid === _freeRoam.uid) want = _freeRoam.want || 'idle';   // hub free-roam owns this unit's clip
             else if (_rtMode && _rtUnits.has(uid)) want = _rtUnits.get(uid).want || 'idle'; // Strike real-time driver owns it
             else if (_jumpTweens.has(uid)) want = 'jump';   // falls back walk→idle
@@ -17729,6 +17735,76 @@ const ThreeRenderer = (function () {
 
     function _getUnitEntry(unitId) {
         return unitEntries.get(unitId) || null;
+    }
+
+    /* ══════════ THE DEBRIEF — THE PODIUM'S POSES (2026-09-21) ══════════
+       The result screen stages the VIEWER'S party on the live board and poses it
+       (battle.js _stageVictoryPodium). The poses (sprites.js PODIUM_POSES) are baked
+       onto a unit's rig ON DEMAND — the same retarget as the load-time bake
+       (_libBakeClips with a def whose libClips is the pose table, the SAME libraries,
+       already resident because the rig's own slots came off them), cached per MODEL
+       (modelEntry._podiumBaked, keyed like the main bake) so the second unit of a race
+       and every later result screen wire the clips without baking again. A rig that
+       is not library-baked (a Meshy-clip fallback, an unrigged model, a sprite) gets
+       nothing and the caller falls back to the slots it has. */
+    function _podiumBakePoses(uid) {
+        var ue = _getUnitEntry(uid);
+        if (!ue || !ue.mixer || !ue.actions || !ue._ew_libBaked || !ue._ew_def) return false;
+        if (ue._ew_podiumPoses) return true;
+        var poses = (typeof window !== 'undefined' && window.PODIUM_POSES) || null;
+        if (!poses) return false;
+        var def = ue._ew_def;
+        var modelEntry = _unitGlbCache[def.model];
+        if (!modelEntry || !modelEntry.root) return false;
+        var urls = _libUrls(def);
+        var entries = urls.map(function (u) { return _unitGlbCache[u]; });
+        if (!entries.length || !entries[0] || !entries[0].root) return false;
+        var key = urls.join('|') + (_libStandardPose(def) ? '|std' : '|keep') + '|poses' + Object.keys(poses).length;
+        var baked = (modelEntry._podiumBakedFrom === key) ? modelEntry._podiumBaked : null;
+        if (!baked) {
+            try {
+                var poseDef = {};
+                for (var k in def) poseDef[k] = def[k];
+                poseDef.libClips = poses;
+                baked = _libBakeClips(entries, modelEntry, poseDef);
+            } catch (ex) {
+                console.warn('[ThreeRenderer] podium pose bake failed:', ex && ex.message);
+                return false;
+            }
+            modelEntry._podiumBaked = baked;
+            modelEntry._podiumBakedFrom = key;
+        }
+        var oneShot = (typeof window !== 'undefined' && window.PODIUM_POSE_ONESHOT) || {};
+        Object.keys(baked).forEach(function (name) {
+            if (ue.actions[name]) return;
+            var clip = baked[name];
+            for (var a in ue.actions) {
+                if (ue.actions[a] && ue.actions[a].getClip() === clip) { clip = clip.clone(); break; }
+            }
+            var act = ue.mixer.clipAction(clip);
+            if (oneShot[name]) { act.setLoop(THREE.LoopOnce, 0); act.clampWhenFinished = true; }
+            else act.setLoop(THREE.LoopRepeat, Infinity);
+            act._ew_ts0 = act.timeScale || 1;
+            ue.actions[name] = act;
+        });
+        ue._ew_podiumPoses = true;
+        return true;
+    }
+    /* hold a looping pose (the picker reads entry._ew_hold under the one-shots); a slot
+       the rig lacks falls down the list; null releases it */
+    function _podiumHold(uid, slots) {
+        var ue = _getUnitEntry(uid);
+        if (!ue || !ue.actions) return false;
+        if (!slots) { ue._ew_hold = null; return true; }
+        var list = Array.isArray(slots) ? slots : [slots];
+        for (var i = 0; i < list.length; i++) {
+            if (ue.actions[list[i]]) { ue._ew_hold = list[i]; return true; }
+        }
+        return false;
+    }
+    function _podiumHas(uid, slot) {
+        var ue = _getUnitEntry(uid);
+        return !!(ue && ue.actions && ue.actions[slot]);
     }
 
     /* SIMUL plan phase: the planning unit is logically ghost-projected to its
@@ -52603,6 +52679,17 @@ const ThreeRenderer = (function () {
             release: _rtRelease,
             active: function () { return _rtMode; },
             playAnim: function (uid, slots) { return _maybeStartModelAnim(uid, slots); },
+        },
+
+        /* THE DEBRIEF (2026-09-21): the result screen's stage — bake the pose table onto a
+           rig on demand, HOLD a loop (the dance, the kneel), fire a one-shot at its full
+           length (maxMs). battle.js _stageVictoryPodium is the only caller. */
+        podium: {
+            bakePoses: _podiumBakePoses,
+            hold: _podiumHold,
+            release: function (uid) { return _podiumHold(uid, null); },
+            has: _podiumHas,
+            play: function (uid, slots, maxMs) { return _maybeStartModelAnim(uid, slots, maxMs || 6000); },
         },
 
         /* Third-person shooter controls (battle.js ShooterControls layer) */

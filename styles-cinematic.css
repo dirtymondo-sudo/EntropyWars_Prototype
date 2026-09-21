@@ -1,1050 +1,544 @@
 /* ═══ Entropy Wars — Cinematics: VS splash, attack cutscene, KO, victory, banners ═══ */
         /* ════════════════════════════════════════════════════
-       JRPG VICTORY / DEFEAT SCREEN (v202)
-       Full-screen 3D perspective landscape with party
-       ════════════════════════════════════════════════════ */
+           THE DEBRIEF — the result screen (2026-09-21)
+           One layout, four homes: THE STAGE (the 3D board under a transparent
+           overlay, the viewer's party posed — or the painted 2D lineup when the
+           renderer is off) on the left two thirds; THE HEAD over it (kicker ·
+           title · facts · field report); THE PLATES at its foot (the MVP
+           nameplate, the CASE CLOSED stamp); THE DEBRIEF panel on the right
+           (REWARDS · HONOURS · PERFORMANCE behind tabs, one card per block);
+           the command bar along the bottom. Materials are the HUD's tokens
+           (hud.js :root / the HQ pass) so the themes restyle it with the
+           battle. Every block reveals in ONE choreography: the title at 0.1 s,
+           the facts at 0.9 s, the stamp at 1.05 s, the panel at 1.3 s, its
+           rows 1.6 → 2.6 s, the bar at 2.0 s.
+           ════════════════════════════════════════════════════ */
         .result-overlay {
+            --vic-panel-w: clamp(320px, 31vw, 460px);
+            --vic-bar-h: 66px;
+            --vic-ink: var(--ew-ink, #eef1ff);
+            --vic-mute: var(--ew-mute, #a9b0c8);
+            --vic-dim: var(--ew-dim, #7a8199);
+            --vic-gold: var(--ew-sel, #ffd75e);
+            --vic-edge: var(--ew-plate-edge, rgba(214, 222, 255, 0.55));
+            --vic-plate: var(--ew-plate-bg, linear-gradient(180deg, #16188e, #050632 70%, #010214));
+            --vic-row: var(--ew-row-bg, rgba(10, 14, 60, 0.55));
+            --vic-p1: var(--p1-score, #6fb2ff);
+            --vic-p2: var(--p2-score, #ff7a7a);
+            --vic-win: #ffd75e;
+            --vic-lose: #ff5a6e;
+            --vic-accent: var(--vic-win);
             position: absolute;
             inset: 0;
             z-index: 1000;
             overflow: hidden;
             background: #080610;
+            font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+            color: var(--vic-ink);
         }
+        .result-overlay.defeat { --vic-accent: var(--vic-lose); }
+        .result-overlay.void   { --vic-accent: #9aa0b8; }
+        .result-overlay.hidden { display: none; }
 
-        .result-overlay.hidden {
-            display: none;
-        }
-
-        /* ── Sky ── */
+        /* ── THE 2D FALLBACK: sky, rays, motes, ground, the sprite lineup ── */
         .vic-sky {
-            position: absolute;
-            inset: 0;
+            position: absolute; inset: 0;
             background: linear-gradient(180deg, var(--vic-sky-top, #0a0818) 0%, var(--vic-sky-mid, #1a1830) 40%, var(--vic-sky-bot, #2a2040) 70%, var(--vic-horizon, #483860) 100%);
         }
-
-        .vic-sky.victory {
-            --vic-sky-top: #081020;
-            --vic-sky-mid: #182848;
-            --vic-sky-bot: #2a3858;
-            --vic-horizon: #c88830;
-        }
-
-        .vic-sky.defeat {
-            --vic-sky-top: #0a0408;
-            --vic-sky-mid: #1a0810;
-            --vic-sky-bot: #2a1018;
-            --vic-horizon: #401818;
-        }
-
-        /* Animated light rays */
+        .vic-sky.victory { --vic-sky-top: #081020; --vic-sky-mid: #182848; --vic-sky-bot: #2a3858; --vic-horizon: #c88830; }
+        .vic-sky.defeat  { --vic-sky-top: #0a0408; --vic-sky-mid: #1a0810; --vic-sky-bot: #2a1018; --vic-horizon: #401818; }
         .vic-rays {
-            position: absolute;
-            inset: 0;
-            background: radial-gradient(ellipse 120% 60% at 50% 80%, rgba(200, 160, 60, 0.12) 0%, transparent 70%);
+            position: absolute; inset: 0;
+            background: radial-gradient(ellipse 120% 60% at 36% 80%, rgba(200, 160, 60, 0.14) 0%, transparent 70%);
             opacity: 0;
             animation: vicRaysFade 2s ease-out 0.5s forwards;
         }
-
-        .defeat .vic-rays {
-            background: radial-gradient(ellipse 120% 60% at 50% 80%, rgba(160, 30, 30, 0.08) 0%, transparent 70%);
-        }
-
-        @keyframes vicRaysFade {
-            to {
-                opacity: 1;
-            }
-        }
-
-        /* Stars / particles */
-        .vic-particles {
-            position: absolute;
-            inset: 0;
-            pointer-events: none;
-        }
-
+        .defeat .vic-rays { background: radial-gradient(ellipse 120% 60% at 36% 80%, rgba(160, 30, 30, 0.08) 0%, transparent 70%); }
+        @keyframes vicRaysFade { to { opacity: 1; } }
+        .vic-particles { position: absolute; inset: 0; pointer-events: none; }
         .vic-particle {
-            position: absolute;
-            width: 2px;
-            height: 2px;
-            background: rgba(255, 220, 120, 0.6);
-            border-radius: 50%;
-            animation: vicParticleFloat 4s ease-in-out infinite alternate;
+            position: absolute; border-radius: 50%;
+            background: rgba(255, 230, 150, 0.85);
+            box-shadow: 0 0 6px rgba(255, 210, 100, 0.8);
+            animation: vicParticleDrift 6s ease-in-out infinite;
         }
-
-        @keyframes vicParticleFloat {
-            from {
-                transform: translateY(0) scale(1);
-                opacity: 0.3;
-            }
-
-            to {
-                transform: translateY(-30px) scale(1.5);
-                opacity: 0.8;
-            }
+        @keyframes vicParticleDrift {
+            0%, 100% { transform: translateY(0) scale(1); opacity: 0.2; }
+            50%      { transform: translateY(-28px) scale(1.4); opacity: 0.95; }
         }
-
-        /* ── Ground plane (CSS 3D perspective) ── */
         .vic-ground-wrap {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 55%;
-            perspective: 400px;
+            position: absolute; left: 0; right: 0; bottom: 0; height: 46%;
+            perspective: 520px; perspective-origin: 36% 0;
             overflow: hidden;
         }
-
         .vic-ground {
-            position: absolute;
-            bottom: 0;
-            left: -50%;
-            right: -50%;
-            height: 200%;
-            transform-origin: bottom center;
-            transform: rotateX(65deg);
-            background: var(--vic-ground-bg);
-            background-size: 32px 32px;
+            position: absolute; inset: -40% -60% 0;
+            transform: rotateX(62deg);
+            transform-origin: 50% 100%;
+            background-image:
+                linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+            background-size: 64px 64px;
         }
-
-        .vic-ground.victory {
-            --vic-ground-bg: repeating-conic-gradient(rgba(40, 60, 30, 0.8) 0% 25%, rgba(30, 50, 22, 0.8) 0% 50%);
-        }
-
-        .vic-ground.defeat {
-            --vic-ground-bg: repeating-conic-gradient(rgba(40, 20, 20, 0.8) 0% 25%, rgba(30, 15, 15, 0.8) 0% 50%);
-        }
-
-        /* Horizon fog */
+        .vic-ground.victory { background-color: #26364a; }
+        .vic-ground.defeat  { background-color: #2a1418; }
         .vic-ground::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 40%;
+            content: ''; position: absolute; inset: 0;
             background: linear-gradient(180deg, var(--vic-horizon, #483860) 0%, transparent 100%);
         }
-
-        /* ── Party sprites on landscape ──
-           Children are absolutely positioned (see battle.js), so .vic-party
-           needs an explicit height for their `bottom` %% to resolve and give
-           the back ranks their depth lift. */
         .vic-party {
-            position: absolute;
-            bottom: 11%;
-            left: 0;
-            right: 0;
-            height: 42%;
+            position: absolute; bottom: calc(var(--vic-bar-h) + 6%); left: 0;
+            right: var(--vic-panel-w); height: 42%;
             pointer-events: none;
         }
-
-        .vic-unit {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            opacity: 0;
-            animation: vicUnitLand 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-        }
-
-        .vic-unit:nth-child(1) {
-            animation-delay: 0.3s;
-        }
-
-        .vic-unit:nth-child(2) {
-            animation-delay: 0.5s;
-        }
-
-        .vic-unit:nth-child(3) {
-            animation-delay: 0.7s;
-        }
-
-        .vic-unit:nth-child(4) {
-            animation-delay: 0.9s;
-        }
-
-        .vic-unit:nth-child(5) {
-            animation-delay: 1.1s;
-        }
-
-        .vic-unit:nth-child(6) {
-            animation-delay: 1.3s;
-        }
-
+        .vic-unit { display: flex; flex-direction: column; align-items: center; opacity: 0; animation: vicUnitLand 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+        .vic-unit:nth-child(1) { animation-delay: 0.3s; }
+        .vic-unit:nth-child(2) { animation-delay: 0.5s; }
+        .vic-unit:nth-child(3) { animation-delay: 0.7s; }
+        .vic-unit:nth-child(4) { animation-delay: 0.9s; }
+        .vic-unit:nth-child(5) { animation-delay: 1.1s; }
+        .vic-unit:nth-child(6) { animation-delay: 1.3s; }
+        .vic-unit:nth-child(7) { animation-delay: 1.5s; }
+        .vic-unit:nth-child(8) { animation-delay: 1.7s; }
         @keyframes vicUnitLand {
-            0% {
-                opacity: 0;
-                transform: translateY(-40px) scale(0.8);
-            }
-
-            100% {
-                opacity: 1;
-                transform: translateY(0) scale(1);
-            }
+            0%   { opacity: 0; transform: translateY(-40px) scale(0.8); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
         }
+        .vic-unit-img { image-rendering: pixelated; filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5)); }
+        .vic-unit.dead .vic-unit-img { filter: grayscale(0.8) brightness(0.5) drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5)); }
+        .vic-unit-shadow { width: 80%; height: 6px; background: radial-gradient(ellipse, rgba(0, 0, 0, 0.4) 0%, transparent 70%); border-radius: 50%; margin-top: -2px; }
+        .vic-unit-name { font-size: 10px; font-weight: 700; color: rgba(255, 255, 255, 0.7); margin-top: 4px; text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6); white-space: nowrap; letter-spacing: 0.03em; }
+        .vic-unit-name.p1 { color: rgba(120, 180, 255, 0.85); }
+        .vic-unit-name.p2 { color: rgba(255, 120, 120, 0.85); }
 
-        .vic-unit-img {
-            image-rendering: pixelated;
-            filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5));
+        /* ── THE STAGE FRAME: the head over it, the plates at its foot ── */
+        .vic-stage {
+            position: absolute; top: 0; left: 0; bottom: var(--vic-bar-h);
+            right: var(--vic-panel-w);
+            z-index: 10; pointer-events: none;
         }
-
-        .vic-unit.dead .vic-unit-img {
-            filter: grayscale(0.8) brightness(0.5) drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5));
-        }
-
-        /* Ground shadow under each sprite */
-        .vic-unit-shadow {
-            width: 80%;
-            height: 6px;
-            background: radial-gradient(ellipse, rgba(0, 0, 0, 0.4) 0%, transparent 70%);
-            border-radius: 50%;
-            margin-top: -2px;
-        }
-
-        .vic-unit-name {
-            font-size: 10px;
-            font-weight: 700;
-            color: rgba(255, 255, 255, 0.7);
-            margin-top: 4px;
-            text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
-            white-space: nowrap;
-            letter-spacing: 0.03em;
-        }
-
-        .vic-unit-name.p1 {
-            color: rgba(120, 180, 255, 0.85);
-        }
-
-        .vic-unit-name.p2 {
-            color: rgba(255, 120, 120, 0.85);
-        }
-
-        /* ── Title ── */
         .vic-title-wrap {
-            position: absolute;
-            top: 6%;
-            left: 0;
-            right: 0;
-            text-align: center;
-            z-index: 10;
+            position: absolute; top: clamp(18px, 4.5vh, 44px); left: 0; right: 0;
+            text-align: center; padding: 0 24px;
         }
-
+        .vic-kicker {
+            font-family: 'IBM Plex Mono', 'DotGothic16', monospace;
+            font-size: 11px; letter-spacing: 0.34em; text-transform: uppercase;
+            color: var(--vic-mute);
+            opacity: 0; animation: vicFadeUp 0.5s ease 0.55s forwards;
+        }
+        .vic-kicker:empty { display: none; }
         /* Title — PS1-era psychedelia: iridescent gradient fill that slowly
            cycles, flanked by magenta/cyan chromatic-aberration ghost layers
            (::before/::after read the same text from data-text). */
         .vic-title {
             position: relative;
-            font-family: 'Cormorant SC', 'DotGothic16', serif;
-            font-size: clamp(52px, 11vw, 104px);
-            font-weight: 900;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            line-height: 1;
+            font-family: 'Cinzel', 'Cormorant SC', serif;
+            font-size: clamp(56px, 9.6vw, 118px);
+            font-weight: 900; text-transform: uppercase;
+            letter-spacing: 0.08em; line-height: 1;
+            margin-top: 4px;
             opacity: 0;
             animation: vicTitleSlam 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.1s forwards;
         }
-
-        .vic-title::before,
-        .vic-title::after {
-            content: attr(data-text);
-            position: absolute;
-            inset: 0;
-            z-index: -1;
-            background: none;
-            pointer-events: none;
+        .vic-title::before, .vic-title::after {
+            content: attr(data-text); position: absolute; inset: 0; z-index: -1;
+            background: none; pointer-events: none;
         }
-
-        .vic-title::before {
-            -webkit-text-fill-color: rgba(255, 60, 220, 0.38);
-            color: rgba(255, 60, 220, 0.38);
-            animation: vicChromaA 3.4s ease-in-out infinite;
-        }
-
-        .vic-title::after {
-            -webkit-text-fill-color: rgba(80, 220, 255, 0.38);
-            color: rgba(80, 220, 255, 0.38);
-            animation: vicChromaB 2.7s ease-in-out infinite;
-        }
-
-        @keyframes vicChromaA {
-            0%, 100% { transform: translate(2px, 0); }
-            50%      { transform: translate(4px, -1px); }
-        }
-
-        @keyframes vicChromaB {
-            0%, 100% { transform: translate(-2px, 0); }
-            50%      { transform: translate(-4px, 1px); }
-        }
-
+        .vic-title::before { -webkit-text-fill-color: rgba(255, 60, 220, 0.34); color: rgba(255, 60, 220, 0.34); animation: vicChromaA 3.4s ease-in-out infinite; }
+        .vic-title::after  { -webkit-text-fill-color: rgba(80, 220, 255, 0.34); color: rgba(80, 220, 255, 0.34); animation: vicChromaB 2.7s ease-in-out infinite; }
+        @keyframes vicChromaA { 0%, 100% { transform: translate(2px, 0); } 50% { transform: translate(4px, -1px); } }
+        @keyframes vicChromaB { 0%, 100% { transform: translate(-2px, 0); } 50% { transform: translate(-4px, 1px); } }
         .vic-title.victory {
-            background: linear-gradient(100deg,
-                #ffd75e 0%, #ffb03a 18%, #ff8ad8 38%,
-                #b98aff 55%, #7fd9ff 72%, #ffd75e 100%);
+            background: linear-gradient(100deg, #ffd75e 0%, #ffb03a 18%, #ff8ad8 38%, #b98aff 55%, #7fd9ff 72%, #ffd75e 100%);
             background-size: 260% 100%;
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-            color: #f0d860;
-            animation:
-                vicTitleSlam 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.1s forwards,
-                vicHueDrift 8s linear 0.8s infinite;
-            filter: drop-shadow(0 0 26px rgba(240, 190, 70, 0.45))
-                    drop-shadow(0 4px 0 rgba(110, 70, 10, 0.9));
+            -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: #f0d860;
+            animation: vicTitleSlam 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.1s forwards, vicHueDrift 8s linear 0.8s infinite;
+            filter: drop-shadow(0 0 26px rgba(240, 190, 70, 0.45)) drop-shadow(0 4px 0 rgba(110, 70, 10, 0.9));
         }
-
         .vic-title.defeat {
-            background: linear-gradient(100deg,
-                #ff4a4a 0%, #b3244f 30%, #7a2a8f 55%,
-                #b3244f 78%, #ff4a4a 100%);
+            background: linear-gradient(100deg, #ff4a4a 0%, #b3244f 30%, #7a2a8f 55%, #b3244f 78%, #ff4a4a 100%);
             background-size: 260% 100%;
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-            color: #cc3030;
-            animation:
-                vicTitleSlam 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.1s forwards,
-                vicHueDrift 11s linear 0.8s infinite;
-            filter: drop-shadow(0 0 24px rgba(200, 40, 80, 0.4))
-                    drop-shadow(0 4px 0 rgba(60, 8, 20, 0.9));
+            -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: #cc3030;
+            animation: vicTitleSlam 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.1s forwards, vicHueDrift 11s linear 0.8s infinite;
+            filter: drop-shadow(0 0 24px rgba(200, 40, 80, 0.4)) drop-shadow(0 4px 0 rgba(60, 8, 20, 0.9));
         }
-
-        @keyframes vicHueDrift {
-            from { background-position: 0% 50%; }
-            to   { background-position: 260% 50%; }
-        }
-
+        @keyframes vicHueDrift { from { background-position: 0% 50%; } to { background-position: 260% 50%; } }
         @keyframes vicTitleSlam {
-            0% {
-                opacity: 0;
-                transform: scale(2.5) translateY(-20px);
-            }
-
-            60% {
-                opacity: 1;
-                transform: scale(0.95) translateY(2px);
-            }
-
-            100% {
-                opacity: 1;
-                transform: scale(1) translateY(0);
-            }
+            0%   { opacity: 0; transform: scale(2.5) translateY(-20px); }
+            60%  { opacity: 1; transform: scale(0.95) translateY(2px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
         }
-
-        /* Esoteric planetary-glyph strip under the title — echoes the zodiac
-           system; shimmer only, no layout weight. */
         .vic-glyphs {
-            margin-top: 6px;
-            font-size: 14px;
-            letter-spacing: 0.5em;
-            color: rgba(255, 214, 120, 0.55);
-            text-shadow: 0 0 10px rgba(255, 190, 80, 0.45);
-            opacity: 0;
-            animation: vicGlyphShimmer 5s ease-in-out 1.1s infinite;
+            margin-top: 4px; font-size: 13px; letter-spacing: 0.5em;
+            color: rgba(255, 214, 120, 0.55); text-shadow: 0 0 10px rgba(255, 190, 80, 0.45);
+            opacity: 0; animation: vicGlyphShimmer 5s ease-in-out 1.1s infinite;
         }
-
-        .vic-title.defeat + .vic-glyphs {
-            color: rgba(255, 120, 160, 0.5);
-            text-shadow: 0 0 10px rgba(255, 60, 120, 0.4);
-        }
-
-        @keyframes vicGlyphShimmer {
-            0%, 100% { opacity: 0.4; }
-            50%      { opacity: 0.85; }
-        }
-
+        .vic-title.defeat + .vic-glyphs { color: rgba(255, 120, 160, 0.5); text-shadow: 0 0 10px rgba(255, 60, 120, 0.4); }
+        @keyframes vicGlyphShimmer { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.85; } }
         .vic-subtitle {
-            font-size: 16px;
-            color: rgba(255, 255, 255, 0.5);
-            margin-top: 8px;
-            opacity: 0;
-            animation: vicFadeUp 0.5s ease 0.8s forwards;
+            font-size: 15px; color: rgba(255, 255, 255, 0.62); margin-top: 10px;
+            letter-spacing: 0.02em;
+            opacity: 0; animation: vicFadeUp 0.5s ease 0.8s forwards;
         }
-
-        @keyframes vicFadeUp {
-            from {
-                opacity: 0;
-                transform: translateY(8px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+        .vic-subtitle:empty { display: none; }
+        .vic-callsign { color: var(--vic-ink); font-weight: 800; letter-spacing: 0.04em; }
+        .vic-streak {
+            display: inline-block; margin-left: 8px; padding: 2px 10px;
+            border-radius: 999px; font-size: 11px; font-weight: 800; letter-spacing: 0.14em;
+            color: #ffe9a8; background: rgba(255, 140, 40, 0.18); border: 1px solid rgba(255, 170, 60, 0.45);
+            vertical-align: 2px;
         }
+        @keyframes vicFadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        /* the fact line: pills of tabular figures, one dot between each */
+        .vic-match-info {
+            display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 4px 8px;
+            margin-top: 12px;
+            font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.12em;
+            color: var(--vic-mute); font-variant-numeric: tabular-nums;
+            opacity: 0; animation: vicFadeUp 0.5s ease 0.95s forwards;
+        }
+        .vic-match-info:empty { display: none; }
+        .vic-fact .p1 { color: var(--vic-p1); font-weight: 700; }
+        .vic-fact .p2 { color: var(--vic-p2); font-weight: 700; }
+        .vic-fact-dot { color: var(--vic-dim); }
+        /* the campaign / dungeon cards write their gold section into the fact line */
+        .vic-match-info .camp-gold-section { text-align: left; font-family: inherit; letter-spacing: 0; }
+        /* the field report: what this crossing filed (a condition, a stabilized
+           threshold, a cleared Code Red, an encounter held) */
+        .vic-field-report {
+            display: none; margin: 14px auto 0; width: max-content; max-width: 92%;
+            padding: 7px 18px; border-radius: 999px;
+            font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase;
+            color: #d9ffe6; background: rgba(20, 90, 60, 0.42); border: 1px solid rgba(90, 220, 150, 0.5);
+            box-shadow: 0 0 22px rgba(60, 200, 120, 0.18);
+            opacity: 0; animation: vicFadeUp 0.5s ease 1.7s forwards;
+        }
+        .vic-field-report.on { display: block; }
+        .result-overlay.defeat .vic-field-report { color: #ffe0e4; background: rgba(110, 30, 40, 0.42); border-color: rgba(255, 110, 130, 0.5); box-shadow: 0 0 22px rgba(255, 90, 110, 0.18); }
 
-        /* ── Gold earned (centered in the open middle of the screen) ── */
-        .vic-gold-breakdown {
-            position: absolute;
-            top: 43%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 12;
-            text-align: center;
-            width: max-content;
-            max-width: min(480px, 44vw);
+        /* THE PLATES at the stage's foot: the MVP nameplate left, the stamp right */
+        .vic-stage-foot {
+            position: absolute; left: clamp(16px, 3vw, 48px); right: clamp(16px, 3vw, 48px); bottom: 18px;
+            display: flex; align-items: flex-end; justify-content: space-between; gap: 16px;
+        }
+        .vic-mvp-tag {
+            position: relative; display: flex; align-items: center; gap: 12px;
+            padding: 8px 20px 8px 10px;
+            background: var(--vic-plate);
+            border: 1px solid var(--vic-edge); border-radius: 8px 16px 16px 8px;
+            box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.55), 0 10px 30px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+            opacity: 0; animation: vicFadeUp 0.6s ease 1.9s forwards;
             pointer-events: none;
         }
-
-        /* ── Awards Panel (top-right column) ── */
-        .vic-awards {
-            position: absolute;
-            right: 14px;
-            top: 14px;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            width: 232px;
-            max-height: calc(100% - 92px);
-            overflow-y: auto;
-            z-index: 10;
-            scrollbar-width: thin;
-            scrollbar-color: rgba(160,140,200,0.3) transparent;
+        .vic-mvp-tag::before {
+            content: ''; position: absolute; left: 0; top: 8px; bottom: 8px; width: 3px;
+            border-radius: 3px; background: var(--vic-gold); box-shadow: 0 0 10px var(--vic-gold);
         }
-
-
-        .vic-award {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 12px;
-            background: linear-gradient(168deg, rgba(12,11,20,0.92), rgba(8,8,16,0.94));
-            border: 1px solid rgba(140, 140, 200, 0.08);
-            border-radius: 3px;
-            opacity: 0;
-            animation: vicAwardSlide 0.5s ease forwards;
+        .vic-mvp-tag.enemy::before { background: var(--vic-p2); box-shadow: 0 0 10px var(--vic-p2); }
+        .vic-mvp-port {
+            width: 46px; height: 46px; border-radius: 50%;
+            background-size: cover; background-position: center top; background-repeat: no-repeat; image-rendering: pixelated;
+            border: 2px solid var(--vic-gold); background-color: rgba(0, 0, 0, 0.5);
+            box-shadow: 0 0 12px rgba(255, 215, 94, 0.35);
         }
+        .vic-mvp-tag.enemy .vic-mvp-port { border-color: var(--vic-p2); box-shadow: 0 0 12px rgba(255, 110, 110, 0.3); }
+        .vic-mvp-col { display: flex; flex-direction: column; line-height: 1.25; }
+        .vic-mvp-label { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.3em; color: var(--vic-gold); }
+        .vic-mvp-tag.enemy .vic-mvp-label { color: var(--vic-p2); }
+        .vic-mvp-name { font-family: 'Cinzel', 'Cormorant SC', serif; font-size: 19px; font-weight: 700; letter-spacing: 0.06em; color: var(--vic-ink); text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8); }
+        .vic-mvp-stat { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.08em; color: var(--vic-mute); font-variant-numeric: tabular-nums; }
 
-        .vic-award:nth-child(1) {
-            animation-delay: 1.4s;
+        /* ── THE DEBRIEF PANEL (the right column) ── */
+        .vic-debrief {
+            position: absolute; top: 0; right: 0; bottom: var(--vic-bar-h);
+            width: var(--vic-panel-w);
+            display: flex; flex-direction: column;
+            background: linear-gradient(180deg, rgba(5, 6, 22, 0.90), rgba(3, 4, 16, 0.96));
+            border-left: 1px solid rgba(214, 222, 255, 0.14);
+            box-shadow: -18px 0 48px rgba(0, 0, 0, 0.55);
+            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+            z-index: 20;
+            transform: translateX(24px); opacity: 0;
+            animation: vicPanelIn 0.6s cubic-bezier(0.22, 1, 0.36, 1) 1.3s forwards;
         }
+        .vic-debrief.empty { display: none; }
+        @keyframes vicPanelIn { to { transform: none; opacity: 1; } }
+        .vic-debrief-head {
+            flex: 0 0 auto; padding: 18px 18px 0;
+        }
+        .vic-debrief-title {
+            display: block; font-family: 'Cinzel', serif; font-size: 11px; font-weight: 800;
+            letter-spacing: 0.42em; color: var(--vic-accent);
+            text-shadow: 0 0 14px color-mix(in srgb, var(--vic-accent) 55%, transparent);
+            padding-bottom: 10px;
+        }
+        .vic-tabs { display: flex; gap: 4px; border-bottom: 1px solid rgba(214, 222, 255, 0.14); }
+        .vic-debrief.one .vic-tabs { display: none; }
+        .vic-tab {
+            flex: 1 1 0; appearance: none; border: 0; background: transparent; cursor: pointer;
+            padding: 9px 4px 10px; margin-bottom: -1px;
+            font-family: 'IBM Plex Mono', monospace; font-size: 10px; font-weight: 700; letter-spacing: 0.18em;
+            color: var(--vic-dim); border-bottom: 2px solid transparent;
+            transition: color 0.15s, border-color 0.15s;
+            display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap;
+        }
+        .vic-tab:hover { color: var(--vic-ink); }
+        .vic-tab.on { color: var(--vic-gold); border-bottom-color: var(--vic-gold); text-shadow: 0 0 12px rgba(255, 215, 94, 0.5); }
+        .vic-tab-glyph { font-size: 12px; opacity: 0.9; }
+        .vic-sheets { flex: 1 1 auto; min-height: 0; position: relative; }
+        .vic-sheet {
+            position: absolute; inset: 0; display: none;
+            overflow-y: auto; padding: 14px 18px 18px;
+            scrollbar-width: thin; scrollbar-color: rgba(160, 170, 220, 0.3) transparent;
+            flex-direction: column; gap: 10px;
+        }
+        .vic-sheet.on { display: flex; }
+        .vic-sheet-in > * { animation: vicRowIn 0.42s cubic-bezier(0.22, 1, 0.36, 1) both; }
+        .vic-sheet-in > *:nth-child(1) { animation-delay: 0.05s; }
+        .vic-sheet-in > *:nth-child(2) { animation-delay: 0.13s; }
+        .vic-sheet-in > *:nth-child(3) { animation-delay: 0.21s; }
+        .vic-sheet-in > *:nth-child(4) { animation-delay: 0.29s; }
+        .vic-sheet-in > *:nth-child(5) { animation-delay: 0.37s; }
+        @keyframes vicRowIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+        .vic-debrief-hint {
+            flex: 0 0 auto; padding: 6px 18px 10px; text-align: right;
+            font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: 0.24em; color: var(--vic-dim);
+        }
+        .vic-debrief.one .vic-debrief-hint { visibility: hidden; }
+        /* the sheets' containers are plain flow — a card per block */
+        .vic-gold-breakdown, .vic-elo-wrap, .vic-awards, .vic-honours, .vic-mode-tally, .vic-stats-table-wrap { display: flex; flex-direction: column; gap: 10px; }
+        .vic-gold-breakdown:empty, .vic-elo-wrap:empty, .vic-awards:empty, .vic-honours:empty, .vic-mode-tally:empty, .vic-stats-table-wrap:empty { display: none; }
 
-        .vic-award:nth-child(2) {
-            animation-delay: 1.7s;
+        /* THE CARD — the one plate every block of the panel wears */
+        .vic-card {
+            position: relative; padding: 12px 14px;
+            background: var(--vic-row);
+            border: 1px solid rgba(214, 222, 255, 0.12); border-radius: 10px;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 6px 18px rgba(0, 0, 0, 0.3);
         }
-
-        .vic-award:nth-child(3) {
-            animation-delay: 2.0s;
-        }
-
-        .vic-award:nth-child(4) {
-            animation-delay: 2.3s;
-        }
-
-        .vic-award:nth-child(5) {
-            animation-delay: 2.6s;
-        }
-
-        .vic-award:nth-child(6) {
-            animation-delay: 2.9s;
-        }
-
-        .vic-award:nth-child(7) {
-            animation-delay: 3.2s;
-        }
-
-        @keyframes vicAwardSlide {
-            from {
-                opacity: 0;
-                transform: translateX(30px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
-        }
-
-        .vic-award.gold {
-            border-color: rgba(200, 170, 60, 0.3);
-            background: rgba(40, 30, 10, 0.75);
-        }
-
-        .vic-award-icon {
-            font-size: 22px;
-            flex-shrink: 0;
-        }
-
-        .vic-award-sprite {
-            width: 32px;
-            height: 32px;
-            image-rendering: pixelated;
-            flex-shrink: 0;
-            border-radius: 4px;
-        }
-
-        .vic-award-detail {
-            flex: 1;
-            min-width: 0;
-        }
-
-        .vic-award-label {
-            font-size: 9px;
-            text-transform: uppercase;
-            letter-spacing: 0.12em;
-            color: var(--muted);
-            font-weight: 700;
-        }
-
-        .vic-award-name {
-            font-size: 13px;
-            font-weight: 800;
-            color: var(--text);
-        }
-
-        .vic-award.gold .vic-award-name {
-            color: var(--gold);
-        }
-
-        .vic-award-stat {
-            font-size: 10px;
-            color: var(--accent);
-        }
-
-        /* ── Victory Screen: Achievements ── */
-        .vic-achievements {
-            margin-top: 12px;
-            padding: 10px 12px;
-            background: rgba(140,140,200,0.02);
-            border: 1px solid rgba(140,140,200,0.05);
-            border-radius: 10px;
-        }
-        .vic-all-achievements {
-            margin-top: 8px;
-            background: rgba(160,150,190,0.02);
-            border-color: rgba(140,140,200,0.035);
-        }
-        .vic-ach-title {
-            font-size: 11px;
-            font-weight: 700;
-            color: var(--gold);
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
+        .vic-card-cap {
+            font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; font-weight: 700;
+            letter-spacing: 0.26em; text-transform: uppercase; color: var(--vic-mute);
             margin-bottom: 8px;
         }
-        .vic-ach-grid {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
+        .vic-sd { font-style: normal; color: #ff6a6a; }
+        /* HAZARD PAY — the hero of the rewards sheet */
+        .vic-pay-card {
+            background: linear-gradient(168deg, rgba(56, 40, 10, 0.72), rgba(24, 18, 8, 0.82));
+            border-color: rgba(212, 178, 90, 0.5);
+            box-shadow: inset 0 1px 0 rgba(255, 235, 170, 0.18), 0 8px 26px rgba(0, 0, 0, 0.45), 0 0 30px rgba(255, 190, 80, 0.10);
         }
+        .vic-pay-card .vic-card-cap { color: #ffd86a; }
+        .vic-pay-total {
+            font-family: 'Cinzel', serif; font-size: 44px; font-weight: 900; line-height: 1;
+            color: #ffd86a; text-shadow: 0 0 18px rgba(255, 200, 80, 0.55), 0 3px 0 rgba(90, 60, 10, 0.9);
+            font-variant-numeric: tabular-nums; margin: 2px 0 10px;
+            transition: transform 0.25s cubic-bezier(0.2, 1.4, 0.3, 1);
+        }
+        .vic-gold-breakdown.counted .vic-pay-total { transform: scale(1.04); }
+        .vic-pay-ledger { display: flex; flex-direction: column; gap: 3px; }
+        .vic-pay-row {
+            display: flex; justify-content: space-between; align-items: baseline; gap: 10px;
+            font-size: 12px; color: #d8cfa8; padding: 3px 0; border-bottom: 1px dashed rgba(212, 178, 90, 0.22);
+        }
+        .vic-pay-row:last-child { border-bottom: 0; }
+        .vic-pay-row b { font-family: 'IBM Plex Mono', monospace; color: #ffe9a8; font-variant-numeric: tabular-nums; }
+        .vic-pay-row.mult b { color: #9fe0a0; }
+        .vic-pay-row.cap { color: #b8a878; }
+        .vic-pay-wallet { margin-top: 10px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.08em; color: #b8a060; }
+        .vic-pay-wallet.set { color: #ffd86a; }
+        .vic-pay-wallet.offline { color: #cdbf90; }
+        /* RANK */
+        .vic-elo-badge { display: flex; align-items: center; gap: 12px; }
+        .vic-elo-rank-icon { font-size: 30px; line-height: 1; filter: drop-shadow(0 0 8px rgba(255, 215, 94, 0.4)); }
+        .vic-elo-info { display: flex; flex-direction: column; line-height: 1.15; flex: 1; }
+        .vic-elo-label { font-family: 'Cinzel', serif; font-size: 13px; font-weight: 700; letter-spacing: 0.1em; color: var(--vic-ink); }
+        .vic-elo-value { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--vic-mute); font-variant-numeric: tabular-nums; }
+        .vic-elo-delta { font-family: 'IBM Plex Mono', monospace; font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; padding: 4px 12px; border-radius: 999px; }
+        .vic-elo-delta.positive { color: #9fe0a0; background: rgba(80, 200, 120, 0.14); }
+        .vic-elo-delta.negative { color: #ff8a8a; background: rgba(255, 90, 110, 0.14); }
+        .vic-elo-delta.neutral  { color: var(--vic-mute); background: rgba(255, 255, 255, 0.06); }
+        /* ACHIEVEMENTS in the rewards sheet (the §6.2 cards keep their own rows) */
+        .vic-achievements { padding-bottom: 10px; }
+        .vic-ach-title { font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; font-weight: 700; letter-spacing: 0.26em; text-transform: uppercase; color: var(--vic-mute); margin-bottom: 8px; }
+        .vic-ach-grid { display: flex; flex-wrap: wrap; gap: 6px; }
         .vic-ach-item {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            padding: 4px 10px;
-            background: rgba(106,138,96,0.1);
-            border: 1px solid rgba(106,138,96,0.2);
-            border-radius: 8px;
-            font-size: 11px;
+            display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 6px;
+            border-radius: 999px; font-size: 11px; font-weight: 700; color: #ffe9a8;
+            background: rgba(184, 150, 60, 0.16); border: 1px solid rgba(212, 178, 90, 0.4);
         }
-        .vic-ach-item.locked {
-            background: rgba(140,140,200,0.02);
-            border-color: rgba(140,140,200,0.04);
-            opacity: 0.45;
+        .vic-ach-item.locked { opacity: 0.45; }
+        .vic-ach-icon { font-size: 14px; line-height: 1; }
+        .vic-ach-name { white-space: nowrap; }
+        .vic-card .ach-card-list, .vic-card .ach-near-list, .vic-card .rec-broken-list { margin-top: 0; }
+        /* the §6.2 blocks arrive un-carded from _achBuildEndOfMatchHtml — dress them */
+        .vic-awards > .vic-achievements:not(.vic-card) {
+            padding: 12px 14px; background: var(--vic-row);
+            border: 1px solid rgba(214, 222, 255, 0.12); border-radius: 10px;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 6px 18px rgba(0, 0, 0, 0.3);
         }
-        .vic-ach-icon {
-            font-size: 14px;
+        .vic-career-ach { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+        .vic-career-ach .vic-card-cap { margin: 0; }
+        .vic-career-ach-count { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--vic-mute); margin-left: auto; }
+        .vic-career-ach-count b { color: var(--vic-gold); font-size: 14px; }
+        .vic-career-ach-bar { flex-basis: 100%; height: 5px; border-radius: 3px; background: rgba(255, 255, 255, 0.07); overflow: hidden; }
+        .vic-career-ach-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, #ffd75e, #ff8ad8, #7fd9ff); transition: width 0.8s ease; }
+        .vic-career-note { flex-basis: 100%; font-size: 10.5px; color: var(--vic-dim); }
+        /* HONOURS: the MVP card + the awards */
+        .vic-mvp-card { display: flex; gap: 14px; align-items: center; border-color: rgba(255, 215, 94, 0.45); background: linear-gradient(168deg, rgba(60, 46, 14, 0.55), rgba(10, 12, 40, 0.6)); }
+        .vic-mvp-card.enemy { border-color: rgba(255, 110, 130, 0.45); background: linear-gradient(168deg, rgba(70, 20, 30, 0.55), rgba(10, 12, 40, 0.6)); }
+        .vic-mvp-card-port {
+            flex: 0 0 auto; width: 74px; height: 74px; border-radius: 50%;
+            background-size: cover; background-position: center top; background-repeat: no-repeat; image-rendering: pixelated;
+            border: 3px solid var(--vic-gold); background-color: rgba(0, 0, 0, 0.5); box-shadow: 0 0 18px rgba(255, 215, 94, 0.35);
         }
-        .vic-ach-name {
-            font-weight: 700;
-            color: var(--text);
+        .vic-mvp-card.enemy .vic-mvp-card-port { border-color: var(--vic-p2); box-shadow: 0 0 18px rgba(255, 110, 110, 0.3); }
+        .vic-mvp-card-col { min-width: 0; flex: 1; }
+        .vic-mvp-card .vic-card-cap { color: var(--vic-gold); margin-bottom: 2px; }
+        .vic-mvp-card.enemy .vic-card-cap { color: var(--vic-p2); }
+        .vic-mvp-card-name { font-family: 'Cinzel', serif; font-size: 22px; font-weight: 800; letter-spacing: 0.04em; color: var(--vic-ink); line-height: 1.1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .vic-mvp-card-sub { font-size: 11px; color: var(--vic-mute); text-transform: capitalize; margin-top: 2px; }
+        .vic-mvp-card-stats { display: flex; gap: 14px; margin-top: 8px; }
+        .vic-mvp-card-stats span { display: flex; flex-direction: column; font-family: 'IBM Plex Mono', monospace; font-size: 8.5px; letter-spacing: 0.18em; color: var(--vic-dim); }
+        .vic-mvp-card-stats b { font-size: 16px; font-weight: 800; letter-spacing: 0; color: var(--vic-ink); font-variant-numeric: tabular-nums; line-height: 1.1; }
+        .vic-awards-card { display: flex; flex-direction: column; gap: 6px; }
+        .vic-award {
+            display: flex; align-items: center; gap: 10px; padding: 6px 8px;
+            border-radius: 8px; background: rgba(0, 0, 0, 0.22); border-left: 3px solid var(--vic-p1);
         }
-        .vic-ach-item.locked .vic-ach-name {
-            color: var(--muted);
+        .vic-award.enemy { border-left-color: var(--vic-p2); }
+        .vic-award.gold { background: linear-gradient(90deg, rgba(212, 178, 90, 0.18), rgba(0, 0, 0, 0.22)); border-left-color: var(--vic-gold); }
+        .vic-award-sprite {
+            flex: 0 0 auto; width: 32px; height: 32px; border-radius: 50%;
+            background-size: cover; background-position: center top; background-repeat: no-repeat; image-rendering: pixelated;
+            background-color: rgba(0, 0, 0, 0.45); border: 1px solid rgba(214, 222, 255, 0.2);
         }
-
-        /* ── Bottom button bar ── */
-        .vic-bottom {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            padding: 12px 24px 16px;
-            background: linear-gradient(180deg, transparent 0%, rgba(6, 5, 10, 0.90) 30%, rgba(6, 5, 10, 0.97) 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            flex-wrap: wrap;
-            z-index: 10;
-        }
-
-        .vic-bottom button {
-            font-size: 13px;
-            padding: 10px 22px;
-            min-width: 140px;
-            /* black/minimal dialect — these were bare browser-default grey
-               buttons. Neutral = white on black; continue = green; any
-               back/exit = red (matches match-select & party-builder). */
-            background: rgba(0,0,0,0.82);
-            border: 1px solid rgba(255,255,255,0.22);
-            color: #e8e8e8;
-            font-family: 'DotGothic16', monospace;
-            letter-spacing: 0.12em;
-            text-transform: uppercase;
-            border-radius: 0;
-            cursor: pointer;
-            transition: background 0.12s, border-color 0.12s, color 0.12s,
-                        box-shadow 0.15s, transform 0.1s;
-        }
-        .vic-bottom button:hover {
-            background: rgba(255,255,255,0.08);
-            border-color: rgba(255,255,255,0.5);
-            color: #fff;
-        }
-        .vic-bottom button:active {
-            transform: scale(0.97);
-            filter: brightness(0.9);
-        }
-        .vic-bottom button.primary {
-            background: rgba(61,220,132,0.1);
-            border-color: #3ddc84;
-            color: #3ddc84;
-            box-shadow: 0 0 18px rgba(61,220,132,0.18);
-        }
-        .vic-bottom button.primary:hover {
-            background: rgba(61,220,132,0.18);
-            border-color: #3ddc84;
-            box-shadow: 0 0 26px rgba(61,220,132,0.3);
-            color: #5ff0a0;
-        }
-        .vic-bottom button.warn,
-        .vic-bottom #mainMenuBtn {
-            background: rgba(255,92,92,0.07);
-            border-color: rgba(255,92,92,0.55);
-            color: #ff5c5c;
-        }
-        .vic-bottom button.warn:hover,
-        .vic-bottom #mainMenuBtn:hover {
-            background: rgba(255,92,92,0.14);
-            border-color: #ff5c5c;
-            color: #ff8a8a;
-        }
-
-        /* ── Elo Rating Display on Result Screen ── */
-        .vic-elo-wrap {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 12px;
-            margin-top: 10px;
-            opacity: 0;
-            animation: vicFadeUp 0.5s ease 1.2s forwards;
-        }
-        .vic-elo-badge {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 6px 14px;
-            border-radius: 3px;
-            background: rgba(10,10,18,0.8);
-            border: 1px solid rgba(200,180,100,0.12);
-        }
-        .vic-elo-rank-icon {
-            font-size: 20px;
-        }
-        .vic-elo-info {
-            display: flex;
-            flex-direction: column;
-        }
-        .vic-elo-label {
-            font-size: 8px;
-            text-transform: uppercase;
-            letter-spacing: 0.12em;
-            color: var(--muted);
-            font-weight: 700;
-        }
-        .vic-elo-value {
-            font-size: 18px;
-            font-weight: 900;
-            color: var(--text);
-            font-variant-numeric: tabular-nums;
-            line-height: 1.1;
-        }
-        .vic-elo-delta {
-            font-size: 15px;
-            font-weight: 900;
-            padding: 4px 10px;
-            border-radius: 8px;
-            font-variant-numeric: tabular-nums;
-        }
-        .vic-elo-delta.positive {
-            color: #55dd78;
-            background: rgba(60,180,90,0.12);
-            border: 1px solid rgba(60,180,90,0.2);
-        }
-        .vic-elo-delta.negative {
-            color: #ff6b6b;
-            background: rgba(200,60,60,0.12);
-            border: 1px solid rgba(200,60,60,0.2);
-        }
-        .vic-elo-delta.neutral {
-            color: var(--muted);
-            background: rgba(140,140,200,0.04);
-            border: 1px solid rgba(160,150,190,0.1);
-        }
-
-        /* ── Per-Unit Stats Table (top-left column) ── */
-        .vic-stats-table-wrap {
-            position: absolute;
-            left: 14px;
-            top: 14px;
-            z-index: 10;
-            width: 392px;
-            max-width: 42vw;
-            max-height: calc(100% - 92px);
-            overflow-y: auto;
-            scrollbar-width: thin;
-            scrollbar-color: rgba(160,140,200,0.3) transparent;
-        }
+        .vic-award-detail { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.2; }
+        .vic-award-label { font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--vic-mute); }
+        .vic-award-name { font-size: 13px; font-weight: 700; color: var(--vic-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .vic-award.gold .vic-award-name { color: #ffe9a8; }
+        .vic-award-stat { flex: 0 0 auto; font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 700; color: var(--vic-gold); font-variant-numeric: tabular-nums; white-space: nowrap; }
+        /* PERFORMANCE: the damage split, the tally, the table */
+        .vic-dmg-card:has(.vic-team-dmg-bar:empty) { display: none; }
+        .vic-team-dmg-bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: rgba(255, 255, 255, 0.06); }
+        .vic-team-dmg-fill-p1 { height: 100%; background: linear-gradient(90deg, var(--vic-p1), color-mix(in srgb, var(--vic-p1) 60%, #fff)); }
+        .vic-team-dmg-fill-p2 { height: 100%; background: linear-gradient(90deg, color-mix(in srgb, var(--vic-p2) 60%, #fff), var(--vic-p2)); }
+        .vic-team-dmg-labels { display: flex; justify-content: space-between; align-items: baseline; margin-top: 6px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
+        .vic-team-dmg-labels .p1-lbl { color: var(--vic-p1); }
+        .vic-team-dmg-labels .p2-lbl { color: var(--vic-p2); }
+        .vic-dmg-cap { font-size: 9px; font-weight: 700; letter-spacing: 0.24em; color: var(--vic-dim); }
+        .vic-tally-total { display: flex; justify-content: center; align-items: baseline; gap: 14px; font-family: 'Cinzel', serif; font-size: 30px; font-weight: 900; font-variant-numeric: tabular-nums; margin-bottom: 6px; }
+        .vic-tally-total .p1 { color: var(--vic-p1); }
+        .vic-tally-total .p2 { color: var(--vic-p2); }
+        .vic-tally-vs { font-size: 18px; color: var(--vic-dim); }
+        .vic-tally-row { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; padding: 3px 0; border-top: 1px dashed rgba(214, 222, 255, 0.1); font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-variant-numeric: tabular-nums; }
+        .vic-tally-row .p1 { text-align: right; color: var(--vic-p1); opacity: 0.75; }
+        .vic-tally-row .p2 { text-align: left; color: var(--vic-p2); opacity: 0.75; }
+        .vic-tally-row .lead { opacity: 1; font-weight: 800; }
+        .vic-tally-lbl { font-size: 10px; letter-spacing: 0.1em; color: var(--vic-mute); white-space: nowrap; }
         .vic-stats-table {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
-            font-size: 11px;
-            background: linear-gradient(168deg, rgba(12,11,20,0.88), rgba(8,8,16,0.92));
-            border: 1px solid rgba(140,140,200,0.08);
-            border-radius: 3px;
-            overflow: hidden;
-            opacity: 0;
-            animation: vicFadeUp 0.5s ease 1.6s forwards;
+            width: 100%; border-collapse: collapse;
+            font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-variant-numeric: tabular-nums;
+            background: var(--vic-row); border: 1px solid rgba(214, 222, 255, 0.12); border-radius: 10px; overflow: hidden;
         }
-        .vic-stats-table caption {
-            padding: 6px 10px;
-            font-size: 9px;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 0.12em;
-            color: var(--muted);
-            text-align: left;
-            background: rgba(140,140,200,0.025);
-        }
-        .vic-stats-table th {
-            padding: 5px 6px;
-            font-size: 8px;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            color: rgba(160,140,200,0.6);
-            text-align: center;
-            border-bottom: 1px solid rgba(140,140,200,0.05);
-            background: rgba(140,140,200,0.02);
-            white-space: nowrap;
-        }
-        .vic-stats-table th:first-child { text-align: left; padding-left: 8px; }
-        .vic-stats-table td {
-            padding: 5px 6px;
-            text-align: center;
-            font-variant-numeric: tabular-nums;
-            font-weight: 700;
-            color: var(--text);
-            border-bottom: 1px solid rgba(140,140,200,0.025);
-        }
-        .vic-stats-table td:first-child { text-align: left; padding-left: 4px; }
+        .vic-stats-table caption { caption-side: top; text-align: left; padding: 10px 12px 6px; font-size: 9.5px; font-weight: 700; letter-spacing: 0.26em; text-transform: uppercase; color: var(--vic-mute); }
+        .vic-stats-table th { padding: 5px 4px; font-size: 9px; font-weight: 700; letter-spacing: 0.12em; color: var(--vic-dim); text-align: center; border-bottom: 1px solid rgba(214, 222, 255, 0.14); }
+        .vic-stats-table th:first-child { text-align: left; padding-left: 10px; }
+        .vic-stats-table td { padding: 4px 4px; text-align: center; color: var(--vic-ink); border-bottom: 1px solid rgba(214, 222, 255, 0.06); }
+        .vic-stats-table td:first-child { text-align: left; padding-left: 8px; }
         .vic-stats-table tr:last-child td { border-bottom: none; }
-        .vic-stats-table tr.team-header td {
-            font-size: 9px;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            padding: 5px 8px;
-            border-bottom: 1px solid rgba(140,140,200,0.05);
-        }
-        .vic-stats-table tr.team-header.p1-hdr td { color: var(--p1-score); background: rgba(var(--p1-rgb),0.06); }
-        .vic-stats-table tr.team-header.p2-hdr td { color: var(--p2-score); background: rgba(var(--p2-rgb),0.06); }
-        .vic-stats-table .unit-sprite-cell {
-            display: flex; align-items: center; gap: 5px;
-        }
-        .vic-stats-table .unit-sprite-cell img {
-            width: 22px; height: 22px; image-rendering: pixelated; border-radius: 3px; flex-shrink: 0;
-        }
-        .vic-stats-table .unit-sprite-cell .unit-name-text {
-            overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100px;
-        }
+        .vic-stats-table tr.team-header td { font-size: 9.5px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; padding: 6px 8px; text-align: left; }
+        .vic-stats-table tr.team-header.p1-hdr td { color: var(--vic-p1); background: color-mix(in srgb, var(--vic-p1) 10%, transparent); }
+        .vic-stats-table tr.team-header.p2-hdr td { color: var(--vic-p2); background: color-mix(in srgb, var(--vic-p2) 10%, transparent); }
+        .vic-stats-table .unit-sprite-cell { display: flex; align-items: center; gap: 6px; }
+        .vic-stats-table .unit-sprite-cell .unit-name-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 92px; font-family: 'Inter', system-ui, sans-serif; font-weight: 600; }
         .vic-stats-table .dead-unit { opacity: 0.45; }
-        .vic-stats-table .stat-best { color: var(--gold); }
+        .vic-stats-table .stat-best { color: var(--vic-gold); font-weight: 800; }
         .vic-stats-table .stat-zero { opacity: 0.3; }
 
-        /* ── Match Duration ── */
-        /* ── Team Damage Comparison Bar ── */
-        .vic-team-dmg-bar {
-            display: flex;
-            width: 240px;
-            height: 8px;
-            border-radius: 4px;
-            overflow: hidden;
-            margin: 8px auto 0;
-            background: rgba(140,140,200,0.04);
-            opacity: 0;
-            animation: vicFadeUp 0.5s ease 1.4s forwards;
+        /* ── THE COMMAND BAR ── */
+        .vic-bottom {
+            position: absolute; left: 0; right: 0; bottom: 0; height: var(--vic-bar-h);
+            display: flex; align-items: center; justify-content: center; gap: 10px; padding: 0 20px;
+            background: linear-gradient(180deg, rgba(4, 5, 18, 0.86), rgba(2, 3, 12, 0.97));
+            border-top: 1px solid rgba(214, 222, 255, 0.14);
+            z-index: 40;
+            opacity: 0; animation: vicFadeUp 0.5s ease 2s forwards;
         }
-        .vic-team-dmg-fill-p1 {
-            height: 100%;
-            background: linear-gradient(90deg, rgba(var(--p1-rgb),0.7), rgba(var(--p1-rgb),0.9));
-            transition: width 0.6s ease;
+        .vic-bottom button {
+            appearance: none; cursor: pointer;
+            padding: 10px 20px; border-radius: 999px;
+            font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase;
+            color: var(--vic-ink); background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(214, 222, 255, 0.22);
+            transition: transform 0.12s, background 0.15s, border-color 0.15s, box-shadow 0.15s;
         }
-        .vic-team-dmg-fill-p2 {
-            height: 100%;
-            background: linear-gradient(90deg, rgba(var(--p2-rgb),0.9), rgba(var(--p2-rgb),0.7));
-            transition: width 0.6s ease;
+        .vic-bottom button:hover { background: rgba(255, 255, 255, 0.11); border-color: rgba(214, 222, 255, 0.45); transform: translateY(-1px); }
+        .vic-bottom button:active { transform: translateY(0); }
+        .vic-bottom button:disabled { opacity: 0.4; cursor: default; transform: none; }
+        .vic-bottom button.primary {
+            padding: 12px 30px; font-size: 12px;
+            color: #1a1200; background: linear-gradient(180deg, #ffe08a, #ffbf3a);
+            border-color: #ffd75e; box-shadow: 0 0 22px rgba(255, 200, 80, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.5);
         }
-        .vic-team-dmg-labels {
-            display: flex;
-            justify-content: space-between;
-            width: 240px;
-            margin: 2px auto 0;
-            font-size: 9px;
-            font-weight: 700;
-            opacity: 0;
-            animation: vicFadeUp 0.5s ease 1.4s forwards;
-        }
-        .vic-team-dmg-labels .p1-lbl { color: var(--p1-score); }
-        .vic-team-dmg-labels .p2-lbl { color: var(--p2-score); }
-
-        /* ── Lobby Elo Badge ── */
-        .vic-streak {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            padding: 3px 10px;
-            border-radius: 8px;
-            font-size: 12px;
-            font-weight: 700;
-            background: rgba(160, 140, 200, 0.1);
-            border: 1px solid rgba(160, 140, 200, 0.2);
-            color: var(--gold);
-        }
-
-        .vic-match-info {
-            font-size: 12px;
-            color: var(--muted);
-            opacity: 0;
-            animation: vicFadeUp 0.5s ease 1s forwards;
-        }
+        .vic-bottom button.primary:hover { background: linear-gradient(180deg, #fff0b0, #ffcf5a); box-shadow: 0 0 30px rgba(255, 200, 80, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.6); }
+        .result-overlay.defeat .vic-bottom button.primary { color: #fff; background: linear-gradient(180deg, #ff7a8a, #c6203c); border-color: #ff8a9a; box-shadow: 0 0 22px rgba(255, 90, 110, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.3); }
+        .vic-bottom button.warn, .vic-bottom #mainMenuBtn { color: var(--vic-mute); }
+        .vic-bottom button.warn:hover, .vic-bottom #mainMenuBtn:hover { color: var(--vic-ink); }
+        .vic-bottom button.enc-return { padding: 12px 40px; font-size: 13px; }
 
         /* ════════════════════════════════════════════════════
-           3D VICTORY PODIUM MODE (.result-overlay.vic-3d)
+           3D STAGE MODE (.result-overlay.vic-3d)
            The live Three.js battlefield IS the backdrop: the overlay goes
-           transparent in the middle, the painted 2D landscape layers hide,
-           and a CRT/psychedelic cinematic frame (vignette + scanlines +
-           letterbox) wraps the winners' 3D lineup. body.vic-podium mutes
-           the battle HUD around the canvas so only the scene shows.
+           transparent under the head, the painted 2D layers hide, and a
+           vignette + letterbox + scanlines frame the party. body.vic-podium
+           mutes the battle HUD around the canvas so only the scene shows.
            ════════════════════════════════════════════════════ */
-        .result-overlay.vic-3d {
-            background: transparent;
-        }
-
-        .result-overlay.vic-3d .vic-sky,
-        .result-overlay.vic-3d .vic-rays,
-        .result-overlay.vic-3d .vic-particles,
-        .result-overlay.vic-3d .vic-ground-wrap,
-        .result-overlay.vic-3d .vic-party {
-            display: none;
-        }
-
-        /* Cinematic dressing layers only exist in 3D mode */
-        .vic-vignette,
-        .vic-scanlines {
-            display: none;
-        }
-
+        .result-overlay.vic-3d { background: transparent; }
+        .result-overlay.vic-3d .vic-sky, .result-overlay.vic-3d .vic-rays, .result-overlay.vic-3d .vic-particles,
+        .result-overlay.vic-3d .vic-ground-wrap, .result-overlay.vic-3d .vic-party { display: none; }
+        .vic-vignette, .vic-scanlines { display: none; }
         .result-overlay.vic-3d .vic-vignette {
-            display: block;
-            position: absolute;
-            inset: 0;
-            z-index: 1;
-            pointer-events: none;
+            display: block; position: absolute; inset: 0; z-index: 1; pointer-events: none;
             background:
-                /* CRT corner vignette */
-                radial-gradient(ellipse 105% 90% at 50% 46%,
-                    transparent 42%, rgba(5, 2, 12, 0.38) 74%, rgba(4, 2, 10, 0.92) 100%),
-                /* letterbox bars, psychedelic-tinted */
-                linear-gradient(180deg,
-                    rgba(8, 4, 18, 0.92) 0%, rgba(10, 5, 22, 0.55) 9%, transparent 22%,
-                    transparent 72%, rgba(10, 5, 22, 0.6) 88%, rgba(8, 4, 18, 0.95) 100%);
+                radial-gradient(ellipse 105% 90% at 36% 46%, transparent 42%, rgba(5, 2, 12, 0.36) 74%, rgba(4, 2, 10, 0.9) 100%),
+                linear-gradient(180deg, rgba(8, 4, 18, 0.9) 0%, rgba(10, 5, 22, 0.5) 10%, transparent 24%, transparent 74%, rgba(10, 5, 22, 0.55) 90%, rgba(8, 4, 18, 0.95) 100%);
         }
-
+        .result-overlay.vic-3d.defeat .vic-vignette {
+            background:
+                radial-gradient(ellipse 105% 90% at 36% 46%, rgba(40, 8, 16, 0.12) 30%, rgba(30, 4, 10, 0.5) 74%, rgba(10, 2, 6, 0.94) 100%),
+                linear-gradient(180deg, rgba(12, 3, 8, 0.92) 0%, rgba(12, 3, 8, 0.55) 10%, transparent 24%, transparent 74%, rgba(12, 3, 8, 0.6) 90%, rgba(10, 2, 6, 0.96) 100%);
+        }
         .result-overlay.vic-3d .vic-scanlines {
-            display: block;
-            position: absolute;
-            inset: 0;
-            z-index: 55;
-            pointer-events: none;
-            background: repeating-linear-gradient(0deg,
-                rgba(0, 0, 0, 0.14) 0px, rgba(0, 0, 0, 0.14) 1px,
-                transparent 1px, transparent 3px);
-            opacity: 0.55;
-            animation: vicCrtFlicker 4.2s steps(2) infinite;
+            display: block; position: absolute; inset: 0; z-index: 2; pointer-events: none;
+            background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.14) 0px, rgba(0, 0, 0, 0.14) 1px, transparent 1px, transparent 3px);
+            opacity: 0.5; animation: vicCrtFlicker 4.2s steps(2) infinite;
         }
+        @keyframes vicCrtFlicker { 0%, 100% { opacity: 0.5; } 50% { opacity: 0.4; } }
+        /* the stamp's own site tag is retired for the head's FIELD REPORT (one home) */
+        .result-overlay .door-result-stamp .drs-site.on { display: none; }
+        body.vic-podium #mapRow > *:not(.map-center) { visibility: hidden !important; }
+        body.vic-podium .map-center > *:not(#threeCanvas):not(#css2dOverlay) { visibility: hidden !important; }
 
-        @keyframes vicCrtFlicker {
-            0%, 100% { opacity: 0.55; }
-            50%      { opacity: 0.44; }
+        /* ── narrow: the panel becomes the lower half, the stage the upper ── */
+        @media (max-width: 900px), (max-height: 520px) {
+            .result-overlay { --vic-panel-w: 0px; --vic-bar-h: 58px; }
+            .vic-stage { right: 0; bottom: 50%; }
+            .vic-title-wrap { top: 10px; }
+            .vic-title { font-size: clamp(40px, 12vw, 64px); }
+            .vic-stage-foot { bottom: 8px; }
+            .vic-debrief {
+                top: 50%; left: 0; width: auto; border-left: 0; border-top: 1px solid rgba(214, 222, 255, 0.14);
+                transform: translateY(24px);
+            }
+            .vic-party { right: 0; bottom: 50%; height: 34%; }
+            .vic-bottom { gap: 6px; padding: 0 8px; overflow-x: auto; justify-content: flex-start; }
+            .vic-bottom button { padding: 8px 12px; font-size: 10px; white-space: nowrap; }
         }
-
-        /* Panels sit ON the scene now — deepen the glass so text stays
-           readable over a bright battlefield. */
-        .result-overlay.vic-3d .vic-stats-table {
-            background: linear-gradient(168deg, rgba(10, 8, 20, 0.93), rgba(6, 5, 14, 0.95));
-            border-color: rgba(170, 130, 255, 0.16);
-            box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5), 0 8px 28px rgba(0, 0, 0, 0.5);
+        @media (prefers-reduced-motion: reduce) {
+            .result-overlay *, .result-overlay *::before, .result-overlay *::after { animation-duration: 0.01s !important; animation-delay: 0s !important; }
         }
-
-        .result-overlay.vic-3d .vic-award {
-            background: linear-gradient(168deg, rgba(10, 8, 20, 0.93), rgba(6, 5, 14, 0.95));
-            border-color: rgba(170, 130, 255, 0.14);
-        }
-
-        .result-overlay.vic-3d .vic-achievements {
-            background: rgba(8, 6, 16, 0.9);
-            border-color: rgba(170, 130, 255, 0.14);
-        }
-
-        /* Gold breakdown floats dead-centre in 2D mode — in 3D mode that's on
-           top of the models, so it drops to just above the MVP plate. */
-        .result-overlay.vic-3d .vic-gold-breakdown {
-            top: auto;
-            bottom: 170px;
-            transform: translateX(-50%);
-        }
-
-        /* ── MVP plate (bottom-centre, under the 3D MVP) ── */
-        .vic-mvp-tag {
-            position: absolute;
-            left: 50%;
-            bottom: 92px;
-            transform: translateX(-50%);
-            z-index: 30;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 8px 20px 8px 10px;
-            background: linear-gradient(168deg, rgba(12, 9, 22, 0.92), rgba(7, 5, 14, 0.95));
-            border: 1px solid rgba(255, 215, 94, 0.4);
-            box-shadow:
-                0 0 22px rgba(255, 200, 80, 0.14),
-                inset 0 0 18px rgba(120, 70, 200, 0.12);
-            opacity: 0;
-            animation: vicFadeUp 0.6s ease 1.9s forwards;
-            pointer-events: none;
-        }
-
-        /* corner notches — esoteric card frame */
-        .vic-mvp-tag::before,
-        .vic-mvp-tag::after {
-            content: '✦';
-            position: absolute;
-            top: 50%;
-            transform: translateY(-50%);
-            font-size: 11px;
-            color: rgba(255, 215, 94, 0.75);
-            text-shadow: 0 0 8px rgba(255, 190, 80, 0.6);
-        }
-
-        .vic-mvp-tag::before { left: -18px; }
-        .vic-mvp-tag::after  { right: -18px; }
-
-        .vic-mvp-port {
-            width: 44px;
-            height: 44px;
-            background-size: cover;
-            background-position: center top;
-            background-repeat: no-repeat;
-            image-rendering: pixelated;
-            border: 1px solid rgba(255, 215, 94, 0.35);
-            background-color: rgba(0, 0, 0, 0.5);
-        }
-
-        .vic-mvp-col {
-            display: flex;
-            flex-direction: column;
-            line-height: 1.25;
-        }
-
-        .vic-mvp-label {
-            font-size: 9px;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 0.3em;
-            color: rgba(255, 215, 94, 0.85);
-            text-shadow: 0 0 8px rgba(255, 190, 80, 0.5);
-        }
-
-        .vic-mvp-name {
-            font-family: 'Cormorant SC', serif;
-            font-size: 19px;
-            font-weight: 700;
-            letter-spacing: 0.08em;
-            color: #f2ecd8;
-            text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
-        }
-
-        .vic-mvp-tag.enemy .vic-mvp-name { color: #ffb0b0; }
-
-        .vic-mvp-stat {
-            font-family: 'IBM Plex Mono', monospace;
-            font-size: 10px;
-            color: var(--muted);
-            font-variant-numeric: tabular-nums;
-        }
-
-        /* ── Career achievements: one honest line + progress bar ── */
-        .vic-career-ach {
-            margin-top: 8px;
-            padding: 8px 12px;
-            background: rgba(8, 6, 16, 0.85);
-            border: 1px solid rgba(170, 130, 255, 0.12);
-            border-radius: 3px;
-            display: flex;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 6px;
-            opacity: 0;
-            animation: vicFadeUp 0.5s ease 2.2s forwards;
-        }
-
-        .vic-career-ach-label {
-            font-size: 9px;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 0.14em;
-            color: rgba(255, 215, 94, 0.8);
-        }
-
-        .vic-career-ach-count {
-            font-family: 'IBM Plex Mono', monospace;
-            font-size: 11px;
-            color: var(--muted);
-            margin-left: auto;
-        }
-
-        .vic-career-ach-count b {
-            color: var(--gold);
-            font-size: 13px;
-        }
-
-        .vic-career-ach-bar {
-            flex-basis: 100%;
-            height: 4px;
-            background: rgba(255, 255, 255, 0.06);
-            overflow: hidden;
-        }
-
-        .vic-career-ach-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #ffd75e, #ff8ad8, #7fd9ff);
-            transition: width 0.8s ease;
-        }
-
-        /* ── Mute the battle HUD around the canvas while the podium runs ──
-           Everything in the map row except the WebGL canvas and its CSS2D
-           nameplate overlay goes dark; the result overlay is the only UI. */
-        body.vic-podium #mapRow > *:not(.map-center) {
-            visibility: hidden !important;
-        }
-
-        body.vic-podium .map-center > *:not(#threeCanvas):not(#css2dOverlay) {
-            visibility: hidden !important;
-        }
-
 
         /* ── Cinematic attack name banner (top-left corner) ── */
         .cin-attack-name {
@@ -4686,8 +4180,11 @@ body.ewi-cinema #css2dOverlay { visibility: hidden !important; }
    both clients (no relay needed). Sits bottom-right, above the button bar,
    clear of the awards rail (top-right) and the MVP tag (bottom-centre). */
 .door-result-stamp {
-    position: absolute; right: clamp(16px, 4vw, 64px); bottom: 118px; z-index: 12;
-    width: clamp(176px, 22vw, 280px); aspect-ratio: 0.96;
+    /* THE DEBRIEF (2026-09-21): the stamp stands at the stage's foot, right of the MVP
+       nameplate (.vic-stage-foot lays them out) — it used to hang absolute over the
+       awards rail and the button bar */
+    position: relative; flex: 0 0 auto; z-index: 12;
+    width: clamp(150px, 15vw, 210px); aspect-ratio: 0.96;
     color: var(--door-admit, #2e8b57); opacity: 0; pointer-events: none;
     filter: url(#doorInk) drop-shadow(0 6px 14px rgba(0,0,0,0.55));
     transform: rotate(-12deg);
@@ -4707,10 +4204,10 @@ body.ewi-cinema #css2dOverlay { visibility: hidden !important; }
 }
 .door-result-stamp .drs-word {
     font-family: 'Cinzel', 'Cormorant SC', serif; font-weight: 900;
-    font-size: clamp(15px, 2.2vw, 26px); letter-spacing: 0.14em; line-height: 1; white-space: nowrap;
+    font-size: clamp(13px, 1.7vw, 22px); letter-spacing: 0.14em; line-height: 1; white-space: nowrap;
 }
 .door-result-stamp .drs-meta {
-    font-family: 'DotGothic16', monospace; font-size: clamp(8px, 0.85vw, 11px);
+    font-family: 'DotGothic16', monospace; font-size: clamp(8px, 0.8vw, 10px);
     letter-spacing: 0.2em; line-height: 1.55; white-space: normal;
 }
 .door-result-stamp .drs-tab {
