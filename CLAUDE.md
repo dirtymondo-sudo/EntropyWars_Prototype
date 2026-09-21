@@ -7970,3 +7970,32 @@ blend — a fence on it makes a wall top the walker can stand on = a trap) or a 
 every door; a tall block past each corner) — scenery only; `EW_HQ_NO_CITY_BACKDROP` / `terrain.backdrop: false`. Disaster City
 is THE PRISM CITY (`texP` 0.22; the Grid / the Strip keep theirs). The Vatican's aisle is `carpet_4`. hq-city.test.js pins the
 infill, the boundary walls and the rim. UNSEEN LIVE (RULE #1c): DOOR_HQ_BUILD_PLAN §9's entry lists what to eyeball first.
+
+## THE RETRO-FUTURIST PASS — the curved shell, the kit, DOOR HQ · the Mall · the Spaceship (2026-09-21, local delivery)
+The user's brief (five references: the TWA bridge, the orange conversation pit, the Palais Bulles, the Futuro, 2001's
+console): "1960s era retro futuristic — rounded offices, windows, curved walls, groovy curved architecture, lava lamps;
+DOOR HQ, the Mall, the Spaceship; make rooms bigger if need be". **THE CURVED SHELL**: a box room's `shell.round` (m)
+FILLETS its four corners — three-renderer.js `_hqBuildFillets` (quarter-cylinder walls in the wall sheet, the dado and
+the trims following the arc; every piece `_hqSweepStrip`, a profile swept along a path) — and the corner behind is
+WALL by ONE exact rule, **`_hqInFillet`**, read by `_hqSurface` / `_hqAirOK` / `_hqCamBlocked` (never a blocker);
+data.js **`hqShellInFillet(S, x, z, pad)`** is its twin (the finds refuse a corner) and **`hqShellDoorClearsFillet
+(S, wall, at, half, margin)`** the door / wall-prop rule. `shell.cove` (the radius) = the wall meeting the ceiling in
+a quarter-round along every wall and round every fillet (`_hqBuildCove`; `_hqInCove` keeps the boom out). Neither on
+an open / cave / terrain / edge room. RULES: a door on a round room's wall ends ≥ 0.4 m before the fillet's tangent
+point (the fillet radius is BOUNDED by the nearest door — reception 0.9, the bridge 2.3), a wall prop clears it, a
+floor prop / spot / counter never stands inside one; `retro-futurism.test.js` fails naming the row. **THE KIT**
+(`_hqProcBuilders` "THE RETRO-FUTURIST KIT — THE PROCS"; catalogue rows after `false_window`): `lava_lamp` /
+`lava_lamp_floor` (the wax on a ticker; a light; `color` / `wax`), `sputnik_lamp` / `saucer_pendant` /
+`disc_cluster` (ceiling lights), `mushroom_lamp`, `egg_chair` (the opening is +Z; a seat), `tulip_chair`,
+`tulip_table` (`r`), `curved_sofa` (a 60° arc about a centre `r` IN FRONT — six rows make a ring, `face` toward
+the centre), `porthole` / `pod_window` (`size`, `round`, `view`: sky · mountains · stars · space; the sky drifts —
+`_hqPaneTex`), `retro_console` (2001's lamp bank on a ticker; the operator at +Z), `shag_rug`, `space_divider`,
+`pod_bed`; doorhq's room-light regex counts the lamps. Looks `HQ_ROOM_LOOKS.retro` (the facility) / `.spaceship`;
+the mall's retuned in place (an identity pin). THE ROOMS: the foyer, reception, Room 86 (15 × 12 — THE CONVERSATION
+RING), the three wing lobbies (12 × 8 / 11 × 8), the penthouse (11 × 8), the corner office (a cove only), four floor
+lava lamps in the hall; the spaceship's airlock / hold (17.5 × 14 — ten field cells, THE CRYO ROW) / bridge (16 × 12, THE CONSOLE BANK,
+the nav counter at x 6.6); the mall's **THE FLIGHT TUBE** (`hqRingBridges` r 21 at y 4.63 — 3 cm proud of the
+galleries, landing on their inner corners, open 215°–325° round the clock tower), THE LOUNGE rings, the pod windows
+over the upper shopfronts (mount 8.6 / 9.2 — the shopfront band reaches ~8 m). A room variant's mood merges over a
+sheet with NO mood (Room 86 keeps none — doorhq pins it). `npm test` runs `retro-futurism.test.js`. UNSEEN LIVE
+(RULE #1c): DOOR_HQ_BUILD_PLAN §9's entry lists what to eyeball first.

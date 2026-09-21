@@ -15495,7 +15495,8 @@ const HQ_ROOM_LOOKS = {
     catacombs: { name: 'THE CATACOMBS', retro: { enabled: true, preset: 'teal', pixelSize: 1, ditherStrength: 0.5, grain: 0.04, tintAmount: 0.45, levels: 18 }, cin: { vignette: true, vigAmount: 0.6, vigSize: 0.42 }, nightMood: 0.75, bloom: 0.14 },
     /* DISASTER CITY (2026-09-17): the disaster-movie print — overcast daylight, faded, a light vignette; the mall = the security camera's tape (grainy, fluorescent, the tubes smearing) */
     city: { name: 'DISASTER CITY', retro: { enabled: true, preset: 'faded', pixelSize: 1, ditherStrength: 0.4, grain: 0.04, tintAmount: 0.35, levels: 20 }, cin: { vignette: true, vigAmount: 0.35, vigSize: 0.55 }, nightMood: 0.15, bloom: 0.14 },
-    mall: { name: 'THE MALL', retro: { enabled: true, preset: 'faded', pixelSize: 1, ditherStrength: 0.45, grain: 0.055, tintAmount: 0.4, levels: 18 }, cin: { vignette: true, vigAmount: 0.3, vigSize: 0.6 }, nightMood: 0.1, bloom: 0.22, dof: 0 },
+    /* THE RETRO-FUTURIST PASS (2026-09-21): the mall is a 1960s terminal now — the dream preset, the grain down, no night, the bloom on the saucers */
+    mall: { name: 'THE MALL', retro: { enabled: true, preset: 'dream', pixelSize: 1, ditherStrength: 0.3, grain: 0.022, tintAmount: 0.3, levels: 28 }, cin: { vignette: true, vigAmount: 0.22, vigSize: 0.62 }, nightMood: 0.0, bloom: 0.34, dof: 0 },
     /* CYBERPUNK CITY (2026-09-17): the reskin's print — the rain-slick night, magenta / cyan in the puddles, bloomed, a hard vignette */
     /* THE STRIP (2026-09-17): the boulevard's print — the neon night, warmer than the grid's, bloomed, a soft vignette */
     strip: { name: 'THE STRIP', retro: { enabled: true, preset: 'dream', pixelSize: 1, ditherStrength: 0.4, grain: 0.03, tintAmount: 0.4, levels: 24 }, cin: { vignette: true, vigAmount: 0.4, vigSize: 0.5 }, nightMood: 0.7, bloom: 0.42, bloomThr: 0.6, bloomRadius: 0.62, lens: { chroma: 1.6 } },
@@ -15547,6 +15548,11 @@ const HQ_ROOM_LOOKS = {
     waiting:    { name: 'THE WAITING ROOM', retro: { enabled: true, preset: 'faded', pixelSize: 1, ditherStrength: 0.42, grain: 0.05, tintAmount: 0.38, levels: 18 }, cin: { vignette: true, vigAmount: 0.3, vigSize: 0.6 }, nightMood: 0.0, bloom: 0.08, dof: 0 },
     nightmare:  { name: 'THE NIGHTMARE', retro: { enabled: true, preset: 'green', pixelSize: 1, ditherStrength: 0.58, grain: 0.06, tintAmount: 0.58, levels: 14 }, cin: { vignette: true, vigAmount: 0.72, vigSize: 0.36 }, nightMood: 0.9, bloom: 0.34, lens: { chroma: 3.0 } },
     unthought:  { name: 'THE LIBRARY OF UNTHOUGHT THINGS', retro: { enabled: true, preset: 'amber', pixelSize: 1, ditherStrength: 0.36, grain: 0.028, tintAmount: 0.34, levels: 24 }, cin: { vignette: true, vigAmount: 0.38, vigSize: 0.54 }, nightMood: 0.25, bloom: 0.4 },
+    /* THE RETRO-FUTURIST PASS (2026-09-21 — the user: "1960s era retro futuristic; the clean rounded aesthetic fits DOOR HQ perfectly"):
+       THE FACILITY's grade — the Kodachrome print: the dream preset barely dithered, low grain, warm, no night, the bloom on the lava
+       lamps and the saucers; THE SPACESHIP's — 2001's white interior under cool light, the teal preset, faded, no vignette to speak of */
+    retro:      { name: 'D.O.O.R. HEADQUARTERS', retro: { enabled: true, preset: 'dream', pixelSize: 1, ditherStrength: 0.26, grain: 0.018, tintAmount: 0.3, levels: 30 }, cin: { vignette: true, vigAmount: 0.2, vigSize: 0.64 }, nightMood: 0.0, bloom: 0.3 },
+    spaceship:  { name: 'THE SPACESHIP', retro: { enabled: true, preset: 'teal', pixelSize: 1, ditherStrength: 0.3, grain: 0.024, tintAmount: 0.3, levels: 28 }, cin: { vignette: true, vigAmount: 0.24, vigSize: 0.6 }, nightMood: 0.15, bloom: 0.3 },
 };
 // THE DAY SKY (2026-09-21): `day: 1` on a row (or a shell's `sky`) = a real daylight atmosphere on the dome — a blue
 // zenith to a pale horizon, the sun, cumulus at `clouds` (0 clear … 1 overcast; a storm weather is a full overcast) —
@@ -20776,6 +20782,24 @@ const DOOR_HQ = {
            swings in toward, swelling and flaring on a slow cycle (a ticker) */
         sun_viewport:      { proc: 'sun_viewport',   h: 1.6,     foot: 0, wall: true, mount: 1.0,  depth: 0.1, glow: { y: 0.8, size: 1.6, color: '#ffb066' }, light: { color: '#ffb066', intensity: 0.9, dist: 6, y: 1.6 } },   // the Bureau: the reality barometer (hqMottoBarometer at build; the room is rebuilt per entry)
         false_window:      { proc: 'false_window',   h: 1.6,     foot: 0, wall: true, mount: 1.0,  depth: 0.08, glow: { y: 0.8, size: 1.8, color: 0xfff3d0 } },   // 4C: the window that should not exist (a lit pane behind blinds)
+        /* ── THE RETRO-FUTURIST KIT (2026-09-21): the 1960s' furniture and light — procs in three-renderer.js "THE RETRO-FUTURIST KIT". A row's
+           `color` / `r` / `size` / `view` ride to the builder (the _hqProcProp(name, p) contract). ── */
+        lava_lamp:         { proc: 'lava_lamp',       h: 0.46, foot: 0,    glow: { y: 0.3, size: 0.7, color: 0xffa040 }, light: { color: 0xff9a40, intensity: 0.32, dist: 3.5, y: 0.3 } },     // a tabletop: the wax rises and falls (a ticker), a warm light
+        lava_lamp_floor:   { proc: 'lava_lamp_floor', h: 1.56, foot: 0.26, block: true, glow: { y: 1.0, size: 2.0, color: 0xffa040 }, light: { color: 0xff9a40, intensity: 0.8, dist: 7, y: 1.0 } },   // the 1.5 m one, a floor lamp
+        sputnik_lamp:      { proc: 'sputnik_lamp',    h: 1.0,  foot: 0,    ceil: true, glow: { y: 0.5, size: 1.6, color: 0xffe4b0 }, light: { color: 0xffe0b0, intensity: 0.85, dist: 9, y: 0.5 } },   // twelve bulbs on twelve rods (h = the drop from the ceiling)
+        saucer_pendant:    { proc: 'saucer_pendant',  h: 0.8,  foot: 0,    ceil: true, glow: { y: 0.05, size: 1.9, color: 0xffeacc }, light: { color: 0xffe8c8, intensity: 0.8, dist: 9, y: 0.0 } },   // TWA's fluted saucer, lit from under
+        disc_cluster:      { proc: 'disc_cluster',    h: 0.9,  foot: 0,    ceil: true, glow: { y: 0.4, size: 1.4, color: 0xfff6e2 }, light: { color: 0xfff4dc, intensity: 0.6, dist: 7, y: 0.4 } },   // the Futuro's three white discs on threads
+        mushroom_lamp:     { proc: 'mushroom_lamp',   h: 0.52, foot: 0.2,  glow: { y: 0.34, size: 1.0, color: 0xffb070 }, light: { color: 0xffa860, intensity: 0.45, dist: 5, y: 0.34 } },       // Panton's mushroom, orange from under the cap (a floor lamp or a tabletop)
+        egg_chair:         { proc: 'egg_chair',       h: 1.32, foot: 0.58, block: true, seat: 0.5 },                                                                                              // Aarnio's ball chair on its pedestal — the opening is the front (+Z)
+        tulip_chair:       { proc: 'tulip_chair',     h: 0.8,  foot: 0.3,  seat: 0.5 },                                                                                                           // Saarinen's tulip: one stem, a shell, a cushion
+        tulip_table:       { proc: 'tulip_table',     h: 0.74, foot: 0.5,  block: true },                                                                                                          // one stem, a white top (`r` the top's radius) — tabletop props seat on it
+        curved_sofa:       { proc: 'curved_sofa',     h: 0.9,  foot: 1.05, block: true, seat: 0.46 },                                                                                             // a 60° arc of tufted bench about a centre `r` in FRONT of it — six rows make a ring
+        porthole:          { proc: 'porthole',        h: 0.9,  foot: 0,    wall: true, mount: 1.3, depth: 0.1, glow: { y: 0.45, size: 1.6, color: 0xbfe0ff } },                                    // an oval pane onto a sky that drifts (`size`, `round`, `view`: sky · mountains · stars · space)
+        pod_window:        { proc: 'pod_window',      h: 2.4,  foot: 0,    wall: true, mount: 0.5, depth: 0.1, glow: { y: 1.2, size: 3.2, color: 0xbfe0ff } },                                     // the 2.4 m round window with the mountains in it
+        retro_console:     { proc: 'retro_console',   h: 1.2,  foot: 0.7,  rect: { hw: 0.8, hd: 0.38 }, block: true, glow: { y: 1.0, size: 1.6, color: 0xffc070 }, light: { color: 0xffb860, intensity: 0.35, dist: 4, y: 1.0 } },   // 2001's console: a bank of lamps that blink (a ticker), two screens; the operator stands at +Z
+        shag_rug:          { proc: 'shag_rug',        h: 0.03, foot: 0 },                                                                                                                          // a thick disc (`r`, `color`, `color2` the inner ring)
+        space_divider:     { proc: 'space_divider',   h: 2.1,  foot: 1.1,  rect: { hw: 1.12, hd: 0.1 }, block: true },                                                                            // a screen of white rings you see through
+        pod_bed:           { proc: 'pod_bed',         h: 1.0,  foot: 0.9,  rect: { hw: 0.52, hd: 1.12 }, block: true, glow: { y: 0.6, size: 1.6, color: 0x9fe8ff }, light: { color: 0x8fdcff, intensity: 0.4, dist: 4, y: 0.7 } },   // the cryo capsule under a glass dome (the head is −Z)
         infinity_pool:     { proc: 'infinity_pool',  h: 0.48,    foot: 3.0, rect: { hw: 3.1, hd: 1.85 }, block: true },   // Room 8: the raised basin, a RECT blocker (room axes: place it at face 0 / 180)
         pool_lounger:      { proc: 'pool_lounger',   h: 0.8,     foot: 0.5, block: true, seat: 0.42 },   // Room 8: a lounger (a seat for hqSit at its own x/z)
         pool_umbrella:     { proc: 'pool_umbrella',  h: 2.4,     foot: 0.12, block: true },  // Room 8: the pole; the canopy is overhead
@@ -23593,6 +23617,11 @@ const DOOR_HQ = {
                 { key: 'computer_chair_blue', deg: 114, r: 16.4, level: 0, rot: 0 },
                 /* globe lamps on the inner band */
                 { key: 'globe_lamp',   deg: 200, r: 9.9, level: 0 },
+                /* THE RETRO-FUTURIST PASS (2026-09-21): four floor lava lamps between the spokes, on the inlaid ring */
+                { key: 'lava_lamp_floor', deg: 22.5,  r: 12.5, level: 0 },
+                { key: 'lava_lamp_floor', deg: 112.5, r: 12.5, level: 0 },
+                { key: 'lava_lamp_floor', deg: 202.5, r: 12.5, level: 0 },
+                { key: 'lava_lamp_floor', deg: 292.5, r: 12.5, level: 0 },
                 { key: 'globe_lamp',   deg: 160, r: 9.9, level: 0 },
                 { key: 'globe_lamp',   deg: 250, r: 9.9, level: 0 },
                 { key: 'globe_lamp',   deg: 110, r: 9.9, level: 0 },
@@ -23751,11 +23780,16 @@ const DOOR_HQ = {
             shell: {
                 w: 10, d: 6, h: 4.0,
                 wallH: 4.0, dadoH: 1.05,
-                floor: 'terrazzo', wall: 'stone', dado: 'oxblood', trim: 'teal', ceiling: 'ceiling',   // the hall's own finishes: the front of the same building
-                pipes: false,
+                /* THE RETRO-FUTURIST PASS (2026-09-21): a 1960s terminal's vestibule — white plaster, a cream terrazzo, the corners
+                   filleted (`round`), the walls meeting the ceiling in a cove, a saucer pendant either side of the seal */
+                round: 1.6, cove: 0.5,
+                floor: 'terrazzo', wall: 'drywall', dado: 'drywall', trim: 'metal', ceiling: 'ceiling',
+                floorColor: 0xeee9dc, wallColor: 0xf4f1ea, dadoColor: 0xe9e4d8, ceilColor: 0xf6f4ee,
+                pipes: false, strips: false,
                 light: { x: 0, z: 0 },
-                mood: { light: 0xf6efdf },              // the brass-and-glass warmth of a lobby that is cleaned nightly
+                mood: { light: 0xf6efdf, ambient: 0.62 },              // the brass-and-glass warmth of a lobby that is cleaned nightly
                 plate: { x: 2.2, z: -2.95, y: 3.4 },
+                look: HQ_ROOM_LOOKS.retro,
             },
             doors: [
                 /* the revolving door: the same leaf the hall wears at 195°, from this side */
@@ -23791,25 +23825,27 @@ const DOOR_HQ = {
                 { key: 'desk_lamp',      x: 4.55, z: -0.62, y: 0.76, face: 250 },      // on the desk (it stood 0.2 m past its end)
                 { key: 'coffee_mug',     x: 4.35, z: 0.62,  y: 0.76, face: 140 },
                 { key: 'computer_chair_grey', x: 4.05, z: 0, face: 90 },              // the inspector's, facing the desk
-                { key: 'wall_clock',     wall: 'e', z: -2.2, mount: 2.6 },
-                { key: 'security_camera', wall: 'e', z: 2.2, mount: 3.3 },
+                { key: 'wall_clock',     wall: 'n', x: -2.4, mount: 2.9 },              // off the fillet (THE RETRO-FUTURIST PASS): over the notices side of the revolving door
+                { key: 'security_camera', wall: 'e', z: 1.0, mount: 3.3 },
+                { key: 'lava_lamp',      x: 4.35, z: 0.15,  y: 0.76, face: 250 },             // THE RETRO-FUTURIST PASS: on the inspector's desk, the wax counting corners
                 /* ── the south wall: the front door, the mat, the stand, the sign over it ── */
                 { key: 'exit_sign',      wall: 's', x: 0, mount: 3.0 },
                 { key: 'umbrella_stand', x: 1.5,  z: 2.55, face: 0 },
-                { key: 'trash_bin',      x: -4.5, z: 2.5,  face: 250 },
+                { key: 'trash_bin',      x: -4.2, z: 2.2,  face: 250 },
                 { key: 'wet_floor_sign', x: -2.6, z: 1.7,  face: 140 },
-                { key: 'potted_plant',   x: 4.5,  z: 2.5,  face: 200 },
+                { key: 'potted_plant',   x: 4.2,  z: 2.2,  face: 200 },
                 /* ── the west wall: the bench, the hooks, the notices ── */
                 { key: 'park_bench',     x: -4.4, z: -0.6, face: 90, rect: false },   // the visitors' bench, facing the seal
-                { key: 'hook_rail',      wall: 'w', z: 1.6 },
-                { key: 'notice_board',   wall: 'w', z: -2.2 },
-                { key: 'lesson_plaque',  wall: 'w', z: 0.2, lesson: 'rooms' },                                 // D8 (3): a door in one room, its twin in the next — the foyer ↔ the hall, safe at both ends
-                { key: 'potted_plant',   x: -4.5, z: -2.5, face: 30 },
+                { key: 'hook_rail',      wall: 's', x: -2.6 },
+                { key: 'notice_board',   wall: 'w', z: -0.7 },
+                { key: 'lesson_plaque',  wall: 'w', z: 0.95, lesson: 'rooms' },                                 // D8 (3): a door in one room, its twin in the next — the foyer ↔ the hall, safe at both ends
+                { key: 'potted_plant',   x: -4.2, z: -2.2, face: 30 },
                 /* ── the north wall: the plate, the camera over the revolving door ── */
                 { key: 'nameplate',      wall: 'n', x: 2.4, mount: 1.6 },
-                { key: 'security_camera', wall: 'n', x: -3.6, mount: 3.3 },
-                { key: 'fluorescent',    x: -2.5, z: 0, ceil: true, face: 0 },
-                { key: 'fluorescent',    x: 2.5,  z: 0, ceil: true, face: 0 },
+                { key: 'security_camera', wall: 'n', x: -2.9, mount: 3.4 },
+                { key: 'saucer_pendant', x: -2.5, z: 0, ceil: true },                             // THE RETRO-FUTURIST PASS: the saucers, lit from under
+                { key: 'saucer_pendant', x: 2.5,  z: 0, ceil: true },
+                { key: 'fluorescent',    x: 0,    z: 0, ceil: true, face: 0 },                  // the lobby's own strip stays, between them
             ],
             agents: [
                 { x: 4.05, z: 0, face: 90, pose: 'hqSit', gender: 'male', label: 'THE INSPECTOR', reach: 1.9,
@@ -24037,12 +24073,19 @@ const DOOR_HQ = {
             roomNo: '86', why: '86’d — the menu is always out of it',
             kind: 'box',
             shell: {
-                w: 12, d: 9, h: 3.7,
-                wallH: 3.7, dadoH: 1.05,
-                floor: 'terrazzo', wall: 'drywall', dado: 'oxblood', trim: 'teal', ceiling: 'ceiling',
-                pipes: false,                 // an acoustic ceiling; the conduits run over the hall, not the lunch
+                w: 15, d: 12, h: 4.0,
+                wallH: 4.0, dadoH: 1.05,
+                /* THE RETRO-FUTURIST PASS (2026-09-21 — the user: "more rounded offices, groovy curved architecture, lava lamps"): Room 86
+                   grew from 12 × 9 to 15 × 12 — a filleted white box under a cove with THE CONVERSATION RING (six arcs of orange velour
+                   round a tulip table and a lava lamp) on a shag rug in the east half, the two long tables in the west, the serving
+                   line where it was, portholes on the south wall, a sputnik over the ring */
+                round: 1.5, cove: 0.55,
+                floor: 'terrazzo', wall: 'drywall', dado: 'drywall', trim: 'metal', ceiling: 'ceiling',
+                floorColor: 0xf0ebdf, wallColor: 0xf5f2ec, dadoColor: 0xe07a3a, ceilColor: 0xf6f4ee,
+                pipes: false, strips: false,       // an acoustic ceiling; the conduits run over the hall, not the lunch
                 light: { x: 0, z: 0 },
-                plate: { x: 0, z: -4.25, y: 3.0 },
+                plate: { x: 0, z: -5.75, y: 3.3 },
+                look: HQ_ROOM_LOOKS.retro,
             },
             doors: [
                 { id: 'egress', wall: 'w', z: 1.2, leaf: 'leaf_saloon',
@@ -24050,7 +24093,7 @@ const DOOR_HQ = {
                   action: { room: 'central_egress', at: 'cafeteria' },
                   desc: 'The way back to the hall. The doors swing both ways, which Facilities calls a feature and Continuity calls a position.' },
                 /* THE SERVICE DOOR (Phase 8, 2026-09-14): the kitchen's stair, at the east end of the serving line */
-                { id: 'kitchen', wall: 'n', x: 4.6, leaf: 'leaf_saloon',
+                { id: 'kitchen', wall: 'n', x: 4.3, leaf: 'leaf_saloon',
                   label: 'THE KITCHEN', sub: 'ROOM 350 · SERVICE STAIR · DOWN TO B',
                   action: { room: 'kitchen', at: 'service' },
                   desc: 'The service stair down to the kitchen. The trays come up it; the cook does not.' },
@@ -24061,72 +24104,85 @@ const DOOR_HQ = {
                    Phase 8, 2026-09-14): the leaderboard is the hall's EMPLOYEE OF THE
                    MONTH board only; the till is a prop again — the shop is the
                    Quartermaster's door only. */
-                { id: 'notice', x: -2.0, z: 3.9, face: 0, plateY: 2.05, radius: 1.9, verb: 'READ',
+                { id: 'notice', x: -2.0, z: 5.4, face: 0, plateY: 2.05, radius: 1.9, verb: 'READ',
                   label: 'NOTICE BOARD', sub: 'DAILY TASKS · NOTICES', action: {},
                   desc: 'Form 365 for today, pinned, and the notices under it. The standings are on the board in the hall; this one is for what is due.' },
             ],
             props: [
-                /* ── the north wall: THE SERVING LINE, west to east (2026-09-16: two
-                   3 m cafeteria counters — hot wells, sneeze guard, THE TRAY SLIDE at
-                   0.85 m along the front; they were four tanker desks with the trays
-                   typed half a metre in front of them, in the air). The wall is at
-                   z −4.5: the body runs z −4.48 … −3.73, the slide −3.73 … −3.33. ── */
+                /* ── the north wall (z −6): THE SERVING LINE, west to east (2026-09-16: two 3 m cafeteria counters — hot wells, sneeze
+                   guard, THE TRAY SLIDE at 0.85 m along the front). The body runs z −5.98 … −5.23, the slide −5.23 … −4.83. ── */
                 { key: 'serving_line',   wall: 'n', x: -3.4 },
                 { key: 'serving_line',   wall: 'n', x: -0.4 },
-                { key: 'reception_wedge', x: 1.95, z: -3.35, face: 200 },                    // the curved till: a straight counter needs a form
-                { key: 'cash_register',  x: 1.55, z: -3.12, y: 0.76, face: 200 },           // on the wedge's counter (0.76 m — the 1.10 is its monitor), the arm the monitor leaves free
-                { key: 'meal_tray',      x: -4.4, z: -3.53, y: 0.85, face: 10 },            // on the slide
-                { key: 'meal_tray',      x: -3.6, z: -3.55, y: 0.85, face: -8 },
-                { key: 'meal_tray',      x: -2.2, z: -3.53, y: 0.85 },
-                { key: 'meal_tray_empty', x: -1.4, z: -3.55, y: 0.85, face: 15 },
-                { key: 'meal_tray_empty', x: -0.4, z: -3.52, y: 0.85, face: -20 },
-                { key: 'coffee_mug',     x: -0.9, z: -4.05, y: 0.9, face: 30 },             // on the counter top, by the wells
-                { key: 'solo_cup',       x: 0.2,  z: -4.0, y: 0.9 },
-                { key: 'clipboard_flat', x: 0.75, z: -4.05, y: 0.9, face: -12 },              // the seconds sheet; nobody has had seconds
+                { key: 'reception_wedge', x: 1.95, z: -4.85, face: 200 },                    // the curved till: a straight counter needs a form
+                { key: 'cash_register',  x: 1.55, z: -4.62, y: 0.76, face: 200 },           // on the wedge's counter (0.76 m — the 1.10 is its monitor)
+                { key: 'meal_tray',      x: -4.4, z: -5.03, y: 0.85, face: 10 },            // on the slide
+                { key: 'meal_tray',      x: -3.6, z: -5.05, y: 0.85, face: -8 },
+                { key: 'meal_tray',      x: -2.2, z: -5.03, y: 0.85 },
+                { key: 'meal_tray_empty', x: -1.4, z: -5.05, y: 0.85, face: 15 },
+                { key: 'meal_tray_empty', x: -0.4, z: -5.02, y: 0.85, face: -20 },
+                { key: 'coffee_mug',     x: -0.9, z: -5.55, y: 0.9, face: 30 },             // on the counter top, by the wells
+                { key: 'solo_cup',       x: 0.2,  z: -5.5, y: 0.9 },
+                { key: 'clipboard_flat', x: 0.75, z: -5.55, y: 0.9, face: -12 },              // the seconds sheet; nobody has had seconds
                 { key: 'observation_window', wall: 'n', x: -2.0, mount: 1.45 },              // the kitchen hatch; the kitchen is not on the plan
-                { key: 'hook_rail_long', wall: 'n', x: 2.7, mount: 1.8 },                    // the aprons (the rail nobody hangs anything on, moved in)
                 { key: 'wall_clock',     wall: 'n', x: 1.0, mount: 2.9 },
-                { key: 'vent_grille',    wall: 'n', x: 2.0, mount: 3.2 },                      // over the hatch; the kitchen door took its wall (Phase 8)
-                /* ── the east wall: THE HOT SIDE (the break nook, moved in from the hall) ── */
-                { key: 'tanker_desk',    wall: 'e', z: -2.9 },
-                { key: 'microwave',      x: 5.55, z: -3.15, y: 0.76, face: 270 },
-                { key: 'coffee_maker',   x: 5.55, z: -2.65, y: 0.76, face: 270 },
-                { key: 'solo_cup',       x: 5.4,  z: -2.4, y: 0.76 },
-                { key: 'round_fridge',   x: 5.5,  z: -1.7, face: 270 },
-                { key: 'retro_speakers', x: 5.5,  z: -1.7, y: 1.05, face: 270 },              // the muzak followed the fridge
-                { key: 'mini_fridge',    x: 5.6,  z: -0.9, face: 270 },
+                { key: 'vent_grille',    wall: 'n', x: 2.2, mount: 3.3 },                      // over the hatch; the kitchen door took its wall (Phase 8)
+                { key: 'saucer_pendant', x: -1.9, z: -3.8, ceil: true },                       // over the queue
+                /* ── the east wall (x 7.5): THE HOT SIDE (the break nook, moved in from the hall) ── */
+                { key: 'tanker_desk',    wall: 'e', z: -2.6 },
+                { key: 'microwave',      x: 7.05, z: -2.85, y: 0.76, face: 270 },
+                { key: 'coffee_maker',   x: 7.05, z: -2.35, y: 0.76, face: 270 },
+                { key: 'solo_cup',       x: 6.9,  z: -2.1, y: 0.76 },
+                { key: 'round_fridge',   x: 7.0,  z: -1.4, face: 270 },
+                { key: 'retro_speakers', x: 7.0,  z: -1.4, y: 1.05, face: 270 },              // the muzak followed the fridge
+                { key: 'mini_fridge',    x: 7.1,  z: -0.6, face: 270 },
+                { key: 'hook_rail_long', wall: 'e', z: 2.2, mount: 1.8 },                    // the aprons (the rail nobody hangs anything on)
                 { key: 'vending_machine', wall: 'e', z: 0.4 },                               // the one that was on the other side yesterday
-                { key: 'trash_bin',      x: 5.55, z: 1.5, face: 270 },
-                { key: 'palm_tree',      x: 5.2,  z: 3.8 },
-                { key: 'cardboard_boxes', x: 5.6, z: 2.7, face: -15 },
-                /* ── the floor: two long tables and the chairs ── */
-                { key: 'conference_table', x: -2.4, z: 0.9, face: 0 },
-                { key: 'cafeteria_chair', x: -3.9, z: 0.9,  face: 90 },
-                { key: 'cafeteria_chair', x: -0.9, z: 0.9,  face: 270 },
-                { key: 'cafeteria_chair', x: -3.1, z: -0.2, face: 180 },
-                { key: 'cafeteria_chair', x: -1.7, z: -0.2, face: 180 },
-                { key: 'cafeteria_chair', x: -3.1, z: 2.0,  face: 0 },
-                { key: 'molded_chair',    x: -1.7, z: 2.05, face: 0 },
-                { key: 'meal_tray',      x: -2.9, z: 0.6,  y: 0.74, face: 5 },
-                { key: 'coffee_mug',     x: -1.9, z: 1.1,  y: 0.74 },
-                { key: 'solo_cup',       x: -2.6, z: 1.3,  y: 0.74 },
-                { key: 'papers_a',       x: -1.6, z: 0.4,  y: 0.74, face: 30 },              // somebody is working through lunch
-                { key: 'conference_table', x: 2.2, z: 0.9, face: 0 },
-                { key: 'cafeteria_chair', x: 0.7,  z: 0.9,  face: 90 },
-                { key: 'cafeteria_chair', x: 3.7,  z: 0.9,  face: 270 },
-                { key: 'molded_chair',    x: 1.5,  z: -0.2, face: 180 },
-                { key: 'cafeteria_chair', x: 2.9,  z: -0.2, face: 180 },
-                { key: 'cafeteria_chair', x: 1.5,  z: 2.0,  face: 0 },
-                { key: 'molded_chair',    x: 2.9,  z: 2.05, face: 0 },
-                { key: 'meal_tray',      x: 2.6,  z: 1.2,  y: 0.74, face: -10 },
-                { key: 'meal_tray_empty', x: 1.5, z: 0.6,  y: 0.74, face: 12 },
-                { key: 'solo_cup',       x: 2.2,  z: 0.3,  y: 0.74 },
-                { key: 'coffee_mug',     x: 3.0,  z: 0.5,  y: 0.74 },
-                /* ── the door end and the south wall ── */
-                { key: 'rug_office',     x: -4.0, z: 1.2, face: 0 },
-                { key: 'trash_bin',      x: -5.3, z: 2.7, face: 60 },
-                { key: 'wet_floor_sign', x: -4.4, z: 3.2, face: 130 },
-                { key: 'potted_plant',   x: -5.4, z: -3.9 },
+                { key: 'trash_bin',      x: 7.05, z: 1.5, face: 270 },
+                { key: 'palm_tree',      x: 6.5,  z: 3.6 },
+                { key: 'cardboard_boxes', x: 6.9, z: 2.6, face: -15 },
+                /* ── the west half: the two long tables and the chairs ── */
+                { key: 'conference_table', x: -3.6, z: -1.0, face: 0 },
+                { key: 'cafeteria_chair', x: -5.1, z: -1.0,  face: 90 },
+                { key: 'cafeteria_chair', x: -2.1, z: -1.0,  face: 270 },
+                { key: 'cafeteria_chair', x: -4.3, z: -2.1, face: 180 },
+                { key: 'cafeteria_chair', x: -2.9, z: -2.1, face: 180 },
+                { key: 'cafeteria_chair', x: -4.3, z: 0.1,  face: 0 },
+                { key: 'molded_chair',    x: -2.9, z: 0.15, face: 0 },
+                { key: 'meal_tray',      x: -4.1, z: -1.3,  y: 0.74, face: 5 },
+                { key: 'coffee_mug',     x: -3.1, z: -0.8,  y: 0.74 },
+                { key: 'solo_cup',       x: -3.8, z: -0.6,  y: 0.74 },
+                { key: 'papers_a',       x: -2.8, z: -1.5,  y: 0.74, face: 30 },              // somebody is working through lunch
+                { key: 'conference_table', x: -3.6, z: 3.0, face: 0 },
+                { key: 'cafeteria_chair', x: -5.1, z: 3.0,  face: 90 },
+                { key: 'cafeteria_chair', x: -2.1, z: 3.0,  face: 270 },
+                { key: 'molded_chair',    x: -4.3, z: 1.9,  face: 180 },
+                { key: 'cafeteria_chair', x: -2.9, z: 1.9,  face: 180 },
+                { key: 'cafeteria_chair', x: -4.3, z: 4.1,  face: 0 },
+                { key: 'molded_chair',    x: -2.9, z: 4.15, face: 0 },
+                { key: 'meal_tray',      x: -3.2, z: 3.3,  y: 0.74, face: -10 },
+                { key: 'meal_tray_empty', x: -4.3, z: 2.7,  y: 0.74, face: 12 },
+                { key: 'solo_cup',       x: -3.6, z: 2.4,  y: 0.74 },
+                { key: 'coffee_mug',     x: -2.8, z: 2.6,  y: 0.74 },
+                /* ── the east half: THE CONVERSATION RING — six arcs of orange velour round a tulip table on a shag rug (the
+                   sunken lounge of every 1960s terminal, raised: the floor is one level); the sixth arc left out at the
+                   north-west so the tables walk in ── */
+                { key: 'shag_rug',       x: 2.8,  z: 1.2, r: 2.1, color: 0xd8632a, color2: 0xf0b64a },
+                { key: 'curved_sofa',    x: 2.8,  z: -1.1, face: 180, r: 2.3, color: 0xe8641e },
+                { key: 'curved_sofa',    x: 4.79, z: 0.05, face: 240, r: 2.3, color: 0xe8641e },
+                { key: 'curved_sofa',    x: 4.79, z: 2.35, face: 300, r: 2.3, color: 0xe8641e },
+                { key: 'curved_sofa',    x: 2.8,  z: 3.5,  face: 0,   r: 2.3, color: 0xe8641e },
+                { key: 'curved_sofa',    x: 0.81, z: 2.35, face: 60,  r: 2.3, color: 0xe8641e },
+                { key: 'tulip_table',    x: 2.8,  z: 1.2, r: 0.7 },
+                { key: 'lava_lamp',      x: 2.8,  z: 1.2, y: 0.74, face: 30 },                 // on the tulip table: the wax, at lunch
+                { key: 'solo_cup',       x: 3.3,  z: 1.0, y: 0.74 },
+                { key: 'coffee_mug',     x: 2.35, z: 1.5, y: 0.74, face: 200 },
+                { key: 'sputnik_lamp',   x: 2.8,  z: 1.2, ceil: true },                        // over the ring
+                { key: 'mushroom_lamp',  x: 0.3,  z: -4.0 },                                   // by the till
+                /* ── the door end and the south wall (z 6) ── */
+                { key: 'rug_office',     x: -6.0, z: 1.2, face: 0 },
+                { key: 'trash_bin',      x: -6.6, z: 4.4, face: 60 },
+                { key: 'wet_floor_sign', x: -5.6, z: 4.6, face: 130 },
+                { key: 'potted_plant',   x: -6.7, z: -5.1 },
                 { key: 'exit_sign',      wall: 'w', z: 1.2, mount: 2.75 },
                 { key: 'picture_round_b', wall: 'w', z: -2.4 },
                 { key: 'fire_extinguisher', wall: 's', x: 4.6 },
@@ -24134,28 +24190,30 @@ const DOOR_HQ = {
                 { key: 'picture_round_a', wall: 's', x: 0.6 },
                 { key: 'picture_round_c', wall: 's', x: 2.4 },
                 { key: 'wall_clock',     wall: 's', x: -4.6, mount: 2.95 },                  // disagrees with the north one on purpose
+                { key: 'porthole',       wall: 's', x: -3.5, mount: 1.75, size: 1.3 },      // THE RETRO-FUTURIST PASS: two oval windows on a sky that drifts
+                { key: 'porthole',       wall: 's', x: 5.1,  mount: 1.75, size: 1.3 },
                 /* ── the ceiling ── */
-                { key: 'fluorescent',    x: -2.4, z: 0.2, ceil: true, face: 90 },
-                { key: 'fluorescent',    x: 2.2,  z: 0.2, ceil: true, face: 90 },
-                { key: 'fluorescent',    x: 0,    z: -3.0, ceil: true, face: 0 },
+                { key: 'fluorescent',    x: -3.6, z: 1.0, ceil: true, face: 90 },
+                { key: 'saucer_pendant', x: -3.6, z: -3.0, ceil: true },
+                { key: 'saucer_pendant', x: 0.2,  z: 4.4,  ceil: true },
             ],
             agents: [
-                { x: 3.1, z: -3.25, face: 240, gender: 'female', label: 'CASHIER', reach: 2.0, line: '“Hazard Pay or exact change. We do not make change.”' },
+                { x: 3.1, z: -4.75, face: 240, gender: 'female', label: 'CASHIER', reach: 2.0, line: '“Hazard Pay or exact change. We do not make change.”' },
             ],
             /* the roster on break (the renderer draws three) */
             npcSpots: [
-                { x: -3.4, z: -1.7, face: 180 },    // in the queue
-                { x: 0.9,  z: -1.7, face: 200 },
-                { x: -2.2, z: 3.3,  face: 0 },
-                { x: 1.0,  z: 3.4,  face: 340 },
-                { x: 3.9,  z: 2.9,  face: 300 },
+                { x: -3.4, z: -3.2, face: 180 },    // in the queue
+                { x: 0.9,  z: -3.2, face: 200 },
+                { x: -2.2, z: 5.0,  face: 0 },
+                { x: 1.0,  z: 5.1,  face: 340 },
+                { x: 5.9,  z: 4.6,  face: 300 },
             ],
             /* the other operatives on shift: one per online player besides you */
             onlineSpots: [
-                { x: -0.6, z: 3.6,  face: 20 },
-                { x: 3.2,  z: 3.5,  face: 350 },
-                { x: -4.6, z: -1.6, face: 120 },
-                { x: 4.2,  z: -1.2, face: 240 },
+                { x: -0.6, z: 5.1,  face: 20 },
+                { x: 3.2,  z: 5.2,  face: 350 },
+                { x: -6.2, z: -1.6, face: 120 },
+                { x: 5.8,  z: -1.2, face: 240 },
             ],
             lines: [
                 '“The menu is out of it.” “Out of what?” “Everything. That is the menu.”',
@@ -24164,7 +24222,7 @@ const DOOR_HQ = {
                 '“The clocks disagree. Lunch is whichever one you believe.”',
                 '“Do not sit in the corner.” There is no corner. That is the point.',
             ],
-            spawn: { x: -4.6, z: 1.2, face: 90 },
+            spawn: { x: -6.1, z: 1.2, face: 90 },
             /* ── AFTER HOURS: MÖBIUS STRIP CLUB (plan 5.1 · 7.4). Rolled per
                visit (hqRollRoomVariants): `when.hours` = the local clock,
                `when.p` = the seeded roll otherwise. `drop` = base prop keys
@@ -24560,12 +24618,15 @@ const DOOR_HQ = {
             shell: {
                 w: 8, d: 6, h: 3.2,
                 wallH: 3.2, dadoH: 1.1,
-                floor: 'terrazzo', wall: 'drywall', dado: 'oxblood', trim: 'teal', ceiling: 'ceiling',
-                floorColor: 0xd6d3c8, wallColor: 0xe6e1d2, dadoColor: 0x6a3d36,   // painted down: the hall's oxblood dado on the intake side, the plaster gone cream
-                pipes: false,                       // an acoustic ceiling; the forms are dusty enough
+                /* THE RETRO-FUTURIST PASS (2026-09-21): filleted corners, a cove, white plaster over a burnt-orange dado, the porthole over the chairs */
+                round: 0.9, cove: 0.45,   // a small fillet: the wide window door on the west wall leaves no more
+                floor: 'terrazzo', wall: 'drywall', dado: 'oxblood', trim: 'metal', ceiling: 'ceiling',
+                floorColor: 0xe9e4d6, wallColor: 0xf4f1ea, dadoColor: 0xc9622c, ceilColor: 0xf6f4ee,
+                pipes: false, strips: false,
                 light: { x: 0, z: 0 },
-                mood: { light: 0xf3ecd8 },          // warm fluorescents, one of them buzzing
+                mood: { light: 0xf3ecd8, ambient: 0.6 },
                 plate: { x: -1.5, z: -2.95, y: 2.75 },
+                look: HQ_ROOM_LOOKS.retro,
             },
             doors: [
                 { id: 'egress', wall: 'w', z: 0, leaf: 'leaf_window_large',
@@ -24589,7 +24650,7 @@ const DOOR_HQ = {
             ],
             props: [
                 /* ── the north wall: THE INTAKE WINDOW, NOW SERVING, THE LAMINATOR — two desks, the sign between ── */
-                { key: 'security_camera', wall: 'n', x: -3.5, mount: 2.55 },
+                { key: 'security_camera', wall: 'n', x: -2.7, mount: 2.6 },
                 { key: 'tanker_desk',    wall: 'n', x: -1.6 },
                 { key: 'crt_terminal',   x: -2.0,  z: -2.55, y: 0.76, face: 180 },
                 { key: 'clipboard_flat', x: -1.35, z: -2.4,  y: 0.76, face: 175 },
@@ -24603,14 +24664,15 @@ const DOOR_HQ = {
                 { key: 'manila_folders', x: 2.25,  z: -2.5,  y: 0.76, face: 10 },
                 { key: 'papers_a',       x: 0.95,  z: -2.55, y: 0.76, face: 25 },
                 { key: 'desk_lamp',      x: 2.2,   z: -2.75, y: 0.76, face: 210 },
-                { key: 'wall_clock',     wall: 'n', x: 3.2, mount: 2.5 },
+                { key: 'wall_clock',     wall: 'n', x: 2.7, mount: 2.6 },
+                { key: 'lava_lamp',      x: -2.55, z: -2.7,  y: 0.76, face: 200 },           // THE RETRO-FUTURIST PASS: on the window desk, beside the clerk's screen
                 /* ── the east wall: the files, the notice board, the cooler ── */
-                { key: 'filing_cabinet', wall: 'e', z: -2.3 },
-                { key: 'filing_cabinet', wall: 'e', z: -1.65 },
+                { key: 'filing_cabinet', wall: 'e', z: -1.1 },
+                { key: 'filing_cabinet', wall: 'e', z: -0.5 },
                 { key: 'cardboard_box',  x: 3.5,   z: -1.0, face: 15 },               // FORMS, MISC — the box has been there longer than the cabinets
-                { key: 'notice_board',   wall: 'e', z: 0.4 },
-                { key: 'vent_grille',    wall: 'e', z: 1.6, mount: 2.35 },
-                { key: 'water_cooler',   wall: 'e', z: 2.4 },
+                { key: 'notice_board',   wall: 'e', z: 0.7 },
+                { key: 'vent_grille',    wall: 'e', z: 1.1, mount: 2.4 },
+                { key: 'water_cooler',   x: 3.3,   z: 1.7,  face: 270 },                        // off the fillet: a floor prop by the east wall
                 /* ── the south wall: the waiting room — four folding chairs, the low table, the plant ── */
                 { key: 'folding_chair',  x: -2.4, z: 2.55, face: 0 },
                 { key: 'folding_chair',  x: -1.6, z: 2.55, face: 0 },
@@ -24621,11 +24683,11 @@ const DOOR_HQ = {
                 { key: 'manila_folders', x: 1.6,  z: 2.3,  y: 0.46, face: 340 },     // the forms you take a number for
                 { key: 'potted_plant',   x: 3.4,  z: 2.5,  face: 200 },
                 { key: 'trash_bin',      x: -3.3, z: 2.5,  face: 250 },
-                { key: 'breaker_panel',  wall: 's', x: 3.0 },
+                { key: 'breaker_panel',  wall: 's', x: 2.1 },
+                { key: 'porthole',       wall: 's', x: -1.2, mount: 1.55, size: 1.3 },          // THE RETRO-FUTURIST PASS: the oval window over the waiting chairs (a sky that drifts)
                 /* ── the west wall: the way in, the plate, the hooks, the mat ── */
                 { key: 'exit_sign',      wall: 'w', z: 0, mount: 2.75 },
-                { key: 'nameplate',      wall: 'w', z: -1.6, mount: 1.55 },
-                { key: 'hook_rail',      wall: 'w', z: 2.0 },
+                { key: 'nameplate',      wall: 's', x: 1.2, mount: 1.6 },                        // off the doorway and the fillet: over the low table
                 { key: 'rug_office',     x: -2.3,  z: 0.0 },
                 { key: 'wet_floor_sign', x: 2.8,   z: 0.9,  face: 140 },
                 /* ── the floor: the queue lane, the ceiling ── */
@@ -24633,7 +24695,7 @@ const DOOR_HQ = {
                 { key: 'railing_1m',     x: 0.5,   z: -0.9, face: 0 },
                 { key: 'railing_1m',     x: 1.5,   z: -0.9, face: 0 },
                 { key: 'fluorescent',    x: -2.0, z: 0, ceil: true, face: 0 },
-                { key: 'fluorescent',    x: 2.0,  z: 0, ceil: true, face: 0 },
+                { key: 'saucer_pendant', x: 2.0,  z: 0, ceil: true },                             // THE RETRO-FUTURIST PASS
             ],
             agents: [
                 { x: -1.6, z: -1.95, face: 0, pose: 'hqSit', gender: 'female', label: 'THE INTAKE CLERK', reach: 1.9,
@@ -24920,14 +24982,16 @@ const DOOR_HQ = {
             sub: 'WARD · PADDED ROOM · INTERROGATION',
             kind: 'box',
             shell: {
-                w: 9, d: 5.2, h: 3.4,
+                w: 12, d: 8, h: 3.4,
                 wallH: 3.4, dadoH: 1.1,
-                floor: 'terrazzo', wall: 'drywall', dado: 'teal', trim: 'teal', ceiling: 'ceiling',
-                floorColor: 0xd9dad2, wallColor: 0xdde6dc, dadoColor: 0x7fa89a,   // the ward's own green, carried out into the corridor
-                pipes: false,
-                lights: [{ x: -2.6, z: 0 }, { x: 2.6, z: 0 }],
-                mood: { light: 0xeef4ee },          // cold white, and it never goes off
-                plate: { x: 0, z: -2.45, y: 2.9 },
+                /* THE RETRO-FUTURIST PASS (2026-09-21): the ward's green carried out into a filleted white corridor under a cove — 9 × 5.2 grew to 12 × 8; two egg chairs, a lava lamp, two portholes */
+                round: 1.6, cove: 0.5,
+                floor: 'terrazzo', wall: 'drywall', dado: 'teal', trim: 'metal', ceiling: 'ceiling',
+                floorColor: 0xe6e8e0, wallColor: 0xf1f4ef, dadoColor: 0x6fb0a0, ceilColor: 0xf6f4ee,
+                pipes: false, strips: false, lights: [],
+                mood: { light: 0xfff0d6, ambient: 0.62 },
+                plate: { x: 0, z: -3.95, y: 2.9 },
+                look: HQ_ROOM_LOOKS.retro,
             },
             doors: [
                 { id: 'egress', wall: 'w', z: 0, leaf: 'leaf_hospital',
@@ -24952,31 +25016,36 @@ const DOOR_HQ = {
             ],
             counters: [],
             props: [
-                /* the north wall: the board, the vent, the way into the ward */
-                { key: 'notice_board',      wall: 'n', x: 1.2 },
-                { key: 'picture_round_b',   wall: 'n', x: 3.2 },
-                { key: 'vent_grille',       wall: 'n', x: -4.0, mount: 2.9 },
-                /* the south wall: the clock nobody checks, the cooler, the coats */
+                /* the north wall (z −4): the board between the two doors, the vent over it */
+                { key: 'notice_board',      wall: 'n', x: 0 },
+                { key: 'vent_grille',       wall: 'n', x: 0, mount: 2.9 },
+                /* the south wall (z 4): the clock nobody checks, the portholes, the picture, the coats, the camera */
                 { key: 'wall_clock',        wall: 's', x: 0,    mount: 2.5 },
-                { key: 'water_cooler',      wall: 's', x: 2.2 },
-                { key: 'hook_rail',         wall: 's', x: -3.0 },
-                { key: 'fire_extinguisher', wall: 's', x: -4.0 },
-                { key: 'security_camera',   wall: 's', x: 3.8,  mount: 2.55 },
+                { key: 'porthole',          wall: 's', x: -2.4, mount: 1.5, size: 1.2 },
+                { key: 'porthole',          wall: 's', x: 2.4,  mount: 1.5, size: 1.2 },
+                { key: 'hook_rail',         wall: 's', x: -3.9 },
+                { key: 'security_camera',   wall: 's', x: 3.4,  mount: 2.55 },
+                { key: 'picture_round_b',   wall: 's', x: 3.9 },
                 /* the two ends */
                 { key: 'exit_sign',         wall: 'w', z: 1.3,  mount: 2.75 },
-                { key: 'nameplate',         wall: 'e', z: 1.3 },
-                { key: 'clipboard',         wall: 'e', z: -1.3, rot: -4 },
-                /* the floor: the waiting bench, the queue rail (THE PARK RULE) */
-                { key: 'rug_office',        x: 0,    z: 0 },
-                { key: 'park_bench',        x: -1.0, z: 1.7, face: 0 },
-                { key: 'park_bench',        x: 1.4,  z: 1.7, face: 0 },
-                { key: 'potted_plant',      x: -4.0, z: 1.9 },
-                { key: 'trash_bin',         x: 3.9,  z: 1.9 },
+                { key: 'fire_extinguisher', wall: 'w', z: -1.9 },
+                { key: 'nameplate',         wall: 'e', z: 1.9 },
+                { key: 'clipboard',         wall: 'e', z: -1.9, rot: -4 },
+                /* the floor: the waiting bench, the egg chairs, the queue rail (THE PARK RULE), the lava lamp in the corner */
+                { key: 'shag_rug',          x: 0,    z: 0.6, r: 1.5, color: 0x7fa89a, color2: 0xe6e8e0 },
+                { key: 'park_bench',        x: -1.0, z: 2.6, face: 0 },
+                { key: 'park_bench',        x: 1.4,  z: 2.6, face: 0 },
+                { key: 'egg_chair',         x: -3.2, z: 2.7, face: 0, color: 0x3d8f80 },
+                { key: 'egg_chair',         x: 3.6,  z: 2.7, face: 0, color: 0x3d8f80 },
+                { key: 'water_cooler',      x: 4.5,  z: 0.6, face: 270 },
+                { key: 'potted_plant',      x: -4.6, z: 2.6 },
+                { key: 'trash_bin',         x: 4.6,  z: -2.6 },
+                { key: 'lava_lamp_floor',   x: -4.6, z: -2.6 },
                 { key: 'railing_1m',        x: -0.6, z: -1.1, face: 0 },
                 { key: 'railing_1m',        x: 0.4,  z: -1.1, face: 0 },
                 { key: 'railing_1m',        x: 1.4,  z: -1.1, face: 0 },
-                { key: 'fluorescent',       x: -2.6, z: 0, ceil: true, face: 0 },
-                { key: 'fluorescent',       x: 2.6,  z: 0, ceil: true, face: 0 },
+                { key: 'saucer_pendant',    x: -2.6, z: 0, ceil: true },
+                { key: 'saucer_pendant',    x: 2.6,  z: 0, ceil: true },
             ],
             agents: [
                 { x: -3.0, z: -1.6, face: 60, pose: 'hqArms', gender: 'female', label: 'THE WING SISTER', reach: 1.9,
@@ -25000,14 +25069,16 @@ const DOOR_HQ = {
             sub: 'THE FILE · THE TIME',
             kind: 'box',
             shell: {
-                w: 9, d: 5.2, h: 3.4,
+                w: 12, d: 8, h: 3.4,
                 wallH: 3.4, dadoH: 1.1,
-                floor: 'concrete', wall: 'drywall', dado: 'wood', trim: 'teal', ceiling: 'ceiling',
-                floorColor: 0x8d8f86, wallColor: 0xc9c2ae, dadoColor: 0x6b4a2e,   // manila over green linoleum: Room 42's palette, out in the corridor
-                pipes: false,
-                lights: [{ x: -2.6, z: 0 }, { x: 2.6, z: 0 }],
-                mood: { light: 0xe9dcc0 },          // warm, and it flickers when the stacks are opened
-                plate: { x: 0, z: -2.45, y: 2.9 },
+                /* THE RETRO-FUTURIST PASS (2026-09-21): manila over a filleted white corridor under a cove — 9 × 5.2 grew to 12 × 8; an egg chair, a lava lamp on the cabinet, a mushroom by the boxes */
+                round: 1.6, cove: 0.5,
+                floor: 'terrazzo', wall: 'drywall', dado: 'wood', trim: 'metal', ceiling: 'ceiling',
+                floorColor: 0xd9d6c6, wallColor: 0xf0ece0, dadoColor: 0x6b4a2e, ceilColor: 0xf6f4ee,
+                pipes: false, strips: false, lights: [],
+                mood: { light: 0xfff0d6, ambient: 0.62 },
+                plate: { x: 0, z: -3.95, y: 2.9 },
+                look: HQ_ROOM_LOOKS.retro,
             },
             doors: [
                 { id: 'egress', wall: 'w', z: 0, leaf: 'leaf_wired_double', wide: true,
@@ -25027,34 +25098,37 @@ const DOOR_HQ = {
             ],
             counters: [],
             props: [
-                /* the north wall: the board, the vent, the way into the stacks */
+                /* the north wall (z −4): the board, the picture, the vent, the way into the stacks */
                 { key: 'notice_board',    wall: 'n', x: 1.2 },
                 { key: 'picture_round_c', wall: 'n', x: 2.6 },
                 { key: 'vent_grille',     wall: 'n', x: 3.8, mount: 2.9 },
-                /* the south wall: the overflow — what the stacks could not take */
-                { key: 'metal_shelving',  wall: 's', x: -3.2 },
+                /* the south wall (z 4): the overflow — what the stacks could not take */
+                { key: 'metal_shelving',  wall: 's', x: -3.0 },
                 { key: 'filing_cabinet',  wall: 's', x: -1.6 },
                 { key: 'filing_cabinet',  wall: 's', x: -0.4 },
+                { key: 'lava_lamp',       x: -1.6,  z: 3.7, y: 1.3, face: 10 },         // THE RETRO-FUTURIST PASS: on the cabinet (the tabletop seat finds its top)
                 { key: 'hook_rail',       wall: 's', x: 1.2 },
                 { key: 'wall_clock',      wall: 's', x: 2.6, mount: 2.5 },       // set to the Clock Room's time; the Clock Room disputes it
-                { key: 'security_camera', wall: 's', x: 4.0, mount: 2.55 },
+                { key: 'security_camera', wall: 's', x: 3.6, mount: 2.55 },
                 /* the two ends */
                 { key: 'exit_sign',       wall: 'w', z: 1.3,  mount: 2.75 },
-                { key: 'nameplate',       wall: 'e', z: 1.3 },
-                { key: 'clipboard',       wall: 'e', z: -1.3, rot: 3 },
-                /* the floor: the trolley's worth of boxes, two chairs, the rail (THE PARK RULE) */
-                { key: 'rug_office',      x: 0,    z: 0 },
-                { key: 'cardboard_boxes', x: -3.6, z: 1.6 },
-                { key: 'cardboard_box',   x: -2.9, z: 1.9, face: 20 },
-                { key: 'molded_chair',    x: -0.8, z: 1.8, face: 0 },
-                { key: 'molded_chair',    x: 0.4,  z: 1.8, face: 0 },
-                { key: 'potted_plant',    x: 4.0,  z: -1.9 },
-                { key: 'trash_bin',       x: 3.9,  z: 1.9 },
+                { key: 'nameplate',       wall: 'e', z: 1.9 },
+                { key: 'clipboard',       wall: 'e', z: -1.9, rot: 3 },
+                /* the floor: the trolley's worth of boxes, two chairs, the egg chair, the rail (THE PARK RULE) */
+                { key: 'shag_rug',        x: 0.2,  z: 0.8, r: 1.4, color: 0xb5772e, color2: 0xe9d9a8 },
+                { key: 'cardboard_boxes', x: -3.6, z: 2.4 },
+                { key: 'cardboard_box',   x: -2.9, z: 2.9, face: 20 },
+                { key: 'mushroom_lamp',   x: -4.5, z: 2.6 },
+                { key: 'molded_chair',    x: -0.8, z: 2.6, face: 0 },
+                { key: 'molded_chair',    x: 0.4,  z: 2.6, face: 0 },
+                { key: 'egg_chair',       x: 2.6,  z: 2.7, face: 0, color: 0xc8842a },
+                { key: 'potted_plant',    x: 4.5,  z: -2.5 },
+                { key: 'trash_bin',       x: 4.5,  z: 2.5 },
                 { key: 'railing_1m',      x: -0.6, z: -1.1, face: 0 },
                 { key: 'railing_1m',      x: 0.4,  z: -1.1, face: 0 },
                 { key: 'railing_1m',      x: 1.4,  z: -1.1, face: 0 },
-                { key: 'fluorescent',     x: -2.6, z: 0, ceil: true, face: 0 },
-                { key: 'fluorescent',     x: 2.6,  z: 0, ceil: true, face: 0 },
+                { key: 'saucer_pendant',  x: -2.6, z: 0, ceil: true },
+                { key: 'saucer_pendant',  x: 2.6,  z: 0, ceil: true },
             ],
             agents: [
                 { x: -3.2, z: -1.5, face: 70, pose: 'hqTalk', gender: 'male', label: 'THE WING ARCHIVIST', reach: 1.9,
@@ -25078,14 +25152,16 @@ const DOOR_HQ = {
             sub: 'TROPHY CASE · BUREAU OF CONTINUITY',
             kind: 'box',
             shell: {
-                w: 8, d: 5, h: 3.2,
-                wallH: 3.2, dadoH: 1.05,
-                floor: 'carpet', wall: 'drywall', dado: 'oxblood', trim: 'teal', ceiling: 'ceiling',
-                floorColor: 0x6a3a34, wallColor: 0xd8d2c2,   // the executive carpet; the walls light, because the case is the light
-                pipes: false,
-                lights: [{ x: -2.2, z: 0 }, { x: 2.2, z: 0 }],
-                mood: { light: 0xfff0d6 },
-                plate: { x: 0, z: -2.35, y: 2.75 },
+                w: 11, d: 8, h: 3.2,
+                wallH: 3.2, dadoH: 1.1,
+                /* THE RETRO-FUTURIST PASS (2026-09-21): the executive claret under white plaster, filleted, coved — 8 × 5 grew to 11 × 8; a lava lamp, a porthole, the couch where it was */
+                round: 1.6, cove: 0.5,
+                floor: 'carpet', wall: 'drywall', dado: 'oxblood', trim: 'metal', ceiling: 'ceiling',
+                floorColor: 0x7a3a30, wallColor: 0xf0ece2, dadoColor: 0x4a2a24, ceilColor: 0xf6f4ee,
+                pipes: false, strips: false, lights: [],
+                mood: { light: 0xfff0d6, ambient: 0.62 },
+                plate: { x: 0, z: -3.95, y: 2.7 },
+                look: HQ_ROOM_LOOKS.retro,
             },
             doors: [
                 { id: 'egress', wall: 's', x: 0, leaf: 'leaf_suburban_house',
@@ -25109,32 +25185,33 @@ const DOOR_HQ = {
             ],
             counters: [],
             props: [
-                /* the north wall: the frame that is not a window, the plate by the Bureau's door */
+                /* the north wall (z −4): the frame that is not a window, the plate by the Bureau's door, the vent */
                 { key: 'picture_round_a', wall: 'n', x: -2.4 },
-                { key: 'nameplate',       wall: 'n', x: 2.8 },
+                { key: 'nameplate',       wall: 'n', x: 3.3 },
                 { key: 'vent_grille',     wall: 'n', x: -3.4, mount: 2.8 },
-                /* the south wall: the way out, the clock, the coats */
+                /* the south wall (z 4): the way out, the clock, the coats, the camera */
                 { key: 'wall_clock',      wall: 's', x: 2.4, mount: 2.5 },
                 { key: 'hook_rail',       wall: 's', x: -2.4 },
                 { key: 'security_camera', wall: 's', x: 3.4, mount: 2.55 },
                 /* the two ends */
-                { key: 'nameplate',       wall: 'w', z: 1.3 },
+                { key: 'nameplate',       wall: 'w', z: 1.9 },
                 { key: 'exit_sign',       wall: 'w', z: -1.4, mount: 2.75 },
                 { key: 'notice_board',    wall: 'e', z: 1.2 },
-                { key: 'filing_cabinet',  wall: 'e', z: -1.4 },
-                /* the floor: the waiting-for-the-suite furniture, off the door lane
-                   (the way out is the SOUTH wall at x 0 — nothing stands in it),
-                   and the rail (THE PARK RULE) */
-                { key: 'rug_office',      x: 2.7,  z: 1.3 },
-                { key: 'curved_couch',    x: 2.7,  z: 1.8, face: 180 },
-                { key: 'coffee_table',    x: 2.7,  z: 1.0, face: 0 },
-                { key: 'globe_lamp',      x: -3.3, z: 1.6 },
-                { key: 'potted_plant',    x: -3.3, z: -1.6 },
-                { key: 'trash_bin',       x: 3.6,  z: -1.9 },
+                { key: 'porthole',        wall: 'e', z: -0.2, mount: 1.5, size: 1.2 },
+                { key: 'filing_cabinet',  wall: 'e', z: -1.6 },
+                /* the floor: the waiting-for-the-suite furniture, off the door lane (the way out is the SOUTH wall at x 0 — nothing stands in it), the rail (THE PARK RULE) */
+                { key: 'shag_rug',        x: 3.2,  z: 1.8, r: 1.6, color: 0xa63a2e, color2: 0xe8b33a },
+                { key: 'curved_couch',    x: 3.2,  z: 2.6, face: 180 },
+                { key: 'coffee_table',    x: 3.2,  z: 1.4, face: 0 },
+                { key: 'lava_lamp',       x: 3.2,  z: 1.4, y: 0.46, face: 20 },
+                { key: 'globe_lamp',      x: -4.0, z: 2.4 },
+                { key: 'egg_chair',       x: -2.4, z: 2.7, face: 0, color: 0xa63a2e },
+                { key: 'potted_plant',    x: -4.0, z: -2.4 },
+                { key: 'trash_bin',       x: 4.0,  z: -2.4 },
                 { key: 'railing_1m',      x: -1.2, z: -1.6, face: 0 },
                 { key: 'railing_1m',      x: -0.2, z: -1.6, face: 0 },
-                { key: 'fluorescent',     x: -2.2, z: 0, ceil: true, face: 0 },
-                { key: 'fluorescent',     x: 2.2,  z: 0, ceil: true, face: 0 },
+                { key: 'saucer_pendant',  x: -2.2, z: 0, ceil: true },
+                { key: 'saucer_pendant',  x: 2.2,  z: 0, ceil: true },
             ],
             agents: [
                 { x: -2.6, z: -1.2, face: 120, pose: 'hqTalk', gender: 'female', label: 'THE FLOOR ASSISTANT', reach: 1.9,
@@ -25169,14 +25246,17 @@ const DOOR_HQ = {
             sub: 'EXECUTIVE FLOOR · KEYHOLDER RANK',
             kind: 'box',
             shell: {
-                w: 9, d: 6, h: 3.4,
+                w: 11, d: 8, h: 3.4,
                 wallH: 3.4, dadoH: 1.05,
-                floor: 'carpet', wall: 'drywall', dado: 'oxblood', trim: 'teal', ceiling: 'ceiling',
-                floorColor: 0x5b2a2c, wallColor: 0xe3dccb, dadoColor: 0x4a2a24,   // painted down: a claret carpet, cream plaster, the dado gone dark
-                pipes: false,
-                lights: [{ x: -2.4, z: 0 }, { x: 2.4, z: 0 }],
-                mood: { light: 0xfff0d6 },          // warm, dimmable; nobody has found the dimmer
-                plate: { x: 0, z: -2.95, y: 2.9 },
+                /* THE RETRO-FUTURIST PASS (2026-09-21): the lobby grew 9 × 6 → 11 × 8, filleted and coved — the claret carpet under white
+                   plaster, a sputnik either side, egg chairs, a lava lamp on the coffee table */
+                round: 1.6, cove: 0.55,
+                floor: 'carpet', wall: 'drywall', dado: 'oxblood', trim: 'metal', ceiling: 'ceiling',
+                floorColor: 0x5b2a2c, wallColor: 0xf2eee4, dadoColor: 0x4a2a24, ceilColor: 0xf6f4ee,
+                pipes: false, strips: false, lights: [],
+                mood: { light: 0xfff0d6, ambient: 0.6 },          // warm, dimmable; nobody has found the dimmer
+                plate: { x: 0, z: -3.95, y: 2.9 },
+                look: HQ_ROOM_LOOKS.retro,
             },
             doors: [
                 /* the car: the way down — the egress's elevator from the other side (proc leaf, both halves pocket) */
@@ -25195,54 +25275,58 @@ const DOOR_HQ = {
             ],
             counters: [
                 /* THE FLOOR PANEL → nothing; the panel is the whole interaction (the way down is a button on it) */
-                { id: 'floorpanel', x: 1.55, z: 2.5, face: 0, plateY: 1.75, radius: 1.5, verb: 'PRESS',
+                { id: 'floorpanel', x: 1.55, z: 3.5, face: 0, plateY: 1.75, radius: 1.5, verb: 'PRESS',
                   label: 'THE FLOOR PANEL', sub: 'SIXTEEN BUTTONS · TWO WORK', action: {},
                   desc: 'B · G · M · 2 through 12 · 14 · PH. Two of them are lit. The car stops at M and at PH; the other floors are on the panel because the panel came with them.' },
             ],
             props: [
-                /* ── the south wall: the car, the panel beside it, the exit sign over it ── */
+                /* ── the south wall (z 4): the car, the panel beside it, the exit sign over it ── */
                 { key: 'floor_panel',    wall: 's', x: 1.55, mount: 1.0 },
                 { key: 'exit_sign',      wall: 's', x: 0, mount: 2.9 },
-                { key: 'potted_plant',   x: -1.7,  z: 2.5,  face: 20 },
-                { key: 'potted_plant',   x: 3.9,   z: 2.5,  face: 200 },
-                { key: 'security_camera',wall: 's', x: -3.6, mount: 2.6 },
-                /* ── the north wall: the assistant's desk between the pool door and the corner ── */
+                { key: 'potted_plant',   x: -1.7,  z: 3.5,  face: 20 },
+                { key: 'potted_plant',   x: 3.9,   z: 3.5,  face: 200 },
+                { key: 'security_camera',wall: 's', x: -3.0, mount: 2.6 },
+                { key: 'hook_rail',      wall: 's', x: -2.0 },
+                /* ── the north wall (z −4): the assistant's desk between the pool door and the corner ── */
                 { key: 'tanker_desk',    wall: 'n', x: -1.6 },
-                { key: 'crt_terminal',   x: -1.95, z: -2.55, y: 0.76, face: 180 },
-                { key: 'rotary_phone',   x: -1.15, z: -2.6,  y: 0.76, face: 200 },
-                { key: 'desk_lamp',      x: -2.25, z: -2.75, y: 0.76, face: 210 },
-                { key: 'papers_a',       x: -1.4,  z: -2.4,  y: 0.76, face: 15 },
-                { key: 'manila_folders', x: -0.9,  z: -2.45, y: 0.76, face: 340 },
-                { key: 'coffee_mug',     x: -0.75, z: -2.3,  y: 0.76, face: 140 },
-                { key: 'computer_chair_grey', x: -1.6, z: -1.95, face: 0 },        // the assistant's, facing the desk
-                { key: 'wall_clock',     wall: 'n', x: -3.6, mount: 2.55 },
+                { key: 'crt_terminal',   x: -1.95, z: -3.55, y: 0.76, face: 180 },
+                { key: 'rotary_phone',   x: -1.15, z: -3.6,  y: 0.76, face: 200 },
+                { key: 'desk_lamp',      x: -2.25, z: -3.75, y: 0.76, face: 210 },
+                { key: 'papers_a',       x: -1.4,  z: -3.4,  y: 0.76, face: 15 },
+                { key: 'manila_folders', x: -0.9,  z: -3.45, y: 0.76, face: 340 },
+                { key: 'coffee_mug',     x: -0.75, z: -3.3,  y: 0.76, face: 140 },
+                { key: 'computer_chair_grey', x: -1.6, z: -2.95, face: 0 },        // the assistant's, facing the desk
+                { key: 'wall_clock',     wall: 'n', x: -3.2, mount: 2.6 },
                 { key: 'picture_round_a',wall: 'n', x: 0.3, mount: 1.7 },
-                { key: 'vent_grille',    wall: 'n', x: -3.9, mount: 2.5 },
-                /* ── the west wall: the seats you wait on ── */
-                { key: 'teal_chair',     x: -3.9,  z: -0.9, face: 90 },
-                { key: 'teal_chair',     x: -3.9,  z: 0.3,  face: 90 },
-                { key: 'coffee_table',   x: -3.3,  z: -0.3 },
-                { key: 'papers_a',       x: -3.3,  z: -0.3, y: 0.46, face: 25 },     // the annual report; the year is not printed
+                /* ── the west wall (x −5.5): the seats you wait on ── */
+                { key: 'shag_rug',       x: -4.3,  z: -0.3, r: 1.3, color: 0x8a3a30, color2: 0xe8b33a },
+                { key: 'teal_chair',     x: -4.6,  z: -0.9, face: 90 },
+                { key: 'teal_chair',     x: -4.6,  z: 0.3,  face: 90 },
+                { key: 'coffee_table',   x: -4.0,  z: -0.3 },
+                { key: 'papers_a',       x: -4.15, z: -0.15, y: 0.46, face: 25 },     // the annual report; the year is not printed
+                { key: 'lava_lamp',      x: -3.85, z: -0.45, y: 0.46, face: 30 },     // THE RETRO-FUTURIST PASS: on the coffee table
                 { key: 'water_cooler',   wall: 'w', z: 1.7 },
-                { key: 'globe_lamp',     x: -3.9,  z: 2.0,  face: 0 },
-                { key: 'nameplate',      wall: 'w', z: -2.2, mount: 1.55 },
-                /* ── the east wall: the corner office door at −0.6, the files by it ── */
-                { key: 'filing_cabinet', wall: 'e', z: 1.4 },
-                { key: 'filing_cabinet', wall: 'e', z: 2.0 },
-                { key: 'hook_rail',      wall: 'e', z: -2.4 },
+                { key: 'vent_grille',    wall: 'w', z: -1.5, mount: 2.6 },
+                { key: 'globe_lamp',     x: -4.4,  z: 2.6,  face: 0 },
+                { key: 'nameplate',      wall: 'w', z: -1.6, mount: 1.55 },
+                /* ── the east wall (x 5.5): the corner office door at −0.6, the files by it, the egg chair ── */
+                { key: 'filing_cabinet', wall: 'e', z: 1.0 },
+                { key: 'filing_cabinet', wall: 'e', z: 1.6 },
+                { key: 'egg_chair',      x: 3.6,   z: 1.4, face: 270, color: 0x8a3a30 },
                 /* ── the floor, the ceiling ── */
                 { key: 'rug_office',     x: 0.4,   z: 0.2 },
-                { key: 'fluorescent',    x: -2.4,  z: 0, ceil: true, face: 0 },
-                { key: 'fluorescent',    x: 2.4,   z: 0, ceil: true, face: 0 },
+                { key: 'fluorescent',    x: 0,     z: 0, ceil: true, face: 0 },
+                { key: 'sputnik_lamp',   x: -2.6,  z: 0, ceil: true },
+                { key: 'sputnik_lamp',   x: 2.6,   z: 0, ceil: true },
             ],
             agents: [
-                { x: -1.6, z: -1.95, face: 0, pose: 'hqSit', gender: 'female', label: 'THE EXECUTIVE ASSISTANT', reach: 1.9,
+                { x: -1.6, z: -2.95, face: 0, pose: 'hqSit', gender: 'female', label: 'THE EXECUTIVE ASSISTANT', reach: 1.9,
                   line: '“The Director is in a meeting. The meeting is in the corner office. The corner office is yours. I have not resolved this either.”' },
-                { x: 3.6, z: 1.0, face: 270, pose: 'hqArms', gender: 'male', label: 'THE DIRECTOR’S GUARD', reach: 1.6,
+                { x: 4.2, z: -2.4, face: 300, pose: 'hqArms', gender: 'male', label: 'THE DIRECTOR’S GUARD', reach: 1.6,
                   line: '“Keys were checked at the elevator. They are checked again here. The Keys have not changed; the policy has.”' },
             ],
             npcSpots: [
-                { x: -3.9, z: 0.3, face: 90 },      // waiting for a meeting that is not on the panel
+                { x: -4.6, z: 0.3, face: 90 },      // waiting for a meeting that is not on the panel
             ],
             onlineSpots: [],
             lines: [
@@ -25251,7 +25335,7 @@ const DOOR_HQ = {
                 '“Is it a corner office?” “The building is round.” “So?” “So it is a corner, and we do not ask of what.”',
                 '“The pool is over the void.” “Is that safe?” “The edge is. The void has not filed a complaint.”',
             ],
-            spawn: { x: 0, z: 1.6, face: 180 },
+            spawn: { x: 0, z: 2.4, face: 180 },
         },
         /* ── ROOM 4C · THE CORNER OFFICE (HQ plan 7.4, 2026-09-14) — your
            office once the ladder passes L3 (MASTER A5: Support at L1–L3,
@@ -25272,12 +25356,15 @@ const DOOR_HQ = {
             shell: {
                 w: 6.4, d: 5.2, h: 3.4,
                 wallH: 3.4, dadoH: 1.05,
-                floor: 'carpet', wall: 'drywall', dado: 'oxblood', trim: 'teal', ceiling: 'ceiling',
-                floorColor: 0x4f3a2e, wallColor: 0xe6dfcd, dadoColor: 0x5a3a2c,   // painted down: a brown carpet, cream plaster, a walnut dado
-                pipes: false,
+                /* THE RETRO-FUTURIST PASS (2026-09-21): a cove (the doors sit too near the corners for a fillet), white plaster over walnut, a saucer over the desk */
+                cove: 0.5,
+                floor: 'carpet', wall: 'drywall', dado: 'wood', trim: 'metal', ceiling: 'ceiling',
+                floorColor: 0x4f3a2e, wallColor: 0xf2eee4, dadoColor: 0x5a3a2c, ceilColor: 0xf6f4ee,
+                pipes: false, strips: false,
                 light: { x: 0, z: 0.4 },
-                mood: { light: 0xfff0d6 },
+                mood: { light: 0xfff0d6, ambient: 0.6 },
                 plate: { x: -1.2, z: -2.55, y: 2.9 },
+                look: HQ_ROOM_LOOKS.retro,
             },
             doors: [
                 { id: 'lobby', wall: 'w', z: 0.6, leaf: 'leaf_glass_exec',
@@ -25316,6 +25403,7 @@ const DOOR_HQ = {
                 { key: 'false_window',   wall: 'e', z: -1.0, mount: 1.0 },
                 { key: 'filing_cabinet', wall: 'e', z: 1.2 },
                 { key: 'filing_cabinet', wall: 'e', z: 1.85 },
+                { key: 'lava_lamp',      x: 1.2,   z: -1.15, y: 0.76, face: 280 },            // on the desk's front corner
                 { key: 'potted_plant',   x: 2.75,  z: 2.35, face: 200 },
                 /* ── the south wall: THE PLAQUES, either side of the centre ── */
                 { key: 'wall_plaques',   wall: 's', x: -0.9, mount: 1.3 },
@@ -25330,9 +25418,11 @@ const DOOR_HQ = {
                 { key: 'trash_bin',      x: -2.0,  z: -2.2, face: 10 },
                 /* ── the floor, the ceiling ── */
                 { key: 'rug_office',     x: 0.2,   z: 0.4 },
-                { key: 'teal_chair',     x: -0.6,  z: -0.5, face: 0 },                 // for whoever the Director is meeting — facing the Director (2026-09-16: they faced the door)
+                { key: 'teal_chair',     x: -0.6,  z: -0.5, face: 0 },                 // for whoever the Director is meeting — facing the Director
                 { key: 'teal_chair',     x: 1.3,   z: -0.5, face: 0 },
+                { key: 'egg_chair',      x: 1.9,   z: 1.7,  face: 315, color: 0xc9622c },      // THE RETRO-FUTURIST PASS: the ball chair in the corner, facing the desk
                 { key: 'fluorescent',    x: 0,     z: 0.4, ceil: true, face: 0 },
+                { key: 'saucer_pendant', x: -1.6,  z: 1.8, ceil: true },                       // THE RETRO-FUTURIST PASS: over the globe's corner
             ],
             agents: [],
             npcSpots: [],
@@ -30030,13 +30120,16 @@ const DOOR_HQ = {
             shell: {
                 w: 8, d: 10, h: 3.2,
                 wallH: 3.2, dadoH: 1.0,
-                floor: 'aluminium', wall: 'gunmetal', dado: 'gunmetal', trim: 'metal', ceiling: 'gunmetal',
-                floorColor: 0x8e98a2, wallColor: 0x6a727c, dadoColor: 0x4e565e, ceilColor: 0x5a626a,
+                /* THE RETRO-FUTURIST PASS (2026-09-21 — 2001's interior): white padding, filleted, coved; the bulkhead leaves stay; a porthole onto the stars on the starboard wall, a disc pendant */
+                round: 1.5, cove: 0.5,
+                floor: 'aluminium', wall: 'drywall', dado: 'drywall', trim: 'metal', ceiling: 'ceiling',
+                floorColor: 0xdfe3e8, wallColor: 0xf2f1ec, dadoColor: 0xe4e2dc, ceilColor: 0xf4f4f0,
                 pipes: false,
                 strips: false,
                 lights: [],
-                mood: { light: 0xb8d8ff, ambient: 0.5 },
+                mood: { light: 0xdce8ff, ambient: 0.58 },
                 plate: { x: 2.6, z: 4.75, y: 2.3 },
+                look: HQ_ROOM_LOOKS.spaceship,
             },
             doors: [
                 { id: 'deck', wall: 's', x: 0, leaf: 'leaf_bulkhead', wide: true,
@@ -30060,22 +30153,23 @@ const DOOR_HQ = {
             ],
             counters: [],
             props: [
-                { key: 'locker',            wall: 'w', z: -3.4 },
-                { key: 'locker',            wall: 'e', z: -2.6 },
+                { key: 'locker',            wall: 'w', z: -2.6 },
+                { key: 'locker',            wall: 'e', z: -2.2 },
                 /* AREA CONTENT D4 (2026-09-20): THE SCRUBBERS — two air units on the port side; from any of the three doors you see one other, not two (R3) */
                 { key: 'boiler',            x: -0.6, z: 1.0, face: 90 },
                 { key: 'boiler',            x: -0.2, z: -1.2, face: 90 },
-                { key: 'railing_1m',        x: 2.4, z: -0.5, face: 90 },                    // the grab rail by the starboard collar (the park rule's rail)
+                { key: 'railing_1m',        x: 2.4, z: -0.5, face: 90 },                    // the grab rail by the starboard wall (the park rule's rail)
                 { key: 'railing_1m',        x: 2.4, z: 0.5, face: 90 },
                 { key: 'warning_tape',      x: 0, z: 3.6 },                                 // the cycle line on the deck side
                 { key: 'warning_tape',      x: 0, z: -3.6 },
-                { key: 'radiation_sign',    wall: 'n', x: 2.6, mount: 1.7 },
-                { key: 'keypad',            wall: 's', x: 1.6, mount: 1.3 },
-                { key: 'fire_extinguisher', wall: 'w', z: 3.6, mount: 0.95 },
-                { key: 'vent_grille',       wall: 'e', z: -3.8, mount: 2.35 },
-                { key: 'hook_rail',         wall: 'e', z: 3.2, mount: 1.75 },               // the suits hung, the helmets gone
-                { key: 'bare_bulb',         x: 0, z: 0, ceil: true },
-                { key: 'bare_bulb',         x: 0, z: -3.2, ceil: true },
+                { key: 'radiation_sign',    wall: 'n', x: 2.0, mount: 1.7 },
+                { key: 'keypad',            wall: 's', x: 1.9, mount: 1.3 },
+                { key: 'porthole',          wall: 'e', z: 1.6, mount: 1.35, size: 1.1, round: true, view: 'stars' },   // THE RETRO-FUTURIST PASS: the stars, drifting
+                { key: 'fire_extinguisher', wall: 'w', z: 2.2, mount: 0.95 },
+                { key: 'vent_grille',       wall: 'e', z: -3.0, mount: 2.4 },
+                { key: 'hook_rail',         wall: 'w', z: 1.2, mount: 1.75 },               // the suits hung, the helmets gone
+                { key: 'disc_cluster',      x: 0, z: 0, ceil: true },
+                { key: 'disc_cluster',      x: 0, z: -3.0, ceil: true },
                 { key: 'floor_stain',       x: -1.6, z: -1.2 },
             ],
             agents: [],
@@ -30094,15 +30188,18 @@ const DOOR_HQ = {
             sub: 'THE CRATES · THE CRYO POD · THE LADDER TO THE BRIDGE',
             kind: 'box', site: 'prebuilt_derelict', part: 'hold',
             shell: {
-                w: 16, d: 12, h: 5.0,
+                w: 17.5, d: 14, h: 5.0,
                 wallH: 5.0, dadoH: 1.2,
-                floor: 'aluminium', wall: 'gunmetal', dado: 'gunmetal', trim: 'metal', ceiling: 'gunmetal',
-                floorColor: 0x7e8892, wallColor: 0x5e666e, dadoColor: 0x464e56, ceilColor: 0x3e464e,
+                /* THE RETRO-FUTURIST PASS (2026-09-21 — 2001's interior): the hold grew 16 × 12 → 17.5 × 14 (ten field cells exactly — no rock proud of a wall), filleted, coved, white; the cryo pods in a row under the disc pendants, a console at the arm */
+                round: 2.4, cove: 0.6,
+                floor: 'aluminium', wall: 'drywall', dado: 'drywall', trim: 'metal', ceiling: 'ceiling',
+                floorColor: 0xdfe3e8, wallColor: 0xf2f1ec, dadoColor: 0xe4e2dc, ceilColor: 0xf4f4f0,
                 pipes: false,
                 strips: false,
                 lights: [],
-                mood: { light: 0x9fd8ff, ambient: 0.42 },
-                plate: { x: 4.5, z: 5.75, y: 2.4 },
+                mood: { light: 0xdce8ff, ambient: 0.58 },
+                plate: { x: 5.5, z: 6.75, y: 2.4 },
+                look: HQ_ROOM_LOOKS.spaceship,
             },
             doors: [
                 { id: 'airlock', wall: 's', x: 0, leaf: 'leaf_bulkhead', wide: true,
@@ -30120,40 +30217,48 @@ const DOOR_HQ = {
             ],
             counters: [],
             props: [
-                { key: 'riser_2',           x: -3.0, z: -4.9, face: 0 },                     // THE LOADING TIERS under the bridge hatch (the park rule's ramp, stepped)
-                { key: 'railing_1m',        x: 1.2, z: -3.9, face: 0 },                      // the tier's rail (the park rule's rail)
-                { key: 'railing_1m',        x: 2.2, z: -3.9, face: 0 },
-                { key: 'railing_1m',        x: 3.2, z: -3.9, face: 0 },
-                { key: 'cardboard_boxes',   x: 6.6, z: 4.6, face: 12 },                      // the freight, strapped
-                { key: 'cardboard_boxes',   x: 6.6, z: -4.6, face: 350 },
-                { key: 'cardboard_boxes',   x: -6.6, z: -4.4, face: 20 },
-                { key: 'cardboard_box',     x: 5.4, z: 4.2, face: 40 },
-                { key: 'cardboard_box',     x: -6.2, z: 4.8, face: 70 },
+                { key: 'riser_2',           x: -3.0, z: -5.9, face: 0 },                     // THE LOADING TIERS under the bridge hatch (the park rule's ramp, stepped)
+                { key: 'railing_1m',        x: 1.2, z: -4.9, face: 0 },                      // the tier's rail (the park rule's rail)
+                { key: 'railing_1m',        x: 2.2, z: -4.9, face: 0 },
+                { key: 'railing_1m',        x: 3.2, z: -4.9, face: 0 },
+                { key: 'cardboard_boxes',   x: 7.4, z: 5.4, face: 12 },                      // the freight, strapped
+                { key: 'cardboard_boxes',   x: 7.4, z: -5.4, face: 350 },
+                { key: 'cardboard_boxes',   x: -7.4, z: -5.2, face: 20 },
+                { key: 'cardboard_box',     x: 6.2, z: 4.6, face: 40 },
+                { key: 'cardboard_box',     x: -7.0, z: 5.4, face: 70 },
                 { key: 'metal_shelving',    wall: 'e', z: 0 },
-                { key: 'metal_shelving',    wall: 'w', z: 2.6 },
-                { key: 'iso_tank',          x: 4.0, z: -0.6, face: 90 },                     // THE CRYO POD: still running, still occupied, not on the manifest
-                { key: 'robot_arm',         x: -1.8, z: 0, face: 180 },                        // AREA CONTENT D4 (2026-09-20): THE CARGO ARM in the middle of the hold (the two bulkheads do not see each other — R3)
-                { key: 'warning_tape',      x: 0, z: 4.4 },
+                { key: 'metal_shelving',    wall: 'w', z: 3.0 },
+                /* THE RETRO-FUTURIST PASS: THE CRYO ROW — four pod beds under their own light, the one that is still running at the end */
+                { key: 'pod_bed',           x: 4.2, z: -1.6, face: 90 },
+                { key: 'pod_bed',           x: 4.2, z: 0.4, face: 90 },
+                { key: 'pod_bed',           x: 4.2, z: 2.4, face: 90 },
+                { key: 'iso_tank',          x: 6.6, z: -3.2, face: 90 },                     // THE CRYO POD: still running, still occupied, not on the manifest
+                { key: 'robot_arm',         x: -1.8, z: 0, face: 180 },                        // AREA CONTENT D4 (2026-09-20): THE CARGO ARM in the middle of the hold
+                { key: 'retro_console',     x: -1.8, z: 3.2, face: 0 },                       // the arm's console, the lamps still counting
+                { key: 'warning_tape',      x: 0, z: 5.4 },
                 { key: 'floor_drain',       x: -2.0, z: 1.2 },
                 { key: 'hook_rail_long',    wall: 'w', z: -2.6, mount: 1.8 },
                 { key: 'radiation_sign',    wall: 's', x: 3.4, mount: 1.7 },
-                { key: 'breaker_panel',     wall: 'e', z: 4.2, mount: 1.25 },
-                { key: 'vent_grille',       wall: 'n', x: 3.0, mount: 2.35 },
-                { key: 'bare_bulb',         x: -5, z: 0, ceil: true },
-                { key: 'bare_bulb',         x: 0, z: 0, ceil: true },
-                { key: 'bare_bulb',         x: 5, z: 2.4, ceil: true },
+                { key: 'breaker_panel',     wall: 'e', z: 3.6, mount: 1.25 },
+                { key: 'porthole',          wall: 'n', x: 3.4, mount: 1.6, size: 1.4, round: true, view: 'space' },   // the sun, closer every crossing
+                { key: 'porthole',          wall: 'w', z: -0.2, mount: 1.6, size: 1.1, round: true, view: 'stars' },
+                { key: 'vent_grille',       wall: 'n', x: 5.4, mount: 2.4 },
+                { key: 'disc_cluster',      x: -5, z: 0, ceil: true },
+                { key: 'disc_cluster',      x: 0, z: 0, ceil: true },
+                { key: 'disc_cluster',      x: 5, z: 2.4, ceil: true },
+                { key: 'saucer_pendant',    x: 4.2, z: -1.6, ceil: true },
                 { key: 'floor_stain',       x: 1.6, z: -1.8 },
                 { key: 'paper_sheet',       x: -3.6, z: 3.0, y: 0.01, face: 300 },            // the manifest, one line short
             ],
             agents: [],
-            npcSpots: [{ x: 2.4, z: 3.0, face: 270, race: 'symbiote' }, { x: -5.4, z: 2.0, face: 60, race: 'black goo' }],
+            npcSpots: [{ x: 2.0, z: 4.4, face: 270, race: 'symbiote' }, { x: -5.4, z: 2.0, face: 60, race: 'black goo' }],
             onlineSpots: [],
             lines: [
                 '“The manifest says forty crates.” “There are forty crates.” “The manifest says forty-one.” “There are forty crates.”',
                 '“The pod is running.” “On what?” “On the reactor.” “The reactor is dead.” “The pod is running.”',
                 '“Something walks the deck.” “Something walks the hold.” “Same something?” “Same footing.”',
             ],
-            spawn: { x: 0, z: 3.2, face: 0 },
+            spawn: { x: 0, z: 4.2, face: 0 },
         },
         /* ── THE BRIDGE — the viewport, the screens, the chair that is warm ── */
         site_prebuilt_derelict_bridge: {
@@ -30161,15 +30266,18 @@ const DOOR_HQ = {
             sub: 'THE VIEWPORT · THE NAV CONSOLE · THE CHAIR',
             kind: 'box', site: 'prebuilt_derelict', part: 'bridge',
             shell: {
-                w: 12, d: 8, h: 3.4,
+                w: 16, d: 12, h: 3.4,
                 wallH: 3.4, dadoH: 1.0,
-                floor: 'aluminium', wall: 'gunmetal', dado: 'gunmetal', trim: 'metal', ceiling: 'gunmetal',
-                floorColor: 0x8e98a2, wallColor: 0x525a64, dadoColor: 0x3e4650, ceilColor: 0x2e363e,
+                /* THE RETRO-FUTURIST PASS (2026-09-21 — 2001's interior): the bridge grew 12 × 8 → 16 × 12, filleted, coved, white; THE CONSOLE BANK — four 2001 panels in an arc under the viewport, the egg chairs behind them, the stars in the portholes */
+                round: 2.3, cove: 0.6,
+                floor: 'aluminium', wall: 'drywall', dado: 'drywall', trim: 'metal', ceiling: 'ceiling',
+                floorColor: 0xdfe3e8, wallColor: 0xf2f1ec, dadoColor: 0xe4e2dc, ceilColor: 0xf4f4f0,
                 pipes: false,
                 strips: false,
                 lights: [],
-                mood: { light: 0x9fd8ff, ambient: 0.4 },
-                plate: { x: -1.0, z: 3.75, y: 2.3 },
+                mood: { light: 0xdce8ff, ambient: 0.58 },
+                plate: { x: -1.0, z: 5.75, y: 2.3 },
+                look: HQ_ROOM_LOOKS.spaceship,
             },
             doors: [
                 { id: 'hold', wall: 's', x: -3.6, leaf: 'leaf_bulkhead', wide: true,
@@ -30180,39 +30288,51 @@ const DOOR_HQ = {
             /* THE NAV CONSOLE (2026-09-16): the pilot's seat — SET COURSE lays in where the
                airlock's collar opens (overlay 'nav' → map.js _hqNavHtml → hqShipSetCourse) */
             counters: [
-                { id: 'nav', x: 4.6, z: -0.35, face: 90, plateY: 1.7, radius: 1.6, verb: 'SET COURSE',
+                { id: 'nav', x: 6.6, z: -0.35, face: 90, plateY: 1.7, radius: 1.6, verb: 'SET COURSE',
                   label: 'THE NAV CONSOLE', sub: 'SET COURSE · THE COLLAR OPENS THERE',
                   action: { overlay: 'nav' },
                   desc: 'The nav console. A course laid in here is where the docking collar in the airlock mates on the next cycle. The last hand to lay one in was not on the crew list either.' },
             ],
             props: [
-                { key: 'riser_1',           x: 0, z: -2.9, face: 0 },                        // THE COMMAND DAIS (the park rule's ramp, one step)
-                { key: 'railing_1m',        x: -1.0, z: 2.6, face: 0 },                      // the rail behind the seats (the park rule's rail)
-                { key: 'railing_1m',        x: 0, z: 2.6, face: 0 },
-                { key: 'railing_1m',        x: 1.0, z: 2.6, face: 0 },
+                { key: 'riser_1',           x: 0, z: -4.4, face: 0 },                        // THE COMMAND DAIS (the park rule's ramp, one step)
+                { key: 'railing_1m',        x: -1.0, z: 3.6, face: 0 },                      // the rail behind the seats (the park rule's rail)
+                { key: 'railing_1m',        x: 0, z: 3.6, face: 0 },
+                { key: 'railing_1m',        x: 1.0, z: 3.6, face: 0 },
                 { key: 'sun_viewport',      wall: 'n', x: 0, mount: 1.0 },                   // THE VIEWPORT: the sun, closer every crossing
-                { key: 'monitor_stack',     wall: 'n', x: -3.6 },
-                { key: 'monitor_stack',     wall: 'n', x: 3.6 },
+                { key: 'monitor_stack',     wall: 'n', x: -4.4 },
+                { key: 'monitor_stack',     wall: 'n', x: 4.4 },
+                /* THE RETRO-FUTURIST PASS: THE CONSOLE BANK — four panels in a shallow arc under the viewport, their lamps blinking; the egg chairs behind them face the sun */
+                { key: 'retro_console',     x: -3.0, z: -3.2, face: 200 },
+                { key: 'retro_console',     x: -1.0, z: -3.6, face: 190 },
+                { key: 'retro_console',     x: 1.0,  z: -3.6, face: 170 },
+                { key: 'retro_console',     x: 3.0,  z: -3.2, face: 160 },
+                { key: 'egg_chair',         x: -2.0, z: -1.9, face: 0, color: 0xe0552a },
+                { key: 'egg_chair',         x: 2.0,  z: -1.9, face: 0, color: 0xe0552a },
+                { key: 'shag_rug',          x: 0,    z: -1.6, r: 2.2, color: 0x2a3a55, color2: 0xdce8ff },
                 { key: 'tanker_desk',       wall: 'e', z: 0 },
-                { key: 'crt_terminal',      x: 5.3, z: -0.35, y: 0.76, face: 270 },          // the nav console (desk top at 0.76)
-                { key: 'papers_a',          x: 5.4, z: 0.4, y: 0.76, face: 250 },
-                { key: 'computer_chair_grey', x: 4.3, z: 0.2, face: 90 },                    // THE CHAIR: warm
+                { key: 'crt_terminal',      x: 7.3, z: -0.35, y: 0.76, face: 270 },          // the nav console (desk top at 0.76)
+                { key: 'papers_a',          x: 7.4, z: 0.4, y: 0.76, face: 250 },
+                { key: 'computer_chair_grey', x: 6.3, z: 0.2, face: 90 },                    // THE CHAIR: warm
+                { key: 'lava_lamp',         x: 7.3, z: 0.9, y: 0.76, face: 260, color: 0x6fc8ff, wax: 0x2a8cff },   // a blue one; nobody's
                 { key: 'keypad',            wall: 's', x: 2.0, mount: 1.3 },
                 { key: 'security_camera',   wall: 'w', z: 2.2, mount: 2.55 },
+                { key: 'porthole',          wall: 'w', z: -1.4, mount: 1.5, size: 1.2, round: true, view: 'stars' },
+                { key: 'porthole',          wall: 'e', z: -3.0, mount: 1.5, size: 1.2, round: true, view: 'space' },
                 { key: 'exit_sign',         wall: 's', x: -0.6, mount: 2.75 },
-                { key: 'bare_bulb',         x: 0, z: 0.6, ceil: true },
-                { key: 'bare_bulb',         x: -4, z: 1.2, ceil: true },
-                { key: 'coffee_mug',        x: 4.8, z: -1.0, y: 0.76 },                      // still warm; nobody's
+                { key: 'disc_cluster',      x: 0, z: 0.6, ceil: true },
+                { key: 'disc_cluster',      x: -4, z: 1.2, ceil: true },
+                { key: 'saucer_pendant',    x: 4.6, z: 1.2, ceil: true },
+                { key: 'coffee_mug',        x: 6.8, z: -1.0, y: 0.76 },                      // still warm; nobody's
             ],
             agents: [],
-            npcSpots: [{ x: -3.4, z: -0.8, face: 120, race: 'ai' }],
+            npcSpots: [{ x: -4.4, z: -0.8, face: 120, race: 'ai' }],
             onlineSpots: [],
             lines: [
                 '“Who is flying it?” “Nobody.” “Then who set the course?” “Somebody.”',
                 '“The sun is bigger.” “Every crossing.” “How many crossings are left?” “Records has the number.” “And?” “It is going down.”',
                 '“The chair is warm.” “Then sit somewhere else.”',
             ],
-            spawn: { x: -2.0, z: 1.6, face: 0 },
+            spawn: { x: -2.0, z: 2.2, face: 0 },
         },
         /* ══════════════════════════════════════════════════════════════════
            THE FLYING DUTCHMAN COMPLEX (HQ plan 9.2 stage 3 — 2026-09-15 rev 19).
@@ -31921,8 +32041,12 @@ const DOOR_HQ = {
             shell: {
                 w: 96, d: 64, h: 12,
                 wallH: 12, dadoH: 1.2,
-                floor: 'urban:TileMarble2a', wall: 'urban:PlasterWallPainted2a', dado: 'urban:TileMarble2d', trim: 'gunmetal', ceiling: 'urban:FibreCeilingTile1a',   // THE URBAN PACK (2026-09-17): the mall's green-and-cream marble, the plaster, the drop ceiling
-                floorColor: 0xe0dcd4, wallColor: 0xd0ccc4, dadoColor: 0xc8c4bc, ceilColor: 0xc8c4bc, ceilTile: 1.75,
+                /* THE RETRO-FUTURIST PASS (2026-09-21): the mall is a 1960s terminal — white plaster over a cream terrazzo, a cove under
+                   the roof, THE FLIGHT TUBE (a curved bridge ring at the upper floor's height round the atrium's east, the clock tower
+                   standing in its open west — the TWA hall's bridge), THE LOUNGE round the fountain, the saucers overhead */
+                cove: 0.9,
+                floor: 'terrazzo', wall: 'urban:PlasterWallPainted2a', dado: 'urban:TileMarble2d', trim: 'metal', ceiling: 'ceiling',   // the pack's painted plaster, tinted white
+                floorColor: 0xece7da, wallColor: 0xf4f2ec, dadoColor: 0xdcd8d0, ceilColor: 0xf6f4ee, ceilTile: 1.75,
                 pipes: false, strips: false, lights: [],
                 mood: { light: 0xfff4e0, ambient: 0.5 },
                 plate: { x: 0, z: 30.8, y: 3.4 },
@@ -31930,7 +32054,7 @@ const DOOR_HQ = {
                 look: HQ_ROOM_LOOKS.mall,
             },
             terrain: {
-                floor: 'urban:TileMarble2a', cliff: 'urban:PlasterWallPainted2a', path: 'urban:TileMarble2d',
+                floor: 'terrazzo', cliff: 'drywall', path: 'urban:TileMarble2d',
                 noise: { amp: 0.0, scale: 6 },
                 features: [
                     /* THE UPPER FLOOR (4.6 m): four galleries + the east bridge — cut at the entrance hall (x −10..10, south) and the north wing (north) */
@@ -31958,6 +32082,11 @@ const DOOR_HQ = {
                     { k: 'wall', x0: -6, z0: -11, x1: 6, z1: -11, h: 0.45, t: 0.5, key: 'urban:ConcreteStriped2a' },                // THE GRIND LEDGES (a wall's top is a rail)
                     { k: 'wall', x0: -6, z0: 11, x1: 6, z1: 11, h: 0.45, t: 0.5, key: 'urban:ConcreteStriped2a' },
                     { k: 'plateau', x: -22, z: 0, r: 1.7, h: 8.5, edge: 0.3 },                                                     // THE CLOCK TOWER (the tape's — the door gun's)
+                    /* THE FLIGHT TUBE (THE RETRO-FUTURIST PASS, 2026-09-21): a bridge ring at the upper floor's height (3 cm proud of the
+                       galleries so the slab never fights their tops) round the atrium's east — it lands on the four galleries' inner corners
+                       (r 21 crosses z ±17 at x ±12.3), crosses the two wings and the fun box with the headroom the rule wants, and is left
+                       OPEN at the west (the arc 215° → 325° skipped) where the clock tower stands. The piers are THE BRIDGE LAYER's. */
+                    ...hqRingBridges({ id: 'flighttube', r: 21, w: 3.4, y: 4.63, a0: 0, a1: 360, n: 28, skip: [[215, 325]], rails: true }),
                     /* the marble runners down the middle of both concourses */
                     { k: 'path', pts: [[0, 32], [0, -32]], w: 3.0 },
                     { k: 'path', pts: [[-48, 0], [34, 0]], w: 3.0 },
@@ -31998,12 +32127,30 @@ const DOOR_HQ = {
                 { key: 'notice_board',    wall: 's', x: 5.0, mount: 1.6 },                                                    // THE DIRECTORY — YOU ARE HERE (on the wall by the doors; it floated in the hall)
                 { key: 'wet_floor_sign',  x: 3.6, z: 3.8, face: 30 },                                                          // by the fountain
                 { key: 'potted_plant',    x: 4.6, z: -4.6 }, { key: 'potted_plant', x: -4.6, z: -4.6 }, { key: 'potted_plant', x: 4.6, z: 4.6 }, { key: 'potted_plant', x: -4.6, z: 4.6 },   // the atrium's palms
+                /* THE LOUNGE (THE RETRO-FUTURIST PASS): two conversation rings on shag rugs either side of the fountain, a lava lamp on each tulip table */
+                { key: 'shag_rug',        x: -9.5, z: 6.5, r: 2.3, color: 0xd8632a, color2: 0xf0b64a },
+                { key: 'curved_sofa',     x: -9.5,  z: 4.1,  face: 180, r: 2.4, color: 0xe8641e }, { key: 'curved_sofa', x: -7.42, z: 5.3, face: 240, r: 2.4, color: 0xe8641e },
+                { key: 'curved_sofa',     x: -7.42, z: 7.7,  face: 300, r: 2.4, color: 0xe8641e }, { key: 'curved_sofa', x: -9.5,  z: 8.9, face: 0,   r: 2.4, color: 0xe8641e },
+                { key: 'tulip_table',     x: -9.5, z: 6.5, r: 0.7 }, { key: 'lava_lamp', x: -9.5, z: 6.5, y: 0.74 },
+                { key: 'shag_rug',        x: 9.5,  z: -6.5, r: 2.3, color: 0xb5772e, color2: 0xe9d9a8 },
+                { key: 'curved_sofa',     x: 9.5,  z: -8.9, face: 180, r: 2.4, color: 0xc9622c }, { key: 'curved_sofa', x: 11.58, z: -7.7, face: 240, r: 2.4, color: 0xc9622c },
+                { key: 'curved_sofa',     x: 11.58, z: -5.3, face: 300, r: 2.4, color: 0xc9622c }, { key: 'curved_sofa', x: 9.5,   z: -4.1, face: 0,   r: 2.4, color: 0xc9622c },
+                { key: 'tulip_table',     x: 9.5,  z: -6.5, r: 0.7 }, { key: 'lava_lamp', x: 9.5, z: -6.5, y: 0.74 },
+                { key: 'lava_lamp_floor', x: 0, z: -5.2 }, { key: 'lava_lamp_floor', x: 0, z: 5.2 },                              // either side of the fountain, past its bank and off the fun box's run-up
+                { key: 'egg_chair',       x: -20, z: -22, face: 90, color: 0xe0552a }, { key: 'egg_chair', x: -20, z: -26, face: 90, color: 0xe0552a },   // the north gallery's lookouts (on the upper floor)
+                { key: 'egg_chair',       x: 20,  z: 22,  face: 270, color: 0x3d8f80 }, { key: 'egg_chair', x: 20, z: 26, face: 270, color: 0x3d8f80 },
+                { key: 'space_divider',   x: -44, z: -10, face: 90 }, { key: 'space_divider', x: -44, z: 10, face: 90 },       // the arcade's screens
+                { key: 'pod_window',      wall: 'n', x: -30, mount: 8.6 }, { key: 'pod_window', wall: 'n', x: 30, mount: 8.6 },   // THE ROUND WINDOWS high on the long walls over the upper shopfronts, the mountains in them
+                { key: 'pod_window',      wall: 's', x: -30, mount: 8.6 }, { key: 'pod_window', wall: 's', x: 30, mount: 8.6 },
+                { key: 'porthole',        wall: 'e', z: -24, mount: 9.2, size: 1.8 }, { key: 'porthole', wall: 'e', z: 24, mount: 9.2, size: 1.8 },
+                { key: 'porthole',        wall: 'w', z: -24, mount: 9.2, size: 1.8 }, { key: 'porthole', wall: 'w', z: 24, mount: 9.2, size: 1.8 },
                 /* THE HALF PIPE across the west concourse (two quarter pipes facing — SKATEBOARDING 9.8) */
                 { key: 'quarter_pipe',    x: -30, z: -12.5, face: 180 },
                 { key: 'quarter_pipe',    x: -30, z: 12.5, face: 0 },
                 /* THE FOOD COURT, up on the east bridge (the ground read puts every prop on the gallery) */
-                { key: 'coffee_table',    x: 40, z: -8 }, { key: 'coffee_table', x: 43, z: -2 }, { key: 'coffee_table', x: 40, z: 4 }, { key: 'coffee_table', x: 43, z: 10 },
-                { key: 'office_chair',    x: 40.9, z: -8, face: 270 }, { key: 'office_chair', x: 43.9, z: -2, face: 270 }, { key: 'office_chair', x: 39.1, z: 4, face: 90 }, { key: 'office_chair', x: 43.9, z: 10, face: 270 },
+                { key: 'tulip_table',     x: 40, z: -8 }, { key: 'tulip_table', x: 43, z: -2 }, { key: 'tulip_table', x: 40, z: 4 }, { key: 'tulip_table', x: 43, z: 10 },   // THE RETRO-FUTURIST PASS: tulip tables and chairs
+                { key: 'tulip_chair',     x: 40.9, z: -8, face: 270 }, { key: 'tulip_chair', x: 43.9, z: -2, face: 270 }, { key: 'tulip_chair', x: 39.1, z: 4, face: 90 }, { key: 'tulip_chair', x: 43.9, z: 10, face: 270 },
+                { key: 'tulip_chair',     x: 39.1, z: -8, face: 90 }, { key: 'tulip_chair', x: 42.1, z: -2, face: 90 }, { key: 'tulip_chair', x: 40.9, z: 4, face: 270 }, { key: 'tulip_chair', x: 42.1, z: 10, face: 90 },
                 { key: 'solo_cup',        x: 40, z: -8, y: 0.45 }, { key: 'papers_a', x: 43, z: -2, y: 0.45 },
                 { key: 'mall_bin',        x: 46.5, z: 0 },
                 { key: 'railing_1m',      x: 34.9, z: 0, face: 90 },                                                          // THE PARK RULE's catalogue rail on the bridge's lip (the terrain's rails are the grind)
@@ -32014,9 +32161,11 @@ const DOOR_HQ = {
                 { key: 'cardboard_boxes', x: 22, z: -6.5, face: 20 },                                                         // a kiosk being packed away
                 { key: 'security_camera', wall: 's', x: -3.0, mount: 3.6 },                                                   // the incident's one camera — it saw nothing
                 { key: 'exit_sign',       wall: 's', x: 0, mount: 3.2 },
-                { key: 'flicker_tube',    x: 0, z: 24, ceil: true, face: 0 }, { key: 'flicker_tube', x: 0, z: -24, ceil: true, face: 0 },
-                { key: 'flicker_tube',    x: -24, z: 0, ceil: true, face: 90 }, { key: 'flicker_tube', x: 24, z: 0, ceil: true, face: 90 },
-                { key: 'bare_bulb',       x: 41, z: 0, ceil: true }, { key: 'bare_bulb', x: -41, z: 0, ceil: true },
+                /* THE RETRO-FUTURIST PASS: the saucers and the sputniks hang from the roof (h 12 — the pendants' drops are the catalogue's) */
+                { key: 'saucer_pendant',  x: 0, z: 24, ceil: true }, { key: 'saucer_pendant', x: 0, z: -24, ceil: true },
+                { key: 'saucer_pendant',  x: -24, z: 0, ceil: true }, { key: 'saucer_pendant', x: 24, z: 0, ceil: true },
+                { key: 'sputnik_lamp',    x: 0, z: 0, ceil: true }, { key: 'sputnik_lamp', x: -9.5, z: 6.5, ceil: true }, { key: 'sputnik_lamp', x: 9.5, z: -6.5, ceil: true },
+                { key: 'saucer_pendant',  x: 41, z: 0, ceil: true }, { key: 'saucer_pendant', x: -41, z: 0, ceil: true },
                 { key: 'floor_stain',     x: 1.8, z: -20 },
                 { key: 'paper_sheet',     x: -4.2, z: 26.6, y: 0.01, face: 60 },                                              // the incident report, blank
             ],
@@ -32024,7 +32173,7 @@ const DOOR_HQ = {
             npcSpots: [
                 { x: 41.5, z: 1.2, face: 90, race: 'zombie', say: ['“Shopping.” “For what?” “Shopping.”', '“Were you here?” “Everyone was here. Nobody was here. Ask the camera.”'] },   // on the bridge, at lunch
                 { x: -2.6, z: 22.5, face: 200, race: 'conspiracy theorist', say: ['“Ten feet tall. Nobody filmed it.” “Everyone filmed it.” “Nobody filmed it in FOCUS.”', '“The police said no aliens.” “Right.” “They did not say no ALIENS. They said no aliens. Listen to the emphasis.”'] },
-                { x: -43.5, z: 0, face: 270, race: 'mad scientist', say: ['“The cabinet at the back is not a cabinet.” “What is it?” “Out of order. Mostly.”'] },
+                { x: -42.0, z: 0, face: 270, race: 'mad scientist', say: ['“The cabinet at the back is not a cabinet.” “What is it?” “Out of order. Mostly.”'] },
                 { x: 24.0, z: -22, face: 300, race: 'zombie', say: ['“Browsing.” “For what?” “Browsing.”'] },   // a shopper, upstairs
             ],
             onlineSpots: [{ x: 43.9, z: 10, face: 270 }],                                                                     // the shift, at lunch
@@ -42272,10 +42421,28 @@ function hqFindRoomInfo(roomId) {
     Object.defineProperty(room, '_findInfo', { value: info, enumerable: false, configurable: true, writable: true });
     return info;
 }
+/* THE RETRO-FUTURIST KIT (2026-09-21): a box shell's `round` fillets its four corners — a point inside the
+   corner square but outside the quarter circle is IN THE WALL. The ONE rule (three-renderer.js _hqInFillet is
+   its twin for the walker / the air / the boom): the finds, the door and wall-prop checks and the tests read it. */
+function hqShellInFillet(S, x, z, pad) {
+    const r = S && S.round;
+    if (!(r > 0)) return false;
+    const hw = S.w / 2, hd = S.d / 2, ax = Math.abs(x), az = Math.abs(z);
+    if (ax <= hw - r || az <= hd - r) return false;
+    return Math.hypot(ax - (hw - r), az - (hd - r)) > r - (pad || 0);
+}
+/* a door row (or a wall prop, `half` its half-width along the wall) stands clear of both fillets on its wall when
+   its run + the body's margin ends before the fillet's tangent point */
+function hqShellDoorClearsFillet(S, wall, at, half, margin) {
+    const r = (S && S.round) || 0; if (!(r > 0)) return true;
+    const len = (wall === 'n' || wall === 's') ? S.w : S.d;
+    return Math.abs(at || 0) + (half || 0) + (margin || 0) <= len / 2 - r;
+}
 function hqFindFree(ri, x, z, opts) {
     opts = opts || {};
     const R = opts.rules || HQ_FIND_RULES, S = ri.S, room = ri.room;
     if (Math.abs(x) > S.w / 2 - R.minWall || Math.abs(z) > S.d / 2 - R.minWall) return false;
+    if (S.round > 0 && hqShellInFillet(S, x, z, R.minWall)) return false;   // THE RETRO-FUTURIST KIT: a filleted corner is wall
     if (ri.terrain) {
         const ti = ri.terrain;
         /* the cheap refusals first (2026-09-18): the reach set, the trees, the scatter, the walls — the sampled feet / fluid /
@@ -47585,7 +47752,7 @@ if (typeof window !== 'undefined') {
     window.hqTapeShelf = hqTapeShelf; window.hqTapeCount = hqTapeCount; window.hqFindById = hqFindById; window.hqFindsForRoom = hqFindsForRoom; window.hqFindsWarm = hqFindsWarm; window.hqFindsDrop = hqFindsDrop; window.hqTapeById = hqTapeById; window.hqTapeClipUrl = hqTapeClipUrl; window.hqFindsRecord = hqFindsRecord;
     window.hqCaveDoorCell = hqCaveDoorCell; window.hqCaveRooms = hqCaveRooms;
     /* THE TERRAIN ROOM (2026-09-17) */
-    window.HQ_TERRAIN_RULES = HQ_TERRAIN_RULES; window.HQ_TERRAIN_GEN = HQ_TERRAIN_GEN; window.HQ_ROOM_LOOKS = HQ_ROOM_LOOKS; window.hqTerrainMaskAt = hqTerrainMaskAt; window.hqTerrainOpenAt = hqTerrainOpenAt; window.hqTerrainRooms = hqTerrainRooms; window.hqTerrainInfo = hqTerrainInfo; window.hqTerrainTraps = hqTerrainTraps; window.hqTerrainCompile = hqTerrainCompile; window.hqTerrainSolidAt = hqTerrainSolidAt; window.hqTerrainSolidTop = hqTerrainSolidTop;
+    window.hqShellInFillet = hqShellInFillet; window.hqShellDoorClearsFillet = hqShellDoorClearsFillet; window.HQ_TERRAIN_RULES = HQ_TERRAIN_RULES; window.HQ_TERRAIN_GEN = HQ_TERRAIN_GEN; window.HQ_ROOM_LOOKS = HQ_ROOM_LOOKS; window.hqTerrainMaskAt = hqTerrainMaskAt; window.hqTerrainOpenAt = hqTerrainOpenAt; window.hqTerrainRooms = hqTerrainRooms; window.hqTerrainInfo = hqTerrainInfo; window.hqTerrainTraps = hqTerrainTraps; window.hqTerrainCompile = hqTerrainCompile; window.hqTerrainSolidAt = hqTerrainSolidAt; window.hqTerrainSolidTop = hqTerrainSolidTop;
     window.hqTerrainHeight = hqTerrainHeight; window.hqTerrainSlope = hqTerrainSlope; window.hqTerrainFeet = hqTerrainFeet; window.hqTerrainAir = hqTerrainAir; window.hqTerrainCam = hqTerrainCam;
     window.hqTerrainRunUps = hqTerrainRunUps; window.hqTerrainRunUpOffenders = hqTerrainRunUpOffenders; window.hqTerrainWallAt = hqTerrainWallAt;
     window.hqTerrainFluidAt = hqTerrainFluidAt; window.hqTerrainWallAt = hqTerrainWallAt; window.hqTerrainDoorY = hqTerrainDoorY; window.hqTerrainReach = hqTerrainReach; window.hqTerrainNodeKey = hqTerrainNodeKey;

@@ -11266,3 +11266,70 @@ the boundary walls, the rim), DOOR_HQ_BUILD_PLAN.md + CLAUDE.md. UNSEEN LIVE (RU
 under each map's tint (the three TERRAIN_BASE_TINT rows are the edit), the blued steel on the Spaceship's deck,
 the cave rock where rock_wall_2 stood, carpet_4 in the nave, the infill prisms' density from the kerb, the
 boundary hoardings' run along the plaza, the backdrop's scale against the terrace, the frames at 2 cm proud.
+
+### 2026-09-21 — THE RETRO-FUTURIST PASS: the curved shell, the kit, DOOR HQ · the Mall · the Spaceship (local delivery)
+
+The user, with five references (the TWA flight centre's bridge, an orange conversation
+pit under porthole windows, the Palais Bulles, a Futuro's oval windows and disc pendants,
+2001's console bank): "redesign some DOOR HQ areas to be more 1960s era retro futuristic —
+rounded offices, windows, curved walls and pathways, groovy curved architecture, lava
+lamps; DOOR HQ, the Mall, the Spaceship; don't be afraid to make rooms bigger."
+
+- **THE CURVED SHELL** (three-renderer.js, the block before `_hqBuildGallery`): a box
+  room's `shell.round` (metres) fillets its four corners — quarter-cylinder walls in the
+  wall sheet with the dado band and the three trims following the arc (`_hqBuildFillets`
+  on `_hqShellCorners`, every piece a `_hqSweepStrip`: a profile swept along a path with
+  its inward normal); the corner behind is WALL by ONE exact rule, `_hqInFillet`, read by
+  `_hqSurface` (the walker), `_hqAirOK` (a jump) and `_hqCamBlocked` (the boom) — never a
+  blocker; data.js `hqShellInFillet` is its twin (the finds' `hqFindFree` refuses a corner;
+  `hqShellDoorClearsFillet` is the door / wall-prop rule the test runs). `shell.cove` (the
+  radius) is the wall meeting the ceiling in a concave quarter-round along every wall and
+  round every fillet (`_hqBuildCove`; a square-cornered room's corner cove is a sphere
+  octant — the same sweep with r = rc); `_hqInCove` keeps the boom out of it. Neither is
+  built on an open, a cave, a terrain or an edge room.
+- **THE KIT** (`_hqProcBuilders`, "THE RETRO-FUTURIST KIT — THE PROCS"; catalogue rows in
+  data.js after `false_window`): `lava_lamp` / `lava_lamp_floor` (the wax rises and falls
+  on a ticker; a light; `color` / `wax`), `sputnik_lamp`, `saucer_pendant` (TWA's fluted
+  saucer), `disc_cluster` (the Futuro's discs), `mushroom_lamp`, `egg_chair` (Aarnio's
+  ball; the opening is +Z; a seat), `tulip_chair`, `tulip_table` (`r`), `curved_sofa` (a
+  60° arc about a centre `r` in front — six rows make a ring; `color`), `porthole` /
+  `pod_window` (a pane onto a sky that drifts — `size`, `round`, `view`: sky · mountains ·
+  stars · space; `_hqPaneTex` is the cached canvas), `retro_console` (2001's bank: forty
+  lamps blinking on a ticker, two screens; the operator at +Z), `shag_rug` (`r`, `color`,
+  `color2`), `space_divider`, `pod_bed` (the cryo capsule). doorhq's room-light regex
+  counts the lamps and the console.
+- **THE ROOMS**: two looks (`HQ_ROOM_LOOKS.retro` — the Kodachrome print, no night;
+  `.spaceship` — 2001's cool white); the mall's look retuned in place. THE FOYER (round
+  1.6, cove, saucers, a lava lamp on the inspector's desk), RECEPTION (round 0.9 — the wide
+  window door leaves no more; the porthole over the chairs), ROOM 86 (12 × 9 → 15 × 12,
+  round 1.5: THE CONVERSATION RING — five arcs of orange velour round a tulip table and a
+  lava lamp on a shag rug, the sputnik over it, two portholes; the serving line where it
+  was, the kitchen door at x 4.3), the three WING LOBBIES (9 × 5.2 → 12 × 8 / 8 × 5 → 11 × 8,
+  round 1.6, egg chairs, lava lamps, portholes), THE PENTHOUSE (9 × 6 → 11 × 8, round 1.6,
+  two sputniks, an egg chair, the lava lamp on the coffee table), THE CORNER OFFICE (a cove
+  only — its doors sit too near the corners; an egg chair, the lava lamp on the desk, a
+  saucer), THE MAIN HALL (four floor lava lamps between the spokes at r 12.5). THE
+  SPACESHIP: the airlock (round 1.5, white padding, a porthole onto the stars), the hold
+  (16 × 12 → 17.5 × 14 — ten field cells exactly, round 2.4, THE CRYO ROW of three pod beds under a saucer, a console at
+  the arm, two portholes), the bridge (12 × 8 → 16 × 12, round 2.3, THE CONSOLE BANK — four
+  panels in an arc under the viewport, two egg chairs facing the sun, the nav counter moved
+  to the desk at x 6.6, a blue lava lamp). THE MALL (96 × 64 × 12 kept — disaster-city-3
+  pins it): white plaster over cream terrazzo under a 0.9 m cove, **THE FLIGHT TUBE** — a
+  `hqRingBridges` ring at 4.63 (3 cm proud of the galleries) round the atrium's east that
+  lands on the four galleries' inner corners (r 21 crosses z ±17 at x ±12.3) and is left
+  open at the west (215° → 325° skipped) where the clock tower stands, THE LOUNGE (two rings
+  of four arcs on shag rugs either side of the fountain), tulip tables and chairs in the
+  food court, egg chairs on the galleries, the arcade's dividers, four pod windows and four
+  portholes high on the walls over the upper shopfronts, saucers and sputniks instead of
+  the tubes and bulbs.
+- **RULES**: a door and a wall prop on a round room stand clear of both fillets
+  (`hqShellDoorClearsFillet`: the run + 0.4 m for a door ends before the tangent point);
+  a floor prop / a spot / a counter never inside one (`hqShellInFillet`) —
+  `retro-futurism.test.js` fails naming the row; the fillet radius is bounded by the
+  nearest door's clearance (reception's 0.9, the bridge's 2.3 are that number); a room
+  variant's `shell.mood` still merges over a sheet with NO mood (Room 86 keeps none).
+- UNSEEN LIVE (RULE #1c): all of it — the fillets' shading against the straight slabs
+  (the sweep's normals are computed; the seam at the tangent point), the cove's read under
+  each room's light, the wax's pace (`_hqLavaLampBuild`'s `sp`), the sky panes' drift, the
+  console lamps' blink rate, the egg chair's opening on the walker's approach, the flight
+  tube's piers landing in the atrium, the lounge rings from the tube, the pendants at 12 m.
