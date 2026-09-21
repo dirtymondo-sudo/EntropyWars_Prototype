@@ -7847,3 +7847,24 @@ the cast rigs' faces, the frame rate in the cities with the map (`HQ_LIGHT_RULES
 are the dials), the beam's strength (`HQ_SHAFT_GAIN` / `HQ_SHAFT_UW` are the edits; the battle's own god rays never drew their prism — the same uW arithmetic, a pool + motes), the height
 fog's colour on the floor of a closed room (`shell.heightFog.amount`), the auto exposure's swing through a door
 (`AE_MIN` / `AE_MAX` / `AE_EASE`), the arrival card over the real fonts, the sway on the real lantern GLBs.
+
+## THE PREMIUM POLISH, THE SECOND PASS — the air thinned in the building, the wind, the ripples, the decals, the hero light, the transition, SMAA + the lens (2026-09-21, local delivery)
+`PREMIUM_POLISH_PLAN.md` §9 has the full entry. RULES that came with it: **(1) THE TIERS** — `HQ_LIGHT_RULES.atmos` is
+three densities (`facility` · `closed` · `open`), data.js `hqRoomAtmos` names the tier (`a.tier`: no site → facility, an
+open wild shell → open, else closed) and the renderer reads it — a facility room breathes a few motes (≤ 40), the woods the
+weather (≤ 720); tune the tier, never a room. **(2) THE WIND** — every HQ tree's leaf + bark material takes `_ewWindHook`
+(the shared clock `_EW_WIND`, a plain object by reference like the height fog's; `_hqFrame` writes it) under `K.hq &&
+!K._wdFog` only — never a battle rim tree (the world's fog / dissolve own their onBeforeCompile). **(3) THE RIPPLES** —
+`_hqRippleEmit(x, sheetY, z, r)` is the ONE ring (a pooled quad on the sheet); `_hqTickRipples` reads the wader (the feet
+under `_hqWetSheetAt` — a terrain fluid, a site / cave cell, never lava), the surface swimmer and the skiff; a plunge calls
+`_hqRippleSplash`. **(4) THE DECALS** — data.js `HQ_DECAL_RULES.byKey` (a regex on a prop's key → kind + r), `.door` (the
+WEAR patch inside every landing), `DOOR_HQ.decals[room]` hand rows (`{ kind | key: 'urban:<Name>', x, z, r, rot?, alpha? }`);
+`_hqBuildDecals` runs after the atmosphere, refuses a slope, caps at `decals.max`; a new mark = a rule row or a hand row,
+never a mesh in a builder. **(5) THE HERO LIGHT** — `_hqHeroShadow`: the first warm prop light (`shadows.hero.keys`) of a
+room casts a cube map, ONE per room (`H.heroLit`); `shell.mood.hero: false` opts out. **(6) THE TRANSITION** — `_hqGoTo`
+leaves the door you came through OPEN (`openT` 1 + `npcOpenUntil`) so it swings shut behind you. **(7) THE POST** —
+`ThreePost.setAA('off' | 'fxaa' | 'smaa')` / `getAA()` is the ONE anti-aliasing switch (index.html loads SMAAShader +
+SMAAPass; `setFXAA` maps onto it; localStorage `ew_aa`); a look's `lens: { chroma }` rides `uChromaRadial` under every frame
+(`_lkLensChroma`). Kill-switches: `EW_HQ_NO_WIND` · `EW_HQ_NO_RIPPLES` · `EW_HQ_NO_DECALS` (+ the light pass's). NOT built:
+2.4 PBR (no maps — the user), 3.4 SSAO (D3 waits on the real frame rate), 5.2 read / toggle / open, 5.4, 6.4, 7.1, §4.
+`npm test` runs premium-polish.test.js (20). UNSEEN LIVE (RULE #1c): the plan's entry lists what to eyeball first.

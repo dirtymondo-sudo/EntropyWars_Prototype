@@ -249,6 +249,50 @@ after each delivery and write the numbers in §9.
 
 ## 9 · Build log
 
+- 2026-09-21 (the second pass) — **THE AIR THINNED IN THE BUILDING + 2.2 · 5.1 · 5.3 · 5.5 · 6.2 · 7.3 · 7.5** (the user: "way
+  too many ambient particles in DOOR HQ when those should be in more outdoor places like the woods; keep going; I don't have
+  PBR maps"). Tested (`premium-polish.test.js`, 20 tests — the ripples run in a vm; `npm test` green), photographed nowhere
+  (the CDN is unreachable from this sandbox — RULE #1c, the look is the user's). By section:
+  - **3.3 THE TIERS** — `HQ_LIGHT_RULES.atmos` carries three densities: `facility` (0.05 / m², ≤ 40 — a few motes in the
+    shafts of the hall, the cafeteria, an office), `closed` (a wild room under a ceiling: the crypt, the hold, the sewers —
+    0.32 / m², ≤ 300) and `open` (the woods, the estate, the grounds — 0.95 / m², ≤ 720). data.js `hqRoomAtmos` names the
+    tier (`a.tier`: no site → facility; a site's open shell → open; else closed) and `_hqBuildAtmos` reads it; a shell's own
+    `atmos.n` still pins a count. The hall went from ~600 motes to ~40.
+  - **2.2 THE HERO LIGHT** — `_hqHeroShadow` at the prop-light site: the FIRST warm prop light of a room whose key matches
+    `HQ_LIGHT_RULES.shadows.hero.keys` (torch · brazier · campfire · furnace · hearth · forge · pyre · candelabra · lava)
+    casts a 512² cube map (256 on Low; one per room — `H.heroLit`); `shell.mood.hero: false` opts a room out; off on the
+    phone / with shadows off. The pulsed depth pass (`_hqShadowTick`) refreshes it with the key's map.
+  - **5.1 THE WIND** — `_ewWindHook(mat, modelH, ampLocal)`: a crown-weighted sway in the vertex shader (two sines on the
+    world position, `uEwWind` = the shared clock `_EW_WIND` the frame writes × `wind.speed`) on every HQ tree's leaf material
+    (`wind.amp` 0.055 m at the crown) and bark (a third); `_nrTree` applies it under `K.hq && !K._wdFog` only (the battle's
+    rim trees keep the world's fog / dissolve hooks). `EW_HQ_NO_WIND`. The foliage OBJs' `Tree_Leaves` mesh is the crown.
+  - **5.3 THE RIPPLES** — `_hqRippleEmit` / `_hqTickRipples`: a pooled flat quad (one cached ring canvas) at the sheet's height
+    every `ripples.every` s while the walker WADES (the feet under a terrain fluid / a site or cave fluid cell — never lava),
+    while the swimmer moves on the surface, and behind the skiff's stern (`wakeR`); a PLUNGE (`_hqSwimStart`'s dive-at-once)
+    is a SPLASH of `splashN` rings. `EW_HQ_NO_RIPPLES`. The vm test walks a wader through a stub pool.
+  - **5.5 THE DECALS** — data.js `HQ_DECAL_RULES.byKey` (a scorch under every torch / brazier / furnace, oil under every car /
+    truck / bus, blood by the steel and autopsy tables and the altar stones, grime under bins and barrels, a puddle at a
+    drain / a vent) + `.door` (a WEAR patch 0.75 m inside every door's landing, indoors) + `DOOR_HQ.decals[room]` hand rows
+    (the garage's oil, the interrogation room's blood, the sewers' and tunnels' puddles, the boiler's scorch, the pit's,
+    the cellar's). `_hqBuildDecals` after the atmosphere: six painted canvases (`_hqDecalTex`) or an `urban:<Name>` sheet
+    (`key`), a quad 2 cm over the ground (above the contact disc), refused on a slope (`_hqDecalGround`: a 0.3 m spread over
+    the footprint), ≤ `decals.max` a room. `EW_HQ_NO_DECALS`.
+  - **6.2 THE TRANSITION** — `_hqGoTo`: the door you came through stands OPEN on arrival and swings shut behind you
+    (`openT` 1 + the rounds' `npcOpenUntil`; never a portal, a way or an unmeasured angle). The exposure already eased
+    across the seam (`_expLk`); the boom's yaw is the door's facing as before.
+  - **7.3 THE LENS** — a look's `lens: { chroma }` (px at the frame's edge) rides the cinematic pass's `uChromaRadial` under
+    the spell grades AND under a bare frame (`_lkLensChroma`); the neon city 2.2, the Strip 1.6, the nightmare 3.0.
+  - **7.5 SMAA** — index.html loads r128's SMAAShader + SMAAPass beside FXAA; three-post.js `setAA('off' | 'fxaa' | 'smaa')`
+    / `getAA()` (localStorage `ew_aa`; the old `ew_fxaa` flag reads as fxaa / off and is kept in step; a desktop defaults to
+    SMAA when the pass loaded, the phone to off); the FXAA row in Settings → Graphics is an Anti-aliasing segment group.
+  - NOT built, and why: **2.4 PBR** — the user has no normal / roughness sheets (D2 closed: Phong stays); **3.4 SSAO** — D3
+    still waits on the real frame rate in Disaster City with 2.1 + 2.3 + the hero light on; **5.2 read / toggle / open** —
+    the props carry no copy / no second state yet; **5.4 reflectors**, **6.4 motion blur**, **7.1 LUTs** (D8, the user's
+    PNGs), **§4 the sound pass** (the user's).
+  - What to eyeball first: the hall with forty motes (too few → `atmos.facility.perM2`), the woods' crowns swaying (too much
+    → `wind.amp`), the torch's cube shadow on the undercroft's walls (acne → `shadows.hero.bias`), the rings under the wader
+    in the moat and the splash off a plunge, the oil on the garage's loop and the wear at every door (too dark → `decals.alpha`
+    / `.wear`), the leaf closing behind you, SMAA on the rails and the sprites, the neon city's edge fringing.
 - 2026-09-21 (later) — **DELIVERY 1 + 3 + 4 + 5 + 6 IN ONE PASS (the sound pass §4 skipped — the user's: "I'll do
   that later")**. Built, offline-photographed (`shots/polish/`, the scratch probe = playtest_hq_offline.js with the
   post ON — the notes in PLAYTEST_NOTES "THE POLISH PROBE"), tested (`premium-polish.test.js`, 14 tests; `npm test`

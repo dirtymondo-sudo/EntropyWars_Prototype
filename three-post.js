@@ -186,6 +186,36 @@ const ThreePost = (function () {
         else if (typeof window !== 'undefined' && window.EW_PERF_LOW) _fxaaWanted = false;
     } catch (e) {}
 
+    /* THE POST PASS 7.5 — SMAA (PREMIUM_POLISH_PLAN, 2026-09-21): three r128's SMAAPass (index.html loads SMAAShader + SMAAPass
+       beside FXAA) — the sprite edges and the rails shimmer under FXAA. ONE mode, localStorage ew_aa = 'off' | 'fxaa' | 'smaa'
+       (the old ew_fxaa flag still reads as 'fxaa' / 'off' for a saved profile); the phone defaults off, a desktop to SMAA when
+       the pass is loaded, else FXAA. setAA(mode) / getAA(); setFXAA(on) keeps working as 'fxaa' / 'off'. */
+    var _smaaPass = null, _aaMode = null;
+    function _aaResolve() {
+        if (_aaMode) return _aaMode;
+        var m = null;
+        try { m = (typeof localStorage !== 'undefined') ? localStorage.getItem('ew_aa') : null; } catch (e) {}
+        if (m !== 'off' && m !== 'fxaa' && m !== 'smaa') m = _fxaaWanted ? ((typeof THREE !== 'undefined' && THREE.SMAAPass && !(typeof window !== 'undefined' && window.EW_PERF_LOW)) ? 'smaa' : 'fxaa') : 'off';
+        if (m === 'smaa' && !(typeof THREE !== 'undefined' && THREE.SMAAPass)) m = 'fxaa';
+        _aaMode = m; return m;
+    }
+    function _aaApply() {
+        var m = _aaResolve();
+        if (_fxaaPass) _fxaaPass.enabled = (m === 'fxaa');
+        if (_smaaPass) _smaaPass.enabled = (m === 'smaa');
+    }
+    function setAA(mode) {
+        mode = (mode === 'smaa' || mode === 'fxaa') ? mode : 'off';
+        if (mode === 'smaa' && !(typeof THREE !== 'undefined' && THREE.SMAAPass)) mode = 'fxaa';
+        _aaMode = mode; _fxaaWanted = (mode !== 'off');
+        try { if (typeof localStorage !== 'undefined') { localStorage.setItem('ew_aa', mode); localStorage.setItem('ew_fxaa', _fxaaWanted ? '1' : '0'); } } catch (e) {}
+        _aaApply();
+    }
+    function getAA() { return _aaResolve(); }
+    /* THE POST PASS 7.3 — THE LENS: a look's `lens: { chroma }` (px at the frame's edge) rides the cinematic pass's radial
+       aberration under the spell grades — a plain cinematic frame used to carry none; the player's own CRT chroma is separate */
+    function _lkLensChroma() { return (_look && _look.lens && typeof _look.lens.chroma === 'number') ? Math.max(0, Math.min(12, _look.lens.chroma)) : 0; }
+
     var _cinematicPass = null;
 
     // ── Impact flash (bloom pulse) ───────────────────────────────────────
@@ -2004,6 +2034,10 @@ const ThreePost = (function () {
         } else {
             console.warn('[ThreePost] FXAAShader not found — skipping FXAA');
         }
+        if (THREE.SMAAPass) {   // 7.5: SMAA beside FXAA — one of the two runs (setAA)
+            try { var _pr2 = renderer.getPixelRatio(); _smaaPass = new THREE.SMAAPass(w * _pr2, h * _pr2); _composer.addPass(_smaaPass); } catch (e) { _smaaPass = null; console.warn('[ThreePost] SMAAPass failed', e); }
+        }
+        _aaApply();
 
         _cinematicPass = new THREE.ShaderPass(_CinematicShader);
         _cinematicPass.material.uniforms['uResolution'].value.set(w, h);
@@ -2061,16 +2095,16 @@ const ThreePost = (function () {
                 _gu['uTrip'].value         = _grade.trip * _gk;
                 _gu['uHue'].value          = _grade.hue;
                 _gu['uWarp'].value         = _grade.warp * _gk;
-                _gu['uChromaRadial'].value = _grade.chroma * _gk + _kick;
+                _gu['uChromaRadial'].value = _grade.chroma * _gk + _kick + _lkLensChroma();
                 _gu['uGradeTint'].value.set(_grade.tint[0], _grade.tint[1], _grade.tint[2]);
                 _gu['uGradeTintAmt'].value = _grade.tintAmt * _gk;
             } else if (_gu['uSpotDim'].value !== 0.0 || _gu['uTrip'].value !== 0.0
-                       || _gu['uChromaRadial'].value !== 0.0 || _gu['uWarp'].value !== 0.0
+                       || _gu['uChromaRadial'].value !== _lkLensChroma() || _gu['uWarp'].value !== 0.0
                        || _gu['uGradeTintAmt'].value !== 0.0) {
                 _gu['uSpotDim'].value = 0.0;
                 _gu['uTrip'].value = 0.0;
                 _gu['uWarp'].value = 0.0;
-                _gu['uChromaRadial'].value = 0.0;
+                _gu['uChromaRadial'].value = _lkLensChroma();   // 7.3 THE LENS: the look's own aberration stays under a bare frame
                 _gu['uGradeTintAmt'].value = 0.0;
                 _grade.lastT = _nowMs;
             }
@@ -2199,6 +2233,7 @@ const ThreePost = (function () {
                 1 / (w * pixelRatio), 1 / (h * pixelRatio)
             );
         }
+        if (_smaaPass && _smaaPass.setSize) { var _pr3 = _renderer ? _renderer.getPixelRatio() : 1; try { _smaaPass.setSize(w * _pr3, h * _pr3); } catch (e) {} }
         if (_cinematicPass) {
             _cinematicPass.material.uniforms['uResolution'].value.set(w, h);
         }
@@ -2258,15 +2293,9 @@ const ThreePost = (function () {
 
     function isReady() { return _ready; }
 
-    function setFXAA(enabled) {
-        _fxaaWanted = !!enabled;
-        try { if (typeof localStorage !== 'undefined') localStorage.setItem('ew_fxaa', _fxaaWanted ? '1' : '0'); } catch (e) {}
-        if (_fxaaPass) _fxaaPass.enabled = _fxaaWanted;
-    }
+    function setFXAA(enabled) { setAA(enabled ? ((_aaResolve() === 'smaa') ? 'smaa' : 'fxaa') : 'off'); }
 
-    function isFXAAEnabled() {
-        return _fxaaPass ? _fxaaPass.enabled : _fxaaWanted;
-    }
+    function isFXAAEnabled() { return _aaResolve() !== 'off'; }
 
     /* persist=false → apply without saving (used by the Performance preset's
        live-apply so a preset doesn't masquerade as an explicit user pref). */
@@ -2514,6 +2543,7 @@ const ThreePost = (function () {
         setExposure: setExposure,
         setFXAA: setFXAA,
         isFXAAEnabled: isFXAAEnabled,
+        setAA: setAA, getAA: getAA,
         setPixelRatio: setPixelRatio,
         syncLighting: syncLighting,
         setShadowFrame: setShadowFrame,

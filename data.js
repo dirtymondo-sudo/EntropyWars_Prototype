@@ -15498,8 +15498,8 @@ const HQ_ROOM_LOOKS = {
     mall: { name: 'THE MALL', retro: { enabled: true, preset: 'faded', pixelSize: 1, ditherStrength: 0.45, grain: 0.055, tintAmount: 0.4, levels: 18 }, cin: { vignette: true, vigAmount: 0.3, vigSize: 0.6 }, nightMood: 0.1, bloom: 0.22, dof: 0 },
     /* CYBERPUNK CITY (2026-09-17): the reskin's print — the rain-slick night, magenta / cyan in the puddles, bloomed, a hard vignette */
     /* THE STRIP (2026-09-17): the boulevard's print — the neon night, warmer than the grid's, bloomed, a soft vignette */
-    strip: { name: 'THE STRIP', retro: { enabled: true, preset: 'dream', pixelSize: 1, ditherStrength: 0.4, grain: 0.03, tintAmount: 0.4, levels: 24 }, cin: { vignette: true, vigAmount: 0.4, vigSize: 0.5 }, nightMood: 0.7, bloom: 0.42, bloomThr: 0.6, bloomRadius: 0.62 },
-    neon: { name: 'CYBERPUNK CITY', retro: { enabled: true, preset: 'dream', pixelSize: 1, ditherStrength: 0.42, grain: 0.035, tintAmount: 0.45, levels: 24 }, cin: { vignette: true, vigAmount: 0.5, vigSize: 0.46 }, nightMood: 0.9, bloom: 0.55, bloomThr: 0.58, bloomRadius: 0.66 },
+    strip: { name: 'THE STRIP', retro: { enabled: true, preset: 'dream', pixelSize: 1, ditherStrength: 0.4, grain: 0.03, tintAmount: 0.4, levels: 24 }, cin: { vignette: true, vigAmount: 0.4, vigSize: 0.5 }, nightMood: 0.7, bloom: 0.42, bloomThr: 0.6, bloomRadius: 0.62, lens: { chroma: 1.6 } },
+    neon: { name: 'CYBERPUNK CITY', retro: { enabled: true, preset: 'dream', pixelSize: 1, ditherStrength: 0.42, grain: 0.035, tintAmount: 0.45, levels: 24 }, cin: { vignette: true, vigAmount: 0.5, vigSize: 0.46 }, nightMood: 0.9, bloom: 0.55, bloomThr: 0.58, bloomRadius: 0.66, lens: { chroma: 2.2 } },
     /* D.U.M.B. (2026-09-17 — complex candidate #5): the base under the base — the security camera's print: cold fluorescent teal-white, hard dither, a tight vignette, red in the shadows; the war room darker and greener (the board's glow); the bunker warm (his tungsten); the ring blue under the beam */
     garage: { name: 'THE GARAGE', retro: { enabled: true, preset: 'amber', pixelSize: 1, ditherStrength: 0.42, grain: 0.035, tintAmount: 0.35, levels: 22 }, cin: { vignette: true, vigAmount: 0.45, vigSize: 0.5 }, nightMood: 0.35, bloom: 0.22 },   // THE ROUND GARAGE (2026-09-20): sodium light, a little grain, the amber grade
     dumb: { name: 'D.U.M.B.', retro: { enabled: true, preset: 'teal', pixelSize: 1, ditherStrength: 0.48, grain: 0.045, tintAmount: 0.42, levels: 20 }, cin: { vignette: true, vigAmount: 0.5, vigSize: 0.48 }, nightMood: 0.45, bloom: 0.2 },
@@ -15545,7 +15545,7 @@ const HQ_ROOM_LOOKS = {
        hardest dither and the tightest vignette anywhere (the edges of the frame are what you cannot look at); THE LIBRARY the archive's amber, softer */
     astral:     { name: 'THE SEA OF POSSIBILITY', retro: { enabled: true, preset: 'dream', pixelSize: 1, ditherStrength: 0.3, grain: 0.022, tintAmount: 0.42, levels: 30 }, cin: { vignette: true, vigAmount: 0.3, vigSize: 0.6 }, nightMood: 0.35, bloom: 0.62 },
     waiting:    { name: 'THE WAITING ROOM', retro: { enabled: true, preset: 'faded', pixelSize: 1, ditherStrength: 0.42, grain: 0.05, tintAmount: 0.38, levels: 18 }, cin: { vignette: true, vigAmount: 0.3, vigSize: 0.6 }, nightMood: 0.0, bloom: 0.08, dof: 0 },
-    nightmare:  { name: 'THE NIGHTMARE', retro: { enabled: true, preset: 'green', pixelSize: 1, ditherStrength: 0.58, grain: 0.06, tintAmount: 0.58, levels: 14 }, cin: { vignette: true, vigAmount: 0.72, vigSize: 0.36 }, nightMood: 0.9, bloom: 0.34 },
+    nightmare:  { name: 'THE NIGHTMARE', retro: { enabled: true, preset: 'green', pixelSize: 1, ditherStrength: 0.58, grain: 0.06, tintAmount: 0.58, levels: 14 }, cin: { vignette: true, vigAmount: 0.72, vigSize: 0.36 }, nightMood: 0.9, bloom: 0.34, lens: { chroma: 3.0 } },
     unthought:  { name: 'THE LIBRARY OF UNTHOUGHT THINGS', retro: { enabled: true, preset: 'amber', pixelSize: 1, ditherStrength: 0.36, grain: 0.028, tintAmount: 0.34, levels: 24 }, cin: { vignette: true, vigAmount: 0.38, vigSize: 0.54 }, nightMood: 0.25, bloom: 0.4 },
 };
 // THE DAY SKY (2026-09-21): `day: 1` on a row (or a shell's `sky`) = a real daylight atmosphere on the dome — a blue
@@ -39818,6 +39818,30 @@ hqBuildHealZones();     // THE HEALING ZONES (2026-09-20): one per hub anchor, b
    battle's god-ray shader (three-renderer.js _hqProcBuilders.light_shaft, placed by _hqPlaceProps like the terrain scatter):
    x / z = where its TOP hangs (m), top = that height (m), h = its length (m), w = its width (m), tilt = degrees off vertical,
    dir = the azimuth it leans toward (0 = north, 90 = east), color, intensity. The pool lands on the ground under the base. */
+/* THE PROP PASS 5.5 — THE DECALS (PREMIUM_POLISH_PLAN, 2026-09-21): a flat mark on the ground. THE RULES BY KEY (a regex on the
+   prop's catalogue key → a kind + a radius in m) put a scorch under every torch, oil under every car, blood by the steel tables,
+   grime under the bins; every DOOR gets a WEAR patch on the floor of its landing; the hand rows below are the rest. Kinds are
+   painted canvases (three-renderer.js _hqDecalTex: scorch · oil · blood · grime · wear · puddle) or an `urban:<Name>` sheet
+   (`key`). A row: { kind | key, x, z, r, rot?, alpha? } in room metres. Cosmetic, viewer-local (RULE #2). */
+const HQ_DECAL_RULES = {
+    byKey: [
+        { re: /torch|brazier|campfire|pyre|hearth|furnace|boiler|door_furnace|candelabra/, kind: 'scorch', r: 0.85 },
+        { re: /^car_|^parked_car|^fire_truck|^school_bus|^taxi|^truck|forklift/, kind: 'oil', r: 1.5 },
+        { re: /steel_table|autopsy_table|altar_stone|sacrifice/, kind: 'blood', r: 1.25 },
+        { re: /bin$|barrel|dumpster|garbage|trash|oil_drum/, kind: 'grime', r: 0.7 },
+        { re: /sea_vent|drain_grate|culvert_mouth|manhole/, kind: 'puddle', r: 1.1 },
+    ],
+    door: { kind: 'wear', r: 0.95, inM: 0.75 },   // the worn floor just inside every door's landing
+};
+DOOR_HQ.decals = {
+    garage: [ { kind: 'oil', x: 0, z: -15.5, r: 1.7, rot: 20 }, { kind: 'oil', x: 13.5, z: 7, r: 1.4, rot: 70 }, { kind: 'oil', x: -12, z: 9.5, r: 1.2 } ],
+    interrogation: [ { kind: 'blood', x: 0.9, z: 0.8, r: 1.1, rot: 35 } ],
+    site_prebuilt_downtown_sewers: [ { kind: 'puddle', x: 0, z: 0, r: 2.4 }, { kind: 'grime', x: -6, z: 4, r: 1.2 } ],
+    site_prebuilt_downtown_tunnels: [ { kind: 'oil', x: 4, z: -8, r: 1.6, rot: 90 }, { kind: 'puddle', x: -10, z: 6, r: 1.8 } ],
+    boiler: [ { kind: 'scorch', x: 0, z: -1.2, r: 1.3 }, { kind: 'grime', x: 1.8, z: 1.4, r: 0.9 } ],
+    site_prebuilt_hell_pit: [ { kind: 'scorch', x: 0, z: 0, r: 3.2 } ],
+    site_prebuilt_haunted_cellar: [ { kind: 'puddle', x: -1.5, z: 2.2, r: 1.4 }, { kind: 'blood', x: 2.4, z: -1.6, r: 0.8, rot: 120 } ],
+};
 DOOR_HQ.lightShafts = {
     site_prebuilt_vatican_basilica: [   // the west windows at z −6 / 4 / 14, mount 7: the morning slant across the nave
         { x: -14, z: -6, top: 9.6, h: 11.5, w: 3.2, tilt: 40, dir: 90, color: 0xfff0d2, intensity: 0.34 },
@@ -45264,7 +45288,10 @@ const HQ_LIGHT_RULES = {
        `shell.arrival`). The renderer's HQ_LIGHT_DEFAULT carries the same keys (premium-polish.test.js diffs them). */
     /* 2.1 the room key casts ONE shadow map: on / off, the map size per Settings → Performance tier (three-post.js's
        knob), the depth bias, and how far past the room's box the ortho frustum reaches (m) */
-    shadows: { on: true, mapLow: 1024, mapHigh: 2048, bias: -0.0005, normalBias: 2.4, pad: 4, everyN: 2 },
+    shadows: { on: true, mapLow: 1024, mapHigh: 2048, bias: -0.0005, normalBias: 2.4, pad: 4, everyN: 2,
+        /* 2.2 THE HERO LIGHT (2026-09-21): the FIRST prop point light in a room whose key matches `keys` casts a cube shadow map
+           (six faces — one per room, never per lamp); `shell.mood.hero: false` opts a room out; off on the phone / with shadows off */
+        hero: { on: true, map: 512, bias: -0.004, keys: 'torch|brazier|campfire|furnace|hearth|forge|pyre|candelabra|lava' } },
     /* 2.5 the key light's default direction per room kind — azimuth (deg, 0 = from the north, clockwise) and
        elevation (deg above the floor), its colour and strength; `shell.rig = { az, el, color, intensity }` overrides */
     key: { box: { az: 300, el: 58, color: 0xfff1dc, intensity: 0.34 }, open: { az: 305, el: 52 }, bay: { az: 320, el: 62, color: 0xf2f5ff, intensity: 0.3 }, hall: { az: 330, el: 60, color: 0xfff0d8, intensity: 0.42 } },
@@ -45274,8 +45301,21 @@ const HQ_LIGHT_RULES = {
     /* 3.1 the height fog — thickest at the floor, gone `h` m up; `amount` = its share at the floor far away; per room
        kind, a room's `shell.heightFog = { h, amount, floor }` (or `sky.fog.height`) overrides */
     heightFog: { on: true, box: { h: 1.7, amount: 0.34 }, open: { h: 3.2, amount: 0.5 }, hall: { h: 2.6, amount: 0.3 } },
-    /* 3.3 the atmosphere particles — the cap per room (halved under EW_PERF_LOW), the count per m² of floor */
-    atmos: { max: 600, perM2: 0.7, min: 90 },
+    /* 3.3 the atmosphere particles — the cap per room (halved under EW_PERF_LOW), the count per m² of floor. THE TIERS
+       (2026-09-21, the user: "way too many ambient particles in DOOR HQ when those should be in more outdoor places like the
+       woods"): a FACILITY room (no site) breathes a few motes in its shafts, a closed wild room (a cave, a crypt, a hold)
+       more, an OPEN wild room (the woods, the estate, the cloud fields) the full weather; `hqRoomAtmos` names the tier
+       (`a.tier`), a shell's own `atmos.n` still pins the count */
+    atmos: { max: 600, perM2: 0.7, min: 90, facility: { perM2: 0.05, max: 40, min: 8 }, closed: { perM2: 0.32, max: 300, min: 50 }, open: { perM2: 0.95, max: 720, min: 120 } },
+    /* 5.1 THE WIND: the foliage sways in the vertex shader — `amp` m at a tree's crown, `speed` the gust clock (the woods, the
+       estate, the grove, every treeline); a battle board's rim trees never (the world's own hooks own their shader) */
+    wind: { on: true, amp: 0.055, speed: 1.0 },
+    /* 5.3 THE RIPPLES: rings at the feet of a walker wading / a swimmer on the surface every `every` s while moving, `life` s
+       each, `r` m across at the end; a plunge = a SPLASH of `splashN` rings + spray; the skiff's wake rings; `max` live */
+    ripples: { on: true, every: 0.24, life: 1.6, r: 1.1, splashN: 5, splashR: 2.6, wakeR: 1.8, max: 48 },
+    /* 5.5 THE DECALS: a quad on the ground under a prop that earns one (HQ_DECAL_RULES.byKey — scorch under a torch, oil under a
+       car, blood by a table, grime under a bin), a WEAR patch inside every door's landing, the hand rows of DOOR_HQ.decals */
+    decals: { on: true, alpha: 0.7, max: 80, wear: 0.42 },
 };
 const HQ_SKATE_RULES = {
     free: true,          // standard issue — every officer holds a board (false = the find in Room 26)
@@ -45401,8 +45441,8 @@ function hqRoomAtmos(roomId, room) {
     if (!a && S.atmos === false) return null;
     if (!a && roomId === 'car') return null;
     if (!a && room.terrain && room.terrain.sea) return null;   // THE DEEP has its own snow and bubbles
+    const site = (typeof hqRoomSite === 'function') ? hqRoomSite(roomId) : null;
     if (!a) {
-        const site = (typeof hqRoomSite === 'function') ? hqRoomSite(roomId) : null;
         const row = site ? HQ_ATMOS_SITES[site] : null;
         if (row) a = Object.assign({}, row);
     }
@@ -45416,6 +45456,8 @@ function hqRoomAtmos(roomId, room) {
     if (!a || a.kind === 'none') return null;
     const KINDS = { dust: 1, embers: 1, fireflies: 1, snow: 1, rain: 1, spores: 1, ash: 1, motes: 1 };
     if (!KINDS[a.kind]) return null;
+    /* THE TIERS (2026-09-21): where the room stands decides how thick the air is — HQ_LIGHT_RULES.atmos[tier] is the density */
+    if (!a.tier) a.tier = !site ? 'facility' : (S.open ? 'open' : 'closed');
     return a;
 }
 /* 6.3 THE ARRIVAL CARD — a room stood in for the first time gets the letterbox + its name; lobbies, corridors, the car and
@@ -47416,7 +47458,7 @@ if (typeof window !== 'undefined') {
     window.hqFieldWindow = hqFieldWindow; window.hqFieldBuild = hqFieldBuild; window.hqFieldLayout = hqFieldLayout; window.hqFieldRegister = hqFieldRegister;
     window.hqFieldBoxInfo = hqFieldBoxInfo; window.hqFieldGallery = hqFieldGallery; window.hqFieldLattice = hqFieldLattice; window.hqFieldBoxStep = hqFieldBoxStep; window.hqFieldBoxTile = hqFieldBoxTile; window.hqFieldNearestWalk = hqFieldNearestWalk;
     /* SKATEBOARDING (HQ plan 9.8 stage 1, 2026-09-15) */
-    window.HQ_SKATE_RULES = HQ_SKATE_RULES; window.HQ_LIGHT_RULES = HQ_LIGHT_RULES; window.HQ_ATMOS_SITES = HQ_ATMOS_SITES; window.hqRoomAtmos = hqRoomAtmos; window.hqRoomArrival = hqRoomArrival; window.HQ_KICKABLE = HQ_KICKABLE; window.hqPropKickable = hqPropKickable; window.hqRoomFogHalfAt = hqRoomFogHalfAt; window.hqSkateStatus = hqSkateStatus; window.hqSkateRecord = hqSkateRecord; window.hqSkateBank = hqSkateBank; window.hqSkateScore = hqSkateScore; window.hqSkateIssueFree = hqSkateIssueFree;
+    window.HQ_SKATE_RULES = HQ_SKATE_RULES; window.HQ_LIGHT_RULES = HQ_LIGHT_RULES; window.HQ_ATMOS_SITES = HQ_ATMOS_SITES; window.HQ_DECAL_RULES = HQ_DECAL_RULES; window.hqRoomAtmos = hqRoomAtmos; window.hqRoomArrival = hqRoomArrival; window.HQ_KICKABLE = HQ_KICKABLE; window.hqPropKickable = hqPropKickable; window.hqRoomFogHalfAt = hqRoomFogHalfAt; window.hqSkateStatus = hqSkateStatus; window.hqSkateRecord = hqSkateRecord; window.hqSkateBank = hqSkateBank; window.hqSkateScore = hqSkateScore; window.hqSkateIssueFree = hqSkateIssueFree;
     window.hqLinkRoom = hqLinkRoom;
     window.hqLinkDoors = hqLinkDoors;
     window.hqLinkEndOk = hqLinkEndOk;

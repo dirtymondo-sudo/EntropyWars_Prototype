@@ -213,6 +213,123 @@ test('THE POST PASS: the building\'s bloom crosses only emissive surfaces (a loo
     assert.ok(W.HQ_ROOM_LOOKS.neon.bloomThr < 0.86 && W.HQ_ROOM_LOOKS.strip.bloomThr < 0.86, 'the neon looks bloom lower');
 });
 
+/* ── THE SECOND PASS (2026-09-21, later): the tiers, the wind, the ripples, the decals, the transition, the hero light, SMAA + the lens ── */
+const UI = fs.readFileSync(path.join(__dirname, 'ui.js'), 'utf8');
+
+test('THE ATMOSPHERE TIERS: a facility room breathes a few motes, a closed wild room more, an open one the weather (the user: "way too many in DOOR HQ")', () => {
+    const A = W.HQ_LIGHT_RULES.atmos;
+    assert.ok(A.facility && A.closed && A.open, 'three tiers');
+    assert.ok(A.facility.perM2 < A.closed.perM2 && A.closed.perM2 < A.open.perM2, 'the density climbs outdoors');
+    assert.ok(A.facility.max <= 60 && A.open.max >= 600, 'a facility room is capped low, the woods high');
+    for (const id of ['central_egress', 'cafeteria', 'foyer', 'ring_g', 'interrogation', 'garage']) assert.equal(W.hqRoomAtmos(id).tier, 'facility', id);
+    assert.equal(W.hqRoomAtmos('site_prebuilt_fairy_forest_clearing').tier, 'open');
+    assert.equal(W.hqRoomAtmos('site_prebuilt_haunted_grounds').tier, 'open');
+    assert.equal(W.hqRoomAtmos('site_prebuilt_vatican_basilica').tier, 'closed');
+    assert.equal(W.hqRoomAtmos('site_prebuilt_downtown_sewers').tier, 'closed');
+    for (const id of Object.keys(D.rooms)) { const a = W.hqRoomAtmos(id); if (a) assert.ok(a.tier === 'facility' || a.tier === 'closed' || a.tier === 'open', id + ' tier'); }
+    const b = fn(TR, '_hqBuildAtmos');
+    assert.ok(b.includes("var TR = (a.tier && AR[a.tier]) ? AR[a.tier] : AR;") && b.includes('TR.perM2 || AR.perM2'), 'the renderer reads the tier');
+    /* the numbers the hall and the woods get, by the renderer's own arithmetic */
+    const dens = (tier, m2) => Math.max(A[tier].min, Math.min(A[tier].max, m2 * A[tier].perM2));
+    assert.ok(dens('facility', 400) <= 40, 'a 400 m² hall: ' + dens('facility', 400));
+    assert.ok(dens('open', 1200) >= 600, 'a 1200 m² wood: ' + dens('open', 1200));
+});
+
+test('THE WIND (5.1): every HQ tree takes the shared sway hook on its leaf + bark materials, on a shared clock the frame writes; the battle\'s rim trees never', () => {
+    assert.ok(/var _EW_WIND = \{ value: 0 \};/.test(TR), 'the shared clock');
+    const hook = fn(TR, '_ewWindHook');
+    assert.ok(hook.includes('sh.uniforms.uEwWind = _EW_WIND;') && hook.includes("mat.customProgramCacheKey = function () { return 'ewWind'; };") && hook.includes('#include <begin_vertex>'), 'the hook');
+    const tree = fn(TR, '_nrTree');
+    assert.ok(tree.includes('(K.hq && !K._wdFog && !(typeof window !== \'undefined\' && window.EW_HQ_NO_WIND))'), 'HQ trees only, the kill-switch');
+    assert.ok(tree.includes('if (windAmp > 0) _ewWindHook(lm, modelH, windAmp)') && tree.includes('_ewWindHook(bm, modelH, windAmp * 0.3)'), 'leaves full, bark a third');
+    assert.ok(fn(TR, '_hqFrame').includes('_EW_WIND.value = now * 0.001'), 'the frame ticks the clock');
+    assert.ok(W.HQ_LIGHT_RULES.wind && W.HQ_LIGHT_RULES.wind.amp > 0 && W.HQ_LIGHT_RULES.wind.amp < 0.2, 'a crown sway in metres');
+});
+
+function rippleCtx() {
+    const canvas = { width: 0, height: 0, getContext: () => ({ createRadialGradient: () => ({ addColorStop() {} }), fillRect() {}, beginPath() {}, arc() {}, fill() {}, moveTo() {}, lineTo() {}, stroke() {}, set fillStyle(v) {}, set strokeStyle(v) {}, set lineWidth(v) {} }) };
+    const THREE = {
+        CanvasTexture: function () {}, PlaneGeometry: function () {}, MeshBasicMaterial: function (o) { this.opacity = o.opacity; },
+        Mesh: function (g, m) { this.material = m; this.visible = true; this.position = { set(x, y, z) { this.x = x; this.y = y; this.z = z; } }; this.rotation = { x: 0, z: 0 }; this.scale = { set(x, y) { this.x = x; this.y = y; } }; },
+        Vector3: function () {},
+    };
+    const c = { console, Math, THREE, performance: { now: () => 1000 }, window: {}, document: { createElement: () => canvas },
+        HQ_LIGHT_RULES: W.HQ_LIGHT_RULES, hqTerrainFluidAt: (info, x, z) => (x > 2 ? { y: 0, key: 'water' } : null) };
+    vm.createContext(c);
+    vm.runInContext(fn(TR, '_hqRippleTex') + fn(TR, '_hqRipplesOn') + fn(TR, '_hqWetSheetAt') + fn(TR, '_hqRippleEmit') + fn(TR, '_hqRippleSplash') + fn(TR, '_hqTickRipples') + `
+        var _hqRippleTexC = null;
+        function _hqUnits() { return 73; }
+        function _hqLightRules() { return HQ_LIGHT_RULES; }
+        function _hqSea() { return null; }
+        var added = [];
+        var _hq = { player: { x: 0, z: 0, y: -0.5, moving: true, velX: 1.4, velZ: 0, swim: false, air: false }, terrain: { H: [] }, paused: false, propGroup: { add: function (m) { added.push(m); } }, vehicle: null, ripples: null };
+    `, c);
+    return c;
+}
+test('THE RIPPLES (5.3, a vm run): a walker wading leaves a ring every beat that grows and fades; dry ground none; a splash is several; the pool is reused', () => {
+    const c = rippleCtx(), dt = 1 / 60, R = W.HQ_LIGHT_RULES.ripples;
+    for (let i = 0; i < 60; i++) vm.runInContext('_hqTickRipples(' + dt + ')', c);   // x 0 → dry
+    assert.equal(c.added.length, 0, 'dry ground: no ring');
+    c._hq.player.x = 4;   // in the water, the feet under the sheet
+    for (let i = 0; i < 60; i++) vm.runInContext('_hqTickRipples(' + dt + ')', c);
+    const n1 = c._hq.ripples.live.length;
+    assert.ok(n1 >= 3 && n1 <= Math.ceil(1 / R.every) + 1, 'about one a beat over a second: ' + n1);
+    const first = c._hq.ripples.live[0];
+    assert.ok(first.m.scale.x > first.r0 * 2 && first.m.material.opacity < first.a0, 'the first ring has grown and faded');
+    assert.equal(first.m.position.y, 0.015 * 73, 'a ring sits on the sheet');
+    vm.runInContext('_hqRippleSplash(4, 0, 0)', c);
+    assert.equal(c._hq.ripples.live.length, n1 + R.splashN, 'a splash is ' + R.splashN + ' rings');
+    c._hq.player.moving = false; c._hq.player.velX = 0;
+    for (let i = 0; i < 240; i++) vm.runInContext('_hqTickRipples(' + dt + ')', c);
+    assert.equal(c._hq.ripples.live.length, 0, 'every ring died');
+    assert.ok(c._hq.ripples.pool.length > 0 && c._hq.ripples.pool.every(m => m.visible === false), 'the pool holds them hidden');
+    const made = c.added.length;
+    c._hq.player.moving = true; c._hq.player.velX = 1.4;
+    for (let i = 0; i < 30; i++) vm.runInContext('_hqTickRipples(' + dt + ')', c);
+    assert.equal(c.added.length, made, 'a new ring came out of the pool, no new mesh');
+    assert.ok(fn(TR, '_hqSwimStart').includes('_hqRippleSplash(pl.x, sea.y, pl.z)'), 'a plunge is a splash');
+    assert.ok(fn(TR, '_hqFrame').includes('_hqTickRipples(dt);'), 'the frame ticks them');
+});
+
+test('THE DECALS (5.5): the rules name real catalogue keys, the hand rows real rooms; the builder marks the ground under a torch / a car / a table / a bin, a wear patch inside every door, never on a slope', () => {
+    const RU = W.HQ_DECAL_RULES;
+    assert.ok(RU.byKey.length >= 4 && RU.door && RU.door.kind === 'wear', 'the rules');
+    const keys = Object.keys(D.catalogue);
+    RU.byKey.forEach(r => assert.ok(keys.some(k => r.re.test(k)), 'a rule matches a catalogue key: ' + r.re));
+    const kindOf = k => (RU.byKey.find(r => r.re.test(k)) || {}).kind;
+    assert.equal(kindOf('wall_torch'), 'scorch'); assert.equal(kindOf('car_suv'), 'oil'); assert.equal(kindOf('steel_table'), 'blood');
+    for (const room of Object.keys(D.decals)) { assert.ok(D.rooms[room], 'DOOR_HQ.decals names a real room: ' + room); D.decals[room].forEach(r => assert.ok((r.kind || r.key) && isFinite(r.x) && isFinite(r.z) && r.r > 0, room + ' row')); }
+    const b = fn(TR, '_hqBuildDecals');
+    assert.ok(b.includes('EW_HQ_NO_DECALS') && b.includes('RULES.byKey') && b.includes("RULES.door") && b.includes('D.decals && D.decals[roomId]'), 'the three sources, the kill-switch');
+    assert.ok(b.includes('made >= cap') && b.includes('_hqDecalGround(r.x, r.z, r.r * 0.8, r.y)'), 'the cap, the ground read');
+    assert.ok(fn(TR, '_hqDecalGround').includes('> 0.3) return null;'), 'never on a slope');
+    assert.ok(b.includes("m.position.set(r.x * U, (gy + 0.02) * U, r.z * U); m.renderOrder = 1;"), 'a quad 2 cm over the ground');
+    ['scorch', 'oil', 'blood', 'grime', 'puddle'].forEach(k => assert.ok(fn(TR, '_hqDecalTex').includes("kind === '" + k + "'"), 'a painted ' + k));
+    assert.ok(TR.includes("try { _hqBuildDecals(room); } catch (e) { console.warn('[HQ] the decals failed', e); }"), 'built beside the atmosphere');
+});
+
+test('THE TRANSITION (6.2) + THE HERO LIGHT (2.2): the door you came through stands open and swings shut behind you; the first warm prop light casts a cube map, one per room', () => {
+    const g = fn(TR, '_hqGoTo');
+    assert.ok(g.includes("if (d && d.motion && !d.portal && !d.angle && !HQ_DOOR_LOCKED[d.state] && d.motion.mode !== 'way') { d.openT = 1; d.openApplied = -1; d.npcOpenUntil = performance.now() + 1100; }"), 'the leaf open on arrival, closing behind');
+    const h = fn(TR, '_hqHeroShadow');
+    assert.ok(h.includes('if (!H || H.heroLit || H.ghost) return;') && h.includes('light.castShadow = true;') && h.includes('mood.hero === false') && h.includes('W.EW_HQ_NO_SHADOWS || W.EW_PERF_LOW'), 'one per room, the opt-out, the kill-switches');
+    assert.ok(TR.includes('try { _hqHeroShadow(ppl, p.key, room); } catch (e) {}'), 'called at the prop light');
+    const SH = W.HQ_LIGHT_RULES.shadows.hero;
+    assert.ok(SH && SH.on && SH.map <= 1024 && new RegExp(SH.keys).test('wall_torch'), 'the hero rule');
+});
+
+test('THE POST PASS 7.3 + 7.5: SMAA beside FXAA (one mode, the page loads the pass, the sheet picks it), the look\'s lens aberration under a bare frame', () => {
+    assert.ok(/examples\/js\/shaders\/SMAAShader\.js/.test(IX) && /examples\/js\/postprocessing\/SMAAPass\.js/.test(IX), 'the two SMAA scripts');
+    assert.ok(TP.includes('_smaaPass = new THREE.SMAAPass(w * _pr2, h * _pr2);') && TP.includes('setAA: setAA, getAA: getAA,'), 'the pass + the API');
+    const sa = fn(TP, 'setAA');
+    assert.ok(sa.includes("localStorage.setItem('ew_aa', mode)") && sa.includes("localStorage.setItem('ew_fxaa', _fxaaWanted ? '1' : '0')"), 'persisted, the old flag kept in step');
+    assert.ok(fn(TP, '_aaApply').includes("_fxaaPass.enabled = (m === 'fxaa')") && fn(TP, '_aaApply').includes("_smaaPass.enabled = (m === 'smaa')"), 'one of the two runs');
+    assert.ok(fn(TP, 'resize').includes('_smaaPass.setSize(w * _pr3, h * _pr3)'), 'resized');
+    assert.ok(UI.includes("ThreePost.setAA('smaa')") && UI.includes("ThreePost.setAA('fxaa')") && UI.includes("ThreePost.setAA('off')"), 'the sheet\'s three buttons');
+    assert.ok(TP.includes("_gu['uChromaRadial'].value = _grade.chroma * _gk + _kick + _lkLensChroma();") && TP.includes("_gu['uChromaRadial'].value = _lkLensChroma();"), 'the lens under both branches');
+    assert.ok(W.HQ_ROOM_LOOKS.neon.lens.chroma > 0 && W.HQ_ROOM_LOOKS.nightmare.lens.chroma > 0, 'the looks that wear one');
+});
+
 test('the token is fresh (RULE #1b)', () => {
-    assert.ok(/\?v=\d{8}[a-z0-9-]*-cors/.test(IX) && !/threerooms-01-cors/.test(IX), 'a new token, the old one gone');
+    assert.ok(/\?v=\d{8}[a-z0-9-]*-cors/.test(IX) && !/polish-01-cors/.test(IX), 'a new token, the old one gone');
 });

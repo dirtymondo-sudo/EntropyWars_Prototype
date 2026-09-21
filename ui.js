@@ -7397,6 +7397,7 @@
             const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
             const nametagMode = state.nametagMode || 'name';
             const fxaaOn = typeof ThreePost!=='undefined'&&ThreePost.isFXAAEnabled&&ThreePost.isFXAAEnabled();
+            const aaMode = (typeof ThreePost!=='undefined'&&ThreePost.getAA) ? ThreePost.getAA() : (fxaaOn ? 'fxaa' : 'off');   // THE POST PASS 7.5: off / FXAA / SMAA
             const isNativePixel = typeof window==='undefined'||window._ewPixelRatio!==1;
             const crtOn = typeof ThreePost!=='undefined'&&ThreePost.isCinematicFilterEnabled&&ThreePost.isCinematicFilterEnabled();
             const vignetteOn = typeof ThreePost!=='undefined'&&ThreePost.isVignetteEnabled&&ThreePost.isVignetteEnabled();
@@ -7492,8 +7493,18 @@
                 <div class="pm-set-group">
                     <div class="pm-set-group-title">Graphics</div>
                     ${opts.perf != null ? opts.perf : (typeof window._buildPerfSettingsHTML === 'function' ? window._buildPerfSettingsHTML(RJ) : '')}
+                    <div class="pm-set-row pm-setting-row" style="margin-top:8px">
+                        <span class="pm-setting-label">Anti-aliasing</span>
+                        <div class="pm-seg-group">
+                            <button class="pm-seg-btn${aaMode==='off'?' active':''}" onclick="if(typeof ThreePost!=='undefined'&&ThreePost.setAA)ThreePost.setAA('off');${RJ}">Off</button>
+                            <button class="pm-seg-btn${aaMode==='fxaa'?' active':''}" onclick="if(typeof ThreePost!=='undefined'&&ThreePost.setAA)ThreePost.setAA('fxaa');${RJ}">FXAA</button>
+                            <button class="pm-seg-btn${aaMode==='smaa'?' active':''}" onclick="if(typeof ThreePost!=='undefined'&&ThreePost.setAA)ThreePost.setAA('smaa');${RJ}">SMAA</button>
+                        </div>
+                    </div>
+                    <div class="pm-set-row" style="margin-top:2px">
+                        <span class="pm-toggle-hint">SMAA is the cleaner edge (the sprites, the rails) · FXAA the cheaper one</span>
+                    </div>
                     <div class="pm-set-toggles" style="margin-top:8px">
-                        <label class="pm-toggle"><input type="checkbox" ${fxaaOn ? 'checked' : ''} onchange="if(typeof ThreePost!=='undefined'&&ThreePost.setFXAA)ThreePost.setFXAA(this.checked);"><span class="pm-toggle-label">FXAA</span><span class="pm-toggle-hint">anti-aliasing</span></label>
                         <label class="pm-toggle"><input type="checkbox" ${filmicOn ? 'checked' : ''} onchange="if(typeof ThreePost!=='undefined'&&ThreePost.setFilmicTone)ThreePost.setFilmicTone(this.checked);"><span class="pm-toggle-label">Filmic Tone</span><span class="pm-toggle-hint">rich contrast grade</span></label>
                     </div>
                     <div class="pm-set-row pm-setting-row" style="margin-top:8px">

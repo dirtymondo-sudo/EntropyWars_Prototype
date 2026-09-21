@@ -21484,11 +21484,14 @@ const ThreeRenderer = (function () {
     var HQ_LIGHT_DEFAULT = { cycle: 'day', nightCap: 0.45, ambientFloor: 0.55, fillColor: 0x9fb4d0, fill: 0.14,
         open: { nightHemi: 0.62, nightSun: 0.4, dayHemi: 0.78, daySun: 0.6, nightLamp: 0.9, dayLamp: 0.55 },
         /* THE PREMIUM POLISH (2026-09-21): the shadow map, the key rig per kind, the AO, the height fog, the atmosphere — data.js owns the numbers */
-        shadows: { on: true, mapLow: 1024, mapHigh: 2048, bias: -0.0005, normalBias: 2.4, pad: 4, everyN: 2 },
+        shadows: { on: true, mapLow: 1024, mapHigh: 2048, bias: -0.0005, normalBias: 2.4, pad: 4, everyN: 2, hero: { on: true, map: 512, bias: -0.004, keys: 'torch|brazier|campfire|furnace|hearth|forge|pyre|candelabra|lava' } },
         key: { box: { az: 300, el: 58, color: 0xfff1dc, intensity: 0.34 }, open: { az: 305, el: 52 }, bay: { az: 320, el: 62, color: 0xf2f5ff, intensity: 0.3 }, hall: { az: 330, el: 60, color: 0xfff0d8, intensity: 0.42 } },
         ao: { corner: 0.34, r: 0.55, contact: 0.5, contactR: 1.35, terrain: 0.32, foot: 0.7 },
         heightFog: { on: true, box: { h: 1.7, amount: 0.34 }, open: { h: 3.2, amount: 0.5 }, hall: { h: 2.6, amount: 0.3 } },
-        atmos: { max: 600, perM2: 0.7, min: 90 } };
+        atmos: { max: 600, perM2: 0.7, min: 90, facility: { perM2: 0.05, max: 40, min: 8 }, closed: { perM2: 0.32, max: 300, min: 50 }, open: { perM2: 0.95, max: 720, min: 120 } },
+        wind: { on: true, amp: 0.055, speed: 1.0 },
+        ripples: { on: true, every: 0.24, life: 1.6, r: 1.1, splashN: 5, splashR: 2.6, wakeR: 1.8, max: 48 },
+        decals: { on: true, alpha: 0.7, max: 80, wear: 0.42 } };
     function _hqLightRules() {
         var R = (typeof HQ_LIGHT_RULES !== 'undefined') ? HQ_LIGHT_RULES : ((typeof window !== 'undefined' && window.HQ_LIGHT_RULES) || null);
         if (!R) return HQ_LIGHT_DEFAULT;
@@ -25940,6 +25943,23 @@ const ThreeRenderer = (function () {
         }
         return g;
     }
+    /* THE PROP PASS 5.1 — THE WIND (PREMIUM_POLISH_PLAN, 2026-09-21): the foliage sways in the vertex shader — every tree the HQ
+       plants (a treeline, a grove, a thicket, the board's own) takes ONE hook on its leaf + bark materials: a crown-weighted
+       sway on a shared clock (_EW_WIND, a plain object every material references — the height fog's rule). The battle's rim trees
+       never (the world's fog / dissolve own their onBeforeCompile). HQ_LIGHT_RULES.wind = { on, amp (m at the crown), speed }. */
+    var _EW_WIND = { value: 0 };
+    function _ewWindHook(mat, modelH, ampLocal) {
+        mat.onBeforeCompile = function (sh) {
+            sh.uniforms.uEwWind = _EW_WIND;
+            sh.uniforms.uEwWindH = { value: Math.max(0.001, modelH) };
+            sh.uniforms.uEwWindAmp = { value: ampLocal };
+            sh.vertexShader = 'uniform float uEwWind; uniform float uEwWindH; uniform float uEwWindAmp;\n' + sh.vertexShader.replace('#include <begin_vertex>',
+                '#include <begin_vertex>\n float ewk = clamp(position.y / uEwWindH, 0.0, 1.0); ewk *= ewk;\n vec4 ewp = modelMatrix * vec4(position, 1.0);\n float ewph = uEwWind + ewp.x * 0.07 + ewp.z * 0.05;\n transformed.x += (sin(ewph) * 0.7 + sin(ewph * 2.3 + 1.1) * 0.3) * ewk * uEwWindAmp;\n transformed.z += cos(ewph * 0.8 + 0.6) * ewk * uEwWindAmp * 0.6;');
+        };
+        mat.customProgramCacheKey = function () { return 'ewWind'; };
+        mat._ew_wind = true;
+        return mat;
+    }
     function _nrTree(K, kind, o) {
         o = o || {};
         var ts = K.ts, g = new THREE.Group(), name = _FOLIAGE_MODEL_FOR_KEY[kind] || 'Tree_1';
@@ -25951,12 +25971,16 @@ const ThreeRenderer = (function () {
             var bb = src._ew_bbox, modelH = (bb.max.y - bb.min.y) || 1, s = target / modelH;
             var bark = _getFoliagePixelTex(_FOLIAGE_BARK_TEX, _FOLIAGE_BARK_REPEAT), leaf = _getFoliagePixelTex(leafFile, _FOLIAGE_LEAF_REPEAT);
             var model = src.clone(true);
+            /* THE WIND (5.1): the HQ's trees sway — the amplitude is metres at the crown, brought into the model's own units (the
+               shader moves `transformed` before the scale); a world-rim tree (K._wdFog) keeps its own hooks */
+            var WR = (K.hq && !K._wdFog && !(typeof window !== 'undefined' && window.EW_HQ_NO_WIND)) ? (_hqLightRules().wind || null) : null;
+            var windAmp = (WR && WR.on !== false) ? ((WR.amp != null ? WR.amp : 0.055) * (K.ts / 1.75)) / s : 0;
             model.traverse(function (n) {
                 if (!n.isMesh) return;
                 var pick = function (sm) {
                     var nm = (sm && sm.name) || '';
-                    if (nm === 'Tree_Leaves') { var lm = new THREE.MeshLambertMaterial({ map: leaf, side: THREE.DoubleSide }); if (tint != null) lm.color.setHex(tint); lm._ew_hzNear = true; return lm; }
-                    var bm = new THREE.MeshLambertMaterial({ map: bark }); bm._ew_hzNear = true; return bm;
+                    if (nm === 'Tree_Leaves') { var lm = new THREE.MeshLambertMaterial({ map: leaf, side: THREE.DoubleSide }); if (tint != null) lm.color.setHex(tint); lm._ew_hzNear = true; if (windAmp > 0) _ewWindHook(lm, modelH, windAmp); return lm; }
+                    var bm = new THREE.MeshLambertMaterial({ map: bark }); bm._ew_hzNear = true; if (windAmp > 0) _ewWindHook(bm, modelH, windAmp * 0.3); return bm;
                 };
                 n.material = Array.isArray(n.material) ? n.material.map(pick) : pick(n.material);
                 n.castShadow = true; n.receiveShadow = true;
@@ -46007,6 +46031,9 @@ const ThreeRenderer = (function () {
                 if (cat.light && _hq.propLights < HQ_PROP_LIGHT_MAX) {
                     var ppl = new THREE.PointLight(cat.light.color != null ? cat.light.color : 0xffd9a0, cat.light.intensity != null ? cat.light.intensity : 0.6, (cat.light.dist || 6) * U, 2);
                     ppl.position.y = (cat.light.y || 0) * U; grp.add(ppl); _hq.propLights++;
+                    /* THE LIGHT PASS 2.2 — THE HERO LIGHT (2026-09-21): the first warm prop light of the room casts a cube shadow map (six
+                       faces, ONE per room); HQ_LIGHT_RULES.shadows.hero names the keys; the room's mood may refuse (mood.hero: false) */
+                    try { _hqHeroShadow(ppl, p.key, room); } catch (e) {}
                 }
                 G.add(grp);
                 _hq.props.push({ key: p.key, grp: grp });
@@ -50058,6 +50085,7 @@ const ThreeRenderer = (function () {
         pl.svx = pl.velX || 0; pl.svz = pl.velZ || 0; pl.svy = plunge ? Math.max(-R.diveV * 1.5, pl.vy * 0.5) : 0; pl.mvx = 0; pl.mvz = 0; pl.vy = 0;
         if (!sea.under) pl.y = plunge ? Math.max(hqTerrainHeight(_hq.terrain, pl.x, pl.z) + 0.3, sea.y - R.surfaceDraft - 1.2) : sea.y - R.surfaceDraft;
         pl.visY = pl.y;
+        if (plunge) { try { _hqRippleSplash(pl.x, sea.y, pl.z); } catch (e) {} }   // THE RIPPLES (5.3): a plunge is a splash
         _hqSeaEmit({ kind: 'swim', on: true, why: why || 'water', under: !!sea.under });
     }
     function _hqSwimStop(pl, y) {
@@ -51820,6 +51848,18 @@ const ThreeRenderer = (function () {
         _hqShadowFlags(room);
         _hqShadowTick(H, 0);
     }
+    function _hqHeroShadow(light, key, room) {
+        var H = _hq; if (!H || H.heroLit || H.ghost) return;
+        var W = (typeof window !== 'undefined') ? window : {};
+        var SH = (_hqLightRules().shadows || {}), HR = SH.hero; if (!HR || HR.on === false || SH.on === false || W.EW_HQ_NO_SHADOWS || W.EW_PERF_LOW) return;
+        var q = (typeof ThreePost !== 'undefined' && ThreePost.getShadowQuality) ? ThreePost.getShadowQuality() : 'high'; if (q === 'off') return;
+        var mood = room && room.shell && room.shell.mood; if (mood && mood.hero === false) return;
+        if (!new RegExp(HR.keys || 'torch|brazier').test(String(key))) return;
+        light.castShadow = true;
+        var map = (q === 'low') ? Math.min(256, HR.map || 512) : (HR.map || 512);
+        light.shadow.mapSize.set(map, map); light.shadow.bias = (HR.bias != null) ? HR.bias : -0.004; light.shadow.camera.near = 0.05 * _hqUnits();
+        H.heroLit = light;
+    }
     var _HQ_NO_CAST_PART = { wall: 1, ceil: 1, edge: 1, strip: 1, pipe: 1, fx: 1 };
     function _hqShadowFlags(room) {
         var H = _hq, U = _hqUnits();
@@ -51993,7 +52033,10 @@ const ThreeRenderer = (function () {
         }
         var m2 = 0; try { m2 = (typeof hqRoomFloorM2 === 'function') ? hqRoomFloorM2(room, roomId) : 0; } catch (e) { m2 = 0; }
         if (!(m2 > 0)) m2 = (room.kind === 'box') ? (S.w || 10) * (S.d || 10) : Math.PI * Math.pow(S.rOut || 24, 2);
-        var n = Math.round(Math.max(AR.min || 90, Math.min(AR.max || 600, m2 * (AR.perM2 || 0.7))) * (K.nMul || 1));
+        /* THE TIERS (2026-09-21, the user: "way too many ambient particles in DOOR HQ when those should be in more outdoor places like
+           the woods"): the density is the tier's — a facility room a few motes, a closed wild room more, an open one the weather */
+        var TR = (a.tier && AR[a.tier]) ? AR[a.tier] : AR;
+        var n = Math.round(Math.max(TR.min || AR.min || 90, Math.min(TR.max || AR.max || 600, m2 * (TR.perM2 || AR.perM2 || 0.7))) * (K.nMul || 1));
         if (a.n) n = Math.round(a.n);
         if (W.EW_PERF_LOW) n = Math.round(n / 2);
         if (a.kind === 'embers') n = Math.min(n, emitters.length * 24);
@@ -52038,6 +52081,143 @@ const ThreeRenderer = (function () {
         H.tickers.push(function (dt, now) { uni.uTime.value = now * 0.001; });
         return H.atmos;
     }
+    /* ── THE PROP PASS 5.3 — THE RIPPLES (PREMIUM_POLISH_PLAN, 2026-09-21) ──
+       Rings on the water at the feet of a walker WADING (the feet under a sheet — a moat, a pool, a stream, the shallows) and
+       of a swimmer on the surface, every `every` s while moving; a PLUNGE (the swimmer's own dive-at-once) is a SPLASH; the
+       skiff's stern leaves a wake. One cached ring canvas, a pool of flat quads at the sheet's height that grow and fade
+       (HQ_LIGHT_RULES.ripples). Nothing on `state`, nothing relayed (RULE #2). `EW_HQ_NO_RIPPLES`. */
+    var _hqRippleTexC = null;
+    function _hqRippleTex() {
+        if (_hqRippleTexC) return _hqRippleTexC;
+        var c = document.createElement('canvas'); c.width = c.height = 128; var g = c.getContext('2d');
+        var gr = g.createRadialGradient(64, 64, 34, 64, 64, 64);
+        gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.55, 'rgba(255,255,255,0.05)'); gr.addColorStop(0.78, 'rgba(255,255,255,0.85)'); gr.addColorStop(0.9, 'rgba(255,255,255,0.35)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+        g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
+        _hqRippleTexC = new THREE.CanvasTexture(c); return _hqRippleTexC;
+    }
+    function _hqRipplesOn() { var W = (typeof window !== 'undefined') ? window : {}; var R = _hqLightRules().ripples; return !!(_hq && R && R.on !== false && !W.EW_HQ_NO_RIPPLES && typeof document !== 'undefined'); }
+    /* the water sheet over (x, z), metres — a terrain fluid (never lava), a site / cave fluid cell, the open sea; null = dry ground */
+    function _hqWetSheetAt(x, z) {
+        var H = _hq; if (!H) return null;
+        if (H.terrain && typeof hqTerrainFluidAt === 'function') { var f = null; try { f = hqTerrainFluidAt(H.terrain, x, z); } catch (e) { f = null; } if (!f || /lava/.test(String(f.key || ''))) return null; return (f.y != null) ? f.y : null; }
+        if (H.site) { var sc = null; try { sc = _hqSiteCellAt(x, z); } catch (e) { sc = null; } if (sc && sc.fluid && !/lava/.test(String(sc.key || ''))) return (sc.sheet != null) ? sc.sheet : -0.3; }
+        return null;
+    }
+    function _hqRippleEmit(x, y, z, r, opts) {
+        var H = _hq; if (!H || !_hqRipplesOn()) return null;
+        opts = opts || {};
+        var R = _hqLightRules().ripples, U = _hqUnits();
+        var P = H.ripples = H.ripples || { live: [], pool: [], t: 0, wakeT: 0 };
+        if (P.live.length >= (R.max || 48)) { var old = P.live.shift(); old.m.visible = false; P.pool.push(old.m); }
+        var m = P.pool.pop();
+        if (!m) {
+            m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: _hqRippleTex(), transparent: true, depthWrite: false, opacity: 0.6, color: 0xffffff, fog: false }));
+            m.rotation.x = -Math.PI / 2; m.renderOrder = 5; m._ew_hqPart = 'fx'; m._ew_shadowFlagged = true; m.castShadow = false; m.receiveShadow = false; m.frustumCulled = false;
+            H.propGroup.add(m);
+        }
+        m.visible = true; m.position.set(x * U, (y + 0.015) * U, z * U); m.rotation.z = Math.random() * 6.2832;
+        var rec = { m: m, t: 0, life: opts.life || R.life || 1.6, r0: (opts.r0 != null ? opts.r0 : 0.22) * U, r1: r * U, a0: opts.alpha != null ? opts.alpha : 0.6 };
+        m.scale.set(rec.r0 * 2, rec.r0 * 2, 1); m.material.opacity = rec.a0;
+        P.live.push(rec);
+        return rec;
+    }
+    function _hqRippleSplash(x, y, z) {
+        var R = _hqLightRules().ripples; if (!_hqRipplesOn()) return;
+        var n = R.splashN || 5, sr = R.splashR || 2.6;
+        for (var i = 0; i < n; i++) _hqRippleEmit(x + (Math.random() - 0.5) * 0.5, y, z + (Math.random() - 0.5) * 0.5, sr * (0.55 + 0.45 * (i / Math.max(1, n - 1))), { life: (R.life || 1.6) * (0.8 + 0.5 * Math.random()), r0: 0.15 + 0.12 * i, alpha: 0.75 });
+    }
+    /* per frame: the wader / the surface swimmer / the skiff leave rings; the pool ages */
+    function _hqTickRipples(dt) {
+        var H = _hq; if (!H) return;
+        var P = H.ripples, R = _hqLightRules().ripples;
+        if (_hqRipplesOn() && !H.paused) {
+            var pl = H.player, V = H.vehicle, sheet = null, sx = 0, sz = 0, big = 0, moving = false;
+            if (V && V.on && V.kind !== 'sub' && Math.abs(V.v || 0) > 0.4) { var sea = _hqSea(); if (sea) { sheet = sea.y; sx = V.x - Math.sin(V.yaw) * 1.2; sz = V.z - Math.cos(V.yaw) * 1.2; big = R.wakeR || 1.8; moving = true; } }
+            else if (pl && pl.swim && !pl.dive) { var sea2 = _hqSea(); if (sea2 && Math.hypot(pl.svx || 0, pl.svz || 0) > 0.35) { sheet = sea2.y; sx = pl.x; sz = pl.z; moving = true; } }
+            else if (pl && !pl.swim && !pl.air && (pl.moving || Math.hypot(pl.velX || 0, pl.velZ || 0) > 0.3)) {
+                var sh = _hqWetSheetAt(pl.x, pl.z);
+                if (sh != null && pl.y < sh - 0.04) { sheet = sh; sx = pl.x; sz = pl.z; moving = true; }
+            }
+            if (moving && sheet != null) {
+                P = H.ripples = H.ripples || { live: [], pool: [], t: 0, wakeT: 0 };
+                P.t += dt;
+                if (P.t >= (R.every || 0.24)) { P.t = 0; _hqRippleEmit(sx, sheet, sz, big || R.r || 1.1, big ? { alpha: 0.5, r0: 0.5 } : null); }
+            } else if (P) P.t = Math.min(P.t, (R.every || 0.24) * 0.6);
+        }
+        if (!P || !P.live.length) return;
+        for (var i = P.live.length - 1; i >= 0; i--) {
+            var rc = P.live[i]; rc.t += dt;
+            var k = Math.min(1, rc.t / rc.life), e = 1 - (1 - k) * (1 - k);
+            var rr = rc.r0 + (rc.r1 - rc.r0) * e;
+            rc.m.scale.set(rr * 2, rr * 2, 1); rc.m.material.opacity = rc.a0 * (1 - k);
+            if (k >= 1) { rc.m.visible = false; P.pool.push(rc.m); P.live.splice(i, 1); }
+        }
+    }
+    /* ── THE PROP PASS 5.5 — THE DECALS (PREMIUM_POLISH_PLAN, 2026-09-21) ──
+       A flat mark on the ground: a scorch under a torch, oil under a car, blood by a steel table, grime under a bin
+       (data.js HQ_DECAL_RULES.byKey), a WEAR patch inside every door's landing, and DOOR_HQ.decals[room]'s hand rows. Six
+       painted kinds (one cached canvas each) or an `urban:<Name>` sheet. A quad 2 cm over the ground (above the contact
+       disc), never on a slope steeper than the walker climbs, ≤ HQ_LIGHT_RULES.decals.max a room. `EW_HQ_NO_DECALS`. */
+    var _hqDecalTexC = {};
+    function _hqDecalTex(kind) {
+        if (_hqDecalTexC[kind]) return _hqDecalTexC[kind];
+        var c = document.createElement('canvas'); c.width = c.height = 128; var g = c.getContext('2d');
+        var rng = _mulberry32(0xDECA1 + kind.length * 977);
+        function blob(cx, cy, r, col, a) { var gr = g.createRadialGradient(cx, cy, 0, cx, cy, r); gr.addColorStop(0, col.replace('A', a)); gr.addColorStop(0.6, col.replace('A', a * 0.7)); gr.addColorStop(1, col.replace('A', 0)); g.fillStyle = gr; g.beginPath(); g.arc(cx, cy, r, 0, 6.2832); g.fill(); }
+        if (kind === 'scorch') { blob(64, 64, 58, 'rgba(8,6,4,A)', 0.9); for (var i = 0; i < 26; i++) { var a = rng() * 6.2832, L = 30 + rng() * 32; g.strokeStyle = 'rgba(0,0,0,' + (0.25 + rng() * 0.4) + ')'; g.lineWidth = 2 + rng() * 5; g.beginPath(); g.moveTo(64 + Math.cos(a) * 12, 64 + Math.sin(a) * 12); g.lineTo(64 + Math.cos(a) * L, 64 + Math.sin(a) * L); g.stroke(); } }
+        else if (kind === 'oil') { for (var j = 0; j < 7; j++) blob(64 + (rng() - 0.5) * 44, 64 + (rng() - 0.5) * 30, 22 + rng() * 26, 'rgba(6,8,14,A)', 0.85); blob(58, 60, 30, 'rgba(60,40,90,A)', 0.18); blob(72, 68, 22, 'rgba(30,70,90,A)', 0.14); }
+        else if (kind === 'blood') { blob(60, 66, 30, 'rgba(78,4,8,A)', 0.9); for (var k = 0; k < 18; k++) { var ang = rng() * 6.2832, d = 24 + rng() * 34; blob(64 + Math.cos(ang) * d, 64 + Math.sin(ang) * d, 3 + rng() * 9, 'rgba(70,3,8,A)', 0.85); } }
+        else if (kind === 'grime') { blob(64, 64, 52, 'rgba(40,34,26,A)', 0.55); for (var q = 0; q < 10; q++) blob(64 + (rng() - 0.5) * 60, 64 + (rng() - 0.5) * 60, 8 + rng() * 14, 'rgba(30,26,20,A)', 0.45); }
+        else if (kind === 'puddle') { blob(64, 64, 54, 'rgba(18,28,40,A)', 0.62); blob(50, 52, 16, 'rgba(180,200,230,A)', 0.16); blob(78, 74, 10, 'rgba(180,200,230,A)', 0.1); }
+        else { blob(64, 64, 60, 'rgba(20,16,12,A)', 0.55); }   // wear: a soft dark tread
+        var t = new THREE.CanvasTexture(c); _hqDecalTexC[kind] = t; return t;
+    }
+    function _hqDecalGround(x, z, r, yFallback) {
+        var y = yFallback;
+        if (_hqHasGround()) {
+            var ys = [], ok = true;
+            [[0, 0], [r, 0], [-r, 0], [0, r], [0, -r]].forEach(function (o) { var g = null; try { g = _hqCaveTop(x + o[0], z + o[1]); } catch (e) { g = null; } if (g == null || !isFinite(g)) ok = false; else ys.push(g); });
+            if (!ok || !ys.length) return null;
+            if (Math.max.apply(null, ys) - Math.min.apply(null, ys) > 0.3) return null;   // a slope: the flat quad would cut the ground
+            y = ys[0];
+        }
+        return (y == null) ? 0 : y;
+    }
+    function _hqBuildDecals(room) {
+        var H = _hq, W = (typeof window !== 'undefined') ? window : {};
+        if (!H || H.ghost || W.EW_HQ_NO_DECALS || typeof document === 'undefined') return 0;
+        var LR = _hqLightRules(), DR = LR.decals || {}; if (DR.on === false) return 0;
+        var D = _hqData(), RULES = (typeof HQ_DECAL_RULES !== 'undefined') ? HQ_DECAL_RULES : (W.HQ_DECAL_RULES || null); if (!D || !RULES) return 0;
+        var roomId = H.opts.room || 'central_egress', U = _hqUnits(), rows = [], cap = DR.max || 80;
+        (H.props || []).forEach(function (pr) {
+            var cat = D.catalogue[pr.key]; if (!cat || cat.wall || cat.ceil || cat.float || cat.hover) return;
+            for (var i = 0; i < RULES.byKey.length; i++) { var ru = RULES.byKey[i]; if (ru.re.test(pr.key)) { var wp = new THREE.Vector3(); pr.grp.getWorldPosition(wp); rows.push({ kind: ru.kind, x: wp.x / U, z: wp.z / U, y: wp.y / U, r: ru.r, rot: Math.random() * 360 }); break; } }
+        });
+        if (RULES.door && !(room.kind === 'box' && room.shell && room.shell.open)) (H.doors || []).forEach(function (d) {
+            if (d.portal || d.way || !d.door || d.door.secret) return;
+            var inM = RULES.door.inM || 0.75, x, z;
+            if (d.box) { x = d.box.wx + d.box.nx * inM; z = d.box.wz + d.box.nz * inM; }
+            else if (d.Rw) { var p = _hqPolarW(d.door.deg || 0, d.inward ? d.Rw + inM : d.Rw - inM, 0); x = p.x / U; z = p.z / U; }
+            else return;
+            rows.push({ kind: RULES.door.kind || 'wear', x: x, z: z, y: d.y0 || 0, r: RULES.door.r || 0.95, rot: d.box ? _hqHeadingOf(d.box.nx, d.box.nz) : (d.door.deg || 0), alpha: DR.wear || 0.42 });
+        });
+        ((D.decals && D.decals[roomId]) || []).forEach(function (r) { if (r && isFinite(+r.x) && isFinite(+r.z)) rows.push({ kind: r.kind, key: r.key, x: +r.x, z: +r.z, y: r.y, r: r.r || 1, rot: r.rot || 0, alpha: r.alpha }); });
+        var made = 0;
+        rows.forEach(function (r) {
+            if (made >= cap) return;
+            var gy = _hqDecalGround(r.x, r.z, r.r * 0.8, r.y); if (gy == null) return;
+            var map = null;
+            if (r.key) { try { map = _hqTex(r.key); } catch (e) { map = null; } }
+            if (!map) map = _hqDecalTex(r.kind || 'wear');
+            var m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: map, transparent: true, depthWrite: false, opacity: (r.alpha != null ? r.alpha : (DR.alpha || 0.7)), color: 0xffffff, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
+            m.rotation.x = -Math.PI / 2; m.rotation.z = _hqRad(r.rot || 0); m.scale.set(r.r * 2 * U, r.r * 2 * U, 1);
+            m.position.set(r.x * U, (gy + 0.02) * U, r.z * U); m.renderOrder = 1;
+            m._ew_hqPart = 'fx'; m._ew_shadowFlagged = true; m.castShadow = false; m.receiveShadow = false; m._ew_decal = r.kind || r.key;
+            H.propGroup.add(m); made++;
+        });
+        H.decals = made;
+        return made;
+    }
     function _hqFrame() {
         var H = _hq; if (!H || !renderer) return;
         var now = performance.now();
@@ -52064,6 +52244,8 @@ const ThreeRenderer = (function () {
         _hqTickChars(dt);
         _hqTickCamera(dt);
         _hqTickWorld(dt, now);
+        _hqTickRipples(dt);   // THE RIPPLES (5.3): the wader's / the swimmer's / the skiff's rings
+        _EW_WIND.value = now * 0.001 * (((_hqLightRules().wind || {}).speed) || 1);   // THE WIND (5.1): the foliage's shared clock
         if (!H.ready) _hqGateTick(H, now);
         if (H.shadows) _hqShadowTick(H, dt);   // THE LIGHT PASS 2.1: the frustum follows the walker, the depth pass pulses (autoUpdate is off)
         var noPost = (typeof window !== 'undefined' && window.EW_HQ_NO_POST);
@@ -52274,7 +52456,7 @@ const ThreeRenderer = (function () {
             finds: [], findLights: 0,   /* THE FINDS (9.1, 2026-09-15): the takeable objects standing in the room (_hqPlaceFinds) and the count of their point lights */
             portal: { drawn: false, ghost: null, aim: null, placed: {}, lastKey: '', hold: null, cross: null, issued: !!(opts.portal && opts.portal.issued), sight: null, fAt: 0, fFired: false, slot: (opts.portal && (opts.portal.slot === 'b')) ? 'b' : 'a', vm: null },   /* rev 4: `vm` = the first-person viewmodel; rev 5: `slot` = the LAST button pressed (the sights + the selector are gone — LEFT = A, RIGHT = B) */   /* THE DOOR GUN (9.5, rev 13; rev 2 2026-09-15: `hold` = the mouth you came out of, `cross` = the entry's speed): the drawn state, the ghost, the last aim, the placed door records by slot */
             tickers: [], propLights: 0,   /* Phase 8 (2026-09-14): per-frame callbacks registered by procs (the orb, the torches, the shaft); the count of catalogue `light`s placed */
-            kicks: [], seats: [], sways: [], shadows: null, atmos: null, heightFog: null, ao: null, keyLight: null, keyDir: null, shafts: 0,   /* THE PREMIUM POLISH (2026-09-21): the kickable bodies, the seats, the swaying props, the light pass's records */
+            kicks: [], seats: [], sways: [], shadows: null, atmos: null, heightFog: null, ao: null, keyLight: null, keyDir: null, shafts: 0, ripples: null, decals: 0, heroLit: null,   /* THE PREMIUM POLISH (2026-09-21): the kickable bodies, the seats, the swaying props, the light pass's records */
             props: [], focus: null,   /* props: { key, grp } per placed catalogue prop (the terminal's camera finds the CRT by key); focus: the screen push (_hqFocusScreen) */
             keys: {}, drag: null, lastDragAt: 0, fp: false, paused: false, ready: false, t0: performance.now(), lastMs: 0, lastDebug: 0,
             cam: { yaw: 0, pitch: -0.24, dist: 3.6, init: false }, targetKey: '', w: 0, h: 0, dirty: true,
@@ -52427,6 +52609,7 @@ const ThreeRenderer = (function () {
         try { _hqHeightFogArm(room); } catch (e) { console.warn('[HQ] the height fog failed', e); }
         try { _hqPlaceLightShafts(room); } catch (e) { console.warn('[HQ] the light shafts failed', e); }
         try { _hqBuildAtmos(room); } catch (e) { console.warn('[HQ] the atmosphere failed', e); }
+        try { _hqBuildDecals(room); } catch (e) { console.warn('[HQ] the decals failed', e); }   // THE PROP PASS 5.5
         /* face the camera the way the spawn faces */
         var sp = room.spawn || { face: 0 };
         _hq.cam.yaw = _hqRad(sp.face || 0);
@@ -52640,6 +52823,9 @@ const ThreeRenderer = (function () {
             }
         }
         if (!spot) return false;
+        /* THE TRANSITION (6.2, 2026-09-21): the door you came through is seen from inside — its leaf stands OPEN on arrival and
+           swings shut behind you (the rounds' own swing, _hqTickDoors reads npcOpenUntil); a portal / a way / an unmeasured angle never */
+        if (d && d.motion && !d.portal && !d.angle && !HQ_DOOR_LOCKED[d.state] && d.motion.mode !== 'way') { d.openT = 1; d.openApplied = -1; d.npcOpenUntil = performance.now() + 1100; }
         pl.x = spot.x / U; pl.z = spot.z / U; pl.y = spot.y / U; pl.visY = pl.y;
         pl.air = false; pl.vy = 0; pl.jumpT = -1;
         pl.mvx = 0; pl.mvz = 0;
