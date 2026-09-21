@@ -89,7 +89,7 @@ const ThreePost = (function () {
     try { if (typeof localStorage !== 'undefined' && localStorage.getItem('ew_auto_exposure') === 'off') AE_ON = false; } catch (e) {}
     var AE_INTERVAL_MS = 220, AE_TARGET = 0.42, AE_MIN = 0.78, AE_MAX = 1.32, AE_EASE = 0.9;
     var _ae = { gain: 1, target: 1, last: 0, tick: 0, rt: null, scene: null, cam: null, mat: null, buf: null, lum: 0 };
-    function _aeEnabled() { return AE_ON && _expCtx === 'hq' && !(typeof window !== 'undefined' && (window.EW_NO_AUTO_EXPOSURE || window.EW_PERF_LOW)); }
+    function _aeEnabled() { return AE_ON && _expCtx === 'hq' && !(typeof window !== 'undefined' && (window.EW_NO_AUTO_EXPOSURE || window.EW_PERF_LOW)) && _polishGet('autoExposure', true) !== false; }
     function _aeMeasure(now) {
         if (!_aeEnabled() || !_composer || !_renderer) return;
         if (now - _ae.last < AE_INTERVAL_MS) return; _ae.last = now;
@@ -613,7 +613,10 @@ const ThreePost = (function () {
             'uWarp':          { value: 0.0 },
             'uChromaRadial':  { value: 0.0 },
             'uGradeTint':     { value: new THREE.Vector3(1.0, 1.0, 1.0) },
-            'uGradeTintAmt':  { value: 0.0 }
+            'uGradeTintAmt':  { value: 0.0 },
+            // THE POST PASS 6.4 (2026-09-21): a zoom blur toward uMotionCenter — the deck at speed, a long fall
+            'uMotion':        { value: 0.0 },
+            'uMotionCenter':  { value: new THREE.Vector2(0.5, 0.5) }
         },
         vertexShader: [
             'varying vec2 vUv;',
@@ -645,6 +648,16 @@ const ThreePost = (function () {
             'uniform float uHue;',
             'uniform float uWarp;',
             'uniform float uChromaRadial;',
+            'uniform float uMotion;',
+            'uniform vec2 uMotionCenter;',
+            '// 6.4 MOTION BLUR: eight taps back along the ray from the blur centre; a zero amount is the plain fetch',
+            'vec4 fetchC(vec2 p) {',
+            '  if (uMotion < 0.001) return texture2D(tDiffuse, p);',
+            '  vec2 d = (p - uMotionCenter) * uMotion * 0.14;',
+            '  vec4 acc = vec4(0.0);',
+            '  for (int i = 0; i < 8; i++) { acc += texture2D(tDiffuse, clamp(p - d * (float(i) / 7.0), vec2(0.001), vec2(0.999))); }',
+            '  return acc * 0.125;',
+            '}',
             'uniform vec3 uGradeTint;',
             'uniform float uGradeTintAmt;',
             'varying vec2 vUv;',
@@ -703,14 +716,14 @@ const ThreePost = (function () {
             '  // even with the CRT filter switched off.',
             '  float px = (uChromaShift * uCrtAmount) / uResolution.x;',
             '  vec2 ab = (uv - 0.5) * (uChromaRadial * 2.0 / uResolution.x);',
-            '  float r = texture2D(tDiffuse, vec2(uv.x - px, uv.y) - ab).r;',
-            '  vec4 center = texture2D(tDiffuse, uv);',
-            '  float b = texture2D(tDiffuse, vec2(uv.x + px, uv.y) + ab).b;',
+            '  float r = fetchC(vec2(uv.x - px, uv.y) - ab).r;',
+            '  vec4 center = fetchC(uv);',
+            '  float b = fetchC(vec2(uv.x + px, uv.y) + ab).b;',
             '  float g = center.g;',
             '  if (uChromaRadial > 0.01) {',
             '    // green rides the PERPENDICULAR so the split fans instead of',
             '    // smearing along one line — reads far more like a bad signal',
-            '    g = texture2D(tDiffuse, uv + vec2(-ab.y, ab.x) * 0.6).g;',
+            '    g = fetchC(uv + vec2(-ab.y, ab.x) * 0.6).g;',
             '  }',
             '  vec4 col = vec4(r, g, b, center.a);',
             '',
@@ -1947,6 +1960,176 @@ const ThreePost = (function () {
         }
     }
 
+    /* ── THE THIRD PASS (PREMIUM_POLISH_PLAN 3.4 + 6.4, 2026-09-21 — D3 answered: "framerate is good in Disaster City") ──
+       SCREEN-SPACE AMBIENT OCCLUSION with NO second scene render: the composer's two render targets carry a DEPTH TEXTURE
+       (DEPTH24_STENCIL8 — the stencil the unit outlines stamp still works), the RenderPass writes the scene's depth into the
+       read buffer as it always did, and _SsaoPass — right after it — (1) reconstructs view position + a normal off that
+       depth at half resolution, samples a 16-vector hemisphere kernel turned by an interleaved-gradient noise, and writes the
+       occlusion into its own small target, then (2) composites: a 4 × 4 depth-weighted blur of the AO multiplied into the
+       colour. The radius is WORLD units, so each context sets its own (setSsaoScale: the building metres × U, the board a
+       tile's share). Needs WebGL2 or WEBGL_depth_texture; off on the phone (no composer). The player's rows: hqPolishGet
+       ('ssao') / ('ssaoStrength') → polishApply(); the numbers: HQ_LIGHT_RULES.ssao. Kill-switch window.EW_NO_SSAO. */
+    var _SSAO_KERNEL = (function () {
+        var k = [], rng = 0x5A0A;
+        function r() { rng = (rng * 1664525 + 1013904223) >>> 0; return rng / 4294967296; }
+        for (var i = 0; i < 16; i++) {
+            var x = r() * 2 - 1, y = r() * 2 - 1, z = r();
+            var L = Math.sqrt(x * x + y * y + z * z) || 1; x /= L; y /= L; z /= L;
+            var sc = (i + 1) / 16; sc = 0.1 + 0.9 * sc * sc;   // more samples near the centre
+            k.push(new THREE.Vector3(x * sc, y * sc, z * sc));
+        }
+        return k;
+    })();
+    var _SsaoAoShader = {
+        uniforms: { tDepth: { value: null }, uRes: { value: new THREE.Vector2(1, 1) }, uProj: { value: new THREE.Matrix4() }, uProjInv: { value: new THREE.Matrix4() },
+            uRadius: { value: 1.0 }, uBias: { value: 0.02 }, uStrength: { value: 0.85 }, uSamples: { value: 12 }, uKernel: { value: _SSAO_KERNEL } },
+        vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
+        fragmentShader: [
+            'uniform sampler2D tDepth; uniform vec2 uRes; uniform mat4 uProj; uniform mat4 uProjInv;',
+            'uniform float uRadius; uniform float uBias; uniform float uStrength; uniform float uSamples; uniform vec3 uKernel[16];',
+            'varying vec2 vUv;',
+            'float rd(vec2 uv) { return texture2D(tDepth, uv).r; }',
+            'vec3 vp(vec2 uv, float d) { vec4 c = vec4(uv * 2.0 - 1.0, d * 2.0 - 1.0, 1.0); vec4 v = uProjInv * c; return v.xyz / v.w; }',
+            'void main() {',
+            '  float d = rd(vUv);',
+            '  if (d >= 0.99995) { gl_FragColor = vec4(1.0); return; }',
+            '  vec3 p = vp(vUv, d);',
+            '  vec2 tx = 1.0 / uRes;',
+            '  // the normal off the depth: the neighbour on each axis that lies closer in depth (an edge never bends it)',
+            '  float dr = rd(vUv + vec2(tx.x, 0.0)), dl = rd(vUv - vec2(tx.x, 0.0)), du = rd(vUv + vec2(0.0, tx.y)), dd = rd(vUv - vec2(0.0, tx.y));',
+            '  vec3 px = (abs(dr - d) < abs(dl - d)) ? (vp(vUv + vec2(tx.x, 0.0), dr) - p) : (p - vp(vUv - vec2(tx.x, 0.0), dl));',
+            '  vec3 py = (abs(du - d) < abs(dd - d)) ? (vp(vUv + vec2(0.0, tx.y), du) - p) : (p - vp(vUv - vec2(0.0, tx.y), dd));',
+            '  vec3 n = normalize(cross(px, py));',
+            '  if (dot(n, -p) < 0.0) n = -n;',
+            '  float ang = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715)))) * 6.2831853;',
+            '  vec3 rv = vec3(cos(ang), sin(ang), 0.0);',
+            '  vec3 t = normalize(rv - n * dot(rv, n)); vec3 b = cross(n, t); mat3 tbn = mat3(t, b, n);',
+            '  float occ = 0.0; float cnt = 0.0;',
+            '  for (int i = 0; i < 16; i++) {',
+            '    if (float(i) >= uSamples) break;',
+            '    vec3 sp = p + (tbn * uKernel[i]) * uRadius;',
+            '    vec4 o = uProj * vec4(sp, 1.0); vec2 suv = (o.xy / o.w) * 0.5 + 0.5;',
+            '    if (suv.x < 0.0 || suv.x > 1.0 || suv.y < 0.0 || suv.y > 1.0) { cnt += 1.0; continue; }',
+            '    float sz = vp(suv, rd(suv)).z;',
+            '    float rc = smoothstep(0.0, 1.0, uRadius / max(0.0001, abs(p.z - sz)));',
+            '    occ += ((sz >= sp.z + uBias * uRadius) ? 1.0 : 0.0) * rc; cnt += 1.0;',
+            '  }',
+            '  float ao = 1.0 - (occ / max(1.0, cnt)) * uStrength;',
+            '  gl_FragColor = vec4(vec3(clamp(ao, 0.0, 1.0)), 1.0);',
+            '}'
+        ].join('\n')
+    };
+    var _SsaoMixShader = {
+        uniforms: { tDiffuse: { value: null }, tAO: { value: null }, tDepth: { value: null }, uTexel: { value: new THREE.Vector2(1, 1) }, uNearFar: { value: new THREE.Vector2(1, 1000) }, uOrtho: { value: 0 }, uAoOn: { value: 1 } },
+        vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
+        fragmentShader: [
+            'uniform sampler2D tDiffuse; uniform sampler2D tAO; uniform sampler2D tDepth; uniform vec2 uTexel; uniform vec2 uNearFar; uniform float uOrtho; uniform float uAoOn;',
+            'varying vec2 vUv;',
+            'float lin(float d) { if (uOrtho > 0.5) return d; float z = d * 2.0 - 1.0; return (2.0 * uNearFar.x * uNearFar.y) / (uNearFar.y + uNearFar.x - z * (uNearFar.y - uNearFar.x)); }',
+            'void main() {',
+            '  vec4 col = texture2D(tDiffuse, vUv);',
+            '  if (uAoOn < 0.5) { gl_FragColor = col; return; }',
+            '  float dc = lin(texture2D(tDepth, vUv).r);',
+            '  float sum = 0.0, wsum = 0.0;',
+            '  for (int j = -1; j <= 2; j++) for (int i = -1; i <= 2; i++) {',
+            '    vec2 o = (vec2(float(i), float(j)) - 0.5) * uTexel;',
+            '    float a = texture2D(tAO, vUv + o).r;',
+            '    float dd = lin(texture2D(tDepth, vUv + o).r);',
+            '    float w = 1.0 / (1.0 + abs(dd - dc) * 40.0 / max(dc, 0.001));',
+            '    sum += a * w; wsum += w;',
+            '  }',
+            '  float ao = (wsum > 0.0) ? sum / wsum : 1.0;',
+            '  gl_FragColor = vec4(col.rgb * ao, col.a);',
+            '}'
+        ].join('\n')
+    };
+    function _SsaoPass() {
+        THREE.Pass.call(this);
+        this.needsSwap = true; this.camera = null; this.rt = null; this.rw = 0; this.rh = 0; this.half = true;
+        this.aoMat = new THREE.ShaderMaterial({ uniforms: THREE.UniformsUtils.clone(_SsaoAoShader.uniforms), vertexShader: _SsaoAoShader.vertexShader, fragmentShader: _SsaoAoShader.fragmentShader, depthTest: false, depthWrite: false });
+        this.aoMat.uniforms.uKernel.value = _SSAO_KERNEL;
+        this.mixMat = new THREE.ShaderMaterial({ uniforms: THREE.UniformsUtils.clone(_SsaoMixShader.uniforms), vertexShader: _SsaoMixShader.vertexShader, fragmentShader: _SsaoMixShader.fragmentShader, depthTest: false, depthWrite: false });
+        this.fsq = new THREE.Pass.FullScreenQuad(this.aoMat);
+    }
+    _SsaoPass.prototype = Object.assign(Object.create(THREE.Pass.prototype), {
+        constructor: _SsaoPass,
+        setSize: function (w, h) { this.fw = w; this.fh = h; },
+        render: function (renderer, writeBuffer, readBuffer) {
+            var cam = this.camera, dt = readBuffer.depthTexture;
+            var mu = this.mixMat.uniforms;
+            if (!cam || !dt) {   // no depth to read: the colour passes through untouched
+                mu.tDiffuse.value = readBuffer.texture; mu.uAoOn.value = 0;
+                renderer.setRenderTarget(this.renderToScreen ? null : writeBuffer); if (this.clear) renderer.clear();
+                this.fsq.material = this.mixMat; this.fsq.render(renderer); return;
+            }
+            var w = Math.max(2, Math.round(readBuffer.width * (this.half ? 0.5 : 1))), h = Math.max(2, Math.round(readBuffer.height * (this.half ? 0.5 : 1)));
+            if (!this.rt) { this.rt = new THREE.WebGLRenderTarget(w, h, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBAFormat, depthBuffer: false, stencilBuffer: false }); this.rw = w; this.rh = h; }
+            else if (w !== this.rw || h !== this.rh) { this.rt.setSize(w, h); this.rw = w; this.rh = h; }
+            var au = this.aoMat.uniforms;
+            au.tDepth.value = dt; au.uRes.value.set(w, h);
+            au.uProj.value.copy(cam.projectionMatrix); au.uProjInv.value.copy(cam.projectionMatrixInverse);
+            renderer.setRenderTarget(this.rt); renderer.clear(true, false, false);
+            this.fsq.material = this.aoMat; this.fsq.render(renderer);
+            mu.tDiffuse.value = readBuffer.texture; mu.tAO.value = this.rt.texture; mu.tDepth.value = dt; mu.uAoOn.value = 1;
+            mu.uTexel.value.set(1 / w, 1 / h); mu.uNearFar.value.set(cam.near || 0.1, cam.far || 1000); mu.uOrtho.value = cam.isOrthographicCamera ? 1 : 0;
+            renderer.setRenderTarget(this.renderToScreen ? null : writeBuffer); if (this.clear) renderer.clear();
+            this.fsq.material = this.mixMat; this.fsq.render(renderer);
+        },
+        dispose: function () { if (this.rt) this.rt.dispose(); this.aoMat.dispose(); this.mixMat.dispose(); }
+    });
+    var _ssaoPass = null, _ssaoAvail = false;
+    var _ssao = { scaleHq: 1, scaleBattle: 1 };
+    function _ssaoRules() { return (typeof window !== 'undefined' && window.HQ_LIGHT_RULES && window.HQ_LIGHT_RULES.ssao) || {}; }
+    function _polishGet(key, def) { try { if (typeof window !== 'undefined' && typeof window.hqPolishGet === 'function') { var v = window.hqPolishGet(key); if (v !== undefined) return v; } } catch (e) {} return def; }
+    function _ssaoAttachDepth(renderer) {
+        if (!_composer || !THREE.DepthTexture) return false;
+        var ok = !!(renderer.capabilities && renderer.capabilities.isWebGL2) || !!(renderer.extensions && renderer.extensions.get('WEBGL_depth_texture'));
+        if (!ok) return false;
+        [_composer.renderTarget1, _composer.renderTarget2].forEach(function (rt) {
+            if (!rt || rt.depthTexture) return;
+            var d = new THREE.DepthTexture(rt.width, rt.height);
+            d.type = THREE.UnsignedInt248Type; d.format = THREE.DepthStencilFormat; d.minFilter = THREE.NearestFilter; d.magFilter = THREE.NearestFilter;
+            rt.depthTexture = d;
+        });
+        return true;
+    }
+    function _ssaoWanted() {
+        var R = _ssaoRules();
+        if (R.on === false) return false;
+        if (typeof window !== 'undefined' && (window.EW_NO_SSAO || window.EW_PERF_LOW)) return false;
+        return !!_polishGet('ssao', true);
+    }
+    function _ssaoApply(ctx) {
+        if (!_ssaoPass) return;
+        var on = _ssaoAvail && _ssaoWanted();
+        _ssaoPass.enabled = on;
+        if (!on) return;
+        var R = _ssaoRules(), au = _ssaoPass.aoMat.uniforms;
+        au.uStrength.value = Math.max(0, Math.min(1.5, _polishGet('ssaoStrength', (R.strength != null) ? R.strength : 0.85) * 1.15));
+        au.uSamples.value = Math.max(4, Math.min(16, R.samples || 12));
+        au.uBias.value = (R.bias != null) ? R.bias : 0.02;
+        au.uRadius.value = (ctx === 'hq') ? _ssao.scaleHq : _ssao.scaleBattle;
+        _ssaoPass.half = (R.half !== false);
+    }
+    /* the radius in the context's own WORLD units: the building = HQ_LIGHT_RULES.ssao.radiusM × the metre; the board = radiusTile × the tile */
+    function setSsaoScale(ctx, unitsPerMetreOrTile) {
+        var R = _ssaoRules(), u = Math.max(0.0001, +unitsPerMetreOrTile || 1);
+        if (ctx === 'hq') _ssao.scaleHq = u * ((R.radiusM != null) ? R.radiusM : 0.75); else _ssao.scaleBattle = u * ((R.radiusTile != null) ? R.radiusTile : 0.55);
+    }
+    function getSsao() { return { avail: _ssaoAvail, on: !!(_ssaoPass && _ssaoPass.enabled), radiusHq: _ssao.scaleHq, radiusBattle: _ssao.scaleBattle, strength: _ssaoPass ? _ssaoPass.aoMat.uniforms.uStrength.value : 0, half: _ssaoPass ? _ssaoPass.half : true }; }
+    /* 6.4 THE MOTION BLUR: the renderer feeds an amount (0..1) + a screen centre per frame; eased here so a landing never snaps */
+    var _motion = { amt: 0, want: 0, cx: 0.5, cy: 0.5, at: 0 };
+    function setMotion(amount, cx, cy) { _motion.want = Math.max(0, Math.min(1, +amount || 0)); if (cx != null) _motion.cx = cx; if (cy != null) _motion.cy = cy; }
+    function _motionTick(now) {
+        var dt = _motion.at ? Math.min(0.1, (now - _motion.at) / 1000) : 0.016; _motion.at = now;
+        var k = Math.min(1, dt * ((_motion.want > _motion.amt) ? 9 : 5));
+        _motion.amt += (_motion.want - _motion.amt) * k; if (_motion.amt < 0.002 && _motion.want === 0) _motion.amt = 0;
+        if (_cinematicPass) { var u = _cinematicPass.material.uniforms; u.uMotion.value = _motion.amt; u.uMotionCenter.value.set(_motion.cx, _motion.cy); }
+        return _motion.amt;
+    }
+    function getMotion() { return { amount: _motion.amt, want: _motion.want, cx: _motion.cx, cy: _motion.cy }; }
+    /* THE POLISH SETTINGS: re-read every row the post owns (the sheet calls it after a change) */
+    function polishApply() { _ssaoApply(_expCtx === 'hq' ? 'hq' : 'battle'); }
     function init(renderer, scene, w, h) {
         _renderer = renderer;
         _scene = scene;
@@ -1998,6 +2181,13 @@ const ThreePost = (function () {
         renderPass.clear = true;
         renderPass.clearAlpha = 0;
         _composer.addPass(renderPass);
+
+        // THE THIRD PASS 3.4: SSAO right after the scene, off the depth the RenderPass just wrote (no second scene render)
+        try {
+            _ssaoAvail = _ssaoAttachDepth(renderer);
+            if (_ssaoAvail && THREE.Pass && THREE.Pass.FullScreenQuad) { _ssaoPass = new _SsaoPass(); _ssaoPass.enabled = _ssaoWanted(); _composer.addPass(_ssaoPass); }
+            else _ssaoAvail = false;
+        } catch (e) { _ssaoAvail = false; _ssaoPass = null; console.warn('[ThreePost] SSAO unavailable', e); }
 
         // Bloom — blooms the raw scene before AA/cinematic. Driven each frame by
         // _applyCurrent (env grade floored to the user strength) and gated by the
@@ -2109,6 +2299,7 @@ const ThreePost = (function () {
                 _grade.lastT = _nowMs;
             }
         }
+        var _mb = _motionTick(_nowMs);   // 6.4: a battle never feeds it, so it decays to 0 here
         if (_cinematicPass) {
             var _ng = _nightF * _lkNum('nightMood', _nightMood) * 0.85;
             if (_dim > 0) _ng = Math.max(_ng, _dim * 0.92);
@@ -2119,7 +2310,7 @@ const ThreePost = (function () {
             _cinematicPass.material.uniforms['uNightGrade'].value = _ng;
             var _lc = _lkCin();
             _cinematicPass.enabled = !!(_lc.crt || _lc.vignette || _ng > 0.001
-                || _gk > 0.001 || _kick > 0.01);
+                || _gk > 0.001 || _kick > 0.01 || _mb > 0.001);
         }
         // Exposure is pulled down for a plain dramaDim, but NOT while a
         // spotlight beat is running: exposure is global, and dimming the
@@ -2161,6 +2352,7 @@ const ThreePost = (function () {
         _updateDofFocus(cam);
 
         _composer.passes[0].camera = cam;
+        if (_ssaoPass) { _ssaoPass.camera = cam; _ssaoApply('battle'); }
         _composer.render();
     }
 
@@ -2189,11 +2381,13 @@ const ThreePost = (function () {
             rp.scene = scene; rp.camera = cam;
             if (_dofPassH) _dofPassH.enabled = false;
             if (_dofPassV) _dofPassV.enabled = false;
+            var _mb2 = _motionTick(performance.now());   // 6.4: the building feeds it (the deck, the fall)
             if (_cinematicPass) {
                 _cinematicPass.material.uniforms['uNightGrade'].value = 0;
                 _cinematicPass.material.uniforms['uTime'].value = performance.now() * 0.001;
-                var _lc2 = _lkCin(); _cinematicPass.enabled = !!(_lc2.crt || _lc2.vignette);
+                var _lc2 = _lkCin(); _cinematicPass.enabled = !!(_lc2.crt || _lc2.vignette || _lkLensChroma() > 0.01 || _mb2 > 0.001);
             }
+            if (_ssaoPass) { _ssaoPass.camera = cam; _ssaoApply('hq'); }
             if (_retroPass && _retroPass.enabled) {
                 _retroPass.material.uniforms['uTime'].value = performance.now() * 0.001;
                 _retroPass.material.uniforms['tMask'].value = null;
@@ -2233,6 +2427,7 @@ const ThreePost = (function () {
                 1 / (w * pixelRatio), 1 / (h * pixelRatio)
             );
         }
+        if (_ssaoPass && _ssaoPass.setSize) _ssaoPass.setSize(w, h);
         if (_smaaPass && _smaaPass.setSize) { var _pr3 = _renderer ? _renderer.getPixelRatio() : 1; try { _smaaPass.setSize(w * _pr3, h * _pr3); } catch (e) {} }
         if (_cinematicPass) {
             _cinematicPass.material.uniforms['uResolution'].value.set(w, h);
@@ -2377,6 +2572,7 @@ const ThreePost = (function () {
 
         if (_composer) {
 
+            if (_ssaoPass) { try { _ssaoPass.dispose(); } catch (e) {} _ssaoPass = null; }
             if (_composer.renderTarget1) _composer.renderTarget1.dispose();
             if (_composer.renderTarget2) _composer.renderTarget2.dispose();
         }
@@ -2598,6 +2794,7 @@ const ThreePost = (function () {
         getRetroFogHorizon: getRetroFogHorizon,
         setSceneLook: setSceneLook,
         getAutoExposure: getAutoExposure, setAutoExposure: setAutoExposure,   // THE POST PASS 7.4
+        setSsaoScale: setSsaoScale, getSsao: getSsao, setMotion: setMotion, getMotion: getMotion, polishApply: polishApply,   // THE THIRD PASS (3.4 · 6.4 · the settings)
         getSceneLookOwned: getSceneLookOwned,
         setExposureContext: setExposureContext,
         getExposureContext: getExposureContext,

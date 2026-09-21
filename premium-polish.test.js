@@ -67,7 +67,7 @@ test('THE ROOM-BOX AO: one shared hook on _hqMat and _hqPropMatPick, armed per r
 
 test('THE SHADOW: the key casts ONE map fitted to the room (≤ 30 m, following the walker, texel-snapped), pulsed every N frames; walls / ceilings / the drum / the ground never cast; people cast once their rig lands', () => {
     const arm = fn(TR, '_hqShadowArm');
-    assert.ok(arm.includes("ThreePost.getShadowQuality()") && arm.includes("q === 'off' || W.EW_HQ_NO_SHADOWS || W.EW_PERF_LOW"), 'the battle\'s knob, the kill-switch, the phone');
+    assert.ok(arm.includes("ThreePost.getShadowQuality()") && arm.includes("q === 'off' || _polishOff('shadows', 'EW_HQ_NO_SHADOWS') || W.EW_PERF_LOW"), 'the battle\'s knob, the kill-switch, the phone');
     assert.ok(arm.includes('var Rf = Math.min(Rroom, 30 * U);') && arm.includes('cam.updateProjectionMatrix();') && arm.includes('renderer.shadowMap.enabled = true;'), 'the fitted frustum');
     const tick = fn(TR, '_hqShadowTick');
     assert.ok(tick.includes('Math.round(c.dot(right) / t) * t') && tick.includes('renderer.shadowMap.needsUpdate = true;') && tick.includes('SH.frame % SH.everyN'), 'the snap + the pulse');
@@ -135,14 +135,14 @@ test('THE PROP PASS: the kickables, the seats, the sways are catalogue rows; the
     assert.equal((pp.match(/if \(!flip && cat\.foot > 0 && !kick && \(cat\.block \|\|/g) || []).length, 2, 'no blocker for a kickable at both sites');
     assert.equal((pp.match(/_hqPolishProp\(p, cat, grp, \{ U: U, y: y, onWall: onWall, onCeil: onCeil, flip: flip, tabletop: tabletop, kick: kick \}\)/g) || []).length, 2, 'the polish at both sites');
     const pol = fn(TR, '_hqPolishProp');
-    assert.ok(pol.includes('var disc = _hqContactDisc(rx, rz, U);') && pol.includes('if (cat.sway && !W.EW_HQ_NO_SWAY) _hqSwayArm(grp, cat, o);') && pol.includes("H.seats.push({ id: 'seat:'") && pol.includes('if (o.kick) H.kicks.push('), 'the disc, the sway, the seat, the kick');
+    assert.ok(pol.includes('var disc = _hqContactDisc(rx, rz, U);') && pol.includes("if (cat.sway && !_polishOff('sway', 'EW_HQ_NO_SWAY')) _hqSwayArm(grp, cat, o);") && pol.includes("H.seats.push({ id: 'seat:'") && pol.includes('if (o.kick) H.kicks.push('), 'the disc, the sway, the seat, the kick');
     assert.ok(/if \(H\.kicks && H\.kicks\.length\) \{ try \{ _hqTickKicks\(dt\); \} catch \(e\) \{\} \}/.test(fn(TR, '_hqTickWorld')) && /_hqTickSways\(dt, now\)/.test(fn(TR, '_hqTickWorld')), 'ticked in the world tick');
 });
 
 test('THE KICK (a vm run): the walker runs into a bin — it takes the heading, hops, rolls and settles inside the room', () => {
     const c = { console, Math, performance: { now: () => 1000 }, window: {}, HQ_KICKABLE: W.HQ_KICKABLE, HQ_BODY_R: 0.32 };
     vm.createContext(c);
-    vm.runInContext(fn(TR, '_hqTickKicks') + `
+    vm.runInContext(fn(TR, '_polishPref') + fn(TR, '_polishOff') + fn(TR, '_hqTickKicks') + `
         function _hqUnits() { return 73; }
         function _hqSurface(x, z) { return (Math.abs(x) > 6 || Math.abs(z) > 6) ? null : 0; }
         var grp = { position: { x: 0, y: 0, z: 0, set: function (x, y, z) { this.x = x; this.y = y; this.z = z; } }, rotation: { x: 0, y: 0, z: 0 } };
@@ -240,7 +240,7 @@ test('THE WIND (5.1): every HQ tree takes the shared sway hook on its leaf + bar
     const hook = fn(TR, '_ewWindHook');
     assert.ok(hook.includes('sh.uniforms.uEwWind = _EW_WIND;') && hook.includes("mat.customProgramCacheKey = function () { return 'ewWind'; };") && hook.includes('#include <begin_vertex>'), 'the hook');
     const tree = fn(TR, '_nrTree');
-    assert.ok(tree.includes('(K.hq && !K._wdFog && !(typeof window !== \'undefined\' && window.EW_HQ_NO_WIND))'), 'HQ trees only, the kill-switch');
+    assert.ok(tree.includes("(K.hq && !K._wdFog && !_polishOff('wind', 'EW_HQ_NO_WIND'))"), 'HQ trees only, the kill-switch');
     assert.ok(tree.includes('if (windAmp > 0) _ewWindHook(lm, modelH, windAmp)') && tree.includes('_ewWindHook(bm, modelH, windAmp * 0.3)'), 'leaves full, bark a third');
     assert.ok(fn(TR, '_hqFrame').includes('_EW_WIND.value = now * 0.001'), 'the frame ticks the clock');
     assert.ok(W.HQ_LIGHT_RULES.wind && W.HQ_LIGHT_RULES.wind.amp > 0 && W.HQ_LIGHT_RULES.wind.amp < 0.2, 'a crown sway in metres');
@@ -256,7 +256,7 @@ function rippleCtx() {
     const c = { console, Math, THREE, performance: { now: () => 1000 }, window: {}, document: { createElement: () => canvas },
         HQ_LIGHT_RULES: W.HQ_LIGHT_RULES, hqTerrainFluidAt: (info, x, z) => (x > 2 ? { y: 0, key: 'water' } : null) };
     vm.createContext(c);
-    vm.runInContext(fn(TR, '_hqRippleTex') + fn(TR, '_hqRipplesOn') + fn(TR, '_hqWetSheetAt') + fn(TR, '_hqRippleEmit') + fn(TR, '_hqRippleSplash') + fn(TR, '_hqTickRipples') + `
+    vm.runInContext(fn(TR, '_polishPref') + fn(TR, '_polishOff') + fn(TR, '_hqRippleTex') + fn(TR, '_hqRipplesOn') + fn(TR, '_hqWetSheetAt') + fn(TR, '_hqRippleEmit') + fn(TR, '_hqRippleSplash') + fn(TR, '_hqTickRipples') + `
         var _hqRippleTexC = null;
         function _hqUnits() { return 73; }
         function _hqLightRules() { return HQ_LIGHT_RULES; }
@@ -312,7 +312,7 @@ test('THE TRANSITION (6.2) + THE HERO LIGHT (2.2): the door you came through sta
     const g = fn(TR, '_hqGoTo');
     assert.ok(g.includes("if (d && d.motion && !d.portal && !d.angle && !HQ_DOOR_LOCKED[d.state] && d.motion.mode !== 'way') { d.openT = 1; d.openApplied = -1; d.npcOpenUntil = performance.now() + 1100; }"), 'the leaf open on arrival, closing behind');
     const h = fn(TR, '_hqHeroShadow');
-    assert.ok(h.includes('if (!H || H.heroLit || H.ghost) return;') && h.includes('light.castShadow = true;') && h.includes('mood.hero === false') && h.includes('W.EW_HQ_NO_SHADOWS || W.EW_PERF_LOW'), 'one per room, the opt-out, the kill-switches');
+    assert.ok(h.includes('if (!H || H.heroLit || H.ghost) return;') && h.includes('light.castShadow = true;') && h.includes('mood.hero === false') && h.includes("_polishOff('heroShadow', 'EW_HQ_NO_HERO_SHADOW') || W.EW_PERF_LOW"), 'one per room, the opt-out, the kill-switches');
     assert.ok(TR.includes('try { _hqHeroShadow(ppl, p.key, room); } catch (e) {}'), 'called at the prop light');
     const SH = W.HQ_LIGHT_RULES.shadows.hero;
     assert.ok(SH && SH.on && SH.map <= 1024 && new RegExp(SH.keys).test('wall_torch'), 'the hero rule');

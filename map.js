@@ -3245,6 +3245,7 @@
         let _hqArrivalPending = null, _hqArrivalTimer = null;
         function _hqArrivalQueue(roomId, room, no) {
             let ok = true; try { ok = (typeof window.hqRoomArrival === 'function') ? window.hqRoomArrival(roomId) : false; } catch (e) { ok = false; }
+            try { if (ok && typeof window.hqPolishGet === 'function' && window.hqPolishGet('arrival') === false) ok = false; } catch (e) {}   // THE POLISH SETTINGS: the Arrival Cards row
             if (!ok) return false;
             let where = '';
             try { const hub = (typeof window.hqHubOf === 'function') ? window.hqHubOf(roomId) : null; const hubs = DOOR_HQ.hubs || {}; where = (hub && hubs[hub] && hubs[hub].label) ? hubs[hub].label : (room.site ? String((DOOR_HQ.thresholds[room.site] || {}).label || '').toUpperCase() : 'D.O.O.R. HEADQUARTERS'); } catch (e) { where = ''; }

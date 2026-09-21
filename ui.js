@@ -7594,6 +7594,8 @@
                     ${opts.extra || ''}
                 </div>
 
+                ${(typeof window._buildPolishSettingsHTML === 'function') ? window._buildPolishSettingsHTML(RJ, inBattle) : ''}
+
                 <div class="pm-set-group pm-collapsible">
                     <button class="pm-collapse-header" onclick="var b=this.nextElementSibling;var c=this.querySelector('.pm-collapse-chev');if(b.style.display==='none'){b.style.display='block';c.style.transform='rotate(180deg)';}else{b.style.display='none';c.style.transform='rotate(0)';}">
                         <span class="pm-set-group-title" style="margin-bottom:0">CRT / Vignette</span>
@@ -7728,6 +7730,59 @@
                     ${typeof window._buildHudThemeHTML === 'function' ? window._buildHudThemeHTML('_renderPauseMenu();') : ''}
                     ${typeof window._buildWorldModeHTML === 'function' ? window._buildWorldModeHTML('_renderPauseMenu();') : ''}` });
         }
+
+        /* ── THE POLISH SETTINGS (PREMIUM_POLISH_PLAN, 2026-09-21 — the user: "add settings in the pause menu to let me
+           customize stuff") — ONE collapsible group on the shared video sheet, so it stands in the battle's pause menu, the
+           HQ pause menu's SETTINGS and the main menu's Settings alike. Every row is a data.js HQ_POLISH_PREFS row rendered
+           by its kind (toggle / level segment / slider); a change → window._setPolishPref → hqPolishSet (localStorage
+           ew_polish) → the renderer's polishApply (the room you stand in re-arms what it can) + the post's. A 'hq' row in a
+           BATTLE's pause menu still saves (the building reads it on the next entry). RESET drops every change. */
+        window._buildPolishSettingsHTML = function (RJ, inBattle) {
+            if (typeof window.hqPolishAll !== 'function') return '';
+            let rows = []; try { rows = window.hqPolishAll(); } catch (e) { rows = []; }
+            if (!rows.length) return '';
+            const esc = (t) => String(t || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+            const owned = rows.filter(r => r.owned).length;
+            const ssao = (typeof ThreePost !== 'undefined' && ThreePost.getSsao) ? ThreePost.getSsao() : null;
+            let html = '';
+            rows.forEach(r => {
+                const note = (r.scope === 'hq' && inBattle) ? ' · exploring only' : (r.live === false ? ' · next room' : '');
+                const hint = esc(r.hint) + esc(note) + ((r.key === 'ssao' && ssao && !ssao.avail) ? ' · not available on this GPU' : '');
+                if (r.kind === 'toggle') {
+                    html += `<div class="pm-set-toggles" style="margin-top:6px"><label class="pm-toggle"><input type="checkbox" ${r.value ? 'checked' : ''} onchange="window._setPolishPref('${r.key}',this.checked);${RJ}"><span class="pm-toggle-label">${esc(r.label)}${r.owned ? ' <em style="opacity:.55;font-style:normal">·</em>' : ''}</span><span class="pm-toggle-hint">${hint}</span></label></div>`;
+                } else if (r.kind === 'level') {
+                    const segs = (r.levels || []).map(([v, lab]) => `<button class="pm-seg-btn${Math.abs(r.value - v) < 0.001 ? ' active' : ''}" onclick="window._setPolishPref('${r.key}',${v});${RJ}">${esc(lab)}</button>`).join('');
+                    html += `<div class="pm-set-row pm-setting-row" style="margin-top:8px"><span class="pm-setting-label">${esc(r.label)}</span><div class="pm-seg-group">${segs}</div></div><div class="pm-set-row" style="margin-top:2px"><span class="pm-toggle-hint">${hint}</span></div>`;
+                } else {
+                    const pct = Math.round((r.value || 0) * 100), dis = (r.needs && rows.some(q => q.key === r.needs && !q.value)) ? ' disabled' : '';
+                    html += `<div class="pm-vol-row" style="margin-top:8px"><span class="pm-vol-label">${esc(r.label)}</span><input type="range" min="0" max="100" step="5" value="${pct}" class="pm-vol-slider"${dis} oninput="window._setPolishPref('${r.key}',this.value/100);this.nextElementSibling.textContent=(this.value=='0'?'off':(this.value/100).toFixed(2));"><span class="pm-vol-val">${pct === 0 ? 'off' : (pct / 100).toFixed(2)}</span></div><div class="pm-set-row" style="margin-top:2px"><span class="pm-toggle-hint">${hint}</span></div>`;
+                }
+            });
+            return `<div class="pm-set-group pm-collapsible" id="pmPolishGroup">
+                    <button class="pm-collapse-header" onclick="var b=this.nextElementSibling;var c=this.querySelector('.pm-collapse-chev');if(b.style.display==='none'){b.style.display='block';c.style.transform='rotate(180deg)';window._pmPolishOpen=true;}else{b.style.display='none';c.style.transform='';window._pmPolishOpen=false;}">
+                        <span class="pm-set-group-title" style="margin-bottom:0">The Polish</span>
+                        <span class="pm-collapse-summary">${owned ? owned + ' changed' : 'shipped'}</span>
+                        <span class="pm-collapse-chev"${window._pmPolishOpen ? ' style="transform:rotate(180deg)"' : ''}>▾</span>
+                    </button>
+                    <div class="pm-collapse-body" style="display:${window._pmPolishOpen ? 'block' : 'none'}">
+                        <div class="pm-set-row" style="margin-top:6px"><span class="pm-toggle-hint">the shadows, the air, the props, the camera and the post over D.O.O.R. HQ and the areas — every row saved on this device; a row marked · is yours</span></div>
+                        ${html}
+                        <div class="pm-set-row" style="margin-top:8px;gap:6px">
+                            <button class="pm-set-btn" onclick="window._resetPolishPrefs();${RJ}">Reset the Polish</button>
+                        </div>
+                    </div>
+                </div>`;
+        };
+        window._setPolishPref = function (key, value) {
+            try { if (typeof window.hqPolishSet === 'function') window.hqPolishSet(key, value); } catch (e) {}
+            try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq && ThreeRenderer.hq.polishApply) ThreeRenderer.hq.polishApply(); } catch (e) {}
+            try { if (typeof ThreePost !== 'undefined' && ThreePost.polishApply) ThreePost.polishApply(); } catch (e) {}
+        };
+        window._resetPolishPrefs = function () {
+            try { if (typeof window.hqPolishReset === 'function') window.hqPolishReset(); } catch (e) {}
+            try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq && ThreeRenderer.hq.polishApply) ThreeRenderer.hq.polishApply(); } catch (e) {}
+            try { if (typeof ThreePost !== 'undefined' && ThreePost.polishApply) ThreePost.polishApply(); } catch (e) {}
+        };
 
         window._setSceneLooks = function (on) {
             try { localStorage.setItem('ew_scene_looks', on ? 'on' : 'off'); } catch (e) {}

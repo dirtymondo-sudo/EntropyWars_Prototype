@@ -45316,7 +45316,73 @@ const HQ_LIGHT_RULES = {
     /* 5.5 THE DECALS: a quad on the ground under a prop that earns one (HQ_DECAL_RULES.byKey — scorch under a torch, oil under a
        car, blood by a table, grime under a bin), a WEAR patch inside every door's landing, the hand rows of DOOR_HQ.decals */
     decals: { on: true, alpha: 0.7, max: 80, wear: 0.42 },
+    /* THE THIRD PASS (2026-09-21 — the user: "framerate is good in Disaster City", D3 answered): 3.4 SCREEN-SPACE AO in the
+       composer, read off the depth the RenderPass already wrote (no second scene render) — `radiusM` the sample reach in
+       metres in the building (`radiusTile` a tile's share on the board), `strength` the darkening, `samples` per pixel,
+       `half` = the AO at half resolution; 6.4 MOTION BLUR on the deck and in a fall — a zoom blur past `fromV` m/s to full at
+       `fullV`, a fall past `fallV` m/s; 5.4 THE REFLECTORS (D5: the puddles + the barbershop mirror) — ONE planar mirror per
+       room at `scale` of the frame, refreshed every `everyN` frames, the puddles' floor plane or a wall mirror's glass */
+    ssao: { on: true, radiusM: 0.75, radiusTile: 0.55, strength: 0.85, samples: 12, half: true, bias: 0.02 },
+    motionBlur: { on: true, fromV: 8, fullV: 16, fallV: 7, max: 0.55, taps: 8 },
+    reflect: { on: true, scale: 0.35, everyN: 1, max: 1, puddleGain: 0.62, mirrorGain: 0.9 },
 };
+/* THE POLISH SETTINGS (2026-09-21 — the user: "add settings in the pause menu to let me customize stuff"): the ONE catalogue of
+   the polish the player owns. Every row is a setting on the shared video sheet (ui.js _buildVideoSettingsHTML → the battle's
+   pause menu, the HQ pause menu's SETTINGS and the main menu's) — `kind` toggle | level (a segment group of `levels`, the
+   value a multiplier) | slider (0..1); `def` the shipped value; `scope` where it reads ('hq' = the building and the areas,
+   'both' = the battle too); `live` = takes effect in the room you stand in (else on the next room). The renderer reads a
+   row through hqPolishGet(key) BEFORE its EW_* kill-switch (three-renderer.js _polishOff); localStorage `ew_polish` keeps
+   the player's changes as { key: value }. Adding a polish = a row here + a _polishOff read at its builder / tick. */
+const HQ_POLISH_PREFS = [
+    { key: 'shadows',      label: 'Room Shadows',       hint: 'the room key casts one shadow map (the size is the Shadow Quality tier)', kind: 'toggle', def: true,  scope: 'hq',   live: true },
+    { key: 'heroShadow',   label: 'Torch Shadows',      hint: 'the first torch / brazier / furnace of a room casts a cube map', kind: 'toggle', def: true, scope: 'hq', live: false },
+    { key: 'ao',           label: 'Corner Shading',     hint: 'the room-box AO: corners, the floor under every prop, the terrain\'s gullies', kind: 'toggle', def: true, scope: 'hq', live: true },
+    { key: 'ssao',         label: 'Ambient Occlusion',  hint: 'screen-space AO off the frame\'s own depth — the crease under everything', kind: 'toggle', def: true, scope: 'both', live: true },
+    { key: 'ssaoStrength', label: 'AO Strength',        hint: 'how dark the creases go', kind: 'slider', def: 0.85, scope: 'both', live: true, needs: 'ssao' },
+    { key: 'heightFog',    label: 'Height Fog',         hint: 'the mist that thickens toward the floor', kind: 'toggle', def: true, scope: 'hq', live: true },
+    { key: 'shafts',       label: 'Light Shafts',       hint: 'the beams from a window, a skylight, a torch', kind: 'toggle', def: true, scope: 'hq', live: true },
+    { key: 'atmos',        label: 'Atmosphere',         hint: 'dust, spores, fireflies, snow, rain — the count per room', kind: 'level', def: 1, levels: [[0, 'Off'], [0.5, 'Few'], [1, 'Normal'], [1.6, 'Full']], scope: 'hq', live: false },
+    { key: 'wind',         label: 'Wind',               hint: 'the foliage sways', kind: 'toggle', def: true, scope: 'hq', live: true },
+    { key: 'ripples',      label: 'Ripples',            hint: 'rings under a wader, a swimmer, the skiff', kind: 'toggle', def: true, scope: 'hq', live: true },
+    { key: 'decals',       label: 'Decals',             hint: 'scorch under a torch, oil under a car, wear at every door', kind: 'toggle', def: true, scope: 'hq', live: true },
+    { key: 'reflections',  label: 'Reflections',        hint: 'the puddles and the barbershop mirror reflect the room (one plane per room)', kind: 'toggle', def: true, scope: 'hq', live: true },
+    { key: 'sway',         label: 'Hanging Props',      hint: 'lamps, banners and chains swing in a draught and in your wake', kind: 'toggle', def: true, scope: 'hq', live: true },
+    { key: 'kicks',        label: 'Kickable Props',     hint: 'bins, cones and cans roll when you walk into them', kind: 'toggle', def: true, scope: 'hq', live: true },
+    { key: 'camFeel',      label: 'Camera Feel',        hint: 'the stride bob, the landing shake, the sprint lens, the carve roll', kind: 'toggle', def: true, scope: 'hq', live: true },
+    { key: 'motionBlur',   label: 'Motion Blur',        hint: 'a zoom blur on the deck at speed and in a long fall', kind: 'slider', def: 0.55, scope: 'hq', live: true },
+    { key: 'autoExposure', label: 'Auto Exposure',      hint: 'the eye adapts through a door — out of a tunnel into daylight', kind: 'toggle', def: true, scope: 'hq', live: true },
+    { key: 'arrival',      label: 'Arrival Cards',      hint: 'the letterbox and the name on a first entry', kind: 'toggle', def: true, scope: 'hq', live: true },
+    { key: 'plateFade',    label: 'Plates Fade',        hint: 'door plates fade and shrink with distance', kind: 'toggle', def: true, scope: 'hq', live: true },
+];
+var _hqPolishMem = null;
+function hqPolishRow(key) { for (var i = 0; i < HQ_POLISH_PREFS.length; i++) if (HQ_POLISH_PREFS[i].key === key) return HQ_POLISH_PREFS[i]; return null; }
+function hqPolishRead() {
+    if (_hqPolishMem) return _hqPolishMem;
+    var o = {};
+    try { if (typeof localStorage !== 'undefined') { var raw = localStorage.getItem('ew_polish'); if (raw) { var j = JSON.parse(raw); if (j && typeof j === 'object') o = j; } } } catch (e) { o = {}; }
+    _hqPolishMem = o; return o;
+}
+/* the ONE read: the player's value, else the shipped default; a slider / level answers a number, a toggle a boolean */
+function hqPolishGet(key) {
+    var row = hqPolishRow(key); if (!row) return undefined;
+    var o = hqPolishRead(), v = o[key];
+    if (v === undefined || v === null) return row.def;
+    if (row.kind === 'toggle') return !!v;
+    v = +v; if (!isFinite(v)) return row.def;
+    if (row.kind === 'slider') return Math.max(0, Math.min(1, v));
+    return v;
+}
+/* the ONE write: null / the default drops the key (the sheet stays the default's) */
+function hqPolishSet(key, value) {
+    var row = hqPolishRow(key); if (!row) return false;
+    var o = hqPolishRead();
+    if (value === null || value === undefined || value === row.def) delete o[key]; else o[key] = (row.kind === 'toggle') ? !!value : +value;
+    try { if (typeof localStorage !== 'undefined') { if (Object.keys(o).length) localStorage.setItem('ew_polish', JSON.stringify(o)); else localStorage.removeItem('ew_polish'); } } catch (e) {}
+    return true;
+}
+function hqPolishReset() { _hqPolishMem = {}; try { if (typeof localStorage !== 'undefined') localStorage.removeItem('ew_polish'); } catch (e) {} }
+/* every row with its live value — the sheet's read */
+function hqPolishAll() { return HQ_POLISH_PREFS.map(function (r) { return { key: r.key, label: r.label, hint: r.hint, kind: r.kind, def: r.def, levels: r.levels || null, scope: r.scope, live: r.live !== false, needs: r.needs || null, value: hqPolishGet(r.key), owned: hqPolishRead()[r.key] !== undefined }; }); }
 const HQ_SKATE_RULES = {
     free: true,          // standard issue — every officer holds a board (false = the find in Room 26)
     key: 'b',            // the walker's key: drop the deck / pick it up
@@ -47458,7 +47524,7 @@ if (typeof window !== 'undefined') {
     window.hqFieldWindow = hqFieldWindow; window.hqFieldBuild = hqFieldBuild; window.hqFieldLayout = hqFieldLayout; window.hqFieldRegister = hqFieldRegister;
     window.hqFieldBoxInfo = hqFieldBoxInfo; window.hqFieldGallery = hqFieldGallery; window.hqFieldLattice = hqFieldLattice; window.hqFieldBoxStep = hqFieldBoxStep; window.hqFieldBoxTile = hqFieldBoxTile; window.hqFieldNearestWalk = hqFieldNearestWalk;
     /* SKATEBOARDING (HQ plan 9.8 stage 1, 2026-09-15) */
-    window.HQ_SKATE_RULES = HQ_SKATE_RULES; window.HQ_LIGHT_RULES = HQ_LIGHT_RULES; window.HQ_ATMOS_SITES = HQ_ATMOS_SITES; window.HQ_DECAL_RULES = HQ_DECAL_RULES; window.hqRoomAtmos = hqRoomAtmos; window.hqRoomArrival = hqRoomArrival; window.HQ_KICKABLE = HQ_KICKABLE; window.hqPropKickable = hqPropKickable; window.hqRoomFogHalfAt = hqRoomFogHalfAt; window.hqSkateStatus = hqSkateStatus; window.hqSkateRecord = hqSkateRecord; window.hqSkateBank = hqSkateBank; window.hqSkateScore = hqSkateScore; window.hqSkateIssueFree = hqSkateIssueFree;
+    window.HQ_SKATE_RULES = HQ_SKATE_RULES; window.HQ_LIGHT_RULES = HQ_LIGHT_RULES; window.HQ_POLISH_PREFS = HQ_POLISH_PREFS; window.hqPolishGet = hqPolishGet; window.hqPolishSet = hqPolishSet; window.hqPolishAll = hqPolishAll; window.hqPolishReset = hqPolishReset; window.hqPolishRow = hqPolishRow; window.HQ_ATMOS_SITES = HQ_ATMOS_SITES; window.HQ_DECAL_RULES = HQ_DECAL_RULES; window.hqRoomAtmos = hqRoomAtmos; window.hqRoomArrival = hqRoomArrival; window.HQ_KICKABLE = HQ_KICKABLE; window.hqPropKickable = hqPropKickable; window.hqRoomFogHalfAt = hqRoomFogHalfAt; window.hqSkateStatus = hqSkateStatus; window.hqSkateRecord = hqSkateRecord; window.hqSkateBank = hqSkateBank; window.hqSkateScore = hqSkateScore; window.hqSkateIssueFree = hqSkateIssueFree;
     window.hqLinkRoom = hqLinkRoom;
     window.hqLinkDoors = hqLinkDoors;
     window.hqLinkEndOk = hqLinkEndOk;

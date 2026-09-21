@@ -249,6 +249,58 @@ after each delivery and write the numbers in §9.
 
 ## 9 · Build log
 
+- 2026-09-21 (the third pass) — **THE POLISH SETTINGS + 3.4 SSAO · 6.4 MOTION BLUR · 5.4 THE REFLECTORS** (the user: "let's
+  continue with the premium polish plan; framerate is good in Disaster City; add settings in the pause menu to let me customize
+  stuff" — D3 answered, D5 taken as recommended: the puddles + the barbershop mirror). Tested (`premium-polish-3.test.js`, 10
+  tests: the catalogue + the read / write in the vm, the sheet rendered headless, the pass / the blur / the mirror as source
+  guards; `npm test` green), photographed nowhere (the CDN is unreachable from this sandbox — RULE #1c). By section:
+  - **THE POLISH SETTINGS** — data.js `HQ_POLISH_PREFS` (19 rows: Room Shadows · Torch Shadows · Corner Shading · Ambient
+    Occlusion + AO Strength · Height Fog · Light Shafts · Atmosphere (Off / Few / Normal / Full) · Wind · Ripples · Decals ·
+    Reflections · Hanging Props · Kickable Props · Camera Feel · Motion Blur (a slider, the cap) · Auto Exposure · Arrival Cards
+    · Plates Fade) with `hqPolishGet` (the ONE read: the player's value else the row's default) / `hqPolishSet` (the ONE write:
+    localStorage `ew_polish`; the default or null drops the key) / `hqPolishAll` / `hqPolishReset`. three-renderer.js reads a
+    row BEFORE every EW_* kill-switch through `_polishOff(key, flag)` / `_polishLevel(key)` (the shadow arm, the hero light,
+    the AO, the contact discs, the height fog, the shafts (tagged `_ew_shaft`), the atmosphere (the count × the level), the
+    wind (an off row freezes the shared clock), the ripples, the decals, the sways, the kicks, the camera feel, the plate fade,
+    the blur, the reflectors); three-post.js `_polishGet` (SSAO + its strength, the auto exposure); map.js the arrival card.
+    THE SHEET: ui.js `_buildPolishSettingsHTML(RJ, inBattle)` = ONE collapsible group "The Polish" on the shared video sheet
+    (`_buildVideoSettingsHTML`) — so it stands in the battle's pause menu, the HQ pause menu's SETTINGS and the main menu's
+    Settings alike; a toggle / a segment group / a slider per row by its kind, an 'hq' row says "exploring only" in a battle, a
+    changed row wears a dot, RESET THE POLISH drops every change. `window._setPolishPref(key, value)` saves then calls
+    `ThreeRenderer.hq.polishApply()` (re-arms the shadows / the AO / the height fog / the reflectors in the room you stand in,
+    shows or hides the shafts / decals / atmosphere, builds what the row had refused at build) and `ThreePost.polishApply()`;
+    the ticks read their row every frame; a count (the Atmosphere level) and the torch shadow take the next room.
+  - **3.4 SSAO** (three-post.js `_SsaoPass`, "THE THIRD PASS" block): the composer's two render targets carry a DEPTH TEXTURE
+    (DEPTH24_STENCIL8 — the unit outlines' stencil still works); the pass sits right after the RenderPass and reads THAT depth
+    — no second scene render: view position + a normal reconstructed off the depth at half resolution, a 16-vector hemisphere
+    kernel turned by an interleaved-gradient noise, the occlusion into its own small target, then a 4 × 4 depth-weighted blur
+    multiplied into the colour. The radius is world units per context (`setSsaoScale('hq', U)` from `_hqEnter`, `('battle',
+    CONFIG.tileSize)` from `activate()`; `HQ_LIGHT_RULES.ssao.radiusM` 0.75 / `radiusTile` 0.55); `strength` × the AO
+    Strength slider; needs WebGL2 or WEBGL_depth_texture, off on the phone (no composer) and under `EW_NO_SSAO`.
+  - **6.4 MOTION BLUR** — the cinematic pass's `uMotion` / `uMotionCenter`: eight taps back along the ray from the centre
+    (`fetchC`, every colour fetch of the pass goes through it); the building feeds it (`_hqTickMotionBlur`: the rider's speed
+    past `motionBlur.fromV` 8 m/s → full at `fullV` 16, a fall faster than `fallV` 7 m/s), eased in the post, the Motion Blur
+    slider is the cap, zeroed on the way out; a battle never feeds it. `EW_HQ_NO_MOTION_BLUR`.
+  - **5.4 THE REFLECTORS** (three-renderer.js `_hqBuildReflectors` / `_hqTickReflectors`; `HQ_LIGHT_RULES.reflect`): ONE planar
+    mirror per room — the `puddle` decals at the room's commonest floor height share the floor plane; the first
+    `barber_mirror`'s glass is a wall mirror. A small target (`scale` 0.35 of the frame) drawn from the camera REFLECTED
+    across the plane (three's Reflector rule: the plane's point projects to the same pixel through the mirrored camera, so
+    `texture2DProj` with that camera's matrix reads the reflection); the surfaces hidden and the far side clipped
+    (`renderer.clippingPlanes`) for the mirrored draw, the shadow pulse not spent by it; the surface's shader re-applies the
+    room's exp² fog and a fresnel on the gain (`puddleGain` 0.62 / `mirrorGain` 0.9); nothing drawn from behind the plane;
+    the targets disposed on the way out; the Reflections row restores the old materials in place. `EW_HQ_NO_REFLECT`.
+  - Cost (read off the code — nothing measured live): SSAO = one half-res full-screen AO pass + one full-res composite (no
+    scene draw); the blur = eight fetches per pixel only while live; a reflector = ONE extra scene draw at 0.35 × 0.35 of the
+    frame per frame in a room that has puddles or the mirror (`reflect.everyN` halves it). The real frame rate is the user's
+    to read (the sheet is the dial: every one of these has a row now).
+  - NOT built, and why: **2.4 PBR** (no maps — D2 closed), **5.2 read / toggle / open** (the props carry no copy / no second
+    state), **7.1 LUTs** (D8 — the user's PNGs), **§4 the sound pass** (the user's).
+  - What to eyeball first: the creases under the furniture and along the kerbs with SSAO on (banding → `ssao.samples` 16;
+    a halo round the units → `ssao.bias` up; too dark → the AO Strength slider), the same on the battle board at a tile's
+    radius, the blur's onset on the deck (`fromV`) and in a fall (`fallV`), the puddles in Disaster City at night and the
+    barbershop's mirror (a mirror image that reads inverted = the glass's normal is the prop's −Z: flip the sign in
+    `_hqBuildReflectors`), the frame rate in the city with a reflector live, the group's length in the pause menu.
+
 - 2026-09-21 (the second pass) — **THE AIR THINNED IN THE BUILDING + 2.2 · 5.1 · 5.3 · 5.5 · 6.2 · 7.3 · 7.5** (the user: "way
   too many ambient particles in DOOR HQ when those should be in more outdoor places like the woods; keep going; I don't have
   PBR maps"). Tested (`premium-polish.test.js`, 20 tests — the ripples run in a vm; `npm test` green), photographed nowhere

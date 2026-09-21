@@ -7868,3 +7868,28 @@ SMAAPass; `setFXAA` maps onto it; localStorage `ew_aa`); a look's `lens: { chrom
 (`_lkLensChroma`). Kill-switches: `EW_HQ_NO_WIND` · `EW_HQ_NO_RIPPLES` · `EW_HQ_NO_DECALS` (+ the light pass's). NOT built:
 2.4 PBR (no maps — the user), 3.4 SSAO (D3 waits on the real frame rate), 5.2 read / toggle / open, 5.4, 6.4, 7.1, §4.
 `npm test` runs premium-polish.test.js (20). UNSEEN LIVE (RULE #1c): the plan's entry lists what to eyeball first.
+
+## THE PREMIUM POLISH, THE THIRD PASS — THE POLISH SETTINGS · SSAO · MOTION BLUR · THE REFLECTORS (2026-09-21, local delivery)
+`PREMIUM_POLISH_PLAN.md` §9 has the full entry. RULES that came with it: **(1) THE SETTINGS ARE THE CATALOGUE** — data.js
+`HQ_POLISH_PREFS` (19 rows: key · label · hint · kind toggle | level | slider · def · scope hq | both · live · needs);
+`hqPolishGet(key)` is the ONE read (the player's value, localStorage `ew_polish`, else the default), `hqPolishSet` the ONE
+write; three-renderer.js reads a row BEFORE its EW_* kill-switch through **`_polishOff(key, flag)`** / **`_polishLevel(key)`**
+(never a bare `W.EW_HQ_NO_*` at a polish site again), three-post.js through `_polishGet`; ADDING A POLISH = a row + a read at
+its builder / tick (premium-polish-3.test.js fails on a row nothing reads). THE SHEET = ui.js `_buildPolishSettingsHTML`,
+ONE collapsible group inside the shared `_buildVideoSettingsHTML` (the battle pause menu, the HQ pause menu's SETTINGS, the
+main menu — never a second sheet); `window._setPolishPref` saves, then `ThreeRenderer.hq.polishApply()` (re-arms the
+shadows / AO / height fog / reflectors in the room you stand in — `_hq.roomDef` — and shows or hides the shafts (`_ew_shaft`)
+/ decals / atmosphere) + `ThreePost.polishApply()`. **(2) SSAO reads the composer's OWN depth**: `_ssaoAttachDepth` hangs a
+DEPTH24_STENCIL8 `DepthTexture` on both composer targets and `_SsaoPass` (right after the RenderPass) reconstructs the scene
+off it — never a second scene render, never an override material (skinned rigs would stand in their bind pose); the radius
+is per context (`setSsaoScale('hq' | 'battle', units)`); `HQ_LIGHT_RULES.ssao`. **(3) THE BLUR** is the cinematic pass's
+`uMotion` (every colour fetch through `fetchC`), fed only by the building (`_hqTickMotionBlur`: the deck past `fromV`, a fall
+past `fallV`; the slider is the cap), zeroed by `_hqLeave`. **(4) A REFLECTOR is ONE plane per room** (`_hqBuildReflectors`:
+the `puddle` decals' floor, the first `barber_mirror`'s glass; `HQ_LIGHT_RULES.reflect.max`): a small target drawn from the
+camera reflected across the plane before the frame (`_hqTickReflectors` in `_hqFrame`), the surfaces hidden and
+`renderer.clippingPlanes` set for the draw, the shadow pulse untouched, the target disposed in `_hqLeave`; the surface's
+ShaderMaterial re-applies the room's exp² fog itself (no fog chunks — the height-fog patch owns those). `HQ_LIGHT_RULES` grew
+`ssao` / `motionBlur` / `reflect` (the renderer's `HQ_LIGHT_DEFAULT` + its merge list in step). UNSEEN LIVE (RULE #1c): the
+plan's entry lists what to eyeball first — the creases, the halo bias, the blur's onset, the puddles at night, the mirror's
+handedness, the group's length in the pause frame.
+
