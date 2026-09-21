@@ -7323,3 +7323,27 @@ render). UNSEEN LIVE (RULE #1c): FINISHER_PLAN §7's delivery-16 entry lists
 what to eyeball first — the ball's radius, the tower's height, the maze
 cells, the tesseract at the game's pitch, the zord's scale, the cadillac's
 yaw, the ruler's overhang, the thirteen camera paths.
+
+## THE DAY SKY — areas that are sunny and blue (2026-09-21, local delivery)
+The user: "downtown's buildings look lit for daytime but the sky is still purple / dark;
+definitely need areas that are sunny and blue." ROOT CAUSE: the dome shader (three-renderer.js
+`_envDomeFS`) was only ever a DEEP-SPACE gradient — `night: 0` merely lightened the purple, and a
+day row's pale `tint` washed it grey; no blue sky existed anywhere. NOW: `env.day: 1` on an
+EW_MAP_META row (or a shell's `sky`) lays a real daylight atmosphere over the tone-mapped cosmic
+backdrop — a blue zenith to a pale horizon, a grey-blue below the horizon line, the same sun as a
+disc + a warm glow, cumulus from the fbm at `env.clouds` (0 clear … 1 overcast; a storm weather is
+a full overcast, an overcast greys the blue), still washed by `tint` / `tintAmt` (a warm tint = a
+desert noon). The day YIELDS to the night cycle in a battle (`dayK = uSkyDay × (1 − night × 0.9)`)
+and to a sky event. Uniforms `uSkyDay` / `uSkyClouds` on `_envUni` (`_ENV_COMMON`), eased by the
+battle's `_updateEnvironment` (`_envSmooth.mapDay / mapClouds`), written by the HQ's `_hqTickSky`
+from the room's sky row. THE DAY ROWS: Downtown (retinted sky blue, the city shell's plain day
+literal matches — hq-city diffs them), the Stadium (now a daylight game — was a night tint),
+Shasta, Giza, Heaven, Babel, Olympus, Antarctica (overcast), the Vatican, Göbekli Tepe, the Flat
+Lands (overcast), Bermuda; every hand-copied shell sky of those rows (hqDivineShell,
+hqVaticanShell's day, the castle in the sky, the ley plateau / tell / tower, hqSeaShell, Room 8,
+the garden) carries `day` too — `day-sky.test.js` fails naming a room that wears a daylight row's
+tint without its day. The night rows (Cyberpunk, the Strip, Camelot, Hell, the Moon, Area 51,
+the Haunted House…) and the void / cavern rows are untouched. Adding a sunny place = `day: 1,
+clouds: n` on its row (a generated area copies it through `hqAreaSky`). The menu biomes stay dusk.
+Ship data.js to R2 AND Render. UNSEEN LIVE (RULE #1c): the blue's saturation under each map's
+tint (`tintAmt` is the edit), the cloud density, the sun's glow at the game's pitch.

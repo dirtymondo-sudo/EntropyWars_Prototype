@@ -15375,6 +15375,11 @@ const HQ_ROOM_LOOKS = {
     nightmare:  { name: 'THE NIGHTMARE', retro: { enabled: true, preset: 'green', pixelSize: 1, ditherStrength: 0.58, grain: 0.06, tintAmount: 0.58, levels: 14 }, cin: { vignette: true, vigAmount: 0.72, vigSize: 0.36 }, nightMood: 0.9, bloom: 0.34 },
     unthought:  { name: 'THE LIBRARY OF UNTHOUGHT THINGS', retro: { enabled: true, preset: 'amber', pixelSize: 1, ditherStrength: 0.36, grain: 0.028, tintAmount: 0.34, levels: 24 }, cin: { vignette: true, vigAmount: 0.38, vigSize: 0.54 }, nightMood: 0.25, bloom: 0.4 },
 };
+// THE DAY SKY (2026-09-21): `day: 1` on a row (or a shell's `sky`) = a real daylight atmosphere on the dome — a blue
+// zenith to a pale horizon, the sun, cumulus at `clouds` (0 clear … 1 overcast; a storm weather is a full overcast) —
+// laid over the cosmic backdrop and still washed by `tint` / `tintAmt` (a warm tint = a desert noon, a pale one = a
+// winter sky). No `day` = the deep-space dome every row wore before (the night rows, the void, the caverns). The day
+// yields to the night cycle in a battle. Every hand-copied shell sky (a complex part) carries the row's `day` too.
 // THE LOOK (2026-09-17): `env.look` on a row = a grade (a HQ_ROOM_LOOKS row: retro preset, dither,
 // vignette, night mood, bloom, exposure, dof) laid over the player's video settings for that map —
 // three-renderer.js _applyEnvLook → ThreePost.setSceneLook; Settings → Graphics → Map Looks refuses it.
@@ -15392,7 +15397,7 @@ const EW_MAP_META = [
       biomes: ['forest', 'inner_earth'], deltaPad: 'grass_2', near: 'shasta',
       desc: '20×20 prebuilt, 6v6 — the sacred volcano: snow-crown vantage, switchback terraces, pine woods, twin cold lakes & the Lemurian gate',
       env: { world: { kind: 'plain', rim: [{ kind: 'trees', kinds: ['tree_2', 'tree_3'], d: 13, n: 60, s: 1.7 }, { kind: 'peaks', tex: 'mountain', snow: 'marble_light', d: 26, n: 12, h: 7 }] },
-             tint: 0x9fc4e8, tintAmt: 0.30, stars: 0.5, nebula: 0.6, fog: { color: 0xbfd8ea, amount: 0.45, top: 0.05, band: 0.5 }, scenery: 'islands' } },
+             tint: 0x9fc4e8, tintAmt: 0.30, stars: 0.5, nebula: 0.6, day: 1, clouds: 0.35, fog: { color: 0xbfd8ea, amount: 0.45, top: 0.05, band: 0.5 }, scenery: 'islands' } },
     { id: 'prebuilt_stonehenge', label: 'Stonehenge', w: 16, h: 16, teamSize: 6, tier: 1, base: 'grass_2',
       biomes: ['ancient', 'arthurian'], deltaPad: 'grass_2', near: 'stonehenge',
       desc: '16×16 prebuilt, 6v6 — the sarsen ring on crossing ley-lines: pillar cover, cardinal entrances, an armillary over the altar',
@@ -15403,12 +15408,12 @@ const EW_MAP_META = [
       biomes: ['desert', 'ancient'], deltaPad: 'dirt_2', near: 'giza',
       desc: '20×20 prebuilt, 6v6 — three pyramids on the great diagonal, twin obelisks, processional avenues & excavation trenches',
       env: { world: { kind: 'plain', rim: [{ kind: 'dunes', d: 14, n: 20 }, { kind: 'pyramids', d: 34, n: 6, h: 16 }] },
-             tint: 0xd9b46a, tintAmt: 0.35, stars: 0.5, nebula: 0.4, fog: { color: 0xd8b370, amount: 0.55, top: 0.05, band: 0.45 }, scenery: 'pyramids' } },
+             tint: 0xd9b46a, tintAmt: 0.35, stars: 0.5, nebula: 0.4, day: 1, clouds: 0.05, fog: { color: 0xd8b370, amount: 0.55, top: 0.05, band: 0.45 }, scenery: 'pyramids' } },
     { id: 'prebuilt_heaven', label: 'Heaven', w: 20, h: 20, teamSize: 6, tier: 1, base: 'cloud_2',
       biomes: ['divine'], deltaPad: 'cloud_2', near: 'heaven',
       desc: '20×20 prebuilt, 6v6 — cloud islands over the void: the gilded gates, light-pillar daises, healing pools & bottomless rifts',
       env: { world: { kind: 'void', root: false },
-             tint: 0xfff3d0, tintAmt: 0.38, stars: 0.15, nebula: 0.35, fog: { color: 0xfdf2d8, amount: 0.55, top: 0.05, band: 0.5 }, scenery: 'divine',
+             tint: 0xfff3d0, tintAmt: 0.38, stars: 0.15, nebula: 0.35, day: 1, clouds: 0.6, fog: { color: 0xfdf2d8, amount: 0.55, top: 0.05, band: 0.5 }, scenery: 'divine',
              motion: { kind: 'drift', axis: 'x', speed: 0.25, ramp: 0.04, max: 1.5, sky: 0.35 } } },   // the cloud islands drift past (MOVING MAPS, a gentle one)
     { id: 'prebuilt_hell', label: 'Hell', w: 20, h: 20, teamSize: 6, tier: 1, base: 'scorched',
       biomes: ['infernal'], deltaPad: 'scorched', near: 'hell',
@@ -15430,7 +15435,7 @@ const EW_MAP_META = [
       biomes: ['stadium', 'urban'], deltaPad: 'grass_2', near: 'stadium',
       desc: '16×28 prebuilt, 8v8 — the void bowl: chalk yard lines, team end zones, climbable bleacher tiers & goalpost gateways',
       env: { world: { kind: 'plain', ground: 'urban_street', groundColor: 0x9a9a96, rim: [{ kind: 'city', d: 18, n: 20, h: 7, lights: [0xffd36a, 0xffffff] }] },
-             tint: 0x101822, tintAmt: 0.40, stars: 0.9, nebula: 0.6, fog: { color: 0x2a3448, amount: 0.4, top: 0.06, band: 0.5 }, scenery: 'city', density: 0.6 } },
+             tint: 0x9fc4e8, tintAmt: 0.28, stars: 0.05, nebula: 0.2, day: 1, clouds: 0.25, fog: { color: 0xc8d8ea, amount: 0.4, top: 0.06, band: 0.5 }, scenery: 'city', density: 0.6, ambience: 'ambDay' } },
     // ── Tier 2 — roster & lore expansion ──
     { id: 'prebuilt_atlantis', label: 'Atlantis', w: 24, h: 24, teamSize: 8, tier: 2, base: 'water',
       biomes: ['deep_sea', 'ancient'], deltaPad: 'marble_light', near: 'atlantis',
@@ -15441,13 +15446,13 @@ const EW_MAP_META = [
       biomes: ['ancient', 'desert'], deltaPad: 'bricks_1', near: 'babel',
       desc: '16×24 prebuilt, 6v6 — the unfinished tower: a grand climbable ziggurat, brick streets, scaffolds & the rubble of scattered tongues',
       env: { world: { kind: 'plain', ground: 'desert', groundColor: 0xd8b888, rim: [{ kind: 'dunes', d: 15, n: 18 }, { kind: 'town', d: 24, n: 16, tex: 'bricks_1', color: 0xd8a878, roofTex: 'bricks_1', roofColor: 0xb88858, h: 1.3 }] },
-             tint: 0x8a6a3a, tintAmt: 0.40, stars: 0.55, nebula: 0.6, fog: { color: 0xa8854e, amount: 0.55, top: 0.06, band: 0.5 }, scenery: 'pyramids',
+             tint: 0x8a6a3a, tintAmt: 0.40, stars: 0.55, nebula: 0.6, day: 1, clouds: 0.15, fog: { color: 0xa8854e, amount: 0.55, top: 0.06, band: 0.5 }, scenery: 'pyramids',
              motion: { kind: 'rise', dir: 1, speed: 1.8, ramp: 0.35, max: 6.0, sky: 1.0 } } },   // MOVING MAPS rev 2: the tower is still going up — the board climbs, the plain and the clouds sink past
     { id: 'prebuilt_olympus', label: 'Mount Olympus', w: 24, h: 24, teamSize: 8, tier: 2, base: 'cloud_2',
       biomes: ['divine', 'ancient'], deltaPad: 'marble_light', near: 'olympus',
       desc: '24×24 prebuilt, 8v8 — the marble acropolis over the cloud sea: temple terraces, stair ascents, storm lanes & void rifts',
       env: { world: { kind: 'plain', ground: 'cloud_2', groundColor: 0xf4f6ff, rim: [{ kind: 'peaks', tex: 'mountain', snow: 'marble_light', d: 26, n: 10, h: 12, p: 0.6 }], rootTex: 'mountain' },
-             tint: 0xcfe0f8, tintAmt: 0.35, stars: 0.3, nebula: 0.5, fog: { color: 0xe8ecf8, amount: 0.6, top: 0.02, band: 0.4 }, scenery: 'divine' } },
+             tint: 0xcfe0f8, tintAmt: 0.35, stars: 0.3, nebula: 0.5, day: 1, clouds: 0.55, fog: { color: 0xe8ecf8, amount: 0.6, top: 0.02, band: 0.4 }, scenery: 'divine' } },
     { id: 'prebuilt_mars', label: 'Mars', w: 20, h: 20, teamSize: 6, tier: 2, base: 'moon_2',
       biomes: ['space', 'desert'], deltaPad: 'moon_2', near: 'mars',
       desc: '20×20 prebuilt, 6v6 — red regolith: mesa cover, twin dead rovers & crater dust bowls',
@@ -15464,7 +15469,7 @@ const EW_MAP_META = [
       biomes: ['polar', 'deep_sea'], deltaPad: 'marble_light', near: 'antarctica', deltaY: 7,
       desc: '24×24 prebuilt, 8v8 — the ice wall and what waits behind it: seawater channels, iceberg hops, slide-gap chokes & a frozen colossus',
       env: { world: { kind: 'plain', sea: true, rim: [{ kind: 'bergs', d: 16, n: 10, h: 3 }] },
-             tint: 0xdae8f2, tintAmt: 0.40, stars: 0.5, nebula: 0.9, fog: { color: 0xe6f0f8, amount: 0.7, top: 0.04, band: 0.5 }, scenery: 'islands' } },
+             tint: 0xdae8f2, tintAmt: 0.40, stars: 0.5, nebula: 0.9, day: 1, clouds: 0.75, fog: { color: 0xe6f0f8, amount: 0.7, top: 0.04, band: 0.5 }, scenery: 'islands' } },
     { id: 'prebuilt_skinwalker', label: 'Skinwalker Ranch', w: 20, h: 20, teamSize: 6, tier: 2, base: 'grass_rocky',
       biomes: ['ranch', 'clandestine'], deltaPad: 'grass_rocky', near: 'skinwalker',
       desc: '20×20 prebuilt, 6v6 — the ranch: barn & corral, twin observation mesas, the mutilation site & a crop-circle anomaly',
@@ -15501,7 +15506,7 @@ const EW_MAP_META = [
       biomes: ['holy_city', 'gothic', 'divine'], deltaPad: 'marble_light', near: 'vatican',
       desc: '20×20 prebuilt, 6v6 — the colonnade piazza: central obelisk, twin basilica steps, fountains & consecrated ground',
       env: { world: { kind: 'plain', rim: [{ kind: 'city', tex: 'marble_light', color: 0xd8d0c0, d: 16, n: 22, h: 4, lights: [0xffd36a] }, { kind: 'hills', d: 30, n: 14, ranks: 1 }] },
-             tint: 0xd8c090, tintAmt: 0.35, stars: 0.4, nebula: 0.5, fog: { color: 0xd8c8a0, amount: 0.5, top: 0.05, band: 0.5 }, scenery: 'divine' } },
+             tint: 0xd8c090, tintAmt: 0.35, stars: 0.4, nebula: 0.5, day: 1, clouds: 0.2, fog: { color: 0xd8c8a0, amount: 0.5, top: 0.05, band: 0.5 }, scenery: 'divine' } },
     { id: 'prebuilt_bohemian_grove', label: 'Bohemian Grove', w: 20, h: 20, teamSize: 6, tier: 3, base: 'grass_2',
       biomes: ['forest', 'clandestine'], deltaPad: 'dirt', near: 'bohemian_grove',
       desc: '20×20 prebuilt, 6v6 — old-growth redwoods around the ritual clearing: the Owl, the altar fire, lantern trails & the creek',
@@ -15511,7 +15516,7 @@ const EW_MAP_META = [
       biomes: ['ancient', 'desert'], deltaPad: 'dirt_3', near: 'gobekli',
       desc: '16×16 prebuilt, 6v6 — the first temple: concentric ring walls, T-pillar sentinels, excavation trenches & the twin great pillars',
       env: { world: { kind: 'plain', rim: [{ kind: 'hills', tex: 'dirt_3', color: 0xc8a878, d: 15, n: 16, r: 4.5, flat: 0.24 }, { kind: 'peaks', tex: 'mountain', color: 0xc8b090, d: 30, n: 12, h: 7, ranks: 1 }] },
-             tint: 0xc89058, tintAmt: 0.38, stars: 0.7, nebula: 0.5, fog: { color: 0xb08858, amount: 0.5, top: 0.05, band: 0.5 }, scenery: 'ruins' } },
+             tint: 0xc89058, tintAmt: 0.38, stars: 0.7, nebula: 0.5, day: 1, clouds: 0.2, fog: { color: 0xb08858, amount: 0.5, top: 0.05, band: 0.5 }, scenery: 'ruins' } },
     { id: 'prebuilt_dumb', label: 'D.U.M.B.', w: 16, h: 16, teamSize: 6, tier: 3, base: 'tilefloor',
       biomes: ['underground_base', 'clandestine'], deltaPad: 'tilefloor', near: 'dumb',
       desc: '16×16 prebuilt, 6v6 — deep underground military base: corridor grid, blast-door chokes, server-bank cover & red emergency light',
@@ -15536,7 +15541,7 @@ const EW_MAP_META = [
       biomes: ['astral'], deltaPad: 'grass_2', near: 'flatlands',
       desc: '16×16 prebuilt, 6v6 — the eerie empty plane: two shallow dips, one dead tree, a circle you can barely see. You are being watched',
       env: { world: { kind: 'plain', r: 64, fogTop: 0.22 },
-             tint: 0xc0c8b8, tintAmt: 0.60, stars: 0.05, nebula: 0.1, fog: { color: 0xd0d8c8, amount: 0.8, top: 0.20, band: 0.9 }, scenery: 'eyes', density: 0.35 } },
+             tint: 0xc0c8b8, tintAmt: 0.60, stars: 0.05, nebula: 0.1, day: 1, clouds: 0.85, fog: { color: 0xd0d8c8, amount: 0.8, top: 0.20, band: 0.9 }, scenery: 'eyes', density: 0.35 } },
     // ── MOVING MAPS (2026-09-12) — the setting travels. `env.motion` (three-renderer.js MOTION):
     //    kind sea|space|void|drift · axis (the world streams toward −axis) · speed tiles/s at round 1 ·
     //    ramp per round · max multiplier · sea (the fluid sheets scroll) · seaDepth (tiles under the
@@ -15598,13 +15603,13 @@ const EW_MAP_META = [
       biomes: ['urban', 'stadium'], deltaPad: 'urban_street', near: 'downtown',
       desc: '16×16 prebuilt, 6v6 — the monster-movie downtown in daylight: the avenue and the cross street, roof-walkable blocks, the rubble where something walked through, the collapsed tower as a ramp of debris, a dumpster in every alley',
       env: { world: { kind: 'plain', rim: [{ kind: 'city', d: 17, n: 22, h: 11, tex: 'concrete_floor', color: 0xb8b8bc, lights: false }, { kind: 'city', d: 32, n: 26, h: 18, tex: 'urban_wall', color: 0xa0a4ac, lights: false, ranks: 1 }], fogTop: 0.2 },
-             tint: 0xb8c0cc, tintAmt: 0.3, stars: 0.05, nebula: 0.2, fog: { color: 0xc8ccd4, amount: 0.55, top: 0.1, band: 0.5 }, scenery: 'city', density: 0.5, ambience: 'ambDay' } },
+             tint: 0x9fc4e8, tintAmt: 0.25, stars: 0.05, nebula: 0.2, day: 1, clouds: 0.3, fog: { color: 0xc8d8ea, amount: 0.55, top: 0.1, band: 0.5 }, scenery: 'city', density: 0.5, ambience: 'ambDay' } },
     /* 7.7 WAVE 2 (2026-09-16): Room 345 first — the user's right triangle, on the sea kit the Dutchman built */
     { id: 'prebuilt_bermuda', label: 'The Bermuda Triangle', w: 16, h: 16, teamSize: 6, tier: 2, base: 'desert',
       biomes: ['deep_sea', 'tropical'], deltaPad: 'desert', near: 'bermuda',
       desc: '16×16 prebuilt, 6v6 — the open Atlantic: a beach each side, the treasure island at the centre with the X on it and the chest, a wreck on a rock islet each side, shallows to wade and the deep between, the corner buoys and the lighthouse; the sea streams past and the storm comes on from round 3',
       env: { world: { kind: 'plain', sea: true, root: false, r: 70 },
-             tint: 0x6fa8c8, tintAmt: 0.34, stars: 0.35, nebula: 0.25, fog: { color: 0x9fc4d8, amount: 0.5, top: 0.06, band: 0.5 }, scenery: 'sea',
+             tint: 0x6fa8c8, tintAmt: 0.34, stars: 0.35, nebula: 0.25, day: 1, clouds: 0.3, fog: { color: 0x9fc4d8, amount: 0.5, top: 0.06, band: 0.5 }, scenery: 'sea',
              motion: { kind: 'sea', axis: 'x', speed: 2.5, ramp: 0.2, max: 3.5, sea: true, seaDepth: 2.4, sky: 0.9, storm: { from: 3, to: 10 }, ambience: 'ambWindHigh' } } },
 ];
 
@@ -19812,7 +19817,7 @@ function hqRingWalls(o) {
    drift apart; `o` overrides a field. */
 function hqDivineShell(o) {
     o = o || {};
-    const sky = { night: 0, tint: 0xfff3d0, tintAmt: 0.38, stars: 0.15, nebula: 0.35, fog: { color: 0xfdf2d8, amount: 0.55, top: 0.05, band: 0.5, density: 0.024 }, scenery: 'divine', density: 0.8 };
+    const sky = { night: 0, tint: 0xfff3d0, tintAmt: 0.38, stars: 0.15, nebula: 0.35, day: 1, clouds: 0.6, fog: { color: 0xfdf2d8, amount: 0.55, top: 0.05, band: 0.5, density: 0.024 }, scenery: 'divine', density: 0.8 };
     const S = {
         w: 0, d: 0, h: 9.0, wallH: 9.0, dadoH: 1.1,
         open: true, edge: 'open',
@@ -19840,7 +19845,7 @@ function hqVaticanShell(o) {
     const landmarks = o.landmarks || null; delete o.landmarks;
     const sky = night
         ? { night: 1, tint: 0x384068, tintAmt: 0.42, stars: 1.0, nebula: 0.3, fog: { color: 0x141a2c, amount: 0.5, top: 0.05, band: 0.5, density: 0.02 }, scenery: 'divine', density: 0.6 }
-        : { night: 0, tint: 0xd8c090, tintAmt: 0.35, stars: 0.4, nebula: 0.5, fog: { color: 0xd8c8a0, amount: 0.5, top: 0.05, band: 0.5, density: 0.022 }, scenery: 'divine', density: 0.8 };
+        : { night: 0, tint: 0xd8c090, tintAmt: 0.35, stars: 0.4, nebula: 0.5, day: 1, clouds: 0.2, fog: { color: 0xd8c8a0, amount: 0.5, top: 0.05, band: 0.5, density: 0.022 }, scenery: 'divine', density: 0.8 };
     if (landmarks) sky.landmarks = landmarks;
     const S = {
         w: 0, d: 0, h: 9.0, wallH: 9.0, dadoH: 1.1,
@@ -19876,7 +19881,7 @@ function hqCityShell(o) {
         ? { night: 1, tint: 0x2a1030, tintAmt: 0.5, stars: 0.6, nebula: 0.9, fog: { color: 0xa040c0, amount: 0.45, top: 0.09, band: 0.5, density: 0.018 }, scenery: 'city', density: 0.6 }
         : neon
         ? { night: 1, tint: 0x1a0f33, tintAmt: 0.5, stars: 0.7, nebula: 1.3, fog: { color: 0x3a1a5a, amount: 0.55, top: 0.1, band: 0.55, density: 0.02 }, scenery: 'city', density: 0.6 }
-        : { night: 0, tint: 0xb8c0cc, tintAmt: 0.3, stars: 0.05, nebula: 0.2, fog: { color: 0xc8ccd4, amount: 0.55, top: 0.1, band: 0.5, density: 0.016 }, scenery: 'city', density: 0.5 };
+        : { night: 0, tint: 0x9fc4e8, tintAmt: 0.25, stars: 0.05, nebula: 0.2, day: 1, clouds: 0.3, fog: { color: 0xc8d8ea, amount: 0.55, top: 0.1, band: 0.5, density: 0.016 }, scenery: 'city', density: 0.5 };
     const S = {
         w: 0, d: 0, h: 9.0, wallH: 9.0, dadoH: 1.0,
         open: true, edge: 'open',
@@ -19960,7 +19965,7 @@ function hqCastleShell(o) {
     o = Object.assign({}, o || {});
     const sky = !!o.sky; delete o.sky;
     const skyRow = sky
-        ? { night: 0, tint: 0xf4d8c8, tintAmt: 0.36, stars: 0.2, nebula: 0.3, fog: { color: 0xf2dcd6, amount: 0.55, top: 0.05, band: 0.5, density: 0.02 }, scenery: 'islands', density: 0.7,
+        ? { night: 0, tint: 0xf4d8c8, tintAmt: 0.36, stars: 0.2, nebula: 0.3, day: 1, clouds: 0.5, fog: { color: 0xf2dcd6, amount: 0.55, top: 0.05, band: 0.5, density: 0.02 }, scenery: 'islands', density: 0.7,
             landmarks: [{ kind: 'castle', id: 'prebuilt_camelot', deg: 180, dist: 0.94, y: -0.07, s: 1.5, label: 'CAMELOT, BELOW' }] }
         : { night: 1, tint: 0x1c2030, tintAmt: 0.45, stars: 0.8, nebula: 0.7, fog: { color: 0x39415a, amount: 0.6, top: 0.07, band: 0.55, density: 0.022 }, scenery: 'dark', density: 0.5,
             landmarks: [{ kind: 'skycastle', id: 'prebuilt_camelot', deg: 28, dist: 0.74, y: 0.3, s: 0.6, label: 'THE CASTLE IN THE SKY' }] };
@@ -20035,7 +20040,7 @@ function hqAncientShell(o) {
         apron: 'grass_2', skirt: 'dirt_2', apronColor: 0x8a9a5a, floorColor: 0x8a9a5a, wallColor: 0xd8d0c0, dadoColor: 0xc8a878,
         pipes: false, strips: false, lights: [],   // a terrain room lights itself: braziers, fires, torches
         mood: { lamp: 0xffb060, glow: 0xff9a40, strip: 0xffd8a0, light: 0xffe8c8, ambient: 0.46 },
-        sky: { night: 0, tint: 0xd9b46a, tintAmt: 0.35, stars: 0.5, nebula: 0.4, fog: { color: 0xd8b370, amount: 0.55, top: 0.05, band: 0.45, density: 0.02 }, scenery: 'ruins', density: 0.6 },
+        sky: { night: 0, tint: 0xd9b46a, tintAmt: 0.35, stars: 0.5, nebula: 0.4, day: 1, clouds: 0.05, fog: { color: 0xd8b370, amount: 0.55, top: 0.05, band: 0.45, density: 0.02 }, scenery: 'ruins', density: 0.6 },
         plate: { x: 0, z: -9.8, y: 4.4 },
         look: HQ_ROOM_LOOKS.tell,
     };
@@ -20058,7 +20063,7 @@ function hqSeaShell(o) {
         apron: 'desert', skirt: 'rocks_1', apronColor: 0xe8d8a8, floorColor: 0xe8d8a8, wallColor: 0x8a8478, dadoColor: 0x8a8478,
         pipes: false, strips: false, lights: [],
         mood: { lamp: 0xfff1c8, glow: 0x7fe0ea, strip: 0xdff0ff, light: 0xfff0d0, ambient: 0.62, night: 0 },
-        sky: { night: 0, tint: 0x6fa8c8, tintAmt: 0.34, stars: 0.35, nebula: 0.25, fog: { color: 0x9fc4d8, amount: 0.5, top: 0.06, band: 0.5, density: 0.018 }, scenery: 'sea', density: 0.8,
+        sky: { night: 0, tint: 0x6fa8c8, tintAmt: 0.34, stars: 0.35, nebula: 0.25, day: 1, clouds: 0.3, fog: { color: 0x9fc4d8, amount: 0.5, top: 0.06, band: 0.5, density: 0.018 }, scenery: 'sea', density: 0.8,
                landmarks: [{ kind: 'waterspout', id: 'prebuilt_bermuda', deg: 32, dist: 0.72, y: -0.02, s: 1.0, label: 'THE WATERSPOUT' }] },
         plate: { x: 0, z: 56.5, y: 3.6 },
         look: HQ_ROOM_LOOKS.sea,
@@ -25072,7 +25077,7 @@ const DOOR_HQ = {
                 lights: [{ x: -4.5, z: -3.0 }, { x: 4.5, z: -3.0 }, { x: -4.5, z: 3.0 }, { x: 4.5, z: 3.0 }],
                 mood: { light: 0xfff0d0 },
                 /* Heaven's sky (EW_MAP_META prebuilt_heaven env): the tint, the fog, the divine roster, daylight */
-                sky: { night: 0, tint: 0xfff3d0, tintAmt: 0.38, stars: 0.15, nebula: 0.35, fog: { color: 0xfdf2d8, amount: 0.55, top: 0.05, band: 0.5 }, scenery: 'divine', density: 0.8 },
+                sky: { night: 0, tint: 0xfff3d0, tintAmt: 0.38, stars: 0.15, nebula: 0.35, day: 1, clouds: 0.6, fog: { color: 0xfdf2d8, amount: 0.55, top: 0.05, band: 0.5 }, scenery: 'divine', density: 0.8 },
                 plate: { x: 0, z: -4.4, y: 2.2 },
             },
             doors: [
@@ -27294,7 +27299,7 @@ const DOOR_HQ = {
                 lights: [{ x: -8, z: -8 }, { x: 8, z: -8 }, { x: -8, z: 8 }, { x: 8, z: 8 }],
                 mood: { light: 0xfff4e0 },
                 /* Olympus's sky (EW_MAP_META prebuilt_olympus env), by hand: daylight, the divine roster thinned */
-                sky: { night: 0, tint: 0xcfe0f8, tintAmt: 0.35, stars: 0.3, nebula: 0.5, fog: { color: 0xe8ecf8, amount: 0.6, top: 0.02, band: 0.4 }, scenery: 'divine', density: 0.4 },
+                sky: { night: 0, tint: 0xcfe0f8, tintAmt: 0.35, stars: 0.3, nebula: 0.5, day: 1, clouds: 0.55, fog: { color: 0xe8ecf8, amount: 0.6, top: 0.02, band: 0.4 }, scenery: 'divine', density: 0.4 },
                 plate: { x: 0, z: -10.75, y: 3.1 },
             },
             doors: [
@@ -34186,7 +34191,7 @@ const DOOR_HQ = {
             sub: 'THE MOUND · FOUR ENCLOSURES · THE T-PILLARS · THE SENTINEL · THE DIG · THE FIRST DOORWAY',
             kind: 'box', site: 'prebuilt_gobekli', part: 'tell',
             shell: hqAncientShell({ w: 110, d: 90, floor: 'dirt_3', apron: 'dirt_3', skirt: 'dirt_3', apronColor: 0xc8a878, floorColor: 0xc8a878, plate: { x: 0, z: -43.8, y: 4.4 },
-                                    sky: { night: 0, tint: 0xc89058, tintAmt: 0.38, stars: 0.7, nebula: 0.5, fog: { color: 0xb08858, amount: 0.5, top: 0.05, band: 0.5, density: 0.02 }, scenery: 'ruins', density: 0.6 },
+                                    sky: { night: 0, tint: 0xc89058, tintAmt: 0.38, stars: 0.7, nebula: 0.5, day: 1, clouds: 0.2, fog: { color: 0xb08858, amount: 0.5, top: 0.05, band: 0.5, density: 0.02 }, scenery: 'ruins', density: 0.6 },
                                     look: HQ_ROOM_LOOKS.tell }),
             /* THE FIELD (110 × 90 m): the oldest doorway (the bay door) on the south wall; THE TELL a 3.2 m hill over the middle of the
                room; four ENCLOSURES sunk two metres into it (A, B, C, D — the dig's letters), each ringed by a low wall with a gap and
@@ -34288,7 +34293,7 @@ const DOOR_HQ = {
             kind: 'box', site: 'prebuilt_giza', part: 'plateau',
             shell: hqAncientShell({ w: 150, d: 120, h: 20, wallH: 20, floor: 'desert', apron: 'desert', skirt: 'dirt_2', apronColor: 0xe0c48c, floorColor: 0xe0c48c, plate: { x: 0, z: -58.8, y: 5.0 },
                                     mood: { lamp: 0xffb060, glow: 0xff9a40, strip: 0xffd8a0, light: 0xfff0d0, ambient: 0.62 },
-                                    sky: { night: 0, tint: 0xd9b46a, tintAmt: 0.35, stars: 0.5, nebula: 0.4, fog: { color: 0xd8b370, amount: 0.55, top: 0.05, band: 0.45, density: 0.018 }, scenery: 'pyramids', density: 0.7 },
+                                    sky: { night: 0, tint: 0xd9b46a, tintAmt: 0.35, stars: 0.5, nebula: 0.4, day: 1, clouds: 0.05, fog: { color: 0xd8b370, amount: 0.55, top: 0.05, band: 0.45, density: 0.018 }, scenery: 'pyramids', density: 0.7 },
                                     look: HQ_ROOM_LOOKS.plateau }),
             /* THE FIELD (150 × 120 m): the sealed tomb door (the bay door) on the south wall; THE GREAT PYRAMID four tiers of dressed stone
                (3.5 m each, 60 m at the base) with THE NORTH STAIR up its north face tier to tier (8.2 m a flight for 3.5 m — THE RAMP RULE
@@ -34368,7 +34373,7 @@ const DOOR_HQ = {
             kind: 'box', site: 'prebuilt_babel', part: 'tower',
             shell: hqAncientShell({ w: 130, d: 110, h: 24, wallH: 24, floor: 'bricks_1', apron: 'desert', skirt: 'dirt_2', apronColor: 0xd8b888, floorColor: 0xd8a878, plate: { x: 0, z: -53.8, y: 5.0 },
                                     mood: { lamp: 0xffb060, glow: 0xff9a40, strip: 0xffd8a0, light: 0xffe0b8, ambient: 0.5 },
-                                    sky: { night: 0, tint: 0x8a6a3a, tintAmt: 0.40, stars: 0.55, nebula: 0.6, fog: { color: 0xa8854e, amount: 0.55, top: 0.06, band: 0.5, density: 0.02 }, scenery: 'pyramids', density: 0.6 },
+                                    sky: { night: 0, tint: 0x8a6a3a, tintAmt: 0.40, stars: 0.55, nebula: 0.6, day: 1, clouds: 0.15, fog: { color: 0xa8854e, amount: 0.55, top: 0.06, band: 0.5, density: 0.02 }, scenery: 'pyramids', density: 0.6 },
                                     look: HQ_ROOM_LOOKS.babel }),
             /* THE FIELD (130 × 110 m): the scaffold-plank barn door (the bay door) on the south wall; THE TOWER four square tiers of
                brick (64 m at the foot, 3.5 m a tier) with THE SPIRAL — a ramp on each face in turn: up the north face onto tier 1, along

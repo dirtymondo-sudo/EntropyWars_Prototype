@@ -20880,7 +20880,7 @@ const ThreeRenderer = (function () {
     var _envGroup = null, _envGround = null, _envWall = null, _envDome = null;
     var _envUni = null, _envInited = false;
     var _ENV_WALL_H = 3200, _ENV_DOME_R = 16000;
-    var _envSmooth = { night: 0, skyAmt: 0, skyEvent: 0, zodiac: 0, storm: 0, snow: 0, sand: 0, blood: 0, mapTintAmt: 0, mapStars: 1, mapNebula: 1 };
+    var _envSmooth = { night: 0, skyAmt: 0, skyEvent: 0, zodiac: 0, storm: 0, snow: 0, sand: 0, blood: 0, mapTintAmt: 0, mapStars: 1, mapNebula: 1, mapDay: 0, mapClouds: 0 };
 
     var _ENV_COMMON = [
         'uniform float uTime; uniform float uDayNight; uniform float uSkyEvent; uniform float uSkyAmt;',
@@ -20891,6 +20891,8 @@ const ThreeRenderer = (function () {
         'uniform vec3 uMapTint; uniform float uMapTintAmt; uniform float uMapStars; uniform float uMapNebula;',
         // MOVING MAPS (2026-09-12): the sky streams with the travel, the sun / moon swell on a close pass
         'uniform float uSkyFlow; uniform float uSunNear; uniform float uMoonNear; uniform float uSkyYaw; uniform float uSkyLift;',
+        // THE DAY SKY (2026-09-21): env.day (0..1) = a real daylight atmosphere over the cosmic backdrop; env.clouds (0..1) = the cover
+        'uniform float uSkyDay; uniform float uSkyClouds;',
         '#define PI 3.14159265359',
         '#define TAU 6.28318530718',
         'float hash11(float p){p=fract(p*0.1031);p*=p+33.33;p*=p+p;return fract(p);}',
@@ -21122,6 +21124,26 @@ const ThreeRenderer = (function () {
         '  col=mix(col,col*vec3(1.35,0.85,0.55)+vec3(0.10,0.04,0.0),uSunNear*0.55);\n' +
         '  col=mix(col,col*vec3(0.90,0.92,1.15)+vec3(0.03,0.03,0.08),uMoonNear*0.35);\n' +
         '  col=col/(col+vec3(0.6)); col=pow(max(col,0.0),vec3(0.92));\n' +
+        // ── THE DAY SKY (2026-09-21 — the user: "downtown's buildings look lit for daytime but the sky is still
+        //    purple / dark; definitely need areas that are sunny and blue"): the dome above was only ever a
+        //    deep-space gradient — `night` 0 just lightened the purple. A row with `day` > 0 gets a real daylight
+        //    atmosphere laid OVER the tone-mapped cosmic backdrop: a blue zenith falling to a pale horizon, a
+        //    grey-blue below the horizon line, the same sun as a disc + a warm glow, cumulus from the fbm at
+        //    `uSkyClouds` cover (0 = clear), an overcast that greys the blue as the cover climbs; a storm weather
+        //    (uWeather.x) is a full overcast. The day yields to the night cycle (a day map at night is the night
+        //    sky) and to a sky event (the blood moon shows through). The map tint below still washes it.
+        '  float dayK=clamp(uSkyDay,0.0,1.0)*(1.0-night*0.9)*(1.0-uSkyAmt*0.7);\n' +
+        '  if(dayK>0.001){ float h=clamp(el,-1.0,1.0); float dcl=clamp(uSkyClouds+wStorm*0.85,0.0,1.0);\n' +
+        '    vec3 zen=vec3(0.17,0.42,0.88); vec3 hor=vec3(0.72,0.83,0.95); vec3 below=vec3(0.60,0.68,0.78);\n' +
+        '    vec3 dsky=mix(hor,zen,pow(smoothstep(0.0,1.0,h),0.55)); dsky=mix(below,dsky,smoothstep(-0.22,0.02,h));\n' +
+        '    dsky+=vec3(1.0,0.97,0.88)*smoothstep(0.045,0.030,sa)*2.4*(1.0-dcl*0.8);\n' +
+        '    dsky+=vec3(1.0,0.90,0.70)*exp(-sa*4.0)*0.55*(1.0-dcl*0.6)+vec3(1.0,0.95,0.85)*exp(-sa*1.4)*0.12;\n' +
+        '    float cl=fbm(nd*vec2(3.2,5.0)+vec2(t*0.006+uSkyFlow,0.0))+0.5*fbm(nd*vec2(7.0,11.0)-vec2(t*0.004,0.3));\n' +
+        '    float cover=smoothstep(0.66-0.40*dcl,0.96-0.34*dcl,cl)*smoothstep(-0.02,0.12,h)*step(0.001,dcl);\n' +
+        '    vec3 cloudC=mix(vec3(0.80,0.82,0.88),vec3(1.0),smoothstep(0.55,1.0,cl)); cloudC=mix(cloudC,cloudC*0.70,dcl*0.55*(1.0-smoothstep(0.7,1.0,cl)));\n' +
+        '    dsky=mix(dsky,cloudC,cover*0.92);\n' +
+        '    float dlum=dot(dsky,vec3(0.299,0.587,0.114)); dsky=mix(dsky,vec3(dlum)*vec3(0.92,0.95,1.02),dcl*0.45); dsky*=1.0-0.30*wStorm;\n' +
+        '    col=mix(col,dsky,dayK); }\n' +
         // ── per-map sky wash (state.mapEnv.tint): pull the dome toward the
         //    map's palette; highlights (sun/moon/stars) still modulate it ──
         '  if(uMapTintAmt>0.001){ float ml=dot(col,vec3(0.299,0.587,0.114));\n' +
@@ -21172,7 +21194,10 @@ const ThreeRenderer = (function () {
                 uSunNear: { value: 0.0 },
                 uMoonNear: { value: 0.0 },
                 uSkyYaw: { value: 0.0 },    // rev 2: a `wheel` map turns the dome
-                uSkyLift: { value: 0.0 }    // rev 2: a `rise` map lifts the clouds
+                uSkyLift: { value: 0.0 },   // rev 2: a `rise` map lifts the clouds
+                // THE DAY SKY (2026-09-21): env.day / env.clouds — 0 on every row that never said otherwise (the cosmic dome as before)
+                uSkyDay: { value: 0.0 },
+                uSkyClouds: { value: 0.0 }
             };
 
             var groundMat = new THREE.ShaderMaterial({
@@ -21354,6 +21379,8 @@ const ThreeRenderer = (function () {
         S.mapTintAmt += (((me && me.tintAmt) || 0) - S.mapTintAmt) * k;
         S.mapStars += (((me && me.stars != null) ? me.stars : 1) - S.mapStars) * k;
         S.mapNebula += (((me && me.nebula != null) ? me.nebula : 1) - S.mapNebula) * k;
+        S.mapDay += (((me && me.day) || 0) - S.mapDay) * k;           // THE DAY SKY (2026-09-21)
+        S.mapClouds += (((me && me.clouds) || 0) - S.mapClouds) * k;
         if (me && me.tint != null) {
             if (!_mapTintScratch) { _mapTintScratch = new THREE.Color(); _mapTintTarget = new THREE.Vector3(); }
             _mapTintScratch.setHex(me.tint);
@@ -21364,6 +21391,7 @@ const ThreeRenderer = (function () {
         _envUni.uMapTintAmt.value = S.mapTintAmt;
         _envUni.uMapStars.value = S.mapStars * (1 - 0.7 * _motion.sunNear);   // stars drown beside the sun (MOVING MAPS)
         _envUni.uMapNebula.value = S.mapNebula;
+        _envUni.uSkyDay.value = S.mapDay; _envUni.uSkyClouds.value = S.mapClouds;
         // map fog feeds the same uFog* pipeline as the retro-fog filter (which
         // wins while enabled); scenery haze shares those uniforms and follows
         var fogKey = (me && me.fog) ? (me.fog.color + ',' + me.fog.amount + ',' + me.fog.top + ',' + me.fog.band) : '';
@@ -41475,6 +41503,7 @@ const ThreeRenderer = (function () {
         u.uMapTintAmt.value = (env.tint != null && env.tintAmt != null) ? env.tintAmt : 0;
         u.uMapStars.value = (env.stars != null) ? env.stars : 1;
         u.uMapNebula.value = (env.nebula != null) ? env.nebula : 1;
+        u.uSkyDay.value = env.day || 0; u.uSkyClouds.value = env.clouds || 0;   // THE DAY SKY (2026-09-21): a room's own daylight
         var fg = env.fog;
         if (fg) { u.uFogColor.value.set(sk.fogC.r, sk.fogC.g, sk.fogC.b); u.uFogAmount.value = fg.amount || 0; u.uFogTop.value = fg.top || 0; u.uFogBand.value = (fg.band != null) ? fg.band : 0.5; }
         else u.uFogAmount.value = 0;
