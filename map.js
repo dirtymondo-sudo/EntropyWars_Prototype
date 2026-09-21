@@ -1077,6 +1077,9 @@
                     onSea: (typeof _hqSeaEvent === 'function') ? _hqSeaEvent : null,
                     /* THE CLIMB (AREA_CONTENT_PLAN D1, 2026-09-19): the ladder's beats (the W CLIMB hint at a foot, the first-time toast, a creak) */
                     onClimb: (typeof _hqClimbEvent === 'function') ? _hqClimbEvent : null,
+                    /* THE PREMIUM POLISH (2026-09-21): a kicked prop (the cue is the sound pass's — a hook for it), a seat taken / left */
+                    onKick: (typeof _hqKickEvent === 'function') ? _hqKickEvent : null,
+                    onSit: (typeof _hqSitEvent === 'function') ? _hqSitEvent : null,
                     /* ESC: close the panel, else Settings (plan D6 — an overlay,
                        not a place); EXIT on the strip is how you leave */
                     onEscape: () => { if (_hqTerm) { window._hqTerminalClose(); return; } if (_hqPause) { window._hqClosePause(); return; } if (_hqPanelTarget) window._hqClosePanel(); else window._hqOpenPause(); },
@@ -1106,6 +1109,7 @@
                                     _hqLoadHideTimer = null;
                                     l.style.display = 'none';
                                     l.classList.remove('walk');
+                                    try { if (typeof _hqArrivalFire === 'function') _hqArrivalFire(roomId); } catch (e) {}   // THE ARRIVAL CARD (2026-09-21): after the load card is gone
                                 }, walking ? 320 : 650);
                             }
                         }, wait);
@@ -2519,7 +2523,7 @@
             /* THE SUSPICIOUS ANGLE (2026-09-21): an unmeasured draught — E pulls out the protractor */
             if (t.kind === 'door' && t.angle) { el.innerHTML = `<b>▸ SUSPICIOUS ANGLE</b><span>THAT CORNER IS NOT SQUARE</span><i>[E] MEASURE IT</i>`; el.style.display = ''; return; }
             const wayVerb = (t.kind === 'door' && t.door && t.door.way) ? ((t.door.verb) || _hqWayCat(t.door.way).verb) : null;
-            const verb = wayVerb || (t.kind === 'vehicle' ? (t.verb || 'BOARD') : (t.kind === 'door' && t.door && t.door.portal) ? 'STEP THROUGH' : t.kind === 'find' ? 'TAKE' : t.kind === 'door' ? ((t.door && t.door.action && t.door.action.mission && !_hqRoomExists(_hqSiteRoomId(t.door.action.mission))) ? 'OPEN' : 'ENTER') : (t.kind === 'counter' ? ((t.counter && t.counter.verb) || 'USE') : 'TALK'));
+            const verb = wayVerb || (t.kind === 'vehicle' ? (t.verb || 'BOARD') : (t.kind === 'door' && t.door && t.door.portal) ? 'STEP THROUGH' : t.kind === 'find' ? 'TAKE' : t.kind === 'seat' ? (t.verb || 'SIT') : t.kind === 'door' ? ((t.door && t.door.action && t.door.action.mission && !_hqRoomExists(_hqSiteRoomId(t.door.action.mission))) ? 'OPEN' : 'ENTER') : (t.kind === 'counter' ? ((t.counter && t.counter.verb) || 'USE') : 'TALK'));
             /* THE UNDISCOVERED DOOR (2026-09-21): a door reads its PLATE (data.js hqDoorPlateFor — the room's name once stood in,
                else '?', never the sub, never the number of a place not yet seen); everything else reads as before */
             const plate = (t.kind === 'door' && t.door && !t.door.portal) ? _hqPlateFor(t.door) : null;
@@ -3227,6 +3231,39 @@
            "THE CLIMB" block reports through opts.onClimb: `near` toggles the W CLIMB hint (.hq-hints.climbnear), `climb`
            on / off toggles the climbing hint line, a toast the first time each visit, a cue at the mount. */
         let _hqClimbToasted = false;
+        /* THE PROP PASS 5.2 (2026-09-21): the kick's cue belongs to the sound pass (PREMIUM_POLISH_PLAN §4, the user's) — the hook stands */
+        function _hqKickEvent(ev) { void ev; }
+        function _hqSitEvent(ev) {
+            if (!ev) return;
+            if (ev.kind === 'sit') _hqToast('<b>SEATED</b><span>ANY KEY STANDS · E STANDS</span>', 1500);
+        }
+        /* ══ THE ARRIVAL CARD (PREMIUM_POLISH_PLAN §6.3, 2026-09-21) ══
+           A room stood in for the FIRST time (hqRoomSee's `first`, rooms the register numbers + every part of a site — data.js
+           hqRoomArrival; lobbies, corridors, the car, the foyer never) gets the Souls / Zelda arrival once the load card has
+           faded: a letterbox, the number + the name in Cinzel at the foot, where it is. Pending until the card is gone
+           (_hqArrivalFire from the onReady fade), else 6 s after the sighting. Reduced motion shortens it (styles-base.css). */
+        let _hqArrivalPending = null, _hqArrivalTimer = null;
+        function _hqArrivalQueue(roomId, room, no) {
+            let ok = true; try { ok = (typeof window.hqRoomArrival === 'function') ? window.hqRoomArrival(roomId) : false; } catch (e) { ok = false; }
+            if (!ok) return false;
+            let where = '';
+            try { const hub = (typeof window.hqHubOf === 'function') ? window.hqHubOf(roomId) : null; const hubs = DOOR_HQ.hubs || {}; where = (hub && hubs[hub] && hubs[hub].label) ? hubs[hub].label : (room.site ? String((DOOR_HQ.thresholds[room.site] || {}).label || '').toUpperCase() : 'D.O.O.R. HEADQUARTERS'); } catch (e) { where = ''; }
+            _hqArrivalPending = { roomId, no: no || '', label: String(room.label || roomId).toUpperCase(), where: String(where || '').toUpperCase() };
+            clearTimeout(_hqArrivalTimer);
+            _hqArrivalTimer = setTimeout(() => { _hqArrivalFire(roomId); }, 6000);
+            return true;
+        }
+        function _hqArrivalFire(roomId) {
+            const A = _hqArrivalPending; if (!A || (roomId && A.roomId !== roomId) || !_hqHome) return;
+            _hqArrivalPending = null; clearTimeout(_hqArrivalTimer); _hqArrivalTimer = null;
+            const el = _hqEl('hqArrival'); if (!el) return;
+            el.innerHTML = `<div class="hq-arrival-bar top"></div><div class="hq-arrival-bar bot"></div><div class="hq-arrival-title"><em>${A.no ? 'ROOM ' + _hqEsc(A.no) : 'FIRST ENTRY'}</em><b>${_hqEsc(A.label)}</b><span>${_hqEsc(A.where)}</span></div>`;
+            el.classList.remove('show'); void el.offsetWidth; el.classList.add('show'); el.setAttribute('aria-hidden', 'false');
+            let ms = 2900; try { if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) ms = 1300; } catch (e) {}
+            clearTimeout(_hqArrivalFire._t);
+            _hqArrivalFire._t = setTimeout(() => { el.classList.remove('show'); el.setAttribute('aria-hidden', 'true'); }, ms);
+        }
+        window._hqArrivalFire = _hqArrivalFire;
         function _hqClimbEvent(ev) {
             if (!ev) return;
             const h = _hqEl('hqHints');
@@ -4049,7 +4086,9 @@
                 if (r.first) {
                     const no = (typeof window.hqMapRoomNo === 'function') ? window.hqMapRoomNo(roomId) : '';
                     const room = DOOR_HQ.rooms[roomId] || {};
-                    if (roomId !== _HQ_FOYER) _hqToast(`<b>ON THE MAP</b> · ${no ? 'ROOM ' + _hqEsc(no) + ' · ' : ''}${_hqEsc(String(room.label || roomId).toUpperCase())}<span>THE DIRECTORY REDRAWS</span>`, 2400);
+                    /* THE ARRIVAL CARD (2026-09-21): a place gets the letterbox + its name instead of the toast; a lobby keeps the toast */
+                    const carded = (typeof _hqArrivalQueue === 'function') && _hqArrivalQueue(roomId, room, no);
+                    if (!carded && roomId !== _HQ_FOYER) _hqToast(`<b>ON THE MAP</b> · ${no ? 'ROOM ' + _hqEsc(no) + ' · ' : ''}${_hqEsc(String(room.label || roomId).toUpperCase())}<span>THE DIRECTORY REDRAWS</span>`, 2400);
                     if (PS.hasServerAccount && PS.hasServerAccount() && typeof PS.scheduleProgressSync === 'function') setTimeout(() => { try { PS.scheduleProgressSync(); } catch (e) {} }, 0);
                 }
             } catch (e) {}
@@ -5601,6 +5640,8 @@
         function _hqInteractTarget(t) {
             /* THE FINDS (9.1): E on a glowing object takes it — no panel, the walk never pauses */
             if (t && t.kind === 'find') { window._hqTakeFind(t); return; }
+            /* THE PROP PASS 5.2 (PREMIUM_POLISH_PLAN, 2026-09-21): E on a seat sits (E again stands) — no panel */
+            if (t && t.kind === 'seat') { try { ThreeRenderer.hq.sit(t.id); } catch (e) { console.warn('[HQ] sit failed', e); } return; }
             /* THE DEEP (2026-09-18): E on the skiff / the bathyscaphe boards it; aboard, E disembarks — no panel */
             if (t && t.kind === 'vehicle') { try { ThreeRenderer.hq.board(t.id); } catch (e) { console.warn('[HQ] board failed', e); } return; }
             /* THE DOOR GUN (9.5): a placed threshold — through it, out of its twin */

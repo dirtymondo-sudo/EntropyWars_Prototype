@@ -4,6 +4,22 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
+## ✨ THE POLISH PROBE — the offline HQ probe with the post ON (2026-09-21, LATEST) — three-renderer.js, three-post.js, data.js, map.js, premium-polish.test.js
+
+The premium polish (PREMIUM_POLISH_PLAN §9) was photographed with a SCRATCH variant of `playtest_hq_offline.js` that
+does NOT set `EW_HQ_NO_POST` (the bloom / vignette / retro passes and THE AUTO EXPOSURE run) and prints
+`ThreeRenderer.hq.polish()` + `ThreePost.getAutoExposure()` + `hq.seats()` / `hq.kicks()` after the shots; a SIT test
+(`hq.sit(seats[0].id)`) and a KICK test (teleport 2 m south of a bin, `hq.dev.press('w', true)` — HOLD IT SIX
+SECONDS: the headless swiftshader frame rate is ~4 fps and the walker's dt is capped at 0.05 s, so a 1.3 s hold moves
+the walker 0.6 m, not 3). Findings: the cafeteria's tables / bins / door frames cast onto the floor and the walls; the
+corner AO reads at the dado; the dust is visible; a bin kicked from the south rolled 1.7 m and kept rolling; a seat
+sat the walker (the target read SEATED · STAND); the basilica's candles cast long shadows; THE BEAM'S PRISM did not draw
+until `uW` was widened (`HQ_SHAFT_UW` 2.6 — the ray shader discards the box's own faces at r ≥ 1; the battle's
+shafts have the same arithmetic and have only ever drawn their pools + motes); after it, the basilica's nave shows the
+three window beams and their pools (`shots/polish/site_prebuilt_vatican_basilica_nave2.png`). Probes fight the test suite for CPU: a probe run beside `npm test` misses its 9 s
+room build and reads an empty scene — run them apart. `THREE.Scene is not a constructor` at index.html:1611 is a
+PRE-EXISTING page error of the offline harness (the module script), not the polish.
+
 ## 🌲 THE WOODS FIXES — the offline pass on the forest (2026-09-16, LATEST) — three-renderer.js, data.js, hq-woods.test.js, playtest_hq_offline.js
 
 `node playtest_hq_offline.js site_prebuilt_fairy_forest_clearing '[{"name":"spawn","x":-0.9,"z":14,"face":0,"pitch":-0.08,"fp":true}]'`

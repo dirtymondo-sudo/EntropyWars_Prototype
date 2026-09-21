@@ -7817,3 +7817,33 @@ forge's spawn lane is rows 0–1 / 6–7 at x 2..5 and a +2 block never stands w
 UNSEEN LIVE (RULE #1c): the clone standing in the corner (the Player rig facing a wall), the
 chair's runners, the mobile's shapes at 2.7 m, the dancer, the directory's legibility, the
 lift's plate on the floor between, the tags beside six copies of the officer.
+
+## THE PREMIUM POLISH — THE LIGHT · AIR · PROP · CAMERA · POST PASSES over the building (2026-09-21, local delivery)
+`PREMIUM_POLISH_PLAN.md` §9 has the full log; the sound pass (§4) is the user's. RULES that came with it: **(1) the
+shared uniforms**: `_EW_HFOG` (the height fog) and `_HQ_AO` / `_HQ_AO2` (the room-box AO) are PLAIN OBJECTS shared by
+reference into every material (three's cloneUniforms copies a plain object by reference, the vec4 setter reads .x .y
+.z .w) — `_hqEnter` arms them (`_hqHeightFogArm` / `_hqAoArm`), `_hqLeave` and `_menuEnter` zero them, the battle never
+sees them; the fog chunks are patched once at load (`_ewHeightFogPatch`, r128 names its depth `fogDepth`) and NO
+ShaderMaterial in this repo may `#include` the fog chunks without declaring `uEwHFog` (the test checks the VFX file).
+**(2) the shadow** is the room key's alone (`_hq.keyLight`, `_hqShadowArm` / `_hqShadowTick`): a new light branch in
+`_hqEnter` names its key; a shell part that must never cast wears `_ew_hqPart` in `_HQ_NO_CAST_PART`; a mesh that lands
+later is flagged by the 30-frame sweep. **(3) `_hqMat` / `_hqPropMatPick` wear `_hqAoHook`** — a material that must
+not (a screen, a glow) passes `noAo: true`; the terrain field's `aAO` attribute must exist on EVERY geometry that
+shares `_hqTerrainMat` (a missing attribute reads 0 = black). **(4) the tables are data.js**: `HQ_LIGHT_RULES`
+(shadows · key · ao · heightFog · atmos — keys in step with the renderer's `HQ_LIGHT_DEFAULT`, premium-polish.test.js
+diffs them), `HQ_ATMOS_SITES` + `hqRoomAtmos`, `hqRoomArrival`, `HQ_KICKABLE` + `hqPropKickable`, the catalogue's
+`seat` / `sway` rows, `DOOR_HQ.lightShafts[room]` (+ the `light_shaft` proc), a look's `bloomThr` / `bloomRadius`,
+`hqRoomFogHalfAt` (THE FAR END: a halls / ley / city plan's fog reaches 0.5 at ≤ 60 % of the diagonal — the test
+insists). **(5) the walker modes**: `pl.sit` (E on a `seat`, any key stands — `_hqSit` / `_hqTickSit`, guarded in
+`_hqTickWalker` for the skate vm) beside the ride / swim / climb; a kickable carries NO blocker (`_hqTickKicks`; its
+disc follows flat). **(6) the post**: the building's bloom threshold is `HQ_BLOOM_THRESHOLD` (0.86) unless the look
+says; THE AUTO EXPOSURE gain rides `_expLk` ONLY in the `hq` context (never the battle's day / night). Kill-switches:
+`EW_HQ_NO_SHADOWS` · `EW_HQ_NO_AO` · `EW_HQ_NO_CONTACT` · `EW_HQ_NO_HEIGHT_FOG` · `EW_HQ_NO_SHAFTS` · `EW_HQ_NO_ATMOS`
+· `EW_HQ_NO_SWAY` · `EW_HQ_NO_CAM_FEEL` · `EW_NO_AUTO_EXPOSURE`; readout `ThreeRenderer.hq.polish()`,
+`ThreePost.getAutoExposure()`. `npm test` runs `premium-polish.test.js`. NOT built (the plan says why): 2.2 the hero
+point-light shadow, 2.4 PBR (D2), 3.4 SSAO (D3), 5.2 read / toggle / open, 5.3 ripples, 5.4 reflectors, 5.5 decals,
+6.4 motion blur, 7.1 LUTs (D8), 7.3 lens, 7.5 SMAA, the whole sound pass. UNSEEN LIVE (RULE #1c): the shadow's bias on
+the cast rigs' faces, the frame rate in the cities with the map (`HQ_LIGHT_RULES.shadows.everyN` / the battle's Low tier
+are the dials), the beam's strength (`HQ_SHAFT_GAIN` / `HQ_SHAFT_UW` are the edits; the battle's own god rays never drew their prism — the same uW arithmetic, a pool + motes), the height
+fog's colour on the floor of a closed room (`shell.heightFog.amount`), the auto exposure's swing through a door
+(`AE_MIN` / `AE_MAX` / `AE_EASE`), the arrival card over the real fonts, the sway on the real lantern GLBs.

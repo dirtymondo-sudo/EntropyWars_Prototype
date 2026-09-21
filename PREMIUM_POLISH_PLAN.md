@@ -249,5 +249,69 @@ after each delivery and write the numbers in §9.
 
 ## 9 · Build log
 
+- 2026-09-21 (later) — **DELIVERY 1 + 3 + 4 + 5 + 6 IN ONE PASS (the sound pass §4 skipped — the user's: "I'll do
+  that later")**. Built, offline-photographed (`shots/polish/`, the scratch probe = playtest_hq_offline.js with the
+  post ON — the notes in PLAYTEST_NOTES "THE POLISH PROBE"), tested (`premium-polish.test.js`, 14 tests; `npm test`
+  green). What shipped, by section:
+  - **2.1 THE SHADOW** — every room's key (`_hq.keyLight`, named by each `_hqEnter` light branch) casts ONE map
+    (`_hqShadowArm`: the battle's Settings → Performance tier sizes it, `HQ_LIGHT_RULES.shadows`; the ortho frustum is
+    fitted to the room but never wider than 30 m — it FOLLOWS the walker, snapped to its texel grid, `_hqShadowTick`;
+    the depth pass pulses every `everyN` frames since `renderer.shadowMap.autoUpdate` is off for the battle's gate).
+    Casters: props, doors, people (once their rig lands, `_hqTickChars`), the shell's floors and slabs; never a wall /
+    ceiling / edge / strip part, the drum, the dome, the ground planes (`_hqShadowFlags`). Measured offline: the
+    cafeteria's tables, bins and door frames cast onto the floor and the walls; the basilica's candles cast long.
+    `EW_HQ_NO_SHADOWS`. 2.2 (a point-light shadow for a hero light) NOT built — a cube map is six passes; judge 2.1 live first.
+  - **2.3 THE AO** — three layers: THE ROOM-BOX AO (`_hqAoHook` on `_hqMat` + `_hqPropMatPick`: the fragment's world
+    position against the room's box — a floor darkens toward the walls, a wall toward the floor / ceiling / its
+    neighbours, every PROP's vertical face darkens in the half metre over the floor; a face's own plane never occludes it;
+    `_hqAoArm` per room: a closed box its walls + ceiling, an open / polar room the floor contact, a field nothing),
+    THE CONTACT DISC (`_hqContactDisc` under every floor prop's foot — the battle's `shadowProxy` rule), THE TERRAIN AO
+    (`aAO` baked from the sampled field's Laplacian + the foot of a plan's solid, multiplied in `_hqTerrainMat`; the
+    outer ground carries the attribute at 1 — a missing attribute reads 0 = black). 2.4 PBR NOT built (D2: the normal
+    sheets are the user's to put in the bucket first).
+  - **2.5 THE RIG** — `HQ_LIGHT_RULES.key[kind]` (az / el / colour / intensity per box · open · bay · hall),
+    `shell.rig` overrides (`_hqLightArm`). No room carries one yet — the table is the edit.
+  - **3.1 THE HEIGHT FOG** — three's fog chunks patched ONCE at load (`_ewHeightFogPatch`: `fogDepth` is r128's name)
+    with a shared plain-object uniform `uEwHFog` on every fogged ShaderLib entry (cloneUniforms copies a plain object by
+    reference); `_hqHeightFogArm` per room (`HQ_LIGHT_RULES.heightFog[kind]`, `sky.fog.height`, `shell.heightFog`);
+    zeroed by `_hqLeave` / `_menuEnter` (the battle sees the stock fog exactly). `EW_HQ_NO_HEIGHT_FOG`.
+  - **3.2 THE LIGHT SHAFTS** — `_hqLightShaft` = the battle's god-ray kit (prism + pool + motes) as one beam;
+    `DOOR_HQ.lightShafts[room]` rows in thirteen rooms (the basilica's west windows, Camelot's hall, the temple, the
+    warehouse, the garage's core, the observatory's slit, the dream lab, the well shaft, the mall's atrium, the
+    catacombs' grating, the archive's stacks, the elevator's shaft window); the proc `light_shaft` for a catalogue row.
+    `HQ_SHAFT_GAIN` 2.2 over the battle's intensity. `EW_HQ_NO_SHAFTS`. MEASURED: the prism did not draw at first — the
+    ray shader's radial term reads `vLocal.xz = position / uW`, so with uW = the box's own width every FACE sits at r ≥ 1
+    and is discarded (the battle's shafts carry the same arithmetic: a pool + motes is what the board has always drawn —
+    worth a look there next). The beam's `uW` is the width × `HQ_SHAFT_UW` (2.6); photographed in the basilica's nave:
+    three beams from the west windows, their pools on the floor.
+  - **3.3 THE ATMOSPHERE** — `_hqBuildAtmos`: one Points (LineSegments for rain) per room, ≤ 600, halved on the phone;
+    the kind from data.js `hqRoomAtmos` (`shell.atmos` → `HQ_ATMOS_SITES[site]` → the rule by kind); eight kinds in
+    `HQ_ATMOS_KINDS` (dust · motes · spores · fireflies · embers (off the warm lights) · snow · ash · rain). Photographed:
+    the cafeteria's dust, the basilica's dust. `EW_HQ_NO_ATMOS`. 3.4 SSAO NOT built (D3: judge on the real frame rate
+    after 2.1 + 2.3 — the plan's own recommendation). 3.5 THE FAR END is a data rule now (`hqRoomFogHalfAt`; four
+    corridor rooms' densities raised; the test judges every halls / ley / city plan).
+  - **5.1 THE SWAY** — catalogue `sway: { amp, period }` (seven hanging rows) → a damped spring on a top pivot with
+    the room's draught + the walker's wake (`_hqSwayArm` / `_hqTickSways`). Foliage wind NOT built.
+  - **5.2 THE KICK** — `HQ_KICKABLE` (twelve small props) are BODIES: no blocker, knocked along the walker's heading
+    with a hop, roll out, bounce off the walls, settle; the disc follows flat (`_hqTickKicks`; a vm test + measured
+    live offline: the cafeteria's bin rolled 1.7 m). Cosmetic (D6). **THE SEAT** — catalogue `seat` (seventeen rows) → E
+    sits (the library's Sitting_Idle, the seat's front, the head lower), any key stands (`_hqSit`). `read` / `toggle` /
+    `open` NOT built (the props carry no copy yet). 5.3 ripples, 5.4 reflectors, 5.5 decals NOT built.
+  - **5.6 THE PLATE** — `HQ_PLATE_FADE` + the CSS var `--pk` (`_hqPlateDist`): a plate fades 8 → 20 m and shrinks past
+    3.4 m (styles-base.css sizes the type in em).
+  - **6.1 THE CAMERA FEEL** — `_hqCamFeel` after the eased boom: the stride bob (7.6 / 11.5 Hz), the landing shake by
+    the fall, the sprint lens 52 → 58, the roll into the rider's carve. `EW_HQ_NO_CAM_FEEL`. 6.4 motion blur NOT built.
+  - **6.3 THE ARRIVAL CARD** — a room's FIRST sighting (`hqRoomSee`, `hqRoomArrival`: numbered rooms, every part of a
+    site, the hub anchors; never a lobby / corridor / the car / the foyer) → the letterbox + the number + the name in
+    Cinzel + where (map.js `_hqArrivalQueue` / `_hqArrivalFire`, after the load card hides; `#hqArrival`). D7 = every
+    place once.
+  - **7.2 / 7.4 THE POST** — the building's bloom threshold 0.86 (a look's `bloomThr` / `bloomRadius`: the neon looks
+    0.58 / 0.6) so only emissive surfaces bloom; THE AUTO EXPOSURE (three-post.js `_aeMeasure`: a 16 × 16 downsample of
+    the frame every 220 ms, a centre-weighted luminance → a gain 0.78 … 1.32 eased over ~1.2 s, in `_expLk` while the
+    context is the building's). `EW_NO_AUTO_EXPOSURE` / localStorage `ew_auto_exposure = 'off'`. 7.1 LUTs (D8 — the
+    user's), 7.3 lens, 7.5 SMAA NOT built.
+  - Frame cost, measured offline (swiftshader, meaningless for fps; `renderer.info` after the frame): the depth pass adds
+    one caster draw every other frame; the atmosphere one draw; a beam three. The real frame rate in the cities is the
+    user's to read (D1: shadows default ON at the battle's tier — the same knob turns them off).
 - 2026-09-21 — the plan written; nothing built. The survey numbers in §0 are read off the source
   (three-renderer.js's `_hqEnter` light block, `_hqMat`, three-post.js's composer, audio.js's beds).

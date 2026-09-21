@@ -6124,3 +6124,30 @@ body.diorama-3d .tile-underpass.jump::before {
 
 /* ══ THE UNDISCOVERED DOOR (2026-09-21) — a plate that reads '?' (the room through it not yet stood in) ══ */
 #hqPage .hq-plate b.hq-plate-unknown { font-size: 22px; letter-spacing: 0; opacity: 0.8; }
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   THE PREMIUM POLISH (PREMIUM_POLISH_PLAN.md, 2026-09-21) — appended at the END so it wins the cascade.
+   5.6 THE PLATE AT A DISTANCE: a door / counter plate's type is sized by --pk (three-renderer.js _hqPlateDist writes it
+   per frame from the eye's distance: 1.12 at arm's length → 0.62 at twenty metres); the paddings stay in px.
+   6.3 THE ARRIVAL CARD: the letterbox + the name in Cinzel on a first arrival (map.js _hqArrivalFire). */
+.hq-plate { font-size: calc(10px * var(--pk, 1)); }
+.hq-plate b { font-size: 1.3em; }
+.hq-plate em { font-size: 0.9em; }
+.hq-plate span { font-size: 0.8em; }
+.hq-plate-bay em { font-size: 1.1em; }
+.hq-arrival { position: absolute; inset: 0; pointer-events: none; z-index: 30; display: none; overflow: hidden; }
+.hq-arrival.show { display: block; }
+.hq-arrival-bar { position: absolute; left: 0; right: 0; height: 11%; background: #020204; transform: scaleY(0); }
+.hq-arrival-bar.top { top: 0; transform-origin: top; }
+.hq-arrival-bar.bot { bottom: 0; transform-origin: bottom; }
+.hq-arrival.show .hq-arrival-bar { animation: hqArrBar 2.9s cubic-bezier(.2, .8, .2, 1) forwards; }
+@keyframes hqArrBar { 0% { transform: scaleY(0); } 12% { transform: scaleY(1); } 78% { transform: scaleY(1); } 100% { transform: scaleY(0); } }
+.hq-arrival-title { position: absolute; left: 50%; bottom: 13.5%; transform: translateX(-50%); text-align: center; color: #ece7d8; opacity: 0; font-family: 'Cinzel', 'Cormorant SC', serif; white-space: nowrap; }
+.hq-arrival.show .hq-arrival-title { animation: hqArrTitle 2.9s ease forwards; }
+@keyframes hqArrTitle { 0% { opacity: 0; transform: translate(-50%, 10px); } 18% { opacity: 1; transform: translate(-50%, 0); } 74% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -6px); } }
+.hq-arrival-title em { display: block; font-style: normal; font-size: 11px; letter-spacing: 0.34em; color: #c9a44a; margin-bottom: 4px; }
+.hq-arrival-title b { display: block; font-size: 30px; letter-spacing: 0.22em; font-weight: 700; text-shadow: 0 2px 14px rgba(0, 0, 0, 0.85), 0 0 2px #000; }
+.hq-arrival-title span { display: block; font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.3em; color: #b8a060; margin-top: 6px; }
+.hq-arrival-title span:empty { display: none; }
+@media (max-width: 720px) { .hq-arrival-title b { font-size: 20px; } }
+@media (prefers-reduced-motion: reduce) { .hq-arrival.show .hq-arrival-bar, .hq-arrival.show .hq-arrival-title { animation-duration: 1.3s; } }

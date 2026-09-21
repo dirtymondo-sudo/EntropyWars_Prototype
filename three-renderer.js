@@ -1691,6 +1691,52 @@ const ThreeRenderer = (function () {
        lighting is easing, a turret arm / flying bob / tower cube moved, or
        fog of war is restyling tile visibility. Console kill-switch:
        window.EW_DISABLE_SHADOW_GATING = true → depth pass every frame again. */
+    /* ══ THE PREMIUM POLISH — THE AIR PASS 3.1: THE HEIGHT FOG (PREMIUM_POLISH_PLAN, 2026-09-21) ══
+       A room's FogExp2 is uniform: the far end of a hall greys out but the floor never mists. Three's fog chunks are
+       patched ONCE at load so every fogged built-in material carries a second term that thickens toward a floor —
+       `uEwHFog` = { x: the floor's world y, y: 1 / the fall-off height, z: the share at the floor far away, w: the
+       distance density } — read from ONE shared plain object (_EW_HFOG): three's cloneUniforms copies a plain object
+       by REFERENCE (only Color / Vector / Matrix / Texture values are cloned) and the vec4 setter reads .x .y .z .w,
+       so every material sees the building's current value with no per-material bookkeeping. Amount 0 = the stock fog
+       exactly (the battle, the menu). The ShaderMaterials in this file never include the fog chunks (checked), so
+       nothing else has to declare the uniform. A material with `fog: false` is untouched. */
+    var _EW_HFOG = { x: 0, y: 1, z: 0, w: 0 };
+    var _ewHFogPatched = false;
+    function _ewHeightFogPatch() {
+        if (_ewHFogPatched || typeof THREE === 'undefined' || !THREE.ShaderChunk || !THREE.ShaderLib) return false;
+        _ewHFogPatched = true;
+        try {
+            var SC = THREE.ShaderChunk;
+            if (SC.fog_pars_vertex && SC.fog_vertex && SC.fog_pars_fragment && SC.fog_fragment && SC.fog_pars_vertex.indexOf('vEwFogY') < 0) {
+                SC.fog_pars_vertex = SC.fog_pars_vertex.replace('varying float fogDepth;', 'varying float fogDepth;\n\tvarying float vEwFogY;');
+                SC.fog_vertex = SC.fog_vertex.replace('fogDepth = - mvPosition.z;', 'fogDepth = - mvPosition.z;\n\tvec4 ewFogWp = vec4( position, 1.0 );\n\t#ifdef USE_INSTANCING\n\t\tewFogWp = instanceMatrix * ewFogWp;\n\t#endif\n\tvEwFogY = ( modelMatrix * ewFogWp ).y;');
+                SC.fog_pars_fragment = SC.fog_pars_fragment.replace('varying float fogDepth;', 'varying float fogDepth;\n\tvarying float vEwFogY;\n\tuniform vec4 uEwHFog;');
+                SC.fog_fragment = SC.fog_fragment.replace('gl_FragColor.rgb = mix( gl_FragColor.rgb, fogColor, fogFactor );',
+                    'float ewHf = uEwHFog.z * exp( - max( 0.0, vEwFogY - uEwHFog.x ) * uEwHFog.y ) * ( 1.0 - exp( - uEwHFog.w * fogDepth ) );\n\tfogFactor = clamp( 1.0 - ( 1.0 - fogFactor ) * ( 1.0 - ewHf ), 0.0, 1.0 );\n\tgl_FragColor.rgb = mix( gl_FragColor.rgb, fogColor, fogFactor );');
+            }
+            var lib = THREE.ShaderLib;
+            for (var k in lib) if (lib[k] && lib[k].uniforms && lib[k].uniforms.fogColor) lib[k].uniforms.uEwHFog = { value: _EW_HFOG };
+            if (THREE.UniformsLib && THREE.UniformsLib.fog) THREE.UniformsLib.fog.uEwHFog = { value: _EW_HFOG };
+            return true;
+        } catch (e) { console.warn('[ThreeRenderer] the height fog patch failed', e); return false; }
+    }
+    _ewHeightFogPatch();
+    /* the ONE write: floor (world units), the fall-off height (world units), the share at the floor, the distance density (per unit) */
+    function _ewHeightFogSet(floorY, h, amount, den) { _EW_HFOG.x = floorY || 0; _EW_HFOG.y = (h > 0) ? 1 / h : 1; _EW_HFOG.z = amount || 0; _EW_HFOG.w = den || 0; }
+    /* ══ THE LIGHT PASS 2.3: THE ROOM-BOX AO (analytic ambient occlusion for a box room's shell + props) ══
+       No baked vertex AO can darken the corner of a one-quad wall, so the occlusion is ANALYTIC: the fragment's world
+       position against the room's box (uHqAo = halfW, halfD, ceiling y, strength; uHqAo2 = the radius, the floor y) —
+       a floor darkens toward the walls, a wall toward the floor / the ceiling / its neighbours, and every PROP's vertical
+       face darkens in the half metre over the floor (the contact that grounds a chair). A face's own plane never
+       occludes it (weighted by its normal). One shared function = one program per material kind; strength 0 = off. */
+    var _HQ_AO = { x: 1e6, y: 1e6, z: 1e6, w: 0 }, _HQ_AO2 = { x: 40, y: 0 };
+    function _hqAoHook(shader) {
+        shader.uniforms.uHqAo = { value: _HQ_AO }; shader.uniforms.uHqAo2 = { value: _HQ_AO2 };
+        shader.vertexShader = 'varying vec3 vHqWp;\nvarying vec3 vHqWn;\n' + shader.vertexShader
+            .replace('#include <project_vertex>', '#include <project_vertex>\nvHqWp = ( modelMatrix * vec4( transformed, 1.0 ) ).xyz;\nvHqWn = normalize( mat3( modelMatrix ) * objectNormal );');
+        shader.fragmentShader = 'uniform vec4 uHqAo;\nuniform vec2 uHqAo2;\nvarying vec3 vHqWp;\nvarying vec3 vHqWn;\n' + shader.fragmentShader
+            .replace('#include <map_fragment>', '#include <map_fragment>\nif ( uHqAo.w > 0.0 ) {\n\tvec3 hqN = abs( normalize( vHqWn ) );\n\tfloat hqR = max( uHqAo2.x, 0.001 );\n\tfloat hqFx = 1.0 - smoothstep( 0.0, hqR, uHqAo.x - abs( vHqWp.x ) );\n\tfloat hqFz = 1.0 - smoothstep( 0.0, hqR, uHqAo.y - abs( vHqWp.z ) );\n\tfloat hqFy = 1.0 - smoothstep( 0.0, hqR, vHqWp.y - uHqAo2.y );\n\tfloat hqFc = 1.0 - smoothstep( 0.0, hqR, uHqAo.z - vHqWp.y );\n\tfloat hqAo = 1.0 - uHqAo.w * ( hqFx * ( 1.0 - hqN.x ) + hqFz * ( 1.0 - hqN.z ) + hqFy * ( 1.0 - hqN.y ) + hqFc * ( 1.0 - hqN.y ) * 0.6 );\n\tdiffuseColor.rgb *= clamp( hqAo, 0.3, 1.0 );\n}');
+    }
     var _shadowsDirty = true;     // consumed when the depth pass re-renders
     var _shadowMotion = false;    // set by per-frame updaters that move casters
     function markShadowsDirty() { _shadowsDirty = true; }
@@ -21436,12 +21482,20 @@ const ThreeRenderer = (function () {
     /* THE LIGHT RULES (2026-09-20): data.js HQ_LIGHT_RULES merged over the renderer's defaults — the cycle the
        building wears, the cap on a look's night grade, the floors under every room's fill. Keep the keys in step. */
     var HQ_LIGHT_DEFAULT = { cycle: 'day', nightCap: 0.45, ambientFloor: 0.55, fillColor: 0x9fb4d0, fill: 0.14,
-        open: { nightHemi: 0.62, nightSun: 0.4, dayHemi: 0.78, daySun: 0.6, nightLamp: 0.9, dayLamp: 0.55 } };
+        open: { nightHemi: 0.62, nightSun: 0.4, dayHemi: 0.78, daySun: 0.6, nightLamp: 0.9, dayLamp: 0.55 },
+        /* THE PREMIUM POLISH (2026-09-21): the shadow map, the key rig per kind, the AO, the height fog, the atmosphere — data.js owns the numbers */
+        shadows: { on: true, mapLow: 1024, mapHigh: 2048, bias: -0.0005, normalBias: 2.4, pad: 4, everyN: 2 },
+        key: { box: { az: 300, el: 58, color: 0xfff1dc, intensity: 0.34 }, open: { az: 305, el: 52 }, bay: { az: 320, el: 62, color: 0xf2f5ff, intensity: 0.3 }, hall: { az: 330, el: 60, color: 0xfff0d8, intensity: 0.42 } },
+        ao: { corner: 0.34, r: 0.55, contact: 0.5, contactR: 1.35, terrain: 0.32, foot: 0.7 },
+        heightFog: { on: true, box: { h: 1.7, amount: 0.34 }, open: { h: 3.2, amount: 0.5 }, hall: { h: 2.6, amount: 0.3 } },
+        atmos: { max: 600, perM2: 0.7, min: 90 } };
     function _hqLightRules() {
         var R = (typeof HQ_LIGHT_RULES !== 'undefined') ? HQ_LIGHT_RULES : ((typeof window !== 'undefined' && window.HQ_LIGHT_RULES) || null);
         if (!R) return HQ_LIGHT_DEFAULT;
         var o = Object.assign({}, HQ_LIGHT_DEFAULT, R);
         o.open = Object.assign({}, HQ_LIGHT_DEFAULT.open, R.open || {});
+        ['shadows', 'ao', 'heightFog', 'atmos'].forEach(function (k) { o[k] = Object.assign({}, HQ_LIGHT_DEFAULT[k], R[k] || {}); });
+        o.key = Object.assign({}, HQ_LIGHT_DEFAULT.key, R.key || {});
         return o;
     }
     function _sceneLookOf(look, name) {
@@ -37778,6 +37832,7 @@ const ThreeRenderer = (function () {
         });
         if (opts.emissive) { m.emissive = new THREE.Color(opts.emissive); m.emissiveIntensity = opts.emissiveIntensity || 1; }
         if (name) _evBaseTint(m, name);   // THE BASE TINT (2026-09-16): a borrowed sheet keeps its identity in the building too
+        if (!opts.noAo) m.onBeforeCompile = _hqAoHook;   // THE LIGHT PASS 2.3: the room-box AO (strength 0 outside a box room)
         return m;
     }
     function _hqBasic(color, opts) {
@@ -38021,6 +38076,7 @@ const ThreeRenderer = (function () {
         if (tex && tex.encoding !== THREE.LinearEncoding) { tex.encoding = THREE.LinearEncoding; tex.needsUpdate = true; }
         var lm = new THREE.MeshLambertMaterial({ map: tex, color: 0xffffff, transparent: !!sm.transparent, opacity: (sm.opacity != null) ? sm.opacity : 1, side: sm.side || THREE.FrontSide, alphaTest: sm.alphaTest || 0 });
         if (sm.emissiveMap) { lm.emissive = new THREE.Color(0xffffff); lm.emissiveMap = sm.emissiveMap; lm.emissiveIntensity = 0.8; }
+        lm.onBeforeCompile = _hqAoHook;   // THE LIGHT PASS 2.3: a prop's foot darkens over the floor, its back toward a wall
         lm._ew_shared = true;
         _hqPropMatCache.set(sm.uuid, lm);
         return lm;
@@ -39334,11 +39390,11 @@ const ThreeRenderer = (function () {
                city block's mass, a plan's rock wall — stretched its sheet the whole way down. Each sheet is sampled on the
                three world axes and blended by the face's normal (sharpened ^4): a flat face reads exactly as before, a
                vertical one tiles DOWN by height at the same tile size, a slope blends the two. World metres / one tile. */
-            sh.vertexShader = 'attribute vec2 aBlend;\nvarying vec2 vBlend;\nvarying vec3 vTriPos;\nvarying vec3 vTriN;\n' + sh.vertexShader
-                .replace('#include <uv_vertex>', '#include <uv_vertex>\nvBlend = aBlend;')
+            sh.vertexShader = 'attribute vec2 aBlend;\nattribute float aAO;\nvarying float vAO;\nvarying vec2 vBlend;\nvarying vec3 vTriPos;\nvarying vec3 vTriN;\n' + sh.vertexShader
+                .replace('#include <uv_vertex>', '#include <uv_vertex>\nvBlend = aBlend;\nvAO = aAO;')
                 .replace('#include <project_vertex>', '#include <project_vertex>\nvTriPos = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvTriN = normalize(mat3(modelMatrix) * objectNormal);');
-            sh.fragmentShader = 'uniform sampler2D tCliff;\nuniform sampler2D tPath;\nuniform float uTriTM;\nvarying vec2 vBlend;\nvarying vec3 vTriPos;\nvarying vec3 vTriN;\n' + sh.fragmentShader
-                .replace('#include <map_fragment>', '#ifdef USE_MAP\n vec3 triW = abs( normalize( vTriN ) ); triW = triW * triW * triW * triW; triW /= ( triW.x + triW.y + triW.z + 0.0001 );\n vec2 triUy = vTriPos.xz / uTriTM; vec2 triUx = vTriPos.zy / uTriTM; vec2 triUz = vTriPos.xy / uTriTM;\n vec4 texelColor = texture2D( map, triUy ) * triW.y + texture2D( map, triUx ) * triW.x + texture2D( map, triUz ) * triW.z;\n vec4 cliffColor = texture2D( tCliff, triUy * 0.85 ) * triW.y + texture2D( tCliff, triUx * 0.85 ) * triW.x + texture2D( tCliff, triUz * 0.85 ) * triW.z;\n vec4 pathColor = texture2D( tPath, triUy * 1.15 ) * triW.y + texture2D( tPath, triUx * 1.15 ) * triW.x + texture2D( tPath, triUz * 1.15 ) * triW.z;\n texelColor = mix( texelColor, pathColor, vBlend.y );\n texelColor = mix( texelColor, cliffColor * vec4(0.92, 0.92, 0.92, 1.0), vBlend.x );\n texelColor = mapTexelToLinear( texelColor );\n diffuseColor *= texelColor;\n#endif')
+            sh.fragmentShader = 'uniform sampler2D tCliff;\nuniform sampler2D tPath;\nuniform float uTriTM;\nvarying float vAO;\nvarying vec2 vBlend;\nvarying vec3 vTriPos;\nvarying vec3 vTriN;\n' + sh.fragmentShader
+                .replace('#include <map_fragment>', '#ifdef USE_MAP\n vec3 triW = abs( normalize( vTriN ) ); triW = triW * triW * triW * triW; triW /= ( triW.x + triW.y + triW.z + 0.0001 );\n vec2 triUy = vTriPos.xz / uTriTM; vec2 triUx = vTriPos.zy / uTriTM; vec2 triUz = vTriPos.xy / uTriTM;\n vec4 texelColor = texture2D( map, triUy ) * triW.y + texture2D( map, triUx ) * triW.x + texture2D( map, triUz ) * triW.z;\n vec4 cliffColor = texture2D( tCliff, triUy * 0.85 ) * triW.y + texture2D( tCliff, triUx * 0.85 ) * triW.x + texture2D( tCliff, triUz * 0.85 ) * triW.z;\n vec4 pathColor = texture2D( tPath, triUy * 1.15 ) * triW.y + texture2D( tPath, triUx * 1.15 ) * triW.x + texture2D( tPath, triUz * 1.15 ) * triW.z;\n texelColor = mix( texelColor, pathColor, vBlend.y );\n texelColor = mix( texelColor, cliffColor * vec4(0.92, 0.92, 0.92, 1.0), vBlend.x );\n texelColor.rgb *= vAO;\n texelColor = mapTexelToLinear( texelColor );\n diffuseColor *= texelColor;\n#endif')
                 .replace('#include <emissivemap_fragment>', '#ifdef USE_MAP\n totalEmissiveRadiance *= texelColor.rgb;\n#endif');
         };
         m.customProgramCacheKey = function () { return 'hqTerrainTri'; };
@@ -39367,7 +39423,7 @@ const ThreeRenderer = (function () {
         };
         _hq.outer = { hx: hx, hz: hz, ext: ext, yAt: yAt };
         var X0 = -(hx + ext), Z0 = -(hz + ext), nx = Math.ceil(2 * (hx + ext) / cs) + 1, nz = Math.ceil(2 * (hz + ext) / cs) + 1;
-        var pos = new Float32Array(nx * nz * 3), uv = new Float32Array(nx * nz * 2), blend = new Float32Array(nx * nz * 2), idx = [];
+        var pos = new Float32Array(nx * nz * 3), uv = new Float32Array(nx * nz * 2), blend = new Float32Array(nx * nz * 2), idx = []; var aoO = new Float32Array(nx * nz); for (var ai = 0; ai < aoO.length; ai++) aoO[ai] = 1;
         for (var j = 0; j < nz; j++) for (var i = 0; i < nx; i++) {
             var k = j * nx + i, px = X0 + i * cs, pz = Z0 + j * cs, h = yAt(px, pz);
             pos[k * 3] = px * U; pos[k * 3 + 1] = h * U; pos[k * 3 + 2] = pz * U;
@@ -39388,6 +39444,7 @@ const ThreeRenderer = (function () {
         geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
         geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
         geo.setAttribute('aBlend', new THREE.BufferAttribute(blend, 2));
+        geo.setAttribute('aAO', new THREE.BufferAttribute(aoO, 1));   // the same material as the field: the attribute must exist (a missing one reads 0 = black)
         geo.setIndex(idx); geo.computeVertexNormals();
         var outer = new THREE.Mesh(geo, mat);
         outer.position.y = 0.2; outer.receiveShadow = true; outer.renderOrder = 0; outer._ew_hqPart = 'floor'; outer._ew_hqGround = true; outer._ew_hqOuter = true;
@@ -39618,6 +39675,17 @@ const ThreeRenderer = (function () {
             }
         });
     }
+    /* THE LIGHT PASS 2.3 (2026-09-21): a field sample's baked occlusion — a gully / the foot of a cliff darkens by its
+       concavity (the Laplacian of the sampled heights), the ground within 0.6 m of a plan's solid darkens at the wall's foot */
+    function _hqTerrainAoAt(info, px, pz, h, res) {
+        var aoK = _hqLightRules().ao || {}, aoT = (aoK.terrain != null) ? aoK.terrain : 0.32, aoF = (aoK.foot != null) ? aoK.foot : 0.7, aoV = 1;
+        if (aoT <= 0) return 1;
+        var hL = hqTerrainHeight(info, px - res, pz), hR = hqTerrainHeight(info, px + res, pz), hU = hqTerrainHeight(info, px, pz - res), hD = hqTerrainHeight(info, px, pz + res);
+        var lap = (hL + hR + hU + hD - 4 * h) / res;   // > 0 = the neighbours stand higher (a hollow)
+        aoV -= aoT * Math.max(0, Math.min(1, lap * 0.9));
+        if (info.maskD && info.gen && typeof hqTerrainMaskAt === 'function') { var mdA = hqTerrainMaskAt(info, px, pz); if (mdA > 0 && mdA < 0.6) aoV -= aoT * aoF * (1 - mdA / 0.6); }
+        return Math.max(0.5, aoV);
+    }
     function _hqBuildTerrain(room) {
         if (typeof hqTerrainInfo !== 'function') return;
         var U = _hqUnits(), S = room.shell, G = _hq.shellGroup;
@@ -39631,7 +39699,7 @@ const ThreeRenderer = (function () {
         var pulse = function (mat, opAmp, spd) { _hq.fxPulse.push({ mat: mat, baseOp: mat.opacity, opAmp: opAmp, spd: spd, phase: rng() * Math.PI * 2 }); return mat; };
         var R = info.rules;
         /* ── THE FIELD: one indexed mesh, UVs in tiles, the blend per vertex ── */
-        var pos = new Float32Array(nx * nz * 3), uv = new Float32Array(nx * nz * 2), blend = new Float32Array(nx * nz * 2);
+        var pos = new Float32Array(nx * nz * 3), uv = new Float32Array(nx * nz * 2), blend = new Float32Array(nx * nz * 2), ao = new Float32Array(nx * nz);
         var pathW = function (px, pz) {
             var w = 0;
             for (var i = 0; i < info.paths.length; i++) { var p = info.paths[i], d = _hqTPolyDist(px, pz, p.pts).d, hw = p.w / 2; var t = d < hw ? 1 : 1 - (d - hw) / 0.7; if (t > w) w = t; }
@@ -39652,6 +39720,7 @@ const ThreeRenderer = (function () {
                 if (info.gen.sidewalk > 0 && md > 0 && md < info.gen.sidewalk + 0.15) sw = 1 - Math.max(0, (md - info.gen.sidewalk) / 0.15);
             }
             blend[k * 2] = rock * rock * (3 - 2 * rock); blend[k * 2 + 1] = Math.max(pathW(px, pz), sw) * (1 - blend[k * 2]);
+            ao[k] = _hqTerrainAoAt(info, px, pz, h, res);   // THE LIGHT PASS 2.3 (2026-09-21): the field's own occlusion
         }
         var idx = [], escalators = (room.terrain.features || []).filter(function (f) { return f.escalator; });
         /* THE FLOATING PIECES (THE DIVINE STAIR, second pass, 2026-09-18): a `float: true` plateau keeps the field's own TOP (the
@@ -39687,6 +39756,7 @@ const ThreeRenderer = (function () {
         geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
         geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
         geo.setAttribute('aBlend', new THREE.BufferAttribute(blend, 2));
+        geo.setAttribute('aAO', new THREE.BufferAttribute(ao, 1));   // THE LIGHT PASS 2.3
         geo.setIndex(idx); geo.computeVertexNormals();
         info._TM = TM;   // THE TRIPLANAR CLIFF: the sheet's tile in world units (the uv = pos / TM rule, now on every axis)
         var field = new THREE.Mesh(geo, _hqTerrainMat(info, S));
@@ -41698,6 +41768,7 @@ const ThreeRenderer = (function () {
        on y = 0, centred, front toward +Z (into the room when wall-hung). */
     var _hqPoleTex = null;   // the barber pole's stripes (Room 1287), drawn once
     var _hqProcBuilders = {
+        light_shaft: function (U, p) { return _hqLightShaft(U, p) || new THREE.Group(); },   /* THE AIR PASS 3.2 (2026-09-21): a catalogue row form of the beam (DOOR_HQ.lightShafts is the usual home) */
         tanker_desk: function (U) {
             var g = new THREE.Group();
             var body = _hqMat(null, 1, 1, { color: 0x3b4147, shininess: 35, specular: 0x556066 });
@@ -45916,6 +45987,8 @@ const ThreeRenderer = (function () {
             if (flip) grp.rotation.z = Math.PI;
             /* THE TABLETOP SEAT: a raised small prop (a mug, a tray, a lamp, a box on a shelf) is seated on the surface under it once the room has landed */
             var tabletop = !onWall && !onCeil && !flip && (p.y != null && p.y >= 0.25) && !(cat.foot > 0.35) && !cat.block && !cat.rect && !(cat.ceil) && !mount;   // never a structural piece (a stair tread, a landing, a raised desk on a riser)
+            /* THE PROP PASS 5.2 (2026-09-21): a kickable is a BODY — it blocks nothing, the walker knocks it along (data.js hqPropKickable) */
+            var kick = !onWall && !onCeil && !flip && !(p.y > 0.5) && (typeof hqPropKickable === 'function') && hqPropKickable(p.key, cat);
             if (cat.proc) {
                 /* procedural: built in metres, no async fit */
                 var pg = _hqProcProp(cat.proc, p);
@@ -45941,7 +46014,8 @@ const ThreeRenderer = (function () {
                 if (tabletop) _hq.tabletops.push({ key: p.key, grp: grp, y: y });   // THE TABLETOP SEAT
                 _hqRegisterPropPark(p, cat, grp, y, U);   // SKATEBOARDING (9.8): a catalogue `rail` / `ramp`
                 /* the blocker's base is the prop's own `y` (Phase 8 stage 2: a stair step stacked by `y` is a column from its base, so the floor under a raised landing stays a floor) */
-                if (!flip && cat.foot > 0 && (cat.block || (!mount && !onCeil && !(p.y > 0.5)))) _hq.blockers.push({ obj: grp, rad: cat.foot, y: y0 + (p.y || 0), top: y + (cat.h || 1), rect: (p.rect === false) ? undefined : (cat.rect || undefined), yaw: grp.rotation.y });   // `rect` (2026-09-14): a rectangular footprint in room axes
+                if (!flip && cat.foot > 0 && !kick && (cat.block || (!mount && !onCeil && !(p.y > 0.5)))) _hq.blockers.push({ obj: grp, rad: cat.foot, y: y0 + (p.y || 0), top: y + (cat.h || 1), rect: (p.rect === false) ? undefined : (cat.rect || undefined), yaw: grp.rotation.y });   // `rect` (2026-09-14): a rectangular footprint in room axes
+                try { _hqPolishProp(p, cat, grp, { U: U, y: y, onWall: onWall, onCeil: onCeil, flip: flip, tabletop: tabletop, kick: kick }); } catch (e) {}   // THE PREMIUM POLISH: the contact disc, the sway, the kick, the seat
                 return;
             }
             place(0.66);
@@ -45953,7 +46027,7 @@ const ThreeRenderer = (function () {
                low enough, and its side is solid in the air (no more jumping
                into a cabinet and walking out through the wall of props) */
             var blk = null;
-            if (!flip && cat.foot > 0 && (cat.block || (!mount && !onCeil && !(p.y > 0.5)))) { blk = { obj: grp, rad: cat.foot, y: y0 + (p.y || 0), top: y + (cat.h || 1), rect: (p.rect === false) ? undefined : (cat.rect || undefined), yaw: grp.rotation.y }; _hq.blockers.push(blk); }
+            if (!flip && cat.foot > 0 && !kick && (cat.block || (!mount && !onCeil && !(p.y > 0.5)))) { blk = { obj: grp, rad: cat.foot, y: y0 + (p.y || 0), top: y + (cat.h || 1), rect: (p.rect === false) ? undefined : (cat.rect || undefined), yaw: grp.rotation.y }; _hq.blockers.push(blk); }
             var inst = _miscModelInstance(_hqModelUrl(cat), true, target, {
                 fit: fitSpan ? 'span' : 'height', matPick: _hqPropMatPick,
                 onDone: function (g, s, bb) {
@@ -45996,6 +46070,7 @@ const ThreeRenderer = (function () {
             }
             G.add(grp);
             _hq.props.push({ key: p.key, grp: grp });
+            try { _hqPolishProp(p, cat, grp, { U: U, y: y, onWall: onWall, onCeil: onCeil, flip: flip, tabletop: tabletop, kick: kick }); } catch (e) {}   // THE PREMIUM POLISH: the contact disc, the sway, the kick, the seat
         });
         try { _hqSeatTabletops(); } catch (e) { console.warn('[HQ] seat pass', e); }   // the procedural furniture is in; the GLBs re-run it as they land
     }
@@ -48133,6 +48208,13 @@ const ThreeRenderer = (function () {
             var dist = Math.hypot(ch.x - pl.x, ch.z - pl.z);
             if (dist > (ch.reach || 1.75)) return;
             if (dist < bestD) { bestD = dist; best = { kind: ch.kind, id: ch.id, label: ch.label, sub: ch.sub || (ch.kind === 'agent' ? 'D.O.O.R. PERSONNEL' : 'ON BREAK'), line: ch.line, race: ch.race, gender: ch.gender, cast: ch.cast, doing: ch.doing }; }
+        });
+        /* THE PROP PASS 5.2 (2026-09-21): seated, the seat is the target (E stands); else a seat within reach — a door / counter beside it still wins when nearer */
+        if (pl.sit && pl.sit.seat) return { kind: 'seat', id: pl.sit.seat.id, label: pl.sit.seat.label, sub: 'SEATED', verb: 'STAND', sitting: true };
+        if (!(_hq.ride && _hq.ride.on) && !pl.swim && !pl.climb && _hq.seats) _hq.seats.forEach(function (st) {
+            var ds = Math.hypot(st.x - pl.x, st.z - pl.z);
+            if (ds > 1.7 || Math.abs(st.y - pl.y) > 1.2) return;
+            if (ds + 0.35 < bestD) { bestD = ds + 0.35; best = { kind: 'seat', id: st.id, label: st.label, sub: 'A SEAT', verb: 'SIT' }; }
         });
         /* THE FINDS (9.1): within reach on the floor, a shelf or a climbed cell — never a wall two levels up (that is the door gun's) */
         _hq.finds.forEach(function (f) {
@@ -51086,6 +51168,7 @@ const ThreeRenderer = (function () {
         if (H.vehicle && H.vehicle.on) { _hqTickVehicle(dt); return; }
         if (pl.swim) { _hqTickSwim(dt); return; }
         if (pl.climb) { _hqTickClimb(dt); return; }   // THE CLIMB (AREA_CONTENT_PLAN D1, 2026-09-19): on a ladder / rope / vine the frame is the climb's
+        if (pl.sit) { if (typeof _hqTickSit === 'function') _hqTickSit(dt); return; }   // THE PROP PASS 5.2 (2026-09-21): seated — any movement key stands up
         var sx0 = pl.x, sz0 = pl.z, sy0 = pl.y;   // THE CARRY (rev 4): the frame's displacement is the walk's velocity
         var ix = H.paused ? 0 : (((k.d || k.right) ? 1 : 0) - ((k.a || k.left) ? 1 : 0));
         var iy = H.paused ? 0 : (((k.s || k.down) ? 1 : 0) - ((k.w || k.up) ? 1 : 0));
@@ -51183,6 +51266,7 @@ const ThreeRenderer = (function () {
             if (!ch.cleaned && e._ew_modelAttached) {
                 e.group.traverse(function (n) { if (n._ew_silhouette) n.visible = false; });
                 ch.cleaned = true;
+                if (H.shadows) { try { _applyShadowFlags(e.group); } catch (err) {} }   // THE LIGHT PASS 2.1: a body casts and receives
                 if (ch.kind === 'player') H.playerAttached = true;   // THE GATE: the card waits for this AND for every file to land (_hqFrame)
             }
             e.model.rotation.y = ch.yaw;
@@ -51204,6 +51288,7 @@ const ThreeRenderer = (function () {
             if (ch.rounds && ch.kind !== 'player') { want = ch.moving ? 'walk' : 'idle'; if (e.actions && e.actions.walk) { var wts = e.actions.walk._ew_ts0 || 1; e.actions.walk.timeScale = wts * 0.62; } }
             if (ch.kind === 'player') {
                 want = (ch.jumpT >= 0) ? 'jump' : (ch.moving ? (ch.running ? 'run' : 'walk') : 'idle');
+                if (ch.sit) want = (e.actions && e.actions.hqSit) ? 'hqSit' : 'idle';   // THE PROP PASS 5.2: seated (the library's Sitting_Idle, the skiff's clip)
                 if (H.ride && H.ride.on) { var bph = _hqRideBailPhase(H.ride); want = bph ? (bph === 'fall' ? 'hqFall' : 'hqGetup') : (ch.jumpT >= 0) ? 'jump' : ((e.actions && e.actions.hqRide) ? 'hqRide' : 'idle'); }   // SKATEBOARDING (9.8): the air is the jump clip, everything else on the deck is THE RIDE stance (rev 2: Idle_10, sideways on the deck; rev 7: no push / kick clip at all — the user); a bail = the fall clip then the get-up (rev 3)
                 else if (H.vehicle && H.vehicle.on) want = (H.vehicle.kind === 'sub') ? 'hqDrive' : 'hqSit';   // THE DEEP (2026-09-18): at the helm — the library's driving loop in the bathyscaphe, the sitting idle in the skiff
                 else if (ch.swim) want = ch.moving ? 'hqSwim' : 'hqSwimIdle';   // THE DEEP: the swimmer — Swim_Fwd_Loop / Swim_Idle_Loop (sprites.js HQ_SWIM_CLIPS)
@@ -51263,7 +51348,7 @@ const ThreeRenderer = (function () {
         var H = _hq, pl = H.player, cam = H.camera, U = _hqUnits();
         if (!pl) return;
         var c = H.cam;
-        var headY = pl.visY + pl.heightM * 0.86;
+        var headY = pl.visY + pl.heightM * (pl.sit ? 0.62 : 0.86);   // seated, the head is lower (THE PROP PASS 5.2)
         var lookDir = new THREE.Vector3(Math.sin(c.yaw) * Math.cos(c.pitch), Math.sin(c.pitch), -Math.cos(c.yaw) * Math.cos(c.pitch));
         /* THE DOOR GUN rev 5: no sights any more — the lens stays at 52 (rev 4 narrowed it on the right button) */
         if (Math.abs(cam.fov - 52) > 0.01) { cam.fov = 52; cam.updateProjectionMatrix(); }
@@ -51318,6 +51403,7 @@ const ThreeRenderer = (function () {
         }
         cam.position.set(c.ex * U, c.ey * U, c.ez * U);
         cam.lookAt(c.lx * U, c.ly * U, c.lz * U);
+        if (typeof _hqCamFeel === 'function') _hqCamFeel(H, pl, cam, dt, U);   // THE CAMERA PASS 6.1 (2026-09-21): the bob, the landing, the sprint lens, the carve lean
     }
     /* Push the camera onto the glass of the CRT nearest a counter (the
        CROSSING / RANGE console's tanker desk, the dispatch desk) — the
@@ -51400,6 +51486,9 @@ const ThreeRenderer = (function () {
         _nrPollPending();
         /* Phase 8: the procs that move (the orb bobs, the torches gutter, the shaft streams past the car) */
         for (var tk = 0; tk < H.tickers.length; tk++) { try { H.tickers[tk](dt, now); } catch (e) {} }
+        /* THE PROP PASS (2026-09-21): the kickable bodies and the swaying props */
+        if (H.kicks && H.kicks.length) { try { _hqTickKicks(dt); } catch (e) {} }
+        if (H.sways && H.sways.length) { try { _hqTickSways(dt, now); } catch (e) {} }
         /* room-fx glow pulses (the training pit's lamps and strips) — the
            battle _hzGlowPulse list is not ticked under the HQ loop */
         for (var fp = 0; fp < H.fxPulse.length; fp++) {
@@ -51414,13 +51503,12 @@ const ThreeRenderer = (function () {
             var wp = d.group.position;
             var cx = H.camera.position.x, cz = H.camera.position.z;
             var dist = Math.hypot(wp.x - cx, wp.z - cz) / _hqUnits();
-            var op = Math.max(0, Math.min(1, 1 - (dist - 15) / 11));
-            if (d.plateEl.style.opacity !== String(op)) d.plateEl.style.opacity = String(op);
+            if (d.plateEl) _hqPlateDist(d.plateEl, dist, d);   // THE PROP PASS 5.6: a plate fades AND shrinks with distance
         }
         for (var ci = 0; ci < H.counters.length; ci++) {
             var cc = H.counters[ci];
             var dd = Math.hypot(cc.group.position.x - H.camera.position.x, cc.group.position.z - H.camera.position.z) / _hqUnits();
-            cc.plateEl.style.opacity = String(Math.max(0, Math.min(1, 1 - (dd - 12) / 9)));
+            if (cc.plateEl) _hqPlateDist(cc.plateEl, dd, cc);
             if (cc.marker) {
                 cc.marker.icon.rotation.y += dt * 1.3;
                 cc.marker.icon.position.y = (cc.marker.y + Math.sin(now * 0.0021) * 0.11) * _hqUnits();
@@ -51508,6 +51596,448 @@ const ThreeRenderer = (function () {
             d.openApplied = (d.openT === want) ? want : -1;
         }
     }
+    /* ══════════════════════════════════════════════════════════════════════════════
+       THE PREMIUM POLISH (PREMIUM_POLISH_PLAN.md, 2026-09-21) — THE LIGHT PASS + THE AIR PASS
+       Grounding before spectacle: one shadow-casting key per room (2.1), the key's rig
+       per room kind (2.5), the room-box AO + the contact discs (2.3), the height fog
+       (3.1), the light shafts (3.2) and the atmosphere (3.3). Every number is data.js
+       HQ_LIGHT_RULES / a room's shell; every effect has a kill-switch. Viewer-local
+       (RULE #2): nothing on `state`, nothing relayed.
+       ══════════════════════════════════════════════════════════════════════════════ */
+    /* ── THE PROP PASS (PREMIUM_POLISH_PLAN §5) + THE CAMERA PASS (§6), 2026-09-21 ── */
+    /* 2.3 THE CONTACT DISC: a soft dark disc under every floor prop's foot (the battle draws the same `shadowProxy` under its
+       sprites) — a chair with no shadow floats; with the disc AND the map it stands. One cached radial canvas. */
+    var _hqContactTex = null;
+    function _hqContactDisc(rx, rz, U) {
+        if (!_hqContactTex) {
+            var c = document.createElement('canvas'); c.width = c.height = 64; var g = c.getContext('2d');
+            var gr = g.createRadialGradient(32, 32, 2, 32, 32, 32); gr.addColorStop(0, 'rgba(0,0,0,0.92)'); gr.addColorStop(0.42, 'rgba(0,0,0,0.55)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+            g.fillStyle = gr; g.fillRect(0, 0, 64, 64); _hqContactTex = new THREE.CanvasTexture(c);
+        }
+        var LR = _hqLightRules(), AO = LR.ao || {};
+        var m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: _hqContactTex, transparent: true, depthWrite: false, opacity: (AO.contact != null) ? AO.contact : 0.5, color: 0x000000, fog: false }));
+        m.rotation.x = -Math.PI / 2; m.scale.set(rx * 2 * U, rz * 2 * U, 1); m.position.y = 0.012 * U; m.renderOrder = 1;
+        m._ew_hqPart = 'fx'; m._ew_shadowFlagged = true; m.castShadow = false; m.receiveShadow = false; m._ew_contact = true;
+        return m;
+    }
+    /* every floor prop, once placed: the disc, a `sway` row's pivot, a kickable's body, a `seat` */
+    function _hqPolishProp(p, cat, grp, o) {
+        var H = _hq; if (!H || H.ghost) return;
+        var U = o.U, W = (typeof window !== 'undefined') ? window : {};
+        var floorProp = !o.onWall && !o.onCeil && !o.flip && !o.tabletop && !cat.float && !cat.hover && !(p.y > 0.5) && !cat.wall && !cat.ceil;
+        if (floorProp && cat.foot > 0 && !W.EW_HQ_NO_CONTACT && typeof document !== 'undefined' && !cat.vehicle && cat.proc !== 'battle_marker' && cat.proc !== 'heal_zone') {
+            var LR = _hqLightRules(), AO = LR.ao || {}, cr = (AO.contactR != null) ? AO.contactR : 1.35;
+            var rx = cat.rect ? cat.rect.hw * 1.2 : Math.max(0.22, cat.foot) * cr, rz = cat.rect ? cat.rect.hd * 1.2 : rx;
+            var disc = _hqContactDisc(rx, rz, U);
+            if (o.kick) { disc.position.set(grp.position.x, grp.position.y + 0.012 * U, grp.position.z); H.propGroup.add(disc); o.disc = disc; }   // a kickable's disc stays flat on the floor and follows the body (the group tumbles)
+            else grp.add(disc);
+        }
+        if (cat.sway && !W.EW_HQ_NO_SWAY) _hqSwayArm(grp, cat, o);
+        if (o.kick) H.kicks.push({ key: p.key, grp: grp, disc: o.disc || null, rad: Math.max(0.12, cat.foot || 0.15), y0: o.y, x: grp.position.x / U, z: grp.position.z / U, y: o.y, vx: 0, vz: 0, vy: 0, spin: 0, tilt: 0, cool: 0, h: cat.h || 0.5 });
+        if (cat.seat != null && floorProp) H.seats.push({ id: 'seat:' + H.seats.length, key: p.key, grp: grp, x: grp.position.x / U, z: grp.position.z / U, y: o.y + cat.seat, yaw: grp.rotation.y, label: String(p.key).replace(/_/g, ' ').toUpperCase() });
+    }
+    /* 5.1 THE SWAY: a hanging prop (catalogue `sway: { amp, period }`) hangs from a pivot at its top on a damped spring — the
+       room's draught keeps it moving a little, the walker's wake within a metre gives it a push */
+    function _hqSwayArm(grp, cat, o) {
+        var U = o.U, sw = cat.sway, top = ((cat.h != null) ? cat.h : 0.5) * U;
+        var piv = new THREE.Group(); piv.position.y = top;
+        grp.children.slice().forEach(function (c) { grp.remove(c); c.position.y -= top; piv.add(c); });
+        grp.add(piv);
+        _hq.sways.push({ piv: piv, grp: grp, a: 0, av: 0, b: 0, bv: 0, amp: sw.amp || 0.04, w: 2 * Math.PI / (sw.period || 3.5), ph: Math.random() * 6.2832, cool: 0 });
+    }
+    function _hqTickSways(dt, now) {
+        var H = _hq, pl = H.player, U = _hqUnits(), t = now * 0.001;
+        var moving = pl ? Math.hypot(pl.velX || 0, pl.velZ || 0) : 0;
+        for (var i = 0; i < H.sways.length; i++) {
+            var r = H.sways[i], w = r.w, z = 0.1;
+            var wind = r.amp * w * w * 0.32 * Math.sin(t * w * 0.31 + r.ph);
+            r.cool -= dt;
+            if (pl && moving > 0.4 && r.cool <= 0) {
+                var wp = r.grp.position, d = Math.hypot(wp.x / U - pl.x, wp.z / U - pl.z);
+                if (d < 1.15 && Math.abs(wp.y / U - pl.y) < 3.2) { var sgn = ((wp.x / U - pl.x) * (pl.velZ || 0) - (wp.z / U - pl.z) * (pl.velX || 0)) > 0 ? 1 : -1; r.av += sgn * r.amp * w * 2.6 * Math.min(1, moving / 3); r.bv += r.amp * w * 1.4; r.cool = 0.7; }
+            }
+            r.av += (-(w * w) * r.a - 2 * z * w * r.av + wind) * dt; r.a += r.av * dt;
+            var w2 = w * 1.31; r.bv += (-(w2 * w2) * r.b - 2 * z * w2 * r.bv + wind * 0.5) * dt; r.b += r.bv * dt;
+            r.piv.rotation.x = r.a; r.piv.rotation.z = r.b;
+        }
+    }
+    /* 5.2 THE KICK: a small prop the walker (or the rider) runs into takes the walker's heading and speed, hops, rolls out and
+       settles; the room remembers nothing (the user's D6). It ignores the furniture (no blocker of its own) and bounces off
+       the walls (_hqSurface null = a wall). */
+    function _hqTickKicks(dt) {
+        var H = _hq, pl = H.player; if (!pl || !H.kicks.length) return;
+        var K = (typeof HQ_KICKABLE !== 'undefined' && HQ_KICKABLE) ? HQ_KICKABLE : { speed: 0.9, hop: 2.2, friction: 2.4, spin: 6 };
+        var U = _hqUnits();
+        var prev = H.kickPrev || { x: pl.x, z: pl.z }; var pvx = (pl.x - prev.x) / Math.max(dt, 0.001), pvz = (pl.z - prev.z) / Math.max(dt, 0.001); H.kickPrev = { x: pl.x, z: pl.z };
+        var spd = Math.hypot(pvx, pvz); if (spd > 30) spd = 0;   // a teleport is not a run
+        for (var i = 0; i < H.kicks.length; i++) {
+            var r = H.kicks[i]; r.cool -= dt;
+            var dx = r.x - pl.x, dz = r.z - pl.z, d = Math.hypot(dx, dz);
+            if (spd > 0.3 && r.cool <= 0 && d < r.rad + HQ_BODY_R + 0.05 && Math.abs(r.y - pl.y) < 1.3) {
+                var ux = spd > 1 ? pvx / spd : (d > 0.01 ? dx / d : 1), uz = spd > 1 ? pvz / spd : (d > 0.01 ? dz / d : 0);
+                var v = spd * ((K.speed != null) ? K.speed : 0.9) + 0.6;
+                r.vx = ux * v; r.vz = uz * v; r.vy = ((K.hop != null) ? K.hop : 2.2) * (0.6 + 0.4 * Math.min(1, spd / 4)); r.spin = (Math.random() - 0.5) * ((K.spin != null) ? K.spin : 6) * Math.max(1, spd); r.cool = 0.45;
+                r.x += ux * 0.08; r.z += uz * 0.08;
+                if (H.opts.onKick) { try { H.opts.onKick({ key: r.key, speed: spd }); } catch (e) {} }
+            }
+            var mv = Math.hypot(r.vx, r.vz);
+            if (mv < 0.01 && !r.vy && r.tilt < 0.002 && Math.abs(r.spin) < 0.01) continue;
+            var nx = r.x + r.vx * dt, nz = r.z + r.vz * dt;
+            if (_hqSurface(nx, r.z, r.y, true) === null) { r.vx = -r.vx * 0.45; nx = r.x; }
+            if (_hqSurface(r.x, nz, r.y, true) === null) { r.vz = -r.vz * 0.45; nz = r.z; }
+            r.x = nx; r.z = nz;
+            r.vy -= 9.8 * dt; r.y += r.vy * dt;
+            var gnd = _hqSurface(r.x, r.z, null, true); if (gnd === null || !isFinite(gnd)) gnd = r.y0;
+            if (r.y <= gnd) { r.y = gnd; r.vy = (r.vy < -1.2) ? -r.vy * 0.32 : 0; var f = Math.exp(-((K.friction != null) ? K.friction : 2.4) * dt); r.vx *= f; r.vz *= f; if (Math.hypot(r.vx, r.vz) < 0.05) { r.vx = 0; r.vz = 0; } }
+            mv = Math.hypot(r.vx, r.vz);
+            var tiltT = Math.min(0.42, mv * 0.16); r.tilt += (tiltT - r.tilt) * Math.min(1, dt * 6);
+            r.spin *= Math.exp(-2.2 * dt); if (Math.abs(r.spin) < 0.01) r.spin = 0;
+            var g = r.grp; g.position.set(r.x * U, r.y * U, r.z * U);
+            if (r.disc) r.disc.position.set(r.x * U, (gnd + 0.012) * U, r.z * U);
+            g.rotation.y += r.spin * dt;
+            if (mv > 0.02) { g.rotation.x = r.tilt * (r.vz / mv); g.rotation.z = -r.tilt * (r.vx / mv); } else { g.rotation.x *= 0.9; g.rotation.z *= 0.9; }
+            H.dirty = true; if (H.shadows) H.shadows.dirty = true;
+        }
+    }
+    /* 5.2 THE SEAT: E on a seat sits the walker on it (data.js catalogue `seat` = the height), facing the seat's front; any
+       movement key (or E again) stands up in front of it. A walker mode like the ride: nothing on `state`. */
+    function _hqSit(id) {
+        var H = _hq, pl = H && H.player; if (!pl) return false;
+        if (pl.sit) { _hqStand(pl); return true; }
+        if ((H.ride && H.ride.on) || pl.swim || pl.climb || pl.air || (H.vehicle && H.vehicle.on)) return false;
+        var st = null; for (var i = 0; i < H.seats.length; i++) if (H.seats[i].id === id) st = H.seats[i];
+        if (!st) return false;
+        pl.sit = { seat: st, t0: performance.now() };
+        pl.x = st.x; pl.z = st.z; pl.y = st.y; pl.visY = st.y; pl.vy = 0; pl.air = false; pl.moving = false; pl.running = false; pl.mvx = 0; pl.mvz = 0;
+        pl.yaw = pl.targetYaw = st.yaw;
+        H.keys = {}; H.dirty = true; if (H.shadows) H.shadows.dirty = true;
+        if (H.opts.onSit) { try { H.opts.onSit({ kind: 'sit', key: st.key }); } catch (e) {} }
+        return true;
+    }
+    function _hqStand(pl) {
+        var H = _hq, st = pl.sit && pl.sit.seat; pl.sit = null; if (!st) return;
+        var U = _hqUnits(), fx = Math.sin(st.yaw), fz = Math.cos(st.yaw);
+        var nx = st.x + fx * 0.72, nz = st.z + fz * 0.72;
+        var y = _hqSurface(nx, nz, null, false);
+        if (y === null) { nx = st.x; nz = st.z; y = _hqSurface(st.x, st.z, null, true); }
+        pl.x = nx; pl.z = nz; pl.y = (y === null || !isFinite(y)) ? st.y : y; pl.visY = pl.y; pl.air = false; pl.vy = 0;
+        pl.entry.group.position.set(pl.x * U, pl.visY * U, pl.z * U);
+        H.dirty = true; if (H.shadows) H.shadows.dirty = true;
+        if (H.opts.onSit) { try { H.opts.onSit({ kind: 'stand', key: st.key }); } catch (e) {} }
+    }
+    function _hqTickSit(dt) {
+        var H = _hq, pl = H.player, k = H.keys;
+        if (!H.paused && (k.w || k.a || k.s || k.d || k.up || k.down || k.left || k.right || k.space)) { _hqStand(pl); return; }
+        var U = _hqUnits(); pl.visY = pl.y; pl.entry.group.position.set(pl.x * U, pl.visY * U, pl.z * U);
+        pl.moving = false; pl.running = false; pl.velX = 0; pl.velZ = 0; pl.velY = 0; pl.pushX = 0; pl.pushZ = 0;
+    }
+    /* 5.6 THE PLATE AT A DISTANCE: a door / counter plate fades between `near` and `far` m and SHRINKS past `scaleAt` m (the
+       CSS var --pk on the CSS2D element; styles-base.css .hq-plate reads it) — a plate 30 m away used to be as big as one at 3 */
+    var HQ_PLATE_FADE = { near: 8, far: 20, scaleAt: 3.4, min: 0.62, max: 1.12 };
+    function _hqPlateDist(el, dist, rec) {
+        var F = HQ_PLATE_FADE;
+        var op = Math.max(0, Math.min(1, 1 - (dist - F.near) / (F.far - F.near))).toFixed(2);
+        if (rec._pop !== op) { rec._pop = op; el.style.opacity = op; }
+        var k = Math.max(F.min, Math.min(F.max, F.scaleAt / Math.max(0.5, dist))).toFixed(2);
+        if (rec._pk !== k) { rec._pk = k; try { el.style.setProperty('--pk', k); } catch (e) {} }
+    }
+    /* 6.1 THE CAMERA FEEL: a head bob at the stride (surface-keyed later — the step event is the sound pass's), a shake on a
+       landing scaled by the fall, a wider lens on the sprint, a roll into the rider's carve. Applied AFTER the eased boom so
+       the bob stays crisp. Off: EW_HQ_NO_CAM_FEEL. */
+    function _hqCamFeel(H, pl, cam, dt, U) {
+        var c = H.cam, W = (typeof window !== 'undefined') ? window : {};
+        if (W.EW_HQ_NO_CAM_FEEL || !pl) return;
+        var R = (H.ride && H.ride.on) ? H.ride : null;
+        var grounded = !pl.air && !pl.swim && !pl.climb && !pl.sit && !R && !(H.vehicle && H.vehicle.on);
+        var walking = grounded && pl.moving && !H.paused;
+        c.bobT = (c.bobT || 0) + (walking ? dt * (pl.running ? 11.5 : 7.6) : 0);
+        var bk = walking ? 1 : 0; c.bobK = (c.bobK == null) ? bk : c.bobK + (bk - c.bobK) * Math.min(1, dt * 6);
+        var amp = (pl.running ? 0.034 : 0.018) * (H.fp ? 0.55 : 1) * c.bobK;
+        var bobY = Math.sin(c.bobT) * amp, bobX = Math.sin(c.bobT * 0.5) * amp * 0.45;
+        var la = pl.entry && pl.entry._ew_hqLandAt;
+        if (la && la !== c.landSeen) { c.landSeen = la; c.shake = Math.min(0.09, Math.abs(c.lastVelY || 0) * 0.012 + 0.012); c.shakeT = 0; }
+        c.lastVelY = pl.velY || 0;
+        var sh = 0; if (c.shake) { c.shakeT += dt; sh = c.shake * Math.sin(c.shakeT * 28) * Math.exp(-c.shakeT * 7); if (c.shakeT > 0.9) c.shake = 0; }
+        var fk = (walking && pl.running) ? 1 : 0; c.fovK = (c.fovK == null) ? fk : c.fovK + (fk - c.fovK) * Math.min(1, dt * 5);
+        if (c.fovK > 0.003) { var fovT = 52 + 6 * c.fovK; if (Math.abs(cam.fov - fovT) > 0.01) { cam.fov = fovT; cam.updateProjectionMatrix(); } }
+        var roll = R ? -(R.lean || 0) * 0.28 : 0; c.roll = (c.roll == null) ? roll : c.roll + (roll - c.roll) * Math.min(1, dt * 8);
+        if (bobY || bobX || sh) {
+            var right = new THREE.Vector3(1, 0, 0).applyQuaternion(cam.quaternion);
+            cam.position.y += (bobY + sh) * U; cam.position.addScaledVector(right, bobX * U);
+        }
+        if (Math.abs(c.roll) > 0.0005) cam.rotateZ(c.roll);
+    }
+    /* 2.5 THE RIG: the key light's direction from HQ_LIGHT_RULES.key[kind] (az 0 = from the north, clockwise; el above the
+       floor), a room's `shell.rig = { az, el, color, intensity }` over it. Each _hqEnter branch named its key (_hq.keyLight). */
+    function _hqLightArm(room) {
+        var H = _hq, L = H && H.keyLight; if (!L) return;
+        var LR = _hqLightRules(), S = room.shell || {};
+        var kind = (room.kind === 'box') ? (S.open ? 'open' : 'box') : (room.kind === 'bay' ? 'bay' : 'hall');
+        var rig = Object.assign({}, (LR.key && LR.key[kind]) || {}, S.rig || {});
+        if (isFinite(+rig.az) && isFinite(+rig.el)) {
+            var az = _hqRad(+rig.az), el = _hqRad(+rig.el);
+            H.keyDir = new THREE.Vector3(Math.sin(az) * Math.cos(el), Math.sin(el), -Math.cos(az) * Math.cos(el)).normalize();
+        } else H.keyDir = L.position.clone().normalize();
+        if (rig.color != null) L.color.setHex(rig.color);
+        if (rig.intensity != null) L.intensity = +rig.intensity;
+        L.position.copy(H.keyDir).multiplyScalar(1000);
+    }
+    /* 2.1 THE SHADOW: the key casts ONE map (the battle's Settings → Performance tier sizes it; off under 'off', EW_PERF_LOW,
+       EW_HQ_NO_SHADOWS). The ortho frustum is FITTED to the room's box but never wider than 30 m — in a city it FOLLOWS the
+       walker (_hqShadowTick), snapped to its own texel grid so nothing swims. The depth pass pulses every `everyN` frames
+       (renderer.shadowMap.autoUpdate is off for the battle's gate). What casts: props, doors, people, the shell's floors
+       and slabs — never a wall / ceiling / edge / strip part (the key stands OUTSIDE the box: those would black the room),
+       never the drum / the dome (a cylinder or sphere over 4 m), never the ground planes. */
+    function _hqShadowArm(room) {
+        var H = _hq; if (!H) return; H.shadows = null;
+        var L = H.keyLight; if (!L || !renderer || !renderer.shadowMap) return;
+        var LR = _hqLightRules(), SH = LR.shadows || {};
+        var W = (typeof window !== 'undefined') ? window : {};
+        var q = (typeof ThreePost !== 'undefined' && ThreePost.getShadowQuality) ? ThreePost.getShadowQuality() : 'high';
+        if (SH.on === false || q === 'off' || W.EW_HQ_NO_SHADOWS || W.EW_PERF_LOW) { L.castShadow = false; return; }
+        var U = _hqUnits(), S = room.shell || {};
+        var hx, hz, top;
+        if (room.kind === 'box') { var rm = (typeof _hqRoamM === 'function') ? (_hqRoamM(S) || 0) : 0; hx = (S.w || 10) / 2 + rm; hz = (S.d || 10) / 2 + rm; top = S.open ? Math.max(S.h || 9, 10) : (S.h || 3.4); }
+        else if (room.kind === 'bay') { hx = hz = (S.rOut || 30) + 2; top = S.wallH || 6; }
+        else { hx = hz = ((S.ring3 && S.ring3.outer) || S.rOut || 26) + 2; top = (S.wallH || 6) + (S.upperWallH || 6) + (S.domeH || 0); }
+        if (H.terrain && H.terrain.H && H.terrain.H.length) { var mx = -1e9; for (var i = 0; i < H.terrain.H.length; i++) if (H.terrain.H[i] > mx) mx = H.terrain.H[i]; if (isFinite(mx)) top = Math.max(top, mx + 4); }
+        var pad = (SH.pad != null) ? SH.pad : 4;
+        var Rroom = Math.hypot(hx + pad, hz + pad) * U;
+        var Rf = Math.min(Rroom, 30 * U);
+        var size = (q === 'low') ? (SH.mapLow || 1024) : (SH.mapHigh || 2048);
+        L.castShadow = true;
+        if (L.shadow.mapSize.width !== size) { L.shadow.mapSize.set(size, size); if (L.shadow.map) { try { L.shadow.map.dispose(); } catch (e) {} L.shadow.map = null; } }
+        L.shadow.bias = (SH.bias != null) ? SH.bias : -0.0005;
+        L.shadow.normalBias = (SH.normalBias != null) ? SH.normalBias : 2.4;
+        var cam = L.shadow.camera;
+        cam.left = -Rf; cam.right = Rf; cam.top = Rf; cam.bottom = -Rf;
+        var D = Rf * 1.6 + top * U;
+        cam.near = 1; cam.far = D + Rf * 2 + top * U;
+        cam.updateProjectionMatrix();
+        if (!L.target.parent) H.scene.add(L.target);
+        H.shadows = { light: L, everyN: Math.max(1, SH.everyN || 2), frame: 0, Rf: Rf, D: D, hx: hx * U, hz: hz * U, texel: (2 * Rf) / size, dirty: true };
+        renderer.shadowMap.enabled = true;
+        _hqShadowFlags(room);
+        _hqShadowTick(H, 0);
+    }
+    var _HQ_NO_CAST_PART = { wall: 1, ceil: 1, edge: 1, strip: 1, pipe: 1, fx: 1 };
+    function _hqShadowFlags(room) {
+        var H = _hq, U = _hqUnits();
+        H.shellGroup.traverse(function (o) {
+            if (!o.isMesh) return;
+            _flagMeshShadows(o);
+            var g = o.geometry, big = false;
+            if (g && g.parameters && (g.type === 'CylinderGeometry' || g.type === 'SphereGeometry' || g.type === 'RingGeometry')) {
+                var r = g.parameters.radiusTop || g.parameters.radius || g.parameters.outerRadius || 0; big = r > 4 * U;
+            }
+            if ((o._ew_hqPart && _HQ_NO_CAST_PART[o._ew_hqPart]) || big || o._ew_hqGround || o._ew_hqOuter) o.castShadow = false;
+        });
+        [H.propGroup, H.doorGroup, H.charGroup].forEach(function (G) { if (G) G.traverse(function (o) { if (o.isMesh) _flagMeshShadows(o); }); });
+    }
+    function _hqShadowTick(H, dt) {
+        var SH = H.shadows; if (!SH || !renderer || !renderer.shadowMap) return;
+        var L = SH.light, pl = H.player, U = _hqUnits();
+        var cx = pl ? pl.x * U : 0, cz = pl ? pl.z * U : 0;
+        cx = Math.max(-SH.hx, Math.min(SH.hx, cx)); cz = Math.max(-SH.hz, Math.min(SH.hz, cz));
+        var dir = H.keyDir || new THREE.Vector3(0.45, 1, 0.3).normalize();
+        var right = new THREE.Vector3().crossVectors(dir, new THREE.Vector3(0, 1, 0));
+        if (right.lengthSq() < 1e-6) right.set(1, 0, 0); right.normalize();
+        var up2 = new THREE.Vector3().crossVectors(right, dir).normalize();
+        var c = new THREE.Vector3(cx, 0, cz), t = SH.texel || 1;
+        var pr = Math.round(c.dot(right) / t) * t, pu = Math.round(c.dot(up2) / t) * t;
+        var snapped = right.multiplyScalar(pr).add(up2.multiplyScalar(pu));
+        L.target.position.copy(snapped);
+        L.position.copy(snapped).add(dir.clone().multiplyScalar(SH.D));
+        L.target.updateMatrixWorld(true);
+        SH.frame++;
+        if (SH.frame % 30 === 0) [H.propGroup, H.doorGroup, H.charGroup].forEach(function (G) { if (G) G.traverse(function (o) { if (o.isMesh && !o._ew_shadowFlagged) _flagMeshShadows(o); }); });   // a GLB that landed since
+        if (SH.dirty || (SH.frame % SH.everyN) === 0) { renderer.shadowMap.needsUpdate = true; SH.dirty = false; }
+    }
+    /* 2.3 THE ROOM-BOX AO's uniforms for this room: a closed box room gets its four walls + the ceiling, an open or polar room
+       the floor contact alone, a room whose floor is a height field nothing (a hill is not a plane). */
+    function _hqAoArm(room) {
+        var H = _hq, LR = _hqLightRules(), AO = LR.ao || {}, U = _hqUnits(), S = room.shell || {};
+        var W = (typeof window !== 'undefined') ? window : {};
+        var k = W.EW_HQ_NO_AO ? 0 : ((AO.corner != null) ? AO.corner : 0.34);
+        if (H.terrain || (H.site && H.site.cave) || H.planet) k = 0;
+        var box = room.kind === 'box' && !S.open;
+        _HQ_AO.x = box ? ((S.w || 10) / 2) * U : 1e6;
+        _HQ_AO.y = box ? ((S.d || 10) / 2) * U : 1e6;
+        _HQ_AO.z = (box && S.h) ? S.h * U : 1e6;
+        _HQ_AO.w = k;
+        _HQ_AO2.x = ((AO.r != null) ? AO.r : 0.55) * U; _HQ_AO2.y = 0;
+        H.ao = k > 0 ? { k: k, box: box } : null;
+    }
+    /* 3.1 THE HEIGHT FOG's row for this room: HQ_LIGHT_RULES.heightFog[kind], `sky.fog.height` (m) for the fall-off, a room's
+       `shell.heightFog = { h, amount, floor }` over it (`false` = none). The distance term rides the scene fog's own density ×4. */
+    function _hqHeightFogArm(room) {
+        var H = _hq, LR = _hqLightRules(), HF = LR.heightFog || {}, U = _hqUnits(), S = room.shell || {}, sc = H.scene;
+        var W = (typeof window !== 'undefined') ? window : {};
+        H.heightFog = null;
+        if (HF.on === false || W.EW_HQ_NO_HEIGHT_FOG || !sc.fog || S.heightFog === false) { _ewHeightFogSet(0, 1, 0, 0); return; }
+        var kind = (room.kind === 'box') ? (S.open ? 'open' : 'box') : 'hall';
+        var row = Object.assign({}, HF[kind] || HF.box || { h: 1.7, amount: 0.34 });
+        if (S.sky && S.sky.fog && S.sky.fog.height > 0) row.h = S.sky.fog.height;
+        if (S.heightFog && typeof S.heightFog === 'object') Object.assign(row, S.heightFog);
+        var floorY = (row.floor != null) ? +row.floor : 0;
+        var den = Math.max((sc.fog.density || 0) * 4, 0.012 / U);
+        var amount = Math.max(0, Math.min(1, (row.amount != null) ? +row.amount : 0.34));
+        _ewHeightFogSet(floorY * U, (row.h > 0 ? row.h : 1.7) * U, amount, den);
+        H.heightFog = { h: row.h, amount: amount, floor: floorY };
+    }
+    /* 3.2 THE LIGHT SHAFT: the battle's god-ray shader (the additive prism, the ground pool, the motes sinking down the beam) as
+       ONE beam in a room — data.js DOOR_HQ.lightShafts[roomId] rows { x, z, top, h, w, tilt, dir, color, intensity } (metres,
+       degrees), or a catalogue prop row `light_shaft` with the same fields. The pool lands on the ground under the base. */
+    /* THE PRISM'S FIX (measured 2026-09-21): the ray shader's radial term reads vLocal.xz = position / uW — with uW = the box's
+       own width every FACE of the box sits at r ≥ 1 and the falloff discards it (only the pool and the motes draw). The
+       beam's uW is the width × HQ_SHAFT_UW, so its faces read as the beam's soft middle. (The battle's shafts carry the
+       same arithmetic — a pool + motes is what they have always drawn there.) */
+    var HQ_SHAFT_UW = 2.6;
+    var HQ_SHAFT_GAIN = 2.2;   /* a room's beam over a dark stand-in wall read as nothing at the battle's 0.3 — the board's rays land on a lit field */
+    function _hqLightShaft(U, p) {
+        if (typeof _ensureRayShaders !== 'function') return null;
+        _ensureRayShaders();
+        var H = _hq, h = (p.h || 6) * U, w = (p.w || 2.2) * U, tilt = _hqRad(p.tilt || 0), dir = _hqRad(p.dir || 0);
+        var uni = { uTime: { value: 0 }, uColor: { value: new THREE.Color((p.color != null) ? p.color : 0xfff0d2) }, uIntensity: { value: ((p.intensity != null) ? p.intensity : 0.3) * HQ_SHAFT_GAIN },
+                    uSeed: { value: ((p.x || 0) * 7.3 + (p.z || 0) * 3.1) % 6.2832 }, uH: { value: h }, uW: { value: w * HQ_SHAFT_UW }, uBand: { value: h * 0.45 } };
+        var g = new THREE.Group(); g.name = 'light_shaft'; g._ew_hqPart = 'fx';
+        var mat = new THREE.ShaderMaterial({ uniforms: uni, vertexShader: _RAY_VS, fragmentShader: _RAY_FS, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: true, side: THREE.DoubleSide, fog: false });
+        var m = new THREE.Mesh(new THREE.BoxGeometry(w, h, w), mat); m.position.y = -h / 2; m.frustumCulled = false; m.renderOrder = 3; m.castShadow = false; m.receiveShadow = false;
+        var tiltG = new THREE.Group(); tiltG.rotation.order = 'YXZ'; tiltG.rotation.y = -dir; tiltG.rotation.x = tilt; tiltG.add(m); g.add(tiltG);
+        /* the motes down the lower half of the beam (the battle's own kit, in the shaft's frame) */
+        var moteN = Math.max(8, Math.round(w / U * 7));
+        var mPos = new Float32Array(moteN * 3), mSpeed = new Float32Array(moteN), mSize = new Float32Array(moteN), mPhase = new Float32Array(moteN);
+        var rng = _mulberry32(0x5A47 + Math.round((p.x || 0) * 13 + (p.z || 0) * 29));
+        for (var j = 0; j < moteN; j++) { var ang = rng() * 6.2832, rad = Math.sqrt(rng()) * w * 0.34; mPos[j * 3] = Math.cos(ang) * rad; mPos[j * 3 + 1] = rng() * h * 0.45; mPos[j * 3 + 2] = Math.sin(ang) * rad; mSpeed[j] = (0.3 + rng() * 0.45) * U; mSize[j] = 3 + rng() * 5; mPhase[j] = rng() * 6.2832; }
+        var mg = new THREE.BufferGeometry(); mg.setAttribute('position', new THREE.BufferAttribute(mPos, 3)); mg.setAttribute('aSpeed', new THREE.BufferAttribute(mSpeed, 1)); mg.setAttribute('aSize', new THREE.BufferAttribute(mSize, 1)); mg.setAttribute('aPhase', new THREE.BufferAttribute(mPhase, 1));
+        var motes = new THREE.Points(mg, new THREE.ShaderMaterial({ uniforms: uni, vertexShader: _RAY_MOTE_VS, fragmentShader: _RAY_MOTE_FS, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: true, fog: false }));
+        motes.frustumCulled = false; motes.renderOrder = 3; m.add(motes);
+        /* the pool on the ground under the base (the beam's landing) */
+        var bx = (p.x || 0) + (h / U) * Math.sin(tilt) * Math.sin(dir), bz = (p.z || 0) - (h / U) * Math.sin(tilt) * Math.cos(dir);
+        var gy = 0; try { if (H && _hqHasGround()) { var gt = _hqCaveTop(bx, bz); if (gt != null && isFinite(gt)) gy = gt; } } catch (e) {}
+        if (p.pool !== false) {
+            var pool = new THREE.Mesh(new THREE.CircleGeometry(1, 24), new THREE.ShaderMaterial({ uniforms: uni, vertexShader: _RAY_POOL_VS, fragmentShader: _RAY_POOL_FS, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: true, side: THREE.DoubleSide, fog: false }));
+            pool.rotation.x = -Math.PI / 2; pool.rotation.z = -dir;
+            pool.scale.set(w * 0.95, w * (0.7 + 0.5 * Math.sin(tilt)), 1);
+            pool.position.set((bx - (p.x || 0)) * U, (gy - (p.top || 0)) * U + 2, (bz - (p.z || 0)) * U);
+            pool.renderOrder = 3; pool.frustumCulled = false; g.add(pool);
+        }
+        var rec = { g: g, uni: uni };
+        if (H && H.tickers) H.tickers.push(function (dt, now) { uni.uTime.value = now * 0.001; });
+        return g;
+    }
+    function _hqPlaceLightShafts(room) {
+        var H = _hq, D = _hqData(), W = (typeof window !== 'undefined') ? window : {};
+        if (!H || !D || W.EW_HQ_NO_SHAFTS) return 0;
+        var rows = (D.lightShafts && D.lightShafts[H.opts.room || 'central_egress']) || [];
+        var U = _hqUnits(), n = 0;
+        rows.forEach(function (p) {
+            var g = _hqLightShaft(U, p); if (!g) return;
+            g.position.set((p.x || 0) * U, (p.top || 3) * U, (p.z || 0) * U);
+            H.propGroup.add(g); n++;
+        });
+        H.shafts = n;
+        return n;
+    }
+    /* 3.3 THE ATMOSPHERE — one Points (or LineSegments for rain) per room, ≤ HQ_LIGHT_RULES.atmos.max, halved under
+       EW_PERF_LOW: the kind comes from data.js hqRoomAtmos (a shell's `atmos`, the site's row, else the rule by kind). The
+       particles live in the vertex shader (drift, wind, wander, the wrap through the room's box, the twinkle, the ember's
+       fade); a flat box room wraps them through its walls, a field or a polar room keeps each one wandering round its own
+       spot on the ground. Embers rise off the room's warm lights (a torch, a brazier, a candle, a furnace). */
+    var HQ_ATMOS_KINDS = {
+        dust:      { color: 0xfff2dc, size: 6.0, alpha: 0.5,  vel: -0.05, wander: 0.5,  wind: 0.25, add: true,  hMax: 6,   nMul: 1.0 },
+        motes:     { color: 0xd8b4ff, size: 8.5, alpha: 0.65, vel: 0.05,  wander: 0.9,  wind: 0.15, add: true,  hMax: 9,   nMul: 0.8, twinkle: 1.0 },
+        spores:    { color: 0xb8ffb0, size: 8.0, alpha: 0.6,  vel: 0.12,  wander: 0.7,  wind: 0.3,  add: true,  hMax: 7,   nMul: 0.9, twinkle: 0.6 },
+        fireflies: { color: 0xd8ff70, size: 11,  alpha: 1.0,  vel: 0.0,   wander: 1.4,  wind: 0.1,  add: true,  hMax: 2.4, y0: 0.35, nMul: 0.35, twinkle: 2.0 },
+        embers:    { color: 0xff9a40, size: 5.5, alpha: 1.0,  vel: 0.9,   wander: 0.3,  wind: 0.2,  add: true,  hMax: 2.6, nMul: 0.6, fade: 1 },
+        snow:      { color: 0xffffff, size: 7.0, alpha: 0.9,  vel: -0.9,  wander: 0.6,  wind: 0.8,  add: false, hMax: 10,  nMul: 1.2 },
+        ash:       { color: 0x9a8a80, size: 6.5, alpha: 0.75, vel: -0.45, wander: 0.5,  wind: 0.6,  add: false, hMax: 8,   nMul: 1.0 },
+        rain:      { color: 0xbfd8ff, size: 1.0, alpha: 0.5,  vel: -11,   wander: 0.0,  wind: 1.2,  add: false, hMax: 12,  nMul: 1.5, streak: 0.5 },
+    };
+    function _hqAtmosShader(line) {
+        var vs = (line ? 'attribute float aEnd;\n' : '') + 'attribute vec3 aSeed;\nuniform float uTime; uniform vec4 uBox; uniform vec4 uMove; uniform float uSize; uniform float uTwinkle; uniform float uFade; uniform float uWrapXZ; uniform float uStreak;\nvarying float vA;\n'
+            + 'void main(){\n vec3 p = position; float t = uTime * aSeed.z; float ph = aSeed.x;\n'
+            + ' p.x += sin(t * 0.7 + ph) * uMove.y + uTime * uMove.z * aSeed.z;\n p.z += cos(t * 0.53 + ph * 1.7) * uMove.y + uTime * uMove.w * aSeed.z;\n p.y += uTime * uMove.x * aSeed.z + sin(t * 0.4 + ph) * uMove.y * 0.4;\n'
+            + ' if (uWrapXZ > 0.5) { p.x = mod(p.x + uBox.x, 2.0 * uBox.x) - uBox.x; p.z = mod(p.z + uBox.y, 2.0 * uBox.y) - uBox.y; }\n'
+            + ' else { vec2 d = p.xz - position.xz; float L = length(d); if (L > uMove.y * 2.5 + 0.001) p.xz = position.xz + d / L * (uMove.y * 2.5); }\n'
+            + ' float base = (uWrapXZ > 0.5) ? uBox.z : position.y;\n float fy = mod(p.y - base, uBox.w); p.y = base + fy; float ny = fy / uBox.w;\n'
+            + ' float a = 1.0; if (uFade > 0.5) a = 1.0 - ny; a *= smoothstep(0.0, 0.06, ny) * smoothstep(1.0, 0.94, ny);\n'
+            + ' if (uTwinkle > 0.0) a *= 0.3 + 0.7 * pow(0.5 + 0.5 * sin(uTime * uTwinkle * 1.7 + ph * 5.0), 3.0);\n vA = a;\n'
+            + (line ? ' p.y -= uStreak * aEnd;\n' : '')
+            + ' vec4 mv = modelViewMatrix * vec4(p, 1.0);\n'
+            + (line ? '' : ' gl_PointSize = uSize * aSeed.y * clamp(600.0 / max(1.0, -mv.z), 0.25, 3.0);\n')
+            + ' gl_Position = projectionMatrix * mv;\n}';
+        var fs = 'uniform vec3 uColor; uniform float uAlpha; uniform float uAdd;\nvarying float vA;\nvoid main(){\n'
+            + (line ? ' float a = vA * uAlpha;\n' : ' float d = length(gl_PointCoord - 0.5) * 2.0; float a = smoothstep(1.0, 0.25, d) * vA * uAlpha;\n')
+            + ' if (a < 0.004) discard;\n gl_FragColor = (uAdd > 0.5) ? vec4(uColor * a, a) : vec4(uColor, a);\n}';
+        return { vs: vs, fs: fs };
+    }
+    function _hqBuildAtmos(room) {
+        var H = _hq, W = (typeof window !== 'undefined') ? window : {};
+        if (!H || W.EW_HQ_NO_ATMOS || typeof hqRoomAtmos !== 'function') return null;
+        var roomId = H.opts.room || 'central_egress';
+        var a = null; try { a = hqRoomAtmos(roomId, room); } catch (e) { a = null; }
+        if (!a) return null;
+        var K = HQ_ATMOS_KINDS[a.kind]; if (!K) return null;
+        var LR = _hqLightRules(), AR = LR.atmos || {}, U = _hqUnits(), S = room.shell || {}, D = _hqData();
+        /* embers rise off the warm lights; a room without one breathes dust instead */
+        var emitters = [];
+        if (a.kind === 'embers') {
+            (H.props || []).forEach(function (pr) {
+                var cat = D.catalogue[pr.key]; if (!cat || !cat.light || !/torch|candle|brazier|campfire|furnace|boiler|fire|lantern|forge|hearth|pyre/.test(pr.key)) return;
+                var c = new THREE.Color(cat.light.color != null ? cat.light.color : 0xffd9a0); if (c.r < c.b) return;
+                var wp = new THREE.Vector3(); pr.grp.getWorldPosition(wp);
+                emitters.push([wp.x, wp.y + (cat.light.y || 0.5) * U, wp.z]);
+            });
+            if (!emitters.length) { K = HQ_ATMOS_KINDS.dust; a = Object.assign({}, a, { kind: 'dust' }); }
+        }
+        var m2 = 0; try { m2 = (typeof hqRoomFloorM2 === 'function') ? hqRoomFloorM2(room, roomId) : 0; } catch (e) { m2 = 0; }
+        if (!(m2 > 0)) m2 = (room.kind === 'box') ? (S.w || 10) * (S.d || 10) : Math.PI * Math.pow(S.rOut || 24, 2);
+        var n = Math.round(Math.max(AR.min || 90, Math.min(AR.max || 600, m2 * (AR.perM2 || 0.7))) * (K.nMul || 1));
+        if (a.n) n = Math.round(a.n);
+        if (W.EW_PERF_LOW) n = Math.round(n / 2);
+        if (a.kind === 'embers') n = Math.min(n, emitters.length * 24);
+        if (n < 4) return null;
+        var isBox = room.kind === 'box', flat = !(H.terrain || (H.site && H.site.cave) || H.planet);
+        var hx = isBox ? (S.w || 10) / 2 + (S.open ? 8 : -0.3) : ((S.ring3 && S.ring3.outer) || S.rOut || 24);
+        var hz = isBox ? (S.d || 10) / 2 + (S.open ? 8 : -0.3) : hx;
+        var y0 = (K.y0 != null) ? K.y0 : 0.15;
+        var roomH = isBox ? (S.h || 9) : ((S.wallH || 6) + (S.upperWallH || 0));
+        var Hh = Math.min(roomH - 0.2, K.hMax || 6); if (a.kind === 'rain' || a.kind === 'snow' || a.kind === 'ash') Hh = Math.min(roomH, K.hMax);
+        var wrap = isBox && flat && a.kind !== 'embers' && a.kind !== 'fireflies';
+        var rng = _mulberry32(0xA7A0 + roomId.length * 131 + n);
+        var line = !!K.streak, per = line ? 2 : 1;
+        var pos = new Float32Array(n * per * 3), seed = new Float32Array(n * per * 3), end = line ? new Float32Array(n * per) : null;
+        for (var i = 0; i < n; i++) {
+            var px, py, pz;
+            if (a.kind === 'embers') { var em = emitters[i % emitters.length]; px = em[0] + (rng() - 0.5) * 0.3 * U; pz = em[2] + (rng() - 0.5) * 0.3 * U; py = em[1] + rng() * Hh * U; }
+            else {
+                if (isBox) { px = (rng() * 2 - 1) * hx * U; pz = (rng() * 2 - 1) * hz * U; }
+                else { var ar = rng() * 6.2832, rr = Math.sqrt(rng()) * hx * U; px = Math.cos(ar) * rr; pz = Math.sin(ar) * rr; }
+                var gy = 0; if (!flat) { try { var gt = _hqCaveTop(px / U, pz / U); if (gt != null && isFinite(gt)) gy = gt; } catch (e) {} }
+                py = (gy + y0) * U + rng() * Hh * U;
+            }
+            var s0 = rng() * 6.2832, s1 = 0.6 + rng() * 0.8, s2 = 0.7 + rng() * 0.6;
+            for (var e2 = 0; e2 < per; e2++) { var k = (i * per + e2); pos[k * 3] = px; pos[k * 3 + 1] = py; pos[k * 3 + 2] = pz; seed[k * 3] = s0; seed[k * 3 + 1] = s1; seed[k * 3 + 2] = s2; if (end) end[k] = e2; }
+        }
+        var geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('aSeed', new THREE.BufferAttribute(seed, 3));
+        if (end) geo.setAttribute('aEnd', new THREE.BufferAttribute(end, 1));
+        var sh = _hqAtmosShader(line), wind = (a.wind != null ? a.wind : 1) * (K.wind || 0), wdir = rng() * 6.2832;
+        var uni = {
+            uTime: { value: 0 }, uColor: { value: new THREE.Color((a.color != null) ? a.color : K.color) }, uAlpha: { value: K.alpha }, uAdd: { value: K.add ? 1 : 0 },
+            uBox: { value: new THREE.Vector4(hx * U, hz * U, y0 * U, Math.max(0.5, Hh) * U) },
+            uMove: { value: new THREE.Vector4((a.speed != null ? a.speed : 1) * K.vel * U, (K.wander || 0) * U, Math.cos(wdir) * wind * U, Math.sin(wdir) * wind * U) },
+            uSize: { value: K.size * ((W.devicePixelRatio || 1) > 1.5 ? 1.4 : 1) }, uTwinkle: { value: K.twinkle || 0 }, uFade: { value: K.fade ? 1 : 0 }, uWrapXZ: { value: wrap ? 1 : 0 }, uStreak: { value: (K.streak || 0) * U },
+        };
+        var mat = new THREE.ShaderMaterial({ uniforms: uni, vertexShader: sh.vs, fragmentShader: sh.fs, transparent: true, depthWrite: false, depthTest: true, fog: false, blending: K.add ? THREE.AdditiveBlending : THREE.NormalBlending });
+        var obj = line ? new THREE.LineSegments(geo, mat) : new THREE.Points(geo, mat);
+        obj.frustumCulled = false; obj.renderOrder = 4; obj.name = 'atmos:' + a.kind; obj._ew_hqPart = 'fx';
+        H.propGroup.add(obj);
+        H.atmos = { kind: a.kind, n: n, obj: obj, uni: uni };
+        H.tickers.push(function (dt, now) { uni.uTime.value = now * 0.001; });
+        return H.atmos;
+    }
     function _hqFrame() {
         var H = _hq; if (!H || !renderer) return;
         var now = performance.now();
@@ -51535,6 +52065,7 @@ const ThreeRenderer = (function () {
         _hqTickCamera(dt);
         _hqTickWorld(dt, now);
         if (!H.ready) _hqGateTick(H, now);
+        if (H.shadows) _hqShadowTick(H, dt);   // THE LIGHT PASS 2.1: the frustum follows the walker, the depth pass pulses (autoUpdate is off)
         var noPost = (typeof window !== 'undefined' && window.EW_HQ_NO_POST);
         if (!noPost && ThreePost && ThreePost.renderScene) ThreePost.renderScene(H.scene, H.camera);
         else renderer.render(H.scene, H.camera);
@@ -51653,7 +52184,7 @@ const ThreeRenderer = (function () {
                   doors: [], counters: [], chars: [], blockers: [], landings: [], player: null, fxPulse: [], site: null, sky: null, setting: null, gallery: null,
                   rails: [], ramps: [], ride: null, finds: [], findLights: 0, climbs: [], climbNear: null,
                   portal: { drawn: false, ghost: null, aim: null, placed: {}, lastKey: '', hold: null, cross: null, issued: false, sight: null, fAt: 0, fFired: false, slot: 'a', vm: null },
-                  tickers: [], propLights: Math.max(0, HQ_PROP_LIGHT_MAX - HQ_BATTLE_ROOM_LIGHTS), props: [], focus: null, tabletops: [],
+                  tickers: [], propLights: Math.max(0, HQ_PROP_LIGHT_MAX - HQ_BATTLE_ROOM_LIGHTS), props: [], focus: null, tabletops: [], kicks: [], seats: [], sways: [],
                   keys: {}, drag: null, lastDragAt: 0, fp: false, paused: true, ready: false, t0: 0, lastMs: 0, lastDebug: 0,
                   cam: { yaw: 0, pitch: 0, dist: 0, init: false }, targetKey: '', w: 0, h: 0, dirty: false };
         if (!R.site) H.floorHole = { x0: R.T.x0, x1: R.T.x0 + R.T.N * C, z0: R.T.z0, z1: R.T.z0 + R.T.N * C };
@@ -51743,6 +52274,7 @@ const ThreeRenderer = (function () {
             finds: [], findLights: 0,   /* THE FINDS (9.1, 2026-09-15): the takeable objects standing in the room (_hqPlaceFinds) and the count of their point lights */
             portal: { drawn: false, ghost: null, aim: null, placed: {}, lastKey: '', hold: null, cross: null, issued: !!(opts.portal && opts.portal.issued), sight: null, fAt: 0, fFired: false, slot: (opts.portal && (opts.portal.slot === 'b')) ? 'b' : 'a', vm: null },   /* rev 4: `vm` = the first-person viewmodel; rev 5: `slot` = the LAST button pressed (the sights + the selector are gone — LEFT = A, RIGHT = B) */   /* THE DOOR GUN (9.5, rev 13; rev 2 2026-09-15: `hold` = the mouth you came out of, `cross` = the entry's speed): the drawn state, the ghost, the last aim, the placed door records by slot */
             tickers: [], propLights: 0,   /* Phase 8 (2026-09-14): per-frame callbacks registered by procs (the orb, the torches, the shaft); the count of catalogue `light`s placed */
+            kicks: [], seats: [], sways: [], shadows: null, atmos: null, heightFog: null, ao: null, keyLight: null, keyDir: null, shafts: 0,   /* THE PREMIUM POLISH (2026-09-21): the kickable bodies, the seats, the swaying props, the light pass's records */
             props: [], focus: null,   /* props: { key, grp } per placed catalogue prop (the terminal's camera finds the CRT by key); focus: the screen push (_hqFocusScreen) */
             keys: {}, drag: null, lastDragAt: 0, fp: false, paused: false, ready: false, t0: performance.now(), lastMs: 0, lastDebug: 0,
             cam: { yaw: 0, pitch: -0.24, dist: 3.6, init: false }, targetKey: '', w: 0, h: 0, dirty: true,
@@ -51777,7 +52309,7 @@ const ThreeRenderer = (function () {
                (the user: "I have to turn the brightness all the way up in some places that are dark") */
             var LRo = _hqLightRules().open;
             sc.add(new THREE.HemisphereLight(skyC.clone().lerp(new THREE.Color(0xffffff), nightO ? 0.22 : 0.45), 0x2a2620, nightO ? LRo.nightHemi : LRo.dayHemi));
-            var sun = new THREE.DirectionalLight(nightO ? 0xaabfe0 : 0xfff1d6, nightO ? LRo.nightSun : LRo.daySun); sun.position.set(0.45, 1, 0.3).multiplyScalar(1000); sc.add(sun);
+            var sun = new THREE.DirectionalLight(nightO ? 0xaabfe0 : 0xfff1d6, nightO ? LRo.nightSun : LRo.daySun); sun.position.set(0.45, 1, 0.3).multiplyScalar(1000); sc.add(sun); _hq.keyLight = sun;
             var ofill = new THREE.DirectionalLight(_hqLightRules().fillColor, _hqLightRules().fill); ofill.position.set(-0.55, 0.45, -0.4).multiplyScalar(1000); sc.add(ofill);   // the cool fill from behind: no black side on a face
             var mplC = (S.mood && S.mood.light != null) ? S.mood.light : 0xfff0d0;
             (S.lights || []).forEach(function (Lt) {
@@ -51797,7 +52329,7 @@ const ThreeRenderer = (function () {
                torches carry the vibe, the key + a cool fill keep every face readable */
             var LRb = _hqLightRules(); amb = Math.max(amb, LRb.ambientFloor);
             sc.add(new THREE.HemisphereLight(0xd9d2c0, 0x1c1a1e, 0.5 * amb));
-            var bxk = new THREE.DirectionalLight(0xe8ecf5, 0.22 * amb); bxk.position.set(0.3, 1, 0.2).multiplyScalar(1000); sc.add(bxk);
+            var bxk = new THREE.DirectionalLight(0xe8ecf5, 0.22 * amb); bxk.position.set(0.3, 1, 0.2).multiplyScalar(1000); sc.add(bxk); _hq.keyLight = bxk;
             var bxf = new THREE.DirectionalLight(LRb.fillColor, LRb.fill * amb); bxf.position.set(-0.55, 0.45, -0.4).multiplyScalar(1000); sc.add(bxf);
             var lightsAt = (S.lights && S.lights.length) ? S.lights : [S.light || { x: 0, z: 0 }];
             var plC = (S.mood && S.mood.light != null) ? S.mood.light : 0xe6eeff;   // a site room's mood (blue under the collider, yellow in the Backrooms)
@@ -51812,7 +52344,7 @@ const ThreeRenderer = (function () {
         } else if (room.kind === 'bay') {
             /* a fluorescent corridor: cooler, flatter, point lights along the centreline */
             sc.add(new THREE.HemisphereLight(0xe3e9f2, 0x24222a, 0.74));
-            var bkey = new THREE.DirectionalLight(0xf2f5ff, 0.3); bkey.position.set(0.2, 1, 0.3).multiplyScalar(1000); sc.add(bkey);
+            var bkey = new THREE.DirectionalLight(0xf2f5ff, 0.3); bkey.position.set(0.2, 1, 0.3).multiplyScalar(1000); sc.add(bkey); _hq.keyLight = bkey;
             var bmid = (S.rIn + S.rOut) / 2, bspan = S.arc[1] - S.arc[0];
             /* one point light per ~6 m of a short bay; the CONTAINMENT RING
                (plan 5.4a stage 2, up to ~130 m of hallway) spaces them ~12 m
@@ -51826,7 +52358,7 @@ const ThreeRenderer = (function () {
             }
         } else {
             sc.add(new THREE.HemisphereLight(0xf1e6cf, 0x2d2a30, 0.78));
-            var key = new THREE.DirectionalLight(0xfff0d8, 0.42); key.position.set(0.35, 1, 0.25).multiplyScalar(1000); sc.add(key);
+            var key = new THREE.DirectionalLight(0xfff0d8, 0.42); key.position.set(0.35, 1, 0.25).multiplyScalar(1000); sc.add(key); _hq.keyLight = key;
             var fill = new THREE.DirectionalLight(0x9fb4c8, 0.16); fill.position.set(-0.6, 0.5, -0.4).multiplyScalar(1000); sc.add(fill);
             [[90, 12], [270, 12], [0, 12], [180, 12]].forEach(function (pp) {
                 var pl = new THREE.PointLight(0xffe0bd, 0.5, 26 * U, 2);
@@ -51886,6 +52418,15 @@ const ThreeRenderer = (function () {
         try { _hqSpawnPopulation(room, opts); } catch (e) { console.error('[HQ] population failed', e); }
         /* SKATEBOARDING (9.8): the rider's record — and the board through a door */
         try { _hqRideArm(opts); } catch (e) { console.error('[HQ] ride failed', e); }
+        /* THE PREMIUM POLISH (PREMIUM_POLISH_PLAN, 2026-09-21) — after the build, so the light knows the room's box and its
+           field: THE LIGHT PASS (the key's rig + the ONE shadow map + the room-box AO), THE AIR PASS (the height fog, the
+           light shafts, the atmosphere) */
+        try { _hqLightArm(room); } catch (e) { console.warn('[HQ] the light rig failed', e); }
+        try { _hqShadowArm(room); } catch (e) { console.warn('[HQ] the shadows failed', e); }
+        try { _hqAoArm(room); } catch (e) { console.warn('[HQ] the AO failed', e); }
+        try { _hqHeightFogArm(room); } catch (e) { console.warn('[HQ] the height fog failed', e); }
+        try { _hqPlaceLightShafts(room); } catch (e) { console.warn('[HQ] the light shafts failed', e); }
+        try { _hqBuildAtmos(room); } catch (e) { console.warn('[HQ] the atmosphere failed', e); }
         /* face the camera the way the spawn faces */
         var sp = room.spawn || { face: 0 };
         _hq.cam.yaw = _hqRad(sp.face || 0);
@@ -51957,6 +52498,7 @@ const ThreeRenderer = (function () {
     }
     function _hqLeave(opts) {
         var H = _hq; if (!H) return;
+        _ewHeightFogSet(0, 1, 0, 0); _HQ_AO.w = 0;   // THE PREMIUM POLISH: the height fog and the room-box AO are the building's alone
         if (opts && opts.dissolve) { try { _hqDissolveStart(H, (typeof opts.dissolve === 'object') ? opts.dissolve : null); } catch (e) { console.warn('[HQ] the dissolve did not start', e); } }
         _hqUnbindInput();
         _hq = null;
@@ -52169,6 +52711,12 @@ const ThreeRenderer = (function () {
         },
         interact: _hqInteract,
         toggleView: _hqToggleView,
+        /* THE PREMIUM POLISH (2026-09-21): sit on / stand from a seat (map.js E), the polish records for the probes */
+        sit: function (id) { return _hqSit(id); },
+        sitting: function () { return !!(_hq && _hq.player && _hq.player.sit); },
+        seats: function () { return _hq ? _hq.seats.map(function (st) { return { id: st.id, key: st.key, x: +st.x.toFixed(2), z: +st.z.toFixed(2), y: +st.y.toFixed(2) }; }) : []; },
+        kicks: function () { return _hq ? _hq.kicks.map(function (k) { return { key: k.key, x: +k.x.toFixed(2), z: +k.z.toFixed(2), v: +Math.hypot(k.vx, k.vz).toFixed(2) }; }) : []; },
+        polish: function () { var H = _hq; if (!H) return null; return { shadows: H.shadows ? { size: H.shadows.light.shadow.mapSize.width, Rf: +(H.shadows.Rf / _hqUnits()).toFixed(1), everyN: H.shadows.everyN } : null, ao: H.ao, heightFog: H.heightFog, atmos: H.atmos ? { kind: H.atmos.kind, n: H.atmos.n } : null, shafts: H.shafts || 0, sways: H.sways.length, kicks: H.kicks.length, seats: H.seats.length, key: H.keyDir ? { x: +H.keyDir.x.toFixed(3), y: +H.keyDir.y.toFixed(3), z: +H.keyDir.z.toFixed(3) } : null }; },
         /* THE ROUNDS (2026-09-19): the walkers on their loops, the nav lattice, the traveller ledger (probes) */
         roamers: function () { return (_hq && _hq.rounds) ? _hq.rounds.map(function (c) { var rd = c.rounds || {}; return { id: c.id, race: c.race, x: +c.x.toFixed(2), z: +c.z.toFixed(2), y: +c.y.toFixed(2), state: rd.state || null, stop: rd.i, stops: (rd.stops || []).map(function (s) { return s.kind + (s.doorId ? ':' + s.doorId : ''); }), moving: !!c.moving, away: !!c.away }; }) : []; },
         nav: function () { var N = _hq && _hq.nav; return N ? { cell: N.cell, nx: N.nx, nz: N.nz, done: N.done, walk: N.walk, ms: N.ms || null } : null; },
@@ -52732,6 +53280,7 @@ const ThreeRenderer = (function () {
     }
     /* ── lifecycle ─────────────────────────────────────────────────────── */
     function _menuEnter(opts) {
+        _ewHeightFogSet(0, 1, 0, 0); _HQ_AO.w = 0;   // THE PREMIUM POLISH: the menu scene is a plain place
         opts = opts || {};
         var host = opts.host;
         if (!host || typeof THREE === 'undefined') return false;

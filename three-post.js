@@ -20,6 +20,7 @@ const ThreePost = (function () {
     var BLOOM_USER_RADIUS    = 0.6;    // how far the glow spreads
     var BLOOM_USER_THRESHOLD = 0.72;   // higher → only the brightest surfaces bloom (less daytime over-bloom on map/spawn zones)
     var BLOOM_MAX_STRENGTH   = 1.6;    // pause-menu slider ceiling
+    var HQ_BLOOM_THRESHOLD = 0.86, HQ_BLOOM_RADIUS = 0.5;   // THE POST PASS 7.2 (2026-09-21): the building's bloom crosses only on emissive surfaces (a look's bloomThr / bloomRadius override)
     try {
         // _v2 key: the default changed (1.0 → 0.35), so ignore stale saved values
         var _bloomSaved = (typeof localStorage !== 'undefined') ? localStorage.getItem('ew_bloomStrength_v2') : null;
@@ -65,7 +66,7 @@ const ThreePost = (function () {
             _expEased += (_exposureUser - _expEased) * Math.min(1, dt * EXPOSURE_EASE_K);
             if (Math.abs(_expEased - _exposureUser) < 0.002) _expEased = _exposureUser;
         } else _expEaseAt = 0;
-        return _lkNum('exposure', _expEased);
+        return _lkNum('exposure', _expEased) * ((_expCtx === 'hq') ? _ae.gain : 1);   // THE AUTO EXPOSURE (7.4): the building's adaptive gain
     }
     function setExposureContext(ctx) {
         ctx = EXPOSURE_CTX_KEYS[ctx] ? ctx : 'battle';
@@ -76,6 +77,57 @@ const ThreePost = (function () {
         _expEaseAt = 0;   // the ease runs from the value on screen to this place's
     }
     function getExposureContext() { return _expCtx; }
+    /* ══ THE POST PASS 7.4 — THE AUTO EXPOSURE (PREMIUM_POLISH_PLAN, 2026-09-21) ══
+       The eye ADAPTS in the building: every AE_INTERVAL_MS the composer's read buffer (the frame before the retro pass) is
+       downsampled to 16 × 16 by one tiny shader draw, read back (1 KB), and its centre-weighted luminance drives a gain of
+       ±½ stop (AE_MIN … AE_MAX) round the room's setting, eased over ~1.2 s — out of the tunnel into the flight line blinds
+       for a beat, then settles. The gain multiplies _expLk()'s value ONLY while the exposure context is the building's;
+       the battle's authored day / night is untouched. Off: window.EW_NO_AUTO_EXPOSURE, localStorage ew_auto_exposure = 'off',
+       EW_PERF_LOW (no composer). The measurement is of the TONE-MAPPED frame, so the loop is a negative feedback that
+       converges (a brighter gain reads brighter and asks for less). */
+    var AE_ON = true;
+    try { if (typeof localStorage !== 'undefined' && localStorage.getItem('ew_auto_exposure') === 'off') AE_ON = false; } catch (e) {}
+    var AE_INTERVAL_MS = 220, AE_TARGET = 0.42, AE_MIN = 0.78, AE_MAX = 1.32, AE_EASE = 0.9;
+    var _ae = { gain: 1, target: 1, last: 0, tick: 0, rt: null, scene: null, cam: null, mat: null, buf: null, lum: 0 };
+    function _aeEnabled() { return AE_ON && _expCtx === 'hq' && !(typeof window !== 'undefined' && (window.EW_NO_AUTO_EXPOSURE || window.EW_PERF_LOW)); }
+    function _aeMeasure(now) {
+        if (!_aeEnabled() || !_composer || !_renderer) return;
+        if (now - _ae.last < AE_INTERVAL_MS) return; _ae.last = now;
+        var src = _composer.readBuffer && _composer.readBuffer.texture; if (!src) return;
+        if (!_ae.rt) {
+            _ae.rt = new THREE.WebGLRenderTarget(16, 16, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBAFormat, depthBuffer: false, stencilBuffer: false });
+            _ae.scene = new THREE.Scene(); _ae.cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+            _ae.mat = new THREE.ShaderMaterial({ uniforms: { tDiffuse: { value: null } },
+                vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
+                fragmentShader: 'uniform sampler2D tDiffuse; varying vec2 vUv; void main(){ vec3 c = vec3(0.0); for (int i = 0; i < 4; i++) for (int j = 0; j < 4; j++) c += texture2D(tDiffuse, vUv + (vec2(float(i), float(j)) - 1.5) * 0.0125).rgb; gl_FragColor = vec4(c / 16.0, 1.0); }',
+                depthTest: false, depthWrite: false });
+            _ae.scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), _ae.mat));
+            _ae.buf = new Uint8Array(16 * 16 * 4);
+        }
+        _ae.mat.uniforms.tDiffuse.value = src;
+        var prevRT = _renderer.getRenderTarget(), prevAuto = _renderer.autoClear;
+        try {
+            _renderer.setRenderTarget(_ae.rt); _renderer.autoClear = true; _renderer.render(_ae.scene, _ae.cam);
+            _renderer.readRenderTargetPixels(_ae.rt, 0, 0, 16, 16, _ae.buf);
+        } catch (e) { AE_ON = false; return; }
+        finally { _renderer.setRenderTarget(prevRT); _renderer.autoClear = prevAuto; }
+        var sum = 0, wsum = 0, b = _ae.buf;
+        for (var y = 0; y < 16; y++) for (var x = 0; x < 16; x++) {
+            var i = (y * 16 + x) * 4, lum = (0.2126 * b[i] + 0.7152 * b[i + 1] + 0.0722 * b[i + 2]) / 255;
+            var w = 1 - 0.6 * Math.hypot(x / 15 - 0.5, y / 15 - 0.5) / 0.707;
+            sum += lum * w; wsum += w;
+        }
+        _ae.lum = wsum ? sum / wsum : AE_TARGET;
+        _ae.target = Math.max(AE_MIN, Math.min(AE_MAX, Math.pow(AE_TARGET / Math.max(0.03, _ae.lum), 0.55)));
+    }
+    function _aeTick(now) {
+        var dt = _ae.tick ? Math.min(0.1, Math.max(0, (now - _ae.tick) / 1000)) : 0.016; _ae.tick = now;
+        var want = _aeEnabled() ? _ae.target : 1;
+        _ae.gain += (want - _ae.gain) * Math.min(1, dt * (_aeEnabled() ? AE_EASE : 3));
+        if (Math.abs(_ae.gain - want) < 0.001) _ae.gain = want;
+    }
+    function getAutoExposure() { return { on: _aeEnabled(), gain: _ae.gain, target: _ae.target, lum: _ae.lum }; }
+    function setAutoExposure(on) { AE_ON = !!on; try { if (typeof localStorage !== 'undefined') localStorage.setItem('ew_auto_exposure', on ? 'on' : 'off'); } catch (e) {} }
 
     // ── HD-2D upgrade state (filmic tone / shadows / tilt-shift DoF) ────
     // Filmic tone mapping (ACESFilmic) — richer contrast + highlight rolloff.
@@ -2098,6 +2150,7 @@ const ThreePost = (function () {
         var prevNight = _cinematicPass ? _cinematicPass.material.uniforms['uNightGrade'].value : 0;
         var prevExposure = _renderer.toneMappingExposure;
         var prevBloom = _bloomPass ? _bloomPass.strength : 0;
+        var prevThr = _bloomPass ? _bloomPass.threshold : 0, prevRad = _bloomPass ? _bloomPass.radius : 0;
         try {
             rp.scene = scene; rp.camera = cam;
             if (_dofPassH) _dofPassH.enabled = false;
@@ -2112,9 +2165,18 @@ const ThreePost = (function () {
                 _retroPass.material.uniforms['tMask'].value = null;
                 _retroPass.material.uniforms['uMaskMode'].value = 0.0;
             }
-            if (_bloomPass && _bloomPass.enabled) _bloomPass.strength = Math.max(BLOOM_USER_STRENGTH, 0.42);
+            if (_bloomPass && _bloomPass.enabled) {
+                /* THE POST PASS 7.2 (2026-09-21): in the building the bloom reads as LIGHT, not haze — the threshold rides the
+                   look (`bloomThr`, default HQ_BLOOM_THRESHOLD: only the emissive surfaces — the neon, the torches, the ley
+                   veins, the screens — cross it, a white wall never does), the radius too (`bloomRadius`), the strength the look's */
+                _bloomPass.strength = Math.max(_lkNum('bloom', BLOOM_USER_STRENGTH), 0.42);
+                _bloomPass.threshold = (_look && typeof _look.bloomThr === 'number') ? _look.bloomThr : HQ_BLOOM_THRESHOLD;
+                _bloomPass.radius = (_look && typeof _look.bloomRadius === 'number') ? _look.bloomRadius : HQ_BLOOM_RADIUS;
+            }
+            var _aeNow = performance.now(); _aeTick(_aeNow);
             _renderer.toneMappingExposure = _expLk() * (_filmic ? FILMIC_EXPOSURE_COMP : 1.0);
             _composer.render();
+            _aeMeasure(_aeNow);   // THE AUTO EXPOSURE (7.4): read the frame just drawn, every AE_INTERVAL_MS
         } finally {
             rp.scene = prevScene;
             if (_dofPassH) _dofPassH.enabled = prevDofH;
@@ -2123,7 +2185,7 @@ const ThreePost = (function () {
                 _cinematicPass.enabled = prevCine;
                 _cinematicPass.material.uniforms['uNightGrade'].value = prevNight;
             }
-            if (_bloomPass) _bloomPass.strength = prevBloom;
+            if (_bloomPass) { _bloomPass.strength = prevBloom; _bloomPass.threshold = prevThr; _bloomPass.radius = prevRad; }
             _renderer.toneMappingExposure = prevExposure;
         }
     }
@@ -2505,6 +2567,7 @@ const ThreePost = (function () {
         setRetroFogHorizon: setRetroFogHorizon,
         getRetroFogHorizon: getRetroFogHorizon,
         setSceneLook: setSceneLook,
+        getAutoExposure: getAutoExposure, setAutoExposure: setAutoExposure,   // THE POST PASS 7.4
         getSceneLookOwned: getSceneLookOwned,
         setExposureContext: setExposureContext,
         getExposureContext: getExposureContext,

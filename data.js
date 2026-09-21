@@ -15498,8 +15498,8 @@ const HQ_ROOM_LOOKS = {
     mall: { name: 'THE MALL', retro: { enabled: true, preset: 'faded', pixelSize: 1, ditherStrength: 0.45, grain: 0.055, tintAmount: 0.4, levels: 18 }, cin: { vignette: true, vigAmount: 0.3, vigSize: 0.6 }, nightMood: 0.1, bloom: 0.22, dof: 0 },
     /* CYBERPUNK CITY (2026-09-17): the reskin's print — the rain-slick night, magenta / cyan in the puddles, bloomed, a hard vignette */
     /* THE STRIP (2026-09-17): the boulevard's print — the neon night, warmer than the grid's, bloomed, a soft vignette */
-    strip: { name: 'THE STRIP', retro: { enabled: true, preset: 'dream', pixelSize: 1, ditherStrength: 0.4, grain: 0.03, tintAmount: 0.4, levels: 24 }, cin: { vignette: true, vigAmount: 0.4, vigSize: 0.5 }, nightMood: 0.7, bloom: 0.42 },
-    neon: { name: 'CYBERPUNK CITY', retro: { enabled: true, preset: 'dream', pixelSize: 1, ditherStrength: 0.42, grain: 0.035, tintAmount: 0.45, levels: 24 }, cin: { vignette: true, vigAmount: 0.5, vigSize: 0.46 }, nightMood: 0.9, bloom: 0.55 },
+    strip: { name: 'THE STRIP', retro: { enabled: true, preset: 'dream', pixelSize: 1, ditherStrength: 0.4, grain: 0.03, tintAmount: 0.4, levels: 24 }, cin: { vignette: true, vigAmount: 0.4, vigSize: 0.5 }, nightMood: 0.7, bloom: 0.42, bloomThr: 0.6, bloomRadius: 0.62 },
+    neon: { name: 'CYBERPUNK CITY', retro: { enabled: true, preset: 'dream', pixelSize: 1, ditherStrength: 0.42, grain: 0.035, tintAmount: 0.45, levels: 24 }, cin: { vignette: true, vigAmount: 0.5, vigSize: 0.46 }, nightMood: 0.9, bloom: 0.55, bloomThr: 0.58, bloomRadius: 0.66 },
     /* D.U.M.B. (2026-09-17 — complex candidate #5): the base under the base — the security camera's print: cold fluorescent teal-white, hard dither, a tight vignette, red in the shadows; the war room darker and greener (the board's glow); the bunker warm (his tungsten); the ring blue under the beam */
     garage: { name: 'THE GARAGE', retro: { enabled: true, preset: 'amber', pixelSize: 1, ditherStrength: 0.42, grain: 0.035, tintAmount: 0.35, levels: 22 }, cin: { vignette: true, vigAmount: 0.45, vigSize: 0.5 }, nightMood: 0.35, bloom: 0.22 },   // THE ROUND GARAGE (2026-09-20): sodium light, a little grain, the amber grade
     dumb: { name: 'D.U.M.B.', retro: { enabled: true, preset: 'teal', pixelSize: 1, ditherStrength: 0.48, grain: 0.045, tintAmount: 0.42, levels: 20 }, cin: { vignette: true, vigAmount: 0.5, vigSize: 0.48 }, nightMood: 0.45, bloom: 0.2 },
@@ -20501,11 +20501,11 @@ const DOOR_HQ = {
            backrest is the tallest band's centroid, the front is the other way) and
            the model is turned so that front is +Z, the placer's contract. Nobody sits
            with the chair's back between them and the desk again. */
-        teal_chair:        { file: 'Meshy_AI_a_teal_office_chair_0903105124_texture.glb',             h: 0.96, foot: 0.32, front: 'back' },
-        office_chair:      { file: 'Meshy_AI_an_office_chair_0903105134_texture.glb',                 h: 0.96, foot: 0.32, front: 'back' },
-        folding_chair:     { file: 'Meshy_AI_a_folding_chair_0903105155_texture.glb',                 h: 0.84, foot: 0.28, front: 'back' },
-        curved_couch:      { file: 'Meshy_AI_a_curved_couch_0903105529_texture.glb',                  span: 2.6, foot: 1.0, front: 'back' },
-        curved_office_couch:{ file: 'Meshy_AI_a_curved_office_couch_0903105539_texture.glb',          span: 2.6, foot: 1.0, front: 'back' },
+        teal_chair:        { file: 'Meshy_AI_a_teal_office_chair_0903105124_texture.glb',             h: 0.96, foot: 0.32, front: 'back', seat: 0.46 },
+        office_chair:      { file: 'Meshy_AI_an_office_chair_0903105134_texture.glb',                 h: 0.96, foot: 0.32, front: 'back', seat: 0.46 },
+        folding_chair:     { file: 'Meshy_AI_a_folding_chair_0903105155_texture.glb',                 h: 0.84, foot: 0.28, front: 'back', seat: 0.44 },
+        curved_couch:      { file: 'Meshy_AI_a_curved_couch_0903105529_texture.glb',                  span: 2.6, foot: 1.0, front: 'back', seat: 0.42 },
+        curved_office_couch:{ file: 'Meshy_AI_a_curved_office_couch_0903105539_texture.glb',          span: 2.6, foot: 1.0, front: 'back', seat: 0.42 },
         filing_cabinet:    { file: 'Meshy_AI_a_filing_cabinet_0903105233_texture.glb',                h: 1.32, foot: 0.40, wall: true },
         round_cabinet:     { file: 'Meshy_AI_a_round_filing_cabinet_0903105248_texture.glb',          h: 1.10, foot: 0.45 },
         office_locker:     { file: 'Meshy_AI_an_office_locker_0903110307_texture.glb',                h: 1.85, foot: 0.40, wall: true },
@@ -20547,7 +20547,7 @@ const DOOR_HQ = {
         ship_cannon:       { file: 'Meshy_AI_iron_canon_0912231022_texture.glb',                     base: 'misc', span: 2.2, foot: 0.9, block: true },          // muzzle −X at face 0: face 0 = run out to port (the west wall), 180 = to starboard
         sea_chest:         { file: 'Meshy_AI_pirate_treasure_chest_0912231220_texture.glb',         base: 'misc', h: 0.7, foot: 0.5, block: true },             // lock +Z
         ship_anchor:       { file: 'Meshy_AI_ship_anchor_0912231033_texture.glb',                   base: 'misc', h: 1.9, foot: 0.5, block: true },             // the spare, stowed on its flukes
-        ship_lantern:      { file: 'Meshy_AI_a_hanging_lantern_0912231043_texture.glb',             base: 'misc', h: 0.5, foot: 0, ceil: true, glow: { y: -0.25, size: 1.4, color: 0xffb060 }, light: { color: 0xffa860, intensity: 0.75, dist: 7, y: -0.3 } },   // hangs from the beams; the deck's yard lanterns, below
+        ship_lantern:      { file: 'Meshy_AI_a_hanging_lantern_0912231043_texture.glb',             base: 'misc', h: 0.5, foot: 0, ceil: true, glow: { y: -0.25, size: 1.4, color: 0xffb060 }, light: { color: 0xffa860, intensity: 0.75, dist: 7, y: -0.3 }, sway: { amp: 0.06, period: 3.4 } },   // hangs from the beams; the deck's yard lanterns, below
         /* 2026-09-17 THE WOODS BATCH (fourteen Meshy props the user uploaded to Assets/misc/ — MODEL_INDEX §3e): the forest
            floor and the cave's furniture, and THE TWO TREES WITH HOLES IN THEM whose holes are the seams (DOOR_HQ.ways
            hollowtree / deadtree read hollow_tree / hollow_dead_tree). Sizes are TARGETS (the files are unmeasured — a wrong
@@ -20592,9 +20592,9 @@ const DOOR_HQ = {
         brazier:            { file: 'Meshy_AI_brazier_0917035429_texture.glb',                        base: 'misc', h: 1.3, foot: 0.4, block: true, glow: { y: 1.25, size: 1.6, color: 0xff9a40 }, light: { color: 0xff9040, intensity: 0.85, dist: 9, y: 1.4 } },
         catacomb_wall:      { file: 'Meshy_AI_catacomb_wall_0917035320_texture.glb',                  base: 'misc', span: 3.2, foot: 0, wall: true, mount: 0 },
         church_building:    { file: 'Meshy_AI_catholic_church_building_0917035753_texture.glb',       base: 'misc', span: 20, foot: 6, rect: { hw: 10, hd: 3 }, block: true },
-        catholic_pew:       { file: 'Meshy_AI_catholic_church_pew_0917035928_texture.glb',            base: 'misc', span: 2.6, foot: 0.8, rect: { hw: 1.3, hd: 0.45 }, block: true },   // second pass (2026-09-18): a pew is 2.6 m long — three seats, not a bus
+        catholic_pew:       { file: 'Meshy_AI_catholic_church_pew_0917035928_texture.glb',            base: 'misc', span: 2.6, foot: 0.8, rect: { hw: 1.3, hd: 0.45 }, block: true, seat: 0.45 },   // second pass (2026-09-18): a pew is 2.6 m long — three seats, not a bus
         church_wall:        { file: 'Meshy_AI_catholic_church_wall_0917035726_texture.glb',           base: 'misc', span: 4.0, foot: 0, wall: true, mount: 0 },
-        church_pew:         { file: 'Meshy_AI_church_pew_0917035915_texture.glb',                     base: 'misc', span: 2.6, foot: 0.8, rect: { hw: 1.3, hd: 0.45 }, block: true },
+        church_pew:         { file: 'Meshy_AI_church_pew_0917035915_texture.glb',                     base: 'misc', span: 2.6, foot: 0.8, rect: { hw: 1.3, hd: 0.45 }, block: true, seat: 0.45 },
         /* second pass (2026-09-18): the carpet GLB stands UPRIGHT (its face along z — it read as a tapestry in the nave), so it IS a tapestry: the same file as a wall row (the same-thing rule: one file, two rows, like the leaves); the aisle is the terrain's carpet path */
         holy_tapestry:      { file: 'Meshy_AI_ornate_holy_carpet_0917035624_texture.glb',             base: 'misc', h: 5.0, foot: 0, wall: true, mount: 3.2 },
         church_podium:      { file: 'Meshy_AI_church_podium_0917035658_texture.glb',                  base: 'misc', h: 1.3, foot: 0.45, block: true },
@@ -20604,7 +20604,7 @@ const DOOR_HQ = {
         italian_building_2: { file: 'Meshy_AI_Italian_building_2_0917035828_texture.glb',             base: 'misc', span: 12, foot: 4.5, block: true },
         holy_carpet:        { file: 'Meshy_AI_ornate_holy_carpet_0917035624_texture.glb',             base: 'misc', span: 6.0, foot: 0 },
         pearly_gate:        { file: 'Meshy_AI_pearly_gate_0917035350_texture.glb',                    base: 'misc', span: 4.2, foot: 0, glow: { y: 2.2, size: 3.2, color: 0xfff0c0 } },
-        royal_throne:       { file: 'Meshy_AI_royal_throne_0917035803_texture.glb',                   base: 'misc', h: 1.9, foot: 0.5, block: true, front: 'back' },
+        royal_throne:       { file: 'Meshy_AI_royal_throne_0917035803_texture.glb',                   base: 'misc', h: 1.9, foot: 0.5, block: true, front: 'back', seat: 0.55 },
         skull_pile:         { file: 'Meshy_AI_skull_pile_0917035243_texture.glb',                     base: 'misc', span: 1.3, foot: 0.5, block: true },
         stained_glass:      { file: 'Meshy_AI_stained_glass_window_0917035453_texture.glb',           base: 'misc', h: 3.2, foot: 0, wall: true, mount: 5.5, glow: { y: 1.6, size: 3.0, color: 0xffd090 } },
         sarcophagus:        { file: 'Meshy_AI_stone_sarcophagus_0917035255_texture.glb',              base: 'misc', span: 2.3, foot: 0.8, block: true },
@@ -20735,7 +20735,7 @@ const DOOR_HQ = {
            floor proc the walker cannot enter), the mirror with its vanity
            bulbs (the glow is the bulbs), the pole — inside by the door and
            out in the hall beside it (a polar room hangs it on the drum) */
-        barber_chair:      { proc: 'barber_chair',   h: 1.2,     foot: 0.48, block: true },
+        barber_chair:      { proc: 'barber_chair',   h: 1.2,     foot: 0.48, block: true, seat: 0.52 },
         barber_mirror:     { proc: 'barber_mirror',  h: 1.35,    foot: 0, wall: true, mount: 1.05, depth: 0.08, glow: { y: 1.28, size: 1.5, color: 0xfff1d6 } },
         barber_pole:       { proc: 'barber_pole',    h: 0.9,     foot: 0, wall: true, mount: 1.35, depth: 0.2 },
         /* THE OBSERVATORIUM (Room 360, 2026-09-11 — plan 7.4): the planetarium
@@ -20762,7 +20762,7 @@ const DOOR_HQ = {
         floor_panel:       { proc: 'floor_panel',    h: 0.9,     foot: 0, wall: true, mount: 1.0,  depth: 0.05, glow: { y: 0.45, size: 0.7, color: 0xffb020 } },   // the lobby: sixteen buttons, two lit
         exec_desk:         { proc: 'exec_desk',      span: 2.4,  foot: 1.2, depth: 1.05, rect: { hw: 1.2, hd: 0.525 }, block: true },   // 4C: the executive desk (top at 0.76 — desk props sit at y: 0.76). A FLOOR prop since 2026-09-16: centred, the drawers on the sitter's side (−z), the modesty panel to the room (+z)
         serving_line:      { proc: 'serving_line',   span: 3.0,  foot: 1.5, wall: true, depth: 1.15, rect: { hw: 1.5, hd: 0.575 }, block: true },   // Room 86 (2026-09-16): a 3 m cafeteria counter — the hot wells + sneeze guard on the wall side, THE TRAY SLIDE (0.85 m) along the front; trays at z = wall + 0.95
-        exec_chair:        { proc: 'exec_chair',     h: 1.25,    foot: 0.36, block: true },   // 4C: the high-backed leather chair
+        exec_chair:        { proc: 'exec_chair',     h: 1.25,    foot: 0.36, block: true, seat: 0.48 },   // 4C: the high-backed leather chair
         wall_plaques:      { proc: 'wall_plaques',   h: 1.2,     foot: 0, wall: true, mount: 1.3,  depth: 0.05 },   // 4C: the achievements engraved (gold per hqTrophyCount, read at build)
         motto_plaque:      { proc: 'motto_plaque',   h: 0.6,     foot: 0, wall: true, mount: 1.5,  depth: 0.05 },
         /* THE MAP REMEMBERS (PHASE9_QUALITY_PLAN §6 D8, 2026-09-16): the door gun's
@@ -20777,7 +20777,7 @@ const DOOR_HQ = {
         sun_viewport:      { proc: 'sun_viewport',   h: 1.6,     foot: 0, wall: true, mount: 1.0,  depth: 0.1, glow: { y: 0.8, size: 1.6, color: '#ffb066' }, light: { color: '#ffb066', intensity: 0.9, dist: 6, y: 1.6 } },   // the Bureau: the reality barometer (hqMottoBarometer at build; the room is rebuilt per entry)
         false_window:      { proc: 'false_window',   h: 1.6,     foot: 0, wall: true, mount: 1.0,  depth: 0.08, glow: { y: 0.8, size: 1.8, color: 0xfff3d0 } },   // 4C: the window that should not exist (a lit pane behind blinds)
         infinity_pool:     { proc: 'infinity_pool',  h: 0.48,    foot: 3.0, rect: { hw: 3.1, hd: 1.85 }, block: true },   // Room 8: the raised basin, a RECT blocker (room axes: place it at face 0 / 180)
-        pool_lounger:      { proc: 'pool_lounger',   h: 0.8,     foot: 0.5, block: true },   // Room 8: a lounger (a seat for hqSit at its own x/z)
+        pool_lounger:      { proc: 'pool_lounger',   h: 0.8,     foot: 0.5, block: true, seat: 0.42 },   // Room 8: a lounger (a seat for hqSit at its own x/z)
         pool_umbrella:     { proc: 'pool_umbrella',  h: 2.4,     foot: 0.12, block: true },  // Room 8: the pole; the canopy is overhead
         /* ══ THE EXPLORATION FLOORS (HQ plan Phase 8, 2026-09-14) — the
            procs the new floors stand on. Every row is procedural; a user
@@ -20797,20 +20797,21 @@ const DOOR_HQ = {
         /* B · services */
         kitchen_range:   { proc: 'kitchen_range',   h: 0.92, foot: 0.7, wall: true, mount: 0, depth: 0.7, block: true, glow: { y: 0.92, size: 0.9, color: 0xff7a30 } },
         range_hood:      { proc: 'range_hood',      h: 0.5,  foot: 0, wall: true, mount: 1.75, depth: 0.7 },
-        pot_rack:        { proc: 'pot_rack',        h: 0.5,  foot: 0, ceil: true },
-        meat_hook:       { proc: 'meat_hook',       h: 1.7,  foot: 0.3, ceil: true, block: true },                          // the cold room: a carcass on a chain; blocks
+        pot_rack:        { proc: 'pot_rack',        h: 0.5,  foot: 0, ceil: true, sway: { amp: 0.03, period: 3.8 } },
+        meat_hook:       { proc: 'meat_hook',       h: 1.7,  foot: 0.3, ceil: true, block: true, sway: { amp: 0.05, period: 2.9 } },                          // the cold room: a carcass on a chain; blocks
         washer:          { proc: 'washer',          h: 0.95, foot: 0.5, wall: true, mount: 0, depth: 0.7, block: true },
         dryer:           { proc: 'dryer',           h: 0.95, foot: 0.5, wall: true, mount: 0, depth: 0.7, block: true },
         laundry_cart:    { proc: 'laundry_cart',    h: 0.85, foot: 0.5, block: true },
         flicker_tube:    { proc: 'flicker_tube',    h: 0.12, foot: 0, ceil: true },                                          // a fluorescent that has not decided (ticker)
-        bare_bulb:       { proc: 'bare_bulb',       h: 0.35, foot: 0, ceil: true, light: { color: 0xffd9a0, intensity: 0.7, dist: 7, y: -0.25 } },
+        bare_bulb:       { proc: 'bare_bulb',       h: 0.35, foot: 0, ceil: true, light: { color: 0xffd9a0, intensity: 0.7, dist: 7, y: -0.25 }, sway: { amp: 0.07, period: 2.6 } },
         boiler:          { proc: 'boiler',          h: 2.3,  foot: 1.0, block: true, glow: { y: 0.55, size: 1.8, color: 0xff6a20 }, light: { color: 0xff7a30, intensity: 0.9, dist: 8, y: 0.6 } },
         /* B2 · the undercroft */
         cell_bars:       { proc: 'cell_bars',       h: 2.4,  foot: 0, wall: true, mount: 0, depth: 0.12 },                   // a barred cell front on the wall; the cell behind it is painted dark
-        wall_chains:     { proc: 'wall_chains',     h: 1.4,  foot: 0, wall: true, mount: 1.2, depth: 0.08 },
+        wall_chains:     { proc: 'wall_chains',     h: 1.4,  foot: 0, wall: true, mount: 1.2, depth: 0.08, sway: { amp: 0.04, period: 3.1 } },
         stocks:          { proc: 'stocks',          h: 1.1,  foot: 0.5, block: true },
         wall_torch:      { proc: 'wall_torch',      h: 1.1,  foot: 0, wall: true, mount: 1.6, depth: 0.2, glow: { y: 0.7, size: 1.0, color: 0xffa040 }, light: { color: 0xff9a40, intensity: 0.8, dist: 8, y: 0.66 } },   /* the game's own torch (ward / editor) on a bracket, leaning into the room — 2026-09-15 */
         candle_ring:     { proc: 'candle_ring',     h: 0.3,  foot: 0, glow: { y: 0.3, size: 1.2, color: 0xffb060 }, light: { color: 0xffb060, intensity: 0.7, dist: 6, y: 0.45 } },
+        light_shaft:     { proc: 'light_shaft',     h: 1,    foot: 0, rect: false },   /* THE AIR PASS 3.2 (2026-09-21): the battle's god-ray shaft in a room — placed by DOOR_HQ.lightShafts[room] rows { x, z, top, h, w, tilt, dir, color, intensity } */
         ritual_circle:   { proc: 'ritual_circle',   h: 0.01, foot: 0 },                                                       // the sigil on the floor (a canvas decal, faintly lit)
         /* THE WOODS (9.3 stage 3, 2026-09-16): a spray-painted panel that stands against a rock face (Dead Man's Cave) — a proc, `face` = the way the paint looks; nothing to bump into */
         graffiti_wall:  { proc: 'graffiti_wall', h: 1.6, foot: 0 },
@@ -20845,19 +20846,19 @@ const DOOR_HQ = {
         urinal:          { proc: 'urinal',          h: 0.7,  foot: 0, wall: true, mount: 0.55, depth: 0.35 },
         sink_row:        { proc: 'sink_row',        h: 1.8,  foot: 1.0, wall: true, mount: 0, depth: 0.55, rect: { hw: 1.2, hd: 0.28 }, block: true },  // three basins under a mirror strip; on a n / s wall
         hand_dryer:      { proc: 'hand_dryer',      h: 0.3,  foot: 0, wall: true, mount: 1.2, depth: 0.2 },
-        locker_bench:    { proc: 'locker_bench',    h: 0.45, foot: 1.0, rect: { hw: 1.0, hd: 0.2 }, block: true },
+        locker_bench:    { proc: 'locker_bench',    h: 0.45, foot: 1.0, rect: { hw: 1.0, hd: 0.2 }, block: true, seat: 0.42 },
         shower_stall:    { proc: 'shower_stall',    h: 2.1,  foot: 0.6, wall: true, mount: 0, depth: 1.0, rect: { hw: 0.5, hd: 0.5 }, block: true },
         lap_pool:        { proc: 'lap_pool',        h: 0.35, foot: 5.0, rect: { hw: 6.2, hd: 2.9 }, block: true },           // Room 50M: six lanes, starting blocks, a rect the walker never enters
         lifeguard_chair: { proc: 'lifeguard_chair', h: 2.2,  foot: 0.4, block: true },
         garden_ring:     { proc: 'garden_ring',     h: 0.7,  foot: 0 },                                                       // Room 1618: the gravel ring + the hedge (the proc registers its own blockers)
         fountain:        { proc: 'fountain',        h: 2.0,  foot: 1.6, block: true, glow: { y: 1.4, size: 2.0, color: 0xbfe9ff }, light: { color: 0xcfefff, intensity: 0.6, dist: 9, y: 1.5 } },
-        park_bench:      { proc: 'park_bench',      h: 0.85, foot: 0.8, rect: { hw: 0.8, hd: 0.3 }, block: true },
+        park_bench:      { proc: 'park_bench',      h: 0.85, foot: 0.8, rect: { hw: 0.8, hd: 0.3 }, block: true, seat: 0.45 },
         garden_tree:     { proc: 'garden_tree',     h: 4.5,  foot: 0.35, block: true },
         /* CAMELOT CASTLE (2026-09-18 — THE COMPLEX CANDIDATES #2): the castle's own kit — THE ROUND TABLE (an oak disc with no head and twelve high-backed
            chairs), a heraldic BANNER on a rod (a wall proc; the cloth's colour turns per instance), an ARMOUR STAND (a knight's plate on a post with
            its shield), THE SWORD IN THE STONE (the anvil on its boulder, the blade upright, the light in it) */
         round_table:     { proc: 'round_table',     h: 1.25, foot: 3.4, block: true },
-        banner:          { proc: 'banner',          h: 2.6,  foot: 0, wall: true, mount: 3.4, depth: 0.12 },
+        banner:          { proc: 'banner',          h: 2.6,  foot: 0, wall: true, mount: 3.4, depth: 0.12, sway: { amp: 0.02, period: 5.0 } },
         armour_stand:    { proc: 'armour_stand',    h: 2.0,  foot: 0.3, block: true },
         sword_stone:     { proc: 'sword_stone',     h: 1.7,  foot: 0.6, block: true, glow: { y: 1.3, size: 1.6, color: 0xbfe0ff }, light: { color: 0xbfe0ff, intensity: 0.7, dist: 8, y: 1.3 } },                                     // a foliage OBJ (_nrTree on a bare kit, like the site boards' trees)
         /* H-WING (HQ plan 5.5, 2026-09-14 rev 4): the wing's right angles */
@@ -20893,7 +20894,7 @@ const DOOR_HQ = {
         high_striker:    { proc: 'high_striker',    h: 5.0,  foot: 0.6,  block: true },                                        // the bell nobody has rung
         ticket_booth:    { proc: 'ticket_booth',    h: 2.6,  foot: 0.9,  rect: { hw: 0.9, hd: 0.7 }, block: true, glow: { y: 2.2, size: 1.8, color: 0xffd0a0 } },   // ADMIT ONE
         popcorn_cart:    { proc: 'popcorn_cart',    h: 1.7,  foot: 0.5,  block: true, glow: { y: 1.2, size: 1.2, color: 0xfff0c0 } },
-        festoon:         { proc: 'festoon',         h: 0.4,  foot: 0,    ceil: true },                                          // a string of bulbs across the tent
+        festoon:         { proc: 'festoon',         h: 0.4,  foot: 0,    ceil: true, sway: { amp: 0.03, period: 4.2 } },                                          // a string of bulbs across the tent
         /* THE URBAN BLOCK (9.2 stage 4, 2026-09-16): the casino floor's machines and the platform's gates — procs until the user's GLBs land (plan 9.6 #5) */
         slot_machine:    { proc: 'slot_machine',    h: 1.8,  foot: 0.35, rect: { hw: 0.33, hd: 0.32 }, block: true, glow: { y: 1.3, size: 1.1, color: 0xffd040 }, light: { color: 0xffc040, intensity: 0.45, dist: 4, y: 1.4 } },   // THE CASINO FLOOR: a cabinet, three reels that spin (ticker), a lever, the top light
         turnstile:       { proc: 'turnstile',       h: 1.0,  foot: 0.4,  block: true },                                        // THE PLATFORM: a tripod gate that turns as you come up (ticker)
@@ -20925,8 +20926,8 @@ const DOOR_HQ = {
         rotary_phone:      { file: 'Meshy_AI_analog_phone_0910054719_texture.glb',                  span: 0.24, foot: 0 },
         /* ── the cafeteria kit (Room 86, HQ plan 7.4 / 5.6 — the serving
            counter is the `reception_wedge`, as the plan's fallback says) ── */
-        cafeteria_chair:   { file: 'Meshy_AI_cafeteria_chair_0910054640_texture.glb',               h: 0.86, foot: 0.28, front: 'back' },
-        molded_chair:      { file: 'Meshy_AI_a_molded_cafeteria_ch_0910054600_texture.glb',         h: 0.82, foot: 0.28, front: 'back' },
+        cafeteria_chair:   { file: 'Meshy_AI_cafeteria_chair_0910054640_texture.glb',               h: 0.86, foot: 0.28, front: 'back', seat: 0.44 },
+        molded_chair:      { file: 'Meshy_AI_a_molded_cafeteria_ch_0910054600_texture.glb',         h: 0.82, foot: 0.28, front: 'back', seat: 0.44 },
         meal_tray:         { file: 'Meshy_AI_cafeteria_meal_tray_w_0910054631_texture.glb',         span: 0.45, foot: 0 },
         meal_tray_empty:   { file: 'Meshy_AI_cafeteria_meal_tray_w_0910054659_texture.glb',         span: 0.42, foot: 0 },
         microwave:         { file: 'Meshy_AI_beige_1980s_microwave_0910054901_texture.glb',         span: 0.50, foot: 0 },
@@ -20968,8 +20969,8 @@ const DOOR_HQ = {
            site rooms' skies draw the same roster). Sizes are targets: none
            of the four GLBs is in the repo, so the renderer's bbox fit is
            the only scale — if one lands wrong, its `h` / `span` is the edit. */
-        computer_chair_blue:{ file: 'computer_chair_blue.glb',                                    h: 0.98, foot: 0.32, front: 'back' },
-        computer_chair_grey:{ file: 'computer_chair_grey.glb',                                    h: 0.98, foot: 0.32, front: 'back' },
+        computer_chair_blue:{ file: 'computer_chair_blue.glb',                                    h: 0.98, foot: 0.32, front: 'back', seat: 0.46 },
+        computer_chair_grey:{ file: 'computer_chair_grey.glb',                                    h: 0.98, foot: 0.32, front: 'back', seat: 0.46 },
         security_camera:   { file: 'camera_01_cc0_clip_ready_v1.glb',                             span: 0.34, foot: 0, wall: true, mount: 2.55 },
         utility_box:       { file: 'utility_box_01_cc0_clip_ready_v1.glb',                        h: 1.35, foot: 0.45 },
         asteroid_a:        { file: 'asteroid_1.glb',                                              span: 4.0, foot: 0 },
@@ -26090,7 +26091,7 @@ const DOOR_HQ = {
                 pipes: true,
                 lights: [{ x: 0, z: -18 }, { x: 0, z: 18 }, { x: -18, z: 0 }, { x: 18, z: 0 }, { x: -12.7, z: -12.7 }, { x: 12.7, z: -12.7 }, { x: -12.7, z: 12.7 }, { x: 12.7, z: 12.7 }, { x: 0, z: 0 }],
                 mood: { light: 0xffe4a8, ambient: 0.78 },      // sodium lamps; nothing in here is white
-                fog: { color: 0x2a2620, density: 0.012 },       // the far side of the drum goes soft
+                fog: { color: 0x2a2620, density: 0.018 },       // the far side of the drum goes soft (THE FAR END rule 3.5: half gone at 60 % of the diagonal)
                 look: HQ_ROOM_LOOKS.garage,   // the object, never the key (the woods' rule)
                 plate: { x: 20.6, z: 7.6, y: 2.4 },
             },
@@ -33456,7 +33457,7 @@ const DOOR_HQ = {
                 floorColor: 0x9a948c, wallColor: 0x9c9ca4, dadoColor: 0x847a6e, ceilColor: 0x5a4030,
                 pipes: false, strips: false, lights: [],
                 mood: { lamp: 0xffb060, glow: 0xff9a40, strip: 0xffd8a0, light: 0xe8d8c0, ambient: 0.30 },
-                fog: { color: 0x0a0806, density: 0.016 },
+                fog: { color: 0x0a0806, density: 0.02 },   // THE FAR END rule 3.5
                 plate: { x: 0, z: 20.6, y: 4.8 },
                 look: HQ_ROOM_LOOKS.keep,
             },
@@ -33861,7 +33862,7 @@ const DOOR_HQ = {
             shell: hqBunkerShell({ w: 44, d: 30, h: 4.6, wallH: 4.6, plate: { x: 0, z: -13.8, y: 2.8 },
                                    floor: 'urban:TileGeneric1a', wall: 'urban:PlasterWallPainted1a', dado: 'urban:PlasterWallPainted1a', ceiling: 'urban:FibreCeilingTile1a',
                                    floorColor: 0xe8e8ea, wallColor: 0xf0f0f2, dadoColor: 0xe0e0e4, ceilColor: 0xf4f4f6,
-                                   mood: { lamp: 0xffffff, glow: 0xffffff, strip: 0xffffff, light: 0xffffff, ambient: 0.60 }, fog: { color: 0xe8e8ec, density: 0.012 }, look: HQ_ROOM_LOOKS.white }),
+                                   mood: { lamp: 0xffffff, glow: 0xffffff, strip: 0xffffff, light: 0xffffff, ambient: 0.60 }, fog: { color: 0xe8e8ec, density: 0.024 }, look: HQ_ROOM_LOOKS.white }),
             terrain: {
                 floor: 'urban:TileGeneric1a', cliff: 'urban:PlasterWallPainted1a', path: 'urban:RubberNonSlip2a',
                 noise: { amp: 0, scale: 5 }, crag: false,
@@ -34478,7 +34479,7 @@ const DOOR_HQ = {
             shell: hqBunkerShell({ w: 60, d: 40, h: 5.0, wallH: 5.0, plate: { x: -27.6, z: -3.4, y: 3.0 },
                                    floor: 'urban:TileMarble1a', wall: 'urban:PlasterWallPainted1c', dado: 'urban:TileMarble1d', ceiling: 'urban:PlasterWallStucco1a',
                                    floorColor: 0xe0dcd4, wallColor: 0xd8d0c4, dadoColor: 0xc0b8ac, ceilColor: 0xd0c8bc,
-                                   mood: { lamp: 0xffd9a0, glow: 0xffe0b0, strip: 0xfff0d8, light: 0xffe8cc, ambient: 0.48 }, fog: { color: 0x14100c, density: 0.016 }, look: HQ_ROOM_LOOKS.bunker }),
+                                   mood: { lamp: 0xffd9a0, glow: 0xffe0b0, strip: 0xfff0d8, light: 0xffe8cc, ambient: 0.48 }, fog: { color: 0x14100c, density: 0.018 }, look: HQ_ROOM_LOOKS.bunker }),
             terrain: {
                 floor: 'urban:TileMarble1a', cliff: 'urban:PlasterWallPainted1c', path: 'urban:TileMarble1b',
                 noise: { amp: 0, scale: 5 }, crag: false,
@@ -39813,6 +39814,34 @@ hqApplySiteEntries();   // THE ENTRY (2026-09-17): the bypassed board rooms' egr
 hqRefreshComplexLinks();
 hqReplateDoors();       // THE PLATE READS THE ROOM THROUGH THE DOOR (2026-09-18) — after the entries and the links
 hqBuildHealZones();     // THE HEALING ZONES (2026-09-20): one per hub anchor, beside the marker — after the areas (the markers) and the entries
+/* THE AIR PASS 3.2 — THE LIGHT SHAFTS (PREMIUM_POLISH_PLAN, 2026-09-21): the rooms that earn a beam. A row = one shaft of the
+   battle's god-ray shader (three-renderer.js _hqProcBuilders.light_shaft, placed by _hqPlaceProps like the terrain scatter):
+   x / z = where its TOP hangs (m), top = that height (m), h = its length (m), w = its width (m), tilt = degrees off vertical,
+   dir = the azimuth it leans toward (0 = north, 90 = east), color, intensity. The pool lands on the ground under the base. */
+DOOR_HQ.lightShafts = {
+    site_prebuilt_vatican_basilica: [   // the west windows at z −6 / 4 / 14, mount 7: the morning slant across the nave
+        { x: -14, z: -6, top: 9.6, h: 11.5, w: 3.2, tilt: 40, dir: 90, color: 0xfff0d2, intensity: 0.34 },
+        { x: -14, z: 4, top: 9.6, h: 11.5, w: 3.2, tilt: 40, dir: 90, color: 0xfff0d2, intensity: 0.3 },
+        { x: -14, z: 14, top: 9.6, h: 11.5, w: 3.2, tilt: 40, dir: 90, color: 0xfff0d2, intensity: 0.3 },
+    ],
+    site_prebuilt_camelot_hall: [ { x: 0, z: -23, top: 9.2, h: 10, w: 3.6, tilt: 42, dir: 180, color: 0xffe8c8, intensity: 0.34 } ],   // the north window over the dais
+    site_prebuilt_atlantis_temple: [   // the two west windows and the two east
+        { x: -14, z: -6, top: 9.5, h: 10.5, w: 2.8, tilt: 36, dir: 90, color: 0xbfe8e0, intensity: 0.3 }, { x: -14, z: 6, top: 9.5, h: 10.5, w: 2.8, tilt: 36, dir: 90, color: 0xbfe8e0, intensity: 0.3 },
+        { x: 14, z: -8, top: 9.5, h: 10.5, w: 2.8, tilt: 36, dir: 270, color: 0xbfe8e0, intensity: 0.26 }, { x: 14, z: 8, top: 9.5, h: 10.5, w: 2.8, tilt: 36, dir: 270, color: 0xbfe8e0, intensity: 0.26 },
+    ],
+    warehouse: [ { x: -4, z: -2, top: 5.9, h: 6, w: 2.2, tilt: 14, dir: 180, color: 0xe8ecf4, intensity: 0.3 }, { x: 4, z: -2, top: 5.9, h: 6, w: 2.2, tilt: 14, dir: 180, color: 0xe8ecf4, intensity: 0.3 } ],   // the high windows
+    garage: [ { x: 0, z: 0, top: 12.2, h: 12.4, w: 4.4, tilt: 0, dir: 0, color: 0xfff0d0, intensity: 0.3 } ],   // the skylight over THE CORE
+    observatorium: [ { x: 0, z: -1.6, top: 5.5, h: 5.6, w: 1.6, tilt: 22, dir: 180, color: 0xbfd8ff, intensity: 0.32 } ],   // the dome slit
+    dreamlab: [ { x: 0, z: 0, top: 3.1, h: 3.2, w: 2.0, tilt: 8, dir: 0, color: 0xd0c0ff, intensity: 0.28 } ],
+    site_prebuilt_hollow_earth_shaft: [ { x: 0, z: -3, top: 7.9, h: 8, w: 3.0, tilt: 5, dir: 0, color: 0xc8e0ff, intensity: 0.32 } ],   // the daylight down the well shaft
+    site_prebuilt_downtown_mall: [   // the atrium's skylights
+        { x: 0, z: 0, top: 11.8, h: 12, w: 5.0, tilt: 6, dir: 0, color: 0xf4f0e8, intensity: 0.3 }, { x: -22, z: 0, top: 11.8, h: 12, w: 4.0, tilt: 6, dir: 0, color: 0xf4f0e8, intensity: 0.26 }, { x: 22, z: 0, top: 11.8, h: 12, w: 4.0, tilt: 6, dir: 0, color: 0xf4f0e8, intensity: 0.26 },
+    ],
+    site_prebuilt_vatican_catacombs: [ { x: -8, z: 4, top: 6.5, h: 6.6, w: 2.0, tilt: 10, dir: 90, color: 0xbfe0d8, intensity: 0.3 } ],   // one grating from the crypt above
+    site_prebuilt_vatican_library: [ { x: -8, z: -10, top: 8.8, h: 9, w: 2.6, tilt: 18, dir: 90, color: 0xffe8c0, intensity: 0.3 }, { x: 6, z: 8, top: 8.8, h: 9, w: 2.6, tilt: 18, dir: 270, color: 0xffe8c0, intensity: 0.28 } ],   // the stacks
+    car: [ { x: 0, z: -1.0, top: 2.5, h: 2.6, w: 0.9, tilt: 30, dir: 180, color: 0xbfd8ff, intensity: 0.35 } ],   // the shaft window
+};
+
 _mfRegisterAreaDeltas(); // THE AREA BOARDS (2026-09-19): a Δ per explorable part, filed once the rooms exist (DELTA FORGE, the block after the site boards)
 /* ── THE CAVE GRID (HQ plan 9.3 stage 2 — 2026-09-15 rev 11) ──────────────
    A box room may carry `cave`: a hand-authored ASCII GRID that IS the room's
@@ -45230,6 +45259,23 @@ const HQ_LIGHT_RULES = {
     fillColor: 0x9fb4d0,
     fill: 0.14,
     open: { nightHemi: 0.62, nightSun: 0.4, dayHemi: 0.78, daySun: 0.6, nightLamp: 0.9, dayLamp: 0.55 },
+    /* THE PREMIUM POLISH — THE LIGHT PASS (PREMIUM_POLISH_PLAN §2, 2026-09-21). Every number here is the
+       building's; a room overrides through its shell (`shell.rig`, `shell.heightFog`, `shell.atmos`,
+       `shell.arrival`). The renderer's HQ_LIGHT_DEFAULT carries the same keys (premium-polish.test.js diffs them). */
+    /* 2.1 the room key casts ONE shadow map: on / off, the map size per Settings → Performance tier (three-post.js's
+       knob), the depth bias, and how far past the room's box the ortho frustum reaches (m) */
+    shadows: { on: true, mapLow: 1024, mapHigh: 2048, bias: -0.0005, normalBias: 2.4, pad: 4, everyN: 2 },
+    /* 2.5 the key light's default direction per room kind — azimuth (deg, 0 = from the north, clockwise) and
+       elevation (deg above the floor), its colour and strength; `shell.rig = { az, el, color, intensity }` overrides */
+    key: { box: { az: 300, el: 58, color: 0xfff1dc, intensity: 0.34 }, open: { az: 305, el: 52 }, bay: { az: 320, el: 62, color: 0xf2f5ff, intensity: 0.3 }, hall: { az: 330, el: 60, color: 0xfff0d8, intensity: 0.42 } },
+    /* 2.3 the analytic AO in a box room's shell + props (the corner darkening over `r` m, the floor contact under a
+       prop's vertical faces), the contact disc under a floor prop, the terrain field's baked concavity */
+    ao: { corner: 0.34, r: 0.55, contact: 0.5, contactR: 1.35, terrain: 0.32, foot: 0.7 },
+    /* 3.1 the height fog — thickest at the floor, gone `h` m up; `amount` = its share at the floor far away; per room
+       kind, a room's `shell.heightFog = { h, amount, floor }` (or `sky.fog.height`) overrides */
+    heightFog: { on: true, box: { h: 1.7, amount: 0.34 }, open: { h: 3.2, amount: 0.5 }, hall: { h: 2.6, amount: 0.3 } },
+    /* 3.3 the atmosphere particles — the cap per room (halved under EW_PERF_LOW), the count per m² of floor */
+    atmos: { max: 600, perM2: 0.7, min: 90 },
 };
 const HQ_SKATE_RULES = {
     free: true,          // standard issue — every officer holds a board (false = the find in Room 26)
@@ -45328,6 +45374,87 @@ const HQ_SKATE_RULES = {
     ranks: [[0, 'LANDED'], [400, 'NICE'], [1500, 'SICK'], [5000, 'INSANE'], [15000, 'LEGENDARY']],   // the word stamped on a banked line, by its score
     controls: ['W push (hold it at speed to cruise)', 'S brake · from a stop skate backwards', 'A / D carve', 'HOLD SPACE to crouch (as long as you like) · RELEASE to pop (the meter is the height · release right as it hits MAX = a PERFECT POP)', 'in the air WASD is AIR CONTROL: A / D steer · W / S the speed', 'THE STICK: hold a mouse button in the air and FLICK — LEFT ← → ↑ ↓ = kickflip · heelflip · front flip · backflip, ↖ ↗ corkscrew, ↙ ↘ varial · RIGHT ← → = 180s, ↑ ↓ = grabs', 'land on a rail = grind (A / D balance)', 'only a trick still turning at the landing bails — walls, props and drops never do', 'B off'],
 };
+/* ══ THE PREMIUM POLISH — the room's AIR, the ARRIVAL, the THINGS THAT MOVE (PREMIUM_POLISH_PLAN §3 / §5 / §6, 2026-09-21) ══
+   Pure reads the renderer and map.js share. Nothing here touches `state` or the relay (RULE #2 — the building is
+   viewer-local). */
+/* 3.3 THE ATMOSPHERE — the particle kind a room breathes: dust (motes in the air, lit by the shafts) · embers (rising off
+   the torches / the lava) · fireflies (a night wood) · snow · rain · spores (the fairy forest) · ash (the pit) · motes (the
+   astral realm's dreaming dust). `shell.atmos = { kind, n, color, speed, wind }` on a room wins; else the SITE's row here;
+   else the rule by kind (a closed room breathes dust, an open night on grass has fireflies, an open day has pollen). */
+const HQ_ATMOS_SITES = {
+    prebuilt_northpole: { kind: 'snow' }, prebuilt_antarctica: { kind: 'snow', wind: 1.6 }, prebuilt_shasta: { kind: 'snow', n: 220 },
+    prebuilt_haunted: { kind: 'rain', n: 420 }, prebuilt_cyberpunk: { kind: 'rain', n: 480, color: 0x9fd8ff },
+    prebuilt_hell: { kind: 'ash', color: 0x8a6a5a }, prebuilt_gobekli: { kind: 'dust', color: 0xe8d8b8 }, prebuilt_giza: { kind: 'dust', color: 0xf0e0b8, wind: 1.2 },
+    prebuilt_fairy_forest: { kind: 'spores', color: 0xb8ffb0 }, prebuilt_bohemian_grove: { kind: 'fireflies' }, prebuilt_skinwalker: { kind: 'fireflies', n: 160 },
+    prebuilt_lookingglass: { kind: 'motes', color: 0xd8b4ff }, prebuilt_derelict: { kind: 'dust', color: 0xbfd0e8, speed: 0.4 }, prebuilt_moon: { kind: 'dust', color: 0xd0d4dc, speed: 0.3, n: 120 },
+    prebuilt_mars: { kind: 'dust', color: 0xd8a070, wind: 1.4 }, prebuilt_saturn: { kind: 'dust', color: 0xe8d0a0, wind: 1.8 }, prebuilt_heaven: { kind: 'motes', color: 0xfff4d8, speed: 0.35 },
+    prebuilt_vatican: { kind: 'dust', color: 0xffe8c0 }, prebuilt_bermuda: { kind: 'none' }, prebuilt_atlantis: { kind: 'none' },
+    prebuilt_camelot: { kind: 'embers', n: 160 }, prebuilt_hollow_earth: { kind: 'dust', color: 0xd8c8b0 }, prebuilt_agartha: { kind: 'motes', color: 0xa0f0ff },
+    prebuilt_stonehenge: { kind: 'fireflies', n: 120 }, prebuilt_babel: { kind: 'dust', color: 0xf0dcb0, wind: 1.3 }, prebuilt_area51: { kind: 'dust', color: 0xd8d0c0, n: 140 },
+};
+/* the rule: an explicit `shell.atmos` → the site's row → the kind by room. Returns null for nothing (the car, a sea room, 'none'). */
+function hqRoomAtmos(roomId, room) {
+    room = room || ((typeof DOOR_HQ !== 'undefined' && DOOR_HQ.rooms) ? DOOR_HQ.rooms[roomId] : null);
+    if (!room || !room.shell) return null;
+    const S = room.shell;
+    let a = (S.atmos && typeof S.atmos === 'object') ? Object.assign({}, S.atmos) : null;
+    if (!a && S.atmos === false) return null;
+    if (!a && roomId === 'car') return null;
+    if (!a && room.terrain && room.terrain.sea) return null;   // THE DEEP has its own snow and bubbles
+    if (!a) {
+        const site = (typeof hqRoomSite === 'function') ? hqRoomSite(roomId) : null;
+        const row = site ? HQ_ATMOS_SITES[site] : null;
+        if (row) a = Object.assign({}, row);
+    }
+    if (!a) {
+        const open = !!S.open, night = !!(S.sky && S.sky.night);
+        const grassy = /grass|forest|leaves|moss|dirt|swamp/.test(String(S.floor || ''));
+        if (!open) a = { kind: 'dust' };
+        else if (night) a = { kind: grassy ? 'fireflies' : 'dust' };
+        else a = { kind: 'dust', color: 0xfff0d0, speed: 0.6, n: 160 };   // pollen in the daylight
+    }
+    if (!a || a.kind === 'none') return null;
+    const KINDS = { dust: 1, embers: 1, fireflies: 1, snow: 1, rain: 1, spores: 1, ash: 1, motes: 1 };
+    if (!KINDS[a.kind]) return null;
+    return a;
+}
+/* 6.3 THE ARRIVAL CARD — a room stood in for the first time gets the letterbox + its name; lobbies, corridors, the car and
+   the foyer never (a room with no number that is not a site's — the register's own rule); `shell.arrival: false` opts out. */
+function hqRoomArrival(roomId) {
+    const room = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.rooms) ? DOOR_HQ.rooms[roomId] : null;
+    if (!room) return false;
+    if (room.arrival === false || (room.shell && room.shell.arrival === false)) return false;
+    if (roomId === 'car' || roomId === 'foyer') return false;
+    try { const hubs = DOOR_HQ.hubs || {}; for (const k in hubs) if (hubs[k] && hubs[k].room === roomId) return true; } catch (e) {}   // a hub's anchor (the main hall) is a place
+    if (room.site) return true;   // every part of a site (a complex part, an area) is a place
+    let no = null; try { no = (typeof hqRoomNo === 'function') ? hqRoomNo(roomId) : null; } catch (e) { no = null; }
+    return !!no;
+}
+/* 5.2 THE KICKABLES — a small prop the walker (or the deck) knocks along its heading with a hop; cosmetic, never a puzzle,
+   the room remembers nothing (the user's D6). The list is explicit: a key here must be in the catalogue (the test checks). */
+const HQ_KICKABLE = {
+    keys: ['cardboard_box', 'traffic_cone', 'traffic_barrel', 'trash_bin', 'city_bin', 'mall_bin', 'solo_cup', 'coffee_mug', 'mop_bucket', 'wet_floor_sign', 'cinder_block', 'toilet_paper'],
+    maxFoot: 0.35, maxH: 1.1,
+    speed: 0.9,      // the share of the walker's speed the prop takes
+    hop: 2.2,        // m/s up on the kick
+    friction: 2.4,   // 1/s — how fast a rolling prop stops
+    spin: 6.0,       // rad/s per m/s of travel
+};
+function hqPropKickable(key, cat) {
+    if (!cat || cat.wall || cat.ceil || cat.vehicle || cat.rail || cat.ramp || cat.light) return false;
+    if (HQ_KICKABLE.keys.indexOf(key) < 0) return false;
+    const h = (cat.h != null) ? cat.h : (cat.span != null ? cat.span : 1);
+    return (cat.foot || 0) <= HQ_KICKABLE.maxFoot && h <= HQ_KICKABLE.maxH;
+}
+/* 3.5 THE FAR END — a corridor room's fog must have the far end HALF gone: 1 − exp(−density·L) ≥ 0.5 at L = 60 % of the
+   diagonal (hq-terrain / premium-polish.test.js read this for every halls / ley / city plan) */
+function hqRoomFogHalfAt(room) {
+    const S = room && room.shell; if (!S) return null;
+    const d = (S.open && S.sky && S.sky.fog && S.sky.fog.density > 0) ? S.sky.fog.density : (S.fog && S.fog.density > 0) ? S.fog.density : null;
+    if (!d) return null;
+    return Math.LN2 / d;   // metres at which the fog reaches 0.5
+}
+
 function hqSkateIssueFree() { return !!HQ_SKATE_RULES.free; }
 /* the record on the profile; `make` creates it (a writer), else a read-only shape */
 function hqSkateRecord(profile, make) {
@@ -47289,7 +47416,7 @@ if (typeof window !== 'undefined') {
     window.hqFieldWindow = hqFieldWindow; window.hqFieldBuild = hqFieldBuild; window.hqFieldLayout = hqFieldLayout; window.hqFieldRegister = hqFieldRegister;
     window.hqFieldBoxInfo = hqFieldBoxInfo; window.hqFieldGallery = hqFieldGallery; window.hqFieldLattice = hqFieldLattice; window.hqFieldBoxStep = hqFieldBoxStep; window.hqFieldBoxTile = hqFieldBoxTile; window.hqFieldNearestWalk = hqFieldNearestWalk;
     /* SKATEBOARDING (HQ plan 9.8 stage 1, 2026-09-15) */
-    window.HQ_SKATE_RULES = HQ_SKATE_RULES; window.HQ_LIGHT_RULES = HQ_LIGHT_RULES; window.hqSkateStatus = hqSkateStatus; window.hqSkateRecord = hqSkateRecord; window.hqSkateBank = hqSkateBank; window.hqSkateScore = hqSkateScore; window.hqSkateIssueFree = hqSkateIssueFree;
+    window.HQ_SKATE_RULES = HQ_SKATE_RULES; window.HQ_LIGHT_RULES = HQ_LIGHT_RULES; window.HQ_ATMOS_SITES = HQ_ATMOS_SITES; window.hqRoomAtmos = hqRoomAtmos; window.hqRoomArrival = hqRoomArrival; window.HQ_KICKABLE = HQ_KICKABLE; window.hqPropKickable = hqPropKickable; window.hqRoomFogHalfAt = hqRoomFogHalfAt; window.hqSkateStatus = hqSkateStatus; window.hqSkateRecord = hqSkateRecord; window.hqSkateBank = hqSkateBank; window.hqSkateScore = hqSkateScore; window.hqSkateIssueFree = hqSkateIssueFree;
     window.hqLinkRoom = hqLinkRoom;
     window.hqLinkDoors = hqLinkDoors;
     window.hqLinkEndOk = hqLinkEndOk;
