@@ -6045,3 +6045,9 @@ body.diorama-3d .tile-underpass.jump::before {
 #hqPage .hq-panel.hq-panel-say .hq-btn:hover { border-color: #fff; color: #fff; }
 #hqPage .hq-panel.hq-panel-say .hq-panel-foot { display: none; }
 @media (max-width: 720px) { #hqPage .hq-panel.hq-panel-say .hq-panel-card { padding: 10px 34px 10px; } #hqPage .hq-panel.hq-panel-say .hq-panel-line { font-size: 18px; } }
+
+/* ══ THE LEVELS (2026-09-21) — the ledger on the party cards: the Lv chip, the EXP bar ══ */
+.hq-pp-lv { display: inline-block; font-family: 'Cinzel', serif; font-weight: 900; font-size: 10px; letter-spacing: 0.08em; color: #ffd86a; background: rgba(255, 216, 106, 0.12); border: 1px solid rgba(255, 216, 106, 0.45); border-radius: 999px; padding: 0 6px; line-height: 15px; margin-right: 4px; vertical-align: 1px; text-shadow: 0 0 6px rgba(255, 200, 80, 0.45); }
+.hq-pp-vbar.xp { height: 4px; }
+.hq-pp-vbar.xp i { background: linear-gradient(90deg, #b8861f, #ffd86a); box-shadow: 0 0 8px rgba(255, 216, 106, 0.45); }
+.hq-pp-vit.xp em { color: #e8cf8a; }

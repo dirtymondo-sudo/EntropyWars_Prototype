@@ -141,7 +141,7 @@ test('the extras arrive by a door once their rig lands, never holding the card',
     assert.ok(/_bgLoadDepth\+\+;[\s\S]*?pop\.draw\.forEach/.test(src), 'still under the background flag');
     assert.ok(/var hot = !murl \|\| !!\(_unitGlbCache\[murl\] && _unitGlbCache\[murl\]\.root\)/.test(src), 'a hot rig stands at once');
     assert.ok(/_loadUnitGLB\(murl, function \(\) \{\s*if \(_hq !== H\) return;/.test(src), 'a cold rig spawns on landing, guarded by the room');
-    assert.ok(/spawnAt\(d\.id, rk, g, by, \{ line: line, sub: sub, arriving: true \}\);\s*if \(ch && by\.rec\) _hqRoundsSwing\(by\.rec, 1600\);/.test(src), 'it comes in by a door that swings');
+    assert.ok(/spawnAt\(d\.id, rk, g, by, \{ line: line, sub: sub, arriving: true, group: d\.group || null \}\);\s*if \(ch && by\.rec\) _hqRoundsSwing\(by\.rec, 1600\);/.test(src), 'it comes in by a door that swings (+ its group, 2026-09-21)');
     assert.ok(/bg: \(typeof _bgLoadDepth === 'number' && _bgLoadDepth > 0\)/.test(fn(renderer, '_alTrack')), 'the record is background');
 });
 

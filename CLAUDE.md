@@ -7549,3 +7549,54 @@ from the building (`_hqIsHome()` in `_shopSuppliesHtml`); the roster scope goes 
 every way out of Online / Practice (`_playHubBack`, `_msBack`, `_hqReturnOrMenu`'s menu fallback —
 the online hub itself keeps `all`), so the Party Builder / the Shop opened from the menu field what
 you own. Token `20260921-threedoors-02-cors`.
+
+## THE LEVELS — story mode starts at 5, the party's XP ledger, the adaptive enemy level, THE EXPERIENCE on the debrief, the group size (2026-09-21, local delivery)
+The user: "re-examine the EXP curve, levelling and stats now that there is a story mode; start at level 5;
+see the stats go up with a satisfying AAA-JRPG level-up sequence; a satisfying experience gain on the
+victory screen; the NPCs' level as an adaptive range round the player's; attack one NPC and only 1–2
+come with them, a roaming group is more." **THE CURVE stays** (data.js `XP_CURVE` → `xpThreshold(L)` =
+round(12 × (L−1)^1.9), `xpLevelFor(xp)`, `xpToNext(xp)` = `{ lvl, into, need, left, pct, max }` — the ONE
+read of a bar; battle.js's `XP_THRESHOLDS` is the same formula; measured: a level is 3–5 same-level kills
+from 5 to 90, the pacing computeKillXP was tuned to). **THE ADDITIVE STATS ARE STRAIGHT** (`LEVEL_STAT_GAIN_EXP`
+1.0 for atk / def / mdef / int in `levelStatGains` + `levelGrowthDeficit`; HP / MP keep `LEVEL_SCALE_EXP`) —
+cosmetic in combat by construction (every formula reads `levelPowerStat` = the cap equivalent;
+party-levels.test.js proves it at five levels) so a level-up card always shows a stat move. **THE LEDGER**
+(data.js THE PARTY block, `HQ_LEVEL_RULES`): a member carries `xp` (cumulative) and `lvl` (= xpLevelFor,
+derived on every `hqPartyNormMember`); a fresh member / the seed start at `start` 5, an ENLISTED vessel at
+THE PARTY LEVEL (`hqPartyLevel` = the first shift's mean; `enlist: 'party'`); `hqPartyXp(m)` the read,
+`hqPartyGrantXp(m, gain, base)` the ONE write (the beats back: before / after / `levels[{ lvl, stats,
+milestone }]` via `hqPartyLevelGains`); `hqPartyForLaunch` puts **`meta.storyLevel`** on the identity →
+map.js `createUnit`'s STORY-LEVEL branch (before the PvP cap; the campaign's recipe) builds the unit at it;
+state.js's repair whitelist keeps it; the pause menu builds a member at its level and wears the LV chip +
+an EXP bar on the card and `EXP · NEXT IN n` on the sheet. **THE ENEMY LEVEL** = `hqEncounterLevels(partyLevel,
+site, n, seed)`: the party level + the site's `tierOffset` (EW_MAP_META tier 1 −1 · 2 +1 · 3 +3) or an
+`HQ_AREA_LEVELS[site]` override (`offset` / `min` / `max` — the story's hook, only Room 64 today), the LEAD
+jittered inside `lead` (−1…+3), the rest inside `band` (−3…+2), clamped to `maxBelow` 6 / `maxAbove` 8 of
+the party level — the user's ±10 is `band`'s edit (1.08^10 = a 2.16× swing). `hqEncounterLaunch` /
+`hqMarkerLaunch` take `opts.partyLevel` (map.js `_hqPartyLevelNow`) and return `levels` (the lead's first) +
+`enemyTeam`; `_hqEncounterStart` rides them on the party (`enemyTeam` / `enemyLevels`) and `_msConfirm` writes
+`storyLevel` on every native's identity. **THE GROUP** (`hqEncounterGroup`, seeded by the target): a lone
+native brings `group.solo` 0–2 companions by `soloWeights`; a ROAMING GROUP — `hqRoomPopulation` binds
+`roamSize` 2–3 of a wild room's extras when the seeded coin (`groupP`) says so (`draw[i].group`,
+`pop.group`); three-renderer.js `_hqSpawnRounds` stands them at ONE stop on ONE loop seed (`ch.group`, the
+sub ONE OF n · TOGETHER) and `_hqEncounterAim` reports the companions in the room (`target.group`) — fights
+as its members (their own races / genders / names seat 2..k in state.js `optimizeRandomizeParty` off
+`encounter.members`) + `roamExtra`. `L.teamSize` stays the OFFICER's deploy; never the enemy's. **THE FIGHT**:
+battle.js `xpProgressionActive` honours `_encRun()`; in a party fight `grantXP` HOLDS the trickle on the
+unit (`_xpHeld`) and never levels mid-battle — the kills float `+N XP` over the killer and are THE POOL:
+`_encXpPool` = Σ `computeKillXP` over the natives that fell against a pseudo-killer at the party level; the
+commit's vit rows carry `xpHeld · bench · baseHp · baseMp · unitId` and `hqPartyAfterMatch(p, { won, units,
+xpPool })` shares the pool (`share`: the board 1 · the bench 0.5 · a member DOWN 0) + the held trickle,
+moves the ledger and returns `xp` (the beats) / `pool` / `leveled` / `partyLevel`. **THE EXPERIENCE** (the
+debrief, REWARDS sheet, first — index.html `#vicExperience`, battle.js `_vicBuildExperience` /
+`_vicPlayExperience` / `_vicXpLevelBeat`, styles-cinematic.css "THE EXPERIENCE"): a row per member (the
+portrait, the LV chip, +N XP, the bar of the current level), THE FILL plays the rows one after another —
+the bar and the number climb, a crossed threshold BUMPS the chip, flashes LEVEL UP! across the row, plays
+the levelUp cue, makes the 3D party member on the podium JUMP (`ThreeRenderer.podium.play`, vicJump over its
+held pose) with `_vfxLevelUp` at its feet and lands that level's stat chips (HP +4 · ATK +1 …) + the
+milestone line (SECONDARY JOB UNLOCKED at 15, THE SPELL SHOP OPENS at 10); DOWN = dim, NO SHARE; the bench
+HALF SHARE; reduced motion = the end state. Viewer-local (RULE #2: VS-CPU). NOT touched: Online / Practice /
+the console's crossings (no `storyLevel` → the cap as before), the marker's line (4, the checklist's fight),
+XP-to-gold, a synced ledger (the party is local). `npm test` runs `party-levels.test.js`. UNSEEN LIVE (RULE
+#1c): the fill's pace (`VIC_XP_ROW_MS`), the flash over a narrow panel, the jump on the cast rigs, a level-5
+fight's numbers (57 HP), the group walking together, the tier offsets against real natives.

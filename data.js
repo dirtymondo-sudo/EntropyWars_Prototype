@@ -16841,11 +16841,18 @@ const EW_MP_L1_FRAC = 0.30;
 // def/mdef ride the 2026-08-29 rescale (×1.2 / ×1.6) so the armor fold's
 // inverse compensators (getEffectiveArmor) keep level armor unchanged.
 const LEVEL_TOTAL_STAT_GAINS = { hp: 360, mp: 100, atk: 58, def: 62, mdef: 69, int: 43 };
+/* THE LEVELS (2026-09-21): the ADDITIVE stats (atk / def / mdef / int) climb on their OWN exponent — 1.0, a straight
+   line: ~2.3 stat points a level from the first level to the cap, so every level-up card shows a stat move. This is
+   COSMETIC in combat by construction: every damage / armor formula reads levelPowerStat (the stat's level-cap equivalent
+   — raw + the growth not yet earned), so how the 58 ATK are spread across the 99 levels never changes a hit; the level
+   gap is levelGapMult's. HP / MP keep LEVEL_SCALE_EXP (that curve IS the combat magnitude). */
+const LEVEL_STAT_GAIN_EXP = 1.0;
 function levelStatGains(level, baseHp, baseMp) {
     const L = Math.max(1, Math.min(LEVEL_CAP, level || 1));
     const t = LEVEL_CAP <= 1 ? 1 : Math.pow((L - 1) / (LEVEL_CAP - 1), LEVEL_SCALE_EXP);
+    const ta = LEVEL_CAP <= 1 ? 1 : Math.pow((L - 1) / (LEVEL_CAP - 1), LEVEL_STAT_GAIN_EXP);
     const out = {};
-    for (const k in LEVEL_TOTAL_STAT_GAINS) out[k] = Math.round(LEVEL_TOTAL_STAT_GAINS[k] * t);
+    for (const k in LEVEL_TOTAL_STAT_GAINS) out[k] = Math.round(LEVEL_TOTAL_STAT_GAINS[k] * ta);
     const b = Math.max(1, Number(baseHp) || 550);
     out.hp = Math.round((b + LEVEL_TOTAL_STAT_GAINS.hp) * levelScale(L)) - b;
     const bm = Number(baseMp);
@@ -16906,14 +16913,33 @@ const EW_LEVEL_GAP_MIN  = 0.30;
 // first, and ai.js/ui.js/hud.js can't always see it). getUnitLevel keeps
 // _lvlCache fresh on every damage event, so this is a hit in practice; the
 // fallback mirrors battle.js XP_THRESHOLDS = round(12 × (L−1)^1.9).
+/* ── THE XP CURVE (2026-09-21) — ONE formula for the party ledger, the battle's XP_THRESHOLDS and the
+   pause menu: threshold(L) = round(12 × (L−1)^1.9), cumulative. Early levels are quick (L5→6 needs 88
+   XP, ~4 same-level kills), the curve stretches so a level stays ~4 same-level kills all the way to the
+   cap (L50→51 needs 756 against a 214-XP kill) — the Pokémon / SMT pacing computeKillXP was tuned to.
+   xpToNext is the ONE read of a bar (the pause menu's, the debrief's). */
+const XP_CURVE = { k: 12, exp: 1.9 };
+function xpThreshold(level) {
+    const L = Math.max(1, Math.min(LEVEL_CAP, level | 0));
+    return L <= 1 ? 0 : Math.round(XP_CURVE.k * Math.pow(L - 1, XP_CURVE.exp));
+}
+function xpLevelFor(xp) {
+    xp = Math.max(0, +xp || 0);
+    for (let L = LEVEL_CAP; L >= 2; L--) if (xp >= xpThreshold(L)) return L;
+    return 1;
+}
+function xpToNext(xp) {
+    xp = Math.max(0, +xp || 0);
+    const lvl = xpLevelFor(xp), max = lvl >= LEVEL_CAP;
+    const cur = xpThreshold(lvl), nxt = max ? cur : xpThreshold(lvl + 1);
+    const need = Math.max(0, nxt - cur), into = Math.max(0, Math.min(need, xp - cur));
+    return { lvl, xp, cur, next: nxt, into, need, left: Math.max(0, nxt - xp), pct: max ? 1 : (need > 0 ? into / need : 1), max };
+}
 function ewUnitLevel(unit) {
     if (!unit) return 0;
     const xp = unit._xp || 0;
     if (unit._lvlCache && unit._lvlCacheXp === xp) return unit._lvlCache;
-    for (let L = LEVEL_CAP; L >= 2; L--) {
-        if (xp >= Math.round(12 * Math.pow(L - 1, 1.9))) return L;
-    }
-    return 1;
+    return xpLevelFor(xp);
 }
 
 // Fraction of the additive stat growth a level-L unit has NOT earned yet.
@@ -16921,7 +16947,7 @@ function ewUnitLevel(unit) {
 function levelGrowthDeficit(level) {
     if (LEVEL_CAP <= 1) return 0;
     const L = Math.max(1, Math.min(LEVEL_CAP, level || 1));
-    return 1 - Math.pow((L - 1) / (LEVEL_CAP - 1), LEVEL_SCALE_EXP);
+    return 1 - Math.pow((L - 1) / (LEVEL_CAP - 1), LEVEL_STAT_GAIN_EXP);   // the additive stats' own curve (levelStatGains)
 }
 
 // A unit's stat as the DAMAGE/ARMOR formulas should see it: its level-cap
@@ -18138,9 +18164,10 @@ Object.assign(window, {
   getSpellSlotCost, getSpellIdsSlotCost, trimSpellIdsToSlotBudget,
   CLASS_SPELL_LEARN_ORDER, RACE_ABILITIES, CAMPAIGN_REGION_THEMES,
   LEVEL_CAP, EW_SCALE, EW_L1_FRAC, LEVEL_SCALE_EXP, levelScale,
-  LEVEL_TOTAL_STAT_GAINS, levelStatGains, EW_MP_L1_FRAC,
+  LEVEL_TOTAL_STAT_GAINS, levelStatGains, EW_MP_L1_FRAC, LEVEL_STAT_GAIN_EXP,
   EW_COMBAT_PACE, EW_LEVEL_GAP_STEP, EW_LEVEL_GAP_MAX, EW_LEVEL_GAP_MIN,
   ewUnitLevel, levelGrowthDeficit, levelPowerStat, levelGapMult,
+  XP_CURVE, xpThreshold, xpLevelFor, xpToNext,
   offenseScale, defenseScale, supportScale,
   getSpellUnlockLevel, SPELL_SHOP_LEVEL, SECONDARY_JOB_LEVEL, AP_BONUS_LEVELS,
   MODE_LEVEL_RULES, isProgressionMode, RACE_XP_YIELD_OVERRIDES, getRaceXpYield,
@@ -42483,7 +42510,18 @@ function hqRoomPopulation(roomId, profile, opts) {
         if (r == null) break;
         draw.push({ id: 'hq-roam-' + i, race: r, tier: tiers[r] || 'native' });
     }
-    return { kind, site, hub: hubId, pool, tiers, n: draw.length, draw, seed, m2: Math.round(m2) };
+    /* THE ROAMING GROUP (2026-09-21): in a WILD room some of the extras walk TOGETHER — one loop, one stop — and the strike that lands on
+       one of them fights them all (hqEncounterGroup); the first `roamSize` draws bind when the seeded coin says so (HQ_LEVEL_RULES.group) */
+    let group = null;
+    try {
+        const G = (typeof HQ_LEVEL_RULES !== 'undefined') ? HQ_LEVEL_RULES.group : null;
+        if (G && kind !== 'facility' && draw.length >= 2 && rnd() < G.groupP) {
+            const size = Math.max(2, Math.min(draw.length, (G.roamSize[0] | 0) + Math.floor(rnd() * ((G.roamSize[1] | 0) - (G.roamSize[0] | 0) + 1))));
+            group = { id: 'hq-group-0', ids: [] };
+            for (let i = 0; i < size; i++) { draw[i].group = group.id; group.ids.push(draw[i].id); }
+        }
+    } catch (e) { group = null; }
+    return { kind, site, hub: hubId, pool, tiers, n: draw.length, draw, seed, m2: Math.round(m2), group };
 }
 /* a seeded call: does an authored spot native LEAVE its spot for a loop? (never a posed / `stay` spot, never a clone) */
 function hqSpotRoams(roomId, si, spot) {
@@ -42555,17 +42593,26 @@ function hqEncounterLaunch(roomId, ch, cfg, opts) {
     if (!site || !hqEncounterCharOk(ch)) return null;
     const c = hqEncounterConfig(cfg, { codeRed: !!opts.codeRed });
     const n = c.teamSize;
-    const pool = (typeof hqMissionPool === 'function') ? hqMissionPool(site, n) : [];
-    const roster = [ch.race].concat(pool.filter(r => r !== ch.race)).slice(0, Math.max(n, 1));
+    /* THE GROUP (2026-09-21, the user: "attack one NPC and only 1–2 come with them; a roaming group is more"): the enemy's line is
+       the target + its roaming group's members (their own races) + the companions the rule draws — never the crossing's team size;
+       `teamSize` stays the OFFICER's deploy (the party's shift). THE LEVELS: every body's level about the party's (hqEncounterLevels). */
+    const grp = hqEncounterGroup(ch, (roomId || '') + '|' + (ch.id || ch.race) + '|group');
+    const enemyTeam = Math.max(1, Math.min(8, grp.size | 0));   // the target + its group + the companions the rule drew
+    const pool = (typeof hqMissionPool === 'function') ? hqMissionPool(site, Math.max(n, enemyTeam)) : [];
+    const withGroup = [ch.race].concat(grp.members.map(x => x.race));
+    const roster = withGroup.concat(pool.filter(r => withGroup.indexOf(r) < 0)).slice(0, Math.max(enemyTeam, 1));
+    const lv = hqEncounterLevels(opts.partyLevel, site, enemyTeam, (roomId || '') + '|' + (ch.id || ch.race) + '|levels');
     /* THE AREA BOARDS (2026-09-19): a part with a Δ of its own (data.js _MF_AREA_DELTA_BUILDERS → hqAreaDeltaId) fights THAT —
        the encounter in the cavern is on THE CAVERN's board, in the sewers on THE SEWERS'; the site's Δ stands in for a room without one */
     const launchId = (typeof hqAreaDeltaId === 'function') ? hqAreaDeltaId(roomId) : null;
     return {
         site, delta: true, gm: c.gm, teamSize: n, rounds: c.rounds, roster, codeRed: !!opts.codeRed,
+        enemyTeam, levels: lv.levels, partyLevel: lv.partyLevel, group: grp,   // THE LEVELS + THE GROUP (2026-09-21)
         launchId, area: launchId ? roomId : null,
         doorId: 'crossing', counterId: 'crossing',
         encounter: { race: ch.race, gender: ch.gender || 'male', id: ch.id || null, room: roomId, x: +(ch.x || 0), z: +(ch.z || 0), gesture: opts.gesture || 'attack', label: ch.label || ch.race,
-                     name: ch.label || null },   // D2: the room's own name for the native — the enemy lead wears it on the nameplate
+                     name: ch.label || null,   // D2: the room's own name for the native — the enemy lead wears it on the nameplate
+                     members: grp.members.map(x => ({ id: x.id || null, race: x.race, gender: x.gender || 'male', name: x.label || null })) },   // the group's own people seat 2..n (state.js)
     };
 }
 /* THE MARKER (2026-09-20, the user: "whenever I do a battle it shows me the full roster — it should just send me into
@@ -42583,11 +42630,13 @@ function hqMarkerLaunch(roomId, cfg, opts) {
     const pool = (typeof hqMissionPool === 'function') ? hqMissionPool(site, n) : [];
     const roster = pool.slice(0, Math.max(n, 1));
     const lead = roster[0] || null;
+    const lv = hqEncounterLevels(opts.partyLevel, site, Math.max(n, 1), roomId + '|marker|' + ((typeof hqToday === 'function') ? hqToday() : ''));   // THE LEVELS (2026-09-21)
     const launchId = (typeof hqAreaDeltaId === 'function') ? hqAreaDeltaId(roomId) : null;
     let label = site;
     try { const M = (typeof EW_MAP_META !== 'undefined') ? EW_MAP_META.find(m => m.id === site) : null; if (M && M.label) label = M.label; } catch (e) {}
     return {
         site, delta: true, gm, teamSize: n, rounds: c.rounds, roster, codeRed: !!opts.codeRed,
+        enemyTeam: Math.max(1, Math.min(8, n)), levels: lv.levels, partyLevel: lv.partyLevel,   // THE LEVELS (2026-09-21): the marker's fight is the full line
         launchId, area: launchId ? roomId : null,
         doorId: 'battle', counterId: 'battle', marker: true,
         encounter: { race: lead, gender: 'male', id: null, room: roomId, x: 0, z: 0, gesture: 'marker', label: label, name: null },
@@ -43079,6 +43128,132 @@ const HQ_PARTY_RULES = {
     officerRace: 'door agent',   // the walker's vessel when no avatar / look says otherwise (the Player cast model is the DOOR Agent's)
     labels: { first: 'FIRST SHIFT', second: 'SECOND SHIFT', onCall: 'ON CALL', down: 'DOWN', fit: 'FIT', you: 'YOU' },
 };
+/* ══ THE LEVELS (2026-09-21) — the party's XP ledger, the adaptive enemy level, the group size ══
+   The user: "start at level 5 in story mode; as the characters level up we need to see their stats go
+   up and a satisfying level-up sequence; the NPCs' level as a range round the player's — adaptive
+   scaling; attack one NPC and only 1–2 come with them, a roaming group is more."
+   THE LEDGER: a member carries `xp` (cumulative, the XP CURVE above) and `lvl` (= xpLevelFor(xp) —
+   derived on every read, never edited by hand); a fresh member and the seed start at `start`; an
+   ENLISTED vessel joins at THE PARTY LEVEL (`enlist: 'party'` — a JRPG recruit is never level 5 in
+   chapter 9). THE PARTY LEVEL = the FIRST SHIFT's mean level (hqPartyLevel) — what every enemy is
+   scaled from. THE SHARE (hqPartyAfterMatch): the fight's XP POOL (Σ over the natives that fell, the
+   battle's own computeKillXP against the party level — RULE: the pool pays the kills, a unit's own
+   in-battle XP is the TRICKLE only) goes to everyone who fought — the board in full, the bench at
+   `share.bench`, a member DOWN at the end gets `share.down` (0: the classic rule) — plus the trickle
+   its own unit held. Level-ups resolve at THE DEBRIEF, never mid-battle (battle.js grantXP HOLDS in a
+   party fight). THE ENEMY LEVEL (hqEncounterLevels): the party level + the SITE's tier offset
+   (`tierOffset` by EW_MAP_META `tier` — a tier-3 site stands three above you), an area override
+   (HQ_AREA_LEVELS[site] — `offset` / `min` / `max`: the story's hook, empty until a route exists),
+   then a seeded jitter per body inside `band` (−3 … +2) — the LEAD (the one you hit) inside `lead`
+   (−1 … +3) — the whole thing clamped to `maxBelow` / `maxAbove` of the party level. The user's ±10
+   idea is the width knob: EW_LEVEL_GAP_STEP 1.08 makes +10 a 2.16× hit and −10 a 0.46× one, so ±3 is
+   shipped and `band` is the edit. THE GROUP: a lone native brings `group.solo` companions (0 · 1 · 2
+   by `group.soloWeights`); a ROAMING GROUP (hqRoomPopulation binds `groupP` of a room's extras into one
+   walking together — three-renderer.js spawns them at one stop on one loop; the aim reports the group)
+   fights as its members + `group.roamExtra` more. The officer's own line is THE PARTY's shift as before. */
+const HQ_LEVEL_RULES = {
+    start: 5,                          // story mode starts here (the seed, a fresh member)
+    enlist: 'party',                   // an enlisted vessel joins at THE PARTY LEVEL ('start' = always level 5)
+    band: { below: 3, above: 2 },      // a native's level about the scaled base (jitter, seeded)
+    lead: { below: 1, above: 3 },      // the one you hit — a touch tougher
+    maxBelow: 6, maxAbove: 8,          // the hard clamp about the party level (a site's tier can push, never past this)
+    tierOffset: { 1: -1, 2: 1, 3: 3 }, // EW_MAP_META tier → the site's standing above / below the party
+    share: { board: 1, bench: 0.5, down: 0 },   // the pool's share: fought on the board · sat the bench · went down
+    group: { solo: [0, 2], soloWeights: [0.35, 0.4, 0.25], roamExtra: [0, 1], roamSize: [2, 3], groupP: 0.55, marker: 4 },
+    milestones: { secondaryJob: SECONDARY_JOB_LEVEL, shop: SPELL_SHOP_LEVEL, every: 5 },
+    labels: { levelUp: 'LEVEL UP!', pool: 'THE ENCOUNTER', trickle: 'IN THE FIELD', bench: 'THE BENCH · HALF SHARE', down: 'DOWN · NO SHARE' },
+};
+/* an AREA's own band — the story's hook (empty until a route exists): { offset, min, max } by site id */
+const HQ_AREA_LEVELS = {
+    prebuilt_training: { offset: 0, min: 1, max: LEVEL_CAP },   // Room 64 stands at the party's own level
+};
+/* THE PARTY LEVEL: the first shift's mean level, rounded (the second shift is the bench — a new recruit there never drags the scale down) */
+function hqPartyLevel(profile) {
+    const S = hqPartyShifts(profile);
+    const ms = S.first.length ? S.first : S.members;
+    if (!ms.length) return HQ_LEVEL_RULES.start;
+    return Math.max(1, Math.round(ms.reduce((a, m) => a + hqPartyXp(m).lvl, 0) / ms.length));
+}
+/* the ONE read of a member's ladder: { lvl, xp, next, into, need, left, pct, max } */
+function hqPartyXp(m) {
+    const xp = (m && Number.isFinite(+m.xp)) ? Math.max(0, +m.xp) : xpThreshold(HQ_LEVEL_RULES.start);
+    return xpToNext(xp);
+}
+/* the stat deltas of every level from `from` (exclusive) to `to` (inclusive) — data.js levelStatGains on the unit's level-1 base
+   HP / MP (the build's _baseStats; without one the race's typical base): [{ lvl, stats: { hp, mp, atk, def, mdef, int }, milestone }] */
+function hqPartyLevelGains(baseHp, baseMp, from, to) {
+    const out = [];
+    const bh = (Number.isFinite(+baseHp) && +baseHp > 0) ? +baseHp : 550, bm = Number.isFinite(+baseMp) ? Math.max(0, +baseMp) : 100;
+    let prev = levelStatGains(Math.max(1, from | 0), bh, bm);
+    for (let L = (from | 0) + 1; L <= (to | 0) && L <= LEVEL_CAP; L++) {
+        const g = levelStatGains(L, bh, bm);
+        const stats = {};
+        ['hp', 'mp', 'atk', 'def', 'mdef', 'int'].forEach(k => { stats[k] = (g[k] | 0) - (prev[k] | 0); });
+        const M = HQ_LEVEL_RULES.milestones;
+        let milestone = null;
+        if (L === M.secondaryJob) milestone = 'SECONDARY JOB UNLOCKED';
+        else if (L === M.shop) milestone = 'THE SPELL SHOP OPENS';
+        else if (L === LEVEL_CAP) milestone = 'ASCENSION';
+        else if (L % 25 === 0) milestone = 'POWER SURGES';
+        out.push({ lvl: L, stats, milestone });
+        prev = g;
+    }
+    return out;
+}
+/* THE ONE WRITE of XP onto a member: the ledger moves, the level follows; the beats come back for the debrief */
+function hqPartyGrantXp(m, gain, base) {
+    if (!m) return null;
+    const before = hqPartyXp(m);
+    const add = Math.max(0, Math.round(+gain || 0));
+    const capXp = xpThreshold(LEVEL_CAP);
+    m.xp = Math.min(capXp, before.xp + add);
+    m.lvl = xpLevelFor(m.xp);
+    const after = hqPartyXp(m);
+    const levels = (after.lvl > before.lvl) ? hqPartyLevelGains(base && base.hp, base && base.mp, before.lvl, after.lvl) : [];
+    return { id: m.id, gain: add, before: { lvl: before.lvl, xp: before.xp, pct: before.pct }, after: { lvl: after.lvl, xp: after.xp, pct: after.pct, left: after.left, max: after.max }, levels };
+}
+/* THE SHARE of a fight's pool one member takes home */
+function hqPartyXpShare(pool, u) {
+    const S = HQ_LEVEL_RULES.share;
+    const k = (u && u.dead) ? S.down : (u && u.bench) ? S.bench : S.board;
+    return Math.max(0, Math.round((+pool || 0) * k));
+}
+/* a seeded xorshift off a string (the same stream everywhere a launch is read) */
+function hqLevelRng(seed) {
+    let s = (hqHash(String(seed == null ? 'x' : seed)) >>> 0) || 1;
+    return () => { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return (s % 100000) / 100000; };
+}
+/* THE ADAPTIVE ENEMY LEVEL: n levels, the lead first — pure, seeded */
+function hqEncounterLevels(partyLevel, siteId, n, seed) {
+    const R = HQ_LEVEL_RULES;
+    const pl = Math.max(1, Math.min(LEVEL_CAP, (partyLevel | 0) || R.start));
+    const site = hqSiteId(siteId || '') || siteId;
+    let tier = 1;
+    try { const M = (typeof EW_MAP_META !== 'undefined') ? EW_MAP_META.find(m => m.id === site) : null; if (M && M.tier) tier = M.tier | 0; } catch (e) { tier = 1; }
+    const A = HQ_AREA_LEVELS[site] || null;
+    const offset = (A && Number.isFinite(+A.offset)) ? +A.offset : ((R.tierOffset[tier] != null) ? R.tierOffset[tier] : 0);
+    const base = pl + offset;
+    const lo = Math.max(1, pl - R.maxBelow, (A && A.min) || 1), hi = Math.min(LEVEL_CAP, pl + R.maxAbove, (A && A.max) || LEVEL_CAP);
+    const rnd = hqLevelRng(seed);
+    const pick = (b) => Math.round(base - b.below + rnd() * (b.below + b.above));
+    const out = [];
+    for (let i = 0; i < Math.max(1, n | 0); i++) out.push(Math.max(lo, Math.min(hi, pick(i === 0 ? R.lead : R.band))));
+    return { levels: out, partyLevel: pl, base, tier, offset, lo, hi };
+}
+/* THE GROUP the strike engages: the target's own roaming group (the aim reports `ch.group` = [{ id, race, gender }] — its
+   members besides the target) plus `roamExtra`; a lone native brings `solo` companions by `soloWeights`. Seeded by the target. */
+function hqEncounterGroup(ch, seed) {
+    const G = HQ_LEVEL_RULES.group;
+    const rnd = hqLevelRng(seed != null ? seed : (ch && ch.id) || 'solo');
+    const members = (ch && Array.isArray(ch.group)) ? ch.group.filter(x => x && x.race && x.id !== ch.id) : [];
+    const span = (r) => Math.max(0, (r[0] | 0) + Math.floor(rnd() * ((r[1] | 0) - (r[0] | 0) + 1)));
+    if (members.length) { const extra = span(G.roamExtra); return { kind: 'roam', members, extra, size: 1 + members.length + extra }; }
+    const W = G.soloWeights || [1], u = rnd();
+    let acc = 0, extra = G.solo[0] | 0;
+    for (let i = 0; i < W.length; i++) { acc += W[i]; if (u < acc) { extra = (G.solo[0] | 0) + i; break; } }
+    extra = Math.max(G.solo[0] | 0, Math.min(G.solo[1] | 0, extra));
+    return { kind: 'solo', members: [], extra, size: 1 + extra };
+}
 function hqPartyRecordRaw(profile) {
     try { const r = profile && profile.door && profile.door.hq && profile.door.hq.party; return (r && typeof r === 'object' && Array.isArray(r.members)) ? r : null; } catch (e) { return null; }
 }
@@ -43110,6 +43285,10 @@ function hqPartyNormMember(m, r) {
     ['hp', 'hpMax', 'mp', 'mpMax'].forEach(k => { m[k] = (Number.isFinite(+m[k]) && m[k] !== null) ? Math.max(0, Math.round(+m[k])) : null; });
     if (m.hp != null && m.hpMax != null && m.hp > m.hpMax) m.hp = m.hpMax;
     if (m.mp != null && m.mpMax != null && m.mp > m.mpMax) m.mp = m.mpMax;
+    /* THE LEVELS (2026-09-21): xp is the ledger, lvl follows it; a member filed before the ledger starts at the start level */
+    if (!Number.isFinite(+m.xp)) m.xp = xpThreshold((Number.isFinite(+m.lvl) && +m.lvl >= 1) ? Math.min(LEVEL_CAP, +m.lvl | 0) : HQ_LEVEL_RULES.start);
+    m.xp = Math.max(0, Math.min(xpThreshold(LEVEL_CAP), Math.round(+m.xp)));
+    m.lvl = xpLevelFor(m.xp);
     return m;
 }
 /* the races the officer may ENLIST: the account's unlocked units (the starters offline), the 3D-only rule kept, the dev switch honoured */
@@ -43228,6 +43407,7 @@ function hqPartyEnlist(profile, spec) {
     if (r.members.some(m => m.meta.race === race)) return { ok: false, reason: 'dup' };
     const m = hqPartySpec(race, spec.gender, spec.cls || null);
     if (spec.name) m.name = String(spec.name).slice(0, 24);
+    if (HQ_LEVEL_RULES.enlist === 'party') { m.xp = xpThreshold(Math.max(HQ_LEVEL_RULES.start, hqPartyLevel(profile))); m.lvl = xpLevelFor(m.xp); }   // THE LEVELS: a recruit joins at the party's level
     m.id = 'p' + (r.seq++);
     r.members.push(m); r.at = Date.now();
     return { ok: true, member: m, index: r.members.length - 1 };
@@ -43278,7 +43458,8 @@ function hqPartyForLaunch(profile) {
     const fit = r.members.filter(m => !hqPartyDown(m));
     if (!fit.length) return null;
     const members = fit.map(m => {
-        const meta = Object.assign({}, m.meta, { partyId: m.id });
+        const mx = hqPartyXp(m);
+        const meta = Object.assign({}, m.meta, { partyId: m.id, storyLevel: mx.lvl, storyXp: mx.xp });   // THE LEVELS: map.js createUnit builds the member at its ledger's level; the xp rides for the HUD's bar
         if (m.hp != null && m.hpMax != null) { meta.hp = m.hp; meta.hpMax = m.hpMax; }
         if (m.mp != null && m.mpMax != null) { meta.mp = m.mp; meta.mpMax = m.mpMax; }
         const items = {};   // THE BAG (2026-09-20): a field-only item never rides into a battle
@@ -43293,9 +43474,16 @@ function hqPartyAfterMatch(profile, ev) {
     const r = hqPartyRecord(profile); if (!r || !ev) return null;
     const by = {}; (Array.isArray(ev.units) ? ev.units : []).forEach(u => { if (u && u.partyId) by[u.partyId] = u; });
     let down = 0, seen = 0;
+    const xp = [];   // THE LEVELS (2026-09-21): the beats of every member who fought — the debrief's EXPERIENCE card plays them
+    const pool = Math.max(0, Math.round(+ev.xpPool || 0));
     r.members.forEach(m => {
         const u = by[m.id]; if (!u) { if (hqPartyDown(m)) down++; return; }
         seen++;
+        try {
+            const held = Math.max(0, Math.round(+u.xpHeld || 0)), share = hqPartyXpShare(pool, u);
+            const beat = hqPartyGrantXp(m, held + share, { hp: u.baseHp, mp: u.baseMp });
+            if (beat) { beat.held = held; beat.share = share; beat.bench = !!u.bench; beat.dead = !!(u.dead || (u.hp | 0) <= 0); beat.unitId = u.unitId || null; beat.name = m.name || m.cls; beat.race = m.meta.race; beat.gender = m.meta.gender || 'male'; beat.cls = m.cls; beat.you = !!m.you; xp.push(beat); }
+        } catch (e) {}
         const hpMax = Math.max(1, u.maxHp | 0), mpMax = Math.max(0, u.maxMp | 0);
         m.hpMax = hpMax; m.mpMax = mpMax;
         if (u.dead || (u.hp | 0) <= 0) { m.hp = 0; m.mp = Math.max(0, Math.min(mpMax, u.mp | 0)); down++; }
@@ -43306,7 +43494,8 @@ function hqPartyAfterMatch(profile, ev) {
     let restored = false;
     if (!ev.won && HQ_PARTY_RULES.lossRestore) { hqPartyRestore(profile); restored = true; down = 0; }
     r.at = Date.now();
-    return { seen, down, fit: r.members.length - down, restored, total: r.members.length };
+    const leveled = xp.filter(b => b.after.lvl > b.before.lvl).length;
+    return { seen, down, fit: r.members.length - down, restored, total: r.members.length, xp, pool, leveled, partyLevel: hqPartyLevel(profile) };
 }
 /* ── FIELD MEDICINE — the party's own heal spells and potions outside a battle ── */
 function hqPartyIsFieldSpell(sp) { return !!(sp && HQ_PARTY_RULES.healKinds.indexOf(sp.kind) >= 0 && (sp.kind === 'revive' || sp.kind === 'selfHeal' || (sp.healAmt != null ? sp.healAmt : sp.heal) > 0)); }
@@ -43331,7 +43520,7 @@ function hqPartyHealAmount(sp, caster, target) {
     if (sp.lowHpBonus && target && target.hpMax > 0 && target.hp / target.hpMax < 0.4) amt += sp.lowHpBonus;
     return Math.max(0, Math.round(amt * scale));
 }
-function hqPartyFrame(m, unit) { const v = hqPartyVitals(m, unit); return { id: m.id, hp: v.hp, hpMax: v.hpMax, mp: v.mp, mpMax: v.mpMax, lvl: (unit && (unit.level | 0)) || 1, healBonus: (unit && unit.healBonus) || 0, down: v.down }; }
+function hqPartyFrame(m, unit) { const v = hqPartyVitals(m, unit); return { id: m.id, hp: v.hp, hpMax: v.hpMax, mp: v.mp, mpMax: v.mpMax, lvl: hqPartyXp(m).lvl, healBonus: (unit && unit.healBonus) || 0, down: v.down }; }
 /* who a field spell may land on: heal → a fit member short of full; healAll → every such member; selfHeal → the caster; revive → a down member */
 function hqPartyFieldTargets(profile, units, casterId, sp) {
     const r = hqPartyRecord(profile); if (!r) return [];
@@ -46182,6 +46371,9 @@ if (typeof window !== 'undefined') {
     window.HQ_PARTY_RULES = HQ_PARTY_RULES; window.hqPartyRecord = hqPartyRecord; window.hqPartyEnsure = hqPartyEnsure; window.hqPartyPrune = hqPartyPrune; window.hqPartyOfficer = hqPartyOfficer; window.hqPartyUnlocked = hqPartyUnlocked; window.hqPartyMember = hqPartyMember; window.hqPartyShifts = hqPartyShifts;
     window.hqPartyVitals = hqPartyVitals; window.hqPartyFit = hqPartyFit; window.hqPartyEnlist = hqPartyEnlist; window.hqPartyRelieve = hqPartyRelieve; window.hqPartySwap = hqPartySwap; window.hqPartyOnCall = hqPartyOnCall; window.hqPartyRestore = hqPartyRestore;
     window.hqPartyForLaunch = hqPartyForLaunch; window.hqPartyAfterMatch = hqPartyAfterMatch;
+    /* THE LEVELS (2026-09-21) */
+    window.HQ_LEVEL_RULES = HQ_LEVEL_RULES; window.HQ_AREA_LEVELS = HQ_AREA_LEVELS; window.XP_CURVE = XP_CURVE; window.xpThreshold = xpThreshold; window.xpLevelFor = xpLevelFor; window.xpToNext = xpToNext;
+    window.hqPartyLevel = hqPartyLevel; window.hqPartyXp = hqPartyXp; window.hqPartyLevelGains = hqPartyLevelGains; window.hqPartyGrantXp = hqPartyGrantXp; window.hqPartyXpShare = hqPartyXpShare; window.hqEncounterLevels = hqEncounterLevels; window.hqEncounterGroup = hqEncounterGroup;
     window.HQ_DISPENSARY = HQ_DISPENSARY; window.hqBagRecord = hqBagRecord; window.hqBagCount = hqBagCount; window.hqBagAdd = hqBagAdd; window.hqBagTake = hqBagTake; window.hqBagList = hqBagList; window.hqBagTotal = hqBagTotal; window.hqShopStock = hqShopStock; window.hqShopQuote = hqShopQuote; window.hqShopBuyApply = hqShopBuyApply; window.hqShopSell = hqShopSell; window.hqPartyStock = hqPartyStock; window.hqPartyBagItems = hqPartyBagItems; window.hqPartyAutoHeal = hqPartyAutoHeal; window.hqPartyFieldSpells = hqPartyFieldSpells; window.hqPartyFieldTargets = hqPartyFieldTargets; window.hqPartyHealAmount = hqPartyHealAmount; window.hqPartyCast = hqPartyCast; window.hqPartyUseItem = hqPartyUseItem; window.hqPartyFieldItems = hqPartyFieldItems; window.hqPartySpec = hqPartySpec; window.hqPartyGenders = hqPartyGenders; window.hqPartyDefaultJob = hqPartyDefaultJob;
     /* THE FIELD stage B — the rasteriser on the cave (Phase 9 Delivery 8, 2026-09-16) */
     window.HQ_FIELD_RULES = HQ_FIELD_RULES; window.hqFieldRimBox = hqFieldRimBox; window.hqEncounterRoomLabel = hqEncounterRoomLabel; window.hqFieldDump = hqFieldDump; window.hqFieldRoomOk = hqFieldRoomOk; window.hqFieldId = hqFieldId; window.hqFieldParse = hqFieldParse; window.hqFieldRaster = hqFieldRaster; window.hqFieldReach = hqFieldReach;

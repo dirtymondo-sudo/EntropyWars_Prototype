@@ -3907,6 +3907,7 @@
 
                     /* THE PARTY (2026-09-19): the member's id + carried vitals ride the identity into createUnit and out to the commit */
                     if (priorMeta.partyId) rebuiltMeta.partyId = priorMeta.partyId;
+                    if ((priorMeta.storyLevel | 0) > 0) { rebuiltMeta.storyLevel = priorMeta.storyLevel | 0; if (Number.isFinite(+priorMeta.storyXp)) rebuiltMeta.storyXp = +priorMeta.storyXp; }   // THE LEVELS (2026-09-21): a story-mode unit is built at its ledger's level (map.js createUnit)
                     ['hp', 'hpMax', 'mp', 'mpMax'].forEach(k => { if (priorMeta[k] != null && Number.isFinite(+priorMeta[k])) rebuiltMeta[k] = priorMeta[k]; });
                     if (priorMeta._campaignLevel != null) rebuiltMeta._campaignLevel = priorMeta._campaignLevel;
                     if (priorMeta._campaignXp != null) rebuiltMeta._campaignXp = priorMeta._campaignXp;
@@ -4135,6 +4136,14 @@
                 const m0 = randomizeIdentity(false, lead.race);
                 if (m0.race === lead.race) { m0.gender = lead.gender; state.partyMeta[player][0] = m0; }
             }
+            /* THE GROUP (2026-09-21): the target's roaming companions seat 2..k in their own races / genders (data.js hqEncounterLaunch
+               → encounter.members); the rule's extra companions and the marker's line stay the pool's draw */
+            const _grpMembers = (lead && _encSpec && Array.isArray(_encSpec.members)) ? _encSpec.members : [];
+            _grpMembers.forEach((mm, k) => {
+                const i = k + 1; if (!mm || !mm.race || i >= state.partyMeta[player].length) return;
+                const mi = randomizeIdentity(false, mm.race);
+                if (mi.race === mm.race) { if (mm.gender === 'male' || mm.gender === 'female') mi.gender = mm.gender; state.partyMeta[player][i] = mi; }
+            });
             state.partyBuilds[player] = state.partyMeta[player].map(meta => {
                 const race = meta.race || 'homosapien';
                 const lockedJob = (race !== 'homosapien' && typeof RACE_DEFAULT_JOBS !== 'undefined' && RACE_DEFAULT_JOBS[race])
@@ -4143,6 +4152,7 @@
             });
             state.partyNames[player] = state.partyBuilds[player].map(cls => getDefaultUnitName(cls));
             if (lead && lead.name && state.partyMeta[player][0] && state.partyMeta[player][0].race === lead.race) state.partyNames[player][0] = sanitizeUnitName(lead.name, getDefaultUnitName(state.partyBuilds[player][0]));
+            _grpMembers.forEach((mm, k) => { const i = k + 1; if (mm && mm.name && state.partyMeta[player][i] && state.partyMeta[player][i].race === mm.race) state.partyNames[player][i] = sanitizeUnitName(mm.name, getDefaultUnitName(state.partyBuilds[player][i])); });
             state.loadouts[player] = state.partyBuilds[player].map((cls, idx) =>
                 optimizeLoadoutForClass(cls, state.partyMeta[player][idx]?.race || '')
             );

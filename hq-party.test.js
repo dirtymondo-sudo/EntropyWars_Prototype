@@ -129,6 +129,7 @@ test('THE COMMIT: a win writes the board AND the bench home by id (a dead body i
 test('FIELD MEDICINE: heal / healAll / selfHeal / revive with the battle\'s own arithmetic, the caster\'s MP, the targets\' rule; the potions from the pockets; the cot', () => {
     const p = profile(); g('hqPartyEnsure')(p, { last });
     const rec = g('hqPartyRecord')(p); const [you, dutch, sis] = rec.members;
+    rec.members.forEach(m => { m.xp = g('xpThreshold')(100); m.lvl = 100; });   // THE LEVELS (2026-09-21): the arithmetic below is pinned at the cap — the ledger's level scales a heal like the battle does
     const SP = Object.values(D.SPELL_BY_ID); const heal = SP.find(s => s.kind === 'heal' && s.heal > 0 && s.lowHpBonus), healAll = SP.find(s => s.kind === 'healAll' && (s.healAmt || s.heal) > 0), rev = SP.find(s => s.kind === 'revive'), self = SP.find(s => s.kind === 'selfHeal' && s.selfHealPct);
     assert.ok(heal && healAll && rev && self, 'the four kinds exist in the library');
     const units = {};
@@ -212,7 +213,7 @@ test('THE SOURCE SITES: the engine (no respawns, the bench fills a seat, the car
     assert.ok(MP.includes("while (!(party && party.exact) && builds.length < n) {"), 'an exact party is never padded');
     assert.ok(MP.includes("if (pf && pf.total > 0 && !pf.ready) { _hqToast('<b>THE PARTY IS DOWN</b>"), 'nobody fit → no fight');
     /* the commit writes the party home by id (the board and the bench) */
-    assert.ok(BT.includes("if (vit.length) partyRes = hqPartyAfterMatch(p, { won, units: vit });") && BT.includes("(state.units || []).concat((state.bench && state.bench[seat]) || [])"), 'battle.js: the commit');
+    assert.ok(BT.includes("if (vit.length) partyRes = hqPartyAfterMatch(p, { won, units: vit, xpPool });") && BT.includes("(state.units || []).concat(benchBodies)"), 'battle.js: the commit (+ THE POOL, 2026-09-21)');
     assert.ok(BT.includes("party: partyRes };"), 'the result carries what the fight did to the party');
     /* the pause menu */
     ['function _hqPartyTx(fn)', 'function _hqPartySeed()', "data-party-act=\"cast:", "data-party-act=\"swap:", "data-party-act=\"relieve:", "data-party-act=\"enlist:", "data-party-act=\"item:", 'function _hqPartyAct(act)', "window._hqPartyRest = function ()", "if (c.id === 'cot' || c.id === 'healzone') {", "[data-party-rest]"].forEach(s => assert.ok(MP.includes(s), 'map.js: ' + s));
@@ -351,7 +352,7 @@ test('THE SOURCE SITES (2026-09-20): the quick strip, the ITEMS sheet, the walk-
     /* the field-only guard at every loadout funnel; the commit carries the pockets */
     assert.ok(BT.includes("const cap = iRule.fieldOnly ? 0 : getItemCapForClass(cls, iKey);") && ST.includes("const cap = iRule.fieldOnly ? 0 : getItemCapForClass(cls, iKey);"), 'normalizeLoadoutForClass caps a field-only item to 0 on both sides');
     assert.ok(PB.includes(".filter(k => !(window.ITEM_RULES[k] && window.ITEM_RULES[k].fieldOnly))"), 'the forge never offers one');
-    assert.ok(BT.includes("dead: !!(u.dead || u._dying), items: Object.assign({}, u.items || {}) });"), 'the commit carries the pockets');
+    assert.ok(BT.includes("dead: !!(u.dead || u._dying), items: Object.assign({}, u.items || {}),"), 'the commit carries the pockets');
     /* the pay cache drops a potion */
     assert.ok(D.HQ_FIND_RULES.potionDrop && D.HQ_FIND_RULES.potionDrop.healPotion > 0, 'the drop table');
     ['.hq-pp-quick', '.hq-pp-quickbar', '.hq-pp-bag', '.hq-pp-bagrow', '.hq-pp-pockets', '.hq-shop-row', '.hq-shop-price'].forEach(s => assert.ok(CSS.includes(s), 'css: ' + s));

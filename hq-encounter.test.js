@@ -89,7 +89,9 @@ test('THE LAUNCH: pure and serialisable — the site\'s Δ, the config, the CPU 
     assert.equal(L.site, 'prebuilt_dumb'); assert.equal(L.delta, true); assert.equal(L.gm, 'tdm'); assert.equal(L.teamSize, 3); assert.equal(L.codeRed, false);
     assert.equal(g('hqEncounterLaunch')('site_prebuilt_dumb', native(), null, { codeRed: true }).gm, 'arena', 'the Code Red response is Arena');
     assert.equal(L.roster[0], 'grey', 'the native leads the pool');
-    assert.equal(L.roster.length, 3); assert.equal(new Set(L.roster).size, 3);
+    /* THE GROUP (2026-09-21): the enemy line is the native + the companions the rule drew (1–3 for a lone native), never the crossing's team size */
+    assert.ok(L.enemyTeam >= 1 && L.enemyTeam <= 3, 'a lone native brings 0–2'); assert.equal(L.roster.length, L.enemyTeam); assert.equal(new Set(L.roster).size, L.roster.length);
+    assert.equal(L.levels.length, L.enemyTeam, 'a level per body'); assert.ok(L.levels.every(x => x >= 1 && x <= 100));
     assert.equal(L.doorId, 'crossing'); assert.equal(L.counterId, 'crossing');
     assert.equal(L.encounter.race, 'grey'); assert.equal(L.encounter.room, 'site_prebuilt_dumb'); assert.equal(L.encounter.gesture, 'magic');
     assert.equal(JSON.parse(JSON.stringify(L)).encounter.x, 1.5);
@@ -139,7 +141,7 @@ test('SOURCE · map.js: the enter opts, the guards (wild room · the gun · the 
     assert.ok(MP.includes("if (drawn) return false;   // the gun drawn: a click is a threshold, never a fight (rev 17)"), 'the gun drawn never fights');
     assert.ok(MP.includes("try { if (!ThreeRenderer.hq.portalDrawn()) aim = ThreeRenderer.hq.encounterAim(); } catch (e) { aim = null; }"), 'the prompt aims holstered');
     assert.ok(MP.includes("if (typeof window.isOnlineMatch === 'function' && window.isOnlineMatch()) return false;   // RULE #2"), 'never from an online seat');
-    assert.ok(MP.includes("window.hqEncounterLaunch(_hqCurRoom, ev.target, _hqEncounterCfgRaw(), { gesture: ev.gesture, codeRed: !!cr })"), 'the launch carries the Code Red read');
+    assert.ok(MP.includes("window.hqEncounterLaunch(_hqCurRoom, ev.target, _hqEncounterCfgRaw(), { gesture: ev.gesture, codeRed: !!cr, partyLevel: _hqPartyLevelNow() })"), 'the launch carries the Code Red read + THE PARTY LEVEL (2026-09-21)');
     assert.ok(MP.includes("window._hqEncounterParty = party;") && MP.includes("const _encParty = window._hqEncounterParty || null;"), 'the roster hands through _msConfirm');
     assert.ok(MP.includes("if (_encParty && typeof _hqApplyLastParty === 'function' && _hqApplyLastParty(_encParty, 1, CONFIG.teamSize)) {"), 'seated after every config rule');
     assert.ok(MP.includes("try { okStart = applyPartyBuild(false) !== false; if (okStart) startMatch(); }"), 'the builder is skipped (the tutorial\'s recipe)');
@@ -327,7 +329,7 @@ test('D2 · SOURCE · state.js: optimizeRandomizeParty pins seat 1 off _hqPresel
     assert.ok(ST2.includes("const m0 = randomizeIdentity(false, lead.race);") && ST.includes("if (m0.race === lead.race) { m0.gender = lead.gender; state.partyMeta[player][0] = m0; }"), 'seat 1 = the native, only when the race held');
     assert.ok(ST2.includes("state.partyNames[player][0] = sanitizeUnitName(lead.name, getDefaultUnitName(state.partyBuilds[player][0]));"), 'the nameplate wears the room\'s name');
     assert.ok(MP.includes("codeRed: !!L.codeRedRun, locked: true, presets: null, encounter: L.encounter };"), 'the preselect carries the encounter (+ the Code Red flag, Delivery 6)');
-    assert.ok(MP.includes("name: ch.label || null }") || fs.readFileSync(__dirname + '/data.js', 'utf8').includes("name: ch.label || null },"), 'the launch names it');
+    assert.ok(MP.includes("name: ch.label || null }") || fs.readFileSync(__dirname + '/data.js', 'utf8').includes("name: ch.label || null,"), 'the launch names it');
 });
 
 test('D1 · THE RETURN SPOT: the run marker\'s walker (feet + camera yaw in radians) → the free-spot form { x, z, y, face° }; a heading wraps to 0..360; no walker → null (the console as before)', () => {

@@ -307,8 +307,8 @@
         }
         .vic-debrief.one .vic-debrief-hint { visibility: hidden; }
         /* the sheets' containers are plain flow — a card per block */
-        .vic-gold-breakdown, .vic-elo-wrap, .vic-awards, .vic-honours, .vic-mode-tally, .vic-stats-table-wrap { display: flex; flex-direction: column; gap: 10px; }
-        .vic-gold-breakdown:empty, .vic-elo-wrap:empty, .vic-awards:empty, .vic-honours:empty, .vic-mode-tally:empty, .vic-stats-table-wrap:empty { display: none; }
+        .vic-experience, .vic-gold-breakdown, .vic-elo-wrap, .vic-awards, .vic-honours, .vic-mode-tally, .vic-stats-table-wrap { display: flex; flex-direction: column; gap: 10px; }
+        .vic-experience:empty, .vic-gold-breakdown:empty, .vic-elo-wrap:empty, .vic-awards:empty, .vic-honours:empty, .vic-mode-tally:empty, .vic-stats-table-wrap:empty { display: none; }
 
         /* THE CARD — the one plate every block of the panel wears */
         .vic-card {
@@ -343,6 +343,96 @@
             font-size: 12px; color: #d8cfa8; padding: 3px 0; border-bottom: 1px dashed rgba(212, 178, 90, 0.22);
         }
         .vic-pay-row:last-child { border-bottom: 0; }
+        /* ── THE EXPERIENCE (2026-09-21) — the level-up sequence: a row per member, the bar of the
+              current level, LEVEL UP! across the row, the stat chips landing under it ── */
+        .vic-xp-card {
+            background: linear-gradient(168deg, rgba(14, 30, 64, 0.78), rgba(6, 12, 30, 0.88));
+            border-color: rgba(120, 170, 255, 0.45);
+            box-shadow: inset 0 1px 0 rgba(190, 215, 255, 0.18), 0 8px 26px rgba(0, 0, 0, 0.45), 0 0 30px rgba(90, 140, 255, 0.10);
+        }
+        .vic-xp-card .vic-card-cap { color: #9fc4ff; display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+        .vic-xp-pool { font-style: normal; color: #ffd86a; letter-spacing: 0.12em; }
+        .vic-xp-rows { display: flex; flex-direction: column; gap: 8px; }
+        .vic-xp-row {
+            position: relative; display: flex; gap: 10px; align-items: flex-start;
+            padding: 8px 10px; border-radius: 9px;
+            background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(214, 222, 255, 0.10);
+            transition: background 0.3s, border-color 0.3s, box-shadow 0.3s;
+        }
+        .vic-xp-row.live { background: rgba(120, 170, 255, 0.10); border-color: rgba(120, 170, 255, 0.45); box-shadow: 0 0 18px rgba(90, 140, 255, 0.18); }
+        .vic-xp-row.leveled { border-color: rgba(255, 216, 106, 0.55); }
+        .vic-xp-row.down { opacity: 0.55; filter: saturate(0.4); }
+        .vic-xp-row.you .vic-xp-name::after { content: 'YOU'; margin-left: 6px; font-size: 8px; letter-spacing: 0.2em; color: #ffd86a; vertical-align: 2px; }
+        .vic-xp-port {
+            flex: 0 0 40px; width: 40px; height: 40px; border-radius: 50%;
+            background-size: cover; background-position: center top;
+            border: 2px solid rgba(214, 222, 255, 0.35); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+            image-rendering: auto;
+        }
+        .vic-xp-col { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+        .vic-xp-head { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+        .vic-xp-name { font-family: 'Cinzel', serif; font-size: 12.5px; font-weight: 800; color: var(--vic-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .vic-xp-lv {
+            flex: 0 0 auto; font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; font-weight: 700; letter-spacing: 0.14em;
+            color: #ffd86a; background: rgba(255, 216, 106, 0.12); border: 1px solid rgba(255, 216, 106, 0.45);
+            border-radius: 999px; padding: 1px 7px; display: inline-block;
+        }
+        .vic-xp-lv i { font-style: normal; font-family: 'Cinzel', serif; font-size: 12px; font-weight: 900; }
+        .vic-xp-lv.bump { animation: vicLvBump 0.55s cubic-bezier(0.2, 1.6, 0.3, 1); }
+        @keyframes vicLvBump { 0% { transform: scale(1); } 35% { transform: scale(1.45); box-shadow: 0 0 18px rgba(255, 216, 106, 0.8); background: rgba(255, 216, 106, 0.45); } 100% { transform: scale(1); } }
+        .vic-xp-gain { margin-left: auto; flex: 0 0 auto; font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 700; color: #9fc4ff; letter-spacing: 0.06em; font-variant-numeric: tabular-nums; }
+        .vic-xp-bar {
+            position: relative; height: 11px; border-radius: 6px; overflow: hidden;
+            background: rgba(0, 0, 0, 0.45); border: 1px solid rgba(160, 190, 255, 0.28);
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.6);
+        }
+        .vic-xp-bar i {
+            display: block; height: 100%; border-radius: 6px;
+            background: linear-gradient(90deg, #2a63d8, #5fa8ff 60%, #b6dcff);
+            box-shadow: 0 0 10px rgba(95, 168, 255, 0.7);
+            transition: width 0.12s linear;
+        }
+        .vic-xp-row.done .vic-xp-bar i { transition: width 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); }
+        .vic-xp-num {
+            position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+            font-family: 'IBM Plex Mono', monospace; font-size: 8.5px; font-weight: 700; letter-spacing: 0.08em;
+            color: #eaf2ff; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9); font-variant-numeric: tabular-nums;
+        }
+        .vic-xp-gains { display: flex; flex-direction: column; gap: 3px; }
+        .vic-xp-gains:empty { display: none; }
+        .vic-xp-gain-in { animation: vicRowIn 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; }
+        .vic-xp-lvl-line { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+        .vic-xp-lvl-no { font-family: 'IBM Plex Mono', monospace; font-size: 8.5px; letter-spacing: 0.18em; color: #ffd86a; margin-right: 2px; }
+        .vic-xp-chip {
+            font-style: normal; font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; letter-spacing: 0.06em;
+            color: #d8e4ff; background: rgba(120, 170, 255, 0.12); border: 1px solid rgba(120, 170, 255, 0.35);
+            border-radius: 999px; padding: 1px 7px; white-space: nowrap;
+            animation: vicChipPop 0.5s cubic-bezier(0.2, 1.5, 0.3, 1) both;
+        }
+        .vic-xp-chip b { color: #7dffa8; font-weight: 800; }
+        .vic-xp-chip.hp b { color: #7dffa8; } .vic-xp-chip.mp b { color: #7fc8ff; } .vic-xp-chip.atk b { color: #ff9a6a; }
+        .vic-xp-chip.int b { color: #d9a3ff; } .vic-xp-chip.def b { color: #8fc0ff; } .vic-xp-chip.mdef b { color: #9fe8e0; }
+        .vic-xp-chip:nth-child(2) { animation-delay: 0.05s; } .vic-xp-chip:nth-child(3) { animation-delay: 0.1s; }
+        .vic-xp-chip:nth-child(4) { animation-delay: 0.15s; } .vic-xp-chip:nth-child(5) { animation-delay: 0.2s; } .vic-xp-chip:nth-child(6) { animation-delay: 0.25s; }
+        @keyframes vicChipPop { from { opacity: 0; transform: translateY(6px) scale(0.8); } to { opacity: 1; transform: none; } }
+        .vic-xp-milestone { font-family: 'Cinzel', serif; font-size: 10px; font-weight: 800; letter-spacing: 0.16em; color: #ffd86a; text-shadow: 0 0 10px rgba(255, 200, 80, 0.5); }
+        .vic-xp-tag { font-family: 'IBM Plex Mono', monospace; font-size: 8.5px; letter-spacing: 0.18em; color: var(--vic-dim); }
+        .vic-xp-flash {
+            position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%) scale(0.6);
+            text-align: center; pointer-events: none; opacity: 0;
+            font-family: 'Cinzel', serif; font-size: 26px; font-weight: 900; letter-spacing: 0.22em;
+            color: #fff2c0; text-shadow: 0 0 18px rgba(255, 216, 106, 0.95), 0 0 42px rgba(255, 170, 60, 0.7), 0 2px 0 rgba(90, 60, 10, 0.9);
+            -webkit-text-stroke: 0.6px rgba(120, 80, 10, 0.6);
+        }
+        .vic-xp-flash.on { animation: vicXpFlash 1.5s cubic-bezier(0.2, 1.2, 0.3, 1) both; }
+        @keyframes vicXpFlash {
+            0%   { opacity: 0; transform: translateY(-50%) scale(0.5); filter: blur(4px); }
+            14%  { opacity: 1; transform: translateY(-50%) scale(1.18); filter: blur(0); }
+            28%  { transform: translateY(-50%) scale(1); }
+            72%  { opacity: 1; transform: translateY(-50%) scale(1.02); }
+            100% { opacity: 0; transform: translateY(-64%) scale(1.08); filter: blur(2px); }
+        }
+        @media (prefers-reduced-motion: reduce) { .vic-xp-flash.on, .vic-xp-lv.bump, .vic-xp-chip, .vic-xp-gain-in { animation: none; } }
         .vic-pay-row b { font-family: 'IBM Plex Mono', monospace; color: #ffe9a8; font-variant-numeric: tabular-nums; }
         .vic-pay-row.mult b { color: #9fe0a0; }
         .vic-pay-row.cap { color: #b8a878; }

@@ -1347,7 +1347,8 @@
                     if (encRes) setTimeout(() => { try {
                         /* THE PARTY (2026-09-19): the second line reads what the fight did to the party — the down, the treatment */
                         const pr = encRes.party || null;
-                        const partyLine = pr ? (pr.restored ? ' · THE PARTY WAS TREATED' : pr.down ? ` · ${pr.down} DOWN — HEAL THEM OR REST IN MEDICAL` : ' · THE PARTY STANDS') : '';
+                        const partyLine = (pr ? (pr.restored ? ' · THE PARTY WAS TREATED' : pr.down ? ` · ${pr.down} DOWN — HEAL THEM OR REST IN MEDICAL` : ' · THE PARTY STANDS') : '')
+                            + ((pr && pr.leveled) ? ` · ${pr.leveled} LEVELLED UP · THE PARTY IS LV ${pr.partyLevel}` : '');   // THE LEVELS (2026-09-21)
                         _hqToast(encRes.won ? `<b>THRESHOLD HELD</b><span>${_hqEsc(String(encRes.label || encRes.race || 'THE NATIVE').toUpperCase())} · THE ROOM IS YOURS${partyLine}</span>` : `<b>EXITED</b><span>${encRes.wake === 'office' ? 'YOU CAME TO AT YOUR DESK' : 'YOU CAME TO IN THE WARD'} · ${_hqEsc(String(encRes.label || encRes.race || 'THE NATIVE').toUpperCase())} HAD THE ROOM${partyLine}</span>`, 4200);
                     } catch (e) {} }, 1400);
                     return true;
@@ -1478,6 +1479,7 @@
                     }
                     const meta = Object.assign({}, m.meta || {});
                     if ((!Array.isArray(meta.customSpells) || !meta.customSpells.length) && lo.spells.some(Boolean)) meta.customSpells = lo.spells.filter(Boolean);
+                    try { if (typeof window.hqPartyXp === 'function') { const mx = window.hqPartyXp(m); meta.storyLevel = mx.lvl; meta.storyXp = mx.xp; } } catch (e) {}   // THE LEVELS: the sheet's stats are the level's
                     u = createUnit('hq-pause-' + i, rec.seat || 1, 0, 0, { cls: m.cls, job: m.cls }, lo, meta);
                     if (m.name) u.name = m.name;
                 } catch (e) { console.warn('[HQ] pause: could not build', m && m.cls, e); u = null; }
@@ -1519,6 +1521,13 @@
             if (arm.kind === 'item') { const v = _hqPauseVitals(m, units[m.id]); return _hqPauseItemOk(arm.key, v); }
             return false;
         }
+        /* THE LEVELS (2026-09-21): the ledger on the card — the Lv chip before the race, the XP bar under the vitals (data.js hqPartyXp) */
+        function _hqPauseXpOf(m) { try { return (typeof window.hqPartyXp === 'function') ? window.hqPartyXp(m) : null; } catch (e) { return null; } }
+        function _hqPauseLvChip(m) { const x = _hqPauseXpOf(m); return x ? `<i class="hq-pp-lv">LV ${x.lvl}</i> ` : ''; }
+        function _hqPauseXpRow(m) {
+            const x = _hqPauseXpOf(m); if (!x) return '';
+            return `<span class="hq-pp-vit xp"><span class="hq-pp-vbar xp"><i style="width:${(x.pct * 100).toFixed(1)}%"></i></span><em>${x.max ? 'MAX LEVEL' : 'EXP ' + x.into + ' / ' + x.need}</em></span>`;
+        }
         function _hqPauseCardHtml(m, i, rec, units, arm) {
             const u = units[m.id];
             const po = _hqPausePortrait(m, u);
@@ -1531,9 +1540,10 @@
             const shift = i < HQ_PARTY_RULES.shift ? 1 : 2;
             return `<div class="${cls}" data-member="${_hqEsc(m.id)}" role="button" tabindex="0"${arm && !tgt ? ' aria-disabled="true"' : ''}>`
                 + `<span class="hq-pp-face${po && po.kind === 'sprite' ? ' sprite' : ''}"${po ? ` style="background-image:url('${po.url}')"` : ''}>${v.down ? '<i class="hq-pp-downstamp">DOWN</i>' : ''}</span>`
-                + `<span class="hq-pp-id"><b>${_hqEsc(name)}${m.you ? ' <i class="hq-pp-you">YOU</i>' : ''}</b><i>${_hqEsc(_hqPauseRaceLabel(m, u))} · ${_hqEsc(m.cls)}${sec ? ' / ' + _hqEsc(sec) : ''}</i>`
+                + `<span class="hq-pp-id"><b>${_hqEsc(name)}${m.you ? ' <i class="hq-pp-you">YOU</i>' : ''}</b><i>${_hqPauseLvChip(m)}${_hqEsc(_hqPauseRaceLabel(m, u))} · ${_hqEsc(m.cls)}${sec ? ' / ' + _hqEsc(sec) : ''}</i>`
                 + `<span class="hq-pp-vit"><span class="hq-pp-vbar hp"><i style="width:${(v.pct * 100).toFixed(1)}%"></i></span><em>HP ${v.hp} / ${v.hpMax}</em></span>`
                 + `<span class="hq-pp-vit"><span class="hq-pp-vbar mp"><i style="width:${(v.mpPct * 100).toFixed(1)}%"></i></span><em>MP ${v.mp} / ${v.mpMax}</em></span>`
+                + _hqPauseXpRow(m)
                 + `<small>${_hqPauseTypeChips(u ? u.types : [])}</small></span>`
                 + `<span class="hq-pp-slot">${shift === 1 ? '1ST' : '2ND'} · ${String(i + 1).padStart(2, '0')}</span>`
                 + (arm ? '' : _hqPauseCardQuickHtml(m, rec, units, v, u))
@@ -1723,7 +1733,8 @@
             const po = _hqPausePortrait(m, u);
             const v = _hqPauseVitals(m, u);
             const name = m.name || (u && u.name) || m.cls;
-            const lvl = u ? ((typeof getUnitLevel === 'function') ? getUnitLevel(u) : (u.level || 1)) : null;
+            const xp = _hqPauseXpOf(m);
+            const lvl = xp ? xp.lvl : (u ? ((typeof getUnitLevel === 'function') ? getUnitLevel(u) : (u.level || 1)) : null);
             const sec = (u && u._secondaryJob) || (m.meta && m.meta.secondaryJob) || '';
             const n = rec.members.length;
             const prev = rec.members[(idx + n - 1) % n], next = rec.members[(idx + 1) % n];
@@ -1737,6 +1748,7 @@
             html += '<div class="hq-pp-stats">';
             html += _hqPauseBar('HP', v.hp | 0, Math.max(1, v.hpMax | 0), v.down ? '#ff4a4a' : '#2ed158', `${v.hp} / ${v.hpMax}`);
             html += _hqPauseBar('MP', v.mp | 0, Math.max(1, v.mpMax | 0), '#2f9dff', `${v.mp} / ${v.mpMax}`);
+            if (xp) html += _hqPauseBar('EXP', xp.into | 0, Math.max(1, xp.need | 0), '#ffd86a', xp.max ? 'MAX LEVEL' : `${xp.into} / ${xp.need} · NEXT IN ${xp.left}`);   // THE LEVELS
             if (u) {
                 html += _hqPauseBar('ATK', u.atk | 0, 100, '#ff6b4a', null, 'atk');
                 html += _hqPauseBar('M ATK', u.intStat | 0, 100, '#c77dff', null, 'int');
@@ -3081,7 +3093,7 @@
             try { cr = (typeof window.hqCodeRed === 'function') ? window.hqCodeRed(_hqProfile()) : null; } catch (e) { cr = null; }
             const site = (typeof window.hqRoomSite === 'function') ? window.hqRoomSite(_hqCurRoom) : null;
             if (!cr || cr.cleared || !site || cr.site !== site) cr = null;
-            const L = (typeof window.hqEncounterLaunch === 'function') ? window.hqEncounterLaunch(_hqCurRoom, ev.target, _hqEncounterCfgRaw(), { gesture: ev.gesture, codeRed: !!cr }) : null;
+            const L = (typeof window.hqEncounterLaunch === 'function') ? window.hqEncounterLaunch(_hqCurRoom, ev.target, _hqEncounterCfgRaw(), { gesture: ev.gesture, codeRed: !!cr, partyLevel: _hqPartyLevelNow() }) : null;
             if (!L) return false;
             L.codeRedRun = cr ? { date: cr.date, site: cr.site, race: cr.race, label: cr.label, bonus: cr.bonus } : null;
             /* THE FIELD stage B / C (Phase 9 Deliveries 8 + 9, 2026-09-16 — the rasteriser on the cave, then on the
@@ -3158,9 +3170,16 @@
             } catch (e) { console.warn('[HQ] the party could not be read', e); out = null; }
             return out;
         }
+        /* THE LEVELS (2026-09-21): THE PARTY LEVEL every native is scaled from (data.js hqPartyLevel — the first shift's mean) */
+        function _hqPartyLevelNow() {
+            try { const p = _hqProfile(); if (p && typeof window.hqPartyRecord === 'function' && !window.hqPartyRecord(p)) _hqPartySeed(); return (typeof window.hqPartyLevel === 'function') ? window.hqPartyLevel(_hqProfile()) : null; } catch (e) { return null; }
+        }
         function _hqEncounterStart(L, ev, field) {
             let party = _hqPartyLaunch() || _hqLastParty();
-            if (party && party.party) party.enemyTeam = L.teamSize;   // the native's group at the encounter's size; the bench is the officer's alone
+            if (party && party.party) {
+                party.enemyTeam = L.enemyTeam || L.teamSize;   // THE GROUP (2026-09-21): the native + its companions — never the crossing's team size; the bench is the officer's alone
+                party.enemyLevels = Array.isArray(L.levels) ? L.levels.slice() : null;   // THE LEVELS: the adaptive levels, the lead's first
+            }
             _hqLastDoor = L.doorId || 'crossing'; _hqLastRoom = _hqCurRoom; _hqRecordVisit(_hqLastDoor);
             /* the run marker: the intro off PER LAUNCH, the native's spawn id (THE CLEARED ROOM on a win), THE EYE
                (stage 2) — the walker's camera in board tiles, the first battle frame (battle.js → ThreeCamera.seedPose)
@@ -4614,7 +4633,7 @@
             try { cr = (typeof window.hqCodeRed === 'function') ? window.hqCodeRed(_hqProfile()) : null; } catch (e) { cr = null; }
             const site = (typeof window.hqRoomSite === 'function') ? window.hqRoomSite(_hqCurRoom) : null;
             if (!cr || cr.cleared || !site || cr.site !== site) cr = null;
-            const L = (typeof window.hqMarkerLaunch === 'function') ? window.hqMarkerLaunch(_hqCurRoom, _hqEncounterCfgRaw(), { gm: gm, codeRed: !!cr && gm === 'arena' }) : null;
+            const L = (typeof window.hqMarkerLaunch === 'function') ? window.hqMarkerLaunch(_hqCurRoom, _hqEncounterCfgRaw(), { gm: gm, codeRed: !!cr && gm === 'arena', partyLevel: _hqPartyLevelNow() }) : null;
             if (!L) { _hqToast('<b>NO BOARD</b><span>THIS ROOM HAS NO SITE ON FILE</span>', 2400); return false; }
             L.codeRedRun = (cr && gm === 'arena') ? { date: cr.date, site: cr.site, race: cr.race, label: cr.label, bonus: cr.bonus } : null;
             return _hqEncounterStart(L, null, null);
@@ -7673,6 +7692,11 @@
                     const _en = Math.max(1, Math.min(CONFIG.teamSize, _encParty.enemyTeam || _msSelectedTeamSize || 4));
                     [state.partyBuilds, state.partyNames, state.loadouts, state.partyMeta].forEach(a => { if (a && Array.isArray(a[2]) && a[2].length > _en) a[2].length = _en; });
                     window._ewPartySlots = { 1: state.partyBuilds[1].length, 2: _en };
+                    /* THE LEVELS (2026-09-21): every native is built at the level the launch drew (createUnit's storyLevel branch) */
+                    if (Array.isArray(_encParty.enemyLevels) && _encParty.enemyLevels.length && Array.isArray(state.partyMeta[2])) {
+                        const lv = _encParty.enemyLevels;
+                        state.partyMeta[2].forEach((mm, i) => { if (mm) mm.storyLevel = lv[Math.min(i, lv.length - 1)] | 0; });
+                    }
                 }
                 /* no roster on file (Delivery 6): the human's stand-in squad gets identities + spell loadouts like the CPU's */
                 if (_encParty.fallback && typeof optimizeRandomizeParty === 'function') {
@@ -13791,6 +13815,64 @@
                 }
             }
 
+            /* THE LEVELS (2026-09-21): a STORY-MODE unit — a party member (data.js hqPartyForLaunch → meta.storyLevel = its
+               ledger's level) or an encounter's native (map.js _msConfirm → the adaptive level hqEncounterLevels drew) — is built
+               at THAT level, never the PvP cap: the campaign's own recipe (the secondary job first, one setUnitLevel, the
+               tree loadout). Online, Practice and the console's crossings carry no storyLevel and take the cap as before. */
+            else if (identityOverride && (identityOverride.storyLevel | 0) > 0) {
+                const targetLevel = Math.max(1, Math.min(XP_MAX_LEVEL, identityOverride.storyLevel | 0));
+                const _secJobLvl = (typeof SECONDARY_JOB_LEVEL !== 'undefined') ? SECONDARY_JOB_LEVEL : 15;
+                if (targetLevel >= _secJobLvl) {
+                    const metaSecJob = identityOverride?.secondaryJob || null;
+                    if (metaSecJob) applySecondaryJob(newUnit, metaSecJob);
+                    else aiPickSecondaryJob(newUnit);
+                }
+                setUnitLevel(newUnit, targetLevel);
+                newUnit.hp = newUnit.maxHp;
+                newUnit.mp = newUnit.maxMp;
+                newUnit._storyLevel = targetLevel;
+                /* the ledger's xp on the unit (inside the level's own band) — the HUD's XP bar reads the real progress; the level never moves */
+                const _sxp = +identityOverride.storyXp;
+                if (Number.isFinite(_sxp) && _sxp >= (XP_THRESHOLDS[targetLevel - 1] || 0) && (targetLevel >= XP_MAX_LEVEL || _sxp < XP_THRESHOLDS[targetLevel])) { newUnit._xp = Math.round(_sxp); newUnit._lvlCacheXp = newUnit._xp; newUnit._lvlCache = targetLevel; }
+                const _customSpells = Array.isArray(identityOverride?.customSpells) ? identityOverride.customSpells : null;
+                if (_customSpells && _customSpells.length > 0) {
+                    const _slotCap = (typeof SPELL_SLOT_MAX !== 'undefined') ? SPELL_SLOT_MAX : 6;
+                    // Slot-budget aware: over-budget saved builds are trimmed
+                    // gracefully (later picks that no longer fit are skipped,
+                    // earlier picks are kept).
+                    const _secJobForBudget = newUnit._secondaryJob || identityOverride?.secondaryJob || '';
+                    let _validIds;
+                    if (typeof classHasSpellTree === 'function' && classHasSpellTree(template.cls)
+                        && typeof treeLegalSubset === 'function') {
+                        /* Spell-tree classes: THE authority checkpoint (host
+                           builds every unit online — RULE #2). Keeps the
+                           largest root-connected subset of the wish-list, so
+                           an off-tree or disconnected loadout can't reach
+                           battle no matter where it came from. */
+                        _validIds = treeLegalSubset(newUnit.race, template.cls, _secJobForBudget, _customSpells);
+                    } else if (typeof trimSpellIdsToSlotBudget === 'function') {
+                        _validIds = trimSpellIdsToSlotBudget(_customSpells, template.cls, _secJobForBudget, _slotCap);
+                    } else {
+                        const _seen = new Set();
+                        _validIds = [];
+                        for (const sid of _customSpells) {
+                            if (!sid || _seen.has(sid)) continue;
+                            const sp = (typeof getSpellById === 'function') ? getSpellById(sid) : null;
+                            if (!sp || sp.kind === 'basicAttack') continue;
+                            _seen.add(sid);
+                            _validIds.push(sid);
+                            if (_validIds.length >= _slotCap) break;
+                        }
+                    }
+                    if (_validIds.length > 0) {
+                        newUnit._spellSlots = _validIds.slice();
+                        newUnit.spells = _validIds.map(id => {
+                            const sp = getSpellById(id);
+                            return sp ? { ...sp } : null;
+                        }).filter(Boolean);
+                    }
+                }
+            }
             else {
             const _cuMode = (typeof getActiveMultiplayerMode === 'function') ? getActiveMultiplayerMode() : null;
             if (_cuMode) {

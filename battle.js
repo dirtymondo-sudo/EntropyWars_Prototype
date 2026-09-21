@@ -16869,16 +16869,21 @@
                             try {
                                 if (typeof hqPartyAfterMatch === 'function') {
                                     const seat = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : 1;
-                                    const bodies = (state.units || []).concat((state.bench && state.bench[seat]) || []);
+                                    const benchBodies = (state.bench && state.bench[seat]) || [];
+                                    const bodies = (state.units || []).concat(benchBodies);
                                     const vit = [];
                                     for (const u of bodies) {
                                         if (!u || (typeof unitHomePlayer === 'function' ? unitHomePlayer(u) : u.player) !== seat) continue;
                                         const ui = parseInt(String(u.id).split('-')[1], 10);
                                         const pm = (Number.isFinite(ui) && state.partyMeta && state.partyMeta[seat]) ? state.partyMeta[seat][ui] : null;
                                         if (!pm || !pm.partyId) continue;
-                                        vit.push({ partyId: pm.partyId, hp: u.hp | 0, maxHp: u.maxHp | 0, mp: u.mp | 0, maxMp: u.maxMp | 0, dead: !!(u.dead || u._dying), items: Object.assign({}, u.items || {}) });   // THE POCKETS (2026-09-20): what the fight spent stays spent
+                                        vit.push({ partyId: pm.partyId, hp: u.hp | 0, maxHp: u.maxHp | 0, mp: u.mp | 0, maxMp: u.maxMp | 0, dead: !!(u.dead || u._dying), items: Object.assign({}, u.items || {}),   // THE POCKETS (2026-09-20): what the fight spent stays spent
+                                                   /* THE LEVELS (2026-09-21): the trickle the unit held, whether it sat the bench, its level-1 base for the stat card, its id for the podium beat */
+                                                   xpHeld: u._xpHeld | 0, bench: benchBodies.indexOf(u) >= 0, baseHp: (u._baseStats && u._baseStats.maxHp) || 0, baseMp: (u._baseStats && isFinite(u._baseStats.maxMp)) ? u._baseStats.maxMp : 0, unitId: u.id });
                                     }
-                                    if (vit.length) partyRes = hqPartyAfterMatch(p, { won, units: vit });
+                                    /* THE POOL: every native that fell, priced by the battle's own kill formula against THE PARTY LEVEL (the share rule is data.js's) */
+                                    const xpPool = _encXpPool(p, seat);
+                                    if (vit.length) partyRes = hqPartyAfterMatch(p, { won, units: vit, xpPool });
                                 }
                             } catch (e) { console.warn('[HQ] the party record failed', e); }
                             PS.saveProfile(idx, p);
@@ -31899,6 +31904,7 @@
         function xpProgressionActive() {
             if (!state) return false;
             if (state.isCampaign || state._mdRun) return true;
+            if (_encRun()) return true;   // THE LEVELS (2026-09-21): a story-mode encounter earns XP — held on the unit, resolved at the debrief
             if (typeof isProgressionMode !== 'function') return false;
             const m = (typeof getActiveMultiplayerMode === 'function') ? getActiveMultiplayerMode() : null;
             return !!(m && isProgressionMode(m.id));
@@ -32037,6 +32043,19 @@
             }
             const amt = Math.max(0, Math.round(amount));
             if (amt <= 0) return;
+            /* THE LEVELS (2026-09-21): in a story-mode encounter a level-up NEVER lands mid-battle — the unit's stats are its
+               ledger's for the whole fight; the kills are THE POOL every party member shares at the commit (data.js
+               hqPartyAfterMatch — the float over the killer is the feedback), the trickle (damage / heal / the round) is HELD
+               on the unit (_xpHeld) and goes home with it. THE EXPERIENCE card on the debrief plays the level-ups. */
+            if (_encRun()) {
+                const _viewerSeat = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : 1;
+                if (reason === 'kill' || reason === 'assist') {
+                    if (!_skipVisuals() && unit.player === _viewerSeat) { try { showFloatingTextForUnit(unit, `+${amt} XP`, 'levelup', { durationMs: 1400 }); } catch (e) {} }
+                    return;
+                }
+                unit._xpHeld = (unit._xpHeld || 0) + amt;
+                return;
+            }
             const prevLevel = getUnitLevel(unit);
             unit._xp = (unit._xp || 0) + amt;
             const newLevel = getUnitLevel(unit);
@@ -36283,7 +36302,7 @@
         function _vicPrepare() {
             /* the shared result DOM: empty every sheet + the head's extras so a campaign /
                dungeon / no-contest card never shows a previous match's rows */
-            ['vicGoldBreakdown', 'vicEloBadge', 'vicAwards', 'vicHonours', 'vicTeamDmgBar', 'vicTeamDmgLabels', 'vicModeTally', 'vicStatsTableWrap', 'vicKicker', 'vicMatchInfo', 'vicSubtitle'].forEach(id => {
+            ['vicExperience', 'vicGoldBreakdown', 'vicEloBadge', 'vicAwards', 'vicHonours', 'vicTeamDmgBar', 'vicTeamDmgLabels', 'vicModeTally', 'vicStatsTableWrap', 'vicKicker', 'vicMatchInfo', 'vicSubtitle'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.innerHTML = '';
             });
@@ -36593,12 +36612,17 @@
 
             _accountBankMatchGold();
 
+            /* THE EXPERIENCE (2026-09-21): a story-mode encounter's XP — the card leads the REWARDS sheet, the fill plays once the overlay shows */
+            let _vicXpParty = null;
+            try { const _er = window._hqEncounterResult; if (_er && _er.party && Array.isArray(_er.party.xp) && _er.party.xp.length) { _vicXpParty = _er.party; const _xe = document.getElementById('vicExperience'); if (_xe) _xe.innerHTML = _vicBuildExperience(_vicXpParty); } } catch (e) { console.warn('[HQ] the experience card failed', e); _vicXpParty = null; }
+
             /* the sheets are filled — build the tab strip; the first sheet with anything in
                it opens (REWARDS on a paid match, HONOURS on a friendly / a no-contest) */
             _vicLayoutSync({ tab: 'rewards' });
 
             resultOverlay.classList.remove('hidden');
             try { _encounterResultButtons(); } catch (e) { console.warn('[HQ] the encounter result bar failed', e); }
+            if (_vicXpParty) { try { _vicPlayExperience(_vicXpParty); } catch (e) { console.warn('[HQ] the experience sequence failed', e); } }
 
             /* Stage the 3D podium LAST — career stats, gold banking and every
                stat readout above snapshot the real outcome before the visual
@@ -36614,6 +36638,120 @@
             const port = (typeof getUnitPortraitUrl === 'function') ? getUnitPortraitUrl(u) : null;
             return port || getBattleMapSpriteUrl(u);
         }
+
+        /* ══════════ THE EXPERIENCE (2026-09-21) — the level-up sequence on the debrief ══════════
+           The user: "a satisfying experience gain on the victory screen; as the characters level up we
+           see their stats go up; AAA JRPG". The card leads the REWARDS sheet: one row per member who
+           fought (data.js hqPartyAfterMatch's beats — the ledger already moved; this REPLAYS it): the
+           portrait, the name, the LV chip, +N XP, a bar of the CURRENT level. THE FILL runs the rows
+           one after another (a beat between): the bar and the number climb; when the ledger crosses a
+           threshold the bar completes, snaps to the next level, the chip BUMPS, LEVEL UP! flashes across
+           the row, the levelUp cue plays, the 3D party member on the podium JUMPS (ThreeRenderer.podium,
+           the vicJump one-shot over its held pose) with the level-up burst at its feet, and the STAT
+           DELTAS of that level land as chips (HP +4 · ATK +1 …; a milestone line under them). A member
+           DOWN at the end wears the row dim with NO SHARE; the bench HALF SHARE. Reduced motion = the
+           end state at once. Viewer-local (RULE #2: the match is over; an encounter is VS-CPU). */
+        const VIC_XP_ROW_MS = { min: 900, max: 2400, perXp: 5, gap: 260, start: 1200, flash: 1500 };
+        const _VIC_XP_STAT_LABELS = { hp: 'HP', mp: 'MP', atk: 'ATK', int: 'M.ATK', def: 'DEF', mdef: 'M.DEF' };
+        function _vicXpPortrait(b) {
+            try {
+                const u = (b.unitId && typeof unitFromId === 'function') ? unitFromId(b.unitId) : null;
+                if (u) return _vicPortrait(u);
+                return _vicPortrait({ race: b.race, gender: b.gender, cls: b.cls, name: b.name, player: 1, types: [] });
+            } catch (e) { return ''; }
+        }
+        function _vicBuildExperience(party) {
+            const R = (typeof HQ_LEVEL_RULES !== 'undefined') ? HQ_LEVEL_RULES : { labels: {} };
+            const L = R.labels || {};
+            const rows = party.xp.map(b => {
+                const cls = 'vic-xp-row' + (b.dead ? ' down' : '') + (b.bench ? ' bench' : '') + (b.you ? ' you' : '');
+                const tag = b.dead ? (L.down || 'DOWN · NO SHARE') : b.bench ? (L.bench || 'THE BENCH · HALF SHARE') : '';
+                const need = Math.max(1, (typeof xpToNext === 'function') ? xpToNext(b.before.xp).need : 1);
+                const into = (typeof xpToNext === 'function') ? xpToNext(b.before.xp).into : 0;
+                return `<div class="${cls}" data-xp="${escapeHtml(String(b.id))}">
+                    <div class="vic-xp-port" style="background-image:url('${_vicXpPortrait(b)}')"></div>
+                    <div class="vic-xp-col">
+                        <div class="vic-xp-head"><b class="vic-xp-name">${escapeHtml(String(b.name || b.cls || ''))}</b><span class="vic-xp-lv">LV <i>${b.before.lvl}</i></span><span class="vic-xp-gain">+${b.gain.toLocaleString()} XP</span></div>
+                        <div class="vic-xp-bar"><i style="width:${(b.before.pct * 100).toFixed(1)}%"></i><em class="vic-xp-num">${into.toLocaleString()} / ${need.toLocaleString()}</em></div>
+                        <div class="vic-xp-gains"></div>
+                        ${tag ? `<div class="vic-xp-tag">${escapeHtml(tag)}</div>` : ''}
+                    </div>
+                    <div class="vic-xp-flash" aria-hidden="true">${escapeHtml(L.levelUp || 'LEVEL UP!')}</div>
+                </div>`;
+            }).join('');
+            const poolLine = party.pool > 0 ? `+${party.pool.toLocaleString()} XP · ${escapeHtml(L.pool || 'THE ENCOUNTER')}` : '';
+            return `<div class="vic-card vic-xp-card">
+                <div class="vic-card-cap">✦ EXPERIENCE${poolLine ? ` · <em class="vic-xp-pool">${poolLine}</em>` : ''}</div>
+                <div class="vic-xp-rows">${rows}</div>
+            </div>`;
+        }
+        function _vicXpStatChips(lv) {
+            const chips = [];
+            Object.keys(_VIC_XP_STAT_LABELS).forEach(k => { const d = (lv.stats && lv.stats[k]) | 0; if (d > 0) chips.push(`<i class="vic-xp-chip ${k}">${_VIC_XP_STAT_LABELS[k]} <b>+${d}</b></i>`); });
+            let html = `<div class="vic-xp-lvl-line"><span class="vic-xp-lvl-no">LV ${lv.lvl}</span>${chips.join('')}</div>`;
+            if (lv.milestone) html += `<div class="vic-xp-milestone">✦ ${escapeHtml(lv.milestone)}</div>`;
+            return html;
+        }
+        function _vicXpLevelBeat(row, b, lv) {
+            const chip = row.querySelector('.vic-xp-lv i'); if (chip) chip.textContent = String(lv.lvl);
+            const lvWrap = row.querySelector('.vic-xp-lv'); if (lvWrap) { lvWrap.classList.remove('bump'); void lvWrap.offsetWidth; lvWrap.classList.add('bump'); }
+            const fl = row.querySelector('.vic-xp-flash'); if (fl) { fl.classList.remove('on'); void fl.offsetWidth; fl.classList.add('on'); }
+            row.classList.add('leveled');
+            const gains = row.querySelector('.vic-xp-gains');
+            if (gains) { const d = document.createElement('div'); d.className = 'vic-xp-gain-in'; d.innerHTML = _vicXpStatChips(lv); gains.appendChild(d); }
+            try { playSfx('levelUp'); } catch (e) {}
+            try {
+                const u = (b.unitId && typeof unitFromId === 'function') ? unitFromId(b.unitId) : null;
+                if (u && !u.dead) {
+                    if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.podium && typeof ThreeRenderer.podium.play === 'function') ThreeRenderer.podium.play(u.id, ['vicJump', 'vicCheer', 'jump'], 2400);
+                    _vfxLevelUp(u.x, u.y);
+                }
+            } catch (e) {}
+        }
+        function _vicPlayExperience(party) {
+            const card = document.getElementById('vicExperience'); if (!card) return;
+            const reduced = (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+            const beats = party.xp.slice();
+            const rowOf = b => card.querySelector('.vic-xp-row[data-xp="' + String(b.id).replace(/"/g, '') + '"]');
+            const settle = (b) => {
+                const row = rowOf(b); if (!row) return;
+                const a = b.after;
+                const bar = row.querySelector('.vic-xp-bar i'); if (bar) bar.style.width = (a.pct * 100).toFixed(1) + '%';
+                const num = row.querySelector('.vic-xp-num'); if (num) { const x = (typeof xpToNext === 'function') ? xpToNext(a.xp) : null; num.textContent = x ? (x.max ? 'MAX' : x.into.toLocaleString() + ' / ' + x.need.toLocaleString()) : ''; }
+                const chip = row.querySelector('.vic-xp-lv i'); if (chip) chip.textContent = String(a.lvl);
+                const gains = row.querySelector('.vic-xp-gains'); if (gains && b.levels.length) { gains.innerHTML = b.levels.map(lv => '<div class="vic-xp-gain-in">' + _vicXpStatChips(lv) + '</div>').join(''); row.classList.add('leveled'); }
+                row.classList.add('done');
+            };
+            if (reduced) { beats.forEach(settle); card.classList.add('counted'); return; }
+            const gen = _vicPlayGen || (_vicPlayGen = { n: 0 });
+            const myGen = ++gen.n;   // a new result screen cancels a sequence still running
+            let i = 0;
+            const next = (delay) => setTimeout(() => { if (gen.n !== myGen) return; if (i >= beats.length) { card.classList.add('counted'); return; } playRow(beats[i++]); }, delay);
+            const playRow = (b) => {
+                const row = rowOf(b); if (!row || b.gain <= 0) { settle(b); next(VIC_XP_ROW_MS.gap); return; }
+                row.classList.add('live');
+                const from = b.before.xp, to = b.after.xp;
+                const dur = Math.max(VIC_XP_ROW_MS.min, Math.min(VIC_XP_ROW_MS.max, 600 + b.gain * VIC_XP_ROW_MS.perXp));
+                const bar = row.querySelector('.vic-xp-bar i'), num = row.querySelector('.vic-xp-num');
+                let shownLvl = b.before.lvl;
+                const t0 = performance.now();
+                const tick = () => {
+                    if (gen.n !== myGen) return;
+                    const t = Math.max(0, Math.min(1, (performance.now() - t0) / dur));
+                    const e = 1 - Math.pow(1 - t, 3);
+                    const xp = from + (to - from) * e;
+                    const x = (typeof xpToNext === 'function') ? xpToNext(xp) : { lvl: shownLvl, pct: 1, into: 0, need: 1, max: false };
+                    while (shownLvl < x.lvl) { shownLvl++; const lv = b.levels.find(l => l.lvl === shownLvl) || { lvl: shownLvl, stats: {}, milestone: null }; _vicXpLevelBeat(row, b, lv); }
+                    if (bar) bar.style.width = ((x.max ? 1 : x.pct) * 100).toFixed(1) + '%';
+                    if (num) num.textContent = x.max ? 'MAX' : Math.round(x.into).toLocaleString() + ' / ' + x.need.toLocaleString();
+                    if (t < 1) requestAnimationFrame(tick);
+                    else { settle(b); row.classList.remove('live'); next(VIC_XP_ROW_MS.gap); }
+                };
+                requestAnimationFrame(tick);
+            };
+            next(VIC_XP_ROW_MS.start);
+        }
+        let _vicPlayGen = null;
 
         /* THE MODE'S TALLY (the PERFORMANCE sheet): Arena's composite score as two
            columns of points, the kill / point / capture modes as one score line. */
@@ -41909,6 +42047,22 @@
            never on `state` (RULE #2 — an encounter is VS-CPU only). */
         let _encMatch = null;
         function _encRun() { return _encMatch || ((window._hqEncounterRun && window._hqEncounterRun.noIntro) ? window._hqEncounterRun : null); }
+        /* THE LEVELS (2026-09-21) — THE POOL: Σ computeKillXP over the enemy bodies that fell, the killer a pseudo-unit at THE PARTY LEVEL
+           (data.js hqPartyLevel), so the payout scales with the natives' levels and the gap exactly as a kill does (a boss ×1.5) */
+        function _encXpPool(profile, seat) {
+            let pool = 0;
+            try {
+                const pl = (typeof hqPartyLevel === 'function') ? hqPartyLevel(profile) : null;
+                const killer = pl ? { _xp: XP_THRESHOLDS[Math.max(1, Math.min(XP_MAX_LEVEL, pl | 0)) - 1] || 0 } : null;
+                for (const u of (state.units || [])) {
+                    if (!u || !(u.dead || u._dying)) continue;
+                    const home = (typeof unitHomePlayer === 'function') ? unitHomePlayer(u) : u.player;
+                    if (home === seat || home === 0) continue;
+                    pool += computeKillXP(killer, u);
+                }
+            } catch (e) { pool = 0; }
+            return Math.max(0, Math.round(pool));
+        }
         /* THE FIELD stage A: the field record map.js's zone builder places the seats from (null outside an encounter) */
         window._ewEncounterField = function () { return (_encMatch && _encMatch.field) || null; };
         /* THE ROOM ROUND THE FIELD (PHASE9_QUALITY_PLAN §10 stage 4, 2026-09-16): the renderer draws the strike's

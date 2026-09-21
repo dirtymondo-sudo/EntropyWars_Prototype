@@ -48109,7 +48109,10 @@ const ThreeRenderer = (function () {
             if (d < bestD) { bestD = d; best = ch; }
         }
         if (!best) return null;
-        return { kind: 'npc', id: best.id, label: best.label, sub: best.sub || null, race: best.race, gender: best.gender, x: best.x, z: best.z, y: best.y, dist: bestD };
+        /* THE ROAMING GROUP (2026-09-21): the target's companions in the room (the same `group`, not away) — data.js hqEncounterGroup seats them */
+        var group = [];
+        if (best.group) for (var k = 0; k < H.chars.length; k++) { var c = H.chars[k]; if (c !== best && c.group === best.group && !c.away && okFn(c)) group.push({ id: c.id, race: c.race, gender: c.gender, label: c.label || null }); }
+        return { kind: 'npc', id: best.id, label: best.label, sub: best.sub || null, race: best.race, gender: best.gender, x: best.x, z: best.z, y: best.y, dist: bestD, group: group.length ? group : null };
     }
     /* THE EYE (9.4 seam 2): the camera as it stands when the swing lands — position
        + gaze in METRES in the room frame, and the ground under the eye's column
@@ -48746,10 +48749,16 @@ const ThreeRenderer = (function () {
             var ch = _hqSpawnCharacter({ id: id, kind: 'npc', race: rk, gender: g, x: st.x + jx, z: st.z + jz, y: _hqHasGround() ? undefined : st.y, face: st.face || 0, line: o && o.line || null, label: o && o.label || undefined, sub: o && o.sub || undefined });
             if (!ch) return null;
             if (ch.race !== rk && rk !== 'men in black') { /* the stand-in agent took the spot: not this room's person — drop it */ }
-            var rd = _hqRoundsAssign(ch, { seed: (typeof hqHash === 'function') ? hqHash(roomId + '|' + id) : id.length * 131, arriving: o && o.arriving, home: o && o.home });
+            /* THE ROAMING GROUP (2026-09-21): the members of a group (data.js hqRoomPopulation `draw[i].group`) share ONE loop — the same
+               seed draws the same stops — and stand at one stop; the strike on one of them fights them all (_hqEncounterAim reports the group) */
+            if (o && o.group) ch.group = o.group;
+            var seedKey = (o && o.group) ? (roomId + '|' + o.group) : (roomId + '|' + id);
+            var rd = _hqRoundsAssign(ch, { seed: (typeof hqHash === 'function') ? hqHash(seedKey) : seedKey.length * 131, arriving: o && o.arriving, home: o && o.home });
             if (rd) H.rounds.push(ch);
             return ch;
         };
+        var groupStops = {};   // THE ROAMING GROUP: one stop per group id
+        var groupSize = function (gid) { var n = 0; if (pop && pop.draw) pop.draw.forEach(function (d) { if (d.group === gid) n++; }); return n; };
         /* 1 · the authored spot natives that roam (their spot is their first stop) + `patrol` agents */
         H.chars.forEach(function (ch) {
             if (ch.kind === 'player' || ch.cast || ch.rounds) return;
@@ -48773,9 +48782,10 @@ const ThreeRenderer = (function () {
                 var rk = d.race;
                 if (!walksRace(rk) || rk === av.race) { rk = pool.find(function (r) { return !used[r] && r !== av.race; }) || null; if (!rk) return; }
                 used[rk] = (used[rk] || 0) + 1;
-                var st = stops[Math.floor(Math.random() * stops.length)];
+                var st = d.group ? (groupStops[d.group] || (groupStops[d.group] = stops[Math.floor(Math.random() * stops.length)])) : stops[Math.floor(Math.random() * stops.length)];
                 var line = null; try { if (room.lines && room.lines.length && Math.random() < 0.5) line = room.lines[Math.floor(Math.random() * room.lines.length)]; } catch (e) {}
                 var g = genderOf(rk), sub = pop.kind === 'facility' ? 'PASSING THROUGH' : (d.tier === 'native' || d.tier === 'biome') ? 'A LOCAL' : 'PASSING THROUGH';
+                if (d.group) sub = 'ONE OF ' + groupSize(d.group) + ' · TOGETHER';   // THE ROAMING GROUP (2026-09-21)
                 /* THE EXTRAS ARRIVE (2026-09-20 — "why is there a loading screen between every little door"):
                    the population's rigs (2–6 × 5–9 MB per room, a new draw per room) were the bulk of what every
                    card waited for. A rig the caches hold stands in the room at once; a rig still to stream never
@@ -48783,12 +48793,12 @@ const ThreeRenderer = (function () {
                    room complete without it. The record is background (rec.bg) so no gate counts it. */
                 var def0 = (typeof getRace3DModel === 'function') ? getRace3DModel(rk, g) : null, murl = def0 && def0.model;
                 var hot = !murl || !!(_unitGlbCache[murl] && _unitGlbCache[murl].root) || (typeof window !== 'undefined' && window.EW_DISABLE_3D_UNITS);
-                if (hot) { spawnAt(d.id, rk, g, st, { line: line, sub: sub }); return; }
+                if (hot) { spawnAt(d.id, rk, g, st, { line: line, sub: sub, group: d.group || null }); return; }
                 _loadUnitGLB(murl, function () {
                     if (_hq !== H) return;   // the room was left while the rig streamed
                     if (H.chars.some(function (c) { return c.id === d.id; })) return;
                     var by = doorStops.length ? doorStops[Math.floor(Math.random() * doorStops.length)] : st;
-                    var ch = spawnAt(d.id, rk, g, by, { line: line, sub: sub, arriving: true });
+                    var ch = spawnAt(d.id, rk, g, by, { line: line, sub: sub, arriving: true, group: d.group || null });
                     if (ch && by.rec) _hqRoundsSwing(by.rec, 1600);
                 });
             }); } finally { _bgLoadDepth--; }
