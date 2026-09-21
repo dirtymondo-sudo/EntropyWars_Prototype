@@ -43508,6 +43508,196 @@ function hqPartyResync(profile, units) {
     if (n) r.at = Date.now();
     return n;
 }
+/* ══ THE CIRCUIT IN THE FIELD (2026-09-21) — the user: "I need a way to equip spells / abilities in the party menu / pause
+   menu in story mode just like in the party builder." The forge's tree UI lives inside party-builder.js's IIFE (its
+   computeTreeEquipPath / treeNodeState / treeDropIds are never globals), so the pause menu reads the SAME rules through
+   these pure helpers: the tree is buildUnitSpellTree's, the path is the forge's BFS (root → the connected frontier →
+   the target, sealed pass-throughs excluded), an unequip is THE CASCADE (treeReachableKeys without the id), a twin node
+   is THE FORK (swap in place), a Freelancer socket is a picker over flSocketPool at the socket's tiers, the cap is
+   SPELL_SLOT_MAX, and every write lands through isTreeLoadoutLegal / treeLegalSubset — never a lock on a saved row.
+   The member's record keeps ONE list in two places (meta.customSpells = what createUnit reads; loadout.spells = the
+   mirror every older reader prints). Nothing on `state`, nothing relayed (RULE #2: the party is local). ══ */
+function hqPartySpellIds(m) {
+    if (!m) return [];
+    const a = (m.meta && Array.isArray(m.meta.customSpells)) ? m.meta.customSpells.filter(Boolean) : [];
+    if (a.length) return a.slice();
+    return ((m.loadout && Array.isArray(m.loadout.spells)) ? m.loadout.spells : []).filter(Boolean);
+}
+function hqPartySpellCap() { return (typeof SPELL_SLOT_MAX !== 'undefined') ? SPELL_SLOT_MAX : 7; }
+function hqPartySpellTree(m) {
+    if (!m) return null;
+    const race = (m.meta && m.meta.race) || 'homosapien', cls = m.cls || 'Freelancer', sec = (m.meta && m.meta.secondaryJob) || '';
+    if (typeof classHasSpellTree === 'function' && !classHasSpellTree(cls)) return null;
+    const equipped = hqPartySpellIds(m);
+    const tree = buildUnitSpellTree(race, cls, sec, equipped);
+    return { tree, equipped, race, cls, sec, cap: hqPartySpellCap(), sealed: _treeSealedIds(tree) };
+}
+/* the forge's computeTreeEquipPath: the node KEYS to newly equip (target last), [] = already connected, null = unreachable */
+function hqPartyTreePath(tree, sealed, equipped, targetKey) {
+    if (!tree || !targetKey || targetKey === 'root') return [];
+    const eq = new Set((equipped || []).filter(Boolean));
+    const adj = {};
+    for (const [a, b] of tree.edges) { (adj[a] = adj[a] || []).push(b); (adj[b] = adj[b] || []).push(a); }
+    const start = _treeReachableKeys(tree, eq, sealed);
+    if (start.has(targetKey)) return [];
+    const prev = {}; const seen = new Set(start); const q = [...start];
+    while (q.length) {
+        const k = q.shift();
+        for (const n of adj[k] || []) {
+            if (seen.has(n)) continue;
+            if (!tree.nodes[n]) continue;
+            seen.add(n); prev[n] = k; q.push(n);
+        }
+    }
+    if (!seen.has(targetKey)) return null;
+    const path = [];
+    for (let k = targetKey; k != null && !start.has(k); k = prev[k]) { const id = tree.nodes[k]; if (id && !(sealed && sealed.has(id))) path.unshift(k); }
+    return path;
+}
+/* root · socket · empty · sealed · equipped · swap (a fork's other option is worn) · reachable · far · blocked */
+function hqPartyTreeNodeState(T, key, altId) {
+    if (key === 'root') return 'root';
+    const tree = T.tree, sealed = T.sealed, eq = T.equipped;
+    const id = altId || tree.nodes[key];
+    if (!id) return (tree.isFreelancer && tree.sockets && tree.sockets[key]) ? 'socket' : 'empty';
+    if (sealed.has(id)) return 'sealed';
+    if (eq.includes(id)) return 'equipped';
+    if (altId) { const pair = (tree.alts && tree.alts[key]) || null; if (pair && pair.some(a => a !== altId && eq.includes(a))) return 'swap'; }
+    const path = hqPartyTreePath(tree, sealed, eq, key);
+    if (!path) return 'blocked';
+    return path.length <= 1 ? 'reachable' : 'far';
+}
+/* THE CASCADE: the id and everything that hung off it */
+function hqPartyTreeDropIds(tree, equipped, removeId) {
+    const out = new Set(removeId ? [removeId] : []);
+    if (!tree || !removeId) return out;
+    const rest = (equipped || []).filter(id => id && id !== removeId);
+    const reached = treeReachableKeys(tree, new Set(rest));
+    for (const [k, id] of Object.entries(tree.nodes || {})) if (id && rest.includes(id) && !reached.has(k)) out.add(id);
+    return out;
+}
+const HQ_CIRCUIT_LANES = [
+    { key: 'P', label: 'JOB', socketLabel: 'ANY RACE' },
+    { key: 'R', label: 'RACE' },
+    { key: 'S', label: 'SECOND JOB', socketLabel: 'ANY JOB' },
+];
+/* THE MODEL the pause menu draws: three lanes, ring 4 → 1, every node's state / path cost / cascade size / fork options / socket */
+function hqPartyTreeCircuit(m) {
+    const T = hqPartySpellTree(m);
+    if (!T) return null;
+    const { tree, equipped, sealed, cap } = T;
+    const spOf = id => (id && typeof SPELL_BY_ID !== 'undefined') ? (SPELL_BY_ID[id] || null) : null;
+    const lanes = HQ_CIRCUIT_LANES.map(L => {
+        const name = L.key === 'R' ? ((typeof getRaceLabel === 'function') ? getRaceLabel(T.race, (m.meta && m.meta.gender) || 'male') : T.race)
+            : L.key === 'P' ? (tree.isFreelancer ? L.socketLabel : T.cls)
+            : (tree.isFreelancer ? L.socketLabel : (T.sec || ''));
+        const nodes = [];
+        for (let ring = 4; ring >= 1; ring--) {
+            const key = L.key + ring;
+            const id = tree.nodes[key] || null;
+            const st = hqPartyTreeNodeState(T, key);
+            const pair = (tree.alts && tree.alts[key]) || null;
+            const alts = pair ? pair.map(a => ({ id: a, sp: spOf(a), st: hqPartyTreeNodeState(T, key, a) })) : null;
+            const path = (st === 'reachable' || st === 'far') ? hqPartyTreePath(tree, sealed, equipped, key) : null;
+            const need = path ? path.map(k => tree.nodes[k]).filter(pid => pid && !equipped.includes(pid)).length : 0;
+            const drop = (st === 'equipped') ? hqPartyTreeDropIds(tree, equipped, id).size : 0;
+            const socket = (tree.isFreelancer && tree.sockets && tree.sockets[key]) ? { tiers: tree.sockets[key].slice(), pool: (tree.socketPool && tree.socketPool[key]) || 'job' } : null;
+            nodes.push({ key, ring, id, sp: spOf(id), st, alts, need, over: need > 0 && equipped.length + need > cap, drop, socket, capstone: ring === 4 });
+        }
+        return { key: L.key, label: L.label, name, empty: !T.sec && L.key === 'S' && !tree.isFreelancer, nodes };
+    });
+    return { lanes, equipped: equipped.slice(), used: equipped.length, cap, isFreelancer: !!tree.isFreelancer, unplaced: (tree.unplaced || []).slice(), race: T.race, cls: T.cls, sec: T.sec };
+}
+/* THE ONE WRITE: a member's spell list, made legal (the forge's own repair), into both places */
+function hqPartySetSpells(profile, memberId, ids) {
+    const r = hqPartyRecord(profile); if (!r) return { ok: false, reason: 'noprofile' };
+    const m = r.members.find(x => x.id === memberId); if (!m) return { ok: false, reason: 'member' };
+    const race = m.meta.race || 'homosapien', cls = m.cls, sec = m.meta.secondaryJob || '';
+    let out = (ids || []).filter(Boolean);
+    out = out.filter((id, i) => out.indexOf(id) === i).slice(0, hqPartySpellCap());
+    let trimmed = false;
+    if (typeof isTreeLoadoutLegal === 'function' && !isTreeLoadoutLegal(race, cls, sec, out)) { const fixed = treeLegalSubset(race, cls, sec, out); trimmed = fixed.length !== out.length; out = fixed; }
+    m.meta.customSpells = out.slice();
+    m.loadout.spells = out.slice();
+    r.at = Date.now();
+    return { ok: true, ids: out.slice(), trimmed, member: m };
+}
+/* THE CLICK — the forge's treeNodeClick / treeAltClick as one pure rule: equipped → the cascade; a fork's other option
+   worn → the swap in place; reachable / far → the whole path (one click); socket → the picker (the caller's); the rest refuse */
+function hqPartyTreeClick(profile, memberId, key, altId) {
+    const r = hqPartyRecord(profile); if (!r) return { ok: false, reason: 'noprofile' };
+    const m = r.members.find(x => x.id === memberId); if (!m) return { ok: false, reason: 'member' };
+    const T = hqPartySpellTree(m); if (!T) return { ok: false, reason: 'notree', note: 'THIS JOB HAS NO CIRCUIT' };
+    const { tree, equipped, sealed, cap } = T;
+    const st = hqPartyTreeNodeState(T, key, altId);
+    const id = altId || tree.nodes[key];
+    if (st === 'root') return { ok: false, reason: 'root', note: 'THE BASIC ATTACK IS ALWAYS EQUIPPED' };
+    if (st === 'socket') return { ok: false, reason: 'socket', note: 'AN OPEN SOCKET · PICK FROM THE POOL', socket: key };
+    if (st === 'empty') return { ok: false, reason: 'empty', note: 'NOTHING ON THIS NODE' };
+    if (st === 'sealed') return { ok: false, reason: 'sealed', note: 'SEALED · NOT ALLOWED IN THIS MODE' };
+    if (st === 'blocked') return { ok: false, reason: 'blocked', note: 'NO PATH · FILL THE NODES BELOW IT FIRST' };
+    if (st === 'equipped') {
+        const drop = hqPartyTreeDropIds(tree, equipped, id);
+        const w = hqPartySetSpells(profile, memberId, equipped.filter(s => !drop.has(s)));
+        return { ok: true, kind: 'unequip', ids: w.ids, dropped: [...drop], note: drop.size > 1 ? 'UNEQUIPPED · −' + drop.size + ' (' + (drop.size - 1) + ' ABOVE IT)' : 'UNEQUIPPED' };
+    }
+    if (st === 'swap') {
+        const pair = tree.alts[key]; const cur = pair.find(a => equipped.includes(a));
+        const cand = equipped.map(s => s === cur ? id : s);
+        if (typeof isTreeLoadoutLegal === 'function' && !isTreeLoadoutLegal(T.race, T.cls, T.sec, cand)) return { ok: false, reason: 'illegal', note: 'NOT A LEGAL LOADOUT' };
+        const w = hqPartySetSpells(profile, memberId, cand);
+        return { ok: true, kind: 'swap', ids: w.ids, added: [id], dropped: [cur], note: 'SWAPPED IN · SAME SLOT' };
+    }
+    const path = hqPartyTreePath(tree, sealed, equipped, key);
+    if (!path || !path.length) return { ok: false, reason: 'blocked', note: 'NO PATH · FILL THE NODES BELOW IT FIRST' };
+    const newIds = path.map(k => k === key ? id : tree.nodes[k]).filter(pid => pid && !equipped.includes(pid));
+    if (equipped.length + newIds.length > cap) return { ok: false, reason: 'cap', note: 'NO ROOM · ' + equipped.length + '/' + cap + ' SLOTS · NEEDS ' + newIds.length + ' · UNEQUIP SOMETHING' };
+    const cand = equipped.concat(newIds);
+    if (typeof isTreeLoadoutLegal === 'function' && !isTreeLoadoutLegal(T.race, T.cls, T.sec, cand)) return { ok: false, reason: 'illegal', note: 'NOT A LEGAL LOADOUT' };
+    const w = hqPartySetSpells(profile, memberId, cand);
+    return { ok: true, kind: 'equip', ids: w.ids, added: newIds, note: newIds.length > 1 ? 'EQUIPPED · +' + newIds.length + ' ALONG THE PATH' : 'EQUIPPED' };
+}
+/* a Freelancer socket's pool at its tiers (the forge's flSocketPool + _flTierOf; THE STORY ROSTER's ledger rule rides inside) */
+function hqPartySocketPool(m, key) {
+    const T = hqPartySpellTree(m); if (!T || !T.tree.isFreelancer || !T.tree.sockets || !T.tree.sockets[key]) return [];
+    const tiers = T.tree.sockets[key];
+    const rank = t => t === 'III' ? 3 : t === 'II' ? 2 : 1;
+    return flSocketPool(T.race, key)
+        .map(sp => ({ id: sp.id, sp, tier: _flTierOf(sp), equipped: T.equipped.includes(sp.id) }))
+        .filter(x => tiers.indexOf(x.tier) >= 0 && !T.sealed.has(x.id))
+        .sort((a, b) => (rank(a.tier) - rank(b.tier)) || String(a.sp.name || a.id).localeCompare(String(b.sp.name || b.id)));
+}
+function hqPartySocketEquip(profile, memberId, key, spellId) {
+    const r = hqPartyRecord(profile); if (!r) return { ok: false, reason: 'noprofile' };
+    const m = r.members.find(x => x.id === memberId); if (!m) return { ok: false, reason: 'member' };
+    const T = hqPartySpellTree(m); if (!T || !T.tree.isFreelancer) return { ok: false, reason: 'notree' };
+    if (!spellId || T.equipped.includes(spellId)) return { ok: false, reason: 'dup', note: 'ALREADY EQUIPPED' };
+    if (T.equipped.length >= T.cap) return { ok: false, reason: 'cap', note: 'NO ROOM · ' + T.equipped.length + '/' + T.cap + ' SLOTS · UNEQUIP SOMETHING' };
+    if (!hqPartySocketPool(m, key).some(x => x.id === spellId)) return { ok: false, reason: 'pool', note: 'NOT IN THIS SOCKET’S POOL' };
+    const cand = T.equipped.concat([spellId]);
+    if (typeof isTreeLoadoutLegal === 'function' && !isTreeLoadoutLegal(T.race, T.cls, T.sec, cand)) return { ok: false, reason: 'illegal', note: 'NO PATH · FILL THE SOCKETS BELOW IT FIRST' };
+    const w = hqPartySetSpells(profile, memberId, cand);
+    return { ok: true, kind: 'socket', ids: w.ids, added: [spellId], note: 'SOCKETED' };
+}
+/* DEFAULTS (the forge's rule: the whole job pillar + race r1–r2, repaired) · RANDOM (buildTreeLegalLoadout) · CLEAR */
+function hqPartySpellsDefault(profile, memberId) {
+    const r = hqPartyRecord(profile); if (!r) return { ok: false, reason: 'noprofile' };
+    const m = r.members.find(x => x.id === memberId); if (!m) return { ok: false, reason: 'member' };
+    const race = m.meta.race || 'homosapien', cls = m.cls, sec = m.meta.secondaryJob || '';
+    const p = (cls === 'Freelancer') ? [] : (getClassTreeSpells(cls) || []);
+    const rr = getRaceTreeSpells(race, cls) || [];
+    const wish = p.filter(Boolean).concat(rr.slice(0, 2).filter(Boolean));
+    const w = hqPartySetSpells(profile, memberId, wish);
+    return Object.assign({ kind: 'defaults', note: 'THE DEFAULT KIT' }, w);
+}
+function hqPartySpellsRandom(profile, memberId, rng) {
+    const r = hqPartyRecord(profile); if (!r) return { ok: false, reason: 'noprofile' };
+    const m = r.members.find(x => x.id === memberId); if (!m) return { ok: false, reason: 'member' };
+    const ids = buildTreeLegalLoadout(m.meta.race || 'homosapien', m.cls, m.meta.secondaryJob || '', hqPartySpellCap(), rng);
+    const w = hqPartySetSpells(profile, memberId, ids);
+    return Object.assign({ kind: 'random', note: 'A RANDOM LEGAL KIT' }, w);
+}
+function hqPartySpellsClear(profile, memberId) { const w = hqPartySetSpells(profile, memberId, []); return Object.assign({ kind: 'clear', note: 'THE CIRCUIT IS CLEAR' }, w); }
 function hqPartyDown(m) { return m.hp === 0; }
 /* the party's condition: who can fight — the launch refuses a party with nobody fit */
 function hqPartyFit(profile) {
@@ -46493,7 +46683,7 @@ if (typeof window !== 'undefined') {
     window.HQ_OFFICER_RULES = HQ_OFFICER_RULES; window.hqOfficerRecord = hqOfficerRecord; window.hqOfficerOnFile = hqOfficerOnFile; window.hqOfficerEnlist = hqOfficerEnlist;   // THE INTAKE (2026-09-21)
     window.HQ_PARTY_RULES = HQ_PARTY_RULES; window.hqPartyRecord = hqPartyRecord; window.hqPartyEnsure = hqPartyEnsure; window.hqPartyPrune = hqPartyPrune; window.hqPartyOfficer = hqPartyOfficer; window.hqPartyUnlocked = hqPartyUnlocked; window.hqPartyMember = hqPartyMember; window.hqPartyShifts = hqPartyShifts;
     window.hqPartyVitals = hqPartyVitals; window.hqPartyFit = hqPartyFit; window.hqPartyEnlist = hqPartyEnlist; window.hqPartyRelieve = hqPartyRelieve; window.hqPartySwap = hqPartySwap; window.hqPartyOnCall = hqPartyOnCall; window.hqPartyRestore = hqPartyRestore;
-    window.hqPartyForLaunch = hqPartyForLaunch; window.hqPartyAfterMatch = hqPartyAfterMatch; window.hqPartyResync = hqPartyResync; window.hqPartyScaledVitals = hqPartyScaledVitals;
+    window.hqPartyForLaunch = hqPartyForLaunch; window.hqPartyAfterMatch = hqPartyAfterMatch; window.hqPartyResync = hqPartyResync; window.hqPartyScaledVitals = hqPartyScaledVitals; window.HQ_CIRCUIT_LANES = HQ_CIRCUIT_LANES; window.hqPartySpellIds = hqPartySpellIds; window.hqPartySpellTree = hqPartySpellTree; window.hqPartyTreePath = hqPartyTreePath; window.hqPartyTreeNodeState = hqPartyTreeNodeState; window.hqPartyTreeDropIds = hqPartyTreeDropIds; window.hqPartyTreeCircuit = hqPartyTreeCircuit; window.hqPartySetSpells = hqPartySetSpells; window.hqPartyTreeClick = hqPartyTreeClick; window.hqPartySocketPool = hqPartySocketPool; window.hqPartySocketEquip = hqPartySocketEquip; window.hqPartySpellsDefault = hqPartySpellsDefault; window.hqPartySpellsRandom = hqPartySpellsRandom; window.hqPartySpellsClear = hqPartySpellsClear;
     /* THE LEVELS (2026-09-21) */
     window.HQ_LEVEL_RULES = HQ_LEVEL_RULES; window.HQ_AREA_LEVELS = HQ_AREA_LEVELS; window.XP_CURVE = XP_CURVE; window.xpThreshold = xpThreshold; window.xpLevelFor = xpLevelFor; window.xpToNext = xpToNext;
     window.hqPartyLevel = hqPartyLevel; window.hqPartyXp = hqPartyXp; window.hqPartyLevelGains = hqPartyLevelGains; window.hqPartyGrantXp = hqPartyGrantXp; window.hqPartyXpShare = hqPartyXpShare; window.hqEncounterLevels = hqEncounterLevels; window.hqEncounterGroup = hqEncounterGroup;

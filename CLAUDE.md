@@ -7670,3 +7670,34 @@ all three (`window.SOAK_FLOOR_SHARE`); the spell preview and ai.js's estimate st
 whole (a small drift at unequal levels only). damage.test.js pins the stages. THE PACE ITSELF is untouched:
 a same-level basic attack is ~12 % of a bar at level 5 (the door agent's 48 ATK ~7 %) — `EW_COMBAT_PACE`
 (1.75) or the basic attack's 0.65 coefficient are the dials if that is still too slow.
+
+## THE CIRCUIT IN THE FIELD — equip abilities from the pause menu's party sheet (2026-09-21, local delivery)
+The user: "I need a way to equip spells / abilities in the party menu / pause menu in story mode just like in
+the party builder." The forge's tree UI (party-builder.js `computeTreeEquipPath` / `treeNodeState` /
+`treeDropIds`) lives inside its IIFE and is never a global, so the pause menu reads THE SAME RULES through PURE
+data.js helpers (the block right after `hqPartyResync`, all on `window`): `hqPartySpellIds(m)` (meta.customSpells,
+else loadout.spells), `hqPartySpellTree(m)` (buildUnitSpellTree + `_treeSealedIds`), `hqPartyTreePath` (the
+forge's BFS: root → the connected frontier → the target; [] connected, null unreachable), `hqPartyTreeNodeState`
+(root · socket · empty · sealed · equipped · swap · reachable · far · blocked), `hqPartyTreeDropIds` (THE
+CASCADE), **`hqPartyTreeCircuit(m)`** = THE MODEL (`HQ_CIRCUIT_LANES` P · R · S, ring 4 → 1, each node's `st` /
+`need` (the path's cost) / `over` (past the cap) / `drop` (the cascade's size) / `alts` (a fork's two options
+with their own state) / `socket` `{ tiers, pool }`; `used / cap / isFreelancer / unplaced`),
+**`hqPartySetSpells(profile, id, ids)`** = THE ONE WRITE (dedupe, the cap, `isTreeLoadoutLegal` else
+`treeLegalSubset` — a stale list is repaired, never refused; lands in BOTH `meta.customSpells` and
+`loadout.spells`), **`hqPartyTreeClick(profile, id, key, altId)`** = the forge's click as one rule (equipped →
+the cascade; a fork's worn option → the swap in place; reachable / far → the whole path in one click; a socket →
+`reason: 'socket'` so the caller opens the picker; the rest refuse with the forge's own notes),
+`hqPartySocketPool(m, key)` (flSocketPool at the socket's tiers via `_flTierOf` — THE STORY ROSTER's ledger rule
+rides inside) + `hqPartySocketEquip`, `hqPartySpellsDefault` (the job pillar + race r1–r2, repaired) /
+`hqPartySpellsRandom` (buildTreeLegalLoadout) / `hqPartySpellsClear`. **map.js**: the member sheet's ABILITIES
+header wears `✎ EDIT · THE CIRCUIT` (`data-party-act="circuit:<id>"` → `_hqPause.circuit`); `_hqPauseCircuitHtml`
+draws the pips, DEFAULTS / RANDOM / CLEAR / ◂ DONE, the three lanes (a node = disc · name · type + meta · the
+verdict: `+N` the path, `−N` the cascade, `⇄` a swap, the socket's pool + tier, `NO ROOM`), a fork as two option
+buttons, the root, and THE SOCKET PICKER (`_hqPause.socket` / `sockQ`, a search input `data-circ-search`
+re-filtered in place, a row per pool ability); `_hqPartyCircuitAct` dispatches `circuit · node · sock ·
+sockclose · spelldef · spellrnd · spellclr` — every write one `_hqPartyTx` (the unit cache drops, the stats and the
+equipped list re-read); `P.keepScroll` keeps the sheet where it stood; ESC closes the picker, then the circuit.
+CSS "THE CIRCUIT IN THE FIELD" at the END of styles-base.css. Viewer-local (RULE #2: the party is local; the
+console's crossings still take the forge). NOT built: a secondary-job pick, gear, hover-painted paths, the stage
+preview (the forge's). `npm test` runs hq-party.test.js (18). UNSEEN LIVE (RULE #1c): the three lanes at the pause
+frame's width (one column under 900 px), the fork's two options in a lane, the picker's 200-row scroll.

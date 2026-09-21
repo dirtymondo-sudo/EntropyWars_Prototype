@@ -379,3 +379,91 @@ test('THE LEVEL\'S MAX (2026-09-21): a stored max from a cap-level fight is read
     assert.match(MP, /P\.resynced = true;[\s\S]{0,600}window\.hqPartyResync\(p, o\)/, 'the pause menu resyncs once per open');
     assert.match(D_SRC, /window\.hqPartyResync = hqPartyResync/);
 });
+
+/* ══ THE CIRCUIT IN THE FIELD (2026-09-21): the forge's spell tree on the pause menu's member sheet ══ */
+test('THE CIRCUIT IN THE FIELD: the model (three lanes, ring 4 → 1, the states), one click equips the path, an equipped node cascades, a fork swaps in place, the cap refuses, the writes land in BOTH places', () => {
+    const p = profile();
+    g('hqPartyEnsure')(p, {});
+    const rec = g('hqPartyRecord')(p);
+    const knight = rec.members.find(m => m.meta.race === 'knight') || rec.members.find(m => m.cls !== 'Freelancer' && m.meta.race !== 'door agent');
+    assert.ok(knight, 'a tree-class member on the seed');
+    const C0 = g('hqPartyTreeCircuit')(knight);
+    assert.equal(C0.lanes.length, 3); assert.equal(C0.lanes.map(l => l.key).join(''), 'PRS');
+    assert.equal(C0.lanes[0].nodes.map(n => n.ring).join(''), '4321');
+    assert.equal(C0.cap, D.SPELL_SLOT_MAX);
+    const P1 = C0.lanes[0].nodes.find(n => n.key === 'P1'), P4 = C0.lanes[0].nodes.find(n => n.key === 'P4');
+    assert.equal(P1.st, 'reachable'); assert.equal(P4.st, 'far'); assert.equal(P4.need, 4); assert.ok(P4.capstone);
+    /* one click on the capstone equips the whole pillar */
+    const r1 = g('hqPartyTreeClick')(p, knight.id, 'P4');
+    assert.ok(r1.ok && r1.kind === 'equip' && r1.added.length === 4, JSON.stringify(r1));
+    let m = g('hqPartyRecord')(p).members.find(x => x.id === knight.id);
+    assert.equal(m.meta.customSpells.length, 4); assert.equal(m.loadout.spells.join(','), m.meta.customSpells.join(','), 'both places');
+    assert.ok(g('isTreeLoadoutLegal')(m.meta.race, m.cls, '', m.meta.customSpells));
+    /* the model reads the cascade: P1 takes the three above it */
+    const C1 = g('hqPartyTreeCircuit')(m);
+    assert.equal(C1.used, 4); assert.equal(C1.lanes[0].nodes.find(n => n.key === 'P1').drop, 4);
+    /* the cap: the race capstone (+4) does not fit beside a full pillar */
+    const r2 = g('hqPartyTreeClick')(p, knight.id, 'R4');
+    assert.ok(!r2.ok && r2.reason === 'cap', JSON.stringify(r2));
+    assert.ok(C1.lanes[1].nodes.find(n => n.key === 'R4').over);
+    /* unequip P2 → P2, P3, P4 go, P1 stays */
+    const r3 = g('hqPartyTreeClick')(p, knight.id, 'P2');
+    assert.ok(r3.ok && r3.kind === 'unequip' && r3.dropped.length === 3, JSON.stringify(r3));
+    m = g('hqPartyRecord')(p).members.find(x => x.id === knight.id);
+    assert.equal(m.meta.customSpells.length, 1);
+    /* the root and an empty node refuse */
+    assert.equal(g('hqPartyTreeClick')(p, knight.id, 'root').reason, 'root');
+    assert.equal(g('hqPartyTreeClick')(p, knight.id, 'S1').reason, 'empty');
+    /* THE FORK: the door agent's R1 is a twin — equip one, the other reads swap, a click trades in place */
+    const agent = rec.members.find(x => x.meta.race === 'door agent');
+    assert.ok(agent);
+    const ra = g('hqPartyTreeClick')(p, agent.id, 'R1'); assert.ok(ra.ok, JSON.stringify(ra));
+    const CA = g('hqPartyTreeCircuit')(g('hqPartyRecord')(p).members.find(x => x.id === agent.id));
+    const fork = CA.lanes[1].nodes.find(n => n.key === 'R1');
+    assert.ok(fork.alts && fork.alts.length === 2);
+    const other = fork.alts.find(a => a.st === 'swap'); assert.ok(other, 'the other option reads swap');
+    const rs = g('hqPartyTreeClick')(p, agent.id, 'R1', other.id);
+    assert.ok(rs.ok && rs.kind === 'swap' && rs.ids.length === 1 && rs.ids[0] === other.id, JSON.stringify(rs));
+    /* DEFAULTS · RANDOM · CLEAR are legal writes */
+    const rd = g('hqPartySpellsDefault')(p, knight.id); assert.ok(rd.ok && rd.ids.length >= 4);
+    const rr = g('hqPartySpellsRandom')(p, knight.id); assert.ok(rr.ok && rr.ids.length >= 1 && g('isTreeLoadoutLegal')(m.meta.race, m.cls, '', rr.ids));
+    const rc = g('hqPartySpellsClear')(p, knight.id); assert.ok(rc.ok && rc.ids.length === 0);
+    /* an illegal wish-list is repaired, never refused (a stale save) */
+    const rw = g('hqPartySetSpells')(p, knight.id, ['judgment', 'guardSlash', 'nonsense']);
+    assert.ok(rw.ok && rw.trimmed && rw.ids.join(',') === 'guardSlash', JSON.stringify(rw));
+});
+
+test('THE CIRCUIT IN THE FIELD: a Freelancer\'s sockets — the pool at the socket\'s tiers, the socket equip, an out-of-pool or out-of-order pick refuses, the model reads the socket', () => {
+    const p = profile();
+    g('hqPartyEnsure')(p, {});
+    const rec = g('hqPartyRecord')(p);
+    const fl = rec.members.find(m => m.cls === 'Freelancer'); assert.ok(fl, 'a Freelancer on the seed');
+    const C = g('hqPartyTreeCircuit')(fl);
+    assert.ok(C.isFreelancer);
+    assert.equal(C.lanes[0].nodes.map(n => n.st).join(','), 'socket,socket,socket,socket');
+    assert.equal(C.lanes[0].nodes[3].socket.pool, 'race'); assert.equal(C.lanes[2].nodes[3].socket.pool, 'job');
+    assert.equal(g('hqPartyTreeClick')(p, fl.id, 'P1').reason, 'socket', 'a socket click asks for the picker');
+    const pool = g('hqPartySocketPool')(fl, 'P1'); assert.ok(pool.length > 20); assert.ok(pool.every(x => x.tier === 'I'));
+    const p4 = g('hqPartySocketPool')(fl, 'P4'); assert.ok(p4.length && p4.every(x => x.tier === 'III'));
+    const bad = g('hqPartySocketEquip')(p, fl.id, 'P1', p4[0].id); assert.equal(bad.reason, 'pool');
+    const early = g('hqPartySocketEquip')(p, fl.id, 'P4', p4[0].id); assert.ok(!early.ok, 'P4 before P1–P3 has no path');
+    const ok = g('hqPartySocketEquip')(p, fl.id, 'P1', pool[0].id); assert.ok(ok.ok, JSON.stringify(ok));
+    const m = g('hqPartyRecord')(p).members.find(x => x.id === fl.id);
+    assert.equal(m.meta.customSpells[0], pool[0].id); assert.equal(m.loadout.spells[0], pool[0].id);
+    assert.equal(g('hqPartyTreeCircuit')(m).lanes[0].nodes[3].st, 'equipped');
+    assert.equal(g('hqPartySocketEquip')(p, fl.id, 'P1', pool[0].id).reason, 'dup');
+});
+
+test('THE CIRCUIT IN THE FIELD: the source sites — the sheet\'s EDIT button, the circuit renderer, the actions, the keys, the CSS, the exports', () => {
+    assert.match(MP, /function _hqPauseCircuitHtml\(m\)/);
+    assert.match(MP, /function _hqPartyCircuitAct\(verb, a, b, c\)/);
+    assert.ok(MP.includes(`data-party-act="circuit:${"$"}{_hqEsc(m.id)}"`), 'the ABILITIES header opens the circuit');
+    assert.match(MP, /if \(circOpen\) html \+= _hqPauseCircuitHtml\(m\);/);
+    assert.match(MP, /window\.hqPartyTreeClick\(p, a, b, c \|\| null\)/);
+    assert.match(MP, /window\.hqPartySocketEquip\(p, a, b, c\)/);
+    assert.match(MP, /data-circ-search/, 'the socket picker searches');
+    assert.match(MP, /if \(P\.socket\) \{ P\.socket = null; P\.sockQ = ''; _hqPauseRender\(\); \} else if \(P\.circuit\)/, 'ESC closes the picker, then the circuit');
+    assert.match(MP, /P\.keepScroll = true;/, 'a node click keeps the sheet where it stood');
+    assert.match(CSS, /\.hq-circ-node\.st-equipped/); assert.match(CSS, /\.hq-circ-fork/); assert.match(CSS, /\.hq-circ-picker/);
+    for (const fn of ['hqPartyTreeCircuit', 'hqPartyTreeClick', 'hqPartySocketPool', 'hqPartySocketEquip', 'hqPartySetSpells', 'hqPartySpellsDefault', 'hqPartySpellsRandom', 'hqPartySpellsClear']) assert.match(D_SRC, new RegExp('window\\.' + fn + ' = ' + fn + ';'), fn + ' on window');
+});
