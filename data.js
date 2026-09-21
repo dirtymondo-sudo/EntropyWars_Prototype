@@ -17514,13 +17514,40 @@ function _flTierOf(sp) {
     return sp.tier === 'III' ? 'III' : sp.tier === 'II' ? 'II' : 'I';
 }
 
+/* THE STORY ROSTER (2026-09-21, the user: "you can only learn spells of units you have unlocked in your
+   roster"): in STORY SCOPE — the building, THE PARTY, the crossings filed there (map.js sets
+   window._ewRosterScope = 'owned'; data.js unitRosterScope) — a Freelancer's sockets offer ONLY the spells
+   of the vessels the account OWNS (isUnitOwned — the ledger, never the scope): a RACE socket an owned
+   race's tree, a JOB socket the trees of the jobs the owned vessels carry (RACE_DEFAULT_JOBS). Online /
+   Practice / Room 64's range / the dev switch (scope 'all'), and the tooling (no window, or no scope set
+   yet — the vm sandbox), see the whole catalogue. An equipped id outside the pool is `unplaced` in
+   buildFreelancerTree, so treeLegalSubset drops it at the build — never a lock on a saved row. */
+function flPoolOwnedOnly() {
+    if (typeof window === 'undefined') return false;
+    if (window._ewRosterScope !== 'owned') return false;
+    return (typeof unitRosterScope === 'function') ? unitRosterScope() === 'owned' : true;
+}
+function flOwnedRaces() {
+    const races = (typeof AVAILABLE_RACES !== 'undefined' && AVAILABLE_RACES.length) ? AVAILABLE_RACES : Object.keys(RACE_TREE);
+    if (!flPoolOwnedOnly() || typeof isUnitOwned !== 'function') return races.slice();
+    return races.filter(r => { try { return isUnitOwned(r); } catch (e) { return false; } });
+}
+function flOwnedJobs() {
+    const out = new Set();
+    for (const r of flOwnedRaces()) { const j = (typeof RACE_DEFAULT_JOBS !== 'undefined') ? RACE_DEFAULT_JOBS[r] : null; if (j) out.add(j); }
+    return out;
+}
+
 /* Every spell a Freelancer JOB socket (S1–S4) may hold: the union of all
-   job trees, minus ids on this race's own tree (the no-duplicate rule). */
+   job trees, minus ids on this race's own tree (the no-duplicate rule) —
+   in story scope the trees of the jobs the owned vessels carry only. */
 function flWildcardPool(race) {
     const raceIds = new Set(getRaceTreeAllIds(race, 'Freelancer') || []);
     const out = [];
     const seen = new Set();
-    for (const ids of Object.values(CLASS_TREE)) {
+    const jobs = flPoolOwnedOnly() ? flOwnedJobs() : null;
+    for (const [job, ids] of Object.entries(CLASS_TREE)) {
+        if (jobs && !jobs.has(job)) continue;
         for (const id of ids) {
             const sp = SPELL_BY_ID[id];
             if (!sp || seen.has(id) || raceIds.has(id)) continue;
@@ -17537,8 +17564,7 @@ function flWildcardPool(race) {
    ability that demands a job (jobRequirement) stays with that job. */
 function flRacePool(race) {
     const own = new Set(getRaceTreeAllIds(race, 'Freelancer') || []);
-    const races = (typeof AVAILABLE_RACES !== 'undefined' && AVAILABLE_RACES.length)
-        ? AVAILABLE_RACES : Object.keys(RACE_TREE);
+    const races = flOwnedRaces();   // THE STORY ROSTER: the owned races only in story scope, the whole roster elsewhere
     const out = [];
     const seen = new Set();
     for (const r of races) {
@@ -43308,20 +43334,73 @@ function hqPartyGenders(race) {
     try { g = (typeof getAvailableGendersForRace === 'function') ? getAvailableGendersForRace(race) : null; } catch (e) { g = null; }
     return (Array.isArray(g) && g.length) ? g.slice() : ['male', 'female'];
 }
-/* THE OFFICER: the walker as a member — the mirror's look (Homosapien in the creator's clothes), the barbershop's race pick, else the DOOR Agent */
+/* ══ THE INTAKE (2026-09-21) — the first thing a new profile does is create its agent ══
+   The user: "the first thing you do when you start a new profile is create a character. They should be a
+   Freelancer DOOR agent, but you can only learn spells of units you have unlocked in your roster."
+   THE OFFICER is a FREELANCER D.O.O.R. AGENT (HQ_OFFICER_RULES.race / .cls) wearing the LOOK the intake's
+   creator filed — the mirror's own record (door.hq.look: the creator appearance, the gender, the name, THE
+   PHOTO on the ID card). `door.hq.officer = { created, at, race, cls, name }` says the intake was done;
+   map.js _goToPlayHub sends a profile without one to THE INTAKE (the creator, party-builder.js
+   OfficerCreator in intake mode) before the building opens. hqOfficerEnlist(profile, look) is the ONE
+   write (pure over the profile handed in — THE CALLER SAVES ONCE): the look, the chair ('look'), the
+   record, and member 0 of THE PARTY rewritten in place (its id, its ledger and its vitals kept; a race /
+   job change drops the old customSpells — the tree is another). The mirror's SAVE re-files it, so a new
+   haircut walks into the next fight. The Freelancer's socket pools read THE ROSTER LEDGER in story
+   scope (flPoolOwnedOnly, below the FREELANCER block) — a socket offers only what the account owns. */
+const HQ_OFFICER_RULES = {
+    race: 'door agent',      // the officer's vessel — a D.O.O.R. Agent in the creator's clothes (sprites.js EW_CREATOR_LOOK_RACES)
+    cls: 'Freelancer',       // the officer's job — the socket racks, filled from the roster you own
+    intake: true,            // false = Play opens the building without the intake (dev: ?nointake / EW_HQ_NO_INTAKE)
+    labels: { title: 'THE INTAKE', sub: 'D.O.O.R. HEADQUARTERS · FORM 1 · YOUR AGENT', brief: 'A FREELANCER D.O.O.R. AGENT · YOUR LOOK, YOUR NAME · LEVEL 5 · THE SOCKETS TAKE THE SPELLS OF THE VESSELS YOU OWN', enlist: 'ENLIST · FILE THE AGENT', back: 'BACK TO THE MENU' },
+};
+function hqOfficerRecord(profile) {
+    try { const r = profile && profile.door && profile.door.hq && profile.door.hq.officer; return (r && typeof r === 'object') ? r : null; } catch (e) { return null; }
+}
+function hqOfficerOnFile(profile) { const r = hqOfficerRecord(profile); return !!(r && r.created); }
+function hqOfficerEnlist(profile, look) {
+    if (!profile) return null;
+    const H = hqPartyEnsureRoot(profile);
+    if (look && look.appearance && typeof hqSetLook === 'function') hqSetLook(profile, look);
+    const lk = (typeof hqLook === 'function') ? hqLook(profile) : null;
+    if (lk && typeof hqSetAvatar === 'function') hqSetAvatar(profile, 'look');
+    const was = hqOfficerRecord(profile);
+    const name = String((look && look.name) || (lk && lk.name) || (was && was.name) || profile.username || 'THE OFFICER').trim().slice(0, 24);
+    H.officer = { created: true, at: (was && was.at) || Date.now(), race: HQ_OFFICER_RULES.race, cls: HQ_OFFICER_RULES.cls, name };
+    if (lk && name && lk.name !== name && profile.door.hq.look) profile.door.hq.look.name = name;   // the look wears the agent's name
+    const spec = hqPartyOfficer(profile);
+    const rec = hqPartyRecord(profile);
+    if (rec && rec.members.length) {
+        const m0 = rec.members[0];
+        const changed = (m0.meta && m0.meta.race) !== spec.meta.race || m0.cls !== spec.cls;
+        m0.you = true; m0.cls = spec.cls; m0.name = spec.name;
+        const meta = Object.assign({}, m0.meta || {}, spec.meta);
+        if (!spec.meta.appearance) delete meta.appearance;
+        if (changed) { delete meta.customSpells; delete meta.secondaryJob; m0.loadout.spells = []; }
+        m0.meta = meta;
+        rec.at = Date.now();
+    } else hqPartyEnsure(profile);
+    return H.officer;
+}
+/* THE OFFICER: the walker as a member — the enlisted agent (a Freelancer D.O.O.R. Agent in the intake's look), else the
+   mirror's look (Homosapien in the creator's clothes), the barbershop's race pick, else the DOOR Agent */
 function hqPartyOfficer(profile) {
     let pref = null, look = null;
     try { pref = (typeof hqAvatarPref === 'function') ? hqAvatarPref(profile) : null; } catch (e) { pref = null; }
     try { look = (typeof hqLook === 'function') ? hqLook(profile) : null; } catch (e) { look = null; }
-    let race = HQ_PARTY_RULES.officerRace, gender = 'male', appearance = null, name = '';
-    if (pref && pref.mode === 'look' && look) { race = 'homosapien'; gender = look.gender; appearance = look.appearance; name = look.name || ''; }
+    const off = hqOfficerRecord(profile);
+    let race = HQ_PARTY_RULES.officerRace, gender = 'male', appearance = null, name = '', cls = null;
+    if (off && off.created) {
+        race = HQ_OFFICER_RULES.race; cls = HQ_OFFICER_RULES.cls; name = off.name || '';
+        if (look) { gender = look.gender; appearance = look.appearance; if (look.name) name = look.name; }
+    }
+    else if (pref && pref.mode === 'look' && look) { race = 'homosapien'; gender = look.gender; appearance = look.appearance; name = look.name || ''; }
     else if (pref && pref.mode === 'race' && pref.race) { race = pref.race; gender = pref.gender || 'male'; }
     if (typeof AVAILABLE_RACES !== 'undefined' && AVAILABLE_RACES.indexOf(race) < 0) race = 'homosapien';
     const genders = hqPartyGenders(race); if (genders.indexOf(gender) < 0) gender = genders[0];
     if (!name) name = String((profile && profile.username) || 'THE OFFICER').slice(0, 24);
     const meta = { race, gender };
     if (appearance) meta.appearance = appearance;
-    return { you: true, cls: hqPartyDefaultJob(race), name, meta, loadout: { spells: [], items: { healPotion: 2, manaPotion: 1 }, equipment: {} }, hp: null, hpMax: null, mp: null, mpMax: null };
+    return { you: true, cls: cls || hqPartyDefaultJob(race), name, meta, loadout: { spells: [], items: { healPotion: 2, manaPotion: 1 }, equipment: {} }, hp: null, hpMax: null, mp: null, mpMax: null };
 }
 /* a member off a LAST ROSTER row (state.js recordLastParty's shape) — the officer's own crossings seed the party */
 function hqPartyMemberFromRoster(m) {
@@ -46368,6 +46447,7 @@ if (typeof window !== 'undefined') {
     window.hqFieldTransform = hqFieldTransform; window.hqEncounterZones = hqEncounterZones;
     window.hqEncounterField = hqEncounterField; window.hqEncounterSeats = hqEncounterSeats; window.hqEncounterEyeFromSeats = hqEncounterEyeFromSeats; window.hqEncounterWakeRoom = hqEncounterWakeRoom;
     /* THE PARTY (2026-09-19): two shifts, the health that carries, field medicine */
+    window.HQ_OFFICER_RULES = HQ_OFFICER_RULES; window.hqOfficerRecord = hqOfficerRecord; window.hqOfficerOnFile = hqOfficerOnFile; window.hqOfficerEnlist = hqOfficerEnlist;   // THE INTAKE (2026-09-21)
     window.HQ_PARTY_RULES = HQ_PARTY_RULES; window.hqPartyRecord = hqPartyRecord; window.hqPartyEnsure = hqPartyEnsure; window.hqPartyPrune = hqPartyPrune; window.hqPartyOfficer = hqPartyOfficer; window.hqPartyUnlocked = hqPartyUnlocked; window.hqPartyMember = hqPartyMember; window.hqPartyShifts = hqPartyShifts;
     window.hqPartyVitals = hqPartyVitals; window.hqPartyFit = hqPartyFit; window.hqPartyEnlist = hqPartyEnlist; window.hqPartyRelieve = hqPartyRelieve; window.hqPartySwap = hqPartySwap; window.hqPartyOnCall = hqPartyOnCall; window.hqPartyRestore = hqPartyRestore;
     window.hqPartyForLaunch = hqPartyForLaunch; window.hqPartyAfterMatch = hqPartyAfterMatch;

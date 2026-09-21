@@ -10078,7 +10078,7 @@
                 // sticky flags from earlier menu picks would derail the sandbox
                 state.squadLeaderMode = false;
                 state.isRankedMatch = false;
-                state.trainingMatch = false;
+                state.trainingMatch = false; state.storyLevel = 0;
                 state.reserves = false; state.noRespawns = false;
                 state.isCampaign = false;
                 state._customRoundLimit = 0;
@@ -12743,7 +12743,7 @@
                 state.controllers[2] = CTRL.AI;
                 state.autoPlayers = {};
                 state.devAutoSim = false; state.devSimSpeed = 1;
-                state.squadLeaderMode = false; state.isRankedMatch = false; state.trainingMatch = false; state.reserves = false; state.noRespawns = false;
+                state.squadLeaderMode = false; state.isRankedMatch = false; state.trainingMatch = false; state.storyLevel = 0; state.reserves = false; state.noRespawns = false;
                 state.isCampaign = false; state.campaignLevelId = null;
                 state._customRoundLimit = L.rounds || 30;
                 state.fogOfWar = !!L.fog;

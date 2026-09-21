@@ -3014,7 +3014,9 @@
             // THE CHARACTER CREATOR (2026-09-11) ships rigged male AND female
             // Homosapien bases, so a slot that carries a creator look may wear
             // either gender even though the roster's stock human model is male-only.
-            const creatorLook = race === 'homosapien' && identity.appearance && typeof normalizeCharacterAppearance === 'function' && normalizeCharacterAppearance(identity.appearance);
+            /* THE INTAKE (2026-09-21): the officer is a D.O.O.R. Agent in the creator's clothes — sprites.js EW_CREATOR_LOOK_RACES names the races a look dresses */
+            const lookRace = (typeof EW_CREATOR_LOOK_RACES !== 'undefined' ? EW_CREATOR_LOOK_RACES : ['homosapien']).includes(race);
+            const creatorLook = lookRace && identity.appearance && typeof normalizeCharacterAppearance === 'function' && normalizeCharacterAppearance(identity.appearance);
             if (creatorLook && (gender === 'male' || gender === 'female')) { /* keep the chosen base */ }
             else if (!gender || !validGenders.includes(gender)) {
                 gender = validGenders[randInt(validGenders.length)];
@@ -3024,7 +3026,7 @@
                 faction: raceProfile.faction,
                 types: [...(raceProfile.types || [])],
                 gender,
-                appearance: race === 'homosapien' && typeof normalizeCharacterAppearance === 'function' ? normalizeCharacterAppearance(identity.appearance) : null,
+                appearance: lookRace && typeof normalizeCharacterAppearance === 'function' ? normalizeCharacterAppearance(identity.appearance) : null,
                 zodiac: identity.zodiac || archetype.zodiac || 'aries',
                 sleepPreference: identity.sleepPreference || archetype.sleepPreference || 'none',
                 terrainPreference: getTerrainPreferenceForRace(race),
@@ -4381,6 +4383,7 @@
                on while an AI unit is active (anims + camera off, delays ×64)
                and back off for the human's units. Match-select CPU TEMPO. */
             trainingMatch: false,
+            storyLevel: 0,   // THE STORY LEVEL (2026-09-21): a crossing filed from the building builds every unit at THE PARTY LEVEL (map.js _msConfirm → createUnit's cap branch); 0 = the PvP cap
             _aiTurbo: false,
             _preTurboVisualPrefs: null,
             activeZodiac: ZODIAC_CYCLE[0],

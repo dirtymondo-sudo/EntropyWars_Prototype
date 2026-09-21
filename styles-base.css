@@ -5423,6 +5423,9 @@ body.diorama-3d .tile-underpass.jump::before {
 .pb-officer-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 18px; border-bottom: 1px solid #4b3f2a; background: rgba(20, 17, 12, .85); }
 .pb-officer-head b { color: #f0cc83; letter-spacing: .14em; font-size: 14px; }
 .pb-officer-head span { color: #c6b995; font-size: 11px; letter-spacing: .1em; }
+/* THE INTAKE (2026-09-21): the creator over the main menu the first time a profile presses Play — the brief under the head */
+.pb-officer.intake { z-index: 99990; }
+.pb-officer-head .pb-officer-brief { display: block; margin-top: 4px; color: #9fd8a4; font-style: normal; font-size: 10px; letter-spacing: .12em; }
 .pb-officer-body { display: grid; grid-template-columns: minmax(320px, 46%) 1fr; min-height: 0; }
 .pb-officer-stage { position: relative; min-height: 0; border-right: 1px solid #4b3f2a; background: radial-gradient(60% 55% at 50% 62%, rgba(240, 204, 131, .10), transparent 70%); }
 .pb-officer-stage .pb-hero3d { position: absolute; inset: 0; }

@@ -11120,3 +11120,28 @@ lots of weird invisible walls and collision boxes, especially in the garage and 
   not 0). Their lines are the user's (A15).
 - UNSEEN LIVE (RULE #1c): every new rig's scale + facing (`heightRatio` is the edit), the jellyfish hanging on the swim loops, the
   cyberpunk cops on the Grid, the robes on the mound, the catgirl's new rig under the old flavour clips, the summon's procedural robe.
+
+### 2026-09-21 — THE INTAKE: a new profile creates its agent first; the officer is a Freelancer D.O.O.R. Agent; the sockets read the ledger; the story level (local delivery)
+The user: "I started a new profile but it still starts me at level 100. Let's make the first thing you do when you start a new
+profile is create a character. They should be a free lancer DOOR agent, but you can only learn spells of units you have unlocked
+in your roster, which at this point is none for the player."
+- **WHY 100**: the party's ledger started at 5 (THE LEVELS) and an ENCOUNTER built it there — but a crossing filed from the
+  building's consoles / DISPATCH / the RANGE went through `_msConfirm` → the forge → `createUnit`'s CAP branch (PvP normalisation,
+  level 100 on both sides). Now `state.storyLevel` (set by `_msConfirm` in story scope = THE PARTY LEVEL, 0 elsewhere and at every
+  other launch reset) is read by that branch; an encounter's own `storyLevel` on the identity still wins.
+- **THE INTAKE**: `_goToPlayHub` → (the door beat) → a profile with no `door.hq.officer` opens the creator over the main menu
+  (`_hqIntakeOpen` → `_mountReactCreator({ intake: true, onDone, onCancel })`; the menu scene leaves — the creator's stage has its
+  own renderer) — ENLIST = `window._hqIntakeEnlist(look)` → data.js `hqOfficerEnlist` (the look, the chair 'look', the record,
+  member 0 of THE PARTY in place) → one save → Play resumes into the building (`{ afterDoor: true, enlisted: true }`). BACK TO THE
+  MENU cancels. Off: `?nointake` / `EW_HQ_NO_INTAKE` / `HQ_OFFICER_RULES.intake`.
+- **THE OFFICER** = `HQ_OFFICER_RULES` `{ race: 'door agent', cls: 'Freelancer' }` in the creator's look: sprites.js
+  `EW_CREATOR_LOOK_RACES` (homosapien + door agent — the agent's creator rig keeps the door-gun `hold`), state.js
+  `resolveIdentityForBuild` keeps the appearance on the agent, map.js `_hqAvatar` walks the building as the agent in the look.
+- **THE SOCKETS**: `flPoolOwnedOnly()` (story scope = `window._ewRosterScope === 'owned'` + `unitRosterScope()`); `flRacePool` =
+  the owned races' trees, `flWildcardPool` = the trees of the owned vessels' default jobs; the sandbox / Online / Practice / the
+  range / the dev switch keep the whole catalogue. On a fresh profile the ledger is the five starters (door agent · homosapien ·
+  catgirl · bigfoot · honda civic) — "none" wants `ACCT_STARTER_UNITS` cut to the agent alone (both sides, `npm run test:parity`).
+- `npm test` runs `hq-intake.test.js`; character-creator.test.js's avatar pin re-pointed.
+- UNSEEN LIVE (RULE #1c): the creator over the menu (its stage on a cold cache), the enlist's hand-off into the door beat's
+  building, the agent's creator rig with the gun on the board and in the hall, the shrunken socket windows, a level-5 console
+  crossing's numbers on both sides.

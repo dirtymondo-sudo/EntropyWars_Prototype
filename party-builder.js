@@ -4177,6 +4177,16 @@ window._unmountReactTeamBuilder = function() {
    mirror counter through _HQ_MODAL (the building waits underneath; CLOSE
    resumes it). */
 function OfficerCreator() {
+  /* THE INTAKE (2026-09-21): the same screen opens over the MAIN MENU the first time a profile presses
+     Play (map.js _hqIntakeOpen → _mountReactCreator({ intake: true, onDone, onCancel })): the officer
+     builds their agent — a FREELANCER D.O.O.R. AGENT (data.js HQ_OFFICER_RULES) in the creator's clothes
+     — and ENLIST files it (window._hqIntakeEnlist → data.js hqOfficerEnlist: the look, the chair, the
+     officer record, member 0 of THE PARTY) before the building opens. The mirror mode (no props) is the
+     barbershop's as before; its SAVE re-files an enlisted officer's look on the party too. */
+  const props = arguments[0] || {};
+  const intake = !!props.intake;
+  const OR = window.HQ_OFFICER_RULES || { race: 'door agent', cls: 'Freelancer', labels: {} };
+  const L = OR.labels || {};
   const PS = window.ProfileSystem;
   const idx = PS && typeof PS.getActiveProfileIndex === 'function' ? PS.getActiveProfileIndex() : null;
   const profile = (idx !== null && idx !== undefined && PS) ? PS.loadProfile(idx) : null;
@@ -4184,8 +4194,8 @@ function OfficerCreator() {
   const [gender, setGender] = React.useState(onFile ? onFile.gender : 'male');
   const [appearance, setAppearance] = React.useState(() => onFile ? onFile.appearance : (window.normalizeCharacterAppearance ? window.normalizeCharacterAppearance({}) : null));
   const [photo, setPhoto] = React.useState(onFile ? onFile.portrait : null);
-  const [lookName, setLookName] = React.useState(onFile && onFile.name ? onFile.name : '');   // rev 10: the look wears a name
-  const [status, setStatus] = React.useState(onFile ? 'A look is on file. Change it here; SAVE files it and takes the photo.' : 'No look on file yet. Build one — SAVE files it on your card and takes the photo.');
+  const [lookName, setLookName] = React.useState(onFile && onFile.name ? onFile.name : (intake && profile && profile.username ? String(profile.username).slice(0, 24) : ''));   // rev 10: the look wears a name (the intake starts it at the callsign)
+  const [status, setStatus] = React.useState(intake ? 'Build your agent — the look, the name. ENLIST files them on your card and opens the building.' : (onFile ? 'A look is on file. Change it here; SAVE files it and takes the photo.' : 'No look on file yet. Build one — SAVE files it on your card and takes the photo.'));
   const [dirty, setDirty] = React.useState(false);
   const change = (changes, g) => {
     setAppearance(window.normalizeCharacterAppearance ? window.normalizeCharacterAppearance({ ...(appearance || {}), ...(changes || {}) }) : { ...(appearance || {}), ...(changes || {}) });
@@ -4200,8 +4210,19 @@ function OfficerCreator() {
   const save = () => {
     if (!profile || typeof window.hqSetLook !== 'function') { setStatus('No card on file — sign in at Reception first.'); return; }
     const url = (window.EWCharViewer && typeof window.EWCharViewer.snapshot === 'function' ? window.EWCharViewer.snapshot({ w: 256, h: 320 }) : null) || photo || null;
+    if (intake) {
+      /* THE INTAKE: one transaction on the profile (map.js), then the building */
+      const rec = (typeof window._hqIntakeEnlist === 'function') ? window._hqIntakeEnlist({ gender, appearance, portrait: url, name: lookName }) : null;
+      if (!rec) { setStatus('The agent could not be filed — try again.'); return; }
+      setPhoto(url); setDirty(false);
+      try { if (typeof playDoorSfx === 'function') playDoorSfx('stamp', { volume: 0.5 }); } catch (e) {}
+      if (typeof props.onDone === 'function') props.onDone(rec);
+      return;
+    }
     window.hqSetLook(profile, { gender, appearance, portrait: url, name: lookName });
     if (typeof window.hqSetAvatar === 'function') window.hqSetAvatar(profile, 'look');
+    /* an enlisted officer's new look walks into the next fight too (data.js hqOfficerEnlist re-files member 0 in place) */
+    try { if (typeof window.hqOfficerOnFile === 'function' && window.hqOfficerOnFile(profile) && typeof window.hqOfficerEnlist === 'function') window.hqOfficerEnlist(profile, { name: lookName }); } catch (e) {}
     PS.saveProfile(idx, profile);
     setPhoto(url); setDirty(false);
     setStatus(url ? 'Filed. The card wears the photo; you walk the building as this look.' : 'Filed without a photo (the stage was not ready) — press TAKE PHOTO once it shows.');
@@ -4217,21 +4238,22 @@ function OfficerCreator() {
     setStatus('Cleared. The card goes back to your vessel’s portrait; the chair to the recruit.');
     if (typeof window._hqRefreshAvatar === 'function') window._hqRefreshAvatar();
   };
-  const close = () => { if (typeof window._unmountReactCreator === 'function') window._unmountReactCreator(); };
+  const close = () => { if (intake) { if (typeof props.onCancel === 'function') props.onCancel(); return; } if (typeof window._unmountReactCreator === 'function') window._unmountReactCreator(); };
   React.useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') { e.preventDefault(); close(); } };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, []);
   const viewerLoads = !!(window.EWCharViewer && window.EWCharViewer.supports && window.EWCharViewer.supports('homosapien', gender));
-  return h('div', { className: 'pb-officer', role: 'dialog', 'aria-label': 'Character creator' },
+  return h('div', { className: 'pb-officer' + (intake ? ' intake' : ''), role: 'dialog', 'aria-label': intake ? 'The intake — create your agent' : 'Character creator' },
     h('div', { className: 'pb-officer-head' },
-      h('div', null, h('b', null, 'THE MIRROR'), h('span', null, ' · OCCAM’S BARBERSHOP · YOUR OWN LOOK · ROOM 1287')),
+      intake ? h('div', null, h('b', null, L.title || 'THE INTAKE'), h('span', null, ' · ' + (L.sub || 'D.O.O.R. HEADQUARTERS · FORM 1 · YOUR AGENT')), h('em', { className: 'pb-officer-brief' }, L.brief || 'A FREELANCER D.O.O.R. AGENT'))
+             : h('div', null, h('b', null, 'THE MIRROR'), h('span', null, ' · OCCAM’S BARBERSHOP · YOUR OWN LOOK · ROOM 1287')),
       h('div', { className: 'pb-creator-options', style: { margin: 0 } },
         h('button', { className: 'ms-tty-btn', onClick: () => window.EWCharViewer?.resetView() }, 'FULL BODY'),
         h('button', { className: 'ms-tty-btn', onClick: () => window.EWCharViewer?.viewHead() }, 'FACE CLOSE-UP'),
         h('button', { className: 'ms-tty-btn', onClick: () => { window.EWCharViewer?.resetView(); window.EWCharViewer?.play('walk', { full: true, name: 'Walk' }); } }, 'WALK'),
-        h('button', { className: 'ms-tty-btn', onClick: close }, dirty ? 'CLOSE · UNSAVED' : 'CLOSE'))),
+        h('button', { className: 'ms-tty-btn', onClick: close }, intake ? (L.back || 'BACK TO THE MENU') : (dirty ? 'CLOSE · UNSAVED' : 'CLOSE')))),
     h('div', { className: 'pb-officer-body' },
       h('div', { className: 'pb-officer-stage' },
         h(HeroViewer3D, { race: 'homosapien', gender, cls: 'Freelancer', faction: 'human', focus: 0.5, appearance }),
@@ -4247,16 +4269,17 @@ function OfficerCreator() {
       photo ? h('img', { className: 'pb-officer-photo', src: photo, alt: 'Your card photo', draggable: false }) : h('div', { className: 'pb-officer-photo pending' }, 'PHOTO PENDING'),
       h('div', { className: 'pb-officer-status' }, status),
       h('button', { className: 'ms-tty-btn', disabled: !profile, onClick: takePhoto }, '📷 TAKE PHOTO'),
-      onFile ? h('button', { className: 'ms-tty-btn', disabled: !profile, onClick: clear }, 'CLEAR LOOK') : null,
-      h('button', { className: 'ms-tty-btn primary', disabled: !profile, onClick: save }, 'SAVE LOOK · FILE ON CARD')));
+      (onFile && !intake) ? h('button', { className: 'ms-tty-btn', disabled: !profile, onClick: clear }, 'CLEAR LOOK') : null,
+      h('button', { className: 'ms-tty-btn primary', disabled: !profile, onClick: save }, intake ? (L.enlist || 'ENLIST · FILE THE AGENT') : 'SAVE LOOK · FILE ON CARD')));
 }
 if (typeof window !== 'undefined') window._ewCreatorParts = { CreatorControls, OfficerCreator, HeroViewer3D };   // the tests render these headlessly
 let _creatorRoot = null;
 window._mountReactCreator = function () {
+  const opts = arguments[0] || null;   // THE INTAKE (2026-09-21): { intake, onDone, onCancel } from map.js; the mirror passes nothing
   let c = document.getElementById('creatorOverlay');
   if (!c) { c = document.createElement('div'); c.id = 'creatorOverlay'; document.body.appendChild(c); }
   if (!_creatorRoot) _creatorRoot = ReactDOM.createRoot(c);
-  _creatorRoot.render(h(OfficerCreator));
+  _creatorRoot.render(h(OfficerCreator, opts));
 };
 window._unmountReactCreator = function () {
   if (_creatorRoot) { _creatorRoot.unmount(); _creatorRoot = null; }

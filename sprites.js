@@ -2171,9 +2171,20 @@ function getCharacterModelFallback(url) {
   for (const key of EW_FABRIC_IDS) if (EW_FABRICS[key].file && getFabricTextureUrl(key) === url) return '/api/character-model/fabric/' + key;
   return null;
 }
+/* THE INTAKE (2026-09-21): the races a CREATOR LOOK may dress — the human base (the mirror's look) and the
+   D.O.O.R. Agent (the officer: a Freelancer DOOR agent in the intake's clothes). A non-human look keeps its
+   race's own held prop + basic-attack kind (the door gun in the agent's hand) on the creator rig. */
+const EW_CREATOR_LOOK_RACES = ['homosapien', 'door agent'];
 function getCharacterAppearanceModel(race, gender, appearance) {
-  const a = race === 'homosapien' && normalizeCharacterAppearance(appearance);
-  return a ? Object.assign({}, EW_CHARACTER_BASES[gender === 'female' ? 'female' : 'male'], { heightRatio: a.height }) : null;
+  const a = EW_CREATOR_LOOK_RACES.includes(race) && normalizeCharacterAppearance(appearance);
+  if (!a) return null;
+  const def = Object.assign({}, EW_CHARACTER_BASES[gender === 'female' ? 'female' : 'male'], { heightRatio: a.height });
+  if (race !== 'homosapien') {
+    const set = RACE_MODELS_3D[race], own = set && (set[gender === 'female' ? 'female' : 'male'] || set.male || set.female);
+    if (own && own.hold) def.hold = own.hold;
+    if (own && own.basicAttackKind) def.basicAttackKind = own.basicAttackKind;
+  }
+  return def;
 }
 // Every remote asset a look needs besides its base (the match-start preload
 // gate warms these so the first board build is not a bald unit in plain cloth).
@@ -2205,6 +2216,7 @@ if (typeof window !== 'undefined') {
   window.getHairStyleUrl = getHairStyleUrl;
   window.getFabricTextureUrl = getFabricTextureUrl;
   window.getCharacterAppearanceModel = getCharacterAppearanceModel;
+  window.EW_CREATOR_LOOK_RACES = EW_CREATOR_LOOK_RACES;
   window.getCharacterAppearanceAssets = getCharacterAppearanceAssets;
 }
 

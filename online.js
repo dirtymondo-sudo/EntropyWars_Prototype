@@ -4526,6 +4526,7 @@
                     _preSimVisualPrefs: 1,
                     /* training match (instant CPU turns) is offline-only */
                     trainingMatch: 1,
+                    storyLevel: 1,   // the story level is the host's build-time input (VS-CPU); online is scope 'all'
                     _aiTurbo: 1,
                     _preTurboVisualPrefs: 1,
 

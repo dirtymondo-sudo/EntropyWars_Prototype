@@ -7600,3 +7600,38 @@ the console's crossings (no `storyLevel` → the cap as before), the marker's li
 XP-to-gold, a synced ledger (the party is local). `npm test` runs `party-levels.test.js`. UNSEEN LIVE (RULE
 #1c): the fill's pace (`VIC_XP_ROW_MS`), the flash over a narrow panel, the jump on the cast rigs, a level-5
 fight's numbers (57 HP), the group walking together, the tier offsets against real natives.
+
+## THE INTAKE — a new profile creates its agent first; the officer is a FREELANCER D.O.O.R. AGENT; the sockets read the ledger; THE STORY LEVEL (2026-09-21, local delivery)
+The user: "I started a new profile but it still starts me at level 100. Make the first thing you do when you start a new
+profile is create a character — a Freelancer DOOR agent — but you can only learn spells of units you have unlocked in your
+roster." **WHY 100**: THE LEVELS built the PARTY at 5 for an ENCOUNTER only; a crossing filed from the building's consoles /
+DISPATCH / the RANGE went through `_msConfirm` → the forge → map.js `createUnit`'s CAP branch (PvP normalisation, 100 both
+sides). **THE STORY LEVEL**: `state.storyLevel` (state.js literal; online.js skip list) is set by `_msConfirm` in STORY SCOPE
+(`_hqHome` + `unitRosterScope() === 'owned'`) to THE PARTY LEVEL (`_hqPartyLevelNow`, 5 on a fresh profile) and to 0 at every
+other launch reset beside `trainingMatch`; createUnit's cap branch reads it (`_storyLv || pvpNormalizedLevel`); an encounter's
+own `meta.storyLevel` still wins (its branch is earlier). **THE INTAKE**: map.js `_goToPlayHub` → after the door beat, a profile
+with no officer on file (`_hqIntakeNeeded` → data.js `hqOfficerOnFile`) opens the creator OVER THE MAIN MENU (`_hqIntakeOpen`:
+`_menuSceneLeave` — the creator's stage owns its own renderer — then `_mountReactCreator({ intake: true, onDone, onCancel })`);
+party-builder.js `OfficerCreator` reads `arguments[0]` (the pinned `function OfficerCreator()` signature stays): intake mode =
+THE INTAKE head + the brief, the name seeded from the callsign, ENLIST · FILE THE AGENT → `window._hqIntakeEnlist(look)` (ONE
+profile transaction → data.js **`hqOfficerEnlist(profile, look)`**: `hqSetLook`, the chair `'look'`, `door.hq.officer =
+{ created, at, race, cls, name }`, and MEMBER 0 OF THE PARTY rewritten IN PLACE — id / ledger / vitals kept, a race or job change
+drops the old customSpells — else `hqPartyEnsure`) → `props.onDone` → `_goToPlayHub({ afterDoor: true, enlisted: true })`; BACK
+TO THE MENU / ESC → `_hqIntakeCancel`. The mirror mode (no props) is the barbershop's as before, and its SAVE re-files an
+enlisted officer's look on the party (`hqOfficerEnlist(profile, { name })` — no appearance = keep the look just filed). Off:
+`?nointake` / `EW_HQ_NO_INTAKE` / `HQ_OFFICER_RULES.intake = false`. **THE OFFICER** (data.js `HQ_OFFICER_RULES` `{ race: 'door
+agent', cls: 'Freelancer', intake, labels }`; `hqPartyOfficer` reads the record FIRST — a profile without one keeps the legacy
+seed: the agent in its own job, the mirror's look = a homosapien): sprites.js **`EW_CREATOR_LOOK_RACES`** = `['homosapien', 'door
+agent']` — `getCharacterAppearanceModel` dresses the agent on the creator base and keeps the race's own `hold` (the door gun) +
+`basicAttackKind`; state.js `resolveIdentityForBuild` keeps a look on those races; map.js `_hqAvatar`'s look mode walks the
+building as the OFFICER'S race in the look (homosapien the fallback); the party card wears THE PHOTO. **THE SOCKETS READ THE
+LEDGER**: data.js `flPoolOwnedOnly()` (= `window._ewRosterScope === 'owned'` AND `unitRosterScope() === 'owned'` — the sandbox /
+no scope / Online / Practice / the range / the dev switch see the whole catalogue) → `flOwnedRaces()` (`isUnitOwned`, never the
+scope) / `flOwnedJobs()` (`RACE_DEFAULT_JOBS` of the owned races): `flRacePool` offers the owned races' trees, `flWildcardPool`
+the owned vessels' jobs' trees; `buildFreelancerTree`'s `poolOf` leaves an unowned id `unplaced`, so `treeLegalSubset` drops it
+at the build (never a lock on a saved row; the online host validates in scope 'all'). On a FRESH profile the ledger is the five
+starters (the agent · homosapien · catgirl · bigfoot · honda civic — the user's free hires) — "none" = cut `ACCT_STARTER_UNITS`
+to the agent on BOTH sides (`npm run test:parity`). `npm test` runs `hq-intake.test.js`; character-creator.test.js's avatar
+pin re-pointed. Ship data.js to R2 AND Render (server.js reads it). UNSEEN LIVE (RULE #1c): the creator over the menu (its
+stage on a cold cache, `.pb-officer.intake` z 99990 over the menu's motes), the hand-off into the building, the agent's creator
+rig holding the gun on the board and in the hall, the shrunken socket windows, a level-5 console crossing's numbers both sides.

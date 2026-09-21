@@ -135,6 +135,9 @@
                toggle keep the classic Play hub; a failed 3D enter falls back
                to it as well. */
             if (typeof window._hqEnabled === 'function' && window._hqEnabled()) {
+                /* THE INTAKE (2026-09-21): a profile with no agent on file creates one FIRST — the creator over the
+                   menu; ENLIST files the officer (a Freelancer D.O.O.R. Agent) and Play resumes into the building */
+                if (!opts.enlisted && _hqIntakeNeeded()) { _hqIntakeOpen(); return; }
                 if (window._hqEnter({ from: 'play' })) return;
             }
             playSfx('uiButtonConfirm');
@@ -667,6 +670,59 @@
         /* HQ plan D13: walk as your most-played vessel (the ID-card photo)
            when it has a rigged model, else as a D.O.O.R. agent in black.
            window.EW_HQ_AVATAR = 'race' | {race, gender} overrides. */
+        /* ── THE INTAKE (2026-09-21) — the first thing a new profile does is create its agent. data.js
+           HQ_OFFICER_RULES / hqOfficerOnFile / hqOfficerEnlist; the creator is party-builder.js OfficerCreator
+           in intake mode (window._mountReactCreator({ intake, onDone, onCancel })) over the main menu's page
+           (the menu scene leaves — the creator's stage has its own renderer). ENLIST = ONE profile transaction
+           (window._hqIntakeEnlist), then Play resumes into the building. Off: ?nointake / EW_HQ_NO_INTAKE /
+           HQ_OFFICER_RULES.intake = false. ── */
+        function _hqIntakeNeeded() {
+            try {
+                if (window.EW_HQ_NO_INTAKE) return false;
+                if (/[?&]nointake\b/.test(location.search)) return false;
+                if (!window.HQ_OFFICER_RULES || !window.HQ_OFFICER_RULES.intake) return false;
+                if (typeof window.hqOfficerOnFile !== 'function' || typeof window._mountReactCreator !== 'function') return false;
+                const p = _hqProfile(); if (!p) return false;
+                return !window.hqOfficerOnFile(p);
+            } catch (e) { return false; }
+        }
+        function _hqIntakeOpen() {
+            try { if (typeof window._menuSceneLeave === 'function') window._menuSceneLeave(); } catch (e) {}
+            _hqHome = false;
+            window._hqIntakeLive = true;
+            try { if (typeof playDoorSfx === 'function') playDoorSfx('laminate', { volume: 0.5 }); } catch (e) {}
+            window._mountReactCreator({ intake: true, onDone: _hqIntakeDone, onCancel: _hqIntakeCancel });
+        }
+        function _hqIntakeClose() {
+            window._hqIntakeLive = false;
+            try { if (typeof window._unmountReactCreator === 'function') window._unmountReactCreator(); } catch (e) {}
+        }
+        function _hqIntakeDone() {
+            _hqIntakeClose();
+            try { if (typeof window._refreshWallets === 'function') window._refreshWallets(); } catch (e) {}
+            window._goToPlayHub({ afterDoor: true, enlisted: true });
+        }
+        function _hqIntakeCancel() {
+            _hqIntakeClose();
+            try { playSfx('uiButtonConfirm'); } catch (e) {}
+            state.gameState = GS.MAIN_MENU;
+            _showTitlePage('mainMenuPage');
+        }
+        /* the creator's ENLIST: the look, the chair, the officer record, member 0 of the party — one save */
+        window._hqIntakeEnlist = function (look) {
+            try {
+                const PS = window.ProfileSystem;
+                const idx = (PS && typeof PS.getActiveProfileIndex === 'function') ? PS.getActiveProfileIndex() : null;
+                if (idx === null || idx === undefined || typeof window.hqOfficerEnlist !== 'function') return null;
+                const p = PS.loadProfile(idx); if (!p) return null;
+                const rec = window.hqOfficerEnlist(p, look || null);
+                PS.saveProfile(idx, p);
+                if (_hqPause) _hqPause.units = {};
+                try { if (typeof window._refreshReactProfile === 'function') window._refreshReactProfile(); } catch (e) {}
+                return rec;
+            } catch (e) { console.warn('[HQ] the intake could not file the agent', e); return null; }
+        };
+        window._hqIntakeNeeded = _hqIntakeNeeded;
         function _hqAvatar(profile) {
             const ov = window.EW_HQ_AVATAR;
             if (typeof ov === 'string' && ov !== 'vessel') return { race: ov };
@@ -684,7 +740,11 @@
             /* YOUR OWN LOOK (rev 8): the mirror's creator look on the human base — the walker carries the appearance */
             if (mode === 'look' && typeof window.hqLook === 'function') {
                 const lk = window.hqLook(profile);
-                if (lk && typeof getCharacterAppearanceModel === 'function' && getCharacterAppearanceModel('homosapien', lk.gender, lk.appearance)) return { race: 'homosapien', gender: lk.gender, appearance: lk.appearance };
+                /* THE INTAKE (2026-09-21): an enlisted officer walks as the D.O.O.R. Agent in the look (the same creator rig, the door gun in hand) */
+                const offRace = (typeof window.hqOfficerOnFile === 'function' && window.hqOfficerOnFile(profile) && window.HQ_OFFICER_RULES) ? window.HQ_OFFICER_RULES.race : 'homosapien';
+                if (lk && typeof getCharacterAppearanceModel === 'function') {
+                    for (const r of [offRace, 'homosapien']) if (getCharacterAppearanceModel(r, lk.gender, lk.appearance)) return { race: r, gender: lk.gender, appearance: lk.appearance };
+                }
             }
             if (mode === 'race' && typeof getRace3DModel === 'function') {
                 if (getRace3DModel(pref.race, pref.gender)) return { race: pref.race, gender: pref.gender };
@@ -1490,6 +1550,8 @@
         function _hqPauseUnits(rec) { const o = {}; (rec ? rec.members : []).forEach(m => { o[m.id] = _hqPauseUnit(m.id); }); return o; }
         function _hqPausePortrait(m, u) {
             let url = null;
+            /* THE INTAKE (2026-09-21): the officer's card wears THE PHOTO the creator took (the ID card's) */
+            try { if (m && m.you && typeof window.hqLook === 'function') { const lk = window.hqLook(_hqProfile()); if (lk && lk.portrait && m.meta && m.meta.appearance) return { url: lk.portrait, kind: 'portrait' }; } } catch (e) {}
             try { if (typeof getUnitPortraitUrl === 'function') url = getUnitPortraitUrl(u || { race: m.meta && m.meta.race, gender: m.meta && m.meta.gender }); } catch (e) {}
             if (url) return { url, kind: 'portrait' };
             try { if (typeof getR2RaceSpriteUrl === 'function') url = getR2RaceSpriteUrl((m.meta && m.meta.race) || 'homosapien', (m.meta && m.meta.gender) || 'male', m.cls || 'Freelancer'); } catch (e) {}
@@ -5718,7 +5780,7 @@
         function _mdSeatDelvers(race, gender, heroJob) {
             window._msCpuOnly = true;
             state.isRankedMatch = false;
-            state.trainingMatch = false;
+            state.trainingMatch = false; state.storyLevel = 0;
             state.reserves = false;
             state.noRespawns = false;
             state._customRoundLimit = 0;
@@ -7739,6 +7801,13 @@
             state.trainingMatch = false;
             state.reserves = false;
             state.noRespawns = false;
+            /* THE STORY LEVEL (2026-09-21, the user: "a new profile still starts me at level 100"): a crossing filed from
+               the BUILDING (story scope — the console, the marker's terminal, DISPATCH's desk) builds EVERY unit at THE
+               PARTY LEVEL (data.js hqPartyLevel — the first shift's mean, 5 on a fresh profile; map.js createUnit's cap
+               branch reads state.storyLevel), never the PvP cap. Online / Practice / the classic desk (scope 'all') stay
+               at the cap; an encounter's own storyLevel on the identity wins over this. */
+            state.storyLevel = 0;
+            try { if (_hqHome && typeof unitRosterScope === 'function' && unitRosterScope() === 'owned') { const _sl = _hqPartyLevelNow(); if (_sl > 0) state.storyLevel = _sl | 0; } } catch (e) { state.storyLevel = 0; }
 
             // Leaving for any non-sim mode clears the sim-mode flags so a
             // stale training/balance/strength session can't keep recording.
@@ -13878,7 +13947,10 @@
             if (_cuMode) {
                 // PvP normalization: every unit is built at the level cap so all
                 // competitive modes are level-100 vs level-100.
-                const targetLevel = (typeof MODE_LEVEL_RULES !== 'undefined') ? MODE_LEVEL_RULES.pvpNormalizedLevel : XP_MAX_LEVEL;
+                /* THE STORY LEVEL (2026-09-21): a crossing filed from the building (map.js _msConfirm → state.storyLevel = THE
+                   PARTY LEVEL) builds every unit there instead — a fresh profile's story mode is level 5 on both sides */
+                const _storyLv = (typeof state !== 'undefined' && (state.storyLevel | 0) > 0) ? Math.max(1, Math.min(XP_MAX_LEVEL, state.storyLevel | 0)) : 0;
+                const targetLevel = _storyLv || ((typeof MODE_LEVEL_RULES !== 'undefined') ? MODE_LEVEL_RULES.pvpNormalizedLevel : XP_MAX_LEVEL);
                 const _secJobLvl = (typeof SECONDARY_JOB_LEVEL !== 'undefined') ? SECONDARY_JOB_LEVEL : 15;
 
                 if (targetLevel >= _secJobLvl) {
@@ -20624,7 +20696,7 @@
             state.showPlayer2Builder = false;
             state.squadLeaderMode = false;
             state.isRankedMatch = false;
-            state.trainingMatch = false;
+            state.trainingMatch = false; state.storyLevel = 0;
             state.reserves = false;
             state.noRespawns = false;
 
