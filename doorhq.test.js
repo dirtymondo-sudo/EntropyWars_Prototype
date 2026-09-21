@@ -2064,7 +2064,7 @@ test('room variants (plan 5.1): after hours Room 86 is the MÖBIUS STRIP CLUB �
     assert.strictEqual(HQ.rooms.cafeteria, CAFE, 'restored: the sheet stands');
     assert.strictEqual(eg.label, baseLabel); assert.strictEqual(eg.sub, baseSub); assert.strictEqual(eg.desc, baseDesc);
     assert.ok(!('_base' in eg), 'the door forgets the night');
-    assert.strictEqual(D.hqRoomRegister().find(x => x.no === '86').label, 'THE CAFETERIUM');
+    assert.strictEqual(D.hqRoomRegister().find(x => x.no === '86').label, 'THE CAFETERIA');
     /* the building-wide roll */
     try {
         /* (D7, 2026-09-16: the three complexes' reveals roll beside Room 86 — the roll names every room with a visit variant) */

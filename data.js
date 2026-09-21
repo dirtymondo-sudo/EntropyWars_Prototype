@@ -11088,7 +11088,7 @@ const ACH_RECORD_DEFS = [
 
 // Hard ceilings so a hostile blob can't balloon the stored row: key-count
 // caps per section plus a universal value clamp.
-const ACH_MERGE_CAPS = { counters: 256, champs: 256, unlocked: 12000, value: 1e9, finds: 4000, links: 512, cleared: 256, clearedIds: 32, rooms: 512, defeated: 256 };
+const ACH_MERGE_CAPS = { counters: 256, champs: 256, unlocked: 12000, value: 1e9, finds: 4000, links: 512, cleared: 256, clearedIds: 32, rooms: 512, angles: 256, defeated: 256 };
 
 function mergeProgressBlobs(a, b) {
   const METRIC_RE = /^[A-Za-z0-9_]{1,48}$/;                 // counter metric names
@@ -11139,8 +11139,8 @@ function mergeProgressBlobs(a, b) {
   const SPOT_RE = /^[A-Za-z0-9_-]{1,48}$/;
   const RACE_KEY_RE = /^[a-z0-9][a-z0-9 _'-]{0,40}$/;
   const RACE_TXT = v => (typeof v === 'string' && v.length <= 48) ? v : null;
-  const out = { v: 2, counters: {}, champs: {}, records: {}, unlocked: {}, hq: { finds: { taken: {} }, links: { seen: {} }, rooms: { seen: {} }, cleared: {}, encounters: { count: 0, wins: 0, losses: 0, last: null }, skate: { best: null, total: 0, lines: 0, bails: 0 }, defeated: {} } };
-  let nCounters = 0, nChamps = 0, nUnlocked = 0, nFinds = 0, nLinks = 0, nCleared = 0, nRooms = 0, nDefeated = 0;
+  const out = { v: 2, counters: {}, champs: {}, records: {}, unlocked: {}, hq: { finds: { taken: {} }, links: { seen: {} }, rooms: { seen: {} }, angles: { found: {} }, cleared: {}, encounters: { count: 0, wins: 0, losses: 0, last: null }, skate: { best: null, total: 0, lines: 0, bails: 0 }, defeated: {} } };
+  let nCounters = 0, nChamps = 0, nUnlocked = 0, nFinds = 0, nLinks = 0, nCleared = 0, nRooms = 0, nAngles = 0, nDefeated = 0;
   for (const src of [a, b]) {
     if (!src || typeof src !== 'object') continue;
     const hqSrc = (src.hq && typeof src.hq === 'object') ? src.hq : {};
@@ -11211,6 +11211,17 @@ function mergeProgressBlobs(a, b) {
       if (v === null) continue;
       const dst = out.hq.rooms.seen;
       if (dst[key] === undefined) { if (nRooms >= ACH_MERGE_CAPS.rooms) continue; nRooms++; dst[key] = v; continue; }
+      if (v < dst[key]) dst[key] = v;
+    }
+    /* THE SUSPICIOUS ANGLE (2026-09-21): the draughts the protractor found ride as hq.angles.found — the EARLIER day wins */
+    const anglesFound = (src.hq && typeof src.hq === 'object' && src.hq.angles && typeof src.hq.angles === 'object' && src.hq.angles.found && typeof src.hq.angles.found === 'object') ? src.hq.angles.found : {};
+    for (const key of Object.keys(anglesFound)) {
+      if (!HQ_ANGLE_RE.test(key) || badKey(key)) continue;
+      const raw = anglesFound[key];
+      const v = (typeof raw === 'string' && DATE_RE.test(raw)) ? raw : null;
+      if (v === null) continue;
+      const dst = out.hq.angles.found;
+      if (dst[key] === undefined) { if (nAngles >= (ACH_MERGE_CAPS.angles || 256)) continue; nAngles++; dst[key] = v; continue; }
       if (v < dst[key]) dst[key] = v;
     }
     const taken = (src.hq && typeof src.hq === 'object' && src.hq.finds && typeof src.hq.finds === 'object' && src.hq.finds.taken && typeof src.hq.finds.taken === 'object') ? src.hq.finds.taken : {};
@@ -21196,13 +21207,13 @@ const DOOR_HQ = {
        back into the car. B2 · THE UNDERCROFT is on no button on purpose. ── */
     elevator: {
         stops: [
-            { id: 'PH', label: 'THE PENTHOUSE', sub: 'EXECUTIVE FLOOR', room: 'executive', at: 'elevator', minClearance: 4, requiresKeys: 12 },
-            { id: '4',  label: 'THE LABS',      sub: 'THE FOURTH FLOOR · RESEARCH', room: 'labs', at: 'elevator' },     // Phase 8 stage 2 (2026-09-15)
-            { id: '3',  label: 'THE ANNEX',     sub: 'THE THIRD FLOOR',  room: 'annex',     at: 'elevator' },
-            { id: '2',  label: 'THE WORKS',     sub: 'THE SECOND FLOOR · MANUFACTURING', room: 'works', at: 'elevator' },   // Phase 8 stage 2 (2026-09-15)
-            { id: 'M',  label: 'THE MAIN HALL', sub: 'CENTRAL EGRESS · MEZZANINE', room: 'central_egress', at: 'elevator' },
+            { id: 'PH', label: 'THE PENTHOUSE', sub: 'THE EXECUTIVE FLOOR', room: 'executive', at: 'elevator', minClearance: 4, requiresKeys: 12 },
+            { id: '4',  label: 'THE FOURTH FLOOR', sub: 'THE LABS · RESEARCH', room: 'labs', at: 'elevator' },     // Phase 8 stage 2 (2026-09-15)
+            { id: '3',  label: 'THE THIRD FLOOR', sub: 'THE ANNEX',  room: 'annex',     at: 'elevator' },
+            { id: '2',  label: 'THE SECOND FLOOR', sub: 'THE WORKS · MANUFACTURING', room: 'works', at: 'elevator' },   // Phase 8 stage 2 (2026-09-15)
+            { id: 'M',  label: 'THE MAIN HALL', sub: 'THE MEZZANINE', room: 'central_egress', at: 'elevator' },
             { id: 'G',  label: 'THE GARAGE',    sub: 'PARKING · P1',     room: 'garage',    at: 'elevator' },
-            { id: 'B',  label: 'SERVICES',      sub: 'THE SERVICE FLOOR', room: 'services', at: 'elevator' },
+            { id: 'B',  label: 'THE BASEMENT', sub: 'SERVICES', room: 'services', at: 'elevator' },
         ],
     },
     /* ── H-WING (HQ plan 5.5, shipped stage 1 2026-09-14 rev 4) ───────────
@@ -23330,7 +23341,7 @@ const DOOR_HQ = {
 
     rooms: {
         central_egress: {
-            label: 'CENTRAL EGRESS',
+            label: 'THE MAIN HALL',
             sub: 'THE MAIN HALL',
             kind: 'rotunda',
             shell: {
@@ -23386,7 +23397,7 @@ const DOOR_HQ = {
                    5.5 m of wall to the vault door, 2.9 needed. The saloon leaf swings
                    both ways. After hours the plate reads MÖBIUS STRIP CLUB — same
                    room, same number (DOOR_HQ.rooms.cafeteria.variants). */
-                { id: 'cafeteria',      deg: 75,  level: 0, leaf: 'leaf_saloon',                    label: 'THE CAFETERIUM',          sub: 'ON BREAK · THE KITCHEN', action: { room: 'cafeteria', at: 'egress' }, desc: 'Room 86. The menu is out of it. The clocks disagree, the chairs are signed out, and the vending machine that was on the other side yesterday is on this side today. Doors swing both ways; nobody has decided which.' },
+                { id: 'cafeteria',      deg: 75,  level: 0, leaf: 'leaf_saloon',                    label: 'THE CAFETERIA',          sub: 'ON BREAK · THE KITCHEN', action: { room: 'cafeteria', at: 'egress' }, desc: 'Room 86. The menu is out of it. The clocks disagree, the chairs are signed out, and the vending machine that was on the other side yesterday is on this side today. Doors swing both ways; nobody has decided which.' },
                 { id: 'quartermaster',  deg: 90,  level: 0, leaf: 'leaf_vault',        wide: true,  label: 'QUARTERMASTER',           sub: 'SHOP',       action: { fn: '_goToShop' },        desc: 'Declassification and asset reassignment. The Shop, and the manifests locker.', alt: { label: 'PARTY BUILDER', fn: '_goToTeamBuilder' } },
                 /* ROOM 1287 (2026-09-11, plan 7.4): OCCAM'S BARBERSHOP between the
                    Quartermaster and Reception — 15° each way (5.5 m of wall at
@@ -23411,7 +23422,7 @@ const DOOR_HQ = {
                    (§5.6), the same door from the foyer's side; a fresh arrival from
                    Play stands in the foyer and walks IN through it (map.js
                    _hqArrivalRoom — `?nofoyer` / ew_hq_foyer='off' lands in the hall). */
-                { id: 'foyer',          deg: 195, level: 0, leaf: 'leaf_revolving',   wide: true,  label: 'THE FOURIER FOYER',       sub: 'THE FRONT DOOR · EXIT',   action: { room: 'foyer', at: 'egress' }, desc: 'The vestibule. The revolving door, the seal in the terrazzo, the inspection desk that verifies your corners. The street is on the other side of it; the street is the main menu.' },
+                { id: 'foyer',          deg: 195, level: 0, leaf: 'leaf_revolving',   wide: true,  label: 'THE FOYER',       sub: 'THE FRONT DOOR · EXIT',   action: { room: 'foyer', at: 'egress' }, desc: 'The vestibule. The revolving door, the seal in the terrazzo, the inspection desk that verifies your corners. The street is on the other side of it; the street is the main menu.' },
                 /* ROOM 1111 · MEDICAL (plan 7.4, 2026-09-13 rev 3): the door is now the
                    way INTO the ward — the services desk (Challenge mode), the chart
                    (your record), the cell door into Room 5150. The number moved onto
@@ -23450,7 +23461,7 @@ const DOOR_HQ = {
                    that stood at 240° moved to 232°. A holographic door (the
                    Cyberpunk tenement wears the same; leaves are not exclusive
                    below rank). */
-                { id: 'observatorium',  deg: 240, level: 2, leaf: 'leaf_holographic',              label: 'THE OBSERVATORIUM',       sub: 'MAP SELECT · REPLAY',        action: { room: 'observatorium', at: 'egress' },
+                { id: 'observatorium',  deg: 240, level: 2, leaf: 'leaf_holographic',              label: 'THE OBSERVATORY',       sub: 'MAP SELECT · REPLAY',        action: { room: 'observatorium', at: 'egress' },
                   desc: 'Room 360. The whole sky from one chair: every threshold in the building is a star on the ceiling — point at one on the chart and its door opens from here. The tape library came upstairs with the projector. The dome is painted; the telescope is pointed at the paint.' },
                 { id: 'bay_quarantined',deg: 270, level: 1, leaf: 'leaf_cell',                      label: 'BAY 6 · QUARANTINED',     sub: 'BATTLE MAPS',            action: { sector: 'quarantined' } },
                 /* THE EXECUTIVE SUITE (plan 9.3 / C-27, 2026-09-15): ONE house door
@@ -23694,7 +23705,7 @@ const DOOR_HQ = {
            door, and walks in; every return (a screen, a match) lands where
            you left. Viewer-local (RULE #2). */
         foyer: {
-            label: 'THE FOURIER FOYER',
+            label: 'THE FOYER',
             sub: 'THE FRONT DOOR',
             kind: 'box',
             shell: {
@@ -23709,7 +23720,7 @@ const DOOR_HQ = {
             doors: [
                 /* the revolving door: the same leaf the hall wears at 195°, from this side */
                 { id: 'egress', wall: 'n', x: 0, leaf: 'leaf_revolving', wide: true,
-                  label: 'CENTRAL EGRESS', sub: 'INTO THE MAIN HALL',
+                  label: 'THE MAIN HALL', sub: 'INTO THE MAIN HALL',
                   action: { room: 'central_egress', at: 'foyer' },
                   desc: 'The revolving door. It turns one way. Which way has not been decided, but it is the same way for everyone, and the hall is on the other side of it.' },
                 /* the front door: the street side is the main menu (the strip's EXIT, as a door) */
@@ -23898,7 +23909,7 @@ const DOOR_HQ = {
             },
             doors: [
                 { id: 'egress', wall: 'w', z: -0.5, leaf: 'leaf_closet_warped', rankDoor: true,
-                  label: 'CENTRAL EGRESS', sub: 'BACK TO THE MAIN HALL',
+                  label: 'THE MAIN HALL', sub: 'BACK TO THE MAIN HALL',
                   action: { room: 'central_egress', at: 'office' },
                   desc: 'Your door. It is the only thing in this room that is issued by rank.' },
             ],
@@ -23981,7 +23992,7 @@ const DOOR_HQ = {
            number. Overheard lines are Claude placeholders (A15 — rewrite at
            will); the cast's own lines are the user's. */
         cafeteria: {
-            label: 'THE CAFETERIUM',
+            label: 'THE CAFETERIA',
             sub: 'ON BREAK · THE KITCHEN',
             roomNo: '86', why: '86’d — the menu is always out of it',
             kind: 'box',
@@ -23995,7 +24006,7 @@ const DOOR_HQ = {
             },
             doors: [
                 { id: 'egress', wall: 'w', z: 1.2, leaf: 'leaf_saloon',
-                  label: 'CENTRAL EGRESS', sub: 'BACK TO THE MAIN HALL',
+                  label: 'THE MAIN HALL', sub: 'BACK TO THE MAIN HALL',
                   action: { room: 'central_egress', at: 'cafeteria' },
                   desc: 'The way back to the hall. The doors swing both ways, which Facilities calls a feature and Continuity calls a position.' },
                 /* THE SERVICE DOOR (Phase 8, 2026-09-14): the kitchen's stair, at the east end of the serving line */
@@ -24307,7 +24318,7 @@ const DOOR_HQ = {
             },
             doors: [
                 { id: 'egress', wall: 'w', z: 0, leaf: 'leaf_birch_glass',
-                  label: 'CENTRAL EGRESS', sub: 'BACK TO THE MAIN HALL',
+                  label: 'THE MAIN HALL', sub: 'BACK TO THE MAIN HALL',
                   action: { room: 'central_egress', at: 'barbershop' },
                   desc: 'The way back to the hall. The lettering on the glass reads OCCAM’S from the hall and, from in here, whatever you walked in as.' },
             ],
@@ -24518,7 +24529,7 @@ const DOOR_HQ = {
             },
             doors: [
                 { id: 'egress', wall: 'w', z: 0, leaf: 'leaf_window_large',
-                  label: 'CENTRAL EGRESS', sub: 'BACK TO THE MAIN HALL',
+                  label: 'THE MAIN HALL', sub: 'BACK TO THE MAIN HALL',
                   action: { room: 'central_egress', at: 'reception' },
                   desc: 'The way back to the hall. New hires are asked to leave the way they came in; the office has never explained where else they would leave.' },
             ],
@@ -24880,7 +24891,7 @@ const DOOR_HQ = {
             },
             doors: [
                 { id: 'egress', wall: 'w', z: 0, leaf: 'leaf_hospital',
-                  label: 'CENTRAL EGRESS', sub: 'BACK TO THE MAIN HALL',
+                  label: 'THE MAIN HALL', sub: 'BACK TO THE MAIN HALL',
                   action: { room: 'central_egress', at: 'medical' },
                   desc: 'The way back to the hall, through the same hospital door. The wing is quieter than the hall and everyone says so on the way out.' },
                 /* ROOM 1111 · the ward (the services desk, the chart, Room 5150 behind it) */
@@ -24960,7 +24971,7 @@ const DOOR_HQ = {
             },
             doors: [
                 { id: 'egress', wall: 'w', z: 0, leaf: 'leaf_wired_double', wide: true,
-                  label: 'CENTRAL EGRESS', sub: 'BACK TO THE MAIN HALL',
+                  label: 'THE MAIN HALL', sub: 'BACK TO THE MAIN HALL',
                   action: { room: 'central_egress', at: 'records' },
                   desc: 'The way back to the hall, through the same wired double door. Sign whatever you are carrying back in first.' },
                 /* ROOM 42 · the file */
@@ -25038,7 +25049,7 @@ const DOOR_HQ = {
             },
             doors: [
                 { id: 'egress', wall: 's', x: 0, leaf: 'leaf_suburban_house',
-                  label: 'CENTRAL EGRESS', sub: 'BACK TO THE MEZZANINE',
+                  label: 'THE MAIN HALL', sub: 'BACK TO THE MEZZANINE',
                   action: { room: 'central_egress', at: 'executive' },
                   desc: 'The way back to the mezzanine. A house door on an office suite. It has always been a house door; the file that says otherwise has been corrected.' },
                 /* ROOM 111 · the case */
@@ -25635,7 +25646,7 @@ const DOOR_HQ = {
                   action: { room: 'server', at: 'it' },
                   desc: 'The stair down to the racks. The keypad by the door is for coming back up.' },
                 { id: 'egress', wall: 'w', z: 0, leaf: 'leaf_holographic',
-                  label: 'CENTRAL EGRESS', sub: 'BACK TO THE MEZZANINE',
+                  label: 'THE MAIN HALL', sub: 'BACK TO THE MEZZANINE',
                   action: { room: 'central_egress', at: 'it' },
                   desc: 'The way back to the mezzanine. The keypad is on this side; the code is on the note; the note says DO NOT SHARE.' },
             ],
@@ -25732,7 +25743,7 @@ const DOOR_HQ = {
            lines are Claude placeholders (A15 — rewrite at will). Viewer-
            local, nothing relayed (RULE #2). */
         observatorium: {
-            label: 'THE OBSERVATORIUM',
+            label: 'THE OBSERVATORY',
             sub: 'MAP SELECT · REPLAY',
             roomNo: '360', why: '360° — the whole sky from one chair',
             kind: 'box',
@@ -25748,7 +25759,7 @@ const DOOR_HQ = {
             },
             doors: [
                 { id: 'egress', wall: 'w', z: 0, leaf: 'leaf_holographic',
-                  label: 'CENTRAL EGRESS', sub: 'BACK TO THE MAIN HALL',
+                  label: 'THE MAIN HALL', sub: 'BACK TO THE MAIN HALL',
                   action: { room: 'central_egress', at: 'observatorium' },
                   desc: 'The way back to the mezzanine. The door hums; Facilities says that is the paint drying.' },
             ],
@@ -25862,7 +25873,7 @@ const DOOR_HQ = {
             doors: [
                 /* the way back, centred on the north wall so the barrier gap
                    lines up with it — in from the egress, straight onto the grid */
-                { id: 'egress',    wall: 'n', x: 0,   leaf: 'leaf_exit', label: 'CENTRAL EGRESS', sub: 'BACK TO THE MAIN HALL',
+                { id: 'egress',    wall: 'n', x: 0,   leaf: 'leaf_exit', label: 'THE MAIN HALL', sub: 'BACK TO THE MAIN HALL',
                   action: { room: 'central_egress', at: 'training' },
                   desc: 'The way back up. The EXIT sign over this one is accurate, which is why it was chosen.' },
                 /* ONE HOME PER FUNCTION (Phase 8, 2026-09-14): Challenge mode is MEDICAL's desk;
@@ -25963,7 +25974,7 @@ const DOOR_HQ = {
            straight to. Un-numbered rooms are lobbies / corridors (the
            register skips them, like the penthouse). ══ */
         car: {
-            label: 'THE CAR',
+            label: 'THE ELEVATOR',
             sub: 'PRESS A FLOOR',
             kind: 'box',
             shell: {
@@ -26270,7 +26281,7 @@ const DOOR_HQ = {
            stair up into the Training Room, the kitchen, the laundry, and
            the corridor nobody uses. ── */
         services: {
-            label: 'B · SERVICES',
+            label: 'THE BASEMENT',
             sub: 'THE SERVICE FLOOR',
             kind: 'box',
             shell: {
@@ -26356,7 +26367,7 @@ const DOOR_HQ = {
             },
             doors: [
                 { id: 'lobby', wall: 's', x: 0, leaf: 'leaf_white_wood',
-                  label: 'B · SERVICES', sub: 'BACK TO THE SERVICE FLOOR',
+                  label: 'THE BASEMENT', sub: 'BACK TO THE SERVICE FLOOR',
                   action: { room: 'services', at: 'kitchen' },
                   desc: 'The way back to the service lobby.' },
                 { id: 'coldroom', wall: 'e', z: -1.5, leaf: 'leaf_bulkhead', wide: true,
@@ -26364,7 +26375,7 @@ const DOOR_HQ = {
                   action: { room: 'coldroom', at: 'kitchen' },
                   desc: 'The walk-in. Minus eighteen. The latch works from both sides, which is the only reassuring thing about it.' },
                 { id: 'service', wall: 'n', x: 3.2, leaf: 'leaf_saloon',
-                  label: 'THE CAFETERIUM', sub: 'SERVICE STAIR · UP TO ROOM 86',
+                  label: 'THE CAFETERIA', sub: 'SERVICE STAIR · UP TO ROOM 86',
                   action: { room: 'cafeteria', at: 'kitchen' },
                   desc: 'The service stair up to the serving line. The saloon doors are so the trays go through without a hand free.' },
             ],
@@ -26490,7 +26501,7 @@ const DOOR_HQ = {
             },
             doors: [
                 { id: 'lobby', wall: 'w', z: 0, leaf: 'leaf_birch_glass',
-                  label: 'B · SERVICES', sub: 'BACK TO THE SERVICE FLOOR',
+                  label: 'THE BASEMENT', sub: 'BACK TO THE SERVICE FLOOR',
                   action: { room: 'services', at: 'laundry' },
                   desc: 'The way back to the lobby.' },
                 { id: 'dock', wall: 'e', z: 0, leaf: 'leaf_wired_double', wide: true,
@@ -26556,7 +26567,7 @@ const DOOR_HQ = {
             },
             doors: [
                 { id: 'lobby', wall: 's', x: 0, leaf: 'leaf_cell',
-                  label: 'B · SERVICES', sub: 'BACK TO THE SERVICE FLOOR',
+                  label: 'THE BASEMENT', sub: 'BACK TO THE SERVICE FLOOR',
                   action: { room: 'services', at: 'corridor' },
                   desc: 'The way back to the lobby, and the light.' },
                 { id: 'boiler', wall: 'e', z: 2.0, leaf: 'leaf_closet',
@@ -27106,7 +27117,7 @@ const DOOR_HQ = {
            five doors (the garden straight ahead is the landmark — glass
            and green at the end of a corridor of doors). ── */
         annex: {
-            label: '3 · THE ANNEX',
+            label: 'THE THIRD FLOOR',
             sub: 'THE THIRD FLOOR',
             kind: 'box',
             shell: {
@@ -27196,7 +27207,7 @@ const DOOR_HQ = {
             },
             doors: [
                 { id: 'annex', wall: 'w', z: -2.6, leaf: 'leaf_beige_wood',
-                  label: '3 · THE ANNEX', sub: 'BACK TO THE FLOOR',
+                  label: 'THE THIRD FLOOR', sub: 'BACK TO THE FLOOR',
                   action: { room: 'annex', at: 'classroom' },
                   desc: 'The way back to the floor.' },
             ],
@@ -27267,7 +27278,7 @@ const DOOR_HQ = {
             },
             doors: [
                 { id: 'annex', wall: 'w', z: 0, leaf: 'leaf_coffee',
-                  label: '3 · THE ANNEX', sub: 'BACK TO THE FLOOR',
+                  label: 'THE THIRD FLOOR', sub: 'BACK TO THE FLOOR',
                   action: { room: 'annex', at: 'cubicles' },
                   desc: 'The way back to the floor.' },
             ],
@@ -27336,7 +27347,7 @@ const DOOR_HQ = {
             },
             doors: [
                 { id: 'annex', wall: 'e', z: 0, leaf: 'leaf_bathroom',
-                  label: '3 · THE ANNEX', sub: 'BACK TO THE FLOOR',
+                  label: 'THE THIRD FLOOR', sub: 'BACK TO THE FLOOR',
                   action: { room: 'annex', at: 'bathroom' },
                   desc: 'The way back to the floor. Wash your hands; the sign insists.' },
                 { id: 'secret', wall: 'n', x: 2.2, leaf: null, secret: true,
@@ -27440,11 +27451,11 @@ const DOOR_HQ = {
             },
             doors: [
                 { id: 'annex', wall: 'e', z: 0, leaf: 'leaf_birch_glass',
-                  label: '3 · THE ANNEX', sub: 'BACK TO THE FLOOR',
+                  label: 'THE THIRD FLOOR', sub: 'BACK TO THE FLOOR',
                   action: { room: 'annex', at: 'locker' },
                   desc: 'The way back to the floor.' },
                 { id: 'pool', wall: 'w', z: 0, leaf: 'leaf_orange_glass',
-                  label: 'THE NATATORIUM', sub: 'ROOM 50M · THE POOL',
+                  label: 'THE SWIMMING POOL', sub: 'ROOM 50M · THE POOL',
                   action: { room: 'natatorium', at: 'locker' },
                   desc: 'The pool. Shower first; the lifeguard checks.' },
             ],
@@ -27491,7 +27502,7 @@ const DOOR_HQ = {
            lifeguard chair, clerestory windows onto nothing. The garden
            is through the far wall (a loop back to the annex). ── */
         natatorium: {
-            label: 'THE NATATORIUM',
+            label: 'THE SWIMMING POOL',
             sub: 'THE POOL · SIX LANES',
             roomNo: '50M', why: 'an Olympic length; the pool is twelve metres and the plate is optimistic',
             kind: 'box',
@@ -27579,11 +27590,11 @@ const DOOR_HQ = {
             },
             doors: [
                 { id: 'annex', wall: 's', x: 0, leaf: 'leaf_wired_double', wide: true,
-                  label: '3 · THE ANNEX', sub: 'BACK TO THE FLOOR',
+                  label: 'THE THIRD FLOOR', sub: 'BACK TO THE FLOOR',
                   action: { room: 'annex', at: 'garden' },
                   desc: 'Back inside.' },
                 { id: 'pool', wall: 'e', z: 0, leaf: 'leaf_wired_double', wide: true,
-                  label: 'THE NATATORIUM', sub: 'ROOM 50M · THE POOL',
+                  label: 'THE SWIMMING POOL', sub: 'ROOM 50M · THE POOL',
                   action: { room: 'natatorium', at: 'garden' },
                   desc: 'The pool, through the east wall.' },
                 { id: 'gate', wall: 'n', x: 0, leaf: 'leaf_portcullis', wide: true, minClearance: 5,
@@ -27655,7 +27666,7 @@ const DOOR_HQ = {
            the control room and the lost and found either side, the fire
            stair beside the car. ── */
         works: {
-            label: '2 · THE WORKS',
+            label: 'THE SECOND FLOOR',
             sub: 'THE SECOND FLOOR · MANUFACTURING',
             kind: 'box',
             shell: {
@@ -27674,7 +27685,7 @@ const DOOR_HQ = {
                   action: { room: 'car', at: 'panel' },
                   desc: 'The car.' },
                 { id: 'warehouse', wall: 'n', x: 0, leaf: 'leaf_wired_double', wide: true,
-                  label: 'THE DOOR WORKS', sub: 'ROOM 1000 · THE FLOOR',
+                  label: 'THE WAREHOUSE', sub: 'ROOM 1000 · THE FLOOR',
                   action: { room: 'warehouse', at: 'works' },
                   desc: 'Where the doors are made. The belts run all day and the arms never tire; the doors come out the far end already numbered.' },
                 { id: 'control', wall: 'e', z: -1.5, leaf: 'leaf_glass',
@@ -27728,7 +27739,7 @@ const DOOR_HQ = {
            incinerator is off the east end, the autopsy room off the west,
            the greenhouse through the far wall. ── */
         warehouse: {
-            label: 'THE DOOR WORKS',
+            label: 'THE WAREHOUSE',
             sub: 'MANUFACTURING · THE FLOOR',
             roomNo: '1000', why: 'a thousand a day, the sign says; the sign has said so since it was painted',
             kind: 'box',
@@ -27744,7 +27755,7 @@ const DOOR_HQ = {
             },
             doors: [
                 { id: 'works', wall: 's', x: 0, leaf: 'leaf_wired_double', wide: true,
-                  label: '2 · THE WORKS', sub: 'BACK TO THE FLOOR',
+                  label: 'THE SECOND FLOOR', sub: 'BACK TO THE FLOOR',
                   action: { room: 'works', at: 'warehouse' },
                   desc: 'The way back to the lobby.' },
                 { id: 'incinerator', wall: 'e', z: 3, leaf: 'leaf_bulkhead', wide: true,
@@ -27839,7 +27850,7 @@ const DOOR_HQ = {
             },
             doors: [
                 { id: 'works', wall: 'w', z: 0, leaf: 'leaf_bulkhead', wide: true,
-                  label: 'THE DOOR WORKS', sub: 'BACK TO THE FLOOR',
+                  label: 'THE WAREHOUSE', sub: 'BACK TO THE FLOOR',
                   action: { room: 'warehouse', at: 'incinerator' },
                   desc: 'Back onto the floor, and cooler.' },
             ],
@@ -27903,7 +27914,7 @@ const DOOR_HQ = {
             },
             doors: [
                 { id: 'works', wall: 'e', z: 0, leaf: 'leaf_hospital',
-                  label: 'THE DOOR WORKS', sub: 'BACK TO THE FLOOR',
+                  label: 'THE WAREHOUSE', sub: 'BACK TO THE FLOOR',
                   action: { room: 'warehouse', at: 'autopsy' },
                   desc: 'Back onto the floor. Wash your hands; the door will not mind.' },
             ],
@@ -27964,7 +27975,7 @@ const DOOR_HQ = {
             },
             doors: [
                 { id: 'works', wall: 's', x: 0, leaf: 'leaf_birch_glass',
-                  label: 'THE DOOR WORKS', sub: 'BACK TO THE FLOOR',
+                  label: 'THE WAREHOUSE', sub: 'BACK TO THE FLOOR',
                   action: { room: 'warehouse', at: 'garden' },
                   desc: 'Back onto the floor, where the doors are made the other way.' },
             ],
@@ -28028,7 +28039,7 @@ const DOOR_HQ = {
             },
             doors: [
                 { id: 'works', wall: 'w', z: 0, leaf: 'leaf_glass',
-                  label: '2 · THE WORKS', sub: 'BACK TO THE FLOOR',
+                  label: 'THE SECOND FLOOR', sub: 'BACK TO THE FLOOR',
                   action: { room: 'works', at: 'control' },
                   desc: 'The way back to the lobby. The camera over it watches you go.' },
             ],
@@ -28087,7 +28098,7 @@ const DOOR_HQ = {
             },
             doors: [
                 { id: 'works', wall: 'e', z: 0, leaf: 'leaf_coffee',
-                  label: '2 · THE WORKS', sub: 'BACK TO THE FLOOR',
+                  label: 'THE SECOND FLOOR', sub: 'BACK TO THE FLOOR',
                   action: { room: 'works', at: 'lostfound' },
                   desc: 'The way back to the lobby. Check your pockets.' },
             ],
@@ -28157,7 +28168,7 @@ const DOOR_HQ = {
             doors: [
                 /* the top landing: six metres up, the way in from the lobby */
                 { id: 'landing', wall: 'n', x: 1.1, y: 6.0, leaf: 'leaf_exit',
-                  label: '2 · THE WORKS', sub: 'THE TOP LANDING',
+                  label: 'THE SECOND FLOOR', sub: 'THE TOP LANDING',
                   action: { room: 'works', at: 'stairwell' },
                   desc: 'The top landing. The sign says 2. It has said 2 at the top of every flight so far.' },
                 /* the bottom: DOWN — and it opens onto the top landing */
@@ -28293,7 +28304,7 @@ const DOOR_HQ = {
            rails (the rail), under a big top. The hall of mirrors on the east
            wall opens into Room * upstairs — a different room every time. ── */
         carnival: {
-            label: 'THE MIDWAY',
+            label: 'THE CARNIVAL',
             sub: 'THE END OF THE LINE · ADMIT ONE',
             roomNo: '1893', why: 'the first wheel; it has been turning since',
             kind: 'box',
@@ -28370,7 +28381,7 @@ const DOOR_HQ = {
            room to the west, Supply Closet 4B and Clone Disposal to the
            east. The radiation sign is on the wall before you reach 4B. ── */
         labs: {
-            label: '4 · THE LABS',
+            label: 'THE FOURTH FLOOR',
             sub: 'THE FOURTH FLOOR · RESEARCH',
             kind: 'box',
             shell: {
@@ -28467,7 +28478,7 @@ const DOOR_HQ = {
             },
             doors: [
                 { id: 'labs', wall: 's', x: 0, leaf: 'leaf_hospital',
-                  label: '4 · THE LABS', sub: 'BACK TO THE FLOOR',
+                  label: 'THE FOURTH FLOOR', sub: 'BACK TO THE FLOOR',
                   action: { room: 'labs', at: 'dreamlab' },
                   desc: 'The way back to the floor. Quietly.' },
                 { id: 'tank', wall: 'e', z: 0, leaf: 'leaf_cell',
@@ -28592,7 +28603,7 @@ const DOOR_HQ = {
             },
             doors: [
                 { id: 'labs', wall: 's', x: 0, leaf: 'leaf_orange_glass',
-                  label: '4 · THE LABS', sub: 'BACK TO THE FLOOR',
+                  label: 'THE FOURTH FLOOR', sub: 'BACK TO THE FLOOR',
                   action: { room: 'labs', at: 'mandela' },
                   desc: 'The way back to the floor. The room will be something else when you come back.' },
                 { id: 'mirrors', wall: 'n', x: 0, leaf: 'leaf_frame_only',
@@ -28703,7 +28714,7 @@ const DOOR_HQ = {
             },
             doors: [
                 { id: 'labs', wall: 'w', z: 0, leaf: 'leaf_beige_wood',
-                  label: '4 · THE LABS', sub: 'BACK TO THE FLOOR',
+                  label: 'THE FOURTH FLOOR', sub: 'BACK TO THE FLOOR',
                   action: { room: 'labs', at: 'upsidedown' },
                   desc: 'The way back to the floor. The door is the right way up. It is the only thing that is.' },
             ],
@@ -28768,7 +28779,7 @@ const DOOR_HQ = {
             },
             doors: [
                 { id: 'labs', wall: 's', x: 0, leaf: 'leaf_cell',
-                  label: '4 · THE LABS', sub: 'BACK TO THE FLOOR',
+                  label: 'THE FOURTH FLOOR', sub: 'BACK TO THE FLOOR',
                   action: { room: 'labs', at: 'closet4b' },
                   desc: 'The way back to the floor. The guards do not watch you leave; they watch the other door.' },
                 { id: 'blast', wall: 'n', x: 0, leaf: 'leaf_vault', wide: true, minClearance: 6,
@@ -28878,7 +28889,7 @@ const DOOR_HQ = {
             },
             doors: [
                 { id: 'labs', wall: 'w', z: 0, leaf: 'leaf_cell',
-                  label: '4 · THE LABS', sub: 'BACK TO THE FLOOR',
+                  label: 'THE FOURTH FLOOR', sub: 'BACK TO THE FLOOR',
                   action: { room: 'labs', at: 'disposal' },
                   desc: 'The way out. One of you takes it.' },
             ],
@@ -36623,7 +36634,7 @@ function hqBayRoom(sectorKey) {
     const label = bayDoor.label || ('BAY · ' + sec.label);
     const doors = [{
         id: 'egress', deg: 0, side: 'in', level: 0, leaf: bayDoor.leaf || 'leaf_closet_alt', wide: !!bayDoor.wide,
-        label: 'CENTRAL EGRESS', sub: 'BACK TO THE MAIN HALL',
+        label: 'THE MAIN HALL', sub: 'BACK TO THE MAIN HALL',
         action: { room: 'central_egress', at: bayDoor.id || null },
         desc: 'Back to the ring. The desk will still be there. Probably the same desk.',
     }];
@@ -36807,7 +36818,7 @@ function hqRingRoom(level) {
         /* the way back: the egress door at the very angle it wears on the egress wall */
         doors.push({
             id: 'egress_' + seg.sector, deg: norm(seg.deg), side: 'in', level: 0, leaf: bd.leaf || 'leaf_closet_alt', wide: !!bd.wide,
-            label: 'CENTRAL EGRESS', sub: 'BACK TO THE MAIN HALL', sector: seg.sector, bay: seg.label,
+            label: 'THE MAIN HALL', sub: 'BACK TO THE MAIN HALL', sector: seg.sector, bay: seg.label,
             action: { room: 'central_egress', at: bd.id || null },
             desc: 'Back to the ring. The desk will still be there. Probably the same desk.',
         });
@@ -38151,6 +38162,109 @@ function hqReplateDoors() {
         d.label = lbl; n++;
     }));
     return n;
+}
+/* ── THE UNDISCOVERED DOOR (2026-09-21, the user: "don't show the names of undiscovered
+   locations on doors — just a question mark or nothing at all; get rid of the descriptors,
+   we just need the location") ─────────────────────────────────────────────────────────
+   hqDoorPlateFor(door, profile) is the ONE read of what a door's PLATE and the walker's PROMPT
+   may say: `known` when the room directly through it (hqDoorThrough) has been STOOD IN
+   (hqRoomSeen), or when the door leads to no room at all (a page, an overlay, the street, the
+   ship's collar, a placed threshold) — then `label` is the room's name and `no` its number;
+   unknown = `label` '?' and NO number (the number is the location too). A bay's segment door
+   and a bay threshold are named by the ring / the site they stand for: known once the ring /
+   the site's entry part is seen. A door's `sub` is never on a plate any more. */
+const HQ_UNKNOWN_PLATE = '?';
+function hqDoorPlateFor(door, profile) {
+    const own = (door && (door.label || door.id)) ? String(door.label || door.id).toUpperCase() : '';
+    const no = (typeof hqDoorNo === 'function') ? (hqDoorNo(door) || '') : '';
+    if (!door || !door.action || typeof door.action !== 'object') return { known: true, label: own, no, room: null };
+    const to = hqDoorThrough(door);
+    if (!to) return { known: true, label: own, no, room: null };
+    const known = !!(profile && hqRoomSeen(profile, to));
+    if (known) {
+        /* a found draught's authored plate says A DRAUGHT (hqReplateDoors leaves a secret door alone) — once the room
+           through it is known, the plate is that room's, like any door's */
+        const thru = DOOR_HQ.rooms[to];
+        return { known: true, label: (door.secret && thru && thru.label) ? String(thru.label).toUpperCase() : own, no, room: to };
+    }
+    return { known: false, label: HQ_UNKNOWN_PLATE, no: '', room: to };
+}
+/* ── THE SUSPICIOUS ANGLE (2026-09-21, the user: "the draughts or hidden passages should be shown
+   as a Suspicious Angle — interact with it, press E to pull out your protractor and measure it and
+   discover the door; a little shiny glimmer until you interact with it") ─────────────────────
+   A secret door (`secret: true` on a door row, or on a links row → both ends) is a GLIMMER on the
+   wall until the officer MEASURES it: E at the angle → the protractor → the door is FOUND and
+   stands as a door (a slab that swings, a plate under the plate rule above). The ledger is like the
+   rooms seen — `door.hq.angles.found[key] = 'YYYY-MM-DD'` (local) + the SYNCED blob
+   `progress.hq.angles.found` (mergeProgressBlobs, the EARLIER day wins; hqDoorSyncFold folds).
+   The KEY: a link's draught is ONE angle at both ends (`link:<id>`); a door row's is the room's
+   (`<roomId>:<doorId>`). hqAngleFound is the read the renderer builds from; hqAngleMark the ONE
+   write (the caller saves once). The reading the protractor prints is seeded (never 90°). */
+const HQ_ANGLE_RE = /^(link:[a-z0-9_]{1,64}|[a-z0-9_]{1,64}:[a-z0-9_]{1,64})$/;
+function hqAngleKey(roomId, door) {
+    if (!door) return null;
+    if (door.link) return 'link:' + String(door.link);
+    return String(roomId || '') + ':' + String(door.id || '');
+}
+function hqAnglesUnion(a, b) {
+    const out = {};
+    [a, b].forEach(src => {
+        if (!src || typeof src !== 'object') return;
+        Object.keys(src).forEach(k => {
+            if (!HQ_ANGLE_RE.test(k)) return;
+            const d = (typeof src[k] === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(src[k])) ? src[k] : (src[k] ? '0000-00-00' : null);
+            if (!d) return;
+            if (!out[k] || d < out[k]) out[k] = d;
+        });
+    });
+    return out;
+}
+function hqAnglesRecord(profile) {
+    let local = null, synced = null;
+    try { const r = profile && profile.door && profile.door.hq && profile.door.hq.angles; if (r && typeof r === 'object' && r.found && typeof r.found === 'object') local = r.found; } catch (e) {}
+    try { const h = profile && profile.progress && profile.progress.hq && profile.progress.hq.angles; if (h && typeof h === 'object' && h.found && typeof h.found === 'object') synced = h.found; } catch (e) {}
+    return hqAnglesUnion(local, synced);
+}
+function hqAnglesSynced(profile, create) {
+    const prog = profile && profile.progress;
+    if (!prog || typeof prog !== 'object' || !(prog.v >= 2)) return null;
+    if (!prog.hq || typeof prog.hq !== 'object') { if (!create) return null; prog.hq = {}; }
+    if (!prog.hq.angles || typeof prog.hq.angles !== 'object') { if (!create) return null; prog.hq.angles = { found: {} }; }
+    if (!prog.hq.angles.found || typeof prog.hq.angles.found !== 'object') { if (!create) return null; prog.hq.angles.found = {}; }
+    return prog.hq.angles.found;
+}
+function hqAngleFound(profile, roomId, door) { const k = hqAngleKey(roomId, door); return !!(k && hqAnglesRecord(profile)[k]); }
+/* the ONE write — { ok, first, key, date } */
+function hqAngleMark(profile, roomId, door, now) {
+    const k = hqAngleKey(roomId, door);
+    if (!profile || !k || !HQ_ANGLE_RE.test(k)) return { ok: false, reason: 'key' };
+    const rec = hqAnglesRecord(profile);
+    const first = !rec[k];
+    const date = rec[k] || hqToday(now ? new Date(now) : undefined);
+    if (!profile.door || typeof profile.door !== 'object') profile.door = {};
+    if (!profile.door.hq || typeof profile.door.hq !== 'object') profile.door.hq = { visits: 0, lastDoor: null, variantSeed: null, keys: 0 };
+    const A = profile.door.hq.angles = Object.assign({}, profile.door.hq.angles || {});
+    A.found = Object.assign({}, rec); A.found[k] = date;
+    const synced = hqAnglesSynced(profile, true);
+    if (synced && !synced[k]) synced[k] = date;
+    return { ok: true, first, key: k, date };
+}
+/* the protractor's reading for an angle — a wall corner is never 90° here (seeded off the key) */
+function hqAngleReading(key) {
+    const h = (typeof hqHash === 'function') ? hqHash(String(key) + '|protractor') : (String(key).length * 7919);
+    const off = ((h % 1300) / 100) + 0.7;            // 0.7 … 13.7 degrees off square
+    const sign = ((h >> 4) & 1) ? 1 : -1;
+    return Math.round((90 + sign * off) * 10) / 10;
+}
+/* every angle in the building (the guard / the overview): [{ key, room, door }] */
+function hqAnglesAll() {
+    const out = [], seen = {};
+    Object.keys(DOOR_HQ.rooms || {}).forEach(id => ((DOOR_HQ.rooms[id] || {}).doors || []).forEach(d => {
+        if (!d || !d.secret) return;
+        const k = hqAngleKey(id, d); if (!k || seen[k]) return; seen[k] = true;
+        out.push({ key: k, room: id, door: d.id });
+    }));
+    return out;
 }
 /* ═══════════════════════════════════════════════════════════════════════
    THE AREAS — every board map is an AREA (2026-09-18, the user: "replace all
@@ -42843,6 +42957,7 @@ function hqDoorSyncFold(hq, door) {
     hq.encounters = hqEncountersUnion(hq.encounters, L.encounters);
     /* THE MAP (2026-09-16): the rooms seen fold like the links */
     hq.rooms = { seen: hqRoomsSeenUnion(hq.rooms && hq.rooms.seen, L.rooms && L.rooms.seen) };
+    hq.angles = { found: hqAnglesUnion(hq.angles && hq.angles.found, L.angles && L.angles.found) };   // THE SUSPICIOUS ANGLE (2026-09-21)
     const sk = hqSkateUnion(hq.skate, L.skate);
     hq.skate = { best: sk.best, total: sk.total, lines: sk.lines, bails: sk.bails };
     hq.defeated = hqDefeatedUnion(hq.defeated, L.defeated);   // THE DEFEATED LEDGER (2026-09-20)
@@ -43224,8 +43339,9 @@ const HQ_PARTY_RULES = {
     restRoom: 'medical', restCounter: 'cot',   // where the party is rested for free: THE COT in Room 1111
     healKinds: ['heal', 'healAll', 'selfHeal', 'revive'],   // the spell kinds FIELD MEDICINE casts outside a battle
     itemKinds: ['healPotion', 'manaPotion', 'reviveTonic', 'elixir'],   // the items usable outside a battle (pockets AND the bag; the last two are FIELD-ONLY)
-    pocket: { healPotion: 2, manaPotion: 1 },              // THE POCKETS: what each fighting member carries into a battle, topped up from THE BAG at the launch (hqPartyStock)
-    bagStack: 20,                                          // THE BAG: the most of one item the party carries (per key)
+    pocket: { healPotion: 2, manaPotion: 1 },              // (retired 2026-09-21 — THE SHARED BAG: nobody carries pockets into a story fight; the table stays for the field-medicine readers)
+    bagStack: 0,                                           // THE BAG (2026-09-21, the user: "no item limit in the bag"): 0 = UNLIMITED (a positive number caps a key)
+    sharedBag: true,                                       // THE SHARED BAG: in a story fight the whole party pulls from ONE bag (state.partyBag) — no per-unit pockets, no 3-item slot cap
     sellBack: 0.5,                                         // THE DISPENSARY buys back at half the price
     autoHeal: { maxSteps: 64, hpFull: 0.999, manaTop: 0.5 },   // AUTO HEAL: the planner's guard, "full" and when a mana potion is spent on a caster
     officerRace: 'door agent',   // the walker's vessel when no avatar / look says otherwise (the Player cast model is the DOOR Agent's)
@@ -43842,11 +43958,12 @@ function hqPartyForLaunch(profile) {
         const meta = Object.assign({}, m.meta, { partyId: m.id, storyLevel: mx.lvl, storyXp: mx.xp });   // THE LEVELS: map.js createUnit builds the member at its ledger's level; the xp rides for the HUD's bar
         if (m.hp != null && m.hpMax != null) { meta.hp = m.hp; meta.hpMax = m.hpMax; }
         if (m.mp != null && m.mpMax != null) { meta.mp = m.mp; meta.mpMax = m.mpMax; }
-        const items = {};   // THE BAG (2026-09-20): a field-only item never rides into a battle
-        Object.keys(m.loadout.items || {}).forEach(k => { const rule = (typeof ITEM_RULES !== 'undefined') ? ITEM_RULES[k] : null; if (rule && !rule.fieldOnly && (m.loadout.items[k] | 0) > 0) items[k] = m.loadout.items[k] | 0; });
+        /* THE SHARED BAG (2026-09-21): nobody carries pockets — the party's ONE bag rides as `bag` and every member pulls from it
+           in the fight (battle.js binds state.partyBag to the human seat's units); a field-only item stays home */
+        const items = {};
         return { cls: m.cls, name: m.name, meta, loadout: { spells: m.loadout.spells.slice(), items, equipment: Object.assign({}, m.loadout.equipment) }, id: m.id, you: !!m.you };
     });
-    return { members, ids: members.map(m => m.id), party: true, exact: true, deploy: Math.min(HQ_PARTY_RULES.shift, members.length), left: r.members.length - fit.length };
+    return { members, ids: members.map(m => m.id), party: true, exact: true, deploy: Math.min(HQ_PARTY_RULES.shift, members.length), left: r.members.length - fit.length, bag: hqBagForBattle(profile) };
 }
 /* THE COMMIT: what the fight did to the party — `ev.units` = [{ partyId, hp, maxHp, mp, maxMp, dead }] off the human seat's units
    (the board AND the bench); a loss with lossRestore wakes the party treated */
@@ -43869,8 +43986,16 @@ function hqPartyAfterMatch(profile, ev) {
         if (u.dead || (u.hp | 0) <= 0) { m.hp = 0; m.mp = Math.max(0, Math.min(mpMax, u.mp | 0)); down++; }
         else { m.hp = Math.max(1, Math.min(hpMax, u.hp | 0)); m.mp = Math.max(0, Math.min(mpMax, u.mp | 0)); }
         /* THE POCKETS (2026-09-20): what the fight spent stays spent — the unit's battle items overwrite the member's (battle keys only; a field-only item was never on the unit) */
-        if (u.items && typeof u.items === 'object') Object.keys(typeof ITEM_RULES !== 'undefined' ? ITEM_RULES : {}).forEach(k => { if (ITEM_RULES[k].fieldOnly) return; const n = Math.max(0, u.items[k] | 0); if (n) m.loadout.items[k] = n; else delete m.loadout.items[k]; });
+        if (!ev.bag && u.items && typeof u.items === 'object') Object.keys(typeof ITEM_RULES !== 'undefined' ? ITEM_RULES : {}).forEach(k => { if (ITEM_RULES[k].fieldOnly) return; const n = Math.max(0, u.items[k] | 0); if (n) m.loadout.items[k] = n; else delete m.loadout.items[k]; });
     });
+    /* THE SHARED BAG (2026-09-21): the fight's bag comes home whole — what it spent stays spent, its battle keys REPLACE the bag's
+       battle keys, the field-only rows (which never left) are kept */
+    if (ev.bag && typeof ev.bag === 'object') {
+        const b = hqBagRecord(profile, true), keep = {};
+        Object.keys(b.items).forEach(k => { const rule = (typeof ITEM_RULES !== 'undefined') ? ITEM_RULES[k] : null; if (rule && rule.fieldOnly) keep[k] = b.items[k] | 0; });
+        Object.keys(ev.bag).forEach(k => { const rule = (typeof ITEM_RULES !== 'undefined') ? ITEM_RULES[k] : null; if (rule && !rule.fieldOnly && (ev.bag[k] | 0) > 0) keep[k] = ev.bag[k] | 0; });
+        hqBagSet(profile, keep);
+    }
     let restored = false;
     if (!ev.won && HQ_PARTY_RULES.lossRestore) { hqPartyRestore(profile); restored = true; down = 0; }
     r.at = Date.now();
@@ -43991,9 +44116,11 @@ function hqBagRecord(profile, create) {
     if (!H) { if (!create) return null; H = hqPartyEnsureRoot(profile); }
     let b = H.bag;
     if (!b || typeof b !== 'object' || !b.items || typeof b.items !== 'object') { if (!create) return null; b = H.bag = { items: {}, at: Date.now() }; }
-    Object.keys(b.items).forEach(k => { const n = b.items[k] | 0; if (n <= 0 || typeof ITEM_RULES === 'undefined' || !ITEM_RULES[k]) delete b.items[k]; else b.items[k] = Math.min(n, HQ_PARTY_RULES.bagStack); });
+    Object.keys(b.items).forEach(k => { const n = b.items[k] | 0; if (n <= 0 || typeof ITEM_RULES === 'undefined' || !ITEM_RULES[k]) delete b.items[k]; else b.items[k] = hqBagCap() ? Math.min(n, hqBagCap()) : n; });
     return b;
 }
+/* the cap per key — 0 = none (HQ_PARTY_RULES.bagStack) */
+function hqBagCap() { const c = HQ_PARTY_RULES.bagStack | 0; return c > 0 ? c : 0; }
 function hqBagCount(profile, key) { const b = hqBagRecord(profile, false); return b ? (b.items[key] | 0) : 0; }
 /* ADD n of an item to the bag (capped at the stack) — { ok, key, n (in the bag now), added, lost } */
 function hqBagAdd(profile, key, n) {
@@ -44001,7 +44128,7 @@ function hqBagAdd(profile, key, n) {
     if (typeof ITEM_RULES === 'undefined' || !ITEM_RULES[key]) return { ok: false, reason: 'item' };
     n = Math.max(0, n | 0); if (!n) return { ok: false, reason: 'none' };
     const b = hqBagRecord(profile, true);
-    const have = b.items[key] | 0, room = Math.max(0, HQ_PARTY_RULES.bagStack - have), added = Math.min(n, room);
+    const have = b.items[key] | 0, room = hqBagCap() ? Math.max(0, hqBagCap() - have) : n, added = Math.min(n, room);
     b.items[key] = have + added; b.at = Date.now();
     return { ok: added > 0, reason: added > 0 ? null : 'full', key, n: b.items[key], added, lost: n - added };
 }
@@ -44016,7 +44143,7 @@ function hqBagTake(profile, key, n) {
 function hqBagItemRow(key, n) {
     const r = (typeof ITEM_RULES !== 'undefined' && ITEM_RULES[key]) || {};
     const price = r.shopPrice | 0;
-    return { key, n: n | 0, name: r.name || key, icon: r.icon || '', desc: r.desc || '', field: HQ_PARTY_RULES.itemKinds.indexOf(key) >= 0, battle: !r.fieldOnly, price, sell: Math.floor(price * HQ_PARTY_RULES.sellBack), max: HQ_PARTY_RULES.bagStack };
+    return { key, n: n | 0, name: r.name || key, icon: r.icon || '', desc: r.desc || '', field: HQ_PARTY_RULES.itemKinds.indexOf(key) >= 0, battle: !r.fieldOnly, price, sell: Math.floor(price * HQ_PARTY_RULES.sellBack), max: hqBagCap() || Infinity };
 }
 /* every row in the bag, the stock's order first, then the rest */
 function hqBagList(profile) {
@@ -44025,6 +44152,21 @@ function hqBagList(profile) {
     return Object.keys(b.items).filter(k => (b.items[k] | 0) > 0).sort((a, c) => { const ia = order.indexOf(a), ic = order.indexOf(c); return (ia < 0 ? 99 : ia) - (ic < 0 ? 99 : ic) || a.localeCompare(c); }).map(k => hqBagItemRow(k, b.items[k]));
 }
 function hqBagTotal(profile) { return hqBagList(profile).reduce((a, r) => a + r.n, 0); }
+/* THE SHARED BAG (2026-09-21): SET the bag to what a fight left in it (the commit's write; every key ITEM_RULES knows, n ≥ 0) */
+function hqBagSet(profile, items) {
+    if (!profile || !items || typeof items !== 'object') return { ok: false, reason: 'items' };
+    const b = hqBagRecord(profile, true);
+    b.items = {};
+    Object.keys(items).forEach(k => { const n = Math.max(0, items[k] | 0); if (n > 0 && typeof ITEM_RULES !== 'undefined' && ITEM_RULES[k]) b.items[k] = n; });
+    b.at = Date.now();
+    return { ok: true, items: Object.assign({}, b.items) };
+}
+/* what rides into a story fight: the BATTLE keys of the bag (a field-only tonic / elixir stays home) */
+function hqBagForBattle(profile) {
+    const b = hqBagRecord(profile, false), out = {};
+    if (b) Object.keys(b.items).forEach(k => { const rule = (typeof ITEM_RULES !== 'undefined') ? ITEM_RULES[k] : null; if (rule && !rule.fieldOnly && (b.items[k] | 0) > 0) out[k] = b.items[k] | 0; });
+    return out;
+}
 /* THE SHELF: the dispensary's stock with prices */
 function hqShopStock() { return HQ_DISPENSARY.stock.filter(k => typeof ITEM_RULES !== 'undefined' && ITEM_RULES[k]).map(k => hqBagItemRow(k, 0)); }
 /* a QUOTE: can this profile buy n of it? — { ok, cost, reason, gold, room } (nothing written) */
@@ -44032,7 +44174,7 @@ function hqShopQuote(profile, key, n, opts) {
     n = Math.max(1, n | 0); opts = opts || {};
     const row = hqShopStock().find(r => r.key === key); if (!row) return { ok: false, reason: 'stock' };
     const gold = (profile && profile.account && profile.account.gold) | 0, cost = row.price * n;
-    const room = HQ_PARTY_RULES.bagStack - hqBagCount(profile, key);
+    const room = hqBagCap() ? hqBagCap() - hqBagCount(profile, key) : Infinity;   // THE BAG (2026-09-21): no cap = never full
     if (n > room) return { ok: false, reason: 'full', cost, gold, room };
     if (!opts.paid && gold < cost) return { ok: false, reason: 'gold', cost, gold, room };
     return { ok: true, cost, gold, room, price: row.price, name: row.name };
@@ -44052,16 +44194,19 @@ function hqShopSell(profile, key, n) {
 }
 /* THE POCKETS: top every FIT member's battle pockets up to HQ_PARTY_RULES.pocket from the bag (a launch, the RESTOCK button) — { moved: [{ id, key, n }], total } */
 function hqPartyStock(profile) {
+    /* THE SHARED BAG (2026-09-21, the user: "a party inventory or a bag everybody can pull from"): the pockets are
+       RETIRED — this pools every member's pocket items INTO the bag (the one-time migration of a pre-bag profile, and
+       the way a forge loadout's potions join the party's), so the fight's ONE bag holds everything. Same name, same
+       shape ({ ok, moved, total }) — every caller that "restocked" now pools. */
     const r = hqPartyRecord(profile); if (!r) return { ok: false, moved: [], total: 0 };
     const moved = []; let total = 0;
     r.members.forEach(m => {
-        if (hqPartyDown(m)) return;
-        Object.keys(HQ_PARTY_RULES.pocket).forEach(k => {
-            const want = HQ_PARTY_RULES.pocket[k] | 0, have = m.loadout.items[k] | 0;
-            const cap = (typeof ITEM_RULES !== 'undefined' && ITEM_RULES[k]) ? (ITEM_RULES[k].max | 0) : want;
-            const need = Math.min(want, cap) - have; if (need <= 0) return;
-            const t = hqBagTake(profile, k, need); if (!t.ok) return;
-            m.loadout.items[k] = have + t.taken; moved.push({ id: m.id, key: k, n: t.taken }); total += t.taken;
+        const items = (m.loadout && m.loadout.items) || {};
+        Object.keys(items).forEach(k => {
+            const n = items[k] | 0; if (n <= 0 || typeof ITEM_RULES === 'undefined' || !ITEM_RULES[k]) { delete items[k]; return; }
+            const a = hqBagAdd(profile, k, n); if (!a.ok) return;
+            const left = n - a.added; if (left > 0) items[k] = left; else delete items[k];
+            moved.push({ id: m.id, key: k, n: a.added }); total += a.added;
         });
     });
     if (total) r.at = Date.now();
@@ -46809,7 +46954,7 @@ if (typeof window !== 'undefined') {
     /* THE LEVELS (2026-09-21) */
     window.HQ_LEVEL_RULES = HQ_LEVEL_RULES; window.HQ_AREA_LEVELS = HQ_AREA_LEVELS; window.XP_CURVE = XP_CURVE; window.xpThreshold = xpThreshold; window.xpLevelFor = xpLevelFor; window.xpToNext = xpToNext;
     window.hqPartyLevel = hqPartyLevel; window.hqPartyXp = hqPartyXp; window.hqPartyLevelGains = hqPartyLevelGains; window.hqPartyGrantXp = hqPartyGrantXp; window.hqPartyXpShare = hqPartyXpShare; window.hqEncounterLevels = hqEncounterLevels; window.hqEncounterGroup = hqEncounterGroup;
-    window.HQ_DISPENSARY = HQ_DISPENSARY; window.hqBagRecord = hqBagRecord; window.hqBagCount = hqBagCount; window.hqBagAdd = hqBagAdd; window.hqBagTake = hqBagTake; window.hqBagList = hqBagList; window.hqBagTotal = hqBagTotal; window.hqShopStock = hqShopStock; window.hqShopQuote = hqShopQuote; window.hqShopBuyApply = hqShopBuyApply; window.hqShopSell = hqShopSell; window.hqPartyStock = hqPartyStock; window.hqPartyBagItems = hqPartyBagItems; window.hqPartyAutoHeal = hqPartyAutoHeal; window.hqPartyFieldSpells = hqPartyFieldSpells; window.hqPartyFieldTargets = hqPartyFieldTargets; window.hqPartyHealAmount = hqPartyHealAmount; window.hqPartyCast = hqPartyCast; window.hqPartyUseItem = hqPartyUseItem; window.hqPartyFieldItems = hqPartyFieldItems; window.hqPartySpec = hqPartySpec; window.hqPartyGenders = hqPartyGenders; window.hqPartyDefaultJob = hqPartyDefaultJob;
+    window.HQ_DISPENSARY = HQ_DISPENSARY; window.hqBagRecord = hqBagRecord; window.hqBagCount = hqBagCount; window.hqBagAdd = hqBagAdd; window.hqBagTake = hqBagTake; window.hqBagList = hqBagList; window.hqBagTotal = hqBagTotal; window.hqBagSet = hqBagSet; window.hqBagForBattle = hqBagForBattle; window.hqBagCap = hqBagCap; window.hqShopStock = hqShopStock; window.hqShopQuote = hqShopQuote; window.hqShopBuyApply = hqShopBuyApply; window.hqShopSell = hqShopSell; window.hqPartyStock = hqPartyStock; window.hqPartyBagItems = hqPartyBagItems; window.hqPartyAutoHeal = hqPartyAutoHeal; window.hqPartyFieldSpells = hqPartyFieldSpells; window.hqPartyFieldTargets = hqPartyFieldTargets; window.hqPartyHealAmount = hqPartyHealAmount; window.hqPartyCast = hqPartyCast; window.hqPartyUseItem = hqPartyUseItem; window.hqPartyFieldItems = hqPartyFieldItems; window.hqPartySpec = hqPartySpec; window.hqPartyGenders = hqPartyGenders; window.hqPartyDefaultJob = hqPartyDefaultJob;
     /* THE FIELD stage B — the rasteriser on the cave (Phase 9 Delivery 8, 2026-09-16) */
     window.HQ_FIELD_RULES = HQ_FIELD_RULES; window.hqFieldRimBox = hqFieldRimBox; window.hqEncounterRoomLabel = hqEncounterRoomLabel; window.hqFieldDump = hqFieldDump; window.hqFieldRoomOk = hqFieldRoomOk; window.hqFieldId = hqFieldId; window.hqFieldParse = hqFieldParse; window.hqFieldRaster = hqFieldRaster; window.hqFieldReach = hqFieldReach;
     window.hqFieldWindow = hqFieldWindow; window.hqFieldBuild = hqFieldBuild; window.hqFieldLayout = hqFieldLayout; window.hqFieldRegister = hqFieldRegister;
@@ -46834,7 +46979,7 @@ if (typeof window !== 'undefined') {
     window.hqShipDoor = hqShipDoor;
     window.hqWorldRoutes = hqWorldRoutes;
     window.hqLinksSeenUnion = hqLinksSeenUnion; window.hqLinksSeenRecord = hqLinksSeenRecord;
-    window.hqRoomsSeenUnion = hqRoomsSeenUnion; window.hqRoomsSeenRecord = hqRoomsSeenRecord; window.hqRoomSeen = hqRoomSeen; window.hqRoomSee = hqRoomSee; window.hqMapRoomNo = hqMapRoomNo; window.hqMapGraph = hqMapGraph; window.hqMapLayout = hqMapLayout; window.hqHubOf = hqHubOf; window.hqDoorThrough = hqDoorThrough; window.hqDoorPlateLabel = hqDoorPlateLabel; window.hqReplateDoors = hqReplateDoors; window.hqMapModel = hqMapModel; window.HQ_MAP_L = HQ_MAP_L; window.HQ_WORLD_L = HQ_WORLD_L; window.hqWorldNodeOf = hqWorldNodeOf; window.hqWorldOverviewGraph = hqWorldOverviewGraph; window.hqWorldOverviewLayout = hqWorldOverviewLayout; window.hqWorldOverview = hqWorldOverview; window.hqWorldFloorOf = hqWorldFloorOf;
+    window.hqRoomsSeenUnion = hqRoomsSeenUnion; window.hqRoomsSeenRecord = hqRoomsSeenRecord; window.hqRoomSeen = hqRoomSeen; window.hqRoomSee = hqRoomSee; window.hqMapRoomNo = hqMapRoomNo; window.hqMapGraph = hqMapGraph; window.hqMapLayout = hqMapLayout; window.hqHubOf = hqHubOf; window.hqDoorThrough = hqDoorThrough; window.hqDoorPlateLabel = hqDoorPlateLabel; window.hqReplateDoors = hqReplateDoors; window.hqDoorPlateFor = hqDoorPlateFor; window.HQ_UNKNOWN_PLATE = HQ_UNKNOWN_PLATE; window.hqAngleKey = hqAngleKey; window.hqAnglesRecord = hqAnglesRecord; window.hqAngleFound = hqAngleFound; window.hqAngleMark = hqAngleMark; window.hqAngleReading = hqAngleReading; window.hqAnglesAll = hqAnglesAll; window.hqMapModel = hqMapModel; window.HQ_MAP_L = HQ_MAP_L; window.HQ_WORLD_L = HQ_WORLD_L; window.hqWorldNodeOf = hqWorldNodeOf; window.hqWorldOverviewGraph = hqWorldOverviewGraph; window.hqWorldOverviewLayout = hqWorldOverviewLayout; window.hqWorldOverview = hqWorldOverview; window.hqWorldFloorOf = hqWorldFloorOf;
      window.hqLinkSeen = hqLinkSeen; window.hqLinkSee = hqLinkSee; window.hqWorldCharted = hqWorldCharted; window.hqWorldApplyKnown = hqWorldApplyKnown;
     window.hqStarChart = hqStarChart;
     window.doorSiteState = doorSiteState;

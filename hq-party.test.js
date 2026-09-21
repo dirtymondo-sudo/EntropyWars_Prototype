@@ -214,7 +214,7 @@ test('THE SOURCE SITES: the engine (no respawns, the bench fills a seat, the car
     assert.ok(MP.includes("while (!(party && party.exact) && builds.length < n) {"), 'an exact party is never padded');
     assert.ok(MP.includes("if (pf && pf.total > 0 && !pf.ready) { _hqToast('<b>THE PARTY IS DOWN</b>"), 'nobody fit → no fight');
     /* the commit writes the party home by id (the board and the bench) */
-    assert.ok(BT.includes("if (vit.length) partyRes = hqPartyAfterMatch(p, { won, units: vit, xpPool });") && BT.includes("(state.units || []).concat(benchBodies)"), 'battle.js: the commit (+ THE POOL, 2026-09-21)');
+    assert.ok(BT.includes("if (vit.length) partyRes = hqPartyAfterMatch(p, { won, units: vit, xpPool, bag: bagHome });") && BT.includes("(state.units || []).concat(benchBodies)"), 'battle.js: the commit (+ THE POOL, 2026-09-21)');
     assert.ok(BT.includes("party: partyRes };"), 'the result carries what the fight did to the party');
     /* the pause menu */
     ['function _hqPartyTx(fn)', 'function _hqPartySeed()', "data-party-act=\"cast:", "data-party-act=\"swap:", "data-party-act=\"relieve:", "data-party-act=\"enlist:", "data-party-act=\"item:", 'function _hqPartyAct(act)', "window._hqPartyRest = function ()", "if (c.id === 'cot' || c.id === 'healzone') {", "[data-party-rest]"].forEach(s => assert.ok(MP.includes(s), 'map.js: ' + s));
@@ -227,21 +227,23 @@ const SV = fs.readFileSync(__dirname + '/server.js', 'utf8');
 const PF = fs.readFileSync(__dirname + '/profile.js', 'utf8');
 const PB = fs.readFileSync(__dirname + '/party-builder.js', 'utf8');
 
-test('THE BAG: the record, add / take, the stack cap, the list, the field-only items', () => {
+test('THE BAG: the record, add / take, NO stack cap (2026-09-21), the list, the field-only items', () => {
     const p = profile();
     assert.equal(g('hqBagRecord')(p, false), null, 'no bag until something goes in');
     assert.equal(g('hqBagCount')(p, 'healPotion'), 0);
     const a = g('hqBagAdd')(p, 'healPotion', 3); assert.ok(a.ok && a.added === 3 && a.n === 3);
     assert.equal(g('hqBagAdd')(p, 'nonsense', 1).reason, 'item', 'an unknown key never enters');
-    const over = g('hqBagAdd')(p, 'healPotion', 40); assert.equal(over.n, R.bagStack); assert.equal(over.lost, 40 - (R.bagStack - 3), 'the stack caps and reports what did not fit');
-    const t = g('hqBagTake')(p, 'healPotion', 2); assert.ok(t.ok && t.taken === 2 && t.n === R.bagStack - 2);
+    assert.equal(R.bagStack, 0, 'THE BAG (2026-09-21, the user: "no item limit in the bag"): bagStack 0 = unlimited');
+    const over = g('hqBagAdd')(p, 'healPotion', 40); assert.equal(over.n, 43); assert.equal(over.lost, 0, 'nothing is lost — the bag has no cap');
+    const t = g('hqBagTake')(p, 'healPotion', 2); assert.ok(t.ok && t.taken === 2 && t.n === 41);
     assert.equal(g('hqBagTake')(p, 'elixir', 1).ok, false, 'nothing to take');
     g('hqBagAdd')(p, 'elixir', 1); g('hqBagAdd')(p, 'scanner', 2);
     const rows = g('hqBagList')(p);
     deq(rows.map(r => r.key), ['healPotion', 'elixir', 'scanner'], 'the shelf order');
     const el = rows.find(r => r.key === 'elixir'); assert.ok(el.field && !el.battle, 'an elixir is field-only');
     const sc = rows.find(r => r.key === 'scanner'); assert.ok(!sc.field && sc.battle, 'a scanner is a battle item, never a field use');
-    assert.equal(g('hqBagTotal')(p), R.bagStack - 2 + 3);
+    assert.equal(g('hqBagTotal')(p), 41 + 3);
+    assert.equal(g('hqBagList')(p)[0].max, Infinity, 'a row reports no cap');
     const META = g('ITEM_META'); ['reviveTonic', 'elixir'].forEach(k => assert.ok(D.ITEM_RULES[k] && D.ITEM_RULES[k].fieldOnly && META[k], k + ' is a field-only ITEM_RULES row with its META'));
     const back = JSON.parse(JSON.stringify(p)); assert.equal(g('hqBagCount')(back, 'elixir'), 1, 'the bag survives JSON');
 });
@@ -257,7 +259,7 @@ test('THE DISPENSARY: the stock, a quote, the buy after the gold moved, the sell
     /* the caller pays first (profile.js spendGold); the apply never touches the gold */
     p.account.gold -= q.cost;
     const b = g('hqShopBuyApply')(p, 'healPotion', 2); assert.ok(b.ok && b.added === 2 && p.account.gold === 100 - q.cost, 'the goods in, the gold untouched by the apply');
-    g('hqBagAdd')(p, 'healPotion', R.bagStack); assert.equal(g('hqShopQuote')(p, 'healPotion', 1).reason, 'full', 'a full stack refuses');
+    g('hqBagAdd')(p, 'healPotion', 500); assert.ok(g('hqShopQuote')(p, 'healPotion', 1).ok || g('hqShopQuote')(p, 'healPotion', 1).reason !== 'full', 'a bag is never full (2026-09-21)');
     const sell = g('hqShopSell')(p, 'healPotion', 3); assert.ok(sell.ok && sell.sold === 3 && sell.refund === 3 * Math.floor(D.ITEM_RULES.healPotion.shopPrice * R.sellBack), 'three back at half');
     assert.equal(g('hqShopSell')(p, 'elixir', 1).reason, 'none');
     /* ROOM 911 off the Medical Wing: the hatch is the overlay's ONE home, the bag a by-id panel, the door lands in the wing */
@@ -270,26 +272,34 @@ test('THE DISPENSARY: the stock, a quote, the buy after the gold moved, the sell
     assert.ok(room.props.some(p2 => p2.key === 'railing_1m'), 'THE PARK RULE');
 });
 
-test('THE POCKETS: the launch tops every fit member up from the bag, a field-only item never rides, the commit brings the pockets home', () => {
+test('THE SHARED BAG (2026-09-21): the pockets POOL into the bag, the launch carries the bag and empty pockets, a field-only item never rides, the commit brings the bag home', () => {
     const p = profile({ account: { gold: 0, unlockedUnits: ['knight', 'wizard', 'door agent', 'cowboy', 'nun'] } }); g('hqPartyEnsure')(p, { last });
     const rec = g('hqPartyRecord')(p);
     rec.members.forEach(m => { m.loadout.items = {}; });
-    rec.members[1].hp = 0; rec.members[1].hpMax = 100;   // Dutch is DOWN: he carries nothing out
+    rec.members[0].loadout.items = { healPotion: 2, manaPotion: 1 };   // a forge leftover in the officer's pocket
+    rec.members[1].hp = 0; rec.members[1].hpMax = 100;
     g('hqBagAdd')(p, 'healPotion', 3); g('hqBagAdd')(p, 'manaPotion', 5); g('hqBagAdd')(p, 'elixir', 1);
+    assert.equal(R.sharedBag, true, 'the rule is on the table');
     const st = g('hqPartyStock')(p);
-    assert.ok(st.ok && st.total === 3 + 2, 'three heals (the bag ran out) + two manas moved');
-    assert.equal(rec.members[0].loadout.items.healPotion, R.pocket.healPotion); assert.equal(rec.members[0].loadout.items.manaPotion, R.pocket.manaPotion);
-    assert.equal(rec.members[2].loadout.items.healPotion, 1, 'the third member got what was left');
-    assert.equal(rec.members[1].loadout.items.healPotion, undefined, 'the down carry nothing');
-    assert.equal(g('hqBagCount')(p, 'healPotion'), 0); assert.equal(g('hqBagCount')(p, 'manaPotion'), 3);
-    assert.equal(g('hqPartyStock')(p).total, 0, 'a second stock moves nothing');
-    rec.members[0].loadout.items.elixir = 1;
+    assert.ok(st.ok && st.total === 3, 'the pocket items pooled INTO the bag (2 + 1)');
+    assert.equal(rec.members[0].loadout.items.healPotion, undefined, 'the pocket is empty now');
+    assert.equal(g('hqBagCount')(p, 'healPotion'), 5); assert.equal(g('hqBagCount')(p, 'manaPotion'), 6);
+    assert.equal(g('hqPartyStock')(p).total, 0, 'a second pool moves nothing');
     const L = g('hqPartyForLaunch')(p);
-    assert.equal(L.members[0].loadout.items.elixir, undefined, 'the elixir stays home'); assert.equal(L.members[0].loadout.items.healPotion, R.pocket.healPotion);
-    /* the commit: the unit's battle items overwrite the pockets */
-    g('hqPartyAfterMatch')(p, { won: true, units: [{ partyId: rec.members[0].id, hp: 50, maxHp: 100, mp: 5, maxMp: 20, dead: false, items: { healPotion: 0, manaPotion: 1, scanner: 0 } }] });
+    L.members.forEach(m => assert.equal(Object.keys(m.loadout.items).length, 0, 'nobody carries pockets into a story fight'));
+    deq(L.bag, { healPotion: 5, manaPotion: 6 }, 'the bag rides — its BATTLE keys only (the elixir stays home)');
+    /* the commit: the bag comes home whole; a unit's items are never read when the bag is given */
+    g('hqPartyAfterMatch')(p, { won: true, units: [{ partyId: rec.members[0].id, hp: 50, maxHp: 100, mp: 5, maxMp: 20, dead: false, items: { healPotion: 99 } }], bag: { healPotion: 1, manaPotion: 6 } });
     const m0 = g('hqPartyRecord')(p).members[0];
-    assert.equal(m0.loadout.items.healPotion, undefined, 'the spent potions are gone'); assert.equal(m0.loadout.items.manaPotion, 1); assert.equal(m0.loadout.items.elixir, 1, 'a field-only item on the record is untouched by the commit');
+    assert.equal(m0.loadout.items.healPotion, undefined, 'the commit never writes a pocket when the bag came home');
+    assert.equal(g('hqBagCount')(p, 'healPotion'), 1, 'what the fight spent stays spent'); assert.equal(g('hqBagCount')(p, 'manaPotion'), 6); assert.equal(g('hqBagCount')(p, 'elixir'), 1, 'the field-only rows that never left are kept');
+    /* the battle's binding + the skip list + the state field */
+    const BT2 = fs.readFileSync(__dirname + '/battle.js', 'utf8');
+    ['function _partyBagBind()', 'if (_partyBagOn()) return 9999;', "bag: bagHome });", 'u.items = bag; n++;'].forEach(s => assert.ok(BT2.includes(s), 'battle.js: ' + s));
+    assert.ok(fs.readFileSync(__dirname + '/state.js', 'utf8').includes('partyBag: null,'), 'state.js carries partyBag');
+    assert.ok(fs.readFileSync(__dirname + '/online.js', 'utf8').includes('partyBag: 1,'), 'online.js skip-lists it');
+    assert.ok(MP.includes('state.partyBag = (_encParty_ && _encPeek.bag'), 'map.js sets the bag at the launch');
+    assert.ok(fs.readFileSync(__dirname + '/hud.js', 'utf8').includes("text: bag ? 'The Bag' : 'Items'"), 'the HUD panel reads THE BAG');
 });
 
 test('FIELD MEDICINE from the bag: a potion, a tonic on the down, an elixir', () => {

@@ -16902,7 +16902,10 @@
                                     }
                                     /* THE POOL: every native that fell, priced by the battle's own kill formula against THE PARTY LEVEL (the share rule is data.js's) */
                                     const xpPool = _encXpPool(p, seat);
-                                    if (vit.length) partyRes = hqPartyAfterMatch(p, { won, units: vit, xpPool });
+                                    /* THE SHARED BAG (2026-09-21): what the fight left in the bag goes home whole (never per unit — every unit's `items` IS the bag) */
+                                    const bagHome = _partyBagOn() ? Object.assign({}, state.partyBag.items) : null;
+                                    if (bagHome) vit.forEach(v => { delete v.items; });
+                                    if (vit.length) partyRes = hqPartyAfterMatch(p, { won, units: vit, xpPool, bag: bagHome });
                                 }
                             } catch (e) { console.warn('[HQ] the party record failed', e); }
                             PS.saveProfile(idx, p);
@@ -29967,7 +29970,37 @@
             return CONFIG.unitItemSlots;
         }
 
+        /* ══ THE SHARED BAG (2026-09-21, the user: "a party inventory or a bag everybody can pull from; no 3 item
+           limit in story mode; no item limit in the bag") ═══════════════════════════════════════════════
+           A story fight (map.js _msConfirm sets state.partyBag = { seat, items } off the party's bag) has ONE
+           bag: every unit of the human seat — the board AND the bench — wears THE SAME items object
+           (unit.items === state.partyBag.items), so a potion drunk by anyone comes out of the bag, the HUD's
+           ITEMS panel reads the bag from every seat, and nothing is capped (getItemCapForClass answers
+           the bag's own count + a large room, normalizeLoadoutForClass never saw the bag — the launch
+           gives every member empty pockets). VS-CPU only (an online seat never carries it; online.js
+           skip-lists the field). The commit hands the bag home (hqPartyAfterMatch's `bag`). */
+        function _partyBagOn() { return !!(state.partyBag && state.partyBag.items && typeof state.partyBag.items === 'object'); }
+        function _partyBagSeatOf(unit) { return (typeof unitHomePlayer === 'function') ? unitHomePlayer(unit) : unit.player; }
+        function _partyBagUnit(unit) { return _partyBagOn() && !!unit && _partyBagSeatOf(unit) === (state.partyBag.seat || 1); }
+        function _partyBagBind() {
+            if (!_partyBagOn()) return 0;
+            const seat = state.partyBag.seat || 1, bag = state.partyBag.items;
+            Object.keys(bag).forEach(k => { if (typeof ITEM_RULES === 'undefined' || !ITEM_RULES[k] || (bag[k] | 0) <= 0) delete bag[k]; else bag[k] = bag[k] | 0; });
+            let n = 0;
+            const bodies = (state.units || []).concat((state.bench && state.bench[seat]) || []);
+            bodies.forEach(u => {
+                if (!u || _partyBagSeatOf(u) !== seat) return;
+                if (u.items !== bag) {
+                    /* anything the unit was built with (a forge leftover) joins the bag once */
+                    Object.keys(u.items || {}).forEach(k => { const c = u.items[k] | 0; if (c > 0 && u.items !== bag) bag[k] = (bag[k] | 0) + c; });
+                    u.items = bag; n++;
+                }
+            });
+            return n;
+        }
+        window._partyBagOn = _partyBagOn; window._partyBagUnit = _partyBagUnit; window._partyBagBind = _partyBagBind;
         function getItemCapForClass(cls, itemKey) {
+            if (_partyBagOn()) return 9999;   // THE SHARED BAG: no cap on the bag — the enemy's own pockets are what they were built with anyway
             const _mdBag = typeof _isDungeonMode === 'function' && _isDungeonMode();
             if (itemKey === 'scanner') return (cls === 'Agent' ? 2 : 1) + (_mdBag ? 1 : 0);
             const base = ITEM_RULES[itemKey].max;
@@ -29979,6 +30012,7 @@
         }
 
         function unitItemsFull(unit) {
+            if (_partyBagUnit(unit)) return false;   // THE SHARED BAG: the bag is never full
             return getTotalItemCount(unit) >= getUnitItemSlots();
         }
 
@@ -39662,6 +39696,7 @@
             _zoomMemo.clear();
             state.units = makeUnitsFromBuilds();
             _gauntletPartitionBench();
+            _partyBagBind();   // THE SHARED BAG (2026-09-21): the human seat's board + bench pull from the party's one bag
             state.selectedUnitId = null;
             state.focusedUnitId = null;
             state.hoverUnitId = null;
@@ -42127,6 +42162,8 @@
                 }
             } catch (e) {}
 
+            if (!_encMatch) state.partyBag = null;   // THE SHARED BAG rides an encounter only — a plain match never wears one
+            _partyBagBind();
             const mpMode = getActiveMultiplayerMode();
             state.matchKills = { 1: 0, 2: 0 };
             state.matchScores = { 1: 0, 2: 0 };

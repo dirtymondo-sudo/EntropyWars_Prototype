@@ -6121,3 +6121,6 @@ body.diorama-3d .tile-underpass.jump::before {
 #hqPage .hq-circ-row:not([disabled]):hover { background: rgba(127,217,221,0.14); border-color: #7fd9dd; }
 #hqPage .hq-circ-tier { font-style: normal; font-family: 'Cinzel', serif; font-weight: 900; font-size: 8px; padding: 0 4px; border: 1px solid rgba(184,160,96,0.5); color: #e8cf8a; }
 @media (max-width: 900px) { #hqPage .hq-circ-lanes { grid-template-columns: 1fr; } #hqPage .hq-circ-fork .hq-circ-node span { display: block; } }
+
+/* ══ THE UNDISCOVERED DOOR (2026-09-21) — a plate that reads '?' (the room through it not yet stood in) ══ */
+#hqPage .hq-plate b.hq-plate-unknown { font-size: 22px; letter-spacing: 0; opacity: 0.8; }

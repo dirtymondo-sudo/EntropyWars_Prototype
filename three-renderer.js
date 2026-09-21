@@ -38050,6 +38050,56 @@ const ThreeRenderer = (function () {
         try { if (typeof hqDoorNo === 'function') return hqDoorNo(entry) || ''; } catch (e) {}
         return (entry && entry.roomNo != null) ? String(entry.roomNo) : '';
     }
+    /* THE UNDISCOVERED DOOR (2026-09-21): what a door's plate may say — data.js hqDoorPlateFor is the ONE rule
+       (the room through it stood in → its name + number; else '?' and no number; a page / overlay door its own
+       name). A door's `sub` is NEVER on a plate any more (the user: "get rid of the descriptors"). */
+    function _hqPlateFor(door) {
+        try { if (typeof hqDoorPlateFor === 'function') return hqDoorPlateFor(door, _hq ? _hq.profile : null); } catch (e) {}
+        return { known: true, label: String((door && (door.label || door.id)) || '').toUpperCase(), no: _hqPlateNo(door), room: null };
+    }
+    function _hqPlateHtml(door) {
+        var P = _hqPlateFor(door);
+        return (P.no ? '<em>ROOM ' + P.no + '</em>' : '') + '<b' + (P.known ? '' : ' class="hq-plate-unknown"') + '>' + P.label + '</b>';
+    }
+    /* THE SUSPICIOUS ANGLE (2026-09-21): has the protractor found this draught? (data.js hqAngleFound on the profile) */
+    function _hqAngleFound(door) {
+        try { if (typeof hqAngleFound === 'function') return hqAngleFound(_hq ? _hq.profile : null, (_hq && _hq.opts && _hq.opts.room) || null, door); } catch (e) {}
+        return false;
+    }
+    /* the glimmer on the wall where a draught is: two additive sprites at chest height, breathing on a ticker
+       (the plate stays hidden until the angle is measured — the glimmer IS the tell) */
+    function _hqAngleGlimmer(grp, U, oh, pd) {
+        var g = new THREE.Group();
+        var a = _hzGlowSprite(0.55 * U, 0xfff2c0, 0.55, 0, 0, 0); a.position.set(0.08 * U, (oh * 0.5) * U, (pd / 2 + 0.16) * U);
+        var b = _hzGlowSprite(0.22 * U, 0xffffff, 0.9, 0, 0, 0); b.position.set(0.08 * U, (oh * 0.5) * U, (pd / 2 + 0.18) * U);
+        var c = _hzGlowSprite(0.34 * U, 0xbfe8ff, 0.5, 0, 0, 0); c.position.set(-0.36 * U, (oh * 0.86) * U, (pd / 2 + 0.16) * U);
+        g.add(a, b, c);
+        var rec = { g: g, dead: false };
+        rec.tick = function (dt, now) {
+            if (rec.dead) return;
+            var k = 0.5 + 0.5 * Math.sin(now * 0.0021), k2 = 0.5 + 0.5 * Math.sin(now * 0.0033 + 1.7);
+            a.material.opacity = 0.25 + 0.45 * k; b.material.opacity = 0.35 + 0.6 * k2; c.material.opacity = 0.15 + 0.45 * (1 - k);
+            var sb = (0.16 + 0.12 * k2) * U; b.scale.set(sb, sb, 1);
+            var sc = (0.26 + 0.14 * k) * U; c.scale.set(sc, sc, 1);
+        };
+        if (_hq && _hq.tickers) _hq.tickers.push(rec.tick);
+        grp.add(g);
+        return rec;
+    }
+    /* E at the angle (map.js _hqMeasureAngle, after the profile is saved): the glimmer goes, the plate comes, the door is a door */
+    function _hqRevealAngle(doorId) {
+        if (!_hq) return false;
+        for (var i = 0; i < _hq.doors.length; i++) {
+            var d = _hq.doors[i];
+            if (!d || !d.door || d.door.id !== doorId || !d.angle) continue;
+            d.angle = false;
+            if (d.glimmer) { d.glimmer.dead = true; try { d.group.remove(d.glimmer.g); } catch (e) {} d.glimmer = null; }
+            if (d.plateEl) { d.plateEl.innerHTML = _hqPlateHtml(d.door); if (d.plateChip) d.plateEl.appendChild(d.plateChip); d.plateEl.style.display = ''; }
+            _hq.dirty = true;
+            return true;
+        }
+        return false;
+    }
     /* the leaf the profile's clearance issues (DOOR_TEXT.CLEARANCE[i].door) */
     function _hqRankLeaf() {
         try {
@@ -45333,8 +45383,7 @@ const ThreeRenderer = (function () {
         var el = document.createElement('div');
         el.className = 'hq-plate hq-plate-way';
         var chip = document.createElement('i');
-        var doorNo = _hqPlateNo(door);
-        el.innerHTML = (doorNo ? '<em>ROOM ' + doorNo + '</em>' : '') + '<b>' + (door.label || door.id) + '</b><span>' + (door.sub || '') + '</span>';
+        el.innerHTML = _hqPlateHtml(door);   // THE UNDISCOVERED DOOR (2026-09-21)
         el.appendChild(chip);
         var plate = new THREE.CSS2DObject(el);
         var plateY = built.plateY || (oh + 0.4);
@@ -45387,6 +45436,9 @@ const ThreeRenderer = (function () {
                wall (tinted like the shell), flush with it. The only tell is the
                prompt when you stand at it and the swing when you do. */
             var secret = !!door.secret;
+            /* THE SUSPICIOUS ANGLE (2026-09-21): an unmeasured draught is a GLIMMER on the wall — no plate, no swing, no walk-in
+               until the protractor has been at it (map.js _hqMeasureAngle → hq.revealAngle) */
+            var found = secret ? _hqAngleFound(door) : true;
             if (secret) { leafKey = null; leafCat = null; }
             var wallMatS = secret ? _hqMat(S.wall || 'stone', 1.2, 1.4, { color: (S.wallColor != null) ? S.wallColor : 0xffffff }) : wallMat;
             var dadoMatS = secret ? _hqMat(S.dado || 'oxblood', 1.2, 0.5, { shininess: 14, color: (S.dadoColor != null) ? S.dadoColor : 0xffffff }) : dadoMat;
@@ -45553,16 +45605,16 @@ const ThreeRenderer = (function () {
             var el = document.createElement('div');
             el.className = 'hq-plate';
             var chip = document.createElement('i');
-            var doorNo = _hqPlateNo(door);
-            el.innerHTML = (doorNo ? '<em>ROOM ' + doorNo + '</em>' : '') + '<b>' + (door.label || door.id) + '</b><span>' + (door.sub || '') + '</span>';
+            el.innerHTML = _hqPlateHtml(door);   // THE UNDISCOVERED DOOR (2026-09-21): the room's name once stood in, else '?'; never the sub
             el.appendChild(chip);
-            if (secret) el.style.display = 'none';
+            if (secret && !found) el.style.display = 'none';
+            var glimmer = (secret && !found) ? _hqAngleGlimmer(grp, U, oh, pd) : null;
             var plate = new THREE.CSS2DObject(el);
             plate.position.set(0, ((room.kind === 'box') ? Math.min(ph + 0.42, S.h - 0.12) : (ph + 0.42)) * U, (pd / 2) * U);
             grp.add(plate);
             if (box && typeof door.wall === 'string' && door.wall !== 'free') grp._ew_hqWall = door.wall;   // THE ROOM ROUND THE FIELD: a door fades with its wall
             G.add(grp);
-            var rec = { door: door, group: grp, lens: lens, glow: glow, plate: plate, plateEl: el, plateChip: chip, state: 'open', level: level, Rw: Rw, y0: y0, wide: wide, ow: ow, inward: inward, box: box, leaf: leafKey, motion: motion, openT: 0 };
+            var rec = { door: door, group: grp, lens: lens, glow: glow, plate: plate, plateEl: el, plateChip: chip, state: 'open', level: level, Rw: Rw, y0: y0, wide: wide, ow: ow, inward: inward, box: box, leaf: leafKey, motion: motion, openT: 0, angle: !!(secret && !found), glimmer: glimmer };
             if (motion && motion.clips) {
                 /* clip planes live in world space: each pocket's jamb edge,
                    keeping the side of the opening AWAY from that pocket
@@ -48038,14 +48090,14 @@ const ThreeRenderer = (function () {
                 var inF = ox * d.box.nx + oz * d.box.nz, side = Math.abs(ox * d.box.nz - oz * d.box.nx);
                 if (inF < 0 || inF > 2.6 || side > (d.ow || (d.wide ? 2.2 : 1.1)) / 2 + 0.4) return;
                 var distB = inF + side;
-                if (distB < bestD) { bestD = distB; best = { kind: 'door', id: d.door.id, label: d.door.label, sub: d.door.sub, state: d.state, door: d.door, rec: d, walkThrough: _hqDoorWalkThrough(d) }; }
+                if (distB < bestD) { bestD = distB; best = d.angle ? { kind: 'door', id: d.door.id, label: 'SUSPICIOUS ANGLE', sub: '', state: d.state, door: d.door, rec: d, angle: true, walkThrough: false } : { kind: 'door', id: d.door.id, label: d.door.label, sub: d.door.sub, state: d.state, door: d.door, rec: d, walkThrough: _hqDoorWalkThrough(d) }; }
                 return;
             }
             var dd = Math.abs(_hqDegDiff(deg, d.door.deg));
             if (dd > (d.wide ? 7 : 6)) return;
             if (d.inward ? (r > d.Rw + 3.4) : (r < d.Rw - 3.4)) return;
             var dist = (d.inward ? (r - d.Rw - 0.5) : (d.Rw - 0.5 - r)) + _hqRad(dd) * r;
-            if (dist < bestD) { bestD = dist; best = { kind: 'door', id: d.door.id, label: d.door.label, sub: d.door.sub, state: d.state, door: d.door, rec: d, walkThrough: _hqDoorWalkThrough(d) }; }
+            if (dist < bestD) { bestD = dist; best = d.angle ? { kind: 'door', id: d.door.id, label: 'SUSPICIOUS ANGLE', sub: '', state: d.state, door: d.door, rec: d, angle: true, walkThrough: false } : { kind: 'door', id: d.door.id, label: d.door.label, sub: d.door.sub, state: d.state, door: d.door, rec: d, walkThrough: _hqDoorWalkThrough(d) }; }
         });
         _hq.counters.forEach(function (c) {
             if (c.level !== lvl) return;
@@ -51246,7 +51298,7 @@ const ThreeRenderer = (function () {
         var H = _hq, pl = H.player;
         if (!pl || H.paused || !H.opts.onEnterDoor) return;
         var rec = (t && t.kind === 'door') ? t.rec : null;
-        if (!rec || !rec.motion || rec.openT < 0.55 || HQ_DOOR_LOCKED[rec.state]) { H.enterDoorLatch = null; return; }
+        if (!rec || !rec.motion || rec.angle || rec.openT < 0.55 || HQ_DOOR_LOCKED[rec.state]) { H.enterDoorLatch = null; return; }   // THE SUSPICIOUS ANGLE: an unmeasured draught is a wall
         if (rec.portalSurf && rec.portalSurf !== 'wall') { H.enterDoorLatch = null; return; }   /* THE DOOR GUN rev 2: a flat threshold is crossed by touch (_hqTickPortalCross), never by the press-in */
         var press = false, toward = 0;
         var dirX = Math.sin(pl.targetYaw), dirZ = Math.cos(pl.targetYaw);
@@ -51279,7 +51331,7 @@ const ThreeRenderer = (function () {
             if (!mo) continue;
             /* THE DOOR GUN rev 2: a FLAT threshold (a floor hatch, a ceiling hatch) stands open — it is a hole you fall through, not a door you press into */
             /* rev 5: a placed WALL door stands open too (HQ_PORTAL_RULES.leafAlways) — Portal's are always open; the leaf lies near flat beside the frame */
-            var want = (d.portalSurf && (d.portalSurf !== 'wall' || _hqPortalRules().leafAlways)) ? 1 : ((targetKey === 'door:' + d.door.id && !HQ_DOOR_LOCKED[d.state]) ? 1 : 0);
+            var want = (d.portalSurf && (d.portalSurf !== 'wall' || _hqPortalRules().leafAlways)) ? 1 : ((targetKey === 'door:' + d.door.id && !HQ_DOOR_LOCKED[d.state] && !d.angle) ? 1 : 0);   // THE SUSPICIOUS ANGLE: no swing until measured
             if (!want && d.npcOpenUntil && d.npcOpenUntil > performance.now() && !HQ_DOOR_LOCKED[d.state]) want = 1;   // THE ROUNDS (2026-09-19): a walker going through swings the leaf
             if (d.openT === want && d.openApplied === want) continue;
             var speed = (mo.mode === 'swing') ? 1.9 : (mo.mode === 'way') ? 1.5 : 2.4;
@@ -51990,6 +52042,9 @@ const ThreeRenderer = (function () {
         target: function () { return _hq ? _hqFindTarget() : null; },
         /* THE FINDS (9.1, 2026-09-15): drop a taken find in place with its burst (map.js _hqTakeFind, after the profile is saved) */
         takeFind: _hqTakeFind,
+        /* THE SUSPICIOUS ANGLE (2026-09-21): the protractor found it (map.js _hqMeasureAngle, after the profile is saved) */
+        revealAngle: _hqRevealAngle,
+        angles: function () { return _hq ? _hq.doors.filter(function (d) { return d && d.angle; }).map(function (d) { return d.door.id; }) : []; },
         /* THE DOOR GUN (HQ plan 9.5, 2026-09-15 rev 13): draw / holster, the aim readout, place the aim (a probe), the hop to a twin in this room, drop a slot */
         portalDraw: _hqPortalDraw,
         portalIssued: function (on) { if (_hq && _hq.portal) { _hq.portal.issued = !!on; if (!on) _hqPortalDraw(false); } return !!(_hq && _hq.portal && _hq.portal.issued); },

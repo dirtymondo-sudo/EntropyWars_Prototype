@@ -158,7 +158,7 @@ test('the secret door in the renderer: no leaf, no lamp, no plate, a wall slab o
     assert.match(doors, /var secret = !!door\.secret;/);
     assert.match(doors, /if \(secret\) \{ leafKey = null; leafCat = null; \}/, 'no leaf');
     assert.match(doors, /if \(secret\) \{ housing\.visible = lens\.visible = glow\.visible = false;/, 'no lamp');
-    assert.match(doors, /if \(secret\) el\.style\.display = 'none';/, 'no plate');
+    assert.match(doors, /if \(secret && !found\) el\.style\.display = 'none';/, 'no plate until the protractor has been at it (THE SUSPICIOUS ANGLE, 2026-09-21)');
     assert.match(doors, /if \(secret\) \{\s*\/\* the panel[\s\S]{0,400}?motion = \{ mode: 'swing', pivot: new THREE\.Group\(\), dir: -1, angle: 1\.35, ow: ow \};/, 'a swinging wall slab');
     assert.match(doors, /var wallMatS = secret \? _hqMat\(S\.wall \|\| 'stone', 1\.2, 1\.4, \{ color: \(S\.wallColor != null\)/, 'the slab and its frame wear the shell’s tinted wall');
 });

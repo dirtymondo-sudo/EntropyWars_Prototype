@@ -8769,7 +8769,7 @@
                     + `<span class="shop-supply-icon">${r.icon}</span>`
                     + `<span class="shop-card-name">${esc(r.name)}</span>`
                     + `<span class="shop-card-tag price">💰 ${r.price}</span>`
-                    + `<span class="shop-supply-have">${r.battle ? 'BATTLE + FIELD' : 'FIELD ONLY'} · × ${have}/${r.max}</span>`
+                    + `<span class="shop-supply-have">${r.battle ? 'BATTLE + FIELD' : 'FIELD ONLY'} · × ${have}${isFinite(r.max) ? '/' + r.max : ''}</span>`
                     + `<button class="cdx-btn cdx-btn-confirm shop-supply-buy" onclick="window._shopBuySupply('${esc(r.key)}')"${ok ? '' : ' disabled'} title="${esc(why)}">BUY</button>`
                     + `</div>`;
             });

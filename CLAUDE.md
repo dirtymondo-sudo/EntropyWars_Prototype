@@ -7730,3 +7730,35 @@ facility box with no counter, no tape, no stash, no `say` and no cast spot FAILS
 a room = give it one of the four. hq-finds' kind pin reads four kinds. Ship data.js to R2 AND Render (the
 ledger's key regex). UNSEEN LIVE (RULE #1c): the tin's scale on the pipe run and the shelves, the six panels'
 rows at the panel's width, the day's line on the roster draw.
+
+## THE SHARED BAG + THE UNDISCOVERED DOOR + THE SUSPICIOUS ANGLE + THE PLAIN NAMES (2026-09-21, local delivery)
+The user's three. **THE SHARED BAG** (story mode): data.js `HQ_PARTY_RULES.bagStack` **0 = unlimited** (`hqBagCap()`;
+a positive number caps a key), `sharedBag: true`; **`hqPartyStock` POOLS every member's pocket items INTO the bag**
+(same name / shape — the pause menu's button reads POOL POCKETS); `hqPartyForLaunch` hands every member EMPTY pockets
+and returns **`bag`** (the battle keys — a field-only tonic / elixir stays home); map.js `_msConfirm` sets
+**`state.partyBag = { seat: 1, items }`** for a party fight (null at every other launch reset; state.js literal;
+online.js skip list — VS-CPU only); battle.js **`_partyBagBind()`** (after the build + in `startMatch`) makes every
+human-seat unit's `items` THE SAME OBJECT — the board AND the bench — so a potion drunk by anyone leaves the bag and
+hud.js's panel reads 🎒 THE BAG from every seat; `getItemCapForClass` → 9999 and `unitItemsFull` false under the bag
+(no 3-item slot cap: the units were built with nothing); the commit hands the bag home (`hqPartyAfterMatch(p, { …, bag })`
+→ `hqBagSet`; the per-unit `items` write is skipped). RULE: never read `unit.items` as a unit's own in a story fight.
+**THE UNDISCOVERED DOOR**: data.js **`hqDoorPlateFor(door, profile)`** is the ONE plate rule — the room directly
+through the door (`hqDoorThrough`) STOOD IN (`hqRoomSeen`) → `{ known, label, no }`; not yet → `label '?'`, no number,
+no sub, no why, no desc; a page / overlay / street / collar / portal door keeps its own name; a found draught reads the
+room's. three-renderer.js `_hqPlateHtml` on every door / way plate (`_hqPlateFor`); **no plate prints a `sub` any
+more** (the user: "get rid of the descriptors"); map.js's prompt (`_hqPlateFor`), the door panel's head and its GO
+THROUGH read it. **THE SUSPICIOUS ANGLE**: an unmeasured `secret` door (a door row's, or a links row's — ONE angle at
+both ends, key `link:<id>`; a door row's `<room>:<door>`, `hqAngleKey`) is a GLIMMER on the wall (three-renderer.js
+`_hqAngleGlimmer`, three additive sprites on a ticker), no plate, no swing, no walk-in (`rec.angle` — `_hqTickDoors`,
+`_hqTickAutoEnter`, map.js `_hqDoorDirectAction` refuse it); the target reads `SUSPICIOUS ANGLE · [E] MEASURE IT`;
+map.js **`_hqMeasureAngle`** → THE PROTRACTOR toast with a seeded off-square reading (`hqAngleReading(key)`, never 90°),
+`HQ_PROTRACTOR_MS` 1500, then **`hqAngleMark(profile, roomId, door)`** (the ONE write: `door.hq.angles.found` + the
+SYNCED `progress.hq.angles.found` — `mergeProgressBlobs` (the EARLIER day wins, `ACH_MERGE_CAPS.angles`) and
+`hqDoorSyncFold` carry it; **ship data.js to Render too**) and `hq.revealAngle(doorId)` (the glimmer goes, the plate
+comes, the slab swings from now on). Reads: `hqAngleFound` / `hqAnglesRecord` / `hqAnglesAll()` (61). **THE PLAIN
+NAMES** (the user: "why is the elevator called the car?"): THE CAR → THE ELEVATOR, CENTRAL EGRESS → THE MAIN HALL, THE
+FOURIER FOYER → THE FOYER, THE CAFETERIUM → THE CAFETERIA, THE OBSERVATORIUM → THE OBSERVATORY, THE NATATORIUM → THE
+SWIMMING POOL, THE MIDWAY → THE CARNIVAL, THE DOOR WORKS → THE WAREHOUSE, the lobbies THE BASEMENT / THE SECOND · THIRD
+· FOURTH FLOOR — ROOM LABELS only (ids untouched; `hqReplateDoors` re-plates every door). `npm test` runs
+`hq-angles.test.js`. UNSEEN LIVE (RULE #1c): the glimmer's size under each room's light, the protractor beat, the '?'
+plates in the hall on a fresh profile, THE BAG panel on the bezel, the bench drinking from the bag.

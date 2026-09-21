@@ -1675,7 +1675,7 @@
             const need = fit && (fit.down || fit.hurt);
             return `<div class="hq-pp-quickbar">`
                 + `<button class="hq-btn hq-btn-sm hq-btn-primary" data-party-act="autoheal"${need ? '' : ' disabled'} title="${need ? 'Revive the down, heal the hurt — spells first, then the potions' : 'Everyone is full'}">♥ AUTO HEAL</button>`
-                + `<button class="hq-btn hq-btn-sm" data-party-act="restock" title="Fill every fit member's battle pockets from the bag (${Object.keys(HQ_PARTY_RULES.pocket).map(k => HQ_PARTY_RULES.pocket[k] + ' ' + ((ITEM_RULES[k] && ITEM_RULES[k].name) || k)).join(' · ')} each)">🎒 RESTOCK POCKETS</button>`
+                + `<button class="hq-btn hq-btn-sm" data-party-act="restock" title="Pool every member's pocket items into THE BAG — in a story fight the whole party pulls from the one bag">🎒 POOL POCKETS</button>`
                 + `<button class="hq-btn hq-btn-sm" data-cmd="items" title="The party's shared inventory">THE BAG · ${bagN}</button>`
                 + `<button class="hq-btn hq-btn-sm" data-pause-room="medical" data-pause-at="cot" title="Walk to Room 1111 — the cot rests the whole party for nothing">🛏 THE COT · ROOM 1111</button>`
                 + `<button class="hq-btn hq-btn-sm" data-pause-room="dispensary" data-pause-at="egress" title="Walk to Room 911 — potions for Hazard Pay">🧪 THE DISPENSARY · 911</button>`
@@ -1693,12 +1693,12 @@
             const fit = (rec && typeof window.hqPartyFit === 'function') ? window.hqPartyFit(p) : null;
             html += `<div class="hq-pp-quickbar">`
                 + `<button class="hq-btn hq-btn-sm hq-btn-primary" data-party-act="autoheal"${fit && (fit.down || fit.hurt) ? '' : ' disabled'}>♥ AUTO HEAL</button>`
-                + `<button class="hq-btn hq-btn-sm" data-party-act="restock">🎒 RESTOCK POCKETS</button>`
+                + `<button class="hq-btn hq-btn-sm" data-party-act="restock">🎒 POOL POCKETS</button>`
                 + `<button class="hq-btn hq-btn-sm" data-cmd="party">◂ THE PARTY</button>`
                 + `<button class="hq-btn hq-btn-sm" data-pause-room="dispensary" data-pause-at="egress">🧪 THE DISPENSARY · ROOM 911</button>`
                 + `<button class="hq-btn hq-btn-sm" data-pause-room="medical" data-pause-at="cot">🛏 THE COT · ROOM 1111</button>`
                 + `</div>`;
-            html += `<div class="hq-pp-sec"><b>IN THE BAG</b><span>USE ▸ PICKS A MEMBER · A FIELD-ONLY ITEM NEVER RIDES INTO A BATTLE</span></div>`;
+            html += `<div class="hq-pp-sec"><b>IN THE BAG</b><span>THE WHOLE PARTY PULLS FROM IT IN A FIGHT · NO LIMIT · USE ▸ PICKS A MEMBER · A FIELD-ONLY ITEM STAYS HOME</span></div>`;
             if (!rows.length) html += `<p class="hq-panel-note">The bag is empty. Pay caches in the rooms drop a potion each; THE DISPENSARY (Room 911, off the Medical Wing) sells them; anything the party did not use in a fight comes back into it.</p>`;
             else {
                 html += '<div class="hq-pp-bag">';
@@ -1713,7 +1713,7 @@
             /* THE POCKETS: what each member carries into a battle */
             if (rec) {
                 const units = _hqPauseUnits(rec);
-                html += `<div class="hq-pp-sec"><b>THE POCKETS</b><span>WHAT EACH MEMBER CARRIES INTO A FIGHT · TOPPED UP FROM THE BAG AT EVERY LAUNCH</span></div><div class="hq-pp-pockets">`;
+                html += `<div class="hq-pp-sec"><b>THE POCKETS</b><span>LEFTOVERS FROM THE FORGE · POOLED INTO THE BAG AT EVERY LAUNCH (NOBODY CARRIES POCKETS INTO A STORY FIGHT)</span></div><div class="hq-pp-pockets">`;
                 rec.members.forEach((m, i) => {
                     const items = (m.loadout && m.loadout.items) || {};
                     const keys = Object.keys(items).filter(k => (items[k] | 0) > 0 && ITEM_RULES[k]);
@@ -2068,8 +2068,8 @@
             }
             else if (verb === 'restock') {
                 const r = _hqPartyTx(p => window.hqPartyStock(p));
-                if (r && r.ok && r.total) { say(`<b>RESTOCKED</b> ${r.total} POTION${r.total === 1 ? '' : 'S'} FROM THE BAG INTO ${[...new Set(r.moved.map(x => x.id))].length} POCKET${new Set(r.moved.map(x => x.id)).size === 1 ? '' : 'S'}`); try { playSfx('uiButtonConfirm'); } catch (e) {} }
-                else say(`<b>NOTHING MOVED</b> ${(window.hqBagTotal(_hqProfile()) | 0) ? 'EVERY FIT MEMBER ALREADY CARRIES THEIR SHARE' : 'THE BAG IS EMPTY — THE DISPENSARY (ROOM 911) SELLS POTIONS, THE PAY CACHES DROP THEM'}`, true);
+                if (r && r.ok && r.total) { say(`<b>POOLED</b> ${r.total} ITEM${r.total === 1 ? '' : 'S'} OUT OF ${[...new Set(r.moved.map(x => x.id))].length} POCKET${new Set(r.moved.map(x => x.id)).size === 1 ? '' : 'S'} INTO THE BAG`); try { playSfx('uiButtonConfirm'); } catch (e) {} }
+                else say(`<b>NOTHING MOVED</b> EVERY POCKET IS ALREADY EMPTY — THE BAG IS THE PARTY’S: EVERYONE PULLS FROM IT IN A FIGHT`, true);
             }
             else if (verb === 'autoheal') {
                 const r = _hqPartyTx(p => window.hqPartyAutoHeal(p, units));
@@ -2516,14 +2516,74 @@
             /* a SEAM THAT IS NOT A DOOR (HQ plan 9.3 `way`): the kind's own verb
                — CLIMB IN, CLIMB DOWN — unless the END names its own (the well
                room's heads read CLIMB UP: the same rope, the other way) */
+            /* THE SUSPICIOUS ANGLE (2026-09-21): an unmeasured draught — E pulls out the protractor */
+            if (t.kind === 'door' && t.angle) { el.innerHTML = `<b>▸ SUSPICIOUS ANGLE</b><span>THAT CORNER IS NOT SQUARE</span><i>[E] MEASURE IT</i>`; el.style.display = ''; return; }
             const wayVerb = (t.kind === 'door' && t.door && t.door.way) ? ((t.door.verb) || _hqWayCat(t.door.way).verb) : null;
             const verb = wayVerb || (t.kind === 'vehicle' ? (t.verb || 'BOARD') : (t.kind === 'door' && t.door && t.door.portal) ? 'STEP THROUGH' : t.kind === 'find' ? 'TAKE' : t.kind === 'door' ? ((t.door && t.door.action && t.door.action.mission && !_hqRoomExists(_hqSiteRoomId(t.door.action.mission))) ? 'OPEN' : 'ENTER') : (t.kind === 'counter' ? ((t.counter && t.counter.verb) || 'USE') : 'TALK'));
-            const pNo = _hqNo(t.door || t.counter);
+            /* THE UNDISCOVERED DOOR (2026-09-21): a door reads its PLATE (data.js hqDoorPlateFor — the room's name once stood in,
+               else '?', never the sub, never the number of a place not yet seen); everything else reads as before */
+            const plate = (t.kind === 'door' && t.door && !t.door.portal) ? _hqPlateFor(t.door) : null;
+            const pNo = plate ? plate.no : _hqNo(t.door || t.counter);
+            const label = plate ? plate.label : t.label;
+            const sub = (t.kind === 'door') ? '' : (t.sub || '');
             /* THE WALK-THROUGH DOOR (2026-09-19): a door the press-in owns says so — no [E] to press */
             const walkIn = t.kind === 'door' && t.walkThrough && !(t.door && t.door.portal) && !!_hqDoorDirectAction(t);
-            el.innerHTML = `<b>▸ ${pNo ? 'ROOM ' + _hqEsc(pNo) + ' · ' : ''}${_hqEsc(t.label)}</b><span>${_hqEsc(t.sub || '')}</span><i>${walkIn ? '[WALK IN]' : '[E]'} ${verb}</i>`;
+            el.innerHTML = `<b>▸ ${pNo ? 'ROOM ' + _hqEsc(pNo) + ' · ' : ''}${_hqEsc(label)}</b><span>${_hqEsc(sub)}</span><i>${walkIn ? '[WALK IN]' : '[E]'} ${verb}</i>`;
             el.style.display = '';
         }
+        /* THE UNDISCOVERED DOOR (2026-09-21): data.js hqDoorPlateFor on the active profile — { known, label, no, room } */
+        function _hqPlateFor(door) {
+            try { if (typeof window.hqDoorPlateFor === 'function') return window.hqDoorPlateFor(door, _hqProfile()); } catch (e) {}
+            return { known: true, label: String((door && (door.label || door.id)) || '').toUpperCase(), no: _hqNo(door), room: null };
+        }
+        /* ══ THE SUSPICIOUS ANGLE (2026-09-21) ══════════════════════════════
+           The user: "the draughts or hidden passages should be shown as a
+           Suspicious Angle — interact with it and press E to pull out your
+           protractor and measure it and discover the door; a little shiny
+           glimmer until you interact with it." An unmeasured draught is a
+           glimmer on the wall (three-renderer.js _hqAngleGlimmer; the target
+           reads kind 'door' + `angle`). E here: THE PROTRACTOR — a reading
+           that is never 90° — then the door is FOUND (data.js hqAngleMark, ONE
+           profile transaction, the synced blob carries it) and the renderer
+           reveals it in place (hq.revealAngle: the glimmer goes, the plate
+           comes, the slab swings from now on). */
+        const HQ_PROTRACTOR_MS = 1500;
+        let _hqMeasuring = null;
+        function _hqMeasureAngle(t) {
+            if (!t || t.kind !== 'door' || !t.angle || !t.door) return false;
+            if (_hqSuspended || state.gameState !== GS.HQ) return false;
+            if (_hqMeasuring) return false;
+            const roomId = _hqCurRoom, door = t.door;
+            const key = (typeof window.hqAngleKey === 'function') ? window.hqAngleKey(roomId, door) : (roomId + ':' + door.id);
+            const reading = (typeof window.hqAngleReading === 'function') ? window.hqAngleReading(key) : 91.3;
+            _hqMeasuring = { key, at: performance.now() };
+            try { playSfx('uiButtonConfirm'); } catch (e) {}
+            _hqToast(`<b>📐 THE PROTRACTOR</b><span>YOU HOLD IT TO THE CORNER · ${reading.toFixed(1)}° · A WALL MEETS A WALL AT NINETY</span>`, HQ_PROTRACTOR_MS + 400);
+            setTimeout(() => {
+                _hqMeasuring = null;
+                if (_hqSuspended || state.gameState !== GS.HQ || _hqCurRoom !== roomId) return;
+                let first = false;
+                try {
+                    const PS = window.ProfileSystem;
+                    const idx = (PS && typeof PS.getActiveProfileIndex === 'function') ? PS.getActiveProfileIndex() : null;
+                    if (idx !== null && idx !== undefined && typeof window.hqAngleMark === 'function') {
+                        const p = PS.loadProfile(idx);
+                        if (p) {
+                            const r = window.hqAngleMark(p, roomId, door);
+                            if (r && r.ok) { first = !!r.first; PS.saveProfile(idx, p); if (PS.hasServerAccount && PS.hasServerAccount() && typeof PS.scheduleProgressSync === 'function') setTimeout(() => { try { PS.scheduleProgressSync(); } catch (e) {} }, 0); }
+                        }
+                    }
+                } catch (e) { console.warn('[HQ] the angle could not be filed', e); }
+                try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq && ThreeRenderer.hq.revealAngle) ThreeRenderer.hq.revealAngle(door.id); } catch (e) {}
+                try { if (typeof playDoorSfx === 'function') playDoorSfx('doorStamp', { volume: 0.6 }); } catch (e) {}
+                try { playSfx('levelUp'); } catch (e) {}
+                const P = _hqPlateFor(door);
+                _hqToast(`<b>A DOOR</b><span>${reading.toFixed(1)}° · IT WAS ALWAYS A DOOR · ${P.known ? 'THROUGH IT: ' + _hqEsc(P.label) : 'WHERE IT GOES IS NOT ON THE PLATE'}${first ? ' · FILED' : ''}</span>`, 4200);
+                try { _hqSetPrompt(ThreeRenderer.hq.target()); } catch (e) {}
+            }, HQ_PROTRACTOR_MS);
+            return true;
+        }
+        window._hqMeasureAngle = _hqMeasureAngle;
         /* DOOR_HQ.ways[kind] (the seams that are not doors): verb / sub / sfx, never undefined */
         function _hqWayCat(kind) { try { return (DOOR_HQ.ways && DOOR_HQ.ways[kind]) || {}; } catch (e) { return {}; } }
         function _hqStateChip(st) {
@@ -2698,7 +2758,7 @@
                 const have = inBag(r.key), room = r.max - have;
                 const q1 = gold >= r.price && room >= 1, q5 = gold >= r.price * 5 && room >= 5;
                 html += `<div class="hq-shop-row${r.battle ? '' : ' field'}"><i class="hq-shop-icon">${r.icon}</i>`
-                    + `<b>${_hqEsc(r.name)}</b><span>${_hqEsc(r.desc)}</span><small>${r.battle ? 'BATTLE + FIELD' : 'FIELD ONLY'} · IN THE BAG × ${have} / ${r.max}</small>`
+                    + `<b>${_hqEsc(r.name)}</b><span>${_hqEsc(r.desc)}</span><small>${r.battle ? 'BATTLE + FIELD' : 'FIELD ONLY'} · IN THE BAG × ${have}${isFinite(r.max) ? ' / ' + r.max : ''}</small>`
                     + `<em class="hq-shop-price">💰 ${r.price}</em>`
                     + `<span class="hq-shop-btns">`
                     + `<button class="hq-btn hq-btn-xs hq-btn-primary" data-buy="${_hqEsc(r.key)}" data-n="1"${q1 && !busy && p ? '' : ' disabled'} title="${!p ? 'NO CARD' : room < 1 ? 'THE BAG IS FULL OF THESE' : gold < r.price ? 'NOT ENOUGH HAZARD PAY' : 'BUY ONE'}">BUY 1</button>`
@@ -3819,7 +3879,7 @@
             }).join('') + '</div>';
             const others = floors.filter(f => !stopIds.has(f));
             if (others.length) html += '<div class="hq-chips"><span>THE OTHER BUTTONS</span>' + others.map(f => `<i class="hq-chip dim">${_hqEsc(f)}</i>`).join('') + '</div>';
-            html += '<div class="hq-panel-actions"><button class="hq-btn" data-close="1">' + (_hqCurRoom === 'car' ? 'STAY IN THE CAR' : 'STEP BACK') + '</button></div>';
+            html += '<div class="hq-panel-actions"><button class="hq-btn" data-close="1">' + (_hqCurRoom === 'car' ? 'STAY IN THE ELEVATOR' : 'STEP BACK') + '</button></div>';
             html += '<p class="hq-panel-note">There is no 13. There is no B2 on the panel either; the building has one.</p>';
             return html;
         }
@@ -3851,7 +3911,9 @@
             const cl = (typeof window.doorClearance === 'function') ? window.doorClearance(profile) : { level: 1, title: 'DOORMAT' };
             const act = d.action || {};
             if (act.mission) return _hqThresholdPanelHtml(t, st);
-            let html = `<div class="hq-panel-hd">${_hqNoTag(_hqNo(d), d.why || (act.room && DOOR_HQ.rooms[act.room] && DOOR_HQ.rooms[act.room].why) || '')}<b>${_hqEsc(d.label)}</b><span>${_hqEsc(d.sub || '')}</span>${_hqStateChip(st)}</div>`;
+            /* THE UNDISCOVERED DOOR (2026-09-21): the head is the plate — a room not yet stood in is '?' with no number, no sub, no why */
+            const PL = _hqPlateFor(d);
+            let html = `<div class="hq-panel-hd">${PL.known ? _hqNoTag(_hqNo(d), d.why || (act.room && DOOR_HQ.rooms[act.room] && DOOR_HQ.rooms[act.room].why) || '') : ''}<b>${_hqEsc(PL.label)}</b>${_hqStateChip(st)}</div>`;
             if (act.sector) {
                 const sec = DOOR_HQ.sectors[act.sector] || { label: act.sector, maps: [] };
                 const bayId = (typeof window.hqBayId === 'function') ? window.hqBayId(act.sector) : ('bay_' + act.sector);
@@ -3891,7 +3953,7 @@
                 else if (st === 'clearance') html += `<p class="hq-panel-note">${_hqGateText(d, cl, profile)}</p>`;
                 else html += '<p class="hq-panel-note">CROSS ▸ Δ = Arena, 4v4 on the site’s 8×8 board, the CPU fielding the entities on file for it. DEEP = the full map. Each ☐ is a win condition still to be filed for the threshold; all three turn it green.</p>';
             } else {
-                if (d.desc) html += `<p class="hq-panel-desc">${_hqEsc(d.desc)}</p>`;
+                if (d.desc && PL.known) html += `<p class="hq-panel-desc">${_hqEsc(d.desc)}</p>`;
                 /* THE SHIP'S ONE DOOR (2026-09-16): the collar with no course — the destinations on file, the bridge named */
                 if (act.ship) html += _hqShipDoorHtml(profile);
                 /* THE BUREAU OF CONTINUITY (plan 4.4, 2026-09-15): the canon notices are ON THE DOOR — the motto's current
@@ -3910,7 +3972,7 @@
                 const locked = st === 'clearance';
                 html += '<div class="hq-panel-actions">';
                 if (act.fn) html += `<button class="hq-btn hq-btn-primary" ${locked ? 'disabled' : ''} data-fn="${_hqEsc(act.fn)}">ENTER ▸ ${_hqEsc(_HQ_FN_LABELS[act.fn] || act.fn)}</button>`;
-                else if (act.room && _hqRoomExists(act.room)) html += `<button class="hq-btn hq-btn-primary" ${locked ? 'disabled' : ''} data-room="${_hqEsc(act.room)}" data-at="${_hqEsc(act.at || '')}">${locked ? _hqGateLabel(d, cl, profile) : 'GO THROUGH ▸ ' + _hqEsc(DOOR_HQ.rooms[act.room].label || act.room)}</button>`;
+                else if (act.room && _hqRoomExists(act.room)) html += `<button class="hq-btn hq-btn-primary" ${locked ? 'disabled' : ''} data-room="${_hqEsc(act.room)}" data-at="${_hqEsc(act.at || '')}">${locked ? _hqGateLabel(d, cl, profile) : 'GO THROUGH' + (PL.known ? ' ▸ ' + _hqEsc(PL.label) : '')}</button>`;
                 else if (act.room) html += `<button class="hq-btn hq-btn-primary" disabled>${locked ? _hqGateLabel(d, cl, profile) : 'INTERIOR NOT YET BUILT'}</button>`;
                 [d.alt, d.alt2].forEach(a => {
                     if (a && a.fn) html += `<button class="hq-btn" ${locked ? 'disabled' : ''} data-fn="${_hqEsc(a.fn)}">${_hqEsc(a.label)}</button>`;
@@ -4606,7 +4668,7 @@
         window._hqMapDev = function () { return { model: _hqMap.model, shown: _hqMapShown(), view: _hqMap.view, fit: _hqMap.fit }; };
         function _hqDirectoryHtml() {
             const room = _hqRoom(), profile = _hqProfile();
-            let html = `<div class="hq-panel-hd"><b>THE MAP</b><span>${_hqMap.mode === 'world' ? 'THE WORLD · EVERY PLACE THE DOORS REACH' : 'BUILDING DIRECTORY'} · ${_hqEsc(room.label || 'CENTRAL EGRESS')} · YOU ARE HERE · M CLOSES</span></div>`;
+            let html = `<div class="hq-panel-hd"><b>THE MAP</b><span>${_hqMap.mode === 'world' ? 'THE WORLD · EVERY PLACE THE DOORS REACH' : 'BUILDING DIRECTORY'} · ${_hqEsc(room.label || 'THE MAIN HALL')} · YOU ARE HERE · M CLOSES</span></div>`;
             const mapHtml = _hqMapHtml();
             /* THE WORLD OVERVIEW (2026-09-19): the LOCATIONS column on the left, the stage in the middle, the card on the right */
             if (mapHtml && _hqMap.world) html += _hqMapLocsHtml(_hqMap.world);
@@ -5454,6 +5516,7 @@
            panel explains the gate), doors with alt actions, and unbuilt
            interiors. Returns the action to run, or null = panel material. */
         function _hqDoorDirectAction(t) {
+            if (t.angle) return null;   // THE SUSPICIOUS ANGLE (2026-09-21): an unmeasured draught is a wall
             const d = t.door, act = d.action || {};
             const st = (typeof window.doorSiteState === 'function') ? window.doorSiteState(d, _hqProfile()) : 'open';
             if (st === 'sealed' || st === 'clearance' || st === 'off') return null;
@@ -5489,6 +5552,8 @@
             if (t && t.kind === 'vehicle') { try { ThreeRenderer.hq.board(t.id); } catch (e) { console.warn('[HQ] board failed', e); } return; }
             /* THE DOOR GUN (9.5): a placed threshold — through it, out of its twin */
             if (t && t.kind === 'door' && t.door && t.door.portal) { window._hqPortalStep(t.door.portal); return; }
+            /* THE SUSPICIOUS ANGLE (2026-09-21): E at the glimmer is the protractor — never a panel, never a walk-in */
+            if (t && t.kind === 'door' && t.angle) { _hqMeasureAngle(t); return; }
             if (t && t.kind === 'door' && t.door) {
                 const act = _hqDoorDirectAction(t);
                 /* THE WALK-THROUGH DOOR (2026-09-19): a direct door whose leaf swings open is crossed by walking into it
@@ -6018,7 +6083,7 @@
             state.isRankedMatch = false;
             state.trainingMatch = false; state.storyLevel = 0;
             state.reserves = false;
-            state.noRespawns = false;
+            state.noRespawns = false; state.partyBag = null;
             state._customRoundLimit = 0;
             state._mdRun = null;
             state._mdPhase = 'floor';
@@ -7891,6 +7956,10 @@
             const _encParty_ = !!(_encPeek && _encPeek.party);
             const _reservesLaunch = (!!_msReserves || _encParty_) && gm.id !== 'gauntlet'
                 && !!(mpMode && (mpMode.respawns || _encParty_) && !mpMode.isFFA && !mpMode.isClash);
+            /* THE SHARED BAG (2026-09-21, the user: "a party inventory or a bag everybody can pull from; no 3 item limit in story
+               mode"): a party fight carries the party's ONE bag — battle.js binds every human-seat unit's `items` to it at the
+               match start (no pockets, no slot cap) and the commit brings it home (hqPartyAfterMatch's `bag`) */
+            state.partyBag = (_encParty_ && _encPeek.bag && typeof _encPeek.bag === 'object') ? { seat: 1, items: Object.assign({}, _encPeek.bag) } : null;
             state.noRespawns = _encParty_;
             state.reserves = _reservesLaunch;
             if (gm.id === 'gauntlet' || _reservesLaunch) {
@@ -8036,7 +8105,7 @@
             state.isRankedMatch = false;
             state.trainingMatch = false;
             state.reserves = false;
-            state.noRespawns = false;
+            state.noRespawns = false; state.partyBag = null;
             /* THE STORY LEVEL (2026-09-21, the user: "a new profile still starts me at level 100"): a crossing filed from
                the BUILDING (story scope — the console, the marker's terminal, DISPATCH's desk) builds EVERY unit at THE
                PARTY LEVEL (data.js hqPartyLevel — the first shift's mean, 5 on a fresh profile; map.js createUnit's cap
@@ -20934,7 +21003,7 @@
             state.isRankedMatch = false;
             state.trainingMatch = false; state.storyLevel = 0;
             state.reserves = false;
-            state.noRespawns = false;
+            state.noRespawns = false; state.partyBag = null;
 
             if (typeof MULTIPLAYER_MODES !== 'undefined') {
                 state.activeMultiplayerMode = 'arena';

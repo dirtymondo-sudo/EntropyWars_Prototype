@@ -3656,7 +3656,8 @@ function _hrlgItemBlades(unit, st) {
     };
   });
   if (!blades.length) blades.push({ id: 'none', icon: '❖', label: 'No items', available: false });
-  return { title: { icon: '❖', text: 'Items', count: heldKeys.length + '' }, blades };
+  const bag = typeof window._partyBagUnit === 'function' && window._partyBagUnit(unit);   // THE SHARED BAG (2026-09-21): the party's one bag, from every seat
+  return { title: { icon: bag ? '🎒' : '❖', text: bag ? 'The Bag' : 'Items', count: heldKeys.length + '' }, blades };
 }
 
 /* ── Build-mode hotbar (2026-07-10): ⛏ Dig + one blade per placeable
