@@ -7426,3 +7426,37 @@ under a silver-white edge; rows / head / dead tokens darkened to match. `npm tes
 `grade-node.test.js`; ring-vitals.test.js pins the two directions. UNSEEN LIVE (RULE #1c): the
 node's legibility at 16 px in the quick stats, the face gradients under each theme, the row
 widths on the inspect card and the codex at narrow widths, the darker rows' contrast.
+
+## THE 2026-09-21 BATCH — POLICE OFFICER · JELLYFISH · CULT LEADER (three races on Meshy "Running" exports), THE CULT MEMBERS, RACE MODEL SKINS, the catgirl's new rig (2026-09-21, local delivery)
+**THE RIG RULE**: Meshy stopped shipping `_Character_output.glb`; an `_Animation_<Clip>.glb` export WITH SKIN is the
+same rigged mesh (28 joints, JOINTS_0 / WEIGHTS_0, textures embedded — measure the JSON chunk before wiring) plus one
+baked clip, so it IS the base — `_mkUAL(folder, prefix, { model: '<the export's URL>' })` (the male sniper's Idle_5
+export was the first). **THE RACES** (data.js: `RACE_PROFILES` · `AVAILABLE_RACES` (102) · `RACE_DEFAULT_JOBS` ·
+`RACE_CLASS` · `RACE_BASE_STATS` (in the 249–275 band, `npm run grades`) · `RACE_PHYSIQUE` · `RACE_ABILITIES` ·
+`RACE_TREE` · `RACE_PASSIVES` · `EW_RACE_BIOMES` · `CAMPAIGN_RACE_PRICES` · `CUSTOMS_OVERRIDES` · `POINT_OF_ENTRY` ·
+`FINISHERS` · the Heat Death tier; sprites.js: `RACE_PATH_RULES` · `RACE_SPRITE_GENDERS` · `_HOMOSAPIEN_RACE_JOB_MAP` ·
+`RACE_MODELS_3D` · `RACE_SPRITES`; server.js `AVAILABLE_RACES`; battle.js `BASIC_ATTACK_RACE_KINDS`; party-builder /
+ui.js lore + `RACE_TRAITS`; check-grades role rows; map.js + check-grades `SKY_RACES` (the jellyfish flies)):
+**police officer** (Gunslinger · ranged · TIME · human · Downtown; Nightstick → Taser ⇄ Pepper Spray → Cuffed →
+Lockdown★, `pointBlank`), **jellyfish** (Black Mage · caster · CHAOS · anomaly + alien · the Bermuda Triangle; Sting →
+Bloom ⇄ Drift → Nematocyst Net → Immortal Cycle★ (selfHeal 50 % + cleanse 2), `thermalRegen` + the wing), **cult
+leader** (Harbinger · support · CHAOS · human + unholy · Bohemian Grove; Sermon → The Kool-Aid ⇄ Tithe → Indoctrinate
+(`possess`) → The Gathering★ (`summonUnit` key `cultist` — three-renderer.js `_buildSummon3D`'s procedural robed
+figure), `unquietMind`). Plain kinds only, family VFX aliases in the 2026-09-21 block of three-vfx-effects.js (after
+the door agent's), **the finishers DESIGNED with `sig: null`** (the typed execution plays; a director + signature +
+stage script is the next pass — FINISHER_PLAN rule 0). Not starters (THE ROSTER LOCK: earned). **RACE MODEL SKINS**
+(sprites.js `RACE_MODEL_SKINS` → `getRaceModelSkin(race, gender, { site, seed })` / `raceModelSkinGenders`; the ONE
+read is three-renderer.js `_hqSpawnCharacter`'s hook after the def resolves — never the walker, the cast or a creator
+look; the board keeps `RACE_MODELS_3D`'s one model per gender): `sites[mapId][gender]` = the rig a native wears in
+THAT site's rooms (the two CYBERPUNK officers in `prebuilt_cyberpunk` only — the user's rule; the female exists there
+alone, the population's `genderOf` reads the site skins), `alts[gender]` = seeded stand-ins (the fat white officer
+beside the black one). Never list a skin under `RACE_MODELS_3D` (its keys ARE the playable genders). **THE CULT
+MEMBERS** are CAST, never a race: `DOOR_CAST_MODELS.cult1–5` (`_mkCast` with an explicit `model`, R2
+`Races/cultmember/`) + `DOOR_CAST.cult1–5` in `site_prebuilt_bohemian_grove_grove` (three on the mound round the owl's
+altar at y 2.6, two on the stage at y 1.4; lines the user's, A15); doorhq.test.js counts 20 cast models. A cast spot
+with no `y` stands on a terrain room's GROUND now (`_hqSpawnPopulation` passes `undefined`, not 0). **THE CATGIRL**
+wears `Races/catgirl/female/Meshy_AI_catgirl_Running.glb` through the library alone (the old per-character clips were
+exported from the OLD rig — cross-character playback warps). door-race.test.js's server pin is membership, not the
+list's last entry. `npm test` runs `new-races.test.js`. Ship data.js to R2 AND Render (server.js reads it). UNSEEN
+LIVE (RULE #1c): every rig's scale + facing (`heightRatio`), the jellyfish on the swim loops, the cyberpunk cops on
+the Grid, the robes on the mound and the stage, the procedural cultist, the catgirl under her old flavour clips.

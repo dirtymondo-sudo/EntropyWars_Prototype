@@ -669,11 +669,34 @@ concrete / frost textures.
 
 ## 7. Rigged models
 
-95 race rigs in sprites.js `RACE_MODELS_3D` (per race and gender; the
-UAL / MAL animation libraries retarget onto every one) and 16 cast rigs
+98 race rigs in sprites.js `RACE_MODELS_3D` (per race and gender; the
+UAL / MAL animation libraries retarget onto every one) and 21 cast rigs
 in `DOOR_CAST_MODELS`. The HQ avatar is the Player rig or the most-played
 vessel (`hqAvatarPref`). Not catalogued per file here — the race table is
 the register.
+
+### 7a. THE 2026-09-21 BATCH — the "Running" exports as bases
+
+Meshy stopped shipping `…_Character_output.glb` in its zips. An
+`…_Animation_<Clip>.glb` export WITH SKIN is the same rigged mesh (28
+joints, JOINTS_0 / WEIGHTS_0, the textures embedded — measured off the
+JSON chunk) plus one baked clip, so it IS the base: wire it with `_mkUAL`
++ an explicit `model:` (the male sniper's Idle_5 export was the first).
+The library retargets onto it; the baked clip is ignored.
+
+| Race / cast | R2 path (`Assets/Sprites/Races/…`) | Where it stands |
+|---|---|---|
+| `police officer` male (THE model) | `police/Meshy_AI_a_black_police_officer_Running.glb` | the board; Disaster City's streets, the underworld, the urban draws |
+| police ALT (male) | `police/Meshy_AI_a_fat_white_police_officer_Running.glb` | `RACE_MODEL_SKINS.alts` — the HQ population draws either regular cop |
+| police CYBERPUNK skin (male / female) | `police/Meshy_AI_a_cyberpunk_police_officer_Running.glb` / `…_female_Running.glb` | `RACE_MODEL_SKINS.sites.prebuilt_cyberpunk` — Cyberpunk City's rooms ONLY (the user's rule); never the board |
+| `jellyfish` male | `jellyfish/Meshy_AI_a_jellyfish_king_Running.glb` | the board; the Bermuda Triangle's native (deep_sea / tropical) |
+| `cult leader` male | `cultleader/Meshy_AI_cult_leader_Running.glb` | the board; Bohemian Grove's native (forest / clandestine / gothic) |
+| cast `cult1`–`cult5` | `cultmember/Meshy_AI_cult_member_1..5_Running.glb` | THE GROVE (Room 1876's area part): three round the owl's altar on the mound, two on the stage — data.js `DOOR_CAST` |
+| `catgirl` female (REPLACED) | `catgirl/female/Meshy_AI_catgirl_Running.glb` | the board; the old `young_female_catgirl` clips are retired (they were exported from the old rig) |
+
+The cult leader's capstone THE GATHERING summons a `cultist`
+(three-renderer.js `_buildSummon3D`) — a PROCEDURAL robed figure today; a
+skinned clone of a cult member rig on the board is the next pass.
 
 ## 8. Procedural families (the `_hz*` builders — no file)
 

@@ -4417,6 +4417,36 @@ const ThreeRenderer = (function () {
        placeholders until the owner's models land (plan §9.6). */
     function _buildSummon3D(turret) {
         var ts = CONFIG.tileSize || BASE_TILE, topY = tileTopY(turret.x, turret.y);
+        /* THE CULT MEMBER (2026-09-21, the cult leader's capstone The Gathering — summonDef key 'cultist'): a robed
+           figure, hood up, a candle in each hand — the procedural stand-in for the user's cult member rigs (the cast
+           models cult1–5 stand in the Grove; a skinned clone of one on the board is the next pass). */
+        if (turret.summon === 'cultist') {
+            var cg = new THREE.Group();
+            var robe = new THREE.MeshLambertMaterial({ color: 0x4a1020 });
+            var robeDark = new THREE.MeshLambertMaterial({ color: 0x2a0810 });
+            var skin = new THREE.MeshLambertMaterial({ color: 0xd8b8a0 });
+            var wax = new THREE.MeshLambertMaterial({ color: 0xf2e6c8 });
+            var body = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.19, ts * 0.62, 12, 1, true), robe);
+            body.position.set(0, ts * 0.31, 0); body.material.side = THREE.DoubleSide; cg.add(body);
+            var shoulders = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.13, 10, 8), robe);
+            shoulders.position.set(0, ts * 0.58, 0); shoulders.scale.set(1, 0.6, 0.8); cg.add(shoulders);
+            var face = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.075, 10, 8), skin);
+            face.position.set(0, ts * 0.7, -ts * 0.02); cg.add(face);
+            var hood = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.1, 10, 8, Math.PI * 0.75, Math.PI * 1.5, 0, Math.PI * 0.75), robeDark);
+            hood.material.side = THREE.DoubleSide; hood.position.set(0, ts * 0.71, 0); cg.add(hood);
+            for (var cs = -1; cs <= 1; cs += 2) {
+                var arm = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.035, ts * 0.045, ts * 0.26, 8), robe);
+                arm.position.set(cs * ts * 0.16, ts * 0.5, -ts * 0.06); arm.rotation.z = cs * 0.55; arm.rotation.x = -0.5; cg.add(arm);
+                var candle = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.014, ts * 0.014, ts * 0.09, 6), wax);
+                candle.position.set(cs * ts * 0.22, ts * 0.46, -ts * 0.16); cg.add(candle);
+                var flame = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.016, 6, 5), new THREE.MeshBasicMaterial({ color: 0xffc040, fog: false }));
+                flame.position.set(cs * ts * 0.22, ts * 0.52, -ts * 0.16); flame.scale.y = 1.6; cg.add(flame);
+            }
+            if (turret.facingAngle != null) cg.rotation.y = -turret.facingAngle + Math.PI / 2;
+            cg.position.set(turret.x * ts + ts / 2, topY, turret.y * ts + ts / 2);
+            cg._ew_turretId = turret.id;
+            return cg;
+        }
         if (turret.summon === 'creation') {
             var gz = _buildZombie3D(turret);
             gz.traverse(function (m) {
@@ -45854,6 +45884,17 @@ const ThreeRenderer = (function () {
            everyone else resolves a roster race */
         // rev 8: a creator LOOK (the officer's own, Occam's mirror) rides `spec.appearance` — the human base's rig dresses it
         var def = spec.def || ((typeof getRace3DModel === 'function') ? getRace3DModel(race, gender, spec.appearance || undefined) : null);
+        /* RACE MODEL SKINS (2026-09-21, sprites.js RACE_MODEL_SKINS): an NPC of a race with OTHER rigs wears the
+           room's SITE skin (the cyberpunk cops in Cyberpunk City only — the user's rule; either gender, so a
+           female cop exists there and nowhere else) or a seeded ALT (the fat white officer beside the black one);
+           never the walker, the cast or a creator look; the board keeps RACE_MODELS_3D's one model per gender. */
+        if (spec.kind !== 'player' && !spec.def && !spec.appearance && typeof getRaceModelSkin === 'function') {
+            try {
+                var _skSite = (typeof hqRoomSite === 'function' && _hq && _hq.opts) ? hqRoomSite(_hq.opts.room) : null;
+                var _skin = getRaceModelSkin(race, gender, { site: _skSite, seed: spec.id || race });
+                if (_skin) def = _skin;
+            } catch (e) {}
+        }
         if (!def && typeof getRace3DModel === 'function') {
             /* other gender of the same race, then the DOOR agent stand-in */
             var alt = (gender === 'male') ? 'female' : 'male';
@@ -47309,7 +47350,7 @@ const ThreeRenderer = (function () {
             try {
                 _hqSpawnCharacter({ id: 'hq-cast-' + c.id, kind: 'cast', cast: c.id, race: m.base || m.race || 'men in black', gender: gender, def: def,
                     deg: s.deg, r: s.r, x: s.x, z: s.z, level: s.level || 0, face: s.face || 0,
-                    label: m.name, sub: m.title, pose: s.pose || null, reach: s.reach, rad: s.rad, doing: s.doing || null, y: s.y || 0, hold: s.hold || null });
+                    label: m.name, sub: m.title, pose: s.pose || null, reach: s.reach, rad: s.rad, doing: s.doing || null, y: (s.y != null ? s.y : undefined), hold: s.hold || null });   // 2026-09-21: a spot with no y stands on the ground (a terrain room's cast — the cult members on the Grove's mound wear y: the tier's height)
             } catch (e) { console.warn('[HQ] cast member skipped', c.id, e); }
         });
     }
@@ -48620,7 +48661,9 @@ const ThreeRenderer = (function () {
         var gone = [];
         try { var cl = (prof && typeof hqEncounterCleared === 'function') ? hqEncounterCleared(prof, roomId) : null; if (cl && cl.ids) gone = cl.ids; } catch (e) { gone = []; }
         var stops = _hqRoundsStops();
-        var genderOf = function (rk, want) { var hm = !!getRace3DModel(rk, 'male'), hf = !!getRace3DModel(rk, 'female'); if (want && ((want === 'male' && hm) || (want === 'female' && hf))) return want; return (hm && hf) ? (Math.random() < 0.5 ? 'male' : 'female') : (hm ? 'male' : 'female'); };
+        var genderOf = function (rk, want) { var hm = !!getRace3DModel(rk, 'male'), hf = !!getRace3DModel(rk, 'female');
+            /* a SITE SKIN lends a gender the roster lacks (sprites.js RACE_MODEL_SKINS — the female cyberpunk cop, Cyberpunk City only) */
+            try { var _skg = (typeof raceModelSkinGenders === 'function' && typeof hqRoomSite === 'function') ? raceModelSkinGenders(rk, hqRoomSite(roomId)) : []; if (_skg.indexOf('male') >= 0) hm = true; if (_skg.indexOf('female') >= 0) hf = true; } catch (e) {} if (want && ((want === 'male' && hm) || (want === 'female' && hf))) return want; return (hm && hf) ? (Math.random() < 0.5 ? 'male' : 'female') : (hm ? 'male' : 'female'); };
         var walksRace = function (rk) { return typeof getRace3DModel === 'function' && (_hqDefWalks(getRace3DModel(rk, 'male')) || _hqDefWalks(getRace3DModel(rk, 'female'))); };
         var spawnAt = function (id, rk, g, st, o) {
             var jx = (Math.random() - 0.5) * 0.5, jz = (Math.random() - 0.5) * 0.5;

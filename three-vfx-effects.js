@@ -23470,7 +23470,25 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     SPELL_MAP['raceBreakingEntering'] = { impact: 'raceStompOut_impact' };                     /* door agent — the kick-in */
     SPELL_MAP['raceAirMail']          = { impact: 'raceAirMail_impact' };                      /* door agent — the drop */
     SPELL_MAP['raceTrapdoor']         = { impact: 'raceTrapdoor_impact' };                     /* door agent — the floor gives way (fired by _springTrap) */
-    SPELL_MAP['raceDropIn']           = { impact: 'raceDropIn_impact' };                       /* door agent — the slam from above */
+    SPELL_MAP['raceDropIn']           = { impact: 'raceDropIn_impact' };
+    /* THE 2026-09-21 BATCH — police officer / jellyfish / cult leader: family aliases (the §5.12 rule — a new
+       race's kit borrows the recipe of the kind it plays; each capstone's row is its own, shared with no sibling
+       on its pillar — capstone-vfx.test.js). Bespoke recipes are the next pass. */
+    SPELL_MAP['racePoliceNightstick'] = { impact: 'raceStompOut_impact' };                     /* police — the baton's crack */
+    SPELL_MAP['racePoliceTaser']      = Object.assign({}, SPELL_MAP['raceTeslaTrap']);         /* police — the prongs' arc */
+    SPELL_MAP['racePoliceSpray']      = Object.assign({}, SPELL_MAP['poisonDart']);            /* police — the cloud in the eyes */
+    SPELL_MAP['racePoliceCuffs']      = Object.assign({}, SPELL_MAP['raceLasso']);             /* police — the cuffs bite */
+    SPELL_MAP['racePoliceLockdown']   = Object.assign({}, SPELL_MAP['raceShockwaveClap']);     /* police — the block cordoned */
+    SPELL_MAP['raceJellySting']       = Object.assign({}, SPELL_MAP['poisonDart']);            /* jellyfish — the tentacle's brush */
+    SPELL_MAP['raceJellyBloom']       = Object.assign({}, SPELL_MAP['raceTemporalTide']);      /* jellyfish — the bloom rolls over the 3×3 */
+    SPELL_MAP['raceJellyDrift']       = Object.assign({}, SPELL_MAP['raceMirrorBlink']);       /* jellyfish — the bell folds and opens */
+    SPELL_MAP['raceJellyNet']         = Object.assign({}, SPELL_MAP['raceLasso']);             /* jellyfish — the skirt closes */
+    SPELL_MAP['raceJellyRebirth']     = Object.assign({}, SPELL_MAP['consumeHealPotion']);     /* jellyfish — the polyp regrows */
+    SPELL_MAP['raceCultSermon']       = Object.assign({}, SPELL_MAP['raceBlessing']);          /* cult leader — the word */
+    SPELL_MAP['raceCultKoolAid']      = Object.assign({}, SPELL_MAP['raceCharm']);             /* cult leader — the cup */
+    SPELL_MAP['raceCultTithe']        = Object.assign({}, SPELL_MAP['raceHitALick']);          /* cult leader — the collection */
+    SPELL_MAP['raceCultIndoctrinate'] = Object.assign({}, SPELL_MAP['racePossession']);        /* cult leader — the induction */
+    SPELL_MAP['raceCultGathering']    = Object.assign({}, SPELL_MAP['raceWhistle']);           /* cult leader — a member answers */                       /* door agent — the slam from above */
 
     /* ═════════ END VFX PASS-3 COVERAGE SECTION ═════════ */
 

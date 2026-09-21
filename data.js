@@ -383,6 +383,11 @@ const FINISHERS = {
     'watcher':        { id: 'fin_watcher', name: 'Observed', glyph: '👁', type: 'divine', sig: 'observed', built: true, tagline: 'THE WAVEFUNCTION COLLAPSES', desc: 'The watcher looks, really looks, and the victim was only ever a probability.' },
     'gangster':       { id: 'fin_gangster', name: 'Drive-By', glyph: '🔫', type: 'human', sig: 'driveBy', built: true, tagline: 'THE WHOLE CLIP', desc: 'A car rolls past the victim at walking pace with every window down.' },
     'nun':            { id: 'fin_nun', name: 'Ruler', glyph: '📏', type: 'divine', sig: 'theRuler', built: true, tagline: 'HOLD OUT YOUR HAND', desc: 'A ruler the size of a bridge comes down across the victim\'s knuckles, and the knuckles were the least of it.' },
+    /* THE 2026-09-21 BATCH — designed here, played as the TYPED EXECUTION (sig null) until each gets its
+       director + signature + stage script (FINISHER_PLAN rule 0; the BUILT table in finishers.test.js). */
+    'police officer': { id: 'fin_police_officer', name: 'Book \'Em', glyph: '🚔', type: 'human', sig: null, built: false, tagline: 'YOU HAVE THE RIGHT TO REMAIN', desc: 'The cruiser pulls up with every light going. The victim is read their rights, cuffed, put in the back, and the car drives off the board with them in it. The paperwork takes a beat longer than the arrest.' },
+    'jellyfish':      { id: 'fin_jellyfish', name: 'The Bloom', glyph: '🪼', type: 'anomaly', sig: null, built: false, tagline: 'A THOUSAND OF US', desc: 'The sea comes up over the tile and the water fills with jellyfish, more and more of them, until the victim is a shape inside a glowing bloom. When the water drains there is nothing on the tile but a print.' },
+    'cult leader':    { id: 'fin_cult_leader', name: 'Ascension Day', glyph: '🕯', type: 'unholy', sig: null, built: false, tagline: 'THE FAMILY IS WAITING', desc: 'Candles ring the victim, the members file in with their heads bowed, the cup is passed, and when the last robe steps back the victim is gone and there is one more robe in the circle.' },
     'door agent':     { id: 'fin_door_agent', name: 'Open House', glyph: '🚪', type: 'anomaly', sig: 'openHouse', built: true, tagline: 'EVERY DOOR IS MINE', desc: 'Six doors stand up round the victim. The agent comes out of one, hits them, and is gone through another — again, and again, faster — until every door opens at once and the last one takes the victim.' },
 };
 function getFinisherDefForRace(race, types) {
@@ -2791,6 +2796,27 @@ const RACE_PROFILES = {
         faction: 'time',
         types: ['human', 'anomaly']
     },
+    /* THE 2026-09-21 BATCH (the user's three Meshy rigs): the POLICE OFFICER
+       (Disaster City's own law — human, TIME: the badge is a schedule), the
+       JELLYFISH (the Bermuda Triangle's drifting king — an anomaly that came
+       up out of the deep, CHAOS) and the CULT LEADER (Bohemian Grove's
+       robed voice — human + unholy, CHAOS). Their cult members are CAST
+       models (sprites.js DOOR_CAST_MODELS cult1–5), never a race. */
+    'police officer': {
+        label: 'Police Officer',
+        faction: 'time',
+        types: ['human']
+    },
+    'jellyfish': {
+        label: 'Jellyfish',
+        faction: 'chaos',
+        types: ['anomaly', 'alien']
+    },
+    'cult leader': {
+        label: 'Cult Leader',
+        faction: 'chaos',
+        types: ['human', 'unholy']
+    },
     'wizard': {
         label: 'Wizard',
         labelMale: 'Wizard',
@@ -3142,6 +3168,9 @@ const RACE_PASSIVES = {
     'gangster':      ['shank'],
     'nun':           ['devout'],
     'door agent':    ['keyholder'],           // DOOR_RACE_DESIGN §3 (2026-09-14)
+    'police officer': ['pointBlank'],         // 2026-09-21 — the service pistol up close
+    'jellyfish':     ['thermalRegen'],        // 2026-09-21 — flying takes the other slot (SKY_RACES); a vent-warmed bell
+    'cult leader':   ['unquietMind'],         // 2026-09-21 — the voices are his own
     'werewolf':      ['lycanthropy', 'bloodcraze'],
     'skeleton':      ['boneDeep'],
     'zombie':        ['returnOfTheDead'],
@@ -3195,7 +3224,7 @@ function unitPassiveBlocksStatus(unit, statusId) {
     return null;
 }
 
-const AVAILABLE_RACES = ['homosapien', 'pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'nun', 'door agent'];
+const AVAILABLE_RACES = ['homosapien', 'pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'nun', 'door agent', 'police officer', 'jellyfish', 'cult leader'];
 
 const RACE_DEFAULT_JOBS = {
     // NOTE (2026-07-18): 'Warrior' and 'Tank' are now SEPARATE jobs (the old
@@ -3247,6 +3276,9 @@ const RACE_DEFAULT_JOBS = {
     'gangster': 'Gunslinger',   // CHAMP REWORK Phase 6 (plan §6.19)
     'nun': 'White Mage',        // CHAMP REWORK Phase 6 (plan §6.20)
     'door agent': 'Agent',      // DOOR_RACE_DESIGN §1 (2026-09-14) — the Closer's kit
+    'police officer': 'Gunslinger',   // 2026-09-21
+    'jellyfish': 'Black Mage',        // 2026-09-21
+    'cult leader': 'Harbinger',       // 2026-09-21
     'wizard': 'Black Mage',
     'fortune teller': 'Harbinger',
     'zombie': 'Raider',
@@ -3353,6 +3385,9 @@ const RACE_CLASS = {
     'gangster': 'bruiser',
     'nun': 'healer',
     'door agent': 'assassin',
+    'police officer': 'ranged',
+    'jellyfish': 'caster',
+    'cult leader': 'support',
     'wizard': 'caster',
     'fortune teller': 'support',
     'cyborg': 'bruiser',
@@ -3554,6 +3589,10 @@ const RACE_BASE_STATS = {
     'nun':                { hp: 460, mp: 250, atk:   8, def:  26, mdef:  58, int:  90, awr: 70, spd: 30 },
     // DOOR_RACE_DESIGN §1 (2026-09-14): the DOOR agent — weak stats, strong geometry; high AWR (they check their corners). Retuned from the design's 560/170/62/46/55/50/84/50 (budget 302) into the 249–275 band.
     'door agent':         { hp: 520, mp: 170, atk:  48, def:  40, mdef:  50, int:  40, awr: 84, spd: 46 },
+    // 2026-09-21 — the three new rigs, tuned into the 249–275 band (npm run grades): the cop a sturdy shooter with eyes, the jellyfish a glass caster, the cult leader a support who reads the room.
+    'police officer':     { hp: 560, mp: 110, atk:  72, def:  58, mdef:  46, int:  12, awr:  72, spd:  56 },
+    'jellyfish':          { hp: 470, mp: 230, atk:  18, def:  30, mdef:  72, int:  72, awr:  52, spd:  46 },
+    'cult leader':        { hp: 500, mp: 220, atk:  26, def:  36, mdef:  66, int:  74, awr:  60, spd:  44 },
     'wizard':             { hp: 415, mp: 255, atk:   8, def:  17, mdef:  98, int:  90, awr: 42, spd: 31 },
     'fortune teller':     { hp: 545, mp: 210, atk:   8, def:  25, mdef:  82, int:  90, awr: 98, spd: 33 },
     'nephilim':           { hp: 680, mp:  90, atk:  68, def:  73, mdef:  36, int:  27, awr: 28, spd: 41 },
@@ -3630,6 +3669,9 @@ const RACE_PHYSIQUE = {
     'gangster':            { h: 1.82, w: 88 },   // Phase 6 — the enforcer
     'nun':                 { h: 1.65, w: 58 },   // Phase 6 — the sister
     'door agent':          { h: 1.78, w: 76 },   // 2026-09-14 — the officer
+    'police officer':      { h: 1.80, w: 86 },   // 2026-09-21 — the beat cop, vest on
+    'jellyfish':           { h: 1.60, w: 12 },   // 2026-09-21 — a bell and a skirt of tentacles; hangs, never stands
+    'cult leader':         { h: 1.76, w: 70 },   // 2026-09-21 — the robe hides the rest
     'wizard':              { h: 1.70, w: 68 },
     'fortune teller':      { h: 1.65, w: 60 },
     'giant':               { h: 7.50, w: 3800 },
@@ -7049,6 +7091,96 @@ const RACE_ABILITIES = {
           kind: 'warCry', auraRadius: 3,
           teamStatusEffects: [{ id: 'extendedClips', duration: 3 }],
           desc: 'Everybody reload. Allies within 3 tiles pack Extended Clips for 3 rounds: +1 basic-attack range and +1 ATK stage.' },
+    ],
+    /* THE 2026-09-21 BATCH — three new races on the user's Meshy rigs.
+       POLICE OFFICER (Gunslinger, ranged; Disaster City's law): Nightstick →
+       Taser ⇄ Pepper Spray → Cuffed → Lockdown★ — a control kit: every row
+       lands one named status (§2.1), the capstone is the block cordoned.
+       JELLYFISH (Black Mage, caster; the Triangle's drifting king): Sting →
+       Bloom ⇄ Drift → Nematocyst Net → Immortal Cycle★ (Turritopsis — the
+       one animal that turns back into a polyp: the capstone is the reset).
+       CULT LEADER (Harbinger, support; the Grove's voice): Sermon → The
+       Kool-Aid ⇄ Tithe → Indoctrinate → The Gathering★ (a cult member
+       answers the call — a walking summon in the hound's plumbing; its look
+       is three-renderer.js _buildSummon3D 'cultist'). Plain kinds only —
+       nothing new in the engine; the VFX are family aliases in
+       three-vfx-effects.js's 2026-09-21 block. */
+    'police officer': [
+        { id: 'racePoliceNightstick', spellType: 'human', element: 'metal', name: 'Nightstick',
+          type: 'damage', cost: 20, dmg: 85, range: 1, apCost: 1,
+          kind: 'damage', damageType: 'physical',
+          statusEffects: [{ id: 'stagger', duration: 1 }],
+          desc: 'The baton comes off the belt. Deals WEAK physical damage to an adjacent enemy and Staggers them.' },
+        { id: 'racePoliceTaser', spellType: 'human', element: 'metal', name: 'Taser',
+          type: 'damage', cost: 30, dmg: 70, range: 3, apCost: 1, cooldownRounds: 2,
+          kind: 'damage', damageType: 'magic',
+          statusEffects: [{ id: 'stun', duration: 1 }],
+          desc: 'Two prongs, fifty thousand volts. Deals WEAK magic damage to a Single Enemy within 3 tiles and Stuns them for a round.' },
+        { id: 'racePoliceSpray', spellType: 'human', element: 'metal', name: 'Pepper Spray',
+          type: 'damage', cost: 25, dmg: 45, range: 2, aoeRadius: 1, apCost: 1,
+          kind: 'aoe', damageType: 'magic',
+          statusEffects: [{ id: 'blind', duration: 2 }],
+          desc: 'A can of it, straight in the eyes. Deals LIGHT magic damage to every enemy in a 3×3 within 2 tiles and Blinds them for 2 rounds.' },
+        { id: 'racePoliceCuffs', spellType: 'human', element: 'metal', name: 'Cuffed',
+          type: 'damage', cost: 35, dmg: 60, range: 1, apCost: 1, tier: 'II',
+          kind: 'damage', damageType: 'physical',
+          statusEffects: [{ id: 'root', duration: 2 }],
+          desc: 'Hands behind your back. Deals LIGHT physical damage to an adjacent enemy and Roots them for 2 rounds — they are not going anywhere.' },
+        { id: 'racePoliceLockdown', spellType: 'human', element: 'metal', name: 'Lockdown',
+          type: 'damage', cost: 55, dmg: 120, range: 3, aoeRadius: 1, apCost: 1, tier: 'III',
+          kind: 'aoe', damageType: 'physical',
+          statusEffects: [{ id: 'slow', duration: 2 }],
+          desc: 'Nobody in, nobody out. The block is cordoned: MEDIUM physical damage to every enemy in a 3×3 within 3 tiles, and every one of them is Slowed for 2 rounds.' },
+    ],
+    'jellyfish': [
+        { id: 'raceJellySting', spellType: 'anomaly', element: 'water', name: 'Sting',
+          type: 'damage', cost: 20, dmg: 80, range: 2, apCost: 1,
+          kind: 'damage', damageType: 'magic',
+          statusEffects: [{ id: 'poison', duration: 2 }],
+          desc: 'A tentacle brushes past. Deals WEAK magic damage to a Single Enemy within 2 tiles and Poisons them for 2 rounds.' },
+        { id: 'raceJellyBloom', spellType: 'anomaly', element: 'water', name: 'Bloom',
+          type: 'damage', cost: 30, dmg: 70, range: 3, aoeRadius: 1, apCost: 1,
+          kind: 'aoe', damageType: 'magic',
+          statusEffects: [{ id: 'wet', duration: 2 }],
+          desc: 'A thousand of them at once. Deals WEAK magic damage to every enemy in a 3×3 within 3 tiles and leaves them Wet for 2 rounds.' },
+        _mkBlink('short', { id: 'raceJellyDrift', spellType: 'anomaly', element: 'water', name: 'Drift',
+          desc: 'Go where the current goes. Drift to any tile within 3 — the bell folds, the water carries it, it opens again.' }),
+        { id: 'raceJellyNet', spellType: 'anomaly', element: 'water', name: 'Nematocyst Net',
+          type: 'damage', cost: 40, dmg: 95, range: 3, apCost: 1, tier: 'II',
+          kind: 'damage', damageType: 'magic',
+          statusEffects: [{ id: 'root', duration: 2 }],
+          desc: 'The skirt of tentacles closes. Deals MEDIUM magic damage to a Single Enemy within 3 tiles and Roots them for 2 rounds.' },
+        { id: 'raceJellyRebirth', spellType: 'anomaly', element: 'water', name: 'Immortal Cycle',
+          type: 'heal', cost: 60, range: 0, apCost: 1, tier: 'III', cooldownRounds: 4,
+          kind: 'selfHeal', selfHealPct: 0.50, cleanse: 2,
+          desc: 'Turritopsis. The bell collapses back into a polyp and grows again: restores 50% of max HP and cleanses 2 debuffs. Once every 4 rounds.' },
+    ],
+    'cult leader': [
+        { id: 'raceCultSermon', spellType: 'unholy', element: 'shadow', name: 'Sermon',
+          type: 'buff', cost: 25, range: 0, apCost: 1,
+          kind: 'warCry', auraRadius: 2,
+          teamStatusEffects: [{ id: 'blessed', duration: 2 }],
+          desc: 'Gather round. Allies within 2 tiles are Blessed for 2 rounds — they have heard the word, and the word is him.' },
+        { id: 'raceCultKoolAid', spellType: 'unholy', element: 'shadow', name: 'The Kool-Aid',
+          type: 'debuff', cost: 30, range: 3, apCost: 1, cooldownRounds: 2,
+          kind: 'debuff',
+          statusEffects: [{ id: 'charm', duration: 2 }],
+          desc: 'Drink. A Single Enemy within 3 tiles is Charmed for 2 rounds — they will not raise a hand to the family.' },
+        { id: 'raceCultTithe', spellType: 'unholy', element: 'shadow', name: 'Tithe',
+          type: 'damage', cost: 25, dmg: 50, range: 2, apCost: 1,
+          kind: 'steal', damageType: 'magic',
+          stealKeys: 0, stealItems: 1,
+          desc: 'Everything you own belongs to the family. Deals LIGHT magic damage to a Single Enemy within 2 tiles and takes an item off them.' },
+        { id: 'raceCultIndoctrinate', spellType: 'unholy', element: 'shadow', name: 'Indoctrinate',
+          type: 'debuff', cost: 45, range: 2, apCost: 1, cooldownRounds: 3, tier: 'II',
+          kind: 'possess', activations: 1,
+          statusEffects: [{ id: 'possessed', duration: 2 }],
+          desc: 'They were always going to join. A Single Enemy within 2 tiles is YOURS for its next activation — move it, attack with it, cast with it. Applies Possessed. Bosses cannot be indoctrinated.' },
+        { id: 'raceCultGathering', spellType: 'unholy', element: 'shadow', name: 'The Gathering',
+          type: 'utility', cost: 60, apCost: 1, range: 1, tier: 'III',
+          kind: 'summonUnit', maxActivePerCaster: 2,
+          summonDef: { key: 'cultist', name: 'Cult Member', move: 3, dmg: 55, hits: 2 },
+          desc: 'The candles are lit and one of the family answers. A cult member steps out of the dark onto an adjacent tile: at the end of every round it walks 3 tiles toward the nearest enemy and strikes for 55. Two hits to put it down. Two members per leader.' },
     ],
     /* DOOR_RACE_DESIGN.md §4 rev 3 (2026-09-20): the DOOR AGENT — THE GUN,
        NOT THE DOORS. The user dropped the placed-door mechanic (Knock Knock,
@@ -10895,7 +11027,7 @@ const ACH_CATALOG = [
   // Champion-mastery meta (§4.1): a champ is Mastered at kills ≥ ACH_MASTERY.kills
   // + wins ≥ ACH_MASTERY.wins + deathless ≥ ACH_MASTERY.deathless. This line
   // counts mastered champs (evaluated at match commit, stored high-water).
-  { id: 'champsMastered',  metric: 'champsMastered',  cat: 'modes',       icon: '👑', name: 'Heat Death',        desc: 'Fully master champions (100 kills · 100 wins · 10 deathless each)', tiers: [1, 5, 10, 25, 50, 99], hw: true },   // top tier = the roster size (99 since the DOOR agent, 2026-09-14)
+  { id: 'champsMastered',  metric: 'champsMastered',  cat: 'modes',       icon: '👑', name: 'Heat Death',        desc: 'Fully master champions (100 kills · 100 wins · 10 deathless each)', tiers: [1, 5, 10, 25, 50, 102], hw: true },   // top tier = the roster size (102 since the police officer / jellyfish / cult leader, 2026-09-21)
 ];
 
 // What a champ must reach on each mastery ladder to count as Mastered
@@ -16539,6 +16671,7 @@ const EW_RACE_BIOMES = {
     'men in black': ['clandestine', 'underground_base'], 'telepath': ['underground_base', 'astral'],
     'marksman': ['clandestine', 'urban'], 'priest': ['holy_city'], 'wizard': ['arthurian', 'gothic'],
     'gangster': ['urban', 'neon_city'], 'nun': ['holy_city'], 'door agent': ['clandestine', 'underground_base'],
+    'police officer': ['urban', 'stadium'], 'jellyfish': ['deep_sea', 'tropical'], 'cult leader': ['forest', 'clandestine', 'gothic'],   // 2026-09-21
     'fortune teller': ['desert', 'astral'], 'barbarella': ['space'],
     'black goo': ['space', 'underground_base'], 'golem': ['ancient'],
     'honda civic': ['urban', 'neon_city'], 'ice queen': ['polar'], 'juggernaut': ['underground_base'],
@@ -16983,6 +17116,9 @@ const RACE_TREE = {
     'gangster':      ['raceStompOut', ['raceDriveBy', 'raceHitALick'], 'raceChoppa', 'raceExtendedClips'],   // §6.19 (Phase 6)
     'nun':           [['racePurify', 'raceSmite'], 'raceBlessing', 'racePrayer', 'raceHallelujah'],           // §6.20 (Phase 6)
     'door agent':    [['raceDoorToTheFace', 'raceBreakingEntering'], 'raceAirMail', 'raceTrapdoor', 'raceDropIn'],   // DOOR_RACE_DESIGN §4 rev 3 (2026-09-20): the gun, not the doors
+    'police officer': ['racePoliceNightstick', ['racePoliceTaser', 'racePoliceSpray'], 'racePoliceCuffs', 'racePoliceLockdown'],   // 2026-09-21
+    'jellyfish':     ['raceJellySting', ['raceJellyBloom', 'raceJellyDrift'], 'raceJellyNet', 'raceJellyRebirth'],                // 2026-09-21
+    'cult leader':   ['raceCultSermon', ['raceCultKoolAid', 'raceCultTithe'], 'raceCultIndoctrinate', 'raceCultGathering'],       // 2026-09-21
     'fortune teller': ['raceTarotDraw', 'raceSpiritChannel', 'raceCurseOfMisfortune', 'raceCrystalBall'],
     'martian':       ['raceHeatRay', 'sharedLowGravity', 'sharedShrinkRay', 'raceWarOfTheWorlds'],
     'nordic':        ['raceAuroraRay', 'racePleiadianShield', 'raceStasisBeam', 'raceNordicAccord'],
@@ -17845,6 +17981,10 @@ const CAMPAIGN_RACE_PRICES = {
   'nun': 250,
   // DOOR_RACE_DESIGN (2026-09-14)
   'door agent': 300,
+  // 2026-09-21 — the three new rigs
+  'police officer': 250,
+  'jellyfish': 350,
+  'cult leader': 400,
 };
 
 const CAMPAIGN_REGION_THEMES = {
@@ -18770,6 +18910,9 @@ const DOOR_TEXT = {
         'gangster':             { status: 'DOMESTIC',          note: 'known to the desk; the desk is known to him' },
         'nun':                  { status: 'DIPLOMATIC',        note: 'the only diplomat who has never lied on the form' },
         'door agent':           { status: 'DOMESTIC',          note: 'staff — the form is filed by the officer who filed the form' },
+        'police officer':       { status: 'DOMESTIC',          note: 'has a form of his own; ours is filed under it' },
+        'jellyfish':            { status: 'UNDER OBSERVATION', note: 'no brain, no heart, no blood; the interview went well' },
+        'cult leader':          { status: 'DENIED',            note: 'the members filed on his behalf; all forty-one forms in the same hand' },
         'quarterback':          { status: 'DOMESTIC',          note: 'went back to the huddle' },
         'general':              { status: 'DOMESTIC',          note: 'asked to see the org chart' },
         'antihero':             { status: 'DOMESTIC',          note: 'declined to align with any desk' },
@@ -18785,6 +18928,7 @@ const DOOR_TEXT = {
         'shaman': 'Mount Shasta', 'mad scientist': 'D.U.M.B.', 'cowboy': 'Area 51', 'men in black': 'Area 51',
         'telepath': 'D.U.M.B.', 'marksman': 'The Lodge', 'priest': 'Vatican City', 'wizard': 'Stonehenge',
         'gangster': 'Cyberpunk City', 'nun': 'Vatican City', 'door agent': 'D.U.M.B.',
+        'police officer': 'Downtown', 'jellyfish': 'The Bermuda Triangle', 'cult leader': 'Bohemian Grove',   // 2026-09-21
         'fortune teller': 'Bohemian Grove', 'giant': 'Göbekli Tepe', 'fairy': 'Fairy Forest', 'martian': 'Mars',
         'nordic': 'Antarctica', 'grey': 'Saturn', 'bigfoot': 'Mount Shasta', 'shadow entity': 'Backrooms',
         'reptilian': 'Hollow Earth', 'ai': 'Cyberpunk City', 'robot': 'Technoticlan', 'android': 'Cyberpunk City',
@@ -42221,7 +42365,7 @@ const HQ_POPULATION_RULES = {
     wildWeights: [0.5, 0.3, 0.2],   // a wild room's draw: a TRUE native (its point of entry) · a biome-tagged resident · a neighbouring site's native; the first draw is always a native
     cityWeights: [0.5, 0.3, 0.2],   // a city street's draw: the site's own (natives + the urban-tagged) · ordinary people (a `human` type) · the other cities' natives
     /* THE UNDERWORLD's own people (hubs.underworld) — the sewers, the tunnels, the cells, the workings */
-    underworld: ['zombie', 'ghoul', 'gangster', 'homosapien', 'conspiracy theorist', 'skeleton', 'reptilian', 'antperson', 'mad scientist', 'shadow entity'],
+    underworld: ['zombie', 'ghoul', 'gangster', 'homosapien', 'conspiracy theorist', 'skeleton', 'reptilian', 'antperson', 'mad scientist', 'shadow entity', 'police officer'],
 };
 /* THE RESIDENTS of a site, by the tags: the NATIVES (POINT_OF_ENTRY) first, then every race whose own
    RACE_PROFILES `biomes` tags meet the site's EW_MAP_META `biomes` (the most shared first — the terrain
@@ -45615,6 +45759,50 @@ const DOOR_CAST = {
         spots: [
             { room: 'central_egress', deg: 158, r: 6.7, level: 0, face: 338, pose: 'hqSit', reach: 2.0,
               doing: 'On a folding chair at the counter, watching Rhonda not find her paperwork. Scheduled for deportation. The schedule is several centuries out.' },
+        ],
+    },
+    /* THE CULT MEMBERS (2026-09-21): the user's five robed rigs (R2 Races/cultmember/) — NOT a race: cast models
+       (sprites.js DOOR_CAST_MODELS cult1–5) standing in THE GROVE (Room 1876's area part) round the owl's altar on
+       the mound and at the stage. Anonymous by design (one name, one title each); the lines are the user's (A15).
+       THE GATHERING (the cult leader's capstone) summons one as a walking summon (three-renderer.js 'cultist'). */
+    cult1: {
+        name: 'CULT MEMBER', title: 'THE FAMILY · ROBE ONE', dept: 'Bohemian Grove (unaffiliated, they say)', model: 'cult1', gender: 'male', base: 'cult leader',
+        lines: [],
+        spots: [
+            { room: 'site_prebuilt_bohemian_grove_grove', x: -15.6, z: -8.2, y: 2.6, face: 250, pose: 'hqTalk', reach: 2.0,
+              doing: 'On the mound beside the altar, hood up, hands folded, mouthing the words a half-second before the leader says them.' },
+        ],
+    },
+    cult2: {
+        name: 'CULT MEMBER', title: 'THE FAMILY · ROBE TWO', dept: 'Bohemian Grove (unaffiliated, they say)', model: 'cult2', gender: 'male', base: 'cult leader',
+        lines: [],
+        spots: [
+            { room: 'site_prebuilt_bohemian_grove_grove', x: -20.4, z: -8.2, y: 2.6, face: 110, pose: 'hqArms', reach: 2.0,
+              doing: 'Across the altar from Robe One, arms folded inside the sleeves. Has not blinked since the brazier was lit.' },
+        ],
+    },
+    cult3: {
+        name: 'CULT MEMBER', title: 'THE FAMILY · ROBE THREE', dept: 'Bohemian Grove (unaffiliated, they say)', model: 'cult3', gender: 'male', base: 'cult leader',
+        lines: [],
+        spots: [
+            { room: 'site_prebuilt_bohemian_grove_grove', x: -18, z: -7.2, y: 2.6, face: 180, pose: 'hqCrouch', reach: 2.0,
+              doing: 'Kneeling at the foot of the altar, facing the owl. Tending a candle that keeps going out. It is not the wind.' },
+        ],
+    },
+    cult4: {
+        name: 'CULT MEMBER', title: 'THE FAMILY · ROBE FOUR', dept: 'Bohemian Grove (unaffiliated, they say)', model: 'cult4', gender: 'male', base: 'cult leader',
+        lines: [],
+        spots: [
+            { room: 'site_prebuilt_bohemian_grove_grove', x: 4.5, z: -19.6, y: 1.4, face: 90, pose: 'hqTalk', reach: 2.0,
+              doing: 'Stage left of the lectern, holding the speech the leader is not reading from. Every page is blank.' },
+        ],
+    },
+    cult5: {
+        name: 'CULT MEMBER', title: 'THE FAMILY · ROBE FIVE', dept: 'Bohemian Grove (unaffiliated, they say)', model: 'cult5', gender: 'male', base: 'cult leader',
+        lines: [],
+        spots: [
+            { room: 'site_prebuilt_bohemian_grove_grove', x: 11.5, z: -19.6, y: 1.4, face: 270, pose: 'hqArms', reach: 2.0,
+              doing: 'Stage right, by the speakers, watching the audience instead of the stage. Counting them. There is always one more than there was.' },
         ],
     },
     elle: {

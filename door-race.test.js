@@ -39,7 +39,8 @@ test('door agent: every race table, both sides, the passive, the statuses the en
     assert.ok(kh && kh.doorHits === 4 && kh.doorFreeToggle === true && kh.doorImmune === true);
     assert.ok(/no trapdoor ever takes the agent/.test(kh.desc), 'the passive says what it does now');
     assert.ok(D.ACCT_STARTER_UNITS.includes(RACE));
-    assert.ok(/'door agent'\]\);/.test(server) && /'door agent',/.test(server), 'server.js race list + starters');
+    /* membership, never the list's LAST entry (2026-09-21: three races joined after the agent — a positional pin was the wrong test's, CLAUDE.md THE RED CI rule 3) */
+    assert.ok(/AVAILABLE_RACES = new Set\(\[[^\]]*'door agent'/.test(server) && /ACCT_STARTER_UNITS[^;]*'door agent'/.test(server), 'server.js race list + starters');
     assert.ok(/'door agent': \{ folder: 'Homosapien'/.test(sprites) && /RACE_MODELS_3D\['door agent'\] = \{/.test(sprites), 'sprites.js path rule + cast models');
     const heat = D.ACH_CATALOG.find(a => a.id === 'champsMastered');
     assert.equal(heat.tiers[heat.tiers.length - 1], D.AVAILABLE_RACES.length);

@@ -120,7 +120,7 @@ const PLANNED_PASSIVE_ALLOWANCE = {        // CHAMP_REWORK_PLAN §5.2 — remove
 const WEREWOLF_NIGHT_STAGES = { atk: 2, spd: 3, def: 2, mdef: 1 };
 const SKY_RACES = ['fairy', 'shadow entity', 'ai', 'angel', 'seraphim', 'orb of light', 'demon', 'mech', 'ghost',
     'annunaki', 'gargoyle', 'djinn', 'mothman', 'glitch', 'demon prince', 'demon princess', 'fallen angel', 'cyborg',
-    'nephilim', 'vampire', 'superhero', 'antihero', 'chosen one', 'dragon', 'occulus', 'valkraye', 'watcher', 'telepath'];
+    'nephilim', 'vampire', 'superhero', 'antihero', 'chosen one', 'dragon', 'occulus', 'valkraye', 'watcher', 'telepath', 'jellyfish'];
 const JOB_KITS = D.JOB_KITS || { Gunslinger: { range: 2 }, Agent: { range: 2 }, Psychic: { range: 2 }, Sniper: { range: 3 } };
 
 function kitRange(race) {
@@ -217,6 +217,13 @@ const CONSTRAINTS = [
         r => S[r].hp >= 540 && S[r].hp <= 620 && B(S[r].def) && B(S[r].mdef) && Ap(S[r].atk) && F(S[r].int) && A(S[r].spd)],
     ['door agent', 'low-mid HP (480–560) · low DEF (C) · mid M.DEF (B) · mid ATK (B) · low M.ATK (C) · mid SPD (B) · top AWR (S) — weak stats, strong geometry',
         r => S[r].hp >= 480 && S[r].hp <= 560 && C(S[r].def) && B(S[r].mdef) && B(S[r].atk) && C(S[r].int) && B(S[r].spd) && S[r].awr >= 80],
+    // 2026-09-21 — the three new rigs
+    ['police officer', 'mid HP (540–620) · mid DEF+M.DEF (B) · good ATK (A) · no M.ATK (F) · mid SPD (B) · good AWR (A)',
+        r => S[r].hp >= 540 && S[r].hp <= 620 && B(S[r].def) && B(S[r].mdef) && A(S[r].atk) && F(S[r].int) && B(S[r].spd) && A(S[r].awr)],
+    ['jellyfish', 'low HP (<540) · low DEF (C) · good M.DEF (A) · terrible ATK (F) · good M.ATK (A) · mid SPD (B) · flies',
+        r => S[r].hp < 540 && C(S[r].def) && A(S[r].mdef) && F(S[r].atk) && A(S[r].int) && B(S[r].spd)],
+    ['cult leader', 'low HP (<540) · low DEF (C) · good M.DEF (A) · low ATK (C) · good M.ATK (A) · mid SPD (B) · mid AWR (B)',
+        r => S[r].hp < 540 && C(S[r].def) && A(S[r].mdef) && C(S[r].atk) && A(S[r].int) && B(S[r].spd) && B(S[r].awr)],
     ['nun', 'low HP (<540) · low DEF (C) · decent M.DEF (B+) · terrible ATK (F) · high M.ATK (A+) · low SPD (C)',
         r => S[r].hp < 540 && C(S[r].def) && Bp(S[r].mdef) && F(S[r].atk) && Ap(S[r].int) && C(S[r].spd)],
     ['fairy', 'low-mid HP (430–540) · good SPD (A) · low DEF (C) · good M.DEF (A) · low ATK (F) · good M.ATK (A)',

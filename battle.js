@@ -9198,6 +9198,7 @@
         const BASIC_ATTACK_RACE_KINDS = {
             'cowboy': 'ranged', 'marksman': 'ranged', 'general': 'ranged', 'men in black': 'ranged',
             'gangster': 'ranged', 'martian': 'ranged', 'mad scientist': 'ranged',
+            'police officer': 'ranged', 'jellyfish': 'magic', 'cult leader': 'magic',   // 2026-09-21
             'ai': 'ranged', 'android': 'ranged', 'droid': 'ranged',
             'ice queen': 'magic', 'seraphim': 'magic', 'watcher': 'magic', 'occulus': 'magic',
             'shadow entity': 'magic', 'siren': 'magic', 'chosen one': 'magic', 'symbiote': 'magic',

@@ -629,6 +629,9 @@ const CODEX_LORE = {
   'shaman': 'Human practitioner of ethnobotanical combat medicine and spirit-realm interfacing. Employs plant-derived compounds and ritualistic invocations to achieve measurable healing and psychoactive battlefield effects. Field reports document instances of consciousness transference and spirit-animal manifestation. Operates outside all recognized medical frameworks. Effectiveness: confirmed.',
   'mad scientist': 'Human subject exhibiting genius-level intellect combined with complete disregard for ethical research protocols. Deploys improvised electromagnetic devices, unstable chemical compounds, and clone technology of alarming sophistication. Laboratory conditions consistently violate 200+ safety regulations. Products are devastatingly effective despite — or because of — their instability.',
   'gangster': 'Human street enforcer operating outside every sanctioned combat doctrine. Small-arms proficiency is exceptional; discipline is not. Subjects answer any approach within arm\'s reach with immediate, disproportionate violence (see incident log: "shanked"). Vehicle-borne engagements documented at speeds the Department\'s insurance does not cover. Do not let them near your pockets.',
+  'police officer': 'Municipal law-enforcement officer of Disaster City, sworn in under a charter nobody has produced. Subjects respond to every disturbance with the same escalation ladder — baton, taser, pepper spray, cuffs — and will, on a bad night, cordon an entire block and call it a lockdown. Ballistic vest, service pistol, a radio that only ever says "copy". The Cyberpunk City precinct wears a different uniform and answers to a different charter; do not expect the two to compare notes. Will ask for your badge. Will not accept ours.',
+  'jellyfish': 'CLASSIFICATION: DRIFTING SOVEREIGN. Cnidarian entity of unprecedented scale recovered from the Bermuda Triangle\'s deep, wearing a crown nobody put on it. No brain, no heart, no blood; the interview went well regardless. Bell pulses at 0.3 Hz, tentacle skirt extends to nematocyst range 3, venom classed as neurotoxic-anomalous. Observed reverting to a polyp stage under lethal damage and regrowing inside a round (see: Turritopsis). Floats. Everything in the Department\'s aquarium wing has been moved.',
+  'cult leader': 'Human. Charismatic. Files no forms because the members file them for him — forty-one so far, all in the same handwriting. Operates out of the redwoods of Bohemian Grove, where an owl the size of a house is not the strangest thing at the altar. Subject exhibits verified influence over cooperative minds (charm, indoctrination, the passing of a cup) and an entourage that arrives before it is called for. The robes are cotton. The candles never go out. Do not drink anything he offers. Do not join.',
   'door agent': 'Department personnel. Field officers of D.O.O.R. trained to treat a wall as a scheduling problem. Subjects place paired doorways on any floor — one in, the twin out — and use them as roads, walls and firing angles in the same engagement; whatever goes into one door comes out of the other. Documented incidents: a package delivered from behind, a door slammed on a room it was not in, a hostile filed out of the building for one round and returned at the wrong address. Stats are unremarkable. Geometry is not. Knock twice.',
   'nun': 'Human clergy of the [REDACTED] order. No offensive capability of note; restorative output exceeds every field medic on file by a wide margin. Subjects refuse the term "healer" and correct it to "sister." Documented cleansing of hostile enchantments, blessings that hold under fire, and a choir that can be heard through the wall. Do not swear in the interview.',
   'cowboy': 'Human firearms specialist operating under frontier combat doctrine. Exhibits supernatural quickdraw reflexes (est. 0.12s reaction time) and preternatural accuracy at range. Cultural affectations include anachronistic headwear and a peculiar code of honor involving fair duels. Do not underestimate. They never miss twice.',
@@ -2121,6 +2124,16 @@ const RACE_TRAITS = {
   ],
   'nun': [
     { icon: '🙏', name: 'Devout', desc: 'Heals she casts restore 20% more.' },                                        // CODED (PASSIVE_DEFS)
+  ],
+  'police officer': [
+    { icon: '🔫', name: 'Point Blank', desc: 'Basic attacks from 2 tiles or closer hit ×1.3.' },                       // CODED (PASSIVE_DEFS)
+  ],
+  'jellyfish': [
+    { icon: '🪽', name: 'Flight', desc: 'Airborne — crosses chasms, lava and deep water unharmed. Grounded below 25% HP.' },   // CODED
+    { icon: '🔥', name: 'Thermal Regen', desc: 'Fire feeds it: fire damage heals instead of harming, Burn never takes hold, and a lava bath knits its wounds.' },   // CODED (PASSIVE_DEFS)
+  ],
+  'cult leader': [
+    { icon: '🕯️', name: 'Unquiet Mind', desc: 'A mind already crowded with voices — immune to Charm.' },               // CODED (PASSIVE_DEFS)
   ],
   'door agent': [
     { icon: '🗝️', name: 'Keyholder', desc: 'Once a turn, open or shut a friendly door beside you for free; your doors take 4 hits; friendly doors never harm you.' },   // CODED (PASSIVE_DEFS)

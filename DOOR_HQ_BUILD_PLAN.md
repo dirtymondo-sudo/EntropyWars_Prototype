@@ -11106,3 +11106,17 @@ lots of weird invisible walls and collision boxes, especially in the garage and 
 - UNSEEN LIVE (RULE #1c): the lean's look on the cast rigs at a coping (`pitchMax` is the edit), the vert air's height against the
   drum (`qpLaunch`), the kicker's pop (`kickLaunch`), the turnaround's timing (`vertTurn`), the launch cues' loudness, the cars'
   turned footprints against their GLBs, the drum's wall under the hand.
+
+### 2026-09-21 — THE 2026-09-21 BATCH: three races (police officer · jellyfish · cult leader), the cult members in THE GROVE, the per-site skins, the catgirl's new rig (local delivery)
+- Three full races through every table (CLAUDE.md "THE 2026-09-21 BATCH" has the list). The population places them by the tags the
+  game keeps: the police are Downtown's natives + `urban` / `stadium` (so Disaster City's streets, the Stadium, the underworld);
+  the jellyfish the Triangle's + `deep_sea` / `tropical`; the cult leader the Grove's + `forest` / `clandestine` / `gothic`.
+- **RACE MODEL SKINS** (sprites.js `RACE_MODEL_SKINS`, read through `getRaceModelSkin` in three-renderer.js `_hqSpawnCharacter`):
+  the two CYBERPUNK officers wear only in `prebuilt_cyberpunk`'s rooms (either gender — a female cop exists there and nowhere else,
+  `raceModelSkinGenders` lends the population draw the gender); the fat white officer is a seeded ALT of the black officer
+  everywhere else. The board keeps one model per gender.
+- **THE CULT MEMBERS** are CAST (`DOOR_CAST` cult1–5, models cult1–5): three on the mound round the owl's altar (y 2.6), two on the
+  stage (y 1.4). A cast spot with no `y` now stands on a terrain room's ground (`_hqSpawnPopulation`'s cast spawn passes `undefined`,
+  not 0). Their lines are the user's (A15).
+- UNSEEN LIVE (RULE #1c): every new rig's scale + facing (`heightRatio` is the edit), the jellyfish hanging on the swim loops, the
+  cyberpunk cops on the Grid, the robes on the mound, the catgirl's new rig under the old flavour clips, the summon's procedural robe.

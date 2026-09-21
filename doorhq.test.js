@@ -1240,7 +1240,7 @@ const LIB_CLIPS = [
 
 test('the cast registry exists on both sides: 15 rigged models in sprites.js, every DOOR_CAST model resolves', () => {
     assert.ok(CAST && typeof CAST === 'object', 'DOOR_CAST missing');
-    assert.strictEqual(CAST_MODEL_IDS.length, 15, 'sprites.js DOOR_CAST_MODELS entries: ' + CAST_MODEL_IDS.join(','));
+    assert.strictEqual(CAST_MODEL_IDS.length, 20, 'sprites.js DOOR_CAST_MODELS entries: ' + CAST_MODEL_IDS.join(','));
     assert.ok(Object.keys(CAST_POSES).length >= 8, 'sprites.js _CAST_POSES parsed: ' + Object.keys(CAST_POSES).join(','));
     for (const [slot, p] of Object.entries(CAST_POSES)) {
         assert.ok(LIB_CLIPS[p.lib] && LIB_CLIPS[p.lib].includes(p.clip), `pose ${slot}: ${p.clip} is not in library ${p.lib}`);

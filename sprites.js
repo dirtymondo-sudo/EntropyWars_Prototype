@@ -39,6 +39,8 @@ const RACE_PATH_RULES = {
   'gangster':   { folder: 'gangster',   capGender: false },  // 2026-09-10 — his OWN art landed (Races/gangster/: gangster_male.png + the rigged GLB)
   'nun':        { folder: 'Homosapien', capGender: true },   // Phase 6 — the whitemage female assets, her own race now
   'door agent': { folder: 'Homosapien', capGender: true },   // DOOR_RACE_DESIGN (2026-09-14) — the agent sheet in 2D; the cast GLBs in 3D
+  'police officer': { folder: 'Homosapien', capGender: true },   // 2026-09-21 — borrows the gunslinger sheet in 2D; his own GLBs in 3D (Races/police/)
+  'cult leader': { folder: 'Homosapien', capGender: true },      // 2026-09-21 — borrows the harbinger sheet in 2D; his own GLB in 3D (Races/cultleader/)
   'wizard':     { folder: 'Homosapien', capGender: true },
   'fortune teller': { folder: 'Homosapien', capGender: true },
   'demon':      { folder: 'Demon',      capGender: true },
@@ -84,6 +86,9 @@ const RACE_SPRITE_GENDERS = {
   'gangster': 'male',
   'nun': 'female',
   'door agent': 'both',
+  'police officer': 'male',   // 2026-09-21 — the regular cops are male rigs; the female is the CYBERPUNK skin (RACE_MODEL_SKINS), Cyberpunk City only
+  'jellyfish': 'male',        // 2026-09-21 — the jellyfish king
+  'cult leader': 'male',      // 2026-09-21
   'wizard': 'both',
   'fortune teller': 'both',
   'nordic': 'both',
@@ -315,6 +320,8 @@ function getR2RaceSpriteUrl(race, gender, cls) {
     'priest': 'whitemage',
     'nun': 'whitemage',         // Phase 6 — the whitemage female sheet is hers
     'door agent': 'agent',      // DOOR_RACE_DESIGN (2026-09-14) — the Agent job sheet
+    'police officer': 'gunslinger',   // 2026-09-21 — the 2D fallback only
+    'cult leader': 'harbinger',       // 2026-09-21 — the 2D fallback only
     'wizard': 'blackmage',
     'fortune teller': 'harbinger',
   };
@@ -1191,14 +1198,16 @@ const RACE_MODELS_3D = {
   },
   // Catgirl — gun for ranged (native Gunslinger), left hook for melee,
   // backflip jump. Spare on R2: Right_Hand_Sword_Slash, Hit_Reaction, Regular_Jump.
+  // 2026-09-21: her NEW rig is the user's Meshy_AI_catgirl_Running.glb (a withSkin export = the rigged
+  // base). The old young_female_catgirl clips were exported from the OLD character — cross-character
+  // playback warps the mesh — so they are gone; the shared library animates her alone.
   'catgirl': {
-    female: _mk3d('catgirl/female', 'young_female_catgirl', {
-      idle: 'Idle_5', walk: 'Running', jump: 'Backflip_Jump', hit: 'Hit_Reaction_1',
-      death: 'Dead', cast: 'Cowboy_Quick_Draw_Shooting',
-      castRanged: 'Cowboy_Quick_Draw_Shooting', castMelee: 'Left_Hook_from_Guard',
-    }, { castTimeScale: 5.0, castTimeScales: { castMelee: 2.0 }, heightRatio: 0.88,   // petite
-         lib: { jump: { clip: 'NinjaJump_Start', lib: 1, ts: 1.6 },   // nimble leap
-                castMelee: { clip: 'Melee_Hook', lib: 1, ts: 0.45 } } }),
+    female: _mkUAL('catgirl/female', 'catgirl', {
+      model: `${_S}/Races/catgirl/female/Meshy_AI_catgirl_Running.glb`,
+      heightRatio: 0.88,   // petite
+      lib: { jump: { clip: 'NinjaJump_Start', lib: 1, ts: 1.6 },   // nimble leap
+             castMelee: { clip: 'Melee_Hook', lib: 1, ts: 0.45 } },
+    }),
   },
   // Female Ki Fighter — punch combo as the generic cast, kung-fu punch for
   // melee, mage_soell_cast_3 (note the _3) for ki blasts / support, backflip
@@ -1397,6 +1406,38 @@ const RACE_MODELS_3D = {
     male: _mkUAL('gangster', 'thug_gangster_reali', {
       heightRatio: 1.02,
       lib: { castMelee: { clip: 'Punch_Cross', lib: 0, ts: 1.2, strikeAt: 0.25 } },
+    }),
+  },
+  /* ── THE 2026-09-21 BATCH — three races on the user's Meshy "Running" exports. Meshy stopped shipping a
+     Character_output.glb in its zips; an Animation_<Clip> export WITH SKIN is the same rigged mesh + one clip
+     (28 joints, JOINTS_0 / WEIGHTS_0, the textures embedded — measured), so it IS the base, exactly like the
+     male sniper's Idle_5 export. The library retargets onto it; the baked Running clip is ignored. */
+  // Police Officer (Gunslinger, ranged) — Disaster City's law. The regular cops: the black officer is THE
+  // model, the fat white officer his ALT (RACE_MODEL_SKINS.alts — the HQ population draws either); the two
+  // CYBERPUNK officers are the Cyberpunk City SKIN (RACE_MODEL_SKINS.sites — that site only, the user's rule).
+  'police officer': {
+    male: _mkUAL('police', 'a_black_police_officer', {
+      model: `${_S}/Races/police/Meshy_AI_a_black_police_officer_Running.glb`,
+      heightRatio: 1.02, basicAttackKind: 'ranged',
+      lib: { idle: { clip: 'Pistol_Idle_Loop', lib: 0 } },
+    }),
+  },
+  // Jellyfish (Black Mage, caster) — the Bermuda Triangle's drifting king. A biped rig under a bell: it hangs
+  // on the swim loops (never a walk), flies (map.js SKY_RACES), and stings with a typed orb.
+  'jellyfish': {
+    male: _mkUAL('jellyfish', 'a_jellyfish_king', {
+      model: `${_S}/Races/jellyfish/Meshy_AI_a_jellyfish_king_Running.glb`,
+      heightRatio: 0.92, basicAttackKind: 'magic',
+      lib: { idle: { clip: 'Swim_Idle_Loop', lib: 0, ts: 0.8 }, walk: { clip: 'Swim_Fwd_Loop', lib: 0, ts: 0.9 }, run: { clip: 'Swim_Fwd_Loop', lib: 0, ts: 1.1 } },
+    }),
+  },
+  // Cult Leader (Harbinger, support) — Bohemian Grove's voice. Idles mid-sermon; the family (DOOR_CAST_MODELS
+  // cult1–5) stands round him in the grove.
+  'cult leader': {
+    male: _mkUAL('cultleader', 'cult_leader', {
+      model: `${_S}/Races/cultleader/Meshy_AI_cult_leader_Running.glb`,
+      heightRatio: 1.0, basicAttackKind: 'magic',
+      lib: { idle: { clip: 'Idle_Talking_Loop', lib: 0 } },
     }),
   },
   // Robot (Warrior, tank) — hydraulic haymakers.
@@ -2324,6 +2365,14 @@ const DOOR_CAST_MODELS = {
   father:   _mkCast('Father',       { heightRatio: 1.02 }),
   // the refugee catgirl (petite, like the roster catgirl); lowercase on R2
   kit:      _mkCast('kit',          { heightRatio: 0.88, female: true }),
+  // THE CULT MEMBERS (2026-09-21) — the user's five robed rigs in R2 Races/cultmember/ (Meshy "Running" exports
+  // with skin = rigged bases). The Grove's family (data.js DOOR_CAST cult1–5); the cult leader's capstone
+  // summons one (three-renderer.js _buildSummon3D 'cultist' clones the first). `model` overrides _mkCast's folder.
+  cult1:    _mkCast('cult_member_1', { heightRatio: 1.0, model: `${_S}/Races/cultmember/Meshy_AI_cult_member_1_Running.glb` }),
+  cult2:    _mkCast('cult_member_2', { heightRatio: 1.0, model: `${_S}/Races/cultmember/Meshy_AI_cult_member_2_Running.glb` }),
+  cult3:    _mkCast('cult_member_3', { heightRatio: 1.0, model: `${_S}/Races/cultmember/Meshy_AI_cult_member_3_Running.glb` }),
+  cult4:    _mkCast('cult_member_4', { heightRatio: 1.0, model: `${_S}/Races/cultmember/Meshy_AI_cult_member_4_Running.glb` }),
+  cult5:    _mkCast('cult_member_5', { heightRatio: 1.0, model: `${_S}/Races/cultmember/Meshy_AI_cult_member_5_Running.glb` }),
 };
 function getCastModel(id) {
   if (typeof window !== 'undefined' && (window.EW_DISABLE_3D_UNITS || window.EW_DISABLE_CAST)) return null;
@@ -2347,6 +2396,69 @@ RACE_MODELS_3D['door agent'] = {
   male:   Object.assign({}, DOOR_CAST_MODELS.player, { basicAttackKind: 'punch', hold: _DOOR_AGENT_HOLD }),
   female: Object.assign({}, DOOR_CAST_MODELS.belle,  { basicAttackKind: 'punch', hold: _DOOR_AGENT_HOLD }),
 };
+
+// ───────────────────────────────────────────────────────────────────────────
+// RACE MODEL SKINS (2026-09-21) — a race's OTHER rigs, for the building's
+// population only (the board keeps RACE_MODELS_3D's one model per gender).
+//   sites[<mapId>][gender] — the rig a native of this race wears in the rooms
+//     of THAT site (the user: "the cyberpunk cops should only be in cyberpunk
+//     city"); a site with no row wears the plain model / an alt.
+//   alts[gender] — a list of stand-ins for the plain model; the population
+//     draws one per walker (seeded), so a street has more than one face.
+// Read ONLY through getRaceModelSkin(race, gender, { site, seed }) — the
+// renderer's _hqSpawnCharacter calls it for every NPC that is not the walker,
+// the cast or a creator look. Never list a skin under RACE_MODELS_3D: its
+// keys ARE the playable genders (race3DGenders).
+const RACE_MODEL_SKINS = {
+  'police officer': {
+    sites: {
+      prebuilt_cyberpunk: {
+        male:   _mkUAL('police', 'a_cyberpunk_police_officer', {
+          model: `${_S}/Races/police/Meshy_AI_a_cyberpunk_police_officer_Running.glb`,
+          heightRatio: 1.02, basicAttackKind: 'ranged', lib: { idle: { clip: 'Pistol_Idle_Loop', lib: 0 } } }),
+        female: _mkUAL('police', 'a_cyberpunk_police_officer_female', {
+          model: `${_S}/Races/police/Meshy_AI_a_cyberpunk_police_officer_female_Running.glb`,
+          heightRatio: 0.96, basicAttackKind: 'ranged', lib: Object.assign({ idle: { clip: 'Pistol_Idle_Loop', lib: 0 } }, _FEM_SLOT_DEFAULTS) }),
+      },
+    },
+    alts: {
+      male: [
+        _mkUAL('police', 'a_fat_white_police_officer', {
+          model: `${_S}/Races/police/Meshy_AI_a_fat_white_police_officer_Running.glb`,
+          heightRatio: 1.0, basicAttackKind: 'ranged', lib: { idle: { clip: 'Pistol_Idle_Loop', lib: 0 } } }),
+      ],
+    },
+  },
+};
+/* the ONE read: a site skin for the room's site (either gender — a female
+   walker of a male-only race exists only where a skin gives her a rig), else
+   a seeded alt, else null (= wear RACE_MODELS_3D's own). */
+function getRaceModelSkin(race, gender, opts) {
+  if (typeof window !== 'undefined' && window.EW_DISABLE_3D_UNITS) return null;
+  const R = RACE_MODEL_SKINS[race];
+  if (!R) return null;
+  opts = opts || {};
+  const g = gender || 'male';
+  if (opts.site && R.sites && R.sites[opts.site]) {
+    const site = R.sites[opts.site];
+    return site[g] || site.male || site.female || null;
+  }
+  if (R.alts && R.alts[g] && R.alts[g].length) {
+    const base = RACE_MODELS_3D[race] && RACE_MODELS_3D[race][g];
+    const pool = base ? [base].concat(R.alts[g]) : R.alts[g];
+    let h = 0; const key = String(opts.seed != null ? opts.seed : '');
+    for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
+    return pool[h % pool.length] || null;
+  }
+  return null;
+}
+/* does a site skin exist for this race + site + gender (the population's gender draw asks before it seats a female cop) */
+function raceModelSkinGenders(race, site) {
+  const R = RACE_MODEL_SKINS[race];
+  const s = R && R.sites && site && R.sites[site];
+  return s ? Object.keys(s) : [];
+}
+if (typeof window !== 'undefined') { window.RACE_MODEL_SKINS = RACE_MODEL_SKINS; window.getRaceModelSkin = getRaceModelSkin; window.raceModelSkinGenders = raceModelSkinGenders; }
 
 // ───────────────────────────────────────────────────────────────────────────
 // HUD portraits — close-up 128×128 face art shown in the HUD panels, the
@@ -2437,6 +2549,9 @@ const RACE_SPRITES = {
   'gangster': `${_S}/Races/gangster/gangster_male.png`,
   'nun': `${_S}/homosapien.png`,
   'door agent': `${_S}/homosapien.png`,
+  'police officer': `${_S}/homosapien.png`,   // 2026-09-21 — 2D borrows the human sheet (his own art is the GLB)
+  'jellyfish': `${_S}/kraken.png`,            // 2026-09-21 — 2D borrows the kraken's sheet (his own art is the GLB)
+  'cult leader': `${_S}/homosapien.png`,      // 2026-09-21
   'wizard': `${_S}/homosapien.png`,
   'fortune teller': `${_S}/homosapien.png`,
   'martian': `${_S}/martian.png`,
