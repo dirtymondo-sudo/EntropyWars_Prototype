@@ -2728,6 +2728,8 @@
         .mm-btn-quickplay:hover .mm-label { color: #55bb70; }
         .mm-btn-friendly:hover .mm-label { color: var(--blue); }
         .mm-btn-vscpu:hover .mm-label { color: var(--purple); }
+        .mm-btn-online:hover .mm-label { color: #55bb70; }      /* THE THREE DOORS (2026-09-21): ONLINE + PRACTICE beside PLAY */
+        .mm-btn-practice:hover .mm-label { color: var(--purple); }
         .mm-btn-campaign:hover .mm-label { color: var(--gold); }
         .mm-btn-dungeon:hover .mm-label { color: #b98ef0; }
         .mm-btn-teambuilder:hover .mm-label { color: #3ddc84; }

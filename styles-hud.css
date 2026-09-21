@@ -1206,6 +1206,19 @@
             text-align: center; flex-shrink: 0; align-self: center;
         }
         .shop-featured .shop-card { width: 100px; flex-shrink: 0; }
+        /* THE SUPPLIES SHELF (2026-09-21): the Dispensary's stock on the Quartermaster's wall — the Revival Tonic first */
+        .shop-supplies { border-bottom-color: rgba(120,230,150,0.25); background: linear-gradient(180deg, rgba(12,40,22,0.30), rgba(6,20,10,0.15)); scrollbar-color: rgba(120,230,150,0.3) transparent; }
+        .shop-supplies-label { color: #9fe0a0; }
+        .shop-featured .shop-card.shop-supply { width: 112px; cursor: default; }
+        .shop-card.shop-supply.field { border-color: rgba(120,230,150,0.22); }
+        .shop-supply-icon { font-size: 30px; line-height: 1; height: 40px; display: flex; align-items: center; }
+        .shop-supply-have { font-size: 9px; letter-spacing: 0.04em; color: rgba(200,190,168,0.7); text-align: center; white-space: nowrap; }
+        .shop-supply-buy { margin-top: 2px; padding: 3px 12px; font-size: 10px; }
+        .shop-supply-buy:disabled { opacity: 0.4; cursor: not-allowed; filter: none; }
+        .shop-supply-msg { align-self: center; flex-shrink: 0; font-size: 10px; letter-spacing: 0.08em; color: #9fe0a0; max-width: 160px; }
+        .shop-supply-msg.bad { color: #e08a9a; }
+        .shop-supply-msg b { color: inherit; }
+        @media (max-width: 760px) { .shop-featured.shop-supplies { display: flex; } }
         .shop-grid {
             flex: 1; min-height: 0; overflow-y: auto;
             display: grid; grid-template-columns: repeat(auto-fill, minmax(106px, 1fr));

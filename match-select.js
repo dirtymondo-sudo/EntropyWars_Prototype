@@ -355,9 +355,15 @@ function MatchSelect(props) {
   if (variant === 'site' && deltaIdx < 0 && fullIdx < 0) variant = 'full';   // no launch entry for the site: the whole desk
   const isSite = variant === 'site';
 
+  /* PRACTICE (2026-09-21): a desk may deal only the modes it names (pre.modes = ids — map.js
+     _goToPractice passes Arena + TDM). The list stays WHOLE (map.js _msSelectedGM indexes
+     MS_GAME_MODES); the rows, the first pick and RANDOMIZE read this gate. */
+  const modesAllow = (pre && Array.isArray(pre.modes) && pre.modes.length) ? new Set(pre.modes) : null;
+  const modeOk = (m) => !!m && (!modesAllow || modesAllow.has(m.id));
   const [gmIdx, setGmIdx] = useState(() => {
-    if (pre && pre.gm) { const i = gameModes.findIndex(m => m.id === pre.gm); if (i >= 0) return i; }
-    return 0;
+    if (pre && pre.gm) { const i = gameModes.findIndex(m => m.id === pre.gm && modeOk(m)); if (i >= 0) return i; }
+    const fi = gameModes.findIndex(modeOk);
+    return fi >= 0 ? fi : 0;
   });
   // Default to the first Δ map — 4v4 8×8 delta maps are the competitive default.
   const [mapIdx, setMapIdx] = useState(() => {
@@ -524,7 +530,7 @@ function MatchSelect(props) {
     mpMode.scoringType === 'kills' ? 'Most Kills' : 'Composite';
   const officer = officerInfo();
   const canon = useMemo(() => canonDate(), []);   // the canon date is rolled once per visit (it is "subject to revision", not per click)
-  const consoleLabel = isSite ? 'CROSSING CONSOLE' : 'FIELD ASSIGNMENT TERMINAL';
+  const consoleLabel = isSite ? 'CROSSING CONSOLE' : ((pre && pre.practice) ? 'PRACTICE TERMINAL' : 'FIELD ASSIGNMENT TERMINAL');
   let whereLabel = (pre && pre.doorLabel) ? pre.doorLabel : (frame === 'room' ? 'HEADQUARTERS' : 'CUSTOMS & ADMISSIONS');
   if (String(whereLabel).toUpperCase() === consoleLabel) { const rn = siteRoomNo(mp); whereLabel = 'ON SITE' + (rn ? ' · ROOM ' + rn : ''); }
 
@@ -545,11 +551,12 @@ function MatchSelect(props) {
   }
   function handleRandomize() {
     playUi();
-    setGmIdx(Math.floor(Math.random() * gameModes.length));
+    const pool = gameModes.map((m, i) => modeOk(m) ? i : -1).filter(i => i >= 0);
+    if (pool.length) setGmIdx(pool[Math.floor(Math.random() * pool.length)]);
     if (filteredMaps.length > 0) setMapIdx(filteredMaps[Math.floor(Math.random() * filteredMaps.length)]);
   }
   function selectMode(m) {
-    if (!m || m.locked) return;
+    if (!m || m.locked || !modeOk(m)) return;
     const i = gameModes.indexOf(m);
     if (i < 0) return;
     playUi();
@@ -638,7 +645,7 @@ function MatchSelect(props) {
     h('h2', null, mp.name, h('span', null, boardSizeLabel)),
     h('div', { className: 'ms-tty-line' }, gm.label.toUpperCase() + ' · ' + teamDisplay + ' · ' + rounds + 'R' + (training ? ' · ⚡ TRAINING' : '') + (reservesOn ? ' · ⇄ RESERVES' : '')),
     sf && h('div', { className: 'ms-tty-line' }, 'SITE STATUS  ', h('span', { style: { color: STAMP_INK[sf.tone] || undefined } }, sf.status)),
-    pre && h('div', { className: 'ms-tty-dispatch' }, 'DISPATCHED FROM ' + (pre.doorLabel || 'HEADQUARTERS') + ' · '
+    pre && !pre.practice && h('div', { className: 'ms-tty-dispatch' }, 'DISPATCHED FROM ' + (pre.doorLabel || 'HEADQUARTERS') + ' · '
       + (mp.isDelta ? '4v4 Δ BOARD' : 'DEEP CROSSING') + ' · '
       + (Array.isArray(pre.roster) && pre.roster.length ? 'CPU FIELDS THE SITE’S NATIVE ENTITIES' : 'FREE CPU DRAW · NOTHING FILED'))
   );
@@ -677,7 +684,7 @@ function MatchSelect(props) {
       h('div', { className: 'ms-tty-col ms-tty-modes' },
         h('div', { className: 'ms-tty-h' }, 'GAME MODE'),
         h('div', { className: 'ms-tty-list' },
-          ...gameModes.map(m => h(ModeRow, { key: m.id, m: m, selected: m.id === gm.id, onClick: () => selectMode(m) }))
+          ...gameModes.filter(modeOk).map(m => h(ModeRow, { key: m.id, m: m, selected: m.id === gm.id, onClick: () => selectMode(m) }))
         )
       ),
       h('div', { className: 'ms-tty-col' },

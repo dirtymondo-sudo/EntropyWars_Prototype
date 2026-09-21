@@ -138,8 +138,25 @@
                 if (window._hqEnter({ from: 'play' })) return;
             }
             playSfx('uiButtonConfirm');
-            state.gameState = GS.MODE_SELECT;
+            /* the classic route (?nohq / ew_hq='off'): the hub page with its VS CPU row */
+            _showPlayHubPage({ classic: true });
+        };
 
+        /* THE THREE DOORS (2026-09-21, the user's rule): PLAY is STORY MODE (the building, the
+           roster you have unlocked — _hqEnter sets the scope 'owned'); ONLINE is PvP over the
+           wire from the main menu (the whole roster — _goToQuickPlay / _goToFriendlyMatch set
+           'all'); PRACTICE is VS CPU on Arena + Team Deathmatch only, the whole roster
+           (_goToPractice). The old play hub page is the ONLINE hub now; its VS CPU row shows
+           only on the classic route. */
+        function _showPlayHubPage(opts) {
+            opts = opts || {};
+            state.gameState = GS.MODE_SELECT;
+            try {
+                const logo = document.getElementById('playHubLogo'), sub = document.getElementById('playHubSub'), cpu = document.getElementById('playHubVsCpu');
+                if (logo) logo.textContent = opts.classic ? 'PLAY' : 'ONLINE';
+                if (sub) sub.textContent = opts.classic ? 'Choose your path' : 'PvP over the wire — every vessel unlocked';
+                if (cpu) cpu.style.display = opts.classic ? '' : 'none';
+            } catch (e) {}
             try {
                 var prof = window.ProfileSystem && window.ProfileSystem.getActiveProfile();
                 var eloTag = document.getElementById('playHubEloTag');
@@ -148,12 +165,34 @@
                 }
             } catch(e) {}
             _showTitlePage('playHubPage');
+        }
+        window._goToOnline = function () {
+            playSfx('uiButtonConfirm');
+            _hqHome = false;   // online is never the building's; a lobby's Back comes to this hub, a match's result to the menu
+            _showPlayHubPage({ classic: false });
         };
+        /* PRACTICE: the classic VS CPU desk restricted to the two modes (match-select.js reads
+           pre.modes on the FULL variant); nothing of the building rides along (no pool, no Code
+           Red, no site pin); BACK and the result overlay return to the main menu (no _hqHome). */
+        window._goToPractice = function () {
+            playSfx('uiButtonConfirm');
+            _hqHome = false;
+            state.gameState = GS.MODE_SELECT;
+            window._msCpuOnly = true;
+            window._ewRosterScope = 'all';   // THE ROSTER LOCK (2026-09-20): practice = the whole roster
+            window._hqPreselect = { practice: true, modes: PRACTICE_MODES.slice(), delta: true, doorLabel: 'PRACTICE' };
+            window._hqCpuPool = null;
+            window._hqCodeRedRun = null;
+            _showTitlePage('modePage');
+        };
+        const PRACTICE_MODES = ['arena', 'tdm'];
+        window.PRACTICE_MODES = PRACTICE_MODES;
 
         window._goToModeSelector = window._goToPlayHub;
 
         window._playHubBack = function() {
             playSfx('uiButtonConfirm');
+            window._ewRosterScope = 'owned';   // THE ROSTER LOCK: the whole roster is Online's / Practice's alone — the menu's screens field what you own
             state.gameState = GS.MAIN_MENU;
             _showTitlePage('mainMenuPage');
         };
@@ -1319,6 +1358,11 @@
             _hqHome = false;
             window._hqRelabelMenuButtons();
             state.gameState = (fallbackPage === 'playHubPage') ? GS.MODE_SELECT : GS.MAIN_MENU;
+            /* THE ROSTER LOCK: back on the main menu the whole roster (Online / Practice) is closed again — the
+               Party Builder / the Shop opened from the menu field what you own; the online hub keeps it */
+            if (fallbackPage !== 'playHubPage') window._ewRosterScope = 'owned';
+            /* the hub page is the ONLINE hub (2026-09-21) unless the building is off — then the classic play hub */
+            if (fallbackPage === 'playHubPage') { _showPlayHubPage({ classic: !enabled }); return false; }
             _showTitlePage(fallbackPage);
             return false;
         };
@@ -2471,6 +2515,8 @@
             if (!body || !t || t.kind !== 'counter' || !t.counter || !t.counter.action || t.counter.action.overlay !== 'pharmacy') return;
             body.innerHTML = _hqPharmacyHtml() + '<p class="hq-panel-foot">ESC · CLOSE</p>';
         }
+        /* the Quartermaster's SUPPLIES shelf (ui.js _shopBuySupply) reads the hatch's last word */
+        window._hqShopTakeMsg = function () { const m = _hqShopMsg; _hqShopMsg = null; return m; };
         window._hqShopBuy = async function (key, n) {
             if (_hqShopBusy) return false;
             n = Math.max(1, n | 0);
@@ -7411,10 +7457,13 @@
             /* THE TERMINAL: STEP AWAY powers the console down and pulls the camera back into the room */
             if (_hqTerm) { window._hqTerminalClose(); return; }
             window._msCpuOnly = false;
+            window._ewRosterScope = 'owned';   // THE ROSTER LOCK: leaving a desk closes the whole roster again
+            const wasPractice = !!(window._hqPreselect && window._hqPreselect.practice);
             window._hqPreselect = null;
             window._hqCodeRedRun = null;
             state.gameState = GS.MODE_SELECT;
-            window._hqReturnOrMenu('playHubPage');
+            /* PRACTICE (2026-09-21) came from the main menu; the classic desk from the hub */
+            window._hqReturnOrMenu(wasPractice ? 'mainMenuPage' : 'playHubPage');
         };
 
         window._msConfirm = function() {

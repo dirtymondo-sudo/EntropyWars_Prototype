@@ -7523,3 +7523,29 @@ Everything is viewer-local (RULE #2: the match is over; both seats stage their o
 (RULE #1c): all of it — the poses on the cast / Meshy rigs (`PODIUM_POSES` ts is the edit), the cheer
 → dance hand-off, the corpses' fall on a loss, the framing offset (`offX` in `_stageVictoryPodium`),
 the panel's width against the stage, the pay count-up's timing, the stamp's size at the foot.
+
+## THE THREE DOORS — PLAY = STORY · ONLINE · PRACTICE + THE SUPPLIES SHELF (2026-09-21, local delivery)
+The user: "separate online and story mode — Play leads to story mode (D.O.O.R. HQ); Online PvP from the
+main menu; a new Practice mode = VS CPU on Arena and Team Deathmatch; Online and Practice have every
+champ unlocked, story mode only what you have unlocked; add Revive as an item in the shop in story
+mode." index.html's main menu wears three doors: **PLAY** (`_goToPlayHub` → the building, scope
+`owned` as before), **ONLINE** (map.js `_goToOnline` → the old play hub page, retitled ONLINE, Quick
+Play + Friendly Match, scope `all`; its VS CPU row shows only on the classic `?nohq` route, where Play
+still falls back to it — `_showPlayHubPage({ classic })` is the ONE writer of the page's title / row)
+and **PRACTICE** (`_goToPractice` → the classic desk with `_hqPreselect = { practice: true, modes:
+PRACTICE_MODES }`, scope `all`, no pool / Code Red / site pin; BACK and the result return to the MAIN
+MENU — `_msBack` reads `practice`). match-select.js: a FULL desk honours **`pre.modes`** (the list stays
+whole — `_msSelectedGM` indexes MS_GAME_MODES — the rows, the first pick, `selectMode` and RANDOMIZE read
+`modeOk`); `pre.practice` labels the head PRACTICE TERMINAL and drops the DISPATCHED line. **THE SUPPLIES
+SHELF**: the Quartermaster's shop (ui.js `_renderShop` → `_shopSuppliesHtml`, `#shopSupplies` over the
+featured strip) sells THE DISPENSARY's stock (data.js `HQ_DISPENSARY.stock`, the Revival Tonic FIRST —
+`_SHOP_SUPPLY_FIRST`) through the hatch's own path (`window._shopBuySupply` → map.js `_hqShopBuy`;
+`_hqShopTakeMsg` hands the hatch's verdict to the strip) into THE BAG; Room 911's hatch is unchanged
+(it stocked the tonic already). CSS: styles-hud.css `.shop-supplies*`, styles-base.css the two menu
+buttons. `npm test` 1816 / 0 / 67 skipped. UNSEEN LIVE (RULE #1c): the three buttons' fit in the
+column, the ONLINE hub's title swap, the two-row mode list on the practice desk, the strip's width
+over the vessel wall (a BUY on a server account round-trips the wallet). **rev 2 (same day)**: the SUPPLIES shelf shows only when the shop was entered
+from the building (`_hqIsHome()` in `_shopSuppliesHtml`); the roster scope goes back to `owned` on
+every way out of Online / Practice (`_playHubBack`, `_msBack`, `_hqReturnOrMenu`'s menu fallback —
+the online hub itself keeps `all`), so the Party Builder / the Shop opened from the menu field what
+you own. Token `20260921-threedoors-02-cors`.

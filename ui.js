@@ -8737,6 +8737,52 @@
             return `<span class="shop-featured-label">★ TODAY'S TARGETS</span>${featured.map(r => _shopRenderCard(r, { featured: true })).join('')}`;
         }
 
+        /* ── THE SUPPLIES SHELF (2026-09-21, the user: "add Revive as an item in the shop in story mode") ──
+           The Quartermaster's shop sells THE DISPENSARY's stock too (data.js HQ_DISPENSARY — the Revival
+           Tonic first), on the same wallet path as the hatch in Room 911 (map.js _hqShopBuy → hqShopQuote →
+           ProfileSystem.spendGold → hqShopBuyApply → THE BAG). One strip over the vessel wall; a purchase
+           re-renders the strip. Field items (the tonic, the elixir) never ride into a battle — the pause
+           menu's ITEMS / AUTO HEAL use them on the party between fights. */
+        const _SHOP_SUPPLY_FIRST = ['reviveTonic'];
+        let _shopSupplyMsg = null;
+        function _shopSuppliesHtml() {
+            if (typeof window.hqShopStock !== 'function' || typeof window.hqBagList !== 'function') return '';
+            /* story mode only (the user's rule): the shelf shows when the shop was entered from the building */
+            if (typeof window._hqIsHome !== 'function' || !window._hqIsHome()) return '';
+            const p = (window.ProfileSystem && typeof window.ProfileSystem.getActiveProfile === 'function') ? window.ProfileSystem.getActiveProfile() : null;
+            const gold = (p && p.account && p.account.gold) | 0;
+            let stock = window.hqShopStock();
+            if (!stock.length) return '';
+            stock = stock.slice().sort((a, b) => { const ia = _SHOP_SUPPLY_FIRST.indexOf(a.key), ib = _SHOP_SUPPLY_FIRST.indexOf(b.key); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib); });
+            const bag = window.hqBagList(p);
+            const inBag = k => { const r = bag.find(x => x.key === k); return r ? r.n : 0; };
+            const esc = v => String(v == null ? '' : v).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+            let html = `<span class="shop-featured-label shop-supplies-label">⚗ SUPPLIES · THE BAG ${bag.reduce((a, r) => a + r.n, 0)}</span>`;
+            stock.forEach(r => {
+                const have = inBag(r.key), room = r.max - have, ok = !!p && gold >= r.price && room >= 1;
+                const why = !p ? 'NO CARD ON FILE — SIGN IN AT RECEPTION' : room < 1 ? 'THE BAG IS FULL OF THESE' : gold < r.price ? 'NOT ENOUGH HAZARD PAY' : 'BUY ONE · ' + r.price;
+                html += `<div class="shop-card shop-supply${r.battle ? '' : ' field'}" title="${esc(r.desc)}">`
+                    + `<span class="shop-supply-icon">${r.icon}</span>`
+                    + `<span class="shop-card-name">${esc(r.name)}</span>`
+                    + `<span class="shop-card-tag price">💰 ${r.price}</span>`
+                    + `<span class="shop-supply-have">${r.battle ? 'BATTLE + FIELD' : 'FIELD ONLY'} · × ${have}/${r.max}</span>`
+                    + `<button class="cdx-btn cdx-btn-confirm shop-supply-buy" onclick="window._shopBuySupply('${esc(r.key)}')"${ok ? '' : ' disabled'} title="${esc(why)}">BUY</button>`
+                    + `</div>`;
+            });
+            if (_shopSupplyMsg) { html += `<span class="shop-supply-msg${_shopSupplyMsg.bad ? ' bad' : ''}">${_shopSupplyMsg.html}</span>`; _shopSupplyMsg = null; }
+            return html;
+        }
+        window._shopBuySupply = async function (key) {
+            if (typeof window._hqShopBuy !== 'function') return false;
+            const ok = await window._hqShopBuy(key, 1);
+            const m = (typeof window._hqShopTakeMsg === 'function') ? window._hqShopTakeMsg() : null;
+            _shopSupplyMsg = m || { html: ok ? '<b>SOLD</b>' : '<b>NO SALE</b>', bad: !ok };
+            const strip = document.getElementById('shopSupplies');
+            if (strip) strip.innerHTML = _shopSuppliesHtml(); else window._renderShop();
+            try { const w = document.getElementById('shopWallet'); if (w) window._renderWallet(w); } catch (e) {}
+            return ok;
+        };
+
         window._renderShop = function() {
             const body = document.getElementById('shopBody');
             if (!body) return;
@@ -8761,10 +8807,12 @@
             filterHtml += '</div>';
 
             const featuredHtml = _shopFeaturedHtml();
+            const suppliesHtml = _shopSuppliesHtml();
             body.innerHTML = `
                 <div class="cdx-toolbar">${filterHtml}${_codexMeterHtml()}</div>
                 <div class="cdx-layout">
                     <div class="shop-left">
+                        ${suppliesHtml ? `<div class="shop-featured shop-supplies" id="shopSupplies">${suppliesHtml}</div>` : ''}
                         ${featuredHtml ? `<div class="shop-featured" id="shopFeatured">${featuredHtml}</div>` : ''}
                         <div class="shop-grid" id="shopGrid">${_shopGridHtml()}</div>
                     </div>
