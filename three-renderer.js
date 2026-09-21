@@ -11381,6 +11381,25 @@ const ThreeRenderer = (function () {
         entry.outlines = null;   // halo planes ride the sprite mesh — gone with it
     }
 
+    /* THE VERTEX-TINTED GLOW (2026-09-21 — the user: "in dark places my created character's
+       clothes and hair are super light and faded compared to everything else"). The unit self-glow
+       below is `emissive` white × `emissiveMap` = the diffuse map. A Meshy bake carries its colour
+       IN the map, so the glow reads as the model's own colour; the CHARACTER CREATOR's shells and
+       hair cards carry theirs in VERTEX COLOURS over a near-white fabric tile / a greyed hair
+       sheet, and Lambert's emissive never reads vColor — so every creator layer glowed pale grey
+       at `glow`, untinted, on top of a diffuse scaled to 0.65: a faded, washed-out officer beside
+       properly dark natives. This hook (one shared function — the program cache keys on its
+       source) multiplies the emissive by the vertex colour, so the creator's glow is the garment's
+       own colour at the same intensity every other model gets. Applied to any swapped material
+       that wears vertexColors. */
+    function _ewVColorEmissiveHook(shader) {
+        shader.fragmentShader = shader.fragmentShader.replace(
+            '#include <emissivemap_fragment>',
+            '#include <emissivemap_fragment>\n' +
+            '#if defined( USE_COLOR_ALPHA )\n totalEmissiveRadiance *= vColor.rgb;\n' +
+            '#elif defined( USE_COLOR )\n totalEmissiveRadiance *= vColor;\n#endif\n');
+    }
+
     function _attachUnitModel(entry, unit, def, ts) {
         var wrap = new THREE.Group();
         wrap._ew_facingSprite = true;    // gameplay-facing pass owns wrap.rotation.y
@@ -11548,6 +11567,8 @@ const ThreeRenderer = (function () {
                         lm.emissiveMap = tex;
                         lm.emissiveIntensity = glow;
                     }
+                    // the creator's vertex-coloured layers: the glow wears the garment's colour (see the hook)
+                    if (lm.vertexColors || n._ew_creatorHair || /^EWCreator_/.test(n.name || '')) lm.onBeforeCompile = _ewVColorEmissiveHook;
                     lm._ew_shared = true;   // owned by the rig cache, not _disposeR
                     entry.modelMats.push(lm);
                     return lm;

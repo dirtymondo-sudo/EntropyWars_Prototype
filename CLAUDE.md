@@ -7762,3 +7762,20 @@ SWIMMING POOL, THE MIDWAY → THE CARNIVAL, THE DOOR WORKS → THE WAREHOUSE, th
 · FOURTH FLOOR — ROOM LABELS only (ids untouched; `hqReplateDoors` re-plates every door). `npm test` runs
 `hq-angles.test.js`. UNSEEN LIVE (RULE #1c): the glimmer's size under each room's light, the protractor beat, the '?'
 plates in the hall on a fresh profile, THE BAG panel on the bezel, the bench drinking from the bag.
+
+## THE VERTEX-TINTED GLOW — the creator's clothes and hair no longer bleach in the dark (2026-09-21, local delivery)
+The user: "in dark places my created character's clothes and hair are super light and faded compared to
+everything else." ROOT CAUSE (three-renderer.js `_attachUnitModel`'s Lambert swap — the board AND the HQ
+walker go through it): every unit model gets the self-glow `emissive` WHITE × `emissiveMap` = its diffuse
+map at `_unitSelfGlowIntensity` (0.15 by day, up to 0.85 at night). A Meshy bake carries its colour IN the
+map, so the glow reads as the model's own colour; the CHARACTER CREATOR's shells and hair cards carry
+theirs in VERTEX COLOURS over a near-white fabric tile / a greyed hair sheet, and Lambert's emissive never
+reads `vColor` — so every creator layer glowed pale grey, untinted, over a diffuse scaled to 0.65. NOW:
+**`_ewVColorEmissiveHook`** (right before `_attachUnitModel`; ONE shared function — the program cache keys
+on its source) patches `<emissivemap_fragment>` with `totalEmissiveRadiance *= vColor` under `USE_COLOR` /
+`USE_COLOR_ALPHA`, and the swap sets it as `onBeforeCompile` on any swapped material that wears
+`vertexColors`, any `_ew_creatorHair` mesh or any `EWCreator_*` shell (the garment shells get their flag
+from the paint pass, so the name is the guard). A model without vertex colours compiles to the old shader.
+RULE: a self-lit material whose colour lives in vertex colours takes this hook — never a bare white
+emissive again. character-creator.test.js pins it. Ship three-renderer.js to R2 + the bumped index.html.
+UNSEEN LIVE (RULE #1c): the officer's coat / hair against a native in a dark room at night (0.85 glow).

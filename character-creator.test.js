@@ -719,3 +719,20 @@ test('rev 11 — the posed hem on the real rig: no sawtooth, the bind pose untou
         assert.ok(walk.moved > 50 && kick.moved > walk.moved, 'the collision pushes the leg out (' + walk.moved + ' / ' + kick.moved + ' vertices)');
     } finally { THREE.TextureLoader.prototype.load = origLoad; }
 });
+
+/* THE VERTEX-TINTED GLOW (2026-09-21): the board's Lambert swap gives every unit model a white
+   emissive × its diffuse map; the creator's shells and hair carry their colour in VERTEX COLOURS
+   over a near-white tile, so the glow bleached them pale in every dark room. The hook multiplies
+   the emissive by vColor and the swap applies it to every creator mesh. */
+test('the creator layers glow in their own colour: the Lambert swap tints the emissive by the vertex colour', () => {
+    const src = fs.readFileSync(path.join(__dirname, 'three-renderer.js'), 'utf8');
+    const hook = src.indexOf('function _ewVColorEmissiveHook(shader)');
+    assert.ok(hook > 0, 'the shared hook exists');
+    const body = src.slice(hook, hook + 900);
+    assert.ok(/#include <emissivemap_fragment>/.test(body) && /totalEmissiveRadiance \*= vColor/.test(body), 'the hook multiplies the emissive by vColor after the emissive map');
+    assert.ok(/#elif defined\( USE_COLOR \)/.test(body) && /USE_COLOR_ALPHA/.test(body), 'guarded on USE_COLOR / USE_COLOR_ALPHA (a model without vertex colours is untouched)');
+    const attach = src.indexOf('function _attachUnitModel(');
+    const swap = src.slice(attach, attach + 12000);
+    assert.ok(/lm\.emissiveMap = tex;[\s\S]{0,400}if \(lm\.vertexColors \|\| n\._ew_creatorHair \|\| \/\^EWCreator_\/\.test\(n\.name \|\| ''\)\) lm\.onBeforeCompile = _ewVColorEmissiveHook;/.test(swap),
+        'the swap applies the hook to vertex-coloured / creator meshes (the shells by name, the hair by flag)');
+});
