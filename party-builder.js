@@ -1454,7 +1454,10 @@ function pbPowerVal(sp) { const p = pbPowerStat(sp); return p ? (parseFloat(p.va
 function pbTypeBadgeStyle(typeKey, fontSize) {
   const k = (typeKey || '').toLowerCase();
   const base = TYPE_C[k] || EW.inkMute;
-  return { display:'inline-flex', alignItems:'center', flexShrink:0, fontFamily:'"IBM Plex Mono", monospace', fontSize:fontSize||9, fontWeight:500, letterSpacing:'0.14em', textTransform:'uppercase', lineHeight:1.3, color:TYPE_TEXT_C[k]||base, background:'rgba(8,7,12,0.72)', border:`1px solid ${base}`, padding:'1px 6px', textShadow:'0 1px 2px rgba(0,0,0,0.85)' };
+  // THE SOLID PASS (2026-09-21): a filled pill, dark ink (white on a dark colour)
+  const _m = /^#?([0-9a-f]{6})/i.exec(String(base)); const _n = _m ? parseInt(_m[1], 16) : 0xffffff;
+  const ink = ((0.299 * (_n >> 16) + 0.587 * ((_n >> 8) & 255) + 0.114 * (_n & 255)) / 255) < 0.5 ? '#ffffff' : '#0b0810';
+  return { display:'inline-flex', alignItems:'center', flexShrink:0, fontFamily:'"IBM Plex Mono", monospace', fontSize:fontSize||9, fontWeight:700, letterSpacing:'0.14em', textTransform:'uppercase', lineHeight:1.3, color:ink, background:base, border:'1px solid rgba(0,0,0,0.55)', borderRadius:999, padding:'1px 6px', boxShadow:'inset 0 1px 0 rgba(255,255,255,0.28), 0 1px 0 rgba(0,0,0,0.5)' };
 }
 function slotNoNode(slotNums, slotLabel) {
   if (slotNums && slotNums.length) return h('span', { className:'pbx-slotno' }, slotNums.map(n => h('span', { key:n }, n)));

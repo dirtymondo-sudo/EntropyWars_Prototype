@@ -121,18 +121,32 @@ const TYPE_TEXT_COLORS = { human: '#d8cfa8', divine: '#f0c860', unholy: '#a06bff
 // letterspaced mono caps of the same color, over near-black. No fill wash,
 // no cut corners — the color IS the badge. Non-type kinds (ATTACK, COMBO, …)
 // pass their own color as base and reuse the same shape.
+// THE SOLID PASS (2026-09-21, the user: "type badges need to be solid
+// colour everywhere"): the badge is a FILLED pill in the type's colour
+// with dark (or, on a dark colour, white) ink — badgeInk() picks by
+// luminance. opts.solid === false keeps the old outline chip.
+function badgeInk(hex) {
+  const m = /^#?([0-9a-f]{6})/i.exec(String(hex || ''));
+  if (!m) return '#0b0810';
+  const n = parseInt(m[1], 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255;
+  const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return lum < 0.5 ? '#ffffff' : '#0b0810';
+}
 function typeBadgeStyle(base, opts) {
   opts = opts || {};
+  const solid = opts.solid !== false;
+  const ink = solid ? (opts.ink || badgeInk(base)) : (opts.text || base);
   return {
     display: 'inline-flex', alignItems: 'center', flexShrink: 0,
-    fontFamily: '"IBM Plex Mono", monospace', fontSize: opts.fontSize || 9, fontWeight: 500,
+    fontFamily: '"IBM Plex Mono", monospace', fontSize: opts.fontSize || 9, fontWeight: solid ? 700 : 500,
     letterSpacing: '0.14em', textTransform: 'uppercase', lineHeight: 1.3,
-    color: opts.text || base,
-    background: '#100d19',
-    border: '1px solid ' + base,
+    color: ink,
+    background: solid ? base : '#100d19',
+    border: '1px solid ' + (solid ? 'rgba(0,0,0,0.55)' : base),
     padding: opts.padding || '1px 7px',
     borderRadius: 999,
-    textShadow: '0 1px 2px rgba(0,0,0,0.85)',
+    textShadow: solid ? (ink === '#ffffff' ? '0 1px 1px rgba(0,0,0,0.6)' : 'none') : '0 1px 2px rgba(0,0,0,0.85)',
+    boxShadow: solid ? 'inset 0 1px 0 rgba(255,255,255,0.28), 0 1px 0 rgba(0,0,0,0.5)' : undefined,
   };
 }
 function typeBadgeStyleFor(typeKey, opts) {
@@ -2442,7 +2456,7 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, co
   const right = [];
   if (b.check && !confirmBtn) right.push(h('span', { key: 'ck', className: 'hrlg-check' }, '✓ TARGET'));
   if (!dead && b.power) right.push(h('span', { key: 'pw', className: 'hrlg-pw', style: { color: b.power.color } }, b.power.v));
-  if (!dead && b.mp) right.push(h('span', { key: 'mp', className: 'hrlg-chip' }, b.mp + ' MP'));
+  if (!dead && b.mp) right.push(h('span', { key: 'mp', className: 'hrlg-chip' }, b.mp + ' MP'));   // plain blue text (the pill is gone — 2026-09-21)
   // Mystery Dungeon lockstep: AP is gone from the player's vocabulary — no
   // cost pips on any blade (one beat = one action, whatever it "costs").
   if (!dead && typeof b.cost === 'number' && !b.sub
@@ -2455,6 +2469,9 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, co
   if (!dead && !b.sub && b.hint) right.push(h('span', { key: 'hn', className: 'hrlg-cfree' }, b.hint));
   if (!dead && b.note) right.push(h('span', { key: 'nt', className: 'hrlg-note', style: b.noteColor ? { color: b.noteColor } : undefined }, b.note));
   if (b.sub && !b.subBelow) right.push(h('span', { key: 'sb', className: 'hrlg-tag' }, b.sub));
+  // THE SHAPE TILES (2026-09-21): an AOE / cross / line spell shows its
+  // footprint as little square tiles at the right end of the blade.
+  if (!dead && b.shape) right.push(_hrlgShapeTiles(b.shape));
   // ⤵ DROP chip (Mystery Dungeon item rows): its own click target — the row
   // click still USES the item; stopPropagation keeps the two apart.
   if (b.drop) right.push(h('span', {
@@ -2566,7 +2583,10 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, co
     '--bc-faint': b.catColor + '2a',
     // quiet PS1 wash: the 3px edge + glyph carry the function color; the
     // row fill only whispers it so the panel stays near-black
-    '--bc-hi': b.catColor + '2e', '--bc-lo': b.catColor + '12',
+    // THE CATEGORY PASS (2026-09-21): the wash is loud now — a damage row
+    // reads red, a heal row green, under EVERY theme (the tokens only
+    // paint the material under it); the glyph is a solid chip too.
+    '--bc-hi': b.catColor + '62', '--bc-lo': b.catColor + '2a',
   } : null;
   return h('div', {
     // the blade's id rides the DOM so THE COLOUR PASS (stylesheet) can
@@ -3417,6 +3437,109 @@ const _HRLG_CAT = {
 // (_renderSpellDescBar) so ability rows stay one clean line each.
 const _HRLG_TYPE_FS = 10;
 const _HRLG_TYPE_PAD = '2px 7px';
+
+// ── THE SHAPE TILES (2026-09-21) ──
+// A spell's footprint as a grid of tiny squares: r1 AOE = 3×3, a cross =
+// the arms lit, a diamond, a line = one row (lineWidth rows). Capped at
+// 5×5 so a room-sized burst still fits the blade.
+function _hrlgSpellShape(sp) {
+  if (!sp) return null;
+  const k = sp.kind || '';
+  if (sp.crossRadius) return { kind: sp.diamond ? 'diamond' : 'cross', r: sp.crossRadius, label: (sp.diamond ? 'Diamond r' : 'Cross r') + sp.crossRadius };
+  if (sp.lineWidth || k === 'line' || k === 'linePush') return { kind: 'line', w: sp.lineWidth || 1, len: Math.min(5, sp.lineLength || sp.range || 4), label: 'Line' + (sp.lineWidth > 1 ? ' ×' + sp.lineWidth + ' wide' : '') };
+  const r = sp.blastRadius || ((sp.aoeRadius != null && sp.aoeRadius > 0) ? sp.aoeRadius : 0);
+  if (r) return { kind: 'aoe', r, label: (r * 2 + 1) + '×' + (r * 2 + 1) + ' area' };
+  return null;
+}
+function _hrlgShapeTiles(shape) {
+  const cells = [];
+  let cols;
+  if (shape.kind === 'line') {
+    cols = shape.len || 4;
+    const rows = Math.min(3, shape.w || 1);
+    for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) cells.push(true);
+  } else {
+    const r = Math.min(2, shape.r || 1);
+    cols = r * 2 + 1;
+    for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+      const on = shape.kind === 'cross' ? (dx === 0 || dy === 0)
+        : shape.kind === 'diamond' ? (Math.abs(dx) + Math.abs(dy) <= r)
+        : true;
+      cells.push(on ? (dx === 0 && dy === 0 ? 'c' : true) : false);
+    }
+  }
+  return h('span', {
+    key: 'shape', className: 'hrlg-shape', title: shape.label,
+    style: { gridTemplateColumns: 'repeat(' + cols + ', 5px)' },
+  }, cells.map((c, i) => h('i', { key: i, className: c === 'c' ? 'ctr' : (c ? '' : 'off') })));
+}
+
+// ── THE STATUS BADGES (2026-09-21) ──
+// Every status a row applies rides the blade as the STATUS_DEFS short
+// (STG, RTD, BRN…) on a solid chip in the status's own colour — the same
+// read for statusEffects, an ally buff row, a charge's collision status,
+// a zone's field, a goo trail. A bonusVsStatus row wears ×1.5 + the
+// abbreviation (the multiplier against that status).
+function _hrlgStatusShort(id) {
+  const d = (typeof STATUS_DEFS !== 'undefined') ? STATUS_DEFS[id] : null;
+  return (d && d.short) || String(id || '').replace(/[^a-z0-9]/gi, '').slice(0, 3).toUpperCase();
+}
+function _hrlgStatusLabel(id) {
+  const d = (typeof STATUS_DEFS !== 'undefined') ? STATUS_DEFS[id] : null;
+  return (d && d.label) || String(id || '').replace(/_/g, ' ');
+}
+function _hrlgStatusRows(sp) {
+  const rows = [];
+  const push = (s, who) => {
+    if (!s) return;
+    const id = typeof s === 'string' ? s : s.id;
+    if (!id) return;
+    const dur = (typeof s === 'object' && s.duration) || 0;
+    if (rows.some(r => r.id === id && r.who === who)) return;
+    rows.push({ id, dur, who });
+  };
+  if (Array.isArray(sp.statusEffects)) sp.statusEffects.forEach(s => push(s, 'target'));
+  if (Array.isArray(sp.allyStatusEffects)) sp.allyStatusEffects.forEach(s => push(s, 'ally'));
+  if (sp.collisionStatus) push(sp.collisionStatus, sp.collisionStatusBoth ? 'both' : 'target');
+  if (sp.basicAttackStatus) push(sp.basicAttackStatus, 'target');
+  if (sp.enterStatus) push(sp.enterStatus, 'target');
+  return rows;
+}
+function _hrlgStatusBadges(sp) {
+  const out = [];
+  for (const r of _hrlgStatusRows(sp)) {
+    const col = _HRLG_SB_COLORS[r.id] || '#777';
+    out.push({
+      label: _hrlgStatusShort(r.id),
+      style: typeBadgeStyle(col, { fontSize: _HRLG_TYPE_FS - 1, padding: '2px 5px' }),
+      title: 'Applies ' + _hrlgStatusLabel(r.id) + (r.dur ? ' (' + r.dur + 't)' : '')
+        + (r.who === 'ally' ? ' to the ally' : r.who === 'both' ? ' to both' : ''),
+    });
+  }
+  const bvs = sp.bonusVsStatus;
+  if (bvs && bvs.status) {
+    const ids = Array.isArray(bvs.status) ? bvs.status : [bvs.status];
+    const mult = bvs.mult || 1.5;
+    for (const id of ids) {
+      const col = _HRLG_SB_COLORS[id] || '#777';
+      out.push({
+        label: '×' + mult + ' ' + _hrlgStatusShort(id),
+        style: Object.assign(typeBadgeStyle(col, { fontSize: _HRLG_TYPE_FS - 1, padding: '2px 5px' }), { outline: '1px solid #f0d060', outlineOffset: -1 }),
+        title: '×' + mult + ' damage against ' + _hrlgStatusLabel(id) + ' targets',
+      });
+    }
+  }
+  return out;
+}
+
+// The element rides the blade as ONE big glyph, no word (2026-09-21).
+// Sonic and metal are the two the user could not tell apart — the note
+// and the gear are unmistakable.
+const _ELEM_BLADE_GLYPH = {
+  fire: '🔥', ice: '❄', lightning: '⚡', water: '💧', poison: '☠', earth: '⛰',
+  wind: '🌪', nature: '🌿', shadow: '🌑', light: '✨', psychic: '🌀', sonic: '♫',
+  arcane: '🔮', blood: '🩸', metal: '⚙',
+};
 // What kind of thing does this spell AIM at? One glanceable chip so the player
 // knows BEFORE clicking whether they'll be picking a tile, an enemy, an ally,
 // or nothing at all — the #1 source of "why is it asking me for an enemy?"
@@ -3457,7 +3580,7 @@ const ELEM_BADGE_COLORS = {
   arcane: '#c88fff', blood: '#ff6a7a', metal: '#b0b8c0',
 };
 
-function _hrlgSpellBadges(sp) {
+function _hrlgSpellBadges(sp, cat, quick) {
   const badges = [];
   if (sp.spellType) badges.push({
     label: sp.spellType.toUpperCase(),
@@ -3474,16 +3597,17 @@ function _hrlgSpellBadges(sp) {
     const _elCombat = (typeof COMBAT_ELEMENTS !== 'undefined') && COMBAT_ELEMENTS.includes(_el);
     // Image icon from R2 (data.js ELEMENT_ICON_FILES); the badge renderer
     // falls back to the emoji glyph if the file 404s (art not uploaded yet).
-    const _elSrc = (typeof elementIconUrl === 'function') ? elementIconUrl(_el) : null;
     badges.push({
-      icon: _elSrc ? { src: _elSrc, fallback: _elIcon } : null,
-      label: (_elSrc ? '' : (_elIcon ? _elIcon + ' ' : '')) + _el.toUpperCase(),
-      style: typeBadgeStyle(_elCol, { fontSize: _HRLG_TYPE_FS, padding: _HRLG_TYPE_PAD, text: _elCol }),
-      title: _elCombat
+      icon: null,
+      label: _ELEM_BLADE_GLYPH[_el] || _elIcon || _el.slice(0, 2).toUpperCase(),
+      style: Object.assign(typeBadgeStyle(_elCol, { fontSize: 14, padding: '0 5px' }), { lineHeight: '18px', letterSpacing: 0 }),
+      title: _el.toUpperCase() + ' · ' + (_elCombat
         ? 'Element — checks the target\'s affinity: weak ×1.5 · resist ×0.5 · null 0 · absorb heals'
-        : 'Element — flavor/VFX only (no affinity check)',
+        : 'Element — flavor/VFX only (no affinity check)'),
     });
   }
+  // the statuses it applies + the status it punishes
+  for (const bd of _hrlgStatusBadges(sp)) badges.push(bd);
   return badges;
 }
 
@@ -3594,6 +3718,7 @@ function _hrlgSpellBlades(unit, st) {
       catColor: cc.color,   // tints the whole blade — red damage, green heal…
       label: sp.name,
       badges: badges,
+      shape: _hrlgSpellShape(sp),
       spell: sp,
       available: canCast,
       selected: am === 'spell' && st.selectedTool === sp.name,
@@ -6844,6 +6969,7 @@ function _hrlgEnemyBlades(actingUnit, st) {
       spell: a.spell || null,
       catColor: a.spell ? (_HRLG_CAT[typeof classifySpell === 'function' ? classifySpell(a.spell) : 'damage'] || _HRLG_CAT.damage).color : undefined,
       badges: a.badges || (a.spell ? _hrlgSpellBadges(a.spell, typeof classifySpell === 'function' ? classifySpell(a.spell) : 'damage', true) : undefined),
+      shape: a.spell ? _hrlgSpellShape(a.spell) : undefined,
       power: power,
       mp: a.mpCost || null,
       cost: a.available ? a.apCost : null,
@@ -7110,6 +7236,7 @@ function _hrlgAllyBlades(actingUnit, st) {
       spell: a.spell || null,
       catColor: cc ? cc.color : (a.id === 'item:healPotion' ? '#57d97e' : undefined),
       badges: a.spell ? _hrlgSpellBadges(a.spell, cls, true) : undefined,
+      shape: a.spell ? _hrlgSpellShape(a.spell) : undefined,
       power: power,
       mp: a.mpCost || null,
       cost: a.available && a.apCost ? a.apCost : null,
@@ -7366,6 +7493,7 @@ function _hrlgTileBlades(actingUnit, st) {
       spell: a.spell || (isObjAtk ? objCard : null),
       catColor: a.spell ? (_HRLG_CAT[typeof classifySpell === 'function' ? classifySpell(a.spell) : 'damage'] || _HRLG_CAT.damage).color : undefined,
       badges: a.spell ? _hrlgSpellBadges(a.spell, typeof classifySpell === 'function' ? classifySpell(a.spell) : 'damage', true) : undefined,
+      shape: a.spell ? _hrlgSpellShape(a.spell) : undefined,
       meta: (isObjAtk && objInfo.hpLabel) ? { text: objInfo.hpLabel, color: objInfo.enemy ? '#ee6655' : '#7fd67f' } : null,
       mp: a.mpCost || null,
       cost: a.available && a.apCost ? a.apCost : null,
@@ -8105,8 +8233,8 @@ function _renderSpellDescBar() {
   const badge = sp.spellType
     ? '<span style="display:inline-flex;align-items:center;flex:none;' +
       "font-family:'IBM Plex Mono',monospace;" + 'font-size:10px;font-weight:500;letter-spacing:0.14em;text-transform:uppercase;' +
-      'color:' + tcText + ';background:rgba(8,7,12,0.72);' +
-      'border:1px solid ' + tc + ';padding:1px 7px;text-shadow:0 1px 2px rgba(0,0,0,0.85);">' +
+      'color:' + badgeInk(tc) + ';background:' + tc + ';font-weight:700;border-radius:999px;' +
+      'border:1px solid rgba(0,0,0,0.55);padding:1px 7px;">' +
       sp.spellType.toUpperCase() + '</span>'
     : '';
 
@@ -10099,6 +10227,24 @@ function _injectHudHideStyles() {
     .hrlg-blade[data-bid="items"] .hrlg-body { --bc: #4fe08a; --bc-soft: #4fe08a88; --bc-faint: #4fe08a2a; --bc-hi: #4fe08a44; --bc-lo: #4fe08a18; }
     .hrlg-blade[data-bid="guard"] .hrlg-body { --bc: #f2b84a; --bc-soft: #f2b84a88; --bc-faint: #f2b84a2a; --bc-hi: #f2b84a40; --bc-lo: #f2b84a16; }
     .hrlg-blade[data-bid="switch"] .hrlg-body { --bc: #ff9a3c; --bc-soft: #ff9a3c88; --bc-faint: #ff9a3c2a; --bc-hi: #ff9a3c40; --bc-lo: #ff9a3c16; }
+    /* ── THE CATEGORY PASS (2026-09-21) — spell / item rows are colour
+       coded in EVERY theme: a 5px function edge, a loud wash, and the
+       category glyph as a SOLID chip (red ⚔ damage · green ♥ heal ·
+       blue ▲ buff · violet ▼ debuff · gold ◎ utility). ── */
+    .hrlg-blade.catc .hrlg-body { border-left-width: 5px; }
+    .hrlg-blade.catc .hrlg-glyph {
+      width: 20px; height: 20px; line-height: 20px; border-radius: 6px;
+      font-size: 13px; color: #0b0810 !important; background: var(--bc);
+      text-shadow: none !important;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), 0 1px 0 rgba(0,0,0,0.5), 0 0 8px var(--bc-faint);
+    }
+    /* MP is blue text, no pill (2026-09-21) */
+    .hrlg-chip { border: none !important; background: none !important; padding: 0 !important; color: #6fb4ff; font-weight: 700; font-size: 10px; letter-spacing: 0.06em; text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
+    /* THE SHAPE TILES — the AOE footprint at the right end of the blade */
+    .hrlg-shape { display: grid; gap: 1px; flex: none; margin-left: 3px; }
+    .hrlg-shape i { display: block; width: 5px; height: 5px; background: var(--bc, #e8e4d8); opacity: 0.85; border-radius: 1px; }
+    .hrlg-shape i.ctr { opacity: 1; background: #fff; }
+    .hrlg-shape i.off { opacity: 0.12; }
     .hrlg-blade[data-bid="move"] .hrlg-glyph, .hrlg-blade[data-bid="jump"] .hrlg-glyph,
     .hrlg-blade[data-bid="attack"] .hrlg-glyph, .hrlg-blade[data-bid="abil"] .hrlg-glyph,
     .hrlg-blade[data-bid="combo"] .hrlg-glyph, .hrlg-blade[data-bid="items"] .hrlg-glyph,

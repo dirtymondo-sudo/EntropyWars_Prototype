@@ -1438,8 +1438,10 @@
             letter-spacing: 0.12em;
             line-height: 1.3;
             text-transform: uppercase;
-            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
+            /* THE SOLID PASS (2026-09-21): a filled chip in the type's colour */
+            text-shadow: none;
             border: 1px solid transparent;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 1px 0 rgba(0, 0, 0, 0.5);
             clip-path: polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px);
         }
 
@@ -1507,39 +1509,39 @@
         .ew-grade.none::before { display: none; }
 
         .type-badge.type-human {
-            color: #c8c8e4;
-            background: linear-gradient(#a0a0c322, #a0a0c322), rgba(9, 11, 17, 0.82);
-            border-color: #a0a0c3aa;
+            color: #0b0810;
+            background: #a0a0c3;
+            border-color: rgba(0, 0, 0, 0.55);
         }
 
         .type-badge.type-divine {
-            color: #f2c63c;
-            background: linear-gradient(#dcaa1e22, #dcaa1e22), rgba(9, 11, 17, 0.82);
-            border-color: #dcaa1eaa;
+            color: #0b0810;
+            background: #dcaa1e;
+            border-color: rgba(0, 0, 0, 0.55);
         }
 
         .type-badge.type-unholy {
-            color: #c566e2;
-            background: linear-gradient(#9632b422, #9632b422), rgba(9, 11, 17, 0.82);
-            border-color: #9632b4aa;
+            color: #ffffff;
+            background: #9632b4;
+            border-color: rgba(0, 0, 0, 0.55);
         }
 
         .type-badge.type-tech {
-            color: #4ecbe2;
-            background: linear-gradient(#28a0be22, #28a0be22), rgba(9, 11, 17, 0.82);
-            border-color: #28a0beaa;
+            color: #0b0810;
+            background: #28a0be;
+            border-color: rgba(0, 0, 0, 0.55);
         }
 
         .type-badge.type-anomaly {
-            color: #ff5e98;
-            background: linear-gradient(#dc3c8222, #dc3c8222), rgba(9, 11, 17, 0.82);
-            border-color: #dc3c82aa;
+            color: #ffffff;
+            background: #dc3c82;
+            border-color: rgba(0, 0, 0, 0.55);
         }
 
         .type-badge.type-alien {
-            color: #56d178;
-            background: linear-gradient(#32aa5022, #32aa5022), rgba(9, 11, 17, 0.82);
-            border-color: #32aa50aa;
+            color: #0b0810;
+            background: #32aa50;
+            border-color: rgba(0, 0, 0, 0.55);
         }
 
         /* ── Builder unit-head kept for fallback ── */

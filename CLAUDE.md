@@ -7999,3 +7999,27 @@ galleries, landing on their inner corners, open 215°–325° round the clock to
 over the upper shopfronts (mount 8.6 / 9.2 — the shopfront band reaches ~8 m). A room variant's mood merges over a
 sheet with NO mood (Room 86 keeps none — doorhq pins it). `npm test` runs `retro-futurism.test.js`. UNSEEN LIVE
 (RULE #1c): DOOR_HQ_BUILD_PLAN §9's entry lists what to eyeball first.
+
+## THE BADGE PASS — solid type badges everywhere, colour-coded blades under every theme, status / bonus badges, plain MP, the AOE tiles, the element glyph (2026-09-21, local delivery)
+The user's six. **SOLID TYPE BADGES**: hud.js `typeBadgeStyle(base, opts)` is a FILLED pill now (the
+type's colour as the ground, `badgeInk(hex)` = dark ink, white on a dark colour; `opts.solid === false`
+keeps the old outline chip); the desc bar's inline badge, party-builder.js `pbTypeBadgeStyle`,
+styles-base.css `.type-badge.type-*` (the codex / shop / inspect card / the forge's wall) and
+three-renderer.js's nameplate `.tp-type-*` all fill the same way — never draw an outline-only type chip
+again. **THE CATEGORY PASS**: a spell / item row's wash is loud (`--bc-hi` = the colour at 0x62, `--bc-lo`
+0x2a in `HorologeBlade`'s catVars), the function edge is 5px and the category glyph is a SOLID CHIP in the
+function colour (`.hrlg-blade.catc .hrlg-glyph`, the colour-pass block after the root-verb rules) — the
+theme tokens paint the material under it, so damage reads red and heal green under Classic / Void / Onyx /
+Leather / Parchment / Glass alike. **THE STATUS BADGES** (`_hrlgStatusBadges` → `_hrlgSpellBadges`, every
+ability / quick-menu spell row): every status a row applies rides the blade as `STATUS_DEFS[id].short`
+(STG · RTD · BRN…) on a solid chip in `_HRLG_SB_COLORS[id]` — read from `statusEffects`,
+`allyStatusEffects`, `collisionStatus` (+Both), `basicAttackStatus`, `enterStatus` (`_hrlgStatusRows`;
+a new status-carrying spell field = one line there); `bonusVsStatus` wears `×1.5 BRN` (the multiplier +
+the abbreviation, a gold outline). **MP** is blue text, no pill (`.hrlg-chip` in the colour pass). **THE
+SHAPE TILES**: `_hrlgSpellShape(sp)` (aoe / blast → n×n, cross / diamond → the arms, line → a row per
+`lineWidth`; capped 5×5) rides `b.shape` and `_hrlgShapeTiles` draws it as 5px squares in the row's
+colour at the right end (`.hrlg-shape`). **THE ELEMENT** is ONE 14px glyph with no word
+(`_ELEM_BLADE_GLYPH`; the R2 icon images are no longer drawn on the blade) — sonic is ♫, metal is ⚙.
+No new state, nothing relayed (RULE #2). Unseen live (RULE #1c): the chips' ink on each type colour, the
+glyph chip against the gold cursor, the tiles' size on a 56px two-line row, the badge row's width with a
+type + element + two statuses.
