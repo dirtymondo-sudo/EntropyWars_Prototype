@@ -7648,3 +7648,25 @@ per pause-menu open when any member's stored max differs from its built unit's (
 kept). The launch was never wrong (createUnit scales the carried hp by the ratio) and the next commit files the level's
 max. Ship data.js to R2 AND Render. The 57 is the July curve (`EW_L1_FRAC` 0.05 → ~50 HP at level 1 for Mystery
 Dungeon); a level-5 of ~100 HP is `EW_L1_FRAC` ≈ 0.1 — one constant, the user's call. hq-party.test.js (15).
+
+## THE SOAK ORDER + THE SOAK FLOOR — why a level-5 S-tier swing landed for 1 (2026-09-21, local delivery)
+The user: "a neutral basic attack at level 5 is doing like 1 damage … catgirl with S-tier attack hitting a
+homosapien for 1." MEASURED with the REAL `applyDamageToUnit` run headlessly (a scratch vm harness over
+battle.js + state.js + data.js, real `computeUnitStats` / `_recomputeStatsForLevel`, every cosmetic helper
+stubbed): on flat ground a level-5 catgirl deals 7 of a level-5 homosapien's 60 HP (the door agent 4), the
+intended eighth — but the HIGH GROUND soak (`HIGH_GROUND_DEF_BONUS` 5 per tier) was subtracted RAW while
+the whole hit had been scaled to ~10 points, so a target ONE tier up took the swing to 2 and two tiers (or
+a tier + Guard) to 1; the areas are all tiers and slopes. THREE RULES NOW (battle.js `calcDamageResolution`
++ the chokepoint in `applyDamageToUnit`): (1) **every flat soak rides `defenseScale`** — `heightSoak:
+Math.round(_heightSoak * _defLs)` beside Bulwark and the hourglass (at the cap 5 → 9 per tier); (2) **THE
+SOAK ORDER**: data.js `offenseMagnitude(src, tgt)` = the victim's `levelScale` × the pace WITHOUT the gap
+(`offenseScale` = that × `levelGapMult`, every other reader unchanged); the chokepoint scales by the
+magnitude (`levelMult`), subtracts the soaks, then `gapMult` lands on the NET hit — the gap used to shrink
+the hit before flat armour came off; (3) **THE SOAK FLOOR** `SOAK_FLOOR_SHARE` 0.35 (`p.soakFloor`; 0 /
+absent = the old rule, `preScaled` hits pass 0): the soaks never remove more than 65 % of a hit, so a 1
+means a feeble attacker, never a good one behind a kerb. The floor binds at the cap too (a weak spell on a
+Tank: 28 − 40 was 1, is 10 now) — a PvP change, documented. ui.js `getPreviewEffect`'s attack branch mirrors
+all three (`window.SOAK_FLOOR_SHARE`); the spell preview and ai.js's estimate still read `offenseScale`
+whole (a small drift at unequal levels only). damage.test.js pins the stages. THE PACE ITSELF is untouched:
+a same-level basic attack is ~12 % of a bar at level 5 (the door agent's 48 ATK ~7 %) — `EW_COMBAT_PACE`
+(1.75) or the basic attack's 0.65 coefficient are the dials if that is still too slow.

@@ -431,3 +431,27 @@ test('calcStatusDurationTick: decrements, splits expiries, never mutates input',
     assert.deepStrictEqual(entries, snapshot, 'input entries must not be mutated');
     assert.deepStrictEqual(calcStatusDurationTick([]), { next: [], expired: [] });
 });
+
+test('THE SOAK FLOOR + THE SOAK ORDER (2026-09-21): flat soaks keep a share of the hit, the level gap lands after them, the height soak is level-scaled', () => {
+    /* the floor: 10 pre-soak, 3 armour + 5 height used to be 2 — the floor is round(10 × 0.35) = 4; absent / 0 = the old rule */
+    assert.strictEqual(calcDamageResolution(R({ base: 100, levelMult: 0.1, armor: 3, heightSoak: 5 })).dmg, 2);
+    assert.strictEqual(calcDamageResolution(R({ base: 100, levelMult: 0.1, armor: 3, heightSoak: 5, soakFloor: 0.35 })).dmg, 4);
+    assert.strictEqual(calcDamageResolution(R({ base: 100, levelMult: 0.1, armor: 3, soakFloor: 0.35 })).dmg, 7, 'a soak under the floor is untouched');
+    assert.strictEqual(calcDamageResolution(R({ base: 10, armor: 50, soakFloor: 0.35 })).dmg, 4);
+    assert.strictEqual(calcDamageResolution(R({ base: 10, armor: 50, soakFloor: 0 })).dmg, 1, '0 = the old rule');
+    /* the order: the gap on the NET hit — (10 − 3) × 0.5 = 4 (it used to be round(10 × 0.5) − 3 = 2) */
+    assert.strictEqual(calcDamageResolution(R({ base: 100, levelMult: 0.1, armor: 3, gapMult: 0.5 })).dmg, 4);
+    assert.strictEqual(calcDamageResolution(R({ base: 100, levelMult: 0.1, armor: 3, gapMult: 2 })).dmg, 14);
+    assert.strictEqual(calcDamageResolution(R({ base: 100, levelMult: 0.1, armor: 3, gapMult: 1 })).dmg, 7);
+    /* the gap after the floor, before the ranged / status multipliers */
+    assert.strictEqual(calcDamageResolution(R({ base: 100, levelMult: 0.1, armor: 9, soakFloor: 0.35, gapMult: 2, statusTakenMult: 0.5 })).dmg, 4, '(floor 4 × 2) × 0.5');
+    /* the source sites */
+    const data = require('./load-data.js').loadGameData();
+    assert.ok(battleSrc.includes("heightSoak: Math.round(_heightSoak * _defLs),"), 'the height soak rides defenseScale');
+    assert.ok(battleSrc.includes("_gapMult = levelGapMult(_srcLvl, _tgtLvl);") && battleSrc.includes("_levelMult = offenseMagnitude(_srcLvl, _tgtLvl);"), 'the chokepoint splits the magnitude from the gap');
+    assert.ok(battleSrc.includes("soakFloor: opts.preScaled ? 0 : SOAK_FLOOR_SHARE,") && battleSrc.includes("gapMult: _gapMult,"));
+    assert.ok(/const SOAK_FLOOR_SHARE = 0\.35;/.test(battleSrc));
+    assert.strictEqual(typeof data.offenseMagnitude, 'function');
+    assert.ok(Math.abs(data.offenseScale(5, 13) - data.offenseMagnitude(5, 13) * data.levelGapMult(5, 13)) < 1e-12, 'offenseScale = magnitude × gap');
+    assert.strictEqual(data.offenseMagnitude(100, 100), data.EW_COMBAT_PACE);
+});

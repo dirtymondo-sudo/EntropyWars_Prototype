@@ -16981,9 +16981,18 @@ function levelGapMult(attackerLevel, defenderLevel) {
 //   on a level-`tgt` victim. Resolved in the VICTIM's magnitude space (that's
 //   whose HP bar it has to eat through), paced, then multiplied by the gap.
 function offenseScale(srcLevel, tgtLevel) {
+    return offenseMagnitude(srcLevel, tgtLevel) * levelGapMult(srcLevel, tgtLevel);
+}
+// offenseMagnitude: offenseScale WITHOUT the level gap — the victim's magnitude
+//   × the pace only. THE SOAK ORDER (2026-09-21): the chokepoint scales the hit
+//   by this, subtracts the flat soaks, and applies levelGapMult AFTER them, so a
+//   level gap scales the NET hit — the gap used to shrink the hit before flat
+//   armour came off, and at level 5 (a 10-point hit, 3 points of armour) a
+//   three-level gap ate everything but the floor.
+function offenseMagnitude(srcLevel, tgtLevel) {
     const magL = (tgtLevel | 0) || (srcLevel | 0);
     if (!magL) return 1;
-    return levelScale(magL) * EW_COMBAT_PACE * levelGapMult(srcLevel, tgtLevel);
+    return levelScale(magL) * EW_COMBAT_PACE;
 }
 // defenseScale: flat MITIGATION (armor, bulwark, hourglass soak, height soak)
 //   held by a level-`tgt` unit. Same pace as offense → armor's share of a hit
@@ -18194,7 +18203,7 @@ Object.assign(window, {
   EW_COMBAT_PACE, EW_LEVEL_GAP_STEP, EW_LEVEL_GAP_MAX, EW_LEVEL_GAP_MIN,
   ewUnitLevel, levelGrowthDeficit, levelPowerStat, levelGapMult,
   XP_CURVE, xpThreshold, xpLevelFor, xpToNext,
-  offenseScale, defenseScale, supportScale,
+  offenseScale, offenseMagnitude, defenseScale, supportScale,
   getSpellUnlockLevel, SPELL_SHOP_LEVEL, SECONDARY_JOB_LEVEL, AP_BONUS_LEVELS,
   MODE_LEVEL_RULES, isProgressionMode, RACE_XP_YIELD_OVERRIDES, getRaceXpYield,
   getRaceLabel, GAUNTLET_MAX_LEVEL, getGauntletRetryCost,

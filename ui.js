@@ -3371,7 +3371,10 @@
             // byte-identical apart from the shared EW_COMBAT_PACE dial.
             const _pvUL = (typeof getUnitLevel === 'function') ? getUnitLevel(unit) : 0;
             const _pvTL = (typeof getUnitLevel === 'function') ? getUnitLevel(target) : 0;
-            const _pvLs = (typeof offenseScale === 'function') ? offenseScale(_pvUL, _pvTL) : 1;
+            /* THE SOAK ORDER (2026-09-21): the magnitude scales the hit, the gap lands on the NET (after armour), like the engine */
+            const _pvLs = (typeof offenseMagnitude === 'function') ? offenseMagnitude(_pvUL, _pvTL) : ((typeof offenseScale === 'function') ? offenseScale(_pvUL, _pvTL) : 1);
+            const _pvGap = (typeof offenseMagnitude === 'function' && typeof levelGapMult === 'function') ? levelGapMult(_pvUL, _pvTL) : 1;
+            const _pvFloor = (typeof SOAK_FLOOR_SHARE !== 'undefined') ? SOAK_FLOOR_SHARE : 0.35;
             const _pvLsT = (typeof defenseScale === 'function') ? defenseScale(_pvTL) : 1;
             const _pvLsS = (typeof supportScale === 'function') ? supportScale(_pvTL, _pvUL) : 1;
             const _pvSc = n => Math.max(1, Math.round(n * _pvLs));
@@ -3392,9 +3395,10 @@
                 maxDamage = _pvSc(maxDamage);
                 const effectiveArmor = Math.round(getEffectiveArmor(target) * _pvLsT);
                 if (effectiveArmor) {
-                    minDamage = Math.max(1, minDamage - effectiveArmor);
-                    maxDamage = Math.max(1, maxDamage - effectiveArmor);
+                    minDamage = Math.max(Math.max(1, minDamage - effectiveArmor), Math.round(minDamage * _pvFloor));
+                    maxDamage = Math.max(Math.max(1, maxDamage - effectiveArmor), Math.round(maxDamage * _pvFloor));
                 }
+                if (_pvGap !== 1) { minDamage = Math.max(1, Math.round(minDamage * _pvGap)); maxDamage = Math.max(1, Math.round(maxDamage * _pvGap)); }
                 if (target.shield > 0) {
                     minDamage = Math.max(0, minDamage - target.shield);
                     maxDamage = Math.max(0, maxDamage - target.shield);

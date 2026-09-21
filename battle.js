@@ -145,6 +145,18 @@
         // aligned" as a huge spike without deleting a healthy unit outright.
         const MAX_OFFENSIVE_MULT = 3.0;
 
+        // THE SOAK FLOOR (2026-09-21): the flat soaks (armour, high ground,
+        // Bulwark, the hourglass) may never remove more than (1 − this) of a
+        // hit — every hit keeps at least this share of its level-scaled,
+        // multiplied value. At level 5 a hit is ~10 points and armour ~3, so
+        // one tier of high ground (5 raw, before this pass) or a Guard took a
+        // catgirl's S-tier swing to 1 HP; a 1 now means a genuinely feeble
+        // attacker (a ~3-point hit), not a good one behind a kerb. Applied
+        // at every level, the cap included: it binds only when armour would
+        // have soaked more than 65 % of a hit (a weak spell on a Tank).
+        const SOAK_FLOOR_SHARE = 0.35;
+        try { window.SOAK_FLOOR_SHARE = SOAK_FLOOR_SHARE; } catch (e) {}   // the damage preview (ui.js) reads the same floor
+
         // Symmetric flavor variance on spell/attack base damage. Was
         // randInt(40)−16 (−16…+23, ~±13% swing) — big enough to decide
         // exchanges. ±8 keeps numbers organic while positioning, matchups
@@ -260,10 +272,17 @@
             if (p.levelMult != null) {
                 dmg = Math.max(1, Math.round(dmg * p.levelMult));
             }
+            const _preSoak = dmg;
             if (p.armor > 0) dmg = Math.max(1, dmg - p.armor);
             if (p.heightSoak > 0) dmg = Math.max(1, dmg - p.heightSoak);
             if (p.bulwarkSoak > 0) dmg = Math.max(1, dmg - p.bulwarkSoak);
             if (p.hourglassSoak > 0) dmg = Math.max(1, dmg - p.hourglassSoak);
+            /* THE SOAK FLOOR: the flat soaks keep at least p.soakFloor of the pre-soak hit (0 / absent = the old rule) */
+            if (p.soakFloor > 0 && _preSoak > 0) dmg = Math.max(dmg, Math.round(_preSoak * p.soakFloor));
+            /* THE LEVEL GAP lands on the NET hit, after the soaks (data.js offenseMagnitude — the gap used to ride levelMult) */
+            if (p.gapMult != null && p.gapMult !== 1 && dmg > 0) {
+                dmg = Math.max(1, Math.round(dmg * p.gapMult));
+            }
             if (p.rangedMult != null) {
                 dmg = Math.max(1, Math.round(dmg * p.rangedMult));
             }
@@ -28369,11 +28388,17 @@
             // opts.scaleByTargetLevel handles source-less hazards (e.g. DoT),
             // which resolve at gap 1 against their victim.
             const _tgtLvl = getUnitLevel(target);
-            let _levelMult = null;
+            let _levelMult = null, _gapMult = null;
             if (!opts.preScaled && typeof offenseScale === 'function') {
                 const _srcLvl = sourceUnit ? getUnitLevel(sourceUnit)
                     : (opts.scaleByTargetLevel ? _tgtLvl : 0);
-                if (_srcLvl >= 1) _levelMult = offenseScale(_srcLvl, _tgtLvl);
+                if (_srcLvl >= 1) {
+                    /* THE SOAK ORDER (2026-09-21): the magnitude here, the gap AFTER the flat soaks (calcDamageResolution) */
+                    if (typeof offenseMagnitude === 'function' && typeof levelGapMult === 'function') {
+                        _levelMult = offenseMagnitude(_srcLvl, _tgtLvl);
+                        _gapMult = levelGapMult(_srcLvl, _tgtLvl);
+                    } else _levelMult = offenseScale(_srcLvl, _tgtLvl);
+                }
             }
             // Mitigation is stored in base magnitude, so bring it into the
             // target's magnitude space at the SAME pace as the damage above —
@@ -28396,9 +28421,12 @@
                 markedBonus: _markedBonus,
                 levelMult: _levelMult,
                 armor: effectiveArmor,
-                heightSoak: _heightSoak,
+                /* THE HEIGHT SOAK rides defenseScale like every other flat soak (it was 5 RAW per tier — half a level-5 hit) */
+                heightSoak: Math.round(_heightSoak * _defLs),
                 bulwarkSoak: _bulwarkSoak,
                 hourglassSoak: hourglassReduction,
+                soakFloor: opts.preScaled ? 0 : SOAK_FLOOR_SHARE,
+                gapMult: _gapMult,
                 rangedMult: (damageType === 'physical' && sourceUnit && isEnemyUnit(sourceUnit, target))
                     ? getStatusRangedDamageTakenMultiplier(target) : null,
                 statusTakenMult: getStatusDamageTakenMultiplier(target)
