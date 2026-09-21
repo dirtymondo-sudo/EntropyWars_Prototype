@@ -15642,6 +15642,607 @@
                     c.at(actionMs(1500), () => { c.snd('uiConfirm'); c.insert('WALLS REMAINING: 0', 'terminal', actionMs(800)); });
                 }
             },
+            /* ═════════ DELIVERY 16 (2026-09-21) — THE LAST THIRTEEN: ki fighter · king kong · minotaur · necromancer · occulus · quarterback · robinhood · super sentai · symbiote · valkraye · watcher · gangster · nun ═════════ */
+            spiritBomb: {
+                chargeMs: 2200, strikeMs: 4300, resolveMs: 2400,
+                castSpell: { type: 'damage', dmg: 1, name: 'Spirit Bomb', kind: 'damage' },
+                siren(c) { c.snd('buff'); c.dsnd('identSting'); c.grade('cool', actionMs(900)); },
+                charge(c) {
+                    const V = c.VFX, u = c.unit;
+                    if (V.sigMagicCircle3D) V.sigMagicCircle3D(u.x, u.y, { radiusPx: c.ts * 0.9, growMs: 240, holdMs: c.CHARGE_MS, fadeMs: 400, spin: true, color: 0x3a8aff, color2: 0xbfe8ff });
+                    if (V.sigStatRings3D) V.sigStatRings3D(u.x, u.y, { color: 0xbfe8ff, ms: c.CHARGE_MS });
+                    c.snd('buff');
+                },
+                cam(c) {
+                    const u = c.unit, p = c.pos(c.target);
+                    if (typeof cineFaceCam === 'function') cineFaceCam(u, { dist: 2.4, tilt: 78, cut: true, duration: 400 }); else c.dive(u, 1.2, 300);   // the hands go up
+                    c.at(c.STRIKE_MS - actionMs(3600), () => { if (typeof cineGodShot === 'function') cineGodShot(c.pos(u), 12, { cut: false, duration: 1000, tilt: 40 }); });   // the world lends — the threads from every side
+                    c.at(c.STRIKE_MS - actionMs(2600), () => { if (typeof cineSkyWatch === 'function') cineSkyWatch(u, { span: 8, tiltUp: 120, tiltDown: 70, ms: actionMs(1400) }); });   // up at the growing ball
+                    c.at(c.STRIKE_MS - actionMs(1200), () => { if (typeof cineDollyZoom === 'function') cineDollyZoom(-14, actionMs(900)); c.slow(0.65, actionMs(500)); });   // the size of the sky
+                    c.at(c.STRIKE_MS - actionMs(700), () => { if (typeof cineFallFollow === 'function') cineFallFollow(p, { ms: actionMs(600) }); });   // down onto the tile
+                    c.at(c.STRIKE_MS - actionMs(200), () => { c.slow(0.3, actionMs(380)); });
+                    c.at(c.STRIKE_MS + actionMs(500), () => { c.slowClear(); if (typeof cineGodShot === 'function') cineGodShot(p, 8, { cut: false, duration: 900, tilt: 52 }); });   // the pillar, the crater
+                    c.at(c.STRIKE_MS + actionMs(1500), () => { if (typeof cineEndCapReverse === 'function') cineEndCapReverse(u, c.target, {}); else if (typeof cineGodShot === 'function') cineGodShot(p, 6, { cut: false, duration: 520, tilt: 30 }); });
+                    return true;
+                },
+                stage(c) {
+                    const V = c.VFX, u = c.unit, p = c.pos(c.target);
+                    if (V.sigSpiritBomb3D) V.sigSpiritBomb3D(u.x, u.y, p.x, p.y, { ms: c.STRIKE_MS + actionMs(3200), gatherAt: actionMs(100), growAt: c.STRIKE_MS - actionMs(3400), throwAt: c.STRIKE_MS - actionMs(1200), hitAt: c.STRIKE_MS });
+                    c.at(actionMs(100), () => { c.snd('buff'); c.insert('🔵 SPIRIT BOMB', 'stamp', actionMs(800)); });
+                    c.at(actionMs(600), () => { c.snd('healRegen'); c.insert('LEND ME YOUR ENERGY', 'scripture', actionMs(1000)); });
+                    for (let i = 0; i < 4; i++) c.at(c.STRIKE_MS - actionMs(3200) + actionMs(i * 600), () => { c.snd('chainHop'); c.insert(['A LITTLE', 'FROM EVERYONE', 'EVEN THEM', 'THE SKY TOO'][i], 'terminal', actionMs(480)); c.kick(2 + i, 120); });
+                    c.at(c.STRIKE_MS - actionMs(1200), () => { c.snd('physicalAbility'); c.insert('THE SIZE OF THE SKY', 'signal', actionMs(700)); c.kick(6, 200); });
+                    c.at(c.STRIKE_MS - actionMs(300), () => c.insert('ONE UNIT', 'glitch', actionMs(300)));
+                },
+                strike(c) {
+                    const p = c.pos(c.target);
+                    c.freeze(actionMs(180), { grade: 'whiteout' });
+                    c.ring(p.x, p.y, 0x3a8aff, { r1: c.ts * 4.0, ms: 800, torus: true });
+                    c.flash('#dff4ff', 260, 0.95); c.kick(22, 340);
+                    c.snd('explosion'); c.dsnd('slam');
+                },
+                resolve(c) {
+                    const V = c.VFX, p = c.pos(c.target);
+                    if (V.sigWhiteout3D) V.sigWhiteout3D(p.x, p.y, { color: 0xbfe8ff, ms: 1000, peak: 0.8, sizeTiles: 7, shake: false });
+                    c.at(actionMs(300), () => c.snd('thunderRumble'));
+                    c.insert('SPENT.', 'stamp', actionMs(1000));
+                    c.at(actionMs(1500), () => { c.snd('uiConfirm'); c.insert('ENERGY RETURNED: NONE', 'terminal', actionMs(800)); });
+                }
+            },
+            topOfTheTower: {
+                chargeMs: 2200, strikeMs: 4300, resolveMs: 2400,
+                castSpell: { type: 'damage', dmg: 1, name: 'Top of the Tower', kind: 'damage' },
+                siren(c) { c.snd('quakeRumble'); c.dsnd('identSting'); c.grade('sepia', actionMs(900)); },
+                charge(c) {
+                    const V = c.VFX, u = c.unit;
+                    if (V.sigMagicCircle3D) V.sigMagicCircle3D(u.x, u.y, { radiusPx: c.ts * 0.9, growMs: 240, holdMs: c.CHARGE_MS, fadeMs: 400, spin: false, color: 0x3a3a44, color2: 0xffd070 });
+                    if (V.sigGasCloud3D) V.sigGasCloud3D(u.x, u.y, { color: 0x6a5a4a, coreColor: 0x3a2a1a, radiusTiles: 0.8, ms: c.CHARGE_MS, count: 8 });
+                    c.snd('physicalAbility');
+                },
+                cam(c) {
+                    const u = c.unit, p = c.pos(c.target);
+                    if (typeof cineFaceCam === 'function') cineFaceCam(u, { dist: 2.4, tilt: 78, cut: true, duration: 400 }); else c.dive(u, 1.2, 300);   // the ape beats its chest
+                    c.at(c.STRIKE_MS - actionMs(3600), () => { if (typeof cineSkyWatch === 'function') cineSkyWatch(c.target, { span: 6, tiltUp: 112, tiltDown: 70, ms: actionMs(1000) }); });   // the tower grows past the frame
+                    c.at(c.STRIKE_MS - actionMs(2500), () => { if (typeof cineCrane === 'function') cineCrane(c.target, { duration: actionMs(1500), tilt: 50, rise: 9.0 }); });   // the crane climbs with the ape
+                    c.at(c.STRIKE_MS - actionMs(1000), () => { if (typeof cineFlyBy === 'function') cineFlyBy(p, { span: 8, altPx: c.ts * 10, tilt: 60 }); });   // the biplanes' pass at the summit
+                    c.at(c.STRIKE_MS - actionMs(600), () => { if (typeof cineFallFollow === 'function') cineFallFollow(p, { ms: actionMs(550) }); c.slow(0.5, actionMs(400)); });   // the drop
+                    c.at(c.STRIKE_MS - actionMs(200), () => { c.slow(0.3, actionMs(380)); });
+                    c.at(c.STRIKE_MS + actionMs(500), () => { c.slowClear(); if (typeof cineGodShot === 'function') cineGodShot(p, 6, { cut: false, duration: 900, tilt: 52 }); });
+                    c.at(c.STRIKE_MS + actionMs(1500), () => { if (typeof cineSkyWatch === 'function') cineSkyWatch(c.target, { span: 6, tiltUp: 110, tiltDown: 100, ms: actionMs(800) }); else if (typeof cineGodShot === 'function') cineGodShot(p, 6, { cut: false, duration: 520, tilt: 30 }); });   // up at the ape on the summit
+                    return true;
+                },
+                stage(c) {
+                    const V = c.VFX, u = c.unit, p = c.pos(c.target);
+                    if (V.sigTopOfTheTower3D) V.sigTopOfTheTower3D(u.x, u.y, p.x, p.y, { ms: c.STRIKE_MS + actionMs(3200), towerAt: actionMs(100), climbAt: c.STRIKE_MS - actionMs(2500), planesAt: c.STRIKE_MS - actionMs(2000), dropAt: c.STRIKE_MS - actionMs(600), hitAt: c.STRIKE_MS });
+                    c.at(actionMs(100), () => { c.snd('earthCast'); c.insert('🦍 TOP OF THE TOWER', 'stamp', actionMs(800)); c.kick(4, 200); });
+                    for (let i = 0; i < 5; i++) c.at(actionMs(300) + actionMs(i * 180), () => { c.snd('earthImpact'); c.kick(2, 90); });   // the storeys go up
+                    c.at(c.STRIKE_MS - actionMs(2500), () => { c.snd('moveStep'); c.insert('THE CLIMB', 'terminal', actionMs(700)); });
+                    c.at(c.STRIKE_MS - actionMs(2000), () => { c.snd('jetFlyover'); c.insert('BIPLANES', 'signal', actionMs(600)); });
+                    c.at(c.STRIKE_MS - actionMs(1300), () => { c.snd('gun'); c.insert('SWATTED', 'glitch', actionMs(300)); c.kick(4, 140); });
+                    c.at(c.STRIKE_MS - actionMs(600), () => { c.snd('physicalAbility'); c.insert('IT WAS BEAUTY', 'scripture', actionMs(900)); });
+                    c.at(c.STRIKE_MS - actionMs(300), () => c.insert('KILLED THE BEAST', 'glitch', actionMs(300)));
+                },
+                strike(c) {
+                    const p = c.pos(c.target);
+                    c.freeze(actionMs(170), { grade: 'sepia' });
+                    c.ring(p.x, p.y, 0x8a7a6a, { r1: c.ts * 3.0, ms: 600, torus: true });
+                    c.flash('#ffffff', 180, 0.7); c.kick(18, 300);
+                    c.snd('physicalAbilityDamage'); c.dsnd('slam');
+                },
+                resolve(c) {
+                    const V = c.VFX, p = c.pos(c.target);
+                    if (V.sigWhiteout3D) V.sigWhiteout3D(p.x, p.y, { color: 0x8a7a6a, ms: 800, peak: 0.5, sizeTiles: 5, shake: false });
+                    for (let i = 0; i < 3; i++) c.at(actionMs(500) + actionMs(i * 400), () => { c.snd('quakeRumble'); c.kick(4, 160); });   // the chest beats
+                    c.insert('FROM THE TOP.', 'stamp', actionMs(1000));
+                    c.at(actionMs(1500), () => { c.snd('uiConfirm'); c.insert('FLOORS: 102 · SURVIVORS: 0', 'terminal', actionMs(800)); });
+                }
+            },
+            theLabyrinth: {
+                chargeMs: 2200, strikeMs: 4300, resolveMs: 2400,
+                castSpell: { type: 'damage', dmg: 1, name: 'The Labyrinth', kind: 'damage' },
+                siren(c) { c.snd('earthCast'); c.dsnd('identSting'); c.grade('crimson dim', actionMs(900)); },
+                charge(c) {
+                    const V = c.VFX, u = c.unit;
+                    if (V.sigMagicCircle3D) V.sigMagicCircle3D(u.x, u.y, { radiusPx: c.ts * 0.9, growMs: 240, holdMs: c.CHARGE_MS, fadeMs: 400, spin: false, color: 0x6a6258, color2: 0xff3020 });
+                    if (V.sigGasCloud3D) V.sigGasCloud3D(u.x, u.y, { color: 0x3a241a, coreColor: 0xff3020, radiusTiles: 0.7, ms: c.CHARGE_MS, count: 8 });
+                    c.snd('quakeRumble');
+                },
+                cam(c) {
+                    const u = c.unit, p = c.pos(c.target);
+                    if (typeof cineFaceCam === 'function') cineFaceCam(u, { dist: 2.4, tilt: 78, cut: true, duration: 400 }); else c.dive(u, 1.2, 300);   // the bull's breath
+                    c.at(c.STRIKE_MS - actionMs(3600), () => { if (typeof cineGodShot === 'function') cineGodShot(p, 8, { cut: false, duration: 1000, tilt: 74 }); });   // straight down: the maze rises round the tile
+                    c.at(c.STRIKE_MS - actionMs(2400), () => { if (typeof cineWitnessCam === 'function') cineWitnessCam(c.target, { dist: 3.2, tilt: 60, duration: 900 }); c.slow(0.8, actionMs(400)); });   // the run, corridor by corridor
+                    c.at(c.STRIKE_MS - actionMs(1300), () => { if (typeof cineGodShot === 'function') cineGodShot(p, 8, { cut: true, duration: 500, tilt: 76 }); });   // from above — the runner, and the one who has not moved
+                    c.at(c.STRIKE_MS - actionMs(650), () => { c.freeze(actionMs(160), { grade: 'crimson' }); if (typeof cineReverseOts === 'function') cineReverseOts(c.target, u, {}); });   // the walls drop — it is right behind
+                    c.at(c.STRIKE_MS - actionMs(200), () => { c.slow(0.3, actionMs(380)); });
+                    c.at(c.STRIKE_MS + actionMs(500), () => { c.slowClear(); if (typeof cineGodShot === 'function') cineGodShot(p, 6, { cut: false, duration: 900, tilt: 52 }); });
+                    c.at(c.STRIKE_MS + actionMs(1500), () => { if (typeof cineEndCapReverse === 'function') cineEndCapReverse(u, c.target, {}); else if (typeof cineGodShot === 'function') cineGodShot(p, 6, { cut: false, duration: 520, tilt: 30 }); });
+                    return true;
+                },
+                stage(c) {
+                    const V = c.VFX, u = c.unit, p = c.pos(c.target);
+                    if (V.sigTheLabyrinth3D) V.sigTheLabyrinth3D(u.x, u.y, p.x, p.y, { ms: c.STRIKE_MS + actionMs(3200), wallsAt: actionMs(100), runAt: c.STRIKE_MS - actionMs(2400), dropAt: c.STRIKE_MS - actionMs(700), hitAt: c.STRIKE_MS });
+                    c.at(actionMs(100), () => { c.snd('earthCast'); c.insert('🐂 THE LABYRINTH', 'stamp', actionMs(800)); });
+                    for (let i = 0; i < 6; i++) c.at(actionMs(300) + actionMs(i * 140), () => { c.snd('earthImpact'); c.kick(2, 80); });   // the walls stand up
+                    c.at(c.STRIKE_MS - actionMs(2400), () => { c.snd('moveStep'); c.insert('RUN', 'glitch', actionMs(400)); });
+                    for (let i = 0; i < 3; i++) c.at(c.STRIKE_MS - actionMs(2000) + actionMs(i * 500), () => { c.snd('moveStep'); c.insert(['LEFT', 'LEFT AGAIN', 'DEAD END'][i], 'terminal', actionMs(420)); });
+                    c.at(c.STRIKE_MS - actionMs(1300), () => { c.snd('quakeRumble'); c.insert('THE MINOTAUR HAS NOT MOVED', 'scripture', actionMs(700)); });
+                    c.at(c.STRIKE_MS - actionMs(650), () => { c.snd('earthImpact'); c.insert('NO THREAD THIS TIME', 'signal', actionMs(600)); c.kick(8, 200); });
+                },
+                strike(c) {
+                    const p = c.pos(c.target);
+                    c.freeze(actionMs(170), { grade: 'crimson' });
+                    c.ring(p.x, p.y, 0x8a5a3a, { r1: c.ts * 2.8, ms: 560, torus: true });
+                    c.flash('#ff4030', 160, 0.6); c.kick(18, 300);
+                    c.snd('physicalAbilityDamage'); c.dsnd('slam');
+                },
+                resolve(c) {
+                    const V = c.VFX, p = c.pos(c.target);
+                    if (V.sigWhiteout3D) V.sigWhiteout3D(p.x, p.y, { color: 0x2a1a10, ms: 800, peak: 0.5, sizeTiles: 5, shake: false });
+                    c.at(actionMs(300), () => c.snd('quakeRumble'));
+                    c.insert('GORED.', 'stamp', actionMs(1000));
+                    c.at(actionMs(1500), () => { c.snd('uiConfirm'); c.insert('EXITS: 0 · TRIBUTE: PAID', 'terminal', actionMs(800)); });
+                }
+            },
+            recruited: {
+                chargeMs: 2200, strikeMs: 4300, resolveMs: 3200,
+                castSpell: { type: 'damage', dmg: 1, name: 'Recruited', kind: 'damage' },
+                siren(c) { c.snd('debuff'); c.dsnd('identSting'); c.grade('desat dim', actionMs(900)); },
+                charge(c) {
+                    const V = c.VFX, u = c.unit;
+                    if (V.sigMagicCircle3D) V.sigMagicCircle3D(u.x, u.y, { radiusPx: c.ts * 0.9, growMs: 240, holdMs: c.CHARGE_MS, fadeMs: 400, spin: true, color: 0x0a2a10, color2: 0x5aff6a });
+                    if (V.sigRuneSphere3D) V.sigRuneSphere3D(u.x, u.y, { color: 0x5aff6a, runeColor: 0x0a2a10, holdMs: c.CHARGE_MS - actionMs(500), radiusTiles: 0.6, spin: true });
+                    c.snd('debuff');
+                },
+                cam(c) {
+                    const u = c.unit, p = c.pos(c.target);
+                    if (typeof cineFaceCam === 'function') cineFaceCam(u, { dist: 2.4, tilt: 78, cut: true, duration: 400 }); else c.dive(u, 1.2, 300);   // the necromancer, one hand out
+                    c.at(c.STRIKE_MS - actionMs(3600), () => { if (typeof cineSideDolly === 'function') cineSideDolly(u, p, { dist: 3.6, tilt: 66, travelMs: actionMs(1200), easing: 'easeInOut' }); });   // the line between them
+                    c.at(c.STRIKE_MS - actionMs(2200), () => { if (typeof cineFaceCam === 'function') cineFaceCam(c.target, { dist: 2.6, tilt: 78, cut: true, duration: 400 }); });   // the victim, last breath
+                    c.at(c.STRIKE_MS - actionMs(1400), () => { if (typeof cineWitnessCam === 'function') cineWitnessCam(c.target, { dist: 3.4, tilt: 58, duration: 800 }); c.slow(0.7, actionMs(500)); });   // the headstone
+                    c.at(c.STRIKE_MS - actionMs(200), () => { c.slow(0.3, actionMs(380)); });
+                    c.at(c.STRIKE_MS + actionMs(500), () => { c.slowClear(); if (typeof cineFaceCam === 'function') cineFaceCam(c.target, { dist: 2.8, tilt: 72, cut: false, duration: 900 }); });   // the eyes open green
+                    c.at(c.STRIKE_MS + actionMs(2000), () => { if (typeof cineFlyBy === 'function') cineFlyBy(p, { span: 10, altPx: c.ts * 2.4, tilt: 60 }); });   // the walk off the board
+                    c.at(c.STRIKE_MS + actionMs(3000), () => { if (typeof cineEndCapReverse === 'function') cineEndCapReverse(u, c.target, {}); else if (typeof cineGodShot === 'function') cineGodShot(p, 6, { cut: false, duration: 520, tilt: 30 }); });
+                    return true;
+                },
+                stage(c) {
+                    const V = c.VFX, u = c.unit, p = c.pos(c.target);
+                    if (V.sigRecruited3D) V.sigRecruited3D(u.x, u.y, p.x, p.y, { ms: c.STRIKE_MS + actionMs(4400), boltAt: c.STRIKE_MS - actionMs(500), hitAt: c.STRIKE_MS, raiseAt: c.STRIKE_MS + actionMs(1300), walkAt: c.STRIKE_MS + actionMs(2600) });
+                    c.at(actionMs(100), () => { c.snd('debuff'); c.insert('🪦 RECRUITED', 'stamp', actionMs(800)); });
+                    c.at(c.STRIKE_MS - actionMs(3400), () => { c.snd('healRegen'); c.insert('THE INTERVIEW', 'document', actionMs(900)); });
+                    for (let i = 0; i < 3; i++) c.at(c.STRIKE_MS - actionMs(2800) + actionMs(i * 600), () => { c.snd('uiConfirm'); c.insert(['STRENGTHS: SEVERAL', 'WEAKNESSES: ONE', 'AVAILABILITY: IMMEDIATE'][i], 'terminal', actionMs(520)); });
+                    c.at(c.STRIKE_MS - actionMs(500), () => { c.snd('elecCast'); c.insert('YOU\'RE HIRED', 'signal', actionMs(500)); });
+                },
+                strike(c) {
+                    const p = c.pos(c.target);
+                    c.freeze(actionMs(150), { grade: 'desat' });
+                    c.ring(p.x, p.y, 0x5aff6a, { r1: c.ts * 2.4, ms: 520, torus: true });
+                    c.flash('#5aff6a', 160, 0.6); c.kick(12, 240);
+                    c.snd('death'); c.dsnd('slam');
+                },
+                resolve(c) {
+                    const V = c.VFX, p = c.pos(c.target);
+                    if (V.sigWhiteout3D) V.sigWhiteout3D(p.x, p.y, { color: 0x0a2a10, ms: 800, peak: 0.45, sizeTiles: 5, shake: false });
+                    c.at(actionMs(1300), () => { c.snd('quakeRumble'); c.insert('…', 'glitch', actionMs(500)); c.kick(3, 140); });
+                    c.at(actionMs(2100), () => { c.snd('debuff'); c.insert('YOU START MONDAY', 'scripture', actionMs(900)); });
+                    for (let i = 0; i < 3; i++) c.at(actionMs(2600) + actionMs(i * 450), () => { c.snd('moveStep'); });
+                    c.at(actionMs(3000), () => { c.snd('uiConfirm'); c.insert('HEADCOUNT +1', 'terminal', actionMs(700)); });
+                }
+            },
+            sacredGeometry: {
+                chargeMs: 2200, strikeMs: 4300, resolveMs: 2400,
+                castSpell: { type: 'damage', dmg: 1, name: 'Sacred Geometry', kind: 'damage' },
+                siren(c) { c.snd('teleport'); c.dsnd('identSting'); c.grade('hue', actionMs(900)); },
+                charge(c) {
+                    const V = c.VFX, u = c.unit;
+                    if (V.sigMagicCircle3D) V.sigMagicCircle3D(u.x, u.y, { radiusPx: c.ts * 0.9, growMs: 240, holdMs: c.CHARGE_MS, fadeMs: 400, spin: true, color: 0x100818, color2: 0xc088ff });
+                    if (V.sigFractalTunnel3D) V.sigFractalTunnel3D(u.x, u.y, { color: 0xc088ff, ms: c.CHARGE_MS });
+                    else if (V.sigRuneSphere3D) V.sigRuneSphere3D(u.x, u.y, { color: 0xc088ff, runeColor: 0xffd070, holdMs: c.CHARGE_MS - actionMs(500), radiusTiles: 0.6, spin: true });
+                    c.snd('teleport');
+                },
+                cam(c) {
+                    const u = c.unit, p = c.pos(c.target);
+                    if (typeof cineFaceCam === 'function') cineFaceCam(u, { dist: 2.4, tilt: 78, cut: true, duration: 400 }); else c.dive(u, 1.2, 300);   // the one eye
+                    c.at(c.STRIKE_MS - actionMs(3600), () => { if (typeof cineSkyWatch === 'function') cineSkyWatch(c.target, { span: 6, tiltUp: 108, tiltDown: 66, ms: actionMs(1000) }); });   // the shape descends
+                    c.at(c.STRIKE_MS - actionMs(2400), () => { if (typeof cineDollyZoom === 'function') cineDollyZoom(18, actionMs(2200), { target: c.target }); c.slow(0.75, actionMs(500)); });   // the folds — the lens goes wrong with the angles
+                    c.at(c.STRIKE_MS - actionMs(900), () => { if (typeof cineDollyZoomRelease === 'function') cineDollyZoomRelease(); if (typeof cineFaceCam === 'function') cineFaceCam(c.target, { dist: 2.6, tilt: 74, cut: true, duration: 400 }); });   // the last fold
+                    c.at(c.STRIKE_MS - actionMs(200), () => { c.slow(0.3, actionMs(380)); });
+                    c.at(c.STRIKE_MS + actionMs(500), () => { c.slowClear(); if (typeof cineGodShot === 'function') cineGodShot(p, 6, { cut: false, duration: 900, tilt: 74 }); });   // the cube on the ground, nothing in it
+                    c.at(c.STRIKE_MS + actionMs(1500), () => { if (typeof cineEndCapReverse === 'function') cineEndCapReverse(u, c.target, {}); else if (typeof cineGodShot === 'function') cineGodShot(p, 6, { cut: false, duration: 520, tilt: 30 }); });
+                    return true;
+                },
+                stage(c) {
+                    const V = c.VFX, u = c.unit, p = c.pos(c.target);
+                    if (V.sigSacredGeometry3D) V.sigSacredGeometry3D(u.x, u.y, p.x, p.y, { ms: c.STRIKE_MS + actionMs(3200), shapeAt: actionMs(100), foldAt: c.STRIKE_MS - actionMs(2400), hitAt: c.STRIKE_MS });
+                    c.at(actionMs(100), () => { c.snd('teleport'); c.insert('🔯 SACRED GEOMETRY', 'stamp', actionMs(800)); });
+                    c.at(actionMs(700), () => { c.snd('healRegen'); c.insert('16 VERTICES · 32 EDGES · 24 FACES · 8 CELLS', 'terminal', actionMs(900)); });
+                    for (let i = 0; i < 4; i++) c.at(c.STRIKE_MS - actionMs(2400) + actionMs(i * 600), () => { c.snd('empBurst'); c.insert(['FOLD', 'FOLD', 'FOLD', 'THE ANGLES ARE WRONG'][i], i < 3 ? 'glitch' : 'scripture', actionMs(i < 3 ? 300 : 700)); c.kick(3 + i * 2, 140); });
+                },
+                strike(c) {
+                    const p = c.pos(c.target);
+                    c.freeze(actionMs(180), { grade: 'hue invert' });
+                    c.ring(p.x, p.y, 0xc088ff, { r1: c.ts * 3.2, ms: 640, torus: true });
+                    c.flash('#ffffff', 200, 0.85); c.kick(16, 300);
+                    c.snd('empBurst'); c.dsnd('slam');
+                },
+                resolve(c) {
+                    const V = c.VFX, p = c.pos(c.target);
+                    if (V.sigWhiteout3D) V.sigWhiteout3D(p.x, p.y, { color: 0x100818, ms: 800, peak: 0.5, sizeTiles: 5, shake: false });
+                    c.at(actionMs(300), () => c.snd('teleport'));
+                    c.insert('A POINT.', 'stamp', actionMs(1000));
+                    c.at(actionMs(1500), () => { c.snd('uiConfirm'); c.insert('DIMENSIONS: 0', 'terminal', actionMs(800)); });
+                }
+            },
+            hailMary: {
+                chargeMs: 2200, strikeMs: 4300, resolveMs: 2400,
+                castSpell: { type: 'damage', dmg: 1, name: 'The Hail Mary', kind: 'damage' },
+                siren(c) { c.snd('physicalAbility'); c.dsnd('identSting'); c.grade('vignette', actionMs(900)); },
+                charge(c) {
+                    const V = c.VFX, u = c.unit;
+                    if (V.sigMagicCircle3D) V.sigMagicCircle3D(u.x, u.y, { radiusPx: c.ts * 0.9, growMs: 240, holdMs: c.CHARGE_MS, fadeMs: 400, spin: false, color: 0x2a5aa8, color2: 0xf4f4f4 });
+                    if (V.sigStatRings3D) V.sigStatRings3D(u.x, u.y, { color: 0xf4f4f4, ms: c.CHARGE_MS });
+                    c.snd('physicalAbility');
+                },
+                cam(c) {
+                    const u = c.unit, p = c.pos(c.target);
+                    if (typeof cineFaceCam === 'function') cineFaceCam(u, { dist: 2.4, tilt: 78, cut: true, duration: 400 }); else c.dive(u, 1.2, 300);   // under centre — the snap
+                    c.at(c.STRIKE_MS - actionMs(3600), () => { if (typeof cineGodShot === 'function') cineGodShot(p, 12, { cut: false, duration: 1000, tilt: 38 }); });   // the field paints itself
+                    c.at(c.STRIKE_MS - actionMs(2400), () => { if (typeof cineFlyBy === 'function') cineFlyBy(p, { span: 14, altPx: c.ts * 3.2, tilt: 56 }); c.slow(0.7, actionMs(500)); });   // the ball's flight, full length
+                    c.at(c.STRIKE_MS - actionMs(900), () => { if (typeof cineWitnessCam === 'function') cineWitnessCam(c.target, { dist: 4.2, tilt: 58, duration: 700 }); });   // the end zone, the catch
+                    c.at(c.STRIKE_MS - actionMs(200), () => { c.slow(0.3, actionMs(380)); });
+                    c.at(c.STRIKE_MS + actionMs(500), () => { c.slowClear(); if (typeof cineGodShot === 'function') cineGodShot(p, 8, { cut: false, duration: 900, tilt: 52 }); });   // the referee's arms
+                    c.at(c.STRIKE_MS + actionMs(1500), () => { if (typeof cineEndCapReverse === 'function') cineEndCapReverse(u, c.target, {}); else if (typeof cineGodShot === 'function') cineGodShot(p, 6, { cut: false, duration: 520, tilt: 30 }); });
+                    return true;
+                },
+                stage(c) {
+                    const V = c.VFX, u = c.unit, p = c.pos(c.target);
+                    if (V.sigHailMary3D) V.sigHailMary3D(u.x, u.y, p.x, p.y, { ms: c.STRIKE_MS + actionMs(3200), fieldAt: actionMs(100), throwAt: c.STRIKE_MS - actionMs(2400), hitAt: c.STRIKE_MS });
+                    c.at(actionMs(100), () => { c.snd('physicalAbility'); c.insert('🏈 THE HAIL MARY', 'stamp', actionMs(800)); });
+                    c.at(actionMs(700), () => { c.snd('uiConfirm'); c.insert('4TH AND FOREVER', 'terminal', actionMs(800)); });
+                    c.at(c.STRIKE_MS - actionMs(2600), () => { c.snd('block'); c.insert('HUT', 'glitch', actionMs(300)); });
+                    c.at(c.STRIKE_MS - actionMs(2400), () => { c.snd('itemThrow'); c.insert('FULL LENGTH OF THE FIELD', 'scripture', actionMs(1000)); c.kick(6, 200); });
+                    c.at(c.STRIKE_MS - actionMs(900), () => { c.snd('physicalAbility'); c.insert('THE CATCH', 'signal', actionMs(500)); });
+                    c.at(c.STRIKE_MS - actionMs(300), () => c.insert('SPIKE', 'glitch', actionMs(300)));
+                },
+                strike(c) {
+                    const p = c.pos(c.target);
+                    c.freeze(actionMs(160), { grade: 'speedlines' });
+                    c.ring(p.x, p.y, 0x3a8a3a, { r1: c.ts * 3.0, ms: 600, torus: true });
+                    c.flash('#ffffff', 160, 0.7); c.kick(18, 300);
+                    c.snd('physicalAbilityDamage'); c.dsnd('slam');
+                },
+                resolve(c) {
+                    const V = c.VFX, p = c.pos(c.target);
+                    if (V.sigWhiteout3D) V.sigWhiteout3D(p.x, p.y, { color: 0x2a5aa8, ms: 800, peak: 0.45, sizeTiles: 5, shake: false });
+                    c.at(actionMs(300), () => c.snd('levelUp'));
+                    c.insert('TOUCHDOWN.', 'stamp', actionMs(1000));
+                    c.at(actionMs(1500), () => { c.snd('uiConfirm'); c.insert('HOME 6 · VISITORS 0 · 0:00', 'terminal', actionMs(800)); });
+                }
+            },
+            splitTheArrow: {
+                chargeMs: 2200, strikeMs: 4300, resolveMs: 2400,
+                castSpell: { type: 'damage', dmg: 1, name: 'Split the Arrow', kind: 'damage' },
+                siren(c) { c.snd('physicalAbility'); c.dsnd('identSting'); c.grade('desat', actionMs(900)); },
+                charge(c) {
+                    const V = c.VFX, u = c.unit;
+                    if (V.sigMagicCircle3D) V.sigMagicCircle3D(u.x, u.y, { radiusPx: c.ts * 0.9, growMs: 240, holdMs: c.CHARGE_MS, fadeMs: 400, spin: false, color: 0x1a2a10, color2: 0x8aff8a });
+                    if (V.sigStatRings3D) V.sigStatRings3D(u.x, u.y, { color: 0x8aff8a, ms: c.CHARGE_MS });
+                    c.snd('physicalAbility');
+                },
+                cam(c) {
+                    const u = c.unit, p = c.pos(c.target);
+                    if (typeof cineFaceCam === 'function') cineFaceCam(u, { dist: 2.4, tilt: 78, cut: true, duration: 400 }); else c.dive(u, 1.2, 300);   // the draw
+                    c.at(c.STRIKE_MS - actionMs(3600), () => { if (typeof cineSideDolly === 'function') cineSideDolly(u, p, { dist: 3.8, tilt: 64, travelMs: actionMs(1000), easing: 'easeInOut' }); });   // the target stands up behind the victim
+                    /* three arrows, three cuts to the gold */
+                    for (let i = 0; i < 3; i++) c.at(c.STRIKE_MS - actionMs(2600) + actionMs(i * 800), () => { if (typeof cineWitnessCam === 'function') cineWitnessCam(c.target, { dist: 2.6 + i * 0.3, tilt: 66, duration: 500 }); c.slow(0.6, actionMs(250)); c.at(actionMs(300), () => c.slowClear()); });
+                    c.at(c.STRIKE_MS - actionMs(500), () => { if (typeof cineFaceCam === 'function') cineFaceCam(u, { dist: 2.2, tilt: 80, cut: true, duration: 300 }); });   // the last draw
+                    c.at(c.STRIKE_MS - actionMs(200), () => { c.slow(0.3, actionMs(380)); if (typeof cineFaceCam === 'function') cineFaceCam(c.target, { dist: 2.6, tilt: 74, cut: true, duration: 300 }); });
+                    c.at(c.STRIKE_MS + actionMs(500), () => { c.slowClear(); if (typeof cineGodShot === 'function') cineGodShot(p, 6, { cut: false, duration: 900, tilt: 52 }); });
+                    c.at(c.STRIKE_MS + actionMs(1500), () => { if (typeof cineEndCapReverse === 'function') cineEndCapReverse(u, c.target, {}); else if (typeof cineGodShot === 'function') cineGodShot(p, 6, { cut: false, duration: 520, tilt: 30 }); });
+                    return true;
+                },
+                stage(c) {
+                    const V = c.VFX, u = c.unit, p = c.pos(c.target);
+                    if (V.sigSplitTheArrow3D) V.sigSplitTheArrow3D(u.x, u.y, p.x, p.y, { ms: c.STRIKE_MS + actionMs(3200), targetAt: actionMs(100), arrowAt: c.STRIKE_MS - actionMs(2780), gap: actionMs(800), hitAt: c.STRIKE_MS });
+                    c.at(actionMs(100), () => { c.snd('physicalAbility'); c.insert('🏹 SPLIT THE ARROW', 'stamp', actionMs(800)); });
+                    c.at(actionMs(700), () => { c.snd('uiConfirm'); c.insert('THE TOURNAMENT', 'document', actionMs(800)); });
+                    for (let i = 0; i < 3; i++) c.at(c.STRIKE_MS - actionMs(2400) + actionMs(i * 800), () => { c.snd('itemThrow'); c.insert(['ONE ARROW', 'THEN THE ARROW THAT SPLIT IT', 'THEN THE ARROW THAT SPLIT THAT'][i], i ? 'scripture' : 'terminal', actionMs(500)); c.kick(3 + i, 120); });
+                    c.at(c.STRIKE_MS - actionMs(300), () => c.insert('AND THE LAST ONE', 'signal', actionMs(300)));
+                },
+                strike(c) {
+                    const p = c.pos(c.target);
+                    c.freeze(actionMs(160), { grade: 'desat' });
+                    c.ring(p.x, p.y, 0x8aff8a, { r1: c.ts * 2.6, ms: 560, torus: true });
+                    c.flash('#dfffd0', 180, 0.7); c.kick(14, 280);
+                    c.snd('physicalAbilityDamage'); c.dsnd('slam');
+                },
+                resolve(c) {
+                    const V = c.VFX, p = c.pos(c.target);
+                    if (V.sigWhiteout3D) V.sigWhiteout3D(p.x, p.y, { color: 0x1a2a10, ms: 800, peak: 0.45, sizeTiles: 5, shake: false });
+                    c.at(actionMs(300), () => c.snd('spellDamage'));
+                    c.insert('SPLIT.', 'stamp', actionMs(1000));
+                    c.at(actionMs(1500), () => { c.snd('uiConfirm'); c.insert('ARROWS: 4 · TARGETS: 1 · HALVES: 2', 'terminal', actionMs(800)); });
+                }
+            },
+            megazord: {
+                chargeMs: 2200, strikeMs: 4300, resolveMs: 2400,
+                castSpell: { type: 'damage', dmg: 1, name: 'Megazord', kind: 'damage' },
+                siren(c) { c.snd('elecCast'); c.dsnd('identSting'); c.grade('heat', actionMs(900)); },
+                charge(c) {
+                    const V = c.VFX, u = c.unit;
+                    if (V.sigMagicCircle3D) V.sigMagicCircle3D(u.x, u.y, { radiusPx: c.ts * 0.9, growMs: 240, holdMs: c.CHARGE_MS, fadeMs: 400, spin: true, color: 0xd82a2a, color2: 0xffe060 });
+                    if (V.sigStatRings3D) V.sigStatRings3D(u.x, u.y, { color: 0xffe060, ms: c.CHARGE_MS });
+                    c.snd('elecCast');
+                },
+                cam(c) {
+                    const u = c.unit, p = c.pos(c.target);
+                    if (typeof cineFaceCam === 'function') cineFaceCam(u, { dist: 2.4, tilt: 78, cut: true, duration: 400 }); else c.dive(u, 1.2, 300);   // the morpher
+                    c.at(c.STRIKE_MS - actionMs(3600), () => { if (typeof cineSkyWatch === 'function') cineSkyWatch(u, { span: 10, tiltUp: 116, tiltDown: 62, ms: actionMs(1400) }); });   // five vehicles from five sides
+                    c.at(c.STRIKE_MS - actionMs(2100), () => { c.freeze(actionMs(160), { grade: 'heat' }); if (typeof cineCrane === 'function') cineCrane(u, { duration: actionMs(1100), tilt: 46, rise: 6.5 }); });   // the lock — the crane climbs the silhouette
+                    c.at(c.STRIKE_MS - actionMs(900), () => { if (typeof cineReverseOts === 'function') cineReverseOts(c.target, u, {}); c.slow(0.65, actionMs(500)); });   // the chest cannon charges — over the zord's shoulder at the victim
+                    c.at(c.STRIKE_MS - actionMs(200), () => { c.slow(0.3, actionMs(380)); });
+                    c.at(c.STRIKE_MS + actionMs(500), () => { c.slowClear(); if (typeof cineGodShot === 'function') cineGodShot(p, 8, { cut: false, duration: 900, tilt: 48 }); });   // the explosion — the zord poses
+                    c.at(c.STRIKE_MS + actionMs(1500), () => { if (typeof cineSkyWatch === 'function') cineSkyWatch(u, { span: 8, tiltUp: 108, tiltDown: 100, ms: actionMs(800) }); else if (typeof cineGodShot === 'function') cineGodShot(p, 6, { cut: false, duration: 520, tilt: 30 }); });
+                    return true;
+                },
+                stage(c) {
+                    const V = c.VFX, u = c.unit, p = c.pos(c.target);
+                    if (V.sigMegazord3D) V.sigMegazord3D(u.x, u.y, p.x, p.y, { ms: c.STRIKE_MS + actionMs(3200), flyAt: actionMs(100), lockAt: c.STRIKE_MS - actionMs(2100), chargeAt: c.STRIKE_MS - actionMs(900), hitAt: c.STRIKE_MS });
+                    c.at(actionMs(100), () => { c.snd('elecCast'); c.insert('🤖 MEGAZORD', 'stamp', actionMs(800)); });
+                    c.at(actionMs(500), () => { c.snd('levelUp'); c.insert("IT'S MORPHIN TIME", 'scripture', actionMs(1000)); });
+                    for (let i = 0; i < 5; i++) c.at(c.STRIKE_MS - actionMs(3500) + actionMs(i * 260), () => { c.snd('jetFlyover'); c.insert(['RED', 'BLUE', 'YELLOW', 'GREEN', 'PINK'][i], 'terminal', actionMs(240)); });
+                    c.at(c.STRIKE_MS - actionMs(2100), () => { c.snd('empBurst'); c.insert('LOCKED', 'signal', actionMs(600)); c.kick(10, 220); });
+                    c.at(c.STRIKE_MS - actionMs(900), () => { c.snd('turret'); c.insert('CHEST CANNON', 'glitch', actionMs(500)); });
+                    c.at(c.STRIKE_MS - actionMs(300), () => c.insert('ONE TARGET', 'glitch', actionMs(300)));
+                },
+                strike(c) {
+                    const p = c.pos(c.target);
+                    c.freeze(actionMs(170), { grade: 'heat' });
+                    c.ring(p.x, p.y, 0xffe060, { r1: c.ts * 3.6, ms: 700, torus: true });
+                    c.flash('#ffe060', 220, 0.9); c.kick(20, 320);
+                    c.snd('explosion'); c.dsnd('slam');
+                },
+                resolve(c) {
+                    const V = c.VFX, p = c.pos(c.target);
+                    if (V.sigWhiteout3D) V.sigWhiteout3D(p.x, p.y, { color: 0xffe060, ms: 800, peak: 0.6, sizeTiles: 6, shake: false });
+                    c.at(actionMs(900), () => { c.snd('explosion'); c.kick(6, 200); });   // the second explosion, behind the pose
+                    c.insert('MORPHED.', 'stamp', actionMs(1000));
+                    c.at(actionMs(1500), () => { c.snd('uiConfirm'); c.insert('MONSTER OF THE WEEK: DEFEATED', 'terminal', actionMs(800)); });
+                }
+            },
+            bonded: {
+                chargeMs: 2200, strikeMs: 4300, resolveMs: 2600,
+                castSpell: { type: 'damage', dmg: 1, name: 'Bonded', kind: 'damage' },
+                siren(c) { c.snd('poisonDamage'); c.dsnd('identSting'); c.grade('dim desat', actionMs(900)); },
+                charge(c) {
+                    const V = c.VFX, u = c.unit;
+                    if (V.sigMagicCircle3D) V.sigMagicCircle3D(u.x, u.y, { radiusPx: c.ts * 0.9, growMs: 240, holdMs: c.CHARGE_MS, fadeMs: 400, spin: false, color: 0x08080c, color2: 0xf4f4f8 });
+                    if (V.sigGasCloud3D) V.sigGasCloud3D(u.x, u.y, { color: 0x08080c, coreColor: 0x2a2a30, radiusTiles: 0.8, ms: c.CHARGE_MS, count: 10 });
+                    c.snd('poisonDamage');
+                },
+                cam(c) {
+                    const u = c.unit, p = c.pos(c.target);
+                    if (typeof cineFaceCam === 'function') cineFaceCam(u, { dist: 2.2, tilt: 80, cut: true, duration: 400 }); else c.dive(u, 1.2, 300);   // the grin
+                    c.at(c.STRIKE_MS - actionMs(3600), () => { if (typeof cineGlamCam === 'function') cineGlamCam(u, { duration: 900 }); else if (typeof cineFaceCam === 'function') cineFaceCam(u, { dist: 2.8, tilt: 70, cut: false, duration: 900 }); });   // it leaves the host
+                    c.at(c.STRIKE_MS - actionMs(2600), () => { if (typeof cineSideDolly === 'function') cineSideDolly(u, p, { dist: 3.4, tilt: 64, travelMs: actionMs(1000), easing: 'easeInOut' }); });   // the mass crosses
+                    c.at(c.STRIKE_MS - actionMs(1600), () => { if (typeof cineFaceCam === 'function') cineFaceCam(c.target, { dist: 2.4, tilt: 76, cut: true, duration: 400 }); c.slow(0.7, actionMs(500)); });   // the wrap, the face
+                    c.at(c.STRIKE_MS - actionMs(200), () => { c.slow(0.3, actionMs(380)); });
+                    c.at(c.STRIKE_MS + actionMs(500), () => { c.slowClear(); if (typeof cineSideDolly === 'function') cineSideDolly(p, c.pos(u), { dist: 3.4, tilt: 64, travelMs: actionMs(1100), easing: 'easeInOut' }); });   // home, fuller
+                    c.at(c.STRIKE_MS + actionMs(1800), () => { if (typeof cineFaceCam === 'function') cineFaceCam(u, { dist: 2.2, tilt: 80, cut: true, duration: 600 }); else if (typeof cineGodShot === 'function') cineGodShot(p, 6, { cut: false, duration: 520, tilt: 30 }); });   // WE
+                    return true;
+                },
+                stage(c) {
+                    const V = c.VFX, u = c.unit, p = c.pos(c.target);
+                    if (V.sigBonded3D) V.sigBonded3D(u.x, u.y, p.x, p.y, { ms: c.STRIKE_MS + actionMs(3400), peelAt: c.STRIKE_MS - actionMs(3600), wrapAt: c.STRIKE_MS - actionMs(1700), hitAt: c.STRIKE_MS, returnAt: c.STRIKE_MS + actionMs(700) });
+                    c.fade(u, 1, 0.001, actionMs(400));   // the host stand-in stands where the model stood
+                    c.at(actionMs(100), () => { c.snd('poisonDamage'); c.insert('🕷 BONDED', 'stamp', actionMs(800)); });
+                    c.at(c.STRIKE_MS - actionMs(3600), () => { c.snd('debuff'); c.insert('IT LEAVES', 'terminal', actionMs(700)); c.kick(4, 160); });
+                    c.at(c.STRIKE_MS - actionMs(1700), () => { c.snd('drowningDamage'); c.insert('THE WRAP', 'glitch', actionMs(500)); });
+                    c.at(c.STRIKE_MS - actionMs(800), () => { c.snd('discord'); c.insert('WE ARE VENOM', 'scripture', actionMs(700)); c.kick(6, 200); });
+                },
+                strike(c) {
+                    const p = c.pos(c.target);
+                    c.freeze(actionMs(160), { grade: 'dim' });
+                    c.ring(p.x, p.y, 0x3a3a48, { r1: c.ts * 2.6, ms: 560, torus: true });
+                    c.flash('#ffffff', 160, 0.6); c.kick(16, 300);
+                    c.snd('poisonDamage'); c.dsnd('slam');
+                },
+                resolve(c) {
+                    const V = c.VFX, p = c.pos(c.target);
+                    if (V.sigWhiteout3D) V.sigWhiteout3D(p.x, p.y, { color: 0x08080c, ms: 800, peak: 0.5, sizeTiles: 5, shake: false });
+                    c.at(actionMs(700), () => c.snd('debuff'));
+                    c.fade(c.unit, 0.001, 1, actionMs(1800));
+                    c.at(actionMs(1800), () => { c.snd('buff'); c.insert('WE.', 'stamp', actionMs(900)); c.kick(4, 160); });
+                    c.at(actionMs(2200), () => { c.snd('uiConfirm'); c.insert('HOSTS: 1 · MASS: +1', 'terminal', actionMs(700)); });
+                }
+            },
+            valhalla: {
+                chargeMs: 2200, strikeMs: 4300, resolveMs: 2400,
+                castSpell: { type: 'damage', dmg: 1, name: 'Valhalla', kind: 'damage' },
+                siren(c) { c.snd('thunderRumble'); c.dsnd('identSting'); c.grade('bone', actionMs(900)); },
+                charge(c) {
+                    const V = c.VFX, u = c.unit;
+                    if (V.sigMagicCircle3D) V.sigMagicCircle3D(u.x, u.y, { radiusPx: c.ts * 0.9, growMs: 240, holdMs: c.CHARGE_MS, fadeMs: 400, spin: true, color: 0xffd070, color2: 0xf4f4f8 });
+                    if (V.sigLightPillar3D) V.sigLightPillar3D(u.x, u.y, { color: 0xffd070, ms: c.CHARGE_MS });
+                    else if (V.sigRuneSphere3D) V.sigRuneSphere3D(u.x, u.y, { color: 0xffd070, runeColor: 0xffffff, holdMs: c.CHARGE_MS - actionMs(500), radiusTiles: 0.6, spin: true });
+                    c.snd('thunderRumble');
+                },
+                cam(c) {
+                    const u = c.unit, p = c.pos(c.target);
+                    if (typeof cineFaceCam === 'function') cineFaceCam(u, { dist: 2.4, tilt: 78, cut: true, duration: 400 }); else c.dive(u, 1.2, 300);   // she looks up
+                    c.at(c.STRIKE_MS - actionMs(3600), () => { if (typeof cineSkyWatch === 'function') cineSkyWatch(c.target, { span: 7, tiltUp: 122, tiltDown: 80, ms: actionMs(1400) }); });   // the clouds part — the rider comes down the spiral
+                    c.at(c.STRIKE_MS - actionMs(2100), () => { if (typeof cineWitnessCam === 'function') cineWitnessCam(c.target, { dist: 3.6, tilt: 60, duration: 600 }); });   // the pick
+                    c.at(c.STRIKE_MS - actionMs(1500), () => { if (typeof cineCrane === 'function') cineCrane(c.target, { duration: actionMs(1000), tilt: 40, rise: 8.0 }); c.slow(0.7, actionMs(400)); });   // up Bifrost
+                    c.at(c.STRIKE_MS - actionMs(500), () => { c.freeze(actionMs(140), { grade: 'whiteout' }); if (typeof cineFallFollow === 'function') cineFallFollow(p, { ms: actionMs(450) }); });   // the bolt — the fall
+                    c.at(c.STRIKE_MS - actionMs(200), () => { c.slow(0.3, actionMs(380)); });
+                    c.at(c.STRIKE_MS + actionMs(500), () => { c.slowClear(); if (typeof cineGodShot === 'function') cineGodShot(p, 6, { cut: false, duration: 900, tilt: 52 }); });
+                    c.at(c.STRIKE_MS + actionMs(1500), () => { if (typeof cineEndCapReverse === 'function') cineEndCapReverse(u, c.target, {}); else if (typeof cineGodShot === 'function') cineGodShot(p, 6, { cut: false, duration: 520, tilt: 30 }); });
+                    return true;
+                },
+                stage(c) {
+                    const V = c.VFX, u = c.unit, p = c.pos(c.target);
+                    if (V.sigValhalla3D) V.sigValhalla3D(u.x, u.y, p.x, p.y, { ms: c.STRIKE_MS + actionMs(3200), cloudsAt: actionMs(100), descendAt: c.STRIKE_MS - actionMs(3500), rideAt: c.STRIKE_MS - actionMs(2000), hitAt: c.STRIKE_MS });
+                    c.at(actionMs(100), () => { c.snd('thunderRumble'); c.insert('🛡 VALHALLA', 'stamp', actionMs(800)); });
+                    c.at(actionMs(700), () => { c.snd('healRegen'); c.insert('THE CLOUDS PART', 'terminal', actionMs(800)); });
+                    c.at(c.STRIKE_MS - actionMs(3500), () => { c.snd('jetFlyover'); c.insert('THE RIDER', 'signal', actionMs(700)); });
+                    c.at(c.STRIKE_MS - actionMs(2000), () => { c.snd('physicalAbility'); c.insert('CHOSEN', 'scripture', actionMs(900)); c.kick(6, 200); });
+                    c.at(c.STRIKE_MS - actionMs(1200), () => { c.snd('chainHop'); c.insert('BIFROST', 'terminal', actionMs(600)); });
+                    c.at(c.STRIKE_MS - actionMs(500), () => { c.snd('lightningStrike'); c.insert('NOT THIS ONE', 'glitch', actionMs(400)); c.kick(10, 200); });
+                },
+                strike(c) {
+                    const p = c.pos(c.target);
+                    c.freeze(actionMs(170), { grade: 'bone' });
+                    c.ring(p.x, p.y, 0xffd070, { r1: c.ts * 3.2, ms: 640, torus: true });
+                    c.flash('#ffd070', 200, 0.8); c.kick(18, 300);
+                    c.snd('fireball'); c.dsnd('slam');
+                },
+                resolve(c) {
+                    const V = c.VFX, p = c.pos(c.target);
+                    if (V.sigWhiteout3D) V.sigWhiteout3D(p.x, p.y, { color: 0xffd070, ms: 800, peak: 0.55, sizeTiles: 5, shake: false });
+                    c.at(actionMs(300), () => c.snd('burningDamage'));
+                    c.insert('NOT CHOSEN.', 'stamp', actionMs(1000));
+                    c.at(actionMs(1500), () => { c.snd('uiConfirm'); c.insert('THE HALL: STILL 540 DOORS', 'terminal', actionMs(800)); });
+                }
+            },
+            observed: {
+                chargeMs: 2200, strikeMs: 4300, resolveMs: 2400,
+                castSpell: { type: 'damage', dmg: 1, name: 'Observed', kind: 'damage' },
+                siren(c) { c.snd('healRegen'); c.dsnd('identSting'); c.grade('cool desat', actionMs(900)); },
+                charge(c) {
+                    const V = c.VFX, u = c.unit;
+                    if (V.sigMagicCircle3D) V.sigMagicCircle3D(u.x, u.y, { radiusPx: c.ts * 0.9, growMs: 240, holdMs: c.CHARGE_MS, fadeMs: 400, spin: true, color: 0x06101a, color2: 0x7fe0ff });
+                    if (V.sigRuneSphere3D) V.sigRuneSphere3D(u.x, u.y, { color: 0x7fe0ff, runeColor: 0xffd070, holdMs: c.CHARGE_MS - actionMs(500), radiusTiles: 0.6, spin: true });
+                    c.snd('healRegen');
+                },
+                cam(c) {
+                    const u = c.unit, p = c.pos(c.target);
+                    if (typeof cineFaceCam === 'function') cineFaceCam(u, { dist: 2.2, tilt: 82, cut: true, duration: 400 }); else c.dive(u, 1.2, 300);   // the watcher looks
+                    c.at(c.STRIKE_MS - actionMs(3600), () => { if (typeof cineSkyWatch === 'function') cineSkyWatch(c.target, { span: 8, tiltUp: 124, tiltDown: 72, ms: actionMs(1200) }); });   // the eye opens over the tile
+                    c.at(c.STRIKE_MS - actionMs(2300), () => { if (typeof cineWitnessCam === 'function') cineWitnessCam(c.target, { dist: 3.4, tilt: 60, duration: 900 }); });   // the copies flicker
+                    c.at(c.STRIKE_MS - actionMs(1400), () => { if (typeof cineDollyZoom === 'function') cineDollyZoom(-16, actionMs(1200), { target: c.target }); c.slow(0.7, actionMs(500)); });   // the collapse — the lens narrows with the lid
+                    c.at(c.STRIKE_MS - actionMs(200), () => { if (typeof cineDollyZoomRelease === 'function') cineDollyZoomRelease(); c.slow(0.3, actionMs(380)); });
+                    c.at(c.STRIKE_MS + actionMs(500), () => { c.slowClear(); if (typeof cineGodShot === 'function') cineGodShot(p, 6, { cut: false, duration: 900, tilt: 74 }); });   // the tile, nothing on it
+                    c.at(c.STRIKE_MS + actionMs(1500), () => { if (typeof cineFaceCam === 'function') cineFaceCam(u, { dist: 2.2, tilt: 82, cut: true, duration: 600 }); else if (typeof cineGodShot === 'function') cineGodShot(p, 6, { cut: false, duration: 520, tilt: 30 }); });   // the watcher blinks
+                    return true;
+                },
+                stage(c) {
+                    const V = c.VFX, u = c.unit, p = c.pos(c.target);
+                    if (V.sigObserved3D) V.sigObserved3D(u.x, u.y, p.x, p.y, { ms: c.STRIKE_MS + actionMs(3200), eyeAt: actionMs(100), ghostsAt: c.STRIKE_MS - actionMs(2300), collapseAt: c.STRIKE_MS - actionMs(1400), hitAt: c.STRIKE_MS });
+                    c.at(actionMs(100), () => { c.snd('healRegen'); c.insert('👁 OBSERVED', 'stamp', actionMs(800)); });
+                    c.at(actionMs(700), () => { c.snd('uiConfirm'); c.insert('UNOBSERVED: ALL STATES AT ONCE', 'terminal', actionMs(900)); });
+                    c.at(c.STRIKE_MS - actionMs(2300), () => { c.snd('empBurst'); c.insert('|ψ⟩ = Σ aₙ|n⟩', 'terminal', actionMs(800)); });
+                    c.at(c.STRIKE_MS - actionMs(1400), () => { c.snd('discord'); c.insert('THE WATCHER LOOKS', 'scripture', actionMs(800)); c.kick(4, 160); });
+                    for (let i = 0; i < 3; i++) c.at(c.STRIKE_MS - actionMs(1100) + actionMs(i * 320), () => { c.snd('chainHop'); c.insert(['|1⟩', '|2⟩', '|3⟩'][i], 'glitch', actionMs(220)); });
+                    c.at(c.STRIKE_MS - actionMs(300), () => c.insert('REALLY LOOKS', 'signal', actionMs(300)));
+                },
+                strike(c) {
+                    const p = c.pos(c.target);
+                    c.freeze(actionMs(180), { grade: 'cool' });
+                    c.ring(p.x, p.y, 0x7fe0ff, { r1: c.ts * 2.8, ms: 600, torus: true });
+                    c.flash('#7fe0ff', 200, 0.8); c.kick(12, 260);
+                    c.snd('empBurst'); c.dsnd('slam');
+                },
+                resolve(c) {
+                    const V = c.VFX, p = c.pos(c.target);
+                    if (V.sigWhiteout3D) V.sigWhiteout3D(p.x, p.y, { color: 0x06101a, ms: 800, peak: 0.5, sizeTiles: 5, shake: false });
+                    c.at(actionMs(300), () => c.snd('teleport'));
+                    c.insert('ψ → 0', 'stamp', actionMs(1000));
+                    c.at(actionMs(1500), () => { c.snd('uiConfirm'); c.insert('PROBABILITY OF SURVIVAL: 0.000', 'terminal', actionMs(800)); });
+                }
+            },
+            driveBy: {
+                chargeMs: 2200, strikeMs: 4300, resolveMs: 2400,
+                castSpell: { type: 'damage', dmg: 1, name: 'Drive-By', kind: 'damage' },
+                siren(c) { c.snd('gun'); c.dsnd('identSting'); c.grade('desat dim vignette', actionMs(900)); },
+                charge(c) {
+                    const V = c.VFX, u = c.unit;
+                    if (V.sigMagicCircle3D) V.sigMagicCircle3D(u.x, u.y, { radiusPx: c.ts * 0.9, growMs: 240, holdMs: c.CHARGE_MS, fadeMs: 400, spin: false, color: 0x101014, color2: 0xffe090 });
+                    if (V.sigGasCloud3D) V.sigGasCloud3D(u.x, u.y, { color: 0x333333, coreColor: 0x101014, radiusTiles: 0.7, ms: c.CHARGE_MS, count: 6 });
+                    c.snd('gun');
+                },
+                cam(c) {
+                    const u = c.unit, p = c.pos(c.target);
+                    if (typeof cineFaceCam === 'function') cineFaceCam(u, { dist: 2.4, tilt: 78, cut: true, duration: 400 }); else c.dive(u, 1.2, 300);   // the phone call
+                    c.at(c.STRIKE_MS - actionMs(3600), () => { if (typeof cineGodShot === 'function') cineGodShot(p, 9, { cut: false, duration: 1000, tilt: 42 }); });   // the car rolls in
+                    c.at(c.STRIKE_MS - actionMs(2500), () => { if (typeof cineWitnessCam === 'function') cineWitnessCam(c.target, { dist: 3.6, tilt: 62, duration: 800 }); });   // walking pace, the windows down
+                    c.at(c.STRIKE_MS - actionMs(1700), () => { if (typeof cineSideDolly === 'function') cineSideDolly(u, p, { dist: 3.2, tilt: 66, travelMs: actionMs(1500), easing: 'linear' }); c.slow(0.7, actionMs(400)); });   // alongside the car through the clip
+                    c.at(c.STRIKE_MS - actionMs(200), () => { c.slow(0.3, actionMs(380)); if (typeof cineFaceCam === 'function') cineFaceCam(c.target, { dist: 2.6, tilt: 74, cut: true, duration: 300 }); });   // the last round
+                    c.at(c.STRIKE_MS + actionMs(500), () => { c.slowClear(); if (typeof cineGodShot === 'function') cineGodShot(p, 6, { cut: false, duration: 900, tilt: 74 }); });   // the chalk outline
+                    c.at(c.STRIKE_MS + actionMs(1500), () => { if (typeof cineEndCapReverse === 'function') cineEndCapReverse(u, c.target, {}); else if (typeof cineGodShot === 'function') cineGodShot(p, 6, { cut: false, duration: 520, tilt: 30 }); });
+                    return true;
+                },
+                stage(c) {
+                    const V = c.VFX, u = c.unit, p = c.pos(c.target);
+                    if (V.sigDriveBy3D) V.sigDriveBy3D(u.x, u.y, p.x, p.y, { ms: c.STRIKE_MS + actionMs(3200), carAt: actionMs(100), fireAt: c.STRIKE_MS - actionMs(1700), hitAt: c.STRIKE_MS });
+                    c.at(actionMs(100), () => { c.snd('gun'); c.insert('🔫 DRIVE-BY', 'stamp', actionMs(800)); });
+                    c.at(actionMs(600), () => { c.snd('uiConfirm'); c.insert('WALKING PACE', 'terminal', actionMs(800)); });
+                    c.at(c.STRIKE_MS - actionMs(2200), () => { c.snd('moveStep'); c.insert('EVERY WINDOW DOWN', 'scripture', actionMs(800)); });
+                    for (let i = 0; i < 14; i++) c.at(c.STRIKE_MS - actionMs(1700) + actionMs(i * 110), () => { c.snd('shootout'); c.kick(2, 60); });   // the clip
+                    c.at(c.STRIKE_MS - actionMs(900), () => c.insert('THE WHOLE CLIP', 'signal', actionMs(700)));
+                },
+                strike(c) {
+                    const p = c.pos(c.target);
+                    c.freeze(actionMs(160), { grade: 'desat dim' });
+                    c.ring(p.x, p.y, 0x8a8a90, { r1: c.ts * 2.4, ms: 520, torus: true });
+                    c.flash('#ffe090', 160, 0.7); c.kick(16, 280);
+                    c.snd('gun'); c.dsnd('slam');
+                },
+                resolve(c) {
+                    const V = c.VFX, p = c.pos(c.target);
+                    if (V.sigWhiteout3D) V.sigWhiteout3D(p.x, p.y, { color: 0x101014, ms: 800, peak: 0.45, sizeTiles: 5, shake: false });
+                    c.at(actionMs(400), () => c.snd('moveStep'));
+                    c.insert('EMPTIED.', 'stamp', actionMs(1000));
+                    c.at(actionMs(1500), () => { c.snd('uiConfirm'); c.insert('ROUNDS: 14 · WITNESSES: 0', 'terminal', actionMs(800)); });
+                }
+            },
+            theRuler: {
+                chargeMs: 2200, strikeMs: 4300, resolveMs: 2400,
+                castSpell: { type: 'damage', dmg: 1, name: 'Ruler', kind: 'damage' },
+                siren(c) { c.snd('healRegen'); c.dsnd('identSting'); c.grade('sepia', actionMs(900)); },
+                charge(c) {
+                    const V = c.VFX, u = c.unit;
+                    if (V.sigMagicCircle3D) V.sigMagicCircle3D(u.x, u.y, { radiusPx: c.ts * 0.9, growMs: 240, holdMs: c.CHARGE_MS, fadeMs: 400, spin: false, color: 0xf4ecd8, color2: 0xffe080 });
+                    if (V.sigLightPillar3D) V.sigLightPillar3D(u.x, u.y, { color: 0xffe080, ms: c.CHARGE_MS });
+                    c.snd('healRegen');
+                },
+                cam(c) {
+                    const u = c.unit, p = c.pos(c.target);
+                    if (typeof cineFaceCam === 'function') cineFaceCam(u, { dist: 2.4, tilt: 78, cut: true, duration: 400 }); else c.dive(u, 1.2, 300);   // the habit, the look
+                    c.at(c.STRIKE_MS - actionMs(3600), () => { if (typeof cineSkyWatch === 'function') cineSkyWatch(c.target, { span: 6, tiltUp: 112, tiltDown: 70, ms: actionMs(1000) }); });   // the ruler comes down out of the sky
+                    c.at(c.STRIKE_MS - actionMs(2500), () => { if (typeof cineFaceCam === 'function') cineFaceCam(c.target, { dist: 2.6, tilt: 76, cut: true, duration: 400 }); });   // the hand held out
+                    for (let i = 0; i < 3; i++) c.at(c.STRIKE_MS - actionMs(2300) + actionMs(i * 600), () => { c.kick(3, 90); });   // three raps
+                    c.at(c.STRIKE_MS - actionMs(800), () => { if (typeof cineCrane === 'function') cineCrane(c.target, { duration: actionMs(500), tilt: 40, rise: 6.0 }); c.slow(0.6, actionMs(400)); });   // the ruler goes UP
+                    c.at(c.STRIKE_MS - actionMs(350), () => { if (typeof cineFallFollow === 'function') cineFallFollow(p, { ms: actionMs(320) }); });   // and comes down
+                    c.at(c.STRIKE_MS - actionMs(200), () => { c.slow(0.3, actionMs(380)); });
+                    c.at(c.STRIKE_MS + actionMs(500), () => { c.slowClear(); if (typeof cineGodShot === 'function') cineGodShot(p, 6, { cut: false, duration: 900, tilt: 52 }); });   // the two halves
+                    c.at(c.STRIKE_MS + actionMs(1500), () => { if (typeof cineEndCapReverse === 'function') cineEndCapReverse(u, c.target, {}); else if (typeof cineGodShot === 'function') cineGodShot(p, 6, { cut: false, duration: 520, tilt: 30 }); });
+                    return true;
+                },
+                stage(c) {
+                    const V = c.VFX, u = c.unit, p = c.pos(c.target);
+                    if (V.sigTheRuler3D) V.sigTheRuler3D(u.x, u.y, p.x, p.y, { ms: c.STRIKE_MS + actionMs(3200), rulerAt: actionMs(100), tapAt: c.STRIKE_MS - actionMs(2300), riseAt: c.STRIKE_MS - actionMs(800), hitAt: c.STRIKE_MS });
+                    c.at(actionMs(100), () => { c.snd('healRegen'); c.insert('📏 RULER', 'stamp', actionMs(800)); });
+                    c.at(actionMs(700), () => { c.snd('uiConfirm'); c.insert('SISTER IS DISAPPOINTED', 'document', actionMs(900)); });
+                    c.at(c.STRIKE_MS - actionMs(2500), () => { c.snd('block'); c.insert('HOLD OUT YOUR HAND', 'scripture', actionMs(900)); });
+                    for (let i = 0; i < 3; i++) c.at(c.STRIKE_MS - actionMs(2300) + actionMs(i * 600), () => { c.snd('block'); c.insert(['ONE', 'TWO', 'THREE'][i], 'terminal', actionMs(300)); });
+                    c.at(c.STRIKE_MS - actionMs(800), () => { c.snd('physicalAbility'); c.insert('AND THE KNUCKLES WERE THE LEAST OF IT', 'signal', actionMs(700)); });
+                },
+                strike(c) {
+                    const p = c.pos(c.target);
+                    c.freeze(actionMs(170), { grade: 'sepia' });
+                    c.ring(p.x, p.y, 0xd8b070, { r1: c.ts * 3.2, ms: 620, torus: true });
+                    c.flash('#ffffff', 180, 0.75); c.kick(20, 320);
+                    c.snd('physicalAbilityDamage'); c.dsnd('slam');
+                },
+                resolve(c) {
+                    const V = c.VFX, p = c.pos(c.target);
+                    if (V.sigWhiteout3D) V.sigWhiteout3D(p.x, p.y, { color: 0xf4ecd8, ms: 800, peak: 0.5, sizeTiles: 5, shake: false });
+                    c.at(actionMs(300), () => c.snd('block'));
+                    c.insert('DETENTION.', 'stamp', actionMs(1000));
+                    c.at(actionMs(1500), () => { c.snd('uiConfirm'); c.insert('RULERS: 0.5 + 0.5 · HANDS: 0', 'terminal', actionMs(800)); });
+                }
+            },
         };
         window._FIN_DIRECTORS = _FIN_DIRECTORS;
 

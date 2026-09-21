@@ -7281,3 +7281,45 @@ placements; not a render). UNSEEN LIVE (RULE #1c): FINISHER_PLAN §7's
 delivery-15 entry lists what to eyeball first — the tentacle GLBs' lean, the
 mountain's distance, the ball's size, the cone under the real model, the
 walls' spacing on a short line, the eight camera paths.
+
+## THE LAST THIRTEEN — Spirit Bomb · Top of the Tower · The Labyrinth · Recruited · Sacred Geometry · The Hail Mary · Split the Arrow · Megazord · Bonded · Valhalla · Observed · Drive-By · Ruler (FINISHER_PLAN delivery 16) — 2026-09-21, local delivery
+THE CATALOGUE IS COMPLETE: every one of the 99 `FINISHERS` rows wears a
+bespoke `sig` + `built: true`; `sig: null` no longer exists in data.js
+(the typed execution stays as the fallback for an unknown race). The last
+thirteen in roster order: ki fighter `spiritBomb` (`_sigSpiritBomb3D` —
+sixteen threads from the horizon into one ball over the caster, grown to
+3.6 tiles, thrown down the line, compressed to a point on the hit), king
+kong `topOfTheTower` (`_sigTopOfTheTower3D` — a ten-tile lit skyscraper
+beside the tile, the ape's climb with the body, three `_finBiplane`s, one
+swatted, the drop from the top), minotaur `theLabyrinth`
+(`_sigTheLabyrinth3D` — a 7 × 7 stone maze from a fixed plan, the body
+runs a waypoint route, the walls drop and the bull is behind it), necromancer
+`recruited` (`_sigRecruited3D` — the bolt, the fall, the headstone, the
+body stands back up green-eyed under YOU START MONDAY and shambles off the
+board; `resolveMs` 3200), occulus `sacredGeometry` (`_sigSacredGeometry3D`
+— a 4D tesseract projected down over the tile, a Metatron cube on the
+ground, four folds, a point), quarterback `hailMary` (`_sigHailMary3D` —
+yard lines to an end zone nine tiles out, the spiral, the catch, the
+spike), robinhood `splitTheArrow` (`_sigSplitTheArrow3D` — the target,
+three arrows each splitting the last, the fourth splits the body into two
+half cylinders), super sentai `megazord` (`_sigMegazord3D` — five vehicles
+lock into a six-tile silhouette behind the caster, the chest beam), symbiote
+`bonded` (`_sigBonded3D` — the suit leaves the host as a blob swarm, wraps
+the victim with `_finVenomTex`, comes home bigger), valkraye `valhalla`
+(`_sigValhalla3D` — a `_finHorse` with wings down a spiral, Bifrost's six
+bands up, the bolt, the burning fall), watcher `observed` (`_sigObserved3D`
+— a seven-tile `_finEyeTex` eye between two lids, seven flickering copies,
+a standing-wave ring, the collapse one by one), gangster `driveBy`
+(`_sigDriveBy3D` — the cadillac clone on the lane beside the victim, a round
+every 110 ms from four windows, casings, the chalk outline), nun `theRuler`
+(`_sigTheRuler3D` — an eight-tile `_finRulerTex` ruler, three raps, up
+edge-on and down, snapped in two, a halo). Each = a director in battle.js
+`_FIN_DIRECTORS` (the DELIVERY 16 block), the signature in "THE FINISHER PASS
+2" (the DELIVERY 16 block; `_sigRunOwned` + `_fxDelay`, called inside the
+relayed cinematic — RULE #2), a `_FIN_STAGE[sig]` script for the forge, a row
+in finishers.test.js's BUILT + SIG_FN tables. Smoke-tested in a stub-THREE
+harness (every tick from four placements; the stage scripts' timers; not a
+render). UNSEEN LIVE (RULE #1c): FINISHER_PLAN §7's delivery-16 entry lists
+what to eyeball first — the ball's radius, the tower's height, the maze
+cells, the tesseract at the game's pitch, the zord's scale, the cadillac's
+yaw, the ruler's overhang, the thirteen camera paths.

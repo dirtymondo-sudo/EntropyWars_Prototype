@@ -197,6 +197,124 @@ spells), a ziggurat tier block, a gothic buttress.
 
 ## 7. Log
 
+- **2026-09-21 — THE LAST THIRTEEN (delivery 16). EVERY FINISHER IS BESPOKE: 99 of 99.**
+  The last `FINISHERS` rows with `sig: null`, in roster order, are BUILT: ki
+  fighter **Spirit Bomb** (`spiritBomb` / `_sigSpiritBomb3D` — sixteen threads
+  of light from the horizon ring and the zenith stream into ONE BALL over the
+  caster; it grows from a fist to 3.6 tiles across with sparks in orbit and
+  the ground lit under it; THROWN on an arc along the line, it comes down on
+  the tile and COMPRESSES to a point on the hit; a pillar of light, motes;
+  LEND ME YOUR ENERGY; the director's sky watch + a dolly zoom out as it
+  grows, the fall-follow rides it down), king kong **Top of the Tower**
+  (`topOfTheTower` / `_sigTopOfTheTower3D` — a ten-tile SKYSCRAPER in a lit
+  window grid (`_finWindowsTex`) grows beside the tile with a mast and a
+  beacon, the ape stand-in carries the body up its face, three BIPLANES
+  (`_finBiplane`) circle the summit on tracer fire, one is swatted and spins
+  down trailing smoke into a fireball, the ape lets go at the top — the fall
+  down the face IS the hit — and beats its chest; IT WAS BEAUTY; the crane
+  climbs with the ape, a fly-by at the summit, the fall-follow), minotaur
+  **The Labyrinth** (`theLabyrinth` / `_sigTheLabyrinth3D` — a 7 × 7 maze of
+  stone walls rises round the tile from a fixed plan, the body RUNS its
+  corridors on a waypoint route (dust at the feet), the bull-headed stand-in
+  waits in a dead end and DOES NOT MOVE; every wall drops at once and it is
+  right behind the runner — the horns lower, one tile's charge, the hit; NO
+  THREAD THIS TIME; a straight-down god shot for the maze, a witness cam for
+  the run, the reverse-OTS on the drop), necromancer **Recruited**
+  (`recruited` / `_sigRecruited3D` — a green bolt, the body FALLS (the hit is
+  the death), a headstone rises at its head reading RECRUITED, the grave
+  glows, the body STANDS BACK UP stiff and lurching with two green eyes under
+  a contract sprite (YOU START MONDAY) and SHAMBLES off the tile past the
+  necromancer and off the board; `resolveMs` 3200 for the walk; the fly-by
+  follows it out), occulus **Sacred Geometry** (`sacredGeometry` /
+  `_sigSacredGeometry3D` — a TESSERACT: 16 vertices / 32 edges projected down
+  from 4D (`proj` = an xw + yz double rotation and a perspective from w) turning
+  over the tile, gold vertex sprites; a Metatron cube (13 points, every chord)
+  burns on the ground; the body is FOLDED four times — a non-uniform scale on
+  one axis, a rotation on another, a ghost copy at every fold — and on the hit
+  goes to a point; THE ANGLES ARE WRONG; a dolly zoom the length of the folds),
+  quarterback **The Hail Mary** (`hailMary` / `_sigHailMary3D` — yard lines
+  paint themselves along the line out to an END ZONE nine tiles past the
+  victim with goalposts, the body is THROWN full length on a high spiral
+  turning on its axis, a receiver stand-in jumps, catches and SPIKES it into
+  the turf (the hit), the referee's arms go up, TOUCHDOWN; a fourteen-tile
+  fly-by for the flight), robinhood **Split the Arrow** (`splitTheArrow` /
+  `_sigSplitTheArrow3D` — a straw target (`_finTargetTex`) stands up behind the
+  victim; arrow one to the gold, arrow two SPLITS it (the first's shaft falls
+  in two halves), arrow three splits that, and THE LAST ONE — a shaft of light
+  — takes the victim, whose body splits down the middle into two half
+  cylinders that fall apart (the hit); THEN THE ARROW THAT SPLIT IT; a cut to
+  the gold per arrow; the `gap` opt spaces the flights and the fourth lands
+  ON the hit), super sentai **Megazord** (`megazord` / `_sigMegazord3D` — five
+  coloured vehicles fly in from five sides on coloured trails and LOCK behind
+  the caster into a six-tile silhouette (legs · torso · arms · a head whose
+  visor lights), the chest cannon charges (a ring closing on it) and fires one
+  beam down the line into the victim (the hit), a second explosion behind the
+  pose; IT'S MORPHIN TIME; the crane climbs the lock, the reverse-OTS over the
+  zord's shoulder for the shot), symbiote **Bonded** (`bonded` / `_sigBonded3D`
+  — the suit LEAVES the host stand-in (the real caster faded; the host pales)
+  as a swarm of black blobs across the line, WRAPS the victim from the feet up
+  with the white eyes and the grin on it (`_finVenomTex`), the body fights,
+  the shell squeezes on the hit and the body is gone inside it, the mass comes
+  home half again bigger and re-wraps the host with the face on him; WE ARE
+  VENOM; two side dollies, out and home), valkraye **Valhalla** (`valhalla` /
+  `_sigValhalla3D` — a cloud ring parts round a gold rift eleven tiles up, THE
+  RIDER (`_finHorse` with wings, a spear) comes down a three-turn spiral,
+  scoops the body and climbs BIFROST — six rainbow bands laid from the tile to
+  the rift — a bolt out of the light takes the body OFF the horse at the top
+  and it comes down the whole way as a burning streak onto the tile (the hit);
+  CHOSEN / NOT CHOSEN; the crane up the bridge, the fall-follow down), watcher
+  **Observed** (`observed` / `_sigObserved3D` — an EYE seven tiles wide
+  (`_finEyeTex`) opens in the sky over the tile between two lids, a gaze cone
+  down onto it; seven translucent copies of the body flicker on and off round
+  the tile, the body itself flickering with them, a standing wave (a sine on a
+  circle, a Line) ringing it; the eye NARROWS and the copies collapse into the
+  tile one by one; on the hit the last goes, the wave flattens, ψ → 0; THE
+  WAVEFUNCTION COLLAPSES; a dolly zoom in with the narrowing lid), gangster
+  **Drive-By** (`driveBy` / `_sigDriveBy3D` — the misc cache's cadillac (else a
+  black box on wheels with headlights) rolls in along the lane BESIDE the
+  victim, slows to walking pace, and every 110 ms a muzzle flashes out of one
+  of four windows in turn — a tracer into the body, a casing off the road (a
+  ballistic mesh), the body jerking — until THE WHOLE CLIP lands on the hit;
+  the body drops, a chalk outline, the car rolls on out; a side dolly alongside
+  the car for the clip), nun **Ruler** (`theRuler` / `_sigTheRuler3D` — a
+  wooden ruler eight tiles long (`_finRulerTex`: the grain, inch ticks,
+  DIOCESAN SCHOOLS · No. 12) descends flat over the tile and hovers, HOLD OUT
+  YOUR HAND, three quick raps on the knuckles (the body flinches, a spark),
+  then it goes UP edge-on and comes down full length across the tile on the
+  hit: the body flattened, the ruler SNAPS in two (both halves spin away
+  ballistically), a halo blinks on over the nun; DETENTION; the crane up, the
+  fall-follow down). Each = a director in battle.js `_FIN_DIRECTORS` (the
+  DELIVERY 16 block), the signature in "THE FINISHER PASS 2" (the DELIVERY 16
+  block; `_sigRunOwned` + `_fxDelay`, called inside the relayed cinematic —
+  RULE #2), a `_FIN_STAGE[sig]` script for the forge, a row in
+  finishers.test.js's BUILT + SIG_FN tables; every data.js row wears `sig` +
+  `built: true`. Four cached canvas textures (`_finTargetTex` · `_finRulerTex`
+  · `_finWindowsTex` · `_finVenomTex`) and two stand-in builders (`_finBiplane`
+  · `_finHorse`) joined the section. Smoke-tested in a stub-THREE harness
+  (every tick of every signature at 16 ms from four caster / victim placements
+  — the caster ON the victim's tile included —, no NaN in any position / scale
+  / rotation / opacity / spawn / geometry argument, no throw; every stage
+  script's `P.at` and sig call resolved; not a render). Files: data.js,
+  battle.js, three-vfx-effects.js, index.html (`20260921-finishers-16-cors`),
+  finishers.test.js, CLAUDE.md, this plan. Not playtested (RULE #1c): the
+  ball's final radius against the dome (`RMAX` 3.6 tiles) and its arc; the
+  tower's ten tiles against a low camera, the ape's climb rate, the swatted
+  plane's fall; the maze walls' 0.9-tile cells against a unit's model (the
+  real victim stands still under the run — the stand-in runs), the charge's
+  read; the risen body's lurch and the walk's length off a small board; the
+  tesseract's projection at the game's pitch, the folds on a sprite vessel;
+  the yard lines' opacity on a bright sheet, the goalposts past the rim; the
+  arrows' scale and the split shafts' fall, the body halves' seam; the zord's
+  six tiles against the caster's model and the beam's spine; the blob swarm's
+  read, the face plane's facing (it faces the caster's side); the horse's
+  scale and the spiral's start on a small board, Bifrost's angle; the eye's
+  lids on a dark map, the ghosts' flicker rate; the cadillac clone's yaw on the
+  lane (the clone takes `rotation.y = π/2` — a nose that lands sideways is that
+  one field), the casings' scale; the ruler's eight tiles on a small board (it
+  overhangs the rim — intended), the tap depth against the model's head; the
+  thirteen camera paths. THE CATALOGUE IS COMPLETE — the next finisher work is
+  the live look: play each on the board, then §6's assets.
+
 - **2026-09-20 — EIGHT MORE EXECUTIONS in roster order (delivery 15).** The
   next eight `FINISHERS` rows with `sig: null` in `AVAILABLE_RACES` order are
   BUILT (eighty-six of 99; 13 remain): kraken **Release the Kraken**

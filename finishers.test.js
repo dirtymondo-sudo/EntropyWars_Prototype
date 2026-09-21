@@ -137,6 +137,7 @@ const BUILT = { 'king arthur': 'worldCleave', anubis: 'weighing', 'santa clause'
     'cosmic wraith': 'heatDeath', superhero: 'upUpAndAway', general: 'airSupport', droid: 'decommissioned', antihero: 'noMercy', 'conspiracy theorist': 'wakeUpSheeple',
     overlord: 'byOrderOf', 'chosen one': 'prophecyFulfilled', politician: 'motionCarries', atlantean: 'poseidonsWrath', dinosaur: 'extinctionEvent', dragon: 'hoard', ghoul: 'graveRobbery', gnome: 'gardenVariety',
     kraken: 'releaseTheKraken', 'loch ness monster': 'nessieSurfaces', yeti: 'avalanche', barbarella: 'spaceDisco', 'black goo': 'assimilated', golem: 'eruption', 'ice queen': 'flashFrozen', juggernaut: 'throughTheWall',
+    'ki fighter': 'spiritBomb', 'king kong': 'topOfTheTower', minotaur: 'theLabyrinth', necromancer: 'recruited', occulus: 'sacredGeometry', quarterback: 'hailMary', robinhood: 'splitTheArrow', 'super sentai': 'megazord', symbiote: 'bonded', valkraye: 'valhalla', watcher: 'observed', gangster: 'driveBy', nun: 'theRuler',
     'door agent': 'openHouse' };
 const SIG_FN = { worldCleave: '_sigWorldCleave3D', weighing: '_sigWeighing3D', naughtyList: '_sigNaughtyList3D', hitAndRun: '_sigHitAndRun3D', kaijuStomp: '_sigKaijuStomp3D', segfault: '_sigSegfault3D',
     haymaker: '_sigHaymaker3D', bootHill: '_sigBootHill3D', shrinkRay: '_sigShrinkRay3D',
@@ -152,6 +153,7 @@ const SIG_FN = { worldCleave: '_sigWorldCleave3D', weighing: '_sigWeighing3D', n
     heatDeath: '_sigHeatDeath3D', upUpAndAway: '_sigUpUpAndAway3D', airSupport: '_sigAirSupport3D', decommissioned: '_sigDecommissioned3D', noMercy: '_sigNoMercy3D', wakeUpSheeple: '_sigWakeUpSheeple3D',
     byOrderOf: '_sigByOrderOf3D', prophecyFulfilled: '_sigProphecyFulfilled3D', motionCarries: '_sigMotionCarries3D', poseidonsWrath: '_sigPoseidonsWrath3D', extinctionEvent: '_sigExtinctionEvent3D', hoard: '_sigHoard3D', graveRobbery: '_sigGraveRobbery3D', gardenVariety: '_sigGardenVariety3D',
     releaseTheKraken: '_sigReleaseTheKraken3D', nessieSurfaces: '_sigNessieSurfaces3D', avalanche: '_sigAvalanche3D', spaceDisco: '_sigSpaceDisco3D', assimilated: '_sigAssimilated3D', eruption: '_sigEruption3D', flashFrozen: '_sigFlashFrozen3D', throughTheWall: '_sigThroughTheWall3D',
+    spiritBomb: '_sigSpiritBomb3D', topOfTheTower: '_sigTopOfTheTower3D', theLabyrinth: '_sigTheLabyrinth3D', recruited: '_sigRecruited3D', sacredGeometry: '_sigSacredGeometry3D', hailMary: '_sigHailMary3D', splitTheArrow: '_sigSplitTheArrow3D', megazord: '_sigMegazord3D', bonded: '_sigBonded3D', valhalla: '_sigValhalla3D', observed: '_sigObserved3D', driveBy: '_sigDriveBy3D', theRuler: '_sigTheRuler3D',
     openHouse: '_sigOpenHouse3D' };
 
 test('THE CATALOGUE: every playable race has a finisher row of its own type; the six typed defaults cover the chart', () => {
