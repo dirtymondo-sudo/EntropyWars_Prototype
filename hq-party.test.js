@@ -24,6 +24,7 @@ const MP = fs.readFileSync(__dirname + '/map.js', 'utf8');
 const BT = fs.readFileSync(__dirname + '/battle.js', 'utf8');
 const ST = fs.readFileSync(__dirname + '/state.js', 'utf8');
 const UI = fs.readFileSync(__dirname + '/ui.js', 'utf8');
+const D_SRC = fs.readFileSync(__dirname + '/data.js', 'utf8');
 const CSS = fs.readFileSync(__dirname + '/styles-base.css', 'utf8');
 const profile = (o) => Object.assign({ username: 'MONDO', account: { gold: 0, unlockedUnits: ['knight', 'wizard', 'fairy', 'catgirl', 'grey', 'marksman', 'werewolf', 'door agent', 'homosapien', 'cowboy', 'nun'] }, door: { clearance: 1, hq: {} } }, o || {});
 const last = { v: 1, seat: 1, members: [
@@ -356,4 +357,25 @@ test('THE SOURCE SITES (2026-09-20): the quick strip, the ITEMS sheet, the walk-
     /* the pay cache drops a potion */
     assert.ok(D.HQ_FIND_RULES.potionDrop && D.HQ_FIND_RULES.potionDrop.healPotion > 0, 'the drop table');
     ['.hq-pp-quick', '.hq-pp-quickbar', '.hq-pp-bag', '.hq-pp-bagrow', '.hq-pp-pockets', '.hq-shop-row', '.hq-shop-price'].forEach(s => assert.ok(CSS.includes(s), 'css: ' + s));
+});
+
+test('THE LEVEL\'S MAX (2026-09-21): a stored max from a cap-level fight is read as a FRACTION of the built unit\'s max; hqPartyResync heals the record once; the pause menu calls it', () => {
+    const p = profile(); g('hqPartyEnsure')(p, { last });
+    const r = g('hqPartyRecord')(p); const m = r.members[1];
+    m.hp = 800; m.hpMax = 800; m.mp = 60; m.mpMax = 120;                       // what a level-100 fight filed before THE LEVELS
+    const u = unitOf(m, 57, 24);                                                // the level-5 build
+    let v = g('hqPartyVitals')(m, u);
+    assert.equal(v.hpMax, 57, 'the level\'s max wins'); assert.equal(v.hp, 57, 'full stays full'); assert.equal(v.mpMax, 24); assert.equal(v.mp, 12, 'half stays half'); assert.equal(v.rescaled, true);
+    m.hp = 200; v = g('hqPartyVitals')(m, u); assert.equal(v.hp, 14, 'a quarter stays a quarter'); assert.equal(v.down, false);
+    m.hp = 0; v = g('hqPartyVitals')(m, u); assert.equal(v.hp, 0); assert.equal(v.down, true, 'DOWN stays down');
+    assert.equal(g('hqPartyVitals')(m, null).hpMax, 800, 'no unit = the stored numbers as before');
+    m.hp = 400;
+    const units = {}; units[m.id] = u;
+    assert.equal(g('hqPartyResync')(p, units), 1, 'one member moved');
+    assert.equal(m.hpMax, 57); assert.equal(m.hp, 29); assert.equal(m.mpMax, 24); assert.equal(m.mp, 12);
+    assert.equal(g('hqPartyResync')(p, units), 0, 'the second pass is a no-op');
+    assert.equal(g('hqPartyVitals')(m, u).rescaled, false);
+    assert.equal(g('hqPartyVitals')(r.members[0], unitOf(r.members[0], 57, 24)).hpMax, 57, 'a member who never fought reads the unit\'s');
+    assert.match(MP, /P\.resynced = true;[\s\S]{0,600}window\.hqPartyResync\(p, o\)/, 'the pause menu resyncs once per open');
+    assert.match(D_SRC, /window\.hqPartyResync = hqPartyResync/);
 });

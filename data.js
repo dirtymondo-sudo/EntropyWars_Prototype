@@ -43457,13 +43457,47 @@ function hqPartyShifts(profile) {
     const r = hqPartyRecord(profile); const ms = r ? r.members : [];
     return { first: ms.slice(0, HQ_PARTY_RULES.shift), second: ms.slice(HQ_PARTY_RULES.shift, HQ_PARTY_RULES.roster), members: ms };
 }
-/* the vitals a member reads at: the stored numbers, else the built unit's (a member who never fought is FULL) */
+/* the vitals a member reads at: the stored numbers, else the built unit's (a member who never fought is FULL).
+   THE LEVEL'S MAX (2026-09-21): a stored max is a MEMORY of the last fight's build — a member who fought at the cap before THE
+   LEVELS landed carries an 800-HP max on a level-5 body. When the built unit is handed in, its max IS the level's: the
+   stored numbers are read as a FRACTION of the old max and laid on the unit's (a full member stays full, a hurt one keeps
+   its share, a DOWN one stays at 0); hqPartyResync writes that back so the record heals. Never print a stored max beside
+   a built unit's level again — hand the unit in. */
+function hqPartyScaledVitals(m, unit) {
+    const uHp = unit ? (unit.maxHp | 0) : 0, uMp = unit ? (unit.maxMp | 0) : 0;
+    let hpMax = (m.hpMax != null) ? m.hpMax : uHp, mpMax = (m.mpMax != null) ? m.mpMax : uMp;
+    let hp = (m.hp != null) ? Math.min(m.hp, hpMax || m.hp) : hpMax;
+    let mp = (m.mp != null) ? Math.min(m.mp, mpMax || m.mp) : mpMax;
+    let rescaled = false;
+    if (uHp > 0 && m.hpMax != null && m.hpMax !== uHp) {
+        const frac = m.hpMax > 0 ? hp / m.hpMax : 1;
+        hp = (m.hp === 0) ? 0 : Math.max(1, Math.min(uHp, Math.round(uHp * frac))); hpMax = uHp; rescaled = true;
+    }
+    if (uMp >= 0 && unit && m.mpMax != null && m.mpMax !== uMp) {
+        const frac = m.mpMax > 0 ? mp / m.mpMax : 1;
+        mp = Math.max(0, Math.min(uMp, Math.round(uMp * frac))); mpMax = uMp; rescaled = true;
+    }
+    return { hp, hpMax, mp, mpMax, rescaled };
+}
 function hqPartyVitals(m, unit) {
-    const hpMax = (m.hpMax != null) ? m.hpMax : (unit ? (unit.maxHp | 0) : 0);
-    const mpMax = (m.mpMax != null) ? m.mpMax : (unit ? (unit.maxMp | 0) : 0);
-    const hp = (m.hp != null) ? Math.min(m.hp, hpMax || m.hp) : hpMax;
-    const mp = (m.mp != null) ? Math.min(m.mp, mpMax || m.mp) : mpMax;
-    return { hp, hpMax, mp, mpMax, down: m.hp === 0, pct: hpMax > 0 ? hp / hpMax : 1, mpPct: mpMax > 0 ? mp / mpMax : 1 };
+    const v = hqPartyScaledVitals(m, unit);
+    const { hp, hpMax, mp, mpMax } = v;
+    return { hp, hpMax, mp, mpMax, down: m.hp === 0, pct: hpMax > 0 ? hp / hpMax : 1, mpPct: mpMax > 0 ? mp / mpMax : 1, rescaled: v.rescaled };
+}
+/* THE RESYNC: the stored vitals brought to the built units' maxes (`units` = { [memberId]: unit }) — ONE write over the
+   profile handed in, the caller saves; returns how many members moved (0 = the record already reads at the level's max) */
+function hqPartyResync(profile, units) {
+    const r = hqPartyRecord(profile); if (!r || !units) return 0;
+    let n = 0;
+    r.members.forEach(m => {
+        const u = units[m.id]; if (!u || !(u.maxHp > 0)) return;
+        const v = hqPartyScaledVitals(m, u); if (!v.rescaled) return;
+        if (m.hpMax != null) { m.hpMax = v.hpMax; m.hp = v.hp; }
+        if (m.mpMax != null) { m.mpMax = v.mpMax; m.mp = v.mp; }
+        n++;
+    });
+    if (n) r.at = Date.now();
+    return n;
 }
 function hqPartyDown(m) { return m.hp === 0; }
 /* the party's condition: who can fight — the launch refuses a party with nobody fit */
@@ -46450,7 +46484,7 @@ if (typeof window !== 'undefined') {
     window.HQ_OFFICER_RULES = HQ_OFFICER_RULES; window.hqOfficerRecord = hqOfficerRecord; window.hqOfficerOnFile = hqOfficerOnFile; window.hqOfficerEnlist = hqOfficerEnlist;   // THE INTAKE (2026-09-21)
     window.HQ_PARTY_RULES = HQ_PARTY_RULES; window.hqPartyRecord = hqPartyRecord; window.hqPartyEnsure = hqPartyEnsure; window.hqPartyPrune = hqPartyPrune; window.hqPartyOfficer = hqPartyOfficer; window.hqPartyUnlocked = hqPartyUnlocked; window.hqPartyMember = hqPartyMember; window.hqPartyShifts = hqPartyShifts;
     window.hqPartyVitals = hqPartyVitals; window.hqPartyFit = hqPartyFit; window.hqPartyEnlist = hqPartyEnlist; window.hqPartyRelieve = hqPartyRelieve; window.hqPartySwap = hqPartySwap; window.hqPartyOnCall = hqPartyOnCall; window.hqPartyRestore = hqPartyRestore;
-    window.hqPartyForLaunch = hqPartyForLaunch; window.hqPartyAfterMatch = hqPartyAfterMatch;
+    window.hqPartyForLaunch = hqPartyForLaunch; window.hqPartyAfterMatch = hqPartyAfterMatch; window.hqPartyResync = hqPartyResync; window.hqPartyScaledVitals = hqPartyScaledVitals;
     /* THE LEVELS (2026-09-21) */
     window.HQ_LEVEL_RULES = HQ_LEVEL_RULES; window.HQ_AREA_LEVELS = HQ_AREA_LEVELS; window.XP_CURVE = XP_CURVE; window.xpThreshold = xpThreshold; window.xpLevelFor = xpLevelFor; window.xpToNext = xpToNext;
     window.hqPartyLevel = hqPartyLevel; window.hqPartyXp = hqPartyXp; window.hqPartyLevelGains = hqPartyLevelGains; window.hqPartyGrantXp = hqPartyGrantXp; window.hqPartyXpShare = hqPartyXpShare; window.hqEncounterLevels = hqEncounterLevels; window.hqEncounterGroup = hqEncounterGroup;

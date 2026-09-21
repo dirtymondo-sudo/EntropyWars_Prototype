@@ -7635,3 +7635,16 @@ to the agent on BOTH sides (`npm run test:parity`). `npm test` runs `hq-intake.t
 pin re-pointed. Ship data.js to R2 AND Render (server.js reads it). UNSEEN LIVE (RULE #1c): the creator over the menu (its
 stage on a cold cache, `.pb-officer.intake` z 99990 over the menu's motes), the hand-off into the building, the agent's creator
 rig holding the gun on the board and in the hall, the shrunken socket windows, a level-5 console crossing's numbers both sides.
+
+## THE LEVEL'S MAX — 800 HP on a level-5 card (2026-09-21, local delivery)
+The user: "I am level 5 with 800 HP." The curve was right (data.js `levelStatGains`: a level-5 unit is ~57 HP off a
+550 base — level 1 ~46, level 10 ~79, level 20 ~139, level 50 ~380, the cap 910); the 800 was a MEMORY: `hqPartyVitals`
+read the member's STORED `hpMax`, filed by the commit of a fight at the cap before THE LEVELS landed, beside a body now
+built at level 5. RULE: a stored max is the last fight's build, the built unit's max IS the level's — `hqPartyScaledVitals
+(m, unit)` reads the stored numbers as a FRACTION of the old max laid on the unit's (full stays full, hurt keeps its
+share, DOWN stays 0), `hqPartyVitals(m, unit)` returns that (+ `rescaled`; no unit = the stored numbers as before), and
+**`hqPartyResync(profile, units)`** writes it back (ONE write, the caller saves) — map.js `_hqPauseUnits` runs it once
+per pause-menu open when any member's stored max differs from its built unit's (`_hqPause.resynced`; the unit cache is
+kept). The launch was never wrong (createUnit scales the carried hp by the ratio) and the next commit files the level's
+max. Ship data.js to R2 AND Render. The 57 is the July curve (`EW_L1_FRAC` 0.05 → ~50 HP at level 1 for Mystery
+Dungeon); a level-5 of ~100 HP is `EW_L1_FRAC` ≈ 0.1 — one constant, the user's call. hq-party.test.js (15).

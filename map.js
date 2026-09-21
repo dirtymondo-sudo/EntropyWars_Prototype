@@ -1547,7 +1547,19 @@
             P.units[i] = u;
             return u;
         }
-        function _hqPauseUnits(rec) { const o = {}; (rec ? rec.members : []).forEach(m => { o[m.id] = _hqPauseUnit(m.id); }); return o; }
+        function _hqPauseUnits(rec) {
+            const o = {}; (rec ? rec.members : []).forEach(m => { o[m.id] = _hqPauseUnit(m.id); });
+            /* THE LEVEL'S MAX (2026-09-21): a stored max from a fight at the cap (before THE LEVELS) read 800 HP on a level-5
+               card — once per open, the record is brought to the built units' maxes (data.js hqPartyResync, one transaction;
+               the cache is kept — the units did not change, the numbers beside them did) */
+            const P = _hqPause;
+            if (P && !P.resynced && rec && typeof window.hqPartyResync === 'function') {
+                P.resynced = true;
+                const stale = rec.members.some(m => { const u = o[m.id]; return u && u.maxHp > 0 && m.hpMax != null && m.hpMax !== (u.maxHp | 0); });
+                if (stale) { _hqPartyTx(p => window.hqPartyResync(p, o)); if (_hqPause) _hqPause.units = o; }
+            }
+            return o;
+        }
         function _hqPausePortrait(m, u) {
             let url = null;
             /* THE INTAKE (2026-09-21): the officer's card wears THE PHOTO the creator took (the ID card's) */
