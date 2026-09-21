@@ -23,11 +23,12 @@ test('reticle shader carries the ring-vitals uniforms and the meters branch', ()
         assert.ok(glsl.includes('uniform ' + (u.endsWith('Col') ? 'vec3 ' : 'float ') + u + ';'), 'uniform ' + u);
     }
     assert.ok(glsl.includes('if (uMeters > 0.5) {'), 'meters branch');
-    // the meters DEPLETE CLOCKWISE: the fraction runs counter-clockwise
-    // from the screen's 12 o'clock so the fill ends at 12 and the spent
-    // track sweeps clockwise (2026-09-12 — matches the party-dock rings)
-    assert.ok(glsl.includes('fract((ang - uMeterRot) / 6.2832)'), 'counter-clockwise-from-screen-top fraction (deplete clockwise)');
-    assert.ok(!glsl.includes('fract((uMeterRot - ang) / 6.2832)'), 'the old fill-clockwise fraction is gone');
+    // the meters FILL FROM THE BOTTOM, CLOCKWISE (2026-09-21 — the grade
+    // node's gauge; matches the party-dock rings): clockwise from 12 is
+    // (uMeterRot − ang), the half turn puts the root at 6 o'clock
+    assert.ok(glsl.includes('fract((uMeterRot - ang) / 6.2832 + 0.5)'), 'clockwise-from-screen-bottom fraction');
+    assert.ok(!glsl.includes('fract((ang - uMeterRot) / 6.2832)'), 'the deplete-from-12 fraction is gone');
+    assert.ok(!glsl.includes('fract((uMeterRot - ang) / 6.2832)\''), 'the fill-from-12 fraction is gone');
     /* every uniform the shader reads is declared on the material */
     const m = renderer.indexOf('function _makeTeamReticleMaterial(color, phase, hpColor)');
     assert.ok(m > 0, 'material factory takes the HP colour');
@@ -69,4 +70,12 @@ test('settings rows reach both menus', () => {
     assert.ok(map.includes("window._buildVitalsLookHTML('window._openMainMenuSettings();')"), 'main-menu Settings renders it');
     assert.ok(ui.includes("window._buildVitalsLookHTML('_renderPauseMenu();')"), 'pause menu renders it');
     assert.ok(map.includes("ThreeRenderer.setRingVitals(${v})") && map.includes("ThreeRenderer.setPlateStyle('${v}')"), 'buttons call the renderer API');
+});
+
+test('the party-dock arcs fill from 6 o\'clock clockwise (2026-09-21)', () => {
+    const hud = fs.readFileSync(path.join(__dirname, 'hud.js'), 'utf8');
+    assert.ok(hud.includes("transform: 'rotate(' + (90 + _ppClamp(start, 0, 100) * 3.6) + 'deg)'"), 'an arc starts at the bottom (+90° from the SVG circle\'s 3 o\'clock)');
+    assert.ok(hud.includes("_ppArc(R_HP, hpPct, 0, 'hp fill'"), 'the HP fill is rooted at the bottom');
+    assert.ok(hud.includes("_ppArc(R_MP, mpPct, 0, 'mp fill'"), 'the MP fill is rooted at the bottom');
+    assert.ok(hud.includes("_ppArc(R_HP, shPct, hpPct, 'hp shield'"), 'the shield leads the HP fill');
 });

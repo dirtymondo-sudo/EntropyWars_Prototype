@@ -1137,13 +1137,16 @@ function TypeChip({ type, size }) {
   return h('span', { style: { display:'inline-flex', alignItems:'center', fontFamily:'DotGothic16, monospace', fontSize:fs, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', lineHeight:1.3, color:text, padding: fs >= 11 ? '3px 10px' : '2px 8px', border:`1px solid ${c}aa`, background:`linear-gradient(${c}22,${c}22), rgba(9,11,17,0.82)`, textShadow:'0 1px 2px rgba(0,0,0,0.85)', clipPath:'polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px)' }}, type);
 }
 /* Letter-grade chip (2026-08-29 stat rework): the React twin of the
-   .stat-grade HTML chip — one 10px chip, one color per grade, shown BESIDE
+   statGradeNodeHtml grade NODE (2026-09-21) — one round node, shown BESIDE
    the number at every display site so the language is learned once. */
 function GradeChip({ statKey, val }) {
-  const g = (typeof window.statGrade === 'function') ? window.statGrade(statKey, val) : null;
-  if (!g) return h('span', { className: 'pb-grade-ring none' });
-  const c = (window.STAT_GRADE_COLORS || {})[g] || '#c8c8e4';
-  return h('span', { className: 'pb-grade-ring', style: { '--gc': c }, title: 'Grade ' + g }, g);
+  /* THE GRADE NODE (2026-09-21): the React twin of data.js statGradeNodeHtml
+     — the same `.ew-grade` markup (the gauge ring from the bottom clockwise,
+     the grade's gradient face, the white letter); `.pb-grade-ring` only
+     sizes it for the pill row. */
+  const n = (typeof window.statGradeNode === 'function') ? window.statGradeNode(statKey, val) : null;
+  if (!n) return h('span', { className: 'pb-grade-ring ew-grade none' });
+  return h('span', { className: 'pb-grade-ring ' + n.cls, style: { '--pct': n.pct }, title: 'GRADE ' + n.g + ' · ' + n.pct + '%' }, h('i', null, n.g));
 }
 /* Stage 5 (plan §5.5 item 2): the STAT PILL. `statKey` (HP / ATK / INT …)
    picks the disc's colour + glyph from PB_STAT_LOOK; `gradeKey` is the
@@ -1157,14 +1160,16 @@ function StatBar({ label, val, max, compact, zodiacMod, delta, suffix, tip, grad
   if (zodiacMod === 'up') { color = EW.good; labelColor = EW.good; valColor = EW.good; }
   if (zodiacMod === 'dn') { color = EW.bad; labelColor = EW.bad; valColor = EW.bad; }
   const deltaNum = delta || 0;
+  /* THE ROW (2026-09-21): label · THE GRADE NODE · the number · the bar ·
+     the delta — the node IS the stat's disc; an ungraded row (MOV / RNG /
+     CRT / EVA) keeps the glyph disc in that column. */
   return h('div', { className: 'pb-stat' + (compact ? ' compact' : ''), title: tip || undefined, style: { '--sc': color } },
-    h('span', { className: 'pb-stat-disc' }, look.g),
     h('span', { className: 'pb-stat-label', style: { color: labelColor } }, label,
       zodiacMod === 'up' ? h('em', { style: { color: EW.good } }, '▲') : null,
       zodiacMod === 'dn' ? h('em', { style: { color: EW.bad } }, '▼') : null),
-    h('span', { className: 'pb-stat-bar' }, h('i', { style: { width: `${pct}%` } })),
-    gradeKey ? h(GradeChip, { statKey: gradeKey, val }) : h('span', { className: 'pb-grade-ring none' }),
+    gradeKey ? h(GradeChip, { statKey: gradeKey, val }) : h('span', { className: 'pb-stat-disc' }, look.g),
     h('span', { className: 'pb-stat-val', style: { color: valColor } }, val + (suffix || '')),
+    h('span', { className: 'pb-stat-bar' }, h('i', { style: { width: `${pct}%` } })),
     h('span', { className: 'pb-stat-delta', style: { color: deltaNum > 0 ? EW.good : EW.bad } }, deltaNum > 0 ? '+' + deltaNum : deltaNum < 0 ? '' + deltaNum : ''));
 }
 /* Battle-style HP/MP vitals pill: the exact nameplate fills/glows (PB_VITAL,
@@ -1180,13 +1185,12 @@ function VitalBar({ label, val, max, vital, zodiacMod, delta, tip, gradeKey, sta
   if (zodiacMod === 'dn') { labelColor = EW.bad; valColor = EW.bad; }
   const deltaNum = delta || 0;
   return h('div', { className: 'pb-stat vital' + (vital === 'hp' ? ' hp' : ''), title: tip || undefined, style: { '--sc': look.c } },
-    h('span', { className: 'pb-stat-disc' }, look.g),
     h('span', { className: 'pb-stat-label', style: { color: labelColor, textShadow: `0 0 8px ${vd.ink}66` } }, label,
       zodiacMod === 'up' ? h('em', { style: { color: EW.good } }, '▲') : null,
       zodiacMod === 'dn' ? h('em', { style: { color: EW.bad } }, '▼') : null),
-    h('span', { className: 'pb-stat-bar' }, h('i', { style: { width: `${pct}%`, background: vd.fill, boxShadow: vd.glow } })),
-    gradeKey ? h(GradeChip, { statKey: gradeKey, val }) : h('span', { className: 'pb-grade-ring none' }),
+    gradeKey ? h(GradeChip, { statKey: gradeKey, val }) : h('span', { className: 'pb-stat-disc' }, look.g),
     h('span', { className: 'pb-stat-val', style: { color: valColor } }, val),
+    h('span', { className: 'pb-stat-bar' }, h('i', { style: { width: `${pct}%`, background: vd.fill, boxShadow: vd.glow } })),
     h('span', { className: 'pb-stat-delta', style: { color: deltaNum > 0 ? EW.good : EW.bad } }, deltaNum > 0 ? '+' + deltaNum : deltaNum < 0 ? '' + deltaNum : ''));
 }
 /* ── D.O.O.R. layer (DOOR_DESIGN §3): the forge is a customs desk. The seal

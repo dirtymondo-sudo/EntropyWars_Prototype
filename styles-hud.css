@@ -1107,7 +1107,7 @@
             content: ''; position: absolute; inset: 0;
             background: linear-gradient(180deg, rgba(255,255,255,0.15) 0%, transparent 50%);
         }
-        .cdx-stat-val { width: 36px; font-size: 10px; font-weight: 700; color: var(--text); text-align: left; font-family: 'Courier New', monospace; }
+        .cdx-stat-val { width: 36px; font-size: 13px; font-weight: 700; color: var(--text); text-align: left; font-family: 'Cormorant SC', 'Courier New', serif; font-variant-numeric: tabular-nums; }
         .cdx-stat-total { font-size: 9px; letter-spacing: 1px; color: var(--muted); text-align: right; margin-top: 6px; font-weight: 600; max-width: 560px; }
 
         /* type matchups */

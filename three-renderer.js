@@ -875,9 +875,10 @@ const ThreeRenderer = (function () {
            meters — HP on the ring's own radius, MP just inside it. uMeterRot
            is the plane-space angle of the SCREEN's 12 o'clock (fed per frame
            from the camera azimuth minus the facing yaw), so both meters
-           always DEPLETE CLOCKWISE from the top of the screen whatever the
-           unit faces or where the camera orbits (the fill ends at 12, the
-           spent track sweeps clockwise from it). uPrev / uPrevHeal are the
+           always FILL FROM THE BOTTOM OF THE SCREEN, CLOCKWISE, whatever the
+           unit faces or where the camera orbits (the fill's root is 6
+           o'clock, its edge climbs the right side; 2026-09-21, the grade
+           node's gauge). uPrev / uPrevHeal are the
            confirm-step forecast slices (fractions of max HP) that blink at
            the leading edge, same as the plate bar's .tp-dmg-preview. */
         'uniform float uMeters;',
@@ -905,13 +906,14 @@ const ThreeRenderer = (function () {
         '  float ang = atan(p.x, p.y);',          // 0 at the facing heading
         '  float pulse = 0.88 + 0.12 * sin(uTime * 2.2 + uPhase);',
         '  if (uMeters > 0.5) {',
-        /* COUNTER-clockwise fraction around the ring, 0 at the screen's 12
-           o'clock: a meter at p fills [12 − p·360°, 12], so the SPENT track
-           grows CLOCKWISE from 12 as the value falls (a cooldown sweep) —
-           the same convention as the HUD's party-dock portrait rings
-           (hud.js PartyPortrait). Flipped 2026-09-12; it used to fill
-           clockwise from 12 (the empty part grew counter-clockwise). */
-        '    float frac = fract((ang - uMeterRot) / 6.2832);',
+        /* CLOCKWISE fraction around the ring, 0 at the screen's 6 o'clock:
+           a meter at p fills [6, 6 + p·360°] clockwise — the fill grows up
+           the right side from the bottom, the same convention as the
+           party-dock portrait rings (hud.js PartyPortrait) and the grade
+           node's gauge (2026-09-21, the user's rule; 2026-09-12 depleted
+           clockwise from 12). uMeterRot − ang is clockwise from 12; the
+           half turn moves the root to 6. */
+        '    float frac = fract((uMeterRot - ang) / 6.2832 + 0.5);',
         /* HP meter on the reticle's own radius (0.42), MP meter inside it */
         '    float R = 0.42;',
         '    float rd = abs(d - R);',

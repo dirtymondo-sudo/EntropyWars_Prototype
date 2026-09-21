@@ -7399,3 +7399,30 @@ floor, not even to a free query), so the body stops at the DRAWN face. The city'
 lean on the cast rigs at a coping (`pitchMax`), the vert's height (`qpLaunch`), the kicker's pop
 (`kickLaunch`), the turnaround's timing (`vertTurn`), the two cues, the cars' footprints, the drum's
 wall under the hand.
+
+## THE GRADE NODE — one letter-grade widget everywhere, the rings fill from the bottom, Classic goes navy-to-black (2026-09-21, local delivery)
+The user's reference sheet: the letter grade in bold white inside a round node whose face is a
+gradient per grade, ringed by a GAUGE that fills FROM THE BOTTOM, CLOCKWISE; the health rings the
+same way; the Classic profile a deep navy falling to black. **THE NODE** = data.js (beside
+`statGrade`) `STAT_GRADE_FACE` (F red · C amber · B teal · A green · S diamond blue / silver),
+`statGradePct(key, val)` (a ruler stat's share of 100; HP / MP against their S band),
+`statGradeNode(key, val)` → `{ g, pct, color, face, cls }` and **`statGradeNodeHtml(key, val,
+{ size: 'sm' | 'lg', label })`** = `<span class="ew-grade grade-a" style="--pct:70"><i>A</i></span>`
+(`statGradeChipHtml` is that name now — the old `.stat-grade` chip and its CSS are GONE). CSS:
+styles-base.css `.ew-grade` (the ring a `conic-gradient(from 180deg …)` — 6 o'clock clockwise —
+over a dark track, the face `::before`, the letter in Cinzel 900 white; `sm` 16 px · the row node
+22 px · `lg` 30 px; `.none` keeps the column). THE ROW at every site reads **label · node · number ·
+bar**: the forge's `StatBar` / `VitalBar` (`GradeChip` = the React twin off `statGradeNode`; the
+glyph disc stays only on an ungraded row), the battle quick stats (`_hrlgQuickStats`, `sm`), the
+inspect card (`statBar` in ui.js), the codex / shop dossier (`_codexBuildStatBar`), the pause
+menu's party sheet (map.js `_hqPauseBar(label, val, max, color, text, gradeKey)`, `lg`). Never
+draw a letter grade any other way. **THE RINGS FILL FROM THE BOTTOM**: the reticle shader's
+`frac = fract((uMeterRot - ang) / 6.2832 + 0.5)` (three-renderer.js; the fill's root at the
+screen's 6, its edge climbing the right side) and the party dock's `_ppArc(r, len, start)`
+(`start` = percent clockwise FROM 6; the fills start at 0, the shield / heal forecast at `hpPct`,
+the damage slice at `hpPct − dmgPct`). **CLASSIC BLUE** (`:root` in hud.js's injected sheet +
+the HQ pass fallback in styles-base.css): `--ew-plate-bg` #16188e → #0c0e64 → #050632 → #010214
+under a silver-white edge; rows / head / dead tokens darkened to match. `npm test` runs
+`grade-node.test.js`; ring-vitals.test.js pins the two directions. UNSEEN LIVE (RULE #1c): the
+node's legibility at 16 px in the quick stats, the face gradients under each theme, the row
+widths on the inspect card and the codex at narrow widths, the darker rows' contrast.

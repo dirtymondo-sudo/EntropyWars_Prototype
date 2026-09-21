@@ -3966,12 +3966,13 @@
                 // Letter grade beside the number (2026-08-29 stat rework):
                 // computed from the FINAL effective value, so buffs/gear
                 // genuinely move a unit from B to A. Ungraded keys render ''.
-                const chip = (gradeKey && typeof statGradeChipHtml === 'function') ? statGradeChipHtml(gradeKey, val) : '';
+                // THE GRADE NODE (2026-09-21): label · node · number · the bar
+                const chip = (gradeKey && typeof statGradeNodeHtml === 'function') ? statGradeNodeHtml(gradeKey, val, { label }) : '<span class="ew-grade none"></span>';
                 return `<div class="ins-stat"${tip ? ` title="${escapeHtml(tip)}"` : ''}>` +
                     `<span class="ins-stat-label">${label}</span>` +
-                    `<span class="ins-stat-track"><span class="ins-stat-fill ${cls}" style="width:${w}%;background:${color}"></span>${diff !== 0 ? `<span class="ins-stat-base" style="left:${baseW}%"></span>` : ''}</span>` +
                     chip +
                     `<span class="ins-stat-val ${cls}">${val}${isPct ? '%' : ''}</span>` +
+                    `<span class="ins-stat-track"><span class="ins-stat-fill ${cls}" style="width:${w}%;background:${color}"></span>${diff !== 0 ? `<span class="ins-stat-base" style="left:${baseW}%"></span>` : ''}</span>` +
                     `</div>`;
             }
 
@@ -8077,11 +8078,12 @@
 
         function _codexBuildStatBar(val, max, label, color, tip, gradeKey) {
             const pct = Math.min(100, (val / max) * 100);
-            const chip = (gradeKey && typeof statGradeChipHtml === 'function') ? statGradeChipHtml(gradeKey, val) : '';
+            // THE GRADE NODE (2026-09-21): label · node · number · the bar
+            const chip = (gradeKey && typeof statGradeNodeHtml === 'function') ? statGradeNodeHtml(gradeKey, val, { label }) : '<span class="ew-grade none"></span>';
             return `<div class="cdx-stat-row"${tip ? ` title="${escapeHtml(tip)}"` : ''}>
                 <span class="cdx-stat-label">${label}</span>
-                <div class="cdx-stat-bar-track"><div class="cdx-stat-bar-fill" style="width:${pct}%;background:${color}"></div></div>
                 ${chip}<span class="cdx-stat-val">${val}</span>
+                <div class="cdx-stat-bar-track"><div class="cdx-stat-bar-fill" style="width:${pct}%;background:${color}"></div></div>
             </div>`;
         }
 

@@ -1443,29 +1443,68 @@
             clip-path: polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px);
         }
 
-        /* ── STAT LETTER GRADE CHIP (2026-08-29 stat rework) ──────────────
-           One 10px chip beside the number, one color per grade — the same
-           visual language at every site (party builder, INFO card, quick
-           menu, codex). S gold · A green · B teal · C neutral · F red;
-           colors mirror STAT_GRADE_COLORS in data.js. */
-        .stat-grade {
-            display: inline-block;
+        /* ── THE GRADE NODE (2026-09-21) — the ONE letter-grade widget.
+           Markup (data.js statGradeNodeHtml / party-builder GradeChip):
+             <span class="ew-grade grade-a" style="--pct:89"><i>A</i></span>
+           A round node: the GAUGE ring (a conic-gradient FROM THE BOTTOM,
+           CLOCKWISE — the ring vitals' convention) over a dark track, a
+           gradient FACE per grade (F red · C amber · B teal · A green ·
+           S diamond blue / silver), the letter bold white on top. Sizes:
+           the bare node is the 22 px row node; `sm` 16 px (the battle
+           quick stats); `lg` 30 px (the forge / the party sheet). The
+           `.stat-grade` chip is gone — nothing draws a letter any other
+           way. */
+        .ew-grade {
+            --pct: 0;
+            --gc: #c8c8e4;
+            --gface: linear-gradient(135deg, #8a8aa8, #3a3a58);
+            --gsz: 22px;
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
             flex: 0 0 auto;
-            width: 13px;
-            font-family: 'DotGothic16', monospace;
-            font-size: 10px;
-            font-weight: 700;
-            line-height: 12px;
-            text-align: center;
-            border-radius: 2px;
+            width: var(--gsz);
+            height: var(--gsz);
+            border-radius: 50%;
             margin: 0 2px;
-            text-shadow: 0 1px 1px rgba(0, 0, 0, 0.7);
+            vertical-align: middle;
+            background: conic-gradient(from 180deg, var(--gc) calc(var(--pct) * 1%), rgba(6, 8, 22, 0.78) 0);
+            box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.55), 0 0 0 2px rgba(0, 0, 0, 0.75),
+                        0 0 8px color-mix(in srgb, var(--gc) 55%, transparent);
+            transition: background 0.35s ease-out;
         }
-        .stat-grade.grade-s { color: #f2c63c; border: 1px solid #f2c63c66; background: #f2c63c1a; }
-        .stat-grade.grade-a { color: #3ddc84; border: 1px solid #3ddc8466; background: #3ddc841a; }
-        .stat-grade.grade-b { color: #4ecbe2; border: 1px solid #4ecbe266; background: #4ecbe21a; }
-        .stat-grade.grade-c { color: #c8c8e4; border: 1px solid #c8c8e466; background: #c8c8e41a; }
-        .stat-grade.grade-f { color: #ff5e5e; border: 1px solid #ff5e5e66; background: #ff5e5e1a; }
+        .ew-grade::before {
+            content: '';
+            position: absolute;
+            inset: 15%;
+            border-radius: 50%;
+            background: var(--gface);
+            box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.7), inset 0 -2px 4px rgba(0, 0, 0, 0.35), inset 0 2px 3px rgba(255, 255, 255, 0.25);
+        }
+        .ew-grade i {
+            position: relative;
+            font-family: 'Cinzel', 'Cormorant SC', 'Times New Roman', serif;
+            font-weight: 900;
+            font-style: normal;
+            font-size: calc(var(--gsz) * 0.5);
+            line-height: 1;
+            color: #fff;
+            text-shadow: 0 1px 0 rgba(0, 0, 0, 0.9), 0 0 4px rgba(0, 0, 0, 0.8), 0 0 1px #000;
+            transform: translateY(0.02em);
+        }
+        .ew-grade.sm { --gsz: 16px; margin: 0 1px; }
+        .ew-grade.sm i { font-size: 9px; }
+        .ew-grade.lg { --gsz: 30px; }
+        .ew-grade.grade-s { --gc: #9fe0ff; --gface: linear-gradient(135deg, #e8f6ff 0%, #7fd6ff 38%, #4e8cff 70%, #cfd8ff 100%); }
+        .ew-grade.grade-s i { text-shadow: 0 1px 0 rgba(0, 0, 0, 0.9), 0 0 5px rgba(20, 40, 120, 0.9), 0 0 1px #000; }
+        .ew-grade.grade-a { --gc: #3ddc84; --gface: linear-gradient(135deg, #3ddc84 0%, #1fb85e 48%, #2b7cff 100%); }
+        .ew-grade.grade-b { --gc: #4ecbe2; --gface: linear-gradient(135deg, #5be2f0 0%, #2fb6d8 50%, #3b62d6 100%); }
+        .ew-grade.grade-c { --gc: #f2c468; --gface: linear-gradient(135deg, #f2c468 0%, #d99a3a 48%, #8c62c8 100%); }
+        .ew-grade.grade-f { --gc: #ff5e5e; --gface: linear-gradient(135deg, #ff5e5e 0%, #d8244a 48%, #7a2cc4 100%); }
+        /* an ungraded row keeps the column (the forge / the sheet) */
+        .ew-grade.none { background: none; box-shadow: none; }
+        .ew-grade.none::before { display: none; }
 
         .type-badge.type-human {
             color: #c8c8e4;
@@ -1964,8 +2003,10 @@
         }
 
         .ins-stat-val {
-            flex: 0 0 40px;
-            text-align: right;
+            flex: 0 0 34px;
+            text-align: left;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
             font-size: 11px;
             color: #cfd6ea;
             white-space: nowrap;
@@ -4411,9 +4452,11 @@ body.diorama-3d .tile-underpass.jump::before {
 .hq-pp-sheet { display: grid; grid-template-columns: minmax(250px, 300px) 1fr; gap: 24px; align-items: start; }
 .hq-pp-left { position: sticky; top: 0; }
 .hq-pp-stats { display: flex; flex-direction: column; gap: 5px; margin-top: 10px; }
-.hq-pp-stat { display: grid; grid-template-columns: 40px 1fr 40px; align-items: center; gap: 8px; font-size: 10px; }
+.hq-pp-stat { display: grid; grid-template-columns: 42px 30px 52px 1fr; align-items: center; gap: 8px; font-size: 10px; }
 .hq-pp-stat b { letter-spacing: 0.16em; color: #b8a060; font-weight: 600; }
-.hq-pp-stat em { font-style: normal; text-align: right; color: #ece7d8; font-variant-numeric: tabular-nums; }
+.hq-pp-stat .ew-grade { justify-self: center; }
+.hq-pp-stat em { font-style: normal; text-align: left; color: #ece7d8; font-variant-numeric: tabular-nums; font-size: 13px; font-weight: 700; font-family: 'Cormorant SC', serif; letter-spacing: 0.04em; }
+.hq-pp-stat em.small { font-size: 10px; font-family: inherit; font-weight: 600; }
 .hq-pp-bar { display: block; height: 8px; border-radius: 4px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); overflow: hidden; }
 .hq-pp-bar i { display: block; height: 100%; border-radius: 4px; box-shadow: 0 0 8px currentColor; transition: width 0.4s cubic-bezier(0.2,0.8,0.2,1); }
 .hq-pp-diamonds { display: flex; gap: 10px; margin-top: 10px; }
@@ -5225,9 +5268,11 @@ body.diorama-3d .tile-underpass.jump::before {
 .pb-stat-bar i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--sc), color-mix(in srgb, var(--sc) 70%, #fff)); box-shadow: 0 0 6px color-mix(in srgb, var(--sc) 45%, transparent); transition: width 0.35s ease-out; }
 .pb-stat.vital .pb-stat-bar { height: 9px; }
 .pb-stat.compact .pb-stat-bar { height: 5px; }
-.pb-grade-ring { --gc: #555; width: 16px; height: 16px; border-radius: 50%; border: 1px solid var(--gc); color: var(--gc); background: color-mix(in srgb, var(--gc) 14%, transparent); font-size: 9px; font-weight: 700; line-height: 1; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.pb-grade-ring.none { border-color: transparent; background: transparent; }
-.pb-stat-val { width: 34px; text-align: right; font-weight: 600; font-size: 11px; flex-shrink: 0; }
+.pb-grade-ring { --gsz: 26px; margin: 0; }
+.pb-stat.compact .pb-grade-ring { --gsz: 20px; }
+.pb-stat.compact .pb-grade-ring i { font-size: 10px; }
+.pb-grade-ring.none { width: var(--gsz); height: var(--gsz); }
+.pb-stat-val { width: 36px; text-align: left; font-weight: 700; font-size: 13px; flex-shrink: 0; font-family: 'Cormorant SC', serif; font-variant-numeric: tabular-nums; }
 .pb-stat-delta { width: 26px; text-align: right; font-size: 9px; font-weight: 700; flex-shrink: 0; }
 .pb-foot-badge { border: 1px solid var(--ph-line); border-radius: 999px; padding: 8px 16px 6px; background: rgba(0,0,0,0.3); }
 /* AFFINITIES: six type discs; WEAK = a red ring, RESIST = a green ring, the vessel's own type filled */
@@ -5716,7 +5761,7 @@ body.diorama-3d .tile-underpass.jump::before {
    shadow, a hairline of the function colour under it, the number small.
    ═══════════════════════════════════════════════════════════════════════ */
 #hqPage {
-  --hq-plate-bg: var(--ew-plate-bg, linear-gradient(180deg, #1f34a8 0%, #15258a 45%, #0c165e 100%));
+  --hq-plate-bg: var(--ew-plate-bg, linear-gradient(180deg, #16188e 0%, #0c0e64 42%, #050632 78%, #010214 100%));
   --hq-plate-edge: var(--ew-plate-edge, #e6e8f4);
   --hq-plate-seam: var(--ew-plate-seam, #061040);
   --hq-plate-rim: var(--ew-plate-rim, #6b7fd6);

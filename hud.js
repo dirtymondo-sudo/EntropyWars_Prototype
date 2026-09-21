@@ -1677,10 +1677,11 @@ function CombatLog({ st }) {
    One circular portrait per unit of the VIEWER's party, in slot order, each
    wearing its vitals as two concentric rings — HP on the outside, MP inside —
    exactly like the ring vitals on the reticle at a unit's feet
-   (three-renderer.js _reticleFragmentShader). Both meters DEPLETE CLOCKWISE:
-   the full ring is anchored at the screen's 12 o'clock and the spent part of
-   the track sweeps clockwise from there, so a wounded unit reads like a
-   cooldown running out. Shield rides the HP fill's leading edge in pale blue;
+   (three-renderer.js _reticleFragmentShader). Both meters FILL FROM THE
+   BOTTOM, CLOCKWISE (2026-09-21 — the grade node's gauge, the user's rule):
+   the fill starts at the screen's 6 o'clock and grows clockwise, a full
+   ring closing at 6 again; the spent track is what is left before 6 on the
+   left. Shield rides the HP fill's leading edge in pale blue;
    the confirm-step forecast (getPendingDamagePreview) blinks the slice about
    to be lost (or healed) on the same ring the target row / nameplate blink.
    A hit blinks the face white (RenderBus 'unit:damaged'), the acting unit
@@ -1701,17 +1702,16 @@ function _ppSlot(u) { const n = parseInt(String(u.id).split('-')[1], 10); return
 
 /* One meter arc on a pathLength=100 circle. `len` = percent of the circle
    the arc covers, `start` = where it BEGINS, in percent of a turn clockwise
-   from 12 o'clock. A meter at p% therefore starts at (100 − p) and runs to
-   12 — the spent track is [12, 100 − p], growing clockwise as p falls.
-   stroke-dasharray + the rotation both transition with the same curve, so
-   the arc's end stays pinned at 12 while it shrinks. */
+   from 6 O'CLOCK (an SVG circle starts at 3, so 6 is +90°). A meter at p%
+   starts at 0 and runs clockwise to p — the fill's root stays pinned at the
+   bottom and its leading edge climbs the right side as the value rises. */
 function _ppArc(r, len, start, cls, extra) {
   return h('circle', {
     cx: 50, cy: 50, r: r, pathLength: 100, fill: 'none',
     className: 'ew-pp-arc' + (cls ? ' ' + cls : ''),
     style: Object.assign({
       strokeDasharray: _ppClamp(len, 0, 100) + ' 100',
-      transform: 'rotate(' + (-90 + _ppClamp(start, 0, 100) * 3.6) + 'deg)',
+      transform: 'rotate(' + (90 + _ppClamp(start, 0, 100) * 3.6) + 'deg)',
     }, extra || {}),
   });
 }
@@ -1792,12 +1792,12 @@ function PartyPortrait({ unit, size, active, finished, next, possessed, forecast
       h('circle', { cx: 50, cy: 50, r: R_HP, className: 'ew-pp-track hp' }),
       h('circle', { cx: 50, cy: 50, r: R_MP, className: 'ew-pp-track mp' }),
       /* HP meter: shield leads the fill, then the fill, then the forecast slices */
-      shPct > 0 && _ppArc(R_HP, shPct, 100 - hpPct - shPct, 'hp shield', { stroke: PP_SHIELD }),
-      _ppArc(R_HP, hpPct, 100 - hpPct, 'hp fill', { stroke: PP_HP }),
-      dmgPct > 0 && _ppArc(R_HP, dmgPct, 100 - hpPct, 'hp prev' + (lethal ? ' lethal' : ''), { stroke: '#ffffff' }),
-      healPct > 0 && _ppArc(R_HP, healPct, 100 - hpPct - healPct, 'hp prev heal', { stroke: PP_HEAL }),
+      shPct > 0 && _ppArc(R_HP, shPct, hpPct, 'hp shield', { stroke: PP_SHIELD }),
+      _ppArc(R_HP, hpPct, 0, 'hp fill', { stroke: PP_HP }),
+      dmgPct > 0 && _ppArc(R_HP, dmgPct, hpPct - dmgPct, 'hp prev' + (lethal ? ' lethal' : ''), { stroke: '#ffffff' }),
+      healPct > 0 && _ppArc(R_HP, healPct, hpPct, 'hp prev heal', { stroke: PP_HEAL }),
       /* MP meter */
-      maxMp > 0 && _ppArc(R_MP, mpPct, 100 - mpPct, 'mp fill', { stroke: PP_MP }),
+      maxMp > 0 && _ppArc(R_MP, mpPct, 0, 'mp fill', { stroke: PP_MP }),
       /* the face disc */
       h('circle', { cx: 50, cy: 50, r: R_FACE + 1.2, className: 'ew-pp-bezel' }),
       h('g', { clipPath: 'url(#' + clipId + ')' },
@@ -2832,11 +2832,12 @@ function _hrlgQuickStats(panelKey) {
     cells.map(c => {
       const cls = (typeof c.v === 'number' && c.base != null)
         ? (c.v > c.base ? ' up' : c.v < c.base ? ' dn' : '') : '';
-      const g = (c.g && _grade && typeof c.v === 'number') ? _grade(c.g, c.v) : null;
+      // THE GRADE NODE (2026-09-21): label · node · number (data.js statGradeNode)
+      const n = (c.g && typeof window !== 'undefined' && typeof window.statGradeNode === 'function' && typeof c.v === 'number') ? window.statGradeNode(c.g, c.v) : null;
       return h('span', { key: c.k, className: 'hrlg-qstat' + cls, title: c.tip || undefined },
         h('span', { className: 'hrlg-qstat-lbl' }, c.k),
-        h('span', { className: 'hrlg-qstat-val' }, String(c.v)),
-        g ? h('span', { className: 'stat-grade grade-' + g.toLowerCase() }, g) : null);
+        n ? h('span', { className: n.cls + ' sm', style: { '--pct': n.pct } }, h('i', null, n.g)) : h('span', { className: 'ew-grade sm none' }),
+        h('span', { className: 'hrlg-qstat-val' }, String(c.v)));
     }),
   );
 }
@@ -9349,7 +9350,7 @@ function _injectHudHideStyles() {
       border-top: 1px solid var(--hfc-faint);
       pointer-events: auto;
     }
-    .hrlg-qstat { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+    .hrlg-qstat { display: flex; align-items: center; gap: 5px; min-width: 0; line-height: 1.7; }
     .hrlg-qstat-lbl {
       flex: none; width: 34px; font-size: 9px; font-weight: 700;
       letter-spacing: 0.12em; color: #7a7490;
@@ -9879,26 +9880,28 @@ function _injectHudHideStyles() {
        Adding a theme = one HUD_THEMES row + one :root[data-hud-theme]
        token block (hud-theme.test.js ties them). */
     :root {
-      /* CLASSIC BLUE (crystal) */
-      --ew-plate-bg: linear-gradient(180deg, #1f34a8 0%, #15258a 45%, #0c165e 100%);
-      --ew-plate-edge: #e6e8f4;
-      --ew-plate-seam: #061040;
-      --ew-plate-rim: #6b7fd6;
-      --ew-plate-lip: rgba(255,255,255,0.08);
-      --ew-plate-scan: repeating-linear-gradient(0deg, rgba(255,255,255,0.02) 0 1px, rgba(0,0,0,0.05) 1px 2px, transparent 2px 3px);
-      --ew-head-bg: linear-gradient(180deg, #2a42b8 0%, #1a2c8e 100%);
-      --ew-head-ink: #c9d2ff;
-      --ew-row-bg: linear-gradient(180deg, #24399f 0%, #1a2c86 55%, #12206c 100%);
-      --ew-row-sel-bg: linear-gradient(180deg, #3550c4 0%, #2841ab 55%, #1e359a 100%);
-      --ew-row-edge: #7b90dc;
-      --ew-row-lip: rgba(255,255,255,0.1);
-      --ew-ink: #f4f4f8;
-      --ew-ink-mute: #b8c1ee;
-      --ew-ink-dim: #7c88c4;
-      --ew-hair: rgba(255,255,255,0.14);
-      --ew-dead-bg: #0b1440;
-      --ew-dead-edge: #2a3670;
-      --ew-dead-ink: #7c88c4;
+      /* CLASSIC BLUE (crystal) — 2026-09-21: a deep navy falling to black
+         under a silver-white frame (the user's reference sheet); the old
+         mid-blue read too light. */
+      --ew-plate-bg: linear-gradient(180deg, #16188e 0%, #0c0e64 42%, #050632 78%, #010214 100%);
+      --ew-plate-edge: #d9dceb;
+      --ew-plate-seam: #03041c;
+      --ew-plate-rim: #4a55b4;
+      --ew-plate-lip: rgba(255,255,255,0.07);
+      --ew-plate-scan: repeating-linear-gradient(0deg, rgba(255,255,255,0.015) 0 1px, rgba(0,0,0,0.06) 1px 2px, transparent 2px 3px);
+      --ew-head-bg: linear-gradient(180deg, #1e2298 0%, #0f1170 100%);
+      --ew-head-ink: #c7ccff;
+      --ew-row-bg: linear-gradient(180deg, #1a1d90 0%, #10126a 55%, #08093e 100%);
+      --ew-row-sel-bg: linear-gradient(180deg, #2b31b8 0%, #1c2090 55%, #12156c 100%);
+      --ew-row-edge: #5a64cc;
+      --ew-row-lip: rgba(255,255,255,0.09);
+      --ew-ink: #f6f6fa;
+      --ew-ink-mute: #b7bee8;
+      --ew-ink-dim: #7079b8;
+      --ew-hair: rgba(255,255,255,0.13);
+      --ew-dead-bg: #05061e;
+      --ew-dead-edge: #232866;
+      --ew-dead-ink: #7079b8;
       --ew-sel: #f0d060;
       --ew-sel-soft: rgba(240,208,96,0.55);
       --ew-sel-faint: rgba(240,208,96,0.2);

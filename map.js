@@ -1458,9 +1458,13 @@
         function _hqPauseTypeChips(types) {
             return (types || []).map(t => `<i class="hq-pp-type" style="--tc:${_HQ_TYPE_COLORS[t] || '#aaa'}">${_hqEsc(String(t).toUpperCase())}</i>`).join('');
         }
-        function _hqPauseBar(label, val, max, color, text) {
+        /* THE GRADE NODE (2026-09-21): label · node · number · bar — `gradeKey`
+           = the engine's stat id (data.js statGradeNodeHtml); a row without
+           one (the vitals' "x / y" text) keeps the column empty. */
+        function _hqPauseBar(label, val, max, color, text, gradeKey) {
             const pct = Math.max(0, Math.min(100, max > 0 ? (val / max) * 100 : 0));
-            return `<div class="hq-pp-stat"><b>${_hqEsc(label)}</b><span class="hq-pp-bar"><i style="width:${pct.toFixed(1)}%;background:${color}"></i></span><em>${_hqEsc(text != null ? String(text) : String(val))}</em></div>`;
+            const node = (gradeKey && typeof window.statGradeNodeHtml === 'function') ? window.statGradeNodeHtml(gradeKey, val, { size: 'lg', label }) : '<span class="ew-grade lg none"></span>';
+            return `<div class="hq-pp-stat"><b>${_hqEsc(label)}</b>${node}<em${text != null ? ' class="small"' : ''}>${_hqEsc(text != null ? String(text) : String(val))}</em><span class="hq-pp-bar"><i style="width:${pct.toFixed(1)}%;background:${color}"></i></span></div>`;
         }
         function _hqPauseVitals(m, u) { return (typeof window.hqPartyVitals === 'function') ? window.hqPartyVitals(m, u) : { hp: u ? u.maxHp : 0, hpMax: u ? u.maxHp : 0, mp: u ? u.maxMp : 0, mpMax: u ? u.maxMp : 0, down: false, pct: 1, mpPct: 1 }; }
         /* is this member a legal TARGET for the armed action? (a swap: any other slot but the officer's; a cast / an item: data.js's rule) */
@@ -1690,12 +1694,12 @@
             html += _hqPauseBar('HP', v.hp | 0, Math.max(1, v.hpMax | 0), v.down ? '#ff4a4a' : '#2ed158', `${v.hp} / ${v.hpMax}`);
             html += _hqPauseBar('MP', v.mp | 0, Math.max(1, v.mpMax | 0), '#2f9dff', `${v.mp} / ${v.mpMax}`);
             if (u) {
-                html += _hqPauseBar('ATK', u.atk | 0, 100, '#ff6b4a');
-                html += _hqPauseBar('DEF', u.def | 0, 100, '#4fa3ff');
-                html += _hqPauseBar('INT', u.intStat | 0, 100, '#c77dff');
-                html += _hqPauseBar('MDEF', u.mdef | 0, 100, '#7fd9dd');
-                html += _hqPauseBar('SPD', u.spd | 0, 100, '#f2c468');
-                html += _hqPauseBar('AWR', u.awr | 0, 100, '#ffd75a');
+                html += _hqPauseBar('ATK', u.atk | 0, 100, '#ff6b4a', null, 'atk');
+                html += _hqPauseBar('M ATK', u.intStat | 0, 100, '#c77dff', null, 'int');
+                html += _hqPauseBar('DEF', u.def | 0, 100, '#4fa3ff', null, 'def');
+                html += _hqPauseBar('M DEF', u.mdef | 0, 100, '#7fd9dd', null, 'mdef');
+                html += _hqPauseBar('SPD', u.spd | 0, 100, '#f2c468', null, 'spd');
+                html += _hqPauseBar('AWR', u.awr | 0, 100, '#ffd75a', null, 'awr');
                 html += `<div class="hq-pp-diamonds"><span><b>${u.move | 0}</b>MOVE</span><span><b>${u.range | 0}</b>RANGE</span><span><b>${u.inspect | 0}</b>INSPECT</span></div>`;
             }
             html += '</div>';

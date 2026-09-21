@@ -17909,13 +17909,52 @@ function statGrade(key, val) {
   for (let i = 0; i < bands.length; i++) if (val >= bands[i]) return STAT_GRADE_LETTERS[i];
   return 'F';
 }
-/* Shared HTML chip (ui.js / hud.js string-built sites; party-builder builds
-   its React twin from STAT_GRADE_COLORS). Returns '' for ungraded keys. */
-function statGradeChipHtml(key, val) {
-  const g = statGrade(key, val);
-  if (!g) return '';
-  return `<span class="stat-grade grade-${g.toLowerCase()}">${g}</span>`;
+/* ── THE GRADE NODE (2026-09-21) — the ONE way a letter grade is drawn at
+   every display site (the forge's stat pills, the battle INFO card, the
+   inspect card, the codex / shop dossier, the pause menu's party sheet).
+   A round node: the letter in bold white on a gradient face coloured by
+   the grade (F red · C amber · B teal · A green · S diamond blue / silver),
+   ringed by a GAUGE that fills FROM THE BOTTOM, CLOCKWISE, by the stat's
+   share of the ruler (statGradePct) — the same convention as the ring
+   vitals on the reticle and the party dock. CSS: styles-base.css
+   `.ew-grade` (the ring is a conic-gradient from 180°, the face a
+   per-grade gradient, sizes `sm` / `lg`). String sites call
+   statGradeNodeHtml; party-builder.js's React GradeChip builds the same
+   markup from statGradeNode. Never draw a letter grade any other way. */
+const STAT_GRADE_FACE = {
+  S: 'linear-gradient(135deg, #e8f6ff 0%, #7fd6ff 38%, #4e8cff 70%, #cfd8ff 100%)',
+  A: 'linear-gradient(135deg, #3ddc84 0%, #1fb85e 48%, #2b7cff 100%)',
+  B: 'linear-gradient(135deg, #5be2f0 0%, #2fb6d8 50%, #3b62d6 100%)',
+  C: 'linear-gradient(135deg, #f2c468 0%, #d99a3a 48%, #8c62c8 100%)',
+  F: 'linear-gradient(135deg, #ff5e5e 0%, #d8244a 48%, #7a2cc4 100%)',
+};
+/* the gauge's share of the ring: a ruler stat is val / 100; HP / MP fill
+   against their S band (the top of the roster), so a 700-HP tank reads full */
+function statGradePct(key, val) {
+  const bands = STAT_GRADE_BANDS[key];
+  if (!bands) return 0;
+  const full = (key === 'hp' || key === 'mp') ? bands[0] : 100;
+  const v = Number(val) || 0;
+  return Math.max(0, Math.min(100, Math.round((v / full) * 100)));
 }
+function statGradeNode(key, val) {
+  const g = statGrade(key, val);
+  if (!g) return null;
+  return { g, pct: statGradePct(key, val), color: STAT_GRADE_COLORS[g], face: STAT_GRADE_FACE[g], cls: 'ew-grade grade-' + g.toLowerCase() };
+}
+/* opts.size = 'sm' | 'lg' (default the 22 px row node); opts.label rides the
+   tooltip ("A · ATK 89"). Returns '' for an ungraded key (MOV / RNG / CRT /
+   EVA — the site draws nothing there). */
+function statGradeNodeHtml(key, val, opts) {
+  const n = statGradeNode(key, val);
+  if (!n) return '';
+  const o = opts || {};
+  const sz = o.size ? ' ' + o.size : '';
+  const tip = (o.label ? o.label + ' ' : '') + 'GRADE ' + n.g + ' · ' + n.pct + '%';
+  return `<span class="${n.cls}${sz}" style="--pct:${n.pct}" title="${tip}"><i>${n.g}</i></span>`;
+}
+/* the old chip's name — every string-built site reads the node through it */
+function statGradeChipHtml(key, val, opts) { return statGradeNodeHtml(key, val, opts); }
 
 /* Player-facing stat explainers — the ONE hover-tooltip text for every stat,
    shared by the party builder (bars, quadrant, MOVE/RANGE footprints), the
@@ -17938,7 +17977,7 @@ const STAT_HELP = {
 
 Object.assign(window, {
   critChanceFromStats, evasionChanceFromStats, STAT_HELP,
-  STAT_GRADE_LETTERS, STAT_GRADE_BANDS, STAT_GRADE_COLORS, statGrade, statGradeChipHtml,
+  STAT_GRADE_LETTERS, STAT_GRADE_BANDS, STAT_GRADE_COLORS, STAT_GRADE_FACE, statGrade, statGradePct, statGradeNode, statGradeNodeHtml, statGradeChipHtml,
   moveFromSpd, RACE_BASE_STATS, JOB_KITS,
   CONFIG, EQUIP_DEFS, RACE_PROFILES, AVAILABLE_RACES, RACE_DEFAULT_JOBS,
   MAX_UNIT_PASSIVES, PASSIVE_DEFS, RACE_PASSIVES,
