@@ -1979,6 +1979,7 @@
             /* SKATEBOARDING (HQ plan 9.8, 2026-09-15): the deck's own kit — quiet, the ride plays them thirty times a minute */
             skatePush: 0.3, skateOllie: 0.4, skateLand: 0.36, skateGrind: 0.3, skateBail: 0.45, skateBank: 0.4,
             skateCharge: 0.22, skatePop: 0.4, skateTrick: 0.32, skateSick: 0.45,   // rev 4 (2026-09-19): the crouch's tick, the meter topping out, the flick's whoosh, the rank's fanfare
+            skateLaunch: 0.42, skateVert: 0.36,   // rev 8 (2026-09-21): THE RAMPS — the launch off a lip (a rising whoosh + the wheels leaving), the coping's ring on a vert
             /* THE DOOR GUN rev 3 (2026-09-16): the zap, the frame landing, the recall — the building AND the board (the shot VFX voices them) */
             doorGunShot: 0.5, doorGunLand: 0.45, doorGunRecall: 0.42,
         };
@@ -2121,6 +2122,24 @@
                 const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(440, t + 0.02); o.frequency.exponentialRampToValueAtTime(1100, t + 0.16);
                 o.connect(g); o.start(t + 0.02); o.stop(t + 0.22);
                 return 0.3;
+            },
+            /* SKATEBOARDING rev 8 (2026-09-21): THE RAMPS — skateLaunch = the wheels leaving a lip (a short burst of noise sweeping UP with a
+               rising tone under it), skateVert = the coping's steel ring as the trucks clear it */
+            skateLaunch(ctx, t, out, vol) {
+                _doorNoiseSrc(ctx, _doorEnv(ctx, out, t, vol * 0.8, 0.01, 0.16, 0.22), t, 0.45, { type: 'bandpass', f0: 700, f1: 2600, slide: 0.32, q: 1.2 });
+                const g = _doorEnv(ctx, out, t, vol * 0.35, 0.01, 0.12, 0.2);
+                const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.setValueAtTime(220, t); o.frequency.exponentialRampToValueAtTime(660, t + 0.28);
+                o.connect(g); o.start(t); o.stop(t + 0.34);
+                return 0.45;
+            },
+            skateVert(ctx, t, out, vol) {
+                [[0, 2960, 0.42], [0.012, 4420, 0.22]].forEach(n => {
+                    const g = _doorEnv(ctx, out, t + n[0], vol * n[2], 0.003, 0.2, 0.5);
+                    const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = n[1];
+                    o.connect(g); o.start(t + n[0]); o.stop(t + n[0] + 0.75);
+                });
+                _doorNoiseSrc(ctx, _doorEnv(ctx, out, t, vol * 0.3, 0.003, 0.03, 0.08), t, 0.14, { type: 'highpass', f0: 3000, f1: 3000, slide: 0.1, q: 0.7 });
+                return 0.8;
             },
             skateSick(ctx, t, out, vol) {
                 [[0, 523], [0.1, 659], [0.2, 784], [0.3, 1046]].forEach(n => {

@@ -35,7 +35,8 @@ function extract(name) {
 function block() { const a = TR.indexOf('/* ══ SKATEBOARDING — THE RIDER'), b = TR.indexOf('/* ── per-frame ───', a); assert.ok(a > 0 && b > a); return TR.slice(a, b); }
 const RIDE_FNS = ['_hqSkateRules', '_hqSkateOff', '_hqRailLen', '_hqRailAt', '_hqRailNearest', '_hqRailSnap', '_hqRampLocal', '_hqRampUnder', '_hqRampProfile', '_hqRampSurfaceAt', '_hqRegisterPropPark',
     '_hqRideTurn', '_hqRideWantHeading', '_hqRideDelta', '_hqRideNew', '_hqRideArm', '_hqRideEmit', '_hqRideToggle', '_hqRideKeyEdge', '_hqRideComboAdd', '_hqRideComboBank', '_hqRideBail', '_hqRideBailPhase', '_hqRideWall', '_hqRideSlide', '_hqRideObstacleSlide', '_hqTickRideStep', '_hqRideTrickDone', '_hqRideStartTrick', '_hqTickRide', '_hqRideSetY', '_hqRideGravity',
-    '_hqRidePop', '_hqRideCamDip', '_hqRideFlickDir', '_hqRideFlick', '_hqRideStickDown', '_hqRideStickMove', '_hqRideStickUp', '_hqRideAirLeft', '_hqRideFitMs', '_hqRideQueueMs'];
+    '_hqRidePop', '_hqRideCamDip', '_hqRideFlickDir', '_hqRideFlick', '_hqRideStickDown', '_hqRideStickMove', '_hqRideStickUp', '_hqRideAirLeft', '_hqRideFitMs', '_hqRideQueueMs',
+    '_hqRideGroundAt', '_hqRideGrade', '_hqRideComboLead', '_hqRideCamKick', '_hqRideLaunch'];   // rev 8: THE RAMPS
 function consts() {
     const out = [];
     for (const n of ['HQ_BODY_R', 'HQ_STEP_TOL', 'HQ_DROP_MAX', 'HQ_FALL_MIN', 'HQ_GRAV', 'HQ_JUMP_V']) { const m = TR.match(new RegExp('    var ' + n + ' = ([0-9.]+);')); assert.ok(m, n); out.push('var ' + n + ' = ' + m[1] + ';'); }
@@ -54,7 +55,7 @@ function sandbox(opts) {
         function _hqNormDeg(d) { d = d % 360; if (d < 0) d += 360; return d; }
         function _hqUnits() { return 73; }
         var _walls = ${opts.wallAt || 40};
-        function _hqSurface(x, z, curY, ig) { if (Math.abs(x) > _walls || Math.abs(z) > _walls) return null; var y = 0; var r = _hqRampSurfaceAt(x, z); if (r !== undefined && r > y) y = r; if (curY != null && y - curY > HQ_STEP_TOL) return null; return y; }
+        function _hqSurface(x, z, curY, ig) { if (Math.abs(x) > _walls || Math.abs(z) > _walls) return null; var y = (${opts.ground || '0'}); var r = _hqRampSurfaceAt(x, z); if (r !== undefined && r > y) y = r; if (curY != null && y - curY > HQ_STEP_TOL) return null; return y; }
         function _hqAirOK(x, z, y) { if (Math.abs(x) > _walls || Math.abs(z) > _walls) return false; var r = _hqRampSurfaceAt(x, z); if (r !== undefined && y < r - 0.05) return false; return true; }
         function _hqBlockerFloor() { return null; }
         function _hqBlockersUnder() { return []; }
@@ -250,8 +251,8 @@ test('THE GRIND: an ollie that comes down on a rail LOCKS to it, the line reads 
 });
 
 test('THE QUARTER PIPE: ridden at speed the rider climbs the curve and LAUNCHES off the coping, going UP; the walker\'s surface reads the curve', () => {
-    const qp = { x: 0, z: 6, yaw: Math.PI, hw: 2.1, hd: 1.3, y0: 0, y1: 2.2, prof: 'qp', prop: 'quarter_pipe' };   // the foot at z 4.7, the coping at z 7.3
-    const c = sandbox({ ramps: [qp], wallAt: 12 });
+    const qp = { x: 0, z: 10, yaw: Math.PI, hw: 2.1, hd: 1.3, y0: 0, y1: 2.2, prof: 'qp', prop: 'quarter_pipe' };   // the foot at z 8.7, the coping at z 11.3 (rev 8: four pushes end before the foot)
+    const c = sandbox({ ramps: [qp], wallAt: 16 });
     c.pl.z = -12;
     c._hqRideToggle(true); c._hq.cam.yaw = Math.PI;   // looking +z, the foot of the pipe 16.7 m ahead
     c.step({ w: true }, 1 / 60, 160); assert.ok(c.R().v > 7, 'fast: ' + c.R().v);   // rev 7: a longer run-up — the retired kick used to add its bump on the coast
@@ -260,7 +261,7 @@ test('THE QUARTER PIPE: ridden at speed the rider climbs the curve and LAUNCHES 
     assert.ok(launched && launched.v > 3, 'off the coping: ' + JSON.stringify(launched));
     assert.ok(maxY > 2.2, 'above the coping (' + maxY + ')');
     assert.ok(!c.events().some(e => e.kind === 'bail'), 'no bail on the curve');
-    assert.ok(Math.abs(c._hqSurface(0, 6, null) - c._hqRampSurfaceAt(0, 6)) < 1e-9 && c._hqRampSurfaceAt(0, 6) > 0.2, 'the surface is the curve');
+    assert.ok(Math.abs(c._hqSurface(0, 10, null) - c._hqRampSurfaceAt(0, 10)) < 1e-9 && c._hqRampSurfaceAt(0, 10) > 0.2, 'the surface is the curve');
 });
 
 test('THE PARK RULE\'s registers: the catalogue rails / ramps, the garage\'s half-pipe, the mezzanine\'s arcs pushed, the placer registering at both sites, the surface + air layers, the gallery + the cave still pushing theirs', () => {
@@ -751,4 +752,126 @@ test('a raised wall exit keeps falling and a refused portal does not consume ska
     d.step({},1/60);
     assert.ok(d.pl.z > -1 && d.R().v > 5);
     assert.equal(d._hq.portal.cross,null);
+});
+
+/* ══ SKATEBOARDING rev 8 (2026-09-21) — THE RAMPS: the tangent is the roll, the lip launches, vert turns you round, the transition landing
+   pays the fall back as speed, the run-up lanes stay clear, the rects turn with the props, the traced walls stop the walker at their faces ══ */
+test('REV 8 — THE KICKER: a rider climbing an incline leaves its lip along the TANGENT (up, not a flat walk-off), the body leans into the climb, the air leads the line as AIR; a crest at a walk is followed', () => {
+    /* a 3 m kicker rising 0.9 m along +x from x 6 to x 9, a drop back to the floor past it */
+    const c = sandbox({ ground: '(x > 6 && x < 9) ? (x - 6) / 3 * 0.9 : 0', wallAt: 40 });
+    c.pl.x = -20; c._hqRideToggle(true); c._hq.cam.yaw = Math.PI / 2;   // looking +x, 26 m of run-up
+    c.step({ w: true }, 1 / 60, 110); assert.ok(c.R().v > 8 && c.pl.x < 5, 'up to speed before the kicker: ' + c.R().v + ' at x ' + c.pl.x);
+    let n = 0, maxPitch = 0, launched = null, lipY = 0;
+    while (n++ < 400 && !launched) { c.step({}, 1 / 60, 1); maxPitch = Math.max(maxPitch, c.R().pitch); launched = c.events().find(e => e.kind === 'launch'); }
+    assert.ok(launched && !launched.vert && launched.v > 2.5 && launched.v <= R.rampLaunchMax, 'off the lip, up: ' + JSON.stringify(launched));
+    assert.ok(c.pl.air && c.pl.vy > 2 && c.pl.x > 8.5 && c.pl.x < 9.6, 'airborne at the lip (x ' + c.pl.x + ', vy ' + c.pl.vy + ')');
+    assert.ok(maxPitch > 0.2, 'the body leaned into the climb (pitch ' + maxPitch + ')');
+    let apex = 0; n = 0; while (c.pl.air && n++ < 400) { c.step({}, 1 / 60, 1); apex = Math.max(apex, c.pl.y); }
+    assert.ok(apex > 0.9 + 0.2, 'it went UP past the lip (apex ' + apex + ' over a 0.9 m lip — a coasting rider; at cruise it is a metre)');
+    assert.ok(!c.events().some(e => e.kind === 'bail'), 'no bail');
+    const bank = c.events().find(e => e.kind === 'bank');
+    assert.ok(bank && /^AIR/.test(bank.text) && bank.score >= R.tricks.launch.pts, 'AIR led the line and banked: ' + JSON.stringify(bank));
+    assert.ok(Math.abs(c.R().pitch) < 0.2, 'level again on the floor');
+    /* a crest at a walk: a gentle hill (0.2 over 4 m) rolled slowly is followed, never a launch */
+    const d = sandbox({ ground: '(x > 4 && x < 8) ? 0.2 * Math.sin((x - 4) / 4 * Math.PI) : 0', wallAt: 40 });
+    d._hqRideToggle(true); d._hq.cam.yaw = Math.PI / 2; d.step({ w: true }, 1 / 60, 1); d.R().v = 2.4;
+    n = 0; while (n++ < 300 && d.pl.x < 10) d.step({}, 1 / 60, 1);
+    assert.ok(!d.events().some(e => e.kind === 'launch'), 'a slow crest is no kicker');
+});
+
+test('REV 8 — VERT: off a quarter pipe the rider goes UP (× qpLaunch), turns 180° in the air, lands back on the transition FACING DOWN with the fall turned into speed; VERT AIR with its height leads the line; a wall too steep for the speed rolls the board back facing down', () => {
+    const qp = { x: 0, z: 10, yaw: Math.PI, hw: 2.1, hd: 1.3, y0: 0, y1: 2.2, prof: 'qp', prop: 'quarter_pipe' };
+    const c = sandbox({ ramps: [qp], wallAt: 16 });
+    c.pl.z = -12; c._hqRideToggle(true); c._hq.cam.yaw = Math.PI;
+    c.step({ w: true }, 1 / 60, 160);
+    const vFoot = c.R().v, hd0 = c.R().hd;
+    let n = 0, launched = null; while (n++ < 400 && !launched) { c.step({}, 1 / 60, 1); launched = c.events().find(e => e.kind === 'launch'); }
+    assert.ok(launched && launched.vert && launched.v > 5, 'vert: ' + JSON.stringify(launched));
+    assert.ok(Math.abs(c.R().v) < vFoot * 0.35, 'the roll stays only as drift off the coping: ' + c.R().v + ' of ' + vFoot);
+    const yLip = c.pl.y;
+    let apex = 0; n = 0; while (c.pl.air && n++ < 600) { c.step({}, 1 / 60, 1); apex = Math.max(apex, c.pl.y); }
+    assert.ok(!c.pl.air && apex > yLip + 0.8, 'a real air (apex ' + apex + ' over the lip at ' + yLip + ')');
+    const turned = Math.atan2(Math.sin(c.R().hd - hd0), Math.cos(c.R().hd - hd0));
+    assert.ok(Math.abs(Math.abs(turned) - Math.PI) < 0.2, 'turned round in the air: ' + turned);
+    assert.equal(c._hq.cam.yaw, Math.PI, 'the camera never turned');
+    assert.ok(c.pl.z > 8.7 && c.pl.z < 11.3 && c.pl.y > 0.05, 'came down ON the transition (z ' + c.pl.z + ', y ' + c.pl.y + ')');
+    assert.ok(c.R().v > 3, 'the fall became speed down the wall: ' + c.R().v);
+    assert.ok(!c.events().some(e => e.kind === 'bail'), 'no bail');
+    const combo = c.events().find(e => e.kind === 'combo'); assert.ok(combo && /^VERT AIR/.test(combo.text) && combo.pts >= R.tricks.vert.pts, 'VERT AIR on the line: ' + JSON.stringify(combo));
+    assert.ok(c.events().some(e => e.kind === 'bank' && /VERT AIR/.test(e.text)), 'banked');
+    /* the rollback: too slow for the wall */
+    const d = sandbox({ ramps: [qp], wallAt: 16 });
+    d.pl.z = 6; d._hqRideToggle(true); d._hq.cam.yaw = Math.PI; d.step({ w: true }, 1 / 60, 1); d.R().v = 3.0;
+    const hdUp = d.R().hd; n = 0; while (n++ < 400 && !d.events().some(e => e.kind === 'rollback')) d.step({}, 1 / 60, 1);
+    assert.ok(d.events().some(e => e.kind === 'rollback') && !d.events().some(e => e.kind === 'launch'), 'rolled back, no launch');
+    assert.ok(Math.abs(Math.abs(Math.atan2(Math.sin(d.R().hd - hdUp), Math.cos(d.R().hd - hdUp))) - Math.PI) < 0.01 && d.R().v > 0, 'facing down, rolling forward');
+    n = 0; while (n++ < 200 && d.pl.y > 0.02) d.step({}, 1 / 60, 1);
+    assert.ok(d.pl.y <= 0.02 && d.R().v > 1 && !d.events().some(e => e.kind === 'bail'), 'back on the flat with speed: ' + d.R().v);
+    /* the table: the keys the renderer's default carries (the table test diffs them) */
+    for (const k of ['slopeG', 'slopeProbe', 'qpLaunch', 'qpCarry', 'kickLaunch', 'vertTurn', 'pitchMax', 'lipOllieS', 'lipOllieV', 'airMinS', 'launchKick', 'rollbackGrade']) assert.ok(k in R, 'the key ' + k);
+    assert.ok(R.tricks.vert && R.tricks.launch && R.tricks.air.perM > 0, 'the chips');
+});
+
+test('REV 8 — THE LIP OLLIE + THE LEAN\'s pose + THE TURNED RECT: SPACE inside lipOllieS of a launch adds a pop; the pose pitches the body and the deck about the feet; a catalogue rect turns with the prop\'s yaw', () => {
+    const c = sandbox({ ground: '(x > 6 && x < 9) ? (x - 6) / 3 * 0.9 : 0', wallAt: 40 });
+    c.pl.x = -20; c._hqRideToggle(true); c._hq.cam.yaw = Math.PI / 2; c.step({ w: true }, 1 / 60, 110);
+    let n = 0, launched = null; while (n++ < 400 && !launched) { c.step({}, 1 / 60, 1); launched = c.events().find(e => e.kind === 'launch'); }
+    const vy0 = c.pl.vy; c.step({ space: true }, 1 / 60, 1);
+    assert.ok(c.pl.vy > vy0 + R.lipOllieV * 0.8 && c.events().some(e => e.kind === 'ollie' && e.lip), 'the lip ollie added its pop: ' + c.pl.vy + ' from ' + vy0);
+    /* the pose: the pitch composes about the feet (source), the deck follows */
+    const pose = extract('_hqRidePose');
+    assert.ok(/THE LEAN \(rev 8\)/.test(pose) && /setFromAxisAngle\(new THREE\.Vector3\(Math\.cos\(R\.hd\), 0, -Math\.sin\(R\.hd\)\), -R\.pitch\)/.test(pose) && /e\.model\.position\.sub\(feet\)\.applyQuaternion\(qP\)\.add\(feet\)/.test(pose) && /D\.quaternion\.premultiply\(qP\)/.test(pose), 'the pitch about the feet, the deck with it');
+    const step = extract('_hqTickRideStep');
+    assert.ok(/THE SLOPE \(rev 8\)/.test(step) && /_hqRideGrade\(pl, R, S\.slopeProbe/.test(step) && /THE VERT TURN \(rev 8\)/.test(step) && /THE LIP OLLIE \(rev 8\)/.test(step) && /wantM = Math\.abs\(R\.v\) \* cTm \* dt/.test(step), 'the tick reads the tangent, turns the vert, pops the lip, and the wall rule wants the tangent\'s share');
+    assert.ok(/THE LIP \(rev 8\)/.test(extract('_hqRideSetY')) && /THE TRANSITION LANDING \(rev 8\)/.test(extract('_hqRideGravity')) && /THE REWARD \(rev 8\)/.test(extract('_hqRideGravity')), 'the lip, the landing, the reward');
+    /* THE TURNED RECT: _hqBlkContains in a sandbox — a 5 m car at 90° blocks ALONG the lane, not across it */
+    const bc = extract('_hqBlkContains');
+    const ctx = vm.createContext({ Math }); vm.runInContext('function _hqUnits() { return 1; }\n' + bc, ctx);
+    const car = { obj: { position: { x: 0, y: 0, z: 0 } }, rad: 1.2, rect: { hw: 1.0, hd: 2.45 }, yaw: Math.PI / 2 };
+    const has = (x, z) => vm.runInContext('_hqBlkContains', ctx)(car, x, z, 0);
+    assert.ok(has(2.0, 0) && !has(0, 2.0) && has(0, 0.8) && !has(0, 1.2), 'turned 90°: long along x, narrow along z');
+    car.yaw = 0; assert.ok(!has(2.0, 0) && has(0, 2.0), 'at face 0 / 180 the rect reads as it always did');
+    assert.ok(/yaw: grp\.rotation\.y \}\);/.test(TR) && (TR.match(/rect: \(p\.rect === false\) \? undefined : \(cat\.rect \|\| undefined\), yaw: grp\.rotation\.y/g) || []).length === 2, 'both prop-placer sites file the yaw');
+    /* the beats and the cues */
+    assert.ok(/case 'launch': _hqSkateSfx\('skateLaunch'/.test(MP) && /case 'rollback':/.test(MP) && /ev\.lip\) _hqOllieFlash\('LIP OLLIE'\)/.test(MP), 'map.js hears the ramps');
+    assert.ok(/skateLaunch\(ctx, t, out, vol\)/.test(AU) && /skateVert\(ctx, t, out, vol\)/.test(AU) && /skateLaunch: 0\.\d+, skateVert: 0\.\d+/.test(AU), 'the two cues');
+});
+
+test('REV 8 — THE RUN-UP + THE TRACED WALL: every ramp lane in the garage and the cities is clear of authored props / spots / counters, the compiled garage\'s scatter stays out of them; the walker stops at a plan wall\'s drawn FACE, not at the mask line before it', () => {
+    const runUps = g('hqTerrainRunUps'), offenders = g('hqTerrainRunUpOffenders'), TRR = D.HQ_TERRAIN_RULES;
+    assert.ok(TRR.rampRunUp >= 8 && TRR.rampLanding >= 4, 'the lanes');
+    for (const id of ['garage', 'site_prebuilt_downtown_streets', 'site_prebuilt_cyberpunk_streets', 'site_prebuilt_strip_streets', 'site_prebuilt_downtown_mall']) {
+        const room = HQ.rooms[id]; assert.ok(room, id);
+        const zones = runUps(room, room.terrain.features);
+        assert.ok(zones.length >= 2, id + ': ramps ' + zones.length);
+        const off = offenders(room);
+        assert.equal(off.map(o => o.kind + ' ' + o.what + ' @ ' + o.x + ',' + o.z + ' — ' + o.where).join(' | '), '', id + ': nothing stands in a ramp\'s lane');   // (a vm-realm array: never deepStrictEqual it)
+    }
+    /* the compiled garage: the scatter (the cones, the blocks) outside every lane; the kickers along the lane; a plan wall stops the walker at its face */
+    const info = g('hqTerrainInfo')('garage'), tramp = g('_hqTRamp');
+    const zones = runUps(HQ.rooms.garage, HQ.rooms.garage.terrain.features);
+    for (const sc of info.scatter) for (const zn of zones) { const L = tramp(sc.x, sc.z, zn); assert.ok(!(Math.abs(L.v) < zn.w / 2 + (sc.r || 0.45) + 0.3 && L.s > -zn.back - (sc.r || 0.45) && L.s < L.L + zn.past + (sc.r || 0.45)), 'garage: ' + sc.key + ' at ' + sc.x + ',' + sc.z + ' in the lane of ' + zn.name); }
+    const kick = HQ.rooms.garage.terrain.features.filter(f => f.k === 'ramp' && !f.helix);
+    assert.equal(kick.length, 2, 'two kickers');
+    for (const k of kick) { const r0 = Math.hypot(k.x0, k.z0), r1 = Math.hypot(k.x1, k.z1); assert.ok(Math.abs(r0 - r1) < 0.4 && r0 > 16.2 && r0 < 19.4, 'the kicker runs ALONG the lane (r ' + r0.toFixed(1) + ' → ' + r1.toFixed(1) + ')'); }
+    assert.ok(info.gen.wallSlack > 0.3 && info.planWalls.every(w => w.push > 0), 'the tracer records its push; the room wears the slack (' + info.gen.wallSlack + ')');
+    const feet = g('hqTerrainFeet'), maskAt = g('hqTerrainMaskAt'), wallAt = g('hqTerrainWallAt');
+    let checked = 0;
+    for (const w of info.planWalls) {
+        if (w.push < 0.45) continue;   // a wall pushed deep behind the mask line: the band the walker could never reach
+        const mx = (w.x0 + w.x1) / 2, mz = (w.z0 + w.z1) / 2, L = Math.hypot(w.x1 - w.x0, w.z1 - w.z0), nx = -(w.z1 - w.z0) / L, nz = (w.x1 - w.x0) / L;
+        const face = w.t / 2;
+        const side = maskAt(info, mx + nx * (face + 0.40), mz + nz * (face + 0.40)) > maskAt(info, mx - nx * (face + 0.40), mz - nz * (face + 0.40)) ? 1 : -1;   // toward the open side (judged at the candidate points themselves)
+        const px = mx + nx * side * (face + 0.40), pz = mz + nz * side * (face + 0.40);   // the body 6 cm clear of the drawn face
+        if (maskAt(info, px, pz) > 0.3) continue;   // the mask already allowed it here
+        if (maskAt(info, px, pz) < -0.3) continue;   // a wall standing inside the mass on both sides (the solid corners behind the vestibules) — nothing to walk on either side
+        const wh = wallAt(info, px, pz, TRR.bodyR); if (wh && wh !== w) continue;   // at a chain's corner the NEXT segment's pad covers the point — that one is the wall there
+        const y = feet(info, px, pz, null);
+        assert.ok(y !== null, 'walkable 0.4 m off the drawn face at ' + px.toFixed(1) + ',' + pz.toFixed(1) + ' (maskD ' + maskAt(info, px, pz).toFixed(2) + ', a wall? ' + !!wallAt(info, px, pz, TRR.bodyR) + ')');
+        assert.equal(feet(info, mx + nx * side * (face + 0.25), mz + nz * side * (face + 0.25), null), null, 'the wall itself refuses the body');
+        checked++;
+    }
+    assert.ok(checked >= 3, 'the drum\'s deep-pushed walls were checked: ' + checked);
+    const DS = fs.readFileSync(__dirname + '/data.js', 'utf8');
+    assert.ok(/const slack = \(gn\.wallSlack > 0/.test(DS) && /if \(w\.plan\) \{ if \(band === null\) band = hqTerrainMaskAt\(info, x, z\) < \(info\.gen\.solidPad \|\| 0\); if \(!band\) continue; \}/.test(DS) && /if \(w\) \{ if \(w\.plan\) return null;/.test(DS), 'the slack rule; a plan wall counts inside the band only and is never a floor');
 });

@@ -45742,7 +45742,7 @@ const ThreeRenderer = (function () {
                 if (tabletop) _hq.tabletops.push({ key: p.key, grp: grp, y: y });   // THE TABLETOP SEAT
                 _hqRegisterPropPark(p, cat, grp, y, U);   // SKATEBOARDING (9.8): a catalogue `rail` / `ramp`
                 /* the blocker's base is the prop's own `y` (Phase 8 stage 2: a stair step stacked by `y` is a column from its base, so the floor under a raised landing stays a floor) */
-                if (!flip && cat.foot > 0 && (cat.block || (!mount && !onCeil && !(p.y > 0.5)))) _hq.blockers.push({ obj: grp, rad: cat.foot, y: y0 + (p.y || 0), top: y + (cat.h || 1), rect: (p.rect === false) ? undefined : (cat.rect || undefined) });   // `rect` (2026-09-14): a rectangular footprint in room axes
+                if (!flip && cat.foot > 0 && (cat.block || (!mount && !onCeil && !(p.y > 0.5)))) _hq.blockers.push({ obj: grp, rad: cat.foot, y: y0 + (p.y || 0), top: y + (cat.h || 1), rect: (p.rect === false) ? undefined : (cat.rect || undefined), yaw: grp.rotation.y });   // `rect` (2026-09-14): a rectangular footprint in room axes
                 return;
             }
             place(0.66);
@@ -45754,7 +45754,7 @@ const ThreeRenderer = (function () {
                low enough, and its side is solid in the air (no more jumping
                into a cabinet and walking out through the wall of props) */
             var blk = null;
-            if (!flip && cat.foot > 0 && (cat.block || (!mount && !onCeil && !(p.y > 0.5)))) { blk = { obj: grp, rad: cat.foot, y: y0 + (p.y || 0), top: y + (cat.h || 1), rect: (p.rect === false) ? undefined : (cat.rect || undefined) }; _hq.blockers.push(blk); }
+            if (!flip && cat.foot > 0 && (cat.block || (!mount && !onCeil && !(p.y > 0.5)))) { blk = { obj: grp, rad: cat.foot, y: y0 + (p.y || 0), top: y + (cat.h || 1), rect: (p.rect === false) ? undefined : (cat.rect || undefined), yaw: grp.rotation.y }; _hq.blockers.push(blk); }
             var inst = _miscModelInstance(_hqModelUrl(cat), true, target, {
                 fit: fitSpan ? 'span' : 'height', matPick: _hqPropMatPick,
                 onDone: function (g, s, bb) {
@@ -47707,7 +47707,15 @@ const ThreeRenderer = (function () {
     function _hqBlkContains(b, x, z, pad) {
         var U = _hqUnits();
         var bx = b.obj.position.x / U, bz = b.obj.position.z / U;
-        if (b.rect) return Math.abs(x - bx) < b.rect.hw + pad && Math.abs(z - bz) < b.rect.hd + pad;
+        if (b.rect) {
+            /* THE TURNED RECT (SKATEBOARDING rev 8, 2026-09-21 — "weird invisible walls in the garage and the cities"): a catalogue rect is
+               authored in the prop's OWN frame (hw across, hd along its local Z); it used to be read in ROOM axes whatever the prop's
+               face, so every car parked at 60° / 90° / 270° blocked as an unturned box — a 5 m wall ACROSS the parking lane and a gap where
+               the car really stood. The prop's yaw (`b.yaw`, the group's rotation.y) turns the footprint with it. */
+            var yw = b.yaw || 0;
+            if (yw) { var dx = x - bx, dz = z - bz, cy = Math.cos(yw), sy = Math.sin(yw), lx = dx * cy - dz * sy, lz = dx * sy + dz * cy; return Math.abs(lx) < b.rect.hw + pad && Math.abs(lz) < b.rect.hd + pad; }
+            return Math.abs(x - bx) < b.rect.hw + pad && Math.abs(z - bz) < b.rect.hd + pad;
+        }
         return Math.hypot(bx - x, bz - z) < b.rad + pad;
     }
     /* the blockers whose footprint overlaps the walker's disc at (x, z) */
@@ -48735,14 +48743,16 @@ const ThreeRenderer = (function () {
        visit; `_hqRideMem` carries the board through a door. Kill-switch
        `window.EW_HQ_NO_SKATE`; dev `window.EW_HQ_SKATE` = issued. */
     var HQ_SKATE_DEFAULT = {
-        maxV: 12.5, pushV: 4.2, pushEvery: 0.85, pushMs: 520, cruiseV: 10.5, friction: 0.993, brake: 0.9, turn: 2.4, turnMin: 0.4,
+        maxV: 12.5, pushV: 4.2, pushEvery: 0.85, pushMs: 520, cruiseV: 10.5, friction: 0.996, brake: 0.9, turn: 2.4, turnMin: 0.4,
         reverseMaxV: 5.0, reversePushV: 1.8, kickEvery: [2.5, 5.5], kickMinV: 2.5,
         ollieV: 7.25, ollieTapV: 4.6, ollieHoldS: 0.42, ollieHoldAcc: 13, ollieMaxV: 7.9, crouchS: 0.55, popPerfectMs: 160, airTurn: 1.35, airAccel: 3.2, flickPx: 34, stickDeadPx: 6,
         flickCoolMs: 220, trickFitShare: 0.9, trickFitMin: 0.5, trickLateMin: 0.45,
         stanceYaw: -Math.PI / 2, bailV: 4.2, bailDrop: 2.4, bailMs: 1400, bailFall: 0.6, deckBackMs: 1400, wallScrub: 0.15, landGrace: 0.8,
         grindSnap: 0.6, grindDy: 0.5, grindMinV: 1.4, grindFriction: 0.996, grindBalance: 0.75, grindDrift: 0.25,
         race: { hw: 5.5, tickMs: 250, minLapMs: 8000 },   // THE CIRCUIT (DISASTER CITY, 2026-09-17)
-        rampLaunchMin: 1.3, rampLaunchMax: 9.5, qpTop: 0.9, qpLaunch: 1.0, bigAirS: 1.0,
+        rampLaunchMin: 1.3, rampLaunchMax: 9.5, qpTop: 0.9, bigAirS: 1.0,
+        /* THE RAMPS (rev 8, 2026-09-21): the tangent is the roll — see data.js HQ_SKATE_RULES for the words */
+        slopeG: 3.0, slopeProbe: 0.6, qpLaunch: 1.15, qpCarry: 0.15, kickLaunch: 2.0, vertTurn: 0.6, pitchMax: 1.25, lipOllieS: 0.16, lipOllieV: 3.2, airMinS: 0.3, launchKick: 0.05, rollbackGrade: 0.35,
         tricks: {
             kickflip:  { pts: 100, ms: 430, label: 'KICKFLIP' },
             heelflip:  { pts: 100, ms: 430, label: 'HEELFLIP' },
@@ -48756,7 +48766,9 @@ const ThreeRenderer = (function () {
             nosegrab:  { pts: 90,  ms: 300, label: 'NOSEGRAB' },
             pop:       { pts: 50,  label: 'PERFECT POP' },
             grind:     { pts: 60,  perSec: 45, label: 'GRIND' },
-            air:       { pts: 40,  label: 'BIG AIR' },
+            air:       { pts: 40,  perM: 60, label: 'BIG AIR' },
+            vert:      { pts: 150, label: 'VERT AIR' },
+            launch:    { pts: 60,  label: 'AIR' },
         },
         ranks: [[0, 'LANDED'], [400, 'NICE'], [1500, 'SICK'], [5000, 'INSANE'], [15000, 'LEGENDARY']],
     };
@@ -48867,7 +48879,12 @@ const ThreeRenderer = (function () {
                  /* rev 4 (2026-09-19): THE CROUCH (crouch 0..1 while SPACE is held on the ground, crouchOn, crouchFullT = s since it topped out,
                     crouchTop = the charge the pop reads), THE STICK (a mouse button held: { btn, dx, dy } accumulated until a flick fires),
                     the juice (squash = the landing's squat timer, landK = its weight, puffT = the dust) */
-                 crouch: 0, crouchOn: false, crouchFullT: 0, stick: null, rollDir: 1, squash: 0, landK: 0, puffT: 0, tricksDone: 0 };
+                 crouch: 0, crouchOn: false, crouchFullT: 0, stick: null, rollDir: 1, squash: 0, landK: 0, puffT: 0, tricksDone: 0,
+                 /* rev 8 (2026-09-21): THE RAMPS — grade = the surface's tangent under the roll (dy/dx along hd, + uphill), gradeBack = the last
+                    probe-length behind the feet (the lip's launch angle), pitch = the eased lean the pose wears (rad, + nose up), vert = a vert
+                    air's record { hd0, k, est }, launchKind = 'vert' | 'kick' while the air began off a ramp, launchY / airApex = the height the
+                    AIR chip is paid on, lipT = the lip ollie's window */
+                 grade: 0, gradeBack: 0, pitch: 0, vert: null, launchKind: null, launchY: 0, airApex: 0, lipT: 9 };
     }
     function _hqRideArm(opts) {
         var H = _hq; if (!H) return;
@@ -48886,12 +48903,14 @@ const ThreeRenderer = (function () {
         var pl = H.player;
         if (on) {
             R.on = true; R.v = 0; R.hd = pl.yaw; R.stance = 0; R.grind = null; R.trick = null; R.queue = []; R.spinAcc = 0; R.combo = null; R.bailT = 0; R.deckAway = 0; R.rise = 0; R.lastY = null; R.flip = R.roll = R.deckRoll = R.deckSpin = 0;
+            R.grade = R.gradeBack = R.pitch = 0; R.vert = null; R.launchKind = null; R.lipT = 9;
             R.crouch = 0; R.crouchOn = false; R.crouchFullT = 0; R.stick = null; R.squash = 0; R.landK = 0; R.puffT = 0;
             _hqRideMem.on = true;
             if (!quiet) _hqRideEmit({ kind: 'on' });
         } else {
             if (R.grind) { R.grind = null; pl.air = true; pl.vy = 1.2; pl.jumpT = -1; }
             R.on = false; R.v = 0; R.combo = null; R.trick = null; R.queue = []; R.spinAcc = 0; R.stance = 0; R.flip = R.roll = R.deckRoll = R.deckSpin = 0; R.bailT = 0;
+            R.grade = R.gradeBack = R.pitch = 0; R.vert = null; R.launchKind = null;
             R.crouch = 0; R.crouchOn = false; R.crouchFullT = 0; R.stick = null; R.squash = 0;
             pl.targetYaw = pl.yaw;
             _hqRideMem.on = false;
@@ -48925,6 +48944,7 @@ const ThreeRenderer = (function () {
         R.combo = null; R.trick = null; R.queue = []; R.spinAcc = 0; R.grab = false; R.grabDone = false; R.holdOn = false;
         R.flip = 0; R.roll = 0; R.deckRoll = 0; R.deckSpin = 0; R.stance = 0; R.lean = 0;
         R.crouch = 0; R.crouchOn = false; R.crouchFullT = 0; R.squash = 0; R.grabTuck = 0; R.deckTuck = 0; if (R.stick) { R.stick.dx = R.stick.dy = 0; }
+        R.vert = null; R.launchKind = null; R.lipT = 9;
         if (R.grind) { R.grind = null; pl.air = true; pl.vy = 0.8; pl.jumpT = -1; }
         R.v *= 0.35; R.bailT = R.bailTotal = S.bailMs / 1000; R.deckAway = R.deckTotal = S.deckBackMs / 1000; R.bailSpin = 0;
         _hqRideEmit({ kind: 'bail', why: why, lost: lost });
@@ -49003,6 +49023,64 @@ const ThreeRenderer = (function () {
         var R = _hq && _hq.ride, S = _hqSkateRules();
         if (R && R.holdOn) vy += (S.ollieHoldAcc || 13) * Math.max(0, (S.ollieHoldS || 0.42) - (R.holdT || 0));
         return (vy + Math.sqrt(vy * vy + 2 * g * h)) / g;
+    }
+    /* ══ THE RAMPS (rev 8, 2026-09-21 — the user: "they need to rotate the character back as they go up, like the board sticks to
+       the curve and then shoots the player up; right now you go up a ramp and nothing really happens — no reward, no mechanic, no juice;
+       research how old school Tony Hawk games did it") ══
+       THPS's transition model, as far as a deck-on-a-height-field can carry it: (1) THE TANGENT IS THE ROLL — the ground is read a
+       probe-length ahead and behind the feet along the heading and the surface speed runs along that tangent (the horizontal step is
+       v·cos θ; gravity along the incline costs going up and pays going down — gently, `slopeG`, THPS was never a simulation); (2) THE
+       BODY LEANS INTO IT — the eased grade is the pose's pitch about the feet, so on a quarter pipe the rider stands out from the wall
+       like the box art; (3) THE LIP — the ground falling away under a CLIMBING rider throws it along the tangent (a kicker), the
+       coping of a quarter pipe throws it straight UP (VERT: `qpLaunch` of the surface speed, `qpCarry` kept as drift) and a VERT AIR
+       auto-turns the rider 180° so it comes back down the same wall facing down (THPS's turnaround; a spin thrown on top lands
+       fakie as ever); (4) THE TRANSITION LANDING — the fall's speed is projected onto the surface under the feet, so down a wall you
+       come out fast (the pump loop) and onto a bank facing up you come out slow or roll back; (5) THE ROLLBACK — a wall too steep
+       for the speed turns the board round instead of stalling it; (6) THE REWARD — every launch that hangs `airMinS` leads the line
+       with AIR / VERT AIR (+ `air.perM` a metre over the launch point), SPACE at the lip is THE LIP OLLIE, the camera kicks. */
+    /* the ground a free query finds at (x, z) — a quarter pipe's curve, a terrain incline, a step's top; null past a wall / off the room,
+       and null when it is not a slope the deck could be following (a metre above the feet, a body-length below: a cliff, a drop) */
+    function _hqRideGroundAt(pl, x, z) {
+        var y = null;
+        try { y = _hqSurface(x, z, null, false); } catch (e) { y = null; }
+        if (y === null || y === undefined) return null;
+        if (y > pl.y + 1.0 || y < pl.y - 0.9) return null;
+        return y;
+    }
+    /* the surface's grade along the heading: { centre (dy/dx over ±e, the tangent the roll follows), back (the last e behind the feet — the
+       lip's launch angle), ahead } — a missing sample falls back on the other side, none = flat */
+    function _hqRideGrade(pl, R, e) {
+        e = e || 0.6;
+        var sx = Math.sin(R.hd), sz = Math.cos(R.hd);
+        var ya = _hqRideGroundAt(pl, pl.x + sx * e, pl.z + sz * e), yb = _hqRideGroundAt(pl, pl.x - sx * e, pl.z - sz * e);
+        var ahead = (ya == null) ? null : (ya - pl.y) / e, back = (yb == null) ? null : (pl.y - yb) / e;
+        var centre = (ya != null && yb != null) ? (ya - yb) / (2 * e) : (ahead != null ? ahead : (back != null ? back : 0));
+        /* THE LIP'S LAST STRETCH: the ground falling away AHEAD of a climb (the floor past a kicker's edge, the deck past a coping) is
+           not the slope under the deck — the tangent stays the climb's until the feet leave it (the body never dips nose-down at the lip) */
+        if (back != null && back > 0.05 && ahead != null && ahead < back - 0.4) centre = back;
+        return { centre: centre, ahead: ahead == null ? 0 : ahead, back: back == null ? 0 : back };
+    }
+    /* the AIR chip leads the line (the air came before the flips thrown in it) */
+    function _hqRideComboLead(R, label, pts) {
+        if (!R.combo) R.combo = { tricks: [], pts: 0 };
+        R.combo.tricks.unshift(label); R.combo.pts += pts;
+        _hqRideEmit({ kind: 'combo', text: R.combo.tricks.join(' + '), pts: Math.round(R.combo.pts), mult: R.combo.tricks.length, score: Math.round(R.combo.pts * R.combo.tricks.length) });
+    }
+    /* the camera's kick UP on a launch (the landing dip's mirror: up at once, eased home over 320 ms) */
+    function _hqRideCamKick(k) {
+        var H = _hq; if (!H || !H.cam || !H.tickers || typeof performance === 'undefined' || !k) return;
+        var kick = k, left = kick; H.cam.pitch += kick;
+        H.tickers.push(function (dt) { if (left <= 0) return; var step = Math.min(left, kick * (dt * 1000) / 320); H.cam.pitch -= step; left -= step; });
+    }
+    /* THE LAUNCH: the rider leaves the ground with `vy` up — `kind` 'vert' (a quarter pipe's coping: the drift is qpCarry of the roll, the
+       turnaround is armed) or 'kick' (a lip: the roll keeps its cosine); the beat, the camera's kick, the lip ollie's window */
+    function _hqRideLaunch(pl, R, S, kind, vy, keepV) {
+        pl.air = true; pl.vy = vy; pl.jumpT = 0; R.airT = 0; R.airY0 = pl.y; R.rise = 0; R.jumpFromWalkOff = false; R.onRamp = null; R.holdOn = false;
+        R.v *= keepV;
+        R.launchKind = kind; R.launchY = pl.y; R.airApex = pl.y; R.lipT = 0;
+        R.vert = (kind === 'vert') ? { hd0: R.hd, k: 0, est: Math.max(0.3, 2 * vy / HQ_GRAV) } : null;
+        _hqRideEmit({ kind: 'launch', v: vy, vert: kind === 'vert', big: vy > 5 });
+        _hqRideCamKick((S.launchKick || 0) * (kind === 'vert' ? 1 : 0.5) * Math.min(1, vy / 6));
     }
     /* THE FIT (rev 4b): a rotation started in the air is sped up to end inside the air that is left (a late flip
        turns faster — Tony Hawk's rule); with too little air for even a fast one the flick is REFUSED (`late`) —
@@ -49201,7 +49279,22 @@ const ThreeRenderer = (function () {
                 R.pushT = Math.min(R.pushT, 0.08);
             } else R.pushT = Math.min(R.pushT, 0.08);
             if (!cruising) R.v *= Math.pow(S.friction, dt * 60);
-            if (Math.abs(R.v) < 0.05) R.v = 0;
+            /* THE SLOPE (rev 8): the tangent under the roll — the ground read a probe-length ahead and behind along the heading; gravity
+               along the incline (slopeG, gentle) costs going up and pays coming down whichever way the deck rolls; THE ROLLBACK — a
+               transition too steep for the speed turns the board round and rolls it back down FACING DOWN (THPS's turnaround), never a
+               stall on the wall; a descent may run a little over maxV */
+            var G = _hqRideGrade(pl, R, S.slopeProbe || 0.6), gr = G.centre, steep = Math.abs(gr) > 0.02;
+            R.grade = gr; R.gradeBack = G.back;
+            if (steep) {
+                var sT = gr / Math.sqrt(1 + gr * gr), vBefore = R.v;
+                R.v -= (S.slopeG != null ? S.slopeG : 3) * sT * dt;
+                if (R.v > S.maxV * 1.25) R.v = S.maxV * 1.25;
+                if (vBefore >= 0 && R.v <= 0 && gr > (S.rollbackGrade != null ? S.rollbackGrade : 0.35) && !noCtl) {
+                    _hqRideTurn(R, R.hd + Math.PI); R.v = Math.max(0.3, -R.v); R.grade = -gr; R.gradeBack = -G.ahead;
+                    _hqRideEmit({ kind: 'rollback' });
+                }
+            }
+            if (Math.abs(R.v) < 0.05 && !(steep && Math.abs(gr) > 0.1)) R.v = 0;   // the crawl stops on the flat; on an incline gravity has it
             /* THE OCCASIONAL KICK (rev 2) is RETIRED (rev 7, 2026-09-20 — the user: "I'd rather just not have any kick
                animation at all"): no stride, no kick beat; kickEvery / kickMinV stay in the table as dead keys */
             /* THE CARVE toward the wanted direction: `turn` rad/s at speed, tighter below 3 m/s (a slow board
@@ -49226,6 +49319,20 @@ const ThreeRenderer = (function () {
             /* ── IN THE AIR: the tricks ── */
             R.airT += dt;
             R.crouchOn = false; R.crouch = 0;
+            if (pl.y > R.airApex) R.airApex = pl.y;
+            /* THE LIP OLLIE (rev 8): SPACE inside lipOllieS of a launch adds a pop on top of it (THPS's ollie off the lip) */
+            if (R.launchKind && R.lipT < (S.lipOllieS != null ? S.lipOllieS : 0.16)) {
+                R.lipT += dt;
+                if (!noCtl && k.space && !pl._jumpLatch) { pl.vy += (S.lipOllieV != null ? S.lipOllieV : 3.2); R.lipT = 9; if (R.vert) R.vert.est = Math.max(R.vert.est, 2 * pl.vy / HQ_GRAV); _hqRideEmit({ kind: 'ollie', lip: true, v: R.v }); }
+            }
+            /* THE VERT TURN (rev 8): off a quarter pipe's coping the rider turns 180° over the first vertTurn share of the hang, so it
+               comes back down the same wall facing down — the heading only (the camera is the mouse's); a spin thrown on top stacks */
+            if (R.vert && !noCtl && R.vert.k < 1) {
+                var vk0 = R.vert.k, vk1 = Math.min(1, vk0 + dt / Math.max(0.2, R.vert.est * (S.vertTurn != null ? S.vertTurn : 0.6)));
+                var smv = function (t) { return t * t * (3 - 2 * t); }, dTurn = Math.PI * (smv(vk1) - smv(vk0));
+                R.vert.k = vk1;
+                if (dTurn) _hqRideTurn(R, R.hd + dTurn);
+            }
             /* THE HOLD: SPACE still down lifts until ollieHoldS or the release; a launch / a walk-off never boosts */
             if (R.holdOn) {
                 if (k.space && !noCtl && R.holdT < (S.ollieHoldS || 0.42) && pl.vy > 0) { pl.vy += (S.ollieHoldAcc || 13) * dt; R.holdT += dt; }
@@ -49272,8 +49379,9 @@ const ThreeRenderer = (function () {
             }
         }
         R.lean += (leanT - R.lean) * Math.min(1, dt * 8);
-        /* ── the move ── */
-        var mx = Math.sin(R.hd) * R.v, mz = Math.cos(R.hd) * R.v;
+        /* ── the move ── (rev 8: on the ground the surface speed runs along the tangent — the horizontal step is its cosine) */
+        var cTm = (!pl.air && R.grade) ? 1 / Math.sqrt(1 + R.grade * R.grade) : 1;
+        var mx = Math.sin(R.hd) * R.v * cTm, mz = Math.cos(R.hd) * R.v * cTm;
         pl.pushX = mx; pl.pushZ = mz;
         if (_hqPortalSweep(dt, { x: mx, y: pl.air ? pl.vy : 0, z: mz })) return;
         var nx = pl.x + mx * dt, nz = pl.z + mz * dt;
@@ -49291,9 +49399,10 @@ const ThreeRenderer = (function () {
                probe (a body pad ahead) leaves the curve a frame before the feet reach qpTop, and at a
                cruising pace that read as a walk-off into the air, then a "wall" inside the curve. */
             var here = _hqRampUnder(pl.x, pl.z);
-            if (here && here.ramp.prof && Math.abs(R.v) > 2.5 && here.t >= S.qpTop - 0.2 && (!under || under.ramp !== here.ramp || under.t >= S.qpTop)) {
-                pl.air = true; pl.vy = Math.min(S.rampLaunchMax, Math.abs(R.v) * S.qpLaunch); R.v *= 0.3; pl.jumpT = 0; R.airT = 0; R.airY0 = pl.y; R.rise = 0; R.jumpFromWalkOff = false; R.onRamp = null; R.lastY = pl.y;
-                _hqRideEmit({ kind: 'launch', v: pl.vy });
+            if (here && here.ramp.prof && R.v > 2.5 && here.t >= S.qpTop - 0.2 && (!under || under.ramp !== here.ramp || under.t >= S.qpTop)) {
+                /* VERT (rev 8): the coping throws the surface speed straight UP (× qpLaunch, the pump), a little of the roll stays as drift, the turnaround is armed */
+                R.lastY = pl.y;
+                _hqRideLaunch(pl, R, S, 'vert', Math.min(S.rampLaunchMax, Math.abs(R.v) * S.qpLaunch), (S.qpCarry != null ? S.qpCarry : 0.15));
                 if (R.pushAnim > 0) R.pushAnim -= dt;
                 pl.yaw = pl.targetYaw = R.hd + R.stance;
                 return;
@@ -49313,20 +49422,23 @@ const ThreeRenderer = (function () {
             /* Keep the free tangential component after a brush. Head-on contact
                stops without a bail; round NPCs allow a gentle shoulder slide. */
             _hqRideObstacleSlide(pl, R, ox, oz, mx, mz, dt, S);
-            var sgM = R.v < 0 ? -1 : 1, wantM = Math.abs(R.v) * dt, movedM = sgM * ((pl.x - ox) * Math.sin(R.hd) + (pl.z - oz) * Math.cos(R.hd));
+            var sgM = R.v < 0 ? -1 : 1, wantM = Math.abs(R.v) * cTm * dt, movedM = sgM * ((pl.x - ox) * Math.sin(R.hd) + (pl.z - oz) * Math.cos(R.hd));   // rev 8: the wanted step is the tangent's horizontal share (a climb is not a wall)
             var doorT = (wantM > 0.002 && movedM < wantM * 0.3) ? _hqFindTarget() : null;
             _hqRideSlide(R, S, sgM, wantM, pl.x - ox, pl.z - oz, !!(doorT && doorT.kind === 'door'));   // rev 3: a wall / a prop is a stop, never a bail
             /* THE RISE: the ground climbed in the last ~0.3 s; when it runs out at speed, a hop (the stairs, the risers, the cave's wedges) */
             if (R.lastY != null && !pl.air) { var dyR = pl.y - R.lastY; R.rise = R.rise * Math.exp(-dt / 0.3) + Math.max(0, dyR); }
             R.lastY = pl.y;
             var onNow = under ? under.ramp : null;
-            if (!pl.air && R.onRamp && !onNow && R.rise > 0.25 && Math.abs(R.v) > 3) {
+            if (!pl.air && R.onRamp && R.onRamp.prop && !R.onRamp.prof && !onNow && R.rise > 0.25 && Math.abs(R.v) > 3) {   // rev 8: a prop's flat register only (a riser) — every real incline launches by THE LIP in _hqRideSetY
                 var vy = Math.min(S.rampLaunchMax, R.rise / 0.3 * 0.8);
                 if (vy >= S.rampLaunchMin) { pl.air = true; pl.vy = vy; pl.jumpT = 0; R.airT = 0; R.airY0 = pl.y; R.rise = 0; R.jumpFromWalkOff = false; _hqRideEmit({ kind: 'launch', v: vy }); }
             }
             R.onRamp = onNow;
         } else { R.lastY = pl.y; R.onRamp = null; }
         if (R.pushAnim > 0) R.pushAnim -= dt;
+        /* THE LEAN (rev 8): the pose's pitch follows the tangent on the ground (fast), levels in the air (slow; a vert air keeps a little lean back) */
+        var pitchT = pl.air ? (R.vert ? -0.15 : 0) : Math.max(-(S.pitchMax || 1.25), Math.min(S.pitchMax || 1.25, Math.atan(R.grade || 0)));
+        R.pitch += (pitchT - R.pitch) * Math.min(1, dt * (pl.air ? 5 : 14));
         pl.visY += (pl.y - pl.visY) * Math.min(1, dt * (pl.air ? 60 : 16));
         if (Math.abs(pl.y - pl.visY) < 0.004) pl.visY = pl.y;
         pl.yaw = R.hd + R.stance;   // the rider faces along the roll (fakie after an odd 180)
@@ -49342,7 +49454,20 @@ const ThreeRenderer = (function () {
     }
     /* a step down at speed: a drop is air (the walker's rule); a climb is taken */
     function _hqRideSetY(pl, R, y, S) {
-        if (pl.y - y > HQ_FALL_MIN) { pl.air = true; pl.vy = 0; pl.jumpT = -1; R.airT = 0; R.airY0 = pl.y; R.jumpFromWalkOff = true; }
+        if (pl.air) return;   // rev 8: the x step launched — the z step keeps its hands off
+        var drop = pl.y - y;
+        /* THE LIP (rev 8): the ground falls away under a rider who was CLIMBING — it leaves along the tangent (the last probe-length behind
+           the feet: a kicker's pitch, a bank's edge), × kickLaunch, capped by the climb's own energy (a curb hop off a cinder block, not a
+           launch); a crest at a walk, a descent, a flat walk-off are the drop they were */
+        if (drop > 0.01) {
+            var gb = R.gradeBack || 0;
+            if (gb > 0.08 && Math.abs(R.v) > 2.0 && !(R.onRamp && R.onRamp.prop && !R.onRamp.prof)) {
+                var st = gb / Math.sqrt(1 + gb * gb), ct = 1 / Math.sqrt(1 + gb * gb);
+                var vy = Math.min(S.rampLaunchMax, Math.abs(R.v) * st * (S.kickLaunch != null ? S.kickLaunch : 2.0), Math.sqrt(2 * HQ_GRAV * Math.max(0, R.rise)) + 1.5);
+                if (vy >= S.rampLaunchMin) { _hqRideLaunch(pl, R, S, 'kick', vy, ct); return; }
+            }
+        }
+        if (drop > HQ_FALL_MIN) { pl.air = true; pl.vy = 0; pl.jumpT = -1; R.airT = 0; R.airY0 = pl.y; R.jumpFromWalkOff = true; }
         else pl.y = y;
     }
     /* gravity + the landing: a rail under the feet locks (the grind), the ground banks or bails */
@@ -49361,7 +49486,7 @@ const ThreeRenderer = (function () {
                     R.v = Math.max(S.grindMinV, Math.abs(along) * av + 0.6 * av * (1 - Math.abs(along)));
                     R.grind = { rail: snap.rail, s: snap.s, dir: dir, t: 0, drift: 0, pts: TR.grind.pts || 0 };
                     R.bal = 0; R.trick = null; R.queue = []; R.flip = R.roll = R.deckRoll = R.deckSpin = 0; R.grab = false;
-                    R.stance = 0; R.spinAcc = 0;
+                    R.stance = 0; R.spinAcc = 0; R.vert = null; R.launchKind = null; R.lipT = 9;
                     pl.air = false; pl.vy = 0; pl.jumpT = -1; pl.x = p.x; pl.z = p.z; pl.y = p.y + 0.02;
                     var gl = snap.rail.gallery ? 'BANISTER GRIND' : snap.rail.arc ? 'RING GRIND' : snap.rail.bridge ? 'ROPE GRIND' : '50-50 GRIND';
                     _hqRideComboAdd(R, gl, TR.grind.pts || 0);
@@ -49375,9 +49500,16 @@ const ThreeRenderer = (function () {
             var bf = _hqBlockerFloor(pl.x, pl.z, pl.y);
             if (bf !== null && bf > land) land = bf;
             if (ny <= land) {
+                var vyLand = pl.vy;
                 ny = land; pl.air = false; pl.vy = 0; pl.jumpT = -1; R.lastY = ny; R.onRamp = null;
                 if (pl.entry) pl.entry._ew_hqLandAt = performance.now();
                 if (!bailing) {
+                    /* THE TRANSITION LANDING (rev 8): the fall's speed is projected onto the surface under the feet along the heading — down a
+                       quarter pipe (facing down after the turnaround) you come out FAST, onto a bank facing up you come out slow or roll back;
+                       a flat landing keeps the roll exactly */
+                    pl.y = ny;
+                    var LG = _hqRideGrade(pl, R, S.slopeProbe || 0.6), lg = LG.centre;
+                    if (Math.abs(lg) > 0.05) { var ls = lg / Math.sqrt(1 + lg * lg), lc = 1 / Math.sqrt(1 + lg * lg); R.v = R.v * lc + vyLand * ls; R.grade = lg; R.gradeBack = LG.back; }
                     var fell = R.airY0 - ny;
                     var offAxis = Math.abs(((R.spinAcc % Math.PI) + Math.PI) % Math.PI); offAxis = Math.min(offAxis, Math.PI - offAxis);
                     /* THE LATE LANDING (rev 3): a rotation ≥ landGrace done is snapped complete; a queued trick never started is dropped */
@@ -49389,6 +49521,12 @@ const ThreeRenderer = (function () {
                     var half = Math.round(R.spinAcc / Math.PI);
                     R.stance = ((R.stance + half * Math.PI) % (Math.PI * 2));
                     R.spinAcc = 0; R.flip = R.roll = R.deckRoll = R.deckSpin = 0; R.grab = false; R.grabDone = false;
+                    /* THE REWARD (rev 8): an air off a ramp that hung airMinS leads the line — VERT AIR off a coping, AIR off a lip — paid by its height over the launch point */
+                    if (R.launchKind && R.airT >= (S.airMinS != null ? S.airMinS : 0.3)) {
+                        var TL = (R.launchKind === 'vert') ? TR.vert : TR.launch;
+                        if (TL) { var hgt = Math.max(0, R.airApex - R.launchY), hp = Math.round(hgt * ((TR.air && TR.air.perM) || 0)); _hqRideComboLead(R, TL.label + (hgt >= 0.5 ? ' ' + hgt.toFixed(1) + ' M' : ''), TL.pts + hp); }
+                    }
+                    R.launchKind = null; R.vert = null; R.lipT = 9;
                     if (R.airT >= S.bigAirS && R.combo) { R.combo.pts += TR.air.pts; }
                     /* THE JUICE (rev 4): the body squats on the touchdown by the fall (landK), a dust puff, the camera dips */
                     R.landK = Math.max(0.25, Math.min(1, fell / 2.4 + Math.abs(R.v) / 20)); R.squash = 0.22; R.puffT = 0.5;
@@ -49487,6 +49625,15 @@ const ThreeRenderer = (function () {
         var piv = ch.heightM * 0.52;
         var pv = new THREE.Vector3(0, piv * U, 0).applyQuaternion(e.model.quaternion);
         e.model.position.set(-pv.x, e.model._ew_hqBaseY + deckH * U + piv * U - pv.y, -pv.z);
+        /* THE LEAN (rev 8): the pitch to the slope turns the body about its FEET (the deck point), about the roll's lateral axis — nose up
+           on a climb, standing out from a quarter pipe's wall; the flips above pivot at the centre, this one composes over them */
+        var qP = null;
+        if (R.pitch) {
+            qP = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(Math.cos(R.hd), 0, -Math.sin(R.hd)), -R.pitch);
+            var feet = new THREE.Vector3(0, e.model._ew_hqBaseY + deckH * U, 0);
+            e.model.quaternion.premultiply(qP);
+            e.model.position.sub(feet).applyQuaternion(qP).add(feet);
+        }
         /* rev 4: the crouch squats the body by its charge (a coil the rider reads), the touchdown squashes it and springs back (squash), a grab tucks it */
         if (R.squash > 0) R.squash = Math.max(0, R.squash - dt);
         var sq = R.squash > 0 ? Math.sin((R.squash / 0.22) * Math.PI) * 0.16 * (R.landK || 0.5) : 0;
@@ -49502,6 +49649,7 @@ const ThreeRenderer = (function () {
         /* THE FIT's offset, travel frame → the group's (the deck's own rotation.y = yaw, its +Z the roll) */
         var cY = Math.cos(yaw), sY = Math.sin(yaw), ox = (R.deckOx || 0), oz = (R.deckOz || 0);
         D.position.x += ox * cY + oz * sY; D.position.z += -ox * sY + oz * cY;
+        if (qP) { D.quaternion.premultiply(qP); D.position.applyQuaternion(qP); }   // rev 8: the deck leans with the body, about the same feet point (the group's origin)
         /* THE SKID (rev 3): on a bail the deck shoots out ahead along the heading (a lazy arc, the
            wheels down) and slides back under the feet as deckAway runs out */
         if (R.deckAway > 0) {

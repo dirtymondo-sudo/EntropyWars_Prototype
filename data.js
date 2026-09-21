@@ -25836,7 +25836,10 @@ const DOOR_HQ = {
                     [{ k: 'bridge', x0: 0, z0: 12.6, x1: 0, z1: 15.6, w: 5, y: 7.8, rails: false, ring: 'top', connector: true }],
                     /* THE LOOP (P1 · LOWER): the painted lane, two kickers, THE FUN BOX, the kerb ledge, the handrail */
                     [{ k: 'path', pts: hqRingPts(0, 0, 17.8, 36), w: 3.2 },                                                    // the lane round the annulus
-                     { k: 'ramp', x0: -16.15, z0: 10.2, x1: -14.65, z1: 7.6, w: 2.6, h0: 0, h1: 0.9, edge: 0.3 },                // THE KICKER (west, at 300°)
+                     /* THE KICKERS (SKATEBOARDING rev 8, 2026-09-21): both ALONG the lane, rising with the clockwise roll — the west one used to run
+                        INTO the loop (its lip a metre from a pillar and the south quarter pipe's back); now it stands at 330° with the kerb ledge
+                        past its landing (kicker → ledge grind is the line), the east one at 60° as it was. A kicker's run-up is the lane behind it */
+                     { k: 'ramp', x0: -10.05, z0: -14.41, x1: -7.45, z1: -15.91, w: 2.6, h0: 0, h1: 0.9, edge: 0.3 },              // THE KICKER (north-west, at 330°)
                      { k: 'ramp', x0: 14.65, z0: -10.2, x1: 16.15, z1: -7.6, w: 2.6, h0: 0, h1: 0.9, edge: 0.3 },                // THE KICKER (east, at 60°)
                      { k: 'plateau', x: 0, z: 18.5, w: 6, d: 2.8, h: 0.5, edge: 0.3 },                                           // THE FUN BOX (south, under the top ring)
                      { k: 'wall', x0: -7, z0: -18.5, x1: 7, z1: -18.5, h: 0.45, t: 0.4, key: 'urban:ConcreteStriped2a' },        // THE KERB LEDGE (north, under the upper ring)
@@ -25889,8 +25892,8 @@ const DOOR_HQ = {
                 { key: 'railing_1m',     x: -10.2, z: 16.0, face: 110 },
                 { key: 'railing_1m',     x: -7.0, z: 17.1, face: 110 },
                 /* SKATEBOARDING (9.8): THE HALF-PIPE — two quarter pipes facing each other down the west side of the loop (THE PARK RULE's first ramps that launch) */
-                { key: 'quarter_pipe',   x: -17.4, z: 7.4,  face: 0 },
-                { key: 'quarter_pipe',   x: -17.4, z: -7.4, face: 180 },
+                { key: 'quarter_pipe',   x: -18.3, z: 7.4,  face: 0 },                      // rev 8: 0.9 m further out — the pillar at (−15.5, 0) stood in the half-pipe's flat (the backs' corners 0.2 m inside the drum)
+                { key: 'quarter_pipe',   x: -18.3, z: -7.4, face: 180 },
                 /* ── the bays: five cars — three on the LOWER deck along the south-east wall, two on the UPPER ring ── */
                 /* THE VEHICLE BATCH (2026-09-15): the building's Sedan, the agents' black SUV, the executive's Cadillac, the cop car nobody signed for, Medical's ambulance */
                 { key: 'parking_bay',    x: 17.49, z: 10.1, face: 120 }, { key: 'car_ambulance', x: 17.49, z: 10.1, face: 300 },
@@ -25914,8 +25917,8 @@ const DOOR_HQ = {
                 { key: 'pipe_run',       x: -8, z: -19.5, face: 60 },
                 { key: 'pipe_run',       x: 19.5, z: 8, face: 150 },
                 { key: 'trash_bin',      x: 20.0, z: 6.2, face: 270 },
-                { key: 'traffic_barrel', x: -19.0, z: -9.6, face: 30 },
-                { key: 'wet_floor_sign', x: -11.6, z: 8.2, face: 200 },
+                { key: 'traffic_barrel', x: -20.8, z: -6.0, face: 30 },                     // rev 8: off the north quarter pipe's deck (it stood a metre behind the coping)
+                { key: 'wet_floor_sign', x: -14.4, z: 3.4, face: 200 },                     // rev 8: off the lane's inner edge (it stood in the helix's foot)
                 { key: 'security_camera', x: -20.9, z: 14.6, face: 60, mount: 2.5 },        // on the alcove's mouth, looking down the loop — never into the alcove
                 { key: 'nameplate',      x: 21.7, z: 6.4, face: 270, mount: 1.55 },
                 /* ── THE DOCK OFFICE (THE CLIMB, 2026-09-19; on the UPPER ring since 2026-09-20): a landing 3 m over the ring at the north-east, a desk and a chair on it, a rail on its west edge, the plaque at the ladder's foot ── */
@@ -30044,7 +30047,7 @@ const DOOR_HQ = {
             npcSpots: [
                 { x: 3.6, z: -8.6, face: 180, race: 'chosen one', say: ['“Thank you. Thank you very much.” “For what?” “The next one.”', '“Eleven chapels.” “Which is yours?” “All of them, on a rota.”'] },   // THE KING, on the plaza's north kerb
                 { x: -14.0, z: 8.8, face: 30, race: 'conspiracy theorist', say: ['“The beam.” “What about it?” “Something climbs it.” “Every night?” “Only the nights you look.”'] },
-                { x: 29.0, z: 27.0, face: 180, race: 'gangster', say: ['“Valet.” “I walked.” “Then park yourself.”'] },   // on the valet deck
+                { x: 26.5, z: 29.5, face: 180, race: 'gangster', say: ['“Valet.” “I walked.” “Then park yourself.”'] },   // on the valet deck (rev 8: its west end, 2.5 m in from the edges — he stood where the car ramp and the pipe land you)
                 { x: -38.0, z: 24.4, face: 60, race: 'zombie', say: ['“Slots.” “Which?” “All of them. Slowly.”'] },        // on the back lane's sidewalk
             ],
             onlineSpots: [],
@@ -31135,7 +31138,7 @@ const DOOR_HQ = {
                     { k: 'rail', x0: -32.2, z0: -50.4, x1: -23.8, z1: -50.4 },                                                        // the roof's rail (1.6 m inside the edge)
                     { k: 'pool', x: -40, z: -64, r: 2.8, y: 0, depth: 0.4 },                                                        // MARKET SQUARE's fountain (waded)
                     { k: 'tree', x: -52, z: -60, kind: 'tree_2', h: 3.4 }, { k: 'tree', x: -28, z: -60, kind: 'tree_2', h: 3.4 }, { k: 'tree', x: -40, z: -75, kind: 'tree_3', h: 3.8 },   // the square's
-                    { k: 'tree', x: 40, z: -60, kind: 'tree_3', h: 3.6 }, { k: 'tree', x: 56, z: -60, kind: 'tree_3', h: 3.6 },     // the church square's
+                    { k: 'tree', x: 40, z: -60, kind: 'tree_3', h: 3.6 }, { k: 'tree', x: 52.5, z: -60, kind: 'tree_3', h: 3.6 },     // the church square's (rev 8: the second tree stood in the step's width)
                     /* THE DOCKS (D2): THE CANAL from the east wall to the west, deep and never entered; FOUR BRIDGES (decks authored after it = causeways over it) */
                     { k: 'stream', pts: [[114, 46], [-60, 46]], w: 6, y: 0, depth: 0.55, bank: 0.9, key: 'deep_water' },            // THE CANAL (behind the waterfront's warehouses) (never entered; its bed is a climb under the dark sheet — a deep bed leaves a dry ledge at the bank's foot the walker drops onto and cannot leave)
                     { k: 'deck', x0: 0, z0: 39.5, x1: 0, z1: 52.5, w: 11, y: 0.3 },                                                  // THE AVENUE BRIDGE (both banks)
@@ -31204,11 +31207,11 @@ const DOOR_HQ = {
             props: [
                 /* the parked cars on the kerbs (the catalogue's vehicle rows; the traffic drives the road between them) */
                 { key: 'car_cop',       x: -14.5, z: -4.0, face: 90 },                      // the cross street's north parking lane
-                { key: 'car_suv',       x: 14.5, z: 4.0, face: 270 },                       // the south lane
-                { key: 'car_cadillac',  x: 4.0, z: -18, face: 0 },                          // the avenue's east lane
+                { key: 'car_suv',       x: 11.0, z: 4.0, face: 270 },                       // the south lane (rev 8: west of the loading dock's riser, off its landing)
+                { key: 'car_cadillac',  x: 4.0, z: -24, face: 0 },                          // the avenue's east lane (rev 8: south of the deck ramp's run-up band)
                 { key: 'car_suv',       x: -4.0, z: 16, face: 180 },
                 { key: 'car_ambulance', x: -84, z: -10.2, face: 90 },                       // at the tower's side street — the evacuation
-                { key: 'car_cadillac',  x: 10, z: -12.8, face: 90 },                        // on the deck's side street
+                { key: 'car_cadillac',  x: 14.5, z: -4.0, face: 90 },                       // the cross street's north lane, east (rev 8: it parked in the deck ramp's run-up)
                 { key: 'crashed_car',     x: -17.5, z: -21.5, face: 300 },                   // THE SECOND PASS (2026-09-17): the wrecks — two under the collapse, one on the chicane
                 { key: 'crashed_car_2',   x: -26.0, z: -8.5, face: 60 },
                 { key: 'crashed_car_2',   x: 35.0, z: -1.5, face: 40 },
@@ -31227,7 +31230,7 @@ const DOOR_HQ = {
                 { key: 'quarter_pipe',    x: 27, z: -12.5, face: 180 },                      // the deck's quarter pipe (SKATEBOARDING 9.8)
                 { key: 'quarter_pipe',    x: -9, z: 9, face: 0 },                            // and one on the plaza's south edge
                 { key: 'riser_2',         x: 18, z: 5.6, face: 90 },                         // the loading dock's riser on the cross street's south sidewalk
-                { key: 'cardboard_boxes', x: 19.8, z: 6.3, face: 30 },
+                { key: 'cardboard_boxes', x: 18.4, z: 10.9, face: 30 },                     // rev 8: past the riser's north end, not on its approach
                 /* THE OLD TOWN (D2) */
                 { key: 'fountain',        x: -40, z: -64, y: 0.45 },                          // MARKET SQUARE's fountain (the square's own light) — in its basin (the r 2.8 pool): up out of the water
                 { key: 'ticket_booth',    x: -49, z: -70, face: 120 },                        // the market's stalls
@@ -31634,7 +31637,7 @@ const DOOR_HQ = {
             counters: [],
             props: [
                 { key: 'car_cyber',       x: -14.5, z: -4.0, face: 90 },                        // the cross street's north parking lane
-                { key: 'car_taxi',        x: 14.5, z: 4.0, face: 270 },                         // the south lane
+                { key: 'car_taxi',      x: 11.0, z: 4.0, face: 270 },                       // rev 8: west of the loading dock's riser, off its landing                         // the south lane
                 { key: 'car_taxi',        x: 4.0, z: -20, face: 0 },                            // the boulevard's east lane
                 { key: 'car_cyber',       x: -4.0, z: 18, face: 180 },
                 { key: 'car_cop',         x: 4.0, z: 30, face: 0 },
@@ -31648,7 +31651,7 @@ const DOOR_HQ = {
                 { key: 'quarter_pipe',    x: 25, z: -10.5, face: 180 },                         // the skyway's quarter pipe (SKATEBOARDING 9.8)
                 { key: 'quarter_pipe',    x: -9, z: 9, face: 0 },                               // and one on the plaza's south edge
                 { key: 'riser_2',         x: 18, z: 5.6, face: 90 },                            // the loading dock's riser on the cross street's south sidewalk
-                { key: 'cardboard_boxes', x: 19.8, z: 6.3, face: 30 },
+                { key: 'cardboard_boxes', x: 18.4, z: 10.9, face: 30 },                     // rev 8: past the riser's north end, not on its approach
                 { key: 'signpost',        x: -24.5, z: -9.0, face: 20 },                        // under THE BILLBOARD ROOF
                 { key: 'city_bin',        x: -27.6, z: -14.6 },                                 // on THE BILLBOARD ROOF (the ground read puts it on the roof), off the tape's spot
                 { key: 'wet_floor_sign',  x: -19.0, z: 2.6, face: 200 },                        // by the puddle
@@ -31681,7 +31684,7 @@ const DOOR_HQ = {
                 { x: 44.0, z: -60.0, face: 180, race: 'catgirl', say: ['“Every roof is joined to the next.” “All of them?” “Every second one. Mind the gap.”'] },
                 /* THE UNDERCITY (D2) */
                 { x: -8.0, z: 70.0, face: 0, race: 'ghoul', say: ['“The city is up the ramp.” “Which city?” “The one that is on top of this one.”'] },
-                { x: 66.0, z: 35.0, face: 180, race: 'android', say: ['“From here you can see the lower street.” “And the gutter at the end of it.” “Everything drains to the same place.”'] },
+                { x: 72.0, z: 41.0, face: 180, race: 'android', say: ['“From here you can see the lower street.” “And the gutter at the end of it.” “Everything drains to the same place.”'] },   // rev 8: deeper on THE OVERLOOK, off the ramp's landing (a spot is forced open in the plan — off the tier it cut a pocket)
             ],
             onlineSpots: [],
             lines: [
@@ -39352,6 +39355,14 @@ const HQ_TERRAIN_RULES = {
        is a SECOND SURFACE over the field — never written into H. The walker stands on it when its feet ARRIVE near its top (the wall
        rule); under it the ground stays walked as long as the slab leaves `headroom`; the solver keys a node by cell AND layer */
     bridgeThick: 0.28, headroom: 1.95, bridgeEdge: 0.12,
+    /* THE RUN-UP (SKATEBOARDING rev 8, 2026-09-21 — the user: "objects like flower pots or fire hydrants or trash cans are not placed directly in
+       front of ramps, the player needs space to gain speed"): nothing scattered stands in the lane before a ramp's FOOT (rampRunUp m back, the
+       ramp's width) or in the landing past its top (rampLanding m); a prop ramp (a quarter pipe, a riser) keeps the same lane at its approach
+       side. The stairs / the escalators / a helix's segments are not kickers. hqTerrainRunUps lists the lanes; the audit reads them too. */
+    rampRunUp: 10, rampLanding: 6,
+    /* THE TRACED WALL (rev 8): a plan wall is drawn INSIDE the mask by up to its chain's reach (the tracer pushes it into the solid so its face
+       never protrudes) — the walker used to be refused at the MASK LINE, a band of up to 0.8 m of air before the drawn face (the garage's drum).
+       A room with traced walls lets the walker into the mask as far as the walls' own faces (hqTerrainSolidAt reads info.gen.wallSlack). */
 };
 function _hqTSmooth(t) { t = t < 0 ? 0 : t > 1 ? 1 : t; return t * t * (3 - 2 * t); }
 function _hqTHash(ix, iz, seed) {
@@ -40376,6 +40387,8 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
                                                               simplify: (gen.simplify != null) ? gen.simplify : K.simplify, inner: (gen.wallInner != null) ? gen.wallInner : K.wallInner, inShell });
         } catch (e) { console.warn('[terrain] the plan walls failed', roomId, e); info.planWalls = []; }
         info.gen.walls = info.planWalls.length;
+        /* THE TRACED WALL (rev 8): how far into the mask the walls were pushed — the walker may follow them in that far (hqTerrainSolidAt) */
+        info.gen.wallSlack = info.planWalls.reduce((m, w) => Math.max(m, w.push || 0), 0);
     }
     /* ── THE THICKET (rooms): the forest growing on the solid, a lattice of trees `spacing` apart ── */
     info.thicket = [];
@@ -40463,10 +40476,55 @@ function _hqTTraceMaskWalls(info, mask, o) {
             let gmin = Infinity;
             for (let q = 0; q <= 4; q++) { const g = hqTerrainHeight(info, ax + (bx - ax) * q / 4, az + (bz - az) * q / 4); if (g < gmin) gmin = g; }
             rows.push({ x0: Math.round((ax + ox) * 100) / 100, z0: Math.round((az + oz) * 100) / 100, x1: Math.round((bx + ox) * 100) / 100, z1: Math.round((bz + oz) * 100) / 100,
-                        t, base: Math.round((gmin - 0.3) * 100) / 100, top: o.top, h: o.top - gmin, key: o.key, plan: true });
+                        t, base: Math.round((gmin - 0.3) * 100) / 100, top: o.top, h: o.top - gmin, key: o.key, plan: true, push: Math.round((t / 2 + dev) * 100) / 100 });
         }
     });
     return rows;
+}
+/* ── THE RUN-UP (SKATEBOARDING rev 8, 2026-09-21) ─────────────────────────────────────────────────────────────────────
+   The lanes a ramp needs clear: one row per KICKER (a terrain `ramp` that is not stairs, not an escalator, not a helix's segment)
+   from its foot back `rampRunUp` m and past its top `rampLanding` m, and one per PROP ramp in `room.props` (a catalogue row wearing
+   `ramp` — the quarter pipes, the risers: the approach is the prop's local +Z, `_hqHeadingYaw(face)` = π − face, so the low end lies
+   at (sin yaw, cos yaw) from its centre; a riser's lane is half a kicker's). Each row is a `_hqTRamp` frame from the foot to the
+   top (`x0 z0 x1 z1 w`) with `back` / `past` (m). hqTerrainCompile's scatter refuses the lanes; the audit (hq-skate.test.js) lists
+   authored props, spots and counters standing in one. */
+function hqTerrainRunUps(room, features) {
+    const R = HQ_TERRAIN_RULES, out = [], F = features || ((room && room.terrain && room.terrain.features) || []);
+    F.forEach(f => {
+        if (!f || f.k !== 'ramp' || f.stairs || f.escalator || f.helix || f.float) return;
+        const h0 = f.h0 || 0, h1 = f.h1 || 0; if (Math.abs(h1 - h0) < 0.15) return;
+        const lowFirst = h0 <= h1;
+        out.push({ name: 'ramp (' + f.x0 + ', ' + f.z0 + ')', x0: lowFirst ? f.x0 : f.x1, z0: lowFirst ? f.z0 : f.z1, x1: lowFirst ? f.x1 : f.x0, z1: lowFirst ? f.z1 : f.z0, w: f.w || 2, back: R.rampRunUp, past: R.rampLanding, terrain: true });
+    });
+    const CAT = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.catalogue) || {};
+    ((room && room.props) || []).forEach(p => {
+        const c = p && CAT[p.key]; if (!c || !c.ramp || p.wall || p.ceil) return;
+        const yaw = Math.PI - (p.face || 0) * Math.PI / 180 - (p.rot || 0) * Math.PI / 180, ax = Math.sin(yaw), az = Math.cos(yaw), hd = (c.ramp.len || 1) / 2, x = p.x || 0, z = p.z || 0;
+        const qp = !!c.ramp.prof;
+        out.push({ name: p.key + ' (' + x + ', ' + z + ')', x0: x + ax * hd, z0: z + az * hd, x1: x - ax * hd, z1: z - az * hd, w: c.ramp.w || 1, back: qp ? R.rampRunUp : R.rampRunUp * 0.5, past: qp ? R.rampLanding * 0.5 : R.rampLanding * 0.5, prop: p.key, qp });
+    });
+    return out;
+}
+/* what stands in a lane: { zone, kind, what, x, z, where } per offender (authored props with a foot, counters, spots, trees / walls / rails / plateaus of the room) — the audit's read */
+function hqTerrainRunUpOffenders(room) {
+    const CAT = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.catalogue) || {}, T = (room && room.terrain) || {}, zones = hqTerrainRunUps(room, T.features || []), out = [];
+    const where = (zn, px, pz, foot) => { const L = _hqTRamp(px, pz, zn); if (Math.abs(L.v) > zn.w / 2 + (foot != null ? foot : 0.5)) return null; if (L.s < -zn.back || L.s > L.L + zn.past) return null; return L.s < 0 ? 'run-up ' + (-L.s).toFixed(1) + ' m before the foot' : L.s <= L.L ? 'on the ramp' : 'landing ' + (L.s - L.L).toFixed(1) + ' m past the top'; };
+    zones.forEach(zn => {
+        ((room && room.props) || []).forEach(p => { const c = p && CAT[p.key]; if (!c || c.ramp || c.wall || p.wall || c.ceil || p.ceil || !(c.foot > 0) || (p.y || 0) > 0.5) return; if (zn.prop && p.key === zn.prop && Math.hypot((p.x || 0) - (zn.x0 + zn.x1) / 2, (p.z || 0) - (zn.z0 + zn.z1) / 2) < 0.1) return; const w = where(zn, p.x || 0, p.z || 0, c.rect ? Math.max(c.rect.hw, c.rect.hd) : c.foot); if (w) out.push({ zone: zn.name, kind: 'prop', what: p.key, x: p.x || 0, z: p.z || 0, where: w }); });
+        ((room && room.counters) || []).forEach(cn => { const w = where(zn, cn.x, cn.z); if (w) out.push({ zone: zn.name, kind: 'counter', what: cn.id, x: cn.x, z: cn.z, where: w }); });
+        ((room && room.npcSpots) || []).forEach(sp => { if (!sp || sp.x == null) return; const w = where(zn, sp.x, sp.z); if (w) out.push({ zone: zn.name, kind: 'spot', what: sp.race || 'npc', x: sp.x, z: sp.z, where: w }); });
+        (T.features || []).forEach(f => {
+            if (!f || !/^(tree|plateau|scatter)$/.test(f.k) || f.x == null) return; if (f.k === 'scatter' && f.r == null) return;
+            if (f.k === 'plateau') {
+                if (f.sink) return;   // THE CUT: the sunk tier a ramp road descends into
+                const holds = (px, pz) => (f.r ? (1 - _hqTEllipse(px, pz, f)) * Math.min(f.r, f.rz || f.r) : _hqTRectIn(px, pz, f)) > -0.8;
+                if (holds(zn.x0, zn.z0) || holds(zn.x1, zn.z1)) return;   // the tier the ramp climbs onto / leaves from
+                if (zn.qp) return;   // the deck behind a quarter pipe's coping is where it lands you
+            }
+            const w = where(zn, f.x, f.z); if (w) out.push({ zone: zn.name, kind: f.k, what: f.key || f.k, x: f.x, z: f.z, where: w });
+        });
+    });
+    return out;
 }
 /* the mask's signed distance (m) at (x, z): > 0 on the open floor plan, < 0 in the solid; +Infinity when the room wears no plan */
 function hqTerrainMaskAt(info, x, z) {
@@ -40729,6 +40787,7 @@ function hqTerrainCompile(room, roomId) {
     info.bridges = hqTerrainBridges(info, bridges);   // THE BRIDGE LAYER (2026-09-19): the second surface, checked against the ground under it
     /* the trees + the scatter: seeded, on flat dry ground, clear of pads / paths / water / doors / each other */
     const placed = [];
+    const runUps = hqTerrainRunUps(room, F);   // THE RUN-UP (rev 8): the lanes before and after every kicker / quarter pipe / riser
     const freeFor = (px, pz, rad, opts) => {
         if (Math.abs(px) > S.w / 2 - 0.6 || Math.abs(pz) > S.d / 2 - 0.6) return false;
         for (const c of info.climbs) if (Math.hypot(px - c.fx, pz - c.fz) < rad + 0.9 || Math.hypot(px - c.hx, pz - c.hz) < rad + 0.9) return false;   // THE CLIMB: nothing stands at a foot or a head
@@ -40742,6 +40801,8 @@ function hqTerrainCompile(room, roomId) {
         for (const b of info.bridges) { const L = _hqTRamp(px, pz, b); if (L.t > -0.1 && L.t < 1.1 && Math.abs(L.v) < b.w / 2 + rad + 0.3) return false; }   // THE BRIDGE LAYER: nothing under a bridge's mouth or its span
         /* THE MALL, THE THIRD PASS (2026-09-17 — the plant pot on the escalator): nothing stands on a ramp, a stair or an escalator, nor on the field's skirt beside it */
         for (const f of F) if (f.k === 'ramp') { const L = _hqTRamp(px, pz, f); if (L.t > -0.15 && L.t < 1.15 && Math.abs(L.v) < f.w / 2 + rad + 0.7) return false; }
+        /* THE RUN-UP (SKATEBOARDING rev 8, 2026-09-21): nothing in the lane before a kicker's foot or in the landing past its top — a rider needs the run to gain speed and the room to come down */
+        if (!opts.own) for (const zn of runUps) { const L = _hqTRamp(px, pz, zn); if (Math.abs(L.v) < zn.w / 2 + rad + 0.3 && L.s > -zn.back - rad && L.s < L.L + zn.past + rad) return false; }   // (a row with its own centre — the collapse's rubble — keeps its ground)
         /* THE KERB RULE (2026-09-17 — "the cone and fire hydrant placement feels completely random"): in a city plan the street furniture stands on the SIDEWALK, never in the roadway (the traffic's) and never deep in a yard */
         if (opts.kerb && info.gen && info.gen.sidewalk > 0 && info.maskD) { const md = hqTerrainMaskAt(info, px, pz); if (md > info.gen.sidewalk - rad * 0.5 || md < rad + 0.35) return false; }
         for (const q of placed) if (Math.hypot(px - q.x, pz - q.z) < q.r + rad + (opts.apart || 0.6)) return false;
@@ -40763,7 +40824,7 @@ function hqTerrainCompile(room, roomId) {
             if (f.x != null && f.r) { const a = rnd() * Math.PI * 2, rr = Math.sqrt(rnd()) * f.r; px = f.x + Math.cos(a) * rr; pz = f.z + Math.sin(a) * rr; }
             else { px = (rnd() - 0.5) * (S.w - 1.6); pz = (rnd() - 0.5) * (S.d - 1.6); }
             px = Math.round(px * 100) / 100; pz = Math.round(pz * 100) / 100;
-            if (!freeFor(px, pz, rad, { slope: f.slope || ((isTree || (f.x != null && f.r)) ? 0.5 : 0.25), onPath: !!f.onPath, apart: isTree ? 0.9 : 0.5, kerb: !isTree && !f.road && !(f.x != null && f.r), sea: !!f.sea })) continue;
+            if (!freeFor(px, pz, rad, { slope: f.slope || ((isTree || (f.x != null && f.r)) ? 0.5 : 0.25), onPath: !!f.onPath, apart: isTree ? 0.9 : 0.5, kerb: !isTree && !f.road && !(f.x != null && f.r), sea: !!f.sea, own: !!(f.x != null && f.r) })) continue;
             placed.push({ x: px, z: pz, r: rad }); made++;
             if (isTree) info.trees.push({ x: px, z: pz, kind: kinds[Math.floor(rnd() * kinds.length)], h: f.h || null, r: rad, y: hAt(px, pz) });
             else info.scatter.push({ key: f.key, x: px, z: pz, y: hAt(px, pz), face: Math.round(rnd() * 360), r: rad, foot: (f.foot != null) ? f.foot : undefined });
@@ -40920,8 +40981,31 @@ function hqTerrainFluidAt(info, x, z) {
     if (info.sea && !info.sea.under) { const g = hqTerrainHeight(info, x, z); if (g < info.sea.y - 0.05) return { kind: 'sea', sea: true, y: info.sea.y, key: info.sea.key }; }
     return null;
 }
+/* THE WALL INDEX (rev 8): the walls bucketed on a 3 m lattice (rebuilt when the lists grow — the compiler pushes walls after the plan); a room
+   with traced plan walls reads THEM as walls too, so the walker stops at the drawn face (see hqTerrainSolidAt's slack) */
+function _hqTWallIndex(info) {
+    const plan = (info.gen && info.gen.wallSlack > 0 && info.planWalls) ? info.planWalls : [], n = info.walls.length + plan.length;
+    let ix = info._wallIdx;
+    if (ix && ix.n === n) return ix;
+    const cell = 3.0, map = new Map(), all = info.walls.concat(plan);
+    all.forEach((w, i) => {
+        const r = (w.t || 0.5) / 2 + 0.6, x0 = Math.min(w.x0, w.x1) - r, x1 = Math.max(w.x0, w.x1) + r, z0 = Math.min(w.z0, w.z1) - r, z1 = Math.max(w.z0, w.z1) + r;
+        for (let gj = Math.floor(z0 / cell); gj <= Math.floor(z1 / cell); gj++) for (let gi = Math.floor(x0 / cell); gi <= Math.floor(x1 / cell); gi++) { const k = gi + ':' + gj; let b = map.get(k); if (!b) { b = []; map.set(k, b); } b.push(w); }
+    });
+    ix = { n, cell, map, all };
+    Object.defineProperty(info, '_wallIdx', { value: ix, enumerable: false, configurable: true, writable: true });
+    return ix;
+}
 function hqTerrainWallAt(info, x, z, pad) {
-    for (const w of info.walls) if (_hqTSegDist(x, z, w.x0, w.z0, w.x1, w.z1).d <= w.t / 2 + (pad || 0)) return w;
+    if (!info.walls.length && !(info.gen && info.gen.wallSlack > 0 && info.planWalls && info.planWalls.length)) return null;
+    const ix = _hqTWallIndex(info), b = ix.map.get(Math.floor(x / ix.cell) + ':' + Math.floor(z / ix.cell));
+    if (!b) return null;
+    let band = null;   // a PLAN wall counts only inside the slack band (the mask used to refuse it there) — never on floor the mask has always allowed, so no room loses a route it had
+    for (const w of b) {
+        if (_hqTSegDist(x, z, w.x0, w.z0, w.x1, w.z1).d > w.t / 2 + (pad || 0)) continue;
+        if (w.plan) { if (band === null) band = hqTerrainMaskAt(info, x, z) < (info.gen.solidPad || 0); if (!band) continue; }
+        return w;
+    }
     return null;
 }
 /* THE WALKER'S FEET at (x, z) coming from curY (null = a free query: the ground, a wall's top, a sheet's wade)
@@ -40931,7 +41015,10 @@ function hqTerrainWallAt(info, x, z, pad) {
    walker is refused there (the mask's signed distance under `solidPad`, the body's own share of the face line) */
 function hqTerrainSolidAt(info, x, z, pad) {
     const gn = info.gen; if (!gn || !gn.solidMass || !info.maskD) return false;
-    return hqTerrainMaskAt(info, x, z) < (gn.solidPad || 0) + (pad || 0);
+    /* THE TRACED WALL (rev 8): with plan walls drawn inside the mask the body goes in as far as their faces (the walls themselves refuse it —
+       hqTerrainWallAt reads them); only the mass past the walls' reach is the mask's own */
+    const slack = (gn.wallSlack > 0 && info.planWalls && info.planWalls.length) ? gn.wallSlack + 0.05 : 0;
+    return hqTerrainMaskAt(info, x, z) < (gn.solidPad || 0) + (pad || 0) - slack;
 }
 function hqTerrainSolidTop(info, x, z) {
     const gn = info.gen; if (!gn || !gn.solidMass || !info.solidTop) return 0;
@@ -40950,7 +41037,7 @@ function hqTerrainFeet(info, x, z, curY) {
     if (info.sea && info.sea.under) { const wu = hqTerrainWallAt(info, x, z, R.bodyR); return wu ? wu.top : g; }
     let y = g;
     const w = hqTerrainWallAt(info, x, z, R.bodyR);
-    if (w) { if (curY == null || curY >= w.top - R.climb) y = w.top; else return null; }
+    if (w) { if (w.plan) return null; if (curY == null || curY >= w.top - R.climb) y = w.top; else return null; }   // rev 8: a TRACED plan wall reaches the ceiling — never a floor, not even to a free query (the door gun's ray, a find's spot)
     else {
         const f = hqTerrainFluidAt(info, x, z);
         if (f && g < f.y - 0.05) {
@@ -43926,7 +44013,28 @@ const HQ_SKATE_RULES = {
     pushEvery: 0.85,     // s between pushes (W held) — a real stroke's cadence (rev 3; was 0.42, a sprint)
     pushMs: 520,         // DEAD KEY since rev 7 (2026-09-20): no push clip plays — the rider holds the ride stance through a push (the user)
     cruiseV: 10.5,       // m/s — at cruise W only HOLDS the speed (no friction, no stride): the rider stands on the deck (rev 3)
-    friction: 0.993,     // per 60 Hz frame, applied time-based (a long coast — rev 3: longer, a Tony Hawk roll; the pushes settle near the cap)
+    friction: 0.996,     // per 60 Hz frame, applied time-based (a long coast — rev 8: longer still, so the speed you pushed for is still there at the ramp's foot; the pushes settle near the cap)
+    /* THE RAMPS (rev 8, 2026-09-21 — the user: "the board sticks to the curve and then shoots the player up; right now nothing happens; no reward, no
+       mechanic, no juice; research how old school Tony Hawk games did it"): the SURFACE'S TANGENT is the roll — the body and the deck PITCH to the
+       ground under them (`pitchMax`), a slope costs / gives speed along it (`slopeG`, m/s² along the incline — gentle, THPS was never a physics sim),
+       a transition too steep for the speed is a ROLLBACK (the board turns and rolls back down facing down, never a stall on the wall), THE LIP:
+       the ground falling away under a CLIMBING rider throws it along the tangent × `kickLaunch` (a kicker, a bank's edge — capped by the climb's
+       own energy), a quarter pipe's coping is VERT (× `qpLaunch` straight up, `qpCarry` of the roll kept as drift), a VERT AIR auto-turns the
+       rider 180° over the first `vertTurn` share of the hang (THPS's turnaround) so it lands FACING DOWN the transition and THE TRANSITION LANDING
+       turns the fall back into speed down the wall (the pump loop: up, air, down, faster); SPACE inside `lipOllieS` of a launch is THE LIP OLLIE
+       (+`lipOllieV`). THE REWARD: every launch that hangs ≥ `airMinS` leads the line with AIR / VERT AIR (+ `air.perM` a metre of height). */
+    slopeG: 3.0,         // m/s² along the incline — uphill costs, downhill gives (a full quarter pipe costs ~1.5 m/s at cruise)
+    slopeProbe: 0.6,     // m either side of the feet the ground is read to find the tangent
+    qpLaunch: 1.15,      // the share of the surface speed that goes UP off a quarter pipe's coping (> 1 = the pump)
+    qpCarry: 0.15,       // the share of the roll kept as horizontal drift off the coping (small: a vert air comes back down the same wall)
+    kickLaunch: 2.0,     // the tangent's vertical share × this off a kicker / a bank's lip (a 17° kicker at 6 m/s ≈ 3.4 m/s up; capped by the climb's own energy + 1.5)
+    vertTurn: 0.6,       // the share of a vert air over which the rider turns to face back down the transition
+    pitchMax: 1.25,      // rad — the body / the deck lean into the slope up to this
+    lipOllieS: 0.16,     // s after a launch inside which SPACE adds the lip ollie
+    lipOllieV: 3.2,      // m/s the lip ollie adds
+    airMinS: 0.3,        // s of hang off a launch that earns the AIR / VERT AIR chip
+    launchKick: 0.05,    // rad the camera kicks up on a vert launch (eased home like the landing dip)
+    rollbackGrade: 0.35, // the incline (tan) above which a stall turns the board round
     brake: 0.9,          // per 60 Hz frame — a key pointing AGAINST the roll (rev 6: WASD is a camera-relative direction, like walking; S with the camera ahead)
     reverseMaxV: 5.0,    // m/s — the cap on a BACKWARDS roll (a portal exit's, a bail's); rev 6 retired the fakie push — S from a stop turns the board round and rolls toward the camera
     reversePushV: 1.8,   // RETIRED rev 6 — kept for old readers
@@ -43968,7 +44076,6 @@ const HQ_SKATE_RULES = {
     rampLaunchMin: 1.3,  // m/s up — a rise slower than this is just a step
     rampLaunchMax: 9.5,  // m/s up — the cap off any lip
     qpTop: 0.9,          // the quarter pipe's launch point (0 = the foot, 1 = the vertical)
-    qpLaunch: 1.0,       // the share of the roll that goes UP off the coping
     bigAirS: 1.0,        // s of air that counts as BIG AIR on the line (a plain ollie is 0.8 s — only a launch earns it)
     tricks: {            // pts · ms (the rotation's length) · the line's word
         /* THE STICK (rev 4, 2026-09-19 — the user: "click and drag for different tricks, like a hit stick"):
@@ -43987,7 +44094,9 @@ const HQ_SKATE_RULES = {
         nosegrab:   { pts: 90,  ms: 300, label: 'NOSEGRAB',         key: 'R-FLICK ↑' },
         pop:        { pts: 50,  label: 'PERFECT POP' },   // the crouch released on the beat
         grind:      { pts: 60,  perSec: 45, label: 'GRIND' },
-        air:        { pts: 40,  label: 'BIG AIR' },
+        air:        { pts: 40,  perM: 60, label: 'BIG AIR' },   // rev 8: perM = points per metre of height over the launch point
+        vert:       { pts: 150, label: 'VERT AIR' },           // rev 8: an air off a quarter pipe's coping
+        launch:     { pts: 60,  label: 'AIR' },                // rev 8: an air off a kicker / a bank's lip
     },
     labels: { on: 'ON THE BOARD', off: 'ON FOOT', bail: 'BAIL', bank: 'LANDED', perfect: 'PERFECT POP' },
     ranks: [[0, 'LANDED'], [400, 'NICE'], [1500, 'SICK'], [5000, 'INSANE'], [15000, 'LEGENDARY']],   // the word stamped on a banked line, by its score
@@ -45827,6 +45936,7 @@ if (typeof window !== 'undefined') {
     /* THE TERRAIN ROOM (2026-09-17) */
     window.HQ_TERRAIN_RULES = HQ_TERRAIN_RULES; window.HQ_TERRAIN_GEN = HQ_TERRAIN_GEN; window.HQ_ROOM_LOOKS = HQ_ROOM_LOOKS; window.hqTerrainMaskAt = hqTerrainMaskAt; window.hqTerrainOpenAt = hqTerrainOpenAt; window.hqTerrainRooms = hqTerrainRooms; window.hqTerrainInfo = hqTerrainInfo; window.hqTerrainTraps = hqTerrainTraps; window.hqTerrainCompile = hqTerrainCompile; window.hqTerrainSolidAt = hqTerrainSolidAt; window.hqTerrainSolidTop = hqTerrainSolidTop;
     window.hqTerrainHeight = hqTerrainHeight; window.hqTerrainSlope = hqTerrainSlope; window.hqTerrainFeet = hqTerrainFeet; window.hqTerrainAir = hqTerrainAir; window.hqTerrainCam = hqTerrainCam;
+    window.hqTerrainRunUps = hqTerrainRunUps; window.hqTerrainRunUpOffenders = hqTerrainRunUpOffenders; window.hqTerrainWallAt = hqTerrainWallAt;
     window.hqTerrainFluidAt = hqTerrainFluidAt; window.hqTerrainWallAt = hqTerrainWallAt; window.hqTerrainDoorY = hqTerrainDoorY; window.hqTerrainReach = hqTerrainReach; window.hqTerrainNodeKey = hqTerrainNodeKey;
     window.hqTerrainDoorLanding = hqTerrainDoorLanding; window.hqTerrainDump = hqTerrainDump; window.hqTerrainClimbs = hqTerrainClimbs; window.hqTerrainClimbEdges = hqTerrainClimbEdges; window.HQ_CLIMB_LOOKS = HQ_CLIMB_LOOKS; window.HQ_WALK_LESSONS = HQ_WALK_LESSONS; window.hqWalkLessons = hqWalkLessons; window.hqCityShell = hqCityShell; window.hqAirbaseShell = hqAirbaseShell; window.hqCastleShell = hqCastleShell; window.hqSewerShell = hqSewerShell; window.hqSiteEntry = hqSiteEntry; window.hqSiteEntryOf = hqSiteEntryOf; window.hqApplySiteEntries = hqApplySiteEntries; window.hqFindHardReachTerrain = hqFindHardReachTerrain; window.hqTerrainFindSpot = hqTerrainFindSpot; window._hqTPolyDist = _hqTPolyDist; window._hqTEllipse = _hqTEllipse; window._hqTRectIn = _hqTRectIn; window._hqTRamp = _hqTRamp;   // THE FLOATING PIECES (2026-09-18): the renderer's underFloat cut reads the same frames the compiler does
     /* THE DOOR GUN (HQ plan 9.5, 2026-09-15 rev 13) */

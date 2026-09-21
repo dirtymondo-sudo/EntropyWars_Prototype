@@ -7347,3 +7347,55 @@ the Haunted House…) and the void / cavern rows are untouched. Adding a sunny p
 clouds: n` on its row (a generated area copies it through `hqAreaSky`). The menu biomes stay dusk.
 Ship data.js to R2 AND Render. UNSEEN LIVE (RULE #1c): the blue's saturation under each map's
 tint (`tintAmt` is the edit), the cloud density, the sun's glow at the game's pitch.
+
+## SKATEBOARDING rev 8 — THE RAMPS (the tangent, the lip, vert, the transition landing) + THE RUN-UP + THE TURNED RECT + THE TRACED WALL (2026-09-21, local delivery)
+The user: "the ramps and slopes need to actually be functional — rotate the character back as they go
+up, like the board sticks to the curve and then shoots the player up; right now nothing happens; no
+reward, no mechanic, no juice; research how old school Tony Hawk games did it; no flower pots / fire
+hydrants / trash cans in front of ramps; weird invisible walls in the garage and the cities." **THE
+RAMPS** (three-renderer.js "SKATEBOARDING — THE RIDER", the block THE RAMPS after `_hqRideAirLeft`;
+the numbers in data.js `HQ_SKATE_RULES`): THPS's transition model on the height field. `_hqRideGrade`
+reads the ground `slopeProbe` (0.6 m) ahead and behind the feet along the heading — THE TANGENT IS THE
+ROLL: the surface speed runs along it (the horizontal step is v·cos θ; the wall rule wants that share —
+it used to compare the shortened step against the full speed and scrubbed the rider on every slope),
+`slopeG` (3 m/s² along the incline — gentle, never a simulation) costs a climb and pays a descent, and
+a stall on a wall steeper than `rollbackGrade` is THE ROLLBACK (the board turns round and rolls back
+down FACING DOWN, `rollback` beat — never a stop on the wall; the crawl clamp leaves an incline
+alone). THE LEAN: `R.pitch` eases to the grade (`pitchMax`) and `_hqRidePose` turns the body AND the
+deck about the FEET on the roll's lateral axis (`qP`), over the centre-pivot flips. THE LIP
+(`_hqRideSetY`): the ground falling away under a CLIMBING rider (`R.gradeBack` = the last probe-length
+behind the feet) throws it along the tangent × `kickLaunch` (2.0), capped by the climb's own energy
+(`R.rise` — a cinder block is a curb hop) — a kicker launches, a crest at a walk is followed, a flat
+walk-off is the drop it was; a prop's flat register (a riser) keeps THE RISE hop. VERT: the coping's
+check launches `qpLaunch` (1.15) of the surface speed straight up with `qpCarry` (0.15) of the roll as
+drift, `R.vert` turns the heading π over `vertTurn` (0.6) of the estimated hang (`_hqRideTurn` — the
+camera never), so the rider comes back down the same wall facing down; THE TRANSITION LANDING
+(`_hqRideGravity`) projects the fall onto the surface under the feet (`R.v = v·cos θ + vy·sin θ`) —
+down a wall you come out fast (the pump loop), onto a bank facing up you come out slow. SPACE inside
+`lipOllieS` of a launch is THE LIP OLLIE (+`lipOllieV`; `ollie` beat with `lip`). THE REWARD: a launch
+that hangs `airMinS` LEADS the line (`_hqRideComboLead`) with `tricks.vert` VERT AIR / `tricks.launch`
+AIR + `tricks.air.perM` a metre over the launch point (`R.airApex − R.launchY`); the camera kicks up
+(`_hqRideCamKick`, `launchKick`); `launch` carries `vert` / `big`; map.js plays audio.js `skateLaunch`
+(+ `skateVert` on a coping); `friction` 0.996. `_hqRideLaunch` is the ONE launch (the record, the beat,
+the kick). **THE RUN-UP** (data.js `HQ_TERRAIN_RULES.rampRunUp` 10 / `rampLanding` 6): `hqTerrainRunUps
+(room, features)` = the lanes before every kicker's foot and past its top (a terrain `ramp` that is not
+stairs / an escalator / a helix segment; a PROP ramp — a quarter pipe, a riser — at its approach side,
+local +Z of `π − face`), `hqTerrainCompile`'s scatter refuses them, `hqTerrainRunUpOffenders(room)`
+lists authored props (their own foot as the tolerance) / counters / spots / trees in one and
+hq-skate.test.js FAILS naming them for the garage, the three cities and the mall — ADDING A RAMP = run
+the test. Moved: the garage's kickers (both run ALONG the lane now — the west one ran into a pillar
+and the south pipe's back), the half-pipe 0.9 m out, a barrel, a sign; Downtown's Cadillac, the SUV /
+taxi, the boxes, the church square's tree; two natives. **THE TURNED RECT**: `_hqBlkContains` reads
+`b.yaw` (the prop placer files `grp.rotation.y`) — a catalogue rect is in the PROP's frame; read in
+room axes every car at 60° / 90° / 270°, every bus shelter, the truck, the train car blocked as an
+unturned box (a 5–12 m wall ACROSS the lane). **THE TRACED WALL**: a halls / ley plan's walls are
+drawn inside the mask by their chain's reach (`row.push`; `info.gen.wallSlack` the largest — 0.6 m on
+the garage's drum) — `hqTerrainSolidAt` lets the walker in that far and `hqTerrainWallAt` (bucketed
+on a 3 m lattice, `_hqTWallIndex`) reads the plan walls as walls INSIDE THAT BAND ONLY (never on floor
+the mask has always allowed — the motor pool's door onto THE PLATFORM leaves by a half-metre sliver
+that clips a wall by 9 cm, and every halls / ley room was solved against that; a plan wall is never a
+floor, not even to a free query), so the body stops at the DRAWN face. The city's `solidPad` stays 0.3
+(0.05 was tried: the Grid grew a rescue ramp, the kerb scatter moved). `npm test` runs hq-skate.test.js (34). UNSEEN LIVE (RULE #1c): the
+lean on the cast rigs at a coping (`pitchMax`), the vert's height (`qpLaunch`), the kicker's pop
+(`kickLaunch`), the turnaround's timing (`vertTurn`), the two cues, the cars' footprints, the drum's
+wall under the hand.

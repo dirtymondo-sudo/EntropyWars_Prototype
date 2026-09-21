@@ -3025,5 +3025,5 @@ test('the Executive floor — the source sites: the three panels, the eight proc
     for (const k of ['floor_panel', 'exec_desk', 'exec_chair', 'wall_plaques', 'false_window', 'infinity_pool', 'pool_lounger', 'pool_umbrella']) assert.match(tr, new RegExp('^\\s+' + k + ': function \\(U\\) \\{', 'm'), 'the ' + k + ' proc');
     assert.match(tr, /wall_plaques: function \(U\) \{[\s\S]{0,900}?window\.hqTrophyCount/, 'the plaques read the achievements ledger');
     assert.strictEqual((tr.match(/rect: \(p\.rect === false\) \? undefined : \(cat\.rect \|\| undefined\)/g) || []).length, 2, 'both prop blocker sites pass the catalogue rect (a placement may refuse it: rect: false)');
-    assert.match(tr, /if \(b\.rect\) return Math\.abs\(x - bx\) < b\.rect\.hw \+ pad/, 'the walker honours a rect blocker');
+    assert.match(tr, /if \(b\.rect\) \{[\s\S]{0,1200}?return Math\.abs\(x - bx\) < b\.rect\.hw \+ pad/, 'the walker honours a rect blocker');   // SKATEBOARDING rev 8 (2026-09-21): the rect turns with the prop's yaw first (THE TURNED RECT)
 });

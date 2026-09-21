@@ -2842,9 +2842,13 @@
                 case 'ollie':
                     _hqSkateSfx('skateOllie', 0.45 + 0.35 * (ev.charge || 0));
                     if (ev.perfect) { _hqOllieFlash('PERFECT POP'); _hqSkateSfx('skateBank', 0.35); }
+                    else if (ev.lip) _hqOllieFlash('LIP OLLIE');   // SKATEBOARDING rev 8 (2026-09-21): SPACE at the lip adds a pop
                     else _hqOllieMeter(0, false, false, true);
                     break;
-                case 'launch': _hqSkateSfx('skateOllie', 0.35); break;
+                /* SKATEBOARDING rev 8 (2026-09-21): THE RAMPS — a launch off a lip is its own whoosh (louder the harder), a vert launch off a coping
+                   the whoosh + the coping's ring; a rollback (a transition too steep for the speed, the board turned round) a low scrape */
+                case 'launch': _hqSkateSfx('skateLaunch', Math.min(0.85, 0.3 + 0.06 * (ev.v || 0))); if (ev.vert) _hqSkateSfx('skateVert', Math.min(0.7, 0.25 + 0.05 * (ev.v || 0))); break;
+                case 'rollback': _hqSkateSfx('skateGrind', 0.18); break;
                 case 'hop': break;
                 case 'grindstart': _hqSkateSfx('skateGrind', 0.5); break;
                 case 'grind': _hqSkateSfx('skateGrind', 0.22); break;

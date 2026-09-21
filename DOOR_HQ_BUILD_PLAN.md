@@ -11055,3 +11055,54 @@ walls, 26 bridges. UNSEEN LIVE (RULE #1c): the traced drum wall's facets, the he
 bridge rings' rails at the chord joints, the stacked rings from the loop, the alcove's read, the cars on the
 UPPER ring, the sodium light at 12.4 m over a three-deck drum. Not built: a lift between the decks (the helix
 and the ladder are the ways), signs per deck, the booth's LOT FULL board.
+
+### 2026-09-21 — SKATEBOARDING rev 8 (HQ plan 9.8): THE RAMPS (the tangent, the lip, vert, the transition landing) · THE RUN-UP · THE TURNED RECT · THE TRACED WALL (local delivery)
+The user: "the ramps and slopes need to actually be functional — rotate the character back as they go up, like the board sticks
+to the curve and then shoots the player up; right now nothing happens, no reward, no mechanic, no juice; research how old
+school Tony Hawk games did it; objects like flower pots or fire hydrants or trash cans are not placed directly in front of ramps;
+lots of weird invisible walls and collision boxes, especially in the garage and Downtown / Disaster City / Cyberpunk City."
+- **THE RAMPS** (three-renderer.js "SKATEBOARDING — THE RIDER", the block THE RAMPS after `_hqRideAirLeft`; data.js `HQ_SKATE_RULES`):
+  THPS's transition model on the height field — the ground is read `slopeProbe` m ahead and behind the feet along the heading and
+  the surface speed runs along that TANGENT (the horizontal step is v·cos θ; `slopeG` costs a climb and pays a descent, gently);
+  the body and the deck PITCH about the feet by the eased grade (`pitchMax`); THE LIP — the ground falling away under a climbing
+  rider throws it along the tangent × `kickLaunch` (capped by the climb's energy: a cinder block is a curb hop, a kicker a
+  launch); a quarter pipe's coping is VERT (`qpLaunch` of the surface speed straight up, `qpCarry` kept as drift) and a VERT AIR
+  turns the rider 180° over `vertTurn` of the hang so it lands FACING DOWN the wall; THE TRANSITION LANDING projects the fall onto
+  the surface under the feet (down a wall you come out fast — the pump loop; onto a bank facing up you come out slow); THE ROLLBACK
+  turns a board that stalls on a wall round instead of stopping it; SPACE inside `lipOllieS` of a launch is THE LIP OLLIE. The
+  REWARD: a launch that hangs `airMinS` leads the line with AIR / VERT AIR + `air.perM` a metre of height; the camera kicks up on
+  a launch; two cues (audio.js `skateLaunch` / `skateVert`), the LIP OLLIE flash, a rollback scrape (map.js). `friction` 0.996 (the
+  speed you pushed for is still there at the foot). Fixed on the way: the wall rule compared the tangent's shortened step against the
+  full speed and scrubbed the rider to nothing on every slope; a stall clamped the speed to zero before gravity could roll it back.
+- **THE RUN-UP** (data.js `HQ_TERRAIN_RULES.rampRunUp` 10 / `rampLanding` 6; `hqTerrainRunUps` / `hqTerrainRunUpOffenders`): the
+  compiler's scatter refuses the lane before every kicker's foot and the landing past its top (a prop ramp — a quarter pipe, a
+  riser — keeps the same lane at its approach side); hq-skate.test.js audits the garage, the three cities and the mall for authored
+  props / spots / counters in a lane and FAILS naming them. Moved: the garage's west kicker (it ran INTO the loop — its lip a metre
+  from a pillar and the south pipe's back; both kickers run ALONG the lane now, kicker → kerb ledge is the north-west line), the
+  half-pipe 0.9 m out (a pillar stood in its flat), a traffic barrel off the north pipe's deck, a wet-floor sign out of the helix's
+  foot; Downtown's Cadillac out of the deck ramp's run-up, the SUV / the taxi / the boxes off the loading-dock riser's landing and
+  approach, the church square's second tree out of the step's width, the Strip's valet and the Grid's android off two landings.
+- **THE TURNED RECT** (three-renderer.js `_hqBlkContains`, the prop placer files `yaw`): a catalogue rect was read in ROOM axes
+  whatever the prop's face — every car parked at 60° / 90° / 270°, every bus shelter, the truck, the train car blocked as an
+  unturned box (a 5–12 m wall ACROSS the lane and a gap where the thing really stood). The footprint turns with the prop now.
+- **THE TRACED WALL** (data.js `hqTerrainSolidAt` + `hqTerrainWallAt`): a halls / ley plan's walls are drawn INSIDE the mask by
+  their chain's reach (measured on the garage's drum: up to 0.6 m) while the walker was refused at the mask line — a band of air
+  before every drawn face. The tracer records each row's `push`, `info.gen.wallSlack` is the largest, the walker goes in that far
+  and the plan walls themselves refuse it INSIDE THAT BAND ONLY (they joined `hqTerrainWallAt`, bucketed on a 3 m lattice; never
+  on floor the mask always allowed — the motor pool's `seven` door leaves by a half-metre sliver along THE PLATFORM's cliff that clips
+  a wall by 9 cm, and the halls / ley rooms were solved against that rule). The city's `solidPad` stays 0.3 (0.05 grew a rescue
+  ramp on the Grid and moved the kerb scatter). `node check-terrain.js garage`: every door from every door, nothing traps.
+  KNOWN, not this delivery — three HEAVY tests (test:full only) were red at HEAD before it and are red after, each verified on a
+  scratch copy of HEAD's data.js: hq-area51.test.js "THE BADGE PHOTO stays on the board" (0 board tapes since THE AREAS moved every
+  bypassed board's tape into its part), area-content.test.js "R1–R8 AS WARNINGS" (94 explorable parts, the pin says ≥ 100),
+  disaster-city-3.test.js "THE KERB RULE" (a traffic cone of the collapse's centred row at (−18.94, −11.88), maskD 2.38 — the
+  test judges centred rows by key though the compiler exempts them); and, on a HEAD worktree of the same five heavy suites (6 of 40
+  red there before this delivery): hq-city.test.js "THE PLAN (`city`)" (a lot's corner check — the moved church tree reseeds that
+  face's lots, so a different lot trips it now), "THE SOLVER + …" (`link_docks_sewer`: the pad −0.55 vs −0.9), "THE PARK RULE + THE
+  PLATFORMING" and hq-city-2.test.js "CYBERPUNK CITY · THE GRID" (both `'the park'` pins), hq-city-districts.test.js "THE AUDIT" (the
+  Grid's pull 57.8 > 55), hq-dumb.test.js "THE PARK RULE + THE LIGHT + THE HARD TAPES" (`prebuilt_cern keeps one`). Every fast-suite
+  test is green; the two rescue-ramp reds this delivery caused (the android's spot forced a pocket off THE OVERLOOK) are fixed.
+- Tests: hq-skate.test.js (34; THE KICKER, VERT, THE LIP OLLIE + THE LEAN + THE TURNED RECT, THE RUN-UP + THE TRACED WALL).
+- UNSEEN LIVE (RULE #1c): the lean's look on the cast rigs at a coping (`pitchMax` is the edit), the vert air's height against the
+  drum (`qpLaunch`), the kicker's pop (`kickLaunch`), the turnaround's timing (`vertTurn`), the launch cues' loudness, the cars'
+  turned footprints against their GLBs, the drum's wall under the hand.
