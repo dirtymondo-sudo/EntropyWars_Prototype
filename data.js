@@ -11118,7 +11118,7 @@ function mergeProgressBlobs(a, b) {
      'YYYY-MM-DD', 'deck:locker': true }`. Union: `true` beats a date, two
      dates keep the LATER (a daily re-taken on a later day). The server pays
      each newly-merged `pay:` claim once (hqFindsSyncPay). */
-  const FIND_RE = /^(tape|pay|deck):[A-Za-z0-9_#:-]{1,96}$/;
+  const FIND_RE = /^(tape|pay|deck|stash):[A-Za-z0-9_#:-]{1,96}$/;   // D5 THE STASH (2026-09-21): a facility room's daily cache of THE BAG's goods
   const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
   /* THE MAP REMEMBERS (PHASE9_QUALITY_PLAN §6 D6, 2026-09-16): `hq.links.seen`
      = the world-graph links the officer has WALKED — `{ '<linkId>':
@@ -20787,7 +20787,8 @@ const DOOR_HQ = {
         /* THE FINDS (HQ plan 9.1, 2026-09-15 rev 12): the objects the walker TAKES — placed by _hqPlaceFinds from DOOR_HQ.finds, never as room props (no foot: nothing blocks) — and THE SHELF in Room 360 the tapes play at */
         find_tape:       { proc: 'find_tape',       h: 0.22, foot: 0, glow: { y: 0.12, size: 1.1, color: 0xff5ad6 } },
         find_pay:        { proc: 'find_pay',        h: 0.14, foot: 0, glow: { y: 0.08, size: 1.0, color: 0xffd25a } },
-        find_deck:       { proc: 'find_deck',       h: 0.8,  foot: 0, glow: { y: 0.4, size: 1.2, color: 0x7dffb0 } },   // SKATEBOARDING (9.8): the board in the locker room (only while HQ_SKATE_RULES.free is off)
+        find_deck:       { proc: 'find_deck',       h: 0.8,  foot: 0, glow: { y: 0.4, size: 1.2, color: 0x7dffb0 } },
+        find_stash:      { proc: 'find_stash',      h: 0.24, foot: 0, glow: { y: 0.14, size: 1.0, color: 0xff8a5a } },   // D5 THE STASH (2026-09-21): a first-aid tin with a bottle in it — a facility room's cache of THE BAG's goods   // SKATEBOARDING (9.8): the board in the locker room (only while HQ_SKATE_RULES.free is off)
         tape_shelf:      { proc: 'tape_shelf',      h: 1.9,  foot: 0.35, wall: true, mount: 0, depth: 0.36, block: true },
         school_desk:     { proc: 'school_desk',     h: 0.75, foot: 0.45, block: true },
         toilet_stall:    { proc: 'toilet_stall',    h: 2.0,  foot: 0.6, wall: true, mount: 0, depth: 1.5, rect: { hw: 0.5, hd: 0.75 }, block: true },   // on a n / s wall (the rect is room-axis)
@@ -24933,7 +24934,7 @@ const DOOR_HQ = {
                   line: '“I walk people down the corridor. That is the whole job. Nobody has ever asked me to walk them back.”' },
             ],
             npcSpots: [
-                { x: 0.2, z: 1.2, face: 180 },
+                { x: 0.2, z: 1.2, face: 180, say: ['“Take a seat. The doctor will see you when the doctor is back from wherever the doctor is.”', '“Are you here for the chart or the cot?” “What is the difference?” “The cot is free.”', '“Room 5150 is not a waiting room. People keep waiting in it.”'] },
             ],
             onlineSpots: [],
             lines: [
@@ -25011,7 +25012,7 @@ const DOOR_HQ = {
                   line: '“I carry forms from the time to the file. By the time they arrive they are historical.”' },
             ],
             npcSpots: [
-                { x: -0.8, z: 1.3, face: 180 },
+                { x: -0.8, z: 1.3, face: 180, say: ['“Records is through there. The clocks are through the other one. Do not tell either what time it is.”', '“Everything that happens is filed here eventually. Eventually is a long shelf.”', '“If you are looking for a tape, the shelf is upstairs. If you are looking for the truth, it is filed under something else.”'] },
             ],
             onlineSpots: [],
             lines: [
@@ -25091,7 +25092,7 @@ const DOOR_HQ = {
                   line: '“You can stand here as long as you like. People do. They read the door and then they read it again.”' },
             ],
             npcSpots: [
-                { x: -0.6, z: 1.1, face: 0 },
+                { x: -0.6, z: 1.1, face: 0, say: ['“The Bureau’s door is gated. The notices on it are not. Read them; that is what they are for.”', '“The trophies are through there. Most of them are yours. The rest are the Department’s, which is also yours, on paper.”', '“Nobody on this floor says the motto out loud. Somebody would have to check the plaque first.”'] },
             ],
             onlineSpots: [],
             lines: [
@@ -26228,7 +26229,13 @@ const DOOR_HQ = {
                   action: { room: 'laundry', at: 'dock' },
                   desc: 'The laundry takes its deliveries here. Everything else arrives by the car and pretends it did not.' },
             ],
-            counters: [],
+            counters: [
+                /* D5 (2026-09-21): THE MANIFEST — the clipboard on the west wall reads what Otto has DELIVERED: the doors built for the
+                   stabilized sites, the ones on the truck (stabilized, not yet stamped), the back-orders (the sites still unseen) */
+                { id: 'deliveries', x: -3.35, z: -0.4, face: 270, plateY: 1.45, radius: 1.6, verb: 'READ',
+                  label: 'THE MANIFEST', sub: 'DELIVERIES · WHAT CAME IN', action: {},
+                  desc: 'The dock’s clipboard. Nothing on it is ticked, but the doors Otto has built are on it, and so are the ones that have not come yet.' },
+            ],
             props: [
                 { key: 'roller_shutter', wall: 'e', z: -1.3 },
                 { key: 'roller_shutter', wall: 'e', z: 1.3 },
@@ -26321,7 +26328,7 @@ const DOOR_HQ = {
                 { x: 3.2, z: -1.4, face: 270, pose: 'hqLean', gender: 'male', label: 'THE PORTER', reach: 2.4,
                   line: '“Everything in the building comes through this floor.” “Including us?” “You came down in the car. The car comes through this floor.”' },
             ],
-            npcSpots: [{ x: -2.8, z: 2.0, face: 0 }],
+            npcSpots: [{ x: -2.8, z: 2.0, face: 0, say: ['“The kitchen is left, the laundry is right, the corridor is straight on and goes nowhere. Every building has one.”', '“Sub-level? No. Basement. Sub-levels are somewhere else and they are not ours.”', '“The car does not stop at B unless it wants to. It wanted to for you.”'] }],
             onlineSpots: [{ x: 1.2, z: -1.4, face: 0 }],
             lines: [
                 '“B is for basement.” “B is for building. The basement is under it.”',
@@ -26406,7 +26413,7 @@ const DOOR_HQ = {
                 { x: -3.4, z: -2.3, face: 0, pose: 'hqFix', gender: 'male', label: 'THE DISHWASHER', reach: 2.0,
                   line: '“Every tray comes back.” “Even the ones that go out of the building?” “Especially those.”' },
             ],
-            npcSpots: [{ x: 1.0, z: 1.0, face: 270 }],
+            npcSpots: [{ x: 1.0, z: 1.0, face: 270, say: ['“Lunch is at twelve. Which twelve is between you and the clock room.”', '“The soup is from the cold room. Do not ask what is behind the cold room. The soup did not.”', '“Trays go on the slide, not on the counter. The counter is Room 86’s. The slide is mine.”'] }],
             onlineSpots: [{ x: 2.4, z: -0.6, face: 90 }],
             lines: [
                 '“Where does the food come from?” “The cold room.” “Where does the cold room come from?” “Do not open the back of it.”',
@@ -26521,7 +26528,7 @@ const DOOR_HQ = {
                 { x: 0, z: 1.9, face: 0, pose: 'hqReach', gender: 'female', label: 'THE LAUNDRESS', reach: 2.2,
                   line: '“One sock.” “Whose?” “Everyone’s. It is the same sock.”' },
             ],
-            npcSpots: [{ x: -3.0, z: 2.3, face: 0 }],
+            npcSpots: [{ x: -3.0, z: 2.3, face: 0, say: ['“Check your pockets before you hand it in. I do not; the machine does, and the machine keeps what it finds.”', '“Every uniform in the building comes through here. Some of them come through twice with nobody in between.”', '“Cold wash. The badge says hot. The badge has never done a wash.”'] }],
             onlineSpots: [{ x: 2.0, z: 2.2, face: 300 }],
             lines: [
                 '“Cold wash.” “The uniforms say hot.” “The uniforms are not in charge.”',
@@ -26611,7 +26618,12 @@ const DOOR_HQ = {
                   action: { room: 'corridor_a', at: 'boiler' },
                   desc: 'Back out into the corridor.' },
             ],
-            counters: [],
+            counters: [
+                /* D5 (2026-09-21): THE GAUGE — the plant’s pressure is the officer’s streak on the punch clock (Room 247 owns the clock; the gauge only reads it) */
+                { id: 'gauge', x: 0, z: -2.1, face: 0, plateY: 1.6, radius: 1.6, verb: 'READ',
+                  label: 'THE GAUGE', sub: 'PRESSURE · DO NOT ADJUST', action: {},
+                  desc: 'The brass gauge between the boilers. The needle is the building’s pressure; the building’s pressure is how many days in a row you have come in.' },
+            ],
             props: [
                 { key: 'boiler',         x: -1.5, z: -1.6, face: 180 },
                 { key: 'boiler',         x: 1.5, z: -1.6, face: 180 },
@@ -26781,7 +26793,12 @@ const DOOR_HQ = {
                   action: { room: 'corridor_b', at: 'server' },
                   desc: 'The back door onto the long corridor. It is propped with a box more often than the log admits.' },
             ],
-            counters: [],
+            counters: [
+                /* D5 (2026-09-21): THE RACKS — the console on the sysadmin’s desk reads the asset store (what the building keeps on the disk) and the ledger’s faults */
+                { id: 'uptime', x: 3.1, z: 1.2, face: 90, plateY: 1.5, radius: 1.7, verb: 'READ',
+                  label: 'THE RACKS', sub: 'UPTIME · WHAT IS KEPT', action: {},
+                  desc: 'The night sysadmin’s console. It says what the building has kept on the disk, what it fetched again, and what never landed. The fourth rack is not on it.' },
+            ],
             props: [
                 /* ── the north wall: four racks ── */
                 { key: 'server_rack',    wall: 'n', x: -3.0 }, { key: 'server_rack', wall: 'n', x: -2.1 }, { key: 'server_rack', wall: 'n', x: -1.2 }, { key: 'server_rack', wall: 'n', x: -0.3 },
@@ -26863,7 +26880,12 @@ const DOOR_HQ = {
                   action: { room: 'site_prebuilt_hollow_earth_oubliette', at: 'dungeon' },
                   desc: 'Past the third cell the wall is colder and the draught comes the wrong way along it. Behind it: cells older than the Department, and a cave, and six wells.' },
             ],
-            counters: [],
+            counters: [
+                /* D5 (2026-09-21): THE ROLL CALL — the clipboard on the east wall reads THE DEFEATED (hqDefeatedRecord): every vessel that fell to the officer, the day it did */
+                { id: 'rollcall', x: 4.1, z: 1.6, face: 90, plateY: 1.45, radius: 1.6, verb: 'READ',
+                  label: 'THE ROLL CALL', sub: 'HOLDING · WHO IS IN THE CELLS', action: {},
+                  desc: 'The roll. Every vessel you have put down in the field is on it, with the date, as if it had been brought here. The cells are still vacant. The roll does not care.' },
+            ],
             props: [
                 /* ── the west wall: three cells behind bars (the fourth is the
                      secret door at z 3.4, and it is not a cell) ── */
@@ -26923,7 +26945,12 @@ const DOOR_HQ = {
                   action: { room: 'sacrifice', at: 'ritual' },
                   desc: 'The arch. The service is in here; whatever it is for is through there.' },
             ],
-            counters: [],
+            counters: [
+                /* D5 (2026-09-21): THE ORDER OF SERVICE — the sheet on the altar reads the encounter log (hqEncounterLog): the offerings, the last one, the rooms cleared today */
+                { id: 'order', x: -0.4, z: -2.6, face: 0, plateY: 1.5, radius: 1.7, verb: 'READ',
+                  label: 'THE ORDER OF SERVICE', sub: 'MEMBERS · THE OFFERINGS', action: {},
+                  desc: 'The order of service on the altar. The offerings are your encounters in the field; the last line is always the one you have not done yet.' },
+            ],
             props: [
                 { key: 'ritual_circle',  x: 0, z: 0.4 },
                 { key: 'candle_ring',    x: 0, z: 0.4 },
@@ -27141,7 +27168,7 @@ const DOOR_HQ = {
                 { x: 2.4, z: 2.2, face: 0, pose: 'hqArms', gender: 'female', label: 'THE FLOOR WARDEN', reach: 2.2,
                   line: '“Third floor.” “There is no third floor on the panel.” “There is now. Mind the garden gate; it is not for you yet.”' },
             ],
-            npcSpots: [{ x: -3.9, z: 0.5, face: 90 }],
+            npcSpots: [{ x: -3.9, z: 0.5, face: 90, say: ['“Three is the annex. Nobody asked for a third floor; it turned up between two and the mezzanine one morning.”', '“The pool is that way. The lockers are that way. The garden is at the end and it is not ours; it is on loan.”', '“The cubicles are round upstairs and square in H. Up here they are whatever the day needs.”'] }],
             onlineSpots: [{ x: 1.4, z: -1.0, face: 0 }],
             lines: [
                 '“Where is everyone?” “At their desks.” “Which desks?” “Through there. The frosted one.”',
@@ -27518,7 +27545,7 @@ const DOOR_HQ = {
                 { x: -6.8, z: 4.6, face: 90, pose: 'hqSit', gender: 'male', label: 'THE OTHER LIFEGUARD', reach: 2.4,
                   line: '“Certified for the pool.” “And the edge?” “That is the one upstairs. She has the edge. I have the lanes.”' },
             ],
-            npcSpots: [{ x: -3.0, z: -4.0, face: 180 }, { x: 4.0, z: 4.2, face: 0 }],
+            npcSpots: [{ x: -3.0, z: -4.0, face: 180, say: ['“Fifty metres. Nobody has measured it since the annex turned up; it may be more.”', '“The deep end is the far end. The far end is further than it looks. Everything on three is.”'] }, { x: 4.0, z: 4.2, face: 0, say: ['“The plunge pool goes somewhere. Do not take my word for it; take a breath.”', '“No running. No diving off the blocks. No asking where the water comes from.”'] }],
             onlineSpots: [{ x: 6.8, z: 4.6, face: 270 }],
             lines: [
                 '“Nobody swims.” “Somebody swims. The lanes are wet.” “The lanes are always wet. That is what a pool is.”',
@@ -27586,7 +27613,7 @@ const DOOR_HQ = {
                 { x: -4.4, z: 5.2, face: 300, pose: 'hqLean', gender: 'male', label: 'THE GROUNDSKEEPER', reach: 2.6,
                   line: '“Golden ratio.” “The what?” “The ring. The hedge. The fountain. Measure it. Nobody measures it.”' },
             ],
-            npcSpots: [{ x: 0.6, z: 4.4, face: 0 }, { x: -4.4, z: -3.0, face: 60 }, { x: 5.0, z: -1.2, face: 270 }],
+            npcSpots: [{ x: 0.6, z: 4.4, face: 0, say: ['“The sky is Olympus’s. The soil is ours. The well is nobody’s, which is why it goes where it goes.”', '“Mind the gate. It is an L5 both ways and it does not care which way you were going.”'] }, { x: -4.4, z: -3.0, face: 60, say: ['“Things grow here that were not planted. We keep a list. The list grows too.”', '“1618 is the golden ratio. The gardener did not choose it. The garden did.”'] }, { x: 5.0, z: -1.2, face: 270, say: ['“If you are looking for the waiting room, it is through the wall you did not notice. Most people notice on the way back.”', '“The bees are on loan too. They came with the sky.”'] }],
             onlineSpots: [{ x: -0.6, z: -4.4, face: 180 }, { x: 4.4, z: 0.6, face: 270 }],
             lines: [
                 '“Whose sky is that?” “Olympus’s. On loan.” “Do they know?” “They filed a complaint. It is in Records.”',
@@ -36157,7 +36184,12 @@ const DOOR_HQ = {
                   action: { room: 'hwing_bar', at: 'pool' },
                   desc: 'The glass door back to the bar of the H.' },
             ],
-            counters: [],
+            counters: [
+                /* D5 (2026-09-21): THE OUT-TRAY — the pool types up THE TAPES (hqTapeShelf): the ones on file, the last three, the pages still blank */
+                { id: 'typing', x: -5.4, z: -2.0, face: 270, plateY: 1.4, radius: 1.6, verb: 'READ',
+                  label: 'THE OUT-TRAY', sub: 'THE SHIFT · WHAT IS TYPED UP', action: {},
+                  desc: 'The out-tray on the filing cabinet. The pool types up every tape you bring in; the pages for the ones you have not are in the tray too, blank, with the number on.' },
+            ],
             props: [
                 { key: 'square_cubicle', x: -4, z: -1.6, face: 0 },   { key: 'square_cubicle', x: 0, z: -1.6, face: 0 },   { key: 'square_cubicle', x: 4, z: -1.6, face: 0 },
                 { key: 'square_cubicle', x: -4, z: 2.4, face: 180 },  { key: 'square_cubicle', x: 0, z: 2.4, face: 180 },  { key: 'square_cubicle', x: 4, z: 2.4, face: 180 },
@@ -36230,7 +36262,7 @@ const DOOR_HQ = {
                 { key: 'coffee_mug',     x: 0.9, z: 0.6, y: 0.46, face: 120 },
             ],
             agents: [],
-            npcSpots: [{ x: -1.4, z: -1.4, face: 135 }],
+            npcSpots: [{ x: -1.4, z: -1.4, face: 135, say: ['“The machine takes coins we stopped minting. It gives change in them too.”', '“Break is fifteen minutes. The clock in here is on the wrong wall, so nobody knows when it started.”', '“You are not from H. Nobody is from H. That is what H is for.”'] }],
             onlineSpots: [],
             lines: [
                 '“The machine took my coins.” “And?” “Gave them back.” “Then it works.”',
@@ -41761,6 +41793,7 @@ function hqFindsForRoom(roomId) {
 function hqFindsWarm(budgetMs) {
     const byRoom = hqFindsTapesByRoom(), rooms = Object.keys(byRoom);
     if (DOOR_HQ.rooms.locker && rooms.indexOf('locker') < 0) rooms.push('locker');
+    hqStashRoomIds().forEach(id => { if (rooms.indexOf(id) < 0) rooms.push(id); });   // D5 THE STASH (2026-09-21): a stash room is its own stop
     /* THE SURVEY (2026-09-19): a terrain room's finds need its compiled field (hqTerrainFindSpot) — a compile
        that has not landed yet (3–31 s of main-thread time) is never forced here; the room waits for the
        worker's record (map.js re-kicks the warm when one is adopted) or its own entry */
@@ -41805,11 +41838,26 @@ function hqBuildFinds(only) {
     });
     /* SKATEBOARDING (9.8): THE DECK leans on a locker in Room 26 — one row, never daily, shown only while the issue is not free (hqFindsInRoom); the locker room has no tape, so it is its own stop */
     if ((only == null || only === 'locker') && DOOR_HQ.rooms.locker) { const dpin = pins.locker || {}, ds = dpin.deck || hqFindSpot('locker', 'deck', []); if (ds) rows.push({ id: 'deck:locker', room: 'locker', kind: 'deck', x: ds.x, z: ds.z, relax: ds.relax || 0, why: 'a skateboard leaning on a locker; the letter on the locker is yours' }); }
+    /* D5 THE STASH (AREA_CONTENT_PLAN §5, 2026-09-21): a facility room with no tape, no counter and no line of its own holds ONE
+       cache of THE BAG's goods — a DOOR_HQ.stashes row, kind `item` (hqCollectFind puts it in the bag), daily on the row's own
+       `mod` of the days, standing at the pin `findSpots[room].stash` else the far corner. The corridors and the closets are worth
+       walking to the end of; the one behind the blast door is worth the rank. */
+    hqStashRoomIds().forEach(roomId => {
+        if (only != null && only !== roomId) return;
+        const st = DOOR_HQ.stashes[roomId], room = DOOR_HQ.rooms[roomId]; if (!st || !room) return;
+        const spin = (pins[roomId] || {}).stash; let sp = spin || hqFindSpot(roomId, 'stash', []);
+        if (sp && room.terrain) sp = hqTerrainFindSpot(roomId, sp);
+        if (!sp) return;
+        rows.push(Object.assign({ id: 'stash:' + roomId, room: roomId, kind: 'item', item: st.item, n: st.n || 1, daily: true, mod: st.mod || R.dailyMod, x: sp.x, z: sp.z, relax: sp.relax || 0, why: st.why || 'a cache of the building’s own supplies, restocked on its own days' }, sp.y != null ? { y: sp.y } : {}));
+    });
     return rows;
 }
+/* the rooms that hold a stash (the table's keys, in order) — never a room that does not exist */
+function hqStashRoomIds() { return Object.keys(DOOR_HQ.stashes || {}).filter(id => !!DOOR_HQ.rooms[id]); }
 function _hqFindsAll() {
     const rooms = Object.keys(hqFindsTapesByRoom());
     if (DOOR_HQ.rooms.locker && rooms.indexOf('locker') < 0) rooms.push('locker');
+    hqStashRoomIds().forEach(id => { if (rooms.indexOf(id) < 0) rooms.push(id); });   // D5 THE STASH (2026-09-21): a stash room is its own stop
     const rows = [];
     /* THE FREEZE AFTER PLAY (2026-09-20): the whole table NEVER compiles a terrain room on the main thread — a
        terrain room whose survey record has not landed (hqTerrainWorkerServe / hqTerrainAdopt) is left out, and
@@ -41829,6 +41877,7 @@ function _hqFindsAll() {
 function hqFindsBuildAll() {
     const rooms = Object.keys(hqFindsTapesByRoom());
     if (DOOR_HQ.rooms.locker && rooms.indexOf('locker') < 0) rooms.push('locker');
+    hqStashRoomIds().forEach(id => { if (rooms.indexOf(id) < 0) rooms.push(id); });   // D5 THE STASH (2026-09-21): a stash room is its own stop
     const rows = [];
     rooms.forEach(id => { hqFindsForRoom(id).forEach(r => rows.push(r)); });
     _hqFindsPin(rows);
@@ -41836,7 +41885,26 @@ function hqFindsBuildAll() {
 }
 function _hqFindsPin(v) { Object.defineProperty(DOOR_HQ, 'finds', { value: v, writable: true, configurable: true, enumerable: true }); }
 /* hand-pinned spots (the generator's fallback): the cold room is 4 × 4 with hooks over the floor — the tape stands in the NE corner, the envelope lies on the shelving */
-DOOR_HQ.findSpots = { coldroom: { tape: { x: 1.3, z: -1.35 }, pay: { x: 0.4, z: 1.7, y: 1.2 } },
+/* D5 THE STASH (AREA_CONTENT_PLAN §5 D5, 2026-09-21): the ten facility rooms that had no tape, no counter and no line — a
+   corridor, a closet, a crawlspace, the legs of the H — each holds ONE daily cache of THE BAG's goods (hqBuildFinds → a
+   `stash:<room>` row of kind `item`; hqCollectFind → hqBagAdd). `mod` = live on the days hqHash(date|id) % mod === 0 (3 = a
+   third of the days, the pay cache's cadence; 7 = the good stuff). Adding a stash = one row; removing a room = the row goes.
+   The `why` is Claude's DRAFT (A15). */
+DOOR_HQ.stashes = {
+    corridor_a:   { item: 'healPotion', n: 1, mod: 3, why: 'a first-aid tin on the pipe run at the far end — somebody restocks it and nobody signs for it' },
+    corridor_b:   { item: 'manaPotion', n: 1, mod: 3, why: 'a blue bottle under the EXIT sign at the far end, thirty metres from anyone who would ask' },
+    crawlspace:   { item: 'healPotion', n: 1, mod: 3, why: 'a tin wedged behind the duct where only somebody on their knees would look' },
+    deadend:      { item: 'reviveTonic', n: 1, mod: 7, why: 'under the loose board in the room with nothing in it — the one thing it has' },
+    coldroom:     { item: 'manaPotion', n: 1, mod: 3, why: 'on the top shelf at minus eighteen, keeping' },
+    supply:       { item: 'elixir', n: 1, mod: 7, why: 'the one bottle on the shelf behind the blast door the rank was for' },
+    hwing_office: { item: 'healPotion', n: 1, mod: 3, why: 'the bottom drawer of the desk in the office behind all eight doors' },
+    hwing_w:      { item: 'manaPotion', n: 1, mod: 3, why: 'at the far end of the west leg, on the fire hose reel' },
+    hwing_e:      { item: 'healPotion', n: 1, mod: 3, why: 'at the far end of the east leg, on the fire hose reel' },
+    hwing_bar:    { item: 'reviveTonic', n: 1, mod: 7, why: 'in the crossbar’s first-aid box, the seal broken and re-taped' },
+};
+DOOR_HQ.findSpots = { coldroom: { tape: { x: 1.3, z: -1.35 }, pay: { x: 0.4, z: 1.7, y: 1.2 }, stash: { x: -1.0, z: 1.7, y: 1.2 } },   // D5 THE STASH (2026-09-21): the three small rooms pin theirs (the far-corner rule finds no spot in a 3 m box)
+    deadend: { stash: { x: -0.82, z: 0.05 } },   // the one floor point a metre from all three landings in a 3 m room
+    supply: { stash: { x: -1.0, z: -1.32, y: 1.2 } },   // the left shelf's end, a metre off the blast door's landing
     /* THE ASTRAL REALM (2026-09-19): THE SPIRE OF THE UNTHOUGHT (7.5 m), THE SPINE (4.6 m), THE TOP SHELF (3.4 m under a 4.6 m ceiling) — the door gun's three */
     site_prebuilt_lookingglass_sea: { tape: { x: 20, z: -35 } },
     site_prebuilt_lookingglass_nightmare: { tape: { x: 32, z: -22 } },
@@ -42087,7 +42155,7 @@ function hqFindRoomOfId(id) {
     if (typeof id !== 'string') return null;
     const i = id.indexOf(':'); if (i < 0) return null;
     const kind = id.slice(0, i), rest = id.slice(i + 1);
-    if (kind === 'pay' || kind === 'deck') return rest;
+    if (kind === 'pay' || kind === 'deck' || kind === 'stash') return rest;   // D5 THE STASH (2026-09-21): a stash id names its room — never the whole table
     if (kind === 'tape') { const t = DOOR_TAPES.find(t => t.id === rest); return t ? t.where : null; }
     return null;
 }
@@ -42139,7 +42207,7 @@ function hqFindsSyncedTaken(profile, create) {
     return prog.hq.finds.taken;
 }
 /* a daily cache is live on the days hqHash(date|id) % dailyMod === 0 */
-function hqFindLiveToday(row, date) { return !row.daily || (hqHash((date || hqToday()) + '|' + row.id) % HQ_FIND_RULES.dailyMod) === 0; }
+function hqFindLiveToday(row, date) { return !row.daily || (hqHash((date || hqToday()) + '|' + row.id) % (row.mod || HQ_FIND_RULES.dailyMod)) === 0; }   // D5: a stash row carries its own `mod` of the days
 function hqFindTaken(row, rec, date) {
     const t = rec.taken[row.id];
     if (!t) return false;
@@ -46604,6 +46672,60 @@ function hqWorksTally() {
     for (const id in T) { try { if (doorSiteState({ id, action: { mission: id } }, null) === 'sealed') sealed++; } catch (e) {} }
     return { register: sites.length, rooms: reg.length, built, sealed, today: 1000 };
 }
+/* ── D5 — THE FACILITY ROOMS' PURPOSE (AREA_CONTENT_PLAN §5 D5, 2026-09-21): the pure reads behind the six by-id panels — each
+   reads something REAL off the profile (never a stored copy); map.js _hqCounterPanelHtml renders them by counter id. ── */
+/* THE MANIFEST (the dock): what Otto has DELIVERED — the earned doors stamped (`door.hq.earned`), the ones ON THE TRUCK (stabilized,
+   not yet stamped: the ceremony fires on the next arrival), the BACK-ORDERS (sites with a threshold the officer has not stood in) */
+function hqDockDeliveries(profile) {
+    const out = { delivered: [], truck: [], backorders: 0, total: 0 };
+    let sites = []; try { sites = hqThresholdSites(); } catch (e) { sites = Object.keys(DOOR_HQ.thresholds || {}); }
+    out.total = sites.length;
+    const rec = hqEarnedDoorsRecord(profile);
+    const label = id => { let no = '', lab = ''; try { no = hqRoomNo(id) || ''; } catch (e) {} try { lab = (typeof EW_MAP_META !== 'undefined' && EW_MAP_META[id] && EW_MAP_META[id].label) || (typeof PREBUILT_MAPS !== 'undefined' && PREBUILT_MAPS[id] && PREBUILT_MAPS[id].name) || ''; } catch (e) {} return { id, no, label: String(lab || id).toUpperCase() }; };
+    sites.forEach(id => {
+        const free = (HQ_EARNED_DOOR_RULES.free || []).indexOf(id) >= 0;
+        if (rec[id]) { out.delivered.push(Object.assign(label(id), { date: typeof rec[id] === 'string' ? rec[id] : null })); return; }
+        let mastered = false; try { mastered = !!profile && hqMapMastered(id, profile); } catch (e) {}
+        if (mastered && !free) { out.truck.push(label(id)); return; }
+        let seen = false; try { seen = free || (typeof hqSiteSeen === 'function' && hqSiteSeen(id, profile)); } catch (e) {}
+        if (!seen) out.backorders++;
+    });
+    out.delivered.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+    return out;
+}
+/* THE GAUGE (the boiler room): the punch clock as PRESSURE — the streak, the best, the days on the clock; PSI = streak × 15, red past the best */
+function hqBoilerGauge(profile) {
+    let pc = null; try { pc = hqPunchClock(profile); } catch (e) {}
+    const streak = pc ? (pc.streak | 0) : 0, best = pc ? (pc.best | 0) : 0, days = pc ? (pc.days | 0) : 0;
+    const psi = streak * 15, max = Math.max(150, best * 15);
+    return { streak, best, days, lapsed: !!(pc && pc.lapsed), psi, max, pct: Math.max(0, Math.min(1, psi / max)), reading: !pc ? 'COLD' : streak >= Math.max(3, best) ? 'RUNNING HOT' : streak >= 3 ? 'RUNNING WARM' : streak > 0 ? 'WARM' : 'COLD' };
+}
+/* THE ROLL CALL (the dungeon): THE DEFEATED (hqDefeatedRecord) — a row per race that fell to the officer, newest first, with the roster's size */
+function hqRollCall(profile) {
+    const rec = hqDefeatedRecord(profile), rows = [];
+    Object.keys(rec).forEach(race => {
+        const prof = (typeof RACE_PROFILES !== 'undefined' && RACE_PROFILES[race]) || {};
+        rows.push({ race, label: String(prof.label || race).toUpperCase(), date: typeof rec[race] === 'string' ? rec[race] : '', buyable: (typeof hqUnitBuyable === 'function') ? !!hqUnitBuyable(profile, race) : true });
+    });
+    rows.sort((a, b) => b.date.localeCompare(a.date) || a.label.localeCompare(b.label));
+    const roster = (typeof AVAILABLE_RACES !== 'undefined' && Array.isArray(AVAILABLE_RACES)) ? AVAILABLE_RACES.length : rows.length;
+    return { rows, count: rows.length, roster };
+}
+/* THE ORDER OF SERVICE (the ritual room): the encounter log — the offerings (count / wins / losses), the last one (site · race · date · won), the rooms cleared TODAY */
+function hqOrderOfService(profile, now) {
+    const log = hqEncounterLog(profile), date = hqToday(now ? new Date(now) : undefined);
+    let cleared = 0; try { const c = hqClearedRecord(profile); Object.keys(c).forEach(rid => { if (c[rid] && c[rid].date === date) cleared++; }); } catch (e) {}
+    let lastWhere = null; if (log.last) { try { lastWhere = (typeof hqEncounterRoomLabel === 'function' && log.last.room) ? hqEncounterRoomLabel(log.last.room) : null; } catch (e) {} }
+    return { count: log.count | 0, wins: log.wins | 0, losses: log.losses | 0, last: log.last ? Object.assign({}, log.last, { where: lastWhere }) : null, cleared, date };
+}
+/* THE OUT-TRAY (the typing pool): THE TAPES typed up — found / total, the last three on file (in the order they were found), the blank pages */
+function hqOutTray(profile) {
+    /* the sheet, never hqTapeShelf: the shelf reads every tape's FIND (hqFindById compiles every terrain room) — the tray needs the titles only */
+    const rec = hqFindsRecord(profile);
+    const recent = rec.tapes.slice(-3).reverse().map(id => { const t = hqTapeById(id); return t ? { id: t.id, num: t.num, title: t.title, where: t.where } : { id, num: '', title: id, where: '' }; });
+    const total = HQ_FIND_RULES.tapes, found = rec.tapes.length;
+    return { found, total, blank: Math.max(0, total - found), recent };
+}
 
 if (typeof window !== 'undefined') {
     window.DOOR_HQ = DOOR_HQ;
@@ -46759,4 +46881,5 @@ if (typeof window !== 'undefined') {
     window.hqClaimsBook = hqClaimsBook;
     window.hqDoorParts = hqDoorParts;
     window.hqWorksTally = hqWorksTally;
+    window.hqDockDeliveries = hqDockDeliveries; window.hqBoilerGauge = hqBoilerGauge; window.hqRollCall = hqRollCall; window.hqOrderOfService = hqOrderOfService; window.hqOutTray = hqOutTray; window.hqStashRoomIds = hqStashRoomIds;   // D5 (2026-09-21): the six panels' reads
 }

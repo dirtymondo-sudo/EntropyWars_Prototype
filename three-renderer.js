@@ -42779,6 +42779,24 @@ const ThreeRenderer = (function () {
             });
             return g;
         },
+        /* D5 THE STASH (2026-09-21): a white first-aid tin, the lid up, one bottle standing in it — the facility rooms' cache of THE BAG's goods (DOOR_HQ.stashes) */
+        find_stash: function (U) {
+            var g = new THREE.Group();
+            var W = 0.26, D = 0.17, H = 0.09;
+            var tin = _hqMat(null, 1, 1, { color: 0xf2f2ee, shininess: 40 }), red = _hqBasic(0xc8302a);
+            var box = _hqBox(W, H, D, tin); box.position.y = H / 2 * U; g.add(box);
+            var lid = _hqBox(W, 0.008, D, tin); lid.position.set(0, (H + D * 0.5 * Math.sin(1.15)) * U, -D * 0.5 * U + D * 0.5 * Math.cos(1.15) * U * 0.5); lid.rotation.x = -1.15; lid.position.z = -D * 0.5 * U; g.add(lid);
+            var c1 = _hqBox(0.06, 0.002, 0.018, red); c1.position.set(0, (H + 0.002) * U, 0.02 * U); g.add(c1);
+            var c2 = _hqBox(0.018, 0.002, 0.06, red); c2.position.set(0, (H + 0.002) * U, 0.02 * U); g.add(c2);
+            var c3 = _hqBox(0.05, 0.016, 0.002, red); c3.position.set(0, (H + 0.05) * U, -D * 0.5 * U + 0.004 * U); c3.rotation.x = -1.15; g.add(c3);
+            var glass = _hqMat(null, 1, 1, { color: 0x8ad0ff, shininess: 90, transparent: true, opacity: 0.8 });
+            var bottle = new THREE.Mesh(new THREE.CylinderGeometry(0.02 * U, 0.024 * U, 0.09 * U, 12), glass); bottle.position.set(0.05 * U, (H + 0.045) * U, 0.01 * U); g.add(bottle);
+            var neck = new THREE.Mesh(new THREE.CylinderGeometry(0.009 * U, 0.012 * U, 0.03 * U, 10), glass); neck.position.set(0.05 * U, (H + 0.105) * U, 0.01 * U); g.add(neck);
+            var cork = new THREE.Mesh(new THREE.CylinderGeometry(0.01 * U, 0.01 * U, 0.012 * U, 10), _hqMat(null, 1, 1, { color: 0x8a6a3a, shininess: 8 })); cork.position.set(0.05 * U, (H + 0.126) * U, 0.01 * U); g.add(cork);
+            var roll = new THREE.Mesh(new THREE.CylinderGeometry(0.022 * U, 0.022 * U, 0.07 * U, 12), _hqMat(null, 1, 1, { color: 0xe8e4d8, shininess: 4 })); roll.rotation.z = Math.PI / 2; roll.position.set(-0.06 * U, (H + 0.02) * U, 0.02 * U); g.add(roll);
+            g.rotation.y = -0.3;
+            return g;
+        },
         find_pay: function (U) {
             var g = new THREE.Group();
             var W = 0.24, D = 0.16;
@@ -46082,7 +46100,7 @@ const ThreeRenderer = (function () {
        pieces like any floor prop. Dev: window.EW_HQ_FINDS_ALL builds every
        row of the room, taken or not. */
     var HQ_FIND_REACH = 1.6, HQ_FIND_LIGHT_MAX = 4;
-    var HQ_FIND_COLORS = { tape: 0xff5ad6, pay: 0xffd25a, deck: 0x7dffb0, potion: 0xff5a5a, item: 0xffffff, cube: 0x7fd9dd };   // deck: SKATEBOARDING (9.8)
+    var HQ_FIND_COLORS = { tape: 0xff5ad6, pay: 0xffd25a, deck: 0x7dffb0, potion: 0xff5a5a, item: 0xff8a5a, cube: 0x7fd9dd };   // item: D5 THE STASH (2026-09-21)   // deck: SKATEBOARDING (9.8)
     function _hqFindSparkle(color, U, seed) {
         var g = new THREE.Group();
         var ring = _hzGlowSprite(0.9 * U, color, 0.42, 0.14, 0.12, 0.9); ring.position.y = 0.16 * U; g.add(ring);
@@ -46107,7 +46125,7 @@ const ThreeRenderer = (function () {
                  : ((typeof hqFindsInRoom === 'function') ? hqFindsInRoom(roomId, _hq.profile) : []);
         _hq.findLights = 0;
         rows.forEach(function (f) {
-            var cat = D.catalogue[f.kind === 'tape' ? 'find_tape' : f.kind === 'deck' ? 'find_deck' : 'find_pay'];   // SKATEBOARDING (9.8): the deck in the locker room when the issue is not free
+            var cat = D.catalogue[f.kind === 'tape' ? 'find_tape' : f.kind === 'deck' ? 'find_deck' : (f.kind === 'item' || f.kind === 'potion') ? 'find_stash' : 'find_pay'];   // D5 THE STASH (2026-09-21): a facility room's tin   // SKATEBOARDING (9.8): the deck in the locker room when the issue is not free
             var pg = cat && cat.proc ? _hqProcProp(cat.proc) : null;
             if (!pg) return;
             var x = f.x || 0, z = f.z || 0;
@@ -47521,7 +47539,8 @@ const ThreeRenderer = (function () {
                list) is what whoever stands there says about THIS room — it rides the
                character as its `line`, read before any roster line (map.js
                _hqNpcPanelHtml). `clone: true` spawns the walker's OWN vessel (Room II). */
-            var sayOf = function (spot) { var s = spot && spot.say; if (!s) return null; if (Array.isArray(s)) return s.length ? s[Math.floor(Math.random() * s.length)] : null; return String(s); };
+            /* D5 (2026-09-21): a `say` LIST is THE DAY's line — picked by the day, the room and the spot (hqHash), so the person says one thing all day and another tomorrow (a random pick while data.js has no hash) */
+            var sayOf = function (spot) { var s = spot && spot.say; if (!s) return null; if (Array.isArray(s)) { if (!s.length) return null; var si = (room.npcSpots || []).indexOf(spot); var day = (typeof hqToday === 'function') ? hqToday() : String(new Date().toDateString()); var k = (typeof hqHash === 'function') ? (hqHash(day + '|' + (room.label || '') + '|say|' + si) % s.length) : Math.floor(Math.random() * s.length); return s[k]; } return String(s); };
             /* THE CLEARED ROOM (9.4 stage 2, 2026-09-15): a native the officer beat TODAY is gone
                until tomorrow (data.js hqEncounterCleared — the record the commit wrote) */
             var gone = [];

@@ -11145,3 +11145,14 @@ in your roster, which at this point is none for the player."
 - UNSEEN LIVE (RULE #1c): the creator over the menu (its stage on a cold cache), the enlist's hand-off into the door beat's
   building, the agent's creator rig with the gun on the board and in the hall, the shrunken socket windows, a level-5 console
   crossing's numbers on both sides.
+
+### 2026-09-21 — AREA CONTENT PLAN D5: THE FACILITY ROOMS' PURPOSE (local delivery)
+- 26 facility boxes had no counter, no find, no line and no cast spot. Each got ONE thing (AREA_CONTENT_PLAN §5 D5; §7 has the
+  room-by-room list): SIX BY-ID PANELS on pure data.js readers (THE MANIFEST in the dock · THE GAUGE in the boiler room · THE RACKS
+  in the server room · THE ROLL CALL in the dungeon · THE ORDER OF SERVICE in the ritual room · THE OUT-TRAY in the typing pool),
+  TEN STASHES (`DOOR_HQ.stashes` → a daily `stash:<room>` find of kind `item` into THE BAG; the corridors, the closets, the H's legs;
+  the Elixir behind Supply Closet 4B's blast door), TEN DAILY LINES (`say` lists picked by the day — three-renderer.js `sayOf`).
+- RULES: a facility box needs a purpose or hq-purpose.test.js names it; a find kind's id names its ROOM in `hqFindRoomOfId` (the
+  whole-table fallback compiles every terrain room); a panel reader never calls `hqTapeShelf` / `hqFindById` for a count.
+- Ship: data.js (R2 + Render — the finds ledger's key regex), three-renderer.js, map.js, index.html; tests + docs to the repo.
+- UNSEEN LIVE (RULE #1c): the tin on the pipe run / the shelves (`findSpots[room].stash` is the edit), the six panels' rows, the day's line.

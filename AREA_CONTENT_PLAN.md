@@ -194,7 +194,7 @@ astral): R3 + R4 + R5 — a third door on a wall moves round a corner or becomes
 every part gains an earned exit if it has none (the 93); every earned exit gains its tease.
 Data-only (door rows + a feature or two per room); the solver and the landing tests hold it.
 
-**D5 — THE FACILITY ROOMS' PURPOSE.** The 126 plain boxes: a room with no counter, no panel
+**D5 — THE FACILITY ROOMS' PURPOSE.** *(SHIPPED 2026-09-21 as a local delivery — see §7: 26 bare rooms → six by-id panels, ten stashes, ten daily lines; `hq-purpose.test.js` holds the bare-room rule.)* The 126 plain boxes: a room with no counter, no panel
 and no find is a box with props (the works' warehouse, the boiler room, the laundry, the
 dock, the corridors). Each gets ONE of: a by-id panel that reads something real off the
 profile, a find, a daily line, a cast spot, or it is folded into its neighbour. The list is
@@ -225,6 +225,27 @@ The questions as they were asked:
    R8 only. Confirm.
 
 ## 7. LOG
+- 2026-09-21 — **D5 SHIPPED (local delivery): THE FACILITY ROOMS' PURPOSE.** The 72 plain facility boxes were measured (a scratch
+  list off `DOOR_HQ.rooms`: no `site` / `terrain` / `cave`, not a bay / ring / site room) and **26 were BARE** — no counter, no tape
+  (the floors' tapes all moved into the areas), no `say` line, no cast spot. Each got ONE thing, never two: **SIX BY-ID PANELS** that
+  read something REAL off the profile through pure data.js readers (the dock's THE MANIFEST = `hqDockDeliveries`: the earned doors
+  Otto has hung, the stabilized sites ON THE TRUCK, the back-orders; the boiler room's THE GAUGE = `hqBoilerGauge`: the punch clock as
+  PSI; the server room's THE RACKS = the asset store's `stats()` + the ledger's faults, read in map.js; the dungeon's THE ROLL CALL =
+  `hqRollCall`: THE DEFEATED with dates, newest first; the ritual room's THE ORDER OF SERVICE = `hqOrderOfService`: the encounter log +
+  the rooms cleared today; the typing pool's THE OUT-TRAY = `hqOutTray`: the tapes typed up + the last three — NEVER through
+  `hqTapeShelf`, which reads every tape's find and compiles every terrain room); **TEN STASHES** — `DOOR_HQ.stashes[room] = { item, n,
+  mod, why }` → `hqBuildFinds` appends a `stash:<room>` row of kind `item` (the fourth shipped find kind; hq-finds' pin reads four),
+  daily on the row's OWN `mod` of the days (3 = the pay cache's cadence, 7 = the good stuff), `hqCollectFind` → `hqBagAdd`; the
+  corridors A / B, the crawlspace, the room at the end (a Revival Tonic), the cold room, SUPPLY CLOSET 4B behind the L6 blast door (an
+  Elixir), H-Wing's office, both legs and the crossbar; `hqFindRoomOfId` knows the kind (a stash id names its room — the whole-table
+  fallback was a 200 s hang in the sandbox); the three 3–4 m rooms pin theirs (`findSpots[room].stash`); the renderer's `find_stash`
+  tin (a white first-aid tin, one bottle) and the placer's kind → proc map; the take's toast names the bag; `FIND_RE` carries the
+  claim; **TEN DAILY LINES** — a `say` LIST on the room's npcSpot (the medical / records / executive wings, B · SERVICES, the annex,
+  the kitchen, the laundry, the natatorium ×2, the garden ×3, H-Wing's break room), and the renderer's `sayOf` picks by
+  `hqHash(day | room | spot)` so the person says one thing all day and another tomorrow. Copy is Claude's DRAFT (A15). `hq-purpose.
+  test.js` (six tests) pins the table, the collector, the readers on an empty and a filled profile, every line, and THE BARE ROOM RULE
+  (no facility box without a counter, a find, a line or a cast spot — a new room fails it). D5 IS THE LAST DELIVERY IN §5; the plan's
+  open items are the audit's accepted residue (§7 D4) and the per-room `check-area-content.js --all` warnings for the prefab parts.
 - 2026-09-20 — **D4 SHIPPED (local delivery): THE DOOR PASS over the complexes.** Data-only (door rows, link rows, a feature or two per
   room) + three audit amendments. **THE AUDIT** (`check-area-content.js`): a draught / a way / a free seam is not a door ON A WALL for the
   three-on-a-wall count; a draught is never a target NOR a viewpoint for R3 (a wall slab is not an approach); a bypassed board room (nobody stands in

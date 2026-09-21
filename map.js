@@ -3545,6 +3545,9 @@
                 try { if (typeof playDoorSfx === 'function') playDoorSfx('doorStamp', { volume: 0.6 }); } catch (e) {}
                 _hqToast(`<b>TAPE ${beat.count} / ${beat.total}</b><span>${_hqEsc(beat.title)} · FILED · IT PLAYS ON THE SHELF IN ROOM 360</span>`, 4200);
                 _hqStripFlash('tapes');   // THE HQ HUD PASS: the count shows for a moment, then the strip is quiet again
+            } else if (beat.kind === 'item' || beat.kind === 'potion') {   // D5 THE STASH (2026-09-21): a facility room's cache goes into THE BAG
+                try { playSfx('uiButtonConfirm'); } catch (e) {}
+                _hqToast(`<b>${_hqEsc(beat.label || 'INTO THE BAG')}</b><span>A CACHE OF THE BUILDING’S OWN · ${beat.count} IN THE BAG · THE PAUSE MENU’S ITEMS, OR THE POCKETS AT THE NEXT LAUNCH</span>`, 3200);
             } else {
                 try { playSfx('uiButtonConfirm'); } catch (e) {}
                 _hqToast(`<b>+${beat.amount} HAZARD PAY</b><span>AN UNMARKED ENVELOPE · ${beat.serverPays ? 'ON THE BOOKS AT THE NEXT SYNC' : (beat.gold || 0).toLocaleString() + ' ON THE BOOKS'} · NOBODY SAW</span>`, 2800);
@@ -5157,6 +5160,104 @@
             /* ── PHASE 8 STAGE 2 (2026-09-15): the two new floors' by-id panels — every one a
                panel that says what it is (ONE HOME PER FUNCTION, C-27: none of them launches
                a screen); the copy is Claude's draft (A15) ── */
+            /* ── D5 — THE FACILITY ROOMS' PURPOSE (AREA_CONTENT_PLAN §5 D5, 2026-09-21): six by-id panels, each reading something REAL
+                  off the profile through data.js's pure readers. Copy is Claude's DRAFT (A15). ── */
+            /* THE MANIFEST (the loading dock): what Otto has delivered — the earned doors, the ones on the truck, the back-orders */
+            if (c.id === 'deliveries') {
+                const m = (typeof window.hqDockDeliveries === 'function') ? window.hqDockDeliveries(_hqProfile()) : null;
+                html += '<p class="hq-panel-desc">' + _hqEsc(c.desc || '') + '</p>';
+                if (m) {
+                    html += '<div class="hq-rows">';
+                    if (!m.delivered.length && !m.truck.length) html += '<div class="hq-row hq-row-tray"><b>NOTHING SIGNED FOR</b><span>STABILIZE A SITE (THE THREE WINS) · OTTO BUILDS THE DOOR · IT LANDS HERE FIRST</span><i class="hq-lamp-chip st-open">0</i></div>';
+                    m.delivered.slice(0, 8).forEach(r => { html += `<div class="hq-row hq-row-tray"><b>ROOM ${_hqEsc(r.no)} · ${_hqEsc(r.label)}</b><span>DELIVERED · THE DOOR IS IN ITS BAY${r.date ? ' · ' + _hqEsc(r.date) : ''}</span><i class="hq-lamp-chip st-stabilized">IN</i></div>`; });
+                    if (m.delivered.length > 8) html += `<div class="hq-row hq-row-tray"><b>+ ${m.delivered.length - 8} MORE</b><span>SIGNED FOR · FURTHER DOWN THE SHEET</span><i class="hq-lamp-chip st-stabilized">IN</i></div>`;
+                    m.truck.forEach(r => { html += `<div class="hq-row hq-row-tray"><b>ROOM ${_hqEsc(r.no)} · ${_hqEsc(r.label)}</b><span>ON THE TRUCK · STABILIZED · OTTO HANGS IT ON YOUR NEXT ARRIVAL</span><i class="hq-lamp-chip st-unstable">DUE</i></div>`; });
+                    html += `<div class="hq-row hq-row-tray"><b>BACK-ORDERED</b><span>SITES NOBODY FROM THIS OFFICE HAS STOOD IN YET</span><i class="hq-lamp-chip st-sealed">${m.backorders}</i></div>`;
+                    html += '</div>';
+                }
+                html += '<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-close="1">SIGN HERE</button></div>';
+                html += '<p class="hq-panel-note">“For what?” “For whatever it was.”</p>';
+                return html;
+            }
+            /* THE GAUGE (the boiler room): the punch clock as pressure */
+            if (c.id === 'gauge') {
+                const g = (typeof window.hqBoilerGauge === 'function') ? window.hqBoilerGauge(_hqProfile()) : null;
+                html += '<p class="hq-panel-desc">' + _hqEsc(c.desc || '') + '</p>';
+                if (g) {
+                    const tone = g.streak >= 3 ? 'st-codered' : g.streak > 0 ? 'st-unstable' : 'st-sealed';
+                    html += '<div class="hq-rows">'
+                        + `<div class="hq-row hq-row-tray"><b>THE NEEDLE</b><span>${_hqEsc(g.reading)} · ${g.psi} OF ${g.max} PSI</span><i class="hq-lamp-chip ${tone}">${g.streak}</i></div>`
+                        + `<div class="hq-row hq-row-tray"><b>DAYS IN A ROW</b><span>${g.lapsed ? 'THE PLANT WENT COLD OVERNIGHT · IT IS WARMING AGAIN' : 'THE PUNCH CLOCK IN ROOM 247 IS THE THROTTLE'}</span><i class="hq-lamp-chip st-open">${g.streak}</i></div>`
+                        + `<div class="hq-row hq-row-tray"><b>THE RED LINE</b><span>THE MOST DAYS IN A ROW THE PLANT HAS EVER RUN</span><i class="hq-lamp-chip st-codered">${g.best}</i></div>`
+                        + `<div class="hq-row hq-row-tray"><b>ON THE CLOCK</b><span>EVERY DAY THE OFFICER HAS COME IN</span><i class="hq-lamp-chip st-stabilized">${g.days}</i></div>`
+                        + '</div>';
+                }
+                html += '<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-close="1">DO NOT ADJUST</button></div>';
+                html += '<p class="hq-panel-note">“She’s running warm.” “Is that bad?” “That is what a boiler is.”</p>';
+                return html;
+            }
+            /* THE RACKS (the server room): the asset store and the ledger's faults — what the building keeps on the disk */
+            if (c.id === 'uptime') {
+                let st = null, faults = 0; try { st = (window._ewAssetStore && typeof window._ewAssetStore.stats === 'function') ? window._ewAssetStore.stats() : null; } catch (e) {} try { faults = Array.isArray(window._ewAssetFailures) ? window._ewAssetFailures.length : 0; } catch (e) {}
+                const mb = n => (Math.round((n || 0) / 1048576 * 10) / 10).toLocaleString() + ' MB';
+                html += '<p class="hq-panel-desc">' + _hqEsc(c.desc || '') + '</p><div class="hq-rows">';
+                if (!st || !st.available) html += '<div class="hq-row hq-row-tray"><b>THE STORE</b><span>NO DISK · THIS BROWSER KEEPS NOTHING BETWEEN VISITS (A PRIVATE WINDOW, OR NO CACHE API)</span><i class="hq-lamp-chip st-sealed">OFF</i></div>';
+                else html += `<div class="hq-row hq-row-tray"><b>ON THE DISK</b><span>${st.files} FILES · ${_hqEsc(mb(st.bytes))} OF ${_hqEsc(mb(st.capBytes))} · THE LEAST USED GOES FIRST</span><i class="hq-lamp-chip st-stabilized">KEPT</i></div>`
+                    + `<div class="hq-row hq-row-tray"><b>THIS SESSION</b><span>${st.hits} FROM THE DISK · ${st.misses} FETCHED · ${st.puts} FILED</span><i class="hq-lamp-chip st-open">${st.hits + st.misses ? Math.round(st.hits / (st.hits + st.misses) * 100) : 0}%</i></div>`;
+                html += `<div class="hq-row hq-row-tray"><b>FAULTS</b><span>${faults ? 'FILES THAT NEVER LANDED · THE CONSOLE NAMES THEM (window._ewAssetFailures)' : 'NOTHING HAS FAILED TO LAND THIS SESSION'}</span><i class="hq-lamp-chip ${faults ? 'st-codered' : 'st-stabilized'}">${faults}</i></div>`;
+                html += '<div class="hq-row hq-row-tray"><b>THE FOURTH RACK</b><span>NOT ON THE CONSOLE · DO NOT UNPLUG IT</span><i class="hq-lamp-chip st-unstable">WARM</i></div>';
+                html += '</div><div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-close="1">NOTED</button></div>';
+                html += '<p class="hq-panel-note">“It is always night down here.” “It is 2 p.m.” “Not on the racks.”</p>';
+                return html;
+            }
+            /* THE ROLL CALL (the dungeon): THE DEFEATED — every vessel that fell to the officer */
+            if (c.id === 'rollcall') {
+                const rc = (typeof window.hqRollCall === 'function') ? window.hqRollCall(_hqProfile()) : null;
+                html += '<p class="hq-panel-desc">' + _hqEsc(c.desc || '') + '</p>';
+                if (rc) {
+                    html += '<div class="hq-rows">';
+                    html += `<div class="hq-row hq-row-tray"><b>ON THE ROLL</b><span>VESSELS PUT DOWN IN THE FIELD · OF THE ${rc.roster} THE DEPARTMENT KNOWS</span><i class="hq-lamp-chip ${rc.count ? 'st-stabilized' : 'st-open'}">${rc.count}</i></div>`;
+                    if (!rc.count) html += '<div class="hq-row hq-row-tray"><b>ALL THREE CELLS VACANT</b><span>NOBODY YET · THE QUARTERMASTER SELLS A VESSEL ONLY ONCE ITS NAME IS ON THIS ROLL</span><i class="hq-lamp-chip st-sealed">—</i></div>';
+                    rc.rows.slice(0, 10).forEach(r => { html += `<div class="hq-row hq-row-tray"><b>${_hqEsc(r.label)}</b><span>${_hqEsc(r.date || 'UNDATED')} · ${r.buyable ? 'CLEARED FOR PURCHASE AT THE QUARTERMASTER' : 'ON THE ROLL'}</span><i class="hq-lamp-chip st-codered">DOWN</i></div>`; });
+                    if (rc.rows.length > 10) html += `<div class="hq-row hq-row-tray"><b>+ ${rc.rows.length - 10} MORE</b><span>THE ROLL GOES ON · THE CELLS DO NOT</span><i class="hq-lamp-chip st-codered">DOWN</i></div>`;
+                    html += '</div>';
+                }
+                html += '<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-close="1">NOTED</button></div>';
+                html += '<p class="hq-panel-note">“Vacant.” “All three?” “All three. The roll is not about the cells.”</p>';
+                return html;
+            }
+            /* THE ORDER OF SERVICE (the ritual room): the encounter log as the offerings */
+            if (c.id === 'order') {
+                const o = (typeof window.hqOrderOfService === 'function') ? window.hqOrderOfService(_hqProfile()) : null;
+                html += '<p class="hq-panel-desc">' + _hqEsc(c.desc || '') + '</p>';
+                if (o) {
+                    html += '<div class="hq-rows">'
+                        + `<div class="hq-row hq-row-tray"><b>THE OFFERINGS</b><span>ENCOUNTERS IN THE FIELD · ${o.wins} HELD · ${o.losses} EXITED</span><i class="hq-lamp-chip ${o.count ? 'st-stabilized' : 'st-open'}">${o.count}</i></div>`
+                        + (o.last ? `<div class="hq-row hq-row-tray"><b>THE LAST ONE</b><span>${_hqEsc(String(o.last.race || 'SOMEONE').toUpperCase())}${o.last.where ? ' · ' + _hqEsc(o.last.where) : ''} · ${_hqEsc(o.last.date || '')}</span><i class="hq-lamp-chip ${o.last.won ? 'st-stabilized' : 'st-codered'}">${o.last.won ? 'HELD' : 'EXITED'}</i></div>`
+                                  : '<div class="hq-row hq-row-tray"><b>THE LAST ONE</b><span>NONE YET · WALK INTO A WILD ROOM AND CLICK WITH THE GUN HOLSTERED</span><i class="hq-lamp-chip st-sealed">—</i></div>')
+                        + `<div class="hq-row hq-row-tray"><b>ROOMS CLEARED TODAY</b><span>${_hqEsc(o.date)} · A CLEARED ROOM’S ENVELOPE GLOWS UNTIL MIDNIGHT</span><i class="hq-lamp-chip st-open">${o.cleared}</i></div>`
+                        + '<div class="hq-row hq-row-tray"><b>THE LAST LINE</b><span>THE PART WE DO NOT SAY</span><i class="hq-lamp-chip st-unstable">CUE</i></div>'
+                        + '</div>';
+                }
+                html += '<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-close="1">NOTED</button></div>';
+                html += '<p class="hq-panel-note">“You are early.” “For what?” “That is the part we do not say.”</p>';
+                return html;
+            }
+            /* THE OUT-TRAY (the typing pool): THE TAPES typed up */
+            if (c.id === 'typing') {
+                const tr = (typeof window.hqOutTray === 'function') ? window.hqOutTray(_hqProfile()) : null;
+                html += '<p class="hq-panel-desc">' + _hqEsc(c.desc || '') + '</p>';
+                if (tr) {
+                    html += '<div class="hq-rows">'
+                        + `<div class="hq-row hq-row-tray"><b>TYPED UP</b><span>TAPES ON FILE · THE SHELF IN ROOM 360 PLAYS THEM</span><i class="hq-lamp-chip ${tr.found ? 'st-stabilized' : 'st-open'}">${tr.found} / ${tr.total}</i></div>`;
+                    tr.recent.forEach(t => { html += `<div class="hq-row hq-row-tray"><b>${_hqEsc(t.num || 'TAPE')} · ${_hqEsc(t.title)}</b><span>TYPED · IN TRIPLICATE · ONE COPY UPSTAIRS</span><i class="hq-lamp-chip st-stabilized">DONE</i></div>`; });
+                    html += `<div class="hq-row hq-row-tray"><b>BLANK PAGES</b><span>NUMBERED, IN THE TRAY, WAITING ON A TAPE</span><i class="hq-lamp-chip st-sealed">${tr.blank}</i></div>`
+                        + '</div>';
+                }
+                html += '<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-close="1">NOTED</button></div>';
+                html += '<p class="hq-panel-note">“What are they typing?” “Crossings.” “The same crossings as upstairs?” “The same shift.”</p>';
+                return html;
+            }
             /* THE LINE (Room 1000): the works' tally off the register */
             if (c.id === 'line') {
                 const t = (typeof window.hqWorksTally === 'function') ? window.hqWorksTally() : null;

@@ -7701,3 +7701,32 @@ CSS "THE CIRCUIT IN THE FIELD" at the END of styles-base.css. Viewer-local (RULE
 console's crossings still take the forge). NOT built: a secondary-job pick, gear, hover-painted paths, the stage
 preview (the forge's). `npm test` runs hq-party.test.js (18). UNSEEN LIVE (RULE #1c): the three lanes at the pause
 frame's width (one column under 900 px), the fork's two options in a lane, the picker's 200-row scroll.
+
+## AREA CONTENT PLAN D5 — THE FACILITY ROOMS' PURPOSE (panels · stashes · daily lines) — 2026-09-21, local delivery
+The last delivery in `AREA_CONTENT_PLAN.md` §5 (§7 has the room list). 26 facility boxes had no counter, no
+find, no line and no cast spot; each got ONE thing. **THE STASH** = a fourth shipped find kind: data.js
+`DOOR_HQ.stashes[room] = { item, n, mod, why }` (before `findSpots`) → `hqBuildFinds` appends a `stash:<room>`
+row of kind `item`, daily on the row's OWN `mod` of the days (`hqFindLiveToday` reads `row.mod`; 3 = the pay
+cache's cadence, 7 = the good stuff), `hqCollectFind` → `hqBagAdd`; `hqStashRoomIds()` joins the three finds
+room lists (`_hqFindsAll` / `hqFindsBuildAll` / `hqFindsWarm`); **`hqFindRoomOfId` knows `stash:`** — a find
+id must name its ROOM or `hqFindById` falls to the whole table and compiles every terrain room (a 200 s hang
+in the sandbox); `FIND_RE` carries the claim; a 3–4 m room pins its spot (`findSpots[room].stash`). Ten rooms:
+corridor A / B, the crawlspace, the room at the end (a Revival Tonic), the cold room, SUPPLY CLOSET 4B behind
+the L6 blast door (an Elixir), H-Wing's office, both legs, the crossbar. Renderer: proc `find_stash` (a white
+first-aid tin with one bottle), the placer maps kind `item` / `potion` → `find_stash`, `HQ_FIND_COLORS.item`;
+map.js's take toast names the bag. **SIX BY-ID PANELS** (`action: {}` + `desc`; map.js `_hqCounterPanelHtml`
+by counter id) on PURE data.js readers (all on `window`): the dock's THE MANIFEST (`deliveries` →
+`hqDockDeliveries`: the earned doors Otto hung, the stabilized sites ON THE TRUCK, the back-orders), the boiler
+room's THE GAUGE (`gauge` → `hqBoilerGauge`: the punch clock as PSI), the server room's THE RACKS (`uptime`:
+`window._ewAssetStore.stats()` + `_ewAssetFailures.length`, read in map.js), the dungeon's THE ROLL CALL
+(`rollcall` → `hqRollCall`: THE DEFEATED with dates, newest first), the ritual room's THE ORDER OF SERVICE
+(`order` → `hqOrderOfService`: the encounter log + the rooms cleared today), the typing pool's THE OUT-TRAY
+(`typing` → `hqOutTray`: the tapes typed up + the last three — **never through `hqTapeShelf` / `hqFindById`
+for a count**, both compile every terrain room). **TEN DAILY LINES**: a `say` LIST on an npcSpot (the three
+wings, B · SERVICES, the annex, the kitchen, the laundry, the natatorium, the garden, H-Wing's break room);
+three-renderer.js `sayOf` picks by `hqHash(day | room.label | spot)` — one line all day, another tomorrow.
+Copy is Claude's DRAFT (A15). `npm test` runs `hq-purpose.test.js`, whose last test is THE BARE ROOM RULE: a
+facility box with no counter, no tape, no stash, no `say` and no cast spot FAILS it, naming the room — adding
+a room = give it one of the four. hq-finds' kind pin reads four kinds. Ship data.js to R2 AND Render (the
+ledger's key regex). UNSEEN LIVE (RULE #1c): the tin's scale on the pipe run and the shelves, the six panels'
+rows at the panel's width, the day's line on the roster draw.

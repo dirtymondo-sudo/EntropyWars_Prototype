@@ -96,7 +96,8 @@ test('every tape has a find, every tape room a daily pay cache, and no other kin
         assert.ok(pays[0].daily === true && pays[0].amount > 0 && pays[0].id === 'pay:' + rid, rid + ': daily, paid, id');
         assert.equal(pays[0].amount, HQ.rooms[rid].fx === 'site' ? R.pay : R.payDeep, rid + ': the walkway rate on a board room, the deep rate elsewhere');
     }
-    assert.deepEqual([...new Set(FINDS.map(f => f.kind))].sort(), ['deck', 'pay', 'tape'], 'only the three shipped kinds are placed (potion / item / cube are reserved; deck = SKATEBOARDING 9.8, one row in Room 26)');
+    assert.deepEqual([...new Set(FINDS.map(f => f.kind))].sort(), ['deck', 'item', 'pay', 'tape'], 'only the four shipped kinds are placed (potion / cube are reserved; deck = SKATEBOARDING 9.8, one row in Room 26; item = D5 THE STASH, one row per DOOR_HQ.stashes room)');
+    for (const rid of D.hqStashRoomIds()) { const st = FINDS.filter(f => f.room === rid && f.kind === 'item'); assert.equal(st.length, 1, rid + ': one stash'); assert.ok(st[0].id === 'stash:' + rid && st[0].daily === true && st[0].mod >= 3 && D.ITEM_RULES[st[0].item], rid + ': daily, on its own cadence, a real item'); }   // D5 (2026-09-21)
     assert.equal(FINDS.filter(f => f.kind === 'deck').length, 1, 'one deck, in the locker room'); assert.equal(FINDS.find(f => f.kind === 'deck').room, 'locker');
     assert.equal(new Set(FINDS.map(f => f.id)).size, FINDS.length, 'unique find ids');
     for (const f of FINDS) assert.ok(f.why, f.id + ': a why');
@@ -108,7 +109,7 @@ test('every find stands inside its room, clear of every blocker, native, counter
         const wm = (f.y != null) ? 0.25 : 0.6;   // a shelf find leans on its wall
         assert.ok(Math.abs(f.x) < S.w / 2 - wm && Math.abs(f.z) < S.d / 2 - wm, f.id + ': inside the walls');
         if (f.cell) continue;                       // the board finds have their own test
-        for (const p of room.props || []) assert.ok(!propBlocks(room, p, f.x, f.z, f.y != null ? -0.2 : 0.3), f.id + ': ' + p.key + ' stands on it');
+        for (const p of room.props || []) { const pc = HQ.catalogue[p.key] || {}; if (f.y != null && f.y > (p.y || 0) + (pc.h || 1) + 0.05) continue; assert.ok(!propBlocks(room, p, f.x, f.z, f.y != null ? -0.2 : 0.3), f.id + ': ' + p.key + ' stands on it'); }   // D5 (2026-09-21): a shelf find is OVER a floor prop whose top is under it (the supply closet's step stool is a 3 m disc)
         for (const q of (room.npcSpots || []).concat(room.agents || [])) if (q.x != null) assert.ok(Math.hypot(f.x - q.x, f.z - q.z) > 0.6, f.id + ': a native stands on it');
         for (const c of room.counters || []) assert.ok(Math.hypot(f.x - c.x, f.z - c.z) > (c.radius || 2), f.id + ': inside a counter\'s reach (' + c.id + ')');
         for (const d of room.doors || []) { const L = landing(room, d); assert.ok(Math.hypot(f.x - L.x, f.z - L.z) > 1.0, f.id + ': on the landing of ' + d.id); }

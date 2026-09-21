@@ -685,3 +685,7 @@ The scan then starts on the top and the foot (`climbReach` back) lands 0.3 m out
   terrace, the adit ON a terrace, three draughts on the new dashed `routes.hollow`), THE STATION (the collar ON the hull, the ice shelf, the drill
   rig, the polar draught). The rule that came with it: a `climb` row's `face` points TOWARD THE MASS (0 = the tier is north of the line, 180 south,
   90 east, 270 west) — read the compiled rows back, never the row count. AREA_CONTENT_PLAN §7 has the numbers.
+
+- 2026-09-21 — **D5 (AREA_CONTENT_PLAN): THE PURPOSE RULE for the facility.** A facility box (no site, no field) carries ONE of: a by-id
+  panel reading something real off the profile, a stash (`DOOR_HQ.stashes` — a daily find of THE BAG's goods), a daily line (a `say`
+  list), or a cast spot; hq-purpose.test.js names any room without one. A corridor is worth walking to the end of.
