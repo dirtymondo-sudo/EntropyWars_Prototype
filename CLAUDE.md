@@ -8094,3 +8094,29 @@ washed into it). `npm test` runs `hdr-bloom.test.js`; day-sky.test.js's horizon 
 the whole look — a lamp lens vs the wall beside it, snow at noon with the slider at 1.0, an additive VFX stack's
 roll-off under ACES (it lands brighter, then compresses), the panes' blit, iOS (half-float colour buffers).
 `BLOOM_HDR_LINEAR` is the edit if a bright surface still glows (raise) or a lamp no longer does (lower).
+
+## THE SEAMLESS FIELD, delivery 1 — THE TRUE GROUND (the encounter stands on the room, no board mesh) — 2026-09-22, local delivery
+The user: "turn-based combat straight from exploration, same world, same screen, seamless; but keep the high ground —
+there are ledges, bridges, rooftops." THE EXPERIMENT'S ROOM is the Haunted House's HALL (any BOX complex part
+qualifies; a site's board room and a cave keep their columns; a TERRAIN room still fights its part's Δ — delivery 2).
+**THE TRUE GROUND**: data.js `hqFieldBuild` files every IN cell's REAL top in room metres on the entry
+(`entry.field.tops`, `null` for rock); three-renderer.js **`_fieldGround()`** (the block right before
+`_hqBuildRoomInBattle`; keyed on the room + the window + the tile) reads it through `_hqBattleRoom()` and
+**`_fieldGroundTop(x, y)` is the FIRST line of `tileTopY`** — every unit, tween, highlight, float and VFX ground read
+lands on the room's floor, a table's top, a tread or the 2.9 m slab, never on `level × tile`; `rebuildTerrain` builds
+NO column under a true-ground field (the shell's walls, the gallery's slab and the props ARE the geometry); the room
+round the field keeps its WHOLE floor (`H.floorHole = null` after the pinned cut) and every prop (the cover drop is
+skipped); `_fieldGroundDress` stands the shell's fluorescents + desk lamps in the battle through the matrix and arms
+the room's height fog in the battle's frame (cleared in `deactivate`); `activate()` arms the gate
+(`_fieldGroundArmed`, before the board builds) and holds the BUILDING'S exposure context; ui.js's HUD write holds the
+DOM cycle at `day` while `ThreeRenderer.fieldGroundLive()` (the rules' clock is untouched). THE ENGINE IS UNTOUCHED —
+a +2 slab cell is still level base+2 to every rule; it is DRAWN where the slab is. Kill-switch
+`window.EW_HQ_NO_TRUE_GROUND` (data.js `hqFieldGroundOn`; `HQ_FIELD_RULES.ground.on`). **THE TIER RULE** (for
+delivery 2, the terrain rooms — tested now): `hqFieldTierOf(topM, refM)` = a cell is a LEVEL only when it stands
+≥ `ground.tierMin` (1.2 m) over the reference floor, one more per `ground.step` (1.75 m), capped `tierMax` — a
+rooftop, a bridge deck, a plateau, a slab keep the high-ground bonus and the LOS step; a mound never earns one. KNOWN
+in delivery 1: THE EDGE's residue strip (0.25–0.75 m of rock proud of a wall) is no longer drawn — the eye reads floor
+the engine refuses; the battle's hemi / sun / dome still light the room over its own lamps (the room's rig is not
+replicated); the crossfade stays as the safety net. `npm test` runs `seamless-field.test.js`. UNSEEN LIVE (RULE #1c):
+the hall under the battle's sun, a unit on the slab, the treads under a move tween, the table tops, the exposure
+through the cut, the residue strip.

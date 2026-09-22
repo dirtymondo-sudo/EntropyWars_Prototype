@@ -45054,7 +45054,33 @@ const HQ_FIELD_RULES = {
         sweep: 0.05,          // m — the offset sweep's step after the exact candidates
     },
     hudLabel: 'THE FIELD',    // stage E: the scoreboard's mode line while an encounter's field is live
+    /* THE SEAMLESS FIELD, delivery 1 (2026-09-22 — THE TRUE GROUND): a BOX room's field draws NO board mesh — the room's
+       own floor, slab, treads and prop tops are the ground the units stand on (three-renderer.js tileTopY reads the
+       raster's real tops through _fieldGroundTop; the voxel columns are never built), the room keeps its whole floor and
+       every prop, the day cycle and the building's exposure hold through the fight, the room's own point lights stand in
+       the battle. The engine plays the same cells and levels as before — this changes what is DRAWN, never a rule.
+       tierMin / step / tierMax = THE TIER RULE for delivery 2 (the terrain rooms — hqFieldTierOf): a cell is a LEVEL only
+       when it stands a real ledge over the reference floor; relief under tierMin is the floor. */
+    ground: {
+        on: true,             // the true ground (window.EW_HQ_NO_TRUE_GROUND = the columns as before)
+        tierMin: 1.2,         // m — a rise under this is relief, never a level (no high ground off a mound)
+        step: HQ_CAVE_CELL,   // m per level above tierMin (a battle level is one tile)
+        tierMax: 3,           // the most levels a cell may stand above the floor
+    },
 };
+/* THE TIER RULE (delivery 2's, tested now): the LEVEL a surface at topM stands at over the reference floor refM.
+   A rooftop, a bridge deck, a plateau, a gallery slab = a real ledge = a level (the high-ground bonus, the LOS
+   step); a hill's shoulder under tierMin = the floor. */
+function hqFieldTierOf(topM, refM, rules) {
+    const G = (rules && rules.ground) || HQ_FIELD_RULES.ground;
+    const d = (+topM || 0) - (+refM || 0);
+    if (!(d >= G.tierMin)) return 0;
+    return Math.max(1, Math.min(G.tierMax, 1 + Math.floor((d - G.tierMin) / G.step)));
+}
+function hqFieldGroundOn() {
+    const W = (typeof window !== 'undefined') ? window : {};
+    return !!(HQ_FIELD_RULES.ground && HQ_FIELD_RULES.ground.on) && !W.EW_HQ_NO_TRUE_GROUND;
+}
 /* stage B: a WILD room with a cave grid; stage C: a WILD box room that is not a site's BOARD room (that one keeps its own Δ — stage A) */
 function hqFieldRoomOk(roomId) {
     const r = (DOOR_HQ.rooms || {})[roomId];
@@ -45482,6 +45508,8 @@ function hqFieldBuild(roomId, ox, oz, opts) {
     entry.bed = M.strata.slice(); entry.underTop = M.underTop; entry.base = baseKey;
     entry.deltaDesc = HQ_FIELD_RULES.label + ' — ' + (room.label || roomId) + ' (' + R.ox + ',' + R.oz + ')';
     entry.field = { id, room: roomId, site, ox: R.ox, oz: R.oz, S, C: R.C, x0: R.x0, z0: R.z0, rockTile: R.rockTile, box: !!R.box, cave: !!R.cave,
+                    /* THE TRUE GROUND (2026-09-22): every IN cell's REAL top in room metres (the floor 0, a table's top, a tread, the slab) */
+                    tops: R.cells.map(row => row.map(c => (c.in && !c.rock) ? Math.round(((+c.top) || 0) * 1000) / 1000 : null)),
                     cells: R.cells.map(row => row.map(c => (c.rock ? '#' : c.hazard ? '!' : c.in ? String(Math.max(0, Math.min(9, c.tile + 1))) : '?')).join('')),
                     /* STAGE D: the rim's doors and the walls' proud (a box window; a cave has neither) */
                     doors: Array.isArray(R.doors) ? R.doors.map(d => Object.assign({}, d)) : [], edges: R.edges ? JSON.parse(JSON.stringify(R.edges)) : null,
@@ -47815,7 +47843,7 @@ if (typeof window !== 'undefined') {
     /* THE FIELD stage B — the rasteriser on the cave (Phase 9 Delivery 8, 2026-09-16) */
     window.HQ_FIELD_RULES = HQ_FIELD_RULES; window.hqFieldRimBox = hqFieldRimBox; window.hqEncounterRoomLabel = hqEncounterRoomLabel; window.hqFieldDump = hqFieldDump; window.hqFieldRoomOk = hqFieldRoomOk; window.hqFieldId = hqFieldId; window.hqFieldParse = hqFieldParse; window.hqFieldRaster = hqFieldRaster; window.hqFieldReach = hqFieldReach;
     window.hqFieldWindow = hqFieldWindow; window.hqFieldBuild = hqFieldBuild; window.hqFieldLayout = hqFieldLayout; window.hqFieldRegister = hqFieldRegister;
-    window.hqFieldBoxInfo = hqFieldBoxInfo; window.hqFieldGallery = hqFieldGallery; window.hqFieldLattice = hqFieldLattice; window.hqFieldBoxStep = hqFieldBoxStep; window.hqFieldBoxTile = hqFieldBoxTile; window.hqFieldNearestWalk = hqFieldNearestWalk;
+    window.hqFieldTierOf = hqFieldTierOf; window.hqFieldGroundOn = hqFieldGroundOn; window.hqFieldBoxInfo = hqFieldBoxInfo; window.hqFieldGallery = hqFieldGallery; window.hqFieldLattice = hqFieldLattice; window.hqFieldBoxStep = hqFieldBoxStep; window.hqFieldBoxTile = hqFieldBoxTile; window.hqFieldNearestWalk = hqFieldNearestWalk;
     /* SKATEBOARDING (HQ plan 9.8 stage 1, 2026-09-15) */
     window.HQ_SKATE_RULES = HQ_SKATE_RULES; window.HQ_LIGHT_RULES = HQ_LIGHT_RULES; window.HQ_POLISH_PREFS = HQ_POLISH_PREFS; window.hqPolishGet = hqPolishGet; window.hqPolishSet = hqPolishSet; window.hqPolishAll = hqPolishAll; window.hqPolishReset = hqPolishReset; window.hqPolishRow = hqPolishRow; window.HQ_ATMOS_SITES = HQ_ATMOS_SITES; window.HQ_DECAL_RULES = HQ_DECAL_RULES; window.hqRoomAtmos = hqRoomAtmos; window.hqRoomArrival = hqRoomArrival; window.HQ_KICKABLE = HQ_KICKABLE; window.hqPropKickable = hqPropKickable; window.hqRoomFogHalfAt = hqRoomFogHalfAt; window.hqSkateStatus = hqSkateStatus; window.hqSkateRecord = hqSkateRecord; window.hqSkateBank = hqSkateBank; window.hqSkateScore = hqSkateScore; window.hqSkateIssueFree = hqSkateIssueFree;
     window.hqLinkRoom = hqLinkRoom;

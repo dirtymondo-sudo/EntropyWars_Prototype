@@ -4313,8 +4313,11 @@
             const cycleChanged = lastRenderedCycle && lastRenderedCycle !== cycle;
             if (cycleLabel) cycleLabel.textContent = `Cycle: ${cycle === 'day' ? '☀ Day' : '🌙 Night'}`;
 
-            document.body.dataset.cycle = cycle;
-            if (boardStageEl) boardStageEl.dataset.cycle = cycle;
+            /* THE SEAMLESS FIELD (2026-09-22): a true-ground field is lit like the room it stands in — the building's
+               day cycle holds on the DOM (the rules' clock is untouched; getCurrentCyclePhase still answers the mode) */
+            var _fieldDay = (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.fieldGroundLive && ThreeRenderer.fieldGroundLive()) ? 'day' : cycle;
+            document.body.dataset.cycle = _fieldDay;
+            if (boardStageEl) boardStageEl.dataset.cycle = _fieldDay;
 
             if (cycleChanged) {
                 clearTimeout(window._sunsetFadeOutTimer);

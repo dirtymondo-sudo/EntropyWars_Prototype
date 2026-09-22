@@ -2733,6 +2733,9 @@ const ThreeRenderer = (function () {
 
     function tileTopY(x, y) {
         var ts = CONFIG.tileSize || BASE_TILE;
+        /* THE SEAMLESS FIELD (2026-09-22): a box room's field stands on the ROOM'S ground — the raster's real tops */
+        var _fgY = _fieldGroundTop(x, y);
+        if (_fgY !== null) return _fgY;
 
         /* Roof-walkable buildings are anchored to the VOXEL ground (baseH*ts) and
            their roof plane sits at baseH*ts + _roofZPx, INDEPENDENT of the natural
@@ -3108,6 +3111,19 @@ const ThreeRenderer = (function () {
         var full = (_bw !== _lastBoardW || _bh !== _lastBoardH);
         if (full) { _clearGroup(terrainGroup); tileMeshes.clear(); }
         var lavaTiles = [];
+        /* THE SEAMLESS FIELD (2026-09-22 — THE TRUE GROUND): the room drawn round the window IS the ground; no voxel
+           column is built (the walls are the shell's, the slab the gallery's, a table its own top) */
+        if (_fieldGround()) {
+            _clearGroup(terrainGroup); tileMeshes.clear();
+            _lastBoardW = _bw; _lastBoardH = _bh; _lastBuiltTileSize = ts;
+            _lastTerrainVersion = state._terrainVersion || 0; _lastHeightVersion = state._heightVersion || 0; _lastVoxelVersion = state._voxelVersion || 0;
+            _objectsDirty = true; _lavaMeshCache = null; _canopyMeshCache = null;
+            if (ThreePost && ThreePost.rebuildLavaLights) ThreePost.rebuildLavaLights([], tileTopY, ts);
+            if (ThreePost && ThreePost.setShadowFrame) { var _fgW = _bw * ts, _fgH = _bh * ts; ThreePost.setShadowFrame(_fgW / 2, _fgH / 2, Math.sqrt(_fgW * _fgW + _fgH * _fgH) / 2 + ts * 3); }
+            _rebuildMergedTerrain();
+            _shadowsDirty = true;
+            return;
+        }
 
         for (var y = 0; y < _bh; y++) {
             for (var x = 0; x < _bw; x++) {
@@ -30134,6 +30150,9 @@ const ThreeRenderer = (function () {
            aspect + post + CSS2D sizes to .map-center (see _viewW) */
         _viewW = -1; _viewH = -1;
         _envLookKey = '';   // THE SCENE LOOK: the battle re-applies its map's on the first environment update
+        /* THE SEAMLESS FIELD (2026-09-22): a true-ground field keeps the BUILDING'S brightness through the fight */
+        _fieldGroundArmed = !!_fieldGround();
+        try { if (_fieldGroundArmed && typeof ThreePost !== 'undefined' && ThreePost.setExposureContext) ThreePost.setExposureContext('hq'); } catch (e) {}
         try { if (typeof ThreePost !== 'undefined' && ThreePost.setSsaoScale && typeof CONFIG !== 'undefined') ThreePost.setSsaoScale('battle', CONFIG.tileSize || 96); } catch (e) {}   // THE THIRD PASS 3.4: the AO's reach in tiles
         canvas.style.display = 'block';
         if (css2dRenderer) css2dRenderer.domElement.style.display = '';
@@ -30179,6 +30198,8 @@ const ThreeRenderer = (function () {
 
     function deactivate() {
         active = false;
+        /* THE SEAMLESS FIELD: the room's fog leaves with the fight, the true-ground gate closes (typeof-guarded: scene-lifecycle.test.js evals deactivate alone) */
+        try { if (typeof _fieldGroundFog !== 'undefined' && _fieldGroundFog) { _fieldGroundFog = false; _ewHeightFogSet(0, 1, 0, 0); } if (typeof _fieldGroundArmed !== 'undefined') { _fieldGroundArmed = false; _fieldGroundCache.key = null; _fieldGroundCache.G = null; } } catch (e) {}
         if (window.ThreeVFXEffects && ThreeVFXEffects.clearBattle) ThreeVFXEffects.clearBattle();
         hideSplitscreen();
         _clearAnimations();
@@ -53041,6 +53062,70 @@ const ThreeRenderer = (function () {
         var row = R.field.cells[iz], ch = row ? String(row).charAt(ix) : '';
         return ch >= '2' && ch <= '9';
     }
+    /* ══ THE SEAMLESS FIELD, delivery 1 — THE TRUE GROUND (2026-09-22) ══
+       An encounter in a BOX room (a complex part; never a site's board room, never a cave — those keep their columns)
+       stands on the ROOM: the raster's per-cell real tops (entry.field.tops, room metres) are the surface every unit,
+       tween, highlight and float reads through tileTopY; rebuildTerrain builds no column; the room round the field keeps
+       its whole floor and every prop; the day cycle and the building's exposure hold (ui.js's HUD write, activate());
+       the room's own point lights stand in the battle and its height fog is armed in the battle's frame. The ENGINE is
+       untouched: a +2 slab cell is still level base+2 to the rules, it is DRAWN at 2.9 m. Kill-switch
+       window.EW_HQ_NO_TRUE_GROUND (data.js hqFieldGroundOn). */
+    var _fieldGroundCache = { key: null, G: null };
+    function _fieldGround() {
+        var R = _hqBattleRoom();
+        if (!R || R.site || R.cave || !R.field || !R.field.tops) { _fieldGroundCache.key = null; _fieldGroundCache.G = null; return null; }
+        if (typeof hqFieldGroundOn === 'function' ? !hqFieldGroundOn() : !!(typeof window !== 'undefined' && window.EW_HQ_NO_TRUE_GROUND)) { _fieldGroundCache.key = null; _fieldGroundCache.G = null; return null; }
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var key = _hqBattleRoomKey() + '|' + ts;
+        if (_fieldGroundCache.key === key) return _fieldGroundCache.G;
+        var s = (ts / R.T.C), elev = ts * ELEV_STEP_RATIO;
+        var G = { R: R, N: R.T.N, tops: R.field.tops, ts: ts, s: s, floorY: R.base * elev,
+                  yAt: function (x, y) { var row = this.tops[y]; var t = row ? row[x] : null; return (t === null || t === undefined) ? null : this.floorY + t * this.s; } };
+        _fieldGroundCache.key = key; _fieldGroundCache.G = G;
+        return G;
+    }
+    /* the ONE read tileTopY makes: the cell's real top in the battle's frame, or null (no field / an OUT cell = the columns' rule) */
+    var _fieldGroundArmed = false;   // set by activate() before the board builds, cleared by deactivate(): tileTopY's fast gate
+    function _fieldGroundTop(x, y) {
+        if (!_fieldGroundArmed) return null;
+        var G = _fieldGround(); if (!G) return null;
+        if (x < 0 || y < 0 || x >= G.N || y >= G.N) return null;
+        return G.yAt(x, y);
+    }
+    function _fieldGroundLive() { return _fieldGroundArmed && !!_fieldGround(); }
+    /* the room's own light in the battle: the shell's fluorescents and desk lamps through the matrix (the hemi / key / fill
+       are the battle's), and the room's height fog in the battle's frame (the floor at the base, h in tiles) */
+    function _fieldGroundDress(R, room, M, ts) {
+        var S = room.shell || {}, s = ts / R.T.C, U = _hqUnits();
+        if (!_facilityNearGroup) return;
+        try {
+            var amb = (S.mood && S.mood.ambient != null) ? S.mood.ambient : 1;
+            var lightsAt = (S.lights && S.lights.length) ? S.lights : [S.light || { x: 0, z: 0 }];
+            var plC = (S.mood && S.mood.light != null) ? S.mood.light : 0xe6eeff;
+            var lg = new THREE.Group(); lg.name = 'hq_field_lights'; lg.applyMatrix4(M);
+            lightsAt.slice(0, 4).forEach(function (Lt) {
+                var fl = new THREE.PointLight(plC, (lightsAt.length > 1 ? 0.5 : 0.55) * amb, (lightsAt.length > 1 ? 12 : 9) * U, 2);
+                fl.position.set((Lt.x || 0) * U, ((S.h || 3) - 0.35) * U, (Lt.z || 0) * U); lg.add(fl);
+            });
+            (room.props || []).forEach(function (pp) {
+                if (pp.key !== 'desk_lamp' && pp.key !== 'table_lamp') return;
+                var wl = new THREE.PointLight(0xffd9a0, 0.5, 5 * U, 2); wl.position.set((pp.x || 0) * U, ((pp.y || 0) + 0.5) * U, (pp.z || 0) * U); lg.add(wl);
+            });
+            _facilityNearGroup.add(lg);
+        } catch (e) { console.warn('[HQ→battle] the room\'s lights did not stand', e); }
+        try {
+            var LR = _hqLightRules(), HF = LR.heightFog || {};
+            var W = (typeof window !== 'undefined') ? window : {};
+            if (HF.on !== false && !_polishOff('heightFog', 'EW_HQ_NO_HEIGHT_FOG') && S.heightFog !== false) {
+                var row = Object.assign({}, HF[S.open ? 'open' : 'box'] || HF.box || { h: 1.7, amount: 0.34 });
+                if (S.heightFog && typeof S.heightFog === 'object') Object.assign(row, S.heightFog);
+                var floorY = R.base * ts * ELEV_STEP_RATIO + ((row.floor != null) ? +row.floor : 0) * s;
+                _ewHeightFogSet(floorY, (row.h > 0 ? row.h : 1.7) * s, Math.max(0, Math.min(1, (row.amount != null) ? +row.amount : 0.34)), 0.012 / s);
+                _fieldGroundFog = true;
+            }
+        } catch (e) {}
+    }
+    var _fieldGroundFog = false;
     function _hqBuildRoomInBattle(ctx) {
         var R = _hqBattleRoom(); if (!R || !ctx || typeof THREE === 'undefined' || !_horizonGroup) return;
         if (ctx.bw !== R.T.N || ctx.bh !== R.T.N) return;   // the board the battle built is not the room's window
@@ -53058,6 +53143,8 @@ const ThreeRenderer = (function () {
                   keys: {}, drag: null, lastDragAt: 0, fp: false, paused: true, ready: false, t0: 0, lastMs: 0, lastDebug: 0,
                   cam: { yaw: 0, pitch: 0, dist: 0, init: false }, targetKey: '', w: 0, h: 0, dirty: false };
         if (!R.site) H.floorHole = { x0: R.T.x0, x1: R.T.x0 + R.T.N * C, z0: R.T.z0, z1: R.T.z0 + R.T.N * C };
+        var trueGround = !!_fieldGround();   // THE TRUE GROUND: no columns fill the window — the room's floor is drawn whole and every prop stands
+        if (trueGround) H.floorHole = null;
         _hq = H;
         try {
             H.gallery = _hqGalleryFrame(copy);
@@ -53090,7 +53177,7 @@ const ThreeRenderer = (function () {
             src.children.slice().forEach(function (c) {
                 src.remove(c);
                 var out = !!(c.isCSS2DObject || (c._ew_hqPart && drop[c._ew_hqPart]) || (R.site && c._ew_hqGround));
-                if (!out && isProp && !c._ew_hqWall && _hqBattleRoomCoverAt(R, c.position.x / U, c.position.z / U)) out = true;   // the column stands for it
+                if (!out && !trueGround && isProp && !c._ew_hqWall && _hqBattleRoomCoverAt(R, c.position.x / U, c.position.z / U)) out = true;   // the column stands for it
                 if (out) { dropped++; try { _disposeR(c); } catch (e) {} return; }
                 var plates = []; c.traverse(function (o) { if (o.isCSS2DObject) plates.push(o); });
                 plates.forEach(function (o) { if (o.parent) o.parent.remove(o); });
@@ -53113,6 +53200,7 @@ const ThreeRenderer = (function () {
         /* the occlusion fade reads the facility group's direct children as its roots */
         if (_facilityNearGroup) { g.children.slice().forEach(function (c) { g.remove(c); c._ew_occNear = true; _facilityNearGroup.add(c); }); }
         else { _facilityNearGroup = g; _horizonGroup.add(g); }
+        if (trueGround) _fieldGroundDress(R, room, M, ts);
         if (typeof window !== 'undefined' && window.EW_HQ_DEBUG) console.log('[HQ→battle] the room round the field:', R.roomId, 'kept', kept, 'dropped', dropped, 'walls', Object.keys(walls).join(''), R.site ? '(site)' : R.cave ? '(cave)' : '(field)');
     }
 
@@ -54430,6 +54518,7 @@ const ThreeRenderer = (function () {
         motion: function () { return _motionInfo(); },
         /* THE WORLD (2026-09-13): grounded ↔ floating readout + the mode pref (entropy / grounded / floating) */
         world: function () { return _worldInfo(); },
+        fieldGroundLive: function () { return _fieldGroundLive(); },   // THE SEAMLESS FIELD: a true-ground field is on screen
         getWorldMode: function () { return _wdMode(); },
         /* THE SCENE LOOK (2026-09-17): re-read the Map Looks preference and re-lay the current place's grade (the settings toggle) */
         refreshSceneLook: function () {
