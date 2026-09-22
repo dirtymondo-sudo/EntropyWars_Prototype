@@ -8187,3 +8187,18 @@ shot at it and the swoop tweens it to the board's — the 52° → 45° pop is g
 hdr-bloom's three threshold sites + `_tmSync` before each composer render, premium-polish-3's `_ssaoApply('battle')`.
 `npm test` runs seamless-field.test.js (rev 3 ×3). UNSEEN LIVE (RULE #1c): the first frame against the last, the
 ceiling's fade, the room's shadow under the board's bias, the fog on the units, the dome past the walls, the FOV tween.
+
+## THE FRAME GUARD — the HQ loop survives a throw + the SMAA load order (2026-09-22, local delivery)
+The user: "I cannot move at all inside DOOR HQ" after the seamless-field session. Headlessly (the repo scripts, stand-in
+assets, the real path title → menu → intake → Play → the foyer, real key events; an encounter in the haunted hall and the
+return) HEAD walked fine, and nothing in the three deliveries' diffs touches the walker — so the fault could not be named
+from here. What WAS established: three r128's `renderer.setAnimationLoop` runs the callback BEFORE it requests the next
+frame (WebGLAnimation.onAnimationFrame), so ONE exception anywhere in the HQ frame — a tick, a proc's ticker, a landed
+model's hook, the post chain — ended the loop for good: the picture froze and every key was dead, exactly the report.
+three-renderer.js **`_hqFrameGuarded`** (what setAnimationLoop takes now) runs `_hqFrame` under a try / catch: the error
+is logged ONCE per message (`console.error('[HQ] the frame threw …')`, `window._ewHqFrameErrors`), map.js's
+`onFrameError` toasts THE FRAME THREW · <message> · see the console, the scene is still drawn and the next frame comes.
+**READ THAT FIRST on any "frozen building" report** — the console names the thrower; `_hqFrame` itself is untouched
+(the source pins scan its body). Also fixed: index.html loaded `SMAAPass.js` BEFORE `EffectComposer.js` (which defines
+`THREE.Pass`), so it threw "Class extends value undefined" on every page load and SMAA was never available — it loads
+after the composer now. Token `20260922-hqframe-guard-01-cors`. Unseen live (RULE #1c): the user's own console.

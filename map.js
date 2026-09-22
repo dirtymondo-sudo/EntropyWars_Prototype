@@ -1115,6 +1115,7 @@
                         }, wait);
                     },
                     onView: (fp) => { const h = _hqEl('hqHints'); if (h) h.classList.toggle('fp', !!fp); },
+                    onFrameError: (msg) => { try { _hqToast('THE FRAME THREW · ' + String(msg).slice(0, 90) + ' · see the console', 6000); } catch (e) {} },   // THE FRAME GUARD (2026-09-22): the loop survives a throw; the officer is told
                     onDebug: debug ? (d) => { if (dbg) dbg.textContent = `deg ${d.deg} · r ${d.r} · y ${d.y} · L${d.level} · x ${d.x} z ${d.z}${d.fp ? ' · FP' : ''}`; } : null,
                 }); } catch (e) { console.error('[HQ] enter failed', e); }
                 if (!ok) {

@@ -52937,6 +52937,29 @@ const ThreeRenderer = (function () {
         try { if (typeof ThreePost !== 'undefined' && ThreePost.polishApply) ThreePost.polishApply(); } catch (e) {}
         return out;
     }
+    /* THE FRAME GUARD (2026-09-22): renderer.setAnimationLoop runs the callback BEFORE it requests the next frame
+       (three r128 WebGLAnimation.onAnimationFrame), so ONE exception anywhere in the HQ frame — a tick, a ticker, a
+       landed model's hook, the post chain — ended the loop for good: the picture froze and every key was dead ("I
+       cannot move at all inside DOOR HQ"). The frame runs under a guard now: a throw is logged ONCE per message (the
+       stack in the console, `window._ewHqFrameErrors`), shown to the officer through opts.onFrameError, and the next
+       frame still comes. A second throw of the same kind inside one second is not re-logged. */
+    var _hqFrameErrs = {};
+    function _hqFrameGuarded() {
+        var H = _hq; if (!H || !renderer) return;
+        try { _hqFrame(); }
+        catch (e) {
+            var msg = String((e && e.message) || e), now0 = performance.now();
+            var rec = _hqFrameErrs[msg];
+            if (!rec || now0 - rec.at > 1000) {
+                _hqFrameErrs[msg] = { at: now0, n: (rec ? rec.n : 0) + 1 };
+                try { console.error('[HQ] the frame threw (the loop continues):', e); } catch (e2) {}
+                try { if (typeof window !== 'undefined') { (window._ewHqFrameErrors = window._ewHqFrameErrors || []).push({ at: Date.now(), msg: msg, stack: String((e && e.stack) || '') }); } } catch (e3) {}
+                try { if (H.opts && H.opts.onFrameError && !rec) H.opts.onFrameError(msg); } catch (e4) {}
+            }
+            /* the frame that threw may have left the scene half-ticked: still draw it, so the eye is never black */
+            try { renderer.render(H.scene, H.camera); } catch (e5) {}
+        }
+    }
     function _hqFrame() {
         var H = _hq; if (!H || !renderer) return;
         var now = performance.now();
@@ -53552,7 +53575,7 @@ const ThreeRenderer = (function () {
         /* THE TWO BRIGHTNESSES (2026-09-20): the building's own Brightness value, eased in (three-post.js) */
         try { if (typeof ThreePost !== 'undefined' && ThreePost.setExposureContext) ThreePost.setExposureContext('hq'); } catch (e) {}
         try { if (typeof ThreePost !== 'undefined' && ThreePost.setSsaoScale) ThreePost.setSsaoScale('hq', _hqUnits()); } catch (e) {}   // THE THIRD PASS 3.4: the AO's reach in the building's metres
-        renderer.setAnimationLoop(_hqFrame);
+        renderer.setAnimationLoop(_hqFrameGuarded);   // THE FRAME GUARD (2026-09-22): a throw never ends the loop
         console.log('[HQ] entered', opts.room || 'central_egress', '(' + (room.kind || 'rotunda') + ') — doors:', _hq.doors.length, 'props:', (room.props || []).length, 'chars:', _hq.chars.length);
         return true;
     }
