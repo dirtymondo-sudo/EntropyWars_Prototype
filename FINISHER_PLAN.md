@@ -197,6 +197,37 @@ spells), a ziggurat tier block, a gothic buttress.
 
 ## 7. Log
 
+- **2026-09-22 — THE 2026-09-22 BATCH (delivery 18): the popstar. 103 of 103.**
+  The race landed the same day (data.js `FINISHERS.popstar`, designed BUILT):
+  popstar **Farewell Tour** (`farewellTour` / `_sigFarewellTour3D` — FOUR
+  STANDS rise out of the ground round the victim one after another (sloped
+  tiers on a steel wall, a floodlight mast at each corner), the crowd is ONE
+  Points cloud of 520 glow sticks on the tiers' slopes (pink and cyan, each its
+  own colour, swaying), the FLOODLIGHTS snap on one by one with a screen
+  flash each, THE SPOTLIGHT — an open cone out of the sky + a pool on the tile
+  — finds the victim, THE STAGE stands up behind the popstar (a deck, a truss
+  on two legs, the FAREWELL TOUR banner, the mic stand) and the notes (♪
+  sprites) drift up off it while THE WAVE goes round the stands (a lift that
+  sweeps the crowd's angle once per 1.8 s); the hit is THE PYRO — six
+  `_finFireball` columns round the tile at 90 ms, nine FIREWORKS bursting over
+  the stands at 220 ms in alternating colours (sparkles on a sphere with
+  gravity), the body up the beam into pink-and-cyan confetti; the lights go
+  out one by one at 250 ms, the crowd fades, the SOLD OUT poster rises on the
+  tile; the director: the face cam on the mic, a god shot as the stands rise,
+  the witness cam under the spotlight, a side dolly for the song, a god shot
+  climbing for the last note, slow-mo into the hit, the sky watch for the
+  fireworks, a god shot for the lights, the end-cap reverse on the poster;
+  inserts FAREWELL TOUR · ONE NIGHT ONLY · THE LAST SONG · …AND THIS ONE GOES
+  OUT TO YOU · ENCORE? NO. · ATTENDANCE: 80,000 · SURVIVORS: 79,999 · SOLD
+  OUT). A director in battle.js `_FIN_DIRECTORS` (the DELIVERY 18 block), the
+  signature in "THE FINISHER PASS 2" (the DELIVERY 18 block; `_sigRunOwned`,
+  called inside the relayed cinematic — RULE #2), `_FIN_STAGE.farewellTour`
+  for the forge, a row in finishers.test.js's BUILT + SIG_FN tables. NOT
+  smoke-tested in the stub-THREE harness this session (the harness is scratch
+  tooling; `node --check` + the source pins only). Not playtested (RULE #1c):
+  the stands' radius (4.2 tiles) against the board's rim, the tier slope
+  against the crowd cloud, the cone's opacity under a day sky, the fireworks'
+  height at the game's pitch, the poster's read.
 - **2026-09-21 — THE 2026-09-21 BATCH (delivery 17): police officer · jellyfish · cult leader. 102 of 102.**
   The three races that landed the same day with `sig: null` are BUILT, in roster
   order: police officer **Book 'Em** (`bookEm` / `_sigBookEm3D` — THE CRUISER (the

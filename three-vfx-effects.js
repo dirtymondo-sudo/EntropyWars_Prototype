@@ -23489,6 +23489,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     SPELL_MAP['raceCultTithe']        = Object.assign({}, SPELL_MAP['raceHitALick']);          /* cult leader — the collection */
     SPELL_MAP['raceCultIndoctrinate'] = Object.assign({}, SPELL_MAP['racePossession']);        /* cult leader — the induction */
     SPELL_MAP['raceCultGathering']    = Object.assign({}, SPELL_MAP['raceWhistle']);           /* cult leader — a member answers */                       /* door agent — the slam from above */
+    /* THE 2026-09-22 BATCH — the popstar: family aliases (the same rule; the capstone's row is its own) */
+    SPELL_MAP['racePopMicDrop']       = Object.assign({}, SPELL_MAP['sonicCharge']);            /* popstar — the mic hits the floor */
+    SPELL_MAP['racePopEncore']        = Object.assign({}, SPELL_MAP['encore']);                /* popstar — one more */
+    SPELL_MAP['racePopStageDive']     = Object.assign({}, SPELL_MAP['raceSkyTackle']);         /* popstar — into the crowd */
+    SPELL_MAP['racePopSpotlight']     = Object.assign({}, SPELL_MAP['raceCurseOfMisfortune']);  /* popstar — every eye */
+    SPELL_MAP['racePopStadiumShow']   = Object.assign({}, SPELL_MAP['raceShockwaveClap']);     /* popstar — the pyro, the crowd */
 
     /* ═════════ END VFX PASS-3 COVERAGE SECTION ═════════ */
 
@@ -34281,6 +34287,123 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     }
     /* ═════════ END DELIVERY 17 ═════════ */
 
+    /* ═════════ DELIVERY 18 (2026-09-22) — THE 2026-09-22 BATCH: the popstar ═════════
+       FAREWELL TOUR (popstar): FOUR STANDS rise out of the ground round the
+       victim (a stadium the size of the board's corner), FOUR FLOODLIGHT
+       MASTS snap on one after another, a CROWD of glow sticks (one Points
+       cloud on the stands' slopes, every stick its own colour) fills the
+       tiers, and THE SPOTLIGHT — a cone out of the sky — finds the victim.
+       THE STAGE stands up behind the popstar with her mic; the notes drift
+       up off it and THE WAVE goes round the stands. The hit is THE PYRO —
+       flame columns round the tile, fireworks over every stand, the body
+       lifted on the beam and gone to confetti. The lights go out one by one
+       on a SOLD OUT poster. */
+    function _sigFarewellTour3D(cx, cy, tx, ty, o) {
+        o = o || {};
+        if (!_canSpawn()) return false;
+        var wpC = _worldPos(cx, cy), wpT = _worldPos(tx, ty), ts = wpT.ts;
+        var ms = o.ms > 0 ? o.ms : 8800;
+        var standsAt = o.standsAt != null ? o.standsAt : 100, lightsAt = o.lightsAt != null ? o.lightsAt : standsAt + 1500, songAt = o.songAt != null ? o.songAt : lightsAt + 1000, hitAt = o.hitAt != null ? o.hitAt : songAt + 2700;
+        var g = new THREE.Group(); g.position.set(wpT.x, wpT.y, wpT.z);
+        var dx = wpC.x - wpT.x, dz = wpC.z - wpT.z, L = Math.max(1, Math.hypot(dx, dz)), ux = dx / L, uz = dz / L;
+        var PINK = 0xff4fa3, CYAN = 0x7fe6ff, WHITE = 0xffe6f4, STEEL = 0x2a2c34, SEAT = 0x3a3040;
+        var body = _finBodyMesh(ts); g.add(body);
+        /* the stands: four sloped tiers round the tile, rising from under the ground */
+        var NS = 4, RS = ts * 4.2, stands = [], standH = ts * 2.2, standD = ts * 2.4;
+        for (var k = 0; k < NS; k++) {
+            var sa = k * Math.PI / 2 + Math.PI / 4, sg = new THREE.Group(); sg.position.set(Math.cos(sa) * RS, -standH - ts * 0.2, Math.sin(sa) * RS); sg.rotation.y = -sa + Math.PI / 2; g.add(sg); stands.push(sg);
+            var tier = new THREE.Mesh(new THREE.BoxGeometry(ts * 5.2, standH, standD), _finBasic(SEAT)); tier.position.y = standH / 2; tier.rotation.x = -0.42; tier.position.z = standD * 0.25; sg.add(tier);
+            var wall = new THREE.Mesh(new THREE.BoxGeometry(ts * 5.2, ts * 0.5, ts * 0.12), _finBasic(STEEL)); wall.position.set(0, ts * 0.25, -standD * 0.55); sg.add(wall);
+            var mast = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.05, ts * 0.07, ts * 4.4, 6), _finBasic(STEEL)); mast.position.set(ts * 2.4, ts * 2.2, standD * 0.9); sg.add(mast);
+            var lamp = _finSprite(WHITE, _sigGlowTex(), ts * 1.6, 160); lamp.position.set(ts * 2.4, ts * 4.4, standD * 0.9); sg.add(lamp); sg.userData.lamp = lamp;
+        }
+        /* the crowd: glow sticks on every tier */
+        var NG = 520, gpos = new Float32Array(NG * 3), gcol = new Float32Array(NG * 3), gsl = new Float32Array(NG), tint = new THREE.Color();
+        for (var i = 0; i < NG; i++) {
+            var st = stands[i % NS], f = Math.random(), across = (Math.random() - 0.5) * ts * 4.8;
+            var lx = Math.cos(st.rotation.y) * across, lz = -Math.sin(st.rotation.y) * across;
+            var back = -Math.cos(st.rotation.y + Math.PI / 2) * (standD * 0.25 - f * standD * 0.9), backz = Math.sin(st.rotation.y + Math.PI / 2) * (standD * 0.25 - f * standD * 0.9);
+            gpos[i * 3] = st.position.x + lx + back; gpos[i * 3 + 1] = ts * 0.3 + f * standH * 0.9; gpos[i * 3 + 2] = st.position.z + lz + backz;
+            tint.setHSL(Math.random() < 0.5 ? 0.9 : 0.52, 1, 0.65); gcol[i * 3] = tint.r; gcol[i * 3 + 1] = tint.g; gcol[i * 3 + 2] = tint.b; gsl[i] = i % NS;
+        }
+        var gGeo = new THREE.BufferGeometry(); gGeo.setAttribute('position', new THREE.BufferAttribute(gpos, 3)); gGeo.setAttribute('color', new THREE.BufferAttribute(gcol, 3));
+        var crowd = new THREE.Points(gGeo, new THREE.PointsMaterial({ size: ts * 0.16, vertexColors: true, map: _sigGlowTex(), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false })); crowd.renderOrder = 158; g.add(crowd);
+        var gBase = gpos.slice();
+        /* the spotlight + the stage + the mic */
+        var cone = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.25, ts * 0.9, ts * 6, 24, 1, true), _finBasic(WHITE, { additive: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false })); cone.position.y = ts * 3; g.add(cone);
+        var pool = new THREE.Mesh(new THREE.CircleGeometry(ts * 0.95, 32), _finBasic(WHITE, { additive: true, opacity: 0, depthWrite: false })); pool.rotation.x = -Math.PI / 2; pool.position.y = ts * 0.03; g.add(pool);
+        var stage = new THREE.Group(); stage.position.set(dx + ux * ts * 0.9, -ts * 0.6, dz + uz * ts * 0.9); stage.rotation.y = Math.atan2(-ux, -uz); g.add(stage);
+        stage.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(ts * 2.4, ts * 0.5, ts * 1.6), _finBasic(0x1a1a22)), { position: new THREE.Vector3(0, ts * 0.25, 0) }));
+        var truss = new THREE.Mesh(new THREE.BoxGeometry(ts * 2.6, ts * 0.1, ts * 0.1), _finBasic(STEEL)); truss.position.set(0, ts * 2.4, -ts * 0.6); stage.add(truss);
+        for (var q = -1; q <= 1; q += 2) { var leg = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.04, ts * 0.04, ts * 2.4, 6), _finBasic(STEEL)); leg.position.set(q * ts * 1.25, ts * 1.2, -ts * 0.6); stage.add(leg); }
+        var micStand = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.02, ts * 0.03, ts * 0.9, 6), _finBasic(0xc8ccd8)); micStand.position.set(0, ts * 0.95, ts * 0.3); stage.add(micStand);
+        var mic = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.06, 8, 6), _finBasic(0x444852)); mic.position.set(0, ts * 1.42, ts * 0.3); stage.add(mic);
+        var banner = _finTextSprite('FAREWELL TOUR', { ink: '#ffffff', bg: '#ff4fa3', font: 'Georgia, serif', fontPx: 60, spriteW: ts * 2.6, opacity: 0 }); banner.position.set(0, ts * 2.75, -ts * 0.6); stage.add(banner);
+        var stageGlow = _finSprite(PINK, _sigGlowTex(), ts * 2.2, 158); stageGlow.position.y = ts * 1.0; stage.add(stageGlow);
+        /* the notes off the stage, the poster */
+        var notes = [], noteTex = _finTextTex('♪', { ink: '#ffe6f4', fontPx: 160 });
+        for (var n = 0; n < 10; n++) { var sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: noteTex, transparent: true, opacity: 0, depthWrite: false })); sp.scale.set(ts * 0.5, ts * 0.25, 1); sp.renderOrder = 160; sp.userData.t0 = -1; g.add(sp); notes.push(sp); }
+        var poster = _finTextSprite('SOLD OUT', { ink: '#ff4fa3', bg: '#111118', font: 'Georgia, serif', fontPx: 72, spriteW: ts * 2.0, opacity: 0 }); poster.position.set(0, ts * 1.4, 0); g.add(poster);
+        var only = _finTextSprite('ONE NIGHT ONLY', { ink: '#ffffff', bg: '#111118', font: 'Georgia, serif', fontPx: 56, spriteW: ts * 2.8, opacity: 0 }); only.position.set(0, ts * 2.6, 0); g.add(only);
+        var c = tilePx(tx, ty), bz = tileZ(tx, ty), hit = false, hitEl = 0, lastMote = 0, lastNote = 0, litN = -1, pyroN = 0, fwN = 0;
+        var PYRO = 6, FW = 9;
+        return !!_sigRunOwned(g, ms, function (el) {
+            /* the stands rise, one after another */
+            for (var k2 = 0; k2 < NS; k2++) {
+                var rk = _sigClamp01((el - standsAt - k2 * 260) / 700), re = 1 - Math.pow(1 - rk, 3);
+                stands[k2].position.y = -standH - ts * 0.2 + (standH + ts * 0.2) * re;
+                if (rk >= 1 && !stands[k2].userData.landed) { stands[k2].userData.landed = true; _finDust(c.x + stands[k2].position.x, c.y + stands[k2].position.z, bz, 8, { r: 40, op: 0.45 }); }
+                /* the floodlights snap on */
+                var lit = el >= lightsAt + k2 * 180;
+                if (lit && litN < k2) { litN = k2; _sigScreenFlash('#ffffff', 90, 0.25); }
+                var lampOp = lit ? 0.8 : 0;
+                if (hit) lampOp *= 1 - _sigClamp01((el - hitEl - 1600 - k2 * 250) / 200);   // out one by one
+                stands[k2].userData.lamp.material.opacity = lampOp;
+            }
+            /* the crowd comes up with the stands, the sticks sway, the wave goes round */
+            var crowdK = _sigClamp01((el - standsAt - 500) / 900) * (hit ? 1 - _sigClamp01((el - hitEl - 2400) / 1200) : 1);
+            crowd.material.opacity = crowdK * 0.95;
+            var wave = el >= songAt && !hit ? ((el - songAt) / 1800) % 1 : -1;
+            for (var i2 = 0; i2 < NG; i2++) {
+                var sway = Math.sin(el * 0.004 + i2 * 0.7) * ts * 0.05, lift = 0;
+                if (wave >= 0) { var ang = (Math.atan2(gBase[i2 * 3 + 2], gBase[i2 * 3]) / (Math.PI * 2) + 1) % 1; var d = Math.abs(((ang - wave) % 1 + 1.5) % 1 - 0.5); lift = Math.max(0, 1 - d * 12) * ts * 0.35; }
+                if (hit) lift += Math.max(0, Math.sin((el - hitEl) * 0.012 + i2)) * ts * 0.25 * (1 - _sigClamp01((el - hitEl - 1500) / 800));
+                gpos[i2 * 3] = gBase[i2 * 3] + sway; gpos[i2 * 3 + 1] = gBase[i2 * 3 + 1] + lift;
+            }
+            gGeo.attributes.position.needsUpdate = true;
+            /* the spotlight finds the victim */
+            var spotK = _sigClamp01((el - lightsAt - 700) / 500) * (0.85 + 0.15 * Math.sin(el * 0.01));
+            cone.material.opacity = 0.16 * spotK * (hit ? 1 + 1.5 * Math.sin(Math.min(1, (el - hitEl) / 900) * Math.PI) : 1); pool.material.opacity = 0.5 * spotK; cone.rotation.y = el * 0.0006;
+            /* the stage stands up, the banner, the notes */
+            var sk = _sigClamp01((el - songAt + 600) / 500), se = 1 - Math.pow(1 - sk, 3);
+            stage.position.y = -ts * 0.6 + ts * 0.6 * se; banner.material.opacity = se * (0.9 + 0.1 * Math.sin(el * 0.008)); stageGlow.material.opacity = 0.5 * se * (0.7 + 0.3 * Math.sin(el * 0.009));
+            only.material.opacity = _sigClamp01((el - lightsAt) / 300) * (1 - _sigClamp01((el - songAt) / 400));
+            if (el >= songAt && !hit && el - lastNote > 260) { lastNote = el; for (var n2 = 0; n2 < notes.length; n2++) if (notes[n2].userData.t0 < 0) { notes[n2].userData.t0 = el; notes[n2].userData.ox = rn(-ts * 0.6, ts * 0.6); notes[n2].userData.oz = rn(-ts * 0.3, ts * 0.3); break; } }
+            for (var n3 = 0; n3 < notes.length; n3++) { var N = notes[n3]; if (N.userData.t0 < 0) continue; var nk = (el - N.userData.t0) / 1500; if (nk >= 1) { N.userData.t0 = -1; N.material.opacity = 0; continue; } N.position.set(stage.position.x + N.userData.ox + Math.sin(nk * 6) * ts * 0.15, stage.position.y + ts * 1.5 + nk * ts * 2.4, stage.position.z + N.userData.oz); N.material.opacity = Math.sin(nk * Math.PI); }
+            if (el >= hitAt && !hit) {
+                hit = true; hitEl = el;
+                _shake('heavy'); _sigScreenFlash('#ffe6f4', 260, 0.9);
+                _sigShockRing3D(tx, ty, { color: 0xff9ad0, r0: ts * 0.3, r1: ts * 3.0, ms: 640, torus: true });
+            }
+            if (hit) {
+                var hk = _sigClamp01((el - hitEl) / 1100);
+                /* the pyro round the tile, the fireworks over the stands */
+                while (pyroN < PYRO && el - hitEl >= pyroN * 90) { var pa = pyroN * Math.PI * 2 / PYRO; _finFireball(c.x + Math.cos(pa) * ts * 1.6, c.y + Math.sin(pa) * ts * 1.6, bz, 10, { r: 14 }); pyroN++; }
+                while (fwN < FW && el - hitEl >= 250 + fwN * 220) {
+                    var st2 = stands[fwN % NS], fx = c.x + st2.position.x + rn(-40, 40), fy = c.y + st2.position.z + rn(-40, 40), fz = bz + ts * rn(4, 6.5), hue = fwN % 2 ? PINK : CYAN;
+                    if (_canSpawn()) for (var s2 = 0; s2 < 26; s2++) { var th = rn(0, Math.PI * 2), ph = rn(-1, 1), sp2 = rn(90, 220); _spawn({ x: fx, y: fy, z: fz, mode: 'billboard', sprite: 'sparkle', ml: rn(500, 900), size0: 7, size1: 1, vx: Math.cos(th) * sp2 * Math.sqrt(1 - ph * ph), vy: Math.sin(th) * sp2 * Math.sqrt(1 - ph * ph), vz: ph * sp2, gravity: 60, opacity0: 1, opacity1: 0, tint: hue }); }
+                    fwN++;
+                }
+                /* the body up the beam, into confetti */
+                body.position.y = ts * 0.45 + hk * ts * 3.2; body.material.opacity = 1 - hk; body.material.transparent = true; body.scale.setScalar(1 - hk * 0.5);
+                if (el - lastMote > 40 && hk < 1 && _canSpawn()) { lastMote = el; for (var m3 = 0; m3 < 3; m3++) _spawn({ x: c.x + rn(-10, 10), y: c.y + rn(-10, 10), z: bz + ts * (0.4 + hk * 3), mode: 'billboard', sprite: 'sparkle', ml: rn(700, 1300), size0: 6, size1: 2, vx: rn(-70, 70), vy: rn(-70, 70), vz: rn(20, 90), gravity: 90, opacity0: 1, opacity1: 0, tint: m3 ? PINK : CYAN }); }
+                poster.material.opacity = _sigClamp01((el - hitEl - 1500) / 300) * (1 - _sigClamp01((el - hitEl - 3400) / 500)); poster.position.y = ts * 0.9 + _sigClamp01((el - hitEl - 1500) / 300) * ts * 0.5;
+                banner.material.opacity *= 1 - _sigClamp01((el - hitEl - 2200) / 800); stageGlow.material.opacity *= 1 - _sigClamp01((el - hitEl - 2200) / 800);
+            }
+        });
+    }
+    /* ═════════ END DELIVERY 18 ═════════ */
+
 
     /* ── THE FORGE'S PREVIEW (2026-09-19) — the finisher on the party
        builder's stage. The user: "I would still like to see the finishers
@@ -35015,6 +35138,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         P.at(P.hitAt, function () { P.ring(0xf4e6c0, { r1: P.ts * 2.6, ms: 620 }); P.flash('#fff4d8', 240, 0.9); P.shake('heavy'); P.grade('#ffb060', 800); });
         P.at(P.hitAt + 300, function () { P.whiteout(0xf4e6c0, 6, { ms: 900, peak: 0.65 }); });
     };
+    _FIN_STAGE.farewellTour = function (P) {
+        P.circle(0xff4fa3, 0x7fe6ff);
+        P.at(P.CHARGE - 1500, function () { var H = 1500 + P.STRIKE; _sigFarewellTour3D(P.cx, P.cy, P.tx, P.ty, { ms: P.STRIKE + 5800, standsAt: 100, lightsAt: Math.max(1200, H - 3700), songAt: Math.max(2200, H - 2700), hitAt: H }); });
+        P.at(P.hitAt, function () { P.ring(0xff9ad0, { r1: P.ts * 3.0, ms: 640 }); P.flash('#ffe6f4', 260, 0.9); P.shake('heavy'); P.grade('#ff4fa3', 800); });
+        P.at(P.hitAt + 300, function () { P.whiteout(0xffc8e6, 7, { ms: 900, peak: 0.6 }); });
+    };
     _FIN_STAGE.theRuler = function (P) {
         P.circle(0xf4ecd8, 0xffe080, { spin: false });
         P.at(P.CHARGE - 1500, function () { var H = 1500 + P.STRIKE; _sigTheRuler3D(P.cx, P.cy, P.tx, P.ty, { ms: P.STRIKE + 5400, rulerAt: 100, tapAt: 1200, riseAt: H - 800, hitAt: H }); });
@@ -35318,6 +35447,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         sigBookEm3D: _sigBookEm3D,
         sigTheBloom3D: _sigTheBloom3D,
         sigAscensionDay3D: _sigAscensionDay3D,
+        sigFarewellTour3D: _sigFarewellTour3D,
 
         getDescentTotalMs: getDescentTotalMs,
         getDescentFlyover: getDescentFlyover,

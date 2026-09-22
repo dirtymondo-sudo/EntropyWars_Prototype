@@ -101,7 +101,7 @@ const BUDGET_TARGET = 262, BUDGET_TOL = 0.05;
 const RANGE_VALUE = 8;                     // per point of job-kit basic-attack range above 1
 const PASSIVE_VALUE = {                    // live PASSIVE_DEFS ids (plan §2.3)
     flying: 10, hemophage: 6, thermalRegen: 4,
-    manAtArms: 2, unquietMind: 2, fractalMind: 2, sereneMind: 2,
+    manAtArms: 2, unquietMind: 2, fractalMind: 2, sereneMind: 2, showMustGoOn: 2,   // 2026-09-22 — the popstar's silence immunity
     // CHAMP REWORK Phase 3 batch (shipped 2026-09-07)
     incorporeal: 18, lycanthropy: 0 /* priced via the night stages */, bloodcraze: 8,
     boneDeep: 6, returnOfTheDead: 10, reach: 8, dragonReach: 8, cryptid: 10,
@@ -224,6 +224,8 @@ const CONSTRAINTS = [
         r => S[r].hp < 540 && C(S[r].def) && A(S[r].mdef) && F(S[r].atk) && A(S[r].int) && B(S[r].spd)],
     ['cult leader', 'low HP (<540) · low DEF (C) · good M.DEF (A) · low ATK (C) · good M.ATK (A) · mid SPD (B) · mid AWR (B)',
         r => S[r].hp < 540 && C(S[r].def) && A(S[r].mdef) && C(S[r].atk) && A(S[r].int) && B(S[r].spd) && B(S[r].awr)],
+    ['popstar', 'low HP (<540) · low DEF (C) · good M.DEF (A) · low ATK (C) · good M.ATK (A) · good SPD (A) · mid AWR (B)',
+        r => S[r].hp < 540 && C(S[r].def) && A(S[r].mdef) && C(S[r].atk) && A(S[r].int) && A(S[r].spd) && B(S[r].awr)],
     ['nun', 'low HP (<540) · low DEF (C) · decent M.DEF (B+) · terrible ATK (F) · high M.ATK (A+) · low SPD (C)',
         r => S[r].hp < 540 && C(S[r].def) && Bp(S[r].mdef) && F(S[r].atk) && Ap(S[r].int) && C(S[r].spd)],
     ['fairy', 'low-mid HP (430–540) · good SPD (A) · low DEF (C) · good M.DEF (A) · low ATK (F) · good M.ATK (A)',

@@ -41,6 +41,7 @@ const RACE_PATH_RULES = {
   'door agent': { folder: 'Homosapien', capGender: true },   // DOOR_RACE_DESIGN (2026-09-14) — the agent sheet in 2D; the cast GLBs in 3D
   'police officer': { folder: 'Homosapien', capGender: true },   // 2026-09-21 — borrows the gunslinger sheet in 2D; his own GLBs in 3D (Races/police/)
   'cult leader': { folder: 'Homosapien', capGender: true },      // 2026-09-21 — borrows the harbinger sheet in 2D; his own GLB in 3D (Races/cultleader/)
+  'popstar':    { folder: 'Homosapien', capGender: true },        // 2026-09-22 — borrows the harbinger sheet in 2D; her own GLB in 3D (Races/popstar/)
   'wizard':     { folder: 'Homosapien', capGender: true },
   'fortune teller': { folder: 'Homosapien', capGender: true },
   'demon':      { folder: 'Demon',      capGender: true },
@@ -89,6 +90,7 @@ const RACE_SPRITE_GENDERS = {
   'police officer': 'male',   // 2026-09-21 — the regular cops are male rigs; the female is the CYBERPUNK skin (RACE_MODEL_SKINS), Cyberpunk City only
   'jellyfish': 'male',        // 2026-09-21 — the jellyfish king
   'cult leader': 'male',      // 2026-09-21
+  'popstar': 'female',        // 2026-09-22 — the headliner
   'wizard': 'both',
   'fortune teller': 'both',
   'nordic': 'both',
@@ -322,6 +324,7 @@ function getR2RaceSpriteUrl(race, gender, cls) {
     'door agent': 'agent',      // DOOR_RACE_DESIGN (2026-09-14) — the Agent job sheet
     'police officer': 'gunslinger',   // 2026-09-21 — the 2D fallback only
     'cult leader': 'harbinger',       // 2026-09-21 — the 2D fallback only
+    'popstar': 'harbinger',           // 2026-09-22 — the 2D fallback only
     'wizard': 'blackmage',
     'fortune teller': 'harbinger',
   };
@@ -1108,6 +1111,12 @@ const RACE_MODELS_3D = {
     }, { heightRatio: 1.18,      // hulking horned demon
          basicAttackKind: 'claw',   // basic attacks rake with talons (castClaw)
          lib: { castMelee: { clip: 'Sword_Heavy_Combo', lib: 1, ts: 3.5 } } }),
+    // Female (2026-09-22 batch) — "demon_female" Character_output (Races/Demon/Female/): the she-demon,
+    // library-animated, the same talons. Both genders are 3D-ready now.
+    female: _mkUAL('Demon/Female', 'demon_female', {
+      heightRatio: 1.1,
+      basicAttackKind: 'claw',
+    }),
   },
   // Half-Demon (Assassin, melee) — REMODELED 2026-07-19: the new
   // "hot_fancy_rich_girl_w" Character_output replaces the old
@@ -1442,11 +1451,75 @@ const RACE_MODELS_3D = {
       lib: { idle: { clip: 'Idle_Talking_Loop', lib: 0 } },
     }),
   },
+  // ── THE 2026-09-22 BATCH ── the user's Meshy uploads: a NEW race (the popstar) and six races that were
+  // sprite-only until today (ai · ice queen · juggernaut · symbiote · antihero · shadow entity) — each a
+  // "Running" / Character_output export wired as the base (the rig rule, MODEL_INDEX §7b). A race that gains
+  // a rig here becomes 3D-READY (isUnitUnlocked reads race3DGenders): playable on the forge wall from now on.
+  // Popstar (Harbinger, support) — the headliner; sonic buffs, the encore, the stadium show. Her 2D fallback is
+  // the harbinger sheet (RACE_PATH_RULES / _HOMOSAPIEN_RACE_JOB_MAP). Idles on the dance loop: she is never off.
+  'popstar': {
+    female: _mkUAL('popstar', 'a_blonde_popstar', {
+      model: `${_S}/Races/popstar/Meshy_AI_a_blonde_popstar_Running.glb`,
+      heightRatio: 0.96, basicAttackKind: 'magic',
+      lib: { idle: { clip: 'Dance_Loop', lib: 0, ts: 1.0 } },
+    }),
+  },
+  // AI (Gunslinger, ranged; flies — map.js SKY_RACES) — "AI_girl" Character_output (Races/ai/female/).
+  'ai': {
+    female: _mkUAL('ai/female', 'AI_girl', {
+      heightRatio: 0.95, basicAttackKind: 'ranged',
+    }),
+  },
+  // Ice Queen (caster) — "an_ice_queen" Running export (Races/icequeen/). Frost from the hand: magic basics.
+  'ice queen': {
+    female: _mkUAL('icequeen', 'an_ice_queen', {
+      model: `${_S}/Races/icequeen/Meshy_AI_an_ice_queen_Running.glb`,
+      heightRatio: 1.02, basicAttackKind: 'magic',
+    }),
+  },
+  // Juggernaut (bruiser) — "a_giant_juggernaut" Running export (Races/juggernaut/). Head and shoulders over a
+  // human; the monster sway idle like the kaiju's.
+  'juggernaut': {
+    male: _mkUAL('juggernaut', 'a_giant_juggernaut', {
+      model: `${_S}/Races/juggernaut/Meshy_AI_a_giant_juggernaut_Running.glb`,
+      heightRatio: 1.42, basicAttackKind: 'punch',
+      lib: { idle: { clip: 'Idle_10', lib: 2 } },
+    }),
+  },
+  // Symbiote (caster) — "a_female_symbiote" Running export (Races/symbiote/). The suit lashes: magic basics
+  // (battle.js BASIC_ATTACK_RACE_KINDS agrees).
+  'symbiote': {
+    female: _mkUAL('symbiote', 'a_female_symbiote', {
+      model: `${_S}/Races/symbiote/Meshy_AI_a_female_symbiote_Running.glb`,
+      heightRatio: 0.98, basicAttackKind: 'magic',
+    }),
+  },
+  // Antihero (bruiser) — "antihero" Character_output (Races/antihero/, no _biped_ in the stem: an explicit model).
+  'antihero': {
+    male: _mkUAL('antihero', 'antihero', {
+      model: `${_S}/Races/antihero/Meshy_AI_antihero_Character_output.glb`,
+      heightRatio: 1.0, basicAttackKind: 'punch',
+    }),
+  },
+  // Shadow Entity (caster; flies — SKY_RACES) — "shadow_monster" Running export (Races/shadowentity/male/).
+  'shadow entity': {
+    male: _mkUAL('shadowentity/male', 'shadow_monster', {
+      model: `${_S}/Races/shadowentity/male/Meshy_AI_shadow_monster_Running.glb`,
+      heightRatio: 1.12, basicAttackKind: 'magic',
+    }),
+  },
   // Robot (Warrior, tank) — hydraulic haymakers.
   'robot': {
     male: _mkUAL('robot/male', 'futuristic_robot_rea', {
       heightRatio: 1.05,
       basicAttackKind: 'punch',
+    }),
+    // Female (2026-09-22 batch) — "robot_female" Character_output (Races/robot/female/). The gendered
+    // idle / walk defaults (Walking_Woman) are overridden: a chassis walks like a chassis.
+    female: _mkUAL('robot/female', 'robot_female', {
+      heightRatio: 1.0,
+      basicAttackKind: 'punch',
+      lib: { idle: { clip: 'Idle_5', lib: 0 }, walk: { clip: 'Running', lib: 0 } },
     }),
   },
   // Cyborg (Raider, bruiser) — augmented strikes.
@@ -1524,6 +1597,12 @@ const RACE_MODELS_3D = {
     // underscore in …superhero__biped_… (same pattern as the psychics).
     female: _mkUAL('superhero/female', 'hot_girl_superhero_', {
       heightRatio: 0.97,
+      basicAttackKind: 'punch',
+    }),
+    // Male (2026-09-22 batch) — "a_superhero" Running export (Races/superhero/male/), the base per the rig rule.
+    male: _mkUAL('superhero/male', 'a_superhero', {
+      model: `${_S}/Races/superhero/male/Meshy_AI_a_superhero_Running.glb`,
+      heightRatio: 1.05,
       basicAttackKind: 'punch',
     }),
   },
@@ -1636,7 +1715,10 @@ const RACE_MODELS_3D = {
   // Djinn (Black Mage) — 2.3m bound elemental (data.js physique), smoke below
   // the waist: folded-arms genie idle, arcane bolts instead of sword swings.
   'djinn': {
-    male: _mkUAL('djinn/male', 'djinn_genie_realist', {
+    // REPLACED 2026-09-22 — the user's "a_djinn" Running export is the base now (the 2026-09-21 rig rule);
+    // the old djinn_genie_realist Character_output stays in the bucket unreferenced.
+    male: _mkUAL('djinn/male', 'a_djinn', {
+      model: `${_S}/Races/djinn/male/Meshy_AI_a_djinn_Running.glb`,
       heightRatio: 1.25,
       basicAttackKind: 'magic',
       lib: { idle: { clip: 'Idle_FoldArms_Loop', lib: 1 } },
@@ -1697,7 +1779,10 @@ const RACE_MODELS_3D = {
   // stature; his kit is all orders/budgets/filibusters → magic zaps for
   // basics so he never throws a fist on camera.
   'politician': {
+    // REPLACED 2026-09-22 — the user's re-export (…_biped_Animation_Running_withSkin.glb, the rigged mesh + one
+    // baked clip = the base, the 2026-09-21 rig rule); the old Character_output is retired.
     male: _mkUAL('politician', 'politician_realisti', {
+      model: `${_S}/Races/politician/Meshy_AI_politician_realisti_biped_Animation_Running_withSkin.glb`,
       heightRatio: 1.0,
       basicAttackKind: 'magic',
     }),
@@ -2596,6 +2681,7 @@ const RACE_SPRITES = {
   'police officer': `${_S}/homosapien.png`,   // 2026-09-21 — 2D borrows the human sheet (his own art is the GLB)
   'jellyfish': `${_S}/kraken.png`,            // 2026-09-21 — 2D borrows the kraken's sheet (his own art is the GLB)
   'cult leader': `${_S}/homosapien.png`,      // 2026-09-21
+  'popstar': `${_S}/homosapien.png`,          // 2026-09-22 — 2D borrows the human sheet (her own art is the GLB)
   'wizard': `${_S}/homosapien.png`,
   'fortune teller': `${_S}/homosapien.png`,
   'martian': `${_S}/martian.png`,

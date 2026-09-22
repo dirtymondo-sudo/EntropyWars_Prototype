@@ -700,7 +700,7 @@ concrete / frost textures.
 
 ## 7. Rigged models
 
-98 race rigs in sprites.js `RACE_MODELS_3D` (per race and gender; the
+110 race rigs in sprites.js `RACE_MODELS_3D` (per race and gender; the
 UAL / MAL animation libraries retarget onto every one) and 21 cast rigs
 in `DOOR_CAST_MODELS`. The HQ avatar is the Player rig or the most-played
 vessel (`hqAvatarPref`). Not catalogued per file here — the race table is
@@ -724,6 +724,32 @@ The library retargets onto it; the baked clip is ignored.
 | `cult leader` male | `cultleader/Meshy_AI_cult_leader_Running.glb` | the board; Bohemian Grove's native (forest / clandestine / gothic) |
 | cast `cult1`–`cult5` | `cultmember/Meshy_AI_cult_member_1..5_Running.glb` | THE GROVE (Room 1876's area part): three round the owl's altar on the mound, two on the stage — data.js `DOOR_CAST` |
 | `catgirl` female (REPLACED) | `catgirl/female/Meshy_AI_catgirl_Running.glb` | the board; the old `young_female_catgirl` clips are retired (they were exported from the old rig) |
+
+### 7b. THE 2026-09-22 BATCH — the popstar + eleven rigs
+
+Twelve uploads (the user's list, verbatim), wired on the 7a rule (an explicit
+`model:` for a "Running" / `_withSkin` export, the `_mkUAL` folder + prefix for
+a `_biped_Character_output`). A race that gains its first rig here is
+3D-READY from now on (`isUnitUnlocked` reads `race3DGenders`) — six races
+were sprite-only until today. `model-batch-0922.test.js` pins every path.
+
+| Race · gender | R2 path (`Assets/Sprites/Races/…`) | What changed |
+|---|---|---|
+| `popstar` female (NEW race) | `popstar/Meshy_AI_a_blonde_popstar_Running.glb` | a new Harbinger support; the 2D fallback is the harbinger sheet; idles on the library's `Dance_Loop` |
+| `djinn` male (REPLACED) | `djinn/male/Meshy_AI_a_djinn_Running.glb` | the old `djinn_genie_realist` base retired (unreferenced in the bucket) |
+| `politician` male (REPLACED) | `politician/Meshy_AI_politician_realisti_biped_Animation_Running_withSkin.glb` | the re-export IS the base (7a); the old Character_output retired |
+| `demon` female (NEW gender) | `Demon/Female/Meshy_AI_demon_female_biped_Character_output.glb` | the demon is both genders now |
+| `robot` female (NEW gender) | `robot/female/Meshy_AI_robot_female_biped_Character_output.glb` | the chassis keeps the plain idle / run (no Walking_Woman) |
+| `superhero` male (NEW gender) | `superhero/male/Meshy_AI_a_superhero_Running.glb` | |
+| `ai` female (first rig) | `ai/female/Meshy_AI_AI_girl_biped_Character_output.glb` | flies (SKY_RACES), ranged basics |
+| `ice queen` female (first rig) | `icequeen/Meshy_AI_an_ice_queen_Running.glb` | magic basics |
+| `juggernaut` male (first rig) | `juggernaut/Meshy_AI_a_giant_juggernaut_Running.glb` | heightRatio 1.42, the monster-sway idle |
+| `symbiote` female (first rig) | `symbiote/Meshy_AI_a_female_symbiote_Running.glb` | magic basics |
+| `antihero` male (first rig) | `antihero/Meshy_AI_antihero_Character_output.glb` | no `_biped_` in the stem — an explicit model |
+| `shadow entity` male (first rig) | `shadowentity/male/Meshy_AI_shadow_monster_Running.glb` | flies (SKY_RACES), magic basics |
+
+Every heightRatio / facing is a TARGET, unmeasured (RULE #1c) — the row's
+`heightRatio` (and `yawOffset` if a rig lands turned) is the one-field edit.
 
 The cult leader's capstone THE GATHERING summons a `cultist`
 (three-renderer.js `_buildSummon3D`) — a PROCEDURAL robed figure today; a

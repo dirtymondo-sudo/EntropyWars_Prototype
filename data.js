@@ -388,6 +388,7 @@ const FINISHERS = {
     'police officer': { id: 'fin_police_officer', name: 'Book \'Em', glyph: '🚔', type: 'human', sig: 'bookEm', built: true, tagline: 'YOU HAVE THE RIGHT TO REMAIN', desc: 'The cruiser pulls up with every light going. The victim is read their rights, cuffed, put in the back, and the car drives off the board with them in it. The paperwork takes a beat longer than the arrest.' },
     'jellyfish':      { id: 'fin_jellyfish', name: 'The Bloom', glyph: '🪼', type: 'anomaly', sig: 'theBloom', built: true, tagline: 'A THOUSAND OF US', desc: 'The sea comes up over the tile and the water fills with jellyfish, more and more of them, until the victim is a shape inside a glowing bloom. When the water drains there is nothing on the tile but a print.' },
     'cult leader':    { id: 'fin_cult_leader', name: 'Ascension Day', glyph: '🕯', type: 'unholy', sig: 'ascensionDay', built: true, tagline: 'THE FAMILY IS WAITING', desc: 'Candles ring the victim, the members file in with their heads bowed, the cup is passed, and when the last robe steps back the victim is gone and there is one more robe in the circle.' },
+    'popstar':        { id: 'fin_popstar', name: 'Farewell Tour', glyph: '🎤', type: 'anomaly', sig: 'farewellTour', built: true, tagline: 'ONE NIGHT ONLY', desc: 'A stadium stands up round the victim — the stands, the floodlights, a crowd of glow sticks — and the spotlight finds them. She sings one last song from her stage. The pyro goes on the final note, the fireworks over the stands, and when the lights come back up there is a SOLD OUT poster where they stood.' },
     'door agent':     { id: 'fin_door_agent', name: 'Open House', glyph: '🚪', type: 'anomaly', sig: 'openHouse', built: true, tagline: 'EVERY DOOR IS MINE', desc: 'Six doors stand up round the victim. The agent comes out of one, hits them, and is gone through another — again, and again, faster — until every door opens at once and the last one takes the victim.' },
 };
 function getFinisherDefForRace(race, types) {
@@ -2817,6 +2818,14 @@ const RACE_PROFILES = {
         faction: 'chaos',
         types: ['human', 'unholy']
     },
+    /* THE 2026-09-22 BATCH: the POPSTAR (the user's "a_blonde_popstar" rig) — human + anomaly (fame at
+       that scale is a field effect), faction SPACE (the tour goes everywhere). A Harbinger support built
+       on the crowd: sonic hits, the encore, the spotlight, the stadium show. */
+    'popstar': {
+        label: 'Popstar',
+        faction: 'space',
+        types: ['human', 'anomaly']
+    },
     'wizard': {
         label: 'Wizard',
         labelMale: 'Wizard',
@@ -3037,6 +3046,12 @@ const PASSIVE_DEFS = {
         immuneStatus: ['charm'],
         desc: 'Federation discipline — immune to Charm.',
     },
+    /* 2026-09-22 — the popstar's: the show goes on. The same immuneStatus hook the three minds ride. */
+    showMustGoOn: {
+        id: 'showMustGoOn', icon: '🎤', name: 'The Show Must Go On',
+        immuneStatus: ['silence'],
+        desc: 'Nobody cuts her mic — immune to Silence.',
+    },
     hemophage: {
         id: 'hemophage', icon: '🩸', name: 'Hemophage',
         basicAttackLifesteal: 0.25,
@@ -3171,6 +3186,7 @@ const RACE_PASSIVES = {
     'police officer': ['pointBlank'],         // 2026-09-21 — the service pistol up close
     'jellyfish':     ['thermalRegen'],        // 2026-09-21 — flying takes the other slot (SKY_RACES); a vent-warmed bell
     'cult leader':   ['unquietMind'],         // 2026-09-21 — the voices are his own
+    'popstar':       ['showMustGoOn'],        // 2026-09-22 — nobody cuts her mic
     'werewolf':      ['lycanthropy', 'bloodcraze'],
     'skeleton':      ['boneDeep'],
     'zombie':        ['returnOfTheDead'],
@@ -3224,7 +3240,7 @@ function unitPassiveBlocksStatus(unit, statusId) {
     return null;
 }
 
-const AVAILABLE_RACES = ['homosapien', 'pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'nun', 'door agent', 'police officer', 'jellyfish', 'cult leader'];
+const AVAILABLE_RACES = ['homosapien', 'pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'nun', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar'];
 
 const RACE_DEFAULT_JOBS = {
     // NOTE (2026-07-18): 'Warrior' and 'Tank' are now SEPARATE jobs (the old
@@ -3279,6 +3295,7 @@ const RACE_DEFAULT_JOBS = {
     'police officer': 'Gunslinger',   // 2026-09-21
     'jellyfish': 'Black Mage',        // 2026-09-21
     'cult leader': 'Harbinger',       // 2026-09-21
+    'popstar': 'Harbinger',           // 2026-09-22
     'wizard': 'Black Mage',
     'fortune teller': 'Harbinger',
     'zombie': 'Raider',
@@ -3388,6 +3405,7 @@ const RACE_CLASS = {
     'police officer': 'ranged',
     'jellyfish': 'caster',
     'cult leader': 'support',
+    'popstar': 'support',
     'wizard': 'caster',
     'fortune teller': 'support',
     'cyborg': 'bruiser',
@@ -3593,6 +3611,8 @@ const RACE_BASE_STATS = {
     'police officer':     { hp: 560, mp: 110, atk:  72, def:  58, mdef:  46, int:  12, awr:  72, spd:  56 },
     'jellyfish':          { hp: 470, mp: 230, atk:  18, def:  30, mdef:  72, int:  72, awr:  52, spd:  46 },
     'cult leader':        { hp: 500, mp: 220, atk:  26, def:  36, mdef:  66, int:  74, awr:  60, spd:  44 },
+    // 2026-09-22 — the popstar: a quick, glass support who hits with the PA (npm run grades — the 249–275 band).
+    'popstar':            { hp: 460, mp: 230, atk:  24, def:  30, mdef:  62, int:  74, awr:  52, spd:  62 },
     'wizard':             { hp: 415, mp: 255, atk:   8, def:  17, mdef:  98, int:  90, awr: 42, spd: 31 },
     'fortune teller':     { hp: 545, mp: 210, atk:   8, def:  25, mdef:  82, int:  90, awr: 98, spd: 33 },
     'nephilim':           { hp: 680, mp:  90, atk:  68, def:  73, mdef:  36, int:  27, awr: 28, spd: 41 },
@@ -3672,6 +3692,7 @@ const RACE_PHYSIQUE = {
     'police officer':      { h: 1.80, w: 86 },   // 2026-09-21 — the beat cop, vest on
     'jellyfish':           { h: 1.60, w: 12 },   // 2026-09-21 — a bell and a skirt of tentacles; hangs, never stands
     'cult leader':         { h: 1.76, w: 70 },   // 2026-09-21 — the robe hides the rest
+    'popstar':             { h: 1.68, w: 54 },   // 2026-09-22 — in the heels
     'wizard':              { h: 1.70, w: 68 },
     'fortune teller':      { h: 1.65, w: 60 },
     'giant':               { h: 7.50, w: 3800 },
@@ -7181,6 +7202,36 @@ const RACE_ABILITIES = {
           kind: 'summonUnit', maxActivePerCaster: 2,
           summonDef: { key: 'cultist', name: 'Cult Member', move: 3, dmg: 55, hits: 2 },
           desc: 'The candles are lit and one of the family answers. A cult member steps out of the dark onto an adjacent tile: at the end of every round it walks 3 tiles toward the nearest enemy and strikes for 55. Two hits to put it down. Two members per leader.' },
+    ],
+    /* THE 2026-09-22 BATCH — the POPSTAR (Harbinger, support; the headliner): Mic Drop → Encore! ⇄ Stage
+       Dive → Spotlight → Stadium Show★. Plain kinds only (damage / encore / tackle / debuff / aoe — every one
+       the engine already runs), the VFX family aliases in three-vfx-effects.js's 2026-09-22 block, the
+       execution FINISHERS.popstar (Farewell Tour). Sonic is her element; the anomaly type carries it. */
+    'popstar': [
+        { id: 'racePopMicDrop', spellType: 'anomaly', element: 'sonic', name: 'Mic Drop',
+          type: 'damage', cost: 20, dmg: 80, range: 2, apCost: 1,
+          kind: 'damage', damageType: 'magic',
+          statusEffects: [{ id: 'stagger', duration: 1 }],
+          desc: 'The mic hits the floor and the floor hits back. Deals WEAK magic damage to a Single Enemy within 2 tiles and Staggers them.' },
+        { id: 'racePopEncore', spellType: 'anomaly', element: 'sonic', name: 'Encore!',
+          type: 'buff', cost: 45, range: 3, apCost: 1, cooldownRounds: 2,
+          kind: 'encore',
+          desc: 'ONE MORE! A friendly unit within 3 tiles that already acted this round gets 1 bonus AP — one more action. A unit takes only one Encore a round.' },
+        { id: 'racePopStageDive', spellType: 'human', element: 'sonic', name: 'Stage Dive',
+          type: 'damage', cost: 35, dmg: 90, range: 3, apCost: 1,
+          kind: 'tackle', damageType: 'physical', chargeToTarget: true, pushDistance: 2,
+          collisionBonus: 30, collisionStatus: { id: 'stagger', duration: 1 },
+          desc: 'Off the stage and into the crowd. Charges a Single Enemy within 3 tiles and carries it up to 2 tiles along the line: LIGHT physical damage, and crashing into a wall or another unit deals 30 more and Staggers the target.' },
+        { id: 'racePopSpotlight', spellType: 'anomaly', element: 'light', name: 'Spotlight',
+          type: 'debuff', cost: 35, range: 3, apCost: 1, cooldownRounds: 2, tier: 'II',
+          kind: 'debuff',
+          statStageBoost: { def: -1, mdef: -1 },
+          desc: 'Every eye in the house on one enemy within 3 tiles. Under the lights there is nowhere to hide: lowers their DEF and M.DEF by 1 stage each.' },
+        { id: 'racePopStadiumShow', spellType: 'anomaly', element: 'sonic', name: 'Stadium Show',
+          type: 'damage', cost: 85, dmg: 130, range: 3, aoeRadius: 2, apCost: 1, tier: 'III', cooldownRounds: 4,
+          kind: 'aoe', damageType: 'magic',
+          statusEffects: [{ id: 'charm', duration: 1 }],
+          desc: 'The pyro goes, the crowd goes. MEDIUM magic damage to every enemy in a 5×5 within 3 tiles, and every one of them is Charmed for a round — they are fans now. Once every 4 rounds.' },
     ],
     /* DOOR_RACE_DESIGN.md §4 rev 3 (2026-09-20): the DOOR AGENT — THE GUN,
        NOT THE DOORS. The user dropped the placed-door mechanic (Knock Knock,
@@ -11027,7 +11078,7 @@ const ACH_CATALOG = [
   // Champion-mastery meta (§4.1): a champ is Mastered at kills ≥ ACH_MASTERY.kills
   // + wins ≥ ACH_MASTERY.wins + deathless ≥ ACH_MASTERY.deathless. This line
   // counts mastered champs (evaluated at match commit, stored high-water).
-  { id: 'champsMastered',  metric: 'champsMastered',  cat: 'modes',       icon: '👑', name: 'Heat Death',        desc: 'Fully master champions (100 kills · 100 wins · 10 deathless each)', tiers: [1, 5, 10, 25, 50, 102], hw: true },   // top tier = the roster size (102 since the police officer / jellyfish / cult leader, 2026-09-21)
+  { id: 'champsMastered',  metric: 'champsMastered',  cat: 'modes',       icon: '👑', name: 'Heat Death',        desc: 'Fully master champions (100 kills · 100 wins · 10 deathless each)', tiers: [1, 5, 10, 25, 50, 103], hw: true },   // top tier = the roster size (103 since the popstar, 2026-09-22)
 ];
 
 // What a champ must reach on each mastery ladder to count as Mastered
@@ -16719,6 +16770,7 @@ const EW_RACE_BIOMES = {
     'marksman': ['clandestine', 'urban'], 'priest': ['holy_city'], 'wizard': ['arthurian', 'gothic'],
     'gangster': ['urban', 'neon_city'], 'nun': ['holy_city'], 'door agent': ['clandestine', 'underground_base'],
     'police officer': ['urban', 'stadium'], 'jellyfish': ['deep_sea', 'tropical'], 'cult leader': ['forest', 'clandestine', 'gothic'],   // 2026-09-21
+    'popstar': ['stadium', 'urban', 'neon_city'],   // 2026-09-22 — the tour: the Bowl, Downtown, the Strip, the Grid
     'fortune teller': ['desert', 'astral'], 'barbarella': ['space'],
     'black goo': ['space', 'underground_base'], 'golem': ['ancient'],
     'honda civic': ['urban', 'neon_city'], 'ice queen': ['polar'], 'juggernaut': ['underground_base'],
@@ -17201,6 +17253,7 @@ const RACE_TREE = {
     'police officer': ['racePoliceNightstick', ['racePoliceTaser', 'racePoliceSpray'], 'racePoliceCuffs', 'racePoliceLockdown'],   // 2026-09-21
     'jellyfish':     ['raceJellySting', ['raceJellyBloom', 'raceJellyDrift'], 'raceJellyNet', 'raceJellyRebirth'],                // 2026-09-21
     'cult leader':   ['raceCultSermon', ['raceCultKoolAid', 'raceCultTithe'], 'raceCultIndoctrinate', 'raceCultGathering'],       // 2026-09-21
+    'popstar':       ['racePopMicDrop', ['racePopEncore', 'racePopStageDive'], 'racePopSpotlight', 'racePopStadiumShow'],         // 2026-09-22
     'fortune teller': ['raceTarotDraw', 'raceSpiritChannel', 'raceCurseOfMisfortune', 'raceCrystalBall'],
     'martian':       ['raceHeatRay', 'sharedLowGravity', 'sharedShrinkRay', 'raceWarOfTheWorlds'],
     'nordic':        ['raceAuroraRay', 'racePleiadianShield', 'raceStasisBeam', 'raceNordicAccord'],
@@ -18093,6 +18146,8 @@ const CAMPAIGN_RACE_PRICES = {
   'police officer': 250,
   'jellyfish': 350,
   'cult leader': 400,
+  // 2026-09-22
+  'popstar': 350,
 };
 
 const CAMPAIGN_REGION_THEMES = {
@@ -19022,6 +19077,7 @@ const DOOR_TEXT = {
         'police officer':       { status: 'DOMESTIC',          note: 'has a form of his own; ours is filed under it' },
         'jellyfish':            { status: 'UNDER OBSERVATION', note: 'no brain, no heart, no blood; the interview went well' },
         'cult leader':          { status: 'DENIED',            note: 'the members filed on his behalf; all forty-one forms in the same hand' },
+        'popstar':              { status: 'DIPLOMATIC',        note: 'the form was signed; the signature is worth more than the desk' },
         'quarterback':          { status: 'DOMESTIC',          note: 'went back to the huddle' },
         'general':              { status: 'DOMESTIC',          note: 'asked to see the org chart' },
         'antihero':             { status: 'DOMESTIC',          note: 'declined to align with any desk' },
@@ -19038,6 +19094,7 @@ const DOOR_TEXT = {
         'telepath': 'D.U.M.B.', 'marksman': 'The Lodge', 'priest': 'Vatican City', 'wizard': 'Stonehenge',
         'gangster': 'Cyberpunk City', 'nun': 'Vatican City', 'door agent': 'D.U.M.B.',
         'police officer': 'Downtown', 'jellyfish': 'The Bermuda Triangle', 'cult leader': 'Bohemian Grove',   // 2026-09-21
+        'popstar': 'Football Stadium',   // 2026-09-22 — the Bowl is the tour's first date
         'fortune teller': 'Bohemian Grove', 'giant': 'Göbekli Tepe', 'fairy': 'Fairy Forest', 'martian': 'Mars',
         'nordic': 'Antarctica', 'grey': 'Saturn', 'bigfoot': 'Mount Shasta', 'shadow entity': 'Backrooms',
         'reptilian': 'Hollow Earth', 'ai': 'Cyberpunk City', 'robot': 'Technoticlan', 'android': 'Cyberpunk City',

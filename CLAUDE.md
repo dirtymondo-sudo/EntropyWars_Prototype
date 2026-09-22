@@ -8363,3 +8363,23 @@ WHOLE round the window (delivery 2–5's rule) — the outer ground, the treelin
 the circuit build as before delivery 6. THE STRATA (`field.levels`, `hqFieldBedFor`, `_fieldStrataBuild`)
 and THE RED CI fix are untouched. SEAMLESS_FIELD_PLAN §8.3 strikes step 7; the way back, if a room ever
 needs it, is the plan's item 4 (frustum-culled chunks of the merged batches), never the moat.
+
+## THE 2026-09-22 MODEL BATCH — THE POPSTAR + eleven rigs (2026-09-22, local delivery)
+Twelve Meshy uploads wired in sprites.js `RACE_MODELS_3D` on the 2026-09-21 rig rule (MODEL_INDEX §7b has the
+table): the **POPSTAR** (a NEW race), the djinn + the politician REPLACED (the old bases retired, unreferenced in
+the bucket), the demon / robot / superhero's SECOND GENDER, and the FIRST rig of six sprite-only races (ai · ice
+queen · juggernaut · symbiote · antihero · shadow entity) — a race that gains a rig is 3D-READY (`isUnitUnlocked`
+reads `race3DGenders`), so those six are playable on the forge wall from this build. **THE POPSTAR** (data.js
+every race table ×15 — the last new-race checklist; sprites.js ×5: the harbinger sheet in 2D, `Dance_Loop` idle;
+server.js `AVAILABLE_RACES` 103 — `npm run test:parity`; battle.js `BASIC_ATTACK_RACE_KINDS` magic; ui.js /
+party-builder.js lore + trait; check-grades role row): Harbinger · support · human + anomaly · SPACE · the
+Football Stadium's native (biomes stadium / urban / neon_city); Mic Drop → Encore! ⇄ Stage Dive → Spotlight →
+Stadium Show★ (plain kinds — `damage` / `encore` (her own row on the Harbinger job spell's kind) / `tackle` /
+`debuff` with `statStageBoost { def: −1, mdef: −1 }` / `aoe` r2 + charm 1; family aliases in three-vfx-effects.js's
+2026-09-22 block); the passive **`showMustGoOn`** (a new `PASSIVE_DEFS` row on the `immuneStatus` hook — silence;
+priced 2 in check-grades); the execution **FAREWELL TOUR** (`farewellTour` / `_sigFarewellTour3D` /
+`_FIN_STAGE.farewellTour` — FINISHER_PLAN §7 delivery 18; the catalogue is 103 of 103, `sig: null` still never
+exists). Not a starter (THE ROSTER LOCK). `npm test` runs `model-batch-0922.test.js`. Ship data.js to R2 AND
+Render (server.js reads it). UNSEEN LIVE (RULE #1c): every rig's scale + facing (`heightRatio` / `yawOffset` are
+the one-field edits), the dance idle on the board, the female robot on the male loops, the finisher's stands
+against the rim.

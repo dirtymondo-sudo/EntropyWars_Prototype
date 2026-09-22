@@ -9512,6 +9512,7 @@
             'cowboy': 'ranged', 'marksman': 'ranged', 'general': 'ranged', 'men in black': 'ranged',
             'gangster': 'ranged', 'martian': 'ranged', 'mad scientist': 'ranged',
             'police officer': 'ranged', 'jellyfish': 'magic', 'cult leader': 'magic',   // 2026-09-21
+            'popstar': 'magic',   // 2026-09-22 — the PA
             'ai': 'ranged', 'android': 'ranged', 'droid': 'ranged',
             'ice queen': 'magic', 'seraphim': 'magic', 'watcher': 'magic', 'occulus': 'magic',
             'shadow entity': 'magic', 'siren': 'magic', 'chosen one': 'magic', 'symbiote': 'magic',
@@ -16702,6 +16703,61 @@
                     c.insert('ASCENDED.', 'stamp', actionMs(1000));
                     c.at(actionMs(1500), () => { c.snd('uiConfirm'); c.insert('ROBES: ONE MORE · MEMBERS: 42', 'terminal', actionMs(900)); });
                     c.at(actionMs(2200), () => { c.dsnd('stamp'); c.insert('WELCOME TO THE FAMILY', 'scripture', actionMs(700)); });
+                }
+            },
+            /* ═════════ DELIVERY 18 (2026-09-22) — THE 2026-09-22 BATCH: the popstar ═════════ */
+            /* FAREWELL TOUR (popstar): the stadium stands up round the victim, the floodlights, the crowd of glow
+               sticks, the spotlight; she sings the last song from her stage (the wave goes round); the pyro on the
+               final note is the hit — fireworks over the stands, the body into confetti — and the lights go out
+               one by one on a SOLD OUT poster. */
+            farewellTour: {
+                chargeMs: 2000, strikeMs: 5200, resolveMs: 2800,
+                castSpell: { type: 'magic', dmg: 1, name: 'Farewell Tour', kind: 'damage' },
+                siren(c) { c.snd('buff'); c.dsnd('identSting'); c.grade('hue vignette', actionMs(900)); },
+                charge(c) {
+                    const V = c.VFX, u = c.unit;
+                    if (V.sigMagicCircle3D) V.sigMagicCircle3D(u.x, u.y, { radiusPx: c.ts * 0.9, growMs: 240, holdMs: c.CHARGE_MS, fadeMs: 400, spin: true, color: 0xff4fa3, color2: 0x7fe6ff });
+                    if (V.sigLightPillar3D) V.sigLightPillar3D(u.x, u.y, { color: 0xff9ad0, ms: c.CHARGE_MS });
+                    c.snd('buff');
+                },
+                cam(c) {
+                    const u = c.unit, p = c.pos(c.target);
+                    if (typeof cineFaceCam === 'function') cineFaceCam(u, { dist: 2.2, tilt: 76, cut: true, duration: 400 }); else c.dive(u, 1.2, 300);   // the mic to the lips
+                    c.at(c.STRIKE_MS - actionMs(4800), () => { if (typeof cineGodShot === 'function') cineGodShot(p, 9, { cut: false, duration: 1100, tilt: 48 }); });   // the stands rise
+                    c.at(c.STRIKE_MS - actionMs(3600), () => { if (typeof cineWitnessCam === 'function') cineWitnessCam(c.target, { dist: 4.0, tilt: 60, duration: 900 }); });   // the spotlight finds them
+                    c.at(c.STRIKE_MS - actionMs(2600), () => { if (typeof cineSideDolly === 'function') cineSideDolly(u, p, { dist: 4.2, tilt: 64, travelMs: actionMs(1500), easing: 'linear' }); });   // the song, the wave
+                    c.at(c.STRIKE_MS - actionMs(900), () => { if (typeof cineGodShot === 'function') cineGodShot(p, 5, { cut: false, duration: 800, tilt: 72 }); });   // up over the stands for the last note
+                    c.at(c.STRIKE_MS - actionMs(200), () => { c.slow(0.35, actionMs(380)); });
+                    c.at(c.STRIKE_MS + actionMs(300), () => { c.slowClear(); if (typeof cineSkyWatch === 'function') cineSkyWatch(c.target, { span: 7, tiltUp: 112, tiltDown: 58, ms: actionMs(1300) }); });   // the fireworks
+                    c.at(c.STRIKE_MS + actionMs(1800), () => { if (typeof cineGodShot === 'function') cineGodShot(p, 6, { cut: false, duration: 900, tilt: 60 }); });   // the lights go out
+                    c.at(c.STRIKE_MS + actionMs(2500), () => { if (typeof cineEndCapReverse === 'function') cineEndCapReverse(u, c.target, {}); });
+                    return true;
+                },
+                stage(c) {
+                    const V = c.VFX, u = c.unit, p = c.pos(c.target);
+                    if (V.sigFarewellTour3D) V.sigFarewellTour3D(u.x, u.y, p.x, p.y, { ms: c.STRIKE_MS + actionMs(3600), standsAt: actionMs(100), lightsAt: c.STRIKE_MS - actionMs(3700), songAt: c.STRIKE_MS - actionMs(2700), hitAt: c.STRIKE_MS });
+                    c.at(actionMs(100), () => { c.snd('buff'); c.insert('🎤 FAREWELL TOUR', 'stamp', actionMs(800)); });
+                    for (let i = 0; i < 4; i++) c.at(actionMs(200) + actionMs(i * 260), () => { c.dsnd('slam'); });   // the stands
+                    c.at(c.STRIKE_MS - actionMs(3700), () => { c.snd('fireball'); c.insert('ONE NIGHT ONLY', 'signal', actionMs(900)); });
+                    for (let i = 0; i < 4; i++) c.at(c.STRIKE_MS - actionMs(3600) + actionMs(i * 180), () => { c.snd('uiConfirm'); });   // the floodlights
+                    c.at(c.STRIKE_MS - actionMs(2700), () => { c.snd('healRegen'); c.insert('THE LAST SONG', 'scripture', actionMs(1000)); });
+                    for (let i = 0; i < 10; i++) c.at(c.STRIKE_MS - actionMs(2600) + actionMs(i * 200), () => { c.snd('uiCursorMove'); });   // the wave goes round
+                    c.at(c.STRIKE_MS - actionMs(700), () => { c.snd('buff'); c.insert('…AND THIS ONE GOES OUT TO YOU', 'document', actionMs(700)); });
+                },
+                strike(c) {
+                    const p = c.pos(c.target);
+                    c.freeze(actionMs(180), { grade: 'whiteout' });
+                    c.ring(p.x, p.y, 0xff9ad0, { r1: c.ts * 3.0, ms: 640, torus: true });
+                    c.flash('#ffe6f4', 260, 0.9); c.kick(20, 300);
+                    c.snd('levelUp'); c.dsnd('slam');
+                },
+                resolve(c) {
+                    const V = c.VFX, p = c.pos(c.target);
+                    if (V.sigWhiteout3D) V.sigWhiteout3D(p.x, p.y, { color: 0xffc8e6, ms: 900, peak: 0.6, sizeTiles: 7, shake: false });
+                    for (let i = 0; i < 5; i++) c.at(actionMs(200) + actionMs(i * 220), () => c.snd('fireball'));   // the fireworks
+                    c.insert('ENCORE? NO.', 'stamp', actionMs(1000));
+                    c.at(actionMs(1500), () => { c.snd('uiConfirm'); c.insert('ATTENDANCE: 80,000 · SURVIVORS: 79,999', 'terminal', actionMs(900)); });
+                    c.at(actionMs(2200), () => { c.dsnd('stamp'); c.insert('SOLD OUT', 'scripture', actionMs(700)); });
                 }
             },
         };

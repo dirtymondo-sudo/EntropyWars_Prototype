@@ -139,7 +139,7 @@ const BUILT = { 'king arthur': 'worldCleave', anubis: 'weighing', 'santa clause'
     kraken: 'releaseTheKraken', 'loch ness monster': 'nessieSurfaces', yeti: 'avalanche', barbarella: 'spaceDisco', 'black goo': 'assimilated', golem: 'eruption', 'ice queen': 'flashFrozen', juggernaut: 'throughTheWall',
     'ki fighter': 'spiritBomb', 'king kong': 'topOfTheTower', minotaur: 'theLabyrinth', necromancer: 'recruited', occulus: 'sacredGeometry', quarterback: 'hailMary', robinhood: 'splitTheArrow', 'super sentai': 'megazord', symbiote: 'bonded', valkraye: 'valhalla', watcher: 'observed', gangster: 'driveBy', nun: 'theRuler',
     'door agent': 'openHouse',
-    'police officer': 'bookEm', jellyfish: 'theBloom', 'cult leader': 'ascensionDay' };
+    'police officer': 'bookEm', jellyfish: 'theBloom', 'cult leader': 'ascensionDay', popstar: 'farewellTour' };
 const SIG_FN = { worldCleave: '_sigWorldCleave3D', weighing: '_sigWeighing3D', naughtyList: '_sigNaughtyList3D', hitAndRun: '_sigHitAndRun3D', kaijuStomp: '_sigKaijuStomp3D', segfault: '_sigSegfault3D',
     haymaker: '_sigHaymaker3D', bootHill: '_sigBootHill3D', shrinkRay: '_sigShrinkRay3D',
     keelhaul: '_sigKeelhaul3D', thousandCuts: '_sigThousandCuts3D', joust: '_sigJoust3D', theTrip: '_sigTheTrip3D', neuralyzer: '_sigNeuralyzer3D', mindOverMatter: '_sigMindOverMatter3D',
@@ -156,7 +156,7 @@ const SIG_FN = { worldCleave: '_sigWorldCleave3D', weighing: '_sigWeighing3D', n
     releaseTheKraken: '_sigReleaseTheKraken3D', nessieSurfaces: '_sigNessieSurfaces3D', avalanche: '_sigAvalanche3D', spaceDisco: '_sigSpaceDisco3D', assimilated: '_sigAssimilated3D', eruption: '_sigEruption3D', flashFrozen: '_sigFlashFrozen3D', throughTheWall: '_sigThroughTheWall3D',
     spiritBomb: '_sigSpiritBomb3D', topOfTheTower: '_sigTopOfTheTower3D', theLabyrinth: '_sigTheLabyrinth3D', recruited: '_sigRecruited3D', sacredGeometry: '_sigSacredGeometry3D', hailMary: '_sigHailMary3D', splitTheArrow: '_sigSplitTheArrow3D', megazord: '_sigMegazord3D', bonded: '_sigBonded3D', valhalla: '_sigValhalla3D', observed: '_sigObserved3D', driveBy: '_sigDriveBy3D', theRuler: '_sigTheRuler3D',
     openHouse: '_sigOpenHouse3D',
-    bookEm: '_sigBookEm3D', theBloom: '_sigTheBloom3D', ascensionDay: '_sigAscensionDay3D' };
+    bookEm: '_sigBookEm3D', theBloom: '_sigTheBloom3D', ascensionDay: '_sigAscensionDay3D', farewellTour: '_sigFarewellTour3D' };
 
 test('THE CATALOGUE: every playable race has a finisher row of its own type; the six typed defaults cover the chart', () => {
     assert.ok(g.FINISHER_RULES && g.FINISHER_RULES.apCost === 1 && g.FINISHER_RULES.baseDmg > 0, 'FINISHER_RULES');
