@@ -543,6 +543,15 @@ test('the highlights conform: the drape samples the room\'s own ground at every 
     /* the drape builder reads it */
     assert.ok(TR.includes("var fieldC = (typeof _fieldGroundSampleAt === 'function') ? _fieldGroundSampleAt(hx * ts + ts / 2, hy * ts + ts / 2, hx, hy) : null;") && TR.includes("y = (fy === null || fy === undefined) ? 0 : (fy - tileTopY(hx, hy));"), '_buildDrapeGeo samples the field');
     assert.ok(TR.indexOf('if (field !== null) {') < TR.indexOf('} else if (stair) {') && TR.includes('var nat = !stair && field === null && _isNaturalRenderTile(hx, hy);'), 'the field branch leads the stair and the landform');
+    /* THE LIFT (rev 2): a field plate rides HL_FIELD_LIFT tiles over the ground at a finer grid, so the sheet never covers it */
+    assert.ok(/var HL_FIELD_LIFT = 0\.0[2-9], HL_FIELD_SEGS = [4-9];/.test(TR), 'HL_FIELD_LIFT + HL_FIELD_SEGS are declared');
+    assert.ok(TR.includes('if (field !== null) { stair = null; segs = HL_FIELD_SEGS; }'), 'a field drape takes the finer grid');
+    assert.ok(TR.includes("var fieldLift = (typeof _fieldGroundLiftPx === 'function') ? _fieldGroundLiftPx(ts, hx, hy) : 0;") && TR.includes('tileTopY(hx, hy) + yOff + roofLift + fieldLift'), '_makeHlTile lifts a field plate');
+    vm.runInContext('_fieldGroundCache.key = null; _fieldGroundSamplerCache.key = null;', ctx);
+    R.terrain = true; ctx._hqBattleRoomKey = () => 'k3';
+    vm.runInContext('this.__lift = _fieldGroundLiftPx;', ctx);
+    assert.ok(Math.abs(ctx.__lift(ts, 1, 0) - 0.04 * ts) < 1e-9, 'the lift is HL_FIELD_LIFT tiles on an IN cell');
+    assert.equal(ctx.__lift(ts, -1, 0), 0, 'no lift off the window');
 });
 
 test('THE WAY BACK: the snapshot + the eye, the arrival ease on the HQ camera, the seamless enter, the latch outlives the commit', () => {

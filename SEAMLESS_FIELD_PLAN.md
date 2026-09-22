@@ -290,6 +290,9 @@ on `level × step` heights on a tiered field before). Unseen live: the
 CDN is unreachable from the sandbox — the drape's read on a real slope,
 the ease's feel, the fade's pop, the level-up card mid-fight are the
 user's to eyeball.
+REV 2 (the same day): THE LIFT — a field plate rides `HL_FIELD_LIFT` (0.04 tile) over
+the ground (`_fieldGroundLiftPx`, added in `_makeHlTile`) at `HL_FIELD_SEGS` 6, so the
+floor sheet never covers a highlight between the field's samples.
 
 ## 8. The second plan — THE CUT (2026-09-22, planning)
 

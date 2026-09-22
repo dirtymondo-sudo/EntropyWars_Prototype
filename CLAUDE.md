@@ -8466,7 +8466,10 @@ solid) = the cell top, capped at `HL_FIELD_MAX_DY` (one tile) off it; a box room
 `_buildDrapeGeo` samples it at every vertex of the highlight grid (the field branch LEADS the stair and the landform
 branches), so every move / attack / spell / inspect wash, the hover ring and the underfoot ring lie on the slope, the
 bank, the ramp. The pick quads (`_fieldPickBuild`) stay flat at the cell top (a click on a steep cell lands a few px off
-the drawn plate). **THE LIVE LEVELS**: battle.js `grantXP` no longer holds a story unit's XP — a kill / assist / trickle
+the drawn plate). **THE LIFT (rev 2, the same day — the user: "raised slightly so they don't get covered up by the
+texture of the floor")**: a field plate rides `HL_FIELD_LIFT` (0.04 tile ≈ 7 cm) over the ground through `_fieldGroundLiftPx(ts,
+hx, hy)` (added to the mesh's y in `_makeHlTile`; rock / off-window = 0) at `HL_FIELD_SEGS` 6 (the drape's grid, so the plate
+follows the field between the 0.35–0.5 m samples) — the two constants are the edits if a plate still sinks or floats. **THE LIVE LEVELS**: battle.js `grantXP` no longer holds a story unit's XP — a kill / assist / trickle
 lands on `_xp`, the level-up card, the cue and the burst play ON THE BOARD, `_recomputeStatsForLevel` climbs the stats
 mid-fight (the unit was built at its ledger's level with its ledger's xp, so the ledger and the board agree); what the
 unit earned is tallied on it (`_xpBattle`) and earning is FIGHTING (`_encFought`) — `spendAP` marks it too. THE VICTORY

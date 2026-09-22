@@ -13476,7 +13476,7 @@ const ThreeRenderer = (function () {
            every vertex (a slope, a bank, a ramp's incline), about the cell's centre top the mesh is placed at */
         var fieldC = (typeof _fieldGroundSampleAt === 'function') ? _fieldGroundSampleAt(hx * ts + ts / 2, hy * ts + ts / 2, hx, hy) : null;
         var field = (fieldC !== null && fieldC !== undefined) ? fieldC : null;
-        if (field !== null) stair = null;
+        if (field !== null) { stair = null; segs = HL_FIELD_SEGS; }
         var nat = !stair && field === null && _isNaturalRenderTile(hx, hy);
         var elevStep = ts * ELEV_STEP_RATIO;
         var _bw = (typeof bw === 'function') ? bw() : 16;
@@ -13580,7 +13580,8 @@ const ThreeRenderer = (function () {
                 if (hoSpr && hoSpr._roofZPx > 0) roofLift = 1.5;
             }
         }
-        mesh.position.set(hx * ts + ts / 2, tileTopY(hx, hy) + yOff + roofLift, hy * ts + ts / 2);
+        var fieldLift = (typeof _fieldGroundLiftPx === 'function') ? _fieldGroundLiftPx(ts, hx, hy) : 0;   // THE LIFT: a plate over the field's own sheet
+        mesh.position.set(hx * ts + ts / 2, tileTopY(hx, hy) + yOff + roofLift + fieldLift, hy * ts + ts / 2);
         return mesh;
     }
 
@@ -53315,6 +53316,18 @@ const ThreeRenderer = (function () {
        hover ring and the underfoot ring. A sample that fails (a wall, a hazard, the solid) is the cell top; the
        drape never leaves its cell's top by more than HL_FIELD_MAX_DY tiles (a cliff foot beside a cliff face). */
     var HL_FIELD_MAX_DY = 1.0;
+    /* THE LIFT (2026-09-22, the user: "raised slightly so they don't get covered up by the texture of the floor") — a drape
+       sampled off the same field the floor mesh is drawn from lies IN its surface between the two meshes' vertices (the
+       field is sampled every 0.35–0.5 m, the drape at HL_FIELD_SEGS): the plate rides HL_FIELD_LIFT tiles above the ground
+       (≈ 7 cm at a 1.75 m tile) and every tile-highlight builder under a field adds it — never a per-site nudge. */
+    var HL_FIELD_LIFT = 0.04, HL_FIELD_SEGS = 6;
+    function _fieldGroundLiftPx(ts, hx, hy) {
+        if (!_fieldGroundArmed) return 0;
+        var G = _fieldGround(); if (!G) return 0;
+        if (hx < 0 || hy < 0 || hx >= G.N || hy >= G.N) return 0;
+        var t = G.yAt(hx, hy); if (t === null || t === undefined) return 0;
+        return HL_FIELD_LIFT * ts;
+    }
     var _fieldGroundSamplerCache = { key: null, fn: null };
     function _fieldGroundSampler() {
         var G = _fieldGround(); if (!G || !G.R || !G.R.terrain) return null;
