@@ -19832,7 +19832,7 @@ const TUTORIAL_LESSONS = [
    with the lesson named. Re-stamp = `node check-tutorial-drift.js --print`. */
 const TUTORIAL_MECHANICS = {
     turn:    { label: 'the blitz turn / rounds', lessons: ['first_steps'],
-               pins: [], watch: [{ file: 'state.js', fn: 'buildBlitzTurnOrder', hash: 'e855b64652' }, { file: 'state.js', fn: 'getNextBlitzUnit', hash: 'b68dee33a6' }] },
+               pins: [], watch: [{ file: 'state.js', fn: 'buildBlitzTurnOrder', hash: '90ada11904' }, { file: 'state.js', fn: 'getNextBlitzUnit', hash: 'b68dee33a6' }] },
     ap:      { label: 'action points', lessons: ['first_steps', 'abilities'],
                pins: [{ name: 'UNIT_MAX_AP', file: 'battle.js', value: 2 }, { name: 'AP_COST_ACTION', file: 'battle.js', value: 1 }, { name: 'UNIT_MAX_MOVES', file: 'battle.js', value: 2 }],
                watch: [{ file: 'battle.js', fn: 'getUnitMaxAP', hash: '7be409729d' }, { file: 'battle.js', fn: 'canUnitMove', hash: 'baf7b896d5' }, { file: 'battle.js', fn: 'getMoveRangeThisTurn', hash: 'f51807202c' }] },
@@ -43449,6 +43449,17 @@ const HQ_ENCOUNTER_RULES = {
     gm: 'tdm', gmCodeRed: 'arena', teamSize: 4,
     tileM: 1.75,         // metres per battle tile — the frame a room with no board (a cave, a complex part) is read in
     snapMs: 260,         // THE SLIDE: the walker + the native ease onto their cells before the cut
+    /* THE ARRIVAL (2026-09-22): the ONE camera move from the walker's eye into the fight — never the board's
+       overview. The swoop lands on a MEDIUM TWO-SHOT: the focal `lead` of the way from the officer's lead to the
+       native's lead, at `tilt` (the tactical pitch of THIS fight — the preset's C key restores the player's own),
+       at the turn framing × `zoomMult`, at the WALKER'S OWN HEADING (`hqEncounterEye(...).yaw` — the board never
+       spins). `crane` shapes three-camera.js's swoop: `bow` = the eye's lift over the straight line as a share of
+       its travel (a boom up and over, not a dolly out), `lookLead` = how far the gaze runs ahead of the body
+       (the pan lands before the dolly), `fovLate` = the share of the move after which the lens tightens from the
+       walker's to the board's. `swoopS` the move's length; `settleMs` the beat after it lands before the first
+       activation; `barsVh` the letterbox's height while it flies (0 = none). */
+    arrival: { tilt: 50, zoomMult: 1.0, lead: 0.42, swoopS: 2.1, settleMs: 260, barsVh: 7,
+               crane: { bow: 0.22, lookLead: 1.18, fovLate: 0.35 } },
     /* rev 17 (the user's correction): the strike is LEFT CLICK with the door gun HOLSTERED
        — drawn, a click places a threshold (9.5) and never attacks. No number keys. */
     trigger: 'click',
@@ -43793,6 +43804,7 @@ function hqEncounterEye(ev, seats) {
     const out = { tx, tz, up, dx, dy, dz, look: 3 };
     for (const k in out) if (!isFinite(out[k])) return null;
     if (isFinite(+e.fov) && +e.fov > 0) out.fov = +e.fov;   // THE SEAMLESS FIELD rev 3: the walker's lens, tweened to the board's with the swoop (three-camera.js seedPose)
+    out.yaw = hqEncounterYawOf(dx, dz);   // THE ARRIVAL (2026-09-22): the walker's heading as a board yaw — the fight's camera lands facing the way you walked in
     /* far outside the board (a complex part's doorway on the apron): clamp the eye to two tiles past the rim — the ground read clamps there anyway */
     out.tx = Math.max(-2, Math.min(b.N + 2, out.tx));
     out.tz = Math.max(-2, Math.min(b.N + 2, out.tz));
@@ -43980,10 +43992,46 @@ function hqEncounterEyeFromSeats(field, seats) {
     if (!(L > 1e-6)) { dx = 1; dy = -0.5; dz = 0; } else { dx /= L; dy /= L; dz /= L; }
     const out = { tx, tz, up, dx, dy, dz, look: 3 };
     for (const k in out) if (!isFinite(out[k])) return null;
+    out.yaw = hqEncounterYawOf(dx, dz);   // THE ARRIVAL: the heading in the rotated frame (the native stands east — the yaw looks east)
     const W = (seats.W > 0) ? seats.W : 8, Hh = (seats.H > 0) ? seats.H : 8;
     out.tx = Math.max(-2, Math.min(W + 2, out.tx));
     out.tz = Math.max(-2, Math.min(Hh + 2, out.tz));
     return out;
+}
+/* ══ THE ARRIVAL (2026-09-22) — the pure reads battle.js lands the encounter's camera with ══
+   hqEncounterYawOf(dx, dz) → a gaze on the board's ground plane as the board camera's YAW in degrees (0..360):
+   the tactical rig looks along (−sin yaw, −cos yaw) in tile axes (three-camera.js sync), so yaw = atan2(−dx, −dz)
+   — the frame that looks the way the walker looked. A zero gaze → null (the caller keeps its resting yaw).
+   hqEncounterArrival(eye, lead, foe, opts) → { x, y, yaw, tilt } — THE MEDIUM TWO-SHOT the swoop lands on: the
+   focal `lead` (HQ_ENCOUNTER_RULES.arrival.lead) of the way from the officer's lead cell to the native's (the
+   officer nearer the eye, the native ahead — exactly the walk's read), the yaw the eye's (else `opts.fallbackYaw`),
+   the tilt the rules' (else `opts.tilt`). Cells are { x, y } tiles; a missing foe frames the lead alone. */
+function hqEncounterYawOf(dx, dz) {
+    dx = +dx; dz = +dz;
+    if (!isFinite(dx) || !isFinite(dz) || Math.hypot(dx, dz) < 1e-6) return null;
+    let yaw = Math.atan2(-dx, -dz) * 180 / Math.PI;
+    yaw = ((yaw % 360) + 360) % 360;
+    return Math.round(yaw * 100) / 100;
+}
+function hqEncounterArrivalRules() {
+    const A = (typeof HQ_ENCOUNTER_RULES !== 'undefined' && HQ_ENCOUNTER_RULES && HQ_ENCOUNTER_RULES.arrival) || {};
+    const c = A.crane || {};
+    return { tilt: (isFinite(+A.tilt) && +A.tilt > 0) ? +A.tilt : 50, zoomMult: (isFinite(+A.zoomMult) && +A.zoomMult > 0) ? +A.zoomMult : 1,
+             lead: (isFinite(+A.lead)) ? Math.max(0, Math.min(1, +A.lead)) : 0.42, swoopS: (isFinite(+A.swoopS) && +A.swoopS > 0) ? +A.swoopS : 2.1,
+             settleMs: (isFinite(+A.settleMs) && +A.settleMs >= 0) ? +A.settleMs : 260, barsVh: (isFinite(+A.barsVh) && +A.barsVh >= 0) ? +A.barsVh : 7,
+             crane: { bow: isFinite(+c.bow) ? +c.bow : 0.22, lookLead: (isFinite(+c.lookLead) && +c.lookLead >= 1) ? +c.lookLead : 1.18, fovLate: (isFinite(+c.fovLate)) ? Math.max(0, Math.min(0.9, +c.fovLate)) : 0.35 } };
+}
+function hqEncounterArrival(eye, lead, foe, opts) {
+    if (!lead || !isFinite(+lead.x) || !isFinite(+lead.y)) return null;
+    const R = hqEncounterArrivalRules(), o = opts || {};
+    const share = isFinite(+o.lead) ? Math.max(0, Math.min(1, +o.lead)) : R.lead;
+    const fx = (foe && isFinite(+foe.x)) ? +foe.x : +lead.x, fy = (foe && isFinite(+foe.y)) ? +foe.y : +lead.y;
+    const x = +lead.x + (fx - +lead.x) * share, y = +lead.y + (fy - +lead.y) * share;
+    let yaw = (eye && isFinite(+eye.yaw)) ? +eye.yaw : null;
+    if (yaw === null && eye && isFinite(+eye.dx) && isFinite(+eye.dz)) yaw = hqEncounterYawOf(eye.dx, eye.dz);
+    if (yaw === null) yaw = isFinite(+o.fallbackYaw) ? +o.fallbackYaw : 45;
+    const tilt = isFinite(+o.tilt) && +o.tilt > 0 ? +o.tilt : R.tilt;
+    return { x: Math.round(x * 1000) / 1000, y: Math.round(y * 1000) / 1000, yaw: yaw, tilt: tilt };
 }
 function hqEncounterWakeRoom(profile) {
     const rooms = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.rooms) || {};
@@ -47994,7 +48042,7 @@ if (typeof window !== 'undefined') {
     window.hqEncounterCleared = hqEncounterCleared; window.hqRoomGuarded = hqRoomGuarded; window.hqEncounterEye = hqEncounterEye;
     window.hqEncounterLead = hqEncounterLead; window.hqEncounterReturnSpot = hqEncounterReturnSpot;
     window.hqFieldTransform = hqFieldTransform; window.hqEncounterZones = hqEncounterZones;
-    window.hqEncounterField = hqEncounterField; window.hqEncounterSeats = hqEncounterSeats; window.hqEncounterEyeFromSeats = hqEncounterEyeFromSeats; window.hqEncounterWakeRoom = hqEncounterWakeRoom;
+    window.hqEncounterField = hqEncounterField; window.hqEncounterSeats = hqEncounterSeats; window.hqEncounterEyeFromSeats = hqEncounterEyeFromSeats; window.hqEncounterWakeRoom = hqEncounterWakeRoom; window.hqEncounterYawOf = hqEncounterYawOf; window.hqEncounterArrival = hqEncounterArrival; window.hqEncounterArrivalRules = hqEncounterArrivalRules;
     /* THE PARTY (2026-09-19): two shifts, the health that carries, field medicine */
     window.HQ_OFFICER_RULES = HQ_OFFICER_RULES; window.hqOfficerRecord = hqOfficerRecord; window.hqOfficerOnFile = hqOfficerOnFile; window.hqOfficerEnlist = hqOfficerEnlist;   // THE INTAKE (2026-09-21)
     window.HQ_PARTY_RULES = HQ_PARTY_RULES; window.hqPartyRecord = hqPartyRecord; window.hqPartyEnsure = hqPartyEnsure; window.hqPartyPrune = hqPartyPrune; window.hqPartyOfficer = hqPartyOfficer; window.hqPartyUnlocked = hqPartyUnlocked; window.hqPartyMember = hqPartyMember; window.hqPartyShifts = hqPartyShifts;

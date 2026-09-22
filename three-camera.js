@@ -37,6 +37,15 @@ const ThreeCamera = (function () {
        slow, which read as a jump then a drift; a smoothstep reads as one continuous crane from the walker's eye
        up to the board's angle). After the window the ordinary damp takes over. */
     let _seedFrom = null, _seedT0 = 0, _seedEase = 0;
+    /* THE ARRIVAL (2026-09-22): THE CRANE — the swoop is a designed camera move, not a straight lerp. The GAZE runs
+       ahead of the body (`lookLead` — the pan lands before the dolly, as an operator does it), the EYE lifts over
+       the straight line by `bow` × its travel on a half-sine (a boom up and over the two figures, never a dolly
+       out), the LENS holds the walker's focal length and tightens to the board's only over the last (1 − fovLate)
+       of the move (a slow push as the boom settles), all on an ease-in-out cubic (a longer dwell at both ends
+       than the smoothstep). seedPose's third argument shapes it (data.js HQ_ENCOUNTER_RULES.arrival.crane); no
+       opts = the straight tween as before. */
+    let _seedCrane = null;
+    function _seedEaseK(u) { u = Math.max(0, Math.min(1, u)); return u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2; }
     /* THE SEAMLESS FIELD (2026-09-22): seedHold(true) parks THE SWOOP at its seed — the room's held frame still covers the
        canvas while the party's rigs land; the crane starts the frame the fade does, so the reveal never shows a camera
        already half-way up. The window is pushed forward every held frame (snapImmediate stays ignored under it). */
@@ -69,6 +78,10 @@ const ThreeCamera = (function () {
            cineSniperPov) narrows the lens by DISTANCE and needs the room;
            the view presets never ask under 28. */
         const f = Math.max(10, Math.min(90, Number(deg) || FOV));
+        /* THE ARRIVAL: while the swoop's lens tween runs, a preset's FOV becomes its DESTINATION — never a write
+           on the live lens (getCameraMode re-applies the preset every turn; it used to pop the walker's 52° to 45°
+           mid-crane) */
+        if (_seedFrom && _seedFrom.fov) { _seedFrom.fovTo = f; return; }
         if (threeCamera && Math.abs(threeCamera.fov - f) > 0.01) {
             threeCamera.fov = f;
             threeCamera.updateProjectionMatrix();
@@ -483,6 +496,12 @@ const ThreeCamera = (function () {
         if (!isFinite(targetPosX + targetPosY + targetPosZ + targetLookX + targetLookY + targetLookZ)) return;
         if (_initialized && !isFinite(_smoothPosX + _smoothPosY + _smoothPosZ + _smoothLookX + _smoothLookY + _smoothLookZ)) _initialized = false;
         const seeded = _seed ? _consumeSeed(now) : false;   // the seeded frame renders the seed itself
+        /* THE ARRIVAL: a swoop whose window elapsed between two frames LANDS here — the deferred lens written, the
+           record dropped (it used to linger, and setFOV's guard would then defer every later preset for good) */
+        if (_seedFrom && !seeded && !_seedHoldOn && now >= _seedUntil) {
+            if (_seedFrom.fov && _seedFrom.fovTo && threeCamera && Math.abs(threeCamera.fov - _seedFrom.fovTo) > 0.01) { threeCamera.fov = _seedFrom.fovTo; threeCamera.updateProjectionMatrix(); }
+            _seedFrom = null; _seedCrane = null;
+        }
 
         if (!_initialized) {
 
@@ -497,15 +516,23 @@ const ThreeCamera = (function () {
             /* THE SWOOP: the tween from the seed to the ideal (the target may still drift — the blend reads it live) */
             if (_seedHoldOn) { _seedT0 = now; _seedUntil = now + _seedEase; }   // held: the clock starts when the hold lifts
             const u = Math.max(0, Math.min(1, (now - _seedT0) / _seedEase));
-            const k = u * u * (3 - 2 * u);
+            const C = _seedCrane;
+            const k = C ? _seedEaseK(u) : u * u * (3 - 2 * u);
+            const kl = C ? _seedEaseK(u * C.lookLead) : k;   // the gaze ahead of the body
+            /* the bow: the eye's lift over the straight line — a share of its travel (read live: the target may drift) */
+            const bow = C && C.bow ? Math.sin(Math.PI * u) * C.bow * Math.hypot(targetPosX - _seedFrom.px, targetPosY - _seedFrom.py, targetPosZ - _seedFrom.pz) : 0;
             _smoothPosX  = _seedFrom.px + (targetPosX  - _seedFrom.px) * k;
-            _smoothPosY  = _seedFrom.py + (targetPosY  - _seedFrom.py) * k;
+            _smoothPosY  = _seedFrom.py + (targetPosY  - _seedFrom.py) * k + bow;
             _smoothPosZ  = _seedFrom.pz + (targetPosZ  - _seedFrom.pz) * k;
-            _smoothLookX = _seedFrom.lx + (targetLookX - _seedFrom.lx) * k;
-            _smoothLookY = _seedFrom.ly + (targetLookY - _seedFrom.ly) * k;
-            _smoothLookZ = _seedFrom.lz + (targetLookZ - _seedFrom.lz) * k;
-            if (_seedFrom.fov && threeCamera) { const f = _seedFrom.fov + (_seedFrom.fovTo - _seedFrom.fov) * k; if (Math.abs(threeCamera.fov - f) > 0.01) { threeCamera.fov = f; threeCamera.updateProjectionMatrix(); } }
-            if (u >= 1) _seedFrom = null;
+            _smoothLookX = _seedFrom.lx + (targetLookX - _seedFrom.lx) * kl;
+            _smoothLookY = _seedFrom.ly + (targetLookY - _seedFrom.ly) * kl;
+            _smoothLookZ = _seedFrom.lz + (targetLookZ - _seedFrom.lz) * kl;
+            if (_seedFrom.fov && threeCamera) {
+                const kf = C ? _seedEaseK((u - C.fovLate) / Math.max(0.05, 1 - C.fovLate)) : k;   // the lens tightens late
+                const f = _seedFrom.fov + (_seedFrom.fovTo - _seedFrom.fov) * kf;
+                if (Math.abs(threeCamera.fov - f) > 0.01) { threeCamera.fov = f; threeCamera.updateProjectionMatrix(); }
+            }
+            if (u >= 1) { _seedFrom = null; _seedCrane = null; }
         } else if (!seeded) {
             const st = (now < _seedUntil) ? _seedSt : (_smoothOverride > 0 ? SMOOTH_TIME_FAST : SMOOTH_TIME);
             if (_smoothOverride > 0) _smoothOverride--;
@@ -756,6 +783,9 @@ const ThreeCamera = (function () {
         const ease = (isFinite(easeS) && easeS > 0) ? +easeS : 1.2;
         _seedSt = ease / 3;   // a damp settles ~95 % in three time constants
         _seedEase = ease; _seedFrom = null;
+        /* THE ARRIVAL: the crane's shape rides as a third argument { bow, lookLead, fovLate } (see _seedCrane) */
+        const co = arguments[2];
+        _seedCrane = (co && typeof co === 'object') ? { bow: isFinite(+co.bow) ? Math.max(0, +co.bow) : 0, lookLead: (isFinite(+co.lookLead) && +co.lookLead >= 1) ? +co.lookLead : 1, fovLate: isFinite(+co.fovLate) ? Math.max(0, Math.min(0.9, +co.fovLate)) : 0 } : null;
         _seedUntil = performance.now() / 1000 + ease;
         return true;
     }
@@ -777,7 +807,7 @@ const ThreeCamera = (function () {
         return true;
     }
     /* the seed's state for probes: { pending, easing, until } */
-    function seedState() { const n = performance.now() / 1000; return { pending: !!_seed, easing: n < _seedUntil, until: _seedUntil }; }
+    function seedState() { const n = performance.now() / 1000; return { pending: !!_seed, easing: n < _seedUntil, until: _seedUntil, crane: !!_seedCrane }; }
 
     /* The camera's live (smoothed) look-at point in world space — what the
        player is actually focused on. ThreePost projects this to screen space

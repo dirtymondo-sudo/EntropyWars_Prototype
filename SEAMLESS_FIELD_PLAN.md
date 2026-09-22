@@ -132,6 +132,64 @@ user's: `hq.perf()` on the walk against `perf()` in the fight in Downtown / the 
 / the sewers / the cavern, and `perf().occ.tests` should read a handful per ray.
 Steps 7 (THE CUT proper: the re-cut chunk + the moat), 8, 9, 10 stay open.
 
+### 2026-09-22 — THE ARRIVAL: the seam is ONE camera move (the crane, the two-shot, no card)
+
+The user: "the seamless field plan is going well — very high frame rate even
+in the city; the transition is still a little janky and it zooms out way too
+much to an over-the-board view; fluid, stylish, cinematic, seamless, no cuts,
+no loads." Read off the code, the seam was three moves and a card:
+
+1. `showVSSplash` seeded the walker's eye, then `_afterVSSplash` ran the stock
+   `resetBoardCamera(true)` — so THE SWOOP flew from the eye to the **board's
+   overview** (getDefaultZoom ≈ 1.0 on the reset target, tilt 40, yaw 45),
+   over 1.4 s. That was the zoom-out.
+2. The ROUND 1 card played (1.85 s), then the first activation pan pulled
+   back IN to the lead at the turn framing (1.5×). Two moves, a card between.
+3. The walker's HEADING was thrown away: the reset's yaw is 45°, so the
+   board spun under the crane. And `getCameraMode()` re-applies the preset's
+   FOV every turn, which popped the walker's 52° lens to 45° mid-swoop.
+
+Now (data.js `HQ_ENCOUNTER_RULES.arrival` is THE table; battle.js the block
+after `_encRun`; three-camera.js THE CRANE):
+
+- **THE MEDIUM TWO-SHOT** — `_encArrivalFrame()` runs in `_afterVSSplash`
+  in place of the overview reset: `hqEncounterArrival(eye, lead, foe)` (pure)
+  = the focal `lead` (0.42) of the way from the officer's lead cell to the
+  native's, the WALKER'S OWN YAW (`hqEncounterYawOf(dx, dz)` — both eye reads
+  carry `yaw` now), tilt 50; `camera.snap` at `getTurnFramingZoom() ×
+  zoomMult` — and `snap()` files that tilt / yaw as the fight's RESTING
+  orientation, so the first activation is a short slide onto the acting unit
+  at the same angle. The C key's preset restores the player's own pitch.
+- **THE CRANE** — `seedPose(eye, swoopS, crane)`: an ease-in-out cubic over
+  2.1 s; the gaze runs ahead of the body (`lookLead` 1.18 — the pan lands
+  before the dolly); the eye bows over the chord by `bow` 0.22 × its travel
+  on a half-sine (a boom up and over, never a dolly out); the lens holds the
+  walker's 52° and tightens to the board's only after `fovLate` 0.35.
+  `setFOV` under the tween writes the DESTINATION, never the live lens; a
+  window that elapses between two frames lands the record (it used to
+  linger).
+- **THE BEAT** — `_encArrivalRound(cb)` replaces the ROUND 1 card: letterbox
+  bars (`barsVh` 7) ride the crane and retract 220 ms before it lands, the
+  HUD (`body.enc-arrival` → the four panels + the party dock + the nameplate
+  layer at opacity 0) fades in over the landing (`enc-arrived` carries the
+  transition), the first activation fires `settleMs` (260) after the swoop.
+  Reduced motion: no transitions.
+
+Unchanged: THE SLIDE (260 ms), the held snapshot + the 220 ms crossfade keyed
+on the first frame, the light hand-over. `npm test` runs
+`encounter-arrival.test.js` (the yaw, the two-shot, the crane in a vm — the
+bow, the lead, the deferred lens, the landing — the straight tween untouched,
+the source sites). UNSEEN LIVE (RULE #1c): the bow's height against a low
+ceiling (`crane.bow`), the two-shot's tilt against the player's preset
+(`arrival.tilt`), the bars' height on a wide screen, the HUD fade's pace.
+Next if it still reads busy: a 9 × 9 / 10 × 10 window is `HQ_FIELD_RULES.size`
+plus the seat / reach tests' pins — the frame rate now allows it.
+
+**THE FIRST STRIKE (the same day):** the probe showed the first activation going to
+the fastest unit while the arrival framed the officer ("I have to select my unit
+first"). The officer who swung opens round 1 now (`window._ewEncounterFirstId`,
+set before the order is built, consumed by `buildBlitzTurnOrder`, round 1 only).
+
 ## 8. The second plan — THE CUT (2026-09-22, planning)
 
 The user, after delivery 4: the hall is fine, a city or any big area is ~10 fps.

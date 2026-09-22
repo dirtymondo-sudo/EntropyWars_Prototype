@@ -645,6 +645,17 @@
                     if (Array.isArray(_tutIds) && _tutIds.length) { state._blitzTurnOrderIds = _tutIds; rebuildBlitzTurnOrderFromIds(); }
                 } catch (e) { console.warn('[Tutorial] turn order', e); }
             }
+            /* THE ENCOUNTER — THE FIRST STRIKE (2026-09-22): the officer who SWUNG opens round 1 (a JRPG's
+               pre-emptive strike — the user: "it makes me select my unit first before I can make an action";
+               the fastest unit, a party member or the native, used to take the first activation while the
+               arrival framed the officer). battle.js _afterVSSplash sets window._ewEncounterFirstId to the
+               walker's unit before beginBlitzRound; consumed here, round 1 only; the rest of the order is the
+               SPD order as built. Never online (an encounter is VS-CPU). */
+            if (typeof window !== 'undefined' && window._ewEncounterFirstId && state.round === 1) {
+                const _fid = window._ewEncounterFirstId; window._ewEncounterFirstId = null;
+                const _ids = state._blitzTurnOrderIds.slice(), _fi = _ids.indexOf(_fid);
+                if (_fi > 0) { _ids.splice(_fi, 1); _ids.unshift(_fid); state._blitzTurnOrderIds = _ids; rebuildBlitzTurnOrderFromIds(); }
+            }
         }
 
         function rebuildBlitzTurnOrderFromIds() {

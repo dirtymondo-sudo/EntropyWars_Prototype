@@ -8291,3 +8291,34 @@ proper (the re-cut 12 × 12 chunk + the moat), 8 THE STRATA, 9 THE SWITCH, 10 TH
 from the sandbox — the fps in Downtown / the Grid / the sewers / the cavern is the user's to read (`hq.perf()` on the walk vs `perf()`
 in the fight), a unit's shadow lagging its walk until it lands, the room's floaters standing still over the fight, the landmarks'
 scale through the matrix (HQ px × the battle's px per metre).
+
+## THE ARRIVAL — the seam from the walk into the fight is ONE camera move (2026-09-22, local delivery)
+The user: "still a little janky and it zooms out way too much to an over-the-board view; fluid, stylish, cinematic,
+seamless, no cuts, no loads." THE CAUSE (read off the code): `_afterVSSplash` ran the stock `resetBoardCamera(true)`
+after the seed, so THE SWOOP flew from the walker's eye to the BOARD'S OVERVIEW (zoom ≈ 1, tilt 40, yaw 45), the ROUND 1
+card played, then the first activation pulled back in to the lead — two moves, a card, a 45° spin (the walker's heading
+thrown away), and `getCameraMode()` re-applying the preset FOV popped the 52° lens to 45° mid-swoop. NOW: data.js
+`HQ_ENCOUNTER_RULES.arrival` is THE table (`tilt` 50 · `zoomMult` · `lead` 0.42 · `swoopS` 2.1 · `settleMs` · `barsVh`
+· `crane { bow, lookLead, fovLate }`); `hqEncounterYawOf(dx, dz)` (both eye reads carry `yaw`) and
+`hqEncounterArrival(eye, lead, foe, opts)` → THE MEDIUM TWO-SHOT (pure, on `window`). battle.js (the block after
+`_encRun`): `_encArrivalFrame()` SNAPS the 2D controller to the two-shot in place of the overview reset (the focal
+between the officer's lead and the native's, `getTurnFramingZoom() × zoomMult`, the arrival tilt, THE WALKER'S OWN
+YAW — `snap` files it as the fight's resting orientation, so the first activation is a slide, never a re-frame; C
+restores the player's preset), `_encArrivalRound(cb)` replaces the ROUND 1 card (letterbox `.enc-arrival-bars` ride
+the crane and retract before it lands; `body.enc-arrival` holds the HUD at opacity 0 and `enc-arrived` fades it in;
+cb after `settleMs`; styles-cinematic.css "THE ARRIVAL"), `showVSSplash` seeds `seedPose(eye, swoopS, crane)` and keeps
+`er.eyeSeeded`. three-camera.js THE CRANE: the swoop's third argument shapes it — an ease-in-out cubic (`_seedEaseK`),
+the gaze `lookLead` ahead of the body, the eye bowed over the chord by `bow` × its travel on a half-sine, the lens held
+at the walker's until `fovLate`; **`setFOV` under the tween writes `fovTo`, never the live lens**; a window that elapses
+between two frames lands the record (it used to linger). No opts = the straight tween as before. Nothing on `state`,
+nothing relayed (VS-CPU; RULE #2). `npm test` runs `encounter-arrival.test.js`; hq-encounter's two swoop pins moved.
+UNSEEN LIVE (RULE #1c): the bow under a low ceiling (`crane.bow`), the tilt against the preset (`arrival.tilt`), the
+bars on a wide screen, the fade's pace. A 9 × 9 / 10 × 10 window is `HQ_FIELD_RULES.size` + the reach / seat pins.
+**THE FIRST STRIKE (same day)**: the user — "it makes me select my unit first before I can make an action". Measured with a
+scratch offline probe (the field probe + a selection read): the engine DID auto-select the first active unit, but the first
+activation went to the FASTEST unit (the catgirl, SPD 70) while the arrival framed the officer. Now the officer who swung
+opens round 1 — battle.js `_afterVSSplash` sets `window._ewEncounterFirstId` to the walker's unit (`_encLeadUnit` off the
+field's seat cell) BEFORE the order is built, state.js `buildBlitzTurnOrder` consumes it after the tutorial's hook (round 1
+only, the unit to the front, the rest the SPD order), `startMatch`'s latch clears it. `buildBlitzTurnOrder` is a watched
+function (TUTORIAL_MECHANICS `turn`): `first_steps` re-read (its copy states the SPD order of a plain match, unchanged) and
+re-stamped. encounter-arrival.test.js pins it.

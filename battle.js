@@ -42126,7 +42126,11 @@
                 /* THE FIELD stage A (Delivery 6): no board under the walker (a cave, a complex part) — the eye hangs
                    on P1's lead cell from the seats the zone builder placed (data.js hqEncounterEyeFromSeats) */
                 if (!eye && _er.field && typeof hqEncounterEye === 'function') { try { eye = hqEncounterEye(_er.field, _er.field.seats || null); } catch (e) { eye = null; } }
-                if (eye && typeof ThreeCamera !== 'undefined' && ThreeCamera.seedPose) { try { ThreeCamera.seedPose(eye, 1.4); } catch (e) { console.warn('[HQ] the encounter eye did not seed', e); } }
+                /* THE ARRIVAL (2026-09-22): the swoop is THE CRANE (data.js HQ_ENCOUNTER_RULES.arrival — its length and
+                   its shape); the seeded eye is kept on the run for the arrival frame (_encArrivalFrame reads its yaw) */
+                const _ar = _encArrivalRules();
+                _er.eyeSeeded = eye || null;
+                if (eye && typeof ThreeCamera !== 'undefined' && ThreeCamera.seedPose) { try { ThreeCamera.seedPose(eye, _ar.swoopS, _ar.crane); } catch (e) { console.warn('[HQ] the encounter eye did not seed', e); } }
                 if (onDone) onDone();
                 return;
             }
@@ -42363,6 +42367,87 @@
            never on `state` (RULE #2 — an encounter is VS-CPU only). */
         let _encMatch = null;
         function _encRun() { return _encMatch || ((window._hqEncounterRun && window._hqEncounterRun.noIntro) ? window._hqEncounterRun : null); }
+        /* ══ THE ARRIVAL (2026-09-22) — the seam from the walk into the fight is ONE camera move ══
+           The user: "it is still a little janky and it zooms out way too much to an over-the-board view; fluid,
+           stylish, cinematic, seamless — no cuts, no loads." What it did: the seed swooped to the stock overview
+           reset (zoom ≈ 1, tilt 40, yaw 45 — the whole board), the ROUND 1 card played, then the first activation
+           pulled back in to the lead: two moves, a card between them, a 45° swing because the walker's heading
+           was thrown away, and a lens pop when the preset's FOV was re-applied mid-swoop. Now:
+           · _encArrivalFrame() SNAPS the 2D controller's target to THE MEDIUM TWO-SHOT before the swoop's first
+             frame lands (data.js hqEncounterArrival: the focal between the officer's lead and the native's, the
+             tactical zoom of a TURN (getTurnFramingZoom × zoomMult), the arrival tilt, the WALKER'S OWN YAW) — and
+             snap() files that tilt / yaw as the fight's resting orientation, so the first activation pan is a
+             short slide onto the acting unit at the same angle, never a re-frame;
+           · the swoop itself is THE CRANE (three-camera.js — the gaze leads, the eye bows over, the lens tightens
+             late; HQ_ENCOUNTER_RULES.arrival.crane);
+           · _encArrivalRound(cb) replaces the ROUND 1 card: letterbox bars ride the crane and retract as it lands,
+             the HUD (body.enc-arrival → the panels at opacity 0) fades in over the landing, cb (the first
+             activation) fires `settleMs` after the swoop. Both return false where they do not apply (no run, the
+             camera disabled, visuals skipped) and the stock path stands. */
+        function _encArrivalRules() {
+            if (typeof hqEncounterArrivalRules === 'function') { try { return hqEncounterArrivalRules(); } catch (e) {} }
+            return { tilt: 50, zoomMult: 1, lead: 0.42, swoopS: 2.1, settleMs: 260, barsVh: 7, crane: { bow: 0.22, lookLead: 1.18, fovLate: 0.35 } };
+        }
+        /* the unit standing on a seat cell of the field record, else the seat's first living unit */
+        function _encLeadUnit(player, seatCell) {
+            const mine = (state.units || []).filter(u => u.player === player && !u.dead);
+            if (!mine.length) return null;
+            if (seatCell && isFinite(+seatCell.x) && isFinite(+seatCell.y)) { const on = mine.find(u => u.x === +seatCell.x && u.y === +seatCell.y); if (on) return on; }
+            return mine[0];
+        }
+        function _encArrivalFrame() {
+            const er = _encRun();
+            if (!er || state.cameraDisabled || typeof camera === 'undefined' || !camera || typeof hqEncounterArrival !== 'function') return false;
+            try {
+                const A = _encArrivalRules();
+                const viewer = getViewerPlayer();
+                const seats = er.field && er.field.seats && er.field.seats.lead;
+                const lead = _encLeadUnit(viewer, seats && seats[viewer]);
+                if (!lead) return false;
+                const foeSeat = (viewer === 1) ? 2 : 1;
+                const foe = _encLeadUnit(foeSeat, seats && seats[foeSeat]) || (state.units || []).find(u => u.player !== viewer && !u.dead) || null;
+                const eye = er.eyeSeeded || er.eye || null;
+                const fr = hqEncounterArrival(eye, { x: lead.x, y: lead.y }, foe ? { x: foe.x, y: foe.y } : null, { fallbackYaw: camera._restYaw, tilt: A.tilt, lead: A.lead });
+                if (!fr) return false;
+                const zoom = Math.max(0.15, Math.min(10.0, getTurnFramingZoom() * A.zoomMult));
+                camera._tpsHold = false;
+                camera._preCineView = null; camera._cineShotId = null;
+                camera.snap({ x: fr.x, y: fr.y, zoom: zoom, tilt: fr.tilt, yaw: fr.yaw });
+                return true;
+            } catch (e) { console.warn('[HQ] the arrival frame failed — the overview stands in', e); return false; }
+        }
+        let _encArrivalTimer = null;
+        function _encArrivalRound(cb) {
+            const er = _encRun();
+            if (!er || state.cameraDisabled || _skipVisuals()) return false;
+            const A = _encArrivalRules();
+            const flyMs = Math.round(A.swoopS * 1000);
+            let bars = null;
+            try {
+                if (document && document.body) {
+                    document.body.classList.add('enc-arrival');
+                    if (A.barsVh > 0) {
+                        bars = document.createElement('div'); bars.className = 'enc-arrival-bars'; bars.style.setProperty('--enc-bars', A.barsVh + 'vh');
+                        bars.innerHTML = '<div class="enc-arrival-bar top"></div><div class="enc-arrival-bar bot"></div>';
+                        const old = document.querySelector('.enc-arrival-bars'); if (old && old.parentNode) old.parentNode.removeChild(old);
+                        document.body.appendChild(bars);
+                        void bars.offsetWidth; bars.classList.add('in');
+                    }
+                }
+            } catch (e) {}
+            const land = () => {
+                try {
+                    if (document && document.body) { document.body.classList.add('enc-arrived'); document.body.classList.remove('enc-arrival'); setTimeout(() => { try { document.body.classList.remove('enc-arrived'); } catch (e) {} }, 900); }
+                    if (bars) { bars.classList.remove('in'); bars.classList.add('out'); setTimeout(() => { try { if (bars.parentNode) bars.parentNode.removeChild(bars); } catch (e) {} }, 700); }
+                } catch (e) {}
+            };
+            if (_encArrivalTimer) { clearTimeout(_encArrivalTimer); _encArrivalTimer = null; }
+            /* the bars begin to lift a beat before the eye settles (the landing reads as one motion) */
+            setTimeout(land, Math.max(0, flyMs - 220));
+            _encArrivalTimer = setTimeout(() => { _encArrivalTimer = null; if (cb) cb(); }, flyMs + A.settleMs);
+            return true;
+        }
+        window._encArrivalRules = _encArrivalRules;
         /* THE LEVELS (2026-09-21) — THE POOL: Σ computeKillXP over the enemy bodies that fell, the killer a pseudo-unit at THE PARTY LEVEL
            (data.js hqPartyLevel), so the payout scales with the natives' levels and the gap exactly as a kill does (a boss ×1.5) */
         function _encXpPool(profile, seat) {
@@ -42395,7 +42480,7 @@
                commit; a later match that still finds it (an exit path that
                skipped finalizeMatch) drops the stale marker, so it can never
                skip that match's intro, seed a dead eye or file a result. */
-            _encMatch = null;
+            _encMatch = null; window._ewEncounterFirstId = null;   // THE FIRST STRIKE: a stale marker never reaches another match
             try {
                 const er = window._hqEncounterRun;
                 if (er) { if (er.armed) { er.armed = false; _encMatch = er; } else window._hqEncounterRun = null; }
@@ -42587,6 +42672,13 @@
                 }
             }
 
+            /* THE FIRST STRIKE (2026-09-22): in an encounter the officer's unit — the one that swung — opens round 1
+               (set BEFORE the order is built below — state.js buildBlitzTurnOrder consumes it); a plain match never carries one */
+            window._ewEncounterFirstId = null;
+            try {
+                const _erF = _encRun();
+                if (_erF && !state.devAutoSim) { const _sf = _erF.field && _erF.field.seats && _erF.field.seats.lead; const _lf = _encLeadUnit(getViewerPlayer(), _sf && _sf[getViewerPlayer()]); if (_lf) window._ewEncounterFirstId = _lf.id; }
+            } catch (e) { window._ewEncounterFirstId = null; }
             if (getActiveGameMode().blitzMode) {
                 _applyRoundStartPassives();
                 buildBlitzTurnOrder();
@@ -42627,13 +42719,18 @@
                        cut" right after FIGHT!. Skips and fallbacks never set
                        the flag and keep the hard reset. */
                     if (window._ewIntroCamLanded) window._ewIntroCamLanded = false;
-                    else resetBoardCamera(true);
+                    /* THE ARRIVAL (2026-09-22): an encounter never resets to the board's overview — the swoop's
+                       destination is THE MEDIUM TWO-SHOT (_encArrivalFrame); the stock reset stands for every other match */
+                    else if (!(_encRun() && _encArrivalFrame())) resetBoardCamera(true);
                 }
                 if (typeof _isDungeonMode === 'function' && _isDungeonMode() && state._mdPhase === 'hub') {
                     /* hub: no "ROUND 1" — free-roam takes over */
                     if (typeof showCombatBanner === 'function') showCombatBanner('🏘 GUILD HUB', 'Walk to the cave entrance to begin the dungeon', 'neutral');
                     maybeAdvanceTurn();
                     setTimeout(_mdStartFreeRoam, 450);
+                } else if (_encRun() && _encArrivalRound(() => maybeAdvanceTurn())) {
+                    /* THE ARRIVAL: no ROUND 1 card (a card is a cut) — the letterbox rides the crane and the HUD
+                       fades in as it lands; the first activation waits for the landing */
                 } else {
                     showRoundBanner(state.round, () => {
                         maybeAdvanceTurn();

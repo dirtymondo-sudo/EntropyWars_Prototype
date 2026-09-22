@@ -4535,3 +4535,28 @@ body.ewi-cinema #css2dOverlay { visibility: hidden !important; }
 .door-tape.reduced .tape-svg .draw { animation: none; stroke-dashoffset: 0; }
 .door-tape.reduced .tape-svg .fade, .door-tape.reduced .tape-svg .pop, .door-tape.reduced .tape-svg .tp-knock { animation: none; opacity: 1; transform: none; }
 .door-tape.reduced.off { animation: none; opacity: 0; transition: opacity 0.4s ease; }
+
+/* ══ THE ARRIVAL (2026-09-22) — the seam from the walk into the fight ══
+   battle.js _encArrivalRound: the HUD is held at opacity 0 under body.enc-arrival while THE CRANE flies and fades
+   in over ~0.6 s as body.enc-arrived replaces it (the transition is worn only under enc-arrived, so nothing else
+   that animates these panels' opacity inherits it); .enc-arrival-bars = the letterbox that rides the crane
+   (--enc-bars = HQ_ENCOUNTER_RULES.arrival.barsVh) and retracts as the eye lands. */
+body.enc-arrival #sidebarPanel,
+body.enc-arrival #scorePanel,
+body.enc-arrival .battle-top-scoreboard,
+body.enc-arrival .ew-party-dock,
+body.enc-arrival #css2dOverlay { opacity: 0 !important; pointer-events: none !important; }
+body.enc-arrived #sidebarPanel,
+body.enc-arrived #scorePanel,
+body.enc-arrived .battle-top-scoreboard,
+body.enc-arrived .ew-party-dock,
+body.enc-arrived #css2dOverlay { transition: opacity .62s cubic-bezier(.22, .61, .36, 1); }
+.enc-arrival-bars { position: fixed; inset: 0; z-index: 100040; pointer-events: none; --enc-bars: 7vh; }
+.enc-arrival-bar { position: absolute; left: 0; right: 0; height: 0; background: #000; transition: height .5s cubic-bezier(.22, .61, .36, 1); }
+.enc-arrival-bar.top { top: 0; }
+.enc-arrival-bar.bot { bottom: 0; }
+.enc-arrival-bars.in .enc-arrival-bar { height: var(--enc-bars); transition-duration: .32s; }
+.enc-arrival-bars.out .enc-arrival-bar { height: 0; transition-duration: .55s; }
+@media (prefers-reduced-motion: reduce) {
+  .enc-arrival-bar, body.enc-arrived #sidebarPanel, body.enc-arrived #scorePanel, body.enc-arrived .battle-top-scoreboard, body.enc-arrived .ew-party-dock, body.enc-arrived #css2dOverlay { transition: none; }
+}
