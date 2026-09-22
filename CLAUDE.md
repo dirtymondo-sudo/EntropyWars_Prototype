@@ -8245,3 +8245,19 @@ the walk's `hq.perf()` against the battle's `perf()` in the same room. OPEN (the
 (refresh on a move, not every frame), the occlusion blocker set bounded to the subject lines, SSAO at half res in a field.
 `npm test` runs seamless-field.test.js (delivery 4 ×4). Ship data.js to R2 AND Render. UNSEEN LIVE (RULE #1c): all of it —
 the CDN is unreachable from the sandbox; the numbers are the user's.
+
+## THE SEAMLESS FIELD — THE SECOND PLAN (THE CUT) — 2026-09-22, planning only
+The user: the hall is fine, a city ~10 fps; "slice a 12×12 chunk, 8×8 the map, the rest a moat / holo grid, keep the fog
+and the weenies, strata under the 8×8 per room, puzzles later — are we doubling something?" `SEAMLESS_FIELD_PLAN.md` §8
+is the answer and the order — READ IT before touching the field again. THE DOUBLING (read off the code): (1) the
+occlusion fade's raycast (`_occComputeBlockers`) runs recursively over `_facilityNearGroup`, which under the hand-over
+is the WHOLE room — a city's ~300 k-triangle terrain mesh + every merged batch, no BVH, with the board's five grid
+points as extra subjects: ~600 rays/s × 3 × 10⁵ triangles — that IS the 10 fps (the walk never raycasts geometry;
+`_hqCamBlocked` reads data); (2) the board's shadow frame draws the whole room on every dirty frame; (3) an open
+terrain room builds the SITE's far roster while the ROOM's sky + weenies (`H.sky`) are not handed over. THE ORDER:
+5 THE BLOCKER SET (merged meshes out of the raycast `groups`, the board-point subjects gone under true ground) · 6 THE
+STATIC SHADOW · 7 THE CUT (a 12 × 12 chunk RE-CUT from the same data — `_hqBuildTerrain(copy, { rect })`, the lots /
+paint / treeline filtered by rect; the moat = the world-dissolve edge into a holo grid plane, the room's fog, the room's
+sky + landmarks handed over, never the site's roster) · 8 THE STRATA (`HQ_FIELD_RULES.beds[family]`; a column drawn
+ONLY where `boardHeights` differs from the cell's filed level — Meteor / Flat Earth / Build work in a field) · 9 THE
+SWITCH (a counter that launches a pinned window — the puzzle hook) · 10 THE POST. Nothing coded, nothing measured live.
