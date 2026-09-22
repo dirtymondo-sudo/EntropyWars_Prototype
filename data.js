@@ -20678,8 +20678,8 @@ const DOOR_HQ = {
            Every `h` / `span` / `rect` / `turn` is a TARGET (the CDN is unreachable from the sandbox): a piece that lands wrong is that
            one field. A long Meshy model lies along X (the vehicle rule) — the tank wears `turn: 90`; the F22 (Assets/weapons/, the Air
            Support spell's own file) comes in nose −Z and wears `turn: 180` so its nose is the placer's +Z front. ═══ */
-        ancient_well:       { file: 'Meshy_AI_an_ancient_well_0922010024_texture.glb',            base: 'misc', h: 2.3,  foot: 0.85, block: true },                                  // EVERY WELL: the `well` way's head (_hqWayBuilders.well)
-        wooden_bucket:      { file: 'Meshy_AI_wooden_bucket_0922011434_texture.glb',              base: 'misc', h: 0.32, foot: 0.16 },                                               // the well's bucket on its rope (the way rig lowers it); kickable on a floor
+        ancient_well:       { file: 'Meshy_AI_an_ancient_well_0922010024_texture.glb',            base: 'misc', h: 1.15, foot: 0.42, block: true },   // 2026-09-22: halved (the user: the wells are too big)                                  // EVERY WELL: the `well` way's head (_hqWayBuilders.well)
+        wooden_bucket:      { file: 'Meshy_AI_wooden_bucket_0922011434_texture.glb',              base: 'misc', h: 0.16, foot: 0.08 },   // 2026-09-22: halved with the well                                               // the well's bucket on its rope (the way rig lowers it); kickable on a floor
         city_bench:         { file: 'Meshy_AI_a_city_bench_0922010124_texture.glb',                base: 'misc', span: 1.7, foot: 0.8, rect: { hw: 0.85, hd: 0.3 }, block: true, seat: 0.45, front: 'back' },   // EVERY BENCH: park_bench + locker_bench wear it; a row of its own too
         hot_dog_stand:      { file: 'Meshy_AI_a_hot_dog_stand_0922010432_texture.glb',             base: 'misc', span: 1.9, foot: 0.9, rect: { hw: 0.95, hd: 0.55 }, block: true, turn: 90 },                 // the street cities' kerbs (a scatter row, the kerb rule)
         military_tank:      { file: 'Meshy_AI_a_military_tank_0922010101_texture.glb',             base: 'misc', span: 7.0, foot: 2.4, rect: { hw: 1.8, hd: 3.5 }, block: true, turn: 90 },                   // AREA 51's pens
@@ -21448,7 +21448,7 @@ const DOOR_HQ = {
     ship: { room: 'site_prebuilt_derelict_airlock', door: 'collar', bridge: 'site_prebuilt_derelict_bridge', counter: 'nav' },
     ways: {
         wardrobe: { verb: 'CLIMB IN', sub: 'THE WARDROBE · THROUGH THE COATS', sfx: 'wayCreak', w: 1.5, h: 2.3 },
-        well:     { verb: 'CLIMB DOWN', sub: 'THE WELL · DOWN THE ROPE', sfx: 'wayWell', w: 1.4, h: 1.0 },
+        well:     { verb: 'CLIMB DOWN', sub: 'THE WELL · DOWN THE ROPE', sfx: 'wayWell', w: 0.8, h: 0.5 },   // 2026-09-22: halved (the builder's own ow / oh win; this is the fallback + the mouth)
         /* THE TRAIN (2026-09-15): a platform; the train arrives, the doors open, the next station is another map. The opening is ONE car door. */
         train:    { verb: 'BOARD', sub: 'THE TRAIN · DOORS OPEN', sfx: 'wayTrain', w: 1.4, h: 2.1 },
         /* THE SECOND BATCH (2026-09-15 rev 22): the other entryways the plan's
@@ -39540,7 +39540,7 @@ const HQ_AREA_SPECS = {
     prebuilt_lookingglass: { part: 'garden', label: 'THE GARDEN', sub: 'THE HEDGES · THE CHESSBOARD · THE TEA TABLE · THE MOON', w: 62, d: 54, night: 1, look: 'skycastle', fogD: 0.024,
         parti: 'A chessboard between hedges; the pieces are the towers, and the moon perches over the whole game with its grin on.', typology: 'grid',
         floor: 'marble_light', cliff: 'leaves_3', path: 'marble', floorColor: 0xf2eee6, cliffColor: 0x3a5a34,
-        gen: { kind: 'rooms', seed: 64, loops: 4, rMin: 5, rMax: 9, wallH: 2.2, thicket: false, corridor: [2.2, 3.0], open: [{ x: 16, z: -14.5, r: 6 }, { x: 25, z: -12, r: 5 }, { x: 9, z: 22, r: 5 }, { x: -4, z: -24, r: 4 }] }, noise: { amp: 0.04, scale: 9 },   // the open circles: the strip north of the croquet ground under the red tower's ramp, its east end, behind the south hedge, and between the bishop's landing and the moon's perch were pockets (rescue ramps)
+        gen: { kind: 'rooms', seed: 64, loops: 4, rMin: 5, rMax: 9, wallH: 2.2, thicket: false, corridor: [2.2, 3.0], open: [{ x: 16, z: -14.5, r: 6 }, { x: 25, z: -12, r: 5 }, { x: 9, z: 22, r: 5 }, { x: -4, z: -24, r: 4 }, { x: -6.8, z: -18, r: 1.5 }] }, noise: { amp: 0.04, scale: 9 },   // the open circles: the strip north of the croquet ground under the red tower's ramp, its east end, behind the south hedge, and between the bishop's landing and the moon's perch were pockets (rescue ramps)
         plaza: { x: 0, z: 8 }, plazaR: 7,
         features: [
             { k: 'path', pts: [[-7, 15], [7, 15], [7, 1], [-7, 1], [-7, 15]], w: 1.0 },                              // THE CHESSBOARD's rim
@@ -39554,7 +39554,7 @@ const HQ_AREA_SPECS = {
             { k: 'plateau', x: -19, z: -19, r: 4.2, h: 3.4, edge: 0.4 }, { k: 'ramp', x0: -19, z0: -7.9, x1: -19, z1: -15.5, w: 2.4, h0: 1.6, h1: 3.4, stairs: true },
             { k: 'climb', x: -22.9, z: -19, face: 90, look: 'rope' },
             /* THE BISHOP'S LANDING (3.4): THE HEDGE WALK from the tower (a level span, the bridge layer), a vine on its east face, the stair down its south side; the moon's perch is seen from it */
-            { k: 'plateau', x: -4, z: -17, r: 3.2, h: 3.4, edge: 0.4 }, { k: 'bridge', x0: -14.2, z0: -18, x1: -6.3, z1: -18, w: 2.2, y: 3.4 },
+            { k: 'plateau', x: -4, z: -17, r: 3.2, h: 3.4, edge: 0.4 }, { k: 'bridge', x0: -15.7, z0: -18, x1: -6.3, z1: -18, w: 2.2, y: 3.4 },   // 2026-09-22: the west end 0.8 m INSIDE the tower (r 4.2 at z −18 reaches x −14.9; at −14.2 the span hung 0.7 m off the tower over its edge blend — the floating object on the Looking Glass)
             { k: 'climb', x: -1.1, z: -17, face: 270, look: 'vine' }, { k: 'ramp', x0: -4, z0: -5, x1: -4, z1: -13.1, w: 2.4, h0: 0, h1: 3.4, stairs: true },
             /* THE RED KING'S TOWER (3.4): the ramp up from the croquet ground, a vine on its north and its east — the throne on it */
             { k: 'plateau', x: 24, z: -20, r: 4, h: 3.4, edge: 0.4 }, { k: 'ramp', x0: 19, z0: -11.4, x1: 22.5, z1: -17.2, w: 2.4, h0: 1.6, h1: 3.4 },
@@ -40479,8 +40479,9 @@ const HQ_TERRAIN_GEN = {
        is an invisible barrier. `podium: true` keeps the extruded solid for a plan whose units ARE the mass (the mall:
        `prisms: false`, the store units to wallH under their storefronts). `riseIn` is read only under a podium. */
     city:  { streetW: 8, walkW: 2.4, kerb: 0.12, lotPitch: 9.5, lotW: [6.4, 8.2], lotD: [8.5, 11.5], lotMinW: 3.2, lowP: 0.2, storeys: [1, 4], wallH: 3.2, edge: 0.3, riseIn: 0.1, jitter: 0.05, topNoise: 0.15, rim: 0.6, frontOut: 0.35,
-             podium: false, solidPad: 0.3, storeyH: 3.4, fenceH: 2.4, fenceKey: 'bricks_2', fenceMinRun: 1.2,
-             infillPitch: 7.5, infillRim: 14 },   /* THE INFILL (2026-09-21): the lattice the bare solid is packed on; a lot within infillRim of the room's edge is tall */
+             podium: false, solidPad: 0.3, storeyH: 3.4, fenceH: 2.4, fenceKey: 'bricks_2', fenceMinRun: 0.4, boundaryMinRun: 1.2,   /* 2026-09-22: a street-face run ≥ 0.4 m between two buildings wears the hoarding (1.2 left every slit under it an INVISIBLE wall; a narrower crack is not walkable); the boundary trace keeps 1.2 */
+             infillPitch: 7.5, infillRim: 14,    /* THE INFILL (2026-09-21): the lattice the bare solid is packed on; a lot within infillRim of the room's edge is tall */
+             alleyMinW: 2.0, alleyMaxW: 6.5, alleyMinD: 4.0, alleyMaxD: 30, alleyStep: 0.25, alleySlitW: 1.0 },   /* THE ALLEYS (2026-09-22): a gap between two buildings on a street face this wide is CARVED OPEN — a real alley (through the block, or a dead end at least alleyMinD deep behind a hoarding); a narrower gap is closed by widening its neighbour */
     /* THE HALLS (D.U.M.B., 2026-09-17 — EXPLORABLE_AREAS_GUIDE family C, ROOMS-AND-HALLWAYS): the rogue / Portal dungeon.
        A BSP (binary space partition) of the shell into leaves `leafMin`..`leafMax` m a side, a rectangular ROOM in each
        leaf (inset `roomInset`, never under `roomMin`), plus the AUTHORED rooms `gen.rooms` ({ x, z, w, d } — the prefab
@@ -41326,6 +41327,119 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
             info.lots.forEach(l => { const R = rectOf(l); if (!kept.some(k => overlaps(k.R, R))) kept.push({ l, R }); });
             if (kept.length !== info.lots.length) { info.lots = kept.map((k, i) => Object.assign(k.l, { i })); placed.length = 0; info.lots.forEach(l => placed.push(l)); }
         }
+        /* ── THE ALLEYS (2026-09-22 — the user: "gaps between some buildings look perfect for alleyways but there are invisible walls
+           that won't let me through; either make the gaps actual alleyways or close the gaps"): every run of a street face that no
+           lot covers is judged by its WIDTH. A gap of alleyMinW..alleyMaxW is CARVED OPEN into the block along the face's normal —
+           a straight alley the gap's own width, marched inward cell by cell until it reaches open ground (a THROUGH alley: the
+           next street, a plaza, a pocket) or is stopped by a lot / a tier / the shell; a dead end shorter than alleyMinD is not
+           an alley (the gap is closed instead), a dead end past it stands (its end wall takes THE BOUNDARY WALLS' hoarding, its
+           sides are the buildings' own walls, and THE INFILL never packs it: the alley is open ground now). A gap narrower than
+           alleyMinW is CLOSED — the lot beside it grows across it (never into another lot); what cannot be closed keeps the yard
+           wall's hoarding. The mask's signed distance is rebuilt after the carve (the walker's solid rule, the fronts, the
+           solid tops, the yard walls and the boundary walls all read it below). info.gen.alleys / info.alleys are the readout
+           (check-terrain prints `alleys n`); `gen.alleys: false` keeps the old faces. */
+        info.alleys = [];
+        if (gen.alleys !== false && faces.length) {
+            const aMinW = (gen.alleyMinW != null) ? gen.alleyMinW : K.alleyMinW, aMaxW = (gen.alleyMaxW != null) ? gen.alleyMaxW : K.alleyMaxW;
+            const aMinD = (gen.alleyMinD != null) ? gen.alleyMinD : K.alleyMinD, aMaxD = (gen.alleyMaxD != null) ? gen.alleyMaxD : K.alleyMaxD, aStep = K.alleyStep || 0.25, aSlitW = (gen.alleySlitW != null) ? gen.alleySlitW : (K.alleySlitW || 1.0);
+            const inAnyLotPad = (px, pz, pad) => placed.some((lot) => { const R = rectOf(lot), dx = px - lot.x, dz = pz - lot.z; const lx = dx * R.ax[0] + dz * R.ax[1], lz = dx * R.az[0] + dz * R.az[1]; return Math.abs(lx) <= R.hw + pad && Math.abs(lz) <= R.hd + pad; });
+            const padNearA = (px, pz, m) => (info.pads || []).some(p => p && ((p.r ? p.r - Math.hypot(px - p.x, pz - p.z) : _hqTRectIn(px, pz, p)) > -m));
+            const overlapsAny = (lot, self) => placed.some(q => q !== self && overlaps(rectOf(lot), rectOf(q)));
+            let carved = 0; const runsBy = { alleys: 0, widened: 0, closed: 0, closedFail: 0, yards: 0, shallow: 0, lone: 0 };
+            faces.forEach((F) => {
+                /* the uncovered runs along the face, read 0.8 m INSIDE the block (behind the front line + the mask's ramp), at 0.1 m */
+                const bx0 = F.x0 - F.nx * 0.8, bz0 = F.z0 - F.nz * 0.8;
+                const runs = []; let run = null;
+                for (let u = 0; u <= F.L; u += 0.1) {
+                    const px = bx0 + F.tx * u, pz = bz0 + F.tz * u;
+                    const bare = !inAnyLotPad(px, pz, 0.05) && hqTerrainMaskAt(info, px, pz) < -0.2 && inShell(px, pz, 1.2) && !padNearA(px, pz, 2.0);
+                    if (bare) { if (!run) run = { u0: u, u1: u }; else run.u1 = u; } else if (run) { runs.push(run); run = null; }
+                }
+                if (run) runs.push(run);
+                /* THE MARCH: from the mouth on the face line inward — open ground (through), a lot / a tier / the shell (blocked) */
+                const march = (mx, mz, aw) => {
+                    const startD = fOut, hRef = hqTerrainHeight(info, mx + F.nx * 0.6, mz + F.nz * 0.6);
+                    let depth = startD, through = false;
+                    while (depth < aMaxD) {
+                        const cx = mx - F.nx * depth, cz = mz - F.nz * depth;
+                        if (!inShell(cx, cz, 0.6)) break;
+                        const md = hqTerrainMaskAt(info, cx, cz);
+                        if (md >= 0 && depth > startD + 0.6) { through = true; break; }                          // open ground: a through alley
+                        if (Math.abs(info.hFn(cx, cz) - hRef) > 0.4) break;                                       // a tier / a cut: never carved into
+                        let hit = false;
+                        for (const sg of [-1, 0, 1]) { const sx = cx + F.tx * sg * aw / 2, sz = cz + F.tz * sg * aw / 2; if (inAnyLotPad(sx, sz, 0.15) || (sg !== 0 && hqTerrainMaskAt(info, sx, sz) >= 0 && depth > startD + 0.6)) { hit = true; break; } }
+                        if (hit) break;
+                        depth += aStep;
+                    }
+                    return { startD, depth, through, len: depth - startD };
+                };
+                const carve = (mx, mz, aw, M) => {
+                    const dEnd = M.through ? M.depth : M.depth - aStep, opened = [];
+                    each((k, px, pz) => {
+                        if (mask[k]) return;
+                        const dx = px - mx, dz = pz - mz, along = dx * F.tx + dz * F.tz, into = -(dx * F.nx + dz * F.nz);
+                        if (Math.abs(along) > aw / 2 - 0.05 || into < M.startD - 0.45 || into > dEnd) return;
+                        if (inAnyLotPad(px, pz, 0.12)) return;
+                        mask[k] = 1; opened.push(k);
+                    });
+                    /* THE PROOF: the solver itself walks the alley from its mouth (the sidewalk) to 1.2 m in and to its far end on the carved mask —
+                       an alley the walker's rule cannot enter (a step, a sliver the grid never lands in) is UN-CARVED and closed like a slit */
+                    D = _hqTMaskDistance(mask, nx, nz, res); info.maskD = D;
+                    const cellAt = (px, pz) => { const i = Math.max(0, Math.min(nx - 1, Math.round((px - x0) / res))), j = Math.max(0, Math.min(nz - 1, Math.round((pz - z0) / res))); return [i, j, j * nx + i]; };
+                    const m0 = cellAt(mx + F.nx * 0.6, mz + F.nz * 0.6), g1 = cellAt(mx - F.nx * (M.startD + 1.2), mz - F.nz * (M.startD + 1.2)), g2 = cellAt(mx - F.nx * Math.max(M.startD + 1.2, dEnd - 0.6), mz - F.nz * Math.max(M.startD + 1.2, dEnd - 0.6));
+                    let ok = true;
+                    try { ok = !!_hqTReachGrid(info, m0[0], m0[1], mask, new Set([g1[2]])).path && !!_hqTReachGrid(info, m0[0], m0[1], mask, new Set([g2[2]])).path; } catch (e) { ok = false; }
+                    if (!ok) { opened.forEach(k => { mask[k] = 0; }); D = _hqTMaskDistance(mask, nx, nz, res); info.maskD = D; runsBy.unwalked = (runsBy.unwalked || 0) + 1; return false; }
+                    info.alleys.push({ x: Math.round(mx * 100) / 100, z: Math.round(mz * 100) / 100, nx: Math.round(-F.nx * 1000) / 1000, nz: Math.round(-F.nz * 1000) / 1000, w: Math.round(aw * 100) / 100, len: Math.round(M.len * 100) / 100, through: M.through, face: F.si });
+                    carved++; runsBy.alleys++; return true;
+                };
+                const lotMaxW = (lot) => dget(distAt(lot.x, lot.z), 'lotW', LW0)[1];
+                const lotMinW = (lot) => dget(distAt(lot.x, lot.z), 'lotMinW', minW0);
+                /* a neighbour grows across the gap (never past its district's lotW, never into another lot) — dir = +1 the lot before the run, −1 the lot after */
+                const grow = (lot, dir, g) => { if (!lot || g <= 0) return false; const trial = Object.assign({}, lot, { w: Math.round((lot.w + g) * 100) / 100, x: Math.round((lot.x + dir * F.tx * g / 2) * 100) / 100, z: Math.round((lot.z + dir * F.tz * g / 2) * 100) / 100 }); if (trial.w > lotMaxW(lot) + 0.01 || overlapsAny(trial, lot)) return false; const R = rectOf(trial); for (const q of [[-1, -1], [1, -1], [0, -1]]) { const px = trial.x + R.ax[0] * q[0] * R.hw + R.az[0] * q[1] * R.hd, pz = trial.z + R.ax[1] * q[0] * R.hw + R.az[1] * q[1] * R.hd; if (!solidBy(px, pz, 0.3) || !inShell(px, pz, 0.6)) return false; } for (const q of [[-1, 1], [1, 1]]) { const px = trial.x + R.ax[0] * q[0] * R.hw + R.az[0] * q[1] * R.hd, pz = trial.z + R.ax[1] * q[0] * R.hw + R.az[1] * q[1] * R.hd; if (hqTerrainMaskAt(info, px, pz) >= fOut + 0.4) return false; } Object.assign(lot, { w: trial.w, x: trial.x, z: trial.z }); return true; };   // the front corners stay on the face line (never grown past the block's corner)
+                /* a neighbour SHRINKS away from the gap (never under its district's lotMinW) — the slit becomes an alley */
+                const shrink = (lot, dir, g) => { if (!lot || g <= 0 || lot.w - g < lotMinW(lot) - 0.01) return false; Object.assign(lot, { w: Math.round((lot.w - g) * 100) / 100, x: Math.round((lot.x - dir * F.tx * g / 2) * 100) / 100, z: Math.round((lot.z - dir * F.tz * g / 2) * 100) / 100 }); return true; };
+                runs.forEach((r) => {
+                    let gw = r.u1 - r.u0, u0 = r.u0, u1 = r.u1;
+                    /* the run's neighbours along the face: the lot ending at u0 / starting at u1 (a run at the face's end has one) */
+                    const before = placed.find(l => l.face === F.si && Math.abs((l.x - F.x0) * F.tx + (l.z - F.z0) * F.tz + l.w / 2 - u0) < 0.3);
+                    const after = placed.find(l => l.face === F.si && Math.abs((l.x - F.x0) * F.tx + (l.z - F.z0) * F.tz - l.w / 2 - u1) < 0.3);
+                    if (!before && !after) { runsBy.lone++; return; }   // no building on either side: not a gap between buildings
+                    if (gw > aMaxW) { runsBy.yards++; return; }         // a yard: the hoarding closes it
+                    if (gw < aMinW) {
+                        /* THE SLIT (2026-09-22): a gap ≥ alleySlitW between two buildings — the one the eye reads as an alley — is WIDENED into one
+                           by a neighbour stepping back, if the alley then goes somewhere; else it is CLOSED (a neighbour grows across it) */
+                        const need = aMinW + 0.1 - gw;
+                        let opened = null;
+                        if (gw >= aSlitW) {
+                            for (const [lot, dir] of [[before, 1], [after, -1]]) {
+                                if (!shrink(lot, dir, need)) continue;
+                                const nu0 = (lot === before) ? u0 - need : u0, nu1 = (lot === before) ? u1 : u1 + need;
+                                const um = (nu0 + nu1) / 2, aw = (nu1 - nu0) - 0.1, mx = F.x0 + F.tx * um, mz = F.z0 + F.tz * um;
+                                const M = march(mx, mz, aw);
+                                if (M.through || M.len >= aMinD) { opened = { mx, mz, aw, M }; break; }
+                                grow(lot, dir, need);   // the alley went nowhere: the lot steps forward again
+                            }
+                        }
+                        if (opened) { if (carve(opened.mx, opened.mz, opened.aw, opened.M)) { runsBy.widened++; return; } gw = opened.aw + 0.1; }   // the proof failed: the widened slit is closed below
+                        if (grow(before, 1, gw - 0.04) || grow(after, -1, gw - 0.04)) runsBy.closed++; else runsBy.closedFail++;
+                        (runsBy.widths = runsBy.widths || []).push(Math.round(gw * 10) / 10); return;
+                    }
+                    /* THE CARVE: the corridor from the mask line inward, the gap's width less a margin */
+                    const um = (u0 + u1) / 2, aw = gw - 0.1, mx = F.x0 + F.tx * um, mz = F.z0 + F.tz * um;
+                    const M = march(mx, mz, aw);
+                    if (!M.through && M.len < aMinD) { if (!grow(before, 1, gw - 0.04)) grow(after, -1, gw - 0.04); runsBy.shallow++; return; }   // too shallow for an alley: close it
+                    if (!carve(mx, mz, aw, M)) { if (!grow(before, 1, gw - 0.04)) grow(after, -1, gw - 0.04); }
+                });
+            });
+            info.gen.alleyRuns = runsBy;
+            if (carved) {
+                D = _hqTMaskDistance(mask, nx, nz, res); info.maskD = D; open = 0;
+                each((k, px, pz) => { if (mask[k]) open++; const d = D[k]; if (kerb > 0 && walkW > 0 && !forced[k] && d > 0 && d < walkW + 0.3 && info.H[k] === H0[k]) info.H[k] += kerb * _hqTSmooth((walkW + 0.3 - d) / 0.45); });   // an alley's floor takes the kerb's lift like a sidewalk (a cell the rise already lifted keeps it)
+                info.gen.open = open / (nx * nz);
+            }
+            info.gen.alleys = carved;
+        }
         /* ── THE INFILL (2026-09-21 — the user: "more buildings in general; I can see the path on the ground but nothing
            blocks me; the corners of the map don't have buildings blocking the view out"): the terrace lays lots on the
            STREET faces alone, so every other stretch of the solid — the block interiors behind the terrace, both sides of
@@ -41421,17 +41535,22 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
             const fenceH = (gen.fenceH != null) ? gen.fenceH : K.fenceH, fenceKey = gen.fenceKey || K.fenceKey, minRun = (gen.fenceMinRun != null) ? gen.fenceMinRun : K.fenceMinRun;
             const inLot = (px, pz) => info.lots.some((lot) => { const R = rectOf(lot), dx = px - lot.x, dz = pz - lot.z; const lx = dx * R.ax[0] + dz * R.ax[1], lz = dx * R.az[0] + dz * R.az[1]; return Math.abs(lx) <= R.hw + 0.1 && Math.abs(lz) <= R.hd + 0.1; });
             info.yardWalls = [];
+            /* THE ALLEYS (2026-09-22): no hoarding across or beside an alley's corridor — the face pass and the boundary trace both ask */
+            const inAlley = (px, pz, pad, body) => (info.alleys || []).some((a) => { const dx = px - a.x, dz = pz - a.z, into = dx * a.nx + dz * a.nz, side = Math.abs(dx * a.nz - dz * a.nx); return into > -0.6 && into < (body ? (a.through ? a.len + 1.5 : a.len - 0.45) : a.len + 0.6 + (a.through ? 0.9 : 0)) && side < a.w / 2 + pad; });   // `body` = the corridor short of its end (a dead end's END keeps its hoarding; a through alley's far mouth is never fenced)
             if (fenceH > 0) faces.forEach((F) => {
                 let run = null;
                 const dd = distAt(F.x0 + F.tx * F.L / 2, F.z0 + F.tz * F.L / 2), fH = dget(dd, 'fenceH', fenceH), fK = dget(dd, 'fenceKey', fenceKey);   // THE DISTRICTS (D2): the fence per district
                 const flush = () => { if (run && run.u1 - run.u0 >= minRun) { const row = { x0: Math.round((F.x0 + F.tx * run.u0) * 100) / 100, z0: Math.round((F.z0 + F.tz * run.u0) * 100) / 100, x1: Math.round((F.x0 + F.tx * run.u1) * 100) / 100, z1: Math.round((F.z0 + F.tz * run.u1) * 100) / 100, h: fH, t: 0.3, key: fK, yard: true, district: dd ? dd.id : null }; info.yardWalls.push(row); } run = null; };
-                for (let u = 0.3; u <= F.L - 0.3; u += 0.5) {
+                for (let u = 0.3; u <= F.L - 0.3; u += 0.25) {   // 2026-09-22: 0.25 m (a 1 m slit between two buildings is three samples, not one)
                     const px = F.x0 + F.tx * u, pz = F.z0 + F.tz * u;
                     /* behind the face line: solid (never a side street's mouth, never the rim past the shell) and under no lot */
                     const bx = px - F.nx * 0.9, bz = pz - F.nz * 0.9;
                     /* and no authored TIER stands behind it (a rooftop / a deck: its own cliff is the face, and the door gun's lip snap wants that cliff, not a wall in front of it) */
                     const tier = (info.hFn(bx, bz) - info.hFn(px, pz) > 0.9) || (info.hFn(px - F.nx * 2.4, pz - F.nz * 2.4) - info.hFn(px, pz) > 0.9);
-                    const want = !tier && inShell(px, pz, 1.2) && hqTerrainMaskAt(info, bx, bz) < -0.45 && hqTerrainMaskAt(info, px + F.nx * 0.5, pz + F.nz * 0.5) > 0.1 && !inLot(bx, bz) && !inLot(px, pz);
+                    /* 2026-09-22: never across a PASSAGE — a slit the mask lets the walker through into a pocket behind (open ground within 2.6 m); a
+                       hoarding on its mouth stranded whatever dropped into the pocket from a tier (the Strip's valet deck) */
+                    const passage = hqTerrainMaskAt(info, px - F.nx * 1.7, pz - F.nz * 1.7) > -0.2 || hqTerrainMaskAt(info, px - F.nx * 2.6, pz - F.nz * 2.6) > -0.2;
+                    const want = !tier && !passage && !inAlley(px, pz, 0.6) && !inAlley(bx, bz, 0.6) && inShell(px, pz, 1.2) && hqTerrainMaskAt(info, bx, bz) < -0.45 && hqTerrainMaskAt(info, px + F.nx * 0.5, pz + F.nz * 0.5) > 0.1 && !inLot(bx, bz) && !inLot(px, pz);
                     if (want) { if (!run) run = { u0: u, u1: u }; else run.u1 = u; } else flush();
                 }
                 flush();
@@ -41445,8 +41564,9 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
                 try { traced = _hqTTraceMaskWalls(info, mask, { t: 0.3, key: fenceKey, top: (info.base || 0) + fenceH, simplify: 0.6, inner: 0.25, inShell }); } catch (e) { console.warn('[terrain] the boundary walls failed', roomId, e); traced = []; }
                 const padNear = (px, pz) => (info.pads || []).some(p => p && ((p.r ? p.r - Math.hypot(px - p.x, pz - p.z) : _hqTRectIn(px, pz, p)) > -1.2));
                 let nB = 0;
+                const bMinRun = (gen.boundaryMinRun != null) ? gen.boundaryMinRun : (K.boundaryMinRun || 1.2);   // 2026-09-22: the trace keeps its own minimum — a corner sliver under 1.2 m fenced off the pocket behind it (the Strip)
                 traced.forEach((w) => {
-                    const L = Math.hypot(w.x1 - w.x0, w.z1 - w.z0); if (L < minRun) return;
+                    const L = Math.hypot(w.x1 - w.x0, w.z1 - w.z0); if (L < bMinRun) return;
                     const mx = (w.x0 + w.x1) / 2, mz = (w.z0 + w.z1) / 2, nxv = -(w.z1 - w.z0) / L, nzv = (w.x1 - w.x0) / L;
                     const sA = hqTerrainMaskAt(info, mx + nxv * 0.6, mz + nzv * 0.6), sB = hqTerrainMaskAt(info, mx - nxv * 0.6, mz - nzv * 0.6);
                     const sg = sA < sB ? 1 : -1;   // +n × sg = into the solid
@@ -41455,6 +41575,7 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
                     if (streetsNear(fx, fz, 0.9)) return;                     // a street face
                     if (inLot(bx, bz) || inLot(mx, mz)) return;                // a building's own face
                     if (padNear(fx, fz) || padNear(mx, mz)) return;            // a door's lane
+                    if (inAlley(mx, mz, 0.6, true) || inAlley(fx, fz, 0.6, true)) return;   // an alley's corridor — its sides and its mouths, never its dead end's wall (that hoarding stays)
                     /* a tier's own cliff (a rooftop, a deck, a sunk cut) is never fenced — judged at every sample along the run, and a run whose
                        ground climbs more than a metre is a tier's edge blend (a fence riding it would put a wall top the walker could stand on) */
                     let tier = false, gmin = Infinity, gmax = -Infinity;

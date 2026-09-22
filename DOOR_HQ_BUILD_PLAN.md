@@ -11399,3 +11399,24 @@ lamps; DOOR HQ, the Mall, the Spaceship; don't be afraid to make rooms bigger."
   the walk's fps with the counts showing most of the room culled, the cost is the merged batches + the shadow pass
   (steps 4–5), not the pieces. A door or a car the eye can see missing at the fog line = `keepM` / `keepFarM` are the
   edits. A handed-over room whose GLB lands late re-places itself under the holder's matrix as before.
+
+
+### 2026-09-22 — THE FLOATERS · THE HALF WELL · THE ALLEYS (local delivery)
+- THE TIER HEIGHT: three-renderer.js `_hqPlaceProps` — a terrain / cave room's floor prop with `y` ≥ 1 (or ≤ −0.5) lands
+  at max(the ground, y) (the height from the floor the specs author), a small `y` stays a lift. The sarcophagus over the
+  Temple City's priest house (6 m), the tea table over the Garden's tower, the rover bay's props over Cydonia's mesa — 344
+  props across the areas by a scratch census — stand on their tiers. THE HEDGE WALK's west end moved 1.5 m into the White
+  Queen's tower (it hung off the edge blend).
+- THE HALF WELL: the `well` way builder at WS 0.5; `ancient_well` h 1.15 / foot 0.42, `wooden_bucket` h 0.16, `ways.well`
+  w 0.8 / h 0.5.
+- THE ALLEYS: data.js `_hqTGenerate`'s city branch after THE OVERLAP SWEEP — a 2.0–6.5 m gap between two buildings on a
+  street face is carved open (through, or a dead end ≥ 4 m behind a hoarding), a 1.0–2.0 m slit is widened into one by a
+  neighbour stepping back when the alley goes somewhere, a narrower gap is closed by growing a neighbour, every carve is
+  proved by the solver from its mouth (un-carved and closed when it fails), no hoarding stands in an alley's corridor, a
+  leftover slit ≥ 0.4 m wears the hoarding (the street-face pass samples every 0.25 m), a passage mouth is never fenced,
+  the boundary trace keeps 1.2 m. Downtown 2 · the Grid 4 · the Strip 1; every city solves, nothing traps. hq-city's four
+  older reds (the print, a lot's width, the docks pad, the park) fail identically on HEAD — not this delivery's.
+- Files: data.js (R2 + Render), three-renderer.js (R2), index.html (Render, `20260922-floaters-alleys-01-cors`);
+  check-terrain.js, hq-city.test.js, hq-areas.test.js, misc-batch-0922.test.js, CLAUDE.md, this file (repo).
+- UNSEEN LIVE (RULE #1c): the props on their tiers, the well's read against the walker, the alley mouths in the prism
+  city (a dead end's hoarding, the fronts on its sides), the slits' hoardings between the prisms.

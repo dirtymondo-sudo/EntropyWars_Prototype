@@ -109,7 +109,7 @@ test('THE PLAN (`city`): the streets are the corridors (the ring road a loop, th
             assert.ok(lot.w >= minW - 0.01 && lot.w <= LW[1] + 0.01 && lot.d >= LD[0] * 0.42 - 0.01 && lot.d <= LD[1] + 0.01 && lot.top === gen.wallH && Number.isFinite(lot.rot) && Number.isFinite(lot.base) && Number.isInteger(lot.face) && /^building_[1-8]$/.test(lot.key), id + ': a lot ' + JSON.stringify(lot));
             /* STREET LEVEL: the back corners deep in the solid, the front corners no further out than the face line, the building's base on the sidewalk (never the podium) */
             for (const c of [[-1, -1], [1, -1]]) { const p = corner(lot, c[0], c[1]); assert.ok(D.hqTerrainMaskAt(info, p[0], p[1]) < -0.3, id + ': a back corner in the open'); }
-            for (const c of [[-1, 1], [1, 1]]) { const p = corner(lot, c[0], c[1]); assert.ok(D.hqTerrainMaskAt(info, p[0], p[1]) < G.city.frontOut + 0.45, id + ': a front corner past the face line'); }
+            for (const c of [[-1, 1], [1, 1]]) { const p = corner(lot, c[0], c[1]); if ((info.alleys || []).some(a => Math.hypot(a.x - p[0], a.z - p[1]) < a.w / 2 + 1.2)) continue; assert.ok(D.hqTerrainMaskAt(info, p[0], p[1]) < G.city.frontOut + 0.45, id + ': a front corner past the face line'); }   // 2026-09-22: a corner at an alley's mouth reads the alley's open ground
             if (!lot.infill) assert.ok(lot.base >= -0.14 && lot.base <= (gen.kerb || 0) + 0.12, id + ': the base is the sidewalk\'s (' + lot.base + ')');   // THE INFILL (2026-09-21): an infill lot's base is the ground under it
             for (const q of info.lots) if (q !== lot) assert.ok(!overlaps(rectOf(lot), rectOf(q)), id + ': lots overlap');
             /* STREET LEVEL rev 2 (2026-09-17): no rise — the ground inside a lot is the street's, the lot is a MASS the walker's rule refuses, the air / the boom meet its roof */
@@ -303,6 +303,29 @@ test('THE PARK RULE + THE PLATFORMING: the streets have the parking deck (a 3 m 
     assert.equal(D.DOOR_TAPES.filter(t => t.where === STREETS).length, 2, 'the streets hold their own tape and the bypassed board’s (THE AREAS, 2026-09-18)'); assert.equal(D.DOOR_TAPES.filter(t => t.where === MALL).length, 1);
     assert.equal(D.DOOR_TAPES.length, 100, 'the hundred stays a hundred');
     for (const site of ['prebuilt_stadium']) assert.ok(D.DOOR_TAPES.some(t => t.where === D.hqSiteRoomId(site) || (t.site === site && t.where === D.hqSiteRoomId(site))), site + ' keeps a tape');   // THE LEY LINES (2026-09-18): Cyberpunk's bypassed board gave BILLBOARD to the tunnels
+});
+
+test('THE ALLEYS (2026-09-22): a gap between two buildings on a street face ≥ alleyMinW is CARVED OPEN — a through alley or a dead end ≥ alleyMinD deep — and its floor is walked and reached from the doors; a narrower gap is closed by widening a neighbour or wears a hoarding (fenceMinRun 0.4, sampled at 0.25 m); the readout names every run', heavy, () => {
+    const G = D.HQ_TERRAIN_GEN.city;
+    assert.ok(G.alleyMinW >= 1.3 && G.alleyMinW <= 2.2 && G.alleyMaxW > G.alleyMinW && G.alleyMinD >= 3 && G.fenceMinRun <= 0.5, 'the table');
+    assert.match(data, /for \(let u = 0\.3; u <= F\.L - 0\.3; u \+= 0\.25\)/, 'the yard walls sample every 0.25 m');
+    for (const id of [STREETS, 'site_prebuilt_cyberpunk_streets']) {
+        const info = D.hqTerrainInfo(id), room = HQ.rooms[id];
+        assert.ok(info.gen.alleys >= 1 && info.alleys.length === info.gen.alleys, id + ': alleys carved (' + info.gen.alleys + ')');   // the honest count: Downtown 2, the Grid 4 (most gaps are slits, closed or hoarded)
+        const R = info.gen.alleyRuns; assert.ok(R && R.alleys === info.gen.alleys && typeof R.closed === 'number' && typeof R.yards === 'number', id + ': the run readout');
+        const L = D.hqTerrainDoorLanding(room, room.doors[0]), reach = D.hqTerrainReach(info, L.x, L.z);
+        for (const a of info.alleys) {
+            assert.ok(a.w >= G.alleyMinW - 0.25 && a.w <= G.alleyMaxW, id + ': an alley ' + a.w + ' m wide');
+            assert.ok(a.through || a.len >= G.alleyMinD - 0.01, id + ': a dead end ' + a.len + ' m deep');
+            for (const t of [0.5, Math.min(a.len - 0.3, 2.0), Math.max(0.5, a.len - 0.6)]) {
+                const px = a.x + a.nx * t, pz = a.z + a.nz * t;
+                assert.ok(D.hqTerrainMaskAt(info, px, pz) > 0 && D.hqTerrainFeet(info, px, pz, null) != null, id + ': the alley at ' + a.x + ',' + a.z + ' is solid ' + t + ' m in');
+                assert.ok(reach.has(D.hqTerrainNodeKey(info, px, pz)), id + ': the alley at ' + a.x + ',' + a.z + ' is not reached ' + t + ' m in');
+            }
+            assert.ok(!info.lots.some(l => Math.hypot(l.x - (a.x + a.nx * a.len / 2), l.z - (a.z + a.nz * a.len / 2)) < 0.6), id + ': no lot stands in the alley');
+        }
+        assert.equal(D.hqTerrainTraps(info).length, 0, id + ': an alley traps');
+    }
 });
 
 test('THE TRAFFIC + THE CIRCUIT (data): the streets carry routes — the ring road both ways on the right, the avenues either side of the plaza — every kind a vehicle of _VEHICLE_KIT, every route on the open plan; the race is the ring road with 8 gates and a label; the mall carries none; the compiler passes them through with defaults', () => {

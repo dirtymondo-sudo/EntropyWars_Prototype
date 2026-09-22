@@ -45359,44 +45359,47 @@ const ThreeRenderer = (function () {
            (the cellar) centres the ring on its own spot; a wall end (Hollow
            Earth's cave wall) stands it just off the wall. */
         well: function (U, ctx) {
+            /* THE WELL AT HALF SIZE (2026-09-22 — the user: "the wells are too big, half the current size"): every metre below
+               is the old builder's × WS; the user's ancient well lands at the catalogue's halved h (1.15) over the stand-in */
             var g = new THREE.Group();
-            var R = 0.72, RI = 0.56, HH = 0.85, zc = ctx.free ? 0 : 0.85;
+            var WS = 0.5, R = 0.72 * WS, RI = 0.56 * WS, HH = 0.85 * WS, zc = ctx.free ? 0 : 0.85 * WS;
+            var m = function (v) { return v * WS; };
             var stone = _hqMat('stone', 2, 1, { color: 0x8c877c, shininess: 4 });
             var stoneIn = _hqMat('stone', 2, 1, { color: 0x3a3634, shininess: 2 });
             var wood = _hqMat('dark_woods', 1, 2, { color: 0x6a4a34, shininess: 12 });
             var stand = new THREE.Group(); g.add(stand);   // THE 2026-09-22 BATCH: the stone head + the frame are the STAND-IN; the user's ancient well lands over them (the shaft, its light and the glow stay)
-            var ring = new THREE.Mesh(new THREE.CylinderGeometry(R * U, (R + 0.04) * U, HH * U, 28, 1, true), stone); ring.position.set(0, (HH / 2) * U, zc * U); stand.add(ring);
-            var inner = new THREE.Mesh(new THREE.CylinderGeometry(RI * U, RI * U, (HH + 0.6) * U, 24, 1, true), stoneIn); inner.material.side = THREE.BackSide; inner.position.set(0, (HH / 2 - 0.3) * U, zc * U); stand.add(inner);
-            var lip = new THREE.Mesh(new THREE.RingGeometry(RI * U, (R + 0.02) * U, 28), stone); lip.rotation.x = -Math.PI / 2; lip.position.set(0, (HH + 0.001) * U, zc * U); stand.add(lip);
-            var shaft = new THREE.Mesh(new THREE.CircleGeometry((RI - 0.01) * U, 24), _hqBasic(0x061a1c)); shaft.rotation.x = -Math.PI / 2; shaft.position.set(0, (HH - 0.55) * U, zc * U); g.add(shaft);
-            var light = new THREE.Mesh(new THREE.CircleGeometry((RI - 0.02) * U, 24), _hqBasic(0x6af0d0, { transparent: true, opacity: 0.18, depthWrite: false })); light.rotation.x = -Math.PI / 2; light.position.set(0, (HH - 0.54) * U, zc * U); light.renderOrder = 2; g.add(light);
-            var glow = _hzGlowSprite(1.3 * U, 0x9affe4, 0.2, 0.0, 0.0, 0.0); glow.position.set(0, (HH + 0.1) * U, zc * U); g.add(glow);
+            var ring = new THREE.Mesh(new THREE.CylinderGeometry(R * U, (R + m(0.04)) * U, HH * U, 28, 1, true), stone); ring.position.set(0, (HH / 2) * U, zc * U); stand.add(ring);
+            var inner = new THREE.Mesh(new THREE.CylinderGeometry(RI * U, RI * U, (HH + m(0.6)) * U, 24, 1, true), stoneIn); inner.material.side = THREE.BackSide; inner.position.set(0, (HH / 2 - m(0.3)) * U, zc * U); stand.add(inner);
+            var lip = new THREE.Mesh(new THREE.RingGeometry(RI * U, (R + m(0.02)) * U, 28), stone); lip.rotation.x = -Math.PI / 2; lip.position.set(0, (HH + 0.001) * U, zc * U); stand.add(lip);
+            var shaft = new THREE.Mesh(new THREE.CircleGeometry((RI - m(0.01)) * U, 24), _hqBasic(0x061a1c)); shaft.rotation.x = -Math.PI / 2; shaft.position.set(0, (HH - m(0.55)) * U, zc * U); g.add(shaft);
+            var light = new THREE.Mesh(new THREE.CircleGeometry((RI - m(0.02)) * U, 24), _hqBasic(0x6af0d0, { transparent: true, opacity: 0.18, depthWrite: false })); light.rotation.x = -Math.PI / 2; light.position.set(0, (HH - m(0.54)) * U, zc * U); light.renderOrder = 2; g.add(light);
+            var glow = _hzGlowSprite(m(1.3) * U, 0x9affe4, 0.2, 0.0, 0.0, 0.0); glow.position.set(0, (HH + m(0.1)) * U, zc * U); g.add(glow);
             /* the frame: two uprights beside the ring (the walker steps between them), the beam, the windlass */
             [-1, 1].forEach(function (sg) {
-                var up = _hqBox(0.09, 1.95, 0.09, wood); up.position.set(sg * (R + 0.02) * U, 0.975 * U, zc * U); stand.add(up);
-                var brace = _hqBox(0.06, 0.5, 0.06, wood); brace.position.set(sg * (R - 0.12) * U, 1.05 * U, zc * U); brace.rotation.z = sg * 0.5; stand.add(brace);
+                var up = _hqBox(m(0.09), m(1.95), m(0.09), wood); up.position.set(sg * (R + m(0.02)) * U, m(0.975) * U, zc * U); stand.add(up);
+                var brace = _hqBox(m(0.06), m(0.5), m(0.06), wood); brace.position.set(sg * (R - m(0.12)) * U, m(1.05) * U, zc * U); brace.rotation.z = sg * 0.5; stand.add(brace);
             });
-            var beam = _hqBox(2 * R + 0.3, 0.1, 0.12, wood); beam.position.set(0, 1.95 * U, zc * U); stand.add(beam);
-            var drum = new THREE.Mesh(new THREE.CylinderGeometry(0.09 * U, 0.09 * U, (2 * R - 0.2) * U, 12), wood); drum.rotation.z = Math.PI / 2; drum.position.set(0, 1.72 * U, zc * U); stand.add(drum);
-            var crank = _hqBox(0.04, 0.3, 0.04, _hqMat(null, 1, 1, { color: 0x2a2a2e, shininess: 40 })); crank.position.set((R - 0.05) * U, 1.6 * U, zc * U); stand.add(crank);
-            var rope = new THREE.Mesh(new THREE.CylinderGeometry(0.012 * U, 0.012 * U, 1 * U, 6), _hqMat(null, 1, 1, { color: 0xb8a070, shininess: 2 })); g.add(rope);
-            var bucket = new THREE.Mesh(new THREE.CylinderGeometry(0.14 * U, 0.11 * U, 0.24 * U, 12, 1, true), _hqMat('dark_woods', 1, 1, { color: 0x7a5a3a, shininess: 10 })); bucket.material.side = THREE.DoubleSide; g.add(bucket);
-            var hoop = new THREE.Mesh(new THREE.TorusGeometry(0.14 * U, 0.008 * U, 6, 16), _hqMat(null, 1, 1, { color: 0x2a2a2e, shininess: 40 })); hoop.rotation.x = Math.PI / 2; g.add(hoop);
+            var beam = _hqBox(2 * R + m(0.3), m(0.1), m(0.12), wood); beam.position.set(0, m(1.95) * U, zc * U); stand.add(beam);
+            var drum = new THREE.Mesh(new THREE.CylinderGeometry(m(0.09) * U, m(0.09) * U, (2 * R - m(0.2)) * U, 12), wood); drum.rotation.z = Math.PI / 2; drum.position.set(0, m(1.72) * U, zc * U); stand.add(drum);
+            var crank = _hqBox(m(0.04), m(0.3), m(0.04), _hqMat(null, 1, 1, { color: 0x2a2a2e, shininess: 40 })); crank.position.set((R - m(0.05)) * U, m(1.6) * U, zc * U); stand.add(crank);
+            var rope = new THREE.Mesh(new THREE.CylinderGeometry(m(0.012) * U, m(0.012) * U, 1 * U, 6), _hqMat(null, 1, 1, { color: 0xb8a070, shininess: 2 })); g.add(rope);
+            var bucket = new THREE.Mesh(new THREE.CylinderGeometry(m(0.14) * U, m(0.11) * U, m(0.24) * U, 12, 1, true), _hqMat('dark_woods', 1, 1, { color: 0x7a5a3a, shininess: 10 })); bucket.material.side = THREE.DoubleSide; g.add(bucket);
+            var hoop = new THREE.Mesh(new THREE.TorusGeometry(m(0.14) * U, m(0.008) * U, 6, 16), _hqMat(null, 1, 1, { color: 0x2a2a2e, shininess: 40 })); hoop.rotation.x = Math.PI / 2; g.add(hoop);
             /* THE 2026-09-22 BATCH: the user's ancient well over the head + frame, the user's wooden bucket on the rope (its base at the proc bucket's bottom; the place() below carries both) */
             var wellGlb = (typeof _hqCatGlb === 'function' ? _hqCatGlb : function () { return null; })('ancient_well', U, { hide: [stand] }); if (wellGlb) { wellGlb.position.set(0, 0, zc * U); g.add(wellGlb); }
             var bucketGlb = (typeof _hqCatGlb === 'function' ? _hqCatGlb : function () { return null; })('wooden_bucket', U, { hide: [bucket, hoop] }); if (bucketGlb) g.add(bucketGlb);
             var place = function (k) {
-                var by = 1.25 - 1.15 * k;                    // the bucket: hanging at the lip → down the shaft
-                bucket.position.set(0, by * U, zc * U); hoop.position.set(0, (by + 0.12) * U, zc * U);
-                if (bucketGlb) bucketGlb.position.set(0, (by - 0.12) * U, zc * U);
-                var top = 1.72, len = top - (by + 0.12);
-                rope.scale.y = Math.max(0.05, len); rope.position.set(0, ((top + by + 0.12) / 2) * U, zc * U);
+                var by = m(1.25 - 1.15 * k);                 // the bucket: hanging at the lip → down the shaft
+                bucket.position.set(0, by * U, zc * U); hoop.position.set(0, (by + m(0.12)) * U, zc * U);
+                if (bucketGlb) bucketGlb.position.set(0, (by - m(0.12)) * U, zc * U);
+                var top = m(1.72), len = top - (by + m(0.12));
+                rope.scale.y = Math.max(0.05, len); rope.position.set(0, ((top + by + m(0.12)) / 2) * U, zc * U);
                 light.material.opacity = 0.18 + 0.55 * k; glow.material.opacity = 0.2 + 0.5 * k;
             };
             place(0);
             var motion = { mode: 'way', ow: 2 * R, tick: place };
-            if (_hq) _hq.tickers.push(function (dt, now) { glow.scale.setScalar((1.3 + 0.08 * Math.sin(now * 0.003)) * U); });
-            return { g: g, motion: motion, ow: 2 * R + 0.1, oh: 1.0, plateY: 2.35 };
+            if (_hq) _hq.tickers.push(function (dt, now) { glow.scale.setScalar((m(1.3) + m(0.08) * Math.sin(now * 0.003)) * U); });
+            return { g: g, motion: motion, ow: 2 * R + m(0.1), oh: m(1.0), plateY: m(2.35) };
         },
         /* THE TRAIN (HQ plan 9.3 `train`, 2026-09-15): a platform edge with
            the yellow line, and THE TRAIN — the user's subway front car + a
@@ -46454,7 +46457,17 @@ const ThreeRenderer = (function () {
             if (isBox && _hq.setting && !p.wall && !p.ceil && !cat.ceil && !(p.y > 0.5)) { var fsp = _hqSettingFreeSpot(p.x || 0, p.z || 0); if (fsp.x !== (p.x || 0) || fsp.z !== (p.z || 0)) p = Object.assign({}, p, { x: fsp.x, z: fsp.z }); }
             var level = p.level || 0, y0 = _hqLevelY(S, level);
             /* THE CAVE (rev 11): a floor prop stands on its cell — a torch on the terrace, a cot in a sunken cell */
-            if (isBox && _hqHasGround() && typeof p.wall !== 'string' && !(cat.ceil || p.ceil)) { var pcy = _hqCaveTop(p.x || 0, p.z || 0); if (pcy != null) y0 += pcy; }
+            var pY = p.y;   // the prop's own lift over the ground under it (a desk top, a sheet of paper)
+            if (isBox && _hqHasGround() && typeof p.wall !== 'string' && !(cat.ceil || p.ceil)) {
+                var pcy = _hqCaveTop(p.x || 0, p.z || 0);
+                /* THE TIER HEIGHT (2026-09-22 — the user: "floating objects on the Looking Glass, Mars, Technoticlan"): a terrain / cave
+                   room's prop authored with `y` ≥ 1 (or a sunk cellar's ≤ −0.5) names a HEIGHT FROM THE ROOM'S FLOOR — a tier's top,
+                   a slab, the air — like a native's `y` and a door's sill, never a lift over the ground (the sarcophagus at y 3.0 on
+                   the 3.0 m priest house stood at 6 m; 344 props across the areas did). It lands at max(the ground, y): on its tier
+                   when it stands on one (a tier's edge blend reads low), where it was hung when it hangs. A small `y` (< 1) is still
+                   the lift over whatever ground is there (a terminal on a cabinet on a terrace). */
+                if (pcy != null) { if (typeof p.y === 'number' && (p.y >= 1 || p.y <= -0.5)) { y0 += Math.max(pcy, p.y); pY = 0; } else y0 += pcy; }
+            }
             var inward = p.side === 'in';            // a bay's inner wall: the prop faces outward
             var Rw = _hqWallR(room, level, p.side);
             /* a box room's wall prop names its wall (`wall: 'n'|'e'|'s'|'w'`);
@@ -46471,7 +46484,7 @@ const ThreeRenderer = (function () {
             var flip = !!p.flip;
             var ceilY = _hqCeilY(room, level);
             if (flip) { onCeil = !onCeil; }
-            var y = onCeil ? (y0 + ((p.y != null) ? p.y : ceilY)) : (y0 + (p.y || 0) + mount);
+            var y = onCeil ? (y0 + ((p.y != null) ? p.y : ceilY)) : (y0 + (pY || 0) + mount);
             if (flip) y = (cat.ceil || p.ceil) ? (y0 + (cat.h || 0.1)) : (y0 + ceilY - mount - (p.y || 0));
             var fitSpan = (cat.span != null && cat.h == null) || (p.span != null);
             var target = ((fitSpan ? (p.span || cat.span) : (p.h || cat.h)) || 1) * U;

@@ -86,6 +86,24 @@ test('THE MARKER stands on walkable, reachable ground in every entry part (the w
     }
 });
 
+test('THE TIER HEIGHT (2026-09-22 — the floating objects): in a room with ground a floor prop\'s `y` ≥ 1 (or ≤ −0.5) is a HEIGHT FROM THE FLOOR, landed at max(the ground, y) — the sarcophagus on the priest house, the tea table on the tower; a small `y` is still the lift over the ground; every tier-height prop in the three named areas has its tier under it', () => {
+    assert.ok(renderer.includes("if (pcy != null) { if (typeof p.y === 'number' && (p.y >= 1 || p.y <= -0.5)) { y0 += Math.max(pcy, p.y); pY = 0; } else y0 += pcy; }"), 'the placer\'s rule');
+    assert.ok(renderer.includes("var y = onCeil ? (y0 + ((p.y != null) ? p.y : ceilY)) : (y0 + (pY || 0) + mount);"), 'the lift the rule consumed is spent');
+    for (const id of ['site_prebuilt_technoticlan_templecity', 'site_prebuilt_mars_cydonia', 'site_prebuilt_lookingglass_garden']) {
+        const info = D.hqTerrainInfo(id), room = HQ.rooms[id]; let tiered = 0;
+        for (const p of room.props) {
+            if (typeof p.wall === 'string' || p.ceil || typeof p.y !== 'number' || p.y < 1) continue;
+            const g = D.hqTerrainFeet(info, p.x, p.z, null), gh = g == null ? D.hqTerrainHeight(info, p.x, p.z) : g;
+            assert.ok(gh <= p.y + 0.8 || p.y >= 1, id + ': ' + p.key + ' authored at ' + p.y + ' under ground ' + gh.toFixed(2));   // the rule lands it at max(ground, y): on the ground when authored under a tier's blend
+            if (Math.abs(gh - p.y) < 0.6) tiered++;
+        }
+        assert.ok(tiered >= 3, id + ': the tier props stand on their tiers (' + tiered + ')');
+    }
+    /* THE HEDGE WALK: both ends of the Garden\'s span stand on their towers (the west end hung 0.7 m off the White Queen\'s tower) */
+    const gi = D.hqTerrainInfo('site_prebuilt_lookingglass_garden'), b = gi.bridges[0];
+    for (const [x, z] of [[b.x0, b.z0], [b.x1, b.z1]]) assert.ok(Math.abs(D.hqTerrainHeight(gi, x, z) - b.y) < 0.15, 'the span\'s end at ' + x + ',' + z + ' is off its tower');
+});
+
 test('THE DOOR RULE: no plain-leaf door joins two sites but the designed seams (docked collars, tunnels that are the route, a site\'s only line — HQ_AREA_KEPT_LEAVES names each with its reason); the shortcuts are gone; the ways, the draughts and the telescope stay', () => {
     const live = HQ.links.filter(l => D.hqLinkLive(l));
     for (const l of live) {

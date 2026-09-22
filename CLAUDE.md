@@ -8421,3 +8421,38 @@ loads the real VFX file on a stub THREE with fake timers, fires every intent of 
 every signature's life (no tick error, particles spawned, every group off the scene); reuse that harness for any VFX pass.
 UNSEEN LIVE (RULE #1c): every look — the scale of the barricades / the rig / the mic on the board, the wires' sag, the
 cup's pour, the confetti's fall, the taser bolt in flight, the bells' pulse, the two colours of the strobe.
+
+## THE FLOATERS · THE HALF WELL · THE ALLEYS (2026-09-22, local delivery)
+The user's three: "floating objects on the Looking Glass, Mars, Technoticlan; the wells are too big; gaps between
+buildings that look like alleys but have invisible walls — make them alleys or close them". **THE TIER HEIGHT**
+(three-renderer.js `_hqPlaceProps`): in a room with ground (a terrain field, a cave grid) a floor prop's `y` was ADDED to
+the ground under it, while every D3 spec (and the natives, the doors, the tests) author `y` as a HEIGHT FROM THE FLOOR —
+the sarcophagus at `y: 3.0` on the 3.0 m priest house stood at 6 m; a census (a scratch over every terrain room) counted
+344 such props. THE RULE: a floor prop's `y` ≥ 1 (or ≤ −0.5, a sunk cellar) lands at **max(the ground, y)** — on its tier
+when it stands on one (a tier's edge blend reads low), where it hangs when it hangs; a small `y` (< 1) is still the lift
+over whatever ground is there (a terminal on a cabinet on a terrace, a sheet of paper on a hill). Never add a prop's `y`
+to a tier's height again. Also THE HEDGE WALK (the Garden): the span's west end stood 0.7 m off the White Queen's tower
+over its edge blend (a bridge's ends stand 0.8 m INSIDE their tiers — `x0` −15.7). **THE HALF WELL**:
+`_hqWayBuilders.well` builds at `WS` 0.5 (every metre × WS), `ancient_well` h 1.15 / foot 0.42, `wooden_bucket` h 0.16,
+`ways.well` w 0.8 / h 0.5. **THE ALLEYS** (data.js `_hqTGenerate`, the city branch after THE OVERLAP SWEEP;
+`HQ_TERRAIN_GEN.city` `alleyMinW` 2.0 (the solver's floor — an alley centred between two grid rows must still hold a cell
+past the 0.3 m solid pad) · `alleySlitW` 1.0 · `alleyMaxW` 6.5 · `alleyMinD` 4 · `alleyMaxD` 30): every run of a street face no
+lot covers is judged by its WIDTH — 2.0..6.5 m between two buildings is CARVED OPEN along the face's normal, cell by
+cell, until it reaches open ground (a THROUGH alley) or a lot / a tier / the shell (a dead end, kept only ≥ 4 m deep —
+THE BOUNDARY WALLS hoard its end, THE INFILL never packs it, its sides are the buildings' own walls and take fronts); a
+gap of 1.0..2.0 m — THE SLIT the eye reads as an alley — is WIDENED into one by a neighbour stepping back (never under its
+district's `lotMinW`) when the march proves the alley goes somewhere, else CLOSED by growing a neighbour lot across it (never
+into another lot, never past its `lotW`, its front corners kept on the face line); EVERY carve is PROVED by the solver itself
+(`_hqTReachGrid` from the mouth to 1.2 m in and to the far end on the carved mask) and un-carved + closed when it fails; no
+hoarding is ever laid across or beside an alley's corridor (`inAlley` in both wall passes — a dead end's END keeps its); what
+stays is a slit under
+`fenceMinRun` **0.4** (the street-face pass samples every 0.25 m now — a 1 m slit was one sample under the old 1.2 and
+got NOTHING: that was the invisible wall) and wears the hoarding; the yard-wall pass never fences a PASSAGE (open mask
+within 2.6 m behind — a hoarding on a pocket's mouth stranded a drop-in); the boundary trace keeps its own
+`boundaryMinRun` 1.2 (a shorter corner sliver penned four cells on the Strip). The mask's distance is rebuilt after the
+carve; readouts `info.alleys` / `info.gen.alleys` / `info.gen.alleyRuns` (`alleys · widened · closed · closedFail · yards · shallow ·
+lone · unwalked`), `node check-terrain.js <room>` prints `alleys n`. Measured: Downtown 2 alleys, the Grid 4, the Strip 1 (most
+gaps are slits under a metre, closed or hoarded); all three solve from every door with nothing trapped. `gen.alleys: false` keeps the old faces. Tests:
+hq-city.test.js THE ALLEYS (heavy), hq-areas.test.js THE TIER HEIGHT, misc-batch-0922's well pins. UNSEEN LIVE (RULE
+#1c): the props on their tiers in every area, the well at half size against the walker, the alleys' mouths between the
+prisms (the hoarding at a dead end, the fronts on the sides), the slits' hoardings.

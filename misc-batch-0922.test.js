@@ -43,7 +43,11 @@ test('GLB-first over the stand-ins: the well, the bucket, the two benches, the f
     for (const key of ['ancient_well', 'wooden_bucket', 'city_bench', 'fortune_teller_tent', 'retro_control_panel', 'vhs_tape', 'vhs_player']) assert.match(TR, CALL(key), key + ' hung by _hqCatGlb');
     assert.equal((TR.match(new RegExp(CALL('city_bench').source, 'g')) || []).length, 2, 'park_bench AND locker_bench');
     assert.match(TR, /_hzMiscKit\('yellow_pole'/, 'the traffic light pole');
-    assert.ok(TR.includes("if (bucketGlb) bucketGlb.position.set(0, (by - 0.12) * U, zc * U);"), 'the bucket rides the rope');
+    assert.ok(TR.includes("if (bucketGlb) bucketGlb.position.set(0, (by - m(0.12)) * U, zc * U);"), 'the bucket rides the rope (2026-09-22: at the well\'s half scale)');
+    /* THE WELL AT HALF SIZE (2026-09-22): the builder's WS = 0.5 scales every metre; the catalogue's rows are halved with it */
+    assert.match(TR, /well: function \(U, ctx\) \{[\s\S]{0,600}var WS = 0\.5, R = 0\.72 \* WS/, 'the well builder at half scale');
+    assert.equal(CAT.ancient_well.h, 1.15, 'the ancient well fitted to 1.15 m'); assert.equal(CAT.wooden_bucket.h, 0.16, 'the bucket with it');
+    assert.equal(D.DOOR_HQ.ways.well.w, 0.8, 'the way\'s mouth halved');
 });
 
 test('every cardboard box is kickable (the stack too) and the bucket with them; the beds / tents / stands / posts are catalogued with a footprint', () => {
