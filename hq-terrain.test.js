@@ -156,7 +156,7 @@ test('THE RENDERER: the field is built on entry, the walker\'s surface / air / c
      "if (_hq.terrain && !hqTerrainAir(_hq.terrain, x, z, y)) return false;", "if (_hq.terrain) return hqTerrainCam(_hq.terrain, px, pz, py);",
      "if (room && room.terrain && typeof hqTerrainDoorY === 'function') return hqTerrainDoorY(room, door);", "land = _hq.terrain ? hqTerrainHeight(_hq.terrain, pl.x, pl.z) :",
      "if (room.cave || room.terrain) {", ".concat(_hq.terrainScatter || [])", "function _hqPlantTreeline(room, S, halfX, halfZ, plantTree, rng)", "_hq.terrain ? _hq.terrain.rules.dropMax : 0",
-     "function _hqHasGround() { return !!(_hq && ((_hq.site && _hq.site.cave) || _hq.terrain)); }", "function _hqTerrainMat(info, S, cut) {", "attribute vec2 aBlend;", "_hq.rails.push.apply(_hq.rails, info.rails);",
+     "function _hqHasGround() { return !!(_hq && ((_hq.site && _hq.site.cave) || _hq.terrain)); }", "function _hqTerrainMat(info, S) {", "attribute vec2 aBlend;", "_hq.rails.push.apply(_hq.rails, info.rails);",
      "function _hqTreeWay(U, ctx, dead) {", "hollowtree: function (U, ctx) { return _hqTreeWay(U, ctx, false); },", "deadtree: function (U, ctx) { return _hqTreeWay(U, ctx, true); },"]
         .forEach(f => assert.ok(renderer.includes(f), f));
     assert.equal(renderer.split('land = _hq.terrain ? hqTerrainHeight(').length, 3, 'both landing sites (the walker and the rider)');
@@ -175,7 +175,7 @@ test('the tool: check-terrain.js prints every room with every door reached and e
 });
 
 test('THE RENDERER on a stub scene: _hqBuildTerrain builds every terrain room — the field mesh with its blend attribute, the sheets, the decks, the walls, the rails on the register, the trees as blockers, the scatter handed to the prop placer — without an error', heavy, () => {
-    const a = renderer.indexOf('    function _hqTerrainMat(info, S, cut) {'), b = renderer.indexOf('    function _hqBuildSiteBoard(room) {');
+    const a = renderer.indexOf('    function _hqTerrainMat(info, S) {'), b = renderer.indexOf('    function _hqBuildSiteBoard(room) {');
     assert.ok(a > 0 && b > a, 'the terrain block stands before _hqBuildSiteBoard');
     const src = renderer.slice(a, b);
     class Obj { constructor() { this.position = { x: 0, y: 0, z: 0, set(x, y, z) { this.x = x; this.y = y; this.z = z; }, copy(p) { this.x = p.x; this.y = p.y; this.z = p.z; } }; this.rotation = { x: 0, y: 0, z: 0, set(x, y, z) { this.x = x; this.y = y; this.z = z; } }; this.scale = { x: 1, y: 1, z: 1, set(x, y, z) { this.x = x; this.y = y; this.z = z; }, setScalar(s) { this.x = this.y = this.z = s; } }; this.children = []; this.parent = null; this.renderOrder = 0; } add(...o) { for (const c of o) { this.children.push(c); c.parent = this; } } }

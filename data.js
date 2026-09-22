@@ -45147,21 +45147,6 @@ const HQ_FIELD_RULES = {
         margin: 0.5,          // the cell's centre this far inside the room's compiled extent
         treePad: 0.12,        // m past a trunk's radius a sample is still the tree's
     },
-    /* THE SEAMLESS FIELD, delivery 6 (2026-09-22 — SEAMLESS_FIELD_PLAN.md §8.3 step 7, THE CUT): a TERRAIN room's battle is built
-       over a CHUNK — the window + moatTiles a side — re-cut from the same data (the height field's samples, the lot rows, the
-       street rows, the tree list; three-renderer.js _hqBuildTerrain reads _hq.cut), never the whole room; the ground past the
-       chunk falls away through a dithered fade over fadeM into THE MOAT (a flat plane at the window's reference floor in the
-       room's floor colour wearing a lit lattice at the tile pitch) under the room's fog; the walk's props / doors / walls inside
-       the chunk are handed over as before, everything outside is dropped (keepM = the moat's edge). The user's brief: "slice a
-       12×12 chunk, 8×8 the map, the rest a moat / holo grid, keep the fog and the weenies". */
-    cut: {
-        on: true,             // window.EW_HQ_NO_FIELD_CUT = the whole room re-built round the window (delivery 2–5's rule)
-        moatTiles: 2,         // tiles a side past the window: the chunk is (size + 2 × moatTiles)² — 12 × 12
-        fadeM: 3,             // m past the chunk's edge over which the re-cut ground dithers away into the moat
-        moat: 'grid',         // 'grid' = the lit lattice on the plane · 'flat' = the plane alone · 'none' = the fog alone
-        outM: 60,             // m past the chunk the moat plane runs before the fog has it
-        gridTiles: 1,         // the lattice's pitch in tiles
-    },
     /* THE SEAMLESS FIELD, delivery 6 — §8.3 step 8, THE STRATA (the user: "I still need to eventually be able to dig and build"):
        under the true ground no column is drawn and tileTopY reads the room's STATIC tops — so a Meteor crater, a Flat Earth dig,
        a Build raise or a reshape changed state.boardHeights and the eye saw nothing. Now the field record carries every cell's

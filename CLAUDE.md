@@ -8324,6 +8324,7 @@ function (TUTORIAL_MECHANICS `turn`): `first_steps` re-read (its copy states the
 re-stamped. encounter-arrival.test.js pins it.
 
 ## THE SEAMLESS FIELD, delivery 6 — THE CUT + THE STRATA (dig and build in a field) + THE RED CI (2026-09-22, local delivery)
+**THE CUT WAS UNDONE the same day (the next section) — the paragraph's CUT half describes code that no longer exists; THE STRATA and THE RED CI stand.**
 **THE RED CI**: one stale source pin (hq-encounter.test.js's "a plain match starts with no latch" wanted the pre-FIRST-STRIKE
 literal) — a regex now. **THE CUT** (SEAMLESS_FIELD_PLAN §8.3 step 7; `HQ_FIELD_RULES.cut = { on, moatTiles 2, fadeM 3, moat 'grid'
 | 'flat' | 'none', outM 60, gridTiles }`, `EW_HQ_NO_FIELD_CUT`): a TERRAIN room's battle is built over the CHUNK = the window +
@@ -8348,3 +8349,17 @@ inward — the pit wall — into a dug cell beside an unmoved one, none between 
 `npm test` runs seamless-field.test.js (26). Ship data.js to R2 AND Render. OPEN: §8.3 steps 9 (THE SWITCH) + 10 (THE POST); a
 flooded dig draws no water under a field; the AI still forecasts a dig by the board's rule. UNSEEN LIVE (RULE #1c): the fps after
 the cut, the fade under each fog, the lattice's brightness, the bed sheets in a crater.
+
+## THE CUT UNDONE — the field is built whole round the window again (2026-09-22, local delivery)
+The user: "undo the cut — it wasn't necessary any more, the frame rate was fine during battles now even
+in the city" (delivery 5's BLOCKER SET + STATIC SHADOW were the fix). Backed out whole: data.js
+`HQ_FIELD_RULES.cut`; three-renderer.js `_hqCutHit` / `_hqCutOf` / `_hqCutRange` / `_hqCutPtsBox`, every
+`cut &&` guard in `_hqBuildTerrain` and the city / lamp / paint / stalactite / scatter builders, the
+`uCut` / `uCutFade` dithered fade in `_hqTerrainMat`, the chunk branch of `_hqBuildRoomInBattle` (a
+handed-over shell group stands whole again; `keepM` / `keepFarM` are delivery 4's radius), `_fieldMoatBuild`
++ its lattice texture, the `cut` read in `_hqHandoverRules`, `EW_HQ_NO_FIELD_CUT`; the three cut tests in
+seamless-field.test.js (the rules test asserts the row is GONE). RULE: a TERRAIN room's field is built
+WHOLE round the window (delivery 2–5's rule) — the outer ground, the treeline, the sea, the traffic and
+the circuit build as before delivery 6. THE STRATA (`field.levels`, `hqFieldBedFor`, `_fieldStrataBuild`)
+and THE RED CI fix are untouched. SEAMLESS_FIELD_PLAN §8.3 strikes step 7; the way back, if a room ever
+needs it, is the plan's item 4 (frustum-culled chunks of the merged batches), never the moat.

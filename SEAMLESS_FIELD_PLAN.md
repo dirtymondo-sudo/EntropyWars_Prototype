@@ -247,6 +247,23 @@ OPEN: 9 THE SWITCH, 10 THE POST; and for the strata — the water sheets stand w
 dig draws no water under a field), a Build WALL / a terrainCreate monument stands its column through the
 board's own object / monument pass (untouched), the AI's forecast of a dig is the board's rule.
 
+
+### 2026-09-22 — THE CUT UNDONE (step 7 backed out; THE STRATA stays)
+
+The user: "undo the cut — it wasn't necessary any more, the frame rate was fine during battles
+now even in the city" (steps 5 + 6 — THE BLOCKER SET and THE STATIC SHADOW — were the fix; the
+cut was the third thing tried in the same hour). Backed out whole: `HQ_FIELD_RULES.cut` (data.js),
+`_hqCutHit` / `_hqCutOf` / `_hqCutRange` / `_hqCutPtsBox`, every `cut &&` guard in the builders,
+the `uCut` / `uCutFade` dithered fade in `_hqTerrainMat`, the chunk branch of `_hqBuildRoomInBattle`
+(the handed-over shell group stands whole again, `keepM` / `keepFarM` are the radius as delivery 4
+set them), `_fieldMoatBuild` + its grid texture, the `cut` read in `_hqHandoverRules`, the
+`EW_HQ_NO_FIELD_CUT` switch, the three cut tests. RULE: a TERRAIN room's field is built WHOLE round
+the window (delivery 2–5's rule); the outer ground, the treeline, the sea, the traffic and the
+circuit build as they did before delivery 6. THE STRATA (step 8: `field.levels`, `hqFieldBedFor`,
+`_fieldStrataBuild`) and THE RED CI fix are untouched. Step 7 is struck from the table, not
+re-opened — the plan's item 4 (THE CHUNKS, culling the merged batches by frustum) is the way back
+if a room ever needs it. Token `20260922-uncut-01-cors`.
+
 ## 8. The second plan — THE CUT (2026-09-22, planning)
 
 The user, after delivery 4: the hall is fine, a city or any big area is ~10 fps.
@@ -328,7 +345,7 @@ Yes — with three amendments the geometry demands:
 |---|------|---------------|
 | 5 ✅ | **THE BLOCKER SET** — the fade raycasts a per-battle `_occFieldRoots` list: pieces whose bounding sphere lies within `blockerM` of an eye→subject segment, never the field mesh / outer ground / merged batches (they never fade — `_ew_occSkip` them AND leave them out of `groups`; a wall group fades, the ground never); under true ground the five board-point subjects go (the units + the focal tile are the subjects; the shell's walls are the only thing that can hide them) | the 10 fps (§8.1 item 1) |
 | 6 ✅ | **THE STATIC SHADOW** — a field battle's depth pass refreshes on a unit's landing / a piece change / a terrain edit, never on a tween frame (`_shadowMotion` ignored under `_fieldGroundLive()`; a moving unit's own shadow is the cheap blob) | item 2 |
-| 7 ✅ | **THE CUT** — `HQ_FIELD_RULES.cut = { moatTiles: 2, moat: 'grid', fadeM: 3 }`: the chunk = the window + `moatTiles` a side (12 × 12); `_hqBuildTerrain(copy, { rect })` re-cuts the field, the water, the decks, the walls, the rails, the scatter, the lots (`_hqBuildCityLots` filtered by lot rect), the road paint and the treeline over the chunk; the hand-over keeps pieces inside the chunk only (`keepM` = the moat's edge); the moat plane + the dissolve edge + the fog; `H.sky` in the stash → the room's dome + landmarks in the battle; `scenery: 'none'` for every field | item 3, the radius made exact, the user's chunk |
+| 7 ↩ (undone 2026-09-22) | **THE CUT** — `HQ_FIELD_RULES.cut = { moatTiles: 2, moat: 'grid', fadeM: 3 }`: the chunk = the window + `moatTiles` a side (12 × 12); `_hqBuildTerrain(copy, { rect })` re-cuts the field, the water, the decks, the walls, the rails, the scatter, the lots (`_hqBuildCityLots` filtered by lot rect), the road paint and the treeline over the chunk; the hand-over keeps pieces inside the chunk only (`keepM` = the moat's edge); the moat plane + the dissolve edge + the fog; `H.sky` in the stash → the room's dome + landmarks in the battle; `scenery: 'none'` for every field | item 3, the radius made exact, the user's chunk |
 | 8 ✅ | **THE STRATA** — `HQ_FIELD_RULES.beds[family]` (facility: concrete · rebar · bedrock; city: asphalt · earth · bedrock; cave: rock · rock · lava-deep; woods: soil · roots · rock; divine: cloud · cloud · cloud; sea: sand · rock · deep water; astral: void) keyed off the room's shell family / hub, `terrain.bed` on a room overriding; `hqFieldBuild` files `field.levels` (the tier per cell at the build) and `tileTopY` = the true top + (`boardHeights − levels`) × the level step; `rebuildTerrain` builds a column ONLY for a cell whose engine height differs from its level — a dig shows the bed's faces (THE CRATER FIX's rule: the crater opens onto the column's own faces), a raise stands a column wearing the room's floor sheet on top; the picking quads follow the engine height | Meteor, Flat Earth, Build, reshape in a field |
 | 9 | **THE SWITCH** — a counter with `action: { field: { ox, oz, enemies, gm } }`: `hqMarkerLaunch`'s shape with a PINNED window and a named enemy set at a spot, launched by E — the puzzle hook ("get into position, press the button, the field turns into battle mode, the enemies are where you need to be") | the user's puzzles; no renderer work |
 | 10 | **THE POST** (was 7) — SSAO at half resolution in a field, the reflectors off, the atmosphere tier down, point lights capped by distance to the window | the last of the frame |

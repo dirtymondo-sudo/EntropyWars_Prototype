@@ -39805,38 +39805,7 @@ const ThreeRenderer = (function () {
        the scatter (catalogue props through _hqPlaceProps), the treeline of
        an open room past its edge, stalactites under a closed one. Rails and
        ramps join the park registers (_hq.rails / _hq.ramps) for the rider. */
-    /* ══ THE CUT (SEAMLESS_FIELD_PLAN §8.3 step 7, 2026-09-22) ══
-       A TERRAIN room's battle is built over a CHUNK, never the whole room: _hqBuildRoomInBattle sets `_hq.cut` on the scratch
-       record ({ x0, z0, x1, z1 } in room metres = the window + HQ_FIELD_RULES.cut.moatTiles a side, `fadeM`) and every builder
-       that lays a MERGED mesh or a piece (the field's samples, the lots, the road paint, the lamps, the walls, the trees…) asks
-       _hqCutHit before it builds — the same samples, the same seed per lot / tree, so the chunk matches the walk the player
-       just left (§8.4). No cut (the walk, a rebuild without the rule) = every read answers true. */
-    function _hqCutHit(cut, x0, z0, x1, z1, pad) {
-        if (!cut) return true;
-        var p = (pad > 0) ? pad : 0;
-        if (x1 === undefined) { x1 = x0; z1 = z0; }
-        if (x1 < x0) { var t = x0; x0 = x1; x1 = t; } if (z1 < z0) { var t2 = z0; z0 = z1; z1 = t2; }
-        return !(x1 < cut.x0 - p || x0 > cut.x1 + p || z1 < cut.z0 - p || z0 > cut.z1 + p);
-    }
-    function _hqCutOf() { return (_hq && _hq.cut) ? _hq.cut : null; }
-    /* the field's sample window under a cut: the chunk + the fade band, clamped to the grid (no cut = the whole grid) */
-    function _hqCutRange(info, cut) {
-        var nx = info.nx, nz = info.nz, res = info.res;
-        if (!cut) return { i0: 0, i1: nx - 1, j0: 0, j1: nz - 1 };
-        var f = (cut.fadeM > 0) ? cut.fadeM : 3;
-        var clamp = function (v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; };
-        var i0 = clamp(Math.floor((cut.x0 - f - info.x0) / res) - 1, 0, nx - 1), i1 = clamp(Math.ceil((cut.x1 + f - info.x0) / res) + 1, 0, nx - 1);
-        var j0 = clamp(Math.floor((cut.z0 - f - info.z0) / res) - 1, 0, nz - 1), j1 = clamp(Math.ceil((cut.z1 + f - info.z0) / res) + 1, 0, nz - 1);
-        if (i1 < i0) i1 = i0; if (j1 < j0) j1 = j0;
-        return { i0: i0, i1: i1, j0: j0, j1: j1 };
-    }
-    function _hqCutPtsBox(pts) {
-        if (!pts || !pts.length) return null;
-        var x0 = Infinity, z0 = Infinity, x1 = -Infinity, z1 = -Infinity;
-        for (var i = 0; i < pts.length; i++) { var p = pts[i]; if (p[0] < x0) x0 = p[0]; if (p[0] > x1) x1 = p[0]; if (p[1] < z0) z0 = p[1]; if (p[1] > z1) z1 = p[1]; }
-        return [x0, z0, x1, z1];
-    }
-    function _hqTerrainMat(info, S, cut) {
+    function _hqTerrainMat(info, S) {
         var floorTex = _hzTex(info.floor) || _hzTex('grass_2'), cliffTex = _hzTex(info.cliff) || _hzTex('cliff') || floorTex, pathTex = _hzTex(info.path) || _hzTex('dirt_2') || floorTex;   // 2026-09-21: the fallback is the plain cliff sheet, never rock_wall_1's glyphs
         var m = new THREE.MeshPhongMaterial({ map: floorTex || null, color: 0xffffff, shininess: S.open ? 4 : 6, specular: S.open ? 0x0e0e0e : 0x161616, vertexColors: false });
         if (S.floorColor != null) m.color.multiply(new THREE.Color(S.floorColor));
@@ -39845,19 +39814,15 @@ const ThreeRenderer = (function () {
         m.onBeforeCompile = function (sh) {
             sh.uniforms.tCliff = { value: cliffTex }; sh.uniforms.tPath = { value: pathTex };
             sh.uniforms.uTriTM = { value: (info._TM || 1) };
-            /* THE CUT: past the chunk the ground dithers away over fadeM into the moat (room px; the walk's material carries no fade) */
-            var cU = _hqUnits();
-            sh.uniforms.uCut = { value: cut ? new THREE.Vector4(cut.x0 * cU, cut.z0 * cU, cut.x1 * cU, cut.z1 * cU) : new THREE.Vector4(0, 0, 0, 0) };
-            sh.uniforms.uCutFade = { value: cut ? Math.max(0.01, (cut.fadeM || 3) * cU) : 0 };
             /* THE TRIPLANAR CLIFF (2026-09-19): the field's UVs are planar (x, z), so every steep face — a plateau's flank, a
                city block's mass, a plan's rock wall — stretched its sheet the whole way down. Each sheet is sampled on the
                three world axes and blended by the face's normal (sharpened ^4): a flat face reads exactly as before, a
                vertical one tiles DOWN by height at the same tile size, a slope blends the two. World metres / one tile. */
-            sh.vertexShader = 'attribute vec2 aBlend;\nattribute float aAO;\nvarying float vAO;\nvarying vec2 vBlend;\nvarying vec3 vTriPos;\nvarying vec3 vTriN;\nvarying vec2 vCutPos;\n' + sh.vertexShader
-                .replace('#include <uv_vertex>', '#include <uv_vertex>\nvBlend = aBlend;\nvAO = aAO;\nvCutPos = position.xz;')
+            sh.vertexShader = 'attribute vec2 aBlend;\nattribute float aAO;\nvarying float vAO;\nvarying vec2 vBlend;\nvarying vec3 vTriPos;\nvarying vec3 vTriN;\n' + sh.vertexShader
+                .replace('#include <uv_vertex>', '#include <uv_vertex>\nvBlend = aBlend;\nvAO = aAO;')
                 .replace('#include <project_vertex>', '#include <project_vertex>\nvTriPos = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvTriN = normalize(mat3(modelMatrix) * objectNormal);');
-            sh.fragmentShader = 'uniform sampler2D tCliff;\nuniform sampler2D tPath;\nuniform float uTriTM;\nuniform vec4 uCut;\nuniform float uCutFade;\nvarying float vAO;\nvarying vec2 vBlend;\nvarying vec3 vTriPos;\nvarying vec3 vTriN;\nvarying vec2 vCutPos;\n' + sh.fragmentShader
-                .replace('#include <map_fragment>', 'if ( uCutFade > 0.0 ) {\n float cutOut = max( max( uCut.x - vCutPos.x, vCutPos.x - uCut.z ), max( uCut.y - vCutPos.y, vCutPos.y - uCut.w ) );\n if ( cutOut > 0.0 ) { float cutK = cutOut / uCutFade; float cutN = fract( sin( dot( floor( vCutPos * 0.12 ), vec2( 12.9898, 78.233 ) ) ) * 43758.5453 ); if ( cutK >= 1.0 || cutN < cutK ) discard; }\n}\n#ifdef USE_MAP\n vec3 triW = abs( normalize( vTriN ) ); triW = triW * triW * triW * triW; triW /= ( triW.x + triW.y + triW.z + 0.0001 );\n vec2 triUy = vTriPos.xz / uTriTM; vec2 triUx = vTriPos.zy / uTriTM; vec2 triUz = vTriPos.xy / uTriTM;\n vec4 texelColor = texture2D( map, triUy ) * triW.y + texture2D( map, triUx ) * triW.x + texture2D( map, triUz ) * triW.z;\n vec4 cliffColor = texture2D( tCliff, triUy * 0.85 ) * triW.y + texture2D( tCliff, triUx * 0.85 ) * triW.x + texture2D( tCliff, triUz * 0.85 ) * triW.z;\n vec4 pathColor = texture2D( tPath, triUy * 1.15 ) * triW.y + texture2D( tPath, triUx * 1.15 ) * triW.x + texture2D( tPath, triUz * 1.15 ) * triW.z;\n texelColor = mix( texelColor, pathColor, vBlend.y );\n texelColor = mix( texelColor, cliffColor * vec4(0.92, 0.92, 0.92, 1.0), vBlend.x );\n texelColor.rgb *= vAO;\n texelColor = mapTexelToLinear( texelColor );\n diffuseColor *= texelColor;\n#endif')
+            sh.fragmentShader = 'uniform sampler2D tCliff;\nuniform sampler2D tPath;\nuniform float uTriTM;\nvarying float vAO;\nvarying vec2 vBlend;\nvarying vec3 vTriPos;\nvarying vec3 vTriN;\n' + sh.fragmentShader
+                .replace('#include <map_fragment>', '#ifdef USE_MAP\n vec3 triW = abs( normalize( vTriN ) ); triW = triW * triW * triW * triW; triW /= ( triW.x + triW.y + triW.z + 0.0001 );\n vec2 triUy = vTriPos.xz / uTriTM; vec2 triUx = vTriPos.zy / uTriTM; vec2 triUz = vTriPos.xy / uTriTM;\n vec4 texelColor = texture2D( map, triUy ) * triW.y + texture2D( map, triUx ) * triW.x + texture2D( map, triUz ) * triW.z;\n vec4 cliffColor = texture2D( tCliff, triUy * 0.85 ) * triW.y + texture2D( tCliff, triUx * 0.85 ) * triW.x + texture2D( tCliff, triUz * 0.85 ) * triW.z;\n vec4 pathColor = texture2D( tPath, triUy * 1.15 ) * triW.y + texture2D( tPath, triUx * 1.15 ) * triW.x + texture2D( tPath, triUz * 1.15 ) * triW.z;\n texelColor = mix( texelColor, pathColor, vBlend.y );\n texelColor = mix( texelColor, cliffColor * vec4(0.92, 0.92, 0.92, 1.0), vBlend.x );\n texelColor.rgb *= vAO;\n texelColor = mapTexelToLinear( texelColor );\n diffuseColor *= texelColor;\n#endif')
                 .replace('#include <emissivemap_fragment>', '#ifdef USE_MAP\n totalEmissiveRadiance *= texelColor.rgb;\n#endif');
         };
         m.customProgramCacheKey = function () { return 'hqTerrainTri'; };
@@ -39961,10 +39926,8 @@ const ThreeRenderer = (function () {
         var h = (S.h || 4) - 0.14, every = 6.5, made = 0, cap = 260;
         var tubeMat = new THREE.MeshBasicMaterial({ color: col, fog: false });
         var geo = new THREE.BoxGeometry(1.2 * U, 0.07 * U, 0.16 * U);
-        var cutH = (typeof _hqCutOf === 'function') ? _hqCutOf() : null;
         var hang = function (px, pz, yaw) {
             if (made >= cap) return;
-            if (cutH && !_hqCutHit(cutH, px, pz, px, pz, 1.5)) return;   // THE CUT
             if (typeof hqTerrainMaskAt === 'function' && info.maskD && hqTerrainMaskAt(info, px, pz) < 0.5) return;   // over the open floor only
             var m = new THREE.Mesh(geo, tubeMat); m.position.set(px * U, h * U, pz * U); m.rotation.y = yaw; G.add(m);
             var gl = _hzGlowSprite(2.2 * U, col, 0.16, 0, 0, 0); gl.position.set(px * U, (h - 0.18) * U, pz * U); G.add(gl);
@@ -40001,10 +39964,8 @@ const ThreeRenderer = (function () {
         if (typeof window !== 'undefined' && window.EW_HQ_NO_LEY_VEINS) return;
         var U = _hqUnits(), S = room.shell, plan = info.genPlan || {}, col = (S.mood && S.mood.strip != null) ? S.mood.strip : 0xffb347;
         var veinMat = new THREE.MeshBasicMaterial({ color: col, fog: true }), made = 0;
-        var cutV = (typeof _hqCutOf === 'function') ? _hqCutOf() : null;
         var strip = function (ax, az, bx, bz, y, ox, oz) {
             if (made >= HQ_LEY_VEIN_MAX) return;
-            if (cutV && !_hqCutHit(cutV, ax, az, bx, bz, 0.5)) return;   // THE CUT
             var L = Math.hypot(bx - ax, bz - az); if (L < 0.4) return;
             var m = new THREE.Mesh(new THREE.BoxGeometry(0.05 * U, 0.06 * U, L * U), veinMat);
             m.position.set(((ax + bx) / 2 + ox) * U, y * U + 0.3, ((az + bz) / 2 + oz) * U); m.rotation.y = Math.atan2(bx - ax, bz - az); m.renderOrder = 2; m._ew_hqPart = 'wall'; G.add(m);
@@ -40063,12 +40024,7 @@ const ThreeRenderer = (function () {
         var puff = function (x, y, z, r, sy, sx, sz) {
             var m = new THREE.Mesh(puffGeo, puffMat); m.position.set(x * U, y * U, z * U); m.scale.set(r * (sx || 1) * U, r * (sy || 0.62) * U, r * (sz || 1) * U); m.rotation.y = rng() * Math.PI * 2; m.castShadow = false; G.add(m); return m;
         };
-        var cutF = (typeof _hqCutOf === 'function') ? _hqCutOf() : null;
         floats.forEach(function (f) {
-            if (cutF) {   // THE CUT
-                if (f.k === 'plateau') { var fr = f.r ? Math.max(f.r, f.rz || f.r) : Math.max(f.w || 0, f.d || 0) / 2; if (cutF && !_hqCutHit(cutF, f.x - fr, f.z - fr, f.x + fr, f.z + fr, 1)) return; }
-                else if (cutF && !_hqCutHit(cutF, f.x0, f.z0, f.x1, f.z1, (f.w || 0) / 2 + 1)) return;
-            }
             if (f.k === 'plateau') {
                 var top = f.h - 0.12, round = !!f.r, rx = round ? f.r : f.w / 2, rz = round ? (f.rz || f.r) : f.d / 2, thick = Math.max(0.6, Math.min(1.6, 0.18 * Math.max(rx, rz) + 0.4));
                 var body;
@@ -40108,9 +40064,7 @@ const ThreeRenderer = (function () {
         var steel = new THREE.MeshPhongMaterial({ color: 0x8a8f94, shininess: 60 });
         var kerbMat = new THREE.MeshPhongMaterial({ color: 0xb9b6ae, shininess: 10 });
         _hq.blockers = _hq.blockers || [];
-        var cutB = (typeof _hqCutOf === 'function') ? _hqCutOf() : null;
         info.bridges.forEach(function (b) {
-            if (cutB && !_hqCutHit(cutB, b.x0, b.z0, b.x1, b.z1, (b.w || 0) / 2 + 0.5)) return;   // THE CUT
             var keyMat = b.key ? new THREE.MeshPhongMaterial({ map: _hzTex(b.key) || null, color: 0xffffff, shininess: 8 }) : topMat;
             var L = b.len, yaw = Math.atan2(b.x1 - b.x0, b.z1 - b.z0), cx = (b.x0 + b.x1) / 2, cz = (b.z0 + b.z1) / 2;
             /* THE FLICKER (2026-09-21): the slab's top stood 4 mm over the tier it lands on at either mouth — the field's own
@@ -40174,19 +40128,15 @@ const ThreeRenderer = (function () {
         var rng = _mulberry32((0x7e44 + nx * 31 + nz * 7) >>> 0);
         var pulse = function (mat, opAmp, spd) { _hq.fxPulse.push({ mat: mat, baseOp: mat.opacity, opAmp: opAmp, spd: spd, phase: rng() * Math.PI * 2 }); return mat; };
         var R = info.rules;
-        /* THE CUT (step 7): the chunk's sample window — the same samples the whole field has, restricted (+ the fade band) */
-        var cut = (typeof _hqCutOf === 'function') ? _hqCutOf() : null;
-        var CR = (cut && typeof _hqCutRange === 'function') ? _hqCutRange(info, cut) : { i0: 0, i1: nx - 1, j0: 0, j1: nz - 1 };
-        var cnx = CR.i1 - CR.i0 + 1, cnz = CR.j1 - CR.j0 + 1;
         /* ── THE FIELD: one indexed mesh, UVs in tiles, the blend per vertex ── */
-        var pos = new Float32Array(cnx * cnz * 3), uv = new Float32Array(cnx * cnz * 2), blend = new Float32Array(cnx * cnz * 2), ao = new Float32Array(cnx * cnz);
+        var pos = new Float32Array(nx * nz * 3), uv = new Float32Array(nx * nz * 2), blend = new Float32Array(nx * nz * 2), ao = new Float32Array(nx * nz);
         var pathW = function (px, pz) {
             var w = 0;
             for (var i = 0; i < info.paths.length; i++) { var p = info.paths[i], d = _hqTPolyDist(px, pz, p.pts).d, hw = p.w / 2; var t = d < hw ? 1 : 1 - (d - hw) / 0.7; if (t > w) w = t; }
             return Math.max(0, Math.min(1, w));
         };
-        for (var j = CR.j0; j <= CR.j1; j++) for (var i = CR.i0; i <= CR.i1; i++) {
-            var k = (j - CR.j0) * cnx + (i - CR.i0), px = info.x0 + i * res, pz = info.z0 + j * res, h = info.H[j * nx + i];
+        for (var j = 0; j < nz; j++) for (var i = 0; i < nx; i++) {
+            var k = j * nx + i, px = info.x0 + i * res, pz = info.z0 + j * res, h = info.H[k];
             pos[k * 3] = px * U; pos[k * 3 + 1] = h * U; pos[k * 3 + 2] = pz * U;
             uv[k * 2] = px * U / TM; uv[k * 2 + 1] = pz * U / TM;
             var sl = hqTerrainSlope(info, px, pz);
@@ -40222,8 +40172,8 @@ const ThreeRenderer = (function () {
             }
             return false;
         };
-        for (var j2 = CR.j0; j2 + 1 <= CR.j1; j2++) for (var i2 = CR.i0; i2 + 1 <= CR.i1; i2++) {
-            var a = (j2 - CR.j0) * cnx + (i2 - CR.i0), b = a + 1, c = a + cnx, d = c + 1;
+        for (var j2 = 0; j2 + 1 < nz; j2++) for (var i2 = 0; i2 + 1 < nx; i2++) {
+            var a = j2 * nx + i2, b = a + 1, c = a + nx, d = c + 1;
             var mx = info.x0 + (i2 + 0.5) * res, mz = info.z0 + (j2 + 0.5) * res;
             var underEscalator = escalators.some(function (f) {
                 var dx = f.x1 - f.x0, dz = f.z1 - f.z0, len = Math.hypot(dx, dz);
@@ -40239,14 +40189,14 @@ const ThreeRenderer = (function () {
         geo.setAttribute('aAO', new THREE.BufferAttribute(ao, 1));   // THE LIGHT PASS 2.3
         geo.setIndex(idx); geo.computeVertexNormals();
         info._TM = TM;   // THE TRIPLANAR CLIFF: the sheet's tile in world units (the uv = pos / TM rule, now on every axis)
-        var field = new THREE.Mesh(geo, _hqTerrainMat(info, S, cut));
+        var field = new THREE.Mesh(geo, _hqTerrainMat(info, S));
         field.position.y = 0.3; field.receiveShadow = true; field.renderOrder = 1; field._ew_hqPart = 'floor'; field._ew_hqTerrain = true;
         G.add(field);
         /* THE OUTER GROUND (2026-09-17): an open field no longer ends at a square edge over a flat apron — the ground
            runs on past the shell to HQ_OUTER_M, matched to the field's own edge, rolling, swelling into low rises and
            then falling away under the fog (the sky's fog colour: scene.fog is the room's, _hqEnter). The treeline
            stands on it (_hqTerrainGround reads _hq.outer). Built in the field's own material. */
-        if (S.open && room.terrain.outer !== false && !cut) { try { _hqBuildOuterGround(room, info, G, field.material, TM, rng); } catch (e) { console.warn('[HQ] the outer ground failed', e); } }
+        if (S.open && room.terrain.outer !== false) { try { _hqBuildOuterGround(room, info, G, field.material, TM, rng); } catch (e) { console.warn('[HQ] the outer ground failed', e); } }
         /* ── THE WATER: the battle's animated sheet per key; a pool a disc, a stream a mitred ribbon ── */
         var fluidMats = {}, fluidKeys = [];
         var fluidMatFor = function (key) {
@@ -40260,10 +40210,6 @@ const ThreeRenderer = (function () {
         var lavaCx = 0, lavaCz = 0, lavaN = 0, lavaY = 0;
         info.fluids.forEach(function (f) {
             var mesh;
-            if (cut) {   // THE CUT: a pool / a stream that never touches the chunk is not drawn
-                if (f.kind === 'pool') { var fr = Math.max(f.r || 0, f.rz || 0); if (cut && !_hqCutHit(cut, f.x - fr, f.z - fr, f.x + fr, f.z + fr, cut.fadeM)) return; }
-                else { var fb = _hqCutPtsBox(f.pts); if (!fb || !_hqCutHit(cut, fb[0], fb[1], fb[2], fb[3], (f.w || 0) / 2 + cut.fadeM)) return; }
-            }
             if (f.kind === 'pool') {
                 var cg = new THREE.CircleGeometry(f.r * U, 40);
                 mesh = new THREE.Mesh(cg, fluidMatFor(f.key)); mesh.rotation.x = -Math.PI / 2;
@@ -40292,7 +40238,7 @@ const ThreeRenderer = (function () {
         });
         /* THE DEEP (2026-09-18): the sea's ONE surface — over the field AND the outer ground, the battle's animated sheet for the key,
            DoubleSide so a diver (and the drowned abyss) sees it from below; the sky's fog takes it at the horizon */
-        if (info.sea && !cut) {
+        if (info.sea) {
             var seaExt = (S.open && room.terrain.outer !== false) ? ((room.terrain.outer && room.terrain.outer.m) || HQ_OUTER_M) : 0;
             var seaW = (info.halfW - 0.5 + seaExt) * 2 * U, seaD = (info.halfD - 0.5 + seaExt) * 2 * U;
             var isPlane = (typeof THREE.PlaneGeometry === 'function');
@@ -40309,7 +40255,6 @@ const ThreeRenderer = (function () {
         var plankMat = new THREE.MeshPhongMaterial({ map: _hzTex('wood_planks') || null, color: 0xffffff, shininess: 10 }); plankMat.emissive = new THREE.Color(0x111111);
         var ropeMat = new THREE.MeshPhongMaterial({ color: 0x5a4a34, shininess: 6 });
         info.decks.forEach(function (dk) {
-            if (cut && !_hqCutHit(cut, dk.x0, dk.z0, dk.x1, dk.z1, (dk.w || 0) / 2 + 0.3)) return;   // THE CUT
             var L = Math.hypot(dk.x1 - dk.x0, dk.z1 - dk.z0), yaw = Math.atan2(dk.x1 - dk.x0, dk.z1 - dk.z0);
             /* THE FLICKER (2026-09-22): a deck is WRITTEN INTO the field, so the slab's top z-fought the field's own triangles — it rides 2.5 cm over its height (the bridge layer's rule; the feet read the data rule) */
             var g = new THREE.Group(); g.position.set((dk.x0 + dk.x1) / 2 * U, (dk.y + 0.025) * U + 0.3, (dk.z0 + dk.z1) / 2 * U); g.rotation.y = yaw;
@@ -40340,7 +40285,6 @@ const ThreeRenderer = (function () {
             return keyedMats[key];
         };
         var drawWall = function (w) {
-            if (cut && !_hqCutHit(cut, w.x0, w.z0, w.x1, w.z1, (w.t || 0.3) + 0.2)) return;   // THE CUT
             var L = Math.hypot(w.x1 - w.x0, w.z1 - w.z0), yaw = Math.atan2(w.x1 - w.x0, w.z1 - w.z0), hM = w.top - w.base;
             var m = new THREE.Mesh(new THREE.BoxGeometry(w.t * U, hM * U, (L + w.t) * U), w.key ? keyedMat(w.key) : wallMat);
             /* THE URBAN PACK (2026-09-17): a YARD WALL is a hoarding in the pack's corrugated sheet — one tile per 1.75 m (its concrete plinth at the foot), never the horizon's coarse repeat */
@@ -40355,7 +40299,7 @@ const ThreeRenderer = (function () {
         if (info.genPlan && info.gen && info.gen.kind === 'halls') { try { _hqBuildHallsLights(room, info, G, TM, rng); } catch (e) { console.warn('[HQ] the halls’ strip lights failed', e); } }
         if (info.genPlan && info.gen && info.gen.kind === 'ley') { try { _hqBuildLeyVeins(room, info, G, TM, rng); } catch (e) { console.warn('[HQ] the ley veins failed', e); } }   // THE LEY LINES (2026-09-18): the walls light themselves
         /* ── THE RAILS: posts and a bar along the ground ── */
-        info.rails.filter(function (r) { return r.rail && (!cut || _hqCutHit(cut, r.x0, r.z0, r.x1, r.z1, 0.3)); }).forEach(function (r) {   // THE CUT
+        info.rails.filter(function (r) { return r.rail; }).forEach(function (r) {
             var L = Math.hypot(r.x1 - r.x0, r.z1 - r.z0), yaw = Math.atan2(r.x1 - r.x0, r.z1 - r.z0);
             var g = new THREE.Group(); g.position.set((r.x0 + r.x1) / 2 * U, 0, (r.z0 + r.z1) / 2 * U); g.rotation.y = yaw;
             var bar = new THREE.Mesh(new THREE.CylinderGeometry(0.03 * U, 0.03 * U, L * U, 8), new THREE.MeshPhongMaterial({ color: 0x8a8f94, shininess: 60 })); bar.rotation.x = Math.PI / 2; bar.position.y = r.y * U; g.add(bar);
@@ -40387,7 +40331,6 @@ const ThreeRenderer = (function () {
             return tg;
         };
         info.trees.forEach(function (t) {
-            if (cut && !_hqCutHit(cut, t.x, t.z, t.x, t.z, 4)) return;   // THE CUT (a canopy reaches ~4 m)
             var tall = t.kind === 'tree_4', dead = (t.kind === 'tree_5' || t.kind === 'tree_6');
             var h = t.h || (tall ? 5.0 + rng() * 1.2 : dead ? 2.3 : 2.6 + rng() * 0.6);
             plantTree(t.kind, h, t.x, t.z, t.y * U);
@@ -40396,12 +40339,11 @@ const ThreeRenderer = (function () {
         });
         /* THE THICKET (2026-09-17): the forest growing on the plan's solid — every tree a blocker (the bank is jumped onto; the trees hold the walker off the interior) */
         (info.thicket || []).forEach(function (t) {
-            if (cut && !_hqCutHit(cut, t.x, t.z, t.x, t.z, 4)) return;   // THE CUT
             plantTree(t.kind, t.h, t.x, t.z, t.y * U);
             var tb = new THREE.Object3D(); tb.position.set(t.x * U, t.y * U, t.z * U); G.add(tb);
             _hq.blockers.push({ obj: tb, y: t.y, top: null, rad: t.r || 0.42, thicket: true });
         });
-        if (TK && S.forest && S.open && !cut) _hqPlantTreeline(room, S, S.w / 2, S.d / 2, plantTree, rng);   // THE CUT: the treeline stands past the shell — the moat's fog is there
+        if (TK && S.forest && S.open) _hqPlantTreeline(room, S, S.w / 2, S.d / 2, plantTree, rng);
         /* ── DISASTER CITY (2026-09-17): the buildings on the lots + the fronts, the street lamps, the traffic, the circuit ── */
         _hqBuildCityEntrances(room, info, G, TK);
         _hqBuildEscalators(room, info, G, TM);
@@ -40411,8 +40353,8 @@ const ThreeRenderer = (function () {
         if (info.genPlan && info.genPlan.streets) { try { _hqBuildStreetLamps(room, info, G, TM, rng); } catch (e) { console.warn('[HQ] the street lamps failed', e); } }
         if (info.genPlan && info.genPlan.streets && info.gen && info.gen.kind === 'city') { try { _hqBuildRoadMarkings(room, info, G, TM); } catch (e) { console.warn('[HQ] the road markings failed', e); } }   // THE STREETS IN THE PACK (2026-09-17): the asphalt is the field's floor sheet; the paint, the kerbs, the manholes and the signs stand on it
         if (info.genPlan && info.genPlan.streets && info.gen && info.gen.kind === 'city' && info.gen.sidewalk > 0 && typeof window !== 'undefined' && window.EW_HQ_ROAD_TILES) { try { _hqBuildRoadTiles(room, info, G, TM); } catch (e) { console.warn('[HQ] the road tiles failed', e); } }   // the GLB tiles are opt-in since the pack landed (they distorted on every bend)
-        if (info.traffic && info.traffic.length && !cut) { try { _hqBuildTraffic(room, info, G, TM, rng); } catch (e) { console.warn('[HQ] the traffic failed', e); } }
-        if (info.race && !cut) { try { _hqBuildRace(room, info, G, TM); } catch (e) { console.warn('[HQ] the circuit failed', e); } }
+        if (info.traffic && info.traffic.length) { try { _hqBuildTraffic(room, info, G, TM, rng); } catch (e) { console.warn('[HQ] the traffic failed', e); } }
+        if (info.race) { try { _hqBuildRace(room, info, G, TM); } catch (e) { console.warn('[HQ] the circuit failed', e); } }
         /* ── THE SCATTER: catalogue props at the compiler's spots, placed by _hqPlaceProps on the ground ── */
         _hq.terrainScatter = info.scatter.map(function (q) { return { key: q.key, x: q.x, z: q.z, face: q.face, foot: q.foot, rect: false, scatter: true }; });
         /* ── THE STALACTITES under a closed ceiling, over the open floor ── */
@@ -40423,7 +40365,6 @@ const ThreeRenderer = (function () {
             for (var si = 0; si < nSt; si++) {
                 var sx = (rng() - 0.5) * (S.w - 2), sz = (rng() - 0.5) * (S.d - 2), gh = hqTerrainHeight(info, sx, sz);
                 if (S.h - gh < 3.2) continue;
-                if (cut && !_hqCutHit(cut, sx, sz, sx, sz, 1)) continue;   // THE CUT (the rng is drawn first — the same stalactites as the walk)
                 if (info.maskD && typeof hqTerrainMaskAt === 'function' && hqTerrainMaskAt(info, sx, sz) < 0.3) continue;   // over the open floor only, never in the plan's rock
                 if (info.pads.some(function (p) { return Math.hypot(p.x - sx, p.z - sz) < 2.6; })) continue;
                 var len = 0.6 + rng() * 2.0, rad = 0.12 + rng() * 0.28;
@@ -40655,13 +40596,10 @@ const ThreeRenderer = (function () {
         var batchFor = function (lotNeon) { if (lotNeon === neon) return batch; if (!batchAlt) batchAlt = _hqTexBatch(G, U, lotNeon); return batchAlt; };
         var lotNeonOf = function (lot) { return (lot.neon != null) ? !!lot.neon : neon; };
         try {
-            var cutL = (typeof _hqCutOf === 'function') ? _hqCutOf() : null;
             lots.forEach(function (lot) {
                 lotById[lot.i] = lot;
                 var base = (lot.base || 0) * U + 0.3, yaw = lot.rot || 0;
                 lot._roofY = (lot.base || 0) + lot.top;
-                lot._cutOut = !!cutL && !_hqCutHit(cutL, lot.x - Math.max(lot.w || 0, lot.d || 0) / 2, lot.z - Math.max(lot.w || 0, lot.d || 0) / 2, lot.x + Math.max(lot.w || 0, lot.d || 0) / 2, lot.z + Math.max(lot.w || 0, lot.d || 0) / 2, 0.5);   // THE CUT (the seed per lot is drawn below as before)
-                if (lot._cutOut) return;
                 if (!prisms) return;   // the mall: the units ARE the rise, fronted below
                 if (texOn) {
                     var lr = _mulberry32(((lot.seed | 0) * 7 + 11) >>> 0);
@@ -40718,9 +40656,7 @@ const ThreeRenderer = (function () {
         prevTs = _hzKitTs; _hzKitTs = TM;
         try {
             fronts.forEach(function (f, fi) {
-                var lot = lotById[f.lot] || {};
-                if (lot._cutOut) return;   // THE CUT: a front on a lot outside the chunk
-                var g = _hqCityFrontGroup(f, U), L = f.len, top = (lot._roofY != null ? lot._roofY - (lot.base || 0) : f.top);
+                var lot = lotById[f.lot] || {}, g = _hqCityFrontGroup(f, U), L = f.len, top = (lot._roofY != null ? lot._roofY - (lot.base || 0) : f.top);
                 var store = (lot.fronts || gen.fronts) === 'store';   // THE DISTRICTS (D2): the front's kind is the lot's district's
                 var ink = _HQ_STORE_INKS[(f.lot * 7 + fi) % _HQ_STORE_INKS.length];
                 if (lot._tex) {
@@ -40908,9 +40844,7 @@ const ThreeRenderer = (function () {
                 var b = Bk.n; Bk.idx.push(b, b + 1, b + 2, b, b + 2, b + 3); Bk.n += 4;
             });
         };
-        var cutS = (typeof _hqCutOf === 'function') ? _hqCutOf() : null;
         rows.forEach(function (r, ri) {
-            if (cutS && !_hqCutHit(cutS, r.x0, r.z0, r.x1, r.z1, 1.5)) return;   // THE CUT
             var dx = r.x1 - r.x0, dz = r.z1 - r.z0, L = Math.hypot(dx, dz); if (L < 2) return;
             var ax = dx / L, az = dz / L, nl = Math.hypot(r.nx || 0, r.nz || 0) || 1, nx = (r.nx || 0) / nl, nz = (r.nz || 0) / nl;
             var y0 = (typeof r.y === 'number') ? r.y : 0, out = r.wall ? HQ_SHOP.wallOut : HQ_SHOP.lipOut;
@@ -41133,10 +41067,8 @@ const ThreeRenderer = (function () {
         /* the merged quad lists: flat quads on the ground (a, b, c, d in metres, y = the ground + lift), each with its own uv */
         var bucket = function () { return { pos: [], uv: [], idx: [], n: 0 }; };
         var Bw = bucket(), Bk = bucket(), Bm = bucket();   // white paint · kerb stones · manholes
-        var cutQ = (typeof _hqCutOf === 'function') ? _hqCutOf() : null;
         var quad = function (B, p, uvs, ny) {
             /* p = four [x, y, z] in metres (ccw seen from above), uvs = four [u, v] */
-            if (cutQ && !_hqCutHit(cutQ, (p[0][0] + p[2][0]) / 2, (p[0][2] + p[2][2]) / 2, (p[0][0] + p[2][0]) / 2, (p[0][2] + p[2][2]) / 2, cutQ.fadeM)) return;   // THE CUT: the paint stops where the ground does
             for (var i = 0; i < 4; i++) { B.pos.push(p[i][0] * U, p[i][1] * U + 0.3, p[i][2] * U); B.uv.push(uvs[i][0], uvs[i][1]); }
             var b = B.n; B.idx.push(b, b + 2, b + 1, b, b + 3, b + 2); B.n += 4;
         };
@@ -41308,7 +41240,6 @@ const ThreeRenderer = (function () {
                     side = -side;
                     var px = pts[i][0] + dx * s + (-dz) * side * (st.w / 2 + Math.min(walk, 0.7) + 0.1), pz = pts[i][1] + dz * s + dx * side * (st.w / 2 + Math.min(walk, 0.7) + 0.1);
                     if (made >= cap || Math.abs(px) > info.S.w / 2 - 1 || Math.abs(pz) > info.S.d / 2 - 1) continue;
-                    if (typeof _hqCutOf === 'function' && _hqCutOf() && !_hqCutHit(_hqCutOf(), px, pz, px, pz, 0.5)) continue;   // THE CUT
                     if (info.pads.some(function (p) { return Math.hypot(p.x - px, p.z - pz) < 3.2; })) continue;
                     if (hqTerrainMaskAt(info, px, pz) < 0.2) continue;
                     var gy = hqTerrainHeight(info, px, pz);
@@ -51756,9 +51687,7 @@ const ThreeRenderer = (function () {
         var vineMat = new THREE.MeshLambertMaterial({ color: 0x4f6a2e }); vineMat.emissive = new THREE.Color(0x0c1408);
         var leafMat = new THREE.MeshLambertMaterial({ color: 0x5e9a3a, side: THREE.DoubleSide }); leafMat.emissive = new THREE.Color(0x0e1c08);
         var holdMat = new THREE.MeshPhongMaterial({ map: (H.terrain && typeof _hzTex === 'function') ? (_hzTex(H.terrain.cliff) || null) : null, color: 0xc9c2b6, shininess: 3 }); holdMat.emissive = new THREE.Color(0x101010);
-        var cutC = (typeof _hqCutOf === 'function') ? _hqCutOf() : null;
         list.forEach(function (c) {
-            if (cutC && !_hqCutHit(cutC, c.x, c.z, c.x, c.z, 1.5)) return;   // THE CUT
             var g = new THREE.Group(); g.position.set(c.x * U, c.y0 * U, c.z * U); g.rotation.y = _hqHeadingYaw(c.face);
             var L = c.len, w = c.w, top = L + 0.15;
             var mk = function (geo, mat) { var m = new THREE.Mesh(geo, mat); m.castShadow = true; g.add(m); return m; };
@@ -53576,40 +53505,18 @@ const ThreeRenderer = (function () {
         if (trueGround) H.floorHole = null;
         /* THE HAND-OVER (delivery 4): the walk's own groups, when the walk just left THIS room under true ground — no builder runs */
         var HR = _hqHandoverRules();
-        /* THE CUT (SEAMLESS_FIELD_PLAN §8.3 step 7, 2026-09-22): a TERRAIN room's battle is built over a CHUNK — the window +
-           moatTiles a side — re-cut from the same data; a handed-over room keeps its doors / props / counters (pieces) and drops the
-           walk's shell group (the whole room's field, lots, paint, treeline — merged meshes no radius can cut), which is re-cut here
-           over the chunk; the radius becomes the moat's edge */
-        var cutOn = !!(trueGround && R.terrain && HR.cut && HR.cut.on);
-        var cutRect = null;
-        if (cutOn) {
-            var mm = HR.cut.moatTiles * C;
-            cutRect = { x0: R.T.x0 - mm, z0: R.T.z0 - mm, x1: R.T.x0 + R.T.N * C + mm, z1: R.T.z0 + R.T.N * C + mm, fadeM: HR.cut.fadeM, moatTiles: HR.cut.moatTiles };
-            H.cut = cutRect;
-            HR.keepM = HR.keepFarM = mm + HR.cut.fadeM;
-        }
         var hand = (trueGround && HR.handover && _hqRoomHandover && _hqRoomHandover.roomId === R.roomId) ? _hqRoomHandover : null;
-        if (hand) {
-            _hqRoomHandover = null; H.doorGroup = hand.doorGroup; H.propGroup = hand.propGroup; H.fxPulse = hand.fxPulse.slice();
-            if (cutOn) { try { _disposeR(hand.shellGroup); } catch (e) {} }   // the walk's shell group (the whole field) goes; the chunk is re-cut below
-            else H.shellGroup = hand.shellGroup;
-        }
+        if (hand) { _hqRoomHandover = null; H.shellGroup = hand.shellGroup; H.doorGroup = hand.doorGroup; H.propGroup = hand.propGroup; H.fxPulse = hand.fxPulse.slice(); }
         else _hqHandoverDrop();
         _hq = H;
         try {
             H.gallery = _hqGalleryFrame(copy);
-            if (hand && !cutOn) { /* the room stands as it was walked */ }
-            else if (hand && cutOn) {
-                /* the chunk: the field + the shell re-cut over cutRect (the pieces — doors, props, counters — are the walk's own) */
-                try { _hqBuildTerrain(copy); } catch (e) { console.warn('[HQ→battle] terrain (cut) failed', e); }
-                try { _hqBuildBoxShell(copy); } catch (e) { console.warn('[HQ→battle] shell failed', e); }
-                if (typeof _hqBuildClimbs === 'function') { try { _hqBuildClimbs(copy); } catch (e) { console.warn('[HQ→battle] climbs failed', e); } }
-            }
+            if (hand) { /* the room stands as it was walked */ }
             else {
             if (R.cave) { try { _hqBuildCave(copy); } catch (e) { console.warn('[HQ→battle] cave failed', e); } }
             /* THE SEAMLESS FIELD, delivery 2 (2026-09-22): a TERRAIN room's field — the height field itself, its water, decks, walls,
-               rails, trees, the scatter, the outer ground to the fog, the treeline, the city's lots — is built on the scratch
-               record and stands round the fight exactly as the walker saw it (whole, or the CHUNK under _hq.cut) */
+               rails, trees, the scatter, the outer ground to the fog, the treeline, the city's lots — is built whole on the scratch
+               record (the window is the true ground: nothing is cut) and stands round the fight exactly as the walker saw it */
             if (R.terrain) { try { _hqBuildTerrain(copy); } catch (e) { console.warn('[HQ→battle] terrain failed', e); } }
             try { _hqBuildBoxShell(copy); } catch (e) { console.warn('[HQ→battle] shell failed', e); }
             if (H.gallery) { try { _hqBuildGallery(copy); } catch (e) { console.warn('[HQ→battle] gallery failed', e); } }
@@ -53619,7 +53526,6 @@ const ThreeRenderer = (function () {
             try { _hqPlaceProps(copy); } catch (e) { console.warn('[HQ→battle] props failed', e); }
             if (R.terrain && typeof _hqBuildClimbs === 'function') { try { _hqBuildClimbs(copy); } catch (e) { console.warn('[HQ→battle] climbs failed', e); } }   // the ladders / ropes / vines the tiers were reached by
             }
-            if (cutOn) { try { _fieldMoatBuild(H, R, cutRect, room, HR.cut); } catch (e) { console.warn('[HQ→battle] the moat failed', e); } }   // THE CUT: the plane past the chunk
             if (trueGround) { try { _hqShadowFlags(copy); } catch (e) {} }   // rev 3: the room casts and receives the key's shadow exactly as it did on the walk
         } finally { _hq = saved; }
         /* the breathing glows: the room's list into the battle's (cleared with the scenery) */
@@ -53703,61 +53609,9 @@ const ThreeRenderer = (function () {
         /* THE BLOCKER SET (step 5): the fade's list — the facility group's direct children, the merged batches out */
         var occF = trueGround ? _occFieldBuild(_facilityNearGroup, ts / C, HR) : null; if (!trueGround) _occFieldDrop();
         _fieldRoomStats = { room: R.roomId, kept: kept, culled: dropped, props: culledProps, scenery: culledScenery, keepM: HR.keepM, keepFarM: HR.keepFarM, handover: !!hand, trueGround: trueGround, kind: R.site ? 'site' : R.cave ? 'cave' : R.terrain ? 'terrain' : 'box',
-                            blockers: occF ? occF.roots.length : null, merged: occF ? occF.skipped : null, sky: skyN,
-                            cut: cutOn ? { tiles: R.T.N + 2 * HR.cut.moatTiles, fadeM: HR.cut.fadeM, moat: HR.cut.moat } : null };
+                            blockers: occF ? occF.roots.length : null, merged: occF ? occF.skipped : null, sky: skyN };
         console.log('[HQ→battle] ' + R.roomId + ': kept ' + kept + ' · culled ' + dropped + ' (props ' + culledProps + ' · scenery ' + culledScenery + ') · radius ' + HR.keepM + '/' + HR.keepFarM + ' m · ' + (hand ? 'handed over' : 'rebuilt') + ' · walls ' + Object.keys(walls).join('') + ' · ' + _fieldRoomStats.kind
-            + (occF ? ' · blockers ' + occF.roots.length + ' (' + occF.skipped + ' merged out)' : '') + (skyN ? ' · sky ' + skyN : '')
-            + (cutOn ? ' · cut ' + (R.T.N + 2 * HR.cut.moatTiles) + '×' + (R.T.N + 2 * HR.cut.moatTiles) + ' (moat ' + HR.cut.moat + ')' : ''));
-    }
-    /* THE MOAT (THE CUT): a flat plane at the window's reference floor from the chunk's edge out to outM — the room's floor colour,
-       a lit lattice at the tile pitch ('grid'), the room's fog to the horizon. Four strips round the chunk (no shape geometry: the
-       stub scenes have none); never an occluder, never raycast (_ew_hqOuter + _ew_occSkip), under the field (renderOrder 0). */
-    var _fieldMoatTex = null;
-    function _fieldMoatGridTex() {
-        if (_fieldMoatTex) return _fieldMoatTex;
-        try {
-            var cv = document.createElement('canvas'); cv.width = cv.height = 128; var g2 = cv.getContext('2d');
-            g2.fillStyle = 'rgba(0,0,0,0)'; g2.clearRect(0, 0, 128, 128);
-            g2.strokeStyle = 'rgba(255,255,255,0.9)'; g2.lineWidth = 3; g2.strokeRect(1.5, 1.5, 125, 125);
-            g2.strokeStyle = 'rgba(255,255,255,0.28)'; g2.lineWidth = 1; g2.beginPath(); g2.moveTo(64, 0); g2.lineTo(64, 128); g2.moveTo(0, 64); g2.lineTo(128, 64); g2.stroke();
-            var t = new THREE.CanvasTexture(cv); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4; _fieldMoatTex = t;
-        } catch (e) { _fieldMoatTex = null; }
-        return _fieldMoatTex;
-    }
-    function _fieldMoatBuild(H, R, cut, room, rules) {
-        if (!rules || rules.moat === 'none' || !H || !H.shellGroup) return null;
-        var U = _hqUnits(), S = room.shell || {}, out = rules.outM || 60, C = R.T.C;
-        var y = ((R.field && R.field.ref != null) ? +R.field.ref : 0) * U + 0.1;   // the window's reference floor (the lowest IN cell), under the field's 0.3
-        var col = new THREE.Color((S.floorColor != null) ? S.floorColor : 0x9a9a98).multiplyScalar(0.55);
-        var mat = new THREE.MeshLambertMaterial({ color: col, fog: true }); mat.emissive = col.clone().multiplyScalar(0.25); mat._ew_hzNear = true;
-        var grid = null;
-        if (rules.moat === 'grid') {
-            var gt = _fieldMoatGridTex();
-            var gcol = new THREE.Color((S.mood && S.mood.strip != null) ? S.mood.strip : 0x62d9ff);
-            grid = gt ? new THREE.MeshBasicMaterial({ map: gt, color: gcol, transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending, fog: true }) : null;
-            if (grid) grid._ew_hzNear = true;
-        }
-        var g = new THREE.Group(); g.name = 'field_moat'; g._ew_hqOuter = true; g._ew_occSkip = true;
-        var x0 = cut.x0, x1 = cut.x1, z0 = cut.z0, z1 = cut.z1, pitch = (rules.gridTiles || 1) * C;
-        /* the four strips: west / east (full depth), north / south (between them) */
-        var strips = [[x0 - out, z0 - out, x0, z1 + out], [x1, z0 - out, x1 + out, z1 + out], [x0, z0 - out, x1, z0], [x0, z1, x1, z1 + out]];
-        var isPlane = (typeof THREE.PlaneGeometry === 'function');
-        strips.forEach(function (st) {
-            var w = st[2] - st[0], d = st[3] - st[1]; if (w <= 0 || d <= 0) return;
-            var geo = isPlane ? new THREE.PlaneGeometry(w * U, d * U, 1, 1) : new THREE.BoxGeometry(w * U, 0.01, d * U);
-            var m = new THREE.Mesh(geo, mat); if (isPlane) m.rotation.x = -Math.PI / 2;
-            m.position.set((st[0] + st[2]) / 2 * U, y, (st[1] + st[3]) / 2 * U); m.renderOrder = 0; m.receiveShadow = false; m._ew_hqOuter = true; m._ew_occSkip = true; m._ew_hqMoat = true; g.add(m);
-            if (grid) {
-                var gm = new THREE.Mesh(geo, grid); if (isPlane) gm.rotation.x = -Math.PI / 2;
-                /* the lattice in world tiles: offset the uv so the lines fall on the tile pitch from the window's own origin */
-                try { var uv = geo.attributes.uv; if (uv) { var arr = uv.array.slice ? uv.array.slice() : Array.prototype.slice.call(uv.array); var g3 = new THREE.BufferGeometry().copy(geo); var u2 = new Float32Array(arr.length);
-                    for (var i = 0; i < arr.length; i += 2) { u2[i] = (st[0] + arr[i] * w - R.T.x0) / pitch; u2[i + 1] = (st[1] + (1 - arr[i + 1]) * d - R.T.z0) / pitch; }
-                    g3.setAttribute('uv', new THREE.BufferAttribute(u2, 2)); gm.geometry = g3; } } catch (e) {}
-                gm.position.set((st[0] + st[2]) / 2 * U, y + 0.15, (st[1] + st[3]) / 2 * U); gm.renderOrder = 1; gm._ew_hqOuter = true; gm._ew_occSkip = true; gm._ew_hqMoat = true; g.add(gm);
-            }
-        });
-        H.shellGroup.add(g);
-        return g;
+            + (occF ? ' · blockers ' + occF.roots.length + ' (' + occF.skipped + ' merged out)' : '') + (skyN ? ' · sky ' + skyN : ''));
     }
 
     function _hqEnter(opts) {
@@ -54028,16 +53882,12 @@ const ThreeRenderer = (function () {
     }
     function _hqHandoverRules() {
         var g = (typeof HQ_FIELD_RULES !== 'undefined' && HQ_FIELD_RULES && HQ_FIELD_RULES.ground) ? HQ_FIELD_RULES.ground : {};
-        var c = (typeof HQ_FIELD_RULES !== 'undefined' && HQ_FIELD_RULES && HQ_FIELD_RULES.cut) ? HQ_FIELD_RULES.cut : {};
         var W = (typeof window !== 'undefined') ? window : {};
         return { keepM: (g.keepM > 0) ? +g.keepM : 28, keepFarM: (g.keepFarM > 0) ? +g.keepFarM : 48,
                  handover: g.handover !== false && !W.EW_HQ_NO_ROOM_HANDOVER, radius: !W.EW_HQ_NO_BATTLE_RADIUS,
                  /* the second plan (§8.3): THE BLOCKER SET · THE STATIC SHADOW · THE SKY ONCE */
                  blockerM: (g.blockerM > 0) ? +g.blockerM : 2.5, occRefreshS: (g.occRefreshS > 0) ? +g.occRefreshS : 2,
-                 staticShadow: g.staticShadow !== false && !W.EW_HQ_NO_STATIC_SHADOW, roomSky: g.roomSky !== false && !W.EW_HQ_NO_ROOM_SKY,
-                 /* THE CUT (§8.3 step 7): the chunk, the fade, the moat */
-                 cut: { on: !!(c.on !== false) && !W.EW_HQ_NO_FIELD_CUT, moatTiles: (c.moatTiles >= 0) ? +c.moatTiles : 2, fadeM: (c.fadeM > 0) ? +c.fadeM : 3,
-                        moat: c.moat || 'grid', outM: (c.outM > 0) ? +c.outM : 60, gridTiles: (c.gridTiles > 0) ? +c.gridTiles : 1 } };
+                 staticShadow: g.staticShadow !== false && !W.EW_HQ_NO_STATIC_SHADOW, roomSky: g.roomSky !== false && !W.EW_HQ_NO_ROOM_SKY };
     }
     function _hqHandoverStash(H, opts) {
         _hqHandoverDrop();

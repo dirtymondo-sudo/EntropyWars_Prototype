@@ -180,7 +180,7 @@ test('THE FOG PAST A FIELD: the woods\' sky carries a per-metre density the rend
     const sky = HQ.rooms.site_prebuilt_fairy_forest_clearing.shell.sky;
     assert.ok(sky.fog.density >= 0.02 && sky.fog.amount >= 0.8, 'a real fog (' + sky.fog.density + ' / m, amount ' + sky.fog.amount + ')');
     ["var fogD = (S.sky.fog && S.sky.fog.density > 0) ? S.sky.fog.density / U : 0.00005;", "if (S.fog && S.fog.color != null) sc.fog = new THREE.FogExp2(S.fog.color, (S.fog.density > 0 ? S.fog.density : 0.012) / U);",
-     "function _hqBuildOuterGround(room, info, G, mat, TM, rng) {", "var HQ_OUTER_M = 54;", "if (S.open && room.terrain.outer !== false && !cut) { try { _hqBuildOuterGround(room, info, G, field.material, TM, rng); }",
+     "function _hqBuildOuterGround(room, info, G, mat, TM, rng) {", "var HQ_OUTER_M = 54;", "if (S.open && room.terrain.outer !== false) { try { _hqBuildOuterGround(room, info, G, field.material, TM, rng); }",
      "} else if (room.terrain && room.terrain.outer !== false) {", "if (!room.terrain) runs.forEach(function (rn) { G.add(slab(0, HQ_EDGE_KERB_H, 0.16, 0.34, edgeTrim, rn)); });",
      "if (_hq.outer && (Math.abs(x) > _hq.outer.hx || Math.abs(z) > _hq.outer.hz)) return _hq.outer.yAt(x, z);",
      "_hq.blockers.push({ obj: tb, y: t.y, top: null, rad: t.r || 0.42, thicket: true });", "info.gen.solidSheet === 'cliff'"].forEach(f => assert.ok(renderer.includes(f), f));
