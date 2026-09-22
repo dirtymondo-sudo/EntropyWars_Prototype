@@ -4160,7 +4160,7 @@
             const scale = Math.min(width / v[2], height / v[3]);
             if (!(scale > 0)) return [];
             const zoom = (_hqMap.fit || v)[2] / v[2], boxes = [], out = [];
-            const rank = n => n.id === focus || n.st === 'here' ? 0 : n.hall || n.ring || n.hub ? 1 : n.wild && !n.part ? 2 : n.part ? 4 : 3;   // THE HUBS (2026-09-18): a hub's name is always on, like the hall's
+            const rank = n => n.id === focus || n.st === 'here' ? 0 : n.hall || n.ring || n.hub ? 1 : n.exit ? 2 : n.wild && !n.part ? 2 : n.part ? 4 : 3;   // THE MAP REMEMBERS (2026-09-22): a charted exit reads at the fit zoom   // THE HUBS (2026-09-18): a hub's name is always on, like the hall's
             M.nodes.filter(n => n.st !== 'q').sort((a, b) => rank(a) - rank(b) || (b.doors || 0) - (a.doors || 0)).forEach(n => {
                 const r = rank(n);
                 if (r >= 4 && zoom < 2.4 || r === 3 && zoom < 1.55) return;
@@ -4242,8 +4242,8 @@
             const sel = _hqMap.sel;
             M.nodes.forEach(n => {
                 /* THE HUBS (2026-09-18): a hub's anchor is a big ringed node in the hub's ink with the hub's name always on; every member wears a halo in the same ink */
-                const cls = `hq-map-n st-${n.st}${n.wild ? ' wild' : ''}${n.part ? ' part' : ''}${n.hall ? ' hall' : ''}${n.ring ? ' ring' : ''}${n.no ? ' numbered' : ''}${n.hub ? ' hub' : ''}${n.hubOf ? ' in-hub' : ''}${sel === n.id ? ' sel' : ''}`;
-                const title = n.st === 'q' ? 'UNCHARTED · WALK A DOOR TO IT' : `${n.hub ? String(n.hubLabel || '').toUpperCase() + ' · ' : ''}${n.no ? 'ROOM ' + n.no + ' · ' : ''}${String(n.label).toUpperCase()}${n.st === 'here' ? ' · YOU ARE HERE' : ''} · ${_hqMapWhere(n)}${(!n.hub && n.hubOf) ? ' · IN ' + String(n.hubLabel || '').toUpperCase() : ''}`;
+                const cls = `hq-map-n st-${n.st}${n.wild ? ' wild' : ''}${n.part ? ' part' : ''}${n.hall ? ' hall' : ''}${n.ring ? ' ring' : ''}${n.no ? ' numbered' : ''}${n.hub ? ' hub' : ''}${n.hubOf ? ' in-hub' : ''}${n.exit ? ' exit' : ''}${sel === n.id ? ' sel' : ''}`;
+                const title = n.st === 'q' ? 'UNCHARTED · WALK A DOOR TO IT' : `${n.hub ? String(n.hubLabel || '').toUpperCase() + ' · ' : ''}${n.no ? 'ROOM ' + n.no + ' · ' : ''}${String(n.label).toUpperCase()}${n.st === 'here' ? ' · YOU ARE HERE' : ''} · ${n.exit ? ('THE WAY OUT' + (n.place ? ' · ' + String(n.place).toUpperCase() : '')) : _hqMapWhere(n)}${(!n.hub && n.hubOf) ? ' · IN ' + String(n.hubLabel || '').toUpperCase() : ''}`;
                 const hubStyle = n.hubColor ? ` style="--hub:${_hqEsc(n.hubColor)}"` : '';
                 svg += `<g class="${cls}" data-mapnode="${_hqEsc(n.id)}" tabindex="0" role="button" aria-label="${_hqEsc(title)}"${hubStyle} transform="translate(${F(n.x * U)} ${F(n.y * U)})"><title>${_hqEsc(title)}</title>`;
                 if (n.hub && !n.ring) svg += '<circle class="hq-map-hubring" r="34"/><circle class="hq-map-hubring inner" r="27"/>';
@@ -4260,7 +4260,7 @@
                     svg += `<text class="hq-map-q" text-anchor="middle" dy="3.5">?</text>`;
                     if (n.no) svg += `<text class="hq-map-no" text-anchor="middle" dy="${n.no.length > 3 ? 3 : 3.5}"${n.no.length > 3 ? ' style="font-size:7px"' : ''}>${_hqEsc(n.no)}</text>`;
                     const lblOn = n.st !== 'q';
-                    if (lblOn) svg += `<text class="hq-map-lbl${n.hub ? ' hublbl' : ''}" y="${n.hub ? 46 : n.hall ? 32 : (n.no ? 24 : 19)}" text-anchor="middle">${_hqEsc(String(n.hub ? (n.hubLabel || n.label) : n.label).toUpperCase())}</text>`;
+                    if (lblOn) svg += `<text class="hq-map-lbl${n.hub ? ' hublbl' : ''}" y="${n.hub ? 46 : n.hall ? 32 : (n.no ? 24 : 19)}" text-anchor="middle">${_hqEsc(String(n.hub ? (n.hubLabel || n.label) : n.label).toUpperCase())}${n.exit && n.place ? `<tspan class="hq-map-lbl-place" x="0" dy="10">▸ ${_hqEsc(String(n.place).toUpperCase())}</tspan>` : ''}</text>`;
                 }
                 svg += '</g>';
             });
@@ -4394,7 +4394,18 @@
             const drawn = {};
             M.nodes.forEach(n => { if (inArea[n.id]) drawn[n.id] = true; });
             M.edges.forEach(e => { if (inArea[e.a] && !inArea[e.b]) drawn[e.b] = true; if (inArea[e.b] && !inArea[e.a]) drawn[e.a] = true; });
-            const nodes = M.nodes.map(n => inArea[n.id] ? n : Object.assign({}, n, { st: n.st === 'here' ? 'here' : 'q', label: n.st === 'here' ? n.label : 'UNCHARTED', no: n.st === 'here' ? n.no : '', hub: null, hubOf: null, hubLabel: null, hubColor: null, ring: 0, hall: false, portal: true })).filter(n => drawn[n.id]);   // a room outside the place is a plain question mark on this sheet (never a ring, never the hall) — the world sheet names it
+            /* THE MAP REMEMBERS (2026-09-22 — the user: "the map doesn't remember when I visit a new place, it puts
+               question marks for places I have visited before"): a room OUTSIDE the place is a PORTAL on this sheet
+               (a small node past the room whose door leads to it — never a ring, never the hall) and it keeps its
+               STATE: a room the officer has stood in wears its name + number as an EXIT (`exit: true`, the world
+               sheet's place name under it); only a room never entered is the question mark it always was. */
+            const nodes = M.nodes.map(n => {
+                if (inArea[n.id]) return n;
+                const known = n.st === 'here' || n.st === 'seen';
+                let place = '';
+                if (known) { try { const G = window.hqWorldOverviewGraph(), pid = window.hqWorldNodeOf(n.id); place = (pid && G.nodes[pid] && G.nodes[pid].label) || ''; } catch (e) { place = ''; } }
+                return Object.assign({}, n, { st: known ? n.st : 'q', label: known ? n.label : 'UNCHARTED', no: known ? n.no : '', hub: null, hubOf: null, hubLabel: null, hubColor: null, ring: 0, hall: false, portal: true, exit: known, place: known ? place : '' });
+            }).filter(n => drawn[n.id]);
             const edges = M.edges.filter(e => drawn[e.a] && drawn[e.b]);
             if (areaId !== 'hq') _hqAreaLayout(nodes, edges, areaId);   // the building keeps its own layout (the hall, the rings, the shaft); every other place is a radial tree round its anchor
             let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -4453,11 +4464,69 @@
             try { const G = window.hqWorldOverviewGraph(); return (G.nodes[id] && G.nodes[id].label) || id; } catch (e) { return id; }
         }
         /* a click on the world sheet: the first picks (the card), the second on the same place travels to its anchor */
+        /* THE FOCUSED MAP (2026-09-22 — the user: "the map needs to show the more focused map of the hub I am in once I
+           click on it or once I zoom in on it far enough; zooming out should bring the world map back up"): ONE way in
+           and one way out of a place's sheet — `_hqMapOpenArea(id)` (a click on a place, a zoom past HQ_MAP_AREA_IN of
+           the world's fit over it, OPEN THE AREA MAP) and `_hqMapOpenWorld()` (a zoom past HQ_MAP_WORLD_OUT of the area's
+           fit, the WORLD crumb / tab). The place opened is the world's pick, so the card's GO stands on either sheet. */
+        function _hqMapOpenArea(id, opts) {
+            opts = opts || {};
+            if (!id || !_hqWorldEnabled()) return false;
+            let G = null; try { G = window.hqWorldOverviewGraph(); } catch (e) { G = null; }
+            if (!G || !G.nodes[id]) return false;
+            _hqMap.mode = 'area'; _hqMap.area = id; _hqMap.wsel = id;
+            /* the card's pick: the anchor when the map has charted it, else the first charted room of the place (a GO on every open) */
+            const nodes = (_hqMap.model && _hqMap.model.nodes) || [];
+            const charted = rid => nodes.some(n => n.id === rid && n.st !== 'q');
+            const anchor = G.nodes[id].anchor;
+            const firstIn = nodes.find(n => n.st !== 'q' && window.hqWorldNodeOf(n.id) === id);
+            _hqMap.sel = (opts.sel && charted(opts.sel)) ? opts.sel : (anchor && charted(anchor)) ? anchor : (firstIn ? firstIn.id : null);
+            _hqMap.view = null; _hqMap.anim++;
+            try { playSfx(opts.quiet ? 'uiButtonHover' : 'uiButtonConfirm'); } catch (e) {}
+            _hqMapRerender();
+            return true;
+        }
+        function _hqMapOpenWorld(opts) {
+            opts = opts || {};
+            if (!_hqWorldEnabled() || !_hqMap.world) return false;
+            if (_hqMap.mode === 'area' && _hqMap.area) _hqMap.wsel = _hqMap.area;
+            _hqMap.mode = 'world'; _hqMap.view = null; _hqMap.anim++;
+            try { playSfx(opts.quiet ? 'uiButtonHover' : 'uiButtonConfirm'); } catch (e) {}
+            _hqMapRerender();
+            return true;
+        }
+        const HQ_MAP_AREA_IN = 0.34;    // the world sheet zoomed in past this share of its fit over a place opens the place's sheet
+        const HQ_MAP_WORLD_OUT = 1.75;  // the area sheet zoomed out past this multiple of its fit brings the world back
+        const HQ_MAP_AREA_NEAR = 1.7;   // units: how close the cursor must be to a place's node for the zoom to mean IT
+        /* the place the cursor stands on / nearest to, in the world sheet's units (p = the pointer in viewBox user units) */
+        function _hqMapWorldPlaceAt(p) {
+            const Wm = _hqMap.world; if (!Wm || !p) return null;
+            const U = HQ_MAP_U, B = Wm.block;
+            if (B && p.x >= B.x * U && p.x <= (B.x + B.w) * U && p.y >= B.y * U && p.y <= (B.y + B.h) * U && Wm.nodes.some(n => n.id === 'hq' && n.st !== 'q')) return 'hq';
+            let best = null, bd = Infinity;
+            Wm.nodes.forEach(n => { if (n.block || n.st === 'q') return; const d = Math.hypot(n.x * U - p.x, n.y * U - p.y); if (d < bd) { bd = d; best = n.id; } });
+            return (best && bd <= HQ_MAP_AREA_NEAR * U) ? best : null;
+        }
+        /* a zoom that crosses a sheet's threshold changes the sheet; returns true when it did (the caller skips its own view write) */
+        function _hqMapZoomSwitch(v, p) {
+            const fit = _hqMap.fit; if (!fit || !_hqWorldEnabled()) return false;
+            if (_hqMap.mode === 'world') {
+                if (v[2] > fit[2] * HQ_MAP_AREA_IN) return false;
+                const id = _hqMapWorldPlaceAt(p || { x: v[0] + v[2] / 2, y: v[1] + v[3] / 2 });
+                return id ? _hqMapOpenArea(id, { quiet: true }) : false;
+            }
+            if (v[2] < fit[2] * HQ_MAP_WORLD_OUT) return false;
+            return _hqMapOpenWorld({ quiet: true });
+        }
         function _hqWorldPick(id) {
             const Wm = _hqMap.world; if (!Wm) return;
             let target = null, ok = true;
             if (/^floor:/.test(id)) { const room = id.slice(6); const f = Wm.floors.find(x => x.room === room); if (!f) return; target = room; }
-            else { const n = Wm.nodes.find(x => x.id === id); if (!n) return; target = n.anchor; ok = n.st !== 'q' || true; }
+            else {
+                const n = Wm.nodes.find(x => x.id === id); if (!n) return; target = n.anchor; ok = n.st !== 'q' || true;
+                /* a CHARTED place clicked = its focused sheet (the card rides along: GO ▸ its anchor); an uncharted one keeps the card + GO ANYWAY */
+                if (n.st !== 'q' && _hqMapOpenArea(id)) return;
+            }
             if (_hqMap.wsel === id && ok && target && target !== _hqCurRoom && _hqRoomExists(target)) {
                 _hqMap.anim++;
                 try { playSfx('uiButtonConfirm'); } catch (e) {}
@@ -4498,7 +4567,7 @@
             html += `<button class="hq-btn" data-mapmode="area" data-maparea="${_hqEsc(n.id)}">OPEN THE AREA MAP ▸</button>`;
             if (!here || floor) html += `<button class="hq-btn" data-mapnode="w:${_hqEsc(Wm.here || 'hq')}">◂ YOU ARE HERE</button>`;
             html += '</div>';
-            html += `<p class="hq-panel-note">${(target !== _hqCurRoom && _hqRoomExists(target)) ? 'CLICK THE PLACE AGAIN TO TRAVEL · ' : ''}THE AREA MAP IS ITS ROOMS</p>`;
+            html += `<p class="hq-panel-note">CLICK THE PLACE ON THE SHEET FOR ITS MAP · THE AREA MAP IS ITS ROOMS</p>`;
             return html + '</div>';
         }
         /* THE LOCATIONS column: every place on the sheet, in its ink */
@@ -4529,8 +4598,8 @@
             html += '</div>';
             const M = _hqMap.model || { seen: 0, total: 0, q: 0 };
             const line = world
-                ? `AREAS CHARTED: ${Wm ? Wm.seen : 0}/${Wm ? Wm.total : 0} &nbsp;|&nbsp; SECRETS: ${(Wm && Wm.secrets.found) ? Wm.secrets.found + '/' + Wm.secrets.total : '???'} &nbsp;|&nbsp; CLICK A PLACE TWICE TO TRAVEL`
-                : `ROOMS CHARTED: ${M.seen}/${M.total} &nbsp;|&nbsp; ${M.q} IN QUESTION &nbsp;|&nbsp; CLICK A ROOM TO TRAVEL`;
+                ? `AREAS CHARTED: ${Wm ? Wm.seen : 0}/${Wm ? Wm.total : 0} &nbsp;|&nbsp; SECRETS: ${(Wm && Wm.secrets.found) ? Wm.secrets.found + '/' + Wm.secrets.total : '???'} &nbsp;|&nbsp; CLICK OR ZOOM IN ON A PLACE FOR ITS MAP`
+                : `ROOMS CHARTED: ${M.seen}/${M.total} &nbsp;|&nbsp; ${M.q} IN QUESTION &nbsp;|&nbsp; CLICK A ROOM TO TRAVEL &nbsp;|&nbsp; ZOOM OUT FOR THE WORLD`;
             return html + `<div class="hq-map-status">${line}</div>`;
         }
         function _hqMapKeyHtml() {
@@ -4549,7 +4618,7 @@
             } else {
                 html += '<i class="lg-room">●</i> ROOM <i class="lg-site">◆</i> SITE <i class="lg-part">•</i> PART OF A SITE <i class="lg-hub">◎</i> A HUB (ITS ROOMS WEAR ITS INK) <i class="lg-q">?</i> UNCHARTED <i class="lg-lift">┃</i> THE ELEVATOR <i class="lg-seam">╌</i> A SEAM';
             }
-            html += '<em>DRAG TO PAN · WHEEL TO ZOOM' + (world ? ' · CLICK A PLACE ONCE FOR ITS CARD, TWICE TO GO' : ' · CLICK A ROOM TO TRAVEL · ZOOM IN FOR SMALLER ROOMS') + '</em></div>';
+            html += '<em>DRAG TO PAN · WHEEL TO ZOOM' + (world ? ' · CLICK A PLACE OR ZOOM IN ON IT FOR ITS MAP' : ' · CLICK A ROOM TO TRAVEL · ZOOM IN FOR SMALLER ROOMS · ZOOM OUT FOR THE WORLD') + '</em></div>';
             return html;
         }
         const _HQ_MAP_COMPASS = '<svg class="hq-map-compass" viewBox="0 0 60 60" aria-hidden="true"><circle cx="30" cy="30" r="24"/><path d="M30 6 L34 30 L30 54 L26 30 Z"/><path d="M6 30 L30 26 L54 30 L30 34 Z"/><text x="30" y="5" text-anchor="middle">N</text><text x="30" y="60" text-anchor="middle">S</text><text x="2" y="33">W</text><text x="58" y="33" text-anchor="end">E</text></svg>';
@@ -4666,7 +4735,9 @@
                 const v = cur(), p = toUser(e.clientX, e.clientY);
                 const f = Math.pow(1.15, e.deltaY > 0 ? 1 : -1);
                 const w = Math.max(160, Math.min(v[2] * f, 6000)), h = v[3] * (w / v[2]);
-                _hqMapSetView(svg, [p.x - (p.x - v[0]) * (w / v[2]), p.y - (p.y - v[1]) * (h / v[3]), w, h]);
+                const nv = [p.x - (p.x - v[0]) * (w / v[2]), p.y - (p.y - v[1]) * (h / v[3]), w, h];
+                if (_hqMapZoomSwitch(nv, p)) return;   // THE FOCUSED MAP: in far enough over a place = its sheet; out far enough = the world
+                _hqMapSetView(svg, nv);
             }, { passive: false });
             svg.addEventListener('pointerdown', (e) => {
                 if (e.button !== 0 || _hqMap.ptr) return;
@@ -5777,9 +5848,9 @@
             if (mapNode) { _hqMapTravel(mapNode.getAttribute('data-mapnode')); return; }
             /* THE WORLD OVERVIEW: the sheets — WORLD / AREA (a place's rooms) */
             const mapMode = e.target.closest('[data-mapmode]');
-            if (mapMode) { const mode = mapMode.getAttribute('data-mapmode'); const area = mapMode.getAttribute('data-maparea'); _hqMap.mode = mode === 'area' ? 'area' : 'world'; if (mode === 'area') { _hqMap.area = area || _hqWorldHere(); _hqMap.sel = null; } _hqMap.view = null; _hqMap.anim++; try { playSfx('uiButtonConfirm'); } catch (err) {} _hqMapRerender(); return; }
+            if (mapMode) { const mode = mapMode.getAttribute('data-mapmode'); const area = mapMode.getAttribute('data-maparea'); if (mode === 'area') { if (!_hqMapOpenArea(area || _hqWorldHere())) { _hqMap.mode = 'area'; _hqMap.area = area || _hqWorldHere(); _hqMap.sel = null; _hqMap.view = null; _hqMap.anim++; _hqMapRerender(); } } else if (!_hqMapOpenWorld()) { _hqMap.mode = 'world'; _hqMap.view = null; _hqMap.anim++; _hqMapRerender(); } return; }
             const mapZoom = e.target.closest('[data-mapzoom]');
-            if (mapZoom) { const svg = body.querySelector('svg.hq-map-svg'); if (svg) { _hqMap.anim++; const v = (svg.getAttribute('viewBox') || '').split(/\s+/).map(Number); const f = mapZoom.getAttribute('data-mapzoom') === 'in' ? 1 / 1.3 : 1.3; const w = Math.max(160, Math.min(v[2] * f, 6000)), h = v[3] * (w / v[2]); _hqMapSetView(svg, [v[0] + (v[2] - w) / 2, v[1] + (v[3] - h) / 2, w, h]); } return; }
+            if (mapZoom) { const svg = body.querySelector('svg.hq-map-svg'); if (svg) { _hqMap.anim++; const v = (svg.getAttribute('viewBox') || '').split(/\s+/).map(Number); const f = mapZoom.getAttribute('data-mapzoom') === 'in' ? 1 / 1.3 : 1.3; const w = Math.max(160, Math.min(v[2] * f, 6000)), h = v[3] * (w / v[2]); const nv = [v[0] + (v[2] - w) / 2, v[1] + (v[3] - h) / 2, w, h]; if (!_hqMapZoomSwitch(nv, null)) _hqMapSetView(svg, nv); } return; }
             if (e.target.closest('[data-mapfit]')) { const svg = body.querySelector('svg.hq-map-svg'); if (svg) { _hqMap.anim++; _hqMap.view = null; svg.setAttribute('viewBox', svg.getAttribute('data-fit') || ''); _hqMapDetail(svg); } return; }
             /* THE NAV CONSOLE (THE SHIP'S ONE DOOR): SET COURSE — the console re-renders in place */
             const course = e.target.closest('[data-course]');

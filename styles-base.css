@@ -5625,6 +5625,11 @@ body.diorama-3d .tile-underpass.jump::before {
 .hq-map-n .hq-map-q { font-family: 'IBM Plex Mono', monospace; font-size: 10px; fill: #6f6f78; display: none; }
 .hq-map-n.st-q .hq-map-q { display: block; }
 .hq-map-n.st-q .hq-map-no { display: none; }
+/* THE MAP REMEMBERS (2026-09-22): a room OUTSIDE the place the sheet shows that the officer has stood in — an EXIT, named,
+   with its place under it; only a never-entered room is the question mark */
+.hq-map-n.exit .hq-map-dot { fill: #0d1428; stroke: #c9b37a; stroke-width: 1.8; stroke-dasharray: 4 2; }
+.hq-map-n.exit .hq-map-lbl { fill: #d8c890; }
+.hq-map-n.exit .hq-map-lbl-place { font-size: 0.78em; fill: #9c8c62; letter-spacing: 0.06em; }
 .hq-map-n .hq-map-lbl { font-family: 'IBM Plex Mono', monospace; font-size: 7px; letter-spacing: 0.12em; fill: #8f8a7a; }
 .hq-map-n.st-here .hq-map-lbl, .hq-map-n.sel .hq-map-lbl { fill: #f0e6c8; }
 .hq-map-n .hq-map-lbl.ringlbl { font-size: 6.5px; fill: #5e6a76; }

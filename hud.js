@@ -112,7 +112,11 @@ function _tqCanCastAnyWithTargets(unit) {
 }
 
 const FACTION_COLORS = { space: EW.space, time: EW.time, chaos: EW.chaos };
-const TYPE_COLORS = { human: EW.human, alien: EW.alien, divine: EW.divine, unholy: EW.unholy, anomaly: EW.anomaly, tech: EW.tech };
+/* THE ONE TYPE PALETTE (2026-09-22 — the user: "the type badges during battle look like different colours
+   than the rest of the game; tech looks lighter blue"): the battle HUD's badges wear the SAME six hex values as
+   styles-base.css `.type-badge.type-*`, ui.js `_CODEX_TYPE_COLORS` and party-builder.js's TYPE_C — never the
+   brighter EW.* accents (those stay for text / glyphs). Change a type's colour in all four places at once. */
+const TYPE_COLORS = { human: '#a0a0c3', alien: '#32aa50', divine: '#dcaa1e', unholy: '#9632b4', anomaly: '#dc3c82', tech: '#28a0be' };
 // Brightened text colors for the canonical type badge (legible over any background).
 const TYPE_TEXT_COLORS = { human: '#d8cfa8', divine: '#f0c860', unholy: '#a06bff', tech: '#4fd8ff', anomaly: '#ff4fa3', alien: '#58d858' };
 

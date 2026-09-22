@@ -8023,3 +8023,23 @@ colour at the right end (`.hrlg-shape`). **THE ELEMENT** is ONE 14px glyph with 
 No new state, nothing relayed (RULE #2). Unseen live (RULE #1c): the chips' ink on each type colour, the
 glyph chip against the gold cursor, the tiles' size on a 56px two-line row, the badge row's width with a
 type + element + two statuses.
+
+## THE ONE TYPE PALETTE + THE FOCUSED MAP + THE MAP REMEMBERS (2026-09-22, local delivery)
+The user's three. **THE ONE TYPE PALETTE**: the battle HUD's type badges (hud.js `TYPE_COLORS`) and the 3D
+nameplates' `.tp-type-*` (three-renderer.js) wore the brighter `EW.*` accents (tech `#4fd8ff`) while the codex /
+shop / forge / inspect card wore `#28a0be` — the badge read two colours in one game. Every badge is the SAME six
+hex values now (`#a0a0c3 · #32aa50 · #dcaa1e · #9632b4 · #dc3c82 · #28a0be`, the values of styles-base.css
+`.type-badge.type-*` / ui.js `_CODEX_TYPE_COLORS` / party-builder.js TYPE_C); `EW.*` stays for text and glyphs.
+Change a type's colour in all four places at once. **THE FOCUSED MAP** (map.js, the world overview block):
+`_hqMapOpenArea(id)` / `_hqMapOpenWorld()` are the ONE way between the sheets — a CLICK on a charted place on the
+world sheet opens its area sheet (the anchor, or the first charted room of the place, picked so the card offers
+GO; an uncharted place keeps the card + GO ANYWAY; a floor band still travels on its second click), the WHEEL and
+the ± buttons go through `_hqMapZoomSwitch(v, p)`: zooming the world in past `HQ_MAP_AREA_IN` (0.34) of its fit
+with the cursor within `HQ_MAP_AREA_NEAR` of a place (or over the building's block) opens that place; zooming the
+area out past `HQ_MAP_WORLD_OUT` (1.75) of its fit brings the world back with the place picked. **THE MAP
+REMEMBERS**: `_hqAreaModel` drew EVERY room outside the sheet's place as UNCHARTED — a room stood in a hundred
+times read as a question mark from the next hub over. A portal node keeps its STATE now: a seen room is an EXIT
+(`exit: true`, its name + number, the far place under it as `▸ THE WOODS`, `.hq-map-n.exit` in styles-base.css);
+only a never-entered room is the `?`. hq-map.test.js pins the click rule, both zoom thresholds and the exit.
+UNSEEN LIVE (RULE #1c): the zoom thresholds' feel on a real wheel (the two constants are the edit), the exit's
+gold dashed ring against the hub inks.

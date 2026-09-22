@@ -12651,12 +12651,13 @@ const ThreeRenderer = (function () {
                 '  border: 1px solid rgba(0,0,0,0.55); color: #0b0810;',   // THE SOLID PASS (2026-09-21)
                 '  box-shadow: inset 0 1px 0 rgba(255,255,255,0.28), 0 1px 0 rgba(0,0,0,0.5);',
                 '}',
-                '.tp-wrap .tp-type-human   { background:#d8cfa8; }',
-                '.tp-wrap .tp-type-divine  { background:#f0c860; }',
-                '.tp-wrap .tp-type-unholy  { background:#a06bff; color:#fff; }',
-                '.tp-wrap .tp-type-tech    { background:#4fd8ff; }',
-                '.tp-wrap .tp-type-anomaly { background:#ff4fa3; }',
-                '.tp-wrap .tp-type-alien   { background:#58d858; }',
+                /* THE ONE TYPE PALETTE (2026-09-22): the same six values as styles-base.css `.type-badge.type-*` / hud.js TYPE_COLORS */
+                '.tp-wrap .tp-type-human   { background:#a0a0c3; }',
+                '.tp-wrap .tp-type-divine  { background:#dcaa1e; }',
+                '.tp-wrap .tp-type-unholy  { background:#9632b4; color:#fff; }',
+                '.tp-wrap .tp-type-tech    { background:#28a0be; }',
+                '.tp-wrap .tp-type-anomaly { background:#dc3c82; color:#fff; }',
+                '.tp-wrap .tp-type-alien   { background:#32aa50; }',
 
                 '.tp-wrap.tp-p1 .tp-name {',
                 '  color: #8fd0e8;',

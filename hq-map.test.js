@@ -322,20 +322,40 @@ test('THE WORLD OVERVIEW: one node per place (the building, every hub, every lon
   assert.ok(html.includes('hq-map-compass'));
   assert.ok(!/undefined|NaN|\[object/.test(html), 'clean');
   const calls = []; c.window._hqDoAction = a => calls.push(a);
+  /* THE FOCUSED MAP (2026-09-22): a click on a CHARTED place opens its area sheet with its anchor picked — the card offers GO; a floor band still travels on its second click */
   vm.runInContext('_hqMapTravel("w:hq");', c);
-  assert.equal(c.map.wsel, 'hq'); assert.equal(calls.length, 0, 'the first click picks');
+  assert.equal(c.map.wsel, 'hq'); assert.equal(c.map.mode, 'area'); assert.equal(c.map.area, 'hq'); assert.ok(c.map.sel && c.map.model.nodes.some(n => n.id === c.map.sel && n.st !== 'q'), 'a charted room of the place is picked'); assert.equal(calls.length, 0, 'the click opens the area, it never travels');
   vm.runInContext('this.out = _hqDirectoryHtml();', c);
-  assert.ok(c.out.includes('GO ▸ THE MAIN HALL') || c.out.includes('GO ▸ CENTRAL EGRESS') || /GO ▸ /.test(c.out), 'the card offers GO');
-  assert.ok(c.out.includes('hq-map-floors'), 'the building\'s card lists the floors');
-  vm.runInContext('_hqMapTravel("w:hq");', c);
-  assert.equal(calls.length, 1); assert.equal(calls[0].room, 'central_egress', 'the second click travels to the anchor');
+  assert.ok(/GO ▸ /.test(c.out), 'the card offers GO');
+  assert.ok(c.out.includes('<svg class="hq-map-svg"') && c.out.includes('data-mapmode="world"'), 'the building\'s own sheet + the way back');
+  vm.runInContext('_hqMapOpenWorld();', c);
+  assert.equal(c.map.mode, 'world'); assert.equal(c.map.wsel, 'hq');
   vm.runInContext('_hqMapTravel("w:floor:garage"); _hqMapTravel("w:floor:garage");', c);
-  assert.equal(calls.length, 2); assert.equal(calls[1].room, 'garage', 'a floor band travels to its lobby');
+  assert.equal(calls.length, 1); assert.equal(calls[0].room, 'garage', 'a floor band travels to its lobby on the second click');
+  /* THE ZOOM: in past HQ_MAP_AREA_IN of the world's fit over a place = its sheet; out past HQ_MAP_WORLD_OUT of the area's fit = the world */
+  vm.runInContext('this.out = _hqDirectoryHtml();', c);
+  const wfit = c.map.fit.slice(), wn = m.nodes.find(n => n.id === 'hub:woods');
+  vm.runInContext(`this.sw = _hqMapZoomSwitch([${wfit[0]}, ${wfit[1]}, ${wfit[2] * 0.5}, ${wfit[3] * 0.5}], { x: ${wn.x * 100}, y: ${wn.y * 100} });`, c);
+  assert.equal(c.sw, false, 'half the fit is not yet a place'); assert.equal(c.map.mode, 'world');
+  vm.runInContext(`this.sw = _hqMapZoomSwitch([${wfit[0]}, ${wfit[1]}, ${wfit[2] * 0.2}, ${wfit[3] * 0.2}], { x: ${wn.x * 100}, y: ${wn.y * 100} });`, c);
+  assert.equal(c.sw, true, 'a fifth of the fit over the woods opens the woods'); assert.equal(c.map.mode, 'area'); assert.equal(c.map.area, 'hub:woods');
+  const afit = c.map.fit.slice();
+  vm.runInContext(`this.sw = _hqMapZoomSwitch([${afit[0]}, ${afit[1]}, ${afit[2] * 2.2}, ${afit[3] * 2.2}], null);`, c);
+  assert.equal(c.sw, true, 'twice the area\'s fit brings the world back'); assert.equal(c.map.mode, 'world'); assert.equal(c.map.wsel, 'hub:woods');
   /* the area sheet: the rooms of one place, a question mark on a door out of it */
+  D.hqRoomSee(p, 'ring_m');   // the mezzanine ring the woods' bay threshold hangs on
   c.map.mode = 'area'; c.map.area = 'hub:woods';
   vm.runInContext('this.out = _hqDirectoryHtml();', c);
   assert.ok(c.out.includes('<svg class="hq-map-svg"') && c.out.includes('data-mapnode="site_prebuilt_fairy_forest_trail"') && c.out.includes('data-mapmode="world"'), 'the area sheet + the way back');
   assert.ok(!c.out.includes('data-mapnode="reception"'), 'a room of another place is not on this sheet');
+  /* THE MAP REMEMBERS (2026-09-22): a room OUTSIDE the place the officer has STOOD IN keeps its name on the sheet as an EXIT; a never-entered one is the question mark */
+  const areaM = c.map.drawn;
+  const exits = areaM.nodes.filter(n => n.portal && n.exit);
+  assert.ok(exits.length >= 1 && exits.every(n => n.st === 'seen' && n.label !== 'UNCHARTED'), 'a room stood in outside the woods (the ring, its threshold) is a named exit off it');
+  assert.ok(exits.some(n => n.id === 'ring_m'), 'the ring the officer stood in is the exit');
+  assert.ok(areaM.nodes.filter(n => n.portal && !n.exit).every(n => n.st === 'q' && n.label === 'UNCHARTED'), 'a never-entered room outside the place is still a question mark');
+  assert.ok(c.out.includes('hq-map-n st-seen') && / exit/.test(c.out) && c.out.includes('hq-map-lbl-place'), 'the exit is drawn named with its place under it');
+  assert.ok(CSS.includes('.hq-map-n.exit .hq-map-dot'), 'the exit look');
   assert.ok(!/undefined|NaN|\[object/.test(c.out));
   assert.ok(MP.includes("if (/^w:/.test(id)) { _hqWorldPick(id.slice(2)); return; }") && MP.includes("e.target.closest('[data-mapmode]')"), 'the handlers');
   for (const cls of ['.hq-map-block', '.hq-map-floor .hq-map-band', '.hq-map-locs', '.hq-loc', '.hq-map-key', '.hq-map-crumb', '.hq-map-we.k-secret', '.hq-map-compass', '.hq-map-wn .hq-map-glyph']) assert.ok(CSS.includes(cls), cls);
