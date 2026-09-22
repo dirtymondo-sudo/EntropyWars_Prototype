@@ -8261,3 +8261,33 @@ paint / treeline filtered by rect; the moat = the world-dissolve edge into a hol
 sky + landmarks handed over, never the site's roster) · 8 THE STRATA (`HQ_FIELD_RULES.beds[family]`; a column drawn
 ONLY where `boardHeights` differs from the cell's filed level — Meteor / Flat Earth / Build work in a field) · 9 THE
 SWITCH (a counter that launches a pinned window — the puzzle hook) · 10 THE POST. Nothing coded, nothing measured live.
+
+## THE SEAMLESS FIELD, delivery 5 — THE BLOCKER SET · THE STATIC SHADOW · THE SKY ONCE (SEAMLESS_FIELD_PLAN §8.3 steps 5–6 + §8.1 item 3) — 2026-09-22, local delivery
+The second plan's first three items, in its order. **THE BLOCKER SET** (three-renderer.js, the block right before `_occInit`; the 10 fps
+in a city): under a true-ground field `_occComputeBlockers` never raycasts the facility group whole (three r128 has no BVH — every ray
+tested every triangle of the handed-over city). `_occFieldBuild(group, mPx, HR)` (run at the end of `_hqBuildRoomInBattle`, after the
+pieces landed in the facility group) lists the group's DIRECT CHILDREN (the holders = the fade roots) with a measured bounding sphere;
+a root carrying a merged / ground mesh (`_ew_hqTerrain` · `_ew_hqOuter` · `_ew_hqGround` · `_ew_hqTexBuilding` · `_ew_hqRoadMark` ·
+`_ew_hqRoad` · `_ew_hqBackdrop`, or over `OCC_FIELD_TRI_MAX` 40 k triangles) is OUT of the list AND every mesh of it wears
+`_ew_occSkip` — the ground never fades, a wall does. Per ray `_occFieldCandidates` hands the raycaster only the roots whose sphere lies
+within `HQ_FIELD_RULES.ground.blockerM` (2.5 m) of the eye→subject segment (+ the board's own three groups); the FIVE BOARD-POINT
+SUBJECTS are gone under a field (the units + the focal tile are the subjects — the shell's walls are the only thing that hides them).
+A streaming GLB has an empty box: judged by its position, re-measured every recompute until it lands; every sphere on `occRefreshS` (2 s).
+The list dies with the facility group (`_occFieldDrop` at both null sites). Readout: `ThreeRenderer.perf().occ` = `{ roots, merged,
+rays, tests, ms }` (the LAST recompute's rays / candidate roots, a rolling ms) and the build line prints `blockers n (m merged out)` —
+READ THAT FIRST on a slow field: `tests` should read a handful per ray. **THE STATIC SHADOW**: under a field the depth-pass gate in
+`renderFrame` reads `_shadowsDirty` + the lighting ease ALONE (`staticShadow`; `EW_HQ_NO_STATIC_SHADOW` = every moving frame as
+before) — never a tween frame, a rig's idle, the fog's fade, a flyer's bob — and the four tween-end loops (walk · displace · jump ·
+strike) stamp `_shadowsDirty` on a landing, so a moving unit's cast shadow lands with it. **THE SKY ONCE**: data.js `hqFieldLayout` says
+`scenery: 'none'` for EVERY field (box and terrain; an open room keeps its stars / day / tint — the site's far roster was built and
+animated over a room whose own sky vanished); `_hqHandoverStash` carries the room's own floaters + landmarks (`sky: { group, landmarks }`,
+`_hqHandoverDrop` disposes them) and `_hqBuildRoomInBattle` hangs them under a matrix holder `hq_sky` in the HORIZON group, outside the
+facility group (`_ew_occSkip` on every piece — never raycast, never faded; `roomSky` / `EW_HQ_NO_ROOM_SKY`); a rebuild (no stash) builds
+the landmarks again on a scratch record (`_hqBuildLandmarks(Hs, …)` — the floaters are the stash's alone). RULES: a new merged / ground
+mesh in the HQ wears one of the tags above (or the fade raycasts it); a field never builds the site's roster; the rules live on
+`HQ_FIELD_RULES.ground` (`_hqHandoverRules` reads them with defaults). `npm test` runs seamless-field.test.js (19 — the candidate
+arithmetic in a vm); hq-field / hq-room-in-battle's box-layout pins moved. Ship data.js to R2 AND Render. OPEN in the plan: 7 THE CUT
+proper (the re-cut 12 × 12 chunk + the moat), 8 THE STRATA, 9 THE SWITCH, 10 THE POST. UNSEEN LIVE (RULE #1c): the CDN is unreachable
+from the sandbox — the fps in Downtown / the Grid / the sewers / the cavern is the user's to read (`hq.perf()` on the walk vs `perf()`
+in the fight), a unit's shadow lagging its walk until it lands, the room's floaters standing still over the fight, the landmarks'
+scale through the matrix (HQ px × the battle's px per metre).

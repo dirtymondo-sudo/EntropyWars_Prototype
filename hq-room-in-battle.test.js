@@ -199,6 +199,6 @@ test('the dressing split off the site board: signs, signboards, masts, lamps and
 });
 
 test('the data side: the box field\'s layout says the room is drawn round the window (no near, no motion, the world inert)', () => {
-    assert.match(DJ, /if \(env && opts\.box\) \{ delete env\.near; delete env\.motion; env\.world = \{ kind: 'room' \}; \}/);
+    assert.match(DJ, /if \(env && opts\.box\) \{ delete env\.near; delete env\.motion; env\.world = \{ kind: 'room' \}; env\.scenery = 'none'; \}/);   // THE SKY ONCE (delivery 5): no far roster for a field
     assert.match(DJ, /_hqBuildRoomInBattle reads battle\.js _ewEncounterRoom/);
 });

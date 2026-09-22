@@ -111,6 +111,27 @@ over a room whose own sky is dropped. §8.3 is the order: the blocker set
 first (the 10 fps), the static shadow, THE CUT, THE STRATA, THE SWITCH, the
 post. Nothing measured live (the CDN is unreachable from the sandbox).
 
+### 2026-09-22 — delivery 5: THE BLOCKER SET · THE STATIC SHADOW · THE SKY ONCE (§8.3 steps 5 + 6, §8.1 item 3)
+See CLAUDE.md "THE SEAMLESS FIELD, delivery 5". Step 5: under a true-ground field
+`_occComputeBlockers` never raycasts the facility group whole — `_occFieldBuild`
+lists the group's direct children with a measured bounding sphere (a root carrying
+the field mesh, the outer ground, a textured-building batch, the road paint, a
+backdrop prism or > 40 k triangles is OUT and its meshes wear `_ew_occSkip`) and
+`_occFieldCandidates` hands each ray only the roots whose sphere lies within
+`blockerM` (2.5 m) of the eye→subject segment; the five board-point subjects are
+gone (the units + the focal tile are the subjects). Step 6: the shadow gate reads
+`_shadowsDirty` + the lighting ease alone under a field (`staticShadow`), and the
+four tween-end loops stamp a landing. Item 3: `hqFieldLayout` says `scenery: 'none'`
+for EVERY field (an open room keeps its stars / day / tint), the hand-over stash
+carries the room's own floaters + landmarks and the battle hangs them under a matrix
+holder in the horizon group outside the facility group (a rebuild re-builds the
+landmarks on a scratch record). Readout: `perf().occ` = `{ roots, merged, rays,
+tests, ms }` and the build line prints `blockers n (m merged out) · sky k`. Built
+without a browser (the CDN is unreachable from the sandbox) — the numbers are the
+user's: `hq.perf()` on the walk against `perf()` in the fight in Downtown / the Grid
+/ the sewers / the cavern, and `perf().occ.tests` should read a handful per ray.
+Steps 7 (THE CUT proper: the re-cut chunk + the moat), 8, 9, 10 stay open.
+
 ## 8. The second plan — THE CUT (2026-09-22, planning)
 
 The user, after delivery 4: the hall is fine, a city or any big area is ~10 fps.
@@ -190,9 +211,9 @@ Yes — with three amendments the geometry demands:
 
 | # | Step | What it fixes |
 |---|------|---------------|
-| 5 | **THE BLOCKER SET** — the fade raycasts a per-battle `_occFieldRoots` list: pieces whose bounding sphere lies within `blockerM` of an eye→subject segment, never the field mesh / outer ground / merged batches (they never fade — `_ew_occSkip` them AND leave them out of `groups`; a wall group fades, the ground never); under true ground the five board-point subjects go (the units + the focal tile are the subjects; the shell's walls are the only thing that can hide them) | the 10 fps (§8.1 item 1) |
-| 6 | **THE STATIC SHADOW** — a field battle's depth pass refreshes on a unit's landing / a piece change / a terrain edit, never on a tween frame (`_shadowMotion` ignored under `_fieldGroundLive()`; a moving unit's own shadow is the cheap blob) | item 2 |
-| 7 | **THE CUT** — `HQ_FIELD_RULES.cut = { moatTiles: 2, moat: 'grid', fadeM: 3 }`: the chunk = the window + `moatTiles` a side (12 × 12); `_hqBuildTerrain(copy, { rect })` re-cuts the field, the water, the decks, the walls, the rails, the scatter, the lots (`_hqBuildCityLots` filtered by lot rect), the road paint and the treeline over the chunk; the hand-over keeps pieces inside the chunk only (`keepM` = the moat's edge); the moat plane + the dissolve edge + the fog; `H.sky` in the stash → the room's dome + landmarks in the battle; `scenery: 'none'` for every field | item 3, the radius made exact, the user's chunk |
+| 5 ✅ | **THE BLOCKER SET** — the fade raycasts a per-battle `_occFieldRoots` list: pieces whose bounding sphere lies within `blockerM` of an eye→subject segment, never the field mesh / outer ground / merged batches (they never fade — `_ew_occSkip` them AND leave them out of `groups`; a wall group fades, the ground never); under true ground the five board-point subjects go (the units + the focal tile are the subjects; the shell's walls are the only thing that can hide them) | the 10 fps (§8.1 item 1) |
+| 6 ✅ | **THE STATIC SHADOW** — a field battle's depth pass refreshes on a unit's landing / a piece change / a terrain edit, never on a tween frame (`_shadowMotion` ignored under `_fieldGroundLive()`; a moving unit's own shadow is the cheap blob) | item 2 |
+| 7 (the sky half ✅, the re-cut + the moat open) | **THE CUT** — `HQ_FIELD_RULES.cut = { moatTiles: 2, moat: 'grid', fadeM: 3 }`: the chunk = the window + `moatTiles` a side (12 × 12); `_hqBuildTerrain(copy, { rect })` re-cuts the field, the water, the decks, the walls, the rails, the scatter, the lots (`_hqBuildCityLots` filtered by lot rect), the road paint and the treeline over the chunk; the hand-over keeps pieces inside the chunk only (`keepM` = the moat's edge); the moat plane + the dissolve edge + the fog; `H.sky` in the stash → the room's dome + landmarks in the battle; `scenery: 'none'` for every field | item 3, the radius made exact, the user's chunk |
 | 8 | **THE STRATA** — `HQ_FIELD_RULES.beds[family]` (facility: concrete · rebar · bedrock; city: asphalt · earth · bedrock; cave: rock · rock · lava-deep; woods: soil · roots · rock; divine: cloud · cloud · cloud; sea: sand · rock · deep water; astral: void) keyed off the room's shell family / hub, `terrain.bed` on a room overriding; `hqFieldBuild` files `field.levels` (the tier per cell at the build) and `tileTopY` = the true top + (`boardHeights − levels`) × the level step; `rebuildTerrain` builds a column ONLY for a cell whose engine height differs from its level — a dig shows the bed's faces (THE CRATER FIX's rule: the crater opens onto the column's own faces), a raise stands a column wearing the room's floor sheet on top; the picking quads follow the engine height | Meteor, Flat Earth, Build, reshape in a field |
 | 9 | **THE SWITCH** — a counter with `action: { field: { ox, oz, enemies, gm } }`: `hqMarkerLaunch`'s shape with a PINNED window and a named enemy set at a spot, launched by E — the puzzle hook ("get into position, press the button, the field turns into battle mode, the enemies are where you need to be") | the user's puzzles; no renderer work |
 | 10 | **THE POST** (was 7) — SSAO at half resolution in a field, the reflectors off, the atmosphere tier down, point lights capped by distance to the window | the last of the frame |

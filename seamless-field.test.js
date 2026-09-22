@@ -177,7 +177,8 @@ test('THE WINDOW on the grounds: every IN cell at THE TIER of its top over the w
     assert.ok(reg.entry.field.tops.some(r => r.some(t => typeof t === 'number')), 'the tops for the true ground');
     assert.equal(reg.entry.spawns[1].length, R.teamSize);
     assert.ok(reg.layout.env && !reg.layout.env.near && !reg.layout.env.motion && reg.layout.env.world.kind === 'room', 'no near setting, THE WORLD inert');
-    assert.notEqual(reg.layout.env.scenery, 'none', 'an open room keeps its sky');
+    assert.equal(reg.layout.env.scenery, 'none', 'THE SKY ONCE (delivery 5): a field never builds the site\'s far roster');
+    assert.ok(reg.layout.env.tint != null && reg.layout.env.stars !== 0, '…but an open room keeps its sky (the tint, the stars)');
     const T = D.hqFieldTransform(W.board);
     const c = T.cellOf({ x: 0, z: 8 }); assert.ok(c.x >= 0 && c.x < S && c.y >= 0 && c.y < S, 'the walker inside the window');
 });
@@ -329,4 +330,101 @@ test('delivery 4 · the readout: one frame-time average for both loops, ThreeRen
     for (let i = 0; i < 200; i++) ctx._perfTick(i * 16.7);
     const p = ctx._perfRead();
     assert.ok(Math.abs(p.fps - 60) < 1.5 && p.calls === 12 && p.triangles === 3400 && p.programs === 2 && p.field === true && p.hq === false, JSON.stringify(p));
+});
+
+/* ── THE SECOND PLAN, delivery 5 (SEAMLESS_FIELD_PLAN.md §8.3 steps 5 + 6, §8.1 item 3) ── */
+test('delivery 5 · the rules: blockerM / occRefreshS / staticShadow / roomSky on HQ_FIELD_RULES.ground; the renderer reads them with defaults and the two kill-switches', () => {
+    const g = DATA.HQ_FIELD_RULES.ground;
+    assert.equal(g.blockerM, 2.5); assert.equal(g.occRefreshS, 2); assert.equal(g.staticShadow, true); assert.equal(g.roomSky, true);
+    const r = TR.slice(TR.indexOf('    function _hqHandoverRules() {'), TR.indexOf('    function _hqHandoverStash(H, opts) {'));
+    assert.match(r, /blockerM: \(g\.blockerM > 0\) \? \+g\.blockerM : 2\.5, occRefreshS: \(g\.occRefreshS > 0\) \? \+g\.occRefreshS : 2,/);
+    assert.match(r, /staticShadow: g\.staticShadow !== false && !W\.EW_HQ_NO_STATIC_SHADOW, roomSky: g\.roomSky !== false && !W\.EW_HQ_NO_ROOM_SKY/);
+});
+
+test('delivery 5 · THE BLOCKER SET: the fade never raycasts the room whole under a field — a per-ray candidate list by bounding sphere, the merged batches out and _ew_occSkip, the board points no longer subjects', () => {
+    const occ = TR.slice(TR.indexOf('    var OCC_FIELD_TRI_MAX = 40000;'), TR.indexOf('    function _occInit() {'));
+    const cb = TR.slice(TR.indexOf('    function _occComputeBlockers(cam, cineActive, selUnit, focalTile) {'), TR.indexOf('    function _occUnitBlockers(cam, subs, subjectIds, nearClear) {'));
+    assert.match(cb, /var fieldSet = \(_occField && _fieldGroundLive\(\)\) \? _occField : null;/);
+    assert.match(cb, /var facOcc = !!\(_facilityNearGroup && _facilityNearGroup\.parent\) && !fieldSet;/, 'the facility group leaves the raycast groups under a field');
+    assert.match(cb, /if \(!groups\.length && !fieldSet\) return roots;/);
+    assert.match(cb, /intersectObjects\(fieldSet \? _occFieldCandidates\(fieldSet, eye, _occDir, dist - nearClear, groups\) : groups, true\)/, 'per ray, the candidates');
+    assert.ok(cb.indexOf('if (facOcc) {') > 0 && cb.indexOf('var fpts = [[(fbw - 1) / 2') > 0, 'the five board points stay for a walled board');
+    assert.match(cb, /if \(fieldSet\) _occFieldStat\(fieldSet, performance\.now\(\) - _occT0\);/);
+    /* the build: the facility group's direct children, after the take */
+    const bb = TR.slice(TR.indexOf('    function _hqBuildRoomInBattle(ctx) {'), TR.indexOf('    function _hqEnter(opts) {'));
+    assert.match(bb, /var occF = trueGround \? _occFieldBuild\(_facilityNearGroup, ts \/ C, HR\) : null; if \(!trueGround\) _occFieldDrop\(\);/);
+    assert.ok(bb.indexOf('var occF = trueGround') > bb.indexOf('if (_facilityNearGroup) { g.children.slice().forEach('), 'built after the pieces landed in the facility group');
+    assert.match(bb, /blockers: occF \? occF\.roots\.length : null, merged: occF \? occF\.skipped : null, sky: skyN/);
+    /* the list dies with the group */
+    assert.ok(TR.includes("        _facilityNearGroup = null; _occFieldDrop();   // THE BLOCKER SET") && TR.includes("_horizonKey = ''; _facilityNearGroup = null; _occFieldDrop();"), 'both null sites drop it');
+    assert.match(TR, /occ: \(typeof _occField !== 'undefined' && _occField\) \? \{ roots: _occField\.roots\.length, merged: _occField\.skipped, rays: _occField\.rays, tests: _occField\.tests/, 'the readout');
+    /* the arithmetic, in a vm: a real-ish THREE (Vector3 / Box3 by hand) */
+    class V3 { constructor(x = 0, y = 0, z = 0) { this.x = x; this.y = y; this.z = z; } set(x, y, z) { this.x = x; this.y = y; this.z = z; return this; } length() { return Math.hypot(this.x, this.y, this.z); } }
+    class B3 { constructor() { this.empty = true; } makeEmpty() { this.empty = true; return this; } isEmpty() { return this.empty; } setFromObject(o) { if (o.box) { this.empty = false; this.min = o.box.min; this.max = o.box.max; } else this.empty = true; return this; } getCenter(v) { return v.set((this.min[0] + this.max[0]) / 2, (this.min[1] + this.max[1]) / 2, (this.min[2] + this.max[2]) / 2); } getSize(v) { return v.set(this.max[0] - this.min[0], this.max[1] - this.min[1], this.max[2] - this.min[2]); } }
+    const mkObj = (o) => Object.assign({ children: [], isMesh: false, updateMatrixWorld() {}, getWorldPosition(v) { return v.set(this.pos[0], this.pos[1], this.pos[2]); }, pos: [0, 0, 0],
+        traverse(fn) { fn(this); this.children.forEach(c => c.traverse(fn)); } }, o);
+    const mesh = (o) => mkObj(Object.assign({ isMesh: true }, o));
+    const ctx = { THREE: { Vector3: V3, Box3: B3 }, performance: { now: () => 1000 }, Math };
+    vm.createContext(ctx); vm.runInContext(occ + '\nthis.build = _occFieldBuild; this.cand = _occFieldCandidates; this.big = _occFieldBig; this.refresh = _occFieldRefresh; this.get = () => _occField;', ctx);
+    const field = mkObj({ children: [mesh({ _ew_hqTerrain: true, geometry: { index: { count: 900 } } })], box: { min: [-9000, 0, -9000], max: [9000, 10, 9000] } });
+    const batch = mkObj({ children: [mesh({ geometry: { index: { count: 3 * 50000 } } })], box: { min: [-5000, 0, -5000], max: [5000, 500, 5000] } });
+    const wall = mkObj({ children: [mesh({ _ew_hqPart: 'wall', geometry: { index: { count: 36 } } })], box: { min: [0, 0, 990], max: [1400, 300, 1010] } });
+    const chair = mkObj({ children: [mesh({ geometry: { index: { count: 600 } } })], box: { min: [690, 0, 290], max: [710, 90, 310] } });
+    const glb = mkObj({ children: [], pos: [300, 0, 300] });   // still streaming: no box
+    const group = mkObj({ children: [field, batch, wall, chair, glb] });
+    const F = ctx.build(group, 73.14, { blockerM: 2.5, occRefreshS: 2 });
+    assert.equal(F.roots.length, 3, 'the field and the batch are out');
+    assert.equal(F.skipped, 2);
+    assert.ok(field.children[0]._ew_occSkip === true && batch.children[0]._ew_occSkip === true, 'the merged meshes wear _ew_occSkip');
+    assert.ok(!wall.children[0]._ew_occSkip);
+    assert.ok(Math.abs(F.blockerPx - 2.5 * 73.14) < 1e-9);
+    const rec = F.roots.find(r => r.o === wall); assert.ok(Math.abs(rec.c.z - 1000) < 1e-9 && rec.r > 700, 'the wall\'s sphere');
+    const rg = F.roots.find(r => r.o === glb); assert.equal(rg.r, 0); assert.equal(rg.c.x, 300);
+    /* a ray from the eye at (700, 200, -2000) toward (700, 100, 700): passes the wall at z 1000 on its way → the wall is a candidate; the chair (at z 300, 10 px wide) is on the line too */
+    const groups = ['G'];
+    let out = ctx.cand(F, new V3(700, 200, -2000), new V3(0, -100 / Math.hypot(100, 2700), 2700 / Math.hypot(100, 2700)), 2600, groups);
+    assert.ok(out.includes(wall) && out.includes(chair) && out[0] === 'G', 'the wall and the chair are on the line');
+    assert.ok(!out.includes(glb), 'the streaming GLB at x 300 is 400 px off the line — never a candidate');
+    /* a ray along x at z -3000: nothing within 2.5 m */
+    out = ctx.cand(F, new V3(-2000, 100, -3000), new V3(1, 0, 0), 4000, groups);
+    assert.deepEqual(out, ['G']);
+    assert.equal(F.rays, 2); assert.equal(F.tests, 2);
+    /* the refresh: an empty box is re-measured every recompute, everything on the cadence */
+    glb.box = { min: [280, 0, 280], max: [320, 100, 320] };
+    ctx.refresh(F, 1500); assert.ok(rg.r > 0, 'the landed GLB grew its sphere');
+    wall.box = { min: [0, 0, 1990], max: [1400, 300, 2010] };
+    ctx.refresh(F, 1500); assert.ok(Math.abs(rec.c.z - 1000) < 1e-9, 'not yet the cadence');
+    ctx.refresh(F, 3200); assert.ok(Math.abs(rec.c.z - 2000) < 1e-9, 'the cadence re-measures everything');
+});
+
+test('delivery 5 · THE STATIC SHADOW: under a field the depth pass refreshes on _shadowsDirty + the lighting ease alone; the four tween-end loops stamp a landing; the kill-switch', () => {
+    const rf = TR.slice(TR.indexOf('    function renderFrame() {'), TR.indexOf('    function renderFrame() {') + 60000);
+    assert.match(rf, /var _fieldStatic = _fieldGroundLive\(\) && _hqHandoverRules\(\)\.staticShadow;/);
+    assert.match(rf, /var _needShadow = window\.EW_DISABLE_SHADOW_GATING \|\| _shadowsDirty\s*\n\s*\|\| \(ThreePost && ThreePost\.isLightingEasing && ThreePost\.isLightingEasing\(\)\)\s*\n\s*\|\| \(!_fieldStatic && \(_shadowMotion\s*\n\s*\|\| hasActiveAnims\(\)\s*\n\s*\|\| \(state && state\.fogOfWar\)\s*\n\s*\|\| _towerCubes\.length > 0\s*\n\s*\|\| _anyGlbAnimating\(\)\)\);/);
+    for (const nm of ['_walkTweens', '_displaceTweens', '_jumpTweens', '_strikeTweens']) {
+        assert.ok(TR.includes('for (var r = 0; r < toRemove.length; r++) ' + nm + '.delete(toRemove[r]);\n        if (toRemove.length) _shadowsDirty = true;'), nm + ' stamps a landing');
+    }
+});
+
+test('delivery 5 · THE SKY ONCE: the stash carries an open room\'s floaters + landmarks, the drop disposes them, the battle hangs them outside the facility group (never raycast), a rebuild re-builds the landmarks alone; every field layout says scenery none', () => {
+    const st = TR.slice(TR.indexOf('    function _hqHandoverStash(H, opts) {'), TR.indexOf('    function _hqLeave(opts) {'));
+    assert.match(st, /var sky = \(H\.sky && \(H\.sky\.group \|\| H\.sky\.landmarks\)\) \? \{ group: H\.sky\.group \|\| null, landmarks: H\.sky\.landmarks \|\| null \} : null;/);
+    assert.match(st, /if \(sky\) \[sky\.group, sky\.landmarks\]\.forEach\(function \(g\) \{ if \(g && g\.parent\) g\.parent\.remove\(g\); \}\);/, 'they leave the scene before the disposal loop');
+    assert.match(st, /propGroup: H\.propGroup, sky: sky, fxPulse/);
+    assert.match(TR, /\[h\.shellGroup, h\.doorGroup, h\.propGroup, h\.sky && h\.sky\.group, h\.sky && h\.sky\.landmarks\]\.forEach/, 'the drop disposes the sky too');
+    const bb = TR.slice(TR.indexOf('    function _hqBuildRoomInBattle(ctx) {'), TR.indexOf('    function _hqEnter(opts) {'));
+    assert.match(bb, /if \(trueGround && HR\.roomSky\) \{/);
+    assert.match(bb, /var skyH = holder\('hq_sky'\); skyH\._ew_occNear = false;/);
+    assert.match(bb, /if \(hand && hand\.sky\) \{ if \(hand\.sky\.group\) skyH\.add\(hand\.sky\.group\); if \(hand\.sky\.landmarks\) skyH\.add\(hand\.sky\.landmarks\); \}/);
+    assert.match(bb, /_hqBuildLandmarks\(Hs, room\.shell\.sky\.landmarks, 6000\)/, 'a rebuild builds the landmarks on a scratch record');
+    assert.match(bb, /o\._ew_occSkip = true; skyN\+\+; \} \}\); _horizonGroup\.add\(skyH\); \}/, 'in the horizon group, never the facility group; every piece skips the fade');
+    const DJ = fs.readFileSync(path.join(__dirname, 'data.js'), 'utf8');
+    assert.match(DJ, /if \(env && opts\.box\) \{ delete env\.near; delete env\.motion; env\.world = \{ kind: 'room' \}; env\.scenery = 'none'; \}/);
+    assert.match(DJ, /if \(env && opts\.terrain\) \{ delete env\.near; delete env\.motion; env\.world = \{ kind: 'room' \}; env\.scenery = 'none'; if \(!opts\.open\) \{ env\.stars = 0; env\.nebula = 0; delete env\.density; \} \}/);
+    /* the layout itself: a box field, an open terrain field, a closed one */
+    const L1 = DATA.hqFieldLayout('prebuilt_haunted', 'wood', { box: true });
+    const L2 = DATA.hqFieldLayout('prebuilt_haunted', 'grass', { terrain: true, open: true });
+    const L3 = DATA.hqFieldLayout('prebuilt_haunted', 'grass', { terrain: true, open: false, dome: 0x101010 });
+    assert.equal(L1.env.scenery, 'none'); assert.equal(L2.env.scenery, 'none'); assert.equal(L3.env.scenery, 'none');
+    assert.notEqual(L2.env.stars, 0, 'an open field keeps its stars'); assert.equal(L3.env.stars, 0, 'a closed one is a dark ceiling');
 });

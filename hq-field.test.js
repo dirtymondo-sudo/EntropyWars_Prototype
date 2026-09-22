@@ -475,7 +475,7 @@ test('STAGE C · THE SOURCE: map.js says THE ROOM IS THE BOARD in a complex part
     const copy = MP.slice(MP.indexOf('function _hqEncounterBoardCopy(board)'), MP.indexOf('function _hqEncounterFire(ev)'));
     ['window.hqFieldRoomOk(_hqCurRoom)', "fieldRoom ? 'THE ROOM IS THE BOARD' : 'THE SITE IS THE BOARD'", "if (board && board.cave) return 'THE CAVE IS THE BOARD';"].forEach(f => assert.ok(copy.includes(f), f));
     ['window.hqFieldBoxInfo = hqFieldBoxInfo;', 'window.hqFieldLattice = hqFieldLattice;', 'window.hqFieldBoxStep = hqFieldBoxStep;', 'window.hqFieldGallery = hqFieldGallery;'].forEach(f => assert.ok(DJ.includes(f), f));
-    assert.ok(DJ.includes("if (env && opts.box) { delete env.near; delete env.motion; env.world = { kind: 'room' }; }"), 'the box layout rule');
+    assert.ok(DJ.includes("if (env && opts.box) { delete env.near; delete env.motion; env.world = { kind: 'room' }; env.scenery = 'none'; }"), 'the box layout rule (+ THE SKY ONCE, delivery 5)');
 });
 
 /* ═══ STAGE D · THE EDGE (Phase 9 Delivery 12, 2026-09-16) ═══ */

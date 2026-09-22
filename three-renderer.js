@@ -16018,6 +16018,79 @@ const ThreeRenderer = (function () {
     var _occShotGuard = { id: null, set: null };
     var OCC_UNIT_RADIUS = 0.34;      // tiles — blocker capsule radius
 
+    /* ── THE BLOCKER SET (SEAMLESS_FIELD_PLAN.md §8.3 step 5, 2026-09-22) ──
+       Under a true-ground field the facility group IS the walk's whole room (the
+       hand-over), and three r128 has no BVH: a raycast against it tested every
+       triangle of every merged mesh whose sphere the ray crossed — a city's
+       300 k-triangle field, its lot batches, the road paint — some 600 times a
+       second. That was the 10 fps. Now a field battle raycasts a LIST: the
+       facility group's direct children (the holders — each one fade root), each
+       with a measured bounding sphere, and only those whose sphere lies within
+       blockerM of the eye→subject segment go to the raycaster — per ray. A root
+       that carries a merged / ground mesh (the field, the outer ground, a
+       textured-building batch, the road paint, a backdrop prism, or anything over
+       OCC_FIELD_TRI_MAX triangles) is never in the list AND every mesh of it
+       wears _ew_occSkip: the ground never fades, a wall does. A GLB still
+       streaming has an empty box — it is judged by its position and re-measured
+       until it lands; every sphere is re-measured on the rules' cadence. */
+    var OCC_FIELD_TRI_MAX = 40000;   // triangles — a root carrying more is a merged batch: never raycast, never faded
+    var _occField = null;            // { roots: [{ o, c, r }], skipped, mPx, blockerPx, refreshMs, at, rays, tests, ms, n }
+    var _occFieldBox = null, _occFieldV = null;
+    function _occFieldBig(root) {
+        var big = false;
+        root.traverse(function (o) {
+            if (big || !o.isMesh) return;
+            if (o._ew_hqTerrain || o._ew_hqOuter || o._ew_hqGround || o._ew_hqTexBuilding || o._ew_hqRoadMark || o._ew_hqRoad || o._ew_hqBackdrop) { big = true; return; }
+            var g = o.geometry, n = g ? (g.index ? g.index.count : (g.attributes && g.attributes.position ? g.attributes.position.count : 0)) : 0;
+            if (n / 3 > OCC_FIELD_TRI_MAX) big = true;
+        });
+        return big;
+    }
+    function _occFieldMeasure(rec) {
+        if (!_occFieldBox) { _occFieldBox = new THREE.Box3(); _occFieldV = new THREE.Vector3(); }
+        var o = rec.o;
+        try { o.updateMatrixWorld(true); _occFieldBox.setFromObject(o); } catch (e) { _occFieldBox.makeEmpty(); }
+        if (_occFieldBox.isEmpty()) { o.getWorldPosition(rec.c); rec.r = 0; return; }
+        _occFieldBox.getCenter(rec.c); rec.r = _occFieldBox.getSize(_occFieldV).length() * 0.5;
+    }
+    function _occFieldBuild(group, mPx, HR) {
+        _occField = null;
+        if (!group || typeof THREE === 'undefined') return null;
+        var roots = [], skipped = 0;
+        group.children.forEach(function (c) {
+            if (_occFieldBig(c)) { c.traverse(function (o) { if (o.isMesh) o._ew_occSkip = true; }); skipped++; return; }
+            roots.push({ o: c, c: new THREE.Vector3(), r: 0 });
+        });
+        var F = { roots: roots, skipped: skipped, mPx: mPx, blockerPx: ((HR && HR.blockerM > 0) ? HR.blockerM : 2.5) * mPx,
+                  refreshMs: ((HR && HR.occRefreshS > 0) ? HR.occRefreshS : 2) * 1000, at: 0, rays: 0, tests: 0, ms: 0, n: 0 };
+        roots.forEach(_occFieldMeasure); F.at = performance.now();
+        _occField = F;
+        return F;
+    }
+    /* the spheres: every root on the cadence, a still-empty one (a streaming GLB) every recompute, a few at a time */
+    function _occFieldRefresh(F, now) {
+        var all = (now - F.at) >= F.refreshMs, k = 0;
+        for (var i = 0; i < F.roots.length; i++) {
+            var rec = F.roots[i];
+            if (all || (rec.r === 0 && k < 24)) { _occFieldMeasure(rec); if (!all) k++; }
+        }
+        if (all) F.at = now;
+    }
+    /* the roots whose sphere lies within blockerPx of the segment eye → eye + dir·L, after the board's own groups */
+    function _occFieldCandidates(F, eye, dir, L, groups) {
+        var out = groups.slice(), pad = F.blockerPx, n = 0;
+        for (var i = 0; i < F.roots.length; i++) {
+            var rec = F.roots[i], cx = rec.c.x - eye.x, cy = rec.c.y - eye.y, cz = rec.c.z - eye.z;
+            var t = cx * dir.x + cy * dir.y + cz * dir.z; if (t < 0) t = 0; else if (t > L) t = L;
+            var qx = cx - dir.x * t, qy = cy - dir.y * t, qz = cz - dir.z * t, rr = rec.r + pad;
+            if (qx * qx + qy * qy + qz * qz <= rr * rr) { out.push(rec.o); n++; }
+        }
+        F.rays++; F.tests += n;
+        return out;
+    }
+    function _occFieldStat(F, ms) { F.ms += (ms - F.ms) * 0.2; F.n++; }
+    function _occFieldDrop() { _occField = null; }
+
     function _occInit() {
         if (_occRaycaster) return;
         _occRaycaster = new THREE.Raycaster();
@@ -16269,9 +16342,16 @@ const ThreeRenderer = (function () {
            angle — before this they were not raycast at all, so every unit
            behind a wall dropped to its x-ray hologram. They are blockers
            like any terrain column now. */
-        var facOcc = !!(_facilityNearGroup && _facilityNearGroup.parent);
+        /* THE BLOCKER SET (SEAMLESS_FIELD_PLAN §8.3 step 5, 2026-09-22): under a true-ground field the room is NEVER
+           raycast whole — only the pieces whose sphere lies within blockerM of a sight line (_occFieldCandidates, per ray),
+           and the units + the focal tile are the subjects (the five board points go: the shell's walls are the only
+           thing that can hide them, and a unit's own sight line finds those) */
+        var fieldSet = (_occField && _fieldGroundLive()) ? _occField : null;
+        var _occT0 = fieldSet ? performance.now() : 0;
+        if (fieldSet) { _occFieldRefresh(fieldSet, _occT0); fieldSet.rays = 0; fieldSet.tests = 0; }
+        var facOcc = !!(_facilityNearGroup && _facilityNearGroup.parent) && !fieldSet;
         if (facOcc) groups.push(_facilityNearGroup);
-        if (!groups.length) return roots;
+        if (!groups.length && !fieldSet) return roots;
 
         var subs = [];   // [{P, feetY, tx, ty}] — see _occUnitPoint/_occTilePoint
         var subjectIds = null;   // cine: units that must never be ghosted as blockers
@@ -16360,7 +16440,7 @@ const ThreeRenderer = (function () {
                 _occRaycaster.set(eye, _occDir);
                 _occRaycaster.near = 0;
                 _occRaycaster.far = dist - nearClear;
-                var hits = _occRaycaster.intersectObjects(groups, true);
+                var hits = _occRaycaster.intersectObjects(fieldSet ? _occFieldCandidates(fieldSet, eye, _occDir, dist - nearClear, groups) : groups, true);
                 for (var hi = 0; hi < hits.length; hi++) {
                     /* MOVING MAPS rev 2: a hull / fuselage the board RIDES ON never
                        fades — its closed back lies right under every tile, so the
@@ -16377,6 +16457,7 @@ const ThreeRenderer = (function () {
         if (cineActive && subjectIds && !(_introOccUids && _introOccUids.length)) {
             _occUnitWant = _occUnitBlockers(cam, subs, subjectIds, nearClear);
         }
+        if (fieldSet) _occFieldStat(fieldSet, performance.now() - _occT0);
         return roots;
     }
 
@@ -18075,6 +18156,7 @@ const ThreeRenderer = (function () {
             }
         }
         for (var r = 0; r < toRemove.length; r++) _walkTweens.delete(toRemove[r]);
+        if (toRemove.length) _shadowsDirty = true;   // THE STATIC SHADOW: a landing refreshes the field's depth pass
     }
 
     function _tileSurfaceY(tx, ty, tz) {
@@ -18529,6 +18611,7 @@ const ThreeRenderer = (function () {
             }
         }
         for (var r = 0; r < toRemove.length; r++) _displaceTweens.delete(toRemove[r]);
+        if (toRemove.length) _shadowsDirty = true;   // THE STATIC SHADOW: a landing refreshes the field's depth pass
     }
 
     function startJumpTween(unit, fromX, fromY, toX, toY, fromZ, toZ, durationMs) {
@@ -18639,6 +18722,7 @@ const ThreeRenderer = (function () {
             }
         }
         for (var r = 0; r < toRemove.length; r++) _jumpTweens.delete(toRemove[r]);
+        if (toRemove.length) _shadowsDirty = true;   // THE STATIC SHADOW: a landing refreshes the field's depth pass
     }
 
     var _strikeTweens = new Map();
@@ -18781,6 +18865,7 @@ const ThreeRenderer = (function () {
             }
         }
         for (var r = 0; r < toRemove.length; r++) _strikeTweens.delete(toRemove[r]);
+        if (toRemove.length) _shadowsDirty = true;   // THE STATIC SHADOW: a landing refreshes the field's depth pass
     }
 
     var _throwTweens = new Map();
@@ -29314,7 +29399,7 @@ const ThreeRenderer = (function () {
         var key = cx.toFixed(0) + ',' + cz.toFixed(0) + ',' + discR.toFixed(0) + ',' + _hzTheme + ',' + _hzThemeDensity + ',' + (_hzNear || '') + ',' + (_hzMotion ? 'm:' + (_hzMotion.kind || 'x') + ':' + (_hzMotion.axis || 'x') : '') + ',' + _hqBattleRoomKey();   // THE ROOM ROUND THE FIELD (§10 stage 4): an encounter's room is part of the scenery
         if (_horizonGroup && _horizonKey === key) return;
         if (_horizonGroup) { scene.remove(_horizonGroup); _disposeR(_horizonGroup); }
-        _facilityNearGroup = null;
+        _facilityNearGroup = null; _occFieldDrop();   // THE BLOCKER SET: the list dies with the group
         _horizonMats.length = 0;
         _horizonFloaters.length = 0;
         _hzGlowPulse.length = 0;
@@ -32047,7 +32132,9 @@ const ThreeRenderer = (function () {
         return { fps: _perfFrameMs > 0 ? +(1000 / _perfFrameMs).toFixed(1) : 0, ms: +_perfFrameMs.toFixed(2),
                  calls: r ? r.calls : 0, triangles: r ? r.triangles : 0, points: r ? r.points : 0, lines: r ? r.lines : 0,
                  geometries: m ? m.geometries : 0, textures: m ? m.textures : 0, programs: inf && inf.programs ? inf.programs.length : 0,
-                 field: _fieldGroundLive(), hq: !!_hq, room: _fieldRoomStats };
+                 field: _fieldGroundLive(), hq: !!_hq, room: _fieldRoomStats,
+                 /* THE BLOCKER SET (step 5): the fade's list, and the LAST recompute's rays / candidate roots / a rolling ms */
+                 occ: (typeof _occField !== 'undefined' && _occField) ? { roots: _occField.roots.length, merged: _occField.skipped, rays: _occField.rays, tests: _occField.tests, ms: +_occField.ms.toFixed(2) } : null };
     }
     function renderFrame() {
         if (!active || !renderer || !scene) return;
@@ -32314,12 +32401,18 @@ const ThreeRenderer = (function () {
                in ROADMAP §4 — GLB idle anims, day/night easing, turret arms,
                flying bob, tower cubes and fog fades all count as motion. */
             if (renderer.shadowMap && renderer.shadowMap.enabled) {
-                var _needShadow = window.EW_DISABLE_SHADOW_GATING || _shadowsDirty || _shadowMotion
-                    || hasActiveAnims()
-                    || (state && state.fogOfWar)
-                    || _towerCubes.length > 0
+                /* THE STATIC SHADOW (SEAMLESS_FIELD_PLAN §8.3 step 6, 2026-09-22): under a true-ground field the depth pass
+                   draws the whole handed-over room, so it refreshes on a LANDING / a piece change / a terrain edit
+                   (_shadowsDirty — the four tween-end loops stamp it) and the lighting's ease, never on a tween frame, a
+                   rig's idle, the fog's fade or a flyer's bob (a moving unit's shadow lands with it) */
+                var _fieldStatic = _fieldGroundLive() && _hqHandoverRules().staticShadow;
+                var _needShadow = window.EW_DISABLE_SHADOW_GATING || _shadowsDirty
                     || (ThreePost && ThreePost.isLightingEasing && ThreePost.isLightingEasing())
-                    || _anyGlbAnimating();
+                    || (!_fieldStatic && (_shadowMotion
+                        || hasActiveAnims()
+                        || (state && state.fogOfWar)
+                        || _towerCubes.length > 0
+                        || _anyGlbAnimating()));
                 if (_needShadow) { renderer.shadowMap.needsUpdate = true; _shadowsDirty = false; }
             }
             _shadowMotion = false;
@@ -32734,7 +32827,7 @@ const ThreeRenderer = (function () {
         if (_floatDomOverlay && _floatDomOverlay.parentElement) _floatDomOverlay.parentElement.removeChild(_floatDomOverlay);
         _floatDomOverlay = null;
         if (_horizonGroup) { if (scene) scene.remove(_horizonGroup); _disposeR(_horizonGroup); }
-        _horizonGroup = null; _horizonMats.length = 0; _horizonKey = ''; _facilityNearGroup = null;
+        _horizonGroup = null; _horizonMats.length = 0; _horizonKey = ''; _facilityNearGroup = null; _occFieldDrop();
         try { _hqHandoverDrop(); } catch (e) {}   // THE HAND-OVER: a stash nobody took
         if (_arenaRuinsGroup) { if (scene) scene.remove(_arenaRuinsGroup); _disposeR(_arenaRuinsGroup); }
         _arenaRuinsGroup = null; _arenaRuinsKey = '';
@@ -53429,8 +53522,27 @@ const ThreeRenderer = (function () {
         if (_facilityNearGroup) { g.children.slice().forEach(function (c) { g.remove(c); c._ew_occNear = true; _facilityNearGroup.add(c); }); }
         else { _facilityNearGroup = g; _horizonGroup.add(g); }
         if (trueGround) _fieldGroundDress(R, room, M, ts);
-        _fieldRoomStats = { room: R.roomId, kept: kept, culled: dropped, props: culledProps, scenery: culledScenery, keepM: HR.keepM, keepFarM: HR.keepFarM, handover: !!hand, trueGround: trueGround, kind: R.site ? 'site' : R.cave ? 'cave' : R.terrain ? 'terrain' : 'box' };
-        console.log('[HQ→battle] ' + R.roomId + ': kept ' + kept + ' · culled ' + dropped + ' (props ' + culledProps + ' · scenery ' + culledScenery + ') · radius ' + HR.keepM + '/' + HR.keepFarM + ' m · ' + (hand ? 'handed over' : 'rebuilt') + ' · walls ' + Object.keys(walls).join('') + ' · ' + _fieldRoomStats.kind);
+        /* THE SKY ONCE (SEAMLESS_FIELD_PLAN §8.1 item 3 / §8.4, 2026-09-22): a field never builds the site's far roster (hqFieldLayout
+           says scenery 'none' for every field) — an OPEN room's own floaters + landmarks are handed over under a matrix holder in the
+           horizon group, OUTSIDE the facility group (the fade never raycasts them, they never fade); on a rebuild the landmarks are
+           built again on a scratch record (the floaters need the walk's env — they are the stash's alone) */
+        var skyN = 0;
+        if (trueGround && HR.roomSky) {
+            var skyH = holder('hq_sky'); skyH._ew_occNear = false;
+            if (hand && hand.sky) { if (hand.sky.group) skyH.add(hand.sky.group); if (hand.sky.landmarks) skyH.add(hand.sky.landmarks); }
+            else if (room.shell && room.shell.open && room.shell.sky && Array.isArray(room.shell.sky.landmarks) && room.shell.sky.landmarks.length) {
+                var Hs = { scene: { add: function (o) { skyH.add(o); } }, sky: {}, fxPulse: [] };
+                try { _hqBuildLandmarks(Hs, room.shell.sky.landmarks, 6000); } catch (e) { console.warn('[HQ→battle] landmarks failed', e); }
+                Hs.fxPulse.forEach(function (p) { if (p && p.mat) _hzGlowPulse.push(p); });
+            }
+            if (skyH.children.length) { skyH.traverse(function (o) { if (o.isMesh || o.isSprite || o.isPoints) { o._ew_occSkip = true; skyN++; } }); _horizonGroup.add(skyH); }
+        }
+        /* THE BLOCKER SET (step 5): the fade's list — the facility group's direct children, the merged batches out */
+        var occF = trueGround ? _occFieldBuild(_facilityNearGroup, ts / C, HR) : null; if (!trueGround) _occFieldDrop();
+        _fieldRoomStats = { room: R.roomId, kept: kept, culled: dropped, props: culledProps, scenery: culledScenery, keepM: HR.keepM, keepFarM: HR.keepFarM, handover: !!hand, trueGround: trueGround, kind: R.site ? 'site' : R.cave ? 'cave' : R.terrain ? 'terrain' : 'box',
+                            blockers: occF ? occF.roots.length : null, merged: occF ? occF.skipped : null, sky: skyN };
+        console.log('[HQ→battle] ' + R.roomId + ': kept ' + kept + ' · culled ' + dropped + ' (props ' + culledProps + ' · scenery ' + culledScenery + ') · radius ' + HR.keepM + '/' + HR.keepFarM + ' m · ' + (hand ? 'handed over' : 'rebuilt') + ' · walls ' + Object.keys(walls).join('') + ' · ' + _fieldRoomStats.kind
+            + (occF ? ' · blockers ' + occF.roots.length + ' (' + occF.skipped + ' merged out)' : '') + (skyN ? ' · sky ' + skyN : ''));
     }
 
     function _hqEnter(opts) {
@@ -53697,20 +53809,26 @@ const ThreeRenderer = (function () {
     var _hqRoomHandover = null;   // { roomId, shellGroup, doorGroup, propGroup, fxPulse, at }
     function _hqHandoverDrop() {
         var h = _hqRoomHandover; _hqRoomHandover = null; if (!h) return;
-        try { [h.shellGroup, h.doorGroup, h.propGroup].forEach(function (g) { if (g) { if (g.parent) g.parent.remove(g); _disposeR(g); } }); } catch (e) {}
+        try { [h.shellGroup, h.doorGroup, h.propGroup, h.sky && h.sky.group, h.sky && h.sky.landmarks].forEach(function (g) { if (g) { if (g.parent) g.parent.remove(g); _disposeR(g); } }); } catch (e) {}
     }
     function _hqHandoverRules() {
         var g = (typeof HQ_FIELD_RULES !== 'undefined' && HQ_FIELD_RULES && HQ_FIELD_RULES.ground) ? HQ_FIELD_RULES.ground : {};
         var W = (typeof window !== 'undefined') ? window : {};
         return { keepM: (g.keepM > 0) ? +g.keepM : 28, keepFarM: (g.keepFarM > 0) ? +g.keepFarM : 48,
-                 handover: g.handover !== false && !W.EW_HQ_NO_ROOM_HANDOVER, radius: !W.EW_HQ_NO_BATTLE_RADIUS };
+                 handover: g.handover !== false && !W.EW_HQ_NO_ROOM_HANDOVER, radius: !W.EW_HQ_NO_BATTLE_RADIUS,
+                 /* the second plan (§8.3): THE BLOCKER SET · THE STATIC SHADOW · THE SKY ONCE */
+                 blockerM: (g.blockerM > 0) ? +g.blockerM : 2.5, occRefreshS: (g.occRefreshS > 0) ? +g.occRefreshS : 2,
+                 staticShadow: g.staticShadow !== false && !W.EW_HQ_NO_STATIC_SHADOW, roomSky: g.roomSky !== false && !W.EW_HQ_NO_ROOM_SKY };
     }
     function _hqHandoverStash(H, opts) {
         _hqHandoverDrop();
         if (!opts || !opts.handover || !_hqHandoverRules().handover || !H || !H.scene) return false;
         try { (H.reflectors || []).forEach(function (r) { (r.targets || []).forEach(function (t) { if (t._ew_reflectOld) { try { t.material.dispose && t.material.dispose(); } catch (e) {} t.material = t._ew_reflectOld; t._ew_reflectOld = null; } }); }); } catch (e) {}
         [H.shellGroup, H.doorGroup, H.propGroup].forEach(function (g) { if (g && g.parent) g.parent.remove(g); });
-        _hqRoomHandover = { roomId: H.opts.room || 'central_egress', shellGroup: H.shellGroup, doorGroup: H.doorGroup, propGroup: H.propGroup, fxPulse: H.fxPulse || [], at: performance.now() };
+        /* THE SKY ONCE (§8.4): an open room's own floaters + landmarks go with it — the battle hangs them, never the site's roster */
+        var sky = (H.sky && (H.sky.group || H.sky.landmarks)) ? { group: H.sky.group || null, landmarks: H.sky.landmarks || null } : null;
+        if (sky) [sky.group, sky.landmarks].forEach(function (g) { if (g && g.parent) g.parent.remove(g); });
+        _hqRoomHandover = { roomId: H.opts.room || 'central_egress', shellGroup: H.shellGroup, doorGroup: H.doorGroup, propGroup: H.propGroup, sky: sky, fxPulse: H.fxPulse || [], at: performance.now() };
         return true;
     }
     function _hqLeave(opts) {

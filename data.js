@@ -45077,6 +45077,12 @@ const HQ_FIELD_RULES = {
         keepM: 28,            // m — a prop / door / counter / lamp / car / tree-line piece farther than this from the window's edge is not drawn
         keepFarM: 48,         // m — the scenery radius (a city lot, a backdrop prism, a thicket bank)
         handover: true,       // the walk's room groups are handed to the battle (window.EW_HQ_NO_ROOM_HANDOVER = the rebuild as before)
+        /* THE SEAMLESS FIELD, delivery 5 (2026-09-22 — SEAMLESS_FIELD_PLAN.md §8.3 steps 5 + 6, §8.1 item 3): the battle's per-frame
+           machinery was written for a board of columns and ran whole over a 200 m room. */
+        blockerM: 2.5,        // m — THE BLOCKER SET: a piece whose bounding sphere lies farther than this from an eye→subject sight line is never raycast by the occlusion fade (the merged batches never are)
+        occRefreshS: 2,       // s — the pieces' spheres are re-measured on this cadence (a GLB that landed grows its box)
+        staticShadow: true,   // THE STATIC SHADOW: a field battle's depth pass refreshes on a landing / a piece change / a terrain edit, never on a tween frame (window.EW_HQ_NO_STATIC_SHADOW = every moving frame as before)
+        roomSky: true,        // THE SKY ONCE: a field never builds the site's far roster; an open room's own floaters + landmarks are handed over (window.EW_HQ_NO_ROOM_SKY)
     },
     /* THE SEAMLESS FIELD, delivery 2 (2026-09-22 — THE TERRAIN ROOMS): a smooth height field (an AREA, a cave chamber, the woods) is
        rasterised on a LATTICE of battle tiles on the room's axes about its centre (the box rule) — a cell is IN when the WALKER'S OWN
@@ -45673,7 +45679,7 @@ function hqFieldLayout(site, baseKey, opts) {
        stand round a room), no streaming motion, THE WORLD inert (`kind: 'room'`); the site's sky and far roster stand
        over the room, which the battle draws round the window itself since §10 stage 4 (three-renderer.js
        _hqBuildRoomInBattle reads battle.js _ewEncounterRoom — the room, the window, the raster's covers) */
-    if (env && opts.box) { delete env.near; delete env.motion; env.world = { kind: 'room' }; }
+    if (env && opts.box) { delete env.near; delete env.motion; env.world = { kind: 'room' }; env.scenery = 'none'; }   // THE SKY ONCE (delivery 5): a field never builds the site's far roster
     /* Phase 9 polish (2026-09-16): a CAVE field is indoors too — the chamber's own rock, ledges and pools are drawn
        round the window by the battle (three-renderer.js _hqBuildRoomInBattle → _hqBuildCave with the window cut out),
        so the site's sky is a DARK CEILING: no stars, no nebula, no far roster (`scenery: 'none'` — the crystals that
@@ -45684,7 +45690,7 @@ function hqFieldLayout(site, baseKey, opts) {
     /* THE SEAMLESS FIELD, delivery 2 (2026-09-22): a TERRAIN room draws its own ground to the fog round the window (three-renderer.js
        _hqBuildRoomInBattle runs _hqBuildTerrain on the scratch record — the field, the outer ground, the treeline, the water) — so no
        near builder, no motion, THE WORLD inert; an OPEN room keeps the site's sky and far roster over it, a CLOSED one is a dark ceiling */
-    if (env && opts.terrain) { delete env.near; delete env.motion; env.world = { kind: 'room' }; if (!opts.open) { env.scenery = 'none'; env.stars = 0; env.nebula = 0; delete env.density; } }
+    if (env && opts.terrain) { delete env.near; delete env.motion; env.world = { kind: 'room' }; env.scenery = 'none'; if (!opts.open) { env.stars = 0; env.nebula = 0; delete env.density; } }   // THE SKY ONCE (delivery 5): the far roster is never built for a field — an OPEN room keeps its stars / day / tint, and the battle hangs the ROOM's own floaters + landmarks (three-renderer.js _hqBuildRoomInBattle)
     /* THE SEAMLESS FIELD rev 3 (2026-09-22, the user: "I don't want the lighting to change"): the field wears the ROOM's grade
        (shell.look — the battle's _applyEnvLook reads env.look), and a CLOSED room's dome is painted the room's own fog colour
        (the far wall fades into that colour on the walk; beyond the walls the eye sees the same dark, never the site's stars) */
