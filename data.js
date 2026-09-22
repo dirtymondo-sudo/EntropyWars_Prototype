@@ -45072,6 +45072,11 @@ const HQ_FIELD_RULES = {
         tierMin: 1.2,         // m — a rise under this is relief, never a level (no high ground off a mound)
         step: HQ_CAVE_CELL,   // m per level above tierMin (a battle level is one tile)
         tierMax: 3,           // the most levels a cell may stand above the floor
+        /* THE SEAMLESS FIELD, delivery 4 (2026-09-22 — SEAMLESS_FIELD_PLAN.md §3): a battle keeps what stands within THE BATTLE RADIUS
+           of its window and beyond it only a cheap backdrop; the walk's room is HANDED to the battle, never rebuilt. */
+        keepM: 28,            // m — a prop / door / counter / lamp / car / tree-line piece farther than this from the window's edge is not drawn
+        keepFarM: 48,         // m — the scenery radius (a city lot, a backdrop prism, a thicket bank)
+        handover: true,       // the walk's room groups are handed to the battle (window.EW_HQ_NO_ROOM_HANDOVER = the rebuild as before)
     },
     /* THE SEAMLESS FIELD, delivery 2 (2026-09-22 — THE TERRAIN ROOMS): a smooth height field (an AREA, a cave chamber, the woods) is
        rasterised on a LATTICE of battle tiles on the room's axes about its centre (the box rule) — a cell is IN when the WALKER'S OWN

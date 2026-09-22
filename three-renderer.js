@@ -32032,6 +32032,23 @@ const ThreeRenderer = (function () {
         el.style.color = fps >= 50 ? '#7dff9a' : (fps >= 28 ? '#ffd866' : '#ff6b6b');
     }
 
+    /* ══ THE READOUT (SEAMLESS_FIELD_PLAN.md §4 step 1, 2026-09-22) ══
+       One frame-time average for both loops (the battle's renderFrame, the building's _hqFrameGuarded) and ONE read —
+       ThreeRenderer.perf() / hq.perf(): the live draw calls + triangles + memory off renderer.info, the fps, and the room
+       round the field's kept / culled counts (_fieldRoomStats, written by _hqBuildRoomInBattle). Compare the walk's calls
+       to the battle's in the same room: the battle should be at or under the walk. */
+    var _perfFrameMs = 0, _perfLastT = 0, _fieldRoomStats = null;
+    function _perfTick(now) {
+        if (_perfLastT) { var d = now - _perfLastT; if (d > 0 && d < 1000) _perfFrameMs += (d - _perfFrameMs) * 0.08; }
+        _perfLastT = now;
+    }
+    function _perfRead() {
+        var inf = (renderer && renderer.info) ? renderer.info : null, r = inf ? inf.render : null, m = inf ? inf.memory : null;
+        return { fps: _perfFrameMs > 0 ? +(1000 / _perfFrameMs).toFixed(1) : 0, ms: +_perfFrameMs.toFixed(2),
+                 calls: r ? r.calls : 0, triangles: r ? r.triangles : 0, points: r ? r.points : 0, lines: r ? r.lines : 0,
+                 geometries: m ? m.geometries : 0, textures: m ? m.textures : 0, programs: inf && inf.programs ? inf.programs.length : 0,
+                 field: _fieldGroundLive(), hq: !!_hq, room: _fieldRoomStats };
+    }
     function renderFrame() {
         if (!active || !renderer || !scene) return;
 
@@ -32045,6 +32062,7 @@ const ThreeRenderer = (function () {
             if (_frameNow - _fpsNextDue > 250) _fpsNextDue = _frameNow + 1000 / _perfSettings.fpsCap;
         }
         if (_perfSettings.fpsCounter) _tickFpsCounter(_frameNow);
+        _perfTick(_frameNow);
 
         /* Dev-sim turbo: while the auto-sim runs with animations hidden, the
            board only needs an occasional visual refresh — drop the entire
@@ -32717,6 +32735,7 @@ const ThreeRenderer = (function () {
         _floatDomOverlay = null;
         if (_horizonGroup) { if (scene) scene.remove(_horizonGroup); _disposeR(_horizonGroup); }
         _horizonGroup = null; _horizonMats.length = 0; _horizonKey = ''; _facilityNearGroup = null;
+        try { _hqHandoverDrop(); } catch (e) {}   // THE HAND-OVER: a stash nobody took
         if (_arenaRuinsGroup) { if (scene) scene.remove(_arenaRuinsGroup); _disposeR(_arenaRuinsGroup); }
         _arenaRuinsGroup = null; _arenaRuinsKey = '';
         _envGroup = _envGround = _envWall = _envDome = null; _envInited = false;
@@ -46134,6 +46153,7 @@ const ThreeRenderer = (function () {
                     if (bcell && bcell.top > 0) grp.position.y += bcell.top * U;
                     marker = _hqBuildBattleMarker(U);
                     grp.add(marker.g);
+                    grp._ew_hqMarker = true;   // THE HAND-OVER (SEAMLESS_FIELD_PLAN §5): never in a battle
                 }
                 /* THE HEALING ZONE (2026-09-20, data.js HQ_HEAL_ZONE / hqBuildHealZones): the hub's green ring — the marker's
                    ticker turns its icon too (the same { icon, ring2, y } record) */
@@ -52956,6 +52976,7 @@ const ThreeRenderer = (function () {
     var _hqFrameErrs = {};
     function _hqFrameGuarded() {
         var H = _hq; if (!H || !renderer) return;
+        _perfTick(performance.now());
         try { _hqFrame(); }
         catch (e) {
             var msg = String((e && e.message) || e), now0 = performance.now();
@@ -53320,9 +53341,16 @@ const ThreeRenderer = (function () {
         if (trueGroundEarly) H.propLights = 0;   // rev 3: the whole HQ light budget — the walk had every torch
         var trueGround = !!_fieldGround();   // THE TRUE GROUND: no columns fill the window — the room's floor is drawn whole and every prop stands
         if (trueGround) H.floorHole = null;
+        /* THE HAND-OVER (delivery 4): the walk's own groups, when the walk just left THIS room under true ground — no builder runs */
+        var HR = _hqHandoverRules();
+        var hand = (trueGround && HR.handover && _hqRoomHandover && _hqRoomHandover.roomId === R.roomId) ? _hqRoomHandover : null;
+        if (hand) { _hqRoomHandover = null; H.shellGroup = hand.shellGroup; H.doorGroup = hand.doorGroup; H.propGroup = hand.propGroup; H.fxPulse = hand.fxPulse.slice(); }
+        else _hqHandoverDrop();
         _hq = H;
         try {
             H.gallery = _hqGalleryFrame(copy);
+            if (hand) { /* the room stands as it was walked */ }
+            else {
             if (R.cave) { try { _hqBuildCave(copy); } catch (e) { console.warn('[HQ→battle] cave failed', e); } }
             /* THE SEAMLESS FIELD, delivery 2 (2026-09-22): a TERRAIN room's field — the height field itself, its water, decks, walls,
                rails, trees, the scatter, the outer ground to the fog, the treeline, the city's lots — is built whole on the scratch
@@ -53335,6 +53363,7 @@ const ThreeRenderer = (function () {
             try { _hqBuildCounters(copy); } catch (e) { console.warn('[HQ→battle] counters failed', e); }
             try { _hqPlaceProps(copy); } catch (e) { console.warn('[HQ→battle] props failed', e); }
             if (R.terrain && typeof _hqBuildClimbs === 'function') { try { _hqBuildClimbs(copy); } catch (e) { console.warn('[HQ→battle] climbs failed', e); } }   // the ladders / ropes / vines the tiers were reached by
+            }
             if (trueGround) { try { _hqShadowFlags(copy); } catch (e) {} }   // rev 3: the room casts and receives the key's shadow exactly as it did on the walk
         } finally { _hq = saved; }
         /* the breathing glows: the room's list into the battle's (cleared with the scenery) */
@@ -53353,13 +53382,29 @@ const ThreeRenderer = (function () {
         /* what stays: by part on a site room (the battle's setting is the ground and, with an enclosure, the walls) / the ceiling never */
         var drop = R.site ? { floor: true, ceil: true, pipe: true, strip: true, wall: walled } : { ceil: true };
         if (trueGround) drop.ceil = false;   // rev 3: a true-ground room KEEPS its ceiling — it fades as the eye rises through it (_fieldGroundTick)
-        var kept = 0, dropped = 0;
+        drop.fx = true;   // the atmosphere (a handed-over room's motes: no ticker runs in a battle)
+        var kept = 0, dropped = 0, culledProps = 0, culledScenery = 0;
         var holeM = H.floorHole;   // a cave's fluid sheets / glows / falls stand as pieces: those inside the window went at the build
+        /* THE BATTLE RADIUS (SEAMLESS_FIELD_PLAN.md §5): a piece's box (room px) against the window's rect — a prop / door /
+           counter / tree-line piece farther than keepM is not taken, scenery (a lot, a backdrop prism, a tree) past keepFarM;
+           a shell part, the field mesh, the outer ground, a plan wall and any merged batch (its box spans the room) always stand */
+        var wx0 = R.T.x0 * U, wx1 = (R.T.x0 + R.T.N * C) * U, wz0 = R.T.z0 * U, wz1 = (R.T.z0 + R.T.N * C) * U;
+        var _rbox = new THREE.Box3();
+        var farOf = function (c) {
+            if (!HR.radius || c._ew_hqPart || c._ew_hqTerrain || c._ew_hqOuter) return 0;
+            try { c.updateMatrixWorld(true); _rbox.setFromObject(c); } catch (e) { return 0; }
+            var bx0, bx1, bz0, bz1;
+            if (_rbox.isEmpty()) { bx0 = bx1 = c.position.x; bz0 = bz1 = c.position.z; } else { bx0 = _rbox.min.x; bx1 = _rbox.max.x; bz0 = _rbox.min.z; bz1 = _rbox.max.z; }
+            var dx = Math.max(wx0 - bx1, bx0 - wx1, 0), dz = Math.max(wz0 - bz1, bz0 - wz1, 0);
+            var d = Math.sqrt(dx * dx + dz * dz) / U, scenery = !!(c._ew_hqLot != null || c._ew_hqBackdrop || c._ew_hqTree);
+            return d > (scenery ? HR.keepFarM : HR.keepM) ? (scenery ? 2 : 1) : 0;
+        };
         var take = function (src, isProp) {
             src.children.slice().forEach(function (c) {
                 src.remove(c);
-                var out = !!(c.isCSS2DObject || (c._ew_hqPart && drop[c._ew_hqPart]) || (R.site && c._ew_hqGround));
+                var out = !!(c.isCSS2DObject || (c._ew_hqPart && drop[c._ew_hqPart]) || (R.site && c._ew_hqGround) || c._ew_hqMarker);
                 if (!out && !trueGround && isProp && !c._ew_hqWall && _hqBattleRoomCoverAt(R, c.position.x / U, c.position.z / U)) out = true;   // the column stands for it
+                if (!out) { var far = farOf(c); if (far) { out = true; if (far === 2) culledScenery++; else culledProps++; } }
                 if (out) { dropped++; try { _disposeR(c); } catch (e) {} return; }
                 var plates = []; c.traverse(function (o) { if (o.isCSS2DObject) plates.push(o); });
                 plates.forEach(function (o) { if (o.parent) o.parent.remove(o); });
@@ -53384,7 +53429,8 @@ const ThreeRenderer = (function () {
         if (_facilityNearGroup) { g.children.slice().forEach(function (c) { g.remove(c); c._ew_occNear = true; _facilityNearGroup.add(c); }); }
         else { _facilityNearGroup = g; _horizonGroup.add(g); }
         if (trueGround) _fieldGroundDress(R, room, M, ts);
-        if (typeof window !== 'undefined' && window.EW_HQ_DEBUG) console.log('[HQ→battle] the room round the field:', R.roomId, 'kept', kept, 'dropped', dropped, 'walls', Object.keys(walls).join(''), R.site ? '(site)' : R.cave ? '(cave)' : '(field)');
+        _fieldRoomStats = { room: R.roomId, kept: kept, culled: dropped, props: culledProps, scenery: culledScenery, keepM: HR.keepM, keepFarM: HR.keepFarM, handover: !!hand, trueGround: trueGround, kind: R.site ? 'site' : R.cave ? 'cave' : R.terrain ? 'terrain' : 'box' };
+        console.log('[HQ→battle] ' + R.roomId + ': kept ' + kept + ' · culled ' + dropped + ' (props ' + culledProps + ' · scenery ' + culledScenery + ') · radius ' + HR.keepM + '/' + HR.keepFarM + ' m · ' + (hand ? 'handed over' : 'rebuilt') + ' · walls ' + Object.keys(walls).join('') + ' · ' + _fieldRoomStats.kind);
     }
 
     function _hqEnter(opts) {
@@ -53398,6 +53444,7 @@ const ThreeRenderer = (function () {
            browser may still drop it (a lock loss during the swap is never the
            walker's ESC — see _hqOnLockChange, 2026-09-14 rev 4) */
         if (_hq) { _hqRebuildAt = performance.now(); _hqKeepLock = true; try { _hqLeave(); } finally { _hqKeepLock = false; } }
+        _hqHandoverDrop();   // THE HAND-OVER: a stash the battle never took
         if (active) { console.warn('[HQ] refusing to open over a live battle'); return false; }
         var room = D.rooms[opts.room || 'central_egress'];
         if (!room) return false;
@@ -53642,6 +53689,30 @@ const ThreeRenderer = (function () {
         setTimeout(drop, hold + ms + 120);
         return rec;
     }
+    /* ══ THE HAND-OVER (SEAMLESS_FIELD_PLAN.md §4 step 3, 2026-09-22) ══
+       The walk's shell / door / prop groups are STASHED here by _hqLeave({ handover: true }) instead of disposed, and
+       _hqBuildRoomInBattle takes them for the same room under true ground — no builder runs, no GLB is re-cloned, no
+       hitch. A stash nobody took (a different room, the rebuild path, a walk instead of a fight) is dropped by the next
+       _hqEnter / _hqLeave / deactivate. A reflector's mirrored material is put back (its target is disposed with the walk). */
+    var _hqRoomHandover = null;   // { roomId, shellGroup, doorGroup, propGroup, fxPulse, at }
+    function _hqHandoverDrop() {
+        var h = _hqRoomHandover; _hqRoomHandover = null; if (!h) return;
+        try { [h.shellGroup, h.doorGroup, h.propGroup].forEach(function (g) { if (g) { if (g.parent) g.parent.remove(g); _disposeR(g); } }); } catch (e) {}
+    }
+    function _hqHandoverRules() {
+        var g = (typeof HQ_FIELD_RULES !== 'undefined' && HQ_FIELD_RULES && HQ_FIELD_RULES.ground) ? HQ_FIELD_RULES.ground : {};
+        var W = (typeof window !== 'undefined') ? window : {};
+        return { keepM: (g.keepM > 0) ? +g.keepM : 28, keepFarM: (g.keepFarM > 0) ? +g.keepFarM : 48,
+                 handover: g.handover !== false && !W.EW_HQ_NO_ROOM_HANDOVER, radius: !W.EW_HQ_NO_BATTLE_RADIUS };
+    }
+    function _hqHandoverStash(H, opts) {
+        _hqHandoverDrop();
+        if (!opts || !opts.handover || !_hqHandoverRules().handover || !H || !H.scene) return false;
+        try { (H.reflectors || []).forEach(function (r) { (r.targets || []).forEach(function (t) { if (t._ew_reflectOld) { try { t.material.dispose && t.material.dispose(); } catch (e) {} t.material = t._ew_reflectOld; t._ew_reflectOld = null; } }); }); } catch (e) {}
+        [H.shellGroup, H.doorGroup, H.propGroup].forEach(function (g) { if (g && g.parent) g.parent.remove(g); });
+        _hqRoomHandover = { roomId: H.opts.room || 'central_egress', shellGroup: H.shellGroup, doorGroup: H.doorGroup, propGroup: H.propGroup, fxPulse: H.fxPulse || [], at: performance.now() };
+        return true;
+    }
     function _hqLeave(opts) {
         var H = _hq; if (!H) return;
         _ewHeightFogSet(0, 1, 0, 0); _HQ_AO.w = 0;   // THE PREMIUM POLISH: the height fog and the room-box AO are the building's alone
@@ -53656,6 +53727,7 @@ const ThreeRenderer = (function () {
         try { if (typeof ThreePost !== 'undefined' && ThreePost.setExposureContext) ThreePost.setExposureContext('battle'); } catch (e) {}   // THE TWO BRIGHTNESSES: the battle's / the menu's value, eased
         if (H.sky) _horizonFogDirty = true;   // an outdoor room drove the shared sky uniforms: the battle re-applies its fog
         try { renderer.setAnimationLoop(active ? renderFrame : null); } catch (e) {}
+        var handed = _hqHandoverStash(H, opts);   // THE HAND-OVER: the room's groups leave the scene before the disposal below
         /* characters: evict their rig-cache records (ids are ours) */
         H.chars.forEach(function (ch) {
             try {
@@ -53682,7 +53754,7 @@ const ThreeRenderer = (function () {
                 if (css2dRenderer) css2dRenderer.domElement.style.display = 'none';
             }
         } catch (e) {}
-        console.log('[HQ] left');
+        console.log('[HQ] left' + (handed ? ' (the room handed to the battle)' : ''));
     }
     function _hqRefreshLamps(profile) {
         if (!_hq) return;
@@ -53870,6 +53942,7 @@ const ThreeRenderer = (function () {
         kicks: function () { return _hq ? _hq.kicks.map(function (k) { return { key: k.key, x: +k.x.toFixed(2), z: +k.z.toFixed(2), v: +Math.hypot(k.vx, k.vz).toFixed(2) }; }) : []; },
         polishApply: function () { return _hqPolishApply(); },   // THE POLISH SETTINGS: re-arm what a row changed, in the room you stand in
         reflectors: function () { return (_hq && _hq.reflectors) ? _hq.reflectors.map(function (r) { return { kind: r.kind, n: r.targets.length, y: +r.p0.y.toFixed(2), normal: [+r.n.x.toFixed(2), +r.n.y.toFixed(2), +r.n.z.toFixed(2)], scale: r.scale, drawn: r.drawn || 0 }; }) : []; },
+        perf: function () { return _perfRead(); },   // THE READOUT: the same numbers on the walk
         polish: function () { var H = _hq; if (!H) return null; return { shadows: H.shadows ? { size: H.shadows.light.shadow.mapSize.width, Rf: +(H.shadows.Rf / _hqUnits()).toFixed(1), everyN: H.shadows.everyN } : null, ao: H.ao, heightFog: H.heightFog, atmos: H.atmos ? { kind: H.atmos.kind, n: H.atmos.n } : null, shafts: H.shafts || 0, sways: H.sways.length, kicks: H.kicks.length, seats: H.seats.length, key: H.keyDir ? { x: +H.keyDir.x.toFixed(3), y: +H.keyDir.y.toFixed(3), z: +H.keyDir.z.toFixed(3) } : null }; },
         /* THE ROUNDS (2026-09-19): the walkers on their loops, the nav lattice, the traveller ledger (probes) */
         roamers: function () { return (_hq && _hq.rounds) ? _hq.rounds.map(function (c) { var rd = c.rounds || {}; return { id: c.id, race: c.race, x: +c.x.toFixed(2), z: +c.z.toFixed(2), y: +c.y.toFixed(2), state: rd.state || null, stop: rd.i, stops: (rd.stops || []).map(function (s) { return s.kind + (s.doorId ? ':' + s.doorId : ''); }), moving: !!c.moving, away: !!c.away }; }) : []; },
@@ -54704,6 +54777,7 @@ const ThreeRenderer = (function () {
         /* THE WORLD (2026-09-13): grounded ↔ floating readout + the mode pref (entropy / grounded / floating) */
         world: function () { return _worldInfo(); },
         fieldGroundLive: function () { return _fieldGroundLive(); },   // THE SEAMLESS FIELD: a true-ground field is on screen
+        perf: function () { return _perfRead(); },   // THE READOUT (SEAMLESS_FIELD_PLAN §6): fps · calls · triangles · the room round the field's counts
         getWorldMode: function () { return _wdMode(); },
         /* THE SCENE LOOK (2026-09-17): re-read the Map Looks preference and re-lay the current place's grade (the settings toggle) */
         refreshSceneLook: function () {

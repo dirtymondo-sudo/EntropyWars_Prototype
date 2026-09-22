@@ -8219,3 +8219,29 @@ NEVER silent — `[HQ] no rig resolves for <race> <gender> — <id> was not spaw
 card waits for the walker's rig again (the gate's `EW_DISABLE_3D_UNITS` clause is gone). Read the flag first on any
 "empty room" / "cannot move" report: `window.EW_DISABLE_3D_UNITS` in the console, `localStorage.ew_units3d` /
 `ew_perfMode`.
+
+## THE SEAMLESS FIELD, delivery 4 — THE READOUT · THE BATTLE RADIUS · THE HAND-OVER (2026-09-22, local delivery)
+The user: "in a larger area like the city or the sewers the frame rate tanks once the battle starts — can we not
+only load a smaller portion of the map?" **`SEAMLESS_FIELD_PLAN.md` is THE doc for the seamless field** (the contract
+of the three earlier deliveries, the causes, the rule, the seven steps — read it before touching
+`_hqBuildRoomInBattle`; append to its §7). THE CAUSE was never loading: the walk's room was DISPOSED and REBUILT
+whole (every builder, every GLB re-cloned) and every piece of a 200 m room stood in the battle. THE RULE: **a battle
+keeps what stands within THE BATTLE RADIUS of its window, beyond it only a backdrop; the walk's room is HANDED to the
+battle, never rebuilt.** data.js `HQ_FIELD_RULES.ground.keepM` (28 m) / `keepFarM` (48 m) / `handover`. three-renderer.js:
+`_hqHandoverRules` (the reads + `EW_HQ_NO_ROOM_HANDOVER` / `EW_HQ_NO_BATTLE_RADIUS`); `_hqLeave({ handover: true })` (map.js's
+encounter start alone) stashes the shell / door / prop groups in `_hqRoomHandover` AFTER the dissolve's snapshot and BEFORE
+the disposal loop (a reflector's mirrored material put back); `_hqBuildRoomInBattle` takes the stash for the same room under
+TRUE GROUND and runs NO builder (the shadow flags still run), else rebuilds as before; `_hqHandoverDrop` at `_hqEnter` /
+`deactivate` / a new stash. THE RADIUS in `take`: `farOf(c)` = the piece's box (room px, `Box3.setFromObject`; a streaming
+GLB by its position) against the window's rect — a prop / door / counter / lamp / car past `keepM` is not taken, a lot
+(`_ew_hqLot`) / backdrop prism (`_ew_hqBackdrop`) / tree (`_ew_hqTree`) past `keepFarM`; anything wearing `_ew_hqPart`,
+`_ew_hqTerrain`, `_ew_hqOuter` or a merged batch (its box spans the room) always stands; the battle marker
+(`grp._ew_hqMarker`, set in `_hqBuildCounters`) and the atmosphere (`drop.fx`) never. THE READOUT: `_perfTick` in BOTH loops
+(renderFrame + `_hqFrameGuarded`), **`ThreeRenderer.perf()` / `hq.perf()`** = `{ fps, ms, calls, triangles, points, lines,
+geometries, textures, programs, field, hq, room: _fieldRoomStats }`, and the build ALWAYS logs one line (`[HQ→battle] <room>:
+kept n · culled m (props p · scenery s) · radius 28/48 m · handed over`). READ THAT FIRST on any "the battle is slow" report:
+the walk's `hq.perf()` against the battle's `perf()` in the same room. OPEN (the plan's steps 4–7): chunk the merged batches
+(the terrain mesh, `_hqTexBatch`, the road paint, the treeline) so the camera / shadow frusta cull them, a STATIC shadow pass
+(refresh on a move, not every frame), the occlusion blocker set bounded to the subject lines, SSAO at half res in a field.
+`npm test` runs seamless-field.test.js (delivery 4 ×4). Ship data.js to R2 AND Render. UNSEEN LIVE (RULE #1c): all of it —
+the CDN is unreachable from the sandbox; the numbers are the user's.

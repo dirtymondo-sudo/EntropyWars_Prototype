@@ -3521,7 +3521,7 @@
             _msSelectedMap = idx; _msSelectedGM = gi; _msSelectedTeamSize = L.teamSize; _msSelectedRounds = L.rounds | 0;
             window._hqEncounterParty = party;
             _hqClosePanel({ keepPaused: true });
-            window._hqLeave({ dissolve: { onFrame: true, hold: 1500, ms: 220 } });   // THE DISSOLVE (seam 3): the room's last frame HOLDS over the build and fades over the battle's first (Phase 9 polish: a short fade — the seam is THE SWOOP)
+            window._hqLeave({ dissolve: { onFrame: true, hold: 1500, ms: 220 }, handover: true });   // THE HAND-OVER (SEAMLESS_FIELD_PLAN §4 step 3): the room's groups go to the battle, never rebuilt   // THE DISSOLVE (seam 3): the room's last frame HOLDS over the build and fades over the battle's first (Phase 9 polish: a short fade — the seam is THE SWOOP)
             try { window._msConfirm(); }
             catch (e) { console.error('[HQ] the encounter failed to start', e); window._hqEncounterParty = null; window._hqEncounterRun = null; return false; }
             return true;

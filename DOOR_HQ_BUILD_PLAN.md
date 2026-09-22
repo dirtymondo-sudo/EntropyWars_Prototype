@@ -11372,3 +11372,30 @@ lamps; DOOR HQ, the Mall, the Spaceship; don't be afraid to make rooms bigger."
 - UNSEEN LIVE (RULE #1c): the first frame against the last (the whole point — a hard reload after the upload), the ceiling's
   fade as the crane climbs, the shadow's bias on the room's floor under the board's frame, the fog on the units, the dome's
   colour past the walls, the FOV tween's feel, the hold's length on a cold cache.
+
+### 2026-09-22 — THE SEAMLESS FIELD, delivery 4: THE READOUT · THE BATTLE RADIUS · THE HAND-OVER (local delivery)
+- The user: "in a larger area like the city or the sewers the frame rate tanks once the battle starts — why do we
+  have to have the whole map loaded for a battle that takes place on a small portion of it." Read off the code: the
+  cut DOWNLOADED nothing (every sheet and model was in memory from the walk) — the walk's room was DISPOSED and rebuilt
+  whole by every builder (seconds of hitch, twice the memory), then every piece of the room stood in the battle: draw
+  calls, the shadow pass and the occlusion raycast all scale with what EXISTS, not what is seen.
+- `SEAMLESS_FIELD_PLAN.md` is the plan doc the field never had (§1 the contract, §2 the causes, §3 the rule, §4 the
+  seven steps, §5 what the radius keeps, §6 how to measure). Delivery 1 of that plan = steps 1–3.
+- THE READOUT: `ThreeRenderer.perf()` / `hq.perf()` (fps · ms · calls · triangles · memory · the room's counts); the
+  build logs `[HQ→battle] <room>: kept n · culled m (props p · scenery s) · radius 28/48 m · handed over | rebuilt`.
+- THE BATTLE RADIUS: data.js `HQ_FIELD_RULES.ground.keepM` 28 / `keepFarM` 48 — `_hqBuildRoomInBattle`'s `take` judges
+  every piece's box (room px) against the window's rect; props / doors / counters / lamps / cars past keepM go, lots /
+  backdrop prisms / trees past keepFarM; anything wearing `_ew_hqPart`, the field, the outer ground and a merged batch
+  (its box spans the room) always stand. `EW_HQ_NO_BATTLE_RADIUS` keeps everything.
+- THE HAND-OVER: map.js's encounter start passes `handover: true`; `_hqLeave` stashes the shell / door / prop groups
+  (`_hqRoomHandover`) before the disposal loop (the dissolve's snapshot first; a reflector's material put back);
+  `_hqBuildRoomInBattle` takes them for the same room under true ground and runs NO builder (the shadow flags still
+  run); a stash nobody took is dropped by the next `_hqEnter` / `deactivate`. `EW_HQ_NO_ROOM_HANDOVER` = the rebuild.
+  The battle marker (`_ew_hqMarker`) and the atmosphere (`_ew_hqPart: 'fx'`) never stand in a battle.
+- Files: three-renderer.js (R2) · data.js (R2 + Render) · map.js (R2) · index.html (Render) · seamless-field.test.js ·
+  hq-encounter.test.js · SEAMLESS_FIELD_PLAN.md · CLAUDE.md · this file (repo).
+- UNSEEN LIVE (RULE #1c): the CDN is unreachable from the sandbox — the numbers are the user's to read first (§6 of the
+  plan: the walk's `hq.perf()` against the battle's `perf()` in the sewers and the city). If the battle is still under
+  the walk's fps with the counts showing most of the room culled, the cost is the merged batches + the shadow pass
+  (steps 4–5), not the pieces. A door or a car the eye can see missing at the fog line = `keepM` / `keepFarM` are the
+  edits. A handed-over room whose GLB lands late re-places itself under the holder's matrix as before.

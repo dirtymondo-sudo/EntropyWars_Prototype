@@ -365,7 +365,7 @@ test('THE DISSOLVE (seam 3) · SOURCE: _hqLeave({ dissolve }) renders the room o
     const once = TR.slice(TR.indexOf('function _hqRenderOnce'), TR.indexOf('function _hqDissolveStart'));
     assert.ok(once.includes("ThreePost.renderScene(H.scene, H.camera)") && once.includes("renderer.render(H.scene, H.camera)"), 'the same render branch as the frame');
     assert.ok(MP.includes("window._hqLeave = function (opts) {") && MP.includes("ThreeRenderer.hq.leave(opts || undefined);"), 'the wrapper passes it through');
-    assert.ok(MP.includes("window._hqLeave({ dissolve: { onFrame: true, hold: 1500, ms: 220 } });   // THE DISSOLVE (seam 3)"), 'the encounter asks: the frame HOLDS until the battle\'s first frame, then a short fade (THE SWOOP is the seam)');
+    assert.ok(MP.includes("window._hqLeave({ dissolve: { onFrame: true, hold: 1500, ms: 220 }, handover: true });   // THE HAND-OVER"), 'the encounter asks: the frame HOLDS until the battle\'s first frame, then a short fade (THE SWOOP is the seam)');
     assert.ok(TR.includes("if (o && o.onFrame) _hqDissolveRec = rec;") && TR.includes("if (_hqDissolveRec) _hqDissolveFrame();") && TR.includes("var fade = function () { if (fading || done) return;"), 'the first battle frame fades the held snapshot; the hold is the cap');
     assert.ok(BT.includes("if (_encMatch) {\n                Promise.resolve().then(finish);\n                return;\n            }"), 'no loading card for an encounter');
     assert.ok(CAM.includes("let _seedFrom = null, _seedT0 = 0, _seedEase = 0;") && CAM.includes("const k = u * u * (3 - 2 * u);"), 'THE SWOOP: the seed is tweened home, not damped');

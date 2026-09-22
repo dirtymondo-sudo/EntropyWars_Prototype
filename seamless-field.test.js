@@ -263,3 +263,70 @@ test('rev 3 · the sources: the room\'s rig / fog / AO / ceiling / dome / lens h
     assert.ok(TC.includes('function seedHold(on) { _seedHoldOn = !!on; }') && TC.includes('if (_seedHoldOn) { _seedT0 = now; _seedUntil = now + _seedEase; }') && TC.includes('fov: (isFinite(seed.fov) && seed.fov > 0) ? +seed.fov : null'), 'the camera');
     assert.ok(TC.includes('threeCamera.fov = S.fov; threeCamera.updateProjectionMatrix();') && TC.includes('        seedHold,'), 'the lens tween + the API');
 });
+
+/* ══ THE SEAMLESS FIELD, delivery 4 — THE READOUT · THE BATTLE RADIUS · THE HAND-OVER (2026-09-22, SEAMLESS_FIELD_PLAN.md) ══ */
+test('delivery 4 · the rules: keepM / keepFarM / handover on HQ_FIELD_RULES.ground; the renderer reads them with defaults and the two kill-switches', () => {
+    const DJ = fs.readFileSync(path.join(__dirname, 'data.js'), 'utf8');
+    assert.match(DJ, /keepM: 28,/); assert.match(DJ, /keepFarM: 48,/); assert.match(DJ, /handover: true,\s+\/\/ the walk's room groups are handed to the battle/);
+    const r = TR.slice(TR.indexOf('    function _hqHandoverRules() {'), TR.indexOf('    function _hqHandoverStash(H, opts) {'));
+    assert.match(r, /keepM: \(g\.keepM > 0\) \? \+g\.keepM : 28, keepFarM: \(g\.keepFarM > 0\) \? \+g\.keepFarM : 48/);
+    assert.match(r, /handover: g\.handover !== false && !W\.EW_HQ_NO_ROOM_HANDOVER, radius: !W\.EW_HQ_NO_BATTLE_RADIUS/);
+});
+
+test('delivery 4 · the hand-over: the leave stashes the three groups before the disposal, a fresh walk / deactivate drops a stash nobody took, the builder takes it for the same room under true ground and runs no builder', () => {
+    const lv = TR.slice(TR.indexOf('    function _hqLeave(opts) {'), TR.indexOf('    function _hqRefreshLamps(profile) {'));
+    assert.ok(lv.indexOf('var handed = _hqHandoverStash(H, opts);') > lv.indexOf('if (opts && opts.dissolve)'), 'the snapshot first, then the stash');
+    assert.ok(lv.indexOf('var handed = _hqHandoverStash(H, opts);') < lv.indexOf('for (var i = H.scene.children.length - 1; i >= 0; i--)'), 'the stash leaves the scene before the disposal loop');
+    const st = TR.slice(TR.indexOf('    function _hqHandoverStash(H, opts) {'), TR.indexOf('    function _hqLeave(opts) {'));
+    assert.match(st, /\[H\.shellGroup, H\.doorGroup, H\.propGroup\]\.forEach\(function \(g\) \{ if \(g && g\.parent\) g\.parent\.remove\(g\); \}\);/);
+    assert.match(st, /t\.material = t\._ew_reflectOld; t\._ew_reflectOld = null;/, 'a reflector\'s mirrored material is put back');
+    assert.ok(TR.includes("        _hqHandoverDrop();   // THE HAND-OVER: a stash the battle never took"), '_hqEnter drops a stale stash');
+    assert.ok(TR.includes("        try { _hqHandoverDrop(); } catch (e) {}   // THE HAND-OVER: a stash nobody took"), 'deactivate drops one');
+    const bb = TR.slice(TR.indexOf('    function _hqBuildRoomInBattle(ctx) {'), TR.indexOf('    function _hqEnter(opts) {'));
+    assert.match(bb, /var hand = \(trueGround && HR\.handover && _hqRoomHandover && _hqRoomHandover\.roomId === R\.roomId\) \? _hqRoomHandover : null;/);
+    assert.match(bb, /if \(hand\) \{ _hqRoomHandover = null; H\.shellGroup = hand\.shellGroup; H\.doorGroup = hand\.doorGroup; H\.propGroup = hand\.propGroup; H\.fxPulse = hand\.fxPulse\.slice\(\); \}\s*\n\s*else _hqHandoverDrop\(\);/);
+    assert.match(bb, /if \(hand\) \{ \/\* the room stands as it was walked \*\/ \}\s*\n\s*else \{\s*\n\s*if \(R\.cave\)/, 'no builder runs on a handed-over room');
+    assert.ok(bb.indexOf('if (trueGround) { try { _hqShadowFlags(copy); }') > bb.indexOf('if (R.terrain && typeof _hqBuildClimbs'), 'the shadow flags run on the handed-over groups too');
+    assert.match(bb, /c\._ew_hqMarker\)/, 'the battle marker never stands in a battle');
+    assert.ok(TR.includes("grp._ew_hqMarker = true;   // THE HAND-OVER"), 'the counter builder tags it');
+    assert.match(bb, /drop\.fx = true;/, 'the atmosphere never stands in a battle');
+    const MP = fs.readFileSync(path.join(__dirname, 'map.js'), 'utf8');
+    assert.equal((MP.match(/handover: true \}\);/g) || []).length, 1, 'only the encounter hands the room over');
+});
+
+test('delivery 4 · the battle radius: a prop / door / counter past keepM of the window\'s rect is not taken, scenery (a lot, a backdrop prism, a tree) past keepFarM; a shell part, the field, the outer ground and a merged batch always stand', () => {
+    const bb = TR.slice(TR.indexOf('    function _hqBuildRoomInBattle(ctx) {'), TR.indexOf('    function _hqEnter(opts) {'));
+    assert.match(bb, /if \(!HR\.radius \|\| c\._ew_hqPart \|\| c\._ew_hqTerrain \|\| c\._ew_hqOuter\) return 0;/, 'the always-kept classes');
+    assert.match(bb, /scenery = !!\(c\._ew_hqLot != null \|\| c\._ew_hqBackdrop \|\| c\._ew_hqTree\)/);
+    assert.match(bb, /return d > \(scenery \? HR\.keepFarM : HR\.keepM\) \? \(scenery \? 2 : 1\) : 0;/);
+    assert.match(bb, /if \(_rbox\.isEmpty\(\)\) \{ bx0 = bx1 = c\.position\.x; bz0 = bz1 = c\.position\.z; \}/, 'a GLB still streaming is judged by its position');
+    assert.match(bb, /if \(!out\) \{ var far = farOf\(c\); if \(far\) \{ out = true; if \(far === 2\) culledScenery\+\+; else culledProps\+\+; \} \}/);
+    /* the arithmetic: a box against the window rect, in a vm */
+    const fn = bb.slice(bb.indexOf('        var _rbox = new THREE.Box3();'), bb.indexOf('        var take = function (src, isProp) {'));
+    const ctx = { HR: { radius: true, keepM: 28, keepFarM: 48 }, U: 100, wx0: 0, wx1: 1400, wz0: 0, wz1: 1400, THREE: { Box3: function () { this.min = { x: 0, z: 0 }; this.max = { x: 0, z: 0 }; this.empty = true; this.isEmpty = function () { return this.empty; }; this.setFromObject = function (o) { if (o.box) { this.empty = false; this.min = o.box.min; this.max = o.box.max; } else this.empty = true; }; } }, Math: Math };
+    vm.createContext(ctx); vm.runInContext(fn + '\nthis.farOf = farOf;', ctx);
+    const mk = (o) => Object.assign({ position: { x: 0, z: 0 }, updateMatrixWorld: function () {} }, o);
+    assert.equal(ctx.farOf(mk({ _ew_hqPart: 'wall', position: { x: 99999, z: 0 } })), 0, 'a shell part always stands');
+    assert.equal(ctx.farOf(mk({ box: { min: { x: -9000, z: -9000 }, max: { x: 9000, z: 9000 } } })), 0, 'a merged batch spanning the room stands');
+    assert.equal(ctx.farOf(mk({ position: { x: 1400 + 27 * 100, z: 700 } })), 0, 'a prop 27 m off the window stands');
+    assert.equal(ctx.farOf(mk({ position: { x: 1400 + 29 * 100, z: 700 } })), 1, 'a prop 29 m off is culled as a prop');
+    assert.equal(ctx.farOf(mk({ _ew_hqTree: true, position: { x: 1400 + 40 * 100, z: 700 } })), 0, 'a tree 40 m off stands (scenery radius)');
+    assert.equal(ctx.farOf(mk({ _ew_hqLot: 3, box: { min: { x: 1400 + 50 * 100, z: 0 }, max: { x: 1400 + 60 * 100, z: 300 } } })), 2, 'a lot 50 m off is culled as scenery');
+    assert.equal(ctx.farOf(mk({ box: { min: { x: 1300, z: -3000 }, max: { x: 1500, z: -2900 } } })), 1, 'the distance is to the rect, not the centre');
+    ctx.HR.radius = false;
+    assert.equal(ctx.farOf(mk({ position: { x: 99999, z: 99999 } })), 0, 'EW_HQ_NO_BATTLE_RADIUS keeps everything');
+});
+
+test('delivery 4 · the readout: one frame-time average for both loops, ThreeRenderer.perf() and hq.perf(), the build logs one line and files the counts', () => {
+    assert.ok(TR.includes('        _perfTick(_frameNow);\n') && TR.includes('        _perfTick(performance.now());\n        try { _hqFrame(); }'), 'both loops tick it');
+    assert.ok(TR.includes("        perf: function () { return _perfRead(); },   // THE READOUT (SEAMLESS_FIELD_PLAN §6)") && TR.includes("        perf: function () { return _perfRead(); },   // THE READOUT: the same numbers on the walk"), 'the two API reads');
+    const bb = TR.slice(TR.indexOf('    function _hqBuildRoomInBattle(ctx) {'), TR.indexOf('    function _hqEnter(opts) {'));
+    assert.match(bb, /_fieldRoomStats = \{ room: R\.roomId, kept: kept, culled: dropped, props: culledProps, scenery: culledScenery, keepM: HR\.keepM, keepFarM: HR\.keepFarM, handover: !!hand/);
+    assert.match(bb, /console\.log\('\[HQ→battle\] ' \+ R\.roomId \+ ': kept ' \+ kept \+ ' · culled ' \+ dropped/, 'the line prints without EW_HQ_DEBUG');
+    const pr = TR.slice(TR.indexOf('    var _perfFrameMs = 0, _perfLastT = 0, _fieldRoomStats = null;'), TR.indexOf('    function renderFrame() {'));
+    const ctx = { renderer: { info: { render: { calls: 12, triangles: 3400, points: 0, lines: 0 }, memory: { geometries: 5, textures: 7 }, programs: [1, 2] } }, _fieldGroundLive: () => true, _hq: null };
+    vm.createContext(ctx); vm.runInContext(pr + '\nthis._perfTick = _perfTick; this._perfRead = _perfRead;', ctx);
+    for (let i = 0; i < 200; i++) ctx._perfTick(i * 16.7);
+    const p = ctx._perfRead();
+    assert.ok(Math.abs(p.fps - 60) < 1.5 && p.calls === 12 && p.triangles === 3400 && p.programs === 2 && p.field === true && p.hq === false, JSON.stringify(p));
+});
