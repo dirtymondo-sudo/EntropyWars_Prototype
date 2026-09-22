@@ -8202,3 +8202,20 @@ is logged ONCE per message (`console.error('[HQ] the frame threw …')`, `window
 (the source pins scan its body). Also fixed: index.html loaded `SMAAPass.js` BEFORE `EffectComposer.js` (which defines
 `THREE.Pass`), so it threw "Class extends value undefined" on every page load and SMAA was never available — it loads
 after the composer now. Token `20260922-hqframe-guard-01-cors`. Unseen live (RULE #1c): the user's own console.
+
+## THE BUILDING IS 3D — the room that spawned nobody (`chars: 0`), the walker included (2026-09-22, local delivery)
+The user: "I cannot move or look around inside DOOR HQ"; their console: `[HQ] entered foyer (box) — doors: 2 props: 31
+chars: 0` and no `[HQ]` warning. ZERO characters = `_hqSpawnCharacter` returned null for the walker and everyone else,
+and the ONE silent path to that is sprites.js `getRace3DModel` / `getCastModel` / `getRaceModelSkin` answering null
+under **`window.EW_DISABLE_3D_UNITS`** (the board's "3D unit models" preference: Settings → Performance LOW, the
+toggle, or Auto on a device that reads as mobile — index.html's boot block). The building has no sprite path, so
+under that setting the room stood empty: no walker record → `_hqTickWalker` returns on its first line, the camera has
+nothing to follow, the mouse is dead, nothing is logged. (The seamless-field rev 3 diff touches nothing on the spawn
+path — the setting flipped on the user's machine, whatever flipped it.) RULES now (three-renderer.js): (1) the HQ
+resolves its rigs with the flag LIFTED — `_hq3DOn()` / `_hq3DOff(was)` round `_hqSpawnCharacter`'s resolution, the
+`_hqSpawnPopulation` call in `_hqEnter` (the roster / cast / skin reads inside), `warmAvatar` and `setAvatar`; the
+board's own reads are untouched (a sprite board is still the player's choice); (2) a character that finds no rig is
+NEVER silent — `[HQ] no rig resolves for <race> <gender> — <id> was not spawned` (a `[HQ]` warn); (3) the load
+card waits for the walker's rig again (the gate's `EW_DISABLE_3D_UNITS` clause is gone). Read the flag first on any
+"empty room" / "cannot move" report: `window.EW_DISABLE_3D_UNITS` in the console, `localStorage.ew_units3d` /
+`ew_perfMode`.

@@ -46511,8 +46511,17 @@ const ThreeRenderer = (function () {
     }
 
     /* ── characters: avatar, DOOR agents, roster vessels ────────────────── */
+    /* THE BUILDING IS 3D (2026-09-22): the board's "3D unit models" preference (Settings → Performance: LOW / the
+       toggle → window.EW_DISABLE_3D_UNITS) makes sprites.js's getRace3DModel / getCastModel / getRaceModelSkin answer
+       null — and the HQ resolved every walker, native and cast member through them, so under that setting the room
+       spawned NOBODY ("[HQ] entered foyer … chars: 0"), the walker included: no body, no walk, no mouse look, no
+       error. The building has no sprite path; its people are rigs whatever the board prefers. _hq3DOn() lifts the
+       flag for the resolution and _hq3DOff() puts it back — the board's own reads are untouched. */
+    function _hq3DOn() { if (typeof window === 'undefined' || !window.EW_DISABLE_3D_UNITS) return false; window.EW_DISABLE_3D_UNITS = false; return true; }
+    function _hq3DOff(was) { if (was && typeof window !== 'undefined') window.EW_DISABLE_3D_UNITS = true; }
     function _hqSpawnCharacter(spec) {
         var U = _hqUnits(), S = _hq.room.shell;
+        var _h3d = _hq3DOn();
         var race = spec.race, gender = spec.gender || 'male';
         /* a cast member (data.js DOOR_CAST, 2026-09-06) brings its own def;
            everyone else resolves a roster race */
@@ -46536,7 +46545,8 @@ const ThreeRenderer = (function () {
             if (def) gender = alt;
         }
         if (!def) { race = 'men in black'; def = getRace3DModel(race, gender) || getRace3DModel(race, 'male'); if (def && !getRace3DModel(race, gender)) gender = 'male'; }
-        if (!def) return null;
+        _hq3DOff(_h3d);
+        if (!def) { console.warn('[HQ] no rig resolves for', race, gender, '— ' + (spec.id || spec.kind) + ' was not spawned'); return null; }   // never silent again (2026-09-22)
         /* SKATEBOARDING rev 2 (2026-09-15): the walker's rig bakes THE RIDE
            clip (sprites.js HQ_RIDE_CLIP = the library's Idle_10, the
            brawler's loose stance — sideways on the deck it reads as a
@@ -48035,7 +48045,7 @@ const ThreeRenderer = (function () {
         var sp = room.spawn || { deg: 180, r: 15, level: 0, face: 0 };
         /* the avatar: the Player cast model (map.js _hqAvatar → {cast: 'player'},
            2026-09-06) or a roster vessel / the agent in black */
-        var avDef = (av.cast && typeof getCastModel === 'function') ? getCastModel(av.cast) : null;
+        var avDef = (av.cast && typeof getCastModel === 'function') ? getCastModel(av.cast) : null;   // (resolved under _hq3DOn — the population call lifts the board's sprite preference)
         _hq.player = _hqSpawnCharacter({ id: 'hq-player', kind: 'player', race: av.race || 'men in black', gender: av.gender || 'male', def: avDef || undefined, appearance: av.appearance || null, deg: sp.deg, r: sp.r, x: sp.x, z: sp.z, level: sp.level || 0, face: sp.face || 0, label: 'YOU' });
         (room.agents || []).forEach(function (ag, i) {
             var g = ag.gender || ((i % 2) ? 'female' : 'male');
@@ -53006,7 +53016,7 @@ const ThreeRenderer = (function () {
     var HQ_GATE_CAP_MS = 75000;
     function _hqGateTick(H, now) {
         var G = H.gate, pd = H.player ? H.player.def : null;
-        var playerOk = H.playerAttached || !pd || !pd.model || (typeof window !== 'undefined' && window.EW_DISABLE_3D_UNITS) || !!(_unitGlbCache[pd.model] && _unitGlbCache[pd.model].failed);
+        var playerOk = H.playerAttached || !pd || !pd.model || !!(_unitGlbCache[pd.model] && _unitGlbCache[pd.model].failed);   // (2026-09-22: the walker is a rig whatever the board's 3D-unit preference — the card waits for it)
         var gateOk = !G || G.idle() || G.closed;
         var capped = now - H.t0 > HQ_GATE_CAP_MS;
         if (!((playerOk && gateOk) || capped)) return;
@@ -53546,7 +53556,8 @@ const ThreeRenderer = (function () {
         try { _hqSeaArm(room); } catch (e) { console.error('[HQ] sea failed', e); }
         /* THE DOOR GUN (HQ plan 9.5): the pair's doors standing in this room, from the profile record */
         try { _hqBuildPortals(room, opts); } catch (e) { console.error('[HQ] portals failed', e); }
-        try { _hqSpawnPopulation(room, opts); } catch (e) { console.error('[HQ] population failed', e); }
+        var _p3d = _hq3DOn();   // THE BUILDING IS 3D (2026-09-22): the roster / cast / skin reads inside ignore the board's sprite preference
+        try { _hqSpawnPopulation(room, opts); } catch (e) { console.error('[HQ] population failed', e); } finally { _hq3DOff(_p3d); }
         /* SKATEBOARDING (9.8): the rider's record — and the board through a door */
         try { _hqRideArm(opts); } catch (e) { console.error('[HQ] ride failed', e); }
         /* THE PREMIUM POLISH (PREMIUM_POLISH_PLAN, 2026-09-21) — after the build, so the light knows the room's box and its
@@ -53835,12 +53846,13 @@ const ThreeRenderer = (function () {
            H.ready is set when the player's model attaches) — resolved the way _hqSpawnCharacter resolves it */
         warmAvatar: function (av) {
             av = av || {};
-            if (typeof window !== 'undefined' && window.EW_DISABLE_3D_UNITS) return 0;
+            var _w3d = _hq3DOn();   // THE BUILDING IS 3D (2026-09-22): the walker is a rig whatever the board prefers
             var def = av.def || ((av.cast && typeof getCastModel === 'function') ? getCastModel(av.cast) : null);
             if (!def && typeof getRace3DModel === 'function') {
                 var race = av.race || 'men in black', gender = av.gender || 'male';
                 def = getRace3DModel(race, gender, av.appearance || undefined) || getRace3DModel(race, gender === 'male' ? 'female' : 'male') || getRace3DModel('men in black', 'male');
             }
+            _hq3DOff(_w3d);
             if (!def || !def.model) return 0;
             var urls = [def.model];
             try { if (_animLibActive(def)) _libUrls(def).forEach(function (u) { if (u) urls.push(u); }); else { var clips = def.clips || {}; for (var k in clips) if (clips[k]) urls.push(clips[k]); } } catch (e) {}
@@ -53882,7 +53894,7 @@ const ThreeRenderer = (function () {
             } catch (e) {}
             try { _hq.charGroup.remove(pl.entry.group); _disposeR(pl.entry.group); } catch (e) {}
             var ci = _hq.chars.indexOf(pl); if (ci >= 0) _hq.chars.splice(ci, 1);
-            var avDef = (av.cast && typeof getCastModel === 'function') ? getCastModel(av.cast) : null;
+            var _s3d = _hq3DOn(); var avDef = (av.cast && typeof getCastModel === 'function') ? getCastModel(av.cast) : null; _hq3DOff(_s3d);   // THE BUILDING IS 3D (2026-09-22)
             var nu = _hqSpawnCharacter({ id: pl.id, kind: 'player', race: av.race || 'men in black', gender: av.gender || 'male', def: avDef || undefined, appearance: av.appearance || null, x: pl.x, z: pl.z, y: pl.y, level: 0, face: 0, label: 'YOU' });
             if (!nu) { _hq.player = null; return false; }
             nu.yaw = nu.targetYaw = pl.yaw; nu.visY = pl.visY; nu.air = pl.air; nu.vy = pl.vy; nu.jumpT = pl.jumpT;
