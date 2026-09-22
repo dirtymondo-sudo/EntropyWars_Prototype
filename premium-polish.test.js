@@ -182,7 +182,7 @@ test('THE PLATE AT A DISTANCE + THE CAMERA FEEL: fade and scale by distance (the
     assert.ok(world.includes('if (d.plateEl) _hqPlateDist(d.plateEl, dist, d);') && world.includes('if (cc.plateEl) _hqPlateDist(cc.plateEl, dd, cc);'), 'doors and counters');
     assert.ok(/\.hq-plate \{ font-size: calc\(10px \* var\(--pk, 1\)\); \}/.test(CS) && /\.hq-plate b \{ font-size: 1\.3em; \}/.test(CS), 'the CSS reads it');
     const cam = fn(TR, '_hqTickCamera');
-    assert.ok(/if \(Math\.abs\(cam\.fov - 52\) > 0\.01\) \{ cam\.fov = 52;/.test(cam), 'the lens\'s base line stands (hq-portal pins it)');
+    assert.ok(/if \(!H\.arrive && Math\.abs\(cam\.fov - 52\) > 0\.01\) \{ cam\.fov = 52;/.test(cam), 'the lens\'s base line stands (hq-portal pins it)');
     assert.ok(/cam\.lookAt\(c\.lx \* U, c\.ly \* U, c\.lz \* U\);\s*\n\s*if \(typeof _hqCamFeel === 'function'\) _hqCamFeel\(H, pl, cam, dt, U\);/.test(cam), 'the feel after the eased boom');
     assert.ok(cam.includes('pl.heightM * (pl.sit ? 0.62 : 0.86)'), 'seated, the head is lower');
     const feel = fn(TR, '_hqCamFeel');

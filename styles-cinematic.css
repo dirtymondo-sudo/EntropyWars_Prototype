@@ -39,6 +39,8 @@
         .result-overlay.defeat { --vic-accent: var(--vic-lose); }
         .result-overlay.void   { --vic-accent: #9aa0b8; }
         .result-overlay.hidden { display: none; }
+        /* THE WAY BACK (2026-09-22): the debrief's panel fades before the held frame is taken and the room returns under it */
+        .result-overlay.vic-leaving { opacity: 0; transition: opacity 0.26s ease; pointer-events: none; }
 
         /* ── THE 2D FALLBACK: sky, rays, motes, ground, the sprite lineup ── */
         .vic-sky {

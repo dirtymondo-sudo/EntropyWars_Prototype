@@ -13472,7 +13472,12 @@ const ThreeRenderer = (function () {
            rendered staircase. +1 step of lift rides it on the step noses
            rather than cutting through the treads. */
         var stair = _stairInfoAt(hx, hy);
-        var nat = !stair && _isNaturalRenderTile(hx, hy);
+        /* THE HIGHLIGHTS CONFORM (2026-09-22): under a true-ground field the drape samples the ROOM's own ground at
+           every vertex (a slope, a bank, a ramp's incline), about the cell's centre top the mesh is placed at */
+        var fieldC = (typeof _fieldGroundSampleAt === 'function') ? _fieldGroundSampleAt(hx * ts + ts / 2, hy * ts + ts / 2, hx, hy) : null;
+        var field = (fieldC !== null && fieldC !== undefined) ? fieldC : null;
+        if (field !== null) stair = null;
+        var nat = !stair && field === null && _isNaturalRenderTile(hx, hy);
         var elevStep = ts * ELEV_STEP_RATIO;
         var _bw = (typeof bw === 'function') ? bw() : 16;
         var _bh = (typeof bh === 'function') ? bh() : 8;
@@ -13487,7 +13492,10 @@ const ThreeRenderer = (function () {
                 var lx = -half + (gi / segs) * s;
                 var lz = -half + (gj / segs) * s;
                 var y;
-                if (stair) {
+                if (field !== null) {
+                    var fy = _fieldGroundSampleAt(cx + lx, cz + lz, hx, hy);
+                    y = (fy === null || fy === undefined) ? 0 : (fy - tileTopY(hx, hy));
+                } else if (stair) {
                     /* mesh origin sits mid-slope (tileTopY includes the +0.5
                        _stairStandLift), so offsets run ±rise/2 around it */
                     y = (lz / ts) * stairRise + stairRise / STAIR_STEPS;
@@ -52067,7 +52075,7 @@ const ThreeRenderer = (function () {
         var headY = pl.visY + pl.heightM * (pl.sit ? 0.62 : 0.86);   // seated, the head is lower (THE PROP PASS 5.2)
         var lookDir = new THREE.Vector3(Math.sin(c.yaw) * Math.cos(c.pitch), Math.sin(c.pitch), -Math.cos(c.yaw) * Math.cos(c.pitch));
         /* THE DOOR GUN rev 5: no sights any more — the lens stays at 52 (rev 4 narrowed it on the right button) */
-        if (Math.abs(cam.fov - 52) > 0.01) { cam.fov = 52; cam.updateProjectionMatrix(); }
+        if (!H.arrive && Math.abs(cam.fov - 52) > 0.01) { cam.fov = 52; cam.updateProjectionMatrix(); }
         var boomD = c.dist;
         var eye, look;
         if (H.fp) {
@@ -52091,6 +52099,27 @@ const ThreeRenderer = (function () {
             else c.f += (f - c.f) * Math.min(1, dt / 0.45);
             eye = pivot.clone().add(ideal.clone().sub(pivot).multiplyScalar(c.f));
             look = pivot.clone().add(lookDir.clone().multiplyScalar(2.5));
+        }
+        /* THE WAY BACK (2026-09-22): the camera stands at the debrief's eye under the held snapshot, then — the frame the
+           room is READY (the snapshot fades) — eases onto the walker's boom over H.arrive.ms with the lens following;
+           the ordinary damping resumes after. A one-way beat: no input steers it, the room's own ease stands behind it. */
+        if (H.arrive) {
+            var A = H.arrive, E = A.eye, nowA = performance.now();
+            if (!A.t0) {
+                c.ex = E.x; c.ey = E.y; c.ez = E.z; c.lx = E.lx; c.ly = E.ly; c.lz = E.lz; c.init = true; c.f = 1;
+                if (isFinite(+E.fov) && Math.abs(cam.fov - +E.fov) > 0.01) { cam.fov = +E.fov; cam.updateProjectionMatrix(); }
+                if (H.ready) A.t0 = nowA;
+                cam.position.set(c.ex * U, c.ey * U, c.ez * U); cam.lookAt(c.lx * U, c.ly * U, c.lz * U);
+                return;
+            }
+            var tA = Math.min(1, (nowA - A.t0) / Math.max(1, A.ms)), kA = tA * tA * (3 - 2 * tA);
+            c.ex = E.x + (eye.x - E.x) * kA; c.ey = E.y + (eye.y - E.y) * kA; c.ez = E.z + (eye.z - E.z) * kA;
+            c.lx = E.lx + (look.x - E.lx) * kA; c.ly = E.ly + (look.y - E.ly) * kA; c.lz = E.lz + (look.z - E.lz) * kA;
+            var f0 = isFinite(+E.fov) ? +E.fov : 52, fovA = f0 + (52 - f0) * kA;
+            if (Math.abs(cam.fov - fovA) > 0.01) { cam.fov = fovA; cam.updateProjectionMatrix(); }
+            cam.position.set(c.ex * U, c.ey * U, c.ez * U); cam.lookAt(c.lx * U, c.ly * U, c.lz * U);
+            if (tA >= 1) H.arrive = null;
+            return;
         }
         var st = H.fp ? 0.03 : 0.085;
         var a = 1 - Math.exp(-dt / st);
@@ -53275,6 +53304,47 @@ const ThreeRenderer = (function () {
         return G.yAt(x, y);
     }
     function _fieldGroundLive() { return _fieldGroundArmed && !!_fieldGround(); }
+    /* ══ THE HIGHLIGHTS CONFORM (THE SEAMLESS FIELD, 2026-09-22) ══
+       The user: "the tile highlights need to conform to the shape of the terrain they are on." A field's cell top
+       (G.yAt) is ONE number per cell — a highlight laid flat at it cut into a slope, floated off a bank and sliced
+       a ramp. This is the sub-tile read: a battle-frame point (wx, wz) inside cell (x, y) → the ROOM's own ground
+       under it (a TERRAIN room's compiled height field through hqTerrainFeet, asked at the cell's own layer so a
+       deck / a wall top resolves to the surface the unit stands on; a box room's floor / cover is flat, so its
+       cells answer null and the drape stays a plane), in the battle's frame, the strata delta added. _buildDrapeGeo
+       samples it at every vertex of the highlight grid — the same sampler for the move / attack / spell washes, the
+       hover ring and the underfoot ring. A sample that fails (a wall, a hazard, the solid) is the cell top; the
+       drape never leaves its cell's top by more than HL_FIELD_MAX_DY tiles (a cliff foot beside a cliff face). */
+    var HL_FIELD_MAX_DY = 1.0;
+    var _fieldGroundSamplerCache = { key: null, fn: null };
+    function _fieldGroundSampler() {
+        var G = _fieldGround(); if (!G || !G.R || !G.R.terrain) return null;
+        var key = _fieldGroundCache.key;
+        if (_fieldGroundSamplerCache.key === key) return _fieldGroundSamplerCache.fn;
+        var info = null;
+        try { info = (typeof hqTerrainInfo === 'function') ? hqTerrainInfo(G.R.roomId) : null; } catch (e) { info = null; }
+        var fn = null;
+        if (info && typeof hqTerrainFeet === 'function') {
+            var T = G.R.T, ts = G.ts;
+            fn = function (wx, wz, x, y) {
+                var row = G.tops[y]; var top = row ? row[x] : null;
+                if (top === null || top === undefined) return null;
+                var rx = wx * T.C / ts + T.x0, rz = wz * T.C / ts + T.z0;   // battle px → room metres (the matrix's rule, inverted)
+                var m = null;
+                try { m = hqTerrainFeet(info, rx, rz, top); } catch (e) { m = null; }
+                if (m === null || m === undefined || !isFinite(m)) m = top;
+                var dy = (m - top) * G.s, cap = HL_FIELD_MAX_DY * ts;
+                if (dy > cap) dy = cap; else if (dy < -cap) dy = -cap;
+                return G.yAt(x, y) + dy;
+            };
+        }
+        _fieldGroundSamplerCache.key = key; _fieldGroundSamplerCache.fn = fn;
+        return fn;
+    }
+    function _fieldGroundSampleAt(wx, wz, x, y) {
+        if (!_fieldGroundArmed) return null;
+        var fn = _fieldGroundSampler(); if (!fn) return null;
+        return fn(wx, wz, x, y);
+    }
     /* ══ THE SEAMLESS FIELD rev 3 — THE LIGHT HOLDS (2026-09-22) ══
        The user: "I don't want the lighting to change, it makes the transition really abrupt". On the cut the battle used to
        swap the room's rig (a 0.22 key, a 0.5 hemisphere, the fluorescents, the room's fog, its look, its AO, its ceiling) for
@@ -53666,6 +53736,8 @@ const ThreeRenderer = (function () {
                go idle (nothing left in flight), never for a clock. The cap (HQ_GATE_CAP_MS) is the only way
                out short of that, and it names what never landed. */
             gate: _alGateOpen('room:' + (opts.room || 'central_egress')), playerAttached: false,
+            /* THE WAY BACK (2026-09-22): the debrief camera's eye in room metres — the HQ camera starts THERE and eases onto the boom once the room is ready */
+            arrive: (opts.arrive && isFinite(+opts.arrive.x) && isFinite(+opts.arrive.z)) ? { eye: opts.arrive, ms: (isFinite(+opts.arrive.ms) && +opts.arrive.ms > 0) ? +opts.arrive.ms : HQ_RETURN_EASE_MS, t0: 0 } : null,
         };
         /* stair landings (top of each flight) are needed by the shell + collision */
         (room.stairs || []).forEach(function (st) {
@@ -53881,6 +53953,64 @@ const ThreeRenderer = (function () {
         if (o && o.onFrame) _hqDissolveRec = rec;   // the first battle frame fades it; `hold` caps the wait
         setTimeout(fade, hold);
         setTimeout(drop, hold + ms + 120);
+        return rec;
+    }
+    /* ══ THE WAY BACK (THE SEAMLESS FIELD, 2026-09-22) — the debrief's last frame held over the return ══
+       The reverse of the crossing's dissolve: battle.js _encReturnLeave asks for a record, fades the debrief's panel,
+       then TAKES it — the battle scene is rendered once more through its own post chain and copied into a 2D canvas
+       over the WebGL canvas (the same task: the drawing buffer is intact there) — and reads THE EYE: the debrief
+       camera's position + gaze in ROOM METRES through the room matrix inverted (the frame _hqBuildRoomInBattle placed
+       the room in), with its lens. map.js _hqEnter({ seamless }) then builds the room with no load card, the HQ camera
+       SEEDED at that eye (H.arrive), and fades the snapshot when the room is ready (the walker's rig attached, the
+       gate idle) while the camera eases onto the walker's boom (_hqTickCamera). `holdCap` fades it regardless — a
+       room that never readies never leaves the frame on screen. Null (reduced motion, EW_HQ_NO_DISSOLVE, no canvas) =
+       the old return with its card. */
+    var HQ_RETURN_EASE_MS = 1500, HQ_RETURN_EYE_LOOK_TILES = 4;
+    function _fieldSnapshot(o) {
+        if (typeof document === 'undefined' || !canvas) return null;
+        if (typeof window !== 'undefined' && window.EW_HQ_NO_DISSOLVE) return null;
+        try { if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return null; } catch (e) {}
+        var ms = (o && isFinite(+o.ms)) ? Math.max(0, +o.ms) : 420;
+        var holdCap = (o && isFinite(+o.holdCap)) ? Math.max(0, +o.holdCap) : 4500;
+        var rec = { el: null, taken: false, eye: null, ms: ms, holdCap: holdCap, fadingAt: 0, done: false };
+        rec.drop = function () { if (rec.done) return; rec.done = true; try { if (rec.el && rec.el.parentNode) rec.el.parentNode.removeChild(rec.el); } catch (e) {} };
+        rec.fade = function () { if (rec.fadingAt || rec.done || !rec.el) return; rec.fadingAt = performance.now(); try { rec.el.style.opacity = '0'; } catch (e) {} setTimeout(rec.drop, ms + 120); };
+        rec.take = function () {
+            if (rec.taken) return !!rec.el;
+            rec.taken = true;
+            if (!active || !scene || !renderer) return false;
+            var cam = null;
+            try { cam = (typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null; } catch (e) { cam = null; }
+            if (!cam) return false;
+            var rect = canvas.getBoundingClientRect();
+            if (!(rect.width > 0 && rect.height > 0) || !(canvas.width > 0 && canvas.height > 0)) return false;
+            var snap = document.createElement('canvas');
+            snap.width = canvas.width; snap.height = canvas.height;
+            var ctx = snap.getContext('2d'); if (!ctx) return false;
+            try {
+                if (ThreePost && ThreePost.isReady && ThreePost.isReady()) ThreePost.render(cam); else renderer.render(scene, cam);
+                ctx.drawImage(canvas, 0, 0);
+            } catch (e) { return false; }
+            /* THE EYE in room metres: the debrief camera through the room matrix inverted */
+            try {
+                var R = _hqBattleRoom(), ts = CONFIG.tileSize || BASE_TILE, U = _hqUnits();
+                if (R) {
+                    var inv = _hqBattleRoomMatrix(R, ts).invert();
+                    var pos = cam.position.clone().applyMatrix4(inv);
+                    var dir = new THREE.Vector3(); cam.getWorldDirection(dir);
+                    var look = cam.position.clone().add(dir.multiplyScalar(ts * HQ_RETURN_EYE_LOOK_TILES)).applyMatrix4(inv);
+                    rec.eye = { x: pos.x / U, y: pos.y / U, z: pos.z / U, lx: look.x / U, ly: look.y / U, lz: look.z / U, fov: cam.fov || 45, room: R.roomId };
+                }
+            } catch (e) { rec.eye = null; }
+            snap.className = 'hq-dissolve hq-return-snap';
+            snap.style.cssText = 'position:fixed;left:' + rect.left + 'px;top:' + rect.top + 'px;width:' + rect.width + 'px;height:' + rect.height + 'px;'
+                + 'z-index:100050;pointer-events:none;opacity:1;transition:opacity ' + ms + 'ms ease-out;';
+            try { var prev = document.querySelector('.hq-return-snap'); if (prev && prev.parentNode) prev.parentNode.removeChild(prev); } catch (e) {}
+            document.body.appendChild(snap);
+            rec.el = snap;
+            setTimeout(rec.fade, holdCap);
+            return true;
+        };
         return rec;
     }
     /* ══ THE HAND-OVER (SEAMLESS_FIELD_PLAN.md §4 step 3, 2026-09-22) ══
@@ -54977,6 +55107,7 @@ const ThreeRenderer = (function () {
         /* THE WORLD (2026-09-13): grounded ↔ floating readout + the mode pref (entropy / grounded / floating) */
         world: function () { return _worldInfo(); },
         fieldGroundLive: function () { return _fieldGroundLive(); },   // THE SEAMLESS FIELD: a true-ground field is on screen
+        fieldSnapshot: function (o) { return _fieldSnapshot(o); },   // THE WAY BACK (2026-09-22): the debrief's last frame + the eye, held over the return (battle.js _encReturnLeave)
         perf: function () { return _perfRead(); },   // THE READOUT (SEAMLESS_FIELD_PLAN §6): fps · calls · triangles · the room round the field's counts
         getWorldMode: function () { return _wdMode(); },
         /* THE SCENE LOOK (2026-09-17): re-read the Map Looks preference and re-lay the current place's grade (the settings toggle) */

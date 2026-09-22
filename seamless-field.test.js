@@ -512,3 +512,61 @@ test('delivery 6 · THE STRATA in the renderer: the ground read adds the engine\
     assert.equal(ctx.__t(1, 1), 300, 'dug two levels: two steps down');
     boardH[0][1] = 6; assert.equal(ctx.__t(1, 0), 600, 'raised one: a step up, read live');
 });
+
+/* ══ THE HIGHLIGHTS CONFORM · THE LIVE LEVELS · THE WAY BACK (2026-09-22) ══ */
+test('the highlights conform: the drape samples the room\'s own ground at every vertex of a terrain room\'s field', () => {
+    const a = TR.indexOf('    var _fieldGroundCache = { key: null, G: null };'), b = TR.indexOf('    /* ══ THE SEAMLESS FIELD rev 3 — THE LIGHT HOLDS');
+    const src = TR.slice(a, b);
+    assert.ok(a > 0 && b > a, 'the block stands');
+    const ts = 100, C = 2, base = 5;
+    /* the room: a slope rising along +x at 0.25 m per metre; cell (1,0)'s top is its centre (3 m, 0 m) → 0.75; a wall at (2,0) */
+    const R = { site: false, cave: false, terrain: true, roomId: 'r', base, T: { N: 3, C, x0: 0, z0: 0 }, field: { tops: [[0.25, 0.75, 1.25]] } };
+    let asked = [];
+    const ctx = { window: {}, CONFIG: { tileSize: ts }, BASE_TILE: 96, ELEV_STEP_RATIO: 1, console, performance: { now: () => 0 },
+                  _hqBattleRoom: () => R, _hqBattleRoomKey: () => 'k', hqFieldGroundOn: () => true, getBaseHeightAt: () => base,
+                  hqTerrainInfo: (id) => (id === 'r' ? { ok: true } : null),
+                  hqTerrainFeet: (info, x, z, cur) => { asked.push([x, z, cur]); return x >= 4 ? null : x * 0.25; } };
+    vm.createContext(ctx);
+    vm.runInContext(src + '\n_fieldGroundArmed = true; this.__s = _fieldGroundSampleAt; this.__top = _fieldGroundTop;', ctx);
+    const s = ts / C, floor = base * ts;
+    assert.equal(ctx.__top(1, 0), floor + 0.75 * s, 'the cell top');
+    /* the west edge of cell (1,0) is x = 2 m → 0.5; the east edge x = 4 m → 1.0: the drape rises across the cell */
+    assert.equal(ctx.__s(1 * ts, 0.5 * ts, 1, 0), floor + 0.5 * s, 'the west edge samples the slope');
+    assert.ok(Math.abs(ctx.__s(2 * ts - 1e-6, 0.5 * ts, 1, 0) - (floor + 1.0 * s)) < 1e-3, 'the east edge samples the slope');
+    assert.ok(asked.every(q => q[2] === 0.75), 'asked at the cell\'s own layer (the deck / wall rule)');
+    assert.equal(ctx.__s(2.5 * ts, 0.5 * ts, 2, 0), floor + 1.25 * s, 'a sample the feet rule refuses is the cell top');
+    assert.equal(ctx.__s(0, 0, 0, 0), floor + 0 * s, 'the cell\'s corner');
+    /* a box room (no terrain) answers null: the drape stays a plane */
+    R.terrain = false; ctx._hqBattleRoomKey = () => 'k2';
+    vm.runInContext('_fieldGroundCache.key = null; _fieldGroundSamplerCache.key = null;', ctx);
+    assert.equal(ctx.__s(1 * ts, 0.5 * ts, 1, 0), null);
+    /* the drape builder reads it */
+    assert.ok(TR.includes("var fieldC = (typeof _fieldGroundSampleAt === 'function') ? _fieldGroundSampleAt(hx * ts + ts / 2, hy * ts + ts / 2, hx, hy) : null;") && TR.includes("y = (fy === null || fy === undefined) ? 0 : (fy - tileTopY(hx, hy));"), '_buildDrapeGeo samples the field');
+    assert.ok(TR.indexOf('if (field !== null) {') < TR.indexOf('} else if (stair) {') && TR.includes('var nat = !stair && field === null && _isNaturalRenderTile(hx, hy);'), 'the field branch leads the stair and the landform');
+});
+
+test('THE WAY BACK: the snapshot + the eye, the arrival ease on the HQ camera, the seamless enter, the latch outlives the commit', () => {
+    const BT = fs.readFileSync(path.join(__dirname, 'battle.js'), 'utf8');
+    const CSS = fs.readFileSync(path.join(__dirname, 'styles-cinematic.css'), 'utf8');
+    const IX = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+    /* the renderer */
+    assert.ok(TR.includes('function _fieldSnapshot(o) {') && TR.includes('fieldSnapshot: function (o) { return _fieldSnapshot(o); }'), 'the API');
+    assert.ok(TR.includes('var inv = _hqBattleRoomMatrix(R, ts).invert();') && TR.includes('rec.eye = { x: pos.x / U, y: pos.y / U, z: pos.z / U, lx: look.x / U, ly: look.y / U, lz: look.z / U, fov: cam.fov || 45, room: R.roomId };'), 'the eye in room metres through the matrix inverted');
+    assert.ok(TR.includes("if (ThreePost && ThreePost.isReady && ThreePost.isReady()) ThreePost.render(cam); else renderer.render(scene, cam);\n                ctx.drawImage(canvas, 0, 0);"), 'a render + a copy in one task');
+    assert.ok(TR.includes('setTimeout(rec.fade, holdCap);'), 'the cap fades it regardless');
+    assert.ok(TR.includes("arrive: (opts.arrive && isFinite(+opts.arrive.x) && isFinite(+opts.arrive.z)) ? { eye: opts.arrive, ms:"), 'the enter records the eye');
+    assert.ok(TR.includes('if (H.arrive) {\n            var A = H.arrive, E = A.eye, nowA = performance.now();') && TR.includes('if (H.ready) A.t0 = nowA;') && TR.includes('if (tA >= 1) H.arrive = null;'), 'the camera holds at the eye until READY, then eases onto the boom');
+    assert.ok(TR.includes('if (!H.arrive && Math.abs(cam.fov - 52) > 0.01) { cam.fov = 52; cam.updateProjectionMatrix(); }'), 'the lens reset yields to the arrival');
+    /* the ease itself: a vm over the camera tick's arithmetic */
+    const ease = (t) => t * t * (3 - 2 * t);
+    assert.equal(ease(0), 0); assert.equal(ease(1), 1); assert.ok(Math.abs(ease(0.5) - 0.5) < 1e-9);
+    /* battle.js */
+    assert.ok(BT.includes('function _encReturnLeave() {') && BT.includes("ThreeRenderer.fieldSnapshot({ ms: 420, holdCap: 4500 })") && BT.includes("resultOverlay.classList.add('vic-leaving');") && BT.includes('try { ok = !!arrive.take(); } catch (e) { ok = false; }') && BT.includes('window._hqReturnArrive = ok ? arrive : null;'), 'the panel fades, the frame is taken, the return rides it');
+    assert.ok(BT.includes('let _encRoomLast = null;') && BT.includes('const m = _encMatch || _encRoomLast;') && BT.includes('_encRoomLast = _encMatch;   // a plain match never wears a room') && BT.includes('_encMatch = null; _encRoomLast = null;'), 'the room record outlives the commit, never a plain match');
+    /* map.js */
+    const MP = fs.readFileSync(path.join(__dirname, 'map.js'), 'utf8');
+    assert.ok(MP.includes('const arrive = window._hqReturnArrive || null;') && MP.includes("seamless: (arrive && arrive.eye) ? arrive : null })) {") && MP.includes('arriveDrop();\n            _hqHome = false;'), 'the return hands the frame to the enter, drops it off the building');
+    assert.ok(MP.includes("load.style.display = seamless ? 'none' : '';") && MP.includes('if (!seamless) _hqLoadProgressStart(loadGeneration, roomId, roomDef, baseNote);') && MP.includes('arrive: seamless ? seamless.eye : null,') && MP.includes('if (seamless) { try { seamless.fade(); } catch (e) {} return; }'), 'no card, the eye to the renderer, the fade on ready');
+    assert.ok(CSS.includes('.result-overlay.vic-leaving { opacity: 0; transition: opacity 0.26s ease; pointer-events: none; }'), 'the panel\'s fade');
+    assert.ok(/\?v=\d{8}[a-z0-9-]*-cors/.test(IX) && !IX.includes('20260922-floaters-alleys-01-cors'), 'the token moved');
+});

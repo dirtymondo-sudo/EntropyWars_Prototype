@@ -114,22 +114,29 @@ test('THE GROUP: a lone native brings 0–2, a roaming group fights as its membe
     assert.ok(MP.includes("partyLevel: _hqPartyLevelNow()"), 'the launches carry the party level');
 });
 
-test('THE COMMIT: the pool shared board / bench / down + the trickle, the ledger moves, the beats carry every level\'s stat deltas', () => {
+test('THE COMMIT: the pool shared fought / present / down + what was earned in the field, the ledger moves, the beats carry every level\'s stat deltas', () => {
     const p = profile(); const rec = g('hqPartyEnsure')(p, {});
     const [you, b] = rec.members;
     const res = g('hqPartyAfterMatch')(p, { won: true, xpPool: 120, units: [
-        { partyId: you.id, hp: 30, maxHp: 60, mp: 5, maxMp: 20, xpHeld: 12, baseHp: 550, baseMp: 100, unitId: '1-0' },
-        { partyId: b.id, hp: 40, maxHp: 60, mp: 5, maxMp: 20, xpHeld: 0, bench: true, baseHp: 500, baseMp: 80, unitId: '1-1' },
+        { partyId: you.id, hp: 30, maxHp: 60, mp: 5, maxMp: 20, xpBattle: 12, fought: true, baseHp: 550, baseMp: 100, unitId: '1-0' },
+        { partyId: b.id, hp: 40, maxHp: 60, mp: 5, maxMp: 20, xpBattle: 0, fought: false, bench: true, baseHp: 500, baseMp: 80, unitId: '1-1' },
     ] });
     assert.equal(res.pool, 120); assert.equal(res.xp.length, 2);
     const y = res.xp.find(x => x.id === you.id), bb = res.xp.find(x => x.id === b.id);
-    assert.equal(y.share, 120); assert.equal(y.held, 12); assert.equal(y.gain, 132); assert.equal(y.before.lvl, 5); assert.equal(y.after.lvl, 6); assert.equal(y.after.xp, 167 + 132);
-    assert.equal(y.levels.length, 1); assert.equal(y.levels[0].lvl, 6); assert.ok(y.levels[0].stats.hp > 0, 'HP grows every level'); assert.equal(y.unitId, '1-0'); assert.equal(y.you, true);
-    assert.equal(bb.share, 60, 'the bench takes half'); assert.equal(bb.bench, true);
+    assert.equal(y.share, 120); assert.equal(y.battle, 12); assert.equal(y.held, 12, 'the old name reads the field tally'); assert.equal(y.gain, 132); assert.equal(y.before.lvl, 5); assert.equal(y.after.lvl, 6); assert.equal(y.after.xp, 167 + 132);
+    assert.equal(y.levels.length, 1); assert.equal(y.levels[0].lvl, 6); assert.ok(y.levels[0].stats.hp > 0, 'HP grows every level'); assert.equal(y.unitId, '1-0'); assert.equal(y.you, true); assert.equal(y.fought, true);
+    assert.equal(bb.share, 60, 'a body that did not fight takes half'); assert.equal(bb.bench, true); assert.equal(bb.fought, false);
     assert.equal(res.leveled, 1); assert.equal(g('hqPartyRecord')(p).members[0].lvl, 6, 'the ledger moved');
-    /* a member DOWN at the end gets no share (the classic rule) */
-    const res2 = g('hqPartyAfterMatch')(p, { won: true, xpPool: 500, units: [{ partyId: b.id, hp: 0, maxHp: 60, mp: 0, maxMp: 20, dead: true }] });
-    assert.equal(res2.xp[0].share, 0); assert.equal(res2.xp[0].dead, true);
+    /* THE VICTORY SHARE (2026-09-22): a member DOWN at the end gets no share — what it earned in the field it keeps */
+    const res2 = g('hqPartyAfterMatch')(p, { won: true, xpPool: 500, units: [{ partyId: b.id, hp: 0, maxHp: 60, mp: 0, maxMp: 20, dead: true, fought: true, xpBattle: 9 }] });
+    assert.equal(res2.xp[0].share, 0); assert.equal(res2.xp[0].dead, true); assert.equal(res2.xp[0].gain, 9, 'the field tally comes home');
+    /* a LOSS shares nothing — the field tally alone */
+    const res3 = g('hqPartyAfterMatch')(p, { won: false, xpPool: 500, units: [{ partyId: you.id, hp: 20, maxHp: 60, mp: 0, maxMp: 20, fought: true, xpBattle: 7 }] });
+    assert.equal(res3.xp[0].share, 0); assert.equal(res3.xp[0].gain, 7); assert.equal(res3.xp[0].won, false);
+    /* a deployed body that never acted is present, not fought: half; the old `xpHeld` / `bench` rows still read */
+    const sh = g('hqPartyXpShare');
+    assert.equal(sh(100, { fought: false }), 50); assert.equal(sh(100, { fought: true }), 100); assert.equal(sh(100, { dead: true, fought: true }), 0); assert.equal(sh(100, { bench: true }), 50); assert.equal(sh(100, {}), 100);
+    assert.equal(D.HQ_LEVEL_RULES.share.poolMult, 0.6, 'the pool dial');
     /* the beats of a big jump list every level, the milestones named */
     const beat = g('hqPartyGrantXp')(rec.members[0], g('xpThreshold')(16) - rec.members[0].xp, { hp: 550, mp: 100 });
     assert.equal(beat.after.lvl, 16); assert.equal(beat.levels.length, 10); assert.equal(beat.levels.find(l => l.lvl === 15).milestone, 'SECONDARY JOB UNLOCKED'); assert.equal(beat.levels.find(l => l.lvl === 10).milestone, 'THE SPELL SHOP OPENS');
@@ -157,9 +164,11 @@ test('THE ADDITIVE CURVE IS COSMETIC: levelPowerStat reads the cap equivalent at
 
 test('THE SOURCE SITES: the XP hold in a party fight, the pool at the commit, the experience card on the debrief', () => {
     assert.ok(BT.includes("if (_encRun()) return true;   // THE LEVELS (2026-09-21)"), 'a story-mode encounter earns XP');
-    assert.ok(BT.includes("unit._xpHeld = (unit._xpHeld || 0) + amt;\n                return;") && BT.includes("if (reason === 'kill' || reason === 'assist') {"), 'grantXP holds the trickle, the pool pays the kills');
-    assert.ok(BT.indexOf("if (_encRun()) {\n                const _viewerSeat") < BT.indexOf("const prevLevel = getUnitLevel(unit);\n            unit._xp = (unit._xp || 0) + amt;"), 'the hold is read before the level-up');
-    assert.ok(BT.includes("function _encXpPool(profile, seat)") && BT.includes("const xpPool = _encXpPool(p, seat);") && BT.includes("xpHeld: u._xpHeld | 0, bench: benchBodies.indexOf(u) >= 0, baseHp:"), 'the commit');
+    /* THE LEVELS rev 2 (2026-09-22): a story unit levels LIVE — grantXP never holds; the field tally + the participation ride the unit */
+    assert.ok(BT.includes("if (_encRun()) { unit._xpBattle = (unit._xpBattle || 0) + amt; unit._encFought = true; }") && !BT.includes("unit._xpHeld = (unit._xpHeld || 0) + amt;"), 'grantXP tallies the field and levels live');
+    assert.ok(BT.indexOf("if (_encRun()) { unit._xpBattle") < BT.indexOf("const prevLevel = getUnitLevel(unit);\n            unit._xp = (unit._xp || 0) + amt;"), 'the tally is written before the level-up lands');
+    assert.ok(BT.includes("if (unit && cost > 0 && _encRun()) unit._encFought = true;"), 'spending AP is fighting');
+    assert.ok(BT.includes("function _encXpPool(profile, seat)") && BT.includes("const xpPool = _encXpPool(p, seat);") && BT.includes("xpBattle: u._xpBattle | 0, fought: !!u._encFought, bench: benchBodies.indexOf(u) >= 0, baseHp:") && BT.includes("pool *= (S.poolMult != null && isFinite(+S.poolMult)) ? +S.poolMult : 1;"), 'the commit + the pool dial');
     assert.ok(BT.includes("function _vicBuildExperience(party)") && BT.includes("function _vicPlayExperience(party)") && BT.includes("function _vicXpLevelBeat(row, b, lv)"), 'the card, the sequence, the beat');
     assert.ok(BT.includes("ThreeRenderer.podium.play(u.id, ['vicJump', 'vicCheer', 'jump'], 2400);") && BT.includes("_vfxLevelUp(u.x, u.y);") && BT.includes("try { playSfx('levelUp'); } catch (e) {}"), 'the beat: the jump, the burst, the cue');
     assert.ok(BT.includes("['vicExperience', 'vicGoldBreakdown',"), '_vicPrepare clears the card');

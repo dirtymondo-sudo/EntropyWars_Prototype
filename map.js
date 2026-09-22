@@ -950,6 +950,10 @@
             if (typeof window.hqFindsWarm === 'function') _hqScheduleFindsWarm();
             const returning = !!opts.at || opts.from === 'return';
             const walking = opts.from === 'walk';
+            /* THE WAY BACK (2026-09-22): a return under the debrief's held frame — NO load card (the room's rigs and sheets are
+               the caches' — the walk just left it), the HQ camera seeded at the debrief's eye, the frame fading when the room
+               is READY (the walker attached, the gate idle); the renderer's holdCap fades it regardless */
+            const seamless = (opts.seamless && opts.seamless.eye && typeof opts.seamless.fade === 'function') ? opts.seamless : null;
             /* which room: an explicit ask, else the room the player left from
                (a return), else the egress (Play always starts on the floor) */
             let roomId = opts.room || (returning ? _hqLastRoom : (opts.from === 'play' ? _hqArrivalRoom() : 'central_egress'));
@@ -1027,7 +1031,7 @@
             const surveying = _hqSurveyNeeded(roomId) && !!_hqSurveyWorkerGet();
             /* walking room-to-room (2026-09-04): no load card — a fast
                door-blink (dip to black) while the next room builds */
-            if (load) { load.style.display = ''; load.classList.remove('done'); load.classList.toggle('walk', walking && !surveying); }
+            if (load) { load.style.display = seamless ? 'none' : ''; load.classList.remove('done'); load.classList.toggle('walk', walking && !surveying); }
             const note = _hqEl('hqLoadNote');
             const baseNote = surveying ? ('surveying ' + String(roomDef.label || roomId).toLowerCase() + '…') : walking ? ('admitting you to ' + String(roomDef.label || roomId).toLowerCase() + '…') : (returning ? 're-admitting… your corners are where you left them' : 'verifying your corners…');
             if (note) note.textContent = baseNote;
@@ -1046,7 +1050,7 @@
                not re-fire the door while the next room waits for its paint / its survey (hq.hold keeps the
                pointer lock, unlike setPaused) */
             if (walking) { try { if (ThreeRenderer.hq.hold) ThreeRenderer.hq.hold(true); } catch (e) {} }
-            _hqLoadProgressStart(loadGeneration, roomId, roomDef, baseNote);
+            if (!seamless) _hqLoadProgressStart(loadGeneration, roomId, roomDef, baseNote);
             const build = () => {
                 if (loadGeneration !== _hqLoadGeneration) return false;   // a newer entry / a leave superseded this one
                 /* the battle renderer stays alive behind the menu after a match
@@ -1063,6 +1067,7 @@
                     /* THE DOOR GUN (HQ plan 9.5): the pair on file (cleared on a fresh arrival — the rope is for one visit),
                        the filer a click calls (LEFT = A, RIGHT = B → the slot), the beats (drawn / holstered / refused),
                        and the TOUCH crossing a flat threshold reports (rev 2: a floor / ceiling hatch is fallen through) */
+                    arrive: seamless ? seamless.eye : null,   // THE WAY BACK: the camera starts at the debrief's eye
                     portal: (typeof _hqPortalOpts === 'function') ? _hqPortalOpts(opts, profile) : null,
                     onPortalPlace: (typeof _hqPortalPlaced === 'function') ? _hqPortalPlaced : null,
                     onPortal: (typeof _hqPortalEvent === 'function') ? _hqPortalEvent : null,
@@ -1097,6 +1102,7 @@
                     onReady: () => {
                         if (loadGeneration !== _hqLoadGeneration || loadReady) return;
                         loadReady = true;
+                        if (seamless) { try { seamless.fade(); } catch (e) {} return; }   // THE WAY BACK: the held frame fades over the ready room (no card, no arrival card)
                         const wait = Math.max(0, (walking ? 150 : 900) - (performance.now() - enteredAt));   // THE GATE: enteredAt is when the card went up — the renderer's ready is the real wait
                         _hqLoadFadeTimer = setTimeout(() => {
                             if (loadGeneration !== _hqLoadGeneration) return;
@@ -1120,6 +1126,7 @@
                 }); } catch (e) { console.error('[HQ] enter failed', e); }
                 if (!ok) {
                     /* no WebGL / renderer failure: fall back to the classic pages */
+                    if (seamless) { try { seamless.drop(); } catch (e) {} }
                     _hqCancelLoadCard();
                     _hqHome = false;
                     if (load) load.style.display = 'none';
@@ -1405,10 +1412,15 @@
                 const spot = window.hqEncounterReturnSpot(encRes);
                 if (spot) _hqLastDoor = spot;
             }
+            /* THE WAY BACK (2026-09-22): the debrief's held frame + the camera's eye (battle.js _encReturnLeave) — the
+               building is entered SEAMLESSLY under it, no load card; a return that never enters the building drops it */
+            const arrive = window._hqReturnArrive || null;
+            window._hqReturnArrive = null;
+            const arriveDrop = () => { try { if (arrive && arrive.drop) arrive.drop(); } catch (e) {} };
             if (enabled && _hqHome) {
-                if (alive && _hqSuspended && window._hqResume()) return true;
+                if (alive && _hqSuspended && window._hqResume()) { arriveDrop(); return true; }
                 if (alive) window._hqLeave();
-                if (window._hqEnter({ room: _hqLastRoom, at: _hqLastDoor, quiet: true, from: 'return' })) {
+                if (window._hqEnter({ room: _hqLastRoom, at: _hqLastDoor, quiet: true, from: 'return', seamless: (arrive && arrive.eye) ? arrive : null })) {
                     if (encRes) setTimeout(() => { try {
                         /* THE PARTY (2026-09-19): the second line reads what the fight did to the party — the down, the treatment */
                         const pr = encRes.party || null;
@@ -1421,6 +1433,7 @@
             } else if (alive) {
                 window._hqLeave();
             }
+            arriveDrop();
             _hqHome = false;
             window._hqRelabelMenuButtons();
             state.gameState = (fallbackPage === 'playHubPage') ? GS.MODE_SELECT : GS.MAIN_MENU;

@@ -363,7 +363,7 @@ test('REV 5 · TWO TRIGGERS (Portal\'s buttons): left click fires A, right click
     assert.ok(/var aim = _hqPortalAim\(null\);/.test(tick) && /var slotHexSel = HQ_PORTAL_COLORS\.ok;/.test(tick) && /_hqViewmodelTick\(dtA\);/.test(tick), 'the ghost judges the surface for either button, in green; the viewmodel still ticks');
     assert.ok(/var gainL = 0\.0032;/.test(TR), 'the mouse gain is flat');
     const cam = TR.slice(TR.indexOf('function _hqTickCamera'), TR.indexOf('function _hqTickWorld'));
-    assert.ok(/if \(Math\.abs\(cam\.fov - 52\) > 0\.01\) \{ cam\.fov = 52;/.test(cam) && /var boomD = c\.dist;/.test(cam), 'the lens and the boom are the walker\'s own');
+    assert.ok(/if \(!H\.arrive && Math\.abs\(cam\.fov - 52\) > 0\.01\) \{ cam\.fov = 52;/.test(cam) && /var boomD = c\.dist;/.test(cam), 'the lens and the boom are the walker\'s own');
     ['portalSlot:', 'portalFire: _hqPortalFire', 'portalCarryFor: _hqPortalCarryFor', 'portalMapCarry: _hqPortalMapCarry'].forEach(k => assert.ok(TR.indexOf(k) >= 0, 'API ' + k));
     assert.ok(!/portalSelect:/.test(TR) && !/portalAds:/.test(TR), 'no selector / ADS API');
     assert.ok(/LEFT CLICK = A/.test(MP) && !/RIGHT CLICK AIMS/.test(MP) && !/R FLIPS/.test(MP) && !/ev\.kind === 'ads'/.test(MP), 'map.js says LEFT = A, RIGHT = B and nothing about sights');

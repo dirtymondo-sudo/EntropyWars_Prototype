@@ -346,7 +346,7 @@ test('D1 · SOURCE: battle.js carries the walker home on the result; map.js land
     assert.ok(BT.includes("label: erun.label || erun.race, walker: erun.walker || null, party: partyRes };"), 'the result carries the swing (and, since THE PARTY, the party\'s result)');
     assert.ok(MP.includes("if (encRes && encRes.won && enabled && _hqHome && encRes.room && encRes.room === _hqLastRoom && typeof window.hqEncounterReturnSpot === 'function') {"), 'a win in the same room');
     assert.ok(MP.includes("const spot = window.hqEncounterReturnSpot(encRes);") && MP.includes("if (spot) _hqLastDoor = spot;"), 'the spot becomes the landing');
-    assert.ok(MP.indexOf("if (spot) _hqLastDoor = spot;") < MP.indexOf("if (window._hqEnter({ room: _hqLastRoom, at: _hqLastDoor, quiet: true, from: 'return' })) {"), 'before the re-entry');
+    assert.ok(MP.indexOf("if (spot) _hqLastDoor = spot;") < MP.indexOf("if (window._hqEnter({ room: _hqLastRoom, at: _hqLastDoor, quiet: true, from: 'return', seamless: (arrive && arrive.eye) ? arrive : null })) {"), 'before the re-entry');
     assert.ok(TR.includes("if (id && typeof id === 'object' && isFinite(+id.x) && isFinite(+id.z)) {"), 'the free-spot form');
     assert.ok(TR.includes("fy = _hqSurface(+id.x, +id.z, (isFinite(+id.y) ? +id.y : null), true);"), 'the feet take the surface at the recorded level');
     assert.ok(TR.includes("face = isFinite(+id.face) ? +id.face : 0;"), 'the recorded heading — faceAway never turns it');
@@ -471,10 +471,10 @@ test('D6 · SOURCE · battle.js: the run is LATCHED at startMatch (never the win
     assert.ok(BT.includes("&& !window.EW_DISABLE_INTRO_CINE && !_encMatch && !(window._hqEncounterRun"), 'the leaf warm-up');
     assert.ok(BT.includes("if (!eye && _er.field && typeof hqEncounterEye === 'function') { try { eye = hqEncounterEye(_er.field, _er.field.seats || null); }"), 'the eye off the seats');
     assert.ok(BT.includes("window._ewEncounterField = function () { return (_encMatch && _encMatch.field) || null; };"), 'the field for map.js');
-    assert.ok(BT.includes("function _encounterResultButtons()") && BT.includes("${won ? '▸ BACK TO THE ROOM' : '▸ WAKE UP'}") && BT.includes("b.onclick = () => { b.disabled = true; window.backToMainMenu(); };"), 'one button, through the building\'s return');
+    assert.ok(BT.includes("function _encounterResultButtons()") && BT.includes("${won ? '▸ BACK TO THE ROOM' : '▸ WAKE UP'}") && BT.includes("b.onclick = () => { b.disabled = true; _encReturnLeave(); };") && BT.includes("try { window.backToMainMenu(); } catch (e)"), 'one button, through THE WAY BACK into the building\'s return');
     assert.ok(BT.includes("try { _encounterResultButtons(); } catch (e)"), 'after the overlay shows');
     assert.ok(BT.includes("if (!document.getElementById('nextMatchBtn') && typeof _restoreResultOverlayButtons === 'function') _restoreResultOverlayButtons();"), 'the standard bar returns');
-    assert.ok(BT.includes("_encMatch = null;   // a rematch is never the encounter"), 'Find Next Match drops it');
+    assert.ok(BT.includes("_encMatch = null; _encRoomLast = null;   // a rematch is never the encounter"), 'Find Next Match drops it (the room record too)');
     assert.ok(BT.includes("window._hqEncounterRun = null; _encMatch = null;"), 'the commit consumes the latch');
 });
 

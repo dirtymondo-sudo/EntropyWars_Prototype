@@ -43,7 +43,9 @@ function bridgeCtx() {
 }
 
 test('the marker: battle.js publishes the latched run\'s room, field and field id — null outside an encounter', () => {
-    assert.match(BT, /window\._ewEncounterRoom = function \(\) \{ return _encMatch \? \{ room: _encMatch\.room \|\| null, field: _encMatch\.field \|\| null, fieldId: _encMatch\.fieldId \|\| null, site: _encMatch\.site \|\| null \} : null; \};/);
+    /* THE WAY BACK (2026-09-22): the record outlives the commit (_encRoomLast) — the debrief stands on the true ground, the return reads the eye; a plain match still publishes null */
+    assert.match(BT, /window\._ewEncounterRoom = function \(\) \{ const m = _encMatch \|\| _encRoomLast; return m \? \{ room: m\.room \|\| null, field: m\.field \|\| null, fieldId: m\.fieldId \|\| null, site: m\.site \|\| null \} : null; \};/);
+    assert.ok(BT.includes('_encRoomLast = _encMatch;   // a plain match never wears a room'));
     assert.match(TR, /run = \(typeof window\._ewEncounterRoom === 'function'\) \? window\._ewEncounterRoom\(\) : null;/, 'the renderer reads it');
 });
 

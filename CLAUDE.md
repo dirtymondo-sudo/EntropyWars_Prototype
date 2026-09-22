@@ -8456,3 +8456,40 @@ gaps are slits under a metre, closed or hoarded); all three solve from every doo
 hq-city.test.js THE ALLEYS (heavy), hq-areas.test.js THE TIER HEIGHT, misc-batch-0922's well pins. UNSEEN LIVE (RULE
 #1c): the props on their tiers in every area, the well at half size against the walker, the alleys' mouths between the
 prisms (the hoarding at a dead end, the fronts on the sides), the slits' hoardings.
+
+## THE SEAMLESS FIELD, delivery 7 — THE HIGHLIGHTS CONFORM · THE LIVE LEVELS · THE WAY BACK (2026-09-22, local delivery)
+The user's three. **THE HIGHLIGHTS CONFORM**: three-renderer.js `_fieldGroundSampler()` / **`_fieldGroundSampleAt(wx, wz, x, y)`**
+(the block after `_fieldGroundLive`) is the SUB-TILE read of a true-ground field — a TERRAIN room's compiled height field
+through `hqTerrainFeet` at the cell's OWN layer (a deck / a wall top resolves to the surface the unit stands on), the battle
+point mapped to room metres by the matrix's rule inverted, the strata delta added, a refused sample (a wall, a hazard, the
+solid) = the cell top, capped at `HL_FIELD_MAX_DY` (one tile) off it; a box room answers null (its cells are flat).
+`_buildDrapeGeo` samples it at every vertex of the highlight grid (the field branch LEADS the stair and the landform
+branches), so every move / attack / spell / inspect wash, the hover ring and the underfoot ring lie on the slope, the
+bank, the ramp. The pick quads (`_fieldPickBuild`) stay flat at the cell top (a click on a steep cell lands a few px off
+the drawn plate). **THE LIVE LEVELS**: battle.js `grantXP` no longer holds a story unit's XP — a kill / assist / trickle
+lands on `_xp`, the level-up card, the cue and the burst play ON THE BOARD, `_recomputeStatsForLevel` climbs the stats
+mid-fight (the unit was built at its ledger's level with its ledger's xp, so the ledger and the board agree); what the
+unit earned is tallied on it (`_xpBattle`) and earning is FIGHTING (`_encFought`) — `spendAP` marks it too. THE VICTORY
+SHARE (data.js `HQ_LEVEL_RULES.share = { fought: 1, present: 0.5, down: 0, poolMult: 0.6 }`; `hqPartyXpShare`): a WIN
+shares the pool (`_encXpPool` = the natives' worth × `poolMult` — the kills already paid the killer live; the one dial)
+with the WHOLE party — a body that fought takes the full share, one alive that never fought (the bench, an idle body)
+the present share, a body DEAD at the end nothing (what it earned in the field it keeps); a LOSS shares nothing. The
+commit's vit rows carry `xpBattle` + `fought` (`xpHeld` / `bench` still read); `hqPartyAfterMatch`'s beats carry
+`battle · share · fought · bench · dead · won`; THE EXPERIENCE card's tag reads the rule (DOWN · NO SHARE / DID NOT FIGHT
+· HALF SHARE / IN THE FIELD +a · THE ENCOUNTER +b / THE ROOM WAS LOST · NO SHARE). **THE WAY BACK**: the debrief's
+▸ BACK TO THE ROOM runs battle.js `_encReturnLeave` — `ThreeRenderer.fieldSnapshot({ ms, holdCap })` returns a record,
+the panel fades (`.result-overlay.vic-leaving`, `ENC_RETURN_FADE_MS`), then **`rec.take()`** renders the battle's frame once
+more through its own post chain into a 2D canvas over the WebGL canvas (z 100050 — the crossing's dissolve in reverse)
+and reads **THE EYE**: the debrief camera's position + gaze in ROOM METRES through `_hqBattleRoomMatrix(R, ts).invert()`
+with its lens; `window._hqReturnArrive` rides it into `backToMainMenu` → map.js `_hqReturnOrMenu` → `_hqEnter({ …,
+seamless })`: NO load card, no progress line, no arrival card; the renderer's `_hqEnter` takes `opts.arrive` → `H.arrive`
+and `_hqTickCamera` HOLDS the camera at the eye (the lens too) until `H.ready`, then eases onto the walker's boom over
+`HQ_RETURN_EASE_MS` (1500, smoothstep, the lens to 52) while map.js's `onReady` fades the snapshot; `holdCap` (4.5 s)
+fades it regardless; a return that never enters the building drops it; no snapshot (reduced motion, `EW_HQ_NO_DISSOLVE`,
+a failed take) = the old return with its card. **`_encRoomLast`** (battle.js): `window._ewEncounterRoom` outlives the
+commit (which spends `_encMatch` before the debrief) — the podium stands on the TRUE GROUND (it stood on `level × step`
+on a tiered field) and the return can read the room's frame; `startMatch` writes it from the latch (a plain match null),
+a rematch drops it. `npm test` runs seamless-field.test.js (the sampler in a vm + the sources); party-levels /
+hq-encounter / hq-room-in-battle pins moved. UNSEEN LIVE (RULE #1c — the CDN is unreachable from the sandbox): the drape
+on a real slope against the plates' opacity, the level-up card mid-fight on the story units, the panel's fade into the
+held frame, the ease's length (`HQ_RETURN_EASE_MS`), the fade's pop when a walker's rig takes a moment to attach.

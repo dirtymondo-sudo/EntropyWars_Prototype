@@ -44284,10 +44284,15 @@ const HQ_LEVEL_RULES = {
     lead: { below: 1, above: 3 },      // the one you hit — a touch tougher
     maxBelow: 6, maxAbove: 8,          // the hard clamp about the party level (a site's tier can push, never past this)
     tierOffset: { 1: -1, 2: 1, 3: 3 }, // EW_MAP_META tier → the site's standing above / below the party
-    share: { board: 1, bench: 0.5, down: 0 },   // the pool's share: fought on the board · sat the bench · went down
+    /* THE VICTORY SHARE (2026-09-22 — the user: "victory grants the entire party XP, but not as much if they didn't
+       actually participate; units must be alive at the end of battle to receive XP"): the pool a WIN shares —
+       `fought` (took an action or dealt / took a blow) · `present` (alive but never fought: the bench, an idle body)
+       · `down` (dead at the end: nothing); `poolMult` scales the natives' worth into the pool (the kills already
+       paid the killer live). The old `board` / `bench` keys read as fought / present. */
+    share: { fought: 1, present: 0.5, down: 0, poolMult: 0.6, board: 1, bench: 0.5 },
     group: { solo: [0, 2], soloWeights: [0.35, 0.4, 0.25], roamExtra: [0, 1], roamSize: [2, 3], groupP: 0.55, marker: 4 },
     milestones: { secondaryJob: SECONDARY_JOB_LEVEL, shop: SPELL_SHOP_LEVEL, every: 5 },
-    labels: { levelUp: 'LEVEL UP!', pool: 'THE ENCOUNTER', trickle: 'IN THE FIELD', bench: 'THE BENCH · HALF SHARE', down: 'DOWN · NO SHARE' },
+    labels: { levelUp: 'LEVEL UP!', pool: 'THE ENCOUNTER', trickle: 'IN THE FIELD', battle: 'IN THE FIELD', fought: 'FOUGHT · FULL SHARE', present: 'DID NOT FIGHT · HALF SHARE', bench: 'DID NOT FIGHT · HALF SHARE', down: 'DOWN · NO SHARE', lost: 'THE ROOM WAS LOST · NO SHARE' },
 };
 /* an AREA's own band — the story's hook (empty until a route exists): { offset, min, max } by site id */
 const HQ_AREA_LEVELS = {
@@ -44338,10 +44343,12 @@ function hqPartyGrantXp(m, gain, base) {
     const levels = (after.lvl > before.lvl) ? hqPartyLevelGains(base && base.hp, base && base.mp, before.lvl, after.lvl) : [];
     return { id: m.id, gain: add, before: { lvl: before.lvl, xp: before.xp, pct: before.pct }, after: { lvl: after.lvl, xp: after.xp, pct: after.pct, left: after.left, max: after.max }, levels };
 }
-/* THE SHARE of a fight's pool one member takes home */
+/* THE SHARE of a fight's pool one member takes home: dead at the end → nothing; fought → the whole share;
+   alive but never fought (the bench, an idle body) → the present share. `bench: true` alone reads as not fought. */
 function hqPartyXpShare(pool, u) {
     const S = HQ_LEVEL_RULES.share;
-    const k = (u && u.dead) ? S.down : (u && u.bench) ? S.bench : S.board;
+    const fought = !!(u && (u.fought === true || (u.fought === undefined && !u.bench)));
+    const k = (u && u.dead) ? S.down : fought ? (S.fought != null ? S.fought : S.board) : (S.present != null ? S.present : S.bench);
     return Math.max(0, Math.round((+pool || 0) * k));
 }
 /* a seeded xorshift off a string (the same stream everywhere a launch is read) */
@@ -44884,9 +44891,16 @@ function hqPartyAfterMatch(profile, ev) {
         const u = by[m.id]; if (!u) { if (hqPartyDown(m)) down++; return; }
         seen++;
         try {
-            const held = Math.max(0, Math.round(+u.xpHeld || 0)), share = hqPartyXpShare(pool, u);
-            const beat = hqPartyGrantXp(m, held + share, { hp: u.baseHp, mp: u.baseMp });
-            if (beat) { beat.held = held; beat.share = share; beat.bench = !!u.bench; beat.dead = !!(u.dead || (u.hp | 0) <= 0); beat.unitId = u.unitId || null; beat.name = m.name || m.cls; beat.race = m.meta.race; beat.gender = m.meta.gender || 'male'; beat.cls = m.cls; beat.you = !!m.you; xp.push(beat); }
+            /* THE LEVELS rev 2 (2026-09-22): the XP a unit EARNED IN THE FIELD (its kills, its blows — levelled live on the
+               board, battle.js grantXP) is `xpBattle` (`xpHeld` is the old name); THE VICTORY SHARE lands on top of it —
+               a WIN only, and only on a body alive at the end (hqPartyXpShare: fought · present · down) */
+            const dead = !!(u.dead || (u.hp | 0) <= 0);
+            const battle = Math.max(0, Math.round(+(u.xpBattle != null ? u.xpBattle : u.xpHeld) || 0));
+            const uu = Object.assign({}, u, { dead });
+            const share = ev.won ? hqPartyXpShare(pool, uu) : 0;
+            const fought = !dead && !!(u.fought === true || (u.fought === undefined && !u.bench));
+            const beat = hqPartyGrantXp(m, battle + share, { hp: u.baseHp, mp: u.baseMp });
+            if (beat) { beat.held = battle; beat.battle = battle; beat.share = share; beat.fought = fought; beat.bench = !dead && !fought; beat.dead = dead; beat.won = !!ev.won; beat.unitId = u.unitId || null; beat.name = m.name || m.cls; beat.race = m.meta.race; beat.gender = m.meta.gender || 'male'; beat.cls = m.cls; beat.you = !!m.you; xp.push(beat); }
         } catch (e) {}
         const hpMax = Math.max(1, u.maxHp | 0), mpMax = Math.max(0, u.maxMp | 0);
         m.hpMax = hpMax; m.mpMax = mpMax;

@@ -264,6 +264,33 @@ circuit build as they did before delivery 6. THE STRATA (step 8: `field.levels`,
 re-opened — the plan's item 4 (THE CHUNKS, culling the merged batches by frustum) is the way back
 if a room ever needs it. Token `20260922-uncut-01-cors`.
 
+### 2026-09-22 — THE HIGHLIGHTS CONFORM · THE LIVE LEVELS · THE WAY BACK
+The user's three: "the tile highlights conform to the shape of the terrain
+they are on; let units level up during battle — victory grants the entire
+party XP, less if they did not participate, alive at the end to receive
+it; a smooth transition from the victory screen back to exploration, no
+loading screen". CLAUDE.md "THE SEAMLESS FIELD, delivery 7" has the
+contract. (1) `_fieldGroundSampleAt(wx, wz, x, y)` is the sub-tile read of
+a terrain room's field (hqTerrainFeet at the cell's own layer, through the
+matrix inverted, the strata delta added); `_buildDrapeGeo` samples it at
+every vertex — the move / attack / spell washes, the hover ring and the
+underfoot ring lie on the slope. The pick quads stay flat at the cell top
+(a click on a steep cell lands a few pixels off the drawn plate — the
+quad could take the same drape later). (2) grantXP levels a story unit LIVE
+(no hold), tallies `_xpBattle`, marks `_encFought`; spendAP marks it too;
+the commit hands `xpBattle` / `fought`; `hqPartyXpShare` = fought 1 ·
+present 0.5 · down 0, a WIN only; `_encXpPool` × `share.poolMult` 0.6.
+(3) `ThreeRenderer.fieldSnapshot` → `take()` renders the debrief's frame
+once more into a 2D canvas + reads the eye in room metres; `_encReturnLeave`
+fades the panel, takes it, then `backToMainMenu`; `_hqEnter({ seamless })`
+skips the card, seeds the HQ camera (`H.arrive`) and fades the frame on
+READY while the camera eases onto the boom over `HQ_RETURN_EASE_MS`.
+`_encRoomLast` keeps the room record through the debrief (the podium stood
+on `level × step` heights on a tiered field before). Unseen live: the
+CDN is unreachable from the sandbox — the drape's read on a real slope,
+the ease's feel, the fade's pop, the level-up card mid-fight are the
+user's to eyeball.
+
 ## 8. The second plan — THE CUT (2026-09-22, planning)
 
 The user, after delivery 4: the hall is fine, a city or any big area is ~10 fps.

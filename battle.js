@@ -17254,8 +17254,9 @@
                                         const pm = (Number.isFinite(ui) && state.partyMeta && state.partyMeta[seat]) ? state.partyMeta[seat][ui] : null;
                                         if (!pm || !pm.partyId) continue;
                                         vit.push({ partyId: pm.partyId, hp: u.hp | 0, maxHp: u.maxHp | 0, mp: u.mp | 0, maxMp: u.maxMp | 0, dead: !!(u.dead || u._dying), items: Object.assign({}, u.items || {}),   // THE POCKETS (2026-09-20): what the fight spent stays spent
-                                                   /* THE LEVELS (2026-09-21): the trickle the unit held, whether it sat the bench, its level-1 base for the stat card, its id for the podium beat */
-                                                   xpHeld: u._xpHeld | 0, bench: benchBodies.indexOf(u) >= 0, baseHp: (u._baseStats && u._baseStats.maxHp) || 0, baseMp: (u._baseStats && isFinite(u._baseStats.maxMp)) ? u._baseStats.maxMp : 0, unitId: u.id });
+                                                   /* THE LEVELS rev 2 (2026-09-22): what the unit EARNED in the field (levelled live), whether it FOUGHT (spent AP / earned XP — the
+                                                      pool's full share; the bench and an idle body take the present share, the dead none), its level-1 base for the stat card, its id for the podium beat */
+                                                   xpBattle: u._xpBattle | 0, fought: !!u._encFought, bench: benchBodies.indexOf(u) >= 0, baseHp: (u._baseStats && u._baseStats.maxHp) || 0, baseMp: (u._baseStats && isFinite(u._baseStats.maxMp)) ? u._baseStats.maxMp : 0, unitId: u.id });
                                     }
                                     /* THE POOL: every native that fell, priced by the battle's own kill formula against THE PARTY LEVEL (the share rule is data.js's) */
                                     const xpPool = _encXpPool(p, seat);
@@ -32396,19 +32397,12 @@
             }
             const amt = Math.max(0, Math.round(amount));
             if (amt <= 0) return;
-            /* THE LEVELS (2026-09-21): in a story-mode encounter a level-up NEVER lands mid-battle — the unit's stats are its
-               ledger's for the whole fight; the kills are THE POOL every party member shares at the commit (data.js
-               hqPartyAfterMatch — the float over the killer is the feedback), the trickle (damage / heal / the round) is HELD
-               on the unit (_xpHeld) and goes home with it. THE EXPERIENCE card on the debrief plays the level-ups. */
-            if (_encRun()) {
-                const _viewerSeat = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : 1;
-                if (reason === 'kill' || reason === 'assist') {
-                    if (!_skipVisuals() && unit.player === _viewerSeat) { try { showFloatingTextForUnit(unit, `+${amt} XP`, 'levelup', { durationMs: 1400 }); } catch (e) {} }
-                    return;
-                }
-                unit._xpHeld = (unit._xpHeld || 0) + amt;
-                return;
-            }
+            /* THE LEVELS rev 2 (2026-09-22 — the user: "let units level up during battle"): a story-mode encounter levels
+               LIVE like every progression mode — the kill / assist / trickle lands on the unit's _xp, the level-up card plays
+               on the board, the stats climb mid-fight. What a unit earned in the field is tallied on it (_xpBattle) and goes
+               home to its ledger at the commit; THE VICTORY SHARE (data.js hqPartyAfterMatch) lands on top — a WIN only,
+               the whole party, a body alive at the end. Earning XP is participating (_encFought — the pool's full share). */
+            if (_encRun()) { unit._xpBattle = (unit._xpBattle || 0) + amt; unit._encFought = true; }
             const prevLevel = getUnitLevel(unit);
             unit._xp = (unit._xp || 0) + amt;
             const newLevel = getUnitLevel(unit);
@@ -32705,6 +32699,9 @@
         }
 
         function spendAP(unit, cost) {
+            /* THE VICTORY SHARE (2026-09-22): a unit that spends AP in a story-mode encounter FOUGHT — it takes the pool's
+               full share at the commit; a body that only stood there (or sat the bench) takes the present share */
+            if (unit && cost > 0 && _encRun()) unit._encFought = true;
             /* Clash: one action per turn, period — attack, spell, item or
                Guard all pass the baton (the SMT-style press refund can still
                hand it back). Zero-cost freebies (inspect) stay free. */
@@ -36655,10 +36652,36 @@
             vicBottom.innerHTML = `<button id="encReturnBtn" class="primary enc-return">${won ? '▸ BACK TO THE ROOM' : '▸ WAKE UP'}</button>`;
             const b = document.getElementById('encReturnBtn');
             if (b) {
-                b.onclick = () => { b.disabled = true; window.backToMainMenu(); };
+                b.onclick = () => { b.disabled = true; _encReturnLeave(); };
                 setTimeout(() => { try { b.focus(); } catch (e) {} }, 80);
             }
             return true;
+        }
+        /* ══ THE WAY BACK (THE SEAMLESS FIELD, 2026-09-22) ══
+           The user: "a smooth transition from the victory screen back to exploration — no loading screen in
+           between." The debrief's panel fades (the overlay's `vic-leaving`), the renderer keeps the battle's LAST
+           FRAME — the party posed in the room — as a snapshot over the canvas (ThreeRenderer.fieldSnapshot: the
+           reverse of the crossing's dissolve) and reads the debrief camera's eye in ROOM metres; the building is
+           then entered SEAMLESSLY (map.js _hqEnter({ seamless }) — no load card, the rigs are the caches')
+           with the HQ camera seeded at that eye, and when the room is ready the snapshot fades over it while the
+           camera eases onto the walker's boom. No snapshot (reduced motion, no canvas) = the old return. */
+        const ENC_RETURN_FADE_MS = 260;
+        function _encReturnLeave() {
+            let arrive = null;
+            try {
+                if (typeof ThreeRenderer !== 'undefined' && typeof ThreeRenderer.fieldSnapshot === 'function') arrive = ThreeRenderer.fieldSnapshot({ ms: 420, holdCap: 4500 });
+            } catch (e) { arrive = null; }
+            const go = () => { try { window.backToMainMenu(); } catch (e) { console.error('[HQ] the return failed', e); } };
+            if (!arrive || !resultOverlay) { window._hqReturnArrive = null; go(); return; }
+            try { resultOverlay.classList.add('vic-leaving'); } catch (e) {}
+            setTimeout(() => {
+                try { resultOverlay.classList.remove('vic-leaving'); } catch (e) {}
+                /* the panel is gone: THE FRAME is taken now (a render + a copy in one task) and the eye read; the return rides it */
+                let ok = false;
+                try { ok = !!arrive.take(); } catch (e) { ok = false; }
+                window._hqReturnArrive = ok ? arrive : null;
+                go();
+            }, ENC_RETURN_FADE_MS);
         }
 
         /* ══════════ THE DEBRIEF (2026-09-21) — the result screen ══════════
@@ -37043,7 +37066,8 @@
             const L = R.labels || {};
             const rows = party.xp.map(b => {
                 const cls = 'vic-xp-row' + (b.dead ? ' down' : '') + (b.bench ? ' bench' : '') + (b.you ? ' you' : '');
-                const tag = b.dead ? (L.down || 'DOWN · NO SHARE') : b.bench ? (L.bench || 'THE BENCH · HALF SHARE') : '';
+                /* THE VICTORY SHARE (2026-09-22): the tag reads the rule — down (nothing), did not fight (half), fought (full); a loss shares nothing */
+                const tag = b.dead ? (L.down || 'DOWN · NO SHARE') : (b.won === false) ? (L.lost || 'THE ROOM WAS LOST · NO SHARE') : b.bench ? (L.present || L.bench || 'DID NOT FIGHT · HALF SHARE') : (b.share > 0 && b.battle > 0 ? `${L.battle || 'IN THE FIELD'} +${(b.battle | 0).toLocaleString()} · ${L.pool || 'THE ENCOUNTER'} +${(b.share | 0).toLocaleString()}` : '');
                 const need = Math.max(1, (typeof xpToNext === 'function') ? xpToNext(b.before.xp).need : 1);
                 const into = (typeof xpToNext === 'function') ? xpToNext(b.before.xp).into : 0;
                 return `<div class="${cls}" data-xp="${escapeHtml(String(b.id))}">
@@ -40345,7 +40369,7 @@
             state.matchScores = { 1: 0, 2: 0 };
             state._arenaNexusControl = { 1: 0, 2: 0 };
             state.entropyGauge = { 1: 0, 2: 0 };
-            _encMatch = null;   // a rematch is never the encounter (its result bar offers none anyway)
+            _encMatch = null; _encRoomLast = null;   // a rematch is never the encounter (its result bar offers none anyway)
             // Simul mode: a stale plan/resolve phase from an aborted match
             // would make interceptAdvance swallow the new match's boot.
             state._simulPhase = null;
@@ -42524,6 +42548,10 @@
                     if (home === seat || home === 0) continue;
                     pool += computeKillXP(killer, u);
                 }
+                /* THE VICTORY SHARE (2026-09-22): the kills already paid the killer LIVE — the pool the whole party shares is
+                   the natives' worth × HQ_LEVEL_RULES.share.poolMult (the one dial) */
+                const S = (typeof HQ_LEVEL_RULES !== 'undefined' && HQ_LEVEL_RULES.share) ? HQ_LEVEL_RULES.share : {};
+                pool *= (S.poolMult != null && isFinite(+S.poolMult)) ? +S.poolMult : 1;
             } catch (e) { pool = 0; }
             return Math.max(0, Math.round(pool));
         }
@@ -42533,7 +42561,10 @@
            ROOM round the board — the latched run's room, its field record (the window's frame) and the field id
            (the rasterised entry: which cells are covers). Null outside an encounter, so a plain match never wears
            a room. The same object for the whole match (the scenery keys on it). */
-        window._ewEncounterRoom = function () { return _encMatch ? { room: _encMatch.room || null, field: _encMatch.field || null, fieldId: _encMatch.fieldId || null, site: _encMatch.site || null } : null; };
+        /* rev 2 (2026-09-22): the record OUTLIVES the commit (_encMatch is spent there, before the debrief) — the podium stands
+           on the true ground and THE RETURN reads the room's frame from it; the next startMatch / a rematch drops it */
+        let _encRoomLast = null;
+        window._ewEncounterRoom = function () { const m = _encMatch || _encRoomLast; return m ? { room: m.room || null, field: m.field || null, fieldId: m.fieldId || null, site: m.site || null } : null; };
 
         function startMatch() {
             state.startTime = Date.now();
@@ -42548,6 +42579,7 @@
                 const er = window._hqEncounterRun;
                 if (er) { if (er.armed) { er.armed = false; _encMatch = er; } else window._hqEncounterRun = null; }
             } catch (e) {}
+            _encRoomLast = _encMatch;   // a plain match never wears a room
 
             /* Seeded engine RNG (extraction stage 5, see NEXT_SESSION.md):
                one fresh seed per battle, rolled here by whoever runs the
