@@ -17681,7 +17681,9 @@ const ThreeRenderer = (function () {
             var glY = h - r.y - r.h;   // GL viewport origin is bottom-left
             renderer.setViewport(r.x, glY, r.w, r.h);
             renderer.setScissor(r.x, glY, r.w, r.h);
-            renderer.render(scene, p.cam);
+            // THE HDR BLOOM (2026-09-22): the materials render linear under the composer — a pane drawn straight to the canvas goes through the tone map
+            if (typeof ThreePost !== 'undefined' && ThreePost.renderDirect) ThreePost.renderDirect(scene, p.cam, { x: r.x, y: glY, w: r.w, h: r.h });
+            else renderer.render(scene, p.cam);
         }
         renderer.setScissorTest(false);
         renderer.setViewport(0, 0, w, h);
@@ -21313,7 +21315,9 @@ const ThreeRenderer = (function () {
         //    sky) and to a sky event (the blood moon shows through). The map tint below still washes it.
         '  float dayK=clamp(uSkyDay,0.0,1.0)*(1.0-night*0.9)*(1.0-uSkyAmt*0.7);\n' +
         '  if(dayK>0.001){ float h=clamp(el,-1.0,1.0); float dcl=clamp(uSkyClouds+wStorm*0.85,0.0,1.0);\n' +
-        '    vec3 zen=vec3(0.17,0.42,0.88); vec3 hor=vec3(0.72,0.83,0.95); vec3 below=vec3(0.60,0.68,0.78);\n' +
+        // 2026-09-22 (the user: "the city sky is too bright"): the horizon band a notch deeper and bluer, the ground haze below it darker —
+        // the pale near-white horizon read as a glowing band once the fog washed into it (the bloom no longer touches it, THE HDR BLOOM)
+        '    vec3 zen=vec3(0.17,0.42,0.88); vec3 hor=vec3(0.58,0.72,0.92); vec3 below=vec3(0.48,0.56,0.68);\n' +
         '    vec3 dsky=mix(hor,zen,pow(smoothstep(0.0,1.0,h),0.55)); dsky=mix(below,dsky,smoothstep(-0.22,0.02,h));\n' +
         '    dsky+=vec3(1.0,0.97,0.88)*smoothstep(0.045,0.030,sa)*2.4*(1.0-dcl*0.8);\n' +
         '    dsky+=vec3(1.0,0.90,0.70)*exp(-sa*4.0)*0.55*(1.0-dcl*0.6)+vec3(1.0,0.95,0.85)*exp(-sa*1.4)*0.12;\n' +

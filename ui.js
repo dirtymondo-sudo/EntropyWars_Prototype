@@ -7532,7 +7532,7 @@
                     </div>
                     <div class="pm-set-row pm-setting-row" style="margin-top:8px">
                         <span class="pm-setting-label">Bloom</span>
-                        <input type="range" min="0" max="${bloomMaxPct}" step="5" value="${bloomPct}" class="pm-vol-slider" oninput="if(typeof ThreePost!=='undefined'&&ThreePost.setBloomStrength)ThreePost.setBloomStrength(this.value/100);this.nextElementSibling.textContent=(this.value/100).toFixed(2);">
+                        <input type="range" min="0" max="${bloomMaxPct}" step="1" value="${bloomPct}" class="pm-vol-slider" oninput="if(typeof ThreePost!=='undefined'&&ThreePost.setBloomStrength)ThreePost.setBloomStrength(this.value/100);this.nextElementSibling.textContent=(this.value/100).toFixed(2);">
                         <span class="pm-vol-val">${bloomStr.toFixed(2)}</span>
                     </div>
                     <div class="pm-set-row pm-setting-row" style="margin-top:8px">

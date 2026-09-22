@@ -15,15 +15,37 @@ const ThreePost = (function () {
     // User-controllable bloom (persisted, tuned via the pause-menu slider). The
     // day/night presets carry bloomStr 0, so without this floor bloom is
     // invisible. A strength of 0 turns bloom off entirely.
-    var BLOOM_USER_STRENGTH  = 0.05;   // default glow intensity (slider value) — near-off: day maps washed out at higher values
+    var BLOOM_USER_STRENGTH  = 0.3;    // default glow intensity (slider value) — THE HDR BLOOM (2026-09-22): only light sources cross now, so a real default is safe (was 0.05 — near-off, day maps washed out)
     var BLOOM_FACTORY = BLOOM_USER_STRENGTH;   // THE LOOK YIELDS (2026-09-17): the factory default — a scene look fills a setting only while it still reads this
     var BLOOM_USER_RADIUS    = 0.6;    // how far the glow spreads
     var BLOOM_USER_THRESHOLD = 0.72;   // higher → only the brightest surfaces bloom (less daytime over-bloom on map/spawn zones)
     var BLOOM_MAX_STRENGTH   = 1.6;    // pause-menu slider ceiling
-    var HQ_BLOOM_THRESHOLD = 0.86, HQ_BLOOM_RADIUS = 0.5;   // THE POST PASS 7.2 (2026-09-21): the building's bloom crosses only on emissive surfaces (a look's bloomThr / bloomRadius override)
+    var HQ_BLOOM_THRESHOLD = 0.86, HQ_BLOOM_RADIUS = 0.5;
+    /* ══ THE HDR BLOOM (2026-09-22 — the user: "why does the bloom affect white things so badly? the sky in the
+       city, the snow in Antarctica / the North Pole — I have to turn the bloom all the way off just to see anything;
+       I shouldn't see a glowing floor just because the floor is white") ══
+       ROOT CAUSE: the composer's target was 8-bit and every material tone-mapped ITSELF (ACES + exposure in the
+       fragment shader), so the frame the bloom read was clamped to [0, 1] — sunlit snow, a white wall and a day sky
+       all sat at ~0.9, exactly where a lamp lens sits, and no threshold could tell them apart. NOW the scene renders
+       LINEAR (renderer.toneMapping = NoToneMapping while the composer is up) into a HALF-FLOAT target — a lit white
+       surface can never exceed the light budget (sun 1.0 + hemi 0.45 + ambient 0.38 ≈ 1.8 on a white albedo), while
+       an emissive lens, an additive VFX stack or the sun's own disc runs far past it — the bloom thresholds at
+       BLOOM_HDR_LINEAR (a linear value ABOVE that budget, expressed in the target's sRGB-encoded luminance by
+       _hdrEnc), and THE TONE MAP PASS (_toneMapPass: ACES / linear + the same toneMappingExposure every site already
+       writes) turns the bloomed HDR frame into the LDR the DoF / AA / cinematic / retro passes always read. So the
+       bloom is a property of LIGHT SOURCES and VFX, never of albedo, and the strength slider can be pushed without
+       washing a day map. A look's `bloomThr` / the LDR constants still express a LOWER bar as a share of their own
+       default (_bloomThrFor). Fallback: no half-float support (or window.EW_NO_HDR_BLOOM) = the old 8-bit chain,
+       the materials tone-mapping themselves, the LDR thresholds. Readout: ThreePost.isHdrBloom(). The splitscreen
+       panes (three-renderer.js showSplitscreen) draw straight to the canvas, so they go through renderDirect(). */
+    var BLOOM_HDR_LINEAR = 2.0;   // linear light a pixel must exceed to bloom — above any sunlit white, below any emissive
+    var _hdr = false, _toneMapPass = null, _directRT = null;
+    function _hdrEnc(lin) { return lin <= 0.0031308 ? lin * 12.92 : 1.055 * Math.pow(lin, 1 / 2.4) - 0.055; }
+    function _bloomThrFor(ldrThr, base) { return _hdr ? _hdrEnc(BLOOM_HDR_LINEAR * Math.min(1, ldrThr / (base || ldrThr || 1))) : ldrThr; }
+    function isHdrBloom() { return _hdr; }   // THE POST PASS 7.2 (2026-09-21): the building's bloom crosses only on emissive surfaces (a look's bloomThr / bloomRadius override)
     try {
         // _v2 key: the default changed (1.0 → 0.35), so ignore stale saved values
-        var _bloomSaved = (typeof localStorage !== 'undefined') ? localStorage.getItem('ew_bloomStrength_v2') : null;
+        var _bloomSaved = (typeof localStorage !== 'undefined') ? localStorage.getItem('ew_bloomStrength_v3') : null;
         if (_bloomSaved !== null) {
             var _bv = parseFloat(_bloomSaved);
             if (!isNaN(_bv)) BLOOM_USER_STRENGTH = Math.max(0, Math.min(BLOOM_MAX_STRENGTH, _bv));
@@ -1386,10 +1408,81 @@ const ThreePost = (function () {
                 // floor the env grade (which is 0 by day/night) to the user level
                 // so the glow is always visible, and let bright sky-events add to it
                 _bloomPass.strength  = Math.max(_cur.bloomStr, _bu);
-                _bloomPass.threshold = Math.min(_cur.bloomThr, BLOOM_USER_THRESHOLD);
+                _bloomPass.threshold = _bloomThrFor(Math.min(_cur.bloomThr, BLOOM_USER_THRESHOLD), BLOOM_USER_THRESHOLD);
                 _bloomPass.radius    = BLOOM_USER_RADIUS;
             }
         }
+    }
+
+    /* ══ THE HDR BLOOM — the helpers ══ */
+    function _hdrSupported(renderer) {
+        try {
+            if (typeof window !== 'undefined' && window.EW_NO_HDR_BLOOM) return false;
+            if (!THREE.HalfFloatType || !THREE.NoToneMapping || !THREE.ShaderPass) return false;
+            var caps = renderer.capabilities || {}, ext = renderer.extensions;
+            if (caps.isWebGL2) return !!(ext && ext.get && (ext.get('EXT_color_buffer_float') || ext.get('EXT_color_buffer_half_float')));
+            return !!(ext && ext.get && ext.get('OES_texture_half_float') && ext.get('EXT_color_buffer_half_float') && ext.get('OES_texture_half_float_linear'));
+        } catch (e) { return false; }
+    }
+    /* UnrealBloomPass allocates its mip chain as 8-bit — its bright pass would clamp the HDR magnitude it just found. */
+    function _hdrBloomTargets(pass) {
+        var list = [];
+        if (pass.renderTargetBright) list.push(pass.renderTargetBright);
+        if (pass.renderTargetsHorizontal) list = list.concat(pass.renderTargetsHorizontal);
+        if (pass.renderTargetsVertical) list = list.concat(pass.renderTargetsVertical);
+        for (var i = 0; i < list.length; i++) { var t = list[i]; if (!t || !t.texture) continue; t.texture.type = THREE.HalfFloatType; t.dispose(); }
+    }
+    var _ToneMapShader = {
+        uniforms: { tDiffuse: { value: null }, uExposure: { value: 1.0 }, uMode: { value: 1.0 } },
+        vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+        fragmentShader: [
+            'uniform sampler2D tDiffuse; uniform float uExposure; uniform float uMode; varying vec2 vUv;',
+            // the target holds sRGB-ENCODED linear light (the materials’ outputEncoding) — the encode is monotonic past 1.0, so decode, grade, re-encode
+            'vec3 dec(vec3 c){ return mix(pow((c + 0.055) / 1.055, vec3(2.4)), c / 12.92, vec3(lessThanEqual(c, vec3(0.04045)))); }',
+            'vec3 enc(vec3 c){ return mix(1.055 * pow(max(c, 0.0), vec3(1.0 / 2.4)) - 0.055, c * 12.92, vec3(lessThanEqual(c, vec3(0.0031308)))); }',
+            'vec3 rrt(vec3 v){ vec3 a = v * (v + 0.0245786) - 0.000090537; vec3 b = v * (0.983729 * v + 0.4329510) + 0.238081; return a / b; }',
+            'vec3 aces(vec3 c){',   // three r128 ACESFilmicToneMapping, verbatim
+            '  const mat3 inM = mat3(vec3(0.59719, 0.07600, 0.02840), vec3(0.35458, 0.90834, 0.13383), vec3(0.04823, 0.01566, 0.83777));',
+            '  const mat3 outM = mat3(vec3(1.60475, -0.10208, -0.00327), vec3(-0.53108, 1.10813, -0.07276), vec3(-0.07367, -0.00605, 1.07602));',
+            '  c *= uExposure / 0.6; c = inM * c; c = rrt(c); c = outM * c; return clamp(c, 0.0, 1.0); }',
+            'void main(){ vec4 t = texture2D(tDiffuse, vUv); vec3 lin = dec(max(t.rgb, 0.0));',
+            '  vec3 m = (uMode > 0.5) ? aces(lin) : clamp(lin * uExposure, 0.0, 1.0);',
+            '  gl_FragColor = vec4(enc(m), t.a); }'
+        ].join('\n')
+    };
+    function _tmSync() {
+        if (!_toneMapPass || !_renderer) return;
+        var u = _toneMapPass.material.uniforms;
+        u.uExposure.value = _renderer.toneMappingExposure;
+        u.uMode.value = _filmic ? 1.0 : 0.0;
+    }
+    /* A direct render into a CSS-px rect of the canvas, tone-mapped: the HDR chain leaves every material linear, so a
+       scene drawn straight to the screen (the splitscreen panes) would come out raw — it draws into a canvas-sized
+       half-float scratch target with the caller's viewport / scissor and is blitted through the tone map shader into
+       the same rect. Without HDR it is a plain renderer.render. rect = { x, y, w, h } in CSS px, y from the BOTTOM. */
+    function renderDirect(scene, cam, rect) {
+        if (!_renderer || !scene || !cam) return;
+        if (!_hdr || !_toneMapPass) { _renderer.render(scene, cam); return; }
+        var size = _renderer.getDrawingBufferSize(new THREE.Vector2()), pr = _renderer.getPixelRatio();
+        if (!_directRT || _directRT.width !== size.x || _directRT.height !== size.y) {
+            if (_directRT) _directRT.dispose();
+            _directRT = new THREE.WebGLRenderTarget(size.x, size.y, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBAFormat, type: THREE.HalfFloatType, stencilBuffer: false });
+            _directRT.scissorTest = true;
+        }
+        var r = rect || { x: 0, y: 0, w: size.x / pr, h: size.y / pr };
+        _directRT.viewport.set(r.x * pr, r.y * pr, r.w * pr, r.h * pr);
+        _directRT.scissor.set(r.x * pr, r.y * pr, r.w * pr, r.h * pr);
+        var prevRT = _renderer.getRenderTarget();
+        try {
+            _renderer.setRenderTarget(_directRT);
+            _renderer.clear();
+            _renderer.render(scene, cam);
+        } finally { _renderer.setRenderTarget(prevRT); }
+        _tmSync();
+        var q = _toneMapPass.fsQuad || (_toneMapPass._fsq = _toneMapPass._fsq || new THREE.Pass.FullScreenQuad(_toneMapPass.material));
+        _toneMapPass.material.uniforms.tDiffuse.value = _directRT.texture;
+        q.render(_renderer);   // the caller's viewport / scissor stand: the blit lands in the same rect
+        _toneMapPass.material.uniforms.tDiffuse.value = null;
     }
 
     function _initLighting(scene) {
@@ -1531,10 +1624,10 @@ const ThreePost = (function () {
     function setFilmicTone(enabled) {
         _filmic = !!enabled;
         if (_renderer) {
-            _renderer.toneMapping = _filmic ? THREE.ACESFilmicToneMapping : THREE.LinearToneMapping;
+            if (!_hdr) _renderer.toneMapping = _filmic ? THREE.ACESFilmicToneMapping : THREE.LinearToneMapping;   // THE HDR BLOOM: the tone map pass reads _filmic itself
             _renderer.toneMappingExposure = _cur.exposure * _expLk() * (_filmic ? FILMIC_EXPOSURE_COMP : 1.0);
         }
-        _recompileSceneMaterials();
+        if (!_hdr) _recompileSceneMaterials();
         try { if (typeof localStorage !== 'undefined') localStorage.setItem('ew_filmicTone', _filmic ? '1' : '0'); } catch (e) {}
     }
     function isFilmicTone() { return _filmic; }
@@ -2161,10 +2254,12 @@ const ThreePost = (function () {
             return;
         }
 
+        _hdr = _hdrSupported(renderer);
         var rt = new THREE.WebGLRenderTarget(w, h, {
             minFilter: THREE.LinearFilter,
             magFilter: THREE.LinearFilter,
             format: THREE.RGBAFormat,
+            type: _hdr ? THREE.HalfFloatType : THREE.UnsignedByteType,   // THE HDR BLOOM: linear light survives past 1.0
             /* Stencil ON: unit team outlines (three-renderer.js) stamp each
                model body's pixels with a per-unit stencil ref and mask the
                inverted-hull rim against it, so only the true screen-space
@@ -2199,6 +2294,16 @@ const ThreePost = (function () {
             );
             _bloomPass.enabled = (BLOOM_USER_STRENGTH > 0);
             _composer.addPass(_bloomPass);
+            if (_hdr) _hdrBloomTargets(_bloomPass);
+        }
+        if (_hdr) {
+            /* THE TONE MAP PASS — right after the bloom: the HDR frame (+ its bloom) → ACES / linear × exposure → sRGB LDR,
+               alpha kept; everything downstream (DoF, AA, cinematic, retro) reads what it always read. */
+            _toneMapPass = new THREE.ShaderPass(_ToneMapShader);
+            _composer.addPass(_toneMapPass);
+            renderer.toneMapping = THREE.NoToneMapping;
+            _recompileSceneMaterials();   // r128 keys a material's program on the tone mapping at compile — anything already compiled with ACES rebuilds linear
+            _tmSync();
         }
 
         // Tilt-shift DoF — after bloom (so the glow melts into the blur), before
@@ -2353,6 +2458,7 @@ const ThreePost = (function () {
 
         _composer.passes[0].camera = cam;
         if (_ssaoPass) { _ssaoPass.camera = cam; _ssaoApply('battle'); }
+        _tmSync();
         _composer.render();
     }
 
@@ -2399,10 +2505,12 @@ const ThreePost = (function () {
                    veins, the screens — cross it, a white wall never does), the radius too (`bloomRadius`), the strength the look's */
                 _bloomPass.strength = Math.max(_lkNum('bloom', BLOOM_USER_STRENGTH), 0.42);
                 _bloomPass.threshold = (_look && typeof _look.bloomThr === 'number') ? _look.bloomThr : HQ_BLOOM_THRESHOLD;
+                _bloomPass.threshold = _bloomThrFor(_bloomPass.threshold, HQ_BLOOM_THRESHOLD);   // THE HDR BLOOM: the look's bar as a share of the default
                 _bloomPass.radius = (_look && typeof _look.bloomRadius === 'number') ? _look.bloomRadius : HQ_BLOOM_RADIUS;
             }
             var _aeNow = performance.now(); _aeTick(_aeNow);
             _renderer.toneMappingExposure = _expLk() * (_filmic ? FILMIC_EXPOSURE_COMP : 1.0);
+            _tmSync();
             _composer.render();
             _aeMeasure(_aeNow);   // THE AUTO EXPOSURE (7.4): read the frame just drawn, every AE_INTERVAL_MS
         } finally {
@@ -2455,11 +2563,11 @@ const ThreePost = (function () {
             _bloomPass.enabled = on;
             if (on) {
                 _bloomPass.strength  = Math.max(_cur.bloomStr, _lkNum('bloom', BLOOM_USER_STRENGTH));
-                _bloomPass.threshold = Math.min(_cur.bloomThr, BLOOM_USER_THRESHOLD);
+                _bloomPass.threshold = _bloomThrFor(Math.min(_cur.bloomThr, BLOOM_USER_THRESHOLD), BLOOM_USER_THRESHOLD);
                 _bloomPass.radius    = BLOOM_USER_RADIUS;
             }
         }
-        try { if (typeof localStorage !== 'undefined') localStorage.setItem('ew_bloomStrength_v2', String(BLOOM_USER_STRENGTH)); } catch (e) {}
+        try { if (typeof localStorage !== 'undefined') localStorage.setItem('ew_bloomStrength_v3', String(BLOOM_USER_STRENGTH)); } catch (e) {}
     }
 
     function getBloomStrength()    { return BLOOM_USER_STRENGTH; }
@@ -2587,6 +2695,7 @@ const ThreePost = (function () {
 
         _composer = null;
         _bloomPass = null;
+        _toneMapPass = null; if (_directRT) { _directRT.dispose(); _directRT = null; } _hdr = false;
         _fxaaPass = null;
         _dofPassH = null;
         _dofPassV = null;
@@ -2726,6 +2835,8 @@ const ThreePost = (function () {
         init: init,
         render: render,
         renderScene: renderScene,
+        renderDirect: renderDirect,
+        isHdrBloom: isHdrBloom,
         resize: resize,
         setBloom: setBloom,
         setBloomEnabled: setBloomEnabled,

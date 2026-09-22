@@ -16,7 +16,7 @@ test('the dome has a day branch on its own uniforms', () => {
     assert.ok(/uniform float uSkyDay; uniform float uSkyClouds;/.test(renderer), 'the two uniforms are declared in _ENV_COMMON');
     assert.ok(/uSkyDay: \{ value: 0\.0 \},\s*uSkyClouds: \{ value: 0\.0 \}/.test(renderer), 'initialised at 0 (the cosmic dome as before)');
     assert.ok(/float dayK=clamp\(uSkyDay,0\.0,1\.0\)\*\(1\.0-night\*0\.9\)\*\(1\.0-uSkyAmt\*0\.7\);/.test(renderer), 'the day yields to the night cycle and to a sky event');
-    assert.ok(/vec3 zen=vec3\(0\.17,0\.42,0\.88\); vec3 hor=vec3\(0\.72,0\.83,0\.95\);/.test(renderer), 'a blue zenith to a pale horizon');
+    assert.ok(/vec3 zen=vec3\(0\.17,0\.42,0\.88\); vec3 hor=vec3\(0\.58,0\.72,0\.92\);/.test(renderer), 'a blue zenith to a pale horizon (2026-09-22: a notch deeper — the user: "the city sky is too bright")');
     assert.ok(/float dcl=clamp\(uSkyClouds\+wStorm\*0\.85,0\.0,1\.0\);/.test(renderer), 'a storm is a full overcast');
     const dayAt = renderer.indexOf('float dayK=clamp(uSkyDay'), tintAt = renderer.indexOf("'  if(uMapTintAmt>0.001){ float ml=dot(col");
     assert.ok(dayAt > 0 && tintAt > dayAt, 'the day is laid after the tone map and before the map tint');

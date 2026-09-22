@@ -8065,3 +8065,32 @@ rule puts a vendor on a sidewalk off the run-ups; measured: every one on a kerb,
 rule; the feet read the data rule, never the mesh. `npm test` runs `misc-batch-0922.test.js`. Ship data.js to R2 AND Render. UNSEEN LIVE
 (RULE #1c): every facing / scale (`turn` / `h` / `span` are the one-field edits — the tank's and the jet's noses, the well's bucket line,
 the bench's back, the pole's mast-arm join), the hospital bed's seat height (`seat` 0.6), the hot dog stands' landing on the kerbs.
+
+## THE HDR BLOOM — the bloom is a property of light, never of albedo (2026-09-22, local delivery)
+The user: "why does the bloom affect white things so badly? the sky in the city, the snow in Antarctica / the North
+Pole — I have to turn the bloom all the way off just to see anything; I shouldn't see a glowing floor just because
+the floor is white." ROOT CAUSE (three-post.js): the composer's target was 8-bit and every material tone-mapped
+ITSELF (ACES + exposure in the fragment shader), so the frame the bloom read was clamped to [0, 1] — sunlit snow, a
+white wall and a day sky sat at ~0.9, exactly where a lamp lens sits, and no threshold could tell them apart. NOW:
+`_hdr` (half-float supported, no `EW_NO_HDR_BLOOM`) → the composer's target is `HalfFloatType`, the renderer's
+`toneMapping` is `NoToneMapping` while the composer is up (`_recompileSceneMaterials` rebuilds anything compiled
+before), the scene renders LINEAR light — a lit white can never exceed the light budget (sun 1.0 + hemi 0.45 +
+ambient 0.38 ≈ 1.8 on a white albedo) while an emissive lens / an additive VFX stack / the sun's disc runs past it —
+the bloom's own mip chain is retyped half-float (`_hdrBloomTargets`), every threshold site goes through
+**`_bloomThrFor(ldrThr, base)`** = `_hdrEnc(BLOOM_HDR_LINEAR × min(1, ldrThr / base))` (`BLOOM_HDR_LINEAR` 2.0 —
+THE ONE DIAL; a look's `bloomThr` / the LDR constants express a LOWER bar as a share of their default; the LDR
+fallback keeps the old numbers), and **THE TONE MAP PASS** (`_toneMapPass`, right after the bloom, before DoF / AA /
+cinematic / retro) does ACES (three r128's, verbatim) or linear × the same `toneMappingExposure` every site already
+writes (`_tmSync` before both `_composer.render()`s), alpha through. The multiply decals' `toneMapped = false` now
+does what it meant (the white multiplies the pre-grade floor). **`ThreePost.renderDirect(scene, cam, rect)`**: a
+scene drawn straight to the canvas under the HDR chain is raw linear — the splitscreen panes (three-renderer.js
+`showSplitscreen`'s pane loop) go through it (a canvas-sized half-float scratch target + the tone map quad in the
+caller's viewport). RULES: never `renderer.render` to the screen from a battle / HQ scene while the composer is up —
+`renderDirect`; a new post pass that reads LDR goes AFTER `_toneMapPass`; never write `_bloomPass.threshold =` bare.
+The default strength is 0.3 under a fresh key (`ew_bloomStrength_v3` — the v2 values were workarounds for the bug),
+the pause / settings slider steps by 0.01 (ui.js `step="1"`). THE DAY SKY's horizon band is a notch deeper
+(`hor` 0.58,0.72,0.92 / `below` 0.48,0.56,0.68 — the pale near-white band read as a glowing strip once the fog
+washed into it). `npm test` runs `hdr-bloom.test.js`; day-sky.test.js's horizon pin moved. UNSEEN LIVE (RULE #1c):
+the whole look — a lamp lens vs the wall beside it, snow at noon with the slider at 1.0, an additive VFX stack's
+roll-off under ACES (it lands brighter, then compresses), the panes' blit, iOS (half-float colour buffers).
+`BLOOM_HDR_LINEAR` is the edit if a bright surface still glows (raise) or a lamp no longer does (lower).
