@@ -41,7 +41,7 @@ const RACE_PATH_RULES = {
   'door agent': { folder: 'Homosapien', capGender: true },   // DOOR_RACE_DESIGN (2026-09-14) — the agent sheet in 2D; the cast GLBs in 3D
   'police officer': { folder: 'Homosapien', capGender: true },   // 2026-09-21 — borrows the gunslinger sheet in 2D; his own GLBs in 3D (Races/police/)
   'cult leader': { folder: 'Homosapien', capGender: true },      // 2026-09-21 — borrows the harbinger sheet in 2D; his own GLB in 3D (Races/cultleader/)
-  'popstar':    { folder: 'Homosapien', capGender: true },        // 2026-09-22 — borrows the harbinger sheet in 2D; her own GLB in 3D (Races/popstar/)
+  'popstar':    { folder: 'popstar',    capGender: false },       // 2026-09-22 — HER OWN sheet (Races/popstar/popstar_female.png, the VFX pass) + her own GLB in 3D (Races/popstar/)
   'wizard':     { folder: 'Homosapien', capGender: true },
   'fortune teller': { folder: 'Homosapien', capGender: true },
   'demon':      { folder: 'Demon',      capGender: true },
@@ -235,6 +235,7 @@ const _HERO_RACE_SPRITES = {
 const _SINGLE_FILE_RACES = {
   'barbarella': 'barbarella.png',
   'gangster': 'gangster_male.png',   // 2026-09-10 — Races/gangster/, male-only race
+  'popstar': 'popstar_female.png',   // 2026-09-22 — Races/popstar/, female-only race (the user's sheet; the portrait too, for now)
   'black goo': 'blackgoo.png',
   'golem': 'golem.png',
   'honda civic': 'hondacivic.png',
@@ -324,7 +325,6 @@ function getR2RaceSpriteUrl(race, gender, cls) {
     'door agent': 'agent',      // DOOR_RACE_DESIGN (2026-09-14) — the Agent job sheet
     'police officer': 'gunslinger',   // 2026-09-21 — the 2D fallback only
     'cult leader': 'harbinger',       // 2026-09-21 — the 2D fallback only
-    'popstar': 'harbinger',           // 2026-09-22 — the 2D fallback only
     'wizard': 'blackmage',
     'fortune teller': 'harbinger',
   };
@@ -2614,6 +2614,7 @@ const RACE_PORTRAITS = {
   'mad scientist':  { male: _pm('madscientist'), female: _pf('madscientist') },
   'cowboy':         { male: _pm('cowboy'),       female: _pf('cowgirl') },
   'men in black':   { male: _pm('meninblack'),   female: _pf('glowie') },
+  'popstar':        { female: `${_S}/Races/popstar/popstar_female.png` },   // 2026-09-22 — the sheet stands in for the portrait for now (the user's call)
   'telepath':       { female: _pf('psychic') },
   'marksman':       { male: _pm('sniper'),       female: _pf('sniper') },
   'priest':         { male: _pm('priest') },                // no priestess file yet
@@ -2681,7 +2682,7 @@ const RACE_SPRITES = {
   'police officer': `${_S}/homosapien.png`,   // 2026-09-21 — 2D borrows the human sheet (his own art is the GLB)
   'jellyfish': `${_S}/kraken.png`,            // 2026-09-21 — 2D borrows the kraken's sheet (his own art is the GLB)
   'cult leader': `${_S}/homosapien.png`,      // 2026-09-21
-  'popstar': `${_S}/homosapien.png`,          // 2026-09-22 — 2D borrows the human sheet (her own art is the GLB)
+  'popstar': `${_S}/Races/popstar/popstar_female.png`,   // 2026-09-22 — her own sheet (the VFX pass)
   'wizard': `${_S}/homosapien.png`,
   'fortune teller': `${_S}/homosapien.png`,
   'martian': `${_S}/martian.png`,

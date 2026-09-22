@@ -8383,3 +8383,41 @@ exists). Not a starter (THE ROSTER LOCK). `npm test` runs `model-batch-0922.test
 Render (server.js reads it). UNSEEN LIVE (RULE #1c): every rig's scale + facing (`heightRatio` / `yawOffset` are
 the one-field edits), the dance idle on the board, the female robot on the male loops, the finisher's stands
 against the rim.
+
+## THE NEW-RACE VFX PASS — police officer · jellyfish · cult leader · popstar get their own kit, and the battle shows it (2026-09-22, local delivery)
+The user: "I can see VFX in the party builder but not during actual battle; even those are too generic." WHY (read off the
+code): the 2026-09-21/22 batch shipped on FAMILY ALIASES (`Object.assign({}, SPELL_MAP['<other race>'])`) and five of the
+twenty never drew a thing in a battle — the alias carried the wrong INTENT for the row's KIND (the Taser copied a deploy's
+`aura`, a damage row fires `impact`; Bloom copied a buff's `aura`, an aoe row fires `aoe`; Lockdown and Stadium Show copied
+Shockwave Clap's `beam` + `impact`, and `resolveTravel` routes an aoe wearing a beam key to the BEAM handler) — and four
+KIND BRANCHES in battle.js never fired a mapping at all (encore fired nothing; the debuff branch fired only the generic
+corruption aura; the charge's strike fired nothing; so Encore! / the Kool-Aid / Spotlight / Stage Dive were invisible on
+the board). The forge's stage fires every mapped intent at once, which is why the builder showed more than the board.
+**THE RULE PER KIND** (battle.js `resolveTravel` + the kind branches): damage r≤2 physical → strikeLeap → `impact` · damage
+magic → `bolt` (+ `impact` on landing) · aoe → `aoe` (a def with `impactTileEffect` + `impactCenterEffect` + `aoeRadius`) ·
+warCry / selfHeal / summonUnit / encore → `aura` · debuff / steal / possess / tackle → `impact` · teleport → `teleport`.
+**AN AURA DEF'S LOOK IS ITS `impactCenterEffect`** — `_fireAura` spawns the pillar, the geometry and the per-tile / centre
+bursts and NEVER a def's bare `layers` (the Harbinger job's `encore_aura` had worn bare layers since it was authored and
+drew nothing; it is `{ aoeRadius: 0, impactCenterEffect: 'encore_center' }` now). A candle is a `fire-glow` sprite — a
+floor-anchored `flame` layer summons the ray-marched VOLUMETRIC fire per tile. **THE BLOCK**: three-vfx-effects.js "THE
+NEW-RACE VFX PASS" (right after the door agent's geometry registry): twenty bespoke recipes (`race<Police|Jelly|Cult|Pop>*`
++ the bolts `_bolt_taser` / `_bolt_sting` / `_bolt_mic`), and eighteen 3D SIGNATURES registered under the spell ids —
+`_sigBatonSwing3D` (the swing + the badge strobe) · `_sigTaserWires3D` (two crackling wires from the hand) ·
+`_sigSprayCone3D` (the can's cone over the 3×3) · `_sigCuffs3D` · `_sigLockdown3D` (barricades rise on the rim, POLICE LINE
+tape between them, the strobe bar, the cold spot) · `_sigStingTendril3D` · `_sigJellyBloom3D` (bells on spirals) ·
+`_sigNematocystNet3D` (threads drop and cinch) · `_sigImmortalCycle3D` (the bell collapses to a polyp and grows back) ·
+`_sigSermon3D` (candles on the ring, the word in dark rings) · `_sigKoolAid3D` (the cup pours) · `_sigTithe3D` (the plate,
+the coins) · `_sigIndoctrinate3D` (the hood comes down) · `_sigGathering3D` (a member steps out of a dark doorway) ·
+`_sigMicDrop3D` (the mic falls and bounces, a sonic ring per contact) · `_sigEncore3D` (the spot, the notes, the confetti,
+the word) · `_sigStageDive3D` (the crowd's hands pass the body along) · `_sigStadiumShow3D` (the rig rises over the 5×5,
+the beams sweep, twelve pyro jets in sequence, confetti over all); Spotlight reuses `_sigSpotlight3D`. The registry runs
+from fire()'s impact / aoe / aura intents (the caster rides `params.fromX / fromY` where the site gives it, `_sigCasterPos`
+else) — RULE #2 by construction. **battle.js**: the encore branch fires `aura`; the debuff branch fires the row's own
+`impact` when mapped (the generic aura is the fallback); `_runChargeToTargetSpell` fires `impact` on arrival (every tackle /
+charge row with a recipe shows now — Sky Tackle too). **THE POPSTAR'S SHEET**: `Races/popstar/popstar_female.png` is her
+single-file 2D sheet (`_SINGLE_FILE_RACES`, `RACE_PATH_RULES` folder `popstar`, `RACE_SPRITES`) and stands in for the
+portrait (`RACE_PORTRAITS.popstar.female`) — the user's call, for now. `npm test` runs `new-race-vfx.test.js` — its SMOKE
+loads the real VFX file on a stub THREE with fake timers, fires every intent of every row and pumps a virtual clock through
+every signature's life (no tick error, particles spawned, every group off the scene); reuse that harness for any VFX pass.
+UNSEEN LIVE (RULE #1c): every look — the scale of the barricades / the rig / the mic on the board, the wires' sag, the
+cup's pour, the confetti's fall, the taser bolt in flight, the bells' pulse, the two colours of the strobe.

@@ -68,9 +68,9 @@ test('the popstar sits in every data.js table, both sides of the parity line, an
     if (!D.DOOR_TEXT.POINT_OF_ENTRY[r]) problems.push('POINT_OF_ENTRY');
     if (D.ACCT_STARTER_UNITS.includes(r)) problems.push('a starter (the roster lock)');
     if (!new RegExp("AVAILABLE_RACES = new Set\\(\\[[^\\]]*'" + r + "'").test(SERVER)) problems.push('server.js AVAILABLE_RACES');
-    if (!/^  'popstar':    \{ folder: 'Homosapien', capGender: true \}/m.test(SPRITES)) problems.push('RACE_PATH_RULES');
-    if (!/^    'popstar': 'harbinger',/m.test(SPRITES)) problems.push('_HOMOSAPIEN_RACE_JOB_MAP');
-    if (!/^  'popstar': `\$\{_S\}\/homosapien\.png`/m.test(SPRITES)) problems.push('RACE_SPRITES 2D fallback');
+    if (!/^  'popstar':\s+\{ folder: 'popstar',\s+capGender: false \}/m.test(SPRITES)) problems.push('RACE_PATH_RULES (her own folder since the VFX pass, 2026-09-22)');
+    if (/^    'popstar': 'harbinger',/m.test(SPRITES)) problems.push('_HOMOSAPIEN_RACE_JOB_MAP (she wears her own sheet — not a homosapien job sheet)');
+    if (!/^  'popstar': `\$\{_S\}\/Races\/popstar\/popstar_female\.png`/m.test(SPRITES)) problems.push('RACE_SPRITES (Races/popstar/popstar_female.png)');
     if (!/^  'popstar': '/m.test(PB)) problems.push('party-builder CODEX_LORE');
     if (!/^  'popstar': \[/m.test(PB)) problems.push('party-builder RACE_TRAITS');
     if (!/^            'popstar': '/m.test(UI)) problems.push('ui.js _CODEX_LORE');

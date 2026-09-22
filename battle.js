@@ -2464,6 +2464,13 @@
 
             window.setTimeout(() => {
                 if (!_skipVisuals()) shakeBoard('normal');
+                /* THE NEW-RACE VFX PASS (2026-09-22): the strike on arrival plays the
+                   row's `impact` recipe (Stage Dive, Sky Tackle — a tackle's mapping
+                   never fired; the caster stands on its landing tile by now). */
+                const _chVFX = window.ThreeVFXEffects;
+                if (_chVFX && state.phase === 'battle' && !_skipVisuals() && !target.dead && _chVFX.hasMapping(spell.id, 'impact')) {
+                    _chVFX.fire('impact', spell.id, { tx: target.x, ty: target.y, fromX: unit.x, fromY: unit.y });
+                }
                 _applyDamageSpellHit(unit, spell, target, spellPower, 'none');
                 delete unit._chargeHandledExternally;
             }, _chargeDelay + chargeMs);
@@ -57798,7 +57805,15 @@
                 // Debuffs bloom a dark corruption aura ON the enemy (the negative
                 // counterpart of the buff/heal aura) instead of flying the old
                 // green "proj-debuff" sprite across the board.
-                window.setTimeout(() => _vfxDebuff(target.x, target.y), projectileDelay);
+                /* THE NEW-RACE VFX PASS (2026-09-22): a debuff row wearing its
+                   own `impact` recipe plays THAT on the victim (the Kool-Aid, the
+                   Spotlight); the generic corruption aura is the fallback only. */
+                const _dbVFX = window.ThreeVFXEffects;
+                const _dbMapped = !!(_dbVFX && _dbVFX.hasMapping && _dbVFX.hasMapping(spell.id, 'impact'));
+                window.setTimeout(() => {
+                    if (_dbMapped && state.phase === 'battle' && !_skipVisuals()) _dbVFX.fire('impact', spell.id, { tx: target.x, ty: target.y, fromX: unit.x, fromY: unit.y });
+                    else _vfxDebuff(target.x, target.y);
+                }, projectileDelay);
 
                 /* ── UFO flyover for alien debuff spells — the crop-circle 3D
                    saucer (ThreeVFXEffects.sigUFO3D), replacing the old flat
@@ -61934,6 +61949,13 @@
                 target.acted = false;
                 if (target.ap !== undefined) target.ap = 1;
                 showFloatingTextForUnit(target, '🎶 Encore!', 'buff');
+                /* THE NEW-RACE VFX PASS (2026-09-22): an encore row with an
+                   `aura` recipe plays it on the ally (the popstar's Encore! —
+                   the branch used to fire nothing; fire() is the relayed one). */
+                if (state.phase === 'battle' && !_skipVisuals() && window.ThreeVFXEffects
+                    && window.ThreeVFXEffects.hasMapping(spell.id, 'aura')) {
+                    window.ThreeVFXEffects.fire('aura', spell.id, { tx: target.x, ty: target.y, fromX: unit.x, fromY: unit.y });
+                }
                 addLog(`${unitDisplayName(unit)} grants ${unitDisplayName(target)} an Encore! They can act again this turn.`);
                 completionDelay = actionMs(400);
             }

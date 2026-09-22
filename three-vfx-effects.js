@@ -2881,7 +2881,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
     /* ── THE BARD KIT — the sonic school finally has a voice. Aura/impact
        intents also fire the music-note geometry registered for these ids. */
-    EFFECTS['encore_aura'] = {
+    /* THE NEW-RACE VFX PASS (2026-09-22): an aura def's look is its impactCenterEffect — _fireAura never spawned
+       these layers, so the Harbinger's Encore drew nothing; the recipe is the centre effect now. */
+    EFFECTS['encore_aura'] = { aoeRadius: 0, impactCenterEffect: 'encore_center' };
+    EFFECTS['encore_center'] = {
         layers: [
             { sprite: 'flash', ml: 180, size0: 60, size1: 130, tint: 0xffd76a, opacity0: 0.55 },
             { count: 10, anchor: 'floor', sprite: 'divine-sparkle', ml: [500, 850], offsetXY: 20,
@@ -23471,30 +23474,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     SPELL_MAP['raceAirMail']          = { impact: 'raceAirMail_impact' };                      /* door agent — the drop */
     SPELL_MAP['raceTrapdoor']         = { impact: 'raceTrapdoor_impact' };                     /* door agent — the floor gives way (fired by _springTrap) */
     SPELL_MAP['raceDropIn']           = { impact: 'raceDropIn_impact' };
-    /* THE 2026-09-21 BATCH — police officer / jellyfish / cult leader: family aliases (the §5.12 rule — a new
-       race's kit borrows the recipe of the kind it plays; each capstone's row is its own, shared with no sibling
-       on its pillar — capstone-vfx.test.js). Bespoke recipes are the next pass. */
-    SPELL_MAP['racePoliceNightstick'] = { impact: 'raceStompOut_impact' };                     /* police — the baton's crack */
-    SPELL_MAP['racePoliceTaser']      = Object.assign({}, SPELL_MAP['raceTeslaTrap']);         /* police — the prongs' arc */
-    SPELL_MAP['racePoliceSpray']      = Object.assign({}, SPELL_MAP['poisonDart']);            /* police — the cloud in the eyes */
-    SPELL_MAP['racePoliceCuffs']      = Object.assign({}, SPELL_MAP['raceLasso']);             /* police — the cuffs bite */
-    SPELL_MAP['racePoliceLockdown']   = Object.assign({}, SPELL_MAP['raceShockwaveClap']);     /* police — the block cordoned */
-    SPELL_MAP['raceJellySting']       = Object.assign({}, SPELL_MAP['poisonDart']);            /* jellyfish — the tentacle's brush */
-    SPELL_MAP['raceJellyBloom']       = Object.assign({}, SPELL_MAP['raceTemporalTide']);      /* jellyfish — the bloom rolls over the 3×3 */
-    SPELL_MAP['raceJellyDrift']       = Object.assign({}, SPELL_MAP['raceMirrorBlink']);       /* jellyfish — the bell folds and opens */
-    SPELL_MAP['raceJellyNet']         = Object.assign({}, SPELL_MAP['raceLasso']);             /* jellyfish — the skirt closes */
-    SPELL_MAP['raceJellyRebirth']     = Object.assign({}, SPELL_MAP['consumeHealPotion']);     /* jellyfish — the polyp regrows */
-    SPELL_MAP['raceCultSermon']       = Object.assign({}, SPELL_MAP['raceBlessing']);          /* cult leader — the word */
-    SPELL_MAP['raceCultKoolAid']      = Object.assign({}, SPELL_MAP['raceCharm']);             /* cult leader — the cup */
-    SPELL_MAP['raceCultTithe']        = Object.assign({}, SPELL_MAP['raceHitALick']);          /* cult leader — the collection */
-    SPELL_MAP['raceCultIndoctrinate'] = Object.assign({}, SPELL_MAP['racePossession']);        /* cult leader — the induction */
-    SPELL_MAP['raceCultGathering']    = Object.assign({}, SPELL_MAP['raceWhistle']);           /* cult leader — a member answers */                       /* door agent — the slam from above */
-    /* THE 2026-09-22 BATCH — the popstar: family aliases (the same rule; the capstone's row is its own) */
-    SPELL_MAP['racePopMicDrop']       = Object.assign({}, SPELL_MAP['sonicCharge']);            /* popstar — the mic hits the floor */
-    SPELL_MAP['racePopEncore']        = Object.assign({}, SPELL_MAP['encore']);                /* popstar — one more */
-    SPELL_MAP['racePopStageDive']     = Object.assign({}, SPELL_MAP['raceSkyTackle']);         /* popstar — into the crowd */
-    SPELL_MAP['racePopSpotlight']     = Object.assign({}, SPELL_MAP['raceCurseOfMisfortune']);  /* popstar — every eye */
-    SPELL_MAP['racePopStadiumShow']   = Object.assign({}, SPELL_MAP['raceShockwaveClap']);     /* popstar — the pyro, the crowd */
+    /* THE 2026-09-21/22 BATCH's aliases lived here — replaced by THE NEW-RACE VFX PASS (2026-09-22), the block after the door agent's registry. */
 
     /* ═════════ END VFX PASS-3 COVERAGE SECTION ═════════ */
 
@@ -24956,6 +24936,931 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         /* THE DOOR GUN's shot (2026-09-16): fired by battle.js before every placement — Knock Knock's two doors, the way in, EXIT, the trapdoor */
         'raceDoorGun:shot':          function (tx, ty, r, x) { x = x || {}; _sigDoorGunShot3D(tx, ty, { fromX: x.fromX, fromY: x.fromY, delay: x.delay || 0, lift: x.lift || 0, size: x.size || 1 }); },
     });
+
+    /* ════════════════════════════════════════════════════════════════════
+       THE NEW-RACE VFX PASS (2026-09-22) — POLICE OFFICER · JELLYFISH ·
+       CULT LEADER · POPSTAR
+       ════════════════════════════════════════════════════════════════════
+       The 2026-09-21/22 batch shipped on FAMILY ALIASES (a byte-copy of
+       another race's SPELL_MAP row) and five of the twenty never drew
+       anything in a battle at all: the Taser copied a deploy's `aura` (a
+       damage row fires `impact`), Bloom copied a buff's `aura` (an aoe row
+       fires `aoe`), Lockdown and Stadium Show copied Shockwave Clap's
+       `beam` + `impact` (resolveTravel routes an aoe wearing a beam key to
+       the BEAM handler — a line effect at a 3×3), Encore! / the Kool-Aid /
+       Spotlight / Stage Dive sat on kind branches that never fired their
+       mapping (fixed in battle.js the same day). The forge's stage fires
+       every mapped intent at once, which is why the builder showed more
+       than the board.
+
+       ONE RULE per kind, read off battle.js:
+         damage r≤2 physical → strikeLeap → impact   (Nightstick, Cuffs)
+         damage magic        → bolt (+ impact on landing)   (Taser, Sting,
+                               Net, Mic Drop)
+         aoe                 → aoe (per-tile + centre recipes)
+         warCry / selfHeal / summonUnit / encore → aura
+         debuff / steal / possess / tackle → impact
+         teleport            → teleport (dispersal + arrival)
+       Every recipe below is the race's OWN (no effect id is shared with
+       another spell — new-race-vfx.test.js insists), and every row but
+       Drift also wears a 3D SIGNATURE in the geometry registry, run by
+       fire() on the impact / aoe / aura intent with the caster in params
+       where the site provides it (`_sigCasterPos` else). RULE #2 holds by
+       construction: everything rides fire(), which online.js relays. */
+
+    var _NRV = {
+        red: 0xff2a3a, blue: 0x3a8aff, amber: 0xffe090, steel: 0xc8ccd8, zap: 0xaaddff, spray: 0xffa030,
+        sea: 0x1e6a9e, cyan: 0x5fd4ee, glow: 0x9ff4ff, jpink: 0xff9ad8, violet: 0xb066ff,
+        candle: 0xffb060, wine: 0x8a1030, robe: 0x2a1622, hood: 0x1a0c16, dusk: 0x6a2a8a,
+        pink: 0xff4fa3, stage: 0x7fe6ff, white: 0xffe6f4, gold: 0xffd76a, truss: 0x2a2c34,
+    };
+
+    /* ── POLICE OFFICER — blue and red on brushed steel; nothing glows that a badge would not ── */
+    EFFECTS['racePoliceNightstick_impact'] = {   /* the baton's crack + the badge strobe */
+        shake: 'normal',
+        layers: [
+            { sprite: 'flash', ml: 100, size0: 50, size1: 14, tint: 0xfff4dc, opacity0: 0.95 },
+            { count: 7, sprite: 'steel-spark', ml: [170, 340], offsetXY: 6, z: [16, 44],
+              vxRange: 200, vyRange: 200, vzRange: [30, 150], gravity: 400, drag: 1.4, size0: [4, 8], size1: 1 },
+            { sprite: 'flash', ml: 90, size0: 40, size1: 12, tint: 0xff2a3a, opacity0: 0.7, delayMs: 70, z: 40 },
+            { sprite: 'flash', ml: 90, size0: 40, size1: 12, tint: 0x3a8aff, opacity0: 0.7, delayMs: 160, z: 40 },
+            { count: 2, anchor: 'floor', sprite: 'dust-puff', ml: [260, 440], offsetXY: 10, z: [2, 8],
+              size0: [10, 16], size1: [22, 34], opacity0: 0.4 },
+        ]
+    };
+    EFFECTS['_bolt_taser'] = {                   /* two prongs on wires — a thin crackling dart, not a lightning bolt */
+        boltCore: 'spark-elec', boltTrail: 'lightning', boltBurst: 'spark-blue', boltRing: 'stun-ring',
+        boltCoreSize: 0.15, boltTrailSize: 0.07, boltBurstCount: 16,
+    };
+    EFFECTS['racePoliceTaser_impact'] = {        /* the prongs land: fifty thousand volts (the /taser/ rule adds three arcs) */
+        layers: [
+            { sprite: 'flash', ml: 120, size0: 44, size1: 12, tint: 0xaaddff, opacity0: 0.9, z: 30 },
+            { anchor: 'floor', mode: 'world', sprite: 'stun-ring', ml: 420, z: 2, size0: 30, size1: 110, opacity0: 0.7 },
+            { count: 10, sprite: 'spark-elec', ml: [220, 420], offsetXY: 22, z: [10, 60],
+              seekIn: [160, 300], seekInZ: [20, 50], seekSpiral: 120, size0: [5, 9], size1: 2, opacity0: 0.95 },
+            { count: 6, sprite: 'spark-blue', ml: [180, 360], offsetXY: 8, z: [20, 50],
+              vxRange: 160, vyRange: 160, vzRange: [40, 140], gravity: 300, drag: 1.2, size0: [4, 7], size1: 1 },
+            { count: 2, sprite: 'smoke-soft', ml: [400, 700], offsetXY: 8, z: [30, 50], delayMs: 200,
+              vzRange: [20, 45], drag: 0.6, size0: [10, 16], size1: [24, 36], opacity0: 0.35 },
+        ]
+    };
+    EFFECTS['racePoliceSpray_tile'] = {          /* pepper spray: the orange cloud on every tile, eye height */
+        layers: [
+            { count: 4, anchor: 'floor', mode: 'y-locked', sprite: 'poison-mist', ml: [700, 1100], offsetXY: 22, z: [30, 60],
+              tint: 0xffa030, vxRange: 40, vyRange: 40, vzRange: [10, 30], drag: 0.5,
+              w0: [24, 34], w1: [50, 70], h0: [24, 34], h1: [50, 70], opacity0: 0.55 },
+            { count: 3, sprite: 'smoke-soft', ml: [600, 900], offsetXY: 18, z: [40, 70], tint: 0xffc070,
+              vzRange: [10, 25], drag: 0.5, size0: [14, 20], size1: [30, 44], opacity0: 0.3 },
+        ]
+    };
+    EFFECTS['racePoliceSpray_center'] = {        /* the can's hiss where the cone lands */
+        layers: [
+            { sprite: 'flash', ml: 110, size0: 46, size1: 14, tint: 0xffb040, opacity0: 0.8, z: 40 },
+            { count: 8, sprite: 'poison-bubble', ml: [300, 520], offsetXY: 10, z: [30, 60], tint: 0xffa030,
+              vxRange: 140, vyRange: 140, vzRange: [10, 60], drag: 1.0, size0: [5, 9], size1: 2, opacity0: 0.85 },
+        ]
+    };
+    EFFECTS['racePoliceSpray_aoe'] = {
+        aoeRadius: 1, shape: 'square',
+        impactTileEffect: 'racePoliceSpray_tile', impactCenterEffect: 'racePoliceSpray_center', layers: []
+    };
+    EFFECTS['racePoliceCuffs_impact'] = {        /* two rings snap shut at the wrists — the click, then nothing moves */
+        layers: [
+            { count: 2, sprite: 'target-ring', ml: 260, offsetXY: 14, z: [40, 56], tint: 0xc8ccd8,
+              size0: 30, size1: 12, opacity0: 0.9 },
+            { sprite: 'flash', ml: 80, size0: 30, size1: 8, tint: 0xffffff, opacity0: 0.9, z: 48, delayMs: 200 },
+            { count: 5, sprite: 'steel-spark', ml: [140, 260], offsetXY: 6, z: [40, 56], delayMs: 200,
+              vxRange: 150, vyRange: 150, vzRange: [20, 90], gravity: 380, size0: [3, 6], size1: 1 },
+        ]
+    };
+    EFFECTS['racePoliceLockdown_tile'] = {       /* every tile inside the cordon strobes red / blue */
+        layers: [
+            { sprite: 'flash', ml: 110, size0: 52, size1: 20, tint: 0xff2a3a, opacity0: 0.75, z: 30 },
+            { sprite: 'flash', ml: 110, size0: 52, size1: 20, tint: 0x3a8aff, opacity0: 0.75, z: 30, delayMs: 150 },
+            { sprite: 'flash', ml: 110, size0: 44, size1: 16, tint: 0xff2a3a, opacity0: 0.6, z: 30, delayMs: 300 },
+            { count: 2, anchor: 'floor', sprite: 'dust-puff', ml: [300, 520], offsetXY: 16, z: [2, 8],
+              vxRange: 60, vyRange: 60, vzRange: [10, 40], gravity: 60, size0: [12, 18], size1: [28, 42], opacity0: 0.45 },
+        ]
+    };
+    EFFECTS['racePoliceLockdown_center'] = {     /* the block is cordoned: the slam, the siren wash */
+        shake: 'hard',
+        layers: [
+            { sprite: 'flash', ml: 160, size0: 90, size1: 24, tint: 0xf4f8ff, opacity0: 1, z: 20 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 460, z: 2, tint: 0x3a8aff, size0: 30, size1: 200, opacity0: 0.7 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 460, z: 2, tint: 0xff2a3a, size0: 30, size1: 200, opacity0: 0.7, delayMs: 160 },
+            { count: 12, sprite: 'steel-spark', ml: [200, 400], offsetXY: 10, z: [4, 40],
+              vxRange: 260, vyRange: 260, vzRange: [40, 180], gravity: 400, drag: 1.4, size0: [4, 8], size1: 1 },
+            { count: 3, sprite: 'smoke', ml: [700, 1100], offsetXY: 14, z: [6, 20], vzRange: [25, 50], drag: 0.5,
+              size0: [26, 36], size1: [70, 100], opacity0: 0.5 },
+        ]
+    };
+    EFFECTS['racePoliceLockdown_aoe'] = {
+        aoeRadius: 1, shape: 'square',
+        impactTileEffect: 'racePoliceLockdown_tile', impactCenterEffect: 'racePoliceLockdown_center', layers: []
+    };
+    SPELL_MAP['racePoliceNightstick'] = { impact: 'racePoliceNightstick_impact' };
+    SPELL_MAP['racePoliceTaser']      = { bolt: '_bolt_taser', impact: 'racePoliceTaser_impact' };
+    SPELL_MAP['racePoliceSpray']      = { aoe: 'racePoliceSpray_aoe' };
+    SPELL_MAP['racePoliceCuffs']      = { impact: 'racePoliceCuffs_impact' };
+    SPELL_MAP['racePoliceLockdown']   = { aoe: 'racePoliceLockdown_aoe' };
+
+    /* ── JELLYFISH — bioluminescence: cyan bells, pink venom, the sea's own blue ── */
+    EFFECTS['_bolt_sting'] = {                   /* one tentacle's tip thrown — a watery dart with a venom glow */
+        boltCore: 'psi-pulse', boltTrail: 'frost-mist', boltBurst: 'water-splash', boltRing: 'target-ring-blue',
+        boltCoreSize: 0.2, boltTrailSize: 0.09, boltBurstCount: 18,
+    };
+    EFFECTS['raceJellySting_impact'] = {         /* the brush: a splash, the nematocysts, the poison in the water */
+        layers: [
+            { sprite: 'flash', ml: 120, size0: 46, size1: 14, tint: 0x9ff4ff, opacity0: 0.85, z: 34 },
+            { anchor: 'floor', sprite: 'water-splash', ml: 380, z: 2, tint: 0x5fd4ee, size0: 40, size1: 90, opacity0: 0.7 },
+            { count: 6, sprite: 'poison-bubble', ml: [420, 760], offsetXY: 12, z: [20, 50], tint: 0xff9ad8,
+              vzRange: [30, 80], drag: 0.6, size0: [5, 9], size1: 3, opacity0: 0.9 },
+            { count: 4, sprite: 'psi-pulse', ml: [260, 420], offsetXY: 6, z: [30, 50], tint: 0x5fd4ee,
+              size0: [12, 18], size1: [34, 48], opacity0: 0.7 },
+        ]
+    };
+    EFFECTS['raceJellyBloom_tile'] = {           /* a bloom of bells rises through every tile */
+        layers: [
+            { count: 3, sprite: 'psi-pulse', ml: [700, 1100], offsetXY: 30, z: [4, 20], tint: 0x5fd4ee,
+              vzRange: [40, 90], drag: 0.3, size0: [10, 16], size1: [26, 40], opacity0: 0.8 },
+            { count: 2, sprite: 'psi-pulse', ml: [700, 1100], offsetXY: 30, z: [4, 20], tint: 0xff9ad8, delayMs: 180,
+              vzRange: [40, 90], drag: 0.3, size0: [8, 14], size1: [22, 34], opacity0: 0.75 },
+            { count: 4, sprite: 'bubble', ml: [600, 1000], offsetXY: 28, z: [2, 16], tint: 0x9ff4ff,
+              vzRange: [30, 70], drag: 0.4, size0: [4, 7], size1: 2, opacity0: 0.8 },
+            { anchor: 'floor', sprite: 'water-splash', ml: 360, z: 2, tint: 0x1e6a9e, size0: 30, size1: 80, opacity0: 0.5 },
+        ]
+    };
+    EFFECTS['raceJellyBloom_center'] = {
+        layers: [
+            { sprite: 'flash', ml: 160, size0: 70, size1: 20, tint: 0xff9ad8, opacity0: 0.8, z: 30 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 520, z: 2, tint: 0x5fd4ee, size0: 30, size1: 190, opacity0: 0.65 },
+        ]
+    };
+    EFFECTS['raceJellyBloom_aoe'] = {
+        aoeRadius: 1, shape: 'square',
+        impactTileEffect: 'raceJellyBloom_tile', impactCenterEffect: 'raceJellyBloom_center', layers: []
+    };
+    EFFECTS['raceJellyDrift_fold'] = {           /* the bell folds: the light draws in, the water takes it */
+        layers: [
+            { count: 8, sprite: 'psi-pulse', ml: [300, 420], offsetXY: 44, z: [10, 70], tint: 0x5fd4ee,
+              seekIn: [220, 340], seekInZ: [30, 60], seekSpiral: 160, size0: [8, 13], size1: 3, opacity0: 0.9 },
+            { count: 5, sprite: 'bubble', ml: [400, 700], offsetXY: 14, z: [4, 30], tint: 0x9ff4ff,
+              vzRange: [40, 90], drag: 0.5, size0: [4, 7], size1: 2, opacity0: 0.8 },
+            { anchor: 'floor', sprite: 'water-splash', ml: 320, z: 2, tint: 0x5fd4ee, size0: 34, size1: 70, opacity0: 0.55 },
+        ]
+    };
+    EFFECTS['raceJellyDrift_open'] = {           /* it opens again where the current set it down */
+        layers: [
+            { sprite: 'flash', ml: 140, size0: 54, size1: 16, tint: 0x9ff4ff, opacity0: 0.8, z: 40 },
+            { count: 8, sprite: 'psi-pulse', ml: [320, 520], offsetXY: 6, z: [30, 60], tint: 0xff9ad8,
+              vxRange: 120, vyRange: 120, vzRange: [-20, 40], drag: 1.0, size0: [8, 12], size1: 2, opacity0: 0.85 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 380, z: 2, tint: 0x5fd4ee, size0: 24, size1: 120, opacity0: 0.6 },
+            { count: 6, sprite: 'bubble', ml: [400, 700], offsetXY: 16, z: [4, 30], tint: 0x9ff4ff,
+              vzRange: [30, 70], drag: 0.5, size0: [4, 7], size1: 2, opacity0: 0.8 },
+        ]
+    };
+    EFFECTS['raceJellyDrift_tele'] = { arrivalDelayMs: 220, dispersalEffect: 'raceJellyDrift_fold', arrivalEffect: 'raceJellyDrift_open' };
+    EFFECTS['raceJellyNet_impact'] = {           /* the skirt closes: the threads cinch, the venom lands */
+        layers: [
+            { sprite: 'target-ring', ml: 360, z: 44, tint: 0xb066ff, size0: 150, size1: 34, opacity0: 0.8 },
+            { count: 10, sprite: 'psi-pulse', ml: [340, 480], offsetXY: 50, z: [40, 110], tint: 0xb066ff,
+              seekIn: [260, 380], seekInZ: [30, 60], seekSpiral: 90, size0: [7, 11], size1: 3, opacity0: 0.9 },
+            { sprite: 'flash', ml: 120, size0: 60, size1: 16, tint: 0xd8a8ff, opacity0: 0.9, z: 44, delayMs: 300 },
+            { count: 5, sprite: 'poison-bubble', ml: [400, 700], offsetXY: 12, z: [20, 50], tint: 0xff9ad8, delayMs: 300,
+              vzRange: [20, 60], drag: 0.6, size0: [5, 8], size1: 3, opacity0: 0.9 },
+        ]
+    };
+    EFFECTS['raceJellyRebirth_aura'] = { aoeRadius: 0, impactCenterEffect: 'raceJellyRebirth_center' };   /* an aura def's look lives in its centre effect — _fireAura never spawns bare layers */
+    EFFECTS['raceJellyRebirth_center'] = {       /* Turritopsis: the light collapses to a bead, then blooms again */
+        layers: [
+            { anchor: 'floor', mode: 'world', sprite: 'halo-ring', ml: 440, z: 3, tint: 0x5fd4ee, size0: 150, size1: 26, opacity0: 0.8 },
+            { count: 8, sprite: 'sparkle', ml: [300, 440], offsetXY: 46, z: [10, 90], tint: 0x9ff4ff,
+              seekIn: [260, 400], seekInZ: [10, 30], seekSpiral: 200, size0: [6, 10], size1: 2, opacity0: 0.9 },
+            { sprite: 'flash', ml: 200, size0: 30, size1: 90, tint: 0xffffff, opacity0: 0.95, z: 12, delayMs: 520 },
+            { anchor: 'floor', mode: 'world', sprite: 'halo-ring', ml: 560, z: 3, tint: 0x9ff4ff, size0: 26, size1: 190, opacity0: 0.8, delayMs: 560 },
+            { count: 12, sprite: 'bubble', ml: [700, 1200], offsetXY: 22, z: [4, 30], tint: 0x9ff4ff, delayMs: 600,
+              vzRange: [40, 100], drag: 0.4, size0: [4, 8], size1: 2, opacity0: 0.85 },
+            { count: 6, sprite: 'heal-glow', ml: [500, 800], offsetXY: 16, z: [20, 60], tint: 0x5fd4ee, delayMs: 650,
+              vzRange: [30, 60], size0: [10, 16], size1: [24, 36], opacity0: 0.6 },
+        ]
+    };
+    SPELL_MAP['raceJellySting']   = { bolt: '_bolt_sting', impact: 'raceJellySting_impact' };
+    SPELL_MAP['raceJellyBloom']   = { aoe: 'raceJellyBloom_aoe' };
+    SPELL_MAP['raceJellyDrift']   = { teleport: 'raceJellyDrift_tele' };
+    SPELL_MAP['raceJellyNet']     = { impact: 'raceJellyNet_impact' };
+    SPELL_MAP['raceJellyRebirth'] = { aura: 'raceJellyRebirth_aura' };
+
+    /* ── CULT LEADER — candlelight in a wine-dark room; every beat has a flame in it ── */
+    EFFECTS['raceCultSermon_tile'] = {           /* a candle on every tile that hears the word */
+        layers: [
+            { anchor: 'floor', sprite: 'fire-glow', ml: [800, 1100], z: [10, 16], offsetXY: 30, tint: 0xffb060,
+              vzRange: [4, 10], size0: [8, 12], size1: [14, 22], opacity0: 0.9 },   /* a candle's flame — never the `flame` sprite on the floor (that is the volumetric bonfire per tile) */
+            { anchor: 'floor', sprite: 'shadow-wisp', ml: [600, 900], z: [4, 12], offsetXY: 28,
+              vzRange: [20, 40], size0: [10, 16], size1: [20, 30], opacity0: 0.45 },
+        ]
+    };
+    EFFECTS['raceCultSermon_center'] = {         /* the word goes out from him in dark rings */
+        layers: [
+            { sprite: 'flash', ml: 200, size0: 50, size1: 120, tint: 0x8a1030, opacity0: 0.55, z: 40 },
+            { anchor: 'floor', mode: 'world', sprite: 'halo-ring', ml: 700, z: 3, tint: 0xffb060, size0: 40, size1: 300, opacity0: 0.6 },
+            { count: 8, sprite: 'void-mist', ml: [500, 800], offsetXY: 10, z: [20, 60], tint: 0x6a2a8a,
+              vxRange: 90, vyRange: 90, vzRange: [10, 40], drag: 0.7, size0: [14, 20], size1: [34, 50], opacity0: 0.5 },
+        ]
+    };
+    EFFECTS['raceCultSermon_aura'] = {
+        aoeRadius: 2, shape: 'square',
+        impactTileEffect: 'raceCultSermon_tile', impactCenterEffect: 'raceCultSermon_center', layers: []
+    };
+    EFFECTS['raceCultKoolAid_impact'] = {        /* the drink: red down the front, sugar in the light */
+        layers: [
+            { count: 9, sprite: 'blood-glob', ml: [260, 440], offsetXY: 6, z: [50, 64], tint: 0xff2a50, globColor: 0xff2a50,
+              vxRange: 40, vyRange: 40, vzRange: [-30, 10], gravity: 320, size0: [5, 9], size1: 3, opacity0: 0.95 },
+            { anchor: 'floor', sprite: 'water-splash', ml: 340, z: 2, tint: 0xff2a50, size0: 26, size1: 60, opacity0: 0.6, delayMs: 280 },
+            { count: 6, sprite: 'sparkle', ml: [400, 700], offsetXY: 14, z: [30, 70], tint: 0xff8fb0,
+              vzRange: [20, 50], size0: [4, 7], size1: 2, opacity0: 0.9 },
+            { sprite: 'flash', ml: 140, size0: 44, size1: 14, tint: 0xff3060, opacity0: 0.7, z: 50, delayMs: 380 },
+        ]
+    };
+    EFFECTS['raceCultTithe_impact'] = {          /* the collection: coins off the body, a dark hand on the purse */
+        layers: [
+            { sprite: 'flash', ml: 110, size0: 40, size1: 12, tint: 0xffd24a, opacity0: 0.8, z: 40 },
+            { count: 10, sprite: 'ember', ml: [360, 620], offsetXY: 10, z: [20, 50], tint: 0xffd24a,
+              vxRange: 150, vyRange: 150, vzRange: [80, 200], gravity: 520, drag: 0.6, size0: [5, 8], size1: 3 },
+            { count: 6, sprite: 'divine-sparkle', ml: [300, 500], offsetXY: 12, z: [30, 60], tint: 0xffe9a8,
+              size0: [5, 8], size1: 2, opacity0: 0.9 },
+            { count: 3, sprite: 'shadow-wisp', ml: [400, 640], offsetXY: 10, z: [20, 50], tint: 0x6a2a8a,
+              vzRange: [10, 30], size0: [12, 18], size1: [22, 32], opacity0: 0.5 },
+        ]
+    };
+    EFFECTS['raceCultIndoctrinate_impact'] = {   /* the induction: the hood comes down, the candles come up */
+        layers: [
+            { count: 10, sprite: 'psi-pulse', ml: [400, 560], offsetXY: 50, z: [40, 120], tint: 0xb066ff,
+              seekIn: [300, 440], seekInZ: [60, 80], seekSpiral: 140, size0: [7, 11], size1: 3, opacity0: 0.9 },
+            { count: 5, anchor: 'floor', sprite: 'fire-glow', ml: [900, 1200], z: [10, 16], offsetXY: 44, tint: 0xffb060,
+              vzRange: [4, 10], size0: [8, 12], size1: [14, 22], opacity0: 0.9, delayMs: 200 },
+            { sprite: 'flash', ml: 140, size0: 50, size1: 16, tint: 0xb066ff, opacity0: 0.8, z: 70, delayMs: 420 },
+            { count: 4, sprite: 'void-mist', ml: [500, 800], offsetXY: 8, z: [30, 70], tint: 0x2a1622,
+              vzRange: [-20, 10], drag: 0.6, size0: [14, 20], size1: [30, 44], opacity0: 0.6, delayMs: 420 },
+        ]
+    };
+    EFFECTS['raceCultGathering_aura'] = {        /* a member answers: the dark pillar, the doorway, the candles round it */
+        aoeRadius: 0, impactCenterEffect: 'raceCultGathering_center',
+        pillarSprite: 'shadow-wisp', pillarH: 190, pillarH1: 230, pillarMs: 1000, pillarW0: 70, pillarW1: 40, pillarOpacity0: 0.8,
+    };
+    EFFECTS['raceCultGathering_center'] = {
+        layers: [
+            { count: 6, anchor: 'floor', sprite: 'fire-glow', ml: [1000, 1400], z: [10, 16], offsetXY: 46, tint: 0xffb060,
+              vzRange: [4, 10], size0: [8, 12], size1: [14, 22], opacity0: 0.9 },
+            { anchor: 'floor', mode: 'world', sprite: 'halo-ring', ml: 640, z: 3, tint: 0xffb060, size0: 30, size1: 150, opacity0: 0.65 },
+            { count: 6, sprite: 'void-mist', ml: [600, 900], offsetXY: 12, z: [10, 60], tint: 0x6a2a8a,
+              vxRange: 60, vyRange: 60, vzRange: [10, 40], drag: 0.7, size0: [14, 22], size1: [30, 48], opacity0: 0.5 },
+        ]
+    };
+    SPELL_MAP['raceCultSermon']       = { aura: 'raceCultSermon_aura' };
+    SPELL_MAP['raceCultKoolAid']      = { impact: 'raceCultKoolAid_impact' };
+    SPELL_MAP['raceCultTithe']        = { impact: 'raceCultTithe_impact' };
+    SPELL_MAP['raceCultIndoctrinate'] = { impact: 'raceCultIndoctrinate_impact' };
+    SPELL_MAP['raceCultGathering']    = { aura: 'raceCultGathering_aura' };
+
+    /* ── POPSTAR — hot pink and stage white; confetti is the blood of this kit ── */
+    EFFECTS['_bolt_mic'] = {                     /* the mic thrown — a hard dark dart with a pink sonic trail */
+        boltCore: 'spark-pink', boltTrail: 'wave-anim', boltBurst: 'spark-pink', boltRing: 'target-ring',
+        boltCoreSize: 0.18, boltTrailSize: 0.1, boltBurstCount: 14,
+    };
+    EFFECTS['racePopMicDrop_impact'] = {         /* the floor hits back: sonic rings, feedback sparks */
+        shake: 'normal',
+        layers: [
+            { sprite: 'flash', ml: 130, size0: 60, size1: 16, tint: 0xff4fa3, opacity0: 0.9, z: 10 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 400, z: 2, tint: 0xff4fa3, size0: 26, size1: 150, opacity0: 0.7 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 400, z: 2, tint: 0x7fe6ff, size0: 26, size1: 150, opacity0: 0.6, delayMs: 140 },
+            { count: 6, sprite: 'wave-anim', ml: [360, 560], offsetXY: 8, z: [6, 30], tint: 0xff9ad8,
+              vxRange: 180, vyRange: 180, vzRange: [10, 50], drag: 1.2, size0: [12, 18], size1: [34, 50], opacity0: 0.7 },
+            { count: 8, sprite: 'spark-pink', ml: [200, 400], offsetXY: 8, z: [4, 30],
+              vxRange: 200, vyRange: 200, vzRange: [40, 160], gravity: 380, drag: 1.3, size0: [4, 8], size1: 1 },
+            { count: 2, anchor: 'floor', sprite: 'dust-puff', ml: [280, 460], offsetXY: 10, z: [2, 8],
+              size0: [10, 16], size1: [24, 36], opacity0: 0.4 },
+        ]
+    };
+    EFFECTS['racePopEncore_aura'] = { aoeRadius: 0, impactCenterEffect: 'racePopEncore_center' };
+    EFFECTS['racePopEncore_center'] = {          /* ONE MORE: the spot finds them, the confetti comes down */
+        layers: [
+            { sprite: 'flash', ml: 200, size0: 60, size1: 140, tint: 0xffd76a, opacity0: 0.55, z: 20 },
+            { anchor: 'floor', mode: 'world', sprite: 'halo-ring', ml: 600, z: 3, tint: 0xff4fa3, size0: 40, size1: 170, opacity0: 0.7 },
+            { count: 10, sprite: 'petal', ml: [900, 1400], offsetXY: 40, z: [120, 170], tint: 0xff4fa3,
+              vxRange: 40, vyRange: 40, vzRange: [-40, -15], gravity: 40, drag: 0.6, spriteSpin: 6, size0: [6, 9], size1: [6, 9], opacity0: 0.95 },
+            { count: 8, sprite: 'petal', ml: [900, 1400], offsetXY: 40, z: [120, 170], tint: 0x7fe6ff, delayMs: 120,
+              vxRange: 40, vyRange: 40, vzRange: [-40, -15], gravity: 40, drag: 0.6, spriteSpin: -6, size0: [6, 9], size1: [6, 9], opacity0: 0.95 },
+            { count: 8, sprite: 'sparkle', ml: [500, 850], offsetXY: 22, z: [10, 60], tint: 0xffd76a,
+              vzRange: [40, 100], gravity: -20, size0: [6, 10], size1: 2, opacity0: 0.9 },
+        ]
+    };
+    EFFECTS['racePopStageDive_impact'] = {       /* into the crowd: the landing, the streamers */
+        shake: 'normal',
+        layers: [
+            { sprite: 'flash', ml: 120, size0: 56, size1: 16, tint: 0xff4fa3, opacity0: 0.9, z: 20 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 380, z: 2, tint: 0x7fe6ff, size0: 24, size1: 140, opacity0: 0.65 },
+            { count: 4, anchor: 'floor', sprite: 'dust-puff', ml: [320, 540], offsetXY: 14, z: [2, 10],
+              vxRange: 90, vyRange: 90, vzRange: [20, 60], gravity: 80, drag: 0.9, size0: [12, 20], size1: [30, 46], opacity0: 0.5 },
+            { count: 12, sprite: 'petal', ml: [600, 1000], offsetXY: 10, z: [10, 40], tint: 0xff9ad8,
+              vxRange: 160, vyRange: 160, vzRange: [80, 220], gravity: 160, drag: 0.8, spriteSpin: 8, size0: [6, 9], size1: [6, 9], opacity0: 0.95 },
+            { count: 6, sprite: 'spark-pink', ml: [200, 380], offsetXY: 8, z: [4, 30],
+              vxRange: 180, vyRange: 180, vzRange: [40, 140], gravity: 380, drag: 1.3, size0: [4, 7], size1: 1 },
+        ]
+    };
+    EFFECTS['racePopSpotlight_impact'] = {       /* every eye in the house: the beam lands, the dust in it */
+        layers: [
+            { sprite: 'flash', ml: 160, size0: 80, size1: 20, tint: 0xfff2aa, opacity0: 0.85, z: 60 },
+            { anchor: 'floor', mode: 'world', sprite: 'halo-ring', ml: 520, z: 3, tint: 0xfff2aa, size0: 30, size1: 160, opacity0: 0.75 },
+            { count: 8, sprite: 'sparkle', ml: [700, 1100], offsetXY: 26, z: [80, 160], tint: 0xffffff,
+              vzRange: [-30, -10], drag: 0.4, size0: [4, 7], size1: 1, opacity0: 0.7 },
+        ]
+    };
+    EFFECTS['racePopStadiumShow_tile'] = {       /* the pyro: a jet on every tile in the show */
+        layers: [
+            { anchor: 'floor', mode: 'y-locked', sprite: 'flame-hot', ml: 420, z: 2, tint: 0xffb0d8,
+              w0: 14, w1: 8, h0: 40, h1: 150, opacity0: 0.95 },
+            { count: 6, sprite: 'ember', ml: [400, 700], offsetXY: 8, z: [4, 20], tint: 0xff9ad8,
+              vxRange: 70, vyRange: 70, vzRange: [140, 320], gravity: 300, drag: 0.6, size0: [5, 9], size1: 2 },
+            { count: 3, sprite: 'spark-pink', ml: [220, 400], offsetXY: 6, z: [10, 40],
+              vxRange: 160, vyRange: 160, vzRange: [60, 180], gravity: 380, drag: 1.2, size0: [4, 7], size1: 1 },
+        ]
+    };
+    EFFECTS['racePopStadiumShow_center'] = {     /* the crowd goes: the big flash, the confetti cannon */
+        shake: 'hard',
+        layers: [
+            { sprite: 'flash', ml: 220, size0: 120, size1: 30, tint: 0xffe6f4, opacity0: 1, z: 30 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 560, z: 2, tint: 0xff4fa3, size0: 40, size1: 300, opacity0: 0.75 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 560, z: 2, tint: 0x7fe6ff, size0: 40, size1: 300, opacity0: 0.65, delayMs: 180 },
+            { count: 16, sprite: 'petal', ml: [900, 1500], offsetXY: 30, z: [160, 240], tint: 0xff4fa3,
+              vxRange: 90, vyRange: 90, vzRange: [-50, -20], gravity: 40, drag: 0.6, spriteSpin: 7, size0: [6, 10], size1: [6, 10], opacity0: 0.95 },
+            { count: 12, sprite: 'petal', ml: [900, 1500], offsetXY: 30, z: [160, 240], tint: 0x7fe6ff, delayMs: 100,
+              vxRange: 90, vyRange: 90, vzRange: [-50, -20], gravity: 40, drag: 0.6, spriteSpin: -7, size0: [6, 10], size1: [6, 10], opacity0: 0.95 },
+            { count: 10, sprite: 'wave-anim', ml: [400, 640], offsetXY: 10, z: [10, 40], tint: 0xff9ad8,
+              vxRange: 220, vyRange: 220, vzRange: [10, 60], drag: 1.2, size0: [14, 20], size1: [40, 60], opacity0: 0.7 },
+        ]
+    };
+    EFFECTS['racePopStadiumShow_aoe'] = {
+        aoeRadius: 2, shape: 'square',
+        impactTileEffect: 'racePopStadiumShow_tile', impactCenterEffect: 'racePopStadiumShow_center', layers: []
+    };
+    SPELL_MAP['racePopMicDrop']     = { bolt: '_bolt_mic', impact: 'racePopMicDrop_impact' };
+    SPELL_MAP['racePopEncore']      = { aura: 'racePopEncore_aura' };
+    SPELL_MAP['racePopStageDive']   = { impact: 'racePopStageDive_impact' };
+    SPELL_MAP['racePopSpotlight']   = { impact: 'racePopSpotlight_impact' };
+    SPELL_MAP['racePopStadiumShow'] = { aoe: 'racePopStadiumShow_aoe' };
+
+    /* ── the signatures' shared bits ── */
+    function _nrvFrame(tx, ty) {
+        var wp = _worldPos(tx, ty), g = new THREE.Group();
+        g.position.set(wp.x, wp.y, wp.z);
+        return { g: g, wp: wp, ts: wp.ts, c: tilePx(tx, ty), bz: tileZ(tx, ty) };
+    }
+    function _nrvFrom(tx, ty, o) {
+        var from = (o && o.fromX != null) ? { x: o.fromX, y: o.fromY } : _sigCasterPos(tx, ty);
+        if (!from || (from.x === tx && from.y === ty)) from = { x: tx - 1, y: ty };
+        return from;
+    }
+    /* the line caster → target in the group's frame (metres of ts): ux/uz the unit, L the length */
+    function _nrvLine(F, from, tx, ty) {
+        var wpC = _worldPos(from.x, from.y);
+        var dx = wpC.x - F.wp.x, dz = wpC.z - F.wp.z, L = Math.max(1, Math.hypot(dx, dz));
+        return { dx: dx, dz: dz, dy: wpC.y - F.wp.y, ux: dx / L, uz: dz / L, L: L };
+    }
+    function _nrvStripeTex() {
+        return _sigTex('nrv-stripe', 128, function (ctx, S) {
+            ctx.fillStyle = '#f2f2f2'; ctx.fillRect(0, 0, S, S);
+            ctx.fillStyle = '#ff7a1a';
+            for (var i = -1; i < 6; i++) { ctx.beginPath(); ctx.moveTo(i * 32, 0); ctx.lineTo(i * 32 + 24, 0); ctx.lineTo(i * 32 + 24 + 32, S); ctx.lineTo(i * 32 + 32, S); ctx.closePath(); ctx.fill(); }
+        });
+    }
+    function _nrvTapeTex() {
+        return _sigTex('nrv-tape', 128, function (ctx, S) {
+            ctx.fillStyle = '#ffd500'; ctx.fillRect(0, 0, S, S);
+            ctx.fillStyle = '#111111'; ctx.font = 'bold 30px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText('POLICE LINE', S / 2, S / 2);
+        });
+    }
+    /* a candle: a stick and a flame sprite; returns the group with `flame` */
+    function _nrvCandle(ts) {
+        var cn = new THREE.Group();
+        cn.add(new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.045, ts * 0.055, ts * 0.36, 8), _finBasic(0xf0e6d0)));
+        var fl = _finSprite(_NRV.candle, _sigGlowTex(), ts * 0.26, 158); fl.position.y = ts * 0.28; cn.add(fl); cn.userData.flame = fl;
+        return cn;
+    }
+    /* a robed figure (the family's): a cone, a hood, a candle in hand */
+    function _nrvRobe(ts) {
+        var r = new THREE.Group();
+        var robe = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.25, ts * 0.95, 8), _finBasic(_NRV.robe)); robe.position.y = ts * 0.475; r.add(robe);
+        var hood = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.14, 8, 6), _finBasic(_NRV.hood)); hood.position.y = ts * 0.98; r.add(hood);
+        var candle = _finSprite(_NRV.candle, _sigGlowTex(), ts * 0.16, 158); candle.position.set(ts * 0.16, ts * 0.72, ts * 0.12); r.add(candle);
+        r.userData.parts = [robe, hood]; r.userData.candle = candle;
+        return r;
+    }
+    function _nrvFadeRobe(r, k) {
+        for (var i = 0; i < r.userData.parts.length; i++) { r.userData.parts[i].material.transparent = true; r.userData.parts[i].material.opacity = k; }
+        r.userData.candle.material.opacity = 0.9 * k;
+    }
+    /* a jellyfish bell: a cap, three tentacles, a glow; returns the group with `cap` / `tents` / `glow` */
+    function _nrvBell(ts, pink) {
+        var bg = new THREE.Group();
+        var cap = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.13, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2),
+            _finBasic(pink ? _NRV.jpink : _NRV.cyan, { additive: true, opacity: 0.6, depthWrite: false, side: THREE.DoubleSide }));
+        bg.add(cap);
+        var tents = [];
+        for (var t = 0; t < 3; t++) {
+            var tn = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.008, ts * 0.004, ts * 0.32, 4), _finBasic(_NRV.glow, { additive: true, opacity: 0.55, depthWrite: false }));
+            tn.position.set(Math.cos(t * 2.1) * ts * 0.05, -ts * 0.16, Math.sin(t * 2.1) * ts * 0.05); bg.add(tn); tents.push(tn);
+        }
+        var gl = _finSprite(pink ? _NRV.jpink : _NRV.glow, _sigGlowTex(), ts * 0.42, 161); gl.material.opacity = 0.8; gl.position.y = ts * 0.04; bg.add(gl);
+        bg.userData.cap = cap; bg.userData.tents = tents; bg.userData.glow = gl;
+        return bg;
+    }
+    function _nrvBellFade(bg, k) {
+        bg.userData.cap.material.opacity = 0.6 * k;
+        for (var i = 0; i < bg.userData.tents.length; i++) bg.userData.tents[i].material.opacity = 0.55 * k;
+        bg.userData.glow.material.opacity = 0.8 * k;
+    }
+    /* confetti: n small tumbling planes in the kit's colours, falling from `y0` over `ms` */
+    function _nrvConfetti(F, n, y0, spread, ms, colors) {
+        var out = [], cols = colors || [_NRV.pink, _NRV.stage, _NRV.gold, _NRV.white];
+        for (var i = 0; i < n; i++) {
+            var m = new THREE.Mesh(new THREE.PlaneGeometry(F.ts * 0.06, F.ts * 0.03), _finBasic(cols[i % cols.length], { opacity: 0, side: THREE.DoubleSide, depthWrite: false }));
+            m.position.set(rn(-spread, spread), y0 + rn(0, F.ts * 0.6), rn(-spread, spread));
+            m.userData.t0 = rn(0, ms * 0.35); m.userData.w = rn(2, 6); m.userData.drift = rn(-0.3, 0.3);
+            F.g.add(m); out.push(m);
+        }
+        return out;
+    }
+    function _nrvConfettiTick(pieces, el, ms, ts) {
+        for (var i = 0; i < pieces.length; i++) {
+            var p = pieces[i], k = _sigClamp01((el - p.userData.t0) / ms);
+            if (el < p.userData.t0) continue;
+            p.position.y -= ts * 0.012 * (0.6 + 0.4 * Math.sin(el * 0.01 + i)); p.position.x += p.userData.drift * ts * 0.004;
+            p.rotation.x += 0.05 * p.userData.w; p.rotation.y += 0.03 * p.userData.w;
+            p.material.opacity = Math.min(1, (el - p.userData.t0) / 120) * (1 - _sigClamp01((k - 0.7) / 0.3));
+        }
+    }
+
+    /* ── NIGHTSTICK: the baton comes off the belt and across the jaw; the badge strobes ── */
+    function _sigBatonSwing3D(tx, ty, o) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = _nrvFrom(tx, ty, o), ln = _nrvLine(F, from, tx, ty);
+        var pivot = new THREE.Group(); pivot.position.set(ln.ux * ts * 0.55, ts * 0.62, ln.uz * ts * 0.55); pivot.rotation.y = Math.atan2(ln.ux, ln.uz); F.g.add(pivot);
+        var baton = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.022, ts * 0.028, ts * 0.5, 8), _finBasic(0x14141a)); baton.position.y = ts * 0.25; baton.rotation.x = 0; pivot.add(baton);
+        var grip = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.03, ts * 0.03, ts * 0.12, 8), _finBasic(0x3a3a44)); grip.position.y = ts * 0.02; pivot.add(grip);
+        var smear = new THREE.Mesh(new THREE.RingGeometry(ts * 0.2, ts * 0.52, 20, 1, 0, 2.2), _finBasic(0xffffff, { additive: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false }));
+        smear.rotation.y = Math.PI / 2; pivot.add(smear);
+        var red = _finSprite(_NRV.red, _sigGlowTex(), ts * 0.5, 162), blue = _finSprite(_NRV.blue, _sigGlowTex(), ts * 0.5, 162);
+        red.position.set(-ts * 0.18, ts * 1.25, 0); blue.position.set(ts * 0.18, ts * 1.25, 0); F.g.add(red); F.g.add(blue);
+        var swingMs = 170, total = 760, struck = false;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _sigClamp01(el / swingMs), e = _sigEaseInCubic(k);
+            pivot.rotation.z = -1.4 + 2.6 * e;             /* the wind-up behind, across, through */
+            smear.material.opacity = k < 1 ? 0.35 * Math.sin(k * Math.PI) : 0;
+            if (k >= 1 && !struck) { struck = true; }
+            var fade = 1 - _sigClamp01((el - 420) / 340);
+            baton.material.transparent = grip.material.transparent = true; baton.material.opacity = grip.material.opacity = fade;
+            var strobe = el > swingMs ? Math.floor((el - swingMs) / 90) % 2 : -1;
+            red.material.opacity = (strobe === 0 ? 0.9 : 0.1) * fade * (strobe >= 0 ? 1 : 0);
+            blue.material.opacity = (strobe === 1 ? 0.9 : 0.1) * fade * (strobe >= 0 ? 1 : 0);
+        });
+    }
+    /* ── TASER: two wires from the officer's hand, crackling the whole hold; the prongs in the victim ── */
+    function _sigTaserWires3D(tx, ty, o) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = _nrvFrom(tx, ty, o), ln = _nrvLine(F, from, tx, ty);
+        var N = 14, wires = [], mats = [];
+        for (var w = 0; w < 2; w++) {
+            var pos = new Float32Array(N * 3), geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+            var mat = new THREE.LineBasicMaterial({ color: new THREE.Color(w ? _NRV.zap : 0xffffff), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
+            var line = new THREE.Line(geo, mat); line.renderOrder = 160; F.g.add(line); wires.push({ line: line, pos: pos, side: w ? 1 : -1 }); mats.push(mat);
+        }
+        var prongA = _finSprite(_NRV.zap, _sigGlowTex(), ts * 0.18, 162), prongB = _finSprite(_NRV.zap, _sigGlowTex(), ts * 0.18, 162);
+        prongA.position.set(-ln.uz * ts * 0.08, ts * 0.58, ln.ux * ts * 0.08); prongB.position.set(ln.uz * ts * 0.08, ts * 0.5, -ln.ux * ts * 0.08); F.g.add(prongA); F.g.add(prongB);
+        var total = 720, lastSpark = 0;
+        return _sigRunOwned(F.g, total, function (el) {
+            var on = el < 560 ? 1 : 1 - (el - 560) / 160;
+            for (var w2 = 0; w2 < wires.length; w2++) {
+                var W = wires[w2];
+                for (var i = 0; i < N; i++) {
+                    var t = i / (N - 1), sag = Math.sin(t * Math.PI) * ts * 0.12, jit = (i > 0 && i < N - 1) ? ts * 0.02 * Math.sin(el * 0.05 + i * 1.7 + w2) : 0;
+                    W.pos[i * 3] = ln.dx * (1 - t) + (-ln.uz) * (W.side * ts * 0.06 + jit);
+                    W.pos[i * 3 + 1] = ts * 0.62 * (1 - t) + ts * 0.55 * t - sag + ln.dy * (1 - t);
+                    W.pos[i * 3 + 2] = ln.dz * (1 - t) + (ln.ux) * (W.side * ts * 0.06 + jit);
+                }
+                W.line.geometry.attributes.position.needsUpdate = true;
+                W.line.material.opacity = on * (0.55 + 0.45 * Math.abs(Math.sin(el * 0.03 + w2)));
+            }
+            prongA.material.opacity = prongB.material.opacity = on * (0.6 + 0.4 * Math.abs(Math.sin(el * 0.04)));
+            if (el - lastSpark > 55 && on > 0.3 && _canSpawn()) {
+                lastSpark = el; var st = rn(0.15, 0.9);
+                _spawn({ x: F.c.x + (ln.dx * (1 - st)), y: F.c.y + (ln.dz * (1 - st)), z: F.bz + ts * 0.55, mode: 'billboard', sprite: 'spark-elec',
+                    ml: rn(90, 160), size0: rn(5, 9), size1: 1, vx: rn(-60, 60), vy: rn(-60, 60), vz: rn(-20, 40), opacity0: 1, opacity1: 0 });
+            }
+        });
+    }
+    /* ── PEPPER SPRAY: the can's cone from the officer's hand over the whole 3×3 ── */
+    function _sigSprayCone3D(tx, ty, r) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = _nrvFrom(tx, ty, null), ln = _nrvLine(F, from, tx, ty);
+        var R = (r != null ? r : 1), reach = ln.L + ts * (R + 0.5), mouth = ts * (R * 0.9 + 0.5);
+        var cone = new THREE.Mesh(new THREE.CylinderGeometry(mouth, ts * 0.04, reach, 20, 1, true),
+            _finBasic(_NRV.spray, { additive: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false, map: _sigGlowTex() }));
+        var hold = new THREE.Group(); hold.position.set(ln.dx, ts * 0.6 + ln.dy, ln.dz); hold.rotation.y = Math.atan2(-ln.ux, -ln.uz);
+        cone.rotation.x = -Math.PI / 2; cone.position.z = -reach / 2 - ts * 0.15; hold.add(cone); F.g.add(hold);
+        var can = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.03, ts * 0.03, ts * 0.12, 8), _finBasic(0x222228)); can.position.set(0, 0, -ts * 0.12); hold.add(can);
+        var total = 900, lastPuff = 0;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = el < 140 ? _sigEaseOutCubic(el / 140) : (el < 560 ? 1 : 1 - (el - 560) / 340);
+            cone.material.opacity = 0.28 * k * (0.85 + 0.15 * Math.sin(el * 0.05));
+            cone.scale.x = cone.scale.z = 0.6 + 0.4 * _sigClamp01(el / 300);
+            if (el - lastPuff > 40 && el < 560 && _canSpawn()) {
+                lastPuff = el; var st = rn(0.2, 1.0);
+                _spawn({ x: F.c.x + ln.dx * (1 - st) + rn(-1, 1) * mouth * 0.5 * st, y: F.c.y + ln.dz * (1 - st) + rn(-1, 1) * mouth * 0.5 * st, z: F.bz + ts * rn(0.35, 0.7),
+                    mode: 'billboard', sprite: 'poison-mist', tint: _NRV.spray, ml: rn(500, 900), size0: rn(10, 16), size1: rn(30, 48),
+                    vx: -ln.ux * 40, vy: -ln.uz * 40, vz: rn(5, 25), drag: 0.6, opacity0: 0.5, opacity1: 0 });
+            }
+        });
+    }
+    /* ── CUFFED: two steel rings snap shut at the wrists, a chain between, the glint ── */
+    function _sigCuffs3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, steel = _finBasic(_NRV.steel, { opacity: 0 });
+        var rings = [];
+        for (var s = -1; s <= 1; s += 2) {
+            var ring = new THREE.Mesh(new THREE.TorusGeometry(ts * 0.075, ts * 0.014, 8, 20), steel); ring.position.set(s * ts * 0.17, ts * 0.46, ts * 0.12); ring.rotation.y = Math.PI / 2;
+            ring.scale.setScalar(2.2); F.g.add(ring); rings.push(ring);
+        }
+        var links = [];
+        for (var l = 0; l < 3; l++) { var lk = new THREE.Mesh(new THREE.TorusGeometry(ts * 0.02, ts * 0.006, 6, 10), steel); lk.position.set((l - 1) * ts * 0.06, ts * 0.46, ts * 0.12); lk.rotation.x = l % 2 ? Math.PI / 2 : 0; F.g.add(lk); links.push(lk); }
+        var glint = _finSprite(0xffffff, _sigGlowTex(), ts * 0.3, 162); glint.position.set(0, ts * 0.48, ts * 0.14); F.g.add(glint);
+        var total = 1000, snapMs = 220;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _sigClamp01(el / snapMs), e = _sigEaseInCubic(k);
+            steel.opacity = Math.min(1, el / 80) * (1 - _sigClamp01((el - 720) / 280));
+            for (var i = 0; i < rings.length; i++) rings[i].scale.setScalar(2.2 - 1.2 * e);
+            glint.material.opacity = k >= 1 ? 0.9 * Math.max(0, 1 - (el - snapMs) / 200) : 0;
+            if (k >= 1) { for (var j = 0; j < links.length; j++) links[j].position.y = ts * 0.46 - ts * 0.01 * Math.sin(el * 0.02 + j); }
+        });
+    }
+    /* ── LOCKDOWN: barricades rise on the cordon's rim, the tape goes up between them, the strobe over the block ── */
+    function _sigLockdown3D(tx, ty, r) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, R = (r != null ? r : 1), rim = ts * (R + 0.62);
+        var NB = 8, bars = [], stripe = new THREE.MeshBasicMaterial({ map: _nrvStripeTex(), transparent: true, opacity: 0 }), leg = _finBasic(0xd8d8e0, { opacity: 0 });
+        for (var i = 0; i < NB; i++) {
+            var a = i * Math.PI * 2 / NB + Math.PI / 8, bg = new THREE.Group();
+            bg.position.set(Math.cos(a) * rim, -ts * 0.7, Math.sin(a) * rim); bg.rotation.y = -a; F.g.add(bg);
+            var board = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.9, ts * 0.16, ts * 0.04), stripe); board.position.y = ts * 0.5; bg.add(board);
+            for (var q = -1; q <= 1; q += 2) { var lg = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.04, ts * 0.62, ts * 0.04), leg); lg.position.set(q * ts * 0.38, ts * 0.31, 0); lg.rotation.x = 0.35; bg.add(lg); var lg2 = lg.clone(); lg2.rotation.x = -0.35; bg.add(lg2); }
+            bars.push({ g: bg, t0: 80 + i * 55 });
+        }
+        var tapeMat = new THREE.MeshBasicMaterial({ map: _nrvTapeTex(), transparent: true, opacity: 0, side: THREE.DoubleSide }), tapes = [];
+        for (var j = 0; j < NB; j++) {
+            var a0 = j * Math.PI * 2 / NB + Math.PI / 8, a1 = (j + 1) * Math.PI * 2 / NB + Math.PI / 8;
+            var x0 = Math.cos(a0) * rim, z0 = Math.sin(a0) * rim, x1 = Math.cos(a1) * rim, z1 = Math.sin(a1) * rim, len = Math.hypot(x1 - x0, z1 - z0);
+            var tp = new THREE.Mesh(new THREE.PlaneGeometry(len, ts * 0.08), tapeMat); tp.position.set((x0 + x1) / 2, ts * 0.5, (z0 + z1) / 2); tp.rotation.y = -Math.atan2(z1 - z0, x1 - x0); tp.scale.x = 0.001;
+            F.g.add(tp); tapes.push({ m: tp, t0: 620 + j * 40 });
+        }
+        var red = _finSprite(_NRV.red, _sigGlowTex(), ts * 1.1, 162), blue = _finSprite(_NRV.blue, _sigGlowTex(), ts * 1.1, 162);
+        red.position.set(-ts * 0.3, ts * 1.8, 0); blue.position.set(ts * 0.3, ts * 1.8, 0); F.g.add(red); F.g.add(blue);
+        try { _sigSpotlight3D(tx, ty, { color: 0x9ac4ff, holdMs: 1300, count: 2 }); } catch (e) {}
+        var total = 2400;
+        return _sigRunOwned(F.g, total, function (el) {
+            var fade = 1 - _sigClamp01((el - 2000) / 400);
+            stripe.opacity = leg.opacity = fade;
+            for (var b = 0; b < bars.length; b++) { var k = _sigClamp01((el - bars[b].t0) / 260); bars[b].g.position.y = -ts * 0.7 + ts * 0.7 * _sigEaseOutBack(k); }
+            for (var t = 0; t < tapes.length; t++) { var tk = _sigClamp01((el - tapes[t].t0) / 200); tapes[t].m.scale.x = Math.max(0.001, tk); }
+            tapeMat.opacity = 0.95 * fade;
+            var strobe = Math.floor(el / 110) % 2;
+            red.material.opacity = (strobe ? 0.95 : 0.15) * fade; blue.material.opacity = (strobe ? 0.15 : 0.95) * fade;
+        });
+    }
+    /* ── STING: one tentacle lashes out from the bell and brushes the victim; the tip flares ── */
+    function _sigStingTendril3D(tx, ty, o) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = _nrvFrom(tx, ty, o), ln = _nrvLine(F, from, tx, ty);
+        var N = 16, beads = _finChain(N, ts * 0.05, ts * 0.018, _finBasic(_NRV.cyan, { additive: true, opacity: 0.85, depthWrite: false }));
+        for (var i = 0; i < N; i++) F.g.add(beads[i]);
+        var tip = _finSprite(_NRV.jpink, _sigGlowTex(), ts * 0.5, 162); tip.position.y = ts * 0.55; F.g.add(tip);
+        var lashMs = 260, holdMs = 140, backMs = 260, total = lashMs + holdMs + backMs;
+        return _sigRunOwned(F.g, total, function (el) {
+            var reach = el < lashMs ? _sigEaseOutCubic(el / lashMs) : (el < lashMs + holdMs ? 1 : 1 - _sigEaseInCubic((el - lashMs - holdMs) / backMs));
+            var px = -ln.uz, pz = ln.ux;
+            for (var i2 = 0; i2 < N; i2++) {
+                var t = i2 / (N - 1), s = t * reach;                /* t=0 at the caster, 1 at the victim */
+                var whip = Math.sin(t * Math.PI * 1.5 - el * 0.012) * ts * 0.22 * (1 - reach * 0.5);
+                beads[i2].visible = t <= reach + 0.02;
+                beads[i2].position.set(ln.dx * (1 - s) + px * whip, ts * 0.6 + ln.dy * (1 - s) + Math.sin(t * Math.PI) * ts * 0.25 * reach, ln.dz * (1 - s) + pz * whip);
+            }
+            tip.material.opacity = el >= lashMs && el < lashMs + holdMs + 120 ? 0.9 : 0;
+        });
+    }
+    /* ── BLOOM: fourteen bells rise through the 3×3 on their own spirals and fade into the light ── */
+    function _sigJellyBloom3D(tx, ty, r) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, R = (r != null ? r : 1), N = 6 + 8 * R, bells = [];
+        for (var i = 0; i < N; i++) {
+            var bg = _nrvBell(ts, i % 4 === 0); bg.visible = false; F.g.add(bg);
+            bells.push({ g: bg, t0: i * 55, x: rn(-1, 1) * ts * (R + 0.35), z: rn(-1, 1) * ts * (R + 0.35), a0: rn(0, 6.28), w: rn(0.8, 1.6) * (i % 2 ? 1 : -1), rise: rn(1.1, 1.7), s: rn(0.8, 1.3) });
+        }
+        try { _sigShockRing3D(tx, ty, { color: _NRV.cyan, r0: ts * 0.3, r1: ts * (R * 2 + 1.2), ms: 620, height: 3 }); } catch (e) {}
+        var life = 1300, total = 1300 + N * 55 + 200;
+        return _sigRunOwned(F.g, total, function (el) {
+            for (var k = 0; k < N; k++) {
+                var B = bells[k]; if (el < B.t0) continue;
+                var age = (el - B.t0) / life; if (age >= 1) { B.g.visible = false; continue; }
+                B.g.visible = true;
+                var ang = B.a0 + age * 6 * B.w, rad = ts * 0.18;
+                B.g.position.set(B.x + Math.cos(ang) * rad, age * B.rise * ts, B.z + Math.sin(ang) * rad);
+                var pulse = 0.5 + 0.5 * Math.sin(el * 0.008 + k);
+                B.g.scale.set(B.s * (1 + pulse * 0.18), B.s * (1 - pulse * 0.22), B.s * (1 + pulse * 0.18));
+                _nrvBellFade(B.g, Math.min(1, age * 6) * (1 - _sigClamp01((age - 0.7) / 0.3)));
+            }
+        });
+    }
+    /* ── NEMATOCYST NET: a skirt of glowing threads drops from a ring above the victim and cinches ── */
+    function _sigNematocystNet3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, N = 14, lines = [];
+        var mat = new THREE.LineBasicMaterial({ color: new THREE.Color(_NRV.violet), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
+        for (var i = 0; i < N; i++) {
+            var pos = new Float32Array(6), geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+            var ln = new THREE.Line(geo, mat); ln.renderOrder = 160; F.g.add(ln); lines.push({ l: ln, pos: pos, a: i * Math.PI * 2 / N });
+        }
+        var ring = new THREE.Mesh(new THREE.TorusGeometry(ts * 0.9, ts * 0.02, 6, 32), _finBasic(_NRV.violet, { additive: true, opacity: 0, depthWrite: false })); ring.rotation.x = Math.PI / 2; F.g.add(ring);
+        var dropMs = 240, cinchMs = 320, holdMs = 380, fadeMs = 260, total = dropMs + cinchMs + holdMs + fadeMs;
+        return _sigRunOwned(F.g, total, function (el) {
+            var drop = _sigEaseOutCubic(_sigClamp01(el / dropMs)), cinch = _sigEaseInCubic(_sigClamp01((el - dropMs) / cinchMs));
+            var fade = 1 - _sigClamp01((el - dropMs - cinchMs - holdMs) / fadeMs);
+            var topY = ts * 2.4 - ts * 1.1 * drop, topR = ts * 0.9 * (1 - 0.55 * cinch), botR = ts * 0.6 * (1 - 0.75 * cinch), botY = ts * 0.2 + ts * 0.15 * cinch;
+            ring.position.y = topY; ring.scale.setScalar(topR / (ts * 0.9)); ring.material.opacity = 0.8 * fade * Math.min(1, el / 100);
+            for (var j = 0; j < N; j++) {
+                var L = lines[j], sw = Math.sin(el * 0.01 + j) * ts * 0.04 * (1 - cinch);
+                L.pos[0] = Math.cos(L.a) * topR; L.pos[1] = topY; L.pos[2] = Math.sin(L.a) * topR;
+                L.pos[3] = Math.cos(L.a + 0.4) * botR + sw; L.pos[4] = botY; L.pos[5] = Math.sin(L.a + 0.4) * botR;
+                L.l.geometry.attributes.position.needsUpdate = true;
+            }
+            mat.opacity = fade * Math.min(1, el / 100) * (0.7 + 0.3 * Math.abs(Math.sin(el * 0.02)));
+        });
+    }
+    /* ── IMMORTAL CYCLE: the bell over the caster collapses into a polyp on the floor and grows back, open ── */
+    function _sigImmortalCycle3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, bell = _nrvBell(ts, false); bell.scale.setScalar(2.2); bell.position.y = ts * 1.2; F.g.add(bell);
+        var bead = _finSprite(0xffffff, _sigGlowTex(), ts * 0.5, 162); bead.position.y = ts * 0.06; F.g.add(bead);
+        var collapseMs = 480, beadMs = 200, growMs = 620, fadeMs = 300, total = collapseMs + beadMs + growMs + fadeMs, rang = false;
+        return _sigRunOwned(F.g, total, function (el) {
+            if (el < collapseMs) {
+                var k = _sigEaseInCubic(el / collapseMs);
+                bell.scale.setScalar(2.2 - 2.0 * k); bell.position.y = ts * 1.2 - ts * 1.14 * k; _nrvBellFade(bell, 1);
+                bead.material.opacity = 0.3 + 0.6 * k;
+            } else if (el < collapseMs + beadMs) {
+                bell.scale.setScalar(0.2); bell.position.y = ts * 0.06; bead.material.opacity = 0.9 + 0.1 * Math.sin(el * 0.05);
+                if (!rang) { rang = true; try { _sigShockRing3D(tx, ty, { color: _NRV.glow, r0: ts * 0.1, r1: ts * 1.5, ms: 480, height: 3 }); } catch (e) {} }
+            } else {
+                var g = _sigEaseOutCubic(_sigClamp01((el - collapseMs - beadMs) / growMs));
+                bell.scale.set(2.3 * g + 0.2, 2.1 * g + 0.2, 2.3 * g + 0.2); bell.position.y = ts * 0.06 + ts * 1.14 * g;
+                for (var t = 0; t < bell.userData.tents.length; t++) bell.userData.tents[t].rotation.z = Math.sin(el * 0.006 + t * 2) * 0.25;
+                var fd = 1 - _sigClamp01((el - collapseMs - beadMs - growMs) / fadeMs);
+                _nrvBellFade(bell, fd); bead.material.opacity = 0.9 * (1 - g) * fd;
+            }
+        });
+    }
+    /* ── SERMON: the candles rise on the ring of the word; the word goes out in dark rings at head height ── */
+    function _sigSermon3D(tx, ty, r) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, R = (r != null ? r : 2), NC = 10, candles = [];
+        for (var i = 0; i < NC; i++) { var a = i * Math.PI * 2 / NC, cn = _nrvCandle(ts); cn.position.set(Math.cos(a) * ts * (R + 0.4), -ts * 0.5, Math.sin(a) * ts * (R + 0.4)); F.g.add(cn); candles.push({ g: cn, t0: 60 + i * 70 }); }
+        var rings = [];
+        for (var k = 0; k < 3; k++) { var rg = new THREE.Mesh(new THREE.RingGeometry(ts * 0.3, ts * 0.42, 40), _finBasic(_NRV.wine, { additive: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false })); rg.rotation.x = -Math.PI / 2; rg.position.y = ts * 0.75; F.g.add(rg); rings.push({ m: rg, t0: 300 + k * 320 }); }
+        var total = 1900;
+        return _sigRunOwned(F.g, total, function (el) {
+            var fade = 1 - _sigClamp01((el - 1500) / 400);
+            for (var c = 0; c < candles.length; c++) {
+                var C = candles[c], kk = _sigClamp01((el - C.t0) / 260);
+                C.g.position.y = -ts * 0.5 + ts * 0.5 * _sigEaseOutBack(kk);
+                C.g.userData.flame.material.opacity = kk * fade * (0.7 + 0.3 * Math.sin(el * 0.02 + c));
+                C.g.children[0].material.transparent = true; C.g.children[0].material.opacity = fade;
+            }
+            for (var q = 0; q < rings.length; q++) {
+                var Q = rings[q], t = _sigClamp01((el - Q.t0) / 900); Q.m.scale.setScalar(1 + t * (R + 0.6) * 2.4); Q.m.material.opacity = 0.6 * Math.sin(t * Math.PI) * fade;
+            }
+        });
+    }
+    /* ── THE KOOL-AID: the cup floats up to the victim's mouth, tips, pours; the cup drops ── */
+    function _sigKoolAid3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, cup = new THREE.Group();
+        var cupMat = _finBasic(0xf0f0f4, { opacity: 0 });
+        var wall = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.075, ts * 0.055, ts * 0.16, 12, 1, true), cupMat); wall.material.side = THREE.DoubleSide; cup.add(wall);
+        var drink = new THREE.Mesh(new THREE.CircleGeometry(ts * 0.07, 12), _finBasic(0xff2a50, { opacity: 0, side: THREE.DoubleSide })); drink.rotation.x = -Math.PI / 2; drink.position.y = ts * 0.06; cup.add(drink);
+        var band = new THREE.Mesh(new THREE.TorusGeometry(ts * 0.076, ts * 0.008, 6, 16), _finBasic(0xff2a50, { opacity: 0 })); band.rotation.x = Math.PI / 2; band.position.y = ts * 0.08; cup.add(band);
+        cup.position.set(ts * 0.22, ts * 1.6, ts * 0.18); F.g.add(cup);
+        var floatMs = 320, tipMs = 240, pourMs = 420, dropMs = 320, total = floatMs + tipMs + pourMs + dropMs + 300, lastDrop = 0, vy = 0;
+        return _sigRunOwned(F.g, total, function (el) {
+            var op = Math.min(1, el / 100) * (1 - _sigClamp01((el - (total - 300)) / 300));
+            cupMat.opacity = op; drink.material.opacity = op; band.material.opacity = op;
+            if (el < floatMs) { var k = _sigEaseOutCubic(el / floatMs); cup.position.y = ts * 1.6 - ts * 0.78 * k; cup.position.x = ts * 0.22 - ts * 0.1 * k; }
+            else if (el < floatMs + tipMs) { cup.rotation.z = -1.6 * _sigEaseInCubic((el - floatMs) / tipMs); }
+            else if (el < floatMs + tipMs + pourMs) {
+                cup.rotation.z = -1.6;
+                if (el - lastDrop > 28 && _canSpawn()) { lastDrop = el; _spawn({ x: F.c.x + rn(-4, 4), y: F.c.y + rn(-4, 4), z: F.bz + ts * 0.7, mode: 'billboard', sprite: 'blood-glob', tint: 0xff2a50, globColor: 0xff2a50, ml: rn(240, 380), size0: rn(4, 8), size1: 3, vx: rn(-20, 20), vy: rn(-20, 20), vz: rn(-40, 0), gravity: 340, opacity0: 0.95, opacity1: 0.6 }); }
+            } else {
+                var d = el - floatMs - tipMs - pourMs; vy -= 0.9; if (cup.position.y > ts * 0.04) { cup.position.y = Math.max(ts * 0.04, cup.position.y - ts * 0.02 * (1 + d * 0.01)); cup.rotation.z -= 0.08; }
+                else cup.rotation.z = -1.5;
+            }
+        });
+    }
+    /* ── TITHE: the collection plate slides across, the coins leap off the body onto it, it slides back ── */
+    function _sigTithe3D(tx, ty, o) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = _nrvFrom(tx, ty, o), ln = _nrvLine(F, from, tx, ty);
+        var plate = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.22, ts * 0.2, ts * 0.025, 20), _finBasic(0xb08a30, { opacity: 0 })); plate.position.set(ln.dx, ts * 0.12 + ln.dy, ln.dz); F.g.add(plate);
+        var NC = 7, coins = [], coinMat = _finBasic(_NRV.gold, { opacity: 0 });
+        for (var i = 0; i < NC; i++) { var cn = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.035, ts * 0.035, ts * 0.008, 12), coinMat); cn.visible = false; F.g.add(cn); coins.push({ m: cn, t0: 380 + i * 60, x0: rn(-1, 1) * ts * 0.12, z0: rn(-1, 1) * ts * 0.12, y0: ts * rn(0.35, 0.7), lx: rn(-1, 1) * ts * 0.12, lz: rn(-1, 1) * ts * 0.12 }); }
+        var slideMs = 340, holdMs = 520, backMs = 340, total = slideMs + holdMs + backMs + 120, near = ts * 0.55;
+        return _sigRunOwned(F.g, total, function (el) {
+            var s = el < slideMs ? _sigEaseOutCubic(el / slideMs) : (el < slideMs + holdMs ? 1 : 1 - _sigEaseInCubic(_sigClamp01((el - slideMs - holdMs) / backMs)));
+            var px = ln.dx * (1 - s) + ln.ux * near * s, pz = ln.dz * (1 - s) + ln.uz * near * s;
+            plate.position.set(px, ts * 0.12 + ln.dy * (1 - s), pz); plate.material.opacity = Math.min(1, el / 100) * (1 - _sigClamp01((el - (total - 160)) / 160));
+            coinMat.opacity = plate.material.opacity;
+            for (var c = 0; c < NC; c++) {
+                var C = coins[c]; if (el < C.t0) continue; var k = _sigClamp01((el - C.t0) / 300); C.m.visible = true;
+                C.m.position.set(C.x0 + (px + C.lx - C.x0) * k, C.y0 + Math.sin(k * Math.PI) * ts * 0.35 + (ts * 0.14 - C.y0) * k, C.z0 + (pz + C.lz - C.z0) * k);
+                if (k >= 1) { C.m.position.set(px + C.lx, ts * 0.14, pz + C.lz); }
+                C.m.rotation.x = k * 6;
+            }
+        });
+    }
+    /* ── INDOCTRINATE: the hood comes down over the victim, two eyes under it, five candles round ── */
+    function _sigIndoctrinate3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, robe = _nrvRobe(ts); robe.position.y = ts * 1.2; robe.scale.setScalar(1.05); F.g.add(robe); _nrvFadeRobe(robe, 0);
+        var eyes = [];
+        for (var s = -1; s <= 1; s += 2) { var ey = _finSprite(_NRV.candle, _sigGlowTex(), ts * 0.09, 163); ey.position.set(s * ts * 0.05, ts * 0.98, ts * 0.13); robe.add(ey); eyes.push(ey); }
+        var candles = [];
+        for (var i = 0; i < 5; i++) { var a = i * Math.PI * 2 / 5 + 0.3, cn = _nrvCandle(ts); cn.position.set(Math.cos(a) * ts * 0.62, -ts * 0.45, Math.sin(a) * ts * 0.62); F.g.add(cn); candles.push({ g: cn, t0: 200 + i * 60 }); }
+        var dropMs = 420, holdMs = 700, fadeMs = 320, total = dropMs + holdMs + fadeMs;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _sigEaseInCubic(_sigClamp01(el / dropMs)), fade = 1 - _sigClamp01((el - dropMs - holdMs) / fadeMs);
+            robe.position.y = ts * 1.2 * (1 - k); _nrvFadeRobe(robe, Math.min(1, el / 200) * fade);
+            var blink = el > dropMs ? (Math.floor((el - dropMs) / 260) % 4 === 3 ? 0.2 : 1) : 0;
+            for (var e = 0; e < eyes.length; e++) eyes[e].material.opacity = blink * fade;
+            for (var c = 0; c < candles.length; c++) { var C = candles[c], kk = _sigClamp01((el - C.t0) / 240); C.g.position.y = -ts * 0.45 + ts * 0.45 * _sigEaseOutBack(kk); C.g.userData.flame.material.opacity = kk * fade * (0.7 + 0.3 * Math.sin(el * 0.02 + c)); C.g.children[0].material.transparent = true; C.g.children[0].material.opacity = fade; }
+        });
+    }
+    /* ── THE GATHERING: a dark doorway opens on the tile and a member steps out of it, candle in hand ── */
+    function _sigGathering3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = _nrvFrom(tx, ty, null), ln = _nrvLine(F, from, tx, ty);
+        var door = new THREE.Group(); door.rotation.y = Math.atan2(ln.ux, ln.uz); door.position.set(-ln.ux * ts * 0.3, 0, -ln.uz * ts * 0.3); F.g.add(door);
+        var dark = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.7, ts * 1.15), _finBasic(0x05030a, { opacity: 0, side: THREE.DoubleSide })); dark.position.y = ts * 0.575; door.add(dark);
+        var rim = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.78, ts * 1.23), _finBasic(_NRV.violet, { additive: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false })); rim.position.set(0, ts * 0.615, -0.5); door.add(rim);
+        var robe = _nrvRobe(ts); robe.position.set(-ln.ux * ts * 0.3, 0, -ln.uz * ts * 0.3); robe.rotation.y = Math.atan2(ln.ux, ln.uz); F.g.add(robe); _nrvFadeRobe(robe, 0);
+        var candles = [];
+        for (var i = 0; i < 6; i++) { var a = i * Math.PI / 3 + 0.5, cn = _nrvCandle(ts); cn.position.set(Math.cos(a) * ts * 0.7, -ts * 0.45, Math.sin(a) * ts * 0.7); F.g.add(cn); candles.push({ g: cn, t0: 40 + i * 60 }); }
+        var openMs = 260, stepMs = 640, holdMs = 500, closeMs = 300, total = openMs + stepMs + holdMs + closeMs + 200;
+        return _sigRunOwned(F.g, total, function (el) {
+            var open = el < openMs ? _sigEaseOutCubic(el / openMs) : (el < openMs + stepMs + holdMs ? 1 : 1 - _sigEaseInCubic(_sigClamp01((el - openMs - stepMs - holdMs) / closeMs)));
+            door.scale.x = Math.max(0.001, open); dark.material.opacity = 0.95 * Math.min(1, el / 80); rim.material.opacity = 0.7 * open * (0.7 + 0.3 * Math.sin(el * 0.01));
+            var st = _sigEaseOutCubic(_sigClamp01((el - openMs) / stepMs));
+            robe.position.set(-ln.ux * ts * 0.3 + ln.ux * ts * 0.62 * st, 0, -ln.uz * ts * 0.3 + ln.uz * ts * 0.62 * st);
+            var rf = st * (1 - _sigClamp01((el - openMs - stepMs - 200) / 300)); _nrvFadeRobe(robe, rf);
+            var fade = 1 - _sigClamp01((el - (total - 300)) / 300);
+            for (var c = 0; c < candles.length; c++) { var C = candles[c], kk = _sigClamp01((el - C.t0) / 240); C.g.position.y = -ts * 0.45 + ts * 0.45 * _sigEaseOutBack(kk); C.g.userData.flame.material.opacity = kk * fade * (0.7 + 0.3 * Math.sin(el * 0.02 + c)); C.g.children[0].material.transparent = true; C.g.children[0].material.opacity = fade; }
+        });
+    }
+    /* ── MIC DROP: the mic falls out of the sky onto the tile, bounces once, and every contact is a sonic ring ── */
+    function _sigMicDrop3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, mic = new THREE.Group();
+        var head = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.075, 10, 8), _finBasic(0x3a3a44)); head.position.y = ts * 0.2; mic.add(head);
+        var stem = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.018, ts * 0.024, ts * 0.22, 8), _finBasic(0x14141a)); stem.position.y = ts * 0.06; mic.add(stem);
+        var gl = _finSprite(_NRV.pink, _sigGlowTex(), ts * 0.35, 162); gl.position.y = ts * 0.2; gl.material.opacity = 0.6; mic.add(gl);
+        mic.position.y = ts * 2.6; F.g.add(mic);
+        var total = 1500, y = ts * 2.6, vy = 0, bounces = 0, lastEl = 0, rest = ts * 0.04;
+        return _sigRunOwned(F.g, total, function (el) {
+            var dt = Math.min(0.05, (el - lastEl) / 1000); lastEl = el;
+            if (bounces < 2) {
+                vy -= ts * 22 * dt; y += vy * dt;
+                if (y <= rest) {
+                    y = rest; bounces++;
+                    try { _sigShockRing3D(tx, ty, { color: bounces === 1 ? _NRV.pink : _NRV.stage, r0: ts * 0.15, r1: ts * (bounces === 1 ? 1.6 : 1.0), ms: 380, height: 3 }); } catch (e) {}
+                    try { _sigMusicNotes3D(tx, ty, { count: bounces === 1 ? 3 : 2, color: _NRV.pink, scale: 0.9, sparkSprite: 'spark-pink' }); } catch (e) {}
+                    if (bounces === 1) { vy = ts * 4.2; _shake('normal'); } else vy = 0;
+                }
+                mic.position.y = y; mic.rotation.z = bounces < 2 ? el * 0.006 : 1.5;
+            } else { mic.position.y = rest; mic.rotation.z = 1.5; }
+            var fade = 1 - _sigClamp01((el - 1100) / 400);
+            head.material.transparent = stem.material.transparent = true; head.material.opacity = stem.material.opacity = fade; gl.material.opacity = 0.6 * fade;
+        });
+    }
+    /* ── ENCORE!: the spot finds them, the notes come up, the confetti comes down, the word over their head ── */
+    function _sigEncore3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts;
+        try { _sigSpotlight3D(tx, ty, { color: 0xffd0e8, holdMs: 900 }); } catch (e) {}
+        try { _sigMusicNotes3D(tx, ty, { count: 4, gentle: true, color: _NRV.pink, scale: 1.1, sparkSprite: 'spark-pink' }); } catch (e) {}
+        var pieces = _nrvConfetti(F, 40, ts * 1.9, ts * 0.7, 1300);
+        var word = _finTextSprite('ENCORE!', { ink: '#ffffff', bg: '#ff4fa3', font: 'Georgia, serif', fontPx: 72, spriteW: ts * 1.4, opacity: 0 }); word.position.y = ts * 1.5; F.g.add(word);
+        var total = 1700;
+        return _sigRunOwned(F.g, total, function (el) {
+            _nrvConfettiTick(pieces, el, 1300, ts);
+            var k = _sigClamp01(el / 220);
+            word.material.opacity = _sigEaseOutBack(k) * (1 - _sigClamp01((el - 1000) / 300)); word.position.y = ts * 1.5 + ts * 0.3 * _sigClamp01(el / 1200);
+            word.scale.set(ts * 1.4 * (0.6 + 0.4 * _sigEaseOutBack(k)), ts * 0.7 * (0.6 + 0.4 * _sigEaseOutBack(k)), 1);
+        });
+    }
+    /* ── STAGE DIVE: the crowd's hands come up along the line and pass the body along; streamers at the landing ── */
+    function _sigStageDive3D(tx, ty, o) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = _nrvFrom(tx, ty, o), ln = _nrvLine(F, from, tx, ty);
+        var px = -ln.uz, pz = ln.ux, span = ln.L + ts * 0.6, step = ts * 0.22, N = Math.max(4, Math.floor(span / step)), hands = [];
+        var armMat = _finBasic(0x2a2230, { opacity: 0 });
+        for (var i = 0; i < N; i++) for (var s = -1; s <= 1; s += 2) {
+            var t = i / (N - 1), hg = new THREE.Group();
+            hg.position.set(ln.dx * (1 - t) + px * s * ts * rn(0.3, 0.45), -ts * 0.4, ln.dz * (1 - t) + pz * s * ts * rn(0.3, 0.45));
+            var arm = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.02, ts * 0.025, ts * 0.32, 6), armMat); arm.position.y = ts * 0.16; hg.add(arm);
+            var stick = _finSprite(i % 2 ? _NRV.pink : _NRV.stage, _sigGlowTex(), ts * 0.14, 161); stick.position.y = ts * 0.34; hg.add(stick);
+            F.g.add(hg); hands.push({ g: hg, t: t, stick: stick });
+        }
+        var pieces = _nrvConfetti(F, 24, ts * 1.2, ts * 0.5, 1000);
+        var passMs = 520, total = 1500, burst = false;
+        return _sigRunOwned(F.g, total, function (el) {
+            var wave = el / passMs, fade = 1 - _sigClamp01((el - 1100) / 400);
+            armMat.opacity = fade;
+            for (var h = 0; h < hands.length; h++) {
+                var H = hands[h], up = _sigClamp01((wave - H.t * 0.85) / 0.25) * (1 - _sigClamp01((wave - H.t * 0.85 - 0.9) / 0.5));
+                H.g.position.y = -ts * 0.4 + ts * 0.42 * _sigEaseOutBack(Math.min(1, up)) + Math.sin(el * 0.02 + h) * ts * 0.02 * up;
+                H.stick.material.opacity = 0.9 * up * fade;
+            }
+            if (el >= passMs && !burst) { burst = true; }
+            if (el >= passMs) _nrvConfettiTick(pieces, el - passMs, 1000, ts);
+        });
+    }
+    /* ── STADIUM SHOW: the rig rises over the 5×5, the beams sweep, the pyro fires round in sequence, confetti over all ── */
+    function _sigStadiumShow3D(tx, ty, r) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, R = (r != null ? r : 2), rim = ts * (R + 0.7), H = ts * 3.2;
+        var steel = _finBasic(_NRV.truss, { opacity: 0 }), masts = [], beams = [];
+        for (var i = 0; i < 4; i++) {
+            var a = i * Math.PI / 2 + Math.PI / 4, mg = new THREE.Group(); mg.position.set(Math.cos(a) * rim, -H, Math.sin(a) * rim); F.g.add(mg);
+            mg.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.05, ts * 0.07, H, 6), steel), { position: new THREE.Vector3(0, H / 2, 0) }));
+            var beamHold = new THREE.Group(); beamHold.position.y = H * 0.96; beamHold.rotation.y = -a + Math.PI; mg.add(beamHold);
+            var cone = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.06, ts * 0.9, H * 1.15, 16, 1, true), _finBasic(i % 2 ? _NRV.pink : _NRV.stage, { additive: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false, map: _sigGlowTex() }));
+            cone.rotation.x = Math.PI; cone.position.y = -H * 0.575; var tilt = new THREE.Group(); tilt.rotation.x = 0.75; tilt.add(cone); beamHold.add(tilt);
+            var lamp = _finSprite(_NRV.white, _sigGlowTex(), ts * 0.6, 162); lamp.position.y = H * 0.96; mg.add(lamp);
+            masts.push({ g: mg, a: a, lamp: lamp }); beams.push({ mat: cone.material, tilt: tilt, ph: i * 1.3 });
+        }
+        var trussMat = _finBasic(_NRV.truss, { opacity: 0 }), trusses = [];
+        for (var j = 0; j < 4; j++) {
+            var a0 = j * Math.PI / 2 + Math.PI / 4, a1 = (j + 1) * Math.PI / 2 + Math.PI / 4;
+            var x0 = Math.cos(a0) * rim, z0 = Math.sin(a0) * rim, x1 = Math.cos(a1) * rim, z1 = Math.sin(a1) * rim;
+            var tr = new THREE.Mesh(new THREE.BoxGeometry(Math.hypot(x1 - x0, z1 - z0), ts * 0.08, ts * 0.08), trussMat); tr.position.set((x0 + x1) / 2, -H + H * 0.98, (z0 + z1) / 2); tr.rotation.y = -Math.atan2(z1 - z0, x1 - x0); F.g.add(tr); trusses.push(tr);
+        }
+        var pieces = _nrvConfetti(F, 70, H * 0.9, rim * 0.9, 1800);
+        var riseMs = 420, lightsAt = 500, pyroAt = 700, total = 2600, pyroN = 0, lit = false;
+        try { _sigMusicNotes3D(tx, ty, { count: 6, color: _NRV.pink, scale: 1.2, sparkSprite: 'spark-pink' }); } catch (e) {}
+        return _sigRunOwned(F.g, total, function (el) {
+            var rk = _sigEaseOutBack(_sigClamp01(el / riseMs)), fade = 1 - _sigClamp01((el - 2150) / 450);
+            steel.opacity = trussMat.opacity = fade;
+            for (var m = 0; m < masts.length; m++) masts[m].g.position.y = -H + H * rk;
+            for (var t2 = 0; t2 < trusses.length; t2++) trusses[t2].position.y = -H + H * rk - H * 0.02;
+            if (el >= lightsAt && !lit) { lit = true; _sigScreenFlash('#ffe6f4', 160, 0.55); }
+            for (var b = 0; b < beams.length; b++) { var B = beams[b]; B.mat.opacity = (el >= lightsAt ? 0.22 : 0) * fade * (0.8 + 0.2 * Math.sin(el * 0.02 + B.ph)); B.tilt.rotation.x = 0.75 + Math.sin(el * 0.004 + B.ph) * 0.35; B.tilt.rotation.z = Math.sin(el * 0.003 + B.ph * 2) * 0.3; masts[b].lamp.material.opacity = (el >= lightsAt ? 0.9 : 0) * fade; }
+            while (pyroN < 12 && el >= pyroAt + pyroN * 110) {
+                var pa = pyroN * Math.PI / 6, pr = pyroN < 8 ? rim * 0.85 : ts * 0.4;
+                _finFireball(F.c.x + Math.cos(pa) * pr, F.c.y + Math.sin(pa) * pr, F.bz + 4, 8, { r: 12, tint: pyroN % 2 ? 0xff9ad8 : 0xffe6f4, smoke: 0x3a2a34 });
+                pyroN++;
+            }
+            if (el >= lightsAt) _nrvConfettiTick(pieces, el - lightsAt, 1800, ts);
+        });
+    }
+
+    Object.assign(_spell3DGeometry, {
+        /* THE NEW-RACE VFX PASS (2026-09-22): the geometry key IS the spell id — fire('impact' | 'aoe' | 'aura') runs the registry */
+        'racePoliceNightstick': function (tx, ty, r, x) { x = x || {}; _sigBatonSwing3D(tx, ty, { fromX: x.fromX, fromY: x.fromY }); },
+        'racePoliceTaser':      function (tx, ty, r, x) { x = x || {}; _sigTaserWires3D(tx, ty, { fromX: x.fromX, fromY: x.fromY }); },
+        'racePoliceSpray':      function (tx, ty, r)    { _sigSprayCone3D(tx, ty, r); },
+        'racePoliceCuffs':      function (tx, ty)       { _sigCuffs3D(tx, ty); },
+        'racePoliceLockdown':   function (tx, ty, r)    { _sigLockdown3D(tx, ty, r); },
+        'raceJellySting':       function (tx, ty, r, x) { x = x || {}; _sigStingTendril3D(tx, ty, { fromX: x.fromX, fromY: x.fromY }); },
+        'raceJellyBloom':       function (tx, ty, r)    { _sigJellyBloom3D(tx, ty, r); },
+        'raceJellyNet':         function (tx, ty)       { _sigNematocystNet3D(tx, ty); },
+        'raceJellyRebirth':     function (tx, ty)       { _sigImmortalCycle3D(tx, ty); },
+        'raceCultSermon':       function (tx, ty, r)    { _sigSermon3D(tx, ty, r); },
+        'raceCultKoolAid':      function (tx, ty)       { _sigKoolAid3D(tx, ty); },
+        'raceCultTithe':        function (tx, ty, r, x) { x = x || {}; _sigTithe3D(tx, ty, { fromX: x.fromX, fromY: x.fromY }); },
+        'raceCultIndoctrinate': function (tx, ty)       { _sigIndoctrinate3D(tx, ty); },
+        'raceCultGathering':    function (tx, ty)       { _sigGathering3D(tx, ty); },
+        'racePopMicDrop':       function (tx, ty)       { _sigMicDrop3D(tx, ty); },
+        'racePopEncore':        function (tx, ty)       { _sigEncore3D(tx, ty); },
+        'racePopStageDive':     function (tx, ty, r, x) { x = x || {}; _sigStageDive3D(tx, ty, { fromX: x.fromX, fromY: x.fromY }); },
+        'racePopSpotlight':     function (tx, ty)       { _sigSpotlight3D(tx, ty, { color: 0xfff2aa, count: 2, holdMs: 1300 }); },
+        'racePopStadiumShow':   function (tx, ty, r)    { _sigStadiumShow3D(tx, ty, r); },
+    });
+    /* ═════════ END THE NEW-RACE VFX PASS ═════════ */
 
     /* ── THE BEAM DEFS: Tsunami + the capstone breaths ───────────────────
        Tsunami stops being Water Pulse: its own beam def with `beamTsunami`
