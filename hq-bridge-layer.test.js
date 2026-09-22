@@ -120,7 +120,7 @@ test('THE TWO CITIES (the solver — heavy): the overpass is walked from the tow
 });
 
 test('THE RENDERER on a stub scene: _hqBuildBridges draws a slab, its rails on the park register (bridge: true) and its piers as blockers for a room with a bridge', () => {
-    const a = renderer.indexOf('    function _hqTerrainMat(info, S) {'), b = renderer.indexOf('    function _hqBuildSiteBoard(room) {');
+    const a = renderer.indexOf('    function _hqTerrainMat(info, S, cut) {'), b = renderer.indexOf('    function _hqBuildSiteBoard(room) {');
     assert.ok(a > 0 && b > a);
     const src = renderer.slice(a, b);
     class Obj { constructor() { this.position = { x: 0, y: 0, z: 0, set(x, y, z) { this.x = x; this.y = y; this.z = z; }, copy(p) { this.x = p.x; this.y = p.y; this.z = p.z; } }; this.rotation = { x: 0, y: 0, z: 0, set(x, y, z) { this.x = x; this.y = y; this.z = z; } }; this.scale = { x: 1, y: 1, z: 1, set() {}, setScalar() {} }; this.children = []; this.userData = {}; } add(...c) { c.forEach(x => this.children.push(x)); } traverse(fn) { fn(this); this.children.forEach(c => c.traverse && c.traverse(fn)); } lookAt() {} }

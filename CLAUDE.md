@@ -8322,3 +8322,29 @@ field's seat cell) BEFORE the order is built, state.js `buildBlitzTurnOrder` con
 only, the unit to the front, the rest the SPD order), `startMatch`'s latch clears it. `buildBlitzTurnOrder` is a watched
 function (TUTORIAL_MECHANICS `turn`): `first_steps` re-read (its copy states the SPD order of a plain match, unchanged) and
 re-stamped. encounter-arrival.test.js pins it.
+
+## THE SEAMLESS FIELD, delivery 6 — THE CUT + THE STRATA (dig and build in a field) + THE RED CI (2026-09-22, local delivery)
+**THE RED CI**: one stale source pin (hq-encounter.test.js's "a plain match starts with no latch" wanted the pre-FIRST-STRIKE
+literal) — a regex now. **THE CUT** (SEAMLESS_FIELD_PLAN §8.3 step 7; `HQ_FIELD_RULES.cut = { on, moatTiles 2, fadeM 3, moat 'grid'
+| 'flat' | 'none', outM 60, gridTiles }`, `EW_HQ_NO_FIELD_CUT`): a TERRAIN room's battle is built over the CHUNK = the window +
+moatTiles a side (12 × 12). three-renderer.js `_hqBuildRoomInBattle` puts **`_hq.cut`** (room metres + fadeM) on the scratch
+record; a handed-over room keeps its pieces (doors / props / counters) and DROPS the walk's shell group (the whole field's merged
+meshes), re-cut by `_hqBuildTerrain(copy)` + `_hqBuildBoxShell` + `_hqBuildClimbs`; `keepM = keepFarM` = the moat's edge. RULE: a
+builder that lays a merged mesh or a piece in a terrain room asks **`_hqCutHit(cut, x0, z0, x1, z1, pad)`** (no cut = true) before
+it builds; the field's samples are `_hqCutRange(info, cut)` (the chunk + the fade band — the SAME samples); the outer ground, the
+treeline, the sea, the traffic, the circuit are never built under a cut; the seed order stays (draw the rng, then test). THE FADE =
+`_hqTerrainMat(info, S, cut)`'s `uCut` / `uCutFade` dithered discard past the chunk; THE MOAT = `_fieldMoatBuild` (four strips at
+`R.field.ref` in the room's floor colour + a lattice pass at the tile pitch; `_ew_hqOuter` + `_ew_occSkip` + `_ew_hqMoat`); the
+build line prints `cut 12×12 (moat grid)`. **THE STRATA** (step 8 — the user: "I still need to eventually be able to dig and
+build"; `HQ_FIELD_RULES.strata = { on, beds[hub], fallback }`, `EW_HQ_NO_FIELD_STRATA`): data.js `hqFieldBuild` files
+**`field.levels`** (every cell's engine height at the build), **`hqFieldBedFor(roomId)`** → `{ side, floor, hub }` (a room's
+`terrain.bed`, else its hub's row, else the fallback — every key a terrain sheet); the renderer's `_fieldGround()` record reads
+**`deltaAt(x, y)` = `getBaseHeightAt` LIVE − the level** and `yAt` = the true top + delta × the level step (every tween / float /
+pick quad follows a dig or a raise at once); `rebuildTerrain`'s field branch runs **`_fieldStrataBuild(ts)`** on every
+`_heightVersion` change: `_fieldStrataFaces(N, yAt, deltaAt, elev)` (pure) plans a top quad per moved cell (a raise the room's
+floor sheet, a dig the bed's floor) and a face per edge where the top differs from the neighbour's (outward from the higher cell,
+inward — the pit wall — into a dug cell beside an unmoved one, none between two digs) in the bed's side sheet, into `terrainGroup`
+(`_ew_fieldStrata`). THE ENGINE IS UNTOUCHED (Meteor / Build / Flat Earth / reshape write `state.boardHeights` as on a board).
+`npm test` runs seamless-field.test.js (26). Ship data.js to R2 AND Render. OPEN: §8.3 steps 9 (THE SWITCH) + 10 (THE POST); a
+flooded dig draws no water under a field; the AI still forecasts a dig by the board's rule. UNSEEN LIVE (RULE #1c): the fps after
+the cut, the fade under each fog, the lattice's brightness, the bed sheets in a crater.

@@ -45147,7 +45147,63 @@ const HQ_FIELD_RULES = {
         margin: 0.5,          // the cell's centre this far inside the room's compiled extent
         treePad: 0.12,        // m past a trunk's radius a sample is still the tree's
     },
+    /* THE SEAMLESS FIELD, delivery 6 (2026-09-22 — SEAMLESS_FIELD_PLAN.md §8.3 step 7, THE CUT): a TERRAIN room's battle is built
+       over a CHUNK — the window + moatTiles a side — re-cut from the same data (the height field's samples, the lot rows, the
+       street rows, the tree list; three-renderer.js _hqBuildTerrain reads _hq.cut), never the whole room; the ground past the
+       chunk falls away through a dithered fade over fadeM into THE MOAT (a flat plane at the window's reference floor in the
+       room's floor colour wearing a lit lattice at the tile pitch) under the room's fog; the walk's props / doors / walls inside
+       the chunk are handed over as before, everything outside is dropped (keepM = the moat's edge). The user's brief: "slice a
+       12×12 chunk, 8×8 the map, the rest a moat / holo grid, keep the fog and the weenies". */
+    cut: {
+        on: true,             // window.EW_HQ_NO_FIELD_CUT = the whole room re-built round the window (delivery 2–5's rule)
+        moatTiles: 2,         // tiles a side past the window: the chunk is (size + 2 × moatTiles)² — 12 × 12
+        fadeM: 3,             // m past the chunk's edge over which the re-cut ground dithers away into the moat
+        moat: 'grid',         // 'grid' = the lit lattice on the plane · 'flat' = the plane alone · 'none' = the fog alone
+        outM: 60,             // m past the chunk the moat plane runs before the fog has it
+        gridTiles: 1,         // the lattice's pitch in tiles
+    },
+    /* THE SEAMLESS FIELD, delivery 6 — §8.3 step 8, THE STRATA (the user: "I still need to eventually be able to dig and build"):
+       under the true ground no column is drawn and tileTopY reads the room's STATIC tops — so a Meteor crater, a Flat Earth dig,
+       a Build raise or a reshape changed state.boardHeights and the eye saw nothing. Now the field record carries every cell's
+       LEVEL at the build (hqFieldBuild → field.levels) and the renderer's ground read is the true top + (the engine's height −
+       the level) × the level step: a dug cell drops, a raised one climbs, the pick quads follow, and rebuildTerrain builds a
+       column ONLY for a cell whose engine height differs from its level — a dig shows THE BED's faces (THE CRATER FIX's rule: the
+       crater opens onto its own faces), a raise stands a column in the bed's sheet wearing the room's floor sheet on top. The bed
+       is a property of the ROOM FAMILY (its hub), never of the site's Δ (§8.4): hqFieldBedFor(roomId). */
+    strata: {
+        on: true,             // window.EW_HQ_NO_FIELD_STRATA = the engine digs, the eye sees nothing (delivery 1's rule)
+        beds: {               // per hub: `side` = the faces of a dig / a raise, `floor` = a dug cell's bottom
+            hq:         { side: 'concrete_floor', floor: 'concrete_floor' },
+            cavern:     { side: 'cave_wall', floor: 'cave_floor' },
+            woods:      { side: 'dirt_2', floor: 'dirt_3' },
+            ranch:      { side: 'dirt_2', floor: 'dirt_3' },
+            divine:     { side: 'cloud_2', floor: 'cloud_2' },
+            city:       { side: 'concrete_floor', floor: 'dirt_3' },
+            dumb:       { side: 'concrete_floor', floor: 'concrete_floor' },
+            kingdom:    { side: 'castle_wall', floor: 'dirt_3' },
+            deep:       { side: 'cliff', floor: 'desert' },
+            underworld: { side: 'bricks_2', floor: 'dirt_3' },
+            ley:        { side: 'cliff', floor: 'dirt_2' },
+            astral:     { side: 'crystal', floor: 'crystal' },
+        },
+        fallback: { side: 'cliff', floor: 'dirt_3' },
+    },
 };
+/* THE STRATA's one read: the bed a field battle digs into — a room's own `terrain.bed` ({ side, floor } or a hub id), else its hub's row, else the fallback */
+function hqFieldBedFor(roomId) {
+    const ST = HQ_FIELD_RULES.strata || {}, beds = ST.beds || {}, fb = ST.fallback || { side: 'cliff', floor: 'dirt_3' };
+    const r = (DOOR_HQ.rooms || {})[roomId];
+    const own = r && r.terrain && r.terrain.bed;
+    if (own && typeof own === 'object' && own.side) return { side: own.side, floor: own.floor || own.side, hub: 'own' };
+    let hub = (typeof own === 'string' && beds[own]) ? own : null;
+    if (!hub) { try { const h = (typeof hqHubOf === 'function') ? hqHubOf(roomId) : null; hub = (h && h.id) || null; } catch (e) { hub = null; } }
+    const row = (hub && beds[hub]) ? beds[hub] : fb;
+    return { side: row.side, floor: row.floor || row.side, hub: (hub && beds[hub]) ? hub : 'fallback' };
+}
+function hqFieldStrataOn() {
+    const W = (typeof window !== 'undefined') ? window : {};
+    return !!(HQ_FIELD_RULES.strata && HQ_FIELD_RULES.strata.on) && !W.EW_HQ_NO_FIELD_STRATA;
+}
 /* THE TIER RULE (delivery 2's, tested now): the LEVEL a surface at topM stands at over the reference floor refM.
    A rooftop, a bridge deck, a plateau, a gallery slab = a real ledge = a level (the high-ground bonus, the LOS
    step); a hill's shoulder under tierMin = the floor. */
@@ -45711,6 +45767,8 @@ function hqFieldBuild(roomId, ox, oz, opts) {
     entry.field = { id, room: roomId, site, ox: R.ox, oz: R.oz, S, C: R.C, x0: R.x0, z0: R.z0, rockTile: R.rockTile, box: !!R.box, cave: !!R.cave, terrain: !!R.terrain, open: !!R.open, ref: (R.ref != null) ? R.ref : 0,
                     /* THE TRUE GROUND (2026-09-22): every IN cell's REAL top in room metres (the floor 0, a table's top, a tread, the slab) */
                     tops: R.cells.map(row => row.map(c => (c.in && !c.rock) ? Math.round(((+c.top) || 0) * 1000) / 1000 : (R.terrain && c.hazard && c.sheet != null) ? Math.round(c.sheet * 1000) / 1000 : null)),
+                    /* THE STRATA (delivery 6): every cell's engine LEVEL at the build (= M.h above) — the renderer draws a column only where state.boardHeights has moved off it */
+                    levels: R.cells.map(row => row.map(c => B + c.tile)),
                     cells: R.cells.map(row => row.map(c => (c.rock ? '#' : c.hazard ? '!' : c.in ? String(Math.max(0, Math.min(9, c.tile + 1))) : '?')).join('')),
                     /* STAGE D: the rim's doors and the walls' proud (a box window; a cave has neither) */
                     doors: Array.isArray(R.doors) ? R.doors.map(d => Object.assign({}, d)) : [], edges: R.edges ? JSON.parse(JSON.stringify(R.edges)) : null,
@@ -48055,7 +48113,7 @@ if (typeof window !== 'undefined') {
     /* THE FIELD stage B — the rasteriser on the cave (Phase 9 Delivery 8, 2026-09-16) */
     window.HQ_FIELD_RULES = HQ_FIELD_RULES; window.hqFieldRimBox = hqFieldRimBox; window.hqEncounterRoomLabel = hqEncounterRoomLabel; window.hqFieldDump = hqFieldDump; window.hqFieldRoomOk = hqFieldRoomOk; window.hqFieldTerrainInfo = hqFieldTerrainInfo; window.hqFieldRasterTerrain = hqFieldRasterTerrain; window.hqFieldTerrainStep = hqFieldTerrainStep; window.hqFieldId = hqFieldId; window.hqFieldParse = hqFieldParse; window.hqFieldRaster = hqFieldRaster; window.hqFieldReach = hqFieldReach;
     window.hqFieldWindow = hqFieldWindow; window.hqFieldBuild = hqFieldBuild; window.hqFieldLayout = hqFieldLayout; window.hqFieldRegister = hqFieldRegister;
-    window.hqFieldTierOf = hqFieldTierOf; window.hqFieldGroundOn = hqFieldGroundOn; window.hqFieldBoxInfo = hqFieldBoxInfo; window.hqFieldGallery = hqFieldGallery; window.hqFieldLattice = hqFieldLattice; window.hqFieldBoxStep = hqFieldBoxStep; window.hqFieldBoxTile = hqFieldBoxTile; window.hqFieldNearestWalk = hqFieldNearestWalk;
+    window.hqFieldTierOf = hqFieldTierOf; window.hqFieldGroundOn = hqFieldGroundOn; window.hqFieldBedFor = hqFieldBedFor; window.hqFieldStrataOn = hqFieldStrataOn; window.hqFieldBoxInfo = hqFieldBoxInfo; window.hqFieldGallery = hqFieldGallery; window.hqFieldLattice = hqFieldLattice; window.hqFieldBoxStep = hqFieldBoxStep; window.hqFieldBoxTile = hqFieldBoxTile; window.hqFieldNearestWalk = hqFieldNearestWalk;
     /* SKATEBOARDING (HQ plan 9.8 stage 1, 2026-09-15) */
     window.HQ_SKATE_RULES = HQ_SKATE_RULES; window.HQ_LIGHT_RULES = HQ_LIGHT_RULES; window.HQ_POLISH_PREFS = HQ_POLISH_PREFS; window.hqPolishGet = hqPolishGet; window.hqPolishSet = hqPolishSet; window.hqPolishAll = hqPolishAll; window.hqPolishReset = hqPolishReset; window.hqPolishRow = hqPolishRow; window.HQ_ATMOS_SITES = HQ_ATMOS_SITES; window.HQ_DECAL_RULES = HQ_DECAL_RULES; window.hqRoomAtmos = hqRoomAtmos; window.hqRoomArrival = hqRoomArrival; window.HQ_KICKABLE = HQ_KICKABLE; window.hqPropKickable = hqPropKickable; window.hqRoomFogHalfAt = hqRoomFogHalfAt; window.hqSkateStatus = hqSkateStatus; window.hqSkateRecord = hqSkateRecord; window.hqSkateBank = hqSkateBank; window.hqSkateScore = hqSkateScore; window.hqSkateIssueFree = hqSkateIssueFree;
     window.hqLinkRoom = hqLinkRoom;

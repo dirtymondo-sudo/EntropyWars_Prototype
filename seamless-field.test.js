@@ -285,8 +285,8 @@ test('delivery 4 · the hand-over: the leave stashes the three groups before the
     assert.ok(TR.includes("        try { _hqHandoverDrop(); } catch (e) {}   // THE HAND-OVER: a stash nobody took"), 'deactivate drops one');
     const bb = TR.slice(TR.indexOf('    function _hqBuildRoomInBattle(ctx) {'), TR.indexOf('    function _hqEnter(opts) {'));
     assert.match(bb, /var hand = \(trueGround && HR\.handover && _hqRoomHandover && _hqRoomHandover\.roomId === R\.roomId\) \? _hqRoomHandover : null;/);
-    assert.match(bb, /if \(hand\) \{ _hqRoomHandover = null; H\.shellGroup = hand\.shellGroup; H\.doorGroup = hand\.doorGroup; H\.propGroup = hand\.propGroup; H\.fxPulse = hand\.fxPulse\.slice\(\); \}\s*\n\s*else _hqHandoverDrop\(\);/);
-    assert.match(bb, /if \(hand\) \{ \/\* the room stands as it was walked \*\/ \}\s*\n\s*else \{\s*\n\s*if \(R\.cave\)/, 'no builder runs on a handed-over room');
+    assert.match(bb, /if \(hand\) \{\s*\n\s*_hqRoomHandover = null; H\.doorGroup = hand\.doorGroup; H\.propGroup = hand\.propGroup; H\.fxPulse = hand\.fxPulse\.slice\(\);[\s\S]*?else H\.shellGroup = hand\.shellGroup;\s*\n\s*\}\s*\n\s*else _hqHandoverDrop\(\);/);
+    assert.match(bb, /if \(hand && !cutOn\) \{ \/\* the room stands as it was walked \*\/ \}/, 'no builder runs on a handed-over room (a box room; the cut re-cuts a terrain room\'s chunk — delivery 6)');
     assert.ok(bb.indexOf('if (trueGround) { try { _hqShadowFlags(copy); }') > bb.indexOf('if (R.terrain && typeof _hqBuildClimbs'), 'the shadow flags run on the handed-over groups too');
     assert.match(bb, /c\._ew_hqMarker\)/, 'the battle marker never stands in a battle');
     assert.ok(TR.includes("grp._ew_hqMarker = true;   // THE HAND-OVER"), 'the counter builder tags it');
@@ -427,4 +427,140 @@ test('delivery 5 · THE SKY ONCE: the stash carries an open room\'s floaters + l
     const L3 = DATA.hqFieldLayout('prebuilt_haunted', 'grass', { terrain: true, open: false, dome: 0x101010 });
     assert.equal(L1.env.scenery, 'none'); assert.equal(L2.env.scenery, 'none'); assert.equal(L3.env.scenery, 'none');
     assert.notEqual(L2.env.stars, 0, 'an open field keeps its stars'); assert.equal(L3.env.stars, 0, 'a closed one is a dark ceiling');
+});
+
+/* ══ delivery 6 — THE CUT (§8.3 step 7) + THE STRATA (§8.3 step 8) ══ */
+test('delivery 6 · the rules: HQ_FIELD_RULES.cut / .strata; the renderer reads the cut with defaults and its kill-switch; the bed is the room\'s hub', () => {
+    const c = DATA.HQ_FIELD_RULES.cut, st = DATA.HQ_FIELD_RULES.strata;
+    assert.equal(c.on, true); assert.equal(c.moatTiles, 2); assert.equal(c.fadeM, 3); assert.equal(c.moat, 'grid');
+    assert.equal(st.on, true); assert.ok(st.beds.woods && st.beds.city && st.beds.cavern && st.fallback.side, 'a bed per hub + the fallback');
+    const r = TR.slice(TR.indexOf('    function _hqHandoverRules() {'), TR.indexOf('    function _hqHandoverStash(H, opts) {'));
+    assert.match(r, /cut: \{ on: !!\(c\.on !== false\) && !W\.EW_HQ_NO_FIELD_CUT, moatTiles: \(c\.moatTiles >= 0\) \? \+c\.moatTiles : 2, fadeM: \(c\.fadeM > 0\) \? \+c\.fadeM : 3,/);
+    /* the bed: a room's hub, a room's own row, a room nobody claims */
+    const woods = DATA.hqFieldBedFor('site_prebuilt_fairy_forest_clearing');
+    assert.equal(woods.hub, 'woods'); assert.equal(woods.side, st.beds.woods.side);
+    const city = DATA.hqFieldBedFor('site_prebuilt_downtown_streets');
+    assert.equal(city.hub, 'city');
+    const own = DATA.hqFieldBedFor('no_such_room');
+    assert.equal(own.hub, 'fallback'); assert.equal(own.side, st.fallback.side);
+    /* every bed names a terrain sheet the game has */
+    const SP = fs.readFileSync(path.join(__dirname, 'sprites.js'), 'utf8');
+    Object.keys(st.beds).concat(['fallback']).forEach((k) => {
+        const row = k === 'fallback' ? st.fallback : st.beds[k];
+        [row.side, row.floor].forEach((key) => assert.ok(new RegExp('^\\s*' + key + ':\\s*\\[', 'm').test(SP), 'a terrain sheet: ' + key));
+    });
+    assert.equal(typeof DATA.hqFieldStrataOn, 'function');
+});
+
+test('delivery 6 · the field record carries every cell\'s LEVEL at the build (the strata\'s reference)', () => {
+    const W = DATA.hqFieldWindow(GROUNDS, { x: 0, z: 0 }, { x: 2, z: 0 });
+    assert.ok(W, 'a window on the grounds');
+    const entry = DATA.hqFieldBuild(GROUNDS, W.board.x0 !== undefined ? W.raster.ox : 0, W.raster.oz, {});
+    const F = entry.field, B = entry.baseH || DATA.HQ_FIELD_RULES.base;
+    assert.ok(Array.isArray(F.levels) && F.levels.length === F.S, 'levels per row');
+    let inCells = 0;
+    for (let y = 0; y < F.S; y++) for (let x = 0; x < F.S; x++) {
+        const ch = F.cells[y].charAt(x);
+        if (ch >= '1' && ch <= '9') { inCells++; assert.equal(F.levels[y][x], DATA.HQ_FIELD_RULES.base + (ch.charCodeAt(0) - '1'.charCodeAt(0)), 'the level is the cell\'s tile over the base'); }
+        assert.equal(typeof F.levels[y][x], 'number');
+    }
+    assert.ok(inCells > 8, 'the window has floor');
+});
+
+test('delivery 6 · THE CUT in a vm: the rect test, the sample window with the fade band, a polyline\'s box', () => {
+    const src = TR.slice(TR.indexOf('    function _hqCutHit(cut, x0, z0, x1, z1, pad) {'), TR.indexOf('    function _hqTerrainMat(info, S, cut) {'));
+    const ctx = { _hq: null, Math };
+    vm.createContext(ctx); vm.runInContext(src + '\nthis.hit = _hqCutHit; this.range = _hqCutRange; this.box = _hqCutPtsBox; this.of = _hqCutOf;', ctx);
+    const cut = { x0: -10, z0: -10, x1: 10, z1: 10, fadeM: 3 };
+    assert.equal(ctx.hit(null, 99, 99), true, 'no cut = everything');
+    assert.equal(ctx.hit(cut, 0, 0), true); assert.equal(ctx.hit(cut, 12, 0), false); assert.equal(ctx.hit(cut, 12, 0, 12, 0, 3), true, 'the pad');
+    assert.equal(ctx.hit(cut, 30, -30, -30, 30), true, 'a reversed box spanning the chunk');
+    assert.equal(ctx.hit(cut, -40, -40, -11, -11), false, 'a box wholly outside');
+    const info = { nx: 101, nz: 101, res: 0.5, x0: -25, z0: -25 };
+    const R0 = ctx.range(info, null); assert.deepEqual([R0.i0, R0.i1, R0.j0, R0.j1], [0, 100, 0, 100], 'no cut = the grid');
+    const R1 = ctx.range(info, cut);
+    assert.ok(R1.i0 > 0 && R1.i1 < 100 && R1.j0 > 0 && R1.j1 < 100, 'restricted');
+    assert.ok(info.x0 + R1.i0 * info.res <= cut.x0 - cut.fadeM && info.x0 + R1.i1 * info.res >= cut.x1 + cut.fadeM, 'the chunk + the fade band inside the window');
+    const R2 = ctx.range(info, { x0: -100, z0: -100, x1: 100, z1: 100, fadeM: 3 }); assert.deepEqual([R2.i0, R2.i1], [0, 100], 'clamped to the grid');
+    assert.equal(ctx.box([[1, 2], [-3, 5], [4, -1]]).join(','), '-3,-1,4,5'); assert.equal(ctx.box([]), null);
+    ctx._hq = { cut: cut }; assert.equal(ctx.of(), cut); ctx._hq = null; assert.equal(ctx.of(), null);
+});
+
+test('delivery 6 · THE CUT in the builders: the field\'s samples, the outer ground / treeline / traffic off, every merged builder asks _hqCutHit, the material fades past the chunk', () => {
+    const bt = TR.slice(TR.indexOf('    function _hqBuildTerrain(room) {'), TR.indexOf('    function _hqCityFrontGroup(f, U) {'));
+    assert.match(bt, /var cut = \(typeof _hqCutOf === 'function'\) \? _hqCutOf\(\) : null;\s*\n\s*var CR = \(cut && typeof _hqCutRange === 'function'\) \? _hqCutRange\(info, cut\) : \{ i0: 0, i1: nx - 1, j0: 0, j1: nz - 1 \};/, 'the sample window, tolerant of a stub slice');
+    assert.match(bt, /for \(var j = CR\.j0; j <= CR\.j1; j\+\+\) for \(var i = CR\.i0; i <= CR\.i1; i\+\+\) \{/, 'the field mesh over the window only');
+    assert.match(bt, /_hqTerrainMat\(info, S, cut\)/);
+    assert.match(bt, /S\.open && room\.terrain\.outer !== false && !cut\)/, 'no outer ground under a cut');
+    assert.match(bt, /S\.forest && S\.open && !cut\) _hqPlantTreeline/, 'no treeline under a cut');
+    assert.match(bt, /info\.traffic\.length && !cut\)/); assert.match(bt, /info\.race && !cut\)/);
+    ['info.decks.forEach', 'var drawWall = function (w) {', 'info.trees.forEach(function (t) {', '(info.thicket || []).forEach(function (t) {'].forEach((k) => {
+        const i = bt.indexOf(k); assert.ok(i >= 0, k); assert.ok(bt.slice(i, i + 400).indexOf('cut && !_hqCutHit(cut') >= 0, k + ' asks the cut');
+    });
+    const mat = TR.slice(TR.indexOf('    function _hqTerrainMat(info, S, cut) {'), TR.indexOf('    function _hqTerrainGround(x, z) {'));
+    assert.match(mat, /sh\.uniforms\.uCut = \{ value: cut \? new THREE\.Vector4/); assert.match(mat, /uCutFade/); assert.match(mat, /if \( cutK >= 1\.0 \|\| cutN < cutK \) discard;/, 'the dithered fade');
+    ['function _hqBuildCityLots', 'function _hqBuildRoadMarkings', 'function _hqBuildStreetLamps', 'function _hqBuildHallsLights', 'function _hqBuildLeyVeins', 'function _hqBuildBridges', 'function _hqBuildFloats', 'function _hqBuildShopfronts', 'function _hqBuildClimbs'].forEach((f) => {
+        const i = TR.indexOf('    ' + f); assert.ok(i >= 0, f);
+        const body = TR.slice(i, TR.indexOf('\n    function ', i + 20));
+        assert.ok(body.indexOf('_hqCutHit(') >= 0 || body.indexOf('_hqCutOf()') >= 0, f + ' reads the cut');
+    });
+});
+
+test('delivery 6 · the battle over the chunk: the handed-over shell group is dropped and re-cut, the radius is the moat\'s edge, the moat plane stands, the log names the cut', () => {
+    const bb = TR.slice(TR.indexOf('    function _hqBuildRoomInBattle(ctx) {'), TR.indexOf('    function _hqEnter(opts) {'));
+    assert.match(bb, /var cutOn = !!\(trueGround && R\.terrain && HR\.cut && HR\.cut\.on\);/);
+    assert.match(bb, /cutRect = \{ x0: R\.T\.x0 - mm, z0: R\.T\.z0 - mm, x1: R\.T\.x0 \+ R\.T\.N \* C \+ mm, z1: R\.T\.z0 \+ R\.T\.N \* C \+ mm, fadeM: HR\.cut\.fadeM/);
+    assert.match(bb, /H\.cut = cutRect;\s*\n\s*HR\.keepM = HR\.keepFarM = mm \+ HR\.cut\.fadeM;/);
+    assert.match(bb, /if \(cutOn\) \{ try \{ _disposeR\(hand\.shellGroup\); \} catch \(e\) \{\} \}/, 'the walk\'s field goes');
+    assert.match(bb, /else if \(hand && cutOn\) \{[\s\S]*?_hqBuildTerrain\(copy\);[\s\S]*?_hqBuildBoxShell\(copy\);/, 're-cut over the chunk');
+    assert.match(bb, /if \(cutOn\) \{ try \{ _fieldMoatBuild\(H, R, cutRect, room, HR\.cut\); \}/);
+    assert.match(bb, /cut: cutOn \? \{ tiles: R\.T\.N \+ 2 \* HR\.cut\.moatTiles/);
+    const moat = TR.slice(TR.indexOf('    function _fieldMoatBuild(H, R, cut, room, rules) {'), TR.indexOf('    function _hqEnter(opts) {'));
+    assert.match(moat, /if \(!rules \|\| rules\.moat === 'none'/); assert.match(moat, /_ew_hqOuter = true; m\._ew_occSkip = true; m\._ew_hqMoat = true/, 'never raycast, never faded');
+    assert.match(moat, /R\.field\.ref/, 'at the window\'s reference floor');
+});
+
+test('delivery 6 · THE STRATA in a vm: a dig drops the cell and shows the bed\'s four inward faces, a raise climbs with four outward faces, two neighbouring digs share no wall, nothing moved = nothing drawn', () => {
+    const src = TR.slice(TR.indexOf('    function _fieldStrataFaces(N, yAt, deltaAt, elev) {'), TR.indexOf('    var _fieldStrataMats = null;'));
+    const ctx = { Math }; vm.createContext(ctx); vm.runInContext(src + '\nthis.faces = _fieldStrataFaces;', ctx);
+    const elev = 100, N = 3;
+    const mk = (delta) => ({ yAt: (x, y) => 500 + (delta[y][x] || 0) * elev, deltaAt: (x, y) => delta[y][x] || 0 });
+    const none = ctx.faces(N, mk([[0,0,0],[0,0,0],[0,0,0]]).yAt, mk([[0,0,0],[0,0,0],[0,0,0]]).deltaAt, elev);
+    assert.equal(none.tops.length, 0); assert.equal(none.faces.length, 0);
+    const dig = mk([[0,0,0],[0,-2,0],[0,0,0]]);
+    const D = ctx.faces(N, dig.yAt, dig.deltaAt, elev);
+    assert.equal(D.tops.length, 1); assert.equal(D.tops[0].top, 300, 'two levels down');
+    assert.equal(D.faces.length, 4); D.faces.forEach((f) => { assert.equal(f.out, false, 'the pit wall faces in'); assert.equal(f.y0, 300); assert.equal(f.y1, 500); });
+    const raise = mk([[0,0,0],[0,1,0],[0,0,0]]);
+    const Rz = ctx.faces(N, raise.yAt, raise.deltaAt, elev);
+    assert.equal(Rz.faces.length, 4); Rz.faces.forEach((f) => { assert.equal(f.out, true); assert.equal(f.y0, 500); assert.equal(f.y1, 600); });
+    const two = mk([[0,0,0],[-1,-1,0],[0,0,0]]);
+    const T = ctx.faces(N, two.yAt, two.deltaAt, elev);
+    assert.equal(T.tops.length, 2); assert.equal(T.faces.length, 5, 'n + s for the edge cell (an OUT neighbour is the room\'s own wall), n + s + e for the other, none between them');
+    assert.ok(!T.faces.some((f) => (f.x === 0 && f.side === 'e') || (f.x === 1 && f.side === 'w')), 'no wall between them');
+    /* a raise beside an OUT cell shows its face from its original top */
+    const edge = mk([[0,0,0],[0,0,0],[0,0,0]]);
+    const yAtOut = (x, y) => (x === 0 && y === 1) ? null : (500 + (x === 1 && y === 1 ? 200 : 0));
+    const E = ctx.faces(N, yAtOut, (x, y) => (x === 1 && y === 1) ? 2 : 0, elev);
+    const w = E.faces.find((f) => f.side === 'w'); assert.ok(w && w.edge && w.y0 === 500 && w.y1 === 700, 'the west face from the old top');
+});
+
+test('delivery 6 · THE STRATA in the renderer: the ground read adds the engine\'s delta, rebuildTerrain\'s field branch builds the columns, the pick quads follow', () => {
+    const fg = TR.slice(TR.indexOf('    function _fieldGround() {'), TR.indexOf('    function _fieldGroundTop(x, y) {'));
+    assert.match(fg, /levels: \(strataOn && R\.field\.levels\) \? R\.field\.levels : null/);
+    assert.match(fg, /: this\.floorY \+ t \* this\.s \+ this\.deltaAt\(x, y\) \* this\.elev; \} \};/, 'the true top + the delta');
+    assert.match(fg, /var eh = \(typeof getBaseHeightAt === 'function'\) \? getBaseHeightAt\(x, y\)/, 'the engine\'s live height');
+    const rb = TR.slice(TR.indexOf('    function rebuildTerrain() {'), TR.indexOf('    function rebuildTerrain() {') + 3000);
+    assert.match(rb, /_fieldPickBuild\(ts\);[^\n]*\n\s*try \{ _fieldStrataBuild\(ts\); \}/, 'the columns after the picks, on every terrain rebuild');
+    const sb = TR.slice(TR.indexOf('    function _fieldStrataBuild(ts) {'), TR.indexOf('    /* activate(): the dome snap'));
+    assert.match(sb, /hqFieldBedFor\(G\.R\.roomId\)/); assert.match(sb, /_shadowsDirty = true;/);
+    /* the delta in a vm: a dug cell reads lower */
+    const src = TR.slice(TR.indexOf('    var _fieldGroundCache = { key: null, G: null };'), TR.indexOf('    function _fieldGroundLive() {'));
+    const boardH = [[5, 5], [5, 3]];
+    const ctx = { CONFIG: { tileSize: 100 }, BASE_TILE: 100, ELEV_STEP_RATIO: 1, _hqBattleRoomKey: () => 'k', hqFieldGroundOn: () => true, hqFieldStrataOn: () => true, getBaseHeightAt: (x, y) => boardH[y][x], Math,
+                  _hqBattleRoom: () => ({ site: false, cave: false, base: 5, T: { N: 2, C: 1.75 }, field: { tops: [[0, 0], [0, 0]], levels: [[5, 5], [5, 5]] } }) };
+    vm.createContext(ctx); vm.runInContext(src + '\n_fieldGroundArmed = true; this.__t = _fieldGroundTop;', ctx);
+    assert.equal(ctx.__t(0, 0), 500, 'unmoved: the true top');
+    assert.equal(ctx.__t(1, 1), 300, 'dug two levels: two steps down');
+    boardH[0][1] = 6; assert.equal(ctx.__t(1, 0), 600, 'raised one: a step up, read live');
 });

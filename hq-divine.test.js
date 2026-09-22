@@ -295,7 +295,7 @@ test('THE FLOATING PIECES (second pass, 2026-09-18): the stairway’s four fligh
     assert.ok(/floats: F\.filter\(f => f\.float === true/.test(data), 'data.js lists the floats');
     const build = extract('_hqBuildFloats');
     assert.ok(/function _hqBuildFloats\(room, info, G, TM, rng, floats\)/.test(build) && /f\.k === 'plateau'/.test(build) && /tread = 2 \* res/.test(build) && /_hzTex\(info\.path\)/.test(build) && /_hzTex\(info\.cliff\)/.test(build), 'the platforms and the treads are built in the room’s own sheets');
-    const terrain = renderer.slice(renderer.indexOf('    function _hqBuildTerrain('), renderer.indexOf('    function _hqBuildTerrain(') + 14000);
+    const terrain = renderer.slice(renderer.indexOf('    function _hqBuildTerrain('), renderer.indexOf('    function _hqBuildTerrain(') + 22000);
     assert.ok(/var underFloat = function \(mx, mz\)/.test(terrain) && /!\(floats\.length && underFloat\(mx, mz\)\)/.test(terrain) && /_hqBuildFloats\(room, info, G, TM, rng, floats\)/.test(terrain), 'the field is cut away under a float and the pieces are hung');
     assert.ok(/window\._hqTEllipse = _hqTEllipse; window\._hqTRectIn = _hqTRectIn; window\._hqTRamp = _hqTRamp;/.test(data), 'the frames the cut reads are on window');
 });

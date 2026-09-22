@@ -466,7 +466,7 @@ test('D6 · WHERE YOU WAKE UP: a loss lands in the ward and your office by turns
 test('D6 · SOURCE · battle.js: the run is LATCHED at startMatch (never the window marker after that), the intro gate + the warm-up + the VS card read the latch, the eye falls back to the seats, the field is published for the zone builder, the result bar is ONE button, the standard bar comes back for the next match, a rematch drops the latch', () => {
     assert.ok(BT.includes("let _encMatch = null;") && BT.includes("function _encRun() { return _encMatch || ((window._hqEncounterRun && window._hqEncounterRun.noIntro) ? window._hqEncounterRun : null); }"), 'the latch');
     assert.ok(BT.includes("if (er) { if (er.armed) { er.armed = false; _encMatch = er; } else window._hqEncounterRun = null; }"), 'armed → latched for THIS match');
-    assert.ok(BT.includes("_encMatch = null;\n            try {\n                const er = window._hqEncounterRun;"), 'a plain match starts with no latch');
+    assert.ok(/_encMatch = null;[^\n]*\n            try \{\n                const er = window\._hqEncounterRun;/.test(BT), 'a plain match starts with no latch');
     assert.ok(BT.includes("if (_encMatch) return false;   // THE ENCOUNTER (Delivery 6)"), 'the intro gate');
     assert.ok(BT.includes("&& !window.EW_DISABLE_INTRO_CINE && !_encMatch && !(window._hqEncounterRun"), 'the leaf warm-up');
     assert.ok(BT.includes("if (!eye && _er.field && typeof hqEncounterEye === 'function') { try { eye = hqEncounterEye(_er.field, _er.field.seats || null); }"), 'the eye off the seats');
