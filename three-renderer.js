@@ -1729,13 +1729,13 @@ const ThreeRenderer = (function () {
        a floor darkens toward the walls, a wall toward the floor / the ceiling / its neighbours, and every PROP's vertical
        face darkens in the half metre over the floor (the contact that grounds a chair). A face's own plane never
        occludes it (weighted by its normal). One shared function = one program per material kind; strength 0 = off. */
-    var _HQ_AO = { x: 1e6, y: 1e6, z: 1e6, w: 0 }, _HQ_AO2 = { x: 40, y: 0 };
+    var _HQ_AO = { x: 1e6, y: 1e6, z: 1e6, w: 0 }, _HQ_AO2 = { x: 40, y: 0, z: 0, w: 0 };   // AO2: the reach, the floor, and (THE SEAMLESS FIELD) the box's centre x / z
     function _hqAoHook(shader) {
         shader.uniforms.uHqAo = { value: _HQ_AO }; shader.uniforms.uHqAo2 = { value: _HQ_AO2 };
         shader.vertexShader = 'varying vec3 vHqWp;\nvarying vec3 vHqWn;\n' + shader.vertexShader
             .replace('#include <project_vertex>', '#include <project_vertex>\nvHqWp = ( modelMatrix * vec4( transformed, 1.0 ) ).xyz;\nvHqWn = normalize( mat3( modelMatrix ) * objectNormal );');
-        shader.fragmentShader = 'uniform vec4 uHqAo;\nuniform vec2 uHqAo2;\nvarying vec3 vHqWp;\nvarying vec3 vHqWn;\n' + shader.fragmentShader
-            .replace('#include <map_fragment>', '#include <map_fragment>\nif ( uHqAo.w > 0.0 ) {\n\tvec3 hqN = abs( normalize( vHqWn ) );\n\tfloat hqR = max( uHqAo2.x, 0.001 );\n\tfloat hqFx = 1.0 - smoothstep( 0.0, hqR, uHqAo.x - abs( vHqWp.x ) );\n\tfloat hqFz = 1.0 - smoothstep( 0.0, hqR, uHqAo.y - abs( vHqWp.z ) );\n\tfloat hqFy = 1.0 - smoothstep( 0.0, hqR, vHqWp.y - uHqAo2.y );\n\tfloat hqFc = 1.0 - smoothstep( 0.0, hqR, uHqAo.z - vHqWp.y );\n\tfloat hqAo = 1.0 - uHqAo.w * ( hqFx * ( 1.0 - hqN.x ) + hqFz * ( 1.0 - hqN.z ) + hqFy * ( 1.0 - hqN.y ) + hqFc * ( 1.0 - hqN.y ) * 0.6 );\n\tdiffuseColor.rgb *= clamp( hqAo, 0.3, 1.0 );\n}');
+        shader.fragmentShader = 'uniform vec4 uHqAo;\nuniform vec4 uHqAo2;\nvarying vec3 vHqWp;\nvarying vec3 vHqWn;\n' + shader.fragmentShader
+            .replace('#include <map_fragment>', '#include <map_fragment>\nif ( uHqAo.w > 0.0 ) {\n\tvec3 hqN = abs( normalize( vHqWn ) );\n\tfloat hqR = max( uHqAo2.x, 0.001 );\n\tfloat hqFx = 1.0 - smoothstep( 0.0, hqR, uHqAo.x - abs( vHqWp.x - uHqAo2.z ) );\n\tfloat hqFz = 1.0 - smoothstep( 0.0, hqR, uHqAo.y - abs( vHqWp.z - uHqAo2.w ) );\n\tfloat hqFy = 1.0 - smoothstep( 0.0, hqR, vHqWp.y - uHqAo2.y );\n\tfloat hqFc = 1.0 - smoothstep( 0.0, hqR, uHqAo.z - vHqWp.y );\n\tfloat hqAo = 1.0 - uHqAo.w * ( hqFx * ( 1.0 - hqN.x ) + hqFz * ( 1.0 - hqN.z ) + hqFy * ( 1.0 - hqN.y ) + hqFc * ( 1.0 - hqN.y ) * 0.6 );\n\tdiffuseColor.rgb *= clamp( hqAo, 0.3, 1.0 );\n}');
     }
     var _shadowsDirty = true;     // consumed when the depth pass re-renders
     var _shadowMotion = false;    // set by per-frame updaters that move casters
@@ -3115,6 +3115,7 @@ const ThreeRenderer = (function () {
            column is built (the walls are the shell's, the slab the gallery's, a table its own top) */
         if (_fieldGround()) {
             _clearGroup(terrainGroup); tileMeshes.clear();
+            _fieldPickBuild(ts);   // THE CLICKS: an invisible quad per IN cell at its real top — screenToTile raycasts terrainGroup, and there was nothing in it
             _lastBoardW = _bw; _lastBoardH = _bh; _lastBuiltTileSize = ts;
             _lastTerrainVersion = state._terrainVersion || 0; _lastHeightVersion = state._heightVersion || 0; _lastVoxelVersion = state._voxelVersion || 0;
             _objectsDirty = true; _lavaMeshCache = null; _canopyMeshCache = null;
@@ -21600,6 +21601,14 @@ const ThreeRenderer = (function () {
 
         // ── per-map environment preset (state.mapEnv → dome/fog/scenery) ──
         var me = (typeof state !== 'undefined' && state && state.mapEnv) || null;
+        if (_envSnapPending) {
+            /* THE SEAMLESS FIELD rev 3: the first battle frame wears the room's sky at once — the eased tint / stars / nebula
+               used to arrive over the first second of the fight (the dome brightening beyond the walls after the cut) */
+            _envSnapPending = false;
+            S.mapTintAmt = (me && me.tintAmt) || 0; S.mapStars = (me && me.stars != null) ? me.stars : 1; S.mapNebula = (me && me.nebula != null) ? me.nebula : 1;
+            S.mapDay = (me && me.day) || 0; S.mapClouds = (me && me.clouds) || 0; S.night = 0;
+            if (me && me.tint != null) { if (!_mapTintScratch) { _mapTintScratch = new THREE.Color(); _mapTintTarget = new THREE.Vector3(); } _mapTintScratch.setHex(me.tint); _envUni.uMapTint.value.set(_mapTintScratch.r, _mapTintScratch.g, _mapTintScratch.b); }
+        }
         S.mapTintAmt += (((me && me.tintAmt) || 0) - S.mapTintAmt) * k;
         S.mapStars += (((me && me.stars != null) ? me.stars : 1) - S.mapStars) * k;
         S.mapNebula += (((me && me.nebula != null) ? me.nebula : 1) - S.mapNebula) * k;
@@ -30153,6 +30162,7 @@ const ThreeRenderer = (function () {
         /* THE SEAMLESS FIELD (2026-09-22): a true-ground field keeps the BUILDING'S brightness through the fight */
         _fieldGroundArmed = !!_fieldGround();
         try { if (_fieldGroundArmed && typeof ThreePost !== 'undefined' && ThreePost.setExposureContext) ThreePost.setExposureContext('hq'); } catch (e) {}
+        try { if (typeof _fieldGroundArm === 'function') _fieldGroundArm(); } catch (e) {}   // THE SEAMLESS FIELD rev 3: the dome snapped to the room, the crossfade gated on the rigs, the swoop held under it
         try { if (typeof ThreePost !== 'undefined' && ThreePost.setSsaoScale && typeof CONFIG !== 'undefined') ThreePost.setSsaoScale('battle', CONFIG.tileSize || 96); } catch (e) {}   // THE THIRD PASS 3.4: the AO's reach in tiles
         canvas.style.display = 'block';
         if (css2dRenderer) css2dRenderer.domElement.style.display = '';
@@ -30200,6 +30210,7 @@ const ThreeRenderer = (function () {
         active = false;
         /* THE SEAMLESS FIELD: the room's fog leaves with the fight, the true-ground gate closes (typeof-guarded: scene-lifecycle.test.js evals deactivate alone) */
         try { if (typeof _fieldGroundFog !== 'undefined' && _fieldGroundFog) { _fieldGroundFog = false; _ewHeightFogSet(0, 1, 0, 0); } if (typeof _fieldGroundArmed !== 'undefined') { _fieldGroundArmed = false; _fieldGroundCache.key = null; _fieldGroundCache.G = null; } } catch (e) {}
+        try { if (typeof _fieldGroundRelease === 'function') _fieldGroundRelease(); } catch (e) {}   // THE SEAMLESS FIELD rev 3: the room's fog / rig / AO / ceiling leave with the fight
         if (window.ThreeVFXEffects && ThreeVFXEffects.clearBattle) ThreeVFXEffects.clearBattle();
         hideSplitscreen();
         _clearAnimations();
@@ -32076,6 +32087,7 @@ const ThreeRenderer = (function () {
         }
 
         _updateEnvironment();
+        _fieldGroundTick();   // THE SEAMLESS FIELD rev 3: the room's ceiling fades as the eye rises through it
 
         // A tile-size change (menu MENU_TILE <-> battle BASE_TILE) rescales the
         // entire board. The renderer's animation loop can otherwise rebuild the
@@ -32310,7 +32322,7 @@ const ThreeRenderer = (function () {
 
                 if (css2dRenderer) css2dRenderer.render(scene, cam);
                 _scalePlates(cam);
-                if (_hqDissolveRec) _hqDissolveFrame();   // THE ENCOUNTER: the room's held frame fades over this, the battle's first
+                if (_hqDissolveRec) _hqDissolveFrame();   // THE ENCOUNTER: the room's held frame fades over this, the battle's first (rev 3: once the party's rigs stand, or the hold's cap — _fieldDissolveReady)
             }
         }
 
@@ -38668,7 +38680,7 @@ const ThreeRenderer = (function () {
             /* `ceilTile` = metres per tile (Room 360's nebula tiles at 4.5 m); `ceilColor` paints it */
             var ce = new THREE.Mesh(new THREE.PlaneGeometry(W * U, Dp * U), _hqMat(texCeil, W / (S.ceilTile || 1.4), Dp / (S.ceilTile || 1.4), { shininess: 2, color: (S.ceilColor != null) ? S.ceilColor : 0xffffff }));
             ce.rotation.x = Math.PI / 2; ce.position.y = H * U;
-            ce._ew_hqPart = 'ceil';   // THE ROOM ROUND THE FIELD: the battle looks in from above — the ceiling is never drawn there
+            ce._ew_hqPart = 'ceil';   // THE ROOM ROUND THE FIELD: the battle looks in from above — the ceiling is dropped there (a true-ground field keeps it and fades it as the eye rises: _fieldGroundTick)
             G.add(ce);
         } else if (room.terrain && room.terrain.outer !== false) {
             /* THE TERRAIN ROOM (2026-09-17): the field's own outer ground runs to the fog (_hqBuildOuterGround) — no flat apron, no skirt */
@@ -48697,7 +48709,7 @@ const ThreeRenderer = (function () {
         var g = null;
         try { g = _hqSurface(eye.x, eye.z, null, true); } catch (e) { g = null; }
         if (g === null || g === undefined || !isFinite(g)) g = pl.y;
-        return { x: eye.x, y: eye.y, z: eye.z, dx: dir.x, dy: dir.y, dz: dir.z, ground: g, px: pl.x, pz: pl.z, py: pl.y };
+        return { x: eye.x, y: eye.y, z: eye.z, dx: dir.x, dy: dir.y, dz: dir.z, ground: g, px: pl.x, pz: pl.z, py: pl.y, fov: H.camera.fov };   // rev 3: the lens too — the battle's 45° over the walk's 52° was a zoom pop on the cut
     }
     /* the board under the room (a site's board room): N cells of C metres about the room's origin — null in a cave / a complex part (no board to land on) */
     function _hqEncounterBoard() {
@@ -52446,7 +52458,7 @@ const ThreeRenderer = (function () {
         _HQ_AO.y = box ? ((S.d || 10) / 2) * U : 1e6;
         _HQ_AO.z = (box && S.h) ? S.h * U : 1e6;
         _HQ_AO.w = k;
-        _HQ_AO2.x = ((AO.r != null) ? AO.r : 0.55) * U; _HQ_AO2.y = 0;
+        _HQ_AO2.x = ((AO.r != null) ? AO.r : 0.55) * U; _HQ_AO2.y = 0; _HQ_AO2.z = 0; _HQ_AO2.w = 0;   // the building's room stands at the origin
         H.ao = k > 0 ? { k: k, box: box } : null;
     }
     /* 3.1 THE HEIGHT FOG's row for this room: HQ_LIGHT_RULES.heightFog[kind], `sky.fog.height` (m) for the fall-off, a room's
@@ -53093,39 +53105,166 @@ const ThreeRenderer = (function () {
         return G.yAt(x, y);
     }
     function _fieldGroundLive() { return _fieldGroundArmed && !!_fieldGround(); }
-    /* the room's own light in the battle: the shell's fluorescents and desk lamps through the matrix (the hemi / key / fill
-       are the battle's), and the room's height fog in the battle's frame (the floor at the base, h in tiles) */
+    /* ══ THE SEAMLESS FIELD rev 3 — THE LIGHT HOLDS (2026-09-22) ══
+       The user: "I don't want the lighting to change, it makes the transition really abrupt". On the cut the battle used to
+       swap the room's rig (a 0.22 key, a 0.5 hemisphere, the fluorescents, the room's fog, its look, its AO, its ceiling) for
+       the board's (a 1.0 sun, a 0.45 sky hemisphere + a 0.38 ambient, no fog, the site's look, the cosmic dome, no ceiling).
+       Now the battle WEARS THE ROOM: _fieldGroundDress rebuilds the room's rig in the battle's frame (the same numbers
+       _hqEnter's box branches use — keep them in step) and hands the key + hemisphere to ThreePost.setFieldLight (the sun IS
+       the key, so the board's shadow rig casts the room's shadow), the fill and the point lights stand under the matrix, the
+       room's fog goes on the battle scene (the density re-based to battle px), the room-box AO is re-centred on the room
+       (_HQ_AO2.zw), the ceiling stays and fades as the eye rises through it (_fieldGroundTick), the dome is snapped to the
+       room's colour on the first frame (_envSnapPending; data.js hqFieldLayout paints a closed room's dome its fog colour and
+       carries the room's look), and the crossfade waits for the party's rigs (_fieldDissolveReady) with THE SWOOP held at
+       the walker's eye under it (ThreeCamera.seedHold). _fieldGroundRelease hands everything back on deactivate. */
+    var _fieldGroundState = null;   // { s, prevFog, ceil: { y, mats, parts, op } | null }
+    var _fieldGate = null, _fieldGateAt = 0;
+    var _envSnapPending = false;
     function _fieldGroundDress(R, room, M, ts) {
-        var S = room.shell || {}, s = ts / R.T.C, U = _hqUnits();
+        var S = room.shell || {}, s = ts / R.T.C, U = _hqUnits(), LR = _hqLightRules();
         if (!_facilityNearGroup) return;
+        var W = (typeof window !== 'undefined') ? window : {};
+        var st = _fieldGroundState || (_fieldGroundState = { s: s, prevFog: (typeof scene !== 'undefined' && scene) ? scene.fog : null, ceil: null });
+        st.s = s;
+        var open = !!(room.kind === 'box' && S.open && S.sky);
+        var floorY = R.base * ts * ELEV_STEP_RATIO;
+        /* THE RIG */
         try {
-            var amb = (S.mood && S.mood.ambient != null) ? S.mood.ambient : 1;
-            var lightsAt = (S.lights && S.lights.length) ? S.lights : (S.open ? [] : [S.light || { x: 0, z: 0 }]);   // an OPEN room has no fluorescents (its props light it)
-            var plC = (S.mood && S.mood.light != null) ? S.mood.light : 0xe6eeff;
             var lg = new THREE.Group(); lg.name = 'hq_field_lights'; lg.applyMatrix4(M);
-            lightsAt.slice(0, 4).forEach(function (Lt) {
-                var fl = new THREE.PointLight(plC, (lightsAt.length > 1 ? 0.5 : 0.55) * amb, (lightsAt.length > 1 ? 12 : 9) * U, 2);
-                fl.position.set((Lt.x || 0) * U, ((S.h || 3) - 0.35) * U, (Lt.z || 0) * U); lg.add(fl);
-            });
+            var SH = LR.shadows || {};
+            var field = { ambient: { intensity: 0 }, shadow: !(SH.on === false || _polishOff('shadows', 'EW_HQ_NO_SHADOWS') || W.EW_PERF_LOW) };
+            var lampMax = (typeof HQ_PROP_LIGHT_MAX !== 'undefined') ? HQ_PROP_LIGHT_MAX : 10;
+            if (open) {
+                var skyC = new THREE.Color((S.sky.tint != null) ? S.sky.tint : 0x8090b0), nightO = S.sky.night ? 1 : 0, LRo = LR.open || {};
+                field.hemi = { sky: skyC.clone().lerp(new THREE.Color(0xffffff), nightO ? 0.22 : 0.45).getHex(), ground: 0x2a2620, intensity: nightO ? LRo.nightHemi : LRo.dayHemi };
+                field.sun = { color: nightO ? 0xaabfe0 : 0xfff1d6, intensity: nightO ? LRo.nightSun : LRo.daySun, dir: [0.45, 1, 0.3] };
+                var ofill = new THREE.DirectionalLight(LR.fillColor, LR.fill); ofill.position.set(-0.55, 0.45, -0.4).multiplyScalar(1000); lg.add(ofill);
+                var mplC = (S.mood && S.mood.light != null) ? S.mood.light : 0xfff0d0;
+                (S.lights || []).slice(0, lampMax).forEach(function (Lt) {
+                    var ml = new THREE.PointLight(mplC, nightO ? LRo.nightLamp : LRo.dayLamp, 20 * s, 2); ml.position.set(Lt.x * U, (S.h + 1.8) * U, Lt.z * U); lg.add(ml);
+                });
+            } else {
+                var amb = (S.mood && S.mood.ambient != null) ? S.mood.ambient : 1; amb = Math.max(amb, LR.ambientFloor || 0);
+                field.hemi = { sky: 0xd9d2c0, ground: 0x1c1a1e, intensity: 0.5 * amb };
+                field.sun = { color: 0xe8ecf5, intensity: 0.22 * amb, dir: [0.3, 1, 0.2] };
+                var bxf = new THREE.DirectionalLight(LR.fillColor, (LR.fill || 0) * amb); bxf.position.set(-0.55, 0.45, -0.4).multiplyScalar(1000); lg.add(bxf);
+                var lightsAt = (S.lights && S.lights.length) ? S.lights : [S.light || { x: 0, z: 0 }];
+                var plC = (S.mood && S.mood.light != null) ? S.mood.light : 0xe6eeff;
+                lightsAt.slice(0, lampMax).forEach(function (Lt) {
+                    /* a PointLight's distance is world units the parent's scale never touches: metres × the battle's px per metre */
+                    var fl = new THREE.PointLight(plC, lightsAt.length > 1 ? 0.5 : 0.55, (lightsAt.length > 1 ? 12 : 9) * s, 2);
+                    fl.position.set((Lt.x || 0) * U, ((S.h || 3) - 0.35) * U, (Lt.z || 0) * U); lg.add(fl);
+                });
+            }
             (room.props || []).forEach(function (pp) {
                 if (pp.key !== 'desk_lamp' && pp.key !== 'table_lamp') return;
-                var wl = new THREE.PointLight(0xffd9a0, 0.5, 5 * U, 2); wl.position.set((pp.x || 0) * U, ((pp.y || 0) + 0.5) * U, (pp.z || 0) * U); lg.add(wl);
+                var wl = new THREE.PointLight(0xffd9a0, 0.5, 5 * s, 2); wl.position.set((pp.x || 0) * U, ((pp.y || 0) + 0.5) * U, (pp.z || 0) * U); lg.add(wl);
             });
             _facilityNearGroup.add(lg);
+            if (typeof ThreePost !== 'undefined' && ThreePost.setFieldLight) ThreePost.setFieldLight(field);
         } catch (e) { console.warn('[HQ→battle] the room\'s lights did not stand', e); }
+        /* THE FOG: the room's own on the battle scene (the same colour, the density per battle px) + the height fog in the battle's frame */
+        var fogC = 0x0d0e12, fogD = 0.00017 * U / s;
         try {
-            var LR = _hqLightRules(), HF = LR.heightFog || {};
-            var W = (typeof window !== 'undefined') ? window : {};
+            if (open) { fogD = (S.sky.fog && S.sky.fog.density > 0) ? S.sky.fog.density / s : 0.00005 * U / s; if (S.sky.fog && S.sky.fog.color != null) fogC = S.sky.fog.color; }
+            else if (S.fog && S.fog.color != null) { fogC = S.fog.color; fogD = (S.fog.density > 0 ? S.fog.density : 0.012) / s; }
+            if (typeof scene !== 'undefined' && scene) scene.fog = new THREE.FogExp2(fogC, fogD);
+        } catch (e) {}
+        try {
+            var HF = LR.heightFog || {};
             if (HF.on !== false && !_polishOff('heightFog', 'EW_HQ_NO_HEIGHT_FOG') && S.heightFog !== false) {
-                var row = Object.assign({}, HF[S.open ? 'open' : 'box'] || HF.box || { h: 1.7, amount: 0.34 });
+                var row = Object.assign({}, HF[open ? 'open' : 'box'] || HF.box || { h: 1.7, amount: 0.34 });
+                if (S.sky && S.sky.fog && S.sky.fog.height > 0) row.h = S.sky.fog.height;
                 if (S.heightFog && typeof S.heightFog === 'object') Object.assign(row, S.heightFog);
-                var floorY = R.base * ts * ELEV_STEP_RATIO + ((row.floor != null) ? +row.floor : 0) * s;
-                _ewHeightFogSet(floorY, (row.h > 0 ? row.h : 1.7) * s, Math.max(0, Math.min(1, (row.amount != null) ? +row.amount : 0.34)), 0.012 / s);
+                var hfFloor = floorY + ((row.floor != null) ? +row.floor : 0) * s;
+                _ewHeightFogSet(hfFloor, (row.h > 0 ? row.h : 1.7) * s, Math.max(0, Math.min(1, (row.amount != null) ? +row.amount : 0.34)), Math.max(fogD * 4, 0.012 / s));
                 _fieldGroundFog = true;
             }
         } catch (e) {}
+        /* THE AO: the room-box AO re-centred on the room in the battle's frame (_hqAoArm's rule) */
+        try {
+            var AO = LR.ao || {}, k = _polishOff('ao', 'EW_HQ_NO_AO') ? 0 : ((AO.corner != null) ? AO.corner : 0.34);
+            if (R.terrain || R.cave) k = 0;
+            var box = room.kind === 'box' && !S.open;
+            _HQ_AO.x = box ? ((S.w || 10) / 2) * s : 1e6; _HQ_AO.y = box ? ((S.d || 10) / 2) * s : 1e6; _HQ_AO.z = (box && S.h) ? floorY + S.h * s : 1e6; _HQ_AO.w = k;
+            _HQ_AO2.x = ((AO.r != null) ? AO.r : 0.55) * s; _HQ_AO2.y = floorY; _HQ_AO2.z = -R.T.x0 * ts / R.T.C; _HQ_AO2.w = -R.T.z0 * ts / R.T.C;
+        } catch (e) {}
+        if (st.ceil) st.ceil.y = floorY + (S.h || 3) * s;
     }
     var _fieldGroundFog = false;
+    /* the ceiling piece(s) of a true-ground room: their materials cloned so the fade owns them */
+    function _fieldCeilRegister(c, R, ts) {
+        var st = _fieldGroundState || (_fieldGroundState = { s: ts / R.T.C, prevFog: (typeof scene !== 'undefined' && scene) ? scene.fog : null, ceil: null });
+        if (!st.ceil) st.ceil = { y: R.base * ts * ELEV_STEP_RATIO + (((R.room && R.room.shell && R.room.shell.h) || 3) * ts / R.T.C), mats: [], parts: [], op: -1 };
+        c.traverse(function (o) {
+            if (!o.isMesh || !o.material) return;
+            var ms = Array.isArray(o.material) ? o.material : [o.material];
+            var cl = ms.map(function (m) { var q = m.clone(); q.transparent = true; return q; });
+            o.material = Array.isArray(o.material) ? cl : cl[0];
+            Array.prototype.push.apply(st.ceil.mats, cl); st.ceil.parts.push(o);
+        });
+    }
+    /* per frame: the ceiling fades as the eye rises through it (opaque from inside the room — the walker's frame; 3 % from above) */
+    function _fieldGroundTick() {
+        var st = _fieldGroundState; if (!st || !st.ceil || !active) return;
+        var cam = (typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null; if (!cam) return;
+        var s = st.s || 1, y = st.ceil.y;
+        var k = Math.max(0, Math.min(1, (cam.position.y - (y - 0.6 * s)) / (2.4 * s)));
+        var op = 1 - k * 0.97;
+        if (Math.abs(op - st.ceil.op) < 0.003) return;
+        st.ceil.op = op;
+        for (var i = 0; i < st.ceil.mats.length; i++) { st.ceil.mats[i].opacity = op; st.ceil.mats[i].depthWrite = op > 0.5; }
+        for (var j = 0; j < st.ceil.parts.length; j++) st.ceil.parts[j].visible = op > 0.04;
+    }
+    /* THE CLICKS: screenToTile raycasts terrainGroup — with no columns built there was nothing to hit and every click on a
+       tile died. One quad per IN cell at its real top, drawn to nothing (colorWrite off), never an occluder. */
+    var _fieldPickGeo = null;
+    function _fieldPickBuild(ts) {
+        var G = _fieldGround(); if (!G || !terrainGroup || typeof THREE === 'undefined') return;
+        if (!_fieldPickGeo || _fieldPickGeo.ts !== ts) {
+            var geo = new THREE.PlaneGeometry(ts, ts); geo.rotateX(-Math.PI / 2); geo._ew_shared = true;
+            var mat = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false, depthTest: false, side: THREE.DoubleSide }); mat._ew_shared = true;
+            _fieldPickGeo = { ts: ts, geo: geo, mat: mat };
+        }
+        var grp = new THREE.Group(); grp.name = 'field_pick'; grp._ew_occSkip = true;
+        for (var y = 0; y < G.N; y++) for (var x = 0; x < G.N; x++) {
+            var top = G.yAt(x, y); if (top === null || top === undefined) continue;
+            var m = new THREE.Mesh(_fieldPickGeo.geo, _fieldPickGeo.mat);
+            m.position.set(x * ts + ts / 2, top + 0.5, y * ts + ts / 2);
+            m._ew_occSkip = true; m._ew_fieldPick = true; m.renderOrder = -900; m.frustumCulled = false; m.castShadow = false; m.receiveShadow = false;
+            grp.add(m);
+        }
+        terrainGroup.add(grp);
+    }
+    /* activate(): the dome snap, the crossfade gate, the held swoop */
+    function _fieldGroundArm() {
+        if (!_fieldGroundArmed) return;
+        _envSnapPending = true;
+        if (_hqDissolveRec) {
+            try { _fieldGate = _alGateOpen('field', { adoptLive: true }); _fieldGateAt = performance.now(); } catch (e) { _fieldGate = null; }
+            try { if (typeof ThreeCamera !== 'undefined' && ThreeCamera.seedHold) ThreeCamera.seedHold(true); } catch (e) {}
+        }
+    }
+    /* the held snapshot fades once nothing the fight asked for is still streaming (the party's rigs), else at the hold's cap */
+    function _fieldDissolveReady() {
+        if (!_fieldGate) return true;
+        var rec = _hqDissolveRec;
+        if (rec && rec.fadingAt) return true;
+        try { if (_fieldGate.pending() === 0) return true; } catch (e) { return true; }
+        return (performance.now() - _fieldGateAt) > ((rec && rec.hold > 0) ? rec.hold : 1500);
+    }
+    function _fieldSeedRelease() {
+        if (_fieldGate) { try { _fieldGate.close(); } catch (e) {} _fieldGate = null; }
+        try { if (typeof ThreeCamera !== 'undefined' && ThreeCamera.seedHold) ThreeCamera.seedHold(false); } catch (e) {}
+    }
+    /* deactivate(): every dial back */
+    function _fieldGroundRelease() {
+        _fieldSeedRelease(); _envSnapPending = false;
+        var st = _fieldGroundState; _fieldGroundState = null;
+        try { if (typeof ThreePost !== 'undefined' && ThreePost.setFieldLight) ThreePost.setFieldLight(null); } catch (e) {}
+        try { if (typeof scene !== 'undefined' && scene && st) scene.fog = st.prevFog || null; } catch (e) {}
+        _HQ_AO.w = 0;
+    }
     function _hqBuildRoomInBattle(ctx) {
         var R = _hqBattleRoom(); if (!R || !ctx || typeof THREE === 'undefined' || !_horizonGroup) return;
         if (ctx.bw !== R.T.N || ctx.bh !== R.T.N) return;   // the board the battle built is not the room's window
@@ -53133,6 +53272,7 @@ const ThreeRenderer = (function () {
         var walled = !!_facilityNearGroup;   // the map's own enclosure (an `occ` near builder) stands: the shell's walls would double it
         /* the copy the builders read: no battle marker (it stood on the board's centre cell) */
         var copy = Object.assign({}, room, { counters: (room.counters || []).filter(function (c) { return !!c && c.id !== 'battle' && c.proc !== 'battle_marker'; }) });
+        var trueGroundEarly = !!_fieldGround();   // rev 3: a true-ground room keeps its whole light budget (the torches of a hall) — the walk had them
         var saved = _hq;
         var H = { ghost: true, opts: { room: R.roomId }, host: null, room: copy, profile: null, snap: null, scene: null, camera: null, cube: null,   // opts.room: _hqBuildTerrain resolves the room's SURVEYED record by id (hqTerrainInfo)
                   terrain: null, outer: null, terrainScatter: null, moatTick: null, seaFx: null,   // THE SEAMLESS FIELD, delivery 2: what _hqBuildTerrain writes on the record
@@ -53144,6 +53284,7 @@ const ThreeRenderer = (function () {
                   keys: {}, drag: null, lastDragAt: 0, fp: false, paused: true, ready: false, t0: 0, lastMs: 0, lastDebug: 0,
                   cam: { yaw: 0, pitch: 0, dist: 0, init: false }, targetKey: '', w: 0, h: 0, dirty: false };
         if (!R.site) H.floorHole = { x0: R.T.x0, x1: R.T.x0 + R.T.N * C, z0: R.T.z0, z1: R.T.z0 + R.T.N * C };
+        if (trueGroundEarly) H.propLights = 0;   // rev 3: the whole HQ light budget — the walk had every torch
         var trueGround = !!_fieldGround();   // THE TRUE GROUND: no columns fill the window — the room's floor is drawn whole and every prop stands
         if (trueGround) H.floorHole = null;
         _hq = H;
@@ -53161,6 +53302,7 @@ const ThreeRenderer = (function () {
             try { _hqBuildCounters(copy); } catch (e) { console.warn('[HQ→battle] counters failed', e); }
             try { _hqPlaceProps(copy); } catch (e) { console.warn('[HQ→battle] props failed', e); }
             if (R.terrain && typeof _hqBuildClimbs === 'function') { try { _hqBuildClimbs(copy); } catch (e) { console.warn('[HQ→battle] climbs failed', e); } }   // the ladders / ropes / vines the tiers were reached by
+            if (trueGround) { try { _hqShadowFlags(copy); } catch (e) {} }   // rev 3: the room casts and receives the key's shadow exactly as it did on the walk
         } finally { _hq = saved; }
         /* the breathing glows: the room's list into the battle's (cleared with the scenery) */
         H.fxPulse.forEach(function (p) { if (p && p.mat) _hzGlowPulse.push(p); });
@@ -53177,6 +53319,7 @@ const ThreeRenderer = (function () {
         };
         /* what stays: by part on a site room (the battle's setting is the ground and, with an enclosure, the walls) / the ceiling never */
         var drop = R.site ? { floor: true, ceil: true, pipe: true, strip: true, wall: walled } : { ceil: true };
+        if (trueGround) drop.ceil = false;   // rev 3: a true-ground room KEEPS its ceiling — it fades as the eye rises through it (_fieldGroundTick)
         var kept = 0, dropped = 0;
         var holeM = H.floorHole;   // a cave's fluid sheets / glows / falls stand as pieces: those inside the window went at the build
         var take = function (src, isProp) {
@@ -53187,6 +53330,7 @@ const ThreeRenderer = (function () {
                 if (out) { dropped++; try { _disposeR(c); } catch (e) {} return; }
                 var plates = []; c.traverse(function (o) { if (o.isCSS2DObject) plates.push(o); });
                 plates.forEach(function (o) { if (o.parent) o.parent.remove(o); });
+                if (trueGround && c._ew_hqPart === 'ceil') { var ch = holder('hq_ceil'); ch.add(c); g.add(ch); _fieldCeilRegister(c, R, ts); kept++; return; }
                 if (c._ew_hqWall) wallOf(c._ew_hqWall).add(c);
                 else { var h = holder('hq_piece'); h.add(c); g.add(h); }
                 kept++;
@@ -53194,7 +53338,7 @@ const ThreeRenderer = (function () {
         };
         take(H.shellGroup, false); take(H.doorGroup, false); take(H.propGroup, true);
         g.traverse(function (o) {
-            if (o.isMesh) { o.castShadow = false; o.receiveShadow = false; }
+            if (o.isMesh && !trueGround) { o.castShadow = false; o.receiveShadow = false; }
             if (!o.material) return;
             var ms = Array.isArray(o.material) ? o.material : [o.material];
             for (var i = 0; i < ms.length; i++) {
@@ -53432,7 +53576,7 @@ const ThreeRenderer = (function () {
        viewpoint); `hold` is then the CAP on that wait. The encounter asks for a short fade: the seam is a
        camera move, not a crossfade. */
     var _hqDissolveRec = null;
-    function _hqDissolveFrame() { var r = _hqDissolveRec; if (!r) return; _hqDissolveRec = null; try { r.fade(); } catch (e) {} }
+    function _hqDissolveFrame() { var r = _hqDissolveRec; if (!r) return; if (typeof _fieldDissolveReady === 'function' && !_fieldDissolveReady()) return; _hqDissolveRec = null; try { r.fade(); } catch (e) {} try { if (typeof _fieldSeedRelease === 'function') _fieldSeedRelease(); } catch (e) {} }
     function _hqRenderOnce(H) {
         var noPost = (typeof window !== 'undefined' && window.EW_HQ_NO_POST);
         if (!noPost && ThreePost && ThreePost.renderScene) ThreePost.renderScene(H.scene, H.camera);
@@ -53457,8 +53601,8 @@ const ThreeRenderer = (function () {
         document.body.appendChild(snap);
         var done = false, fading = false;
         var drop = function () { if (done) return; done = true; if (_hqDissolveRec && _hqDissolveRec.el === snap) _hqDissolveRec = null; try { if (snap.parentNode) snap.parentNode.removeChild(snap); } catch (e) {} };
-        var fade = function () { if (fading || done) return; fading = true; try { snap.style.opacity = '0'; } catch (e) {} setTimeout(drop, ms + 120); };
-        var rec = { el: snap, ms: ms, hold: hold, drop: drop, fade: fade };
+        var fade = function () { if (fading || done) return; fading = true; rec.fadingAt = performance.now(); try { if (typeof _fieldSeedRelease === 'function') _fieldSeedRelease(); } catch (e) {} try { snap.style.opacity = '0'; } catch (e) {} setTimeout(drop, ms + 120); };
+        var rec = { el: snap, ms: ms, hold: hold, drop: drop, fade: fade, fadingAt: 0 };
         if (o && o.onFrame) _hqDissolveRec = rec;   // the first battle frame fades it; `hold` caps the wait
         setTimeout(fade, hold);
         setTimeout(drop, hold + ms + 120);

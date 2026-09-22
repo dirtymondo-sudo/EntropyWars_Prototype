@@ -43792,6 +43792,7 @@ function hqEncounterEye(ev, seats) {
     if (!(L > 1e-6)) { dx = 0; dy = -0.5; dz = 1; } else { dx /= L; dy /= L; dz /= L; }
     const out = { tx, tz, up, dx, dy, dz, look: 3 };
     for (const k in out) if (!isFinite(out[k])) return null;
+    if (isFinite(+e.fov) && +e.fov > 0) out.fov = +e.fov;   // THE SEAMLESS FIELD rev 3: the walker's lens, tweened to the board's with the swoop (three-camera.js seedPose)
     /* far outside the board (a complex part's doorway on the apron): clamp the eye to two tiles past the rim — the ground read clamps there anyway */
     out.tx = Math.max(-2, Math.min(b.N + 2, out.tx));
     out.tz = Math.max(-2, Math.min(b.N + 2, out.tz));
@@ -45679,6 +45680,11 @@ function hqFieldLayout(site, baseKey, opts) {
        _hqBuildRoomInBattle runs _hqBuildTerrain on the scratch record — the field, the outer ground, the treeline, the water) — so no
        near builder, no motion, THE WORLD inert; an OPEN room keeps the site's sky and far roster over it, a CLOSED one is a dark ceiling */
     if (env && opts.terrain) { delete env.near; delete env.motion; env.world = { kind: 'room' }; if (!opts.open) { env.scenery = 'none'; env.stars = 0; env.nebula = 0; delete env.density; } }
+    /* THE SEAMLESS FIELD rev 3 (2026-09-22, the user: "I don't want the lighting to change"): the field wears the ROOM's grade
+       (shell.look — the battle's _applyEnvLook reads env.look), and a CLOSED room's dome is painted the room's own fog colour
+       (the far wall fades into that colour on the walk; beyond the walls the eye sees the same dark, never the site's stars) */
+    if (env && opts.look) env.look = opts.look;
+    if (env && opts.dome != null && !opts.open && (opts.box || opts.terrain)) { env.tint = opts.dome; env.tintAmt = 1; env.stars = 0; env.nebula = 0; env.day = 0; env.clouds = 0; env.scenery = 'none'; delete env.density; }
     return {
         sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: S - 1, label: 'Earth', baseTerrain: baseKey || 'cave_floor' }, buffer2: null, below: null },
         barrierRows: [], barrierOpeningsX: [], hasFloors: false, env, streetLamps: !!(src && src.streetLamps),
@@ -45688,10 +45694,12 @@ function hqFieldRegister(roomId, ox, oz, opts) {
     const entry = hqFieldBuild(roomId, ox, oz, opts); if (!entry) return null;
     const id = entry.field.id, site = entry.field.site, S = HQ_FIELD_RULES.size;
     if (typeof PREBUILT_MAPS !== 'undefined' && PREBUILT_MAPS) PREBUILT_MAPS[id] = entry;
-    const layout = hqFieldLayout(site, entry.base, { box: !!entry.field.box, cave: !!entry.field.cave, terrain: !!entry.field.terrain, open: !!entry.field.open });
+    const room = DOOR_HQ.rooms[roomId], sh = (room && room.shell) || {};
+    const closedDome = (!sh.open) ? ((sh.fog && sh.fog.color != null) ? sh.fog.color : 0x0d0e12) : null;   // _hqEnter's closed-room fog (the default 0x0d0e12)
+    const layout = hqFieldLayout(site, entry.base, { box: !!entry.field.box, cave: !!entry.field.cave, terrain: !!entry.field.terrain, open: !!entry.field.open,
+                                                    look: (sh.look && typeof sh.look === 'object') ? sh.look : null, dome: closedDome });
     if (typeof MAP_LAYOUT_PRESETS !== 'undefined') MAP_LAYOUT_PRESETS[id] = layout;
     const siteMeta = (typeof EW_MAP_META !== 'undefined') ? EW_MAP_META.find(m => m.id === site) : null;
-    const room = DOOR_HQ.rooms[roomId];
     const meta = { id, label: (room.label || roomId) + ' · ' + HQ_FIELD_RULES.label, w: S, h: S, teamSize: HQ_FIELD_RULES.teamSize, tier: (siteMeta && siteMeta.tier) || 3,
                    biomes: (siteMeta && siteMeta.biomes) ? siteMeta.biomes.slice() : [], isDelta: true, field: true, base: entry.base, env: layout.env, desc: entry.deltaDesc };
     return { id, entry, layout, meta };

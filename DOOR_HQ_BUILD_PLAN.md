@@ -11345,3 +11345,30 @@ lamps; DOOR HQ, the Mall, the Spaceship; don't be afraid to make rooms bigger."
 - `HQ_KICKABLE`: `cardboard_boxes` + `wooden_bucket`, `maxFoot` 0.6. THE FLICKER: every plank deck rides 2.5 cm over its data height.
 - UNSEEN LIVE (RULE #1c): every facing and scale — the tank's and the jet's noses (`turn`), the well's bucket line against the GLB's
   windlass, the bench's back toward the wall (`front: 'back'`), the pole under the proc's mast arm, the vendors' size on a 2.4 m kerb.
+
+### 2026-09-22 — THE SEAMLESS FIELD rev 3: the light holds, the clicks, the held swoop (local delivery)
+- The user's three: "I don't want the lighting to change, it makes the transition really abrupt; still a rough transition;
+  I can't click on tiles when I am trying to move". MEASURED off the code: (1) the cut swapped the room's rig (a 0.22 key,
+  a 0.5 hemisphere, the fluorescents, the room's fog, its look, its box AO, its ceiling) for the board's (a 1.0 sun, a 0.45
+  sky + 0.38 ambient, no scene fog, the site's look, the cosmic dome eased in over a second, no ceiling) and the HQ camera's
+  52° lens for the battle's 45°; (2) THE TRUE GROUND builds no columns, and `screenToTile` raycasts `terrainGroup` — empty,
+  so every click on a tile returned null and died (a click on a unit still worked: `screenToUnit`).
+- THE LIGHT HOLDS: three-renderer.js `_fieldGroundDress` rebuilds the room's rig in the battle's frame (the same numbers as
+  `_hqEnter`'s box branches — keep them in step) and hands the key + hemisphere to three-post.js **`ThreePost.setFieldLight`**
+  (the sun IS the room's key, so the board's shadow rig casts the room's shadow; the ambient goes; the exposure is the
+  building's alone; the bloom is the building's threshold; no night grade, no tilt-shift; `_ssaoApply` reads the building's
+  reach); the fill + the point lights stand under the matrix (a PointLight's distance is world units — metres × the battle's
+  px per metre); the room's fog goes on the battle scene (density re-based); the room-box AO is re-centred (`_HQ_AO2.zw` —
+  the hook's uniform is a vec4 now); the room's pieces cast + receive (`_hqShadowFlags` on the scratch record); the whole
+  HQ light budget (the hall's torches); the CEILING STAYS and fades as the eye rises through it (`_fieldGroundTick`, the
+  materials cloned); the dome is SNAPPED to the room on the first frame (`_envSnapPending`), and data.js `hqFieldLayout`
+  paints a closed room's dome its fog colour + carries the room's `shell.look` as `env.look`.
+- THE CLICKS: `_fieldPickBuild` — one invisible double-sided quad per IN cell at its real top in `terrainGroup` (colorWrite
+  off, `_ew_occSkip`); hover, click and the surface-z read all land on it.
+- THE SEAM: the crossfade fades when nothing the fight asked for is still streaming (`_fieldDissolveReady` over a ledger
+  gate opened in `activate()`), else at the hold's cap; THE SWOOP is HELD at the walker's eye under the snapshot
+  (`ThreeCamera.seedHold`) and the walker's LENS rides the seed (`fov` on the eye) and tweens to the board's with the crane.
+- Files: three-renderer.js · three-post.js · three-camera.js · data.js (R2 + Render) · index.html (Render) · seamless-field.test.js (+3).
+- UNSEEN LIVE (RULE #1c): the first frame against the last (the whole point — a hard reload after the upload), the ceiling's
+  fade as the crane climbs, the shadow's bias on the room's floor under the board's frame, the fog on the units, the dome's
+  colour past the walls, the FOV tween's feel, the hold's length on a cold cache.

@@ -37,6 +37,11 @@ const ThreeCamera = (function () {
        slow, which read as a jump then a drift; a smoothstep reads as one continuous crane from the walker's eye
        up to the board's angle). After the window the ordinary damp takes over. */
     let _seedFrom = null, _seedT0 = 0, _seedEase = 0;
+    /* THE SEAMLESS FIELD (2026-09-22): seedHold(true) parks THE SWOOP at its seed — the room's held frame still covers the
+       canvas while the party's rigs land; the crane starts the frame the fade does, so the reveal never shows a camera
+       already half-way up. The window is pushed forward every held frame (snapImmediate stays ignored under it). */
+    let _seedHoldOn = false;
+    function seedHold(on) { _seedHoldOn = !!on; }
     /* Focal height latched while the user hand-pans the board — see sync(). */
     let _panFocalY = null;
 
@@ -488,8 +493,9 @@ const ThreeCamera = (function () {
             _smoothLookY = targetLookY;
             _smoothLookZ = targetLookZ;
             _initialized = true;
-        } else if (!seeded && _seedFrom && now < _seedUntil && _seedEase > 0) {
+        } else if (!seeded && _seedFrom && (_seedHoldOn || now < _seedUntil) && _seedEase > 0) {
             /* THE SWOOP: the tween from the seed to the ideal (the target may still drift — the blend reads it live) */
+            if (_seedHoldOn) { _seedT0 = now; _seedUntil = now + _seedEase; }   // held: the clock starts when the hold lifts
             const u = Math.max(0, Math.min(1, (now - _seedT0) / _seedEase));
             const k = u * u * (3 - 2 * u);
             _smoothPosX  = _seedFrom.px + (targetPosX  - _seedFrom.px) * k;
@@ -498,6 +504,7 @@ const ThreeCamera = (function () {
             _smoothLookX = _seedFrom.lx + (targetLookX - _seedFrom.lx) * k;
             _smoothLookY = _seedFrom.ly + (targetLookY - _seedFrom.ly) * k;
             _smoothLookZ = _seedFrom.lz + (targetLookZ - _seedFrom.lz) * k;
+            if (_seedFrom.fov && threeCamera) { const f = _seedFrom.fov + (_seedFrom.fovTo - _seedFrom.fov) * k; if (Math.abs(threeCamera.fov - f) > 0.01) { threeCamera.fov = f; threeCamera.updateProjectionMatrix(); } }
             if (u >= 1) _seedFrom = null;
         } else if (!seeded) {
             const st = (now < _seedUntil) ? _seedSt : (_smoothOverride > 0 ? SMOOTH_TIME_FAST : SMOOTH_TIME);
@@ -744,7 +751,8 @@ const ThreeCamera = (function () {
     /* THE ENCOUNTER (9.4 seam 2): park the walker's eye as the next frame's start — see the note by _seed */
     function seedPose(seed, easeS) {
         if (!seed || !isFinite(seed.tx + seed.tz + seed.up + seed.dx + seed.dy + seed.dz)) { _seed = null; return false; }
-        _seed = { tx: +seed.tx, tz: +seed.tz, up: +seed.up, dx: +seed.dx, dy: +seed.dy, dz: +seed.dz, look: (isFinite(seed.look) && seed.look > 0) ? +seed.look : 3 };
+        _seed = { tx: +seed.tx, tz: +seed.tz, up: +seed.up, dx: +seed.dx, dy: +seed.dy, dz: +seed.dz, look: (isFinite(seed.look) && seed.look > 0) ? +seed.look : 3,
+                  fov: (isFinite(seed.fov) && seed.fov > 0) ? +seed.fov : null };   // rev 3: the walker's lens — the frame starts at it and the swoop tweens it to the board's
         const ease = (isFinite(easeS) && easeS > 0) ? +easeS : 1.2;
         _seedSt = ease / 3;   // a damp settles ~95 % in three time constants
         _seedEase = ease; _seedFrom = null;
@@ -764,7 +772,8 @@ const ThreeCamera = (function () {
         _initialized = true;
         if (nowS > _seedUntil) _seedUntil = nowS + _seedSt * 3;   // seeded long before the first sync: the ease starts now
         /* THE SWOOP starts from this very frame and lands at the window's end */
-        _seedFrom = { px: ex, py: ey, pz: ez, lx: lx, ly: ly, lz: lz }; _seedT0 = nowS; _seedEase = Math.max(0.05, _seedUntil - nowS);
+        _seedFrom = { px: ex, py: ey, pz: ez, lx: lx, ly: ly, lz: lz, fov: null, fovTo: null }; _seedT0 = nowS; _seedEase = Math.max(0.05, _seedUntil - nowS);
+        if (S.fov && threeCamera) { _seedFrom.fov = S.fov; _seedFrom.fovTo = threeCamera.fov; threeCamera.fov = S.fov; threeCamera.updateProjectionMatrix(); }
         return true;
     }
     /* the seed's state for probes: { pending, easing, until } */
@@ -783,6 +792,7 @@ const ThreeCamera = (function () {
         resize,
         sync,
         screenToTile,
+        seedHold,
         screenToTilePlane,
         screenToUnit,
         screenDeltaToWorldXZ,

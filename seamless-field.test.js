@@ -187,3 +187,79 @@ test('the sources: map.js says THE GROUND IS THE BOARD and gates the Δ on the r
     assert.ok(TR.includes('terrain: !!room.terrain, base: base, field:') && TR.includes('if (R.terrain) { try { _hqBuildTerrain(copy); }') && TR.includes("opts: { room: R.roomId }"), 'the room round the field builds the terrain');
     assert.ok(TR.includes("if (R.terrain && typeof _hqBuildClimbs === 'function')"), 'and its climbs');
 });
+
+/* ── THE SEAMLESS FIELD rev 3 — THE LIGHT HOLDS + THE CLICKS + THE HELD SWOOP (2026-09-22) ──
+   The user: "I don't want the lighting to change, it makes the transition really abrupt; still a rough transition; I
+   can't click on tiles when I am trying to move". The battle wears the room's rig / fog / look / AO / ceiling
+   (ThreePost.setFieldLight), the dome is snapped to the room's colour on the first frame, the pick quads give
+   screenToTile something to hit, the crossfade waits for the party's rigs with the swoop (and the walker's lens)
+   held under it. */
+const TP = fs.readFileSync(path.join(__dirname, 'three-post.js'), 'utf8');
+const TC = fs.readFileSync(path.join(__dirname, 'three-camera.js'), 'utf8');
+
+test('rev 3 · the field env wears the room\'s look and a closed room\'s dome is its fog colour', () => {
+    const D = loadData();
+    const L1 = D.hqFieldLayout('prebuilt_haunted', 'wood', { box: true, look: { name: 'THE HALL', vignette: true }, dome: 0x123456 });
+    assert.ok(L1.env && L1.env.look && L1.env.look.name === 'THE HALL', 'the look rides env.look');
+    assert.equal(L1.env.tint, 0x123456); assert.equal(L1.env.tintAmt, 1); assert.equal(L1.env.stars, 0); assert.equal(L1.env.nebula, 0); assert.equal(L1.env.scenery, 'none');
+    const L2 = D.hqFieldLayout('prebuilt_haunted', 'wood', { terrain: true, open: true, look: null, dome: 0x123456 });
+    assert.notEqual(L2.env.tint, 0x123456, 'an open room keeps the site\'s sky');
+    assert.ok(!L2.env.look || L2.env.look.name !== 'THE HALL');
+    const W = D.hqFieldWindow(HALL, { x: 0, z: 0 }, { x: 1.75, z: 0 });
+    const reg = D.hqFieldRegister(W.room, W.ox, W.oz, {});
+    const sh = D.DOOR_HQ.rooms[HALL].shell;
+    assert.ok(reg && reg.meta && reg.meta.env, 'the hall registers');
+    if (sh.look) assert.equal(reg.meta.env.look, sh.look, 'the hall\'s own look');
+    assert.equal(reg.meta.env.tint, (sh.fog && sh.fog.color != null) ? sh.fog.color : 0x0d0e12, 'the hall\'s fog colour on the dome');
+    assert.ok(DATASRC.includes('if (env && opts.look) env.look = opts.look;') && DATASRC.includes('out.fov = +e.fov;'), 'the data sources');
+});
+
+test('rev 3 · the pick quads: one invisible double-sided quad per IN cell at its real top; the crossfade waits for the rigs, else the cap', () => {
+    const a = TR.indexOf('    var _fieldGroundCache = { key: null, G: null };'), b = TR.indexOf('    function _hqBuildRoomInBattle(ctx) {');
+    const src = TR.slice(a, b);
+    const ts = 127.75, C = 1.7534, base = 5;
+    const R = { site: false, cave: false, base, T: { N: 8, C, x0: 0, z0: 0 }, field: { tops: [[0, 0.76, null], [2.9, 0.25, 0]] } };
+    class Obj { constructor() { this.children = []; this.position = { x: 0, y: 0, z: 0, set(x, y, z) { this.x = x; this.y = y; this.z = z; } }; } add(c) { this.children.push(c); } }
+    class Geo { rotateX() {} }
+    const THREE = { Group: Obj, Mesh: class extends Obj { constructor(g, m) { super(); this.geometry = g; this.material = m; } }, PlaneGeometry: Geo, MeshBasicMaterial: class { constructor(o) { Object.assign(this, o); } }, DoubleSide: 2 };
+    const terrainGroup = new Obj();
+    let now = 1000;
+    const ctx = { window: {}, CONFIG: { tileSize: ts }, BASE_TILE: 96, ELEV_STEP_RATIO: 1, THREE, console, terrainGroup,
+                  _hqBattleRoom: () => R, _hqBattleRoomKey: () => 'k', _hqUnits: () => 73, _facilityNearGroup: null, _hqLightRules: () => ({}), _polishOff: () => true, _ewHeightFogSet: () => {},
+                  hqFieldGroundOn: () => true, performance: { now: () => now }, _hqDissolveRec: null, _alGateOpen: () => ({ pending: () => 0, close() {} }) };
+    vm.createContext(ctx);
+    vm.runInContext(src + '\n_fieldGroundArmed = true; _fieldPickBuild(CONFIG.tileSize); this.__ready = _fieldDissolveReady; this.__setGate = function (g, at) { _fieldGate = g; _fieldGateAt = at; };', ctx);
+    assert.equal(terrainGroup.children.length, 1, 'one pick group in terrainGroup');
+    const quads = terrainGroup.children[0].children;
+    assert.equal(quads.length, 5, 'one quad per IN cell (the null cell has none)');
+    const s = ts / C, floor = base * ts;
+    const q10 = quads.find(q => q.position.x === 1 * ts + ts / 2 && q.position.z === 0 * ts + ts / 2);
+    assert.ok(q10 && Math.abs(q10.position.y - (floor + 0.76 * s + 0.5)) < 1e-9, 'the table cell\'s quad sits on the table');
+    assert.ok(quads.every(q => q.material.colorWrite === false && q.material.side === 2 && q._ew_occSkip === true), 'drawn to nothing, double-sided, never an occluder');
+    /* the dissolve gate */
+    assert.equal(ctx.__ready(), true, 'no gate: the first frame fades');
+    ctx._hqDissolveRec = { hold: 1500, fadingAt: 0 };
+    ctx.__setGate({ pending: () => 2, close() {} }, 1000);
+    assert.equal(ctx.__ready(), false, 'two rigs still streaming: the snapshot holds');
+    now = 1000 + 1600;
+    assert.equal(ctx.__ready(), true, 'the hold\'s cap');
+    now = 1000 + 200; ctx._hqDissolveRec.fadingAt = 1;
+    assert.equal(ctx.__ready(), true, 'the timer already faded it');
+    ctx._hqDissolveRec.fadingAt = 0; ctx.__setGate({ pending: () => 0, close() {} }, 1000);
+    assert.equal(ctx.__ready(), true, 'every rig landed');
+});
+
+test('rev 3 · the sources: the room\'s rig / fog / AO / ceiling / dome / lens hand over, the post file yields to the field light, the camera holds the swoop', () => {
+    assert.ok(TR.includes('_fieldPickBuild(ts);') && TR.includes('if (typeof ThreePost !== \'undefined\' && ThreePost.setFieldLight) ThreePost.setFieldLight(field);'), 'the rig hands over');
+    assert.ok(TR.includes('scene.fog = new THREE.FogExp2(fogC, fogD);') && TR.includes('_HQ_AO2.z = -R.T.x0 * ts / R.T.C; _HQ_AO2.w = -R.T.z0 * ts / R.T.C;'), 'the fog and the AO centre');
+    assert.ok(TR.includes('uniform vec4 uHqAo2;') && TR.includes('abs( vHqWp.x - uHqAo2.z )') && TR.includes('_HQ_AO2.z = 0; _HQ_AO2.w = 0;'), 'the AO box carries a centre; the building stands at the origin');
+    assert.ok(TR.includes('if (trueGround) drop.ceil = false;') && TR.includes('_fieldCeilRegister(c, R, ts)') && TR.includes('        _fieldGroundTick();'), 'the ceiling stays and fades');
+    assert.ok(TR.includes('if (trueGround) { try { _hqShadowFlags(copy); } catch (e) {} }') && TR.includes('if (o.isMesh && !trueGround) { o.castShadow = false; o.receiveShadow = false; }'), 'the room casts and receives');
+    assert.ok(TR.includes("try { if (typeof _fieldGroundArm === 'function') _fieldGroundArm(); } catch (e) {}") && TR.includes("try { if (typeof _fieldGroundRelease === 'function') _fieldGroundRelease(); } catch (e) {}"), 'activate arms, deactivate releases');
+    assert.ok(TR.includes('if (_envSnapPending) {') && TR.includes("if (typeof _fieldDissolveReady === 'function' && !_fieldDissolveReady()) return;") && TR.includes('if (_hqDissolveRec) _hqDissolveFrame();'), 'the dome snap and the gated fade');
+    assert.ok(TR.includes('fov: H.camera.fov') && TR.includes('if (trueGroundEarly) H.propLights = 0;'), 'the lens rides the eye; the whole light budget');
+    assert.ok(TP.includes('function setFieldLight(o) {') && TP.includes('if (_fieldLight) _ng = 0;') && TP.includes("if (_fieldLight) ctx = 'hq';") && TP.includes('setFieldLight: setFieldLight, getFieldLight: getFieldLight'), 'the post file');
+    assert.ok(TP.includes('(F ? 1 : _cur.exposure) * _expLk()') && TP.includes("_bloomPass.threshold = _bloomThrFor(_thrIn, F ? HQ_BLOOM_THRESHOLD : BLOOM_USER_THRESHOLD);"), 'no day preset, the building\'s bloom');
+    assert.ok(TC.includes('function seedHold(on) { _seedHoldOn = !!on; }') && TC.includes('if (_seedHoldOn) { _seedT0 = now; _seedUntil = now + _seedEase; }') && TC.includes('fov: (isFinite(seed.fov) && seed.fov > 0) ? +seed.fov : null'), 'the camera');
+    assert.ok(TC.includes('threeCamera.fov = S.fov; threeCamera.updateProjectionMatrix();') && TC.includes('        seedHold,'), 'the lens tween + the API');
+});

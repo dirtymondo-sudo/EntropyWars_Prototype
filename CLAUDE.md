@@ -8156,3 +8156,34 @@ walker-reachable ⇒ unit-reachable, never the converse); the water sheets and t
 hall's residue strip (delivery 1) stands. Ship data.js to R2 AND Render. UNSEEN LIVE (RULE #1c): the grounds under the
 battle's night, the tiers' read against the engine's levels (the porch +1, the crypt +1, the gazebo roof +3), a unit on the
 footbridge, the trees as rock cells, the treeline and the fog past the window, the eye's first frame on a slope.
+
+## THE SEAMLESS FIELD rev 3 — THE LIGHT HOLDS · THE CLICKS · THE HELD SWOOP (2026-09-22, local delivery)
+The user: "I don't want the lighting to change, it makes the transition really abrupt; still a rough transition; I can't
+click on tiles when I am trying to move". **THE LIGHT HOLDS**: the battle WEARS THE ROOM — three-renderer.js
+`_fieldGroundDress` rebuilds the room's rig in the battle's frame (the same numbers `_hqEnter`'s box branches use — keep
+them in step) and hands the key + hemisphere to **`ThreePost.setFieldLight(o | null)`** (three-post.js: the sun IS the
+room's key — colour · intensity · direction, the board's shadow frame casts it —, the hemisphere the room's, the ambient 0,
+the exposure `_expLk()` alone (no day preset), the bloom the building's (`renderScene`'s rule, ONE `_bloomThrFor` site),
+the night grade 0, the tilt-shift off round the composer render, `_ssaoApply` forced to `'hq'`; `setFieldLight(null)`
+hands every dial back); the fill + the point lights stand under the matrix (a PointLight's `distance` is world units the
+parent's scale never touches — metres × `s`, the battle's px per metre); the room's FOG goes on `scene.fog` (the density
+re-based to battle px; restored on deactivate); the room-box AO is re-centred — `_HQ_AO2` is a vec4 now (`.zw` = the box
+centre; `_hqAoArm` writes 0, 0 — the building's room stands at the origin); the room's pieces cast + receive the key's
+shadow (`_hqShadowFlags` on the scratch record; the `castShadow = false` traverse is skipped under true ground); the
+whole HQ light budget (`H.propLights = 0`); **the CEILING STAYS** (`drop.ceil = false`) and fades as the eye rises through
+it (`_fieldCeilRegister` clones its materials, `_fieldGroundTick` from renderFrame eases the opacity by the camera's
+height); the dome is SNAPPED to the room on the first frame (`_envSnapPending` in `_updateEnvironment` — the eased tint /
+stars used to arrive over the first second); data.js `hqFieldLayout(site, base, { look, dome })` carries the room's
+`shell.look` as `env.look` and paints a CLOSED room's dome its fog colour (`hqFieldRegister` reads the shell). **THE
+CLICKS**: `_fieldPickBuild(ts)` (from `rebuildTerrain`'s field branch) puts one invisible double-sided quad per IN cell at
+its real top in `terrainGroup` (`colorWrite: false`, `_ew_occSkip`) — `screenToTile` raycasts that group, and under the
+true ground there was nothing to hit. **THE SEAM**: `activate()` → `_fieldGroundArm` opens a ledger gate (`adoptLive`)
+and `ThreeCamera.seedHold(true)`; `_hqDissolveFrame` fades the held snapshot only when `_fieldDissolveReady()` (nothing
+pending, or the timer already faded it, or the hold's cap) and releases the hold (`_fieldSeedRelease`; the timer's
+`fade` releases too); THE SWOOP's clock is pushed every held frame, so the crane starts the frame the fade does; the
+walker's LENS rides the eye (`fov` on `_hqEncounterEye` → data.js `hqEncounterEye` → `seedPose`), the first frame is
+shot at it and the swoop tweens it to the board's — the 52° → 45° pop is gone. Pins kept: the room-in-battle test's
+`drop` / `propLights` literals (overridden on the next line), hq-encounter's `if (_hqDissolveRec) _hqDissolveFrame();`,
+hdr-bloom's three threshold sites + `_tmSync` before each composer render, premium-polish-3's `_ssaoApply('battle')`.
+`npm test` runs seamless-field.test.js (rev 3 ×3). UNSEEN LIVE (RULE #1c): the first frame against the last, the
+ceiling's fade, the room's shadow under the board's bias, the fog on the units, the dome past the walls, the FOV tween.

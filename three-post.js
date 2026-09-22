@@ -1367,10 +1367,26 @@ const ThreePost = (function () {
 
     function _lerpVal(a, b, t) { return a + (b - a) * t; }
 
+    /* ══ THE SEAMLESS FIELD — THE FIELD LIGHT (2026-09-22) ══
+       While an encounter stands on the room it was struck in (three-renderer.js _fieldGroundDress), the battle's day / night
+       rig is REPLACED by the room's own: the sun becomes the room's key (colour · intensity · direction — its shadow frame
+       is the board's), the hemisphere the room's, the ambient goes (the building has none), the exposure is the building's
+       alone (no day preset), the bloom reads as LIGHT (the building's threshold), the night grade / the tilt-shift never
+       run and the AO keeps the building's reach — the cut from the walk to the board changes no light. setFieldLight(null)
+       hands every dial back. The user: "I don't want the lighting to change, it makes the transition really abrupt". */
+    var _fieldLight = null;
+    function setFieldLight(o) {
+        _fieldLight = (o && typeof o === 'object') ? o : null;
+        if (_sunLight) _sunLight.castShadow = (_shadowQuality !== 'off') && !(_fieldLight && _fieldLight.shadow === false);
+        _applyCurrent();
+    }
+    function getFieldLight() { return _fieldLight; }
     function _applyCurrent() {
+        var F = _fieldLight;
         if (_sunLight) {
-            _sunLight.color.setRGB(_cur.sunR, _cur.sunG, _cur.sunB);
-            _sunLight.intensity = _cur.sunInt;
+            if (F && F.sun) { _sunLight.color.setHex(F.sun.color != null ? F.sun.color : 0xffffff); _sunLight.intensity = +F.sun.intensity || 0; }
+            else { _sunLight.color.setRGB(_cur.sunR, _cur.sunG, _cur.sunB); _sunLight.intensity = _cur.sunInt; }
+            var _sdx = (F && F.sun && F.sun.dir) ? F.sun.dir[0] : _cur.sunDirX, _sdy = (F && F.sun && F.sun.dir) ? F.sun.dir[1] : _cur.sunDirY, _sdz = (F && F.sun && F.sun.dir) ? F.sun.dir[2] : _cur.sunDirZ;
             // Direction only (no shadow frame yet): a unit vector aimed at the
             // origin behaves exactly like the old rig. Once setShadowFrame has
             // fitted the board, park the sun a real distance out along that
@@ -1378,7 +1394,7 @@ const ThreePost = (function () {
             if (_shadowFrame) {
                 var _sf = _shadowFrame;
                 var _sd = Math.max(_sf.radius * 1.8, 900);
-                _sunLight.position.set(_cur.sunDirX, _cur.sunDirY, _cur.sunDirZ).normalize().multiplyScalar(_sd);
+                _sunLight.position.set(_sdx, _sdy, _sdz).normalize().multiplyScalar(_sd);
                 _sunLight.position.x += _sf.cx;
                 _sunLight.position.z += _sf.cz;
                 if (_sunLight.target) {
@@ -1386,20 +1402,26 @@ const ThreePost = (function () {
                     _sunLight.target.updateMatrixWorld();
                 }
             } else {
-                _sunLight.position.set(_cur.sunDirX, _cur.sunDirY, _cur.sunDirZ).normalize();
+                _sunLight.position.set(_sdx, _sdy, _sdz).normalize();
             }
         }
         if (_hemiLight) {
-            _hemiLight.color.setRGB(_cur.skyR, _cur.skyG, _cur.skyB);
-            _hemiLight.groundColor.setRGB(_cur.gndR, _cur.gndG, _cur.gndB);
-            _hemiLight.intensity = _cur.hemiInt;
+            if (F && F.hemi) { _hemiLight.color.setHex(F.hemi.sky != null ? F.hemi.sky : 0xffffff); _hemiLight.groundColor.setHex(F.hemi.ground != null ? F.hemi.ground : 0x000000); _hemiLight.intensity = +F.hemi.intensity || 0; }
+            else {
+                _hemiLight.color.setRGB(_cur.skyR, _cur.skyG, _cur.skyB);
+                _hemiLight.groundColor.setRGB(_cur.gndR, _cur.gndG, _cur.gndB);
+                _hemiLight.intensity = _cur.hemiInt;
+            }
         }
         if (_ambientLight) {
-            _ambientLight.color.setRGB(_cur.ambR, _cur.ambG, _cur.ambB);
-            _ambientLight.intensity = _cur.ambInt;
+            if (F) { _ambientLight.intensity = (F.ambient && F.ambient.intensity) ? +F.ambient.intensity : 0; if (F.ambient && F.ambient.color != null) _ambientLight.color.setHex(F.ambient.color); }
+            else {
+                _ambientLight.color.setRGB(_cur.ambR, _cur.ambG, _cur.ambB);
+                _ambientLight.intensity = _cur.ambInt;
+            }
         }
         if (_renderer) {
-            _renderer.toneMappingExposure = _cur.exposure * _expLk() * (_filmic ? FILMIC_EXPOSURE_COMP : 1.0);
+            _renderer.toneMappingExposure = (F ? 1 : _cur.exposure) * _expLk() * (_filmic ? FILMIC_EXPOSURE_COMP : 1.0);
         }
         if (_bloomPass) {
             var _bu = _lkNum('bloom', BLOOM_USER_STRENGTH), _bloomOn = _bu > 0;
@@ -1407,9 +1429,11 @@ const ThreePost = (function () {
             if (_bloomOn) {
                 // floor the env grade (which is 0 by day/night) to the user level
                 // so the glow is always visible, and let bright sky-events add to it
-                _bloomPass.strength  = Math.max(_cur.bloomStr, _bu);
-                _bloomPass.threshold = _bloomThrFor(Math.min(_cur.bloomThr, BLOOM_USER_THRESHOLD), BLOOM_USER_THRESHOLD);
-                _bloomPass.radius    = BLOOM_USER_RADIUS;
+                /* THE FIELD LIGHT: the building's bloom (renderScene's rule) — the look's bar as a share of HQ_BLOOM_THRESHOLD, a white wall never glows */
+                var _thrIn = F ? ((_look && typeof _look.bloomThr === 'number') ? _look.bloomThr : HQ_BLOOM_THRESHOLD) : Math.min(_cur.bloomThr, BLOOM_USER_THRESHOLD);
+                _bloomPass.strength  = F ? Math.max(_bu, 0.42) : Math.max(_cur.bloomStr, _bu);
+                _bloomPass.threshold = _bloomThrFor(_thrIn, F ? HQ_BLOOM_THRESHOLD : BLOOM_USER_THRESHOLD);
+                _bloomPass.radius    = F ? ((_look && typeof _look.bloomRadius === 'number') ? _look.bloomRadius : HQ_BLOOM_RADIUS) : BLOOM_USER_RADIUS;
             }
         }
     }
@@ -2194,6 +2218,7 @@ const ThreePost = (function () {
     }
     function _ssaoApply(ctx) {
         if (!_ssaoPass) return;
+        if (_fieldLight) ctx = 'hq';   // THE FIELD LIGHT: the room keeps the building's AO reach through the fight
         var on = _ssaoAvail && _ssaoWanted();
         _ssaoPass.enabled = on;
         if (!on) return;
@@ -2407,6 +2432,7 @@ const ThreePost = (function () {
         var _mb = _motionTick(_nowMs);   // 6.4: a battle never feeds it, so it decays to 0 here
         if (_cinematicPass) {
             var _ng = _nightF * _lkNum('nightMood', _nightMood) * 0.85;
+            if (_fieldLight) _ng = 0;   // THE FIELD LIGHT: the room wears no night grade
             if (_dim > 0) _ng = Math.max(_ng, _dim * 0.92);
             // A spotlit beat carries its own darkness in the grade (the pools
             // lift out of it), so it feeds the night grade too — that's what
@@ -2424,14 +2450,14 @@ const ThreePost = (function () {
             // Written AFTER syncLighting() (which owns the steady value) so
             // the beat wins for its duration and restores itself on release.
             _renderer.toneMappingExposure =
-                _cur.exposure * _expLk() * (_filmic ? FILMIC_EXPOSURE_COMP : 1.0)
+                (_fieldLight ? 1 : _cur.exposure) * _expLk() * (_filmic ? FILMIC_EXPOSURE_COMP : 1.0)
                 * (1 - 0.5 * _dim);
         }
 
         // Impact flash — decaying bloom kick over the steady user strength.
         if (_bloomPass && _bloomPass.enabled) {
             var _pulse = _bloomPulseCurrent(performance.now());
-            _bloomPass.strength = Math.max(_cur.bloomStr, _lkNum('bloom', BLOOM_USER_STRENGTH)) + _pulse;
+            _bloomPass.strength = (_fieldLight ? Math.max(_lkNum('bloom', BLOOM_USER_STRENGTH), 0.42) : Math.max(_cur.bloomStr, _lkNum('bloom', BLOOM_USER_STRENGTH))) + _pulse;
         }
 
         if (_cinematicPass && _cinematicPass.enabled) {
@@ -2458,8 +2484,13 @@ const ThreePost = (function () {
 
         _composer.passes[0].camera = cam;
         if (_ssaoPass) { _ssaoPass.camera = cam; _ssaoApply('battle'); }
-        _tmSync();
-        _composer.render();
+        /* THE FIELD LIGHT: no tilt-shift band over the room (the building never had one — a board plane to focus on is what it wants) */
+        var _fdH = _dofPassH ? _dofPassH.enabled : false, _fdV = _dofPassV ? _dofPassV.enabled : false;
+        if (_fieldLight) { if (_dofPassH) _dofPassH.enabled = false; if (_dofPassV) _dofPassV.enabled = false; }
+        try {
+            _tmSync();
+            _composer.render();
+        } finally { if (_fieldLight) { if (_dofPassH) _dofPassH.enabled = _fdH; if (_dofPassV) _dofPassV.enabled = _fdV; } }
     }
 
     /* ── Render ANOTHER scene through the same post stack ──────────────
@@ -2908,6 +2939,7 @@ const ThreePost = (function () {
         setSsaoScale: setSsaoScale, getSsao: getSsao, setMotion: setMotion, getMotion: getMotion, polishApply: polishApply,   // THE THIRD PASS (3.4 · 6.4 · the settings)
         getSceneLookOwned: getSceneLookOwned,
         setExposureContext: setExposureContext,
+        setFieldLight: setFieldLight, getFieldLight: getFieldLight,   // THE SEAMLESS FIELD: the room's rig over the battle's
         getExposureContext: getExposureContext,
         getSceneLook: getSceneLook,
         isReady: isReady,
