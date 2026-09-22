@@ -592,6 +592,37 @@ room); `greek_column` ×4, `floating_orb`, `pearly_gate`, `carousel`, `fortune_t
 9. **a card catalogue** (a wall of tiny brass-handled drawers, ~2.6 m) — three shelves round the top shelf today.
 10. **a giant eye for the horizon** (the same rig as #2 at any scale — one file for both).
 
+## 3q. THE 2026-09-22 BATCH (Assets/misc/ — wells, benches, vendors, armour, beds, tents, the console, the tapes, the posts)
+
+Seventeen Meshy models the user uploaded to R2 `Assets/misc/` on 2026-09-22. Every one is a `DOOR_HQ.catalogue` row (`base: 'misc'`, the
+file named there) and a `_MISC_GLB` register row; a proc that stood for one of them keeps its key and hangs the file over its own stand-in
+through three-renderer.js **`_hqCatGlb(key, U, { h, fit, hide, onDone, turn })`** — the GLB-FIRST rule (the telescope's). UNMEASURED: every
+`h` / `span` / `rect` / `turn` is a target (the CDN is unreachable from the sandbox) — a piece that lands wrong is that one field.
+
+| catalogue key | file | stands as |
+| --- | --- | --- |
+| `ancient_well` | Meshy_AI_an_ancient_well_0922010024_texture.glb | EVERY WELL — the `well` way rig (`_hqWayBuilders.well`: the cellar, the garden, Camelot's bailey, the ranch's farmyard, Göbekli's flank, the cave's well room, the cortile's cistern) over the stone-head stand-in; the shaft, its light and the glow stay |
+| `wooden_bucket` | Meshy_AI_wooden_bucket_0922011434_texture.glb | the well's bucket on the rope (the way tick lowers it into the shaft); a kickable floor prop of its own |
+| `city_bench` | Meshy_AI_a_city_bench_0922010124_texture.glb | EVERY BENCH — `park_bench` (the foyer, the garden, the grove, the Bowl's concourse, the chapel's six pews…) and `locker_bench` (Room 26) hang it over their slat stand-ins; a placeable row too (`seat` 0.45, `front: 'back'`) |
+| `hot_dog_stand` | Meshy_AI_a_hot_dog_stand_0922010432_texture.glb | the three street cities' kerbs — a `scatter` row (`r0` 0.9, the kerb rule puts it on the sidewalks off the run-ups): the Strip ×2, Disaster City ×3, the Grid ×2 |
+| `military_tank` | Meshy_AI_a_military_tank_0922010101_texture.glb | AREA 51's two pens behind the revetments (`turn: 90` — the vehicle rule) |
+| `fighter_jet` | Meshy_AI_f22_fighter_jett_0713025555_texture.glb (`Assets/weapons/`, `base: 'weapons'`) | RUNWAY 33's east end, nose down the runway — the SAME file the Air Support spell flies (§5); `_hqModelUrl` reads `base: 'weapons'` since this batch |
+| `yellow_pole` | Meshy_AI_a_yellow_pole_0922010159_texture.glb | the board's TRAFFIC LIGHT pole (`_buildTrafficLight3D`, through `_hzMiscKit` fitted to the pole's height; the mast arm and the three-lamp head stay the proc's); a bollard row of its own for a room |
+| `hospital_bed` | Meshy_AI_a_hospital_bed_0922010451_texture.glb | Room 1111's ward (the two cots along the east wall; the patient sits on one) |
+| `dorm_bed` | Meshy_AI_a_dorm_bed_0922010217_texture.glb | the keep's guardroom (two bunks by the west wall) |
+| `couples_bed` | Meshy_AI_a_couples_bed_0922010443_texture.glb | the bunker's loft (2.6 m) |
+| `royal_bed` | Meshy_AI_a_royal_bed_0922010438_texture.glb | THE SOLAR in the keep (4.5 m) |
+| `camping_tent` | Meshy_AI_a_camping_tent_0922010306_texture.glb | the grove's camp — the three members' tents (they were fortune tents) |
+| `carnival_tent` | Meshy_AI_a_carnival_tent_0922010243_texture.glb | the grove's lawn, west (Room 1893's own canvas is the `bigtop` ceiling — a 22 × 16 room has no floor for a 6 m tent) |
+| `fortune_teller_tent` | Meshy_AI_a_fortune_teller_tent_0922010255_texture.glb | the `fortune_tent` proc (Room 1893, the Strip's back lot, the sea) over its canvas stand-in; the crystal ball, the glow and the sign stay |
+| `retro_control_panel` | Meshy_AI_a_retro_control_panel_0922010114_texture.glb | the `retro_console` proc (the retro-futurist kit: the bridge's console bank) over its desk / lamp-bank stand-in; the catalogue's glow + light stay |
+| `vhs_player` | Meshy_AI_a_vhs_player_0922010233_texture.glb | on top of every `tape_shelf` (Room 360's shelf); a tabletop row of its own |
+| `vhs_tape` | Meshy_AI_a_vhs_tape_0922010141_texture.glb | the `find_tape` proc — every tape find in the world (the placer's sparkle stays) |
+| `field_goal_post` | Meshy_AI_a_yellow_field_goal_post_0922010209_texture.glb | THE BOWL's two goal lines |
+
+Also in the same delivery: EVERY cardboard box is a kickable (`HQ_KICKABLE.keys` grew `cardboard_boxes` + `wooden_bucket`, `maxFoot` 0.6), and THE FLICKER on the
+plank decks (a terrain `deck` and a cave-grid bridge cell ride 2.5 cm over their data height — the bridge layer's rule).
+
 ## 4. The older `Assets/misc/` models (`_MISC_GLB` + the OBJ landmarks)
 
 | key | file | kind | stands as |
@@ -739,6 +770,10 @@ skinned clone of a cult member rig on the board is the next pass.
 | the thing | the model | where |
 | --- | --- | --- |
 | the alien saucer in flight / abducting | Triangle UFO (`ufo`) | orbs / space rosters, the UFO spells |
+| a well | `ancient_well` + `wooden_bucket` (§3q) | every `well` way in the world (the stone proc is its stand-in only) |
+| a bench | `city_bench` (§3q) | `park_bench` and `locker_bench` everywhere, the row of its own |
+| a fighter jet | Meshy_AI_f22_fighter_jett (`Assets/weapons/`) | the Air Support / flyover spells, Area 51's flight line (`fighter_jet`, `base: 'weapons'`) |
+| a traffic light's pole | `yellow_pole` (§3q) | the board's `traffic_light` object; a bollard row in a room |
 | the saucer on the ground | `saucer_lg` | Area 51 |
 | a cannon | `cannon` | the Dutchman's rails, the Cannonball spell, THE GUN DECK below decks (`ship_cannon`) |
 | a sea chest / an anchor / a hanging lantern | `chest` / `anchor` / `lantern` | the Dutchman's deck and quay; below decks as `sea_chest` / `ship_anchor` / `ship_lantern` (rev 19) |

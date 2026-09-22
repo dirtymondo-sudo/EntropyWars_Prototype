@@ -2767,10 +2767,10 @@ test('Room 1111 is a box room off the ground ring at 210° (between the Training
     assert.ok(MED.props.some(p => p.key === 'tanker_desk' && p.wall === 's' && Math.abs(p.x - dk.x) < 0.3), 'a desk under the desk counter');
     assert.ok(MED.props.some(p => p.key === 'clipboard' && p.wall === 'e' && Math.abs(p.z - ch.z) < 0.3), 'the chart is a clipboard on the east wall at the counter');
     const has = key => MED.props.filter(p => p.key === key).length;
-    for (const key of ['cot', 'sink', 'wall_shelf', 'clipboard', 'tanker_desk', 'crt_terminal', 'computer_chair_grey', 'folding_chair', 'metal_shelving', 'filing_cabinet', 'notice_board', 'wall_clock', 'water_cooler', 'exit_sign', 'fluorescent', 'fire_extinguisher', 'breaker_panel', 'floor_drain']) assert.ok(has(key) >= 1, 'Room 1111 has its ' + key);
-    assert.ok(has('cot') >= 2, 'a ward: two cots at least'); assert.ok(MED.props.every(p => p.key !== 'cot' || p.x > MED.shell.w / 2 - 1.0), 'the cots stand along the east wall');
+    for (const key of ['hospital_bed', 'sink', 'wall_shelf', 'clipboard', 'tanker_desk', 'crt_terminal', 'computer_chair_grey', 'folding_chair', 'metal_shelving', 'filing_cabinet', 'notice_board', 'wall_clock', 'water_cooler', 'exit_sign', 'fluorescent', 'fire_extinguisher', 'breaker_panel', 'floor_drain']) assert.ok(has(key) >= 1, 'Room 1111 has its ' + key);
+    assert.ok(has('hospital_bed') >= 2, 'a ward: two hospital beds at least (THE 2026-09-22 BATCH: the ward\'s cots are the user\'s hospital beds)'); assert.ok(MED.props.every(p => p.key !== 'hospital_bed' || p.x > MED.shell.w / 2 - 1.0), 'the beds stand along the east wall');
     assert.ok(MED.agents.some(a => a.pose === 'hqSit' && MED.props.some(p => /^(office_chair|computer_chair_)/.test(p.key) && Math.hypot(p.x - a.x, p.z - a.z) < 0.05)), 'the nurse sits on the desk chair');
-    assert.ok(MED.agents.some(a => a.pose === 'hqSit' && MED.props.some(p => p.key === 'cot' && Math.hypot(p.x - a.x, p.z - a.z) < 0.05)), 'the patient sits on a cot');
+    assert.ok(MED.agents.some(a => a.pose === 'hqSit' && MED.props.some(p => p.key === 'hospital_bed' && Math.hypot(p.x - a.x, p.z - a.z) < 0.05)), 'the patient sits on a bed');
     assert.deepStrictEqual(boxPropProblems('medical', MED), []);
     const rows = D.hqRoomRegister().filter(r => r.no === '1111');
     assert.strictEqual(rows.length, 1); assert.strictEqual(rows[0].kind, 'room'); assert.strictEqual(rows[0].id, 'medical');

@@ -8043,3 +8043,25 @@ times read as a question mark from the next hub over. A portal node keeps its ST
 only a never-entered room is the `?`. hq-map.test.js pins the click rule, both zoom thresholds and the exit.
 UNSEEN LIVE (RULE #1c): the zoom thresholds' feel on a real wheel (the two constants are the edit), the exit's
 gold dashed ring against the hub inks.
+
+## THE 2026-09-22 BATCH — wells · benches · vendors · armour · beds · tents · the console · the tapes · the posts + THE KICKABLE BOXES + THE DECK FLICKER (2026-09-22, local delivery)
+Seventeen Meshy models the user uploaded to R2 `Assets/misc/` (MODEL_INDEX §3q has the table and every home). **THE RULE**: a model is ONE
+`DOOR_HQ.catalogue` row (`base: 'misc'`; the F22 wears `base: 'weapons'` — `_hqModelUrl` reads the spell-prop bucket now, the same file the
+Air Support spell flies) and a `_MISC_GLB` register row; a PROC that stood for the thing keeps its key and hangs the file over its own
+geometry through three-renderer.js **`_hqCatGlb(key, U, { h, fit, hide, onDone, turn })`** (the row by key, the placer's material pick,
+the stand-in pieces in `hide` go invisible when the file lands — the telescope's rule made one helper). Wired: **every well** (`_hqWayBuilders
+.well` — `ancient_well` over the stone head + frame, `wooden_bucket` riding the rope; the shaft, its light and the glow stay), **every bench**
+(`park_bench` + `locker_bench` → `city_bench`), the `fortune_tent` (→ `fortune_teller_tent`; the ball / glow / sign stay), the `retro_console`
+(→ `retro_control_panel`; the catalogue's glow + light stay), the `find_tape` (→ `vhs_tape`; the sparkle stays), a `vhs_player` on every
+`tape_shelf`, and the BOARD's traffic light (`_buildTrafficLight3D` → `_hzMiscKit('yellow_pole')` fitted to the pole's height; the mast arm
+and the head stay). Placed: `hospital_bed` ×2 in Room 1111's ward (doorhq's cot pins read the bed), `royal_bed` in the keep's solar,
+`dorm_bed` ×2 in its guardroom, `couples_bed` on the bunker's loft, `camping_tent` ×3 at the grove's camp + a `carnival_tent` on its lawn,
+`field_goal_post` ×2 on the Bowl's goal lines, `military_tank` ×2 in Area 51's pens + the `fighter_jet` on Runway 33 (every room re-solved
+with `node check-terrain.js`, nothing traps), and `hot_dog_stand` as a **scatter row** in the three street cities (`r0: 0.9` — the kerb
+rule puts a vendor on a sidewalk off the run-ups; measured: every one on a kerb, zero run-up offenders). **THE KICKABLE BOXES**:
+`HQ_KICKABLE.keys` grew `cardboard_boxes` (the stack) + `wooden_bucket`, `maxFoot` 0.35 → 0.6 — every cardboard box in the game rolls.
+**THE DECK FLICKER**: a terrain `deck` is WRITTEN INTO the field, so its plank slab's top sat exactly on the field's triangles and z-fought
+(the cavern's plank, the rope bridge); the slab (and a cave-grid bridge cell) rides 2.5 cm over its data height now — the bridge layer's
+rule; the feet read the data rule, never the mesh. `npm test` runs `misc-batch-0922.test.js`. Ship data.js to R2 AND Render. UNSEEN LIVE
+(RULE #1c): every facing / scale (`turn` / `h` / `span` are the one-field edits — the tank's and the jet's noses, the well's bucket line,
+the bench's back, the pole's mast-arm join), the hospital bed's seat height (`seat` 0.6), the hot dog stands' landing on the kerbs.

@@ -11333,3 +11333,15 @@ lamps; DOOR HQ, the Mall, the Spaceship; don't be afraid to make rooms bigger."
   each room's light, the wax's pace (`_hqLavaLampBuild`'s `sp`), the sky panes' drift, the
   console lamps' blink rate, the egg chair's opening on the walker's approach, the flight
   tube's piers landing in the atrium, the lounge rings from the tube, the pendants at 12 m.
+
+### 2026-09-22 — THE 2026-09-22 BATCH: seventeen Meshy models placed, the kickable boxes, the deck flicker (local delivery)
+- The user's seventeen uploads (R2 `Assets/misc/`; MODEL_INDEX §3q). Every one a catalogue row; the procs that stood for them hang the
+  file over their stand-ins through the new `_hqCatGlb` (three-renderer.js) — the ancient well + wooden bucket on EVERY well way, the city
+  bench on every park / locker bench, the fortune tent, the retro console, the VHS tape find, a VCR on the tape shelf, and the board's
+  traffic-light pole (`yellow_pole` through `_hzMiscKit`).
+- Placed: the hospital beds in Medical's ward, the royal bed in the solar + two dorm beds in the guardroom (the keep), the couples bed on
+  the bunker's loft, three camping tents at the grove's camp + a carnival tent on its lawn, two goal posts on the Bowl, two tanks in Area
+  51's pens + the F22 on Runway 33 (`base: 'weapons'`), hot dog stands scattered on the three cities' kerbs (`r0` 0.9; measured on the kerbs).
+- `HQ_KICKABLE`: `cardboard_boxes` + `wooden_bucket`, `maxFoot` 0.6. THE FLICKER: every plank deck rides 2.5 cm over its data height.
+- UNSEEN LIVE (RULE #1c): every facing and scale — the tank's and the jet's noses (`turn`), the well's bucket line against the GLB's
+  windlass, the bench's back toward the wall (`front: 'back'`), the pole under the proc's mast arm, the vendors' size on a 2.4 m kerb.

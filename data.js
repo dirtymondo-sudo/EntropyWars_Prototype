@@ -20615,6 +20615,30 @@ const DOOR_HQ = {
         stained_glass:      { file: 'Meshy_AI_stained_glass_window_0917035453_texture.glb',           base: 'misc', h: 3.2, foot: 0, wall: true, mount: 5.5, glow: { y: 1.6, size: 3.0, color: 0xffd090 } },
         sarcophagus:        { file: 'Meshy_AI_stone_sarcophagus_0917035255_texture.glb',              base: 'misc', span: 2.3, foot: 0.8, block: true },
         brass_telescope:    { file: 'Meshy_AI_telescope_0917035520_texture.glb',                      base: 'misc', h: 2.0, foot: 0.5, block: true },   // the WAY's model (the Observatorium's `telescope` proc keeps its key)
+        /* ═══ THE 2026-09-22 BATCH — seventeen Meshy models the user uploaded to R2 Assets/misc/ (MODEL_INDEX §3q). The GLB-FIRST rule:
+           a proc that stands for one of these keeps its key and hangs the file over its stand-in through three-renderer.js `_hqCatGlb`
+           (the well, the two benches, the fortune tent, the console, the tape, the shelf's VCR) — never a second file for the same thing.
+           Every `h` / `span` / `rect` / `turn` is a TARGET (the CDN is unreachable from the sandbox): a piece that lands wrong is that
+           one field. A long Meshy model lies along X (the vehicle rule) — the tank wears `turn: 90`; the F22 (Assets/weapons/, the Air
+           Support spell's own file) comes in nose −Z and wears `turn: 180` so its nose is the placer's +Z front. ═══ */
+        ancient_well:       { file: 'Meshy_AI_an_ancient_well_0922010024_texture.glb',            base: 'misc', h: 2.3,  foot: 0.85, block: true },                                  // EVERY WELL: the `well` way's head (_hqWayBuilders.well)
+        wooden_bucket:      { file: 'Meshy_AI_wooden_bucket_0922011434_texture.glb',              base: 'misc', h: 0.32, foot: 0.16 },                                               // the well's bucket on its rope (the way rig lowers it); kickable on a floor
+        city_bench:         { file: 'Meshy_AI_a_city_bench_0922010124_texture.glb',                base: 'misc', span: 1.7, foot: 0.8, rect: { hw: 0.85, hd: 0.3 }, block: true, seat: 0.45, front: 'back' },   // EVERY BENCH: park_bench + locker_bench wear it; a row of its own too
+        hot_dog_stand:      { file: 'Meshy_AI_a_hot_dog_stand_0922010432_texture.glb',             base: 'misc', span: 1.9, foot: 0.9, rect: { hw: 0.95, hd: 0.55 }, block: true, turn: 90 },                 // the street cities' kerbs (a scatter row, the kerb rule)
+        military_tank:      { file: 'Meshy_AI_a_military_tank_0922010101_texture.glb',             base: 'misc', span: 7.0, foot: 2.4, rect: { hw: 1.8, hd: 3.5 }, block: true, turn: 90 },                   // AREA 51's pens
+        fighter_jet:        { file: 'Meshy_AI_f22_fighter_jett_0713025555_texture.glb',            base: 'weapons', span: 15.5, foot: 4.5, rect: { hw: 6.8, hd: 7.8 }, block: true, turn: 180 },              // the F22 on RUNWAY 33 (the same file the Air Support spell flies — MODEL_INDEX §5, the same-thing rule)
+        yellow_pole:        { file: 'Meshy_AI_a_yellow_pole_0922010159_texture.glb',               base: 'misc', h: 3.3,  foot: 0.12, block: true },                                  // the traffic light's pole on the board (_buildTrafficLight3D, GLB-first); a bollard of its own in a room
+        hospital_bed:       { file: 'Meshy_AI_a_hospital_bed_0922010451_texture.glb',              base: 'misc', span: 2.1, foot: 0.75, rect: { hw: 0.5, hd: 1.05 }, block: true, seat: 0.6 },                // Room 1111's ward (the cots elsewhere stay cots)
+        dorm_bed:           { file: 'Meshy_AI_a_dorm_bed_0922010217_texture.glb',                  base: 'misc', span: 2.0, foot: 0.7, rect: { hw: 0.5, hd: 1.0 }, block: true, seat: 0.5 },                  // the keep's guardroom
+        couples_bed:        { file: 'Meshy_AI_a_couples_bed_0922010443_texture.glb',               base: 'misc', span: 2.1, foot: 1.0, rect: { hw: 0.85, hd: 1.05 }, block: true, seat: 0.5 },                // the bunker's loft
+        royal_bed:          { file: 'Meshy_AI_a_royal_bed_0922010438_texture.glb',                 base: 'misc', span: 2.4, foot: 1.1, rect: { hw: 1.0, hd: 1.2 }, block: true, seat: 0.6 },                  // THE SOLAR in the keep
+        camping_tent:       { file: 'Meshy_AI_a_camping_tent_0922010306_texture.glb',              base: 'misc', span: 3.2, foot: 1.5, rect: { hw: 1.6, hd: 1.4 }, block: true },                             // the grove's camp
+        carnival_tent:      { file: 'Meshy_AI_a_carnival_tent_0922010243_texture.glb',             base: 'misc', span: 6.0, foot: 2.8, rect: { hw: 3.0, hd: 3.0 }, block: true },                             // the grove's lawn (the carnival room's own canvas is the bigtop ceiling)
+        fortune_teller_tent:{ file: 'Meshy_AI_a_fortune_teller_tent_0922010255_texture.glb',       base: 'misc', span: 3.2, foot: 1.6, block: true },                                                         // the `fortune_tent` proc's model (GLB-first; the proc keeps its key, its glow and its sign)
+        retro_control_panel:{ file: 'Meshy_AI_a_retro_control_panel_0922010114_texture.glb',       base: 'misc', span: 1.6, foot: 0.7, rect: { hw: 0.8, hd: 0.38 }, block: true },                            // the `retro_console` proc's model (GLB-first; the catalogue's glow / light stay)
+        vhs_player:         { file: 'Meshy_AI_a_vhs_player_0922010233_texture.glb',                base: 'misc', span: 0.42, foot: 0.2 },                                                                     // on top of every `tape_shelf`; a tabletop row of its own
+        vhs_tape:           { file: 'Meshy_AI_a_vhs_tape_0922010141_texture.glb',                  base: 'misc', h: 0.11, foot: 0 },                                                                         // the `find_tape` proc's model (GLB-first; the sparkle is the placer's)
+        field_goal_post:    { file: 'Meshy_AI_a_yellow_field_goal_post_0922010209_texture.glb',    base: 'misc', h: 6.0,  foot: 0.35, rect: { hw: 2.9, hd: 0.25 }, block: true },                            // THE BOWL's two goal lines
         /* DISASTER CITY, THE SECOND PASS (2026-09-17): the user's city batch on R2 Assets/misc/ (MODEL_INDEX §3i) — the same
            files three-renderer.js _MISC_GLB names (the same-thing rule). MEASURED: the crashed car (1.0 × 0.36 × 0.45, nose
            −X → `turn: 90` like the cars), the escalator (0.53 × 0.72 × 1.0, rising toward −Z — face 270 puts its top at +x);
@@ -24853,8 +24877,8 @@ const DOOR_HQ = {
                 { key: 'cardboard_box',  x: 0.55, z: -2.85, y: 1.3,  face: 20 },
                 { key: 'exit_sign',      wall: 'n', x: 2.6, mount: 2.75 },           // over the cell door — it says EXIT; it is not one
                 /* ── the east wall: THE WARD — two cots, the chart between them, the visitor's chair ── */
-                { key: 'cot',            x: 3.5, z: -1.6, face: 90 },
-                { key: 'cot',            x: 3.5, z: 1.4,  face: 90 },
+                { key: 'hospital_bed',   x: 3.5, z: -1.6, face: 90 },                   // THE 2026-09-22 BATCH: the ward's two cots are the user's hospital beds
+                { key: 'hospital_bed',   x: 3.5, z: 1.4,  face: 90 },
                 { key: 'meal_tray_empty', x: 3.45, z: 1.7, y: 0.46, face: 100 },   // lunch came; it went untouched
                 { key: 'clipboard',      wall: 'e', z: -0.1, mount: 1.4, rot: 2 },   // THE CHART
                 { key: 'folding_chair',  x: 2.6, z: -1.6, face: 90 },                // the visitor's, nobody visits
@@ -30650,6 +30674,7 @@ const DOOR_HQ = {
                     { k: 'rail', x0: -14.8, z0: 27.9, x1: -5.2, z1: 27.9 },
                     { k: 'scatter', key: 'city_bin', n: 8, seed: 3 },
                     { k: 'scatter', key: 'fire_hydrant', n: 4, seed: 4 },
+                    { k: 'scatter', key: 'hot_dog_stand', n: 2, seed: 61, r0: 0.9 },                              // THE 2026-09-22 BATCH: two vendors on the boulevard's kerbs
                     { k: 'scatter', key: 'signpost', n: 4, seed: 5 },
                     { k: 'scatter', key: 'potted_plant', n: 6, seed: 6 },
                     { k: 'scatter', key: 'park_bench', n: 4, seed: 7 },
@@ -31892,6 +31917,7 @@ const DOOR_HQ = {
                     { k: 'tree', x: 0, z: -10.2, kind: 'tree_3', h: 3.6 }, { k: 'tree', x: 0, z: 10.2, kind: 'tree_3', h: 3.6 },   // THE TRAFFIC ISLANDS either side of the plaza (R3: the avenue's far doors are not one sightline)
                     { k: 'scatter', key: 'city_bin', n: 60, seed: 3 },
                     { k: 'scatter', key: 'fire_hydrant', n: 26, seed: 14 },
+                    { k: 'scatter', key: 'hot_dog_stand', n: 3, seed: 66, r0: 0.9 },                                                     // THE 2026-09-22 BATCH: the vendors on the kerbs
                     { k: 'scatter', key: 'city_bin', n: 24, seed: 27 },   // (city_bin outside, mall_bin inside — hq-city-2's rule)
                     { k: 'scatter', key: 'street_drain', n: 18, seed: 15 },
                     { k: 'scatter', key: 'park_bench', n: 30, seed: 4 },
@@ -32370,6 +32396,7 @@ const DOOR_HQ = {
                     { k: 'scatter', key: 'vending_machine', n: 4, x: -43, z: 12, r: 8, seed: 7 },                                     // THE MARKET's machines
                     { k: 'scatter', key: 'city_bin', n: 26, seed: 3 },
                     { k: 'scatter', key: 'fire_hydrant', n: 14, seed: 4 },
+                    { k: 'scatter', key: 'hot_dog_stand', n: 2, seed: 61, r0: 0.9 },                                              // THE 2026-09-22 BATCH: the noodle carts' cousins on the kerbs
                     { k: 'scatter', key: 'traffic_cone', n: 14, seed: 5 },
                     { k: 'scatter', key: 'street_drain', n: 16, seed: 6 },
                     { k: 'scatter', key: 'signpost', n: 12, seed: 8 },
@@ -33674,8 +33701,10 @@ const DOOR_HQ = {
                 { key: 'wall_torch',     x: -18.7, z: -14, face: 90, mount: 1.9 }, { key: 'wall_torch', x: 14.7, z: -2, face: 270, mount: 1.9 },
                 { key: 'banner',         x: -18.7, z: -6, face: 90, mount: 3.4 }, { key: 'banner', x: 14.7, z: -6, face: 270, mount: 3.4 },
                 { key: 'armour_stand',   x: -16, z: -2, face: 90 },
+                { key: 'dorm_bed',       x: -16, z: 2.2, face: 90 }, { key: 'dorm_bed', x: -16, z: 5.4, face: 90 },   // THE 2026-09-22 BATCH: the guardroom's bunks
                 /* THE SOLAR: the astrologer's desk, the shelf, the chest */
                 { key: 'lectern',        x: -12, z: -14.5, face: 0 },
+                { key: 'royal_bed',      x: -8.5, z: -12.2, y: 4.5, face: 0 },                                   // THE 2026-09-22 BATCH: the king's bed in the solar (the head to the north wall)
                 { key: 'library_shelf',  x: -6, z: -16.4, face: 180 },
                 { key: 'sea_chest',      x: -14.5, z: -16, face: 30 },
                 /* THE BATTLEMENTS: the brazier, the rail */
@@ -34143,6 +34172,9 @@ const DOOR_HQ = {
                 { key: 'car_truck',       x: -36, z: 20, face: 90 },
                 { key: 'fire_truck',      x: 40, z: -24, face: 90 },
                 { key: 'crashed_car',     x: 34, z: -2, face: 30 },
+                /* THE 2026-09-22 BATCH: the armour in the two pens behind the revetments, the F22 on RUNWAY 33's east end, nose down the runway (−x) */
+                { key: 'military_tank',   x: -34, z: -14, face: 0 }, { key: 'military_tank', x: 34, z: -14, face: 0 },
+                { key: 'fighter_jet',     x: 34, z: 10, face: 270 },
                 { key: 'signpost',        x: 10, z: 26 },
                 { key: 'warning_tape',    x: 18, z: 5.5, face: 0 },
                 { key: 'quarter_pipe',    x: 10, z: 20, face: 90 }, { key: 'quarter_pipe', x: 26, z: 20, face: 270 },  // THE PARK RULE: the half pipe on the apron
@@ -34667,6 +34699,7 @@ const DOOR_HQ = {
                 { key: 'railing_1m',      x: -14.8, z: -6, face: 90 },
                 { key: 'bare_bulb',       x: -18, z: 2, ceil: true }, { key: 'bare_bulb', x: -6, z: 4, ceil: true },
                 { key: 'desk_lamp',       x: -22, z: -6, y: 2.6, face: 200 },                                            // on the loft (y = the tier)
+                { key: 'couples_bed',     x: -17.5, z: -6.8, y: 2.6, face: 0 },                                             // THE 2026-09-22 BATCH: the guests' bed on the loft
                 /* THE POOL: the loungers, the umbrella, the towel nobody folded */
                 { key: 'pool_lounger',    x: 8, z: -13.6, face: 0 }, { key: 'pool_lounger', x: 20, z: -13.6, face: 0 }, { key: 'pool_umbrella', x: 14, z: -14.4 },
                 { key: 'bare_bulb',       x: 14, z: -9, ceil: true },
@@ -38976,7 +39009,8 @@ const HQ_AREA_SPECS = {
             { k: 'path', pts: [[18, 12], [18, 26], [28, 24], [34, 22], [34.5, 12], [33.5, -20], [24, -27], [2, -27]], w: 2.2 },
             { k: 'scatter', key: 'traffic_cone', n: 8, seed: 2 }, { k: 'scatter', key: 'cinder_block', n: 6, seed: 5 }, { k: 'scatter', key: 'solo_cup', n: 8, seed: 9 },
         ],
-        props: [{ key: 'railing_1m', x: 0, z: 17.6, face: 0, y: 3.4 }, { key: 'railing_1m', x: -22.6, z: 4, face: 90, y: 3.0 }, { key: 'railing_1m', x: 22.6, z: 4, face: 90, y: 3.0 }, { key: 'railing_1m', x: 6, z: -19.6, face: 0, y: 3.0 },
+        props: [{ key: 'field_goal_post', x: 0, z: -13.3, face: 0 }, { key: 'field_goal_post', x: 0, z: 12.3, face: 180 },   // THE 2026-09-22 BATCH: the two goal lines
+                { key: 'railing_1m', x: 0, z: 17.6, face: 0, y: 3.4 }, { key: 'railing_1m', x: -22.6, z: 4, face: 90, y: 3.0 }, { key: 'railing_1m', x: 22.6, z: 4, face: 90, y: 3.0 }, { key: 'railing_1m', x: 6, z: -19.6, face: 0, y: 3.0 },
                 { key: 'riser_2', x: 8, z: 12 }, { key: 'quarter_pipe', x: -6, z: 13.5, face: 0 }, { key: 'quarter_pipe', x: 6, z: 13.5, face: 0 },
                 { key: 'lifeguard_chair', x: 16, z: -9, face: 270 }, { key: 'bus_shelter', x: 15.5, z: 8, face: 270 }, { key: 'bus_shelter', x: 15.5, z: -6, face: 270 },
                 { key: 'flood_mast', x: -28, z: -22, y: 1.8 }, { key: 'flood_mast', x: 28, z: 24, y: 1.8 }, { key: 'flood_mast', x: -30, z: 26 }, { key: 'flood_mast', x: 32, z: -24 },
@@ -39376,7 +39410,7 @@ const HQ_AREA_SPECS = {
                 { key: 'folding_chair', x: -2, z: -0.5, face: 0 }, { key: 'folding_chair', x: 0, z: -0.5, face: 0 }, { key: 'folding_chair', x: 2, z: -0.5, face: 0 }, { key: 'folding_chair', x: 4, z: -0.5, face: 0 }, { key: 'folding_chair', x: 6, z: -0.5, face: 0 }, { key: 'folding_chair', x: 8, z: -0.5, face: 0 },
                 { key: 'park_bench', x: 4, z: 12, face: 180 }, { key: 'park_bench', x: -6, z: 4, face: 0 }, { key: 'park_bench', x: 14, z: 12, face: 270 }, { key: 'park_bench', x: -24, z: 8, face: 90 },
                 /* THE CAMP east of the lawn: the members' tents */
-                { key: 'fortune_tent', x: 20, z: 22, face: 200 }, { key: 'fortune_tent', x: 26, z: 20, face: 230 }, { key: 'fortune_tent', x: 24, z: 26, face: 180 }, { key: 'campfire', x: 22, z: 20 }, { key: 'cardboard_boxes', x: 28, z: 24 }, { key: 'sea_chest', x: 18, z: 25 },
+                { key: 'camping_tent', x: 20, z: 22, face: 200 }, { key: 'camping_tent', x: 26, z: 20, face: 230 }, { key: 'camping_tent', x: 24, z: 26, face: 180 }, { key: 'campfire', x: 22, z: 20 }, { key: 'carnival_tent', x: -15, z: 15, face: 90 }, { key: 'cardboard_boxes', x: 28, z: 24 }, { key: 'sea_chest', x: 18, z: 25 },
                 { key: 'ticket_booth', x: 4, z: 24, face: 180 }, { key: 'signpost', x: -3, z: 14 }, { key: 'signpost', x: -12, z: 4 }, { key: 'signpost', x: 20, z: 6 }, { key: 'lesson_sign', x: 6, z: 14, face: 180, lesson: 'climb' },
                 /* THE TREEHOUSE, THE DOCK, the creek */
                 { key: 'brass_telescope', x: 23.5, z: 11, y: 3.4, face: 180 }, { key: 'sea_chest', x: 20.8, z: 13.2, y: 3.4 }, { key: 'wooden_cross', x: -12, z: -22 }, { key: 'stump', x: -16, z: -27 }, { key: 'fallen_log', x: 26, z: -2 },
@@ -45800,8 +45834,8 @@ function hqRoomArrival(roomId) {
 /* 5.2 THE KICKABLES — a small prop the walker (or the deck) knocks along its heading with a hop; cosmetic, never a puzzle,
    the room remembers nothing (the user's D6). The list is explicit: a key here must be in the catalogue (the test checks). */
 const HQ_KICKABLE = {
-    keys: ['cardboard_box', 'traffic_cone', 'traffic_barrel', 'trash_bin', 'city_bin', 'mall_bin', 'solo_cup', 'coffee_mug', 'mop_bucket', 'wet_floor_sign', 'cinder_block', 'toilet_paper'],
-    maxFoot: 0.35, maxH: 1.1,
+    keys: ['cardboard_box', 'cardboard_boxes', 'wooden_bucket', 'traffic_cone', 'traffic_barrel', 'trash_bin', 'city_bin', 'mall_bin', 'solo_cup', 'coffee_mug', 'mop_bucket', 'wet_floor_sign', 'cinder_block', 'toilet_paper'],   // 2026-09-22: EVERY cardboard box (the stack of them too — the user) and the well's bucket
+    maxFoot: 0.6, maxH: 1.1,   // 0.6 (was 0.35): the stack of boxes' foot is 0.55
     speed: 0.9,      // the share of the walker's speed the prop takes
     hop: 2.2,        // m/s up on the kick
     friction: 2.4,   // 1/s — how fast a rolling prop stops

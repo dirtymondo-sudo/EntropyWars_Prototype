@@ -5236,6 +5236,9 @@ const ThreeRenderer = (function () {
         var collar = new THREE.Mesh(new THREE.CylinderGeometry(poleR * 1.7, poleR * 2.1, ts * 0.07, 8), poleMat);
         collar.position.y = ts * 0.035;
         g.add(collar);
+        /* THE 2026-09-22 BATCH: the user's yellow pole (Assets/misc/) stands in for the galvanized one once it lands — fitted to the
+           pole's height so the mast arm still leaves its top; the arm and the three-lamp head are the proc's (the head is the point) */
+        if (typeof _hzMiscKit === 'function') { try { g.add(_hzMiscKit('yellow_pole', { tiles: poleH / ts, fit: 'height', lit: true, low: 'skip', onDone: function () { pole.visible = false; collar.visible = false; } })); } catch (e) {} }
 
         /* mast arm reaching out over the road (local -Z = the facing) —
            a leaned riser off the pole top, then the horizontal reach */
@@ -22700,6 +22703,7 @@ const ThreeRenderer = (function () {
     // builder returns an (initially empty) Group and registers a callback that
     // fills it once the mesh arrives, flipping _objectsDirty to re-render.
     var _R2_MISC = 'https://cdn.entropywars.net/Assets/misc/';
+    var _R2_WEAPONS = 'https://cdn.entropywars.net/Assets/weapons/';   // 2026-09-22: a catalogue row with `base: 'weapons'` reads the spell-prop bucket (the F22 on the flight line — the same file the Air Support spell flies)
     var _miscModelCache = {};   // url -> { root, loading, failed, cbs:[] }
     var _miscTexCache = {};     // url -> THREE.Texture (linear + mipmapped)
 
@@ -22932,6 +22936,26 @@ const ThreeRenderer = (function () {
         clock:     'Meshy_AI_analog_clock_realist_0727195259_texture.glb',
         gclock:    'Meshy_AI_grandfather_clock_re_0727195306_texture.glb',
         skateboard: 'Meshy_AI_a_skateboard_0915212313_texture.glb',   // SKATEBOARDING (HQ plan 9.8, 2026-09-15): the deck under the rider — 1.0 long along X, 0.29 wide, 0.17 tall (the wheels down); MODEL_INDEX §3d
+        /* THE 2026-09-22 BATCH (seventeen Meshy models on R2 Assets/misc/ — MODEL_INDEX §3q). Every one is placed through a
+           DOOR_HQ.catalogue row (`base: 'misc'`, the file named there) — the keys here are the register and the board's own
+           readers (the traffic light's `yellow_pole` through _hzMiscKit). UNMEASURED (the CDN is unreachable from the sandbox). */
+        yellow_pole:       'Meshy_AI_a_yellow_pole_0922010159_texture.glb',              // the traffic light's pole (_buildTrafficLight3D, GLB-first); the catalogue's `yellow_pole`
+        ancient_well:      'Meshy_AI_an_ancient_well_0922010024_texture.glb',            // every `well` way's head
+        wooden_bucket:     'Meshy_AI_wooden_bucket_0922011434_texture.glb',              // the well's bucket
+        city_bench:        'Meshy_AI_a_city_bench_0922010124_texture.glb',                // park_bench + locker_bench
+        hot_dog_stand:     'Meshy_AI_a_hot_dog_stand_0922010432_texture.glb',             // the cities' kerbs
+        military_tank:     'Meshy_AI_a_military_tank_0922010101_texture.glb',             // Area 51's pens
+        hospital_bed:      'Meshy_AI_a_hospital_bed_0922010451_texture.glb',              // Room 1111
+        dorm_bed:          'Meshy_AI_a_dorm_bed_0922010217_texture.glb',                  // the keep's guardroom
+        couples_bed:       'Meshy_AI_a_couples_bed_0922010443_texture.glb',               // the bunker's loft
+        royal_bed:         'Meshy_AI_a_royal_bed_0922010438_texture.glb',                 // the solar
+        camping_tent:      'Meshy_AI_a_camping_tent_0922010306_texture.glb',              // the grove's camp
+        carnival_tent:     'Meshy_AI_a_carnival_tent_0922010243_texture.glb',             // the grove's lawn
+        fortune_teller_tent: 'Meshy_AI_a_fortune_teller_tent_0922010255_texture.glb',     // the `fortune_tent` proc
+        retro_control_panel: 'Meshy_AI_a_retro_control_panel_0922010114_texture.glb',     // the `retro_console` proc
+        vhs_player:        'Meshy_AI_a_vhs_player_0922010233_texture.glb',                // on the `tape_shelf`
+        vhs_tape:          'Meshy_AI_a_vhs_tape_0922010141_texture.glb',                  // the `find_tape` proc
+        field_goal_post:   'Meshy_AI_a_yellow_field_goal_post_0922010209_texture.glb',    // THE BOWL
         /* DISASTER CITY, THE SECOND PASS (2026-09-17): the user's city batch on R2 Assets/misc/ — MODEL_INDEX §3i. Four
            are in the repo and were MEASURED (the crashed car 1.0 × 0.36 × 0.45, nose −X like every Meshy piece; the two
            road tiles 1 × 1 squares, the straight one's dashes along Z with kerbs on the X sides, the turn a quarter
@@ -38124,12 +38148,36 @@ const ThreeRenderer = (function () {
         _hqPropMatCache.set(sm.uuid, lm);
         return lm;
     }
+    /* THE 2026-09-22 BATCH — GLB-FIRST OVER A STAND-IN: the one helper for a proc / a way rig that stands for a catalogue file. Reads the
+       row by KEY (`file` + `base`, the `h` / `span` target unless `o.h` says, `fit` by which the row carries — `o.fit` overrides), hangs
+       the instance through the misc loader with the room's material pick, and on landing HIDES the stand-in pieces in `o.hide` (the
+       proc's own geometry stays as the stand-in while the file streams — the telescope's rule) and calls `o.onDone(grp, s, bb)`. A
+       missing row / loader / file = null (the caller keeps its stand-in). The row's `rot` + `turn` pre-turn the instance like the placer's. */
+    function _hqCatGlb(key, U, o) {
+        o = o || {};
+        var D = (typeof _hqData === 'function') ? _hqData() : null;
+        var cat = D && D.catalogue ? D.catalogue[key] : null;
+        if (!cat || !cat.file || typeof _miscModelInstance !== 'function' || typeof THREE.GLTFLoader !== 'function') return null;
+        var byH = (o.fit ? o.fit === 'height' : (cat.h != null));
+        var target = ((o.h != null) ? o.h : (byH ? (cat.h || 1) : (cat.span || cat.h || 1))) * U;
+        var inst = _miscModelInstance(_hqModelUrl(cat), true, target, {
+            fit: byH ? 'height' : 'span',
+            matPick: (typeof _hqPropMatPick === 'function') ? _hqPropMatPick : undefined,
+            onDone: function (grp, s, bb) {
+                (o.hide || []).forEach(function (m) { if (m) m.visible = false; });
+                if (o.onDone) o.onDone(grp, s, bb);
+            }
+        });
+        inst.rotation.y = _hqRad((cat.rot || 0) + (cat.turn || 0) + (o.turn || 0));
+        return inst;
+    }
     function _hqModelUrl(entry) {
         var D = _hqData();
         /* 2026-09-12: a catalogue entry with `base: 'misc'` lives in the shared
            Assets/misc/ bucket (the moving-maps batch — the pocket watch in the
            clock room) instead of the D.O.O.R. kit folder */
         if (entry.base === 'misc') return _R2_MISC + encodeURIComponent(entry.file);
+        if (entry.base === 'weapons') return _R2_WEAPONS + encodeURIComponent(entry.file);   // 2026-09-22: the F22
         return D.assets.models + encodeURIComponent(entry.file);
     }
 
@@ -39468,7 +39516,7 @@ const ThreeRenderer = (function () {
             var ew = (function (nc) { return nc && (nc.bridge || (!nc.rock && !nc.fluid)); })(at(b.x + 1, b.y)) || (function (nc) { return nc && (nc.bridge || (!nc.rock && !nc.fluid)); })(at(b.x - 1, b.y));
             var ns = (function (nc) { return nc && (nc.bridge || (!nc.rock && !nc.fluid)); })(at(b.x, b.y + 1)) || (function (nc) { return nc && (nc.bridge || (!nc.rock && !nc.fluid)); })(at(b.x, b.y - 1));
             var runEW = ew && !ns ? true : (!ew && ns) ? false : (at(b.x + 1, b.y) && at(b.x + 1, b.y).bridge) || (at(b.x - 1, b.y) && at(b.x - 1, b.y).bridge);
-            var deck = _hqBox(C * 1.0, 0.22, C * 1.0, deckMat); deck.position.set(cellX(b.x) * U, (deckY - 0.11) * U + 0.3, cellZ(b.y) * U); G.add(deck);
+            var deck = _hqBox(C * 1.0, 0.22, C * 1.0, deckMat); deck.position.set(cellX(b.x) * U, (deckY - 0.11 + 0.025) * U + 0.3, cellZ(b.y) * U); G.add(deck);   // THE FLICKER (2026-09-22): 2.5 cm proud of the cell top it shares
             /* the rails: along the run's two edges, posts at the cell's corners, a rope between */
             [-1, 1].forEach(function (sg) {
                 var px = runEW ? 0 : sg * (C / 2 - 0.08), pz = runEW ? sg * (C / 2 - 0.08) : 0;
@@ -40058,7 +40106,8 @@ const ThreeRenderer = (function () {
         var ropeMat = new THREE.MeshPhongMaterial({ color: 0x5a4a34, shininess: 6 });
         info.decks.forEach(function (dk) {
             var L = Math.hypot(dk.x1 - dk.x0, dk.z1 - dk.z0), yaw = Math.atan2(dk.x1 - dk.x0, dk.z1 - dk.z0);
-            var g = new THREE.Group(); g.position.set((dk.x0 + dk.x1) / 2 * U, dk.y * U + 0.3, (dk.z0 + dk.z1) / 2 * U); g.rotation.y = yaw;
+            /* THE FLICKER (2026-09-22): a deck is WRITTEN INTO the field, so the slab's top z-fought the field's own triangles — it rides 2.5 cm over its height (the bridge layer's rule; the feet read the data rule) */
+            var g = new THREE.Group(); g.position.set((dk.x0 + dk.x1) / 2 * U, (dk.y + 0.025) * U + 0.3, (dk.z0 + dk.z1) / 2 * U); g.rotation.y = yaw;
             var slab = new THREE.Mesh(new THREE.BoxGeometry(dk.w * U, 0.18 * U, (L + 0.3) * U), plankMat); _hzBoxUV(slab.geometry, dk.w * U, 0.18 * U, (L + 0.3) * U, TM); slab.position.y = -0.09 * U; g.add(slab);
             if (dk.rails !== false) [-1, 1].forEach(function (sg) {
                 var bar = _hqBox(0.05, 0.05, L, ropeMat); bar.position.set(sg * (dk.w / 2 - 0.08) * U, 0.95 * U, 0); g.add(bar);
@@ -43198,6 +43247,7 @@ const ThreeRenderer = (function () {
             var band = _hqBox(0.15, 0.006, 0.0005, _hqBasic(0xd63aa8)); band.position.set(0, -0.004 * U, (D / 2 + 0.0012) * U); g.add(band);
             g.rotation.x = -0.22;
             var pivot = new THREE.Group(); g.position.y = (H / 2 + 0.004) * U; pivot.add(g);
+            var glb = (typeof _hqCatGlb === 'function' ? _hqCatGlb : function () { return null; })('vhs_tape', U, { fit: 'height', h: H + 0.01, hide: [g] }); if (glb) { glb.rotation.x = -0.22; pivot.add(glb); }   // THE 2026-09-22 BATCH: the user's cassette over the proc's
             return pivot;
         },
         /* a manila envelope lying at a slant: the flap, the red string clasp, a stamp in the corner */
@@ -43274,6 +43324,7 @@ const ThreeRenderer = (function () {
             }
             spines.count = n; labels.count = nl; spines.instanceMatrix.needsUpdate = true; if (spines.instanceColor) spines.instanceColor.needsUpdate = true; labels.instanceMatrix.needsUpdate = true;
             g.add(spines); g.add(labels);
+            var vcr = (typeof _hqCatGlb === 'function' ? _hqCatGlb : function () { return null; })('vhs_player', U, { fit: 'span', h: 0.42 }); if (vcr) { vcr.position.set(-0.3 * U, H * U, 0.02 * U); g.add(vcr); }   // THE 2026-09-22 BATCH: the VCR on top of the shelf
             var card = new THREE.Mesh(new THREE.PlaneGeometry(0.42 * U, 0.09 * U), (function () { var t = _hzTextTex('hq_tape_shelf_card', ['THE TAPES · 100 ON THE REGISTER', 'RETURN TO RECORDS. THEY ASKED.'], { w: 512, h: 112, bg: '#e8e2cc', color: '#1a1a1e', pad: 0.12 }); return t ? new THREE.MeshBasicMaterial({ map: t }) : _hqBasic(0xe8e2cc); })());
             card.position.set(0, (H + 0.02) * U, (D / 2 - 0.16) * U); g.add(card);
             return g;
@@ -43839,11 +43890,12 @@ const ThreeRenderer = (function () {
             return g;
         },
         locker_bench: function (U) {
-            var g = new THREE.Group();
+            var g = new THREE.Group(), stand = new THREE.Group(); g.add(stand);   // THE 2026-09-22 BATCH: the proc is the STAND-IN; the user's city bench lands over it (_hqCatGlb)
             var slat = _hqMat('wood', 3, 1, { color: 0xb08a5a, shininess: 16 });
-            for (var i = 0; i < 3; i++) { var s = _hqBox(2.0, 0.04, 0.1, slat); s.position.set(0, 0.43 * U, (-0.12 + i * 0.12) * U); g.add(s); }
+            for (var i = 0; i < 3; i++) { var s = _hqBox(2.0, 0.04, 0.1, slat); s.position.set(0, 0.43 * U, (-0.12 + i * 0.12) * U); stand.add(s); }
             var steel = _hqMat(null, 1, 1, { color: 0x3b4147, shininess: 40 });
-            [-0.8, 0.8].forEach(function (x) { var leg = _hqBox(0.06, 0.41, 0.34, steel); leg.position.set(x * U, 0.205 * U, 0); g.add(leg); });
+            [-0.8, 0.8].forEach(function (x) { var leg = _hqBox(0.06, 0.41, 0.34, steel); leg.position.set(x * U, 0.205 * U, 0); stand.add(leg); });
+            var glb = (typeof _hqCatGlb === 'function' ? _hqCatGlb : function () { return null; })('city_bench', U, { fit: 'span', h: 2.0, hide: [stand] }); if (glb) g.add(glb);
             return g;
         },
         shower_stall: function (U) {
@@ -43937,12 +43989,13 @@ const ThreeRenderer = (function () {
             return g;
         },
         park_bench: function (U) {
-            var g = new THREE.Group();
+            var g = new THREE.Group(), stand = new THREE.Group(); g.add(stand);   // THE 2026-09-22 BATCH: the proc is the STAND-IN; the user's city bench lands over it (_hqCatGlb)
             var slat = _hqMat('wood', 3, 1, { color: 0x8a6a48, shininess: 14 });
             var iron = _hqMat(null, 1, 1, { color: 0x2a2a2e, shininess: 40 });
-            for (var i = 0; i < 3; i++) { var s = _hqBox(1.6, 0.04, 0.12, slat); s.position.set(0, 0.45 * U, (-0.15 + i * 0.14) * U); g.add(s); }
-            for (var j = 0; j < 2; j++) { var b = _hqBox(1.6, 0.04, 0.12, slat); b.position.set(0, (0.62 + j * 0.16) * U, -0.26 * U); b.rotation.x = 0.25; g.add(b); }
-            [-0.7, 0.7].forEach(function (x) { var leg = _hqBox(0.05, 0.43, 0.4, iron); leg.position.set(x * U, 0.215 * U, 0); g.add(leg); var arm = _hqBox(0.05, 0.4, 0.06, iron); arm.position.set(x * U, 0.68 * U, -0.26 * U); arm.rotation.x = 0.25; g.add(arm); });
+            for (var i = 0; i < 3; i++) { var s = _hqBox(1.6, 0.04, 0.12, slat); s.position.set(0, 0.45 * U, (-0.15 + i * 0.14) * U); stand.add(s); }
+            for (var j = 0; j < 2; j++) { var b = _hqBox(1.6, 0.04, 0.12, slat); b.position.set(0, (0.62 + j * 0.16) * U, -0.26 * U); b.rotation.x = 0.25; stand.add(b); }
+            [-0.7, 0.7].forEach(function (x) { var leg = _hqBox(0.05, 0.43, 0.4, iron); leg.position.set(x * U, 0.215 * U, 0); stand.add(leg); var arm = _hqBox(0.05, 0.4, 0.06, iron); arm.position.set(x * U, 0.68 * U, -0.26 * U); arm.rotation.x = 0.25; stand.add(arm); });
+            var glb = (typeof _hqCatGlb === 'function' ? _hqCatGlb : function () { return null; })('city_bench', U, { fit: 'span', h: 1.7, hide: [stand] }); if (glb) g.add(glb);
             return g;
         },
         /* a foliage tree on a bare near kit — the site boards' own trees (_hqBuildSiteBoard) do exactly this */
@@ -44633,6 +44686,7 @@ const ThreeRenderer = (function () {
             var ball = new THREE.Mesh(new THREE.SphereGeometry(0.16 * U, 14, 10), new THREE.MeshPhongMaterial({ color: 0xc0a0ff, emissive: 0x8040ff, emissiveIntensity: 0.6, transparent: true, opacity: 0.8, shininess: 160 })); ball.position.set(0, 0.95 * U, 0.2 * U); g.add(ball);
             var tbl = new THREE.Mesh(new THREE.CylinderGeometry(0.4 * U, 0.3 * U, 0.05 * U, 12), _hqMat('wood', 1, 1, { color: 0x4a2a1c })); tbl.position.set(0, 0.78 * U, 0.2 * U); g.add(tbl);
             var glow = _hzGlowSprite(2.6 * U, 0xc070ff, 0.35, 0.1, 0.05, 1.2); glow.position.y = 1.2 * U; g.add(glow);
+            var glb = (typeof _hqCatGlb === 'function' ? _hqCatGlb : function () { return null; })('fortune_teller_tent', U, { hide: [wall, cone, beads, tbl] }); if (glb) g.add(glb);   // THE 2026-09-22 BATCH: the user's tent over the canvas stand-in (the ball, the glow and the sign stay)
             var tx = _hzTextTex('hq_fortune_sign', ['THE LADY WHO KNOWS', 'ONE QUESTION · SHE ALREADY HAS THE ANSWER'], { w: 512, h: 128, color: '#ffe0a0', bg: '#2a1030' });
             if (tx) { var m = new THREE.Mesh(new THREE.PlaneGeometry(1.6 * U, 0.4 * U), new THREE.MeshBasicMaterial({ map: tx })); m.position.set(0, 2.15 * U, (R + 0.02) * U); g.add(m); }
             return g;
@@ -45160,26 +45214,31 @@ const ThreeRenderer = (function () {
             var stone = _hqMat('stone', 2, 1, { color: 0x8c877c, shininess: 4 });
             var stoneIn = _hqMat('stone', 2, 1, { color: 0x3a3634, shininess: 2 });
             var wood = _hqMat('dark_woods', 1, 2, { color: 0x6a4a34, shininess: 12 });
-            var ring = new THREE.Mesh(new THREE.CylinderGeometry(R * U, (R + 0.04) * U, HH * U, 28, 1, true), stone); ring.position.set(0, (HH / 2) * U, zc * U); g.add(ring);
-            var inner = new THREE.Mesh(new THREE.CylinderGeometry(RI * U, RI * U, (HH + 0.6) * U, 24, 1, true), stoneIn); inner.material.side = THREE.BackSide; inner.position.set(0, (HH / 2 - 0.3) * U, zc * U); g.add(inner);
-            var lip = new THREE.Mesh(new THREE.RingGeometry(RI * U, (R + 0.02) * U, 28), stone); lip.rotation.x = -Math.PI / 2; lip.position.set(0, (HH + 0.001) * U, zc * U); g.add(lip);
+            var stand = new THREE.Group(); g.add(stand);   // THE 2026-09-22 BATCH: the stone head + the frame are the STAND-IN; the user's ancient well lands over them (the shaft, its light and the glow stay)
+            var ring = new THREE.Mesh(new THREE.CylinderGeometry(R * U, (R + 0.04) * U, HH * U, 28, 1, true), stone); ring.position.set(0, (HH / 2) * U, zc * U); stand.add(ring);
+            var inner = new THREE.Mesh(new THREE.CylinderGeometry(RI * U, RI * U, (HH + 0.6) * U, 24, 1, true), stoneIn); inner.material.side = THREE.BackSide; inner.position.set(0, (HH / 2 - 0.3) * U, zc * U); stand.add(inner);
+            var lip = new THREE.Mesh(new THREE.RingGeometry(RI * U, (R + 0.02) * U, 28), stone); lip.rotation.x = -Math.PI / 2; lip.position.set(0, (HH + 0.001) * U, zc * U); stand.add(lip);
             var shaft = new THREE.Mesh(new THREE.CircleGeometry((RI - 0.01) * U, 24), _hqBasic(0x061a1c)); shaft.rotation.x = -Math.PI / 2; shaft.position.set(0, (HH - 0.55) * U, zc * U); g.add(shaft);
             var light = new THREE.Mesh(new THREE.CircleGeometry((RI - 0.02) * U, 24), _hqBasic(0x6af0d0, { transparent: true, opacity: 0.18, depthWrite: false })); light.rotation.x = -Math.PI / 2; light.position.set(0, (HH - 0.54) * U, zc * U); light.renderOrder = 2; g.add(light);
             var glow = _hzGlowSprite(1.3 * U, 0x9affe4, 0.2, 0.0, 0.0, 0.0); glow.position.set(0, (HH + 0.1) * U, zc * U); g.add(glow);
             /* the frame: two uprights beside the ring (the walker steps between them), the beam, the windlass */
             [-1, 1].forEach(function (sg) {
-                var up = _hqBox(0.09, 1.95, 0.09, wood); up.position.set(sg * (R + 0.02) * U, 0.975 * U, zc * U); g.add(up);
-                var brace = _hqBox(0.06, 0.5, 0.06, wood); brace.position.set(sg * (R - 0.12) * U, 1.05 * U, zc * U); brace.rotation.z = sg * 0.5; g.add(brace);
+                var up = _hqBox(0.09, 1.95, 0.09, wood); up.position.set(sg * (R + 0.02) * U, 0.975 * U, zc * U); stand.add(up);
+                var brace = _hqBox(0.06, 0.5, 0.06, wood); brace.position.set(sg * (R - 0.12) * U, 1.05 * U, zc * U); brace.rotation.z = sg * 0.5; stand.add(brace);
             });
-            var beam = _hqBox(2 * R + 0.3, 0.1, 0.12, wood); beam.position.set(0, 1.95 * U, zc * U); g.add(beam);
-            var drum = new THREE.Mesh(new THREE.CylinderGeometry(0.09 * U, 0.09 * U, (2 * R - 0.2) * U, 12), wood); drum.rotation.z = Math.PI / 2; drum.position.set(0, 1.72 * U, zc * U); g.add(drum);
-            var crank = _hqBox(0.04, 0.3, 0.04, _hqMat(null, 1, 1, { color: 0x2a2a2e, shininess: 40 })); crank.position.set((R - 0.05) * U, 1.6 * U, zc * U); g.add(crank);
+            var beam = _hqBox(2 * R + 0.3, 0.1, 0.12, wood); beam.position.set(0, 1.95 * U, zc * U); stand.add(beam);
+            var drum = new THREE.Mesh(new THREE.CylinderGeometry(0.09 * U, 0.09 * U, (2 * R - 0.2) * U, 12), wood); drum.rotation.z = Math.PI / 2; drum.position.set(0, 1.72 * U, zc * U); stand.add(drum);
+            var crank = _hqBox(0.04, 0.3, 0.04, _hqMat(null, 1, 1, { color: 0x2a2a2e, shininess: 40 })); crank.position.set((R - 0.05) * U, 1.6 * U, zc * U); stand.add(crank);
             var rope = new THREE.Mesh(new THREE.CylinderGeometry(0.012 * U, 0.012 * U, 1 * U, 6), _hqMat(null, 1, 1, { color: 0xb8a070, shininess: 2 })); g.add(rope);
             var bucket = new THREE.Mesh(new THREE.CylinderGeometry(0.14 * U, 0.11 * U, 0.24 * U, 12, 1, true), _hqMat('dark_woods', 1, 1, { color: 0x7a5a3a, shininess: 10 })); bucket.material.side = THREE.DoubleSide; g.add(bucket);
             var hoop = new THREE.Mesh(new THREE.TorusGeometry(0.14 * U, 0.008 * U, 6, 16), _hqMat(null, 1, 1, { color: 0x2a2a2e, shininess: 40 })); hoop.rotation.x = Math.PI / 2; g.add(hoop);
+            /* THE 2026-09-22 BATCH: the user's ancient well over the head + frame, the user's wooden bucket on the rope (its base at the proc bucket's bottom; the place() below carries both) */
+            var wellGlb = (typeof _hqCatGlb === 'function' ? _hqCatGlb : function () { return null; })('ancient_well', U, { hide: [stand] }); if (wellGlb) { wellGlb.position.set(0, 0, zc * U); g.add(wellGlb); }
+            var bucketGlb = (typeof _hqCatGlb === 'function' ? _hqCatGlb : function () { return null; })('wooden_bucket', U, { hide: [bucket, hoop] }); if (bucketGlb) g.add(bucketGlb);
             var place = function (k) {
                 var by = 1.25 - 1.15 * k;                    // the bucket: hanging at the lip → down the shaft
                 bucket.position.set(0, by * U, zc * U); hoop.position.set(0, (by + 0.12) * U, zc * U);
+                if (bucketGlb) bucketGlb.position.set(0, (by - 0.12) * U, zc * U);
                 var top = 1.72, len = top - (by + 0.12);
                 rope.scale.y = Math.max(0.05, len); rope.position.set(0, ((top + by + 0.12) / 2) * U, zc * U);
                 light.material.opacity = 0.18 + 0.55 * k; glow.material.opacity = 0.2 + 0.5 * k;
@@ -51334,11 +51393,11 @@ const ThreeRenderer = (function () {
         pod_window: function (U, p) { return _hqProcBuilders.porthole(U, Object.assign({ size: 2.4, round: true, view: 'mountains' }, p || {})); },
         /* THE 2001 CONSOLE: a sloped bank of lamps that blink, two screens, a keyboard shelf; the operator stands at +Z */
         retro_console: function (U, p) {
-            var g = new THREE.Group();
+            var g = new THREE.Group(), stand = new THREE.Group(); g.add(stand);   // THE 2026-09-22 BATCH: the proc is the STAND-IN; the user's retro control panel lands over it
             var W = 1.6, body = _hqMat(null, 1, 1, { color: 0x1e2126, shininess: 30, specular: 0x333333 }), cream = _hqMat(null, 1, 1, { color: 0xe6e2d8, shininess: 20 });
-            var desk = _hqBox(W, 0.72, 0.6, body); desk.position.set(0, 0.36 * U, 0); g.add(desk);
-            var shelf = _hqBox(W, 0.03, 0.34, cream); shelf.position.set(0, 0.735 * U, 0.13 * U); g.add(shelf);
-            var panel = new THREE.Group(); panel.position.set(0, 0.74 * U, -0.12 * U); panel.rotation.x = -0.6; g.add(panel);
+            var desk = _hqBox(W, 0.72, 0.6, body); desk.position.set(0, 0.36 * U, 0); stand.add(desk);
+            var shelf = _hqBox(W, 0.03, 0.34, cream); shelf.position.set(0, 0.735 * U, 0.13 * U); stand.add(shelf);
+            var panel = new THREE.Group(); panel.position.set(0, 0.74 * U, -0.12 * U); panel.rotation.x = -0.6; stand.add(panel);
             var face = _hqBox(W, 0.5, 0.05, body); face.position.y = 0.25 * U; panel.add(face);
             var cols = 10, rows = 4, lamps = [], tints = [0xffb830, 0xff4a2a, 0x3cff7a, 0x48b8ff, 0xfff0c0];
             for (var r = 0; r < rows; r++) for (var c = 0; c < cols; c++) {
@@ -51347,7 +51406,8 @@ const ThreeRenderer = (function () {
                 lamps.push({ m: l, on: 1, col: col, ph: (r * 7 + c * 3) % 11 });
             }
             var scrMat = new THREE.MeshBasicMaterial({ color: 0x1a2a4a });
-            [-0.42, 0.42].forEach(function (sx) { var sc = new THREE.Mesh(new THREE.PlaneGeometry(0.5 * U, 0.34 * U), scrMat); sc.position.set(sx * U, 0.98 * U, -0.36 * U); sc.rotation.x = -0.25; g.add(sc); var fr = _hqBox(0.56, 0.4, 0.04, cream); fr.position.set(sx * U, 0.98 * U, -0.385 * U); fr.rotation.x = -0.25; g.add(fr); });
+            [-0.42, 0.42].forEach(function (sx) { var sc = new THREE.Mesh(new THREE.PlaneGeometry(0.5 * U, 0.34 * U), scrMat); sc.position.set(sx * U, 0.98 * U, -0.36 * U); sc.rotation.x = -0.25; stand.add(sc); var fr = _hqBox(0.56, 0.4, 0.04, cream); fr.position.set(sx * U, 0.98 * U, -0.385 * U); fr.rotation.x = -0.25; stand.add(fr); });
+            var glb = (typeof _hqCatGlb === 'function' ? _hqCatGlb : function () { return null; })('retro_control_panel', U, { fit: 'span', h: W, hide: [stand] }); if (glb) g.add(glb);
             var seed = (_hqProcSeed++) * 0.31;
             if (_hq && _hq.tickers) _hq.tickers.push(function (dt, now) {
                 var t = Math.floor(now * 0.004 + seed);

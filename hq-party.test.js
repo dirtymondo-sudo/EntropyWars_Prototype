@@ -185,7 +185,7 @@ test('FIELD MEDICINE: heal / healAll / selfHeal / revive with the battle\'s own 
 test('THE COT is a by-id panel in Medical; the record survives JSON', () => {
     const MED = D.DOOR_HQ.rooms.medical; const cot = MED.counters.find(c => c.id === 'cot');
     assert.ok(cot && cot.verb === 'REST' && cot.desc && !cot.action.fn && !cot.action.overlay && !cot.action.room, 'a by-id panel (ONE HOME: rest lives here)');
-    assert.ok(MED.props.some(p => p.key === 'cot' && Math.abs(p.z - cot.z) < 0.3), 'the counter stands at a cot');
+    assert.ok(MED.props.some(p => (p.key === 'cot' || p.key === 'hospital_bed') && Math.abs(p.z - cot.z) < 0.3), 'the counter stands at a cot (THE 2026-09-22 BATCH: the ward\'s cots are hospital beds)');
     const p = profile(); g('hqPartyEnsure')(p, { last });
     const back = JSON.parse(JSON.stringify(p));
     assert.equal(g('hqPartyRecord')(back).members.length, 3);
