@@ -665,6 +665,29 @@ square, and the units are not on squares when the fight starts.
 - **E · THE HUD OF THE FIELD.** ✅ SHIPPED 2026-09-16 (Delivery 12): the scoreboard's mode line (THE FIELD · TEAM DEATHMATCH — the mode is TDM by the user's decision, rule 8, never WIPEOUT), the result stamp's line (HELD / EXITED · THE ENCOUNTER · the room · the native), the OFFICER row's LAST … IN the room; `hqEncounterRoomLabel` is the one wording. Original text: The mode's copy (THE FIELD · WIPEOUT), the scoreboard, the
   result stamp's site line reading the room, the OFFICER sheet's encounters row by room.
 
+- **F · THE SEAMLESS FIELD (the user's 2026-09-22 ask: "turn-based combat straight from exploration, same world, same
+  screen; keep the high ground").** Delivery 1 (2026-09-22) — THE TRUE GROUND: a box part's field draws NO board mesh
+  (`_fieldGroundTop` is the first line of `tileTopY`; the raster's real tops; the room keeps its floor and props; the day
+  cycle + the building's exposure hold; the room's lamps + height fog in the battle). **Delivery 2 (2026-09-22) — THE
+  FIELD WINS + THE TERRAIN ROOMS**: the user's report ("encounters in the haunted house still go to a voxel grid map")
+  had two causes: `hqEncounterLaunch` handed every part with an area Δ (THE Δ AREA PASS, 2026-09-19) its `launchId` and
+  map.js skipped the window on it — so the hall's true ground never fired; and every TERRAIN room (the generated AREA you
+  land in — THE GROUNDS — the cave, the woods) refused the rasteriser and fought the site's Δ. Now (a) a room the
+  rasteriser takes launches with `launchId: null` (`L.seamless`); the area Δ is THE MARKER's fight (the crystal — "the
+  option to battle on the delta map") and the fallback for a room the rasteriser refuses (a sea); (b) THE TERRAIN
+  LATTICE (`hqFieldTerrainInfo` — a battle tile per cell about the room's centre, IN by the walker's own feet rule on a
+  3 × 3 sub-sample, the plan's solid / a trunk / a face steeper than the walker climbs OUT, the top the feet at the centre,
+  a wade `water`, a never-entered pool a HAZARD in its liquid; cached against the surveyed record), `hqFieldRasterTerrain`
+  (the window; a cell's level = THE TIER RULE over the window's own lowest IN top — step 1.75 > the jump 1.46, so THE
+  GUARANTEE holds by construction; seamless-field.test.js proves it on every window of the grounds), `hqFieldTerrainStep`
+  (the reach's step), the layout (no near setting, no motion, THE WORLD inert; an open room keeps the site's sky), and
+  the renderer runs `_hqBuildTerrain` on the scratch record (`_hqBuildRoomInBattle` — the field, the water, the decks,
+  the trees, the outer ground to the fog, the treeline, the climbs) so the fight stands in the area as walked, on the
+  true ground. KNOWN: a tier's CLIFF is one level to the engine (level +1 is a step) — a unit climbs a 1.6 m porch face
+  the walker only takes by the stair; the plan's rule 4 promises walker-reachable ⇒ unit-reachable, never the converse;
+  a connectivity pass that raises a cliff to +2 without cutting the stair is the next refinement. Not drawn: a swim (a
+  sea room keeps the site's Δ), the water sheets' tick, the traffic's tick.
+
 ### 11.4 What this does NOT change
 The console's crossings on the authored Δs, Arena's zones, the bays, the tutorial, online
 play, the Door Agent's board doors. The site room's board stays hand-authored; the field is

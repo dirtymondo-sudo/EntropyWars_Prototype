@@ -160,7 +160,7 @@ test('THE RENDERER: the field is built on entry, the walker\'s surface / air / c
      "function _hqTreeWay(U, ctx, dead) {", "hollowtree: function (U, ctx) { return _hqTreeWay(U, ctx, false); },", "deadtree: function (U, ctx) { return _hqTreeWay(U, ctx, true); },"]
         .forEach(f => assert.ok(renderer.includes(f), f));
     assert.equal(renderer.split('land = _hq.terrain ? hqTerrainHeight(').length, 3, 'both landing sites (the walker and the rider)');
-    for (const id of ROOMS) assert.equal(D.hqFieldRoomOk(id), false, id + ': no field window on a smooth field');
+    for (const id of ROOMS) assert.equal(D.hqFieldRoomOk(id), !!(D.hqRoomSite(id) && !(HQ.rooms[id].terrain && HQ.rooms[id].terrain.sea)), id + ': THE SEAMLESS FIELD (2026-09-22) — a WILD terrain room rasterises its own window (a sea room keeps the site\'s Δ; the facility\'s garage is no encounter room)');
     assert.ok(HQ.ways.hollowtree && HQ.ways.deadtree && HQ.catalogue.hollow_tree && HQ.catalogue.hollow_dead_tree, 'the two trees with holes in them');
     assert.ok(HQ.rooms.site_prebuilt_fairy_forest_clearing.doors.find(d => d.id === 'forest').way === 'hollowtree', 'the clearing\'s way back is the hollow tree');
     assert.ok(D.hqSiteRoom('prebuilt_fairy_forest').doors.find(d => d.id === 'woods').way === 'hollowtree', 'and so is the forest\'s way in');

@@ -53040,7 +53040,7 @@ const ThreeRenderer = (function () {
                     var entry = (!site && run.fieldId && typeof PREBUILT_MAPS !== 'undefined' && PREBUILT_MAPS) ? PREBUILT_MAPS[run.fieldId] : null;
                     var info = (site && typeof hqSiteBoardInfo === 'function') ? hqSiteBoardInfo(room.site) : null;
                     var base = site ? ((info && info.base) || 5) : ((typeof HQ_FIELD_RULES !== 'undefined' && HQ_FIELD_RULES.base) || 5);
-                    R = { room: room, roomId: run.room, T: T, site: site, cave: cave, base: base, field: (entry && entry.field) ? entry.field : null };
+                    R = { room: room, roomId: run.room, T: T, site: site, cave: cave, terrain: !!room.terrain, base: base, field: (entry && entry.field) ? entry.field : null };   // THE SEAMLESS FIELD, delivery 2: a terrain room is drawn round its window too
                 }
             }
         } catch (e) { console.warn('[HQ→battle] the room could not be read', e); R = null; }
@@ -53100,7 +53100,7 @@ const ThreeRenderer = (function () {
         if (!_facilityNearGroup) return;
         try {
             var amb = (S.mood && S.mood.ambient != null) ? S.mood.ambient : 1;
-            var lightsAt = (S.lights && S.lights.length) ? S.lights : [S.light || { x: 0, z: 0 }];
+            var lightsAt = (S.lights && S.lights.length) ? S.lights : (S.open ? [] : [S.light || { x: 0, z: 0 }]);   // an OPEN room has no fluorescents (its props light it)
             var plC = (S.mood && S.mood.light != null) ? S.mood.light : 0xe6eeff;
             var lg = new THREE.Group(); lg.name = 'hq_field_lights'; lg.applyMatrix4(M);
             lightsAt.slice(0, 4).forEach(function (Lt) {
@@ -53134,7 +53134,8 @@ const ThreeRenderer = (function () {
         /* the copy the builders read: no battle marker (it stood on the board's centre cell) */
         var copy = Object.assign({}, room, { counters: (room.counters || []).filter(function (c) { return !!c && c.id !== 'battle' && c.proc !== 'battle_marker'; }) });
         var saved = _hq;
-        var H = { ghost: true, opts: {}, host: null, room: copy, profile: null, snap: null, scene: null, camera: null, cube: null,
+        var H = { ghost: true, opts: { room: R.roomId }, host: null, room: copy, profile: null, snap: null, scene: null, camera: null, cube: null,   // opts.room: _hqBuildTerrain resolves the room's SURVEYED record by id (hqTerrainInfo)
+                  terrain: null, outer: null, terrainScatter: null, moatTick: null, seaFx: null,   // THE SEAMLESS FIELD, delivery 2: what _hqBuildTerrain writes on the record
                   shellGroup: new THREE.Group(), doorGroup: new THREE.Group(), propGroup: new THREE.Group(), charGroup: new THREE.Group(),
                   doors: [], counters: [], chars: [], blockers: [], landings: [], player: null, fxPulse: [], site: null, sky: null, setting: null, gallery: null,
                   rails: [], ramps: [], ride: null, finds: [], findLights: 0, climbs: [], climbNear: null,
@@ -53149,12 +53150,17 @@ const ThreeRenderer = (function () {
         try {
             H.gallery = _hqGalleryFrame(copy);
             if (R.cave) { try { _hqBuildCave(copy); } catch (e) { console.warn('[HQ→battle] cave failed', e); } }
+            /* THE SEAMLESS FIELD, delivery 2 (2026-09-22): a TERRAIN room's field — the height field itself, its water, decks, walls,
+               rails, trees, the scatter, the outer ground to the fog, the treeline, the city's lots — is built whole on the scratch
+               record (the window is the true ground: nothing is cut) and stands round the fight exactly as the walker saw it */
+            if (R.terrain) { try { _hqBuildTerrain(copy); } catch (e) { console.warn('[HQ→battle] terrain failed', e); } }
             try { _hqBuildBoxShell(copy); } catch (e) { console.warn('[HQ→battle] shell failed', e); }
             if (H.gallery) { try { _hqBuildGallery(copy); } catch (e) { console.warn('[HQ→battle] gallery failed', e); } }
             if (R.site) { try { _hqBuildSiteDressing(copy); } catch (e) { console.warn('[HQ→battle] dressing failed', e); } }
             try { _hqBuildDoors(copy); } catch (e) { console.warn('[HQ→battle] doors failed', e); }
             try { _hqBuildCounters(copy); } catch (e) { console.warn('[HQ→battle] counters failed', e); }
             try { _hqPlaceProps(copy); } catch (e) { console.warn('[HQ→battle] props failed', e); }
+            if (R.terrain && typeof _hqBuildClimbs === 'function') { try { _hqBuildClimbs(copy); } catch (e) { console.warn('[HQ→battle] climbs failed', e); } }   // the ladders / ropes / vines the tiers were reached by
         } finally { _hq = saved; }
         /* the breathing glows: the room's list into the battle's (cleared with the scenery) */
         H.fxPulse.forEach(function (p) { if (p && p.mat) _hzGlowPulse.push(p); });

@@ -66,7 +66,7 @@ test('THE RULES + WHERE: an 8 × 8 window on the Δ\'s base; stage B = a WILD ro
     const ok = g('hqFieldRoomOk');
     assert.equal(caves.length, 0, 'THE TERRAIN ROOMS (2026-09-17): no chamber wears the grid — stage B has nothing to raster');
     caves.forEach(id => assert.equal(ok(id), true, id));
-    g('hqTerrainRooms')().forEach(id => assert.equal(ok(id), false, id + ': a smooth field is never a field window'));
+    g('hqTerrainRooms')().forEach(id => assert.equal(ok(id), !!(g('hqRoomSite')(id) && !(HQ.rooms[id].terrain && HQ.rooms[id].terrain.sea)), id + ': THE SEAMLESS FIELD (2026-09-22) — a WILD terrain room is a field room (its own lattice, seamless-field.test.js); a sea room and the facility\'s are not'));
     assert.ok(parts.length >= 14, 'the fourteen box parts');
     parts.forEach(id => assert.equal(ok(id), true, id + ' is a complex part'));
     ['site_prebuilt_dumb', 'site_prebuilt_hollow_earth', 'site_prebuilt_haunted', 'central_egress', 'foyer', 'garage', 'hwing_w', 'nope'].forEach(id => assert.equal(ok(id), false, id + ' is never a field'));
@@ -614,7 +614,7 @@ test('STAGE D · THE ENTRY + THE TOOL: hqFieldBuild carries the doors, the edges
     assert.ok(e.field.edges && e.field.edges.n.proud > 0 && e.field.edges.s.proud === 0, 'the attic: the residue on the north, the hatch\'s wall flush');
     assert.equal(e.field.dump.length, S); assert.ok(e.field.dump.some(l => l.includes('%')), 'the dump shows the proud rim');
     assert.ok(e.field.dump.some(l => l.includes('a')) && e.field.dump.some(l => l.includes('b')), 'the seats on the dump');
-    assert.equal(g('hqFieldRoomOk')('site_prebuilt_hollow_earth_vent'), false, 'a terrain chamber (2026-09-17) is never a field room (map.js gates the window on it)');
+    assert.equal(g('hqFieldRoomOk')('site_prebuilt_hollow_earth_vent'), true, 'THE SEAMLESS FIELD (2026-09-22): a terrain chamber is a field room (its own lattice — seamless-field.test.js)');
     const TOOL = fs.readFileSync(__dirname + '/check-field-windows.js', 'utf8');
     ['hqFieldWindow', 'hqFieldDump', 'hqEncounterSeats', '--all', 'rock PROUD of the wall'].forEach(f => assert.ok(TOOL.includes(f), f));
     const r = require('node:child_process').spawnSync(process.execPath, [__dirname + '/check-field-windows.js', '--json'], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });

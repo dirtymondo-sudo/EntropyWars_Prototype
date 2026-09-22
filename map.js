@@ -3358,11 +3358,13 @@
            wild room the rasteriser refuses fights the SITE'S Δ from the centre — THE SITE IS THE BOARD */
         function _hqEncounterBoardCopy(board) {
             const room = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.rooms) ? DOOR_HQ.rooms[_hqCurRoom] : null;
-            /* THE AREA BOARDS (2026-09-19): a complex part with a Δ of its own fights it — THE ROOM'S OWN BOARD */
-            if (!board && typeof window.hqAreaDeltaId === 'function' && window.hqAreaDeltaId(_hqCurRoom)) return 'THE ROOM’S OWN BOARD';
             /* THE FIELD stage B / C: a cave chamber or a complex part fights its own window (data.js hqFieldRoomOk) — the renderer reports no board there, the window is the board */
             const fieldRoom = !!(room && typeof window.hqFieldRoomOk === 'function' && window.hqFieldRoomOk(_hqCurRoom));
+            /* THE AREA BOARDS (2026-09-19): a complex part with a Δ of its own fights it — THE ROOM'S OWN BOARD — only where the rasteriser refuses the room (THE SEAMLESS FIELD, 2026-09-22) */
+            if (!board && !fieldRoom && typeof window.hqAreaDeltaId === 'function' && window.hqAreaDeltaId(_hqCurRoom)) return 'THE ROOM’S OWN BOARD';
             const caveField = !!(fieldRoom && room.cave);
+            if (board && board.terrain) return 'THE GROUND IS THE BOARD';   // THE SEAMLESS FIELD, delivery 2: a terrain room's window on its own ground
+            if (fieldRoom && room.terrain) return 'THE GROUND IS THE BOARD';
             if (board && board.cave) return 'THE CAVE IS THE BOARD';
             if (board === null) return caveField ? 'THE CAVE IS THE BOARD' : fieldRoom ? 'THE ROOM IS THE BOARD' : 'THE SITE IS THE BOARD';
             if (board) return 'THE ROOM IS THE BOARD';

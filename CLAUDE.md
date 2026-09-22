@@ -8120,3 +8120,39 @@ the engine refuses; the battle's hemi / sun / dome still light the room over its
 replicated); the crossfade stays as the safety net. `npm test` runs `seamless-field.test.js`. UNSEEN LIVE (RULE #1c):
 the hall under the battle's sun, a unit on the slab, the treads under a move tween, the table tops, the exposure
 through the cut, the residue strip.
+
+## THE SEAMLESS FIELD, delivery 2 — THE FIELD WINS + THE TERRAIN ROOMS (the haunted house fights on its own ground) — 2026-09-22, local delivery
+The user: "encounters in the haunted house still go to a voxel grid map, not what I wanted at all." TWO CAUSES, both in the
+routing: (1) data.js `hqEncounterLaunch` handed every part with an area Δ (THE Δ AREA PASS) its `launchId`, and map.js
+`_hqEncounterFire` gates the window on `!L.launchId` — so the hall's true ground (delivery 1) NEVER FIRED; (2) `hqFieldRoomOk`
+refused every TERRAIN room — and every generated AREA (THE GROUNDS the bay door lands you in, the cave, the woods) is one, so
+they fought the site's Δ. NOW: **THE FIELD WINS** — `hqEncounterLaunch` returns `seamless: true, launchId: null` for any room
+`hqFieldRoomOk` takes; the area Δ is THE MARKER's fight only (`hqMarkerLaunch` — the crystal's "battle on the delta map") and
+the fallback for a room the rasteriser refuses (a room with `terrain.sea` — a swim has no tile). **THE TERRAIN LATTICE**
+(data.js, after `hqFieldRaster`; `HQ_FIELD_RULES.terrain` = cell · sub · cover · margin · treePad): **`hqFieldTerrainInfo
+(roomId)`** = every lattice cell of a terrain room judged once (cached on the room against its compiled record — a fresh
+survey / a variant re-rasterises): a battle tile per cell about the room's centre, IN when the WALKER'S OWN FEET RULE
+(`hqTerrainFeet` free query, refused on the plan's solid (`hqTerrainMaskAt < solidPad`), under a trunk (`info.trees` +
+`info.thicket`), on a face steeper than `maxSlope` — a wall's top and a deck excepted) stands on ≥ `cover` of `sub × sub`
+samples AND at the centre (a centre on a tier's edge blend takes the median of its standing samples; a centre on the solid
+is OUT whatever the samples say); `top` = the feet there (THE TRUE GROUND), `key` = the path sheet on a path / `water` on a
+wade (`seat: false`) / the room's floor; a pool the walker never enters is a HAZARD cell in its liquid; a wall row's top
+wears `wall`, a deck its `bridge` layer. **`hqFieldRasterTerrain(ti, ox, oz)`** = the window: OUT = rock in the room's cliff
+sheet at `rockTile`, a hazard at its sheet's tier (else `fluidMin`), an IN cell's LEVEL = **THE TIER RULE** `hqFieldTierOf
+(top, ref)` over the window's OWN lowest IN top (`R.ref`) — `step` 1.75 > the jump 1.46, so THE GUARANTEE (a walker's step
+never splits two levels) holds by construction and seamless-field.test.js proves it on every window of the grounds;
+`hqFieldTerrainStep` is the reach's step (up ≤ climbM, down anything); `hqFieldLattice` / `hqFieldRaster` / `hqFieldReach` /
+`hqFieldWindow` (`board.terrain: true`) / `hqFieldBuild` (`entry.field.terrain / open / ref`; a hazard's top = its sheet) /
+`hqFieldLayout({ terrain, open })` (no near, no motion, THE WORLD inert; an OPEN room keeps the site's sky + roster, a closed
+one is a dark ceiling) dispatch on it. **THE RENDERER**: `_hqBattleRoom` carries `terrain`; `_hqBuildRoomInBattle` builds
+the scratch record with `opts: { room }` (so `_hqBuildTerrain` finds the SURVEYED record by id) and runs **`_hqBuildTerrain
+(copy)`** before the shell — the field mesh, the water, the decks / bridges, the walls, the rails, the trees, the scatter,
+the outer ground to the fog, the treeline, a city's lots — and `_hqBuildClimbs(copy)` after the props; the true ground
+(delivery 1) then stands every unit on it, no column drawn. map.js's copy reads THE GROUND IS THE BOARD. `check-field-windows
+.js` sweeps terrain rooms only with `--terrain` (a compile is seconds a room). Tests: seamless-field.test.js (8);
+hq-terrain / hq-woods / hq-field's `hqFieldRoomOk` pins flipped. KNOWN: a tier's CLIFF is one level to the engine (level
++1 is a step) — a unit climbs the porch's 1.6 m face the walker takes by the stair (the plan's rule 4 promises
+walker-reachable ⇒ unit-reachable, never the converse); the water sheets and the traffic do not tick in the battle; the
+hall's residue strip (delivery 1) stands. Ship data.js to R2 AND Render. UNSEEN LIVE (RULE #1c): the grounds under the
+battle's night, the tiers' read against the engine's levels (the porch +1, the crypt +1, the gazebo roof +3), a unit on the
+footbridge, the trees as rock cells, the treeline and the fog past the window, the eye's first frame on a slope.

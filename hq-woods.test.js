@@ -246,7 +246,7 @@ test('THE TAPES: one per part, the hundred kept; the crag, the pinnacle, the sta
     assert.ok(/_hq\.blockers\.push\(\{ obj: blk, y: t\.y, top: null, rad: t\.r \|\| 0\.38, tree: true \}\)/.test(terr), 'a tree is a blocker');
     assert.ok(/if \(TK && S\.forest && S\.open\) _hqPlantTreeline\(room, S, S\.w \/ 2, S\.d \/ 2, plantTree, rng\);/.test(terr), 'THE TREELINE past an open edge');
     assert.ok(/if \(!S\.open && room\.terrain\.stalactites !== false\)/.test(terr), 'no stalactites under an open sky');
-    for (const id of PART_IDS) assert.equal(D.hqFieldRoomOk(id), false, id + ': the encounter fights the site’s Δ (no field on a smooth floor)');
+    for (const id of PART_IDS) assert.equal(D.hqFieldRoomOk(id), true, id + ': THE SEAMLESS FIELD (2026-09-22) — the encounter fights the woods\' own window on their own ground');
 });
 
 test('THE STAIRCASE + THE STORM DRAIN: the flight is a stair ramp (treads two samples deep) up to the landing (3.5 m) the EXIT door stands on, its banisters the rails, THE TOWER beside it no stair reaches; Dead Man’s Cave is a closed brick culvert 35 m long with THE CHANNEL waded down its middle, THE SUMP deep and never entered, the walkways dry either side, the grate at the east end', () => {

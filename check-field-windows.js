@@ -22,7 +22,9 @@ main();
 function main() {
 const R = g('HQ_FIELD_RULES'), C = R.box.cell;
 const win = g('hqFieldWindow'), dump = g('hqFieldDump'), seatsOf = g('hqEncounterSeats'), roomInfo = g('hqFindRoomInfo'), caveInfo = g('hqCaveInfo'), doorCell = g('hqCaveDoorCell'), lattice = g('hqFieldLattice');
-const rooms = g('hqComplexRooms()').filter(id => g('hqFieldRoomOk')(id) && (!want || id.indexOf(want) >= 0));
+/* THE SEAMLESS FIELD, delivery 2 (2026-09-22): a TERRAIN room is a field room too, but its compile is seconds a room — the sweep takes them only with --terrain (or by name) */
+const withTerrain = process.argv.includes('--terrain');
+const rooms = g('hqComplexRooms()').filter(id => g('hqFieldRoomOk')(id) && (!want || id.indexOf(want) >= 0) && (withTerrain || want || !g('DOOR_HQ').rooms[id].terrain));
 const out = [];
 function targetNear(Lt, cell) {
     for (const [dx, dy] of [[2, 0], [-2, 0], [0, 2], [0, -2], [1, 0], [-1, 0], [0, 1], [0, -1]]) {
