@@ -8611,3 +8611,21 @@ restores HP and MP all the way — battle.js `grantXP` on the board (every progr
 the ledger at the debrief (a member whose beat crossed a level comes home `hp / mp = null` = FULL; a body dead
 at the end stays DOWN). hq-party.test.js (21). Ship data.js to R2 AND Render. UNSEEN LIVE (RULE #1c): the swapped
 rig under the pause menu, the opening gauge on the bezel, the mid-fight heal's pop.
+
+## THE MATTE BAKE — the forge's stage wears every Meshy bake unlit-matte (the glossy politician / cop) — 2026-09-23, local delivery
+The user: "Meshy's lit mode makes the models look glossy; the politician and the cop in the party builder have that
+shininess." MEASURED off the exports in the repo (the JSON chunk): every Meshy `_Animation_<Clip>_withSkin.glb` — the
+2026-09-21 RIG RULE's base for the politician, the cop, the popstar, the djinn, the six first rigs, the catgirl — carries NO
+`metallicFactor` (glTF's default is **1.0 = fully metallic**), a `roughnessFactor` as low as 0.41, `emissiveFactor [1,1,1]`
+over the SAME bake as its emissive texture (that IS Meshy's unlit look) and a ×2 `KHR_materials_specular`. THE BOARD AND THE
+HQ NEVER SAW IT: `_attachUnitModel` swaps every unit material to Lambert (map only) — the one place the raw PBR material
+survived was **`EWCharViewer`** (the forge's stage, the barbershop / intake creator's `HeroViewer3D`), which keeps Meshy's
+material on purpose for the close-up; under three's GLTFLoader a metalness-1 body has no diffuse lobe and the stage's three
+lights paint tight highlights over the emissive bake — chrome. NOW: three-renderer.js **`_cvMatteBake(mat)`** (before
+`_cvEnsure`; `CV_BAKE_ROUGHNESS` 0.92 · `CV_BAKE_EMISSIVE` 0.5) is the ONE rule for a PBR material on the stage — metalness 0,
+roughness ≥ 0.92, the bake's self-glow capped at 0.5 (a white emissive with NO map = a pure white glow → off), clearcoat /
+specular tamed, no envMap — ALWAYS on a viewer-owned copy (the mount's traverse clones every Standard / Physical material
+now, not only a map that needed the sRGB flip; `_cvClearModel` disposes them). `window.EW_CV_LIT_BAKES = true` keeps the
+export as authored. The misc / door-kit / prop paths were already Lambert (`_hzMiscKit` picks, `_hqPropMatPick`). Unseen
+live (RULE #1c): the stage's tone against the old — `CV_BAKE_EMISSIVE` is the edit if a bake reads too dark (raise) or flat
+(lower); the creator base's own shells set their roughness after this and are untouched.

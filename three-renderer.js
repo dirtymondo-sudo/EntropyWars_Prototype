@@ -36631,6 +36631,28 @@ const ThreeRenderer = (function () {
         return tex;
     }
 
+    /* THE MATTE BAKE — the one rule for a Meshy PBR material on the stage (see the
+       mount's comment). `EW_CV_LIT_BAKES = true` keeps the export as authored. */
+    var CV_BAKE_ROUGHNESS = 0.92;    // ≥ this: no tight highlight on a bake
+    var CV_BAKE_EMISSIVE = 0.5;      // the bake's self-glow — Meshy exports set 1.0 over a chrome body
+    function _cvMatteBake(mat) {
+        if (!mat || (typeof window !== 'undefined' && window.EW_CV_LIT_BAKES)) return mat;
+        if (mat.metalness != null) mat.metalness = 0;
+        if (mat.roughness != null) mat.roughness = Math.max(CV_BAKE_ROUGHNESS, mat.roughness || 0);
+        if (mat.isMeshPhysicalMaterial) {
+            if (mat.clearcoat != null) mat.clearcoat = 0;
+            if (mat.specularIntensity != null) mat.specularIntensity = 0.2;
+            if (mat.specularColor && mat.specularColor.setRGB) mat.specularColor.setRGB(1, 1, 1);
+        }
+        if (mat.emissive) {
+            if (mat.emissiveMap) { mat.emissiveIntensity = Math.min(mat.emissiveIntensity == null ? 1 : mat.emissiveIntensity, CV_BAKE_EMISSIVE); }
+            else if (mat.emissive.r + mat.emissive.g + mat.emissive.b > 0.05) mat.emissive.setRGB(0, 0, 0);   // a bare white glow washes the bake out
+        }
+        mat.envMap = null;
+        mat.needsUpdate = true;
+        return mat;
+    }
+
     function _cvEnsure() {
         if (_cv) return _cv;
         if (typeof THREE === 'undefined') return null;
@@ -36979,6 +37001,19 @@ const ThreeRenderer = (function () {
             // already flipped, hand the viewer its own sRGB-tagged CLONE on a
             // viewer-owned material copy — never mutate anything cache-shared.
             // Owned copies are disposed in _cvClearModel.
+            // THE MATTE BAKE (2026-09-23): a Meshy export's material is authored for
+            // Meshy's own LIT viewer — no metallicFactor (glTF's default is 1.0 =
+            // FULLY METALLIC), a roughnessFactor as low as 0.41, a white emissive over
+            // the same bake, a ×2 KHR specular colour. Under three's GLTFLoader that is
+            // a chrome figure: the diffuse lobe is gone and the three stage lights
+            // paint tight highlights over the emissive bake — the "lit mode" gloss the
+            // user never wanted (the politician / the cop, every 2026-09-21 rig). The
+            // look the user likes is Meshy's UNLIT mode = the bake alone, so the viewer
+            // wears every bake MATTE: metalness 0, roughness ≥ CV_BAKE_ROUGHNESS, the
+            // bake's self-glow at CV_BAKE_EMISSIVE (a white emissive with no map — a
+            // pure white glow — is switched off) — always on a viewer-owned copy, never
+            // the cache-shared material. The board / the HQ never see this: they swap
+            // every unit material to Lambert in _attachUnitModel.
             v.ownedMats = []; v.ownedTex = [];
             m.traverse(function (n) {
                 if (!n.isMesh) return;
@@ -36987,14 +37022,21 @@ const ThreeRenderer = (function () {
                 var src = Array.isArray(n.material) ? n.material : [n.material];
                 var changed = false;
                 var out = src.map(function (sm) {
-                    if (!sm || !sm.map || sm.map.encoding === THREE.sRGBEncoding) return sm;
+                    if (!sm) return sm;
+                    var pbr = !!(sm.isMeshStandardMaterial || sm.isMeshPhysicalMaterial);
+                    var flip = !!(sm.map && sm.map.encoding !== THREE.sRGBEncoding);
+                    if (!pbr && !flip) return sm;
                     var mat2 = sm.clone();
-                    var tex2 = sm.map.clone();
-                    tex2.encoding = THREE.sRGBEncoding;
-                    tex2.needsUpdate = true;
-                    mat2.map = tex2;
-                    if (sm.emissiveMap === sm.map) mat2.emissiveMap = tex2;
-                    v.ownedMats.push(mat2); v.ownedTex.push(tex2);
+                    if (flip) {
+                        var tex2 = sm.map.clone();
+                        tex2.encoding = THREE.sRGBEncoding;
+                        tex2.needsUpdate = true;
+                        mat2.map = tex2;
+                        if (sm.emissiveMap === sm.map) mat2.emissiveMap = tex2;
+                        v.ownedTex.push(tex2);
+                    }
+                    if (pbr) _cvMatteBake(mat2);
+                    v.ownedMats.push(mat2);
                     changed = true;
                     return mat2;
                 });
