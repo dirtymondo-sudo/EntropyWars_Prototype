@@ -8522,3 +8522,19 @@ draw wins on every board); under a true-ground field they are GRIDS (`RING_FIELD
 the air wears them flat. `npm test` runs seamless-field.test.js (delivery 8 ×3). UNSEEN LIVE (RULE #1c): the bowl's read
 in each floor sheet (the sheet stretches down the wall — `deformBand` is the edit), the box floor's subdivision under the
 AO, the ring's lift against a rig's feet, a dig beside a raise.
+
+## THE SEAMLESS FIELD, delivery 9 — THE NO-DEFORM FLAG + THE SINK (the fountain question) — 2026-09-23, local delivery
+The user: "a circular fountain GLB sits on four cells — I dig a corner, what happens?" The deform moves FLOORS, never props
+(the basin hung over a pit; a box cover cell dug from the fountain's rim). Now: data.js **`hqFieldFixedCells(R)`** files
+`entry.field.fixed` (one letter per cell) at the build — C a cover · P a prop whose footprint covers ≥ `HQ_FIELD_RULES.
+strata.fixedOverlap` (8 %) of MORE THAN ONE cell · D a door landing / rim (a terrain pad) · W water / a hazard · L a wall
+row · B a bridge · G the gallery · K a counter · **S a prop wholly in ONE cell = NOT fixed** · `.` free; a cave carries none.
+**`hqFieldFixedAt(field, x, y)`** = the reason (`fixedLabels`) or null. battle.js **`fieldCellFixed(x, y)`** (off the latched
+field's `PREBUILT_MAPS` entry; null outside a field) is read by `applyTerrainDeform` (the cell is skipped like a wall),
+`_buildProblem`'s dig and `_placeBlockProblem` (`Fixed ground: <reason>`). **THE SINK**: three-renderer.js `_hqPlaceProps` tags
+every floor prop's group `_ew_hqProp`; `_fieldSinkProps` (run by `_fieldDeformApply`) drops one standing on a dug cell by the
+bowl at its spot (its base kept, put back by `_fieldDeformRestore`). RULE: a new thing a unit must never dig under = a
+letter in `hqFieldFixedCells`, never a check at a call site. **OPEN (the user's note): THE STRUCTURE HEIGHTS** —
+SEAMLESS_FIELD_PLAN §9: measure roofs / bridges / stairs / platforms / building tops as a structure table per room, read by
+the raster as a LAYER per cell, before any second-floor fight. `npm test` runs seamless-field.test.js (delivery 9 ×2).
+UNSEEN LIVE (RULE #1c): the refusal's log line, a barrel sinking into a crater, the crater stopping at a landing.

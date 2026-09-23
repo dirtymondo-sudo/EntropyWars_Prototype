@@ -45349,6 +45349,8 @@ const HQ_FIELD_RULES = {
        is a property of the ROOM FAMILY (its hub), never of the site's Δ (§8.4): hqFieldBedFor(roomId). */
     strata: {
         on: true,             // window.EW_HQ_NO_FIELD_STRATA = the engine digs, the eye sees nothing (delivery 1's rule)
+        fixedLabels: { C: 'a prop stands here', P: 'a prop stands here', D: 'a doorway', W: 'water', L: 'a wall', B: 'a bridge', G: 'the gallery', K: 'a counter' },   // THE NO-DEFORM FLAG (delivery 9): why a cell refuses a dig / a raise
+        fixedOverlap: 0.08,   // a prop's footprint on ≥ this share of a cell = the cell is under it
         deformBand: 0.3,      // THE DEFORM (2026-09-23): a dig is a BOWL in the room's own floor — its wall runs this many tiles either side of the cell's edge (a raise stays a block); window.EW_HQ_NO_FIELD_DEFORM = the old column under the floor
         beds: {               // per hub: `side` = the faces of a dig / a raise, `floor` = a dug cell's bottom
             hq:         { side: 'concrete_floor', floor: 'concrete_floor' },
@@ -45914,6 +45916,68 @@ function hqFieldWindow(roomId, wPt, tPt) {
         raster: R,
     };
 }
+/* ══ THE NO-DEFORM FLAG (THE SEAMLESS FIELD, delivery 9, 2026-09-23) ══
+   The user's fountain: a four-cell GLB with one corner dug hangs over a pit — the deform moves floors, never props.
+   So a cell the engine may NOT dig or raise is FLAGGED at the build (entry.field.fixed, one letter per cell): a cover
+   (C — a prop's top is the cell's floor), a prop whose footprint spans MORE THAN ONE cell (P — the fountain, a car, a
+   table), a door's landing / rim (D), water or a hazard (W), a wall row's top (L), a bridge / deck layer (B), the
+   gallery's slab / flight (G), a counter (K). A prop whose whole footprint lies in ONE cell is 'S' — NOT fixed: the
+   cell may be dug and the renderer SINKS the prop with the ground (a barrel in a crater). '.' is free. battle.js
+   fieldCellFixed(x, y) reads it at applyTerrainDeform, the Build dig and the block placer. Never author it. */
+function hqFieldFixedCells(R) {
+    if (!R || !(R.box || R.terrain)) return null;
+    const S = R.S, C = R.C, T = HQ_FIELD_RULES.strata || {}, ov = (T.fixedOverlap > 0) ? T.fixedOverlap : 0.08;
+    const F = []; for (let y = 0; y < S; y++) { F.push([]); for (let x = 0; x < S; x++) F[y].push(null); }
+    const mark = (x, y, k) => { if (x >= 0 && y >= 0 && x < S && y < S && (!F[y][x] || F[y][x] === 'S')) F[y][x] = k; };
+    const centre = (x, y) => { const c = R.cells[y] && R.cells[y][x], s = c && c.src; if (!s) return null; return R.box ? { x: +s.cx, z: +s.cz } : { x: +s.x, z: +s.z }; };
+    for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+        const c = R.cells[y][x]; if (!c) continue;
+        if (R.box) { if (c.in && c.prop) mark(x, y, 'C'); if (c.in && (c.flight || c.slab)) mark(x, y, 'G'); }
+        else { if (c.hazard || c.fluid) mark(x, y, 'W'); if (c.in && c.wall) mark(x, y, 'L'); if (c.in && c.bridge) mark(x, y, 'B'); }
+    }
+    /* a box footprint in room metres → the cells it covers by ≥ ov of their area */
+    const cellsUnder = (px, pz, hw, hd) => {
+        const out = [];
+        for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+            const cc = centre(x, y); if (!cc) continue;
+            const ox = Math.min(cc.x + C / 2, px + hw) - Math.max(cc.x - C / 2, px - hw), oz = Math.min(cc.z + C / 2, pz + hd) - Math.max(cc.z - C / 2, pz - hd);
+            if (ox > 0 && oz > 0 && (ox * oz) / (C * C) >= ov) out.push({ x, y });
+        }
+        return out;
+    };
+    const room = DOOR_HQ.rooms[R.room] || {};
+    if (R.box) { for (const d of R.doors || []) { mark(d.inX, d.inY, 'D'); mark(d.x, d.y, 'D'); } }
+    else {
+        let info = null; try { info = hqTerrainInfo(R.room); } catch (e) { info = null; }
+        for (const p of (info && info.pads) || []) cellsUnder(+p.x || 0, +p.z || 0, (+p.w || 3) / 2, (+p.d || 3) / 2).forEach(c => mark(c.x, c.y, 'D'));
+    }
+    for (const k of room.counters || []) { if (!k || k.proc === 'battle_marker' || k.id === 'battle' || typeof k.x !== 'number') continue; cellsUnder(+k.x, +k.z || 0, 0.5, 0.5).forEach(c => mark(c.x, c.y, 'K')); }
+    const cat = DOOR_HQ.catalogue || {};
+    let scatter = [];
+    if (!R.box) { try { const ti = hqTerrainInfo(R.room); scatter = (ti && ti.scatter) || []; } catch (e) { scatter = []; } }
+    for (const p of (room.props || []).concat(scatter)) {
+        if (!p || !p.key) continue;
+        const c = cat[p.key] || {};
+        if (p.wall || p.ceil || c.ceil || p.flip) continue;
+        const foot = (p.foot != null) ? +p.foot : (+c.foot || 0);
+        if (!(foot > 0) || !(c.block || !((+p.y || 0) > 0.5))) continue;   // the renderer's own blocker rule: a lifted small prop (a tray) blocks nothing
+        const rect = (p.rect === false) ? null : (p.rect || c.rect);
+        let hw, hd;
+        if (rect && +rect.hw > 0 && +rect.hd > 0) { hw = +rect.hw; hd = +rect.hd; } else { hw = hd = foot * 0.886; }
+        const under = cellsUnder(+p.x || 0, +p.z || 0, hw, hd);
+        if (!under.length) continue;
+        if (under.length > 1) under.forEach(u => mark(u.x, u.y, 'P')); else mark(under[0].x, under[0].y, 'S');
+    }
+    return F.map(row => row.map(k => k || '.').join(''));
+}
+/* the read: the reason a cell is fixed, else null ('S' — a small prop that sinks — is not fixed) */
+function hqFieldFixedAt(field, x, y) {
+    const F = field && field.fixed; if (!F) return null;
+    const row = F[y]; if (typeof row !== 'string') return null;
+    const k = row[x]; if (!k || k === '.' || k === 'S') return null;
+    const L = (HQ_FIELD_RULES.strata && HQ_FIELD_RULES.strata.fixedLabels) || {};
+    return L[k] || 'fixed ground';
+}
 function hqFieldBuild(roomId, ox, oz, opts) {
     opts = opts || {};
     const R = hqFieldRaster(roomId, ox, oz); if (!R) return null;
@@ -45950,6 +46014,7 @@ function hqFieldBuild(roomId, ox, oz, opts) {
                     cells: R.cells.map(row => row.map(c => (c.rock ? '#' : c.hazard ? '!' : c.in ? String(Math.max(0, Math.min(9, c.tile + 1))) : '?')).join('')),
                     /* STAGE D: the rim's doors and the walls' proud (a box window; a cave has neither) */
                     doors: Array.isArray(R.doors) ? R.doors.map(d => Object.assign({}, d)) : [], edges: R.edges ? JSON.parse(JSON.stringify(R.edges)) : null,
+                    fixed: hqFieldFixedCells(R),   // THE NO-DEFORM FLAG (delivery 9): the cells the engine may not dig / raise (null on a cave)
                     dump: hqFieldDump(R, { seats: sp }) };
     return entry;
 }
@@ -48290,7 +48355,7 @@ if (typeof window !== 'undefined') {
     window.HQ_DISPENSARY = HQ_DISPENSARY; window.hqBagRecord = hqBagRecord; window.hqBagCount = hqBagCount; window.hqBagAdd = hqBagAdd; window.hqBagTake = hqBagTake; window.hqBagList = hqBagList; window.hqBagTotal = hqBagTotal; window.hqBagSet = hqBagSet; window.hqBagForBattle = hqBagForBattle; window.hqBagCap = hqBagCap; window.hqShopStock = hqShopStock; window.hqShopQuote = hqShopQuote; window.hqShopBuyApply = hqShopBuyApply; window.hqShopSell = hqShopSell; window.hqPartyStock = hqPartyStock; window.hqPartyBagItems = hqPartyBagItems; window.hqPartyAutoHeal = hqPartyAutoHeal; window.hqPartyFieldSpells = hqPartyFieldSpells; window.hqPartyFieldTargets = hqPartyFieldTargets; window.hqPartyHealAmount = hqPartyHealAmount; window.hqPartyCast = hqPartyCast; window.hqPartyUseItem = hqPartyUseItem; window.hqPartyFieldItems = hqPartyFieldItems; window.hqPartySpec = hqPartySpec; window.hqPartyGenders = hqPartyGenders; window.hqPartyDefaultJob = hqPartyDefaultJob;
     /* THE FIELD stage B — the rasteriser on the cave (Phase 9 Delivery 8, 2026-09-16) */
     window.HQ_FIELD_RULES = HQ_FIELD_RULES; window.hqFieldRimBox = hqFieldRimBox; window.hqEncounterRoomLabel = hqEncounterRoomLabel; window.hqFieldDump = hqFieldDump; window.hqFieldRoomOk = hqFieldRoomOk; window.hqFieldTerrainInfo = hqFieldTerrainInfo; window.hqFieldRasterTerrain = hqFieldRasterTerrain; window.hqFieldTerrainStep = hqFieldTerrainStep; window.hqFieldId = hqFieldId; window.hqFieldParse = hqFieldParse; window.hqFieldRaster = hqFieldRaster; window.hqFieldReach = hqFieldReach;
-    window.hqFieldWindow = hqFieldWindow; window.hqFieldBuild = hqFieldBuild; window.hqFieldLayout = hqFieldLayout; window.hqFieldRegister = hqFieldRegister;
+    window.hqFieldWindow = hqFieldWindow; window.hqFieldBuild = hqFieldBuild; window.hqFieldFixedCells = hqFieldFixedCells; window.hqFieldFixedAt = hqFieldFixedAt; window.hqFieldLayout = hqFieldLayout; window.hqFieldRegister = hqFieldRegister;
     window.hqFieldTierOf = hqFieldTierOf; window.hqFieldGroundOn = hqFieldGroundOn; window.hqFieldBedFor = hqFieldBedFor; window.hqFieldStrataOn = hqFieldStrataOn; window.hqFieldBoxInfo = hqFieldBoxInfo; window.hqFieldGallery = hqFieldGallery; window.hqFieldLattice = hqFieldLattice; window.hqFieldBoxStep = hqFieldBoxStep; window.hqFieldBoxTile = hqFieldBoxTile; window.hqFieldNearestWalk = hqFieldNearestWalk;
     /* SKATEBOARDING (HQ plan 9.8 stage 1, 2026-09-15) */
     window.HQ_SKATE_RULES = HQ_SKATE_RULES; window.HQ_LIGHT_RULES = HQ_LIGHT_RULES; window.HQ_POLISH_PREFS = HQ_POLISH_PREFS; window.hqPolishGet = hqPolishGet; window.hqPolishSet = hqPolishSet; window.hqPolishAll = hqPolishAll; window.hqPolishReset = hqPolishReset; window.hqPolishRow = hqPolishRow; window.HQ_ATMOS_SITES = HQ_ATMOS_SITES; window.HQ_DECAL_RULES = HQ_DECAL_RULES; window.hqRoomAtmos = hqRoomAtmos; window.hqRoomArrival = hqRoomArrival; window.HQ_KICKABLE = HQ_KICKABLE; window.hqPropKickable = hqPropKickable; window.hqRoomFogHalfAt = hqRoomFogHalfAt; window.hqSkateStatus = hqSkateStatus; window.hqSkateRecord = hqSkateRecord; window.hqSkateBank = hqSkateBank; window.hqSkateScore = hqSkateScore; window.hqSkateIssueFree = hqSkateIssueFree;

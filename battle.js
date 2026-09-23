@@ -42565,6 +42565,17 @@
            on the true ground and THE RETURN reads the room's frame from it; the next startMatch / a rematch drops it */
         let _encRoomLast = null;
         window._ewEncounterRoom = function () { const m = _encMatch || _encRoomLast; return m ? { room: m.room || null, field: m.field || null, fieldId: m.fieldId || null, site: m.site || null } : null; };
+        /* THE NO-DEFORM FLAG (THE SEAMLESS FIELD, delivery 9, 2026-09-23): a field cell under a multi-cell prop, a cover, a
+           doorway, water, a wall row, a bridge, the gallery or a counter is never dug or raised (data.js hqFieldFixedCells
+           filed it on the entry at the build) — the room's floor is the only thing the deform moves, and a fountain with
+           one corner dug would hang over air. The reason, else null; null outside a field (a board keeps its own rules). */
+        function fieldCellFixed(x, y) {
+            const m = _encMatch || _encRoomLast; if (!m || !m.fieldId) return null;
+            const e = (typeof PREBUILT_MAPS !== 'undefined' && PREBUILT_MAPS) ? PREBUILT_MAPS[m.fieldId] : null;
+            if (!e || !e.field || !e.field.fixed || typeof hqFieldFixedAt !== 'function') return null;
+            return hqFieldFixedAt(e.field, x, y);
+        }
+        window.fieldCellFixed = fieldCellFixed;
 
         function startMatch() {
             state.startTime = Date.now();
@@ -54634,6 +54645,7 @@
                     if (rule && !rule.walkable && !rule.cosmetic) return 'Blocked by an object';
                 }
                 if (typeof getBuildingAt === 'function' && getBuildingAt(x, y)) return 'Part of a structure';
+                { const fx = fieldCellFixed(x, y); if (fx) return 'Fixed ground: ' + fx; }   // THE NO-DEFORM FLAG
                 const h = getBaseHeightAt(x, y);
                 if (h <= cfg.minHeight) return 'Already at bedrock';
                 if (h - uz > cfg.vReach) return 'Too high to reach';
@@ -54882,6 +54894,7 @@
                     if (terrain === 'wall') continue;
                     if (terrain === 'mountain' && (cDelta < 0 || _flatten)) continue;
                     if (typeof isObjectiveTile === 'function' && isObjectiveTile(tx, ty)) continue;
+                    if (fieldCellFixed(tx, ty)) continue;   // THE NO-DEFORM FLAG: the ground under a prop / a doorway / water in a field
                     const obj = getObjectAt(tx, ty);
                     if (obj) {
                         const rule = typeof getObjectRule === 'function' ? getObjectRule(obj) : null;
@@ -55177,6 +55190,7 @@
                 if (rule && !rule.walkable && !rule.cosmetic) return 'Tile is occupied';
             }
             if (typeof getBuildingAt === 'function' && getBuildingAt(x, y)) return 'Inside a structure';
+            { const fx = fieldCellFixed(x, y); if (fx) return 'Fixed ground: ' + fx; }   // THE NO-DEFORM FLAG (delivery 9)
             out.isWater = _isWaterTile(x, y);
             out.oldH = getBaseHeightAt(x, y);
             if (!out.isWater && out.oldH >= TERRAIN_RESHAPE_CONFIG.maxHeight) return 'Max height';

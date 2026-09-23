@@ -46567,6 +46567,7 @@ const ThreeRenderer = (function () {
             if (p.ring && cat.wedge && !isBox) { _hqPlaceWedgeRing(p, cat, r, y0, y, target); return; }
             var grp = new THREE.Group();
             if (box && typeof p.wall === 'string') grp._ew_hqWall = p.wall;   // THE ROOM ROUND THE FIELD: a wall prop fades with its wall
+            if (!onWall && !onCeil && !flip) grp._ew_hqProp = { key: p.key, foot: cat.foot || 0 };   // THE SINK (delivery 9): a floor prop the field's deform may carry down with a dug cell
             /* the spot: a wall point pushed in by `depth` (known now for proc props, on load for GLBs), else the free spot */
             function place(depth) {
                 if (box) grp.position.set((box.wx + box.nx * (0.02 + depth / 2)) * U, y * U, (box.wz + box.nz * (0.02 + depth / 2)) * U);
@@ -53694,11 +53695,34 @@ const ThreeRenderer = (function () {
             if (!on || !plan || !plan.dug.length) { _fieldDeformRestoreMesh(m); return; }
             try { if (_fieldDeformMesh(m, ts, plan)) hit++; } catch (e) { console.warn('[HQ→battle] the deform failed', e); }
         });
+        try { _fieldSinkProps(on ? plan : null, ts); } catch (e) { console.warn('[HQ→battle] the sink failed', e); }   // THE SINK: the small props on the dug cells
         if (hit) _shadowsDirty = true;
         return hit;
     }
+    /* THE SINK (delivery 9, 2026-09-23): a floor prop standing on a dug cell goes down with the ground — its holder's frame
+       is the room's, so the battle-px drop is re-based by the parent's scale; the base is kept and put back. A cell under a
+       prop that spans more than one cell is never dug (data.js hqFieldFixedCells), so whatever is here is small. */
+    function _fieldSinkProps(plan, ts) {
+        if (!_facilityNearGroup || typeof THREE === 'undefined') return 0;
+        _fdV = _fdV || new THREE.Vector3();
+        var G = _fieldGround(), n = 0; if (!G) return 0;
+        _facilityNearGroup.traverse(function (o) {
+            if (!o._ew_hqProp) return;
+            if (o._ew_sinkBase == null) o._ew_sinkBase = o.position.y;
+            if (!plan || !plan.dug.length) { if (o.position.y !== o._ew_sinkBase) o.position.y = o._ew_sinkBase; return; }
+            o.updateWorldMatrix(true, false);
+            _fdV.setFromMatrixPosition(o.matrixWorld);
+            if (_fdV.x < 0 || _fdV.z < 0 || _fdV.x > G.N * ts || _fdV.z > G.N * ts) { o.position.y = o._ew_sinkBase; return; }
+            var dy = plan.dyAt(_fdV.x / ts, _fdV.z / ts);
+            var e = o.parent ? o.parent.matrixWorld.elements : null, sPx = e ? (Math.sqrt(e[4] * e[4] + e[5] * e[5] + e[6] * e[6]) || 1) : 1;
+            o.position.y = o._ew_sinkBase + dy / sPx;
+            if (dy) n++;
+        });
+        return n;
+    }
     function _fieldDeformRestore() {
         try { _fieldFloorMeshes().forEach(_fieldDeformRestoreMesh); } catch (e) {}
+        try { if (_facilityNearGroup) _facilityNearGroup.traverse(function (o) { if (o._ew_hqProp && o._ew_sinkBase != null) o.position.y = o._ew_sinkBase; }); } catch (e) {}
         _fieldDeformCache.key = null; _fieldDeformCache.plan = null;
     }
     function _fieldStrataBuild(ts) {

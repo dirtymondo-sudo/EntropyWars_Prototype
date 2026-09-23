@@ -630,3 +630,42 @@ test('delivery 8 · THE RINGS ABOVE: the reticle and the selected tile render af
     /* the lift maths: the ring sits above the plate */
     assert.ok(1.75 * 0.04 > 0.04, 'RING_FIELD_LIFT × HL_FIELD_LIFT clears HL_FIELD_LIFT');
 });
+
+/* ══ delivery 9 — THE NO-DEFORM FLAG + THE SINK (2026-09-23) ══ */
+test('delivery 9 · THE NO-DEFORM FLAG: every cover / gallery / door landing cell of the hall is fixed, a one-cell prop is S (not fixed), the grounds\' water is W, the read names the reason', () => {
+    const D = loadData();
+    const W = D.hqFieldWindow(HALL, { x: 0, z: 0 }, { x: 1.75, z: 0 });
+    const e = D.hqFieldBuild(HALL, W.ox, W.oz, {});
+    const F = e.field.fixed; assert.ok(Array.isArray(F) && F.length === e.field.S && F.every(r => typeof r === 'string' && r.length === e.field.S), 'one letter per cell');
+    const R = D.hqFieldRaster(HALL, W.ox, W.oz);
+    for (let y = 0; y < R.S; y++) for (let x = 0; x < R.S; x++) {
+        const c = R.cells[y][x];
+        if (c.in && c.prop) assert.equal(F[y][x], 'C', 'a cover is fixed at ' + x + ',' + y);
+        if (c.in && (c.flight || c.slab) && !c.prop) assert.equal(F[y][x], 'G', 'the gallery is fixed');
+    }
+    for (const d of e.field.doors) { if (d.inX < 0 || d.inY < 0 || d.inX >= e.field.S || d.inY >= e.field.S) continue; assert.ok(D.hqFieldFixedAt(e.field, d.inX, d.inY), 'the landing is fixed (' + F[d.inY][d.inX] + ')'); }
+    assert.ok(F.join('').includes('S'), 'the hall has a small prop that sinks');
+    const sy = F.findIndex(r => r.includes('S')), sx = F[sy].indexOf('S');
+    assert.equal(D.hqFieldFixedAt(e.field, sx, sy), null, 'S is not fixed');
+    const cy = F.findIndex(r => r.includes('C')), cx = F[cy].indexOf('C');
+    assert.equal(D.hqFieldFixedAt(e.field, cx, cy), 'a prop stands here');
+    const fy = F.findIndex(r => r.includes('.')), fx = F[fy].indexOf('.');
+    assert.equal(D.hqFieldFixedAt(e.field, fx, fy), null, 'free ground');
+    assert.equal(D.hqFieldFixedAt({ fixed: null }, 0, 0), null, 'no flag = a board\'s own rules');
+    const WG = D.hqFieldWindow(GROUNDS, { x: 0, z: 8 }, { x: 1.75, z: 9 });
+    const g = D.hqFieldBuild(GROUNDS, WG.ox, WG.oz, {});
+    assert.ok(Array.isArray(g.field.fixed) && /[PS]/.test(g.field.fixed.join('')), 'the grounds carry props on the flag');
+    const RG = D.hqFieldRaster(GROUNDS, WG.ox, WG.oz);
+    for (let y = 0; y < RG.S; y++) for (let x = 0; x < RG.S; x++) { const c = RG.cells[y][x]; if (c.hazard || c.fluid) assert.equal(g.field.fixed[y][x], 'W', 'water is fixed'); }
+});
+
+test('delivery 9 · the engine gate + the sink: applyTerrainDeform, the Build dig and the block placer refuse a fixed cell; the renderer tags floor props and sinks the small ones with the ground, restoring them with the floor', () => {
+    const BT = fs.readFileSync(path.join(__dirname, 'battle.js'), 'utf8');
+    assert.ok(BT.includes('function fieldCellFixed(x, y) {') && BT.includes("const m = _encMatch || _encRoomLast; if (!m || !m.fieldId) return null;") && BT.includes('return hqFieldFixedAt(e.field, x, y);'), 'the read off the latched field');
+    assert.ok(BT.includes("if (fieldCellFixed(tx, ty)) continue;   // THE NO-DEFORM FLAG"), 'applyTerrainDeform skips it');
+    assert.equal((BT.match(/if \(fx\) return 'Fixed ground: ' \+ fx;/g) || []).length, 2, 'the dig and the block placer refuse it with the reason');
+    assert.ok(TR.includes("if (!onWall && !onCeil && !flip) grp._ew_hqProp = { key: p.key, foot: cat.foot || 0 };"), 'the prop tag');
+    assert.ok(TR.includes('function _fieldSinkProps(plan, ts) {') && TR.includes('o.position.y = o._ew_sinkBase + dy / sPx;') && TR.includes("try { _fieldSinkProps(on ? plan : null, ts); }"), 'the sink runs with the deform');
+    assert.ok(TR.includes("if (o._ew_hqProp && o._ew_sinkBase != null) o.position.y = o._ew_sinkBase;"), 'the restore puts the props back');
+    assert.equal(DATA.HQ_FIELD_RULES.strata.fixedLabels.D, 'a doorway');
+});

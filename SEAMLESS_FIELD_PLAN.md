@@ -357,6 +357,42 @@ sheet stretches down the wall — a steeper `deformBand` is the edit), the
 box floor's subdivision seam under the AO, the ring's lift against a
 rig's feet, the marker's grid on a slope, a dig beside a raise.
 
+### 2026-09-23 — delivery 9: THE NO-DEFORM FLAG + THE SINK (the fountain question)
+
+The user: "what happens if I deform terrain with something on it that's not
+completely square — a circular fountain GLB on four cells, dig a corner?"
+Nothing happened to the fountain: the deform moves floors, never props, so
+the basin hung over a pit; worse, a box room's cover cell (a prop's top IS
+the cell's floor) let the engine dig from the fountain's rim while the bowl
+was carved from the room's floor.
+
+- **THE FLAG** (data.js `hqFieldFixedCells(R)` → `entry.field.fixed`, one
+  letter per cell, filed at the build; `hqFieldFixedAt(field, x, y)` the
+  read): C a cover · P a prop whose footprint covers ≥ `fixedOverlap` (8 %)
+  of MORE THAN ONE cell · D a door's landing / rim (a terrain room: its pad)
+  · W water / a hazard · L a wall row · B a bridge layer · G the gallery ·
+  K a counter · **S a prop whose whole footprint lies in ONE cell — not
+  fixed** · `.` free. A cave (columns, no deform) carries none.
+- **THE GATE** (battle.js `fieldCellFixed(x, y)`, off the latched field's
+  entry): `applyTerrainDeform` skips a fixed cell like a wall (Meteor still
+  craters the open ground round the fountain), the Build dig and the block
+  placer refuse it with `Fixed ground: <reason>` (the ghost preview mirrors
+  `_buildProblem`, so nothing lights that would not land). Raises are
+  refused too — a block through a bench is the same fault.
+- **THE SINK** (three-renderer.js `_fieldSinkProps`, run by
+  `_fieldDeformApply`): every floor prop's group wears `_ew_hqProp`; one
+  standing on a dug cell goes down by the bowl at its spot (the drop
+  re-based by its holder's scale), its base kept and put back with the
+  floor. By the flag only one-cell props can be there.
+
+Measured on the hall (covers C, the slab G, the landings D, three small
+props S), the grounds (P / S on its props, no water in that window) and the
+mall (the fountain pool W). Tests: seamless-field.test.js (delivery 9 ×2).
+
+UNSEEN LIVE (RULE #1c): a Build dig refused beside a table ("Fixed ground: a
+prop stands here" in the log), a barrel sinking into a Meteor crater, the
+crater's shape stopping at a doorway's landing.
+
 ## 8. The second plan — THE CUT (2026-09-22, planning)
 
 The user, after delivery 4: the hall is fine, a city or any big area is ~10 fps.
@@ -461,3 +497,29 @@ fraction of the walk's (a 12 × 12 chunk of a 200 m city).
 - A builder that takes a `rect` must produce, over that rect, exactly the
   triangles it produced there over the whole room (the same samples, the same
   seed per lot / tree) — the chunk must match the walk the player just left.
+
+## 9. THE STRUCTURE HEIGHTS (open — the user's note, 2026-09-23)
+
+The field reads the ground: a terrain room's height field, a box room's floor
+and the tops of its COVERS (a prop on ≥ 50 % of a cell). Nothing in the game
+yet measures what a unit can STAND ON above the ground as a first-class
+surface: roofs, bridges, stairs, platforms, walkways, the tops of buildings,
+the deck of a bus, a mezzanine — and nothing under them. Today a roof is a
+plateau feature, a bridge a `bridge` layer, a stair a `ramp`, a table a cover;
+a GLB building is a mass with no top. The user's ask: **start calculating the
+heights of buildings, objects and walkable structures**, so that
+
+- a unit on a roof / a deck / a landing stands on ITS top (measured off the
+  mesh or authored per catalogue row), with the high-ground bonus, and the
+  ground under it stays a cell of its own (the second floor of §5 item 3);
+- a dig / a raise knows what is above the cell (never under a bridge deck);
+- the walker's rule and the field's rule share ONE structure record.
+
+The pieces that exist: `hqTerrainBridges` (a level slab, two layers), the
+gallery frame, covers (`hqFieldBoxInfo`), the renderer's blocker tops
+(`top` on every blocker, measured for a GLB once it lands — the first place
+a real height lives), THE NO-DEFORM FLAG (delivery 9 — the cells a structure
+owns). The missing piece is a STRUCTURE TABLE per room — `{ kind, footprint,
+top, under, walkable, stairs }` per building / prop / deck — compiled with the
+survey and read by the raster as a LAYER per cell, not a cover. Do this
+before any second-floor fight and before dig / raise on a roofed cell.
