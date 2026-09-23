@@ -2316,6 +2316,18 @@ function PbElementRing({ race }) {
   const rows = pbElementAffinities(race);
   const icons = window.ELEMENT_ICONS || {};
   const iconHtml = typeof window.elementIconHtml === 'function' ? window.elementIconHtml : null;
+  /* THE ELEMENT BOX (2026-09-23): the same two-row read every stat surface
+     wears — the icon over the reaction, ? until the race has been hit with
+     the element (data.js elemAffinityBox; a vessel you own is always read). */
+  if (typeof window.elemAffinityBox === 'function') {
+    const cells = window.elemAffinityBox(race);
+    return h('div', { className: 'ew-elem-box md pb-elem-box' },
+      h('div', { className: 'ew-elem-row ew-elem-els' }, cells.map(c => iconHtml
+        ? h('span', { key: c.el, className: 'ew-elem-cell ew-elem-el', title: c.tip, dangerouslySetInnerHTML: { __html: iconHtml(c.el, 'ew-elem-icon') } })
+        : h('span', { key: c.el, className: 'ew-elem-cell ew-elem-el', title: c.tip }, icons[c.el] || '?'))),
+      h('div', { className: 'ew-elem-row ew-elem-rxs' }, cells.map(c =>
+        h('span', { key: c.el, className: 'ew-elem-cell ew-elem-rx ' + (c.tier || 'unknown'), style: { color: c.color }, title: c.tip }, c.sym))));
+  }
   return h('div', { className: 'pb-affinity pb-element' },
     ...rows.map(r => {
       const c = PB_ELEMENT_C[r.element] || EW.inkMute;

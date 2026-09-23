@@ -6171,3 +6171,31 @@ body.diorama-3d .tile-underpass.jump::before {
 #hqPage .hq-pp-bagrow[data-cat="healing"] .hq-pp-bagicon { filter: drop-shadow(0 0 6px rgba(87,217,126,0.55)); }
 #hqPage .hq-pp-bagrow[data-cat="banes"] .hq-pp-bagicon { filter: drop-shadow(0 0 6px rgba(255,138,106,0.55)); }
 #hqPage .hq-pp-bagrow[data-cat="battle"] .hq-pp-bagicon { filter: drop-shadow(0 0 6px rgba(127,200,255,0.55)); }
+
+/* ═══ THE ELEMENT BOX (2026-09-23) — two rows: the six combat elements over
+   the unit's reaction to each (data.js elemAffinityBoxHtml / elemAffinityBox).
+   – neutral · ! weak (the press's green) · ▼ resist · ∅ immune · ♥ absorb ·
+   ? unknown. One look everywhere a unit's stats show. ═══════════════════ */
+.ew-elem-box { display: inline-grid; grid-template-rows: auto auto; gap: 2px 0; padding: 3px 4px; border-radius: 6px;
+  background: rgba(6, 5, 12, 0.55); border: 1px solid rgba(150, 150, 210, 0.16); font-family: inherit; }
+.ew-elem-box[data-label]::before { content: attr(data-label); grid-column: 1 / -1; font-size: 8px; letter-spacing: 0.14em; font-weight: 700; color: #7a7490; padding: 0 2px 1px; }
+.ew-elem-row { display: grid; grid-template-columns: repeat(6, minmax(20px, 1fr)); gap: 0 2px; }
+.ew-elem-cell { display: flex; align-items: center; justify-content: center; min-width: 20px; height: 18px; line-height: 1; }
+.ew-elem-el { font-size: 12px; border-bottom: 1px solid rgba(150, 150, 210, 0.14); }
+.ew-elem-el .ew-elem-icon, .ew-elem-el .ew-elicon { width: 14px; height: 14px; display: block; object-fit: contain; }
+.ew-elem-rx { font-size: 12px; font-weight: 800; text-shadow: 0 1px 1px #000; }
+.ew-elem-rx.weak { font-size: 14px; }
+.ew-elem-rx.unknown { font-weight: 600; opacity: 0.75; }
+.ew-elem-rx.immune, .ew-elem-rx.absorb { font-size: 12px; }
+.ew-elem-box.sm .ew-elem-cell { min-width: 17px; height: 15px; }
+.ew-elem-box.sm .ew-elem-el { font-size: 10px; }
+.ew-elem-box.sm .ew-elem-el .ew-elem-icon, .ew-elem-box.sm .ew-elem-el .ew-elicon { width: 12px; height: 12px; }
+.ew-elem-box.sm .ew-elem-rx { font-size: 11px; }
+.ew-elem-box.sm .ew-elem-rx.weak { font-size: 12px; }
+.ew-elem-box.lg .ew-elem-cell { min-width: 26px; height: 22px; }
+.ew-elem-box.lg .ew-elem-el .ew-elem-icon, .ew-elem-box.lg .ew-elem-el .ew-elicon { width: 18px; height: 18px; }
+.ew-elem-box.lg .ew-elem-rx { font-size: 15px; }
+.ins-affin .ew-elem-box { margin-top: 2px; }
+.cdx-elem-boxrow .ew-elem-box { vertical-align: middle; }
+#hqPage .hq-pp-elem { margin: 4px 0 6px; }
+.pb-elem-box { align-self: flex-start; }

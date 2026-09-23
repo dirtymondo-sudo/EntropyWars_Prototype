@@ -8676,3 +8676,37 @@ and the D.U.M.B. east, the underworld under the city, the deep off the coast, th
 the ice along the bottom) — nothing on the woods ⇄ estate line. Screenshotted offline (the test harness's SVG under
 headless chromium — no animation, no label plan); hq-map.test.js green. UNSEEN LIVE (RULE #1c): the pop landing in
 place, the plan's offsets on the crowded sheets, the octilinear lines over the new slots.
+
+## THE ELEMENT BOX + THE ELEMENT PRESS + THE TYPED BOMB (2026-09-23, local delivery)
+The user's four. **THE ELEMENT BOX**: ONE two-row read of a unit's elemental affinities wherever its stats
+show — the six COMBAT elements' icons over the unit's REACTION to each (data.js `ELEM_REACTION_UI`: `–`
+neutral · `!` weak (the press's green) · `▼` resist · `∅` immune · `♥` absorb · `?` unknown). data.js (the
+block after `unitElementAffinity`): **`elemAffinityKnown(race, el, opts)`** is THE ONE READ of the knowledge
+rule — a vessel on your roster (`isUnitOwned`), a seat of THE PARTY (`hqPartyRecordRaw`), roster scope 'all'
+(Online / Practice / the range), the viewer's LOCAL ledger (localStorage `ew_elem_seen_v1`) or the MATCH's
+synced **`state._elemSeen`** (`{ 'race|el': 1 }`; state.js literal; synced by default — the guest's box reads
+the host's hits, RULE #2); `opts.own` / `opts.all` force it; dev `window.EW_ELEM_KNOW_ALL`. **`elemSeenMark
+(race, el)`** is THE ONE WRITE (battle.js `applyDamageToUnit` files every combat-element hit on both ledgers
+— a burn tick counts; `startMatch` resets the field, `finalizeMatch` folds it — `elemSeenFold`); `elemAffinityBox
+(race, opts)` = the six-cell model (`{ el, tier | null, known, sym, color, tip }` — an unknown cell never
+leaks its tier), **`elemAffinityBoxHtml(race, { own, seen, all, size: sm|md|lg, label })`** the innerHTML
+form. Readers: hud.js `_hrlgElemBox` (under `_hrlgQuickStats` — the clicked unit's readout returns a
+Fragment now), the INFO card (`.ins-affin` holds the box; the old pills are gone), the codex / shop dossier
+(`_codexBuildElementAffinity`: the box + the KNOWN tiers' rows + "n of 6 unknown"), the forge's
+`PbElementRing` (the box; the ring markup is the no-helper fallback), the pause menu's party sheet
+(`.hq-pp-elem`, `own: true`). CSS: styles-base.css "THE ELEMENT BOX" (`.ew-elem-box` / `-row` / `-cell` /
+`-el` / `-rx.<tier>`; sizes). A new stat surface = one `elemAffinityBoxHtml` / `elemAffinityBox` call — never
+draw an affinity any other way. **THE ELEMENT PRESS** (ELEMENTAL_TYPES_PLAN decision #5 REVERSED): battle.js
+`_pressOutcomeForHit` ADDS the TYPE tier (+1 / −1 / 0, the SPELL's own type vs the target — the caster's types
+only ever add STAB; `_collectPressHit` reads `opts.spellType`, a typeless basic attack the attacker's) and the
+ELEMENT tier (`elemPressTier`: weak +1 · resist −1 · immune / absorb −2), clamped to ±1: a super effective
+element presses a neutral spell, an ineffective type under a super effective element is neutral (and vice
+versa), an immune / absorbed element never presses whatever the type; `_collectPressHit` records `elemAff`
+off `opts.spellElement`, the combo press reads `getSpellElement(combo)`. **THE TYPED BOMB**: `detonateBomb`
+was `applyDamageToUnit` with no source and no type — no matchup ever applied. It is a TYPED BLAST now: the
+bomb record files the row's `spellType` (Place Bomb = tech) + `spellElement`; the blast passes them with the
+placer as `sourceUnit` (the credit, STAB, the press collector on a contact bomb) and **`opts.noAtkBonus`**
+(a new applyDamageToUnit opt: the placer's live ATK bonuses never ride a placed object's blast). `npm test`
+runs `elements-press.test.js`. Ship data.js to R2 AND Render (server.js reads it). UNSEEN LIVE (RULE #1c): the
+box under the Horologe's stats at the identity column's width, the ? cells' read, the codex row, the forge's
+STATS column, the tech callout on a bomb blast, the +2 AP off a fire spell on a yeti.

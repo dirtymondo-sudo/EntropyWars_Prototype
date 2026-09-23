@@ -543,6 +543,134 @@ function unitElementAffinity(unit, element) {
     return getRaceElementAffinity(unit.race, element);
 }
 
+/* ═══ THE ELEMENT BOX + THE ELEMENT KNOWLEDGE (2026-09-23) ═══════════════
+   ONE two-row read of a unit's elemental affinities, everywhere a unit's
+   stats show (the Horologe's clicked-unit readout, the INFO card, the
+   codex / shop dossier, the forge's STATS column, the pause menu's party
+   sheet): the TOP row is the six COMBAT elements' icons, the BOTTOM row
+   the unit's REACTION — a dash for neutral, the green ! of a super
+   effective hit for WEAK, ▼ for RESIST, ∅ for IMMUNE, ♥ for ABSORB — and
+   a ? until the affinity is KNOWN.
+   THE KNOWLEDGE RULE (the user's): a vessel on your roster (the account
+   ledger — isUnitOwned — or a seat of THE PARTY, or every vessel when
+   the roster scope is 'all': Online / Practice / the range) shows every
+   reaction; any other unit shows ? per element until it has been HIT by
+   that element (any source — a spell, a burn tick, lava). Discovery is
+   filed in TWO places: the viewer's LOCAL ledger (localStorage
+   ELEM_KNOWLEDGE_KEY, {race: {el: 1}}) and the MATCH's synced
+   state._elemSeen ({'race|el': 1} — battle.js applyDamageToUnit writes
+   it on the host, the guest reads it off the sync, RULE #2), so both
+   seats learn what the fight showed. elemAffinityKnown() is the ONE read;
+   elemSeenMark() the ONE write. Dev: window.EW_ELEM_KNOW_ALL. */
+const ELEM_KNOWLEDGE_KEY = 'ew_elem_seen_v1';
+const ELEM_REACTION_UI = {
+    neutral: { sym: '–', color: '#8f8aa8', word: 'Neutral',  tip: 'takes ×1 from this element' },
+    weak:    { sym: '!', color: '#6ee2a8', word: 'Weak',     tip: 'takes ×1.5 from this element — a press' },
+    resist:  { sym: '▼', color: '#8fb8e8', word: 'Resist',   tip: 'takes ×0.5 from this element — no press' },
+    immune:  { sym: '∅', color: '#c9c9d4', word: 'Immune',   tip: 'takes NO damage from this element — its statuses bounce' },
+    absorb:  { sym: '♥', color: '#7de08a', word: 'Absorbs',  tip: 'this element HEALS the unit instead' },
+    unknown: { sym: '?', color: '#6f6a86', word: 'Unknown',  tip: 'hit it with this element to find out' }
+};
+let _elemSeenCache = null;
+function elemSeenRecord() {
+    if (_elemSeenCache) return _elemSeenCache;
+    let rec = null;
+    try {
+        if (typeof localStorage !== 'undefined') {
+            const raw = localStorage.getItem(ELEM_KNOWLEDGE_KEY);
+            if (raw) rec = JSON.parse(raw);
+        }
+    } catch (e) { rec = null; }
+    _elemSeenCache = (rec && typeof rec === 'object') ? rec : {};
+    return _elemSeenCache;
+}
+function _elemSeenSave() {
+    try { if (typeof localStorage !== 'undefined') localStorage.setItem(ELEM_KNOWLEDGE_KEY, JSON.stringify(elemSeenRecord())); } catch (e) {}
+}
+/* THE ONE WRITE: a unit of `race` was hit by `el`. Returns true when it was
+   news (the first sighting), false otherwise. */
+function elemSeenMark(race, el) {
+    if (!race || !el || !COMBAT_ELEMENTS.includes(el)) return false;
+    const rec = elemSeenRecord();
+    if (!rec[race]) rec[race] = {};
+    if (rec[race][el]) return false;
+    rec[race][el] = 1;
+    _elemSeenSave();
+    return true;
+}
+/* The match's synced ledger folded into the local one (a guest learns what
+   the host's hits showed). `seen` = state._elemSeen. */
+function elemSeenFold(seen) {
+    if (!seen || typeof seen !== 'object') return 0;
+    let n = 0;
+    for (const k of Object.keys(seen)) {
+        const i = k.lastIndexOf('|');
+        if (i <= 0) continue;
+        if (elemSeenMark(k.slice(0, i), k.slice(i + 1))) n++;
+    }
+    return n;
+}
+function _elemPartyRaces() {
+    try {
+        const ps = (typeof window !== 'undefined') ? window.ProfileSystem : null;
+        const p = ps && typeof ps.getActiveProfile === 'function' ? ps.getActiveProfile() : null;
+        const rec = p && typeof hqPartyRecordRaw === 'function' ? hqPartyRecordRaw(p) : null;
+        return rec && Array.isArray(rec.members) ? rec.members.map(m => m && m.meta && m.meta.race).filter(Boolean) : [];
+    } catch (e) { return []; }
+}
+/* THE ONE READ. opts: { all, seen (state._elemSeen), own (force known) }. */
+function elemAffinityKnown(race, el, opts) {
+    opts = opts || {};
+    if (opts.own || opts.all) return true;
+    if (typeof window !== 'undefined' && (window.EW_ELEM_KNOW_ALL || window._DEV_UNLOCK_ALL)) return true;
+    if (!race) return false;
+    try { if (typeof unitRosterScope === 'function' && unitRosterScope() === 'all') return true; } catch (e) {}
+    try { if (typeof isUnitOwned === 'function' && isUnitOwned(race)) return true; } catch (e) {}
+    if (_elemPartyRaces().includes(race)) return true;
+    const rec = elemSeenRecord();
+    if (rec[race] && rec[race][el]) return true;
+    let seen = opts.seen;
+    if (seen === undefined && typeof state !== 'undefined' && state) seen = state._elemSeen;
+    if (seen && seen[race + '|' + el]) return true;
+    return false;
+}
+/* THE MODEL: one cell per combat element — { el, icon, tier, known, sym,
+   color, word, tip }. A cell the viewer may not read wears the unknown
+   reaction (its tier is still returned as null, never leaked). */
+function elemAffinityBox(race, opts) {
+    opts = opts || {};
+    return COMBAT_ELEMENTS.map(el => {
+        const known = elemAffinityKnown(race, el, opts);
+        const tier = known ? (getRaceElementAffinity(race, el) || 'neutral') : null;
+        const ui = ELEM_REACTION_UI[tier || 'unknown'];
+        return { el, icon: ELEMENT_ICONS[el] || '', tier, known, sym: ui.sym, color: ui.color, word: ui.word,
+            tip: el.toUpperCase() + ' · ' + (known ? ui.word + ' — ' + ui.tip : ui.tip) };
+    });
+}
+/* THE HTML (innerHTML surfaces — the INFO card, the codex, the pause
+   menu). opts.size: 'sm' | 'md' (default) | 'lg'; opts.label: a caption. */
+function elemAffinityBoxHtml(race, opts) {
+    opts = opts || {};
+    const cells = elemAffinityBox(race, opts);
+    const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+    const icon = el => (typeof elementIconHtml === 'function') ? elementIconHtml(el, 'ew-elem-icon') : esc(ELEMENT_ICONS[el] || '');
+    let html = '<div class="ew-elem-box' + (opts.size ? ' ' + esc(opts.size) : '') + '"' + (opts.label ? ' data-label="' + esc(opts.label) + '"' : '') + '>';
+    html += '<div class="ew-elem-row ew-elem-els">' + cells.map(c => '<span class="ew-elem-cell ew-elem-el" title="' + esc(c.tip) + '">' + icon(c.el) + '</span>').join('') + '</div>';
+    html += '<div class="ew-elem-row ew-elem-rxs">' + cells.map(c => '<span class="ew-elem-cell ew-elem-rx ' + esc(c.tier || 'unknown') + '" style="color:' + c.color + '" title="' + esc(c.tip) + '">' + esc(c.sym) + '</span>').join('') + '</div>';
+    html += '</div>';
+    return html;
+}
+/* THE PRESS TIER OF AN ELEMENT (the press system reads it beside the type
+   tier — battle.js _pressOutcomeForHit): weak +1, resist −1, immune /
+   absorb −2 (nothing landed — a super effective TYPE cannot make it a
+   press), neutral / no element 0. */
+function elemPressTier(aff) {
+    if (aff === 'weak') return 1;
+    if (aff === 'resist') return -1;
+    if (aff === 'immune' || aff === 'absorb') return -2;
+    return 0;
+}
+
 const FACTION_BONUSES = {
     space: {
         label: 'Space Alignment',
@@ -18294,6 +18422,9 @@ Object.assign(window, {
   ELEMENT_ICONS, ELEMENT_ICON_BASE, ELEMENT_ICON_FILES, elementIconUrl, elementIconHtml,
   ELEMENTAL_STATUS, ELEMENT_RIDER_STATUS, statusAffinityElement,
   RACE_ELEMENT_AFFINITY, getRaceElementAffinity, unitElementAffinity,
+  /* THE ELEMENT BOX + THE ELEMENT KNOWLEDGE (2026-09-23) */
+  ELEM_KNOWLEDGE_KEY, ELEM_REACTION_UI, elemSeenRecord, elemSeenMark, elemSeenFold,
+  elemAffinityKnown, elemAffinityBox, elemAffinityBoxHtml, elemPressTier,
   AVAILABLE_ZODIACS, ZODIAC_ICONS, JOB_MODIFIERS, CLASS_TEMPLATES,
   JOB_PASSIVES, CLASS_PASSIVES, getJobPassive,
   DEFAULT_BUILDS, ITEM_RULES, SPELL_LIBRARY, SPELL_SLOT_MAX,

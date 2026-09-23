@@ -28446,6 +28446,15 @@
                 || null;
             const _affinity = (_affEl && typeof unitElementAffinity === 'function')
                 ? unitElementAffinity(target, _affEl) : null;
+            /* THE ELEMENT KNOWLEDGE (2026-09-23): a unit HIT by a combat
+               element shows that reaction on every element box from now on —
+               the viewer's local ledger (data.js elemSeenMark) AND the match's
+               synced state._elemSeen (the guest reads it off the sync). */
+            if (_affEl && target.race && damage > 0 && typeof COMBAT_ELEMENTS !== 'undefined' && COMBAT_ELEMENTS.includes(_affEl)) {
+                if (!state._elemSeen || typeof state._elemSeen !== 'object') state._elemSeen = {};
+                state._elemSeen[target.race + '|' + _affEl] = 1;
+                if (typeof elemSeenMark === 'function') elemSeenMark(target.race, _affEl);
+            }
 
             // ── 🔥 Element-drinking (Thermal Regen passive + 'absorb' tier) ─
             // healedByElement (data.js PASSIVE_DEFS) and the affinity table's
@@ -28576,7 +28585,9 @@
                 // Inspired, Discord…); magic damage rides the INT axis (Dark
                 // Pact, Harmonize, Neuralyzer, Drowsy…). Environmental/faction/
                 // streak bonuses apply to both.
-                finalDamage += getEffectiveAttackBonus(sourceUnit, damageType === 'magic' ? 'magic' : 'physical');
+                // opts.noAtkBonus: a placed object's blast (a bomb) is typed and
+                // credited but never rides the placer's live ATK bonuses.
+                if (!opts.noAtkBonus) finalDamage += getEffectiveAttackBonus(sourceUnit, damageType === 'magic' ? 'magic' : 'physical');
                 const _typeMult = typeEffectOverride ? 1 : getTypeDamageMultiplier(sourceUnit, target, opts.spellType || null);
                 _offMult *= _typeMult;
 
@@ -33146,8 +33157,19 @@
             if (!hit) return PRESS_OUTCOME.NORMAL;
             if (hit.evaded) return PRESS_OUTCOME.MISS;
             const eff = hit.effSummary || {};
-            const weakness = !!eff.hasStrong && !eff.hasWeak; // attacker strong vs target = target's weakness
-            const resisted = !!eff.hasWeak && !eff.hasStrong; // mixed dual-type cancels → NORMAL
+            /* THE ELEMENT PRESSES TOO (2026-09-23, the user's rule): the
+               TYPE tier (+1 weak / −1 resist / 0 — judged by the SPELL's
+               own type vs the target, never the caster's) and the ELEMENT
+               tier (data.js elemPressTier: weak +1, resist −1, immune /
+               absorb −2 — nothing landed) ADD: a super effective element
+               turns a neutral spell into a press, an ineffective type under
+               a super effective element is neutral (and vice versa), an
+               immune / absorbed element is never a press whatever the type. */
+            const typeTier = (!!eff.hasStrong && !eff.hasWeak) ? 1 : (!!eff.hasWeak && !eff.hasStrong) ? -1 : 0;
+            const elemTier = (typeof elemPressTier === 'function') ? elemPressTier(hit.elemAff || null) : 0;
+            const tier = Math.max(-1, Math.min(1, typeTier + elemTier));
+            const weakness = tier > 0;  // the target's weakness (type, element, or both)
+            const resisted = tier < 0;  // resisted / nullified / drunk → no press, the AP drain
             if (hit.isCrit && weakness) return PRESS_OUTCOME.WEAK_CRIT;
             if (hit.isCrit) return PRESS_OUTCOME.CRIT;
             if (weakness) return PRESS_OUTCOME.WEAK;
@@ -33308,8 +33330,14 @@
             if (!c || !sourceUnit || !target) return;
             if (sourceUnit.id !== c.casterId) return;       // only the caster's own spell damage
             if (target.player === sourceUnit.player) return; // enemies only
+            /* THE SPELL'S TYPE, never the caster's: a divine spell from an
+               anomaly caster is judged as divine vs the target (the caster's
+               own types only ever add STAB). Only a TYPELESS hit (a basic
+               attack) reads the attacker's types. */
             const atkTypes = (opts && opts.spellType) ? [opts.spellType] : (sourceUnit.types || []);
-            c.hits.push({ effSummary: getTypeEffectSummary(atkTypes, target.types || []) });
+            const _el = opts && opts.spellElement;
+            const elemAff = (_el && typeof unitElementAffinity === 'function') ? unitElementAffinity(target, _el) : null;
+            c.hits.push({ effSummary: getTypeEffectSummary(atkTypes, target.types || []), elemAff });
         }
 
         function _consumePressCollector(casterUnit, cost) {
@@ -39880,6 +39908,9 @@
         let _finalizing = false;
 
         function finalizeMatch() {
+            /* THE ELEMENT KNOWLEDGE: what the match showed goes into the viewer's
+               local ledger (the guest learns the host's hits off the sync). */
+            if (typeof elemSeenFold === 'function' && state._elemSeen) { try { elemSeenFold(state._elemSeen); } catch (e) {} }
             if (_finalizing) return;
             _finalizing = true;
             _setAiTurbo(false);   // training match: result screen / podium play normally
@@ -42684,6 +42715,7 @@
                 }
             } catch (e) {}
 
+            state._elemSeen = {};   // THE ELEMENT KNOWLEDGE (2026-09-23): what this match showed (synced; battle.js applyDamageToUnit)
             if (!_encMatch) { state.partyBag = null; state.partyGauge = 0; }   // THE SHARED BAG + THE CARRIED GAUGE ride an encounter only — a plain match never wears them
             _partyBagBind();
             const mpMode = getActiveMultiplayerMode();
@@ -50718,11 +50750,15 @@
                 }
             }
             const area = getSquareArea(bomb.x, bomb.y, 1);
-            // Credit the placer WITHOUT changing the damage math: passing
-            // sourceUnit into applyDamageToUnit would add atk-bonus/type
-            // multipliers the blast never had. Setting _lastDamageSource lets
-            // the death block's chip-credit fallback award the kill/XP/gold,
-            // and the tracked-damage counter is bumped by hand.
+            /* THE TYPED BLAST (2026-09-23): the blast is the row's own type
+               (Place Bomb is TECH) and element, judged vs every victim like
+               any spell — the type chart (weak / resist + the placer's STAB),
+               the affinity table, the press collector when the bomb goes off
+               inside the cast (a contact bomb). The placer is the source for
+               the credit (the kill / XP / gold, the tracked damage) but its
+               live ATK bonuses never ride the blast (noAtkBonus); a placer
+               that has since died still detonates a typed blast (no source,
+               no press). */
             const _bombCaster = bomb.ownerUnitId
                 ? state.units.find(u => u.id === bomb.ownerUnitId && !u.dead) || null
                 : null;
@@ -50732,7 +50768,11 @@
                     const _hpBefore = target.hp;
                     if (_bombCaster) target._lastDamageSourceId = _bombCaster.id;
                     applyDamageToUnit(target, bomb.dmg, `Bomb blast at ${coordLabel(bomb.x, bomb.y)}: `, {
-                        allowMarkBonus: false
+                        allowMarkBonus: false,
+                        sourceUnit: _bombCaster || undefined,
+                        noAtkBonus: true,
+                        spellType: bomb.spellType || 'tech',
+                        spellElement: bomb.spellElement || null
                     });
                     const _applied = Math.max(0, _hpBefore - Math.max(0, target.hp || 0));
                     if (_bombCaster && _applied > 0) _bombCaster._trackDmgDealt = (_bombCaster._trackDmgDealt || 0) + _applied;
@@ -55945,7 +55985,8 @@
                     resolvePressOutcome({
                         evaded: false,
                         isCrit: false,
-                        effSummary: getTypeEffectSummary(_comboAtkTypes, target.types || [])
+                        effSummary: getTypeEffectSummary(_comboAtkTypes, target.types || []),
+                        elemAff: (() => { const _cEl = getSpellElement(combo); return (_cEl && typeof unitElementAffinity === 'function') ? unitElementAffinity(target, _cEl) : null; })()
                     }),
                     { cost: COMBO_AP_COST_INITIATOR }
                 );
@@ -58212,7 +58253,9 @@
                     ownerUnitId: unit.id,
                     dmg: spell.dmg + spellPower,
                     radius: spell.blastRadius || 1,
-                    spellId: spell.id
+                    spellId: spell.id,
+                    spellType: spell.spellType || 'tech',          // THE TYPED BLAST (detonateBomb)
+                    spellElement: getSpellElement(spell) || null
                 };
                 /* Contact detonation: a bomb placed straight onto a grounded
                    enemy goes off immediately — no Detonate needed. This

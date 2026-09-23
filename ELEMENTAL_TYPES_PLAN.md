@@ -633,3 +633,28 @@ no `_serializeState` changes.
    tagging-pass rule ("every damage spell carries element: or a deliberate
    none note") is satisfied and kaiju mirror matches stay honest
    (fire:absorb never eats a nuke).
+
+## 2026-09-23 — THE ELEMENT BOX, THE ELEMENT PRESS, THE KNOWLEDGE RULE (decision #5 REVERSED)
+The user: "have the elements show up when you click on a target … a 2 row box; the
+elements affect the press system too; the 2nd row a question mark until you hit it
+with that element; any unit in your roster / party you can see; also in the party
+builder, the codex, the pause menu". Decision #5 (press-turn coupling rejected) is
+REVERSED — P4.15 shipped as THE ELEMENT PRESS. What shipped where:
+- data.js (after `unitElementAffinity`): `ELEM_REACTION_UI` (– neutral · ! weak · ▼
+  resist · ∅ immune · ♥ absorb · ? unknown), `elemAffinityKnown` (THE ONE READ: owned
+  (`isUnitOwned`) / a seat of THE PARTY / roster scope 'all' / the local ledger / the
+  match's synced `state._elemSeen`; `own` / `all` opts; dev `EW_ELEM_KNOW_ALL`),
+  `elemSeenMark` (THE ONE WRITE — localStorage `ew_elem_seen_v1`), `elemSeenFold`,
+  `elemAffinityBox` (the six-cell model), `elemAffinityBoxHtml`, `elemPressTier`
+  (weak +1 · resist −1 · immune / absorb −2).
+- battle.js: `_pressOutcomeForHit` ADDS the type tier and the element tier, clamped
+  to ±1; `_collectPressHit` records `elemAff` off `opts.spellElement`; the combo
+  press reads `getSpellElement(combo)`; `applyDamageToUnit` files every combat-
+  element hit on `state._elemSeen` + the local ledger; `startMatch` resets the
+  field, `finalizeMatch` folds it. `detonateBomb` is a TYPED BLAST (the row's
+  `spellType` — tech — + element, the placer as the source with `noAtkBonus`).
+- The surfaces: hud.js `_hrlgElemBox` under the clicked unit's stats, the INFO
+  card (`.ins-affin` holds the box now), the codex (`◇ ELEMENTS` box + the known
+  tiers' rows + an "n of 6 unknown" line), the forge's `PbElementRing` (the box),
+  the pause menu's party sheet (`.hq-pp-elem`). CSS: styles-base.css `.ew-elem-box`.
+- `npm test` runs `elements-press.test.js`.

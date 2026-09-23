@@ -1873,6 +1873,8 @@
             }
             html += '</div>';
             if (u) html += `<div class="hq-chips">${_hqPauseTypeChips(u.types)}<i class="hq-chip dim">${_hqEsc(String(u.faction || '').toUpperCase())}</i>${u.zodiac ? `<i class="hq-chip dim">${_hqEsc(String(u.zodiac).toUpperCase())}</i>` : ''}</div>`;
+            /* THE ELEMENT BOX (2026-09-23): a party member's reactions are always read (own: true) */
+            if (u && typeof window.elemAffinityBoxHtml === 'function') html += `<div class="hq-pp-elem">${window.elemAffinityBoxHtml(u.race, { own: true, size: 'md', label: 'ELEMENTS' })}</div>`;
             else html += `<p class="hq-panel-note">The sheet could not be rebuilt from the record (a retired vessel or job?). The bare loadout is below.</p>`;
             /* THE DUTY ROSTER: swap the slot (a shift change), relieve (never the officer) */
             html += `<div class="hq-pp-duty"><b>DUTY</b><span>${v.down ? 'DOWN — A REVIVE OR THE COT IN MEDICAL BRINGS THEM BACK' : idx === 0 ? 'THE LEAD · SLOT 1 · YOU WALK THE BUILDING AS THEM' : idx < HQ_PARTY_RULES.shift ? 'FIRST SHIFT · SENT OUT FIRST' : 'SECOND SHIFT · ON THE BENCH'}</span>`

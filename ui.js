@@ -3949,13 +3949,14 @@
                 }).join('') + '</div>';
             }
 
-            // Elemental affinity row — static race intel (always visible per
-            // the knowledge model), rides under the stats: Weak 🔥 · Resist ❄.
-            const affinEntries = _elemAffinityRows(unit.race);
-            const affinRow = affinEntries.length
-                ? '<div class="ins-affin">' + affinEntries.map(a =>
-                    `<span class="ins-affin-pill" style="color:${a.color};border-color:${a.color}66" title="${escapeHtml(a.tip)}">${a.word} ${a.icon} ${escapeHtml(a.el.toUpperCase())}</span>`
-                ).join('') + '</div>'
+            // THE ELEMENT BOX (2026-09-23): the six combat elements over the
+            // unit's reaction to each — ? until this race has been hit with
+            // that element, every reaction for your own vessels (data.js
+            // elemAffinityBoxHtml; the knowledge rule lives there).
+            const _insViewer = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : null;
+            const _insOwn = _insViewer != null && (typeof unitHomePlayer === 'function' ? unitHomePlayer(unit) : unit.player) === _insViewer;
+            const affinRow = (typeof elemAffinityBoxHtml === 'function')
+                ? '<div class="ins-affin">' + elemAffinityBoxHtml(unit.race, { own: _insOwn, seen: state._elemSeen, size: 'md', label: 'ELEMENTS' }) + '</div>'
                 : '';
 
             // FFT-style horizontal stat bar: length reads at a glance, exact
@@ -8188,6 +8189,20 @@
             const rows = _elemAffinityRows(race);
             const label = { weak: '▼ ELEM WEAK', resist: '■ ELEM RESIST', immune: '∅ NULLIFIES', absorb: '♥ ABSORBS' };
             let html = '<div class="cdx-matchups cdx-elem-matchups">';
+            /* THE ELEMENT BOX (2026-09-23) leads the section; the grouped rows
+               under it name the known tiers; an unknown cell is a ? until a
+               unit of the race has been hit with that element (a vessel on
+               your roster is always read — data.js elemAffinityKnown). */
+            if (typeof elemAffinityBoxHtml === 'function' && typeof elemAffinityBox === 'function') {
+                const cells = elemAffinityBox(race);
+                const unknown = cells.filter(c => !c.known).length;
+                html += `<div class="cdx-mu-row cdx-elem-boxrow"><span class="cdx-mu-label">◇ ELEMENTS</span>${elemAffinityBoxHtml(race, { size: 'md' })}</div>`;
+                if (unknown) html += `<div class="cdx-mu-row"><span class="cdx-mu-label"></span><span class="cdx-elem-neutral">${unknown} of 6 unknown — hit one with that element, or hire the vessel, to read it</span></div>`;
+                if (unknown === 6) { html += '</div>'; return html; }
+                const _knownRows = rows.filter(r => cells.some(c => c.el === r.el && c.known));
+                if (unknown && !_knownRows.length) { html += '</div>'; return html; }
+                rows.length = 0; rows.push(..._knownRows);
+            }
             if (!rows.length) {
                 html += `<div class="cdx-mu-row"><span class="cdx-mu-label">◇ ELEMENTS</span><span class="cdx-elem-neutral">Neutral — no elemental weaknesses or resistances</span></div>`;
             } else {

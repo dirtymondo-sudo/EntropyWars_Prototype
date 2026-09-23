@@ -2852,7 +2852,7 @@ function _hrlgQuickStats(panelKey) {
   // Letter grade beside the number (2026-08-29 stat rework) — computed from
   // the displayed EFFECTIVE value; ungraded keys (MOV/RNG/CRT/EVA) get none.
   const _grade = (typeof window !== 'undefined' && typeof window.statGrade === 'function') ? window.statGrade : null;
-  return h('div', { key: 'qs', className: 'hrlg-qstats' },
+  return h(React.Fragment, { key: 'qs' }, h('div', { className: 'hrlg-qstats' },
     cells.map(c => {
       const cls = (typeof c.v === 'number' && c.base != null)
         ? (c.v > c.base ? ' up' : c.v < c.base ? ' dn' : '') : '';
@@ -2863,7 +2863,27 @@ function _hrlgQuickStats(panelKey) {
         n ? h('span', { className: n.cls + ' sm', style: { '--pct': n.pct } }, h('i', null, n.g)) : h('span', { className: 'ew-grade sm none' }),
         h('span', { className: 'hrlg-qstat-val' }, String(c.v)));
     }),
-  );
+  ), _hrlgElemBox(u));
+}
+
+/* THE ELEMENT BOX (2026-09-23): two rows under the clicked unit's stats —
+   the six combat elements over the unit's reaction to each (data.js
+   elemAffinityBox: – neutral · ! weak · ▼ resist · ∅ immune · ♥ absorb ·
+   ? until this unit's race has been hit with that element; your own seat's
+   vessels are always read). The same box stands on the INFO card, the
+   codex, the forge's STATS column and the pause menu's party sheet. */
+function _hrlgElemBox(u) {
+  if (!u || typeof window === 'undefined' || typeof window.elemAffinityBox !== 'function') return null;
+  const viewer = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : null;
+  const own = viewer != null && (typeof unitHomePlayer === 'function' ? unitHomePlayer(u) : u.player) === viewer;
+  const cells = window.elemAffinityBox(u.race, { own, seen: (typeof state !== 'undefined' && state) ? state._elemSeen : undefined });
+  const iconHtml = typeof window.elementIconHtml === 'function' ? window.elementIconHtml : null;
+  return h('div', { className: 'ew-elem-box sm hrlg-qelem', title: 'ELEMENTS · how this unit takes each element' },
+    h('div', { className: 'ew-elem-row ew-elem-els' }, cells.map(c => iconHtml
+      ? h('span', { key: c.el, className: 'ew-elem-cell ew-elem-el', title: c.tip, dangerouslySetInnerHTML: { __html: iconHtml(c.el, 'ew-elem-icon') } })
+      : h('span', { key: c.el, className: 'ew-elem-cell ew-elem-el', title: c.tip }, c.icon))),
+    h('div', { className: 'ew-elem-row ew-elem-rxs' }, cells.map(c =>
+      h('span', { key: c.el, className: 'ew-elem-cell ew-elem-rx ' + (c.tier || 'unknown'), style: { color: c.color }, title: c.tip }, c.sym))));
 }
 
 function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, unitTypes, portraitUrl, portraitIsFace, onPortraitClick, infoOpen, onInfo, unitKey, burning, poisoned, statusChips, ap, maxAP, hp, maxHp, mp, maxMp, xp, mats, buildCharge, modeLabel, am, pushers, build, items, confirm, onItem, onAction, onEndTurn, onCancel }) {
@@ -9487,6 +9507,7 @@ function _injectHudHideStyles() {
       pointer-events: auto;
     }
     .hrlg-qstat { display: flex; align-items: center; gap: 5px; min-width: 0; line-height: 1.7; }
+    .hrlg-qelem { margin: 0 14px 6px 13px; pointer-events: auto; }
     .hrlg-qstat-lbl {
       flex: none; width: 34px; font-size: 9px; font-weight: 700;
       letter-spacing: 0.12em; color: #7a7490;
