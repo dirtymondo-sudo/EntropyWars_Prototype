@@ -294,6 +294,69 @@ REV 2 (the same day): THE LIFT — a field plate rides `HL_FIELD_LIFT` (0.04 til
 the ground (`_fieldGroundLiftPx`, added in `_makeHlTile`) at `HL_FIELD_SEGS` 6, so the
 floor sheet never covers a highlight between the field's samples.
 
+### 2026-09-23 — delivery 8: THE DEFORM (a dig bowls the room's own floor) + THE RINGS ABOVE
+
+The user: "digging still doesn't show on screen and spells that lower terrain
+just make the units appear underground since the floor doesn't change — can we
+not temporarily overwrite the floor elevation for a tile or an area and return
+the map to normal after the battle; natural terrain deformation, not voxels; I
+don't want to lose the spells that lower the ground. And the unit selection
+rings and the vital rings need to appear above the floor textures and the tile
+highlights — they are getting buried."
+
+**Why a dig was invisible**: THE STRATA (delivery 6) drew a dug cell as a quad
+at its new (lower) top plus four inward faces — all of it UNDER the room's
+floor mesh, which never moved. A raise stood proud (a block) and showed.
+
+**THE DEFORM** (three-renderer.js, the block right before `_fieldStrataMats`):
+- `_fieldDeformPlan(N, deltaAt, elev, band)` (pure, vm-tested): the drop field
+  over the window in tiles — a dug cell's centre drops its FULL delta × elev
+  (tileTopY's number: the unit stands on the bowl's floor), a plateau
+  `1 − 2·band` wide, the wall a smoothstep over `band` (0.3 tile ≈ 0.5 m)
+  either side of the cell's edge — the shared edge is the two cells' mean, a
+  corner the four cells', so the surface is continuous and two dug
+  neighbours share one floor; an unmoved neighbour keeps its centre; a RAISE
+  contributes nothing (it stays a block).
+- `_fieldDeformApply(ts)` runs FIRST in `_fieldStrataBuild` (every height
+  version): the room's floor meshes (`_fieldFloorMeshes`: a terrain room's
+  field `_ew_hqTerrain`, a box room's `_ew_hqPart === 'floor'` plane(s) —
+  never the outer ground / a site's apron / the backdrop / the strata's own
+  pieces) are deformed IN PLACE in the battle frame: each vertex → world via
+  `matrixWorld`, + the drop, → back through the inverse. The ORIGINAL
+  positions are kept on the mesh (`_ew_fieldOrig`) and every rebuild
+  re-derives from them (a dig then a raise back = flat again). A box floor is
+  ONE quad: the first dig subdivides it (`_ew_fieldOrigGeo` kept, ≈ four
+  vertices a tile, the same frame + UVs). Normals / bounds recomputed.
+- The columns (THE STRATA) then draw only what the deform did not take: a
+  raise's quad + faces (`c.delta > 0` / `deltaAt(f.x, f.y) > 0`); with no
+  floor mesh found (nothing to deform) the old columns stand as the fallback.
+- `_fieldGroundSampler` carries the bowl: a dug cell's plate / ring samples
+  `_fieldDeformDyAt`; a raise stays a flat block at its delta; a BOX room
+  gets a sampler once something is dug (its cells were flat = null before).
+- `deactivate()` → `_fieldDeformRestore()` puts every floor back (and the
+  next room entry rebuilds the room from its data regardless) — THE MAP IS
+  BACK TO NORMAL after the battle. Kill-switch `EW_HQ_NO_FIELD_DEFORM`; the
+  band on `HQ_FIELD_RULES.strata.deformBand` (data.js).
+
+**THE RINGS ABOVE**: the team reticle and the selected-tile marker wear
+`renderOrder` 4 (`RING_RENDER_ORDER`) — the highlight plates are 0 / 2 and
+none of the three writes depth, so the later draw wins everywhere, field or
+board. Under a true-ground field both are built as GRIDS (`RING_FIELD_SEGS`
+10) and `_fieldRingsTick(g)` (both branches of `_updateUnitFacing`) drapes
+them over the room's ground through the highlights' own sampler, lifted
+`RING_FIELD_LIFT` (1.75) × the plates' lift (≈ 12 cm), capped half a tile
+off the unit's own top; keyed on the group's spot + yaw + the height version
+(a standing unit costs nothing); a body in the air (a flyer, a leap) wears
+them flat; off the field the geometry is the one quad it always was.
+
+Tests: seamless-field.test.js (delivery 8 ×3 — the planner in a vm, the
+sources, the rings). `npm run test:quick` + the touched suites green.
+
+UNSEEN LIVE (RULE #1c): the bowl's read in each room's floor sheet (the
+sheet stretches down the wall — a steeper `deformBand` is the edit), the
+box floor's subdivision seam under the AO, the ring's lift against a
+rig's feet, the marker's grid on a slope, a dig beside a raise.
+
 ## 8. The second plan — THE CUT (2026-09-22, planning)
 
 The user, after delivery 4: the hall is fine, a city or any big area is ~10 fps.

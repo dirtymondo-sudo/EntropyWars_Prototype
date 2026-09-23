@@ -8496,3 +8496,29 @@ a rematch drops it. `npm test` runs seamless-field.test.js (the sampler in a vm 
 hq-encounter / hq-room-in-battle pins moved. UNSEEN LIVE (RULE #1c — the CDN is unreachable from the sandbox): the drape
 on a real slope against the plates' opacity, the level-up card mid-fight on the story units, the panel's fade into the
 held frame, the ease's length (`HQ_RETURN_EASE_MS`), the fade's pop when a walker's rig takes a moment to attach.
+
+## THE SEAMLESS FIELD, delivery 8 — THE DEFORM (a dig bowls the room's own floor, the map comes back) + THE RINGS ABOVE (2026-09-23, local delivery)
+The user: "digging still doesn't show; spells that lower terrain put the units underground since the floor doesn't change —
+temporarily overwrite the floor elevation for a tile / an area and put the map back after the battle; natural deformation,
+not voxels; and the selection / vital rings are buried under the floor textures and the tile highlights." **THE DEFORM**
+(three-renderer.js, the block before `_fieldStrataMats`; SEAMLESS_FIELD_PLAN §7 has the entry): a DIG is no longer a
+column drawn UNDER the floor — `_fieldStrataBuild` runs **`_fieldDeformApply(ts)`** FIRST: the room's own floor meshes
+(`_fieldFloorMeshes` = a terrain room's field `_ew_hqTerrain`, a box room's `_ew_hqPart === 'floor'` planes; never the
+outer ground / a site's apron / the backdrop / the strata) are deformed IN PLACE in the battle frame by the pure planner
+**`_fieldDeformPlan(N, deltaAt, elev, band)`** — a bowl per dug cell: the centre drops the full delta × elev (tileTopY's
+number), a plateau `1 − 2·band`, the wall a smoothstep over `band` (`HQ_FIELD_RULES.strata.deformBand` 0.3 tile) either
+side of the edge, the shared edge the two cells' mean (continuous; two dug neighbours share one floor; an unmoved neighbour
+keeps its centre); a RAISE stays a BLOCK (the strata quad + faces draw only for `delta > 0` once the deform landed). The
+ORIGINAL vertices are kept on the mesh (`_ew_fieldOrig`; a box floor's one quad is SUBDIVIDED on the first dig,
+`_ew_fieldOrigGeo` kept) and every rebuild re-derives from them; `deactivate()` → `_fieldDeformRestore()` puts the floor
+back — and the next room entry rebuilds from data anyway. `_fieldGroundSampler` carries the bowl (a box room gets a sampler
+once something is dug), so the highlight plates and the rings follow it. Kill-switch `EW_HQ_NO_FIELD_DEFORM`. RULE: a floor
+mesh under a field is deformed through this path, never a second mesh over it; a new floor-carrying builder tags its mesh
+`_ew_hqPart: 'floor'` (or `_ew_hqTerrain`) or a dig will not show on it. **THE RINGS ABOVE**: the team reticle and the
+selected-tile marker wear `renderOrder` **4** (`RING_RENDER_ORDER`; the plates are 0 / 2, nobody writes depth — the later
+draw wins on every board); under a true-ground field they are GRIDS (`RING_FIELD_SEGS`) that **`_fieldRingsTick(g)`**
+(both branches of `_updateUnitFacing`) drapes over the ground through the highlights' sampler, lifted `RING_FIELD_LIFT`
+× the plates' lift (≈ 12 cm), capped half a tile off the unit's top, keyed on spot + yaw + the height version; a body in
+the air wears them flat. `npm test` runs seamless-field.test.js (delivery 8 ×3). UNSEEN LIVE (RULE #1c): the bowl's read
+in each floor sheet (the sheet stretches down the wall — `deformBand` is the edit), the box floor's subdivision under the
+AO, the ring's lift against a rig's feet, a dig beside a raise.

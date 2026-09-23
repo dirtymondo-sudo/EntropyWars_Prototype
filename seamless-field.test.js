@@ -579,3 +579,54 @@ test('THE WAY BACK: the snapshot + the eye, the arrival ease on the HQ camera, t
     assert.ok(CSS.includes('.result-overlay.vic-leaving { opacity: 0; transition: opacity 0.26s ease; pointer-events: none; }'), 'the panel\'s fade');
     assert.ok(/\?v=\d{8}[a-z0-9-]*-cors/.test(IX) && !IX.includes('20260922-floaters-alleys-01-cors'), 'the token moved');
 });
+
+/* ══ delivery 8 — THE DEFORM + THE RINGS ABOVE (2026-09-23) ══ */
+test('delivery 8 · THE DEFORM in a vm: a dig is a bowl — the centre drops the full delta, a plateau, a smooth wall over the band, the edge shared with a neighbour, an unmoved neighbour keeps its centre, nothing dug = 0, a raise is never bowled', () => {
+    const src = TR.slice(TR.indexOf('    function _fieldDeformPlan(N, deltaAt, elev, band) {'), TR.indexOf('    var _fieldStrataMats = null;'));
+    const ctx = { Math }; vm.createContext(ctx); vm.runInContext(src + '\nthis.plan = _fieldDeformPlan;', ctx);
+    const elev = 100, N = 4, band = 0.3;
+    const mk = (d) => (x, y) => d[y][x] || 0;
+    const none = ctx.plan(N, mk([[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]]), elev, band);
+    assert.equal(none.dug.length, 0); assert.equal(none.dyAt(1.5, 1.5), 0);
+    const one = ctx.plan(N, mk([[0,0,0,0],[0,-2,0,0],[0,0,0,0],[0,0,0,0]]), elev, band);
+    assert.equal(one.dug.length, 1); assert.equal(one.dug[0].delta, -2);
+    assert.equal(one.dyAt(1.5, 1.5), -200, 'the centre drops the full delta — tileTopY\'s number');
+    assert.equal(one.dyAt(1.35, 1.6), -200, 'the plateau inside the band');
+    assert.equal(one.dyAt(2.5, 1.5), 0, 'the unmoved neighbour keeps its centre');
+    assert.equal(one.dyAt(0.5, 0.5), 0);
+    const edgeFromDug = one.dyAt(1.9999, 1.5), edgeFromNb = one.dyAt(2.0001, 1.5);
+    assert.ok(Math.abs(edgeFromDug - edgeFromNb) < 1, 'continuous across the cell edge');
+    assert.ok(Math.abs(edgeFromDug - (-100)) < 1, 'the edge is the midpoint');
+    let last = -200; for (let t = 1.5; t <= 2.5; t += 0.01) { const v = one.dyAt(t, 1.5); assert.ok(v >= last - 1e-9, 'the wall never dips back'); last = v; }
+    assert.ok(one.dyAt(1.85, 1.5) < -100 && one.dyAt(1.85, 1.5) > -200, 'the wall is a slope, not a step');
+    const two = ctx.plan(N, mk([[0,0,0,0],[0,-1,-1,0],[0,0,0,0],[0,0,0,0]]), elev, band);
+    assert.ok(Math.abs(two.dyAt(2.0, 1.5) + 100) < 1e-6, 'two dug neighbours share one floor'); assert.ok(Math.abs(two.dyAt(1.8, 1.5) + 100) < 1e-6);
+    const raise = ctx.plan(N, mk([[0,0,0,0],[0,2,0,0],[0,0,0,0],[0,0,0,0]]), elev, band);
+    assert.equal(raise.dug.length, 0); assert.equal(raise.dyAt(1.5, 1.5), 0, 'a raise is a block, never a mound');
+    const corner = one.dyAt(1.9999, 1.9999), cornerNb = one.dyAt(2.0001, 2.0001);
+    assert.ok(Math.abs(corner - cornerNb) < 1 && Math.abs(corner - (-50)) < 1, 'a corner is the four cells\' mean');
+});
+
+test('delivery 8 · THE DEFORM in the renderer: the strata build deforms the floor meshes first and draws columns only for raises, the sampler carries the bowl, deactivate puts the floor back, the rule row exists', () => {
+    assert.ok(TR.includes("var deformed = 0; try { deformed = _fieldDeformApply(ts); }") && TR.includes("if (deformed) { plan.tops = plan.tops.filter(function (c) { return c.delta > 0; }); plan.faces = plan.faces.filter(function (f) { return G.deltaAt(f.x, f.y) > 0; }); }"), 'the deform first, the columns for what it did not take');
+    assert.ok(TR.includes("if (o._ew_fieldStrata || o._ew_hqOuter || o._ew_hqGround || o._ew_hqBackdrop) return;\n            if (o._ew_hqTerrain || o._ew_hqPart === 'floor') list.push(o);"), 'the floor meshes: the field, the box floor — never the outer ground / the apron / the backdrop');
+    assert.ok(TR.includes("if (prm && prm.width > 0 && prm.height > 0 && (prm.widthSegments || 1) < 4 && !m._ew_fieldOrigGeo) {"), 'a box floor is subdivided on the first dig');
+    assert.ok(TR.includes("if (!m._ew_fieldOrig || m._ew_fieldOrig.length !== pos.array.length) m._ew_fieldOrig = new Float32Array(pos.array);") && TR.includes('v.y += dy; v.applyMatrix4(_fdInv); pos.setXYZ(i, v.x, v.y, v.z); moved++;'), 'the original vertices kept, the drop applied in the battle frame and carried back to the mesh\'s own');
+    assert.ok(TR.includes("try { if (typeof _fieldDeformRestore === 'function') _fieldDeformRestore(); } catch (e) {}"), 'deactivate puts the floor back');
+    assert.ok(TR.includes("return base + (d > 0 ? d * G.elev : 0) + (dug ? _fieldDeformDyAt(wx, wz) : 0);") && TR.includes('if (!feet && !dug) return null;') && TR.includes("var dug = (typeof _fieldDeformDug === 'function') && _fieldDeformDug();"), 'the sampler: a raise a block, a dig the bowl, a box room flat until dug');
+    assert.ok(TR.includes("window.EW_HQ_NO_FIELD_DEFORM"), 'the kill-switch');
+    assert.equal(DATA.HQ_FIELD_RULES.strata.deformBand, 0.3, 'the rule row');
+});
+
+test('delivery 8 · THE RINGS ABOVE: the reticle and the selected tile render after every highlight and drape on the field\'s ground over the plates', () => {
+    assert.ok(TR.includes('var RING_RENDER_ORDER = 4, RING_FIELD_SEGS = 10, RING_FIELD_LIFT = 1.75;'));
+    assert.ok(TR.includes('reticle.renderOrder = RING_RENDER_ORDER;') && TR.includes('selTile.renderOrder = RING_RENDER_ORDER;'), 'over the plates (0 / 2, no depth write — the later draw wins)');
+    assert.ok(TR.includes("new THREE.PlaneGeometry(ts * RETICLE_SPAN, ts * RETICLE_SPAN, _retSegs, _retSegs)") && TR.includes("new THREE.PlaneGeometry(ts * 0.96, ts * 0.96, _selSegs, _selSegs)"), 'a grid under a field');
+    assert.ok(TR.includes('group._ew_selTile = selTile;'), 'the marker is reachable from the group');
+    assert.ok(TR.includes('function _fieldRingsTick(g) {') && TR.includes('function _fieldDrapeRing(mesh, ts, top, lift, cap) {') && TR.includes('function _fieldRingsFlat(g) {'));
+    assert.ok(TR.includes('var lift = HL_FIELD_LIFT * ts * RING_FIELD_LIFT, cap = ts * 0.5;'), 'lifted over the plates, capped half a tile off the unit\'s own top');
+    assert.ok(TR.includes("var airborne = (top === null || top === undefined) || Math.abs(feetY - top) > ts * 0.5;"), 'a body in the air wears them flat');
+    assert.equal((TR.match(/_fieldRingsTick\(g\);/g) || []).length, 2, 'both branches of the facing pass (the swarm, the unit)');
+    /* the lift maths: the ring sits above the plate */
+    assert.ok(1.75 * 0.04 > 0.04, 'RING_FIELD_LIFT × HL_FIELD_LIFT clears HL_FIELD_LIFT');
+});

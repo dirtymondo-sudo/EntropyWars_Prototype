@@ -865,6 +865,10 @@ const ThreeRenderer = (function () {
        (plane rotation.x = +π/2, wrapper yaw = _unitFacingYaw). RETICLE_SPAN
        must match the `* 1.30` UV→tile scale inside the shader. */
     var RETICLE_SPAN = 1.30;
+    /* THE RINGS ABOVE (2026-09-23): the team reticle + the selected-tile marker render after every tile highlight (the plates are
+       renderOrder 0 / 2 and write no depth, so the LATER draw wins) and, on a true-ground field, are draped over the room's ground
+       RING_FIELD_LIFT × the plates' own lift — never buried by a slope's bulge or a plate's 7 cm */
+    var RING_RENDER_ORDER = 4, RING_FIELD_SEGS = 10, RING_FIELD_LIFT = 1.75;
 
     var _reticleFragmentShader = [
         'uniform vec3 uColor;',
@@ -12319,13 +12323,17 @@ const ThreeRenderer = (function () {
            the unit id so neighbouring reticles don't pulse in lockstep. */
         var _rpHash = 0, _rpStr = String(unit.id);
         for (var _rpI = 0; _rpI < _rpStr.length; _rpI++) _rpHash = (_rpHash * 31 + _rpStr.charCodeAt(_rpI)) % 997;
+        /* THE RINGS ABOVE (2026-09-23): the reticle draws AFTER every tile highlight (renderOrder 4 — the plates are 0 / 2, neither
+           writes depth) and, under a true-ground field, is a GRID that _fieldRingsTick drapes on the room's ground above the plates */
+        var _retSegs = (typeof _fieldGroundLive === 'function' && _fieldGroundLive()) ? RING_FIELD_SEGS : 1;
         var reticle = new THREE.Mesh(
-            new THREE.PlaneGeometry(ts * RETICLE_SPAN, ts * RETICLE_SPAN),
+            new THREE.PlaneGeometry(ts * RETICLE_SPAN, ts * RETICLE_SPAN, _retSegs, _retSegs),
             _makeTeamReticleMaterial(ringCol, (_rpHash % 63) * 0.1,
                 _isAllyPlayer(unit.player) ? RING_HP_ALLY_COLOR : RING_HP_ENEMY_COLOR)
         );
         reticle.rotation.x = Math.PI / 2;   // flatten; shader +v → world +Z
         reticle._ew_reticle = true;
+        reticle.renderOrder = RING_RENDER_ORDER;
         /* Ring vitals start at the unit's real fill (a rebuilt entry must not
            re-drain from full); _updateRingVitals eases them from here. */
         _seedRingVitals(reticle, unit);
@@ -12346,14 +12354,18 @@ const ThreeRenderer = (function () {
             /* The tile UNDER the current unit: a white glowing outline, near-
                empty body — the default "this is who's acting" marker. Rides
                the unit group so walks/knockbacks carry it automatically. */
+            var _selSegs = (typeof _fieldGroundLive === 'function' && _fieldGroundLive()) ? RING_FIELD_SEGS : 1;
             var selTile = new THREE.Mesh(
-                new THREE.PlaneGeometry(ts * 0.96, ts * 0.96),
+                new THREE.PlaneGeometry(ts * 0.96, ts * 0.96, _selSegs, _selSegs),
                 _makeHlMaterial(0xffffff, 0.9, 1.5, 0, { fill: 0.05 })
             );
             selTile.rotation.x = -Math.PI / 2;
             selTile.position.y = SELECTED_RING_OFFSET - 0.15;
+            selTile.renderOrder = RING_RENDER_ORDER;   // THE RINGS ABOVE: over the highlights
             selTile.raycast = function () {};
+            selTile._ew_selTile = true;
             group.add(selTile);
+            group._ew_selTile = selTile;
         }
 
         var _subSink = _getSubmersionDepth(unit) * _effectiveSprH;
@@ -12436,6 +12448,58 @@ const ThreeRenderer = (function () {
         _easeRingUniform(u.uHp, _ringFrac(unit.hp, unit.maxHp || 1), k);
         _easeRingUniform(u.uMp, _ringFrac(unit.mp, unit.maxMp || 0), k);
         _easeRingUniform(u.uShield, _ringFrac(unit.shield || 0, unit.maxHp || 1), k);
+    }
+    /* THE RINGS ABOVE on a field: the reticle (in its facing wrapper) and the selected-tile marker of a unit group are
+       draped over the room's ground at every vertex (the same sampler the highlights use), lifted over the plates; a
+       body in the air (a flyer, a leap) wears them flat; keyed on the group's spot + yaw + the height version so a
+       standing unit costs nothing per frame. Off the field the grids stay flat (their build made them one quad). */
+    var _frM = null, _frInv = null, _frV = null;
+    function _fieldRingsTick(g) {
+        if (!g || !g.children) return;
+        var live = (typeof _fieldGroundLive === 'function') && _fieldGroundLive();
+        if (!live) { if (g._ew_ringDraped) { _fieldRingsFlat(g); g._ew_ringDraped = false; g._ew_ringKey = ''; } return; }
+        var G = _fieldGround(); if (!G) return;
+        var ts = G.ts, ux = Math.floor(g.position.x / ts), uy = Math.floor(g.position.z / ts);
+        var fi = null, yaw = 0;
+        for (var i = 0; i < g.children.length; i++) { var ch = g.children[i]; if (ch._ew_facingIndicator) { fi = ch; yaw = ch.rotation.y; break; } }
+        var ret = (fi && fi.children[0] && fi.children[0]._ew_reticle) ? fi.children[0] : null, sel = g._ew_selTile || null;
+        if (!ret && !sel) return;
+        var key = Math.round(g.position.x) + '|' + Math.round(g.position.y) + '|' + Math.round(g.position.z) + '|' + Math.round(yaw * 50) + '|' + ((typeof state !== 'undefined' && state) ? (state._heightVersion || 0) : 0) + '|' + _fieldGroundCache.key;
+        if (g._ew_ringKey === key) return;
+        g._ew_ringKey = key;
+        var top = G.yAt(ux, uy), feetY = g.position.y + (g._ew_subSink || 0);
+        var airborne = (top === null || top === undefined) || Math.abs(feetY - top) > ts * 0.5;
+        if (airborne) { if (g._ew_ringDraped) { _fieldRingsFlat(g); g._ew_ringDraped = false; } return; }
+        var lift = HL_FIELD_LIFT * ts * RING_FIELD_LIFT, cap = ts * 0.5;
+        if (ret) _fieldDrapeRing(ret, ts, top, lift, cap);
+        if (sel) _fieldDrapeRing(sel, ts, top, lift, cap);
+        g._ew_ringDraped = true;
+    }
+    function _fieldDrapeRing(mesh, ts, top, lift, cap) {
+        var geo = mesh.geometry, pos = geo && geo.attributes && geo.attributes.position; if (!pos || pos.count < 9 || typeof THREE === 'undefined') return;
+        _frM = _frM || new THREE.Matrix4(); _frInv = _frInv || new THREE.Matrix4(); _frV = _frV || new THREE.Vector3();
+        if (!mesh._ew_drapeOrig || mesh._ew_drapeOrig.length !== pos.array.length) mesh._ew_drapeOrig = new Float32Array(pos.array);
+        mesh.updateWorldMatrix(true, false);
+        var mw = mesh.matrixWorld; _frInv.copy(mw).invert();
+        var o = mesh._ew_drapeOrig, v = _frV;
+        for (var i = 0, n = pos.count; i < n; i++) {
+            v.set(o[i * 3], o[i * 3 + 1], o[i * 3 + 2]).applyMatrix4(mw);
+            var s = _fieldGroundSampleAt(v.x, v.z, Math.floor(v.x / ts), Math.floor(v.z / ts));
+            var y = (s === null || s === undefined) ? top : s;
+            if (y > top + cap) y = top + cap; else if (y < top - cap) y = top - cap;
+            v.y = y + lift; v.applyMatrix4(_frInv); pos.setXYZ(i, v.x, v.y, v.z);
+        }
+        pos.needsUpdate = true; try { geo.computeBoundingSphere(); } catch (e) {}
+        mesh._ew_draped = true;
+    }
+    function _fieldRingsFlat(g) {
+        var undo = function (mesh) {
+            if (!mesh || !mesh._ew_draped || !mesh._ew_drapeOrig) return;
+            var pos = mesh.geometry && mesh.geometry.attributes && mesh.geometry.attributes.position; if (!pos) return;
+            pos.array.set(mesh._ew_drapeOrig); pos.needsUpdate = true; mesh._ew_draped = false;
+        };
+        for (var i = 0; i < g.children.length; i++) { var ch = g.children[i]; if (ch._ew_facingIndicator && ch.children[0] && ch.children[0]._ew_reticle) undo(ch.children[0]); }
+        undo(g._ew_selTile);
     }
     /* The reticle of a live unit entry (null while it has none). */
     function _reticleOfUnit(uid) {
@@ -17844,6 +17908,7 @@ const ThreeRenderer = (function () {
                         if (bunit && brv && brv._ew_reticle) _updateRingVitals(brv, bunit, g, cam, bch.rotation.y, dtSec);
                     }
                 }
+                _fieldRingsTick(g);   // THE RINGS ABOVE
                 continue;
             }
             var unit = _findUnit(uid);
@@ -17903,6 +17968,7 @@ const ThreeRenderer = (function () {
                     ch.position.z = Math.cos(syaw) * silOff;
                 }
             }
+            _fieldRingsTick(g);   // THE RINGS ABOVE: the reticle + the selected tile draped on the field's ground
         }
     }
 
@@ -30305,6 +30371,7 @@ const ThreeRenderer = (function () {
         active = false;
         /* THE SEAMLESS FIELD: the room's fog leaves with the fight, the true-ground gate closes (typeof-guarded: scene-lifecycle.test.js evals deactivate alone) */
         try { if (typeof _fieldGroundFog !== 'undefined' && _fieldGroundFog) { _fieldGroundFog = false; _ewHeightFogSet(0, 1, 0, 0); } if (typeof _fieldGroundArmed !== 'undefined') { _fieldGroundArmed = false; _fieldGroundCache.key = null; _fieldGroundCache.G = null; } } catch (e) {}
+        try { if (typeof _fieldDeformRestore === 'function') _fieldDeformRestore(); } catch (e) {}   // THE DEFORM: the room's floor back to its data before the room is dropped
         try { if (typeof _fieldGroundRelease === 'function') _fieldGroundRelease(); } catch (e) {}   // THE SEAMLESS FIELD rev 3: the room's fog / rig / AO / ceiling leave with the fight
         if (window.ThreeVFXEffects && ThreeVFXEffects.clearBattle) ThreeVFXEffects.clearBattle();
         hideSplitscreen();
@@ -53330,26 +53397,33 @@ const ThreeRenderer = (function () {
     }
     var _fieldGroundSamplerCache = { key: null, fn: null };
     function _fieldGroundSampler() {
-        var G = _fieldGround(); if (!G || !G.R || !G.R.terrain) return null;
+        var G = _fieldGround(); if (!G) return null;
         var key = _fieldGroundCache.key;
         if (_fieldGroundSamplerCache.key === key) return _fieldGroundSamplerCache.fn;
         var info = null;
-        try { info = (typeof hqTerrainInfo === 'function') ? hqTerrainInfo(G.R.roomId) : null; } catch (e) { info = null; }
-        var fn = null;
-        if (info && typeof hqTerrainFeet === 'function') {
-            var T = G.R.T, ts = G.ts;
-            fn = function (wx, wz, x, y) {
-                var row = G.tops[y]; var top = row ? row[x] : null;
-                if (top === null || top === undefined) return null;
+        if (G.R.terrain) { try { info = (typeof hqTerrainInfo === 'function') ? hqTerrainInfo(G.R.roomId) : null; } catch (e) { info = null; } }
+        var feet = !!(info && typeof hqTerrainFeet === 'function');
+        var T = G.R.T, ts = G.ts;
+        /* THE DEFORM (2026-09-23): a box room's cells are flat (null — the plate stays a plane) until a dig bowls one;
+           a dug cell's shape is the bowl's (_fieldDeformDyAt), a raise is a block (the cell's delta, flat) */
+        var fn = function (wx, wz, x, y) {
+            var row = G.tops[y]; var top = row ? row[x] : null;
+            if (top === null || top === undefined) return null;
+            var dug = (typeof _fieldDeformDug === 'function') && _fieldDeformDug();   // typeof: the highlights-conform test evals the block alone
+            if (!feet && !dug) return null;
+            var base = G.floorY + top * G.s;
+            if (feet) {
                 var rx = wx * T.C / ts + T.x0, rz = wz * T.C / ts + T.z0;   // battle px → room metres (the matrix's rule, inverted)
                 var m = null;
                 try { m = hqTerrainFeet(info, rx, rz, top); } catch (e) { m = null; }
                 if (m === null || m === undefined || !isFinite(m)) m = top;
                 var dy = (m - top) * G.s, cap = HL_FIELD_MAX_DY * ts;
                 if (dy > cap) dy = cap; else if (dy < -cap) dy = -cap;
-                return G.yAt(x, y) + dy;
-            };
-        }
+                base += dy;
+            }
+            var d = G.deltaAt(x, y);
+            return base + (d > 0 ? d * G.elev : 0) + (dug ? _fieldDeformDyAt(wx, wz) : 0);
+        };
         _fieldGroundSamplerCache.key = key; _fieldGroundSamplerCache.fn = fn;
         return fn;
     }
@@ -53513,11 +53587,127 @@ const ThreeRenderer = (function () {
         }
         return { tops: tops, faces: faces };
     }
+    /* ══ THE DEFORM (THE SEAMLESS FIELD, delivery 8, 2026-09-23) ══
+       The user: "digging still doesn't show on screen and spells that lower terrain make the units appear underground
+       since the floor doesn't change — temporarily overwrite the floor elevation for a tile or an area and put the map
+       back after the battle; natural terrain deformation, not voxels." A DIG is no longer a column drawn UNDER the
+       room's floor (invisible): the room's own floor mesh — a terrain room's field, a box room's floor plane (subdivided
+       on the first dig) — is DEFORMED in place, a smooth bowl per dug cell: the cell's centre drops the engine's full
+       delta (tileTopY's number — the unit stands on the bowl's floor), a plateau `1 − 2·band` tiles wide, the wall a
+       smoothstep over `band` tiles either side of the cell's edge (two dug neighbours share one floor; an unmoved
+       neighbour keeps its centre); a RAISE stays a block (the strata's quad + faces — "I can place blocks now"). The
+       floor's ORIGINAL vertices are kept on the mesh and re-derived on every rebuild; deactivate() puts them back, and
+       the next room entry rebuilds the room from its data anyway — the map is back to normal after the battle. */
+    function _fieldDeformPlan(N, deltaAt, elev, band) {
+        var dug = [], D = new Array(N * N);
+        for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) { var d = deltaAt(x, y) || 0; D[y * N + x] = d < 0 ? d * elev : 0; if (d < 0) dug.push({ x: x, y: y, delta: d }); }
+        var at = function (x, y) { return (x < 0 || y < 0 || x >= N || y >= N) ? 0 : D[y * N + x]; };
+        var ss = function (t) { t = t < 0 ? 0 : t > 1 ? 1 : t; return t * t * (3 - 2 * t); };
+        var side = function (f) { return f < band ? -(1 - ss(f / band)) : f > 1 - band ? ss((f - (1 - band)) / band) : 0; };
+        var dyAt = function (tx, tz) {   // tiles in → the drop (≤ 0, the elev's units) out
+            if (!dug.length) return 0;
+            var cx = Math.floor(tx), cz = Math.floor(tz), fx = tx - cx, fz = tz - cz;
+            var dc = at(cx, cz), tX = side(fx), tZ = side(fz);
+            var sx = tX < 0 ? -1 : 1, sz = tZ < 0 ? -1 : 1, ax = Math.abs(tX), az = Math.abs(tZ);
+            if (!ax && !az) return dc;
+            var dx = at(cx + sx, cz), dz = at(cx, cz + sz), dxz = at(cx + sx, cz + sz);
+            var ex = (dc + dx) / 2, ez = (dc + dz) / 2, ec = (dc + dx + dz + dxz) / 4;
+            return (1 - ax) * (1 - az) * dc + ax * (1 - az) * ex + (1 - ax) * az * ez + ax * az * ec;
+        };
+        return { dug: dug, dyAt: dyAt, band: band };
+    }
     var _fieldStrataMats = null;
+    var FIELD_DEFORM_BAND = 0.3;   // tiles — the wall of a dig either side of the cell's edge (HQ_FIELD_RULES.strata.deformBand overrides)
+    var _fieldDeformCache = { key: null, plan: null };
+    function _fieldDeformPlanLive() {
+        var G = _fieldGround(); if (!G || !G.levels) { _fieldDeformCache.key = null; _fieldDeformCache.plan = null; return null; }
+        var key = ((typeof state !== 'undefined' && state) ? (state._heightVersion || 0) : 0) + '|' + _fieldGroundCache.key;
+        if (_fieldDeformCache.key === key) return _fieldDeformCache.plan;
+        var band = FIELD_DEFORM_BAND;
+        try { var rs = (typeof HQ_FIELD_RULES !== 'undefined' && HQ_FIELD_RULES && HQ_FIELD_RULES.strata) ? HQ_FIELD_RULES.strata : null; if (rs && rs.deformBand > 0 && rs.deformBand < 0.5) band = rs.deformBand; } catch (e) {}
+        var plan = _fieldDeformPlan(G.N, function (x, y) { return G.deltaAt(x, y); }, G.elev, band);
+        _fieldDeformCache.key = key; _fieldDeformCache.plan = plan;
+        return plan;
+    }
+    /* the drop under a battle-frame point (px, ≤ 0); 0 with nothing dug */
+    function _fieldDeformDyAt(wx, wz) {
+        var plan = _fieldDeformPlanLive(); if (!plan || !plan.dug.length) return 0;
+        var G = _fieldGround(); if (!G) return 0;
+        return plan.dyAt(wx / G.ts, wz / G.ts);
+    }
+    function _fieldDeformDug() { var plan = _fieldDeformPlanLive(); return !!(plan && plan.dug.length); }
+    /* the room's floor meshes in the battle: a terrain room's field, a box room's floor plane(s) — never the outer ground,
+       a site's apron, the backdrop or the strata's own pieces */
+    function _fieldFloorMeshes() {
+        var list = []; if (!_facilityNearGroup) return list;
+        _facilityNearGroup.traverse(function (o) {
+            if (!o.isMesh || !o.geometry || !o.geometry.attributes || !o.geometry.attributes.position) return;
+            if (o._ew_fieldStrata || o._ew_hqOuter || o._ew_hqGround || o._ew_hqBackdrop) return;
+            if (o._ew_hqTerrain || o._ew_hqPart === 'floor') list.push(o);
+        });
+        return list;
+    }
+    var _fdM = null, _fdInv = null, _fdV = null;
+    function _fieldDeformMesh(m, ts, plan) {
+        if (typeof THREE === 'undefined') return false;
+        _fdM = _fdM || new THREE.Matrix4(); _fdInv = _fdInv || new THREE.Matrix4(); _fdV = _fdV || new THREE.Vector3();
+        m.updateWorldMatrix(true, false);
+        var mw = m.matrixWorld;
+        /* a box room's floor is ONE quad — the first dig subdivides it (≈ four vertices a tile) in the same frame + UVs */
+        var geo = m.geometry, prm = geo.parameters;
+        if (prm && prm.width > 0 && prm.height > 0 && (prm.widthSegments || 1) < 4 && !m._ew_fieldOrigGeo) {
+            var e = mw.elements, sPx = Math.sqrt(e[4] * e[4] + e[5] * e[5] + e[6] * e[6]) || 1;   // battle px per local unit
+            var tileLocal = ts / sPx;
+            var wsg = Math.max(4, Math.min(400, Math.round(prm.width / tileLocal * 4))), hsg = Math.max(4, Math.min(400, Math.round(prm.height / tileLocal * 4)));
+            var sub = new THREE.PlaneGeometry(prm.width, prm.height, wsg, hsg);
+            m._ew_fieldOrigGeo = geo; m.geometry = sub; geo = sub;
+        }
+        var pos = geo.attributes.position;
+        if (!m._ew_fieldOrig || m._ew_fieldOrig.length !== pos.array.length) m._ew_fieldOrig = new Float32Array(pos.array);
+        _fdInv.copy(mw).invert();
+        var o = m._ew_fieldOrig, v = _fdV, G = _fieldGround(); if (!G) return false;
+        var pad = (plan.band + 0.05) * ts, x0 = -pad, x1 = G.N * ts + pad, z0 = -pad, z1 = G.N * ts + pad, moved = 0;
+        for (var i = 0, n = pos.count; i < n; i++) {
+            var ox = o[i * 3], oy = o[i * 3 + 1], oz = o[i * 3 + 2];
+            v.set(ox, oy, oz).applyMatrix4(mw);
+            if (v.x < x0 || v.x > x1 || v.z < z0 || v.z > z1) { pos.setXYZ(i, ox, oy, oz); continue; }
+            var dy = plan.dyAt(v.x / ts, v.z / ts);
+            if (!dy) { pos.setXYZ(i, ox, oy, oz); continue; }
+            v.y += dy; v.applyMatrix4(_fdInv); pos.setXYZ(i, v.x, v.y, v.z); moved++;
+        }
+        pos.needsUpdate = true;
+        try { geo.computeVertexNormals(); geo.computeBoundingSphere(); geo.computeBoundingBox(); } catch (e) {}
+        m._ew_fieldDeformed = moved > 0 || !!m._ew_fieldOrigGeo;
+        return moved > 0;
+    }
+    function _fieldDeformRestoreMesh(m) {
+        if (!m || !m._ew_fieldDeformed) return;
+        if (m._ew_fieldOrigGeo) { var sub = m.geometry; m.geometry = m._ew_fieldOrigGeo; m._ew_fieldOrigGeo = null; try { sub.dispose(); } catch (e) {} m._ew_fieldOrig = null; }
+        else if (m._ew_fieldOrig && m.geometry && m.geometry.attributes.position) { var pos = m.geometry.attributes.position; pos.array.set(m._ew_fieldOrig); pos.needsUpdate = true; try { m.geometry.computeVertexNormals(); m.geometry.computeBoundingSphere(); m.geometry.computeBoundingBox(); } catch (e) {} }
+        m._ew_fieldDeformed = false;
+    }
+    /* run by _fieldStrataBuild on every height change: the bowls under every dug cell, or the floor put back; → the number of meshes that took a dig */
+    function _fieldDeformApply(ts) {
+        var plan = _fieldDeformPlanLive(), meshes = _fieldFloorMeshes(), hit = 0;
+        var on = !(typeof window !== 'undefined' && window.EW_HQ_NO_FIELD_DEFORM);
+        meshes.forEach(function (m) {
+            if (!on || !plan || !plan.dug.length) { _fieldDeformRestoreMesh(m); return; }
+            try { if (_fieldDeformMesh(m, ts, plan)) hit++; } catch (e) { console.warn('[HQ→battle] the deform failed', e); }
+        });
+        if (hit) _shadowsDirty = true;
+        return hit;
+    }
+    function _fieldDeformRestore() {
+        try { _fieldFloorMeshes().forEach(_fieldDeformRestoreMesh); } catch (e) {}
+        _fieldDeformCache.key = null; _fieldDeformCache.plan = null;
+    }
     function _fieldStrataBuild(ts) {
         var G = _fieldGround(); if (!G || !G.levels || !terrainGroup || typeof THREE === 'undefined') return 0;
         var elev = G.elev;
+        /* THE DEFORM: the room's floor takes every dig as a bowl; the columns below draw only what it did not take */
+        var deformed = 0; try { deformed = _fieldDeformApply(ts); } catch (e) { console.warn('[HQ→battle] the deform failed', e); }
         var plan = _fieldStrataFaces(G.N, function (x, y) { return G.yAt(x, y); }, function (x, y) { return G.deltaAt(x, y); }, elev);
+        if (deformed) { plan.tops = plan.tops.filter(function (c) { return c.delta > 0; }); plan.faces = plan.faces.filter(function (f) { return G.deltaAt(f.x, f.y) > 0; }); }
         if (!plan.tops.length) return 0;
         var bed = (typeof hqFieldBedFor === 'function') ? hqFieldBedFor(G.R.roomId) : { side: 'cliff', floor: 'dirt_3' };
         var floorKey = (G.R.room && G.R.room.terrain && G.R.room.terrain.floor) || (G.R.room && G.R.room.shell && G.R.room.shell.floor) || bed.floor;

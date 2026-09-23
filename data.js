@@ -45349,6 +45349,7 @@ const HQ_FIELD_RULES = {
        is a property of the ROOM FAMILY (its hub), never of the site's Δ (§8.4): hqFieldBedFor(roomId). */
     strata: {
         on: true,             // window.EW_HQ_NO_FIELD_STRATA = the engine digs, the eye sees nothing (delivery 1's rule)
+        deformBand: 0.3,      // THE DEFORM (2026-09-23): a dig is a BOWL in the room's own floor — its wall runs this many tiles either side of the cell's edge (a raise stays a block); window.EW_HQ_NO_FIELD_DEFORM = the old column under the floor
         beds: {               // per hub: `side` = the faces of a dig / a raise, `floor` = a dug cell's bottom
             hq:         { side: 'concrete_floor', floor: 'concrete_floor' },
             cavern:     { side: 'cave_wall', floor: 'cave_floor' },
