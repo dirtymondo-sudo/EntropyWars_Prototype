@@ -11420,3 +11420,9 @@ lamps; DOOR HQ, the Mall, the Spaceship; don't be afraid to make rooms bigger."
   check-terrain.js, hq-city.test.js, hq-areas.test.js, misc-batch-0922.test.js, CLAUDE.md, this file (repo).
 - UNSEEN LIVE (RULE #1c): the props on their tiers, the well's read against the walker, the alley mouths in the prism
   city (a dead end's hoarding, the fronts on its sides), the slits' hoardings between the prisms.
+
+### 2026-09-23 — THE MAP FIXES: the pop wrapper, the portal per door, the geography (local delivery)
+- THE BUG: the reveal's pop animated `transform` on a node's `<g>`; a CSS transform overrides the SVG `transform` attribute, so every popped node collapsed onto the sheet's centre (fill-mode both) — the overlapping names, the one clickable node. The pop plays on an inner `.hq-map-nb` now.
+- THE AREA SHEET: every room's name is on at the fit (collision alone hides); a room outside the place is an exit node beside EACH room that opens onto it (no spoke across the sheet, no edge between two outsiders); portals are leaves of the radial tree; the ring is 1.7 units.
+- THE GEOGRAPHY (`HQ_WORLD_L.slots`): the surface north of the building, the underground south — the cavern due south-west between the ley lines and the D.U.M.B., off the woods ⇄ estate line.
+- Eyeball first: the pop landing in place on a fresh open, the crowded sheets (the city, the woods) after the label plan, the world's octilinear lines over the new slots.

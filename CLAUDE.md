@@ -8654,3 +8654,25 @@ none → a potion); battle.js's commit rolls `_encFallenEnemies(seat)` on a WIN 
 styles-cinematic.css "THE SPOILS"); the return toast counts them. Tune the table, never the roller.
 `npm test` runs hq-party.test.js (27). Ship data.js to R2 AND Render. UNSEEN LIVE (RULE #1c): the tab strip's
 fit on the pause frame, the card's stagger, the category colours on the blades.
+
+## THE MAP FIXES — THE POP WRAPPER · THE PORTAL PER DOOR · THE GEOGRAPHY (2026-09-23, local delivery)
+The user: "in the close-up area maps all of the location names are overlapping and I can only click on the
+middle node; the cavern is right in between the estate and the woods." **THE POP WRAPPER** (the bug): the reveal's
+`.hq-map-n.reveal.pop` animated `transform` on the node's `<g>`, and a CSS transform OVERRIDES an SVG element's
+`transform` attribute — every popped node collapsed onto the sheet's origin for good (`animation-fill-mode: both`),
+every label over every other, the topmost the only one under the pointer. map.js `_hqMapSvg` / the world sheet wrap
+a node's contents in an inner `<g class="hq-map-nb">` and styles-base.css plays the pop on THAT (`.hq-map-n.reveal.pop
+> .hq-map-nb`). RULE: never animate `transform` on an element that carries a `transform` attribute. **THE AREA SHEET**:
+`_hqMapLabelPlan` shows a part's name at the fit on a place's own sheet (`M.area` set — the collision boxes alone
+decide; the whole map keeps its zoom ladder); `_hqAreaModel` makes a PORTAL PER DOOR — a room outside the place is a
+small exit node BESIDE EACH ROOM of the place that opens onto it (the same room id on every copy, `key` = `<out>@<via>`
+for the layout + `data-mapkey` for the label plan; an edge between two outside rooms is never drawn); `_hqAreaLayout`
+hangs a portal as a LEAF of the radial tree off the first room reached (its own slice of the circle, weight 0.75), the
+ring is 1.7 units, and an edge carries its own ends (`e.ax / ay / bx / by` — `_hqMapSvg` reads them before the node's).
+**THE GEOGRAPHY** (data.js `HQ_WORLD_L.slots`): the SURFACE north of the building (the kingdom at twelve, the woods +
+Shasta + Agartha north-west with the estate, the grove and the lodge below them on the west, the divine stair and the
+astral realm north-east, the city east), the UNDERGROUND south (the cavern due south-west with the ley lines west of it
+and the D.U.M.B. east, the underworld under the city, the deep off the coast, the space route beyond it, the bases and
+the ice along the bottom) — nothing on the woods ⇄ estate line. Screenshotted offline (the test harness's SVG under
+headless chromium — no animation, no label plan); hq-map.test.js green. UNSEEN LIVE (RULE #1c): the pop landing in
+place, the plan's offsets on the crowded sheets, the octilinear lines over the new slots.

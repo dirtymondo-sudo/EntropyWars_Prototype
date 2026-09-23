@@ -4212,10 +4212,14 @@
             const scale = Math.min(width / v[2], height / v[3]);
             if (!(scale > 0)) return [];
             const zoom = (_hqMap.fit || v)[2] / v[2], boxes = [], out = [];
-            const rank = n => n.id === focus || n.st === 'here' ? 0 : n.hall || n.ring || n.hub ? 1 : n.exit ? 2 : n.wild && !n.part ? 2 : n.part ? 4 : 3;   // THE MAP REMEMBERS (2026-09-22): a charted exit reads at the fit zoom   // THE HUBS (2026-09-18): a hub's name is always on, like the hall's
+            /* THE AREA SHEET (2026-09-23): on a place's own sheet every room of the place IS the map — a part's name is on at the
+               fit (rank 2, never the whole map's "parts at 2.4×" rule); the collision boxes alone decide what fits, the focus,
+               the here and the anchor first. The whole map (mode 'hq' / no area) keeps the zoom ladder. */
+            const areaSheet = !!(M.area && M.area !== 'hq');
+            const rank = n => n.id === focus || n.st === 'here' ? 0 : n.hall || n.ring || n.hub ? 1 : n.exit ? 2 : n.wild && !n.part ? 2 : n.part ? (areaSheet ? 2 : 4) : 3;   // THE MAP REMEMBERS (2026-09-22): a charted exit reads at the fit zoom   // THE HUBS (2026-09-18): a hub's name is always on, like the hall's
             M.nodes.filter(n => n.st !== 'q').sort((a, b) => rank(a) - rank(b) || (b.doors || 0) - (a.doors || 0)).forEach(n => {
                 const r = rank(n);
-                if (r >= 4 && zoom < 2.4 || r === 3 && zoom < 1.55) return;
+                if (!areaSheet && (r >= 4 && zoom < 2.4 || r === 3 && zoom < 1.55)) return;
                 const x = (n.x * HQ_MAP_U - v[0]) * scale + (width - v[2] * scale) / 2;
                 const y = (n.y * HQ_MAP_U - v[1]) * scale + (height - v[3] * scale) / 2;
                 if (x < 0 || x > width || y < 0 || y > height) return;
@@ -4231,7 +4235,7 @@
                 }
                 if (!box) return;
                 boxes.push(box);
-                out.push({ id: n.id, size: size / scale, x: (box.x + w / 2 - x) / scale, y: (box.y + size + 2 - y) / scale });
+                out.push({ id: n.key || n.id, size: size / scale, x: (box.x + w / 2 - x) / scale, y: (box.y + size + 2 - y) / scale });
             });
             return out;
         }
@@ -4245,7 +4249,7 @@
             svg.querySelectorAll('g[data-mapnode]').forEach(g => {
                 if (!g.querySelector) return;
                 const label = g.querySelector('.hq-map-lbl'), hit = g.querySelector('.hq-map-hit');
-                const l = labels.get(g.getAttribute('data-mapnode'));
+                const l = labels.get(g.getAttribute('data-mapkey') || g.getAttribute('data-mapnode'));
                 if (hit) hit.setAttribute('r', Math.min(28, Math.max(16, 12 * Math.max(v[2] / rect.width, v[3] / rect.height))));
                 if (!label) return;
                 label.style.display = l ? 'block' : 'none';
@@ -4274,7 +4278,7 @@
                     svg += `<line class="hq-map-e k-lift st-${e.st}" data-mapedge="${_hqEsc(e.key)}" x1="${F(M.shaft.x * U)}" y1="${F(S.y * U)}" x2="${F(S.x * U)}" y2="${F(S.y * U)}"><title>${_hqEsc('THE ELEVATOR · ' + e.stop)}</title></line>`;
                     return;
                 }
-                let a = { x: A.x, y: A.y }, b = { x: B.x, y: B.y };
+                let a = { x: e.ax != null ? e.ax : A.x, y: e.ay != null ? e.ay : A.y }, b = { x: e.bx != null ? e.bx : B.x, y: e.by != null ? e.by : B.y };   // THE PORTAL PER DOOR: an edge to a portal copy carries its own end
                 if (A.ring) a = ringPt(A, B.x, B.y);
                 if (B.ring) b = ringPt(B, A.x, A.y);
                 const cls = `hq-map-e k-${e.kind} st-${e.st}${e.charted ? '' : ' uncharted'}${e.gate ? ' gated' : ''}`;
@@ -4297,7 +4301,12 @@
                 const cls = `hq-map-n st-${n.st}${n.wild ? ' wild' : ''}${n.part ? ' part' : ''}${n.hall ? ' hall' : ''}${n.ring ? ' ring' : ''}${n.no ? ' numbered' : ''}${n.hub ? ' hub' : ''}${n.hubOf ? ' in-hub' : ''}${n.exit ? ' exit' : ''}${sel === n.id ? ' sel' : ''}`;
                 const title = n.st === 'q' ? 'UNCHARTED · WALK A DOOR TO IT' : `${n.hub ? String(n.hubLabel || '').toUpperCase() + ' · ' : ''}${n.no ? 'ROOM ' + n.no + ' · ' : ''}${String(n.label).toUpperCase()}${n.st === 'here' ? ' · YOU ARE HERE' : ''} · ${n.exit ? ('THE WAY OUT' + (n.place ? ' · ' + String(n.place).toUpperCase() : '')) : _hqMapWhere(n)}${(!n.hub && n.hubOf) ? ' · IN ' + String(n.hubLabel || '').toUpperCase() : ''}`;
                 const hubStyle = n.hubColor ? ` style="--hub:${_hqEsc(n.hubColor)}"` : '';
-                svg += `<g class="${cls}" data-mapnode="${_hqEsc(n.id)}" tabindex="0" role="button" aria-label="${_hqEsc(title)}"${hubStyle} transform="translate(${F(n.x * U)} ${F(n.y * U)})"><title>${_hqEsc(title)}</title>`;
+                /* THE POP WRAPPER (2026-09-23 — the user: "all of the location names are overlapping and I can only click on the
+                   middle node"): the reveal's pop animates `transform`, and a CSS transform OVERRIDES an SVG element's `transform`
+                   attribute — every popped node collapsed onto the origin (the sheet's centre) for good (animation-fill-mode: both),
+                   its label over every other's, the topmost the only one under the pointer. The translate stays on the outer <g>;
+                   the pop plays on the inner `.hq-map-nb` — never animate transform on an element that carries a transform attribute. */
+                svg += `<g class="${cls}" data-mapnode="${_hqEsc(n.id)}"${n.key && n.key !== n.id ? ` data-mapkey="${_hqEsc(n.key)}"` : ''} tabindex="0" role="button" aria-label="${_hqEsc(title)}"${hubStyle} transform="translate(${F(n.x * U)} ${F(n.y * U)})"><title>${_hqEsc(title)}</title><g class="hq-map-nb">`;
                 if (n.hub && !n.ring) svg += '<circle class="hq-map-hubring" r="34"/><circle class="hq-map-hubring inner" r="27"/>';
                 else if (n.hubOf && !n.ring && !n.hall) svg += '<circle class="hq-map-halo" r="15"/>';
                 if (n.ring) {
@@ -4314,7 +4323,7 @@
                     const lblOn = n.st !== 'q';
                     if (lblOn) svg += `<text class="hq-map-lbl${n.hub ? ' hublbl' : ''}" y="${n.hub ? 46 : n.hall ? 32 : (n.no ? 24 : 19)}" text-anchor="middle">${_hqEsc(String(n.hub ? (n.hubLabel || n.label) : n.label).toUpperCase())}${n.exit && n.place ? `<tspan class="hq-map-lbl-place" x="0" dy="10">▸ ${_hqEsc(String(n.place).toUpperCase())}</tspan>` : ''}</text>`;
                 }
-                svg += '</g>';
+                svg += '</g></g>';
             });
             svg += '</svg>';
             return svg;
@@ -4425,7 +4434,7 @@
                 const r = n.r * U;
                 const cls = `hq-map-n hq-map-wn kind-${n.kind} st-${n.st}${sel === n.id ? ' sel' : ''}${n.no ? ' numbered' : ''}`;
                 const title = n.st === 'q' ? 'UNCHARTED · WALK A DOOR TO IT' : `${n.label}${n.kind === 'hub' ? ' · A HUB' : ' · A LOCATION'}${n.no ? ' · ROOM ' + n.no : ''} · ${n.roomsSeen} OF ${n.rooms} ROOMS CHARTED${n.st === 'here' ? ' · YOU ARE HERE' : ''}`;
-                svg += `<g class="${cls}" data-mapnode="w:${_hqEsc(n.id)}" tabindex="0" role="button" aria-label="${_hqEsc(title)}"${n.color ? ` style="--hub:${_hqEsc(n.color)}"` : ''} transform="translate(${F(n.x * U)} ${F(n.y * U)})"><title>${_hqEsc(title)}</title>`;
+                svg += `<g class="${cls}" data-mapnode="w:${_hqEsc(n.id)}" tabindex="0" role="button" aria-label="${_hqEsc(title)}"${n.color ? ` style="--hub:${_hqEsc(n.color)}"` : ''} transform="translate(${F(n.x * U)} ${F(n.y * U)})"><title>${_hqEsc(title)}</title><g class="hq-map-nb">`;   // THE POP WRAPPER (the room sheet's rule)
                 svg += `<circle class="hq-map-hit" r="${F(r + 10)}"/>`;
                 if (n.st === 'here') svg += `<circle class="hq-map-here" r="${F(r + 9)}"/>`;
                 svg += `<circle class="hq-map-wdot" r="${F(r)}"/>`;
@@ -4434,7 +4443,7 @@
                 else if (n.kind === 'hub') svg += _hqWorldGlyph(n) || `<text class="hq-map-no" text-anchor="middle" dy="4">${_hqEsc(n.no || '')}</text>`;
                 else svg += `<text class="hq-map-no" text-anchor="middle" dy="${n.no.length > 3 ? 3 : 3.5}"${n.no.length > 3 ? ' style="font-size:7px"' : ''}>${_hqEsc(n.no)}</text>`;
                 if (n.st !== 'q') svg += `<text class="hq-map-lbl${n.kind === 'hub' ? ' hublbl' : ' sitelbl'}" y="${F(r + (n.kind === 'hub' ? 15 : 12))}" text-anchor="middle">${_hqEsc(n.label)}</text>`;
-                svg += '</g>';
+                svg += '</g></g>';
             });
             svg += '</svg>';
             return svg;
@@ -4451,14 +4460,30 @@
                (a small node past the room whose door leads to it — never a ring, never the hall) and it keeps its
                STATE: a room the officer has stood in wears its name + number as an EXIT (`exit: true`, the world
                sheet's place name under it); only a room never entered is the question mark it always was. */
-            const nodes = M.nodes.map(n => {
-                if (inArea[n.id]) return n;
+            /* THE PORTAL PER DOOR (2026-09-23 — the user: "all of the location names are overlapping"): a room outside the
+               place that several rooms of it open onto (the ring's thresholds into three sites, the stairwell) used to be ONE
+               node with a spoke to every one of them across the sheet; it is one small exit node BESIDE EACH ROOM that has a
+               door to it now (the same room id on every copy — a click on any travels there; `key` tells the copies apart
+               for the layout and the label plan). An edge between two rooms outside the place is never drawn. */
+            const portalOf = n => {
                 const known = n.st === 'here' || n.st === 'seen';
                 let place = '';
                 if (known) { try { const G = window.hqWorldOverviewGraph(), pid = window.hqWorldNodeOf(n.id); place = (pid && G.nodes[pid] && G.nodes[pid].label) || ''; } catch (e) { place = ''; } }
                 return Object.assign({}, n, { st: known ? n.st : 'q', label: known ? n.label : 'UNCHARTED', no: known ? n.no : '', hub: null, hubOf: null, hubLabel: null, hubColor: null, ring: 0, hall: false, portal: true, exit: known, place: known ? place : '' });
-            }).filter(n => drawn[n.id]);
-            const edges = M.edges.filter(e => drawn[e.a] && drawn[e.b]);
+            };
+            const byId = {}; M.nodes.forEach(n => { byId[n.id] = n; });
+            const nodes = M.nodes.filter(n => inArea[n.id]).map(n => Object.assign({}, n, { key: n.id }));
+            const edges = [], copies = {};
+            M.edges.forEach(e => {
+                const ia = inArea[e.a], ib = inArea[e.b];
+                if (ia && ib) { edges.push(Object.assign({}, e, { aKey: e.a, bKey: e.b })); return; }
+                if (!ia && !ib) return;
+                const via = ia ? e.a : e.b, out = ia ? e.b : e.a;
+                if (!byId[out]) return;
+                const key = out + '@' + via;
+                if (!copies[key]) { copies[key] = Object.assign(portalOf(byId[out]), { key, via }); nodes.push(copies[key]); }
+                edges.push(Object.assign({}, e, { a: via, b: out, aKey: via, bKey: key }));
+            });
             if (areaId !== 'hq') _hqAreaLayout(nodes, edges, areaId);   // the building keeps its own layout (the hall, the rings, the shaft); every other place is a radial tree round its anchor
             let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
             nodes.forEach(n => { const r = n.ring || 0.05; minX = Math.min(minX, n.x - r); maxX = Math.max(maxX, n.x + r); minY = Math.min(minY, n.y - r); maxY = Math.max(maxY, n.y + r); });
@@ -4468,19 +4493,25 @@
         /* THE AREA LAYOUT: a radial tree round the place's anchor — depth = the ring, a subtree's share of the circle = its size,
            a portal (a question mark outside the place) hangs just past the room whose door leads to it. Deterministic (ids sorted). */
         function _hqAreaLayout(nodes, edges, areaId) {
-            const byId = {}; nodes.forEach(n => { byId[n.id] = n; });
+            const K = n => n.key || n.id;
+            const byKey = {}; nodes.forEach(n => { byKey[K(n)] = n; });
             const inArea = n => !n.portal;
-            const adj = {}; edges.forEach(e => { if (!byId[e.a] || !byId[e.b]) return; (adj[e.a] = adj[e.a] || []).push(e.b); (adj[e.b] = adj[e.b] || []).push(e.a); });
+            const adj = {}; edges.forEach(e => { const a = e.aKey || e.a, b = e.bKey || e.b; if (!byKey[a] || !byKey[b]) return; (adj[a] = adj[a] || []).push(b); (adj[b] = adj[b] || []).push(a); });
             Object.keys(adj).forEach(k => adj[k].sort());
             let anchor = null; try { const G = window.hqWorldOverviewGraph(); anchor = G.nodes[areaId] && G.nodes[areaId].anchor; } catch (e) {}
-            const inner = nodes.filter(inArea).map(n => n.id).sort();
+            const inner = nodes.filter(inArea).map(K).sort();
             if (!inner.length) return;
-            const R = 1.15, pos = {};
-            const placedRoots = [];
+            const R = 1.7, PW = 0.75, pos = {};   // 2026-09-23: the ring is roomier (1.15 put seven siblings ~100 px apart under 130 px labels); a portal leaf weighs PW of a room
+            /* the tree: BFS from the root over the rooms of the place; a PORTAL hangs as a LEAF off the first room reached that
+               has a door to it (never expanded), so it takes its own slice of the circle beside that room — never a fan of
+               spokes off the root, never on top of a sibling */
             const layTree = (root, a0, a1, r0) => {
-                const depth = { [root]: 0 }, parent = {}, order = [root], kids = {};
-                for (let i = 0; i < order.length; i++) { const at = order[i]; (adj[at] || []).forEach(b => { if (depth[b] != null || !byId[b] || byId[b].portal) return; depth[b] = depth[at] + 1; parent[b] = at; (kids[at] = kids[at] || []).push(b); order.push(b); }); }
-                const size = {}; for (let i = order.length - 1; i >= 0; i--) { const id = order[i]; size[id] = 1 + (kids[id] || []).reduce((s, k) => s + size[k], 0); }
+                const depth = { [root]: 0 }, order = [root], kids = {};
+                for (let i = 0; i < order.length; i++) {
+                    const at = order[i]; if (byKey[at].portal) continue;
+                    (adj[at] || []).forEach(b => { if (depth[b] != null || !byKey[b]) return; depth[b] = depth[at] + 1; (kids[at] = kids[at] || []).push(b); order.push(b); });
+                }
+                const size = {}; for (let i = order.length - 1; i >= 0; i--) { const id = order[i]; size[id] = (byKey[id].portal ? PW : 1) + (kids[id] || []).reduce((s, k) => s + size[k], 0); }
                 const span = { [root]: [a0, a1] };
                 order.forEach(id => {
                     const [s0, s1] = span[id], mid = (s0 + s1) / 2, r = r0 + depth[id] * R;
@@ -4490,24 +4521,24 @@
                 });
                 return order;
             };
-            const root = (anchor && byId[anchor] && !byId[anchor].portal) ? anchor : (inner.find(id => byId[id].st === 'here') || inner[0]);
+            const root = (anchor && byKey[anchor] && !byKey[anchor].portal) ? anchor : (inner.find(id => byKey[id].st === 'here') || inner[0]);
             let done = layTree(root, 0, Math.PI * 2, 0);
             pos[root].x = 0; pos[root].y = 0;
             /* an island the anchor's doors never reach (a second way in): its own small tree on an outer ring */
             let extra = 0;
-            inner.forEach(id => { if (pos[id]) return; const a = extra * 0.9; extra++; const sub = layTree(id, a - 0.35, a + 0.35, 0); const rr = (Math.max(...done.map(d => pos[d].r)) || 0) + 1.6; sub.forEach(k => { const p = pos[k]; const r = rr + (p.r || 0); p.x = r * Math.sin(p.ang); p.y = -r * Math.cos(p.ang); p.r = r; }); done = done.concat(sub); });
-            /* the portals: past the room whose door leads out, fanned when several share it */
+            inner.forEach(id => { if (pos[id]) return; const a = extra * 0.9; extra++; const sub = layTree(id, a - 0.35, a + 0.35, 0); const rr = (Math.max(...done.map(d => pos[d].r)) || 0) + R; sub.forEach(k => { const p = pos[k]; const r = rr + (p.r || 0); p.x = r * Math.sin(p.ang); p.y = -r * Math.cos(p.ang); p.r = r; }); done = done.concat(sub); });
+            /* a portal nothing reached (its room is on no tree): past the room whose door leads out */
             const fan = {};
-            nodes.filter(n => n.portal).forEach(n => {
-                const via = ((adj[n.id] || []).find(b => pos[b] && !byId[b].portal)) || root, P = pos[via];   // always off a ROOM of the place, never off another question mark
+            nodes.filter(n => n.portal && !pos[K(n)]).forEach(n => {
+                const via = ((adj[K(n)] || []).find(b => pos[b] && !byKey[b].portal)) || root, P = pos[via];
                 const k = (fan[via] = (fan[via] || 0) + 1);
-                const ang = (P.ang || 0) + (k - 1) * 0.42 - ((k - 1) * 0.21), r = (P.r || 0) + 0.95;
-                pos[n.id] = { x: r * Math.sin(ang), y: -r * Math.cos(ang), ang, r };
+                const ang = (P.ang || 0) + (k - 1) * 0.6, r = (P.r || 0) + R;
+                pos[K(n)] = { x: r * Math.sin(ang), y: -r * Math.cos(ang), ang, r };
             });
             /* the place's name is the crumb's: a room reads its own part (THE MOUNTAIN TRAIL, not THE WOODS · THE MOUNTAIN TRAIL) */
             let placeLabel = ''; try { const G = window.hqWorldOverviewGraph(); placeLabel = (G.nodes[areaId] && G.nodes[areaId].label) || ''; } catch (e) {}
-            nodes.forEach(n => { const p = pos[n.id]; if (p) { n.x = p.x; n.y = p.y; } if (placeLabel && !n.portal && String(n.label).toUpperCase().indexOf(placeLabel + ' · ') === 0) n.label = String(n.label).slice(placeLabel.length + 3); });
-            edges.forEach(e => { const A = pos[e.a], B = pos[e.b]; if (A) { e.ax = A.x; e.ay = A.y; } if (B) { e.bx = B.x; e.by = B.y; } e.aRing = 0; e.bRing = 0; });
+            nodes.forEach(n => { const p = pos[K(n)]; if (p) { n.x = p.x; n.y = p.y; } if (placeLabel && !n.portal && String(n.label).toUpperCase().indexOf(placeLabel + ' · ') === 0) n.label = String(n.label).slice(placeLabel.length + 3); });
+            edges.forEach(e => { const A = pos[e.aKey || e.a], B = pos[e.bKey || e.b]; if (A) { e.ax = A.x; e.ay = A.y; } if (B) { e.bx = B.x; e.by = B.y; } e.aRing = 0; e.bRing = 0; });
         }
         function _hqWorldNode(id) { const Wm = _hqMap.world; return (Wm && Wm.nodes.find(n => n.id === id)) || null; }
         function _hqWorldLabelOf(id) {

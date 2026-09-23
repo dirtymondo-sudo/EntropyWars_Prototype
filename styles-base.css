@@ -5635,7 +5635,8 @@ body.diorama-3d .tile-underpass.jump::before {
 .hq-map-n .hq-map-lbl.ringlbl { font-size: 6.5px; fill: #5e6a76; }
 .hq-map-n.st-here .hq-map-lbl.ringlbl { fill: #f0e6c8; }
 /* THE REVEAL */
-.hq-map-n.reveal.pop { transform-box: fill-box; transform-origin: center; animation: hqMapPop 0.55s cubic-bezier(0.2, 1.4, 0.4, 1) both; animation-delay: var(--d, 0ms); }
+/* THE POP WRAPPER (2026-09-23): the pop's transform plays on the inner .hq-map-nb — a CSS transform on the outer <g> overrode its translate attribute and stacked every node on the sheet's centre */
+.hq-map-n.reveal.pop > .hq-map-nb { transform-box: fill-box; transform-origin: center; animation: hqMapPop 0.55s cubic-bezier(0.2, 1.4, 0.4, 1) both; animation-delay: var(--d, 0ms); }
 .hq-map-n.reveal.qin { animation: hqMapQin 0.5s ease-out both; animation-delay: var(--d, 0ms); }
 .hq-map-n.reveal.flip .hq-map-q { display: block; transform-box: fill-box; transform-origin: center; animation: hqMapQout 0.45s ease-in both; animation-delay: var(--d, 0ms); }
 .hq-map-n.reveal.flip .hq-map-no { transform-box: fill-box; transform-origin: center; animation: hqMapNoIn 0.5s cubic-bezier(0.2, 1.4, 0.4, 1) both; animation-delay: calc(var(--d, 0ms) + 300ms); }

@@ -38471,18 +38471,25 @@ function hqMapModel(profile, curRoom, opts) {
 const HQ_WORLD_L = {
     hubR: 0.44, siteR: 0.27, minD: 0.8, autoR: 5.8, autoStep: 0.6,
     block: { w: 1.7, h: 2.3 },
+    /* THE GEOGRAPHY (2026-09-23 — the user: "I don't like how the cavern is right in between the estate and the
+       woods"): the SURFACE stands north of the building (the kingdom at twelve, the woods and the mountain to the
+       north-west with the estate below them on the west, the divine stair and the astral realm to the north-east,
+       the city east), the UNDERGROUND south of it (the cavern due south-west — the undercroft every well drops
+       into, joined to the ley lines west of it and the D.U.M.B. east of it; the underworld under the city; the
+       deep off the city's coast; the space route beyond the deep in the south-east; the bases and the ice along
+       the bottom). A hub sits beside the sites its lines reach; nothing lies on the woods ⇄ estate line. */
     slots: {
         hub: {
-            woods:      { x: -2.7, y: -2.3 }, kingdom:  { x: 0.2, y: -3.3 }, divine: { x: 2.7, y: -2.9 }, astral: { x: 4.6, y: -2.4 },
-            city:       { x: 3.0, y: -0.9 },  deep:     { x: 4.7, y: 0.9 },  underworld: { x: 2.7, y: 1.4 }, dumb: { x: 0.4, y: 3.4 },
-            ley:        { x: -2.6, y: 3.0 },  ranch:    { x: -4.1, y: 1.4 }, cavern: { x: -3.9, y: -0.6 },
+            kingdom:    { x: 0.2, y: -3.4 },  woods:    { x: -3.0, y: -2.5 }, divine: { x: 2.7, y: -3.1 }, astral: { x: 5.0, y: -2.7 },
+            city:       { x: 3.3, y: -0.8 },  deep:     { x: 5.2, y: 1.5 },   ranch:  { x: -4.3, y: 0.3 },
+            cavern:     { x: -1.4, y: 2.9 },  ley:      { x: -3.9, y: 3.0 },  underworld: { x: 2.9, y: 1.8 }, dumb: { x: 1.1, y: 3.9 },
         },
         site: {
-            prebuilt_haunted: { x: -1.5, y: -2.1 }, prebuilt_northpole: { x: -1.0, y: -4.4 }, prebuilt_lookingglass: { x: 3.2, y: -4.0 }, prebuilt_olympus: { x: 1.5, y: -4.2 },
-            prebuilt_shasta: { x: -4.7, y: -2.4 }, prebuilt_agartha: { x: -5.6, y: -1.0 }, prebuilt_technoticlan: { x: -4.5, y: 3.4 }, prebuilt_bohemian_grove: { x: -3.2, y: 0.5 },
-            prebuilt_lodge: { x: -2.0, y: 1.6 }, prebuilt_stadium: { x: 4.8, y: -0.5 }, prebuilt_revenge: { x: 3.7, y: 2.4 }, prebuilt_derelict: { x: 3.4, y: 3.6 },
-            prebuilt_mars: { x: 4.7, y: 3.0 }, prebuilt_moon: { x: 5.2, y: 4.0 }, prebuilt_saturn: { x: 4.2, y: 4.8 }, prebuilt_singularity: { x: 5.8, y: 5.0 },
-            prebuilt_antarctica: { x: 2.4, y: 4.7 }, prebuilt_area51: { x: 1.2, y: 4.9 }, prebuilt_backrooms: { x: -1.4, y: 4.6 }, prebuilt_flatlands: { x: -3.0, y: 4.9 },
+            prebuilt_northpole: { x: -0.5, y: -4.9 }, prebuilt_haunted: { x: -1.6, y: -2.1 }, prebuilt_olympus: { x: 1.3, y: -4.5 }, prebuilt_lookingglass: { x: 3.6, y: -4.5 },
+            prebuilt_shasta: { x: -4.8, y: -3.5 }, prebuilt_agartha: { x: -5.9, y: -1.8 }, prebuilt_bohemian_grove: { x: -2.7, y: -0.7 }, prebuilt_lodge: { x: -2.6, y: 1.0 },
+            prebuilt_stadium: { x: 5.1, y: -0.6 }, prebuilt_revenge: { x: 4.0, y: 2.9 }, prebuilt_technoticlan: { x: -5.6, y: 3.6 },
+            prebuilt_flatlands: { x: -3.4, y: 5.4 }, prebuilt_backrooms: { x: -1.6, y: 5.2 }, prebuilt_antarctica: { x: 0.1, y: 5.7 }, prebuilt_area51: { x: 2.1, y: 5.3 },
+            prebuilt_derelict: { x: 3.6, y: 4.4 }, prebuilt_mars: { x: 5.0, y: 3.7 }, prebuilt_moon: { x: 5.9, y: 4.9 }, prebuilt_saturn: { x: 4.5, y: 5.8 }, prebuilt_singularity: { x: 6.2, y: 6.3 },
         },
     },
 };
