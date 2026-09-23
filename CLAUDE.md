@@ -8538,3 +8538,21 @@ letter in `hqFieldFixedCells`, never a check at a call site. **OPEN (the user's 
 SEAMLESS_FIELD_PLAN §9: measure roofs / bridges / stairs / platforms / building tops as a structure table per room, read by
 the raster as a LAYER per cell, before any second-floor fight. `npm test` runs seamless-field.test.js (delivery 9 ×2).
 UNSEEN LIVE (RULE #1c): the refusal's log line, a barrel sinking into a crater, the crater stopping at a landing.
+
+## THE SEAMLESS FIELD, delivery 10 — THE UNITS STAND ON THE GROUND (the floating officer, the catgirl in the stairs) — 2026-09-23, local delivery
+The user: "my character is on this raised circle but floating in the air, yet their vital ring is on the ground correctly; my catgirl is
+inside the stairs; allow decimal heights if that is the issue." THE CAUSE: the ring was draped through `_fieldGroundSampleAt` (delivery 8),
+but the BODY was placed by three-renderer.js `unitSurfaceY` and every tween's end by `_tileSurfaceY`, and neither read the field — both
+returned the ENGINE's integer level × the level step (THE TIER RULE calls a 1.2 m dais level +1 = 1.75 m → the officer floated; a stair
+cell whose centre is mid-flight is level 0 → the catgirl stood at the floor inside the treads). `tileTopY` (delivery 1) was right; the unit
+path never went through it. NOW: **`_fieldSurfaceY(tx, ty, tz, wx, wz)`** (right after `_fieldGroundSampleAt`) is the ONE field-aware
+surface read — the cell's real top (the strata's dig / raise folded in), sampled at a world point when given, and for a z ABOVE the cell's
+engine height (a flyer, a jump node) that clearance over the real top. Readers: `unitSurfaceY` (a grounded body FIRST, before the roof /
+multi-floor / natural branches; a flyer's hover sink over the real top), `_tileSurfaceY` (every tween's ends, the puffs, the projectile
+heights), and `_updateWalkTweens` samples the ground under the body every frame of a grounded leg (a walk rides the treads / the slope; a
+jump leg keeps its arc). The VFX file's `unitSurfaceZ` anchors to the renderer's unit and inherits it. THE ENGINE IS UNTOUCHED: a cell's
+LEVEL stays THE TIER RULE's integer (the high-ground bonus, the LOS step); only the DRAWN height is the room's decimal one — the decimal
+height was never the problem, the field already carried it. RULE: a new "where does a body stand" read under a field goes through
+`_fieldSurfaceY` (or `tileTopY` / `surfaceYAt`), never `getBaseHeightAt × ELEV_STEP_RATIO`. `npm test` runs seamless-field.test.js (31).
+SEAMLESS_FIELD_PLAN §7 has the entry. UNSEEN LIVE (RULE #1c): the foot contact on the treads during a walk, a flyer's bob over a dais,
+the strike leap's landing on a slope.

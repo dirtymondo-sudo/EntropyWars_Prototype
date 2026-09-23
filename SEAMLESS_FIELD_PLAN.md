@@ -393,6 +393,48 @@ UNSEEN LIVE (RULE #1c): a Build dig refused beside a table ("Fixed ground: a
 prop stands here" in the log), a barrel sinking into a Meteor crater, the
 crater's shape stopping at a doorway's landing.
 
+### 2026-09-23 — delivery 10: THE UNITS STAND ON THE GROUND (the floating officer, the catgirl in the stairs)
+
+The user, from a fight in the observatory: "my character is on this raised circle,
+but floating in the air; yet their vital ring is on the ground correctly — why
+can't we have the unit there too? allow decimal heights if that is the issue; my
+catgirl is inside the stairs leading up to the raised circle."
+
+THE CAUSE (read off the code, then proved in a vm): the ring is draped through
+`_fieldGroundSampleAt` (delivery 8), but the BODY was placed by `unitSurfaceY`
+and every tween's end by `_tileSurfaceY`, and NEITHER read the field — both
+returned the ENGINE's integer level × the level step. THE TIER RULE calls a
+1.2 m dais level +1 (1.75 m), so the officer stood 0.55 m in the air; a stair
+cell whose centre is mid-flight (0.9 m, under `tierMin`) is level 0, so the
+catgirl stood at the floor inside the treads. `tileTopY` (delivery 1) was
+right, but the unit path never went through it. The decimal height was never
+the problem — the field HAS the decimal top per cell; the readers ignored it.
+
+THE FIX: `_fieldSurfaceY(tx, ty, tz, wx, wz)` (three-renderer.js, right after
+the sampler) is the ONE field-aware surface read — the cell's real top (the
+strata's dig / raise folded in through `G.yAt`), sampled at a world point when
+the caller has one, and for a z ABOVE the cell's engine height (a flyer, a jump
+node) that clearance in level steps over the real top. Readers: `unitSurfaceY`
+(a grounded body, before the roof / multi-floor / natural branches; a flyer's
+hover sink laid over the real top), `_tileSurfaceY` (every walk / displace /
+jump / strike / carry / throw tween's ends, the ground puffs, the projectile
+launch heights, the stage-sprite anchors), and `_updateWalkTweens` samples the
+ground UNDER the body every frame of a grounded leg (a walk up a stair rides
+the treads, a walk across a slope rides the slope; a jump leg keeps its arc).
+The VFX file's `unitSurfaceZ` anchors to the renderer's unit and inherits it.
+
+THE ENGINE IS UNTOUCHED: a cell's LEVEL is still THE TIER RULE's integer (the
+high-ground bonus, the LOS step, the AP of a climb); only the DRAWN height is
+the room's decimal one. A unit on a mid-flight stair cell stands on its tread
+at level 0 — it is "on the stairs", and the engine reads it as the floor,
+which is what the walker's rule says too (a tread under tierMin is relief).
+
+Tests: seamless-field.test.js "THE UNITS STAND ON THE GROUND" (the read in a
+vm at a dais, a stair cell, a flyer, a sampled world point; the three readers
+pinned). Unseen live: the walk's foot contact on the treads (the sampler is
+capped ±1 tile off the cell top — a very steep flight could clip a toe), a
+flyer's bob over a tall dais, the strike leap's landing on a slope.
+
 ## 8. The second plan — THE CUT (2026-09-22, planning)
 
 The user, after delivery 4: the hall is fine, a city or any big area is ~10 fps.

@@ -2778,8 +2778,15 @@ const ThreeRenderer = (function () {
             && !(_introGroundSet && _introGroundSet.size && _introGroundSet.has(unit.id))) {
             var h = unit.z || 0;
             var gH = _flyGroundZ(ux, uy, h);
-            return _flyVisualY(h, gH, ts);
+            var _fvY = _flyVisualY(h, gH, ts);
+            /* THE UNITS STAND ON THE GROUND (2026-09-23): a flyer hovers its clearance over the cell's REAL top */
+            var _fgAir = _fieldSurfaceY(ux, uy, null);
+            if (_fgAir !== null) return _fgAir + (_fvY - gH * ts * ELEV_STEP_RATIO);
+            return _fvY;
         }
+        /* THE UNITS STAND ON THE GROUND (2026-09-23): a body on a true-ground field stands on the room's own surface */
+        var _fgStand = _fieldSurfaceY(ux, uy, null);
+        if (_fgStand !== null) return _fgStand;
 
         /* Roof-walkable building tiles only expose the ROOF as a standing surface
            (getWalkableSurfaces returns [roofZ] alone), so a unit on this tile is on
@@ -18185,6 +18192,14 @@ const ThreeRenderer = (function () {
             var wx = (from.x + (to.x - from.x) * ease) * ts + ts / 2;
             var wy = fromY + (toY - fromY) * ease;
             var wz = (from.y + (to.y - from.y) * ease) * ts + ts / 2;
+            /* THE UNITS STAND ON THE GROUND (2026-09-23): a grounded walk on a true-ground field rides the room's own
+               surface between the two cells (the slope, the treads) — the cell under the body samples it; a node the
+               field does not own (rock, off the window) keeps the straight lerp */
+            if (!tw.isFlying && _fieldGroundArmed && !(tw.segArcs && tw.segArcs[stepIdx])) {
+                var _wkCx = Math.floor(wx / ts), _wkCy = Math.floor(wz / ts);
+                var _wkS = _fieldSurfaceY(_wkCx, _wkCy, null, wx, wz);
+                if (_wkS !== null) wy = _wkS;
+            }
 
             /* Jump/vault legs arc: parabolic boost peaking mid-segment, high
                enough to clear the wall or ledge this leg crosses. */
@@ -18237,6 +18252,9 @@ const ThreeRenderer = (function () {
 
     function _tileSurfaceY(tx, ty, tz) {
         var ts = CONFIG.tileSize || BASE_TILE;
+        /* THE UNITS STAND ON THE GROUND (2026-09-23): under a true-ground field every tween's end reads the real top */
+        var _fgT = _fieldSurfaceY(tx, ty, tz);
+        if (_fgT !== null) return _fgT;
         var z = tz;
         if (z === undefined || z === null) {
             z = (typeof getHeightAt === 'function') ? getHeightAt(tx, ty) : 0;
@@ -53432,6 +53450,36 @@ const ThreeRenderer = (function () {
         if (!_fieldGroundArmed) return null;
         var fn = _fieldGroundSampler(); if (!fn) return null;
         return fn(wx, wz, x, y);
+    }
+    /* ══ THE UNITS STAND ON THE GROUND (THE SEAMLESS FIELD, 2026-09-23) ══
+       The user: "my character is on this raised circle but floating in the air, yet the vital ring is on the ground;
+       my catgirl is inside the stairs." The ring was draped through the sampler; the BODY was placed by unitSurfaceY /
+       _tileSurfaceY, which read the ENGINE'S level × the level step and never asked the field — so a unit stood at
+       1.75 m over a 1.2 m dais (THE TIER RULE rounds a ledge to a whole level) and at 0 m inside a stair whose centre
+       is mid-flight (a tread under tierMin is the floor to the engine). This is the ONE read every body / tween / VFX
+       ground goes through under a true-ground field: the cell's real top (the strata's dig / raise folded in), sampled at
+       (wx, wz) when a caller has a world point (a walk between two cells follows the slope and the treads), and for a z
+       ABOVE the cell's engine height (a flyer, a jump node) that clearance in level steps over the real top. The engine
+       keeps its integer level (the high-ground bonus, the LOS step); the drawn height is the room's decimal one. Null =
+       no field / an OUT cell = the columns' rule. */
+    function _fieldSurfaceY(tx, ty, tz, wx, wz) {
+        if (!_fieldGroundArmed) return null;
+        var G = _fieldGround(); if (!G) return null;
+        if (tx === undefined || ty === undefined || tx === null || ty === null) return null;
+        var cx = Math.round(tx), cy = Math.round(ty);
+        if (cx < 0 || cy < 0 || cx >= G.N || cy >= G.N) return null;
+        var top = G.yAt(cx, cy);
+        if (top === null || top === undefined) return null;
+        if (wx !== undefined && wz !== undefined && wx !== null && wz !== null) {
+            var sm = _fieldGroundSampleAt(wx, wz, cx, cy);
+            if (sm !== null && sm !== undefined && isFinite(sm)) top = sm;
+        }
+        if (tz !== undefined && tz !== null) {
+            var eh = (typeof getBaseHeightAt === 'function') ? getBaseHeightAt(cx, cy)
+                   : (state.boardHeights && state.boardHeights[cy]) ? (state.boardHeights[cy][cx] || 0) : 0;
+            if (tz > eh + 1e-6) top += (tz - eh) * G.elev;   // in the air over the cell: the clearance rides the real top
+        }
+        return top;
     }
     /* ══ THE SEAMLESS FIELD rev 3 — THE LIGHT HOLDS (2026-09-22) ══
        The user: "I don't want the lighting to change, it makes the transition really abrupt". On the cut the battle used to

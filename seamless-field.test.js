@@ -669,3 +669,40 @@ test('delivery 9 · the engine gate + the sink: applyTerrainDeform, the Build di
     assert.ok(TR.includes("if (o._ew_hqProp && o._ew_sinkBase != null) o.position.y = o._ew_sinkBase;"), 'the restore puts the props back');
     assert.equal(DATA.HQ_FIELD_RULES.strata.fixedLabels.D, 'a doorway');
 });
+
+/* ── THE UNITS STAND ON THE GROUND (2026-09-23) ──
+   The user: "my character is on this raised circle but floating in the air, yet the vital ring is on the ground; my
+   catgirl is inside the stairs". The ring was draped through the sampler; the body was placed by unitSurfaceY /
+   _tileSurfaceY off the ENGINE's integer level × the step. One field-aware read now stands every body, tween end and
+   VFX ground on the room's real surface; a grounded walk samples the slope between two cells. */
+test('THE UNITS STAND ON THE GROUND: _fieldSurfaceY reads the real top (sampled at a world point, the clearance over it for an airborne z), unitSurfaceY / _tileSurfaceY / the walk tween read it first', () => {
+    const a = TR.indexOf('    var _fieldGroundCache = { key: null, G: null };'), b = TR.indexOf('    /* ══ THE SEAMLESS FIELD rev 3 — THE LIGHT HOLDS');
+    const src = TR.slice(a, b);
+    const ts = 100, C = 2, base = 5;
+    /* a dais of 1.2 m at cell (1,0) — THE TIER RULE calls it level base+1 (1.75 m to the engine); a stair cell (2,0) mid-flight at 0.9 m = level base+0 */
+    const R = { site: false, cave: false, terrain: true, roomId: 'r', base, T: { N: 3, C, x0: 0, z0: 0 }, field: { tops: [[0, 1.2, 0.9]] } };
+    const levels = [[base, base + 1, base]];
+    const ctx = { window: {}, CONFIG: { tileSize: ts }, BASE_TILE: 96, ELEV_STEP_RATIO: 1, console, performance: { now: () => 0 },
+                  _hqBattleRoom: () => R, _hqBattleRoomKey: () => 'k', hqFieldGroundOn: () => true, getBaseHeightAt: (x, y) => levels[y][x],
+                  hqTerrainInfo: (id) => (id === 'r' ? { ok: true } : null),
+                  hqTerrainFeet: (info, x, z, cur) => (x < 2 ? 0 : x < 4 ? 0.6 * (x - 2) : 0.9) };
+    vm.createContext(ctx);
+    vm.runInContext(src + '\n_fieldGroundArmed = true; this.__y = _fieldSurfaceY;', ctx);
+    const s = ts / C, floor = base * ts;
+    assert.ok(Math.abs(ctx.__y(1, 0, null) - (floor + 1.2 * s)) < 1e-9, 'the dais at 1.2 m, never the engine\'s 1.75');
+    assert.ok(Math.abs(ctx.__y(1, 0, base + 1) - (floor + 1.2 * s)) < 1e-9, 'a z equal to the cell\'s engine height is standing');
+    assert.ok(Math.abs(ctx.__y(2, 0, null) - (floor + 0.9 * s)) < 1e-9, 'the stair cell stands on its tread, never inside the flight');
+    assert.ok(Math.abs(ctx.__y(1, 0, base + 3) - (floor + 1.2 * s + 2 * ts)) < 1e-9, 'a flyer two levels over the cell hovers that over the real top');
+    assert.ok(Math.abs(ctx.__y(1, 0, null, 1.5 * ts, 0.5 * ts) - (floor + 0.6 * s)) < 1e-9, 'a world point samples the slope inside the cell');
+    assert.equal(ctx.__y(2, 5, null), null, 'off the window = the columns\' rule');
+    assert.equal(ctx.__y(1.4, 0, null), ctx.__y(1, 0, null), 'a fractional tile rounds to its cell');
+    /* the readers */
+    const us = TR.slice(TR.indexOf('    function unitSurfaceY(unit) {'), TR.indexOf('    function surfaceYAt(x, y, z) {'));
+    assert.ok(us.includes('var _fgStand = _fieldSurfaceY(ux, uy, null);') && us.includes('if (_fgStand !== null) return _fgStand;'), 'unitSurfaceY stands a body on the field');
+    assert.ok(us.indexOf('_fieldSurfaceY(ux, uy, null)') < us.indexOf("if (typeof getObjectAt === 'function') {"), 'the field read leads the roof / multi-floor / natural branches');
+    assert.ok(us.includes('return _fgAir + (_fvY - gH * ts * ELEV_STEP_RATIO);'), 'a flyer hovers its clearance over the real top');
+    const tsy = TR.slice(TR.indexOf('    function _tileSurfaceY(tx, ty, tz) {'), TR.indexOf('    function _spawnGroundPuff('));
+    assert.ok(tsy.includes('var _fgT = _fieldSurfaceY(tx, ty, tz);') && tsy.includes('if (_fgT !== null) return _fgT;'), '_tileSurfaceY (every tween\'s end) reads the field first');
+    const wk = TR.slice(TR.indexOf('    function _updateWalkTweens() {'), TR.indexOf('    function _tileSurfaceY(tx, ty, tz) {'));
+    assert.ok(wk.includes('var _wkS = _fieldSurfaceY(_wkCx, _wkCy, null, wx, wz);') && wk.includes('if (_wkS !== null) wy = _wkS;') && wk.includes('!(tw.segArcs && tw.segArcs[stepIdx])'), 'a grounded walk samples the ground under the body; a jump leg keeps its arc');
+});
