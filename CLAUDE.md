@@ -8710,3 +8710,14 @@ placer as `sourceUnit` (the credit, STAB, the press collector on a contact bomb)
 runs `elements-press.test.js`. Ship data.js to R2 AND Render (server.js reads it). UNSEEN LIVE (RULE #1c): the
 box under the Horologe's stats at the identity column's width, the ? cells' read, the codex row, the forge's
 STATS column, the tech callout on a bomb blast, the +2 AP off a fire spell on a yeti.
+
+## THE ONE-WAY DOOR — the story-mode capture mechanic (CAPTURE_PLAN.md, 2026-09-23, docs only)
+`CAPTURE_PLAN.md` is THE doc for capturing enemies in story mode — read it before building any of
+it. The rule it sets: a CAPTURE DOOR is a bag ITEM (never a spell, never Online / Practice) placed
+on an EMPTY tile by the door gun's shot; an enemy that ARRIVES on it by any means (a step in THE
+CHAIN REACTION after the fuses) is HELD in the void (realm-shielded, the `exited` status's shape)
+under a DETERMINISTIC seal time shown as pips (§2.3, no roll); its allies break the door (a structure
+attack) to free it, the seal makes it SEALED (off the board, counted gone for Wipeout), victory
+enlists every sealed / held unit into THE PARTY, else the roster (a synced `hq.captured` ledger the
+server unions into `unlockedUnits`), else a bounty. §5: every encounter is at least two bodies; THE
+SWARM (6–8 low-level bodies + 1–2 elites) is the last phase. Nothing built.
