@@ -171,7 +171,7 @@ test('THE SOURCE SITES: the XP hold in a party fight, the pool at the commit, th
     assert.ok(BT.includes("function _encXpPool(profile, seat)") && BT.includes("const xpPool = _encXpPool(p, seat);") && BT.includes("xpBattle: u._xpBattle | 0, fought: !!u._encFought, bench: benchBodies.indexOf(u) >= 0, baseHp:") && BT.includes("pool *= (S.poolMult != null && isFinite(+S.poolMult)) ? +S.poolMult : 1;"), 'the commit + the pool dial');
     assert.ok(BT.includes("function _vicBuildExperience(party)") && BT.includes("function _vicPlayExperience(party)") && BT.includes("function _vicXpLevelBeat(row, b, lv)"), 'the card, the sequence, the beat');
     assert.ok(BT.includes("ThreeRenderer.podium.play(u.id, ['vicJump', 'vicCheer', 'jump'], 2400);") && BT.includes("_vfxLevelUp(u.x, u.y);") && BT.includes("try { playSfx('levelUp'); } catch (e) {}"), 'the beat: the jump, the burst, the cue');
-    assert.ok(BT.includes("['vicExperience', 'vicGoldBreakdown',"), '_vicPrepare clears the card');
+    assert.ok(BT.includes("['vicExperience', 'vicDrops', 'vicGoldBreakdown',"), '_vicPrepare clears the card');
     assert.ok(BT.indexOf("_xe.innerHTML = _vicBuildExperience(_vicXpParty)") < BT.indexOf("_vicLayoutSync({ tab: 'rewards' });") && BT.indexOf("_vicPlayExperience(_vicXpParty)") > BT.indexOf("resultOverlay.classList.remove('hidden');"), 'built before the layout sync, played after the overlay shows');
     assert.ok(IX.includes('<div id="vicExperience" class="vic-experience"></div>') && IX.indexOf('id="vicExperience"') < IX.indexOf('id="vicGoldBreakdown"'), 'the card leads the REWARDS sheet');
     assert.ok(/\?v=\d{8}[a-z0-9-]*-cors/.test(IX) && !IX.includes('20260921-threedoors-02-cors'), 'the token moved');
