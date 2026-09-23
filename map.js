@@ -2350,7 +2350,8 @@
                only the board / mode / config are asked); `presets` = a
                console's quick picks on the FULL variant (the RANGE console) */
             const pre = { mapId: site, launchId, delta, teamSize, gm: 'arena', roster, doorId: o.doorId || null, doorLabel: o.doorLabel || '', codeRed: !!cr,
-                          locked: o.variant !== 'full', presets: Array.isArray(o.presets) ? o.presets : null };
+                          locked: o.variant !== 'full', presets: Array.isArray(o.presets) ? o.presets : null,
+                          allow: Array.isArray(o.allow) ? o.allow : null };
             window._hqPreselect = pre;
             window._msCpuOnly = true;
             if (o.doorId) { _hqLastDoor = o.doorId; _hqLastRoom = _hqCurRoom; _hqRecordVisit(o.doorId); }
@@ -2494,10 +2495,20 @@
         /* the RANGE console (HQ plan 6.1a): the whole desk, opened on the
            Training Room board with ORIENTATION / PRACTICE one click away;
            a free CPU pool — nothing is filed, no threshold moves */
+        /* THE RANGE'S DECK (2026-09-23, the user's rule): in story mode the range deals the sites you have EARNED
+           (Otto's door) or VISITED (a room of the site stood in) + its own two boards — never every site; and it
+           fields what you OWN (the whole roster is Online's / Practice's / the main menu's Party Builder's) */
+        function _hqRangeSites() {
+            if (typeof window.hqThresholdSites !== 'function') return null;
+            const p = _hqProfile();
+            const seen = (id) => { try { return (typeof window.hqSiteEarned === 'function' && window.hqSiteEarned(id, p)) || (typeof window.hqSiteSeen === 'function' && window.hqSiteSeen(id, p)); } catch (e) { return false; } };
+            return window.hqThresholdSites().filter(seen).concat(['prebuilt_training', 'prebuilt_holosim']);
+        }
         function _hqRangeTerminal(counterId) {
             return window._hqLaunchMission('prebuilt_training', {
                 delta: true, roster: [], doorId: counterId || 'range', doorLabel: 'RANGE CONSOLE', counterId: counterId || 'range', variant: 'full',
-                scope: 'all',   // THE ROSTER LOCK (2026-09-20): Room 64 is the testing bench — every site, the whole roster
+                scope: 'owned',   // THE ROSTER LOCK (2026-09-23): the range fields what you own
+                allow: _hqRangeSites(),   // the sites you have earned or visited (+ the range's own boards)
                 /* the facility boards are 8×8 already — they have no Δ cut (launchId = the site) */
                 presets: [
                     { id: 'orientation', label: 'SPARRING · TRAINING ROOM', launchId: 'prebuilt_training', gm: 'arena', teamSize: 4, title: 'Arena · 4v4 on the 8×8 Training Room board · free CPU pool' },
@@ -6556,6 +6567,10 @@
            button serves them in the normal flow of play. */
         window._goToTeamBuilder = function() {
             playSfx('uiButtonConfirm');
+            /* THE ROSTER LOCK (2026-09-23): the main menu's Party Builder is where ONLINE PvP squads are forged —
+               every race with a 3D model is unlocked there (isUnitUnlocked reads the scope); the building's own
+               screens (the forge from a console, the pause menu) stay on what you own */
+            window._ewRosterScope = 'all';
             state.gameState = GS.MAIN_MENU;
             _showTitlePage('teamBuilderPage');
             if (typeof window._mountReactTeamBuilder === 'function') window._mountReactTeamBuilder();
@@ -6564,6 +6579,7 @@
             playSfx('uiButtonConfirm');
             if (window.EWCharViewer) window.EWCharViewer.unmount();
             if (typeof window._unmountReactTeamBuilder === 'function') window._unmountReactTeamBuilder();
+            window._ewRosterScope = 'owned';   // THE ROSTER LOCK: the whole roster was the archive's alone
             state.gameState = GS.MAIN_MENU;
             window._hqReturnOrMenu();
         };

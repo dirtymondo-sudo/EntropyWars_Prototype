@@ -127,7 +127,14 @@ test('THE ROSTER LOCK: five starters on both sides; the ledger read never opens 
     /* the launchers set the scope; the shop + the codex read the ledger */
     assert.ok(/_goToVsCpu = function\(\) \{[\s\S]{0,400}_ewRosterScope = 'all'/.test(MP), 'classic VS CPU = all');
     assert.ok(/_goToQuickPlay = function\(\) \{[\s\S]{0,200}_ewRosterScope = 'all'/.test(MP) && /_goToFriendlyMatch = function\(\) \{[\s\S]{0,200}_ewRosterScope = 'all'/.test(MP), 'online = all');
-    assert.ok(/scope: 'all',\s*\/\/ THE ROSTER LOCK/.test(MP), 'the RANGE console = all');
+    /* 2026-09-23 (the user's rule): the range fields what you OWN and deals only the earned + visited sites; the
+       main menu's Party Builder (online PvP squads) opens the whole rigged roster and closes it on BACK */
+    assert.ok(/scope: 'owned',\s*\/\/ THE ROSTER LOCK/.test(MP) && !/scope: 'all',\s*\/\/ THE ROSTER LOCK/.test(MP), 'the RANGE console = owned');
+    assert.ok(/function _hqRangeSites\(\)[\s\S]{0,600}hqSiteSeen/.test(MP) && /allow: _hqRangeSites\(\)/.test(MP), 'the range deals the earned + visited sites');
+    assert.ok(/allow: Array\.isArray\(o\.allow\) \? o\.allow : null/.test(MP), '_hqLaunchMission rides o.allow onto the preselect');
+    assert.ok(/_goToTeamBuilder = function\(\) \{[\s\S]{0,600}_ewRosterScope = 'all'/.test(MP), 'the main menu Party Builder = all');
+    assert.ok(/_teamBuilderBack = function\(\) \{[\s\S]{0,400}_ewRosterScope = 'owned'/.test(MP), 'BACK closes the roster again');
+    assert.ok(/function handleRandomMap/.test(MS) && /RANDOM SITE/.test(MS), 'the desk has a random-site button');
     assert.ok(/window\._ewRosterScope = \(o\.scope === 'all'\) \? 'all' : 'owned';/.test(MP), '_hqLaunchMission sets the scope');
     assert.ok(/window\._ewRosterScope = 'owned';   \/\/ THE ROSTER LOCK \(2026-09-20\): in the building/.test(MP), '_hqEnter = owned');
     const shop = UI.slice(UI.indexOf('function _shopBuyable'), UI.indexOf('function _shopGridHtml') + 2000);

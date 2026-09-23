@@ -465,7 +465,7 @@ function MatchSelect(props) {
       const m = mapList[i];
       if (!m) return false;
       if (m.field) return false;   // THE FIELD (Phase 9 stage B): an encounter's rasterised window is never filed from the console
-      /* THE EARNED DOORS (2026-09-20): a console may deal only the sites Otto has built a door to (pre.allow = site ids; the RANGE console passes none = every site) */
+      /* THE EARNED DOORS (2026-09-20): a console may deal only the sites Otto has built a door to (pre.allow = site ids; since 2026-09-23 the RANGE console passes the earned + visited sites too — only Practice / the classic desk pass none = every site) */
       if (allowSites && !allowSites.has(siteOf(m.modeId))) return false;
       if (deltaOnly && !m.isDelta) return false;
       const w = m.w || 8;
@@ -553,7 +553,16 @@ function MatchSelect(props) {
     playUi();
     const pool = gameModes.map((m, i) => modeOk(m) ? i : -1).filter(i => i >= 0);
     if (pool.length) setGmIdx(pool[Math.floor(Math.random() * pool.length)]);
-    if (filteredMaps.length > 0) setMapIdx(filteredMaps[Math.floor(Math.random() * filteredMaps.length)]);
+    handleRandomMap(false);
+  }
+  /* RANDOM SITE (2026-09-23): a random MAP alone — the mode, the filters and the config stand; drawn
+     from the sites the desk deals (the earned / visited list, the Δ toggle, the size filter, the
+     search), never the one already picked when there is a choice */
+  function handleRandomMap(sound = true) {
+    if (sound) playUi();
+    let pool = filteredMaps.filter(i => i !== mapIdx);
+    if (!pool.length) pool = filteredMaps;
+    if (pool.length > 0) setMapIdx(pool[Math.floor(Math.random() * pool.length)]);
   }
   function selectMode(m) {
     if (!m || m.locked || !modeOk(m)) return;
@@ -734,7 +743,8 @@ function MatchSelect(props) {
     ),
     h('div', { className: 'ms-tty-spacer' }),
     h('span', { className: 'ms-tty-prompt' }, '> ', h('b', null, 'file ' + (isSite ? '--site' : '--any') + ' --mode ' + gm.id + (mp.isDelta ? ' --delta' : '')), h('span', { className: 'ms-tty-cursor' })),
-    !isSite && h('button', { className: 'ms-tty-btn', onClick: handleRandomize, title: 'Let the Department assign the site' }, 'RANDOMIZE'),
+    !isSite && h('button', { className: 'ms-tty-btn', onClick: handleRandomMap, title: 'A random site from the deck — the mode and the config stand', disabled: filteredMaps.length < 2 }, '🎲 RANDOM SITE'),
+    !isSite && h('button', { className: 'ms-tty-btn', onClick: handleRandomize, title: 'Let the Department assign the mode and the site' }, 'RANDOMIZE'),
     h('button', { className: 'ms-tty-btn primary' + (filed ? ' filed' : ''), onClick: handleConfirm, title: DOOR ? 'File the crossing' : undefined },
       h('b', null, isSite ? 'FILE THE CROSSING' : 'CONFIRM'), h('i', null, '↵'),
       /* the FILED stamp thunks onto the form (styles-base.css .door-stamp.thunk) */

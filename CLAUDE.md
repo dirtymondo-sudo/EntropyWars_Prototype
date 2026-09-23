@@ -8575,3 +8575,18 @@ turn loop reads (`actionExecuting · roundAdvanceInProgress · pendingReplace ·
 walkAnim · dying · cinematic · cameraBusy · bootPending · simul · spellLab · autoPlayers · controllers ·
 order`) and kicks `maybeAdvanceTurn` once unless a dialog / a cinematic / a seat pick owns the frame — READ
 THAT LINE FIRST on the next "the fight starts but nothing happens" report.
+
+## THE SCOPES SORTED + RANDOM SITE — the Party Builder opens the roster, the range deals what you know (2026-09-23, local delivery)
+The user's three. **THE PARTY BUILDER FROM THE MAIN MENU = THE WHOLE RIGGED ROSTER**: map.js `_goToTeamBuilder` sets
+`window._ewRosterScope = 'all'` before the page (online PvP squads are forged there — `isUnitUnlocked` reads the scope,
+every race with a 3D model shows unlocked) and `_teamBuilderBack` closes it (`'owned'`) — the forge opened from a
+console or the pause menu still fields what you own. **THE RANGE DEALS WHAT YOU KNOW**: `_hqRangeTerminal` passes
+`scope: 'owned'` (the roster lock holds in Room 64 now — the whole roster is Online's / Practice's / the archive's) and
+`allow: _hqRangeSites()` = every threshold site that is EARNED (`hqSiteEarned`) or VISITED (`hqSiteSeen` — a room of
+it stood in) + `prebuilt_training` / `prebuilt_holosim`; `_hqLaunchMission` rides `o.allow` onto the preselect
+(`pre.allow`, the same gate DISPATCH's desk used) and match-select.js's card filter / first pick honour it. The RANGE
+console is still the FULL variant (presets, the Δ toggle) — only its deck shrank. **🎲 RANDOM SITE** (match-select.js
+`handleRandomMap`, the foot's first button on the FULL variant, disabled under two choices): a random MAP alone from
+the dealt + filtered list, never the one already picked; RANDOMIZE (mode + map) stays and calls it. earned-doors.test.js
+pins all three. UNSEEN LIVE (RULE #1c): the 🔒 wall gone on the archive, the range's shortened deck on a fresh profile
+(the two boards alone), the button's fit in the foot row.
