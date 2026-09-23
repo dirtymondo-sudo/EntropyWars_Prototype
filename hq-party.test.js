@@ -218,7 +218,7 @@ test('THE SOURCE SITES: the engine (no respawns, the bench fills a seat, the car
     assert.ok(MP.includes("while (!(party && party.exact) && builds.length < n) {"), 'an exact party is never padded');
     assert.ok(MP.includes("if (pf && pf.total > 0 && !pf.ready) { _hqToast('<b>THE PARTY IS DOWN</b>"), 'nobody fit → no fight');
     /* the commit writes the party home by id (the board and the bench) */
-    assert.ok(BT.includes("if (vit.length) partyRes = hqPartyAfterMatch(p, { won, units: vit, xpPool, bag: bagHome, gauge: gaugeHome });") && BT.includes("(state.units || []).concat(benchBodies)"), 'battle.js: the commit (+ THE POOL, 2026-09-21)');
+    assert.ok(BT.includes("if (vit.length) partyRes = hqPartyAfterMatch(p, { won, units: vit, xpPool, bag: bagHome, gauge: gaugeHome, drops });") && BT.includes("(state.units || []).concat(benchBodies)"), 'battle.js: the commit (+ THE POOL, 2026-09-21)');
     assert.ok(BT.includes("party: partyRes };"), 'the result carries what the fight did to the party');
     /* the pause menu */
     ['function _hqPartyTx(fn)', 'function _hqPartySeed()', "data-party-act=\"cast:", "data-party-act=\"swap:", "data-party-act=\"relieve:", "data-party-act=\"enlist:", "data-party-act=\"item:", 'function _hqPartyAct(act)', "window._hqPartyRest = function ()", "if (c.id === 'cot' || c.id === 'healzone') {", "[data-party-rest]"].forEach(s => assert.ok(MP.includes(s), 'map.js: ' + s));
@@ -299,7 +299,7 @@ test('THE SHARED BAG (2026-09-21): the pockets POOL into the bag, the launch car
     assert.equal(g('hqBagCount')(p, 'healPotion'), 1, 'what the fight spent stays spent'); assert.equal(g('hqBagCount')(p, 'manaPotion'), 6); assert.equal(g('hqBagCount')(p, 'elixir'), 1, 'the field-only rows that never left are kept');
     /* the battle's binding + the skip list + the state field */
     const BT2 = fs.readFileSync(__dirname + '/battle.js', 'utf8');
-    ['function _partyBagBind()', 'if (_partyBagOn()) return 9999;', "bag: bagHome, gauge: gaugeHome });", 'u.items = bag; n++;'].forEach(s => assert.ok(BT2.includes(s), 'battle.js: ' + s));
+    ['function _partyBagBind()', 'if (_partyBagOn()) return 9999;', "bag: bagHome, gauge: gaugeHome, drops });", 'u.items = bag; n++;'].forEach(s => assert.ok(BT2.includes(s), 'battle.js: ' + s));
     assert.ok(fs.readFileSync(__dirname + '/state.js', 'utf8').includes('partyBag: null,'), 'state.js carries partyBag');
     assert.ok(fs.readFileSync(__dirname + '/online.js', 'utf8').includes('partyBag: 1,'), 'online.js skip-lists it');
     assert.ok(MP.includes('state.partyBag = (_encParty_ && _encPeek.bag'), 'map.js sets the bag at the launch');
@@ -517,7 +517,7 @@ test('THE GAUGE CARRIES (2026-09-23): the commit files the seat\'s gauge, the la
     assert.match(MP, /state\.partyGauge = \(_encParty_ && Number\.isFinite\(\+_encPeek\.gauge\)\)/, 'map.js _msConfirm files the opening gauge');
     assert.equal((MP.match(/state\.partyBag = null; state\.partyGauge = 0;/g) || []).length, 3, 'every other launch reset drops it');
     assert.match(BT, /if \(\(state\.partyGauge \| 0\) > 0\) \{ const _gs = \(state\.partyBag && state\.partyBag\.seat\) \|\| 1; state\.entropyGauge\[_gs\] = /, 'battle.js startMatch opens at it');
-    assert.match(BT, /hqPartyAfterMatch\(p, \{ won, units: vit, xpPool, bag: bagHome, gauge: gaugeHome \}\)/, 'the commit hands the gauge home');
+    assert.match(BT, /hqPartyAfterMatch\(p, \{ won, units: vit, xpPool, bag: bagHome, gauge: gaugeHome, drops \}\)/, 'the commit hands the gauge home');
     assert.match(ST, /partyGauge: 0,/, 'the state literal'); assert.match(fs.readFileSync(__dirname + '/online.js', 'utf8'), /partyGauge: 1,/, 'the online skip list');
 });
 
@@ -535,4 +535,83 @@ test('THE LEVEL\'S REST (2026-09-23): a level crossed at the debrief brings the 
     g('hqPartyAfterMatch')(p2, { won: true, units: [{ partyId: y2.id, hp: 0, maxHp: 60, mp: 1, maxMp: 20, dead: true, xpBattle: big, fought: true }], xpPool: 0 });
     assert.equal(g('hqPartyRecord')(p2).members.find(x => x.id === y2.id).hp, 0, 'DOWN stays down');
     assert.match(BT, /unit\.hp = unit\.maxHp \|\| unit\.hp; unit\.mp = unit\.maxMp \|\| unit\.mp; _lvHealed = true;/, 'grantXP restores on the board');
+});
+
+test('NO RESTOCK (2026-09-23): the forge\'s staple grant skips the bag\'s seat, the bind never merges a built unit\'s items, nothing tops the bag up between fights', () => {
+    const p = profile({ account: { gold: 0, unlockedUnits: ['door agent', 'cowboy', 'nun'] } }); g('hqPartyEnsure')(p, { last });
+    const rec = g('hqPartyRecord')(p); rec.members.forEach(m => { m.loadout.items = {}; });
+    g('hqBagAdd')(p, 'healPotion', 2);
+    const L1 = g('hqPartyForLaunch')(p);
+    L1.members.forEach(m => assert.equal(Object.keys(m.loadout.items).length, 0, 'the launch hands out EMPTY pockets'));
+    deq(L1.bag, { healPotion: 2 });
+    /* three fights in a row, nothing used, nothing dropped: the bag is exactly what it was */
+    for (let i = 0; i < 3; i++) {
+        const L = g('hqPartyForLaunch')(p);
+        g('hqPartyAfterMatch')(p, { won: true, units: L.members.map(m => ({ partyId: m.id, hp: 50, maxHp: 100, mp: 5, maxMp: 20 })), bag: Object.assign({}, L.bag), drops: null });
+    }
+    assert.equal(g('hqBagTotal')(p), 2, 'three fights later the bag holds what it held');
+    assert.equal(g('hqPartyStock')(p).total, 0, 'the pool has nothing to pool');
+    /* the two battle.js seams: the staple grant reads the bag's seat, the bind writes the bag over the unit and adds nothing */
+    assert.ok(BT.includes("const _bagSeat = (typeof _partyBagOn === 'function' && _partyBagOn()) ? (state.partyBag.seat || 1) : 0;"), 'battle.js reads the bag\'s seat before the staples');
+    assert.ok(BT.includes('if (player !== _bagSeat) {\n                            lo.items.healPotion = 1;'), 'the staples skip the bag\'s seat');
+    assert.ok(!BT.includes("anything the unit was built with (a forge leftover) joins the bag once"), 'the bind\'s merge is gone');
+    assert.ok(BT.includes('u.items = bag; n++;'), 'the bind still hands every unit the bag');
+});
+
+test('THE BAG\'S TABS (2026-09-23): one category rule for every item, the list sorted by it, the tab filter, the counts, the pause menu\'s strip, the HUD\'s order', () => {
+    const cat = g('hqBagCategoryOf');
+    ['healPotion', 'manaPotion', 'panacea', 'reviveTonic', 'elixir'].forEach(k => assert.equal(cat(k), 'healing', k));
+    ['humanBane', 'divineBane', 'unholyBane', 'techBane', 'anomalyBane', 'alienBane'].forEach(k => assert.equal(cat(k), 'banes', k));
+    ['scanner', 'warpStone', 'entropyGrenade', 'adrenalStim', 'bulwarkStim', 'psiStim'].forEach(k => assert.equal(cat(k), 'battle', k));
+    deq(D.HQ_BAG_TABS.map(t => t.id), ['all', 'healing', 'battle', 'banes']);
+    const p = profile(); ['techBane', 'scanner', 'healPotion', 'elixir', 'warpStone', 'manaPotion'].forEach(k => g('hqBagAdd')(p, k, 2));
+    const all = g('hqBagList')(p);
+    deq(all.map(r => r.cat), ['healing', 'healing', 'healing', 'battle', 'battle', 'banes'], 'healing, then battle, then banes');
+    deq(all.map(r => r.key), ['healPotion', 'manaPotion', 'elixir', 'scanner', 'warpStone', 'techBane'], 'the shelf\'s order inside a category');
+    deq(g('hqBagList')(p, { tab: 'banes' }).map(r => r.key), ['techBane']);
+    deq(g('hqBagList')(p, { tab: 'all' }).map(r => r.key), all.map(r => r.key));
+    const tabs = g('hqBagTabs')(p);
+    deq(tabs.map(t => [t.id, t.n, t.kinds]), [['all', 12, 6], ['healing', 6, 3], ['battle', 4, 2], ['banes', 2, 1]]);
+    assert.equal(g('hqBagTab')('nonsense').id, 'all', 'an unknown tab is ALL');
+    ['data-party-act="bagtab:', "verb === 'bagtab'", 'hq-pp-bagtabs', "bagTab: 'all'", 'data-cat="${_hqEsc(r.cat'].forEach(s => assert.ok(MP.includes(s), 'map.js: ' + s));
+    assert.ok(CSS.includes('.hq-pp-bagtab.on'), 'the strip\'s CSS');
+    const HUD = fs.readFileSync(__dirname + '/hud.js', 'utf8');
+    assert.ok(HUD.includes("const _catOrder = ['healing', 'battle', 'banes'];") && HUD.includes('window.hqBagCategoryOf'), 'the HUD orders its rows by the same rule');
+});
+
+test('THE SPOILS (2026-09-23): every fallen enemy rolls the SAME table, a bane is the fallen unit\'s own type, the rarities, the commit puts them in the bag on a win only, the debrief card', () => {
+    const R = D.HQ_DROP_RULES, drops = g('hqEncounterDrops');
+    assert.equal(typeof R.chance, 'number'); assert.ok(R.weights.healPotion > R.weights.panacea && R.weights.panacea > R.weights.bane && R.weights.bane >= R.weights.reviveTonic, 'the rarity ladder');
+    assert.equal(R.rarity.reviveTonic, 'rare'); assert.equal(R.rarity.bane, 'rare'); assert.equal(R.rarity.healPotion, 'common');
+    assert.equal(g('hqDropBaneFor')(['tech', 'human']), 'techBane'); assert.equal(g('hqDropBaneFor')(['nothing']), null);
+    /* a deterministic rng: the first draw says "dropped", the second picks the row */
+    const seq = (vals) => { let i = 0; return () => vals[(i++) % vals.length]; };
+    const fallen = [{ race: 'robot', name: 'R-1', types: ['tech'] }, { race: 'nun', name: 'Sister', types: ['human', 'divine'] }, { race: 'ghost', name: 'G', types: ['nothing'] }];
+    const none = drops(fallen, { rng: () => 0.99 });
+    assert.equal(none.total, 0); assert.equal(none.rolled, 3); deq(none.items, {});
+    /* rng: 0 → dropped, then a pick deep in the bane band (0.9 of the sum lands on bane with the shipped weights: 42+30+16 = 88 of 100) */
+    const sum = Object.values(R.weights).reduce((a, b) => a + b, 0);
+    const baneAt = (R.weights.healPotion + R.weights.manaPotion + R.weights.panacea + 0.5) / sum;
+    const d = drops(fallen, { rng: seq([0, baneAt]) });
+    deq(d.items, { techBane: 1, humanBane: 1, healPotion: 1 }, 'the tech unit drops a tech bane, the human a human bane, the untyped one rerolls as a potion');
+    assert.equal(d.total, 3);
+    assert.ok(d.rows.every(r => ['common', 'uncommon', 'rare'].includes(r.rarity)));
+    assert.equal(d.rows.find(r => r.key === 'techBane').rarity, 'rare');
+    deq(d.rows.map(r => r.cat), ['healing', 'banes', 'banes'], 'the rows in the bag\'s category order');
+    /* the same odds for every unit: the roller reads nothing off the unit but its types */
+    assert.ok(!D_SRC.includes('HQ_DROP_RULES.byRace') && !D_SRC.includes('dropRates['), 'no per-race table');
+    /* the commit: a win puts them in the bag, a loss does not */
+    const p = profile({ account: { gold: 0, unlockedUnits: ['door agent', 'cowboy', 'nun'] } }); g('hqPartyEnsure')(p, { last });
+    const rec = g('hqPartyRecord')(p); rec.members.forEach(m => { m.loadout.items = {}; });
+    const vit = [{ partyId: rec.members[0].id, hp: 50, maxHp: 100, mp: 5, maxMp: 20 }];
+    const lost = g('hqPartyAfterMatch')(p, { won: false, units: vit, bag: {}, drops: d });
+    assert.equal(lost.drops, null); assert.equal(g('hqBagTotal')(p), 0, 'a loss drops nothing into the bag');
+    const won = g('hqPartyAfterMatch')(p, { won: true, units: vit, bag: {}, drops: d });
+    assert.equal(won.drops.total, 3); deq(won.drops.items, { techBane: 1, humanBane: 1, healPotion: 1 });
+    assert.equal(g('hqBagCount')(p, 'techBane'), 1); assert.equal(g('hqBagCount')(p, 'healPotion'), 1);
+    /* the sources: the fallen list + the roll at the commit, the card on the REWARDS sheet, the return toast */
+    ['function _encFallenEnemies(seat)', 'drops = hqEncounterDrops(_encFallenEnemies(seat))', 'gauge: gaugeHome, drops });', 'function _vicBuildDrops(drops)', "getElementById('vicDrops')", "'vicExperience', 'vicDrops', 'vicGoldBreakdown'"].forEach(s => assert.ok(BT.includes(s), 'battle.js: ' + s));
+    assert.ok(fs.readFileSync(__dirname + '/index.html', 'utf8').includes('id="vicDrops"'), 'index.html: the sheet');
+    assert.ok(fs.readFileSync(__dirname + '/styles-cinematic.css', 'utf8').includes('.vic-drop-row.rare'), 'the card\'s CSS');
+    assert.ok(MP.includes("ITEM${pr.drops.total === 1 ? '' : 'S'} DROPPED"), 'the return toast names the drops');
 });

@@ -17265,7 +17265,11 @@
                                     if (bagHome) vit.forEach(v => { delete v.items; });
                                     /* THE GAUGE CARRIES (2026-09-23): the human seat's Entropy Gauge at the end of the fight goes home on the record */
                                     let gaugeHome = null; try { gaugeHome = getEntropyGauge(seat); } catch (e) { gaugeHome = null; }
-                                    if (vit.length) partyRes = hqPartyAfterMatch(p, { won, units: vit, xpPool, bag: bagHome, gauge: gaugeHome });
+                                    /* THE SPOILS (2026-09-23): every fallen enemy rolls the SAME drop table (data.js hqEncounterDrops — a bane of its own type);
+                                       the commit puts them in the bag on a win, the debrief's REWARDS sheet lists them */
+                                    let drops = null;
+                                    try { if (won && typeof hqEncounterDrops === 'function') drops = hqEncounterDrops(_encFallenEnemies(seat)); } catch (e) { drops = null; }
+                                    if (vit.length) partyRes = hqPartyAfterMatch(p, { won, units: vit, xpPool, bag: bagHome, gauge: gaugeHome, drops });
                                 }
                             } catch (e) { console.warn('[HQ] the party record failed', e); }
                             PS.saveProfile(idx, p);
@@ -30351,8 +30355,8 @@
             bodies.forEach(u => {
                 if (!u || _partyBagSeatOf(u) !== seat) return;
                 if (u.items !== bag) {
-                    /* anything the unit was built with (a forge leftover) joins the bag once */
-                    Object.keys(u.items || {}).forEach(k => { const c = u.items[k] | 0; if (c > 0 && u.items !== bag) bag[k] = (bag[k] | 0) + c; });
+                    /* NO RESTOCK (2026-09-23): what a unit was BUILT with never joins the bag — the members come with empty
+                       pockets (hqPartyForLaunch) and the forge's staple grant is skipped for this seat; the bag is the only source */
                     u.items = bag; n++;
                 }
             });
@@ -31006,11 +31010,18 @@
                     if (!state.loadouts[player][i]) state.loadouts[player][i] = emptyLoadout();
                     const lo = state.loadouts[player][i];
 
+                    /* NO RESTOCK (2026-09-23, the user: "make sure we don't restock items in between battles"): the
+                       staples below are the FORGE's courtesy for an empty loadout — a story fight's human seat pulls
+                       from THE SHARED BAG and its members come with EMPTY pockets on purpose (hqPartyForLaunch), so a
+                       staple here landed in the bag at every launch (three items a member a fight). The bag's seat is skipped. */
+                    const _bagSeat = (typeof _partyBagOn === 'function' && _partyBagOn()) ? (state.partyBag.seat || 1) : 0;
                     if (!lo.items || Object.values(lo.items).reduce((a,b) => a+b, 0) === 0) {
                         lo.items = Object.fromEntries(Object.keys(ITEM_RULES).map(k => [k, 0]));
-                        lo.items.healPotion = 1;
-                        lo.items.manaPotion = 1;
-                        lo.items.panacea = 1;
+                        if (player !== _bagSeat) {
+                            lo.items.healPotion = 1;
+                            lo.items.manaPotion = 1;
+                            lo.items.panacea = 1;
+                        }
                     }
 
                     if (!lo.equipment) lo.equipment = emptyEquipment();
@@ -36714,7 +36725,7 @@
         function _vicPrepare() {
             /* the shared result DOM: empty every sheet + the head's extras so a campaign /
                dungeon / no-contest card never shows a previous match's rows */
-            ['vicExperience', 'vicGoldBreakdown', 'vicEloBadge', 'vicAwards', 'vicHonours', 'vicTeamDmgBar', 'vicTeamDmgLabels', 'vicModeTally', 'vicStatsTableWrap', 'vicKicker', 'vicMatchInfo', 'vicSubtitle'].forEach(id => {
+            ['vicExperience', 'vicDrops', 'vicGoldBreakdown', 'vicEloBadge', 'vicAwards', 'vicHonours', 'vicTeamDmgBar', 'vicTeamDmgLabels', 'vicModeTally', 'vicStatsTableWrap', 'vicKicker', 'vicMatchInfo', 'vicSubtitle'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.innerHTML = '';
             });
@@ -37027,6 +37038,8 @@
             /* THE EXPERIENCE (2026-09-21): a story-mode encounter's XP — the card leads the REWARDS sheet, the fill plays once the overlay shows */
             let _vicXpParty = null;
             try { const _er = window._hqEncounterResult; if (_er && _er.party && Array.isArray(_er.party.xp) && _er.party.xp.length) { _vicXpParty = _er.party; const _xe = document.getElementById('vicExperience'); if (_xe) _xe.innerHTML = _vicBuildExperience(_vicXpParty); } } catch (e) { console.warn('[HQ] the experience card failed', e); _vicXpParty = null; }
+            /* THE SPOILS (2026-09-23): what the fallen dropped — under the EXPERIENCE card on the REWARDS sheet (a win with a party only) */
+            try { const _er = window._hqEncounterResult; const _dr = _er && _er.party && _er.party.drops; const _de = document.getElementById('vicDrops'); if (_de) _de.innerHTML = (_dr && _er.won) ? _vicBuildDrops(_dr) : ''; } catch (e) { console.warn('[HQ] the spoils card failed', e); }
 
             /* the sheets are filled — build the tab strip; the first sheet with anything in
                it opens (REWARDS on a paid match, HONOURS on a friendly / a no-contest) */
@@ -37071,6 +37084,23 @@
                 if (u) return _vicPortrait(u);
                 return _vicPortrait({ race: b.race, gender: b.gender, cls: b.cls, name: b.name, player: 1, types: [] });
             } catch (e) { return ''; }
+        }
+        /* THE SPOILS card: one row per item kind dropped (its rarity, who dropped it), staggered in; nothing dropped = one quiet line */
+        function _vicBuildDrops(drops) {
+            const R = (typeof HQ_DROP_RULES !== 'undefined') ? HQ_DROP_RULES : { labels: {} };
+            const L = R.labels || {};
+            const rows = (drops && Array.isArray(drops.rows)) ? drops.rows : [];
+            const body = rows.length ? `<div class="vic-drop-rows">${rows.map((r, i) => {
+                const who = (r.froms && r.froms.length) ? [...new Set(r.froms)].slice(0, 3).join(', ') + (new Set(r.froms).size > 3 ? '…' : '') : (r.from || '');
+                return `<div class="vic-drop-row ${escapeHtml(String(r.rarity || 'common'))}" style="--d:${(i * 0.14).toFixed(2)}s">
+                    <i class="vic-drop-icon">${escapeHtml(String(r.icon || '❖'))}</i>
+                    <div class="vic-drop-col"><b class="vic-drop-name">${escapeHtml(String(r.name || r.key))}<em>× ${r.n | 0}</em></b>
+                    <span class="vic-drop-from">${who ? escapeHtml(String(L.from || 'FROM') + ' ' + who.toUpperCase()) : ''}</span></div>
+                    <span class="vic-drop-rarity">${escapeHtml(String(L[r.rarity] || r.rarity || 'COMMON').toUpperCase())}</span>
+                </div>`; }).join('')}</div>`
+                : `<div class="vic-drop-none">${escapeHtml(L.none || 'NOTHING DROPPED')}</div>`;
+            const cap = `${escapeHtml(L.cap || 'THE SPOILS')}${rows.length ? ` · <em class="vic-drop-total">+${drops.total | 0} ${escapeHtml(L.bag || 'INTO THE BAG')}</em>` : ''}`;
+            return `<div class="vic-card vic-drop-card${rows.length ? '' : ' empty'}"><div class="vic-card-cap">🎒 ${cap}</div>${body}</div>`;
         }
         function _vicBuildExperience(party) {
             const R = (typeof HQ_LEVEL_RULES !== 'undefined') ? HQ_LEVEL_RULES : { labels: {} };
@@ -42574,6 +42604,17 @@
         window._encArrivalRules = _encArrivalRules;
         /* THE LEVELS (2026-09-21) — THE POOL: Σ computeKillXP over the enemy bodies that fell, the killer a pseudo-unit at THE PARTY LEVEL
            (data.js hqPartyLevel), so the payout scales with the natives' levels and the gap exactly as a kill does (a boss ×1.5) */
+        /* THE SPOILS (2026-09-23): the enemy bodies that FELL this fight — [{ race, name, types }] for the drop roller (never the seat's own, never a neutral) */
+        function _encFallenEnemies(seat) {
+            const out = [];
+            for (const u of (state.units || [])) {
+                if (!u || !(u.dead || u._dying)) continue;
+                const home = (typeof unitHomePlayer === 'function') ? unitHomePlayer(u) : u.player;
+                if (home === seat || home === 0) continue;
+                out.push({ race: u.race || '', name: u.name || u.race || '', types: Array.isArray(u.types) ? u.types.slice() : [] });
+            }
+            return out;
+        }
         function _encXpPool(profile, seat) {
             let pool = 0;
             try {

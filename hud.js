@@ -3744,10 +3744,13 @@ function _hrlgItemBlades(unit, st) {
   const am = st.actionMode;
   const heldKeys = typeof ITEM_RULES !== 'undefined'
     ? Object.keys(ITEM_RULES).filter(k => (unit.items?.[k] || 0) > 0) : [];
-  // Greyed-out (currently unusable) items sink to the bottom so usable ones lead.
-  if (typeof canUseItemNow === 'function') {
-    heldKeys.sort((a, b) => (canUseItemNow(unit, a) ? 0 : 1) - (canUseItemNow(unit, b) ? 0 : 1));
-  }
+  /* THE BAG'S TABS (2026-09-23): the rows stand in the bag's CATEGORY order — HEALING · BATTLE ITEMS · BANES
+     (data.js hqBagCategoryOf, the one rule the pause menu's tabs read) — and within a category the usable lead */
+  const _catOrder = ['healing', 'battle', 'banes'];
+  const _catOf = (k) => (typeof window.hqBagCategoryOf === 'function') ? window.hqBagCategoryOf(k) : 'battle';
+  const _catColor = { healing: '#57d97e', battle: '#7fc8ff', banes: '#ff8a6a' };
+  const _usable = (k) => (typeof canUseItemNow === 'function') ? (canUseItemNow(unit, k) ? 0 : 1) : 0;
+  heldKeys.sort((a, b) => (_catOrder.indexOf(_catOf(a)) - _catOrder.indexOf(_catOf(b))) || (_usable(a) - _usable(b)));
   // Mystery Dungeon floors: every row grows a ⤵ DROP chip — one click puts
   // the item on the unit's tile (state._mdItems) for a teammate to scoop up.
   const mdFloor = typeof window._isDungeonMode === 'function' && window._isDungeonMode()
@@ -3762,13 +3765,13 @@ function _hrlgItemBlades(unit, st) {
       else if (itemKey === 'manaPotion') reason = 'No ally needs MP';
       else reason = 'Can\'t use';
     }
-    // healing items wear heal-green edge to edge, like heal spells do
-    const isHealItem = itemKey === 'healPotion';
+    // every row wears its CATEGORY's colour edge to edge (healing green, battle blue, banes red), like heal spells do
+    const _cat = _catOf(itemKey);
     return {
       id: 'it:' + itemKey,
       icon: rules?.icon || '❖',
-      iconColor: isHealItem ? '#57d97e' : undefined,
-      catColor: isHealItem ? '#57d97e' : undefined,
+      iconColor: _catColor[_cat],
+      catColor: _catColor[_cat],
       label: rules?.name || itemKey,
       available: canUse,
       // dungeon rows stay clickable even when unusable — the DROP chip works

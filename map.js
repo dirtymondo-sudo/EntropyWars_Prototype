@@ -1438,7 +1438,8 @@
                         /* THE PARTY (2026-09-19): the second line reads what the fight did to the party — the down, the treatment */
                         const pr = encRes.party || null;
                         const partyLine = (pr ? (pr.restored ? ' · THE PARTY WAS TREATED' : pr.down ? ` · ${pr.down} DOWN — HEAL THEM OR REST IN MEDICAL` : ' · THE PARTY STANDS') : '')
-                            + ((pr && pr.leveled) ? ` · ${pr.leveled} LEVELLED UP · THE PARTY IS LV ${pr.partyLevel}` : '');   // THE LEVELS (2026-09-21)
+                            + ((pr && pr.leveled) ? ` · ${pr.leveled} LEVELLED UP · THE PARTY IS LV ${pr.partyLevel}` : '')   // THE LEVELS (2026-09-21)
+                            + ((pr && pr.drops && pr.drops.total) ? ` · ${pr.drops.total} ITEM${pr.drops.total === 1 ? '' : 'S'} DROPPED · IN THE BAG` : '');   // THE SPOILS (2026-09-23)
                         _hqToast(encRes.won ? `<b>THRESHOLD HELD</b><span>${_hqEsc(String(encRes.label || encRes.race || 'THE NATIVE').toUpperCase())} · THE ROOM IS YOURS${partyLine}</span>` : `<b>EXITED</b><span>${encRes.wake === 'office' ? 'YOU CAME TO AT YOUR DESK' : 'YOU CAME TO IN THE WARD'} · ${_hqEsc(String(encRes.label || encRes.race || 'THE NATIVE').toUpperCase())} HAD THE ROOM${partyLine}</span>`, 4200);
                     } catch (e) {} }, 1400);
                     return true;
@@ -1500,7 +1501,7 @@
                for a lock that lands late — _hqOnLockChange gives it back too */
             try { if (document.pointerLockElement) document.exitPointerLock(); } catch (e) {}
             const fresh = !_hqPause;
-            if (fresh) _hqPause = { cmd: 'party', cursor: 1, member: null, units: {}, arm: null, msg: null, circuit: null, socket: null, sockQ: '' };
+            if (fresh) _hqPause = { cmd: 'party', cursor: 1, member: null, units: {}, arm: null, msg: null, circuit: null, socket: null, sockQ: '', bagTab: 'all' };
             if (cmd) { _hqPause.cmd = cmd; _hqPause.member = null; _hqPause.arm = null; }
             _hqPause.cursor = Math.max(0, _HQ_PAUSE_CMDS.findIndex(c => c.id === _hqPause.cmd));
             el.style.display = '';
@@ -1716,10 +1717,14 @@
         /* THE BAG (the pause menu's ITEMS): the shared inventory, the pockets, the ways to fill it */
         function _hqPauseBagHtml() {
             const rec = _hqParty(); const P = _hqPause; const p = _hqProfile();
-            const rows = (typeof window.hqBagList === 'function') ? window.hqBagList(p) : [];
+            /* THE BAG'S TABS (2026-09-23): ALL · HEALING · BATTLE ITEMS · BANES (data.js HQ_BAG_TABS / hqBagCategoryOf — one rule for every item) */
+            const tabs = (typeof window.hqBagTabs === 'function') ? window.hqBagTabs(p) : [];
+            if (!P.bagTab || !tabs.some(t => t.id === P.bagTab)) P.bagTab = 'all';
+            const allRows = (typeof window.hqBagList === 'function') ? window.hqBagList(p) : [];
+            const rows = (typeof window.hqBagList === 'function') ? window.hqBagList(p, { tab: P.bagTab }) : [];
             const gold = (p && p.account && p.account.gold) | 0;
-            const total = rows.reduce((a, r) => a + r.n, 0);
-            let html = `<div class="hq-panel-hd"><b>THE BAG</b><span>${total} ITEM${total === 1 ? '' : 'S'} · ${rows.length} KIND${rows.length === 1 ? '' : 'S'} · 💰 ${gold.toLocaleString()} HAZARD PAY</span></div>`;
+            const total = allRows.reduce((a, r) => a + r.n, 0);
+            let html = `<div class="hq-panel-hd"><b>THE BAG</b><span>${total} ITEM${total === 1 ? '' : 'S'} · ${allRows.length} KIND${allRows.length === 1 ? '' : 'S'} · 💰 ${gold.toLocaleString()} HAZARD PAY</span></div>`;
             if (P.msg) { html += `<div class="hq-pp-msg${P.msg.bad ? ' bad' : ''}">${P.msg.html}</div>`; P.msg = null; }
             const fit = (rec && typeof window.hqPartyFit === 'function') ? window.hqPartyFit(p) : null;
             html += `<div class="hq-pp-quickbar">`
@@ -1730,11 +1735,14 @@
                 + `<button class="hq-btn hq-btn-sm" data-pause-room="medical" data-pause-at="cot">🛏 THE COT · ROOM 1111</button>`
                 + `</div>`;
             html += `<div class="hq-pp-sec"><b>IN THE BAG</b><span>THE WHOLE PARTY PULLS FROM IT IN A FIGHT · NO LIMIT · USE ▸ PICKS A MEMBER · A FIELD-ONLY ITEM STAYS HOME</span></div>`;
-            if (!rows.length) html += `<p class="hq-panel-note">The bag is empty. Pay caches in the rooms drop a potion each; THE DISPENSARY (Room 911, off the Medical Wing) sells them; anything the party did not use in a fight comes back into it.</p>`;
+            html += `<div class="hq-pp-bagtabs" role="tablist">` + tabs.map(t => `<button class="hq-btn hq-btn-xs hq-pp-bagtab${t.id === P.bagTab ? ' on' : ''}" role="tab" aria-selected="${t.id === P.bagTab}" data-party-act="bagtab:${_hqEsc(t.id)}" title="${_hqEsc(t.desc || '')}"${t.color ? ` style="--bag-c:${_hqEsc(t.color)}"` : ''}>${t.glyph} ${_hqEsc(t.label)} <em>${t.n}</em></button>`).join('') + `</div>`;
+            const curTab = tabs.find(t => t.id === P.bagTab) || null;
+            if (!allRows.length) html += `<p class="hq-panel-note">The bag is empty. Pay caches in the rooms drop a potion each; THE DISPENSARY (Room 911, off the Medical Wing) sells them; anything the party did not use in a fight comes back into it, and what the fallen drop after a fight lands here too.</p>`;
+            else if (!rows.length) html += `<p class="hq-panel-note">Nothing under ${_hqEsc(curTab ? curTab.label : 'THIS TAB')} — ${_hqEsc(curTab && curTab.desc ? curTab.desc : '')}.</p>`;
             else {
                 html += '<div class="hq-pp-bag">';
                 rows.forEach(r => {
-                    html += `<div class="hq-pp-bagrow${r.field ? ' field' : ''}"><i class="hq-pp-bagicon">${r.icon}</i><b>${_hqEsc(r.name)} <em>× ${r.n}</em></b><span>${_hqEsc(r.desc)}</span>`
+                    html += `<div class="hq-pp-bagrow${r.field ? ' field' : ''}" data-cat="${_hqEsc(r.cat || '')}"><i class="hq-pp-bagicon">${r.icon}</i><b>${_hqEsc(r.name)} <em>× ${r.n}</em></b><span>${_hqEsc(r.desc)}</span>`
                         + `<small>${r.battle ? 'BATTLE + FIELD' : 'FIELD ONLY'}${r.sell ? ' · SELLS ' + r.sell : ''}</small>`
                         + (r.field ? `<button class="hq-btn hq-btn-xs" data-party-act="bag:${_hqEsc(r.key)}"${rec ? '' : ' disabled'}>USE ▸</button>` : '')
                         + `</div>`;
@@ -2100,6 +2108,7 @@
                 const row = (window.hqPartyBagItems(_hqProfile()) || []).find(x => x.key === a); if (!row) return;
                 P.arm = { kind: 'item', from: 'bag', key: a, name: row.name }; P.member = null; P.cmd = 'party'; P.cursor = Math.max(0, _HQ_PAUSE_CMDS.findIndex(c => c.id === 'party'));
             }
+            else if (verb === 'bagtab') { P.bagTab = (typeof window.hqBagTab === 'function') ? window.hqBagTab(a).id : (a || 'all'); try { playSfx('uiCursorFocus'); } catch (e) {} }   // THE BAG'S TABS (2026-09-23)
             else if (verb === 'restock') {
                 const r = _hqPartyTx(p => window.hqPartyStock(p));
                 if (r && r.ok && r.total) { say(`<b>POOLED</b> ${r.total} ITEM${r.total === 1 ? '' : 'S'} OUT OF ${[...new Set(r.moved.map(x => x.id))].length} POCKET${new Set(r.moved.map(x => x.id)).size === 1 ? '' : 'S'} INTO THE BAG`); try { playSfx('uiButtonConfirm'); } catch (e) {} }

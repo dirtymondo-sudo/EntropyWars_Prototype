@@ -6158,3 +6158,15 @@ body.diorama-3d .tile-underpass.jump::before {
 .hq-arrival-title span:empty { display: none; }
 @media (max-width: 720px) { .hq-arrival-title b { font-size: 20px; } }
 @media (prefers-reduced-motion: reduce) { .hq-arrival.show .hq-arrival-bar, .hq-arrival.show .hq-arrival-title { animation-duration: 1.3s; } }
+
+/* ══ THE BAG'S TABS (2026-09-23) ══
+   ALL · HEALING · BATTLE ITEMS · BANES over the ITEMS sheet's rows (map.js _hqPauseBagHtml; the categories are
+   data.js hqBagCategoryOf's — one rule for every item). Appended at the END so the HQ HUD pass's material carries. */
+#hqPage .hq-pp-bagtabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 10px; }
+#hqPage .hq-pp-bagtab { --bag-c: var(--ew-sel, #d9b45a); letter-spacing: 0.16em; padding: 5px 11px; border-color: color-mix(in srgb, var(--bag-c) 55%, transparent); }
+#hqPage .hq-pp-bagtab em { font-style: normal; margin-left: 4px; padding: 0 6px; border-radius: 999px; background: rgba(0,0,0,0.35); color: var(--bag-c); font-family: 'IBM Plex Mono', monospace; font-size: 9px; }
+#hqPage .hq-pp-bagtab.on { background: color-mix(in srgb, var(--bag-c) 22%, transparent); color: #fff; box-shadow: inset 0 -2px 0 var(--bag-c); }
+#hqPage .hq-pp-bagtab:not(.on):hover { background: color-mix(in srgb, var(--bag-c) 12%, transparent); }
+#hqPage .hq-pp-bagrow[data-cat="healing"] .hq-pp-bagicon { filter: drop-shadow(0 0 6px rgba(87,217,126,0.55)); }
+#hqPage .hq-pp-bagrow[data-cat="banes"] .hq-pp-bagicon { filter: drop-shadow(0 0 6px rgba(255,138,106,0.55)); }
+#hqPage .hq-pp-bagrow[data-cat="battle"] .hq-pp-bagicon { filter: drop-shadow(0 0 6px rgba(127,200,255,0.55)); }

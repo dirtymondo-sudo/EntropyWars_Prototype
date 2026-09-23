@@ -44915,8 +44915,50 @@ function hqPartyForLaunch(profile) {
     });
     return { members, ids: members.map(m => m.id), party: true, exact: true, deploy: Math.min(HQ_PARTY_RULES.shift, members.length), left: r.members.length - fit.length, bag: hqBagForBattle(profile), gauge: hqPartyGauge(profile) };
 }
+/* ── THE SPOILS (2026-09-23, the user: "in the Victory Screen let enemies sometimes drop items that the player
+   automatically acquires — potions, mana potions, panaceas, revives, and banes of their type; different rarities (a
+   revive and a bane rarer than a regular potion); don't give different units different drop rates") ──
+   ONE table, HQ_DROP_RULES: every fallen enemy rolls the SAME `chance` to drop ONE item, the item by the SAME `weights`
+   (the rarity — common / uncommon / rare in `rarity`), a bane the fallen unit's OWN type (its first type with a bane
+   row; a unit with no typed bane rerolls as a potion). Nothing about the unit changes the odds — never a per-race
+   table. hqEncounterDrops(fallen, { rng }) is PURE: [{ race, name, types }] → { items: { key: n }, rows, total }; the
+   commit (hqPartyAfterMatch's `drops`) puts them in the bag on a WIN only, the debrief's REWARDS sheet lists them. */
+const HQ_DROP_RULES = {
+    on: true,
+    chance: 0.6,                                                                   // per fallen enemy: the odds it dropped anything (the same for every unit)
+    weights: { healPotion: 42, manaPotion: 30, panacea: 16, bane: 8, reviveTonic: 4 },   // what dropped — `bane` resolves to the fallen unit's own type
+    rarity: { healPotion: 'common', manaPotion: 'common', panacea: 'uncommon', bane: 'rare', reviveTonic: 'rare' },
+    labels: { cap: 'THE SPOILS', none: 'NOTHING DROPPED', from: 'FROM', common: 'COMMON', uncommon: 'UNCOMMON', rare: 'RARE', bag: 'INTO THE BAG' },
+};
+function hqDropBaneFor(types) {
+    const list = Array.isArray(types) ? types : (types ? [types] : []);
+    for (const t of list) { const k = String(t || '') + 'Bane'; if (typeof ITEM_RULES !== 'undefined' && ITEM_RULES[k] && ITEM_RULES[k].baneType === t) return k; }
+    return null;
+}
+function hqEncounterDrops(fallen, opts) {
+    const R = HQ_DROP_RULES, rng = (opts && typeof opts.rng === 'function') ? opts.rng : Math.random;
+    const out = { items: {}, rows: [], total: 0, rolled: 0 };
+    if (!R.on || !Array.isArray(fallen)) return out;
+    const keys = Object.keys(R.weights).filter(k => (R.weights[k] | 0) > 0 && (k === 'bane' || (typeof ITEM_RULES !== 'undefined' && ITEM_RULES[k])));
+    const sum = keys.reduce((a, k) => a + (R.weights[k] | 0), 0); if (!sum) return out;
+    fallen.forEach(f => {
+        if (!f) return; out.rolled++;
+        if (rng() >= R.chance) return;
+        let r = rng() * sum, pick = keys[keys.length - 1];
+        for (const k of keys) { r -= R.weights[k] | 0; if (r < 0) { pick = k; break; } }
+        let key = pick, rarity = R.rarity[pick] || 'common';
+        if (pick === 'bane') { key = hqDropBaneFor(f.types); if (!key) { key = 'healPotion'; rarity = R.rarity.healPotion || 'common'; } }
+        if (typeof ITEM_RULES === 'undefined' || !ITEM_RULES[key]) return;
+        out.items[key] = (out.items[key] | 0) + 1; out.total++;
+        out.rows.push({ key, n: 1, name: ITEM_RULES[key].name || key, icon: ITEM_RULES[key].icon || '', rarity, from: f.name || f.race || '', race: f.race || '', cat: hqBagCategoryOf(key) });
+    });
+    /* the same key from two bodies folds to one row × n (the rarest reading wins the label — a bane row is its own key anyway) */
+    const byKey = {}; out.rows.forEach(r => { if (!byKey[r.key]) byKey[r.key] = Object.assign({}, r, { froms: [] }); else byKey[r.key].n++; byKey[r.key].froms.push(r.from); });
+    out.rows = Object.keys(byKey).map(k => byKey[k]).sort((a, b) => (_HQ_BAG_CAT_ORDER.indexOf(a.cat) - _HQ_BAG_CAT_ORDER.indexOf(b.cat)) || a.key.localeCompare(b.key));
+    return out;
+}
 /* THE COMMIT: what the fight did to the party — `ev.units` = [{ partyId, hp, maxHp, mp, maxMp, dead }] off the human seat's units
-   (the board AND the bench); a loss with lossRestore wakes the party treated */
+   (the board AND the bench); a loss with lossRestore wakes the party treated; `ev.drops` (hqEncounterDrops) go into the bag on a WIN */
 function hqPartyAfterMatch(profile, ev) {
     const r = hqPartyRecord(profile); if (!r || !ev) return null;
     const by = {}; (Array.isArray(ev.units) ? ev.units : []).forEach(u => { if (u && u.partyId) by[u.partyId] = u; });
@@ -44957,6 +44999,12 @@ function hqPartyAfterMatch(profile, ev) {
         Object.keys(ev.bag).forEach(k => { const rule = (typeof ITEM_RULES !== 'undefined') ? ITEM_RULES[k] : null; if (rule && !rule.fieldOnly && (ev.bag[k] | 0) > 0) keep[k] = ev.bag[k] | 0; });
         hqBagSet(profile, keep);
     }
+    /* THE SPOILS (2026-09-23): what the fallen dropped goes INTO the bag after the fight's bag came home — a win only */
+    let drops = null;
+    if (ev.won && ev.drops && ev.drops.items && typeof ev.drops.items === 'object') {
+        drops = { items: {}, rows: Array.isArray(ev.drops.rows) ? ev.drops.rows.slice() : [], total: 0, rolled: ev.drops.rolled | 0 };
+        Object.keys(ev.drops.items).forEach(k => { const a = hqBagAdd(profile, k, ev.drops.items[k] | 0); if (a.ok) { drops.items[k] = a.added; drops.total += a.added; } });
+    }
     let restored = false;
     if (!ev.won && HQ_PARTY_RULES.lossRestore) { hqPartyRestore(profile); restored = true; down = 0; }
     /* THE GAUGE CARRIES (2026-09-23): the human seat's gauge at the end of the fight is the next fight's opening gauge (win or lose) */
@@ -44966,7 +45014,7 @@ function hqPartyAfterMatch(profile, ev) {
     }
     r.at = Date.now();
     const leveled = xp.filter(b => b.after.lvl > b.before.lvl).length;
-    return { seen, down, fit: r.members.length - down, restored, total: r.members.length, xp, pool, leveled, partyLevel: hqPartyLevel(profile), gauge: hqPartyGauge(profile) };
+    return { seen, down, fit: r.members.length - down, restored, total: r.members.length, xp, pool, leveled, partyLevel: hqPartyLevel(profile), gauge: hqPartyGauge(profile), drops };
 }
 /* ── FIELD MEDICINE — the party's own heal spells and potions outside a battle ── */
 function hqPartyIsFieldSpell(sp) { return !!(sp && HQ_PARTY_RULES.healKinds.indexOf(sp.kind) >= 0 && (sp.kind === 'revive' || sp.kind === 'selfHeal' || (sp.healAmt != null ? sp.healAmt : sp.heal) > 0)); }
@@ -45111,11 +45159,40 @@ function hqBagItemRow(key, n) {
     const price = r.shopPrice | 0;
     return { key, n: n | 0, name: r.name || key, icon: r.icon || '', desc: r.desc || '', field: HQ_PARTY_RULES.itemKinds.indexOf(key) >= 0, battle: !r.fieldOnly, price, sell: Math.floor(price * HQ_PARTY_RULES.sellBack), max: hqBagCap() || Infinity };
 }
-/* every row in the bag, the stock's order first, then the rest */
-function hqBagList(profile) {
+/* ── THE BAG'S TABS (2026-09-23, the user: "make the bag more organized or sortable by categories / tabs — healing
+   (HP, MP, panacea, revive), banes, and battle items") ── ONE rule sorts every item into a category:
+   hqBagCategoryOf(key) reads the ITEM_RULES row (never a hand list): a heal / mana / revive / cure row is HEALING, a
+   typed bane (baneType other than 'none') is a BANE, everything else (scanner, warp stone, the grenade, the stims) is a
+   BATTLE ITEM. HQ_BAG_TABS is the strip the pause menu draws (ALL first); hqBagTabs(profile) counts each; hqBagList
+   sorts by category, then the shelf's order, and takes { tab } to filter. The battle HUD orders its rows the same way. */
+const HQ_BAG_TABS = [
+    { id: 'all', label: 'ALL', glyph: '🎒', desc: 'Everything in the bag' },
+    { id: 'healing', label: 'HEALING', glyph: '♥', color: '#57d97e', desc: 'HP · MP · Panacea · Revive' },
+    { id: 'battle', label: 'BATTLE ITEMS', glyph: '❖', color: '#7fc8ff', desc: 'Scanner · Warp Stone · Grenade · Stims' },
+    { id: 'banes', label: 'BANES', glyph: '🗡', color: '#ff8a6a', desc: 'Thrown at an enemy of the matching type' },
+];
+const _HQ_BAG_CAT_ORDER = ['healing', 'battle', 'banes'];
+function hqBagCategoryOf(key) {
+    const r = (typeof ITEM_RULES !== 'undefined' && ITEM_RULES[key]) || null; if (!r) return 'battle';
+    if (r.baneType && r.baneType !== 'none') return 'banes';
+    if (r.healPct != null || r.mpPct != null || r.revivePct != null || r.fieldOnly || key === 'panacea' || r.cure || r.cleanse) return 'healing';
+    return 'battle';
+}
+function hqBagTab(id) { return HQ_BAG_TABS.find(t => t.id === id) || HQ_BAG_TABS[0]; }
+/* every row in the bag: category order (healing · battle · banes), then the stock's order, then the rest; { tab } filters */
+function hqBagList(profile, opts) {
     const b = hqBagRecord(profile, false); if (!b) return [];
     const order = HQ_DISPENSARY.stock.slice();
-    return Object.keys(b.items).filter(k => (b.items[k] | 0) > 0).sort((a, c) => { const ia = order.indexOf(a), ic = order.indexOf(c); return (ia < 0 ? 99 : ia) - (ic < 0 ? 99 : ic) || a.localeCompare(c); }).map(k => hqBagItemRow(k, b.items[k]));
+    const tab = (opts && opts.tab && opts.tab !== 'all') ? String(opts.tab) : null;
+    return Object.keys(b.items).filter(k => (b.items[k] | 0) > 0)
+        .map(k => Object.assign(hqBagItemRow(k, b.items[k]), { cat: hqBagCategoryOf(k) }))
+        .filter(r => !tab || r.cat === tab)
+        .sort((a, c) => (_HQ_BAG_CAT_ORDER.indexOf(a.cat) - _HQ_BAG_CAT_ORDER.indexOf(c.cat)) || ((order.indexOf(a.key) < 0 ? 99 : order.indexOf(a.key)) - (order.indexOf(c.key) < 0 ? 99 : order.indexOf(c.key))) || a.key.localeCompare(c.key));
+}
+/* the strip's counts: [{ id, label, glyph, color, desc, n (items), kinds }] — ALL carries the whole bag */
+function hqBagTabs(profile) {
+    const rows = hqBagList(profile);
+    return HQ_BAG_TABS.map(t => { const mine = t.id === 'all' ? rows : rows.filter(r => r.cat === t.id); return Object.assign({}, t, { n: mine.reduce((a, r) => a + r.n, 0), kinds: mine.length }); });
 }
 function hqBagTotal(profile) { return hqBagList(profile).reduce((a, r) => a + r.n, 0); }
 /* THE SHARED BAG (2026-09-21): SET the bag to what a fight left in it (the commit's write; every key ITEM_RULES knows, n ≥ 0) */
@@ -48397,7 +48474,7 @@ if (typeof window !== 'undefined') {
     /* THE LEVELS (2026-09-21) */
     window.HQ_LEVEL_RULES = HQ_LEVEL_RULES; window.HQ_AREA_LEVELS = HQ_AREA_LEVELS; window.XP_CURVE = XP_CURVE; window.xpThreshold = xpThreshold; window.xpLevelFor = xpLevelFor; window.xpToNext = xpToNext;
     window.hqPartyLevel = hqPartyLevel; window.hqPartyXp = hqPartyXp; window.hqPartyLevelGains = hqPartyLevelGains; window.hqPartyGrantXp = hqPartyGrantXp; window.hqPartyXpShare = hqPartyXpShare; window.hqEncounterLevels = hqEncounterLevels; window.hqEncounterGroup = hqEncounterGroup;
-    window.HQ_DISPENSARY = HQ_DISPENSARY; window.hqBagRecord = hqBagRecord; window.hqBagCount = hqBagCount; window.hqBagAdd = hqBagAdd; window.hqBagTake = hqBagTake; window.hqBagList = hqBagList; window.hqBagTotal = hqBagTotal; window.hqBagSet = hqBagSet; window.hqBagForBattle = hqBagForBattle; window.hqBagCap = hqBagCap; window.hqShopStock = hqShopStock; window.hqShopQuote = hqShopQuote; window.hqShopBuyApply = hqShopBuyApply; window.hqShopSell = hqShopSell; window.hqPartyStock = hqPartyStock; window.hqPartyBagItems = hqPartyBagItems; window.hqPartyAutoHeal = hqPartyAutoHeal; window.hqPartyFieldSpells = hqPartyFieldSpells; window.hqPartyFieldTargets = hqPartyFieldTargets; window.hqPartyHealAmount = hqPartyHealAmount; window.hqPartyCast = hqPartyCast; window.hqPartyUseItem = hqPartyUseItem; window.hqPartyFieldItems = hqPartyFieldItems; window.hqPartySpec = hqPartySpec; window.hqPartyGenders = hqPartyGenders; window.hqPartyDefaultJob = hqPartyDefaultJob;
+    window.HQ_DISPENSARY = HQ_DISPENSARY; window.hqBagRecord = hqBagRecord; window.hqBagCount = hqBagCount; window.hqBagAdd = hqBagAdd; window.hqBagTake = hqBagTake; window.hqBagList = hqBagList; window.hqBagTotal = hqBagTotal; window.HQ_BAG_TABS = HQ_BAG_TABS; window.hqBagCategoryOf = hqBagCategoryOf; window.hqBagTab = hqBagTab; window.hqBagTabs = hqBagTabs; window.HQ_DROP_RULES = HQ_DROP_RULES; window.hqDropBaneFor = hqDropBaneFor; window.hqEncounterDrops = hqEncounterDrops; window.hqBagSet = hqBagSet; window.hqBagForBattle = hqBagForBattle; window.hqBagCap = hqBagCap; window.hqShopStock = hqShopStock; window.hqShopQuote = hqShopQuote; window.hqShopBuyApply = hqShopBuyApply; window.hqShopSell = hqShopSell; window.hqPartyStock = hqPartyStock; window.hqPartyBagItems = hqPartyBagItems; window.hqPartyAutoHeal = hqPartyAutoHeal; window.hqPartyFieldSpells = hqPartyFieldSpells; window.hqPartyFieldTargets = hqPartyFieldTargets; window.hqPartyHealAmount = hqPartyHealAmount; window.hqPartyCast = hqPartyCast; window.hqPartyUseItem = hqPartyUseItem; window.hqPartyFieldItems = hqPartyFieldItems; window.hqPartySpec = hqPartySpec; window.hqPartyGenders = hqPartyGenders; window.hqPartyDefaultJob = hqPartyDefaultJob;
     /* THE FIELD stage B — the rasteriser on the cave (Phase 9 Delivery 8, 2026-09-16) */
     window.HQ_FIELD_RULES = HQ_FIELD_RULES; window.hqFieldRimBox = hqFieldRimBox; window.hqEncounterRoomLabel = hqEncounterRoomLabel; window.hqFieldDump = hqFieldDump; window.hqFieldRoomOk = hqFieldRoomOk; window.hqFieldTerrainInfo = hqFieldTerrainInfo; window.hqFieldRasterTerrain = hqFieldRasterTerrain; window.hqFieldTerrainStep = hqFieldTerrainStep; window.hqFieldId = hqFieldId; window.hqFieldParse = hqFieldParse; window.hqFieldRaster = hqFieldRaster; window.hqFieldReach = hqFieldReach;
     window.hqFieldWindow = hqFieldWindow; window.hqFieldBuild = hqFieldBuild; window.hqFieldFixedCells = hqFieldFixedCells; window.hqFieldFixedAt = hqFieldFixedAt; window.hqFieldLayout = hqFieldLayout; window.hqFieldRegister = hqFieldRegister;

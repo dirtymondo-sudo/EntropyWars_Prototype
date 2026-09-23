@@ -418,6 +418,36 @@
         .vic-xp-chip:nth-child(4) { animation-delay: 0.15s; } .vic-xp-chip:nth-child(5) { animation-delay: 0.2s; } .vic-xp-chip:nth-child(6) { animation-delay: 0.25s; }
         @keyframes vicChipPop { from { opacity: 0; transform: translateY(6px) scale(0.8); } to { opacity: 1; transform: none; } }
         .vic-xp-milestone { font-family: 'Cinzel', serif; font-size: 10px; font-weight: 800; letter-spacing: 0.16em; color: #ffd86a; text-shadow: 0 0 10px rgba(255, 200, 80, 0.5); }
+        /* ── THE SPOILS (2026-09-23) — what the fallen dropped: a row per item kind, its rarity, who dropped it,
+              staggered in under the EXPERIENCE card; nothing dropped = one quiet line ── */
+        .vic-drops { display: flex; flex-direction: column; gap: 10px; }
+        .vic-drops:empty { display: none; }
+        .vic-drop-card {
+            background: linear-gradient(168deg, rgba(40, 30, 14, 0.80), rgba(16, 12, 6, 0.90));
+            border-color: rgba(255, 216, 106, 0.40);
+            box-shadow: inset 0 1px 0 rgba(255, 230, 170, 0.16), 0 8px 26px rgba(0, 0, 0, 0.45), 0 0 30px rgba(255, 190, 80, 0.08);
+        }
+        .vic-drop-card.empty { opacity: 0.7; }
+        .vic-drop-card .vic-card-cap { color: #ffd86a; display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+        .vic-drop-total { font-style: normal; color: #7dffa8; letter-spacing: 0.12em; }
+        .vic-drop-rows { display: flex; flex-direction: column; gap: 6px; }
+        .vic-drop-row {
+            display: grid; grid-template-columns: 34px 1fr auto; gap: 2px 10px; align-items: center;
+            padding: 6px 10px; border-radius: 9px;
+            background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 230, 170, 0.14);
+            animation: vicRowIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; animation-delay: var(--d, 0s);
+        }
+        .vic-drop-icon { font-style: normal; font-size: 22px; text-align: center; line-height: 1; }
+        .vic-drop-col { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+        .vic-drop-name { font-family: 'Cinzel', serif; font-size: 12px; font-weight: 800; letter-spacing: 0.08em; color: #fff3d6; }
+        .vic-drop-name em { font-style: normal; margin-left: 6px; color: #ffd86a; font-family: 'IBM Plex Mono', monospace; font-size: 10px; }
+        .vic-drop-from { font-family: 'IBM Plex Mono', monospace; font-size: 8px; letter-spacing: 0.16em; color: #cbbf9c; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .vic-drop-rarity { font-family: 'IBM Plex Mono', monospace; font-size: 8px; letter-spacing: 0.2em; padding: 2px 7px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.25); color: #d8d8d8; }
+        .vic-drop-row.uncommon .vic-drop-rarity { color: #9fe0ff; border-color: rgba(127, 200, 255, 0.55); background: rgba(127, 200, 255, 0.10); }
+        .vic-drop-row.rare .vic-drop-rarity { color: #ffd86a; border-color: rgba(255, 216, 106, 0.7); background: rgba(255, 216, 106, 0.12); text-shadow: 0 0 8px rgba(255, 200, 80, 0.6); }
+        .vic-drop-row.rare { border-color: rgba(255, 216, 106, 0.45); box-shadow: 0 0 14px rgba(255, 190, 80, 0.12); }
+        .vic-drop-none { font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: 0.2em; color: #a89c80; padding: 4px 2px; }
+        @media (prefers-reduced-motion: reduce) { .vic-drop-row { animation: none; } }
         .vic-xp-tag { font-family: 'IBM Plex Mono', monospace; font-size: 8.5px; letter-spacing: 0.18em; color: var(--vic-dim); }
         .vic-xp-flash {
             position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%) scale(0.6);

@@ -8629,3 +8629,28 @@ now, not only a map that needed the sRGB flip; `_cvClearModel` disposes them). `
 export as authored. The misc / door-kit / prop paths were already Lambert (`_hzMiscKit` picks, `_hqPropMatPick`). Unseen
 live (RULE #1c): the stage's tone against the old — `CV_BAKE_EMISSIVE` is the edit if a bake reads too dark (raise) or flat
 (lower); the creator base's own shells set their roughness after this and are untouched.
+
+## THE BAG'S TABS + NO RESTOCK + THE SPOILS (the story-mode inventory, 2026-09-23, local delivery)
+The user's three: "a crap ton of items in my bag — don't restock between battles; organize the bag by tabs
+(healing / banes / battle items); enemies sometimes drop items on the victory screen, rarities, no per-unit
+drop rates". **NO RESTOCK** (the cause, read off the code): battle.js `syncPartyBuildsFromInputs` gives every
+EMPTY loadout a potion + a mana potion + a panacea (the forge's courtesy), `hqPartyForLaunch` hands every
+member EMPTY pockets on purpose, and `_partyBagBind` merged "what the unit was built with" into the shared bag —
+three items a member a fight. Now the staple grant SKIPS the bag's seat (`_bagSeat` off `state.partyBag`, set
+before the build) and the bind hands a unit the bag and adds NOTHING. RULE: the bag is the ONLY source of a
+story fight's items — never merge a built unit's items into it. **THE BAG'S TABS**: data.js `HQ_BAG_TABS`
+(all · healing · battle · banes) + **`hqBagCategoryOf(key)`** = ONE rule off the ITEM_RULES row (a typed
+bane → banes; heal / mana / revive / cure / field-only / panacea → healing; else battle — the grenade's
+`baneType: 'none'` is a battle item); `hqBagList(profile, { tab })` sorts by category then the shelf's order
+and carries `cat`; `hqBagTabs(profile)` the counts. map.js `_hqPauseBagHtml` draws the strip
+(`data-party-act="bagtab:<id>"`, `_hqPause.bagTab`), hud.js `_hrlgItemBlades` orders the battle rows the
+same way and paints every row its category's colour. **THE SPOILS**: data.js `HQ_DROP_RULES` = `chance` (0.6,
+the SAME for every unit — never a per-race table), `weights` (healPotion 42 · manaPotion 30 · panacea 16 ·
+bane 8 · reviveTonic 4), `rarity` (common / uncommon / rare); **`hqEncounterDrops(fallen, { rng })`** (pure:
+[{ race, name, types }] → { items, rows, total }; a bane is the fallen unit's OWN first type with a bane row,
+none → a potion); battle.js's commit rolls `_encFallenEnemies(seat)` on a WIN and hands `drops` to
+`hqPartyAfterMatch`, which puts them in the bag AFTER the fight's bag came home (a loss = nothing) and returns
+`drops`; the debrief's REWARDS sheet wears THE SPOILS card under THE EXPERIENCE (`#vicDrops`, `_vicBuildDrops`,
+styles-cinematic.css "THE SPOILS"); the return toast counts them. Tune the table, never the roller.
+`npm test` runs hq-party.test.js (27). Ship data.js to R2 AND Render. UNSEEN LIVE (RULE #1c): the tab strip's
+fit on the pause frame, the card's stagger, the category colours on the blades.
