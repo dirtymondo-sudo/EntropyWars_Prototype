@@ -8556,3 +8556,22 @@ height was never the problem, the field already carried it. RULE: a new "where d
 `_fieldSurfaceY` (or `tileTopY` / `surfaceYAt`), never `getBaseHeightAt × ELEV_STEP_RATIO`. `npm test` runs seamless-field.test.js (31).
 SEAMLESS_FIELD_PLAN §7 has the entry. UNSEEN LIVE (RULE #1c): the foot contact on the treads during a walk, a flyer's bob over a dais,
 the strike leap's landing on a slope.
+
+## THE FLAT RINGS + THE CLEAN BOOT + THE BOOT DIAGNOSTIC (2026-09-23, local delivery)
+**THE FLAT RINGS** (three-renderer.js `_fieldDrapeRing`): under a true-ground field the reticle and the
+selected-tile marker are a FLAT PLANE again — lifted to the HIGHEST ground sampled under the ring's footprint
+(capped half a tile off the unit's top) plus `RING_FIELD_LIFT × HL_FIELD_LIFT`; only the tile highlights
+conform to the slope (the user's rule). The grid geometry stays (`RING_FIELD_SEGS` is one segment now).
+**THE CLEAN BOOT** (battle.js `prepareBattleStateFromCurrentBuilds`, the block after `_finalizing = false` —
+every launch path runs it): the loop's TRANSIENT latches are dropped on every boot — `_actionExecuting` +
+its watchdog, `_blitzActiveUnitId` (a stale id parked the stall watchdog in its "active unit" branch, so a
+match that never activated was never kicked), `_prevBlitzActivePlayer`, `aiThinking`, `pendingTarget`,
+`uiDialog` (+ the overlay), the walk flag, the HUD's `_hrlgHoldUntil`, the arrival's timer + body classes,
+the camera's seed hold, the AI safety / kick timers. The user's "second battle: no menu, no enemy, no
+clicks" could NOT be reproduced headlessly (four endings, two launch paths — the two-fight probes in
+PLAYTEST_NOTES "THE SECOND FIGHT"); this is the hardening. **THE BOOT DIAGNOSTIC** (`_afterVSSplash`): ten
+seconds after the boot completes with no unit activated, ONE `[BOOT]` console line names every gate the
+turn loop reads (`actionExecuting · roundAdvanceInProgress · pendingReplace · uiDialog · aiThinking ·
+walkAnim · dying · cinematic · cameraBusy · bootPending · simul · spellLab · autoPlayers · controllers ·
+order`) and kicks `maybeAdvanceTurn` once unless a dialog / a cinematic / a seat pick owns the frame — READ
+THAT LINE FIRST on the next "the fight starts but nothing happens" report.

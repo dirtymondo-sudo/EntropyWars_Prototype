@@ -12332,7 +12332,7 @@ const ThreeRenderer = (function () {
         for (var _rpI = 0; _rpI < _rpStr.length; _rpI++) _rpHash = (_rpHash * 31 + _rpStr.charCodeAt(_rpI)) % 997;
         /* THE RINGS ABOVE (2026-09-23): the reticle draws AFTER every tile highlight (renderOrder 4 — the plates are 0 / 2, neither
            writes depth) and, under a true-ground field, is a GRID that _fieldRingsTick drapes on the room's ground above the plates */
-        var _retSegs = (typeof _fieldGroundLive === 'function' && _fieldGroundLive()) ? RING_FIELD_SEGS : 1;
+        var _retSegs = 1;   // rev 2: the ring is a flat plane on a field too (_fieldDrapeRing lifts it, never bends it)
         var reticle = new THREE.Mesh(
             new THREE.PlaneGeometry(ts * RETICLE_SPAN, ts * RETICLE_SPAN, _retSegs, _retSegs),
             _makeTeamReticleMaterial(ringCol, (_rpHash % 63) * 0.1,
@@ -12361,7 +12361,7 @@ const ThreeRenderer = (function () {
             /* The tile UNDER the current unit: a white glowing outline, near-
                empty body — the default "this is who's acting" marker. Rides
                the unit group so walks/knockbacks carry it automatically. */
-            var _selSegs = (typeof _fieldGroundLive === 'function' && _fieldGroundLive()) ? RING_FIELD_SEGS : 1;
+            var _selSegs = 1;   // rev 2: flat on a field too
             var selTile = new THREE.Mesh(
                 new THREE.PlaneGeometry(ts * 0.96, ts * 0.96, _selSegs, _selSegs),
                 _makeHlMaterial(0xffffff, 0.9, 1.5, 0, { fill: 0.05 })
@@ -12482,19 +12482,30 @@ const ThreeRenderer = (function () {
         if (sel) _fieldDrapeRing(sel, ts, top, lift, cap);
         g._ew_ringDraped = true;
     }
+    /* rev 2 (2026-09-23, the user: "the vital ring should stay parallel with the ground like the white one — only the
+       tile highlights conform; but high enough that it is not cut off"): the ring is a FLAT PLANE at the HIGHEST ground
+       under its footprint (the same sampler, every vertex read, capped half a tile off the unit's top) + the lift — it
+       never bends with the slope and never sinks under a bulge beside the feet. The grid stays (a flat grid costs nothing). */
     function _fieldDrapeRing(mesh, ts, top, lift, cap) {
-        var geo = mesh.geometry, pos = geo && geo.attributes && geo.attributes.position; if (!pos || pos.count < 9 || typeof THREE === 'undefined') return;
+        var geo = mesh.geometry, pos = geo && geo.attributes && geo.attributes.position; if (!pos || pos.count < 4 || typeof THREE === 'undefined') return;
         _frM = _frM || new THREE.Matrix4(); _frInv = _frInv || new THREE.Matrix4(); _frV = _frV || new THREE.Vector3();
         if (!mesh._ew_drapeOrig || mesh._ew_drapeOrig.length !== pos.array.length) mesh._ew_drapeOrig = new Float32Array(pos.array);
         mesh.updateWorldMatrix(true, false);
         var mw = mesh.matrixWorld; _frInv.copy(mw).invert();
-        var o = mesh._ew_drapeOrig, v = _frV;
-        for (var i = 0, n = pos.count; i < n; i++) {
+        var o = mesh._ew_drapeOrig, v = _frV, i, n = pos.count;
+        /* THE PLANE: the highest ground sample under the ring, capped */
+        var hi = top;
+        for (i = 0; i < n; i++) {
             v.set(o[i * 3], o[i * 3 + 1], o[i * 3 + 2]).applyMatrix4(mw);
             var s = _fieldGroundSampleAt(v.x, v.z, Math.floor(v.x / ts), Math.floor(v.z / ts));
-            var y = (s === null || s === undefined) ? top : s;
-            if (y > top + cap) y = top + cap; else if (y < top - cap) y = top - cap;
-            v.y = y + lift; v.applyMatrix4(_frInv); pos.setXYZ(i, v.x, v.y, v.z);
+            if (s === null || s === undefined) continue;
+            if (s > hi) hi = s;
+        }
+        if (hi > top + cap) hi = top + cap;
+        var planeY = hi + lift;
+        for (i = 0; i < n; i++) {
+            v.set(o[i * 3], o[i * 3 + 1], o[i * 3 + 2]).applyMatrix4(mw);
+            v.y = planeY; v.applyMatrix4(_frInv); pos.setXYZ(i, v.x, v.y, v.z);
         }
         pos.needsUpdate = true; try { geo.computeBoundingSphere(); } catch (e) {}
         mesh._ew_draped = true;

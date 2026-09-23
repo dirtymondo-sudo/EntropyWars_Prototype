@@ -39962,6 +39962,32 @@
 
         function prepareBattleStateFromCurrentBuilds() {
             _finalizing = false;
+            /* THE CLEAN BOOT (2026-09-23 — the user: "I can never do a second battle without refreshing the
+               page: it starts, the menu never pops up, the enemy never acts, I can't click anywhere"). Every
+               engine-side latch a match can leave ARMED when it ends mid-sequence — the previous match's active
+               unit (a stale id makes the stall watchdog take its "active unit" branch and never fire), an
+               action still executing (its clear sat behind a wait that returns once a winner is set), a dialog
+               that never closed (a secondary-job pick, a trade), the HUD's menu hold, the walk flag, the AI's
+               thinking flag, the arrival's timer, the camera's held swoop — is dropped HERE, on every boot
+               (an encounter, a console crossing, Practice, Online, a rematch all run this function). Nothing
+               here is per-match data (the party, the map, the mode); it is the loop's transient state only. */
+            try {
+                state._actionExecuting = false;
+                if (state._actionExecutingWatchdog) { clearTimeout(state._actionExecutingWatchdog); state._actionExecutingWatchdog = null; }
+                state._blitzActiveUnitId = null;
+                state._prevBlitzActivePlayer = null;
+                state.aiThinking = false;
+                state.pendingTarget = null;
+                if (state.uiDialog) { state.uiDialog = null; try { if (typeof renderUiDialog === 'function') renderUiDialog(); } catch (e) {} }
+                if (typeof _setWalkAnimActive === 'function') _setWalkAnimActive(false);
+                if (typeof _walkAnimUnitId !== 'undefined') _walkAnimUnitId = null;
+                if (typeof window !== 'undefined') window._hrlgHoldUntil = 0;
+                if (typeof _encArrivalTimer !== 'undefined' && _encArrivalTimer) { clearTimeout(_encArrivalTimer); _encArrivalTimer = null; }
+                if (typeof document !== 'undefined' && document.body) { document.body.classList.remove('enc-arrival'); document.body.classList.remove('enc-arrived'); }
+                if (typeof ThreeCamera !== 'undefined' && ThreeCamera && ThreeCamera.seedHold) ThreeCamera.seedHold(false);
+                if (typeof clearAiSafetyTimer === 'function') clearAiSafetyTimer();
+                if (state._runComputerTurnTimer) { clearTimeout(state._runComputerTurnTimer); state._runComputerTurnTimer = null; }
+            } catch (e) { console.warn('[BOOT] the clean boot threw (continuing)', e); }
             /* Any lingering victory-podium staging must release its camera
                drift + unit mutations before the new match builds its units. */
             _teardownVictoryPodium();
@@ -42731,6 +42757,32 @@
                 if (window._ewDeferRecovery && window._ewDeferRecovery('battle-boot', () => _afterVSSplash())) return;
 
             _matchBootPendingSince = 0;   // boot chain complete — watchdogs may drive again
+            /* THE BOOT DIAGNOSTIC (2026-09-23): ten seconds after the boot chain completes, if no unit has
+               activated yet, name every gate the turn loop reads in ONE console line (read that first on any
+               "the fight starts but nothing happens" report) and, unless a dialog or a cinematic owns the
+               frame, kick the loop once. The stall watchdog covers the rest (it can, now that a stale active
+               id no longer parks it in its "active unit" branch — see THE CLEAN BOOT). */
+            try {
+                const _bootN = state.matchNumber;
+                setTimeout(() => {
+                    try {
+                        if (state.phase !== 'battle' || state.winner || state.matchNumber !== _bootN || state._blitzActiveUnitId) return;
+                        const gates = {
+                            phase: state.phase, gameState: state.gameState, round: state.round, activePlayer: state.activePlayer,
+                            actionExecuting: !!state._actionExecuting, roundAdvanceInProgress: !!_roundAdvanceInProgress,
+                            pendingReplace: !!state._gauntletPendingReplace, uiDialog: state.uiDialog ? state.uiDialog.type : null,
+                            aiThinking: !!state.aiThinking, walkAnim: !!_walkAnimActive, dying: state.units.some(u => u._dying),
+                            cinematic: (typeof isCinematicPresent === 'function') ? isCinematicPresent() : null,
+                            cameraBusy: !!(camera && camera.isBusy && camera.isBusy()), bootPending: !!_matchBootPendingSince,
+                            simul: (typeof window._isSimulMode === 'function') ? window._isSimulMode() : null,
+                            spellLab: !!state._spellLabMode, autoPlayers: state.autoPlayers || null, controllers: state.controllers || null,
+                            order: (state._blitzTurnOrderIds || []).length, units: state.units.length, encounter: !!_encRun(),
+                        };
+                        console.warn('[BOOT] no unit has activated 10 s after the match booted — the gates:', JSON.stringify(gates));
+                        if (!state.uiDialog && !gates.cinematic && !gates.pendingReplace) { console.warn('[BOOT] kicking the turn loop once'); maybeAdvanceTurn(); }
+                    } catch (e) {}
+                }, 10000);
+            } catch (e) {}
 
             if (mpMode.hasFlags) {
                 /* Place flags at the center of each team's spawn zone */
