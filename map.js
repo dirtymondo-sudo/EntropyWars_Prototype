@@ -734,6 +734,19 @@
             /* OCCAM'S BARBERSHOP (Room 1287, 2026-09-11): the chair's pick on
                the profile (data.js hqAvatarPref → door.hq.avatar) — 'player'
                is the default; a 'race' whose model is missing falls through */
+            /* THE LEAD (2026-09-23, the user: "the unit the player controls and moves around with should be whichever unit is in
+               the first party slot"): slot 1 of THE PARTY is the walker. The officer's own row (`you`) keeps the chair's / the
+               mirror's rules below; any other member walks as its vessel (a look on it rides too). */
+            try {
+                const lead = (typeof window.hqPartyLeadAvatar === 'function') ? window.hqPartyLeadAvatar(profile) : null;
+                if (lead && !lead.you && ov !== 'vessel' && typeof getRace3DModel === 'function') {
+                    if (lead.appearance && typeof getCharacterAppearanceModel === 'function' && getCharacterAppearanceModel(lead.race, lead.gender, lead.appearance)) return { race: lead.race, gender: lead.gender, appearance: lead.appearance, lead: lead.id };
+                    if (getRace3DModel(lead.race, lead.gender)) return { race: lead.race, gender: lead.gender, lead: lead.id };
+                    const alt = lead.gender === 'male' ? 'female' : 'male';
+                    if (getRace3DModel(lead.race, alt)) return { race: lead.race, gender: alt, lead: lead.id };
+                    console.warn('[HQ] the lead ' + lead.race + ' has no rig — the officer walks instead');
+                }
+            } catch (e) { console.warn('[HQ] the lead could not be read', e); }
             const pref = (typeof window.hqAvatarPref === 'function') ? window.hqAvatarPref(profile) : { mode: 'player' };
             const mode = (ov === 'vessel') ? 'vessel' : pref.mode;
             if (mode === 'agent') return { race: 'men in black', gender: 'male' };
@@ -1608,7 +1621,7 @@
         /* is this member a legal TARGET for the armed action? (a swap: any other slot but the officer's; a cast / an item: data.js's rule) */
         function _hqPauseTargetOk(arm, m, rec, units) {
             if (!arm || !m) return false;
-            if (arm.kind === 'swap') return m.id !== arm.from && !m.you;
+            if (arm.kind === 'swap') return m.id !== arm.from;   // THE LEAD (2026-09-23): slot 1 is anyone's — the officer swaps out like any unit
             if (arm.kind === 'cast') { const sp = arm.spell; if (!sp) return false; if (sp.kind === 'healAll' || sp.kind === 'selfHeal') return false; return (window.hqPartyFieldTargets(_hqProfile(), units, arm.from, sp) || []).some(t => t.id === m.id); }
             if (arm.kind === 'item') { const v = _hqPauseVitals(m, units[m.id]); return _hqPauseItemOk(arm.key, v); }
             return false;
@@ -1637,7 +1650,7 @@
                 + `<span class="hq-pp-vit"><span class="hq-pp-vbar mp"><i style="width:${(v.mpPct * 100).toFixed(1)}%"></i></span><em>MP ${v.mp} / ${v.mpMax}</em></span>`
                 + _hqPauseXpRow(m)
                 + `<small>${_hqPauseTypeChips(u ? u.types : [])}</small></span>`
-                + `<span class="hq-pp-slot">${shift === 1 ? '1ST' : '2ND'} · ${String(i + 1).padStart(2, '0')}</span>`
+                + `<span class="hq-pp-slot">${i === 0 ? 'LEAD · ' : ''}${shift === 1 ? '1ST' : '2ND'} · ${String(i + 1).padStart(2, '0')}</span>`
                 + (arm ? '' : _hqPauseCardQuickHtml(m, rec, units, v, u))
                 + `</div>`;
         }
@@ -1647,7 +1660,7 @@
         function _hqPauseCardQuickHtml(m, rec, units, v, u) {
             const id = _hqEsc(m.id);
             let h = '<span class="hq-pp-quick">';
-            h += m.you ? '' : `<button class="hq-btn hq-btn-xs" data-party-act="swap:${id}" title="Trade slots — a shift change">⇄ SWAP</button>`;
+            h += `<button class="hq-btn hq-btn-xs" data-party-act="swap:${id}" title="Trade slots — a shift change; slot 1 is THE LEAD, the one you walk the building as">⇄ SWAP</button>`;
             h += m.you ? '' : `<button class="hq-btn hq-btn-xs danger" data-party-act="relieve:${id}" title="Off duty — back on call">RELIEVE</button>`;
             /* the heal spells */
             const field = (typeof window.hqPartyFieldSpells === 'function') ? window.hqPartyFieldSpells(u, m) : [];
@@ -1814,7 +1827,7 @@
                     return `<div class="hq-pp-oc"><b>${_hqEsc(String(o.label).toUpperCase())}</b><i>${_hqEsc(o.cls)}</i><span>${gs}</span></div>`;
                 }).join('') + `</div>`;
             }
-            html += `<p class="hq-panel-note">Click a member for the sheet — SWAP a slot, RELIEVE them, or USE a heal spell or a potion on the party (FIELD MEDICINE: the caster's own MP, no board). Health carries between encounters; a member at 0 stays DOWN until a revive or THE COT in Medical (Room 1111), which rests the whole party for free. An EXIT (a loss) wakes the party treated.</p>`;
+            html += `<p class="hq-panel-note">Click a member for the sheet — SWAP a slot (slot 1 is THE LEAD: whoever stands there is the one you walk the building as), RELIEVE them, or USE a heal spell or a potion on the party (FIELD MEDICINE: the caster's own MP, no board). Health carries between encounters; a member at 0 stays DOWN until a revive or THE COT in Medical (Room 1111), which rests the whole party for free. An EXIT (a loss) wakes the party treated.</p>`;
             return html;
         }
         function _hqPauseMemberHtml(i) {
@@ -1854,9 +1867,9 @@
             if (u) html += `<div class="hq-chips">${_hqPauseTypeChips(u.types)}<i class="hq-chip dim">${_hqEsc(String(u.faction || '').toUpperCase())}</i>${u.zodiac ? `<i class="hq-chip dim">${_hqEsc(String(u.zodiac).toUpperCase())}</i>` : ''}</div>`;
             else html += `<p class="hq-panel-note">The sheet could not be rebuilt from the record (a retired vessel or job?). The bare loadout is below.</p>`;
             /* THE DUTY ROSTER: swap the slot (a shift change), relieve (never the officer) */
-            html += `<div class="hq-pp-duty"><b>DUTY</b><span>${v.down ? 'DOWN — A REVIVE OR THE COT IN MEDICAL BRINGS THEM BACK' : idx < HQ_PARTY_RULES.shift ? 'FIRST SHIFT · SENT OUT FIRST' : 'SECOND SHIFT · ON THE BENCH'}</span>`
+            html += `<div class="hq-pp-duty"><b>DUTY</b><span>${v.down ? 'DOWN — A REVIVE OR THE COT IN MEDICAL BRINGS THEM BACK' : idx === 0 ? 'THE LEAD · SLOT 1 · YOU WALK THE BUILDING AS THEM' : idx < HQ_PARTY_RULES.shift ? 'FIRST SHIFT · SENT OUT FIRST' : 'SECOND SHIFT · ON THE BENCH'}</span>`
                 + `<div class="hq-panel-actions">`
-                + (m.you ? `<button class="hq-btn hq-btn-sm" disabled title="You lead the first shift">⇄ SWAP SLOT</button>` : `<button class="hq-btn hq-btn-sm" data-party-act="swap:${_hqEsc(m.id)}">⇄ SWAP SLOT</button>`)
+                + `<button class="hq-btn hq-btn-sm" data-party-act="swap:${_hqEsc(m.id)}" title="Trade slots — slot 1 is THE LEAD, the one you walk the building as">⇄ SWAP SLOT</button>`
                 + (m.you ? `<button class="hq-btn hq-btn-sm" disabled title="You cannot relieve yourself">RELIEVE</button>` : `<button class="hq-btn hq-btn-sm danger" data-party-act="relieve:${_hqEsc(m.id)}">RELIEVE OF DUTY</button>`)
                 + `</div></div>`;
             html += `</div>`;
@@ -2059,7 +2072,10 @@
                 const arm = P.arm; if (!arm || arm.kind !== 'swap') return;
                 const r = _hqPartyTx(p => window.hqPartySwap(p, arm.from, a === 'end' ? window.hqPartyRecord(p).members.length : a));
                 P.arm = null;
-                if (r && r.ok) { say(`<b>SWAPPED</b> THE ORDER IS THE SHIFT`); try { playSfx('uiButtonConfirm'); } catch (e) {} }
+                if (r && r.ok) {
+                    say(r.leadChanged ? `<b>SWAPPED</b> ${nameOf(r.lead)} IS THE LEAD — YOU WALK THE BUILDING AS THEM` : `<b>SWAPPED</b> THE ORDER IS THE SHIFT`); try { playSfx('uiButtonConfirm'); } catch (e) {}
+                    if (r.leadChanged) { try { if (typeof window._hqRefreshAvatar === 'function') window._hqRefreshAvatar(); } catch (e) {} }   // THE LEAD (2026-09-23): slot 1 is the walker — the rig swaps in place under the pause menu
+                }
                 else say(`<b>NO</b> ${r && r.reason === 'you' ? 'YOU LEAD THE FIRST SHIFT' : 'THAT SWAP IS NOT ALLOWED'}`, true);
             }
             else if (verb === 'cast') {
@@ -6276,7 +6292,7 @@
             state.isRankedMatch = false;
             state.trainingMatch = false; state.storyLevel = 0;
             state.reserves = false;
-            state.noRespawns = false; state.partyBag = null;
+            state.noRespawns = false; state.partyBag = null; state.partyGauge = 0;
             state._customRoundLimit = 0;
             state._mdRun = null;
             state._mdPhase = 'floor';
@@ -8158,6 +8174,7 @@
                mode"): a party fight carries the party's ONE bag — battle.js binds every human-seat unit's `items` to it at the
                match start (no pockets, no slot cap) and the commit brings it home (hqPartyAfterMatch's `bag`) */
             state.partyBag = (_encParty_ && _encPeek.bag && typeof _encPeek.bag === 'object') ? { seat: 1, items: Object.assign({}, _encPeek.bag) } : null;
+            state.partyGauge = (_encParty_ && Number.isFinite(+_encPeek.gauge)) ? Math.max(0, +_encPeek.gauge | 0) : 0;   // THE GAUGE CARRIES (2026-09-23): the record's gauge is the fight's opening gauge (battle.js startMatch)
             state.noRespawns = _encParty_;
             state.reserves = _reservesLaunch;
             if (gm.id === 'gauntlet' || _reservesLaunch) {
@@ -8303,7 +8320,7 @@
             state.isRankedMatch = false;
             state.trainingMatch = false;
             state.reserves = false;
-            state.noRespawns = false; state.partyBag = null;
+            state.noRespawns = false; state.partyBag = null; state.partyGauge = 0;
             /* THE STORY LEVEL (2026-09-21, the user: "a new profile still starts me at level 100"): a crossing filed from
                the BUILDING (story scope — the console, the marker's terminal, DISPATCH's desk) builds EVERY unit at THE
                PARTY LEVEL (data.js hqPartyLevel — the first shift's mean, 5 on a fresh profile; map.js createUnit's cap
@@ -21201,7 +21218,7 @@
             state.isRankedMatch = false;
             state.trainingMatch = false; state.storyLevel = 0;
             state.reserves = false;
-            state.noRespawns = false; state.partyBag = null;
+            state.noRespawns = false; state.partyBag = null; state.partyGauge = 0;
 
             if (typeof MULTIPLAYER_MODES !== 'undefined') {
                 state.activeMultiplayerMode = 'arena';

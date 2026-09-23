@@ -17263,7 +17263,9 @@
                                     /* THE SHARED BAG (2026-09-21): what the fight left in the bag goes home whole (never per unit — every unit's `items` IS the bag) */
                                     const bagHome = _partyBagOn() ? Object.assign({}, state.partyBag.items) : null;
                                     if (bagHome) vit.forEach(v => { delete v.items; });
-                                    if (vit.length) partyRes = hqPartyAfterMatch(p, { won, units: vit, xpPool, bag: bagHome });
+                                    /* THE GAUGE CARRIES (2026-09-23): the human seat's Entropy Gauge at the end of the fight goes home on the record */
+                                    let gaugeHome = null; try { gaugeHome = getEntropyGauge(seat); } catch (e) { gaugeHome = null; }
+                                    if (vit.length) partyRes = hqPartyAfterMatch(p, { won, units: vit, xpPool, bag: bagHome, gauge: gaugeHome });
                                 }
                             } catch (e) { console.warn('[HQ] the party record failed', e); }
                             PS.saveProfile(idx, p);
@@ -32428,6 +32430,14 @@
                 unit._lvlDlgSuppress = false;
                 // Grow max HP/MP to the new level (stats are recompute-from-base).
                 _recomputeStatsForLevel(unit, newLevel);
+                /* THE LEVEL'S REST (2026-09-23, the user: "leveling up should restore health and mana all the way"):
+                   a level-up is a full heal — HP and MP to the new max, on the board, for every progression mode
+                   (data.js HQ_LEVEL_RULES.levelHeal; the ledger does the same at the debrief) */
+                let _lvHealed = false;
+                if (!unit.dead && (typeof HQ_LEVEL_RULES === 'undefined' || HQ_LEVEL_RULES.levelHeal !== false)) {
+                    unit.hp = unit.maxHp || unit.hp; unit.mp = unit.maxMp || unit.mp; _lvHealed = true;
+                    try { if (typeof window.RenderBus !== 'undefined' && window.RenderBus && typeof window.RenderBus.emit === 'function') window.RenderBus.emit('unit:healed', { unit }); } catch (e) {}
+                }
                 playSfx('levelUp');
                 if (!unit.dead) _vfxLevelUp(unit.x, unit.y);
 
@@ -32444,6 +32454,7 @@
                         `<span class="dlg-levelup" style="font-size:15px">HP ${_gain(dHp)} · MP ${_gain(dMp)}</span>`,
                         `<span class="dlg-levelup" style="font-size:15px">ATK ${_gain(dAtk)} · M.ATK ${_gain(dInt)} · DEF ${_gain(dDef)} · M.DEF ${_gain(dMdef)}</span>`,
                     ];
+                    if (_lvHealed) dlgLines.push(`<span class="dlg-levelup" style="font-size:14px">♥ HP AND MP FULLY RESTORED</span>`);
                     const _newSpells = (unit.spells || []).filter(Boolean)
                         .map(s => s.name).filter(n => !_spellsBefore.includes(n));
                     for (const n of _newSpells) {
@@ -42632,13 +42643,16 @@
                 }
             } catch (e) {}
 
-            if (!_encMatch) state.partyBag = null;   // THE SHARED BAG rides an encounter only — a plain match never wears one
+            if (!_encMatch) { state.partyBag = null; state.partyGauge = 0; }   // THE SHARED BAG + THE CARRIED GAUGE ride an encounter only — a plain match never wears them
             _partyBagBind();
             const mpMode = getActiveMultiplayerMode();
             state.matchKills = { 1: 0, 2: 0 };
             state.matchScores = { 1: 0, 2: 0 };
             state._arenaNexusControl = { 1: 0, 2: 0 };
             state.entropyGauge = { 1: 0, 2: 0 };
+            /* THE GAUGE CARRIES (2026-09-23): a party fight opens at the gauge the last one ended on (map.js _msConfirm files
+               state.partyGauge off the party record; data.js hqPartyGauge) — the human seat's alone, pinned at full if it was */
+            if ((state.partyGauge | 0) > 0) { const _gs = (state.partyBag && state.partyBag.seat) || 1; state.entropyGauge[_gs] = Math.max(0, Math.min(ENTROPY_GAUGE_MAX, state.partyGauge | 0)); }
             // Simul mode: never inherit a stale plan/resolve phase from a
             // previous (possibly aborted) match — it would deadlock the boot.
             state._simulPhase = null;

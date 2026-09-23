@@ -4527,6 +4527,7 @@
                     /* training match (instant CPU turns) is offline-only */
                     trainingMatch: 1,
                     storyLevel: 1,   // the story level is the host's build-time input (VS-CPU); online is scope 'all'
+                    partyGauge: 1,   // THE GAUGE CARRIES (2026-09-23): a story fight's opening gauge — VS-CPU only
                     partyBag: 1,     // THE SHARED BAG (2026-09-21): a story fight's bag — VS-CPU only
                     _aiTurbo: 1,
                     _preTurboVisualPrefs: 1,

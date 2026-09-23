@@ -4411,6 +4411,7 @@
                on while an AI unit is active (anims + camera off, delays ×64)
                and back off for the human's units. Match-select CPU TEMPO. */
             trainingMatch: false,
+            partyGauge: 0,   // THE GAUGE CARRIES (2026-09-23): the party record's Entropy Gauge a story fight opens at (battle.js startMatch); 0 = none
             partyBag: null,  // THE SHARED BAG (2026-09-21): { seat, items } in a story fight — battle.js _partyBagBind makes every human-seat unit's items THAT object
             storyLevel: 0,   // THE STORY LEVEL (2026-09-21): a crossing filed from the building builds every unit at THE PARTY LEVEL (map.js _msConfirm → createUnit's cap branch); 0 = the PvP cap
             _aiTurbo: false,

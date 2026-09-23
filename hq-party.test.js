@@ -81,14 +81,18 @@ test('ENLIST / RELIEVE / SWAP: the first free slot, one vessel per race, only th
     const oc = g('hqPartyOnCall')(p).map(o => o.race);
     assert.ok(oc.includes('marksman') && oc.includes('werewolf') && !oc.includes('knight') && !oc.includes('door agent'), 'ON CALL = the unlocked not on the books');
     const you = S().members[0], knight = S().members.find(m => m.meta.race === 'knight'), wiz = S().members.find(m => m.meta.race === 'wizard');
-    assert.equal(rl(p, you.id).reason, 'you'); assert.equal(sw(p, knight.id, you.id).reason, 'you'); assert.equal(sw(p, you.id, knight.id).reason, 'you');
-    assert.equal(sw(p, knight.id, wiz.id).ok, true, 'a swap across the line is a shift change');
+    assert.equal(rl(p, you.id).reason, 'you', 'the officer is never relieved');
+    /* THE LEAD (2026-09-23): slot 1 is anyone's — the officer swaps out of it like any unit, and the result says the lead changed */
+    const s1 = sw(p, knight.id, you.id); assert.equal(s1.ok, true); assert.equal(s1.leadChanged, true); assert.equal(s1.lead, knight.id);
+    assert.equal(S().members[0].id, knight.id, 'the knight is THE LEAD'); assert.equal(S().members.find(m => m.you).id, you.id, 'the officer keeps YOU wherever they stand');
+    const s2 = sw(p, you.id, knight.id); assert.equal(s2.ok, true); assert.equal(s2.leadChanged, true); assert.equal(s2.lead, you.id);
+    const s3 = sw(p, knight.id, wiz.id); assert.equal(s3.ok, true, 'a swap across the line is a shift change'); assert.equal(s3.leadChanged, false);
     assert.ok(S().second.some(m => m.id === knight.id) && S().first.some(m => m.id === wiz.id));
     assert.equal(rl(p, knight.id).ok, true); assert.equal(S().members.length, 7); assert.ok(!S().members.some(m => m.id === knight.id));
     const grey = S().members.find(m => m.meta.race === 'grey');
     assert.equal(sw(p, wiz.id, S().members.length).ok, true, 'a member and an empty slot: to the end of the order');
     assert.equal(S().members[S().members.length - 1].id, wiz.id); assert.ok(grey);
-    assert.equal(S().members[0].you, true, 'the officer never moved');
+    assert.equal(S().members[0].you, true, 'the officer is back in slot 1');
 });
 
 test('THE FIT + THE LAUNCH: the fit of the first shift, then the fit of the second; a down member stays home; the vitals + the id ride the identity; nobody fit → no launch', () => {
@@ -214,7 +218,7 @@ test('THE SOURCE SITES: the engine (no respawns, the bench fills a seat, the car
     assert.ok(MP.includes("while (!(party && party.exact) && builds.length < n) {"), 'an exact party is never padded');
     assert.ok(MP.includes("if (pf && pf.total > 0 && !pf.ready) { _hqToast('<b>THE PARTY IS DOWN</b>"), 'nobody fit → no fight');
     /* the commit writes the party home by id (the board and the bench) */
-    assert.ok(BT.includes("if (vit.length) partyRes = hqPartyAfterMatch(p, { won, units: vit, xpPool, bag: bagHome });") && BT.includes("(state.units || []).concat(benchBodies)"), 'battle.js: the commit (+ THE POOL, 2026-09-21)');
+    assert.ok(BT.includes("if (vit.length) partyRes = hqPartyAfterMatch(p, { won, units: vit, xpPool, bag: bagHome, gauge: gaugeHome });") && BT.includes("(state.units || []).concat(benchBodies)"), 'battle.js: the commit (+ THE POOL, 2026-09-21)');
     assert.ok(BT.includes("party: partyRes };"), 'the result carries what the fight did to the party');
     /* the pause menu */
     ['function _hqPartyTx(fn)', 'function _hqPartySeed()', "data-party-act=\"cast:", "data-party-act=\"swap:", "data-party-act=\"relieve:", "data-party-act=\"enlist:", "data-party-act=\"item:", 'function _hqPartyAct(act)', "window._hqPartyRest = function ()", "if (c.id === 'cot' || c.id === 'healzone') {", "[data-party-rest]"].forEach(s => assert.ok(MP.includes(s), 'map.js: ' + s));
@@ -295,7 +299,7 @@ test('THE SHARED BAG (2026-09-21): the pockets POOL into the bag, the launch car
     assert.equal(g('hqBagCount')(p, 'healPotion'), 1, 'what the fight spent stays spent'); assert.equal(g('hqBagCount')(p, 'manaPotion'), 6); assert.equal(g('hqBagCount')(p, 'elixir'), 1, 'the field-only rows that never left are kept');
     /* the battle's binding + the skip list + the state field */
     const BT2 = fs.readFileSync(__dirname + '/battle.js', 'utf8');
-    ['function _partyBagBind()', 'if (_partyBagOn()) return 9999;', "bag: bagHome });", 'u.items = bag; n++;'].forEach(s => assert.ok(BT2.includes(s), 'battle.js: ' + s));
+    ['function _partyBagBind()', 'if (_partyBagOn()) return 9999;', "bag: bagHome, gauge: gaugeHome });", 'u.items = bag; n++;'].forEach(s => assert.ok(BT2.includes(s), 'battle.js: ' + s));
     assert.ok(fs.readFileSync(__dirname + '/state.js', 'utf8').includes('partyBag: null,'), 'state.js carries partyBag');
     assert.ok(fs.readFileSync(__dirname + '/online.js', 'utf8').includes('partyBag: 1,'), 'online.js skip-lists it');
     assert.ok(MP.includes('state.partyBag = (_encParty_ && _encPeek.bag'), 'map.js sets the bag at the launch');
@@ -476,4 +480,59 @@ test('THE CIRCUIT IN THE FIELD: the source sites — the sheet\'s EDIT button, t
     assert.match(MP, /P\.keepScroll = true;/, 'a node click keeps the sheet where it stood');
     assert.match(CSS, /\.hq-circ-node\.st-equipped/); assert.match(CSS, /\.hq-circ-fork/); assert.match(CSS, /\.hq-circ-picker/);
     for (const fn of ['hqPartyTreeCircuit', 'hqPartyTreeClick', 'hqPartySocketPool', 'hqPartySocketEquip', 'hqPartySetSpells', 'hqPartySpellsDefault', 'hqPartySpellsRandom', 'hqPartySpellsClear']) assert.match(D_SRC, new RegExp('window\\.' + fn + ' = ' + fn + ';'), fn + ' on window');
+});
+
+test('THE LEAD WALKS (2026-09-23): the walker is whoever stands in slot 1 — the officer says `you`, any other member its own vessel; the officer swapped to the bench is re-filed by the intake where it stands', () => {
+    assert.equal(R.leadWalks, true);
+    const p = profile(); g('hqPartyEnsure')(p, { last });
+    const lead0 = g('hqPartyLeadAvatar')(p);
+    assert.equal(lead0.you, true); assert.equal(lead0.race, 'door agent'); assert.equal(lead0.id, g('hqPartyLead')(p).id);
+    const dutch = g('hqPartyShifts')(p).members.find(m => m.meta.race === 'cowboy');
+    assert.equal(g('hqPartySwap')(p, dutch.id, lead0.id).ok, true);
+    const lead1 = g('hqPartyLeadAvatar')(p);
+    assert.equal(lead1.you, false); assert.equal(lead1.race, 'cowboy'); assert.equal(lead1.gender, 'male'); assert.equal(lead1.name, 'Dutch'); assert.equal(lead1.appearance, undefined);
+    /* the intake's re-file finds the officer by `you`, never slot 1 */
+    g('hqOfficerEnlist')(p, { name: 'AGENT K' });
+    const rec = g('hqPartyRecord')(p);
+    assert.equal(rec.members[0].meta.race, 'cowboy', 'the cowboy still leads'); assert.equal(rec.members.find(m => m.you).name, 'AGENT K');
+    assert.match(MP, /window\.hqPartyLeadAvatar\(profile\)/, 'map.js _hqAvatar reads the lead');
+    assert.match(MP, /if \(r\.leadChanged\) \{ try \{ if \(typeof window\._hqRefreshAvatar === 'function'\) window\._hqRefreshAvatar\(\); \}/, 'a swap that changes the lead swaps the rig');
+    assert.ok(!MP.includes("return m.id !== arm.from && !m.you;"), 'the swap pick offers slot 1');
+    assert.match(D_SRC, /window\.hqPartyLead = hqPartyLead; window\.hqPartyLeadAvatar = hqPartyLeadAvatar; window\.hqPartyGauge = hqPartyGauge;/);
+});
+
+test('THE GAUGE CARRIES (2026-09-23): the commit files the seat\'s gauge, the launch hands it out, a strike\'s 0 carries, the cot never touches it; the sources on both sides', () => {
+    assert.equal(R.carryGauge, true);
+    const p = profile(); g('hqPartyEnsure')(p, { last });
+    assert.equal(g('hqPartyGauge')(p), 0, 'nothing filed = 0');
+    const you = g('hqPartyLead')(p);
+    const r1 = g('hqPartyAfterMatch')(p, { won: true, units: [{ partyId: you.id, hp: 30, maxHp: 60, mp: 5, maxMp: 20, dead: false }], gauge: 64 });
+    assert.equal(r1.gauge, 64); assert.equal(g('hqPartyGauge')(p), 64);
+    assert.equal(g('hqPartyForLaunch')(p).gauge, 64, 'the launch carries it');
+    g('hqPartyRestore')(p); assert.equal(g('hqPartyGauge')(p), 64, 'the cot rests bodies, not the gauge');
+    g('hqPartyAfterMatch')(p, { won: false, units: [{ partyId: you.id, hp: 0, maxHp: 60, mp: 5, maxMp: 20, dead: true }], gauge: 0 });
+    assert.equal(g('hqPartyGauge')(p), 0, 'a strike spent it — 0 carries (a loss too)');
+    g('hqPartyAfterMatch')(p, { won: true, units: [{ partyId: you.id, hp: 30, maxHp: 60, mp: 5, maxMp: 20, dead: false }], gauge: 900 });
+    assert.equal(g('hqPartyGauge')(p), 100, 'clamped to the gauge\'s max');
+    assert.match(MP, /state\.partyGauge = \(_encParty_ && Number\.isFinite\(\+_encPeek\.gauge\)\)/, 'map.js _msConfirm files the opening gauge');
+    assert.equal((MP.match(/state\.partyBag = null; state\.partyGauge = 0;/g) || []).length, 3, 'every other launch reset drops it');
+    assert.match(BT, /if \(\(state\.partyGauge \| 0\) > 0\) \{ const _gs = \(state\.partyBag && state\.partyBag\.seat\) \|\| 1; state\.entropyGauge\[_gs\] = /, 'battle.js startMatch opens at it');
+    assert.match(BT, /hqPartyAfterMatch\(p, \{ won, units: vit, xpPool, bag: bagHome, gauge: gaugeHome \}\)/, 'the commit hands the gauge home');
+    assert.match(ST, /partyGauge: 0,/, 'the state literal'); assert.match(fs.readFileSync(__dirname + '/online.js', 'utf8'), /partyGauge: 1,/, 'the online skip list');
+});
+
+test('THE LEVEL\'S REST (2026-09-23): a level crossed at the debrief brings the member home FULL; a body dead at the end stays down; the board\'s grantXP heals live', () => {
+    assert.equal(D.HQ_LEVEL_RULES.levelHeal, true);
+    const p = profile(); g('hqPartyEnsure')(p, { last });
+    const you = g('hqPartyLead')(p);
+    const big = D.xpThreshold(7) - D.xpThreshold(5) + 5;
+    const r = g('hqPartyAfterMatch')(p, { won: true, units: [{ partyId: you.id, hp: 3, maxHp: 60, mp: 1, maxMp: 20, dead: false, xpBattle: big, fought: true }], xpPool: 0 });
+    assert.ok(r.leveled >= 1, 'a level crossed'); assert.equal(r.xp[0].healed, true);
+    const m = g('hqPartyRecord')(p).members.find(x => x.id === you.id);
+    assert.equal(m.hp, null, 'FULL'); assert.equal(m.mp, null, 'FULL');
+    /* the same XP on a dead body: the level lands on the ledger, the body stays DOWN */
+    const p2 = profile(); g('hqPartyEnsure')(p2, { last }); const y2 = g('hqPartyLead')(p2);
+    g('hqPartyAfterMatch')(p2, { won: true, units: [{ partyId: y2.id, hp: 0, maxHp: 60, mp: 1, maxMp: 20, dead: true, xpBattle: big, fought: true }], xpPool: 0 });
+    assert.equal(g('hqPartyRecord')(p2).members.find(x => x.id === y2.id).hp, 0, 'DOWN stays down');
+    assert.match(BT, /unit\.hp = unit\.maxHp \|\| unit\.hp; unit\.mp = unit\.maxMp \|\| unit\.mp; _lvHealed = true;/, 'grantXP restores on the board');
 });

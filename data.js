@@ -44252,7 +44252,17 @@ const HQ_PARTY_RULES = {
     sellBack: 0.5,                                         // THE DISPENSARY buys back at half the price
     autoHeal: { maxSteps: 64, hpFull: 0.999, manaTop: 0.5 },   // AUTO HEAL: the planner's guard, "full" and when a mana potion is spent on a caster
     officerRace: 'door agent',   // the walker's vessel when no avatar / look says otherwise (the Player cast model is the DOOR Agent's)
-    labels: { first: 'FIRST SHIFT', second: 'SECOND SHIFT', onCall: 'ON CALL', down: 'DOWN', fit: 'FIT', you: 'YOU' },
+    /* THE LEAD (2026-09-23, the user: "let me swap out my main character from the first spot just like any other unit; the
+       unit the player controls and moves around with should be whichever unit is in the first party slot"): SLOT 1 IS THE
+       WALKER — the officer (`you`) may be swapped out of it like anyone (never RELIEVED: the agent is the profile's);
+       hqPartyLead / hqPartyLeadAvatar are the ONE read of who walks the building (map.js _hqAvatar). */
+    leadWalks: true,
+    /* THE GAUGE CARRIES (2026-09-23, the user: "the Entropy Gauge should carry over between battles in story mode"): the
+       human seat's gauge at the end of a party fight is filed on the record (`gauge`, 0..ENTROPY_GAUGE_MAX) and the next
+       party fight opens at it (hqPartyForLaunch → state.partyGauge → battle.js startMatch). A strike / a finisher spends it
+       to 0 and 0 is what carries. THE COT never touches it. */
+    carryGauge: true,
+    labels: { first: 'FIRST SHIFT', second: 'SECOND SHIFT', onCall: 'ON CALL', down: 'DOWN', fit: 'FIT', you: 'YOU', lead: 'THE LEAD' },
 };
 /* ══ THE LEVELS (2026-09-21) — the party's XP ledger, the adaptive enemy level, the group size ══
    The user: "start at level 5 in story mode; as the characters level up we need to see their stats go
@@ -44290,6 +44300,7 @@ const HQ_LEVEL_RULES = {
        · `down` (dead at the end: nothing); `poolMult` scales the natives' worth into the pool (the kills already
        paid the killer live). The old `board` / `bench` keys read as fought / present. */
     share: { fought: 1, present: 0.5, down: 0, poolMult: 0.6, board: 1, bench: 0.5 },
+    levelHeal: true,                   // THE LEVEL'S REST (2026-09-23, the user): a level-up restores HP and MP all the way — live on the board (battle.js grantXP) and on the ledger at the debrief
     group: { solo: [0, 2], soloWeights: [0.35, 0.4, 0.25], roamExtra: [0, 1], roamSize: [2, 3], groupP: 0.55, marker: 4 },
     milestones: { secondaryJob: SECONDARY_JOB_LEVEL, shop: SPELL_SHOP_LEVEL, every: 5 },
     labels: { levelUp: 'LEVEL UP!', pool: 'THE ENCOUNTER', trickle: 'IN THE FIELD', battle: 'IN THE FIELD', fought: 'FOUGHT · FULL SHARE', present: 'DID NOT FIGHT · HALF SHARE', bench: 'DID NOT FIGHT · HALF SHARE', down: 'DOWN · NO SHARE', lost: 'THE ROOM WAS LOST · NO SHARE' },
@@ -44477,7 +44488,7 @@ function hqOfficerEnlist(profile, look) {
     const spec = hqPartyOfficer(profile);
     const rec = hqPartyRecord(profile);
     if (rec && rec.members.length) {
-        const m0 = rec.members[0];
+        const m0 = rec.members.find(m => m.you) || rec.members[0];   // THE LEAD: the officer may have been swapped off slot 1 — the agent is the `you` member wherever it stands
         const changed = (m0.meta && m0.meta.race) !== spec.meta.race || m0.cls !== spec.cls;
         m0.you = true; m0.cls = spec.cls; m0.name = spec.name;
         const meta = Object.assign({}, m0.meta || {}, spec.meta);
@@ -44831,17 +44842,42 @@ function hqPartyRelieve(profile, id) {
     const [m] = r.members.splice(i, 1); r.at = Date.now();
     return { ok: true, member: m };
 }
-/* SWAP two slots (a shift change is a swap across the line; a member and an empty slot = a move to the end of the order); the officer holds slot 1 */
+/* SWAP two slots (a shift change is a swap across the line; a member and an empty slot = a move to the end of the order).
+   THE LEAD (2026-09-23): slot 1 is anyone's — the officer swaps out of it like any other unit (`leadWalks`); the result says
+   whether THE LEAD changed (`leadChanged` — the caller refreshes the walker) */
 function hqPartySwap(profile, a, b) {
     const r = hqPartyRecord(profile); if (!r) return { ok: false, reason: 'noparty' };
     const ia = r.members.findIndex(m => m.id === a), ib = (typeof b === 'number') ? b : r.members.findIndex(m => m.id === b);
     if (ia < 0 || ib < 0 || ib >= HQ_PARTY_RULES.roster) return { ok: false, reason: 'who' };
     if (ia === ib) return { ok: false, reason: 'same' };
-    if (ia === 0 || ib === 0) return { ok: false, reason: 'you' };
+    if (!HQ_PARTY_RULES.leadWalks && (ia === 0 || ib === 0)) return { ok: false, reason: 'you' };
+    const leadBefore = r.members[0] ? r.members[0].id : null;
     if (ib >= r.members.length) { const [m] = r.members.splice(ia, 1); r.members.push(m); }
     else { const t = r.members[ia]; r.members[ia] = r.members[ib]; r.members[ib] = t; }
     r.at = Date.now();
-    return { ok: true };
+    const leadAfter = r.members[0] ? r.members[0].id : null;
+    return { ok: true, leadChanged: leadBefore !== leadAfter, lead: leadAfter };
+}
+/* THE LEAD: the member in slot 1 — the one the player walks the building as (null = no party) */
+function hqPartyLead(profile) { const r = hqPartyRecord(profile); return (r && r.members.length) ? r.members[0] : null; }
+/* THE LEAD'S AVATAR: what map.js _hqAvatar spawns — { race, gender, appearance?, name, you, id }; the officer's own row says
+   `you` so the caller keeps its look / chair rules for the agent; null = no party (the chair's rule as before) */
+function hqPartyLeadAvatar(profile) {
+    if (!HQ_PARTY_RULES.leadWalks) return null;
+    const m = hqPartyLead(profile); if (!m) return null;
+    const race = (m.meta && m.meta.race) || 'homosapien';
+    const genders = hqPartyGenders(race);
+    let gender = (m.meta && m.meta.gender) || genders[0]; if (genders.indexOf(gender) < 0) gender = genders[0];
+    const out = { race, gender, name: m.name || '', you: !!m.you, id: m.id };
+    if (m.meta && m.meta.appearance) out.appearance = m.meta.appearance;
+    return out;
+}
+/* THE GAUGE CARRIES: the human seat's Entropy Gauge filed on the record (0 without one) */
+function hqPartyGauge(profile) {
+    if (!HQ_PARTY_RULES.carryGauge) return 0;
+    const r = hqPartyRecord(profile); if (!r) return 0;
+    const max = (typeof ENTROPY_GAUGE_MAX !== 'undefined') ? ENTROPY_GAUGE_MAX : ((typeof window !== 'undefined' && window.ENTROPY_GAUGE_MAX) || 100);
+    return Math.max(0, Math.min(max, Math.round(+r.gauge || 0)));
 }
 /* the ON CALL list: every unlocked vessel not on the party */
 function hqPartyOnCall(profile) {
@@ -44877,7 +44913,7 @@ function hqPartyForLaunch(profile) {
         const items = {};
         return { cls: m.cls, name: m.name, meta, loadout: { spells: m.loadout.spells.slice(), items, equipment: Object.assign({}, m.loadout.equipment) }, id: m.id, you: !!m.you };
     });
-    return { members, ids: members.map(m => m.id), party: true, exact: true, deploy: Math.min(HQ_PARTY_RULES.shift, members.length), left: r.members.length - fit.length, bag: hqBagForBattle(profile) };
+    return { members, ids: members.map(m => m.id), party: true, exact: true, deploy: Math.min(HQ_PARTY_RULES.shift, members.length), left: r.members.length - fit.length, bag: hqBagForBattle(profile), gauge: hqPartyGauge(profile) };
 }
 /* THE COMMIT: what the fight did to the party — `ev.units` = [{ partyId, hp, maxHp, mp, maxMp, dead }] off the human seat's units
    (the board AND the bench); a loss with lossRestore wakes the party treated */
@@ -44906,6 +44942,10 @@ function hqPartyAfterMatch(profile, ev) {
         m.hpMax = hpMax; m.mpMax = mpMax;
         if (u.dead || (u.hp | 0) <= 0) { m.hp = 0; m.mp = Math.max(0, Math.min(mpMax, u.mp | 0)); down++; }
         else { m.hp = Math.max(1, Math.min(hpMax, u.hp | 0)); m.mp = Math.max(0, Math.min(mpMax, u.mp | 0)); }
+        /* THE LEVEL'S REST (2026-09-23): a member whose ledger crossed a level at the debrief comes home FULL (hp / mp null = the
+           level's own max — the new max is bigger than the fight's build knew); a body dead at the end stays down */
+        const lastBeat = xp.length ? xp[xp.length - 1] : null;
+        if (HQ_LEVEL_RULES.levelHeal && lastBeat && lastBeat.id === m.id && lastBeat.levels && lastBeat.levels.length && m.hp !== 0) { m.hp = null; m.mp = null; lastBeat.healed = true; }
         /* THE POCKETS (2026-09-20): what the fight spent stays spent — the unit's battle items overwrite the member's (battle keys only; a field-only item was never on the unit) */
         if (!ev.bag && u.items && typeof u.items === 'object') Object.keys(typeof ITEM_RULES !== 'undefined' ? ITEM_RULES : {}).forEach(k => { if (ITEM_RULES[k].fieldOnly) return; const n = Math.max(0, u.items[k] | 0); if (n) m.loadout.items[k] = n; else delete m.loadout.items[k]; });
     });
@@ -44919,9 +44959,14 @@ function hqPartyAfterMatch(profile, ev) {
     }
     let restored = false;
     if (!ev.won && HQ_PARTY_RULES.lossRestore) { hqPartyRestore(profile); restored = true; down = 0; }
+    /* THE GAUGE CARRIES (2026-09-23): the human seat's gauge at the end of the fight is the next fight's opening gauge (win or lose) */
+    if (HQ_PARTY_RULES.carryGauge && Number.isFinite(+ev.gauge)) {
+        const max = (typeof ENTROPY_GAUGE_MAX !== 'undefined') ? ENTROPY_GAUGE_MAX : ((typeof window !== 'undefined' && window.ENTROPY_GAUGE_MAX) || 100);
+        r.gauge = Math.max(0, Math.min(max, Math.round(+ev.gauge)));
+    }
     r.at = Date.now();
     const leveled = xp.filter(b => b.after.lvl > b.before.lvl).length;
-    return { seen, down, fit: r.members.length - down, restored, total: r.members.length, xp, pool, leveled, partyLevel: hqPartyLevel(profile) };
+    return { seen, down, fit: r.members.length - down, restored, total: r.members.length, xp, pool, leveled, partyLevel: hqPartyLevel(profile), gauge: hqPartyGauge(profile) };
 }
 /* ── FIELD MEDICINE — the party's own heal spells and potions outside a battle ── */
 function hqPartyIsFieldSpell(sp) { return !!(sp && HQ_PARTY_RULES.healKinds.indexOf(sp.kind) >= 0 && (sp.kind === 'revive' || sp.kind === 'selfHeal' || (sp.healAmt != null ? sp.healAmt : sp.heal) > 0)); }
@@ -48346,7 +48391,7 @@ if (typeof window !== 'undefined') {
     window.hqEncounterField = hqEncounterField; window.hqEncounterSeats = hqEncounterSeats; window.hqEncounterEyeFromSeats = hqEncounterEyeFromSeats; window.hqEncounterWakeRoom = hqEncounterWakeRoom; window.hqEncounterYawOf = hqEncounterYawOf; window.hqEncounterArrival = hqEncounterArrival; window.hqEncounterArrivalRules = hqEncounterArrivalRules;
     /* THE PARTY (2026-09-19): two shifts, the health that carries, field medicine */
     window.HQ_OFFICER_RULES = HQ_OFFICER_RULES; window.hqOfficerRecord = hqOfficerRecord; window.hqOfficerOnFile = hqOfficerOnFile; window.hqOfficerEnlist = hqOfficerEnlist;   // THE INTAKE (2026-09-21)
-    window.HQ_PARTY_RULES = HQ_PARTY_RULES; window.hqPartyRecord = hqPartyRecord; window.hqPartyEnsure = hqPartyEnsure; window.hqPartyPrune = hqPartyPrune; window.hqPartyOfficer = hqPartyOfficer; window.hqPartyUnlocked = hqPartyUnlocked; window.hqPartyMember = hqPartyMember; window.hqPartyShifts = hqPartyShifts;
+    window.HQ_PARTY_RULES = HQ_PARTY_RULES; window.hqPartyRecord = hqPartyRecord; window.hqPartyEnsure = hqPartyEnsure; window.hqPartyPrune = hqPartyPrune; window.hqPartyOfficer = hqPartyOfficer; window.hqPartyLead = hqPartyLead; window.hqPartyLeadAvatar = hqPartyLeadAvatar; window.hqPartyGauge = hqPartyGauge; window.hqPartyUnlocked = hqPartyUnlocked; window.hqPartyMember = hqPartyMember; window.hqPartyShifts = hqPartyShifts;
     window.hqPartyVitals = hqPartyVitals; window.hqPartyFit = hqPartyFit; window.hqPartyEnlist = hqPartyEnlist; window.hqPartyRelieve = hqPartyRelieve; window.hqPartySwap = hqPartySwap; window.hqPartyOnCall = hqPartyOnCall; window.hqPartyRestore = hqPartyRestore;
     window.hqPartyForLaunch = hqPartyForLaunch; window.hqPartyAfterMatch = hqPartyAfterMatch; window.hqPartyResync = hqPartyResync; window.hqPartyScaledVitals = hqPartyScaledVitals; window.HQ_CIRCUIT_LANES = HQ_CIRCUIT_LANES; window.hqPartySpellIds = hqPartySpellIds; window.hqPartySpellTree = hqPartySpellTree; window.hqPartyTreePath = hqPartyTreePath; window.hqPartyTreeNodeState = hqPartyTreeNodeState; window.hqPartyTreeDropIds = hqPartyTreeDropIds; window.hqPartyTreeCircuit = hqPartyTreeCircuit; window.hqPartySetSpells = hqPartySetSpells; window.hqPartyTreeClick = hqPartyTreeClick; window.hqPartySocketPool = hqPartySocketPool; window.hqPartySocketEquip = hqPartySocketEquip; window.hqPartySpellsDefault = hqPartySpellsDefault; window.hqPartySpellsRandom = hqPartySpellsRandom; window.hqPartySpellsClear = hqPartySpellsClear;
     /* THE LEVELS (2026-09-21) */

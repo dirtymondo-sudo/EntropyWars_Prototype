@@ -8590,3 +8590,24 @@ console is still the FULL variant (presets, the Δ toggle) — only its deck shr
 the dealt + filtered list, never the one already picked; RANDOMIZE (mode + map) stays and calls it. earned-doors.test.js
 pins all three. UNSEEN LIVE (RULE #1c): the 🔒 wall gone on the archive, the range's shortened deck on a fresh profile
 (the two boards alone), the button's fit in the foot row.
+
+## THE LEAD WALKS · THE GAUGE CARRIES · THE LEVEL'S REST (the party, 2026-09-23, local delivery)
+The user's four. **THE LEAD**: SLOT 1 of THE PARTY is the walker — data.js `hqPartyLead(profile)` /
+**`hqPartyLeadAvatar(profile)`** (`{ race, gender, appearance?, name, you, id }`) are the ONE read, and map.js
+`_hqAvatar` reads it right after the dev override: a member that is not the officer walks as its own vessel (its
+rig, a look on it if any; no rig = the officer walks and a `[HQ]` warn says so), the officer's own row (`you`)
+keeps the chair's / the mirror's rules as before. `hqPartySwap` no longer refuses slot 1 (`HQ_PARTY_RULES.leadWalks`;
+the result carries `leadChanged` / `lead`) — the pause menu's SWAP offers every card, the DUTY row names slot 1
+THE LEAD, a swap that changes it calls `_hqRefreshAvatar` (the rig swaps in place under the menu); RELIEVE still
+refuses the officer (`you` is the profile's agent wherever it stands — `hqOfficerEnlist` re-files the `you`
+member, never `members[0]`). The launch order is untouched (the fit of the shifts), so a fit lead is P1 seat 1
+= the walker's cell; a DOWN lead still walks but stays home from the fight. **THE GAUGE CARRIES**
+(`HQ_PARTY_RULES.carryGauge`): the commit hands the human seat's Entropy Gauge to `hqPartyAfterMatch(p, { …,
+gauge })` → `door.hq.party.gauge` (win or lose; a strike's 0 carries; THE COT never touches it); `hqPartyGauge`
+reads it, `hqPartyForLaunch` returns it, map.js `_msConfirm` files **`state.partyGauge`** (state.js literal;
+online.js skip list; 0 at every other launch reset beside `partyBag`), battle.js `startMatch` opens
+`state.entropyGauge[seat]` at it after the reset. **THE LEVEL'S REST** (`HQ_LEVEL_RULES.levelHeal`): a level-up
+restores HP and MP all the way — battle.js `grantXP` on the board (every progression mode; the card says so) and
+the ledger at the debrief (a member whose beat crossed a level comes home `hp / mp = null` = FULL; a body dead
+at the end stays DOWN). hq-party.test.js (21). Ship data.js to R2 AND Render. UNSEEN LIVE (RULE #1c): the swapped
+rig under the pause menu, the opening gauge on the bezel, the mid-fight heal's pop.
