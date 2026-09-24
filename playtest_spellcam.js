@@ -80,7 +80,7 @@ const TILT_START = process.env.START_CAM ? JSON.parse(process.env.START_CAM) : n
   const page = await context.newPage();
   const errs = [];
   page.on('pageerror', e => errs.push(String(e && e.message || e)));
-  page.on('console', m => { const t = m.text(); if (m.type() === 'error' && errs.length < 40) errs.push(t.slice(0, 300)); if (/\[spellcam\]/.test(t)) console.log('  page:', t.slice(0, 300)); });
+  page.on('console', m => { const t = m.text(); if (m.type() === 'error' && errs.length < 40) errs.push(t.slice(0, 300)); if (/\[(spellcam|CAPSTONE)\]/.test(t)) console.log('  page:', t.slice(0, 300)); });
   await page.goto('http://localhost:3000/?nohq', { waitUntil: 'commit', timeout: 70000 });
   { const t0 = Date.now(); let ok = false, last = null;
     while (Date.now() - t0 < 180000) { try { last = await page.evaluate(() => [document.readyState, typeof window._goToVsCpu, !!window.GAME]); if (last[0] === 'complete' && last[1] === 'function' && last[2]) { ok = true; break; } } catch (e) { last = ['nav']; } await sleep(1000); }
@@ -162,6 +162,8 @@ const TILT_START = process.env.START_CAM ? JSON.parse(process.env.START_CAM) : n
   if (TILT_START) await page.evaluate((c) => { camera.snap({ _force: true, ...c }); }, TILT_START);
   /* LEGACY=1 — the pre-director layering (window.EW_DISABLE_SPELL_DIRECTOR), for an A/B of the same cast */
   if (process.env.LEGACY === '1') await page.evaluate(() => { window.EW_DISABLE_SPELL_DIRECTOR = true; });
+  /* NOCAP=1 — the capstone directors off (window.EW_DISABLE_CAPSTONE_DIRECTOR): the family, for an A/B */
+  if (process.env.NOCAP === '1') await page.evaluate(() => { window.EW_DISABLE_CAPSTONE_DIRECTOR = true; });
   await sleep(800);
   /* CAST_AT=x,y — cast at another tile than the dummy's (a self / ally cast: the caster's own tile) */
   const [KX, KY] = (process.env.CAST_AT || (TX + ',' + TY)).split(',').map(Number);

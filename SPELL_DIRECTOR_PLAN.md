@@ -461,7 +461,7 @@ through the spell director and the relay too. Pitches:
 | Plasma Cascade | a plasma wave cascading down a staircase of floating panels |
 | Hybrid Assault | the alternating flurry with a camera per hit, the finisher hit in a void flash |
 
-### Phase 6 — THE CAPSTONES (44 bare ultimates)
+### Phase 6 — THE CAPSTONES (44 bare ultimates) · *shipped 2026-09-24 (session 5)*
 A bespoke director + signature for each capstone with neither (§1.3), on the
 finisher pattern (the director names its shots, the signature is one
 `_sigRunOwned` group, and the timers go through `_fxDelay`). Order: by how
@@ -584,7 +584,8 @@ selfStun / recoil casts), `Weapon_Twirl_Flourish` (a kill confirm) and
   `castMelee` spell has a verb that matches its name.
 - **P5:** every combo has a director and a world event; the relay replays
   it. ✅ 2026-09-24 (combo-director.test.js + combo-world.test.js).
-- **P6:** bare capstones go from 44 to 0.
+- **P6:** bare capstones go from 44 to 0. ✅ 2026-09-24 (capstone-director.test.js;
+  the census reads 0).
 - **P7/P8:** the user's playtest.
 
 ## 10. Build log
@@ -901,6 +902,66 @@ docs/notes/spells-vfx.md.
   not in the probe's frames: UNSEEN LIVE.
 
 **Phase 5 is done.** Next: Phase 6 THE CAPSTONES (the 44 bare ultimates).
+
+### 2026-09-24 (session 5) — THE CAPSTONES (Phase 6, done) · local delivery
+**Shipped** (token `20260924-capstones-01-cors`): three-vfx-effects.js,
+battle.js, index.html; repo: capstone-director.test.js,
+playtest_spellcam.js (`NOCAP=1`, the A/B), this plan,
+docs/notes/spells-vfx.md. The census: **bare capstones 44 → 0** (each of
+the 44 is now both a signature and a bespoke director).
+- **The signatures** (three-vfx-effects.js, THE CAPSTONES, after THE CRAFT
+  KIT). `_CAP_SIGS[id] = { charge, hit, detonate? }`, registered in
+  `_spell3DGeometry` (`'id': function (tx, ty, r, p) { _capRun(...) }`) so
+  the census counts them, but each answers ONLY its own calls (`p._cap`),
+  so the automatic routes (impact per tile, aura, wall) never double-draw.
+  **The hook** is `_fireStage`: the relayed `'windup'` beat (every cast
+  kind fires it at the commit, with the footprint `tiles` and `holdMs`)
+  plays the CHARGE on the caster; the `'burst'` beat (retimed to the real
+  impact) plays the HIT. The guest draws both off the same relay (RULE #2 —
+  nothing new in online.js, no `state` field). **The delayed three**
+  (Nuke, Fire for Effect, Star Decree) charge on the mark turn and
+  `detonate` from the end-of-round descent / `fireGeometry` arming call,
+  deduped per tile (an aoe and an impact intent may both land). Nuke and
+  Fire for Effect's arming beat now exists, so their blast lands ~1.1 s
+  after the camera arrives (it was instant). Built from the craft kit and
+  the shared primitives, plus five new builders: `_capShell` (an energy
+  sphere / dome — the EMP bubble, the goo, the gnome's shields),
+  `_capLance` (an energy strip between two points — the leech tether, the
+  Megazord's five lances), `_capSpikes` (stone cones out of the floor —
+  Rampart, Quake, the smashes), `_capTendrils` (the symbiote's lash) and
+  `_capEye` / `_capCar`. **THE ONE MODEL:** Vehicular Manslaughter drops
+  the honda civic's own sedan (`ThreeRenderer.sedan`, the kit's cars while
+  it streams), Reality Pulse opens the astral eye, the Nuke's blast is the
+  Nuke's own mushroom cloud, Fire for Effect walks the Meshy missile, the
+  fists are the Meshy fist, Marrowstorm the bones. No psychedelic backdrop
+  (the rows' existing void stages stay as they were). Kill-switch
+  `EW_DISABLE_CAPSTONE_SIGS` (and `EW_DISABLE_CRAFT`).
+- **The directors** (battle.js, `CAPSTONE_DIRECTOR_SHOTS` + `_capstoneDirector`,
+  44 literal `CINE_SEQUENCES.<id> = _capSeq;` lines). The finisher pattern
+  on the director's own kit (`_spellDirCtx`): `open` films the charge
+  (face cam, orbit, crane or the dread reverse over the victim's shoulder),
+  `pay` is the payoff cut (the sky watch for things that fall — Revive's
+  column, Marrowstorm's bones, the cars, the Megazord's lances, Tidal
+  Slam's column, the Watcher's eye; the god shot for Dark Dominion's
+  pentagram and the EMP dome; the witness cam for the Sasquatch — the photo;
+  the floor-level low tile for Rampart, Tail Whip, Quake), `after` the
+  settle. A row with no `pay` keeps its family director whole — the dash,
+  sky, blink and delayed families keep their retargets and sky-fall
+  clocks. The row's flavour (grade / insert / void / slow) lays over it as
+  before; every shot is fog-gated. The log reads `bespoke:<id>` with
+  `capOpen` / `capPay` / `capAfter` beats. Kill-switch
+  `EW_DISABLE_CAPSTONE_DIRECTOR` (the family, as before).
+- **THE PLAYTEST** (the camera probe, the stadium): Vehicular Manslaughter,
+  Tendril Strike, Reality Pulse, EMP Burst, Quake, Rampart cast clean
+  (every beat fires, none past the window, no `[CAPSTONE]` warning);
+  Nuke and Fire for Effect detonate clean (`DETONATE=1`). Found, not
+  mine: a delayed spell's mark turn runs on the SUPPORT rig, where the
+  delayed family's `mark` / `dread` beats never fire (`NOCAP=1` shows the
+  same empty log) — the capstone's charge shot is now the mark turn's only
+  shot. The GLBs 404 in the probe, so the sedan / eye / fist fell back:
+  UNSEEN LIVE with real art.
+
+**Phase 6 is done.** Next: Phase 7 THE JUICE PASS.
 
 ## 11. The census tool
 

@@ -27487,6 +27487,196 @@
         }
         SPELL_FAMILY_DIRECTORS.combo = _comboDirector;
 
+        /* ═══════════════════════════════════════════════════════════════════
+           THE CAPSTONE DIRECTORS (SPELL_DIRECTOR_PLAN §5 Phase 6, 2026-09-24)
+           The 44 ultimates that had only a family treatment each get their
+           own director, the finisher pattern: the director NAMES its shots —
+           `open` films the charge (the signature's charge plays on the caster
+           in the same window, three-vfx-effects.js THE CAPSTONES), `pay` is
+           the payoff cut (the family director's whole treatment when a row
+           has none — the dash / sky / blink / delayed families keep their
+           retargets and their sky-fall clocks), `after` is the beat on the
+           settled hit. Every shot is fog-gated (c.vis) and every beat rides
+           c.at (inside the window, the late ones dropped). The row's flavour
+           (grade / insert / void / slow — SPELL_DIRECTOR_ROWS) lays over it
+           as it does over a family.
+           d = { a: the caster, t: the target, H: the charge's ms, I: the
+               impact, r: the blast radius, span: open → impact }.
+           Kill-switch: window.EW_DISABLE_CAPSTONE_DIRECTOR = true → the
+           family director, as before. ═══════════════════════════════════ */
+        const _capFace = (c, u, o) => { if (u && u.id != null && c.vis(u)) cineFaceCam(u, Object.assign({ dist: 2.5, tilt: 78 }, o || {})); };
+        const _capOrbit = (c, d, deg, o) => { if (c.vis(d.a)) cineOrbit(d.a, deg, d.H, Object.assign({ dist: 3.0, tilt: 86 }, o || {})); };
+        const _capCrane = (c, d, o) => { if (c.vis(d.a)) cineCrane(d.a, Object.assign({ duration: Math.min(760, c.raw(d.H)) }, o || {})); };
+        const _capDread = (c, d) => { if (c.vis(d.t) && d.t.id != null && d.t.id !== d.a.id) cineReverseOts(d.t, d.a, {}); else _capFace(c, d.a); };
+        const _capSky = (c, d, o) => {
+            if (!c.vis(d.t)) return c.stockHit();
+            cineSkyWatch(d.t, Object.assign({ ms: Math.max(actionMs(420), c.left(c.cut, actionMs(420))), span: d.r * 2 + 4 }, o || {}));
+        };
+        const _capGod = (c, d, tilt, pushMs) => {
+            if (!c.vis(d.t)) return c.stockHit();
+            cineGodShot(d.t, d.r * 2 + 4, { tilt });
+            if (pushMs) c.push(1.14, actionMs(pushMs));
+        };
+        const CAPSTONE_DIRECTOR_SHOTS = {
+            // the standing stones break the floor: at ground level along the line
+            rampart:            { open: (c, d) => _capFace(c, d.a, { tilt: 72 }),
+                                  pay: (c, d) => { if (!c.vis(d.t)) return c.stockHit(); cineLowTile(d.t, d.a, { swing: 60 }); } },
+            // the prayer lifts the lens; the answer comes down the column
+            revive1:            { open: (c, d) => _capCrane(c, d, { tilt: 108 }),
+                                  pay: (c, d) => _capSky(c, d, { span: 4, tiltUp: 112, tiltDown: 70 }),
+                                  after: (c, d) => { const u = c.live(d.t); if (u && c.vis(u)) cineGlamCam(u, { duration: 360 }); } },
+            // the seed is planted: the caster's face, then the family's tether hold
+            leechSeed:          { open: (c, d) => _capFace(c, d.a, { dist: 2.3 }) },
+            // the berserker's face before the run (the dash keeps its ride)
+            rampage:            { open: (c, d) => _capFace(c, d.a, { dist: 2.2, tilt: 72 }) },
+            // the dome from above, the lens pushing as the lights die
+            empBurst:           { open: (c, d) => _capOrbit(c, d, 40),
+                                  pay: (c, d) => _capGod(c, d, 30, 700) },
+            // the choir: the orbit through the chord, then straight down on the rings
+            requiem:            { open: (c, d) => _capOrbit(c, d, 70, { tilt: 94 }),
+                                  pay: (c, d) => { if (!c.vis(d.a)) return c.stockHit(); cineGodShot(d.a, d.r * 2 + 3, { tilt: 16, cut: false, duration: 420 }); } },
+            // the fold: the caster's face as they vanish (the blink keeps its hard cut)
+            voidRush:           { open: (c, d) => _capFace(c, d.a, { dist: 2.4 }) },
+            // the gargoyle's fall (the sky family's crane + reverse), then the crater
+            raceStoneDrop:      { after: (c, d) => { if (c.vis(d.t)) cineGodShot(d.t, 4, { tilt: 26, cut: false, duration: 420 }); } },
+            // the ossuary: watch the bones come out of the sky
+            raceMarrowstorm:    { open: (c, d) => _capOrbit(c, d, 36),
+                                  pay: (c, d) => _capSky(c, d, { tiltUp: 110, tiltDown: 66 }) },
+            // the sweep is low: the lens on the floor it cuts
+            raceTailWhip:       { open: (c, d) => _capFace(c, d.a),
+                                  pay: (c, d) => { if (!c.vis(d.t)) return c.stockHit(); cineLowTile(d.t, d.a, { swing: 70 }); } },
+            // the skin sheds while the lens circles
+            raceMimicry:        { open: (c, d) => _capOrbit(c, d, 110, { dist: 2.6 }) },
+            // the antennae up close, then the family's pull-back over the swarm
+            raceSwarmSignal:    { open: (c, d) => _capFace(c, d.a, { dist: 2.1, tilt: 74 }) },
+            // the dread over the victim's shoulder; the payoff is THE PHOTO —
+            // the witness in the trees sees it
+            raceSasquatchSmash: { open: (c, d) => _capDread(c, d),
+                                  pay: (c, d) => { if (!c.vis(d.t) || !cineWitnessCam(d.t, [d.a, d.t], {})) c.stockHit(); } },
+            // the song, then the lens at the water's edge
+            raceCallOfTheDeep:  { open: (c, d) => _capFace(c, d.a, { tilt: 74 }),
+                                  pay: (c, d) => { if (!c.vis(d.t)) return c.stockHit(); cineLowTile(d.t, d.a, { swing: 30 }); } },
+            // the finger on the button; the family marks the doomed tile
+            sharedNuke:         { open: (c, d) => _capFace(c, d.a, { dist: 2.1, tilt: 80 }) },
+            // looking UP at the giant from under it, then straight down on the stamp
+            raceColossalCrush:  { open: (c, d) => _capDread(c, d),
+                                  pay: (c, d) => _capGod(c, d, 18, 420) },
+            // the heartbeat on the face, then the family's hero glam
+            raceIndomitableWill:{ open: (c, d) => _capFace(c, d.a, { dist: 2.2, tilt: 70 }) },
+            // the gunner, then the family's wide on the blast
+            raceCannonball:     { open: (c, d) => _capFace(c, d.a, { tilt: 80 }) },
+            // the outbreak from inside it: the witness in the cloud
+            racePlandemic:      { open: (c, d) => _capOrbit(c, d, 40),
+                                  pay: (c, d) => { if (!c.vis(d.t) || !cineWitnessCam(d.t, [d.a], {})) _capGod(c, d, 40, 600); } },
+            // the man in black, then the stock hit (the stamp insert is the row's)
+            raceClassifiedWeapon:{ open: (c, d) => _capFace(c, d.a, { dist: 2.2, tilt: 80 }) },
+            // the radio call; the family marks the grid
+            raceFireForEffect:  { open: (c, d) => _capFace(c, d.a, { dist: 2.3 }) },
+            // three rounds into the sky: the lens goes up with them
+            raceExtendedClips:  { open: (c, d) => _capCrane(c, d, { tilt: 112 }) },
+            // heaven first, then everyone the song reaches
+            raceHallelujah:     { open: (c, d) => _capCrane(c, d, { tilt: 112 }),
+                                  pay: (c, d) => cinePartyFit(d.a, Math.max(3, d.r) + 2, { duration: Math.min(480, c.raw(c.left(c.cut))) }) },
+            // the decree points at the star; the family marks the zone
+            raceStarDecree:     { open: (c, d) => _capCrane(c, d, { tilt: 114 }) },
+            // the one red eye before the charge
+            raceGiantSmash:     { open: (c, d) => _capFace(c, d.a, { dist: 2.0, tilt: 76 }) },
+            // the pentagram from straight above, a slow push while it burns
+            raceDarkDominion:   { open: (c, d) => _capOrbit(c, d, 45),
+                                  pay: (c, d) => _capGod(c, d, 12, 800) },
+            // the cradle song: a soft ¾ over the sleepers, drifting in
+            raceDarkLullaby:    { open: (c, d) => _capFace(c, d.a, { dist: 2.6, tilt: 80 }),
+                                  pay: (c, d) => _capGod(c, d, 42, 1000) },
+            // the bat's stoop (the sky family's crane + reverse), then the kill
+            racePredatorDrop:   { after: (c) => _spellDirKillConfirm(c) },
+            // the sea rising behind the caster; the family rides the wave
+            raceTsunami:        { open: (c, d) => _capCrane(c, d, { tilt: 100 }) },
+            // over the prey's shoulder as the shadow comes
+            raceTerrorPounce:   { open: (c, d) => _capDread(c, d) },
+            // the gnome at work, then the family's pull-back over the shells
+            raceOvertinker:     { open: (c, d) => _capFace(c, d.a, { dist: 2.2, tilt: 76 }) },
+            // the maelstrom from above as it wheels; the family tracks the pull
+            sharedVortexSlam:   { open: (c, d) => { if (c.vis(d.t)) cineGodShot(d.t, d.r * 2 + 4, { tilt: 20 }); else _capFace(c, d.a); } },
+            // the column stands up: the lens looks up at it, then down with the crash
+            raceTidalSlam:      { open: (c, d) => _capFace(c, d.a),
+                                  pay: (c, d) => _capSky(c, d, { tiltUp: 104, tiltDown: 64 }) },
+            // the dancer's hero shot under the swinging lights
+            raceSpaceDisco:     { open: (c, d) => _capOrbit(c, d, 120, { tilt: 90 }),
+                                  pay: (c, d) => { if (!c.vis(d.a)) return c.stockHit(); cineGlamCam(d.a, { driftMs: c.raw(c.left(c.cut, actionMs(500))) }); } },
+            // the goo splits while the lens circles
+            raceMitosisSplit:   { open: (c, d) => _capOrbit(c, d, 90, { dist: 2.6 }) },
+            // the golem stamps: the lens at floor level where the spikes break
+            raceQuake:          { open: (c, d) => _capOrbit(c, d, 50),
+                                  pay: (c, d) => { if (!c.vis(d.a)) return c.stockHit(); cineLowTile({ x: d.a.x + Math.min(2, d.r), y: d.a.y }, d.a, { swing: 20 }); } },
+            // cars from the sky: watch them come
+            raceMissileBarrage: { open: (c, d) => _capFace(c, d.a, { tilt: 80 }),
+                                  pay: (c, d) => _capSky(c, d, { tiltUp: 112, tiltDown: 66 }) },
+            // the ram's face (the dash keeps its ride)
+            raceUnstoppableCharge:{ open: (c, d) => _capFace(c, d.a, { dist: 2.2, tilt: 72 }) },
+            // the fist catches fire, then the blow across the frame
+            raceDragonFist:     { open: (c, d) => _capFace(c, d.a, { dist: 2.1, tilt: 76 }),
+                                  pay: (c, d) => { if (!c.vis(d.t)) return c.stockHit(); cineSideDolly(d.a, d.t, { mode: 'hold', tilt: 82 }); } },
+            // the chest beats (a low hero angle), then the stock smash and a push
+            racePrimalSmash:    { open: (c, d) => _capFace(c, d.a, { dist: 2.3, tilt: 66 }),
+                                  pay: (c) => { c.stockHit(); c.push(1.1, actionMs(360)); } },
+            // over the victim's shoulder as the bull lowers its horns
+            raceBullRush:       { open: (c, d) => _capDread(c, d) },
+            // the lens goes up with the rangers, then down with the lances
+            sentaiMegazordBlast:{ open: (c, d) => _capCrane(c, d, { tilt: 110 }),
+                                  pay: (c, d) => _capSky(c, d, { tiltUp: 108, tiltDown: 68 }) },
+            // the symbiote's face, then the lash across the frame
+            raceTendrilStrike:  { open: (c, d) => _capFace(c, d.a, { dist: 2.1, tilt: 78 }),
+                                  pay: (c, d) => { if (!c.vis(d.t)) return c.stockHit(); cineSideDolly(d.a, d.t, { mode: 'hold', tilt: 80 }); } },
+            // the eye opens over the zone: look up at it, the world stretching
+            raceRealityPulse:   { open: (c, d) => _capFace(c, d.a, { dist: 2.4 }),
+                                  pay: (c, d) => { _capSky(c, d, { tiltUp: 116, tiltDown: 72 }); cineDollyZoom(-10, actionMs(600), { zoomMult: 1.1 }); } }
+        };
+        function _capstoneDirector(c) {
+            const row = CAPSTONE_DIRECTOR_SHOTS[c.spell.id] || {};
+            const fam = _cineFamilyKey(c.spell);
+            const F = fam ? SPELL_FAMILY_DIRECTORS[fam] : null;
+            const d = {
+                a: c.caster, t: c.target || c.caster,
+                H: Math.max(actionMs(300), c.timings.sourceHold - actionMs(140)),
+                I: c.impact,
+                r: Math.max(1, c.spell.aoeRadius || c.spell.radius || 1)
+            };
+            d.span = Math.max(actionMs(240), d.I - actionMs(90));
+            if (c.log) c.log.capstone = c.spell.id;
+            // the charge — only when the cast holds long enough to see it
+            if (row.open && c.timings.sourceHold >= actionMs(360) && c.cut > actionMs(300)) {
+                c.at(actionMs(90), () => row.open(c, d), 'capOpen');
+            }
+            if (row.pay) {
+                if (c.displaces) c.allowRetargets();
+                c.at(c.cut, () => { if (c.row.payoff) return c.payoff(); row.pay(c, d); }, 'capPay');
+                if (!c.self) _spellDirKillConfirm(c);
+            } else if (F) {
+                F(c);
+            } else {
+                c.at(c.cut, () => c.stockHit(), 'stock');
+            }
+            if (row.after) {
+                const at = c.impact + Math.round(c.timings.targetHold * 0.45);
+                c.at(at, () => row.after(c, d), 'capAfter');
+            }
+        }
+        /* the bespoke entry every capstone registers (CINE_SEQUENCES below) */
+        function _capSeq(ctx) {
+            if (window.EW_DISABLE_CAPSTONE_DIRECTOR || window.EW_DISABLE_SPELL_DIRECTOR) return false;
+            const spell = ctx.spell || _cineSpellById(ctx.spellId);
+            if (!spell || !CAPSTONE_DIRECTOR_SHOTS[spell.id]) return false;
+            let log = null;
+            for (let i = SpellDirector.log.length - 1; i >= 0; i--) {
+                if (SpellDirector.log[i].seq === ctx.sequenceId) { log = SpellDirector.log[i]; break; }
+            }
+            const c = _spellDirCtx('capstone', { ...ctx, spell, log });
+            c.own();
+            _capstoneDirector(c);
+            _spellDirFlavour(c);
+            return true;
+        }
+
         /* The row's flavour, laid over any family director at the payoff:
            a grade, an insert card, a void stage, a slow-mo, a freeze. */
         function _spellDirFlavour(c) {
@@ -28841,6 +29031,53 @@
                 return true;
             }
         };
+
+        /* THE CAPSTONES (Phase 6): each ultimate's own director — one
+           literal line per id (check-spell-presentation.js counts them) */
+        CINE_SEQUENCES.rampart = _capSeq;
+        CINE_SEQUENCES.revive1 = _capSeq;
+        CINE_SEQUENCES.leechSeed = _capSeq;
+        CINE_SEQUENCES.rampage = _capSeq;
+        CINE_SEQUENCES.empBurst = _capSeq;
+        CINE_SEQUENCES.requiem = _capSeq;
+        CINE_SEQUENCES.voidRush = _capSeq;
+        CINE_SEQUENCES.raceStoneDrop = _capSeq;
+        CINE_SEQUENCES.raceMarrowstorm = _capSeq;
+        CINE_SEQUENCES.raceTailWhip = _capSeq;
+        CINE_SEQUENCES.raceMimicry = _capSeq;
+        CINE_SEQUENCES.raceSwarmSignal = _capSeq;
+        CINE_SEQUENCES.raceSasquatchSmash = _capSeq;
+        CINE_SEQUENCES.raceCallOfTheDeep = _capSeq;
+        CINE_SEQUENCES.sharedNuke = _capSeq;
+        CINE_SEQUENCES.raceColossalCrush = _capSeq;
+        CINE_SEQUENCES.raceIndomitableWill = _capSeq;
+        CINE_SEQUENCES.raceCannonball = _capSeq;
+        CINE_SEQUENCES.racePlandemic = _capSeq;
+        CINE_SEQUENCES.raceClassifiedWeapon = _capSeq;
+        CINE_SEQUENCES.raceFireForEffect = _capSeq;
+        CINE_SEQUENCES.raceExtendedClips = _capSeq;
+        CINE_SEQUENCES.raceHallelujah = _capSeq;
+        CINE_SEQUENCES.raceStarDecree = _capSeq;
+        CINE_SEQUENCES.raceGiantSmash = _capSeq;
+        CINE_SEQUENCES.raceDarkDominion = _capSeq;
+        CINE_SEQUENCES.raceDarkLullaby = _capSeq;
+        CINE_SEQUENCES.racePredatorDrop = _capSeq;
+        CINE_SEQUENCES.raceTsunami = _capSeq;
+        CINE_SEQUENCES.raceTerrorPounce = _capSeq;
+        CINE_SEQUENCES.raceOvertinker = _capSeq;
+        CINE_SEQUENCES.sharedVortexSlam = _capSeq;
+        CINE_SEQUENCES.raceTidalSlam = _capSeq;
+        CINE_SEQUENCES.raceSpaceDisco = _capSeq;
+        CINE_SEQUENCES.raceMitosisSplit = _capSeq;
+        CINE_SEQUENCES.raceQuake = _capSeq;
+        CINE_SEQUENCES.raceMissileBarrage = _capSeq;
+        CINE_SEQUENCES.raceUnstoppableCharge = _capSeq;
+        CINE_SEQUENCES.raceDragonFist = _capSeq;
+        CINE_SEQUENCES.racePrimalSmash = _capSeq;
+        CINE_SEQUENCES.raceBullRush = _capSeq;
+        CINE_SEQUENCES.sentaiMegazordBlast = _capSeq;
+        CINE_SEQUENCES.raceTendrilStrike = _capSeq;
+        CINE_SEQUENCES.raceRealityPulse = _capSeq;
 
         /* ═══════════════════════════════════════════════════════════════════
            STANDALONE BEATS — cinematic moments that fire OUTSIDE a cast (a

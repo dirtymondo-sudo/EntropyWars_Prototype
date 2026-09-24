@@ -21875,6 +21875,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     function _fireStage(phase, spellId, params) {
         if (!params) return;
         try { _stageGlow(phase, spellId, params); } catch (e) {}
+        /* THE CAPSTONES (Phase 6): an ultimate's own charge / hit rides the
+           same relayed beat, so the guest draws it too */
+        try { _capStage(phase, spellId, params); } catch (e) {}
         if (phase === 'windup') { _stageWindup(spellId, params); return; }
         if (phase === 'burst')  { _stageBurst(spellId, params);  return; }
         if (phase === 'finish') { _stageFinish(spellId, params); return; }
@@ -37570,6 +37573,1257 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     }
 
     /* ═════════ END THE CRAFT KIT ═════════ */
+
+    /* ═══════════════════════════════════════════════════════════════════
+       THE CAPSTONES (SPELL_DIRECTOR_PLAN §5 Phase 6, 2026-09-24)
+       ═══════════════════════════════════════════════════════════════════
+       The 44 ultimates that had neither a signature nor a bespoke director
+       ("the bare capstones", check-spell-presentation.js --list
+       bareCapstones) each get ONE signature of their own, built from THE
+       CRAFT KIT (real light, the explosion, the shards, the scar), the
+       shared primitives (sigils, columns, rings, shells) and the game's own
+       Meshy models (the honda civic sedan and the kit's cars, the missile,
+       the bones, the fist, the astral eye) — never a generated stand-in for
+       a thing the game owns a model of.
+
+       THE HOOK is the staging pair every cast already fires through the
+       relayed VFX3D.fire (battle.js _stageSpellCast): 'windup' at the cast
+       commit (the caster's tile, the footprint `tiles`, `holdMs` = the
+       estimated impact) → the signature's CHARGE; 'burst' on the real
+       impact frame (retimed by the paths that know it) → its HIT. Every
+       kind passes through that pair, so one hook reaches dashes, sky
+       drops, war cries and revives alike, and the guest draws the same
+       signature off the same relay (RULE #2 — nothing new to plumb, no
+       `state` field). A DELAYED capstone's mark turn gets its charge; its
+       blast is the end-of-round detonation, which reaches the registry
+       through the descent pipeline / fireGeometry (`detonate`, deduped —
+       an aoe + an impact intent may both land on it).
+
+       Each one is registered in _spell3DGeometry (the census counts it) but
+       answers ONLY the calls it asked for (p._cap), so the automatic
+       routes (impact per tile, aura, wall…) never double-fire it.
+       Ownership: every group under _sigRunOwned, every beat through
+       _fxDelay (_capAt re-checks _suppressed()). Kill-switch:
+       window.EW_DISABLE_CAPSTONE_SIGS = true (and EW_DISABLE_CRAFT). */
+    var _CAP_LIVE = {}, _CAP_DET = {};
+    function _capOff() {
+        return _crOff() || (typeof window !== 'undefined' && !!window.EW_DISABLE_CAPSTONE_SIGS);
+    }
+    function _capTs() { return _cfg().tileSize || 128; }
+    /* a tile's point in VFX px space, h tiles over the floor */
+    function _capPx(tx, ty, h) {
+        var c = tilePx(tx, ty);
+        return { x: c.x, y: c.y, z: unitSurfaceZ(tx, ty) + _capTs() * (h || 0) };
+    }
+    function _capLight(tx, ty, col, o) {
+        o = o || {};
+        var p = _capPx(tx, ty, o.h != null ? o.h : 0.6);
+        return _crLight(p.x, p.y, p.z, col, { intensity: o.i != null ? o.i : 2.4, radius: o.r != null ? o.r : 3.2,
+            ms: o.ms != null ? o.ms : 520, attack: o.attack || 0, hold: o.hold || 0 });
+    }
+    function _capAt(ms, fn) {
+        var go = function () { if (_suppressed()) return; try { fn(); } catch (e) { console.warn('[CAPSTONE] beat failed', e); } };
+        if (!(ms > 0)) go(); else _fxDelay(go, ms);
+    }
+    function _capRing(tx, ty, col, r1, ms, h) {
+        try { return _sigShockRing3D(tx, ty, { color: col, r0: _capTs() * 0.15, r1: _capTs() * r1, ms: ms || 460, height: h != null ? h : 5 }); } catch (e) { return null; }
+    }
+    function _capSigil(tx, ty, col, rT, ms, o) {
+        o = o || {};
+        var grow = o.grow || 200, fade = o.fade || 280;
+        try {
+            return _sigMagicCircle3D(tx, ty, { color: col, color2: o.color2 != null ? o.color2 : col, radiusPx: _capTs() * rT,
+                growMs: grow, holdMs: Math.max(100, (ms || 900) - grow - fade), fadeMs: fade,
+                opacity: o.op != null ? o.op : 0.8, spin: o.spin != null ? o.spin : 0.002,
+                height: o.height != null ? o.height : 3, rise: o.rise });
+        } catch (e) { return null; }
+    }
+    function _capColumn(tx, ty, col, hT, rT, ms, core) {
+        try { return _sigLightPillar3D(tx, ty, { color: col, coreColor: core != null ? core : 0xffffff, height: _capTs() * hT, radius: _capTs() * rT, ms: ms || 800 }); } catch (e) { return null; }
+    }
+    function _capBoom(tx, ty, o) { try { return _crExplosion(tx, ty, o || {}); } catch (e) { return null; } }
+    function _capShards(tx, ty, kind, o) { try { return _crShards(tx, ty, kind, o || {}); } catch (e) { return null; } }
+    function _capSparks(tx, ty, sprite, n, o) { try { _sigSparks(tx, ty, sprite, n, o || {}); } catch (e) {} }
+    function _capYaw(ax, ay, bx, by) {
+        var dx = bx - ax, dz = by - ay;
+        if (!dx && !dz) return rn(0, Math.PI * 2);
+        return Math.atan2(dx, dz);
+    }
+    /* particles blown out of (or rising off) a tile — the one loop every
+       recipe below would otherwise repeat */
+    function _capPuff(tx, ty, sprite, n, o) {
+        if (!_canSpawn()) return;
+        o = o || {};
+        var ts = _capTs(), c = tilePx(tx, ty), z0 = unitSurfaceZ(tx, ty) + ts * (o.h != null ? o.h : 0.1);
+        var R = ts * (o.r != null ? o.r : 0.5);
+        for (var i = 0; i < n; i++) {
+            var a = rn(0, 6.2832), d = Math.sqrt(Math.random()) * R, sp = o.out != null ? o.out : 60;
+            _spawn({ x: c.x + Math.cos(a) * d, y: c.y + Math.sin(a) * d, z: z0 + rn(0, ts * (o.zSpread || 0.2)),
+                vx: Math.cos(a) * sp * rn(0.5, 1.2), vy: Math.sin(a) * sp * rn(0.5, 1.2),
+                vz: rn(o.vz0 != null ? o.vz0 : 20, o.vz1 != null ? o.vz1 : 90),
+                gravity: o.gravity != null ? o.gravity : 0, drag: o.drag != null ? o.drag : 1.0,
+                mode: 'billboard', sprite: sprite, tint: o.tint != null ? o.tint : null,
+                ml: rn(o.ml0 || 500, o.ml1 || 900), size0: rn(o.s0 || 8, o.s1 || 16), size1: o.sEnd != null ? o.sEnd : 2,
+                opacity0: o.op != null ? o.op : 0.9, opacity1: 0,
+                wander: o.wander ? { amp: o.wander, freq: 1.2 } : undefined });
+        }
+    }
+    /* motes that travel from one tile to another (a drain, a swarm, a gift) */
+    function _capMotes(fx, fy, tx, ty, sprite, n, o) {
+        if (!_canSpawn()) return;
+        o = o || {};
+        var ts = _capTs(), a = tilePx(fx, fy), b = tilePx(tx, ty);
+        var za = unitSurfaceZ(fx, fy) + ts * (o.h0 != null ? o.h0 : 0.5), zb = unitSurfaceZ(tx, ty) + ts * (o.h1 != null ? o.h1 : 0.5);
+        for (var i = 0; i < n; i++) {
+            var ms = rn(o.ms0 || 420, o.ms1 || 760);
+            _spawn({ x: a.x + rn(-18, 18), y: a.y + rn(-18, 18), z: za + rn(-10, 18),
+                mode: 'billboard', sprite: sprite, tint: o.tint != null ? o.tint : null,
+                ml: ms + 80, seek: { x: b.x, y: b.y, z: zb, ms: ms, ease: o.ease || 'inOut', spiralDeg: o.spiral || 0 },
+                size0: rn(o.s0 || 5, o.s1 || 10), size1: 2, opacity0: 0.95, opacity1: 0.3 });
+        }
+    }
+    /* THE CHARGE every capstone shares under its own: motes spiral into the
+       caster, a sigil turns under the feet, and a light swells over the
+       hold so the caster is LIT by what they are about to do */
+    function _capCharge(P, col, o) {
+        o = o || {};
+        var hold = Math.max(320, Math.min(2600, P.hold || 900));
+        try { _sigChargeSpiral3D(P.sx, P.sy, { count: o.n || 16, ms: Math.min(900, hold * 0.8), sprite: o.sprite || 'divine-sparkle', tint: col, r1: _capTs() * 1.4 }); } catch (e) {}
+        if (o.sigil !== false) _capSigil(P.sx, P.sy, o.sigilColor != null ? o.sigilColor : col, o.sigilR || 1.05, hold + 200, { op: 0.62, spin: o.spin });
+        _capLight(P.sx, P.sy, col, { i: o.i || 1.8, r: 2.6, h: 0.7, attack: hold * 0.85, hold: 60, ms: hold + 320 });
+    }
+
+    /* ── the capstone builders (each one group, _sigRunOwned) ─────────── */
+
+    /* an energy shell — a sphere or a dome that swells, holds and erodes:
+       the EMP bubble, the void, the goo, the gnome's shield */
+    function _capShell(tx, ty, o) {
+        if (!_getVFXScene()) return null;
+        o = o || {};
+        var wp = _worldPos(tx, ty), ts = wp.ts;
+        var r0 = ts * (o.r0 != null ? o.r0 : 0.2), r1 = ts * (o.r1 != null ? o.r1 : 1.4);
+        var grow = o.grow != null ? o.grow : 420, hold = o.hold != null ? o.hold : 300, fade = o.fade != null ? o.fade : 520;
+        var total = grow + hold + fade, peak = o.op != null ? o.op : 0.85;
+        var g = new THREE.Group();
+        g.position.set(wp.x, wp.y + ts * (o.h != null ? o.h : 0), wp.z);
+        var mat = _sigEnergyMat(o.color != null ? o.color : 0x88ccff, { hot: o.hot != null ? o.hot : 0xffffff, gain: o.gain != null ? o.gain : 1.5,
+            opacity: 0, scale1: o.scale1 || 3, scale2: 1.5, vFadeLo: o.dome ? 0.1 : 0.04, vFadeHi: 0.96,
+            s1x: 0.08, s1y: o.flow != null ? o.flow : -0.4 });
+        var geo = o.dome ? new THREE.SphereGeometry(1, 28, 12, 0, Math.PI * 2, 0, Math.PI / 2) : new THREE.SphereGeometry(1, 28, 18);
+        var m = new THREE.Mesh(geo, mat);
+        m.renderOrder = 160;
+        g.add(m);
+        return _sigRunOwned(g, total, function (el) {
+            var k, op, er = 0.04;
+            if (el < grow) { k = _sigEaseOutCubic(el / grow); op = Math.min(1, el / (grow * 0.4 + 1)); }
+            else if (el < grow + hold) { k = 1; op = 1; }
+            else { var f = (el - grow - hold) / fade; k = 1 + (o.swell != null ? o.swell : 0.08) * f; op = 1 - f; er = 0.1 + 0.75 * f; }
+            if (o.collapse && el > grow + hold) k = Math.max(0.02, 1 - (el - grow - hold) / fade);
+            var r = r0 + (r1 - r0) * k;
+            m.scale.set(r, r * (o.squash || 1), r);
+            if (o.spin) m.rotation.y = el * o.spin;
+            _sigEnergyTick(mat, el, er);
+            mat.uniforms.uOpacity.value = peak * op * (o.flicker ? (0.7 + 0.3 * Math.abs(Math.sin(el * 0.045))) : 1);
+        });
+    }
+
+    /* an energy strip between two world points (two crossed quads, the
+       noise flowing from a → b): a drain's tether, a beam of light */
+    function _capLance(A, B, o) {
+        if (!_getVFXScene()) return null;
+        o = o || {};
+        var ts = _capTs(), w = ts * (o.w != null ? o.w : 0.08);
+        var ms = o.ms != null ? o.ms : 700, grow = o.grow != null ? o.grow : 140, fade = o.fade != null ? o.fade : 260;
+        var g = new THREE.Group();
+        var mat = _sigEnergyMat(o.color != null ? o.color : 0x88ffcc, { hot: o.hot != null ? o.hot : 0xffffff, gain: o.gain || 1.8,
+            opacity: 0, scale1: 1.2, scale2: 0.8, s1x: o.flow != null ? o.flow : -1.8, s1y: 0, s2x: -1.1, s2y: 0.05,
+            vFadeLo: 0.3, vFadeHi: 0.7 });
+        var d = new THREE.Vector3().subVectors(B, A), side1 = new THREE.Vector3().crossVectors(d, new THREE.Vector3(0, 1, 0));
+        if (side1.lengthSq() < 1e-6) side1.set(1, 0, 0);
+        side1.normalize();
+        var m1 = new THREE.Mesh(_crStripGeo(A, B, w, new THREE.Vector3(0, 1, 0)), mat);
+        var m2 = new THREE.Mesh(_crStripGeo(A, B, w, side1), mat);
+        m1.renderOrder = m2.renderOrder = 170;
+        g.add(m1); g.add(m2);
+        var peak = o.op != null ? o.op : 0.95;
+        return _sigRunOwned(g, ms, function (el) {
+            var op = el < grow ? el / grow : (el > ms - fade ? Math.max(0, (ms - el) / fade) : 1);
+            _sigEnergyTick(mat, el, 0.05);
+            mat.uniforms.uOpacity.value = peak * op * (o.pulse ? (0.65 + 0.35 * Math.sin(el * 0.03)) : 1);
+        });
+    }
+    function _capTorso(tx, ty, lift) {
+        var wp = _worldPos(tx, ty);
+        return new THREE.Vector3(wp.x, wp.y + unitZBoost() + _capTs() * (lift || 0), wp.z);
+    }
+
+    /* stone spikes that burst out of the floor and sink back: the Rampart's
+       heave, the golem's quake. pts = [{x, y}] tiles; o.ring = a ring of
+       `n` spikes round (tx, ty) at o.ring tiles instead */
+    function _capSpikes(tx, ty, o) {
+        if (!_getVFXScene()) return null;
+        o = o || {};
+        var wp = _worldPos(tx, ty), ts = wp.ts;
+        var g = new THREE.Group();
+        g.position.set(wp.x, wp.y, wp.z);
+        var mat = new THREE.MeshStandardMaterial({ color: o.color != null ? o.color : 0x7d6e5e, roughness: 1, metalness: 0,
+            flatShading: true, transparent: true, opacity: 1,
+            emissive: new THREE.Color(o.glow != null ? o.glow : 0x000000), emissiveIntensity: o.glow != null ? 0.6 : 0 });
+        var spikes = [], pts = [];
+        if (o.pts) {
+            for (var i = 0; i < o.pts.length; i++) {
+                var q = _worldPos(o.pts[i].x, o.pts[i].y);
+                pts.push({ x: q.x - wp.x, z: q.z - wp.z, y: q.y - wp.y, delay: i * (o.stagger || 70) });
+            }
+        } else {
+            var n = o.n || 10, R = ts * (o.ring || 1.4);
+            for (var j = 0; j < n; j++) {
+                var a = j / n * Math.PI * 2 + rn(-0.15, 0.15), rr = R * rn(0.85, 1.12);
+                pts.push({ x: Math.cos(a) * rr, z: Math.sin(a) * rr, y: 0, delay: rn(0, o.jitter != null ? o.jitter : 120) });
+            }
+        }
+        for (var k = 0; k < pts.length; k++) {
+            var per = o.per || 1;
+            for (var s = 0; s < per; s++) {
+                var h = ts * (o.h || 0.9) * rn(0.7, 1.25), rad = ts * (o.w || 0.2) * rn(0.75, 1.2);
+                var geo = new THREE.ConeGeometry(rad, h, 5, 1);
+                geo.translate(0, h / 2, 0);
+                var m = new THREE.Mesh(geo, mat);
+                m.position.set(pts[k].x + (per > 1 ? rn(-0.28, 0.28) * ts : 0), pts[k].y - h, pts[k].z + (per > 1 ? rn(-0.28, 0.28) * ts : 0));
+                m.rotation.set(rn(-0.25, 0.25), rn(0, 6.28), rn(-0.25, 0.25));
+                g.add(m);
+                spikes.push({ m: m, h: h, y0: pts[k].y, delay: pts[k].delay + s * 40 });
+            }
+        }
+        var riseMs = o.riseMs || 170, holdMs = o.holdMs != null ? o.holdMs : 900, sinkMs = o.sinkMs || 520;
+        var last = 0;
+        for (var z = 0; z < spikes.length; z++) last = Math.max(last, spikes[z].delay);
+        var total = last + riseMs + holdMs + sinkMs;
+        return _sigRunOwned(g, total, function (el) {
+            for (var i = 0; i < spikes.length; i++) {
+                var S = spikes[i], t = el - S.delay, k;
+                if (t < 0) k = 0;
+                else if (t < riseMs) k = _sigEaseOutBack(t / riseMs);
+                else if (t < riseMs + holdMs) k = 1;
+                else k = Math.max(0, 1 - (t - riseMs - holdMs) / (total - S.delay - riseMs - holdMs));
+                S.m.position.y = S.y0 - S.h * (1 - k);
+            }
+            if (o.glow != null) mat.emissiveIntensity = 0.6 * Math.max(0, 1 - el / 900);
+        });
+    }
+
+    /* a car from the sky (Vehicular Manslaughter): THE ONE MODEL — the honda
+       civic's own sedan (ThreeRenderer.sedan), the kit's cars
+       (ThreeRenderer.vehicle) while it streams. It drops nose-down, slams,
+       bounces, rolls onto its side and burns. */
+    var _CAP_CAR_KINDS = ['taxi', 'cadillac', 'suv', 'copcar'];
+    function _capCar(tx, ty, o) {
+        if (!_canSpawn()) return null;
+        o = o || {};
+        var TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
+        if (!TR) return null;
+        var car = null;
+        try { if (typeof TR.sedan === 'function') car = TR.sedan({ metres: 4.4 }); } catch (e) { car = null; }
+        if (!car) {
+            try { if (typeof TR.vehicle === 'function') car = TR.vehicle(o.kind || _CAP_CAR_KINDS[(Math.random() * _CAP_CAR_KINDS.length) | 0], { metres: 4.4, beacon: false }); } catch (e2) { car = null; }
+        }
+        if (!car) return null;
+        var wp = _worldPos(tx, ty), ts = wp.ts;
+        var g = new THREE.Group();
+        g.position.set(wp.x, wp.y, wp.z);
+        g.rotation.y = rn(0, Math.PI * 2);
+        var pivot = new THREE.Group();
+        pivot.add(car);
+        g.add(pivot);
+        var H = ts * (o.fromH || 6.5), fall = o.ms || 480, settle = 1500, fadeMs = 420, total = fall + settle + fadeMs;
+        var tipTo = rn(0.9, 1.4) * (Math.random() < 0.5 ? -1 : 1);
+        var landed = false;
+        pivot.position.y = H;
+        pivot.rotation.x = 0.9;
+        return _sigRunOwned(g, total, function (el) {
+            if (el < fall) {
+                var k = el / fall;
+                pivot.position.y = H * (1 - k * k);
+                pivot.rotation.x = 0.9 * (1 - k) + 0.25;
+                pivot.rotation.z = el * 0.004;
+                return;
+            }
+            if (!landed) {
+                landed = true;
+                if (o.onLand) { try { o.onLand(); } catch (e) {} }
+            }
+            var t = el - fall;
+            var b = t < 380 ? Math.sin(Math.PI * t / 380) * ts * 0.45 * Math.max(0, 1 - t / 380) : 0;
+            pivot.position.y = b;
+            var tk = Math.min(1, t / 520);
+            pivot.rotation.x = 0.25 * (1 - tk);
+            pivot.rotation.z = tipTo * _sigEaseOutCubic(tk) + 0.004 * fall;
+            if (t > settle) _crFadeTree(pivot, Math.max(0, 1 - (t - settle) / fadeMs));
+            if (t > 200 && t < settle && ((t / 90) | 0) !== (((t - 16) / 90) | 0) && _canSpawn()) {
+                var c = tilePx(tx, ty);
+                _spawn({ x: c.x + rn(-20, 20), y: c.y + rn(-20, 20), z: unitSurfaceZ(tx, ty) + ts * 0.3,
+                    vz: rn(40, 80), mode: 'billboard', sprite: Math.random() < 0.4 ? 'flame' : 'smoke',
+                    ml: rn(500, 900), size0: ts * 0.1, size1: ts * 0.34, opacity0: 0.6, opacity1: 0, drag: 1.1,
+                    wander: { amp: 20, freq: 1.2 } });
+            }
+        });
+    }
+
+    /* curling tendrils from a tile to a tile that grow out along the line:
+       the symbiote's lash (a drawRange reveal on a tapering bent strip) */
+    function _capTendrils(fx, fy, tx, ty, o) {
+        if (!_getVFXScene()) return null;
+        o = o || {};
+        var A = _capTorso(fx, fy, 0.05), B = _capTorso(tx, ty, 0);
+        var ts = _capTs(), n = o.n || 3, SEG = 24;
+        var g = new THREE.Group();
+        var mat = new THREE.MeshBasicMaterial({ color: o.color != null ? o.color : 0x120a18, transparent: true, opacity: 0.95,
+            side: THREE.DoubleSide, depthWrite: false });
+        var glowMat = _sigMat(o.glow != null ? o.glow : 0x7dff3a);
+        var d = new THREE.Vector3().subVectors(B, A), L = d.length() || 1;
+        var fwd = d.clone().normalize(), side = new THREE.Vector3().crossVectors(fwd, new THREE.Vector3(0, 1, 0));
+        if (side.lengthSq() < 1e-6) side.set(1, 0, 0);
+        side.normalize();
+        var up = new THREE.Vector3().crossVectors(side, fwd).normalize();
+        var strips = [];
+        for (var i = 0; i < n; i++) {
+            var bend = (i - (n - 1) / 2) * ts * 0.55 + rn(-0.15, 0.15) * ts, lift = rn(0.2, 0.7) * ts;
+            var pos = new Float32Array((SEG + 1) * 2 * 3), uv = new Float32Array((SEG + 1) * 2 * 2), idx = [];
+            for (var s = 0; s <= SEG; s++) {
+                var t = s / SEG, arc = Math.sin(Math.PI * t);
+                var P = A.clone().addScaledVector(fwd, L * t).addScaledVector(side, bend * arc + Math.sin(t * 9 + i) * ts * 0.05)
+                    .addScaledVector(up, lift * arc);
+                var hw = ts * 0.07 * (1 - t * 0.8);
+                pos.set([P.x - up.x * hw, P.y - up.y * hw, P.z - up.z * hw, P.x + up.x * hw, P.y + up.y * hw, P.z + up.z * hw], s * 6);
+                uv.set([t, 0, t, 1], s * 4);
+                if (s < SEG) { var q = s * 2; idx.push(q, q + 1, q + 2, q + 1, q + 3, q + 2); }
+            }
+            var geo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+            geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+            geo.setIndex(idx);
+            geo.setDrawRange(0, 0);
+            var mA = new THREE.Mesh(geo, mat), mB = new THREE.Mesh(geo, glowMat);
+            mB.scale.set(1, 1, 1);
+            mA.renderOrder = 171; mB.renderOrder = 170;
+            g.add(mA); g.add(mB);
+            strips.push({ geo: geo, delay: i * 70 });
+        }
+        var reach = o.reachMs || 260, hold = o.holdMs || 520, back = 300, total = (n - 1) * 70 + reach + hold + back;
+        return _sigRunOwned(g, total, function (el) {
+            for (var i = 0; i < strips.length; i++) {
+                var S = strips[i], t = el - S.delay, k;
+                if (t < 0) k = 0;
+                else if (t < reach) k = _sigEaseOutCubic(t / reach);
+                else if (t < reach + hold) k = 1;
+                else k = Math.max(0, 1 - (t - reach - hold) / back);
+                S.geo.setDrawRange(0, Math.round(SEG * k) * 6);
+            }
+            glowMat.opacity = 0.35 * (0.6 + 0.4 * Math.sin(el * 0.03));
+        });
+    }
+
+    /* a watching eye over the board (THE WATCHER's Reality Pulse) — THE ONE
+       MODEL: the astral realm's eye (ThreeRenderer.astralEye), turned on
+       the camera; a glowing ball while it streams */
+    function _capEye(tx, ty, o) {
+        if (!_getVFXScene()) return null;
+        o = o || {};
+        var wp = _worldPos(tx, ty), ts = wp.ts;
+        var R = ts * (o.r || 0.8);
+        var g = new THREE.Group();
+        g.position.set(wp.x, wp.y + ts * (o.h || 2.4), wp.z);
+        var eye = _crAstralEye(R, o.tint != null ? o.tint : 0xb46cff), glowMat = null;
+        if (!eye) {
+            glowMat = _sigMat(o.tint != null ? o.tint : 0xb46cff, { map: _sigGlowTex() });
+            eye = new THREE.Sprite(new THREE.SpriteMaterial({ map: _sigGlowTex(), color: 0xffffff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+            eye.scale.set(R * 2.4, R * 2.4, 1);
+        }
+        g.add(eye);
+        var halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: _sigGlowTex(), color: new THREE.Color(o.tint != null ? o.tint : 0xb46cff),
+            transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }));
+        halo.scale.set(R * 4.2, R * 4.2, 1);
+        g.add(halo);
+        var inMs = 380, hold = o.hold || 1100, out = 420, total = inMs + hold + out;
+        var camV = new THREE.Vector3();
+        return _sigRunOwned(g, total, function (el) {
+            var f = el < inMs ? _sigEaseOutBack(el / inMs) : (el < inMs + hold ? 1 : Math.max(0.01, 1 - (el - inMs - hold) / out));
+            g.scale.setScalar(Math.max(0.01, f));
+            try {
+                var cam = (typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null;
+                if (cam && eye.isObject3D && !eye.isSprite) { cam.getWorldPosition(camV); eye.lookAt(camV); }
+            } catch (e) {}
+            if (eye.userData && eye.userData.eye && eye.userData.eye.blink) {
+                eye.userData.eye.blink(el < inMs ? 1 - el / inMs : 0);
+            }
+            if (eye.isGroup || eye.isObject3D) { if (!eye.isSprite) _crFadeTree(eye, Math.min(1, f)); }
+            halo.material.opacity = 0.45 * Math.min(1, f) * (0.8 + 0.2 * Math.sin(el * 0.02));
+        });
+    }
+
+    /* ── THE 44 — one signature each ─────────────────────────────────────
+       P = { sx, sy, tx, ty, hold (ms to the estimated impact), tiles (the
+       footprint the windup lit), r (the aoe radius), def, ts }.
+       charge(P) on the windup · hit(P) on the burst · detonate(P) for the
+       delayed three (the end-of-round blast, P.lead = ms to its impact). */
+    var _CAP_SIGS = {
+        /* Rampart — THREE STANDING STONES: the earth heaves along the line
+           before the stones rise; stone spikes break the floor, dust rolls */
+        rampart: {
+            charge: function (P) { _capCharge(P, 0xc9a36a, { sprite: 'dust-puff', sigilR: 0.9 }); _capPuff(P.sx, P.sy, 'dust-puff', 8, { r: 0.6, out: 40, s0: 18, s1: 30, sEnd: 44, op: 0.5 }); },
+            hit: function (P) {
+                var pts = (P.tiles && P.tiles.length) ? P.tiles : [{ x: P.tx, y: P.ty }];
+                _capSpikes(P.tx, P.ty, { pts: pts, per: 3, h: 1.1, w: 0.22, stagger: 90, holdMs: 700 });
+                for (var i = 0; i < pts.length && i < 5; i++) {
+                    (function (q, k) { _capAt(k * 90, function () {
+                        _capShards(q.x, q.y, 'stone', { n: 6, scale: 1.1, lite: k > 0 });
+                        _capPuff(q.x, q.y, 'dust-puff', 7, { r: 0.55, out: 90, s0: 20, s1: 34, sEnd: 60, op: 0.55, ml0: 700, ml1: 1100 });
+                    }); })(pts[i], i);
+                }
+                _capRing(P.tx, P.ty, 0xd8b884, 1.9, 520, 3);
+                _capLight(P.tx, P.ty, 0xffd08a, { i: 1.6, ms: 600, h: 0.3 });
+                _sigShake('hard');
+            }
+        },
+        /* Revive — THE ANSWERED PRAYER: a column of light comes DOWN on the
+           fallen, feathers fall through it, a halo rises off the body */
+        revive1: {
+            charge: function (P) { _capCharge(P, 0xffe7a0, { sprite: 'holy-light' }); },
+            hit: function (P) {
+                _capColumn(P.tx, P.ty, 0xffe7a0, 9, 0.5, 1300);
+                _capSigil(P.tx, P.ty, 0xffd76a, 1.2, 1500, { color2: 0xffffff, op: 0.75 });
+                _capLight(P.tx, P.ty, 0xfff0c0, { i: 3.0, ms: 1400, attack: 120, hold: 500, h: 1.2, r: 3.6 });
+                try { _sigSnowfall3D(P.tx, P.ty, { radiusTiles: 0.9, count: 14, ms: 1600, sprite: 'divine-sparkle', tint: 0xfff2c0 }); } catch (e) {}
+                _capAt(420, function () { try { _sigStatRings3D(P.tx, P.ty, { dir: 1, rings: 3, color: 0xffe08a, ms: 700 }); } catch (e) {} });
+                _capAt(700, function () { _sigScreenFlash('#fff6d8', 260, 0.16); });
+            }
+        },
+        /* Leech Seed — THE SEED TAKES: a seed of green light buries itself
+           in the victim, vines of light tether it to the caster, and the
+           sap runs home */
+        leechSeed: {
+            charge: function (P) { _capCharge(P, 0x7dff5a, { sprite: 'vine-green' }); },
+            hit: function (P) {
+                _capSigil(P.tx, P.ty, 0x5fd84a, 0.9, 1500, { op: 0.6, spin: 0.004 });
+                try { _sigOrbBurst3D(P.tx, P.ty, { mode: 'in', color: 0x7dff5a, ms: 360, r1: _capTs() * 0.7 }); } catch (e) {}
+                _capPuff(P.tx, P.ty, 'leaf', 10, { r: 0.4, out: 80, vz0: 60, vz1: 160, gravity: 120, ml0: 700, ml1: 1100 });
+                _capAt(260, function () {
+                    _capLance(_capTorso(P.tx, P.ty), _capTorso(P.sx, P.sy), { color: 0x6fff4a, hot: 0xe8ffd0, w: 0.06, ms: 1300, pulse: true, flow: 1.6 });
+                    _capMotes(P.tx, P.ty, P.sx, P.sy, 'heal-glow', 12, { tint: 0x9dff7a, ms0: 500, ms1: 900 });
+                    _capLight(P.tx, P.ty, 0x7dff5a, { i: 1.6, ms: 1200, attack: 200, hold: 400 });
+                });
+            }
+        },
+        /* Rampage — THE BERSERK: the charge lands as three red cuts in a
+           blink, the floor splits under the victim */
+        rampage: {
+            charge: function (P) { _capCharge(P, 0xff4020, { sprite: 'ember', sigil: false }); _capPuff(P.sx, P.sy, 'smoke', 8, { r: 0.4, out: 30, vz0: 60, vz1: 120, s0: 14, s1: 24, sEnd: 40, op: 0.4 }); },
+            hit: function (P) {
+                var y = _capYaw(P.sx, P.sy, P.tx, P.ty);
+                [[0.0, -0.4, 1], [0.9, -0.9, -1], [-0.7, -0.2, 1]].forEach(function (s, i) {
+                    _capAt(i * 85, function () {
+                        try { _sigCrescentSlash3D(P.tx, P.ty, { yaw: y + s[0], pitch: s[1], dir: s[2], color: 0xff5a3a, size: _capTs() * 1.9, ms: 200, scar: true, scarColor: 0xff2010, scarMs: 1500 }); } catch (e) {}
+                    });
+                });
+                _capAt(260, function () { _capRing(P.tx, P.ty, 0xff6a3a, 1.6, 420); _capShards(P.tx, P.ty, 'stone', { n: 8 }); _sigShake('hard'); });
+                _capLight(P.tx, P.ty, 0xff3a1a, { i: 2.6, ms: 700, h: 0.5 });
+            }
+        },
+        /* EMP Burst — THE PULSE: a dome of static swells off the strike,
+           arcs crawl its skin, every light in it stutters and dies */
+        empBurst: {
+            charge: function (P) { _capCharge(P, 0x7fe8ff, { sprite: 'spark-elec' }); },
+            hit: function (P) {
+                var r = Math.max(1, P.r || 2);
+                _capShell(P.tx, P.ty, { color: 0x5fd8ff, hot: 0xe8fbff, r0: 0.2, r1: r + 0.6, dome: true, grow: 380, hold: 260, fade: 460, flicker: true, flow: -0.9 });
+                _capRing(P.tx, P.ty, 0x9fe8ff, r + 1.1, 520);
+                var L = _LT();
+                if (L) for (var i = 0; i < 4; i++) {
+                    (function (k) { _capAt(80 + k * 110, function () {
+                        var a = rn(0, 6.28), c = tilePx(P.tx, P.ty), ts = _capTs(), z = unitSurfaceZ(P.tx, P.ty);
+                        try { L.boltVfx({ x: c.x, y: c.y, z: z + ts * 1.1 }, { x: c.x + Math.cos(a) * ts * (r + 0.4), y: c.y + Math.sin(a) * ts * (r + 0.4), z: z + 6 },
+                            { color: 0xbff4ff, glowColor: 0x3fb8ff, durationMs: 200, segments: 9, branchChance: 0.3 }); } catch (e) {}
+                    }); })(i);
+                }
+                /* the lights stutter: three blinks, then dark */
+                [0, 140, 260].forEach(function (t, i) { _capAt(t, function () { _capLight(P.tx, P.ty, 0x9feaff, { i: 3.2 - i * 0.8, ms: 110, h: 1.0, r: 4 }); }); });
+                _capAt(40, function () { _sigScreenFlash('#bff4ff', 150, 0.16); });
+                _capShards(P.tx, P.ty, 'glass', { n: 8, lite: true });
+            }
+        },
+        /* Requiem — THE LAST MASS: a black choir of notes rises round the
+           caster; the chord breaks and the notes shatter outward */
+        requiem: {
+            charge: function (P) {
+                _capCharge(P, 0x9a6bff, { sprite: 'void-mist', sigilColor: 0x5a2aa0 });
+                try { _sigMusicNotes3D(P.sx, P.sy, { count: 4, color: 0xb488ff, gentle: true, ms: Math.max(700, P.hold) }); } catch (e) {}
+            },
+            hit: function (P) {
+                var r = Math.max(1, P.r || 2);
+                try { _sigSonicBoom3D(P.sx, P.sy, { color: 0xc49aff, rings: 4, ringGapMs: 120, radiusTiles: r + 0.5 }); } catch (e) {}
+                try { _sigMusicNotes3D(P.sx, P.sy, { count: 6, color: 0xd6b8ff, broken: true, scale: 1.3 }); } catch (e) {}
+                _capColumn(P.sx, P.sy, 0x7a4adf, 5, 0.34, 900, 0xe6d8ff);
+                _capLight(P.sx, P.sy, 0xa77aff, { i: 2.6, ms: 900, h: 1.2, r: 4 });
+                _capPuff(P.sx, P.sy, 'shadow-wisp', 10, { r: r * 0.8, out: 120, vz0: 20, vz1: 60, s0: 20, s1: 34, sEnd: 50, op: 0.5 });
+            }
+        },
+        /* Void Rush — THE TEAR: the caster folds into a violet wound in the
+           air; it opens again over the enemies and bursts */
+        voidRush: {
+            charge: function (P) {
+                _capCharge(P, 0xb46cff, { sprite: 'void-mist', sigil: false });
+                try { _sigOrbBurst3D(P.sx, P.sy, { mode: 'in', color: 0x8a3cff, ms: Math.max(300, P.hold * 0.8), r1: _capTs() * 1.1 }); } catch (e) {}
+            },
+            hit: function (P) {
+                var r = Math.max(1, P.r || 1);
+                _capShell(P.tx, P.ty, { color: 0x7a2cff, hot: 0xf0d8ff, r0: 0.5, r1: 0.05, h: 0.5, grow: 200, hold: 60, fade: 200, collapse: true, op: 0.9 });
+                _capAt(200, function () {
+                    try { _sigOrbBurst3D(P.tx, P.ty, { mode: 'out', color: 0x9a4cff, tint2: 0xffffff, ms: 520, r1: _capTs() * (r + 0.8) }); } catch (e) {}
+                    _capRing(P.tx, P.ty, 0xc08aff, r + 1.2, 480);
+                    _capShards(P.tx, P.ty, 'crystal', { n: 10 });
+                    _capLight(P.tx, P.ty, 0xb46cff, { i: 3.0, ms: 700, h: 0.6, r: 3.8 });
+                    _sigShake('hard');
+                });
+            }
+        },
+        /* Stone Drop — THE GARGOYLE'S FALL: the body hits like a statue off
+           a cathedral: a crater of broken stone, a ring of dust */
+        raceStoneDrop: {
+            charge: function (P) { _capCharge(P, 0xbfb6a8, { sprite: 'dust-puff', sigil: false, i: 1.2 }); },
+            hit: function (P) {
+                _capShards(P.tx, P.ty, 'stone', { n: 14, scale: 1.3 });
+                _capSpikes(P.tx, P.ty, { ring: 0.8, n: 7, h: 0.45, w: 0.18, holdMs: 800, jitter: 60 });
+                _capRing(P.tx, P.ty, 0xd8d0c0, 1.8, 500, 3);
+                _capPuff(P.tx, P.ty, 'dust-puff', 12, { r: 0.8, out: 160, s0: 24, s1: 40, sEnd: 70, op: 0.55, ml0: 800, ml1: 1300 });
+                _capLight(P.tx, P.ty, 0xffe0b0, { i: 1.8, ms: 500, h: 0.4 });
+            }
+        },
+        /* Marrowstorm — THE OSSUARY: real bones hail over the blast while a
+           cold green light burns in the eyes of a skull over the storm */
+        raceMarrowstorm: {
+            charge: function (P) { _capCharge(P, 0xb8ffb0, { sprite: 'shadow-wisp' }); try { _sigBoneBurst3D(P.sx, P.sy, { count: 4 }); } catch (e) {} },
+            hit: function (P) {
+                var r = Math.max(1, P.r || 1);
+                try { _sigBoneRain3D(P.tx, P.ty, { radiusTiles: r }); } catch (e) {}
+                try { _sigSkull3D(P.tx, P.ty, { scale: 1.6, eyeColor: 0x9dff7a, laugh: true }); } catch (e) {}
+                _capAt(300, function () { _capShards(P.tx, P.ty, 'bone', { n: 12 }); _capRing(P.tx, P.ty, 0xe6dac0, r + 1, 500); });
+                _capLight(P.tx, P.ty, 0x9dff7a, { i: 2.0, ms: 1100, h: 1.4, attack: 150, hold: 400 });
+            }
+        },
+        /* Tail Whip — THE SWEEP: a low scaled arc cuts the floor under the
+           victim; dust and grit spray off the tail */
+        raceTailWhip: {
+            charge: function (P) { _capCharge(P, 0x6fd07a, { sprite: 'dust-puff', sigil: false, i: 1.2 }); },
+            hit: function (P) {
+                var y = _capYaw(P.sx, P.sy, P.tx, P.ty);
+                try { _sigCrescentSlash3D(P.tx, P.ty, { yaw: y + Math.PI / 2, pitch: -1.35, dir: 1, color: 0x8fe89a, size: _capTs() * 2.4, height: _capTs() * 0.2, ms: 240, sweep: 3.0 }); } catch (e) {}
+                _capAt(90, function () {
+                    _capPuff(P.tx, P.ty, 'dust-puff', 12, { r: 0.7, out: 180, vz0: 10, vz1: 50, s0: 16, s1: 28, sEnd: 54, op: 0.5 });
+                    _capShards(P.tx, P.ty, 'stone', { n: 7, scale: 0.8 });
+                    _capRing(P.tx, P.ty, 0xa8f0b0, 1.5, 400, 2);
+                    _capLight(P.tx, P.ty, 0xb8ffc0, { i: 1.8, ms: 420, h: 0.3 });
+                });
+            }
+        },
+        /* Mimicry — THE SHED SKIN: the caster's outline shatters like a
+           mirror and a prism of their stolen colours climbs them */
+        raceMimicry: {
+            charge: function (P) { _capCharge(P, 0xd28cff, { sprite: 'spark-pink' }); },
+            hit: function (P) {
+                _capShards(P.sx, P.sy, 'glass', { n: 12, height: 0.6 });
+                try { _sigSpectrumBurst3D(P.sx, P.sy, { radiusPx: _capTs() * 1.1, ms: 700 }); } catch (e) {}
+                try { _sigStatRings3D(P.sx, P.sy, { dir: 1, rings: 4, color: 0xe6a8ff, ms: 720 }); } catch (e) {}
+                _capShell(P.sx, P.sy, { color: 0xc07aff, hot: 0xffe0ff, r0: 0.3, r1: 0.62, h: 0.55, squash: 1.5, grow: 260, hold: 420, fade: 420, op: 0.55 });
+                _capLight(P.sx, P.sy, 0xe8a8ff, { i: 2.2, ms: 800, h: 0.8 });
+            }
+        },
+        /* Swarm Signal — THE PHEROMONE: a pulse of amber rings off the
+           antennae and the swarm runs out to every ally in reach */
+        raceSwarmSignal: {
+            charge: function (P) { _capCharge(P, 0xffc05a, { sprite: 'ember' }); },
+            hit: function (P) {
+                try { _sigSonicBoom3D(P.sx, P.sy, { color: 0xffc85a, rings: 3, ringGapMs: 160, radiusTiles: 2.6, height: 0.9 }); } catch (e) {}
+                _capLight(P.sx, P.sy, 0xffb040, { i: 2.0, ms: 800, h: 1.0, r: 4 });
+                var al = (P.tiles || []).filter(function (t) { return t.x !== P.sx || t.y !== P.sy; }).slice(0, 6);
+                al.forEach(function (t, i) {
+                    _capMotes(P.sx, P.sy, t.x, t.y, 'ember', 8, { tint: 0xffb040, h0: 0.1, h1: 0.1, ms0: 420, ms1: 700, s0: 3, s1: 5 });
+                    _capAt(520 + i * 60, function () { try { _sigStatRings3D(t.x, t.y, { dir: 1, rings: 2, color: 0xffc85a, ms: 600 }); } catch (e) {} });
+                });
+            }
+        },
+        /* Sasquatch Smash — THE BLURRY PHOTO: the two-fisted smash, the
+           floor caves in, and a camera flash goes off in the trees */
+        raceSasquatchSmash: {
+            charge: function (P) { _capCharge(P, 0xc89a6a, { sprite: 'leaf', sigil: false, i: 1.2 }); },
+            hit: function (P) {
+                try { _sigGlbFist3D(P.tx, P.ty, { fromTx: P.sx, fromTy: P.sy, scale: 1.3, tint: 0x8a6a4a }); } catch (e) {}
+                _capAt(120, function () {
+                    _capShards(P.tx, P.ty, 'stone', { n: 12, scale: 1.25 });
+                    _capRing(P.tx, P.ty, 0xe0c8a0, 2.0, 520, 3);
+                    _capPuff(P.tx, P.ty, 'leaf', 10, { r: 1.2, out: 60, vz0: 80, vz1: 180, gravity: 90, ml0: 900, ml1: 1400 });
+                    _sigShake('hard');
+                });
+                /* the photo — a flashbulb pop from the tree line, a beat late */
+                _capAt(520, function () {
+                    var ts = _capTs(), c = tilePx(P.tx, P.ty);
+                    _crLight(c.x + ts * 2.2, c.y - ts * 1.6, unitSurfaceZ(P.tx, P.ty) + ts * 1.2, 0xffffff, { intensity: 3.6, ms: 180, radius: 5 });
+                    _sigScreenFlash('#ffffff', 170, 0.34);
+                });
+            }
+        },
+        /* Call of the Deep — THE SIREN'S WELL: the song goes down into the
+           ground and the sea answers from under the tile */
+        raceCallOfTheDeep: {
+            charge: function (P) {
+                _capCharge(P, 0x5fb8f0, { sprite: 'bubble' });
+                try { _sigMusicNotes3D(P.sx, P.sy, { count: 3, color: 0x8fdcff, gentle: true }); } catch (e) {}
+            },
+            hit: function (P) {
+                _capSigil(P.tx, P.ty, 0x3f9fe0, 1.3, 1500, { spin: -0.006, op: 0.7 });
+                _capColumn(P.tx, P.ty, 0x5fb8f0, 3.2, 0.5, 900, 0xd8f4ff);
+                _capPuff(P.tx, P.ty, 'water-splash', 14, { r: 0.4, out: 140, vz0: 180, vz1: 360, gravity: 520, s0: 14, s1: 26, ml0: 600, ml1: 900 });
+                _capPuff(P.tx, P.ty, 'bubble', 12, { r: 0.8, out: 10, vz0: 40, vz1: 110, s0: 5, s1: 10, ml0: 900, ml1: 1500, wander: 18 });
+                _capRing(P.tx, P.ty, 0x9fdcff, 1.6, 600, 2);
+                _capLight(P.tx, P.ty, 0x4fb0ff, { i: 2.4, ms: 1100, h: -0.1, attack: 200, hold: 300, r: 3.5 });
+            }
+        },
+        /* Nuke — THE SAME BOMB: the mark turn gets the red alarm light on
+           the zone; the blast is the game's one mushroom cloud (the Nuke
+           spell's own _spawnNukeCloud3D — one thing, one look), a hot light
+           and the whiteout */
+        sharedNuke: {
+            charge: function (P) {
+                _capSigil(P.tx, P.ty, 0xff2a1a, Math.max(1.2, (P.r || 1) + 0.6), 1600, { op: 0.55, spin: 0.001 });
+                [0, 520, 1040].forEach(function (t) { _capAt(t, function () { _capLight(P.tx, P.ty, 0xff2010, { i: 2.2, ms: 420, h: 1.2, attack: 80, r: 3.6 }); }); });
+            },
+            detonate: function (P) {
+                var r = Math.max(1, P.r || 2);
+                _capAt(P.lead, function () {
+                    /* the craft explosion is the impact centre's own
+                       (_CR_BOOM_SCALE) — the cloud and the light are ours */
+                    try { _spawnNukeCloud3D(P.tx, P.ty, r); } catch (e) {}
+                    _capLight(P.tx, P.ty, 0xffe0a0, { i: 4.0, ms: 1400, h: 2.0, r: 6, hold: 200 });
+                    try { _sigWhiteout3D(P.tx, P.ty, { color: 0xfff0d0, peak: 0.6, sizeTiles: 5 }); } catch (e) {}
+                });
+            }
+        },
+        /* Colossal Crush — THE STAMP: a giant's pressure comes DOWN as a
+           flattening disc of dust and force; the floor cracks in a ring */
+        raceColossalCrush: {
+            charge: function (P) { _capCharge(P, 0xd0b890, { sprite: 'dust-puff', sigil: false, i: 1.2 }); },
+            hit: function (P) {
+                _capShell(P.tx, P.ty, { color: 0xc8b89a, hot: 0xfff4e0, r0: 1.6, r1: 1.5, h: 3.0, squash: 0.08, grow: 1, hold: 1, fade: 1, op: 0 });
+                _capShell(P.tx, P.ty, { color: 0xe0d0b0, hot: 0xffffff, r0: 0.4, r1: 1.7, dome: true, squash: 0.25, grow: 220, hold: 120, fade: 520, op: 0.7, flow: 0.6 });
+                _capShards(P.tx, P.ty, 'stone', { n: 14, scale: 1.4 });
+                _capSpikes(P.tx, P.ty, { ring: 1.2, n: 9, h: 0.38, w: 0.22, holdMs: 900 });
+                _capRing(P.tx, P.ty, 0xfff0d0, 2.4, 560, 2);
+                _capPuff(P.tx, P.ty, 'dust-puff', 14, { r: 1.0, out: 200, s0: 26, s1: 40, sEnd: 80, op: 0.55, ml0: 900, ml1: 1400 });
+                _capLight(P.tx, P.ty, 0xffe8c0, { i: 2.2, ms: 520, h: 0.5 });
+                _sigShake('hard');
+            }
+        },
+        /* Indomitable Will — THE HEARTBEAT: two red beats pulse off the
+           caster (lub-dub), a gold column climbs, embers rise */
+        raceIndomitableWill: {
+            charge: function (P) { _capCharge(P, 0xff4a3a, { sprite: 'ember' }); },
+            hit: function (P) {
+                [0, 190].forEach(function (t, i) {
+                    _capAt(t, function () {
+                        _capRing(P.sx, P.sy, i ? 0xffc85a : 0xff3a2a, 1.4 + i * 0.5, 420, 30);
+                        _capLight(P.sx, P.sy, 0xff3a2a, { i: 2.6 - i * 0.6, ms: 260, h: 0.7 });
+                    });
+                });
+                _capAt(260, function () {
+                    _capColumn(P.sx, P.sy, 0xffb040, 4.5, 0.32, 1000, 0xfff0d0);
+                    try { _sigStatRings3D(P.sx, P.sy, { dir: 1, rings: 3, color: 0xffc050, ms: 700 }); } catch (e) {}
+                    _capPuff(P.sx, P.sy, 'ember', 16, { r: 0.4, out: 20, vz0: 90, vz1: 200, s0: 4, s1: 8, ml0: 800, ml1: 1300, wander: 16 });
+                });
+            }
+        },
+        /* Cannonball — THE BROADSIDE'S ANSWER: the hero cannon already fires
+           (the bolt intent); here the powder smoke round the gunner and the
+           blast's fire, splinters and a lit smoke bank at the hit */
+        raceCannonball: {
+            charge: function (P) {
+                _capPuff(P.sx, P.sy, 'smoke', 8, { r: 0.5, out: 30, vz0: 30, vz1: 80, s0: 18, s1: 30, sEnd: 56, op: 0.35, ml0: 900, ml1: 1400 });
+                _capLight(P.sx, P.sy, 0xffa040, { i: 1.4, ms: Math.max(400, P.hold), h: 0.4, attack: P.hold * 0.7, r: 2.4 });
+            },
+            hit: function (P) {
+                _capShards(P.tx, P.ty, 'stone', { n: 8, scale: 1.1 });
+                _capAt(80, function () { _capPuff(P.tx, P.ty, 'smoke', 12, { r: 1.0, out: 60, vz0: 30, vz1: 70, s0: 30, s1: 44, sEnd: 90, op: 0.45, ml0: 1400, ml1: 2000, wander: 14 }); });
+                _capLight(P.tx, P.ty, 0xff8a30, { i: 3.0, ms: 900, h: 0.6, r: 4.2 });
+            }
+        },
+        /* Plandemic — THE OUTBREAK: the vials break, a green cloud boils
+           over the zone and spiked virus bodies drift in it */
+        racePlandemic: {
+            charge: function (P) { _capCharge(P, 0x9dff5e, { sprite: 'poison-bubble' }); },
+            hit: function (P) {
+                var r = Math.max(1, P.r || 2);
+                _capShards(P.tx, P.ty, 'glass', { n: 10 });
+                try { _sigGasCloud3D(P.tx, P.ty, { color: 0x7cff4a, radiusTiles: r + 0.4, count: 14, ms: 1900 }); } catch (e) {}
+                _capSigil(P.tx, P.ty, 0x6fe04a, r + 0.6, 1700, { op: 0.45, spin: 0.001 });
+                for (var i = 0; i < 4; i++) {
+                    (function (k) {
+                        var a = k / 4 * 6.28 + rn(-0.4, 0.4), d = rn(0.2, r * 0.8);
+                        _capAt(120 + k * 90, function () {
+                            var ts = _capTs(), wp = _worldPos(P.tx, P.ty);
+                            var vx = Math.round(P.tx + Math.cos(a) * d), vy = Math.round(P.ty + Math.sin(a) * d);
+                            _capShell(vx, vy, { color: 0x8aff4a, hot: 0xeaffd0, r0: 0.05, r1: 0.22, h: rn(0.6, 1.2), grow: 260, hold: 900, fade: 400, op: 0.75, spin: 0.004, scale1: 6 });
+                        });
+                    })(i);
+                }
+                _capLight(P.tx, P.ty, 0x7cff4a, { i: 2.0, ms: 1600, h: 0.8, attack: 200, hold: 600, r: 4 });
+            }
+        },
+        /* Classified Weapon — THE THING THEY DON'T TALK ABOUT: the MIB's gun
+           rig fires (the bolt); the hit is a plasma sphere that eats the
+           light and spits blue arcs */
+        raceClassifiedWeapon: {
+            charge: function (P) { _capCharge(P, 0x7fc8ff, { sprite: 'spark-blue', sigil: false }); },
+            hit: function (P) {
+                _capShell(P.tx, P.ty, { color: 0x4fa8ff, hot: 0xf0faff, r0: 0.1, r1: 0.9, h: 0.5, grow: 160, hold: 180, fade: 360, op: 0.95, flow: -1.2 });
+                var L = _LT();
+                if (L) for (var i = 0; i < 3; i++) {
+                    (function (k) { _capAt(60 + k * 90, function () {
+                        var a = rn(0, 6.28), c = tilePx(P.tx, P.ty), ts = _capTs(), z = unitSurfaceZ(P.tx, P.ty);
+                        try { L.boltVfx({ x: c.x, y: c.y, z: z + ts * 0.5 }, { x: c.x + Math.cos(a) * ts * 1.3, y: c.y + Math.sin(a) * ts * 1.3, z: z + 4 },
+                            { color: 0xd8f0ff, glowColor: 0x4fa8ff, durationMs: 180, segments: 8 }); } catch (e) {}
+                    }); })(i);
+                }
+                _capRing(P.tx, P.ty, 0x9fd8ff, 1.5, 420);
+                _capLight(P.tx, P.ty, 0x6fb8ff, { i: 3.2, ms: 560, h: 0.5 });
+                _capAt(30, function () { _sigScreenFlash('#cfe8ff', 140, 0.2); });
+            }
+        },
+        /* Fire for Effect — THE BATTERY: a red smoke flare marks the grid on
+           the cast; the round's end walks real shells (the Meshy missile)
+           across it, one blast after another */
+        raceFireForEffect: {
+            charge: function (P) {
+                _capPuff(P.tx, P.ty, 'smoke', 14, { r: 0.3, out: 10, vz0: 80, vz1: 160, s0: 20, s1: 30, sEnd: 70, op: 0.55, tint: 0xff4a3a, ml0: 1400, ml1: 2200, wander: 14 });
+                _capLight(P.tx, P.ty, 0xff3a2a, { i: 1.8, ms: 1600, h: 0.3, attack: 200, hold: 800 });
+            },
+            detonate: function (P) {
+                var r = Math.max(1, P.r || 1), n = 6;
+                for (var i = 0; i < n; i++) {
+                    (function (k) {
+                        var ox = k === n - 1 ? 0 : Math.round(rn(-r, r)), oy = k === n - 1 ? 0 : Math.round(rn(-r, r));
+                        var x = P.tx + ox, y = P.ty + oy, fall = 520;
+                        var land = Math.max(0, P.lead - (n - 1 - k) * 150);
+                        _capAt(Math.max(0, land - fall), function () { try { _sigMissileDrop3D(x, y, { ms: fall, scale: 0.9 }); } catch (e) {} });
+                        _capAt(land, function () { _capBoom(x, y, { scale: k === n - 1 ? 1.8 : 1.0, lite: k < n - 2 }); if (k === n - 1) _sigShake('hard'); });
+                    })(i);
+                }
+            }
+        },
+        /* Extended Clips — EVERYBODY RELOAD: the gangster fires three rounds
+           into the sky, brass rains, and every ally in reach racks a clip */
+        raceExtendedClips: {
+            charge: function (P) { _capCharge(P, 0xffd070, { sprite: 'steel-spark', sigil: false, i: 1.2 }); },
+            hit: function (P) {
+                var ts = _capTs(), c = tilePx(P.sx, P.sy), z = unitSurfaceZ(P.sx, P.sy);
+                for (var i = 0; i < 3; i++) {
+                    (function (k) { _capAt(k * 120, function () {
+                        try { _crGunShot({ x: c.x + ts * 0.15, y: c.y, z: z + ts * 0.95 }, { x: c.x + rn(-0.6, 0.6) * ts, y: c.y + rn(-0.6, 0.6) * ts, z: z + ts * 6 }, 150, {}); } catch (e) {}
+                    }); })(i);
+                }
+                _capPuff(P.sx, P.sy, 'steel-spark', 14, { r: 0.3, h: 0.9, out: 80, vz0: 60, vz1: 160, gravity: 520, s0: 3, s1: 6, sEnd: 3, tint: 0xffcf5a, ml0: 600, ml1: 900 });
+                var al = (P.tiles || []).slice(0, 6);
+                al.forEach(function (t, i) {
+                    _capAt(380 + i * 70, function () {
+                        try { _sigStatRings3D(t.x, t.y, { dir: 1, rings: 2, color: 0xffcf5a, ms: 560 }); } catch (e) {}
+                        _capSparks(t.x, t.y, 'steel-spark', 6, { vxy: 90, vz0: 60, vz1: 160, tint: 0xffe08a });
+                    });
+                });
+            }
+        },
+        /* Hallelujah — THE CHOIR ANSWERS: a halo over the nun, gold notes
+           rise, and a column of light finds every ally the song reaches */
+        raceHallelujah: {
+            charge: function (P) {
+                _capCharge(P, 0xffe7a0, { sprite: 'holy-light' });
+                try { _sigMusicNotes3D(P.sx, P.sy, { count: 4, color: 0xffe08a, gentle: true, ms: Math.max(900, P.hold) }); } catch (e) {}
+            },
+            hit: function (P) {
+                _capRing(P.sx, P.sy, 0xffe7a0, 3.2, 700, 40);
+                _capLight(P.sx, P.sy, 0xfff0c0, { i: 2.6, ms: 1200, h: 1.4, r: 5, attack: 100, hold: 400 });
+                var al = (P.tiles || []).slice(0, 6);
+                al.forEach(function (t, i) {
+                    _capAt(120 + i * 110, function () {
+                        _capColumn(t.x, t.y, 0xffe7a0, 6, 0.3, 900);
+                        try { _sigSnowfall3D(t.x, t.y, { radiusTiles: 0.6, count: 6, ms: 1200, sprite: 'divine-sparkle', tint: 0xfff2c0 }); } catch (e) {}
+                    });
+                });
+            }
+        },
+        /* Star Decree — THE STAR FALLS: a gold constellation sigil marks the
+           zone; the round's end brings a white star down it */
+        raceStarDecree: {
+            charge: function (P) {
+                _capSigil(P.tx, P.ty, 0xffe08a, Math.max(1.2, (P.r || 1) + 0.5), 1800, { color2: 0xffffff, op: 0.6, spin: 0.0012 });
+                _capLight(P.tx, P.ty, 0xffe8b0, { i: 1.6, ms: 1600, h: 1.5, attack: 300, hold: 700 });
+            },
+            detonate: function (P) {
+                var r = Math.max(1, P.r || 1);
+                _capColumn(P.tx, P.ty, 0xfff2c8, 12, 0.3, Math.max(600, P.lead + 500));
+                _capAt(P.lead, function () {
+                    _capShards(P.tx, P.ty, 'crystal', { n: 12 });
+                    _capRing(P.tx, P.ty, 0xffe7a0, r + 1.6, 620);
+                    _capLight(P.tx, P.ty, 0xfff2d0, { i: 3.6, ms: 1000, h: 1.0, r: 5 });
+                    try { _sigWhiteout3D(P.tx, P.ty, { color: 0xfff6e0, peak: 0.45, sizeTiles: 3.5, sparkSprite: 'divine-sparkle' }); } catch (e) {}
+                });
+            }
+        },
+        /* Giant Smash — THE ONE EYE: the cyclops' eye burns red through the
+           charge; the smash cracks the floor wide */
+        raceGiantSmash: {
+            charge: function (P) {
+                _capCharge(P, 0xff4a2a, { sprite: 'ember', sigil: false });
+                _capLight(P.sx, P.sy, 0xff2a10, { i: 2.0, ms: Math.max(500, P.hold), h: 1.3, attack: 120, hold: P.hold * 0.6, r: 2.4 });
+            },
+            hit: function (P) {
+                _capShards(P.tx, P.ty, 'stone', { n: 14, scale: 1.3 });
+                _capSpikes(P.tx, P.ty, { ring: 1.0, n: 8, h: 0.5, w: 0.2, holdMs: 700 });
+                _capRing(P.tx, P.ty, 0xffc8a0, 2.2, 520, 3);
+                _capPuff(P.tx, P.ty, 'dust-puff', 12, { r: 0.9, out: 170, s0: 24, s1: 40, sEnd: 70, op: 0.55 });
+                _capLight(P.tx, P.ty, 0xffb080, { i: 2.4, ms: 520, h: 0.4 });
+                _sigShake('hard');
+            }
+        },
+        /* Dark Dominion — THE THRONE'S LAW: a pentagram of hellfire, five
+           columns of fire at its points, a crimson light under everything */
+        raceDarkDominion: {
+            charge: function (P) { _capCharge(P, 0xff2a3a, { sprite: 'dark-flame', sigilColor: 0xa0101a }); },
+            hit: function (P) {
+                var r = Math.max(1, P.r || 2);
+                _capSigil(P.tx, P.ty, 0xff2030, r + 0.5, 1600, { color2: 0xff8a2a, op: 0.85, spin: 0.0015 });
+                for (var i = 0; i < 5; i++) {
+                    (function (k) {
+                        var a = -Math.PI / 2 + k * Math.PI * 2 / 5;
+                        var x = Math.round(P.tx + Math.cos(a) * r), y = Math.round(P.ty + Math.sin(a) * r);
+                        _capAt(k * 80, function () {
+                            _capColumn(x, y, 0xff4a1a, 3.2, 0.26, 900, 0xffd08a);
+                            _capPuff(x, y, 'flame', 6, { r: 0.25, out: 20, vz0: 80, vz1: 180, s0: 16, s1: 26, ml0: 500, ml1: 800 });
+                        });
+                    })(i);
+                }
+                _capAt(420, function () { _capBoom(P.tx, P.ty, { scale: 1.4, color: 0xff2a1a }); });
+                _capLight(P.tx, P.ty, 0xff2020, { i: 2.8, ms: 1400, h: 0.4, r: 5, attack: 120, hold: 500 });
+            }
+        },
+        /* Dark Lullaby — THE CRADLE SONG: slow violet rings, notes that sway,
+           a dark mist that settles on the sleepers */
+        raceDarkLullaby: {
+            charge: function (P) {
+                _capCharge(P, 0xc07aff, { sprite: 'void-mist' });
+                try { _sigMusicNotes3D(P.sx, P.sy, { count: 3, color: 0xd6a8ff, gentle: true }); } catch (e) {}
+            },
+            hit: function (P) {
+                var r = Math.max(1, P.r || 2);
+                try { _sigSonicBoom3D(P.tx, P.ty, { color: 0xb488ff, rings: 3, ringGapMs: 260, radiusTiles: r + 0.4, gentle: true }); } catch (e) {}
+                try { _sigMusicNotes3D(P.tx, P.ty, { count: 5, color: 0xd6a8ff, gentle: true, scale: 1.2 }); } catch (e) {}
+                _capPuff(P.tx, P.ty, 'void-mist', 16, { r: r, out: 12, vz0: -10, vz1: 20, s0: 24, s1: 40, sEnd: 60, op: 0.45, ml0: 1400, ml1: 2000, wander: 10 });
+                _capLight(P.tx, P.ty, 0x9a6aff, { i: 1.8, ms: 1800, h: 1.2, attack: 400, hold: 600, r: 4.5 });
+            }
+        },
+        /* Predator Drop — THE BAT'S STOOP: two crossed red scars rip the
+           victim on landing and the blood mist runs home to the vampire */
+        racePredatorDrop: {
+            charge: function (P) { _capCharge(P, 0xff2a3a, { sprite: 'blood-mist', sigil: false }); },
+            hit: function (P) {
+                var y = _capYaw(P.sx, P.sy, P.tx, P.ty);
+                [[0.6, 1], [-0.6, -1]].forEach(function (s, i) {
+                    _capAt(i * 90, function () {
+                        try { _sigCrescentSlash3D(P.tx, P.ty, { yaw: y + s[0], pitch: -0.8, dir: s[1], color: 0xff3a4a, size: _capTs() * 1.7, ms: 190, scar: true, scarColor: 0xff1020, scarMs: 1600 }); } catch (e) {}
+                    });
+                });
+                _capAt(160, function () {
+                    _capRing(P.tx, P.ty, 0xc01020, 1.6, 460, 3);
+                    _capPuff(P.tx, P.ty, 'blood-mist', 10, { r: 0.4, out: 90, vz0: 40, vz1: 120, s0: 16, s1: 26, op: 0.6 });
+                    _capMotes(P.tx, P.ty, P.sx, P.sy, 'blood-drop', 10, { ms0: 520, ms1: 900, spiral: 60 });
+                });
+                _capLight(P.tx, P.ty, 0xff1a2a, { i: 2.4, ms: 800, h: 0.5 });
+            }
+        },
+        /* Tsunami — THE SEA RISES: the wall is _sigTsunami3D (the beam
+           intent); the caster's trident sigil through the charge and the
+           crash's lit foam at the far end */
+        raceTsunami: {
+            charge: function (P) {
+                _capCharge(P, 0x5fb8f0, { sprite: 'bubble', sigilColor: 0x2f8fe0 });
+                _capPuff(P.sx, P.sy, 'water-splash', 8, { r: 0.6, out: 30, vz0: 90, vz1: 200, gravity: 380, s0: 10, s1: 18 });
+            },
+            hit: function (P) {
+                _capRing(P.tx, P.ty, 0xbfe8ff, 2.2, 620, 2);
+                _capLight(P.tx, P.ty, 0x7fcaff, { i: 2.2, ms: 900, h: 0.6, r: 4.5 });
+                _capPuff(P.tx, P.ty, 'frost-mist', 12, { r: 1.2, out: 60, vz0: 30, vz1: 80, s0: 26, s1: 40, sEnd: 70, op: 0.4, ml0: 1000, ml1: 1600 });
+            }
+        },
+        /* Terror Pounce — THE PREY IS STRIPPED: three shadow claws rake the
+           victim, black smoke boils off, and the victim's buffs sink away */
+        raceTerrorPounce: {
+            charge: function (P) { _capCharge(P, 0x8a4aff, { sprite: 'shadow-wisp', sigil: false }); },
+            hit: function (P) {
+                try { _sigClawCombo3D(P.tx, P.ty, { glowColor: 0x9a5aff, swipes: 3, scale: 1.2, yaw: _capYaw(P.sx, P.sy, P.tx, P.ty) }); } catch (e) {}
+                _capAt(220, function () {
+                    _capPuff(P.tx, P.ty, 'shadow-wisp', 12, { r: 0.4, out: 80, vz0: 40, vz1: 120, s0: 20, s1: 34, sEnd: 50, op: 0.6 });
+                    try { _sigStatRings3D(P.tx, P.ty, { dir: -1, rings: 3, color: 0xa86aff, ms: 640 }); } catch (e) {}
+                });
+                _capLight(P.tx, P.ty, 0x8a4aff, { i: 2.0, ms: 700, h: 0.6 });
+            }
+        },
+        /* Overtinker — ONE MORE ADJUSTMENT: welding sparks off every ally in
+           reach as a brass hex shell clamps shut round each */
+        raceOvertinker: {
+            charge: function (P) { _capCharge(P, 0xffc85a, { sprite: 'steel-spark' }); },
+            hit: function (P) {
+                var al = (P.tiles && P.tiles.length) ? P.tiles.slice(0, 7) : [{ x: P.sx, y: P.sy }];
+                al.forEach(function (t, i) {
+                    _capAt(i * 90, function () {
+                        _capShell(t.x, t.y, { color: 0xffb84a, hot: 0xfff0c0, r0: 0.9, r1: 0.62, dome: true, grow: 240, hold: 700, fade: 380, op: 0.6, flow: -0.2, scale1: 5 });
+                        _capSparks(t.x, t.y, 'steel-spark', 10, { vxy: 160, vz0: 80, vz1: 220, tint: 0xffd070 });
+                    });
+                });
+                _capLight(P.sx, P.sy, 0xffc070, { i: 2.2, ms: 800, h: 0.8, r: 4 });
+            }
+        },
+        /* Vortex Slam — THE MAELSTROM: water and wind wheel into the centre,
+           the kraken slams it shut */
+        sharedVortexSlam: {
+            charge: function (P) { _capCharge(P, 0x5fc8e0, { sprite: 'frost-mist' }); },
+            hit: function (P) {
+                var r = Math.max(1, P.r || 2), ts = _capTs(), c = tilePx(P.tx, P.ty), z = unitSurfaceZ(P.tx, P.ty);
+                if (_canSpawn()) for (var i = 0; i < 26; i++) {
+                    _spawn({ x: c.x, y: c.y, z: z + rn(4, ts * 0.8), mode: 'billboard', sprite: i % 3 ? 'water-splash' : 'frost-mist',
+                        ml: rn(700, 1000), orbit: { x: c.x, y: c.y, z: z + rn(4, ts * 0.8), r0: ts * (r + 0.6), r1: ts * 0.15, degPerSec: 520, zRate: 20 },
+                        size0: rn(10, 18), size1: 4, opacity0: 0.85, opacity1: 0.1 });
+                }
+                _capSigil(P.tx, P.ty, 0x3fa0d0, r + 0.5, 1000, { spin: 0.012, op: 0.6 });
+                _capAt(620, function () {
+                    _capRing(P.tx, P.ty, 0xbfe8ff, r + 1.2, 480);
+                    _capPuff(P.tx, P.ty, 'water-splash', 14, { r: 0.5, out: 160, vz0: 160, vz1: 320, gravity: 520, s0: 14, s1: 24 });
+                    _capLight(P.tx, P.ty, 0x7fcaff, { i: 2.6, ms: 600, h: 0.5, r: 4 });
+                    _sigShake('hard');
+                });
+            }
+        },
+        /* Tidal Slam — NESSIE SURFACES: a column of sea stands up out of the
+           zone and crashes flat on it */
+        raceTidalSlam: {
+            charge: function (P) { _capCharge(P, 0x4fa8e0, { sprite: 'bubble' }); },
+            hit: function (P) {
+                var r = Math.max(1, P.r || 1);
+                _capColumn(P.tx, P.ty, 0x4fa8e0, 4.2, 0.7, 700, 0xd8f4ff);
+                _capPuff(P.tx, P.ty, 'water-splash', 16, { r: 0.5, out: 30, vz0: 300, vz1: 520, gravity: 700, s0: 16, s1: 28, ml0: 700, ml1: 1000 });
+                _capAt(520, function () {
+                    _capRing(P.tx, P.ty, 0xbfe8ff, r + 1.4, 560, 2);
+                    _capPuff(P.tx, P.ty, 'water-splash', 14, { r: r, out: 200, vz0: 30, vz1: 90, gravity: 300, s0: 16, s1: 26 });
+                    _capLight(P.tx, P.ty, 0x6fbfff, { i: 2.4, ms: 700, h: 0.4, r: 4 });
+                    _sigShake('hard');
+                });
+            }
+        },
+        /* Space Disco — THE FLOOR IS LIT: coloured lights swing across the
+           floor, a rainbow sigil turns under the dancer, the beat drops */
+        raceSpaceDisco: {
+            charge: function (P) { _capCharge(P, 0xff6ad8, { sprite: 'spark-pink', sigilColor: 0x6ad8ff }); },
+            hit: function (P) {
+                var r = Math.max(1, P.r || 2), ts = _capTs(), c = tilePx(P.sx, P.sy), z = unitSurfaceZ(P.sx, P.sy);
+                var cols = [0xff4ad8, 0x4ad8ff, 0xffe04a];
+                cols.forEach(function (col, i) {
+                    var h = _crLight(c.x, c.y, z + ts * 1.2, col, { intensity: 2.6, radius: 3.6, ms: 1500, attack: 60, hold: 900 });
+                    if (h) {
+                        var t0 = performance.now();
+                        var mover = function () {
+                            var el = performance.now() - t0;
+                            if (el > 1500 || _suppressed()) return false;
+                            var a = el * 0.004 + i * 2.09;
+                            h.move(c.x + Math.cos(a) * ts * r * 0.8, c.y + Math.sin(a) * ts * r * 0.8, z + ts * 0.8);
+                            return true;
+                        };
+                        _fxSchedule(mover);
+                    }
+                });
+                _capSigil(P.sx, P.sy, 0xff6ad8, r + 0.5, 1500, { color2: 0x6ad8ff, spin: 0.006, op: 0.7 });
+                try { _sigSpectrumBurst3D(P.sx, P.sy, { radiusPx: ts * (r + 0.8), ms: 800 }); } catch (e) {}
+                _capPuff(P.sx, P.sy, 'divine-sparkle', 18, { r: r, out: 20, vz0: 20, vz1: 80, s0: 5, s1: 9, ml0: 900, ml1: 1500, tint: 0xffd8ff });
+            }
+        },
+        /* Mitosis — THE SPLIT: a gloss-black bubble swells round the goo,
+           pinches in two, and the halves spit droplets */
+        raceMitosisSplit: {
+            charge: function (P) { _capCharge(P, 0x9a6aff, { sprite: 'inkblot', sigil: false, i: 1.0 }); },
+            hit: function (P) {
+                _capShell(P.sx, P.sy, { color: 0x3a2a5a, hot: 0xb89aff, r0: 0.3, r1: 0.7, h: 0.5, squash: 1.2, grow: 280, hold: 200, fade: 360, op: 0.8, gain: 1.1 });
+                _capAt(420, function () {
+                    var ts = _capTs(), wp = _worldPos(P.sx, P.sy);
+                    [-1, 1].forEach(function (s) {
+                        _capShell(P.sx, P.sy, { color: 0x4a3a7a, hot: 0xc8a8ff, r0: 0.45, r1: 0.35, h: 0.5, grow: 160, hold: 240, fade: 360, op: 0.7, gain: 1.1 });
+                    });
+                    _capPuff(P.sx, P.sy, 'inkblot', 10, { r: 0.3, out: 140, vz0: 100, vz1: 220, gravity: 520, s0: 6, s1: 12, h: 0.5 });
+                    try { _sigRegenPulse3D(P.sx, P.sy, { color: 0x9dff7a, radiusPx: _capTs() * 1.2, ms: 700, pillar: false }); } catch (e) {}
+                    _capLight(P.sx, P.sy, 0xb89aff, { i: 1.8, ms: 600, h: 0.7 });
+                });
+            }
+        },
+        /* Quake — THE GOLEM STAMPS: rings of stone spikes break the floor
+           outward from the golem, the ground rolls three times */
+        raceQuake: {
+            charge: function (P) { _capCharge(P, 0xd0a060, { sprite: 'dust-puff' }); },
+            hit: function (P) {
+                var r = Math.max(1, P.r || 2);
+                _capSpikes(P.sx, P.sy, { ring: 1.1, n: 8, h: 0.8, w: 0.24, holdMs: 700, jitter: 40 });
+                _capAt(150, function () { _capSpikes(P.sx, P.sy, { ring: Math.max(1.8, r), n: 12, h: 0.65, w: 0.22, holdMs: 600, jitter: 60 }); });
+                [0, 180, 360].forEach(function (t, i) { _capAt(t, function () { _capRing(P.sx, P.sy, 0xe0c090, r + 0.6 + i * 0.4, 480, 2); }); });
+                _capShards(P.sx, P.sy, 'stone', { n: 12, scale: 1.3 });
+                _capPuff(P.sx, P.sy, 'dust-puff', 16, { r: r, out: 120, s0: 26, s1: 40, sEnd: 80, op: 0.5, ml0: 900, ml1: 1500 });
+                _capLight(P.sx, P.sy, 0xffd090, { i: 2.0, ms: 700, h: 0.4, r: 4 });
+                _sigShake('hard');
+            }
+        },
+        /* Vehicular Manslaughter — CARS FROM THE SKY: the honda civic's own
+           sedan (and the kit's cars while it streams) rains nose-first onto
+           the zone; each lands in its own blast */
+        raceMissileBarrage: {
+            charge: function (P) {
+                _capCharge(P, 0xffb040, { sprite: 'ember', sigil: false });
+                try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.sedan) ThreeRenderer.sedan({ metres: 4.4 }); } catch (e) {}   // warm the file
+            },
+            hit: function (P) {
+                var r = Math.max(1, P.r || 1);
+                var spots = [{ x: P.tx, y: P.ty }];
+                for (var i = 0; i < 2; i++) spots.push({ x: P.tx + Math.round(rn(-r, r)), y: P.ty + Math.round(rn(-r, r)) });
+                spots.forEach(function (s, k) {
+                    _capAt(k * 180, function () {
+                        var ok = _capCar(s.x, s.y, { ms: 420, onLand: function () {
+                            _capBoom(s.x, s.y, { scale: k === 0 ? 1.5 : 1.0, lite: k > 0 });
+                            _capShards(s.x, s.y, 'glass', { n: 8, lite: k > 0 });
+                            _capRing(s.x, s.y, 0xffc080, 1.4, 420, 2);
+                            if (k === 0) _sigShake('hard');
+                        } });
+                        if (!ok) _capAt(420, function () { _capBoom(s.x, s.y, { scale: k === 0 ? 1.5 : 1.0, lite: k > 0 }); });
+                    });
+                });
+            }
+        },
+        /* Unstoppable Charge — THE RAM: chevrons of force race ahead of the
+           juggernaut; the hit throws steel sparks and a stagger ring */
+        raceUnstoppableCharge: {
+            charge: function (P) { _capCharge(P, 0xffa060, { sprite: 'steel-spark', sigil: false }); },
+            hit: function (P) {
+                try { _sigDashWave3D(P.sx, P.sy, P.tx, P.ty, { color: 0xffd0a0, waves: 3 }); } catch (e) {}
+                _capSparks(P.tx, P.ty, 'steel-spark', 18, { vxy: 280, vz0: 80, vz1: 300 });
+                try { _sigSpeedBurst3D(P.tx, P.ty, { color: 0xfff0d0, size: _capTs() * 2.2 }); } catch (e) {}
+                _capRing(P.tx, P.ty, 0xffe070, 1.8, 480, 3);
+                _capShards(P.tx, P.ty, 'stone', { n: 8 });
+                _capLight(P.tx, P.ty, 0xffc080, { i: 2.6, ms: 520, h: 0.5 });
+                _sigShake('hard');
+            }
+        },
+        /* Dragon Fist — THE DRAGON: the Meshy fist, wreathed in fire,
+           drives through the victim; a coil of flame climbs off the blow */
+        raceDragonFist: {
+            charge: function (P) { _capCharge(P, 0xff8a2a, { sprite: 'flame' }); },
+            hit: function (P) {
+                try { _sigGlbFist3D(P.tx, P.ty, { fromTx: P.sx, fromTy: P.sy, scale: 1.2, tint: 0xffa060 }); } catch (e) {}
+                _capAt(100, function () {
+                    _capBoom(P.tx, P.ty, { scale: 1.2 });
+                    var ts = _capTs(), c = tilePx(P.tx, P.ty), z = unitSurfaceZ(P.tx, P.ty);
+                    if (_canSpawn()) for (var i = 0; i < 22; i++) {
+                        _spawn({ x: c.x, y: c.y, z: z + ts * 0.3, mode: 'billboard', sprite: i % 2 ? 'flame-hot' : 'flame',
+                            ml: rn(700, 1000), orbit: { x: c.x, y: c.y, z: z + ts * 0.3, r0: ts * 0.55, r1: ts * 0.3, degPerSec: 420, zRate: ts * 2.2, phase: i * 0.6 },
+                            size0: rn(14, 22), size1: 4, opacity0: 0.95, opacity1: 0 });
+                    }
+                });
+                _capLight(P.tx, P.ty, 0xff7a1a, { i: 3.0, ms: 900, h: 0.8, r: 4 });
+            }
+        },
+        /* Ape Fury — THE CHEST AND THE FISTS: two beats of the chest ring off
+           the ape, then both fists crater the victim */
+        racePrimalSmash: {
+            charge: function (P) {
+                _capCharge(P, 0xd09a5a, { sprite: 'dust-puff', sigil: false });
+                var h = Math.max(300, P.hold);
+                [h * 0.35, h * 0.62].forEach(function (t) { _capAt(t, function () { _capRing(P.sx, P.sy, 0xffe0b0, 1.2, 320, 50); _sigShake('normal'); }); });
+            },
+            hit: function (P) {
+                try { _sigGlbFist3D(P.tx, P.ty, { fromTx: P.sx, fromTy: P.sy, scale: 1.35, tint: 0x5a4a3a }); } catch (e) {}
+                _capAt(110, function () {
+                    _capShards(P.tx, P.ty, 'stone', { n: 14, scale: 1.4 });
+                    _capSpikes(P.tx, P.ty, { ring: 1.1, n: 9, h: 0.45, w: 0.22, holdMs: 800 });
+                    _capRing(P.tx, P.ty, 0xffe0b0, 2.3, 560, 3);
+                    _capPuff(P.tx, P.ty, 'dust-puff', 12, { r: 1.0, out: 180, s0: 26, s1: 40, sEnd: 80, op: 0.55 });
+                    _capLight(P.tx, P.ty, 0xffc890, { i: 2.4, ms: 600, h: 0.4 });
+                    _sigShake('hard');
+                });
+            }
+        },
+        /* Bull Rush — THE HORNS: two gored cuts cross the victim, red steam
+           blows off the minotaur, the floor is torn behind the run */
+        raceBullRush: {
+            charge: function (P) {
+                _capCharge(P, 0xff5a3a, { sprite: 'smoke', sigil: false });
+                _capPuff(P.sx, P.sy, 'smoke', 10, { r: 0.3, h: 0.9, out: 70, vz0: 20, vz1: 60, s0: 10, s1: 18, sEnd: 36, op: 0.45, tint: 0xffb0a0 });
+            },
+            hit: function (P) {
+                var y = _capYaw(P.sx, P.sy, P.tx, P.ty);
+                [[0.35, -1.1, 1], [-0.35, -1.1, -1]].forEach(function (s, i) {
+                    _capAt(i * 70, function () {
+                        try { _sigCrescentSlash3D(P.tx, P.ty, { yaw: y + s[0], pitch: s[1], dir: s[2], color: 0xfff0e0, size: _capTs() * 1.5, ms: 180, scar: true, scarColor: 0xff3020, scarMs: 1300 }); } catch (e) {}
+                    });
+                });
+                _capAt(120, function () {
+                    _capRing(P.tx, P.ty, 0xffd0a0, 1.7, 460, 3);
+                    _capShards(P.tx, P.ty, 'stone', { n: 9 });
+                    _capPuff(P.tx, P.ty, 'dust-puff', 10, { r: 0.6, out: 150, s0: 20, s1: 34, sEnd: 60, op: 0.5 });
+                    _sigShake('hard');
+                });
+                _capLight(P.tx, P.ty, 0xff8060, { i: 2.2, ms: 520, h: 0.5 });
+            }
+        },
+        /* Megazord Blast — FIVE COLOURS, ONE SHOT: five lances of the
+           rangers' colours converge from the sky onto the target and it
+           goes up in the full blast */
+        sentaiMegazordBlast: {
+            charge: function (P) { _capCharge(P, 0xffffff, { sprite: 'spark-pink', sigilColor: 0xff3a3a }); },
+            hit: function (P) {
+                var cols = [0xff3a3a, 0x3a7aff, 0xffe03a, 0x3aff6a, 0xff7ad8];
+                var B = _capTorso(P.tx, P.ty, 0), ts = _capTs();
+                cols.forEach(function (col, i) {
+                    var a = i / 5 * Math.PI * 2 + rn(-0.1, 0.1);
+                    var A = new THREE.Vector3(B.x + Math.cos(a) * ts * 3.2, B.y + ts * 4.2, B.z + Math.sin(a) * ts * 3.2);
+                    _capAt(i * 50, function () { _capLance(A, B, { color: col, hot: 0xffffff, w: 0.07, ms: 620, grow: 90, fade: 220 }); });
+                });
+                _capAt(300, function () {
+                    cols.forEach(function (col, i) { _capAt(i * 60, function () { _capRing(P.tx, P.ty, col, 1.4 + i * 0.35, 460, 4 + i * 6); }); });
+                    _capLight(P.tx, P.ty, 0xffffff, { i: 3.6, ms: 700, h: 0.8, r: 5 });
+                    _sigScreenFlash('#ffffff', 160, 0.25);
+                });
+            }
+        },
+        /* Tendril Strike — THE SYMBIOTE LASHES: black tendrils whip out of
+           the caster, bite, and the venom blooms green in the wound */
+        raceTendrilStrike: {
+            charge: function (P) { _capCharge(P, 0x7dff3a, { sprite: 'inkblot', sigil: false, i: 1.2 }); },
+            hit: function (P) {
+                _capTendrils(P.sx, P.sy, P.tx, P.ty, { n: 3, color: 0x0c0810, glow: 0x6dff3a, reachMs: 200, holdMs: 520 });
+                _capAt(200, function () {
+                    _capPuff(P.tx, P.ty, 'poison-bubble', 12, { r: 0.35, h: 0.5, out: 110, vz0: 40, vz1: 140, gravity: 200, s0: 6, s1: 12 });
+                    _capPuff(P.tx, P.ty, 'inkblot', 8, { r: 0.3, h: 0.5, out: 140, vz0: 60, vz1: 160, gravity: 480, s0: 6, s1: 12 });
+                    _capRing(P.tx, P.ty, 0x7dff3a, 1.3, 400, 30);
+                    _capLight(P.tx, P.ty, 0x6dff3a, { i: 2.0, ms: 700, h: 0.5 });
+                });
+            }
+        },
+        /* Reality Pulse — THE WATCHER LOOKS: the astral eye opens over the
+           zone (THE ONE MODEL), the world refracts in a ring and cracks */
+        raceRealityPulse: {
+            charge: function (P) { _capCharge(P, 0xb46cff, { sprite: 'psi-pulse' }); },
+            hit: function (P) {
+                var r = Math.max(1, P.r || 2);
+                _capEye(P.tx, P.ty, { r: 0.7, h: 2.6, tint: 0xb46cff, hold: 1000 });
+                _capAt(360, function () {
+                    try { _sigSpectrumBurst3D(P.tx, P.ty, { radiusPx: _capTs() * (r + 0.8), ms: 760 }); } catch (e) {}
+                    _capShards(P.tx, P.ty, 'glass', { n: 12 });
+                    _capRing(P.tx, P.ty, 0xd8b0ff, r + 1.2, 520);
+                    _capLight(P.tx, P.ty, 0xc08aff, { i: 2.6, ms: 800, h: 1.6, r: 5 });
+                });
+            }
+        }
+    };
+
+    /* the registry's door for the 44: a signature answers only its own
+       calls (the stage hook's p._cap, or a delayed spell's detonation) */
+    function _capRun(id, tx, ty, r, p) {
+        var S = _CAP_SIGS[id];
+        if (!S || _capOff() || _suppressed() || _catOff('spells')) return;
+        var def = _spellDefFor(id) || {};
+        var P = { tx: tx, ty: ty, r: r != null ? r : (def.aoeRadius || 0), def: def, ts: _capTs() };
+        if (p && p._cap) {
+            P.sx = p.sx != null ? p.sx : tx; P.sy = p.sy != null ? p.sy : ty;
+            P.tx = p.tx != null ? p.tx : tx; P.ty = p.ty != null ? p.ty : ty;
+            P.hold = p.hold || 0; P.tiles = p.tiles || null;
+            if (p._cap === 'charge' && S.charge) S.charge(P);
+            else if (p._cap === 'hit' && S.hit) S.hit(P);
+            return;
+        }
+        if (!S.detonate || tx == null || ty == null) return;
+        var key = id + '@' + tx + ',' + ty, now = performance.now();
+        if (_CAP_DET[key] && now - _CAP_DET[key] < 4000) return;
+        _CAP_DET[key] = now;
+        var lead = 0;
+        try { lead = getDescentTotalMs(id) || 0; } catch (e) { lead = 0; }
+        P.sx = tx; P.sy = ty; P.lead = lead > 0 ? lead : 1100;
+        S.detonate(P);
+    }
+    /* the stage hook (_fireStage): windup → charge, burst → hit */
+    function _capStage(phase, spellId, p) {
+        if (!_CAP_SIGS[spellId] || _capOff()) return;
+        var fn = _geom3D(spellId);
+        if (typeof fn !== 'function') return;
+        if (phase === 'windup') {
+            var rec = { sx: p.sx, sy: p.sy, tx: p.tx != null ? p.tx : p.sx, ty: p.ty != null ? p.ty : p.sy,
+                hold: p.holdMs || 900, tiles: Array.isArray(p.tiles) ? p.tiles : null, t0: performance.now() };
+            _CAP_LIVE[spellId] = rec;
+            try { fn(rec.sx, rec.sy, null, { _cap: 'charge', sx: rec.sx, sy: rec.sy, tx: rec.tx, ty: rec.ty, hold: rec.hold, tiles: rec.tiles }); } catch (e) { console.warn('[CAPSTONE] charge failed', spellId, e); }
+            return;
+        }
+        if (phase === 'burst') {
+            var L = _CAP_LIVE[spellId];
+            if (L && performance.now() - L.t0 > 12000) L = null;
+            var sx = (L && L.sx != null) ? L.sx : p.sx, sy = (L && L.sy != null) ? L.sy : p.sy;
+            try { fn(p.tx, p.ty, null, { _cap: 'hit', sx: sx, sy: sy, tx: p.tx, ty: p.ty, hold: 0, tiles: L ? L.tiles : null }); } catch (e) { console.warn('[CAPSTONE] hit failed', spellId, e); }
+            delete _CAP_LIVE[spellId];
+        }
+    }
+    Object.assign(_spell3DGeometry, {
+        'rampart':               function (tx, ty, r, p) { _capRun('rampart', tx, ty, r, p); },
+        'revive1':               function (tx, ty, r, p) { _capRun('revive1', tx, ty, r, p); },
+        'leechSeed':             function (tx, ty, r, p) { _capRun('leechSeed', tx, ty, r, p); },
+        'rampage':               function (tx, ty, r, p) { _capRun('rampage', tx, ty, r, p); },
+        'empBurst':              function (tx, ty, r, p) { _capRun('empBurst', tx, ty, r, p); },
+        'requiem':               function (tx, ty, r, p) { _capRun('requiem', tx, ty, r, p); },
+        'voidRush':              function (tx, ty, r, p) { _capRun('voidRush', tx, ty, r, p); },
+        'raceStoneDrop':         function (tx, ty, r, p) { _capRun('raceStoneDrop', tx, ty, r, p); },
+        'raceMarrowstorm':       function (tx, ty, r, p) { _capRun('raceMarrowstorm', tx, ty, r, p); },
+        'raceTailWhip':          function (tx, ty, r, p) { _capRun('raceTailWhip', tx, ty, r, p); },
+        'raceMimicry':           function (tx, ty, r, p) { _capRun('raceMimicry', tx, ty, r, p); },
+        'raceSwarmSignal':       function (tx, ty, r, p) { _capRun('raceSwarmSignal', tx, ty, r, p); },
+        'raceSasquatchSmash':    function (tx, ty, r, p) { _capRun('raceSasquatchSmash', tx, ty, r, p); },
+        'raceCallOfTheDeep':     function (tx, ty, r, p) { _capRun('raceCallOfTheDeep', tx, ty, r, p); },
+        'sharedNuke':            function (tx, ty, r, p) { _capRun('sharedNuke', tx, ty, r, p); },
+        'raceColossalCrush':     function (tx, ty, r, p) { _capRun('raceColossalCrush', tx, ty, r, p); },
+        'raceIndomitableWill':   function (tx, ty, r, p) { _capRun('raceIndomitableWill', tx, ty, r, p); },
+        'raceCannonball':        function (tx, ty, r, p) { _capRun('raceCannonball', tx, ty, r, p); },
+        'racePlandemic':         function (tx, ty, r, p) { _capRun('racePlandemic', tx, ty, r, p); },
+        'raceClassifiedWeapon':  function (tx, ty, r, p) { _capRun('raceClassifiedWeapon', tx, ty, r, p); },
+        'raceFireForEffect':     function (tx, ty, r, p) { _capRun('raceFireForEffect', tx, ty, r, p); },
+        'raceExtendedClips':     function (tx, ty, r, p) { _capRun('raceExtendedClips', tx, ty, r, p); },
+        'raceHallelujah':        function (tx, ty, r, p) { _capRun('raceHallelujah', tx, ty, r, p); },
+        'raceStarDecree':        function (tx, ty, r, p) { _capRun('raceStarDecree', tx, ty, r, p); },
+        'raceGiantSmash':        function (tx, ty, r, p) { _capRun('raceGiantSmash', tx, ty, r, p); },
+        'raceDarkDominion':      function (tx, ty, r, p) { _capRun('raceDarkDominion', tx, ty, r, p); },
+        'raceDarkLullaby':       function (tx, ty, r, p) { _capRun('raceDarkLullaby', tx, ty, r, p); },
+        'racePredatorDrop':      function (tx, ty, r, p) { _capRun('racePredatorDrop', tx, ty, r, p); },
+        'raceTsunami':           function (tx, ty, r, p) { _capRun('raceTsunami', tx, ty, r, p); },
+        'raceTerrorPounce':      function (tx, ty, r, p) { _capRun('raceTerrorPounce', tx, ty, r, p); },
+        'raceOvertinker':        function (tx, ty, r, p) { _capRun('raceOvertinker', tx, ty, r, p); },
+        'sharedVortexSlam':      function (tx, ty, r, p) { _capRun('sharedVortexSlam', tx, ty, r, p); },
+        'raceTidalSlam':         function (tx, ty, r, p) { _capRun('raceTidalSlam', tx, ty, r, p); },
+        'raceSpaceDisco':        function (tx, ty, r, p) { _capRun('raceSpaceDisco', tx, ty, r, p); },
+        'raceMitosisSplit':      function (tx, ty, r, p) { _capRun('raceMitosisSplit', tx, ty, r, p); },
+        'raceQuake':             function (tx, ty, r, p) { _capRun('raceQuake', tx, ty, r, p); },
+        'raceMissileBarrage':    function (tx, ty, r, p) { _capRun('raceMissileBarrage', tx, ty, r, p); },
+        'raceUnstoppableCharge': function (tx, ty, r, p) { _capRun('raceUnstoppableCharge', tx, ty, r, p); },
+        'raceDragonFist':        function (tx, ty, r, p) { _capRun('raceDragonFist', tx, ty, r, p); },
+        'racePrimalSmash':       function (tx, ty, r, p) { _capRun('racePrimalSmash', tx, ty, r, p); },
+        'raceBullRush':          function (tx, ty, r, p) { _capRun('raceBullRush', tx, ty, r, p); },
+        'sentaiMegazordBlast':   function (tx, ty, r, p) { _capRun('sentaiMegazordBlast', tx, ty, r, p); },
+        'raceTendrilStrike':     function (tx, ty, r, p) { _capRun('raceTendrilStrike', tx, ty, r, p); },
+        'raceRealityPulse':      function (tx, ty, r, p) { _capRun('raceRealityPulse', tx, ty, r, p); },
+    });
+    /* ═════════ END THE CAPSTONES ═════════ */
 
 
     /* ── VFX3D.stage — the party builder's preview stage (§5.3) ────────
