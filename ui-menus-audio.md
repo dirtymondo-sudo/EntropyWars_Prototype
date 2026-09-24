@@ -628,3 +628,8 @@ tier numerals 22 px, the technique panel 12 / 20 px). **HQ pause** (map.js): `_h
 HTML via `_hqCssOf`), `_hqAoeTilesHtml`, `_hqPauseFinisherHtml` (the race's finisher, read-only, above Tier IV), an
 equipped button reads ✓ EQUIPPED and keeps its fill; CSS "THE LOOK PASS in the field" at the end of styles-base.css.
 Test: spell-tree-ux.test.js "the look pass". Seen in the builder probe; the HQ pause screen UNSEEN live.
+**Two per row (same day, mondo: "a lot of empty space between the left info and the right info … put 2 spells side by
+side"):** the card lost its right-hand column: `.pb-tc-top` = the name (wraps to 2 lines) + the SP tag (✓ n SP when
+equipped), `.pb-tc-badges` = the battle badges + JOB / BORROWED (race is the default, unlabeled), `.pb-tc-bottom` = the
+meta (or the refusal) ⟷ the AOE grid. `.pb-tier-cells` is `repeat(2, …)`, the tier head 40 px, the disc 30–36 px.
+Token 20260924-spell-look-02-cors.

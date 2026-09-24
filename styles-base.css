@@ -6261,10 +6261,19 @@ body.diorama-3d .tile-underpass.jump::before {
    circles need to be the regular type badges … the same elemental information and AOE grid as the battle spell
    menu … the text needs to be bigger"). Every chip is a framed card; an EQUIPPED one is filled in its category
    colour and keeps that fill (hover only adds a red edge = click to unequip). */
-.pb-rack { --pb-disc: clamp(34px, 4.4vh, 42px); --pb-aoe-cell: 6px; }
-.pb-tier-cells { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 5px 8px; }
+.pb-rack { --pb-disc: clamp(30px, 3.8vh, 36px); --pb-aoe-cell: 6px; }
+/* the compact card (2026-09-24): name + SP on one line, badges, then meta ⟷ AOE grid — no side column, two per row */
+.pb-tc-top { display: flex; align-items: flex-start; gap: 6px; min-width: 0; }
+.pb-tc-top .pb-tn-name { flex: 1; min-width: 0; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.08; }
+.pb-tc-top .pb-tc-cost { flex: none; margin-top: 1px; }
+.pb-tc-cost.on { color: #0d0d13; background: #fff; border-color: #fff; }
+.pb-tc-bottom { display: flex; align-items: center; justify-content: space-between; gap: 6px; min-width: 0; }
+.pb-tc-bottom .pb-tn-meta { flex: 1; min-width: 0; }
+.pb-tc-bottom .pb-tc-why { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pb-tc-badges .pb-tc-src { margin-left: 2px; }
+.pb-tier-cells { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px 6px; }
 .pb-loadout { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px 5px; }
-.pb-tn.pb-tc { height: auto; min-height: var(--pb-row); align-items: center; padding: 5px 8px 5px 3px; border: 1px solid rgba(255,255,255,0.07); background: rgba(0,0,0,0.22); }
+.pb-tn.pb-tc { gap: 6px; height: auto; min-height: var(--pb-row); align-items: center; padding: 5px 7px 5px 3px; border: 1px solid rgba(255,255,255,0.07); background: rgba(0,0,0,0.22); }
 .pb-tn.pb-tc.hov, .pb-tn.pb-tc.can:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.18); }
 .pb-tn.pb-tc.is-equipped, .pb-tn.pb-tc.is-equipped.hov, .pb-tn.pb-tc.is-equipped.can:hover {
   background: linear-gradient(90deg, color-mix(in srgb, var(--nc) 42%, #0d0d13) 0%, color-mix(in srgb, var(--nc) 20%, #0d0d13) 100%);
@@ -6285,7 +6294,8 @@ body.diorama-3d .tile-underpass.jump::before {
 .pb-tc-cost { font-size: 11px; padding: 1px 7px; }
 .pb-tc-src { font-size: 8.5px; }
 .pb-tc-why { font-size: 9px; }
-.pb-tier { grid-template-columns: 54px minmax(0, 1fr); }
+.pb-tier { grid-template-columns: 40px minmax(0, 1fr); gap: 6px; }
+.pb-tier-head { padding-right: 4px; }
 .pb-tier-head b { font-size: 22px; }
 .pb-tier-head span { font-size: 10px; }
 .pb-tier-head i { font-size: 9px; }

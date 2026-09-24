@@ -1691,16 +1691,20 @@ function SpellTierPanel({ ctx, fc, clsName, raceLabel, onSpellClick, onBorrow, o
       title: sp ? sp.name + ' — Tier ' + PB_TIER_NUM[t] + ' · ' + t + ' SP' + (why ? ' · ' + why : '') : id,
     },
       h('span', { className: 'pb-tn-disc' }, st8 === 'sealed' ? '🔒' : glyph),
+      /* COMPACT (2026-09-24, mondo: "a lot of empty space between the left info and the right info … put 2 spells
+         side by side"): no right-hand column — the SP tag rides the name line, the source rides the badge row,
+         the AOE grid closes the meta line, a refusal replaces the meta's tail. Two cards per row. */
       h('span', { className: 'pb-tn-text' },
-        h('span', { className: 'pb-tn-name' }, sp ? sp.name : id),
-        h('span', { className: 'pb-tc-badges' }, ...pbSpellBadges(sp, 4)),
-        h('span', { className: 'pb-tn-meta' },
-          ...pbNodeMeta(sp).filter(([tx]) => !(aoeTiles && /^AOE /.test(tx))).map(([tx, c], i) => h('em', { key: i, style: c ? { color: c } : undefined }, tx)))),
-      aoeTiles,
-      h('span', { className: 'pb-tc-side' },
-        st8 === 'equipped' ? h('i', { className: 'pb-tc-on' }, '✓ EQUIPPED') : null,
-        st8 === 'equipped' ? null : h('i', { className: 'pb-tc-src' }, src === 'job' ? 'JOB' : src === 'race' ? 'RACE' : 'BORROWED'),
-        why ? h('i', { className: 'pb-tc-why' }, why) : tag(t)));
+        h('span', { className: 'pb-tc-top' },
+          h('span', { className: 'pb-tn-name' }, sp ? sp.name : id),
+          st8 === 'equipped' ? h('b', { className: 'pb-tc-cost on', title: 'Equipped · ' + t + ' SP' }, '✓ ' + t + ' SP') : tag(t)),
+        h('span', { className: 'pb-tc-badges' }, ...pbSpellBadges(sp, 4),
+          src === 'race' ? null : h('i', { className: 'pb-tc-src' }, src === 'job' ? 'JOB' : 'BORROWED')),
+        h('span', { className: 'pb-tc-bottom' },
+          why ? h('i', { className: 'pb-tc-why' }, why)
+            : h('span', { className: 'pb-tn-meta' },
+                ...pbNodeMeta(sp).filter(([tx]) => !(aoeTiles && /^AOE /.test(tx))).map(([tx, c], i) => h('em', { key: i, style: c ? { color: c } : undefined }, tx))),
+          aoeTiles)));
   };
   const borrowChip = (t) => {
     const key = 'B' + t;

@@ -181,7 +181,7 @@ test('the secondary job is retired: no level-15 pick, no bonus, no random second
    the finisher on top · bigger text) — the builder rack and the HQ pause rack both ── */
 test('the look pass: battle badges + AOE grid on every chip, the finisher leads, equipped chips stay lit', () => {
     for (const sym of ['function pbSpellBadges(sp, max)', 'function pbAoeTiles(sp, big)', "typeof _hrlgSpellBadges === 'function'", "typeof _hrlgSpellShape === 'function'",
-                       "h('span', { className: 'pb-tc-badges' }, ...pbSpellBadges(sp, 4))", "className: 'pb-technique-badges'"]) {
+                       "h('span', { className: 'pb-tc-badges' }, ...pbSpellBadges(sp, 4),", "h('span', { className: 'pb-tc-top' },", "h('span', { className: 'pb-tc-bottom' },", "className: 'pb-technique-badges'"]) {
         assert.ok(PB.includes(sym), 'party-builder.js: ' + sym);
     }
     assert.ok(!PB.includes("className: 'pb-tn-type'"), 'the little TYPE circles are gone — the regular type badge replaces them');
@@ -191,6 +191,8 @@ test('the look pass: battle badges + AOE grid on every chip, the finisher leads,
     assert.ok(ret.indexOf("className: 'pb-tiers'") < ret.indexOf("className: 'pb-rack-foot'"), 'the basic attack closes the rack');
     assert.ok(/\.pb-tn\.pb-tc\.is-equipped, \.pb-tn\.pb-tc\.is-equipped\.hov, \.pb-tn\.pb-tc\.is-equipped\.can:hover \{\s*background: linear-gradient/.test(CSS), 'an equipped chip keeps its fill, hovered or not');
     for (const sel of ['.pb-aoe {', '.pb-aoe i.ctr {', '.pb-tc-badges {', '#hqPage .hq-circ-aoe {', '#hqPage .hq-circ-fin {', '#hqPage .hq-circ-node span.hq-circ-badges {']) assert.ok(CSS.includes(sel), 'styles-base.css: ' + sel);
+    assert.ok(/\.pb-tier-cells \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/.test(CSS), 'two spells side by side (mondo)');
+    assert.ok(!PB.includes("h('span', { className: 'pb-tc-side' }"), 'no right-hand column on a card');
     const M = read('map.js');
     for (const sym of ['function _hqSpellBadgesHtml(sp, max)', 'function _hqAoeTilesHtml(sp)', 'function _hqPauseFinisherHtml(m)', 'html += _hqPauseFinisherHtml(m);']) assert.ok(M.includes(sym), 'map.js: ' + sym);
     const H = read('hud.js');
