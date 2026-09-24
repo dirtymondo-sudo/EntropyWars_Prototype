@@ -26247,6 +26247,8 @@
            the object. */
         function _cineSpellById(id) {
             if (!id) return null;
+            // a dual tech's shot: 'combo:<registry key>' (the combo director)
+            if (typeof id === 'string' && id.indexOf('combo:') === 0) return _cineComboSpell(id.slice(6));
             try {
                 if (typeof RACE_ABILITY_BY_ID !== 'undefined' && RACE_ABILITY_BY_ID[id]) {
                     return RACE_ABILITY_BY_ID[id];
@@ -26779,6 +26781,7 @@
         };
         function _cineFamilyKey(spell) {
             if (!spell) return null;
+            if (spell._comboKey) return window.EW_DISABLE_COMBO_DIRECTOR ? null : 'combo';
             const row = SPELL_DIRECTOR_ROWS[spell.id];
             if (row && row.family && SPELL_FAMILY_DIRECTORS[row.family]) return row.family;
             return CINE_FAMILY_BY_KIND[spell.kind] || null;
@@ -26900,8 +26903,10 @@
             const log = ctx.log || null;
             const self = rig === 'self' || !!(caster && target && caster.x === target.x && caster.y === target.y
                 && (target.id == null || target.id === caster.id));
+            // a dual tech's second caster (the relay carries the id)
+            const partner = (ctx.partnerId != null) ? ((state.units || []).find(u => u.id === ctx.partnerId) || null) : null;
             const c = {
-                key, spell, caster, target, rig, row, self, sequenceId, timings, shotOpts,
+                key, spell, caster, partner, target, rig, row, self, sequenceId, timings, shotOpts,
                 frameTiles: ctx.frameTiles,
                 weight: stage.weight || 'standard', archetype: stage.archetype || 'arcane',
                 cut, impact, tail, end,
@@ -27232,6 +27237,255 @@
                 }, 'world');
             }
         };
+
+        /* ═══════════════════════════════════════════════════════════════════
+           THE DUAL TECHS' DIRECTOR (SPELL_DIRECTOR_PLAN.md Phase 5, the
+           camera half — 2026-09-24). A combo's shot passes its own spell id,
+           `combo:<registry key>` (doComboAttack), which _cineSpellById turns
+           into a synthetic row (_cineComboSpell) and _cineFamilyKey sends
+           here. The skeleton, on the rig's real clock:
+             beat 1   the stock over-the-shoulder, under the splitscreen page
+             EVENT    the combo's own shot, cut inside the page's whiteout
+                      (L = the launch − 180 ms) and framed on the WORLD EVENT
+                      (_COMBO_WORLD) — a sky column is watched from below, a
+                      pentagram from above, a crossfire from each gun
+             STRIKE   an optional second shot before / on the impact
+             RESOLVE  after the last hit: the kill confirm (glam on the
+                      initiator) or the two-shot — both casters and the
+                      victim in one frame, the pair's work shown together
+           Rows are presentation only (RULE #2): online.js relays the id and
+           the partner's id on the 'offensive' camera event, and the guest
+           resolves the same row; every beat is fog-gated (c.vis). No slow-mo:
+           the damage runs on wall-clock timers (see _comboPlayPresentation).
+           Kill-switch: window.EW_DISABLE_COMBO_DIRECTOR (the stock shot).
+           ═══════════════════════════════════════════════════════════════════ */
+        const _cineComboSpells = {};
+        function _cineComboSpell(key) {
+            if (!key) return null;
+            if (_cineComboSpells[key]) return _cineComboSpells[key];
+            let reg = null;
+            try { reg = (typeof COMBO_REGISTRY !== 'undefined') ? COMBO_REGISTRY[key] : null; } catch (e) {}
+            if (!reg) return null;
+            const row = {
+                id: 'combo:' + key, name: reg.name, kind: 'combo', comboKind: reg.kind,
+                spellType: reg.spellType || null, aoeRadius: reg.aoeRadius || 0,
+                hitDamages: reg.hitDamages || null, _comboKey: key
+            };
+            _cineComboSpells[key] = row;
+            return row;
+        }
+        function _comboYaw(from, to) {
+            return Math.atan2(-(to.x - from.x), -(to.y - from.y)) * (180 / Math.PI);
+        }
+        /* the point past the victim, opposite the initiator: a ground shot
+           taken FROM there has the victim up front and the pair behind it
+           (from the caster's side the pair filled the frame — playtest) */
+        function _comboFar(a, t) {
+            const x = t.x + (t.x - a.x), y = t.y + (t.y - a.y);
+            const ok = (typeof isInside !== 'function') || isInside(Math.round(x), Math.round(y));
+            return ok ? { x, y } : { x: t.x + Math.sign(t.x - a.x), y: t.y + Math.sign(t.y - a.y) };
+        }
+        function _comboEsc(s) {
+            return String(s == null ? '' : s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
+        }
+        /* d = { a, b (null when fog-hidden / gone), t, L, I, span (I − L),
+           hits, gap, end (the last hit) } — every time on the scaled clock. */
+        const COMBO_DIRECTOR_SHOTS = {
+            // the column of light, watched from under it, then down with the fall
+            'Celestial Chorus'(c, d) {
+                c.at(d.L, () => cineSkyWatch(d.t, { ms: d.span, span: 5, tiltUp: 112, tiltDown: 64 }), 'chorus');
+            },
+            // the pentagram from straight above, a slow push while it opens
+            'Abyssal Pact'(c, d) {
+                c.at(d.L, () => { cineGodShot(d.t, 5, { tilt: 12 }); c.push(1.14, d.span); }, 'pentagram');
+                c.at(d.I, () => cineGrade('crimson', actionMs(700)), 'blood');
+            },
+            // the face cam, the world stretching behind it (Vertigo)
+            'Reality Fracture'(c, d) {
+                c.at(d.L, () => {
+                    cineFaceCam(d.t, { dist: 2.7, tilt: 82 });
+                    cineDollyZoom(-12, d.span, { zoomMult: 1.14 });
+                }, 'fracture');
+            },
+            // the board seen as the terminal sees it
+            'System Override'(c, d) {
+                c.at(d.L, () => {
+                    cineGodShot(d.t, 4, { tilt: 30 });
+                    cineGrade('terminal', d.span + actionMs(300));
+                }, 'wireframe');
+            },
+            // one camera per gun: ride the initiator's shot, then the partner's
+            'Combined Arms'(c, d) {
+                const half = Math.max(actionMs(260), Math.round(d.span / 2));
+                c.at(d.L, () => cineBulletCam(d.a, d.t, { travelMs: half }), 'gunA');
+                c.at(d.L + half, () => {
+                    if (d.b) cineBulletCam(d.b, d.t, { travelMs: half, side: -1 });
+                    else cineReverseOts(d.t, d.a);
+                }, 'gunB');
+            },
+            // under the saucer looking up at it; down with its beam
+            // (playtest: a ground shot from the pair's side framed the pair)
+            'Cosmic Convergence'(c, d) {
+                c.at(d.L, () => cineSkyWatch(d.t, { ms: Math.max(actionMs(200), d.span - actionMs(200)), span: 4, tiltUp: 104, tiltDown: 80 }), 'saucer');
+                c.at(d.I - actionMs(180), () => cineGodShot(d.t, 5, { cut: false, tilt: 30, duration: 300 }), 'beam');
+            },
+            // the day / night line sweeps: the lens circles the victim with it
+            'Twilight Reckoning'(c, d) {
+                c.at(d.L, () => {
+                    cineFaceCam(d.t, { dist: 3.0, tilt: 84 });
+                    cineOrbit(d.t, 140, d.span + actionMs(200), { dist: 3.0, tilt: 84, easing: 'linear' });
+                    cineGrade('dim', d.span);
+                }, 'twilight');
+            },
+            // the world goes grey; the colour comes back with the tide on the hit
+            'Purifying Pulse'(c, d) {
+                c.at(d.L, () => { cineFaceCam(d.t, { dist: 2.6 }); cineGrade('desat', d.span); }, 'grey');
+                c.at(d.I - actionMs(40), () => cineGodShot(d.t, 8, { cut: false, tilt: 34, duration: 380 }), 'tide');
+            },
+            // the shells whistle in: look up into the barrage, pitch down with it
+            'Holy Ordnance'(c, d) {
+                c.at(d.L, () => cineSkyWatch(d.t, { ms: d.span, span: 6 }), 'barrage');
+            },
+            // two converging charges, each on its own side dolly
+            "Crusader's Charge"(c, d) {
+                const half = Math.max(actionMs(260), Math.round(d.span / 2));
+                c.at(d.L, () => cineSideDolly(d.a, d.t, { travelMs: half }), 'chargeA');
+                c.at(d.L + half, () => {
+                    // the other side of the line (playtest: the auto pick put both on one side)
+                    if (d.b) cineSideDolly(d.b, d.t, { travelMs: half, yaw: (camera._tyaw ?? 0) + 180 });
+                    else cineReverseOts(d.t, d.a);
+                }, 'chargeB');
+            },
+            // crane up and away: the constellation's eye on the whole board,
+            // then the stars' view straight down on the victim
+            'Astral Judgment'(c, d) {
+                c.at(d.L, () => cineCrane(d.t, { tilt: 112, rise: 3.0, dist: 5.0, duration: c.raw(Math.max(actionMs(300), d.span - actionMs(160))) }), 'stars');
+                c.at(d.I - actionMs(160), () => cineGodShot(d.t, 5, { tilt: 16 }), 'fall');
+            },
+            // straight down into the pit, then from the ground as it spits the victim out
+            'Chaos Eruption'(c, d) {
+                c.at(d.L, () => { cineGodShot(d.t, 4, { tilt: 8 }); cineDollyZoom(-10, d.span); }, 'pit');
+                c.at(d.I, () => cineLowTile(d.t, _comboFar(d.a, d.t), { tilt: 96, dist: 2.8 }), 'spat');
+            },
+            // the deletion typed over the victim's face
+            'Dark Protocol'(c, d) {
+                c.at(d.L, () => {
+                    cineFaceCam(d.t, { dist: 2.4 });
+                    cineGrade('terminal', d.span + actionMs(200));
+                }, 'terminal');
+                c.at(d.L + actionMs(80), () => {
+                    const nm = (typeof unitDisplayName === 'function') ? unitDisplayName(d.t) : 'TARGET';
+                    cineInsert('&gt; DELETE ' + _comboEsc(String(nm).toUpperCase()), 'signal', Math.max(actionMs(500), d.span));
+                }, 'delete');
+            },
+            // the blood moon over the victim's shoulder; close on the twin cuts
+            // (the grade ends before them — the cuts must read, see _COMBO_WORLD)
+            'Blood Pact'(c, d) {
+                c.at(d.L, () => {
+                    cineReverseOts(d.t, d.a);
+                    cineGrade('crimson', Math.max(actionMs(200), d.span - actionMs(320)));
+                }, 'moon');
+                c.at(d.I - actionMs(300), () => cineFaceCam(d.t, { dist: 2.3, tilt: 78 }), 'cuts');
+            },
+            // the stretch into the rift, then the victim falls through into the stars
+            'Void Rift'(c, d) {
+                c.at(d.L, () => { cineFaceCam(d.t, { dist: 2.6 }); cineDollyZoom(-14, d.span, { zoomMult: 1.18 }); }, 'rift');
+                c.at(d.I, () => {
+                    const v = c.live(d.t);
+                    if (v && c.vis(v) && !window.EW_DISABLE_VOID_STAGE && VoidStage.canPlay([v])) {
+                        VoidStage.enter({ palette: 'starfield', actors: [v], ms: actionMs(900) });
+                    }
+                }, 'void');
+            },
+            // the edit breaks: four hard cuts in the time of one
+            'Glitch Bomb'(c, d) {
+                const step = Math.max(actionMs(120), Math.round(d.span / 4));
+                c.at(d.L, () => cineFaceCam(d.t, { dist: 2.5 }), 'glitch1');
+                c.at(d.L + step, () => cineGodShot(d.t, 4, { tilt: 20 }), 'glitch2');
+                c.at(d.L + step * 2, () => cineReverseOts(d.t, d.a), 'glitch3');
+                c.at(d.L + step * 3, () => cineFaceCam(d.t, { dist: 2.2, yaw: (camera._tyaw ?? 0) + 90 }), 'glitch4');
+            },
+            // the casters loom from below, as the beasts their shadows become
+            'Primal Surge'(c, d) {
+                const half = Math.max(actionMs(260), Math.round(d.span / 2));
+                c.at(d.L, () => cineGlamCam(d.a, { tilt: 100, dist: 3.0, driftMs: c.raw(half) }), 'beastA');
+                c.at(d.L + half, () => { if (d.b) cineGlamCam(d.b, { tilt: 100, dist: 3.0, driftMs: c.raw(half) }); }, 'beastB');
+                c.at(d.I - actionMs(120), () => cineLowTile(d.t, _comboFar(d.a, d.t), { tilt: 92, dist: 2.8 }), 'blow');
+            },
+            // side-on through both portals
+            'Dimensional Tear'(c, d) {
+                c.at(d.L, () => {
+                    cineSideDolly({ x: d.t.x - 1, y: d.t.y }, { x: d.t.x + 1, y: d.t.y }, { mode: 'hold' });
+                    c.push(1.1, d.span);
+                }, 'portals');
+            },
+            // the drone's eye: straight down, the scope grade, painting the target
+            'Tactical Strike'(c, d) {
+                c.at(d.L, () => {
+                    cineGodShot(d.t, 3, { tilt: 4 });
+                    cineGrade('scope', d.span + actionMs(200));
+                    c.push(1.16, d.span);
+                }, 'drone');
+            },
+            // at the victim's feet as the wave pours in, then over the splash
+            'Plasma Cascade'(c, d) {
+                c.at(d.L, () => cineLowTile(d.t, _comboFar(d.a, d.t), { tilt: 90, pushMs: c.raw(d.span), push: 1.12 }), 'wave');
+                c.at(d.I - actionMs(60), () => cineGodShot(d.t, 6, { cut: false, tilt: 30, duration: 360 }), 'splash');
+            },
+            // a camera per hit, alternating sides; the finisher in a whiteout
+            'Hybrid Assault'(c, d) {
+                c.at(d.L, () => cineReverseOts(d.t, d.a), 'flurry');
+                for (let i = 0; i < d.hits; i++) {
+                    c.at(d.I + i * d.gap - actionMs(40), () => {
+                        if (!c.live(d.t)) return;
+                        cineFaceCam(d.t, { dist: 2.6, tilt: 76 + (i % 2 ? 10 : -4), yaw: (camera._tyaw ?? 0) + (i % 2 ? 64 : -60) });
+                    }, 'hit' + (i + 1));
+                }
+                c.at(d.end + actionMs(20), () => cineFreezeFrame(actionMs(90), { grade: 'whiteout' }), 'finisher');
+            }
+        };
+        /* The resolve: the kill confirm, else the two-shot of the pair and
+           their victim (only who this screen may see). */
+        function _comboResolve(c, d) {
+            const at = d.end + actionMs(380);
+            c.at(at, () => {
+                const vt = (d.t && d.t.id != null) ? (state.units || []).find(u => u.id === d.t.id) : null;
+                if (!vt || vt.dead || vt._dying) {
+                    const cs = c.live(d.a);
+                    if (cs && c.vis(cs)) cineGlamCam(cs, { duration: 360, driftMs: c.raw(c.left(at, actionMs(300))) });
+                    return;
+                }
+                const pts = [c.live(d.a), d.b ? c.live(d.b) : null, vt].filter(u => u && c.vis(u));
+                if (pts.length < 2) return;
+                let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+                pts.forEach(u => { x0 = Math.min(x0, u.x); x1 = Math.max(x1, u.x); y0 = Math.min(y0, u.y); y1 = Math.max(y1, u.y); });
+                cineGodShot({ x: (x0 + x1) / 2, y: (y0 + y1) / 2 }, Math.max(x1 - x0, y1 - y0) + 3,
+                    { tilt: 44, cut: false, duration: Math.min(560, c.raw(c.left(at))) });
+            }, 'resolve');
+        }
+        function _comboDirector(c) {
+            const d = {
+                a: c.caster, t: c.target,
+                b: (c.partner && c.vis(c.partner) && !c.partner.dead) ? c.partner : null,
+                L: Math.max(0, c.timings.sourceHold - actionMs(180)),
+                I: c.impact,
+                hits: (c.spell.comboKind === 'multiHit' && c.spell.hitDamages) ? c.spell.hitDamages.length : 1,
+                gap: actionMs(420)
+            };
+            d.span = Math.max(actionMs(240), d.I - d.L);
+            d.end = d.I + (d.hits - 1) * d.gap;
+            const row = COMBO_DIRECTOR_SHOTS[c.spell.name];
+            // a hidden victim (the fog branch re-aimed the shot at the caster)
+            // or a row-less combo keeps the stock payoff
+            if (!row || c.self || !c.vis(d.t) || d.t.id == null) {
+                c.at(c.cut, () => c.stockHit(), 'stock');
+                return;
+            }
+            if (c.log) c.log.combo = c.spell.name;
+            row(c, d);
+            _comboResolve(c, d);
+        }
+        SPELL_FAMILY_DIRECTORS.combo = _comboDirector;
 
         /* The row's flavour, laid over any family director at the payoff:
            a grade, an insert card, a void stage, a slow-mo, a freeze. */
@@ -29227,6 +29481,7 @@
                 if (_cineClaimCast(_cineSpellIdForShot)) _cinePlaySpellSequence(_cineSpellIdForShot, {
                     caster: sourceUnit, target, timings, sequenceId,
                     shotOpts: _shotOpts, frameTiles: opts.frameTiles,
+                    partnerId: opts.comboPartnerId,
                     spell: _cineSpellById(_cineSpellIdForShot)
                 });
             } else {
@@ -57149,9 +57404,18 @@
                 if (_ccOK && !(window._NET && window._NET.online)) {
                     _ccOK = _ccinEligible([initiator, partner, target]);
                 }
+                // THE DUAL TECHS' DIRECTOR (Phase 5): the shot carries the
+                // combo's own id + the partner, so the spell director runs
+                // COMBO_DIRECTOR_SHOTS and the relay replays it. A flurry
+                // holds the victim through every hit (it used to restore
+                // mid-flurry).
+                const _ccHits = (combo.kind === 'multiHit') ? (combo.hitDamages || [0]).length : 1;
                 cam = playOffensiveActionCamera(initiator, target, {
-                    sourceHold: _ccOK ? 1750 : 1100, targetHold: _ccOK ? 1150 : 1050,
-                    attackName: combo.name, _noCinematic: _ccOK
+                    sourceHold: _ccOK ? 1750 : 1100,
+                    targetHold: (_ccOK ? 1150 : 1050) + (_ccHits - 1) * 420,
+                    attackName: combo.name, _noCinematic: _ccOK,
+                    spellId: combo.key ? 'combo:' + combo.key : undefined,
+                    comboPartnerId: partner.id
                 });
             } else if (typeof _playSelfCastHeroShot === 'function') {
                 _playSelfCastHeroShot(initiator, { spellName: combo.name });

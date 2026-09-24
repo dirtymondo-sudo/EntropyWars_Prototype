@@ -1140,3 +1140,34 @@ crossfades to idle), castDance (0.75× groove).
   + the craft kit (`ThreeVFXEffects.craftExplosion / craftShards`, public now),
   never a finisher body (those are 4–8 s whole sequences with their own shake
   and flash), no camera, no grade, no slow-mo.
+
+## THE DUAL TECHS' CAMERA DIRECTOR (SPELL_DIRECTOR_PLAN.md, Phase 5 done) — 2026-09-24, local delivery
+
+A combo's action shot passes `spellId: 'combo:<COMBO_REGISTRY key>'` +
+`comboPartnerId` (battle.js doComboAttack). `_cineSpellById` resolves a
+`combo:` id to a synthetic row (`_cineComboSpell`, kind `combo`), and
+`_cineFamilyKey` routes it to `SPELL_FAMILY_DIRECTORS.combo` =
+`_comboDirector`, which runs the combo's `COMBO_DIRECTOR_SHOTS[name]` row
+(the EVENT shot at launch − 180 ms, inside the splitscreen whiteout, then an
+optional strike shot) and `_comboResolve` (the kill confirm, else a two-shot
+of the pair and the victim). `c.partner` is new on the director context
+(`ctx.partnerId`). online.js relays `comboPartnerId` on the 'offensive'
+camera event, both ways (RULE #2). A combo in `SpellDirector.log` reads
+`family:combo` with `combo: <name>`. Kill-switch
+`window.EW_DISABLE_COMBO_DIRECTOR`. Never slow-mo a combo: its damage runs on
+wall-clock timers. A multiHit combo's `targetHold` covers every hit.
+Ground shots at the victim use `_comboFar(a, t)` as the `from` point (from
+the caster's side the pair fills the frame). Test: `combo-director.test.js`
+(runs every row in a vm on the real combo clock).
+
+**`node playtest_combocam.js`** (repo tooling, needs `npm i --no-save
+three@0.128.0 react@18 react-dom@18 three.meshline` + playwright + `npm
+start`): `COMBO="Void Rift" CASTER=5,5 TARGET=5,7 VW=640 VH=360`. It stages
+two P1 casters + a P2 dummy on the stadium, fires the real doComboAttack,
+and saves one frame per director beat (`shots/combocam/<combo>_beat_*.jpg`,
+plus `+` frames GLIDE ms later). The frames come from the next rAF after
+each beat, because software GL takes ~1 s a frame and timed screenshots land
+seconds late. Beats less than ~1 s apart can share a frame. DOM grades and
+insert cards aren't in the frames. Range-2 combos (Blood Pact, Combined
+Arms, Crusader's Charge, Hybrid Assault, Primal Surge) need the target within
+2 tiles.

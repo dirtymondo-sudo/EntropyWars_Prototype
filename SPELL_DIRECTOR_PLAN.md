@@ -431,7 +431,7 @@ place:
 4. The census tool reports the clip spread. Target: no clip plays more than
    15 % of spells.
 
-### Phase 5 — THE DUAL TECHS (combos get directors) · *the world event shipped 2026-09-24; the camera director is next*
+### Phase 5 — THE DUAL TECHS (combos get directors) · *shipped 2026-09-24 (the world event, then the camera director)*
 Each of the 21 combos becomes a director on the Entropy-Strike skeleton:
 siren · the splitscreen charge (kept) · a WORLD EVENT stage · the strike ·
 the resolve. A combo passes its own `spellId` (`combo:<key>`), so it runs
@@ -564,7 +564,9 @@ selfStun / recoil casts), `Weapon_Twirl_Flourish` (a kill confirm) and
 5. **The cross.** `cross` (weapons) and `wooden_cross` (misc) are two
    files for one thing. Which one is THE cross? Boot Hill waits on it.
 4. **Combo length.** An Entropy Strike runs ~6 s and a finisher ~6.5 s. A
-   combo is two units' turns: target ~4.5 s?
+   combo is two units' turns: target ~4.5 s? *Measured 2026-09-24 with the
+   camera director on: ~3.4 s (Hybrid Assault's five-hit flurry ~5.1 s), so
+   no extension was needed. Say if combos should run longer.*
 
 ## 9. Acceptance per phase
 
@@ -581,7 +583,7 @@ selfStun / recoil casts), `Weapon_Twirl_Flourish` (a kill confirm) and
 - **P4 (THE BODY):** no cast clip plays more than 15 % of spells, and every
   `castMelee` spell has a verb that matches its name.
 - **P5:** every combo has a director and a world event; the relay replays
-  it.
+  it. ✅ 2026-09-24 (combo-director.test.js + combo-world.test.js).
 - **P6:** bare capstones go from 44 to 0.
 - **P7/P8:** the user's playtest.
 
@@ -849,6 +851,56 @@ spell-body.test.js, combo-world.test.js, this plan, docs/notes/spells-vfx.md.
 the spell director — `_cineSpellById` does not resolve a combo id today, so
 this needs a synthetic spell row), the resolve beat, the ~4.5 s length
 (§8 #4). Then Phase 6 THE CAPSTONES.
+
+### 2026-09-24 (session 4) — THE DUAL TECHS' CAMERA DIRECTOR (Phase 5, done) · local delivery
+**Shipped** (token `20260924-combo-cam-01-cors`): battle.js, online.js,
+index.html; repo: combo-director.test.js, playtest_combocam.js, this plan,
+docs/notes/spells-vfx.md.
+- **The id.** doComboAttack's action shot now carries
+  `spellId: 'combo:<registry key>'` + `comboPartnerId`. `_cineSpellById`
+  turns a `combo:` id into a synthetic row (`_cineComboSpell`: kind
+  `combo`, the registry's kind / type / hits), `_cineFamilyKey` sends it to
+  `SPELL_FAMILY_DIRECTORS.combo` (`_comboDirector`), and the log reads
+  `family:combo`. online.js relays `comboPartnerId` both ways on the
+  'offensive' camera event, so the guest runs the same row with both
+  casters. `SpellDirector.catalogue()` is unchanged (still 519 spells).
+- **The skeleton** (`COMBO_DIRECTOR_SHOTS`, one row per combo): beat 1
+  under the splitscreen page (stock) · the EVENT shot, cut inside the page's
+  whiteout (launch − 180 ms) and framed on that combo's world event · an
+  optional STRIKE shot · the RESOLVE after the last hit (the kill confirm
+  on the initiator, else a glide to a two-shot of both casters and the
+  victim). Shots per combo: Celestial Chorus and Holy Ordnance the sky
+  watch, Cosmic Convergence the sky watch on the saucer then down the beam,
+  Abyssal Pact the pentagram from straight above + crimson on the hit,
+  Reality Fracture / Void Rift the face cam + dolly zoom (Void Rift's
+  victim falls into the starfield void stage on the hit, scarcity rules
+  apply), System Override / Dark Protocol the terminal grade (Dark Protocol
+  types `> DELETE <NAME>` on an insert card, the name escaped), Combined
+  Arms a bullet cam per gun, Crusader's Charge a side dolly per charge
+  (opposite sides), Twilight Reckoning an orbit round the victim in the
+  dim, Purifying Pulse grey until the tide, Astral Judgment the star's-eye
+  view then straight down, Chaos Eruption down the pit then from the ground,
+  Blood Pact over the victim's shoulder in crimson then close on the cuts,
+  Glitch Bomb four hard cuts, Primal Surge the casters from below, then
+  the blow, Dimensional Tear side-on through both portals, Tactical Strike
+  the drone's eye (straight down + the scope grade), Plasma Cascade at the
+  victim's feet then over the splash, Hybrid Assault a camera per hit and
+  the finisher in a whiteout freeze. No slow-mo (the damage runs on
+  wall-clock timers). A flurry's `targetHold` now covers every hit (the
+  shot used to restore mid-flurry). Fog: a hidden victim keeps the stock
+  shot, a hidden partner drops out of its shots and the two-shot.
+  Kill-switch `EW_DISABLE_COMBO_DIRECTOR` (the stock shot, as before).
+- **THE PLAYTEST** (all 21, live VS-CPU battle on the stadium,
+  `node playtest_combocam.js`): every beat fires on every combo, none
+  dropped past the window. Fixed: Plasma Cascade, Chaos Eruption and Primal
+  Surge's ground shots were taken from the pair's side and framed the pair
+  (`_comboFar`: from past the victim), Cosmic Convergence's saucer shot
+  framed the pair (→ the sky watch), Crusader's Charge's two dollies landed
+  on the same side (the second takes the far side), System Override's
+  board shot was too wide (span 6 → 4). The grades and insert cards are DOM,
+  not in the probe's frames: UNSEEN LIVE.
+
+**Phase 5 is done.** Next: Phase 6 THE CAPSTONES (the 44 bare ultimates).
 
 ## 11. The census tool
 

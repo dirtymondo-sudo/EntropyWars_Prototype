@@ -1092,6 +1092,9 @@
                        so a void stage / grade / side dolly that fires on the
                        host fires on the guest too (RULE #2). */
                     if (opts.spellId) camEvt.spellId = opts.spellId;
+                    /* a dual tech's second caster: the combo director
+                       (battle.js COMBO_DIRECTOR_SHOTS) frames both */
+                    if (opts.comboPartnerId != null) camEvt.comboPartnerId = opts.comboPartnerId;
                     /* beam casts hold beat 1 through the launch (kamehameha
                        rule) — without this the guest cut away before the beam
                        left the caster's hands. */
@@ -3725,6 +3728,7 @@
                                 if (camEvt.targetHold) camOpts.targetHold = camEvt.targetHold;
                                 if (camEvt.shotKind) camOpts.shotKind = camEvt.shotKind;
                                 if (camEvt.spellId) camOpts.spellId = camEvt.spellId;
+                                if (camEvt.comboPartnerId != null) camOpts.comboPartnerId = camEvt.comboPartnerId;
                                 if (camEvt.holdAfterLaunchMs != null) camOpts.holdAfterLaunchMs = camEvt.holdAfterLaunchMs;
                                 if (camEvt.descentCam) camOpts.descentCam = camEvt.descentCam;
                                 if (camEvt.noActionCam) camOpts.noActionCam = true;
