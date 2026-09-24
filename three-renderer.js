@@ -11945,11 +11945,11 @@ const ThreeRenderer = (function () {
                chain ends on the slot the kind used before — a cast in the
                first seconds of a match plays that, never nothing. */
             (kind === 'channel') ? ['castChannel', 'castMagic', 'cast'] :      // beams, drains, breath: the arm held out
-            (kind === 'call')    ? ['castCall', 'castAOE', 'castSupport', 'cast'] :   // summons, war cries: the beckon
+            (kind === 'call')    ? ['castSlam', 'castAOE', 'cast'] :             // summons, war cries: stomp it forth (Rail_Call cut by the playtest)
             (kind === 'reap')    ? ['castReap', 'castMelee', 'cast'] :         // steals, hooks, reaps: stoop and yank
-            (kind === 'pour')    ? ['castPour', 'castSupport', 'cast'] :       // splashes, potions, floods: the pour
+            (kind === 'pour')    ? ['castThrow', 'castRanged', 'cast'] :       // splashes, floods: flung (Farm_Watering cut)
             (kind === 'heavySlash') ? ['castHeavySlash', 'castMelee', 'cast'] :   // the great blades: leap and cleave
-            (kind === 'hook')    ? ['castHook', 'castMelee', 'cast'] :         // whips, clubs, smashes: the overhead haymaker
+            (kind === 'hook')    ? ['castChop', 'castMelee', 'cast'] :         // whips, clubs, smashes: the overhead two-hand chop (Melee_Hook cut)
             (kind === 'leap')    ? ['castLeap', 'castMelee', 'cast'] :         // leap strikes, sky drops: the landing
             (kind === 'guard')   ? ['castGuard', 'castSupport', 'cast'] :      // shields, armour: the brace
             (kind === 'open')    ? ['castOpen', 'castSupport', 'cast'] :       // presents, loot, wishes: open the box
@@ -11957,7 +11957,7 @@ const ThreeRenderer = (function () {
             (kind === 'push')    ? ['castPush', 'castMelee', 'cast'] :         // shoves, waves: two-hand push
             (kind === 'lantern') ? ['castLantern', 'castSupport', 'cast'] :    // scans, sights, reveals: the lamp held out
             (kind === 'phone')   ? ['castPhone', 'castSupport', 'cast'] :      // call-ins, orders: on the phone
-            (kind === 'reload')  ? ['castReload', 'castSupport', 'cast'] :     // ammo buffs
+            (kind === 'reload')  ? ['castRanged', 'cast'] :                    // ammo buffs: the draw (Pistol_Reload cut)
             (kind === 'dance')   ? ['castDance', 'castSupport', 'cast'] :      // encores, discos
             (kind === 'smug')    ? ['castSmug', 'castSupport', 'cast'] :       // untouchable self buffs: arms folded
             (kind === 'cheer')   ? ['castCheer', 'castSupport', 'cast'] :      // rallies, pep talks: thumbs up
@@ -18584,6 +18584,17 @@ const ThreeRenderer = (function () {
            origin's level is the walkable surface nearest the unit's level
            on the FROM tile (a ground unit; a flyer keeps its hover); the
            destination's is the unit's own z once it stands there. */
+        /* THE BODY (2026-09-24): a body an ENEMY shoved (battle.js passes
+           `stagger` from the knockback / shove-aside / collision sites, the
+           relay carries it to the guest) reels back and recovers — UAL2
+           Idle_Shield_Break (sprites.js hitStagger) — as the slide starts.
+           It replaces the flinch the hit just started; a dying body keeps
+           its death clip. */
+        if (opts && opts.stagger && unit && unit.id != null) {
+            var _stUid = unit.id;
+            var _stGo = function () { if (!_deathTweens.has(_stUid)) _maybeStartModelAnim(_stUid, ['hitStagger', 'hitHeavy', 'hit']); };
+            if (opts.delayMs > 0) setTimeout(_stGo, opts.delayMs); else _stGo();
+        }
         var _dpMoved = (unit.x === toX && unit.y === toY);
         var _dpAir = (typeof isUnitAirborne === 'function') && isUnitAirborne(unit);
         var fromZ = unit.z || 0;
@@ -20582,6 +20593,7 @@ const ThreeRenderer = (function () {
                     if (_hk === 'hit' && !_deathTweens.has(uid)) _maybeStartModelAnim(uid, ['hit']);
                     else if (_hk === 'hitHeavy' && !_deathTweens.has(uid)) _maybeStartModelAnim(uid, ['hitHeavy', 'hit']);   // crit / super effective — big reel
                     else if (_hk === 'block' && !_deathTweens.has(uid)) _maybeStartModelAnim(uid, ['block', 'hit']);
+                    else if (_hk === 'guardBreak' && !_deathTweens.has(uid)) _maybeStartModelAnim(uid, ['hitStagger', 'hitHeavy', 'hit']);   // THE BODY: the shield broke — reel back
                 }
             }
             _prevHitFlashIds = new Set(state.hitFlashIds);

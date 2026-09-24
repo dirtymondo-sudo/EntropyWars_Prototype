@@ -431,7 +431,7 @@ place:
 4. The census tool reports the clip spread. Target: no clip plays more than
    15 % of spells.
 
-### Phase 5 — THE DUAL TECHS (combos get directors)
+### Phase 5 — THE DUAL TECHS (combos get directors) · *the world event shipped 2026-09-24; the camera director is next*
 Each of the 21 combos becomes a director on the Entropy-Strike skeleton:
 siren · the splitscreen charge (kept) · a WORLD EVENT stage · the strike ·
 the resolve. A combo passes its own `spellId` (`combo:<key>`), so it runs
@@ -805,6 +805,50 @@ spell-body.test.js, capstone-vfx.test.js, this plan, docs/notes/spells-vfx.md.
 
 **Next:** Phase 4 item 1's victim side (Hit_Knockback + LayToIdle,
 Idle_Shield_Break, Hit_Head / Hit_Chest), then Phase 5 THE DUAL TECHS.
+
+### 2026-09-24 (session 3, delivery 2) — THE PLAYTEST + the victim side + THE WORLD EVENT (Phase 5 slice 1) · local delivery
+mondo allowed playtesting for this plan. **Shipped** (supersedes delivery 1,
+token `20260924-spell-body-02-cors`): sprites.js, three-renderer.js,
+battle.js, online.js, three-vfx-effects.js, index.html; repo:
+spell-body.test.js, combo-world.test.js, this plan, docs/notes/spells-vfx.md.
+- **THE PLAYTEST of THE BODY:** the real character viewer on a retargeted
+  Meshy rig (the marksman), all 18 verbs baked by the deferred pass and
+  played. CUT: castCall (Rail_Call leans on a rail that isn't there, no wave
+  → the call verb plays castSlam), castHook (Melee_Hook folds into a
+  kneeling dive → castChop, the overhead chop), castPour (Farm_Watering
+  barely moves → castThrow), castReload (Pistol_Reload hides the face →
+  castRanged). Tuned: castHeavySlash trim starts on the rise (2.2), castLeap
+  pinHips (it popped a third of a body up), castReap pinXZ (drifted 0.12).
+- **THE VICTIM SIDE:** `hitStagger` (UAL2 Idle_Shield_Break, deferred) — a
+  body an ENEMY shoves (the seven knockback / shove-aside / collision
+  displacement sites pass `stagger`; online.js relays it on 'displace-anim')
+  and a blow that empties a shield and still lands (flash kind
+  `guardBreak`) reel back and recover. Hit_Knockback was not used: it ends
+  on the floor. Not done: the revive rise (LayToIdle).
+- **THE WORLD EVENT** (Phase 5 slice 1): battle.js `_COMBO_WORLD`, a row
+  for every one of the 21 combos from the §5 pitch table, built from short
+  tile layers + the craft kit (now public: ThreeVFXEffects.craftExplosion /
+  craftShards; sigSnowfall3D takes a `sprite` / `tint` for petals-sparkle
+  falls). Fired from `_comboPlayPresentation` on the launch, last layer on
+  the hit; cut-in combos only; the guest draws it off the 'combo-cine'
+  replay. No camera move, no grade, no finisher signature, no slow-mo (the
+  damage runs on wall-clock timers — a warp would land the streams late).
+  Kill-switch `EW_DISABLE_COMBO_WORLD`.
+- **THE WORLD EVENT PLAYTEST** (8 combos, live 3D battle, `window._comboPlayPresentation`,
+  with and without the kill-switch): System Override, Holy Ordnance and
+  Tactical Strike read clearly first time. Fixed: Celestial Chorus (too
+  faint → a tall gold column, doubled fall), Abyssal Pact (bigger double
+  circle, the column at the launch), Reality Fracture (a crack ring + glass
+  at the launch, not hit-only), Blood Pact (the blood circle at the launch;
+  the cuts before the hit's flash — they still lose to it, UNSEEN LIVE),
+  Void Rift (sigBlackHole3D graded the whole frame black → a violet rift
+  sphere + pillar + swirl), Holy Ordnance (an edge-row victim threw a shell
+  off the board → offsets fold). The other 13 are unseen live.
+
+**Phase 5 still open:** the combo's own camera director (`combo:<key>` into
+the spell director — `_cineSpellById` does not resolve a combo id today, so
+this needs a synthetic spell row), the resolve beat, the ~4.5 s length
+(§8 #4). Then Phase 6 THE CAPSTONES.
 
 ## 11. The census tool
 

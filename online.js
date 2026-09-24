@@ -2294,7 +2294,8 @@
                         return { x: p.x, y: p.y, z: p.z, bump: p.bump ? 1 : 0 };
                     }),
                     perStepMs: perStepMs || 120,
-                    delayMs: (opts && opts.delayMs) || 0
+                    delayMs: (opts && opts.delayMs) || 0,
+                    stagger: (opts && opts.stagger) ? 1 : 0   // THE BODY: the shoved body reels on the guest too
                 });
             }
             return _origAnimateDisplacementPath(unit, fromX, fromY, steps, perStepMs, opts);
@@ -2312,7 +2313,8 @@
                     fromY: fromY,
                     steps: [{ x: toX, y: toY }],
                     perStepMs: durationMs || 220,
-                    delayMs: (opts && opts.delayMs) || 0
+                    delayMs: (opts && opts.delayMs) || 0,
+                    stagger: (opts && opts.stagger) ? 1 : 0
                 });
             }
             return _origAnimateDisplacement(unit, fromX, fromY, toX, toY, durationMs, opts);
@@ -4092,7 +4094,7 @@
                                 dispUnit.x = data.fromX;
                                 dispUnit.y = data.fromY;
                                 window.animateDisplacementPath(dispUnit, data.fromX, data.fromY,
-                                    data.steps, data.perStepMs || 120, { delayMs: data.delayMs || 0 });
+                                    data.steps, data.perStepMs || 120, { delayMs: data.delayMs || 0, stagger: !!data.stagger });
                                 dispUnit.x = _savedDX;
                                 dispUnit.y = _savedDY;
                                 dispUnit.z = _savedDZ;

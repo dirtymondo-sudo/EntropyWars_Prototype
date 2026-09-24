@@ -53,10 +53,11 @@ test('every verb has a chain; a new verb slot is deferred and falls back to an e
         }
     }
     const deferred = Object.keys(S).filter(k => S[k].defer);
-    assert.ok(deferred.length >= 18, 'the 18 spell verbs defer');
+    assert.ok(deferred.length >= 14, 'the spell verbs defer');
     for (const k of deferred) {
         const o = S[k];
-        assert.ok(/^cast/.test(k), k + ': only cast slots defer (a deferred idle / walk would pop)');
+        assert.ok(/^(cast|hit)/.test(k), k + ': only one-shot cast / hit slots defer (a deferred idle / walk would pop)');
+        if (/^hit/.test(k)) continue;   // a reaction has no strike frame
         assert.strictEqual(typeof o.strikeAt, 'number', k + ' needs a strike frame');
         const t0 = o.trim ? o.trim[0] : 0;
         assert.ok(o.strikeAt >= t0 && (!o.trim || o.strikeAt <= o.trim[1]), k + ': strikeAt inside the baked window');
@@ -66,7 +67,7 @@ test('every verb has a chain; a new verb slot is deferred and falls back to an e
 test('the played window of each verb fits the 1.4 s cast cap', () => {
     const S = lit('UAL_SLOTS');
     /* source durations for the untrimmed verbs (contact sheets 2026-09-24) */
-    const DUR = { Melee_Hook: 0.47, NinjaJump_Land: 1.27, Sword_Block: 1.23, Chest_Open: 1.37, Pistol_Reload: 1.67, Dance_Loop: 1.0 };
+    const DUR = { Idle_Shield_Break: 1.07, Melee_Hook: 0.47, NinjaJump_Land: 1.27, Sword_Block: 1.23, Chest_Open: 1.37, Pistol_Reload: 1.67, Dance_Loop: 1.0 };
     for (const k of Object.keys(S).filter(k => S[k].defer)) {
         const o = S[k];
         const dur = o.trim ? (o.trim[1] - o.trim[0]) : DUR[o.clip];
@@ -81,6 +82,17 @@ test('the renderer defers the verbs and wires them into live rigs', () => {
     assert.ok(/if \(baked\) _libBakeDeferred\(entries, modelEntry, def, bakeKey\);/.test(TR), 'the deferred pass starts after the load bake settles');
     assert.ok(/_libOnDeferred\(res, function \(name, clip\)/.test(TR), 'a board rig listens for its verbs');
     assert.ok(/if \(o\.defer\) r\.defer = true;/.test(SP), '_ualClipRef carries the flag to the renderer');
+});
+
+test('the victim side: shoves and broken shields reel (hitStagger), host and guest', () => {
+    const BT = fs.readFileSync(path.join(__dirname, 'battle.js'), 'utf8');
+    const ON = fs.readFileSync(path.join(__dirname, 'online.js'), 'utf8');
+    assert.ok((BT.match(/stagger: true \}\);/g) || []).length >= 7, 'the enemy-shove displacement sites pass stagger');
+    assert.ok(/stagger: !!\(opts && opts\.stagger\) \}\);/.test(BT) && /stagger: !!\(opts && opts\.stagger\) \}\);   \/\/ THE BODY/.test(BT), 'both displacement fns hand it to ThreeAnim.displace');
+    assert.ok(/if \(opts && opts\.stagger && unit && unit\.id != null\)/.test(TR), 'startDisplaceTween plays the stagger');
+    assert.strictEqual((ON.match(/stagger: \(opts && opts\.stagger\) \? 1 : 0/g) || []).length, 2, 'both displace relays carry it');
+    assert.ok(/\{ delayMs: data\.delayMs \|\| 0, stagger: !!data\.stagger \}/.test(ON), 'the guest replays it');
+    assert.ok(/_guardBroke \? 'guardBreak'/.test(BT) && /_hk === 'guardBreak'/.test(TR), 'a broken shield reels');
 });
 
 test('the router beats the text rules; the rules still hold underneath', () => {

@@ -10262,7 +10262,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var h = zGround + ts * rn(0.9, 1.9);
             var o = {
                 x: c.x + Math.cos(a) * rad, y: c.y + Math.sin(a) * rad, z: h,
-                mode: 'billboard', sprite: 'snowflake',
+                mode: 'billboard', sprite: opts.sprite || 'snowflake',   // THE DUAL TECHS: petals / sparkles / embers fall the same way
                 ml: ms0 * rn(0.55, 1.05),
                 size0: rn(3.5, 7.5), size1: rn(2.5, 5),
                 opacity0: 0.9, opacity1: 0.15,
@@ -10270,6 +10270,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 vx: rn(-14, 14), vy: rn(-14, 14), vz: rn(-25, -5),
                 wander: { amp: rn(30, 55), freq: rn(0.7, 1.3) },
             };
+            if (opts.tint != null) o.tint = opts.tint;
             if (swirl) {
                 /* vortex variant: flakes ride a decaying orbit instead */
                 o.wander = null;
@@ -10281,6 +10282,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             }
             _spawn(o);
         }
+        if (opts.sprite && opts.sprite !== 'snowflake') return;   // a non-snow fall carries no frost mist / blue ring
         _spawn({
             x: c.x, y: c.y, z: zGround + 2,
             mode: 'world', sprite: 'frost-mist',
@@ -10459,7 +10461,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 if (again) { attempt(again, true); return; }
                 e.loading = false; e.failed = true; e.queued = false; _done();
                 if (rec) rec.settle(false);
-                try { console.warn('[VFX] weapon GLB failed to load:', def.file); } catch (e2) {}
+                try { console.warn('[VFX] weapon GLB failed to load:', def.file || def.url || reqUrl); } catch (e2) {}
             };
             if (_viaStore) TR.assetGltf(reqUrl, _onGltf, _onFail, { rec: rec });
             else new THREE.GLTFLoader().load(reqUrl, _onGltf, undefined, _onFail);
@@ -37680,6 +37682,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         fireTeleportLegacy: fireTeleportLegacy,
         fireZone: fireZone,
         fireCombo: fireCombo,
+        /* THE CRAFT KIT, public (THE DUAL TECHS 2026-09-24 — battle.js
+           _COMBO_WORLD stages them): the explosion (_crExplosion — scale,
+           lite, color; caps at 4 full kits) and the shatter (_crShards —
+           kind ice / glass / crystal / bone / stone). Both no-op under
+           EW_DISABLE_CRAFT or a suppressed effect. */
+        craftExplosion: function (tx, ty, o) { try { return _crExplosion(tx, ty, o || {}); } catch (e) { return null; } },
+        craftShards: function (tx, ty, kind, o) { try { return _crShards(tx, ty, kind, o || {}); } catch (e) { return null; } },
 
         sigMagicCircle3D: _sigMagicCircle3D,
         sigMagicOrb3D: _sigMagicOrb3D,

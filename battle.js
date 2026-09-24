@@ -4492,7 +4492,7 @@
                             animateJumpArc(target, res.fromX, res.fromY, cx, cy, res.fromZ, cz, arcMs);
                             res.animMs = arcMs;
                         } else if (typeof animateDisplacementPath === 'function') {
-                            animateDisplacementPath(target, res.fromX, res.fromY, res.steps, perStepMs, { delayMs: baseDelay });
+                            animateDisplacementPath(target, res.fromX, res.fromY, res.steps, perStepMs, { delayMs: baseDelay, stagger: true });
                         }
                     }
                 }
@@ -5286,7 +5286,7 @@
                         const pdx = Math.sign(opts.pullCenter.x - target.x), pdy = Math.sign(opts.pullCenter.y - target.y);
                         const nx = target.x + pdx, ny = target.y + pdy;
                         const _apOldX = target.x, _apOldY = target.y;
-                        if (isInside(nx, ny) && canOccupy(nx, ny)) { target.x = nx; target.y = ny; if (typeof nearestWalkableZ === 'function') target.z = nearestWalkableZ(nx, ny, target.z); animateDisplacement(target, _apOldX, _apOldY, nx, ny, 180, { delayMs: actionMs(320) }); _applyKnockbackHazard(target); }
+                        if (isInside(nx, ny) && canOccupy(nx, ny)) { target.x = nx; target.y = ny; if (typeof nearestWalkableZ === 'function') target.z = nearestWalkableZ(nx, ny, target.z); animateDisplacement(target, _apOldX, _apOldY, nx, ny, 180, { delayMs: actionMs(320), stagger: true }); _applyKnockbackHazard(target); }
                     }
 
                     // Ground airborne units
@@ -29761,6 +29761,10 @@
                 shieldIgnore: Number(opts.shieldIgnore || 0),
             });
             finalDamage = _res.dmg;
+            /* THE BODY (2026-09-24): the blow that EMPTIES a shield and still
+               lands reels the body back (flash kind 'guardBreak' → the
+               renderer's hitStagger, UAL2 Idle_Shield_Break) */
+            const _guardBroke = _res.absorbed > 0 && !(_res.shieldLeft > 0) && _res.dmg > 0;
             if (_res.absorbed > 0) {
                 target.shield = _res.shieldLeft;
                 addLog(`${unitDisplayName(target)}'s shield absorbs ${_res.absorbed} HP damage.`);
@@ -29914,7 +29918,7 @@
                 // own flashColor (burn/poison/…) and are untouched.
                 const _heavyFlinch = finalDamage >= 60 || !!opts.isCrit
                     || !!(typeNote && typeNote.includes('super effective'));
-                flashUnit(target.id, opts.flashColor || (_heavyFlinch ? 'hitHeavy' : 'hit'));
+                flashUnit(target.id, opts.flashColor || (_guardBroke ? 'guardBreak' : (_heavyFlinch ? 'hitHeavy' : 'hit')));
 
                 // Damage number style: crit hits pop gold, counter/follow-up
                 // chain hits pop electric blue (kind supplied by the caller),
@@ -52383,7 +52387,8 @@
             if (window.ThreeAnim && window.ThreeAnim.isActive()) {
                 window.ThreeAnim.displace(unit, fromX, fromY, toX, toY, durationMs,
                     { delayMs: (opts && opts.delayMs) || 0,
-                      leap: (opts && opts.leap !== undefined) ? opts.leap : undefined });
+                      leap: (opts && opts.leap !== undefined) ? opts.leap : undefined,
+                      stagger: !!(opts && opts.stagger) });   // THE BODY: a body shoved by an enemy reels (hitStagger)
                 return;
             }
             if (!boardEl || _skipVisuals()) return;
@@ -52459,7 +52464,7 @@
                 // Full waypoint path: bounce rebounds and slam "bump" overshoots
                 // ride through to the 3D tween instead of a straight A→B glide.
                 window.ThreeAnim.displace(unit, fromX, fromY, last.x, last.y, (perStepMs || 150) * steps.length,
-                    { delayMs: (opts && opts.delayMs) || 0, path: steps });
+                    { delayMs: (opts && opts.delayMs) || 0, path: steps, stagger: !!(opts && opts.stagger) });
                 return;
             }
             if (!boardEl || _skipVisuals()) return;
@@ -55371,7 +55376,7 @@
                 occupant.z = tz;
                 addLog(`${unitDisplayName(occupant)} is knocked aside to ${coordLabel(t.x, t.y)}${opts.byLabel ? ' ' + opts.byLabel : ''}!`);
                 showFloatingTextForUnit(occupant, 'PUSHED!', 'streak', { durationMs: 800 });
-                if (typeof animateDisplacement === 'function') animateDisplacement(occupant, fx, fy, t.x, t.y, 180);
+                if (typeof animateDisplacement === 'function') animateDisplacement(occupant, fx, fy, t.x, t.y, 180, { stagger: true });
                 _applyKnockbackHazard(occupant);   // ⛓ knocked aside onto whatever waits there
                 return targetZ;
             }
@@ -55898,7 +55903,7 @@
                         const _fromX = info.enemyOcc.x, _fromY = info.enemyOcc.y;
                         info.enemyOcc.x = info.shoveTo.x; info.enemyOcc.y = info.shoveTo.y;
                         if (typeof nearestWalkableZ === 'function') info.enemyOcc.z = nearestWalkableZ(info.shoveTo.x, info.shoveTo.y, info.enemyOcc.z);
-                        animateDisplacement(info.enemyOcc, _fromX, _fromY, info.shoveTo.x, info.shoveTo.y, 180);
+                        animateDisplacement(info.enemyOcc, _fromX, _fromY, info.shoveTo.x, info.shoveTo.y, 180, { stagger: true });
                         applyDamageToUnit(info.enemyOcc, BUILD_ACTION_CONFIG.eruptDamage, 'The block erupts underfoot: ', {
                             sourceUnit: unit, damageType: 'physical', noRangeMult: true
                         });
@@ -56672,6 +56677,148 @@
             }
         };
 
+        /* ── THE WORLD EVENT (SPELL_DIRECTOR_PLAN Phase 5, THE DUAL TECHS,
+           2026-09-24) ─────────────────────────────────────────────────────
+           Between the splitscreen charge and the impact, each dual tech
+           bends the world for a beat (the plan's §5 pitch table): it opens
+           on the launch, while the converge streams fly,
+           and lands its last layer ON the hit (`o.dt` = ms from the
+           launch to the impact). Built from the short tile layers and the
+           craft kit — no finisher signature (those stay the executions'
+           own), no camera move (the action camera owns the shot), no
+           default fever. Runs inside _comboPlayPresentation, so the guest
+           gets it from the 'combo-cine' replay (RULE #2); every anchor is
+           the victim's tile, fog-gated by the caller.
+           W(V, ts, t, a, b, o): t = victim tile, a / b = the casters (a
+           fog-hidden caster is the victim tile), o = { dt, at(fn, ms),
+           hexA, hexB }. Kill-switch: window.EW_DISABLE_COMBO_WORLD. */
+        const _COMBO_WORLD = {
+            'Celestial Chorus': (V, ts, t, a, b, o) => {     // a halo column, the choir's feathers fall
+                // (playtest: the first cut was too faint — the column is now tall and bright, the fall doubled)
+                V.sigLightPillar3D && V.sigLightPillar3D(t.x, t.y, { height: 900, radius: ts * 0.55, ms: Math.max(900, o.dt + 400), color: 0xffd76a, coreColor: 0xffffff });
+                V.sigRuneSphere3D && V.sigRuneSphere3D(t.x, t.y, { color: 0xffd76a, runeColor: 0xffffff, radiusTiles: 1.3, holdMs: 1000, spin: true });
+                V.sigAuroraCurtain3D && V.sigAuroraCurtain3D(t.x, t.y, { ms: 1600, hues: [0.12, 0.14, 0.1], opacity: 0.85, radiusPx: ts * 1.6 });
+                V.sigSnowfall3D && V.sigSnowfall3D(t.x, t.y, { sprite: 'divine-sparkle', count: 60, ms: 1800, radiusTiles: 1.8 });
+            },
+            'Abyssal Pact': (V, ts, t, a, b, o) => {         // a pentagram opens under the victim
+                V.sigMagicCircle3D && V.sigMagicCircle3D(t.x, t.y, { radiusPx: ts * 2.2, color: 0xff1a4a, color2: 0x9a20ff, growMs: 220, holdMs: Math.max(500, o.dt + 200), fadeMs: 420, spin: true, opacity: 1 });
+                V.sigMagicCircle3D && V.sigMagicCircle3D(t.x, t.y, { radiusPx: ts * 1.2, color: 0xff5070, growMs: 300, holdMs: Math.max(400, o.dt), fadeMs: 380, spin: true, height: ts * 0.05 });
+                // the pit's red column rises at the launch (playtest: at the hit it merged into the impact pillar)
+                V.sigLightPillar3D && V.sigLightPillar3D(t.x, t.y, { height: 420, radius: ts * 0.3, ms: Math.max(600, o.dt), color: 0x8a0a2a, coreColor: 0xff5070 });
+            },
+            'Reality Fracture': (V, ts, t, a, b, o) => {     // the board shatters like glass around the victim
+                // the crack runs first (playtest: a hit-only layer read as the impact)
+                V.sigShockRing3D && V.sigShockRing3D(t.x, t.y, { r0: ts * 0.2, r1: ts * 2.2, ms: 520, color: 0xff9ad2 });
+                V.craftShards && V.craftShards(t.x, t.y, 'glass', { n: 10, lite: true });
+                V.sigSpectrumBurst3D && o.at(() => V.sigSpectrumBurst3D(t.x, t.y, { ms: 700, shake: false }), o.dt);
+                V.craftShards && o.at(() => { V.craftShards(t.x, t.y, 'glass', { n: 16 }); V.craftShards(t.x, t.y, 'crystal', { n: 10 }); }, o.dt);
+            },
+            'System Override': (V, ts, t) => {              // the world goes wireframe
+                V.sigNeonGrid3D && V.sigNeonGrid3D(t.x, t.y, { ms: 1500, hue: 0.55, hueRate: 0, radiusPx: ts * 2.4 });
+            },
+            'Combined Arms': (V, ts, t, a, b, o) => {        // the crossfire meets: a blast on the hit
+                V.craftExplosion && o.at(() => V.craftExplosion(t.x, t.y, { scale: 1.2 }), o.dt);
+            },
+            'Cosmic Convergence': (V, ts, t) => {           // a saucer over the victim beams into the lens
+                V.sigUFO3D && V.sigUFO3D(t.x, t.y, { enterMs: 320, hoverMs: 900, exitMs: 420, beam: true, beamColor: 0x7de6a0 });
+            },
+            'Twilight Reckoning': (V, ts, t) => {           // day and night meet over the victim
+                V.sigAuroraCurtain3D && V.sigAuroraCurtain3D(t.x, t.y, { ms: 1600, hues: [0.13, 0.75, 0.13, 0.75], curtains: 4, opacity: 0.6 });
+            },
+            'Purifying Pulse': (V, ts, t, a, b, o) => {      // a white tide rolls out from the victim
+                V.sigRegenPulse3D && o.at(() => V.sigRegenPulse3D(t.x, t.y, { color: 0xffffff, radiusPx: ts * 3.2, ms: 900 }), o.dt);
+                V.sigShockRing3D && o.at(() => V.sigShockRing3D(t.x, t.y, { r0: ts * 0.4, r1: ts * 3.6, ms: 800, color: 0xf4fbff }), o.dt + 80);
+            },
+            'Holy Ordnance': (V, ts, t, a, b, o) => {        // gilded shells whistle in
+                // offsets fold back onto the board (playtest: an edge-row victim threw a shell off it)
+                [[0, 0, 0], [0.9, 0.5, 140], [-0.8, -0.6, 260]].map(([dx, dy, d]) => o.fold(dx, dy).concat([d])).forEach(([dx, dy, d]) => o.at(() => {
+                    V.sigAsteroidDrop3D && V.sigAsteroidDrop3D(t.x + dx, t.y + dy, { scale: 0.35, ms: Math.max(300, o.dt - 120) });
+                    V.sigLightPillar3D && V.sigLightPillar3D(t.x + dx, t.y + dy, { height: 400, radius: ts * 0.12, ms: 600, color: 0xffd76a, coreColor: 0xffffff });
+                }, d));
+                V.craftExplosion && o.at(() => V.craftExplosion(t.x, t.y, { lite: true, color: 0xffd76a }), o.dt);
+            },
+            "Crusader's Charge": (V, ts, t, a, b, o) => {    // lances of light close on the victim
+                V.sigSpearPrison3D && o.at(() => V.sigSpearPrison3D(t.x, t.y, { count: 6, color: 0xfff2c0, runeColor: 0xffd76a, holdMs: 520, finisher: false }), Math.max(0, o.dt - 520));
+            },
+            'Astral Judgment': (V, ts, t, a, b, o) => {      // the constellation draws, the stars fall
+                V.sigRuneSphere3D && V.sigRuneSphere3D(t.x, t.y, { color: 0x9fb8ff, runeColor: 0xffffff, radiusTiles: 1.1, holdMs: 800 });
+                V.sigSnowfall3D && V.sigSnowfall3D(t.x, t.y, { sprite: 'sparkle', count: 34, ms: 1300, radiusTiles: 1.4 });
+            },
+            'Chaos Eruption': (V, ts, t, a, b, o) => {       // the ground boils into a pit, the victim is spat out
+                V.sigFractalTunnel3D && V.sigFractalTunnel3D(t.x, t.y, { ms: 1300, rings: 8 });
+                V.craftExplosion && o.at(() => V.craftExplosion(t.x, t.y, { scale: 1, color: 0xdc3c82 }), o.dt);
+            },
+            'Dark Protocol': (V, ts, t) => {                // red glitch blocks eat the tile
+                V.sigNeonGrid3D && V.sigNeonGrid3D(t.x, t.y, { ms: 1400, hue: 0.99, hueRate: 0, radiusPx: ts * 1.8, divisions: 6 });
+            },
+            'Blood Pact': (V, ts, t, a, b, o) => {           // twin blades cross in red slow-mo, the scars stay
+                // the blood moon's circle at the launch, the twin cuts BEFORE the hit's red flash (playtest: on the hit they drowned in it)
+                V.sigMagicCircle3D && V.sigMagicCircle3D(t.x, t.y, { radiusPx: ts * 1.6, color: 0xc00020, color2: 0xff4040, growMs: 200, holdMs: Math.max(400, o.dt), fadeMs: 400, spin: true });
+                V.sigCrescentSlash3D && o.at(() => {
+                    V.sigCrescentSlash3D(t.x, t.y, { scar: true, color: 0xff2030, yaw: 0.7, dir: 1, ms: 320 });
+                    V.sigCrescentSlash3D(t.x, t.y, { scar: true, color: 0xff2030, yaw: -0.7, dir: -1, ms: 320 });
+                }, Math.max(0, o.dt - 260));
+            },
+            'Void Rift': (V, ts, t, a, b, o) => {            // a tear in the air, stars inside it
+                // (playtest: sigBlackHole3D grades the whole frame black — too much for a combo beat)
+                V.sigMagicCircle3D && V.sigMagicCircle3D(t.x, t.y, { radiusPx: ts * 0.9, color: 0x6a2cff, color2: 0x10001a, growMs: 240, holdMs: Math.max(500, o.dt + 200), fadeMs: 360, spin: true, tiltRad: Math.PI / 2, height: ts * 0.7 });
+                V.sigSnowfall3D && V.sigSnowfall3D(t.x, t.y, { sprite: 'sparkle', count: 30, ms: 1400, radiusTiles: 0.8, swirl: true });
+                // (playtest 2: the tilted ring alone was lost in the haze — the rift gets a body)
+                V.sigRuneSphere3D && V.sigRuneSphere3D(t.x, t.y, { color: 0x6a2cff, runeColor: 0xd8c0ff, radiusTiles: 1.0, holdMs: Math.max(700, o.dt + 200), spin: true });
+                V.sigLightPillar3D && V.sigLightPillar3D(t.x, t.y, { height: 520, radius: ts * 0.16, ms: Math.max(700, o.dt), color: 0x6a2cff, coreColor: 0xffffff });
+                V.craftShards && o.at(() => V.craftShards(t.x, t.y, 'crystal', { n: 10, lite: true }), o.dt);
+            },
+            'Glitch Bomb': (V, ts, t, a, b, o) => {          // the frame breaks into pieces
+                V.sigNeonGrid3D && V.sigNeonGrid3D(t.x, t.y, { ms: 900, hue: 0.3, hueRate: 0.004, radiusPx: ts * 1.6, divisions: 5 });
+                V.craftShards && o.at(() => V.craftShards(t.x, t.y, 'glass', { n: 12 }), o.dt);
+            },
+            'Primal Surge': (V, ts, t, a, b, o) => {         // the beasts' blow cracks the ground
+                V.craftShards && o.at(() => V.craftShards(t.x, t.y, 'stone', { n: 12 }), o.dt);
+                V.sigShockRing3D && o.at(() => V.sigShockRing3D(t.x, t.y, { r0: ts * 0.3, r1: ts * 2.6, ms: 620, color: 0xc8904a }), o.dt);
+            },
+            'Dimensional Tear': (V, ts, t, a, b, o) => {     // a portal on each side of the victim
+                [-1, 1].forEach((sd) => V.sigMagicCircle3D && V.sigMagicCircle3D(t.x + sd * 0.7, t.y, { radiusPx: ts * 0.6, color: 0x8c5cff, color2: 0xff7ad9, growMs: 200, holdMs: Math.max(400, o.dt), fadeMs: 300, spin: true, tiltRad: Math.PI / 2, height: ts * 0.6 }));
+            },
+            'Tactical Strike': (V, ts, t, a, b, o) => {      // the drone paints the target, the strike lands
+                V.sigLightPillar3D && V.sigLightPillar3D(t.x, t.y, { height: 900, radius: ts * 0.05, ms: Math.max(500, o.dt), color: 0xff2020, coreColor: 0xff8080 });
+                V.craftExplosion && o.at(() => V.craftExplosion(t.x, t.y, { scale: 1.5 }), o.dt);
+            },
+            'Plasma Cascade': (V, ts, t, a, b, o) => {       // the plasma wave pours down
+                V.sigNeonGrid3D && V.sigNeonGrid3D(t.x, t.y, { ms: 1200, hue: 0.36, hueRate: 0, radiusPx: ts * 2.0 });
+                V.sigShockRing3D && o.at(() => V.sigShockRing3D(t.x, t.y, { r0: ts * 0.3, r1: ts * 2.4, ms: 600, color: 0x40ff90 }), o.dt);
+            },
+            'Hybrid Assault': (V, ts, t, a, b, o) => {       // the flurry's ring: both casters' colours spin under the victim
+                V.sigMagicCircle3D && V.sigMagicCircle3D(t.x, t.y, { radiusPx: ts * 1.1, color: o.hexA, color2: o.hexB, growMs: 200, holdMs: 1600, fadeMs: 400, spin: true });
+            },
+        };
+        function _comboWorldFx(combo, a, b, target, dt) {
+            if (_skipVisuals() || (typeof window !== 'undefined' && window.EW_DISABLE_COMBO_WORLD)) return false;
+            const V = (typeof ThreeVFXEffects !== 'undefined') ? ThreeVFXEffects : null;
+            const fn = combo && _COMBO_WORLD[combo.name];
+            if (!V || !fn || !target) return false;
+            const ts = (typeof CONFIG !== 'undefined' && CONFIG.tileSize) ? CONFIG.tileSize : 64;
+            const t = { x: target._dyingX ?? target.x, y: target._dyingY ?? target.y };
+            const _vis = (u) => {
+                try { return typeof _shouldCameraFollowUnit !== 'function' || !u || _shouldCameraFollowUnit(u); }
+                catch (err) { return true; }
+            };
+            const pa = (a && _vis(a)) ? { x: a.x, y: a.y } : t;
+            const pb = (b && _vis(b)) ? { x: b.x, y: b.y } : t;
+            const o = {
+                dt: Math.max(0, dt || 0),
+                at: (f, ms) => { if (ms > 0) window.setTimeout(() => _ewsSafe(f), ms); else _ewsSafe(f); },
+                hexA: _ccinHex(((a && a.types) || [])[0]),
+                hexB: _ccinHex(((b && b.types) || [])[0]),
+                // an offset that leaves the board folds to the victim's other side
+                fold: (dx, dy) => {
+                    const ok = (x, y) => (typeof isInside !== 'function') || isInside(Math.round(x), Math.round(y));
+                    return [ok(t.x + dx, t.y) ? dx : -dx, ok(t.x, t.y + dy) ? dy : -dy];
+                }
+            };
+            _ewsSafe(() => fn(V, ts, t, pa, pb, o));
+            return true;
+        }
+
         function _comboImpactFx(combo, a, b, target) {
             if (_skipVisuals()) return;
             const V = (typeof ThreeVFXEffects !== 'undefined') ? ThreeVFXEffects : null;
@@ -56807,6 +56954,16 @@
             };
             if (T.launchAt > 0) window.setTimeout(_launchFx, T.launchAt);
             else _launchFx();
+
+            // THE WORLD EVENT (Phase 5): on the launch the world bends for a
+            // beat and lands its last layer on the hit. No slow-mo here: the
+            // damage and the impact run on wall-clock timers, so a time warp
+            // during the flight would land the streams AFTER the hit (the
+            // hitstop at the impact is the beat's pause). The cut-in page only
+            // (ccOK) — a plain combo stays lean.
+            if (T.ccOK && _see(target)) window.setTimeout(() => {
+                _comboWorldFx(combo, initiator, partner, target, (T.hitAt || 0) - (T.launchAt || 0));
+            }, Math.max(0, T.launchAt || 0));
 
             // Impact: hard kick + per-variant signature + a hitstop frame.
             window.setTimeout(() => {
@@ -61755,7 +61912,7 @@
                         const _fromX = _pbEnemyOcc.x, _fromY = _pbEnemyOcc.y;
                         _pbEnemyOcc.x = _pbShoveTo.x; _pbEnemyOcc.y = _pbShoveTo.y;
                         if (typeof nearestWalkableZ === 'function') _pbEnemyOcc.z = nearestWalkableZ(_pbShoveTo.x, _pbShoveTo.y, _pbEnemyOcc.z);
-                        animateDisplacement(_pbEnemyOcc, _fromX, _fromY, _pbShoveTo.x, _pbShoveTo.y, 180);
+                        animateDisplacement(_pbEnemyOcc, _fromX, _fromY, _pbShoveTo.x, _pbShoveTo.y, 180, { stagger: true });
                         const _pbCrash = Math.max(20, 45 + Math.floor(spellPower * 0.5));
                         applyDamageToUnit(_pbEnemyOcc, _pbCrash, `${spell.name} erupts underfoot: `, {
                             sourceUnit: unit, damageType: 'physical'
@@ -63311,7 +63468,7 @@
                             if (typeof nearestWalkableZ === 'function') destOccupant.z = nearestWalkableZ(pushTo.x, pushTo.y, destOccupant.z);
                             addLog(`${unitDisplayName(destOccupant)} is knocked aside to ${coordLabel(pushTo.x, pushTo.y)}!`);
                             showFloatingTextForUnit(destOccupant, 'PUSHED!', 'streak', { durationMs: 800 });
-                            animateDisplacement(destOccupant, _dashPushFromX, _dashPushFromY, pushTo.x, pushTo.y, 180);
+                            animateDisplacement(destOccupant, _dashPushFromX, _dashPushFromY, pushTo.x, pushTo.y, 180, { stagger: true });
                             _applyKnockbackHazard(destOccupant);   // ⛓ knocked aside onto whatever waits there
                         } else {
 
@@ -63635,7 +63792,7 @@
                                 collisionTarget.x = pushTo.x;
                                 collisionTarget.y = pushTo.y;
                                 if (typeof nearestWalkableZ === 'function') collisionTarget.z = nearestWalkableZ(pushTo.x, pushTo.y, collisionTarget.z);
-                                animateDisplacement(collisionTarget, _pFromX, _pFromY, pushTo.x, pushTo.y, 150);
+                                animateDisplacement(collisionTarget, _pFromX, _pFromY, pushTo.x, pushTo.y, 150, { stagger: true });
                                 _applyKnockbackHazard(collisionTarget);   // ⛓
                             }
 

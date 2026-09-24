@@ -895,46 +895,56 @@ const UAL_SLOTS = {
   // says which spell plays which.
   //   castChannel Spell_Simple_Idle_Loop — the arm held out, palm open (the
   //     crossfade is the raise), held through a beam / drain / breath.
-  //   castCall Idle_Rail_Call — a forward lean and a big beckoning wave
-  //     0.7–1.1 s: summons, war cries, the horde called.
   //   castReap Farm_Harvest — stoop to the ground 0.7–1.1 s, YANK up 1.4 s.
-  //   castPour Farm_Watering — the can tipped from 0.7 s and held.
   //   castHeavySlash Sword_Heavy_Combo, the FINISHER cut only: the leap up
   //     with the blade overhead 2.36 s, the cleave down 2.76–3.15 s.
-  //   castHook Melee_Hook — a clubbing overhead haymaker, down 0.13–0.3 s.
-  //   castLeap NinjaJump_Land — the tuck, the landing crouch 0.12–0.35 s.
+  //   castLeap NinjaJump_Land — the tuck, the landing crouch 0.12–0.35 s
+  //     (pinHips: the export starts a third of a body up; the board tween
+  //     owns the arc, the clip keeps the tuck).
   //   castGuard Sword_Block — the braced crouch 0.11–0.7 s.
   //   castOpen Chest_Open — stoop 0.5 s, the lid thrown up 0.75–0.87 s.
   //   castTouch Interact — reach out and press 0.55–1.1 s.
   //   castPush Push_Loop — both palms out, leaning in.
   //   castLantern Idle_Lantern_Loop — the lamp held out at arm's length.
   //   castPhone Idle_TalkingPhone_Loop — the hand at the ear.
-  //   castReload Pistol_Reload — the mag slapped home ~0.62 s.
   //   castDance Dance_Loop — the one-second groove, slowed.
   //   castSmug Idle_FoldArms_Loop — arms folded from frame 0.
   //   castCheer Yes — the thumbs up 0.45–1.6 s.
   //   castStealth Crouch_Idle_Loop — the sneak crouch.
-  // Not wired yet (the victim side): Hit_Knockback ENDS ON THE FLOOR (it
-  // needs LayToIdle chained after it), Idle_Shield_Break, Hit_Head /
-  // Hit_Chest — the plan's §5 Phase 4 item 1, next delivery.
+  // THE PLAYTEST (2026-09-24, the real viewer on a retargeted Meshy rig,
+  // shots/…/castprobe): four verbs CUT and folded onto slots that read —
+  //   call   Idle_Rail_Call leaned on a rail that isn't there, forearms over
+  //          the face, no wave → castSlam (the charged stomp: call it forth);
+  //   hook   Melee_Hook folds into a kneeling dive, ends crouched → castChop
+  //          (TreeChopping_Loop, the overhead two-hand chop: the club, the whip);
+  //   pour   Farm_Watering barely moves → castThrow (the splash is thrown);
+  //   reload Pistol_Reload hides the face behind both hands → castRanged.
+  // Kept and tuned: castHeavySlash starts on the rise (trim 2.2), castLeap
+  // pinHips, castReap pinXZ (it drifted 0.12).
+  // The victim side (THE BODY, delivery 2): hitStagger Idle_Shield_Break —
+  //   the body flung back 0.1–0.4 s and recovered by 0.7 s — plays when an
+  //   ENEMY shoves the body (battle.js `stagger` on the knockback / shove /
+  //   collision displacements → three-renderer.js startDisplaceTween) and
+  //   when a blow empties a shield and still lands (flash kind guardBreak).
+  //   Hit_Knockback was the plan's pick but it ENDS ON THE FLOOR (needs
+  //   LayToIdle after it); the stagger reads as the same blow and stands.
+  //   Not wired: a revive rise (LayToIdle) — a revived unit's rig is built
+  //   fresh, the hook is the entry rebuild.
   castChannel:    { clip: 'Spell_Simple_Idle_Loop', lib: 0, ts: 1.0, trim: [0, 1.3],   strikeAt: 0.20, defer: true },
-  castCall:       { clip: 'Idle_Rail_Call',      lib: 1, ts: 1.1, trim: [0.3, 1.8], strikeAt: 0.90, pinXZ: true, defer: true },
-  castReap:       { clip: 'Farm_Harvest',        lib: 1, ts: 1.5, trim: [0.2, 2.1], strikeAt: 1.45, defer: true },
-  castPour:       { clip: 'Farm_Watering',       lib: 1, ts: 1.3, trim: [0.1, 1.9], strikeAt: 0.80, defer: true },
-  castHeavySlash: { clip: 'Sword_Heavy_Combo',   lib: 1, ts: 1.3, trim: [1.9, 3.6], strikeAt: 2.80, pinXZ: true, defer: true },
-  castHook:       { clip: 'Melee_Hook',          lib: 1, ts: 0.6,                  strikeAt: 0.25, pinXZ: true, defer: true },
-  castLeap:       { clip: 'NinjaJump_Land',      lib: 1, ts: 1.1,                  strikeAt: 0.14, pinXZ: true, defer: true },
+  castReap:       { clip: 'Farm_Harvest',        lib: 1, ts: 1.5, trim: [0.2, 2.1], strikeAt: 1.45, pinXZ: true, defer: true },
+  castHeavySlash: { clip: 'Sword_Heavy_Combo',   lib: 1, ts: 1.3, trim: [2.2, 3.6], strikeAt: 2.80, pinXZ: true, defer: true },
+  castLeap:       { clip: 'NinjaJump_Land',      lib: 1, ts: 1.1,                  strikeAt: 0.14, pinHips: true, defer: true },
   castGuard:      { clip: 'Sword_Block',         lib: 1, ts: 1.0,                  strikeAt: 0.20, defer: true },
   castOpen:       { clip: 'Chest_Open',          lib: 1, ts: 1.0,                  strikeAt: 0.80, defer: true },
   castTouch:      { clip: 'Interact',            lib: 0, ts: 1.1, trim: [0.1, 1.6], strikeAt: 0.75, defer: true },
   castPush:       { clip: 'Push_Loop',           lib: 0, ts: 1.0, trim: [0, 1.3],   strikeAt: 0.30, pinXZ: true, defer: true },
   castLantern:    { clip: 'Idle_Lantern_Loop',   lib: 1, ts: 1.0, trim: [0, 1.3],   strikeAt: 0.30, defer: true },
   castPhone:      { clip: 'Idle_TalkingPhone_Loop', lib: 1, ts: 1.0, trim: [0, 1.3], strikeAt: 0.40, defer: true },
-  castReload:     { clip: 'Pistol_Reload',       lib: 0, ts: 1.2,                  strikeAt: 0.62, defer: true },
   castDance:      { clip: 'Dance_Loop',          lib: 0, ts: 0.75,                 strikeAt: 0.69, defer: true },
   castSmug:       { clip: 'Idle_FoldArms_Loop',  lib: 1, ts: 1.0, trim: [0, 1.3],   strikeAt: 0.35, defer: true },
   castCheer:      { clip: 'Yes',                 lib: 1, ts: 1.0, trim: [0, 1.4],   strikeAt: 0.50, defer: true },
   castStealth:    { clip: 'Crouch_Idle_Loop',    lib: 0, ts: 1.0, trim: [0, 1.3],   strikeAt: 0.30, pinXZ: true, defer: true },
+  hitStagger:     { clip: 'Idle_Shield_Break',   lib: 1, ts: 1.0, pinXZ: true, defer: true },
 };
 // Female body-language defaults — applied to every `female:` def after
 // RACE_MODELS_3D is built (see _applyFemaleSlotDefaults) unless the

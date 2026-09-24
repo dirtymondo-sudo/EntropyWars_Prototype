@@ -1122,3 +1122,21 @@ the old clip already fits.
 `SPELL_ANIM_VERBS`. Likeliest to need a look: castCall (the Rail_Call lean has
 no rail under it; `pinXZ` keeps the hips over the tile), castHook (ends crouched,
 crossfades to idle), castDance (0.75× groove).
+
+### THE BODY, delivery 2 — the playtest, the victim side, THE WORLD EVENT (2026-09-24, local delivery)
+- **The playtest** (allowed by mondo for this plan): the real character viewer
+  (`EWCharViewer`) with the marksman's model + the four libraries routed to
+  `rigged_animations/` — the real `_animLibBakeForModel` + `_libBakeDeferred`
+  ran. Verbs CUT after seeing them on a Meshy rig: castCall → castSlam,
+  castHook → castChop, castPour → castThrow, castReload → castRanged (the
+  kinds stay in `SPELL_ANIM_VERBS`; only the chain moved). Contact sheets
+  lie: the UAL mannequin read fine where the Meshy coat did not — check a
+  verb on a real rig.
+- **hitStagger** (Idle_Shield_Break): `stagger: true` on the enemy-shove
+  displacements → `ThreeAnim.displace` → `startDisplaceTween`; relayed on
+  'displace-anim'. Flash kind `guardBreak` when a blow empties a shield.
+- **THE WORLD EVENT** — battle.js `_COMBO_WORLD` / `_comboWorldFx`, one row per
+  combo (`combo-world.test.js` pins a row for all 21). Rules: short tile layers
+  + the craft kit (`ThreeVFXEffects.craftExplosion / craftShards`, public now),
+  never a finisher body (those are 4–8 s whole sequences with their own shake
+  and flash), no camera, no grade, no slow-mo.
