@@ -23113,21 +23113,29 @@ const ThreeRenderer = (function () {
     // transparent cornea/lens group (Eye_Tranz) — if we render it opaque it
     // greys out the iris/pupil underneath, so that group is kept see-through
     // while the sclera/iris/pupil show the painted Eye_D diffuse.
+    /* the eyeball's material rule — ONE rule for every eye that wears the
+       OBJ (the sky's watchers and, since 2026-09-24, the astral realm's
+       eyes). The cornea mesh is flagged `_ewCornea`: its offset from the
+       ball's centre IS the gaze direction (_hqAstralEye reads it). */
+    function _hzEyeballPick() {
+        var tex = _miscTex(_R2_MISC + 'eyeball/textures/Eye_D.jpg');
+        return function (node, srcMat) {
+            var nm = (srcMat && srcMat.name) || '';
+            if (nm.indexOf('Eye_Tranz') === 0) {       // glassy cornea — barely there
+                if (node && node.userData) node.userData._ewCornea = true;
+                return new THREE.MeshBasicMaterial({
+                    color: 0xdfe6f2, transparent: true, opacity: 0.10,
+                    depthWrite: false, side: THREE.FrontSide, fog: false
+                });
+            }
+            return new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide, fog: false });
+        };
+    }
     function _hzModelEyeball(rng) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var h = ts * (3.5 + rng() * 3.5);
-        var tex = _miscTex(_R2_MISC + 'eyeball/textures/Eye_D.jpg');
         var g = _miscModelInstance(_R2_MISC + 'eyeball/eyeball.obj', false, h, {
-            matPick: function (node, srcMat) {
-                var nm = (srcMat && srcMat.name) || '';
-                if (nm.indexOf('Eye_Tranz') === 0) {       // glassy cornea — barely there
-                    return new THREE.MeshBasicMaterial({
-                        color: 0xdfe6f2, transparent: true, opacity: 0.10,
-                        depthWrite: false, side: THREE.FrontSide, fog: false
-                    });
-                }
-                return new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide, fog: false });
-            }
+            matPick: _hzEyeballPick()
         });
         var aura = _hzGlowCore(h * 0.46, 0xff5f8f, 0x9a4cff);   // sickly violet halo
         aura.position.y = h * 0.5;
@@ -51354,6 +51362,42 @@ const ThreeRenderer = (function () {
         var bot = new THREE.Mesh(new THREE.SphereGeometry(R * 1.05, 24, 8, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), lidMat); g.add(bot);
         var OPEN = 0.95;   // the lids swung back off the front (radians); 0 = shut
         top.rotation.x = -OPEN; bot.rotation.x = OPEN;
+        /* THE SAME-THING RULE (MODEL_INDEX §9, 2026-09-24 — the user: "the floating eyeballs in the astral realm can be
+           replaced by the floating eyeball already in the esoteric sky background"): the ball IS the sky's eyeball OBJ (the
+           same file, the same material rule — _hzEyeballPick). It rides INSIDE the ball, so track() still turns it and the
+           lids still blink over it. Its gaze is MEASURED on load (the cornea's centre minus the ball's centre, swung onto
+           +Z) — no hand-set facing to get wrong. The procedural white / iris / pupil stay the fallback until it lands, and
+           for good if the file has no cornea to aim by. EW_PERF_LOW keeps the procedural eye (no download). */
+        if (typeof _miscModelInstance === 'function' && typeof _R2_MISC !== 'undefined' &&
+            !(typeof window !== 'undefined' && (window.EW_PERF_LOW || window.EW_PROC_EYES))) {
+            var model = _miscModelInstance(_R2_MISC + 'eyeball/eyeball.obj', false, R * 2, {
+                matPick: _hzEyeballPick(),
+                onDone: function (grp) {
+                    try {
+                        grp.updateMatrixWorld(true);
+                        var inv = new THREE.Matrix4().copy(grp.matrixWorld).invert(), rel = new THREE.Matrix4();
+                        var all = new THREE.Box3(), cor = new THREE.Box3(), bx = new THREE.Box3();
+                        grp.traverse(function (n) {
+                            if (!n.isMesh || !n.geometry) return;
+                            if (!n.geometry.boundingBox) n.geometry.computeBoundingBox();
+                            rel.multiplyMatrices(inv, n.matrixWorld);
+                            bx.copy(n.geometry.boundingBox).applyMatrix4(rel);
+                            all.union(bx);
+                            if (n.userData && n.userData._ewCornea) cor.union(bx);
+                        });
+                        var ctr = all.getCenter(new THREE.Vector3());
+                        var gaze = cor.isEmpty() ? null : cor.getCenter(new THREE.Vector3()).sub(ctr);
+                        if (!gaze || gaze.lengthSq() < 1e-8) { grp.visible = false; return; }
+                        var pivot = new THREE.Group();
+                        grp.children.slice().forEach(function (k) { grp.remove(k); k.position.sub(ctr); pivot.add(k); });
+                        pivot.quaternion.setFromUnitVectors(gaze.normalize(), new THREE.Vector3(0, 0, 1));
+                        grp.add(pivot);
+                        white.visible = false; iris.visible = false; pupil.visible = false;
+                    } catch (e) { grp.visible = false; }
+                }
+            });
+            ball.add(model);
+        }
         var tgt = new THREE.Vector3(), tmpW = new THREE.Vector3(), tmpL = new THREE.Vector3();
         return { g: g, ball: ball, iris: iris,
             /* look at a WORLD point (the ball turns in its parent's frame; +Z is the iris) */
@@ -55468,6 +55512,11 @@ const ThreeRenderer = (function () {
            Returns null while the model is still streaming — the caller keeps
            its procedural fallback and the call itself warms the cache. */
         getMiscModelClone: _getMiscModelClone,
+        /* THE SAME-THING RULE (2026-09-24): a spell that needs a vehicle
+           places the SAME kit vehicle the HQ traffic drives (_hzVehicle —
+           nose on +Z, the lit Lambert per clone, `metres` to resize). The
+           group fills in when the GLB lands (warm it via the weapon drip). */
+        vehicle: function (kind, o) { return _hzVehicle(kind, o); },
 
         setLightRayStrength, getLightRayStrength,
 

@@ -13,6 +13,32 @@
 > psychedelic epic fantasy sci-fi apocalyptic fever-dream esoteric nostalgic
 > PS1-era cult-classic JRPG."*
 
+> **THE REVISION (2026-09-24) — the user's second brief:** *"It has a
+> section for like a psychedelic backdrop, I don't want every spell to have
+> that, only where it makes sense. When I told it to improve the VFX, I
+> meant like the lights and the particles and the 3D objects — make the
+> beams look more realistic and impressive, give gun spells bullets, speed
+> lines and muzzle flash, make the particles better, give bombs better
+> explosions, give sword slashes red glowing scars, more diverse types of
+> effects. Make sure that spells are using the same 3D Meshy objects — I
+> don't want one spell with a generated sword and one with a Meshy sword.
+> What Meshy objects from DOOR HQ can be used in the spell animations and
+> vice versa?"*
+>
+> What changed in this doc because of it:
+> 1. **The psychedelic layer is OPT-IN, per spell** (§2, §5 "THE FEVER, cut
+>    down"). No family, archetype or bulk pass puts a trip, a warp, a void
+>    or a fever effect on a spell any more. It turned out a hue-cycling trip
+>    was ALREADY running on every alien, unholy, anomaly and mind cast at
+>    every weight (`_STAGE_GRADES`); that is now colour-only for alien and
+>    unholy, and heavy / ultimate only for anomaly and mind.
+> 2. **The VFX phase is now THE CRAFT (Phase 2, next after the director):**
+>    lights, particles and 3D objects, built as SHARED pieces at the choke
+>    points every spell already passes through (§5 Phase 2).
+> 3. **A new phase, THE ONE MODEL (Phase 3):** spells and DOOR HQ draw every
+>    real-world thing from the same Meshy file, with the crossover table in
+>    §12. The body pass (clips) moves to Phase 4.
+
 This is THE doc for spell presentation from now on. `SPELL_CINEMATICS.md` stays
 the catalogue of the 77 bespoke sequences and the camera vocabulary it built;
 `FINISHER_PLAN.md` stays the finisher catalogue. Read this doc first, append
@@ -133,8 +159,9 @@ through a fever.** In practice:
 | Pillar | What it means on screen | Tools we have / need |
 |---|---|---|
 | **The summon grammar (FF7–9, Xenogears, Legaia, Chrono Cross)** | The camera ORBITS the caster during the charge. The world dims to a spotlight. Big geometric sigils spin up. The payoff is a WORLD EVENT, not a particle puff. The name card slams. Damage numbers bounce. | have: magic circles, void stage, spot-dim grade, name chrome · need: the orbit charge (Phase 1 shots), world events per family (Phase 3) |
+| **Real light, real matter** *(2026-09-24, the user's brief)* | A muzzle flash LIGHTS the shooter. A beam lights both ends of the room and burns the floor. A bomb throws hot debris that cools as it flies and leaves a crater. A blade leaves a red glowing scar. Every summoned thing is the same Meshy model the world uses. | have: THE CRAFT KIT (§5 Phase 2) · need: the rest of Phase 2 |
 | **PS1 texture** | Additive billboards with hard edges and flipbooks. Flat-shaded polygon shards. Low-poly spheres with scrolling textures (the materia look). Ribbon trails. Vertex jitter. Palette-limited colour. Dither. | have: the retro filter (pixel / dither / levels), `_spawn` billboards · need: shard kit, scrolling-texture orbs, ribbon trails (Phase 3) |
-| **Psychedelic** | Hue cycling, kaleidoscope mirror, frame feedback trails, chromatic aberration, UV warp, datamosh smear, fisheye bulge on impact. | have: `ThreePost.spellGrade` (dim / trip / hue / warp / chroma / tint), `spellGradeKick`, the cinematic pass's radial motion blur · need: THE FEVER PASS (feedback, kaleido, ripple, bulge, datamosh — Phase 3) |
+| **Psychedelic** *(opt-in, 2026-09-24)* | Hue cycling, kaleidoscope, feedback trails, UV warp, datamosh, the void stage. **Only on the spells whose idea IS the trip** (Bad Trip, Psychosis, Ego Death, the dream / mind spells, the anomaly ultimates) — never a family default, never a bulk pass. The rest of the game reads as REAL light hitting a REAL world. | have: `ThreePost.spellGrade` trip / warp / chroma, the void stage, `SPELL_STAGE_MAP[id].grade` and `SPELL_DIRECTOR_ROWS[id].void` as the opt-in switches |
 | **Esoteric** | Sacred geometry (Metatron, Flower of Life, the tesseract), alchemical and planetary glyphs, tarot cards, sigils burnt into the board, all tied to the SIX TYPES. | have: sigils in a few signatures · need: a glyph atlas per type (Phase 3) |
 | **Apocalyptic sci-fi** | CRT scanlines, VHS tracking tears, orbital strikes, warning klaxons, terminal inserts, whiteout nukes. | have: grades (`terminal`, `scope`, `whiteout`), inserts, the flyover strike · extend per family |
 | **Nostalgic** | Warmth: film grain, a light leak, the sepia memory, bloom that sings. | have: bloom (HDR, the look system), grades · tune |
@@ -151,7 +178,7 @@ its element second):
 | tech | cyan / magenta | grids, wireframes, glitch blocks, scan lines | stepping, digital | chirp, static | `terminal` |
 | anomaly | violet / prismatic | fractals, kaleidoscope, Möbius, impossible geometry | warping, looping | reversed audio | `hue` |
 
-**Juice rules** (every director applies them, Phase 6 tunes them):
+**Juice rules** (every director applies them, Phase 7 tunes them):
 - **Hitstop scales with weight:** light 0 · standard 40 ms · heavy 90 ms ·
   ultimate 150 ms · kill +60 ms.
 - **One cut per beat.** A beat gets exactly ONE camera move. Two moves in the
@@ -160,7 +187,7 @@ its element second):
   moves: the bolt, the beam head, the falling star, the flung body (the
   Director's Pass rule, SPELL_CINEMATICS §I).
 - **Anticipation → action → reaction.** The charge sells the hit, and the
-  victim's reaction (Phase 7 clips) sells the charge.
+  victim's reaction (Phase 8 clips) sells the charge.
 - **Contrast.** A big spell earns a dim world (the spot-dim grade) so its
   light reads. Never bloom everything.
 - **Scarcity.** At most ONE void stage per round. At most ONE big grade per
@@ -230,7 +257,7 @@ direction without 519 functions:
 | `slow` | `[scale, ms]` slow-mo on the impact |
 | `freeze` | hitstop ms on the impact (overrides the weight table) |
 | `anim` | the cast clip kind (Phase 2 — overrides `classifySpellAnimKind`) |
-| `vfx` | the Phase 3 look overrides (sigil, shard colour, fever kind) |
+| `vfx` | the Phase 2 look overrides (tracer colour, scar colour, explosion scale, an opt-in fever kind) |
 
 **Readout:** `window.SpellDirector` = `{ resolve(id), catalogue(), log }`.
 The log keeps the last 40 casts: spell, director, source, rig, owned, the
@@ -285,7 +312,7 @@ places ONE payoff shot, and puts its aftermath inside the window.
 Each phase ships on its own and is playable. The order is by leverage:
 the director is the socket every later phase plugs into.
 
-### Phase 1 — THE DIRECTOR (camera) · *this session*
+### Phase 1 — THE DIRECTOR (camera) · *shipped 2026-09-23*
 1. `spellDirect(spellId, ctx)` is the one entry, called from all three rigs.
    The self rig and the support rig now run the director, which brings back
    the dead families and the ~20 unreachable bespoke sequences.
@@ -302,7 +329,65 @@ the director is the socket every later phase plugs into.
 6. The readout (`window.SpellDirector`), the online spell-id fix, the tests,
    and a probe pass (`playtest_spellcam.js`).
 
-### Phase 2 — THE BODY (existing clips, a verb per spell)
+### Phase 2 — THE CRAFT (lights, particles, 3D objects) · *started 2026-09-24*
+The user's words are the spec: beams more realistic and impressive; guns with
+bullets, speed lines and muzzle flash; better particles; bombs with better
+explosions; sword slashes with red glowing scars; more diverse effect types.
+Every piece is SHARED and hooks a choke point, so one piece lifts every spell
+behind it (the census in §1.3 is why: 120 spells have no effect of their own,
+so a piece per spell would never finish).
+
+| Piece | What it is on screen | Choke point it hooks | Reaches |
+|---|---|---|---|
+| **VFX LIGHTS** ✅ | The first spell effects that throw real light: a pooled set of 3 PointLights, born with the particle pools at intensity 0 (a light added later would recompile every lit shader), claimed / moved / decayed per flash | `ThreeVFX.flashLight(px, py, pz, colour, o)` | every piece below |
+| **THE TRACER** ✅ | A round is a streak: a tapered white-hot core in an orange sleeve riding the bullet, a 3D muzzle star + two crossed side flares along the barrel, 6–9 speed-line needles that snap out behind it, a muzzle light, a smoke puff, a brass spark spray, ricochet sparks + a light on the hit. Sniper-class rounds get the long streak | `_BOLT_DEFS._bolt_bullet.boltTracer` → `_fireBoltMapped` + `fireBoltDirect` | 13 gun spells + every ranged basic attack (cowboy, marksman, general, MIB, gangster, martian, mad scientist, police, AI, android, droid, Gunslinger, Sniper, Agent) |
+| **THE EXPLOSION** ✅ | A white flash core, three eroding noise fireballs that swell and climb, 6–12 flat-shaded debris chunks that glow hot and cool as they fly (lit by the blast's own light), bounce once and roll, trailing embers then smoke; a dust skirt, a smoke column, a scorch, a ground ring, sparks, a light and a bloom kick. An AoE's centre gets the full kit, its tiles the lite one; at most 4 full kits at once | any recipe with an `explosion-orange` layer → `_spawnEffect` (tagged at load, `_crTagBooms`) | Place Bomb, Flat Earth, Mortar Salvo, Missile Barrage / Cluster Rockets, Nuke, Artillery Strike, Broadside, Cannon Blast, Boarding Rush, Megazord Blast |
+| **THE SCAR** ✅ | A blade's cut stays: a thin white-hot arc in the plane of the swing that cools to red and then crimson, with a soft red halo, embers dripping off it, a red light, and a glowing groove burned into the floor | `_sigCrescentSlash3D({ scar: true })` | Judgment / Divine Judgment (the stand sword), Slash Combo (Dragon Slash, Guard Slash, Sneak Slash, Sentai Red Slash, Synthetic Blade, Cross Slash), Zantetsuken, Blade Waltz, Lunging Strike, the holy sword, and every kinetic stage slash on a spell whose name is a blade (`_crIsBlade`) |
+| **THE BEAM, LIT** ✅ | A light at the muzzle that holds with the beam, a light at the target, sparks peeling off the length while it holds, a glowing burn line scored into the floor under the path that cools through ember red, and char under it. The beam wears ITS spell's colour (element, then type) — Heat Ray was white-blue like every other beam | `_spawnLaserBeam3D` → `_crBeamExtras`; `_fireBeamMapped` → `_crBeamPalette` | the 16 laser beams + the Spell Lab cue + the old `beam()` path |
+| **THE GATLING** | Suppressive Fire / Choppa / the turret shot become a STREAM of tracers (a burst of 6–10 rounds with a rolling muzzle) instead of a laser cylinder | `_fireBeamMapped` `beamGatling` flag | Suppressive Fire, Plasma Cannon's burst, the turret |
+| **THE SHARD KIT** | Flat-shaded polygon shards (ice, glass, crystal, bone, stone) as real 3D pieces with gravity and a bounce — the PS1 shatter | a shared `_crShards(tx, ty, kind, n)` | freezes, petrify, glass / mirror spells, bone spells, the Void Rift combo |
+| **RIBBON TRAILS** | Real 3D ribbons behind bolts, blades and thrown things instead of sprite dots | `_tickBolts` head + the slash combo pivot | every bolt |
+| **VELOCITY SPARKS** | Sparks that stretch along their velocity (hard-edged, not soft blobs) — the pool's `_stretchVel` today faces the screen | `ThreeVFX.spawn` | every spark in the game |
+| **PARTICLES THAT SCALE** | Counts scale with the perf tier (`EW_PERF_LOW` halves) and the Impact FX slider; a full pool drops the OLDEST, not the new spawn | `ThreeVFX.spawn` / `_claim` | everything |
+| **THE HIT READ** | Type-coloured punch-scaled numbers, a crit stamp, the weakness type glyph, a kill afterglow | the damage-number layer | every hit |
+
+Rules for every piece: `_sigRunOwned` groups, `_fxDelay` beats that re-check
+`_suppressed()`, hooks called through `typeof` guards (the source-cut
+lifetime tests keep their counts), no new `state` field, and nothing outside
+`fire()` without a relay (the kit rides fire(), so the guest draws the same
+tracers / blasts / scars / burns off the relayed intent). Kill-switches:
+`EW_DISABLE_CRAFT` (the whole kit), `EW_DISABLE_FX_LIGHTS` (the lights).
+
+### Phase 3 — THE ONE MODEL (spells and DOOR HQ share every Meshy model) · *started 2026-09-24*
+The same-thing rule (MODEL_INDEX §9) for spells: **one model per thing,
+everywhere it appears.** A spell never builds a procedural sword, car, jet or
+eye when the game owns a Meshy one; the procedural shape is only the fallback
+while the GLB streams. The crossover table is §12. Mechanics:
+- Weapons-bucket props go through `_wpnInstance` (the spells' loader) — the
+  sword, the jet, the missile, the guns, the candles, the bones, the cross.
+- Misc-bucket props the HQ places (vehicles, the eyeball, the pine, the demon
+  statue, the gate) are reached from spells through `ThreeRenderer.vehicle`
+  (the HQ traffic's own `_hzVehicle`: nose +Z, lit per clone) and
+  `ThreeRenderer.getMiscModelClone`.
+- The match drip warms the misc props the spells use (`_WPN_DRIP_MISC`), so
+  a first cast gets the model, not the box.
+- Every swap adds its §9 row to MODEL_INDEX in the same delivery.
+
+### THE FEVER, cut down (was Phase 3)
+The fever pass is **not** a phase any more. No screen-space kaleidoscope,
+feedback, datamosh or VHS effect ships as a default for a family, a type or a
+bulk "identity" pass. What survives, in order of how likely it is to earn a
+place:
+1. **An impact ripple** (a heat-shimmer shockwave from the hit point) on
+   HEAVY and ULTIMATE hits only. It reads as physical force, not a style, so
+   it is the one screen effect that could plausibly help every big spell.
+   Build it only if the user wants it after seeing THE CRAFT.
+2. **The opt-in kinds** (kaleido, feedback, datamosh, vhs, invert, burn) as a
+   per-spell `SPELL_DIRECTOR_ROWS[id].vfx.fever` value, for the handful of
+   spells whose idea is the trip. The void stage keeps its one-per-round
+   budget and stays row-only.
+
+### Phase 4 — THE BODY (existing clips, a verb per spell) *(was Phase 2)*
 1. New cast slots from the 20+ unused library clips (§1.2):
    - `castChannel`: Spell_Simple_Enter → Idle_Loop held through the beam →
      Exit. For beams, drains and breath.
@@ -343,41 +428,7 @@ the director is the socket every later phase plugs into.
 4. The census tool reports the clip spread. Target: no clip plays more than
    15 % of spells.
 
-### Phase 3 — THE FEVER (VFX)
-1. **THE FEVER PASS** (three-post.js): a screen-space effect layer driven by
-   `ThreePost.fever({ kind, at, ms, amt })`. Kinds:
-   - `ripple`: a radial shockwave distortion from a world point.
-   - `bulge`: fisheye on the impact.
-   - `feedback`: frame feedback afterimages, the psychedelic trail.
-   - `kaleido`: an N-fold mirror.
-   - `datamosh`: block smear.
-   - `vhs`: a tracking tear.
-   - `posterize`: palette crush with dither.
-   - `invert`: a negative flash.
-   - `burn`: a film-burn light leak.
-
-   All are scaled by the Impact FX slider, gated by reduced motion, with no
-   strobe over 3 Hz.
-2. **THE PS1 KIT** (three-vfx-effects.js):
-   - flat-shaded shard bursts;
-   - scrolling-texture orbs (the materia look);
-   - ribbon trails on bolts and blades;
-   - the glyph atlas: six type sigil sets drawn on one canvas (sacred
-     geometry, alchemy, circuitry, pentacles, crop circles, fractals);
-   - flipbook billboards with hard edges.
-3. **FAMILY VFX SKELETONS.** Every family's windup → release → travel →
-   impact → aftermath is re-authored with the kit and the type table (§2).
-   Every aoe leaves a print decal, every beam leaves a scorch line, and
-   every buff ignites from the feet up.
-4. **THE IDENTITY PASS.** Each of the 120 shared-only spells and the 18
-   rowless spells gets at least ONE element of its own: a sigil, a shard
-   colour, a signature geometry or a fever kind, carried on its row's `vfx`
-   field. The census's shared-only count goes to 0.
-5. **THE HIT READ.** Damage numbers get a type-coloured punch-scale, crits
-   stamp, weakness hits flash the type glyph, and a kill leaves an afterglow
-   silhouette.
-
-### Phase 4 — THE DUAL TECHS (combos get directors)
+### Phase 5 — THE DUAL TECHS (combos get directors)
 Each of the 21 combos becomes a director on the Entropy-Strike skeleton:
 siren · the splitscreen charge (kept) · a WORLD EVENT stage · the strike ·
 the resolve. A combo passes its own `spellId` (`combo:<key>`), so it runs
@@ -407,13 +458,13 @@ through the spell director and the relay too. Pitches:
 | Plasma Cascade | a plasma wave cascading down a staircase of floating panels |
 | Hybrid Assault | the alternating flurry with a camera per hit, the finisher hit in a void flash |
 
-### Phase 5 — THE CAPSTONES (44 bare ultimates)
+### Phase 6 — THE CAPSTONES (44 bare ultimates)
 A bespoke director + signature for each capstone with neither (§1.3), on the
 finisher pattern (the director names its shots, the signature is one
 `_sigRunOwned` group, and the timers go through `_fxDelay`). Order: by how
 often each is seen (the AI's pick rate × the race's popularity).
 
-### Phase 6 — THE JUICE PASS
+### Phase 7 — THE JUICE PASS
 Tune the hitstop table and the shake language. Tie audio to the strike
 frame on every family. Punch-scale the damage numbers. Add status-impact
 flourishes: a burn catches, a freeze cracks, a shock arcs. Seed kill
@@ -421,7 +472,7 @@ confirms per weight. Add a "the world flinches" pass: props and trees
 sway on a heavy impact, dust falls. Check the frame rate on every family at
 the Low perf tier.
 
-### Phase 7 — THE NEW CLIPS
+### Phase 8 — THE NEW CLIPS
 Wire the user's new animations (§6) as `UAL_SLOTS` / MAL3 slots through the
 anim router, read their strike frames, and hand the reactions to the victim
 side of every family director.
@@ -503,8 +554,9 @@ selfStun / recoil casts), `Weapon_Twirl_Flourish` (a kill confirm) and
    casts only?
 2. **The void budget.** One void stage per round, game-wide. Keep it, or
    make it one per side?
-3. **The fever intensity.** The Phase 3 screen effects are loud by nature.
-   Default ON at 60 %, with the Impact FX slider owning it?
+3. ~~**The fever intensity.**~~ Answered 2026-09-24: the fever is opt-in per
+   spell, never a default. Open instead: **the impact ripple** — after seeing
+   THE CRAFT, should heavy / ultimate hits get a heat-shimmer ripple?
 4. **Combo length.** An Entropy Strike runs ~6 s and a finisher ~6.5 s. A
    combo is two units' turns: target ~4.5 s?
 
@@ -514,14 +566,18 @@ selfStun / recoil casts), `Weapon_Twirl_Flourish` (a kill confirm) and
   probe shows ONE camera move per beat on a sample of every family. The
   unreachable bespoke sequences (Howl, Trick Room, Chivalry, Wish Granted,
   Reassemble, Eject, Awakening) log `played`. `npm test` is green.
-- **P2:** no cast clip plays more than 15 % of spells, and every
+- **P2 (THE CRAFT):** every piece in the §5 table ships; the user's playtest
+  says the guns, bombs, blades and beams read as real; the Low tier holds
+  (the lights are a fixed pool of 3, the explosion kit caps at 4 live).
+- **P3 (THE ONE MODEL):** no spell builds a procedural stand-in for a thing
+  §12 lists a Meshy model for, except as the streaming fallback; every swap
+  has a MODEL_INDEX §9 row.
+- **P4 (THE BODY):** no cast clip plays more than 15 % of spells, and every
   `castMelee` spell has a verb that matches its name.
-- **P3:** shared-only spells go from 120 to 0; the fever kinds hold 60 fps on
-  the High tier and do not stall the Low tier.
-- **P4:** every combo has a director and a world event; the relay replays
+- **P5:** every combo has a director and a world event; the relay replays
   it.
-- **P5:** bare capstones go from 44 to 0.
-- **P6/P7:** the user's playtest.
+- **P6:** bare capstones go from 44 to 0.
+- **P7/P8:** the user's playtest.
 
 ## 10. Build log
 
@@ -606,7 +662,80 @@ kill-switch.
   - the summon reveal's crane;
   - the control family's dolly zoom strength (−11 FOV);
   - the partyFit's tilt 46.
-- **Next:** Phase 2 (THE BODY).
+- **Next:** ~~Phase 2 (THE BODY)~~ — re-planned 2026-09-24: THE CRAFT
+  and THE ONE MODEL come first (the revision at the top).
+
+### 2026-09-24 — the revision + THE CRAFT (first slice) + THE ONE MODEL (first swaps) · local delivery
+**The plan:** the revision at the top — the psychedelic layer is opt-in per
+spell, THE CRAFT (lights, particles, 3D objects) is Phase 2, THE ONE MODEL
+is Phase 3, the body pass moved to Phase 4, the fever pass is cut down to an
+optional impact ripple + per-spell opt-ins, and §12 is the crossover table.
+
+**Shipped (three-vfx.js, three-vfx-effects.js, three-renderer.js, battle.js):**
+- **VFX lights** (three-vfx.js): `ThreeVFX.flashLight(px, py, pz, colour,
+  { intensity, radius (tiles), ms, attack, hold, decay })` → a handle with
+  `move()` / `kill()`. Three PointLights born with the pools at intensity 0,
+  reparented with them (the party builder's stage), zeroed by `clear()`.
+  Kill-switch `EW_DISABLE_FX_LIGHTS`.
+- **THE CRAFT KIT** (three-vfx-effects.js, after END THE FINISHER PASS):
+  `_crGunShot`, `_crExplosion`, `_crSlashScar`, `_crBeamExtras`,
+  `_crBeamPalette`, `_crRide`, `_crIsBlade`, `_crTagBooms`, the textures
+  (`_crStarTex`, `_crFlareTex`, `_crLineTex`, `_crGrooveTex`) and
+  `_crStripGeo`. Kill-switch `EW_DISABLE_CRAFT`.
+- **Hooks:** `_bolt_bullet.boltTracer` (→ `_fireBoltMapped` +
+  `fireBoltDirect`: the tracer replaces the blob head and the flat flash);
+  `_spawnEffect` detonates `_crBoom`-tagged recipes on the explosion
+  layer's own delay; `_spawnLaserBeam3D` → `_crBeamExtras`;
+  `_fireBeamMapped` → `_crBeamPalette`; `_sigCrescentSlash3D({ scar })`
+  → `_crSlashScar` at 45 % of the sweep, flagged on the stand sword, the
+  slash combo, the holy sword, the iai cut, Blade Waltz, Lunging Strike and
+  every blade-named spell's kinetic stage slash.
+- **The trip, only where it fits:** `_STAGE_GRADES` alien / unholy lost
+  `trip`; `_gradeTripOK` keeps the anomaly / mind trip + warp on heavy and
+  ultimate casts only, and any `SPELL_STAGE_MAP[id].grade.trip` opts in.
+- **THE ONE MODEL:**
+  - Air Support flies the F-22 (`_finJetMeshy` → `_WPN_MODELS.jet`, the
+    procedural `_finJet` is the streaming fallback) and drops the Meshy
+    missile.
+  - Every summoned sword is the master sword (`_sigSwordMeshy` inside
+    `_sigBuildSword`, framed like the procedural blade: the tip at the
+    origin, the blade up +Y, `hiltY` the grip; a glow shell in the spell's
+    colour; holograms go additive + tinted; `ghost(mat)` for the slash
+    combo's afterimages). `opts.procedural` forces the old blade.
+  - The Drive-By rolls in a Cadillac: the race spell's dash fires a new
+    `ride` intent (battle.js, relayed by online.js's fire() wrapper — the
+    params are all on its whitelist), `_crRide` places
+    `ThreeRenderer.vehicle('cadillac')` — the HQ traffic's own
+    `_hzVehicle` — on a lane beside the run; it paces the gangster, idles
+    through the shot, and peels away.
+  - The astral realm's eyes (dream_eye, THE WATCHER) wear the sky's eyeball
+    OBJ (`_hzEyeballPick`, one material rule for both). The OBJ rides inside
+    the procedural ball so `track()` and the lids still work; its gaze is
+    MEASURED on load (the cornea's centre minus the ball's) and swung onto
+    +Z. `EW_PERF_LOW` / `EW_PROC_EYES` keep the procedural eye.
+  - The match drip warms the misc props the spells share
+    (`_WPN_DRIP_MISC`: cadillac, copcar, taxi, wreck, crashed_car).
+
+**UNSEEN LIVE (RULE #1c) — the edits if a number is off:**
+- the tracer's streak length (`streakLen`, 1.05 / 1.6 tiles) and speed-line
+  radius;
+- the explosion's fireball radius (`B.r`, 0.62 tile × scale) and the
+  debris throw (`cs` / `vy`); the per-recipe scales are `_CR_BOOM_SCALE`;
+- the scar's lifetime (`scarMs`, 1.2–2.6 s per caller) and its halo width;
+- the beam burn line's width (0.2 tile × thickness);
+- the light intensities (every `_crLight` call; a flash is 1.4–3.6);
+- the Cadillac's size (`metres: 4.4` in `_crRide`) and lane (1 tile);
+- the master sword's glow shell opacity (`setFade`) and its grip
+  (`hiltY: L * 0.86`);
+- the eyeball's gaze: if an eye looks away from the walker, the OBJ's
+  cornea is not its front — set `window.EW_PROC_EYES = true` and report.
+
+**Tests:** `spell-craft.test.js` (the kit, the hooks, the opt-in trip, the
+model swaps, the ride relay).
+
+**Next:** the rest of THE CRAFT (the gatling, the shard kit, ribbon trails,
+velocity sparks, scaled particles, the hit read), then THE ONE MODEL's
+remaining §12 rows.
 
 ## 11. The census tool
 
@@ -616,3 +745,49 @@ table, the director each spell resolves to, the cast clip spread, the VFX
 identity buckets (signature / bespoke / shared-only / rowless), and the bare
 capstones. Re-run it at the end of every phase; its numbers are the
 acceptance lines in §9.
+
+## 12. THE CROSSOVER TABLE — one Meshy model per thing, spells ⇄ DOOR HQ
+
+Built 2026-09-24 from MODEL_INDEX (§2 loaders, §5 spell props, §6 the HQ
+catalogue, §9 the same-thing rule). ✅ = wired in this delivery.
+
+**Spells that should draw the world's model:**
+
+| Thing | The Meshy model (key · bucket) | Spell / finisher today | Status |
+|---|---|---|---|
+| Cadillac | `cadillac` · misc (`_VEHICLE_KIT`) | Drive-By (race spell) had no car; the Drive-By finisher asked for it but never warmed it | ✅ ride + drip warm |
+| Fighter jet | `jet` (F-22) · weapons | Air Support flew the procedural `_finJet` | ✅ |
+| Missile | `missile` · weapons | Air Support dropped a capsule | ✅ |
+| Sword | `sword` (master sword) · weapons | Judgment, Divine Judgment, Slash Combo, Blade Waltz, Parry and the typed human execution built `_sigBuildSword` | ✅ every caller |
+| Eyeball | `eyeball/eyeball.obj` · misc | the giant's Fee Fi Fo Fum eye, the seraphim's Be Not Afraid ring eyes | next — export the eye (`_hqAstralEye`) to spells |
+| Honda Civic sedan | the race rig / garage `parked_car` | Hit and Run flies a box (tries cadillac → taxi → copcar) | next |
+| Crashed car | `crashed_car` · misc | Hit and Run's wreck | next (warmed now) |
+| Cop car | `copcar` · misc | Book 'Em | already the model; warmed now |
+| Pen | catalogue `pen` | Neuralyzer's chrome cylinder | next |
+| Wooden cross | `cross` (weapons) vs `wooden_cross` (misc) — **two files for one thing** | Boot Hill's procedural cross | next — the user picks ONE file |
+| Tarot card | `tarot` / `tarot2` · catalogue | Abracadabra's canvas planes | next |
+| Clock | `clock` / `gclock` · misc | The Changeling's glowing dial (optional — it is an additive dial) | maybe |
+| Cardboard box | `cardboard_box` · catalogue | Decommissioned's crate (weak match) | maybe |
+| Military tank | `military_tank` · misc | the general's Artillery Strike / Iron Bulwark | next |
+| Door gun | catalogue `door_gun` | the door agent's `_sigDoorGunShot3D` procedural frame | next |
+
+**DOOR HQ procs that should draw the spells' model:**
+
+| Thing | The Meshy model | HQ proc today | Status |
+|---|---|---|---|
+| Astral eyes | the sky's eyeball OBJ | `dream_eye`, THE WATCHER (`_hqAstralEye`) | ✅ |
+| Sword in the stone | `sword` (master sword) | `sword_stone` procedural (Camelot) | next |
+| Saucer | `ufo` / `saucer_lg` | `saucer_rig` procedural, `_hzSaucer` in the rosters | next |
+| Skateboard find | `skateboard` · misc | `find_deck` procedural | next |
+| Candle ring | `candleRing` / `candle` · weapons | `candle_ring` procedural (7+ rooms) | next |
+| Crystal ball / tarot deck | `crystalBall`, `tarotDeck` · weapons | the fortune-teller tent's interior, `floating_orb` | next |
+| Skulls, bones | `skull`, `femur`, `ulna` · weapons | catacomb / dungeon dressing | next |
+| Cauldron | `cauldron` · weapons | ritual rooms | next |
+| Guns | revolver, pistol, shotgun, sniper · weapons | the police / Area 51 armouries | next |
+| Missile | `missile` · weapons | Area 51 / D.U.M.B. set dressing | next |
+
+**The loader gap to close with the next rows:** the weapons cache
+(`_wpnCache`) and the misc cache (`_miscModelCache`) are separate, so a
+model both sides use loads twice (`jet` / `fighter_jet`, `cannon` /
+`ship_cannon`). The fix is one loader per FILE: `_doorFxLeafKey` already
+bridges an HQ catalogue row into `_WPN_MODELS`; it needs `base: 'weapons'`.

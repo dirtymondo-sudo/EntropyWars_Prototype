@@ -31,6 +31,21 @@ const ThreeVFX = (function () {
 
     var _particles = [];
 
+    /* ── THE CRAFT: pooled VFX lights (SPELL_DIRECTOR_PLAN §5 Phase 2,
+       2026-09-24). Spells lit nothing — a muzzle flash, a beam, a fireball
+       were all additive sprites that glowed on screen but never threw light
+       on the floor, the walls or the caster. Every PointLight added to the
+       scene recompiles the lit shaders (see three-renderer TORCH_MAX_LIGHTS),
+       so the pool is FIXED: FX_LIGHT_COUNT lights are born with the pools at
+       intensity 0 and are never added or removed afterwards — a flash only
+       claims a slot, moves it and decays it. `flashLight(px, py, pz, colour,
+       opts)` takes VFX px space (the same space as spawn()); the handle it
+       returns can `move()` the light (a tracer drags its glow along).
+       Kill-switch: window.EW_DISABLE_FX_LIGHTS = true. */
+    var FX_LIGHT_COUNT = 3;
+    var _fxLights = [];
+    var _fxLightGen = 0;
+
     var _initialized = false;
     var _aliveCount = 0;
     var _zoneAliveCount = 0;
@@ -1716,6 +1731,7 @@ const ThreeVFX = (function () {
         _quadMeshPool  = _createMeshPool(MAX_QUAD_BILLBOARDS, 102);
         _buildGlobGeos();
         _globPool = _createGlobPool(MAX_BLOOD_GLOBS);
+        _buildFxLights();
 
         for (var i = 0; i < MAX_PARTICLES; i++) {
             _particles.push({
@@ -1789,6 +1805,79 @@ const ThreeVFX = (function () {
         p._spriteRot = 0; p._spriteSpin = 0;
         p.poolType = null; p.slotIdx = -1;
         _aliveCount = Math.max(0, _aliveCount - 1);
+    }
+
+    function _buildFxLights() {
+        _fxLights = [];
+        for (var i = 0; i < FX_LIGHT_COUNT; i++) {
+            var L = new THREE.PointLight(0xffffff, 0, 1, 2);
+            L.position.set(0, -99999, 0);
+            L.castShadow = false;
+            if (_scene) _scene.add(L);
+            _fxLights.push({ light: L, gen: 0, t: 0, ms: 0, attack: 0, peak: 0, busy: false });
+        }
+    }
+
+    function _fxLightIdle(slot) {
+        slot.busy = false;
+        slot.light.intensity = 0;
+        slot.light.position.set(0, -99999, 0);
+    }
+
+    function flashLight(px, py, pz, color, opts) {
+        if (!_initialized || !_fxLights.length) return null;
+        if (typeof window !== 'undefined' && window.EW_DISABLE_FX_LIGHTS) return null;
+        opts = opts || {};
+        var ts = (typeof CONFIG !== 'undefined' && CONFIG.tileSize) || 128;
+        /* claim: a free slot, else the one closest to dark */
+        var best = null, bestLeft = Infinity;
+        for (var i = 0; i < _fxLights.length; i++) {
+            var sl = _fxLights[i];
+            if (!sl.busy) { best = sl; break; }
+            var left = sl.peak * (1 - Math.min(1, sl.t / Math.max(1, sl.ms)));
+            if (left < bestLeft) { bestLeft = left; best = sl; }
+        }
+        if (!best) return null;
+        var w = _vfxToWorld(px, py, pz);
+        best.light.position.set(w.x, w.y, w.z);
+        best.light.color.set(color != null ? color : 0xffffff);
+        best.light.distance = (opts.radius != null ? opts.radius : 3.2) * ts;
+        best.light.decay = opts.decay != null ? opts.decay : 1.6;
+        best.peak = opts.intensity != null ? opts.intensity : 2.2;
+        best.ms = Math.max(40, opts.ms != null ? opts.ms : 260);
+        best.attack = Math.max(0, opts.attack != null ? opts.attack : 0);
+        best.hold = Math.max(0, opts.hold != null ? opts.hold : 0);
+        best.t = 0;
+        best.busy = true;
+        best.light.intensity = best.attack > 0 ? 0 : best.peak;
+        var gen = best.gen = ++_fxLightGen;
+        var slot = best;
+        return {
+            move: function (mx, my, mz) {
+                if (slot.gen !== gen || !slot.busy) return;
+                var mw = _vfxToWorld(mx, my, mz);
+                slot.light.position.set(mw.x, mw.y, mw.z);
+            },
+            kill: function () { if (slot.gen === gen) _fxLightIdle(slot); }
+        };
+    }
+
+    function _fxLightsTick(dt) {
+        for (var i = 0; i < _fxLights.length; i++) {
+            var sl = _fxLights[i];
+            if (!sl.busy) continue;
+            sl.t += dt * 1000;
+            if (sl.t >= sl.ms) { _fxLightIdle(sl); continue; }
+            var k;
+            if (sl.t < sl.attack) k = sl.t / sl.attack;
+            else if (sl.t < sl.attack + sl.hold) k = 1;
+            else {
+                var rest = Math.max(1, sl.ms - sl.attack - sl.hold);
+                var f = (sl.t - sl.attack - sl.hold) / rest;
+                k = (1 - f) * (1 - f);           // a hard flash, a soft tail
+            }
+            sl.light.intensity = sl.peak * k;
+        }
     }
 
     function spawn(opts) {
@@ -2216,6 +2305,7 @@ const ThreeVFX = (function () {
 
         _rainTick(dt);
         _ambientTick(dt);
+        _fxLightsTick(dt);
 
         if (window.ThreeVFXEffects && window.ThreeVFXEffects.tick) {
             window.ThreeVFXEffects.tick(dt);
@@ -2929,6 +3019,7 @@ const ThreeVFX = (function () {
         for (i = 0; i < _rainSplashMeshes.length; i++) out.push(_rainSplashMeshes[i].mesh);
         if (_ambMotes && _ambMotes.points) out.push(_ambMotes.points);
         if (_ambFlies && _ambFlies.points) out.push(_ambFlies.points);
+        for (i = 0; i < _fxLights.length; i++) out.push(_fxLights[i].light);
         return out;
     }
     function _reparentAll(target) {
@@ -2980,6 +3071,7 @@ const ThreeVFX = (function () {
         }
         _aliveCount = 0;
         _zoneAliveCount = 0;
+        for (var li = 0; li < _fxLights.length; li++) _fxLightIdle(_fxLights[li]);
         if (window.ThreeVFXEffects && window.ThreeVFXEffects.clear) {
             window.ThreeVFXEffects.clear();
         }
@@ -3018,6 +3110,11 @@ const ThreeVFX = (function () {
 
         _rainDrops = []; _rainSplashes = [];
         _rainActive = false; _rainZones = []; _rainTileIndex = null; _rainBounds = null;
+
+        for (var fl = 0; fl < _fxLights.length; fl++) {
+            if (_fxLights[fl].light.parent) _fxLights[fl].light.parent.remove(_fxLights[fl].light);
+        }
+        _fxLights = [];
 
         _ambDisposeCloud(_ambMotes); _ambDisposeCloud(_ambFlies);
         _ambMotes = null; _ambFlies = null; _ambKey = ''; _ambCanvasEl = null;
@@ -3080,7 +3177,8 @@ const ThreeVFX = (function () {
              attach: attach, detach: detach, isAttached: isAttached,
              startRain3D: startRain3D, stopRain3D: stopRain3D, isRain3DActive: isRain3DActive,
              setAmbientDensity: setAmbientDensity, getAmbientDensity: getAmbientDensity,
-             hasActiveParticles: hasActiveParticles, _diag: _diag, _getScene: _getScene };
+             hasActiveParticles: hasActiveParticles, flashLight: flashLight,
+             _diag: _diag, _getScene: _getScene };
 })();
 
 window.ThreeVFX = ThreeVFX;

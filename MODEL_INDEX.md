@@ -798,12 +798,14 @@ skinned clone of a cult member rig on the board is the next pass.
 | the alien saucer in flight / abducting | Triangle UFO (`ufo`) | orbs / space rosters, the UFO spells |
 | a well | `ancient_well` + `wooden_bucket` (§3q) | every `well` way in the world (the stone proc is its stand-in only) |
 | a bench | `city_bench` (§3q) | `park_bench` and `locker_bench` everywhere, the row of its own |
-| a fighter jet | Meshy_AI_f22_fighter_jett (`Assets/weapons/`) | the Air Support / flyover spells, Area 51's flight line (`fighter_jet`, `base: 'weapons'`) |
+| a fighter jet | Meshy_AI_f22_fighter_jett (`Assets/weapons/`) | the Air Support / flyover spells, Area 51's flight line (`fighter_jet`, `base: 'weapons'`); since 2026-09-24 the general's Air Support EXECUTION too (`_finJetMeshy` — `_finJet` is only its streaming fallback) |
+| a missile / a bomb from the sky | `missile` (Meshy_AI_missle, `Assets/weapons/`) | the missile spells, the nuke warhead, Air Support's bomb (2026-09-24) |
+| an eyeball | `eyeball/eyeball.obj` + `Eye_D.jpg` (`_hzEyeballPick`, one material rule) | the sky's watchers (`_hzModelEyeball`), the astral realm's `dream_eye` + THE WATCHER (`_hqAstralEye`, 2026-09-24 — the OBJ rides inside the procedural ball, its gaze measured off the cornea on load; the lids still blink over it) |
 | a traffic light's pole | `yellow_pole` (§3q) | the board's `traffic_light` object; a bollard row in a room |
 | the saucer on the ground | `saucer_lg` | Area 51 |
 | a cannon | `cannon` | the Dutchman's rails, the Cannonball spell, THE GUN DECK below decks (`ship_cannon`) |
 | a sea chest / an anchor / a hanging lantern | `chest` / `anchor` / `lantern` | the Dutchman's deck and quay; below decks as `sea_chest` / `ship_anchor` / `ship_lantern` (rev 19) |
-| the master sword | Meshy_AI_master_sword | Excalibur's rock (Camelot), every sword effect |
+| the master sword | Meshy_AI_master_sword | Excalibur's rock (Camelot), every sword effect — since 2026-09-24 literally every one: `_sigBuildSword` returns the GLB (`_sigSwordMeshy`) for the stand sword, the slash combo, Blade Waltz, Parry and the typed execution; the procedural blade is only its streaming fallback |
 | the sleigh | Meshy_AI_Golden_Red_Sleigh | the North Pole board, the sleigh spell |
 | a vault / blast door | `vault` | D.U.M.B. chokes, the `blastdoor` monument (D.U.M.B., CERN) |
 | a trilithon | `trilithon` | Stonehenge's setting, the `trilithon` monument |
@@ -815,6 +817,6 @@ skinned clone of a cult member rig on the board is the next pass.
 | a security camera | `security_camera` | the hall / IT / the Interrogation Room walls, Downtown's pole camera + the `securitycam` monument |
 | a street utility box | `utility_box` | every URBAN setting (Cyberpunk, the Strip, Downtown, Nuketown, the Stadium) |
 | an asteroid | `asteroid_a` / `asteroid_b` | the `space` + `wreckage` rosters (`_hzAsteroidFar`) |
-| a car / a truck / a bus | `_VEHICLE_KIT` (§3c: `suv` · `cadillac` · `copcar` · `cybercar` · `firetruck` · `schoolbus` · `ambulance`) | the URBAN settings through `_hzVehicle`, Room P1 through the catalogue's `car_*` rows — never a procedural box where the kit has the vehicle |
+| a car / a truck / a bus | `_VEHICLE_KIT` (§3c: `suv` · `cadillac` · `copcar` · `cybercar` · `firetruck` · `schoolbus` · `ambulance`) | the URBAN settings through `_hzVehicle`, Room P1 through the catalogue's `car_*` rows — never a procedural box where the kit has the vehicle. SPELLS reach the same builder through `ThreeRenderer.vehicle(kind, o)` (2026-09-24: the Drive-By race spell's Cadillac ride, `SPELL_MAP[id].ride`); the weapon drip warms the spells' cars (`_WPN_DRIP_MISC`) |
 | the subway train | `subway_front` + `subway_cart` | ONLY the `train` way rig (`_hqWayBuilders.train`) — the tunnel's `train_car` proc is retired; never a second train as a prop |
 | the leaves in THE WORKS (Room 1000's belt + gripper + pallet, Room −1's furnace, Room ½'s vine, Room ?'s shelf) | `_HQ_WORKS_LEAVES` — 16 plain catalogue `leaf_*` rows (coffee · beige / white wood · shabby · suburban · closet · barn · stable · hotel · motel · birch / orange glass · medium window · entrance · bathroom · glass) | `_hqWorksLeaf` (2026-09-16) clones the door kit's own files fitted to the proc's slot; `_hqMiniDoor` is the hidden stand-in — never a procedural panel where the kit has the door |

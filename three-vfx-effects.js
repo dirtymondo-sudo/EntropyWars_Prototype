@@ -2029,7 +2029,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         _bolt_curse:    { boltCore: 'dark-flame',     boltTrail: 'void-mist',   boltBurst: 'void-mist',        boltRing: 'target-ring',       boltCoreSize: 0.20, boltTrailSize: 0.07, boltBurstCount: 22, boltHeadGlow: true },
         _bolt_glitch:   { boltCore: 'spark-elec',     boltTrail: 'emp-arc',     boltBurst: 'spark-elec',       boltRing: 'target-ring-blue',  boltCoreSize: 0.20, boltTrailSize: 0.07, boltBurstCount: 22 },
         /* TIER 3 — Physical projectiles */
-        _bolt_bullet:   { boltCore: 'muzzle-flash',   boltTrail: 'steel-spark', boltBurst: 'steel-spark',      boltRing: 'target-ring',       boltCoreSize: 0.14, boltTrailSize: 0.05, boltTrailRate: 5, boltBurstCount: 20 },
+        _bolt_bullet:   { boltCore: 'muzzle-flash',   boltTrail: 'steel-spark', boltBurst: 'steel-spark',      boltRing: 'target-ring',       boltCoreSize: 0.14, boltTrailSize: 0.05, boltTrailRate: 5, boltBurstCount: 20, boltTracer: true },
         _bolt_arrow:    { boltCore: 'steel-spark',     boltTrail: 'dust-puff',  boltBurst: 'steel-spark',      boltRing: 'target-ring',       boltCoreSize: 0.14, boltTrailSize: 0.05, boltTrailRate: 6, boltBurstCount: 18 },
         _bolt_rock:     { boltCore: 'rock-debris',     boltTrail: 'dust-puff',  boltBurst: 'rock-debris',      boltRing: 'target-ring',       boltCoreSize: 0.22, boltTrailSize: 0.07, boltBurstCount: 24 },
         _bolt_bone:     { boltCore: 'debris',          boltTrail: 'void-mist',  boltBurst: 'debris',           boltRing: 'target-ring',       boltCoreSize: 0.20, boltTrailSize: 0.07, boltBurstCount: 22 },
@@ -2966,6 +2966,17 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var fireVol = _flameVolumeInfo(effectDef);
         if (fireVol) spawnFlameBurst3D(anchor.tx, anchor.ty, fireVol);
 
+        /* THE CRAFT: a recipe that carries an explosion layer detonates the
+           explosion kit on its tile (tagged at load — see _crTagBooms) */
+        var boom = effectDef._crBoom;
+        if (boom && typeof _crExplosion === 'function' && !_crOff()) {
+            if (boom.delay > 0) {
+                _fxDelay(function () { if (!_suppressed()) _crExplosion(anchor.tx, anchor.ty, boom); }, boom.delay);
+            } else {
+                _crExplosion(anchor.tx, anchor.ty, boom);
+            }
+        }
+
         for (var li = 0; li < effectDef.layers.length; li++) {
             var layer = effectDef.layers[li];
             if (fireVol && (layer.sprite === 'flame' || layer.sprite === 'flame-hot') &&
@@ -3617,6 +3628,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
            they resolve from spell data, not SPELL_MAP. */
         if (intent === 'cue') {
             _fireCue(spellId, params || {});
+            return;
+        }
+        /* THE CRAFT: a spell's RIDE — the kit vehicle it rolls in on
+           (SPELL_MAP[id].ride = a _VEHICLE_KIT key). Rides fire() so the
+           relay wrapper carries it to the guest. */
+        if (intent === 'ride') {
+            if (hasMapping(spellId, 'ride') && typeof _crRide === 'function') _crRide(SPELL_MAP[spellId].ride, params || {});
             return;
         }
         if (!hasMapping(spellId, intent)) return;
@@ -4617,7 +4635,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var _terminalPx = tilePx(_lastTile.x, _lastTile.y);
             var _terminalZTorso = unitSurfaceZ(_lastTile.x, _lastTile.y) + unitZBoost();
 
-            var _bc = _beamColorFor(beamDef.beamType || null, beamDef.beamElement || null);
+            /* THE CRAFT: the beam wears its spell's colour (element, then type) */
+            var _bc = (typeof _crBeamPalette === 'function') ? _crBeamPalette(spellId, beamDef)
+                    : _beamColorFor(beamDef.beamType || null, beamDef.beamElement || null);
             /* Volumetric laser (real 3D cylinders). Thickness derives from the
                beam def's configured pixel thickness so wide "wave" beams stay
                chunky. Falls back to flat sprite quads only without a 3D scene. */
@@ -4818,9 +4838,17 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var shake        = boltDef.shake || null;
         var radiant      = !!boltDef.radiant;
 
+        /* THE CRAFT (2026-09-24): a gun round is a TRACER — a streak with a
+           3D muzzle star, speed lines, a muzzle light and ricochet sparks
+           (_crGunShot). The blob head goes; a sparse spark trail stays. */
+        var tracer = !!boltDef.boltTracer && typeof _crGunShot === 'function' &&
+            !!_crGunShot({ x: from.x, y: from.y, z: fz }, { x: to.x, y: to.y, z: tz }, flyMs,
+                         { heavy: !!_CR_HEAVY_SHOTS[spellId] });
+        if (tracer) { headGlow = false; trailRate = 34; }
+
         /* Muzzle flash at caster — radiant bolts (Exorcism / Radiant Bolt)
            charge up with a bigger holy flare and a puff of gold sparkles. */
-        _spawn({
+        if (!tracer) _spawn({
             x: from.x, y: from.y, z: fz,
             mode: 'billboard', sprite: 'flash',
             ml: radiant ? 220 : 160,
@@ -4915,8 +4943,14 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var headGlow     = (params.headGlow != null) ? !!params.headGlow : (boltDef.boltHeadGlow !== false);
         var radiant      = !!boltDef.radiant;
 
+        /* THE CRAFT: a ranged basic attack's round is a tracer too — the
+           bullet GLB (ThreeAnim.projectile) rides at the head of the streak */
+        var tracer = !!boltDef.boltTracer && typeof _crGunShot === 'function' &&
+            !!_crGunShot({ x: from.x, y: from.y, z: fz }, { x: to.x, y: to.y, z: tz }, flyMs, {});
+        if (tracer) { headGlow = false; trailRate = 34; }
+
         /* Muzzle flash at caster */
-        _spawn({
+        if (!tracer) _spawn({
             x: from.x, y: from.y, z: fz,
             mode: 'billboard', sprite: 'flash',
             ml: radiant ? 220 : 160,
@@ -5858,6 +5892,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
         if (opts.shake !== false && typeof window.shakeBoard === 'function') {
             _shake(opts.shake || 5);
+        }
+        /* THE CRAFT: lights at both ends, sparks off the length, a burn line */
+        if (typeof _crBeamExtras === 'function') {
+            try { _crBeamExtras(fromTx, fromTy, toTx, toTy, { glow: glowColor, beamMs: beamMs, lanceMs: lanceMs,
+                                                              thickness: thick, scorch: opts.scorch }); } catch (e) {}
         }
         return true;
     }
@@ -9675,7 +9714,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var sweep = opts.sweep != null ? opts.sweep : 2.4;
         var roll = opts.roll || 0;
 
-        return _sigRunOwned(group, ms, function (el) {
+        var entry = _sigRunOwned(group, ms, function (el) {
             var t = _sigClamp01(el / ms);
             var e = _sigEaseOutCubic(t);
             mesh.rotation.z = roll + sweep * e * dir;
@@ -9692,6 +9731,20 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var gs = size * (0.3 - 0.16 * t);
             glint.scale.set(gs, gs, 1);
         });
+        /* THE CRAFT: a BLADE's cut stays — a red glowing scar in the plane
+           of the swing, laid along the middle of the sweep (_crSlashScar) */
+        if (entry && opts.scar && typeof _crSlashScar === 'function') {
+            _fxDelay(function () {
+                if (_suppressed()) return;
+                try {
+                    _crSlashScar(tx, ty, { yaw: opts.yaw || 0, pitch: mesh.rotation.x,
+                        roll: roll + sweep * dir * 0.5, R: R * 1.08,
+                        height: opts.height != null ? opts.height : ts * 0.5,
+                        color: opts.scarColor, ms: opts.scarMs });
+                } catch (e) {}
+            }, ms * 0.45);
+        }
+        return entry;
     }
 
     /* ════════════════════════════════════════════════════════════════════
@@ -10475,6 +10528,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     var _WPN_DRIP_FIRST = ['bullet', 'arrow', 'missile', 'revolver', 'pistol', 'plasma',
                            'shotgun', 'sniper', 'jet', 'sword', 'football', 'cauldron', 'crystalBall'];
     var _wpnDripTimer = null, _wpnDripQueue = [];
+    var _WPN_DRIP_MISC = ['cadillac', 'copcar', 'taxi', 'wreck', 'crashed_car'];
     function _wpnWarmOff() { return _wpnGlbOff() || (typeof window !== 'undefined' && !!window.EW_NO_WEAPON_WARM); }
     function _wpnWarm(keys, opts) {
         if (_wpnWarmOff()) return 0;
@@ -10492,6 +10546,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var order = _WPN_DRIP_FIRST.slice();
         for (var k in _WPN_MODELS) if (order.indexOf(k) < 0) order.push(k);
         _wpnDripQueue = order.filter(function (key) { return !_wpnCache[key]; });
+        /* THE SAME-THING RULE (2026-09-24): the misc-bucket props the spells
+           and finishers share with the building warm here too — a first
+           cast used to get the procedural box (the Drive-By's Cadillac) */
+        for (var mk = 0; mk < _WPN_DRIP_MISC.length; mk++) _wpnDripQueue.push('misc:' + _WPN_DRIP_MISC[mk]);
         var step = Math.max(500, ms || 4000);
         function tick() {
             _wpnDripTimer = null;
@@ -10501,7 +10559,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             if (!ok) { _wpnDripQueue = []; return; }   // the match ended — nothing else needs a weapon
             if (typeof document !== 'undefined' && document.hidden) { _wpnDripTimer = setTimeout(tick, step); return; }
             var key = _wpnDripQueue.shift();
-            if (!_wpnCache[key]) _wpnLoad(key, { bg: true });
+            if (key.indexOf('misc:') === 0) {
+                try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getMiscModelClone) ThreeRenderer.getMiscModelClone(key.slice(5), 1); } catch (e) {}
+            } else if (!_wpnCache[key]) _wpnLoad(key, { bg: true });
             _wpnDripTimer = setTimeout(tick, step);
         }
         _wpnDripTimer = setTimeout(tick, step);
@@ -11336,8 +11396,80 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        pixel terrain sprites as the trees/turrets so it sits in the board's
        art style. Returns {group, setFade, hiltY} — hiltY is the natural
        grip pivot for slash animation. */
+    /* THE SAME-THING RULE (MODEL_INDEX §9 "every sword effect", 2026-09-24):
+       a summoned sword IS the Meshy master sword (_WPN_MODELS.sword) — the
+       one Excalibur and the iai cut already draw — framed exactly like the
+       procedural blade below (origin at the TIP, blade up +Y, hiltY the
+       grip) so every caller swaps free. A glow shell in the spell's colour
+       carries the old fuller's glowBoost; a hologram goes additive + tinted.
+       ghost(mat) builds an afterimage of the same model (the slash combo's
+       lagging blades). The procedural blade stays the fallback while the
+       GLB streams, and for opts.procedural. */
+    function _sigSwordMeshy(opts) {
+        if (opts.procedural || !_wpnReady('sword')) return null;
+        var len = opts.len || 260;
+        var L = len * 1.27;                       /* tip → pommel, as the procedural's */
+        function framed(inst) {
+            var outer = new THREE.Group();
+            inst.group.rotation.x = Math.PI;      /* tip-up instance → tip-down */
+            inst.group.position.y = inst.len * 0.5;
+            outer.add(inst.group);
+            return outer;
+        }
+        function recolor(root, mat) {
+            root.traverse(function (n) {
+                if (!n.isMesh) return;
+                var old = Array.isArray(n.material) ? n.material : [n.material];
+                for (var i = 0; i < old.length; i++) if (old[i] && old[i] !== mat) old[i].dispose();
+                n.material = mat;
+                n.renderOrder = 157;
+            });
+        }
+        var inst = _wpnInstance('sword', L);
+        if (!inst) return null;
+        var group = framed(inst);
+        var holo = !!opts.hologram;
+        var tint = new THREE.Color(opts.bladeColor != null ? opts.bladeColor : 0xbfe0ff);
+        var mats = [];
+        inst.group.traverse(function (n) {
+            if (!n.isMesh) return;
+            var ms = Array.isArray(n.material) ? n.material : [n.material];
+            for (var i = 0; i < ms.length; i++) {
+                if (holo) {
+                    ms[i].blending = THREE.AdditiveBlending;
+                    ms[i].depthWrite = false;
+                    if (ms[i].color) ms[i].color.multiply(tint);
+                }
+                mats.push(ms[i]);
+            }
+        });
+        /* the glow shell: the same model, additive, in the spell's colour */
+        var glowMat = _sigMat(opts.glowColor != null ? opts.glowColor : 0x88bbff);
+        var shellInst = _wpnInstance('sword', L * 1.035);
+        var shell = null;
+        if (shellInst) { shell = framed(shellInst); shell.position.y = -L * 0.0175; recolor(shell, glowMat); group.add(shell); }
+        var holoBase = holo ? 0.42 : 1;
+        function setFade(f, glowBoost) {
+            for (var i = 0; i < mats.length; i++) mats[i].opacity = holoBase * f;
+            glowMat.opacity = (holo ? 0.35 : 0.16 + 0.4 * (glowBoost || 0)) * f;
+        }
+        setFade(0);
+        return {
+            group: group, setFade: setFade, hiltY: L * 0.86, meshy: true,
+            ghost: function (mat) {
+                var gi = _wpnInstance('sword', L);
+                if (!gi) return new THREE.Group();
+                var gg = framed(gi); recolor(gg, mat);
+                return gg;
+            }
+        };
+    }
     function _sigBuildSword(opts) {
         opts = opts || {};
+        if (typeof _sigSwordMeshy === 'function') {
+            var meshy = _sigSwordMeshy(opts);
+            if (meshy) return meshy;
+        }
         var len = opts.len || 260;
         var half = len * 0.052;              /* slim semi-realistic blade */
         var group = new THREE.Group();
@@ -11587,7 +11719,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                     _sigScreenFlash('#ffffff', 130, opts.flashPeak != null ? opts.flashPeak : 0.3);
                     _sigShockRing3D(tx, ty, { color: color, r1: ts * (opts.ringTiles != null ? opts.ringTiles : 1.7) });
                     _sigSpeedBurst3D(tx, ty, { color: 0xffffff });
-                    _sigCrescentSlash3D(tx, ty, { color: color, yaw: group.rotation.y, dir: 1 });
+                    _sigCrescentSlash3D(tx, ty, { color: color, yaw: group.rotation.y, dir: 1, scar: true, scarMs: 2200 });
                     _sigCrescentSlash3D(tx, ty, { color: 0xffffff, yaw: group.rotation.y + 1.2, dir: -1, ms: 300, size: ts * 1.3 });
                     _sigSparks(tx, ty, opts.sparkSprite || 'steel-spark', 22);
                     if (_canSpawn()) {
@@ -11879,9 +12011,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var ghostMatB = _sigMat(color);
             var gpA = new THREE.Group(); gpA.position.y = hubH; holder.add(gpA);
             var gpB = new THREE.Group(); gpB.position.y = hubH; holder.add(gpB);
-            var gA = new THREE.Mesh(sw.bladeGeo, ghostMatA);
+            /* the Meshy sword's afterimages are the same model (sw.ghost) */
+            var gA = sw.ghost ? sw.ghost(ghostMatA) : new THREE.Mesh(sw.bladeGeo, ghostMatA);
             gA.position.y = -sw.hiltY; gA.renderOrder = 158; gpA.add(gA);
-            var gB = new THREE.Mesh(sw.bladeGeo, ghostMatB);
+            var gB = sw.ghost ? sw.ghost(ghostMatB) : new THREE.Mesh(sw.bladeGeo, ghostMatB);
             gB.position.y = -sw.hiltY; gB.renderOrder = 157; gpB.add(gB);
 
             var heavy = !!sl.heavy;
@@ -11983,6 +12116,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                         size: ts * (p.heavy ? 2.2 : 1.6),
                         ms: p.heavy ? 300 : 230,
                         roll: p.holder.rotation.x * 0.6,
+                        scar: true, scarMs: p.heavy ? 2000 : 1300,
                     });
                     _sigSparks(tx, ty, opts.sparkSprite || 'steel-spark', p.heavy ? 22 : 10);
                     if (p.heavy) {
@@ -13684,7 +13818,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                     _sigScreenFlash('#ffffff', 140, 0.32);
                     _sigShockRing3D(tx, ty, { color: 0xffd24a, r1: ts * 2.1 });
                     _sigSpeedBurst3D(tx, ty, { color: 0xffffff });
-                    _sigCrescentSlash3D(tx, ty, { color: 0xffd875, yaw: g.rotation.y, dir: 1 });
+                    _sigCrescentSlash3D(tx, ty, { color: 0xffd875, yaw: g.rotation.y, dir: 1, scar: true, scarMs: 2200 });
                     _sigCrescentSlash3D(tx, ty, { color: 0xffffff, yaw: g.rotation.y + 1.2, dir: -1, ms: 300, size: ts * 1.3 });
                     _sigLightPillar3D(tx, ty, { color: 0xffe9a8, coreColor: 0xfff6d8, ms: 900, height: 760 });
                     _sigSparks(tx, ty, 'divine-sparkle', 18);
@@ -13756,7 +13890,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             } else {
                 if (!swept) {
                     swept = true;
-                    _sigCrescentSlash3D(tx, ty, { color: 0xffffff, yaw: g.rotation.y, dir: 1, ms: 260, size: ts * 1.7, height: ts * 0.85 });
+                    _sigCrescentSlash3D(tx, ty, { color: 0xffffff, yaw: g.rotation.y, dir: 1, ms: 260, size: ts * 1.7, height: ts * 0.85, scar: true, scarMs: 2600 });
                     _sigCrescentSlash3D(tx, ty, { color: 0xbfe0ff, yaw: g.rotation.y + 0.18, dir: 1, ms: 320, size: ts * 1.35, height: ts * 0.8 });
                     _sigSparks(tx, ty, 'steel-spark', 6, { vxy: 120, vz0: 20, vz1: 120, gravity: 260 });
                 }
@@ -13819,6 +13953,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                         color: s3 === 2 ? 0xffffff : color,
                         yaw: g.rotation.y + s3 * 2.1, dir: s3 % 2 ? -1 : 1,
                         ms: 240, size: ts * 1.25, height: ts * 0.55,
+                        scar: true, scarMs: 1200,
                     });
                     _sigSparks(tx, ty, 'steel-spark', 5, { vxy: 160, vz0: 30, vz1: 140, gravity: 300 });
                 }
@@ -19710,7 +19845,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         lungingStrike: function(tx, ty) {
             var ts0 = _cfg().tileSize || 128;
             _sigSpeedBurst3D(tx, ty, { color: 0xbbddff });
-            _sigCrescentSlash3D(tx, ty, { color: 0xaaccff, yaw: rn(0, Math.PI * 2), dir: 1, ms: 240, size: ts0 * 1.4 });
+            _sigCrescentSlash3D(tx, ty, { color: 0xaaccff, yaw: rn(0, Math.PI * 2), dir: 1, ms: 240, size: ts0 * 1.4, scar: true });
             _sigShockRing3D(tx, ty, { color: 0x99ccff, r1: ts0 * 1.4, ms: 340 });
             _sigScreenFlash('#bbddff', 110, 0.16);
         },
@@ -20523,9 +20658,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         ice:      { tint: [0.70, 0.96, 1.28], tintAmt: 0.44, chroma: 2.0 },
         lightning:{ tint: [0.88, 1.00, 1.28], tintAmt: 0.34, chroma: 5.5 },
         divine:   { tint: [1.22, 1.10, 0.78], tintAmt: 0.36, chroma: 1.5 },
-        unholy:   { tint: [1.06, 0.58, 1.22], tintAmt: 0.52, chroma: 4.0, trip: 0.20, hueRate: 0.10 },
+        unholy:   { tint: [1.06, 0.58, 1.22], tintAmt: 0.52, chroma: 4.0 },
         tech:     { tint: [0.66, 1.06, 1.24], tintAmt: 0.44, chroma: 6.0 },
-        alien:    { tint: [0.70, 1.24, 0.82], tintAmt: 0.46, chroma: 3.5, trip: 0.22, hueRate: 0.16 },
+        alien:    { tint: [0.70, 1.24, 0.82], tintAmt: 0.46, chroma: 3.5 },
         anomaly:  { tint: [1.22, 0.66, 1.18], tintAmt: 0.48, chroma: 6.5, trip: 0.55, warp: 0.0024, hueRate: 0.38 },
         poison:   { tint: [0.84, 1.22, 0.58], tintAmt: 0.46, chroma: 2.5 },
         heal:     { tint: [0.84, 1.16, 0.98], tintAmt: 0.30, chroma: 0.0 },
@@ -20539,6 +20674,21 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         aura:     { tint: [1.16, 1.08, 0.82], tintAmt: 0.30, chroma: 1.5 },
     };
     var _GRADE_FALLBACK = { tint: [1, 1, 1], tintAmt: 0.2, chroma: 1.5 };
+
+    /* THE TRIP ONLY WHERE IT FITS (SPELL_DIRECTOR_PLAN §2, 2026-09-24 — the
+       user: "I don't want every spell to have that, only where it makes
+       sense"). The hue-cycling trip + the UV warp used to ride EVERY alien
+       and unholy cast (a name regex put any "dark"/"shadow" spell there) and
+       every anomaly / mind cast at every weight. Now: alien and unholy wear
+       their colour only; the anomaly and mind archetypes (the psychic, the
+       dream, the impossible) keep the trip on their HEAVY and ULTIMATE casts;
+       and any spell can opt in by name with SPELL_STAGE_MAP[id].grade.trip
+       (that override always plays). */
+    function _gradeTripOK(spellId, rank) {
+        var ov = SPELL_STAGE_MAP[spellId] && SPELL_STAGE_MAP[spellId].grade;
+        if (ov && (ov.trip || ov.warp)) return true;
+        return rank >= 2;
+    }
 
     function _gradeProfile(spellId) {
         var ov = SPELL_STAGE_MAP[spellId] && SPELL_STAGE_MAP[spellId].grade;
@@ -20592,6 +20742,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var T = info.tier;
         var G = _gradeProfile(spellId);
         var rank = _TIER_ORDER[info.weight] || 0;
+        if ((G.trip || G.warp) && !_gradeTripOK(spellId, rank)) {
+            var G2 = {};
+            for (var gk in G) G2[gk] = G[gk];
+            G2.trip = 0; G2.warp = 0;
+            G = G2;
+        }
         if (!p.spellGrade) {
             /* legacy path — uniform dim only, no spotlight/trip */
             if (T.dim > 0 && p.dramaDim) {
@@ -21427,7 +21583,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                         size: ts * (1.25 + 0.5 * T.ringScale),
                         ms: 240,
                         yaw: _sigYawToward(tx, ty),
-                        height: ts * 0.5
+                        height: ts * 0.5,
+                        /* THE CRAFT: a blade spell's cut leaves a scar */
+                        scar: typeof _crIsBlade === 'function' && _crIsBlade(spellId)
                     });
                 } catch (e) {}
             }
@@ -21476,7 +21634,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                         _sigCrescentSlash3D(tx, ty, {
                             color: P.ring, size: ts * (1.1 + 0.4 * T.ringScale),
                             ms: 220, yaw: _sigYawToward(tx, ty),
-                            height: ts * 0.5, dir: -1, roll: 1.2
+                            height: ts * 0.5, dir: -1, roll: 1.2,
+                            scar: typeof _crIsBlade === 'function' && _crIsBlade(spellId)
                         });
                     } catch (e) {}
                 }, 70);
@@ -23399,7 +23558,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* 'muzzle' is a plain layered intent (fire()'s default branch spawns it
        at params.tx/ty) — battle.js's afterShot fires it at the CASTER's
        tile when the round leaves, then 'impact' where it lands. */
-    SPELL_MAP['raceDriveBy']          = { impact: 'raceDriveBy_impact', muzzle: 'raceDriveBy_muzzle' };   /* gangster — the shot after the run */
+    SPELL_MAP['raceDriveBy']          = { impact: 'raceDriveBy_impact', muzzle: 'raceDriveBy_muzzle', ride: 'cadillac' };   /* the ride: the HQ's own Cadillac (THE CRAFT) */   /* gangster — the shot after the run */
     SPELL_MAP['raceHitALick']         = { impact: 'raceHitALick_impact' };                     /* gangster — the grab */
     SPELL_MAP['raceChoppa']           = { beam: 'raceChoppa_beam' };                           /* gangster — the bullet line */
     SPELL_MAP['raceExtendedClips']    = { aura: 'raceExtendedClips_aura' };                    /* gangster — the reload aura */
@@ -32036,9 +32195,26 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        directly — the board's world units ARE its pixels). The victim is
        the dark stand-in capsule (_finBodyMesh). */
 
+    /* THE SAME-THING RULE (MODEL_INDEX §9, 2026-09-24): Air Support flies
+       the F-22 — the SAME Meshy jet the flyover and Area 51 use
+       (_WPN_MODELS.jet, nose on +Z), with the two afterburner glows hung
+       at its tail. The procedural jet below is only its fallback while the
+       GLB streams in (the match drip warms 'jet' early). */
+    function _finJetMeshy(ts, color) {
+        var inst = _wpnReady('jet') ? _wpnInstance('jet', ts * 2.0) : null;
+        if (!inst) return _finJet(ts, color);
+        inst.setFade(1);
+        var g = inst.group, burners = [];
+        for (var b = 0; b < 2; b++) {
+            var bg = _finSprite(0xffa040, _sigGlowTex(), ts * 0.34, 160);
+            bg.position.set(b ? ts * 0.08 : -ts * 0.08, 0, -inst.len * 0.5);
+            bg.material.opacity = 0.9; g.add(bg); burners.push(bg);
+        }
+        return { group: g, burners: burners, fin: null, meshy: true };
+    }
     /* a procedural strike jet: fuselage along local +Z (the nose), swept
-       wings, a tail fin, two afterburner glows — the flyover craft of Air
-       Support (there is no jet GLB in any bucket: MODEL_INDEX's wish-list) */
+       wings, a tail fin, two afterburner glows — the fallback for the F-22
+       above while its GLB streams */
     function _finJet(ts, color) {
         var g = new THREE.Group();
         var m = _finBasic(color != null ? color : 0x4a5560), dark = _finBasic(0x1c2228);
@@ -32250,11 +32426,14 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var g = new THREE.Group(); g.position.set(wpT.x, wpT.y, wpT.z);
         var body = _finBodyMesh(ts); g.add(body);
         var FAR = ts * 14, ALT = ts * 2.6, yaw = Math.atan2(ux, uz);
-        var lead = _finJet(ts, 0x4a5560), wing = _finJet(ts, 0x56606a);
+        var lead = _finJetMeshy(ts, 0x4a5560), wing = _finJetMeshy(ts, 0x56606a);
         var jets = [lead, wing];
         for (var j = 0; j < 2; j++) { jets[j].group.rotation.y = yaw; jets[j].group.visible = false; g.add(jets[j].group); }
         var sideX = -uz, sideZ = ux;   /* the wingman flies off the lead's right */
-        var bomb = new THREE.Mesh(THREE.CapsuleGeometry ? new THREE.CapsuleGeometry(ts * 0.07, ts * 0.32, 4, 8) : new THREE.CylinderGeometry(ts * 0.07, ts * 0.07, ts * 0.4, 8), _finBasic(0x2a3036)); bomb.visible = false; g.add(bomb);
+        /* the bomb is the SAME Meshy missile every missile spell drops (nose on +Z) */
+        var bombGlb = _wpnReady('missile') ? _wpnInstance('missile', ts * 0.55) : null;
+        var bomb = bombGlb ? bombGlb.group : new THREE.Mesh(THREE.CapsuleGeometry ? new THREE.CapsuleGeometry(ts * 0.07, ts * 0.32, 4, 8) : new THREE.CylinderGeometry(ts * 0.07, ts * 0.07, ts * 0.4, 8), _finBasic(0x2a3036)); bomb.visible = false; g.add(bomb);
+        if (bombGlb) { bombGlb.setFade(1); bomb.rotation.order = 'YXZ'; }
         var chute = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.42, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), _finBasic(0xf0e8d8, { side: THREE.DoubleSide })); chute.visible = false; g.add(chute);
         var seat = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.14, ts * 0.22, ts * 0.14), _finBasic(0x3a4046)); seat.visible = false; g.add(seat);
         var wreckFin = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.04, ts * 0.5, ts * 0.42), _finBasic(0x1c2228)); wreckFin.visible = false; wreckFin.position.set(ts * 0.3, ts * 0.25, -ts * 0.2); wreckFin.rotation.z = 0.35; g.add(wreckFin);
@@ -32296,6 +32475,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 var bk = _sigClamp01((el - bombAt) / Math.max(1, hitAt - bombAt));
                 bomb.position.set(bombFrom.x * (1 - bk), bombFrom.y * (1 - bk * bk) + ts * 0.2, bombFrom.z * (1 - bk));
                 bomb.rotation.x = -Math.PI / 2 + bk * 1.2; bomb.rotation.y = yaw;
+                if (bombGlb) bomb.rotation.x = bk * 1.2;   /* yaw first, then the nose drops */
             }
             radio.material.opacity = el > jetsAt + 200 && el < crashAt + 2400 ? 1 : 0;
             if (el > crashAt) setRadio('▮ …AND CLOSER'); else if (el > hitAt) setRadio('▮ SPLASH · ONE'); else if (el > bombAt) setRadio('▮ BOMBS AWAY'); else setRadio('▮ DANGER CLOSE');
@@ -36067,6 +36247,778 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     function _finStageTiming(def, o) { var P = _finStageCtx(o); return { charge: P.CHARGE, strike: P.STRIKE, resolve: P.RESOLVE, hitAt: P.hitAt, total: P.total }; }
 
     /* ═════════ END THE FINISHER PASS ═════════ */
+
+    /* ═══════════════════════════════════════════════════════════════════
+       THE CRAFT KIT (SPELL_DIRECTOR_PLAN §5 Phase 2 "THE CRAFT", 2026-09-24)
+       ═══════════════════════════════════════════════════════════════════
+       The user's brief: "lights and particles and 3D objects — beams more
+       realistic and impressive, gun spells with bullets, speed lines and
+       muzzle flash, bombs with better explosions, sword slashes with red
+       glowing scars." These are SHARED pieces hooked into the choke points
+       every spell already goes through, so one piece lifts dozens of spells:
+
+         _crLight        a pooled PointLight flash (ThreeVFX.flashLight) —
+                         the first VFX that throw real light on the board
+         _crGunShot      tracer streak + 3D muzzle star + speed lines +
+                         muzzle light + ricochet sparks (every `_bolt_bullet`
+                         spell and every ranged basic attack — the bolt
+                         defs' `boltTracer` flag)
+         _crExplosion    flash core + eroding noise fireball + hot debris that
+                         cools as it flies + a smoke column + a dust skirt +
+                         scorch + a light (every recipe carrying an
+                         'explosion-orange' layer, via _spawnEffect)
+         _crSlashScar    the cut stays: a white-hot arc that cools to a red
+                         glowing scar in the air, drips embers, and leaves a
+                         glowing groove on the floor (blade crescents that
+                         pass `scar: true`, and blade spells' stage slash)
+         _crBeamExtras   the beam lights the room at both ends, sheds sparks
+                         along its length, and burns a glowing line into the
+                         floor (every _spawnLaserBeam3D)
+         _crBeamPalette  a beam wears ITS spell's colour (element, then type)
+                         — Heat Ray was white-blue like every other beam
+
+       Every group runs under _sigRunOwned; every delayed beat goes through
+       _fxDelay and re-checks _suppressed(). The hooks call these through
+       `typeof` guards so the source-cut lifetime tests keep their counts.
+       Kill-switch: window.EW_DISABLE_CRAFT = true (the hooks fall back to
+       the old look exactly). */
+    function _crOff() {
+        return (typeof window !== 'undefined' && !!window.EW_DISABLE_CRAFT);
+    }
+    function _crPad() { var c = _cfg(); return c.boardPadding || 2; }
+    /* board px (x, y) + height z → world (the _worldPos convention) */
+    function _crW(px, py, pz) {
+        var pad = _crPad();
+        return new THREE.Vector3(px - pad, pz + 3, py - pad);
+    }
+    function _crLight(px, py, pz, color, o) {
+        try {
+            if (window.ThreeVFX && window.ThreeVFX.flashLight) return window.ThreeVFX.flashLight(px, py, pz, color, o || {});
+        } catch (e) {}
+        return null;
+    }
+
+    /* ── textures (cached forever in _sigTex, never disposed) ── */
+    function _crStarTex() {
+        return _sigTex('cr-muzzle-star', 128, function (ctx, S) {
+            var c = S / 2, rnd = _sigRand(0x5747);
+            ctx.clearRect(0, 0, S, S);
+            ctx.globalCompositeOperation = 'lighter';
+            for (var i = 0; i < 9; i++) {
+                var a = i * Math.PI * 2 / 9 + (rnd() - 0.5) * 0.35;
+                var len = c * (0.55 + rnd() * 0.45), w = 3 + rnd() * 4;
+                ctx.save(); ctx.translate(c, c); ctx.rotate(a);
+                var g = ctx.createLinearGradient(0, 0, len, 0);
+                g.addColorStop(0, 'rgba(255,255,255,1)');
+                g.addColorStop(1, 'rgba(255,255,255,0)');
+                ctx.fillStyle = g;
+                ctx.beginPath(); ctx.moveTo(0, -w); ctx.lineTo(len, 0); ctx.lineTo(0, w); ctx.closePath(); ctx.fill();
+                ctx.restore();
+            }
+            var r = ctx.createRadialGradient(c, c, 0, c, c, c * 0.42);
+            r.addColorStop(0, 'rgba(255,255,255,1)');
+            r.addColorStop(0.5, 'rgba(255,255,255,0.6)');
+            r.addColorStop(1, 'rgba(255,255,255,0)');
+            ctx.fillStyle = r; ctx.fillRect(0, 0, S, S);
+        });
+    }
+    /* the side view of a muzzle blast: a spiky cone along +u */
+    function _crFlareTex() {
+        return _sigTex('cr-muzzle-flare', 128, function (ctx, S) {
+            var rnd = _sigRand(0xF1A3);
+            ctx.clearRect(0, 0, S, S);
+            ctx.globalCompositeOperation = 'lighter';
+            for (var i = 0; i < 7; i++) {
+                var spread = (rnd() - 0.5) * S * 0.5;
+                var len = S * (0.55 + rnd() * 0.45);
+                var g = ctx.createLinearGradient(0, 0, len, 0);
+                g.addColorStop(0, 'rgba(255,255,255,0.95)');
+                g.addColorStop(1, 'rgba(255,255,255,0)');
+                ctx.fillStyle = g;
+                ctx.beginPath();
+                ctx.moveTo(0, S / 2 - 6); ctx.lineTo(len, S / 2 + spread); ctx.lineTo(0, S / 2 + 6);
+                ctx.closePath(); ctx.fill();
+            }
+            var r = ctx.createRadialGradient(0, S / 2, 0, 0, S / 2, S * 0.3);
+            r.addColorStop(0, 'rgba(255,255,255,1)');
+            r.addColorStop(1, 'rgba(255,255,255,0)');
+            ctx.fillStyle = r; ctx.fillRect(0, 0, S, S);
+        });
+    }
+    /* a line across v: white-hot core, soft falloff, faint ragged edge */
+    function _crLineTex() {
+        return _sigTex('cr-hot-line', 128, function (ctx, S) {
+            ctx.clearRect(0, 0, S, S);
+            var g = ctx.createLinearGradient(0, 0, 0, S);
+            g.addColorStop(0.0, 'rgba(255,255,255,0)');
+            g.addColorStop(0.30, 'rgba(255,255,255,0.18)');
+            g.addColorStop(0.44, 'rgba(255,255,255,0.75)');
+            g.addColorStop(0.5, 'rgba(255,255,255,1)');
+            g.addColorStop(0.56, 'rgba(255,255,255,0.75)');
+            g.addColorStop(0.70, 'rgba(255,255,255,0.18)');
+            g.addColorStop(1.0, 'rgba(255,255,255,0)');
+            ctx.fillStyle = g; ctx.fillRect(0, 0, S, S);
+            /* ends taper along u */
+            ctx.globalCompositeOperation = 'destination-in';
+            var e = ctx.createLinearGradient(0, 0, S, 0);
+            e.addColorStop(0, 'rgba(0,0,0,0)');
+            e.addColorStop(0.12, 'rgba(0,0,0,1)');
+            e.addColorStop(0.88, 'rgba(0,0,0,1)');
+            e.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = e; ctx.fillRect(0, 0, S, S);
+        });
+    }
+    /* a ground groove: a ragged burnt line, lighter where it is hottest */
+    function _crGrooveTex() {
+        return _sigTex('cr-groove', 256, function (ctx, S) {
+            var rnd = _sigRand(0x6B00);
+            ctx.clearRect(0, 0, S, S);
+            ctx.globalCompositeOperation = 'lighter';
+            for (var i = 0; i < 3; i++) {
+                ctx.beginPath();
+                var y = S / 2 + (rnd() - 0.5) * 6;
+                ctx.moveTo(S * 0.06, y);
+                for (var x = S * 0.06; x <= S * 0.94; x += S / 24) {
+                    ctx.lineTo(x, S / 2 + (rnd() - 0.5) * 10 * Math.sin(Math.PI * x / S));
+                }
+                ctx.strokeStyle = i === 0 ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.35)';
+                ctx.lineWidth = i === 0 ? 5 : 11 + i * 6;
+                ctx.lineCap = 'round';
+                ctx.stroke();
+            }
+            ctx.globalCompositeOperation = 'destination-in';
+            var e = ctx.createLinearGradient(0, 0, S, 0);
+            e.addColorStop(0, 'rgba(0,0,0,0)');
+            e.addColorStop(0.2, 'rgba(0,0,0,1)');
+            e.addColorStop(0.8, 'rgba(0,0,0,1)');
+            e.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = e; ctx.fillRect(0, 0, S, S);
+        });
+    }
+    /* an oriented quad strip between two world points (for floor lines) */
+    function _crStripGeo(a, b, halfW, up) {
+        var d = new THREE.Vector3().subVectors(b, a);
+        var side = new THREE.Vector3().crossVectors(d, up || new THREE.Vector3(0, 1, 0));
+        if (side.lengthSq() < 1e-6) side.set(1, 0, 0);
+        side.normalize().multiplyScalar(halfW);
+        var pos = new Float32Array([
+            a.x - side.x, a.y - side.y, a.z - side.z,
+            a.x + side.x, a.y + side.y, a.z + side.z,
+            b.x - side.x, b.y - side.y, b.z - side.z,
+            b.x + side.x, b.y + side.y, b.z + side.z,
+        ]);
+        var uv = new Float32Array([0, 0, 0, 1, 1, 0, 1, 1]);
+        var geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+        geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+        geo.setIndex([0, 1, 2, 1, 3, 2]);
+        return geo;
+    }
+
+    /* ── GUNS: tracer · muzzle star · speed lines · light · ricochet ─────
+       from/to are board px + height ({x, y, z}); flyMs the bullet's flight.
+       o.color the tracer's hot colour (default brass-white), o.heavy for a
+       sniper / cannon-class round (longer streak, more lines, harder light). */
+    var _CR_TRACER_HOT = 0xfff3c8, _CR_TRACER_GLOW = 0xffa640;
+    function _crGunShot(from, to, flyMs, o) {
+        if (_crOff() || _suppressed()) return null;
+        var scene = _getVFXScene(); if (!scene) return null;
+        o = o || {};
+        var ts = _cfg().tileSize || 128;
+        var A = _crW(from.x, from.y, from.z), B = _crW(to.x, to.y, to.z);
+        var dir = new THREE.Vector3().subVectors(B, A);
+        var dist = dir.length() || 1;
+        dir.normalize();
+        var heavy = !!o.heavy;
+        var hot = o.color != null ? o.color : _CR_TRACER_HOT;
+        var glowC = o.glow != null ? o.glow : _CR_TRACER_GLOW;
+        var fly = Math.max(60, flyMs || 160);
+        var up = new THREE.Vector3(0, 1, 0);
+        var q = new THREE.Quaternion().setFromUnitVectors(up, dir);
+
+        var group = new THREE.Group();
+        /* the streak: a tapered core (fat at the head, needle at the tail)
+           inside a soft glow sleeve — both ride the bullet */
+        var streakLen = ts * (heavy ? 1.6 : 1.05);
+        var coreGeo = new THREE.CylinderGeometry(ts * (heavy ? 0.03 : 0.022), ts * 0.004, 1, 8, 1, true);
+        var coreMat = _sigMat(hot); coreMat.opacity = 1;
+        var core = new THREE.Mesh(coreGeo, coreMat);
+        core.quaternion.copy(q); core.renderOrder = 214;
+        var sleeveGeo = new THREE.CylinderGeometry(ts * (heavy ? 0.09 : 0.065), ts * 0.01, 1, 10, 1, true);
+        var sleeveMat = _sigMat(glowC); sleeveMat.opacity = 0.42;
+        var sleeve = new THREE.Mesh(sleeveGeo, sleeveMat);
+        sleeve.quaternion.copy(q); sleeve.renderOrder = 213;
+        group.add(core); group.add(sleeve);
+
+        /* muzzle: a camera-facing star + two crossed side flares along the
+           barrel axis (the cone of the blast seen from the side) */
+        var starMat = new THREE.SpriteMaterial({ map: _crStarTex(), color: new THREE.Color(0xfff0c0),
+            transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false });
+        var star = new THREE.Sprite(starMat);
+        star.position.copy(A); star.renderOrder = 216;
+        group.add(star);
+        var flareTex = _crFlareTex();
+        var flares = [];
+        var flareLen = ts * (heavy ? 1.0 : 0.72);
+        for (var fi = 0; fi < 2; fi++) {
+            var fMat = _sigMat(0xffd480, { map: flareTex }); fMat.opacity = 1;
+            var fGeo = new THREE.PlaneGeometry(1, 1);
+            fGeo.translate(0.5, 0, 0);                 // the flare grows from the muzzle
+            var fl = new THREE.Mesh(fGeo, fMat);
+            fl.position.copy(A);
+            /* local +x along the shot, the two planes 90° apart round it */
+            fl.quaternion.setFromUnitVectors(new THREE.Vector3(1, 0, 0), dir);
+            fl.rotateX(fi * Math.PI / 2 + 0.3);
+            fl.renderOrder = 215;
+            group.add(fl);
+            flares.push({ mesh: fl, mat: fMat });
+        }
+
+        /* speed lines: thin needles parallel to the shot, offset round the
+           path, snapping forward and dying fast — the anime whip of a round */
+        var side = new THREE.Vector3().crossVectors(dir, up);
+        if (side.lengthSq() < 1e-6) side.set(1, 0, 0);
+        side.normalize();
+        var vup = new THREE.Vector3().crossVectors(side, dir).normalize();
+        var lines = [];
+        var nLines = heavy ? 9 : 6;
+        for (var li = 0; li < nLines; li++) {
+            var ang = (li / nLines) * Math.PI * 2 + rn(-0.3, 0.3);
+            var rad = ts * rn(0.12, heavy ? 0.42 : 0.32);
+            var off = side.clone().multiplyScalar(Math.cos(ang) * rad).addScaledVector(vup, Math.sin(ang) * rad);
+            var lGeo = new THREE.CylinderGeometry(ts * 0.0045, ts * 0.0045, 1, 4, 1, true);
+            var lMat = _sigMat(0xffffff); lMat.opacity = 0;
+            var ln = new THREE.Mesh(lGeo, lMat);
+            ln.quaternion.copy(q); ln.renderOrder = 212;
+            group.add(ln);
+            lines.push({ mesh: ln, mat: lMat, off: off, t0: rn(0, 0.35), len: ts * rn(0.7, heavy ? 2.2 : 1.6),
+                         at: rn(0.05, 0.6), ms: rn(150, 240) });
+        }
+
+        /* the muzzle light + a puff of smoke + a spray of sparks */
+        _crLight(from.x, from.y, from.z, 0xffc070, { intensity: heavy ? 3.4 : 2.4, ms: heavy ? 200 : 130, radius: heavy ? 4 : 3 });
+        var ddx = to.x - from.x, ddy = to.y - from.y, ddl = Math.sqrt(ddx * ddx + ddy * ddy) || 1;
+        var ux = ddx / ddl, uy = ddy / ddl;
+        if (_canSpawn()) {
+            for (var si = 0; si < (heavy ? 10 : 6); si++) {
+                var sp = rn(180, 420);
+                _spawn({
+                    x: from.x, y: from.y, z: from.z,
+                    vx: ux * sp + rn(-90, 90), vy: uy * sp + rn(-90, 90), vz: rn(-20, 110),
+                    mode: 'billboard', sprite: 'steel-spark', tint: 0xffd080,
+                    ml: rn(110, 240), size0: rn(3, 6), size1: 0.5,
+                    opacity0: 1, opacity1: 0, drag: 2.6, gravity: 260,
+                });
+            }
+            for (var pi = 0; pi < (heavy ? 3 : 2); pi++) {
+                _spawn({
+                    x: from.x + ux * rn(6, 18), y: from.y + uy * rn(6, 18), z: from.z + rn(-3, 4),
+                    vx: ux * rn(20, 50) + rn(-12, 12), vy: uy * rn(20, 50) + rn(-12, 12), vz: rn(14, 34),
+                    mode: 'billboard', sprite: 'smoke',
+                    ml: rn(520, 820), size0: ts * 0.12, size1: ts * rn(0.42, 0.6),
+                    opacity0: 0.42, opacity1: 0, drag: 1.4,
+                });
+            }
+        }
+
+        var lightH = null, impacted = false;
+        var total = fly + 260;
+        var entry = _sigRunOwned(group, total, function (el) {
+            /* muzzle: a hard 70 ms pop, a little longer on a heavy round */
+            var mT = el / (heavy ? 110 : 75);
+            if (mT < 1) {
+                var ms = ts * (heavy ? 0.75 : 0.5) * (0.6 + 0.6 * Math.sin(Math.min(1, mT * 1.4) * Math.PI / 2));
+                star.scale.set(ms, ms, 1);
+                starMat.opacity = 1 - mT * mT;
+                for (var f = 0; f < flares.length; f++) {
+                    var fs = flareLen * (0.55 + 0.45 * mT);
+                    flares[f].mesh.scale.set(fs, fs * 0.45, 1);
+                    flares[f].mat.opacity = 1 - mT;
+                }
+            } else {
+                starMat.opacity = 0;
+                for (var f2 = 0; f2 < flares.length; f2++) flares[f2].mat.opacity = 0;
+            }
+            /* the streak: the head at the bullet, the tail trailing, clipped
+               to the muzzle at the start and to the target at the end */
+            var p = Math.min(1, el / fly);
+            var headD = dist * p;
+            var tailD = Math.max(0, headD - streakLen);
+            if (p >= 1) tailD = Math.min(dist, tailD + dist * Math.min(1, (el - fly) / 90));
+            var segLen = Math.max(0.001, headD - tailD);
+            var mid = A.clone().addScaledVector(dir, (headD + tailD) / 2);
+            core.position.copy(mid); sleeve.position.copy(mid);
+            core.scale.set(1, segLen, 1); sleeve.scale.set(1, segLen, 1);
+            var fade = p < 1 ? 1 : Math.max(0, 1 - (el - fly) / 90);
+            coreMat.opacity = fade; sleeveMat.opacity = 0.42 * fade;
+            /* speed lines snap out behind the round as it passes */
+            for (var l = 0; l < lines.length; l++) {
+                var L = lines[l];
+                var lt = (el - L.t0 * fly) / L.ms;
+                if (lt <= 0 || lt >= 1) { L.mat.opacity = 0; continue; }
+                var along = dist * Math.min(0.95, L.at + 0.35 * lt);
+                var lp = A.clone().addScaledVector(dir, along).add(L.off);
+                L.mesh.position.copy(lp);
+                L.mesh.scale.set(1, L.len * (0.35 + 0.65 * lt), 1);
+                L.mat.opacity = 0.75 * Math.sin(lt * Math.PI);
+            }
+            if (p >= 1 && !impacted) {
+                impacted = true;
+                _crLight(to.x, to.y, to.z, 0xffb060, { intensity: heavy ? 2.4 : 1.4, ms: 150, radius: 2.4 });
+                /* ricochet: a hard cone of sparks thrown back off the hit */
+                if (_canSpawn()) {
+                    for (var r = 0; r < (heavy ? 14 : 9); r++) {
+                        var rs = rn(160, 380);
+                        _spawn({
+                            x: to.x - ux * 6, y: to.y - uy * 6, z: to.z + rn(-4, 6),
+                            vx: -ux * rs + rn(-160, 160), vy: -uy * rs + rn(-160, 160), vz: rn(30, 200),
+                            mode: 'billboard', sprite: 'steel-spark', tint: 0xffe0a0,
+                            ml: rn(160, 340), size0: rn(3, 6), size1: 0.5,
+                            opacity0: 1, opacity1: 0, drag: 2.2, gravity: 420,
+                        });
+                    }
+                }
+            }
+        });
+        return entry;
+    }
+
+    /* ── EXPLOSIONS ──────────────────────────────────────────────────────
+       o.scale (1 = a grenade · 1.5 a shell · 2.2 a salvo centre), o.lite (the
+       outer tiles of an AoE: a smaller ball, no debris, no light), o.color.
+       At most _CR_BOOM_MAX full kits live at once — past that a blast goes
+       lite, so a 25-tile nuke can't flood the scene. */
+    var _CR_BOOM_MAX = 4, _crBooms = [];
+    function _crBoomLive() {
+        for (var i = _crBooms.length - 1; i >= 0; i--) if (_crBooms[i].done) _crBooms.splice(i, 1);
+        return _crBooms.length;
+    }
+    function _crExplosion(tx, ty, o) {
+        if (_crOff() || _suppressed()) return null;
+        var scene = _getVFXScene(); if (!scene) return null;
+        o = o || {};
+        var wp = _worldPos(tx, ty), ts = wp.ts;
+        var lite = !!o.lite || _crBoomLive() >= _CR_BOOM_MAX;
+        var S = (o.scale != null ? o.scale : 1) * (lite ? 0.6 : 1);
+        var fireC = o.color != null ? o.color : 0xff6a1a;
+        var c = tilePx(tx, ty), floorZ = unitSurfaceZ(tx, ty);
+
+        var group = new THREE.Group();
+        group.position.set(wp.x, wp.y, wp.z);
+
+        /* 1. the flash core — white-hot, gone in a blink */
+        var flashMat = _sigMat(0xfff6dc); flashMat.opacity = 1;
+        var flash = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 12), flashMat);
+        flash.position.y = ts * 0.25 * S; flash.renderOrder = 218;
+        group.add(flash);
+
+        /* 2. the fireball: noise shells that swell, rise and erode away */
+        var balls = [];
+        var nBalls = lite ? 1 : 3;
+        for (var bi = 0; bi < nBalls; bi++) {
+            var bMat = _sigEnergyMat(fireC, { hot: 0xffe6a0, gain: 1.9, opacity: 1,
+                s1x: 0.02, s1y: -0.7, s2x: -0.04, s2y: -0.35, scale1: 2.4, scale2: 1.2, vFadeLo: 0.02, vFadeHi: 0.99 });
+            var ball = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 14), bMat);
+            var bx = bi ? rn(-0.22, 0.22) * ts * S : 0, bz = bi ? rn(-0.22, 0.22) * ts * S : 0;
+            ball.position.set(bx, ts * 0.2 * S, bz);
+            ball.rotation.set(rn(0, 3), rn(0, 3), rn(0, 3));
+            ball.renderOrder = 217;
+            group.add(ball);
+            balls.push({ mesh: ball, mat: bMat, r: ts * S * (bi ? rn(0.38, 0.52) : 0.62), delay: bi * 45,
+                         rise: ts * S * rn(0.35, 0.6), x: bx, z: bz });
+        }
+
+        /* 3. debris: flat-shaded chunks, glowing hot, cooling as they fly —
+           lit by the blast's own light, so they read as solid rock */
+        var chunks = [];
+        if (!lite) {
+            var nCh = Math.round(6 * Math.min(2, S));
+            for (var ci = 0; ci < nCh; ci++) {
+                var chMat = new THREE.MeshStandardMaterial({ color: 0x3b3029, roughness: 1, metalness: 0,
+                    flatShading: true, emissive: new THREE.Color(0xff5a14), emissiveIntensity: 1.4 });
+                var ch = new THREE.Mesh(new THREE.DodecahedronGeometry(ts * rn(0.035, 0.07) * Math.min(1.5, S), 0), chMat);
+                ch.position.set(0, ts * 0.15, 0);
+                group.add(ch);
+                var ca = rn(0, Math.PI * 2), cs = ts * rn(1.6, 3.6) * Math.sqrt(S);
+                chunks.push({ mesh: ch, mat: chMat, vx: Math.cos(ca) * cs, vz: Math.sin(ca) * cs,
+                              vy: ts * rn(3.2, 6.2) * Math.sqrt(S), spin: [rn(-9, 9), rn(-9, 9), rn(-9, 9)],
+                              bounced: false, trailAcc: 0 });
+            }
+        }
+
+        /* 4. the light, the ring, the smoke, the scorch, the sparks */
+        if (!lite) {
+            _crLight(c.x, c.y, floorZ + ts * 0.5 * S, 0xff8a3a,
+                { intensity: 3.6 * Math.min(1.6, S), ms: 720, radius: 4.2 * Math.min(2, S), attack: 30 });
+        }
+        try { _sigShockRing3D(tx, ty, { color: 0xffc27a, r1: ts * 1.9 * S, ms: 440 }); } catch (e) {}
+        if (_canSpawn()) {
+            _spawn({ x: c.x, y: c.y, z: floorZ + 1, mode: 'world', sprite: 'scorch',
+                     ml: lite ? 3200 : 5200, size0: ts * 1.05 * S, size1: ts * 1.25 * S, opacity0: 0.92, opacity1: 0 });
+            _spawn({ x: c.x, y: c.y, z: floorZ + 2, mode: 'world', sprite: 'fire-glow',
+                     ml: 1500, size0: ts * 0.9 * S, size1: ts * 0.6 * S, opacity0: 0.85, opacity1: 0 });
+            var nEm = lite ? 6 : 16;
+            for (var ei = 0; ei < nEm; ei++) {
+                var ea = rn(0, 6.2832), es = rn(120, 420) * Math.sqrt(S);
+                _spawn({ x: c.x, y: c.y, z: floorZ + ts * 0.25 * S,
+                         vx: Math.cos(ea) * es, vy: Math.sin(ea) * es, vz: rn(120, 420) * Math.sqrt(S),
+                         mode: 'billboard', sprite: 'ember', ml: rn(600, 1150), size0: rn(5, 10), size1: 1,
+                         opacity0: 1, opacity1: 0, gravity: 420, drag: 0.9 });
+            }
+            /* the dust skirt runs out along the ground */
+            var nDust = lite ? 4 : 10;
+            for (var di = 0; di < nDust; di++) {
+                var da = (di / nDust) * 6.2832 + rn(-0.2, 0.2), dsp = rn(140, 240) * Math.sqrt(S);
+                _spawn({ x: c.x, y: c.y, z: floorZ + 6,
+                         vx: Math.cos(da) * dsp, vy: Math.sin(da) * dsp, vz: rn(4, 22),
+                         mode: 'billboard', sprite: 'dust-puff', ml: rn(700, 1100),
+                         size0: ts * 0.18 * S, size1: ts * 0.55 * S, opacity0: 0.55, opacity1: 0, drag: 2.4 });
+            }
+            /* the smoke column climbs after the fire is spent */
+            var nSmoke = lite ? 3 : Math.round(7 * Math.min(1.8, S));
+            _fxDelay(function () {
+                if (_suppressed() || !_canSpawn()) return;
+                for (var sk = 0; sk < nSmoke; sk++) {
+                    _spawn({ x: c.x + rn(-0.2, 0.2) * ts * S, y: c.y + rn(-0.2, 0.2) * ts * S,
+                             z: floorZ + ts * rn(0.3, 0.7) * S,
+                             vx: rn(-14, 14), vy: rn(-14, 14), vz: rn(40, 105) * Math.sqrt(S),
+                             mode: 'billboard', sprite: 'smoke', ml: rn(1400, 2400),
+                             size0: ts * 0.3 * S, size1: ts * rn(1.0, 1.4) * S,
+                             opacity0: 0.62, opacity1: 0, drag: 0.5 });
+                }
+            }, 140);
+        }
+        if (!lite) {
+            _shake(S >= 1.4 ? 'hard' : 'normal');
+            try { if (typeof ThreePost !== 'undefined' && ThreePost.bloomPulse) ThreePost.bloomPulse(0.45, 380); } catch (e) {}
+        }
+
+        var total = lite ? 1000 : 1800;
+        var g = ts * 13;                                     // gravity, world units / s²
+        var pad = _crPad();
+        var prev = 0;
+        var entry = _sigRunOwned(group, total, function (el) {
+            var dt = Math.min(0.05, (el - prev) / 1000); prev = el;
+            /* flash core */
+            var ft = el / 150;
+            if (ft < 1) {
+                var fr = ts * 0.55 * S * (0.25 + ft);
+                flash.scale.set(fr, fr, fr);
+                flashMat.opacity = 1 - ft * ft;
+            } else flashMat.opacity = 0;
+            /* fireballs */
+            for (var b = 0; b < balls.length; b++) {
+                var B = balls[b];
+                var bt = _sigClamp01((el - B.delay) / (lite ? 520 : 820));
+                if (bt <= 0) { B.mesh.visible = false; continue; }
+                B.mesh.visible = true;
+                var grow = _sigEaseOutCubic(Math.min(1, bt * 2.4));
+                var r = B.r * (0.25 + 0.75 * grow);
+                B.mesh.scale.set(r, r * 0.92, r);
+                B.mesh.position.y = ts * 0.2 * S + B.rise * _sigEaseOutCubic(bt);
+                B.mesh.rotation.y += dt * 0.8;
+                _sigEnergyTick(B.mat, el, Math.max(0, (bt - 0.18) * 1.2));
+                B.mat.uniforms.uOpacity.value = bt < 0.7 ? 1 : Math.max(0, 1 - (bt - 0.7) / 0.3);
+            }
+            /* debris */
+            for (var k = 0; k < chunks.length; k++) {
+                var C = chunks[k];
+                var m = C.mesh;
+                C.vy -= g * dt;
+                m.position.x += C.vx * dt; m.position.y += C.vy * dt; m.position.z += C.vz * dt;
+                m.rotation.x += C.spin[0] * dt; m.rotation.y += C.spin[1] * dt; m.rotation.z += C.spin[2] * dt;
+                if (m.position.y < ts * 0.03) {
+                    m.position.y = ts * 0.03;
+                    if (!C.bounced) { C.bounced = true; C.vy = Math.abs(C.vy) * 0.28; C.vx *= 0.45; C.vz *= 0.45; }
+                    else { C.vy = 0; C.vx *= 0.8; C.vz *= 0.8; C.spin[0] *= 0.8; C.spin[1] *= 0.8; C.spin[2] *= 0.8; }
+                }
+                C.mat.emissiveIntensity = Math.max(0, 1.4 * (1 - el / 900));
+                if (el > total - 380) { C.mat.transparent = true; C.mat.opacity = Math.max(0, (total - el) / 380); }
+                /* a smoke thread off every airborne chunk */
+                if (!C.bounced && _canSpawn()) {
+                    C.trailAcc += dt * 1000;
+                    if (C.trailAcc > 55) {
+                        C.trailAcc = 0;
+                        _spawn({ x: wp.x + m.position.x + pad, y: wp.z + m.position.z + pad, z: wp.y + m.position.y - 3,
+                                 mode: 'billboard', sprite: el < 350 ? 'ember' : 'smoke', ml: rn(300, 520),
+                                 size0: el < 350 ? 6 : ts * 0.07, size1: el < 350 ? 1 : ts * 0.18,
+                                 opacity0: el < 350 ? 1 : 0.38, opacity1: 0 });
+                    }
+                }
+            }
+        });
+        if (entry && !lite) _crBooms.push(entry);
+        return entry;
+    }
+
+    /* ── SLASH SCARS ─────────────────────────────────────────────────────
+       Called by _sigCrescentSlash3D (scar: true) with the slash's own frame:
+       the cut hangs in the air as a white-hot arc, cools to a red glowing
+       scar, drips embers, and burns a glowing groove into the floor under
+       the victim. o: { yaw, pitch, roll, R, height, color } */
+    function _crSlashScar(tx, ty, o) {
+        if (_crOff() || _suppressed()) return null;
+        var scene = _getVFXScene(); if (!scene) return null;
+        o = o || {};
+        var wp = _worldPos(tx, ty), ts = wp.ts;
+        var R = o.R != null ? o.R : ts * 0.85;
+        var h = o.height != null ? o.height : ts * 0.5;
+        var scarC = new THREE.Color(o.color != null ? o.color : 0xff2414);
+        var hotC = new THREE.Color(0xfff2e0), coolC = new THREE.Color(0x5a0006);
+
+        var group = new THREE.Group();
+        group.position.set(wp.x, wp.y + h, wp.z);
+        group.rotation.y = o.yaw || 0;
+        var holder = new THREE.Group();
+        holder.rotation.x = o.pitch != null ? o.pitch : -0.5;
+        group.add(holder);
+
+        /* the scar lies along the middle of the swept arc — a flatter arc
+           of the same radius, so it reads as ONE cut through the target */
+        var span = 1.35;
+        var lineTex = _crLineTex();
+        var cutMat = _sigMat(0xffffff, { map: lineTex }); cutMat.opacity = 1;
+        var cut = new THREE.Mesh(_sigSlashRibbonGeo(R, ts * 0.028, span, 22), cutMat);
+        cut.rotation.z = o.roll || 0;
+        cut.renderOrder = 168;
+        holder.add(cut);
+        var haloMat = _sigMat(scarC.getHex(), { map: lineTex }); haloMat.opacity = 0.5;
+        var halo = new THREE.Mesh(_sigSlashRibbonGeo(R, ts * 0.11, span * 1.04, 22), haloMat);
+        halo.rotation.z = cut.rotation.z;
+        halo.renderOrder = 167;
+        holder.add(halo);
+
+        /* the groove on the floor, along the cut's heading */
+        var gMat = _sigMat(scarC.getHex(), { map: _crGrooveTex() }); gMat.opacity = 0.9;
+        var gGeo = new THREE.PlaneGeometry(ts * 1.25, ts * 0.3);
+        gGeo.rotateX(-Math.PI / 2);
+        var groove = new THREE.Mesh(gGeo, gMat);
+        groove.position.y = -h + 1.5;
+        groove.rotation.y = (o.roll || 0) * 0.5;
+        groove.renderOrder = 120;
+        group.add(groove);
+
+        var c = tilePx(tx, ty), zC = unitSurfaceZ(tx, ty) + h;
+        _crLight(c.x, c.y, zC, 0xff3018, { intensity: 1.8, ms: 700, radius: 2.4 });
+
+        var ms = o.ms != null ? o.ms : 1700;
+        var dripAcc = 0, prev = 0;
+        var tmp = new THREE.Color();
+        var cosR = Math.cos(o.yaw || 0), sinR = Math.sin(o.yaw || 0);
+        return _sigRunOwned(group, ms, function (el) {
+            var t = el / ms;
+            /* white-hot → scar red (by 180 ms) → cooling crimson */
+            if (el < 180) tmp.copy(hotC).lerp(scarC, el / 180);
+            else tmp.copy(scarC).lerp(coolC, _sigClamp01((el - 180) / (ms - 180)) * 0.85);
+            cutMat.color.copy(tmp);
+            var flick = 0.9 + 0.1 * Math.sin(el * 0.045);
+            cutMat.opacity = (t < 0.7 ? 1 : 1 - (t - 0.7) / 0.3) * flick;
+            haloMat.opacity = 0.5 * Math.max(0, 1 - t * 1.2) * flick;
+            var wid = 1 + 0.25 * Math.max(0, 1 - el / 120);
+            cut.scale.set(1, 1, 1); halo.scale.set(wid, wid, 1);
+            gMat.opacity = 0.9 * (t < 0.35 ? 1 : Math.max(0, 1 - (t - 0.35) / 0.65));
+            gMat.color.copy(tmp);
+            /* embers drip off the cut while it is hot */
+            if (el < ms * 0.45 && _canSpawn()) {
+                dripAcc += el - prev;
+                while (dripAcc > 40) {
+                    dripAcc -= 40;
+                    var a = (o.roll || 0) + rn(-span / 2, span / 2);
+                    var lx = Math.cos(a) * R, ly = Math.sin(a) * R;
+                    /* local arc point → the tilted, yawed holder frame */
+                    var pitch = holder.rotation.x;
+                    var ly2 = ly * Math.cos(pitch), lz2 = ly * Math.sin(pitch);
+                    var wx = lx * cosR + lz2 * sinR, wz = -lx * sinR + lz2 * cosR;
+                    _spawn({ x: c.x + wx, y: c.y + wz, z: zC + ly2,
+                             vx: rn(-20, 20), vy: rn(-20, 20), vz: rn(-10, 30),
+                             mode: 'billboard', sprite: 'ember', tint: 0xff4020,
+                             ml: rn(380, 700), size0: rn(4, 7), size1: 1,
+                             opacity0: 1, opacity1: 0, gravity: 360, drag: 0.8 });
+                }
+            }
+            prev = el;
+        });
+    }
+    /* which spells swing a BLADE (their kinetic stage slash leaves a scar) */
+    var _CR_BLADE_RE = /slash|blade|sword|cleave|katana|sabre|saber|slice|excalibur|zantetsu|iai|guillotine|decapitat|edge|cutlass|scimitar|rapier|machete|dual.?strike|cross.?cut|rend/i;
+    var _crBladeCache = {};
+    function _crIsBlade(spellId) {
+        if (!spellId) return false;
+        if (_crBladeCache[spellId] !== undefined) return _crBladeCache[spellId];
+        var d = _spellDefFor(spellId);
+        var yes = _CR_BLADE_RE.test(spellId + ' ' + ((d && d.name) || ''));
+        _crBladeCache[spellId] = yes;
+        return yes;
+    }
+
+    /* ── BEAMS ───────────────────────────────────────────────────────────
+       A beam that fires from nowhere and lights nothing reads as a sticker.
+       _crBeamExtras is called by _spawnLaserBeam3D with the resolved world
+       ends and timings: a light at the muzzle that holds with the beam, a
+       light at the terminus, sparks shed along the length while it holds,
+       and a glowing burn line scored into the floor under the path. */
+    function _crBeamExtras(fromTx, fromTy, toTx, toTy, o) {
+        if (_crOff() || _suppressed()) return null;
+        var scene = _getVFXScene(); if (!scene) return null;
+        o = o || {};
+        var ts = _cfg().tileSize || 128;
+        var glowC = o.glow != null ? o.glow : 0x88bbff;
+        var beamMs = o.beamMs || 440, lanceMs = o.lanceMs || 80;
+        var mp = tilePx(fromTx, fromTy), ip = tilePx(toTx, toTy);
+        var mz = unitSurfaceZ(fromTx, fromTy) + unitZBoost(), iz = unitSurfaceZ(toTx, toTy) + unitZBoost();
+        var thick = o.thickness || 1;
+        _crLight(mp.x, mp.y, mz, glowC, { intensity: 2.2 * Math.min(1.5, thick), ms: beamMs, hold: beamMs * 0.55, radius: 3.2 });
+        _crLight(ip.x, ip.y, iz, glowC, { intensity: 2.8 * Math.min(1.5, thick), ms: beamMs + 180, attack: lanceMs, hold: beamMs * 0.4, radius: 3.6 });
+
+        var group = new THREE.Group();
+        var burnMat = null, burn = null;
+        if (o.scorch !== false) {
+            var fa = _worldPos(fromTx, fromTy), fb = _worldPos(toTx, toTy);
+            var a = new THREE.Vector3(fa.x, fa.y + 1.2, fa.z), b = new THREE.Vector3(fb.x, fb.y + 1.2, fb.z);
+            /* start the line a third of a tile out — not under the caster's feet */
+            var d = new THREE.Vector3().subVectors(b, a), dl = d.length();
+            if (dl > ts * 0.5) {
+                a.addScaledVector(d.normalize(), ts * 0.35);
+                burnMat = _sigMat(glowC, { map: _crGrooveTex() });
+                burn = new THREE.Mesh(_crStripGeo(a, b, ts * 0.2 * Math.min(1.6, thick)), burnMat);
+                burn.renderOrder = 121;
+                group.add(burn);
+                /* the char under it outlives the glow */
+                if (_canSpawn()) {
+                    var n = Math.max(1, Math.round(dl / (ts * 0.55)));
+                    for (var i = 1; i <= n; i++) {
+                        var f = i / n;
+                        _spawn({ x: mp.x + (ip.x - mp.x) * f, y: mp.y + (ip.y - mp.y) * f,
+                                 z: unitSurfaceZ(fromTx, fromTy) + (unitSurfaceZ(toTx, toTy) - unitSurfaceZ(fromTx, fromTy)) * f + 1,
+                                 mode: 'world', sprite: 'scorch', ml: 3400, size0: ts * 0.42 * thick, size1: ts * 0.5 * thick,
+                                 opacity0: 0.7, opacity1: 0 });
+                    }
+                }
+            }
+        }
+        var total = beamMs + 1700;
+        var shedAcc = 0, prev = 0;
+        var tmp = new THREE.Color(), cool = new THREE.Color(0x401008), hotC = new THREE.Color(glowC);
+        return _sigRunOwned(group, total, function (el) {
+            if (burnMat) {
+                /* the line burns in behind the lance, glows while the beam
+                   holds, then cools through ember-red and fades */
+                var reveal = _sigClamp01(el / Math.max(1, lanceMs * 1.6));
+                burn.scale.set(1, 1, 1);
+                burnMat.opacity = reveal * (el < beamMs ? 0.95 : Math.max(0, 0.95 * (1 - (el - beamMs) / 1700)));
+                tmp.copy(hotC).lerp(cool, _sigClamp01((el - beamMs * 0.6) / 1400));
+                burnMat.color.copy(tmp);
+            }
+            /* sparks peel off the beam's length while it holds */
+            if (el > lanceMs && el < beamMs * 0.8 && _canSpawn()) {
+                shedAcc += el - prev;
+                while (shedAcc > 26) {
+                    shedAcc -= 26;
+                    var f2 = rn(0.08, 0.95);
+                    _spawn({ x: mp.x + (ip.x - mp.x) * f2 + rn(-6, 6), y: mp.y + (ip.y - mp.y) * f2 + rn(-6, 6),
+                             z: mz + (iz - mz) * f2 + rn(-6, 6),
+                             vx: rn(-90, 90), vy: rn(-90, 90), vz: rn(-20, 120),
+                             mode: 'billboard', sprite: 'spark-blue', tint: glowC,
+                             ml: rn(180, 380), size0: rn(3, 6) * thick, size1: 0.5,
+                             opacity0: 1, opacity1: 0, gravity: 240, drag: 1.8 });
+                }
+            }
+            prev = el;
+        });
+    }
+    /* a mapped beam wears its SPELL's colour: an explicit beamType /
+       beamElement on the def wins, then the spell's element (Heat Ray →
+       fire), then its type (Psychic Beam → anomaly) */
+    function _crBeamPalette(spellId, beamDef) {
+        if (beamDef && (beamDef.beamType || beamDef.beamElement) || _crOff())
+            return _beamColorFor(beamDef && beamDef.beamType || null, beamDef && beamDef.beamElement || null);
+        var d = _spellDefFor(spellId);
+        if (!d) return _beamColorFor(null, null);
+        var el = d.element && _BEAM_COLORS[d.element] ? d.element : null;
+        return _beamColorFor(el || d.spellType || null, d.element || null);
+    }
+
+    /* ── RIDES: the kit vehicle a spell rolls in on ─────────────────────
+       p: { fromX, fromY, toX, toY, durMs (the run), holdMs (the stop) } —
+       all on online.js's relay whitelist, so the guest's car runs the same
+       clock. The
+       car comes in from behind the start on a lane beside the run, paces
+       the caster to the landing tile, idles through the shot, then peels
+       away down the line. It is ThreeRenderer.vehicle — the SAME model and
+       material rule as the HQ's traffic (nose +Z). */
+    function _crRide(kind, p) {
+        if (_crOff() || _suppressed() || !_canSpawn()) return null;
+        var TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
+        if (!TR || typeof TR.vehicle !== 'function' || p.fromX == null || p.toX == null) return null;
+        var a = _worldPos(p.fromX, p.fromY), b = _worldPos(p.toX, p.toY), ts = a.ts;
+        var dx = b.x - a.x, dz = b.z - a.z, L = Math.hypot(dx, dz);
+        if (L < 1) { dx = 0; dz = 1; L = 1; }
+        var ux = dx / L, uz = dz / L, sx = -uz, sz = ux;
+        var car;
+        try { car = TR.vehicle(kind, { metres: 4.4, beacon: false }); } catch (e) { car = null; }
+        if (!car) return null;
+        var g = new THREE.Group();
+        g.position.set(a.x, a.y, a.z);
+        car.rotation.y = Math.atan2(ux, uz);
+        g.add(car);
+        var LANE = ts * 1.0, runIn = ts * 3;
+        var runMs = Math.max(200, p.durMs || p.ms || 500), holdMs = p.holdMs != null ? p.holdMs : 700, leaveMs = 1200;
+        var total = runMs + holdMs + leaveMs;
+        var c0 = tilePx(p.fromX, p.fromY), zA = unitSurfaceZ(p.fromX, p.fromY), zB = unitSurfaceZ(p.toX, p.toY);
+        var lastPuff = -999, rise = b.y - a.y;
+        return _sigRunOwned(g, total, function (el) {
+            var along, bob = 0;
+            if (el < runMs) { var k = el / runMs; along = -runIn * (1 - k) * (1 - k) + L * (1 - (1 - k) * (1 - k)); }
+            else if (el < runMs + holdMs) { along = L; bob = Math.sin(el * 0.05) * ts * 0.008; }
+            else { var lk = (el - runMs - holdMs) / leaveMs; along = L + ts * 9 * lk * lk; }
+            var f = Math.max(0, Math.min(1, along / L));
+            car.position.set(ux * along + sx * LANE, rise * f + bob, uz * along + sz * LANE);
+            /* the lean of a hard stop, and the squat of the getaway */
+            car.rotation.x = (el > runMs - 120 && el < runMs + 160) ? -0.05 : (el > runMs + holdMs ? 0.04 : 0);
+            if (el - lastPuff > 80 && _canSpawn()) {
+                lastPuff = el;
+                var rx = car.position.x - ux * ts * 1.2, rz = car.position.z - uz * ts * 1.2;
+                _spawn({ x: c0.x + rx, y: c0.y + rz, z: zA + (zB - zA) * f + 6,
+                         vx: -ux * 30 + rn(-10, 10), vy: -uz * 30 + rn(-10, 10), vz: rn(8, 24),
+                         mode: 'billboard', sprite: 'smoke', ml: rn(500, 800),
+                         size0: ts * 0.08, size1: ts * 0.3, opacity0: 0.45, opacity1: 0, drag: 1.2 });
+            }
+        });
+    }
+
+    /* the heavy rounds: a sniper / hand-cannon class shot gets the long
+       streak, the extra speed lines and the harder light */
+    var _CR_HEAVY_SHOTS = { precisionShot: 1, headshot: 1, deadEye: 1, raceHeadshot: 1, requiem: 1,
+                            raceHighNoon: 1, raceClassifiedWeapon: 1, shootout: 1 };
+
+    /* Tag every recipe that carries an 'explosion-orange' layer with the
+       kit it detonates: an AoE's CENTRE recipe gets the full blast, its
+       per-TILE recipe the lite one, and the kit fires on the explosion
+       layer's own delay. Beams / descents carry fire layers mid-flight and
+       are skipped (their impact recipes are tagged instead). */
+    var _CR_BOOM_SCALE = { nuke_impact_center: 2.4, sharedNuke_impact_center: 2.4,
+        sentaiMegazordBlast_impact_center: 2.0, sentaiMegazordBlast_impact_center_v2: 2.0,
+        placeBomb_impact_center: 1.6, raceMortarSalvo_impact_center: 1.4, raceMissileBarrage_impact_center: 1.4,
+        broadside_impact_center: 1.3, cannonBlast_impact: 1.3 };
+    function _crTagBooms() {
+        for (var id in EFFECTS) {
+            var d = EFFECTS[id];
+            if (!d || !d.layers || /_beam$|_descent$/.test(id)) continue;
+            var delay = -1;
+            for (var i = 0; i < d.layers.length; i++) {
+                if (d.layers[i].sprite === 'explosion-orange') {
+                    var ld = d.layers[i].delayMs || 0;
+                    if (delay < 0 || ld < delay) delay = ld;
+                }
+            }
+            if (delay < 0) continue;
+            var tile = /_tile$/.test(id);
+            d._crBoom = { scale: _CR_BOOM_SCALE[id] || (tile ? 1 : 1.2), lite: tile, delay: delay };
+        }
+    }
+    _crTagBooms();
+
+    /* ═════════ END THE CRAFT KIT ═════════ */
 
 
     /* ── VFX3D.stage — the party builder's preview stage (§5.3) ────────

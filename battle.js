@@ -63108,6 +63108,15 @@
                         }
                     }
 
+                    /* THE CRAFT (SPELL_DIRECTOR_PLAN Phase 2, 2026-09-24): a dash
+                       with a RIDE (SPELL_MAP[id].ride — the Drive-By's Cadillac,
+                       the HQ traffic's own model) rolls in beside the run and
+                       idles through the shot. VFX3D.fire is relayed (RULE #2). */
+                    const _rideVFX = window.ThreeVFXEffects;
+                    if (_rideVFX && state.phase === 'battle' && !_skipVisuals() && _rideVFX.hasMapping(spell.id, 'ride')) {
+                        _rideVFX.fire('ride', spell.id, { fromX: casterStartX, fromY: casterStartY, toX: x, toY: y,
+                            durMs: dashAnimMs, holdMs: spell.afterShot ? actionMs(360) + actionMs(300) + 200 : 300 });
+                    }
                     animateDisplacement(unit, casterStartX, casterStartY, x, y, dashAnimMs);
                     resolveTileArrival(unit, { via: 'self' });   // ⛓ the dash's landing
                     if (dashHitCount > 0) {
