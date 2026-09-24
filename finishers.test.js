@@ -285,7 +285,7 @@ test('THE FORGE: the ☠ FINISHER strip stands on the TECHNIQUES tier rack and p
     for (const sym of ["const PB_FIN_KEY = 'FIN';", 'function pbFinisherDef(race)', 'function pbFinisherInfo(key, fin)', "className: 'pb-fin'", "className: 'pb-fin-head'",
                        "'pb-tn pb-tn-fin is-finisher can'", 'function FinisherPanel(', "if (info && info.st8 === 'finisher') return h(FinisherPanel,",
                        'const pbPreviewFinisher = (opts) => {', 'cv.previewFinisher(fin, {', "if (key === PB_FIN_KEY) { pbPreviewFinisher({ hover: true }); return; }",
-                       "if (st8 === 'finisher') { pbPreviewFinisher(); return; }", "grid.push(finisher ? ['root', PB_FIN_KEY] : ['root']);",
+                       "if (st8 === 'finisher') { pbPreviewFinisher(); return; }", "const grid = finisher ? [[PB_FIN_KEY]] : [];",
                        "if (key === PB_FIN_KEY) return pbFinisherInfo(key, finisher);", 'finisher: unitFinisher }))']) {
         assert.ok(PB.includes(sym), 'party-builder.js: ' + sym);
     }

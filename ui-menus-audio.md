@@ -610,3 +610,21 @@ subclass text (now "Picks up new techniques faster"). **HQ pause** (map.js): "�
 "BORROW · TIER …" (data.js `hqPartyTreeCircuit` / `hqPartyTreeClick` / `hqPartySocketPool(m, 'B<t>')`).
 Seen in the builder probe (`playtest_builder.js`, a homosapien Warrior at 13/16 SP); UNSEEN: the HQ pause screen,
 the Freelancer borrow window live.
+
+## THE LOOK PASS on the tier rack — lit when equipped, battle badges + AOE grid, the finisher on top, bigger text (2026-09-24, local delivery)
+mondo: "if an ability is selected its background needs to stay lit up … the TYPE circles need to be the regular type
+badges … put the FINISHER at the top (most powerful at the top, basic attack at the bottom) … the spells need to show the
+same elemental information like in the spell menu during battle, and the same AOE grid preview … the text needs to be
+bigger." **Builder** (party-builder.js): `pbSpellBadges(sp, max)` renders hud.js `_hrlgSpellBadges` (type badge, element
+glyph, status chips — the battle row's exact read; hud.js loads AFTER party-builder.js, so it is read at render time, the
+type badge alone as the fallback) and `pbAoeTiles(sp, big)` draws hud.js `_hrlgSpellShape` as `.pb-aoe` tiles (6 px; 8 px
+in the technique panel). The chip is name / badges / meta (the "AOE …" text drops when the grid shows) / grid / side
+(✓ EQUIPPED or the source, then the SP tag). The finisher strip renders ABOVE Tier IV (`pbTierGrid` puts `[FIN]` first,
+`['root']` last). The `.pb-tn-type` circles are gone. CSS: the LOOK PASS block at the END of styles-base.css (it must stay
+after the older .pb-technique / .pb-fin rules or they win) — every chip is framed, `.is-equipped` keeps a category-colour
+gradient fill on hover too (hover only turns the edge red = click to unequip), one chip per row (minmax 300 px; two
+columns truncated every name), the loadout wraps 4 + 3, text a size up everywhere (names 14–16 px, meta 10.5 px, SP 11 px,
+tier numerals 22 px, the technique panel 12 / 20 px). **HQ pause** (map.js): `_hqSpellBadgesHtml` (the same badges as
+HTML via `_hqCssOf`), `_hqAoeTilesHtml`, `_hqPauseFinisherHtml` (the race's finisher, read-only, above Tier IV), an
+equipped button reads ✓ EQUIPPED and keeps its fill; CSS "THE LOOK PASS in the field" at the end of styles-base.css.
+Test: spell-tree-ux.test.js "the look pass". Seen in the builder probe; the HQ pause screen UNSEEN live.

@@ -1598,13 +1598,13 @@ const PB_SOURCE_LABEL = { race: 'RACE', job: 'JOB', borrowRace: 'BORROWED · RAC
    Freelancer), then the root (+ THE FINISHER). ↑ ↓ change row keeping the
    column (clamped), ← → walk the row. Empty tiers are skipped. */
 function pbTierGrid(ctx, finisher) {
-  const grid = [];
+  const grid = finisher ? [[PB_FIN_KEY]] : [];   // the finisher row leads (2026-09-24), the basic attack closes
   for (const t of PB_TIER_ORDER) {
     const row = (ctx.rows[t] || []).slice();
     if (ctx.isFreelancer) row.push('B' + t);
     if (row.length) grid.push(row);
   }
-  grid.push(finisher ? ['root', PB_FIN_KEY] : ['root']);
+  grid.push(['root']);
   return grid;
 }
 function pbTierStep(ctx, key, dir, finisher) {
@@ -1629,6 +1629,41 @@ function pbNodeMeta(sp) {
   if (pw) m.push([pw.value + ' ' + pw.unit, pw.color]);
   return m.slice(0, 4);
 }
+/* THE BATTLE READ (2026-09-24 look pass — mondo: "the spells need to show the same elemental information like in
+   the spell menu during battle, and the same AOE grid preview"): the badges the battle spell menu's row wears
+   (hud.js _hrlgSpellBadges — the TYPE badge, the element glyph, the statuses it applies / punishes) and its AOE
+   footprint (hud.js _hrlgSpellShape → our own tiles, sized for the rack). hud.js loads after this file, so both
+   are read at render time; without it the type badge stands alone and no grid shows. */
+function pbSpellBadges(sp, max) {
+  if (!sp) return [];
+  let list = null;
+  try { if (typeof _hrlgSpellBadges === 'function') list = _hrlgSpellBadges(sp); } catch (e) { list = null; }
+  if (!list) list = sp.spellType ? [{ label: String(sp.spellType).toUpperCase(), style: pbTypeBadgeStyle(sp.spellType, 10), title: 'Spell type — drives type advantage' }] : [];
+  return list.slice(0, max || 6).map((b, i) => h('span', { key: 'b' + i, className: 'pb-badge', style: b.style, title: b.title || undefined }, b.label));
+}
+function pbAoeShape(sp) {
+  try { return (sp && typeof _hrlgSpellShape === 'function') ? _hrlgSpellShape(sp) : null; } catch (e) { return null; }
+}
+function pbAoeTiles(sp, big) {
+  const shape = pbAoeShape(sp);
+  if (!shape) return null;
+  const cells = [];
+  let cols;
+  if (shape.kind === 'line') {
+    cols = shape.len || 4;
+    const rows = Math.min(3, shape.w || 1);
+    for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) cells.push(true);
+  } else {
+    const r = Math.min(2, shape.r || 1);
+    cols = r * 2 + 1;
+    for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+      const on = shape.kind === 'cross' ? (dx === 0 || dy === 0) : shape.kind === 'diamond' ? (Math.abs(dx) + Math.abs(dy) <= r) : true;
+      cells.push(on ? (dx === 0 && dy === 0 ? 'c' : true) : false);
+    }
+  }
+  return h('span', { key: 'aoe', className: 'pb-aoe' + (big ? ' big' : ''), title: shape.label, style: { gridTemplateColumns: 'repeat(' + cols + ', var(--pb-aoe-cell))' } },
+    ...cells.map((c, i) => h('i', { key: i, className: c === 'c' ? 'ctr' : (c ? '' : 'off') })));
+}
 function SpellTierPanel({ ctx, fc, clsName, raceLabel, onSpellClick, onBorrow, onNodeHoverIn, onNodeHoverOut,
                           selKey, hoverKey, onSelect, shakeKey, finisher, onUnequipSlot }) {
   const spellOf = (id) => (id && typeof window.getSpellById === 'function') ? window.getSpellById(id) : null;
@@ -1646,6 +1681,7 @@ function SpellTierPanel({ ctx, fc, clsName, raceLabel, onSpellClick, onBorrow, o
     const { nc, glyph } = colourOf(sp);
     const src = ctx.sourceOf[id] || 'race';
     const cls = 'pb-tn pb-tc is-' + st8 + (t === 4 ? ' cap' : '') + (selKey === id ? ' sel' : '') + (hoverKey === id ? ' hov' : '') + ' src-' + src + ' can';
+    const aoeTiles = pbAoeTiles(sp);
     const why = st8 === 'sp' ? 'NEEDS ' + t + ' SP · ' + spLeft + ' LEFT' : st8 === 'slots' ? 'NO SLOT · ' + eq.length + '/' + ctx.cap : st8 === 'sealed' ? 'SEALED' : null;
     return h('div', {
       key: id, className: cls, style: { '--nc': nc, animation: shakeKey === id ? 'ewTreeShake 0.3s linear' : undefined },
@@ -1657,11 +1693,13 @@ function SpellTierPanel({ ctx, fc, clsName, raceLabel, onSpellClick, onBorrow, o
       h('span', { className: 'pb-tn-disc' }, st8 === 'sealed' ? '🔒' : glyph),
       h('span', { className: 'pb-tn-text' },
         h('span', { className: 'pb-tn-name' }, sp ? sp.name : id),
+        h('span', { className: 'pb-tc-badges' }, ...pbSpellBadges(sp, 4)),
         h('span', { className: 'pb-tn-meta' },
-          sp && sp.spellType ? h('i', { className: 'pb-tn-type', style: { '--tc': TYPE_C[String(sp.spellType).toLowerCase()] || EW.inkMute }, title: String(sp.spellType).toUpperCase() }, PB_TYPE_GLYPH[String(sp.spellType).toLowerCase()] || '?') : null,
-          ...pbNodeMeta(sp).map(([tx, c], i) => h('em', { key: i, style: c ? { color: c } : undefined }, tx)))),
+          ...pbNodeMeta(sp).filter(([tx]) => !(aoeTiles && /^AOE /.test(tx))).map(([tx, c], i) => h('em', { key: i, style: c ? { color: c } : undefined }, tx)))),
+      aoeTiles,
       h('span', { className: 'pb-tc-side' },
-        h('i', { className: 'pb-tc-src' }, src === 'job' ? 'JOB' : src === 'race' ? 'RACE' : 'BORROWED'),
+        st8 === 'equipped' ? h('i', { className: 'pb-tc-on' }, '✓ EQUIPPED') : null,
+        st8 === 'equipped' ? null : h('i', { className: 'pb-tc-src' }, src === 'job' ? 'JOB' : src === 'race' ? 'RACE' : 'BORROWED'),
         why ? h('i', { className: 'pb-tc-why' }, why) : tag(t)));
   };
   const borrowChip = (t) => {
@@ -1717,13 +1755,14 @@ function SpellTierPanel({ ctx, fc, clsName, raceLabel, onSpellClick, onBorrow, o
     h('span', { className: 'pb-tn-text' },
       h('span', { className: 'pb-tn-name' }, 'Basic Attack'),
       h('span', { className: 'pb-tn-meta' }, h('em', null, 'ALWAYS EQUIPPED · NO SLOT · 0 SP'))));
+  // mondo (2026-09-24): the most powerful at the top — the FINISHER over Tier IV, the basic attack at the foot
   return h('div', { className: 'pb-circuit pb-rack' },
     loadout,
+    finisher ? finStrip() : null,
     h('div', { className: 'pb-tiers' }, ...PB_TIER_ORDER.map(tierRow)),
-    h('div', { className: 'pb-rack-foot' }, root),
-    finisher ? finStrip() : null);
+    h('div', { className: 'pb-rack-foot' }, root));
 
-  /* THE FINISHER strip (2026-09-19): one ☠ row under the rack — the race's
+  /* THE FINISHER strip (2026-09-19; over the rack since 2026-09-24): one ☠ row — the race's
      execution, always ready, the full gauge its price. Not a slot, no SP. */
   function finStrip() {
     const fin = finisher;
@@ -1746,7 +1785,7 @@ function SpellTierPanel({ ctx, fc, clsName, raceLabel, onSpellClick, onBorrow, o
         h('span', { className: 'pb-tn-text' },
           h('span', { className: 'pb-tn-name' }, fin.name),
           h('span', { className: 'pb-tn-meta' },
-            h('i', { className: 'pb-tn-type', style: { '--tc': nc }, title: t.toUpperCase() }, PB_TYPE_GLYPH[t] || '?'),
+            h('span', { className: 'pb-badge', style: pbTypeBadgeStyle(t, 10), title: 'Execution type' }, t.toUpperCase()),
             h('em', null, fin.tagline || ''),
             h('em', { style: { color: fin.built ? nc : EW.inkMute } }, fin.built ? 'BESPOKE' : 'TYPED EXECUTION'),
             h('em', { style: { color: EW.inkMute } }, 'FULL GAUGE + 1 AP')))));
@@ -1825,8 +1864,8 @@ function TechniquePanel({ info, clsName, raceLabel, fc, onVerb, onPreview, previ
     h('div', { className: 'pb-technique-main' },
       h('div', { className: 'pb-technique-kicker' }, kicker),
       h('div', { className: 'pb-technique-name' }, name,
-        sp && sp.spellType ? h('span', { style: { ...pbTypeBadgeStyle(sp.spellType, 8), borderRadius: 999, marginLeft: 8, verticalAlign: 'middle' } }, sp.spellType) : null,
-        sp ? pbDmgIcon(sp, 10) : null),
+        sp ? pbDmgIcon(sp, 12) : null),
+      sp ? h('div', { className: 'pb-technique-badges' }, ...pbSpellBadges(sp, 8), pbAoeTiles(sp, true)) : null,
       h('div', { className: 'pb-technique-desc' }, desc),
       (chips.length || effects.length) ? h('div', { className: 'pb-technique-chips' },
         ...chips.map(([t, c], i) => h('span', { key: 'c' + i, className: 'pb-technique-chip', style: { color: c } }, t)),
@@ -1852,8 +1891,8 @@ function FinisherPanel({ info, raceLabel, onPreview, previewOff, previewing, use
     h('div', { className: 'pb-technique-disc', style: { borderColor: nc, color: TREE_NODE_BG, background: nc } }, fin.glyph || '☠'),
     h('div', { className: 'pb-technique-main' },
       h('div', { className: 'pb-technique-kicker' }, ['☠ FINISHER', 'THE GAUGE\u2019S OTHER VERB', (raceLabel || '').toUpperCase(), fin.built ? 'BESPOKE' : 'TYPED EXECUTION'].filter(Boolean).join(' · ')),
-      h('div', { className: 'pb-technique-name' }, fin.name,
-        h('span', { style: { ...pbTypeBadgeStyle(t, 8), borderRadius: 999, marginLeft: 8, verticalAlign: 'middle' } }, t)),
+      h('div', { className: 'pb-technique-name' }, fin.name),
+      h('div', { className: 'pb-technique-badges' }, h('span', { className: 'pb-badge', style: pbTypeBadgeStyle(t, 10) }, t.toUpperCase())),
       fin.tagline ? h('div', { className: 'pb-technique-tagline', style: { color: nc } }, fin.tagline) : null,
       h('div', { className: 'pb-technique-desc' }, fin.desc || ''),
       fin.built ? null : h('div', { className: 'pb-technique-desc typed-note' }, 'DESIGNED · until its own is built this race plays the ' + t.toUpperCase() + '-type execution.'),

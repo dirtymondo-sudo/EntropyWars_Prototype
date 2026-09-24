@@ -1969,19 +1969,66 @@
         function _hqPauseSpellDesc(sp) { if (!sp) return ''; let d = sp.desc || ''; if (!d) { try { d = (typeof describeSpell === 'function') ? describeSpell(sp) : ''; } catch (e) {} } return d; }
         const _HQ_CIRC_ST_NOTE = { equipped: 'EQUIPPED · CLICK TO UNEQUIP', ok: 'CLICK TO EQUIP', slots: 'NO SLOT · UNEQUIP SOMETHING', sp: 'NOT ENOUGH SP · UNEQUIP SOMETHING', sealed: 'SEALED · NOT ALLOWED IN THIS MODE' };
         const _HQ_CIRC_SRC = { race: '', job: '', borrowRace: 'BORROWED · RACE', borrowJob: 'BORROWED · JOB' };
+        /* THE LOOK PASS (2026-09-24, mondo — the builder's rack and this one read alike): the battle spell menu's
+           badges (hud.js _hrlgSpellBadges — type, element glyph, statuses) + its AOE footprint (hud.js _hrlgSpellShape),
+           as HTML. hud.js is loaded by the time the HQ opens; without it the type badge stands alone. */
+        function _hqCssOf(st) {
+            if (!st) return '';
+            return Object.keys(st).map(k => k.replace(/[A-Z]/g, c => '-' + c.toLowerCase()) + ':' + (typeof st[k] === 'number' && !/^(fontWeight|lineHeight|opacity|zIndex|flex)$/.test(k) ? st[k] + 'px' : st[k])).join(';');
+        }
+        function _hqSpellBadgesHtml(sp, max) {
+            if (!sp) return '';
+            let list = null;
+            try { if (typeof _hrlgSpellBadges === 'function') list = _hrlgSpellBadges(sp); } catch (e) { list = null; }
+            if (!list) {
+                const tc = sp.spellType ? (_HQ_TYPE_COLORS[sp.spellType] || '#aaa') : null;
+                return tc ? `<i class="hq-pp-type" style="--tc:${tc}">${_hqEsc(String(sp.spellType).toUpperCase())}</i>` : '';
+            }
+            return list.slice(0, max || 5).map(b => `<i class="hq-circ-badge" style="${_hqEsc(_hqCssOf(b.style))}"${b.title ? ` title="${_hqEsc(b.title)}"` : ''}>${_hqEsc(b.label)}</i>`).join('');
+        }
+        function _hqAoeTilesHtml(sp) {
+            let shape = null;
+            try { shape = (sp && typeof _hrlgSpellShape === 'function') ? _hrlgSpellShape(sp) : null; } catch (e) { shape = null; }
+            if (!shape) return '';
+            const cells = []; let cols;
+            if (shape.kind === 'line') {
+                cols = shape.len || 4;
+                const rows = Math.min(3, shape.w || 1);
+                for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) cells.push('');
+            } else {
+                const r = Math.min(2, shape.r || 1); cols = r * 2 + 1;
+                for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+                    const on = shape.kind === 'cross' ? (dx === 0 || dy === 0) : shape.kind === 'diamond' ? (Math.abs(dx) + Math.abs(dy) <= r) : true;
+                    cells.push(on ? (dx === 0 && dy === 0 ? 'ctr' : '') : 'off');
+                }
+            }
+            return `<span class="hq-circ-aoe" title="${_hqEsc(shape.label)}" style="grid-template-columns:repeat(${cols}, 6px)">${cells.map(c => `<i${c ? ` class="${c}"` : ''}></i>`).join('')}</span>`;
+        }
+        /* the race's FINISHER at the top of the rack (the most powerful first, the basic attack last) — read-only here */
+        function _hqPauseFinisherHtml(m) {
+            const race = (m && m.meta && m.meta.race) || null;
+            let fin = null;
+            try { fin = race && typeof window.getFinisherDefForRace === 'function' ? window.getFinisherDefForRace(race, []) : null; } catch (e) { fin = null; }
+            if (!fin) return '';
+            const t = String(fin.type || 'anomaly').toLowerCase();
+            const tc = _HQ_TYPE_COLORS[t] || '#aaa';
+            return `<div class="hq-circ-fin" style="--cc:${tc}" title="${_hqEsc((fin.name || '') + ' — ' + (fin.tagline || ''))}"><i class="hq-circ-disc">${_hqEsc(fin.glyph || '☠')}</i><b>☠ FINISHER · ${_hqEsc(fin.name || '')}</b>`
+                + `<span><i class="hq-pp-type" style="--tc:${tc}">${_hqEsc(t.toUpperCase())}</i> ${_hqEsc(fin.tagline || '')}</span><em>FULL GAUGE + 1 AP</em></div>`;
+        }
         function _hqPauseCircuitNodeHtml(m, row) {
             /* one ability of a tier row: category disc + name + type chip / meta + the verdict */
             const id = row.id, sp = row.sp, st = row.st, cost = row.cost;
             const cat = sp ? (_HQ_CAT[sp.type] || _HQ_CAT.utility) : { g: '·', c: '#8a8270' };
-            const tc = sp && sp.spellType ? (_HQ_TYPE_COLORS[sp.spellType] || '#aaa') : null;
-            const verdict = st === 'equipped' ? '●' : st === 'ok' ? `+${cost} SP` : st === 'slots' ? 'NO SLOT' : st === 'sp' ? `NEEDS ${cost} SP` : st === 'sealed' ? 'SEALED' : '';
+            const aoe = _hqAoeTilesHtml(sp);
+            const verdict = st === 'equipped' ? '✓ EQUIPPED' : st === 'ok' ? `+${cost} SP` : st === 'slots' ? 'NO SLOT' : st === 'sp' ? `NEEDS ${cost} SP` : st === 'sealed' ? 'SEALED' : '';
             const src = _HQ_CIRC_SRC[row.source] || '';
             const title = `${sp ? (sp.name || id) : id} — ${_HQ_CIRC_ST_NOTE[st] || ''}${sp ? ' — ' + _hqPauseSpellDesc(sp) : ''}`;
             return `<button type="button" class="hq-circ-node st-${st}${src ? ' borrowed' : ''}" data-party-act="node:${_hqEsc(m.id)}:${_hqEsc(id)}"${st === 'sealed' ? ' disabled' : ''} title="${_hqEsc(title)}" style="--cc:${cat.c}">`
                 + `<i class="hq-circ-disc">${cat.g}</i>`
                 + `<b>${_hqEsc(sp ? (sp.name || id) : id)}</b>`
-                + `<span>${tc ? `<i class="hq-pp-type" style="--tc:${tc}">${_hqEsc(String(sp.spellType).toUpperCase())}</i> ` : ''}${src ? `<i class="hq-circ-src">${_hqEsc(src)}</i> ` : ''}${_hqEsc(_hqPauseSpellMeta(sp))}</span>`
-                + `<em>${_hqEsc(verdict)}</em></button>`;
+                + `<span class="hq-circ-badges">${_hqSpellBadgesHtml(sp)}${src ? `<i class="hq-circ-src">${_hqEsc(src)}</i>` : ''}</span>`
+                + `<span class="hq-circ-meta">${_hqEsc(aoe ? _hqPauseSpellMeta(sp).replace(/ · AOE \d+/, '') : _hqPauseSpellMeta(sp))}</span>`
+                + `<em>${_hqEsc(verdict)}</em>${aoe}</button>`;
         }
         function _hqPauseCircuitHtml(m) {
             const C = (typeof window.hqPartyTreeCircuit === 'function') ? window.hqPartyTreeCircuit(m) : null;
@@ -1993,6 +2040,7 @@
                 + `<span class="hq-circ-tools"><button class="hq-btn hq-btn-xs" data-party-act="spelldef:${_hqEsc(m.id)}" title="The job's four + the race's first two, trimmed to the budget">DEFAULTS</button><button class="hq-btn hq-btn-xs" data-party-act="spellrnd:${_hqEsc(m.id)}">RANDOM</button><button class="hq-btn hq-btn-xs danger" data-party-act="spellclr:${_hqEsc(m.id)}"${C.used ? '' : ' disabled'}>CLEAR</button><button class="hq-btn hq-btn-sm" data-party-act="circuit:${_hqEsc(m.id)}">◂ DONE</button></span></div>`;
             html += `<p class="hq-circ-note">ANY ABILITY, ANY TIER · TIER I–IV COSTS 1–4 SP · ${C.cap} SLOTS · ${spMax} SP${C.isFreelancer ? ' · A FREELANCER BORROWS ANY RACE OR JOB ABILITY' : ''}</p>`;
             if (C.unplaced.length) html += `<p class="hq-circ-note bad">${C.unplaced.length} ABILIT${C.unplaced.length === 1 ? 'Y' : 'IES'} ON THE RECORD NO LONGER FIT THIS UNIT (${_hqEsc(C.unplaced.join(', '))}) — THEY ARE DROPPED AT THE NEXT WRITE</p>`;
+            html += _hqPauseFinisherHtml(m);
             html += `<div class="hq-circ-tiers">`;
             C.tiers.forEach(T => {
                 html += `<div class="hq-circ-tier-row t${T.tier}"><div class="hq-circ-head"><b>TIER ${_hqEsc(T.numeral)}</b><i>${T.cost} SP</i></div><div class="hq-circ-row-nodes">`;

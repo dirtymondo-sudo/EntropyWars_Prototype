@@ -176,3 +176,33 @@ test('the secondary job is retired: no level-15 pick, no bonus, no random second
     assert.ok(!/meta\.secondaryJob = secJob/.test(S), 'the randomizer no longer rolls a second job');
     assert.ok(!/applySecondaryJob\(newUnit/.test(M), 'story / campaign builds no longer apply one');
 });
+
+/* ── THE LOOK PASS (2026-09-24, mondo: lit when equipped · real type badges · the battle menu's element + AOE grid ·
+   the finisher on top · bigger text) — the builder rack and the HQ pause rack both ── */
+test('the look pass: battle badges + AOE grid on every chip, the finisher leads, equipped chips stay lit', () => {
+    for (const sym of ['function pbSpellBadges(sp, max)', 'function pbAoeTiles(sp, big)', "typeof _hrlgSpellBadges === 'function'", "typeof _hrlgSpellShape === 'function'",
+                       "h('span', { className: 'pb-tc-badges' }, ...pbSpellBadges(sp, 4))", "className: 'pb-technique-badges'"]) {
+        assert.ok(PB.includes(sym), 'party-builder.js: ' + sym);
+    }
+    assert.ok(!PB.includes("className: 'pb-tn-type'"), 'the little TYPE circles are gone — the regular type badge replaces them');
+    const panel = PB.slice(PB.indexOf('function SpellTierPanel('), PB.indexOf('function finStrip('));
+    const ret = panel.slice(panel.lastIndexOf("return h('div', { className: 'pb-circuit pb-rack' },"));
+    assert.ok(ret.indexOf('finStrip()') > 0 && ret.indexOf('finStrip()') < ret.indexOf("className: 'pb-tiers'"), 'the finisher sits above Tier IV');
+    assert.ok(ret.indexOf("className: 'pb-tiers'") < ret.indexOf("className: 'pb-rack-foot'"), 'the basic attack closes the rack');
+    assert.ok(/\.pb-tn\.pb-tc\.is-equipped, \.pb-tn\.pb-tc\.is-equipped\.hov, \.pb-tn\.pb-tc\.is-equipped\.can:hover \{\s*background: linear-gradient/.test(CSS), 'an equipped chip keeps its fill, hovered or not');
+    for (const sel of ['.pb-aoe {', '.pb-aoe i.ctr {', '.pb-tc-badges {', '#hqPage .hq-circ-aoe {', '#hqPage .hq-circ-fin {', '#hqPage .hq-circ-node span.hq-circ-badges {']) assert.ok(CSS.includes(sel), 'styles-base.css: ' + sel);
+    const M = read('map.js');
+    for (const sym of ['function _hqSpellBadgesHtml(sp, max)', 'function _hqAoeTilesHtml(sp)', 'function _hqPauseFinisherHtml(m)', 'html += _hqPauseFinisherHtml(m);']) assert.ok(M.includes(sym), 'map.js: ' + sym);
+    const H = read('hud.js');
+    assert.ok(/function _hrlgSpellBadges\(sp, cat, quick\)/.test(H) && /function _hrlgSpellShape\(sp\)/.test(H), 'the battle menu readers the racks borrow');
+    // the grid geometry: a cross r1 lights 5 of 9, the centre marked
+    const blk = PB.slice(PB.indexOf('function pbAoeShape(sp)'), PB.indexOf('function SpellTierPanel('));
+    const ctx = { h: (t, p, ...k) => ({ t, p, k }), _hrlgSpellShape: (sp) => ({ kind: 'cross', r: 1, label: 'Cross r1' }) };
+    vm.createContext(ctx);
+    vm.runInContext(blk + '\nthis.pbAoeTiles = pbAoeTiles;', ctx);
+    const g = ctx.pbAoeTiles({ id: 'x' });
+    const cls = g.k.map(c => c.p.className);
+    assert.strictEqual(cls.length, 9);
+    assert.strictEqual(cls.filter(c => c !== 'off').length, 5);
+    assert.strictEqual(cls[4], 'ctr');
+});

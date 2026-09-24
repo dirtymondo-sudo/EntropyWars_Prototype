@@ -6256,3 +6256,102 @@ body.diorama-3d .tile-underpass.jump::before {
 .cdx-elem-boxrow .ew-elem-box { vertical-align: middle; }
 #hqPage .hq-pp-elem { margin: 4px 0 6px; }
 .pb-elem-box { align-self: flex-start; }
+
+/* THE LOOK PASS (2026-09-24, mondo: "if an ability is selected its background needs to stay lit up … the TYPE
+   circles need to be the regular type badges … the same elemental information and AOE grid as the battle spell
+   menu … the text needs to be bigger"). Every chip is a framed card; an EQUIPPED one is filled in its category
+   colour and keeps that fill (hover only adds a red edge = click to unequip). */
+.pb-rack { --pb-disc: clamp(34px, 4.4vh, 42px); --pb-aoe-cell: 6px; }
+.pb-tier-cells { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 5px 8px; }
+.pb-loadout { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px 5px; }
+.pb-tn.pb-tc { height: auto; min-height: var(--pb-row); align-items: center; padding: 5px 8px 5px 3px; border: 1px solid rgba(255,255,255,0.07); background: rgba(0,0,0,0.22); }
+.pb-tn.pb-tc.hov, .pb-tn.pb-tc.can:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.18); }
+.pb-tn.pb-tc.is-equipped, .pb-tn.pb-tc.is-equipped.hov, .pb-tn.pb-tc.is-equipped.can:hover {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--nc) 42%, #0d0d13) 0%, color-mix(in srgb, var(--nc) 20%, #0d0d13) 100%);
+  border-color: color-mix(in srgb, var(--nc) 85%, #fff);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--nc) 45%, transparent), inset 0 1px 0 rgba(255,255,255,0.18);
+}
+.pb-tn.pb-tc.is-equipped.can:hover { border-color: var(--ph-red); }
+.pb-tn.pb-tc.is-equipped .pb-tn-name { color: #fff; }
+.pb-tn.pb-tc.is-equipped .pb-tn-meta { color: #f1e9cf; }
+.pb-tn.pb-tc.sel { border-color: var(--ph-gold); }
+.pb-tc-on { font-style: normal; font-size: 9px; font-weight: 700; letter-spacing: 0.12em; color: #fff; white-space: nowrap; text-shadow: 0 1px 2px #000; }
+.pb-tc-badges { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; min-width: 0; }
+.pb-tc-badges:empty { display: none; }
+.pb-badge { white-space: nowrap; }
+.pb-tn-text { gap: 3px; }
+.pb-tn-name { font-size: clamp(14px, 1.8vh, 16px); }
+.pb-tn-meta { font-size: 10.5px; line-height: 15px; letter-spacing: 0.06em; }
+.pb-tc-cost { font-size: 11px; padding: 1px 7px; }
+.pb-tc-src { font-size: 8.5px; }
+.pb-tc-why { font-size: 9px; }
+.pb-tier { grid-template-columns: 54px minmax(0, 1fr); }
+.pb-tier-head b { font-size: 22px; }
+.pb-tier-head span { font-size: 10px; }
+.pb-tier-head i { font-size: 9px; }
+.pb-ls { height: 34px; }
+.pb-ls-disc { width: 22px; height: 22px; font-size: 12px; }
+.pb-ls-name { font-size: 13px; }
+.pb-ls-tier { font-size: 10px; }
+.pb-ls.empty i { font-size: 11px; }
+.pb-sp b, .pb-sp small, .pb-pips small { font-size: 11px; }
+.pb-sp-cells i { width: 7px; height: 13px; }
+.pb-fin { margin: 2px 0 4px; }
+.pb-fin-title { font-size: 13px; }
+.pb-fin-tag { font-size: 9.5px; }
+.pb-tn.pb-tn-fin .pb-tn-meta { display: flex; align-items: center; gap: 0; }
+.pb-tn.pb-tn-fin .pb-badge + em { margin-left: 6px; }
+/* the AOE grid — the battle blade's footprint, a size up */
+.pb-aoe { display: grid; gap: 1px; flex: none; align-self: center; margin: 0 2px; }
+.pb-aoe i { display: block; width: var(--pb-aoe-cell); height: var(--pb-aoe-cell); background: var(--nc, #e8e4d8); opacity: 0.85; border-radius: 1px; }
+.pb-aoe i.ctr { opacity: 1; background: #fff; }
+.pb-aoe i.off { opacity: 0.12; }
+.pb-aoe.big { --pb-aoe-cell: 8px; margin-left: 8px; }
+.pb-technique .pb-aoe i { background: var(--tc, #e8e4d8); }
+.pb-technique-badges { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.pb-technique-kicker { font-size: 10px; }
+.pb-technique-name { font-size: 20px; }
+.pb-technique-desc { font-size: 12px; }
+.pb-technique-chip { font-size: 10.5px; padding: 3px 8px 2px; }
+.pb-verb { font-size: 11px; }
+.pb-verb-note, .pb-technique-slots { font-size: 10px; }
+.pb-technique-keys { font-size: 9.5px; }
+.pb-technique-keys kbd { font-size: 9px; }
+/* THE LOOK PASS in the field (2026-09-24): the pause menu's tier rack reads like the builder's — an equipped ability
+   stays lit in its category colour, the battle badges + AOE grid ride each button, the finisher leads, bigger text */
+#hqPage .hq-circ-node { grid-template-rows: auto auto auto; row-gap: 3px; padding: 7px 10px 7px 7px; }
+#hqPage .hq-circ-node .hq-circ-disc { grid-row: 1 / span 3; width: 30px; height: 30px; font-size: 15px; }
+#hqPage .hq-circ-node b { font-size: 16px; }
+#hqPage .hq-circ-node span.hq-circ-badges { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; overflow: visible; font-size: 9px; }
+#hqPage .hq-circ-node span.hq-circ-badges:empty { display: none; }
+#hqPage .hq-circ-node span.hq-circ-meta { font-size: 10.5px; letter-spacing: 0.08em; color: #d9c690; }
+#hqPage .hq-circ-node em { grid-row: 1; font-size: 11px; }
+#hqPage .hq-circ-badge { font-style: normal; white-space: nowrap; }
+#hqPage .hq-pp-type { font-size: 9.5px; }
+#hqPage .hq-circ-node.st-equipped, #hqPage .hq-circ-node.st-equipped:not([disabled]):hover {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--cc, #d9b45a) 42%, #0d0d13) 0%, color-mix(in srgb, var(--cc, #d9b45a) 18%, #0d0d13) 100%);
+  border-color: color-mix(in srgb, var(--cc, #d9b45a) 85%, #fff);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--cc, #d9b45a) 45%, transparent), inset 0 1px 0 rgba(255,255,255,0.18);
+}
+#hqPage .hq-circ-node.st-equipped:not([disabled]):hover { border-color: #ff6a6a; }
+#hqPage .hq-circ-node.st-equipped b { color: #fff; }
+#hqPage .hq-circ-node.st-equipped em { color: #fff; }
+#hqPage .hq-circ-aoe { grid-column: 3; grid-row: 2 / span 2; justify-self: end; display: grid; gap: 1px; }
+#hqPage .hq-circ-aoe i { display: block; width: 6px; height: 6px; background: var(--cc, #e8e4d8); opacity: 0.85; border-radius: 1px; }
+#hqPage .hq-circ-aoe i.ctr { opacity: 1; background: #fff; }
+#hqPage .hq-circ-aoe i.off { opacity: 0.12; }
+#hqPage .hq-circ-row-nodes { grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); }
+#hqPage .hq-circ-tier-row .hq-circ-head b { font-size: 15px; }
+#hqPage .hq-circ-head i { font-size: 9.5px; }
+#hqPage .hq-circ-note { font-size: 10px; }
+#hqPage .hq-circ-count { font-size: 11px; }
+#hqPage .hq-circ-root span { font-size: 9.5px; }
+#hqPage .hq-circ-borrow { font-size: 11px; }
+#hqPage .hq-circ-row span { font-size: 9.5px; }
+#hqPage .hq-circ-row p { font-size: 11.5px; }
+#hqPage .hq-circ-row em { font-size: 10px; }
+#hqPage .hq-circ-fin { display: grid; grid-template-columns: 30px 1fr auto; grid-template-rows: auto auto; column-gap: 8px; row-gap: 3px; align-items: center; margin-top: 12px; padding: 7px 10px 7px 7px; border: 1px solid color-mix(in srgb, var(--cc) 60%, transparent); background: linear-gradient(90deg, color-mix(in srgb, var(--cc) 20%, #0d0d13), rgba(0,0,0,0.2)); }
+#hqPage .hq-circ-fin .hq-circ-disc { grid-row: 1 / span 2; width: 30px; height: 30px; font-size: 15px; }
+#hqPage .hq-circ-fin b { font-family: 'Cormorant SC', serif; font-size: 16px; letter-spacing: 0.08em; color: #ffe08a; }
+#hqPage .hq-circ-fin span { grid-column: 2; font-size: 10.5px; letter-spacing: 0.08em; color: #d9c690; }
+#hqPage .hq-circ-fin em { grid-column: 3; grid-row: 1 / span 2; font-style: normal; font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.1em; color: #b8a060; white-space: nowrap; }
