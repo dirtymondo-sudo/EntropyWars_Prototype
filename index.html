@@ -254,12 +254,12 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Caveat:wght@500;700&family=Cinzel:wght@700;900&family=Cinzel+Decorative:wght@400;700;900&family=Cormorant+SC:wght@500;600;700&family=DotGothic16&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=IBM+Plex+Mono:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-base.css?v=20260924-spell-craft-01-cors">
-    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-animations.css?v=20260924-spell-craft-01-cors">
-    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-cinematic.css?v=20260924-spell-craft-01-cors">
-    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-hud.css?v=20260924-spell-craft-01-cors">
+    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-base.css?v=20260924-spell-craft-02-cors">
+    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-animations.css?v=20260924-spell-craft-02-cors">
+    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-cinematic.css?v=20260924-spell-craft-02-cors">
+    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-hud.css?v=20260924-spell-craft-02-cors">
 
-    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-editor.css?v=20260924-spell-craft-01-cors">
+    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-editor.css?v=20260924-spell-craft-02-cors">
     <!-- Three.js r128 for game board renderer -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <!-- Three.js r128 postprocessing (bloom + FXAA) — adds to global THREE -->
@@ -277,7 +277,7 @@
     <!-- THREE.CSS2DRenderer — DOM labels synced to 3D camera (nameplates, nexus bars) -->
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/renderers/CSS2DRenderer.js"></script>
     <!-- THREE.MeshLine — thick 3D lines for lightning bolts -->
-    <script src="https://cdn.entropywars.net/THREE.MeshLine.js?v=20260924-spell-craft-01-cors"></script>
+    <script src="https://cdn.entropywars.net/THREE.MeshLine.js?v=20260924-spell-craft-02-cors"></script>
     <!-- THREE.OBJLoader — real 3D foliage/tree models (Entropy Vale natural maps) -->
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
     <!-- THREE.GLTFLoader — esoteric background props from /Assets/misc (Pyramid.glb)
@@ -418,6 +418,47 @@
         }
         .lobby-status.connected {
             color: var(--green, #55d38a);
+        }
+        /* THE HIT READ (SPELL_DIRECTOR_PLAN §5 Phase 2) — 2D-board fallback
+           for battle.js _hitReadDressDom. The 3D renderer's canvas pops get
+           the same read painted in (battle.js _hitReadDress3D). Vars:
+           --hr-color (type colour, absent on untyped hits), --hr-glow,
+           --hr-scale (the swell, 1 → EW_HIT_READ.maxScale). */
+        .dio-float-text.hr {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.15em;
+            color: var(--hr-color, inherit);
+            transform-origin: 50% 60%;
+            animation: hrPunch 0.28s cubic-bezier(0.2, 1.6, 0.4, 1) both;
+            scale: var(--hr-scale, 1);
+        }
+        .dio-float-text.hr .hr-glyph {
+            font-size: 0.8em;
+            filter: drop-shadow(0 0 4px var(--hr-glow, #fff));
+        }
+        .dio-float-text.hr .hr-crit {
+            font-size: 0.5em;
+            font-weight: 900;
+            letter-spacing: 0.06em;
+            color: #1c0c00;
+            background: #ffc21a;
+            border: 2px solid #3a1a00;
+            border-radius: 3px;
+            padding: 0 0.3em;
+            transform: rotate(-14deg) translateY(-0.7em);
+            box-shadow: 0 0 0 3px rgba(255, 248, 214, 0.85), 0 0 10px rgba(255, 210, 60, 0.8);
+        }
+        .dio-float-text.hr.hr-resist {
+            filter: saturate(0.35) brightness(0.78);
+        }
+        .dio-float-text.hr.hr-kill {
+            text-shadow: 0 0 10px var(--hr-glow, #ff5a3a), 0 0 22px var(--hr-glow, #ff5a3a);
+        }
+        @keyframes hrPunch {
+            0%   { transform: scale(0.4); }
+            55%  { transform: scale(1.3); }
+            100% { transform: scale(1); }
         }
     </style>
 </head>
@@ -634,7 +675,7 @@
                 <div class="door-ident-skip">CLICK TO SKIP</div>
             </div>
             <div class="title-art-wrap">
-                <video src="https://cdn.entropywars.net/Assets/Entropy%20Wars_Static%20Logo.mp4?v=20260924-spell-craft-01-cors" class="title-art" autoplay muted loop playsinline disablePictureInPicture></video>
+                <video src="https://cdn.entropywars.net/Assets/Entropy%20Wars_Static%20Logo.mp4?v=20260924-spell-craft-02-cors" class="title-art" autoplay muted loop playsinline disablePictureInPicture></video>
             </div>
             <div class="title-characters">
                 <div class="title-sprite sprite-steve"></div>
@@ -1364,18 +1405,18 @@
 
     <!-- External dependencies -->
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-    <script src="https://cdn.entropywars.net/sprites.js?v=20260924-spell-craft-01-cors"></script>
+    <script src="https://cdn.entropywars.net/sprites.js?v=20260924-spell-craft-02-cors"></script>
     <script>window._spritesLoaded = true; window._EW_BUILD_TOKEN = '20260803h-cors';</script>
     <script>
     // NOTE: crossorigin="anonymous" removed from display <img> tags.
     // Only _getCachedImg (canvas compositing) uses CORS mode.
     </script>
-    <script src="https://cdn.entropywars.net/data.js?v=20260924-spell-craft-01-cors"></script>
+    <script src="https://cdn.entropywars.net/data.js?v=20260924-spell-craft-02-cors"></script>
     <script>
       // Fallback: if local data.js didn't load, try CDN
       if (typeof SPELL_LIBRARY === 'undefined') {
         var _djs = document.createElement('script');
-        _djs.src = 'https://cdn.entropywars.net/data.js?v=20260924-spell-craft-01-cors';
+        _djs.src = 'https://cdn.entropywars.net/data.js?v=20260924-spell-craft-02-cors';
         document.head.appendChild(_djs);
       }
     </script>
@@ -1533,23 +1574,23 @@
 
 
     <!-- React (for Party Builder UI) -->
-    <script src="https://cdn.entropywars.net/react.production.min.js?v=20260924-spell-craft-01-cors"></script>
-    <script src="https://cdn.entropywars.net/react-dom.production.min.js?v=20260924-spell-craft-01-cors"></script>
+    <script src="https://cdn.entropywars.net/react.production.min.js?v=20260924-spell-craft-02-cors"></script>
+    <script src="https://cdn.entropywars.net/react-dom.production.min.js?v=20260924-spell-craft-02-cors"></script>
 
     <!-- Game modules -->
-    <script src="https://cdn.entropywars.net/state.js?v=20260924-spell-craft-01-cors"></script>
-    <script src="https://cdn.entropywars.net/audio.js?v=20260924-spell-craft-01-cors"></script>
-    <script src="https://cdn.entropywars.net/map.js?v=20260924-spell-craft-01-cors"></script>
+    <script src="https://cdn.entropywars.net/state.js?v=20260924-spell-craft-02-cors"></script>
+    <script src="https://cdn.entropywars.net/audio.js?v=20260924-spell-craft-02-cors"></script>
+    <script src="https://cdn.entropywars.net/map.js?v=20260924-spell-craft-02-cors"></script>
     <!-- Three.js renderer — three-camera.js must load before battle.js, three-renderer.js after -->
-    <script src="https://cdn.entropywars.net/three-camera.js?v=20260924-spell-craft-01-cors"></script>
-    <script src="https://cdn.entropywars.net/battle.js?v=20260924-spell-craft-01-cors"></script>
-    <script src="https://cdn.entropywars.net/three-post.js?v=20260924-spell-craft-01-cors"></script>
-    <script src="https://cdn.entropywars.net/three-renderer.js?v=20260924-spell-craft-01-cors"></script>
-    <script src="https://cdn.entropywars.net/three-vfx.js?v=20260924-spell-craft-01-cors"></script>
-    <script src="https://cdn.entropywars.net/three-lightning.js?v=20260924-spell-craft-01-cors"></script>
-    <script src="https://cdn.entropywars.net/three-vfx-effects.js?v=20260924-spell-craft-01-cors"></script>
-    <script src="https://cdn.entropywars.net/ui.js?v=20260924-spell-craft-01-cors"></script>
-    <script src="https://cdn.entropywars.net/profile.js?v=20260924-spell-craft-01-cors"></script>
+    <script src="https://cdn.entropywars.net/three-camera.js?v=20260924-spell-craft-02-cors"></script>
+    <script src="https://cdn.entropywars.net/battle.js?v=20260924-spell-craft-02-cors"></script>
+    <script src="https://cdn.entropywars.net/three-post.js?v=20260924-spell-craft-02-cors"></script>
+    <script src="https://cdn.entropywars.net/three-renderer.js?v=20260924-spell-craft-02-cors"></script>
+    <script src="https://cdn.entropywars.net/three-vfx.js?v=20260924-spell-craft-02-cors"></script>
+    <script src="https://cdn.entropywars.net/three-lightning.js?v=20260924-spell-craft-02-cors"></script>
+    <script src="https://cdn.entropywars.net/three-vfx-effects.js?v=20260924-spell-craft-02-cors"></script>
+    <script src="https://cdn.entropywars.net/ui.js?v=20260924-spell-craft-02-cors"></script>
+    <script src="https://cdn.entropywars.net/profile.js?v=20260924-spell-craft-02-cors"></script>
     <script>
     // First-launch: if no profile exists after migration, open profile creation on ENTER click
     (function() {
@@ -1579,14 +1620,14 @@
         }
     })();
     </script>
-    <script src="https://cdn.entropywars.net/party-builder.js?v=20260924-spell-craft-01-cors"></script>
-    <script src="https://cdn.entropywars.net/match-select.js?v=20260924-spell-craft-01-cors"></script>
-    <script src="https://cdn.entropywars.net/online.js?v=20260924-spell-craft-01-cors"></script>
+    <script src="https://cdn.entropywars.net/party-builder.js?v=20260924-spell-craft-02-cors"></script>
+    <script src="https://cdn.entropywars.net/match-select.js?v=20260924-spell-craft-02-cors"></script>
+    <script src="https://cdn.entropywars.net/online.js?v=20260924-spell-craft-02-cors"></script>
     <!-- AI v4 (2026-08-15): ONE unified brain — the ainew.js overlay was
          merged into ai.js and deleted. Do not re-add an ainew.js tag. -->
-    <script src="https://cdn.entropywars.net/ai.js?v=20260924-spell-craft-01-cors"></script>
+    <script src="https://cdn.entropywars.net/ai.js?v=20260924-spell-craft-02-cors"></script>
     <!-- React HUD overlay (Codex visual system) -->
-    <script src="https://cdn.entropywars.net/hud.js?v=20260924-spell-craft-01-cors"></script>
+    <script src="https://cdn.entropywars.net/hud.js?v=20260924-spell-craft-02-cors"></script>
 
     <!-- ── Shader Sky Background (Three.js volumetric terrain) ── -->
     <script type="module">

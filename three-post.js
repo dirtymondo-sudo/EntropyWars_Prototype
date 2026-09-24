@@ -512,6 +512,40 @@ const ThreePost = (function () {
         v.set(_gv1.x * 0.5 + 0.5, _gv1.y * 0.5 + 0.5, Math.max(0.02, Math.min(2.0, r)));
     }
 
+    // ── THE IMPACT RIPPLE ───────────────────────────────────────────────
+    // The one screen effect THE FEVER kept (SPELL_DIRECTOR_PLAN "THE FEVER,
+    // cut down" #1): a heat-shimmer shockwave — a thin ring of refraction
+    // that races out of the hit point and thins as it goes. It reads as
+    // force, not as a style, and it plays on ULTIMATE hits only (the
+    // caller, three-vfx-effects.js _crImpactRipple, decides). Scaled by the
+    // Impact FX slider; EW_DISABLE_RIPPLE kills it. One ring at a time — a
+    // new hit restarts it. pt = a WORLD point {x, y, z}.
+    var _ripple = { live: false, t0: 0, ms: 700, amp: 0, pt: null, r1: 0.55 };
+    var _rpV = null;
+    function impactRipple(pt, o) {
+        if (!pt || _impactFx <= 0) return;
+        if (typeof window !== 'undefined' && window.EW_DISABLE_RIPPLE) return;
+        o = o || {};
+        _ripple.live = true; _ripple.t0 = performance.now();
+        _ripple.ms = o.ms || 700;
+        _ripple.amp = Math.min(0.05, (o.amp != null ? o.amp : 0.022)) * Math.min(1.2, _impactFx);
+        _ripple.r1 = o.r1 || 0.55;
+        _ripple.pt = { x: pt.x, y: pt.y, z: pt.z };
+    }
+    function _rippleTick(cam, nowMs) {
+        if (!_cinematicPass) return 0;
+        var u = _cinematicPass.material.uniforms['uRipple'].value;
+        if (!_ripple.live || !cam) { if (u.w !== 0) u.w = 0; return 0; }
+        var t = (nowMs - _ripple.t0) / _ripple.ms;
+        if (t >= 1) { _ripple.live = false; u.w = 0; return 0; }
+        if (!_rpV) _rpV = new THREE.Vector3();
+        _rpV.set(_ripple.pt.x, _ripple.pt.y, _ripple.pt.z).project(cam);
+        if (_rpV.z > 1) { u.w = 0; return 0; }
+        var e = 1 - (1 - t) * (1 - t);
+        u.set(_rpV.x * 0.5 + 0.5, _rpV.y * 0.5 + 0.5, 0.02 + _ripple.r1 * e, _ripple.amp * (1 - t) * (1 - t));
+        return u.w;
+    }
+
     function setImpactFx(v) {
         var s = parseFloat(v);
         if (isNaN(s)) return;
@@ -638,7 +672,10 @@ const ThreePost = (function () {
             'uGradeTintAmt':  { value: 0.0 },
             // THE POST PASS 6.4 (2026-09-21): a zoom blur toward uMotionCenter — the deck at speed, a long fall
             'uMotion':        { value: 0.0 },
-            'uMotionCenter':  { value: new THREE.Vector2(0.5, 0.5) }
+            'uMotionCenter':  { value: new THREE.Vector2(0.5, 0.5) },
+            // THE IMPACT RIPPLE (SPELL_DIRECTOR_PLAN "THE FEVER, cut down" #1, 2026-09-24): centre uv, radius (screen
+            // heights), strength — a heat-shimmer ring racing out of an ultimate's hit
+            'uRipple':        { value: new THREE.Vector4(0.5, 0.5, 0.0, 0.0) }
         },
         vertexShader: [
             'varying vec2 vUv;',
@@ -672,6 +709,7 @@ const ThreePost = (function () {
             'uniform float uChromaRadial;',
             'uniform float uMotion;',
             'uniform vec2 uMotionCenter;',
+            'uniform vec4 uRipple;',
             '// 6.4 MOTION BLUR: eight taps back along the ray from the blur centre; a zero amount is the plain fetch',
             'vec4 fetchC(vec2 p) {',
             '  if (uMotion < 0.001) return texture2D(tDiffuse, p);',
@@ -724,6 +762,17 @@ const ThreePost = (function () {
             '      sin(uv.y * 11.0 + wt) * 0.65 + sin(uv.y * 27.0 - wt * 1.7) * 0.35,',
             '      cos(uv.x * 13.0 - wt * 1.3) * 0.65 + cos(uv.x * 21.0 + wt * 2.2) * 0.35',
             '    ) * uWarp;',
+            '    uv = clamp(uv, vec2(0.0005), vec2(0.9995));',
+            '  }',
+            '',
+            '  // ── the impact ripple: a thin ring of refraction racing out of the hit ──',
+            '  if (uRipple.w > 0.00001) {',
+            '    vec2 rasp = vec2(uResolution.x / max(1.0, uResolution.y), 1.0);',
+            '    vec2 rd = (uv - uRipple.xy) * rasp;',
+            '    float rl = length(rd);',
+            '    float rr = rl - uRipple.z;',
+            '    float band = exp(-rr * rr * 1400.0) - 0.5 * exp(-(rr + 0.03) * (rr + 0.03) * 1400.0);',
+            '    uv -= (rd / max(rl, 0.0001)) / rasp * band * uRipple.w;',
             '    uv = clamp(uv, vec2(0.0005), vec2(0.9995));',
             '  }',
             '',
@@ -2430,6 +2479,7 @@ const ThreePost = (function () {
             }
         }
         var _mb = _motionTick(_nowMs);   // 6.4: a battle never feeds it, so it decays to 0 here
+        var _rip = _rippleTick(cam, _nowMs);
         if (_cinematicPass) {
             var _ng = _nightF * _lkNum('nightMood', _nightMood) * 0.85;
             if (_fieldLight) _ng = 0;   // THE FIELD LIGHT: the room wears no night grade
@@ -2442,6 +2492,7 @@ const ThreePost = (function () {
             var _lc = _lkCin();
             _cinematicPass.enabled = !!(_lc.crt || _lc.vignette || _ng > 0.001
                 || _gk > 0.001 || _kick > 0.01 || _mb > 0.001);
+            if (_rip > 0.00001) _cinematicPass.enabled = true;   // a live impact ripple needs the pass too
         }
         // Exposure is pulled down for a plain dramaDim, but NOT while a
         // spotlight beat is running: exposure is global, and dimming the
@@ -2894,6 +2945,7 @@ const ThreePost = (function () {
         setNightMood: setNightMood,
         getNightMood: getNightMood,
         bloomPulse: bloomPulse,
+        impactRipple: impactRipple,
         dramaDim: dramaDim,
         dramaClear: dramaClear,
         getDramaDim: getDramaDim,

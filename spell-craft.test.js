@@ -136,3 +136,109 @@ test('the plan records the revision: the fever is opt-in, THE CRAFT and THE ONE 
     assert.match(PLAN, /### THE FEVER, cut down/);
     assert.match(PLAN, /## 12\. THE CROSSOVER TABLE/);
 });
+
+/* ── the second slice (2026-09-24, session 2): gatling · shards · ribbons · the gun line ── */
+
+test('the gatling: a bullet line is a burst of lite tracers; the laser is only the fallback', () => {
+    for (const fn of ['_crGatling', '_crShards', '_crTagShards', '_crBoltRibbon', '_crTank', '_crCatKey'])
+        assert.match(KIT, new RegExp('function ' + fn + '\\('), fn);
+    const fb = between(FX, '    function _fireBeamMapped(', '    function _fireBoltMapped(');
+    assert.match(fb, /if \(beamDef\.beamGatling && typeof _crGatling === 'function' &&\n\s+_crGatling\(fromX, fromY, hitTiles, beamDef\)\) return;/);
+    assert.ok(fb.indexOf('_crGatling(') < fb.indexOf('_spawnLaserBeam3D('), 'the burst is decided before the laser');
+    const gat = between(KIT, '    function _crGatling(', '    /* ── THE SHARD KIT');
+    assert.match(gat, /_crGunShot\(from, to, fly, \{ lite: true \}\)/);
+    assert.match(gat, /_fxDelay\(/);
+    for (const id of ['raceChoppa_beam', '_turretBlast_beam', 'raceSuppressiveFire_beam'])
+        assert.match(KIT, new RegExp("EFFECTS\\['" + id + "'\\][^\\n]*beamGatling|'" + id + "'\\] = Object\\.assign\\([^\\n]*\\n\\s+beamGatling: true"), id);
+    assert.match(KIT, /SPELL_MAP\['raceSuppressiveFire'\]\.beam = 'raceSuppressiveFire_beam'/, 'Suppressive Fire stops borrowing the plasma beam');
+    const gun = between(KIT, '    function _crGunShot(', '    /* ── EXPLOSIONS');
+    assert.match(gun, /lite = !!o\.lite && !heavy/);
+    assert.match(gun, /if \(!lite\) _crLight\(from\.x/, 'a burst round carries no light of its own');
+});
+
+test('the shard kit: ice / rock recipes shatter real shards; named bone / crystal spells too; capped', () => {
+    const se = between(FX, '    function _spawnEffect(', '    function _emitLayer(');
+    assert.match(se, /var shard = effectDef\._crShard;/);
+    assert.match(se, /_crShards\(anchor\.tx, anchor\.ty, shard\.kind, shard\)/);
+    const kit = between(KIT, '    function _crShards(', '    /* named spells');
+    assert.match(kit, /flatShading: true/);
+    assert.match(kit, /_CR_SHARD_ALL\) return null/, 'a 25-tile quake cannot take every signature slot');
+    const data = JSON.parse(FX.match(/var _EFX_DATA = (\{.*?\});\n/s)[1]);
+    const ctx = { EFFECTS: {}, SPELL_MAP: data.S, Object };
+    for (const [id, e] of Object.entries(data.E)) {
+        ctx.EFFECTS[id] = { layers: e.L ? e.L.map(l => ({ sprite: l.s, delayMs: l.d || 0 })) : undefined };
+        if (e.ice) ctx.EFFECTS[id].impactCenterEffect = e.ice;
+        if (e.ite) ctx.EFFECTS[id].impactTileEffect = e.ite;
+    }
+    vm.runInNewContext(between(KIT, '    var _CR_SHARD_SPELLS', '    _crTagShards();') + '_crTagShards();', ctx);
+    const kindOf = id => ctx.EFFECTS[id] && ctx.EFFECTS[id]._crShard && ctx.EFFECTS[id]._crShard.kind;
+    assert.equal(kindOf('raceIceSpear_impact'), 'ice');
+    assert.equal(kindOf('sharedFlashFreeze_tile'), 'ice');
+    assert.equal(kindOf('raceStonefall_impact'), 'stone');
+    assert.equal(kindOf('raceBoneToss_impact_v2'), 'bone');
+    assert.equal(kindOf('racePrismBurst_impact'), 'crystal');
+    assert.equal(kindOf('raceStoneSkin_burst'), undefined, 'a self-buff burst does not shatter');
+    assert.equal(kindOf('raceGiftOfHealing_burst_v2'), undefined, 'a heal never shatters');
+    assert.equal(ctx.EFFECTS._earth_impact_tile._crShard.lite, true, 'an AoE tile goes lite');
+});
+
+test('ribbon trails: a bolt pulls a 3D ribbon on its first frame; a tracer does not', () => {
+    const tick = between(FX, '    function _tickBolts(dt) {', '    function _fireAoeMapped(');
+    assert.match(tick, /if \(e\.elapsed === 0 && !e\.tracer && typeof _crBoltRibbon === 'function'\)/);
+    const mapped = between(FX, '    function _fireBoltMapped(', '    function fireBoltDirect(');
+    const direct = between(FX, '    function fireBoltDirect(', '    function _tickBolts(');
+    for (const src of [mapped, direct]) assert.match(src, /tracer: tracer,/);
+    const rib = between(KIT, '    function _crBoltRibbon(', '    /* THE GATLING\'s lanes');
+    assert.match(rib, /_sigRunOwned\(group, e\.durMs \+ tailMs \+ 40/);
+    assert.match(rib, /_crBeamPalette\(e\.spellId \|\| null, null\)/, 'the ribbon wears the spell\'s colour');
+});
+
+test('THE ONE MODEL: Artillery Strike fires from the Area 51 tank; the caster rides the descent, fog-gated per side', () => {
+    assert.match(KIT, /SPELL_MAP\['raceArtilleryStrike'\]\.tank = 'military_tank'/);
+    assert.match(between(FX, '    function _fireDescent(', '        var aoeRadius'), /_crTank\(SPELL_MAP\[spellId\]\.tank, params\.cx, params\.cy, tx, ty\)/);
+    const tank = between(KIT, '    function _crTank(', '    /* ── HQ catalogue props');
+    assert.match(tank, /window\._isTileVisibleToViewer\(cx, cy\)\) return null/);
+    assert.match(tank, /getMiscModelClone\(kind \|\| 'military_tank'/);
+    assert.match(BT, /VFX\.fire\('descent', spell\.id, \{ tx: target\.x, ty: target\.y,\n\s+cx: unit \? unit\.x : undefined, cy: unit \? unit\.y : undefined \}\)/);
+    const wl = between(ON, "VFX3D.fire = function(phase, spellId, params) {", "_emit('relay', {");
+    assert.ok(wl.includes("'cx', 'cy'"), 'the relay carries the caster');
+    assert.match(FX, /var _WPN_DRIP_MISC = \[[^\]]*'military_tank'/);
+});
+
+test('THE ONE MODEL: the Neuralyzer holds the HQ desk pen; Hit and Run lands as the crashed car', () => {
+    assert.match(KIT, /var _CR_CAT_PROPS = \[[^\]]*'pen'/);
+    const neu = between(FX, '    function _sigNeuralyzer3D(', '        var cone = new THREE.Mesh');
+    assert.match(neu, /_crCatKey\('pen'\)/);
+    assert.match(neu, /_wpnInstance\(penKey, ts \* 0\.5\)/);
+    assert.match(neu, /var tube = new THREE\.Mesh/, 'the chrome tube stays the fallback');
+    const hr = between(FX, '    function _sigHitAndRun3D(', '    /* ── THE STOMP');
+    assert.match(hr, /getMiscModelClone\('crashed_car'/);
+    assert.match(hr, /if \(wreck\) \{ wreck\.visible = true; car\.visible = false;/);
+});
+
+test('THE ONE MODEL: Hit and Run drives the honda civic; the giant\'s and the seraphim\'s great eye are the astral eye', () => {
+    const hr = between(FX, '    function _sigHitAndRun3D(', '    /* ── THE STOMP');
+    assert.match(hr, /ThreeRenderer\.sedan\(\{ metres: carLen \/ ts \* 1\.75 \}\)/);
+    assert.match(hr, /if \(!sedan && window\.ThreeRenderer && ThreeRenderer\.getMiscModelClone\)/, 'the misc cars only stand in');
+    assert.match(TR, /sedan: function \(o\) \{ return _spellSedan\(o\); \}/);
+    assert.match(TR, /astralEye: function \(o\) \{ return _spellAstralEye\(o\); \}/);
+    assert.match(between(FX, '    function _sigFeeFiFoFum3D(', '        /* the mill'), /_crAstralEye\(ts \* 1\.1, 0x3a6a3a\)/);
+    const bna = between(FX, '    function _sigBeNotAfraid3D(', '    _FIN_STAGE');
+    assert.match(bna, /_crAstralEye\(ts \* 0\.55, 0xff9a2a\)/);
+    assert.match(bna, /if \(bigAstral\) _crFadeTree\(bigAstral, op\)/);
+    assert.match(KIT, /m\._crBaseOp = m\.transparent \? m\.opacity : 1/, 'the cornea keeps its own opacity under a fade');
+});
+
+test('THE IMPACT RIPPLE: ultimates only, from fire(), a band in the cinematic pass with its own kill-switch', () => {
+    const POST = fs.readFileSync(path.join(R, 'three-post.js'), 'utf8');
+    assert.match(POST, /'uRipple':\s+\{ value: new THREE\.Vector4/);
+    assert.match(POST, /'uniform vec4 uRipple;'/);
+    assert.match(POST, /impactRipple: impactRipple,/);
+    assert.match(POST, /window\.EW_DISABLE_RIPPLE/);
+    assert.match(POST, /if \(_rip > 0\.00001\) _cinematicPass\.enabled = true;/, 'a live ripple keeps the cinematic pass on');
+    const f = between(FX, '    function fire(intent, spellId, params) {', "        if (intent === 'descent')  { _fireDescent");
+    assert.match(f, /_crImpactRipple\(intent, spellId, params \|\| \{\}\)/);
+    const rip = between(KIT, '    function _crImpactRipple(', '    /* ═');
+    assert.match(rip, /if \(w !== 'ultimate'\) return;/);
+    assert.match(rip, /getDescentTotalMs\(spellId\)/, 'a descent ripples when the warhead lands');
+});

@@ -22995,8 +22995,8 @@ const ThreeRenderer = (function () {
             _objectsDirty = true;
             _horizonFogDirty = true;   // a horizon misc model (pyramid/eye) just filled in — re-apply fog
         }
-        function _onErr() { e.loading = false; e.failed = true; e.cbs.length = 0; rec.settle(false); }
-        function _onDrop() { if (_miscModelCache[url] === e) delete _miscModelCache[url]; e.loading = false; e.cbs.length = 0; rec.settle(false, true); }
+        function _onErr() { e.loading = false; e.failed = true; e.cbs.length = 0; rec.settle(false); _oneFileNotify(e, false); }
+        function _onDrop() { if (_miscModelCache[url] === e) delete _miscModelCache[url]; e.loading = false; e.cbs.length = 0; rec.settle(false, true); _oneFileNotify(e, true); }
         _scheduleModelLoad(function (done) {
         function loaded(res) { try { _onLoad(res); } finally { done(); } }
         function failed() { try { _onErr(); } finally { done(); } }
@@ -23018,6 +23018,62 @@ const ThreeRenderer = (function () {
         }
         attempt(url, false);
         }, url, bg, _onDrop);
+    }
+
+    /* THE ONE LOADER PER FILE (SPELL_DIRECTOR_PLAN §12 "the loader gap", 2026-09-24 — the user's rule: one model per
+       thing, everywhere it appears). The spells' weapon cache (three-vfx-effects.js `_wpnCache`, keyed by _WPN_MODELS key)
+       and this misc cache (`_miscModelCache`, keyed by URL) were separate, so a file BOTH sides draw — the F22
+       (`jet` ⇄ Area 51's `fighter_jet`, `base: 'weapons'`), the iron cannon (`cannon` ⇄ the Dutchman / `ship_cannon`),
+       the Triangle UFO (`ufo`), the master sword (`sword` ⇄ Excalibur's rock, `sword_stone`), the bones (`femur` / `ulna`
+       / `skull` ⇄ the graves), the candle, the crystal ball, the pistol — was fetched, parsed and held TWICE. Now the
+       weapon loader's GLB call (`ThreeRenderer.assetGltf`, what `_wpnLoad` already calls) goes through `_oneFileGltf`:
+       the misc cache entry for that URL IS the file — cached → the weapon side gets the same root at once; streaming →
+       it joins the entry's callbacks; neither → it loads through the store and PUBLISHES its root into the misc cache
+       (an in-flight entry first, so a misc request made meanwhile joins it instead of fetching again). Both sides only
+       ever CLONE the root (`_wpnInstance` clones its materials; the misc instances re-pick theirs), so sharing it is
+       safe. A misc entry that fails reports to its weapon joiners (the weapon side keeps its own retry); a DROPPED
+       queued entry (a room left before it started) re-runs the weapon request on its own. */
+    function _oneFileNotify(e, dropped) {
+        var x = e && e.xcbs; if (!x || !x.length) return;
+        var list = x.splice(0);
+        for (var i = 0; i < list.length; i++) { try { list[i](!!dropped); } catch (_e) {} }
+    }
+    function _oneFileGltf(url, onLoad, onError, o) {
+        var me = _miscModelCache[url];
+        if (me && me.root) { onLoad({ scene: me.root, scenes: [me.root], _ewOneFile: true }); return; }
+        if (me && me.loading) {
+            me.cbs.push(function (root) { onLoad({ scene: root, scenes: [root], _ewOneFile: true }); });
+            (me.xcbs || (me.xcbs = [])).push(function (dropped) {
+                if (dropped) _oneFileGltf(url, onLoad, onError, o);
+                else if (onError) onError(new Error('[ThreeRenderer] the shared model failed: ' + url));
+            });
+            _alJoin(me._alRec);
+            return;
+        }
+        if (me && me.failed) { _asGltf(url, onLoad, onError, o); return; }   // the misc side gave up on it: the weapon side tries on its own (no publish)
+        var e = _miscModelCache[url] = { root: null, loading: true, failed: false, cbs: [], xcbs: [], _alRec: (o && o.rec) || null, _ewOneFile: true };
+        _asGltf(url, function (gltf) {
+            var root = gltf && (gltf.scene || (gltf.scenes && gltf.scenes[0]));
+            if (root && _miscModelCache[url] === e) {
+                try {
+                    _compactMobileModelTextures(root);
+                    root.traverse(function (n) { if (n.isMesh && n.geometry) n.geometry._ew_shared = true; });
+                    root._ew_bbox = new THREE.Box3().setFromObject(root);
+                    e.root = root; e.loading = false;
+                    var cbs = e.cbs.splice(0);
+                    for (var i = 0; i < cbs.length; i++) { try { cbs[i](root); } catch (_e) {} }
+                    e.xcbs.length = 0;
+                    _objectsDirty = true;
+                } catch (ex) { if (_miscModelCache[url] === e) delete _miscModelCache[url]; e.loading = false; e.cbs.length = 0; }
+            } else if (!root && _miscModelCache[url] === e) { delete _miscModelCache[url]; e.loading = false; e.cbs.length = 0; _oneFileNotify(e, true); }
+            onLoad(gltf);
+        }, function (err) {
+            /* forget the in-flight entry (a later misc request loads it itself); a misc waiter's callback is dropped, the
+               same "ignored on failure" rule _loadMiscModel keeps — its procedural stand-in stays */
+            if (_miscModelCache[url] === e) delete _miscModelCache[url];
+            e.loading = false; e.cbs.length = 0; _oneFileNotify(e, true);
+            if (onError) onError(err);
+        }, o);
     }
 
     // Return a Group that fills (async) with a normalized instance of a misc
@@ -24578,18 +24634,39 @@ const ThreeRenderer = (function () {
         var dome = new THREE.Mesh(
             new THREE.SphereGeometry(R * 0.34, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2), domeMat);
         _hzAt(g, dome, 0, hullY + R * 0.14, 0);
+        var procHull = [hull, rim, dome];   // THE ONE MODEL (2026-09-24): what the saucer_lg GLB replaces (below)
         for (var i = 0; i < 10; i++) {                                  // rim lights
             var a = i * Math.PI * 2 / 10;
             var lm = _hzGlowMat(0xaaffcc, 0.75);
             var l = new THREE.Mesh(new THREE.SphereGeometry(R * 0.045, 6, 5), lm);
             _hzAt(g, l, Math.cos(a) * R * 0.88, hullY - R * 0.02, Math.sin(a) * R * 0.88);
             if (i < 3) _hzPulse(lm, l, 0.3, 0.1, 0.9 + i * 0.4);
+            procHull.push(l);
         }
         var strutMat = _hzGeoMat(_hzTex('aluminium') || _hzTex('metal'), 0xc9cfd8);
         for (var s = 0; s < 3; s++) {                                   // landing struts
             var a2 = s * Math.PI * 2 / 3 + 0.5;
-            _hzAt(g, _hzCyl(ts * 0.05, ts * 0.07, lift + ts * 0.3, 5, ts, strutMat),
+            var strut = _hzCyl(ts * 0.05, ts * 0.07, lift + ts * 0.3, 5, ts, strutMat);
+            _hzAt(g, strut,
                 Math.cos(a2) * ts * 1.0, (lift + ts * 0.3) / 2, Math.sin(a2) * ts * 1.0, 0, Math.cos(a2) * 0.3, Math.sin(a2) * 0.3);
+            procHull.push(strut);
+        }
+        /* THE ONE MODEL (2026-09-24, SPELL_DIRECTOR_PLAN §12 / MODEL_INDEX §9): the saucer IS the landing-gear saucer Area 51
+           parks (_MISC_GLB.saucer_lg — _hzSaucerLanded's file), the same span as the lathe hull, standing on its own gear
+           where the struts met the ground; the hull, the rim, the dome, the rim lights and the struts are its stand-in until
+           it lands (the tractor beam stays). One saucer in the rosters, the `saucer` monument and HANGAR 18. EW_PERF_LOW keeps
+           the lathe (no download — _HZ_SCENERY_SKIP_LOW's rule for the far craft). */
+        var SF = (typeof _HQ_ONE_MODEL !== 'undefined') ? _HQ_ONE_MODEL.saucer_far : { k: 1, lift: 0.22 };
+        if (_MISC_GLB.saucer_lg && typeof THREE.GLTFLoader === 'function' &&
+            !(typeof window !== 'undefined' && (window.EW_PERF_LOW || window.EW_PROC_ONE_MODEL))) {
+            var craft = _miscModelInstance(_R2_MISC + _MISC_GLB.saucer_lg, true, R * 2 * (SF.k || 1), {
+                fit: 'span', matPick: _hzPropLitLiftPick(SF.lift || 0),
+                onDone: function (grp) {
+                    grp.traverse(function (n) { if (n.isMesh) { n.castShadow = true; n.receiveShadow = true; } });
+                    procHull.forEach(function (m) { m.visible = false; });
+                }
+            });
+            g.add(craft);
         }
         var beamMat = _hzGlowMat(0xa0ffd0, 0.14);
         var beam = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.9, lift + ts * 0.4, 10, 1, true), beamMat);
@@ -38476,6 +38553,76 @@ const ThreeRenderer = (function () {
         inst.rotation.y = _hqRad((cat.rot || 0) + (cat.turn || 0) + (o.turn || 0));
         return inst;
     }
+    /* THE ONE MODEL (SPELL_DIRECTOR_PLAN §5 Phase 3 / §12 "DOOR HQ procs that should draw the spells' model", 2026-09-24 —
+       the user: one Meshy model per thing, everywhere it appears; never a procedural sword here and a Meshy sword there).
+       A proc that IS a thing the spells already draw from a Meshy file hangs THAT file over its own geometry: the
+       procedural pieces stay as the stand-in while the GLB streams (and for good when it fails / the loader is missing),
+       and hide the moment it lands — the telescope's rule (_hqCatGlb), for files that are not catalogue rows. The weapon
+       files load through the misc cache, which the spells' `_wpnLoad` now shares per URL (_oneFileGltf): one download,
+       one parse, one root for Excalibur's rock and Judgment's sword alike (MODEL_INDEX §9). */
+    var _HQ_SPELL_FILES = {   // Assets/weapons/ — the SAME files three-vfx-effects.js _WPN_MODELS names (a renamed upload is fixed in both)
+        sword:       'Meshy_AI_master_sword_0713025949_texture.glb',                 // authored tip-DOWN (the spells bake an rx flip; a stone wants it as authored)
+        candle:      'Meshy_AI_single_lit_candle_realistic_0725065958_texture.glb',  // 1.23 w × 1.91 h, the flame included
+        crystalBall: 'Meshy_AI_crystal_ball_0713025648_texture.glb',
+        pistol:      'Meshy_AI_pistol_0713030139_texture.glb'                        // barrel along Z (muzzle −Z, the spells bake an ry flip)
+    };
+    /* THE TUNABLES (metres unless noted) — console: `window._ewOneModel.sword_stone.len = 1.5`, then leave and re-enter the room */
+    var _HQ_ONE_MODEL = {
+        sword_stone:  { len: 1.35, tipY: 0.72, x: -0.1, lean: 0.05 },   // the master sword's whole length; where its TIP sits (inside the anvil / stone); its x; its lean (rad)
+        saucer_rig:   { span: 6.0, y: 0, keepRig: false },             // saucer_lg across; its gear's feet off the floor; keepRig = leave the tripod + cradle + tarp standing round it
+        find_deck:    { span: 0.8, lean: 1.2 },                        // the deck's length; its lean back on its tail (rad, the proc's own)
+        candle_ring:  { k: 1.0 },                                      // × each proc candle's height (wax + flame); EW_PERF_LOW keeps the wax sticks (13 clones a ring)
+        crystal_ball: { h: 0.36, y: 0.8, z: 0.2 },                     // the fortune teller's ball (with its stand) — its height, its foot's y, its z
+        lone_gun:     { span: 0.22, yaw: 0.3 },                        // Room II's pistol on the table — its length, its turn (rad)
+        saucer_far:   { k: 1.0, lift: 0.22 }                           // _hzSaucer (the rosters, the `saucer` monument): × the procedural hull's span; the self-lit lift
+    };
+    if (typeof window !== 'undefined') window._ewOneModel = _HQ_ONE_MODEL;
+    function _hqSpellUrl(key) { var f = _HQ_SPELL_FILES[key]; return (f && typeof _R2_WEAPONS !== 'undefined') ? _R2_WEAPONS + f : null; }
+    function _hqMiscUrl(key) { return (typeof _MISC_GLB !== 'undefined' && _MISC_GLB[key]) ? _R2_MISC + _MISC_GLB[key] : null; }
+    /* the box of a group's meshes in the GROUP's own frame (the astral eye's measure — the group may already hang in a room) */
+    function _hqLocalBox(grp) {
+        grp.updateMatrixWorld(true);
+        var inv = new THREE.Matrix4().copy(grp.matrixWorld).invert(), rel = new THREE.Matrix4(), all = new THREE.Box3(), bx = new THREE.Box3();
+        grp.traverse(function (n) {
+            if (!n.isMesh || !n.geometry) return;
+            if (!n.geometry.boundingBox) n.geometry.computeBoundingBox();
+            rel.multiplyMatrices(inv, n.matrixWorld);
+            bx.copy(n.geometry.boundingBox).applyMatrix4(rel); all.union(bx);
+        });
+        return all;
+    }
+    /* `lay`: a thing lying on its SIDE on a table (the pistol) — the thinnest axis turned upright, re-seated on y = 0, centred */
+    function _hqOneModelLay(grp) {
+        var pv = new THREE.Group();
+        grp.children.slice().forEach(function (k) { grp.remove(k); pv.add(k); });
+        grp.add(pv);
+        var b = _hqLocalBox(grp), ex = b.max.x - b.min.x, ey = b.max.y - b.min.y, ez = b.max.z - b.min.z;
+        if (ex < ey && ex <= ez) pv.rotation.z = Math.PI / 2;
+        else if (ez < ey && ez < ex) pv.rotation.x = Math.PI / 2;
+        var b2 = _hqLocalBox(grp);
+        pv.position.set(-(b2.min.x + b2.max.x) / 2, -b2.min.y, -(b2.min.z + b2.max.z) / 2);
+    }
+    /* the one helper: `url` (a weapons / misc file), `o.size` metres along `o.fit` ('height' | 'span'), `o.hide` = the
+       proc pieces to hide on landing, `o.lay`, `o.low: 'skip'` (EW_PERF_LOW keeps the proc — many clones / pure
+       dressing), `o.matPick` (default the room's lit pick), `o.onDone(grp, s, bb)`. null = keep the stand-in.
+       window.EW_PROC_ONE_MODEL = true is the kill-switch (every swap keeps its procedural shape). */
+    function _hqOneModel(url, U, o) {
+        o = o || {};
+        if (!url || typeof _miscModelInstance !== 'function' || typeof THREE.GLTFLoader !== 'function') return null;
+        if (typeof window !== 'undefined' && (window.EW_PROC_ONE_MODEL || (o.low === 'skip' && window.EW_PERF_LOW))) return null;
+        var inst = _miscModelInstance(url, true, (o.size || 1) * U, {
+            fit: o.fit || 'height',
+            matPick: o.matPick || ((typeof _hqPropMatPick === 'function') ? _hqPropMatPick : undefined),
+            onDone: function (grp, s, bb) {
+                try { if (o.lay) _hqOneModelLay(grp); } catch (e) {}
+                (o.hide || []).forEach(function (m) { if (m) m.visible = false; });
+                if (o.onDone) o.onDone(grp, s, bb);
+                if (_hq) _hq.dirty = true;
+            }
+        });
+        inst._ew_oneModel = url;
+        return inst;
+    }
     function _hqModelUrl(entry) {
         var D = _hqData();
         /* 2026-09-12: a catalogue entry with `base: 'misc'` lives in the shared
@@ -43561,10 +43708,20 @@ const ThreeRenderer = (function () {
             var g = new THREE.Group();
             var wood = _hqMat(null, 1, 1, { color: 0x6b4a2a, shininess: 30 }), rub = _hqMat(null, 1, 1, { color: 0x1a1a1a, shininess: 10 });
             var top = _hqBox(0.2, 0.025, 0.8, wood); top.rotation.x = -1.2; top.position.set(0, 0.4 * U, 0.1 * U); g.add(top);
+            var wheels = [];
             [[-0.07, -0.26], [0.07, -0.26], [-0.07, 0.26], [0.07, 0.26]].forEach(function (w) {
                 var wh = new THREE.Mesh(new THREE.CylinderGeometry(0.03 * U, 0.03 * U, 0.03 * U, 10), rub); wh.rotation.z = Math.PI / 2;
-                wh.position.set(w[0] * U, (0.4 + w[1] * Math.sin(1.2) - 0.06 * Math.cos(1.2)) * U, (0.1 + w[1] * Math.cos(1.2) + 0.06 * Math.sin(1.2)) * U); top.parent && g.add(wh);
+                wh.position.set(w[0] * U, (0.4 + w[1] * Math.sin(1.2) - 0.06 * Math.cos(1.2)) * U, (0.1 + w[1] * Math.cos(1.2) + 0.06 * Math.sin(1.2)) * U); top.parent && g.add(wh); wheels.push(wh);
             });
+            /* THE ONE MODEL (2026-09-24, SPELL_DIRECTOR_PLAN §12): the find IS the deck the walker rides — the user's skateboard
+               (_MISC_GLB.skateboard, MODEL_INDEX §3d: 1.0 long along X, wheels down), turned onto the proc's +Z and leaned on its
+               tail like the stand-in plank + wheels, which hide when it lands */
+            var FD = _HQ_ONE_MODEL.find_deck;
+            var lean = new THREE.Group(); lean.position.set(0, 0.4 * U, 0.1 * U); lean.rotation.x = -FD.lean;
+            var along = new THREE.Group(); along.rotation.y = Math.PI / 2; lean.add(along);   // the GLB's length runs along X
+            var deck = _hqOneModel(_hqMiscUrl('skateboard'), U, { size: FD.span, fit: 'span', hide: [top].concat(wheels),
+                onDone: function (grp, s, bb) { grp.position.y = -((bb.max.y - bb.min.y) * s) / 2; } });   // centred on the lean's pivot (the plank's middle)
+            if (deck) { along.add(deck); g.add(lean); }
             return g;
         },
         /* D5 THE STASH (2026-09-21): a white first-aid tin, the lid up, one bottle standing in it — the facility rooms' cache of THE BAG's goods (DOOR_HQ.stashes) */
@@ -43986,6 +44143,12 @@ const ThreeRenderer = (function () {
             var guard = _hqBox(0.34, 0.05, 0.05, gold); guard.position.set(-0.11 * U, 1.66 * U, 0); guard.rotation.z = 0.05; g.add(guard);
             var grip = new THREE.Mesh(new THREE.CylinderGeometry(0.025 * U, 0.025 * U, 0.22 * U, 8), _hqMat(null, 1, 1, { color: 0x4a2a1a })); grip.position.set(-0.12 * U, 1.8 * U, 0); grip.rotation.z = 0.05; g.add(grip);
             var pommel = new THREE.Mesh(new THREE.SphereGeometry(0.045 * U, 10, 8), gold); pommel.position.set(-0.13 * U, 1.93 * U, 0); g.add(pommel);
+            /* THE ONE MODEL (2026-09-24, SPELL_DIRECTOR_PLAN §12): the blade IS the master sword — the same Meshy file every sword
+               spell draws (_WPN_MODELS.sword) and Camelot's board rock (_hzExcalibur); tip DOWN as authored, sunk through the anvil
+               into the stone. The procedural blade / guard / grip / pommel are its stand-in until it lands. */
+            var SW = _HQ_ONE_MODEL.sword_stone;
+            var sword = _hqOneModel(_hqSpellUrl('sword'), U, { size: SW.len, hide: [blade, guard, grip, pommel] });
+            if (sword) { sword.position.set(SW.x * U, SW.tipY * U, 0); sword.rotation.z = SW.lean; g.add(sword); }
             return g;
         },
         /* THE SAME TORCH EVERYWHERE (2026-09-15, the user's rule): a torch in
@@ -44012,10 +44175,16 @@ const ThreeRenderer = (function () {
             var g = new THREE.Group();
             var wax = _hqMat(null, 1, 1, { color: 0xf0e8d0, shininess: 20 });
             var n = 13, R = 1.7, flames = [];
+            /* THE ONE MODEL (2026-09-24, SPELL_DIRECTOR_PLAN §12): every candle IS the spells' lit candle (_WPN_MODELS.candle — the
+               ritual spells' file), one clone per stick at the stick's own height (flame included); the wax stick + its cone flame
+               are its stand-in until it lands. EW_PERF_LOW keeps the sticks (13 clones a ring). The glow + the room light stay. */
+            var CR = _HQ_ONE_MODEL.candle_ring, candleUrl = _hqSpellUrl('candle');
             for (var i = 0; i < n; i++) {
                 var a = (i / n) * Math.PI * 2, h = 0.12 + ((i * 7) % 5) * 0.03;
                 var c = new THREE.Mesh(new THREE.CylinderGeometry(0.03 * U, 0.03 * U, h * U, 8), wax); c.position.set(Math.cos(a) * R * U, (h / 2) * U, Math.sin(a) * R * U); g.add(c);
                 var f = new THREE.Mesh(new THREE.ConeGeometry(0.018 * U, 0.06 * U, 6), _hqBasic(0xffc060)); f.position.set(c.position.x, (h + 0.03) * U, c.position.z); g.add(f); flames.push(f);
+                var cg = _hqOneModel(candleUrl, U, { size: (h + 0.06) * CR.k, low: 'skip', hide: [c, f] });
+                if (cg) { cg.position.set(c.position.x, 0, c.position.z); cg.rotation.y = -a; g.add(cg); }
             }
             var glow = _hzGlowSprite(3.4 * U, 0xffb060, 0.22, 0.05, 0.02, 0.8); glow.position.y = 0.3 * U; g.add(glow);
             if (_hq) _hq.tickers.push(function (dt, now) { for (var k = 0; k < flames.length; k++) { var s = 0.8 + 0.25 * Math.sin(now * 0.011 + k * 1.7); flames[k].scale.set(s, 0.9 + 0.3 * Math.sin(now * 0.017 + k), s); } });
@@ -44991,6 +45160,11 @@ const ThreeRenderer = (function () {
             var ball = new THREE.Mesh(new THREE.SphereGeometry(0.16 * U, 14, 10), new THREE.MeshPhongMaterial({ color: 0xc0a0ff, emissive: 0x8040ff, emissiveIntensity: 0.6, transparent: true, opacity: 0.8, shininess: 160 })); ball.position.set(0, 0.95 * U, 0.2 * U); g.add(ball);
             var tbl = new THREE.Mesh(new THREE.CylinderGeometry(0.4 * U, 0.3 * U, 0.05 * U, 12), _hqMat('wood', 1, 1, { color: 0x4a2a1c })); tbl.position.set(0, 0.78 * U, 0.2 * U); g.add(tbl);
             var glow = _hzGlowSprite(2.6 * U, 0xc070ff, 0.35, 0.1, 0.05, 1.2); glow.position.y = 1.2 * U; g.add(glow);
+            /* THE ONE MODEL (2026-09-24, SPELL_DIRECTOR_PLAN §12): the lady's ball IS the spells' crystal ball (_WPN_MODELS.crystalBall
+               — the fortune teller's own spells draw it); the glowing sphere is its stand-in until it lands */
+            var CB = _HQ_ONE_MODEL.crystal_ball;
+            var crystal = _hqOneModel(_hqSpellUrl('crystalBall'), U, { size: CB.h, hide: [ball] });
+            if (crystal) { crystal.position.set(0, CB.y * U, CB.z * U); g.add(crystal); }
             var glb = (typeof _hqCatGlb === 'function' ? _hqCatGlb : function () { return null; })('fortune_teller_tent', U, { hide: [wall, cone, beads, tbl] }); if (glb) g.add(glb);   // THE 2026-09-22 BATCH: the user's tent over the canvas stand-in (the ball, the glow and the sign stay)
             var tx = _hzTextTex('hq_fortune_sign', ['THE LADY WHO KNOWS', 'ONE QUESTION · SHE ALREADY HAS THE ANSWER'], { w: 512, h: 128, color: '#ffe0a0', bg: '#2a1030' });
             if (tx) { var m = new THREE.Mesh(new THREE.PlaneGeometry(1.6 * U, 0.4 * U), new THREE.MeshBasicMaterial({ map: tx })); m.position.set(0, 2.15 * U, (R + 0.02) * U); g.add(m); }
@@ -45147,14 +45321,16 @@ const ThreeRenderer = (function () {
             var dark = _hqMat(null, 1, 1, { color: 0x2a2e34, shininess: 30 });
             var hull = new THREE.MeshPhongMaterial({ color: 0xb8c4cc, emissive: 0x203040, emissiveIntensity: 0.25, shininess: 140, specular: 0xffffff });
             var canvas = new THREE.MeshPhongMaterial({ color: 0x6a6e5c, shininess: 4, side: THREE.DoubleSide });
+            var rigBits = [], hullBits = [];   // THE ONE MODEL (2026-09-24): what the saucer_lg GLB replaces (below)
             /* the tripod: three legs leaning in to the cradle ring at 1.6 m */
             for (var i = 0; i < 3; i++) {
                 var a = i * Math.PI * 2 / 3 + 0.5, leg = new THREE.Mesh(new THREE.CylinderGeometry(0.09 * U, 0.12 * U, 2.0 * U, 8), steel);
                 leg.position.set(Math.cos(a) * 2.2 * U, 0.95 * U, Math.sin(a) * 2.2 * U);
                 leg.rotation.z = -Math.cos(a) * 0.42; leg.rotation.x = Math.sin(a) * 0.42; g.add(leg);
                 var foot = new THREE.Mesh(new THREE.CylinderGeometry(0.32 * U, 0.36 * U, 0.12 * U, 10), dark); foot.position.set(Math.cos(a) * 2.6 * U, 0.06 * U, Math.sin(a) * 2.6 * U); g.add(foot);
+                rigBits.push(leg, foot);
             }
-            var cradle = new THREE.Mesh(new THREE.TorusGeometry(1.7 * U, 0.09 * U, 8, 36), steel); cradle.position.y = 1.65 * U; cradle.rotation.x = Math.PI / 2; g.add(cradle);
+            var cradle = new THREE.Mesh(new THREE.TorusGeometry(1.7 * U, 0.09 * U, 8, 36), steel); cradle.position.y = 1.65 * U; cradle.rotation.x = Math.PI / 2; g.add(cradle); rigBits.push(cradle);
             /* the lens: the lower cone (inverted), the upper cone, the dome on top */
             var lower = new THREE.Mesh(new THREE.ConeGeometry(3.0 * U, 0.7 * U, 28), hull); lower.position.y = 2.05 * U; lower.rotation.x = Math.PI; g.add(lower);
             var upper = new THREE.Mesh(new THREE.ConeGeometry(3.0 * U, 1.0 * U, 28), hull); upper.position.y = 2.9 * U; g.add(upper);
@@ -45163,10 +45339,20 @@ const ThreeRenderer = (function () {
             var dome = new THREE.Mesh(new THREE.SphereGeometry(0.8 * U, 20, 14, 0, Math.PI * 2, 0, Math.PI / 2), domeMat); dome.position.y = 3.35 * U; g.add(dome);
             /* the port lights round the rim */
             var portMat = new THREE.MeshBasicMaterial({ color: 0xffd080 });
-            for (var k = 0; k < 8; k++) { var b = k * Math.PI / 4, port = new THREE.Mesh(new THREE.SphereGeometry(0.07 * U, 8, 6), portMat); port.position.set(Math.cos(b) * 2.75 * U, 2.42 * U, Math.sin(b) * 2.75 * U); g.add(port); }
+            for (var k = 0; k < 8; k++) { var b = k * Math.PI / 4, port = new THREE.Mesh(new THREE.SphereGeometry(0.07 * U, 8, 6), portMat); port.position.set(Math.cos(b) * 2.75 * U, 2.42 * U, Math.sin(b) * 2.75 * U); g.add(port); hullBits.push(port); }
+            hullBits.push(lower, upper, rim, dome);
             /* THE TARP: a cone of canvas over the top half, its hem hanging past the rim */
             var tarp = new THREE.Mesh(new THREE.ConeGeometry(3.45 * U, 1.9 * U, 24, 1, true), canvas); tarp.position.y = 3.25 * U; g.add(tarp);
             var hem = new THREE.Mesh(new THREE.CylinderGeometry(3.45 * U, 3.3 * U, 0.55 * U, 24, 1, true), canvas); hem.position.y = 2.05 * U; g.add(hem);
+            rigBits.push(tarp, hem);
+            /* THE ONE MODEL (2026-09-24, SPELL_DIRECTOR_PLAN §12 / MODEL_INDEX §9 "the saucer on the ground"): the craft IS the
+               landing-gear saucer Area 51's board parks (_MISC_GLB.saucer_lg, _hzSaucerLanded) — it stands on its OWN gear, so the
+               lens, the dome, the ports AND the tripod / cradle / tarp that held the procedural lens hide when it lands (keepRig
+               leaves the rig standing round it); the four floodlights stay aimed at it. The proc is its stand-in until then. */
+            var SR = _HQ_ONE_MODEL.saucer_rig;
+            var craft = _hqOneModel(_hqMiscUrl('saucer_lg'), U, { size: SR.span, fit: 'span', hide: SR.keepRig ? hullBits : hullBits.concat(rigBits),
+                onDone: function (grp) { grp.traverse(function (n) { if (n.isMesh) { n.castShadow = true; n.receiveShadow = true; } }); } });
+            if (craft) { craft.position.y = SR.y * U; g.add(craft); }
             /* the floodlights: four stands round the rig, the lamps aimed up at the tarp */
             var lampMat = new THREE.MeshBasicMaterial({ color: 0xeaf4ff });
             for (var j = 0; j < 4; j++) {
@@ -45201,6 +45387,11 @@ const ThreeRenderer = (function () {
             g.rotation.x = Math.PI / 2; g.rotation.z = 0.3;
             var pivot = new THREE.Group(); g.position.y = 0.014 * U; pivot.add(g);
             var tag = _hqBox(0.07, 0.001, 0.04, _hqBasic(0xf0e8d0)); tag.position.set(0.16 * U, 0.001 * U, 0.06 * U); tag.rotation.y = 0.3; pivot.add(tag);
+            /* THE ONE MODEL (2026-09-24, SPELL_DIRECTOR_PLAN §12): the gun IS the spells' pistol (_WPN_MODELS.pistol), laid on its
+               side (its thinnest axis turned upright, re-seated on the table); the silhouette is its stand-in until it lands */
+            var LG = _HQ_ONE_MODEL.lone_gun;
+            var pistol = _hqOneModel(_hqSpellUrl('pistol'), U, { size: LG.span, fit: 'span', lay: true, hide: [g] });
+            if (pistol) { pistol.rotation.y = LG.yaw; pivot.add(pistol); }
             return pivot;
         },
         /* ROOM II: the garbage chute — a steel hatch with a pull handle and a stencil */
@@ -51399,7 +51590,7 @@ const ThreeRenderer = (function () {
             ball.add(model);
         }
         var tgt = new THREE.Vector3(), tmpW = new THREE.Vector3(), tmpL = new THREE.Vector3();
-        return { g: g, ball: ball, iris: iris,
+        return { g: g, ball: ball, iris: iris, lids: [top, bot],
             /* look at a WORLD point (the ball turns in its parent's frame; +Z is the iris) */
             track: function (wx, wy, wz, ease) {
                 tgt.set(wx, wy, wz); ball.parent.worldToLocal(tgt);
@@ -51409,6 +51600,63 @@ const ThreeRenderer = (function () {
             },
             /* 0 = open, 1 = shut */
             blink: function (k) { top.rotation.x = -OPEN * (1 - k); bot.rotation.x = OPEN * (1 - k); } };
+    }
+    /* THE ONE MODEL for the spells (2026-09-24, SPELL_DIRECTOR_PLAN §12 row "Eyeball"): ThreeRenderer.astralEye(o) — the astral
+       realm's eye as a ready object for a spell (the giant's Fee Fi Fo Fum eye, the seraphim's ring eyes): the sky's eyeball
+       OBJ (_hzEyeballPick's material rule) inside the procedural ball, its gaze MEASURED onto +Z when it lands (the ball is
+       the stand-in until then; EW_PERF_LOW / EW_PROC_EYES keep the ball). Returns a THREE.Group centred on the eye's middle,
+       gaze +Z (turn the GROUP to aim it, or `group.userData.eye.track(wx, wy, wz, ease)` to turn the ball inside it), never
+       null. o: `radius` (world units; default half a tile of the current board), `tint` (the iris, default 0x4fa8ff),
+       `lidColor` (default 0xd8a0a8), `lids` (false = no lids — a bare floating eye). userData.eye = { ball, iris, lids,
+       track(wx, wy, wz, ease), blink(k 0 open … 1 shut) }. Nothing on `state`: a spell layer's own object (RULE #2 — the
+       spell's relay already replays the cast on the guest, who builds their own eye). */
+    function _spellAstralEye(o) {
+        o = o || {};
+        var ts = (typeof _hzKitTile === 'function') ? _hzKitTile() : (CONFIG.tileSize || BASE_TILE);
+        var R = (o.radius != null && o.radius > 0) ? o.radius : ts * 0.5;
+        var eye = _hqAstralEye(R, (o.tint != null) ? o.tint : 0x4fa8ff, (o.lidColor != null) ? o.lidColor : 0xd8a0a8);
+        if (o.lids === false) eye.lids.forEach(function (m) { m.visible = false; });
+        eye.g.userData.eye = eye;
+        eye.g._ew_astralEye = true;
+        return eye.g;
+    }
+    /* THE ONE MODEL for the spells (2026-09-24 — the lead's ask, §12 row "Honda Civic sedan"): ThreeRenderer.sedan(o) — the
+       honda civic's static car GLB (getRace3DModel('honda civic', 'male').model — the SAME file the garage `parked_car` proc
+       and the main menu's _menuBuildSedan stand), used static: nose +Z (the def's yawOffset, +π/2 = the raw −X nose), base on
+       y = 0, centred. SYNCHRONOUS: null while the file streams (the call warms it — ask again next cast; the caller keeps its
+       stand-in). o: `metres` (its LENGTH; default 4.4 — sized against the current board's tile like ThreeRenderer.vehicle:
+       metres / 1.75 × tile), `tint` (hex, mixed into the paint by `tintMix`, default 0.35 — parked_car's), `lift` (the
+       self-lit Lambert, default 0.22 — a dark car under a night sky), `cast` (default true). Fresh materials per call (the
+       caller may fade / dispose them); the geometry is the shared cache's (_ew_shared). */
+    function _spellSedanUrl() {
+        var def = null, url = null, yawOff = Math.PI / 2;
+        try { def = (typeof getRace3DModel === 'function') ? getRace3DModel('honda civic', 'male') : null; } catch (e) {}
+        if (def && def.model) { url = def.model; if (def.yawOffset != null) yawOff = def.yawOffset; }
+        if (!url) url = 'https://cdn.entropywars.net/Assets/Sprites/Races/hondacivic/Meshy_AI_1990s_sedan_0719015525_texture.glb';
+        return { url: url, yaw: yawOff };
+    }
+    function _spellSedan(o) {
+        o = o || {};
+        if (typeof THREE === 'undefined' || typeof THREE.GLTFLoader !== 'function') return null;
+        var src = _spellSedanUrl(), e = _miscModelCache[src.url];
+        if (!e || !e.root || !e.root._ew_bbox) { try { _loadMiscModel(src.url, true, function () {}); } catch (x) {} return null; }
+        var ts = (typeof _hzKitTile === 'function') ? _hzKitTile() : (CONFIG.tileSize || BASE_TILE);
+        var len = ((o.metres != null && o.metres > 0) ? o.metres : 4.4) / 1.75 * ts;
+        var lift = (o.lift != null) ? o.lift : 0.22, tint = (o.tint != null) ? new THREE.Color(o.tint) : null, mix = (o.tintMix != null) ? o.tintMix : 0.35;
+        var car = _miscModelInstance(src.url, true, len, {
+            fit: 'span',
+            matPick: function (n, sm) {
+                var map = (sm && sm.map) || null;
+                var m = new THREE.MeshLambertMaterial({ map: map, side: THREE.FrontSide });
+                if (lift) { m.emissive = new THREE.Color(lift, lift, lift); if (map) m.emissiveMap = map; }
+                if (tint) m.color.lerp(tint, mix);
+                return m;
+            }
+        });
+        car.rotation.y = src.yaw;
+        car.traverse(function (n) { if (n.isMesh) { n.castShadow = o.cast !== false; n.receiveShadow = true; } });
+        var g = new THREE.Group(); g.add(car); g._ew_sedan = true;
+        return g;
     }
     Object.assign(_hqProcBuilders, {
         /* A THOUGHT-FORM: an idea before anyone has it — a sphere that breathes (its vertices ride two waves of a noise that is
@@ -55317,7 +55565,7 @@ const ThreeRenderer = (function () {
         /* another module's loader (three-vfx-effects.js) files its request here: assetTrack(kind, url) → rec; rec.settle(ok) */
         assetTrack: function (kind, url) { return _alTrack(kind, url); },
         /* THE ASSET STORE (2026-09-20): another module's GLB / texture goes through the store too */
-        assetGltf: function (url, onLoad, onError, o) { return _asGltf(url, onLoad, onError, o); },
+        assetGltf: function (url, onLoad, onError, o) { return _oneFileGltf(url, onLoad, onError, o); },   // THE ONE LOADER PER FILE (2026-09-24): the weapon GLBs share the misc cache's entry for the same URL
         assetTexture: function (url, onLoad, onError) { return textureLoader.load(url, onLoad, undefined, onError); },
         assetStore: function () { return _asStats(); },
 
@@ -55517,6 +55765,11 @@ const ThreeRenderer = (function () {
            nose on +Z, the lit Lambert per clone, `metres` to resize). The
            group fills in when the GLB lands (warm it via the weapon drip). */
         vehicle: function (kind, o) { return _hzVehicle(kind, o); },
+        /* THE ONE MODEL (2026-09-24, SPELL_DIRECTOR_PLAN §12): the sky's eyeball as a ready object (a Group, gaze +Z,
+           procedural ball until the OBJ lands — never null) and the Honda Civic race GLB used static (nose +Z, sized by
+           `metres`, null while it streams — the call warms it). See _spellAstralEye / _spellSedan for the opts. */
+        astralEye: function (o) { return _spellAstralEye(o); },
+        sedan: function (o) { return _spellSedan(o); },
 
         setLightRayStrength, getLightRayStrength,
 

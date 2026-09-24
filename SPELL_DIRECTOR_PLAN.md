@@ -344,12 +344,15 @@ so a piece per spell would never finish).
 | **THE EXPLOSION** ✅ | A white flash core, three eroding noise fireballs that swell and climb, 6–12 flat-shaded debris chunks that glow hot and cool as they fly (lit by the blast's own light), bounce once and roll, trailing embers then smoke; a dust skirt, a smoke column, a scorch, a ground ring, sparks, a light and a bloom kick. An AoE's centre gets the full kit, its tiles the lite one; at most 4 full kits at once | any recipe with an `explosion-orange` layer → `_spawnEffect` (tagged at load, `_crTagBooms`) | Place Bomb, Flat Earth, Mortar Salvo, Missile Barrage / Cluster Rockets, Nuke, Artillery Strike, Broadside, Cannon Blast, Boarding Rush, Megazord Blast |
 | **THE SCAR** ✅ | A blade's cut stays: a thin white-hot arc in the plane of the swing that cools to red and then crimson, with a soft red halo, embers dripping off it, a red light, and a glowing groove burned into the floor | `_sigCrescentSlash3D({ scar: true })` | Judgment / Divine Judgment (the stand sword), Slash Combo (Dragon Slash, Guard Slash, Sneak Slash, Sentai Red Slash, Synthetic Blade, Cross Slash), Zantetsuken, Blade Waltz, Lunging Strike, the holy sword, and every kinetic stage slash on a spell whose name is a blade (`_crIsBlade`) |
 | **THE BEAM, LIT** ✅ | A light at the muzzle that holds with the beam, a light at the target, sparks peeling off the length while it holds, a glowing burn line scored into the floor under the path that cools through ember red, and char under it. The beam wears ITS spell's colour (element, then type) — Heat Ray was white-blue like every other beam | `_spawnLaserBeam3D` → `_crBeamExtras`; `_fireBeamMapped` → `_crBeamPalette` | the 16 laser beams + the Spell Lab cue + the old `beam()` path |
-| **THE GATLING** | Suppressive Fire / Choppa / the turret shot become a STREAM of tracers (a burst of 6–10 rounds with a rolling muzzle) instead of a laser cylinder | `_fireBeamMapped` `beamGatling` flag | Suppressive Fire, Plasma Cannon's burst, the turret |
-| **THE SHARD KIT** | Flat-shaded polygon shards (ice, glass, crystal, bone, stone) as real 3D pieces with gravity and a bounce — the PS1 shatter | a shared `_crShards(tx, ty, kind, n)` | freezes, petrify, glass / mirror spells, bone spells, the Void Rift combo |
-| **RIBBON TRAILS** | Real 3D ribbons behind bolts, blades and thrown things instead of sprite dots | `_tickBolts` head + the slash combo pivot | every bolt |
-| **VELOCITY SPARKS** | Sparks that stretch along their velocity (hard-edged, not soft blobs) — the pool's `_stretchVel` today faces the screen | `ThreeVFX.spawn` | every spark in the game |
-| **PARTICLES THAT SCALE** | Counts scale with the perf tier (`EW_PERF_LOW` halves) and the Impact FX slider; a full pool drops the OLDEST, not the new spawn | `ThreeVFX.spawn` / `_claim` | everything |
-| **THE HIT READ** | Type-coloured punch-scaled numbers, a crit stamp, the weakness type glyph, a kill afterglow | the damage-number layer | every hit |
+| **THE GATLING** ✅ | Suppressive Fire / Choppa / the turret shot are a STREAM of lite tracers (6–12 rounds walking the lane out of a rolling muzzle, one held muzzle light, brass) instead of a laser cylinder | `_fireBeamMapped` `beamGatling` flag → `_crGatling` | Choppa (10), Suppressive Fire (12, its own bullet line — it borrowed the plasma beam), the turret (6). Plasma Gun / Plasma Cannon keep the beam: plasma IS a beam |
+| **THE SHARD KIT** ✅ | Flat-shaded polygon shards (ice, glass, crystal, bone, stone) as real 3D pieces lit by the VFX lights, with gravity, a bounce and a slide — the PS1 shatter | `_crShards(tx, ty, kind, o)`, tagged at load (`_crTagShards`) and fired by `_spawnEffect` | every recipe with an `ice-shard` layer (Ice Spear, Flash Freeze, Permafrost, Diamond Dust, Frost Throne…) or a `rock-debris` layer (Stonefall, Quake, Boulder Hurl, Fissure…), + `_CR_SHARD_SPELLS` (Bone Toss, Bone Barrage, Prism Burst). Not yet: petrify (a status, not a recipe), the Void Rift combo (Phase 5) |
+| **RIBBON TRAILS** ✅ | A real 3D ribbon (two crossed strips, the head's last 14 points, tapering, in the spell's colour) behind every bolt; the tail runs in on the hit | `_tickBolts` first frame → `_crBoltRibbon` | every bolt except tracers (their streak is the trail). Blades: the scar covers the slash; the slash combo pivot is not ribboned |
+| **VELOCITY SPARKS** ✅ | Spark sprites (spark, steel-spark, spark-blue, spark-pink, spark-elec) turn and stretch along their SCREEN velocity (up to 7× their width); embers and sparkles stay soft | `ThreeVFX.spawn` → `_writeSprite` / `_poseVelSpark` | every spark in the game |
+| **PARTICLES THAT SCALE** ✅ | Small repeated bits (sparks, embers, smoke, dust, debris) thin evenly with the perf tier (`EW_PERF_LOW` ×0.5) × the Impact FX slider (floor 0.35) × `EW_FX_DENSITY`; flashes, rings, decals never thin; a full pool recycles the particle furthest through its life | `ThreeVFX.spawn` / `_claimSlot` | everything |
+| **THE HIT READ** ✅ | Numbers wear the hit's element colour, punch-scale 1.0–1.6 by the share of max HP, a CRIT stamp (replaces the old "CRIT!" pop), the element glyph on a weakness (a resisted hit reads muted), a kill that lingers ×1.45 with a glow | battle.js `applyDamageToUnit` → the floating-text opts (`_hitType/_hitPct/_hitCrit/_hitWeak/_hitKill`) → both render paths; online.js relays them as `hit:{t,p,c,w,k}` | every hit. Tunables: `window.EW_HIT_READ` |
+
+Plus **THE GUN LINE** ✅ (`_crTank`): Artillery Strike fires a three-round
+salvo from the Area 51 tank behind the caster (see §12).
 
 Rules for every piece: `_sigRunOwned` groups, `_fxDelay` beats that re-check
 `_suppressed()`, hooks called through `typeof` guards (the source-cut
@@ -378,10 +381,10 @@ The fever pass is **not** a phase any more. No screen-space kaleidoscope,
 feedback, datamosh or VHS effect ships as a default for a family, a type or a
 bulk "identity" pass. What survives, in order of how likely it is to earn a
 place:
-1. **An impact ripple** (a heat-shimmer shockwave from the hit point) on
-   HEAVY and ULTIMATE hits only. It reads as physical force, not a style, so
-   it is the one screen effect that could plausibly help every big spell.
-   Build it only if the user wants it after seeing THE CRAFT.
+1. **An impact ripple** (a heat-shimmer shockwave from the hit point) —
+   ✅ built 2026-09-24 on ULTIMATE hits only (the default while the
+   question was open): `ThreePost.impactRipple` (a refraction band in the
+   cinematic pass) fired by `_crImpactRipple` from `fire()`.
 2. **The opt-in kinds** (kaleido, feedback, datamosh, vhs, invert, burn) as a
    per-spell `SPELL_DIRECTOR_ROWS[id].vfx.fever` value, for the handful of
    spells whose idea is the trip. The void stage keeps its one-per-round
@@ -555,8 +558,11 @@ selfStun / recoil casts), `Weapon_Twirl_Flourish` (a kill confirm) and
 2. **The void budget.** One void stage per round, game-wide. Keep it, or
    make it one per side?
 3. ~~**The fever intensity.**~~ Answered 2026-09-24: the fever is opt-in per
-   spell, never a default. Open instead: **the impact ripple** — after seeing
-   THE CRAFT, should heavy / ultimate hits get a heat-shimmer ripple?
+   spell, never a default. **The impact ripple** was still open; built
+   2026-09-24 (session 2) on the DEFAULT — **ultimates only** (not heavy).
+   Say if it should reach heavy hits, or go (`EW_DISABLE_RIPPLE = true`).
+5. **The cross.** `cross` (weapons) and `wooden_cross` (misc) are two
+   files for one thing. Which one is THE cross? Boot Hill waits on it.
 4. **Combo length.** An Entropy Strike runs ~6 s and a finisher ~6.5 s. A
    combo is two units' turns: target ~4.5 s?
 
@@ -737,6 +743,46 @@ model swaps, the ride relay).
 velocity sparks, scaled particles, the hit read), then THE ONE MODEL's
 remaining §12 rows.
 
+### 2026-09-24 (session 2) — THE CRAFT (the rest) + THE ONE MODEL (the §12 rows) + the ripple · local delivery
+**Shipped:** three-vfx-effects.js, three-vfx.js, three-post.js, three-renderer.js, battle.js, online.js, index.html (CSS + the token).
+- **THE GATLING** (`_crGatling`, `beamGatling`; `_crGunShot` `o.lite`).
+- **THE SHARD KIT** (`_crShards`, `_crTagShards`, `_CR_SHARD_SPELLS`; caps
+  `_CR_SHARD_MAX` 5 full / `_CR_SHARD_ALL` 9 live).
+- **RIBBON TRAILS** (`_crBoltRibbon`, `_CR_RIB_N` 14 points).
+- **VELOCITY SPARKS + PARTICLES THAT SCALE** (three-vfx.js: `_VEL_SPARKS`,
+  `_poseVelSpark`, `_fxDensity`, `_claimSlot` / `_oldestLive`).
+- **THE HIT READ** (battle.js `_hitRead*`, online.js `hit:{t,p,c,w,k}`,
+  index.html `.dio-float-text.hr*`). The 3D pop is dressed from battle.js
+  (the canvas is the overlay's last child) — three-renderer.js's
+  `floatingText` is untouched, so its slam is the one overshoot.
+- **THE IMPACT RIPPLE** (three-post.js `impactRipple` / `uRipple`;
+  `_crImpactRipple` in fire(), ultimates only).
+- **THE ONE MODEL:** Artillery Strike's tank (`_crTank`, battle.js passes
+  `cx / cy` on the descent), the Neuralyzer's pen (`_crCatKey`), Hit and
+  Run's honda civic + crashed-car wreck, the giant's and the seraphim's eye
+  (`_crAstralEye`), and the HQ procs (`_hqOneModel`: sword in the stone,
+  saucers, skateboard, candles, crystal ball, pistol). Loader gap closed.
+
+**UNSEEN LIVE (RULE #1c) — the edits if a number is off:**
+- gatling rounds per lane (`gatlingRounds`: Choppa 10, Suppressive Fire
+  12, turret 6) and the burst window (the def's `beamMs`);
+- shard size / throw (`_crShardGeo` `sz`, `sp` / `vy` in `_crShards`);
+- the ribbon's width (`W`, 0.06 tile; radiant 0.09);
+- spark streaks (three-vfx.js `VS_DEADZONE` 25, `VS_K` 1/55, `VS_MAX` 7);
+- thinning (`PX_PERF_LOW_MUL` 0.5, `PX_FX_FLOOR` 0.35);
+- the hit read (`window.EW_HIT_READ`: minPct 5, maxPct 40, maxScale 1.6,
+  killLinger 1.45);
+- the ripple (`amp` 0.022, `r1` 0.55 screen heights, `ms` 720 in
+  `_crImpactRipple`; the band width is the shader's 1400);
+- the tank (`ts * 1.05` tall, `back` 1.5 tiles, 3 shots 190 ms apart);
+- the HQ swaps (`_HQ_ONE_MODEL`, re-enter the room to see a change).
+
+**Tests:** spell-craft.test.js (18), spell-craft-particles.test.js,
+spell-craft-hitread.test.js, spell-one-model.test.js.
+
+**Next:** Phase 4 THE BODY. Open: the cross (§8 #5), the ripple's reach
+(§8 #3), THE TOWER's tarot card (§12, maybe).
+
 ## 11. The census tool
 
 `node check-spell-presentation.js [--json] [--list <bucket>]` (repo tooling)
@@ -759,35 +805,39 @@ catalogue, §9 the same-thing rule). ✅ = wired in this delivery.
 | Fighter jet | `jet` (F-22) · weapons | Air Support flew the procedural `_finJet` | ✅ |
 | Missile | `missile` · weapons | Air Support dropped a capsule | ✅ |
 | Sword | `sword` (master sword) · weapons | Judgment, Divine Judgment, Slash Combo, Blade Waltz, Parry and the typed human execution built `_sigBuildSword` | ✅ every caller |
-| Eyeball | `eyeball/eyeball.obj` · misc | the giant's Fee Fi Fo Fum eye, the seraphim's Be Not Afraid ring eyes | next — export the eye (`_hqAstralEye`) to spells |
-| Honda Civic sedan | the race rig / garage `parked_car` | Hit and Run flies a box (tries cadillac → taxi → copcar) | next |
-| Crashed car | `crashed_car` · misc | Hit and Run's wreck | next (warmed now) |
+| Eyeball | `eyeball/eyeball.obj` · misc | the giant's Fee Fi Fo Fum eye, the seraphim's Be Not Afraid great eye (`ThreeRenderer.astralEye` → `_crAstralEye`) | ✅ — the 42 ring eyes stay procedural beads (pinpricks; 42 OBJ clones would cost more than they show) |
+| Honda Civic sedan | the race rig / garage `parked_car` | Hit and Run (`ThreeRenderer.sedan`; the misc cars stand in while it streams) | ✅ |
+| Crashed car | `crashed_car` · misc | Hit and Run's wreck (swapped in on impact when the car was Meshy) | ✅ |
 | Cop car | `copcar` · misc | Book 'Em | already the model; warmed now |
-| Pen | catalogue `pen` | Neuralyzer's chrome cylinder | next |
-| Wooden cross | `cross` (weapons) vs `wooden_cross` (misc) — **two files for one thing** | Boot Hill's procedural cross | next — the user picks ONE file |
-| Tarot card | `tarot` / `tarot2` · catalogue | Abracadabra's canvas planes | next |
+| Pen | catalogue `pen` | Neuralyzer (`_crCatKey('pen')` — a catalogue row through the spells' loader; the tube is the fallback) | ✅ |
+| Wooden cross | `cross` (weapons) vs `wooden_cross` (misc) — **two files for one thing** | Boot Hill's procedural cross | waiting — the user picks ONE file (§8 #5) |
+| Tarot card | `tarot` / `tarot2` · weapons | THE TOWER's building-sized card (the fortune teller — not Abracadabra) | maybe — its face IS the drawn "XVI · THE TOWER"; the model's own print would lose it |
 | Clock | `clock` / `gclock` · misc | The Changeling's glowing dial (optional — it is an additive dial) | maybe |
 | Cardboard box | `cardboard_box` · catalogue | Decommissioned's crate (weak match) | maybe |
-| Military tank | `military_tank` · misc | the general's Artillery Strike / Iron Bulwark | next |
-| Door gun | catalogue `door_gun` | the door agent's `_sigDoorGunShot3D` procedural frame | next |
+| Military tank | `military_tank` · misc | the general's Artillery Strike (`_crTank`: rolls up behind the caster, three-round salvo; fog-gated per side) | ✅ Artillery Strike · Iron Bulwark is an aura, no vehicle |
+| Door gun | catalogue `door_gun` | the door agent holds it in every battle (`_unitAttachHeld`); `_sigDoorGunShot3D`'s flying frame is the folded DOOR, not the gun | ✅ already the model |
 
 **DOOR HQ procs that should draw the spells' model:**
 
 | Thing | The Meshy model | HQ proc today | Status |
 |---|---|---|---|
 | Astral eyes | the sky's eyeball OBJ | `dream_eye`, THE WATCHER (`_hqAstralEye`) | ✅ |
-| Sword in the stone | `sword` (master sword) | `sword_stone` procedural (Camelot) | next |
-| Saucer | `ufo` / `saucer_lg` | `saucer_rig` procedural, `_hzSaucer` in the rosters | next |
-| Skateboard find | `skateboard` · misc | `find_deck` procedural | next |
-| Candle ring | `candleRing` / `candle` · weapons | `candle_ring` procedural (7+ rooms) | next |
-| Crystal ball / tarot deck | `crystalBall`, `tarotDeck` · weapons | the fortune-teller tent's interior, `floating_orb` | next |
-| Skulls, bones | `skull`, `femur`, `ulna` · weapons | catacomb / dungeon dressing | next |
-| Cauldron | `cauldron` · weapons | ritual rooms | next |
-| Guns | revolver, pistol, shotgun, sniper · weapons | the police / Area 51 armouries | next |
-| Missile | `missile` · weapons | Area 51 / D.U.M.B. set dressing | next |
+| Sword in the stone | `sword` (master sword) | `sword_stone` (`_hqOneModel`; the procedural blade is the stand-in) | ✅ |
+| Saucer | `saucer_lg` | `saucer_rig` and `_hzSaucer` (rosters, the monument) | ✅ (`EW_PERF_LOW` keeps `_hzSaucer` procedural) |
+| Skateboard find | `skateboard` · misc | `find_deck` | ✅ |
+| Candle ring | `candle` · weapons | `candle_ring` — one `candle` per stick (`candleRing` fitted to a 3.4 m ring would stand ~2 m tall) | ✅ |
+| Crystal ball / tarot deck | `crystalBall` · weapons | the fortune-teller tent's ball | ✅ ball · `floating_orb` is a sci-fi orb, and there is no tarot-deck prop |
+| Skulls, bones | `skull`, `femur`, `ulna` · weapons | — | ✅ already: dungeons use the Meshy `skull_pile`, graves the weapons bones; no procedural bones exist |
+| Cauldron | `cauldron` · weapons | ritual rooms | no procedural cauldron exists — nothing to swap |
+| Guns | `pistol` · weapons | `lone_gun` (the HQ's only gun prop) | ✅ · no armoury gun racks exist |
+| Missile | `missile` · weapons | Area 51 / D.U.M.B. | no procedural missile exists — nothing to swap |
 
-**The loader gap to close with the next rows:** the weapons cache
-(`_wpnCache`) and the misc cache (`_miscModelCache`) are separate, so a
-model both sides use loads twice (`jet` / `fighter_jet`, `cannon` /
-`ship_cannon`). The fix is one loader per FILE: `_doorFxLeafKey` already
-bridges an HQ catalogue row into `_WPN_MODELS`; it needs `base: 'weapons'`.
+**The loader gap — closed 2026-09-24 (session 2):** the weapons cache
+(`_wpnCache`) and the misc cache (`_miscModelCache`) loaded a shared file
+twice (`jet` / `fighter_jet`, `cannon` / `ship_cannon`). Now
+`ThreeRenderer.assetGltf` (the spells' loader already calls it) goes
+through `_oneFileGltf`, which hands the weapons side the misc cache's entry
+for the same URL: one download, one parse per FILE. `_crCatKey` bridges any
+HQ catalogue row into `_WPN_MODELS` (`cat:<key>`), like the door leaf's.
+The HQ procs' swap helper is three-renderer.js `_hqOneModel` (tunables
+`_HQ_ONE_MODEL` / `window._ewOneModel`; kill-switch `EW_PROC_ONE_MODEL`).

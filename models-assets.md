@@ -241,19 +241,15 @@ export as authored. The misc / door-kit / prop paths were already Lambert (`_hzM
 live (RULE #1c): the stage's tone against the old — `CV_BAKE_EMISSIVE` is the edit if a bake reads too dark (raise) or flat
 (lower); the creator base's own shells set their roughness after this and are untouched.
 
-## THE ONE MODEL (2026-09-24) — spells draw the world's Meshy models
-mondo: "i dont want one spell with a generated sword and one with a meshy sword". The crossover
-table is SPELL_DIRECTOR_PLAN.md §12; MODEL_INDEX.md §9 rows updated. Shipped:
-- **Every summoned sword** is the weapons-bucket master sword: `_sigSwordMeshy` (glow shell,
-  hologram mode, `ghost(mat)` afterimages) is tried first by `_sigBuildSword`; `opts.procedural`
-  forces the old blade (also the fallback while the GLB loads).
-- **Air Support** flies the F-22 (`_finJetMeshy`, falls back to `_finJet`) and drops the missile GLB.
-- **Drive-By** rolls the HQ's Cadillac: renderer export `ThreeRenderer.vehicle(kind, o)` →
-  `_hzVehicle`; `SPELL_MAP.raceDriveBy.ride = 'cadillac'`, fired from battle.js's dash branch as
-  `fire('ride', …, {fromX,fromY,toX,toY,durMs,holdMs})` (all on online.js's relay whitelist).
-  `_WPN_DRIP_MISC` warms the kit vehicles at match start.
-- **Astral realm eyes** wear the esoteric sky's `eyeball/eyeball.obj` (`_hzEyeballPick()` is the
-  shared material rule, it flags the cornea); the gaze is found at load from the cornea bbox, so
-  the OBJ's authored facing does not matter. `window.EW_PROC_EYES = true` (or EW_PERF_LOW) keeps
-  the procedural eye.
-- Open: `cross` vs `wooden_cross` are duplicate files — pick one before either is reused.
+## THE ONE MODEL, the §12 rows (2026-09-24, session 2 — SPELL_DIRECTOR_PLAN §12)
+- Spells → HQ models: Artillery Strike's `military_tank` (`_crTank`), the Neuralyzer's catalogue `pen`
+  (`_crCatKey(catKey)` registers any `DOOR_HQ.catalogue` row as a `cat:<key>` `_WPN_MODELS` entry),
+  Hit and Run's honda civic (`ThreeRenderer.sedan(o)`) + `crashed_car` wreck, Fee Fi Fo Fum's and Be Not
+  Afraid's great eye (`ThreeRenderer.astralEye(o)` → `_crAstralEye`; the 42 ring eyes stay beads).
+- HQ procs → spell models (three-renderer.js `_hqOneModel`, tunables `_HQ_ONE_MODEL` /
+  `window._ewOneModel`, kill-switch `EW_PROC_ONE_MODEL`): sword_stone → `sword`, saucer_rig / `_hzSaucer`
+  → `saucer_lg`, find_deck → `skateboard`, candle_ring → `candle` per stick, the fortune tent's ball →
+  `crystalBall`, lone_gun → `pistol`. The procedural shape stays the stand-in while a GLB streams.
+- ONE LOADER PER FILE: `ThreeRenderer.assetGltf` → `_oneFileGltf` shares the misc cache's entry with the
+  weapons cache. Keep `_WPN_MODELS` file names in step with three-renderer.js `_HQ_SPELL_FILES`.
+- Open: `cross` vs `wooden_cross` (the user picks one).

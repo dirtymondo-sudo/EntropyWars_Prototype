@@ -1294,7 +1294,18 @@
                     text: String(textValue ?? ''),
                     kind: kind || 'damage',
                     dmgAmt: (opts && opts._dmgAmt > 0) ? opts._dmgAmt : undefined,
-                    dmgBy: (opts && opts._dmgAmt > 0) ? opts._dmgBy : undefined
+                    dmgBy: (opts && opts._dmgAmt > 0) ? opts._dmgBy : undefined,
+                    /* THE HIT READ (SPELL_DIRECTOR_PLAN §5 Phase 2): the
+                       host's verdict on this hit — type key, % of max HP,
+                       crit, weak (1) / resisted (-1), kill — so the guest's
+                       number wears the same colour / swell / stamp / glyph /
+                       afterglow. Facts only; each end styles (and honours
+                       its own EW_DISABLE_CRAFT). */
+                    hit: (opts && opts._hitPct != null) ? {
+                        t: opts._hitType || undefined, p: opts._hitPct,
+                        c: opts._hitCrit ? 1 : undefined, w: opts._hitWeak || undefined,
+                        k: opts._hitKill ? 1 : undefined
+                    } : undefined
                 });
             }
         };
@@ -3831,8 +3842,18 @@
                             /* Rebuild the record-juice attribution opts so the
                                guest's display layer can restyle a number that
                                breaks the GUEST's own Biggest Hit record. */
-                            window.showFloatingTextAtTile(data.x, data.y, data.text, data.kind,
-                                (data.dmgAmt > 0) ? { _dmgAmt: data.dmgAmt, _dmgBy: data.dmgBy } : {});
+                            var _ftOpts = (data.dmgAmt > 0) ? { _dmgAmt: data.dmgAmt, _dmgBy: data.dmgBy } : {};
+                            /* THE HIT READ: rebuild the host's hit facts so
+                               the guest's number reads the same hit. */
+                            var _ftHit = data.hit;
+                            if (_ftHit && typeof _ftHit === 'object' && Number.isFinite(Number(_ftHit.p))) {
+                                _ftOpts._hitPct = Number(_ftHit.p);
+                                if (typeof _ftHit.t === 'string') _ftOpts._hitType = _ftHit.t;
+                                if (_ftHit.c) _ftOpts._hitCrit = 1;
+                                if (_ftHit.w === 1 || _ftHit.w === -1) _ftOpts._hitWeak = _ftHit.w;
+                                if (_ftHit.k) _ftOpts._hitKill = 1;
+                            }
+                            window.showFloatingTextAtTile(data.x, data.y, data.text, data.kind, _ftOpts);
                         }
                     }
 

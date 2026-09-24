@@ -36,7 +36,16 @@ as it stood that day.
 | `_loadMiscModel(..., false)` | `Assets/misc/<folder>/` | absolute path | the OBJ landmarks |
 
 Rules: one filename lives in ONE table (a renamed upload is a one-line
-fix). A model that also has a procedural stand-in is **GLB-first with the
+fix). **One loader per FILE (2026-09-24, SPELL_DIRECTOR_PLAN §12 "the
+loader gap"):** the weapon loader's GLB call (`ThreeRenderer.assetGltf`,
+what `_wpnLoad` calls) goes through `_oneFileGltf`, which serves / joins /
+publishes the misc cache's entry for the same URL — so `jet` ⇄
+`fighter_jet`, `cannon` ⇄ `ship_cannon`, `ufo`, `sword` ⇄ Excalibur's rock,
+the bones, the candle, the crystal ball and the pistol are ONE download,
+ONE parse, ONE root, whichever side asks first. The HQ's own copies of
+the weapon file names live in ONE renderer table, `_HQ_SPELL_FILES`
+(three-renderer.js, next to `_hqCatGlb`) — a renamed weapon upload is
+fixed there AND in `_WPN_MODELS`. A model that also has a procedural stand-in is **GLB-first with the
 procedural as `fallback`** (loader missing, or `low: 'skip'` under
 `EW_PERF_LOW` for pure scenery — on-board cover never skips). Measure a
 new GLB before wiring it (bbox + a contact sheet; the facing is noted in
@@ -168,9 +177,10 @@ walker's own group (three-renderer.js `_hqRideDeckBuild`: `_miscModelInstance`
 fitted by SPAN to 0.84 m, pre-turned π/2 so its length runs along the
 rider's +Z, over a procedural stand-in that hides when the file lands),
 rolled on a kickflip, spun with the body on a 180, flipped with it on a
-front flip. It is never a room prop and never on a board; the deck FIND in
+front flip. It is never on a board; the deck FIND in
 Room 26 (`find_deck`, shown only while `HQ_SKATE_RULES.free` is off) is the
-stand-in leaning on its tail. Columns as in §3.
+SAME GLB since 2026-09-24 (THE ONE MODEL — fitted by span to 0.8 m, leaned
+on its tail; the procedural plank + wheels are its stand-in). Columns as in §3.
 
 | key | file | facing | S | H | stands as |
 | --- | --- | --- | --- | --- | --- |
@@ -789,7 +799,7 @@ skinned clone of a cult member rig on the board is the next pass.
 - **Billboards**: `_hzGlowSprite` / `_hzGlowCore` haloes, `_hzTextTex`
   signs and playing cards, `_nrStreakTex` wakes.
 
-### 8b. AREA 51's procs (2026-09-18) — `saucer_rig` (HANGAR 18: the tripod cradle, the lens, the dome, the tarp, four floodlights — the near weenie; a real saucer GLB with a tarp would replace it: measure it, `base: 'misc'`, keep the key) and `flood_mast` (THE FLIGHT LINE's floodlights — an outdoor terrain room lights itself). Wish-list: a tarped saucer, a floodlight mast, a control tower, a padded-cell wall tile (the `wall_padding` proc stands free on the plan walls).
+### 8b. AREA 51's procs (2026-09-18) — `saucer_rig` (HANGAR 18: the tripod cradle, the lens, the dome, the tarp, four floodlights — the near weenie; since 2026-09-24 THE ONE MODEL: the craft IS `saucer_lg` on its own gear, the lens + rig + tarp its stand-in, the floodlights kept — `_HQ_ONE_MODEL.saucer_rig.keepRig` leaves the rig standing; a tarped saucer GLB would still be the better fit) and `flood_mast` (THE FLIGHT LINE's floodlights — an outdoor terrain room lights itself). Wish-list: a tarped saucer, a floodlight mast, a control tower, a padded-cell wall tile (the `wall_padding` proc stands free on the plan walls).
 
 ## 9. The same-thing rule (one model per thing, everywhere it appears)
 
@@ -800,13 +810,19 @@ skinned clone of a cult member rig on the board is the next pass.
 | a bench | `city_bench` (§3q) | `park_bench` and `locker_bench` everywhere, the row of its own |
 | a fighter jet | Meshy_AI_f22_fighter_jett (`Assets/weapons/`) | the Air Support / flyover spells, Area 51's flight line (`fighter_jet`, `base: 'weapons'`); since 2026-09-24 the general's Air Support EXECUTION too (`_finJetMeshy` — `_finJet` is only its streaming fallback) |
 | a missile / a bomb from the sky | `missile` (Meshy_AI_missle, `Assets/weapons/`) | the missile spells, the nuke warhead, Air Support's bomb (2026-09-24) |
-| an eyeball | `eyeball/eyeball.obj` + `Eye_D.jpg` (`_hzEyeballPick`, one material rule) | the sky's watchers (`_hzModelEyeball`), the astral realm's `dream_eye` + THE WATCHER (`_hqAstralEye`, 2026-09-24 — the OBJ rides inside the procedural ball, its gaze measured off the cornea on load; the lids still blink over it) |
+| an eyeball | `eyeball/eyeball.obj` + `Eye_D.jpg` (`_hzEyeballPick`, one material rule) | the sky's watchers (`_hzModelEyeball`), the astral realm's `dream_eye` + THE WATCHER (`_hqAstralEye`, 2026-09-24 — the OBJ rides inside the procedural ball, its gaze measured off the cornea on load; the lids still blink over it); SPELLS reach the same eye through `ThreeRenderer.astralEye(o)` (a Group, gaze +Z, `userData.eye.track / blink`) |
 | a traffic light's pole | `yellow_pole` (§3q) | the board's `traffic_light` object; a bollard row in a room |
-| the saucer on the ground | `saucer_lg` | Area 51 |
+| the saucer on the ground | `saucer_lg` | Area 51 (`_hzSaucerLanded`); since 2026-09-24 (THE ONE MODEL) HANGAR 18's `saucer_rig` (the craft on its own gear; the lathe lens, the tripod and the tarp its stand-in) and every `_hzSaucer` — the orbs / space rosters' saucer and the `saucer` monument (the lathe hull + struts its stand-in; EW_PERF_LOW keeps the lathe) |
 | a cannon | `cannon` | the Dutchman's rails, the Cannonball spell, THE GUN DECK below decks (`ship_cannon`) |
 | a sea chest / an anchor / a hanging lantern | `chest` / `anchor` / `lantern` | the Dutchman's deck and quay; below decks as `sea_chest` / `ship_anchor` / `ship_lantern` (rev 19) |
 | the master sword | Meshy_AI_master_sword | Excalibur's rock (Camelot), every sword effect — since 2026-09-24 literally every one: `_sigBuildSword` returns the GLB (`_sigSwordMeshy`) for the stand sword, the slash combo, Blade Waltz, Parry and the typed execution; the procedural blade is only its streaming fallback |
 | the sleigh | Meshy_AI_Golden_Red_Sleigh | the North Pole board, the sleigh spell |
+| the sword in the stone (DOOR HQ) | Meshy_AI_master_sword (`_HQ_SPELL_FILES.sword`) | Camelot's `sword_stone` proc (2026-09-24, THE ONE MODEL — tip down as authored through the anvil into the stone; the box blade / guard / grip / pommel its stand-in). The same root as every sword spell (one loader per file, §2) |
+| a skateboard | `skateboard` (§3d) | under the rider (`_hqRideDeckBuild`) and, since 2026-09-24, the deck FIND (`find_deck`, leaned on its tail — the plank + wheels its stand-in) |
+| a lit candle | `candle` (Meshy_AI_single_lit_candle, `_WPN_MODELS.candle` / `_HQ_SPELL_FILES.candle`) | the ritual spells; since 2026-09-24 every stick of the HQ's `candle_ring` (13 clones at the sticks' own heights — the wax + cone flame their stand-in; EW_PERF_LOW keeps the sticks). The `candleRing` file (1.91 ⌀ × 1.19 h) is NOT used for the 3.4 m ring: fitted to it its candles stand 2 m tall |
+| a crystal ball | `crystalBall` (Meshy_AI_crystal_ball) | the fortune teller's spells; since 2026-09-24 the lady's ball in ROOM 1893's `fortune_tent` (the glowing sphere its stand-in). ROOM X's `floating_orb` is a sci-fi orb on a plinth, not a crystal ball — it stays procedural |
+| a pistol | `pistol` (Meshy_AI_pistol) | the gun spells; since 2026-09-24 Room II's `lone_gun` on the table (laid on its side — its thinnest axis turned upright; the box silhouette its stand-in) and every other room that sets the row |
+| a sedan (the Honda Civic) | the race's static car GLB (`getRace3DModel('honda civic', 'male').model`) | the race's unit, the garage `parked_car`, the main menu's sedan; SPELLS reach it through `ThreeRenderer.sedan(o)` (2026-09-24 — nose +Z, `metres` long, null while it streams) |
 | a vault / blast door | `vault` | D.U.M.B. chokes, the `blastdoor` monument (D.U.M.B., CERN) |
 | a trilithon | `trilithon` | Stonehenge's setting, the `trilithon` monument |
 | a crane | `crane` | Babel's setting, the `babelcrane` monument |

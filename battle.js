@@ -1849,7 +1849,7 @@
             },
 
             descent(ctx) {
-                const { spell, target, cam, projectileDelay } = ctx;
+                const { spell, target, cam, projectileDelay, unit } = ctx;
                 const VFX = window.ThreeVFXEffects;
                 const descentMs = VFX.getDescentTotalMs(spell.id);
                 const impactDelay = Math.max(projectileDelay + actionMs(descentMs), actionMs(620));
@@ -1858,7 +1858,11 @@
 
                 window.setTimeout(() => {
                     if (state.phase !== 'battle' || _skipVisuals()) return;
-                    VFX.fire('descent', spell.id, { tx: target.x, ty: target.y });
+                    /* cx / cy: a strike fired from a kit vehicle (Artillery
+                       Strike's tank, THE ONE MODEL) stands it by the caster —
+                       each side gates it on its own fog */
+                    VFX.fire('descent', spell.id, { tx: target.x, ty: target.y,
+                        cx: unit ? unit.x : undefined, cy: unit ? unit.y : undefined });
                 }, projectileDelay);
 
                 return { impactDelay, completionDelay };
@@ -9951,6 +9955,230 @@
             return (CONFIG.tileSize || BASE_TILE) * 0.4 * Math.max(0, (tiltDeg - 10) / 70);
         }
 
+        /* ═══ THE HIT READ (SPELL_DIRECTOR_PLAN.md §5 Phase 2, 2026-09-24) ═══
+           The damage number says what KIND of hit it was before the log
+           does: it wears the hit's element / type colour, swells with the
+           hit's share of the target's max HP, carries a stamped CRIT tag on
+           a crit, the element glyph on a weakness (a resisted hit reads
+           muted), and the killing blow lingers a beat with an afterglow.
+           Everything is DECIDED ON THE HOST at emit (applyDamageToUnit →
+           _hitReadEmitOpts, the {_hitType,_hitPct,_hitCrit,_hitWeak,_hitKill}
+           opts) and rides online.js's floating-text relay, so the guest
+           draws the same read off facts it never computed (RULE #2). The
+           display layer only STYLES; each end honours its own kill-switch.
+           Colours are the codebase's own chips: hud.js ELEM_BADGE_COLORS
+           (elements) then TYPE_TEXT_COLORS (types) — no second palette.
+           A basic attack with no type / element keeps the classic red: red
+           reads "physical", colour reads "typed".
+           Kill-switch: window.EW_DISABLE_CRAFT = true → the old look. */
+        function _hitReadOn() {
+            return !(typeof window !== 'undefined' && window.EW_DISABLE_CRAFT);
+        }
+        // Tunables — live-editable from the console (window.EW_HIT_READ.maxScale = 2 …).
+        const HIT_READ = (typeof window !== 'undefined')
+            ? (window.EW_HIT_READ = window.EW_HIT_READ || {}) : {};
+        if (HIT_READ.minPct == null) HIT_READ.minPct = 5;         // ≤ this % of max HP → no swell
+        if (HIT_READ.maxPct == null) HIT_READ.maxPct = 40;        // ≥ this % → full swell
+        if (HIT_READ.maxScale == null) HIT_READ.maxScale = 1.6;   // the full swell
+        if (HIT_READ.killLinger == null) HIT_READ.killLinger = 1.45; // killing blow's duration ×
+        if (HIT_READ.muteSat == null) HIT_READ.muteSat = 0.35;    // resisted: colour kept (0 = grey)
+        if (HIT_READ.muteDim == null) HIT_READ.muteDim = 0.78;    // resisted: brightness kept
+
+        /* HOST, at emit: the facts of one hit → the relay-safe opts (plain
+           numbers / strings, no objects). info = { type, crit, weakMult, kill }. */
+        function _hitReadEmitOpts(target, amount, info) {
+            if (!_hitReadOn() || !target || !(amount > 0)) return {};
+            const maxHp = Math.max(1, Number(target.maxHp) || Number(target.hp) || 1);
+            const o = { _hitPct: Math.max(0, Math.min(100, Math.round(amount / maxHp * 100))) };
+            if (info.type) o._hitType = String(info.type);
+            if (info.crit) o._hitCrit = 1;
+            const wm = Number(info.weakMult) || 1;
+            if (wm > 1.001) o._hitWeak = 1;
+            else if (wm < 0.999) o._hitWeak = -1;
+            if (info.kill) o._hitKill = 1;
+            return o;
+        }
+
+        /* DISPLAY, on each end: opts → the style of this pop, or null (no
+           read on this pop, or the viewer's kill-switch is thrown). */
+        function _hitReadStyle(kind, opts) {
+            if (!opts || opts._hitPct == null || !_hitReadOn()) return null;
+            const key = opts._hitType || null;
+            const col = key && ((typeof ELEM_BADGE_COLORS !== 'undefined' && ELEM_BADGE_COLORS[key])
+                || (typeof TYPE_TEXT_COLORS !== 'undefined' && TYPE_TEXT_COLORS[key])) || null;
+            // The record kinds are their own gold treatment (and size); the
+            // combo kind's electric blue says "chain" — both keep their look.
+            const own = kind === 'record' || kind === 'record-near';
+            const tintable = kind === 'damage' || kind === 'critdmg';
+            const span = Math.max(1, HIT_READ.maxPct - HIT_READ.minPct);
+            const f = Math.max(0, Math.min(1, ((Number(opts._hitPct) || 0) - HIT_READ.minPct) / span));
+            const weak = opts._hitWeak > 0, resist = opts._hitWeak < 0;
+            const glyph = weak
+                ? ((key && typeof ELEMENT_ICONS !== 'undefined' && ELEMENT_ICONS[key]) || '▲') : '';
+            return {
+                color: (tintable && !own) ? col : null,
+                glowColor: col || '#ff5a3a',
+                scale: own ? 1 : 1 + f * (HIT_READ.maxScale - 1),
+                crit: !!opts._hitCrit,
+                weak, resist, glyph,
+                kill: !!opts._hitKill,
+            };
+        }
+
+        /* 3D path: ThreeAnim.floatingText (three-renderer.js) builds the pop
+           as a <canvas> in #floatTextOverlay and animates only its left /
+           top / transform / opacity each frame — so the pop it JUST appended
+           can be re-painted and re-sized here without touching the renderer.
+           The tween centres it with translate(-50%,-50%), so a bigger canvas
+           (the swell, the stamp's margin) stays on its anchor. */
+        function _hitReadDress3D(hr) {
+            try {
+                const ov = document.getElementById('floatTextOverlay');
+                const c = ov && ov.lastElementChild;
+                if (!c || c.tagName !== 'CANVAS' || c._hitRead) return;
+                c._hitRead = 1;
+                const w = c.width, h = c.height;
+                if (!(w > 0 && h > 0)) return;
+                const snap = document.createElement('canvas');
+                snap.width = w; snap.height = h;
+                const sx = snap.getContext('2d');
+                sx.drawImage(c, 0, 0);
+                // Re-tint by LUMINANCE: the stock fire gradient's light→dark
+                // ramp becomes the same ramp in the type's hue; the dark
+                // outline and shadow stay dark, the white sheen stays white.
+                if (hr.color || hr.resist) {
+                    const img = sx.getImageData(0, 0, w, h), d = img.data;
+                    const tc = hr.color ? _hitReadRgb(hr.color) : null;
+                    const sat = HIT_READ.muteSat, dim = HIT_READ.muteDim;
+                    for (let i = 0; i < d.length; i += 4) {
+                        if (d[i + 3] === 0) continue;
+                        let r = d[i], g = d[i + 1], b = d[i + 2];
+                        const L = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+                        if (tc) {
+                            if (L < 0.8) { const k = L / 0.8; r = tc[0] * k; g = tc[1] * k; b = tc[2] * k; }
+                            else { const k = (L - 0.8) / 0.2; r = tc[0] + (255 - tc[0]) * k; g = tc[1] + (255 - tc[1]) * k; b = tc[2] + (255 - tc[2]) * k; }
+                        }
+                        if (hr.resist) {
+                            const y = 0.299 * r + 0.587 * g + 0.114 * b;
+                            r = (y + (r - y) * sat) * dim; g = (y + (g - y) * sat) * dim; b = (y + (b - y) * sat) * dim;
+                        }
+                        d[i] = r; d[i + 1] = g; d[i + 2] = b;
+                    }
+                    sx.putImageData(img, 0, 0);
+                }
+                const gs = hr.glyph ? Math.round(h * 0.46) : 0;       // glyph box
+                const padX = gs ? Math.round(gs * 1.05) : (hr.crit ? Math.round(h * 0.3) : 0);
+                const padY = hr.crit ? Math.round(h * 0.28) : 0;
+                const W = w + padX * 2, H = h + padY * 2;
+                c.width = W; c.height = H;                              // (clears it)
+                const ctx = c.getContext('2d');
+                if (hr.kill) {
+                    // The afterglow: the number painted once through a wide
+                    // soft shadow in its own colour, then crisp on top.
+                    ctx.save();
+                    ctx.shadowColor = hr.glowColor;
+                    ctx.shadowBlur = Math.round(h * 0.35);
+                    ctx.globalAlpha = 0.9;
+                    ctx.drawImage(snap, padX, padY);
+                    ctx.restore();
+                }
+                ctx.drawImage(snap, padX, padY);
+                if (hr.glyph) _hitReadGlyph(ctx, hr, padX * 0.55, H / 2, gs);
+                if (hr.crit) _hitReadStamp(ctx, padX + w * 0.8, padY + h * 0.2, h);
+                c.style.width = Math.round(W * hr.scale) + 'px';
+                c.style.height = Math.round(H * hr.scale) + 'px';
+                // The afterglow breathes while the killing blow lingers.
+                if (hr.kill && typeof c.animate === 'function') {
+                    const gc = hr.glowColor;
+                    c.animate([
+                        { filter: 'drop-shadow(0 0 4px ' + gc + ')' },
+                        { filter: 'drop-shadow(0 0 16px ' + gc + ')' },
+                        { filter: 'drop-shadow(0 0 4px ' + gc + ')' },
+                    ], { duration: 700, iterations: 3, easing: 'ease-in-out' });
+                }
+            } catch (_e) { /* the stock pop stands */ }
+        }
+        function _hitReadRgb(hex) {
+            const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || ''));
+            if (!m) return [255, 255, 255];
+            const n = parseInt(m[1], 16);
+            return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+        }
+        // The weakness glyph: the element's emoji, or a type-coloured ▲.
+        function _hitReadGlyph(ctx, hr, cx, cy, size) {
+            ctx.save();
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = '900 ' + size + "px 'Segoe UI Emoji','Apple Color Emoji','Noto Color Emoji',sans-serif";
+            ctx.shadowColor = hr.glowColor;
+            ctx.shadowBlur = Math.round(size * 0.45);
+            if (hr.glyph === '▲') {
+                ctx.lineWidth = Math.max(2, size * 0.12);
+                ctx.strokeStyle = '#000';
+                ctx.strokeText(hr.glyph, cx, cy);
+                ctx.fillStyle = hr.glowColor;
+            } else {
+                ctx.fillStyle = '#fff';
+            }
+            ctx.fillText(hr.glyph, cx, cy);
+            ctx.restore();
+        }
+        // The crit stamp: a tilted gold plate on a white starburst, "CRIT"
+        // punched out in near-black — reads at a glance, even at chip size.
+        function _hitReadStamp(ctx, cx, cy, h) {
+            const fs = Math.max(10, Math.round(h * 0.24));
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.rotate(-0.24);
+            const R = fs * 1.35, r = fs * 0.75;
+            ctx.beginPath();
+            for (let i = 0; i < 16; i++) {
+                const a = i * Math.PI / 8, rr = (i % 2) ? r : R;
+                ctx.lineTo(Math.cos(a) * rr * 1.5, Math.sin(a) * rr);
+            }
+            ctx.closePath();
+            ctx.fillStyle = 'rgba(255,248,214,0.92)';
+            ctx.fill();
+            ctx.font = "900 " + fs + "px 'Cinzel', Georgia, serif";
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            const tw = ctx.measureText('CRIT').width + fs * 0.6, th = fs * 1.15;
+            ctx.fillStyle = '#ffc21a';
+            ctx.strokeStyle = '#3a1a00';
+            ctx.lineWidth = Math.max(2, fs * 0.14);
+            ctx.beginPath();
+            if (typeof ctx.roundRect === 'function') ctx.roundRect(-tw / 2, -th / 2, tw, th, fs * 0.2);
+            else ctx.rect(-tw / 2, -th / 2, tw, th);
+            ctx.fill();
+            ctx.stroke();
+            ctx.fillStyle = '#1c0c00';
+            ctx.fillText('CRIT', 0, fs * 0.04);
+            ctx.restore();
+        }
+
+        /* 2D-board fallback: the same read as classes + CSS vars on the
+           .dio-float-text div (styles in index.html, `.dio-float-text.hr`). */
+        function _hitReadDressDom(el, hr) {
+            el.classList.add('hr');
+            if (hr.color) el.style.setProperty('--hr-color', hr.color);
+            el.style.setProperty('--hr-glow', hr.glowColor);
+            el.style.setProperty('--hr-scale', hr.scale.toFixed(3));
+            if (hr.resist) el.classList.add('hr-resist');
+            if (hr.kill) el.classList.add('hr-kill');
+            if (hr.glyph) {
+                const g = document.createElement('span');
+                g.className = 'hr-glyph';
+                g.textContent = hr.glyph;
+                el.insertBefore(g, el.firstChild);
+            }
+            if (hr.crit) {
+                const s = document.createElement('span');
+                s.className = 'hr-crit';
+                s.textContent = 'CRIT';
+                el.appendChild(s);
+            }
+        }
+
         function showFloatingTextAtTile(x, y, textValue, kind = 'damage', opts = {}) {
             if (_bufferingRoundEvents) {
                 _rePushEvent({ type: 'floatingText', x, y, text: textValue, kind, opts: {...opts} });
@@ -9999,12 +10227,18 @@
                 }
             }
 
-            const durationMs = Math.max(400, Number(opts.durationMs) || (state.animationsDisabled ? 500 : actionMs(900)));
+            // THE HIT READ: the host's facts about this hit (opts._hit*) →
+            // this viewer's styling; null for every non-damage pop.
+            const _hr = _hitReadStyle(kind, opts);
+            // The killing blow's number lingers a beat longer (the afterglow).
+            const durationMs = Math.round(Math.max(400, Number(opts.durationMs) || (state.animationsDisabled ? 500 : actionMs(900)))
+                * (_hr && _hr.kill ? HIT_READ.killLinger : 1));
             const jitterX = Number.isFinite(opts.jitterX) ? opts.jitterX : (Math.random() * 18 - 9);
             const jitterY = Number.isFinite(opts.jitterY) ? opts.jitterY : (Math.random() * 10 - 5);
 
             if (window.ThreeAnim && window.ThreeAnim.isActive()) {
                 window.ThreeAnim.floatingText(x, y, String(textValue ?? ''), kind, durationMs, { jitterX, jitterY });
+                if (_hr) _hitReadDress3D(_hr);
                 return;
             }
 
@@ -10024,6 +10258,7 @@
             const ts = CONFIG.tileSize || BASE_TILE;
             const floatY = ts * 1.2;
             el.style.setProperty('--dio-float-y', `-${floatY}px`);
+            if (_hr) _hitReadDressDom(el, _hr);
 
             tileEl.appendChild(el);
             window.setTimeout(() => el.remove(), durationMs + 80);
@@ -29288,6 +29523,10 @@
             const typeNote = typeEffectOverride
                 ? (typeEffectOverride === 'super' ? "It's super effective!" : '')
                 : (sourceUnit && isEnemyUnit(sourceUnit, target) ? getTypeCombatNote(sourceUnit, target, opts.spellType || null) : '');
+            // The pure type matchup (STAB backed out) for THE HIT READ's
+            // number — set in the block below; a bane's forced 'super' is
+            // judged at the emit.
+            let _hrTypeEff = 1;
             if (sourceUnit && isEnemyUnit(sourceUnit, target)) {
                 // ATK/INT split: physical damage rides the ATK axis (Overclock,
                 // Inspired, Discord…); magic damage rides the INT axis (Dark
@@ -29313,6 +29552,7 @@
                     // Back out the pure matchup factor from the net multiplier
                     // so it stays exact if the type-chart values ever change.
                     const _effMult = _stabMult ? _typeMult / _stabMult : _typeMult;
+                    _hrTypeEff = _effMult; // THE HIT READ's weak / resisted verdict
                     if (_effMult > 1.001) _multCallout(target, `${_fmtMult(_effMult)} WEAK!`);
                     else if (_effMult < 0.999) _multCallout(target, `${_fmtMult(_effMult)} RESIST`);
                 }
@@ -29709,7 +29949,22 @@
                     const _recOpts = (damageType !== 'dot' && sourceUnit
                         && isEnemyUnit(sourceUnit, target))
                         ? { _dmgAmt: finalDamage, _dmgBy: sourceUnit.player } : {};
-                    showFloatingTextForUnit(target, `-${finalDamage}`, _floatKind, _recOpts);
+                    /* THE HIT READ (SPELL_DIRECTOR_PLAN §5 Phase 2): the
+                       number's colour (the hit's element, else its spell
+                       type; untyped basic attacks stay red), its swell (share
+                       of max HP), the crit stamp, the weakness glyph / muted
+                       resist (type matchup × element affinity, the same two
+                       factors the ×N WEAK!/RESIST callouts name) and the
+                       kill afterglow — decided HERE on the host, relayed as
+                       plain opts (online.js floating-text). */
+                    const _hitOpts = _hitReadEmitOpts(target, finalDamage, {
+                        type: _affEl || opts.spellType || null,
+                        crit: !!opts.isCrit,
+                        weakMult: (typeEffectOverride === 'super' ? 1.3 : _hrTypeEff)
+                            * (_affinity === 'weak' ? 1.5 : _affinity === 'resist' ? 0.5 : 1),
+                        kill: _lethalHit,
+                    });
+                    showFloatingTextForUnit(target, `-${finalDamage}`, _floatKind, { ..._recOpts, ..._hitOpts });
                     if (damageType !== 'dot') {
                         const _isPhysAbility = damageType === 'physical' && !!opts.spellType;
                         const _isMagicSpellHit = damageType !== 'physical' && !!opts.spellType;
@@ -54527,7 +54782,10 @@
                     if (isCrit) {
                         addLog(`⚡ CRITICAL HIT!`);
                         showBattleDialogue([`<span class="dlg-effective">⚡ CRITICAL HIT!</span>`], 1200);
-                        showFloatingTextForUnit(unit, 'CRIT!', 'crit', {
+                        // THE HIT READ stamps CRIT on the number itself (over
+                        // the target, where the eye already is) — the old
+                        // word pop over the ATTACKER only runs without it.
+                        if (!_hitReadOn()) showFloatingTextForUnit(unit, 'CRIT!', 'crit', {
                             durationMs: 1100,
                             jitterY: -20
                         });

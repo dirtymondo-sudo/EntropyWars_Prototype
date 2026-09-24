@@ -130,7 +130,8 @@ test('every loader goes through the store — the renderer\'s three, the foliage
     assert.ok(/_asGltf\(reqUrl, loaded, err, \{ rec: rec \}\);/.test(fn(renderer, '_loadMiscModel')) && /_asObj\(reqUrl, loaded, err, \{ rec: rec \}\);/.test(fn(renderer, '_loadMiscModel')), 'the misc loader, GLB and OBJ');
     assert.ok(/_asObj\(\s*\/\/ THE ASSET STORE/.test(fn(renderer, '_loadFoliageModel')), 'the foliage OBJs');
     assert.ok(/if \(_asAvailable\(\) && !\/\^\(data\|blob\):\/i\.test\(String\(src\)\)\) \{/.test(fn(renderer, '_texFetch')), 'a sheet is fetched through the store and decoded from a blob URL');
-    assert.ok(renderer.includes("assetGltf: function (url, onLoad, onError, o) { return _asGltf(url, onLoad, onError, o); }"), 'the API');
+    assert.ok(renderer.includes("assetGltf: function (url, onLoad, onError, o) { return _oneFileGltf(url, onLoad, onError, o); }"), 'the API (THE ONE LOADER PER FILE, 2026-09-24: through the misc cache\'s entry for the URL)');
+    assert.ok(/_asGltf\(url, function \(gltf\) \{/.test(fn(renderer, '_oneFileGltf')), 'the shared entry still loads through the store');
     assert.ok(/if \(_viaStore\) TR\.assetGltf\(reqUrl, _onGltf, _onFail, \{ rec: rec \}\);/.test(fn(vfx, '_wpnLoad')), 'the weapon GLBs');
     assert.ok(/TRl\.assetTexture\(url, null, null\)/.test(fn(vfx, '_loadCachedTex')), 'the VFX sheets');
     assert.ok(renderer.includes("window._ewAssetStore = { stats: _asStats, clear: _asClear };"), 'the dev read');

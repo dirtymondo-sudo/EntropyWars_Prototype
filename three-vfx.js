@@ -57,6 +57,61 @@ const ThreeVFX = (function () {
     var _tmpVec = null;
     var _upVec = null;
 
+    /* ── THE CRAFT: velocity sparks + particles that scale (SPELL_DIRECTOR_PLAN
+       §5 Phase 2, 2026-09-24). Two pool-level pieces, so every spark and
+       every burst in the game gets them without touching a single recipe.
+       VELOCITY SPARKS — a spark was a star glint that faced the screen and
+       never turned, so a shower of sparks read as a cloud of confetti. A
+       spark now points along its velocity AS THE CAMERA SEES IT and grows
+       long and thin with speed: a fast one is a needle, a slow one settles
+       back into its twinkle. The list is explicit on purpose — 'sparkle' /
+       'divine-sparkle' are glitter that hangs in the air, and embers are
+       soft drifting coals; stretching either would read wrong.
+       PARTICLES THAT SCALE — the phone (EW_PERF_LOW) and the pause menu's
+       Impact FX slider thin the small repeated bits (sparks, embers, smoke,
+       dust, debris), evenly (an accumulator, not a coin flip — half the
+       sparks means every other spark, never a burst that lost all of them),
+       and a full pool now recycles its OLDEST live particle instead of
+       throwing away the spawn that was just asked for (the big hit landed
+       and its sparks were the ones that never showed).
+       EW_DISABLE_CRAFT turns both back into exactly the old look. */
+    var _VEL_SPARKS = { 'spark': 1, 'steel-spark': 1, 'spark-blue': 1, 'spark-pink': 1, 'spark-elec': 1 };
+    var VS_DEADZONE = 25;      // px/s on screen below which a spark stays a dot
+    var VS_K = 1 / 55;         // streak aspect gained per px/s above the dead zone
+    var VS_MAX = 7;            // the longest streak, in widths
+    var VS_LEAD = 0.25;        // the spark rides this far toward the streak's head (0 = centred)
+    var _THIN_SPRITES = {
+        'spark': 1, 'steel-spark': 1, 'spark-blue': 1, 'spark-pink': 1, 'spark-elec': 1,
+        'sparkle': 1, 'divine-sparkle': 1, 'ember': 1,
+        'smoke': 1, 'smoke-soft': 1, 'dust-puff': 1, 'sand-particle': 1,
+        'debris': 1, 'rock-debris': 1, 'mud-chunk': 1, 'blood-fleck': 1,
+    };
+    var PX_PERF_LOW_MUL = 0.5;  // EW_PERF_LOW halves the small bits
+    var PX_FX_FLOOR = 0.35;     // Impact FX at 0 still keeps this share (the slider dims, it never empties a hit)
+    var _thinAcc = 0;           // the density accumulator: a spawn passes each time it crosses 1
+
+    function _craftOff() {
+        return typeof window !== 'undefined' && !!window.EW_DISABLE_CRAFT;
+    }
+
+    /* 0..1 share of the thinnable spawns that are kept. The slider goes to
+       1.5 but only ever thins — more than the recipe asked for is its job. */
+    function _fxDensity() {
+        if (typeof window === 'undefined') return 1;
+        var W = window, d = 1;
+        if (W.EW_PERF_LOW) d *= PX_PERF_LOW_MUL;
+        var tp = W.ThreePost;
+        if (tp && typeof tp.getImpactFx === 'function') {
+            var fx = +tp.getImpactFx();
+            if (fx === fx) d *= PX_FX_FLOOR + (1 - PX_FX_FLOOR) * Math.max(0, Math.min(1, fx));
+        }
+        if (W.EW_FX_DENSITY != null) {
+            var ed = +W.EW_FX_DENSITY;
+            if (ed === ed) d *= Math.max(0, Math.min(1, ed));
+        }
+        return d;
+    }
+
     var _spriteMap = {
 
         'ember':             { r: 1.00, g: 0.78, b: 0.31, blend: 'add' },
@@ -1688,6 +1743,36 @@ const ThreeVFX = (function () {
         return -1;
     }
 
+    /* The OLDEST live particle (furthest through its life) that may be
+       recycled — of one pool type, or of any when type is null. A kept
+       particle (opts.keep), a zone aura, and anything choreographed (an
+       onComplete chain, a descent) are never cut short: those carry the
+       spell's beats, the recycled one is only ever a bit of spray. */
+    function _oldestLive(type) {
+        var best = null, bestF = -1;
+        for (var j = 0; j < _particles.length; j++) {
+            var q = _particles[j];
+            if (!q.alive || (type && q.poolType !== type)) continue;
+            if (q._keep || q._zone || q.onComplete || q.descent) continue;
+            var f = q.life / q.ml;
+            if (f > bestF) { bestF = f; best = q; }
+        }
+        return best;
+    }
+
+    /* A free slot of the pool, else (THE CRAFT) the slot of its oldest live
+       particle — a full pool used to drop the NEW spawn, so the hit that
+       just landed lost its sparks to spray that was already fading. */
+    function _claimSlot(pool, type) {
+        var idx = _claimFromPool(pool);
+        if (idx >= 0 || _craftOff()) return idx;
+        var old = _oldestLive(type);
+        if (!old) return -1;
+        idx = old.slotIdx;
+        _release(old);
+        return (idx >= 0 && idx < pool.length && !pool[idx].inUse) ? idx : -1;
+    }
+
     function _hideSprite(entry) {
         entry.sprite.visible = false;
         entry.sprite.position.set(0, -99999, 0);
@@ -1760,6 +1845,7 @@ const ThreeVFX = (function () {
                 _spinx: 0, _spiny: 0, _spinz: 0,
                 _stretch: false,
                 _seek: null, _orbit: null, _wander: null, _stretchVel: 0,
+                _velSpark: false, _keep: false,
             });
         }
 
@@ -1773,6 +1859,10 @@ const ThreeVFX = (function () {
             if (!_particles[i].alive) return _particles[i];
         }
 
+        /* full: recycle the OLDEST — the craft skips the kept / choreographed
+           ones first (_oldestLive), then falls back to the old any-oldest */
+        var pick = _craftOff() ? null : _oldestLive(null);
+        if (pick) { _release(pick); return pick; }
         var oldest = _particles[0], oldF = -1;
         for (var j = 0; j < _particles.length; j++) {
             var f = _particles[j].life / _particles[j].ml;
@@ -1802,6 +1892,7 @@ const ThreeVFX = (function () {
         p._beamYawDeg = null; p._trackHeading = false; p._uvRect = null;
         p._tint = null;
         p._seek = null; p._orbit = null; p._wander = null; p._stretchVel = 0;
+        p._velSpark = false; p._keep = false;
         p._spriteRot = 0; p._spriteSpin = 0;
         p.poolType = null; p.slotIdx = -1;
         _aliveCount = Math.max(0, _aliveCount - 1);
@@ -1891,22 +1982,38 @@ const ThreeVFX = (function () {
         var isGlob = (sprite === 'blood-glob');
 
         var poolType, slotIdx;
+        var craft = !_craftOff();
+
+        /* THE CRAFT density gate: only the small repeated bits in the sprite
+           pool thin — a flash, a ring, a scorch, a world decal, a quad
+           streak, a kept particle or anything choreographed is one-off and
+           always spawns. The accumulator spreads the cut evenly. */
+        if (craft && !isGlob && !isWorld && !isNonSquare && _THIN_SPRITES[sprite] &&
+            !opts.keep && !opts._zone && !opts.onComplete && !opts.trail &&
+            !opts.descent && !opts.seek && !opts.orbit) {
+            var dens = _fxDensity();
+            if (dens < 1) {
+                _thinAcc += dens;
+                if (_thinAcc < 1) return null;
+                _thinAcc -= 1;
+            }
+        }
 
         if (isGlob) {
             poolType = 'glob';
-            slotIdx = _claimFromPool(_globPool);
+            slotIdx = _claimSlot(_globPool, 'glob');
             if (slotIdx < 0) return null;
         } else if (isWorld) {
             poolType = 'world';
-            slotIdx = _claimFromPool(_worldMeshPool);
+            slotIdx = _claimSlot(_worldMeshPool, 'world');
             if (slotIdx < 0) return null;
         } else if (isNonSquare) {
             poolType = 'quad';
-            slotIdx = _claimFromPool(_quadMeshPool);
+            slotIdx = _claimSlot(_quadMeshPool, 'quad');
             if (slotIdx < 0) return null;
         } else {
             poolType = 'sprite';
-            slotIdx = _claimFromPool(_spritePool);
+            slotIdx = _claimSlot(_spritePool, 'sprite');
             if (slotIdx < 0) return null;
         }
 
@@ -2054,6 +2161,13 @@ const ThreeVFX = (function () {
            tracking the velocity heading and its length becomes speed×k, so
            fast particles smear into streaks (wawa-vfx "stretch billboard"). */
         p._stretchVel = opts.stretchVel || 0;
+        /* VELOCITY SPARKS: a sprite-pool spark the caller did not already
+           shape (stretchVel / an explicit facing) and whose position the
+           physics owns (seek / orbit / descent move it off its velocity). */
+        p._velSpark = craft && poolType === 'sprite' && !!_VEL_SPARKS[sprite] &&
+                      !opts.stretchVel && opts.spriteRot == null && opts.spriteSpin == null &&
+                      !opts.seek && !opts.orbit && !opts.descent;
+        p._keep = !!opts.keep;
 
         p.onComplete = opts.onComplete || null;
         p._trackHeading = !!opts.trackHeading;
@@ -2166,12 +2280,15 @@ const ThreeVFX = (function () {
         entry.sprite.position.set(w.x, w.y, w.z);
 
         var sz = _lerp(p.size0, p.size1, t);
-        entry.sprite.scale.set(sz, sz, 1);
+        if (!(p._velSpark && !_craftOff() && _poseVelSpark(p, entry, sz))) {
+            entry.sprite.scale.set(sz, sz, 1);
+            if (entry.sprite.center && entry.sprite.center.x !== 0.5) entry.sprite.center.x = 0.5;
 
-        if (p._spriteRot || p._spriteSpin) {
-            entry.material.rotation = (p._spriteRot + p._spriteSpin * (p.life / 1000)) * 0.017453293;
-        } else if (entry.material.rotation !== 0) {
-            entry.material.rotation = 0;
+            if (p._spriteRot || p._spriteSpin) {
+                entry.material.rotation = (p._spriteRot + p._spriteSpin * (p.life / 1000)) * 0.017453293;
+            } else if (entry.material.rotation !== 0) {
+                entry.material.rotation = 0;
+            }
         }
 
         var op = _lerp(p.opacity0, p.opacity1, t);
@@ -2187,6 +2304,30 @@ const ThreeVFX = (function () {
         }
 
         entry.sprite.visible = (op > 0.001);
+    }
+
+    /* VELOCITY SPARKS: the velocity (vfx x,y,z → world x,z,y) projected on
+       the camera's right / up axes gives the streak's angle on screen and
+       its screen speed — no allocation, two dot products off matrixWorld.
+       Length ~ a^0.6 and width ~ a^-0.4 keep the area (and so the additive
+       brightness) about constant while the aspect a runs 1..VS_MAX. The
+       sprite's centre shifts toward the head so the tail trails BEHIND the
+       spark instead of poking out ahead of it. false = still a dot, the
+       caller draws the plain billboard. */
+    function _poseVelSpark(p, entry, sz) {
+        var cam = _vfxCam();
+        if (!cam) return false;
+        var e = cam.matrixWorld.elements;
+        var sx = p.vx * e[0] + p.vz * e[1] + p.vy * e[2];
+        var sy = p.vx * e[4] + p.vz * e[5] + p.vy * e[6];
+        var spd = Math.sqrt(sx * sx + sy * sy);
+        var a = 1 + (spd - VS_DEADZONE) * VS_K;
+        if (!(a > 1.02)) return false;
+        if (a > VS_MAX) a = VS_MAX;
+        entry.sprite.scale.set(sz * Math.pow(a, 0.6), sz * Math.pow(a, -0.4), 1);
+        entry.material.rotation = Math.atan2(sy, sx);
+        if (entry.sprite.center) entry.sprite.center.x = 0.5 + VS_LEAD * (1 - 1 / a);
+        return true;
     }
 
     function _writeWorldMesh(p) {

@@ -1070,26 +1070,21 @@ the Entropy Strike, the combos (Phase 4).
 **UNSEEN LIVE (RULE #1c):** the family directors' look with real art (the
 plan's §10 entry lists the edits).
 
-## THE CRAFT (2026-09-24) — SPELL_DIRECTOR_PLAN.md Phase 2
-mondo's second brief: "improve the VFX" means the LIGHTS, PARTICLES and 3D OBJECTS, not a
-backdrop. So the psychedelic layer is now OPT-IN per spell (the Void Stage was already per-row;
-the hue-cycling `trip` came off the `alien` / `unholy` `_STAGE_GRADES`, and `_gradeTripOK(spellId,
-rank)` keeps `anomaly` / `mind` trips for rank ≥ 2 or a SPELL_STAGE_MAP grade that asks). The
-shared kit lives in one block of three-vfx-effects.js (`THE CRAFT KIT` … `END THE CRAFT KIT`),
-kill-switch `window.EW_DISABLE_CRAFT = true`:
-- **Real light:** three-vfx.js `flashLight(px,py,pz,color,opts)` — a FIXED pool of 3 PointLights
-  made at init (a new light recompiles every lit shader, so NEVER add one at runtime); claims a
-  free or the dimmest slot, returns `{move, kill}`. Kill-switch `EW_DISABLE_FX_LIGHTS`.
-- **Guns:** `_bolt_bullet.boltTracer` → `_crGunShot` on BOTH bolt paths (spells + ranged basics):
-  tapered tracer + sleeve, muzzle star + crossed flares, speed-line needles, muzzle/impact light,
-  smoke, sparks, ricochet. Heavy shots (`_CR_HEAVY_SHOTS`) get a thicker round.
-- **Explosions:** `_crTagBooms()` tags every recipe with an `explosion-orange` layer (not `_beam`
-  / `_descent`) with `_crBoom {scale, lite, delay}`; `_spawnEffect` detonates `_crExplosion`
-  (noise fireballs, lit flat-shaded debris that bounce and cool, shock ring, scorch, smoke column,
-  light, shake). Max 4 live (`_CR_BOOM_MAX`); AoE tiles go lite.
-- **Sword scars:** `_sigCrescentSlash3D({scar:true})` → `_crSlashScar`: a white-hot arc cooling to
-  red then crimson, floor groove, red light, ember drips. The stage slashes ask `_crIsBlade`.
-- **Beams:** `_spawnLaserBeam3D` → `_crBeamExtras` (lights at both ends, shed sparks, burn strip);
-  `_crBeamPalette` gives a mapped beam its spell's element colour.
-- Every new call inside a source-cut function is `typeof`-guarded so the lifetime harnesses skip it.
-- Test: `spell-craft.test.js`. UNSEEN LIVE: all of it; the plan's §10 lists the tuning knobs.
+## THE CRAFT, the rest + THE IMPACT RIPPLE (2026-09-24, session 2 — SPELL_DIRECTOR_PLAN §5 Phase 2, §10)
+All in three-vfx-effects.js's CRAFT KIT block unless named; every piece obeys `EW_DISABLE_CRAFT`.
+- **Gatling** `_crGatling` — a beam def with `beamGatling: true` (+ `gatlingRounds`) fires lite tracers
+  (`_crGunShot` `o.lite`: no light, 3 speed lines) walking the lane; the laser is only the fallback.
+  Choppa, the turret, and Suppressive Fire (now `raceSuppressiveFire_beam`, not the plasma beam).
+- **Shards** `_crShards(tx, ty, kind, o)` — ice / glass / crystal / bone / stone. `_crTagShards` tags
+  recipes at load (an `ice-shard` layer → ice, `rock-debris` → stone; `_burst|_aura|_dispersal|_arrival`
+  skipped) + `_CR_SHARD_SPELLS`. `_spawnEffect` fires them like `_crBoom`. Capped (5 full, 9 live).
+- **Ribbons** `_crBoltRibbon(e)` — started by `_tickBolts` on a bolt's first frame (`e.tracer` skips).
+- **Velocity sparks / thinning** (three-vfx.js) — `_VEL_SPARKS` streak along screen velocity;
+  `_fxDensity()` thins small bits (perf tier × Impact FX × `EW_FX_DENSITY`); `_claimSlot` recycles the
+  oldest when a pool is full.
+- **Hit read** (battle.js + online.js + index.html CSS) — see the plan's table; tunables `EW_HIT_READ`.
+- **Impact ripple** — three-post.js `impactRipple(worldPt, {ms, amp, r1})` (the `uRipple` band in the
+  cinematic pass, `EW_DISABLE_RIPPLE`), fired by `_crImpactRipple` from `fire()` on ULTIMATE casts only
+  (`_stageWeight`), timed to the hit (descent: `getDescentTotalMs`; beam: `chargeMs`).
+- **The gun line** `_crTank` — `SPELL_MAP[id].tank` on a descent; battle.js's descent handler passes
+  `cx / cy`; each side gates on its own fog (`window._isTileVisibleToViewer`).
