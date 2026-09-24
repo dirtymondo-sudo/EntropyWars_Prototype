@@ -3082,7 +3082,8 @@
                 if (!u.dead && !u._dying) {
                     applyStatusEffects(u, [{ id: 'burn', duration: 2 }], `${spell.name} firestorm: `, caster);
                 }
-                showFloatingTextForUnit(u, '💥 IGNITED!', 'damage', { durationMs: 1100 });
+                /* the burn's own landing calls it out now (THE JUICE PASS) */
+                if (!_juiceOn() || u.dead || u._dying) showFloatingTextForUnit(u, '💥 IGNITED!', 'damage', { durationMs: 1100 });
             }
             if (!_skipVisuals()) {
                 shakeBoard('heavy');
@@ -5967,6 +5968,7 @@
             if (typeof window === 'undefined' || !window.VFX3D
                 || typeof window.VFX3D.fire !== 'function') return;
             try { window.VFX3D.fire(phase, spell.id, params); } catch (e) {}
+            if (phase === 'burst') _juiceStrikeSfx(spell);
         }
 
         // ═══════════════════════════════════════════════════════════════════
@@ -7321,13 +7323,32 @@
                 else if (meta.kind === 'buff') _vfxBuff(target.x, target.y);
                 // Paralysis (stun) flashes the unit yellow the moment it lands.
                 if (payload.id === 'stun') flashUnit(target.id, 'paralysis');
+                /* THE JUICE PASS (Phase 7) — the status IMPACT: a burn
+                   catches, a freeze cracks, a lightning stun arcs off the
+                   body (poison bubbles, bleed sprays), with a one-word
+                   callout for the three that change the fight. The VFX rides
+                   online.js's sibling relay; the callout the floating-text
+                   relay. */
+                if (_juiceOn() && _JUICE_STATUS_CALLOUT[payload.id] !== undefined) {
+                    const _jEl = payload._element || '';
+                    const _jV = window.VFX3D;
+                    if (_jV && typeof _jV.statusFlourish === 'function') {
+                        try { _jV.statusFlourish(payload.id, target.x, target.y, _jEl); } catch (e) {}
+                    }
+                    const _jTxt = (payload.id === 'stun' && _jEl !== 'lightning') ? null : _JUICE_STATUS_CALLOUT[payload.id];
+                    if (_jTxt) showFloatingTextForUnit(target, _jTxt, 'debuff', { durationMs: 900 });
+                }
             }
             // Bespoke status stings (2026-08-04): Discord's dissonant bell,
             // frozen's creak-and-lock. Everything else keeps the generic clip.
             if (isEnemyDebuff && !meta.onRoundEnd) {
                 playSfx(payload.id === 'discord' ? 'discord'
                     : payload.id === 'frozen' ? 'freezeSolid'
+                    : (payload.id === 'stun' && payload._element === 'lightning' && _juiceOn()) ? 'taserZap'
                     : 'debuff');
+            } else if (payload.id === 'burn' && _juiceOn() && !_skipVisuals()) {
+                /* the burn catching is a WHUMP, not silence until round end */
+                playSfx('fireball', { volume: 0.55 });
             }
 
             if (!target._statusLog) target._statusLog = {};
@@ -9815,6 +9836,65 @@
             window.setTimeout(() => el.remove(), durationMs + 60);
         }
 
+        /* ── THE JUICE PASS (SPELL_DIRECTOR_PLAN §5 Phase 7) ──────────────
+           Tunables live-editable from the console (window.EW_JUICE.heavy = 120 …).
+           Kill-switch: window.EW_DISABLE_JUICE = true (the old damage-band
+           freeze, no kill freeze, no flourish / flinch / punch). */
+        const JUICE = (typeof window !== 'undefined') ? (window.EW_JUICE = window.EW_JUICE || {}) : {};
+        if (JUICE.light == null) JUICE.light = 0;
+        if (JUICE.standard == null) JUICE.standard = 40;
+        if (JUICE.heavy == null) JUICE.heavy = 90;
+        if (JUICE.ultimate == null) JUICE.ultimate = 150;
+        if (JUICE.kill == null) JUICE.kill = 60;
+        if (JUICE.crit == null) JUICE.crit = 20;
+        if (JUICE.cap == null) JUICE.cap = 230;
+        const _JUICE_WEIGHTS = ['light', 'standard', 'heavy', 'ultimate'];
+        const _JUICE_STATUS_CALLOUT = { burn: '🔥 IGNITED', frozen: '❄️ FROZEN', stun: '⚡ SHOCKED', poison: null, bleed: null };
+        function _juiceOn() { return !(typeof window !== 'undefined' && window.EW_DISABLE_JUICE); }
+        /* the hit's weight, 0 light · 1 standard · 2 heavy · 3 ultimate: a
+           spell hit reads the live cast's stage weight (the same one the
+           camera paces by); a basic attack reads its damage */
+        /* the caster's live cast, recorded at the commit (the same hook as
+           the sound theme). A module map, never a unit field (units ride
+           state-sync). Good for 6 s — a dash's contact, a sky-fall, a
+           multi-hit's last hit all land well after the 900 ms the camera's
+           _cineCurrentSpellId allows. */
+        const _juiceCastByUnit = new Map();
+        function _juiceNoteCast(unit, spell) {
+            const i = _JUICE_WEIGHTS.indexOf(_spellStageInfo(spell).weight);
+            _juiceCastByUnit.set(unit.id, { w: i >= 0 ? i : 1, at: performance.now() });
+        }
+        function _juiceHitWeight(sourceUnit, opts, dmg) {
+            if (opts && opts.spellType) {
+                const rec = sourceUnit ? _juiceCastByUnit.get(sourceUnit.id) : null;
+                if (rec && performance.now() - rec.at < 6000) return rec.w;
+                const id = _cineCurrentSpellId(sourceUnit);
+                if (id) {
+                    const i = _JUICE_WEIGHTS.indexOf(_spellStageInfo({ id }).weight);
+                    if (i >= 0) return i;
+                }
+                return 1;
+            }
+            return dmg >= 80 ? 2 : dmg >= 30 ? 1 : 0;
+        }
+        function _juiceHitstopMs(w, opts, dmg, kill) {
+            if (!_juiceOn()) {
+                return (!kill && dmg >= 30) ? (dmg >= 80 ? 110 : dmg >= 50 ? 85 : 60) : 0;
+            }
+            let ms = (opts && opts.spellType)
+                ? (Number(JUICE[_JUICE_WEIGHTS[w]]) || 0)
+                : (dmg >= 30 ? (dmg >= 80 ? 110 : dmg >= 50 ? 85 : 60) : 0);
+            if (opts && opts.isCrit) ms += Number(JUICE.crit) || 0;
+            if (kill) ms += Number(JUICE.kill) || 0;
+            return Math.max(0, Math.min(Number(JUICE.cap) || 230, Math.round(ms)));
+        }
+        function _juiceHitFx(target, w, hs, kill) {
+            if (!_juiceOn() || !target) return;
+            const V = (typeof window !== 'undefined') ? window.VFX3D : null;
+            if (!V || typeof V.juiceHit !== 'function') return;
+            try { V.juiceHit(target.x, target.y, w, hs, kill ? 1 : 0); } catch (e) {}
+        }
+
         function triggerHitstop(durationMs) {
             if (_bufferingRoundEvents) {
                 _rePushEvent({ type: 'hitstop', durationMs });
@@ -9983,6 +10063,8 @@
         if (HIT_READ.killLinger == null) HIT_READ.killLinger = 1.45; // killing blow's duration ×
         if (HIT_READ.muteSat == null) HIT_READ.muteSat = 0.35;    // resisted: colour kept (0 = grey)
         if (HIT_READ.muteDim == null) HIT_READ.muteDim = 0.78;    // resisted: brightness kept
+        if (HIT_READ.punch == null) HIT_READ.punch = [0.9, 1, 1.14, 1.3]; // × by weight: light · standard · heavy · ultimate
+        if (HIT_READ.killPunch == null) HIT_READ.killPunch = 1.1;  // × on a killing blow
 
         /* HOST, at emit: the facts of one hit → the relay-safe opts (plain
            numbers / strings, no objects). info = { type, crit, weakMult, kill }. */
@@ -9996,6 +10078,7 @@
             if (wm > 1.001) o._hitWeak = 1;
             else if (wm < 0.999) o._hitWeak = -1;
             if (info.kill) o._hitKill = 1;
+            if (info.weight >= 0 && info.weight <= 3) o._hitW = info.weight | 0;
             return o;
         }
 
@@ -10015,10 +10098,18 @@
             const weak = opts._hitWeak > 0, resist = opts._hitWeak < 0;
             const glyph = weak
                 ? ((key && typeof ELEMENT_ICONS !== 'undefined' && ELEMENT_ICONS[key]) || '▲') : '';
+            /* THE JUICE PASS (Phase 7): the PUNCH — the swell (share of max
+               HP) × the hit's weight (a light jab reads smaller than a
+               capstone's number at the same %), a killing blow a touch more */
+            let punch = 1;
+            if (!(typeof window !== 'undefined' && window.EW_DISABLE_JUICE) && opts._hitW >= 0 && opts._hitW <= 3) {
+                punch = HIT_READ.punch[opts._hitW | 0] || 1;
+                if (opts._hitKill) punch *= HIT_READ.killPunch;
+            }
             return {
                 color: (tintable && !own) ? col : null,
                 glowColor: col || '#ff5a3a',
-                scale: own ? 1 : 1 + f * (HIT_READ.maxScale - 1),
+                scale: own ? 1 : Math.min(HIT_READ.maxScale * 1.35, (1 + f * (HIT_READ.maxScale - 1)) * punch),
                 crit: !!opts._hitCrit,
                 weak, resist, glyph,
                 kill: !!opts._hitKill,
@@ -10386,14 +10477,38 @@
             // parent wrapper is never transformed by the camera, so the keyframe
             // animation survives.
             const shakeTarget = document.querySelector('.map-center') || boardStageEl;
-            shakeTarget.classList.remove('board-shake', 'board-shake-hard');
+            /* THE SHAKE LANGUAGE (THE JUICE PASS, Phase 7): four words, four
+               kicks — light (a tap, 200 ms) · normal (320) · heavy (a
+               shove, 400) · hard (the quake, 480). 'heavy' and 'light' used
+               to fall through to normal. ONE KICK PER BEAT: a shake that is
+               not stronger than the one still running is dropped (a spell's
+               signature, its impact and its kill confirm all asking at once
+               read as one kick, not a stutter of restarts); a stronger one
+               takes over. Kill-switch EW_DISABLE_JUICE → the old two. */
+            let lvl = _SHAKE_LEVELS[intensity] || _SHAKE_LEVELS.normal;
+            if (!_juiceOn()) lvl = intensity === 'hard' ? _SHAKE_LEVELS.hard : _SHAKE_LEVELS.normal;
+            const now = performance.now();
+            if (now < _shakeLive.until && lvl.rank <= _shakeLive.rank) return;
+            const live = _shakeLive = { rank: lvl.rank, until: now + lvl.ms };
+            shakeTarget.classList.remove(..._SHAKE_CLASSES);
 
             requestAnimationFrame(() => {
-                shakeTarget.classList.add(intensity === 'hard' ? 'board-shake-hard' : 'board-shake');
+                if (_shakeLive !== live) return;      // a stronger kick took over
+                shakeTarget.classList.remove(..._SHAKE_CLASSES);
+                shakeTarget.classList.add(lvl.cls);
             });
-            const dur = intensity === 'hard' ? 480 : 320;
-            window.setTimeout(() => shakeTarget.classList.remove('board-shake', 'board-shake-hard'), dur);
+            window.clearTimeout(_shakeClearTimer);
+            _shakeClearTimer = window.setTimeout(() => shakeTarget.classList.remove(..._SHAKE_CLASSES), lvl.ms);
         }
+        const _SHAKE_LEVELS = {
+            light:  { rank: 1, ms: 200, cls: 'board-shake-light' },
+            normal: { rank: 2, ms: 320, cls: 'board-shake' },
+            heavy:  { rank: 3, ms: 400, cls: 'board-shake-heavy' },
+            hard:   { rank: 4, ms: 480, cls: 'board-shake-hard' },
+        };
+        const _SHAKE_CLASSES = ['board-shake-light', 'board-shake', 'board-shake-heavy', 'board-shake-hard'];
+        let _shakeLive = { rank: 0, until: 0 };
+        let _shakeClearTimer = 0;
 
         _realShowFloatingTextAtTile = _realShowFloatingTextAtTile_impl;
         _realShowDeathBanner = _realShowDeathBanner_impl;
@@ -30429,10 +30544,17 @@
                 // the freeze sells the weight, the sound confirms it. Lethal
                 // hits skip the freeze (the death slow-mo owns that beat), and
                 // buffered end-of-round replays keep their own pacing.
+                /* THE JUICE PASS (SPELL_DIRECTOR_PLAN Phase 7): the hitstop
+                   TABLE. A spell hit freezes by its weight (light 0 ·
+                   standard 40 · heavy 90 · ultimate 150 ms); a basic attack
+                   keeps its damage bands (60 / 85 / 110 from 30 damage). A
+                   crit adds 20, a killing blow 60 (the death slow-mo now
+                   waits for the freeze instead of being swallowed by it —
+                   three-renderer setTimeWarp). Capped at EW_JUICE.cap. */
+                const _juiceW = _juiceHitWeight(sourceUnit, opts, finalDamage);
                 let _impactFreezeMs = 0;
-                if (damageType !== 'dot' && !_lethalHit && finalDamage >= 30
-                    && !_skipVisuals() && !_bufferingRoundEvents) {
-                    _impactFreezeMs = finalDamage >= 80 ? 110 : finalDamage >= 50 ? 85 : 60;
+                if (damageType !== 'dot' && !_skipVisuals() && !_bufferingRoundEvents) {
+                    _impactFreezeMs = _juiceHitstopMs(_juiceW, opts, finalDamage, _lethalHit);
                 }
                 const _popDamageFeedback = () => {
                     // Cinematic action shot live → the number ALSO rolls into
@@ -30459,6 +30581,7 @@
                         weakMult: (typeEffectOverride === 'super' ? 1.3 : _hrTypeEff)
                             * (_affinity === 'weak' ? 1.5 : _affinity === 'resist' ? 0.5 : 1),
                         kill: _lethalHit,
+                        weight: _juiceW,
                     });
                     showFloatingTextForUnit(target, `-${finalDamage}`, _floatKind, { ..._recOpts, ..._hitOpts });
                     if (damageType !== 'dot') {
@@ -30477,6 +30600,11 @@
                             : 'damage');
                     }
                 };
+                /* the feel layer on both ends (kill confirm per weight, the
+                   world flinch, the guest's own freeze) — relayed by online.js */
+                if (damageType !== 'dot' && !_skipVisuals() && !_bufferingRoundEvents) {
+                    _juiceHitFx(target, _juiceW, _impactFreezeMs, _lethalHit);
+                }
                 if (_impactFreezeMs > 0) {
                     triggerHitstop(_impactFreezeMs);
                     window.setTimeout(_popDamageFeedback, _impactFreezeMs + 20);
@@ -58306,6 +58434,7 @@
         const _sfxCastThemeByUnit = new Map();
         function _sfxNoteSpellCast(unit, spell) {
             if (!unit || !spell) return;
+            _juiceNoteCast(unit, spell);
             const theme = _sfxSpellTheme(spell);
             if (theme) _sfxCastThemeByUnit.set(unit.id, theme);
             else _sfxCastThemeByUnit.delete(unit.id);
@@ -58320,7 +58449,42 @@
         // Percussive one-shot reports — the sound OF the projectile leaving.
         // These must land on the launch frame (muzzle flash), not at cast
         // start where the aim/windup camera still has a full second to run.
-        const _PERCUSSIVE_LAUNCH_SFX = { gun: 1, doubleShot: 1 };
+        /* THE JUICE PASS (Phase 7): the release sounds join them — the
+           beam's roar, the wave, the zap and the body blow are the sound OF
+           the strike leaving, so they wait for the launch frame too. The
+           chants (elecCast / iceCast / waterCast / earthCast / fireball) keep
+           cast start: they ARE the wind-up. */
+        const _PERCUSSIVE_LAUNCH_SFX = { gun: 1, doubleShot: 1, flameJet: 1, tidalWave: 1, taserZap: 1, empBurst: 1, physicalAbility: 1 };
+
+        /* THE STRIKE FRAME (THE JUICE PASS, Phase 7): a hit's sound already
+           lands on the impact (applyDamageToUnit, after the hitstop). The
+           families whose payoff hurts nobody had silence on theirs — the wall
+           rising, the turret landing, the summon arriving, the zone opening,
+           the storm breaking, the room flipping. They now sound on the
+           stage's 'burst' beat (the retimed real impact), host-side, the one
+           playSfx riding the existing 'sfx' relay. A spell with authored
+           sfxCues owns its audio; a damaging spell keeps the impact sound. */
+        const _JUICE_STRIKE_SFX = {
+            terrain: 'earthImpact', deploy: 'earthImpact', summon: 'earthImpact',
+            zone: 'debuff', weather: 'thunderRumble', world: 'discord',
+            transform: 'buff', control: 'debuff',
+        };
+        let _juiceStrikeLast = { id: null, at: 0 };
+        function _juiceStrikeSfx(spell) {
+            if (!spell || !spell.id || (typeof window !== 'undefined' && window.EW_DISABLE_JUICE)) return;
+            if (Array.isArray(spell.sfxCues) && spell.sfxCues.length) return;
+            if (Number(spell.dmg) > 0 || Number(spell.damage) > 0) return;
+            const fam = CINE_FAMILY_BY_KIND[spell.kind];
+            let key = _JUICE_STRIKE_SFX[fam];
+            if (!key) return;
+            const now = performance.now();
+            if (_juiceStrikeLast.id === spell.id && now - _juiceStrikeLast.at < 400) return;
+            _juiceStrikeLast = { id: spell.id, at: now };
+            const theme = _sfxSpellTheme(spell);
+            if (theme && _SFX_THEME_IMPACT[theme] && fam !== 'weather') key = _SFX_THEME_IMPACT[theme];
+            if (fam === 'zone' && spell.kind === 'zoneHeal') key = 'buff';
+            try { playSfx(key, { volume: 0.8 }); } catch (e) {}
+        }
 
         function spellLaunchSfx(spell) {
             // Authored SFX cues (Spell Lab timeline) replace the default
