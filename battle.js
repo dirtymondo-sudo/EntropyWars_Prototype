@@ -24580,6 +24580,10 @@
         // that used to fire under 2.6 tiles — that shot centred the pair,
         // made every melee spell look identical, and is deleted for good.)
         const CINE_OTS_MAX_TILES = 1.45;
+        /* THE SPELL DIRECTOR (2026-09-23): the stock rig's beat 2 waits this
+           long past its cut frame, so a director beat scheduled ON the cut
+           claims the shot first and the two never double-cut. */
+        const CINE_CLAIM_GRACE_MS = 40;
         const CINE_OTS_SWING     = 26;
         // The game's LIVE gun/bullet spells — the VFX layer's gun tables
         // (three-vfx-effects.js `_bolt_bullet` entries / _SIG_GUN_FOR rigs)
@@ -24788,6 +24792,7 @@
            end-of-shot timer was silently cancelling the turn-banner restore
            (a long-standing descent-cam bug, fixed here for the new beats). */
         function _cineBeatMove(opts) {
+            if (_cineDirectingSeq != null) _cineLazyClaim();   // SPELL DIRECTOR: a director's move claims the shot
             const _keep = boardCameraResetTimer;
             boardCameraResetTimer = null;
             camera.moveTo(opts);
@@ -24800,6 +24805,7 @@
            This applies the framing directly and tells both smoothing layers
            (the 2D _apply smoother and ThreeCamera's damped follow) to jump. */
         function _cineHardCut(opts) {
+            if (_cineDirectingSeq != null) _cineLazyClaim();   // SPELL DIRECTOR: a director's cut claims the shot
             camera._stop();
             camera.x = camera._tx = opts.x ?? camera._tx;
             camera.y = camera._ty = opts.y ?? camera._ty;
@@ -25008,11 +25014,14 @@
                 // Shared with the family/sequence layer via _cineCutMs, so a
                 // family beat can land on the SAME frame the shot cuts on.
                 const cutMs = _cineCutMs(timings, shotOpts);
-                window.setTimeout(() => {
-                    if (camera._cineShotId !== sequenceId) return;
-                    if (sequenceId !== boardCameraSequenceId) return;
-                    if (state.phase !== 'battle' || state.cameraDisabled) return;
-                    if (_cineShotOwned(sequenceId)) return;   // cineOwnShot: the director composes beat 2 itself
+                /* THE SPELL DIRECTOR: beat 2 is a callable — a director that owns
+                   the shot replays it through c.stockHit() when the stock cut IS the
+                   right payoff; the timer waits CINE_CLAIM_GRACE_MS past the cut so a
+                   director's own beat at the same frame claims first (no double cut). */
+                const _stockBeat2Ok = () => camera._cineShotId === sequenceId
+                    && sequenceId === boardCameraSequenceId
+                    && state.phase === 'battle' && !state.cameraDisabled;
+                const _stockBeat2 = () => {
                     // ── Multi-target casts (barrage novae like Requiem, AoE
                     // blasts): beat 2 is a WIDE reverse cut framing EVERY
                     // affected target instead of a close-up of one victim —
@@ -25123,7 +25132,15 @@
                         _allowZoomChange: true, _bypassCap: true,
                         _fogAllowed: fogAllowed || undefined
                     });
-                }, cutMs);
+                };
+                camera._cineStockHit = { seq: sequenceId, run: () => { if (_stockBeat2Ok()) _stockBeat2(); } };
+                window.setTimeout(() => {
+                    if (camera._cineShotId !== sequenceId) return;
+                    if (sequenceId !== boardCameraSequenceId) return;
+                    if (state.phase !== 'battle' || state.cameraDisabled) return;
+                    if (_cineShotOwned(sequenceId)) return;   // cineOwnShot: the director composes beat 2 itself
+                    _stockBeat2();
+                }, cutMs + CINE_CLAIM_GRACE_MS);
             } else {
                 // ── 2D fallback: the legacy single over-the-shoulder shot ──
                 // (focal a fixed lead in front of the caster, slope-following
@@ -25188,16 +25205,56 @@
         function cineOwnShot(sequenceId) {
             if (sequenceId == null) return false;
             camera._cineOwnedSeq = sequenceId;
+            /* the explicit take blocks retargets too — even after a lazy
+               claim allowed them (To the Moon owns from the fling on) */
+            if (camera._cineRetargetOkSeq === sequenceId) camera._cineRetargetOkSeq = null;
             return true;
         }
         function _cineShotOwned(sequenceId) {
             return camera._cineOwnedSeq != null && camera._cineOwnedSeq === (sequenceId != null ? sequenceId : camera._cineShotId);
         }
         window.cineOwnShot = cineOwnShot;
+        /* THE SPELL DIRECTOR (SPELL_DIRECTOR_PLAN.md §3, 2026-09-23) —
+           ownership is TWO permissions, not one:
+             · the STOCK BEATS (the rig's beat 2: the reverse cut, the pair
+               drift, the wide cut) yield to an owned shot — cineOwnShot;
+             · a VFX-driven RETARGET (_cineRetargetShot: a ricochet hand-off,
+               a flung body, a throw) is blocked on an owned shot UNLESS the
+               director allowed it (camera._cineRetargetOkSeq) — the dash /
+               sky / displace / multi-hit families ride the hero part.
+           THE LAZY CLAIM: a bespoke CINE_SEQUENCES director never had to call
+           cineOwnShot — the first camera move it makes inside its directing
+           context (a _cineAt beat, or the synchronous call) claims the shot
+           from that frame (_cineClaimShot: the stock beats yield, retargets
+           keep working as they always did). Before this every bespoke
+           sequence LAYERED on the stock shot and was cut over by its beat 2
+           (Boo's horror pan, cut at ~1.4 s). */
+        let _cineDirectingSeq = null;
+        function _cineDirecting(sequenceId, fn) {
+            const prev = _cineDirectingSeq;
+            _cineDirectingSeq = sequenceId;
+            try { return fn(); } finally { _cineDirectingSeq = prev; }
+        }
+        function _cineClaimShot(sequenceId) {
+            if (sequenceId == null || _cineShotOwned(sequenceId)) return false;
+            camera._cineOwnedSeq = sequenceId;
+            camera._cineRetargetOkSeq = sequenceId;
+            try { if (window.SpellDirector) window.SpellDirector._note(sequenceId, 'claimed'); } catch (e) {}
+            return true;
+        }
+        /* Called by _cineBeatMove / _cineHardCut: a camera move made while a
+           director is directing the LIVE shot claims it. */
+        function _cineLazyClaim() {
+            const s = _cineDirectingSeq;
+            if (s == null || camera._cineShotId !== s) return;
+            _cineClaimShot(s);
+        }
         function _cineRetargetShot(point, unit, opts = {}) {
             if (state.cameraDisabled || state.phase !== 'battle' || state.winner) return false;
             if (camera._cineShotId == null) return false;
-            if (_cineShotOwned(camera._cineShotId)) return true;   // the director owns this shot — a retarget would yank it
+            if (camera._cineRetargetOkSeq !== camera._cineShotId) {
+                if (_cineShotOwned(camera._cineShotId)) return true;   // the director owns this shot — a retarget would yank it
+            }
             if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.y)) return false;
             const ts = CONFIG.tileSize || BASE_TILE;
             camera._cineShotTarget = { x: Math.round(point.x), y: Math.round(point.y),
@@ -26357,6 +26414,96 @@
            existing spellType palettes and the staging layer, so members of a
            family never look identical.
            ═══════════════════════════════════════════════════════════════════ */
+        /* ═══════════════════════════════════════════════════════════════════
+           THE SPELL DIRECTOR — the per-spell rows (SPELL_DIRECTOR_PLAN.md §3).
+           The tuning surface for EVERY spell: 519 spells get individual
+           direction without 519 functions. A row may carry:
+             family      take another family's director
+             payoff      the named shot for the payoff beat (CINE_SHOTS key:
+                         glam · witness · godShot · faceCam · reverseOts ·
+                         sideDolly · bulletCam · crane · skyWatch · orbit ·
+                         lowTile) — 'stock' = the rig's own beat 2
+             grade/gradeMs · insert [text, kind, ms] · void (a Void Stage
+             palette) · voidMs · slow [scale, ms] · freeze (ms) ·
+             freezeGrade · flavourAt ('impact' default | 'cut')
+             anim / vfx  reserved for Phases 2 / 3
+           Every field is presentation only (RULE #2: the guest resolves the
+           same row off the same spell id). The first rows (2026-09-23) give
+           the capstones that had no bespoke director and no signature a
+           flavour of their own; Phase 5 replaces them with real directors.
+           ═══════════════════════════════════════════════════════════════════ */
+        const SPELL_DIRECTOR_ROWS = {
+            /* ── the bare capstones: a grade / an insert / a void each ── */
+            empBurst:            { grade: 'terminal', gradeMs: 800, insert: ['SIGNAL LOST', 'glitch', 900] },
+            requiem:             { void: 'abyss', voidMs: 1300 },
+            voidRush:            { void: 'abyss', voidMs: 1000 },
+            raceMarrowstorm:     { grade: 'bone', gradeMs: 900 },
+            raceMimicry:         { grade: 'hue', gradeMs: 900 },
+            raceSwarmSignal:     { grade: 'cool', gradeMs: 800 },
+            raceCallOfTheDeep:   { grade: 'cool', gradeMs: 1000 },
+            raceIndomitableWill: { grade: 'heat', gradeMs: 900, slow: [0.4, 320] },
+            racePlandemic:       { grade: 'desat', gradeMs: 1000, insert: ['OUTBREAK', 'signal', 1000] },
+            raceClassifiedWeapon:{ insert: ['CLASSIFIED', 'stamp', 1000], slow: [0.35, 260] },
+            raceExtendedClips:   { insert: ['EXTENDED CLIPS', 'stamp', 900] },
+            racePoliceLockdown:  { insert: ['LOCKDOWN', 'stamp', 1000], grade: 'vignette', gradeMs: 900 },
+            raceJellyRebirth:    { void: 'ocean', voidMs: 1200 },
+            raceCultGathering:   { grade: 'crimson', gradeMs: 900 },
+            racePopStadiumShow:  { void: 'stadium', voidMs: 1300 },
+            raceHallelujah:      { grade: 'bone', gradeMs: 900, insert: ['HALLELUJAH', 'scripture', 1100] },
+            raceDarkDominion:    { void: 'inferno', voidMs: 1300 },
+            raceDarkLullaby:     { void: 'dream', voidMs: 1300 },
+            raceSpaceDisco:      { void: 'kaleido', voidMs: 1300 },
+            raceRealityPulse:    { grade: 'hue', gradeMs: 900 },
+            sentaiMegazordBlast: { grade: 'speedlines', gradeMs: 700, slow: [0.4, 300] },
+            raceMitosisSplit:    { grade: 'hue', gradeMs: 700 },
+            raceOvertinker:      { grade: 'terminal', gradeMs: 800 },
+            raceQuake:           { grade: 'dim', gradeMs: 800, slow: [0.45, 280] },
+            raceTidalSlam:       { grade: 'cool', gradeMs: 700, slow: [0.4, 260] },
+            sharedVortexSlam:    { grade: 'dim', gradeMs: 800 },
+            raceMissileBarrage:  { grade: 'speedlines', gradeMs: 700 },
+            raceCannonball:      { slow: [0.4, 260] },
+            raceTailWhip:        { slow: [0.35, 260] },
+            raceSasquatchSmash:  { slow: [0.35, 280], grade: 'speedlines', gradeMs: 600 },
+            raceColossalCrush:   { slow: [0.35, 280], grade: 'speedlines', gradeMs: 600 },
+            raceTerrorPounce:    { slow: [0.35, 260], grade: 'crimson', gradeMs: 600 },
+            raceDragonFist:      { slow: [0.35, 260], grade: 'heat', gradeMs: 600 },
+            racePrimalSmash:     { slow: [0.35, 280], grade: 'speedlines', gradeMs: 600 },
+            raceTendrilStrike:   { slow: [0.35, 260], grade: 'crimson', gradeMs: 600 },
+            rampage:             { slow: [0.4, 240], grade: 'speedlines', gradeMs: 500 },
+            raceGiantSmash:      { slow: [0.4, 260] },
+            raceUnstoppableCharge:{ slow: [0.4, 240], grade: 'speedlines', gradeMs: 500 },
+            raceBullRush:        { slow: [0.4, 240], grade: 'speedlines', gradeMs: 500 },
+            raceStoneDrop:       { slow: [0.4, 260] },
+            racePredatorDrop:    { slow: [0.35, 260], grade: 'crimson', gradeMs: 600 },
+            revive1:             { grade: 'bone', gradeMs: 900 },
+            leechSeed:           { grade: 'dim', gradeMs: 700 },
+            /* ── kind remaps where the kind's grammar is the wrong one ── */
+            raceHitALick:        { family: 'strike' }
+        };
+
+        /* ═══════════════════════════════════════════════════════════════════
+           THE SPELL DIRECTOR — the family directors (SPELL_DIRECTOR_PLAN.md §4).
+
+           The ~375 spells without a bespoke sequence each run their kind's
+           FAMILY DIRECTOR — a whole shot, not a layer. Until 2026-09-23 the
+           family treatments LAYERED on the stock two-beat shot and cut again
+           0–30 ms after its beat 2 (two cuts in one breath), and the families
+           for every non-offensive kind never ran at all (the self / support
+           rigs never consulted the table). Now:
+             · EVERY kind maps to a family (five new ones: deploy · summon ·
+               control · transform · world) — SpellDirector.resolve(id) is
+               never null;
+             · a family director OWNS the shot from t = 0 (c.own()): the stock
+               beat 2 yields and the director places ONE payoff shot itself
+               (c.stockHit() replays the stock cut when that IS the right
+               shot); VFX retargets are allowed only where the hero part moves;
+             · every beat lands inside the shot's window (c.at drops a late
+               beat instead of yanking the next unit's camera);
+             · the three rigs (offensive · self · support) all run the same
+               director through _cinePlaySpellSequence.
+           window.EW_DISABLE_SPELL_DIRECTOR = true restores the old layering
+           exactly (_cineApplyFamilyLegacy, the focus rigs undirected).
+           ═══════════════════════════════════════════════════════════════════ */
         const CINE_FAMILY_BY_KIND = {
             damage: 'strike', magic: 'strike',
             aoe: 'groundAoe', cross: 'groundAoe',
@@ -26378,22 +26525,571 @@
             pull: 'displace', aoePull: 'displace', displacement: 'displace',
             multiHit: 'multiHit', ricochet: 'multiHit',
             summonWeather: 'weather',
-            scan: 'recon', remoteView: 'recon'
+            scan: 'recon', remoteView: 'recon',
+            /* 2026-09-23 — THE SPELL DIRECTOR: every kind has a director */
+            steal: 'strike', doorSlam: 'strike',
+            tackle: 'dash',
+            doorBreach: 'blink', doorDelivery: 'blink', doorExit: 'blink',
+            cleanseArea: 'partyCry', rallyPull: 'partyCry',
+            guard: 'buff', utility: 'buff',
+            bomb: 'deploy', placeTrap: 'deploy', placeMirror: 'deploy', warpRune: 'deploy',
+            deployObject: 'deploy', deployPair: 'deploy', deployTurret: 'deploy',
+            seedHeal: 'deploy', seedPoison: 'deploy', door: 'deploy', doorTrap: 'deploy',
+            placeBlock: 'deploy', buildStructure: 'deploy',
+            summonUnit: 'summon', raiseDead: 'summon',
+            possess: 'control', link: 'control', shadowRealm: 'control',
+            transfer: 'control', cannibalize: 'control',
+            transform: 'transform',
+            trickRoom: 'world', tuneFrequency: 'world', pulseLattice: 'world'
         };
         function _cineFamilyKey(spell) {
             if (!spell) return null;
+            const row = SPELL_DIRECTOR_ROWS[spell.id];
+            if (row && row.family && SPELL_FAMILY_DIRECTORS[row.family]) return row.family;
             return CINE_FAMILY_BY_KIND[spell.kind] || null;
         }
 
-        /* Schedule one family beat on the live shot. */
+        /* Schedule one director beat on the live shot. The beat runs inside
+           the DIRECTING context (_cineDirecting): its first camera move
+           claims the shot (the lazy claim — the stock beat 2 yields). */
         function _cineAt(ms, sequenceId, fn) {
             return window.setTimeout(() => {
                 if (!_cineBeatOk(sequenceId)) return;
-                try { fn(); } catch (e) {}
+                try {
+                    if (window.EW_DISABLE_SPELL_DIRECTOR) fn();
+                    else _cineDirecting(sequenceId, fn);
+                } catch (e) {}
             }, Math.max(0, ms));
         }
 
+        /* ── The director's own shots (the named library grows) ──────────
+           cineLowTile — ground level at a TILE, ¾ from the caster's side:
+             the deploy "assembly" shot and the summon's rise.
+           cineOrbit   — the summon grammar: swing the lens around a unit
+             while the charge builds (the selfNova opener).
+           cinePartyFit — pull back to fit every visible ally in a radius
+             (the war cry's morale wave). */
+        function cineLowTile(tile, from, opts = {}) {
+            if (!tile) return false;
+            const ts = CONFIG.tileSize || BASE_TILE;
+            let dx = tile.x - (from ? from.x : tile.x), dy = tile.y - (from ? from.y : tile.y);
+            if (Math.abs(dx) + Math.abs(dy) < 0.01) {
+                const fc = (from && from.id != null && typeof getUnitFacing === 'function') ? getUnitFacing(from) : { dx: 0, dy: 1 };
+                dx = fc.dx || 0; dy = fc.dy || 1;
+            }
+            const yaw = Math.atan2(-dx, -dy) * (180 / Math.PI) + (opts.swing ?? 38) * (opts.side ?? 1);
+            let px = 0;
+            if (typeof window._camGroundPx === 'function') {
+                px = window._camGroundPx(Math.round(tile.x), Math.round(tile.y)) || 0;
+            }
+            if (!_cineTpsAnchor({ x: tile.x, y: tile.y }, (tile.id != null ? tile : null), { liftPx: ts * 0.4 })) return false;
+            const framing = {
+                x: tile.x, y: tile.y,
+                zoom: _tpsZoomForBoomTiles(opts.dist ?? 2.8),
+                tilt: opts.tilt ?? 88, yaw,
+                elevZ: px + ts * (opts.rise ?? 0.35)
+            };
+            if (opts.cut === false) {
+                _cineBeatMove({ ...framing, duration: actionMs(opts.duration ?? 420), easing: 'easeInOut',
+                    _allowZoomChange: true, _bypassCap: true, _fogAllowed: true });
+            } else {
+                _cineHardCut(framing);
+                _acChromeFlash('cut');
+                if (opts.pushMs) {
+                    _cineBeatMove({ zoom: framing.zoom * (opts.push ?? 1.1), elevZ: framing.elevZ,
+                        duration: actionMs(opts.pushMs), easing: 'linear',
+                        _allowZoomChange: true, _bypassCap: true, _fogAllowed: true });
+                }
+            }
+            return true;
+        }
+        function cineOrbit(unit, deg, ms, opts = {}) {
+            if (!unit || !_cineTpsAnchor(unit, (unit.id != null ? unit : null))) return false;
+            const ts = CONFIG.tileSize || BASE_TILE;
+            let px = 0;
+            if (typeof window._getElevationPx === 'function') {
+                const z = _unitElevZ(unit);
+                px = z > 0 ? window._getElevationPx(z) : 0;
+            }
+            _cineBeatMove({
+                x: unit.x, y: unit.y,
+                zoom: _tpsZoomForBoomTiles(opts.dist ?? 3.1),
+                tilt: opts.tilt ?? 88,
+                yaw: (camera._tyaw ?? camera.yaw ?? 0) + deg,
+                elevZ: px + ts * (opts.rise ?? 0.7),
+                duration: Math.max(actionMs(220), ms), easing: opts.easing || 'easeInOut',
+                _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
+            });
+            return true;
+        }
+        function cinePartyFit(caster, radius, opts = {}) {
+            if (!caster) return false;
+            const r = Math.max(2, radius || 3);
+            let x0 = caster.x, x1 = caster.x, y0 = caster.y, y1 = caster.y;
+            for (const u of (state.units || [])) {
+                if (!u || u.dead || u._dying || u.id === caster.id) continue;
+                const ally = (typeof isAllyUnit === 'function') ? isAllyUnit(u, caster) : (u.player === caster.player);
+                if (!ally) continue;
+                if (Math.max(Math.abs(u.x - caster.x), Math.abs(u.y - caster.y)) > r) continue;
+                if (!_cineActorVisible(u)) continue;
+                x0 = Math.min(x0, u.x); x1 = Math.max(x1, u.x);
+                y0 = Math.min(y0, u.y); y1 = Math.max(y1, u.y);
+            }
+            const span = Math.max(x1 - x0, y1 - y0) + 3;
+            return cineGodShot({ x: (x0 + x1) / 2, y: (y0 + y1) / 2 }, span,
+                { tilt: opts.tilt ?? 46, cut: opts.cut ?? false, duration: opts.duration ?? 420 });
+        }
+        CINE_SHOTS.lowTile = (ctx, o) => cineLowTile(ctx.center || ctx.target, ctx.caster, o);
+        CINE_SHOTS.orbit = (ctx, o) => cineOrbit(ctx.subject || ctx.caster, (o && o.deg) || 60, actionMs((o && o.ms) || 700), o);
+        CINE_SHOTS.partyFit = (ctx, o) => cinePartyFit(ctx.caster, (o && o.radius) || 3, o);
+
+        /* ── The director's context — the kit every family director gets ──
+           c.cut / impact / tail / end are the RIG's real clock (the offensive
+           two-beat, the self hero shot, the support gift); every rig passes
+           its own. */
+        function _spellDirCtx(key, ctx) {
+            const spell = ctx.spell || {};
+            const caster = ctx.caster;
+            const target = ctx.target || ctx.caster;
+            const sequenceId = ctx.sequenceId;
+            const timings = ctx.timings || { sourceHold: 0, travelMs: 0, targetHold: actionMs(1000), totalMs: actionMs(1600) };
+            const shotOpts = ctx.shotOpts || {};
+            const rig = ctx.rig || 'offensive';
+            const cut = (ctx.cutMs != null) ? ctx.cutMs : _cineCutMs(timings, shotOpts);
+            const impact = (ctx.impactMs != null) ? ctx.impactMs
+                : (shotOpts.impactMs != null ? shotOpts.impactMs : timings.sourceHold + timings.travelMs);
+            const tail = timings.sourceHold + timings.travelMs + timings.targetHold;
+            const end = Math.max(cut + actionMs(240), timings.totalMs || (tail + actionMs(210)));
+            const stage = _spellStageInfo(spell);
+            const row = SPELL_DIRECTOR_ROWS[spell.id] || {};
+            const log = ctx.log || null;
+            const self = rig === 'self' || !!(caster && target && caster.x === target.x && caster.y === target.y
+                && (target.id == null || target.id === caster.id));
+            const c = {
+                key, spell, caster, target, rig, row, self, sequenceId, timings, shotOpts,
+                frameTiles: ctx.frameTiles,
+                weight: stage.weight || 'standard', archetype: stage.archetype || 'arcane',
+                cut, impact, tail, end,
+                displaces: !!(spell.pushDistance || spell.knockback || spell.pullDistance
+                    || spell.displaceTiles || spell.linePush),
+                /* one beat on the live shot; a beat past the window is DROPPED
+                   (a late beat would yank the next unit's camera) unless the
+                   caller keeps it (the descent clock runs past the window). */
+                at(ms, fn, label, keep) {
+                    const t = Math.max(0, Math.round(ms));
+                    if (!keep && t > end - actionMs(40)) { if (log) log.beats.push((label || 'beat') + '@late'); return null; }
+                    return _cineAt(t, sequenceId, () => { if (log) log.beats.push(label || 'beat'); fn(); });
+                },
+                own() { cineOwnShot(sequenceId); if (log) log.owned = true; },
+                allowRetargets() { camera._cineRetargetOkSeq = sequenceId; if (log) log.retargets = true; },
+                /* the rig's own beat 2, on demand */
+                stockHit() {
+                    const h = camera._cineStockHit;
+                    if (h && h.seq === sequenceId) { h.run(); return true; }
+                    return false;
+                },
+                vis(u) { return !!u && _cineActorVisible(u); },
+                live(u) {
+                    if (!u || u.id == null) return u || null;
+                    const v = (state.units || []).find(x => x.id === u.id);
+                    return (v && !v.dead && !v._dying) ? v : null;
+                },
+                shotCtx(subject) { return { caster, target, center: target, subject: subject || target, sequenceId }; },
+                /* THE PAYOFF — the row's named shot beats the family's own */
+                payoff(fallback, subject) {
+                    const name = row.payoff || fallback;
+                    if (!name || name === 'stock') return c.stockHit();
+                    const ok = cinePlayShot(name, c.shotCtx(subject), row.payoffOpts || {});
+                    return ok || c.stockHit();
+                },
+                push(mult, ms) {
+                    _cineBeatMove({ zoom: camera._tz * (mult || 1.1),
+                        elevZ: (camera._tElev != null && camera._tElev >= 0) ? camera._tElev : undefined,
+                        duration: Math.max(actionMs(160), ms), easing: 'linear',
+                        _allowZoomChange: true, _bypassCap: true, _fogAllowed: true });
+                },
+                /* the remainder of the window from `ms`, for a glide / a drift
+                   (scaled ms — for _cineBeatMove / a raw timer) */
+                left(ms, min) { return Math.max(min != null ? min : actionMs(200), end - ms - actionMs(80)); },
+                /* scaled → raw ms, for a kit shot that wraps its own duration
+                   in actionMs() (cineGodShot / cineGlamCam / cineLowTile) —
+                   never scale twice under a slow-mo or a dev sim speed */
+                raw(ms) { const k = actionMs(1000) / 1000; return Math.max(1, Math.round(ms / (k > 0 ? k : 1))); }
+            };
+            return c;
+        }
+
+        /* The sky-fall rule (2026-09-13), shared by strike / groundAoe /
+           delayed: a descent payload gets the sky watch, then the crater.
+           The descent clock runs past the shot's own window — kept. */
+        function _spellDirSkyFall(c) {
+            const dc = c.shotOpts && c.shotOpts.descentCam;
+            if (!dc) return false;
+            const T0 = c.timings.sourceHold;
+            const tele = actionMs(Math.max(120, dc.telegraphMs || 800));
+            const fall = actionMs(Math.max(180, dc.descentMs || 700));
+            const span = ((c.spell && c.spell.aoeRadius) || 1) * 2 + 4;
+            c.at(T0 + tele - actionMs(160), () => cineSkyWatch(c.target, { ms: fall + actionMs(160), span }), 'skyWatch', true);
+            c.at(T0 + tele + fall + actionMs(80), () => cineGodShot(c.target, span, { cut: false, duration: 520 }), 'crater', true);
+            return true;
+        }
+
+        /* The kill confirm: a heavy / ultimate hit that killed gets the glam
+           cam on the caster, inside the window. */
+        function _spellDirKillConfirm(c) {
+            if (c.weight !== 'heavy' && c.weight !== 'ultimate') return;
+            const at = c.impact + Math.min(actionMs(460), Math.round(c.timings.targetHold * 0.45));
+            c.at(at, () => {
+                const v = (c.target && c.target.id != null) ? (state.units || []).find(u => u.id === c.target.id) : null;
+                if (!v || !(v.dead || v._dying)) return;
+                const cs = c.live(c.caster);
+                if (cs && c.vis(cs)) cineGlamCam(cs, { duration: 360, driftMs: c.raw(c.left(at, actionMs(300))) });
+            }, 'killConfirm');
+        }
+
+        const SPELL_FAMILY_DIRECTORS = {
+            /* Single-target strikes (the biggest family) — sharpen, never
+               slow: the stock beat 2 IS the payoff, the kill gets the glam
+               confirm. The damage path owns the impact hitstop already. */
+            strike(c) {
+                c.allowRetargets();
+                if (_spellDirSkyFall(c)) return;
+                c.at(c.cut, () => c.payoff('stock'), 'hit');
+                _spellDirKillConfirm(c);
+            },
+            /* Ground AOE — ONE payoff cut: the WIDE cut when several are hit,
+               else the witness cam (somebody standing in the blast sees it),
+               else the stock cut; then a glide up to the god shot over the
+               print, inside the window. */
+            groundAoe(c) {
+                if (c.displaces) c.allowRetargets();
+                if (_spellDirSkyFall(c)) return;
+                c.at(c.cut, () => {
+                    if (c.row.payoff) return c.payoff();
+                    const multi = !!(c.frameTiles && c.frameTiles.length >= 2);
+                    if (!multi && c.target && cineWitnessCam(c.target, [c.caster, c.target], {})) return;
+                    c.stockHit();
+                }, 'hit');
+                const printAt = c.impact + Math.round(c.timings.targetHold * 0.42);
+                c.at(printAt, () => cineGodShot(c.target, ((c.spell.aoeRadius || 1) * 2) + 4,
+                    { cut: false, duration: Math.min(520, c.raw(c.left(printAt))) }), 'print');
+                _spellDirKillConfirm(c);
+            },
+            /* Self-nova — the summon grammar: the lens ORBITS the caster
+               through the charge, then the wide cut on everyone the pulse
+               reaches (self rig: the pull-back over the blast radius). */
+            selfNova(c) {
+                const cs = c.caster;
+                const chargeMs = Math.max(actionMs(320), c.timings.sourceHold - actionMs(140));
+                c.at(actionMs(90), () => { if (c.vis(cs)) cineOrbit(cs, 64, chargeMs, { dist: 3.0, tilt: 90 }); }, 'orbit');
+                c.at(c.cut, () => {
+                    if (c.row.payoff) return c.payoff();
+                    if (c.rig === 'offensive' && c.target && c.target.id !== cs.id) return c.stockHit();
+                    cineGodShot(cs, ((c.spell.aoeRadius || 2) * 2) + 3, { tilt: 40, cut: false, duration: 420 });
+                }, 'wide');
+            },
+            /* THE BEAM REEL — never film a beam down its own axis: the side
+               dolly rides the head, a pierce ends on the headlight reverse. */
+            beam(c) {
+                const pierce = !!(c.frameTiles && c.frameTiles.length >= 2)
+                    || c.spell.kind === 'splitBeam' || c.spell.pierce;
+                c.at(c.cut, () => {
+                    if (c.row.payoff) return c.payoff();
+                    cineSideDolly(c.caster, c.target, {
+                        travelMs: Math.max(actionMs(260), Math.round(c.timings.travelMs * 0.9)) });
+                }, 'dolly');
+                if (pierce) c.at(c.tail - actionMs(280), () => cineEndCapReverse(c.caster, c.target, {}), 'endCap');
+                _spellDirKillConfirm(c);
+            },
+            /* Drains — the tether hold (both actors, the siphon crossing
+               between them), then the caster as the heal lands. */
+            drain(c) {
+                c.at(c.cut, () => {
+                    if (c.row.payoff) return c.payoff();
+                    cineSideDolly(c.caster, c.target, { mode: 'hold', tilt: 82 });
+                    c.push(1.08, actionMs(700));
+                }, 'tether');
+                const gainAt = c.impact + Math.round(c.timings.targetHold * 0.5);
+                c.at(gainAt, () => {
+                    const cs = c.live(c.caster);
+                    if (cs && c.vis(cs)) cineFaceCam(cs, { dist: 2.9, tilt: 80, cut: false, duration: 360 });
+                }, 'gain');
+            },
+            /* Dashes — ride the body (retargets on), the last tile cut
+               perpendicular so the impact crosses the frame. */
+            dash(c) {
+                c.allowRetargets();
+                c.at(c.timings.sourceHold + Math.round(c.timings.travelMs * 0.75), () => {
+                    if (c.row.payoff) return c.payoff();
+                    cineSideDolly(c.caster, c.target, { mode: 'hold', tilt: 84, rise: 0.45 });
+                }, 'impact');
+            },
+            /* Leap strikes — crane up with the takeoff, the apex hang, the
+               reverse OTS on the victim as the shadow grows. */
+            leap(c) {
+                c.at(actionMs(100), () => cineCrane(c.caster, {
+                    duration: Math.max(actionMs(420), c.timings.sourceHold - actionMs(140)) }), 'crane');
+                c.at(Math.max(0, c.timings.sourceHold - actionMs(120)), () => cineSlowMo(0.35, 220), 'apex');
+                c.at(c.cut, () => { if (c.row.payoff) return c.payoff(); cineReverseOts(c.target, c.caster, {}); }, 'reverse');
+            },
+            /* Sky verticality — the height IS the damage: show it. */
+            sky(c) {
+                c.allowRetargets();
+                c.at(actionMs(120), () => cineCrane(c.caster, { duration: 620 }), 'crane');
+                c.at(c.cut + actionMs(40), () => { if (c.row.payoff) return c.payoff(); cineReverseOts(c.target, c.caster, {}); }, 'reverse');
+            },
+            /* Teleports — NO travel shot: the vanish, then a HARD cut to the
+               arrival (easing a teleport makes it a walk). */
+            blink(c) {
+                const v0 = (c.rig === 'offensive') ? c.timings.sourceHold : c.cut;
+                c.at(v0, () => cineUnitFade(c.caster, 1, 0.05, 140, () => cineUnitFade(c.caster, 0.05, 1, 160)), 'vanish');
+                c.at(v0 + actionMs(150), () => {
+                    if (c.row.payoff) return c.payoff(null, c.caster);
+                    const cs = c.live(c.caster);
+                    if (cs && c.vis(cs)) cineFaceCam(cs, { dist: 3.2, tilt: 76 });
+                }, 'arrive');
+            },
+            /* Terrain / zones — the god shot, and the stagger IS the
+               spectacle: the lens settles only after the tiles. */
+            terrain(c) {
+                c.at(c.cut, () => { if (c.row.payoff) return c.payoff(); cineGodShot(c.target, 6, {}); }, 'god');
+                c.at(c.cut + actionMs(700), () => c.push(1.18, actionMs(620)), 'settle');
+            },
+            zone(c) {
+                c.at(c.cut, () => { if (c.row.payoff) return c.payoff(); cineGodShot(c.target, 7, {}); }, 'stamp');
+                c.at(c.cut + actionMs(560), () => {
+                    _cineBeatMove({ tilt: 70, zoom: camera._tz * 1.2,
+                        elevZ: (camera._tElev != null && camera._tElev >= 0) ? camera._tElev : undefined,
+                        duration: c.left(c.cut + actionMs(560), actionMs(300)), easing: 'easeInOut',
+                        _allowZoomChange: true, _bypassCap: true, _fogAllowed: true });
+                }, 'dip');
+            },
+            /* The mark turn of a delayed strike: the doomed tile (the payoff
+               turn is the detonation's own cinematic). */
+            delayed(c) {
+                if (_spellDirSkyFall(c)) return;
+                c.at(c.cut, () => { if (c.row.payoff) return c.payoff(); cineGodShot(c.target, 5, {}); }, 'mark');
+                c.at(c.cut + actionMs(420), () => c.push(1.22, actionMs(520)), 'dread');
+            },
+            /* The Wish Granted rule: the RECEIVER gets the hero shot — the
+               low glam with the slow orbit while the number lands. Self casts
+               get it on the aura pop. */
+            support(c) {
+                const rcv = c.self ? c.caster : c.target;
+                c.at(c.cut, () => {
+                    if (c.row.payoff) return c.payoff('glam', rcv);
+                    const u = c.live(rcv);
+                    if (u && u.id != null && c.vis(u)) cineGlamCam(u, { driftMs: c.raw(c.left(c.cut, actionMs(500))) });
+                    else c.stockHit();
+                }, 'receiver');
+            },
+            buff(c) { SPELL_FAMILY_DIRECTORS.support(c); },
+            /* Party cries — pull back to fit the whole group so the morale
+               wave is visibly passing through allies one by one. */
+            partyCry(c) {
+                c.at(c.cut, () => {
+                    if (c.row.payoff) return c.payoff();
+                    cinePartyFit(c.caster, (c.spell.aoeRadius || c.spell.radius || 3) + 1,
+                        { duration: Math.min(480, c.raw(c.left(c.cut))) });
+                }, 'rally');
+            },
+            /* Debuffs — the world looks down on the victim: the face cam and
+               a dip of the lens as the status lands. */
+            debuff(c) {
+                c.at(c.cut, () => {
+                    if (c.row.payoff) return c.payoff();
+                    if (!c.vis(c.target) || c.target.id == null) return c.stockHit();
+                    cineFaceCam(c.target, { dist: 2.6, tilt: 78 });
+                    _cineBeatMove({
+                        zoom: camera._tz * 1.14, tilt: (camera._tt ?? 78) - 5,
+                        elevZ: (camera._tElev != null && camera._tElev >= 0) ? camera._tElev : undefined,
+                        duration: Math.max(actionMs(420), c.left(c.cut)),
+                        easing: 'easeInOut', _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
+                    });
+                }, 'victim');
+            },
+            /* Pulls / knockbacks — track the VICTIM (retargets ride the body). */
+            displace(c) {
+                c.allowRetargets();
+                c.at(c.cut, () => {
+                    if (c.row.payoff) return c.payoff();
+                    cineSideDolly(c.caster, c.target, { mode: 'hold', tilt: 80 });
+                }, 'path');
+            },
+            /* Multi-hits — hits 1–2 on the stock cut, 3+ alternate hard
+               angles; ricochets hand the frame along the bounce. */
+            multiHit(c) {
+                c.allowRetargets();
+                c.at(c.cut, () => c.payoff('stock'), 'hit');
+                const hits = Math.max(3, (c.spell.hitDamages && c.spell.hitDamages.length) || c.spell.hits || 3);
+                const step = Math.max(actionMs(180), Math.round(c.timings.targetHold / hits));
+                for (let i = 2; i < Math.min(hits, 6); i++) {
+                    c.at(c.cut + step * i, () => {
+                        if (!c.vis(c.target) || c.target.id == null) return;
+                        cineFaceCam(c.target, { dist: 2.8, tilt: 74 + (i % 2 ? 10 : -6),
+                            yaw: (camera._tyaw ?? 0) + (i % 2 ? 62 : -58) });
+                    }, 'hit' + (i + 1));
+                }
+                _spellDirKillConfirm(c);
+            },
+            /* Weather — the sky shot, the first particles hitting the lens. */
+            weather(c) {
+                c.at(actionMs(160), () => cineCrane(c.caster, { duration: 760, tilt: 112 }), 'crane');
+                c.at(Math.min(actionMs(1100), c.end - actionMs(300)), () => cineGrade('dim', 700), 'dim');
+            },
+            /* Recon — iris out over the revealed area. */
+            recon(c) {
+                c.at(c.cut, () => { if (c.row.payoff) return c.payoff(); cineGodShot(c.target, 8, {}); cineGrade('scope', 900); }, 'iris');
+            },
+            /* ── the five new families (2026-09-23) ── */
+            /* Deployables — the ASSEMBLY shot: ground level at the device,
+               ¾ from the caster's side, a slow push while it unfolds. */
+            deploy(c) {
+                const tile = c.target || c.caster;
+                c.at(c.cut, () => {
+                    if (c.row.payoff) return c.payoff('lowTile');
+                    if (!c.vis(tile)) return c.stockHit();
+                    cineLowTile(tile, c.caster, { pushMs: c.raw(c.left(c.cut, actionMs(400))), push: 1.12 });
+                }, 'assemble');
+            },
+            /* Summons — THE SUMMON REVEAL: high over the tile, then a crane
+               down to a low hero shot as the thing stands up. */
+            summon(c) {
+                const tile = c.target || c.caster;
+                c.at(c.cut, () => {
+                    if (c.row.payoff) return c.payoff();
+                    if (!c.vis(tile)) return c.stockHit();
+                    cineGodShot(tile, 5, { tilt: 28 });
+                }, 'reveal');
+                const riseAt = c.cut + actionMs(360);
+                c.at(riseAt, () => {
+                    if (c.row.payoff || !c.vis(tile)) return;
+                    cineLowTile(tile, c.caster, { cut: false, tilt: 92, dist: 3.0, duration: Math.min(620, c.raw(c.left(riseAt))) });
+                }, 'rise');
+            },
+            /* Control (possess / link / soul transfer) — the mind snapping:
+               the face cam on the victim, a Vertigo dolly zoom, the hue grade. */
+            control(c) {
+                c.at(c.cut, () => {
+                    if (c.row.payoff) return c.payoff();
+                    if (!c.vis(c.target) || c.target.id == null) return c.stockHit();
+                    cineFaceCam(c.target, { dist: 2.5, tilt: 80 });
+                    cineDollyZoom(-11, Math.min(actionMs(760), c.left(c.cut)), { zoomMult: 1.16 });
+                    cineGrade('hue', Math.min(actionMs(900), c.left(c.cut)));
+                }, 'mind');
+            },
+            /* Transform — the glam orbit, a whiteout freeze on the swap frame. */
+            transform(c) {
+                const at0 = Math.max(0, c.cut - actionMs(160));
+                c.at(at0, () => {
+                    const cs = c.live(c.caster);
+                    if (cs && c.vis(cs)) cineGlamCam(cs, { drift: 120, driftMs: c.raw(c.left(at0, actionMs(500))) });
+                }, 'glam');
+                c.at(c.cut + actionMs(60), () => cineFreezeFrame(actionMs(110), { grade: 'whiteout' }), 'swap');
+            },
+            /* World-altering casts (Trick Room, the lattice) — crane up off
+               the caster, then the god shot over the board. */
+            world(c) {
+                c.at(actionMs(140), () => cineCrane(c.caster, { duration: 560 }), 'crane');
+                c.at(c.cut, () => {
+                    if (c.row.payoff) return c.payoff();
+                    cineGodShot(c.target || c.caster, 9, { tilt: 34, cut: false, duration: Math.min(560, c.raw(c.left(c.cut))) });
+                }, 'world');
+            }
+        };
+
+        /* The row's flavour, laid over any family director at the payoff:
+           a grade, an insert card, a void stage, a slow-mo, a freeze. */
+        function _spellDirFlavour(c) {
+            const r = c.row;
+            if (!r) return;
+            const at = (r.flavourAt === 'cut') ? c.cut : c.impact;
+            if (r.slow) c.at(Math.max(0, at - actionMs(60)), () => cineSlowMo(r.slow[0], actionMs(r.slow[1] || 300)), 'slow');
+            if (r.grade) c.at(at, () => cineGrade(r.grade, actionMs(r.gradeMs || 700)), 'grade');
+            if (r.insert) c.at(at + actionMs(r.insertDelay || 60), () => cineInsert(r.insert[0], r.insert[1] || 'stamp', actionMs(r.insert[2] || 1000)), 'insert');
+            if (r.freeze) c.at(at + actionMs(20), () => cineFreezeFrame(actionMs(r.freeze), r.freezeGrade ? { grade: r.freezeGrade } : {}), 'freeze');
+            if (r.void) c.at(at, () => {
+                const actors = [c.caster, c.target].filter((u, i, a) => u && u.id != null && !u.dead
+                    && _cineActorVisible(u) && a.findIndex(v => v && v.id === u.id) === i);   // the self rig: one actor, once
+                if (!actors.length || window.EW_DISABLE_VOID_STAGE || !VoidStage.canPlay(actors)) return;
+                VoidStage.enter({ palette: r.void, actors, ms: actionMs(r.voidMs || 1300), caption: r.voidCaption });
+            }, 'void');
+        }
+
+        /* Run a family director on the live shot. */
         function _cineApplyFamily(key, ctx) {
+            if (window.EW_DISABLE_SPELL_DIRECTOR) return _cineApplyFamilyLegacy(key, ctx);
+            const D = SPELL_FAMILY_DIRECTORS[key];
+            if (!D) return false;
+            const c = _spellDirCtx(key, ctx);
+            c.own();
+            D(c);
+            _spellDirFlavour(c);
+            return true;
+        }
+
+        /* ═══════════════════════════════════════════════════════════════════
+           window.SpellDirector — the readout (SPELL_DIRECTOR_PLAN.md §3).
+             resolve(id)   → { spellId, kind, source: 'bespoke'|'family'|null,
+                               family, director }
+             catalogue()   → every spell in the game resolved + the counts
+             log           → the last 40 casts: spell, director, rig, owned,
+                             claimed, the beats that fired (@late = dropped)
+           Read the log FIRST on any "the camera did something weird" report.
+           ═══════════════════════════════════════════════════════════════════ */
+        const SpellDirector = {
+            log: [],
+            families: SPELL_FAMILY_DIRECTORS,
+            rows: SPELL_DIRECTOR_ROWS,
+            _open(spellId, ctx) {
+                const e = { at: Math.round(performance.now()), spellId: spellId || null,
+                    rig: (ctx && ctx.rig) || 'offensive', seq: ctx ? ctx.sequenceId : null,
+                    source: null, director: null, owned: false, claimed: false, beats: [] };
+                this.log.push(e);
+                if (this.log.length > 40) this.log.shift();
+                return e;
+            },
+            _note(seq, what) {
+                for (let i = this.log.length - 1; i >= 0; i--) {
+                    const e = this.log[i];
+                    if (e.seq !== seq) continue;
+                    if (what === 'claimed') e.claimed = true; else e.beats.push(what);
+                    return;
+                }
+            },
+            resolve(spellId) {
+                const spell = _cineSpellById(spellId);
+                const out = { spellId, kind: spell ? spell.kind : null, source: null, family: null, director: null };
+                const row = SPELL_DIRECTOR_ROWS[spellId] || null;
+                if (typeof CINE_SEQUENCES[spellId] === 'function') {
+                    out.source = 'bespoke'; out.director = 'bespoke:' + spellId;
+                }
+                const fam = _cineFamilyKey(spell);
+                if (fam) out.family = fam;
+                if (!out.source && fam) { out.source = 'family'; out.director = 'family:' + fam; }
+                if (row) out.row = row;
+                return out;
+            },
+            catalogue() {
+                const ids = new Set();
+                try { Object.keys(SPELL_BY_ID || {}).forEach(id => ids.add(id)); } catch (e) {}
+                try { Object.keys(RACE_ABILITY_BY_ID || {}).forEach(id => ids.add(id)); } catch (e) {}
+                const rows = [], count = { bespoke: 0, family: 0, none: 0 }, byFamily = {};
+                ids.forEach(id => {
+                    const r = this.resolve(id);
+                    rows.push(r);
+                    count[r.source || 'none']++;
+                    if (r.family) byFamily[r.family] = (byFamily[r.family] || 0) + 1;
+                });
+                return { total: rows.length, count, byFamily, missing: rows.filter(r => !r.source).map(r => r.spellId), rows };
+            }
+        };
+        window.SpellDirector = SpellDirector;
+
+        /* The PRE-DIRECTOR family treatments, kept verbatim for the A/B
+           kill-switch (window.EW_DISABLE_SPELL_DIRECTOR): they LAYER on the
+           stock two-beat shot exactly as they did before 2026-09-23. */
+        function _cineApplyFamilyLegacy(key, ctx) {
             const { caster, target, timings, sequenceId, spell } = ctx;
             const cut = _cineCutMs(timings, ctx.shotOpts || {});
             const tail = timings.sourceHold + timings.travelMs + timings.targetHold;
@@ -27706,20 +28402,32 @@
              window.EW_DISABLE_CINE_FAMILIES = true  → bespoke sequences only
              window.EW_DISABLE_VOID_STAGE    = true  → void beats take their
                                                        non-void fallback */
+        /* THE SPELL DIRECTOR (2026-09-23): this is the ONE entry for every
+           rig — the offensive two-beat, the self hero shot and the support
+           gift all call it with their own clock (ctx.rig / ctx.timings /
+           ctx.cutMs). A bespoke sequence runs inside the directing context
+           (its first camera move claims the shot); a family director owns
+           the shot from t = 0. Every cast is logged on window.SpellDirector. */
         function _cinePlaySpellSequence(spellId, ctx) {
             if (_skipVisuals()) return;   // the caller already cleared cinematicActionCam
             if (window.EW_DISABLE_CINE_FX) return;
+            const legacy = !!window.EW_DISABLE_SPELL_DIRECTOR;
+            const log = legacy ? null : SpellDirector._open(spellId, ctx);
             const seq = spellId ? CINE_SEQUENCES[spellId] : null;
             let taken = false;
             if (typeof seq === 'function') {
-                try { taken = seq(ctx) !== false; } catch (e) { taken = false; }
+                if (log) { log.source = 'bespoke'; log.director = 'bespoke:' + spellId; }
+                try {
+                    taken = (legacy ? seq(ctx) : _cineDirecting(ctx.sequenceId, () => seq(ctx))) !== false;
+                } catch (e) { taken = false; }
             }
             if (taken) return;
             if (window.EW_DISABLE_CINE_FAMILIES) return;
             const spell = ctx.spell || _cineSpellById(spellId);
             const key = _cineFamilyKey(spell);
             if (!key) return;
-            try { _cineApplyFamily(key, { ...ctx, spell }); } catch (e) {}
+            if (log) { log.source = 'family'; log.director = 'family:' + key; }
+            try { _cineApplyFamily(key, { ...ctx, spell, log }); } catch (e) {}
         }
 
         /* The live cast context. doSpell publishes it at the universal
@@ -56905,20 +57613,45 @@
             // ally-heal shot — they used to flash by in the light chrome.
             const _selfHeal = _isHealFlavoredCast(opts);
             const _selfHold = actionMs(opts.holdMs ?? (_selfHeal ? 1900 : 1500));
-            window.setTimeout(() => {
-                if (camera._cineShotId !== sequenceId) return;
-                if (state.phase !== 'battle' || state.cameraDisabled) return;
+            const _selfPush = () => {
                 _cineBeatMove({
                     zoom: _tpsZoomForBoomTiles(CINE_FACE_DIST_TILES) * 1.1,
                     duration: Math.max(actionMs(320), _selfHold - actionMs(460)),
                     easing: 'linear',
                     _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
                 });
-            }, actionMs(440));
+            };
+            /* THE SPELL DIRECTOR: the push-in is this rig's "beat 2" — a
+               director that owns the shot yields it or replays it. */
+            camera._cineStockHit = { seq: sequenceId, run: () => {
+                if (camera._cineShotId === sequenceId && state.phase === 'battle' && !state.cameraDisabled) _selfPush();
+            } };
+            window.setTimeout(() => {
+                if (camera._cineShotId !== sequenceId) return;
+                if (state.phase !== 'battle' || state.cameraDisabled) return;
+                if (_cineShotOwned(sequenceId)) return;   // the director composes the rest
+                _selfPush();
+            }, actionMs(440) + CINE_CLAIM_GRACE_MS);
             if (opts.spellName) {
                 showActionCamChrome({ name: opts.spellName, heavy: _selfHeal,
                     tallyKind: _selfHeal ? 'heal' : undefined,
                     totalMs: _selfHold + actionMs(600) });
+            }
+            /* THE SPELL DIRECTOR (2026-09-23): the self rig runs the cast's
+               director too — before this every self buff / self heal / war
+               cry / escape / trick room took this shot and nothing else
+               (their families and bespoke sequences were unreachable). The
+               clock: the aura POP at 640 ms is the payoff frame. */
+            if (!window.EW_DISABLE_SPELL_DIRECTOR && opts.spellId && _cineClaimCast(opts.spellId)) {
+                const _pop = actionMs(640);
+                _cinePlaySpellSequence(opts.spellId, {
+                    caster: unit, target: unit, sequenceId, rig: 'self',
+                    timings: { sourceHold: _pop, travelMs: 0,
+                        targetHold: Math.max(actionMs(600), _selfHold - _pop),
+                        resetBuffer: actionMs(200), totalMs: Math.max(actionMs(1900), _selfHold + actionMs(200)) },
+                    cutMs: _pop, impactMs: _pop, shotOpts: {},
+                    spell: _cineSpellById(opts.spellId)
+                });
             }
             return true;
         }
@@ -57021,6 +57754,7 @@
                 _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
             });
 
+            let _supBeat2 = () => {}, _supCutMs = sourceHold;
             if (_supHeal) {
                 // BEAT 2 (heal) — HARD CUT to the recipient mid-flight, the
                 // same ¾ reverse cut + push-in the offensive hit shot uses,
@@ -57028,10 +57762,8 @@
                 // casts the framing widens just enough to keep the caster in
                 // the background (the two-actor pair shot).
                 const cutMs = sourceHold + Math.min(actionMs(300), Math.round(travelMs * 0.5));
-                window.setTimeout(() => {
-                    if (camera._cineShotId !== sequenceId) return;
-                    if (sequenceId !== boardCameraSequenceId) return;
-                    if (state.phase !== 'battle' || state.cameraDisabled) return;
+                _supCutMs = cutMs;
+                _supBeat2 = () => {
                     _cineTpsAnchor(target, (target.id != null) ? target : null);
                     camera._cineShotTarget = { x: target.x, y: target.y, id: target.id ?? null };
                     const _pairShot = len <= 4.2;
@@ -57061,15 +57793,13 @@
                         easing: 'linear',
                         _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
                     });
-                }, cutMs);
+                };
             } else {
                 // BEAT 2 (blessing) — the receiver: glide over WITH the gift
                 // and hold while they consume/absorb it. No hard cut — a
                 // buff/shield is a hand-off, not an impact.
-                window.setTimeout(() => {
-                    if (camera._cineShotId !== sequenceId) return;
-                    if (sequenceId !== boardCameraSequenceId) return;
-                    if (state.phase !== 'battle' || state.cameraDisabled) return;
+                _supCutMs = sourceHold;
+                _supBeat2 = () => {
                     _cineTpsAnchor(target, (target.id != null) ? target : null);
                     camera._cineShotTarget = { x: target.x, y: target.y, id: target.id ?? null };
                     _cineBeatMove({
@@ -57081,14 +57811,39 @@
                         duration: Math.max(actionMs(280), travelMs), easing: 'easeInOut',
                         _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
                     });
-                }, sourceHold);
+                };
             }
+            /* THE SPELL DIRECTOR: beat 2 (the heal's hard cut / the blessing's
+               glide) is a callable — a director that owns the shot yields it
+               or replays it through c.stockHit(); the timer waits the claim
+               grace so a director beat on the same frame claims first. */
+            const _supBeat2Ok = () => camera._cineShotId === sequenceId
+                && sequenceId === boardCameraSequenceId
+                && state.phase === 'battle' && !state.cameraDisabled;
+            camera._cineStockHit = { seq: sequenceId, run: () => { if (_supBeat2Ok()) _supBeat2(); } };
+            window.setTimeout(() => {
+                if (!_supBeat2Ok()) return;
+                if (_cineShotOwned(sequenceId)) return;   // the director composes beat 2 itself
+                _supBeat2();
+            }, _supCutMs + CINE_CLAIM_GRACE_MS);
 
             if (opts.spellName) {
                 // Heals wear the full letterbox + TOTAL HEALED readout; other
                 // support keeps the understated name-only chrome.
                 showActionCamChrome({ name: opts.spellName, heavy: _supHeal,
                     tallyKind: _supHeal ? 'heal' : undefined, totalMs });
+            }
+            /* THE SPELL DIRECTOR (2026-09-23): the support rig runs the
+               cast's director — heals, buffs, shields, deploys, zones,
+               summons, runes: their families and bespoke sequences were
+               unreachable before (the rig never consulted the table). */
+            if (!window.EW_DISABLE_SPELL_DIRECTOR && opts.spellId && _cineClaimCast(opts.spellId)) {
+                _cinePlaySpellSequence(opts.spellId, {
+                    caster: unit, target, sequenceId, rig: 'support',
+                    timings: { sourceHold, travelMs, targetHold, resetBuffer: actionMs(200), totalMs },
+                    cutMs: _supCutMs, impactMs: sourceHold + travelMs, shotOpts: {},
+                    spell: _cineSpellById(opts.spellId)
+                });
             }
             return { sequenceId, sourceHold, travelMs, targetHold, totalMs };
         }
@@ -57107,7 +57862,8 @@
             // focus below when the 3D rig is off or the shot declines.
             if (casterUnit && !casterUnit.dead && tx === casterUnit.x && ty === casterUnit.y
                 && _playSelfCastHeroShot(casterUnit, opts)) {
-                return { mode: 'self', sourceHold: actionMs(640), totalMs: actionMs(1900) };
+                return { mode: 'self', sourceHold: actionMs(640), totalMs: actionMs(1900),
+                    spellId: opts.spellId || null, spellName: opts.spellName || null };
             }
 
             // TARGETED support/utility (deploys, zones, runes, remote views,
@@ -57138,7 +57894,11 @@
                 transitionMs: opts.transitionMs ?? 380,
                 _fogAllowed: _fogCamTilesVisible(...points)
             });
-            return { mode: 'pan' };
+            /* spellId / spellName ride the result so online.js's relay carries
+               the RESOLVED id (a bare _spellFocusCamera(unit, x, y) call recovers
+               it from _focusCamSpellCtx here — the relay used to send null and
+               the guest's shot had no director). */
+            return { mode: 'pan', spellId: opts.spellId || null, spellName: opts.spellName || null };
         }
 
         // ── Spellsteal / Borrowed Claw: take one of the target's spells and give it to the caster ──

@@ -8721,3 +8721,93 @@ attack) to free it, the seal makes it SEALED (off the board, counted gone for Wi
 enlists every sealed / held unit into THE PARTY, else the roster (a synced `hq.captured` ledger the
 server unions into `unlockedUnits`), else a bounty. §5: every encounter is at least two bodies; THE
 SWARM (6–8 low-level bodies + 1–2 elites) is the last phase. Nothing built.
+
+## THE SPELL DIRECTOR — every spell directed, one owner per shot (SPELL_DIRECTOR_PLAN.md, Phase 1) — 2026-09-23, local delivery
+**`SPELL_DIRECTOR_PLAN.md` is THE doc for spell presentation from now on.**
+It holds:
+- the measured diagnosis;
+- the fever-dream look bible;
+- the architecture;
+- phases 1–7: the director, the body, the fever, the dual techs, the
+  capstones, the juice, the new clips;
+- THE 30 ANIMATIONS the user will create, and how to export them so they
+  drop into a `MAL3_Sniper.glb`.
+
+Read it before touching a spell's camera, clip or VFX, and append to its §10
+every session. `SPELL_CINEMATICS.md` stays the catalogue of the 87 bespoke
+sequences.
+
+**THE RULE: every cast is run by exactly ONE director** (battle.js
+`_cinePlaySpellSequence`), whichever rig it takes:
+- the offensive two-beat (`_playCineActionShot`);
+- the SELF hero shot (`_playSelfCastHeroShot`, `rig: 'self'`, the aura pop at
+  640 ms is the payoff frame);
+- the SUPPORT gift shot (`_playSupportCineShot`, `rig: 'support'`).
+
+Before this the self and support rigs never consulted the director table.
+The families for every non-offensive kind, and ~20 bespoke sequences (Howl,
+Trick Room, Chivalry, Wish Granted, Reassemble, Eject, Awakening…), could
+never play. The families that did run cut twice, 0–30 ms after the stock
+beat 2.
+
+Resolution order:
+1. `SPELL_DIRECTOR_ROWS[id].family` (a per-spell remap);
+2. `CINE_SEQUENCES[id]` (bespoke);
+3. `SPELL_FAMILY_DIRECTORS[CINE_FAMILY_BY_KIND[kind]]`.
+
+EVERY kind maps to a family; the five new ones are `deploy`, `summon`,
+`control`, `transform` and `world`. `SpellDirector.resolve(id)` is never
+null, and `spell-director.test.js` walks all 519 spells.
+
+**OWNERSHIP is two permissions:**
+- `cineOwnShot(seq)` (explicit): the stock beats yield AND VFX retargets are
+  blocked. It also clears a lazy claim's retarget permission.
+- `_cineClaimShot(seq)` (THE LAZY CLAIM): made by `_cineBeatMove` /
+  `_cineHardCut` when a director is directing (`_cineDirecting`, set by
+  `_cineAt` beats and around a bespoke sequence's synchronous call). The
+  stock beats yield; retargets are kept.
+- A family director owns at t = 0 (`c.own()`) and calls `c.allowRetargets()`
+  only where the hero part moves (strike · dash · sky · displace · multiHit
+  · an aoe that knocks back).
+- The stock beat 2 is a callable on every rig: `camera._cineStockHit = { seq,
+  run }`. A director replays it with `c.stockHit()`. Its timer waits
+  `CINE_CLAIM_GRACE_MS` (40) past the cut, so a director beat on the cut
+  frame claims first.
+
+**Rules for new directors:**
+- schedule with `c.at(ms, fn, label)`: a beat past the shot's window is
+  DROPPED (`keep` only for the descent clock);
+- ONE hard cut per beat (the harness fails two within 50 ms);
+- pass `c.raw(ms)` to a kit shot that wraps its own duration in `actionMs()`
+  (cineGodShot / cineGlamCam / cineLowTile); `c.left(ms)` is scaled;
+- a new camera helper goes through `_cineBeatMove` / `_cineHardCut`, never
+  a bare `camera.moveTo`, or the lazy claim cannot see it.
+
+**`SPELL_DIRECTOR_ROWS`** (data, battle.js) is the per-spell tuning surface:
+`family`, `payoff` (a CINE_SHOTS name), `grade` / `gradeMs`, `insert
+[text, kind, ms]`, `void` (a palette), `slow [scale, ms]`, `freeze`,
+`flavourAt`. `anim` / `vfx` are reserved for Phases 2 / 3. The test checks
+every field and every id.
+
+**Readout:** `window.SpellDirector.log` (the last 40 casts: director, rig,
+owned / claimed, the beats that fired; `@late` = dropped). Read it FIRST on
+any "the camera did something weird" report.
+
+**Kill-switch:** `window.EW_DISABLE_SPELL_DIRECTOR = true` restores the
+pre-director layering exactly (`_cineApplyFamilyLegacy`).
+
+**RULE #2:** `_spellFocusCamera` returns the resolved `spellId`, and
+online.js's `spell-focus-cam` relay reads it off the result.
+
+**Tooling:**
+- `node check-spell-presentation.js [--json] [--list <bucket>]` — THE
+  CENSUS: directors, the clip spread, VFX identity, bare capstones.
+- `playtest_spellcam.js` — `LEGACY=1` (the A/B), `CAST_AT=x,y` (a self /
+  ally cast), a `DIRECTOR` line, and it defaults to the Stadium Δ (Nuketown
+  is retired).
+
+**NOT touched:** the CHARGE rig (`animateDashActionCamera`), the finishers,
+the Entropy Strike, the combos (Phase 4).
+
+**UNSEEN LIVE (RULE #1c):** the family directors' look with real art (the
+plan's §10 entry lists the edits).

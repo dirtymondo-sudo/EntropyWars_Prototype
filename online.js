@@ -2591,8 +2591,11 @@
                         cx: casterUnit.x, cy: casterUnit.y,
                         casterPlayer: casterUnit.player || null,
                         tx: tx, ty: ty,
-                        spellName: (opts && opts.spellName) || null,
-                        spellId: (opts && opts.spellId) || null
+                        /* THE SPELL DIRECTOR (2026-09-23): a bare call recovers the
+                           id inside battle.js — read it off the RESULT, else the
+                           guest's self shot ran no director (RULE #2). */
+                        spellName: (opts && opts.spellName) || (result && result.spellName) || null,
+                        spellId: (opts && opts.spellId) || (result && result.spellId) || null
                     });
                 }
                 return result;

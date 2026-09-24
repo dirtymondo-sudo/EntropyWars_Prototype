@@ -62,7 +62,7 @@ async function installRoutes(context, counters) {
     counters.miss++; return route.fulfill({ status: 404, body: '' });
   });
 }
-const MAP = process.env.MAP || 'prebuilt_nuketown';
+const MAP = process.env.MAP || 'prebuilt_stadium';   // (Nuketown was retired 2026-09-18)
 const SPELL = process.env.SPELL || 'raceLaserBeam';
 const [CX, CY] = (process.env.CASTER || '3,7').split(',').map(Number);
 const [TX, TY] = (process.env.TARGET || '13,7').split(',').map(Number);
@@ -160,14 +160,18 @@ const TILT_START = process.env.START_CAM ? JSON.parse(process.env.START_CAM) : n
   console.log('staged', JSON.stringify(staged));
   if (staged.err) { await browser.close(); process.exit(1); }
   if (TILT_START) await page.evaluate((c) => { camera.snap({ _force: true, ...c }); }, TILT_START);
+  /* LEGACY=1 — the pre-director layering (window.EW_DISABLE_SPELL_DIRECTOR), for an A/B of the same cast */
+  if (process.env.LEGACY === '1') await page.evaluate(() => { window.EW_DISABLE_SPELL_DIRECTOR = true; });
   await sleep(800);
+  /* CAST_AT=x,y — cast at another tile than the dummy's (a self / ally cast: the caster's own tile) */
+  const [KX, KY] = (process.env.CAST_AT || (TX + ',' + TY)).split(',').map(Number);
   const cast = await page.evaluate(({ SPELL, TX, TY }) => {
     const st = window.GAME.state; const caster = st.units.find(u => u.player === 1 && !u.dead);
     st.actionMode = 'spell'; st.selectedTool = caster.spells[0].name;
     window.__csT0 = performance.now();
     let d = 0; try { d = GAME.doSpell(caster, TX, TY, getHeightAt(TX, TY)) || 0; } catch (e) { return 'threw ' + e.message; }
     return 'delay ' + d + ' | log: ' + JSON.stringify((st.logEntries || []).slice(-3).map(e => (e && e.text) || e).map(String).map(x => x.slice(0, 120)));
-  }, { SPELL, TX, TY });
+  }, { SPELL, TX: KX, TY: KY });
   console.log('cast →', cast);
   if (process.env.DETONATE === '1') {
     // a delayed strike (Nuke, Artillery Strike): the camera lives at the END-OF-ROUND detonation —
@@ -211,6 +215,9 @@ const TILT_START = process.env.START_CAM ? JSON.parse(process.env.START_CAM) : n
   let lastT = -1000;
   for (const k of s) { if (k.t - lastT < 250) continue; lastT = k.t; console.log('  ' + JSON.stringify(k)); }
   fs.writeFileSync(path.join(OUT, `${TAG}_samples.json`), JSON.stringify(samples, null, 0));
+  /* THE SPELL DIRECTOR (2026-09-23): which director ran, on which rig, the beats it fired */
+  const dlog = await page.evaluate(() => (window.SpellDirector ? window.SpellDirector.log.slice(-4) : null));
+  console.log('DIRECTOR', JSON.stringify(dlog));
   console.log('ERRORS', JSON.stringify(errs.slice(0, 8)));
   await browser.close();
 })().catch(e => { console.error('PROBE FAIL', e); process.exit(1); });

@@ -1,5 +1,17 @@
 # Spell Cinematics — Signature Camera / Animation / VFX Candidates
 
+> **2026-09-23 — SUPERSEDED AS THE PLAN by `SPELL_DIRECTOR_PLAN.md`.** This
+> file stays the catalogue of the bespoke sequences and the camera vocabulary.
+> Since THE SPELL DIRECTOR (Phase 1):
+> - every cast runs ONE director on all three rigs (offensive · self ·
+>   support);
+> - the family treatments below are whole-shot directors
+>   (`SPELL_FAMILY_DIRECTORS`) that OWN the shot;
+> - bespoke sequences claim the shot on their first camera move.
+>
+> The §I family table's "Kinds" column is extended by the five new families
+> (deploy · summon · control · transform · world); read the plan's §4.
+
 > **STATUS (2026-08-10): v1 SHIPPED.** The primitive layer, the Void Stage
 > (16 palettes), the named shot library, the family treatments for every
 > `kind`, and 77 bespoke sequences (the named candidates plus the honorable

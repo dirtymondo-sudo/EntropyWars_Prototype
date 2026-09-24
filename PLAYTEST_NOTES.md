@@ -10563,6 +10563,20 @@ under the edge — the beam edge bug read −5 tiles there before the fix.
   `flyby_frozen250.png`). The jet itself and the bomb follow's glide are
   UNSEEN here (GLB 404 / rAF-paced) — eyeball live.
 
+- **2026-09-23 (THE SPELL DIRECTOR):**
+  - the probe defaults to `MAP=prebuilt_stadium` (Nuketown was retired); use
+    `MAP=prebuilt_flatlands` for flat ground: the Stadium's stands block a
+    cast from 4,4;
+  - `LEGACY=1` sets `window.EW_DISABLE_SPELL_DIRECTOR` for an A/B of the
+    same cast;
+  - `CAST_AT=x,y` casts at another tile than the dummy's (a self buff = the
+    caster's own tile, e.g. `CAST_AT=3,4` for Howl);
+  - the output ends with a `DIRECTOR` line (the last `window.SpellDirector.log`
+    entries: director, rig, owned / claimed, beats);
+  - read the camera timeline as the distinct (x, y, zoom, tilt, yaw) states in
+    `shots/spellcam/<TAG>_samples.json`. Software GL samples ~1 per second,
+    so trust the order of states, not their timestamps.
+
 ## THE DOOR-KIT BATCH — measuring a leaf's silhouette (2026-09-14)
 The frame is cut to the LEAF's shape now (CLAUDE.md "THE DOOR-KIT BATCH +
 THE SURROUND"). Before giving a new leaf a `shape` / `hole` / `arch`, look
