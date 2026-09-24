@@ -390,7 +390,7 @@ place:
    spells whose idea is the trip. The void stage keeps its one-per-round
    budget and stays row-only.
 
-### Phase 4 — THE BODY (existing clips, a verb per spell) *(was Phase 2)*
+### Phase 4 — THE BODY (existing clips, a verb per spell) *(was Phase 2)* · *items 1 (casters), 2, 3, 4 shipped 2026-09-24; the victim reactions are next*
 1. New cast slots from the 20+ unused library clips (§1.2):
    - `castChannel`: Spell_Simple_Enter → Idle_Loop held through the beam →
      Exit. For beams, drains and breath.
@@ -782,6 +782,29 @@ spell-craft-hitread.test.js, spell-one-model.test.js.
 
 **Next:** Phase 4 THE BODY. Open: the cross (§8 #5), the ripple's reach
 (§8 #3), THE TOWER's tarot card (§12, maybe).
+
+### 2026-09-24 (session 3) — THE BODY (Phase 4: the caster verbs + the anim router) · local delivery
+**Shipped:** sprites.js, three-renderer.js, index.html (the token
+`20260924-spell-body-01-cors`); repo: check-spell-presentation.js,
+spell-body.test.js, capstone-vfx.test.js, this plan, docs/notes/spells-vfx.md.
+- **18 verb slots** in UAL_SLOTS (castChannel, castCall, castReap, castPour,
+  castHeavySlash, castHook, castLeap, castGuard, castOpen, castTouch,
+  castPush, castLantern, castPhone, castReload, castDance, castSmug,
+  castCheer, castStealth), strike frames off the 2026-09-24 contact sheets.
+  Dropped from the §5 list: castSlashLight (the blades already own
+  Sword_Attack / the combo) and castJab / castPunchCombo2 (Punch_Cross and
+  Punch_Combo cover them).
+- **THE DEFERRED BAKE** (`defer: true` → `_libBakeDeferred`): the verbs bake
+  one per idle tick after load, so the load bake is unchanged; each chain
+  falls back to the kind's old slot until its verb lands.
+- **THE ANIM ROUTER** is sprites.js `SPELL_ANIM_VERBS`, not
+  `SPELL_DIRECTOR_ROWS[id].anim` (the forge preview classifies without
+  battle.js). ~200 spells named; the charges get the shoulder-check.
+- **The census:** top clip 27 % → 14 %; castMelee 59 → 9 (all blades).
+  §9 P4 ✅, pinned by spell-body.test.js.
+
+**Next:** Phase 4 item 1's victim side (Hit_Knockback + LayToIdle,
+Idle_Shield_Break, Hit_Head / Hit_Chest), then Phase 5 THE DUAL TECHS.
 
 ## 11. The census tool
 

@@ -95,7 +95,10 @@ test('the charged cast: castUltimate slot, the chain, and the classify rules', (
     assert.strictEqual(S.castUltimate.strikeAt, 1.90);
     assert.ok(/\(kind === 'ultimate'\) \? \['castUltimate', 'castAOE', 'castMagic', 'cast'\]/.test(TR), '_castChainFor must know the ultimate chain');
     assert.ok(/function _isCapstoneSpellForAnim\(spell\)/.test(SP));
-    const cl = classify();
+    const cl0 = classify();
+    /* the TEXT RULES (THE BODY 2026-09-24: sprites.js SPELL_ANIM_VERBS routes many of
+       these spells to a verb first — rulesOnly pins the rules underneath) */
+    const cl = (sp) => cl0(sp, { rulesOnly: true });
     const by = g.SPELL_BY_ID;
     assert.strictEqual(cl(by.raceTsunami), 'ultimate');
     assert.strictEqual(cl(by.raceSupernova), 'ultimate');
@@ -114,6 +117,14 @@ test('the charged cast: castUltimate slot, the chain, and the classify rules', (
     assert.strictEqual(cl(by.healAll), 'aoe', 'the party heal charges');
     assert.strictEqual(cl(by.fire1), 'magic', 'a single bolt does not');
     assert.strictEqual(cl(by.raceFanTheHammer), 'ranged', 'a gun aoe does not');
+    /* THE ANIM ROUTER beats the rules for the spells it names */
+    assert.strictEqual(cl0(by.raceTsunami), 'push', 'the wave is shoved');
+    assert.strictEqual(cl0(by.raceHallelujah), 'cheer');
+    assert.strictEqual(cl0(by.raceShamblingHorde), 'call', 'the horde is called');
+    assert.strictEqual(cl0(by.raceColossalCrush), 'hook');
+    assert.strictEqual(cl0(by.racePlasmaCannon), 'channel');
+    assert.strictEqual(cl0(by.healAll), 'heal');
+    assert.strictEqual(cl0(by.raceSupernova), 'ultimate', 'an unrouted capstone still charges');
 });
 
 test('every capstone stages as an ultimate and blooms; the VFX hooks are wired', () => {

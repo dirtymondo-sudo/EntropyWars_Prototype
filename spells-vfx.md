@@ -1070,21 +1070,55 @@ the Entropy Strike, the combos (Phase 4).
 **UNSEEN LIVE (RULE #1c):** the family directors' look with real art (the
 plan's §10 entry lists the edits).
 
-## THE CRAFT, the rest + THE IMPACT RIPPLE (2026-09-24, session 2 — SPELL_DIRECTOR_PLAN §5 Phase 2, §10)
-All in three-vfx-effects.js's CRAFT KIT block unless named; every piece obeys `EW_DISABLE_CRAFT`.
-- **Gatling** `_crGatling` — a beam def with `beamGatling: true` (+ `gatlingRounds`) fires lite tracers
-  (`_crGunShot` `o.lite`: no light, 3 speed lines) walking the lane; the laser is only the fallback.
-  Choppa, the turret, and Suppressive Fire (now `raceSuppressiveFire_beam`, not the plasma beam).
-- **Shards** `_crShards(tx, ty, kind, o)` — ice / glass / crystal / bone / stone. `_crTagShards` tags
-  recipes at load (an `ice-shard` layer → ice, `rock-debris` → stone; `_burst|_aura|_dispersal|_arrival`
-  skipped) + `_CR_SHARD_SPELLS`. `_spawnEffect` fires them like `_crBoom`. Capped (5 full, 9 live).
-- **Ribbons** `_crBoltRibbon(e)` — started by `_tickBolts` on a bolt's first frame (`e.tracer` skips).
-- **Velocity sparks / thinning** (three-vfx.js) — `_VEL_SPARKS` streak along screen velocity;
-  `_fxDensity()` thins small bits (perf tier × Impact FX × `EW_FX_DENSITY`); `_claimSlot` recycles the
-  oldest when a pool is full.
-- **Hit read** (battle.js + online.js + index.html CSS) — see the plan's table; tunables `EW_HIT_READ`.
-- **Impact ripple** — three-post.js `impactRipple(worldPt, {ms, amp, r1})` (the `uRipple` band in the
-  cinematic pass, `EW_DISABLE_RIPPLE`), fired by `_crImpactRipple` from `fire()` on ULTIMATE casts only
-  (`_stageWeight`), timed to the hit (descent: `getDescentTotalMs`; beam: `chargeMs`).
-- **The gun line** `_crTank` — `SPELL_MAP[id].tank` on a descent; battle.js's descent handler passes
-  `cx / cy`; each side gates on its own fog (`window._isTileVisibleToViewer`).
+## THE BODY — a verb per spell, 18 new cast clips baked after load (SPELL_DIRECTOR_PLAN.md, Phase 4) — 2026-09-24, local delivery
+
+**The spread** (the census, `node check-spell-presentation.js`): the most-played
+clip went from Charged_Spell_Cast 141 spells (27 %) and castSupport 129 (25 %) to
+Charged_Spell_Cast 75 (14 %), castSupport 66 (13 %). castMelee 59 → 9, and the
+nine are all blades. §9 P4 is met and pinned by `spell-body.test.js`.
+
+**THE ANIM ROUTER** — sprites.js `SPELL_ANIM_VERBS` (verb → spell ids), read
+FIRST by `classifySpellAnimKind`; a listed spell skips every text rule. It lives
+in sprites.js, NOT in battle.js `SPELL_DIRECTOR_ROWS[id].anim` (the plan's first
+idea): the forge preview and the party builder classify without battle.js on the
+page. `classifySpellAnimKind(spell, { rulesOnly: true })` skips the router (the
+tests pin the rules underneath). The charges (`chargeToTarget` + a dash / tackle
+kind) used to return 'melee' and swing a sword on arrival; the router sends them
+to `tackle` (the shoulder-check) or `dash` (the lunging stab).
+
+**The verbs** (UAL_SLOTS rows marked `defer: true`; chains in three-renderer.js
+`_castChainFor`, each ending on the slot the kind used before): castChannel
+(Spell_Simple_Idle_Loop, beams / drains / breath), castCall (Idle_Rail_Call,
+summons / war cries), castReap (Farm_Harvest, steals / hooks), castPour
+(Farm_Watering, splashes / floods), castHeavySlash (Sword_Heavy_Combo's finishing
+cleave, trim 1.9–3.6), castHook (Melee_Hook, whips / clubs / smashes), castLeap
+(NinjaJump_Land, leap strikes / sky drops), castGuard (Sword_Block, shields),
+castOpen (Chest_Open), castTouch (Interact, runes / machines / links), castPush
+(Push_Loop), castLantern (Idle_Lantern_Loop, scans), castPhone
+(Idle_TalkingPhone_Loop, call-ins), castReload (Pistol_Reload), castDance
+(Dance_Loop), castSmug (Idle_FoldArms_Loop), castCheer (Yes), castStealth
+(Crouch_Idle_Loop). Strike frames read off contact sheets (`node anim-sheets.js
+<dir> --only=UAL`); every played window ≤ the board's 1.4 s cast cap.
+
+**THE DEFERRED BAKE** — `_libBakeClips(entries, modelEntry, def, opts)`: the eager
+pass skips `defer` slots; `_libBakeDeferred` bakes them ONE per idle tick
+(`requestIdleCallback`, else 30 ms timeouts) into the same cached `_libBaked`,
+and `_libOnDeferred` wires each into every live board rig on the model. Reason:
+the load bake was ~100–170 ms a character for ~20 slots (PLAYTEST_NOTES); 18 more
+eager slots would have grown every load hitch by a third. A cast before its verb
+lands plays the chain's old slot.
+
+**RULE #2:** nothing new crosses the wire — the anim kind is computed from the
+spell on each side, and the clip is local rendering.
+
+**Not done yet (Phase 4 item 1, the victim side):** `Hit_Knockback` ENDS ON THE
+FLOOR (needs `LayToIdle` chained after it), `Idle_Shield_Break` (guard break),
+`Hit_Head` / `Hit_Chest` (light hits), `LayToIdle` (revive). Also still unrouted:
+the rest of castSupport (66) and castMagic (43) are generic buffs / bolts where
+the old clip already fits.
+
+**UNSEEN LIVE (RULE #1c) — the edits if a verb reads wrong:** the slot's `ts` /
+`trim` / `strikeAt` in UAL_SLOTS; a spell on the wrong verb is one line in
+`SPELL_ANIM_VERBS`. Likeliest to need a look: castCall (the Rail_Call lean has
+no rail under it; `pinXZ` keeps the hips over the tile), castHook (ends crouched,
+crossfades to idle), castDance (0.75× groove).

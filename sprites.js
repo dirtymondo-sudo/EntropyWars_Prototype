@@ -561,8 +561,80 @@ function _isCapstoneSpellForAnim(spell) {
   return spell.tier === 'III';
 }
 
-function classifySpellAnimKind(spell) {
+// ── THE ANIM ROUTER (2026-09-24, SPELL_DIRECTOR_PLAN Phase 4 THE BODY) ──
+// Four clips played 84 % of the game (castSupport 25 %, the charged cast
+// 27 %), and every beast's bite, whip and stomp swung a sword. SPELL_ANIM_VERBS
+// names the verb a spell PERFORMS; the verb is an anim kind with its own
+// chain (three-renderer.js _castChainFor → the `defer` slots in UAL_SLOTS).
+// A spell listed here skips the text rules below entirely — this table beats
+// every regex, and it is the ONE place to change a spell's body language
+// (it lives here, not in battle.js SPELL_DIRECTOR_ROWS, because the forge
+// preview and the party builder classify without battle.js on the page).
+// A spell not listed keeps the rules below. The census
+// (check-spell-presentation.js) reports the spread; target ≤ 15 % a clip.
+const SPELL_ANIM_VERBS = {
+  channel: ['lifeDrain', 'raceVoidContract', 'raceSoulSuck', 'raceKissOfDecay', 'raceDreamSiphon', 'raceLifetap',
+    'raceAbsorb', 'raceSoulDrain', 'raceSymbioticDrain', 'raceEntropicBeam', 'raceFreezeBreath', 'raceDragonBreath',
+    'raceKiWave', 'racePsychicBeam', 'sentaiBlueWave', 'raceJudgmentBeam', 'raceBalefulGaze', 'raceAuroraRay',
+    'raceAbductionBeam', 'raceStasisBeam', 'sharedShrinkRay', 'raceSonicBreaker', 'racePlasmaCannon',
+    'raceDrainingEmbrace', 'raceHellmouth', 'raceLaserBeam', 'raceDragonfire', 'raceAtomicBreath',
+    'raceFractalNeedle', 'raceDeathGaze'],
+  call: ['warCry', 'raceWhistle', 'raceSummonCreation', 'raceCultSermon', 'raceCultGathering', 'raceSwarmSignal',
+    'raceKnightsOfRound', 'raceSirenSong', 'raceRaiseDead', 'raceCallOfTheDeep', 'raceShamblingHorde',
+    'raceWalkThePlank'],
+  reap: ['raceHarvestHook', 'raceHitALick', 'raceCultTithe', 'raceStealFromRich', 'raceWeighTheHeart',
+    'raceSpellsteal', 'raceEarthenGrasp'],
+  pour: ['raceCultKoolAid', 'raceFluorideWater', 'raceSplash', 'raceCorrosiveSplash', 'racePoliceSpray',
+    'raceOozeTrail', 'raceFlood', 'sharedPoisonSwamp', 'raceTidalBlessing', 'raceOvercharge', 'raceFairyDust'],
+  heavySlash: ['dragonSlash', 'raceExcaliburStrike', 'raceBlessedBlade', 'judgment'],
+  hook: ['skullCrack', 'racePoliceNightstick', 'raceTailWhip', 'raceDinoTailWhip', 'racePlasmaWhip',
+    'raceTendrilStrike', 'raceSasquatchSmash', 'raceColossalCrush', 'racePrimalSmash', 'raceElbowGrease',
+    'raceWingGust', 'raceAvalancheStrike', 'raceTentacleLash', 'raceNoMercy'],
+  leap: ['raceStoneDrop', 'racePredatorDrop', 'raceTitanDrop', 'raceCliffCharge', 'raceSeismicLeap',
+    'raceHeroicLeap', 'raceFeralDive', 'racePredatorLeap', 'raceDivineSwoop', 'raceDescendingWrath', 'raceAbduction'],
+  guard: ['fortify', 'protect1', 'raceStoneform', 'raceChivalry', 'raceIronBulwark', 'raceStoneSkin',
+    'raceThickHide', 'raceChitinArmor', 'sentaiBlackGuard', 'racePsychicBarrier', 'raceSiegeMode',
+    'raceSymbioteArmor', 'shieldBash', 'raceShieldWall', 'raceHolyBulwark', 'raceShieldMaiden',
+    'raceLuminousShield', 'racePleiadianShield', 'raceAstralBarrier', 'racePupilShield'],
+  open: ['raceBlizzardPresent', 'raceWishGranted', 'racePlunder'],
+  touch: ['raceTuneFrequency', 'racePrismMirror', 'raceNeuralHack', 'raceMemoryLeak', 'raceBlueScreen',
+    'raceSystemAnalysis', 'raceVoodoo', 'raceSoulBind', 'raceFederationBeacon', 'fiveGTower',
+    'raceClockworkTurret', 'raceCloneDecoy', 'raceGravityBoots', 'raceOvertinker', 'raceFirewallProtocol',
+    'raceTelepathicLink', 'raceTarotDraw', 'raceZigguratProtocol', 'freeEnergy', 'racePoliceCuffs'],
+  push: ['raceBodyCheck', 'raceShockwaveClap', 'raceTsunami', 'sharedTidalSurge'],
+  lantern: ['raceOmniVision', 'raceCosmicSight', 'raceRangefinder', 'racePredictiveModel', 'racePopSpotlight',
+    'raceRedEyes', 'raceCrystalBall'],
+  phone: ['raceExecutiveOrder', 'raceBlackBudget', 'raceFireForEffect', 'raceArtilleryStrike', 'sharedNuke',
+    'raceRallyCommand', 'raceClassifiedWeapon', 'racePoliceLockdown', 'raceWarOfTheWorlds'],
+  reload: ['raceIncendiaryRounds', 'raceExtendedClips'],
+  dance: ['encore', 'racePopEncore', 'raceEndZoneDance', 'raceSpaceDisco', 'racePopStadiumShow'],
+  smug: ['racePlotArmor', 'raceInvulnerable', 'raceTinFoilHat', 'raceGrimResolve', 'raceSadBackstory',
+    'raceUnderdogSpirit', 'raceIndomitableWill'],
+  cheer: ['jackOfAll', 'raceOathOfValor', 'raceAudible', 'raceRoyalDecree', 'raceYoHo', 'raceHallelujah',
+    'raceMeow'],
+  stealth: ['camouflage', 'raceAgentVanish', 'raceCryptidVanish', 'raceCorpseCrawl', 'raceTreelineRetreat',
+    'raceForestAmbush', 'raceNimbleDodge', 'raceShedSkin', 'raceDeepDive'],
+  // the verbs that already had a slot, now claimed by name
+  heal: ['healAll', 'raceAbsolution', 'raceNordicAccord', 'raceSanctuary', 'raceTemporalTide', 'racePurify'],
+  consume: ['raceMonsterSerum', 'raceAdrenalineRush'],
+  claw: ['raceJurassicJaw', 'raceMandibleStrike', 'raceAmbushLunge', 'raceTerrorPounce', 'racePounce',
+    'raceBloodFrenzy', 'raceFrenzy', 'raceZombieRush'],
+  punch: ['raceDragonFist', 'raceFlurryOfBlows', 'raceDarkJustice'],
+  // the charges ran the old melee swing on arrival (chargeToTarget beat
+  // their `dash` / `tackle` kind): the shoulder-check is what a charge lands
+  tackle: ['raceGoreCharge', 'raceApexCharge', 'raceRamCharge', 'raceUnstoppableCharge', 'raceBullRush',
+    'raceBlitz', 'raceSkyTackle', 'racePopStageDive'],
+  dash: ['raceDarkFeather', 'raceShadowInfiltration', 'raceValkyrieSpear'],   // the low lunging stab (a spear thrust)
+  throw: ['sharedSmokeScreen'],
+};
+const _SPELL_VERB_BY_ID = {};
+for (const _v in SPELL_ANIM_VERBS) for (const _id of SPELL_ANIM_VERBS[_v]) _SPELL_VERB_BY_ID[_id] = _v;
+
+function classifySpellAnimKind(spell, opts) {
   if (!spell) return 'melee';
+  // THE ANIM ROUTER first: a named verb beats every rule below
+  // (opts.rulesOnly skips it — the tests pin the rules themselves).
+  if (spell.id && !(opts && opts.rulesOnly) && Object.prototype.hasOwnProperty.call(_SPELL_VERB_BY_ID, spell.id)) return _SPELL_VERB_BY_ID[spell.id];
   const text = ((spell.id || '') + ' ' + (spell.name || '') + ' '
               + (spell.projectileOverride || '')).toLowerCase();
   // Charge-to-target gap closers (Brave Charge, Zombie Rush…) sprint in and
@@ -813,6 +885,56 @@ const UAL_SLOTS = {
   //   `tackle` kind runs the charge first, so the clip starts on arrival.
   castDash:       { clip: 'Sword_Dash',          lib: 1, ts: 1.5, strikeAt: 0.50 },
   castTackle:     { clip: 'Shield_Dash',         lib: 1, ts: 1.1, strikeAt: 0.06 },
+  // 2026-09-24 — THE BODY (SPELL_DIRECTOR_PLAN Phase 4): the SPELL VERBS,
+  // library clips no spell played before (contact sheets 2026-09-24, the
+  // strike read off the frames). `defer: true` — they bake one per idle
+  // tick AFTER the character's load bake (three-renderer.js
+  // _libBakeDeferred), so the load pays nothing; each kind's chain falls
+  // back to its old slot until its verb lands. Played windows stay under the
+  // board's 1.4 s cast cap. SPELL_ANIM_VERBS (above classifySpellAnimKind)
+  // says which spell plays which.
+  //   castChannel Spell_Simple_Idle_Loop — the arm held out, palm open (the
+  //     crossfade is the raise), held through a beam / drain / breath.
+  //   castCall Idle_Rail_Call — a forward lean and a big beckoning wave
+  //     0.7–1.1 s: summons, war cries, the horde called.
+  //   castReap Farm_Harvest — stoop to the ground 0.7–1.1 s, YANK up 1.4 s.
+  //   castPour Farm_Watering — the can tipped from 0.7 s and held.
+  //   castHeavySlash Sword_Heavy_Combo, the FINISHER cut only: the leap up
+  //     with the blade overhead 2.36 s, the cleave down 2.76–3.15 s.
+  //   castHook Melee_Hook — a clubbing overhead haymaker, down 0.13–0.3 s.
+  //   castLeap NinjaJump_Land — the tuck, the landing crouch 0.12–0.35 s.
+  //   castGuard Sword_Block — the braced crouch 0.11–0.7 s.
+  //   castOpen Chest_Open — stoop 0.5 s, the lid thrown up 0.75–0.87 s.
+  //   castTouch Interact — reach out and press 0.55–1.1 s.
+  //   castPush Push_Loop — both palms out, leaning in.
+  //   castLantern Idle_Lantern_Loop — the lamp held out at arm's length.
+  //   castPhone Idle_TalkingPhone_Loop — the hand at the ear.
+  //   castReload Pistol_Reload — the mag slapped home ~0.62 s.
+  //   castDance Dance_Loop — the one-second groove, slowed.
+  //   castSmug Idle_FoldArms_Loop — arms folded from frame 0.
+  //   castCheer Yes — the thumbs up 0.45–1.6 s.
+  //   castStealth Crouch_Idle_Loop — the sneak crouch.
+  // Not wired yet (the victim side): Hit_Knockback ENDS ON THE FLOOR (it
+  // needs LayToIdle chained after it), Idle_Shield_Break, Hit_Head /
+  // Hit_Chest — the plan's §5 Phase 4 item 1, next delivery.
+  castChannel:    { clip: 'Spell_Simple_Idle_Loop', lib: 0, ts: 1.0, trim: [0, 1.3],   strikeAt: 0.20, defer: true },
+  castCall:       { clip: 'Idle_Rail_Call',      lib: 1, ts: 1.1, trim: [0.3, 1.8], strikeAt: 0.90, pinXZ: true, defer: true },
+  castReap:       { clip: 'Farm_Harvest',        lib: 1, ts: 1.5, trim: [0.2, 2.1], strikeAt: 1.45, defer: true },
+  castPour:       { clip: 'Farm_Watering',       lib: 1, ts: 1.3, trim: [0.1, 1.9], strikeAt: 0.80, defer: true },
+  castHeavySlash: { clip: 'Sword_Heavy_Combo',   lib: 1, ts: 1.3, trim: [1.9, 3.6], strikeAt: 2.80, pinXZ: true, defer: true },
+  castHook:       { clip: 'Melee_Hook',          lib: 1, ts: 0.6,                  strikeAt: 0.25, pinXZ: true, defer: true },
+  castLeap:       { clip: 'NinjaJump_Land',      lib: 1, ts: 1.1,                  strikeAt: 0.14, pinXZ: true, defer: true },
+  castGuard:      { clip: 'Sword_Block',         lib: 1, ts: 1.0,                  strikeAt: 0.20, defer: true },
+  castOpen:       { clip: 'Chest_Open',          lib: 1, ts: 1.0,                  strikeAt: 0.80, defer: true },
+  castTouch:      { clip: 'Interact',            lib: 0, ts: 1.1, trim: [0.1, 1.6], strikeAt: 0.75, defer: true },
+  castPush:       { clip: 'Push_Loop',           lib: 0, ts: 1.0, trim: [0, 1.3],   strikeAt: 0.30, pinXZ: true, defer: true },
+  castLantern:    { clip: 'Idle_Lantern_Loop',   lib: 1, ts: 1.0, trim: [0, 1.3],   strikeAt: 0.30, defer: true },
+  castPhone:      { clip: 'Idle_TalkingPhone_Loop', lib: 1, ts: 1.0, trim: [0, 1.3], strikeAt: 0.40, defer: true },
+  castReload:     { clip: 'Pistol_Reload',       lib: 0, ts: 1.2,                  strikeAt: 0.62, defer: true },
+  castDance:      { clip: 'Dance_Loop',          lib: 0, ts: 0.75,                 strikeAt: 0.69, defer: true },
+  castSmug:       { clip: 'Idle_FoldArms_Loop',  lib: 1, ts: 1.0, trim: [0, 1.3],   strikeAt: 0.35, defer: true },
+  castCheer:      { clip: 'Yes',                 lib: 1, ts: 1.0, trim: [0, 1.4],   strikeAt: 0.50, defer: true },
+  castStealth:    { clip: 'Crouch_Idle_Loop',    lib: 0, ts: 1.0, trim: [0, 1.3],   strikeAt: 0.30, pinXZ: true, defer: true },
 };
 // Female body-language defaults — applied to every `female:` def after
 // RACE_MODELS_3D is built (see _applyFemaleSlotDefaults) unless the
@@ -833,6 +955,7 @@ function _ualClipRef(o) {
   if (o.pinXZ) r.pinXZ = true;
   if (Array.isArray(o.trim) && o.trim.length === 2) r.trim = [o.trim[0], o.trim[1]];
   if (typeof o.strikeAt === 'number') r.strikeAt = o.strikeAt;
+  if (o.defer) r.defer = true;   // THE BODY: baked after load (three-renderer.js _libBakeDeferred)
   return r;
 }
 for (const _slot in UAL_SLOTS) {

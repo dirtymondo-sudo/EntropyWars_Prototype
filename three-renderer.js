@@ -11213,10 +11213,16 @@ const ThreeRenderer = (function () {
        def.animLib; slot values pick theirs by `lib` index. Returns
        { slot: THREE.AnimationClip } (slots naming the same library clip share
        one baked AnimationClip — the action wiring clones dupes). */
-    function _libBakeClips(libEntries, modelEntry, def) {
+    /* opts (THE BODY, 2026-09-24): { only: slot } bakes that ONE slot (the
+       deferred pass, _libBakeDeferred); without it the eager pass SKIPS every
+       slot marked `defer` (sprites.js UAL_SLOTS — the spell verbs), which bake
+       one per idle tick after the match is up. opts.ctx carries the per-lib
+       retarget setup between those calls. */
+    function _libBakeClips(libEntries, modelEntry, def, opts) {
         var standardPose = _libStandardPose(def);
         var wristLim = (def && def.wristLimit > 0) ? def.wristLimit * Math.PI / 180 : 0;
-        var ctxByLib = {};   // lib index -> { src, setup }, built on demand
+        var only = (opts && opts.only) || null;
+        var ctxByLib = (opts && opts.ctx) || {};   // lib index -> { src, setup }, built on demand
         function libCtx(idx) {
             if (ctxByLib[idx]) return ctxByLib[idx];
             var le = libEntries[idx];
@@ -11228,6 +11234,7 @@ const ThreeRenderer = (function () {
         var bakedByClip = {}, out = {}, missing = [];
         Object.keys(def.libClips).forEach(function (slot) {
             var ref = def.libClips[slot];
+            if (only ? slot !== only : (ref && typeof ref === 'object' && ref.defer)) return;
             var clipName = (typeof ref === 'string') ? ref : ref.clip;
             var libIdx = (ref && typeof ref === 'object' && ref.lib) || 0;
             // pinHips: bake WITHOUT hips travel — the character's own rest
@@ -11333,8 +11340,53 @@ const ThreeRenderer = (function () {
         if (missing.length) {
             console.warn('[ThreeRenderer] animation library is missing clips:', missing.join(', '));
         }
-        if (!Object.keys(out).length) throw new Error('no library clips baked');
+        if (!only && !Object.keys(out).length) throw new Error('no library clips baked');
         return out;
+    }
+
+    /* THE DEFERRED BAKE (THE BODY, 2026-09-24). The spell verbs (castChannel,
+       castCall, castGuard… — sprites.js UAL_SLOTS rows with `defer: true`) are
+       ~18 more clips per character; baked with the rest they would add a
+       third to every character's load bake. They bake here instead, ONE slot
+       per idle tick after the eager bake settles, into the same cached
+       `_libBaked` object, and every live rig on the model hears about each
+       one (modelEntry._libDeferCbs). Until a verb lands its chain falls back
+       to the old slot (three-renderer.js _castChainFor), so a cast in the
+       first seconds plays the old clip, never nothing. */
+    function _libBakeDeferred(entries, modelEntry, def, bakeKey) {
+        var lc = def.libClips || {};
+        var queue = Object.keys(lc).filter(function (k) { return lc[k] && typeof lc[k] === 'object' && lc[k].defer; });
+        if (!queue.length) return;
+        var ctx = {};
+        function tick() {
+            if (modelEntry._libBakedFrom !== bakeKey || !modelEntry._libBaked) { modelEntry._libDeferCbs = null; return; }
+            var slot = queue.shift();
+            var clip = null;
+            try { clip = _libBakeClips(entries, modelEntry, def, { only: slot, ctx: ctx })[slot] || null; }
+            catch (ex) { console.warn('[ThreeRenderer] deferred bake failed for', slot, ex && ex.message); }
+            if (clip) {
+                modelEntry._libBaked[slot] = clip;
+                var cbs = modelEntry._libDeferCbs || [];
+                for (var i = cbs.length - 1; i >= 0; i--) {
+                    var keep = false;
+                    try { keep = cbs[i](slot, clip) !== false; } catch (_e) {}
+                    if (!keep) cbs.splice(i, 1);
+                }
+            }
+            if (queue.length) _libDeferNext(tick);
+            else modelEntry._libDeferCbs = null;   // every verb is in _libBaked now — later rigs wire it with the rest
+        }
+        _libDeferNext(tick);
+    }
+    function _libDeferNext(fn) {
+        if (typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function') window.requestIdleCallback(fn, { timeout: 400 });
+        else setTimeout(fn, 30);
+    }
+    /* a rig that wired its eager slots listens for the verbs still baking;
+       listen(slot, clip) returns false once the rig is gone */
+    function _libOnDeferred(modelEntry, listen) {
+        if (!modelEntry || !modelEntry._libDeferCbs) return;
+        modelEntry._libDeferCbs.push(listen);
     }
 
     /* Async wrapper: loads every library GLB (once each, shared by every
@@ -11382,7 +11434,9 @@ const ThreeRenderer = (function () {
             } catch (ex) {
                 console.warn('[ThreeRenderer] animation-library retarget failed — using per-character clips:', ex && ex.message);
             }
+            if (baked) modelEntry._libDeferCbs = [];   // opened BEFORE settle, so the settling rigs can listen
             settle(baked);
+            if (baked) _libBakeDeferred(entries, modelEntry, def, bakeKey);
         }
         urls.forEach(function (url) {
             _loadUnitGLB(url, function () {});
@@ -11813,6 +11867,11 @@ const ThreeRenderer = (function () {
                         _wireSlot(name, baked[name],
                             (def.libTimeScales && def.libTimeScales[name]) || 1);
                     });
+                    _libOnDeferred(res, function (name, clip) {   // THE BODY: the spell verbs, as they bake
+                        if (entry.mixer !== mixer) return false;
+                        if (!entry.actions[name]) _wireSlot(name, clip, (def.libTimeScales && def.libTimeScales[name]) || 1);
+                        return true;
+                    });
                 });
             } else {
                 _loadMeshyClips();
@@ -11880,7 +11939,29 @@ const ThreeRenderer = (function () {
             (kind === 'deploy')  ? ['castTrap', 'castPlant', 'castSupport', 'cast'] :
             (kind === 'dash')    ? ['castDash', 'castMelee', 'cast'] :        // 2026-09-09: the slide's lunging stab
             (kind === 'tackle')  ? ['castTackle', 'castMelee', 'cast'] :      // the shoulder-check on arrival
-            (kind === 'magic')   ? ['castMagic', 'cast'] : ['cast'];
+            (kind === 'magic')   ? ['castMagic', 'cast'] :
+            /* THE BODY (2026-09-24, SPELL_DIRECTOR_PLAN Phase 4): the spell
+               verbs. Each slot bakes AFTER load (sprites.js `defer`), so every
+               chain ends on the slot the kind used before — a cast in the
+               first seconds of a match plays that, never nothing. */
+            (kind === 'channel') ? ['castChannel', 'castMagic', 'cast'] :      // beams, drains, breath: the arm held out
+            (kind === 'call')    ? ['castCall', 'castAOE', 'castSupport', 'cast'] :   // summons, war cries: the beckon
+            (kind === 'reap')    ? ['castReap', 'castMelee', 'cast'] :         // steals, hooks, reaps: stoop and yank
+            (kind === 'pour')    ? ['castPour', 'castSupport', 'cast'] :       // splashes, potions, floods: the pour
+            (kind === 'heavySlash') ? ['castHeavySlash', 'castMelee', 'cast'] :   // the great blades: leap and cleave
+            (kind === 'hook')    ? ['castHook', 'castMelee', 'cast'] :         // whips, clubs, smashes: the overhead haymaker
+            (kind === 'leap')    ? ['castLeap', 'castMelee', 'cast'] :         // leap strikes, sky drops: the landing
+            (kind === 'guard')   ? ['castGuard', 'castSupport', 'cast'] :      // shields, armour: the brace
+            (kind === 'open')    ? ['castOpen', 'castSupport', 'cast'] :       // presents, loot, wishes: open the box
+            (kind === 'touch')   ? ['castTouch', 'castSupport', 'cast'] :      // runes, machines, links: reach and press
+            (kind === 'push')    ? ['castPush', 'castMelee', 'cast'] :         // shoves, waves: two-hand push
+            (kind === 'lantern') ? ['castLantern', 'castSupport', 'cast'] :    // scans, sights, reveals: the lamp held out
+            (kind === 'phone')   ? ['castPhone', 'castSupport', 'cast'] :      // call-ins, orders: on the phone
+            (kind === 'reload')  ? ['castReload', 'castSupport', 'cast'] :     // ammo buffs
+            (kind === 'dance')   ? ['castDance', 'castSupport', 'cast'] :      // encores, discos
+            (kind === 'smug')    ? ['castSmug', 'castSupport', 'cast'] :       // untouchable self buffs: arms folded
+            (kind === 'cheer')   ? ['castCheer', 'castSupport', 'cast'] :      // rallies, pep talks: thumbs up
+            (kind === 'stealth') ? ['castStealth', 'castSupport', 'cast'] : ['cast'];   // vanishes, camouflage: the crouch
     }
     /* THE STRIKE FRAME (2026-09-09). Every action slot in sprites.js
        UAL_SLOTS names `strikeAt` — the source-clip second on which the hit /

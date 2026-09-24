@@ -73,7 +73,7 @@ function census() {
     const S = runtimeSpellMap(FX);
     const GEOM = geometryKeys(FX);
     const capSet = new Set(typeof W.capstoneSpellIds === 'function' ? W.capstoneSpellIds() : []);
-    const fsrc = SP.slice(SP.indexOf('function classifySpellAnimKind'), SP.indexOf('// ── SHARED ANIMATION LIBRARIES'));
+    const fsrc = SP.slice(SP.indexOf('// ── THE ANIM ROUTER'), SP.indexOf('// ── SHARED ANIMATION LIBRARIES'));   // the verb table + the classifier
     const classify = vm.runInNewContext('(function(){ function _isCapstoneSpellForAnim(s){ return CAP.has(s.id); } '
         + fsrc + ' return classifySpellAnimKind; })()', { CAP: capSet });
     /* the chain's first slot per anim kind (three-renderer.js _castChainFor) */
