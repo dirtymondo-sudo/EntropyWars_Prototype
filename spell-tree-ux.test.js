@@ -1,11 +1,11 @@
-// spell-tree-ux.test.js — THE FORK + THE CASCADE + 7 SLOTS (2026-09-13).
+// spell-tree-ux.test.js — THE TIERS (2026-09-24; was THE FORK + THE CASCADE, 2026-09-13).
 //
-// The party builder's circuit renders every twin node as a FORK (both
-// alternates visible on the tier), unequips with a CASCADE (the node and
-// everything that hung off it), and the slot cap is 7. This runs the
-// builder's own pure helpers (computeTreeEquipPath / treeNodeState /
-// treeAltState / treeDropIds / pbTechInfo) in a vm sandbox over the REAL
-// data.js trees, then source-scans the click flow and the CSS.
+// The user's spell tree rework: no secondary job, no branches. The rung a
+// spell sits on is its TIER (I–IV), costing 1–4 Spell Points; every unit has
+// 7 slots and 16 SP; any spell of the unit's pool can be picked in any order.
+// This checks data.js's rules over the REAL rows, runs the builder's pure
+// rack helpers (pbTierCtx / pbSpellState / pbTierStep / pbTechInfo) in a vm
+// sandbox, then source-scans the rack, the SP meter and the CSS.
 
 'use strict';
 
@@ -27,94 +27,152 @@ function between(src, a, b) {
     return src.slice(i, j);
 }
 function helpers() {
-    const ctx = { window: D, EW: { time: '#000' }, classifySpellLocal: () => 'damage', spellSlotCost: () => 1 };
+    const ctx = { window: D, EW: { time: '#000' }, PB_FIN_KEY: 'FIN', classifySpellLocal: () => 'damage' };
     ctx.window.getSpellById = (id) => D.SPELL_BY_ID[id] || null;
     vm.createContext(ctx);
-    vm.runInContext(between(PB, 'const TREE_NODE_POS = {', '/* Node color ='), ctx);
-    vm.runInContext(between(PB, 'function computeTreeEquipPath(', '/* ══ THE CIRCUIT — THREE LANES'), ctx);
+    vm.runInContext(between(PB, 'const PB_TIER_ORDER = [4, 3, 2, 1];', 'function pbNodeMeta('), ctx);
     vm.runInContext(between(PB, 'function pbTechInfo(', 'function TechniquePanel('), ctx);
     return ctx;
 }
+const FL_RACE = 'homosapien';
+const jobRung = (n) => Object.values(D.CLASS_TREE).map(ids => ids[n - 1]);
 
-test('SPELL_SLOT_MAX is 7 and every fallback literal agrees', () => {
+test('the budget: 7 slots, 16 SP, Tier I–IV cost 1–4 — the rung is the tier', () => {
     assert.strictEqual(D.SPELL_SLOT_MAX, 7);
+    assert.strictEqual(D.SPELL_SP_MAX, 16);
+    assert.deepStrictEqual(JSON.stringify(D.SPELL_TIER_SP), JSON.stringify([0, 1, 2, 3, 4]));
     assert.ok(!/SPELL_SLOT_MAX : 6\b/.test(read('data.js')), 'data.js fallback still says 6');
     assert.ok(!/SPELL_SLOT_MAX : 6\b/.test(PB), 'party-builder.js fallback still says 6');
-    // a 7-slot walk over a twin race stays legal
-    const race = 'quarterback', cls = D.RACE_DEFAULT_JOBS[race];
-    for (let i = 0; i < 20; i++) {
-        const walk = D.buildTreeLegalLoadout(race, cls, '', 7);
-        assert.ok(walk.length <= 7 && D.isTreeLoadoutLegal(race, cls, '', walk), 'walk ' + walk.join(','));
+    for (const [job, ids] of Object.entries(D.CLASS_TREE)) {
+        ids.forEach((id, i) => {
+            assert.strictEqual(D.spellTierOf(id), i + 1, job + ' rung ' + (i + 1) + ' (' + id + ')');
+            assert.strictEqual(D.spellSpCost(id), i + 1, id + ' SP');
+        });
+    }
+    // a race row's rungs are tiers too (the face and the alternate of a twin share one)
+    const alts = D.getRaceTreeAlts('quarterback', D.RACE_DEFAULT_JOBS.quarterback);
+    for (const [key, pair] of Object.entries(alts)) {
+        for (const id of pair) assert.strictEqual(D.spellTierOf(id), +key.slice(1), id + ' on ' + key);
+    }
+    assert.strictEqual(D.loadoutSpUsed(['doubleShot', 'deadEye']), 5);
+});
+
+test('any spell, any order: no path, no tier ladder, no twin exclusivity', () => {
+    const race = 'knight', cls = 'Warrior';
+    // a capstone alone is legal (nothing below it)
+    assert.ok(D.isTreeLoadoutLegal(race, cls, '', ['judgment']));
+    assert.ok(D.isTreeLoadoutLegal(race, cls, '', ['raceCrusade', 'groundSlam']));
+    // both alternates of a twin rung — two picks now
+    const qb = 'quarterback', qcls = D.RACE_DEFAULT_JOBS[qb];
+    const pair = D.getRaceTreeAlts(qb, qcls).R2;
+    assert.ok(D.isTreeLoadoutLegal(qb, qcls, '', pair), 'both twin alternates');
+    // a duplicate, an off-pool id (another job's spell) are illegal
+    assert.ok(!D.isTreeLoadoutLegal(race, cls, '', ['judgment', 'judgment']));
+    assert.ok(!D.isTreeLoadoutLegal(race, cls, '', ['fortify']), 'a Tank spell on a Warrior');
+    // no graph left to walk
+    assert.strictEqual(D.getTreeEdges().length, 0);
+});
+
+test('the SP cap: four Tier IV fill 16 (three slots stay empty); seven Tier I fit; the 17th SP is refused', () => {
+    const cls = 'Freelancer';
+    const fourIV = jobRung(4).slice(0, 4);
+    assert.strictEqual(D.loadoutSpUsed(fourIV), 16);
+    assert.ok(D.isTreeLoadoutLegal(FL_RACE, cls, '', fourIV), '4 × Tier IV');
+    const oneI = jobRung(1)[0];
+    assert.ok(!D.isTreeLoadoutLegal(FL_RACE, cls, '', fourIV.concat([oneI])), '16 + 1 SP');
+    const v = D.spellAddVerdict(FL_RACE, cls, fourIV, oneI);
+    assert.strictEqual(v.ok, false); assert.strictEqual(v.reason, 'sp');
+    const sevenI = jobRung(1).slice(0, 7);
+    assert.ok(D.isTreeLoadoutLegal(FL_RACE, cls, '', sevenI), '7 × Tier I');
+    const eighth = jobRung(1)[7];
+    assert.ok(!D.isTreeLoadoutLegal(FL_RACE, cls, '', sevenI.concat([eighth])), 'the eighth slot');
+    assert.strictEqual(D.spellAddVerdict(FL_RACE, cls, sevenI, eighth).reason, 'slots');
+});
+
+test('stale saves trim, never crash: a retired secondary job\'s spells go, the budget holds, earlier picks win', () => {
+    const race = 'knight', cls = 'Warrior';
+    // an old Warrior + Tank save: the Tank row goes, the rest fits
+    const old = ['fortify', 'provoke', 'judgment', 'raceCrusade', 'groundSlam', 'raceOathOfValor', 'guardSlash', 'warCry'];
+    const fixed = D.treeLegalSubset(race, cls, 'Tank', old);
+    assert.ok(!fixed.includes('fortify') && !fixed.includes('provoke'));
+    assert.ok(D.isTreeLoadoutLegal(race, cls, '', fixed));
+    assert.ok(D.loadoutSpUsed(fixed) <= 16 && fixed.length <= 7);
+    // IV + IV + III + III = 14, then guardSlash (1) fits, warCry (2) would make 17 → skipped, not truncated
+    assert.deepStrictEqual(JSON.stringify(fixed), JSON.stringify(['judgment', 'raceCrusade', 'groundSlam', 'raceOathOfValor', 'guardSlash']));
+    // garbage never throws
+    assert.strictEqual(D.treeLegalSubset(race, cls, '', [null, '', 'noSuchSpell']).length, 0);
+});
+
+test('random kits are legal for every race and job (and the AI never exceeds the budget)', () => {
+    let n = 0;
+    for (const race of D.AVAILABLE_RACES) {
+        const cls = D.RACE_DEFAULT_JOBS[race] || 'Freelancer';
+        const kit = D.buildTreeLegalLoadout(race, cls, '');
+        assert.ok(D.isTreeLoadoutLegal(race, cls, '', kit), race + '/' + cls + ': ' + kit.join(','));
+        assert.ok(kit.length >= 1, race + ' rolled nothing');
+        n++;
+    }
+    assert.ok(n > 40);
+    for (let i = 0; i < 10; i++) {
+        const kit = D.buildTreeLegalLoadout(FL_RACE, 'Freelancer', '');
+        assert.ok(D.isTreeLoadoutLegal(FL_RACE, 'Freelancer', '', kit), 'freelancer ' + kit.join(','));
     }
 });
 
-test('the fork: each alternate carries its own state, a swap trades in place', () => {
+test('the rack helpers: rows by tier, states, the keyboard grid, the panel', () => {
     const H = helpers();
-    const race = 'quarterback', cls = D.RACE_DEFAULT_JOBS[race];
-    const alts = D.getRaceTreeAlts(race, cls);
-    assert.deepStrictEqual(JSON.stringify(Object.keys(alts)), JSON.stringify(['R2', 'R3']));
-    const [faceA, altB] = alts.R2;
-    const r1 = D.getRaceTreeSpells(race, cls)[0];
-    const sealed = new Set();
-    // nothing equipped: R2 is far (needs R1), both options read the same
-    let tree = D.buildUnitSpellTree(race, cls, '', []);
-    H.tree = tree; H.sealed = sealed; H.eq = [];
-    assert.strictEqual(vm.runInContext("treeAltState(tree, sealed, eq, 'R2', '" + faceA + "')", H), 'far');
-    assert.strictEqual(vm.runInContext("treeAltState(tree, sealed, eq, 'R2', '" + altB + "')", H), 'far');
-    // the path resolved for option B puts B (not the face) on the node
-    let info = vm.runInContext("pbTechInfo(tree, sealed, eq, 'R2', 7, '" + altB + "')", H);
-    assert.deepStrictEqual(JSON.stringify(info.newIds), JSON.stringify([r1, altB]));
-    assert.strictEqual(info.alt, altB);
-    // wearing A: A is equipped, B reads SWAP and its verb path is empty
-    H.eq = [r1, faceA]; tree = D.buildUnitSpellTree(race, cls, '', H.eq); H.tree = tree;
-    assert.strictEqual(vm.runInContext("treeAltState(tree, sealed, eq, 'R2', '" + faceA + "')", H), 'equipped');
-    assert.strictEqual(vm.runInContext("treeAltState(tree, sealed, eq, 'R2', '" + altB + "')", H), 'swap');
-    info = vm.runInContext("pbTechInfo(tree, sealed, eq, 'R2', 7, '" + altB + "')", H);
-    assert.strictEqual(info.st8, 'swap'); assert.strictEqual(info.otherAlt, faceA);
-    // the swap candidate keeps everything else and is legal
-    const swapped = H.eq.map(id => id === faceA ? altB : id);
-    assert.ok(D.isTreeLoadoutLegal(race, cls, '', swapped));
-    // with the node worn, the fork's default option (no altId) is the worn one
-    info = vm.runInContext("pbTechInfo(tree, sealed, eq, 'R2', 7, null)", H);
-    assert.strictEqual(info.id, faceA); assert.strictEqual(info.st8, 'equipped');
+    const race = 'knight', cls = 'Warrior';
+    H.eq = ['judgment', 'raceCrusade', 'groundSlam', 'raceOathOfValor'];   // 14 SP
+    const ctx = vm.runInContext("pbTierCtx('knight', 'Warrior', eq)", H);
+    H.ctx = ctx;
+    assert.strictEqual(ctx.spUsed, 14);
+    assert.deepStrictEqual(JSON.stringify(ctx.rows[4].slice().sort()), JSON.stringify(['judgment', 'raceCrusade'].sort()));
+    assert.deepStrictEqual(JSON.stringify(ctx.rows[1].slice().sort()), JSON.stringify(['guardSlash', 'raceChivalry'].sort()));
+    assert.strictEqual(vm.runInContext("pbSpellState(ctx, 'judgment')", H), 'equipped');
+    assert.strictEqual(vm.runInContext("pbSpellState(ctx, 'warCry')", H), 'ok');         // 14 + 2 = 16
+    H.eq2 = H.eq.concat(['warCry']);
+    H.ctx2 = vm.runInContext("pbTierCtx('knight', 'Warrior', eq2)", H);
+    assert.strictEqual(vm.runInContext("pbSpellState(ctx2, 'guardSlash')", H), 'sp');    // 16 + 1
+    // the panel reads tier + cost + verdict
+    const info = vm.runInContext("pbTechInfo(ctx, 'warCry', null)", H);
+    assert.strictEqual(info.tier, 2); assert.strictEqual(info.cost, 2); assert.strictEqual(info.st8, 'ok'); assert.strictEqual(info.source, 'job');
+    assert.strictEqual(vm.runInContext("pbTechInfo(ctx, 'root', null)", H).st8, 'root');
+    // the keyboard grid: IV row first, the root last; ↓ from the last tier lands on the root
+    const grid = vm.runInContext("pbTierGrid(ctx, null)", H);
+    assert.ok(grid[0].includes('judgment') && grid[grid.length - 1][0] === 'root');
+    assert.strictEqual(vm.runInContext("pbTierStep(ctx, grid[grid.length - 2][0], 'down', null)", Object.assign(H, { grid })), 'root');
+    // a Freelancer's rows end in BORROW keys and its borrowed picks join their tier
+    H.fe = [jobRung(4)[0]];
+    const fl = vm.runInContext("pbTierCtx('homosapien', 'Freelancer', fe)", H);
+    assert.ok(fl.isFreelancer && fl.rows[4].includes(jobRung(4)[0]), 'borrowed IV on the IV row');
+    H.fl = fl;
+    assert.ok(vm.runInContext("pbTierGrid(fl, null)", H).some(r => r.includes('B4')), 'the B4 key');
+    const b = vm.runInContext("pbTechInfo(fl, 'B2', null)", H);
+    assert.strictEqual(b.st8, 'borrow'); assert.ok(b.count > 0);
 });
 
-test('the cascade: unequipping a node drops what hung off it, nothing else', () => {
-    const H = helpers();
-    const race = 'quarterback', cls = D.RACE_DEFAULT_JOBS[race];
-    const R = D.getRaceTreeSpells(race, cls);
-    const P = D.getClassTreeSpells(cls);
-    const eq = [R[0], R[1], R[2], P[0], P[1]];
-    assert.ok(D.isTreeLoadoutLegal(race, cls, '', eq));
-    const tree = D.buildUnitSpellTree(race, cls, '', eq);
-    H.tree = tree; H.sealed = new Set(); H.eq = eq;
-    // R1 goes → R2, R3 go with it; the job pillar stays
-    let drop = vm.runInContext("[...treeDropIds(tree, eq, '" + R[0] + "')]", H);
-    assert.deepStrictEqual(JSON.stringify(drop.sort()), JSON.stringify([R[0], R[1], R[2]].sort()));
-    // R3 (the top) goes alone
-    drop = vm.runInContext("[...treeDropIds(tree, eq, '" + R[2] + "')]", H);
-    assert.deepStrictEqual(JSON.stringify(drop), JSON.stringify([R[2]]));
-    // the panel reports the count and the survivors are legal
-    const info = vm.runInContext("pbTechInfo(tree, sealed, eq, 'R1', 7, null)", H);
-    assert.strictEqual(info.st8, 'equipped'); assert.strictEqual(info.dropCount, 2);
-    const rest = eq.filter(id => !info.drop.has(id));
-    assert.deepStrictEqual(JSON.stringify(rest), JSON.stringify([P[0], P[1]]));
-    assert.ok(D.isTreeLoadoutLegal(race, cls, '', rest));
-});
-
-test('the click flow: no picker window, the fork is on the circuit, the cascade lands, notes explain', () => {
-    assert.ok(!/setTwinPick\(/.test(PB) && !/twinPick &&/.test(PB), 'the twin picker window is gone');
-    for (const sym of ["className: 'pb-tn-fork-row'", "'pb-tn-opt is-'", 'function treeAltState(', 'function treeDropIds(',
-                       'function treeAltClick(', 'function twinPickSpell(twinKey, spellId)', 'onAltClick: treeAltClick',
-                       'const drop = treeDropIds(unitTree, arr, id);', 'flashTreeNote(', "className: 'pb-tree-note'",
-                       "k === 'Tab' && unitTree.alts", "verb = '⇄ SWAP IN'", 'dropIds: treeDrop', 'pipPend', 'pipDrop']) {
+test('the builder: the rack replaced the circuit, no subclass anywhere, the SP meter + verdicts explain', () => {
+    for (const sym of ['function SpellTierPanel(', 'h(SpellTierPanel, {', 'function tierSpellClick(id)', "className: 'pb-loadout'",
+                       "className: 'pb-tier'", "className: 'pb-sp'", 'flashTreeNote(', "className: 'pb-tree-note'",
+                       'pbSpellVerdict(unitTiers', "'＋ BORROW · TIER '", 'pipPend', 'spPend']) {
         assert.ok(PB.includes(sym), sym + ' missing');
     }
-    // an unequip never bounces on "the rest must stay connected" any more
-    assert.ok(!PB.includes('unequip only if the rest stays root-connected'), 'the old refusing unequip is gone');
-    for (const sel of ['.pb-tn.pb-tn-fork', '.pb-tn-opt', '.pb-tn-opt.is-swap .pb-tn-disc', '.pb-tn-opt.will-drop .pb-tn-disc', '.pb-link.cut',
-                       '.pb-pips i.pend', '.pb-pips i.on.drop', '.pb-tree-note', '.pb-technique-keys']) {
+    for (const gone of ['function SpellTreePanel(', 'function computeTreeEquipPath(', 'function treeDropIds(', 'function treeAltState(',
+                        'function twinPickSpell(', 'function handleSecJobChange(', "equipPicker === 'subjob'", "'＋ SUBCLASS'", 'TREE_NODE_POS']) {
+        assert.ok(!PB.includes(gone), gone + ' should be gone');
+    }
+    for (const sel of ['.pb-rack', '.pb-loadout', '.pb-ls', '.pb-tier', '.pb-tier-head b', '.pb-tier-cells', '.pb-tc-cost', '.pb-tc-why',
+                       '.pb-tn.is-sp .pb-tn-disc', '.pb-sp-cells i.on', '.pb-sp-cells i.pend', '.pb-tree-note', '.pb-technique-keys']) {
         assert.ok(CSS.includes(sel + ' {') || CSS.includes(sel + ','), sel + ' rule missing');
     }
     assert.ok(/@keyframes pbTipIn/.test(CSS), 'pbTipIn keyframe');
+});
+
+test('the secondary job is retired: no level-15 pick, no bonus, no random second job', () => {
+    const B = read('battle.js'), S = read('state.js'), M = read('map.js');
+    const apply = between(B, 'function applySecondaryJob(unit, jobName) {', 'function aiPickSecondaryJob(unit) {');
+    assert.ok(!/computeSecJobBonuses|learnSpellForUnit/.test(apply), 'applySecondaryJob is a no-op');
+    assert.ok(!B.includes("'Choose a Secondary Job!'"), 'the level-15 milestone is gone');
+    assert.ok(!/meta\.secondaryJob = secJob/.test(S), 'the randomizer no longer rolls a second job');
+    assert.ok(!/applySecondaryJob\(newUnit/.test(M), 'story / campaign builds no longer apply one');
 });

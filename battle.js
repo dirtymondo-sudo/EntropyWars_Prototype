@@ -33024,7 +33024,7 @@
                        Freelancer falls through to the flat preferred lists. */
                     if (typeof classHasSpellTree === 'function' && classHasSpellTree(cls)
                         && typeof treeLegalSubset === 'function') {
-                        const _secJ = state.partyMeta?.[player]?.[idx]?.secondaryJob || '';
+                        const _secJ = '';   // no secondary job since the tier rework (2026-09-24)
                         const _p = (typeof getClassTreeSpells === 'function' && getClassTreeSpells(cls)) || [];
                         const _r = (typeof getRaceTreeSpells === 'function' && getRaceTreeSpells(race, cls)) || [];
                         const _wish = [...existingSpells.filter(Boolean), ..._p, ..._r.slice(0, 2)];
@@ -33971,7 +33971,6 @@
             }
 
             const _shopLvl = (typeof SPELL_SHOP_LEVEL !== 'undefined') ? SPELL_SHOP_LEVEL : 10;
-            const _secJobLvl = (typeof SECONDARY_JOB_LEVEL !== 'undefined') ? SECONDARY_JOB_LEVEL : 15;
             const _apLvls = (typeof AP_BONUS_LEVELS !== 'undefined') ? AP_BONUS_LEVELS : [];
 
             let milestoneMsg = '';
@@ -33983,12 +33982,6 @@
             if (level === _shopLvl) {
                 milestoneMsg = 'Spell Shop unlocks!';
                 if (_inBattle) addLog(`⬆ ${name} reaches Lv.${level}! Spell Shop unlocks!`);
-            } else if (level === _secJobLvl) {
-                /* Only prompt units that don't already HAVE a secondary job —
-                   PvP units pick theirs in the party builder before the match. */
-                if (_inBattle && !unit._secondaryJob) unit._pendingSecondaryJobPick = true;
-                milestoneMsg = 'Choose a Secondary Job!';
-                if (_inBattle) addLog(`⬆ ${name} reaches Lv.${level}! Choose a Secondary Job!`);
             } else if (_apLvls.includes(level)) {
                 unit._xpBonusAP = (unit._xpBonusAP || 0) + 1;
                 unit.ap = Math.min((unit.ap || 0) + 1, UNIT_MAX_AP + (unit._xpBonusAP || 0));
@@ -34045,100 +34038,15 @@
 
         }
 
+        /* THE SECONDARY JOB IS RETIRED (2026-09-24, the tier rework — the user: "get rid of units having a
+           secondary job"). Both names stay exported (map.js / ui.js / old saves may still call them) but do
+           nothing: no stat bonus, no borrowed spell, no level-15 pick. */
         function applySecondaryJob(unit, jobName) {
-            if (!unit || !jobName) return;
-            unit._secondaryJob = jobName;
-            unit._pendingSecondaryJobPick = false;
-
-            if (typeof computeSecJobBonuses === 'function') {
-                const b = computeSecJobBonuses(jobName);
-                // Route max HP/MP into the persistent bonus pool so a later
-                // level-up (which recomputes HP/MP from base) doesn't drop it.
-                unit._bonusMaxHp = (unit._bonusMaxHp || 0) + (b.hp || 0);
-                unit._bonusMaxMp = (unit._bonusMaxMp || 0) + (b.mp || 0);
-                unit.maxHp += b.hp; unit.hp = Math.min(unit.hp + Math.max(0, b.hp), unit.maxHp);
-                unit.maxMp += b.mp; unit.mp = Math.min(unit.mp + Math.max(0, b.mp), unit.maxMp);
-                unit.atk += b.atk; unit.def += b.def;
-                unit.mdef = (unit.mdef || 0) + (b.mdef || 0);
-                unit.intStat += b.int;
-                unit.spd = Math.max(1, unit.spd + b.spd);
-                // MOV derives from SPD (2026-08-29 rework): a +/-20 SPD nature
-                // is exactly one letter band = one tile. Re-derive the stored
-                // baseline (gear tile bonuses ride on top).
-                unit.move = (typeof moveFromSpd === 'function' ? moveFromSpd(unit.spd) : Math.max(1, Math.min(5, Math.ceil(unit.spd / 20)))) + (unit._equipMoveBonus || 0) + (b.move || 0);
-                unit.awr = Math.max(1, unit.awr + b.awr);
-            }
-
-            const learnOrder = typeof CLASS_SPELL_LEARN_ORDER !== 'undefined' ? CLASS_SPELL_LEARN_ORDER[jobName] : null;
-            if (learnOrder && learnOrder[0]) {
-                learnSpellForUnit(unit, learnOrder[0]);
-            }
-
-            const name = unitDisplayName(unit);
-            /* Same build-time gate as applyLevelUpRewards: units assembled for
-               a rematch pick/apply their secondary job silently. */
-            const _secInBattle = state.phase === 'battle' && !unit._buildLeveling;
-            if (_secInBattle) addLog(`🎭 ${name} chose ${jobName} as secondary job!`);
-            if (!_skipVisuals() && _secInBattle) {
-                const spellLearned = learnOrder?.[0] ? getSpellById(learnOrder[0]) : null;
-                const dlgLines = [
-                    `<span class="dlg-sec-job">🎭 ${escapeHtml(name)} — ${escapeHtml(jobName)}!</span>`,
-                    `<span class="dlg-sec-job" style="font-size:16px">Secondary Job Chosen</span>`
-                ];
-                if (spellLearned) {
-                    dlgLines.push(`<span class="dlg-spell-learn">✨ Learned ${escapeHtml(spellLearned.name)}!</span>`);
-                }
-                showBattleDialogue(dlgLines, 2400);
-            }
-            markDirty('selectedUnit', 'actions', 'board');
+            if (unit) { unit._secondaryJob = null; unit._pendingSecondaryJobPick = false; }
         }
 
         function aiPickSecondaryJob(unit) {
-            if (!unit) return;
-            const mainJob = unit.job || unit.cls;
-            const allJobs = typeof JOB_MODIFIERS !== 'undefined' ? Object.keys(JOB_MODIFIERS) : [];
-            const eligible = allJobs.filter(j => j !== mainJob);
-            if (eligible.length === 0) return;
-
-            const team = state.units.filter(u => u.player === unit.player && !u.dead);
-            const teamJobs = new Set(team.map(u => u.job || u.cls));
-            const teamSecondaryJobs = new Set(team.map(u => u._secondaryJob).filter(Boolean));
-
-            const healers = ['White Mage', 'Harvester'];
-            const tanks = ['Tank', 'Engineer'];
-            const ranged = ['Gunslinger', 'Sniper', 'Black Mage'];
-            const support = ['Harbinger', 'Psychic', 'White Mage'];
-            const melee = ['Warrior', 'Tank', 'Raider', 'Agent', 'Freelancer', 'Swordmaster'];
-
-            const scores = eligible.map(job => {
-                let score = 10;
-
-                if (!teamJobs.has(job) && !teamSecondaryJobs.has(job)) score += 8;
-                else if (!teamSecondaryJobs.has(job)) score += 3;
-
-                const isMainMelee = melee.includes(mainJob);
-                const isMainRanged = ranged.includes(mainJob);
-                const isMainSupport = support.includes(mainJob) || healers.includes(mainJob);
-
-                if (isMainMelee && ranged.includes(job)) score += 5;
-                if (isMainMelee && support.includes(job)) score += 3;
-                if (isMainRanged && melee.includes(job)) score += 4;
-                if (isMainRanged && tanks.includes(job)) score += 3;
-                if (isMainSupport && melee.includes(job)) score += 5;
-                if (isMainSupport && ranged.includes(job)) score += 4;
-
-                if (['Black Mage', 'Gunslinger', 'Sniper', 'Raider'].includes(job)) score += 2;
-
-                const teamHasHealer = team.some(u => healers.includes(u.job || u.cls));
-                if (!teamHasHealer && healers.includes(job)) score += 6;
-
-                score += engineRng() * 3;
-
-                return { job, score };
-            });
-
-            scores.sort((a, b) => b.score - a.score);
-            applySecondaryJob(unit, scores[0].job);
+            if (unit) unit._pendingSecondaryJobPick = false;
         }
 
         function unitMeetsSpellTierReq(unit, spell) {
@@ -42337,7 +42245,7 @@
                                    random walk instead of flat-pool picks. */
                                 if (typeof classHasSpellTree === 'function' && classHasSpellTree(c)
                                     && typeof treeLegalSubset === 'function') {
-                                    const _afSec = state.partyMeta?.[p]?.[i]?.secondaryJob || '';
+                                    const _afSec = '';   // no secondary job since the tier rework
                                     const _afWish = [...existingSpells.filter(Boolean),
                                         ...buildTreeLegalLoadout(r, c, _afSec)];
                                     lo.spells = treeLegalSubset(r, c, _afSec, _afWish);
@@ -48387,21 +48295,24 @@
                 if (typeof buildUnitSpellTree !== 'function') return null;
                 const ids = (u.spells || []).map(s => s && s.id).filter(Boolean);
                 if (!ids.length) return null;
-                const tree = buildUnitSpellTree(u.race || '', cls, u._secondaryJob || '', ids);
+                /* THE TIERS (2026-09-24): the shape is the kit's tier spread — how many Tier I / II / III / IV
+                   spells it carries (R/P still counts race vs job picks). */
+                const tree = buildUnitSpellTree(u.race || '', cls, '', ids);
                 if (!tree || !tree.nodes) return null;
                 const eq = new Set(ids);
-                const d = { R: 0, P: 0, S: 0 };
-                for (const pf of ['R', 'P', 'S']) {
+                const d = { R: 0, P: 0 };
+                for (const pf of ['R', 'P']) {
                     for (let i = 1; i <= 4; i++) {
                         const nid = tree.nodes[pf + i];
                         if (nid && eq.has(nid)) d[pf]++;
                     }
                 }
-                if (!d.R && !d.P && !d.S) return null;
+                const t = [0, 0, 0, 0, 0];
+                for (const id of ids) t[(typeof spellTierOf === 'function') ? spellTierOf(id) : 1]++;
                 return {
-                    sig: `R${d.R}·P${d.P}·S${d.S}`,
-                    sorted: [d.R, d.P, d.S].sort((a, b) => b - a).join('-'),
-                    cap: d.R === 4 ? 'R' : d.P === 4 ? 'P' : d.S === 4 ? 'S' : null,
+                    sig: `R${d.R}·P${d.P}·T${t[1]}${t[2]}${t[3]}${t[4]}`,
+                    sorted: [t[4], t[3], t[2], t[1]].join('-'),
+                    cap: t[4] > 0 ? 'IV' : null,
                 };
             } catch (e) { return null; }
         }
@@ -49003,7 +48914,7 @@
                     game: 'Entropy Wars',
                     kind: 'spell-trees',
                     exportedAt: new Date().toISOString(),
-                    note: 'Node keys: R1-R4 race pillar, P1-P4 primary-job pillar, S1-S4 secondary-job pillar; ring 4 = capstone (tier III). Pillars are strict chains from the root (Basic Attack).',
+                    note: 'Node keys: R1-R4 race row, P1-P4 job row; the rung is the tier (I-IV, 1-4 SP). Since 2026-09-24 there are no edges and no secondary job: any spell, 7 slots, 16 SP.',
                 },
                 edges: (typeof getTreeEdges === 'function') ? getTreeEdges() : null,
                 trees: _balSpellTreeDefs(),

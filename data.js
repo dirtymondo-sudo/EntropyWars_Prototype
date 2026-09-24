@@ -9456,16 +9456,20 @@ function trimSpellIdsToSlotBudget(spellIds, cls, secJob, budget) {
     const cap = budget || (typeof SPELL_SLOT_MAX !== 'undefined' ? SPELL_SLOT_MAX : 7);
     const kept = [];
     const seen = new Set();
-    let used = 0;
+    let used = 0, spUsed = 0;
     for (const id of (spellIds || [])) {
         if (!id || seen.has(id)) continue;
         const sp = (typeof getSpellById === 'function') ? getSpellById(id) : null;
         if (!sp || sp.kind === 'basicAttack') continue;
         const c = getSpellSlotCost(sp, cls, secJob);
         if (used + c > cap) continue;
+        // THE TIERS (2026-09-24): the 16-SP budget holds here too
+        const spc = (typeof spellSpCost === 'function') ? spellSpCost(sp) : 0;
+        if (typeof SPELL_SP_MAX !== 'undefined' && spUsed + spc > SPELL_SP_MAX) continue;
         seen.add(id);
         kept.push(id);
         used += c;
+        spUsed += spc;
     }
     return kept;
 }
@@ -17248,6 +17252,8 @@ function getSpellUnlockLevel(cls, spellIdx) {
 
 // Milestone levels (single place to tune).
 const SPELL_SHOP_LEVEL = 10;
+/* RETIRED 2026-09-24 (the tier rework: no unit has a secondary job) — kept only so an old reader's typeof check
+   finds a number; nothing unlocks at it any more. */
 const SECONDARY_JOB_LEVEL = 15;
 // Units always have exactly UNIT_MAX_AP (3) AP — no bonus-AP level milestones.
 const AP_BONUS_LEVELS = [];
@@ -17305,6 +17311,8 @@ const CLASS_SPELL_LEARN_ORDER = {
 };
 
 /* ═══════════════ SPELL TREE — the "Tree of Life" selector ═══════════════
+   SUPERSEDED 2026-09-24 by THE TIERS (below, after the Freelancer pools): no graph, no secondary job — the rung is
+   the tier, Tier I–IV cost 1–4 SP, 16 SP and 7 slots per unit, any spell anywhere. The history:
    SPELL_TREE_REDESIGN doc: the party-builder spell pool is a 13-node tree —
    root (Basic Attack, always known, 0 slots) + three 4-node pillars: RACE
    (middle), PRIMARY job (right), SECONDARY job (left). A spell can be
@@ -17677,80 +17685,10 @@ function _treeTwinConflict(race, cls, ids) {
     return false;
 }
 
-/* Functional adjacency, by node key. Root connects to all three ring-1
-   nodes; each pillar is a strict chain (traditional skill-tree order —
-   ring N requires ring N-1 of the SAME pillar). No cross-links: reaching
-   a capstone always costs its full pillar (4 slots), so a second capstone
-   can never fit in the 7-slot budget (4+4 > 7). */
-function getTreeEdges() {
-    return [
-        ['root', 'R1'], ['root', 'P1'], ['root', 'S1'],
-        ['R1', 'R2'], ['R2', 'R3'], ['R3', 'R4'],
-        ['P1', 'P2'], ['P2', 'P3'], ['P3', 'P4'],
-        ['S1', 'S2'], ['S2', 'S3'], ['S3', 'S4'],
-    ];
-}
-
-/* One unit's concrete tree: node key → spell id (null = empty socket; an
-   empty socket can never be equipped OR traversed). Dedupes — if an id
-   would appear on two nodes the later node goes empty (authoring rule:
-   no id may live in both a job tree and a race tree). */
-function buildUnitSpellTree(race, cls, secJob, equippedIds) {
-    if (cls === 'Freelancer') return buildFreelancerTree(race, equippedIds);
-    const nodes = { root: null };
-    const seen = new Set();
-    const fill = (prefix, ids) => {
-        for (let i = 0; i < 4; i++) {
-            const id = (ids && ids[i]) || null;
-            const known = id && (typeof SPELL_BY_ID === 'undefined' || SPELL_BY_ID[id]);
-            if (known && !seen.has(id)) {
-                nodes[prefix + (i + 1)] = id;
-                seen.add(id);
-            } else {
-                nodes[prefix + (i + 1)] = null;
-            }
-        }
-    };
-    const rr = _resolveRaceNodes(race, cls, equippedIds);
-    fill('R', rr.ids);
-    fill('P', getClassTreeSpells(cls) || []);
-    fill('S', secJob && secJob !== cls ? (getClassTreeSpells(secJob) || []) : []);
-    return { nodes, edges: getTreeEdges(), alts: rr.alts };
-}
-
-/* ═══════════ FREELANCER — the wildcard-socket tree (Phase B) ═══════════
-   Doc §6: the identity IS borrowing, so no new spells were authored.
-   Race pillar as normal. 2026-09-14 (the user's call): the three fixed
-   spells (improvise / jackOfAll / reallyGoodPunch) MOVED to the homosapien
-   race tree, and BOTH job pillars are wildcard sockets now, ring-tier-
-   capped (r1/r2 any tier I, r3 any tier II, r4★ any tier III capstone):
-     PRIMARY   P1–P4 = ANY RACE ability (the union of every race tree,
-               minus this unit's own race pillar — that pillar is already
-               on the tree);
-     SECONDARY S1–S4 = ANY JOB ability (the union of every job tree, as
-               before).
-   Equipping is still just customSpells ids (no save-format change) —
-   buildFreelancerTree() finds a socket placement of the equipped wildcards
-   that keeps the tree root-connected (backtracking over ≤7×8, trivial).
-   FL_FIXED stays exported (empty) for readers that print the layout. */
-const FL_FIXED = {};
-const FL_SOCKET_TIERS = {
-    P1: ['I'], P2: ['I'], P3: ['II'], P4: ['III'],
-    S1: ['I'], S2: ['I'], S3: ['II'], S4: ['III'],
-};
-/* Which pool each socket draws from. */
-const FL_SOCKET_POOL = { P1: 'race', P2: 'race', P3: 'race', P4: 'race', S1: 'job', S2: 'job', S3: 'job', S4: 'job' };
-
-/* A socket judges a spell by its TREE RING (r1/r2 → I, r3 → II, r4★ → III)
-   — most race abilities carry no `tier` field, and a job spell's tier is
-   its ring anyway. Off-tree ids fall back to the authored tier. */
-function _flTierOf(sp) {
-    if (!sp) return 'I';
-    const r = treeRingOfSpell(sp.id);
-    if (r != null) return r >= 3 ? 'III' : r === 2 ? 'II' : 'I';
-    return sp.tier === 'III' ? 'III' : sp.tier === 'II' ? 'II' : 'I';
-}
-
+/* ═══════════ FREELANCER — THE BORROWER (since the tier rework, 2026-09-24) ═══════════
+   A Freelancer has no job row: besides its own race row it may equip ANY race ability (flRacePool) and ANY job
+   ability (flWildcardPool) — no sockets, no socket tiers any more; the 7 slots and the 16 SP are the only limits,
+   exactly as for everyone else. */
 /* THE STORY ROSTER (2026-09-21, the user: "you can only learn spells of units you have unlocked in your
    roster"): in STORY SCOPE — the building, THE PARTY, the crossings filed there (map.js sets
    window._ewRosterScope = 'owned'; data.js unitRosterScope) — a Freelancer's sockets offer ONLY the spells
@@ -17817,297 +17755,184 @@ function flRacePool(race) {
     return out;
 }
 
-/* The pool one socket draws from (the builder's picker reads this). */
-function flSocketPool(race, key) {
-    const kind = FL_SOCKET_POOL[key];
-    if (kind === 'race') return flRacePool(race);
-    if (kind === 'job') return flWildcardPool(race);
-    return [];
+/* ═══════════ THE TIERS — the spell selection rework (2026-09-24, the user) ═══════════
+   The user: "get rid of units having a secondary job. Ditch the branches. The node rung level that a spell is on
+   becomes its tier — Tier I, II, III and IV, costing 1, 2, 3 and 4 Spell Points (SP). Still 7 spell slots. Total
+   SP = 16 ... You do not have to connect nodes or climb up the tiers to select a higher spell. Any spell can be
+   selected anywhere. No restrictions across tiers either."
+   So there is NO graph any more (no root, no edges, no path, no cascade, no fork, no socket) and no second job. A
+   loadout is LEGAL iff:
+     · every id is in the unit's POOL — its race row (BOTH alternates of a twin rung: a twin is two spells on one
+       rung now, each its own pick) + its job's four; a Freelancer (no job row) also BORROWS any race ability
+       (flRacePool) and any job ability (flWildcardPool) — THE STORY ROSTER's owned-only rule rides inside those;
+     · no duplicates, at most SPELL_SLOT_MAX (7) spells, at most SPELL_SP_MAX (16) SP;
+     · nothing Clash-sealed (movement spells are banned on a formation stage).
+   The TIER is the RUNG: buildTreeRingIndex's ring 0–3 → Tier I–IV (a shared id takes its LOWEST rung — the same read
+   that prices MP 25/50/75/100, so SP and MP always agree). Off every row (never in a pool — tooling only) the tier
+   falls back to the MP ladder. 4 × Tier IV = 16 is a legal (three-empty-slot) kit; 7 × Tier I is legal too.
+   ONLINE: legality is pure data — the host re-validates every guest loadout through treeLegalSubset (online.js
+   receipt + createUnit), so a hacked or stale kit is trimmed host-side exactly like a local one.
+   STALE SAVES (a secondary job's spells, > 16 SP, an old fork holding both alternates is fine now): treeLegalSubset
+   TRIMS — earlier picks win, an id that is off the pool or no longer fits the slots / SP is skipped, never a crash.
+   The old API names stay (every caller already routes through them); the secJob parameter is ignored. ═══ */
+const SPELL_SP_MAX = 16;
+const SPELL_TIER_SP = [0, 1, 2, 3, 4];                  // index = tier (1–4)
+const SPELL_TIER_NUMERALS = ['', 'I', 'II', 'III', 'IV'];
+
+function _spellOfIdOrDef(spOrId) {
+    if (!spOrId) return null;
+    if (typeof spOrId === 'object') return spOrId;
+    return (typeof SPELL_BY_ID !== 'undefined' && SPELL_BY_ID[spOrId]) || null;
+}
+/* The tier (1–4) of a spell: its rung on the rows, else its MP on the ladder. 0 = the basic attack / nothing. */
+function spellTierOf(spOrId) {
+    if (!spOrId) return 0;
+    const id = typeof spOrId === 'object' ? spOrId.id : spOrId;
+    const sp = _spellOfIdOrDef(spOrId);
+    if (sp && sp.kind === 'basicAttack') return 0;
+    const r = treeRingOfSpell(id);
+    if (r != null) return Math.max(1, Math.min(4, r + 1));
+    const c = sp && typeof sp.cost === 'number' ? sp.cost : 25;
+    return c <= 37 ? 1 : c <= 62 ? 2 : c <= 87 ? 3 : 4;
+}
+function spellTierNumeral(spOrId) { return SPELL_TIER_NUMERALS[spellTierOf(spOrId)] || 'I'; }
+/* SP price of one spell (Tier N = N SP; the basic attack is free). */
+function spellSpCost(spOrId) { return SPELL_TIER_SP[spellTierOf(spOrId)] || 0; }
+/* SP a list of ids spends. */
+function loadoutSpUsed(ids) {
+    let n = 0;
+    for (const id of (ids || [])) if (id) n += spellSpCost(id);
+    return n;
 }
 
-function buildFreelancerTree(race, equippedIds) {
-    const edges = getTreeEdges();
-    const nodes = { root: null };
-    const seen = new Set();
-    const rr = _resolveRaceNodes(race, 'Freelancer', equippedIds);
-    const raceAll = new Set(getRaceTreeAllIds(race, 'Freelancer') || []);
-    for (let i = 0; i < 4; i++) {
-        const id = rr.ids[i] || null;
-        const known = id && SPELL_BY_ID[id];
-        if (known && !seen.has(id)) { nodes['R' + (i + 1)] = id; seen.add(id); }
-        else nodes['R' + (i + 1)] = null;
-    }
-    for (const [k, id] of Object.entries(FL_FIXED)) {
-        nodes[k] = SPELL_BY_ID[id] ? id : null;
-        if (nodes[k]) seen.add(id);
-    }
-    for (const k of Object.keys(FL_SOCKET_TIERS)) nodes[k] = null;
-
-    // which pool each equipped wildcard belongs to (the pools are disjoint:
-    // no id lives in both a job tree and a race tree)
-    const poolOf = {};
-    for (const sp of flWildcardPool(race)) poolOf[sp.id] = 'job';
-    for (const sp of flRacePool(race)) poolOf[sp.id] = 'race';
-    const equipped = (equippedIds || []).filter(Boolean);
-    const wild = [], unplaced = [];
-    for (const id of equipped) {
-        if (seen.has(id)) continue;                       // race / fixed node
-        if (raceAll.has(id)) { unplaced.push(id); continue; }   // the OTHER alternate of an equipped twin
-        (poolOf[id] ? wild : unplaced).push(id);
-    }
-
-    const mkTree = (placement) => {
-        const n2 = { ...nodes };
-        for (const [k, id] of Object.entries(placement)) n2[k] = id;
-        return { nodes: n2, edges, isFreelancer: true, sockets: FL_SOCKET_TIERS, socketPool: FL_SOCKET_POOL, alts: rr.alts };
-    };
-    let firstComplete = null;
-    const placed = {};
-    const search = (i) => {
-        if (i >= wild.length) {
-            const t = mkTree(placed);
-            if (!firstComplete) firstComplete = t;
-            const connected = _treeConnectedEquipped(t, equipped);
-            return equipped.every(id => connected.has(id)) ? t : null;
-        }
-        const tier = _flTierOf(SPELL_BY_ID[wild[i]]);
-        const pool = poolOf[wild[i]];
-        for (const k of Object.keys(FL_SOCKET_TIERS)) {
-            if (placed[k] != null || FL_SOCKET_POOL[k] !== pool || !FL_SOCKET_TIERS[k].includes(tier)) continue;
-            placed[k] = wild[i];
-            const r = search(i + 1);
-            if (r) return r;
-            delete placed[k];
-        }
-        return null;
-    };
-    let tree = (wild.length <= Object.keys(FL_SOCKET_TIERS).length) ? search(0) : null;
-    if (!tree) {
-        // No fully-connected placement — surface a best-effort tree so the
-        // UI can render; the wildcards that found no socket are unplaced.
-        tree = firstComplete || mkTree({});
-        const inNodes = new Set(Object.values(tree.nodes).filter(Boolean));
-        for (const id of wild) if (!inNodes.has(id)) unplaced.push(id);
-        tree.connected = false;
-    } else {
-        tree.connected = true;
-    }
-    tree.unplaced = unplaced;
-    return tree;
-}
-
-/* Clash bans movement spells. A banned node mid-branch would sever the
-   chain, so banned nodes are "sealed pass-throughs" (doc §6): they cannot
-   be equipped but still count as connected for adjacency. */
-function _treeSealedIds(tree) {
-    const sealed = new Set();
+/* Clash bans movement spells — a sealed spell stays in the pool (shown, locked) but can never be equipped. */
+function _spellSealed(id) {
     const clash = (typeof _isClashMode === 'function' && _isClashMode());
     const allowFn = (typeof window !== 'undefined' && typeof window._clashSpellAllowed === 'function')
         ? window._clashSpellAllowed : null;
-    if (!clash || !allowFn) return sealed;
-    const ids = Object.values(tree.nodes).slice();
-    for (const pair of Object.values(tree.alts || {})) ids.push(...pair);
-    for (const id of ids) {
-        if (!id) continue;
-        const sp = SPELL_BY_ID[id];
-        if (sp && !allowFn(sp)) sealed.add(id);
-    }
-    return sealed;
+    if (!clash || !allowFn) return false;
+    const sp = _spellOfIdOrDef(id);
+    return !!(sp && !allowFn(sp));
 }
-
-/* BFS from root over passable nodes (root | equipped | sealed). Returns the
-   set of reached node KEYS. */
-function _treeReachableKeys(tree, equippedIds, sealedIds) {
-    const equipped = equippedIds instanceof Set ? equippedIds : new Set(equippedIds || []);
-    const adj = {};
-    for (const [a, b] of tree.edges) {
-        (adj[a] = adj[a] || []).push(b);
-        (adj[b] = adj[b] || []).push(a);
-    }
-    const passable = (key) => {
-        if (key === 'root') return true;
-        const id = tree.nodes[key];
-        return !!id && (equipped.has(id) || (sealedIds && sealedIds.has(id)));
-    };
-    const reached = new Set(['root']);
-    const stack = ['root'];
-    while (stack.length) {
-        const k = stack.pop();
-        for (const n of (adj[k] || [])) {
-            if (!reached.has(n) && passable(n)) { reached.add(n); stack.push(n); }
-        }
-    }
-    return reached;
-}
-
-/* Public aliases for the UI (party-builder) — same objects, stable names. */
-function treeSealedIds(tree) { return _treeSealedIds(tree); }
-function treeReachableKeys(tree, equippedIds) {
-    return _treeReachableKeys(tree, equippedIds, _treeSealedIds(tree));
-}
-
-/* The subset of equipped ids that are root-connected (through equipped or
-   sealed nodes). Dropping the disconnected rest can never disconnect these. */
-function _treeConnectedEquipped(tree, equippedIds) {
-    const equipped = new Set((equippedIds || []).filter(Boolean));
-    const reached = _treeReachableKeys(tree, equipped, _treeSealedIds(tree));
+function spellSealedIds(ids) {
     const out = new Set();
-    for (const [key, id] of Object.entries(tree.nodes)) {
-        if (id && equipped.has(id) && reached.has(key)) out.add(id);
-    }
+    for (const id of (ids || [])) if (id && _spellSealed(id)) out.add(id);
     return out;
 }
 
-/* THE loadout legality check (builder, createUnit, online host authority):
-   every id is a tree node, no duplicates, within the slot cap, nothing
-   sealed, and the whole equipped set is connected to the root. Freelancer
-   (no tree yet) is always legal here — flat-pool rules cover it. */
+/* The unit's pool in parts, each an ordered id list (rung order, a twin's alternates side by side):
+     race   — the race row (every alternate), job — the job's four (none for a Freelancer),
+     borrowRace / borrowJob — a Freelancer's borrowable abilities (every other race's row / every job's four). */
+function unitSpellPoolParts(race, cls) {
+    const known = (id) => !!id && (typeof SPELL_BY_ID === 'undefined' || !!SPELL_BY_ID[id]);
+    const seen = new Set();
+    const take = (ids) => { const out = []; for (const id of ids || []) if (known(id) && !seen.has(id)) { seen.add(id); out.push(id); } return out; };
+    const parts = { race: take(getRaceTreeAllIds(race, cls)), job: take(cls === 'Freelancer' ? [] : (getClassTreeSpells(cls) || [])), borrowRace: [], borrowJob: [] };
+    if (cls === 'Freelancer') {
+        parts.borrowRace = take(flRacePool(race).map(sp => sp.id));
+        parts.borrowJob = take(flWildcardPool(race).map(sp => sp.id));
+    }
+    return parts;
+}
+/* Every id the unit may equip (sealed ones included — spellSealedIds says which). */
+function unitSpellPool(race, cls) {
+    const p = unitSpellPoolParts(race, cls);
+    return p.race.concat(p.job, p.borrowRace, p.borrowJob);
+}
+
+/* Can `id` join this loadout? { ok, reason, note, slots, sp, need } — the ONE verdict every UI prints. */
+function spellAddVerdict(race, cls, ids, id, poolSet) {
+    const eq = (ids || []).filter(Boolean);
+    const cap = (typeof SPELL_SLOT_MAX !== 'undefined') ? SPELL_SLOT_MAX : 7;
+    const used = loadoutSpUsed(eq), need = spellSpCost(id);
+    const out = { ok: false, reason: '', note: '', slots: eq.length, cap, sp: used, spMax: SPELL_SP_MAX, need };
+    if (!id) return Object.assign(out, { reason: 'none', note: 'NOTHING TO EQUIP' });
+    if (eq.includes(id)) return Object.assign(out, { reason: 'dup', note: 'ALREADY EQUIPPED' });
+    const pool = poolSet || new Set(unitSpellPool(race, cls));
+    if (!pool.has(id)) return Object.assign(out, { reason: 'pool', note: 'NOT IN THIS UNIT’S SPELLS' });
+    if (_spellSealed(id)) return Object.assign(out, { reason: 'sealed', note: 'SEALED · NOT ALLOWED IN THIS MODE' });
+    if (eq.length >= cap) return Object.assign(out, { reason: 'slots', note: 'NO SLOT · ' + eq.length + '/' + cap + ' SLOTS · UNEQUIP SOMETHING' });
+    if (used + need > SPELL_SP_MAX) return Object.assign(out, { reason: 'sp', note: 'NOT ENOUGH SP · ' + used + '/' + SPELL_SP_MAX + ' USED · NEEDS ' + need + ' · FREE ' + (used + need - SPELL_SP_MAX) + ' MORE' });
+    return Object.assign(out, { ok: true, reason: 'ok', note: 'EQUIP · ' + need + ' SP' });
+}
+
+
+/* No graph since the tier rework: every pillar is a flat pool. Kept for readers that export the tree. */
+function getTreeEdges() { return []; }
+
+/* One unit's rows, keyed by rung: R1–R4 = the race row (a twin rung wears its equipped alternate, else its first),
+   P1–P4 = the job's four (empty for a Freelancer). `tiers` = id → tier for everything on it. No edges. */
+function buildUnitSpellTree(race, cls, secJob, equippedIds) {
+    const eq = new Set((equippedIds || []).filter(Boolean));
+    const row = getRaceTreeRow(race, cls);
+    const nodes = {}, alts = {}, tiers = {};
+    for (let i = 0; i < 4; i++) {
+        const ids = _treeEntryIds(row[i]);
+        if (ids.length > 1) alts['R' + (i + 1)] = ids.slice();
+        nodes['R' + (i + 1)] = ids.find(id => eq.has(id)) || ids[0] || null;
+    }
+    const job = cls === 'Freelancer' ? [] : (getClassTreeSpells(cls) || []);
+    for (let i = 0; i < 4; i++) nodes['P' + (i + 1)] = job[i] || null;
+    for (const id of unitSpellPool(race, cls)) tiers[id] = spellTierOf(id);
+    return { nodes, edges: [], alts, tiers, isFreelancer: cls === 'Freelancer' };
+}
+
+/* THE loadout legality check (builder, createUnit, online host authority). */
 function isTreeLoadoutLegal(race, cls, secJob, spellIds) {
     if (!classHasSpellTree(cls)) return true;
     const ids = (spellIds || []).filter(Boolean);
     const cap = (typeof SPELL_SLOT_MAX !== 'undefined') ? SPELL_SLOT_MAX : 7;
     if (ids.length > cap) return false;
     if (new Set(ids).size !== ids.length) return false;
-    if (_treeTwinConflict(race, cls, ids)) return false;   // both alternates of one node
-    // buildUnitSpellTree needs the equipped list: Freelancer derives socket
-    // placement from it and every class resolves twin nodes with it.
-    const tree = buildUnitSpellTree(race, cls, secJob, ids);
-    if (tree.isFreelancer && (tree.unplaced.length || !tree.connected)) return false;
-    const inTree = new Set(Object.values(tree.nodes).filter(Boolean));
-    const sealed = _treeSealedIds(tree);
-    for (const id of ids) {
-        if (!inTree.has(id) || sealed.has(id)) return false;
-    }
-    return _treeConnectedEquipped(tree, ids).size === ids.length;
+    if (loadoutSpUsed(ids) > SPELL_SP_MAX) return false;
+    const pool = new Set(unitSpellPool(race, cls));
+    for (const id of ids) if (!pool.has(id) || _spellSealed(id)) return false;
+    return true;
 }
 
-/* Graceful repair for stale saves / vessel swaps: keep the largest
-   root-connected subset of the wish-list (earlier picks win), capped. */
+/* Graceful repair for stale saves / vessel swaps / a hacked online kit: walk the wish-list in order, keep every id
+   that is in the pool, unsealed, new, and still fits the slots AND the SP — skip (never truncate at) the rest. */
 function treeLegalSubset(race, cls, secJob, spellIds) {
     const cap = (typeof SPELL_SLOT_MAX !== 'undefined') ? SPELL_SLOT_MAX : 7;
     if (!classHasSpellTree(cls)) return (spellIds || []).filter(Boolean).slice(0, cap);
-    if (cls === 'Freelancer') {
-        /* Sockets re-place themselves per candidate set, so keep-the-largest
-           is a greedy add: earlier picks win, an id stays only if the set
-           is still fully legal with it in. */
-        const out = [];
-        const seen = new Set();
-        for (const id of (spellIds || [])) {
-            if (!id || seen.has(id) || out.length >= cap) continue;
-            seen.add(id);
-            out.push(id);
-            if (!isTreeLoadoutLegal(race, cls, secJob, out)) out.pop();
-        }
-        return out;
-    }
-    const tree0 = buildUnitSpellTree(race, cls, secJob);
-    const inTree = new Set(Object.values(tree0.nodes).filter(Boolean));
-    // twin alternates are all "in the tree" — but only ONE per node survives
-    const twinNodeOf = {};
-    for (const [key, pair] of Object.entries(tree0.alts || {})) {
-        for (const id of pair) {
-            if (typeof SPELL_BY_ID === 'undefined' || SPELL_BY_ID[id]) { inTree.add(id); twinNodeOf[id] = key; }
-        }
-    }
-    const sealed = _treeSealedIds(tree0);
-    const seen = new Set();
-    const usedTwin = new Set();
-    const ids = [];
+    const pool = new Set(unitSpellPool(race, cls));
+    const out = [];
+    let sp = 0;
     for (const id of (spellIds || [])) {
-        if (!id || seen.has(id) || !inTree.has(id) || sealed.has(id)) continue;
-        const tk = twinNodeOf[id];
-        if (tk) { if (usedTwin.has(tk)) continue; usedTwin.add(tk); }   // earlier alternate wins
-        seen.add(id);
-        ids.push(id);
-        if (ids.length >= cap) break;
+        if (out.length >= cap) break;
+        if (!id || out.includes(id) || !pool.has(id) || _spellSealed(id)) continue;
+        const c = spellSpCost(id);
+        if (sp + c > SPELL_SP_MAX) continue;
+        out.push(id);
+        sp += c;
     }
-    // re-resolve so each twin node wears the alternate we kept
-    const tree = buildUnitSpellTree(race, cls, secJob, ids);
-    const connected = _treeConnectedEquipped(tree, ids);
-    return ids.filter(id => connected.has(id));
+    return out;
 }
 
-/* Random tree-legal loadout for the AI / randomize buttons: a random walk
-   over currently-reachable nodes. Retries a few times to land at least one
-   damage spell so CPU units never roll an all-utility kit. */
+/* A random legal kit for the AI / the RANDOM buttons: random affordable picks until nothing fits (slots or SP).
+   A Freelancer leans on its own race row (weight 6) over the borrowable catalogue (weight 1). Retries a few times
+   so a CPU unit never rolls an all-utility kit. `budget` = a slot cap under SPELL_SLOT_MAX (optional). */
 function buildTreeLegalLoadout(race, cls, secJob, budget, rng) {
-    const cap = Math.min(budget || ((typeof SPELL_SLOT_MAX !== 'undefined') ? SPELL_SLOT_MAX : 7),
-        (typeof SPELL_SLOT_MAX !== 'undefined') ? SPELL_SLOT_MAX : 7);
     if (!classHasSpellTree(cls)) return [];
+    const max = (typeof SPELL_SLOT_MAX !== 'undefined') ? SPELL_SLOT_MAX : 7;
+    const cap = Math.min(budget || max, max);
     const rand = (typeof rng === 'function') ? rng : Math.random;
-    if (cls === 'Freelancer') {
-        /* Random walk with sockets: each step picks either a concrete
-           race/fixed node adjacent to the connected set, or fills an
-           adjacent empty socket with a random pool spell of a fitting tier.
-           Every push is legality-checked (socket placement can shuffle). */
-        const attemptFL = () => {
-            const picks = [];
-            for (let guard = 0; picks.length < cap && guard < cap * 4; guard++) {
-                const tree = buildFreelancerTree(race, picks);
-                const sealed = _treeSealedIds(tree);
-                const reached = _treeReachableKeys(tree, new Set(picks), sealed);
-                const opts = [];
-                for (const [key, id] of Object.entries(tree.nodes)) {
-                    if (key === 'root') continue;
-                    const adjacent = tree.edges.some(([a, b]) =>
-                        (a === key && reached.has(b)) || (b === key && reached.has(a)));
-                    if (!adjacent) continue;
-                    const pair = tree.alts && tree.alts[key];
-                    if (pair && !picks.includes(id)) {
-                        const cands = pair.filter(a => !sealed.has(a) && SPELL_BY_ID[a]);
-                        if (cands.length) opts.push(cands[Math.floor(rand() * cands.length)]);
-                    } else if (id) {
-                        if (!picks.includes(id) && !sealed.has(id)) opts.push(id);
-                    } else if (FL_SOCKET_TIERS[key]) {
-                        const cands = flSocketPool(race, key).filter(sp => FL_SOCKET_TIERS[key].includes(_flTierOf(sp))
-                            && !picks.includes(sp.id));
-                        if (cands.length) opts.push(cands[Math.floor(rand() * cands.length)].id);
-                    }
-                }
-                if (!opts.length) break;
-                picks.push(opts[Math.floor(rand() * opts.length)]);
-                if (!isTreeLoadoutLegal(race, cls, secJob, picks)) picks.pop();
-            }
-            return picks;
-        };
-        const hasDmg = (ids) => ids.some(id => {
-            const sp = SPELL_BY_ID[id];
-            return sp && (sp.type === 'damage' || sp.kind === 'damage' || sp.dmg > 0);
-        });
-        let best = attemptFL();
-        for (let t = 0; t < 3 && !hasDmg(best); t++) {
-            const alt = attemptFL();
-            if (hasDmg(alt) || alt.length > best.length) best = alt;
-        }
-        return best;
-    }
+    const parts = unitSpellPoolParts(race, cls);
+    const weighted = [];
+    for (const id of parts.race.concat(parts.job)) if (!_spellSealed(id)) weighted.push([id, 6]);
+    for (const id of parts.borrowRace.concat(parts.borrowJob)) if (!_spellSealed(id)) weighted.push([id, 1]);
     const attempt = () => {
-        const equipped = new Set();
         const picks = [];
+        let sp = 0;
         while (picks.length < cap) {
-            // rebuilt per pick so an equipped twin alternate becomes its node
-            const tree = buildUnitSpellTree(race, cls, secJob, picks);
-            const sealed = _treeSealedIds(tree);
-            const reached = _treeReachableKeys(tree, equipped, sealed);
-            const frontier = [];
-            for (const [key, id] of Object.entries(tree.nodes)) {
-                if (!id || equipped.has(id)) continue;
-                // adjacent to any reached node?
-                const adjacent = tree.edges.some(([a, b]) =>
-                    (a === key && reached.has(b)) || (b === key && reached.has(a)));
-                if (!adjacent) continue;
-                const pair = tree.alts && tree.alts[key];
-                if (pair) {
-                    // an unequipped twin node: either alternate may be walked onto
-                    const cands = pair.filter(a => !sealed.has(a)
-                        && (typeof SPELL_BY_ID === 'undefined' || SPELL_BY_ID[a]));
-                    if (cands.length) frontier.push(cands[Math.floor(rand() * cands.length)]);
-                } else if (!sealed.has(id)) frontier.push(id);
-            }
-            if (!frontier.length) break;
-            const pick = frontier[Math.floor(rand() * frontier.length)];
-            equipped.add(pick);
+            const opts = weighted.filter(([id]) => !picks.includes(id) && sp + spellSpCost(id) <= SPELL_SP_MAX);
+            if (!opts.length) break;
+            let total = 0;
+            for (const o of opts) total += o[1];
+            let roll = rand() * total, pick = opts[opts.length - 1][0];
+            for (const [id, w] of opts) { roll -= w; if (roll < 0) { pick = id; break; } }
             picks.push(pick);
+            sp += spellSpCost(pick);
         }
         return picks;
     };
@@ -18122,6 +17947,9 @@ function buildTreeLegalLoadout(race, cls, secJob, budget, rng) {
     }
     return best;
 }
+/* The tier numeral a spell sits on ('I'–'IV') — the old socket reader's name, kept for the builder's filters. */
+function _flTierOf(sp) { return spellTierNumeral(sp); }
+
 
 const SPELL_SHOP_PRICES = {
     'I':   40,
@@ -18453,9 +18281,12 @@ Object.assign(window, {
   getRaceTreeRow, getRaceTreeAlts, getRaceTreeAllIds,   // twin nodes (CHAMP_REWORK_PLAN §4)
   TREE_RING_MP_COSTS, buildTreeRingIndex, getTreeRingCost, applyTreeRingCosts, snapCostToLadder,
   getTreeEdges, buildUnitSpellTree, isTreeLoadoutLegal, treeLegalSubset,
-  buildTreeLegalLoadout, treeSealedIds, treeReachableKeys,
-  /* Freelancer wildcard sockets (Phase B) */
-  FL_FIXED, FL_SOCKET_TIERS, FL_SOCKET_POOL, flWildcardPool, flRacePool, flSocketPool, buildFreelancerTree, _flTierOf, treeRingOfSpell,
+  buildTreeLegalLoadout,
+  /* THE TIERS (2026-09-24): Tier I–IV = the rung, 1–4 SP, 16 SP, 7 slots, no graph, no second job */
+  SPELL_SP_MAX, SPELL_TIER_SP, SPELL_TIER_NUMERALS, spellTierOf, spellTierNumeral, spellSpCost, loadoutSpUsed,
+  spellSealedIds, unitSpellPoolParts, unitSpellPool, spellAddVerdict,
+  /* the Freelancer borrows any race / job ability */
+  flWildcardPool, flRacePool, _flTierOf, treeRingOfSpell,
 });
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -44370,7 +44201,7 @@ function hqEncounterWakeRoom(profile) {
    SHIFT (the bench — the RESERVES plumbing, battle.js _benchOn / doSwitch / the Gauntlet
    replacement modal when a seat falls). Member 0 is THE OFFICER (`you: true` — the walker,
    built off the barbershop's avatar / the mirror's look; never relieved, never moved). A
-   member: { id, you?, cls, name, meta: { race, gender, secondaryJob?, customSpells?,
+   member: { id, you?, cls, name, meta: { race, gender, customSpells?,
    zodiac?, appearance? }, loadout: { spells, items, equipment }, hp, hpMax, mp, mpMax }
    — `hp === null` means FULL (never fought yet / rested), `hp === 0` means DOWN (a KO'd
    member stays down until a revive or the ward). The record is LOCAL like the punch clock
@@ -44440,7 +44271,7 @@ const HQ_LEVEL_RULES = {
     share: { fought: 1, present: 0.5, down: 0, poolMult: 0.6, board: 1, bench: 0.5 },
     levelHeal: true,                   // THE LEVEL'S REST (2026-09-23, the user): a level-up restores HP and MP all the way — live on the board (battle.js grantXP) and on the ledger at the debrief
     group: { solo: [0, 2], soloWeights: [0.35, 0.4, 0.25], roamExtra: [0, 1], roamSize: [2, 3], groupP: 0.55, marker: 4 },
-    milestones: { secondaryJob: SECONDARY_JOB_LEVEL, shop: SPELL_SHOP_LEVEL, every: 5 },
+    milestones: { shop: SPELL_SHOP_LEVEL, every: 5 },   // the secondary-job milestone retired with the tier rework (2026-09-24)
     labels: { levelUp: 'LEVEL UP!', pool: 'THE ENCOUNTER', trickle: 'IN THE FIELD', battle: 'IN THE FIELD', fought: 'FOUGHT · FULL SHARE', present: 'DID NOT FIGHT · HALF SHARE', bench: 'DID NOT FIGHT · HALF SHARE', down: 'DOWN · NO SHARE', lost: 'THE ROOM WAS LOST · NO SHARE' },
 };
 /* an AREA's own band — the story's hook (empty until a route exists): { offset, min, max } by site id */
@@ -44471,8 +44302,7 @@ function hqPartyLevelGains(baseHp, baseMp, from, to) {
         ['hp', 'mp', 'atk', 'def', 'mdef', 'int'].forEach(k => { stats[k] = (g[k] | 0) - (prev[k] | 0); });
         const M = HQ_LEVEL_RULES.milestones;
         let milestone = null;
-        if (L === M.secondaryJob) milestone = 'SECONDARY JOB UNLOCKED';
-        else if (L === M.shop) milestone = 'THE SPELL SHOP OPENS';
+        if (L === M.shop) milestone = 'THE SPELL SHOP OPENS';
         else if (L === LEVEL_CAP) milestone = 'ASCENSION';
         else if (L % 25 === 0) milestone = 'POWER SURGES';
         out.push({ lvl: L, stats, milestone });
@@ -44662,7 +44492,7 @@ function hqPartyOfficer(profile) {
 function hqPartyMemberFromRoster(m) {
     if (!m || !m.cls) return null;
     const meta = {};
-    ['race', 'gender', 'secondaryJob', 'zodiac', 'appearance'].forEach(k => { if (m.meta && m.meta[k]) meta[k] = m.meta[k]; });
+    ['race', 'gender', 'zodiac', 'appearance'].forEach(k => { if (m.meta && m.meta[k]) meta[k] = m.meta[k]; });
     if (m.meta && Array.isArray(m.meta.customSpells) && m.meta.customSpells.length) meta.customSpells = m.meta.customSpells.filter(Boolean);
     const lo = m.loadout || {};
     return { cls: String(m.cls), name: m.name || '', meta, loadout: { spells: Array.isArray(lo.spells) ? lo.spells.slice() : [], items: Object.assign({}, lo.items || {}), equipment: Object.assign({}, lo.equipment || {}) }, hp: null, hpMax: null, mp: null, mpMax: null };
@@ -44755,15 +44585,14 @@ function hqPartyResync(profile, units) {
     if (n) r.at = Date.now();
     return n;
 }
-/* ══ THE CIRCUIT IN THE FIELD (2026-09-21) — the user: "I need a way to equip spells / abilities in the party menu / pause
-   menu in story mode just like in the party builder." The forge's tree UI lives inside party-builder.js's IIFE (its
-   computeTreeEquipPath / treeNodeState / treeDropIds are never globals), so the pause menu reads the SAME rules through
-   these pure helpers: the tree is buildUnitSpellTree's, the path is the forge's BFS (root → the connected frontier →
-   the target, sealed pass-throughs excluded), an unequip is THE CASCADE (treeReachableKeys without the id), a twin node
-   is THE FORK (swap in place), a Freelancer socket is a picker over flSocketPool at the socket's tiers, the cap is
-   SPELL_SLOT_MAX, and every write lands through isTreeLoadoutLegal / treeLegalSubset — never a lock on a saved row.
-   The member's record keeps ONE list in two places (meta.customSpells = what createUnit reads; loadout.spells = the
-   mirror every older reader prints). Nothing on `state`, nothing relayed (RULE #2: the party is local). ══ */
+/* ══ THE SPELL TIERS IN THE FIELD (2026-09-24 — the tier rework; was THE CIRCUIT IN THE FIELD, 2026-09-21) — the pause
+   menu equips abilities by the SAME rules as the forge, through these pure helpers: the pool is unitSpellPoolParts, a
+   click on an ability toggles it (spellAddVerdict says why an add is refused — no slot, not enough SP, sealed), a
+   Freelancer's BORROW key ('B1'–'B4') opens a picker over every race / job ability of that tier, the caps are
+   SPELL_SLOT_MAX (7) and SPELL_SP_MAX (16), and every write lands through isTreeLoadoutLegal / treeLegalSubset —
+   never a lock on a saved row. The member's record keeps ONE list in two places (meta.customSpells = what createUnit
+   reads; loadout.spells = the mirror every older reader prints). Nothing on `state`, nothing relayed (RULE #2: the
+   party is local). The old names stay (hqPartyTreeCircuit / hqPartyTreeClick / hqPartySocketPool / hqPartySocketEquip). ══ */
 function hqPartySpellIds(m) {
     if (!m) return [];
     const a = (m.meta && Array.isArray(m.meta.customSpells)) ? m.meta.customSpells.filter(Boolean) : [];
@@ -44773,178 +44602,121 @@ function hqPartySpellIds(m) {
 function hqPartySpellCap() { return (typeof SPELL_SLOT_MAX !== 'undefined') ? SPELL_SLOT_MAX : 7; }
 function hqPartySpellTree(m) {
     if (!m) return null;
-    const race = (m.meta && m.meta.race) || 'homosapien', cls = m.cls || 'Freelancer', sec = (m.meta && m.meta.secondaryJob) || '';
+    const race = (m.meta && m.meta.race) || 'homosapien', cls = m.cls || 'Freelancer';
     if (typeof classHasSpellTree === 'function' && !classHasSpellTree(cls)) return null;
     const equipped = hqPartySpellIds(m);
-    const tree = buildUnitSpellTree(race, cls, sec, equipped);
-    return { tree, equipped, race, cls, sec, cap: hqPartySpellCap(), sealed: _treeSealedIds(tree) };
+    const parts = unitSpellPoolParts(race, cls);
+    return { parts, equipped, race, cls, cap: hqPartySpellCap(), spMax: SPELL_SP_MAX, spUsed: loadoutSpUsed(equipped), isFreelancer: cls === 'Freelancer' };
 }
-/* the forge's computeTreeEquipPath: the node KEYS to newly equip (target last), [] = already connected, null = unreachable */
-function hqPartyTreePath(tree, sealed, equipped, targetKey) {
-    if (!tree || !targetKey || targetKey === 'root') return [];
-    const eq = new Set((equipped || []).filter(Boolean));
-    const adj = {};
-    for (const [a, b] of tree.edges) { (adj[a] = adj[a] || []).push(b); (adj[b] = adj[b] || []).push(a); }
-    const start = _treeReachableKeys(tree, eq, sealed);
-    if (start.has(targetKey)) return [];
-    const prev = {}; const seen = new Set(start); const q = [...start];
-    while (q.length) {
-        const k = q.shift();
-        for (const n of adj[k] || []) {
-            if (seen.has(n)) continue;
-            if (!tree.nodes[n]) continue;
-            seen.add(n); prev[n] = k; q.push(n);
-        }
-    }
-    if (!seen.has(targetKey)) return null;
-    const path = [];
-    for (let k = targetKey; k != null && !start.has(k); k = prev[k]) { const id = tree.nodes[k]; if (id && !(sealed && sealed.has(id))) path.unshift(k); }
-    return path;
+/* one ability's state for the rack: equipped · ok · slots (no slot left) · sp (not enough SP) · sealed */
+function hqPartySpellState(T, id, poolSet) {
+    if (T.equipped.includes(id)) return 'equipped';
+    const v = spellAddVerdict(T.race, T.cls, T.equipped, id, poolSet);
+    return v.ok ? 'ok' : v.reason;
 }
-/* root · socket · empty · sealed · equipped · swap (a fork's other option is worn) · reachable · far · blocked */
-function hqPartyTreeNodeState(T, key, altId) {
-    if (key === 'root') return 'root';
-    const tree = T.tree, sealed = T.sealed, eq = T.equipped;
-    const id = altId || tree.nodes[key];
-    if (!id) return (tree.isFreelancer && tree.sockets && tree.sockets[key]) ? 'socket' : 'empty';
-    if (sealed.has(id)) return 'sealed';
-    if (eq.includes(id)) return 'equipped';
-    if (altId) { const pair = (tree.alts && tree.alts[key]) || null; if (pair && pair.some(a => a !== altId && eq.includes(a))) return 'swap'; }
-    const path = hqPartyTreePath(tree, sealed, eq, key);
-    if (!path) return 'blocked';
-    return path.length <= 1 ? 'reachable' : 'far';
-}
-/* THE CASCADE: the id and everything that hung off it */
-function hqPartyTreeDropIds(tree, equipped, removeId) {
-    const out = new Set(removeId ? [removeId] : []);
-    if (!tree || !removeId) return out;
-    const rest = (equipped || []).filter(id => id && id !== removeId);
-    const reached = treeReachableKeys(tree, new Set(rest));
-    for (const [k, id] of Object.entries(tree.nodes || {})) if (id && rest.includes(id) && !reached.has(k)) out.add(id);
-    return out;
-}
-const HQ_CIRCUIT_LANES = [
-    { key: 'P', label: 'JOB', socketLabel: 'ANY RACE' },
-    { key: 'R', label: 'RACE' },
-    { key: 'S', label: 'SECOND JOB', socketLabel: 'ANY JOB' },
-];
-/* THE MODEL the pause menu draws: three lanes, ring 4 → 1, every node's state / path cost / cascade size / fork options / socket */
+/* THE MODEL the pause menu draws: four tier rows, IV → I, every ability of the unit's pool on its tier with its state;
+   a Freelancer's rows also carry its borrowed (equipped) abilities and a BORROW key per tier. */
 function hqPartyTreeCircuit(m) {
     const T = hqPartySpellTree(m);
     if (!T) return null;
-    const { tree, equipped, sealed, cap } = T;
+    const { parts, equipped, cap } = T;
     const spOf = id => (id && typeof SPELL_BY_ID !== 'undefined') ? (SPELL_BY_ID[id] || null) : null;
-    const lanes = HQ_CIRCUIT_LANES.map(L => {
-        const name = L.key === 'R' ? ((typeof getRaceLabel === 'function') ? getRaceLabel(T.race, (m.meta && m.meta.gender) || 'male') : T.race)
-            : L.key === 'P' ? (tree.isFreelancer ? L.socketLabel : T.cls)
-            : (tree.isFreelancer ? L.socketLabel : (T.sec || ''));
-        const nodes = [];
-        for (let ring = 4; ring >= 1; ring--) {
-            const key = L.key + ring;
-            const id = tree.nodes[key] || null;
-            const st = hqPartyTreeNodeState(T, key);
-            const pair = (tree.alts && tree.alts[key]) || null;
-            const alts = pair ? pair.map(a => ({ id: a, sp: spOf(a), st: hqPartyTreeNodeState(T, key, a) })) : null;
-            const path = (st === 'reachable' || st === 'far') ? hqPartyTreePath(tree, sealed, equipped, key) : null;
-            const need = path ? path.map(k => tree.nodes[k]).filter(pid => pid && !equipped.includes(pid)).length : 0;
-            const drop = (st === 'equipped') ? hqPartyTreeDropIds(tree, equipped, id).size : 0;
-            const socket = (tree.isFreelancer && tree.sockets && tree.sockets[key]) ? { tiers: tree.sockets[key].slice(), pool: (tree.socketPool && tree.socketPool[key]) || 'job' } : null;
-            nodes.push({ key, ring, id, sp: spOf(id), st, alts, need, over: need > 0 && equipped.length + need > cap, drop, socket, capstone: ring === 4 });
-        }
-        return { key: L.key, label: L.label, name, empty: !T.sec && L.key === 'S' && !tree.isFreelancer, nodes };
-    });
-    return { lanes, equipped: equipped.slice(), used: equipped.length, cap, isFreelancer: !!tree.isFreelancer, unplaced: (tree.unplaced || []).slice(), race: T.race, cls: T.cls, sec: T.sec };
+    const poolSet = new Set(parts.race.concat(parts.job, parts.borrowRace, parts.borrowJob));
+    const own = parts.race.map(id => [id, 'race']).concat(parts.job.map(id => [id, 'job']));
+    const borrowed = T.isFreelancer ? equipped.filter(id => !parts.race.includes(id) && poolSet.has(id)).map(id => [id, parts.borrowRace.includes(id) ? 'borrowRace' : 'borrowJob']) : [];
+    const tiers = [];
+    for (let t = 4; t >= 1; t--) {
+        const rows = own.concat(borrowed).filter(([id]) => spellTierOf(id) === t).map(([id, source]) => {
+            const st = hqPartySpellState(T, id, poolSet);
+            return { id, sp: spOf(id), st, source, cost: t };
+        });
+        const borrowKey = T.isFreelancer ? 'B' + t : null;
+        tiers.push({ tier: t, numeral: SPELL_TIER_NUMERALS[t], cost: SPELL_TIER_SP[t], rows, borrow: borrowKey, borrowCount: borrowKey ? parts.borrowRace.concat(parts.borrowJob).filter(id => spellTierOf(id) === t).length : 0 });
+    }
+    const dropped = equipped.filter(id => !poolSet.has(id));
+    return { tiers, equipped: equipped.slice(), used: equipped.length, cap, spUsed: T.spUsed, spMax: T.spMax, isFreelancer: T.isFreelancer, unplaced: dropped, race: T.race, cls: T.cls };
 }
 /* THE ONE WRITE: a member's spell list, made legal (the forge's own repair), into both places */
 function hqPartySetSpells(profile, memberId, ids) {
     const r = hqPartyRecord(profile); if (!r) return { ok: false, reason: 'noprofile' };
     const m = r.members.find(x => x.id === memberId); if (!m) return { ok: false, reason: 'member' };
-    const race = m.meta.race || 'homosapien', cls = m.cls, sec = m.meta.secondaryJob || '';
+    const race = m.meta.race || 'homosapien', cls = m.cls;
     let out = (ids || []).filter(Boolean);
-    out = out.filter((id, i) => out.indexOf(id) === i).slice(0, hqPartySpellCap());
+    out = out.filter((id, i) => out.indexOf(id) === i);
     let trimmed = false;
-    if (typeof isTreeLoadoutLegal === 'function' && !isTreeLoadoutLegal(race, cls, sec, out)) { const fixed = treeLegalSubset(race, cls, sec, out); trimmed = fixed.length !== out.length; out = fixed; }
+    if (typeof isTreeLoadoutLegal === 'function' && !isTreeLoadoutLegal(race, cls, '', out)) { const fixed = treeLegalSubset(race, cls, '', out); trimmed = fixed.length !== out.length; out = fixed; }
+    out = out.slice(0, hqPartySpellCap());
     m.meta.customSpells = out.slice();
     m.loadout.spells = out.slice();
+    if (m.meta.secondaryJob) delete m.meta.secondaryJob;   // the tier rework retired the second job
     r.at = Date.now();
     return { ok: true, ids: out.slice(), trimmed, member: m };
 }
-/* THE CLICK — the forge's treeNodeClick / treeAltClick as one pure rule: equipped → the cascade; a fork's other option
-   worn → the swap in place; reachable / far → the whole path (one click); socket → the picker (the caller's); the rest refuse */
+/* THE CLICK — `key` is an ability id (altId, the old fork option, wins when given): equipped → unequip it (just it);
+   else equip it when the verdict allows; a Freelancer BORROW key → the picker (the caller's). */
 function hqPartyTreeClick(profile, memberId, key, altId) {
     const r = hqPartyRecord(profile); if (!r) return { ok: false, reason: 'noprofile' };
     const m = r.members.find(x => x.id === memberId); if (!m) return { ok: false, reason: 'member' };
-    const T = hqPartySpellTree(m); if (!T) return { ok: false, reason: 'notree', note: 'THIS JOB HAS NO CIRCUIT' };
-    const { tree, equipped, sealed, cap } = T;
-    const st = hqPartyTreeNodeState(T, key, altId);
-    const id = altId || tree.nodes[key];
-    if (st === 'root') return { ok: false, reason: 'root', note: 'THE BASIC ATTACK IS ALWAYS EQUIPPED' };
-    if (st === 'socket') return { ok: false, reason: 'socket', note: 'AN OPEN SOCKET · PICK FROM THE POOL', socket: key };
-    if (st === 'empty') return { ok: false, reason: 'empty', note: 'NOTHING ON THIS NODE' };
-    if (st === 'sealed') return { ok: false, reason: 'sealed', note: 'SEALED · NOT ALLOWED IN THIS MODE' };
-    if (st === 'blocked') return { ok: false, reason: 'blocked', note: 'NO PATH · FILL THE NODES BELOW IT FIRST' };
-    if (st === 'equipped') {
-        const drop = hqPartyTreeDropIds(tree, equipped, id);
-        const w = hqPartySetSpells(profile, memberId, equipped.filter(s => !drop.has(s)));
-        return { ok: true, kind: 'unequip', ids: w.ids, dropped: [...drop], note: drop.size > 1 ? 'UNEQUIPPED · −' + drop.size + ' (' + (drop.size - 1) + ' ABOVE IT)' : 'UNEQUIPPED' };
+    const T = hqPartySpellTree(m); if (!T) return { ok: false, reason: 'notree', note: 'THIS JOB HAS NO SPELLS TO PICK' };
+    if (key === 'root') return { ok: false, reason: 'root', note: 'THE BASIC ATTACK IS ALWAYS EQUIPPED' };
+    if (/^B[1-4]$/.test(String(key || ''))) {
+        if (!T.isFreelancer) return { ok: false, reason: 'empty', note: 'ONLY A FREELANCER BORROWS' };
+        return { ok: false, reason: 'socket', note: 'BORROW · PICK FROM THE POOL', socket: key };
     }
-    if (st === 'swap') {
-        const pair = tree.alts[key]; const cur = pair.find(a => equipped.includes(a));
-        const cand = equipped.map(s => s === cur ? id : s);
-        if (typeof isTreeLoadoutLegal === 'function' && !isTreeLoadoutLegal(T.race, T.cls, T.sec, cand)) return { ok: false, reason: 'illegal', note: 'NOT A LEGAL LOADOUT' };
-        const w = hqPartySetSpells(profile, memberId, cand);
-        return { ok: true, kind: 'swap', ids: w.ids, added: [id], dropped: [cur], note: 'SWAPPED IN · SAME SLOT' };
+    const id = altId || key;
+    if (!id) return { ok: false, reason: 'empty', note: 'NOTHING HERE' };
+    const t = spellTierOf(id);
+    if (T.equipped.includes(id)) {
+        const w = hqPartySetSpells(profile, memberId, T.equipped.filter(s => s !== id));
+        return { ok: true, kind: 'unequip', ids: w.ids, dropped: [id], note: 'UNEQUIPPED · +' + t + ' SP BACK' };
     }
-    const path = hqPartyTreePath(tree, sealed, equipped, key);
-    if (!path || !path.length) return { ok: false, reason: 'blocked', note: 'NO PATH · FILL THE NODES BELOW IT FIRST' };
-    const newIds = path.map(k => k === key ? id : tree.nodes[k]).filter(pid => pid && !equipped.includes(pid));
-    if (equipped.length + newIds.length > cap) return { ok: false, reason: 'cap', note: 'NO ROOM · ' + equipped.length + '/' + cap + ' SLOTS · NEEDS ' + newIds.length + ' · UNEQUIP SOMETHING' };
-    const cand = equipped.concat(newIds);
-    if (typeof isTreeLoadoutLegal === 'function' && !isTreeLoadoutLegal(T.race, T.cls, T.sec, cand)) return { ok: false, reason: 'illegal', note: 'NOT A LEGAL LOADOUT' };
-    const w = hqPartySetSpells(profile, memberId, cand);
-    return { ok: true, kind: 'equip', ids: w.ids, added: newIds, note: newIds.length > 1 ? 'EQUIPPED · +' + newIds.length + ' ALONG THE PATH' : 'EQUIPPED' };
+    const v = spellAddVerdict(T.race, T.cls, T.equipped, id);
+    if (!v.ok) return { ok: false, reason: v.reason === 'slots' ? 'cap' : v.reason, note: v.note };
+    const w = hqPartySetSpells(profile, memberId, T.equipped.concat([id]));
+    return { ok: true, kind: 'equip', ids: w.ids, added: [id], note: 'EQUIPPED · TIER ' + SPELL_TIER_NUMERALS[t] + ' · ' + t + ' SP' };
 }
-/* a Freelancer socket's pool at its tiers (the forge's flSocketPool + _flTierOf; THE STORY ROSTER's ledger rule rides inside) */
+/* a Freelancer's borrowable abilities of one tier (key 'B1'–'B4'; THE STORY ROSTER's ledger rule rides inside) */
 function hqPartySocketPool(m, key) {
-    const T = hqPartySpellTree(m); if (!T || !T.tree.isFreelancer || !T.tree.sockets || !T.tree.sockets[key]) return [];
-    const tiers = T.tree.sockets[key];
-    const rank = t => t === 'III' ? 3 : t === 'II' ? 2 : 1;
-    return flSocketPool(T.race, key)
-        .map(sp => ({ id: sp.id, sp, tier: _flTierOf(sp), equipped: T.equipped.includes(sp.id) }))
-        .filter(x => tiers.indexOf(x.tier) >= 0 && !T.sealed.has(x.id))
-        .sort((a, b) => (rank(a.tier) - rank(b.tier)) || String(a.sp.name || a.id).localeCompare(String(b.sp.name || b.id)));
+    const T = hqPartySpellTree(m); if (!T || !T.isFreelancer) return [];
+    const t = parseInt(String(key || '').replace(/^B/, ''), 10);
+    if (!(t >= 1 && t <= 4)) return [];
+    const sealed = spellSealedIds(T.parts.borrowRace.concat(T.parts.borrowJob));
+    return T.parts.borrowRace.map(id => [id, 'race']).concat(T.parts.borrowJob.map(id => [id, 'job']))
+        .filter(([id]) => spellTierOf(id) === t && !sealed.has(id))
+        .map(([id, pool]) => ({ id, sp: SPELL_BY_ID[id], tier: SPELL_TIER_NUMERALS[t], pool, equipped: T.equipped.includes(id) }))
+        .sort((a, b) => String(a.sp.name || a.id).localeCompare(String(b.sp.name || b.id)));
 }
 function hqPartySocketEquip(profile, memberId, key, spellId) {
     const r = hqPartyRecord(profile); if (!r) return { ok: false, reason: 'noprofile' };
     const m = r.members.find(x => x.id === memberId); if (!m) return { ok: false, reason: 'member' };
-    const T = hqPartySpellTree(m); if (!T || !T.tree.isFreelancer) return { ok: false, reason: 'notree' };
+    const T = hqPartySpellTree(m); if (!T || !T.isFreelancer) return { ok: false, reason: 'notree' };
     if (!spellId || T.equipped.includes(spellId)) return { ok: false, reason: 'dup', note: 'ALREADY EQUIPPED' };
-    if (T.equipped.length >= T.cap) return { ok: false, reason: 'cap', note: 'NO ROOM · ' + T.equipped.length + '/' + T.cap + ' SLOTS · UNEQUIP SOMETHING' };
-    if (!hqPartySocketPool(m, key).some(x => x.id === spellId)) return { ok: false, reason: 'pool', note: 'NOT IN THIS SOCKET’S POOL' };
-    const cand = T.equipped.concat([spellId]);
-    if (typeof isTreeLoadoutLegal === 'function' && !isTreeLoadoutLegal(T.race, T.cls, T.sec, cand)) return { ok: false, reason: 'illegal', note: 'NO PATH · FILL THE SOCKETS BELOW IT FIRST' };
-    const w = hqPartySetSpells(profile, memberId, cand);
-    return { ok: true, kind: 'socket', ids: w.ids, added: [spellId], note: 'SOCKETED' };
+    if (!hqPartySocketPool(m, key).some(x => x.id === spellId)) return { ok: false, reason: 'pool', note: 'NOT IN THIS POOL' };
+    const v = spellAddVerdict(T.race, T.cls, T.equipped, spellId);
+    if (!v.ok) return { ok: false, reason: v.reason === 'slots' ? 'cap' : v.reason, note: v.note };
+    const w = hqPartySetSpells(profile, memberId, T.equipped.concat([spellId]));
+    return { ok: true, kind: 'socket', ids: w.ids, added: [spellId], note: 'BORROWED · ' + spellTierOf(spellId) + ' SP' };
 }
-/* DEFAULTS (the forge's rule: the whole job pillar + race r1–r2, repaired) · RANDOM (buildTreeLegalLoadout) · CLEAR */
+/* DEFAULTS (the forge's rule: the job's four + the race's first two, trimmed to the budget; a Freelancer = its race
+   row) · RANDOM (buildTreeLegalLoadout) · CLEAR */
 function hqPartySpellsDefault(profile, memberId) {
     const r = hqPartyRecord(profile); if (!r) return { ok: false, reason: 'noprofile' };
     const m = r.members.find(x => x.id === memberId); if (!m) return { ok: false, reason: 'member' };
-    const race = m.meta.race || 'homosapien', cls = m.cls, sec = m.meta.secondaryJob || '';
+    const race = m.meta.race || 'homosapien', cls = m.cls;
     const p = (cls === 'Freelancer') ? [] : (getClassTreeSpells(cls) || []);
     const rr = getRaceTreeSpells(race, cls) || [];
-    const wish = p.filter(Boolean).concat(rr.slice(0, 2).filter(Boolean));
+    const wish = p.filter(Boolean).concat((cls === 'Freelancer' ? rr : rr.slice(0, 2)).filter(Boolean));
     const w = hqPartySetSpells(profile, memberId, wish);
     return Object.assign({ kind: 'defaults', note: 'THE DEFAULT KIT' }, w);
 }
 function hqPartySpellsRandom(profile, memberId, rng) {
     const r = hqPartyRecord(profile); if (!r) return { ok: false, reason: 'noprofile' };
     const m = r.members.find(x => x.id === memberId); if (!m) return { ok: false, reason: 'member' };
-    const ids = buildTreeLegalLoadout(m.meta.race || 'homosapien', m.cls, m.meta.secondaryJob || '', hqPartySpellCap(), rng);
+    const ids = buildTreeLegalLoadout(m.meta.race || 'homosapien', m.cls, '', hqPartySpellCap(), rng);
     const w = hqPartySetSpells(profile, memberId, ids);
     return Object.assign({ kind: 'random', note: 'A RANDOM LEGAL KIT' }, w);
 }
-function hqPartySpellsClear(profile, memberId) { const w = hqPartySetSpells(profile, memberId, []); return Object.assign({ kind: 'clear', note: 'THE CIRCUIT IS CLEAR' }, w); }
+function hqPartySpellsClear(profile, memberId) { const w = hqPartySetSpells(profile, memberId, []); return Object.assign({ kind: 'clear', note: 'NOTHING EQUIPPED' }, w); }
 function hqPartyDown(m) { return m.hp === 0; }
 /* the party's condition: who can fight — the launch refuses a party with nobody fit */
 function hqPartyFit(profile) {
@@ -48608,7 +48380,7 @@ if (typeof window !== 'undefined') {
     window.HQ_OFFICER_RULES = HQ_OFFICER_RULES; window.hqOfficerRecord = hqOfficerRecord; window.hqOfficerOnFile = hqOfficerOnFile; window.hqOfficerEnlist = hqOfficerEnlist;   // THE INTAKE (2026-09-21)
     window.HQ_PARTY_RULES = HQ_PARTY_RULES; window.hqPartyRecord = hqPartyRecord; window.hqPartyEnsure = hqPartyEnsure; window.hqPartyPrune = hqPartyPrune; window.hqPartyOfficer = hqPartyOfficer; window.hqPartyLead = hqPartyLead; window.hqPartyLeadAvatar = hqPartyLeadAvatar; window.hqPartyGauge = hqPartyGauge; window.hqPartyUnlocked = hqPartyUnlocked; window.hqPartyMember = hqPartyMember; window.hqPartyShifts = hqPartyShifts;
     window.hqPartyVitals = hqPartyVitals; window.hqPartyFit = hqPartyFit; window.hqPartyEnlist = hqPartyEnlist; window.hqPartyRelieve = hqPartyRelieve; window.hqPartySwap = hqPartySwap; window.hqPartyOnCall = hqPartyOnCall; window.hqPartyRestore = hqPartyRestore;
-    window.hqPartyForLaunch = hqPartyForLaunch; window.hqPartyAfterMatch = hqPartyAfterMatch; window.hqPartyResync = hqPartyResync; window.hqPartyScaledVitals = hqPartyScaledVitals; window.HQ_CIRCUIT_LANES = HQ_CIRCUIT_LANES; window.hqPartySpellIds = hqPartySpellIds; window.hqPartySpellTree = hqPartySpellTree; window.hqPartyTreePath = hqPartyTreePath; window.hqPartyTreeNodeState = hqPartyTreeNodeState; window.hqPartyTreeDropIds = hqPartyTreeDropIds; window.hqPartyTreeCircuit = hqPartyTreeCircuit; window.hqPartySetSpells = hqPartySetSpells; window.hqPartyTreeClick = hqPartyTreeClick; window.hqPartySocketPool = hqPartySocketPool; window.hqPartySocketEquip = hqPartySocketEquip; window.hqPartySpellsDefault = hqPartySpellsDefault; window.hqPartySpellsRandom = hqPartySpellsRandom; window.hqPartySpellsClear = hqPartySpellsClear;
+    window.hqPartyForLaunch = hqPartyForLaunch; window.hqPartyAfterMatch = hqPartyAfterMatch; window.hqPartyResync = hqPartyResync; window.hqPartyScaledVitals = hqPartyScaledVitals; window.hqPartySpellIds = hqPartySpellIds; window.hqPartySpellTree = hqPartySpellTree; window.hqPartySpellState = hqPartySpellState; window.hqPartyTreeCircuit = hqPartyTreeCircuit; window.hqPartySetSpells = hqPartySetSpells; window.hqPartyTreeClick = hqPartyTreeClick; window.hqPartySocketPool = hqPartySocketPool; window.hqPartySocketEquip = hqPartySocketEquip; window.hqPartySpellsDefault = hqPartySpellsDefault; window.hqPartySpellsRandom = hqPartySpellsRandom; window.hqPartySpellsClear = hqPartySpellsClear;
     /* THE LEVELS (2026-09-21) */
     window.HQ_LEVEL_RULES = HQ_LEVEL_RULES; window.HQ_AREA_LEVELS = HQ_AREA_LEVELS; window.XP_CURVE = XP_CURVE; window.xpThreshold = xpThreshold; window.xpLevelFor = xpLevelFor; window.xpToNext = xpToNext;
     window.hqPartyLevel = hqPartyLevel; window.hqPartyXp = hqPartyXp; window.hqPartyLevelGains = hqPartyLevelGains; window.hqPartyGrantXp = hqPartyGrantXp; window.hqPartyXpShare = hqPartyXpShare; window.hqEncounterLevels = hqEncounterLevels; window.hqEncounterGroup = hqEncounterGroup;

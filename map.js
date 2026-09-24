@@ -1638,7 +1638,7 @@
             const u = units[m.id];
             const po = _hqPausePortrait(m, u);
             const v = _hqPauseVitals(m, u);
-            const sec = (u && u._secondaryJob) || (m.meta && m.meta.secondaryJob) || '';
+            const sec = '';   // the tier rework (2026-09-24): no secondary job
             const name = m.name || (u && u.name) || m.cls;
             const tgt = arm ? _hqPauseTargetOk(arm, m, rec, units) : false;
             const self = arm && arm.from === m.id;
@@ -1848,7 +1848,7 @@
             const name = m.name || (u && u.name) || m.cls;
             const xp = _hqPauseXpOf(m);
             const lvl = xp ? xp.lvl : (u ? ((typeof getUnitLevel === 'function') ? getUnitLevel(u) : (u.level || 1)) : null);
-            const sec = (u && u._secondaryJob) || (m.meta && m.meta.secondaryJob) || '';
+            const sec = '';   // the tier rework (2026-09-24): no secondary job
             const n = rec.members.length;
             const prev = rec.members[(idx + n - 1) % n], next = rec.members[(idx + 1) % n];
             let html = `<div class="hq-pp-nav"><button class="hq-btn hq-btn-sm" data-cmd="party">◂ PARTY</button><span>${idx < HQ_PARTY_RULES.shift ? 'FIRST SHIFT' : 'SECOND SHIFT'} · ${String(idx + 1).padStart(2, '0')} / ${String(n).padStart(2, '0')}</span><span class="hq-pp-nav-r"><button class="hq-btn hq-btn-sm" data-member="${_hqEsc(prev.id)}" title="← previous">◂</button><button class="hq-btn hq-btn-sm" data-member="${_hqEsc(next.id)}" title="→ next">▸</button></span></div>`;
@@ -1891,8 +1891,8 @@
                 spells = ids.filter(Boolean).map(id => (typeof getSpellById === 'function') ? getSpellById(id) : null).filter(Boolean);
             }
             const field = (typeof window.hqPartyFieldSpells === 'function') ? window.hqPartyFieldSpells(u, m) : [];
-            const circOpen = _hqPause.circuit === m.id;   // THE CIRCUIT IN THE FIELD (2026-09-21): the forge's spell tree on the sheet
-            html += `<div class="hq-pp-sec"><b>ABILITIES</b><span>${spells.length} EQUIPPED${field.length ? ' · ' + field.length + ' USABLE HERE' : ''}</span><button class="hq-btn hq-btn-xs hq-pp-sec-btn${circOpen ? ' on' : ''}" data-party-act="circuit:${_hqEsc(m.id)}" title="Equip abilities on the spell tree, as in the party builder">${circOpen ? '◂ CLOSE THE CIRCUIT' : '✎ EDIT · THE CIRCUIT'}</button></div>`;
+            const circOpen = _hqPause.circuit === m.id;   // THE SPELL TIERS IN THE FIELD (2026-09-24; was THE CIRCUIT, 2026-09-21): the tier rack on the sheet
+            html += `<div class="hq-pp-sec"><b>ABILITIES</b><span>${spells.length} EQUIPPED${field.length ? ' · ' + field.length + ' USABLE HERE' : ''}</span><button class="hq-btn hq-btn-xs hq-pp-sec-btn${circOpen ? ' on' : ''}" data-party-act="circuit:${_hqEsc(m.id)}" title="Equip abilities by tier (I–IV = 1–4 SP · 7 slots · 16 SP), as in the party builder">${circOpen ? '◂ CLOSE · SPELLS' : '✎ EDIT · SPELLS'}</button></div>`;
             if (circOpen) html += _hqPauseCircuitHtml(m);
             if (!spells.length) html += `<p class="hq-panel-note">No abilities on the record.</p>`;
             else {
@@ -1944,12 +1944,17 @@
             html += `</div></div>`;
             return html;
         }
-        /* ══ THE CIRCUIT IN THE FIELD (2026-09-21) — the user: "equip spells / abilities in the party menu / pause menu in story
-           mode just like in the party builder." The member sheet's ABILITIES section opens THE CIRCUIT (data.js
-           hqPartyTreeCircuit — the forge's three lanes, ring 4 → 1, the same path / cascade / fork / socket rules through
-           hqPartyTreeClick / hqPartySocketEquip; every write is one _hqPartyTx, the unit cache drops, the sheet re-reads).
-           _hqPause.circuit = the member id whose circuit is open; _hqPause.socket = the open socket's key; _hqPause.sockQ =
-           the picker's search. Viewer-local (RULE #2). ══ */
+        /* ══ THE SPELL TIERS IN THE FIELD (2026-09-24 — the tier rework; was THE CIRCUIT IN THE FIELD, 2026-09-21) — the
+           user: "no secondary job, no branches / paths — every spell's rung is its TIER, Tier I–IV costs 1–4 SP, 7 slots,
+           16 SP." The member sheet's ABILITIES section opens THE TIER RACK (data.js hqPartyTreeCircuit): a bar with the SP
+           meter (16 segments, the spent ones lit) + the slot count + DEFAULTS / RANDOM / CLEAR / DONE, then four rows,
+           TIER IV at the top → TIER I at the bottom, one button per ability of the unit's pool (the race row, both
+           alternates of a twin rung, + the job's four). A click toggles it through hqPartyTreeClick; a refused add prints
+           spellAddVerdict's reason (NO SLOT · NEEDS n SP · SEALED). A Freelancer's row carries ＋ BORROW (key 'B1'–'B4'),
+           which opens the picker over every race / job ability of that tier (hqPartySocketPool / hqPartySocketEquip).
+           Every write is one _hqPartyTx, the unit cache drops, the sheet re-reads. _hqPause.circuit = the member id whose
+           rack is open; _hqPause.socket = the open BORROW key; _hqPause.sockQ = the picker's search. Viewer-local
+           (RULE #2). ══ */
         function _hqPauseSpellMeta(sp) {
             const bits = [];
             if (!sp) return '';
@@ -1962,63 +1967,57 @@
             return bits.join(' · ');
         }
         function _hqPauseSpellDesc(sp) { if (!sp) return ''; let d = sp.desc || ''; if (!d) { try { d = (typeof describeSpell === 'function') ? describeSpell(sp) : ''; } catch (e) {} } return d; }
-        const _HQ_CIRC_ST_NOTE = { equipped: 'EQUIPPED · CLICK TO UNEQUIP', swap: 'THE OTHER OPTION · CLICK TO SWAP IN', reachable: 'CLICK TO EQUIP', far: 'CLICK TO EQUIP THE WHOLE PATH', blocked: 'NO PATH', sealed: 'SEALED', socket: 'AN OPEN SOCKET · CLICK TO PICK', empty: '—' };
-        function _hqPauseCircuitNodeHtml(m, n, opt) {
-            /* one option disc + name + meta + the verdict; `opt` = a fork's option (its own id / state) */
-            const id = opt ? opt.id : n.id, sp = opt ? opt.sp : n.sp, st = opt ? opt.st : n.st;
-            const cat = sp ? (_HQ_CAT[sp.type] || _HQ_CAT.utility) : { g: n.socket ? '◌' : '·', c: '#8a8270' };
+        const _HQ_CIRC_ST_NOTE = { equipped: 'EQUIPPED · CLICK TO UNEQUIP', ok: 'CLICK TO EQUIP', slots: 'NO SLOT · UNEQUIP SOMETHING', sp: 'NOT ENOUGH SP · UNEQUIP SOMETHING', sealed: 'SEALED · NOT ALLOWED IN THIS MODE' };
+        const _HQ_CIRC_SRC = { race: '', job: '', borrowRace: 'BORROWED · RACE', borrowJob: 'BORROWED · JOB' };
+        function _hqPauseCircuitNodeHtml(m, row) {
+            /* one ability of a tier row: category disc + name + type chip / meta + the verdict */
+            const id = row.id, sp = row.sp, st = row.st, cost = row.cost;
+            const cat = sp ? (_HQ_CAT[sp.type] || _HQ_CAT.utility) : { g: '·', c: '#8a8270' };
             const tc = sp && sp.spellType ? (_HQ_TYPE_COLORS[sp.spellType] || '#aaa') : null;
-            let verdict = '';
-            if (st === 'equipped' && n.drop > 1 && !opt) verdict = `−${n.drop}`;
-            else if (st === 'equipped') verdict = '●';
-            else if (st === 'reachable' || st === 'far') verdict = n.over ? 'NO ROOM' : `+${Math.max(1, n.need)}`;
-            else if (st === 'swap') verdict = '⇄';
-            else if (st === 'socket') verdict = `${n.socket.pool === 'race' ? 'ANY RACE' : 'ANY JOB'} · ${n.socket.tiers.join('/')}`;
-            else if (st === 'blocked') verdict = '✕';
-            const title = sp ? `${sp.name || id} — ${_hqPauseSpellDesc(sp)}` : (st === 'socket' ? 'An open socket: click to pick from the pool' : 'Nothing on this node');
-            const dis = (st === 'empty' || st === 'sealed');
-            const act = `node:${_hqEsc(m.id)}:${_hqEsc(n.key)}${opt ? ':' + _hqEsc(opt.id) : ''}`;
-            return `<button type="button" class="hq-circ-node st-${st}${n.capstone ? ' cap' : ''}${n.over && (st === 'reachable' || st === 'far') ? ' over' : ''}" data-party-act="${act}"${dis ? ' disabled' : ''} title="${_hqEsc(title)}" style="--cc:${cat.c}">`
-                + `<i class="hq-circ-disc">${n.capstone && sp ? '★' : cat.g}</i>`
-                + `<b>${_hqEsc(sp ? (sp.name || id) : (st === 'socket' ? 'OPEN SOCKET' : 'EMPTY'))}</b>`
-                + `<span>${tc ? `<i class="hq-pp-type" style="--tc:${tc}">${_hqEsc(String(sp.spellType).toUpperCase())}</i> ` : ''}${_hqEsc(sp ? _hqPauseSpellMeta(sp) : (_HQ_CIRC_ST_NOTE[st] || ''))}</span>`
+            const verdict = st === 'equipped' ? '●' : st === 'ok' ? `+${cost} SP` : st === 'slots' ? 'NO SLOT' : st === 'sp' ? `NEEDS ${cost} SP` : st === 'sealed' ? 'SEALED' : '';
+            const src = _HQ_CIRC_SRC[row.source] || '';
+            const title = `${sp ? (sp.name || id) : id} — ${_HQ_CIRC_ST_NOTE[st] || ''}${sp ? ' — ' + _hqPauseSpellDesc(sp) : ''}`;
+            return `<button type="button" class="hq-circ-node st-${st}${src ? ' borrowed' : ''}" data-party-act="node:${_hqEsc(m.id)}:${_hqEsc(id)}"${st === 'sealed' ? ' disabled' : ''} title="${_hqEsc(title)}" style="--cc:${cat.c}">`
+                + `<i class="hq-circ-disc">${cat.g}</i>`
+                + `<b>${_hqEsc(sp ? (sp.name || id) : id)}</b>`
+                + `<span>${tc ? `<i class="hq-pp-type" style="--tc:${tc}">${_hqEsc(String(sp.spellType).toUpperCase())}</i> ` : ''}${src ? `<i class="hq-circ-src">${_hqEsc(src)}</i> ` : ''}${_hqEsc(_hqPauseSpellMeta(sp))}</span>`
                 + `<em>${_hqEsc(verdict)}</em></button>`;
         }
         function _hqPauseCircuitHtml(m) {
             const C = (typeof window.hqPartyTreeCircuit === 'function') ? window.hqPartyTreeCircuit(m) : null;
-            if (!C) return `<div class="hq-circ"><p class="hq-panel-note">This job has no circuit — its abilities are fixed.</p><div class="hq-panel-actions"><button class="hq-btn hq-btn-sm" data-party-act="circuit:${_hqEsc(m.id)}">◂ DONE</button></div></div>`;
+            if (!C) return `<div class="hq-circ"><p class="hq-panel-note">This job has no spells to pick — its abilities are fixed.</p><div class="hq-panel-actions"><button class="hq-btn hq-btn-sm" data-party-act="circuit:${_hqEsc(m.id)}">◂ DONE</button></div></div>`;
             const P = _hqPause;
+            const spMax = C.spMax || 16, spUsed = C.spUsed || 0;
             let html = `<div class="hq-circ">`;
-            html += `<div class="hq-circ-bar"><b>THE CIRCUIT</b><span class="hq-circ-pips">${Array.from({ length: C.cap }, (_, i) => `<i${i < C.used ? ' class="on"' : ''}></i>`).join('')}</span><span class="hq-circ-count">${C.used} / ${C.cap} SLOTS</span>`
-                + `<span class="hq-circ-tools"><button class="hq-btn hq-btn-xs" data-party-act="spelldef:${_hqEsc(m.id)}" title="The job pillar + the race's first two">DEFAULTS</button><button class="hq-btn hq-btn-xs" data-party-act="spellrnd:${_hqEsc(m.id)}">RANDOM</button><button class="hq-btn hq-btn-xs danger" data-party-act="spellclr:${_hqEsc(m.id)}"${C.used ? '' : ' disabled'}>CLEAR</button><button class="hq-btn hq-btn-sm" data-party-act="circuit:${_hqEsc(m.id)}">◂ DONE</button></span></div>`;
-            html += `<p class="hq-circ-note">A NODE EQUIPS ITSELF AND THE PATH BELOW IT · AN EQUIPPED NODE UNEQUIPS WITH EVERYTHING ABOVE IT · A FORK HOLDS TWO OPTIONS, ONE SLOT${C.isFreelancer ? ' · A SOCKET TAKES ANY ABILITY OF ITS POOL AT ITS TIER' : ''}</p>`;
-            if (C.unplaced.length) html += `<p class="hq-circ-note bad">${C.unplaced.length} ABILIT${C.unplaced.length === 1 ? 'Y' : 'IES'} ON THE RECORD CANNOT SIT ON THIS CIRCUIT (${_hqEsc(C.unplaced.join(', '))}) — THEY ARE DROPPED AT THE NEXT WRITE</p>`;
-            html += `<div class="hq-circ-lanes">`;
-            C.lanes.forEach(L => {
-                html += `<div class="hq-circ-lane${L.empty ? ' empty' : ''}"><div class="hq-circ-head"><i>${_hqEsc(L.label)}</i><b>${_hqEsc(L.empty ? 'NO SECOND JOB' : String(L.name || '').toUpperCase())}</b></div>`;
-                L.nodes.forEach(n => {
-                    if (n.alts && n.alts.length > 1) html += `<div class="hq-circ-fork${n.capstone ? ' cap' : ''}">${n.alts.map(o => _hqPauseCircuitNodeHtml(m, n, o)).join('<i class="hq-circ-bridge">⇄</i>')}</div>`;
-                    else html += _hqPauseCircuitNodeHtml(m, n, null);
-                });
-                html += `</div>`;
+            html += `<div class="hq-circ-bar"><b>SPELLS</b><span class="hq-circ-sp" title="Spell Points: Tier I–IV costs 1–4">${Array.from({ length: spMax }, (_, i) => `<i${i < spUsed ? ' class="on"' : ''}></i>`).join('')}</span><span class="hq-circ-count">SP ${spUsed} / ${spMax}</span><span class="hq-circ-count">${C.used} / ${C.cap} SLOTS</span>`
+                + `<span class="hq-circ-tools"><button class="hq-btn hq-btn-xs" data-party-act="spelldef:${_hqEsc(m.id)}" title="The job's four + the race's first two, trimmed to the budget">DEFAULTS</button><button class="hq-btn hq-btn-xs" data-party-act="spellrnd:${_hqEsc(m.id)}">RANDOM</button><button class="hq-btn hq-btn-xs danger" data-party-act="spellclr:${_hqEsc(m.id)}"${C.used ? '' : ' disabled'}>CLEAR</button><button class="hq-btn hq-btn-sm" data-party-act="circuit:${_hqEsc(m.id)}">◂ DONE</button></span></div>`;
+            html += `<p class="hq-circ-note">ANY ABILITY, ANY TIER · TIER I–IV COSTS 1–4 SP · ${C.cap} SLOTS · ${spMax} SP${C.isFreelancer ? ' · A FREELANCER BORROWS ANY RACE OR JOB ABILITY' : ''}</p>`;
+            if (C.unplaced.length) html += `<p class="hq-circ-note bad">${C.unplaced.length} ABILIT${C.unplaced.length === 1 ? 'Y' : 'IES'} ON THE RECORD NO LONGER FIT THIS UNIT (${_hqEsc(C.unplaced.join(', '))}) — THEY ARE DROPPED AT THE NEXT WRITE</p>`;
+            html += `<div class="hq-circ-tiers">`;
+            C.tiers.forEach(T => {
+                html += `<div class="hq-circ-tier-row t${T.tier}"><div class="hq-circ-head"><b>TIER ${_hqEsc(T.numeral)}</b><i>${T.cost} SP</i></div><div class="hq-circ-row-nodes">`;
+                T.rows.forEach(row => { html += _hqPauseCircuitNodeHtml(m, row); });
+                if (T.borrow) html += `<button type="button" class="hq-circ-borrow${P && P.socket === T.borrow ? ' on' : ''}" data-party-act="node:${_hqEsc(m.id)}:${_hqEsc(T.borrow)}"${T.borrowCount ? '' : ' disabled'} title="Borrow any race or job ability of Tier ${_hqEsc(T.numeral)}">＋ BORROW · ${T.borrowCount}</button>`;
+                if (!T.rows.length && !T.borrow) html += `<span class="hq-circ-none">NOTHING AT THIS TIER</span>`;
+                html += `</div></div>`;
             });
-            html += `</div><div class="hq-circ-root"><i>⚔</i><b>BASIC ATTACK</b><span>ALWAYS EQUIPPED · THE ROOT OF EVERY LANE</span></div>`;
-            /* THE SOCKET PICKER (a Freelancer's open socket): the pool at the socket's tiers, a search, a row per ability */
+            html += `</div><div class="hq-circ-root"><i>⚔</i><b>BASIC ATTACK</b><span>ALWAYS EQUIPPED · FREE</span></div>`;
+            /* THE BORROW PICKER (a Freelancer's ＋ BORROW): every race / job ability of that tier, a search, a row per ability */
             if (C.isFreelancer && P && P.socket) {
                 const key = P.socket;
+                const t = parseInt(String(key).replace(/^B/, ''), 10) || 0;
+                const numeral = (typeof SPELL_TIER_NUMERALS !== 'undefined' && SPELL_TIER_NUMERALS[t]) || String(t);
                 const pool = (typeof window.hqPartySocketPool === 'function') ? window.hqPartySocketPool(m, key) : [];
                 const q = String(P.sockQ || '').trim().toLowerCase();
                 const rows = q ? pool.filter(x => ((x.sp.name || '') + ' ' + (x.sp.desc || '') + ' ' + (x.sp.school || '') + ' ' + (x.sp.type || '') + ' ' + (x.sp.spellType || '')).toLowerCase().includes(q)) : pool;
-                const lane = key[0] === 'P' ? 'ANY RACE' : 'ANY JOB';
-                const tiers = pool.length ? [...new Set(pool.map(x => x.tier))].join(' / ') : '';
-                html += `<div class="hq-circ-picker"><div class="hq-circ-bar"><b>SOCKET ${_hqEsc(key)}</b><span class="hq-circ-count">${_hqEsc(lane)}${tiers ? ' · TIER ' + _hqEsc(tiers) : ''} · ${rows.length} / ${pool.length}</span><input type="search" class="hq-circ-search" data-circ-search="1" placeholder="SEARCH THE POOL" value="${_hqEsc(P.sockQ || '')}" autocomplete="off"><span class="hq-circ-tools"><button class="hq-btn hq-btn-sm" data-party-act="sockclose">✕ CLOSE</button></span></div>`;
-                if (!pool.length) html += `<p class="hq-panel-note">Nothing in this pool — in story mode a socket offers only the abilities of the vessels you own.</p>`;
+                html += `<div class="hq-circ-picker"><div class="hq-circ-bar"><b>BORROW · TIER ${_hqEsc(numeral)} · ANY RACE OR JOB</b><span class="hq-circ-count">${t} SP · ${rows.length} / ${pool.length}</span><input type="search" class="hq-circ-search" data-circ-search="1" placeholder="SEARCH THE POOL" value="${_hqEsc(P.sockQ || '')}" autocomplete="off"><span class="hq-circ-tools"><button class="hq-btn hq-btn-sm" data-party-act="sockclose">✕ CLOSE</button></span></div>`;
+                if (!pool.length) html += `<p class="hq-panel-note">Nothing to borrow at this tier — in story mode a Freelancer borrows only from the vessels you own.</p>`;
                 else if (!rows.length) html += `<p class="hq-panel-note">Nothing matches.</p>`;
                 else {
                     html += `<div class="hq-circ-pool">`;
                     rows.forEach(x => {
                         const sp = x.sp; const cat = _HQ_CAT[sp.type] || _HQ_CAT.utility; const tc = _HQ_TYPE_COLORS[sp.spellType] || '#aaa';
-                        html += `<button type="button" class="hq-circ-row${x.equipped ? ' on' : ''}" data-party-act="sock:${_hqEsc(m.id)}:${_hqEsc(key)}:${_hqEsc(x.id)}"${x.equipped ? ' disabled' : ''} style="--cc:${cat.c}"><i class="hq-circ-disc">${cat.g}</i><b>${_hqEsc(sp.name || x.id)}</b><span>${sp.spellType ? `<i class="hq-pp-type" style="--tc:${tc}">${_hqEsc(String(sp.spellType).toUpperCase())}</i> ` : ''}<i class="hq-circ-tier">${_hqEsc(x.tier)}</i> ${_hqEsc(_hqPauseSpellMeta(sp))}</span><p>${_hqEsc(_hqPauseSpellDesc(sp))}</p><em>${x.equipped ? 'ON THE CIRCUIT' : 'SOCKET ▸'}</em></button>`;
+                        html += `<button type="button" class="hq-circ-row${x.equipped ? ' on' : ''}" data-party-act="sock:${_hqEsc(m.id)}:${_hqEsc(key)}:${_hqEsc(x.id)}"${x.equipped ? ' disabled' : ''} style="--cc:${cat.c}"><i class="hq-circ-disc">${cat.g}</i><b>${_hqEsc(sp.name || x.id)}</b><span>${sp.spellType ? `<i class="hq-pp-type" style="--tc:${tc}">${_hqEsc(String(sp.spellType).toUpperCase())}</i> ` : ''}<i class="hq-circ-tier">${x.pool === 'race' ? 'RACE' : 'JOB'}</i> ${_hqEsc(_hqPauseSpellMeta(sp))}</span><p>${_hqEsc(_hqPauseSpellDesc(sp))}</p><em>${x.equipped ? 'EQUIPPED' : 'BORROW ▸'}</em></button>`;
                     });
                     html += `</div>`;
                 }
@@ -2027,27 +2026,27 @@
             html += `</div>`;
             return html;
         }
-        /* the circuit's actions (data-party-act): circuit · node · sock · sockclose · spelldef / spellrnd / spellclr — the write, the line, the sound */
+        /* the tier rack's actions (data-party-act): circuit (open / close) · node (an ability id toggles; B1–B4 = BORROW) · sock · sockclose · spelldef / spellrnd / spellclr — the write, the line, the sound */
         function _hqPartyCircuitAct(verb, a, b, c) {
             const P = _hqPause; if (!P) return false;
             P.keepScroll = true;
             const say = (h, bad) => _hqPauseSay(h, bad);
             const sfx = (k) => { try { playSfx(k); } catch (e) {} };
             const land = (r, head) => {
-                if (r && r.ok) { say(`<b>${head}</b> ${_hqEsc(r.note || '')}${r.trimmed ? ' · <em>SOME IDS COULD NOT SIT ON THE CIRCUIT AND WERE DROPPED</em>' : ''}`); sfx(r.kind === 'unequip' || r.kind === 'clear' ? 'uiCursorMove' : 'uiButtonConfirm'); }
+                if (r && r.ok) { say(`<b>${head}</b> ${_hqEsc(r.note || '')}${r.trimmed ? ' · <em>SOME ABILITIES NO LONGER FIT AND WERE DROPPED</em>' : ''}`); sfx(r.kind === 'unequip' || r.kind === 'clear' ? 'uiCursorMove' : 'uiButtonConfirm'); }
                 else { say(`<b>NO</b> ${_hqEsc((r && r.note) || 'THE BUILDING SAID NO')}`, true); sfx('uiError'); }
             };
             if (verb === 'circuit') { P.circuit = (P.circuit === a) ? null : a; P.socket = null; P.sockQ = ''; sfx('uiCursorMove'); return true; }
             if (verb === 'sockclose') { P.socket = null; P.sockQ = ''; sfx('uiCursorMove'); return true; }
             if (verb === 'node') {
-                const r = _hqPartyTx(p => window.hqPartyTreeClick(p, a, b, c || null));
-                if (r && !r.ok && r.reason === 'socket') { P.socket = b; P.sockQ = ''; sfx('uiCursorMove'); return true; }
-                land(r, r && r.kind === 'unequip' ? 'UNEQUIPPED' : r && r.kind === 'swap' ? 'SWAPPED' : 'EQUIPPED');
+                const r = _hqPartyTx(p => window.hqPartyTreeClick(p, a, b, null));
+                if (r && !r.ok && r.reason === 'socket') { P.socket = (P.socket === b) ? null : b; P.sockQ = ''; sfx('uiCursorMove'); return true; }   // ＋ BORROW toggles the picker
+                land(r, r && r.kind === 'unequip' ? 'UNEQUIPPED' : 'EQUIPPED');
                 return true;
             }
             if (verb === 'sock') {
                 const r = _hqPartyTx(p => window.hqPartySocketEquip(p, a, b, c));
-                land(r, 'SOCKETED');
+                land(r, 'BORROWED');
                 if (r && r.ok) { P.socket = null; P.sockQ = ''; }
                 return true;
             }
@@ -14375,18 +14374,7 @@
 
             if (_isCampaign && _campaignLevel > 0) {
                 const targetLevel = Math.min(_campaignLevel, XP_MAX_LEVEL);
-                const _secJobLvl = (typeof SECONDARY_JOB_LEVEL !== 'undefined') ? SECONDARY_JOB_LEVEL : 15;
-
-                // Secondary job first — its flat bonuses ride on top of the scaled
-                // stats that setUnitLevel() computes from base.
-                if (targetLevel >= _secJobLvl) {
-                    const metaSecJob = identityOverride?.secondaryJob || null;
-                    if (metaSecJob) {
-                        applySecondaryJob(newUnit, metaSecJob);
-                    } else {
-                        aiPickSecondaryJob(newUnit);
-                    }
-                }
+                /* (the secondary job retired 2026-09-24 — the tier rework) */
 
                 // One call scales HP/MP for the level and applies every spell
                 // unlock / AP milestone from 2..targetLevel.
@@ -14412,7 +14400,7 @@
                     // Slot-budget aware: over-budget saved builds are trimmed
                     // gracefully (later picks that no longer fit are skipped,
                     // earlier picks are kept).
-                    const _secJobForBudget = newUnit._secondaryJob || identityOverride?.secondaryJob || '';
+                    const _secJobForBudget = '';   // the tier rework (2026-09-24): no secondary job
                     let _validIds;
                     if (typeof classHasSpellTree === 'function' && classHasSpellTree(template.cls)
                         && typeof treeLegalSubset === 'function') {
@@ -14452,12 +14440,7 @@
                tree loadout). Online, Practice and the console's crossings carry no storyLevel and take the cap as before. */
             else if (identityOverride && (identityOverride.storyLevel | 0) > 0) {
                 const targetLevel = Math.max(1, Math.min(XP_MAX_LEVEL, identityOverride.storyLevel | 0));
-                const _secJobLvl = (typeof SECONDARY_JOB_LEVEL !== 'undefined') ? SECONDARY_JOB_LEVEL : 15;
-                if (targetLevel >= _secJobLvl) {
-                    const metaSecJob = identityOverride?.secondaryJob || null;
-                    if (metaSecJob) applySecondaryJob(newUnit, metaSecJob);
-                    else aiPickSecondaryJob(newUnit);
-                }
+                /* (the secondary job retired 2026-09-24 — the tier rework) */
                 setUnitLevel(newUnit, targetLevel);
                 newUnit.hp = newUnit.maxHp;
                 newUnit.mp = newUnit.maxMp;
@@ -14471,7 +14454,7 @@
                     // Slot-budget aware: over-budget saved builds are trimmed
                     // gracefully (later picks that no longer fit are skipped,
                     // earlier picks are kept).
-                    const _secJobForBudget = newUnit._secondaryJob || identityOverride?.secondaryJob || '';
+                    const _secJobForBudget = '';   // the tier rework (2026-09-24): no secondary job
                     let _validIds;
                     if (typeof classHasSpellTree === 'function' && classHasSpellTree(template.cls)
                         && typeof treeLegalSubset === 'function') {
@@ -14513,16 +14496,7 @@
                    PARTY LEVEL) builds every unit there instead — a fresh profile's story mode is level 5 on both sides */
                 const _storyLv = (typeof state !== 'undefined' && (state.storyLevel | 0) > 0) ? Math.max(1, Math.min(XP_MAX_LEVEL, state.storyLevel | 0)) : 0;
                 const targetLevel = _storyLv || ((typeof MODE_LEVEL_RULES !== 'undefined') ? MODE_LEVEL_RULES.pvpNormalizedLevel : XP_MAX_LEVEL);
-                const _secJobLvl = (typeof SECONDARY_JOB_LEVEL !== 'undefined') ? SECONDARY_JOB_LEVEL : 15;
-
-                if (targetLevel >= _secJobLvl) {
-                    const metaSecJob = identityOverride?.secondaryJob || null;
-                    if (metaSecJob) {
-                        applySecondaryJob(newUnit, metaSecJob);
-                    } else {
-                        aiPickSecondaryJob(newUnit);
-                    }
-                }
+                /* (the secondary job retired 2026-09-24 — the tier rework) */
 
                 setUnitLevel(newUnit, targetLevel);
 
@@ -14535,7 +14509,7 @@
                     // Slot-budget aware: over-budget saved builds are trimmed
                     // gracefully (later picks that no longer fit are skipped,
                     // earlier picks are kept).
-                    const _secJobForBudget = newUnit._secondaryJob || identityOverride?.secondaryJob || '';
+                    const _secJobForBudget = '';   // the tier rework (2026-09-24): no secondary job
                     let _validIds;
                     if (typeof classHasSpellTree === 'function' && classHasSpellTree(template.cls)
                         && typeof treeLegalSubset === 'function') {

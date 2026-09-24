@@ -206,7 +206,7 @@ test('every race capstone (ring 4) is tier III; rings 1–3 are not — twins sh
     assert.deepStrictEqual(problems, []);
 });
 
-test('twin nodes: faces, alts, one-alternate rule, repair, random walks, Freelancer', () => {
+test('twin nodes: faces, alts, both alternates equippable, shared tier, Freelancer', () => {
     // at least the Phase-2 free twins exist
     const twinRaces = Object.keys(D.RACE_TREE).filter(r => D.RACE_TREE[r].some(Array.isArray));
     assert.ok(twinRaces.length >= 8, `expected the Phase-2 twin rows, found ${twinRaces.length}`);
@@ -214,50 +214,33 @@ test('twin nodes: faces, alts, one-alternate rule, repair, random walks, Freelan
     assert.strictEqual(JSON.stringify(D.getRaceTreeSpells('quarterback')),
         JSON.stringify(['raceBulletPass', 'raceBlitz', 'raceAudible', 'raceHailMary']));
     assert.strictEqual(JSON.stringify(D.getRaceTreeAlts('quarterback')),
-        JSON.stringify({ R2: ['raceBlitz', 'raceQBSneak'], R3: ['raceAudible', 'raceSpikeTheBall'] }));   // R2 twin landed with QB Sneak (Phase 5 wave A)
+        JSON.stringify({ R2: ['raceBlitz', 'raceQBSneak'], R3: ['raceAudible', 'raceSpikeTheBall'] }));
     assert.ok(D.getRaceTreeAllIds('quarterback').includes('raceSpikeTheBall'));
-    // a non-twin race exposes no alts (the vampire grew a twin in Phase 5 wave B)
     assert.strictEqual(JSON.stringify(D.getRaceTreeAlts('knight')), '{}');
-    // the node wears the equipped alternate, else the face
-    assert.strictEqual(D.buildUnitSpellTree('quarterback', 'Sniper', '', []).nodes.R3, 'raceAudible');
-    assert.strictEqual(D.buildUnitSpellTree('quarterback', 'Sniper', '', ['raceBulletPass', 'raceBlitz', 'raceSpikeTheBall']).nodes.R3, 'raceSpikeTheBall');
+    // 2026-09-24 SPELL TIERS: a twin is two spells of the same tier — both may be equipped
     const ok = (ids) => D.isTreeLoadoutLegal('quarterback', 'Sniper', '', ids);
-    assert.ok(ok(['raceBulletPass', 'raceBlitz', 'raceAudible']), 'face alternate legal');
-    assert.ok(ok(['raceBulletPass', 'raceBlitz', 'raceSpikeTheBall']), 'other alternate legal');
-    assert.ok(ok(['raceBulletPass', 'raceBlitz', 'raceSpikeTheBall', 'raceHailMary']), 'capstone reachable through either alternate');
-    assert.ok(!ok(['raceBulletPass', 'raceBlitz', 'raceAudible', 'raceSpikeTheBall']), 'both alternates illegal');
-    assert.ok(!ok(['raceBulletPass', 'raceSpikeTheBall']), 'alternate still needs ring 2');
-    // both alternates price by the node's ring
+    assert.ok(ok(['raceAudible', 'raceSpikeTheBall']), 'both alternates legal together');
+    assert.ok(ok(['raceSpikeTheBall']), 'an alternate needs no lower rung');
+    assert.strictEqual(D.spellTierOf('raceSpikeTheBall'), D.spellTierOf('raceAudible'), 'twins share a tier');
+    assert.strictEqual(D.spellSpCost('raceSpikeTheBall'), 3, 'ring-3 twin costs 3 SP');
     const rings = D.buildTreeRingIndex();
     assert.strictEqual(rings.raceSpikeTheBall, rings.raceAudible);
     assert.strictEqual(D.SPELL_BY_ID.raceSpikeTheBall.cost, D.TREE_RING_MP_COSTS[2]);
-    // repair keeps the FIRST alternate listed and drops the other
+    // repair keeps both alternates
     assert.strictEqual(
-        JSON.stringify(D.treeLegalSubset('quarterback', 'Sniper', '', ['raceBulletPass', 'raceBlitz', 'raceSpikeTheBall', 'raceAudible', 'raceHailMary'])),
-        JSON.stringify(['raceBulletPass', 'raceBlitz', 'raceSpikeTheBall', 'raceHailMary']));
-    // random walks over twin races stay legal and do reach the alternates
-    let altSeen = 0;
+        JSON.stringify(D.treeLegalSubset('quarterback', 'Sniper', '', ['raceBulletPass', 'raceSpikeTheBall', 'raceAudible'])),
+        JSON.stringify(['raceBulletPass', 'raceSpikeTheBall', 'raceAudible']));
+    // random kits over twin races stay legal
     for (const race of twinRaces) {
         const cls = D.RACE_DEFAULT_JOBS[race] || 'Warrior';
-        for (let i = 0; i < 15; i++) {
+        for (let i = 0; i < 10; i++) {
             const walk = D.buildTreeLegalLoadout(race, cls, '');
-            assert.ok(D.isTreeLoadoutLegal(race, cls, '', walk), `twin walk illegal for ${race}: ${walk.join(',')}`);
-            const alts = Object.values(D.getRaceTreeAlts(race, cls)).flat();
-            if (walk.some(id => alts.includes(id) && id !== D.getRaceTreeSpells(race, cls).find(f => alts.includes(f)))) altSeen++;
+            assert.ok(D.isTreeLoadoutLegal(race, cls, '', walk), `twin kit illegal for ${race}: ${walk.join(',')}`);
         }
     }
-    assert.ok(altSeen > 0, 'random walks never picked a non-face alternate');
-    // Freelancer: race twins resolve the same way, pool excludes both alternates
-    assert.ok(D.isTreeLoadoutLegal('ki fighter', 'Freelancer', '', ['raceFlurryOfBlows', 'raceKiWave']), 'FL alternates legal');
-    assert.ok(!D.isTreeLoadoutLegal('ki fighter', 'Freelancer', '', ['raceKiBlast', 'raceFlurryOfBlows']), 'FL both alternates illegal');
-    assert.ok(!D.flWildcardPool('ki fighter').some(sp => sp.id === 'raceKiWave' || sp.id === 'raceKiBlast'), 'FL pool excludes race twins');
-    assert.strictEqual(
-        JSON.stringify(D.treeLegalSubset('ki fighter', 'Freelancer', '', ['raceKiBlast', 'raceFlurryOfBlows', 'raceKiWave'])),
-        JSON.stringify(['raceKiBlast', 'raceKiWave']));
-    for (let i = 0; i < 20; i++) {
-        const walk = D.buildTreeLegalLoadout('ki fighter', 'Freelancer', '');
-        assert.ok(D.isTreeLoadoutLegal('ki fighter', 'Freelancer', '', walk), `FL twin walk illegal: ${walk.join(',')}`);
-    }
+    // Freelancer: own race twins behave the same; the job pool never holds race ids
+    assert.ok(D.isTreeLoadoutLegal('ki fighter', 'Freelancer', '', ['raceKiBlast', 'raceKiWave', 'raceFlurryOfBlows']), 'FL both alternates legal');
+    assert.ok(!D.flWildcardPool('ki fighter').some(sp => sp.id === 'raceKiWave' || sp.id === 'raceKiBlast'), 'FL job pool excludes race twins');
 });
 
 test('§2.1 single-stat rule: only capstones may boost two stats at once', () => {
@@ -276,99 +259,95 @@ test('§2.1 single-stat rule: only capstones may boost two stats at once', () =>
     assert.deepStrictEqual(problems, []);
 });
 
-test('tree legality: adjacency, connectivity, capstone geometry, random walks', () => {
-    // vampire Sniper/Raider — a fully-audited race with two full job pillars
-    const ok = (ids) => D.isTreeLoadoutLegal('vampire', 'Sniper', 'Raider', ids);
+test('tier legality: SP cost by rung, 16 SP, 7 slots, no adjacency, random kits', () => {
+    assert.strictEqual(D.SPELL_SP_MAX, 16);
+    assert.strictEqual(D.SPELL_SLOT_MAX, 7);
+    // vampire Sniper — a fully-audited race with a full job pillar
+    const ok = (ids) => D.isTreeLoadoutLegal('vampire', 'Sniper', '', ids);
+    for (const [id, sp] of [['kneecapShot', 1], ['camouflage', 2], ['precisionShot', 3], ['headshot', 4],
+                            ['raceBite', 1], ['racePredatorDrop', 4]]) {
+        assert.strictEqual(D.spellSpCost(id), sp, `${id} costs ${sp} SP`);
+    }
     assert.ok(ok([]), 'empty loadout legal');
-    assert.ok(ok(['raceBite']), 'ring-1 alone legal');
-    assert.ok(!ok(['raceMistForm']), 'ring-2 without ring-1 illegal');
-    assert.ok(!ok(['headshot']), 'capstone alone illegal');
-    assert.ok(ok(['kneecapShot', 'camouflage', 'precisionShot', 'headshot']), 'full pillar legal');
-    assert.ok(!ok(['raceBite', 'raceMistForm', 'camouflage']),
-        'no cross-links — a job ring 2 needs its own ring 1 first');
-    assert.ok(!ok(['kneecapShot', 'camouflage', 'precisionShot', 'headshot', 'raceBite', 'racePredatorDrop']),
-        'two capstones impossible — each needs its full 4-node pillar (4+4 > 6)');
-    assert.ok(!ok(['racePredatorDrop', 'headshot', 'rampage']), 'three capstones impossible');
+    assert.ok(ok(['headshot']), 'a Tier IV alone is legal — no climbing');
+    assert.ok(ok(['raceMistForm']), 'a Tier II race spell alone is legal');
+    assert.ok(ok(['headshot', 'racePredatorDrop']), 'two capstones legal (8 SP)');
+    assert.ok(ok(['kneecapShot', 'camouflage', 'precisionShot', 'headshot', 'raceBite', 'raceMistForm']),
+        'full job pillar + two race rungs = 13 SP, 6 slots');
+    assert.strictEqual(D.loadoutSpUsed(['kneecapShot', 'camouflage', 'precisionShot', 'headshot']), 10);
     assert.ok(!ok(['raceBite', 'raceBite']), 'duplicates illegal');
-    assert.ok(!ok(['fire1']), 'off-tree spell illegal');
-    // random walks are always legal, for audited and fallback races alike
-    for (const [race, cls, sec] of [['vampire', 'Sniper', 'Raider'], ['homosapien', 'Warrior', 'Tank'],
-                                    ['gnome', 'Engineer', ''], ['dragon', 'Warrior', 'Black Mage']]) {
+    assert.ok(!ok(['fire1']), 'off-pool spell illegal');
+    // SP cap: find the race's own ring-3 spell for a 4+4+4+3+… budget check
+    const r3 = D.getRaceTreeSpells('vampire', 'Sniper')[2];
+    assert.ok(ok(['headshot', 'racePredatorDrop', 'precisionShot', r3, 'raceBite', 'kneecapShot']),
+        '4+4+3+3+1+1 = 16 SP exactly is legal');
+    assert.ok(!ok(['headshot', 'racePredatorDrop', 'precisionShot', r3, 'camouflage', 'kneecapShot']), '4+4+3+3+2+1 = 17 SP is over');
+    assert.strictEqual(D.spellAddVerdict('vampire', 'Sniper', ['headshot', 'racePredatorDrop', 'precisionShot', r3, 'camouflage'], 'kneecapShot').reason, 'sp');
+    // verdict reasons
+    assert.strictEqual(D.spellAddVerdict('vampire', 'Sniper', ['headshot'], 'headshot').reason, 'dup');
+    assert.strictEqual(D.spellAddVerdict('vampire', 'Sniper', [], 'fire1').reason, 'pool');
+    // random kits are always legal, within both budgets
+    for (const [race, cls] of [['vampire', 'Sniper'], ['homosapien', 'Warrior'], ['gnome', 'Engineer'], ['dragon', 'Black Mage']]) {
         for (let i = 0; i < 20; i++) {
-            const walk = D.buildTreeLegalLoadout(race, cls, sec);
-            assert.ok(D.isTreeLoadoutLegal(race, cls, sec, walk),
-                `random walk illegal for ${race}/${cls}/${sec}: ${walk.join(',')}`);
-            assert.ok(walk.length <= D.SPELL_SLOT_MAX, 'walk within slot cap');
+            const walk = D.buildTreeLegalLoadout(race, cls, '');
+            assert.ok(D.isTreeLoadoutLegal(race, cls, '', walk), `random kit illegal for ${race}/${cls}: ${walk.join(',')}`);
+            assert.ok(walk.length <= D.SPELL_SLOT_MAX, 'kit within slot cap');
+            assert.ok(D.loadoutSpUsed(walk) <= D.SPELL_SP_MAX, 'kit within SP cap');
         }
     }
-    // repair keeps the largest connected subset (JSON compare — the array
-    // comes from the load-data vm realm, so deepStrictEqual sees a foreign
-    // Array prototype)
+    // repair: off-pool and over-budget ids drop, earlier picks win (JSON compare — vm realm)
     assert.strictEqual(
-        JSON.stringify(D.treeLegalSubset('vampire', 'Sniper', 'Raider', ['raceBite', 'headshot', 'raceMistForm'])),
-        JSON.stringify(['raceBite', 'raceMistForm']));
+        JSON.stringify(D.treeLegalSubset('vampire', 'Sniper', 'Raider', ['raceBite', 'fire1', 'headshot', 'raceMistForm', 'raceBite'])),
+        JSON.stringify(['raceBite', 'headshot', 'raceMistForm']));
+    assert.strictEqual(
+        JSON.stringify(D.treeLegalSubset('vampire', 'Sniper', '', ['headshot', 'racePredatorDrop', 'precisionShot', r3, 'camouflage', 'kneecapShot'])),
+        JSON.stringify(['headshot', 'racePredatorDrop', 'precisionShot', r3, 'camouflage']));
 });
 
-test('Freelancer wildcard-socket tree: pool, placement, legality, random walks', () => {
+test('Freelancer borrows: race + job pools, any tier, same SP / slot budget', () => {
     const fl = (ids) => D.isTreeLoadoutLegal('homosapien', 'Freelancer', '', ids);
-    const T = (sp) => D._flTierOf(sp);
-    // 2026-09-14: the old fixed spells are homosapien RACE abilities now
-    assert.ok(!Object.keys(D.FL_FIXED).length, 'no fixed Freelancer nodes any more');
+    // 2026-09-14: the old fixed spells are homosapien RACE abilities
     for (const id of ['improvise', 'jackOfAll', 'reallyGoodPunch']) {
         assert.ok(D.RACE_ABILITIES.homosapien.some(sp => sp.id === id), id + ' is a homosapien ability');
         assert.ok(!D.SPELL_LIBRARY.some(sp => sp.id === id), id + ' left the job library');
         assert.ok(D.getRaceTreeAllIds('homosapien', 'Freelancer').includes(id), id + ' sits on the homosapien tree');
     }
     assert.strictEqual(D.RACE_TREE.homosapien.filter(Array.isArray).length, 3, 'three homosapien twin nodes');
-    assert.ok(fl(['improvise', 'jackOfAll', 'raceUnderdogSpirit', 'reallyGoodPunch']), 'the old Freelancer chain is a homosapien race pillar');
-    assert.ok(!fl(['improvise', 'raceElbowGrease']), 'both alternates of a homosapien twin illegal');
-    // the JOB pool (S1–S4)
+    assert.ok(fl(['improvise', 'jackOfAll', 'raceUnderdogSpirit', 'reallyGoodPunch']), 'the homosapien race row');
+    assert.ok(fl(['improvise', 'raceElbowGrease']), 'both alternates of a homosapien twin legal');
+    // the JOB pool
     const pool = D.flWildcardPool('homosapien');
     assert.ok(pool.length >= 40, 'job pool spans the job trees');
     assert.ok(pool.every(sp => !['improvise', 'jackOfAll', 'reallyGoodPunch'].includes(sp.id)),
         'the homosapien twins are not in the job pool');
-    const t1 = pool.filter(sp => T(sp) === 'I').map(sp => sp.id);
-    const t2 = pool.find(sp => T(sp) === 'II').id;
-    const t3 = pool.find(sp => T(sp) === 'III').id;
-    assert.ok(fl([]), 'empty legal');
-    assert.ok(fl([t1[0]]), 'a tier-I job wildcard sits at S1 (root-adjacent)');
-    assert.ok(!fl([t3]), 'tier-III job wildcard without S1–S3 support illegal');
-    assert.ok(fl([t1[0], t1[1], t2, t3]), 'full job pillar to the S4 capstone legal');
-    assert.ok(!fl([t1[0], t1[1], t1[2]]), 'a third tier-I job wildcard has no job socket (S1, S2 only)');
-    // the RACE pool (P1–P4): every other race's tree, never this race's own
+    // the RACE pool: every other race's tree, never this race's own
     const rp = D.flRacePool('homosapien');
     assert.ok(rp.length >= 200, 'race pool spans the race trees');
     const own = new Set(D.getRaceTreeAllIds('homosapien', 'Freelancer'));
-    assert.ok(rp.every(sp => !own.has(sp.id)), 'own race pillar is not in the race pool');
+    assert.ok(rp.every(sp => !own.has(sp.id)), 'own race row is not in the race pool');
     const jobIds = new Set(Object.values(D.CLASS_TREE).flat());
     assert.ok(rp.every(sp => !jobIds.has(sp.id)), 'no job-tree id in the race pool');
     assert.ok(D.flRacePool('knight').some(sp => sp.id === 'reallyGoodPunch'), 'a knight Freelancer may borrow the homosapien capstone');
-    assert.ok(!D.flRacePool('knight').some(sp => sp.id === 'raceChivalry'), 'a knight never borrows its own pillar');
-    assert.strictEqual(D.flSocketPool('homosapien', 'P1').length, rp.length, 'P sockets draw the race pool');
-    assert.strictEqual(D.flSocketPool('homosapien', 'S1').length, pool.length, 'S sockets draw the job pool');
-    const r1 = rp.filter(sp => T(sp) === 'I').map(sp => sp.id);
-    const r2 = rp.find(sp => T(sp) === 'II').id;
-    const r3 = rp.find(sp => T(sp) === 'III').id;
-    assert.ok(fl([r1[0]]), 'a tier-I race wildcard sits at P1');
-    assert.ok(!fl([r2]), 'a tier-II race wildcard needs P1–P2');
-    assert.ok(!fl([r3]), 'a tier-III race wildcard needs P1–P3');
-    assert.ok(fl([r1[0], r1[1], r2, r3]), 'full race pillar to the P4 capstone legal');
-    assert.ok(!fl([r1[0], r1[1], r1[2]]), 'a third tier-I race wildcard has no race socket');
-    assert.ok(!fl([r1[0], t1[0], r1[1], t1[1], r1[2]]), 'race ids never spill into job sockets');
-    assert.ok(fl([r1[0], r1[1], r2, r3, t1[0], t1[1], t2]), 'a race capstone beside three job wildcards fills the 7 slots');
-    assert.ok(!fl([r1[0], r1[1], r2, r3, t1[0], t1[1], t2, t3]), 'two capstones never fit (4 + 4 > 7)');
-    const tree = D.buildFreelancerTree('homosapien', [r1[0], t1[0]]);
-    assert.strictEqual(tree.nodes.P1, r1[0]); assert.strictEqual(tree.nodes.S1, t1[0]);
-    assert.strictEqual(tree.socketPool.P1, 'race'); assert.strictEqual(tree.socketPool.S1, 'job');
+    // the unit pool is own row + both borrow pools
+    const parts = D.unitSpellPoolParts('homosapien', 'Freelancer');
+    assert.strictEqual(parts.borrowRace.length, rp.length);
+    assert.strictEqual(parts.borrowJob.length, pool.length);
+    const byTier = (list, t) => list.filter(sp => D.spellTierOf(sp) === t).map(sp => sp.id);
+    const j4 = byTier(pool, 4), r4 = byTier(rp, 4), j1 = byTier(pool, 1);
+    assert.ok(fl([j4[0]]), 'a Tier IV job borrow alone is legal');
+    assert.ok(fl([r4[0], j4[0]]), 'race + job capstones side by side');
+    assert.ok(fl([r4[0], r4[1], j4[0], j4[1]]), 'four Tier IVs = 16 SP');
+    assert.ok(!fl([r4[0], r4[1], j4[0], j4[1], j1[0]]), 'a fifth spell breaks 16 SP');
+    assert.ok(fl(j1.slice(0, 7)), 'seven Tier I borrows fill the slots');
+    assert.ok(!fl(j1.slice(0, 8)), 'an eighth never fits');
     for (let i = 0; i < 20; i++) {
         const walk = D.buildTreeLegalLoadout('homosapien', 'Freelancer', '');
-        assert.ok(fl(walk), `Freelancer random walk illegal: ${walk.join(',')}`);
-        assert.ok(walk.length <= D.SPELL_SLOT_MAX, 'walk within slot cap');
+        assert.ok(fl(walk), `Freelancer random kit illegal: ${walk.join(',')}`);
     }
-    // repair: off-pool / disconnected ids drop, earlier picks win
+    // repair: off-pool ids drop, earlier picks win
     assert.strictEqual(
-        JSON.stringify(D.treeLegalSubset('homosapien', 'Freelancer', '', [r1[0], 'noSuchSpell', r3, r1[1], r2])),
-        JSON.stringify([r1[0], r1[1], r2]));
+        JSON.stringify(D.treeLegalSubset('homosapien', 'Freelancer', '', [r4[0], 'noSuchSpell', r4[1], j4[0], j4[1], j1[0]])),
+        JSON.stringify([r4[0], r4[1], j4[0], j4[1]]));
 });
 
 /* ── Elemental affinity system (2026-09-01, ELEMENTAL_TYPES_PLAN.md) ────── */

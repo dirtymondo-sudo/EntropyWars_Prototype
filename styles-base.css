@@ -5042,6 +5042,64 @@ body.diorama-3d .tile-underpass.jump::before {
 .pb-bus-cell.c::before { left: calc(-1 * var(--pb-lane-gap)); right: calc(-1 * var(--pb-lane-gap)); }
 .pb-bus-cell.r::before { left: calc(-1 * var(--pb-lane-gap)); right: calc(100% - var(--pb-disc) / 2); border-radius: 0 2px 2px 0; }
 .pb-bus-cell .pb-tn { position: absolute; left: 0; right: 0; top: calc(var(--pb-disc) / -2 + 1px); height: var(--pb-disc); }
+/* ── THE TIER RACK (2026-09-24, the spell tree rework — party-builder.js
+   SpellTierPanel): no lanes, no links, no bus. THE LOADOUT (seven slot
+   cells) · four TIER ROWS, IV on top (a numeral + its SP price, then a grid
+   of technique chips — the .pb-tn disc + text + a side column with the
+   source and the SP price, or why it cannot be picked) · the basic attack ·
+   THE FINISHER. The SP meter (.pb-sp) sits in the tech bar beside the slot
+   pips. States: is-equipped (lit) · is-ok (pickable) · is-sp / is-slots
+   (over the budget — dimmed, the reason in red) · is-sealed (Clash). ── */
+.pb-rack { --pb-disc: clamp(30px, 4vh, 38px); --pb-row: clamp(40px, 5.2vh, 48px); gap: 8px; }
+.pb-loadout { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; flex-shrink: 0; }
+.pb-ls { --nc: var(--ph-dim); position: relative; display: flex; align-items: center; gap: 5px; min-width: 0; height: 30px; padding: 0 16px 0 4px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--nc) 70%, transparent); background: color-mix(in srgb, var(--nc) 16%, #0d0d13); cursor: pointer; transition: background 0.12s, border-color 0.12s; }
+.pb-ls:hover { border-color: var(--ph-red); background: rgba(255,106,92,0.14); }
+.pb-ls.sel { box-shadow: 0 0 0 2px #000, 0 0 0 3px var(--ph-gold); }
+.pb-ls-disc { width: 20px; height: 20px; flex: none; border-radius: 50%; background: var(--nc); color: #0d0d13; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
+.pb-ls-name { font-family: 'Cormorant SC', serif; font-size: 11px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.pb-ls-tier { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); font-family: 'Cinzel', 'Cormorant SC', serif; font-size: 8px; font-weight: 900; color: var(--ph-gold); letter-spacing: 0.04em; }
+.pb-ls.empty { border: 1px dashed rgba(255,255,255,0.16); background: transparent; cursor: default; justify-content: center; padding: 0; }
+.pb-ls.empty:hover { border-color: rgba(255,255,255,0.16); background: transparent; }
+.pb-ls.empty i { font-style: normal; font-size: 9px; letter-spacing: 0.1em; color: var(--ph-faint); }
+.pb-tiers { display: flex; flex-direction: column; gap: 6px; flex: 1 0 auto; }
+.pb-tier { display: grid; grid-template-columns: 46px minmax(0, 1fr); gap: 8px; align-items: stretch; padding: 4px 0; border-top: 1px solid var(--ph-line); }
+.pb-tier-head { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; border-right: 1px solid var(--ph-line); padding-right: 6px; }
+.pb-tier-head b { font-family: 'Cinzel', 'Cormorant SC', serif; font-size: 18px; font-weight: 900; line-height: 1; color: var(--ph); letter-spacing: 0.02em; }
+.pb-tier-head span { font-size: 8px; letter-spacing: 0.14em; color: var(--ph-gold); white-space: nowrap; }
+.pb-tier-head i { font-style: normal; font-size: 7px; letter-spacing: 0.14em; color: var(--ph-dim); white-space: nowrap; }
+.pb-tier[data-tier="4"] .pb-tier-head b { color: var(--ph-gold); text-shadow: 0 0 8px rgba(255,205,107,0.45); }
+.pb-tier-cells { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 2px 8px; align-content: start; min-width: 0; }
+.pb-tier-none { align-self: center; font-size: 8px; letter-spacing: 0.18em; color: var(--ph-faint); padding: 0 4px; }
+.pb-tn.pb-tc { padding-right: 6px; }
+.pb-tn.pb-tc.hov { background: rgba(255,255,255,0.05); }
+.pb-tc-side { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex: none; }
+.pb-tc-src { font-style: normal; font-size: 6.5px; letter-spacing: 0.14em; color: var(--ph-faint); white-space: nowrap; }
+.pb-tn.src-borrowRace .pb-tc-src, .pb-tn.src-borrowJob .pb-tc-src { color: var(--ph-teal); }
+.pb-tc-cost { font-family: 'IBM Plex Mono', monospace; font-size: 9px; font-weight: 700; color: var(--ph-gold); padding: 0 5px; border: 1px solid rgba(255,205,107,0.45); border-radius: 999px; white-space: nowrap; }
+.pb-tc-why { font-style: normal; font-size: 7px; letter-spacing: 0.08em; color: var(--ph-red); white-space: nowrap; }
+.pb-tn.is-ok .pb-tn-disc { background: color-mix(in srgb, var(--nc) 22%, #0d0d13); }
+.pb-tn.is-equipped .pb-tc-cost { color: #0d0d13; background: var(--ph-gold); border-color: var(--ph-gold); }
+.pb-tn.is-equipped.can:hover { background: rgba(255,106,92,0.10); }
+.pb-tn.is-sp .pb-tn-disc, .pb-tn.is-slots .pb-tn-disc { border-color: color-mix(in srgb, var(--nc) 40%, transparent); color: color-mix(in srgb, var(--nc) 55%, transparent); }
+.pb-tn.is-sp .pb-tn-name, .pb-tn.is-slots .pb-tn-name { color: var(--ph-dim); }
+.pb-tn.is-sp .pb-tn-meta, .pb-tn.is-slots .pb-tn-meta { color: var(--ph-faint); }
+.pb-tn.pb-tc-borrow .pb-tn-name { color: var(--ph-teal); }
+.pb-tn.pb-tc-borrow .pb-tn-disc { border-color: rgba(127,217,221,0.6); color: var(--ph-teal); }
+.pb-rack-foot { display: flex; justify-content: center; padding-top: 4px; border-top: 1px solid var(--ph-line); flex-shrink: 0; }
+.pb-rack-foot .pb-tn { max-width: 320px; flex: 1; }
+/* the SP meter in the tech bar: one cell per Spell Point, grouped by four */
+.pb-sp { display: inline-flex; align-items: center; gap: 5px; }
+.pb-sp b { font-family: 'Cinzel', 'Cormorant SC', serif; font-size: 9px; font-weight: 900; letter-spacing: 0.1em; color: var(--ph-gold); }
+.pb-sp-cells { display: inline-flex; gap: 2px; }
+.pb-sp-cells i { width: 6px; height: 11px; border: 1px solid rgba(255,255,255,0.28); display: inline-block; box-sizing: border-box; }
+.pb-sp-cells i:nth-child(4n):not(:last-child) { margin-right: 3px; }
+.pb-sp-cells i.on { background: var(--ph-gold); border-color: var(--ph-gold); box-shadow: 0 0 5px rgba(255,205,107,0.45); }
+.pb-sp-cells i.on.drop { background: var(--ph-red); border-color: var(--ph-red); }
+.pb-sp-cells i.pend { border-color: var(--ph-gold); background: rgba(255,205,107,0.3); }
+.pb-sp-cells i.pend.over { border-color: var(--ph-red); background: rgba(255,106,92,0.4); }
+.pb-sp small { font-size: 9px; letter-spacing: 0.12em; color: var(--ph-dim); }
+.pb-sp small.over, .pb-sp.over small { color: var(--ph-red); }
+@media (max-width: 1100px) { .pb-loadout { grid-template-columns: repeat(4, minmax(0, 1fr)); } .pb-tier-cells { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); } }
 /* ── THE FINISHER ON THE CIRCUIT (2026-09-19): one ☠ row under the root's
    bus — the race's execution (data.js FINISHERS), the gauge's other verb.
    Not a slot: always lit in its TYPE colour, a skull ring round the disc,
@@ -6070,47 +6128,25 @@ body.diorama-3d .tile-underpass.jump::before {
 #hqPage .hq-circ { margin: 0 0 12px; padding: 10px 12px 12px; border: 1px solid rgba(184,160,96,0.4); background: rgba(184,160,96,0.05); }
 #hqPage .hq-circ-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
 #hqPage .hq-circ-bar > b { font-family: 'Cormorant SC', serif; font-size: 17px; letter-spacing: 0.2em; }
-#hqPage .hq-circ-pips { display: inline-flex; gap: 3px; }
-#hqPage .hq-circ-pips i { display: block; width: 9px; height: 9px; border-radius: 50%; border: 1px solid rgba(184,160,96,0.6); background: rgba(0,0,0,0.4); }
-#hqPage .hq-circ-pips i.on { background: #d9b45a; box-shadow: 0 0 6px rgba(217,180,90,0.7); }
 #hqPage .hq-circ-count { font-size: 8px; letter-spacing: 0.24em; color: #b8a060; }
 #hqPage .hq-circ-tools { margin-left: auto; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 #hqPage .hq-circ-tools .hq-btn-xs { margin-left: 0; padding: 4px 8px; min-height: 24px; letter-spacing: 0.14em; }
 #hqPage .hq-circ-note { margin: 8px 0 0; font-size: 8px; letter-spacing: 0.18em; line-height: 1.7; color: rgba(184,160,96,0.8); }
 #hqPage .hq-circ-note.bad { color: #ffb0b0; }
-#hqPage .hq-circ-lanes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
-#hqPage .hq-circ-lane { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
-#hqPage .hq-circ-lane.empty { opacity: 0.45; }
 #hqPage .hq-circ-head { display: flex; flex-direction: column; align-items: center; padding: 5px 6px; border: 1px solid rgba(184,160,96,0.35); background: rgba(184,160,96,0.08); text-align: center; }
 #hqPage .hq-circ-head i { font-style: normal; font-size: 7px; letter-spacing: 0.24em; color: #b8a060; }
 #hqPage .hq-circ-head b { font-family: 'Cormorant SC', serif; font-size: 13px; letter-spacing: 0.12em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 #hqPage .hq-circ-node { position: relative; display: grid; grid-template-columns: 26px 1fr auto; grid-template-rows: auto auto; column-gap: 8px; row-gap: 1px; align-items: center; width: 100%; min-width: 0; padding: 6px 8px 6px 6px; text-align: left; font-family: inherit; color: #ece7d8; border: 1px solid rgba(255,255,255,0.08); border-left: 3px solid var(--cc, #f0d060); background: rgba(255,255,255,0.03); cursor: pointer; transition: background 0.15s, border-color 0.15s, transform 0.15s; }
-#hqPage .hq-circ-node::before { content: ''; position: absolute; left: 50%; top: 100%; width: 2px; height: 6px; background: rgba(184,160,96,0.35); }
-#hqPage .hq-circ-lane .hq-circ-node:last-child::before, #hqPage .hq-circ-fork:last-child .hq-circ-node::before { display: none; }
 #hqPage .hq-circ-disc { grid-row: 1 / span 2; display: flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%; font-style: normal; font-size: 13px; color: var(--cc, #f0d060); border: 1px solid var(--cc, #f0d060); background: rgba(0,0,0,0.45); }
 #hqPage .hq-circ-node b { font-family: 'Cormorant SC', serif; font-size: 14px; letter-spacing: 0.08em; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #hqPage .hq-circ-node span { grid-column: 2; font-size: 7px; letter-spacing: 0.14em; color: #b8a060; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #hqPage .hq-circ-node em { grid-column: 3; grid-row: 1 / span 2; font-style: normal; font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: 0.1em; color: #b8a060; text-align: right; white-space: nowrap; }
-#hqPage .hq-circ-node.cap .hq-circ-disc { box-shadow: 0 0 0 2px rgba(0,0,0,0.5), 0 0 0 3px var(--cc, #f0d060); }
 #hqPage .hq-circ-node.st-equipped { border-color: rgba(217,180,90,0.7); background: linear-gradient(90deg, rgba(184,160,96,0.22), rgba(255,255,255,0.04)); }
 #hqPage .hq-circ-node.st-equipped .hq-circ-disc { background: var(--cc, #f0d060); color: #0a0a0e; box-shadow: 0 0 10px var(--cc, #f0d060); }
 #hqPage .hq-circ-node.st-equipped em { color: #ffe08a; }
-#hqPage .hq-circ-node.st-reachable em { color: #9ff09f; }
-#hqPage .hq-circ-node.st-far { opacity: 0.72; }
-#hqPage .hq-circ-node.st-swap { border-style: dashed; }
-#hqPage .hq-circ-node.st-swap em { color: #7fd9dd; font-size: 12px; }
-#hqPage .hq-circ-node.st-blocked, #hqPage .hq-circ-node.st-sealed, #hqPage .hq-circ-node.st-empty { opacity: 0.38; }
-#hqPage .hq-circ-node.st-empty, #hqPage .hq-circ-node.st-sealed { cursor: not-allowed; }
-#hqPage .hq-circ-node.st-socket { border-style: dashed; border-left-style: dashed; }
-#hqPage .hq-circ-node.st-socket .hq-circ-disc { border-style: dashed; }
-#hqPage .hq-circ-node.over em { color: #ffb0b0; }
 #hqPage .hq-circ-node:not([disabled]):hover { background: rgba(184,160,96,0.18); border-color: #d9b45a; transform: translateY(-1px); }
 #hqPage .hq-circ-node.st-equipped:not([disabled]):hover { border-color: #ff6a6a; background: rgba(255,74,74,0.14); }
 #hqPage .hq-circ-node.st-equipped:not([disabled]):hover em { color: #ffb0b0; }
-#hqPage .hq-circ-fork { position: relative; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 2px; }
-#hqPage .hq-circ-fork .hq-circ-node { padding-left: 5px; padding-right: 5px; }
-#hqPage .hq-circ-fork .hq-circ-node span { display: none; }
-#hqPage .hq-circ-bridge { font-style: normal; font-size: 11px; color: #7fd9dd; }
 #hqPage .hq-circ-root { display: grid; grid-template-columns: 26px 1fr; column-gap: 8px; align-items: center; margin: 8px auto 0; max-width: 360px; padding: 6px 10px; border: 1px solid rgba(184,160,96,0.5); background: rgba(184,160,96,0.1); }
 #hqPage .hq-circ-root i { grid-row: 1 / span 2; font-style: normal; text-align: center; font-size: 14px; color: #ffe08a; }
 #hqPage .hq-circ-root b { font-family: 'Cormorant SC', serif; font-size: 14px; letter-spacing: 0.16em; }
@@ -6128,7 +6164,28 @@ body.diorama-3d .tile-underpass.jump::before {
 #hqPage .hq-circ-row.on em { color: #b8a060; }
 #hqPage .hq-circ-row:not([disabled]):hover { background: rgba(127,217,221,0.14); border-color: #7fd9dd; }
 #hqPage .hq-circ-tier { font-style: normal; font-family: 'Cinzel', serif; font-weight: 900; font-size: 8px; padding: 0 4px; border: 1px solid rgba(184,160,96,0.5); color: #e8cf8a; }
-@media (max-width: 900px) { #hqPage .hq-circ-lanes { grid-template-columns: 1fr; } #hqPage .hq-circ-fork .hq-circ-node span { display: block; } }
+/* THE SPELL TIERS IN THE FIELD (2026-09-24): the pause menu's tier rack — map.js _hqPauseCircuitHtml */
+#hqPage .hq-circ-sp { display: inline-flex; gap: 2px; }
+#hqPage .hq-circ-sp i { display: block; width: 8px; height: 12px; border: 1px solid rgba(184,160,96,0.6); background: rgba(0,0,0,0.4); }
+#hqPage .hq-circ-sp i:nth-child(4n) { margin-right: 3px; }
+#hqPage .hq-circ-sp i.on { background: #d9b45a; box-shadow: 0 0 6px rgba(217,180,90,0.7); }
+#hqPage .hq-circ-tiers { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+#hqPage .hq-circ-tier-row { display: grid; grid-template-columns: 76px 1fr; gap: 8px; align-items: stretch; }
+#hqPage .hq-circ-tier-row .hq-circ-head { justify-content: center; gap: 2px; }
+#hqPage .hq-circ-tier-row .hq-circ-head b { font-family: 'Cinzel', serif; font-weight: 900; font-size: 12px; letter-spacing: 0.14em; color: #e8cf8a; }
+#hqPage .hq-circ-tier-row.t4 .hq-circ-head { border-color: rgba(217,180,90,0.7); background: rgba(217,180,90,0.16); }
+#hqPage .hq-circ-row-nodes { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 5px; min-width: 0; }
+#hqPage .hq-circ-node.st-ok em { color: #9ff09f; }
+#hqPage .hq-circ-node.st-slots, #hqPage .hq-circ-node.st-sp { opacity: 0.55; }
+#hqPage .hq-circ-node.st-slots em, #hqPage .hq-circ-node.st-sp em { color: #ffb0b0; }
+#hqPage .hq-circ-node.st-sealed { opacity: 0.38; cursor: not-allowed; }
+#hqPage .hq-circ-node.borrowed { border-style: dashed; border-left-style: solid; }
+#hqPage .hq-circ-src { font-style: normal; color: #7fd9dd; }
+#hqPage .hq-circ-borrow { font-family: inherit; font-size: 9px; letter-spacing: 0.18em; color: #7fd9dd; padding: 6px 10px; border: 1px dashed rgba(127,217,221,0.6); background: rgba(127,217,221,0.05); cursor: pointer; }
+#hqPage .hq-circ-borrow:not([disabled]):hover, #hqPage .hq-circ-borrow.on { background: rgba(127,217,221,0.16); border-style: solid; }
+#hqPage .hq-circ-borrow[disabled] { opacity: 0.38; cursor: not-allowed; }
+#hqPage .hq-circ-none { align-self: center; font-size: 8px; letter-spacing: 0.2em; color: rgba(184,160,96,0.6); }
+@media (max-width: 900px) { #hqPage .hq-circ-tier-row { grid-template-columns: 1fr; } #hqPage .hq-circ-tier-row .hq-circ-head { flex-direction: row; gap: 8px; } }
 
 /* ══ THE UNDISCOVERED DOOR (2026-09-21) — a plate that reads '?' (the room through it not yet stood in) ══ */
 #hqPage .hq-plate b.hq-plate-unknown { font-size: 22px; letter-spacing: 0; opacity: 0.8; }

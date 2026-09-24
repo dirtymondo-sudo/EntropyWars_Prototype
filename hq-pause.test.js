@@ -48,7 +48,7 @@ test('recordLastParty files the human seat and loadLastParty reads it back', () 
     assert.equal(rec.members[0].cls, 'Gunslinger');
     assert.equal(rec.members[0].name, 'Dutch');
     assert.equal(rec.members[0].meta.race, 'cowboy');
-    assert.equal(rec.members[0].meta.secondaryJob, 'Sniper');
+    assert.equal(rec.members[0].meta.secondaryJob, undefined, 'the tier rework (2026-09-24) retired the second job — never filed');
     assert.equal(rec.members[0].meta.customSpells.join(','), 'raceLasso', 'blank slots are dropped');
     assert.equal(rec.members[0].loadout.items.healPotion, 2);
     assert.equal(rec.members[0].loadout.equipment.accessory1, 'binoculars');

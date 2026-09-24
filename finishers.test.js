@@ -279,13 +279,13 @@ test('THE AI: scoreFinisher competes with the strike on the same scale, the exec
 });
 
 /* ═══ THE FINISHER ON THE CIRCUIT (2026-09-19) — the forge shows it and plays it ═══ */
-test('THE FORGE: the ☠ FINISHER strip stands on the TECHNIQUES circuit and previews the execution on the stage', () => {
+test('THE FORGE: the ☠ FINISHER strip stands on the TECHNIQUES tier rack and previews the execution on the stage', () => {
     const PB = src('party-builder.js'), CSS = src('styles-base.css');
     /* the strip + the panel + the keys */
     for (const sym of ["const PB_FIN_KEY = 'FIN';", 'function pbFinisherDef(race)', 'function pbFinisherInfo(key, fin)', "className: 'pb-fin'", "className: 'pb-fin-head'",
                        "'pb-tn pb-tn-fin is-finisher can'", 'function FinisherPanel(', "if (info && info.st8 === 'finisher') return h(FinisherPanel,",
-                       'const pbPreviewFinisher = (opts) => {', 'cv.previewFinisher(fin, {', "if (nodeKey === PB_FIN_KEY) { pbPreviewFinisher({ hover: true }); return; }",
-                       "if (st8 === 'finisher') { pbPreviewFinisher(); return; }", "if (key === PB_FIN_KEY) return dir === 'up' ? 'root' : key;",
+                       'const pbPreviewFinisher = (opts) => {', 'cv.previewFinisher(fin, {', "if (key === PB_FIN_KEY) { pbPreviewFinisher({ hover: true }); return; }",
+                       "if (st8 === 'finisher') { pbPreviewFinisher(); return; }", "grid.push(finisher ? ['root', PB_FIN_KEY] : ['root']);",
                        "if (key === PB_FIN_KEY) return pbFinisherInfo(key, finisher);", 'finisher: unitFinisher }))']) {
         assert.ok(PB.includes(sym), 'party-builder.js: ' + sym);
     }

@@ -732,21 +732,17 @@ function usedSpellSlots(ids) {
 }
 
 function buildDefaultCustomSpells(race, cls, secJob) {
-  /* Tree classes: default = full primary branch + race r1–r2 ("master your
-     job, dabble in your blood"), connectivity-repaired so short or sealed
-     branches degrade gracefully. Freelancer falls through to the flat-pool
-     default below. */
+  /* THE TIERS (2026-09-24): default = the job's four + the race's first two
+     rungs ("master your job, dabble in your blood" — 1+2+3+4 + 1+2 = 13 of
+     16 SP, 6 of 7 slots), trimmed to the budget by data.js treeLegalSubset.
+     A Freelancer (no job row) takes its race row. No secondary job. */
   if (typeof window.classHasSpellTree === 'function' && window.classHasSpellTree(cls)
       && typeof window.treeLegalSubset === 'function') {
-    /* Freelancer default: race r1–r2 only — both job pillars are sockets
-       (any race ability on P, any job ability on S), and sockets are the
-       player's call. FL_FIXED is empty since 2026-09-14. */
-    const p = (cls === 'Freelancer')
-      ? Object.values(window.FL_FIXED || {})
+    const p = (cls === 'Freelancer') ? []
       : ((typeof window.getClassTreeSpells === 'function' && window.getClassTreeSpells(cls)) || []);
     const r = (typeof window.getRaceTreeSpells === 'function' && window.getRaceTreeSpells(race, cls)) || [];
-    const wish = [...p.filter(Boolean), ...r.slice(0, 2).filter(Boolean)];
-    const picks = window.treeLegalSubset(race, cls, secJob, wish);
+    const wish = [...p.filter(Boolean), ...(cls === 'Freelancer' ? r : r.slice(0, 2)).filter(Boolean)];
+    const picks = window.treeLegalSubset(race, cls, '', wish);
     if (picks.length) return picks;
   }
   const slotCap = typeof window.SPELL_SLOT_MAX !== 'undefined' ? window.SPELL_SLOT_MAX : 7;
@@ -801,31 +797,17 @@ function buildDefaultCustomSpells(race, cls, secJob) {
   return picks;
 }
 
-// Every spell id this unit may legally equip: its race's abilities (job-gated)
-// plus spells native to its main job, plus non-Tier-III spells native to its
-// secondary job — exactly what the spell pool offers. Used to scrub stale
-// picks left behind by a vessel/job swap or an old saved team.
+// Every spell id this unit may legally equip — used to scrub stale picks left
+// behind by a vessel/job swap or an old saved team (a retired secondary job's
+// spells included). THE TIERS (2026-09-24): the unit's pool (data.js
+// unitSpellPool — race row + job four, a Freelancer's borrowables too) minus
+// the Clash-sealed; the slot / SP budget is checked by treeLegalSubset.
 function legalCustomSpellIds(race, cls, secJob) {
-  /* Tree classes: legal = exactly the unit's 12 tree nodes (minus clash-
-     sealed ones) — connectivity is checked separately by treeLegalSubset. */
   if (typeof window.classHasSpellTree === 'function' && window.classHasSpellTree(cls)
-      && typeof window.buildUnitSpellTree === 'function') {
-    const tree = window.buildUnitSpellTree(race, cls, secJob);
-    const sealed = typeof window.treeSealedIds === 'function' ? window.treeSealedIds(tree) : new Set();
-    const ok = new Set();
-    for (const id of Object.values(tree.nodes)) if (id && !sealed.has(id)) ok.add(id);
-    // twin nodes (CHAMP_REWORK_PLAN §4): either alternate is legal — one at a
-    // time, which treeLegalSubset enforces.
-    for (const pair of Object.values(tree.alts || {})) for (const id of pair) if (id && !sealed.has(id)) ok.add(id);
-    /* Freelancer: any wildcard-pool spell may legally sit in a socket —
-       any JOB ability (S1–S4) or any RACE ability (P1–P4); connectivity is
-       enforced separately by treeLegalSubset. */
-    if (cls === 'Freelancer' && typeof window.flWildcardPool === 'function') {
-      for (const sp of window.flWildcardPool(race)) if (sp.id && clashSpellOk(sp)) ok.add(sp.id);
-      if (typeof window.flRacePool === 'function')
-        for (const sp of window.flRacePool(race)) if (sp.id && clashSpellOk(sp)) ok.add(sp.id);
-    }
-    return ok;
+      && typeof window.unitSpellPool === 'function') {
+    const ids = window.unitSpellPool(race, cls);
+    const sealed = typeof window.spellSealedIds === 'function' ? window.spellSealedIds(ids) : new Set();
+    return new Set(ids.filter(id => !sealed.has(id)));
   }
   const ok = new Set();
   const ra = (typeof window.RACE_ABILITIES !== 'undefined' && window.RACE_ABILITIES[race])
@@ -1305,12 +1287,8 @@ function pbSpellShape(sp) {
   if (sp.range === 0 || sp.selfOnly || sp.selfTarget || _PB_SELF_KINDS.includes(k)) return 'self';
   return 'single';
 }
-// The tier a socket judges by is the TREE RING (data.js _flTierOf); the
-// row's own `tier` is the fallback for a spell off every tree.
-function pbTreeTierOf(sp) {
-  if (typeof window._flTierOf === 'function') return window._flTierOf(sp);
-  return sp && sp.tier === 'III' ? 'III' : sp && sp.tier === 'II' ? 'II' : 'I';
-}
+// The tier numeral ('I'–'IV') a spell sits on — its rung (data.js spellTierOf).
+function pbTreeTierOf(sp) { return PB_TIER_NUM[pbTierOf(sp)] || 'I'; }
 function pbSocketFilterMatch(sp, f) {
   if (!f) return true;
   if (f.cat && f.cat !== 'all' && classifySpellLocal(sp) !== f.cat) return false;
@@ -1518,15 +1496,6 @@ function SpellBlade({ sp, slotLabel, slotNums, heightPx, equippedSlot, pool, equ
    root-connected. Freelancer keeps the flat pool (wildcard sockets are a
    separate pass — classHasSpellTree routes it to legacy). */
 
-/* Node positions in % of the panel (x, y). Middle pillar crests highest
-   (Keter); R3 renders as the dashed Da'at ring. */
-const TREE_NODE_POS = {
-  root: [50, 91],
-  R1: [50, 70], R2: [50, 51], R3: [50, 32], R4: [50, 9],
-  P1: [19, 75], P2: [19, 56], P3: [19, 37], P4: [19, 14],
-  S1: [81, 75], S2: [81, 56], S3: [81, 37], S4: [81, 14],
-};
-
 /* Node color = what the spell DOES, same coding as the in-battle action
    menu (_HRLG_CAT in hud.js): red damage, green heal, blue buff, purple
    debuff, gold utility. Faction/branch identity lives only in the pillar
@@ -1537,62 +1506,6 @@ const TREE_CAT_C = { damage:'#ff5f5f', heal:'#58d858', buff:'#5cb2ff', debuff:'#
 // no tier tag, which left race chips blank). Name lives under the chip.
 const TREE_CAT_GLYPH = { damage:'⚔', heal:'♥', buff:'▲', debuff:'▼', utility:'◎' };
 const TREE_NODE_BG = '#0d0d13';   // opaque chip fill — lines must never show through a node
-function _treeMixBg(hex, t) {     // blend a #rrggbb toward TREE_NODE_BG at ratio t — stays fully opaque
-  const p = (s, i) => parseInt(s.slice(i, i + 2), 16);
-  const m = (a, b) => Math.round(a * t + b * (1 - t));
-  return 'rgb(' + m(p(hex,1), 13) + ',' + m(p(hex,3), 13) + ',' + m(p(hex,5), 19) + ')';
-}
-
-/* BFS from the connected frontier to targetKey. Returns the node keys that
-   must be NEWLY equipped (target last, sealed pass-throughs excluded), [] if
-   the target is already connected, or null if unreachable (empty sockets
-   block). */
-function computeTreeEquipPath(tree, sealed, equippedIds, targetKey) {
-  const equipped = new Set((equippedIds || []).filter(Boolean));
-  const adj = {};
-  for (const [a, b] of tree.edges) { (adj[a] = adj[a] || []).push(b); (adj[b] = adj[b] || []).push(a); }
-  const start = new Set(['root']);
-  let grew = true;
-  while (grew) {
-    grew = false;
-    for (const k of [...start]) for (const n of adj[k] || []) {
-      if (start.has(n)) continue;
-      const id = tree.nodes[n];
-      if (id && (equipped.has(id) || sealed.has(id))) { start.add(n); grew = true; }
-    }
-  }
-  if (start.has(targetKey)) return [];
-  const prev = {};
-  const seen = new Set(start);
-  const q = [...start];
-  while (q.length) {
-    const k = q.shift();
-    for (const n of adj[k] || []) {
-      if (seen.has(n)) continue;
-      const id = tree.nodes[n];
-      if (!id) continue;
-      seen.add(n); prev[n] = k;
-      q.push(n);
-    }
-  }
-  if (!seen.has(targetKey)) return null;
-  const path = [];
-  for (let k = targetKey; k != null && !start.has(k); k = prev[k]) {
-    const id = tree.nodes[k];
-    if (id && !sealed.has(id)) path.unshift(k);
-  }
-  return path;
-}
-
-/* Which pillar a node key sits on ('P' | 'R' | 'S'; root = null) and its
-   ring (1–4; root = 0) — the keyboard walks the circuit with these. */
-function treePillarOf(key) { return key === 'root' ? null : key[0]; }
-function treeRingOf(key) { return key === 'root' ? 0 : (parseInt(key.slice(1), 10) || 0); }
-const TREE_PILLAR_ORDER = ['P', 'R', 'S'];
-/* Arrow-key step across the circuit: ↑ ↓ along a pillar, ← → across
-   pillars on the same ring; from the root ← → land on ring 1 of the outer
-   pillars, ↓ from ring 1 returns to the root. Skips nothing — an empty node
-   is still a place on the circuit (the panel says so). */
 /* ══ THE FINISHER ON THE CIRCUIT (2026-09-19) — the user: "I would still
    like to see the finishers and their animations in the party builder in
    the spell tree somewhere." The race's execution (data.js FINISHERS — the
@@ -1611,84 +1524,100 @@ function pbFinisherDef(race) {
     return (window.FINISHERS && window.FINISHERS[race]) || null;
   } catch (e) { return null; }
 }
-function pbFinisherInfo(key, fin) {
-  return { key, st8: 'finisher', id: null, sp: null, fin: fin || null, ring: 0, path: null, newIds: [], overCap: false,
-    twin: null, alt: null, otherAlt: null, drop: null, dropCount: 0, pillar: null, tiers: null, socketKind: null };
+/* ══ THE TIER RACK (2026-09-24 — the user's spell tree rework) ══════════
+   The user: "get rid of units having a secondary job ... ditch the branches.
+   The node rung level that a spell is on becomes its tier — Tier I, II, III
+   and IV, costing 1, 2, 3 and 4 Spell Points (SP). Still 7 spell slots, 16
+   SP ... any spell can be selected anywhere ... make sure the skill tree is
+   completely redesigned / reformatted to fit this new spell selection
+   system in the party builder."
+   So TECHNIQUES is no longer a circuit (no root-to-capstone lanes, no path,
+   no cascade, no fork, no subclass lane). It is THE RACK:
+     · THE LOADOUT — seven slot cells, the equipped spells in pick order,
+       each with its tier numeral; a click unequips (just that spell).
+     · FOUR TIER ROWS, IV at the top → I at the bottom, each headed with its
+       numeral and its price (4 · 3 · 2 · 1 SP), holding every spell of the
+       unit's pool on that tier (race + job, a twin rung's two alternates
+       side by side — each its own pick now). A click equips or unequips.
+       A chip's state is data.js spellAddVerdict's: equipped · ok · sp (not
+       enough SP left) · slots (all seven full) · sealed (Clash).
+     · A Freelancer has no job row; each tier row ends in ＋ BORROW, which
+       opens the pool window over every race / job ability of that tier.
+     · The basic attack + THE FINISHER strip stay under the rows.
+   The SP meter (16 cells) and the slot pips live in the tech bar; hovering a
+   chip forecasts +N / −N on both. Legality is data.js's (isTreeLoadoutLegal
+   / treeLegalSubset — also the host's online check). ══ */
+const PB_TIER_ORDER = [4, 3, 2, 1];
+const PB_TIER_NUM = ['', 'I', 'II', 'III', 'IV'];
+const PB_BORROW_RE = /^B[1-4]$/;
+function pbSpMax() { return typeof window.SPELL_SP_MAX === 'number' ? window.SPELL_SP_MAX : 16; }
+function pbTierOf(spOrId) {
+  if (!spOrId) return 0;
+  if (typeof window.spellTierOf === 'function') return window.spellTierOf(spOrId);
+  const sp = typeof spOrId === 'object' ? spOrId : null;
+  return sp && sp.tier === 'III' ? 3 : sp && sp.tier === 'II' ? 2 : 1;
 }
-function treeStepKey(key, dir) {
-  if (key === PB_FIN_KEY) return dir === 'up' ? 'root' : key;      // THE FINISHER strip hangs under the root
-  const col = treePillarOf(key), ring = treeRingOf(key);
-  if (dir === 'up') return key === 'root' ? 'R1' : (ring < 4 ? col + (ring + 1) : key);
-  if (dir === 'down') return key === 'root' ? PB_FIN_KEY : (ring > 1 ? col + (ring - 1) : 'root');
-  const ci = col ? TREE_PILLAR_ORDER.indexOf(col) : 1;
-  const r = Math.max(1, ring);
-  if (dir === 'left') return ci > 0 ? TREE_PILLAR_ORDER[ci - 1] + r : key;
-  if (dir === 'right') return ci < 2 ? TREE_PILLAR_ORDER[ci + 1] + r : key;
-  return key;
+function pbSpCost(spOrId) { return typeof window.spellSpCost === 'function' ? window.spellSpCost(spOrId) : pbTierOf(spOrId); }
+function pbSpUsed(ids) { return (ids || []).reduce((n, id) => n + (id ? pbSpCost(id) : 0), 0); }
+/* One unit's rack: the pool in parts, the sealed set, the rows by tier, every
+   id's source. Built per render from (race, job, equipped) — pure. */
+function pbTierCtx(race, cls, equipped) {
+  const parts = typeof window.unitSpellPoolParts === 'function' ? window.unitSpellPoolParts(race, cls) : { race: [], job: [], borrowRace: [], borrowJob: [] };
+  const eq = (equipped || []).filter(Boolean);
+  const sourceOf = {};
+  parts.race.forEach(id => { sourceOf[id] = 'race'; });
+  parts.job.forEach(id => { sourceOf[id] = 'job'; });
+  parts.borrowRace.forEach(id => { if (!sourceOf[id]) sourceOf[id] = 'borrowRace'; });
+  parts.borrowJob.forEach(id => { if (!sourceOf[id]) sourceOf[id] = 'borrowJob'; });
+  const pool = new Set(Object.keys(sourceOf));
+  const isFreelancer = cls === 'Freelancer';
+  const own = parts.race.concat(parts.job);
+  const borrowed = isFreelancer ? eq.filter(id => pool.has(id) && !own.includes(id)) : [];
+  const rows = {};
+  for (const t of PB_TIER_ORDER) rows[t] = own.concat(borrowed).filter(id => pbTierOf(id) === t);
+  const sealed = typeof window.spellSealedIds === 'function' ? window.spellSealedIds(own.concat(borrowed)) : new Set();
+  return { race, cls, parts, pool, sourceOf, rows, sealed, equipped: eq, isFreelancer,
+    cap: typeof window.SPELL_SLOT_MAX !== 'undefined' ? window.SPELL_SLOT_MAX : 7, spMax: pbSpMax(), spUsed: pbSpUsed(eq) };
 }
-
-/* The state of one node — shared by the circuit (its look) and the technique
-   panel (its verb). root / socket / empty / sealed / equipped / reachable /
-   far / blocked; identical to the Stage-1 nodeState (moved, not changed). */
-function treeNodeState(tree, sealed, equipped, key) {
-  if (key === 'root') return 'root';
-  const id = tree.nodes[key];
-  // Freelancer: an unfilled wildcard socket is its own state — a slot the
-  // player clicks to browse the pool (vs 'empty' = missing branch node).
-  if (!id && tree.isFreelancer && tree.sockets && tree.sockets[key]) return 'socket';
-  if (!id) return 'empty';
-  if (sealed.has(id)) return 'sealed';
-  if ((equipped || []).includes(id)) return 'equipped';
-  const path = computeTreeEquipPath(tree, sealed, equipped, key);
-  if (!path) return 'blocked';
-  return path.length <= 1 ? 'reachable' : 'far';
-}
-
-/* THE OPTION's state on a TWIN node (2026-09-13): each alternate is its own
-   visible node on the tier. sealed / equipped / SWAP (the node wears the
-   other alternate — one click trades it in place) / reachable / far /
-   blocked (the last three follow the node's path, whichever alternate). */
-function treeAltState(tree, sealed, equipped, key, altId) {
-  if (!altId) return treeNodeState(tree, sealed, equipped, key);
-  if (sealed.has(altId)) return 'sealed';
-  const eq = equipped || [];
-  if (eq.includes(altId)) return 'equipped';
-  const pair = (tree.alts && tree.alts[key]) || null;
-  if (pair && pair.some(a => a !== altId && eq.includes(a))) return 'swap';
-  const path = computeTreeEquipPath(tree, sealed, eq, key);
-  if (!path) return 'blocked';
-  return path.length <= 1 ? 'reachable' : 'far';
-}
-/* THE CASCADE (2026-09-13): unequipping a node drops it AND every equipped
-   technique that hung off it (the rest of its pillar above it). Returns the
-   Set of ids that go — removeId first — so the circuit can paint them red
-   before the click and the click can cut them in one go. Reachability is
-   data.js's own (through equipped + sealed nodes), never a pillar guess. */
-function treeDropIds(tree, equipped, removeId) {
-  const out = new Set(removeId ? [removeId] : []);
-  if (!tree || !removeId) return out;
-  const rest = (equipped || []).filter(id => id && id !== removeId);
-  if (typeof window.treeReachableKeys !== 'function') return out;
-  const reached = window.treeReachableKeys(tree, new Set(rest));
-  for (const [k, id] of Object.entries(tree.nodes || {})) {
-    if (id && rest.includes(id) && !reached.has(k)) out.add(id);
+/* equipped · ok · sp · slots · sealed · dup/pool (never drawn) */
+function pbSpellState(ctx, id) {
+  if (!ctx || !id) return 'empty';
+  if (ctx.equipped.includes(id)) return 'equipped';
+  if (typeof window.spellAddVerdict === 'function') {
+    const v = window.spellAddVerdict(ctx.race, ctx.cls, ctx.equipped, id, ctx.pool);
+    return v.ok ? 'ok' : v.reason;
   }
-  return out;
+  return 'ok';
 }
-
-/* ══ THE CIRCUIT — THREE LANES (2026-09-09, the redesign after the user's
-   "smushed together / doesn't convey enough" note). TREE_NODE_POS and every
-   legality rule are untouched (treeNodeState / computeTreeEquipPath /
-   treeStepKey still walk the same keys); only the SKIN changed: instead of
-   thirteen bare circles on a % board, each pillar is a LANE — a head pill,
-   then four NODE ROWS top-down (ring 4 … ring 1), each row a category disc
-   + the technique's NAME + one META line (type · MP · range · AoE · power ·
-   slots · the twin's alternate) — joined by CSS link segments (lit =
-   phosphor, hover path = gold, unlit = dashed) that drop onto a BUS at the
-   bottom with the root hub (Basic Attack) at its centre. State reads as
-   brightness on the disc AND the text: EQUIPPED glows white, REACHABLE is
-   full colour, FAR dims, BLOCKED / SEALED go dark, the selection is a gold
-   halo. The slot pips moved up into the tech bar (the parent). ══ */
+function pbSpellVerdict(ctx, id) {
+  if (!ctx || !id || typeof window.spellAddVerdict !== 'function') return null;
+  return window.spellAddVerdict(ctx.race, ctx.cls, ctx.equipped, id, ctx.pool);
+}
+const PB_SOURCE_LABEL = { race: 'RACE', job: 'JOB', borrowRace: 'BORROWED · RACE', borrowJob: 'BORROWED · JOB' };
+/* The keyboard's grid: one row per tier (its chips, then ＋ BORROW for a
+   Freelancer), then the root (+ THE FINISHER). ↑ ↓ change row keeping the
+   column (clamped), ← → walk the row. Empty tiers are skipped. */
+function pbTierGrid(ctx, finisher) {
+  const grid = [];
+  for (const t of PB_TIER_ORDER) {
+    const row = (ctx.rows[t] || []).slice();
+    if (ctx.isFreelancer) row.push('B' + t);
+    if (row.length) grid.push(row);
+  }
+  grid.push(finisher ? ['root', PB_FIN_KEY] : ['root']);
+  return grid;
+}
+function pbTierStep(ctx, key, dir, finisher) {
+  const grid = pbTierGrid(ctx, finisher);
+  let r = grid.findIndex(row => row.includes(key));
+  if (r < 0) return grid[0][0];
+  let c = grid[r].indexOf(key);
+  if (dir === 'left') c = Math.max(0, c - 1);
+  else if (dir === 'right') c = Math.min(grid[r].length - 1, c + 1);
+  else if (dir === 'up') { if (r > 0) { r -= 1; c = Math.min(c, grid[r].length - 1); } }
+  else if (dir === 'down') { if (r < grid.length - 1) { r += 1; c = Math.min(c, grid[r].length - 1); } }
+  return grid[r][c];
+}
 function pbNodeMeta(sp) {
   const m = [];
   if (!sp) return m;
@@ -1698,165 +1627,104 @@ function pbNodeMeta(sp) {
   if (aoe) m.push(['AOE ' + aoe, null]);
   const pw = pbPowerStat(sp);
   if (pw) m.push([pw.value + ' ' + pw.unit, pw.color]);
-  const sc = spellSlotCost(sp);
-  if (sc > 1) m.push([sc + ' SLOTS', EW.time]);
   return m.slice(0, 4);
 }
-function SpellTreePanel({ tree, sealed, equipped, slotCap, fc, clsName, secJob, raceLabel,
-                          onNodeClick, onNodeHoverIn, onNodeHoverOut, hoverPath, dropIds, shakeKey, onOpenSubjob,
-                          onSocketClick, onAltClick, selKey, selAlt, hoverKey, hoverAlt, onSelect, finisher }) {
-  const equippedSet = new Set(equipped || []);
-  const connected = (typeof window.treeReachableKeys === 'function')
-    ? window.treeReachableKeys(tree, equippedSet) : new Set(['root']);
-  const hoverSet = hoverPath ? new Set(hoverPath) : null;
-  const isFL = !!tree.isFreelancer;
-  // the ids that would go with the hovered / selected UNEQUIP, as node keys
-  const dropKeys = new Set();
-  if (dropIds && dropIds.size) for (const [k, id] of Object.entries(tree.nodes)) if (id && dropIds.has(id)) dropKeys.add(k);
-
-  const states = {};
-  Object.keys(TREE_NODE_POS).forEach(k => { states[k] = treeNodeState(tree, sealed, equipped, k); });
-
-  // one edge's look: a = the lower end (root / ring n), b = the upper end
-  const linkCls = (a, b) => {
-    const lit = connected.has(a) && connected.has(b);
-    const onHover = hoverSet && (hoverSet.has(a) || a === 'root' || connected.has(a)) && hoverSet.has(b);
-    const cut = dropKeys.has(b);
-    return 'pb-link' + (cut ? ' cut' : onHover ? ' hover' : lit ? ' lit' : '');
-  };
+function SpellTierPanel({ ctx, fc, clsName, raceLabel, onSpellClick, onBorrow, onNodeHoverIn, onNodeHoverOut,
+                          selKey, hoverKey, onSelect, shakeKey, finisher, onUnequipSlot }) {
   const spellOf = (id) => (id && typeof window.getSpellById === 'function') ? window.getSpellById(id) : null;
-  const colourOf = (sp, key) => {
+  const colourOf = (sp) => {
     const cat = sp ? classifySpellLocal(sp) : null;
-    return { cat, nc: cat ? (TREE_CAT_C[cat] || TREE_CAT_C.utility) : (key === 'root' ? '#e6e9f2' : EW.time),
-             glyph: cat ? (TREE_CAT_GLYPH[cat] || TREE_CAT_GLYPH.utility) : '' };
+    return { cat, nc: cat ? (TREE_CAT_C[cat] || TREE_CAT_C.utility) : EW.time, glyph: cat ? (TREE_CAT_GLYPH[cat] || TREE_CAT_GLYPH.utility) : '' };
   };
-  // the NAME + META column every node / option shares
-  const textOf = (sp, name, st8, tail) => h('span', { className: 'pb-tn-text' },
-    h('span', { className: 'pb-tn-name' }, name),
-    st8 === 'swap' ? h('span', { className: 'pb-tn-meta swap' }, h('em', null, '⇄ SWAP IN')) :
-    sp ? h('span', { className: 'pb-tn-meta' },
-      sp.spellType ? h('i', { className: 'pb-tn-type', style: { '--tc': TYPE_C[String(sp.spellType).toLowerCase()] || EW.inkMute }, title: String(sp.spellType).toUpperCase() }, PB_TYPE_GLYPH[String(sp.spellType).toLowerCase()] || '?') : null,
-      ...pbNodeMeta(sp).map(([t, c], i) => h('em', { key: i, style: c ? { color: c } : undefined }, t))) : null,
-    tail || null);
-
-  /* A TWIN node = THE FORK (2026-09-13): both alternates stand on the tier
-     as their own option discs, side by side, joined by an ⇄ bridge. The
-     chain runs through the LEFT option's column. Each option is its own
-     hover / select / click target: an unequipped option on a worn node
-     reads SWAP IN and trades in place; the worn option unequips (with the
-     cascade); an unworn node equips whichever option you click (the path
-     lights under the pointer first). No picker window any more. */
-  const fork = (key, pair) => {
-    const nodeSt = states[key];
-    const isCap = key.endsWith('4');
-    const opts = pair.map((aid, i) => {
-      const sp = spellOf(aid);
-      const st8 = treeAltState(tree, sealed, equipped, key, aid);
-      const { nc, glyph } = colourOf(sp, key);
-      const clickable = st8 === 'equipped' || st8 === 'swap' || st8 === 'reachable' || st8 === 'far';
-      const selected = selKey === key && (selAlt ? selAlt === aid : tree.nodes[key] === aid);
-      // the path's TARGET lights the hovered option; a fork passed through lights its worn face
-      const onPath = !!(hoverSet && hoverSet.has(key)) && ((hoverKey === key && hoverAlt) ? hoverAlt === aid : tree.nodes[key] === aid);
-      const willDrop = dropKeys.has(key) && tree.nodes[key] === aid;
-      const cls = 'pb-tn-opt is-' + st8 + (selected ? ' sel' : '') + (onPath ? ' on-path' : '') + (willDrop ? ' will-drop' : '')
-        + (clickable ? ' can' : '');
-      return h('div', {
-        key: aid, className: cls, style: { '--nc': nc },
-        onClick: (e) => { e.stopPropagation(); if (onSelect) onSelect(key, aid); if (clickable && onAltClick) onAltClick(key, aid); },
-        onMouseEnter: (e) => onNodeHoverIn(key, sp, e, aid),
-        onMouseLeave: () => onNodeHoverOut(key),
-        title: sp ? (st8 === 'swap' ? 'Swap in ' + sp.name : sp.name) : '',
-      },
-        h('span', { className: 'pb-tn-disc' }, st8 === 'sealed' ? '🔒' : glyph),
-        textOf(sp, sp ? sp.name : '—', st8));
-    });
-    const wornSp = spellOf(tree.nodes[key]);
-    // st-<state> on the wrapper (never is-<state>: the node rules would paint BOTH option discs)
-    const cls = 'pb-tn pb-tn-fork st-' + nodeSt + (isCap ? ' cap' : '') + (dropKeys.has(key) ? ' will-drop' : '');
-    return h('div', { key, className: cls, style: { '--nc': colourOf(wornSp, key).nc, animation: shakeKey === key ? 'ewTreeShake 0.3s linear' : undefined } },
-      h('i', { className: 'pb-tn-fork-tag' }, 'ONE OF TWO'),
-      h('div', { className: 'pb-tn-fork-row' }, ...opts));
-  };
-
-  const node = (key) => {
-    const twin = key !== 'root' && tree.alts && tree.alts[key];
-    if (twin && twin.length > 1 && states[key] !== 'empty') return fork(key, twin);
-    const st8 = states[key];
-    const id = key === 'root' ? null : tree.nodes[key];
+  const eq = ctx.equipped;
+  const spLeft = ctx.spMax - ctx.spUsed;
+  const tag = (t) => h('b', { className: 'pb-tc-cost', title: 'Tier ' + PB_TIER_NUM[t] + ' · costs ' + t + ' SP' }, t + ' SP');
+  const chip = (id) => {
     const sp = spellOf(id);
-    // Category colour — SAME coding as the battle action menu (red damage,
-    // green heal, blue buff, purple debuff, gold utility).
-    const { nc, glyph: catGlyph } = colourOf(sp, key);
-    const isCap = key.endsWith('4');
-    const onPath = !!(hoverSet && hoverSet.has(key));
-    const selected = selKey === key;
-    const willDrop = dropKeys.has(key);
-    let glyph = catGlyph, name = sp ? sp.name : '';
-    if (st8 === 'root') { glyph = '⚔'; name = 'Basic Attack'; }
-    else if (st8 === 'socket') { glyph = '＋'; name = (flSocketKind(tree, key) === 'race' ? 'Any race ' : 'Any job ') + (tree.sockets[key] || []).join('·'); }
-    else if (st8 === 'empty') { glyph = ''; name = key[0] === 'S' ? 'No subclass' : '—'; }
-    else if (st8 === 'sealed') { glyph = '🔒'; }
-    const clickable = (st8 === 'equipped' || st8 === 'reachable' || st8 === 'far' || st8 === 'root');
-    const chipClick = st8 === 'socket' ? () => onSocketClick && onSocketClick(key)
-      : (clickable && st8 !== 'root') ? () => onNodeClick(key) : undefined;
-    const onRowClick = (e) => { if (onSelect) onSelect(key, null); if (chipClick) chipClick(e); };
-    const socketLit = st8 === 'socket' && tree.edges.some(([a, b]) =>
-      (a === key && connected.has(b)) || (b === key && connected.has(a)));
-    const cls = 'pb-tn is-' + st8 + (isCap ? ' cap' : '') + (onPath ? ' on-path' : '') + (selected ? ' sel' : '')
-      + (willDrop ? ' will-drop' : '')
-      + (socketLit ? ' socket-lit' : '') + (key === 'R3' ? ' daat' : '') + (chipClick || st8 === 'root' ? ' can' : '');
+    const t = pbTierOf(id);
+    const st8 = pbSpellState(ctx, id);
+    const { nc, glyph } = colourOf(sp);
+    const src = ctx.sourceOf[id] || 'race';
+    const cls = 'pb-tn pb-tc is-' + st8 + (t === 4 ? ' cap' : '') + (selKey === id ? ' sel' : '') + (hoverKey === id ? ' hov' : '') + ' src-' + src + ' can';
+    const why = st8 === 'sp' ? 'NEEDS ' + t + ' SP · ' + spLeft + ' LEFT' : st8 === 'slots' ? 'NO SLOT · ' + eq.length + '/' + ctx.cap : st8 === 'sealed' ? 'SEALED' : null;
     return h('div', {
-      key, className: cls, style: { '--nc': nc, animation: shakeKey === key ? 'ewTreeShake 0.3s linear' : undefined },
-      onClick: onRowClick,
-      onMouseEnter: (e) => onNodeHoverIn(key, sp, e, null),
-      onMouseLeave: () => onNodeHoverOut(key),
-      title: sp ? sp.name : (st8 === 'root' ? 'Basic Attack — always equipped' : st8 === 'socket' ? 'Open wildcard socket' : 'Empty node'),
+      key: id, className: cls, style: { '--nc': nc, animation: shakeKey === id ? 'ewTreeShake 0.3s linear' : undefined },
+      onClick: () => { if (onSelect) onSelect(id); onSpellClick(id); },
+      onMouseEnter: (e) => onNodeHoverIn(id, sp, e),
+      onMouseLeave: () => onNodeHoverOut(id),
+      title: sp ? sp.name + ' — Tier ' + PB_TIER_NUM[t] + ' · ' + t + ' SP' + (why ? ' · ' + why : '') : id,
     },
-      h('span', { className: 'pb-tn-disc' }, glyph),
-      textOf(sp, name, st8, st8 === 'root' ? h('span', { className: 'pb-tn-meta' }, h('em', null, 'ALWAYS EQUIPPED')) : null));
+      h('span', { className: 'pb-tn-disc' }, st8 === 'sealed' ? '🔒' : glyph),
+      h('span', { className: 'pb-tn-text' },
+        h('span', { className: 'pb-tn-name' }, sp ? sp.name : id),
+        h('span', { className: 'pb-tn-meta' },
+          sp && sp.spellType ? h('i', { className: 'pb-tn-type', style: { '--tc': TYPE_C[String(sp.spellType).toLowerCase()] || EW.inkMute }, title: String(sp.spellType).toUpperCase() }, PB_TYPE_GLYPH[String(sp.spellType).toLowerCase()] || '?') : null,
+          ...pbNodeMeta(sp).map(([tx, c], i) => h('em', { key: i, style: c ? { color: c } : undefined }, tx)))),
+      h('span', { className: 'pb-tc-side' },
+        h('i', { className: 'pb-tc-src' }, src === 'job' ? 'JOB' : src === 'race' ? 'RACE' : 'BORROWED'),
+        why ? h('i', { className: 'pb-tc-why' }, why) : tag(t)));
   };
-
-  /* The lane heads as PILLS: the title + a tagline line under it. Until the
-     tagline table (decision C-5) is approved the line is the pillar's spell
-     count. The SUBCLASS head is a button (opens the picker). */
-  const pillarCount = (prefix) => [1, 2, 3, 4].reduce((n, r) => n + (tree.nodes[prefix + r] ? 1 : 0), 0);
-  const pillarHead = (prefix, text, color, onClick, sub) => h('div', {
-    key: 'head' + prefix,
-    className: 'pb-pillar-head' + (onClick ? ' btn' : ''),
-    style: { color, borderColor: onClick ? 'rgba(242,196,104,0.5)' : (color + '66') },
-    onClick, title: onClick ? 'Subclass — click to change' : undefined,
-  },
-    h('span', { className: 'pb-pillar-title' }, text, onClick ? h('i', null, ' ▾') : null),
-    h('span', { className: 'pb-pillar-tag' }, sub != null ? sub : pillarCount(prefix) + ' TECHNIQUE' + (pillarCount(prefix) === 1 ? '' : 'S')));
-
-  const lane = (prefix, head) => h('div', { key: prefix, className: 'pb-lane', 'data-pillar': prefix },
-    head,
-    node(prefix + '4'), h('i', { className: linkCls(prefix + '3', prefix + '4') }),
-    node(prefix + '3'), h('i', { className: linkCls(prefix + '2', prefix + '3') }),
-    node(prefix + '2'), h('i', { className: linkCls(prefix + '1', prefix + '2') }),
-    node(prefix + '1'), h('i', { className: linkCls('root', prefix + '1') + ' drop' }));
-
-  const busCls = (k) => (connected.has(k) ? ' lit' : '') + (hoverSet && hoverSet.has(k) ? ' hover' : '');
-  // The circuit: three lanes over a BUS. Every lane's drop lands on the bus;
-  // the root hub sits at the centre lane's disc, exactly under R1.
-  return h('div', { className: 'pb-circuit' },
-    h('div', { className: 'pb-lanes' },
-      lane('P', pillarHead('P', isFL ? 'ANY RACE' : getJobDisplay(clsName).toUpperCase(), EW.space)),
-      lane('R', pillarHead('R', (raceLabel || '').toUpperCase(), fc)),
-      lane('S', isFL
-        // Freelancer has no subclass — the right pillar IS the wildcard rack.
-        ? pillarHead('S', 'ANY JOB', EW.time)
-        : pillarHead('S', secJob ? getJobDisplay(secJob).toUpperCase() : '＋ SUBCLASS',
-            secJob ? EW.ink : EW.inkMute, onOpenSubjob, secJob ? 'CHANGE' : 'SELECT'))),
-    h('div', { className: 'pb-bus' },
-      h('div', { className: 'pb-bus-cell l' + busCls('P1') }),
-      h('div', { className: 'pb-bus-cell c lit' }, node('root')),
-      h('div', { className: 'pb-bus-cell r' + busCls('S1') })),
+  const borrowChip = (t) => {
+    const key = 'B' + t;
+    const n = ctx.parts.borrowRace.concat(ctx.parts.borrowJob).filter(id => pbTierOf(id) === t).length;
+    return h('div', {
+      key, className: 'pb-tn pb-tc pb-tc-borrow is-socket can' + (selKey === key ? ' sel' : ''),
+      onClick: () => { if (onSelect) onSelect(key); onBorrow(key); },
+      onMouseEnter: (e) => onNodeHoverIn(key, null, e),
+      onMouseLeave: () => onNodeHoverOut(key),
+      title: 'Borrow any race or job ability of Tier ' + PB_TIER_NUM[t],
+    },
+      h('span', { className: 'pb-tn-disc' }, '＋'),
+      h('span', { className: 'pb-tn-text' },
+        h('span', { className: 'pb-tn-name' }, 'Borrow'),
+        h('span', { className: 'pb-tn-meta' }, h('em', null, n + ' TIER ' + PB_TIER_NUM[t] + ' ABILITIES'))));
+  };
+  // THE LOADOUT — seven cells, pick order; a click unequips that one spell
+  const loadout = h('div', { className: 'pb-loadout', 'aria-label': 'Equipped spells' },
+    ...Array.from({ length: ctx.cap }).map((_, i) => {
+      const id = eq[i];
+      if (!id) return h('div', { key: 'e' + i, className: 'pb-ls empty' }, h('i', null, String(i + 1)));
+      const sp = spellOf(id);
+      const t = pbTierOf(id);
+      const { nc, glyph } = colourOf(sp);
+      return h('div', { key: id, className: 'pb-ls' + (selKey === id ? ' sel' : ''), style: { '--nc': nc },
+        onClick: () => { if (onSelect) onSelect(id); onUnequipSlot(id); },
+        onMouseEnter: (e) => onNodeHoverIn(id, sp, e), onMouseLeave: () => onNodeHoverOut(id),
+        title: (sp ? sp.name : id) + ' — Tier ' + PB_TIER_NUM[t] + ' · ' + t + ' SP · click to unequip' },
+        h('span', { className: 'pb-ls-disc' }, glyph),
+        h('span', { className: 'pb-ls-name' }, sp ? sp.name : id),
+        h('b', { className: 'pb-ls-tier' }, PB_TIER_NUM[t]));
+    }));
+  const tierRow = (t) => {
+    const ids = ctx.rows[t] || [];
+    const worn = ids.filter(id => eq.includes(id)).length;
+    return h('div', { key: 't' + t, className: 'pb-tier', 'data-tier': t },
+      h('div', { className: 'pb-tier-head', title: 'Tier ' + PB_TIER_NUM[t] + ': every spell on this rung costs ' + t + ' SP' },
+        h('b', null, PB_TIER_NUM[t]),
+        h('span', null, t + ' SP'),
+        worn ? h('i', null, worn + ' ON') : null),
+      h('div', { className: 'pb-tier-cells' },
+        ...ids.map(chip),
+        ctx.isFreelancer ? borrowChip(t) : null,
+        (!ids.length && !ctx.isFreelancer) ? h('span', { className: 'pb-tier-none' }, 'NOTHING ON THIS TIER') : null));
+  };
+  const rootSel = selKey === 'root';
+  const root = h('div', { className: 'pb-tn pb-tc is-root can' + (rootSel ? ' sel' : ''), style: { '--nc': '#e6e9f2' },
+    onClick: () => { if (onSelect) onSelect('root'); },
+    onMouseEnter: (e) => onNodeHoverIn('root', null, e), onMouseLeave: () => onNodeHoverOut('root'),
+    title: 'Basic Attack — always equipped, free' },
+    h('span', { className: 'pb-tn-disc' }, '⚔'),
+    h('span', { className: 'pb-tn-text' },
+      h('span', { className: 'pb-tn-name' }, 'Basic Attack'),
+      h('span', { className: 'pb-tn-meta' }, h('em', null, 'ALWAYS EQUIPPED · NO SLOT · 0 SP'))));
+  return h('div', { className: 'pb-circuit pb-rack' },
+    loadout,
+    h('div', { className: 'pb-tiers' }, ...PB_TIER_ORDER.map(tierRow)),
+    h('div', { className: 'pb-rack-foot' }, root),
     finisher ? finStrip() : null);
 
-  /* THE FINISHER strip (2026-09-19): one ☠ row under the bus — the race's
-     execution, always ready, the full gauge its price. Not a slot, not a
-     node of the tree; the same select / hover / preview gestures. */
+  /* THE FINISHER strip (2026-09-19): one ☠ row under the rack — the race's
+     execution, always ready, the full gauge its price. Not a slot, no SP. */
   function finStrip() {
     const fin = finisher;
     const t = String(fin.type || 'anomaly').toLowerCase();
@@ -1866,11 +1734,11 @@ function SpellTreePanel({ tree, sealed, equipped, slotCap, fc, clsName, secJob, 
     return h('div', { className: 'pb-fin', 'data-finisher': fin.id || '' },
       h('div', { className: 'pb-fin-head' },
         h('span', { className: 'pb-fin-title' }, '☠ THE FINISHER'),
-        h('span', { className: 'pb-fin-tag' }, 'THE GAUGE\u2019S OTHER VERB · ONE UNIT · ONE VICTIM')),
+        h('span', { className: 'pb-fin-tag' }, 'THE GAUGE’S OTHER VERB · ONE UNIT · ONE VICTIM')),
       h('div', {
         className: cls, style: { '--nc': nc },
-        onClick: () => { if (onSelect) onSelect(PB_FIN_KEY, null); },
-        onMouseEnter: (e) => onNodeHoverIn(PB_FIN_KEY, null, e, null),
+        onClick: () => { if (onSelect) onSelect(PB_FIN_KEY); },
+        onMouseEnter: (e) => onNodeHoverIn(PB_FIN_KEY, null, e),
         onMouseLeave: () => onNodeHoverOut(PB_FIN_KEY),
         title: fin.name + ' — ' + (fin.tagline || '') + (fin.built ? '' : ' (plays the typed execution until its own is built)'),
       },
@@ -1885,95 +1753,73 @@ function SpellTreePanel({ tree, sealed, equipped, slotCap, fc, clsName, secJob, 
   }
 }
 
-/* ══ THE TECHNIQUE PANEL (plan §5.2 item 3) — under the circuit: a category
-   disc with the glyph · `RING 2 · TIER II · DAMAGE` · the name · the desc ·
-   the chip row (AP / MP / RNG / AOE / PWR / the type badge / status effects /
-   slots) · the verb pill. Follows `techHover || techSel`. Module-level so it
-   never remounts per render. `info` = pbTechInfo(...) below. ══ */
-function pbTechInfo(tree, sealed, equipped, key, slotCap, altId, finisher) {
-  if (!tree || !key) return null;
+/* ══ THE TECHNIQUE PANEL (plan §5.2 item 3) — under the rack: a category
+   disc · `TIER II · 2 SP · DAMAGE · RACE` · the name · the desc · the chip
+   row (AP / MP / RNG / AOE / PWR / SP / status effects) · the verb pill.
+   Follows `techHover || techSel`. Module-level so it never remounts per
+   render. `info` = pbTechInfo(...) below. ══ */
+function pbTechInfo(ctx, key, finisher) {
+  if (!ctx || !key) return null;
   if (key === PB_FIN_KEY) return pbFinisherInfo(key, finisher);
-  const twin = (tree.alts && tree.alts[key]) || null;
-  // altId = one OPTION of a twin node (the fork); default = the node's worn face
-  const alt = (twin && altId && twin.includes(altId)) ? altId : (twin ? tree.nodes[key] : null);
-  const st8 = alt ? treeAltState(tree, sealed, equipped, key, alt) : treeNodeState(tree, sealed, equipped, key);
-  const id = key === 'root' ? null : (alt || tree.nodes[key]);
-  const sp = id && typeof window.getSpellById === 'function' ? window.getSpellById(id) : null;
-  const ring = treeRingOf(key);
-  let path = null;
-  if (st8 === 'reachable' || st8 === 'far') path = computeTreeEquipPath(tree, sealed, equipped, key);
-  const newIds = path ? path.map(k => k === key ? id : tree.nodes[k]).filter(pid => pid && !(equipped || []).includes(pid)) : [];
-  const overCap = path ? ((equipped || []).length + newIds.length > slotCap) : false;
-  const drop = st8 === 'equipped' ? treeDropIds(tree, equipped, id) : null;
-  const otherAlt = twin ? (twin.find(a => a !== id) || null) : null;
-  return { key, st8, id, sp, ring, path, newIds, overCap, twin, alt, otherAlt, drop,
-    dropCount: drop ? drop.size - 1 : 0,
-    pillar: treePillarOf(key), tiers: (st8 === 'socket' && tree.sockets) ? (tree.sockets[key] || []) : null,
-    socketKind: st8 === 'socket' ? flSocketKind(tree, key) : null };
+  if (key === 'root') return { key, st8: 'root', id: null, sp: null, tier: 0, cost: 0, verdict: null, source: null };
+  if (PB_BORROW_RE.test(key)) {
+    const t = +key.slice(1);
+    return { key, st8: 'borrow', id: null, sp: null, tier: t, cost: t, verdict: null, source: null,
+      count: ctx.parts.borrowRace.concat(ctx.parts.borrowJob).filter(id => pbTierOf(id) === t).length };
+  }
+  const sp = typeof window.getSpellById === 'function' ? window.getSpellById(key) : null;
+  if (!sp) return null;
+  const t = pbTierOf(key);
+  return { key, st8: pbSpellState(ctx, key), id: key, sp, tier: t, cost: pbSpCost(key), verdict: pbSpellVerdict(ctx, key), source: ctx.sourceOf[key] || null };
 }
-/* Which pool a Freelancer socket draws from: 'race' (P1–P4) or 'job' (S1–S4). */
-function flSocketKind(tree, key) {
-  const p = tree && tree.socketPool && tree.socketPool[key];
-  if (p) return p;
-  return key && key[0] === 'P' ? 'race' : 'job';
+function pbFinisherInfo(key, fin) {
+  return { key, st8: 'finisher', id: null, sp: null, fin: fin || null, tier: 0, cost: 0, verdict: null, source: null };
 }
-function TechniquePanel({ info, clsName, secJob, raceLabel, fc, onVerb, onPreview, previewLabel, previewOff, previewing, used, slotCap }) {
-  if (info && info.st8 === 'finisher') return h(FinisherPanel, { info, raceLabel, onPreview, previewOff, previewing, used, slotCap });
+function TechniquePanel({ info, clsName, raceLabel, fc, onVerb, onPreview, previewLabel, previewOff, previewing, used, slotCap, spUsed, spMax }) {
+  if (info && info.st8 === 'finisher') return h(FinisherPanel, { info, raceLabel, onPreview, previewOff, previewing, used, slotCap, spUsed, spMax });
+  const budget = used + ' / ' + slotCap + ' SLOTS · ' + spUsed + ' / ' + spMax + ' SP';
   if (!info) {
     return h('div', { className: 'pb-technique empty' },
       h('div', { className: 'pb-technique-disc', style: { borderColor: 'rgba(255,255,255,0.18)', color: EW.inkDim } }, '◯'),
       h('div', { className: 'pb-technique-main' },
-        h('div', { className: 'pb-technique-kicker' }, 'THE CIRCUIT'),
+        h('div', { className: 'pb-technique-kicker' }, 'THE RACK · ' + budget),
         h('div', { className: 'pb-technique-name', style: { color: EW.inkMute } }, 'Select a technique'),
-        h('div', { className: 'pb-technique-desc' }, 'CLICK a node to equip it (the path fills in) · CLICK it again to unequip it and everything above it · a forked tier holds two options — pick either, swap any time'),
-        h('div', { className: 'pb-technique-keys' }, h('kbd', null, '↑↓←→'), ' walk ', h('kbd', null, 'ENTER'), ' equip / swap ', h('kbd', null, '⌫'), ' unequip ', h('kbd', null, 'TAB'), ' other option ', h('kbd', null, 'SPACE'), ' replay')));
+        h('div', { className: 'pb-technique-desc' }, 'CLICK any spell to equip it · CLICK it again (or its slot) to unequip · Tier I–IV cost 1–4 SP · 7 slots · ' + spMax + ' SP · any tier, any order'),
+        h('div', { className: 'pb-technique-keys' }, h('kbd', null, '↑↓←→'), ' walk ', h('kbd', null, 'ENTER'), ' equip / unequip ', h('kbd', null, '⌫'), ' unequip ', h('kbd', null, 'SPACE'), ' replay')));
   }
-  const { st8, sp, ring, key } = info;
+  const { st8, sp, key } = info;
   const cat = sp ? classifySpellLocal(sp) : null;
-  const cc = cat ? (PB_CAT[cat] || PB_CAT.damage) : null;
   const nc = cat ? (TREE_CAT_C[cat] || TREE_CAT_C.utility) : (st8 === 'root' ? '#e6e9f2' : EW.time);
-  const glyph = cat ? (TREE_CAT_GLYPH[cat] || TREE_CAT_GLYPH.utility) : (st8 === 'root' ? '⚔' : st8 === 'socket' ? '＋' : st8 === 'sealed' ? '🔒' : '◯');
-  const pillarName = info.pillar === 'P' ? getJobDisplay(clsName) : info.pillar === 'R' ? (raceLabel || 'RACE') : (secJob ? getJobDisplay(secJob) : 'SUBCLASS');
-  const kicker = st8 === 'root' ? 'ROOT · ALWAYS EQUIPPED'
-    : ['RING ' + ring, sp && sp.tier ? 'TIER ' + sp.tier : null, cat ? spellCategoryLabel(cat).toUpperCase() : null,
-       info.twin ? 'ONE OF TWO' : null, st8 === 'equipped' ? 'EQUIPPED' : st8 === 'swap' ? 'NOT WORN' : null].filter(Boolean).join(' · ');
-  const name = st8 === 'root' ? 'Basic Attack' : st8 === 'socket' ? (info.socketKind === 'race' ? 'Race Socket' : 'Job Socket') : st8 === 'empty' ? 'Empty Node' : (sp ? sp.name : '—');
-  const desc = st8 === 'root' ? 'The vessel\'s plain strike — melee or ranged by reach. Every loadout carries it; the circuit grows from here.'
-    : st8 === 'socket' ? 'An open socket on the Freelancer\'s rack: borrow any ' + (info.socketKind === 'race' ? 'race' : 'job') + '\'s technique of tier ' + (info.tiers || []).join(' / ') + '.'
-    : st8 === 'empty' ? (info.pillar === 'S' ? 'No subclass chosen — pick one on the pillar head to light this node.' : 'Nothing is authored on this node yet.')
+  const glyph = cat ? (TREE_CAT_GLYPH[cat] || TREE_CAT_GLYPH.utility) : (st8 === 'root' ? '⚔' : st8 === 'borrow' ? '＋' : '◯');
+  const srcTxt = info.source === 'race' ? (raceLabel || 'RACE').toUpperCase() : info.source === 'job' ? getJobDisplay(clsName).toUpperCase() : info.source ? PB_SOURCE_LABEL[info.source] : null;
+  const kicker = st8 === 'root' ? 'ALWAYS EQUIPPED · NO SLOT · 0 SP'
+    : st8 === 'borrow' ? 'TIER ' + PB_TIER_NUM[info.tier] + ' · ' + info.cost + ' SP EACH · THE FREELANCER BORROWS'
+    : ['TIER ' + PB_TIER_NUM[info.tier], info.cost + ' SP', cat ? spellCategoryLabel(cat).toUpperCase() : null, srcTxt,
+       st8 === 'equipped' ? 'EQUIPPED' : null].filter(Boolean).join(' · ');
+  const name = st8 === 'root' ? 'Basic Attack' : st8 === 'borrow' ? 'Borrow · Tier ' + PB_TIER_NUM[info.tier] : (sp ? sp.name : '—');
+  const desc = st8 === 'root' ? 'The vessel\'s plain strike — melee or ranged by reach. Every loadout carries it, free.'
+    : st8 === 'borrow' ? 'A Freelancer has no job row: it may equip any race\'s or any job\'s technique. ' + info.count + ' Tier ' + PB_TIER_NUM[info.tier] + ' techniques to pick from.'
     : (sp ? (sp.desc || spellCategoryLabel(cat)) : '');
-  // chips
   const chips = [];
   if (sp) {
     const pw = pbPowerStat(sp);
     const aoe = pbAoeLabel(sp);
-    const sc = spellSlotCost(sp);
     if (sp.apCost != null) chips.push(['AP ' + sp.apCost, EW.ink]);
     if (sp.cost) chips.push(['MP ' + sp.cost, '#6fc3ff']);
     if (sp.range != null) chips.push([sp.range === 0 ? 'SELF' : 'RNG ' + sp.range, EW.ink]);
     if (aoe) chips.push(['AOE ' + aoe, EW.ink]);
     if (pw) chips.push([pw.value + ' ' + pw.unit, pw.color]);
-    chips.push([sc + ' SLOT' + (sc > 1 ? 'S' : ''), EW.time]);
+    chips.push(['TIER ' + PB_TIER_NUM[info.tier] + ' · ' + info.cost + ' SP', EW.time]);
   }
   const effects = sp ? pbSpellEffects(sp) : [];
-  // the verb
   let verb = null, verbCls = '', verbTitle = '';
-  const otherSp = info.otherAlt && typeof window.getSpellById === 'function' ? window.getSpellById(info.otherAlt) : null;
-  if (st8 === 'equipped') {
-    verb = info.dropCount > 0 ? 'UNEQUIP · −' + (info.dropCount + 1) : 'UNEQUIP'; verbCls = 'danger';
-    verbTitle = info.dropCount > 0 ? 'Removes it and the ' + info.dropCount + ' technique' + (info.dropCount > 1 ? 's' : '') + ' above it' : 'Remove it';
-  }
-  else if (st8 === 'swap') { verb = '⇄ SWAP IN' + (otherSp ? ' · FOR ' + otherSp.name.toUpperCase() : ''); verbCls = 'gold'; verbTitle = 'Trade the node\'s other option for this one — same slot, nothing else moves'; }
-  else if (st8 === 'socket') { verb = '＋ BROWSE'; verbCls = 'gold'; verbTitle = 'Open the wildcard pool'; }
+  if (st8 === 'equipped') { verb = 'UNEQUIP · +' + info.cost + ' SP BACK'; verbCls = 'danger'; verbTitle = 'Remove it — only it'; }
+  else if (st8 === 'ok') { verb = 'EQUIP · ' + info.cost + ' SP'; verbCls = 'primary'; verbTitle = 'Equip this technique'; }
+  else if (st8 === 'sp') { verb = 'NEEDS ' + info.cost + ' SP · ' + (spMax - spUsed) + ' LEFT'; verbCls = 'off'; verbTitle = 'Unequip something to free SP'; }
+  else if (st8 === 'slots') { verb = 'NO SLOT · ' + used + '/' + slotCap; verbCls = 'off'; verbTitle = 'All seven slots are full — unequip something first'; }
   else if (st8 === 'sealed') { verb = 'SEALED — CLASH RULES'; verbCls = 'off'; verbTitle = 'Not allowed in this mode'; }
-  else if (st8 === 'blocked') { verb = 'NO PATH'; verbCls = 'off'; verbTitle = 'Fill the sockets between here and the root first'; }
-  else if (st8 === 'reachable' || st8 === 'far') {
-    if (info.overCap) { verb = 'NO ROOM · ' + info.newIds.length + ' SLOT' + (info.newIds.length > 1 ? 'S' : '') + ' NEEDED'; verbCls = 'off'; verbTitle = 'Unequip something first'; }
-    else if (info.path && info.path.length > 1) { verb = 'PATH · +' + info.path.length + ' NODES'; verbCls = 'gold'; verbTitle = 'Equips the whole path to reach it'; }
-    else { verb = 'EQUIP'; verbCls = 'primary'; verbTitle = 'Equip this technique'; }
-  }
-  if (verb && info.twin && otherSp && st8 !== 'swap' && st8 !== 'equipped') verbTitle += ' (the tier\'s other option is ' + otherSp.name + ')';
-  const canPreview = st8 !== 'empty' && st8 !== 'socket';
+  else if (st8 === 'borrow') { verb = '＋ BROWSE TIER ' + PB_TIER_NUM[info.tier]; verbCls = 'gold'; verbTitle = 'Open the pool'; }
+  const canPreview = st8 !== 'borrow';
   return h('div', { className: 'pb-technique', style: { '--tc': nc } },
     h('div', { className: 'pb-technique-disc', style: { borderColor: nc, color: st8 === 'equipped' || st8 === 'root' ? TREE_NODE_BG : nc, background: (st8 === 'equipped' || st8 === 'root') ? nc : 'transparent' } }, glyph),
     h('div', { className: 'pb-technique-main' },
@@ -1988,14 +1834,14 @@ function TechniquePanel({ info, clsName, secJob, raceLabel, fc, onVerb, onPrevie
       h('div', { className: 'pb-technique-verbs' },
         verb ? h('button', { className: 'pb-verb ' + verbCls, disabled: verbCls === 'off', onClick: () => onVerb && onVerb(info), title: verbTitle }, verb) : h('span', { className: 'pb-verb-note' }, st8 === 'root' ? 'ALWAYS EQUIPPED' : ''),
         canPreview ? h('button', { className: 'pb-verb ghost' + (previewing ? ' live' : ''), onClick: () => onPreview && onPreview(info), disabled: !!previewOff, title: previewOff ? 'Preview off' : 'Play the cast on the stage (SPACE)' }, previewOff ? '▶ PREVIEW OFF' : (previewing ? '■ PLAYING' : '▶ PREVIEW')) : null,
-        h('span', { className: 'pb-technique-slots' }, used + ' / ' + slotCap + ' SLOTS'))));
+        h('span', { className: 'pb-technique-slots' }, budget))));
 }
 /* THE FINISHER's panel (2026-09-19): the race's execution — the type, the
    name, the tagline, the brief, the price (the whole gauge + 1 AP), the
    reach (any enemy the team can see), the slice (~3× the strike's, typed by
    the chart, STAB) — and ▶ PREVIEW plays it on the stage. A designed row
    says so: the typed execution plays until its own is built. */
-function FinisherPanel({ info, raceLabel, onPreview, previewOff, previewing, used, slotCap }) {
+function FinisherPanel({ info, raceLabel, onPreview, previewOff, previewing, used, slotCap, spUsed, spMax }) {
   const fin = info.fin;
   if (!fin) return h('div', { className: 'pb-technique empty' }, h('div', { className: 'pb-technique-main' }, h('div', { className: 'pb-technique-kicker' }, 'THE FINISHER'), h('div', { className: 'pb-technique-name', style: { color: EW.inkMute } }, 'No execution on file')));
   const t = String(fin.type || 'anomaly').toLowerCase();
@@ -2016,7 +1862,7 @@ function FinisherPanel({ info, raceLabel, onPreview, previewOff, previewing, use
       h('div', { className: 'pb-technique-verbs' },
         h('span', { className: 'pb-verb-note' }, 'ALWAYS READY · A FULL GAUGE BUYS IT OR THE ENTROPY STRIKE'),
         h('button', { className: 'pb-verb ghost' + (previewing ? ' live' : ''), onClick: () => onPreview && onPreview(info), disabled: !!previewOff, title: previewOff ? 'Preview off' : 'Play the execution on the stage (SPACE)' }, previewOff ? '▶ PREVIEW OFF' : (previewing ? '■ PLAYING' : '▶ PREVIEW')),
-        h('span', { className: 'pb-technique-slots' }, used + ' / ' + slotCap + ' SLOTS'))));
+        h('span', { className: 'pb-technique-slots' }, used + ' / ' + slotCap + ' SLOTS · ' + (spUsed || 0) + ' / ' + (spMax || 16) + ' SP'))));
 }
 // ── Race traits: passives & terrain rules shown on the hero sheet ──
 // Entries marked CODED are live engine rules (map.js adaptation fns,
@@ -2027,7 +1873,7 @@ function FinisherPanel({ info, raceLabel, onPreview, previewOff, previewing, use
 // as they're implemented. Only default-unlocked (3D-ready) races listed.
 const RACE_TRAITS = {
   'homosapien': [
-    { icon: '🎓', name: 'Quick Study', desc: 'Learns subclass spells as if they were native.' },                     // DESIGN
+    { icon: '🎓', name: 'Quick Study', desc: 'Picks up new techniques faster than other vessels.' },                     // DESIGN
     { icon: '💪', name: 'Underdog', desc: 'Deals +10% damage to vessels with higher max HP.' },                       // DESIGN
   ],
   'giant': [
@@ -2721,7 +2567,9 @@ function PartyBuilder(props) {
   const template = computeStats(unitRace, clsName);
   const raceAbilities = getRaceAbilities(unitRace, clsName);
   const prof = window.RACE_PROFILES?.[unitRace];
-  const secJob = st.partyMeta?.[player]?.[slot]?.secondaryJob || '';
+  /* THE TIERS (2026-09-24): no unit has a secondary job — an old save's is dropped here, its spells by the scrub below. */
+  const secJob = '';
+  if (st.partyMeta?.[player]?.[slot]?.secondaryJob) delete st.partyMeta[player][slot].secondaryJob;
   const unitLoadout = st.loadouts?.[player]?.[slot] || (typeof window.emptyLoadout === 'function' ? window.emptyLoadout() : {});
   const unitEquipment = unitLoadout.equipment || {};
   const { final: fullStats, delta: statDeltas } = computeFullStats(unitRace, clsName, secJob, unitEquipment);
@@ -2851,26 +2699,16 @@ function PartyBuilder(props) {
   function handleNameChange(val) { if (!st.partyNames) st.partyNames={}; if (!st.partyNames[player]) st.partyNames[player]=[]; st.partyNames[player][slot]=val; }
   function handleZodiacChange(val) { if (!st.partyMeta[player]) st.partyMeta[player]=[]; if (!st.partyMeta[player][slot]) st.partyMeta[player][slot]={}; st.partyMeta[player][slot].zodiac=val; refresh(); }
   function handleAccChange(accSlot, val) { if (!st.loadouts[player]) st.loadouts[player]=[]; if (!st.loadouts[player][slot]) st.loadouts[player][slot]=typeof window.emptyLoadout==='function'?window.emptyLoadout():{}; if (!st.loadouts[player][slot].equipment) st.loadouts[player][slot].equipment=typeof window.emptyEquipment==='function'?window.emptyEquipment():{}; st.loadouts[player][slot].equipment[accSlot]=val||null; st.teamLockedIn=false; refresh(); }
-  function handleSecJobChange(val) { if (!st.partyMeta[player]) st.partyMeta[player]=[]; if (!st.partyMeta[player][slot]) st.partyMeta[player][slot]={}; const prevSec=st.partyMeta[player][slot].secondaryJob||''; st.partyMeta[player][slot].secondaryJob=val;
-
-    const mainJob=st.partyBuilds[player][slot];
-    const _mm = typeof window.getActiveMultiplayerMode === 'function' ? window.getActiveMultiplayerMode() : null;
-
-      st.partyMeta[player][slot].customSpells = buildDefaultCustomSpells(unitRace, mainJob, val);
-    st.teamLockedIn=false; refresh(); }
-  function toggleSpell(spellId) { if (!spellId) return; if (!st.partyMeta[player]) st.partyMeta[player]=[]; if (!st.partyMeta[player][slot]) st.partyMeta[player][slot]={}; const slotCap=typeof window.SPELL_SLOT_MAX!=='undefined'?window.SPELL_SLOT_MAX:6; const m=st.partyMeta[player][slot]; if (!Array.isArray(m.customSpells)) m.customSpells=[]; const arr=m.customSpells,idx=arr.indexOf(spellId); if(idx>=0)arr.splice(idx,1);else{if(usedSpellSlots(arr)+spellIdSlotCost(spellId)>slotCap){sfx('uiError');return;}arr.push(spellId); if (typeof window.getSpellById==='function') pbPreview(window.getSpellById(spellId), { equip: true });} st.teamLockedIn=false; sfx('uiCursorMove'); refresh(); }
+  function toggleSpell(spellId) { if (!spellId) return; if (!st.partyMeta[player]) st.partyMeta[player]=[]; if (!st.partyMeta[player][slot]) st.partyMeta[player][slot]={}; const slotCap=typeof window.SPELL_SLOT_MAX!=='undefined'?window.SPELL_SLOT_MAX:6; const m=st.partyMeta[player][slot]; if (!Array.isArray(m.customSpells)) m.customSpells=[]; const arr=m.customSpells,idx=arr.indexOf(spellId); if(idx>=0)arr.splice(idx,1);else{if(usedSpellSlots(arr)+spellIdSlotCost(spellId)>slotCap||pbSpUsed(arr)+pbSpCost(spellId)>pbSpMax()){sfx('uiError');return;}arr.push(spellId); if (typeof window.getSpellById==='function') pbPreview(window.getSpellById(spellId), { equip: true });} st.teamLockedIn=false; sfx('uiCursorMove'); refresh(); }
   function resetCustomSpells() { if (!st.partyMeta[player]) st.partyMeta[player]=[]; if (!st.partyMeta[player][slot]) st.partyMeta[player][slot]={};
     st.partyMeta[player][slot].customSpells = buildDefaultCustomSpells(unitRace, clsName, secJob);
     st.teamLockedIn=false; sfx('uiButtonConfirm'); refresh(); }
   function clearAllSpells() { if (!st.partyMeta[player]) st.partyMeta[player]=[]; if (!st.partyMeta[player][slot]) st.partyMeta[player][slot]={}; st.partyMeta[player][slot].customSpells=[]; st.teamLockedIn=false; sfx('uiButtonConfirm'); refresh(); }
   function randomizeSpells() { if (!st.partyMeta[player]) st.partyMeta[player]=[]; if (!st.partyMeta[player][slot]) st.partyMeta[player][slot]={}; const slotCap=typeof window.SPELL_SLOT_MAX!=='undefined'?window.SPELL_SLOT_MAX:6;
 
-    const allJobs = typeof window.JOB_MODIFIERS!=='undefined' ? Object.keys(window.JOB_MODIFIERS) : [];
     const mainJob = st.partyBuilds?.[player]?.[slot] || clsName;
-    const secOptions = allJobs.filter(j => j && j !== mainJob && j !== 'Freelancer');
-    if (secOptions.length > 0) { st.partyMeta[player][slot].secondaryJob = secOptions[Math.floor(Math.random()*secOptions.length)]; }
-    const curSecJob = st.partyMeta[player][slot].secondaryJob || '';
-    // Tree classes: a random walk over the tree is the randomizer.
+    const curSecJob = '';   // no secondary job since the tier rework (2026-09-24)
+    // Every class: a random legal kit (any tier, 7 slots, 16 SP — data.js buildTreeLegalLoadout).
     if (typeof window.classHasSpellTree === 'function' && window.classHasSpellTree(mainJob)
         && typeof window.buildTreeLegalLoadout === 'function') {
       st.partyMeta[player][slot].customSpells = window.buildTreeLegalLoadout(unitRace, mainJob, curSecJob);
@@ -2914,32 +2752,19 @@ function PartyBuilder(props) {
 
   const mpMode = typeof window.getActiveMultiplayerMode === 'function' ? window.getActiveMultiplayerMode() : null;
   const isArena = false;
-  /* Spell tree (Tree of Life selector): every job except Freelancer picks
-     from its 13-node tree; Freelancer keeps the flat pool below until its
-     wildcard-socket tree ships. */
+  /* THE RACK (2026-09-24, the tier rework): every job picks from its pool by
+     tier — no graph. unitTiers = pbTierCtx (the pool in parts, the rows by
+     tier, the sealed set, the equipped list + its SP). */
   const useTree = !isArena && typeof window.classHasSpellTree === 'function'
-    && window.classHasSpellTree(clsName) && typeof window.buildUnitSpellTree === 'function';
-  // Freelancer's tree derives socket placement from the equipped list, so
-  // the equipped ids are part of the tree's identity (other classes ignore them).
-  const unitTree = React.useMemo(() => useTree
-    ? window.buildUnitSpellTree(unitRace, clsName, secJob, customSpells || [])
-    : null, [useTree, unitRace, clsName, secJob, customSpells, _]);
-  const treeSealed = React.useMemo(() => (unitTree && typeof window.treeSealedIds === 'function')
-    ? window.treeSealedIds(unitTree) : new Set(), [unitTree]);
-  const [treeHoverPath, setTreeHoverPath] = React.useState(null);
+    && window.classHasSpellTree(clsName) && typeof window.unitSpellPoolParts === 'function';
+  const unitTiers = React.useMemo(() => useTree ? pbTierCtx(unitRace, clsName, customSpells || []) : null,
+    [useTree, unitRace, clsName, customSpells, _]);
   const [treeShake, setTreeShake] = React.useState(null);
-  // Freelancer wildcard sockets: which socket's picker is open (node key or null).
+  // A Freelancer's BORROW window: which tier's pool is open ('B1'–'B4' or null).
   const [flSocketPick, setFlSocketPick] = React.useState(null);
   const [flSocketFilt, setFlSocketFilt] = React.useState(PB_SOCKET_FILTER_EMPTY);
-  // a fresh socket opens on ALL with no filters
+  // a fresh pool opens on ALL with no filters
   React.useEffect(() => { setFlSocketFilt(PB_SOCKET_FILTER_EMPTY); }, [flSocketPick]);
-  // Twin nodes (CHAMP_REWORK_PLAN §4) are THE FORK since 2026-09-13 — both
-  // options stand on the tier, so there is no picker window; the selection
-  // / hover carry WHICH option (an alternate id, or null = the worn face).
-  const [techSelAlt, setTechSelAlt] = React.useState(null);
-  const [techHoverAlt, setTechHoverAlt] = React.useState(null);
-  // the ids an UNEQUIP under the pointer would drop (the cascade preview)
-  const [treeDrop, setTreeDrop] = React.useState(null);
   // one-line reason for a refused click, shown in the tech bar for 1.6 s
   const [treeNote, setTreeNote] = React.useState(null);
   const treeNoteTimer = React.useRef(0);
@@ -2948,7 +2773,7 @@ function PartyBuilder(props) {
     if (treeNoteTimer.current) clearTimeout(treeNoteTimer.current);
     treeNoteTimer.current = setTimeout(() => setTreeNote(null), 1600);
   };
-  React.useEffect(() => { setFlSocketPick(null); setTechSelAlt(null); setTechHoverAlt(null); setTreeDrop(null); }, [player, slot, clsName, unitRace]);
+  React.useEffect(() => { setFlSocketPick(null); }, [player, slot, clsName, unitRace]);
   React.useEffect(() => () => { if (treeNoteTimer.current) clearTimeout(treeNoteTimer.current); }, []);
   const treeShakeTimer = React.useRef(null);
   React.useEffect(() => { setTechSel(null); setTechHover(null); setPreviewState(null); }, [player, slot, clsName, unitRace]);
@@ -3065,154 +2890,64 @@ function PartyBuilder(props) {
     if (treeShakeTimer.current) clearTimeout(treeShakeTimer.current);
     treeShakeTimer.current = setTimeout(() => setTreeShake(null), 350);
   };
-  function treeNodeClick(nodeKey) {
-    if (!unitTree) return;
-    const id = unitTree.nodes[nodeKey];
-    if (!id || nodeKey === 'root') return;
-    if (treeSealed.has(id)) { sfx('uiError'); return; }
+  /* THE RACK's click (2026-09-24): an equipped spell unequips (only it — no
+     cascade); any other spell equips when data.js spellAddVerdict allows it
+     (a free slot, enough SP, not sealed) — else the bar says why. */
+  function tierSpellClick(id) {
+    if (!unitTiers || !id) return;
     if (!st.partyMeta[player]) st.partyMeta[player] = [];
     if (!st.partyMeta[player][slot]) st.partyMeta[player][slot] = {};
     const m = st.partyMeta[player][slot];
     if (!Array.isArray(m.customSpells)) m.customSpells = [];
     const arr = m.customSpells;
-    const idx = arr.indexOf(id);
-    if (idx >= 0) {
-      // UNEQUIP = THE CASCADE (2026-09-13): the node goes and so does every
-      // technique that hung off it — the click always lands; the circuit
-      // showed the red preview first. treeLegalSubset is the safety net.
-      const drop = treeDropIds(unitTree, arr, id);
-      let candidate = arr.filter(s => !drop.has(s));
-      if (typeof window.isTreeLoadoutLegal === 'function'
-          && !window.isTreeLoadoutLegal(unitRace, clsName, secJob, candidate)
-          && typeof window.treeLegalSubset === 'function') {
-        candidate = window.treeLegalSubset(unitRace, clsName, secJob, candidate);
-      }
-      m.customSpells = candidate;
-      if (drop.size > 1) flashTreeNote('UNEQUIPPED · −' + drop.size + ' (' + (drop.size - 1) + ' ABOVE IT)');
+    const cost = pbSpCost(id);
+    if (arr.includes(id)) {
+      m.customSpells = arr.filter(s => s !== id);
+      flashTreeNote('UNEQUIPPED · +' + cost + ' SP BACK');
     } else {
-      // equip — one click auto-equips the whole cheapest path (doc §1.3)
-      const path = computeTreeEquipPath(unitTree, treeSealed, arr, nodeKey);
-      if (!path || !path.length) { flashTreeNote('NO PATH · FILL THE NODES BELOW IT FIRST'); sfx('uiError'); shakeTreeNode(nodeKey); return; }
-      const newIds = path.map(k => unitTree.nodes[k]).filter(pid => pid && !arr.includes(pid));
-      if (arr.length + newIds.length > slotCap) { flashTreeNote('NO ROOM · ' + arr.length + '/' + slotCap + ' SLOTS · NEEDS ' + newIds.length + ' · UNEQUIP SOMETHING'); sfx('uiError'); shakeTreeNode(nodeKey); return; }
-      for (const pid of newIds) arr.push(pid);
-      if (newIds.length > 1) flashTreeNote('EQUIPPED · +' + newIds.length + ' ALONG THE PATH');
+      const v = pbSpellVerdict(unitTiers, id);
+      if (!v || !v.ok) { flashTreeNote((v && v.note) || 'NOT A LEGAL PICK'); sfx('uiError'); shakeTreeNode(id); return; }
+      arr.push(id);
       const spNow = typeof window.getSpellById === 'function' ? window.getSpellById(id) : null;
       if (spNow) pbPreview(spNow, { equip: true });      // the equip plays the cast (+ its VFX, §5.3)
     }
-    setTreeHoverPath(null); setTreeDrop(null);
     st.teamLockedIn = false; sfx('uiCursorMove'); refresh();
   }
-  /* A click on ONE OPTION of a fork: equipped → unequip (the cascade);
-     the node wears the other option → swap in place; unworn → equip the
-     path with THIS option on the node. */
-  function treeAltClick(nodeKey, altId) {
-    if (!unitTree || !altId) return;
-    const st8 = treeAltState(unitTree, treeSealed, customSpells || [], nodeKey, altId);
-    if (st8 === 'equipped') { treeNodeClick(nodeKey); return; }
-    if (st8 === 'sealed') { flashTreeNote('SEALED · NOT ALLOWED IN THIS MODE'); sfx('uiError'); shakeTreeNode(nodeKey); return; }
-    if (st8 === 'blocked') { flashTreeNote('NO PATH · FILL THE NODES BELOW IT FIRST'); sfx('uiError'); shakeTreeNode(nodeKey); return; }
-    twinPickSpell(nodeKey, altId);
-  }
-  // The circuit's hover: the technique panel follows it (no floating card —
-  // the panel IS the card here), the path lights, the stage previews.
-  const treeNodeHoverIn = (nodeKey, sp, e, altId) => {
-    setTechHover(nodeKey); setTechHoverAlt(altId || null);
-    const id = altId || (unitTree ? unitTree.nodes[nodeKey] : null);
-    const eq = customSpells || [];
-    if (id && eq.includes(id)) {
-      // an UNEQUIP under the pointer: paint what it would take with it
-      const drop = treeDropIds(unitTree, eq, id);
-      setTreeDrop(drop.size > 1 ? drop : null);
-      setTreeHoverPath(null);
-    } else if (id && !treeSealed.has(id)) {
-      const pair = unitTree && unitTree.alts && unitTree.alts[nodeKey];
-      const worn = pair && pair.some(a => eq.includes(a));   // a SWAP — the path is already lit
-      const path = worn ? null : computeTreeEquipPath(unitTree, treeSealed, eq, nodeKey);
-      setTreeHoverPath(path && path.length > 1 ? path : null);
-      setTreeDrop(null);
-    } else { setTreeHoverPath(null); setTreeDrop(null); }
-    if (nodeKey === PB_FIN_KEY) { pbPreviewFinisher({ hover: true }); return; }
-    if (sp || nodeKey === 'root') pbPreview(sp || null, { hover: true });
+  // The rack's hover: the technique panel follows it, the SP meter + pips
+  // forecast it, the stage previews it.
+  const treeNodeHoverIn = (key, sp, e) => {
+    setTechHover(key);
+    if (key === PB_FIN_KEY) { pbPreviewFinisher({ hover: true }); return; }
+    if (sp || key === 'root') pbPreview(sp || null, { hover: true });
   };
   const treeNodeHoverOut = () => {
-    setTechHover(null); setTechHoverAlt(null); setTreeHoverPath(null); setTreeDrop(null);
+    setTechHover(null);
     if (previewHoverTimer.current) { clearTimeout(previewHoverTimer.current); previewHoverTimer.current = 0; }
   };
-  /* Freelancer socket flow: click an open socket → picker overlay; picking a
-     spell equips it (customSpells only — placement re-derives). */
+  /* A Freelancer's BORROW: ＋ on a tier row opens that tier's pool; picking
+     a spell equips it through the same verdict. */
   function flEquipWildcard(spellId) {
-    if (!spellId) return;
+    if (!spellId || !unitTiers) return;
     if (!st.partyMeta[player]) st.partyMeta[player] = [];
     if (!st.partyMeta[player][slot]) st.partyMeta[player][slot] = {};
     const m = st.partyMeta[player][slot];
     if (!Array.isArray(m.customSpells)) m.customSpells = [];
-    const arr = m.customSpells;
-    if (arr.includes(spellId) || arr.length >= slotCap) { sfx('uiError'); return; }
-    const candidate = [...arr, spellId];
-    if (typeof window.isTreeLoadoutLegal === 'function'
-        && !window.isTreeLoadoutLegal(unitRace, clsName, secJob, candidate)) { sfx('uiError'); return; }
-    arr.push(spellId);
+    const v = pbSpellVerdict(unitTiers, spellId);
+    if (!v || !v.ok) { flashTreeNote((v && v.note) || 'NOT A LEGAL PICK'); sfx('uiError'); return; }
+    m.customSpells.push(spellId);
     setFlSocketPick(null);
     hideSpellTip();
     if (typeof window.getSpellById === 'function') pbPreview(window.getSpellById(spellId), { equip: true });
     st.teamLockedIn = false; sfx('uiCursorMove'); refresh();
   }
-  /* Twin-node flow: the candidate loadout that equips ALTERNATE spellId on
-     twin node twinKey — a swap in place when the node's other alternate is
-     equipped (never severs: same node), else the cheapest path with the
-     chosen alternate on the target node. null = impossible. */
-  function twinCandidate(twinKey, spellId) {
-    if (!unitTree || !unitTree.alts || !unitTree.alts[twinKey]) return null;
-    const pair = unitTree.alts[twinKey];
-    if (!pair.includes(spellId) || treeSealed.has(spellId)) return null;
-    const arr = customSpells || [];
-    const cur = pair.find(id => arr.includes(id));
-    if (cur === spellId) return arr.slice();
-    if (cur) return arr.map(id => id === cur ? spellId : id);
-    const path = computeTreeEquipPath(unitTree, treeSealed, arr, twinKey);
-    if (!path || !path.length) return null;
-    const newIds = path.map(k => k === twinKey ? spellId : unitTree.nodes[k]).filter(pid => pid && !arr.includes(pid));
-    if (arr.length + newIds.length > slotCap) return null;
-    return [...arr, ...newIds];
-  }
-  function twinPickSpell(twinKey, spellId) {
-    if (!twinKey || !spellId) return;
-    const candidate = twinCandidate(twinKey, spellId);
-    if (!candidate) {
-      const arr = customSpells || [];
-      const path = computeTreeEquipPath(unitTree, treeSealed, arr, twinKey);
-      flashTreeNote(!path || !path.length ? 'NO PATH · FILL THE NODES BELOW IT FIRST'
-        : 'NO ROOM · ' + arr.length + '/' + slotCap + ' SLOTS · UNEQUIP SOMETHING');
-      sfx('uiError'); shakeTreeNode(twinKey); return;
-    }
-    if (typeof window.isTreeLoadoutLegal === 'function'
-        && !window.isTreeLoadoutLegal(unitRace, clsName, secJob, candidate)) { flashTreeNote('NOT A LEGAL LOADOUT'); sfx('uiError'); shakeTreeNode(twinKey); return; }
-    if (!st.partyMeta[player]) st.partyMeta[player] = [];
-    if (!st.partyMeta[player][slot]) st.partyMeta[player][slot] = {};
-    const m = st.partyMeta[player][slot];
-    const wasSwap = (unitTree.alts[twinKey] || []).some(a => a !== spellId && (customSpells || []).includes(a));
-    m.customSpells = candidate;
-    if (wasSwap) flashTreeNote('SWAPPED IN · SAME SLOT');
-    setTechSelAlt(null);
-    setTreeHoverPath(null); setTreeDrop(null);
-    hideSpellTip();
-    if (typeof window.getSpellById === 'function') pbPreview(window.getSpellById(spellId), { equip: true });
-    st.teamLockedIn = false; sfx('uiCursorMove'); refresh();
-  }
   const flSocketPool = React.useMemo(() => {
-    if (!flSocketPick || !unitTree || !unitTree.isFreelancer
-        || typeof window.flWildcardPool !== 'function') return [];
-    const tiers = (unitTree.sockets && unitTree.sockets[flSocketPick]) || [];
-    // the tier a socket judges by is the TREE RING (data.js _flTierOf)
-    const tierOf = pbTreeTierOf;
-    const pool = (typeof window.flSocketPool === 'function')
-      ? window.flSocketPool(unitRace, flSocketPick) : window.flWildcardPool(unitRace);
-    return pool
-      .filter(sp => tiers.includes(tierOf(sp)) && clashSpellOk(sp))
-      .sort((a, b) => (tierOf(a) === tierOf(b) ? 0 : tierOf(a) < tierOf(b) ? -1 : 1)
-        || pbCatRank(a) - pbCatRank(b) || (a.name || '').localeCompare(b.name || ''));
-  }, [flSocketPick, unitTree, unitRace, _]);
+    if (!flSocketPick || !unitTiers || !unitTiers.isFreelancer) return [];
+    const t = +String(flSocketPick).slice(1);
+    const ids = unitTiers.parts.borrowRace.concat(unitTiers.parts.borrowJob);
+    return ids.map(id => (typeof window.getSpellById === 'function' ? window.getSpellById(id) : null))
+      .filter(sp => sp && pbTierOf(sp) === t && clashSpellOk(sp))
+      .sort((a, b) => pbCatRank(a) - pbCatRank(b) || (a.name || '').localeCompare(b.name || ''));
+  }, [flSocketPick, unitTiers, _]);
   const spellPool = React.useMemo(() => { if (typeof window.SPELL_LIBRARY==='undefined') return []; const mainJob=clsName,secJ=secJob,pool=[]; for (const sp of Object.values(window.SPELL_LIBRARY)){if(!sp||sp.kind==='basicAttack'||!clashSpellOk(sp))continue;const isM=typeof window.isSpellNativeToClass==='function'&&window.isSpellNativeToClass(sp,mainJob);const isS=secJ&&typeof window.isSpellNativeToClass==='function'&&window.isSpellNativeToClass(sp,secJ)&&sp.tier!=='III';if(isM||isS){pool.push(sp);}} return pool; }, [clsName, secJob, _]);
 
   const numerals = ['I','II','III','IV','V','VI','VII','VIII'];
@@ -3245,7 +2980,7 @@ function PartyBuilder(props) {
      when a tab changes. ══ */
   const raceLabelTxt = _grl(unitRace, identity.gender) || unitRace;
   const officer = pbOfficer();
-  const anyWindow = !!(equipPicker || showTeamModal || teamPick || pbMenu || notesOpen || (flSocketPick && unitTree && unitTree.isFreelancer));
+  const anyWindow = !!(equipPicker || showTeamModal || teamPick || pbMenu || notesOpen || (flSocketPick && unitTiers && unitTiers.isFreelancer));
   // the wall's hover → the stage (Stage 4); cleared on leave, on a pick and off the ROSTER tab
   const rosterHoverIn = (entry) => {
     if (rosterHoverTimer.current) clearTimeout(rosterHoverTimer.current);
@@ -3299,45 +3034,35 @@ function PartyBuilder(props) {
       }
       if (anyWindow || (standalone && tbView === 'locker')) return;
       const onButton = t && t.tagName === 'BUTTON';
-      const circuitKeys = pbTab === 'tech' && !!unitTree;   // the circuit owns the arrows on TECHNIQUES (SHIFT+← → still walks the row)
+      const circuitKeys = pbTab === 'tech' && !!unitTiers;   // the rack owns the arrows on TECHNIQUES (SHIFT+← → still walks the row)
       if (k === 'q' || k === 'Q' || k === '[') { e.preventDefault(); cycleTab(-1); }
       else if (k === 'e' || k === 'E' || k === ']') { e.preventDefault(); cycleTab(1); }
       else if (k >= '1' && k <= '4' && PB_TABS[+k - 1]) { e.preventDefault(); setTab(PB_TABS[+k - 1].id); }
       else if (circuitKeys && !e.shiftKey && (k === 'ArrowUp' || k === 'ArrowDown' || k === 'ArrowLeft' || k === 'ArrowRight')) {
         e.preventDefault();
         const dir = k === 'ArrowUp' ? 'up' : k === 'ArrowDown' ? 'down' : k === 'ArrowLeft' ? 'left' : 'right';
-        const next = techSel ? treeStepKey(techSel, dir) : 'root';
+        const next = techSel ? pbTierStep(unitTiers, techSel, dir, unitFinisher) : pbTierGrid(unitTiers, unitFinisher)[0][0];
         if (next !== techSel) {
-          setTechSel(next); setTechSelAlt(null); setTechHover(null); setTechHoverAlt(null); sfx('uiCursorMove');
-          const nid = (next === 'root' || next === PB_FIN_KEY) ? null : unitTree.nodes[next];
-          const nsp = nid && typeof window.getSpellById === 'function' ? window.getSpellById(nid) : null;
+          setTechSel(next); setTechHover(null); sfx('uiCursorMove');
+          const nsp = (next === 'root' || next === PB_FIN_KEY || PB_BORROW_RE.test(next)) ? null
+            : (typeof window.getSpellById === 'function' ? window.getSpellById(next) : null);
           if (next === PB_FIN_KEY) pbPreviewFinisher({ hover: true });
           else if (nsp || next === 'root') pbPreview(nsp, { hover: true });
         }
       }
       else if (k === 'ArrowLeft') { e.preventDefault(); selectSlot((slot - 1 + teamSize) % teamSize); }
       else if (k === 'ArrowRight') { e.preventDefault(); selectSlot((slot + 1) % teamSize); }
-      else if (circuitKeys && techSel && k === 'Tab' && unitTree.alts && unitTree.alts[techSel]) {
-        // TAB on a fork = the other option (the panel + the preview follow)
-        e.preventDefault();
-        const pair = unitTree.alts[techSel];
-        const cur = techSelAlt || unitTree.nodes[techSel];
-        const other = pair.find(a => a !== cur) || cur;
-        setTechSelAlt(other); setTechHover(null); setTechHoverAlt(null); sfx('uiCursorMove');
-        const osp = typeof window.getSpellById === 'function' ? window.getSpellById(other) : null;
-        if (osp) pbPreview(osp, { hover: true });
-      }
-      else if (circuitKeys && techSel && !onButton && k === 'Enter') { e.preventDefault(); techVerb(pbTechInfo(unitTree, treeSealed, customSpells || [], techSel, slotCap, techSelAlt, unitFinisher)); }
+      else if (circuitKeys && techSel && !onButton && k === 'Enter') { e.preventDefault(); techVerb(pbTechInfo(unitTiers, techSel, unitFinisher)); }
       else if (circuitKeys && techSel && k === 'Backspace') {
         e.preventDefault();
-        if (treeNodeState(unitTree, treeSealed, customSpells || [], techSel) === 'equipped') treeNodeClick(techSel);
+        if ((customSpells || []).includes(techSel)) tierSpellClick(techSel);
         else { flashTreeNote('NOTHING EQUIPPED HERE'); sfx('uiError'); }
       }
       else if (circuitKeys && !onButton && k === ' ') {
         e.preventDefault();
-        const info = pbTechInfo(unitTree, treeSealed, customSpells || [], techHover || techSel, slotCap, techHover ? techHoverAlt : techSelAlt, unitFinisher);
+        const info = pbTechInfo(unitTiers, techHover || techSel, unitFinisher);
         if (info && info.st8 === 'finisher') pbPreviewFinisher();
-        else if (info && info.st8 !== 'empty' && info.st8 !== 'socket') pbPreview(info.sp || null);
+        else if (info && info.st8 !== 'borrow') pbPreview(info.sp || null);
       }
     };
     document.addEventListener('keydown', onKey);
@@ -3345,28 +3070,24 @@ function PartyBuilder(props) {
   });
 
   /* THE TECHNIQUE PANEL's verb (plan §5.2 item 3): the same thing a click
-     on the chip does — treeNodeClick / the twin picker / the socket picker. */
+     on the chip does — tierSpellClick / the borrow window. */
   const techVerb = (info) => {
-    if (!info || !unitTree) return;
+    if (!info || !unitTiers) return;
     const { st8, key } = info;
     if (st8 === 'finisher') { pbPreviewFinisher(); return; }
-    if (st8 === 'socket') { if (unitTree.isFreelancer) { setFlSocketPick(key); sfx('uiCursorMove'); } return; }
-    if (st8 === 'equipped') { treeNodeClick(key); return; }
-    if (st8 === 'swap') { twinPickSpell(key, info.id); return; }
-    if (st8 === 'reachable' || st8 === 'far') {
-      if (info.overCap) { flashTreeNote('NO ROOM · ' + (customSpells || []).length + '/' + slotCap + ' SLOTS · NEEDS ' + info.newIds.length + ' · UNEQUIP SOMETHING'); sfx('uiError'); shakeTreeNode(key); return; }
-      if (info.twin && info.alt) { twinPickSpell(key, info.alt); return; }
-      treeNodeClick(key); return;
-    }
-    if (st8 === 'sealed') flashTreeNote('SEALED · NOT ALLOWED IN THIS MODE');
-    else if (st8 === 'blocked') flashTreeNote('NO PATH · FILL THE NODES BELOW IT FIRST');
-    sfx('uiError');
+    if (st8 === 'root') { pbPreview(null); return; }
+    if (st8 === 'borrow') { if (unitTiers.isFreelancer) { setFlSocketPick(key); sfx('uiCursorMove'); } return; }
+    tierSpellClick(key);
   };
   const unitFinisher = pbFinisherDef(unitRace);
-  const techInfo = (useTree && unitTree) ? pbTechInfo(unitTree, treeSealed, customSpells || [], techHover || techSel, slotCap, techHover ? techHoverAlt : techSelAlt, unitFinisher) : null;
-  // the slot pips' forecast: +N along the hovered path, −N under the hovered UNEQUIP
-  const pipPend = techInfo && (techInfo.st8 === 'reachable' || techInfo.st8 === 'far') ? techInfo.newIds.length : 0;
-  const pipDrop = techInfo && techInfo.st8 === 'equipped' && techInfo.drop ? techInfo.drop.size : 0;
+  const techInfo = (useTree && unitTiers) ? pbTechInfo(unitTiers, techHover || techSel, unitFinisher) : null;
+  // the forecast on the slot pips + the SP meter: +N under a hovered pick, −N under a hovered unequip
+  const pipPend = techInfo && techInfo.st8 === 'ok' ? 1 : 0;
+  const pipDrop = techInfo && techInfo.st8 === 'equipped' ? 1 : 0;
+  const spMax = pbSpMax();
+  const spUsedNow = pbSpUsed(customSpells || []);
+  const spPend = pipPend ? techInfo.cost : 0;
+  const spDrop = pipDrop ? techInfo.cost : 0;
 
   /* ── HEAD: one row — the seal + FORGE-1, the tabs (L1 / R1 caps), the mode · slots, ESC ── */
   const tabbar = h('div', { className: 'pb-tabbar' },
@@ -3468,7 +3189,16 @@ function PartyBuilder(props) {
           className: i < spellSlotsUsed ? ('on' + (pipDrop && i >= spellSlotsUsed - pipDrop ? ' drop' : ''))
             : (pipPend && i < spellSlotsUsed + pipPend ? ('pend' + (i >= slotCap ? ' over' : '')) : '') })),
         h('small', { className: pipPend && spellSlotsUsed + pipPend > slotCap ? 'over' : '' },
-          pipPend ? (spellSlotsUsed + '+' + pipPend + '/' + slotCap) : pipDrop ? (spellSlotsUsed + '−' + pipDrop + '/' + slotCap) : (spellSlotsUsed + '/' + slotCap))),
+          (pipPend ? (spellSlotsUsed + '+' + pipPend + '/' + slotCap) : pipDrop ? (spellSlotsUsed + '−' + pipDrop + '/' + slotCap) : (spellSlotsUsed + '/' + slotCap)) + ' SLOTS')),
+      // THE SP METER (2026-09-24): one cell per Spell Point — spent · the hovered pick (+N) · the hovered unequip (−N)
+      useTree && h('span', { className: 'pb-sp' + (spUsedNow > spMax ? ' over' : ''), title: spUsedNow + ' of ' + spMax + ' Spell Points spent — Tier I–IV cost 1–4 SP' },
+        h('b', null, 'SP'),
+        h('span', { className: 'pb-sp-cells' },
+          ...Array.from({ length: Math.max(spMax, spUsedNow) }).map((_, i) => h('i', { key: i,
+            className: i < spUsedNow ? ('on' + (spDrop && i >= spUsedNow - spDrop ? ' drop' : ''))
+              : (spPend && i < spUsedNow + spPend ? ('pend' + (i >= spMax ? ' over' : '')) : '') }))),
+        h('small', { className: spPend && spUsedNow + spPend > spMax ? 'over' : '' },
+          spPend ? (spUsedNow + '+' + spPend + '/' + spMax) : spDrop ? (spUsedNow + '−' + spDrop + '/' + spMax) : (spUsedNow + '/' + spMax))),
       treeNote ? h('span', { className: 'pb-tree-note', key: treeNote }, treeNote) : null,
       h('div', { style:{flex:1} }),
       !isArena&&h('button',{onClick:randomizeSpells,className:'pb-mini',title:'Random legal loadout'},'RND'),
@@ -3476,11 +3206,9 @@ function PartyBuilder(props) {
       !isArena&&h('button',{onClick:clearAllSpells,className:'pb-mini danger',title:'Unequip everything'},'CLR')),
     h('div', { className: 'pb-zone-body', style: { padding: '6px 4px 6px 2px' } },
 
-      // ── equipped loadout: fixed slot rack (SPELL_SLOT_MAX). Tree classes DON'T get
-      //    this — the tree (lit nodes + pips) IS the loadout display;
-      //    the rack only remains for the flat-pool fallback (Freelancer,
-      //    or a race/class the tree fns can't build). ──
-      !(useTree&&unitTree)&&h('div', { className:'pbx-slotrack', style:{ maxHeight:'48%', overflow:'hidden' } },
+      // ── equipped loadout: the flat-pool FALLBACK's slot rack (only when the
+      //    tier fns are unavailable) — the tier rack draws its own loadout. ──
+      !(useTree&&unitTiers)&&h('div', { className:'pbx-slotrack', style:{ maxHeight:'48%', overflow:'hidden' } },
         h('div', { className:'pbx-slotrack-head' },
           h('span', { style:{ fontSize:10, color:'#79d99a', letterSpacing:'0.16em', fontWeight:700 } }, '🔒 EQUIPPED — SPELL SLOTS'),
           h('span', { style:{ fontSize:9, color:EW.inkDim, letterSpacing:'0.06em', marginLeft:'auto' } }, spellSlotsUsed, ' / ', slotCap, ' SLOTS FILLED')),
@@ -3505,34 +3233,23 @@ function PartyBuilder(props) {
           return rows;
         })())),
 
-      // ── SUBCLASS — flat-pool classes pick it here (it feeds the pool);
-      //    tree classes pick via the tree's right pillar head, and every
-      //    class also has it on the GEAR tab. ──
-      !isArena && !(useTree&&unitTree) && clsName!=='Freelancer' && h('div', { className:'pbx-subbar', style:{ '--cat': fc, flexShrink:0 }, onClick:()=>{ setEquipPicker('subjob'); sfx('uiCursorMove'); }, title:'A second job: its spells join this spell pool and its training shifts your stats.' },
-        h('span', { style:{ fontSize:9, color:EW.inkMute, letterSpacing:'0.16em', flexShrink:0 } }, 'SUBCLASS'),
-        h('span', { style:{ fontFamily:'Cormorant SC, serif', fontSize:14, fontWeight:700, color:EW.ink, letterSpacing:'0.04em', whiteSpace:'nowrap' } }, secJob ? getJobDisplay(secJob) : '— None —'),
-        h('span', { style:{ fontSize:9, color:EW.inkDim, letterSpacing:'0.04em', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', minWidth:0, flex:1 } }, 'adds its spells to the pool below · shifts stats'),
-        h('span', { style:{ fontSize:10, color:fc, letterSpacing:'0.1em', flexShrink:0 } }, '▾ CHANGE')),
-
-      // ── the spell tree (every job — Freelancer gets wildcard sockets) ──
-      useTree&&unitTree&&h(React.Fragment, null,
+      // ── THE RACK (2026-09-24): the loadout, four tier rows, the root + THE FINISHER ──
+      useTree&&unitTiers&&h(React.Fragment, null,
         h('div', { className: 'pb-circuit-scroll', onMouseLeave: treeNodeHoverOut },
-          h(SpellTreePanel, { tree: unitTree, sealed: treeSealed, equipped: customSpells || [],
-            slotCap, fc, clsName, secJob,
+          h(SpellTierPanel, { ctx: unitTiers, fc, clsName,
             raceLabel: (typeof window.getRaceLabel === 'function' ? window.getRaceLabel(unitRace) : unitRace),
-            onNodeClick: treeNodeClick, onNodeHoverIn: treeNodeHoverIn, onNodeHoverOut: treeNodeHoverOut,
-            hoverPath: treeHoverPath, dropIds: treeDrop, shakeKey: treeShake,
-            selKey: techSel, selAlt: techSelAlt, hoverKey: techHover, hoverAlt: techHoverAlt, onSelect: (key, altId) => { setTechSel(key); setTechSelAlt(altId || null); },
-            onOpenSubjob: (!isArena && !unitTree.isFreelancer) ? () => { setEquipPicker('subjob'); sfx('uiCursorMove'); } : undefined,
-            onSocketClick: unitTree.isFreelancer ? (key) => { setFlSocketPick(key); sfx('uiCursorMove'); } : undefined,
-            onAltClick: treeAltClick, finisher: unitFinisher })),
+            onSpellClick: tierSpellClick, onUnequipSlot: tierSpellClick,
+            onBorrow: (key) => { setFlSocketPick(flSocketPick === key ? null : key); sfx('uiCursorMove'); },
+            onNodeHoverIn: treeNodeHoverIn, onNodeHoverOut: treeNodeHoverOut, shakeKey: treeShake,
+            selKey: techSel, hoverKey: techHover, onSelect: (key) => { setTechSel(key); },
+            finisher: unitFinisher })),
         null),
 
       // ── flat pool — FALLBACK only (tree fns unavailable) ──
       (!useTree&&!isArena&&(spellPool.length>0||raceAbilities.length>0))&&h(React.Fragment, null,
         h('div', { style:{ display:'flex', alignItems:'center', gap:6, flexShrink:0, margin:'6px 6px 3px 10px', paddingTop:6, borderTop:`1px solid ${EW.panelEdge}` } },
           h('span', { style:{ fontSize:10, color:EW.inkMute, letterSpacing:'0.16em' } }, 'SPELL POOL'),
-          h('span', { style:{ fontSize:9, color:`${fc}bb`, letterSpacing:'0.08em', textTransform:'uppercase' } }, getJobDisplay(clsName), secJob ? ' + ' + getJobDisplay(secJob) : ''),
+          h('span', { style:{ fontSize:9, color:`${fc}bb`, letterSpacing:'0.08em', textTransform:'uppercase' } }, getJobDisplay(clsName)),
           h('span', { style:{ fontSize:9, color:EW.inkDim, letterSpacing:'0.06em', marginLeft:'auto' } }, spellPool.length + raceAbilities.length, ' AVAILABLE · CLICK TO EQUIP')),
         h('div', { style:{ flex:1, minHeight:0, overflowY:'auto', display:'flex', flexDirection:'column', gap:3, paddingTop:2, paddingBottom:2 } },
           (()=>{
@@ -3580,26 +3297,26 @@ function PartyBuilder(props) {
         h('span',{style:{fontSize:10,color:'rgba(200,180,150,0.6)',letterSpacing:'0.1em',marginBottom:1,paddingLeft:10}},'RACE ABILITIES'),
         raceAbilities.map((a,ai)=>h(SpellBlade,{key:ai,sp:a,raceAbility:true,onHoverIn:e=>showSpellTip(a,e),onHoverOut:hideSpellTip})))),
 
-    // ── node picker: the Freelancer's wildcard sockets. (Twin nodes used to
-    //    share this window — since 2026-09-13 they are THE FORK on the
-    //    circuit itself, both options visible, no window.) ──
+    // ── THE BORROW window: a Freelancer's ＋ on a tier row opens every race /
+    //    job ability of that tier (tabs + filters + search; a row that would
+    //    break the budget is dimmed and says why on click). ──
     (() => {
-      if (!unitTree) return null;
-      const socketOpen = flSocketPick && unitTree.isFreelancer;
+      if (!unitTiers) return null;
+      const socketOpen = flSocketPick && unitTiers.isFreelancer;
       if (!socketOpen) return null;
       const close = () => { setFlSocketPick(null); hideSpellTip(); };
       let title, sub, rows;
       {
-        const kind = flSocketKind(unitTree, flSocketPick);
-        title = kind === 'race' ? '＋ RACE SOCKET' : '＋ JOB SOCKET';
-        sub = 'TIER ' + (((unitTree.sockets||{})[flSocketPick]||[]).join(' / ')) + (kind === 'race' ? ' · ANY RACE' : ' · ANY JOB');
+        const bt = +String(flSocketPick).slice(1);
+        title = '＋ BORROW · TIER ' + PB_TIER_NUM[bt];
+        sub = bt + ' SP EACH · ANY RACE OR JOB · ' + spUsedNow + '/' + spMax + ' SP · ' + (customSpells || []).length + '/' + slotCap + ' SLOTS';
         const F = flSocketFilt;
         const setF = (patch) => setFlSocketFilt(prev => ({ ...prev, ...patch }));
         // the tabs count within the OTHER filters, so a tab never lies
         const sansCat = { ...F, cat: 'all' };
         const tabCount = {};
         for (const sp of flSocketPool) { if (!pbSocketFilterMatch(sp, sansCat)) continue; const c = classifySpellLocal(sp); tabCount[c] = (tabCount[c] || 0) + 1; tabCount.all = (tabCount.all || 0) + 1; }
-        const socketTiers = ((unitTree.sockets||{})[flSocketPick]||[]);
+        const socketTiers = [];   // one tier per window since the tier rework
         const poolTypes = new Set(flSocketPool.map(sp => (sp.spellType || '').toLowerCase()));
         const shown = flSocketPool.filter(sp => pbSocketFilterMatch(sp, F));
         const filtOn = pbSocketFilterActive(F);
@@ -3638,9 +3355,8 @@ function PartyBuilder(props) {
         sub += ' · ' + shown.length + ' / ' + flSocketPool.length;
         rows = [tabs, filters, ...shown.map(sp => {
           const already = (customSpells || []).includes(sp.id);
-          const cantEquip = already || (customSpells || []).length >= slotCap
-            || (typeof window.isTreeLoadoutLegal === 'function'
-                && !window.isTreeLoadoutLegal(unitRace, clsName, secJob, [...(customSpells || []), sp.id]));
+          const v = already ? null : pbSpellVerdict(unitTiers, sp.id);
+          const cantEquip = already || !v || !v.ok;
           return h(SpellBlade, { key: sp.id, sp, pool:true, equipped: already, dim: cantEquip && !already,
             onClick: () => flEquipWildcard(sp.id),
             onHoverIn: e=>showSpellTip(sp, e), onHoverOut: hideSpellTip });
@@ -3681,14 +3397,6 @@ function PartyBuilder(props) {
               onClick:()=>{ setEquipPicker('item'); sfx('uiCursorMove'); },
               onClear:rule ? ()=>setItemCount(ik, -1) : null });
           }))),
-      // SUBCLASS — a pill (Stage 5); the same picker the tree's right pillar opens (handleSecJobChange as today)
-      !isArena && clsName!=='Freelancer' && h('div', { className: 'pb-gear-row', style:{ marginTop: 4 } },
-        h('div', { className: 'pb-gear-label' }, 'SUBCLASS', h('small', null, 'A SECOND JOB')),
-        h('button', { className:'pb-sub-pill', style:{ '--cat': fc }, onClick:()=>{ setEquipPicker('subjob'); sfx('uiCursorMove'); }, title:'A second job: its spells join this spell pool and its training shifts your stats.' },
-          h('b', null, secJob ? getJobDisplay(secJob) : '— None —'),
-          h('span', null, 'its spells join the tree · its training shifts stats'),
-          h('i', null, '▾ CHANGE'))),
-      clsName==='Freelancer' && h('div', { style:{ fontSize:9, color:EW.inkDim, letterSpacing:'0.08em', fontStyle:'italic', padding:'4px 2px' } }, 'A Freelancer has no subclass — its wildcard sockets borrow any job\'s spell.'),
       h('div', { className: 'pb-gear-row', style:{ marginTop: 6 } },
         h('div', { className: 'pb-gear-label' }, 'NAME', h('small', null, 'THE MANIFEST')),
         h('input', { key:player+'-'+slot, className:'pb-gear-input', defaultValue:unitName, maxLength:24, onBlur:e=>{ handleNameChange(e.target.value); refresh(); }, onKeyDown:e=>{ if(e.key==='Enter') e.target.blur(); } })),
@@ -3751,7 +3459,7 @@ function PartyBuilder(props) {
     h('div', { className: 'pb-ident' },
       h('b', null, unitName),
       h('span', null, raceLabelTxt.toUpperCase(), ' · ', getJobDisplay(clsName).toUpperCase(),
-        (!isArena && clsName!=='Freelancer' && secJob) ? ' + ' + getJobDisplay(secJob).toUpperCase() : ''),
+        ''),
       h('div', { className: 'pb-ident-types' }, ...unitTypes.map((t,i)=>h(TypeChip,{key:i,type:t,size:9})),
         h('em', { style:{ color:`${fc}bb` }, title: factionBonusTxt || undefined }, unitFaction))),
     h('div', { style:{ flex:1, minHeight:0, display:'flex', flexDirection:'column', gap:6, overflowY:'auto', overflowX:'hidden', paddingTop:4 } },
@@ -3859,9 +3567,9 @@ function PartyBuilder(props) {
   // THE TECHNIQUE PANEL (2026-09-09 rev 8): its own cell UNDER the lanes, beside
   // the party bar — the lanes get the full height, the description reads next
   // to the portraits. Only on TECHNIQUES with a tree; otherwise the party bar spans.
-  const hasPanel = pbTab === 'tech' && !!(useTree && unitTree);
+  const hasPanel = pbTab === 'tech' && !!(useTree && unitTiers);
   const panelZone = hasPanel ? h('div', { key: 'panel', className: 'pb-zone pb-zone-panel' },
-    h(TechniquePanel, { info: techInfo, clsName, secJob, fc,
+    h(TechniquePanel, { info: techInfo, clsName, fc, spUsed: spUsedNow, spMax,
       raceLabel: (typeof window.getRaceLabel === 'function' ? window.getRaceLabel(unitRace) : unitRace),
       onVerb: techVerb, onPreview: (info) => (info && info.st8 === 'finisher') ? pbPreviewFinisher() : pbPreview(info.sp || null),
       previewOff, previewing: !!previewState, used: (customSpells || []).length, slotCap })) : null;
@@ -4061,44 +3769,10 @@ function PartyBuilder(props) {
       (!unitNotes.passives.length && !unitNotes.terrain.length) ? h('div', { style:{ fontSize:11, color:EW.inkDim, fontStyle:'italic', padding:'12px 6px', textAlign:'center' } }, 'No notes on this vessel — field research pending.') : null));
 
   const pickerWindow = equipPicker && h(PbWindow, {
-      title: equipPicker === 'item' ? 'Battle Items' : equipPicker === 'subjob' ? 'Choose a Subclass' : 'Gear — Slot ' + (equipPicker === 'accessory1' ? '1' : '2'),
-      sub: equipPicker === 'item' ? (totalItemsUsed + ' / ' + itemSlotMax + ' CARRIED') : equipPicker === 'subjob' ? 'its spells join your pool · its training shifts your stats' : null,
+      title: equipPicker === 'item' ? 'Battle Items' : 'Gear — Slot ' + (equipPicker === 'accessory1' ? '1' : '2'),
+      sub: equipPicker === 'item' ? (totalItemsUsed + ' / ' + itemSlotMax + ' CARRIED') : null,
       onClose: () => setEquipPicker(null), width: 470 },
-    equipPicker === 'subjob'
-      ? (() => {
-          // Subclass rows: spells the job contributes + its stat shifts, so
-          // the choice reads as "what playstyle does this buy me".
-          const jobs = (typeof window.JOB_MODIFIERS!=='undefined'?Object.keys(window.JOB_MODIFIERS):[]).filter(j=>j!==clsName&&j!=='Freelancer');
-          const bonusStr = (j) => {
-            const b = (typeof window.computeSecJobBonuses === 'function') ? window.computeSecJobBonuses(j) : {};
-            return Object.entries(b).filter(([,v]) => v).map(([k,v]) => (v>0?'+':'')+v+' '+k.toUpperCase()).join('  ');
-          };
-          const spellCount = (j) => (((typeof window.CLASS_SPELL_LEARN_ORDER!=='undefined'&&window.CLASS_SPELL_LEARN_ORDER)||{})[j]||[]).length;
-          const pickJob = (j) => { handleSecJobChange(j); sfx('uiButtonConfirm'); setEquipPicker(null); };
-          const autoOn = !secJob;
-          const rows = [h('div', { key:'__auto', className:'pbx-pick-row', style: autoOn ? { borderColor:fc, background:`${fc}14` } : undefined, onClick:()=>pickJob('') },
-            h('span', { style:{ width:26, textAlign:'center', fontSize:16, flexShrink:0, color:EW.inkMute }}, '◈'),
-            h('div', { style:{ flex:1, minWidth:0 }},
-              h('div', { style:{ fontFamily:'Cormorant SC, serif', fontSize:13, fontWeight:700, color: autoOn ? EW.ink : '#c3c8d6' }}, '— None —'),
-              h('div', { style:{ fontSize:10, color:EW.inkMute, lineHeight:1.35 }}, 'No subclass. Your pool holds main-job spells and race abilities only.')),
-            autoOn ? h('span', { style:{ fontSize:9, color:fc, fontWeight:700, flexShrink:0, letterSpacing:'0.08em' }}, 'CURRENT') : null)];
-          for (const j of jobs) {
-            const on = secJob === j;
-            const bs = bonusStr(j);
-            rows.push(h('div', { key:j, className:'pbx-pick-row', style: on ? { borderColor:fc, background:`${fc}14` } : undefined, onClick:()=>pickJob(j) },
-              // Plain homosapien in this job — a visual shorthand for the role.
-              h('div', { style:{ width:40, height:40, flexShrink:0, display:'flex', alignItems:'flex-end', justifyContent:'center', background:`linear-gradient(180deg, transparent 45%, ${fc}12 100%)`, border:`1px solid ${on?fc:EW.panelEdge}`, borderRadius:'50%', overflow:'hidden' }},
-                h(Sprite, { race:'homosapien', gender:'male', cls:j, size:'92%', style:{ width:'92%', height:'92%' } })),
-              h('div', { style:{ flex:1, minWidth:0 }},
-                h('div', { style:{ display:'flex', alignItems:'baseline', gap:8 }},
-                  h('span', { style:{ fontFamily:'Cormorant SC, serif', fontSize:13, fontWeight:700, color: on ? EW.ink : '#c3c8d6' }}, getJobDisplay(j)),
-                  h('span', { style:{ fontSize:9, color:EW.inkDim, letterSpacing:'0.06em' }}, '+', spellCount(j), ' SPELLS TO POOL')),
-                bs ? h('div', { style:{ fontSize:10, color:EW.inkMute, lineHeight:1.4 }}, ...bs.split('  ').map((tok, ti) => h('span', { key:ti, style:{ color: tok.startsWith('-') ? EW.bad : EW.good, marginRight:8, fontWeight:600 }}, tok))) : null),
-              on ? h('span', { style:{ fontSize:9, color:fc, fontWeight:700, flexShrink:0, letterSpacing:'0.08em' }}, 'CURRENT') : null));
-          }
-          return rows;
-        })()
-      : equipPicker === 'item'
+    equipPicker === 'item'
       ? allItemKeys.map(ik => {
           const rule = window.ITEM_RULES?.[ik];
           if (!rule) return null;

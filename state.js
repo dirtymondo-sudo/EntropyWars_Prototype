@@ -3742,7 +3742,7 @@
                         cls: String(cls || 'Freelancer'),
                         name: (state.partyNames && state.partyNames[seat] && state.partyNames[seat][i]) || '',
                         meta: {
-                            race: meta.race || '', gender: meta.gender || '', secondaryJob: meta.secondaryJob || '',
+                            race: meta.race || '', gender: meta.gender || '',
                             customSpells: Array.isArray(meta.customSpells) ? meta.customSpells.filter(Boolean).slice() : null,
                             zodiac: meta.zodiac || '', appearance: meta.appearance || null,
                         },
@@ -3926,7 +3926,6 @@
                         dominantHand: priorMeta.dominantHand || (cls === 'Black Mage' ? 'left' : 'right')
                     };
 
-                    if (priorMeta.secondaryJob) rebuiltMeta.secondaryJob = priorMeta.secondaryJob;
                     if (Array.isArray(priorMeta.customSpells) && priorMeta.customSpells.length > 0) {
                         rebuiltMeta.customSpells = priorMeta.customSpells.slice();
                     }
@@ -4044,13 +4043,12 @@
             const allJobs = (typeof JOB_MODIFIERS !== 'undefined') ? Object.keys(JOB_MODIFIERS)
                           : (typeof CLASS_TEMPLATES !== 'undefined') ? Object.keys(CLASS_TEMPLATES) : [];
 
-            const secOptions = allJobs.filter(j => j && j !== cls && j !== 'Freelancer');
-            const secJob = secOptions.length > 0 ? secOptions[randInt(secOptions.length)] : '';
-            meta.secondaryJob = secJob;
+            /* THE TIERS (2026-09-24): no unit has a secondary job any more — the name of this fn is history. */
+            const secJob = '';
+            delete meta.secondaryJob;
 
-            /* Spell-tree classes: random loadout = a random walk over the
-               unit's tree (race + primary + secondary pillars, adjacency-
-               legal by construction). Freelancer keeps the flat pools. */
+            /* Every class: a random legal kit (any spell of its pool, 7 slots, 16 SP — data.js
+               buildTreeLegalLoadout). The flat pools below are the no-tree fallback only. */
             if (typeof classHasSpellTree === 'function' && classHasSpellTree(cls)
                 && typeof buildTreeLegalLoadout === 'function') {
                 meta.customSpells = buildTreeLegalLoadout(meta.race || '', cls, secJob);

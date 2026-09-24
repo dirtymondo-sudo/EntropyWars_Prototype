@@ -61,10 +61,14 @@ test('the online lock flow in the foot survives verbatim', () => {
 });
 
 test('every mechanic keeps its function name (plan rule 3.5)', () => {
-    for (const fn of ['pickRace', 'toggleSpell', 'treeNodeClick', 'twinPickSpell', 'flEquipWildcard', 'handleSecJobChange', 'equipAccessory', 'setItemCount', 'confirmSlot', 'doStart', 'saveTeamAs', 'loadTeamPreset', 'tbSaveTeam', 'selectSlot', 'doRandomize', 'doRandomizeAll', 'doDefaults', 'doBack', 'handleZodiacChange', 'handleNameChange', 'resetCustomSpells', 'clearAllSpells', 'randomizeSpells']) {
+    for (const fn of ['pickRace', 'toggleSpell', 'tierSpellClick', 'flEquipWildcard', 'equipAccessory', 'setItemCount', 'confirmSlot', 'doStart', 'saveTeamAs', 'loadTeamPreset', 'tbSaveTeam', 'selectSlot', 'doRandomize', 'doRandomizeAll', 'doDefaults', 'doBack', 'handleZodiacChange', 'handleNameChange', 'resetCustomSpells', 'clearAllSpells', 'randomizeSpells']) {
         assert.ok(new RegExp('function ' + fn + '\\(|const ' + fn + ' = ').test(PB), `${fn} missing`);
     }
     assert.ok(/setPbTab\('tech'\);\s*\/\/ C-1/.test(PB), 'pickRace must flip to TECHNIQUES (decision C-1)');
+    // 2026-09-24 SPELL TIERS: the secondary job and the node graph are retired
+    for (const gone of ['handleSecJobChange', 'treeNodeClick', 'twinPickSpell', 'computeTreeEquipPath']) {
+        assert.ok(!new RegExp('function ' + gone + '\\(|const ' + gone + ' = ').test(PB), `${gone} should be gone`);
+    }
 });
 
 test('the windows are panes on the glass, not browser modals', () => {
@@ -109,23 +113,23 @@ test('EWCharViewer exposes the MOVE PREVIEW API', () => {
     assert.ok(/Math\.min\(ms, 1400\)/.test(TR), 'the preview keeps the board\'s 1.4 s cap (opts.full lifts it)');
 });
 
-test('the circuit, the technique panel and the preview triggers are in the builder', () => {
-    for (const sym of ['function treeNodeState(', 'function treeStepKey(', 'function pbTechInfo(', 'function TechniquePanel(', 'const pbPreview = ', 'const techVerb = ']) {
+test('the tier rack, the technique panel and the preview triggers are in the builder', () => {
+    for (const sym of ['function SpellTierPanel(', 'function pbTierCtx(', 'function pbTierGrid(', 'function pbTierStep(', 'function pbTechInfo(', 'function TechniquePanel(', 'const pbPreview = ', 'const techVerb = ']) {
         assert.ok(PB.includes(sym), `${sym} missing`);
     }
-    assert.ok(PB.includes("className: 'pb-circuit'") && PB.includes("className: 'pb-technique'"), 'circuit / technique classes missing');
-    // 2026-09-09 relayout: the circuit is THREE LANES over a bus — node rows (disc + name + meta), CSS link segments, the root hub on the bus
-    for (const sym of ["className: 'pb-lanes'", "className: 'pb-lane'", "className: 'pb-bus'", "'pb-tn is-'", "className: 'pb-tn-disc'", "className: 'pb-tn-name'", "className: 'pb-tn-meta'", 'function pbNodeMeta(sp)', "h('i', { className: linkCls("]) {
-        assert.ok(PB.includes(sym), `${sym} missing from the lanes`);
+    assert.ok(PB.includes("className: 'pb-circuit pb-rack'") && PB.includes("className: 'pb-technique'"), 'rack / technique classes missing');
+    // 2026-09-24 SPELL TIERS: a loadout strip of 7 cells over four tier rows (IV → I), chips carry their SP cost
+    for (const sym of ["className: 'pb-loadout'", "className: 'pb-tiers'", "className: 'pb-tier'", "className: 'pb-tier-head'", "className: 'pb-tier-cells'", "className: 'pb-tc-cost'", "className: 'pb-tn-disc'", "className: 'pb-tn-name'", "className: 'pb-tn-meta'", 'function pbNodeMeta(sp)', "className: 'pb-sp'"]) {
+        assert.ok(PB.includes(sym), `${sym} missing from the rack`);
     }
-    assert.ok(!/TREE_NODE_POS\[a\]/.test(PB), 'the % board is gone — no SVG connectors from TREE_NODE_POS');
-    assert.ok(/const TREE_NODE_POS = \{/.test(PB) && /function treeStepKey\(key, dir\)/.test(PB), 'TREE_NODE_POS keys and the keyboard walk stay');
+    assert.ok(!/const TREE_NODE_POS = \{/.test(PB) && !/function treeStepKey\(/.test(PB), 'the node graph is gone');
+    assert.ok(/const PB_TIER_ORDER = \[4, 3, 2, 1\];/.test(PB), 'the rack reads Tier IV first');
     assert.ok(PB.includes("className: 'pb-stage-pill live'"), 'the MOVE PREVIEW pill is missing');
     assert.ok(PB.includes('window.EW_NO_PB_PREVIEW') && PB.includes('st.animationsDisabled'), 'the preview kill-switches are missing');
     assert.ok(/pbPreview\(sp \|\| null, \{ hover: true \}\)/.test(PB), 'node hover must preview (debounced)');
     assert.ok(/cv\.playSpell\(sp, \{ attack: !sp/.test(PB), 'the builder must go through EWCharViewer.playSpell');
     assert.ok(!/VFX3D\.fire\(/.test(PB), 'party-builder.js must never call the relayed VFX3D.fire');
-    for (const sel of ['.pb-lanes', '.pb-lane', '.pb-tn', '.pb-tn-disc', '.pb-link', '.pb-link.lit', '.pb-link.hover', '.pb-bus', '.pb-bus-cell', '.pb-tech-bar', '.pb-pips', '.pb-pillar-head', '.pb-technique', '.pb-verb', '.pb-stage-pill']) {
+    for (const sel of ['.pb-rack', '.pb-loadout', '.pb-ls', '.pb-tiers', '.pb-tier', '.pb-tier-head', '.pb-tier-cells', '.pb-tn', '.pb-tn-disc', '.pb-sp', '.pb-tech-bar', '.pb-pips', '.pb-technique', '.pb-verb', '.pb-stage-pill']) {
         assert.ok(CSS.includes(sel + ' {') || CSS.includes(sel + ','), `${sel} rule missing`);
     }
 });
@@ -199,7 +203,7 @@ test('EWCharViewer exposes the stage API and the builder previews through it', (
     assert.ok(/cv\.playSpell\(sp, \{ attack: !sp/.test(PB), 'the animation-only fallback must remain');
     assert.ok(PB.includes('window.EW_NO_PB_VFX') && TR.includes('window.EW_NO_PB_VFX'), 'the VFX kill-switch is missing');
     assert.ok(!/VFX3D\.fire\(/.test(PB), 'party-builder.js must never call the relayed VFX3D.fire');
-    assert.strictEqual((PB.match(/, \{ equip: true \}\)/g) || []).length, 4, 'the four equip sites must carry { equip: true } (the DOOR click)');
+    assert.strictEqual((PB.match(/, \{ equip: true \}\)/g) || []).length, 3, 'the three equip sites (toggle, tier chip, borrow) must carry { equip: true } (the DOOR click)');
     assert.ok(/cv\.onStageFx\(/.test(PB) && PB.includes("'data-grade'") && PB.includes("className: 'pb-crt-grade'") && PB.includes("className: 'pb-crt-roll'"), 'the monitor reactions are not wired');
     assert.ok(PB.includes("ref: crtRef, className: `ms-crt ms-crt-page ms-crt-forge"), 'the CRT root must carry the ref the reactions paint');
     for (const sel of ['.pb-crt-grade', '.pb-crt-roll', '.ms-crt-forge.pb-crt-jolt .ms-crt-glass', '.ms-crt-forge.pb-crt-roll-on .pb-crt-roll']) {
@@ -326,7 +330,7 @@ test('ELEMENTS: the elemental ring under the type chart reads RACE_ELEMENT_AFFIN
     for (const sel of ['.pb-aff.immune .pb-aff-disc {', '.pb-aff.absorb .pb-aff-disc {', '.pb-element .pb-aff-disc {']) assert.ok(CSS.includes(sel), `${sel} rule missing`);
 });
 
-test('GEAR: no native <select> left on the glass (C-9); the zodiac wheel mirrors the engine; the subclass is a pill', () => {
+test('GEAR: no native <select> left on the glass (C-9); the zodiac wheel mirrors the engine; no subclass (retired 2026-09-24)', () => {
     assert.ok(!/h\('select'/.test(PB), 'no native <select> anywhere in party-builder.js');
     assert.ok(PB.includes("className:'pb-zodiac-chip'") && /handleZodiacChange\(z\)/.test(PB), 'the wheel must set the sign through handleZodiacChange');
     const pbTable = PB.match(/const PB_ZODIAC_ELEMENT = \{([\s\S]*?)\};/);
@@ -335,7 +339,7 @@ test('GEAR: no native <select> left on the glass (C-9); the zodiac wheel mirrors
     const parse = (s) => Object.fromEntries([...s.matchAll(/(\w+):\s*'(\w+)'/g)].map(x => [x[1], x[2]]));
     assert.deepStrictEqual(parse(pbTable[1]), parse(btTable[1]), 'PB_ZODIAC_ELEMENT must equal battle.js Star Crossed _zElementOf');
     assert.ok(PB.includes("+10% MOVE & ARMOR'"), 'the sign\'s engine rule (state.js getZodiacBonus ×1.10 on move + armor) must be stated');
-    assert.ok(PB.includes("className:'pb-sub-pill'") && CSS.includes('.pb-sub-pill {'), 'the SUBCLASS pill is missing');
+    assert.ok(!PB.includes("className:'pb-sub-pill'"), 'the secondary job is retired — no SUBCLASS pill');
     assert.strictEqual((PB.match(/size:64, accent:fc/g) || []).length, 2, 'the gear + item discs are 64 px');
     for (const sel of ['.pb-zodiac-wheel {', '.pb-zodiac-chip {', '.pb-zodiac-chip.on {', '.pb-zodiac-read {']) assert.ok(CSS.includes(sel), `${sel} rule missing`);
 });
@@ -392,12 +396,12 @@ test('party-builder: the archive grows a sheet to the reserve roster and the pre
     assert.ok(PB.includes('teamWindow, pickWindow,'), 'the picker window is not mounted');
 });
 
-test('THE SOCKET PICKER (2026-09-14): five category tabs + the filter row on the Freelancer pool; the classifiers hold on the real race pool', () => {
+test('THE BORROW PICKER (2026-09-14, per tier since 2026-09-24): five category tabs + the filter row on the Freelancer pool; the classifiers hold on the real race pool', () => {
     const m = PB.match(/const PB_SOCKET_TABS = \[([\s\S]*?)\];/);
     assert.ok(m, 'PB_SOCKET_TABS missing');
     const ids = [...m[1].matchAll(/id:\s*'([a-z]+)'/g)].map(x => x[1]);
     assert.deepStrictEqual(ids, ['all', 'damage', 'utility', 'buff', 'debuff', 'heal']);
-    const win = PB.slice(PB.indexOf("title = kind === 'race' ? '＋ RACE SOCKET'"), PB.indexOf("return h(PbWindow, { title, sub, onClose: close, zone: true }, rows);"));
+    const win = PB.slice(PB.indexOf("title = '＋ BORROW · TIER '"), PB.indexOf("return h(PbWindow, { title, sub, onClose: close, zone: true }, rows);"));
     assert.ok(win.length > 0, 'socket window not found');
     for (const needle of ['pb-socket-tabs', 'pb-socket-filters', "'DMG'", "'TYPE'", "'SHAPE'", "'TIER'", 'pb-pill-input', 'pbSocketFilterMatch(sp, F)', 'pb-socket-empty', 'PB_SOCKET_FILTER_EMPTY'])
         assert.ok(win.includes(needle), 'socket window lacks ' + needle);
@@ -415,7 +419,7 @@ test('THE SOCKET PICKER (2026-09-14): five category tabs + the filter row on the
     const ctx = { window: { _flTierOf: D._flTierOf }, classifySpellLocal: (sp) => D.classifySpell ? D.classifySpell(sp) : 'damage' };
     vm.createContext(ctx);
     vm.runInContext(block + '\nthis.pbSpellShape = pbSpellShape; this.pbSpellDmgKind = pbSpellDmgKind; this.pbSocketFilterMatch = pbSocketFilterMatch;', ctx);
-    const pool = D.flSocketPool('homosapien', 'P1').concat(D.flSocketPool('homosapien', 'S1'));
+    const pool = D.flRacePool('homosapien').concat(D.flWildcardPool('homosapien'));
     assert.ok(pool.length > 100, 'the pool is the race + job abilities');
     const shapes = { single: 0, multi: 0, aoe: 0, line: 0, self: 0 };
     for (const sp of pool) {

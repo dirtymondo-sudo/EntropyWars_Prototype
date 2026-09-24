@@ -4267,7 +4267,7 @@
         <div class="small"><strong>Terrain:</strong> Grass, water, mountain, and desert are now modular rules with easy tweak points.</div>
         <div class="small"><strong>Inspect:</strong> choose a nearby tile to reveal whether a Key is there.</div>
         <div class="small"><strong>Hint System:</strong> a failed scan points toward the closest hidden Key.</div>
-        <div class="small"><strong>Leveling V2:</strong> units auto-learn spells as they level up in battle. At Lv.4, pick a secondary job for an offhand weapon and 6th spell. Use Recall to teleport to your spawn zone for healing!</div>
+        <div class="small"><strong>Leveling V2:</strong> units auto-learn spells as they level up in battle. Use Recall to teleport to your spawn zone for healing!</div>
         <div class="small"><strong>Control Mode:</strong> Player 2 is computer-controlled.</div>
         <div class="small"><strong>Keys:</strong> scans reveal them, movement secures them, and defeated carriers drop them for both teams to see.</div>
       `;

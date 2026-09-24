@@ -139,7 +139,7 @@ test('THE COMMIT: the pool shared fought / present / down + what was earned in t
     assert.equal(D.HQ_LEVEL_RULES.share.poolMult, 0.6, 'the pool dial');
     /* the beats of a big jump list every level, the milestones named */
     const beat = g('hqPartyGrantXp')(rec.members[0], g('xpThreshold')(16) - rec.members[0].xp, { hp: 550, mp: 100 });
-    assert.equal(beat.after.lvl, 16); assert.equal(beat.levels.length, 10); assert.equal(beat.levels.find(l => l.lvl === 15).milestone, 'SECONDARY JOB UNLOCKED'); assert.equal(beat.levels.find(l => l.lvl === 10).milestone, 'THE SPELL SHOP OPENS');
+    assert.equal(beat.after.lvl, 16); assert.equal(beat.levels.length, 10); assert.ok(!beat.levels.some(l => /SECONDARY JOB/.test(l.milestone || '')), 'the tier rework (2026-09-24) retired the second job — no milestone names it'); assert.equal(beat.levels.find(l => l.lvl === 10).milestone, 'THE SPELL SHOP OPENS');
     const moved = beat.levels.filter(l => ['atk', 'def', 'mdef', 'int'].some(k => l.stats[k] > 0)).length;
     assert.ok(moved >= 9, 'the additive stats tick on nearly every level (' + moved + ' / 10) — the straight curve');
     /* the cap holds */

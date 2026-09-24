@@ -87,7 +87,7 @@ test('THE OFFICER without an intake: the legacy seed still stands (the DOOR Agen
     assert.equal(off2.meta.race, 'homosapien'); assert.equal(off2.cls, 'Freelancer');
 });
 
-test('THE STORY ROSTER: the socket pools are whole in the sandbox / scope all, and the ledger\'s in story scope', () => {
+test('THE STORY ROSTER: the borrow pools are whole in the sandbox / scope all, and the ledger\'s in story scope', () => {
     const w = D.window;
     const all = g('flRacePool')('door agent').length, allJobs = g('flWildcardPool')('door agent').length;
     assert.ok(all > 300 && allJobs > 50, 'the whole catalogue without a scope');
@@ -109,10 +109,9 @@ test('THE STORY ROSTER: the socket pools are whole in the sandbox / scope all, a
         assert.ok(wp.length > 0 && wp.length < allJobs, 'the job pool shrank to the owned vessels\' jobs');
         const jobIds = new Set(); for (const j of jobs) for (const id of D.CLASS_TREE[j] || []) jobIds.add(id);
         assert.ok(wp.every(sp => jobIds.has(sp.id)), 'every job-socket spell is on an owned vessel\'s job tree');
-        /* the tree drops what the pool no longer offers, keeps what it does */
-        const keep = rp[0].id, tree = g('buildFreelancerTree')('door agent', [keep, 'raceLasso']);
-        const placed = Object.values(tree.nodes).filter(Boolean);
-        assert.ok(placed.includes(keep) && !placed.includes('raceLasso'), 'an unowned spell is unplaced; an owned one is socketed');
+        /* the repair drops what the pool no longer offers, keeps what it does (2026-09-24 SPELL TIERS: borrows, no sockets) */
+        const keep = rp[0].id, kept = J(g('treeLegalSubset')('door agent', 'Freelancer', '', [keep, 'raceLasso']));
+        assert.ok(kept.includes(keep) && !kept.includes('raceLasso'), 'an unowned spell is dropped; an owned one is kept');
         /* the dev switch / scope all re-open the catalogue */
         w._ewRosterScope = 'all';
         assert.equal(g('flRacePool')('door agent').length, all);
