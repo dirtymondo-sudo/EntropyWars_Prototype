@@ -7269,6 +7269,8 @@ const ThreeRenderer = (function () {
                 var dd = state.doors[ddi];
                 h = _hashInt(h, 31); h = _hashInt(h, dd.x); h = _hashInt(h, dd.y);
                 h = _hashVal(h, dd.owner); h = _hashInt(h, dd.open ? 1 : 0); h = _hashInt(h, dd.hp | 0); h = _hashInt(h, dd.fixed ? 1 : 0);
+                /* 🚪 THE ONE-WAY DOOR (Phase 2): the void, the hold pips and the shot's arrival redraw a capture door */
+                if (dd.kind === 'capture') { h = _hashInt(h, dd.held ? 1 + (dd.held.seal | 0) : 0); h = _hashInt(h, (dd._revealAt && Date.now() < dd._revealAt) ? 1 : 0); }
             }
         }
         if (state.wards) {
@@ -8060,12 +8062,97 @@ const ThreeRenderer = (function () {
         }
         return leaf;
     }
+    /* 🚪 THE ONE-WAY DOOR's dress (CAPTURE_PLAN.md §3.4, Phase 2, 2026-09-25): the capture door is the agent's board
+       door (the same catalogue leaf on the D.O.O.R. frame) standing wide open, plus:
+         · jamb LAMPS in the owner's colour (a tuned door: its type's badge colour) — T2 and up a second pair higher up;
+         · the APERTURE: a faint shimmer while it waits (you see straight through it), THE VOID once it holds someone —
+           a black pane with a violet rim and a slow violet glow;
+         · a glow pool on the floor under the opening (the owner's colour; violet while holding);
+         · the PLATE: the tower plate's look — "🚪 <name>", the door's hits as a bar, and while it holds, the HOLD METER
+           (one pip per round still to go) and the captive's name. */
+    var CAPTURE_TYPE_COLORS = { human: 0xa0a0c3, alien: 0x32aa50, divine: 0xdcaa1e, unholy: 0x9632b4, anomaly: 0xdc3c82, tech: 0x28a0be };
+    function _captureDoorDress(g, d, k) {
+        var ts = k.ts, ow = k.ow, oh = k.oh, jw = k.jw, lh = k.lh, pd = k.pd;
+        var held = !!d.held;
+        var teamCol = d.owner === 1 ? 0x4488ff : 0xff4444;
+        var lampCol = (d.type && CAPTURE_TYPE_COLORS[d.type]) || teamCol;
+        var lampMat = _deployGlowMat(lampCol, 0.95);
+        var pairs = (d.tier | 0) >= 2 ? 2 : 1;
+        for (var pi = 0; pi < pairs; pi++) {
+            var ly = oh * (pi ? 0.8 : 0.5);
+            for (var side = -1; side <= 1; side += 2) {
+                var lamp = new THREE.Mesh(new THREE.BoxGeometry(jw * 0.7, ts * 0.07, pd * 1.25), lampMat);
+                lamp.position.set(side * (ow / 2 + jw / 2), ly, 0); g.add(lamp);
+            }
+        }
+        if (held) {
+            var voidMat = new THREE.MeshBasicMaterial({ color: 0x030106, transparent: true, opacity: 0.96, side: THREE.DoubleSide, depthWrite: true });
+            var pane = new THREE.Mesh(new THREE.PlaneGeometry(ow, oh), voidMat);
+            pane.position.set(0, oh / 2, 0); g.add(pane);
+            var rimMat = _deployGlowMat(0x9a4dff, 0.85);
+            var rimW = ts * 0.018;
+            [[0, oh - rimW / 2, ow, rimW], [0, rimW / 2, ow, rimW], [-(ow / 2 - rimW / 2), oh / 2, rimW, oh], [(ow / 2 - rimW / 2), oh / 2, rimW, oh]].forEach(function (r) {
+                var m = new THREE.Mesh(new THREE.PlaneGeometry(r[2], r[3]), rimMat);
+                m.position.set(r[0], r[1], 0.004 * ts); g.add(m);
+                var m2 = m.clone(); m2.position.z = -0.004 * ts; m2.rotation.y = Math.PI; g.add(m2);
+            });
+            var glowV = _deployGlowMat(0x7a33ff, 0.22);
+            var glowP = new THREE.Mesh(new THREE.PlaneGeometry(ow * 1.6, oh * 1.25), glowV);
+            glowP.position.set(0, oh / 2, -0.03 * ts); g.add(glowP);
+        } else {
+            var shimMat = _deployGlowMat(0x5ce0d0, 0.08);
+            var shim = new THREE.Mesh(new THREE.PlaneGeometry(ow, oh), shimMat);
+            shim.position.set(0, oh / 2, 0); g.add(shim);
+        }
+        /* (no standing PointLight: a new light changes the scene's light count and recompiles every lit shader — the
+           real light rides the pooled VFX flash lights in the take / open / seal recipes instead) */
+        var floorMat = _deployGlowMat(held ? 0x7a33ff : lampCol, held ? 0.3 : 0.16);
+        var floor = new THREE.Mesh(new THREE.PlaneGeometry(ow * 1.4, ts * 0.9), floorMat);
+        floor.rotation.x = -Math.PI / 2; floor.position.set(0, ts * 0.012, 0); g.add(floor);
+        /* THE PLATE (the tower plate's markup + the hold pips) */
+        try {
+            if (typeof document === 'undefined' || !THREE.CSS2DObject) return;
+            _ensurePlateStyles();
+            var name = d.spellName || 'Capture Door';
+            var hp = Math.max(0, d.hp | 0), maxHp = Math.max(1, d.maxHp | 0 || hp || 1);
+            var allyCls = _isAllyPlayer(d.owner) ? 'tp-hp-ally' : 'tp-hp-enemy';
+            var pipsHtml = '', capName = '';
+            if (held) {
+                var total = Math.max(1, d.held.total | 0 || d.held.seal | 0 || 1), left = Math.max(0, d.held.seal | 0);
+                for (var i = 0; i < total; i++) {
+                    pipsHtml += '<span style="display:inline-block;width:9px;height:9px;margin:0 2px;border-radius:2px;transform:rotate(45deg);'
+                        + (i < left ? 'background:#b77bff;box-shadow:0 0 6px #9a4dff' : 'background:rgba(255,255,255,0.14)') + '"></span>';
+                }
+                var cu = (typeof state !== 'undefined' && state.units) ? state.units.find(function (u) { return u && u.id === d.held.unitId; }) : null;
+                capName = cu ? (cu.name || cu.race || '') : '';
+            }
+            var outer = document.createElement('div');
+            outer.className = 'tp-plate-outer';
+            var wrap = document.createElement('div');
+            wrap.className = 'tp-wrap ' + (d.owner === 1 ? 'tp-p1' : 'tp-p2') + ' tp-tower-plate tp-capture-door';
+            wrap.innerHTML =
+                '<div class="tp-name"><span class="tp-lvl">🚪</span><span class="tp-nm">' + String(name).replace(/[<>&]/g, '') + (d.type ? ' · ' + String(d.type).toUpperCase() : '') + '</span></div>' +
+                '<div class="tp-body"><div class="tp-bars"><div class="tp-bar ' + allyCls + '">' +
+                    '<div class="tp-hp-fill" style="width:' + Math.round(100 * hp / maxHp) + '%"></div>' +
+                    '<span class="tp-bar-num">🚪 ' + hp + '/' + maxHp + '</span>' +
+                '</div></div></div>' +
+                (held ? '<div style="text-align:center;margin-top:3px;line-height:10px">' + pipsHtml + '</div>'
+                      + '<div style="text-align:center;font-size:10px;letter-spacing:1px;white-space:nowrap;color:#d9c2ff;text-shadow:0 0 4px #000">HELD · ' + String(capName).replace(/[<>&]/g, '').toUpperCase() + ' · ' + (d.held.seal | 0) + ' TO SEAL</div>' : '');
+            outer.appendChild(wrap);
+            var css2d = new THREE.CSS2DObject(outer);
+            css2d.position.set(0, oh + lh + ts * 0.32, 0);
+            g.add(css2d);
+        } catch (e) {}
+    }
     var DOOR3D_OPEN_ANGLE = 1.5;
+    var DOOR3D_CAPTURE_OPEN_ANGLE = 2.62;   // 🚪 a capture door stands wide open (150°) — see straight through it
     function _buildDoor3D(d) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
         var hqOk = (typeof DOOR_HQ !== 'undefined');
+        var cap = d.kind === 'capture';   // 🚪 THE ONE-WAY DOOR (CAPTURE_PLAN.md §3.4, Phase 2)
         var leaf = _doorLeafFor();
+        if (cap && (d.tier | 0) >= 3 && hqOk && DOOR_HQ.catalogue && DOOR_HQ.catalogue.leaf_vault) leaf = { key: 'leaf_vault', cat: DOOR_HQ.catalogue.leaf_vault };   // T3: the vault leaf
         var cat = leaf ? leaf.cat : null;
         var mode = _introMotionFor(leaf);
         if (mode === 'lift' || mode === 'spin') mode = 'none';
@@ -8096,7 +8183,7 @@ const ThreeRenderer = (function () {
             leafRoot.position.x = -pivot.position.x;
             pivot.add(leafRoot); g.add(pivot);
             /* open TOWARD the twin (+z), the leaf lying against the jamb's far face */
-            pivot.rotation.y = d.open ? dir * DOOR3D_OPEN_ANGLE : 0;
+            pivot.rotation.y = d.open ? dir * (cap ? DOOR3D_CAPTURE_OPEN_ANGLE : DOOR3D_OPEN_ANGLE) : 0;
         } else if (mode === 'slide') {
             carrier = new THREE.Group();
             carrier.position.x = d.open ? dir * (ow - 0.03 * ts) : 0;
@@ -8129,7 +8216,9 @@ const ThreeRenderer = (function () {
         /* the light in the opening while it stands open (the other side is
            lit — the twin's room), a dark team-tinted pane when a frame-only
            leaf is shut (the hell arch has no leaf to close) */
-        if (d.open) {
+        if (cap) {
+            _captureDoorDress(g, d, { ts: ts, ow: ow, oh: oh, jw: jw, lh: lh, pd: pd });
+        } else if (d.open) {
             var veilMat = _deployGlowMat(0xfff0cc, 0.16);
             var veil = new THREE.Mesh(new THREE.PlaneGeometry(ow, oh), veilMat);
             veil.position.set(0, oh / 2, -0.02 * ts); g.add(veil);
@@ -8148,7 +8237,8 @@ const ThreeRenderer = (function () {
         var tw = null;
         if (state.doors) for (var i = 0; i < state.doors.length; i++) { var o = state.doors[i]; if (o && o.pairId === d.pairId && o.id !== d.id) { tw = o; break; } }
         var out = _deployFinish(g, d.x, d.y, 1);
-        out.rotation.y = tw ? Math.atan2(tw.x - d.x, tw.y - d.y) : 0;
+        out.rotation.y = tw ? Math.atan2(tw.x - d.x, tw.y - d.y)
+            : (cap && d.faceX != null && (d.faceX !== d.x || d.faceY !== d.y)) ? Math.atan2(d.faceX - d.x, d.faceY - d.y) : 0;
         try { if (typeof window !== 'undefined' && window.ThreeVFXEffects && typeof window.ThreeVFXEffects.warmDoor === 'function') window.ThreeVFXEffects.warmDoor(); } catch (e) {}
         return out;
     }
@@ -8564,7 +8654,8 @@ const ThreeRenderer = (function () {
             for (var ddi = 0; ddi < state.doors.length; ddi++) {
                 var dd = state.doors[ddi];
                 if (!dd || dd.hp <= 0) continue;
-                var dm = dd.fixed
+                if (dd.kind === 'capture' && dd._revealAt && Date.now() < dd._revealAt) continue;   // 🚪 the door gun's comet is still in the air
+                var dm = (dd.fixed && dd.kind !== 'capture')
                     ? (/tunnel/i.test(dd.spellName || '') ? _buildTunnelMound3D(dd.x, dd.y, dd.owner) : _buildGraveGate3D(dd.x, dd.y, dd.owner))
                     : _buildDoor3D(dd);
                 dm._ew_deployable = true;
@@ -16226,6 +16317,10 @@ const ThreeRenderer = (function () {
                     entry.modelOutlineMats[_tmi].uniforms.uColor.value.set(_toc);
                 }
             }
+            /* 🚪 THE ONE-WAY DOOR (Phase 2): a HELD body is in the void behind the door's black pane — its model is hidden
+               (the door's plate names it); it comes back the frame the door breaks */
+            if (unit.status && unit.status.captured > 0) { entry.group.visible = false; entry._ew_heldHid = true; return; }
+            if (entry._ew_heldHid) { entry._ew_heldHid = false; entry.group.visible = true; }
             if (unit.player === vp) {
                 /* The viewer's own cloaked units stay on screen but turn ghostly so
                    the player can tell the Invisible buff is actually active. */

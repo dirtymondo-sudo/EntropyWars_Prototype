@@ -32085,6 +32085,11 @@
                 // Clash: warp stones are movement — there is nowhere to go.
                 return !(typeof _isClashMode === 'function' && _isClashMode());
             }
+            /* 🚪 THE ONE-WAY DOOR (CAPTURE_PLAN.md §3.2, Phase 2): usable when some tile would take the door right now */
+            if (ITEM_RULES[itemKey] && ITEM_RULES[itemKey].kind === 'captureDoor') {
+                const _cdT = (typeof captureDoorLegalTiles === 'function') ? captureDoorLegalTiles(unit) : [];
+                return !!_cdT.length && captureDoorPlaceCheck(unit, _cdT[0].x, _cdT[0].y, itemKey) === '';
+            }
             return true;
         }
 
@@ -52300,7 +52305,15 @@
             }
             if (state.actionMode === 'ping') return _execAction(() => doPing(actingUnit, x, y));
             if (state.actionMode === 'trade') return _execAction(() => doTrade(actingUnit, x, y, state._clickedZ));
-            if (state.actionMode === 'item') return _execAction(() => doItem(actingUnit, x, y, state._clickedZ));
+            if (state.actionMode === 'item') {
+                /* 🚪 THE ONE-WAY DOOR: a door tile past the gun's reach → one step into reach, then the shot */
+                const _cdRule = ITEM_RULES[state.selectedTool];
+                if (_cdRule && _cdRule.kind === 'captureDoor' && !captureDoorLegalTiles(actingUnit).some(t => t.x === x && t.y === y)) {
+                    const _cdAp = findCaptureDoorApproachTile(actingUnit, x, y, state.selectedTool);
+                    if (_cdAp) { state._actionExecuting = false; _moveThenCaptureDoor(actingUnit, _cdAp, x, y, state.selectedTool); return; }
+                }
+                return _execAction(() => doItem(actingUnit, x, y, state._clickedZ));
+            }
             if (state.actionMode === 'warpStone') return _execAction(() => executeWarpStone(actingUnit, x, y));
             if (state.actionMode === 'ward') return _execAction(() => doWard(actingUnit, x, y));
             if (state.actionMode === 'flair') return _execAction(() => doFlair(actingUnit, x, y));
@@ -54598,6 +54611,7 @@
             for (const d of both) d.hp = 0;
             state.doors = _doors().filter(d => d.pairId !== door.pairId);
             if (door.kind === 'capture') {   // 🚪 THE ONE-WAY DOOR: no twin — the captive comes out
+                if ((!opts.quiet || opts.fx) && !_skipVisuals()) window._doorGeom(opts.reason === 'replaced' ? 'raceCaptureDoor:fold' : 'raceCaptureDoor:break', door.x, door.y, { fromX: door.faceX, fromY: door.faceY, held: door.held ? 1 : 0 });   // Phase 2 THE LOOK
                 if (!opts.quiet && opts.reason !== 'replaced') {
                     if (!_skipVisuals()) showFloatingTextAtTile(door.x, door.y, '🚪 BROKEN', 'damage');
                     addLog(`${opts.label || ''}The capture door at ${coordLabel(door.x, door.y)} breaks.`);
@@ -54836,7 +54850,7 @@
                 return null;
             }
             const R = _capR(), rule = ITEM_RULES[itemKey];
-            for (const old of captureDoorsOf(unit.player)) breakDoorPair(old, { quiet: true, reason: 'replaced' });
+            for (const old of captureDoorsOf(unit.player)) breakDoorPair(old, { quiet: true, reason: 'replaced', fx: !opts.quiet });
             const tier = Math.max(1, Math.min(3, rule.tier | 0 || 1));
             const type = (rule.tuned && opts.type && (R.types || []).indexOf(opts.type) >= 0) ? opts.type : null;
             const hp = (typeof captureDoorHits === 'function') ? captureDoorHits({ tier }) : 3;
@@ -54847,6 +54861,7 @@
                 open: true, fixed: true, hp, maxHp: hp, owner: unit.player, ownerId: unit.id,
                 spellName: rule.name, placedRound: state.round || 0,
                 tier, type, itemKey, held: null, sealed: null,
+                faceX: unit.x, faceY: unit.y,   // the renderer turns the opening toward whoever fired it
             };
             _doors().push(door);
             unit.items[itemKey] = Math.max(0, (unit.items[itemKey] | 0) - 1);
@@ -54854,7 +54869,13 @@
             unit._captureDoorRound = state.round || 0;
             setUnitFacing(unit, x - unit.x, y - unit.y);
             if (!opts.quiet && !_skipVisuals()) {
+                /* Phase 2 THE LOOK: the comet flies first, the door unfolds where it lands — the board door is held back
+                   (`_revealAt`, the renderer skips it) until the shot arrives, then the open burst plays under it */
+                const _shotMs = Math.max(120, Math.min(360, 90 + Math.hypot(x - unit.x, y - unit.y) * 45));
+                door._revealAt = Date.now() + _shotMs;
                 window._doorGeom('raceDoorGun:shot', x, y, { fromX: unit.x, fromY: unit.y });
+                window._doorGeom('raceCaptureDoor:open', x, y, { fromX: unit.x, fromY: unit.y, delay: _shotMs, tier, type: type || '', owner: unit.player });
+                setTimeout(() => { if (door._revealAt) { delete door._revealAt; _doorTouched(); } }, _shotMs + 30);
                 showFloatingTextAtTile(x, y, `🚪 ${rule.name.toUpperCase()}`, 'buff');
             }
             addLog(`🚪 ${unitDisplayName(unit)} fires a ${rule.name}${type ? ' (' + type.toUpperCase() + ')' : ''} onto ${coordLabel(x, y)} — whoever lands on it is held.`);
@@ -54892,7 +54913,10 @@
             unit._captureDoorId = door.id;
             unit.ap = 0;                 // a body taken on its own walk ends its turn in the void
             if ((unit.hourglasses || 0) > 0 && typeof dropHourglassesFromUnit === 'function') dropHourglassesFromUnit(unit);
-            if (!_skipVisuals()) showFloatingTextForUnit(unit, `🚪 HELD · ${seal}`, 'debuff');
+            if (!_skipVisuals()) {
+                showFloatingTextForUnit(unit, `🚪 HELD · ${seal}`, 'debuff');
+                window._doorGeom('raceCaptureDoor:take', door.x, door.y, { fromX: door.faceX, fromY: door.faceY, seal });   // Phase 2: the void opens, the body is pulled in
+            }
             if (typeof playDoorSfx === 'function') playDoorSfx('stamp');
             addLog(`🚪 The door at ${coordLabel(door.x, door.y)} takes ${unitDisplayName(unit)} — HELD. Hold it ${seal} round${seal === 1 ? '' : 's'} to seal it.`);
             _doorTouched();
@@ -54942,7 +54966,10 @@
             if (!Array.isArray(state.sealedUnits)) state.sealedUnits = [];
             state.sealedUnits.push(unit);
             if (state._blitzActiveUnitId === unit.id) state._blitzActiveUnitId = null;
-            if (!opts.quiet && !_skipVisuals()) showFloatingTextAtTile(door.x, door.y, '🚪 SEALED', 'buff');
+            if (!opts.quiet && !_skipVisuals()) {
+                showFloatingTextAtTile(door.x, door.y, '🚪 SEALED', 'buff');
+                window._doorGeom('raceCaptureDoor:seal', door.x, door.y, { fromX: door.faceX, fromY: door.faceY, tier: door.tier || 1 });   // Phase 2: the leaf slams, the stamp, the frame folds away
+            }
             if (typeof playDoorSfx === 'function') playDoorSfx('stamp');
             addLog(`🚪 SEALED — ${unitDisplayName(unit)} is behind the door for good${opts.reason ? ' (' + opts.reason + ')' : ''}.`);
             _doorTouched();
@@ -54976,7 +55003,68 @@
             }
             return (state.captures || []).slice();
         }
+        /* THE TUNED DOOR's type (Phase 2 default): the placement tunes it to the type of the living enemy nearest the
+           tile — the body the player means to push in. null for a plain door. */
+        function captureDoorTuneFor(unit, x, y, itemKey) {
+            const rule = (typeof ITEM_RULES !== 'undefined') ? ITEM_RULES[itemKey] : null;
+            if (!rule || !rule.tuned || !unit) return null;
+            const types = _capR().types || [];
+            let best = null, bestD = Infinity;
+            for (const u of state.units) {
+                if (!u || u.dead || u._dying || u._sealed || !isEnemyUnit(u, unit)) continue;
+                const t = (u.types || []).find(k => types.indexOf(k) >= 0);
+                if (!t) continue;
+                const d = Math.abs(u.x - x) + Math.abs(u.y - y);
+                if (d < bestD) { bestD = d; best = t; }
+            }
+            return best;
+        }
+        /* THE TILE MENU's move-then-place (§3.2): one walk step from which (tx, ty) takes the door, keeping the AP for
+           the shot — findInspectApproachTile's twin (the tile FARTHEST from the door that still reaches it) */
+        function findCaptureDoorApproachTile(unit, tx, ty, itemKey) {
+            if (!unit || !itemKey || typeof _inspectMoveBudget !== 'function' || _inspectMoveBudget(unit) <= 0) return null;
+            const sx = unit.x, sy = unit.y, sz = unit.z;
+            let best = null, bestScore = -1;
+            try {
+                for (const t of getMoveTiles(unit)) {
+                    if (t._jump || t._takeoff) continue;
+                    if (t.x === tx && t.y === ty) continue;
+                    if (unitAt(t.x, t.y, t.z)) continue;
+                    unit.x = t.x; unit.y = t.y; unit.z = t.z ?? sz;
+                    const ok = captureDoorLegalTiles(unit).some(p => p.x === tx && p.y === ty);
+                    unit.x = sx; unit.y = sy; unit.z = sz;
+                    if (!ok) continue;
+                    const score = Math.abs(t.x - tx) + Math.abs(t.y - ty);
+                    if (score > bestScore) { best = { x: t.x, y: t.y, z: t.z ?? sz, moveCost: 1 }; bestScore = score; }
+                }
+            } finally {
+                unit.x = sx; unit.y = sy; unit.z = sz;
+            }
+            return best;
+        }
+        /* walk the step, then fire the door (doMove, then doItem's captureDoor branch) */
+        function _moveThenCaptureDoor(unit, approach, tx, ty, itemKey) {
+            if (typeof _clearSpellApproachPreview === 'function') _clearSpellApproachPreview();
+            state._tileActionTarget = null;
+            if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
+            scheduleBoardRender();
+            const r = doMove(unit, approach.x, approach.y, approach.z);
+            if (r === false) {
+                if (typeof showFloatingTextForUnit === 'function') showFloatingTextForUnit(unit, 'Blocked!', 'status', { color: '#ff4444' });
+                state.actionMode = null; state.selectedTool = null; state.pendingTarget = null;
+                markDirty('board', 'hud', 'selectedUnit'); renderIfDirty();
+                return false;
+            }
+            setTimeout(() => {
+                if (state.phase !== 'battle' || state.winner || unit.dead) return;
+                state.actionMode = 'item';
+                state.selectedTool = itemKey;
+                doItem(unit, tx, ty, undefined);
+            }, typeof r === 'number' ? r : 450);
+            return true;
+        }
         if (typeof window !== 'undefined') {
+            window.captureDoorTuneFor = captureDoorTuneFor; window.findCaptureDoorApproachTile = findCaptureDoorApproachTile; window._moveThenCaptureDoor = _moveThenCaptureDoor;
             window.captureDoorAt = captureDoorAt; window.captureDoorById = captureDoorById; window.captureDoorsOf = captureDoorsOf;
             window.captureDoorLegalTiles = captureDoorLegalTiles; window.captureDoorPlaceCheck = captureDoorPlaceCheck; window.captureDoorPlace = captureDoorPlace;
             window.captureDoorCanTake = captureDoorCanTake; window.captureDoorTake = captureDoorTake; window.captureDoorFree = captureDoorFree;
@@ -58583,6 +58671,36 @@
                     endUnitIfDone(_scanUnit);
                     renderBattleUpdate();
                 }, 800);
+                return;
+            } else if (ITEM_RULES[state.selectedTool]?.kind === 'captureDoor') {
+                /* 🚪 THE ONE-WAY DOOR (CAPTURE_PLAN.md §3.2, Phase 2): the aim is a TILE. The unit fires the door gun from
+                   the hip (the ranged clip); captureDoorPlace spends the item + its own AP (CAPTURE_RULES.ap) and fires
+                   the shot. A refused tile keeps the item armed (THE MODE HOLDS). */
+                const _cdKey = state.selectedTool;
+                const _cdWhy = captureDoorPlaceCheck(unit, x, y, _cdKey);
+                if (_cdWhy) {
+                    captureDoorPlace(unit, x, y, _cdKey);   // logs the reason, places nothing
+                    playErrorSfx();
+                    state._actionExecuting = false;
+                    return;
+                }
+                pushUndoSnapshot(true);
+                triggerAttackAnim(unit, x, y, 'ranged');
+                const _cdDoor = captureDoorPlace(unit, x, y, _cdKey, { type: captureDoorTuneFor(unit, x, y, _cdKey) });
+                if (!_cdDoor) { playErrorSfx(); state._actionExecuting = false; return; }
+                if (!unit._itemLog) unit._itemLog = {};
+                unit._itemLog[_cdKey] = (unit._itemLog[_cdKey] || 0) + 1;
+                state._actionExecuting = false;
+                state._tileActionTarget = null;
+                state._enemyActionTargetId = null;
+                state.actionMode = null;
+                state.actionMenuView = (!unitFinished(unit) && !unit.dead
+                    && state.actionMenuView === 'items' && anyUsableItemNow(unit)) ? 'items' : 'root';
+                state.selectedTool = null;
+                state.pendingTarget = null;
+                if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
+                endUnitIfDone(unit);
+                renderBattleUpdate();
                 return;
             } else if (ITEM_RULES[state.selectedTool]?.baneType) {
 

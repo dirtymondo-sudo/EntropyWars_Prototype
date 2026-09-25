@@ -25136,6 +25136,125 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     });
 
     /* ════════════════════════════════════════════════════════════════════
+       THE ONE-WAY DOOR (CAPTURE_PLAN.md §3.4, Phase 2, 2026-09-25) — the
+       capture door's four beats. The standing door is the renderer's
+       (_buildDoor3D's capture dress: wide open, jamb lamps, the void pane
+       while it holds); these are the moments around it, fired by battle.js
+       through window._doorGeom (VS-CPU story fights only):
+         :open   the comet lands → the door unfolds: a teal sigil, a ring,
+                 a light, sparks off the frame
+         :take   THE VOID — a black disc swells in the opening, a violet
+                 light, a ring of motes PULLED into it, an inward shock, a
+                 short shake (the body's model hides the same frame: the
+                 renderer reads the `captured` status)
+         :seal   the leaf slams (the Slam ghost leaf), the red STAMP ring,
+                 a white flash + light, the frame folds up on a recall
+                 comet toward whoever fired it
+         :break  the frame splinters: steel sparks, a white ring, a light,
+                 a violet puff where the void was (x.held)
+         :fold   an empty door folded by a new placement — a small puff
+       Real light (the pooled ThreeVFX.flashLight), real particles; no
+       backdrop. */
+    var _CAP_FX = { void: 0x7a33ff, rim: 0xb77bff, teal: 0x5ce0d0, light: 0xfff0cc, stamp: 0xff3a3a, black: 0x030106 };
+    function _capLight(tx, ty, color, o) {
+        try {
+            var c = tilePx(tx, ty), ts = _worldPos(tx, ty).ts;
+            if (typeof window !== 'undefined' && window.ThreeVFX && typeof window.ThreeVFX.flashLight === 'function')
+                return window.ThreeVFX.flashLight(c.x, c.y, unitSurfaceZ(tx, ty) + ts * 0.55, color, o || {});
+        } catch (e) {}
+        return null;
+    }
+    function _capDoorOpen3D(tx, ty, o) {
+        if (_catOff('spells')) return null;
+        var ts = _worldPos(tx, ty).ts;
+        try { _sigMagicCircle3D(tx, ty, { color: _CAP_FX.teal, color2: _CAP_FX.light, radiusPx: ts * 0.7, growMs: 140, holdMs: 380, fadeMs: 280, opacity: 0.5, spin: 0.003, height: 2 }); } catch (e) {}
+        try { _sigShockRing3D(tx, ty, { color: _CAP_FX.teal, r0: ts * 0.15, r1: ts * 1.0, ms: 360, height: 4 }); } catch (e) {}
+        try { _sigSparks(tx, ty, 'steel-spark', 10 + 4 * ((o.tier | 0) || 1), { tint: _CAP_FX.teal, vz0: 120, vz1: 380, vxy: 160, z: ts * 0.5 }); } catch (e) {}
+        _capLight(tx, ty, _CAP_FX.teal, { intensity: 2.4, ms: 520, radius: 3, attack: 40 });
+        return true;
+    }
+    function _capDoorTake3D(tx, ty, o) {
+        if (_catOff('spells')) return null;
+        var wp = _worldPos(tx, ty), ts = wp.ts;
+        var yaw = _doorYaw(tx, ty, o.fromX, o.fromY);
+        var oh = ts * 1.18, ow = ts * 0.6, total = 900;
+        var g = new THREE.Group(); g.position.set(wp.x, wp.y, wp.z); g.rotation.y = yaw;
+        /* the void swelling in the opening (normal blending — it DARKENS) */
+        var voidMat = _sigMat(_CAP_FX.black, { normal: true });
+        var disc = new THREE.Mesh(new THREE.CircleGeometry(ow * 0.62, 28), voidMat);
+        disc.position.set(0, oh * 0.5, 0.02 * ts); disc.scale.set(0.01, 0.01, 1); disc.renderOrder = 152; g.add(disc);
+        var rimMat = _sigMat(_CAP_FX.rim, { map: _sigRingTex() });
+        var rim = new THREE.Mesh(new THREE.PlaneGeometry(ow * 1.5, ow * 1.5), rimMat);
+        rim.position.set(0, oh * 0.5, 0.025 * ts); rim.renderOrder = 153; g.add(rim);
+        var haloMat = new THREE.SpriteMaterial({ map: _sigGlowTex(), color: new THREE.Color(_CAP_FX.void), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
+        var halo = new THREE.Sprite(haloMat); halo.scale.set(oh * 1.8, oh * 1.8, 1); halo.position.set(0, oh * 0.5, -0.05 * ts); g.add(halo);
+        /* the motes: a ring of sparks drawn INTO the opening */
+        var motes = [], NM = 22;
+        for (var i = 0; i < NM; i++) {
+            var mm = new THREE.SpriteMaterial({ map: _sigGlowTex(), color: new THREE.Color(i % 3 ? _CAP_FX.rim : 0xffffff), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
+            var sp = new THREE.Sprite(mm); var sz = ts * (0.06 + (i % 4) * 0.02); sp.scale.set(sz, sz, 1); g.add(sp);
+            var a = (i / NM) * Math.PI * 2, rr = ts * (0.9 + (i % 5) * 0.12);
+            motes.push({ s: sp, m: mm, x0: Math.cos(a) * rr, y0: oh * 0.5 + Math.sin(a) * rr * 0.8, z0: ts * (0.35 + (i % 3) * 0.15), d: (i % 6) * 40 });
+        }
+        var shook = false;
+        _capLight(tx, ty, _CAP_FX.void, { intensity: 3.2, ms: 820, radius: 3.4, attack: 60 });
+        try { _sigShockRing3D(tx, ty, { color: _CAP_FX.void, r0: ts * 1.3, r1: ts * 0.1, ms: 420, height: 4 }); } catch (e) {}
+        return _sigRunOwned(g, total, function (el) {
+            var p = el / total;
+            var sw = _sigEaseOutCubic(Math.min(1, el / 300));
+            disc.scale.set(Math.max(0.01, sw), Math.max(0.01, sw * 1.55), 1);
+            voidMat.opacity = el < 700 ? 0.95 * sw : 0.95 * (1 - (el - 700) / 200);
+            rimMat.opacity = 0.9 * (1 - p); rim.scale.setScalar(1.3 - 0.5 * sw);
+            haloMat.opacity = 0.7 * Math.sin(Math.PI * Math.min(1, p * 1.2));
+            for (var j = 0; j < motes.length; j++) {
+                var mo = motes[j], k = _sigClamp01((el - mo.d) / 520);
+                var e = _sigEaseInCubic(k);
+                mo.s.position.set(mo.x0 * (1 - e), mo.y0 + (oh * 0.5 - mo.y0) * e, mo.z0 * (1 - e));
+                mo.m.opacity = k <= 0 ? 0 : (k < 1 ? 0.9 * (1 - e * 0.6) : 0);
+            }
+            if (!shook && el > 300) { shook = true; if (typeof window !== 'undefined' && typeof window.shakeBoard === 'function') _shake('normal'); }
+        });
+    }
+    function _capDoorSeal3D(tx, ty, o) {
+        if (_catOff('spells')) return null;
+        var ts = _worldPos(tx, ty).ts;
+        var yaw = _doorYaw(tx, ty, o.fromX, o.fromY);
+        try { _sigDoorSlam3D(tx, ty, { yaw: yaw, big: true }); } catch (e) {}
+        _fxDelay(function () {
+            try { _sigShockRing3D(tx, ty, { color: _CAP_FX.stamp, r0: ts * 0.2, r1: ts * 1.8, ms: 520, height: 4 }); } catch (e) {}
+            try { _sigSparks(tx, ty, 'steel-spark', 18, { tint: _CAP_FX.rim, vz0: 160, vz1: 460, vxy: 220, z: ts * 0.6 }); } catch (e) {}
+            _capLight(tx, ty, 0xffffff, { intensity: 3.6, ms: 420, radius: 3.6 });
+            try { if (typeof window !== 'undefined' && typeof window.playDoorSfx === 'function') window.playDoorSfx('stamp', { volume: 0.6 }); } catch (e) {}
+        }, 180);
+        /* the fold: the frame goes home on a recall comet toward whoever fired it */
+        if (o.fromX != null && (o.fromX !== tx || o.fromY !== ty)) {
+            _fxDelay(function () {
+                try { _sigDoorGunShot3D(o.fromX, o.fromY, { fromX: tx, fromY: ty, ms: 300 }); } catch (e) {}
+            }, 520);
+        }
+        return true;
+    }
+    function _capDoorBreak3D(tx, ty, o) {
+        if (_catOff('spells')) return null;
+        var ts = _worldPos(tx, ty).ts, fold = !!o.fold;
+        try { _sigShockRing3D(tx, ty, { color: fold ? _CAP_FX.teal : 0xffffff, r0: ts * 0.1, r1: ts * (fold ? 0.7 : 1.3), ms: fold ? 280 : 380, height: 4 }); } catch (e) {}
+        try { _sigSparks(tx, ty, 'steel-spark', fold ? 8 : 26, { tint: fold ? _CAP_FX.teal : null, vz0: 140, vz1: fold ? 280 : 520, vxy: fold ? 120 : 260, z: ts * 0.6 }); } catch (e) {}
+        if (!fold) {
+            _capLight(tx, ty, o.held ? _CAP_FX.void : 0xffffff, { intensity: 2.8, ms: 380, radius: 3 });
+            if (o.held) { try { _sigShockRing3D(tx, ty, { color: _CAP_FX.void, r0: ts * 0.1, r1: ts * 1.1, ms: 460, height: 8 }); } catch (e) {} }
+            if (typeof window !== 'undefined' && typeof window.shakeBoard === 'function') _shake('normal');
+        }
+        return true;
+    }
+    Object.assign(_spell3DGeometry, {
+        'raceCaptureDoor:open':  function (tx, ty, r, x) { x = x || {}; _fxDelay(function () { try { _capDoorOpen3D(tx, ty, x); } catch (e) {} }, x.delay || 0); },
+        'raceCaptureDoor:take':  function (tx, ty, r, x) { x = x || {}; _capDoorTake3D(tx, ty, x); },
+        'raceCaptureDoor:seal':  function (tx, ty, r, x) { x = x || {}; _capDoorSeal3D(tx, ty, x); },
+        'raceCaptureDoor:break': function (tx, ty, r, x) { x = x || {}; _capDoorBreak3D(tx, ty, x); },
+        'raceCaptureDoor:fold':  function (tx, ty, r, x) { x = x || {}; _capDoorBreak3D(tx, ty, { fold: true }); },
+    });
+
+    /* ════════════════════════════════════════════════════════════════════
        THE NEW-RACE VFX PASS (2026-09-22) — POLICE OFFICER · JELLYFISH ·
        CULT LEADER · POPSTAR
        ════════════════════════════════════════════════════════════════════

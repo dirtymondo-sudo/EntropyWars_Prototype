@@ -2872,6 +2872,12 @@
         } else if (state.actionMode === 'item' && canUnitAct(_selectedForHl)) {
           if (state.selectedTool === 'scanner') {
             _hlCache.set(posKey(_selectedForHl.x, _selectedForHl.y), 'inspect');
+          } else if (ITEM_RULES[state.selectedTool]?.kind === 'captureDoor') {
+            /* 🚪 THE ONE-WAY DOOR (CAPTURE_PLAN.md §3.2, Phase 2): the placement reach — every empty tile within the gun's
+               reach and sight (battle.js captureDoorLegalTiles, the same list the engine checks) */
+            if (typeof captureDoorLegalTiles === 'function') {
+              for (const t of captureDoorLegalTiles(_selectedForHl)) _hlCache.set(posKey(t.x, t.y), 'spell-range');
+            }
           } else if (ITEM_RULES[state.selectedTool]?.baneType) {
 
             const _baneRule = ITEM_RULES[state.selectedTool];

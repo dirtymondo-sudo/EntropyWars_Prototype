@@ -3760,15 +3760,22 @@ function _hrlgSpellBlades(unit, st) {
   return { title: { icon: '✦', text: 'Abilities', count: castableCount + '/' + spells.length }, blades };
 }
 
+/* 🚪 THE ONE-WAY DOOR (CAPTURE_PLAN.md Phase 2): a greyed door row says why (battle.js captureDoorPlaceCheck's reasons) */
+function _captureDoorWhy(unit, itemKey) {
+  const T = (typeof captureDoorLegalTiles === 'function') ? captureDoorLegalTiles(unit) : [];
+  const why = (typeof captureDoorPlaceCheck === 'function') ? captureDoorPlaceCheck(unit, T.length ? T[0].x : -1, T.length ? T[0].y : -1, itemKey) : 'item';
+  return ({ story: 'Story only', seat: 'Party only', none: 'None left', ap: 'No AP', once: 'One a turn', holding: 'Door holding', tile: 'No free tile in reach' })[why] || 'Can\'t use';
+}
+
 function _hrlgItemBlades(unit, st) {
   const am = st.actionMode;
   const heldKeys = typeof ITEM_RULES !== 'undefined'
     ? Object.keys(ITEM_RULES).filter(k => (unit.items?.[k] || 0) > 0) : [];
   /* THE BAG'S TABS (2026-09-23): the rows stand in the bag's CATEGORY order — HEALING · BATTLE ITEMS · BANES
      (data.js hqBagCategoryOf, the one rule the pause menu's tabs read) — and within a category the usable lead */
-  const _catOrder = ['healing', 'battle', 'banes'];
+  const _catOrder = ['healing', 'battle', 'banes', 'doors'];   // 🚪 THE ONE-WAY DOOR (CAPTURE_PLAN.md Phase 2): the capture doors sort last, like the bag's DOORS tab
   const _catOf = (k) => (typeof window.hqBagCategoryOf === 'function') ? window.hqBagCategoryOf(k) : 'battle';
-  const _catColor = { healing: '#57d97e', battle: '#7fc8ff', banes: '#ff8a6a' };
+  const _catColor = { healing: '#57d97e', battle: '#7fc8ff', banes: '#ff8a6a', doors: '#5ce0d0' };
   const _usable = (k) => (typeof canUseItemNow === 'function') ? (canUseItemNow(unit, k) ? 0 : 1) : 0;
   heldKeys.sort((a, b) => (_catOrder.indexOf(_catOf(a)) - _catOrder.indexOf(_catOf(b))) || (_usable(a) - _usable(b)));
   // Mystery Dungeon floors: every row grows a ⤵ DROP chip — one click puts
@@ -3783,6 +3790,7 @@ function _hrlgItemBlades(unit, st) {
     if (!canUse) {
       if (itemKey === 'healPotion') reason = 'HP full';
       else if (itemKey === 'manaPotion') reason = 'No ally needs MP';
+      else if (rules && rules.kind === 'captureDoor') reason = _captureDoorWhy(unit, itemKey);
       else reason = 'Can\'t use';
     }
     // every row wears its CATEGORY's colour edge to edge (healing green, battle blue, banes red), like heal spells do
@@ -4968,6 +4976,11 @@ function ActionMenu({ st, hidden }) {
       inItemTargets = true; view = 'sub';
       modeLabel = (itName + ' — PICK A TARGET').toUpperCase();
       panels.push(_mkPanel('itemTargets|' + st.selectedTool, _hrlgItemTargetBlades(unit, st), cancelBlade));
+    } else if (itRule && itRule.kind === 'captureDoor') {
+      // 🚪 THE ONE-WAY DOOR: the aim is an empty tile (the painter lights captureDoorLegalTiles)
+      view = 'aim';
+      modeLabel = ('PLACE THE ' + itName + ' · EMPTY TILE WITHIN ' + ((typeof CAPTURE_RULES !== 'undefined' && CAPTURE_RULES.range) || 4)).toUpperCase();
+      panels.push({ key: 'aim|item|' + st.selectedTool, title: { icon: '🚪', text: itName }, blades: [cancelBlade] });
     } else {
       // tile-targeted item (warp stone): keep free board aim
       view = 'aim';
@@ -7514,7 +7527,7 @@ function _hrlgTileBlades(actingUnit, st) {
     return {
       id: 'ta:' + a.id + ':' + i,
       icon: a.icon,
-      iconColor: a.category === 'attack' ? '#ff5340' : undefined,
+      iconColor: a.category === 'attack' ? '#ff5340' : (a.id.startsWith('captureDoor:') ? '#5ce0d0' : undefined),
       label: a.label,
       available: a.available,
       spell: a.spell || (isObjAtk ? objCard : null),
@@ -7903,6 +7916,41 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
         if (typeof scheduleBoardRender === 'function') { scheduleBoardRender(); }
       } : null,
     });
+  }
+
+  /* 🚪 THE ONE-WAY DOOR (CAPTURE_PLAN.md §3.2, Phase 2): PLACE CAPTURE DOOR on an empty tile — one row per door in
+     the bag, the best tier first (data.js captureDoorItemKeys); out of the gun's reach → one walk step, then the shot
+     (findCaptureDoorApproachTile / _moveThenCaptureDoor, battle.js). Story only: the engine's check refuses the rest. */
+  if (typeof captureDoorPlaceCheck === 'function' && typeof captureDoorItemKeys === 'function' && !onSelf && actingUnit.items) {
+    const _cdKeys = captureDoorItemKeys().filter(k => (actingUnit.items[k] || 0) > 0);
+    const _cdBusy = (typeof unitAt === 'function' && unitAt(tx, ty)) || (typeof doorAt === 'function' && doorAt(tx, ty));
+    for (const k of (_cdBusy ? [] : _cdKeys)) {
+      const rule = ITEM_RULES[k] || {};
+      const why = captureDoorPlaceCheck(actingUnit, tx, ty, k);
+      if (why === 'story' || why === 'seat') break;   // not a story fight / not the party: no row at all
+      const mt = (why === 'tile' && typeof findCaptureDoorApproachTile === 'function') ? findCaptureDoorApproachTile(actingUnit, tx, ty, k) : null;
+      const ok = !why || !!mt;
+      const tune = (!why || mt) && rule.tuned && typeof captureDoorTuneFor === 'function' ? captureDoorTuneFor(actingUnit, tx, ty, k) : null;
+      actions.push({
+        id: 'captureDoor:' + k, icon: '🚪', category: 'actions',
+        label: 'Place ' + (rule.name || 'Capture Door') + (tune ? ' · ' + String(tune).toUpperCase() : ''),
+        apCost: (typeof CAPTURE_RULES !== 'undefined' && CAPTURE_RULES.ap) || 1,
+        available: ok,
+        reason: ok ? '' : _captureDoorWhy(actingUnit, k).replace('No free tile in reach', 'Out of reach'),
+        moveTile: why ? mt : null,
+        itemKey: k, _count: actingUnit.items[k] || 0,
+        handler: !ok ? null : !why ? () => {
+          state._tileActionTarget = null;
+          state.actionMode = 'item';
+          state.selectedTool = k;
+          if (typeof doItem === 'function') doItem(actingUnit, tx, ty, tz);
+        } : () => {
+          state._tileActionTarget = null;
+          if (typeof hideSpellTooltip === 'function') hideSpellTooltip();
+          _moveThenCaptureDoor(actingUnit, mt, tx, ty, k);
+        },
+      });
+    }
   }
 
   if (typeof doWard === 'function' && unitAP >= 1 && !onSelf) {

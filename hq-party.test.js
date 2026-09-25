@@ -620,7 +620,7 @@ test('THE BAG\'S TABS (2026-09-23): one category rule for every item, the list s
     ['data-party-act="bagtab:', "verb === 'bagtab'", 'hq-pp-bagtabs', "bagTab: 'all'", 'data-cat="${_hqEsc(r.cat'].forEach(s => assert.ok(MP.includes(s), 'map.js: ' + s));
     assert.ok(CSS.includes('.hq-pp-bagtab.on'), 'the strip\'s CSS');
     const HUD = fs.readFileSync(__dirname + '/hud.js', 'utf8');
-    assert.ok(HUD.includes("const _catOrder = ['healing', 'battle', 'banes'];") && HUD.includes('window.hqBagCategoryOf'), 'the HUD orders its rows by the same rule');
+    assert.ok(HUD.includes("const _catOrder = ['healing', 'battle', 'banes', 'doors'];") && HUD.includes('window.hqBagCategoryOf'), 'the HUD orders its rows by the same rule');
 });
 
 test('THE SPOILS (2026-09-23): every fallen enemy rolls the SAME table, a bane is the fallen unit\'s own type, the rarities, the commit puts them in the bag on a win only, the debrief card', () => {

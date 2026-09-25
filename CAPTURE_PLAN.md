@@ -1,7 +1,7 @@
 # THE ONE-WAY DOOR — the capture mechanic of story mode
 
 *Plan document, 2026-09-23. Story mode (the encounters and the marker's fights) only — Online and
-Practice never see a capture door. Phases 0 (THE RULES) and 1 (THE DOOR ON THE BOARD) are built (2026-09-25); §6 is the order to build the rest in.
+Practice never see a capture door. Phases 0 (THE RULES), 1 (THE DOOR ON THE BOARD) and 2 (THE DELIVERY) are built (2026-09-25); §6 is the order to build the rest in.
 Read CLAUDE.md "THE CHAIN REACTION", "THE DOOR AGENT rev 3", "THE PARTY" and "THE BAG'S TABS" first —
 every hook this plan hangs on already exists.*
 
@@ -367,3 +367,18 @@ the item rows the server's loadout validation reads).
   `hqCaptureEnlist` (the bounty onto the saved profile's gold). **Deviation from §2.4:** a sealed body leaves
   `state.units` instead of sitting at (−1, −1), so no reader (turn order, AI, HUD, renderer) ever sees it. Nothing
   in the UI places a door yet (Phase 2). Test: `capture-board.test.js` (the DOOR block in a vm). Next: Phase 2.
+- 2026-09-25 — **Phase 2 THE DELIVERY built** (token `20260925-capture-03-cors`). battle.js: `canUseItemNow` knows the door
+  (a legal tile + a clean `captureDoorPlaceCheck`); `doItem`'s `captureDoor` branch (the ranged clip, `pushUndoSnapshot`,
+  the placement, the menu fall-back; a refused tile keeps the item armed); `captureDoorTuneFor` (**default taken:** the
+  tuned door tunes itself to the type of the living enemy nearest the tile — no type picker); `findCaptureDoorApproachTile`
+  / `_moveThenCaptureDoor` (the tile menu's and the board click's move-then-place); the record gains `faceX / faceY` (the
+  opening faces the shooter) and `_revealAt` (the renderer skips the door until the comet lands); the beats fire through
+  `window._doorGeom`: `raceCaptureDoor:open` (after the shot), `:take`, `:seal`, `:break`, `:fold` (an empty door folded
+  by a new one). hud.js: `_catOrder` + 'doors' (teal), the greyed row's reason (`_captureDoorWhy`), the aim label, the
+  TILE MENU rows (`captureDoor:<key>`, the best tier first, ↳ MOVE when out of reach, no row outside a story fight or
+  off the party). ui.js: the placement painter. three-renderer.js: capture doors route to `_buildDoor3D` (not the grave
+  gate), `_captureDoorDress` (lamps, the void pane, the glow pool, the plate: hits + hold pips + the captive), T3 the
+  vault leaf, the leaf open 150°, the hash reads the hold, a held body's model hides. **Deviation:** no standing
+  PointLight on the door (a new light recompiles every lit shader); the real light is the pooled flash in the beats.
+  Test: `capture-delivery.test.js`; live check `playtest_capture.js` (Football Stadium: place → take → seal, no page
+  errors). Next: Phase 3 THE AI.
