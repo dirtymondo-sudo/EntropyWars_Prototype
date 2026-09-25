@@ -637,6 +637,27 @@ it is true and three-renderer.js `_syncEnemyRangePreview` folds it into its sign
 when the camera lands. Unseen live (RULE #1c): the plate opacities against the busiest sheets, the
 one-click door pair's near spot on a crowded flank, the greyed rows' reasons, the wash's return timing.
 
+## THE DOOR AGENT rev 4 — THE DOOR WHEEL Phase 0 (Swing Door, Door Dash, the table) — 2026-09-25, local delivery
+DOOR_GUN_PLAN.md Phase 0. The tree is `[[raceSwingDoor, raceDoorDash], [raceBreakingEntering, raceAirMail],
+raceTrapdoor, raceDropIn★]` (six rows). **Door to the Face is RETIRED** — `SPELL_ID_RENAMED` (data.js) maps a
+saved `raceDoorToTheFace` to `raceSwingDoor` inside `treeLegalSubset`. **SWING DOOR** = `damage` + **`hinge: true`**
+r3, 40 phys, push 2, Stagger: the aim is the HINGE, an EMPTY tile beside a hostile (8 neighbours).
+`_kindMeta` returns `_HINGE_KIND_META` (tile aim that is still offensive); `getSpellRangeTiles` = the legal
+hinges (`swingDoorHingeTiles`); the drum is empty (board aim, like the old door kinds). `doSpell` resolves the
+click through **`swingDoorResolve`** (battle.js, beside `_doorRangeTiles`): victim = the side neighbour before a
+corner one, then the nearest; stamps `unit._swingHinge = {x, y, spellId}` (plain, RULE #2) and re-aims x/y at
+the victim, so the rest is the ordinary damage path. `_runPostEffects` pushes along `swingDoorPushDir(hinge →
+victim)` (data.js, pure). A CPU / auto seat may hand in the victim's tile (`auto`) and takes the hinge nearest
+itself; a human click must be a hinge. The travel shoots the hinge and fires **`raceSwingDoor:swing`** from it
+(never keyed by the spell id — the impact intent's caster-origin registry call would double it). ui.js
+`updateAoePreview` paints hinge (gold) · victim (red) · the forecast landing (amber). **DOOR DASH** = `teleport`
+r5 + `doorGun`: the teleport branch fires the shot, `raceBreakingEntering:door` at the feet and
+`raceDoorDash:out` at the landing, the agent faded until the far door opens. The **door table** (`DOOR_GUN_RULES`,
+`DOOR_GUN_DOORS`, `doorGunLaneTiles`, `doorGunWheel`, `doorGunUnlocked`), the **`hq.gunDoors` ledger**
+(merge earlier-day-wins, destination keys only, `hqDoorSyncFold`) and **the wheel pool**
+(`unitSpellPoolParts().wheel`, race `door agent` only, rows that exist only — empty until Phase 1 lands
+`gunGustDoor` / `gunArchersDoor`; the rack tags them DOOR WHEEL) are in data.js. Test: `door-gun.test.js`.
+
 ## THE DOOR AGENT rev 3 — THE GUN, NOT THE DOORS (five rows, OPEN HOUSE, the gun's pitch) — 2026-09-20, local delivery
 The user dropped the placed-door mechanic. `RACE_ABILITIES['door agent']` (data.js) is FIVE rows on
 `[[raceDoorToTheFace, raceBreakingEntering], raceAirMail, raceTrapdoor, raceDropIn★]`, every one wearing
