@@ -2254,7 +2254,7 @@
             if (k) html += row('KEYS', `${k.pickups | 0} RECOVERED${k.issued ? ' + ' + k.issued + ' ISSUED' : ''}`, `${k.keys | 0}`);
             if (mc) html += row('STABILIZED', 'THRESHOLDS WON BY EVERY WIN CONDITION', `${mc.mastered} / ${mc.total}`, mc.mastered === mc.total ? 'stabilized' : 'open');
             { const el = (typeof window.hqEncounterLog === 'function') ? window.hqEncounterLog(profile) : null; if (el && el.count) html += row('ENCOUNTERS', `${el.wins} HELD · ${el.losses} EXITED${el.last ? ' · LAST ' + _hqEsc(String(el.last.race || '').toUpperCase()) + (el.last.room && typeof window.hqEncounterRoomLabel === 'function' && window.hqEncounterRoomLabel(el.last.room) ? ' IN ' + _hqEsc(window.hqEncounterRoomLabel(el.last.room)) : '') + (el.last.won ? ' (HELD)' : ' (EXITED)') : ''}`, String(el.count), el.last && el.last.won ? 'stabilized' : 'open'); }
-            { const ps = _hqPortalStatus(profile); if (ps && ps.issued) html += row('THE THRESHOLD', 'PORTABLE · DOOR ISSUE · F DRAWS · LEFT CLICK = A ● · RIGHT CLICK = B ■ · Q HOLSTERS · HOLD F RECALLS', `${ps.a ? 'A' : '·'} ${ps.b ? 'B' : '·'}`, ps.paired ? 'stabilized' : 'open'); }
+            { const ps = _hqPortalStatus(profile); if (ps && ps.issued) html += row('THE THRESHOLD', 'PORTABLE · DOOR ISSUE · F DRAWS · LEFT CLICK = A ● · RIGHT CLICK = B ■ · Q HOLSTERS · HOLD F RECALLS · C OR W TWICE = DOOR DASH', `${ps.a ? 'A' : '·'} ${ps.b ? 'B' : '·'}`, ps.paired ? 'stabilized' : 'open'); }
             { const st = _hqSkateStatus(profile); if (st && st.issued) html += row('THE BOARD', st.best ? `BEST LINE · ${_hqEsc(st.best.text)} · ${st.lines | 0} LANDED · ${st.bails | 0} BAILS` : `B DROPS IT · NOTHING LANDED YET · ${_hqEsc(st.label)}`, st.best ? (st.best.score | 0).toLocaleString() : '—', st.best ? 'stabilized' : 'open');
               /* DISASTER CITY (2026-09-17): the best lap per circuit (hqSkateBank laps — local) */
               if (st && st.issued && st.laps) Object.keys(st.laps).forEach(rid => { const L = st.laps[rid], r = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.rooms[rid]) || null; if (L && L.ms) html += row('THE CIRCUIT', `${_hqEsc((r && r.label) || rid)} · BEST LAP · ${L.date || ''}`, _hqLapFmt(L.ms), 'stabilized'); }); }   // SKATEBOARDING (9.8)
@@ -3852,7 +3852,7 @@
                 PS.saveProfile(idx, p);
                 try { playSfx('levelUp'); } catch (e) {}
                 try { if (typeof playDoorSfx === 'function') playDoorSfx('doorStamp', { volume: 0.6 }); } catch (e) {}
-                _hqToast(`<b>PORTABLE THRESHOLD · ISSUED</b><span>−${r.cost} KEYS · F DRAWS IT · LEFT CLICK = A · RIGHT CLICK = B</span>`, 4200);
+                _hqToast(`<b>PORTABLE THRESHOLD · ISSUED</b><span>−${r.cost} KEYS · F DRAWS IT · LEFT CLICK = A · RIGHT CLICK = B · C OR W TWICE = DOOR DASH</span>`, 4200);
                 _hqFillStrip(p);
                 /* the walker learns it without a rebuild: the renderer's own flag */
                 try { if (ThreeRenderer.hq && ThreeRenderer.hq.active()) ThreeRenderer.hq.portalIssued(true); } catch (e) {}

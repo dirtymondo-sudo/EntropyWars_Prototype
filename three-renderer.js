@@ -47992,7 +47992,7 @@ const ThreeRenderer = (function () {
         pl._gunTried = true;
         _hqAttachHeld(pl, { key: G.key, bone: G.bone || 'RightHand', pos: G.pos || [0, 0, 0], rot: G.rot || [0, 0, 0], turn: G.turn || 0, pitch: G.pitch || 0, h: G.span || 0.36 });   // rev 5: `turn` pre-turns the model so its barrel is +X   // rev 4: `h` = the span the holder fits (the catalogue's 0.62 was the board's)
         var tries = 0;
-        (function show() { if (_hq !== H) return; if (!pl.held) { if (tries++ < 400) setTimeout(show, 100); return; } pl.held.visible = !!(H.portal && H.portal.drawn); H.dirty = true; })();
+        (function show() { if (_hq !== H) return; if (!pl.held) { if (tries++ < 400) setTimeout(show, 100); return; } pl.held.visible = !!((H.portal && H.portal.drawn) || pl.dash); H.dirty = true; })();
     }
     function _hqGunShow(on) {
         var H = _hq, pl = H && H.player; if (!pl) return;
@@ -48660,6 +48660,139 @@ const ThreeRenderer = (function () {
             });
         } catch (e) {}
         H.dirty = true;
+    }
+    /* ── DOOR DASH IN THE ROOM (DOOR_GUN_PLAN §5.1, 2026-09-25 — the user: "make door dash an actual dash, like double
+       tapping w or pressing c or something to dash, not on the door wheel but still with the door gun animation") ──
+       C, or W tapped twice, while walking: the officer fires the gun (the shot clip, the flash, the zap), steps into
+       a door that unfolds in front of them, crosses `dash.m` in `dash.ms` and steps out of a second one. A movement
+       verb, not a wedge: the wheel's selected door is untouched and the gun goes back to how it was. The walk only —
+       C still dives in the water and descends at the helm; the board, a ladder, a seat and the slide refuse it.
+       The gun has to be issued (the Threshold's own gate, the wheel's too). */
+    function _hqDashRules() {
+        var R = (typeof window !== 'undefined' && window.HQ_GUN_RULES && window.HQ_GUN_RULES.dash) || {};
+        return { m: R.m || 5.25, ms: R.ms || 200, cooldownMs: (R.cooldownMs != null) ? R.cooldownMs : 800, tapMs: R.tapMs || 260, exitV: (R.exitV != null) ? R.exitV : 4.6, color: R.color || 0xe8c07a };
+    }
+    function _hqDashCan(quiet) {
+        var H = _hq, pl = H && H.player; if (!pl || !pl.entry) return false;
+        if (H.paused || H.snap || (H.gun && H.gun.wheel) || pl.dash) return false;
+        if ((H.ride && H.ride.on) || (H.vehicle && H.vehicle.on) || pl.swim || pl.climb || pl.sit) return false;
+        if (!H.portal || !H.portal.issued) { if (!quiet && H.opts.onPortal) { try { H.opts.onPortal({ kind: 'unissued' }); } catch (e) {} } return false; }
+        if (performance.now() < (H._dashReadyAt || 0)) return false;
+        return true;
+    }
+    function _hqDash(quiet) {
+        var H = _hq, pl = H && H.player;
+        if (!_hqDashCan(quiet)) return false;
+        var k = H.keys, R = _hqDashRules();
+        /* the way: the keys held (camera-relative, the walk's own maths), else where the camera looks */
+        var ix = ((k.d || k.right) ? 1 : 0) - ((k.a || k.left) ? 1 : 0), iy = ((k.s || k.down) ? 1 : 0) - ((k.w || k.up) ? 1 : 0);
+        var fx = Math.sin(H.cam.yaw), fz = -Math.cos(H.cam.yaw), rx = Math.cos(H.cam.yaw), rz = Math.sin(H.cam.yaw);
+        var dx = fx * (-iy) + rx * ix, dz = fz * (-iy) + rz * ix;
+        if (!ix && !iy) { dx = fx; dz = fz; }
+        var L = Math.hypot(dx, dz); if (L < 0.001) return false;
+        dx /= L; dz /= L;
+        var now = performance.now();
+        H._dashReadyAt = now + R.ms + R.cooldownMs; H._dashTapAt = 0;
+        pl.yaw = pl.targetYaw = Math.atan2(dx, dz);
+        pl.mvx = 0; pl.mvz = 0; pl.vy = 0;
+        /* the gun: in the hand for the shot (holstered, it comes out and goes back) */
+        var wasDrawn = !!(H.portal && H.portal.drawn);
+        if (!wasDrawn) _hqGunShow(true);
+        pl.dash = { dx: dx, dz: dz, left: R.m, t0: now, wasDrawn: wasDrawn };
+        var from = _hqGunMuzzle();
+        _hqGunFire(from, null);
+        _hqDashDoor(pl.x + dx * 0.5, pl.y, pl.z + dz * 0.5, pl.yaw, R.color);
+        if (H.opts.onPortal) { try { H.opts.onPortal({ kind: 'dash', x: pl.x, z: pl.z, dx: dx, dz: dz }); } catch (e) {} }
+        H.dirty = true;
+        return true;
+    }
+    /* the dash's frame, per walker tick: the walk's axis-separated slide at dash speed, no gravity while it lasts */
+    function _hqTickDash(dt) {
+        var H = _hq, pl = H.player, D = pl.dash, R = _hqDashRules();
+        if (H.paused) return true;
+        var spd = R.m / (R.ms / 1000);
+        if (_hqPortalSweep(dt, { x: D.dx * spd, y: 0, z: D.dz * spd })) { _hqDashEnd(pl, D, R, true); return true; }   // a dash into a Threshold goes through it
+        var sx0 = pl.x, sz0 = pl.z, sy0 = pl.y;
+        var step = Math.min(spd * dt, D.left);
+        var nx = pl.x + D.dx * step, nz = pl.z + D.dz * step;
+        if (pl.air) {
+            if (_hqAirOK(nx, pl.z, pl.y)) pl.x = nx;
+            if (_hqAirOK(pl.x, nz, pl.y)) pl.z = nz;
+        } else {
+            var skipB = _hqSurface(pl.x, pl.z, pl.y, false) === null;
+            var y1 = _hqSurface(nx + Math.sign(D.dx) * HQ_BODY_R * 0.6, pl.z, pl.y, skipB);
+            if (y1 !== null) { pl.x = nx; _hqWalkerSetY(pl, y1); }
+            var y2 = _hqSurface(pl.x, nz + Math.sign(D.dz) * HQ_BODY_R * 0.6, pl.y, skipB);
+            if (y2 !== null) { pl.z = nz; _hqWalkerSetY(pl, y2); }
+        }
+        pl.vy = 0;   // an air dash holds its height; gravity takes it back at the end
+        var moved = Math.hypot(pl.x - sx0, pl.z - sz0);
+        D.left -= Math.max(moved, step * 0.25);   // a wall ends it (no progress still burns the distance)
+        pl.moving = true; pl.running = true;
+        pl.pushX = D.dx * R.exitV; pl.pushZ = D.dz * R.exitV;
+        pl.visY += (pl.y - pl.visY) * Math.min(1, dt * 30);
+        if (dt > 0.0005) { pl.velX = (pl.x - sx0) / dt; pl.velZ = (pl.z - sz0) / dt; pl.velY = (pl.y - sy0) / dt; }
+        pl.yaw = pl.targetYaw;
+        var U = _hqUnits();
+        pl.entry.group.position.set(pl.x * U, pl.visY * U, pl.z * U);
+        if (moved > 0.02 && Math.random() < 0.6) _hqDashTrail(pl, R.color);
+        if (D.left <= 0.001 || (moved < step * 0.25 && step > 0)) {
+            _hqDashEnd(pl, D, R, false);
+            _hqSwimCheck(pl);
+            _hqClimbCheck(pl);
+        }
+        H.dirty = true;
+        return true;
+    }
+    /* the landing: out of the second door at a run (THE CARRY eases it off); through a Threshold the pair's own carry has it */
+    function _hqDashEnd(pl, D, R, crossed) {
+        var H = _hq;
+        pl.dash = null;
+        if (!crossed) {
+            pl.mvx = D.dx * R.exitV; pl.mvz = D.dz * R.exitV;
+            _hqDashDoor(pl.x + D.dx * 0.4, pl.y, pl.z + D.dz * 0.4, pl.yaw + Math.PI, R.color);
+        }
+        if (!D.wasDrawn) setTimeout(function () { if (_hq === H && !(H.portal && H.portal.drawn)) _hqGunShow(false); }, 380);
+    }
+    /* a Door Dash door: the frame in the dash's colour, a lit opening, up in 110 ms, folded by 520 ms */
+    function _hqDashDoor(x, y, z, yaw, hex) {
+        var H = _hq; if (!H || !H.propGroup) return;
+        try {
+            var U = _hqUnits(), ow = 1.1, oh = 2.2;
+            var mat = new THREE.MeshBasicMaterial({ color: hex, transparent: true, opacity: 0.95 });
+            var fill = new THREE.MeshBasicMaterial({ color: hex, transparent: true, opacity: 0.3, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false });
+            var grp = new THREE.Group();
+            grp.add(_hqGunFrame(ow, oh, mat, U));
+            var pane = new THREE.Mesh(new THREE.PlaneGeometry(ow * U, oh * U), fill); pane.position.set(0, oh / 2 * U, 0); grp.add(pane);
+            grp.position.set(x * U, y * U, z * U); grp.rotation.y = yaw; grp.scale.set(1, 0.01, 1);
+            H.propGroup.add(grp);
+            var t0 = performance.now(), gone = false;
+            H.tickers.push(function (dt, now) {
+                if (gone) return;
+                var t = now - t0, up = Math.min(1, t / 110), fold = Math.max(0, Math.min(1, (t - 300) / 220));
+                grp.scale.set(1 - fold * 0.9, Math.max(0.01, up * (1 - fold)), 1 - fold * 0.9);
+                mat.opacity = 0.95 * (1 - fold); fill.opacity = 0.3 * (1 - fold) * (0.7 + 0.3 * Math.sin(t / 40));
+                if (fold >= 1) { gone = true; try { H.propGroup.remove(grp); _disposeR(grp); } catch (e) {} }
+                H.dirty = true;
+            });
+        } catch (e) {}
+    }
+    /* the streak behind the dash: a glow left where the body was, fading in 260 ms */
+    function _hqDashTrail(pl, hex) {
+        var H = _hq; if (!H || !H.propGroup) return;
+        try {
+            var U = _hqUnits(), h = (pl.heightM || 1.75);
+            var g = _hzGlowSprite(0.7 * U, hex, 0.5, 0, 0, 0);
+            g.position.set(pl.x * U, (pl.visY + h * (0.35 + Math.random() * 0.4)) * U, pl.z * U);
+            H.propGroup.add(g);
+            var t0 = performance.now(), gone = false;
+            H.tickers.push(function (dt, now) {
+                if (gone) return;
+                var k2 = Math.min(1, (now - t0) / 260);
+                g.material.opacity = 0.5 * (1 - k2); g.scale.setScalar((0.7 - 0.4 * k2) * U);
+                if (k2 >= 1) { gone = true; try { H.propGroup.remove(g); _disposeR(g); } catch (e) {} }
+            });
+        } catch (e) {}
     }
     function _hqPortalLeafKey(room) {
         var D = _hqData(), roomId = (_hq && _hq.opts.room) || 'central_egress';
@@ -50567,6 +50700,12 @@ const ThreeRenderer = (function () {
             /* THE SELECTOR (rev 4): R flips A ⇄ B, 1 / 2 pick — drawn only (holstered, the keys are nobody's) */
             /* Q = answer a BELL call from anywhere in the building (HQ plan D2) */
             if (k === 'q') { e.preventDefault(); if (H.opts.onHotkey) H.opts.onHotkey('q'); return; }
+            /* DOOR DASH (DOOR_GUN_PLAN §5.1): C on foot, or the forward key tapped twice inside dash.tapMs (C still dives
+               in the water and descends at the helm — _hqDashCan refuses there, so the key falls through to them) */
+            if (!e.repeat && (k === 'c' || k === 'w' || k === 'up')) {
+                if (k === 'c') { if (_hqDash(false)) e.preventDefault(); }
+                else { var nowT = performance.now(); if (H._dashTapAt && nowT - H._dashTapAt < _hqDashRules().tapMs && _hqDash(true)) H._dashTapAt = 0; else H._dashTapAt = nowT; }
+            }
             H.keys[k] = true;
             if (k === 'space' || (e.key && e.key.indexOf('Arrow') === 0)) e.preventDefault();
         };
@@ -53611,6 +53750,7 @@ const ThreeRenderer = (function () {
         if (pl.swim) { _hqTickSwim(dt); return; }
         if (pl.climb) { _hqTickClimb(dt); return; }   // THE CLIMB (AREA_CONTENT_PLAN D1, 2026-09-19): on a ladder / rope / vine the frame is the climb's
         if (pl.sit) { if (typeof _hqTickSit === 'function') _hqTickSit(dt); return; }   // THE PROP PASS 5.2 (2026-09-21): seated — any movement key stands up
+        if (pl.dash) { _hqTickDash(dt); return; }   // DOOR DASH (DOOR_GUN_PLAN §5.1): the dash owns the frame until it lands
         var sx0 = pl.x, sz0 = pl.z, sy0 = pl.y;   // THE CARRY (rev 4): the frame's displacement is the walk's velocity
         var ix = H.paused ? 0 : (((k.d || k.right) ? 1 : 0) - ((k.a || k.left) ? 1 : 0));
         var iy = H.paused ? 0 : (((k.s || k.down) ? 1 : 0) - ((k.w || k.up) ? 1 : 0));
@@ -53709,7 +53849,7 @@ const ThreeRenderer = (function () {
                 e.group.traverse(function (n) { if (n._ew_silhouette) n.visible = false; });
                 ch.cleaned = true;
                 if (H.shadows) { try { _applyShadowFlags(e.group); } catch (err) {} }   // THE LIGHT PASS 2.1: a body casts and receives
-                if (ch.kind === 'player') H.playerAttached = true;   // THE GATE: the card waits for this AND for every file to land (_hqFrame)
+                if (ch.kind === 'player') { H.playerAttached = true; if (H.portal && H.portal.issued) { try { _hqGunAttach(); } catch (err) {} } }   // THE GATE: the card waits for this AND for every file to land (_hqFrame); DOOR DASH: an issued gun is strapped on (hidden) so the first dash has it in the hand
             }
             e.model.rotation.y = ch.yaw;
             if (ch.heldUpright && ch.heldBone) {
@@ -56234,6 +56374,8 @@ const ThreeRenderer = (function () {
         portalDraw: _hqPortalDraw,
         portalIssued: function (on) { if (_hq && _hq.portal) { _hq.portal.issued = !!on; if (!on) _hqPortalDraw(false); } return !!(_hq && _hq.portal && _hq.portal.issued); },
         portalDrawn: function () { return !!(_hq && _hq.portal && _hq.portal.drawn); },
+        dash: function () { return _hqDash(true); },   // DOOR DASH (DOOR_GUN_PLAN §5.1): the C key's verb (a probe / a pad button)
+        dashing: function () { return !!(_hq && _hq.player && _hq.player.dash); },
         portalAim: function () { return (_hq && _hq.portal) ? (_hq.portal.drawn ? _hq.portal.aim : _hqPortalAim()) : null; },
         portalPlace: _hqPortalPlaceAim,
         portalHop: _hqPortalHop,

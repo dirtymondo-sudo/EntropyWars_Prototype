@@ -7,6 +7,10 @@ revs 1–5, docs/notes/champions-combat.md "THE DOOR AGENT rev 3" and "THE SPELL
 docs/notes/spells-vfx.md "THE CHAIN REACTION" first — every hook this plan hangs on already exists.
 Implementation threads: each phase in §9 is one delivery; append to §11 when you ship one.*
 
+**2026-09-25, the user: the PUZZLES (§5.4, Phase 5) are DEFERRED to their own human-written plan.** Wherever this
+plan says "puzzle", read it as a note for that future plan, not work for this one. Door Dash in the room is a
+movement (C / W twice, §5.1), not a wedge.
+
 ---
 
 ## 0. The verdict — what this rework is, in one paragraph
@@ -308,6 +312,15 @@ move it off (the capture is the terminal of every chain).
   is `_hqPortalGhost` re-dressed per door (the frame + a lane arrow on the floor).
 - **F** still draws / holsters; drawn + the wheel's door selected = the aim as today
   (`_hqPortalAim`'s march; the surface rules of §8 apply per kind).
+- **DOOR DASH is a movement, not a wedge** (the user, 2026-09-25: "make door dash an actual dash, like double
+  tapping w or pressing c or something to dash, not on the door wheel but still with the door gun animation").
+  On foot, **C** or **the forward key tapped twice** (W / ↑, inside `dash.tapMs`) fires the gun (the shot clip, the
+  flash, the zap), a door unfolds in front of the officer, they cross `HQ_GUN_RULES.dash.m` (3 tiles, 5.25 m) in
+  `dash.ms` (200 ms) and step out of a second door at a run. The way is the keys held, else where the camera looks;
+  a wall ends it early; an air dash holds its height; a Threshold in the path is crossed. A cooldown
+  (`dash.cooldownMs`) between dashes; the gun must be issued (the wheel's gate). C keeps its other jobs: dive in the
+  water, down at the helm (the dash refuses there, so the key falls through). The battle row (`raceDoorDash`, the
+  teleport on the rack) is unchanged.
 
 ### 5.2 THE LIVE DOORS (the room's standing doors)
 
@@ -351,7 +364,13 @@ move it off (the capture is the terminal of every chain).
   over, or the room is left (the item is refunded when you leave the room without a fight — a
   door is never lost to a wrong room). The one-per-player rule holds.
 
-### 5.4 THE PUZZLES (the room's objects that doors talk to)
+### 5.4 THE PUZZLES — DEFERRED (the user, 2026-09-25)
+
+> **Not part of this plan any more.** The user: puzzles are "an entirely other beast of a project that will need
+> human planning and its own specific plan and a lot more work on the maps and explorable areas." Nothing below is
+> to be built, sketched or stubbed from this plan: no puzzle props, no `puzzles` rows, no authored puzzles. It
+> stays only as the record of the first idea, for the human-written puzzle plan to take or drop.
+
 
 New pure rows in `DOOR_HQ.rooms[id].puzzles` (authored per room, data.js) and three prop kinds:
 
@@ -454,12 +473,12 @@ Turning the flag off = `DOOR_GUN_RULES.allUnlocked: false` + shipping data.js to
 | 2 | **THE DESTINATIONS**: Hell + Frost (`laneTerrain` + the timed terrain + the ice rule), Maw (`pullIn`), Laser (`beam` + mirrors), Light (`laneLight`); their dresses and recipes | data.js, battle.js, three-renderer.js, three-vfx-effects.js | the harness per act; a beam through one mirror; ice lengthens a swing |
 | 3 | **THE WHEEL + THE LIVE DOORS**: `#hqWheel` (hold middle click, the slow, the wedges, the sealed look), `H.gun.door`, the ghost per door + the facing turn, `H.gunDoors` + the profile record, `_hqTickGunDoors` (period + arrival), the kickable / walker push, the strip pill | map.js, three-renderer.js, data.js, index.html, styles-base.css | `hq-gun.test.js` (the wheel's geometry, the record, the cap) + the offline HQ probe (`playtest_gun_offline.js` extended — the user allowed gun probes) |
 | 4 | **THE ENGAGEMENT + THE CARRY-OVER**: the act as the strike (`opening` on the launch), doors → board cells at `hqEncounterLaunch`, seats around them, the room rebuild after the fight, the pre-placed capture door + its refund | data.js, map.js, three-renderer.js, battle.js | `hq-encounter` pins: a door inside the window lands on its cell; one outside stays |
-| 5 | **THE PUZZLES**: the ball, the socket, the brazier's `lit`, the frost slab, the sensor + mirror, `DOOR_HQ.rooms[].puzzles`, the four authored puzzles, `door.hq.puzzles` | data.js, three-renderer.js, map.js | `hq-puzzles.test.js` (every authored puzzle names an ownable door and a reachable reward — `heavy` if it compiles rooms) |
+| 5 | ~~**THE PUZZLES**~~ **DEFERRED (the user, 2026-09-25): a separate, human-written plan; do not build, sketch or stub** — was: the ball, the socket, the brazier's `lit`, the frost slab, the sensor + mirror, `DOOR_HQ.rooms[].puzzles`, the four authored puzzles, `door.hq.puzzles` | data.js, three-renderer.js, map.js | `hq-puzzles.test.js` (every authored puzzle names an ownable door and a reachable reward — `heavy` if it compiles rooms) |
 | 6 | **THE AI**: doors as structures, lanes as hazards, the CPU placer, the lane-feed forecast | ai.js | `door-gun-ai.test.js` (a body never paths through a gust lane ending on a hazard; a bot places a gust whose lane ends on its capture door) |
 | 7 | **THE UNLOCKS**: the seven triggers, the toasts, the codex page, the sealed wedges, the Part C row for the princess; ships with `allUnlocked` STILL TRUE (the user flips it) | data.js (Render too), map.js, DOOR_MASTER.md | `hq-purpose` pins per trigger |
 
 `npm run test:quick` before every delivery; the one test that names the phase; `test:full` only
-for phase 5 (it touches rooms). Every R2 delivery bumps `?v=` (RULE #1b); data.js goes to Render
+when a phase touches rooms (phase 5 did; it is deferred). Every R2 delivery bumps `?v=` (RULE #1b); data.js goes to Render
 at phases 0, 2, 5 and 7 (the ledgers).
 
 ---
@@ -604,3 +623,13 @@ Line numbers are the 2026-09-25 clone's (token `20260925-capture-08-cors`); grep
   seats. The plan's `door.hq.gunDoors.placed` is `door.hq.gunPlaced.capture` for the capture door (the Phase 3
   record). Not browser-probed. Notes: docs/notes/door-gun-skate-vehicles.md "THE ENGAGEMENT + THE CARRY-OVER". Test:
   hq-gun-carry.test.js (plus the pins in hq-gun / hq-encounter / encounter-arrival brought to the new lines).
+- 2026-09-25 — **the user's rulings on what comes after Phase 4**: (1) **Phase 5, the puzzles, is DEFERRED** to its
+  own human-written plan (with the maps / explorable-area work it needs); §5.4 and the §9 row are marked, nothing is
+  built or stubbed, and the next phase of THIS plan is 6 (the AI). (2) **Door Dash in the room is a real dash**, not
+  a wheel wedge: shipped as `door-gun/ENTROPY_WARS_DOOR_DASH.zip`, token `20260925-door-gun-06-cors`. three-renderer.js
+  `_hqDash` / `_hqTickDash` / `_hqDashEnd` / `_hqDashDoor` / `_hqDashTrail` (the walker tick hands the frame to the
+  dash while `pl.dash` is set), the keys in `H.onKeyDown` (C on foot; W / ↑ twice inside `tapMs`), `hq.dash()` /
+  `hq.dashing()` on the API; data.js `HQ_GUN_RULES.dash` (`m` 3 tiles, `ms` 200, `cooldownMs` 800, `tapMs` 260,
+  `exitV` 4.6, the Door Dash colour); the hints (index.html's drawn-gun line, map.js's pause row + the issue toast).
+  The battle's `raceDoorDash` is untouched. Room only, so there is nothing to relay (the HQ is never online). Test:
+  hq-gun.test.js "Door Dash".

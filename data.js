@@ -47215,6 +47215,9 @@ const HQ_GUN_RULES = {
     minFromWalker: 1.2,                 // never on your own feet
     minGap: 1.4,                        // two standing doors keep this apart
     faceStepDeg: 45,                    // RIGHT CLICK turns the lane this much
+    /* DOOR DASH in the room (DOOR_GUN_PLAN §5.1, 2026-09-25): C or W twice — three tiles in a fifth of a second through
+       two doors, out at a run; not a wheel wedge */
+    dash: { m: 3 * HQ_CAVE_CELL, ms: 200, cooldownMs: 800, tapMs: 260, exitV: 4.6, color: 0xe8c07a },
 };
 /* the record, sanitised: only standing-door keys, finite numbers, a real room, the newest `cap` rows */
 function hqGunDoorRecord(profile) {

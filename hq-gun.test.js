@@ -100,3 +100,23 @@ test('MAP.JS + THE PAGE: the filer, the fresh-arrival clear, the pill, #hqWheel 
     assert.ok(/\.hq-wheel-wedge\.hover/.test(CSS) && /\.hq-wheel-wedge\.sealed/.test(CSS));
     assert.ok(Object.keys(DOORS).filter(k => DOORS[k].kind === 'standing').every(k => DOORS[k].color != null), 'every standing door has a colour to wear');
 });
+
+test('Door Dash: a movement on C / the forward key twice, not a wedge, with the gun\'s shot; C still dives and descends', () => {
+    const d = R.dash;
+    assert.ok(d && d.m === 3 * R.cell && d.ms > 0 && d.ms <= 400 && d.cooldownMs >= 0 && d.tapMs > 0 && d.exitV > 0, 'three tiles, fast, a cooldown, a double-tap window');
+    assert.ok(!g('doorGunWheel')(null, { room: true }).some(x => x.key === 'dash'), 'never on the room wheel');
+    assert.equal(DOORS.dash.spell, 'raceDoorDash', 'the battle row is untouched');
+    const fn = n => { const i = TR.indexOf('function ' + n + '('); assert.ok(i > 0, n); return TR.slice(i, TR.indexOf('\n    }\n', i)); };
+    const can = fn('_hqDashCan');
+    ['H.ride && H.ride.on', 'H.vehicle && H.vehicle.on', 'pl.swim', 'pl.climb', 'pl.sit', 'H.gun && H.gun.wheel', 'H.portal.issued'].forEach(s => assert.ok(can.includes(s), 'refuses: ' + s));
+    const dash = fn('_hqDash');
+    assert.ok(dash.includes('_hqGunFire(') && dash.includes('_hqGunShow(true)') && dash.includes('_hqDashDoor('), 'the gun fires (clip, flash, zap) and a door opens');
+    assert.ok(fn('_hqDashEnd').includes('_hqDashDoor('), 'out of a second door');
+    assert.ok(fn('_hqTickDash').includes('_hqPortalSweep('), 'a Threshold in the path is crossed');
+    assert.ok(/if \(pl\.dash\) \{ _hqTickDash\(dt\); return; \}/.test(fn('_hqTickWalker')), 'the walker hands the frame to the dash');
+    assert.ok(/k === 'c'\) \{ if \(_hqDash\(false\)\)/.test(TR), 'C dashes on foot');
+    assert.ok(/H\._dashTapAt && nowT - H\._dashTapAt < _hqDashRules\(\)\.tapMs && _hqDash\(true\)/.test(TR), 'the forward key twice');
+    assert.ok(/down = k\.c \? 1 : 0/.test(TR) && /\(k\.space \? 1 : 0\) - \(k\.c \? 1 : 0\)/.test(TR), 'C still dives / descends');
+    assert.ok(/dash: function \(\) \{ return _hqDash\(true\); \}/.test(TR));
+    assert.ok(IX.includes('C or W W = door dash') && MP.includes('C OR W TWICE = DOOR DASH'), 'the hints say how');
+});
