@@ -637,3 +637,16 @@ pane + violet rim while holding, the plate with hits + hold pips + the captive's
 light-count change recompiles every shader), the door held back until the comet lands (`door._revealAt`), the held
 body's model hidden (`_updateEnemyConcealment`), and five recipes `raceCaptureDoor:open / take / seal / break / fold`
 in three-vfx-effects.js (pooled flash lights, sparks, rings, the recall comet on the seal). Next: Phase 3 THE AI.
+**Phase 3 THE AI built 2026-09-25** (`capture-ai.test.js`; live probe `playtest_capture_ai.js`). ai.js "THE ONE-WAY DOOR"
+block (`CAP_TUNE`, beside aiHazardPenaltyAt): natives never WALK onto or THROUGH a door that would take them
+(`_aiMoveTiles` drops every tile whose engine `findMovePath` crosses it — every scorer reads it instead of the raw
+`TargetQuery.moveTiles`; the execute `move` case refuses such a walk as a last gate); ending on one costs 260 × (1 + the
+seal steps the body would lose), ×2 for its team's last free body, and 60 / 20 one / two tiles off it in a line (×0.35
+with no hostile pusher on the board) — through `aiHazardPenaltyAt`, so tileDangerCost, the safety moves and the final
+ranking all see it; a teleport / dash / swap landing on it and a rally pull beside it are refused, a shove whose collision
+would slide an ally in costs 220 (`_capSpellFeeds`); a HELD ally leaves `v.allies`. THE RESCUE: a swing at the door
+holding one of ours (`_capDoorAttacks` in scoreAttacks, the joint move×attack search, a `free_captive` move goal) is
+worth the ally's kill value ÷ the door's hits, ×1.6 / ×1.25 at 1 / 2 seal rounds left, + half the worth for the
+breaking hit, + focusCommitBonus when the team can break it this round, + half the worth when no round is spare,
+×0.25 when it cannot fall before it seals; an empty door is a spare 30-point swing. Kill-switch
+`window.EW_AI_NO_CAPTURE`. AI version `v4.12-2026-09-25-capture-door`. Next: Phase 4 THE PRIZE (server union, debrief).
