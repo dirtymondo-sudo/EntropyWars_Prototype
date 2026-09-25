@@ -903,7 +903,11 @@
                         pp.classList.toggle('paired', !!ps.paired);
                         const gd = (() => { try { return ThreeRenderer.hq.gunDoor ? ThreeRenderer.hq.gunDoor() : 'threshold'; } catch (e) { return 'threshold'; } })();
                         const gdef = gd !== 'threshold' ? (window.DOOR_GUN_DOORS || {})[gd] : null;
-                        if (gdef) {   // THE DOOR WHEEL (Phase 3): the door the gun holds, and how many stand
+                        if (gdef && gdef.kind === 'capture') {   // THE ONE-WAY WEDGE (Phase 4): the kind the gun holds, how many the bag has
+                            const cs = (() => { try { return ThreeRenderer.hq.gunCaptureSel ? ThreeRenderer.hq.gunCaptureSel() : null; } catch (e) { return null; } })();
+                            const up = (typeof window.hqGunCaptureRecord === 'function') ? window.hqGunCaptureRecord(profile) : null;
+                            pp.innerHTML = `${gdef.icon || '⛓'} ${_hqEsc(String((cs && cs.name) || 'NONE IN THE BAG').toUpperCase())} <b>${cs ? '×' + (cs.n | 0) : '0'}</b>${up ? ' · ONE STANDS' : ''}${drawn ? ' · L = STAND IT · R = THE KIND' : ''}`;
+                        } else if (gdef) {   // THE DOOR WHEEL (Phase 3): the door the gun holds, and how many stand
                             const nStand = (typeof window.hqGunDoorRecord === 'function') ? window.hqGunDoorRecord(profile).length : 0;
                             pp.innerHTML = `${gdef.icon || '🚪'} ${String(gdef.name || gd).toUpperCase()} <b>${nStand}/${((window.HQ_GUN_RULES || {}).cap) || 2}</b>${drawn ? ' · L = STAND IT · R = TURN' : ''}`;
                         } else
@@ -1033,6 +1037,7 @@
             /* the strike plate buzzes on the way IN from Play; a return from a
                screen / match is quiet (the door already buzzed on the way out) */
             if (!opts.quiet && !returning) { try { if (typeof playDoorSfx === 'function') playDoorSfx('doorBuzz', { volume: 0.55 }); } catch (e) {} }
+            if (typeof _hqGunCaptureSettle === 'function') _hqGunCaptureSettle(roomId);   // THE ONE-WAY WEDGE (Phase 4): a capture door standing in another room goes back in the bag
             const profile = _hqProfile();
             _hqHome = true;
             _hqSuspended = false;
@@ -1094,6 +1099,7 @@
                     /* THE DOOR WHEEL IN THE ROOM (DOOR_GUN_PLAN Phase 3): the wedges, the door the gun holds, the standing doors on file, the filer */
                     gun: (typeof _hqGunOpts === 'function') ? _hqGunOpts(opts, profile) : null,
                     onGunDoorPlace: (typeof _hqGunDoorPlaced === 'function') ? _hqGunDoorPlaced : null,
+                    onGunCapturePlace: (typeof _hqGunCapturePlaced === 'function') ? _hqGunCapturePlaced : null,   // THE ONE-WAY WEDGE (Phase 4)
                     onPortalCross: function (slot) { try { return window._hqPortalStep(slot); } catch (e) { return false; } },
                     /* THE ENCOUNTER (HQ plan 9.4): a thrown gesture (the beat) and the one that LANDS on a native with the gun drawn (the crossing) */
                     onStrike: (typeof _hqStrikeEvent === 'function') ? _hqStrikeEvent : null,
@@ -3158,7 +3164,14 @@
                 if (fresh) _hqGunSel = 'threshold';
                 const placed = (!fresh && typeof window.hqGunDoorRecord === 'function') ? window.hqGunDoorRecord(profile) : [];
                 const selOk = _hqGunSel === 'threshold' || (wedges || []).some(w => w.key === _hqGunSel && !w.sealed);
-                return { door: selOk ? _hqGunSel : 'threshold', wedges, placed };
+                /* THE ONE-WAY WEDGE (Phase 4): the capture doors the bag holds (the right click's choices) and the one standing */
+                const capture = {
+                    choices: (typeof window.hqGunCaptureChoices === 'function') ? window.hqGunCaptureChoices(profile) : [],
+                    placed: (!fresh && typeof window.hqGunCaptureRecord === 'function') ? window.hqGunCaptureRecord(profile) : null,
+                };
+                /* THE STRIKE (Phase 4): a standing door's act on a native starts the fight — only where a fight can start */
+                const strike = Object.assign({ ok: _hqEncounterEnabled() && _hqEncounterRoomOkNow() }, ((window.HQ_GUN_RULES || {}).strike) || {});
+                return { door: selOk ? _hqGunSel : 'threshold', wedges, placed, capture, strike };
             } catch (e) { return null; }
         }
         function _hqGunDoorPlaced(spec) {
@@ -3180,7 +3193,46 @@
                 return r;
             } catch (e) { console.warn('[HQ] gun door place', e); return null; }
         }
+        /* THE ONE-WAY WEDGE (DOOR_GUN_PLAN §5.3, Phase 4): the capture door stood in the room — the bag's item is spent
+           now; the next fight here carries it, leaving the room puts it back (data.js hqGunCaptureRefund on entry) */
+        function _hqGunCapturePlaced(spec) {
+            try {
+                const PS = window.ProfileSystem;
+                const idx = (PS && typeof PS.getActiveProfileIndex === 'function') ? PS.getActiveProfileIndex() : null;
+                if (idx === null || idx === undefined) { _hqToast('<b>NO CARD ON FILE</b><span>SIGN IN AT RECEPTION — THE ISSUE IS TO A NAME</span>'); return null; }
+                const p = PS.loadProfile(idx);
+                if (!p || typeof window.hqGunCapturePlace !== 'function') return null;
+                const r = window.hqGunCapturePlace(p, spec);
+                if (!r || !r.ok) { _hqGunRefused(r ? r.reason : 'none'); return null; }
+                PS.saveProfile(idx, p);
+                _hqStripFlash('portal');
+                const rule = (window.ITEM_RULES || (typeof ITEM_RULES !== 'undefined' ? ITEM_RULES : {}))[spec.item] || {};
+                const nm = String(rule.name || 'One-Way Door').toUpperCase() + (r.row && r.row.type ? ' · ' + String(r.row.type).toUpperCase() : '');
+                _hqToast(`<b>⛓ ${_hqEsc(nm)} · STANDING</b><span>${r.refunded ? 'THE OTHER ONE IS BACK IN THE BAG · ' : ''}THE NEXT FIGHT HERE CARRIES IT ONTO THE BOARD · LEAVE THE ROOM AND IT GOES BACK IN THE BAG</span>`, 3400);
+                _hqFillStrip(p);
+                return Object.assign({}, r, { choices: (typeof window.hqGunCaptureChoices === 'function') ? window.hqGunCaptureChoices(p) : [] });
+            } catch (e) { console.warn('[HQ] capture door place', e); return null; }
+        }
+        /* every room entry: a capture door left standing in ANOTHER room goes back in the bag (a door is never lost to a wrong room) */
+        function _hqGunCaptureSettle(roomId) {
+            try {
+                const PS = window.ProfileSystem;
+                const idx = (PS && typeof PS.getActiveProfileIndex === 'function') ? PS.getActiveProfileIndex() : null;
+                if (idx === null || idx === undefined || typeof window.hqGunCaptureRefund !== 'function') return null;
+                const p = PS.loadProfile(idx);
+                const rec = p && typeof window.hqGunCaptureRecord === 'function' ? window.hqGunCaptureRecord(p) : null;
+                if (!rec || rec.room === roomId) return null;
+                const back = window.hqGunCaptureRefund(p, roomId);
+                if (!back) return null;
+                PS.saveProfile(idx, p);
+                const rule = (typeof ITEM_RULES !== 'undefined' ? ITEM_RULES : {})[back.item] || {};
+                setTimeout(() => { try { _hqToast(`<b>⛓ ${_hqEsc(String(rule.name || 'One-Way Door').toUpperCase())} · BACK IN THE BAG</b><span>IT WAS STANDING IN ${_hqEsc(String(((DOOR_HQ.rooms[back.room] || {}).label) || back.room).toUpperCase())} · NO FIGHT CARRIED IT</span>`, 3000); } catch (e) {} }, 900);
+                return back;
+            } catch (e) { console.warn('[HQ] capture door settle', e); return null; }
+        }
         const _HQ_GUN_REFUSALS = {
+            bag: ['NO ONE-WAY DOOR IN THE BAG', 'THE QUARTERMASTER SELLS THEM · THE SHOP IN THE BUILDING'],
+            type: ['TUNE THE DOOR FIRST', 'RIGHT CLICK PICKS THE TYPE'],
             upright: ['A STANDING DOOR NEEDS A FLOOR', 'AIM AT THE GROUND · IT STANDS UP ON ITS OWN'],
             near: ['TOO CLOSE', 'STEP BACK · NOT ON YOUR OWN FEET'],
             gap: ['TOO CLOSE TO YOUR OTHER DOOR', 'GIVE THE TWO A LITTLE ROOM'],
@@ -3203,6 +3255,7 @@
                 _hqFillStrip(_hqProfile()); _hqStripFlash('portal');
                 const d = (window.DOOR_GUN_DOORS || {})[_hqGunSel] || {};
                 if (_hqGunSel === 'threshold') _hqToast('<b>🌀 THE THRESHOLD</b><span>LEFT CLICK = A ● · RIGHT CLICK = B ■ · HOLD F = RECALL BOTH</span>', 2200);
+                else if (d.kind === 'capture') _hqToast(`<b>⛓ THE ONE-WAY DOOR</b><span>LEFT CLICK STANDS ONE FROM THE BAG · RIGHT CLICK PICKS THE KIND · THE NEXT FIGHT HERE CARRIES IT ONTO THE BOARD</span>`, 3000);
                 else _hqToast(`<b>${_hqEsc((d.icon || '') + ' ' + String(d.name || _hqGunSel).toUpperCase())}</b><span>LEFT CLICK STANDS IT ON THE FLOOR · RIGHT CLICK TURNS ITS LANE · TWO STAND AT A TIME</span>`, 2600);
                 return;
             }
@@ -3554,7 +3607,7 @@
             if (!_hqEncounterEnabled() || !_hqEncounterRoomOkNow()) return false;
             if (typeof window.isOnlineMatch === 'function' && window.isOnlineMatch()) return false;   // RULE #2: never from an online seat
             let drawn = false; try { drawn = ThreeRenderer.hq.portalDrawn(); } catch (e) { drawn = false; }
-            if (drawn) return false;   // the gun drawn: a click is a threshold, never a fight (rev 17)
+            if (drawn && !ev.door) return false;   // the gun drawn: a click is a threshold, never a fight (rev 17) — a standing door's act is the strike itself (DOOR_GUN_PLAN §5.3)
             /* THE PARTY (2026-09-19): a party with nobody fit to fight never crosses — rest at the ward or heal from the pause menu */
             try {
                 const pf = (typeof window.hqPartyFit === 'function') ? window.hqPartyFit(_hqProfile()) : null;
@@ -3569,6 +3622,12 @@
             if (!cr || cr.cleared || !site || cr.site !== site) cr = null;
             const L = (typeof window.hqEncounterLaunch === 'function') ? window.hqEncounterLaunch(_hqCurRoom, ev.target, _hqEncounterCfgRaw(), { gesture: ev.gesture, codeRed: !!cr, partyLevel: _hqPartyLevelNow() }) : null;
             if (!L) return false;
+            /* THE DOOR STRIKE (DOOR_GUN_PLAN §5.3, Phase 4): the door says who it struck */
+            if (ev.door) {
+                const dd = (window.DOOR_GUN_DOORS || {})[ev.door.key] || {};
+                _hqToast(`<b>${_hqEsc((dd.icon || '🚪') + ' ' + String(dd.name || ev.door.key).toUpperCase())} · ${_hqEsc(ev.target.label || ev.target.race || 'THE NATIVE')}</b><span>THE DOOR STRUCK FIRST · ENGAGING · ${_hqEncounterBoardCopy(ev.board)}</span>`, 1800);
+                try { playSfx('uiButtonConfirm'); } catch (e) {}
+            }
             L.codeRedRun = cr ? { date: cr.date, site: cr.site, race: cr.race, label: cr.label, bonus: cr.bonus } : null;
             /* THE FIELD stage B / C (Phase 9 Deliveries 8 + 9, 2026-09-16 — the rasteriser on the cave, then on the
                box rooms): a cave chamber or a complex part has no board under the walker, so THE WINDOW is chosen here
@@ -3665,6 +3724,15 @@
                                        date: (typeof hqToday === 'function') ? hqToday() : null, at: Date.now(), noIntro: true, armed: true,   // `armed`: battle.js startMatch spends it on THIS launch; a later match finds it spent and drops a stale marker
                                        eye: eye, walker: ev ? { x: ev.x, z: ev.z, y: ev.y, yaw: ev.yaw, pitch: ev.pitch } : null, field: field || null, gm: L.gm,
                                        swarm: L.swarm || null };   // THE SWARM: battle.js keeps every native on the board
+            /* THE CARRY-OVER (DOOR_GUN_PLAN §5.3, Phase 4): the room's standing doors (and a pre-placed capture door) on the
+               fight's board go onto their cells before the seats (battle.js encounterCarryDoors); the striking door's act is
+               THE OPENING (battle.js encounterOpening). The record's hits come home at the commit (hqGunDoorsAfterFight). */
+            try {
+                if (typeof window.hqGunDoorCarry === 'function') {
+                    const carry = window.hqGunDoorCarry(_hqProfile(), L.room || _hqCurRoom, field, (ev && ev.door) || null);
+                    if (carry && (carry.doors.length || carry.capture || carry.opening)) window._hqEncounterRun.carry = carry;
+                }
+            } catch (e) { console.warn('[HQ] the door carry failed', e); }
             window._hqEncounterResult = null;
             try { if (typeof playDoorSfx === 'function') playDoorSfx('doorBuzz', { volume: 0.6 }); } catch (e) {}
             /* no roster on file (Delivery 6): the fight still starts on the spot — the mode's default squad stands in
@@ -13625,8 +13693,11 @@
                 }
                 return true;
             };
+            /* THE CARRY-OVER (DOOR_GUN_PLAN §5.3, Phase 4): the room's doors on this board stand on their cells first — no seat lands on a door */
+            try { if (typeof window.encounterCarryDoors === 'function') window.encounterCarryDoors(free); } catch (e) { console.warn('[HQ] the door carry failed', e); }
+            const freeSeat = (x, y) => free(x, y) && !(typeof doorAt === 'function' && doorAt(x, y));
             let seats = null;
-            try { seats = window.hqEncounterSeats(F, { W: bw(), H: bh(), n1: u1.length, n2: u2.length, free }); } catch (e) { console.warn('[HQ] the encounter seats failed', e); seats = null; }
+            try { seats = window.hqEncounterSeats(F, { W: bw(), H: bh(), n1: u1.length, n2: u2.length, free: freeSeat }); } catch (e) { console.warn('[HQ] the encounter seats failed', e); seats = null; }
             if (!seats || !seats[1] || !seats[2]) return null;
             const zones = window.hqEncounterZones(seats);
             if (!zones) return null;

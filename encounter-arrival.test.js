@@ -113,7 +113,7 @@ test('the straight tween without opts is untouched: monotone toward home, no bow
 test('the source sites: battle.js frames the two-shot in place of the overview reset and the arrival beat in place of the ROUND 1 card; the CSS; the token', () => {
     assert.ok(BT.includes("ThreeCamera.seedPose(eye, _ar.swoopS, _ar.crane)") && BT.includes("_er.eyeSeeded = eye || null;"), 'the crane seed + the eye kept on the run');
     assert.ok(BT.includes("else if (!(_encRun() && _encArrivalFrame())) resetBoardCamera(true);"), 'never the overview for an encounter');
-    assert.ok(BT.includes("} else if (_encRun() && _encArrivalRound(() => maybeAdvanceTurn())) {"), 'no ROUND 1 card');
+    assert.ok(BT.includes("} else if (_encRun() && _encArrivalRound(() => encounterOpening(() => maybeAdvanceTurn()))) {"), 'no ROUND 1 card (the door\'s opening lands first, DOOR_GUN_PLAN §5.3)');
     assert.ok(BT.includes("camera.snap({ x: fr.x, y: fr.y, zoom: zoom, tilt: fr.tilt, yaw: fr.yaw });") && BT.includes("getTurnFramingZoom() * A.zoomMult"), 'the snap files the fight\'s resting orientation at the turn framing');
     assert.ok(BT.includes("document.body.classList.add('enc-arrival');") && BT.includes("document.body.classList.add('enc-arrived'); document.body.classList.remove('enc-arrival');") && BT.includes("bars.className = 'enc-arrival-bars'"), 'the HUD fade + the bars');
     assert.ok(CAM.includes("if (_seedFrom && _seedFrom.fov) { _seedFrom.fovTo = f; return; }") && CAM.includes("function _seedEaseK(u)"), 'the lens guard + the ease');

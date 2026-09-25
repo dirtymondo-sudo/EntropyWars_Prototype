@@ -583,3 +583,24 @@ Line numbers are the 2026-09-25 clone's (token `20260925-capture-08-cors`); grep
   restored) confirmed the wheel (8 wedges, hover, the release takes Gust), a gust door placed and the walker
   blown down its lane, the cap folding the oldest, hell / frost / maw / laser standing. Notes:
   docs/notes/door-gun-skate-vehicles.md "THE DOOR WHEEL IN THE ROOM". Test: hq-gun.test.js.
+- 2026-09-25 — **Phase 4 shipped** (`door-gun/ENTROPY_WARS_DOOR_GUN_4.zip`, token `20260925-door-gun-05-cors`):
+  THE ENGAGEMENT + THE CARRY-OVER. **The strike** (three-renderer.js `_hqGunStrikeScan` / `_hqGunDoorStrike`): a
+  standing door's act touching a roaming native starts the fight. That covers the lane (gust, hell, frost, light), the
+  maw's disc, the laser to its wall, and the archers when their arrows land. The report is the swing's `onEncounter`
+  with `gesture: 'door'` + `door`, and map.js lets it through with the gun drawn. Gated by `HQ_GUN_RULES.strike`: armed
+  3 s after entry, the native within 12 m of the walker, a 4 s cooldown, and only where an encounter may start.
+  **The carry** (data.js `hqGunDoorCarry` → the run marker; battle.js `encounterCarryDoors`, called by map.js's seat
+  builder before `hqEncounterSeats`, which now skips door cells): every standing door and the pre-placed capture door
+  on the fight's board lands on its cell with its hits and facing. A door off the board stays in the room. **The
+  opening** (`hqGunDoorOpening`, battle.js `encounterOpening` on the arrival's landing): the striking door's own act on
+  the native when it was carried and covers it, so the chain runs and a native blown onto the carried capture door is
+  taken on the first frame. Otherwise the battle row's numbers land (the hit, the status, the gust's shove, the maw's
+  pull). **After the fight** (`hqGunDoorsAfterFight` at the commit): each carried door keeps the hits the board left
+  it, a broken one is gone, and a carried capture door is spent. **The ONE-WAY wedge**: the room wheel has nine wedges.
+  LEFT CLICK stands a capture door from the bag (spent at once, one at a time, a second returns the first) and RIGHT
+  CLICK picks the kind (a Tuned Door's type is one of the choices, so the player picks it). Leaving the room without a
+  fight refunds it (`_hqGunCaptureSettle` on every entry, and the fresh-arrival clear). **Deviations:** no board under
+  the fight (a rotated-seat fight) carries no door, only the opening's numbers, with the facing rotated like the
+  seats. The plan's `door.hq.gunDoors.placed` is `door.hq.gunPlaced.capture` for the capture door (the Phase 3
+  record). Not browser-probed. Notes: docs/notes/door-gun-skate-vehicles.md "THE ENGAGEMENT + THE CARRY-OVER". Test:
+  hq-gun-carry.test.js (plus the pins in hq-gun / hq-encounter / encounter-arrival brought to the new lines).

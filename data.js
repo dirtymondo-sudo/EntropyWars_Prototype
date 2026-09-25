@@ -17950,7 +17950,7 @@ const DOOR_GUN_RULES = {
     ap: 1, range: 4, los: true,
     lane: { max: 6 },                   // the longest lane any door paints
     actOrder: 'placed',                 // THE DOORS' TURN walks the doors oldest first
-    wheel: { holdMs: 140, slow: 0.15, wedges: 8 },
+    wheel: { holdMs: 140, slow: 0.15, wedges: 9 },   // the room's: the Threshold, the seven standing doors, the ONE-WAY wedge (Phase 4)
     agentOnly: true,                    // the user: "only the DOOR agent can fire doors (OBVIOUSLY)"
     windPushesAllies: true,             // the user: "yes wind should push allies too"
 };
@@ -18014,9 +18014,10 @@ function doorGunWheel(profile, opts) {
         const d = DOOR_GUN_DOORS[key];
         if (o.battle && (d.roomOnly || d.kind === 'capture')) continue;
         if (o.story === false && d.story) continue;
-        /* THE ROOM's wheel (Phase 3): the Threshold + the standing doors — eight wedges. The two shot rows are battle
-           verbs (a hinge push, a dash off a board tile) and the capture door is pre-placed in the room from Phase 4. */
-        if (o.room && !(d.roomOnly || d.kind === 'standing')) continue;
+        /* THE ROOM's wheel (Phase 3): the Threshold + the standing doors; Phase 4 adds the ONE-WAY wedge (the capture
+           door, pre-placed in the room from the bag) — nine wedges. The two shot rows are battle verbs (a hinge push,
+           a dash off a board tile). */
+        if (o.room && !(d.roomOnly || d.kind === 'standing' || d.kind === 'capture')) continue;
         out.push({ key, name: d.name, icon: d.icon, kind: d.kind, spell: d.spell || null, tier: d.tier || 0,
             sealed: !doorGunUnlocked(profile, key), place: d.unlock ? d.unlock.site : null });
     }
@@ -43989,7 +43990,7 @@ const HQ_ENCOUNTER_RULES = {
        — drawn, a click places a threshold (9.5) and never attacks. No number keys. */
     trigger: 'click',
     gesture: 'attack',   // the one gesture: the walker's basic-attack chain
-    labels: { attack: 'ATTACK' },
+    labels: { attack: 'ATTACK', door: 'THE DOOR' },   // `door`: a standing door's act struck the native (DOOR_GUN_PLAN §5.3)
 };
 /* a wild room: a site's board room or one of its complex parts — hqRoomSite is the ONE test */
 function hqEncounterRoomOk(roomId) { return !!hqRoomSite(roomId); }
@@ -47278,13 +47279,181 @@ function hqGunDoorClear(profile) {
     try {
         const P = profile && profile.door && profile.door.hq && profile.door.hq.gunPlaced;
         if (!P) return false;
-        const had = !!(P.list && P.list.length);
+        const had = !!(P.list && P.list.length) || !!P.capture;
+        hqGunCaptureRefund(profile, null);   // Phase 4: a pre-placed capture door goes back in the bag
         profile.door.hq.gunPlaced = { list: [] };
         return had;
     } catch (e) { return false; }
 }
 /* the standing doors in `roomId` (the renderer rebuilds these on entry) */
 function hqGunDoorsIn(profile, roomId) { return hqGunDoorRecord(profile).filter(r => r.room === roomId); }
+
+/* ══ THE ENGAGEMENT + THE CARRY-OVER (DOOR_GUN_PLAN.md §5.3, Phase 4, 2026-09-25) ══
+   · THE STRIKE: a standing door's act touching a roaming native (the wind on it, the draught, the fire, the ice, the
+     beam, the light, the volley's arrows landing) starts the fight exactly as a swing does — the renderer reports it
+     (onEncounter with `door`), map.js files the launch. `HQ_GUN_RULES.strike`: the door arms `armMs` after the room is
+     entered (a fight's return never re-engages on the first frame), the native must be within `maxM` of the walker
+     (both fit one board), one strike per `cooldownMs`.
+   · THE OPENING: the door's act lands on the native's unit on the fight's first frame (battle.js encounterOpening:
+     the door's own act on the board when it was carried there and covers the native, else the hit + the status + the
+     shove below). hqGunDoorOpening is the pure spec.
+   · THE CARRY: every standing door (and the pre-placed capture door) standing on the fight's board is placed on its
+     cell BEFORE the seats (hqGunDoorCarry), with the hits it has; after the fight the room's record takes the hits the
+     board left it and a broken door is gone (hqGunDoorsAfterFight). A door off the board stays in the room.
+   · THE PRE-PLACED CAPTURE DOOR (the wheel's ONE-WAY wedge): the bag's item is SPENT when it stands; the next fight in
+     this room carries it (spent for good), and leaving the room without one puts it back in the bag
+     (hqGunCaptureRefund, run on every room entry) — a door is never lost to a wrong room. One at a time; a second
+     placement returns the first to the bag. profile.door.hq.gunPlaced.capture = { room, item, type, x, y, z, face, at }. */
+HQ_GUN_RULES.strike = { armMs: 3000, maxM: 12, cooldownMs: 4000 };
+/* a room facing (degrees, 0 = +z) → a board step: the board's x is the room's x, its y the room's z */
+function hqGunDoorBoardFace(deg) {
+    const a = hqGunDoorSnapFace(deg) * Math.PI / 180;
+    const s = (v) => (Math.abs(v) < 0.38 ? 0 : Math.sign(v));
+    return { faceX: s(Math.sin(a)), faceY: s(Math.cos(a)) };
+}
+/* the pre-placed capture door on file, sanitised (null = none) */
+function hqGunCaptureRecord(profile) {
+    const c = profile && profile.door && profile.door.hq && profile.door.hq.gunPlaced && profile.door.hq.gunPlaced.capture;
+    if (!c || typeof c !== 'object' || typeof c.room !== 'string' || !DOOR_HQ.rooms[c.room]) return null;
+    const rule = (typeof ITEM_RULES !== 'undefined') ? ITEM_RULES[c.item] : null;
+    if (!rule || rule.kind !== 'captureDoor') return null;
+    if (![c.x, c.y, c.z].every(v => typeof v === 'number' && isFinite(v))) return null;
+    const type = (rule.tuned && CAPTURE_RULES.types.indexOf(c.type) >= 0) ? c.type : null;
+    return { room: c.room, item: c.item, type, tier: Math.max(1, Math.min(3, rule.tier | 0 || 1)), x: c.x, y: c.y, z: c.z,
+             face: (((c.face | 0) % 360) + 360) % 360, at: +c.at || 0 };
+}
+function _hqGunPlacedRoot(profile) {
+    if (!profile.door || typeof profile.door !== 'object') profile.door = {};
+    if (!profile.door.hq || typeof profile.door.hq !== 'object') profile.door.hq = {};
+    const P = profile.door.hq.gunPlaced;
+    if (!P || typeof P !== 'object') profile.door.hq.gunPlaced = { list: [] };
+    else if (!Array.isArray(P.list)) P.list = [];
+    return profile.door.hq.gunPlaced;
+}
+/* the capture doors the bag holds, as the wedge's choices: [{ item, type, name, n }] — best tier first; a Tuned Door is
+   one choice per type (the player picks the type as it is placed, CAPTURE_PLAN §7.3) */
+function hqGunCaptureChoices(profile) {
+    const out = [];
+    const keys = (typeof captureDoorItemKeys === 'function') ? captureDoorItemKeys() : [];
+    for (const k of keys) {
+        const n = hqBagCount(profile, k);
+        if (n <= 0) continue;
+        const rule = ITEM_RULES[k];
+        if (rule.tuned) CAPTURE_RULES.types.forEach(t => out.push({ item: k, type: t, name: rule.name + ' · ' + t.toUpperCase(), n }));
+        else out.push({ item: k, type: null, name: rule.name, n });
+    }
+    return out;
+}
+/* stand the capture door: `spec` = { room, item, type, x, y, z, face }. The bag's item is spent; a door already
+   standing goes back to the bag first (one at a time). The caller saves the profile. */
+function hqGunCapturePlace(profile, spec) {
+    if (!profile) return { ok: false, reason: 'noprofile' };
+    const rule = (spec && typeof ITEM_RULES !== 'undefined') ? ITEM_RULES[spec.item] : null;
+    if (!rule || rule.kind !== 'captureDoor') return { ok: false, reason: 'door' };
+    if (typeof spec.room !== 'string' || !DOOR_HQ.rooms[spec.room]) return { ok: false, reason: 'room' };
+    if (![spec.x, spec.y, spec.z].every(v => typeof v === 'number' && isFinite(v))) return { ok: false, reason: 'spec' };
+    if (rule.tuned && CAPTURE_RULES.types.indexOf(spec.type) < 0) return { ok: false, reason: 'type' };
+    if (hqGunDoorRecord(profile).some(r => r.room === spec.room && Math.hypot(r.x - spec.x, r.z - spec.z) < HQ_GUN_RULES.minGap && Math.abs(r.y - spec.y) < 1.5)) return { ok: false, reason: 'gap' };
+    const old = hqGunCaptureRecord(profile);
+    if (hqBagCount(profile, spec.item) + ((old && old.item === spec.item) ? 1 : 0) <= 0) return { ok: false, reason: 'bag' };
+    const back = old ? hqGunCaptureRefund(profile, null) : null;
+    hqBagTake(profile, spec.item, 1);
+    const row = { room: spec.room, item: spec.item, type: rule.tuned ? spec.type : null, x: Math.round(spec.x * 100) / 100, y: Math.round(spec.y * 100) / 100,
+                  z: Math.round(spec.z * 100) / 100, face: hqGunDoorSnapFace(spec.face), at: Date.now() };
+    _hqGunPlacedRoot(profile).capture = row;
+    return { ok: true, row: hqGunCaptureRecord(profile), refunded: back, left: hqBagCount(profile, spec.item) };
+}
+/* the capture door back in the bag unless it stands in `keepRoom` (every room entry; null = always). Returns the row
+   refunded, or null. The caller saves the profile. */
+function hqGunCaptureRefund(profile, keepRoom) {
+    const c = hqGunCaptureRecord(profile);
+    const P = profile && profile.door && profile.door.hq && profile.door.hq.gunPlaced;
+    if (!c) { if (P && P.capture) delete P.capture; return null; }
+    if (keepRoom && c.room === keepRoom) return null;
+    hqBagAdd(profile, c.item, 1);
+    delete P.capture;
+    return c;
+}
+/* THE CARRY: what of the room's doors lands on the fight's board. `field` = the encounter's field record (its board is
+   the transform; no board → nothing is carried, a door off the window stays in the room). `strike` = the striking door
+   ({ key, at, x, z, face }) or null. Returns { doors: [{ at, key, x, y, faceX, faceY, hits }], capture: { at, item, type,
+   tier, x, y } | null, opening: hqGunDoorOpening(...) | null }. Pure. */
+function hqGunDoorCarry(profile, roomId, field, strike) {
+    const out = { doors: [], capture: null, opening: null };
+    const TR = (field && field.board) ? hqFieldTransform(field.board) : null;
+    const wy = (field && field.walker && isFinite(+field.walker.y)) ? +field.walker.y : null;
+    const onBoard = (r) => TR && TR.inside({ x: r.x, z: r.z }) && (wy === null || Math.abs(r.y - wy) < 3);
+    const taken = new Set();
+    for (const r of hqGunDoorsIn(profile, roomId)) {
+        if (!onBoard(r)) continue;
+        const c = TR.cellOf({ x: r.x, z: r.z }), k = c.x + ',' + c.y;
+        if (taken.has(k)) continue;
+        taken.add(k);
+        const f = hqGunDoorBoardFace(r.face);
+        out.doors.push({ at: r.at, key: r.key, x: c.x, y: c.y, faceX: f.faceX, faceY: f.faceY, hits: r.hits });
+    }
+    const cap = hqGunCaptureRecord(profile);
+    if (cap && cap.room === roomId && onBoard(cap)) {
+        const c = TR.cellOf({ x: cap.x, z: cap.z });
+        if (!taken.has(c.x + ',' + c.y)) out.capture = { at: cap.at, item: cap.item, type: cap.type, tier: cap.tier, x: c.x, y: c.y };
+    }
+    if (strike && DOOR_GUN_DOORS[strike.key] && DOOR_GUN_DOORS[strike.key].kind === 'standing') out.opening = hqGunDoorOpening(strike, field);
+    return out;
+}
+/* THE OPENING, pure: the striking door's act as numbers on the native — { door, at, spell, act, dmg, hits, status,
+   rounds, shove: { dx, dy, n } | null, cell: { x, y } | null (the door's own cell, unclamped: it may stand off the board),
+   faceX, faceY }. The numbers are the door's battle row's (SPELL_BY_ID). The shove: the wind along its lane, the draught
+   one tile toward the door. With no board under the fight (the seats are rotated so the walker → native heading is
+   board +x) the facing is rotated the same way. */
+function hqGunDoorOpening(strike, field) {
+    const def = strike && DOOR_GUN_DOORS[strike.key];
+    if (!def || def.kind !== 'standing') return null;
+    const sp = (typeof SPELL_BY_ID !== 'undefined' && SPELL_BY_ID[def.spell]) || {};
+    const TR = (field && field.board) ? hqFieldTransform(field.board) : null;
+    let f = hqGunDoorBoardFace(strike.face);
+    let cell = null;
+    if (TR && isFinite(+strike.x) && isFinite(+strike.z)) { const t = TR.toTile(+strike.x, +strike.z); cell = { x: Math.floor(t.tx), y: Math.floor(t.tz) }; }
+    else if (!TR && field && isFinite(+field.heading)) {
+        const a = hqGunDoorSnapFace(strike.face) * Math.PI / 180, h = +field.heading;
+        const dx = Math.sin(a), dz = Math.cos(a), ch = Math.cos(h), sh = Math.sin(h);
+        const rx = dx * ch + dz * sh, rz = -dx * sh + dz * ch, s = (v) => (Math.abs(v) < 0.38 ? 0 : Math.sign(v));
+        f = { faceX: s(rx), faceY: s(rz) };
+    }
+    const act = def.act;
+    const o = { door: strike.key, at: +strike.at || 0, spell: def.spell, act, dmg: 0, hits: 1, status: null, rounds: 0, shove: null, cell, faceX: f.faceX, faceY: f.faceY };
+    if (act === 'lanePush') o.shove = { dx: f.faceX, dy: f.faceY, n: def.lane | 0 };
+    else if (act === 'volley') { o.dmg = sp.arrowDmg || 25; o.hits = Math.max(1, sp.arrows || 3); }
+    else if (act === 'laneTerrain' && def.terrain === 'ice') { o.dmg = sp.laneDmg || 30; o.status = 'slow'; o.rounds = sp.slowRounds || 1; }
+    else if (act === 'laneTerrain') { o.dmg = sp.laneDmg || 45; o.status = 'burn'; o.rounds = sp.burnRounds || 2; }
+    else if (act === 'pullIn') { o.shove = { dx: -f.faceX, dy: -f.faceY, n: 1, toDoor: true }; }
+    else if (act === 'beam') o.dmg = sp.beamDmg || 60;
+    else if (act === 'laneLight') { o.dmg = sp.laneDmg || 45; o.status = 'blind'; o.rounds = sp.blindRounds || 1; }
+    return o;
+}
+/* AFTER THE FIGHT: the room's record takes what the board left — `carry` = the run's hqGunDoorCarry, `results` =
+   { doors: { [at]: hits (0 = broken / folded) }, capture: true when it went onto the board }. A carried capture door is
+   spent (it went into the fight); a door the board could not seat (`results.doors[at] === undefined`) is untouched. */
+function hqGunDoorsAfterFight(profile, carry, results) {
+    if (!profile || !carry) return { changed: false, broken: [] };
+    const R = results || {}, D = R.doors || {};
+    const P = profile.door && profile.door.hq && profile.door.hq.gunPlaced;
+    if (!P) return { changed: false, broken: [] };
+    const broken = [];
+    let changed = false;
+    const carried = new Set((carry.doors || []).map(d => d.at));
+    if (Array.isArray(P.list)) {
+        P.list = P.list.filter(r => {
+            if (!r || !carried.has(r.at) || D[r.at] === undefined) return true;
+            const h = D[r.at] | 0;
+            changed = true;
+            if (h <= 0) { broken.push(r.key); return false; }
+            r.hits = Math.max(1, Math.min(HQ_GUN_RULES.hits, h));
+            return true;
+        });
+    }
+    if (carry.capture && R.capture && P.capture && +P.capture.at === +carry.capture.at) { delete P.capture; changed = true; }
+    return { changed, broken };
+}
 
 /* ── THE ROOM REGISTER (HQ plan 7.1, 2026-09-07) ───────────────────────
    Every site and every numbered HQ room wears ONE number (7.0 rule 1). The
@@ -49099,6 +49268,7 @@ if (typeof window !== 'undefined') {
     /* THE DOOR GUN (HQ plan 9.5, 2026-09-15 rev 13) */
     window.HQ_PORTAL_RULES = HQ_PORTAL_RULES; window.hqPortalRecord = hqPortalRecord; window.hqPortalStatus = hqPortalStatus; window.hqPortalIssue = hqPortalIssue;
     window.HQ_GUN_RULES = HQ_GUN_RULES; window.hqGunDoorRecord = hqGunDoorRecord; window.hqGunDoorPlace = hqGunDoorPlace; window.hqGunDoorClear = hqGunDoorClear; window.hqGunDoorsIn = hqGunDoorsIn; window.hqGunDoorLane = hqGunDoorLane; window.hqGunDoorCovers = hqGunDoorCovers; window.hqGunDoorSnapFace = hqGunDoorSnapFace;   // THE DOOR WHEEL IN THE ROOM (Phase 3)
+    window.hqGunDoorBoardFace = hqGunDoorBoardFace; window.hqGunCaptureRecord = hqGunCaptureRecord; window.hqGunCaptureChoices = hqGunCaptureChoices; window.hqGunCapturePlace = hqGunCapturePlace; window.hqGunCaptureRefund = hqGunCaptureRefund; window.hqGunDoorCarry = hqGunDoorCarry; window.hqGunDoorOpening = hqGunDoorOpening; window.hqGunDoorsAfterFight = hqGunDoorsAfterFight;   // THE ENGAGEMENT + THE CARRY-OVER (Phase 4)
     window.hqPortalPlace = hqPortalPlace; window.hqPortalClear = hqPortalClear; window.hqPortalLeaf = hqPortalLeaf; window.hqPortalNextSlot = hqPortalNextSlot; window.hqPortalTwin = hqPortalTwin; window.hqPortalSafeRoom = hqPortalSafeRoom; window.hqPortalDoorsIn = hqPortalDoorsIn;
     /* THE ENCOUNTER (HQ plan 9.4 stage 1, 2026-09-15 rev 16) */
     window.HQ_POPULATION_RULES = HQ_POPULATION_RULES; window.hqSiteResidents = hqSiteResidents; window.hqRosterRaces = hqRosterRaces; window.hqRoomFloorM2 = hqRoomFloorM2; window.hqRoomPopulation = hqRoomPopulation; window.hqSpotRoams = hqSpotRoams;   // THE POPULATION (2026-09-19)

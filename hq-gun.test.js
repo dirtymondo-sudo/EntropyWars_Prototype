@@ -1,7 +1,7 @@
 // hq-gun.test.js — THE DOOR WHEEL IN THE ROOM (DOOR_GUN_PLAN.md §5.1-5.2, Phase 3, 2026-09-25): hold MIDDLE CLICK
 // for the wheel (the Threshold + the seven standing doors), LEFT CLICK stands the selected door on the floor, RIGHT
 // CLICK turns its lane 45°, the door acts on the walker and the kickables in its lane (the gust blows, the maw draws).
-// Guards: the room's wedges (eight, in order, the shot rows and the capture door left for battle / Phase 4); the
+// Guards: the room's wedges (nine, in order — the shot rows left for battle; Phase 4 added the capture wedge); the
 // rules (the battle's cap and hits, a tile's metres); the record (sanitised, the cap folds the oldest, refusals, the
 // clear, per room); the lane geometry (8 facings, the lane vs the radius); and the source sites: the renderer's
 // wheel / aim / fire / build / tick / API, map.js's filer + clear + pill, index.html's #hqWheel + hint, the CSS.
@@ -22,12 +22,12 @@ const R = g('HQ_GUN_RULES'), GR = g('DOOR_GUN_RULES'), DOORS = g('DOOR_GUN_DOORS
 const room = Object.keys(g('DOOR_HQ').rooms)[0];
 const prof = () => ({ door: { hq: {} } });
 
-test('THE ROOM WHEEL: the Threshold first, then the seven standing doors — eight wedges, none sealed while allUnlocked', () => {
+test('THE ROOM WHEEL: the Threshold first, the ONE-WAY wedge (Phase 4), then the seven standing doors — nine wedges, none sealed while allUnlocked', () => {
     const w = g('doorGunWheel')(null, { room: true });
-    assert.equal(w.map(x => x.key).join(','), 'threshold,gust,archers,hell,maw,frost,laser,light');
+    assert.equal(w.map(x => x.key).join(','), 'threshold,capture,gust,archers,hell,maw,frost,laser,light');
     assert.equal(w.length, GR.wheel.wedges);
     assert.ok(GR.allUnlocked && w.every(x => !x.sealed));
-    assert.ok(!w.some(x => x.key === 'swing' || x.key === 'dash' || x.key === 'capture'), 'the shot rows are battle verbs; the capture door is Phase 4');
+    assert.ok(!w.some(x => x.key === 'swing' || x.key === 'dash'), 'the shot rows are battle verbs (hq-gun-carry.test.js guards the capture wedge)');
     assert.ok(GR.wheel.holdMs > 0 && GR.wheel.slow > 0 && GR.wheel.slow < 1, 'a hold, and the room slowed (never paused)');
 });
 

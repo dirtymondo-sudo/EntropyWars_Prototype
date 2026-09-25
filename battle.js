@@ -17703,6 +17703,14 @@
                         let partyRes = null;
                         if (p) {
                             hqEncounterRecord(p, { site: erun.site, room: erun.room, race: erun.race, id: erun.id || null, won, date: erun.date || ((typeof hqToday === 'function') ? hqToday() : null) });
+                            /* THE CARRY-OVER (DOOR_GUN_PLAN §5.3, Phase 4): the room's doors go home with the hits the board left them (a
+                               broken door is gone); a capture door that went onto the board is spent */
+                            try {
+                                if (erun.carry && typeof hqGunDoorsAfterFight === 'function') {
+                                    const dr = hqGunDoorsAfterFight(p, erun.carry, _encDoorResults(erun.carry));
+                                    if (dr && dr.broken.length) addLog(`🚪 ${dr.broken.map(k => (((typeof DOOR_GUN_DOORS !== 'undefined' && DOOR_GUN_DOORS[k]) || {}).name || k)).join(', ')} broke on the board — gone from the room.`);
+                                }
+                            } catch (e) { console.warn('[HQ] the door carry-back failed', e); }
                             /* THE PARTY (2026-09-19): the fight's vitals go home on the members — the board AND the bench of the
                                human seat, matched by meta.partyId (data.js hqPartyAfterMatch; a loss wakes the party treated) */
                             try {
@@ -44742,12 +44750,13 @@
                     if (typeof showCombatBanner === 'function') showCombatBanner('🏘 GUILD HUB', 'Walk to the cave entrance to begin the dungeon', 'neutral');
                     maybeAdvanceTurn();
                     setTimeout(_mdStartFreeRoam, 450);
-                } else if (_encRun() && _encArrivalRound(() => maybeAdvanceTurn())) {
+                } else if (_encRun() && _encArrivalRound(() => encounterOpening(() => maybeAdvanceTurn()))) {
                     /* THE ARRIVAL: no ROUND 1 card (a card is a cut) — the letterbox rides the crane and the HUD
-                       fades in as it lands; the first activation waits for the landing */
+                       fades in as it lands; the first activation waits for the landing (and THE OPENING — the door that struck
+                       first lands its act on the native, DOOR_GUN_PLAN §5.3) */
                 } else {
                     showRoundBanner(state.round, () => {
-                        maybeAdvanceTurn();
+                        encounterOpening(() => maybeAdvanceTurn());   // a no-op outside an encounter a door struck
                     });
                 }
             });
@@ -56006,6 +56015,139 @@
             const ns = fy < 0 ? 'north' : fy > 0 ? 'south' : '', ew = fx < 0 ? 'west' : fx > 0 ? 'east' : '';
             return (ns + ew) || 'nowhere';
         }
+
+        /* ═══════════════════════════════════════════════════════════════════
+           THE ENGAGEMENT + THE CARRY-OVER (DOOR_GUN_PLAN.md §5.3, the door
+           wheel Phase 4, 2026-09-25) — the room's doors come into the fight.
+           map.js _hqEncounterStart files data.js hqGunDoorCarry on the run
+           marker (`carry`): the standing doors (and a pre-placed capture door)
+           that stood on the fight's board, each on its cell with the hits it
+           had, and — when a door's act struck the native (the room's STRIKE) —
+           THE OPENING.
+             · encounterCarryDoors(free): map.js's seat builder calls it BEFORE
+               the seats (the seats never land on a door); the records are the
+               board's own (`kind: 'standing'` / `'capture'`, owner = the party's
+               seat, `_roomAt` = the room record's key). A cell the board can't
+               take leaves that door in the room.
+             · encounterOpening(cb): on the arrival's landing, before the first
+               activation — the striking door's act lands on the native's unit:
+               the door's own act when it was carried and its lane / disc / sight
+               holds the native (the chain runs: a native blown onto the
+               pre-placed capture door is taken on the fight's first frame), else
+               the act as numbers (the hit, the status, the shove).
+             · _encDoorResults(carry): the commit's read — the hits each carried
+               door has left (0 = broken / folded) and whether the capture door
+               went in (data.js hqGunDoorsAfterFight writes the room's record).
+           VS-CPU only (an encounter never runs online); the records ride the
+           snapshot like any door.
+           ═══════════════════════════════════════════════════════════════════ */
+        function _encHumanSeat() { return (state.partyBag && state.partyBag.seat) || ((typeof getViewerPlayer === 'function') ? getViewerPlayer() : 1) || 1; }
+        function encounterCarryDoors(free) {
+            const run = _encMatch, carry = run && run.carry;
+            if (!carry || typeof DOOR_GUN_DOORS === 'undefined') return 0;
+            const seat = _encHumanSeat();
+            const mine = (state.units || []).filter(u => u.player === seat && !u.dead);
+            const agent = mine.find(u => u.race === 'door agent') || null;
+            if (!carry.placed || typeof carry.placed !== 'object') carry.placed = {};
+            const ok = (x, y) => isInside(x, y) && !doorAt(x, y) && (typeof free !== 'function' || !!free(x, y));
+            const zAt = (x, y) => (typeof getHeightAt === 'function') ? getHeightAt(x, y) : 0;
+            let n = 0;
+            for (const d of (carry.doors || [])) {
+                const def = DOOR_GUN_DOORS[d.key];
+                if (!def || def.kind !== 'standing' || _doors().some(r => r._roomAt === d.at)) continue;
+                if (!ok(d.x, d.y)) continue;
+                const max = doorMaxHits(null);
+                const hp = Math.max(1, Math.min(max, (d.hits | 0) || max));
+                state._doorSeq = (state._doorSeq | 0) + 1;
+                const id = 'gd_room_' + d.at;
+                _doors().push({
+                    id, pairId: id, kind: 'standing', door: d.key, x: d.x, y: d.y, z: zAt(d.x, d.y),
+                    open: true, fixed: true, hp, maxHp: max, owner: seat, ownerId: agent ? agent.id : null,
+                    spellId: def.spell, spellName: def.name, placedRound: 0, _seq: state._doorSeq,
+                    faceX: Math.sign(d.faceX || 0), faceY: Math.sign(d.faceY || 0), actedRound: null, laneStamps: {}, _roomAt: d.at,
+                });
+                carry.placed[d.at] = true;
+                n++;
+            }
+            const c = carry.capture;
+            const rule = (c && typeof ITEM_RULES !== 'undefined') ? ITEM_RULES[c.item] : null;
+            if (c && rule && rule.kind === 'captureDoor' && !_doors().some(r => r._roomAt === c.at) && ok(c.x, c.y)) {
+                const tier = Math.max(1, Math.min(3, rule.tier | 0 || 1));
+                const hp = (typeof captureDoorHits === 'function') ? captureDoorHits({ tier }) : 3;
+                const w = run.field && run.field.cells && run.field.cells.walker;
+                const id = 'cap_room_' + c.at;
+                _doors().push({
+                    id, pairId: id, kind: 'capture', x: c.x, y: c.y, z: zAt(c.x, c.y),
+                    open: true, fixed: true, hp, maxHp: hp, owner: seat, ownerId: (agent || mine[0] || {}).id || null,
+                    spellName: rule.name, placedRound: 0, tier, type: (rule.tuned && c.type) ? c.type : null, itemKey: c.item, held: null, sealed: null,
+                    faceX: w ? w.x : c.x, faceY: w ? w.y : c.y + 1,   // the opening turns toward where the officer stood
+                    _roomAt: c.at,
+                });
+                carry.placedCapture = true;
+                n++;
+            }
+            if (n) {
+                addLog(`🚪 ${n === 1 ? 'A door' : n + ' doors'} from the room stand${n === 1 ? 's' : ''} on the board.`);
+                _doorTouched();
+            }
+            return n;
+        }
+        function encounterOpening(cb) {
+            const go = () => { if (typeof cb === 'function') cb(); };
+            const run = _encMatch, op = run && run.carry && run.carry.opening;
+            if (!op || run._openingDone || state.winner || typeof DOOR_GUN_DOORS === 'undefined') { go(); return; }
+            run._openingDone = true;
+            const def = DOOR_GUN_DOORS[op.door];
+            const seat = _encHumanSeat(), foe = seat === 1 ? 2 : 1;
+            const sc = run.field && run.field.seats && run.field.seats.lead;
+            const lead = _encLeadUnit(foe, sc && sc[foe]);
+            if (!def || !lead) { go(); return; }
+            const door = _doors().find(d => d._roomAt === op.at && d.kind === 'standing' && d.hp > 0) || null;
+            const cheb = (a, b) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
+            const covers = !!door && (def.act === 'pullIn' ? cheb(lead, door) <= (def.radius | 0)
+                : def.act === 'volley' ? _gunDoorVolleyTargets(door).some(u => u.id === lead.id)
+                : _gunDoorOnLane(door, lead.x, lead.y));
+            const label = `${def.icon} ${def.name}: `;
+            try {
+                if (covers) {
+                    if (def.act === 'lanePush') _gunDoorGust(door, lead, { fromChain: true });
+                    else if (def.act === 'volley') _gunDoorVolley(door, lead, {});
+                    else if (def.act === 'laneTerrain') (def.terrain === 'ice' ? _gunDoorFrost : _gunDoorHell)(door, null, {});
+                    else if (def.act === 'pullIn') _gunDoorMaw(door, lead, {});
+                    else if (def.act === 'beam') _gunDoorLaser(door, lead, {});
+                    else if (def.act === 'laneLight') _gunDoorLight(door, lead, {});
+                    door.actedRound = state.round || 0;
+                } else {
+                    /* off the board (or the native left its lane in the slide onto the cells): the act lands as numbers */
+                    const tmp = door || { id: 'opening', door: op.door, spellId: op.spell, owner: seat, ownerId: null, hp: 1,
+                                          x: op.cell ? op.cell.x : lead.x, y: op.cell ? op.cell.y : lead.y, faceX: op.faceX, faceY: op.faceY, laneStamps: {} };
+                    for (let i = 0; i < Math.max(1, op.hits | 0) && op.dmg > 0 && !lead.dead && !lead._dying; i++) _gunDoorHit(tmp, lead, op.dmg, {});
+                    if (op.status) _gunDoorStatus(lead, op.status, op.rounds | 0, label);
+                    if (op.shove && _gunDoorMovable(lead)) {
+                        let dx = Math.sign(op.shove.dx || 0), dy = Math.sign(op.shove.dy || 0);
+                        if (op.shove.toDoor && op.cell) { dx = Math.sign(op.cell.x - lead.x); dy = Math.sign(op.cell.y - lead.y); }
+                        const dist = (typeof getUnitPushDistance === 'function') ? getUnitPushDistance(lead, op.shove.n | 0) : (op.shove.n | 0);
+                        if ((dx || dy) && dist > 0) resolveForcedSlide(lead, dx, dy, dist, { byUnit: null, label, perStepMs: 110 });
+                    }
+                    if (!_skipVisuals() && !lead.dead) showFloatingTextForUnit(lead, `${def.icon} ${String(def.name).toUpperCase()}`, 'debuff', { durationMs: 1200 });
+                }
+                addLog(`${def.icon} THE DOOR STRUCK FIRST — the ${def.name} caught ${unitDisplayName(lead)} before the fight began.`);
+            } catch (e) { console.warn('[HQ] the door opening failed', e); }
+            scheduleBoardRender();
+            if (typeof checkWin === 'function') checkWin();
+            const ms = _skipVisuals() ? 0 : actionMs(1200);
+            if (ms > 0) setTimeout(go, ms); else go();
+        }
+        function _encDoorResults(carry) {
+            const out = { doors: {}, capture: !!(carry && carry.placedCapture) };
+            const placed = (carry && carry.placed) || {};
+            for (const at of Object.keys(placed)) {
+                const r = (state.doors || []).find(d => String(d._roomAt) === String(at));
+                out.doors[at] = (r && r.hp > 0) ? (r.hp | 0) : 0;
+            }
+            return out;
+        }
+        if (typeof window !== 'undefined') { window.encounterCarryDoors = encounterCarryDoors; window.encounterOpening = encounterOpening; window._encDoorResults = _encDoorResults; }
         /* THE DOORS' TURN (§3.3) — the end of the round, after the turret volleys: every standing door acts, oldest first, each
            with the turret's two-beat camera (on the door, then down its lane / sight line). The user's rule: the full beat
            every round, never fast-forwarded. The quiet paths (auto-sim, a skipped visual, the dungeon's upkeep) resolve

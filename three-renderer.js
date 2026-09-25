@@ -49020,7 +49020,8 @@ const ThreeRenderer = (function () {
         for (var i = 0; i < n; i++) {
             var w = list[i], a = i * 2 * Math.PI / n;
             var x = Math.sin(a) * 118, y = -Math.cos(a) * 118;
-            var sub = w.sealed ? (_hqGunPlaceName(w.place).toUpperCase() + ' · NOT YET') : (w.key === 'threshold' ? 'L = A · R = B' : (w.kind === 'standing' ? 'STANDING' : ''));
+            var capN = 0; if (w.kind === 'capture') H.gun.cap.choices.forEach(function (c, ci, all) { if (!ci || all[ci - 1].item !== c.item) capN += (c.n | 0); });
+            var sub = w.sealed ? (_hqGunPlaceName(w.place).toUpperCase() + ' · NOT YET') : (w.key === 'threshold' ? 'L = A · R = B' : (w.kind === 'standing' ? 'STANDING' : (w.kind === 'capture' ? (capN ? 'IN THE BAG · ' + capN : 'NONE IN THE BAG') : '')));
             html += '<div class="hq-wheel-wedge' + (w.sealed ? ' sealed' : '') + (w.key === H.gun.door ? ' current' : '') + '" data-i="' + i + '" style="transform:translate(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px)">'
                 + '<i>' + (w.icon || '🚪') + '</i><b>' + String(w.name || w.key).toUpperCase() + '</b><span>' + sub + '</span></div>';
         }
@@ -49045,7 +49046,8 @@ const ThreeRenderer = (function () {
                 : w.key === 'threshold' ? 'THE PAIR · WALK INTO ONE, OUT OF THE OTHER'
                 : d && d.act === 'lanePush' ? 'A WIND LANE · BLOWS WHAT STANDS IN IT' : d && d.act === 'volley' ? 'ARCHERS · LOOSE AT WHAT COMES NEAR'
                 : d && d.act === 'laneTerrain' ? (d.terrain === 'ice' ? 'AN ICE LANE' : 'A LANE OF FIRE') : d && d.act === 'pullIn' ? 'A DRAUGHT · DRAWS WHAT IS NEAR IN'
-                : d && d.act === 'beam' ? 'A BEAM TO THE FIRST WALL' : d && d.act === 'laneLight' ? 'A SHAFT OF LIGHT' : '';
+                : d && d.act === 'beam' ? 'A BEAM TO THE FIRST WALL' : d && d.act === 'laneLight' ? 'A SHAFT OF LIGHT'
+                : d && d.kind === 'capture' ? 'STANDS FROM THE BAG · THE NEXT FIGHT HERE CARRIES IT' : '';
             hub.querySelector('b').textContent = w ? ((w.icon || '') + ' ' + String(w.name || w.key).toUpperCase()) : 'THE DOOR WHEEL';
             hub.querySelector('span').textContent = what;
         }
@@ -49097,6 +49099,7 @@ const ThreeRenderer = (function () {
     }
     function _hqGunLaneDecal(key, U, mat) {
         var L = _hqGunLane(key, 0), g = new THREE.Group();
+        if (!L.r && !(L.len > 0)) return g;   // the capture door: no lane, no disc
         if (L.r) {
             var ring = new THREE.Mesh(new THREE.RingGeometry((L.r - 0.1) * U, L.r * U, 56), mat); ring.rotation.x = -Math.PI / 2; ring.position.y = 0.03 * U; g.add(ring);
             return g;
@@ -49159,6 +49162,7 @@ const ThreeRenderer = (function () {
             g.rotation.set(0, (aim.face || 0) * Math.PI / 180, 0);
             g.userData.mat.color.setHex(hex); g.userData.mat.opacity = 0.3 + 0.1 * Math.sin(performance.now() * 0.006);
             var word = aim.ok ? String((def && def.name) || key).toUpperCase() + ' · R-CLICK TURNS' : (HQ_GUN_REASONS[aim.reason] || 'NOT HERE');
+            if (key === 'capture' && aim.ok) { var cpk = _hqGunCaptureChoice(); word = cpk ? String(cpk.name).toUpperCase() + ' ×' + (cpk.n | 0) + ' · R-CLICK: THE KIND' : 'NO ONE-WAY DOOR IN THE BAG'; }   // Phase 4
             var lk = (aim.ok ? 'ok:' : 'no:') + word;
             if (lk !== g.userData.lblKey) {
                 g.userData.lblKey = lk;
@@ -49185,6 +49189,14 @@ const ThreeRenderer = (function () {
     /* RIGHT CLICK: the lane turns 45° clockwise */
     function _hqGunDoorTurn() {
         var H = _hq; if (!H || !H.gun) return false;
+        if (H.gun.door === 'capture') {   // THE ONE-WAY WEDGE (Phase 4): RIGHT CLICK picks the kind (a Tuned Door's type is one of the choices)
+            var ch = H.gun.cap.choices;
+            H.gun.cap.sel = ch.length ? (H.gun.cap.sel + 1) % ch.length : 0;
+            H.portal.lastKey = '';
+            try { if (typeof playSfx === 'function') playSfx('uiCursorMove'); } catch (e) {}
+            if (H.opts.onPortal) { try { H.opts.onPortal({ kind: 'gunCaptureKind', choice: ch[H.gun.cap.sel] || null }); } catch (e) {} }
+            return true;
+        }
         H.gun.turn = ((H.gun.turn || 0) + 1) % 8;
         H.portal.lastKey = '';
         try { if (typeof playSfx === 'function') playSfx('uiCursorMove'); } catch (e) {}
@@ -49193,6 +49205,7 @@ const ThreeRenderer = (function () {
     /* LEFT CLICK: the shot. map.js files it (the cap folds the oldest), the door flies out of the gun and unfolds */
     function _hqGunDoorFire() {
         var H = _hq; if (!H || !H.portal || !H.portal.drawn || !H.gun || H.gun.door === 'threshold') return false;
+        if (H.gun.door === 'capture') return _hqGunCaptureFire();
         var aim = _hqGunDoorAim();
         if (!aim || !aim.ok) { if (H.opts.onPortal) { try { H.opts.onPortal({ kind: 'gunRefused', reason: aim ? aim.reason : 'none', door: H.gun.door }); } catch (e) {} } return false; }
         var spec = { room: H.opts.room || 'central_egress', key: H.gun.door, x: aim.x, y: aim.y, z: aim.z, face: aim.face };
@@ -49200,7 +49213,7 @@ const ThreeRenderer = (function () {
         if (H.opts.onGunDoorPlace) { try { filed = H.opts.onGunDoorPlace(spec); } catch (e) { console.warn('[HQ] gun door place failed', e); filed = null; } }
         else {   // no filer (a probe): the cap folds the oldest here
             var R = _hqGunRulesRoom(), fold = [];
-            var all = H.gun.doors.map(function (d) { return d.row; }).sort(function (a, b) { return a.at - b.at; });
+            var all = H.gun.doors.filter(function (d) { return d.key !== 'capture'; }).map(function (d) { return d.row; }).sort(function (a, b) { return a.at - b.at; });
             while (all.length >= R.cap) fold.push(all.shift());
             var at = Math.max(Date.now(), all.length ? all[all.length - 1].at + 1 : 0);
             filed = { ok: true, row: { room: spec.room, key: spec.key, x: spec.x, y: spec.y, z: spec.z, face: _hqGunSnap(spec.face), hits: 3, at: at }, folded: fold };
@@ -49212,6 +49225,39 @@ const ThreeRenderer = (function () {
         _hqGunFire(from, null);
         H.gun.turn = 0; H.portal.lastKey = '';
         return true;
+    }
+    /* THE ONE-WAY WEDGE (DOOR_GUN_PLAN §5.3, Phase 4): LEFT CLICK stands a capture door from the bag on the floor, its
+       opening toward you; map.js spends the item (data.js hqGunCapturePlace — one at a time, a second returns the first) */
+    function _hqGunCaptureChoice() {
+        var H = _hq; if (!H || !H.gun) return null;
+        var ch = H.gun.cap.choices; if (!ch.length) return null;
+        if (H.gun.cap.sel >= ch.length) H.gun.cap.sel = 0;
+        return ch[H.gun.cap.sel];
+    }
+    function _hqGunCaptureFire() {
+        var H = _hq; if (!H || !H.gun) return false;
+        var aim = _hqGunDoorAim();
+        if (!aim || !aim.ok) { if (H.opts.onPortal) { try { H.opts.onPortal({ kind: 'gunRefused', reason: aim ? aim.reason : 'none', door: 'capture' }); } catch (e) {} } return false; }
+        var pick = _hqGunCaptureChoice();
+        if (!pick) { if (H.opts.onPortal) { try { H.opts.onPortal({ kind: 'gunRefused', reason: 'bag', door: 'capture' }); } catch (e) {} } return false; }
+        var pl = H.player, face = _hqGunSnap(Math.atan2(pl.x - aim.x, pl.z - aim.z) * 180 / Math.PI);   // the opening faces whoever fired it (the board's rule)
+        var spec = { room: H.opts.room || 'central_egress', item: pick.item, type: pick.type || null, x: aim.x, y: aim.y, z: aim.z, face: face };
+        var filed = null;
+        if (H.opts.onGunCapturePlace) { try { filed = H.opts.onGunCapturePlace(spec); } catch (e) { console.warn('[HQ] capture door place failed', e); filed = null; } }
+        else filed = { ok: true, row: { room: spec.room, item: spec.item, type: spec.type, x: spec.x, y: spec.y, z: spec.z, face: face, at: Date.now() } };   // no filer (a probe)
+        if (!filed || !filed.ok || !filed.row) return false;
+        H.gun.doors.filter(function (d) { return d.key === 'capture'; }).forEach(function (d) { _hqGunDoorRemove(d.at, { fold: true }); });
+        if (Array.isArray(filed.choices)) { H.gun.cap.choices = filed.choices; if (H.gun.cap.sel >= filed.choices.length) H.gun.cap.sel = 0; }
+        var from = _hqGunMuzzle();
+        _hqGunDoorBuild(_hqGunCaptureRow(filed.row), { fresh: true, from: from });
+        _hqGunFire(from, null);
+        H.portal.lastKey = '';
+        return true;
+    }
+    function _hqGunCaptureRow(c) {
+        var rule = (typeof ITEM_RULES !== 'undefined' && ITEM_RULES[c.item]) || {};
+        return { room: c.room, key: 'capture', x: c.x, y: c.y, z: c.z, face: c.face || 0, at: c.at, hits: 3, item: c.item, type: c.type || null,
+                 label: String(rule.name || 'One-Way Door') + (c.type ? ' · ' + String(c.type).toUpperCase() : '') };
     }
     /* ── THE LIVE DOOR ── */
     function _hqGunDoorRemove(at, opts) {
@@ -49250,7 +49296,7 @@ const ThreeRenderer = (function () {
         var pane = new THREE.Mesh(new THREE.PlaneGeometry(ow * U, oh * U), glowMat); pane.position.set(0, oh / 2 * U, 0); body.add(pane);
         var lamp = _hzGlowSprite(1.6 * U, hex, 0.4, 0.1, 0.08, 1.2); lamp.position.set(0, oh * 0.5 * U, 0.35 * U); body.add(lamp);
         try {
-            var tex = _hzTextTex('hq_gun_door_' + row.key, [String(def.name || row.key).toUpperCase()], { w: 512, h: 96, color: '#f2efe6', pad: 0.14, weight: 'bold', font: '"Courier New", Courier, monospace' });
+            var tex = _hzTextTex('hq_gun_door_' + row.key + (row.label ? ':' + row.label : ''), [String(row.label || def.name || row.key).toUpperCase()], { w: 512, h: 96, color: '#f2efe6', pad: 0.14, weight: 'bold', font: '"Courier New", Courier, monospace' });
             if (tex) {
                 var tm = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, fog: false, side: THREE.DoubleSide });
                 var tp = new THREE.Mesh(new THREE.PlaneGeometry((ow + 0.32) * 0.92 * U, 0.15 * U), tm); tp.position.set(0, (oh + 0.1) * U, 0.105 * U); body.add(tp);
@@ -49329,6 +49375,8 @@ const ThreeRenderer = (function () {
         var list = (opts.gun && Array.isArray(opts.gun.placed)) ? opts.gun.placed : [];
         var roomId = opts.room || 'central_egress';
         list.forEach(function (row) { if (row && row.room === roomId) { try { _hqGunDoorBuild(row); } catch (e) { console.warn('[HQ] gun door', row.key, 'failed', e); } } });
+        var cap = opts.gun && opts.gun.capture && opts.gun.capture.placed;   // Phase 4: the pre-placed capture door
+        if (cap && cap.room === roomId) { try { _hqGunDoorBuild(_hqGunCaptureRow(cap)); } catch (e) { console.warn('[HQ] capture door failed', e); } }
     }
     /* the laser's reach: the march from the door's face to the first solid (a wall, a blocker, the room's edge) */
     function _hqGunBeamLen(rec) {
@@ -49391,12 +49439,71 @@ const ThreeRenderer = (function () {
                 H.dirty = true;
             }
             /* THE PULSE: once a room round (the placement's first) the door flares; the archers loose at the nearest native in reach */
-            if (now - rec.pulseAt >= R.actMs) {
+            if (def.kind === 'standing' && now - rec.pulseAt >= R.actMs) {   // the capture door (Phase 4) stands and waits — no act, no pulse
                 rec.pulseAt = now;
                 _hqGunDoorPulse(rec, def);
             }
             if (rec.pulseK > 0) { rec.pulseK = Math.max(0, rec.pulseK - dt * 2.2); rec.glowMat.opacity = 0.32 + 0.5 * rec.pulseK; H.dirty = true; }
         }
+        /* THE STRIKE (Phase 4): a door's act on a roaming native starts the fight */
+        var hit = _hqGunStrikeScan(now);
+        if (hit) _hqGunDoorStrike(hit.rec, hit.ch);
+    }
+    /* ── THE STRIKE (DOOR_GUN_PLAN §5.3, Phase 4) ──
+       A standing door's act touching a roaming native IS the engagement: the wind on it (the gust's lane), the draught
+       (the maw's disc), the fire / the ice (the lane), the beam (to the first wall), the light (the lane) — every frame —
+       and the archers' arrows when they land (the pulse). Gated: map.js says a fight can start here (a wild room, the
+       switch), the door arms HQ_GUN_RULES.strike.armMs after the room is entered (the return from a fight never
+       re-engages on its first frame), the native is within `maxM` of the walker (both fit one board), one strike per
+       `cooldownMs`. The report is the swing's own onEncounter with `gesture: 'door'` and `door` (the key, the record's
+       `at`, where it stands and faces) — map.js files the launch and the board takes the door's act as THE OPENING. */
+    function _hqGunStrikeGate(now) {
+        var H = _hq; if (!H || !H.gun || H.paused || H.snap || !H.opts.onEncounter) return false;
+        var S = H.gun.strike; if (!S || !S.ok) return false;
+        if (now < H.gun.armAt) return false;
+        if (H.gun.strikeAt && now - H.gun.strikeAt < (S.cooldownMs || 4000)) return false;
+        return true;
+    }
+    function _hqGunDoorTouches(rec, def, ch) {
+        if (Math.abs(ch.y - rec.y) > 1.6) return false;
+        var L = rec.lane, act = def.act;
+        if (act === 'lanePush' || act === 'laneTerrain' || act === 'laneLight') return _hqGunCovers(rec, ch.x, ch.z);
+        if (act === 'pullIn') { var d = Math.hypot(ch.x - rec.x, ch.z - rec.z); return d > 0.05 && d <= L.r; }
+        if (act === 'beam') {
+            var vx = ch.x - rec.x, vz = ch.z - rec.z, along = vx * L.dx + vz * L.dz, side = Math.abs(vx * L.dz - vz * L.dx);
+            var reach = (rec.fx && rec.fx.beamLen) || _hqGunBeamLen(rec);
+            return along > 0.2 && along <= reach && side <= L.halfW;
+        }
+        return false;   // the archers strike when their arrows land (_hqGunDoorPulse)
+    }
+    function _hqGunStrikeScan(now) {
+        var H = _hq; if (!_hqGunStrikeGate(now)) return null;
+        var pl = H.player; if (!pl) return null;
+        var S = H.gun.strike, maxM = S.maxM || 12;
+        var okFn = (typeof hqEncounterCharOk === 'function') ? hqEncounterCharOk : function (ch) { return ch && ch.kind === 'npc' && !!ch.race && !ch.cast; };
+        for (var i = 0; i < H.gun.doors.length; i++) {
+            var rec = H.gun.doors[i], def = _hqGunDef(rec.key);
+            if (!def || def.kind !== 'standing' || now - rec.born < 520) continue;
+            for (var k = 0; k < H.chars.length; k++) {
+                var ch = H.chars[k];
+                if (!ch || ch === pl || ch.away || !okFn(ch)) continue;
+                if (Math.hypot(ch.x - pl.x, ch.z - pl.z) > maxM || Math.abs(ch.y - pl.y) > 3) continue;
+                if (_hqGunDoorTouches(rec, def, ch)) return { rec: rec, ch: ch };
+            }
+        }
+        return null;
+    }
+    function _hqGunDoorStrike(rec, ch) {
+        var H = _hq, pl = H && H.player; if (!pl || !ch) return false;
+        H.gun.strikeAt = performance.now();
+        rec.pulseK = 1;
+        var target = _hqEncounterTargetOf(ch, Math.hypot(ch.x - pl.x, ch.z - pl.z));
+        try {
+            var ok = H.opts.onEncounter({ gesture: 'door', door: { key: rec.key, at: rec.at, x: rec.x, y: rec.y, z: rec.z, face: rec.face }, target: target, room: H.opts.room,
+                                 x: pl.x, z: pl.z, y: pl.y, yaw: H.cam.yaw, pitch: H.cam.pitch, eye: _hqEncounterEye(), board: _hqEncounterBoard() });
+            if (!ok) H.gun.strikeAt = performance.now() + 11000;   // refused (the party is down, a panel is open…): the door waits a while before it asks again
+        } catch (e) { console.warn('[HQ] the door strike failed', e); }
+        return true;
     }
     function _hqGunDoorPulse(rec, def) {
         var H = _hq, U = _hqUnits();
@@ -49426,6 +49533,15 @@ const ThreeRenderer = (function () {
                     });
                 })(a);
                 if (H.opts.onPortal) { try { H.opts.onPortal({ kind: 'gunAct', door: rec.key, on: 'native', id: best.id }); } catch (e) {} }
+                /* THE STRIKE (Phase 4): the arrows landing on a native start the fight */
+                var tid = best.id;
+                setTimeout(function () {
+                    if (_hq !== H || !H.gun || H.gun.doors.indexOf(rec) < 0) return;
+                    var now2 = performance.now(), pl2 = H.player; if (!pl2 || !_hqGunStrikeGate(now2)) return;
+                    var still = null; for (var j = 0; j < H.chars.length; j++) if (H.chars[j].id === tid && !H.chars[j].away) { still = H.chars[j]; break; }
+                    if (!still || Math.hypot(still.x - pl2.x, still.z - pl2.z) > ((H.gun.strike && H.gun.strike.maxM) || 12)) return;
+                    _hqGunDoorStrike(rec, still);
+                }, 260 + 2 * 90 + 40);
             }
         }
         try { if (typeof playDoorSfx === 'function' && H.player && Math.hypot(H.player.x - rec.x, H.player.z - rec.z) < 14) playDoorSfx(def.act === 'volley' ? 'doorGunShot' : 'doorGunLand', { volume: 0.25 }); } catch (e) {}
@@ -50325,6 +50441,12 @@ const ThreeRenderer = (function () {
             if (d < bestD) { bestD = d; best = ch; }
         }
         if (!best) return null;
+        return _hqEncounterTargetOf(best, bestD);
+    }
+    /* the onEncounter target record of a native (the swing's and the door strike's — DOOR_GUN_PLAN §5.3) */
+    function _hqEncounterTargetOf(best, bestD) {
+        var H = _hq;
+        var okFn = (typeof hqEncounterCharOk === 'function') ? hqEncounterCharOk : function (ch) { return ch && ch.kind === 'npc' && !!ch.race && !ch.cast; };
         /* THE ROAMING GROUP (2026-09-21): the target's companions in the room (the same `group`, not away) — data.js hqEncounterGroup seats them */
         var group = [];
         if (best.group) for (var k = 0; k < H.chars.length; k++) { var c = H.chars[k]; if (c !== best && c.group === best.group && !c.away && okFn(c)) group.push({ id: c.id, race: c.race, gender: c.gender, label: c.label || null }); }
@@ -55514,7 +55636,9 @@ const ThreeRenderer = (function () {
             boats: [], vehicle: null, seaFx: null, seaWayLatch: null,   /* THE DEEP (2026-09-18): the moored vehicles (the prop placer registers a catalogue `vehicle`), the one you are aboard, the water's effects, the whirlpool latch */
             finds: [], findLights: 0,   /* THE FINDS (9.1, 2026-09-15): the takeable objects standing in the room (_hqPlaceFinds) and the count of their point lights */
             portal: { drawn: false, ghost: null, aim: null, placed: {}, lastKey: '', hold: null, cross: null, issued: !!(opts.portal && opts.portal.issued), sight: null, fAt: 0, fFired: false, slot: (opts.portal && (opts.portal.slot === 'b')) ? 'b' : 'a', vm: null },
-            gun: { door: (opts.gun && opts.gun.door && opts.gun.door !== 'threshold' && typeof window !== 'undefined' && window.DOOR_GUN_DOORS && window.DOOR_GUN_DOORS[opts.gun.door]) ? opts.gun.door : 'threshold', turn: 0, wheel: null, mDown: false, mAt: 0, doors: [], wedges: (opts.gun && Array.isArray(opts.gun.wedges)) ? opts.gun.wedges : null, ghost: null, ghostKey: null, aim: null },   /* THE DOOR WHEEL IN THE ROOM (DOOR_GUN_PLAN Phase 3): the selected door, the lane's turn (45° steps), the open wheel, the standing doors */   /* rev 4: `vm` = the first-person viewmodel; rev 5: `slot` = the LAST button pressed (the sights + the selector are gone — LEFT = A, RIGHT = B) */   /* THE DOOR GUN (9.5, rev 13; rev 2 2026-09-15: `hold` = the mouth you came out of, `cross` = the entry's speed): the drawn state, the ghost, the last aim, the placed door records by slot */
+            gun: { door: (opts.gun && opts.gun.door && opts.gun.door !== 'threshold' && typeof window !== 'undefined' && window.DOOR_GUN_DOORS && window.DOOR_GUN_DOORS[opts.gun.door]) ? opts.gun.door : 'threshold', turn: 0, wheel: null, mDown: false, mAt: 0, doors: [], wedges: (opts.gun && Array.isArray(opts.gun.wedges)) ? opts.gun.wedges : null, ghost: null, ghostKey: null, aim: null,
+                   cap: { choices: (opts.gun && opts.gun.capture && Array.isArray(opts.gun.capture.choices)) ? opts.gun.capture.choices : [], sel: 0 },
+                   strike: (opts.gun && opts.gun.strike) || null, armAt: performance.now() + (((opts.gun && opts.gun.strike) || {}).armMs || 3000), strikeAt: 0 },   /* Phase 4: `cap` = the ONE-WAY wedge's choices (the bag's capture doors) + the pick; `strike` = map.js's gate + HQ_GUN_RULES.strike, armed `armMs` after entry */   /* THE DOOR WHEEL IN THE ROOM (DOOR_GUN_PLAN Phase 3): the selected door, the lane's turn (45° steps), the open wheel, the standing doors */   /* rev 4: `vm` = the first-person viewmodel; rev 5: `slot` = the LAST button pressed (the sights + the selector are gone — LEFT = A, RIGHT = B) */   /* THE DOOR GUN (9.5, rev 13; rev 2 2026-09-15: `hold` = the mouth you came out of, `cross` = the entry's speed): the drawn state, the ghost, the last aim, the placed door records by slot */
             tickers: [], propLights: 0,   /* Phase 8 (2026-09-14): per-frame callbacks registered by procs (the orb, the torches, the shaft); the count of catalogue `light`s placed */
             kicks: [], seats: [], sways: [], shadows: null, atmos: null, heightFog: null, ao: null, keyLight: null, keyDir: null, shafts: 0, ripples: null, decals: 0, heroLit: null,   /* THE PREMIUM POLISH (2026-09-21): the kickable bodies, the seats, the swaying props, the light pass's records */
             props: [], focus: null,   /* props: { key, grp } per placed catalogue prop (the terminal's camera finds the CRT by key); focus: the screen push (_hqFocusScreen) */
@@ -56128,7 +56252,9 @@ const ThreeRenderer = (function () {
         gunDoorTurn: _hqGunDoorTurn,
         gunDoorAim: function () { return _hq ? _hqGunDoorAim() : null; },
         gunDoors: function () { return (_hq && _hq.gun) ? _hq.gun.doors.map(function (d) { return { at: d.at, key: d.key, x: d.x, y: d.y, z: d.z, face: d.face }; }) : []; },
-        gunDoorRemove: _hqGunDoorRemove,   /* rev 5: portalFire('a' | 'b') — LEFT CLICK is A, RIGHT CLICK is B */
+        gunDoorRemove: _hqGunDoorRemove,
+        gunCaptureSel: function () { return _hq ? _hqGunCaptureChoice() : null; },   /* Phase 4: the ONE-WAY wedge's pick */
+        gunStrikeCheck: function (now) { return _hq ? _hqGunStrikeScan(now == null ? performance.now() : now) : null; },   /* Phase 4: a probe's read — the native a door would strike now */   /* rev 5: portalFire('a' | 'b') — LEFT CLICK is A, RIGHT CLICK is B */
         portalCarryFor: _hqPortalCarryFor,   /* rev 4: map.js hands the twin's row before a room change so the carry crosses with you */
         portalMapCarry: _hqPortalMapCarry,
         portalViewmodel: function () { return (_hq && _hq.portal) ? _hq.portal.vm : null; },   /* a probe's read (the first-person gun group) */

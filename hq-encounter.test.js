@@ -138,7 +138,7 @@ test('SOURCE · the renderer: no number keys, LEFT CLICK holstered = the attack 
 test('SOURCE · map.js: the enter opts, the guards (wild room · the gun · the switch · never online), the launch, THE LAST ROSTER inside _msConfirm, the sticky config, the ward on a loss, the prompt, the officer row', () => {
     assert.ok(MP.includes("onStrike: (typeof _hqStrikeEvent === 'function') ? _hqStrikeEvent : null,") && MP.includes("onEncounter: (typeof _hqEncounterFire === 'function') ? _hqEncounterFire : null,"), 'guarded with typeof (scene-lifecycle.test.js evals _hqEnter alone)');
     assert.ok(MP.includes("if (!_hqEncounterEnabled() || !_hqEncounterRoomOkNow()) return false;"), 'the switch + the wild room');
-    assert.ok(MP.includes("if (drawn) return false;   // the gun drawn: a click is a threshold, never a fight (rev 17)"), 'the gun drawn never fights');
+    assert.ok(MP.includes("if (drawn && !ev.door) return false;   // the gun drawn: a click is a threshold, never a fight (rev 17)"), 'the gun drawn never fights (a standing door\'s act is the strike itself)');
     assert.ok(MP.includes("try { if (!ThreeRenderer.hq.portalDrawn()) aim = ThreeRenderer.hq.encounterAim(); } catch (e) { aim = null; }"), 'the prompt aims holstered');
     assert.ok(MP.includes("if (typeof window.isOnlineMatch === 'function' && window.isOnlineMatch()) return false;   // RULE #2"), 'never from an online seat');
     assert.ok(MP.includes("window.hqEncounterLaunch(_hqCurRoom, ev.target, _hqEncounterCfgRaw(), { gesture: ev.gesture, codeRed: !!cr, partyLevel: _hqPartyLevelNow() })"), 'the launch carries the Code Red read + THE PARTY LEVEL (2026-09-21)');
@@ -490,7 +490,7 @@ test('D6 · SOURCE · map.js: the strike reads the Code Red, files the field, SL
      "window._hqCodeRedRun = L.codeRedRun || null;",
      "const _encSeated = _encounterPlaceSeats();", "if (_encSeated) {\n                state.spawnZones = _encSeated.zones;",
      "function _encounterPlaceSeats() {", "const F = (typeof window._ewEncounterField === 'function') ? window._ewEncounterField() : null;",
-     "if (!_respawnTileSafe(x, y)) return false;", "seats = window.hqEncounterSeats(F, { W: bw(), H: bh(), n1: u1.length, n2: u2.length, free });",
+     "if (!_respawnTileSafe(x, y)) return false;", "seats = window.hqEncounterSeats(F, { W: bw(), H: bh(), n1: u1.length, n2: u2.length, free: freeSeat });",
      "F.seats = seats;", "if (_encParty.fallback && typeof optimizeRandomizeParty === 'function') {",
      "YOU CAME TO AT YOUR DESK", "YOU CAME TO IN THE WARD"].forEach(f => assert.ok(MP.includes(f), f));
     assert.ok(MP.indexOf("const _encSeated = _encounterPlaceSeats();") < MP.indexOf("state.spawnZones = {};\n\n            /* Determine orientation from SPAWNS hint */"), 'the seats are placed before the rows would be built');
