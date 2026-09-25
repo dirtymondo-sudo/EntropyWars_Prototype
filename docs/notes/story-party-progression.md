@@ -650,3 +650,19 @@ worth the ally's kill value ÷ the door's hits, ×1.6 / ×1.25 at 1 / 2 seal rou
 breaking hit, + focusCommitBonus when the team can break it this round, + half the worth when no round is spare,
 ×0.25 when it cannot fall before it seals; an empty door is a spare 30-point swing. Kill-switch
 `window.EW_AI_NO_CAPTURE`. AI version `v4.12-2026-09-25-capture-door`. Next: Phase 4 THE PRIZE (server union, debrief).
+**Phase 4 THE PRIZE built 2026-09-25** (`capture-prize.test.js`). After a WIN every sealed native goes through
+data.js `hqCaptureEnlist` in the encounter commit (battle.js): THE PARTY (a free slot, race not in the party — at the
+party's level), else THE ROSTER (a race the account did not own: the captured ledger is the claim), else A BOUNTY
+(`CAPTURE_RULES.bounty[tier]`). THE BOUNTY LEDGER: `hq.bounties = { 'YYYY-MM-DD': [t1, t2, t3] }` (local door.hq +
+the synced blob; per-tier max per day, `bountyPerDay` 12, the newest `ACH_MERGE_CAPS.bounties` 64 days kept) — the
+commit credits the local mirror, server.js /api/progress/sync pays the ledger's growth (`hqCaptureBountySyncPay`,
+beside the finds' Hazard Pay; idempotent, pays on the first sync). THE SERVER UNION: `getOrBackfillEconomy(player,
+progress?)` → `unionCapturedUnits` adds every race on the synced `hq.captured` ledger to `unlocked_units` (persisted —
+the ranked party guard and the purchase's "Already owned" see it; data.js `hqCapturedUnlockUnion`). THE MIRROR:
+profile.js `localCaptureUnit(race, profile?)` (the commit adds a new race to p.account.unlockedUnits) and
+`_unionCapturedIntoMirror` (backfillProfile + `_syncEconomyToLocal` keep ledger races over a server overwrite).
+THE CAPTURES card: battle.js `_vicBuildCaptures` into index.html `#vicCaptures` under THE SPOILS (portrait, name +
+race, JOINS THE PARTY · LV n / ON YOUR ROSTER · OWNED, NEVER BOUGHT / BOUNTY +n, the door's tier; teal
+`.vic-cap-*` in styles-cinematic.css). The return toast (map.js) adds "… JOINED THE PARTY · … ON YOUR ROSTER ·
+CAPTURE BOUNTY". Trust note: the captured ledger is client-written (story fights run client-side), so a hand-edited
+blob can claim a race; the bounty is bounded by the daily ceiling. Next: Phase 5 THE ECONOMY (doors on shelves, drops).
