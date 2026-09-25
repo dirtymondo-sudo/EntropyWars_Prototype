@@ -834,3 +834,29 @@ every door. Also removed (never ruled on): flyers standing in the Gust stream, t
 the Laser's walk-across skipping flyers. Kept: the colossal weight in the wind (the user's ruling), a held body, Hell's
 ground fire skipping an airborne flyer (the standing airborne rule), and the capture door's CAPTURE_PLAN exclusions.
 This supersedes the Keyholder lines in rev 4–6 above and in DOOR_RACE_DESIGN §3.
+
+## THE 3D LINE + FRACTAL STITCH + NO SEEDS AT FLYERS — 2026-09-25, local delivery (bugfix/ENTROPY_WARS_BATTLE_FIXES_2.zip, token 20260925-bugfix-02-cors)
+mondo: "Beams need to shoot in a straight line from the caster to the target, and anyone on that line gets hit"
+— a flyer's beam must not hit the lower enemy behind it, and beams never left the ground. battle.js **THE 3D
+LINE** block (after `_lineLosBlocked`): a `line`/`linePush` beam still picks one of the 8 headings, but it now
+flies a straight line in block levels from the caster's z to the AIMED body (`lineBeamAimZ`: the unit clicked at
+that z, else the one nearest z — a click on the ground under a lone flyer aims at the flyer — else the tile's
+ground) and on at that slope (`lineBeamLine(from, dx, dy, aim).zAt(step)`; lanes share their spine step). A unit
+is hit when the line's height at its cell is within **0.75 of a level** of its own z (`beamBodyOnLine`; 2×2
+bosses one level taller). Sight is checked along that line (`_lineLosBlocked(..., lineZ)` → the targetZ of
+`isRangeBlockedByTerrain`), so a beam angled up clears the low wall its ground ray used to clip. Ground things
+(turrets, prisms, doors, deployed objects, `leaveTerrain`, `lineZone`, terrain reactions) are touched only where
+the line runs at body height over the ground (`_beamAtGround`). `lineBeamPlan` (read-only, no boring) feeds the
+camera framing, the VFX route and the glow tiles; `_applyLineDamage(…, aim)` is the real walk; doSpell fixes the
+aim once (`_beamAim.lineZ`) so the boomerang's return flies the same line. `lineSpellHeadingTo` takes a 7th arg
+`tz` (the menu passes the target's z). A walk with NO aim keeps the old flat lane (`unitAt`) — the breach
+harnesses call it that way. AI: `_bestLineAimAI` tries each spine victim as the aim and scores with
+`g.lineBeamHits` (exported on GAME with `lineBeamPlan`); the re-aim returns `z` and the cast passes it.
+**Laser Door**: its beam is level at the door's body height, so an airborne flyer over the lane is not burned
+(`_gunDoorLaser`). **Fractal Stitch** (`raceFractalStitch`, mantid, `kind: 'line'` + **`beamZigzag`**, cost 40,
+dmg 130, range 5): the Ambush Lunge twin on rung III (tier III). It ignores the line — every enemy in the lane is
+hit, any height — and the VFX zigzags through each body (mondo called it "fractal needs"; renamed to avoid a clash
+with the mantid's existing Fractal Needle). **Seeds**: hud.js `_computeEnemyActions` drops Poison Seed and Leech
+Seed rows against an airborne enemy (`applySeedEffectToUnit` already skipped airborne units). Test:
+`beam-3d-line.test.js`. Unseen live: the special beam renderers (breath cone, tsunami, sonic boomerang, gatling,
+sword wave, bow) still draw along the ground; the damage follows the line.

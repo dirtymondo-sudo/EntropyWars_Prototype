@@ -1173,3 +1173,14 @@ reaches 1 ON its strike frame (the kick connects at half its glide).
 **Tests:** new-clips.test.js (slot table → bake → tween → battle → relay,
 plus the curve maths); spell-body.test.js (a verb's fallbacks need SOME eager
 slot now); anim-strike.test.js pins the MAL3 clip names and durations.
+
+## THE 3D LINE's VFX + FRACTAL STITCH — 2026-09-25, local delivery (token 20260925-bugfix-02-cors)
+battle.js fires `beam` with `fromZ` (caster level) + `tx/ty/tz` (the aimed body). three-vfx-effects.js
+`_fireBeamMapped` turns them into world points (`_worldTorsoAtLevel(tx, ty, level)`: the renderer's own surface
+for the unit AT that level, so a flyer over a grounded unit is its own body) and extrapolates caster → aim to the
+last cell; `_spawnLaserBeam3D` takes `opts.startW / opts.endW`, the muzzle / terminus / lights (`_crBeamExtras`
+`o.mz / o.iz`) follow, and a beam ending in the air drops its ground ring and burn groove. The generic damage
+`beam` travel passes `fromZ/tz` too. **Fractal Stitch** = `EFFECTS.raceFractalStitch_beam` (`beamZigzag`) →
+`_sigFractalStitch3D`: one thin lit laser segment per hop (caster → each victim's body in line order → the end),
+95 ms apart, arcane palette, the last hop shakes; no backdrop. battle.js sends `beamPath` [{x, y, z}]; online.js
+relays it with z. The special renderers (breath, tsunami, boomerang, gatling, sword wave, bow) are unchanged.
