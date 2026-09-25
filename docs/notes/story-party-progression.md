@@ -666,3 +666,7 @@ race, JOINS THE PARTY · LV n / ON YOUR ROSTER · OWNED, NEVER BOUGHT / BOUNTY +
 `.vic-cap-*` in styles-cinematic.css). The return toast (map.js) adds "… JOINED THE PARTY · … ON YOUR ROSTER ·
 CAPTURE BOUNTY". Trust note: the captured ledger is client-written (story fights run client-side), so a hand-edited
 blob can claim a race; the bounty is bounded by the daily ceiling. Next: Phase 5 THE ECONOMY (doors on shelves, drops).
+**The user's fixes after Phase 4 (2026-09-25, token 20260925-capture-06-cors):** a capture keeps the level it was
+fought at (`hqPartyEnlist` `spec.lvl`); the PLAYER picks a tuned door's type (tile menu row per type, the pick in
+`window._ewCapDoorType`; no more nearest-enemy guess); the Room 911 hatch sells all four doors and `hqCaptureDoorIssue`
+puts 3 One-Way Doors + 1 Tuned Door in the bag once (`door.hq.capIssue`).
