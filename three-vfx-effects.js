@@ -25261,6 +25261,170 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     });
 
     /* ════════════════════════════════════════════════════════════════════
+       THE STANDING DOORS (DOOR_GUN_PLAN.md §4, the door wheel Phase 1,
+       2026-09-25) — the Gust Door and the Archers' Door. The board door is
+       the renderer's (_buildDoor3D's standing dress + the lane decals); these
+       are its BEATS, keyed by the spell id so the census credits each door
+       with a signature of its own:
+         <id>:open   the comet lands → the door unfolds: a sigil in the door's
+                     colour, a ring, a light, sparks off the frame
+         <id>:act    GUST — the wind down the lane: streaks racing out of the
+                     opening along the face, dust kicked up tile by tile,
+                     a cold light at the mouth (x.only = one body's tile: the
+                     chain's short gust). ARCHERS — three arrows (the Meshy
+                     `arrow`, a procedural shaft while it streams) loosed from
+                     the opening one after another, arcing onto the target,
+                     each landing a spark burst + a light (x.miss: a puff at
+                     the lamps, nobody in reach)
+         <id>:hit    a hit on the frame: splinters + a small white ring
+         <id>:break  the frame splinters: a ring, sparks, a light, a shake
+         <id>:fold   folded by a newer door (the cap): a small puff
+       Real lights (the pooled ThreeVFX.flashLight), real particles; no
+       backdrop. battle.js fires them through window._doorGeom (relayed online
+       as vfx3d-x; the extras are primitives). */
+    function _gunDoorColor(key) {
+        try { if (typeof DOOR_GUN_DOORS !== 'undefined' && DOOR_GUN_DOORS[key] && DOOR_GUN_DOORS[key].color) return DOOR_GUN_DOORS[key].color; } catch (e) {}
+        return 0xe8c07a;
+    }
+    function _gunDoorLight(tx, ty, color, o) {
+        try {
+            var c = tilePx(tx, ty), ts = _worldPos(tx, ty).ts;
+            if (typeof window !== 'undefined' && window.ThreeVFX && typeof window.ThreeVFX.flashLight === 'function')
+                return window.ThreeVFX.flashLight(c.x, c.y, unitSurfaceZ(tx, ty) + ts * 0.55, color, o || {});
+        } catch (e) {}
+        return null;
+    }
+    function _gunDoorOpen3D(key, tx, ty, o) {
+        if (_catOff('spells')) return null;
+        var ts = _worldPos(tx, ty).ts, col = _gunDoorColor(key);
+        try { _sigMagicCircle3D(tx, ty, { color: col, color2: 0xffffff, radiusPx: ts * 0.7, growMs: 140, holdMs: 360, fadeMs: 280, opacity: 0.5, spin: 0.003, height: 2 }); } catch (e) {}
+        try { _sigShockRing3D(tx, ty, { color: col, r0: ts * 0.15, r1: ts * 1.05, ms: 360, height: 4 }); } catch (e) {}
+        try { _sigSparks(tx, ty, 'steel-spark', 14, { tint: col, vz0: 120, vz1: 380, vxy: 160, z: ts * 0.5 }); } catch (e) {}
+        _gunDoorLight(tx, ty, col, { intensity: 2.4, ms: 520, radius: 3, attack: 40 });
+        return true;
+    }
+    /* 🌬 the wind tunnel: streaks + dust down `len` tiles of the face */
+    function _gunGust3D(tx, ty, o) {
+        if (_catOff('spells')) return null;
+        var fx = Math.sign(o.faceX || 0), fy = Math.sign(o.faceY || 0);
+        if (!fx && !fy) return null;
+        var wp = _worldPos(tx, ty), ts = wp.ts;
+        var len = Math.max(1, Math.min(8, (o.len | 0) || 4)) + 1;
+        var diag = (fx && fy) ? Math.SQRT2 : 1;
+        var reach = len * ts * diag;
+        var g = new THREE.Group(); g.position.set(wp.x, wp.y, wp.z); g.rotation.y = Math.atan2(fx, fy);
+        var total = o.only ? 700 : 1100, streaks = [], NS = o.only ? 10 : 22;
+        for (var i = 0; i < NS; i++) {
+            var mm = new THREE.SpriteMaterial({ map: _sigGlowTex(), color: new THREE.Color(i % 4 ? 0xcfe8ff : 0xffffff), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
+            var sp = new THREE.Sprite(mm);
+            var w = ts * (0.05 + (i % 3) * 0.02);
+            sp.scale.set(w, w, 1); g.add(sp);
+            streaks.push({ s: sp, m: mm, x: rn(-0.36, 0.36) * ts, y: ts * rn(0.12, 1.0), d: rn(0, total * 0.45), v: rn(0.9, 1.35), stretch: rn(4, 8) });
+        }
+        /* dust down the lane, tile by tile (the particle pool) */
+        for (var t = 1; t <= len; t++) {
+            (function (k) {
+                _fxDelay(function () {
+                    try { _sigSparks(tx + fx * k, ty + fy * k, 'dust-puff', o.only ? 2 : 4, { vz0: 30, vz1: 120, vxy: 90, gravity: 60, z: 4 }); } catch (e) {}
+                }, 60 + k * 70);
+            })(t);
+        }
+        _gunDoorLight(tx, ty, 0xcfe8ff, { intensity: o.only ? 1.4 : 2.2, ms: total * 0.6, radius: 3, attack: 60 });
+        try { if (typeof window !== 'undefined' && typeof window.playDoorSfx === 'function') window.playDoorSfx('wayWhirl', { volume: o.only ? 0.12 : 0.2 }); } catch (e) {}   // the mountain's roar through the opening
+        return _sigRunOwned(g, total, function (el) {
+            for (var j = 0; j < streaks.length; j++) {
+                var st = streaks[j], k = _sigClamp01((el - st.d) / (total * 0.5 / st.v));
+                if (k <= 0 || k >= 1) { st.m.opacity = 0; continue; }
+                var z = _sigEaseOutCubic(k) * reach;
+                st.s.position.set(st.x + Math.sin(el * 0.01 + j) * ts * 0.05, st.y, z);
+                st.s.scale.set(st.s.scale.x, st.s.scale.x, 1);
+                st.m.opacity = 0.75 * Math.sin(Math.PI * k);
+            }
+        });
+    }
+    /* 🏹 the volley: `n` arrows from the opening onto (x.tx, x.ty) */
+    function _gunVolley3D(tx, ty, o) {
+        if (_catOff('spells')) return null;
+        var col = _gunDoorColor('archers');
+        if (o.miss || o.tx == null) {
+            try { _sigSparks(tx, ty, 'dust-puff', 4, { vz0: 40, vz1: 140, vxy: 60, z: 40 }); } catch (e) {}
+            return true;
+        }
+        var from = _worldPos(tx, ty), to = _worldPos(o.tx, o.ty), ts = from.ts;
+        var n = Math.max(1, Math.min(5, (o.n | 0) || 3));
+        var dist = Math.hypot(to.x - from.x, to.z - from.z);
+        var flyMs = Math.max(180, Math.min(420, 140 + dist / ts * 40)), gap = 110, total = n * gap + flyMs + 320;
+        var useGlb = _wpnReady('arrow');
+        if (!useGlb) { try { _wpnLoad('arrow'); } catch (e) {} }
+        var g = new THREE.Group();
+        var shaftMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0x9a7a4c), transparent: true, opacity: 1 });
+        var headMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0xd0d6e0), transparent: true, opacity: 1 });
+        var trailMat = _sigMat(col);
+        var arrows = [];
+        for (var i = 0; i < n; i++) {
+            var holder = new THREE.Group(), setF = null;
+            if (useGlb) { var inst = _wpnInstance('arrow', ts * 0.7); if (inst) { holder.add(inst.group); setF = inst.setFade; } }
+            if (!setF) {
+                var sh = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.012, ts * 0.012, ts * 0.6, 5), shaftMat);
+                sh.rotation.x = Math.PI / 2; holder.add(sh);
+                var hd = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.03, ts * 0.1, 5), headMat);
+                hd.rotation.x = Math.PI / 2; hd.position.z = ts * 0.34; holder.add(hd);
+            }
+            var tr = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.04, ts * 0.5), trailMat);
+            tr.rotation.x = Math.PI / 2; tr.position.z = -ts * 0.4; holder.add(tr);
+            holder.visible = false; g.add(holder);
+            arrows.push({ h: holder, d: i * gap, off: (i - (n - 1) / 2) * ts * 0.12, landed: false });
+        }
+        var sx = from.x, sy = from.y + ts * 0.62, sz = from.z, ex = to.x, ey = to.y + ts * 0.45, ez = to.z;
+        var arcH = ts * (0.6 + Math.min(1.4, dist / ts * 0.18));
+        _gunDoorLight(tx, ty, 0xffc27a, { intensity: 1.8, ms: 360, radius: 2.6, attack: 30 });
+        return _sigRunOwned(g, total, function (el) {
+            trailMat.opacity = 0.35;
+            for (var j = 0; j < arrows.length; j++) {
+                var a = arrows[j], k = (el - a.d) / flyMs;
+                if (k < 0) continue;
+                if (k >= 1) {
+                    if (!a.landed) {
+                        a.landed = true;
+                        try { _sigSparks(o.tx, o.ty, 'steel-spark', 8, { vz0: 80, vz1: 260, vxy: 140, z: ts * 0.4 }); } catch (e) {}
+                        _gunDoorLight(o.tx, o.ty, 0xffe0b0, { intensity: 1.6, ms: 240, radius: 2 });
+                    }
+                    a.h.visible = el < a.d + flyMs + 160;
+                    continue;
+                }
+                a.h.visible = true;
+                var x = sx + (ex - sx) * k + a.off, z = sz + (ez - sz) * k, y = sy + (ey - sy) * k + Math.sin(Math.PI * k) * arcH;
+                var k2 = Math.min(1, k + 0.02);
+                var x2 = sx + (ex - sx) * k2 + a.off, z2 = sz + (ez - sz) * k2, y2 = sy + (ey - sy) * k2 + Math.sin(Math.PI * k2) * arcH;
+                a.h.position.set(x, y, z);
+                a.h.lookAt(x2, y2, z2);
+            }
+        });
+    }
+    function _gunDoorBreak3D(key, tx, ty, o) {
+        if (_catOff('spells')) return null;
+        var ts = _worldPos(tx, ty).ts, col = _gunDoorColor(key), mode = o.mode || 'break';
+        var small = mode !== 'break';
+        try { _sigShockRing3D(tx, ty, { color: mode === 'fold' ? col : 0xffffff, r0: ts * 0.1, r1: ts * (small ? 0.7 : 1.3), ms: small ? 260 : 380, height: 4 }); } catch (e) {}
+        try { _sigSparks(tx, ty, 'steel-spark', mode === 'fold' ? 8 : mode === 'hit' ? 10 : 26, { tint: mode === 'fold' ? col : null, vz0: 140, vz1: small ? 300 : 520, vxy: small ? 130 : 260, z: ts * 0.6 }); } catch (e) {}
+        if (mode !== 'fold') _gunDoorLight(tx, ty, 0xffffff, { intensity: small ? 1.6 : 2.8, ms: small ? 220 : 380, radius: small ? 2 : 3 });
+        if (mode === 'break' && typeof window !== 'undefined' && typeof window.shakeBoard === 'function') _shake('normal');
+        return true;
+    }
+    Object.assign(_spell3DGeometry, {
+        'gunGustDoor:open':     function (tx, ty, r, x) { x = x || {}; _fxDelay(function () { try { _gunDoorOpen3D('gust', tx, ty, x); } catch (e) {} }, x.delay || 0); },
+        'gunGustDoor:act':      function (tx, ty, r, x) { x = x || {}; _fxDelay(function () { try { _gunGust3D(tx, ty, x); } catch (e) {} }, x.delay || 0); },
+        'gunGustDoor:hit':      function (tx, ty, r, x) { _gunDoorBreak3D('gust', tx, ty, { mode: 'hit' }); },
+        'gunGustDoor:break':    function (tx, ty, r, x) { _gunDoorBreak3D('gust', tx, ty, { mode: 'break' }); },
+        'gunGustDoor:fold':     function (tx, ty, r, x) { _gunDoorBreak3D('gust', tx, ty, { mode: 'fold' }); },
+        'gunArchersDoor:open':  function (tx, ty, r, x) { x = x || {}; _fxDelay(function () { try { _gunDoorOpen3D('archers', tx, ty, x); } catch (e) {} }, x.delay || 0); },
+        'gunArchersDoor:act':   function (tx, ty, r, x) { x = x || {}; _fxDelay(function () { try { _gunVolley3D(tx, ty, x); } catch (e) {} }, x.delay || 0); },
+        'gunArchersDoor:hit':   function (tx, ty, r, x) { _gunDoorBreak3D('archers', tx, ty, { mode: 'hit' }); },
+        'gunArchersDoor:break': function (tx, ty, r, x) { _gunDoorBreak3D('archers', tx, ty, { mode: 'break' }); },
+        'gunArchersDoor:fold':  function (tx, ty, r, x) { _gunDoorBreak3D('archers', tx, ty, { mode: 'fold' }); },
+    });
+
+    /* ════════════════════════════════════════════════════════════════════
        THE NEW-RACE VFX PASS (2026-09-22) — POLICE OFFICER · JELLYFISH ·
        CULT LEADER · POPSTAR
        ════════════════════════════════════════════════════════════════════

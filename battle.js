@@ -809,6 +809,8 @@
             doorExit:     { minRange: 0, offensive: true,  breaksStealth: true, noStrikeLeap: true, doorOrigin: true },
             doorTrap:     { minRange: 1, offensive: true,  breaksStealth: true, noStrikeLeap: true },
             deployTurret: { minRange: 0, offensive: false, tileTargeted: true, noStrikeLeap: true },
+            // THE DOOR WHEEL (DOOR_GUN_PLAN §3.2, Phase 1): a STANDING door — a tile, then (a lane door) its facing
+            doorDeploy:   { minRange: 1, offensive: false, tileTargeted: true, noStrikeLeap: true },
             buildBridge:  { minRange: 0, offensive: false, tileTargeted: true },
             terrainCreate:{ minRange: 0, offensive: false, tileTargeted: true, noStrikeLeap: true },
             summonWeather:{ minRange: 0, offensive: false, tileTargeted: true, noStrikeLeap: true },
@@ -1570,6 +1572,18 @@
                 casterAnim: 'cast',
                 camera: 'focus',
                 travel: 'auto',
+                impact: 'none',
+                hitResponse: 'none',
+                bloodTier: 'none',
+                screenShake: 'none',
+                sfx: null,
+                postEffects: [],
+            },
+            /* 🚪 THE STANDING DOORS (the door wheel, Phase 1): the kind branch fires the gun's shot and the door itself */
+            doorDeploy: {
+                casterAnim: 'cast',
+                camera: 'focus',
+                travel: 'none',
                 impact: 'none',
                 hitResponse: 'none',
                 bloodTier: 'none',
@@ -3650,6 +3664,11 @@
         //                  its statuses NOW (once per zone per round — the
         //                  end-of-round tick then refreshes as before); a
         //                  friendly smoke cloud re-cloaks.
+        //   E′ THE STANDING DOORS (the door wheel, DOOR_GUN_PLAN §3.4) — a
+        //                  standing door whose lane / radius holds the tile
+        //                  acts on the body NOW (a Gust Door blows it down the
+        //                  lane, an Archers' Door looses its volley), once per
+        //                  door per unit per round; a slide runs its own chain.
         //   F  THE VORTEX — an active tornado / hurricane whose tiles hold
         //                  the body shreds and FLINGS it now (once per storm
         //                  per round), and the landing runs its own chain.
@@ -3761,6 +3780,13 @@
                 // ── E · THE ZONES ───────────────────────────────────────────
                 fired += _chainZones(unit);
                 updateSmokeZoneCloak(unit);
+                if (moved()) return fired;
+
+                // ── E′ · THE STANDING DOORS (DOOR_GUN_PLAN.md §3.4) ─────────
+                // The order contract: A sky · B ground · C pickups · D fuses ·
+                // D′ one-way door · E zones · E′ standing doors · F vortex · G rune
+                // (a capture door takes a body before any lane can move it off).
+                if (typeof _chainStandingDoors === 'function') fired += _chainStandingDoors(unit, opts);
                 if (moved()) return fired;
 
                 // ── F · THE VORTEX ──────────────────────────────────────────
@@ -6078,7 +6104,7 @@
             zoneHeal: 1, scan: 1, remoteView: 1, utility: 1, escape: 1, teleport: 1,
             warpRune: 1, swap: 1, placeMirror: 1, tuneFrequency: 1, deployObject: 1,
             deployPair: 1, deployTurret: 1, buildBridge: 1, buildStructure: 1,
-            door: 1, doorSlam: 1,
+            door: 1, doorSlam: 1, doorDeploy: 1,
             placeBlock: 1, terrainCreate: 1, placeTrap: 1, summonWeather: 1,
         };
         function _spellGlowTiles(unit, spell, tx, ty) {
@@ -26974,7 +27000,7 @@
             guard: 'buff', utility: 'buff',
             bomb: 'deploy', placeTrap: 'deploy', placeMirror: 'deploy', warpRune: 'deploy',
             deployObject: 'deploy', deployPair: 'deploy', deployTurret: 'deploy',
-            seedHeal: 'deploy', seedPoison: 'deploy', door: 'deploy', doorTrap: 'deploy',
+            seedHeal: 'deploy', seedPoison: 'deploy', door: 'deploy', doorTrap: 'deploy', doorDeploy: 'deploy',
             placeBlock: 'deploy', buildStructure: 'deploy',
             summonUnit: 'summon', raiseDead: 'summon',
             possess: 'control', link: 'control', shadowRealm: 'control',
@@ -33608,6 +33634,11 @@
         function _spellTargetPromptText(spell, esc) {
             const nm = '<strong>' + esc(spell.name) + '</strong>';
             if (spell.hinge) return nm + ': select the HINGE — an empty tile beside an enemy. The door swings through them and pushes them ' + (spell.pushDistance || 2) + ' tiles straight away from it.';
+            if (spell.kind === 'doorDeploy') {   // 🚪 THE STANDING DOORS: the tile, then (a lane door) the face
+                const _gdd = (typeof DOOR_GUN_DOORS !== 'undefined' && DOOR_GUN_DOORS[spell.door]) || {};
+                if (_gdd.lane && typeof _gunDoorPick === 'function' && _gunDoorPick(spell)) return nm + ': now pick which way it FACES — click along a lane (the wind blows ' + (_gdd.lane | 0) + ' tiles that way), or the door again to face away from you.';
+                return nm + ': pick an empty tile within ' + (spell.range || 4) + ' you can see' + (_gdd.lane ? ' — then which way the door faces.' : ' — the archers shoot anyone within ' + (_gdd.radius | 0) + ' of it.');
+            }
             switch (spell.kind || '') {
                 case 'heal':          return 'Select an ally to heal with ' + nm + '.';
                 case 'shield':        return 'Select an ally to shield with ' + nm + '.';
@@ -35486,7 +35517,7 @@
                doorDelivery / doorExit need an enemy a door of yours reaches;
                doorBreach / doorTrap are plain single-target hits (the list
                below). */
-            if (kind === 'door' || kind === 'doorSlam') return getSpellRangeTiles(unit, spell).length > 0;
+            if (kind === 'door' || kind === 'doorSlam' || kind === 'doorDeploy') return getSpellRangeTiles(unit, spell).length > 0;
             if (kind === 'doorDelivery' || kind === 'doorExit') {
                 const _dFog = state.fogOfWar && !state.autoPlayers?.[unit.player];
                 return state.units.some(u => !u.dead && u.player !== unit.player
@@ -39918,6 +39949,7 @@
                     processEndOfRoundRegen(function () {});
                 }
                 if (typeof processTurretVolleys === 'function') processTurretVolleys(function () {});
+                if (typeof processDoorActs === 'function') processDoorActs(function () {});   // 🚪 THE DOORS' TURN (quiet upkeep)
                 /* terrain bookkeeping the old EOR owned: burning tiles cool,
                    soaked units dry, frozen units get their thaw roll. (The
                    AMBIENCE tickers — tickWeather/tickSkyEvent — are on
@@ -46239,6 +46271,8 @@
                     //   4. Delayed detonations — dive onto each blast.
                     //   5. Turret volleys — each turret gets its own action beat:
                     //      camera on the turret, then down the sight line as it fires.
+                    //   5b. The doors' turn — each standing door (the door wheel) acts:
+                    //      camera on the door, then down its lane / sight line.
                     //   6. Storms — focus the vortex, glide with it as it hunts,
                     //      watch it strike.
                     //   7. Recovery — overview while every unit's regen ticks.
@@ -46262,6 +46296,11 @@
                     if (state.winner) return;
 
                     processTurretVolleys(function _afterTurretVolleyPhase() {
+                    if (state.winner) return;
+
+                    // 🚪 THE DOORS' TURN (DOOR_GUN_PLAN §3.3): every standing door acts, oldest first — after the turret
+                    // volleys, before the capture hold tick (a lane that feeds a capture door this round is taken this round)
+                    processDoorActs(function _afterDoorActsPhase() {
                     if (state.winner) return;
 
                     // Machine Elves — everyone still standing in a laser beam burns.
@@ -46435,6 +46474,7 @@
                     });
                     });
                     });
+                    });   // _afterDoorActsPhase
                     return;
                 }
 
@@ -50315,7 +50355,7 @@
                (the board is their drum — no unit is ever a valid pick);
                Special Delivery and EXIT list the enemies a door of yours
                reaches, never the caster's own disc. */
-            if (spell.kind === 'door' || spell.kind === 'doorSlam') return targets;
+            if (spell.kind === 'door' || spell.kind === 'doorSlam' || spell.kind === 'doorDeploy') return targets;
             /* THE DOOR WHEEL: Swing Door aims at a HINGE tile, never at a unit — the board is its drum (the painter
                shows the victim and its landing on hover) */
             if (spell.hinge) return targets;
@@ -54556,13 +54596,13 @@
         /* the friendly doors the unit stands ON or BESIDE (Chebyshev ≤ 1) */
         function doorsBeside(unit, opts = {}) {
             if (!unit) return [];
-            return _doors().filter(d => _doorCheb(d, unit.x, unit.y) <= 1 && d.kind !== 'capture'
+            return _doors().filter(d => _doorCheb(d, unit.x, unit.y) <= 1 && d.kind !== 'capture' && d.kind !== 'standing'
                 && (opts.any || d.owner === unit.player) && (!opts.open || d.open));
         }
         /* one door per pair, oldest first */
         function doorTeamPairs(player) {
             const seen = new Set();
-            return _doors().filter(d => d.owner === player && d.kind !== 'capture' && !seen.has(d.pairId) && seen.add(d.pairId))
+            return _doors().filter(d => d.owner === player && d.kind !== 'capture' && d.kind !== 'standing' && !seen.has(d.pairId) && seen.add(d.pairId))   // the standing doors keep their own cap (standingDoorsOf)
                 .sort((a, b) => (a.placedRound || 0) - (b.placedRound || 0));
         }
         function doorTileFree(x, y) {
@@ -54596,6 +54636,10 @@
            land on, what greys the row when empty. null for any other kind. */
         function _doorRangeTiles(unit, spell) {
             const k = spell && spell.kind;
+            if (k === 'doorDeploy') {   // 🚪 THE STANDING DOORS: the legal shot tiles; after a lane door's tile pick, its 8 lanes
+                const _pk = doorGunNeedsFacing(spell) ? _gunDoorPick(spell) : null;
+                return _pk ? doorGunFacingTiles(spell, _pk) : doorGunLegalTiles(unit, spell);
+            }
             if (k !== 'door' && k !== 'doorSlam' && k !== 'doorDelivery' && k !== 'doorExit') return null;
             const out = [], seen = new Set();
             const push = (x, y) => { const key = x + ',' + y; if (!seen.has(key) && isInside(x, y)) { seen.add(key); out.push({ x, y }); } };
@@ -54791,6 +54835,18 @@
                 _doorTouched();
                 return;
             }
+            if (door.kind === 'standing') {   // 🚪 THE STANDING DOOR (the door wheel, Phase 1): no twin — its lane stops
+                const _gd = (typeof DOOR_GUN_DOORS !== 'undefined' && DOOR_GUN_DOORS[door.door]) || { icon: '🚪', name: 'door' };
+                if ((!opts.quiet || opts.fx) && !_skipVisuals()) window._doorGeom(door.spellId + (opts.reason === 'replaced' ? ':fold' : ':break'), door.x, door.y, { faceX: door.faceX, faceY: door.faceY, owner: door.owner });
+                if (opts.reason === 'replaced') addLog(`${_gd.icon} The old ${_gd.name} at ${coordLabel(door.x, door.y)} folds away — two standing doors a side.`);
+                else if (!opts.quiet) {
+                    if (!_skipVisuals()) showFloatingTextAtTile(door.x, door.y, '🚪 BROKEN', 'damage');
+                    addLog(`${opts.label || ''}The ${_gd.name} at ${coordLabel(door.x, door.y)} breaks.`);
+                    playSfx('uiConfirm');
+                }
+                _doorTouched();
+                return;
+            }
             if (opts.reason === 'replaced') {
                 addLog(`The old doors at ${both.map(d => coordLabel(d.x, d.y)).join(' / ')} fold away.`);
             } else if (!opts.quiet) {
@@ -54808,6 +54864,7 @@
             door.hp -= (opts.hits || 1);
             if (door.hp > 0) {
                 if (!_skipVisuals()) showFloatingTextAtTile(x, y, `🚪 ${door.hp}/${door.maxHp}`, 'damage');
+                if (door.kind === 'standing' && !_skipVisuals()) window._doorGeom(door.spellId + ':hit', x, y, { faceX: door.faceX, faceY: door.faceY, owner: door.owner });   // the standing door's hit flash
                 addLog(`${opts.label || ''}The door at ${coordLabel(x, y)} takes a hit (${door.hp} left).`);
                 _doorTouched();
             } else breakDoorPair(door, { label: opts.label });
@@ -54978,23 +55035,8 @@
         }
         /* the tiles a unit may fire a door onto: empty, walkable, no door / bomb / trap / object, within reach with sight */
         function captureDoorLegalTiles(unit) {
-            const R = _capR(), out = [];
-            if (!unit || unit.dead) return out;
-            const r = R.range || 4;
-            for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
-                if ((!dx && !dy) || Math.abs(dx) + Math.abs(dy) > r) continue;
-                const x = unit.x + dx, y = unit.y + dy;
-                if (!doorTileFree(x, y)) continue;
-                if (state.bombs && state.bombs.some(b => b.x === x && b.y === y)) continue;
-                if (state.traps && state.traps.some(t => t.x === x && t.y === y)) continue;
-                if (state._deployedObjects && state._deployedObjects.some(o => o.x === x && o.y === y && o.hp > 0)) continue;
-                const T = (typeof getTerrainRule === 'function') ? getTerrainRule(getTerrainAt(x, y)) : null;
-                if (T && (T.isLava || T.deepWater || T.lava || T.damagePerTurn > 0)) continue;
-                if (R.los && typeof isRangeBlockedByTerrain === 'function' && isRangeBlockedByTerrain(unit.x, unit.y, x, y, unit.z)) continue;
-                if (state.fogOfWar && !state.autoPlayers?.[unit.player] && typeof isInVision === 'function' && !isInVision(unit, x, y)) continue;
-                out.push({ x, y });
-            }
-            return out;
+            const R = _capR();
+            return doorShotLegalTiles(unit, { range: R.range || 4, los: !!R.los });   // the door wheel (Phase 1): one shot rule, the standing doors share it
         }
         /* why a placement is refused ('' = legal) */
         function captureDoorPlaceCheck(unit, x, y, itemKey) {
@@ -55233,6 +55275,424 @@
             window.captureDoorLegalTiles = captureDoorLegalTiles; window.captureDoorPlaceCheck = captureDoorPlaceCheck; window.captureDoorPlace = captureDoorPlace;
             window.captureDoorCanTake = captureDoorCanTake; window.captureDoorTake = captureDoorTake; window.captureDoorFree = captureDoorFree;
             window.captureDoorSeal = captureDoorSeal; window.captureDoorHoldTick = captureDoorHoldTick; window.captureMatchEnd = captureMatchEnd;
+        }
+
+        /* ═══════════════════════════════════════════════════════════════════
+           THE STANDING DOORS (DOOR_GUN_PLAN.md §3.2–§3.4, the door wheel Phase 1,
+           2026-09-25) — a door the Door Agent SHOOTS onto a tile and leaves
+           there: a `kind: 'standing'` record in state.doors (ids only, RULE #2)
+           with a FACING (faceX / faceY, a unit step of the 8 — the player's
+           pick, never auto-picked for a human seat), hits (3, a Keyholder's 4),
+           no twin (pairId = id), `fixed` (no toggle, no Slam) and standing OPEN
+           (walkable, see-through — a body can be blown THROUGH its tile). Its
+           ACT (DOOR_GUN_DOORS[key].act) fires three ways:
+             · once when it lands (doorGunPlace, after the comet + the unfold);
+             · at THE DOORS' TURN every round (processDoorActs — the end of the
+               round, after the turret volleys, before the capture hold tick),
+               oldest door first, each with its own camera beat;
+             · on ARRIVAL: a body that lands in its lane / radius by ANY means
+               (a walk, a shove, a throw, a teleport) is acted on at once — THE
+               CHAIN REACTION's step E′ (_chainStandingDoors), once per door per
+               unit per round (door.laneStamps = { unitId: round }).
+           Phase 1's acts: `lanePush` (GUST — every body in the lane, EITHER
+           team, the user's ruling, slides to the lane's end + 1, the far body
+           first; resolveForcedSlide → the landing's own chain) and `volley`
+           (ARCHERS — 3 arrows at the nearest hostile within the radius the door
+           can see; no displacement). THE CAP: two standing doors per PLAYER (the
+           user's ruling; the capture door never counts); a third folds the
+           oldest. Enemies break one with basic attacks / blasts (damageDoorAt,
+           _structureAt already reads any enemy door); its owner's side cannot.
+           A Keyholder (`doorImmune`) walks through wind: the lanes never move
+           it (arrows still find it). Host-authoritative: the record syncs in the
+           snapshot; every beat is window._doorGeom (relayed `vfx3d-x`), the
+           slides ride animateDisplacementPath (relayed), the numbers ride the
+           damage path. The recipes are '<spellId>:open / act / fold / hit'
+           (three-vfx-effects.js "THE STANDING DOORS").
+           ═══════════════════════════════════════════════════════════════════ */
+        function _gunR() { return (typeof DOOR_GUN_RULES !== 'undefined') ? DOOR_GUN_RULES : { standingCap: 2, hits: 3, range: 4, los: true, lane: { max: 6 } }; }
+        function _gunDoorDef(door) { return (door && typeof DOOR_GUN_DOORS !== 'undefined') ? (DOOR_GUN_DOORS[door.door] || null) : null; }
+        function _gunDoorDefOfSpell(spell) { return (spell && spell.door && typeof DOOR_GUN_DOORS !== 'undefined' && DOOR_GUN_DOORS[spell.door] && DOOR_GUN_DOORS[spell.door].kind === 'standing') ? DOOR_GUN_DOORS[spell.door] : null; }
+        /* the live standing doors — one player's, or everyone's (player == null) — OLDEST FIRST (THE DOORS' TURN order) */
+        function standingDoorsOf(player) {
+            return _doors().filter(d => d.kind === 'standing' && d.hp > 0 && (player == null || d.owner === player))
+                .sort((a, b) => ((a.placedRound || 0) - (b.placedRound || 0)) || ((a._seq || 0) - (b._seq || 0)));
+        }
+        function standingDoorAt(x, y) { return _doors().find(d => d.kind === 'standing' && d.x === x && d.y === y && d.hp > 0) || null; }
+        /* the tiles the door acts on (data.js doorGunLaneTiles, clipped to the board) */
+        function standingDoorLaneTiles(door) {
+            if (!door || typeof doorGunLaneTiles !== 'function') return [];
+            return doorGunLaneTiles(door, { w: bw(), h: bh() });
+        }
+        /* a lane door takes a FACING (a second click); a radius door (Archers) does not */
+        function doorGunNeedsFacing(spell) { const d = _gunDoorDefOfSpell(spell); return !!(d && (d.lane || d.beam)); }
+        /* THE SHOT's legal tiles — the capture door's rules, generalised (one function, the capture door calls it too):
+           empty, walkable, no door / bomb / trap / object under it, not lava / deep water / a damaging tile, never the
+           placer's own tile, within `range` (Manhattan) with sight, and seen through the fog. */
+        function doorShotLegalTiles(unit, opts = {}) {
+            const out = [];
+            if (!unit || unit.dead) return out;
+            const r = opts.range || 4;
+            for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+                if ((!dx && !dy) || Math.abs(dx) + Math.abs(dy) > r) continue;
+                const x = unit.x + dx, y = unit.y + dy;
+                if (!doorTileFree(x, y)) continue;
+                if (state.bombs && state.bombs.some(b => b.x === x && b.y === y)) continue;
+                if (state.traps && state.traps.some(t => t.x === x && t.y === y)) continue;
+                if (state._deployedObjects && state._deployedObjects.some(o => o.x === x && o.y === y && o.hp > 0)) continue;
+                const T = (typeof getTerrainRule === 'function') ? getTerrainRule(getTerrainAt(x, y)) : null;
+                if (T && (T.isLava || T.deepWater || T.lava || T.damagePerTurn > 0)) continue;
+                if (opts.los !== false && typeof isRangeBlockedByTerrain === 'function' && isRangeBlockedByTerrain(unit.x, unit.y, x, y, unit.z)) continue;
+                if (state.fogOfWar && !state.autoPlayers?.[unit.player] && typeof isInVision === 'function' && !isInVision(unit, x, y)) continue;
+                out.push({ x, y });
+            }
+            return out;
+        }
+        function doorGunLegalTiles(unit, spell) {
+            if (!_gunDoorDefOfSpell(spell)) return [];
+            const R = _gunR();
+            return doorShotLegalTiles(unit, { range: (typeof getEffectiveSpellRange === 'function' ? getEffectiveSpellRange(unit, spell) : 0) || spell.range || R.range || 4, los: R.los !== false });
+        }
+        /* the first click of a lane door (state._spellPick1 with tile: true — per-viewer UI, online.js skip-lists it) */
+        function _gunDoorPick(spell) {
+            const pk = state._spellPick1;
+            return (pk && pk.tile && spell && pk.spellId === spell.id) ? pk : null;
+        }
+        /* the default face: AWAY from the placer (the shot's line), so a quick double-click points the lane the way you shot */
+        function doorGunDefaultFacing(unit, x, y) {
+            return doorGunSnapFacing(x - (unit ? unit.x : x), y - (unit ? unit.y : y - 1));
+        }
+        /* after the tile pick, the tiles a facing click may land on: the picked tile (= the default face) + its 8 lanes */
+        function doorGunFacingTiles(spell, pk) {
+            if (!pk) return [];
+            const out = [{ x: pk.x, y: pk.y }], seen = new Set([pk.x + ',' + pk.y]);
+            for (const [fx, fy] of (typeof DOOR_GUN_FACINGS !== 'undefined' ? DOOR_GUN_FACINGS : [])) {
+                for (const t of standingDoorLaneTiles({ door: spell.door, x: pk.x, y: pk.y, faceX: fx, faceY: fy })) {
+                    const k = t.x + ',' + t.y;
+                    if (!seen.has(k)) { seen.add(k); out.push(t); }
+                }
+            }
+            return out;
+        }
+        /* the CPU's facing (an AI / auto seat only — a human always picks): the face whose lane holds the most hostile bodies
+           (a body blown onto a hazard counts double), the fewest of its own; ties → the default face */
+        function doorGunBestFacing(unit, spell, x, y) {
+            const def0 = doorGunDefaultFacing(unit, x, y);
+            if (!doorGunNeedsFacing(spell)) return def0;
+            let best = def0, bestS = -Infinity;
+            const L = (_gunDoorDefOfSpell(spell).lane | 0) + 1;
+            for (const [fx, fy] of DOOR_GUN_FACINGS) {
+                let s = (fx === def0.faceX && fy === def0.faceY) ? 0.5 : 0;
+                const lane = standingDoorLaneTiles({ door: spell.door, x, y, faceX: fx, faceY: fy });
+                for (const t of lane) {
+                    const u = unitAt(t.x, t.y);
+                    if (!u || u.dead || u._dying) continue;
+                    if (typeof unitPassiveValue === 'function' && unitPassiveValue(u, 'doorImmune')) continue;
+                    const endX = x + fx * L, endY = y + fy * L;
+                    const T = isInside(endX, endY) && typeof getTerrainRule === 'function' ? getTerrainRule(getTerrainAt(endX, endY)) : null;
+                    const hazard = !isInside(endX, endY) || !!(T && (T.isLava || T.deepWater || T.lava || T.damagePerTurn > 0)) || !!captureDoorAt(endX, endY);
+                    s += isEnemyUnit(u, unit) ? (hazard ? 20 : 10) : -8;
+                }
+                if (s > bestS) { bestS = s; best = { faceX: fx, faceY: fy }; }
+            }
+            return best;
+        }
+        /* THE AIM — the ONE read the cast, the painter and online share. (x, y) = the click. Returns
+             { x, y, faceX, faceY, pick }   pick = true: the first click of a lane door (remember it, spend nothing)
+             { error }                      'noDoor' | 'tile'
+           opts.auto: a CPU / auto seat — no second click, the face is doorGunBestFacing (or opts.face). */
+        function doorGunAimResolve(unit, spell, x, y, opts = {}) {
+            if (!unit || !_gunDoorDefOfSpell(spell)) return { error: 'noDoor' };
+            const lane = doorGunNeedsFacing(spell);
+            const pk = (lane && !opts.auto) ? _gunDoorPick(spell) : null;
+            if (pk) {
+                if (!doorGunLegalTiles(unit, spell).some(t => t.x === pk.x && t.y === pk.y)) return { error: 'tile' };
+                const f = (x === pk.x && y === pk.y) ? doorGunDefaultFacing(unit, pk.x, pk.y) : doorGunSnapFacing(x - pk.x, y - pk.y);
+                return { x: pk.x, y: pk.y, faceX: f.faceX, faceY: f.faceY, pick: false };
+            }
+            if (!doorGunLegalTiles(unit, spell).some(t => t.x === x && t.y === y)) return { error: 'tile' };
+            if (lane && !opts.auto) return { x, y, pick: true };
+            const f = opts.face || (lane ? doorGunBestFacing(unit, spell, x, y) : doorGunDefaultFacing(unit, x, y));
+            return { x, y, faceX: f.faceX, faceY: f.faceY, pick: false };
+        }
+        /* the unit a door's act credits (the damage, the kill, the XP) — its owner while it lives */
+        function _gunDoorOwnerUnit(door) {
+            const u = door && door.ownerId ? unitFromId(door.ownerId) : null;
+            return (u && !u.dead) ? u : null;
+        }
+        function _gunDoorStampOk(door, unit) {
+            if (!door.laneStamps || typeof door.laneStamps !== 'object') door.laneStamps = {};
+            const r = state.round || 0;
+            if (door.laneStamps[unit.id] === r) return false;
+            door.laneStamps[unit.id] = r;
+            return true;
+        }
+        function _gunDoorMovable(u) {
+            if (!u || u.dead || u._dying || u._sealed) return false;
+            if (u.status && u.status.captured > 0) return false;   // in the void: nothing reaches it
+            if (typeof unitPassiveValue === 'function' && unitPassiveValue(u, 'doorImmune')) return false;   // a Keyholder walks through wind
+            return true;
+        }
+        /* 🌬 GUST — the wind tunnel. `only` = one unit (the chain's E′); else every body in the lane, the far one first (nobody
+           is a cushion for the one behind). Each slides to the lane's end + 1 along the face. Returns the bodies moved. */
+        function _gunDoorGust(door, only, opts = {}) {
+            const def = _gunDoorDef(door);
+            const fx = Math.sign(door.faceX || 0), fy = Math.sign(door.faceY || 0);
+            if (!def || (!fx && !fy)) return [];
+            const L = def.lane | 0;
+            const lane = standingDoorLaneTiles(door);
+            const bodies = [];
+            lane.forEach((t, i) => {
+                const u = unitAt(t.x, t.y);
+                if (!_gunDoorMovable(u)) return;
+                if (only && u.id !== only.id) return;
+                bodies.push({ u, pos: i + 1 });
+            });
+            if (!opts.fromChain && !_skipVisuals()) window._doorGeom(door.spellId + ':act', door.x, door.y, { faceX: fx, faceY: fy, len: lane.length, delay: opts.delayMs || 0, owner: door.owner });
+            const moved = [];
+            const owner = _gunDoorOwnerUnit(door);
+            bodies.sort((a, b) => b.pos - a.pos);
+            for (const b of bodies) {
+                const u = b.u;
+                if (!_gunDoorMovable(u)) continue;
+                if (!only) _gunDoorStampOk(door, u);   // the act stamps whom it moved (E′ never re-blows them this round)
+                const dist = (typeof getUnitPushDistance === 'function') ? getUnitPushDistance(u, L - b.pos + 1) : (L - b.pos + 1);
+                if (dist <= 0) continue;
+                if (opts.fromChain && !_skipVisuals()) window._doorGeom(door.spellId + ':act', door.x, door.y, { faceX: fx, faceY: fy, len: lane.length, delay: opts.delayMs || 0, owner: door.owner, only: u.x + ',' + u.y });
+                const fromX = u.x, fromY = u.y;
+                const res = resolveForcedSlide(u, fx, fy, dist, {
+                    byUnit: (owner && isEnemyUnit(owner, u)) ? owner : null, label: `${def.name}: `,
+                    delayMs: opts.delayMs || 0, perStepMs: 110,
+                });
+                if (res && (res.moved > 0 || u.x !== fromX || u.y !== fromY)) {
+                    moved.push(u);
+                    if (!_skipVisuals()) showFloatingTextForUnit(u, `${def.icon} BLOWN`, 'debuff', { durationMs: 1000 });
+                    addLog(`${def.icon} The ${def.name} at ${coordLabel(door.x, door.y)} blows ${unitDisplayName(u)} from ${coordLabel(fromX, fromY)} to ${coordLabel(u.x, u.y)}.`);
+                }
+            }
+            return moved;
+        }
+        /* the hostiles an Archers' Door can shoot: within its radius (Chebyshev), in sight of the opening, nearest first */
+        function _gunDoorVolleyTargets(door) {
+            const def = _gunDoorDef(door);
+            if (!def) return [];
+            const R = def.radius | 0;
+            const dz = door.z || 0;
+            return state.units.filter(u => !u.dead && !u._dying && !u._sealed && u.player !== door.owner
+                && !(u.status && u.status.captured > 0)
+                && Math.max(Math.abs(u.x - door.x), Math.abs(u.y - door.y)) <= R
+                && !(typeof isRangeBlockedByTerrain === 'function' && isRangeBlockedByTerrain(door.x, door.y, u.x, u.y, dz))
+                && !doorBlocksSightBetween(door.x, door.y, u.x, u.y))
+                .sort((a, b) => (Math.max(Math.abs(a.x - door.x), Math.abs(a.y - door.y)) - Math.max(Math.abs(b.x - door.x), Math.abs(b.y - door.y)))
+                    || ((a.hp || 0) - (b.hp || 0)));
+        }
+        /* 🏹 ARCHERS — the volley. `only` = the arriving unit (E′); else the nearest target. `opts.deferMs`: the arrows fly
+           first and the hits land when they arrive (the placement and THE DOORS' TURN); the chain lands them at once. */
+        function _gunDoorVolley(door, only, opts = {}) {
+            const def = _gunDoorDef(door);
+            const spell = (typeof SPELL_BY_ID !== 'undefined' && SPELL_BY_ID[door.spellId]) || {};
+            let tgts = _gunDoorVolleyTargets(door);
+            if (only) tgts = tgts.filter(u => u.id === only.id);
+            const target = tgts[0];
+            if (!def || !target) {
+                if (!only && !opts.fromChain && !_skipVisuals()) window._doorGeom(door.spellId + ':act', door.x, door.y, { tx: door.x, ty: door.y, miss: 1, delay: opts.delayMs || 0, owner: door.owner });
+                return null;
+            }
+            if (!only) _gunDoorStampOk(door, target);
+            const n = Math.max(1, spell.arrows || 3), base = spell.arrowDmg || 25;
+            const flyMs = actionMs(260);
+            if (!_skipVisuals()) window._doorGeom(door.spellId + ':act', door.x, door.y, { tx: target.x, ty: target.y, n, delay: opts.delayMs || 0, owner: door.owner });
+            const land = () => {
+                if (target.dead || target._dying) return;
+                const owner = _gunDoorOwnerUnit(door);
+                const hp0 = target.hp;
+                for (let i = 0; i < n && !target.dead && !target._dying; i++) {
+                    const dmg = Math.max(1, base + engineRandInt(9) - 4);
+                    applyDamageToUnit(target, dmg, `${def.icon} ${def.name}: `, {
+                        ignoreArmor: false, damageType: spell.damageType || 'physical', sourceUnit: owner || undefined,
+                        noRangeMult: true, scaleByTargetLevel: true, flashColor: 'hit',
+                    });
+                }
+                if (typeof _balAddSpellEffect === 'function') {
+                    const applied = Math.max(0, hp0 - Math.max(0, target.hp || 0));
+                    _balAddSpellEffect(door.spellId, applied, (target.dead || target._dying || (target.hp || 0) <= 0) ? 1 : 0);
+                }
+                addLog(`${def.icon} The ${def.name} at ${coordLabel(door.x, door.y)} looses ${n} arrows at ${unitDisplayName(target)}.`);
+                if (!_skipVisuals() && !target.dead) triggerStatusWiggle(target);
+            };
+            const wait = (opts.deferMs != null ? opts.deferMs : 0);
+            if (wait > 0 && !_skipVisuals()) {
+                window.setTimeout(() => {
+                    if (state.phase !== 'battle' || state.winner) return;
+                    land(); scheduleBoardRender(); if (typeof checkWin === 'function') checkWin();
+                }, wait + flyMs);
+            } else land();
+            return target;
+        }
+        /* ONE ACT of one door (the placement, THE DOORS' TURN): { fired, focus, holdMs } */
+        function _gunDoorAct(door, opts = {}) {
+            const def = _gunDoorDef(door);
+            if (!def || !door || door.hp <= 0) return { fired: 0, focus: null, holdMs: 0 };
+            door.actedRound = state.round || 0;
+            if (def.act === 'lanePush') {
+                const moved = _gunDoorGust(door, null, opts);
+                const f = moved.length ? { x: moved[0].x, y: moved[0].y } : { x: door.x + (door.faceX || 0) * 2, y: door.y + (door.faceY || 0) * 2 };
+                return { fired: moved.length, focus: f, holdMs: moved.length ? 1000 : 700 };
+            }
+            if (def.act === 'volley') {
+                const t = _gunDoorVolley(door, null, { delayMs: opts.delayMs || 0, deferMs: opts.deferMs != null ? opts.deferMs : (opts.delayMs || 0) });
+                return { fired: t ? 1 : 0, focus: t ? { x: (door.x + t.x) / 2, y: (door.y + t.y) / 2 } : null, holdMs: t ? 1050 : 650 };
+            }
+            return { fired: 0, focus: null, holdMs: 0 };   // Phase 2's acts (laneTerrain, pullIn, beam, laneLight)
+        }
+        /* E′ · THE STANDING DOORS (resolveTileArrival, after E THE ZONES): every standing door whose lane / radius holds the
+           body's tile acts on THIS body now — once per door per unit per round. A slide re-enters the chain at depth + 1. */
+        function _chainStandingDoors(unit, opts = {}) {
+            const list = _doors();
+            if (!list.length || !unit) return 0;
+            if (typeof unitPassiveValue === 'function' && unitPassiveValue(unit, 'doorImmune')) return 0;
+            let fired = 0;
+            for (const door of standingDoorsOf(null)) {
+                if (door._revealAt) continue;   // the comet is still in the air — the placement act runs when it lands
+                const def = _gunDoorDef(door);
+                if (!def) continue;
+                if (def.act === 'volley' && unit.player === door.owner) continue;   // the archers shoot hostiles only
+                if (!standingDoorLaneTiles(door).some(t => t.x === unit.x && t.y === unit.y)) continue;
+                if (def.act === 'volley' && !_gunDoorVolleyTargets(door).some(u => u.id === unit.id)) continue;
+                if (!_gunDoorStampOk(door, unit)) continue;
+                const sx = unit.x, sy = unit.y;
+                if (def.act === 'lanePush') { if (_gunDoorGust(door, unit, { fromChain: true, delayMs: opts.fxDelayMs || 0 }).length) fired++; }
+                else if (def.act === 'volley') { if (_gunDoorVolley(door, unit, { fromChain: true, delayMs: opts.fxDelayMs || 0 })) fired++; }
+                if (unit.dead || unit._dying || unit.x !== sx || unit.y !== sy) break;   // moved on: its new tile ran its own chain
+            }
+            return fired;
+        }
+        /* PLACE — the door gun's shot. Validates nothing the aim did not (doSpell ran doorGunAimResolve); the cap folds the
+           oldest of the PLAYER's standing doors; the act fires when the door has unfolded. Returns the record (with
+           `_actMs`, the beat the caller's completion waits on) or null. */
+        function doorGunPlace(unit, spell, x, y, faceX, faceY, opts = {}) {
+            const def = _gunDoorDefOfSpell(spell);
+            if (!unit || !def || !doorTileFree(x, y)) return null;
+            const R = _gunR();
+            const cap = Math.max(1, R.standingCap || 2);
+            let mine = standingDoorsOf(unit.player);
+            while (mine.length >= cap) { breakDoorPair(mine[0], { quiet: true, reason: 'replaced', fx: true }); mine = standingDoorsOf(unit.player); }
+            const hp = doorMaxHits(unit);
+            const id = `gd_${state.round || 0}_${unit.id}_${randInt(99999)}`;
+            state._doorSeq = (state._doorSeq | 0) + 1;
+            const f = (faceX || faceY) ? { faceX: Math.sign(faceX), faceY: Math.sign(faceY) } : doorGunDefaultFacing(unit, x, y);
+            const door = {
+                id, pairId: id, kind: 'standing', door: spell.door, x, y,
+                z: (typeof getHeightAt === 'function') ? getHeightAt(x, y) : 0,
+                open: true, fixed: true, hp, maxHp: hp, owner: unit.player, ownerId: unit.id,
+                spellId: spell.id, spellName: def.name, placedRound: state.round || 0, _seq: state._doorSeq,
+                faceX: f.faceX, faceY: f.faceY, actedRound: null, laneStamps: {},
+            };
+            _doors().push(door);
+            setUnitFacing(unit, x - unit.x, y - unit.y);
+            const quiet = !!opts.quiet || _skipVisuals();
+            const shotMs = quiet ? 0 : Math.max(120, Math.min(360, 90 + Math.hypot(x - unit.x, y - unit.y) * 45));
+            const unfoldMs = quiet ? 0 : actionMs(300);
+            if (!quiet) {
+                /* the comet flies first; the board door is held back (`_revealAt`, the renderer skips it) until it lands */
+                door._revealAt = Date.now() + shotMs;
+                if (typeof playDoorSfx === 'function') playDoorSfx('doorGunShot');
+                window._doorGeom('raceDoorGun:shot', x, y, { fromX: unit.x, fromY: unit.y });
+                window._doorGeom(spell.id + ':open', x, y, { faceX: f.faceX, faceY: f.faceY, delay: shotMs, owner: unit.player });
+                setTimeout(() => { if (door._revealAt) { delete door._revealAt; _doorTouched(); } }, shotMs + 30);
+                showFloatingTextAtTile(x, y, `${def.icon} ${def.name.toUpperCase()}`, 'buff');
+            }
+            addLog(`${def.icon} ${unitDisplayName(unit)} fires a ${def.name} onto ${coordLabel(x, y)}${def.lane ? ' facing ' + _gunFaceWord(f.faceX, f.faceY) : ''}.`);
+            _doorTouched();
+            /* THE PLACEMENT ACT — the state now, the beat after the unfold (the slides / the arrows wait on `delayMs`) */
+            const actAt = shotMs + unfoldMs;
+            const r = _gunDoorAct(door, { reason: 'placed', delayMs: actAt, deferMs: actAt });
+            door._actMs = actAt + actionMs(r.holdMs || 600);
+            return door;
+        }
+        function _gunFaceWord(fx, fy) {
+            const ns = fy < 0 ? 'north' : fy > 0 ? 'south' : '', ew = fx < 0 ? 'west' : fx > 0 ? 'east' : '';
+            return (ns + ew) || 'nowhere';
+        }
+        /* THE DOORS' TURN (§3.3) — the end of the round, after the turret volleys: every standing door acts, oldest first, each
+           with the turret's two-beat camera (on the door, then down its lane / sight line). The user's rule: the full beat
+           every round, never fast-forwarded. The quiet paths (auto-sim, a skipped visual, the dungeon's upkeep) resolve
+           the acts in place. */
+        function processDoorActs(onDone) {
+            const done = () => { if (typeof onDone === 'function') onDone(); };
+            const doors = standingDoorsOf(null);
+            if (!doors.length) { done(); return; }
+            if (state.devAutoSim || _skipVisuals()) {
+                for (const d of doors) { if (d.hp > 0 && _doors().includes(d)) _gunDoorAct(d, { reason: 'turn' }); if (state.winner) break; }
+                if (typeof checkWin === 'function') checkWin();
+                scheduleBoardRender();
+                done();
+                return;
+            }
+            _eorPhaseLabel('End of Round — The Doors');
+            let idx = 0;
+            const next = () => {
+                if (state.winner) { done(); return; }
+                if (idx >= doors.length) { scheduleBoardRender(); done(); return; }
+                const door = doors[idx++];
+                if (!door || door.hp <= 0 || !_doors().includes(door)) { next(); return; }
+                const def = _gunDoorDef(door) || { icon: '🚪', name: 'Door' };
+                const visible = !state.fogOfWar || (typeof _isTileVisibleToViewer === 'function' && _isTileVisibleToViewer(door.x, door.y));
+                const cam = visible && !state.cameraDisabled && typeof camera !== 'undefined';
+                if (visible) _eorPhaseLabel(`${def.icon} ${def.name} ${def.act === 'volley' ? 'looses a volley' : 'blows'}`);
+                if (cam) eorFocusCamera(door.x, door.y, { duration: 380 });
+                window.setTimeout(() => {
+                    if (state.winner) { done(); return; }
+                    if (door.hp <= 0 || !_doors().includes(door)) { next(); return; }
+                    const r = _gunDoorAct(door, { reason: 'turn', delayMs: 0, deferMs: actionMs(80) });
+                    if (cam && r.focus) eorFocusCamera(r.focus.x, r.focus.y, { duration: 400 });
+                    scheduleBoardRender();
+                    if (typeof renderBattleUpdate === 'function') renderBattleUpdate();
+                    window.setTimeout(() => {
+                        if (typeof checkWin === 'function') checkWin();
+                        if (state.winner) { done(); return; }
+                        next();
+                    }, actionMs(r.holdMs || 700));
+                }, cam ? actionMs(560) : actionMs(260));
+            };
+            next();
+        }
+        if (typeof window !== 'undefined') {
+            window.standingDoorsOf = standingDoorsOf; window.standingDoorAt = standingDoorAt; window.standingDoorLaneTiles = standingDoorLaneTiles;
+            window.doorGunNeedsFacing = doorGunNeedsFacing; window.doorShotLegalTiles = doorShotLegalTiles; window.doorGunLegalTiles = doorGunLegalTiles;
+            window.doorGunDefaultFacing = doorGunDefaultFacing; window.doorGunFacingTiles = doorGunFacingTiles; window.doorGunBestFacing = doorGunBestFacing;
+            window.doorGunAimResolve = doorGunAimResolve; window.doorGunPlace = doorGunPlace; window.processDoorActs = processDoorActs;
+            window._chainStandingDoors = _chainStandingDoors; window._gunDoorPick = _gunDoorPick;
+            /* the CPU's placer (ai.js findSpellTarget 'doorDeploy'): the best legal tile + its worth; null = nothing worth a door.
+               Gust: the best face's lane (doorGunBestFacing's count); Archers: hostiles the volley reaches from the tile, a
+               tile no hostile stands beside preferred. Phase 6 (DOOR_GUN_PLAN §6) makes it smarter. */
+            window.doorGunAiPick = function (unit, spell) {
+                const def = _gunDoorDefOfSpell(spell);
+                if (!unit || !def) return null;
+                if (standingDoorsOf(unit.player).length >= (_gunR().standingCap || 2)) {
+                    /* the cap is full: only worth it if the oldest door has nothing left to do */
+                    const old = standingDoorsOf(unit.player)[0];
+                    if (old && _gunDoorDef(old).act === 'volley' && _gunDoorVolleyTargets(old).length) return null;
+                }
+                let best = null;
+                for (const t of doorGunLegalTiles(unit, spell)) {
+                    let s = 0, face = null;
+                    if (def.act === 'lanePush') {
+                        face = doorGunBestFacing(unit, spell, t.x, t.y);
+                        for (const lt of standingDoorLaneTiles({ door: spell.door, x: t.x, y: t.y, faceX: face.faceX, faceY: face.faceY })) {
+                            const u = unitAt(lt.x, lt.y);
+                            if (u && !u.dead && _gunDoorMovable(u)) s += isEnemyUnit(u, unit) ? 60 : -50;
+                        }
+                    } else if (def.act === 'volley') {
+                        const probe = { door: spell.door, x: t.x, y: t.y, z: (typeof getHeightAt === 'function') ? getHeightAt(t.x, t.y) : 0, owner: unit.player };
+                        const hits = _gunDoorVolleyTargets(probe).length;
+                        if (!hits) continue;
+                        s = 40 + hits * 30;
+                        if (state.units.some(u => !u.dead && u.player !== unit.player && Math.max(Math.abs(u.x - t.x), Math.abs(u.y - t.y)) <= 1)) s -= 25;
+                    }
+                    if (s > 0 && (!best || s > best.score)) best = { x: t.x, y: t.y, score: s, face };
+                }
+                return best;
+            };
         }
 
         function _structureAt(x, y, unit) {
@@ -59634,6 +60094,25 @@
 
             if (spell.kind !== 'teleport') state._teleportingUnit = null;
 
+            /* 🚪 THE STANDING DOORS (the door wheel, DOOR_GUN_PLAN §3.2): the AIM is the whole gate — a lane door takes TWO
+               clicks (the tile, then which way it faces: any tile of its 8 lanes, or the tile again for the default face,
+               away from you), a radius door one. The first click is remembered (state._spellPick1, tile: true) and spends
+               nothing; from here (x, y) is the door's tile. A CPU / auto seat places in one call with its own face. */
+            let _gunDoorAim = null;
+            if (spell.kind === 'doorDeploy') {
+                const _gdAuto = state.controllers?.[unit.player] === CTRL.AI || !!state.autoPlayers?.[unit.player];
+                _gunDoorAim = doorGunAimResolve(unit, spell, x, y, { auto: _gdAuto });
+                if (_gunDoorAim.error) {
+                    if (state.controllers?.[unit.player] !== CTRL.AI) {
+                        addLog(`${spell.name}: pick an empty tile within ${getEffectiveSpellRange(unit, spell) || spell.range || 4} you can see.`);
+                        playErrorSfx();
+                    }
+                    if (_gunDoorPick(spell)) clearSpellPick();
+                    return 0;
+                }
+                x = _gunDoorAim.x; y = _gunDoorAim.y; z = undefined;
+            }
+
             // ── Blood Frenzy & friends: auto-lock onto the visible enemy with the least HP ──
             if (spell.autoTargetLowestHp) {
                 const _visEnemies = state.units.filter(u =>
@@ -59785,7 +60264,7 @@
                     && !(spell.kind !== 'delayed' && !spell.ignoresLineOfSight && _rawDxy >= 1 && isRangeBlockedByTerrain(unit.x, unit.y, x, y, unit.z ?? 0));
                 if (!_direct) _doorOrg = doorCastOriginFor(unit, x, y, _effR, { minRange, noLos: spell.kind === 'delayed' || !!spell.ignoresLineOfSight });
             }
-            if (!_doorOrg && !isTeleportPhase2 && !isLineDirection && !isSkyThrowPhase2) {
+            if (!_doorOrg && !isTeleportPhase2 && !isLineDirection && !isSkyThrowPhase2 && !_gunDoorAim) {   // 🚪 a standing door's aim already judged reach, sight and fog
                 const effSpellRange = getEffectiveSpellRange(unit, spell);
                 const gateD = _isSkyGrabCast ? _rawDxy : dEff;
                 if (gateD < minRange || gateD > effSpellRange) {
@@ -59814,7 +60293,7 @@
 
             const _isSpellSkyTelescopeTarget = unitHasTelescope(unit) && getSectionForUnit(unit) === 'earth' && true &&
                 state.units.some(u => !u.dead && u.player !== unit.player && getSectionForUnit(u) === 'above' && u.x === x && u.y === y);
-            if (state.fogOfWar && !state.autoPlayers?.[unit.player] && !isTeleportPhase2 && !isLineDirection && !isSkyThrowPhase2 && d > 0) {
+            if (state.fogOfWar && !state.autoPlayers?.[unit.player] && !isTeleportPhase2 && !isLineDirection && !isSkyThrowPhase2 && !_gunDoorAim && d > 0) {
                 if (!isInVision(unit, x, y) && !_isSpellSkyTelescopeTarget && !_kindMeta(spell).fogExempt) {
                     addLog('Target is hidden in the fog.');
                     state._teleportingUnit = null;
@@ -59963,6 +60442,22 @@
                     playErrorSfx();
                     return 0;
                 }
+            }
+
+            /* 🚪 A lane door's FIRST click (the tile): remembered, nothing spent — the painter now draws its 8 lanes and the
+               next click picks the face (ESC / right-click drops the pick). */
+            if (_gunDoorAim && _gunDoorAim.pick) {
+                state._spellPick1 = { tile: true, id: null, spellId: spell.id, x, y };
+                if (!_silentReject) {
+                    playSfx('uiConfirm');
+                    showFloatingTextAtTile(x, y, '🚪 ①', 'buff', { durationMs: 900 });
+                    addLog(`${spell.name}: the door goes on ${coordLabel(x, y)} — now pick which way it faces (click a lane, or the tile again to face away from you).`, unit.player);
+                }
+                if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
+                if (typeof markDirty === 'function') markDirty('hud', 'board', 'selectedUnit');
+                if (typeof renderIfDirty === 'function') renderIfDirty();
+                scheduleBoardRender();
+                return 0;
             }
 
             /* ── Two-click casts (plan §5.3 link / transfer, wave B): the FIRST
@@ -64287,6 +64782,22 @@
                     scheduleBoardRender();
                 }, actionMs(200) + flyMs + actionMs(60));
                 completionDelay = actionMs(200) + flyMs + actionMs(500);
+            }
+
+            else if (spell.kind === 'doorDeploy') {
+                /* 🚪 THE STANDING DOOR (the door wheel, DOOR_GUN_PLAN §3.2): the shot, the door, its first act */
+                _spellFocusCamera(unit, x, y);
+                unit.mp -= effectiveSpellCost;
+                const _gdoor = doorGunPlace(unit, spell, x, y, _gunDoorAim ? _gunDoorAim.faceX : 0, _gunDoorAim ? _gunDoorAim.faceY : 0);
+                if (_gunDoorPick(spell)) state._spellPick1 = null;
+                if (!_gdoor) {
+                    unit.mp += effectiveSpellCost;
+                    addLog(`${spell.name}: the tile is no longer free.`);
+                    playErrorSfx();
+                    return 0;
+                }
+                completionDelay = Math.max(actionMs(700), _gdoor._actMs || 0);
+                scheduleBoardRender();
             }
 
             else if (spell.kind === 'deployTurret') {

@@ -9057,6 +9057,27 @@ for (const [race, abilities] of Object.entries(RACE_ABILITIES)) {
     }
 }
 
+/* ══ THE DOOR WHEEL's destination rows (DOOR_GUN_PLAN.md §2.2 / §3.1, Phase 1, 2026-09-25) ═════════════════════
+   The STANDING doors. They are the Door Agent's WHEEL pool (doorGunWheelPool — race 'door agent' only) and live
+   OUTSIDE RACE_ABILITIES on purpose: flRacePool reads the race rows, so no Freelancer can ever borrow a door (the
+   user: "only the DOOR agent can fire doors"). kind 'doorDeploy' (battle.js doorGunPlace): shoot a door onto an empty
+   tile within 4 you can see, then pick which way it FACES (a lane door — two clicks: the tile, then a direction; the
+   first hover shows the lane pointing away from you); a radius door (Archers) is one click. The door STANDS: hits
+   (3, a Keyholder's 4), a plate, and an ACT that fires once when it lands and again at THE DOORS' TURN every round
+   (battle.js processDoorActs); a body that ARRIVES in its lane is acted on at once (the chain's step E′). Two
+   standing doors per PLAYER; a third folds the oldest. `door` = the DOOR_GUN_DOORS key. Phase 2 adds the rest. */
+const DOOR_GUN_SPELLS = [
+    { id: 'gunGustDoor', spellType: 'anomaly', element: 'wind', name: 'Gust Door',
+      type: 'utility', cost: 50, range: 4, apCost: 1, cooldownRounds: 0,
+      kind: 'doorDeploy', door: 'gust', doorGun: true,
+      desc: 'A door to the top of Mt Shasta. Shoot it onto an empty tile within 4 and turn it to face a lane: the mountain wind blows 4 tiles out of it, and EVERY body in that lane (yours too) is blown to the end of it and one tile past — walls, bodies and hazards as ever. It blows when it lands, again at the end of every round, and at once on anyone who steps or is knocked into the lane. 3 hits to break; two standing doors per player.' },
+    { id: 'gunArchersDoor', spellType: 'human', element: 'physical', name: "Archers' Door",
+      type: 'utility', cost: 50, range: 4, apCost: 1, cooldownRounds: 0,
+      kind: 'doorDeploy', door: 'archers', doorGun: true, damageType: 'physical', arrows: 3, arrowDmg: 25,
+      desc: "A door to Camelot's walls. Shoot it onto an empty tile within 4: Robin Hood's archers loose a volley of 3 arrows (WEAK physical each) at the nearest enemy within 4 they can see — when it lands, again at the end of every round, and at once on an enemy who steps or is knocked into range. It moves nobody: it punishes the body you pinned. 3 hits to break; two standing doors per player." },
+];
+for (const sp of DOOR_GUN_SPELLS) { sp._doorWheel = true; SPELL_BY_ID[sp.id] = sp; }
+
 /* ── Baked movepool shares (2026-07-26, from the Spell Library editor) ────
    These races borrow spells DEFINED elsewhere (another race's array or the
    job spell library) by id, instead of duplicating the literals. Runs AFTER
@@ -48980,7 +49001,7 @@ if (typeof window !== 'undefined') {
     window.HQ_LEVEL_RULES = HQ_LEVEL_RULES; window.HQ_AREA_LEVELS = HQ_AREA_LEVELS; window.XP_CURVE = XP_CURVE; window.xpThreshold = xpThreshold; window.xpLevelFor = xpLevelFor; window.xpToNext = xpToNext;
     window.hqPartyLevel = hqPartyLevel; window.hqPartyXp = hqPartyXp; window.hqPartyLevelGains = hqPartyLevelGains; window.hqPartyGrantXp = hqPartyGrantXp; window.hqPartyXpShare = hqPartyXpShare; window.hqEncounterLevels = hqEncounterLevels; window.hqEncounterGroup = hqEncounterGroup; window.hqSwarmRace = hqSwarmRace; window.hqRoomNatives = hqRoomNatives;
     window.HQ_DISPENSARY = HQ_DISPENSARY; window.hqBagRecord = hqBagRecord; window.hqBagCount = hqBagCount; window.hqBagAdd = hqBagAdd; window.hqBagTake = hqBagTake; window.hqBagList = hqBagList; window.hqBagTotal = hqBagTotal; window.HQ_BAG_TABS = HQ_BAG_TABS; window.hqBagCategoryOf = hqBagCategoryOf; window.hqBagTab = hqBagTab; window.hqBagTabs = hqBagTabs; window.HQ_DROP_RULES = HQ_DROP_RULES; window.hqDropBaneFor = hqDropBaneFor; window.hqEncounterDrops = hqEncounterDrops; window.hqBagSet = hqBagSet; window.hqBagForBattle = hqBagForBattle; window.hqBagCap = hqBagCap; window.hqShopStock = hqShopStock; window.hqCaptureDoorIssue = hqCaptureDoorIssue; window.hqShopQuote = hqShopQuote; window.hqShopBuyApply = hqShopBuyApply; window.hqShopSell = hqShopSell; window.hqPartyStock = hqPartyStock; window.hqPartyBagItems = hqPartyBagItems; window.hqPartyAutoHeal = hqPartyAutoHeal; window.hqPartyFieldSpells = hqPartyFieldSpells; window.hqPartyFieldTargets = hqPartyFieldTargets; window.hqPartyHealAmount = hqPartyHealAmount; window.hqPartyCast = hqPartyCast; window.hqPartyUseItem = hqPartyUseItem; window.hqPartyFieldItems = hqPartyFieldItems; window.hqPartySpec = hqPartySpec; window.hqPartyGenders = hqPartyGenders; window.hqPartyDefaultJob = hqPartyDefaultJob;
-    window.DOOR_GUN_RULES = DOOR_GUN_RULES; window.DOOR_GUN_DOORS = DOOR_GUN_DOORS; window.DOOR_GUN_KEYS = DOOR_GUN_KEYS; window.DOOR_GUN_FACINGS = DOOR_GUN_FACINGS; window.SPELL_ID_RENAMED = SPELL_ID_RENAMED;   // THE DOOR WHEEL (DOOR_GUN_PLAN.md Phase 0)
+    window.DOOR_GUN_RULES = DOOR_GUN_RULES; window.DOOR_GUN_DOORS = DOOR_GUN_DOORS; window.DOOR_GUN_KEYS = DOOR_GUN_KEYS; window.DOOR_GUN_FACINGS = DOOR_GUN_FACINGS; window.SPELL_ID_RENAMED = SPELL_ID_RENAMED; window.DOOR_GUN_SPELLS = DOOR_GUN_SPELLS;   // THE DOOR WHEEL (DOOR_GUN_PLAN.md Phase 0)
     window.doorGunUnlocked = doorGunUnlocked; window.doorGunWheel = doorGunWheel; window.doorGunLaneTiles = doorGunLaneTiles; window.doorGunLedger = doorGunLedger; window.doorGunLedgerUnion = doorGunLedgerUnion; window.doorGunKeyOfSpell = doorGunKeyOfSpell; window.doorGunSpellTier = doorGunSpellTier; window.doorGunWheelPool = doorGunWheelPool; window.doorGunSnapFacing = doorGunSnapFacing; window.swingDoorPushDir = swingDoorPushDir;
     window.CAPTURE_RULES = CAPTURE_RULES; window.captureDoorItemKeys = captureDoorItemKeys; window.captureDoorTier = captureDoorTier; window.captureSealSteps = captureSealSteps; window.captureSealFor = captureSealFor; window.captureDoorHits = captureDoorHits; window.captureXp = captureXp; window.itemStoryOnly = itemStoryOnly; window.hqCapturedRecord = hqCapturedRecord; window.hqUnitCaptured = hqUnitCaptured; window.hqCapturedMark = hqCapturedMark; window.hqCaptureOwned = hqCaptureOwned; window.hqCaptureEnlist = hqCaptureEnlist; window.hqBountyUnion = hqBountyUnion; window.hqCaptureBountyRecord = hqCaptureBountyRecord; window.hqCaptureBountyMark = hqCaptureBountyMark; window.hqCaptureBountySyncPay = hqCaptureBountySyncPay; window.hqCapturedUnlockUnion = hqCapturedUnlockUnion;   // THE ONE-WAY DOOR (CAPTURE_PLAN.md Phase 0)
     /* THE FIELD stage B — the rasteriser on the cave (Phase 9 Delivery 8, 2026-09-16) */

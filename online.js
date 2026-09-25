@@ -554,6 +554,15 @@
                     var _tcClicked = (typeof unitAt === 'function') ? (unitAt(x, y, z) || unitAt(x, y)) : null;
                     if (!_tcPick || (_tcClicked && _tcClicked.id === _tcPick.id)) return _origDoSpell(unit, x, y, z);
                 }
+                /* 🚪 THE STANDING DOORS (the door wheel, DOOR_GUN_PLAN §3.2): a lane door's TILE pick is local UI — the
+                   engine's pick branch runs here (it only files state._spellPick1, nothing is spent); the FACING click
+                   travels with the tile as pickX / pickY and the host seats it as its own first pick. A radius door
+                   (Archers) is one click and travels as it is. */
+                if (_tcSpell && _tcSpell.kind === 'doorDeploy' && typeof doorGunNeedsFacing === 'function' && doorGunNeedsFacing(_tcSpell)) {
+                    var _gdPk = (typeof _gunDoorPick === 'function') ? _gunDoorPick(_tcSpell) : null;
+                    if (!_gdPk) return _origDoSpell(unit, x, y, z);
+                    _tcDoorPick = { x: _gdPk.x, y: _gdPk.y };
+                }
                 /* 🚪 Knock Knock (DOOR_RACE_DESIGN, 2026-09-14): the door kind's
                    TILE pick is local UI like a two-click's first pick — a click
                    that is not a toggle (no door there) and has no pick yet runs

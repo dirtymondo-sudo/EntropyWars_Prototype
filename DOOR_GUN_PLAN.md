@@ -501,3 +501,28 @@ Line numbers are the 2026-09-25 clone's (token `20260925-capture-08-cors`); grep
   EMPTY until Phase 1 adds the Gust / Archers rows (a door row only joins the rack with its engine). No
   sprites.js / hud.js change was needed (`doorGun` already routes to the quick-draw clip; the target prompt
   lives in battle.js). Notes: docs/notes/champions-combat.md "THE DOOR AGENT rev 4". Test: door-gun.test.js.
+- 2026-09-25 — **Phase 1 shipped** (`door-gun/ENTROPY_WARS_DOOR_GUN_1.zip`, token `20260925-door-gun-02-cors`):
+  THE STANDING DOOR. data.js adds the two wheel rows `gunGustDoor` / `gunArchersDoor` (`kind: 'doorDeploy'`,
+  `door: 'gust'|'archers'`, `doorGun`, 1 AP, range 4; Archers 3 × 25 physical), so the wheel pool now lists them
+  for the Door Agent only (a Freelancer's borrow lists never carry them). battle.js "THE STANDING DOORS" (before
+  `_structureAt`): the record (`kind: 'standing'`, `pairId = id`, `fixed`, open, faceX/faceY, `laneStamps`,
+  ids only), `doorGunPlace` (the cap: 2 per PLAYER, the oldest folds via `breakDoorPair` reason `replaced`),
+  `doorGunAimResolve` (the ONE aim: a lane door takes two clicks, the tile then the face, stored in
+  `state._spellPick1 {tile: true}`; a radius door one click; only a CPU / auto seat auto-faces, via
+  `doorGunBestFacing`), `doorShotLegalTiles` (the capture door's tile rules, generalised; `captureDoorLegalTiles`
+  now calls it), the acts `lanePush` (every body in the lane, EITHER team, the far one first, to the lane's
+  end + 1, through `resolveForcedSlide`, so the landing runs its own chain) and `volley` (the nearest hostile in
+  the radius it can see; the hits land when the arrows arrive), **E′** in `resolveTileArrival` (after E zones,
+  before F vortex; once per door per unit per round) and **THE DOORS' TURN** `processDoorActs` (the end of the
+  round, AFTER the turret volleys, oldest door first, two camera beats each, never fast-forwarded; the quiet
+  paths and the dungeon upkeep resolve in place). A Keyholder (`doorImmune`) is never moved by a lane; arrows
+  still hit it. Enemies break a door through the existing `damageDoorAt`, and hud.js adds the tile card and an
+  `attack:door` row. The facing painter is in ui.js `updateAoePreview`. online.js: the guest sends the first
+  click with the second (`pickX`/`pickY`), and the host seats it. The record rides the snapshot and every beat
+  goes through `_doorGeom` (relayed). three-renderer.js: the standing dress (`_standingDoorDress`, lamps, pane,
+  plate), the lane decal (`_buildStandingDoorLane3D`), held back while the comet flies (`_revealAt`).
+  **Deviation:** the recipes are keyed by the SPELL id, `gunGustDoor:{open,act,hit,break,fold}` /
+  `gunArchersDoor:*`, not `raceGunDoor:<key>:*`, so the presentation census credits each row a signature.
+  **Also added early:** ai.js gets a basic CPU placer (`doorGunAiPick`: the best gust lane, a volley that
+  reaches), so a bot Door Agent is not dead weight; Phase 6 still owns the real AI. Notes:
+  docs/notes/champions-combat.md "THE DOOR AGENT rev 5". Test: door-gun-board.test.js.

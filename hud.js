@@ -7397,6 +7397,28 @@ function _tileQuickObjectInfo(actingUnit, tx, ty) {
     };
   }
 
+  // 🚪 A STANDING DOOR (the door wheel, DOOR_GUN_PLAN §4): its name, hits, what it does in words, and when it acts next.
+  // `soft`: the door stands open — its tile is still ground you can walk onto (the movement rows stay up).
+  const sdoor = (s.doors || []).find(d => d && d.kind === 'standing' && d.x === tx && d.y === ty && d.hp > 0);
+  if (sdoor) {
+    const gd = (typeof DOOR_GUN_DOORS !== 'undefined' && DOOR_GUN_DOORS[sdoor.door]) || { name: 'Door', icon: '🚪' };
+    const enemy = actingUnit ? sdoor.owner !== actingUnit.player : false;
+    const sp = (typeof SPELL_BY_ID !== 'undefined' && sdoor.spellId) ? SPELL_BY_ID[sdoor.spellId] : null;
+    const dir = (fx, fy) => ((fy < 0 ? 'north' : fy > 0 ? 'south' : '') + (fx < 0 ? 'west' : fx > 0 ? 'east' : '')) || 'ahead';
+    let what;
+    if (gd.act === 'lanePush') what = 'The wind blows ' + _plural(gd.lane | 0, 'tile') + ' ' + dir(sdoor.faceX, sdoor.faceY) + ' out of it: every body in that lane — either side — is blown to the end of it and one tile past.';
+    else if (gd.act === 'volley') what = 'Archers loose ' + ((sp && sp.arrows) || 3) + ' arrows at the nearest enemy within ' + _plural(gd.radius | 0, 'tile') + ' they can see.';
+    else what = (sp && sp.desc) || 'A door that stands and acts every round.';
+    const desc = (enemy ? 'An enemy ' : 'Your ') + gd.name + '. ' + what
+      + ' It acts at the end of every round, and at once on anyone who steps or is knocked into its reach. '
+      + (enemy ? 'Hit it ' + _plural(Math.max(0, sdoor.hp | 0), 'time') + ' to break it.' : _plural(Math.max(0, sdoor.hp | 0), 'hit') + ' left.');
+    return {
+      kind: 'door', name: gd.name, icon: gd.icon || '🚪', enemy, soft: true,
+      hp: Math.max(0, sdoor.hp | 0), maxHp: sdoor.maxHp || sdoor.hp,
+      hpLabel: _mkHpLabel(sdoor.hp, sdoor.maxHp, true), desc,
+    };
+  }
+
   // 📦 Deployed objects (kegs / mines / decoys / aura pylons…). ENEMY decoys
   // are excluded on purpose: they render as units, and an object card naming
   // them "Decoy" would give the trick away for free.
@@ -7505,7 +7527,7 @@ function _hrlgTileBlades(actingUnit, st) {
   const objCard = objInfo ? _objCardSpell(objInfo, tx, ty) : null;
   // which attack row is ABOUT the featured object (carries its card + HP)
   const _objAtkId = objInfo
-    ? ({ tower: 'attack:tower', turret: 'attack:turret', deploy: 'attack:deploy', seed: 'attack:seed', tree: 'attack:tree' })[objInfo.kind]
+    ? ({ tower: 'attack:tower', turret: 'attack:turret', deploy: 'attack:deploy', seed: 'attack:seed', tree: 'attack:tree', door: 'attack:door' })[objInfo.kind]
     : null;
 
   const _availFirst = (a, b) => (a.available ? 0 : 1) - (b.available ? 0 : 1);
@@ -8079,6 +8101,15 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
       const seedName = seed.type === 'heal' ? 'Healing Seed' : seed.type === 'poison' ? 'Poison Seed' : 'Leech Seed';
       const canAtk = inRange && !losBlocked && _fogSees;
       actions.push(_objAtkRow('attack:seed', 'Attack ' + seedName, canAtk));
+    }
+
+    // 🚪 An enemy STANDING DOOR (the door wheel): one hit per attack breaks it down — offered only when nobody stands in
+    // the doorway (the swing hits the body first, the engine's own rule)
+    const sdoorAtk = (state.doors || []).find(d => d && d.kind === 'standing' && d.x === tx && d.y === ty && d.hp > 0 && d.owner !== actingUnit.player);
+    if (sdoorAtk && !(typeof G.unitAt === 'function' && G.unitAt(tx, ty))) {
+      const canAtk = inRange && !losBlocked && _fogSees;
+      const _gdn = (typeof DOOR_GUN_DOORS !== 'undefined' && DOOR_GUN_DOORS[sdoorAtk.door]) ? DOOR_GUN_DOORS[sdoorAtk.door].name : 'Door';
+      actions.push(_objAtkRow('attack:door', 'Attack ' + _gdn, canAtk, '🚪'));
     }
 
     // 🪓 Chop a tree: any unit can fell a tree with a basic attack (banks

@@ -11359,6 +11359,43 @@
                 return;
             }
 
+            // ── 🚪 THE STANDING DOORS (the door wheel, DOOR_GUN_PLAN §3.2): hovering a legal tile paints the door (gold,
+            // the cursor) and what it will act on in the door's colour — a lane door's lane pointing AWAY from you (the
+            // default face) with the landing tile past its end in amber; a radius door's reach with every hostile in it
+            // in red. After a lane door's tile pick the hover turns the lane: the face follows the cursor round the
+            // picked tile (the tile itself = the default face). Viewer-local (a guest paints its own).
+            if (spell.kind === 'doorDeploy' && typeof window.doorGunLegalTiles === 'function' && typeof DOOR_GUN_DOORS !== 'undefined') {
+                const gd = DOOR_GUN_DOORS[spell.door] || {};
+                const needsFace = !!(gd.lane || gd.beam);
+                const pk = needsFace && typeof window._gunDoorPick === 'function' ? window._gunDoorPick(spell) : null;
+                let door = null;
+                if (pk) {
+                    const f = (x === pk.x && y === pk.y) ? window.doorGunDefaultFacing(unit, pk.x, pk.y) : window.doorGunSnapFacing(x - pk.x, y - pk.y);
+                    door = { door: spell.door, x: pk.x, y: pk.y, faceX: f.faceX, faceY: f.faceY };
+                } else if (window.doorGunLegalTiles(unit, spell).some(t => t.x === x && t.y === y)) {
+                    const f = window.doorGunDefaultFacing(unit, x, y);
+                    door = { door: spell.door, x, y, faceX: f.faceX, faceY: f.faceY };
+                }
+                if (door && typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive()) {
+                    const col = gd.color || 0xe8c07a;
+                    const tiles = [{ x: door.x, y: door.y, color: 0xe8c07a, opacity: 0.55, cursor: true }];
+                    const lane = window.standingDoorLaneTiles(door);
+                    lane.forEach(t => {
+                        const u = unitAt(t.x, t.y);
+                        const hostile = u && !u.dead && u.player !== unit.player;
+                        tiles.push({ x: t.x, y: t.y, color: hostile ? 0xff3333 : col, opacity: hostile ? 0.5 : (gd.radius ? 0.16 : 0.34) });
+                    });
+                    if (gd.lane) {
+                        const ex = door.x + door.faceX * ((gd.lane | 0) + 1), ey = door.y + door.faceY * ((gd.lane | 0) + 1);
+                        if (ex >= 0 && ey >= 0 && ex < bw() && ey < bh()) tiles.push({ x: ex, y: ey, color: 0xffa040, opacity: 0.42 });
+                    }
+                    ThreeRenderer.setOverlay('aoe', tiles, col, 0.3);
+                    _aoePreview3dActive = true;
+                }
+                updateIntentPreview(x, y);
+                return;
+            }
+
             // ── Terrain-shaping spells: voxel ghost preview ─────────────────
             // (2026-07-07 terraforming pass) Instead of the loud generic red
             // AoE tiles, terrain spells show translucent ghost BLOCKS at the

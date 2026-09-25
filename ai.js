@@ -3114,6 +3114,10 @@
         }
 
         // ── placement / terraforming family ──
+        /* 🚪 THE STANDING DOORS (the door wheel, DOOR_GUN_PLAN Phase 1): the engine's placer priced the tile
+           (battle.js doorGunAiPick — a gust lane full of enemies, a volley that reaches them); Phase 6 grows it */
+        if (kind === 'doorDeploy') return (target && target._gunDoorScore) ? target._gunDoorScore : 0;
+
         if (kind === 'deployTurret') {
             if (!target) return 0;
             const tRange = spell.turretRange || 2;
@@ -4876,6 +4880,12 @@
                 }
             }
             return bestTile;
+        }
+
+        /* 🚪 THE STANDING DOORS: the best legal tile (the facing is the engine's own for a CPU seat) */
+        if (kind === 'doorDeploy') {
+            const pick = (typeof window !== 'undefined' && typeof window.doorGunAiPick === 'function') ? window.doorGunAiPick(unit, spell) : null;
+            return pick ? { x: pick.x, y: pick.y, _gunDoorScore: pick.score } : null;
         }
 
         /* ═══ THE DOOR AGENT (DOOR_RACE_DESIGN.md §7, 2026-09-14) ═══════════ */

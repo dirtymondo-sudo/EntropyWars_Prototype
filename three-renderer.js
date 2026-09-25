@@ -7271,6 +7271,8 @@ const ThreeRenderer = (function () {
                 h = _hashVal(h, dd.owner); h = _hashInt(h, dd.open ? 1 : 0); h = _hashInt(h, dd.hp | 0); h = _hashInt(h, dd.fixed ? 1 : 0);
                 /* 🚪 THE ONE-WAY DOOR (Phase 2): the void, the hold pips and the shot's arrival redraw a capture door */
                 if (dd.kind === 'capture') { h = _hashInt(h, dd.held ? 1 + (dd.held.seal | 0) : 0); h = _hashInt(h, (dd._revealAt && Date.now() < dd._revealAt) ? 1 : 0); }
+                /* 🚪 THE STANDING DOOR (the door wheel, Phase 1): its face (the lane turns) and the comet's arrival */
+                if (dd.kind === 'standing') { h = _hashInt(h, 7 + (dd.faceX | 0) * 3 + (dd.faceY | 0)); h = _hashVal(h, dd.door); h = _hashInt(h, (dd._revealAt && Date.now() < dd._revealAt) ? 1 : 0); }
             }
         }
         if (state.wards) {
@@ -8144,6 +8146,103 @@ const ThreeRenderer = (function () {
             g.add(css2d);
         } catch (e) {}
     }
+    /* 🚪 THE STANDING DOOR's dress (the door wheel, DOOR_GUN_PLAN §4, Phase 1, 2026-09-25): the capture door's kit in the
+       DOOR's colour (DOOR_GUN_DOORS[key].color) — jamb lamps, a floor glow, the plate — and a per-door APERTURE showing
+       where it opens to: GUST a pale sky pane with cloud puffs drifting through it (Mt Shasta's summit), ARCHERS a warm
+       torch-lit pane with two arrows nocked in the lamps (Camelot's walls). No standing PointLight (a new light
+       recompiles every lit shader) — the real lights ride the recipes' pooled flash lights. */
+    function _standingDoorDress(g, d, k) {
+        var ts = k.ts, ow = k.ow, oh = k.oh, jw = k.jw, lh = k.lh, pd = k.pd;
+        var gd = (typeof DOOR_GUN_DOORS !== 'undefined' && DOOR_GUN_DOORS[d.door]) || { color: 0xe8c07a, name: 'Door', icon: '🚪' };
+        var col = gd.color || 0xe8c07a;
+        var teamCol = d.owner === 1 ? 0x4488ff : 0xff4444;
+        var lampMat = _deployGlowMat(col, 0.95);
+        for (var side = -1; side <= 1; side += 2) {
+            var lamp = new THREE.Mesh(new THREE.BoxGeometry(jw * 0.7, ts * 0.07, pd * 1.25), lampMat);
+            lamp.position.set(side * (ow / 2 + jw / 2), oh * 0.55, 0); g.add(lamp);
+            var tlamp = new THREE.Mesh(new THREE.BoxGeometry(jw * 0.5, ts * 0.05, pd * 1.1), _deployGlowMat(teamCol, 0.8));
+            tlamp.position.set(side * (ow / 2 + jw / 2), oh * 0.82, 0); g.add(tlamp);
+        }
+        var paneCol = d.door === 'gust' ? 0xcfe8ff : d.door === 'archers' ? 0xffc27a : col;
+        var pane = new THREE.Mesh(new THREE.PlaneGeometry(ow, oh), _deployGlowMat(paneCol, 0.22));
+        pane.position.set(0, oh / 2, 0.004 * ts); g.add(pane);
+        if (d.door === 'gust') {
+            /* the summit's clouds in the opening (soft discs, both faces) */
+            var cMat = _deployGlowMat(0xffffff, 0.3);
+            [[-0.22, 0.62, 0.2], [0.18, 0.4, 0.26], [0.02, 0.8, 0.16], [-0.1, 0.25, 0.14]].forEach(function (c) {
+                var puff = new THREE.Mesh(new THREE.CircleGeometry(ow * c[2], 14), cMat);
+                puff.position.set(ow * c[0], oh * c[1], 0.01 * ts); g.add(puff);
+            });
+            /* the wind's mouth: a pale fan on the floor in front of the face */
+            var fan = new THREE.Mesh(new THREE.PlaneGeometry(ow * 1.3, ts * 0.9), _deployGlowMat(0xcfe8ff, 0.14));
+            fan.rotation.x = -Math.PI / 2; fan.position.set(0, ts * 0.014, ts * 0.5); g.add(fan);
+        } else if (d.door === 'archers') {
+            /* two arrows nocked in the lamps, pointing out of the opening */
+            var shaftMat = new THREE.MeshLambertMaterial({ color: 0x8a6a3c });
+            var headMat = new THREE.MeshBasicMaterial({ color: 0xd0d6e0 });
+            for (var ai = -1; ai <= 1; ai += 2) {
+                var ar = new THREE.Group();
+                var sh = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.01, ts * 0.01, ts * 0.42, 5), shaftMat);
+                sh.rotation.x = Math.PI / 2; ar.add(sh);
+                var hd = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.025, ts * 0.07, 5), headMat);
+                hd.rotation.x = Math.PI / 2; hd.position.z = ts * 0.24; ar.add(hd);
+                ar.position.set(ai * (ow / 2 + jw / 2), oh * 0.55, ts * 0.1); g.add(ar);
+            }
+        }
+        var floor = new THREE.Mesh(new THREE.PlaneGeometry(ow * 1.4, ts * 0.9), _deployGlowMat(col, 0.16));
+        floor.rotation.x = -Math.PI / 2; floor.position.set(0, ts * 0.012, 0); g.add(floor);
+        /* THE PLATE (the tower plate's markup): the door's name and its hits */
+        try {
+            if (typeof document === 'undefined' || !THREE.CSS2DObject) return;
+            _ensurePlateStyles();
+            var hp = Math.max(0, d.hp | 0), maxHp = Math.max(1, d.maxHp | 0 || hp || 1);
+            var allyCls = _isAllyPlayer(d.owner) ? 'tp-hp-ally' : 'tp-hp-enemy';
+            var outer = document.createElement('div');
+            outer.className = 'tp-plate-outer';
+            var wrap = document.createElement('div');
+            wrap.className = 'tp-wrap ' + (d.owner === 1 ? 'tp-p1' : 'tp-p2') + ' tp-tower-plate tp-standing-door';
+            wrap.innerHTML =
+                '<div class="tp-name"><span class="tp-lvl">' + String(gd.icon || '🚪').replace(/[<>&]/g, '') + '</span><span class="tp-nm">' + String(gd.name || d.spellName || 'Door').replace(/[<>&]/g, '') + '</span></div>' +
+                '<div class="tp-body"><div class="tp-bars"><div class="tp-bar ' + allyCls + '">' +
+                    '<div class="tp-hp-fill" style="width:' + Math.round(100 * hp / maxHp) + '%"></div>' +
+                    '<span class="tp-bar-num">🚪 ' + hp + '/' + maxHp + '</span>' +
+                '</div></div></div>';
+            outer.appendChild(wrap);
+            var css2d = new THREE.CSS2DObject(outer);
+            css2d.position.set(0, oh + lh + ts * 0.32, 0);
+            g.add(css2d);
+        } catch (e) {}
+    }
+    /* the lane decals: one flat tile-sized plane per tile the door acts on, each at its own tile's height (a lane crosses
+       hills), in the door's colour — 0.2 for the owner's side, 0.1 for the other; a radius door (Archers) marks only the
+       rim of its reach, not 80 tiles */
+    function _buildStandingDoorLane3D(d) {
+        var out = [];
+        try {
+            if (typeof doorGunLaneTiles !== 'function') return out;
+            var gd = (typeof DOOR_GUN_DOORS !== 'undefined' && DOOR_GUN_DOORS[d.door]) || null;
+            if (!gd) return out;
+            var ts = CONFIG.tileSize || BASE_TILE;
+            var W = (typeof bw === 'function') ? bw() : 16, H = (typeof bh === 'function') ? bh() : 16;
+            var tiles = doorGunLaneTiles(d, { w: W, h: H });
+            if (gd.radius) {
+                var R = gd.radius | 0;
+                tiles = tiles.filter(function (t) { return Math.max(Math.abs(t.x - d.x), Math.abs(t.y - d.y)) === R; });
+            }
+            var mine = _isAllyPlayer(d.owner);
+            var mat = _deployGlowMat(gd.color || 0xe8c07a, mine ? 0.2 : 0.1);
+            var geo = new THREE.PlaneGeometry(ts * (gd.radius ? 0.5 : 0.82), ts * (gd.radius ? 0.5 : 0.82));
+            for (var i = 0; i < tiles.length; i++) {
+                var m = new THREE.Mesh(geo, mat);
+                m.rotation.x = -Math.PI / 2;
+                m.position.set(tiles[i].x * ts + ts / 2, tileTopY(tiles[i].x, tiles[i].y) + ts * 0.02, tiles[i].y * ts + ts / 2);
+                m.renderOrder = 3;
+                m._ew_deployable = true; m._ew_depX = tiles[i].x; m._ew_depY = tiles[i].y; m._ew_depOwner = d.owner;
+                out.push(m);
+            }
+        } catch (e) {}
+        return out;
+    }
     var DOOR3D_OPEN_ANGLE = 1.5;
     var DOOR3D_CAPTURE_OPEN_ANGLE = 2.62;   // 🚪 a capture door stands wide open (150°) — see straight through it
     function _buildDoor3D(d) {
@@ -8151,6 +8250,7 @@ const ThreeRenderer = (function () {
         var g = new THREE.Group();
         var hqOk = (typeof DOOR_HQ !== 'undefined');
         var cap = d.kind === 'capture';   // 🚪 THE ONE-WAY DOOR (CAPTURE_PLAN.md §3.4, Phase 2)
+        var stand = d.kind === 'standing';   // 🚪 THE STANDING DOOR (the door wheel, DOOR_GUN_PLAN §4)
         var leaf = _doorLeafFor();
         if (cap && (d.tier | 0) >= 3 && hqOk && DOOR_HQ.catalogue && DOOR_HQ.catalogue.leaf_vault) leaf = { key: 'leaf_vault', cat: DOOR_HQ.catalogue.leaf_vault };   // T3: the vault leaf
         var cat = leaf ? leaf.cat : null;
@@ -8183,7 +8283,7 @@ const ThreeRenderer = (function () {
             leafRoot.position.x = -pivot.position.x;
             pivot.add(leafRoot); g.add(pivot);
             /* open TOWARD the twin (+z), the leaf lying against the jamb's far face */
-            pivot.rotation.y = d.open ? dir * (cap ? DOOR3D_CAPTURE_OPEN_ANGLE : DOOR3D_OPEN_ANGLE) : 0;
+            pivot.rotation.y = d.open ? dir * ((cap || stand) ? DOOR3D_CAPTURE_OPEN_ANGLE : DOOR3D_OPEN_ANGLE) : 0;
         } else if (mode === 'slide') {
             carrier = new THREE.Group();
             carrier.position.x = d.open ? dir * (ow - 0.03 * ts) : 0;
@@ -8218,6 +8318,8 @@ const ThreeRenderer = (function () {
            leaf is shut (the hell arch has no leaf to close) */
         if (cap) {
             _captureDoorDress(g, d, { ts: ts, ow: ow, oh: oh, jw: jw, lh: lh, pd: pd });
+        } else if (stand) {
+            _standingDoorDress(g, d, { ts: ts, ow: ow, oh: oh, jw: jw, lh: lh, pd: pd });
         } else if (d.open) {
             var veilMat = _deployGlowMat(0xfff0cc, 0.16);
             var veil = new THREE.Mesh(new THREE.PlaneGeometry(ow, oh), veilMat);
@@ -8238,6 +8340,7 @@ const ThreeRenderer = (function () {
         if (state.doors) for (var i = 0; i < state.doors.length; i++) { var o = state.doors[i]; if (o && o.pairId === d.pairId && o.id !== d.id) { tw = o; break; } }
         var out = _deployFinish(g, d.x, d.y, 1);
         out.rotation.y = tw ? Math.atan2(tw.x - d.x, tw.y - d.y)
+            : (stand && (d.faceX || d.faceY)) ? Math.atan2(d.faceX, d.faceY)   // a standing door's face is a unit step: the opening looks down its lane
             : (cap && d.faceX != null && (d.faceX !== d.x || d.faceY !== d.y)) ? Math.atan2(d.faceX - d.x, d.faceY - d.y) : 0;
         try { if (typeof window !== 'undefined' && window.ThreeVFXEffects && typeof window.ThreeVFXEffects.warmDoor === 'function') window.ThreeVFXEffects.warmDoor(); } catch (e) {}
         return out;
@@ -8654,8 +8757,17 @@ const ThreeRenderer = (function () {
             for (var ddi = 0; ddi < state.doors.length; ddi++) {
                 var dd = state.doors[ddi];
                 if (!dd || dd.hp <= 0) continue;
-                if (dd.kind === 'capture' && dd._revealAt && Date.now() < dd._revealAt) continue;   // 🚪 the door gun's comet is still in the air
-                var dm = (dd.fixed && dd.kind !== 'capture')
+                if ((dd.kind === 'capture' || dd.kind === 'standing') && dd._revealAt && Date.now() < dd._revealAt) continue;   // 🚪 the door gun's comet is still in the air
+                /* 🚪 THE STANDING DOOR's lane (the door wheel, DOOR_GUN_PLAN §4): a faint decal on every tile it acts on, in
+                   the door's colour, brighter for its owner's side — the board says where the wind blows / the arrows reach */
+                if (dd.kind === 'standing') {
+                    var sdl = _buildStandingDoorLane3D(dd);
+                    for (var sdli = 0; sdli < sdl.length; sdli++) {
+                        objectGroup.add(sdl[sdli]);
+                        deployableMeshes.set('dep_' + (idx++), sdl[sdli]);
+                    }
+                }
+                var dm = (dd.fixed && dd.kind !== 'capture' && dd.kind !== 'standing')
                     ? (/tunnel/i.test(dd.spellName || '') ? _buildTunnelMound3D(dd.x, dd.y, dd.owner) : _buildGraveGate3D(dd.x, dd.y, dd.owner))
                     : _buildDoor3D(dd);
                 dm._ew_deployable = true;

@@ -141,8 +141,8 @@ test('the board door wears the capture look; the held body hides in the void', (
     assert.ok(/d\.held/.test(dress) && /0x030106/.test(dress), 'the void pane while it holds');
     assert.ok(/CSS2DObject/.test(dress) && /TO SEAL/.test(dress), 'the plate: hits + the hold meter');
     assert.ok(!/new THREE\.PointLight/.test(dress), 'no standing light (a light-count change recompiles every lit shader)');
-    assert.ok(/dd\.kind === 'capture' && dd\._revealAt && Date\.now\(\) < dd\._revealAt\) continue/.test(REND), 'held back until the comet lands');
-    assert.ok(/\(dd\.fixed && dd\.kind !== 'capture'\)/.test(REND), 'a capture door is not a grave gate');
+    assert.ok(/\(dd\.kind === 'capture'(?: \|\| dd\.kind === 'standing')?\)? && dd\._revealAt && Date\.now\(\) < dd\._revealAt\) continue/.test(REND), 'held back until the comet lands');
+    assert.ok(/\(dd\.fixed && dd\.kind !== 'capture'(?: && dd\.kind !== 'standing')?\)/.test(REND), 'a capture door is not a grave gate');
     assert.ok(/if \(dd\.kind === 'capture'\) \{ h = _hashInt\(h, dd\.held/.test(REND), 'the hold redraws it');
     assert.ok(/unit\.status && unit\.status\.captured > 0\) \{ entry\.group\.visible = false/.test(REND), 'the held model hides');
 });
