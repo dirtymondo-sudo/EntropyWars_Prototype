@@ -49606,7 +49606,7 @@ const ThreeRenderer = (function () {
         /* THE ROAMING GROUP (2026-09-21): the target's companions in the room (the same `group`, not away) — data.js hqEncounterGroup seats them */
         var group = [];
         if (best.group) for (var k = 0; k < H.chars.length; k++) { var c = H.chars[k]; if (c !== best && c.group === best.group && !c.away && okFn(c)) group.push({ id: c.id, race: c.race, gender: c.gender, label: c.label || null }); }
-        return { kind: 'npc', id: best.id, label: best.label, sub: best.sub || null, race: best.race, gender: best.gender, x: best.x, z: best.z, y: best.y, dist: bestD, group: group.length ? group : null };
+        return { kind: 'npc', id: best.id, label: best.label, sub: best.sub || null, race: best.race, gender: best.gender, x: best.x, z: best.z, y: best.y, dist: bestD, group: group.length ? group : null, swarm: best.swarm || (best.spot && best.spot.swarm) || null };   // an authored spot may say `swarm: true`
     }
     /* THE EYE (9.4 seam 2): the camera as it stands when the swing lands — position
        + gaze in METRES in the room frame, and the ground under the eye's column
@@ -50246,6 +50246,7 @@ const ThreeRenderer = (function () {
             /* THE ROAMING GROUP (2026-09-21): the members of a group (data.js hqRoomPopulation `draw[i].group`) share ONE loop — the same
                seed draws the same stops — and stand at one stop; the strike on one of them fights them all (_hqEncounterAim reports the group) */
             if (o && o.group) ch.group = o.group;
+            if (o && o.swarm) ch.swarm = o.swarm;   // THE SWARM (CAPTURE_PLAN §5.2): the group won the swarm coin — the aim reports { n }
             var seedKey = (o && o.group) ? (roomId + '|' + o.group) : (roomId + '|' + id);
             var rd = _hqRoundsAssign(ch, { seed: (typeof hqHash === 'function') ? hqHash(seedKey) : seedKey.length * 131, arriving: o && o.arriving, home: o && o.home });
             if (rd) H.rounds.push(ch);
@@ -50280,6 +50281,8 @@ const ThreeRenderer = (function () {
                 var line = null; try { if (room.lines && room.lines.length && Math.random() < 0.5) line = room.lines[Math.floor(Math.random() * room.lines.length)]; } catch (e) {}
                 var g = genderOf(rk), sub = pop.kind === 'facility' ? 'PASSING THROUGH' : (d.tier === 'native' || d.tier === 'biome') ? 'A LOCAL' : 'PASSING THROUGH';
                 if (d.group) sub = 'ONE OF ' + groupSize(d.group) + ' · TOGETHER';   // THE ROAMING GROUP (2026-09-21)
+                var swarm = (d.group && pop.group && pop.group.id === d.group && pop.group.swarm) ? { n: pop.group.swarm.n } : null;
+                if (swarm) sub = ((typeof HQ_LEVEL_RULES !== 'undefined' && HQ_LEVEL_RULES.swarm && HQ_LEVEL_RULES.swarm.label) || 'A SWARM OF') + ' ' + swarm.n;   // THE SWARM: the room shows 2–3, the fight is n
                 /* THE EXTRAS ARRIVE (2026-09-20 — "why is there a loading screen between every little door"):
                    the population's rigs (2–6 × 5–9 MB per room, a new draw per room) were the bulk of what every
                    card waited for. A rig the caches hold stands in the room at once; a rig still to stream never
@@ -50287,12 +50290,12 @@ const ThreeRenderer = (function () {
                    room complete without it. The record is background (rec.bg) so no gate counts it. */
                 var def0 = (typeof getRace3DModel === 'function') ? getRace3DModel(rk, g) : null, murl = def0 && def0.model;
                 var hot = !murl || !!(_unitGlbCache[murl] && _unitGlbCache[murl].root) || (typeof window !== 'undefined' && window.EW_DISABLE_3D_UNITS);
-                if (hot) { spawnAt(d.id, rk, g, st, { line: line, sub: sub, group: d.group || null }); return; }
+                if (hot) { spawnAt(d.id, rk, g, st, { line: line, sub: sub, group: d.group || null, swarm: swarm }); return; }
                 _loadUnitGLB(murl, function () {
                     if (_hq !== H) return;   // the room was left while the rig streamed
                     if (H.chars.some(function (c) { return c.id === d.id; })) return;
                     var by = doorStops.length ? doorStops[Math.floor(Math.random() * doorStops.length)] : st;
-                    var ch = spawnAt(d.id, rk, g, by, { line: line, sub: sub, arriving: true, group: d.group || null });
+                    var ch = spawnAt(d.id, rk, g, by, { line: line, sub: sub, arriving: true, group: d.group || null, swarm: swarm });
                     if (ch && by.rec) _hqRoundsSwing(by.rec, 1600);
                 });
             }); } finally { _bgLoadDepth--; }

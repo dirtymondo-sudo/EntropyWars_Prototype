@@ -277,7 +277,7 @@ test('THE DISPENSARY: the stock, a quote, the buy after the gold moved, the sell
 });
 
 test('THE SHARED BAG (2026-09-21): the pockets POOL into the bag, the launch carries the bag and empty pockets, a field-only item never rides, the commit brings the bag home', () => {
-    const p = profile({ account: { gold: 0, unlockedUnits: ['knight', 'wizard', 'door agent', 'cowboy', 'nun'] } }); g('hqPartyEnsure')(p, { last });
+    const p = profile({ account: { gold: 0, unlockedUnits: ['knight', 'wizard', 'door agent', 'cowboy', 'nun'] } }); (p.door = p.door || {}).hq = Object.assign(p.door.hq || {}, { capIssue: 1 });   /* the capture doors' one-time issue (CAPTURE_PLAN Phase 5) is filed already — this test counts the bag */ g('hqPartyEnsure')(p, { last });
     const rec = g('hqPartyRecord')(p);
     rec.members.forEach(m => { m.loadout.items = {}; });
     rec.members[0].loadout.items = { healPotion: 2, manaPotion: 1 };   // a forge leftover in the officer's pocket
@@ -582,7 +582,7 @@ test('THE LEVEL\'S REST (2026-09-23): a level crossed at the debrief brings the 
 });
 
 test('NO RESTOCK (2026-09-23): the forge\'s staple grant skips the bag\'s seat, the bind never merges a built unit\'s items, nothing tops the bag up between fights', () => {
-    const p = profile({ account: { gold: 0, unlockedUnits: ['door agent', 'cowboy', 'nun'] } }); g('hqPartyEnsure')(p, { last });
+    const p = profile({ account: { gold: 0, unlockedUnits: ['door agent', 'cowboy', 'nun'] } }); (p.door = p.door || {}).hq = Object.assign(p.door.hq || {}, { capIssue: 1 });   /* the capture doors' one-time issue (CAPTURE_PLAN Phase 5) is filed already — this test counts the bag */ g('hqPartyEnsure')(p, { last });
     const rec = g('hqPartyRecord')(p); rec.members.forEach(m => { m.loadout.items = {}; });
     g('hqBagAdd')(p, 'healPotion', 2);
     const L1 = g('hqPartyForLaunch')(p);

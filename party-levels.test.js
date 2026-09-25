@@ -78,11 +78,11 @@ test('THE ENEMY LEVEL: the party level + the tier, the lead inside its band, the
     assert.ok(R.band.below + R.band.above <= 6, 'the shipped band is narrow — EW_LEVEL_GAP_STEP 1.08 makes ±10 a 2.16× swing');
 });
 
-test('THE GROUP: a lone native brings 0–2, a roaming group fights as its members + extra; the population binds a group; the aim reports it', () => {
+test('THE GROUP: a lone native brings 1–2 (never one enemy, CAPTURE_PLAN §5.1), a roaming group fights as its members + extra; the population binds a group; the aim reports it', () => {
     const grp = g('hqEncounterGroup');
     const seen = new Set();
-    for (let s = 0; s < 60; s++) { const r = grp({ id: 'hq-roam-0', race: 'grey' }, 's' + s); assert.equal(r.kind, 'solo'); assert.ok(r.size >= 1 && r.size <= 3); seen.add(r.size); }
-    assert.ok(seen.has(1) && seen.has(2) && seen.has(3), 'all three sizes come up');
+    for (let s = 0; s < 60; s++) { const r = grp({ id: 'hq-roam-0', race: 'grey' }, 's' + s); assert.equal(r.kind, 'solo'); assert.ok(r.size >= 2 && r.size <= 3, 'never one enemy'); seen.add(r.size); }
+    assert.ok(seen.has(2) && seen.has(3), 'both sizes come up');
     const rr = grp({ id: 'hq-roam-0', race: 'grey', group: [{ id: 'hq-roam-1', race: 'nordic' }, { id: 'hq-roam-2', race: 'grey' }, { id: 'hq-roam-0', race: 'grey' }] }, 'x');
     assert.equal(rr.kind, 'roam'); assert.equal(rr.members.length, 2, 'the target itself is never its own companion'); assert.equal(rr.size, 3 + rr.extra);
     /* the launch: the enemy line is the group, the roster leads with the target then its members, a level per body; the OFFICER's teamSize is untouched */
@@ -107,7 +107,7 @@ test('THE GROUP: a lone native brings 0–2, a roaming group fights as its membe
     /* the renderer: the group shares a stop + a loop seed, the aim reports the companions, state.js seats them */
     assert.ok(TR.includes("if (o && o.group) ch.group = o.group;") && TR.includes("var seedKey = (o && o.group) ? (roomId + '|' + o.group) : (roomId + '|' + id);"), 'one loop per group');
     assert.ok(TR.includes("groupStops[d.group] || (groupStops[d.group] = stops[Math.floor(Math.random() * stops.length)])"), 'one stop per group');
-    assert.ok(TR.includes("group: group.length ? group : null };"), 'the aim reports the group');
+    assert.ok(TR.includes("group: group.length ? group : null, swarm: "), 'the aim reports the group (and a swarm)');
     assert.ok(ST.includes("const _grpMembers = (lead && _encSpec && Array.isArray(_encSpec.members)) ? _encSpec.members : [];"), 'state.js seats the members');
     assert.ok(MP.includes("party.enemyTeam = L.enemyTeam || L.teamSize;") && MP.includes("party.enemyLevels = Array.isArray(L.levels) ? L.levels.slice() : null;"), 'map.js: the line + the levels ride the party');
     assert.ok(MP.includes("state.partyMeta[2].forEach((mm, i) => { if (mm) mm.storyLevel = lv[Math.min(i, lv.length - 1)] | 0; });"), 'map.js _msConfirm writes the natives\' levels');

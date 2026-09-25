@@ -1,7 +1,7 @@
 # THE ONE-WAY DOOR — the capture mechanic of story mode
 
 *Plan document, 2026-09-23. Story mode (the encounters and the marker's fights) only — Online and
-Practice never see a capture door. Phases 0 (THE RULES), 1 (THE DOOR ON THE BOARD), 2 (THE DELIVERY), 3 (THE AI) and 4 (THE PRIZE) are built (2026-09-25); §6 is the order to build the rest in.
+Practice never see a capture door. All seven phases (0 THE RULES through 6 THE SIZES + THE SWARM) are built (2026-09-25); §8 logs each one's hooks.
 Read CLAUDE.md "THE CHAIN REACTION", "THE DOOR AGENT rev 3", "THE PARTY" and "THE BAG'S TABS" first —
 every hook this plan hangs on already exists.*
 
@@ -427,3 +427,24 @@ the item rows the server's loadout validation reads).
   read it); THE DOOR ISSUE `HQ_DISPENSARY.capIssue` (3 One-Way Doors + 1 Tuned Door) goes into the bag once per profile that
   has the HQ (profile.js backfillProfile → data.js `hqCaptureDoorIssue`, flag `door.hq.capIssue`). Phase 5 still owes the
   stashes, the drops and the intake's issue for a brand-new profile.
+- 2026-09-25 — **Phase 5 THE ECONOMY finished + Phase 6 THE SIZES + THE SWARM built** (token `20260925-capture-07-cors`).
+  **Phase 5:** the user's ruling "I dont think doors should be part of loot" — NO drop row (`HQ_DROP_RULES` unchanged) and NO
+  stash row; the shop (the Room 911 hatch + the Quartermaster, since the -06 fixes) and the one-time issue are the only
+  sources. The intake's issue for a BRAND-NEW profile: `hqPartyEnsure`'s first filing calls `hqCaptureDoorIssue` (the flag
+  keeps it once; backfillProfile still covers older profiles). **Phase 6 §5.1:** `HQ_LEVEL_RULES.group.solo [1, 2]`,
+  `soloWeights [0.55, 0.45]` — every encounter is at least two bodies. **§5.2 THE SWARM:** `HQ_LEVEL_RULES.swarm { on, p 0.18,
+  size [6, 8], elite [1, 2], offset −4, turbo, races, label }` (the plan's `cultist` is not a race — eleven races). data.js:
+  `hqRoomPopulation` rolls the swarm as the roaming group's second coin (`group.swarm = { n, race }`, the grouped walkers
+  take the race; `hqSwarmRace` — the lead's when it is a swarm race, else a swarm race among the room's TRUE natives, else no swarm: the room's first draw stays a native, hq-population's rule);
+  `hqEncounterGroup` kind `'swarm'` off `ch.swarm` (`{ n }` from the room, or an authored spot's `swarm: true`);
+  `hqEncounterLevels(…, opts.grunts = { from, offset })` (grunts `offset` about the PARTY level inside the band, the clamps
+  hold); `hqEncounterLaunch` → `roster` n × the target's race, `swarm { n, elite, race, turbo }`, `encounter.swarm`.
+  three-renderer.js: the walker carries `ch.swarm`, the sub reads `A SWARM OF n`, the aim reports it. map.js: the party +
+  the run marker carry `swarm`; the reserves launch lays a P2 spawn per body (`DEPLOY2`). battle.js
+  `_gauntletPartitionBench`: a swarm's natives are ALL on the board (no enemy bench), seats past the elites are
+  `_swarmGrunt`; `_trainingTurboWanted` runs the grunts' CPU turns on the training turbo. **Deviations:** the room walks
+  the group as drawn (2–3 bodies) with the fight's count on the sub, not 6–8 rigs (the population's perf budget); the
+  turbo is the training path whole (no visuals for a grunt's turn — `swarm.turbo: false` turns it off). §4.4 (natives that
+  carry doors) stays dropped (§7.2). Test: `capture-swarm.test.js`; the stale pins in `party-levels` / `hq-encounter`
+  (a lone native's 0–2) and `hq-party` (two bag counts — the issue is pre-filed there) moved with it. The plan is done.
+

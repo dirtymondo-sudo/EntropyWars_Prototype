@@ -90,7 +90,7 @@ test('THE LAUNCH: pure and serialisable — the site\'s Δ, the config, the CPU 
     assert.equal(g('hqEncounterLaunch')('site_prebuilt_dumb', native(), null, { codeRed: true }).gm, 'arena', 'the Code Red response is Arena');
     assert.equal(L.roster[0], 'grey', 'the native leads the pool');
     /* THE GROUP (2026-09-21): the enemy line is the native + the companions the rule drew (1–3 for a lone native), never the crossing's team size */
-    assert.ok(L.enemyTeam >= 1 && L.enemyTeam <= 3, 'a lone native brings 0–2'); assert.equal(L.roster.length, L.enemyTeam); assert.equal(new Set(L.roster).size, L.roster.length);
+    assert.ok(L.enemyTeam >= 2 && L.enemyTeam <= 3, 'a lone native brings 1–2 (never one enemy, CAPTURE_PLAN §5.1)'); assert.equal(L.roster.length, L.enemyTeam); assert.equal(new Set(L.roster).size, L.roster.length);
     assert.equal(L.levels.length, L.enemyTeam, 'a level per body'); assert.ok(L.levels.every(x => x >= 1 && x <= 100));
     assert.equal(L.doorId, 'crossing'); assert.equal(L.counterId, 'crossing');
     assert.equal(L.encounter.race, 'grey'); assert.equal(L.encounter.room, 'site_prebuilt_dumb'); assert.equal(L.encounter.gesture, 'magic');
@@ -486,7 +486,7 @@ test('D6 · SOURCE · map.js: the strike reads the Code Red, files the field, SL
      "eye2 = (typeof ThreeRenderer.hq.encounterEye === 'function') ? ThreeRenderer.hq.encounterEye() : null;",
      "const ev2 = Object.assign({}, ev, { x: field.snap.walker.x, z: field.snap.walker.z }, eye2 ? { eye: eye2 } : {});",
      "_hqEncounterStart(L, ev2, field2);", "return _hqEncounterStart(L, ev, field);",
-     "function _hqEncounterStart(L, ev, field) {", "field: field || null, gm: L.gm };",
+     "function _hqEncounterStart(L, ev, field) {", "field: field || null, gm: L.gm,",
      "window._hqCodeRedRun = L.codeRedRun || null;",
      "const _encSeated = _encounterPlaceSeats();", "if (_encSeated) {\n                state.spawnZones = _encSeated.zones;",
      "function _encounterPlaceSeats() {", "const F = (typeof window._ewEncounterField === 'function') ? window._ewEncounterField() : null;",

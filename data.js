@@ -43674,9 +43674,29 @@ function hqRoomPopulation(roomId, profile, opts) {
             const size = Math.max(2, Math.min(draw.length, (G.roamSize[0] | 0) + Math.floor(rnd() * ((G.roamSize[1] | 0) - (G.roamSize[0] | 0) + 1))));
             group = { id: 'hq-group-0', ids: [] };
             for (let i = 0; i < size; i++) { draw[i].group = group.id; group.ids.push(draw[i].id); }
+            /* THE SWARM (CAPTURE_PLAN §5.2, 2026-09-25): the group's second coin — one race, n bodies in the fight (hqEncounterGroup) */
+            const SW = HQ_LEVEL_RULES.swarm;
+            if (SW && SW.on !== false && rnd() < SW.p) {
+                const race = hqSwarmRace(draw[0].race, pool.filter(r => tiers[r] === 'native'), rnd);   // a TRUE native only — the room's first draw stays its own
+                if (race) {
+                    const n = (SW.size[0] | 0) + Math.floor(rnd() * ((SW.size[1] | 0) - (SW.size[0] | 0) + 1));
+                    group.swarm = { n: Math.max(2, Math.min(8, n)), race };
+                    for (let i = 0; i < size; i++) draw[i].race = race;
+                }
+            }
         }
     } catch (e) { group = null; }
     return { kind, site, hub: hubId, pool, tiers, n: draw.length, draw, seed, m2: Math.round(m2), group };
+}
+/* THE SWARM'S RACE: the lead's own when it is a swarm race, else a swarm race among `natives` (the room's TRUE natives — a
+   swarm is always the site's own people, so the room's first draw stays a native), seeded by the caller's stream; null =
+   this room has no swarm race and the group stays a group */
+function hqSwarmRace(lead, natives, rnd) {
+    const SW = HQ_LEVEL_RULES.swarm; if (!SW || !Array.isArray(SW.races)) return null;
+    const known = SW.races.filter(r => typeof AVAILABLE_RACES === 'undefined' || AVAILABLE_RACES.indexOf(r) >= 0);
+    if (lead && known.indexOf(lead) >= 0) return lead;
+    const from = known.filter(r => Array.isArray(natives) && natives.indexOf(r) >= 0);
+    return from.length ? from[Math.floor((typeof rnd === 'function' ? rnd() : 0) * from.length) % from.length] : null;
 }
 /* a seeded call: does an authored spot native LEAVE its spot for a loop? (never a posed / `stay` spot, never a clone) */
 function hqSpotRoams(roomId, si, spot) {
@@ -43766,8 +43786,12 @@ function hqEncounterLaunch(roomId, ch, cfg, opts) {
     const enemyTeam = Math.max(1, Math.min(8, grp.size | 0));   // the target + its group + the companions the rule drew
     const pool = (typeof hqMissionPool === 'function') ? hqMissionPool(site, Math.max(n, enemyTeam)) : [];
     const withGroup = [ch.race].concat(grp.members.map(x => x.race));
-    const roster = withGroup.concat(pool.filter(r => withGroup.indexOf(r) < 0)).slice(0, Math.max(enemyTeam, 1));
-    const lv = hqEncounterLevels(opts.partyLevel, site, enemyTeam, (roomId || '') + '|' + (ch.id || ch.race) + '|levels');
+    /* THE SWARM (CAPTURE_PLAN §5.2, 2026-09-25): every seat is the target's race; the grunts stand under the party level */
+    const swarm = grp.kind === 'swarm' ? { n: enemyTeam, elite: Math.min(grp.elite | 0, enemyTeam), race: ch.race, turbo: !!HQ_LEVEL_RULES.swarm.turbo } : null;
+    const roster = swarm ? Array.from({ length: enemyTeam }, () => ch.race)
+        : withGroup.concat(pool.filter(r => withGroup.indexOf(r) < 0)).slice(0, Math.max(enemyTeam, 1));
+    const lv = hqEncounterLevels(opts.partyLevel, site, enemyTeam, (roomId || '') + '|' + (ch.id || ch.race) + '|levels',
+                                 swarm ? { grunts: { from: swarm.elite, offset: HQ_LEVEL_RULES.swarm.offset } } : null);
     /* THE SEAMLESS FIELD (2026-09-22 — the user: "encounters in the haunted house still go to a voxel grid map, not what I wanted at
        all"): a room the rasteriser takes (hqFieldRoomOk — a box part, a cave chamber, a TERRAIN area) fights ITS OWN WINDOW on its own
        ground, so it hands the launch NO area Δ (map.js gates the window on `launchId`); the part's Δ (THE AREA BOARDS, 2026-09-19 —
@@ -43778,12 +43802,14 @@ function hqEncounterLaunch(roomId, ch, cfg, opts) {
     return {
         site, delta: true, gm: c.gm, teamSize: n, rounds: c.rounds, roster, codeRed: !!opts.codeRed,
         enemyTeam, levels: lv.levels, partyLevel: lv.partyLevel, group: grp,   // THE LEVELS + THE GROUP (2026-09-21)
+        swarm,   // THE SWARM (CAPTURE_PLAN §5.2): { n, elite, race, turbo } or null — map.js seats all n on the board
         seamless,
         launchId, area: launchId ? roomId : null,
         doorId: 'crossing', counterId: 'crossing',
         encounter: { race: ch.race, gender: ch.gender || 'male', id: ch.id || null, room: roomId, x: +(ch.x || 0), z: +(ch.z || 0), gesture: opts.gesture || 'attack', label: ch.label || ch.race,
                      name: ch.label || null,   // D2: the room's own name for the native — the enemy lead wears it on the nameplate
-                     members: grp.members.map(x => ({ id: x.id || null, race: x.race, gender: x.gender || 'male', name: x.label || null })) },   // the group's own people seat 2..n (state.js)
+                     members: grp.members.map(x => ({ id: x.id || null, race: x.race, gender: x.gender || 'male', name: x.label || null })),   // the group's own people seat 2..n (state.js)
+                     swarm: swarm ? swarm.n : 0 },
     };
 }
 /* THE MARKER (2026-09-20, the user: "whenever I do a battle it shows me the full roster — it should just send me into
@@ -44581,7 +44607,18 @@ const HQ_LEVEL_RULES = {
        paid the killer live). The old `board` / `bench` keys read as fought / present. */
     share: { fought: 1, present: 0.5, down: 0, poolMult: 0.6, board: 1, bench: 0.5 },
     levelHeal: true,                   // THE LEVEL'S REST (2026-09-23, the user): a level-up restores HP and MP all the way — live on the board (battle.js grantXP) and on the ledger at the debrief
-    group: { solo: [0, 2], soloWeights: [0.35, 0.4, 0.25], roamExtra: [0, 1], roamSize: [2, 3], groupP: 0.55, marker: 4 },
+    /* THE SIZES (CAPTURE_PLAN §5.1, 2026-09-25): NEVER ONE ENEMY — a lone native brings 1 or 2 companions (55 % two bodies,
+       45 % three), so a capture door is never the whole fight; the lone-seal rule stays for a fight REDUCED to one */
+    group: { solo: [1, 2], soloWeights: [0.55, 0.45], roamExtra: [0, 1], roamSize: [2, 3], groupP: 0.55, marker: 4 },
+    /* THE SWARM (CAPTURE_PLAN §5.2, 2026-09-25): a roaming group that won the second coin (`p`) is a SWARM — `size` bodies of ONE
+       race (the lead's when it is a swarm race, else one of `races` among the room's true natives; a room with none has no swarm), `elite` of them at the ordinary encounter level and the
+       rest `offset` under the party level (the clamps hold). The room walks the group as drawn (2–3 bodies, sub A SWARM OF n);
+       the fight seats all n on the board (no enemy bench). `turbo`: the grunts' CPU turns run on the training turbo path
+       (battle.js _trainingTurboWanted) — six slow activations a round otherwise. `on: false` = no swarms. The plan's
+       cultist is not a race in the roster; the list is the eleven that are. */
+    swarm: { on: true, p: 0.18, size: [6, 8], elite: [1, 2], offset: -4, turbo: true,
+             races: ['antperson', 'zombie', 'ghoul', 'grey', 'scarecrow', 'jellyfish', 'glitch', 'demon', 'goatman', 'skinwalker', 'black goo'],
+             label: 'A SWARM OF' },
     milestones: { shop: SPELL_SHOP_LEVEL, every: 5 },   // the secondary-job milestone retired with the tier rework (2026-09-24)
     labels: { levelUp: 'LEVEL UP!', pool: 'THE ENCOUNTER', trickle: 'IN THE FIELD', battle: 'IN THE FIELD', fought: 'FOUGHT · FULL SHARE', present: 'DID NOT FIGHT · HALF SHARE', bench: 'DID NOT FIGHT · HALF SHARE', down: 'DOWN · NO SHARE', lost: 'THE ROOM WAS LOST · NO SHARE' },
 };
@@ -44647,7 +44684,7 @@ function hqLevelRng(seed) {
     return () => { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return (s % 100000) / 100000; };
 }
 /* THE ADAPTIVE ENEMY LEVEL: n levels, the lead first — pure, seeded */
-function hqEncounterLevels(partyLevel, siteId, n, seed) {
+function hqEncounterLevels(partyLevel, siteId, n, seed, opts) {
     const R = HQ_LEVEL_RULES;
     const pl = Math.max(1, Math.min(LEVEL_CAP, (partyLevel | 0) || R.start));
     const site = hqSiteId(siteId || '') || siteId;
@@ -44659,9 +44696,16 @@ function hqEncounterLevels(partyLevel, siteId, n, seed) {
     const lo = Math.max(1, pl - R.maxBelow, (A && A.min) || 1), hi = Math.min(LEVEL_CAP, pl + R.maxAbove, (A && A.max) || LEVEL_CAP);
     const rnd = hqLevelRng(seed);
     const pick = (b) => Math.round(base - b.below + rnd() * (b.below + b.above));
+    /* THE SWARM (CAPTURE_PLAN §5.2): `opts.grunts = { from, offset }` — every body from index `from` stands `offset` about the
+       PARTY level (not the site's base), inside the band; the elites before it are the ordinary levels; the clamps hold */
+    const G = (opts && opts.grunts) ? opts.grunts : null;
+    const gFrom = G ? Math.max(1, G.from | 0) : Infinity, gBase = G ? pl + (+G.offset || 0) : base;
     const out = [];
-    for (let i = 0; i < Math.max(1, n | 0); i++) out.push(Math.max(lo, Math.min(hi, pick(i === 0 ? R.lead : R.band))));
-    return { levels: out, partyLevel: pl, base, tier, offset, lo, hi };
+    for (let i = 0; i < Math.max(1, n | 0); i++) {
+        if (i >= gFrom) out.push(Math.max(lo, Math.min(hi, Math.round(gBase - R.band.below + rnd() * (R.band.below + R.band.above)))));
+        else out.push(Math.max(lo, Math.min(hi, pick(i === 0 ? R.lead : R.band))));
+    }
+    return { levels: out, partyLevel: pl, base, tier, offset, lo, hi, grunts: G ? { from: gFrom, base: gBase } : null };
 }
 /* THE GROUP the strike engages: the target's own roaming group (the aim reports `ch.group` = [{ id, race, gender }] — its
    members besides the target) plus `roamExtra`; a lone native brings `solo` companions by `soloWeights`. Seeded by the target. */
@@ -44670,6 +44714,16 @@ function hqEncounterGroup(ch, seed) {
     const rnd = hqLevelRng(seed != null ? seed : (ch && ch.id) || 'solo');
     const members = (ch && Array.isArray(ch.group)) ? ch.group.filter(x => x && x.race && x.id !== ch.id) : [];
     const span = (r) => Math.max(0, (r[0] | 0) + Math.floor(rnd() * ((r[1] | 0) - (r[0] | 0) + 1)));
+    /* THE SWARM (CAPTURE_PLAN §5.2): the aim reports `ch.swarm = { n }` (the room's group won the swarm coin) or an authored
+       spot says `swarm: true` — n bodies of the TARGET's race, `elite` of them at the encounter level; the room's walkers are
+       part of the n, never on top of it */
+    const SW = HQ_LEVEL_RULES.swarm;
+    if (ch && ch.swarm && SW && SW.on !== false) {
+        const want = (typeof ch.swarm === 'object' && ch.swarm.n) ? (ch.swarm.n | 0) : span(SW.size);
+        const size = Math.max(2, Math.min(8, want));
+        const elite = Math.max(1, Math.min(size, span(SW.elite)));
+        return { kind: 'swarm', members: [], extra: size - 1, size, elite, race: ch.race };
+    }
     if (members.length) { const extra = span(G.roamExtra); return { kind: 'roam', members, extra, size: 1 + members.length + extra }; }
     const W = G.soloWeights || [1], u = rnd();
     let acc = 0, extra = G.solo[0] | 0;
@@ -44832,6 +44886,10 @@ function hqPartyEnsure(profile, opts) {
         starters.concat(unlocked).forEach(r => { if (rec.members.length < HQ_PARTY_RULES.shift && unlocked.indexOf(r) >= 0) push(hqPartySpec(r, hqPartyGenders(r)[0], null)); });
     }
     H.party = rec;
+    /* THE DOOR ISSUE for a BRAND-NEW profile (CAPTURE_PLAN §6 Phase 5, 2026-09-25): the first party filing is the intake's
+       moment — the capture doors go into the bag here, so a fresh profile has them before its first fight (backfillProfile
+       covers every profile filed before this; the flag makes it once either way) */
+    try { hqCaptureDoorIssue(profile); } catch (e) {}
     return hqPartyRecord(profile);
 }
 /* THE PRUNE (2026-09-20): a party filed before the owned-seed rule may still carry vessels the account never owned — they
@@ -48713,7 +48771,7 @@ if (typeof window !== 'undefined') {
     window.hqPartyForLaunch = hqPartyForLaunch; window.hqPartyAfterMatch = hqPartyAfterMatch; window.hqPartyResync = hqPartyResync; window.hqPartyScaledVitals = hqPartyScaledVitals; window.hqPartySpellIds = hqPartySpellIds; window.hqPartySpellTree = hqPartySpellTree; window.hqPartySpellState = hqPartySpellState; window.hqPartyTreeCircuit = hqPartyTreeCircuit; window.hqPartySetSpells = hqPartySetSpells; window.hqPartyTreeClick = hqPartyTreeClick; window.hqPartySocketPool = hqPartySocketPool; window.hqPartySocketEquip = hqPartySocketEquip; window.hqPartySpellsDefault = hqPartySpellsDefault; window.hqPartySpellsRandom = hqPartySpellsRandom; window.hqPartySpellsClear = hqPartySpellsClear;
     /* THE LEVELS (2026-09-21) */
     window.HQ_LEVEL_RULES = HQ_LEVEL_RULES; window.HQ_AREA_LEVELS = HQ_AREA_LEVELS; window.XP_CURVE = XP_CURVE; window.xpThreshold = xpThreshold; window.xpLevelFor = xpLevelFor; window.xpToNext = xpToNext;
-    window.hqPartyLevel = hqPartyLevel; window.hqPartyXp = hqPartyXp; window.hqPartyLevelGains = hqPartyLevelGains; window.hqPartyGrantXp = hqPartyGrantXp; window.hqPartyXpShare = hqPartyXpShare; window.hqEncounterLevels = hqEncounterLevels; window.hqEncounterGroup = hqEncounterGroup;
+    window.hqPartyLevel = hqPartyLevel; window.hqPartyXp = hqPartyXp; window.hqPartyLevelGains = hqPartyLevelGains; window.hqPartyGrantXp = hqPartyGrantXp; window.hqPartyXpShare = hqPartyXpShare; window.hqEncounterLevels = hqEncounterLevels; window.hqEncounterGroup = hqEncounterGroup; window.hqSwarmRace = hqSwarmRace;
     window.HQ_DISPENSARY = HQ_DISPENSARY; window.hqBagRecord = hqBagRecord; window.hqBagCount = hqBagCount; window.hqBagAdd = hqBagAdd; window.hqBagTake = hqBagTake; window.hqBagList = hqBagList; window.hqBagTotal = hqBagTotal; window.HQ_BAG_TABS = HQ_BAG_TABS; window.hqBagCategoryOf = hqBagCategoryOf; window.hqBagTab = hqBagTab; window.hqBagTabs = hqBagTabs; window.HQ_DROP_RULES = HQ_DROP_RULES; window.hqDropBaneFor = hqDropBaneFor; window.hqEncounterDrops = hqEncounterDrops; window.hqBagSet = hqBagSet; window.hqBagForBattle = hqBagForBattle; window.hqBagCap = hqBagCap; window.hqShopStock = hqShopStock; window.hqCaptureDoorIssue = hqCaptureDoorIssue; window.hqShopQuote = hqShopQuote; window.hqShopBuyApply = hqShopBuyApply; window.hqShopSell = hqShopSell; window.hqPartyStock = hqPartyStock; window.hqPartyBagItems = hqPartyBagItems; window.hqPartyAutoHeal = hqPartyAutoHeal; window.hqPartyFieldSpells = hqPartyFieldSpells; window.hqPartyFieldTargets = hqPartyFieldTargets; window.hqPartyHealAmount = hqPartyHealAmount; window.hqPartyCast = hqPartyCast; window.hqPartyUseItem = hqPartyUseItem; window.hqPartyFieldItems = hqPartyFieldItems; window.hqPartySpec = hqPartySpec; window.hqPartyGenders = hqPartyGenders; window.hqPartyDefaultJob = hqPartyDefaultJob;
     window.CAPTURE_RULES = CAPTURE_RULES; window.captureDoorItemKeys = captureDoorItemKeys; window.captureDoorTier = captureDoorTier; window.captureSealSteps = captureSealSteps; window.captureSealFor = captureSealFor; window.captureDoorHits = captureDoorHits; window.captureXp = captureXp; window.itemStoryOnly = itemStoryOnly; window.hqCapturedRecord = hqCapturedRecord; window.hqUnitCaptured = hqUnitCaptured; window.hqCapturedMark = hqCapturedMark; window.hqCaptureOwned = hqCaptureOwned; window.hqCaptureEnlist = hqCaptureEnlist; window.hqBountyUnion = hqBountyUnion; window.hqCaptureBountyRecord = hqCaptureBountyRecord; window.hqCaptureBountyMark = hqCaptureBountyMark; window.hqCaptureBountySyncPay = hqCaptureBountySyncPay; window.hqCapturedUnlockUnion = hqCapturedUnlockUnion;   // THE ONE-WAY DOOR (CAPTURE_PLAN.md Phase 0)
     /* THE FIELD stage B — the rasteriser on the cave (Phase 9 Delivery 8, 2026-09-16) */

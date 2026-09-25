@@ -3581,6 +3581,7 @@
             if (party && party.party) {
                 party.enemyTeam = L.enemyTeam || L.teamSize;   // THE GROUP (2026-09-21): the native + its companions — never the crossing's team size; the bench is the officer's alone
                 party.enemyLevels = Array.isArray(L.levels) ? L.levels.slice() : null;   // THE LEVELS: the adaptive levels, the lead's first
+                party.swarm = L.swarm || null;   // THE SWARM (CAPTURE_PLAN §5.2): all n on the board — the seats below size for it
             }
             _hqLastDoor = L.doorId || 'crossing'; _hqLastRoom = _hqCurRoom; _hqRecordVisit(_hqLastDoor);
             /* the run marker: the intro off PER LAUNCH, the native's spawn id (THE CLEARED ROOM on a win), THE EYE
@@ -3590,7 +3591,8 @@
             try { eye = (ev && typeof window.hqEncounterEye === 'function') ? window.hqEncounterEye(field || ev) : null; } catch (e) { eye = null; }
             window._hqEncounterRun = { site: L.site, room: L.room || _hqCurRoom, race: L.encounter.race, label: L.encounter.label, gesture: L.encounter.gesture, id: L.encounter.id || null,
                                        date: (typeof hqToday === 'function') ? hqToday() : null, at: Date.now(), noIntro: true, armed: true,   // `armed`: battle.js startMatch spends it on THIS launch; a later match finds it spent and drops a stale marker
-                                       eye: eye, walker: ev ? { x: ev.x, z: ev.z, y: ev.y, yaw: ev.yaw, pitch: ev.pitch } : null, field: field || null, gm: L.gm };
+                                       eye: eye, walker: ev ? { x: ev.x, z: ev.z, y: ev.y, yaw: ev.yaw, pitch: ev.pitch } : null, field: field || null, gm: L.gm,
+                                       swarm: L.swarm || null };   // THE SWARM: battle.js keeps every native on the board and marks the grunts (the turbo)
             window._hqEncounterResult = null;
             try { if (typeof playDoorSfx === 'function') playDoorSfx('doorBuzz', { volume: 0.6 }); } catch (e) {}
             /* no roster on file (Delivery 6): the fight still starts on the spot — the mode's default squad stands in
@@ -8284,12 +8286,14 @@
                 const bw = mode.boardWidth || mode.boardSize || 8;
                 const bh = mode.boardHeight || mode.boardSize || 8;
                 SPAWNS[1] = (mode.spawns[1] || []).slice(0, DEPLOY);
-                SPAWNS[2] = (mode.spawns[2] || []).slice(0, DEPLOY);
+                /* THE SWARM (CAPTURE_PLAN §5.2): the enemy has no bench in a swarm — every body needs a spawn */
+                const DEPLOY2 = (_encParty_ && _encPeek.swarm && (_encPeek.swarm.n | 0) > DEPLOY) ? Math.min(ROSTER, _encPeek.swarm.n | 0) : DEPLOY;
+                SPAWNS[2] = (mode.spawns[2] || []).slice(0, DEPLOY2);
                 while (SPAWNS[1].length < DEPLOY) {
                     const idx = SPAWNS[1].length;
                     SPAWNS[1].push({ x: idx % 2, y: Math.min(Math.floor(idx / 2), bh - 1) });
                 }
-                while (SPAWNS[2].length < DEPLOY) {
+                while (SPAWNS[2].length < DEPLOY2) {
                     const idx = SPAWNS[2].length;
                     SPAWNS[2].push({ x: bw - 1 - idx % 2, y: Math.min(bh - 1 - Math.floor(idx / 2), bh - 1) });
                 }
