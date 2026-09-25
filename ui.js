@@ -11379,13 +11379,14 @@
                 if (door && typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive()) {
                     const col = gd.color || 0xe8c07a;
                     const tiles = [{ x: door.x, y: door.y, color: 0xe8c07a, opacity: 0.55, cursor: true }];
+                    door.owner = unit.player; door.spellId = spell.id;   // the beam's prism turns read whose enemies they seek
                     const lane = window.standingDoorLaneTiles(door);
                     lane.forEach(t => {
                         const u = unitAt(t.x, t.y);
                         const hostile = u && !u.dead && u.player !== unit.player;
                         tiles.push({ x: t.x, y: t.y, color: hostile ? 0xff3333 : col, opacity: hostile ? 0.5 : (gd.radius ? 0.16 : 0.34) });
                     });
-                    if (gd.lane) {
+                    if (gd.lane && gd.act === 'lanePush') {   // only the wind has a landing past the lane
                         const ex = door.x + door.faceX * ((gd.lane | 0) + 1), ey = door.y + door.faceY * ((gd.lane | 0) + 1);
                         if (ex >= 0 && ey >= 0 && ex < bw() && ey < bh()) tiles.push({ x: ex, y: ey, color: 0xffa040, opacity: 0.42 });
                     }

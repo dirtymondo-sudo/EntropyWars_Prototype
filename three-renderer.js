@@ -8163,9 +8163,75 @@ const ThreeRenderer = (function () {
             var tlamp = new THREE.Mesh(new THREE.BoxGeometry(jw * 0.5, ts * 0.05, pd * 1.1), _deployGlowMat(teamCol, 0.8));
             tlamp.position.set(side * (ow / 2 + jw / 2), oh * 0.82, 0); g.add(tlamp);
         }
-        var paneCol = d.door === 'gust' ? 0xcfe8ff : d.door === 'archers' ? 0xffc27a : col;
-        var pane = new THREE.Mesh(new THREE.PlaneGeometry(ow, oh), _deployGlowMat(paneCol, 0.22));
+        var paneCol = d.door === 'gust' ? 0xcfe8ff : d.door === 'archers' ? 0xffc27a : d.door === 'hell' ? 0xff6a20
+            : d.door === 'frost' ? 0xd8f4ff : d.door === 'laser' ? 0x3a0a14 : d.door === 'light' ? 0xfff6d0 : col;
+        var pane = (d.door === 'maw' || d.door === 'laser')
+            /* the void / the neon night: a dark pane (normal blending — additive black would be nothing) */
+            ? new THREE.Mesh(new THREE.PlaneGeometry(ow, oh), new THREE.MeshBasicMaterial({ color: new THREE.Color(d.door === 'maw' ? 0x05020c : paneCol), transparent: true, opacity: 0.92, side: THREE.DoubleSide, depthWrite: false }))
+            : new THREE.Mesh(new THREE.PlaneGeometry(ow, oh), _deployGlowMat(paneCol, d.door === 'light' ? 0.42 : d.door === 'hell' ? 0.34 : 0.22));
         pane.position.set(0, oh / 2, 0.004 * ts); g.add(pane);
+        /* Phase 2's apertures (the destinations): each one's place, alive in the opening (onBeforeRender ticks — no
+           standing light, no per-frame allocation) */
+        var _now = function () { return (typeof performance !== 'undefined' ? performance.now() : Date.now()) / 1000; };
+        if (d.door === 'hell') {
+            /* the pit's glow + flames licking up out of the sill, flickering */
+            var flameMat = _deployGlowMat(0xff7a1a, 0.55), coreMat = _deployGlowMat(0xffd060, 0.6);
+            [[-0.3, 0.34, 0.0], [0.0, 0.46, 1.7], [0.28, 0.3, 3.1], [-0.12, 0.22, 4.4], [0.14, 0.26, 5.6]].forEach(function (f, fi) {
+                var fl = new THREE.Mesh(new THREE.ConeGeometry(ow * 0.11, oh * f[1], 6, 1, true), fi % 2 ? coreMat : flameMat);
+                fl.position.set(ow * f[0], oh * f[1] / 2, 0.02 * ts);
+                fl._ph = f[2];
+                fl.onBeforeRender = function () { var t = _now() * 7 + this._ph; this.scale.set(1 + 0.12 * Math.sin(t * 1.3), 0.8 + 0.3 * (0.5 + 0.5 * Math.sin(t)), 1); };
+                g.add(fl);
+            });
+            var lip = new THREE.Mesh(new THREE.PlaneGeometry(ow * 1.3, ts * 0.9), _deployGlowMat(0xff5a2a, 0.2));
+            lip.rotation.x = -Math.PI / 2; lip.position.set(0, ts * 0.014, ts * 0.5); g.add(lip);
+        } else if (d.door === 'frost') {
+            /* rime on the pane + ice shards growing off the sill, snow motes drifting down the opening */
+            var shardMat = _deployGlowMat(0xbfefff, 0.5);
+            [[-0.34, 0.3], [-0.16, 0.18], [0.12, 0.24], [0.32, 0.34]].forEach(function (c) {
+                var sh = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.035, oh * c[1], 4), shardMat);
+                sh.position.set(ow * c[0], oh * c[1] / 2, 0.03 * ts); g.add(sh);
+            });
+            var moteMat = _deployGlowMat(0xffffff, 0.7);
+            for (var mi = 0; mi < 6; mi++) {
+                var mote = new THREE.Mesh(new THREE.CircleGeometry(ts * 0.018, 6), moteMat);
+                mote._ph = mi / 6; mote._mx = ow * (-0.4 + 0.8 * ((mi * 37) % 10) / 10);
+                mote.onBeforeRender = function () { var t = (_now() * 0.35 + this._ph) % 1; this.position.set(this._mx + Math.sin(t * 9) * ts * 0.02, oh * (1 - t), 0.02 * ts); };
+                g.add(mote);
+            }
+        } else if (d.door === 'maw') {
+            /* the void: a violet ring turning inward, pulling the motes of the room into the black */
+            var ring = new THREE.Mesh(new THREE.RingGeometry(ow * 0.18, ow * 0.34, 24, 1), _deployGlowMat(0x7a4cff, 0.5));
+            ring.position.set(0, oh * 0.5, 0.02 * ts);
+            ring.onBeforeRender = function () { var t = _now(); this.rotation.z = -t * 1.6; var k = 1 + 0.08 * Math.sin(t * 3); this.scale.set(k, k, 1); };
+            g.add(ring);
+            var pullMat = _deployGlowMat(0xb49bff, 0.6);
+            for (var pi2 = 0; pi2 < 7; pi2++) {
+                var pm = new THREE.Mesh(new THREE.CircleGeometry(ts * 0.02, 6), pullMat);
+                pm._ph = pi2 / 7; pm._a = pi2 * 0.9;
+                pm.onBeforeRender = function () { var t = (_now() * 0.5 + this._ph) % 1, r = ow * 0.48 * (1 - t), a = this._a + t * 3; this.position.set(Math.cos(a) * r, oh * 0.5 + Math.sin(a) * r, 0.03 * ts); this.scale.setScalar(1 - t * 0.7); };
+                g.add(pm);
+            }
+        } else if (d.door === 'laser') {
+            /* the neon city: a red neon edge round the opening, a scanline sweeping the dark pane */
+            var neon = _deployGlowMat(0xff2a4a, 0.85);
+            [[0, oh, ow, ts * 0.02], [0, 0.01 * ts, ow, ts * 0.02]].forEach(function (b) { var e = new THREE.Mesh(new THREE.PlaneGeometry(b[2], b[3]), neon); e.position.set(b[0], b[1], 0.02 * ts); g.add(e); });
+            [-1, 1].forEach(function (sd) { var e = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.02, oh), neon); e.position.set(sd * ow / 2, oh / 2, 0.02 * ts); g.add(e); });
+            var scan = new THREE.Mesh(new THREE.PlaneGeometry(ow * 0.96, ts * 0.03), _deployGlowMat(0xff6a7a, 0.6));
+            scan.onBeforeRender = function () { this.position.set(0, oh * ((_now() * 0.6) % 1), 0.025 * ts); };
+            g.add(scan);
+        } else if (d.door === 'light') {
+            /* the pearly gate: god-rays fanning out of the opening, breathing */
+            var rayMat = _deployGlowMat(0xfff1b0, 0.22);
+            [-0.3, -0.1, 0.1, 0.3].forEach(function (rx, ri) {
+                var ray = new THREE.Mesh(new THREE.PlaneGeometry(ow * 0.12, oh * 1.1), rayMat);
+                ray.position.set(ow * rx, oh * 0.55, ts * 0.12); ray.rotation.z = rx * 0.6; ray._ph = ri;
+                ray.onBeforeRender = function () { this.scale.set(1, 0.85 + 0.2 * Math.sin(_now() * 1.7 + this._ph), 1); };
+                g.add(ray);
+            });
+            var halo = new THREE.Mesh(new THREE.RingGeometry(ow * 0.2, ow * 0.26, 24), _deployGlowMat(0xffffff, 0.5));
+            halo.position.set(0, oh * 0.8, 0.02 * ts); g.add(halo);
+        }
         if (d.door === 'gust') {
             /* the summit's clouds in the opening (soft discs, both faces) */
             var cMat = _deployGlowMat(0xffffff, 0.3);
@@ -8224,7 +8290,9 @@ const ThreeRenderer = (function () {
             if (!gd) return out;
             var ts = CONFIG.tileSize || BASE_TILE;
             var W = (typeof bw === 'function') ? bw() : 16, H = (typeof bh === 'function') ? bh() : 16;
-            var tiles = doorGunLaneTiles(d, { w: W, h: H });
+            var tiles = (gd.beam && typeof window !== 'undefined' && typeof window.standingDoorLaneTiles === 'function')
+                ? window.standingDoorLaneTiles(d)   // the beam as the engine traces it: walls stop it, prisms turn it
+                : doorGunLaneTiles(d, { w: W, h: H });
             if (gd.radius) {
                 var R = gd.radius | 0;
                 tiles = tiles.filter(function (t) { return Math.max(Math.abs(t.x - d.x), Math.abs(t.y - d.y)) === R; });
@@ -8240,8 +8308,68 @@ const ThreeRenderer = (function () {
                 m._ew_deployable = true; m._ew_depX = tiles[i].x; m._ew_depY = tiles[i].y; m._ew_depOwner = d.owner;
                 out.push(m);
             }
+            if (gd.act === 'lanePush') _gustStreamStreaks(d, tiles, out, ts, mine);
+            if (gd.beam) _laserBeamLine(d, tiles, out, ts, gd.color || 0xff2a4a);
         } catch (e) {}
         return out;
+    }
+    /* 🌬 THE GUST STREAM, drawn (the user, 2026-09-25: the wind is a standing hazard, not a round-end blast): pale streaks
+       race down every lane tile in the face's direction, all the time the door stands, at two heights — the board says
+       "this ground is wind" without a beat. onBeforeRender ticks them (no per-frame allocation, fog-gated per tile). */
+    function _gustStreamStreaks(d, tiles, out, ts, mine) {
+        var fx = Math.sign(d.faceX || 0), fy = Math.sign(d.faceY || 0);
+        if (!fx && !fy) return;
+        var diag = (fx && fy) ? Math.SQRT2 : 1;
+        var n = Math.hypot(fx, fy), ux = fx / n, uz = fy / n;
+        var yaw = Math.atan2(fx, fy);
+        var mat = _deployGlowMat(0xeef8ff, mine ? 0.55 : 0.4);
+        var geo = new THREE.PlaneGeometry(ts * 0.035, ts * 0.5);
+        var now = function () { return (typeof performance !== 'undefined' ? performance.now() : Date.now()) / 1000; };
+        for (var i = 0; i < tiles.length; i++) {
+            for (var k = 0; k < 3; k++) {
+                var m = new THREE.Mesh(geo, mat);
+                m.rotation.order = 'YXZ'; m.rotation.y = yaw; m.rotation.x = -Math.PI / 2 + (k === 2 ? 0.5 : 0);
+                var side = (k - 1) * 0.26 * ts;
+                m._bx = tiles[i].x * ts + ts / 2 - uz * side; m._bz = tiles[i].y * ts + ts / 2 + ux * side;
+                m._by = tileTopY(tiles[i].x, tiles[i].y) + ts * (k === 2 ? 0.55 : 0.05 + 0.18 * k);
+                m._ux = ux * ts * diag; m._uz = uz * ts * diag;
+                m._ph = ((i * 0.37 + k * 0.29) % 1);
+                m._rate = 1.5 + 0.25 * k;
+                m.renderOrder = 4;
+                m.onBeforeRender = function () {
+                    var t = (now() * this._rate + this._ph) % 1;
+                    this.position.set(this._bx + this._ux * (t - 0.5), this._by, this._bz + this._uz * (t - 0.5));
+                    this.scale.set(1, 0.3 + Math.sin(Math.PI * t), 1);
+                };
+                m.onBeforeRender();
+                m._ew_deployable = true; m._ew_depX = tiles[i].x; m._ew_depY = tiles[i].y; m._ew_depOwner = d.owner;
+                out.push(m);
+            }
+        }
+    }
+    /* 🔴 THE LASER's beam, drawn: a thin red line at chest height from the opening along the traced tiles (bent at each
+       prism), shimmering; per tile so the fog hides the stretches the viewer cannot see */
+    function _laserBeamLine(d, tiles, out, ts, col) {
+        if (!tiles.length) return;
+        var mat = _deployGlowMat(col, 0.75), core = _deployGlowMat(0xffd0d8, 0.8);
+        var px = d.x, py = d.y;
+        var now = function () { return (typeof performance !== 'undefined' ? performance.now() : Date.now()) / 1000; };
+        for (var i = 0; i < tiles.length; i++) {
+            var t = tiles[i];
+            var ax = px * ts + ts / 2, az = py * ts + ts / 2, bx = t.x * ts + ts / 2, bz = t.y * ts + ts / 2;
+            var len = Math.hypot(bx - ax, bz - az);
+            var y = Math.max(tileTopY(px, py), tileTopY(t.x, t.y)) + ts * 0.62;
+            [[mat, 0.05], [core, 0.018]].forEach(function (lay) {
+                var m = new THREE.Mesh(new THREE.BoxGeometry(ts * lay[1], ts * lay[1], len), lay[0]);
+                m.position.set((ax + bx) / 2, y, (az + bz) / 2);
+                m.rotation.y = Math.atan2(bx - ax, bz - az);
+                m._ph = i * 0.7;
+                m.onBeforeRender = function () { var k = 1 + 0.25 * Math.sin(now() * 18 + this._ph); this.scale.set(k, k, 1); };
+                m._ew_deployable = true; m._ew_depX = t.x; m._ew_depY = t.y; m._ew_depOwner = d.owner;
+                out.push(m);
+            });
+            px = t.x; py = t.y;
+        }
     }
     var DOOR3D_OPEN_ANGLE = 1.5;
     var DOOR3D_CAPTURE_OPEN_ANGLE = 2.62;   // 🚪 a capture door stands wide open (150°) — see straight through it

@@ -526,3 +526,23 @@ Line numbers are the 2026-09-25 clone's (token `20260925-capture-08-cors`); grep
   **Also added early:** ai.js gets a basic CPU placer (`doorGunAiPick`: the best gust lane, a volley that
   reaches), so a bot Door Agent is not dead weight; Phase 6 still owns the real AI. Notes:
   docs/notes/champions-combat.md "THE DOOR AGENT rev 5". Test: door-gun-board.test.js.
+- 2026-09-25 — **Phase 2 shipped** (`door-gun/ENTROPY_WARS_DOOR_GUN_2.zip`, token `20260925-door-gun-03-cors`):
+  **THE GUST STREAM first** (the user: the wind is "a persistent hazard on the field, not just blasting in between
+  rounds. If a unit walks into the gust stream it should push them that direction. Immovable units like the kaiju
+  and giant should be able to stand in it just fine"): a walk that enters a gust lane stops on the first windy tile
+  (`getPathPickupEvent` `gust` → `gustStreamAt`) and E′ blows it; E′ stamps the gust once per CHAIN (`_chainRootSeq`),
+  not per round, so every entry is blown and facing gusts cannot juggle a body; **the stream REPLACES the round-end
+  blast** (a gust only takes a DOORS' TURN beat when a movable body is still stuck in its lane). Unmoved: colossal
+  weight (kaiju, giant, mech, dragon…), flyers, a Keyholder, a held body. The lane is drawn as live wind streaks.
+  **THE DESTINATIONS**: `gunHellDoor` (a 3-tile burning lane via `igniteTile`, 45 + Burn to enemies, melts Frost's
+  ice), `gunFrostDoor` (4 tiles of timed ice, water freezes, 30 + Slow; **the ice rule** is chain step B′: a body
+  displaced onto ice slides on in its travel direction — `resolveForcedSlide` passes `dirX/dirY`), `gunMawDoor`
+  (enemies within 2 drawn one tile in; on the door: 50 + Stagger, spat out of the back), `gunLaserDoor`
+  (`doorGunBeamTiles`: to a wall / shut door, a PRISM turns it toward the side with more enemies, ≤ 3 turns; 60 to
+  enemies only; walking across it burns too), `gunLightDoor` (its side heals 40 + cleanse; the other 45 + Blind).
+  **Deviations:** the Light row's element is `light` (the table's `holy` is not a SPELL_ELEMENT); there is no
+  Chill or Dazzle status, so Frost slows and Light blinds; Hell's direct blast spares allies (its fire does not);
+  mirrors are prisms with no facing, so the turn rule is "toward more enemies, else clockwise". **Also early
+  (Phase 6):** ai.js drops move targets whose path enters a stream that would move the unit and prices ending in
+  a hostile lane; the placer scores all seven acts. Dresses + recipes in three-renderer.js / three-vfx-effects.js.
+  Notes: docs/notes/champions-combat.md "THE DOOR AGENT rev 6". Test: door-gun-destinations.test.js.

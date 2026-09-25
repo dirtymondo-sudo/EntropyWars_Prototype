@@ -3598,14 +3598,16 @@
         // from doMove after the path resolves; deterministic (no RNG) so the
         // online guest's doMove replay stays in sync. Units whose terrain
         // preference is ice (yeti) are sure-footed and never slide.
-        function _resolveIceSlide(unit) {
+        function _resolveIceSlide(unit, dir) {
             if (!unit || unit.dead || unit._dying) return false;
             if (state.phase !== 'battle') return false;
             if (typeof canFly === 'function' && canFly(unit)
                 && typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return false;
             if (!_isIceTile(unit.x, unit.y)) return false;
             if (unit.terrainPreference === 'ice') return false;
-            const f = (typeof getUnitFacing === 'function') ? getUnitFacing(unit) : null;
+            /* `dir` (THE CHAIN's ice rule): a displaced body slides in its TRAVEL direction, not the way it faces */
+            const f = (dir && (dir.dx || dir.dy)) ? { dx: dir.dx, dy: dir.dy }
+                : (typeof getUnitFacing === 'function') ? getUnitFacing(unit) : null;
             if (!f) return false;
             const dx = Math.sign(f.dx || 0), dy = Math.sign(f.dy || 0);
             if (!dx && !dy) return false;
@@ -3628,7 +3630,7 @@
             unit.x = cx;
             unit.y = cy;
             if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(cx, cy, unit.z);
-            animateDisplacementPath(unit, fromX, fromY, steps, 90);
+            animateDisplacementPath(unit, fromX, fromY, steps, 90, (dir && dir.delayMs) ? { delayMs: dir.delayMs } : undefined);
             playSfx('iceSlide');
             showFloatingTextForUnit(unit, '⛸ SLIDES!', 'debuff', { durationMs: 1000 });
             addLog(`⛸ ${unitDisplayName(unit)} hits the ice at ${coordLabel(fromX, fromY)} and slides to ${coordLabel(cx, cy)}!`);
@@ -3656,6 +3658,8 @@
         //   B  THE GROUND — water soaks (and douses), lava / deep water bite
         //                  (a shove only — walking in is the terrain's own
         //                  end-of-turn rule), a burning tile burns, goo coats.
+        //   B′ THE ICE   — a body DISPLACED onto ice slides on in its travel
+        //                  direction (opts.dirX / dirY; the door wheel Phase 2).
         //   C  THE PICKUPS — pixie dust, debris cubes.
         //   D  THE FUSES  — an enemy BOMB detonates (its blast blows bodies
         //                  → their own chains), a hidden TRAP springs, a
@@ -3668,7 +3672,8 @@
         //                  standing door whose lane / radius holds the tile
         //                  acts on the body NOW (a Gust Door blows it down the
         //                  lane, an Archers' Door looses its volley), once per
-        //                  door per unit per round; a slide runs its own chain.
+        //                  door per unit per round (THE GUST STREAM: once per
+        //                  CHAIN — every entry is blown); a slide runs its own chain.
         //   F  THE VORTEX — an active tornado / hurricane whose tiles hold
         //                  the body shreds and FLINGS it now (once per storm
         //                  per round), and the landing runs its own chain.
@@ -3688,6 +3693,10 @@
         const CHAIN_RULES = { maxDepth: 8, floatMs: 1100 };
         let _chainDepth = 0;
         let _chainFired = 0;
+        /* one number per ROOT resolution (a walk's landing, a shove's landing — depth 0), so a reaction can act on a body
+           once per chain instead of once per round: THE GUST STREAM blows a body every time it enters, never twice in one
+           chain (two gusts facing each other would otherwise juggle it to the depth cap) */
+        let _chainRootSeq = 0;
 
         function _chainStampOk(unit, field, key) {
             /* once per (unit, key) per round — plain data on the unit (an id
@@ -3744,6 +3753,7 @@
             const startX = unit.x, startY = unit.y;
             const moved = () => unit.dead || unit._dying || unit.x !== startX || unit.y !== startY;
             let fired = 0;
+            if (depth === 0) _chainRootSeq++;
             _chainDepth = depth + 1;
             try {
                 const airborne = (typeof canFly === 'function' && canFly(unit)
@@ -3761,6 +3771,16 @@
                 // ── B · THE GROUND ──────────────────────────────────────────
                 fired += _chainGround(unit, via);
                 if (moved()) return fired;
+                // THE ICE RULE (DOOR_GUN_PLAN §3.4, the door wheel Phase 2): a body DISPLACED onto ice (a shove, a gust,
+                // a pull — never a walk, doMove's own slide owns that) keeps sliding the way it was travelling until it
+                // leaves the ice; the slide's landing runs its own chain. A Frost lane turns a 2-tile swing into the
+                // lane's whole length.
+                if (via !== 'move' && (opts.dirX || opts.dirY) && typeof _isIceTile === 'function' && _isIceTile(unit.x, unit.y)
+                    && typeof _resolveIceSlide === 'function'
+                    && _resolveIceSlide(unit, { dx: opts.dirX, dy: opts.dirY, delayMs: opts.fxDelayMs || 0 })) {
+                    fired++;
+                    return fired;
+                }
 
                 // ── C · THE PICKUPS ─────────────────────────────────────────
                 if (typeof checkPixieDustPickup === 'function' && checkPixieDustPickup(unit)) fired++;
@@ -4607,7 +4627,7 @@
                         }
                     }
                     if (res.moved > 0) {
-                        _applyKnockbackHazard(target, { fxDelayMs: (opts.animate !== false && !_skipVisuals() && !_bufferingRoundEvents) ? (res.animMs || 0) : 0 });
+                        _applyKnockbackHazard(target, { fxDelayMs: (opts.animate !== false && !_skipVisuals() && !_bufferingRoundEvents) ? (res.animMs || 0) : 0, dirX: Math.sign(dx || 0), dirY: Math.sign(dy || 0) });
                         _fanFlamesAlongPush(target, res.steps.filter(s => !s.bump), dx, dy, opts.byUnit || null);
                     }
                 }
@@ -31865,7 +31885,9 @@
                 if (!isTerrainPassable(t.x, t.y)) continue;
                 const cur = getTerrainAt(t.x, t.y);
                 if (!cur || cur === 'wall' || cur === 'mountain' || cur === 'chasm' || cur.indexOf('void') === 0) continue;
-                if (typeof liquidFamilyOf === 'function' && liquidFamilyOf(cur) && cur !== cfg.terrain) continue;
+                /* cfg.freezeWater (the Frost Door): water and deep water freeze into ice — the one liquid a paint may cover */
+                const _frz = !!(cfg.freezeWater && (cur === 'water' || cur === 'deep_water'));
+                if (typeof liquidFamilyOf === 'function' && liquidFamilyOf(cur) && cur !== cfg.terrain && !_frz) continue;
                 const ex = state._timedTerrain.find(e => e.x === t.x && e.y === t.y);
                 if (ex) {
                     ex.expiresRound = Math.max(ex.expiresRound, expires);
@@ -31890,18 +31912,19 @@
             if (!state._timedTerrain || !state._timedTerrain.length) return;
             const r = state.round || 1;
             const keep = [];
-            let reverted = 0;
+            let reverted = 0, thawed = 0;
             for (const e of state._timedTerrain) {
                 if (r < e.expiresRound) { keep.push(e); continue; }
                 if (getTerrainAt(e.x, e.y) === e.terrain && e.prev && typeof TERRAIN_RULES !== 'undefined' && TERRAIN_RULES[e.prev]) {
                     setTerrainAt(e.x, e.y, e.prev);
                     reverted++;
+                    if (e.terrain === 'ice') thawed++;
                 }
             }
             state._timedTerrain = keep;
             if (reverted) {
                 state._terrainVersion = (state._terrainVersion || 0) + 1;
-                addLog(`The ooze dries up on ${reverted} tile${reverted !== 1 ? 's' : ''}.`);
+                addLog(`The ${thawed === reverted ? 'ice thaws' : thawed ? 'ooze dries up and the ice thaws' : 'ooze dries up'} on ${reverted} tile${reverted !== 1 ? 's' : ''}.`);
                 scheduleBoardRender();
             }
         }
@@ -32450,6 +32473,9 @@
                 /* 🚪 THE ONE-WAY DOOR: an enemy's capture door stops the walk on it (the chain's D′ takes the body) */
                 const _cd = (typeof captureDoorAt === 'function') ? captureDoorAt(x, y) : null;
                 if (_cd && captureDoorCanTake(_cd, unit)) return { kind: 'capture', x, y };
+                /* 🌬 THE GUST STREAM (the user, 2026-09-25): a walk into a Gust Door's lane stops on the first windy tile and
+                   the wind takes it from there (the chain's E′) — a body the wind cannot move (colossal, a Keyholder) walks on */
+                if (typeof gustStreamAt === 'function' && gustStreamAt(unit, x, y)) return { kind: 'gust', x, y };
             }
             const visibleHourglasses = groundHourglassesAt(x, y).filter(h => h.visibleTo?.[unit.player]);
 
@@ -52882,6 +52908,15 @@
                         return;
                     }
                 }
+                /* 🔴 a LASER DOOR's beam sears an enemy who walks across it (once per door per round; the tile the walk
+                   ends on is the chain's E′) */
+                if (i < path.length - 1 && typeof gunDoorWalkCross === 'function') {
+                    gunDoorWalkCross(unit, step.x, step.y);
+                    if (unit.dead || unit._dying) {
+                        completeMoveAlongPath(unit, step.x, step.y, null, destinationX, destinationY, step.z);
+                        return;
+                    }
+                }
                 /* Mystery Dungeon loot is scooped in passing — walking OVER an
                    item collects it without stopping the move. */
                 if (typeof _mdCollectItemsOnTile === 'function') _mdCollectItemsOnTile(unit, step.x, step.y);
@@ -55351,6 +55386,11 @@
            slides ride animateDisplacementPath (relayed), the numbers ride the
            damage path. The recipes are '<spellId>:open / act / fold / hit'
            (three-vfx-effects.js "THE STANDING DOORS").
+           Phase 2 (2026-09-25): THE GUST STREAM (the lane is a standing hazard —
+           a walk stops in it, every entry is blown, no round-end blast unless a
+           body is stuck in it) and the destinations: Hell (a burning lane),
+           Frost (an ice lane + the chain's ice rule), Maw (the draught + the
+           bite), Laser (the beam, prisms turn it), Light (heal + cleanse / blind).
            ═══════════════════════════════════════════════════════════════════ */
         function _gunR() { return (typeof DOOR_GUN_RULES !== 'undefined') ? DOOR_GUN_RULES : { standingCap: 2, hits: 3, range: 4, los: true, lane: { max: 6 } }; }
         function _gunDoorDef(door) { return (door && typeof DOOR_GUN_DOORS !== 'undefined') ? (DOOR_GUN_DOORS[door.door] || null) : null; }
@@ -55364,7 +55404,54 @@
         /* the tiles the door acts on (data.js doorGunLaneTiles, clipped to the board) */
         function standingDoorLaneTiles(door) {
             if (!door || typeof doorGunLaneTiles !== 'function') return [];
+            const def = (typeof DOOR_GUN_DOORS !== 'undefined') ? DOOR_GUN_DOORS[door.door] : null;
+            if (def && def.beam) return doorGunBeamTiles(door);
             return doorGunLaneTiles(door, { w: bw(), h: bh() });
+        }
+        /* 🔴 THE BEAM (the Laser Door, Phase 2): straight out of the face until the board's edge, a wall (impassable ground)
+           or a SHUT door. A live PRISM on the path (state.mirrors — the Machine Elves' object, either side's) turns it a
+           quarter turn toward the side whose line holds more of the door owner's enemies (a tie turns it clockwise), up to
+           the row's `bounces` (3). Every tile once, the prism tiles included (tagged `mirror`). Pure over the board. */
+        function doorGunBeamTiles(door) {
+            const out = [];
+            let fx = Math.sign(door.faceX || 0), fy = Math.sign(door.faceY || 0);
+            if (!door || (!fx && !fy)) return out;
+            const sp = (typeof SPELL_BY_ID !== 'undefined' && door.spellId && SPELL_BY_ID[door.spellId]) || {};
+            const maxB = sp.bounces != null ? sp.bounces : 3;
+            const blocked = (x, y) => !isInside(x, y)
+                || (typeof isTerrainPassable === 'function' && !isTerrainPassable(x, y))
+                || (typeof doorBlocksMove === 'function' && doorBlocksMove(x, y));
+            const prismAt = (x, y) => (state.mirrors || []).find(m => m && m.x === x && m.y === y && m.hp > 0) || null;
+            const hostilesOn = (x0, y0, dx, dy) => {
+                let n = 0, x = x0 + dx, y = y0 + dy, guard = 0;
+                while (!blocked(x, y) && guard++ < 64) {
+                    const u = unitAt(x, y);
+                    if (u && !u.dead && u.player !== door.owner) n++;
+                    if (prismAt(x, y)) break;
+                    x += dx; y += dy;
+                }
+                return n;
+            };
+            const seen = new Set(), turns = new Set();
+            let x = door.x, y = door.y, bounces = 0, guard = 0;
+            while (guard++ < 256) {
+                const nx = x + fx, ny = y + fy;
+                if (blocked(nx, ny)) break;
+                x = nx; y = ny;
+                const k = x + ',' + y;
+                const prism = prismAt(x, y);
+                if (!seen.has(k)) { seen.add(k); out.push(prism ? { x, y, mirror: true } : { x, y }); }
+                if (prism && bounces < maxB) {
+                    const tk = k + ':' + fx + ',' + fy;
+                    if (turns.has(tk)) break;   // a closed loop of prisms: the light has nowhere new to go
+                    turns.add(tk);
+                    const cw = { x: -fy, y: fx }, ccw = { x: fy, y: -fx };
+                    const nCw = hostilesOn(x, y, cw.x, cw.y), nCcw = hostilesOn(x, y, ccw.x, ccw.y);
+                    const t = nCcw > nCw ? ccw : cw;
+                    fx = t.x; fy = t.y; bounces++;
+                }
+            }
+            return out;
         }
         /* a lane door takes a FACING (a second click); a radius door (Archers) does not */
         function doorGunNeedsFacing(spell) { const d = _gunDoorDefOfSpell(spell); return !!(d && (d.lane || d.beam)); }
@@ -55418,23 +55505,41 @@
         }
         /* the CPU's facing (an AI / auto seat only — a human always picks): the face whose lane holds the most hostile bodies
            (a body blown onto a hazard counts double), the fewest of its own; ties → the default face */
-        function doorGunBestFacing(unit, spell, x, y) {
-            const def0 = doorGunDefaultFacing(unit, x, y);
-            if (!doorGunNeedsFacing(spell)) return def0;
-            let best = def0, bestS = -Infinity;
-            const L = (_gunDoorDefOfSpell(spell).lane | 0) + 1;
-            for (const [fx, fy] of DOOR_GUN_FACINGS) {
-                let s = (fx === def0.faceX && fy === def0.faceY) ? 0.5 : 0;
-                const lane = standingDoorLaneTiles({ door: spell.door, x, y, faceX: fx, faceY: fy });
-                for (const t of lane) {
-                    const u = unitAt(t.x, t.y);
-                    if (!u || u.dead || u._dying) continue;
+        /* one face's worth to its placer (the CPU's facing + placer): what the lane / beam holds, per act */
+        function _gunDoorFaceScore(unit, spell, x, y, fx, fy) {
+            const def = _gunDoorDefOfSpell(spell);
+            if (!def) return 0;
+            const probe = { door: spell.door, x, y, faceX: fx, faceY: fy, owner: unit.player, spellId: spell.id };
+            const lane = standingDoorLaneTiles(probe);
+            const L = (def.lane | 0) + 1;
+            let s = 0;
+            for (const t of lane) {
+                const u = unitAt(t.x, t.y);
+                if (!u || u.dead || u._dying) continue;
+                const foe = isEnemyUnit(u, unit);
+                if (def.act === 'lanePush') {
                     if (typeof unitPassiveValue === 'function' && unitPassiveValue(u, 'doorImmune')) continue;
                     const endX = x + fx * L, endY = y + fy * L;
                     const T = isInside(endX, endY) && typeof getTerrainRule === 'function' ? getTerrainRule(getTerrainAt(endX, endY)) : null;
                     const hazard = !isInside(endX, endY) || !!(T && (T.isLava || T.deepWater || T.lava || T.damagePerTurn > 0)) || !!captureDoorAt(endX, endY);
-                    s += isEnemyUnit(u, unit) ? (hazard ? 20 : 10) : -8;
+                    s += foe ? (hazard ? 20 : 10) : -8;
+                } else if (def.act === 'laneLight') {
+                    if (foe) s += 10;
+                    else s += ((u.hp || 0) < (u.maxHp || 1) * 0.7 || Object.keys(u.status || {}).some(k => (u.status[k] | 0) > 0 && typeof STATUS_DEFS !== 'undefined' && STATUS_DEFS[k] && STATUS_DEFS[k].kind === 'debuff')) ? 8 : 2;
+                } else if (def.act === 'laneTerrain') {
+                    s += foe ? 10 : (def.terrain === 'fire' ? -6 : -1);   // the fire burns whoever stands on it later
+                } else if (def.act === 'beam') {
+                    if (foe) s += 12;
                 }
+            }
+            return s;
+        }
+        function doorGunBestFacing(unit, spell, x, y) {
+            const def0 = doorGunDefaultFacing(unit, x, y);
+            if (!doorGunNeedsFacing(spell)) return def0;
+            let best = def0, bestS = -Infinity;
+            for (const [fx, fy] of DOOR_GUN_FACINGS) {
+                const s = ((fx === def0.faceX && fy === def0.faceY) ? 0.5 : 0) + _gunDoorFaceScore(unit, spell, x, y, fx, fy);
                 if (s > bestS) { bestS = s; best = { faceX: fx, faceY: fy }; }
             }
             return best;
@@ -55456,6 +55561,231 @@
             if (lane && !opts.auto) return { x, y, pick: true };
             const f = opts.face || (lane ? doorGunBestFacing(unit, spell, x, y) : doorGunDefaultFacing(unit, x, y));
             return { x, y, faceX: f.faceX, faceY: f.faceY, pick: false };
+        }
+        function _gdPlural(n, w) { return n + ' ' + w + (n === 1 ? '' : 's'); }
+        function _gunDoorSpell(door) { return (typeof SPELL_BY_ID !== 'undefined' && door && SPELL_BY_ID[door.spellId]) || {}; }
+        function _gunDoorOnLane(door, x, y) { return standingDoorLaneTiles(door).some(t => t.x === x && t.y === y); }
+        /* 🌬 THE GUST STREAM (the user, 2026-09-25: "a persistent hazard on the field … if a unit walks into the gust stream it
+           should push them that direction. Immovable units like the kaiju and giant should be able to stand in it just
+           fine"): the live Gust Door whose lane holds (x, y) and would move THIS body, or null. The walk stops there
+           (getPathPickupEvent `gust`) and E′ blows it; a body the wind cannot move — colossal weight (kaiju, giant, mech,
+           dragon…: getUnitPushDistance 0), a Keyholder, a flyer in the air, a held body — is never stopped. */
+        function gustStreamAt(unit, x, y) {
+            if (!_gunDoorMovable(unit)) return null;
+            if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return null;
+            if (typeof getUnitPushDistance === 'function' && getUnitPushDistance(unit, 1) <= 0) return null;
+            for (const door of standingDoorsOf(null)) {
+                if (door._revealAt) continue;
+                const def = _gunDoorDef(door);
+                if (!def || def.act !== 'lanePush') continue;
+                if (_gunDoorOnLane(door, x, y)) return door;
+            }
+            return null;
+        }
+        /* the stream's stamp: once per door per body per CHAIN (resolveTileArrival's root), so a body that walks back
+           into the wind is blown again, but two gusts facing each other never juggle it */
+        function _gunDoorStreamOk(door, unit) {
+            if (!door.laneStamps || typeof door.laneStamps !== 'object') door.laneStamps = {};
+            const key = 'c' + (typeof _chainRootSeq !== 'undefined' ? _chainRootSeq : 0);
+            if (door.laneStamps[unit.id] === key) return false;
+            door.laneStamps[unit.id] = key;
+            return true;
+        }
+        /* a door's typed hit on one body (the owner credited; the spell row's type + element ride the type wheel and the
+           affinity table). Returns the HP it took. */
+        function _gunDoorHit(door, target, base, opts = {}) {
+            if (!target || target.dead || target._dying || !(base > 0)) return 0;
+            const def = _gunDoorDef(door) || { icon: '🚪', name: 'Door' };
+            const sp = _gunDoorSpell(door);
+            const owner = _gunDoorOwnerUnit(door);
+            const hp0 = target.hp;
+            const dmg = Math.max(1, base + engineRandInt(9) - 4);
+            applyDamageToUnit(target, dmg, `${def.icon} ${def.name}: `, {
+                ignoreArmor: false, damageType: sp.damageType || 'magic', sourceUnit: owner || undefined,
+                spellType: sp.spellType || def.spellType || null, spellElement: sp.element || def.element || null,
+                noRangeMult: true, scaleByTargetLevel: true, flashColor: opts.flash || 'hit',
+            });
+            const took = Math.max(0, hp0 - Math.max(0, target.hp || 0));
+            if (typeof _balAddSpellEffect === 'function') _balAddSpellEffect(door.spellId, took, (target.dead || target._dying || (target.hp || 0) <= 0) ? 1 : 0);
+            if (!_skipVisuals() && !target.dead) triggerStatusWiggle(target);
+            return took;
+        }
+        function _gunDoorStatus(target, id, rounds, label) {
+            if (!target || target.dead || target._dying || !(rounds > 0) || typeof applyStatusPayload !== 'function') return;
+            applyStatusPayload(target, { id, duration: rounds }, label, null);
+        }
+        /* the bodies on a door's lane / beam: hostiles only, or everyone (`all`); no held bodies */
+        function _gunDoorLaneBodies(door, all) {
+            const out = [];
+            for (const t of standingDoorLaneTiles(door)) {
+                const u = unitAt(t.x, t.y);
+                if (!u || u.dead || u._dying || u._sealed || (u.status && u.status.captured > 0)) continue;
+                if (!all && u.player === door.owner) continue;
+                out.push(u);
+            }
+            return out;
+        }
+        /* 🔥 HELL — the lava tongue: the lane's ground burns (the board's own fire, igniteTile — the chain's step B bites a
+           body landing on it, the round tick burns and spreads it), a Frost Door's ice on it melts first; every enemy in
+           the lane takes the blast + Burn. */
+        function _gunDoorHell(door, only, opts = {}) {
+            const def = _gunDoorDef(door), sp = _gunDoorSpell(door);
+            const lane = standingDoorLaneTiles(door);
+            if (!only) {
+                const owner = _gunDoorOwnerUnit(door);
+                for (const t of lane) {
+                    const tt = (state._timedTerrain || []).find(e => e.x === t.x && e.y === t.y && e.terrain === 'ice');
+                    if (tt && getTerrainAt(t.x, t.y) === 'ice' && tt.prev) {   // the fire melts the frost door's ice
+                        setTerrainAt(t.x, t.y, tt.prev);
+                        state._timedTerrain = state._timedTerrain.filter(e => e !== tt);
+                        state._terrainVersion = (state._terrainVersion || 0) + 1;
+                    }
+                    if (typeof igniteTile === 'function') igniteTile(t.x, t.y, sp.terrainRounds || 2, owner || { player: door.owner });
+                }
+                if (!_skipVisuals()) window._doorGeom(door.spellId + ':act', door.x, door.y, { faceX: door.faceX, faceY: door.faceY, len: lane.length, delay: opts.delayMs || 0, owner: door.owner });
+            }
+            const hit = [];
+            for (const u of _gunDoorLaneBodies(door, false)) {
+                if (only && u.id !== only.id) continue;
+                if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) continue;
+                if (!only) _gunDoorStampOk(door, u);
+                _gunDoorHit(door, u, sp.laneDmg || 45, { flash: 'burn' });
+                _gunDoorStatus(u, 'burn', sp.burnRounds || 2, `${def.icon} ${def.name}: `);
+                hit.push(u);
+            }
+            if (!only) addLog(`${def.icon} The ${def.name} at ${coordLabel(door.x, door.y)} sets ${_gdPlural(lane.length, 'tile')} ablaze${hit.length ? ' and scorches ' + hit.map(unitDisplayName).join(', ') : ''}.`);
+            return hit;
+        }
+        /* ❄ FROST — the ice lane: the lane's tiles turn to ICE for `terrainRounds` (timed terrain — the round tick thaws
+           them; water freezes over, fire on them goes out); every enemy in the lane takes the cold + Slow. The ice rule is
+           THE CHAIN's (step B′): a body shoved onto ice slides on the way it was going. */
+        function _gunDoorFrost(door, only, opts = {}) {
+            const def = _gunDoorDef(door), sp = _gunDoorSpell(door);
+            const lane = standingDoorLaneTiles(door);
+            let frozen = 0;
+            if (!only) {
+                const owner = _gunDoorOwnerUnit(door);
+                for (const t of lane) {
+                    if (typeof extinguishTile === 'function') extinguishTile(t.x, t.y);
+                    if (typeof _paintTimedTerrain === 'function') frozen += _paintTimedTerrain(t.x, t.y, { terrain: 'ice', radius: 0, rounds: sp.terrainRounds || 3, freezeWater: true }, owner || null, null);
+                }
+                if (!_skipVisuals()) window._doorGeom(door.spellId + ':act', door.x, door.y, { faceX: door.faceX, faceY: door.faceY, len: lane.length, delay: opts.delayMs || 0, owner: door.owner });
+            }
+            const hit = [];
+            for (const u of _gunDoorLaneBodies(door, false)) {
+                if (only && u.id !== only.id) continue;
+                if (!only) _gunDoorStampOk(door, u);
+                _gunDoorHit(door, u, sp.laneDmg || 30, {});
+                _gunDoorStatus(u, 'slow', sp.slowRounds || 1, `${def.icon} ${def.name}: `);
+                hit.push(u);
+            }
+            if (!only) addLog(`${def.icon} The ${def.name} at ${coordLabel(door.x, door.y)} freezes ${_gdPlural(frozen || lane.length, 'tile')}${hit.length ? ' and chills ' + hit.map(unitDisplayName).join(', ') : ''}.`);
+            return hit;
+        }
+        /* 🕳 MAW — the draught: every enemy within the radius is drawn ONE tile toward the door (the nearest first, so the
+           one beside it goes in and the next steps up); a body that lands ON the door's tile is bitten and spat out of the
+           back (a slide — the chain). `only` = one body (E′). */
+        function _gunDoorMawBite(door, u, opts = {}) {
+            const def = _gunDoorDef(door), sp = _gunDoorSpell(door);
+            if (!u || u.dead || u._dying || u.x !== door.x || u.y !== door.y || u.player === door.owner) return false;
+            if (typeof unitPassiveValue === 'function' && unitPassiveValue(u, 'doorImmune')) return false;
+            if (!door.laneStamps || typeof door.laneStamps !== 'object') door.laneStamps = {};
+            const key = 'bite' + (typeof _chainRootSeq !== 'undefined' ? _chainRootSeq : 0);
+            if (door.laneStamps['b:' + u.id] === key) return false;
+            door.laneStamps['b:' + u.id] = key;
+            if (!_skipVisuals()) window._doorGeom(door.spellId + ':act', door.x, door.y, { bite: 1, delay: opts.delayMs || 0, owner: door.owner });
+            _gunDoorHit(door, u, sp.biteDmg || 50, {});
+            _gunDoorStatus(u, 'stagger', 1, `${def.icon} ${def.name}: `);
+            addLog(`${def.icon} The ${def.name} at ${coordLabel(door.x, door.y)} bites ${unitDisplayName(u)} and spits it out.`);
+            if (!u.dead && !u._dying && _gunDoorMovable(u)) {
+                let bx = -Math.sign(door.faceX || 0), by = -Math.sign(door.faceY || 0);
+                if (!bx && !by) by = -1;
+                const d = (typeof getUnitPushDistance === 'function') ? getUnitPushDistance(u, 1) : 1;
+                if (d > 0) resolveForcedSlide(u, bx, by, d, { byUnit: _gunDoorOwnerUnit(door), label: `${def.name}: `, delayMs: opts.delayMs || 0, perStepMs: 110 });
+            }
+            return true;
+        }
+        function _gunDoorMaw(door, only, opts = {}) {
+            const def = _gunDoorDef(door);
+            const R = def.radius | 0;
+            const inReach = u => Math.max(Math.abs(u.x - door.x), Math.abs(u.y - door.y)) <= R;
+            let bodies = state.units.filter(u => !u.dead && !u._dying && u.player !== door.owner && _gunDoorMovable(u)
+                && !(typeof isUnitAirborne === 'function' && isUnitAirborne(u)) && inReach(u))
+                .sort((a, b) => (Math.max(Math.abs(a.x - door.x), Math.abs(a.y - door.y)) - Math.max(Math.abs(b.x - door.x), Math.abs(b.y - door.y))) || String(a.id).localeCompare(String(b.id)));
+            if (only) bodies = bodies.filter(u => u.id === only.id);
+            if (!only && !_skipVisuals()) window._doorGeom(door.spellId + ':act', door.x, door.y, { pull: 1, r: R, delay: opts.delayMs || 0, owner: door.owner });
+            const moved = [];
+            const owner = _gunDoorOwnerUnit(door);
+            for (const u of bodies) {
+                if (u.dead || u._dying || !inReach(u)) continue;
+                if (u.x === door.x && u.y === door.y) { if (_gunDoorMawBite(door, u, opts)) moved.push(u); continue; }
+                if (!only) _gunDoorStampOk(door, u);
+                const dx = Math.sign(door.x - u.x), dy = Math.sign(door.y - u.y);
+                const dist = (typeof getUnitPushDistance === 'function') ? getUnitPushDistance(u, 1) : 1;
+                if (dist <= 0) continue;
+                const fx0 = u.x, fy0 = u.y;
+                resolveForcedSlide(u, dx, dy, 1, { byUnit: owner, label: `${def.name}: `, delayMs: opts.delayMs || 0, perStepMs: 130 });
+                if (u.x !== fx0 || u.y !== fy0) {
+                    moved.push(u);
+                    if (!_skipVisuals()) showFloatingTextForUnit(u, `${def.icon} DRAWN IN`, 'debuff', { durationMs: 1000 });
+                    addLog(`${def.icon} The ${def.name} at ${coordLabel(door.x, door.y)} draws ${unitDisplayName(u)} from ${coordLabel(fx0, fy0)} to ${coordLabel(u.x, u.y)}.`);
+                }
+            }
+            return moved;
+        }
+        /* 🔴 LASER — the beam: every enemy on it takes the blast (allies never: a laser is aimed, the wind is not) */
+        function _gunDoorLaser(door, only, opts = {}) {
+            const sp = _gunDoorSpell(door), def = _gunDoorDef(door);
+            const beam = standingDoorLaneTiles(door);
+            if (!_skipVisuals()) {
+                const pts = [door.x + ',' + door.y];
+                let px = door.x, py = door.y, pdx = null, pdy = null;
+                beam.forEach((t, i) => {   // the corners only (a primitive string rides the relay)
+                    const dx = t.x - px, dy = t.y - py;
+                    if (pdx !== null && (dx !== pdx || dy !== pdy)) pts.push(px + ',' + py);
+                    pdx = dx; pdy = dy; px = t.x; py = t.y;
+                    if (i === beam.length - 1) pts.push(t.x + ',' + t.y);
+                });
+                if (!beam.length) pts.push((door.x + Math.sign(door.faceX || 0)) + ',' + (door.y + Math.sign(door.faceY || 0)));
+                window._doorGeom(door.spellId + ':act', door.x, door.y, { pts: pts.join(';'), only: only ? (opts.at ? opts.at.x + ',' + opts.at.y : only.x + ',' + only.y) : '', delay: opts.delayMs || 0, owner: door.owner });
+            }
+            const hit = [];
+            const bodies = (only && opts.at) ? [only] : _gunDoorLaneBodies(door, false);   // opts.at: a walker crossing the beam
+            for (const u of bodies) {
+                if (only && u.id !== only.id) continue;
+                if (!only) _gunDoorStampOk(door, u);
+                _gunDoorHit(door, u, sp.beamDmg || 60, { flash: 'shock' });
+                hit.push(u);
+            }
+            if (hit.length) addLog(`${def.icon} The ${def.name} at ${coordLabel(door.x, door.y)} burns ${hit.map(unitDisplayName).join(', ')}.`);
+            return hit;
+        }
+        /* ✨ LIGHT — the shaft: the owner's side in the lane heals + is cleansed; the other side takes the holy blast + Blind */
+        function _gunDoorLight(door, only, opts = {}) {
+            const sp = _gunDoorSpell(door), def = _gunDoorDef(door);
+            const lane = standingDoorLaneTiles(door);
+            if (!only && !_skipVisuals()) window._doorGeom(door.spellId + ':act', door.x, door.y, { faceX: door.faceX, faceY: door.faceY, len: lane.length, delay: opts.delayMs || 0, owner: door.owner });
+            if (only && !_skipVisuals()) window._doorGeom(door.spellId + ':act', door.x, door.y, { faceX: door.faceX, faceY: door.faceY, len: lane.length, only: only.x + ',' + only.y, delay: opts.delayMs || 0, owner: door.owner });
+            const touched = [];
+            const owner = _gunDoorOwnerUnit(door);
+            for (const u of _gunDoorLaneBodies(door, true)) {
+                if (only && u.id !== only.id) continue;
+                if (!only) _gunDoorStampOk(door, u);
+                if (u.player === door.owner) {
+                    const healed = (typeof applyHealingToUnit === 'function') ? applyHealingToUnit(u, sp.laneHeal || 40, owner, { scaleByTargetLevel: true }) : 0;
+                    let cleansed = 0;
+                    if (u.status && typeof STATUS_DEFS !== 'undefined') for (const k of Object.keys(u.status)) {
+                        if (STATUS_DEFS[k] && STATUS_DEFS[k].kind === 'debuff' && k !== 'captured') { delete u.status[k]; cleansed++; }
+                    }
+                    if (!_skipVisuals()) showFloatingTextForUnit(u, cleansed ? `${def.icon} CLEANSED` : `${def.icon} +${Math.round(healed || 0)}`, 'heal', { durationMs: 1000 });
+                    addLog(`${def.icon} The ${def.name}'s light ${healed ? 'heals' : 'bathes'} ${unitDisplayName(u)}${cleansed ? ' and lifts ' + _gdPlural(cleansed, 'debuff') : ''}.`);
+                } else {
+                    _gunDoorHit(door, u, sp.laneDmg || 45, {});
+                    _gunDoorStatus(u, 'blind', sp.blindRounds || 1, `${def.icon} ${def.name}: `);
+                }
+                touched.push(u);
+            }
+            return touched;
         }
         /* the unit a door's act credits (the damage, the kill, the XP) — its owner while it lives */
         function _gunDoorOwnerUnit(door) {
@@ -55497,7 +55827,6 @@
             for (const b of bodies) {
                 const u = b.u;
                 if (!_gunDoorMovable(u)) continue;
-                if (!only) _gunDoorStampOk(door, u);   // the act stamps whom it moved (E′ never re-blows them this round)
                 const dist = (typeof getUnitPushDistance === 'function') ? getUnitPushDistance(u, L - b.pos + 1) : (L - b.pos + 1);
                 if (dist <= 0) continue;
                 if (opts.fromChain && !_skipVisuals()) window._doorGeom(door.spellId + ':act', door.x, door.y, { faceX: fx, faceY: fy, len: lane.length, delay: opts.delayMs || 0, owner: door.owner, only: u.x + ',' + u.y });
@@ -55585,7 +55914,26 @@
                 const t = _gunDoorVolley(door, null, { delayMs: opts.delayMs || 0, deferMs: opts.deferMs != null ? opts.deferMs : (opts.delayMs || 0) });
                 return { fired: t ? 1 : 0, focus: t ? { x: (door.x + t.x) / 2, y: (door.y + t.y) / 2 } : null, holdMs: t ? 1050 : 650 };
             }
-            return { fired: 0, focus: null, holdMs: 0 };   // Phase 2's acts (laneTerrain, pullIn, beam, laneLight)
+            const mid = (n) => ({ x: door.x + (door.faceX || 0) * n, y: door.y + (door.faceY || 0) * n });
+            if (def.act === 'laneTerrain') {
+                const hit = def.terrain === 'ice' ? _gunDoorFrost(door, null, opts) : _gunDoorHell(door, null, opts);
+                return { fired: 1 + hit.length, focus: mid(Math.ceil((def.lane | 0) / 2)), holdMs: hit.length ? 1050 : 850 };
+            }
+            if (def.act === 'pullIn') {
+                const moved = _gunDoorMaw(door, null, opts);
+                return { fired: moved.length, focus: { x: door.x, y: door.y }, holdMs: moved.length ? 1100 : 700 };
+            }
+            if (def.act === 'beam') {
+                const hit = _gunDoorLaser(door, null, opts);
+                const beam = standingDoorLaneTiles(door);
+                const f = hit.length ? { x: hit[0].x, y: hit[0].y } : (beam.length ? beam[Math.floor(beam.length / 2)] : mid(1));
+                return { fired: hit.length, focus: { x: f.x, y: f.y }, holdMs: hit.length ? 1000 : 750 };
+            }
+            if (def.act === 'laneLight') {
+                const t = _gunDoorLight(door, null, opts);
+                return { fired: t.length, focus: mid(2), holdMs: t.length ? 1000 : 750 };
+            }
+            return { fired: 0, focus: null, holdMs: 0 };
         }
         /* E′ · THE STANDING DOORS (resolveTileArrival, after E THE ZONES): every standing door whose lane / radius holds the
            body's tile acts on THIS body now — once per door per unit per round. A slide re-enters the chain at depth + 1. */
@@ -55594,17 +55942,29 @@
             if (!list.length || !unit) return 0;
             if (typeof unitPassiveValue === 'function' && unitPassiveValue(unit, 'doorImmune')) return 0;
             let fired = 0;
+            const co = { fromChain: true, delayMs: opts.fxDelayMs || 0 };
             for (const door of standingDoorsOf(null)) {
                 if (door._revealAt) continue;   // the comet is still in the air — the placement act runs when it lands
                 const def = _gunDoorDef(door);
                 if (!def) continue;
-                if (def.act === 'volley' && unit.player === door.owner) continue;   // the archers shoot hostiles only
+                const sx = unit.x, sy = unit.y;
+                /* 🕳 the Maw's own tile is its mouth: a body that lands ON it is bitten and spat out (once per chain) */
+                if (def.act === 'pullIn' && unit.x === door.x && unit.y === door.y) {
+                    if (_gunDoorMawBite(door, unit, co)) fired++;
+                    if (unit.dead || unit._dying || unit.x !== sx || unit.y !== sy) break;
+                    continue;
+                }
+                if (def.act === 'laneTerrain') continue;   // the burning / frozen ground is step B's (it already bit the body)
+                if (def.act !== 'lanePush' && def.act !== 'laneLight' && unit.player === door.owner) continue;   // the archers, the maw and the beam spare their own side
                 if (!standingDoorLaneTiles(door).some(t => t.x === unit.x && t.y === unit.y)) continue;
                 if (def.act === 'volley' && !_gunDoorVolleyTargets(door).some(u => u.id === unit.id)) continue;
-                if (!_gunDoorStampOk(door, unit)) continue;
-                const sx = unit.x, sy = unit.y;
-                if (def.act === 'lanePush') { if (_gunDoorGust(door, unit, { fromChain: true, delayMs: opts.fxDelayMs || 0 }).length) fired++; }
-                else if (def.act === 'volley') { if (_gunDoorVolley(door, unit, { fromChain: true, delayMs: opts.fxDelayMs || 0 })) fired++; }
+                /* THE GUST STREAM blows a body EVERY time it enters (once per chain); every other door once per round */
+                if (def.act === 'lanePush' ? !_gunDoorStreamOk(door, unit) : !_gunDoorStampOk(door, unit)) continue;
+                if (def.act === 'lanePush') { if (_gunDoorGust(door, unit, co).length) fired++; }
+                else if (def.act === 'volley') { if (_gunDoorVolley(door, unit, co)) fired++; }
+                else if (def.act === 'pullIn') { if (_gunDoorMaw(door, unit, co).length) fired++; }
+                else if (def.act === 'beam') { if (_gunDoorLaser(door, unit, co).length) fired++; }
+                else if (def.act === 'laneLight') { if (_gunDoorLight(door, unit, co).length) fired++; }
                 if (unit.dead || unit._dying || unit.x !== sx || unit.y !== sy) break;   // moved on: its new tile ran its own chain
             }
             return fired;
@@ -55660,12 +56020,42 @@
            with the turret's two-beat camera (on the door, then down its lane / sight line). The user's rule: the full beat
            every round, never fast-forwarded. The quiet paths (auto-sim, a skipped visual, the dungeon's upkeep) resolve
            the acts in place. */
+        const _GUN_ACT_VERB = { lanePush: 'blows', volley: 'looses a volley', laneTerrain: 'breathes', pullIn: 'draws', beam: 'fires', laneLight: 'shines' };
+        /* THE GUST STREAM needs no round-end blast (the user, 2026-09-25: the wind is a standing hazard, it blows whoever
+           ENTERS it) — its turn only comes when a body the wind can move is still standing in it (one that was pinned
+           behind another, or whose wall broke). Every other door acts every round. */
+        function _gunDoorTurnWanted(door) {
+            const def = _gunDoorDef(door);
+            if (!def) return false;
+            if (def.act !== 'lanePush') return true;
+            return standingDoorLaneTiles(door).some(t => {
+                const u = unitAt(t.x, t.y);
+                return u && _gunDoorMovable(u) && !(typeof isUnitAirborne === 'function' && isUnitAirborne(u))
+                    && !(typeof getUnitPushDistance === 'function' && getUnitPushDistance(u, 1) <= 0);
+            });
+        }
+        /* 🔴 a walk ACROSS a hostile Laser Door's beam (not the tile it ends on — that is E′): the beam burns the walker,
+           once per door per round (the walk loop in doMove calls this per step) */
+        function gunDoorWalkCross(unit, x, y) {
+            if (!unit || unit.dead || unit._dying) return 0;
+            if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return 0;
+            let n = 0;
+            for (const door of standingDoorsOf(null)) {
+                if (door._revealAt || door.owner === unit.player) continue;
+                const def = _gunDoorDef(door);
+                if (!def || def.act !== 'beam' || !_gunDoorOnLane(door, x, y)) continue;
+                if (!_gunDoorStampOk(door, unit)) continue;
+                if (_gunDoorLaser(door, unit, { fromChain: true, at: { x, y } }).length) n++;
+                if (unit.dead || unit._dying) break;
+            }
+            return n;
+        }
         function processDoorActs(onDone) {
             const done = () => { if (typeof onDone === 'function') onDone(); };
             const doors = standingDoorsOf(null);
             if (!doors.length) { done(); return; }
             if (state.devAutoSim || _skipVisuals()) {
-                for (const d of doors) { if (d.hp > 0 && _doors().includes(d)) _gunDoorAct(d, { reason: 'turn' }); if (state.winner) break; }
+                for (const d of doors) { if (d.hp > 0 && _doors().includes(d) && _gunDoorTurnWanted(d)) _gunDoorAct(d, { reason: 'turn' }); if (state.winner) break; }
                 if (typeof checkWin === 'function') checkWin();
                 scheduleBoardRender();
                 done();
@@ -55678,10 +56068,11 @@
                 if (idx >= doors.length) { scheduleBoardRender(); done(); return; }
                 const door = doors[idx++];
                 if (!door || door.hp <= 0 || !_doors().includes(door)) { next(); return; }
+                if (!_gunDoorTurnWanted(door)) { next(); return; }   // an empty wind stream has no beat
                 const def = _gunDoorDef(door) || { icon: '🚪', name: 'Door' };
                 const visible = !state.fogOfWar || (typeof _isTileVisibleToViewer === 'function' && _isTileVisibleToViewer(door.x, door.y));
                 const cam = visible && !state.cameraDisabled && typeof camera !== 'undefined';
-                if (visible) _eorPhaseLabel(`${def.icon} ${def.name} ${def.act === 'volley' ? 'looses a volley' : 'blows'}`);
+                if (visible) _eorPhaseLabel(`${def.icon} ${def.name} ${_GUN_ACT_VERB[def.act] || 'acts'}`);
                 if (cam) eorFocusCamera(door.x, door.y, { duration: 380 });
                 window.setTimeout(() => {
                     if (state.winner) { done(); return; }
@@ -55705,6 +56096,7 @@
             window.doorGunDefaultFacing = doorGunDefaultFacing; window.doorGunFacingTiles = doorGunFacingTiles; window.doorGunBestFacing = doorGunBestFacing;
             window.doorGunAimResolve = doorGunAimResolve; window.doorGunPlace = doorGunPlace; window.processDoorActs = processDoorActs;
             window._chainStandingDoors = _chainStandingDoors; window._gunDoorPick = _gunDoorPick;
+            window.gustStreamAt = gustStreamAt; window.gunDoorWalkCross = gunDoorWalkCross; window.doorGunBeamTiles = doorGunBeamTiles;
             /* the CPU's placer (ai.js findSpellTarget 'doorDeploy'): the best legal tile + its worth; null = nothing worth a door.
                Gust: the best face's lane (doorGunBestFacing's count); Archers: hostiles the volley reaches from the tile, a
                tile no hostile stands beside preferred. Phase 6 (DOOR_GUN_PLAN §6) makes it smarter. */
@@ -55731,6 +56123,21 @@
                         if (!hits) continue;
                         s = 40 + hits * 30;
                         if (state.units.some(u => !u.dead && u.player !== unit.player && Math.max(Math.abs(u.x - t.x), Math.abs(u.y - t.y)) <= 1)) s -= 25;
+                    } else if (def.act === 'pullIn') {
+                        /* the maw: hostiles the draught reaches (a body beside it is bitten) */
+                        const R = def.radius | 0;
+                        for (const u of state.units) {
+                            if (u.dead || u._dying || u.player === unit.player || !_gunDoorMovable(u)) continue;
+                            const k = Math.max(Math.abs(u.x - t.x), Math.abs(u.y - t.y));
+                            if (k <= R) s += (k === 1 ? 55 : 35);
+                        }
+                        if (s && state.units.some(u => !u.dead && u.player !== unit.player && Math.max(Math.abs(u.x - t.x), Math.abs(u.y - t.y)) <= 1)) s -= 10;
+                    } else {
+                        /* a lane / beam door (Hell, Frost, Laser, Light): the best face's worth */
+                        face = doorGunBestFacing(unit, spell, t.x, t.y);
+                        const fs = _gunDoorFaceScore(unit, spell, t.x, t.y, face.faceX, face.faceY);
+                        if (fs < 10) continue;   // nobody worth it in any direction
+                        s = fs * 5;
                     }
                     if (s > 0 && (!best || s > best.score)) best = { x: t.x, y: t.y, score: s, face };
                 }

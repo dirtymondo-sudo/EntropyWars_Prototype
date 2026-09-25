@@ -81,12 +81,12 @@ const at = u => u.x + ',' + u.y;
 
 test('the rows: the wheel is the Door Agent\'s alone — a Freelancer never borrows a door', () => {
     const D = loadGameData();
-    assert.deepEqual([...D.unitSpellPoolParts('door agent', 'Agent').wheel], ['gunGustDoor', 'gunArchersDoor']);
+    assert.deepEqual([...D.unitSpellPoolParts('door agent', 'Agent').wheel], ['gunGustDoor', 'gunArchersDoor', 'gunHellDoor', 'gunMawDoor', 'gunFrostDoor', 'gunLaserDoor', 'gunLightDoor']);
     for (const [race, job] of [['freelancer', 'Freelancer'], ['human', 'Freelancer'], ['knight', 'Freelancer']]) {
         const p = D.unitSpellPoolParts(race, job);
         for (const k of Object.keys(p)) assert.ok(!(p[k] || []).some(s => /^gun.*Door$/.test(typeof s === 'string' ? s : s.id)), race + ' ' + k);
     }
-    for (const id of ['gunGustDoor', 'gunArchersDoor']) {
+    for (const id of ['gunGustDoor', 'gunArchersDoor', 'gunHellDoor', 'gunMawDoor', 'gunFrostDoor', 'gunLaserDoor', 'gunLightDoor']) {
         const s = D.SPELL_BY_ID[id];
         assert.equal(s.kind, 'doorDeploy'); assert.equal(s.apCost, 1); assert.equal(s.range, D.DOOR_GUN_RULES.range);
         assert.equal(D.DOOR_GUN_DOORS[s.door].spell, id, 'the table and the row name each other');
@@ -105,11 +105,12 @@ test('PLACE → THE ACT: a Gust Door lands facing its lane and blows EVERY body 
     assert.deepEqual([...B.g('standingDoorLaneTiles')(d)].map(t => t.x + ',' + t.y), ['4,2', '5,2', '6,2', '7,2']);
     assert.equal(at(e), '8,2', 'the enemy: lane end (7) + 1');
     assert.equal(at(ally), '7,2', 'the ally is blown too — stopped by the enemy it followed');
-    assert.deepEqual(B.slides.map(s => s.id), ['e', 'f'], 'the far body first');
+    const real = B.slides.filter(s => s.n > 0);
+    assert.deepEqual(real.map(s => s.id), ['e', 'f'], 'the far body first');
     assert.equal(B.slides[0].by, 'a', 'the owner is credited for a hostile');
     assert.equal(B.slides[1].by, null, 'never for an ally');
     assert.equal(at(off), '5,3', 'a body beside the lane is untouched');
-    assert.equal(B.slides.length, 2, 'the ally still in the lane is not re-blown (stamped by the act)');
+    assert.equal(real.length, 2, 'the ally pinned in the lane by the enemy stays pinned (the stream tries, nothing moves)');
 });
 
 test('SWING → GUST → CAPTURE: a body shoved into a gust lane is blown onto a capture door and TAKEN', () => {
@@ -127,7 +128,7 @@ test('SWING → GUST → CAPTURE: a body shoved into a gust lane is blown onto a
     assert.equal(at(e), '7,4', 'swung to (3,4), blown 4 on to the capture door');
     assert.equal(cap.held && cap.held.unitId, 'e', 'D′ at the landing: the door takes it');
     assert.equal(e.status.captured, 99);
-    assert.ok(gust.laneStamps.e === 1, 'E′ stamped the body');
+    assert.ok(/^c\d+$/.test(gust.laneStamps.e), 'E′ stamped the body for this chain (the stream)');
 });
 
 test('ARCHERS: the volley looses 3 arrows at the nearest hostile it can see; allies and the far enemy are spared; it moves nobody', () => {
@@ -179,7 +180,7 @@ test('A KEYHOLDER WALKS THROUGH WIND: the lane never moves a doorImmune body —
     assert.ok(k.hp < 1000, 'the archers still shoot it');
 });
 
-test('E′ ONCE A ROUND; THE DOORS\' TURN acts every door, oldest first', () => {
+test('THE GUST STREAM: every entry is blown (the same round too); the doors\' turn only blows a body still stuck in it', () => {
     const B = board();
     const a = B.mk('a', 1, 1, 2, { race: 'door agent' });
     const e = B.mk('e', 2, 4, 0);
@@ -187,11 +188,27 @@ test('E′ ONCE A ROUND; THE DOORS\' TURN acts every door, oldest first', () => 
     e.x = 4; e.y = 2; B.D.resolveTileArrival(e, { via: 'move' });
     assert.equal(at(e), '8,2', 'walked into the lane: blown at once');
     e.x = 5; e.y = 2; B.D.resolveTileArrival(e, { via: 'move' });
-    assert.equal(at(e), '5,2', 'the same round: the door has had it');
+    assert.equal(at(e), '8,2', 'the same round, back in: the stream blows it again');
     B.state.round = 2;
+    const acted = []; const orig0 = B.g('_gunDoorAct');
+    B.D._gunDoorAct = (door, o) => { acted.push(door.id); return orig0(door, o); };
+    vm.runInContext('_gunDoorAct = this._gunDoorAct;', B.D);
     B.g('processDoorActs')(() => {});
-    assert.equal(at(e), '8,2', 'THE DOORS\' TURN blows the lane again');
-    assert.equal(d.actedRound, 2);
+    assert.deepEqual(acted, [], 'an empty stream takes no round-end beat');
+    /* a body pinned in the lane (the tile past the end is held) is blown once the way opens, at the doors' turn */
+    const p = B.mk('p', 2, 6, 2);
+    B.D.resolveTileArrival(p, { via: 'move' });
+    assert.equal(at(p), '7,2', 'walked in, blown, and stopped at the lane\'s end by the body past it');
+    e.dead = true;
+    B.g('processDoorActs')(() => {});
+    assert.deepEqual(acted, [d.id], 'a body still in the stream: the door acts');
+    assert.equal(at(p), '8,2', 'blown to the end + 1');
+    /* two gusts facing each other never juggle a body past one bounce each */
+    const B3 = board(); const a3 = B3.mk('a', 1, 0, 0, { race: 'door agent' });
+    B3.place(a3, 'gunGustDoor', 1, 5, 1, 0); B3.place(a3, 'gunGustDoor', 7, 5, -1, 0);
+    const j = B3.mk('j', 2, 3, 5); B3.slides.length = 0;
+    B3.D.resolveTileArrival(j, { via: 'move' });
+    assert.ok(B3.slides.length <= 3, 'bounded: ' + B3.slides.length);
     /* two doors act in placement order */
     const B2 = board(); const a2 = B2.mk('a', 1, 0, 0, { race: 'door agent' });
     const g1 = B2.place(a2, 'gunArchersDoor', 1, 3); B2.state.round = 2; const g2 = B2.place(a2, 'gunArchersDoor', 3, 1);

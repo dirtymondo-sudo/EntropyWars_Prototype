@@ -9065,16 +9065,39 @@ for (const [race, abilities] of Object.entries(RACE_ABILITIES)) {
    first hover shows the lane pointing away from you); a radius door (Archers) is one click. The door STANDS: hits
    (3, a Keyholder's 4), a plate, and an ACT that fires once when it lands and again at THE DOORS' TURN every round
    (battle.js processDoorActs); a body that ARRIVES in its lane is acted on at once (the chain's step E′). Two
-   standing doors per PLAYER; a third folds the oldest. `door` = the DOOR_GUN_DOORS key. Phase 2 adds the rest. */
+   standing doors per PLAYER; a third folds the oldest. `door` = the DOOR_GUN_DOORS key. Phase 2 (2026-09-25) adds the
+   destinations: Hell (a burning lane), Frost (an ice lane), Maw (the pull), Laser (the beam), Light (the shaft).
+   The GUST's lane is a STANDING STREAM (the user, 2026-09-25): it blows on anyone who enters it, any time. */
 const DOOR_GUN_SPELLS = [
     { id: 'gunGustDoor', spellType: 'anomaly', element: 'wind', name: 'Gust Door',
       type: 'utility', cost: 50, range: 4, apCost: 1, cooldownRounds: 0,
       kind: 'doorDeploy', door: 'gust', doorGun: true,
-      desc: 'A door to the top of Mt Shasta. Shoot it onto an empty tile within 4 and turn it to face a lane: the mountain wind blows 4 tiles out of it, and EVERY body in that lane (yours too) is blown to the end of it and one tile past — walls, bodies and hazards as ever. It blows when it lands, again at the end of every round, and at once on anyone who steps or is knocked into the lane. 3 hits to break; two standing doors per player.' },
+      desc: 'A door to the top of Mt Shasta. Shoot it onto an empty tile within 4 and turn it to face a lane: the mountain wind blows 4 tiles out of it for as long as it stands. EVERY body in that lane (yours too) is blown to the end of it and one tile past, walls, bodies and hazards as ever: when it lands, and whenever anyone walks, is knocked or teleports into the stream (a walk stops at the first windy tile). Colossal bodies (a kaiju, a giant), flyers and a Keyholder stand in it unmoved. 3 hits to break; two standing doors per player.' },
     { id: 'gunArchersDoor', spellType: 'human', element: 'physical', name: "Archers' Door",
       type: 'utility', cost: 50, range: 4, apCost: 1, cooldownRounds: 0,
       kind: 'doorDeploy', door: 'archers', doorGun: true, damageType: 'physical', arrows: 3, arrowDmg: 25,
       desc: "A door to Camelot's walls. Shoot it onto an empty tile within 4: Robin Hood's archers loose a volley of 3 arrows (WEAK physical each) at the nearest enemy within 4 they can see — when it lands, again at the end of every round, and at once on an enemy who steps or is knocked into range. It moves nobody: it punishes the body you pinned. 3 hits to break; two standing doors per player." },
+    /* Phase 2 — THE DESTINATIONS (2026-09-25) */
+    { id: 'gunHellDoor', spellType: 'unholy', element: 'fire', name: 'Hell Door',
+      type: 'utility', cost: 75, range: 4, apCost: 1, cooldownRounds: 0,
+      kind: 'doorDeploy', door: 'hell', doorGun: true, damageType: 'magic', laneDmg: 45, burnRounds: 2, terrainRounds: 2,
+      desc: "A door to the pit of Hell. Shoot it onto an empty tile within 4 and turn it to face a lane: a tongue of lava licks 3 tiles out of it. The lane's ground BURNS for 2 rounds (anyone knocked or walking onto it burns, as on any fire), and every enemy in the lane takes a fire blast (MODERATE) and Burn 2. It melts a Frost Door's ice. It blasts when it lands and again at the end of every round. 3 hits to break; two standing doors per player." },
+    { id: 'gunFrostDoor', spellType: 'anomaly', element: 'ice', name: 'Frost Door',
+      type: 'utility', cost: 50, range: 4, apCost: 1, cooldownRounds: 0,
+      kind: 'doorDeploy', door: 'frost', doorGun: true, damageType: 'magic', laneDmg: 30, slowRounds: 1, terrainRounds: 3,
+      desc: "A door to the North Pole. Shoot it onto an empty tile within 4 and turn it to face a lane: 4 tiles of it turn to ICE for 3 rounds (water freezes into a walkable sheet, fire goes out), and every enemy in the lane takes a cold blast (WEAK) and Slow 1. A body shoved onto ice keeps sliding the way it was going, so a push along the lane runs its whole length. It freezes when it lands and again at the end of every round. 3 hits to break; two standing doors per player." },
+    { id: 'gunMawDoor', spellType: 'alien', element: 'psychic', name: 'Maw Door',
+      type: 'utility', cost: 75, range: 4, apCost: 1, cooldownRounds: 0,
+      kind: 'doorDeploy', door: 'maw', doorGun: true, damageType: 'magic', biteDmg: 50,
+      desc: "A door to the Singularity. Shoot it onto an empty tile within 4: the void behind it DRAWS every enemy within 2 one tile toward it (over anything in the way: a bomb, a trap, a capture door). A body pulled onto the door itself is bitten (MODERATE alien damage + Stagger 1) and spat out of the back. It pulls when it lands, again at the end of every round, and at once on an enemy who steps into its reach. 3 hits to break; two standing doors per player." },
+    { id: 'gunLaserDoor', spellType: 'tech', element: 'lightning', name: 'Laser Door',
+      type: 'utility', cost: 75, range: 4, apCost: 1, cooldownRounds: 0,
+      kind: 'doorDeploy', door: 'laser', doorGun: true, damageType: 'magic', beamDmg: 60, bounces: 3,
+      desc: "A door to the neon city. Shoot it onto an empty tile within 4 and turn it to face a line: a red beam runs straight out of it until a wall or a shut door stops it. A PRISM on its path turns it a quarter turn (toward the side with more enemies), up to 3 turns. Every enemy on the beam takes a tech blast (STRONG); your own side is never hit. It fires when it lands, again at the end of every round, and on any enemy who steps onto or walks across the beam. 3 hits to break; two standing doors per player." },
+    { id: 'gunLightDoor', spellType: 'divine', element: 'light', name: 'Light Door',
+      type: 'utility', cost: 50, range: 4, apCost: 1, cooldownRounds: 0,
+      kind: 'doorDeploy', door: 'light', doorGun: true, damageType: 'magic', laneHeal: 40, laneDmg: 45, blindRounds: 1,
+      desc: "A door to the pearly gate. Shoot it onto an empty tile within 4 and turn it to face a lane: a shaft of Heaven's light shines 4 tiles out of it. Your side in the lane heals (MODERATE) and is cleansed of every debuff; enemies in it take a holy blast (MODERATE) and Blind 1. It shines when it lands, again at the end of every round, and at once on anyone who steps into it. 3 hits to break; two standing doors per player." },
 ];
 for (const sp of DOOR_GUN_SPELLS) { sp._doorWheel = true; SPELL_BY_ID[sp.id] = sp; }
 
@@ -17948,7 +17971,7 @@ const DOOR_GUN_DOORS = {
     maw:       { name: 'Maw Door',      kind: 'standing', spell: 'gunMawDoor',     tier: 3, radius: 2,  act: 'pullIn',                       spellType: 'alien',   element: 'psychic',   icon: '🕳', color: 0x6a3cff, unlock: { site: 'prebuilt_singularity' } },
     frost:     { name: 'Frost Door',    kind: 'standing', spell: 'gunFrostDoor',   tier: 2, lane: 4,    act: 'laneTerrain', terrain: 'ice',  spellType: 'anomaly', element: 'ice',       icon: '❄', color: 0x9fe6ff, unlock: { site: 'prebuilt_northpole' } },
     laser:     { name: 'Laser Door',    kind: 'standing', spell: 'gunLaserDoor',   tier: 3, beam: true, act: 'beam',                         spellType: 'tech',    element: 'lightning', icon: '🔴', color: 0xff2a4a, unlock: { site: 'prebuilt_cyberpunk' } },
-    light:     { name: 'Light Door',    kind: 'standing', spell: 'gunLightDoor',   tier: 2, lane: 4,    act: 'laneLight',                    spellType: 'divine',  element: 'holy',      icon: '✨', color: 0xfff1b0, unlock: { site: 'prebuilt_heaven' } },
+    light:     { name: 'Light Door',    kind: 'standing', spell: 'gunLightDoor',   tier: 2, lane: 4,    act: 'laneLight',                    spellType: 'divine',  element: 'light',      icon: '✨', color: 0xfff1b0, unlock: { site: 'prebuilt_heaven' } },
 };
 const DOOR_GUN_KEYS = Object.keys(DOOR_GUN_DOORS);
 /* the 8 facings, clockwise from north (the board's +y is south) */

@@ -7406,11 +7406,21 @@ function _tileQuickObjectInfo(actingUnit, tx, ty) {
     const sp = (typeof SPELL_BY_ID !== 'undefined' && sdoor.spellId) ? SPELL_BY_ID[sdoor.spellId] : null;
     const dir = (fx, fy) => ((fy < 0 ? 'north' : fy > 0 ? 'south' : '') + (fx < 0 ? 'west' : fx > 0 ? 'east' : '')) || 'ahead';
     let what;
-    if (gd.act === 'lanePush') what = 'The wind blows ' + _plural(gd.lane | 0, 'tile') + ' ' + dir(sdoor.faceX, sdoor.faceY) + ' out of it: every body in that lane — either side — is blown to the end of it and one tile past.';
+    let when = ' It acts at the end of every round, and at once on anyone who steps or is knocked into its reach. ';
+    if (gd.act === 'lanePush') {
+      what = 'A standing wind blows ' + _plural(gd.lane | 0, 'tile') + ' ' + dir(sdoor.faceX, sdoor.faceY) + ' out of it: anyone who walks, is knocked or teleports into that lane (either side) is blown to the end of it and one tile past. A walk stops at the first windy tile. Colossal bodies, flyers and a Keyholder stand in it unmoved.';
+      when = ' ';
+    }
     else if (gd.act === 'volley') what = 'Archers loose ' + ((sp && sp.arrows) || 3) + ' arrows at the nearest enemy within ' + _plural(gd.radius | 0, 'tile') + ' they can see.';
+    else if (gd.act === 'laneTerrain' && gd.terrain === 'fire') what = 'A tongue of lava sets ' + _plural(gd.lane | 0, 'tile') + ' ' + dir(sdoor.faceX, sdoor.faceY) + ' of it burning and scorches every enemy in that lane (Burn).';
+    else if (gd.act === 'laneTerrain') what = 'The North Pole freezes ' + _plural(gd.lane | 0, 'tile') + ' ' + dir(sdoor.faceX, sdoor.faceY) + ' of it to ice (water too) and chills every enemy in that lane (Slow). A body shoved onto the ice keeps sliding.';
+    else if (gd.act === 'pullIn') what = 'The void draws every enemy within ' + _plural(gd.radius | 0, 'tile') + ' one tile toward it; a body pulled onto the door is bitten and spat out of the back.';
+    else if (gd.act === 'beam') what = 'A red beam runs ' + dir(sdoor.faceX, sdoor.faceY) + ' out of it to the first wall, turned by any prism on its way, and burns every enemy on it (walking across it too).';
+    else if (gd.act === 'laneLight') what = "Heaven's light shines " + _plural(gd.lane | 0, 'tile') + ' ' + dir(sdoor.faceX, sdoor.faceY) + ': its own side in the shaft heals and is cleansed, the other side is burned and blinded.';
     else what = (sp && sp.desc) || 'A door that stands and acts every round.';
+    if (gd.act === 'laneTerrain') when = ' It acts when it lands and again at the end of every round. ';
     const desc = (enemy ? 'An enemy ' : 'Your ') + gd.name + '. ' + what
-      + ' It acts at the end of every round, and at once on anyone who steps or is knocked into its reach. '
+      + when
       + (enemy ? 'Hit it ' + _plural(Math.max(0, sdoor.hp | 0), 'time') + ' to break it.' : _plural(Math.max(0, sdoor.hp | 0), 'hit') + ' left.');
     return {
       kind: 'door', name: gd.name, icon: gd.icon || '🚪', enemy, soft: true,

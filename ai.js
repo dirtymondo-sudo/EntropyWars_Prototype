@@ -67,7 +67,7 @@
     // so a stats file can never again be ambiguous about WHICH brain played
     // it (stats17 mixed old-AI matches into a post-rewrite export). Bump on
     // any behavior-relevant ai.js change.
-    try { window.EW_AI_VERSION = 'v4.12-2026-09-25-capture-door'; } catch (e) {}
+    try { window.EW_AI_VERSION = 'v4.13-2026-09-25-door-lanes'; } catch (e) {}
 
     // ── CPU DIFFICULTY (schema 12, kept) ─────────────────────────────────
     // Difficulty changes HOW WELL the AI executes decisions, never its
@@ -1301,6 +1301,69 @@
     // findMovePath) crosses or ends on a door that would take this body.
     let _capMoveCache = { key: '', tiles: null };
     function _aiMoveTiles(g, unit) {
+        return _gdStreamFilter(g, unit, _aiMoveTilesCap(g, unit));
+    }
+    // ── 🚪 THE STANDING DOORS' LANES (the door wheel Phase 2, DOOR_GUN_PLAN §6.2) ──────────────────────
+    // THE GUST STREAM stops any walk that enters it (battle.js getPathPickupEvent 'gust') and blows the walker down
+    // the lane, so a destination whose ENGINE path enters a stream the wind can move this body in is not a destination
+    // at all: drop it (a colossal body, a Keyholder or a flyer walks through — battle.js gustStreamAt says who).
+    // The other doors' lanes are hazards to END on (aiHazardPenaltyAt → _gdLaneHazardAt).
+    function _gdOn() { return !(typeof window !== 'undefined' && window.EW_AI_NO_GUN_DOORS); }
+    function _gdDoors(g) {
+        if (!_gdOn()) return [];
+        const ds = g && g.state && g.state.doors;
+        if (!ds || !ds.length) return [];
+        return ds.filter(d => d && d.kind === 'standing' && d.hp > 0 && !d._revealAt);
+    }
+    function _gdLane(d) {
+        try { return (typeof window !== 'undefined' && typeof window.standingDoorLaneTiles === 'function') ? window.standingDoorLaneTiles(d) : []; } catch (e) { return []; }
+    }
+    let _gdStreamCache = { key: '', tiles: null };
+    function _gdStreamFilter(g, unit, tiles) {
+        if (!tiles || !tiles.length) return tiles;
+        const gusts = _gdDoors(g).filter(d => d.door === 'gust');
+        if (!gusts.length || typeof window === 'undefined' || typeof window.gustStreamAt !== 'function') return tiles;
+        const wind = new Set();
+        for (const d of gusts) for (const t of _gdLane(d)) { try { if (window.gustStreamAt(unit, t.x, t.y)) wind.add(t.x + ',' + t.y); } catch (e) {} }
+        if (!wind.size) return tiles;
+        const key = [unit.id, unit.x, unit.y, unit.z, unit.ap, g.state.round, tiles.length, [...wind].join('|')].join(';');
+        if (_gdStreamCache.key === key && _gdStreamCache.tiles) return _gdStreamCache.tiles;
+        const windTiles = [...wind].map(k => { const p = k.split(','); return { x: +p[0], y: +p[1] }; });
+        let budget = 0;
+        for (const t of tiles) budget = Math.max(budget, Math.abs(t.x - unit.x) + Math.abs(t.y - unit.y));
+        const out = tiles.filter(t => {
+            if (wind.has(t.x + ',' + t.y)) return false;
+            const near = windTiles.some(w => Math.abs(unit.x - w.x) + Math.abs(unit.y - w.y) + Math.abs(w.x - t.x) + Math.abs(w.y - t.y) <= budget + 1);
+            if (!near || typeof g.findMovePath !== 'function') return true;
+            let path = null;
+            try { path = g.findMovePath(unit, t.x, t.y, t.z); } catch (e) { return true; }
+            return !(path || []).some(p => p && wind.has(p.x + ',' + p.y));
+        });
+        _gdStreamCache = { key, tiles: out };
+        return out;
+    }
+    // the price of ENDING on (x, y) inside a hostile door's reach (the fire / ice ground itself is the terrain's own cost)
+    function _gdLaneHazardAt(g, unit, x, y) {
+        const doors = _gdDoors(g).filter(d => d.owner !== unit.player);
+        if (!doors.length) return 0;
+        let pen = 0;
+        for (const d of doors) {
+            if (d.door === 'maw') {
+                const k = Math.max(Math.abs(d.x - x), Math.abs(d.y - y));
+                if (k <= 2) pen += (k <= 1 ? 55 : 35);   // drawn in, and bitten from beside it
+                continue;
+            }
+            if (d.door === 'archers') {
+                if (Math.max(Math.abs(d.x - x), Math.abs(d.y - y)) <= 4) pen += 25;
+                continue;
+            }
+            if (d.door === 'gust') continue;   // nobody ends in the stream (the move filter)
+            if (!_gdLane(d).some(t => t.x === x && t.y === y)) continue;
+            pen += d.door === 'laser' ? 70 : d.door === 'light' ? 45 : d.door === 'hell' ? 50 : d.door === 'frost' ? 25 : 20;
+        }
+        return pen;
+    }
+    function _aiMoveTilesCap(g, unit) {
         const tiles = g.TargetQuery.moveTiles(unit);
         if (!tiles.length) return tiles;
         const doors = _capThreats(g, unit);
@@ -1446,6 +1509,7 @@
         else if (terr === 'poison' || terr === 'scorched') pen += 30;
         if (typeof _tileIsBurning === 'function' && _tileIsBurning(x, y)) pen += 45;
         pen += _capHazardAt(g, unit, x, y);   // 🚪 THE ONE-WAY DOOR: on an enemy capture door, or a push away from one
+        pen += _gdLaneHazardAt(g, unit, x, y);   // 🚪 THE STANDING DOORS: a hostile beam / shaft / tongue / draught
         return pen;
     }
 

@@ -25425,6 +25425,149 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     });
 
     /* ════════════════════════════════════════════════════════════════════
+       THE DESTINATIONS (DOOR_GUN_PLAN.md §4, the door wheel Phase 2,
+       2026-09-25) — the beats of the Hell, Frost, Maw, Laser and Light
+       doors (open / hit / break / fold share the Phase 1 kit in each door's
+       colour). The acts:
+         gunHellDoor:act   the lava tongue — embers and a flame burst rolling
+                           down the lane tile by tile, an orange light
+         gunFrostDoor:act  the rime — ice shards + frost mist spreading tile by
+                           tile down the lane, a cold light
+         gunMawDoor:act    x.pull: void mist drawn in from the rim, an inward
+                           ring; x.bite: the mouth snaps (psi burst, a shake)
+         gunLaserDoor:act  the beam — a red line along x.pts ('x,y;x,y…', the
+                           corners, bent at each prism), a flash and sparks on
+                           every tile it burns (x.only: one crossing)
+         gunLightDoor:act  the shaft — divine sparkles down the lane, a warm
+                           light (x.only: one tile)
+       Real lights, real particles, no backdrop; relayed as vfx3d-x through
+       window._doorGeom (primitive extras). */
+    function _gunLaneWalk(tx, ty, o, each) {
+        var fx = Math.sign(o.faceX || 0), fy = Math.sign(o.faceY || 0);
+        if (!fx && !fy) return;
+        if (o.only) {
+            var p = String(o.only).split(',');
+            each(parseInt(p[0], 10), parseInt(p[1], 10), 0);
+            return;
+        }
+        var len = Math.max(1, Math.min(8, (o.len | 0) || 3));
+        for (var k = 1; k <= len; k++) (function (i) { _fxDelay(function () { try { each(tx + fx * i, ty + fy * i, i); } catch (e) {} }, 40 + i * 85); })(k);
+    }
+    function _gunHell3D(tx, ty, o) {
+        if (_catOff('spells')) return null;
+        var ts = _worldPos(tx, ty).ts;
+        _gunLaneWalk(tx, ty, o, function (x, y) {
+            try { _sigSparks(x, y, 'ember', 10, { vz0: 120, vz1: 360, vxy: 70, gravity: -40, z: 6 }); } catch (e) {}
+            try { _sigSparks(x, y, 'smoke', 2, { vz0: 40, vz1: 90, vxy: 30, z: ts * 0.3 }); } catch (e) {}
+            try { _sigShockRing3D(x, y, { color: 0xff6a20, r0: ts * 0.1, r1: ts * 0.55, ms: 300, height: 3 }); } catch (e) {}
+            _gunDoorLight(x, y, 0xff6a20, { intensity: 1.6, ms: 420, radius: 2.2, attack: 40 });
+        });
+        _gunDoorLight(tx, ty, 0xff5a2a, { intensity: 2.6, ms: 700, radius: 3, attack: 60 });
+        try { if (typeof window !== 'undefined' && typeof window.playSfx === 'function') window.playSfx('burningDamage', { volume: 0.35 }); } catch (e) {}
+        return true;
+    }
+    function _gunFrost3D(tx, ty, o) {
+        if (_catOff('spells')) return null;
+        var ts = _worldPos(tx, ty).ts;
+        _gunLaneWalk(tx, ty, o, function (x, y) {
+            try { _sigSparks(x, y, 'ice-shard', 6, { vz0: 60, vz1: 200, vxy: 60, z: 4 }); } catch (e) {}
+            try { _sigSparks(x, y, 'frost-mist', 3, { vz0: 20, vz1: 60, vxy: 50, z: ts * 0.1 }); } catch (e) {}
+            try { _sigShockRing3D(x, y, { color: 0x9fe6ff, r0: ts * 0.1, r1: ts * 0.6, ms: 360, height: 2 }); } catch (e) {}
+        });
+        _gunDoorLight(tx, ty, 0x9fe6ff, { intensity: 2.2, ms: 800, radius: 3, attack: 60 });
+        return true;
+    }
+    function _gunMaw3D(tx, ty, o) {
+        if (_catOff('spells')) return null;
+        var ts = _worldPos(tx, ty).ts, col = _gunDoorColor('maw');
+        if (o.bite) {
+            try { _sigSparks(tx, ty, 'psi-pulse', 12, { tint: col, vz0: 80, vz1: 260, vxy: 200, z: ts * 0.5 }); } catch (e) {}
+            try { _sigShockRing3D(tx, ty, { color: col, r0: ts * 0.9, r1: ts * 0.1, ms: 260, height: 5 }); } catch (e) {}
+            _gunDoorLight(tx, ty, col, { intensity: 2.8, ms: 380, radius: 2.6, attack: 30 });
+            if (typeof window !== 'undefined' && typeof window.shakeBoard === 'function') _shake('light');
+            return true;
+        }
+        var R = Math.max(1, (o.r | 0) || 2);
+        try { _sigShockRing3D(tx, ty, { color: col, r0: ts * (R + 0.5), r1: ts * 0.2, ms: 620, height: 3 }); } catch (e) {}
+        for (var dy = -R; dy <= R; dy++) for (var dx = -R; dx <= R; dx++) {
+            if (Math.max(Math.abs(dx), Math.abs(dy)) !== R) continue;
+            try { _sigSparks(tx + dx, ty + dy, 'void-mist', 1, { vz0: 10, vz1: 40, vxy: 20, z: ts * 0.2 }); } catch (e) {}
+        }
+        try { _sigSparks(tx, ty, 'psi-pulse', 6, { tint: col, vz0: 30, vz1: 90, vxy: 40, z: ts * 0.5 }); } catch (e) {}
+        _gunDoorLight(tx, ty, col, { intensity: 2.2, ms: 700, radius: 3, attack: 80 });
+        return true;
+    }
+    function _gunLaser3D(tx, ty, o) {
+        if (_catOff('spells')) return null;
+        var pts = String(o.pts || '').split(';').map(function (q) { var a = q.split(','); return { x: parseInt(a[0], 10), y: parseInt(a[1], 10) }; })
+            .filter(function (p) { return isFinite(p.x) && isFinite(p.y); });
+        if (pts.length < 2) return null;
+        var ts = _worldPos(tx, ty).ts, col = _gunDoorColor('laser');
+        var g = new THREE.Group(), mats = [];
+        for (var i = 1; i < pts.length; i++) {
+            var a = _worldPos(pts[i - 1].x, pts[i - 1].y), b = _worldPos(pts[i].x, pts[i].y);
+            var len = Math.hypot(b.x - a.x, b.z - a.z);
+            [[col, ts * 0.09, 0.6], [0xffe0e6, ts * 0.03, 0.95]].forEach(function (lay) {
+                var m = new THREE.MeshBasicMaterial({ color: new THREE.Color(lay[0]), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
+                mats.push({ m: m, peak: lay[2] });
+                var bx = new THREE.Mesh(new THREE.BoxGeometry(lay[1], lay[1], Math.max(1, len)), m);
+                bx.position.set((a.x + b.x) / 2, Math.max(a.y, b.y) + ts * 0.58, (a.z + b.z) / 2);
+                bx.rotation.y = Math.atan2(b.x - a.x, b.z - a.z);
+                g.add(bx);
+            });
+        }
+        var end = pts[pts.length - 1];
+        var hitAt = null;
+        if (o.only) { var hp = String(o.only).split(','); hitAt = { x: parseInt(hp[0], 10), y: parseInt(hp[1], 10) }; }
+        try { _sigSparks((hitAt || end).x, (hitAt || end).y, 'spark-pink', 12, { tint: col, vz0: 80, vz1: 260, vxy: 160, z: ts * 0.55 }); } catch (e) {}
+        _gunDoorLight(tx, ty, col, { intensity: 2.4, ms: 520, radius: 3, attack: 20 });
+        _gunDoorLight((hitAt || end).x, (hitAt || end).y, col, { intensity: 1.8, ms: 420, radius: 2.4, attack: 20 });
+        var total = 620;
+        return _sigRunOwned(g, total, function (el) {
+            var k = el < 80 ? el / 80 : Math.max(0, 1 - (el - 80) / (total - 80));
+            var flick = 0.85 + 0.15 * Math.sin(el * 0.08);
+            for (var j = 0; j < mats.length; j++) mats[j].m.opacity = mats[j].peak * k * flick;
+        });
+    }
+    function _gunLight3D(tx, ty, o) {
+        if (_catOff('spells')) return null;
+        var ts = _worldPos(tx, ty).ts;
+        _gunLaneWalk(tx, ty, o, function (x, y) {
+            try { _sigSparks(x, y, 'divine-sparkle', 8, { vz0: 60, vz1: 220, vxy: 40, gravity: -20, z: ts * 0.2 }); } catch (e) {}
+            _gunDoorLight(x, y, 0xfff1b0, { intensity: 1.4, ms: 480, radius: 2, attack: 60 });
+        });
+        _gunDoorLight(tx, ty, 0xfff1b0, { intensity: 2.4, ms: 800, radius: 3, attack: 80 });
+        return true;
+    }
+    Object.assign(_spell3DGeometry, {
+        'gunHellDoor:open':    function (tx, ty, r, x) { x = x || {}; _fxDelay(function () { try { _gunDoorOpen3D('hell', tx, ty, x); } catch (e) {} }, x.delay || 0); },
+        'gunHellDoor:act':     function (tx, ty, r, x) { x = x || {}; _fxDelay(function () { try { _gunHell3D(tx, ty, x); } catch (e) {} }, x.delay || 0); },
+        'gunHellDoor:hit':     function (tx, ty, r, x) { _gunDoorBreak3D('hell', tx, ty, { mode: 'hit' }); },
+        'gunHellDoor:break':   function (tx, ty, r, x) { _gunDoorBreak3D('hell', tx, ty, { mode: 'break' }); },
+        'gunHellDoor:fold':    function (tx, ty, r, x) { _gunDoorBreak3D('hell', tx, ty, { mode: 'fold' }); },
+        'gunFrostDoor:open':   function (tx, ty, r, x) { x = x || {}; _fxDelay(function () { try { _gunDoorOpen3D('frost', tx, ty, x); } catch (e) {} }, x.delay || 0); },
+        'gunFrostDoor:act':    function (tx, ty, r, x) { x = x || {}; _fxDelay(function () { try { _gunFrost3D(tx, ty, x); } catch (e) {} }, x.delay || 0); },
+        'gunFrostDoor:hit':    function (tx, ty, r, x) { _gunDoorBreak3D('frost', tx, ty, { mode: 'hit' }); },
+        'gunFrostDoor:break':  function (tx, ty, r, x) { _gunDoorBreak3D('frost', tx, ty, { mode: 'break' }); },
+        'gunFrostDoor:fold':   function (tx, ty, r, x) { _gunDoorBreak3D('frost', tx, ty, { mode: 'fold' }); },
+        'gunMawDoor:open':     function (tx, ty, r, x) { x = x || {}; _fxDelay(function () { try { _gunDoorOpen3D('maw', tx, ty, x); } catch (e) {} }, x.delay || 0); },
+        'gunMawDoor:act':      function (tx, ty, r, x) { x = x || {}; _fxDelay(function () { try { _gunMaw3D(tx, ty, x); } catch (e) {} }, x.delay || 0); },
+        'gunMawDoor:hit':      function (tx, ty, r, x) { _gunDoorBreak3D('maw', tx, ty, { mode: 'hit' }); },
+        'gunMawDoor:break':    function (tx, ty, r, x) { _gunDoorBreak3D('maw', tx, ty, { mode: 'break' }); },
+        'gunMawDoor:fold':     function (tx, ty, r, x) { _gunDoorBreak3D('maw', tx, ty, { mode: 'fold' }); },
+        'gunLaserDoor:open':   function (tx, ty, r, x) { x = x || {}; _fxDelay(function () { try { _gunDoorOpen3D('laser', tx, ty, x); } catch (e) {} }, x.delay || 0); },
+        'gunLaserDoor:act':    function (tx, ty, r, x) { x = x || {}; _fxDelay(function () { try { _gunLaser3D(tx, ty, x); } catch (e) {} }, x.delay || 0); },
+        'gunLaserDoor:hit':    function (tx, ty, r, x) { _gunDoorBreak3D('laser', tx, ty, { mode: 'hit' }); },
+        'gunLaserDoor:break':  function (tx, ty, r, x) { _gunDoorBreak3D('laser', tx, ty, { mode: 'break' }); },
+        'gunLaserDoor:fold':   function (tx, ty, r, x) { _gunDoorBreak3D('laser', tx, ty, { mode: 'fold' }); },
+        'gunLightDoor:open':   function (tx, ty, r, x) { x = x || {}; _fxDelay(function () { try { _gunDoorOpen3D('light', tx, ty, x); } catch (e) {} }, x.delay || 0); },
+        'gunLightDoor:act':    function (tx, ty, r, x) { x = x || {}; _fxDelay(function () { try { _gunLight3D(tx, ty, x); } catch (e) {} }, x.delay || 0); },
+        'gunLightDoor:hit':    function (tx, ty, r, x) { _gunDoorBreak3D('light', tx, ty, { mode: 'hit' }); },
+        'gunLightDoor:break':  function (tx, ty, r, x) { _gunDoorBreak3D('light', tx, ty, { mode: 'break' }); },
+        'gunLightDoor:fold':   function (tx, ty, r, x) { _gunDoorBreak3D('light', tx, ty, { mode: 'fold' }); },
+    });
+
+    /* ════════════════════════════════════════════════════════════════════
        THE NEW-RACE VFX PASS (2026-09-22) — POLICE OFFICER · JELLYFISH ·
        CULT LEADER · POPSTAR
        ════════════════════════════════════════════════════════════════════
