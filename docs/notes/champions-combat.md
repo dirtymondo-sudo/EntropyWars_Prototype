@@ -655,6 +655,38 @@ basic attacks (`damageDoorAt`, `attack:door` on the tile card); its owner's side
 by spell id (`gunGustDoor:open/act/hit/break/fold`). A basic CPU placer is `window.doorGunAiPick`. Test:
 `door-gun-board.test.js` (the door block + the chain in one vm).
 
+
+## THE DOOR AGENT rev 6 — THE GUST STREAM + THE DESTINATIONS (door wheel Phase 2) — 2026-09-25, local delivery
+DOOR_GUN_PLAN.md Phase 2 (full log in its §11). **THE GUST STREAM** (the user: "a persistent hazard on the field,
+not just blasting in between rounds … immovable units like the kaiju and giant should be able to stand in it"):
+a walk that enters a Gust lane STOPS on the first windy tile (`getPathPickupEvent` kind `gust`, via
+`gustStreamAt(unit, x, y)`) and E′ blows it down the lane. E′ stamps a gust per CHAIN (`'c' + _chainRootSeq`,
+a counter bumped at every depth-0 `resolveTileArrival`), not per round, so walking back in is blown again and two
+gusts facing each other bounce a body once each, never to the depth cap. The round-end blast is GONE for Gust:
+`_gunDoorTurnWanted` gives it a DOORS' TURN beat only when a movable body is still in the lane (pinned behind
+another). Unmoved: colossal weight (`getUnitPushDistance(u,1) === 0`: kaiju, giant, mech, dragon, kraken…),
+flyers in the air, a Keyholder, a held body. The renderer draws the wind all the time (`_gustStreamStreaks`,
+onBeforeRender streaks per lane tile, fog-gated). **Five rows** (`gunHellDoor` III, `gunFrostDoor` II,
+`gunMawDoor` III, `gunLaserDoor` III, `gunLightDoor` II; the Light row's element is `light`, the table's old
+`holy` was not a SPELL_ELEMENT). **Hell** (lane 3): `igniteTile` on the lane for 2 rounds (step B burns
+arrivals), a Frost Door's timed ice on it melts back first, enemies take 45 + Burn 2 (allies are spared the
+blast, not the fire). **Frost** (lane 4): `_paintTimedTerrain` ice for 3 rounds with `freezeWater` (water / deep
+water freeze; the thaw log reads "the ice thaws"), fires on it go out, enemies take 30 + Slow 1. **THE ICE RULE**
+(chain step B′): a body DISPLACED onto ice with a direction (`resolveForcedSlide` now passes `dirX / dirY` to
+its landing) slides on via `_resolveIceSlide(unit, { dx, dy, delayMs })`; a walk never. **Maw** (radius 2):
+enemies drawn one tile in, nearest first; a body on the door's tile is bitten (50 + Stagger 1, once per chain)
+and spat out of the back (−face; a radius door's face is the default, away from the placer). **Laser**:
+`doorGunBeamTiles` traces the live board — to a wall / a shut door; a live prism (`state.mirrors`) turns it a
+quarter turn toward the side with more of the owner's enemies (tie: clockwise), ≤ `bounces` 3; enemies only,
+60; a walk ACROSS the beam is burned too (`gunDoorWalkCross` in the doMove path loop, once per door per round).
+**Light** (lane 4): its side heals 40 + every debuff cleansed; the other side 45 + Blind 1. Hell / Frost E′ do
+nothing (the ground already bit the body); Maw / Laser / Light E′ once per door per unit per round. Look: five
+dresses in `_standingDoorDress` (flames, shards + snow, the void ring, the neon edge + scanline, god-rays), the
+beam as a real line (`_laserBeamLine`), recipes `gun<Key>Door:{open,act,hit,break,fold}`. AI (EW_AI_VERSION
+v4.13): `_aiMoveTiles` drops destinations whose engine path enters a stream that would move the unit
+(`_gdStreamFilter`), `aiHazardPenaltyAt` adds hostile lanes (`_gdLaneHazardAt`); the placer scores every act
+(`_gunDoorFaceScore`). Kill-switch `window.EW_AI_NO_GUN_DOORS`. Test: door-gun-destinations.test.js.
+
 ## THE DOOR AGENT rev 4 — THE DOOR WHEEL Phase 0 (Swing Door, Door Dash, the table) — 2026-09-25, local delivery
 DOOR_GUN_PLAN.md Phase 0. The tree is `[[raceSwingDoor, raceDoorDash], [raceBreakingEntering, raceAirMail],
 raceTrapdoor, raceDropIn★]` (six rows). **Door to the Face is RETIRED** — `SPELL_ID_RENAMED` (data.js) maps a
