@@ -673,7 +673,9 @@ puts 3 One-Way Doors + 1 Tuned Door in the bag once (`door.hq.capIssue`).
 **Capture Phases 5 + 6 (2026-09-25, token 20260925-capture-07-cors):** doors are never loot (the user) — the shop and
 the one-time issue only; a brand-new profile gets the issue at its first party filing (`hqPartyEnsure` →
 `hqCaptureDoorIssue`). Never one enemy: `HQ_LEVEL_RULES.group.solo [1, 2]`. THE SWARM: `HQ_LEVEL_RULES.swarm` — a roaming
-group's second coin makes it 6–8 bodies of one race (the room's sub says A SWARM OF n; the room still walks 2–3), 1–2
-elites at the encounter level, the grunts 4 under the party level, all on the board (no enemy bench), the grunts' CPU
-turns on the training turbo (`_swarmGrunt`). CAPTURE_PLAN §8 has the hooks; test `capture-swarm.test.js`.
+group's second coin (or a lone native's strike, the same coin) makes it 6–8 bodies: the target + the rest ONE race drawn
+from the room's natives (`hqRoomNatives`; the user, rev 2 / token -08: "attack a ghoul and a swarm of skeletons show up,
+or more ghouls"). The room's sub says A SWARM OF n (the room still walks 2–3), 1–2 elites at the encounter level, the
+grunts 4 under the party level, all on the board (no enemy bench), every turn animated in full (the user rejected the
+turbo: "why would I want the player to experience a dev tool"). CAPTURE_PLAN §8 has the hooks; test `capture-swarm.test.js`.
 
