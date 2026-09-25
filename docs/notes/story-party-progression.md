@@ -627,3 +627,13 @@ battle.js "THE ONE-WAY DOOR" block: place / take / hold tick / seal / break / ma
 answers (§7): a captured race is owned at once (isUnitOwned reads the captured ledger), natives never capture the
 party (`CAPTURE_RULES.playerOnly`), no healing a held unit, a lone enemy seals at the round's end. Next: Phase 2
 THE DELIVERY (the ITEMS row, the tile menu, the gun, the look).
+**Phase 2 THE DELIVERY built 2026-09-25** (`capture-delivery.test.js`; probe `playtest_capture.js`). The door reaches the
+player: the ITEMS row (doItem's `captureDoor` branch, a tile aim reading PLACE THE DOOR, the painter lights
+`captureDoorLegalTiles`; the row greys with the reason), the TILE MENU row per door in the bag (best tier first;
+out of reach → `findCaptureDoorApproachTile` + `_moveThenCaptureDoor`, the board click does the same), the tuned door
+auto-tunes to the type of the enemy nearest the tile (`captureDoorTuneFor`). THE LOOK: `_buildDoor3D`'s capture
+dress (leaf open 150°, jamb lamps in the owner's / the type's colour, T2 a second pair, T3 the vault leaf, the void
+pane + violet rim while holding, the plate with hits + hold pips + the captive's name; no standing PointLight — a
+light-count change recompiles every shader), the door held back until the comet lands (`door._revealAt`), the held
+body's model hidden (`_updateEnemyConcealment`), and five recipes `raceCaptureDoor:open / take / seal / break / fold`
+in three-vfx-effects.js (pooled flash lights, sparks, rings, the recall comet on the seal). Next: Phase 3 THE AI.
