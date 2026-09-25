@@ -824,3 +824,13 @@ console is still the FULL variant (presets, the Δ toggle) — only its deck shr
 the dealt + filtered list, never the one already picked; RANDOMIZE (mode + map) stays and calls it. earned-doors.test.js
 pins all three. UNSEEN LIVE (RULE #1c): the 🔒 wall gone on the archive, the range's shortened deck on a fresh profile
 (the two boards alone), the button's fit in the foot row.
+
+## THE DOOR AGENT rev 7 — NO KEYHOLDER EXCEPTIONS — 2026-09-25, local delivery
+The user: "take out these weird exceptions for the keyholder … i never asked for that". The `keyholder` passive keeps
+ONLY `doorFreeToggle`; `doorImmune` and `doorHits` are gone from data.js and every check is gone from battle.js. The
+wind, the other lanes, the Maw's bite, E′, the capture door (`captureDoorCanTake`), the Slam and the trapdoor
+(`checkTrapTrigger`) treat a Door Agent like any body of its weight, and `doorMaxHits` is `DOOR_RULES.hits` (3) for
+every door. Also removed (never ruled on): flyers standing in the Gust stream, the Maw's draught skipping flyers, and
+the Laser's walk-across skipping flyers. Kept: the colossal weight in the wind (the user's ruling), a held body, Hell's
+ground fire skipping an airborne flyer (the standing airborne rule), and the capture door's CAPTURE_PLAN exclusions.
+This supersedes the Keyholder lines in rev 4–6 above and in DOOR_RACE_DESIGN §3.

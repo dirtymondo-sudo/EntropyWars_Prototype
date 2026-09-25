@@ -600,3 +600,20 @@ floor, not even to a free query), so the body stops at the DRAWN face. The city'
 lean on the cast rigs at a coping (`pitchMax`), the vert's height (`qpLaunch`), the kicker's pop
 (`kickLaunch`), the turnaround's timing (`vertTurn`), the two cues, the cars' footprints, the drum's
 wall under the hand.
+
+## THE DOOR WHEEL IN THE ROOM (DOOR_GUN_PLAN.md Phase 3) — 2026-09-25, local delivery
+Full log in DOOR_GUN_PLAN.md §11. HOLD MIDDLE CLICK (`DOOR_GUN_RULES.wheel.holdMs` 140 ms) in the room opens
+`#hqWheel` (index.html, styles-base.css `.hq-wheel*`): eight wedges from data.js `doorGunWheel(profile, { room: true })`
+— the Threshold, then Gust, Archers, Hell, Maw, Frost, Laser, Light. The room runs at `wheel.slow` (0.15) while it is
+open (never paused); the RELEASE takes the wedge under the mouse; a pause or a blur closes it untaken. Taking a door
+draws the gun. `H.gun.door === 'threshold'` is revs 1–5 exactly. A standing door: LEFT CLICK stands it on the floor
+under the aim (walls / ceilings refuse), RIGHT CLICK turns the lane 45°, the default faces away from the officer.
+Two stand (the battle's per-player cap), the oldest folds. The record is `profile.door.hq.gunPlaced.list`
+(`hqGunDoorPlace` / `hqGunDoorClear` / `hqGunDoorsIn`; NOT `door.hq.gunDoors`, the earned ledger), filed by map.js
+`_hqGunDoorPlaced` and cleared on a fresh arrival from Play with the pair. Live acts (`_hqTickGunDoors`): the gust
+blows the walker (the carry `pl.mvx / mvz`) and the kickables along its lane all the time it stands, and the maw
+draws them in. Hell and frost dress their lanes, the laser marches to the first solid, and the light door is a real
+SpotLight (`EW_HQ_NO_GUN_LIGHT`). Every door pulses each `HQ_GUN_RULES.actMs`, and the archers' arrows fly at the
+nearest native (visual only until Phase 4's strike). Probe API: `ThreeRenderer.hq.gunSelect / gunWheelOpen /
+gunDoorAim / gunDoorFire / gunDoorTurn / gunDoors`. Headless probe gotcha: the aim's march treats a roaming native as a
+wall, so a shot from where a native stands in front reads "A STANDING DOOR NEEDS A FLOOR". Test: hq-gun.test.js.
