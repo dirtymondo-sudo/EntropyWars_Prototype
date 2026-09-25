@@ -36,8 +36,8 @@ test('door agent: every race table, both sides, the passive, the statuses the en
     assert.ok(D.RACE_BASE_STATS[RACE] && D.RACE_BASE_STATS[RACE].awr >= 80, 'they check their corners');
     assert.equal(D.RACE_PASSIVES[RACE].join(','), 'keyholder');
     const kh = D.PASSIVE_DEFS.keyholder;
-    assert.ok(kh && kh.doorHits === 4 && kh.doorFreeToggle === true && kh.doorImmune === true);
-    assert.ok(/no trapdoor ever takes the agent/.test(kh.desc), 'the passive says what it does now');
+    assert.ok(kh && kh.doorFreeToggle === true && kh.doorHits === undefined && kh.doorImmune === undefined, 'no door exceptions (the user, 2026-09-25)');
+    assert.ok(/opens or shuts a friendly door/.test(kh.desc) && !/trapdoor|4 hits/.test(kh.desc), 'the passive says what it does now');
     assert.ok(D.ACCT_STARTER_UNITS.includes(RACE));
     /* membership, never the list's LAST entry (2026-09-21: three races joined after the agent — a positional pin was the wrong test's, CLAUDE.md THE RED CI rule 3) */
     assert.ok(/AVAILABLE_RACES = new Set\(\[[^\]]*'door agent'/.test(server) && /ACCT_STARTER_UNITS[^;]*'door agent'/.test(server), 'server.js race list + starters');
@@ -106,7 +106,7 @@ function makeTrapCtx() {
         coordLabel: (x, y) => x + ',' + y, unitDisplayName: u => u.id, addLog: s => log.push(s),
         showFloatingTextForUnit: () => {}, playSfx: () => {}, playDoorSfx: () => {}, shakeBoard: () => {},
         isUnitAirborne: () => false,
-        unitPassiveValue: (u, k) => (u && u.race === 'door agent') ? ({ doorHits: 4, doorFreeToggle: true, doorImmune: true })[k] : undefined,
+        unitPassiveValue: (u, k) => (u && u.race === 'door agent') ? ({ doorFreeToggle: true })[k] : undefined,
         applyDamageToUnit: (v, d, label, o) => { dmg.push({ id: v.id, d, label, type: o && o.damageType }); v.hp -= d; },
         getBaseHeightAt: () => 0,
         applyTerrainDeform: (x, y, r, dfm) => { deform.push({ x, y, r, delta: dfm.centerDelta }); const u = units.find(u => u.x === x && u.y === y); if (u) u.z = (u.z || 0) + dfm.centerDelta; },
@@ -125,7 +125,7 @@ function makeTrapCtx() {
     return ctx;
 }
 
-test('the trapdoor: the 2×2 footprint clamps and validates, the first enemy on any tile sinks the four, the Keyholder never falls', () => {
+test('the trapdoor: the 2×2 footprint clamps and validates, the first enemy on any tile sinks the four, a door agent too', () => {
     const c = makeTrapCtx();
     /* the footprint */
     const e1 = c.state.units[1];
@@ -150,12 +150,9 @@ test('the trapdoor: the 2×2 footprint clamps and validates, the first enemy on 
     const f1 = c.state.units[3]; f1.x = 5; f1.y = 5;
     assert.equal(c.checkTrapTrigger(f1), false, 'never the owner\'s team');
     assert.equal(c.state.traps.length, 4);
-    /* the enemy Keyholder walks over it */
-    const e2 = c.state.units[2]; e2.x = 4; e2.y = 5;
-    assert.equal(c.checkTrapTrigger(e2), false, 'no trapdoor takes a door agent');
-    assert.equal(c.state.traps.length, 4);
-    /* the enemy knight steps on the south-east tile */
-    e1.x = 5; e1.y = 5; e2.x = 7; e2.y = 0;
+    /* the enemy knight steps on the south-east tile (a door agent would fall the same: no Keyholder exception) */
+    const e2 = c.state.units[2]; e2.x = 7; e2.y = 0;
+    e1.x = 5; e1.y = 5;
     assert.equal(c.checkTrapTrigger(e1), true);
     assert.equal(c.state.traps.length, 0, 'the whole group folds');
     assert.equal(c.deform.length, 4, 'every tile of the 2×2 sinks');
@@ -183,7 +180,7 @@ function makeDoorCtx() {
         unitAt: (x, y) => units.find(u => !u.dead && u.x === x && u.y === y) || null,
         getLinePoints: vm.runInNewContext(between(map, '        function getLinePoints(',
             '        function isRangeBlockedByTerrain(') + 'getLinePoints'),
-        unitPassiveValue: (u, k) => (u && u.race === 'door agent') ? ({ doorHits: 4, doorFreeToggle: true, doorImmune: true })[k] : undefined,
+        unitPassiveValue: (u, k) => (u && u.race === 'door agent') ? ({ doorFreeToggle: true })[k] : undefined,
         unitHasStatus: (u, id) => !!(u && u._st && u._st[id]),
         isRangeBlockedByTerrain: () => false,
         canOccupy: (x, y) => !units.some(u => u.x === x && u.y === y),
@@ -220,8 +217,8 @@ test('the door object the engine keeps: place, cap, toggle, wall, sight, hits, s
     assert.equal(g.doorStepThrough(a1), true);
     assert.ok(a1.x === 4 && a1.y === 3, 'out of the twin');
     assert.equal(g.damageDoorAt(2, 1, e1), true);
-    assert.equal(g.doorAt(2, 1).hp, 3, 'Keyholder: the agent\'s own doors take 4 hits');
-    g.damageDoorAt(2, 1, e1); g.damageDoorAt(2, 1, e1); g.damageDoorAt(2, 1, e1);
+    assert.equal(g.doorAt(2, 1).hp, 2, 'every door takes 3 hits (no Keyholder exception)');
+    g.damageDoorAt(2, 1, e1); g.damageDoorAt(2, 1, e1);
     assert.equal(c.state.doors.length, 0, 'at 0 the door AND its twin are gone');
 });
 
@@ -236,7 +233,7 @@ test('source guards: every engine site the rev 3 kit touches', () => {
     const place = between(battle, "} else if (spell.kind === 'placeTrap') {", "} else if (spell.kind === 'scan') {");
     assert.ok(/_trapFootprint\(x, y, spell\.trapSize \|\| 1\)/.test(place) && /groupId: _gid, anchorX: _tfp\.x/.test(place), 'the branch places the footprint as one group');
     assert.ok(/onlyPlayer: unit\.player/.test(place) && /'raceTrapdoor:set'/.test(place), 'the laying recipe is the owner\'s alone');
-    assert.ok(/t\.trapType === 'trapdoor' && typeof unitPassiveValue === 'function' && unitPassiveValue\(unit, 'doorImmune'\)/.test(battle), 'checkTrapTrigger: the Keyholder');
+    assert.ok(!/doorImmune/.test(battle), 'checkTrapTrigger: no Keyholder exception');
     const spring = between(battle, "            if (trap.trapType === 'trapdoor') {", "            } else if (trap.trapType === 'spike') {");
     assert.ok(/applyTerrainDeform\(t\.x, t\.y, 0, \{ centerDelta: -2, edgeDelta: 0 \}\)/.test(spring) && /applyFallDamage\(victim/.test(spring) && /id: 'stagger'/.test(spring), 'the spring sinks, falls, staggers');
     assert.ok(/\.fire\('impact', trap\.spellId/.test(spring), 'the victim\'s tile through the impact intent');

@@ -606,6 +606,7 @@
                     p.door.hq.visits = (p.door.hq.visits || 0) + 1;
                     /* THE DOOR GUN (plan 9.5): the rope is for one visit — a fresh arrival clears the placed pair (the issue stays) */
                     try { if (typeof window.hqPortalClear === 'function') window.hqPortalClear(p); } catch (e) {}
+                    try { if (typeof window.hqGunDoorClear === 'function') window.hqGunDoorClear(p); } catch (e) {}   // THE DOOR WHEEL (Phase 3): the room's standing doors go with the pair
                     /* THE PUNCH CLOCK (Room 247, plan 7.9): the front door
                        punches you in once a day — the login streak */
                     try { if (typeof window.hqPunchIn === 'function') { const pr = window.hqPunchIn(p); if (pr && pr.punched) window._hqLastPunch = pr; } } catch (e) {}
@@ -900,6 +901,12 @@
                         pp.style.display = '';
                         pp.classList.toggle('drawn', drawn);
                         pp.classList.toggle('paired', !!ps.paired);
+                        const gd = (() => { try { return ThreeRenderer.hq.gunDoor ? ThreeRenderer.hq.gunDoor() : 'threshold'; } catch (e) { return 'threshold'; } })();
+                        const gdef = gd !== 'threshold' ? (window.DOOR_GUN_DOORS || {})[gd] : null;
+                        if (gdef) {   // THE DOOR WHEEL (Phase 3): the door the gun holds, and how many stand
+                            const nStand = (typeof window.hqGunDoorRecord === 'function') ? window.hqGunDoorRecord(profile).length : 0;
+                            pp.innerHTML = `${gdef.icon || '🚪'} ${String(gdef.name || gd).toUpperCase()} <b>${nStand}/${((window.HQ_GUN_RULES || {}).cap) || 2}</b>${drawn ? ' · L = STAND IT · R = TURN' : ''}`;
+                        } else
                         pp.innerHTML = `⌂ THRESHOLD <b>${ps.a ? 'A' : '·'}${ps.b ? 'B' : '·'}</b>${drawn ? ' · DRAWN · L = A ● · R = B ■' : ''}`;   // rev 5: the two buttons on the pill while drawn (no selector)
                         pp.title = 'THE PORTABLE THRESHOLD — F draws it, LEFT CLICK shoots THRESHOLD A, RIGHT CLICK shoots THRESHOLD B, Q holsters. Walk into one, step out of the other. ' + (ps.a ? 'A in ' + ((DOOR_HQ.rooms[ps.a.room] || {}).label || ps.a.room) + '. ' : '') + (ps.b ? 'B in ' + ((DOOR_HQ.rooms[ps.b.room] || {}).label || ps.b.room) + '. ' : '') + 'Cleared on the next arrival from Play.';
                     } else { pp.style.display = 'none'; pp.innerHTML = ''; }
@@ -1084,6 +1091,9 @@
                     portal: (typeof _hqPortalOpts === 'function') ? _hqPortalOpts(opts, profile) : null,
                     onPortalPlace: (typeof _hqPortalPlaced === 'function') ? _hqPortalPlaced : null,
                     onPortal: (typeof _hqPortalEvent === 'function') ? _hqPortalEvent : null,
+                    /* THE DOOR WHEEL IN THE ROOM (DOOR_GUN_PLAN Phase 3): the wedges, the door the gun holds, the standing doors on file, the filer */
+                    gun: (typeof _hqGunOpts === 'function') ? _hqGunOpts(opts, profile) : null,
+                    onGunDoorPlace: (typeof _hqGunDoorPlaced === 'function') ? _hqGunDoorPlaced : null,
                     onPortalCross: function (slot) { try { return window._hqPortalStep(slot); } catch (e) { return false; } },
                     /* THE ENCOUNTER (HQ plan 9.4): a thrown gesture (the beat) and the one that LANDS on a native with the gun drawn (the crossing) */
                     onStrike: (typeof _hqStrikeEvent === 'function') ? _hqStrikeEvent : null,
@@ -3135,8 +3145,70 @@
             try { playSfx('uiError'); } catch (e) {}
             _hqToast(`<b>${r[0]}</b><span>${r[1]}</span>`, 1800);
         }
+        /* ══ THE DOOR WHEEL IN THE ROOM (DOOR_GUN_PLAN.md §5.1-5.2, Phase 3, 2026-09-25) ══
+           Hold MIDDLE CLICK: the wheel (the renderer's #hqWheel) — the Threshold and the seven standing doors. The door
+           the gun holds rides every room entry (`_hqGunSel`, this visit's); the standing doors are ONE profile record
+           (data.js hqGunDoorPlace: two, the oldest folds), filed here in one transaction per shot and handed to the
+           renderer on every entry; a fresh arrival from Play clears them with the pair. Viewer-local (RULE #2). */
+        let _hqGunSel = 'threshold';
+        function _hqGunOpts(opts, profile) {
+            try {
+                const wedges = (typeof window.doorGunWheel === 'function') ? window.doorGunWheel(profile, { room: true }) : null;
+                const fresh = opts && opts.from === 'play';
+                if (fresh) _hqGunSel = 'threshold';
+                const placed = (!fresh && typeof window.hqGunDoorRecord === 'function') ? window.hqGunDoorRecord(profile) : [];
+                const selOk = _hqGunSel === 'threshold' || (wedges || []).some(w => w.key === _hqGunSel && !w.sealed);
+                return { door: selOk ? _hqGunSel : 'threshold', wedges, placed };
+            } catch (e) { return null; }
+        }
+        function _hqGunDoorPlaced(spec) {
+            try {
+                const PS = window.ProfileSystem;
+                const idx = (PS && typeof PS.getActiveProfileIndex === 'function') ? PS.getActiveProfileIndex() : null;
+                if (idx === null || idx === undefined) { _hqToast('<b>NO CARD ON FILE</b><span>SIGN IN AT RECEPTION — THE ISSUE IS TO A NAME</span>'); return null; }
+                const p = PS.loadProfile(idx);
+                if (!p || typeof window.hqGunDoorPlace !== 'function') return null;
+                const r = window.hqGunDoorPlace(p, spec);
+                if (!r || !r.ok) { _hqGunRefused(r ? r.reason : 'none'); return null; }
+                PS.saveProfile(idx, p);
+                _hqStripFlash('portal');
+                const d = (window.DOOR_GUN_DOORS || {})[spec.key] || {};
+                const fold = (r.folded || [])[0];
+                const foldName = fold ? (((window.DOOR_GUN_DOORS || {})[fold.key] || {}).name || fold.key) : '';
+                _hqToast(`<b>${_hqEsc((d.icon || '') + ' ' + String(d.name || spec.key).toUpperCase())} · STANDING</b><span>${fold ? 'TWO STAND AT A TIME · THE ' + _hqEsc(String(foldName).toUpperCase()) + ' FOLDED' : r.count + ' OF ' + (((window.HQ_GUN_RULES || {}).cap) || 2) + ' STANDING · RIGHT CLICK TURNS THE NEXT ONE'}</span>`, 2600);
+                _hqFillStrip(p);
+                return r;
+            } catch (e) { console.warn('[HQ] gun door place', e); return null; }
+        }
+        const _HQ_GUN_REFUSALS = {
+            upright: ['A STANDING DOOR NEEDS A FLOOR', 'AIM AT THE GROUND · IT STANDS UP ON ITS OWN'],
+            near: ['TOO CLOSE', 'STEP BACK · NOT ON YOUR OWN FEET'],
+            gap: ['TOO CLOSE TO YOUR OTHER DOOR', 'GIVE THE TWO A LITTLE ROOM'],
+            sealed: ['NOT ON YOUR WHEEL YET', 'THAT DOOR IS EARNED AT ITS PLACE'],
+        };
+        function _hqGunRefused(reason) {
+            if (!_HQ_GUN_REFUSALS[reason]) { _hqPortalRefused(reason); return; }
+            const r = _HQ_GUN_REFUSALS[reason];
+            const now = performance.now();
+            if (_hqGunRefused._at && now - _hqGunRefused._at < 900) return;
+            _hqGunRefused._at = now;
+            try { playSfx('uiError'); } catch (e) {}
+            _hqToast(`<b>${r[0]}</b><span>${r[1]}</span>`, 1800);
+        }
         function _hqPortalEvent(ev) {
             if (!ev) return;
+            if (ev.kind === 'wheel') { try { playSfx(ev.open ? 'uiCursorMove' : 'uiButtonConfirm'); } catch (e) {} return; }
+            if (ev.kind === 'gunSelect') {
+                _hqGunSel = ev.key || 'threshold';
+                _hqFillStrip(_hqProfile()); _hqStripFlash('portal');
+                const d = (window.DOOR_GUN_DOORS || {})[_hqGunSel] || {};
+                if (_hqGunSel === 'threshold') _hqToast('<b>🌀 THE THRESHOLD</b><span>LEFT CLICK = A ● · RIGHT CLICK = B ■ · HOLD F = RECALL BOTH</span>', 2200);
+                else _hqToast(`<b>${_hqEsc((d.icon || '') + ' ' + String(d.name || _hqGunSel).toUpperCase())}</b><span>LEFT CLICK STANDS IT ON THE FLOOR · RIGHT CLICK TURNS ITS LANE · TWO STAND AT A TIME</span>`, 2600);
+                return;
+            }
+            if (ev.kind === 'gunRefused') { _hqGunRefused(ev.reason); return; }
+            if (ev.kind === 'gunSealed') { _hqGunRefused('sealed'); return; }
+            if (ev.kind === 'gunAct') return;
             if (ev.kind === 'draw') {
                 _hqFillStrip(_hqProfile());
                 const h = _hqEl('hqHints'); if (h) h.classList.toggle('portal', !!ev.on);

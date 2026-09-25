@@ -46,7 +46,7 @@ rule) is exactly the base a standing door needs — nothing is built from zero.
   are specified and dormant; flipping one flag turns them on.
 - **Three kinds of door:**
   - a **SHOT** door appears, does its thing, folds (Swing Door, Door Dash, the Threshold pair);
-  - a **STANDING** door stays on its tile with a **facing**, **hits** (3, 4 for a Keyholder), a
+  - a **STANDING** door stays on its tile with a **facing**, **hits** (3, every door the same), a
     **plate** (health bar, owner colour), and an **ACT** that fires ONCE when placed and again at
     THE DOORS' TURN every round (§3.3);
   - the **CAPTURE** door is CAPTURE_PLAN's item, unchanged, never counted against the cap.
@@ -124,9 +124,9 @@ pool part for the race only (`unitSpellPoolParts` gains `gunDoors` when `race ==
 Practice offer all seven). The tier rack shows them as a fourth column, THE WHEEL, under the
 race's rows. Still 7 slots / 16 SP: a full destination kit is a real choice (Gust + Archers +
 Swing + Dash + Hell = 9 SP with room for the job's four).
-The finisher Open House and the `keyholder` passive (`doorHits: 4`) are untouched; the passive's
-`doorImmune` keeps the Keyholder out of every door's take and off every lane's slide (a Keyholder
-walks through wind).
+The finisher Open House is untouched. The `keyholder` passive keeps only its free toggle: the user
+(2026-09-25) never asked for Keyholder exceptions, so its `doorHits: 4` and `doorImmune` are gone and
+every door treats a Door Agent like any other body of its weight.
 
 ---
 
@@ -171,7 +171,7 @@ to Render** when it lands — the sync validates keys).
 ```js
 { id, pairId: id, kind: 'standing', door: 'gust', x, y, z, open: true,
   faceX, faceY,                       // the lane's direction, a unit vector (8 directions)
-  hp, maxHp,                          // doorMaxHits(unit): 3, 4 for a Keyholder
+  hp, maxHp,                          // doorMaxHits(unit): DOOR_RULES.hits (3), every door the same
   owner, ownerId, spellId, placedRound, fixed: true,
   actedRound,                         // the doors' turn stamps it; the placement act stamps it too
   laneStamps: {},                     // unitId → round: E′ once per unit per round
@@ -238,7 +238,7 @@ into a capture door is depth 3). The vortex's stamp rule is the model (`unit._vo
 The ICE RULE (Frost): step B gains "a body arriving on ice with `via !== 'move'` keeps sliding in
 its travel direction" — `_resolveIceSlide` takes an explicit direction (today it reads the walker's
 facing after a walk), called with the slide's `dx, dy`; the slide's landing re-enters the resolver.
-A Keyholder (`doorImmune`) is skipped by E′ entirely.
+Nobody is skipped by E′ for who they are: only what the door's own act can't move (colossal weight for a push) or reach (a held body).
 The order contract, written into the resolver's header comment: **A sky · B ground · C pickups · D
 fuses · D′ one-way door · E zones · E′ standing doors · F vortex · G rune.** A capture door
 before a standing door means a body that lands ON a capture door is taken before any lane can
@@ -439,7 +439,7 @@ Turning the flag off = `DOOR_GUN_RULES.allUnlocked: false` + shipping data.js to
    borrow a door). The capture door stays the bag item any party member fires from the hip
    (CAPTURE_PLAN §3.3) — it is an item, not a wheel door.
 4. **Does the wind push allies?** **RULED: YES.** The Gust lane moves every body in it, either
-   team (the Keyholder's `doorImmune` aside); the launch pad is the friendly use.
+   team; the launch pad is the friendly use.
 5. **Does the Threshold get a battle row back** (a pair on the board, allies step through)? **No**
    for now (the plan's default; not re-asked).
 
@@ -450,7 +450,7 @@ Turning the flag off = `DOOR_GUN_RULES.allUnlocked: false` + shipping data.js to
 | # | Delivery | Files | Test |
 |---|---|---|---|
 | 0 | **THE TABLE**: `DOOR_GUN_RULES` / `DOOR_GUN_DOORS` / `doorGunUnlocked` / `doorGunWheel` / `doorGunLaneTiles` (pure), the `gunDoors` ledger + merge, the wheel pool (`unitSpellPoolParts`, `spellTierOf`), the Door Agent's tree (Swing Door + Door Dash rows, Door to the Face retired, B&E to rung II), the two shot rows' engine (`hinge` push-from-hinge, the dash), the painter for the hinge, the tier rack's WHEEL column | data.js (R2 + Render), battle.js, hud.js, ui.js, party-builder.js, sprites.js (verbs) | `door-gun.test.js` (pure: lanes for 8 facings, the wheel order, tier reads, `treeLegalSubset` on the old kit) + the rows' schema in content-schema |
-| 1 | **THE STANDING DOOR**: the record, `doorGunPlace` + the cap + the fold, the facing pick (two clicks), THE DOORS' TURN with **Gust + Archers** (the two verbs: a lane push, a volley), step E′, the structure attack + the plate, the tile card, `_buildDoor3D` standing dress + the lane decal, the recipes `raceGunDoor:{gust,archers}:{open,act,fold,hit}`, the relay check ("what does the guest see": the door in the snapshot, every beat through `_doorGeom`) | battle.js, hud.js, ui.js, three-renderer.js, three-vfx-effects.js, online.js (skip-list audit only) | vm harness `door-gun-board.test.js`: place → the act → a swing into a gust lane → the capture door takes; the cap folds the oldest; a Keyholder walks through wind |
+| 1 | **THE STANDING DOOR**: the record, `doorGunPlace` + the cap + the fold, the facing pick (two clicks), THE DOORS' TURN with **Gust + Archers** (the two verbs: a lane push, a volley), step E′, the structure attack + the plate, the tile card, `_buildDoor3D` standing dress + the lane decal, the recipes `raceGunDoor:{gust,archers}:{open,act,fold,hit}`, the relay check ("what does the guest see": the door in the snapshot, every beat through `_doorGeom`) | battle.js, hud.js, ui.js, three-renderer.js, three-vfx-effects.js, online.js (skip-list audit only) | vm harness `door-gun-board.test.js`: place → the act → a swing into a gust lane → the capture door takes; the cap folds the oldest |
 | 2 | **THE DESTINATIONS**: Hell + Frost (`laneTerrain` + the timed terrain + the ice rule), Maw (`pullIn`), Laser (`beam` + mirrors), Light (`laneLight`); their dresses and recipes | data.js, battle.js, three-renderer.js, three-vfx-effects.js | the harness per act; a beam through one mirror; ice lengthens a swing |
 | 3 | **THE WHEEL + THE LIVE DOORS**: `#hqWheel` (hold middle click, the slow, the wedges, the sealed look), `H.gun.door`, the ghost per door + the facing turn, `H.gunDoors` + the profile record, `_hqTickGunDoors` (period + arrival), the kickable / walker push, the strip pill | map.js, three-renderer.js, data.js, index.html, styles-base.css | `hq-gun.test.js` (the wheel's geometry, the record, the cap) + the offline HQ probe (`playtest_gun_offline.js` extended — the user allowed gun probes) |
 | 4 | **THE ENGAGEMENT + THE CARRY-OVER**: the act as the strike (`opening` on the launch), doors → board cells at `hqEncounterLaunch`, seats around them, the room rebuild after the fight, the pre-placed capture door + its refund | data.js, map.js, three-renderer.js, battle.js | `hq-encounter` pins: a door inside the window lands on its cell; one outside stays |
@@ -546,3 +546,40 @@ Line numbers are the 2026-09-25 clone's (token `20260925-capture-08-cors`); grep
   (Phase 6):** ai.js drops move targets whose path enters a stream that would move the unit and prices ending in
   a hostile lane; the placer scores all seven acts. Dresses + recipes in three-renderer.js / three-vfx-effects.js.
   Notes: docs/notes/champions-combat.md "THE DOOR AGENT rev 6". Test: door-gun-destinations.test.js.
+- 2026-09-25 — **The Keyholder exceptions removed** (the user: "take out these weird exceptions for the keyholder …
+  i never asked for that"). The `keyholder` passive loses `doorImmune` and `doorHits`: the wind, every other lane, the
+  Maw's bite, E′, the capture door, the Slam and the trapdoor now treat a Door Agent like any body of its weight, and
+  every door takes 3 hits (`doorMaxHits` reads `DOOR_RULES.hits` only). The passive keeps its free toggle. **Also
+  removed (never ruled on):** flyers standing in the wind (`gustStreamAt` and the gust's turn check), the Maw's draught
+  skipping flyers, and the Laser's walk-across skipping flyers — the wind and the draught move what their weight lets
+  them, the beam burns what crosses it. **Kept:** the colossal weight in the wind (the user asked for it); a held
+  body (it is in the void, not on the board); Hell's ground fire skipping a flyer in the air (the airborne rule every
+  ground-bound effect follows, data.js `flying`); the capture door's own exclusions (CAPTURE_PLAN).
+- 2026-09-25 — **Phase 3 shipped** (`door-gun/ENTROPY_WARS_DOOR_GUN_3.zip`, token `20260925-door-gun-04-cors`):
+  THE WHEEL + THE LIVE DOORS in the explored room. **The wheel** (three-renderer.js "THE DOOR WHEEL IN THE ROOM"):
+  hold MIDDLE CLICK past `wheel.holdMs` → `#hqWheel` (index.html; styles-base.css `.hq-wheel*`), eight wedges from
+  `doorGunWheel(profile, { room: true })` (the Threshold + the seven standing doors; a sealed wedge shows its place
+  and can't be taken), the room slowed to `wheel.slow` (walker, rounds, natives, the doors) while it is open, the
+  release takes the wedge under the mouse (locked: the movement deltas; unlocked: the cursor from the press), a
+  pause / blur closes it untaken, taking a door draws the gun. **The modes** (`H.gun.door`): `threshold` is revs 1–5
+  untouched; a standing door = LEFT CLICK stands it on the FLOOR under the aim (a wall / ceiling hit refuses:
+  "A STANDING DOOR NEEDS A FLOOR"), RIGHT CLICK turns the lane 45°, the default faces away from you; the ghost is
+  an upright frame + the lane on the floor with its verdict word. **The record** (data.js `HQ_GUN_RULES`,
+  `hqGunDoorRecord / Place / Clear / DoorsIn / Lane / Covers / SnapFace`): `profile.door.hq.gunPlaced.list` —
+  **deviation:** not `door.hq.gunDoors.placed`, because `door.hq.gunDoors` is the earned-doors ledger whose union
+  drops any non-door key. Two stand (the battle's cap), the oldest folds; a fresh arrival from Play clears them
+  (map.js, with the Threshold pair); map.js files each shot in one transaction and hands the record in on every
+  entry (`opts.gun`), keeping the selected door for the visit. **The live doors** (`_hqGunDoorBuild`): the frame in
+  the door's colour, its name on the lintel, the lane decal (chevrons per 1.75 m tile, a ring for a radius door),
+  two jamb blockers (the opening is walkable); the shot is a comet from the muzzle + a 300 ms unfold.
+  **The acts** (`_hqTickGunDoors`): the GUST blows the walker (the carry, `pl.mvx / mvz`, to 6 m/s) and every
+  kickable in its lane, all the time it stands (the battle's stream rule); the MAW draws them in to 0.9 m; HELL's
+  lane burns (flames), FROST's is ice slabs, the LASER marches to the first solid, the LIGHT door is a real
+  SpotLight + cone (`EW_HQ_NO_GUN_LIGHT` off); every door pulses once per `actMs` (2.5 s), and the ARCHERS loose
+  at the nearest native in reach and sight (the arrows only — the strike is Phase 4). **Deviations:** the room
+  wheel drops Swing / Dash (battle verbs) and the capture door (its room pre-place is Phase 4's); no new `?v=`
+  asset. **Not yet:** water freezing, braziers, mirrors (Phase 5), a door's act as the encounter's strike and the
+  carry-over onto the board (Phase 4). The probe (`playtest_gun_offline.js`, its missing `fs/path/zlib` requires
+  restored) confirmed the wheel (8 wedges, hover, the release takes Gust), a gust door placed and the walker
+  blown down its lane, the cap folding the oldest, hell / frost / maw / laser standing. Notes:
+  docs/notes/door-gun-skate-vehicles.md "THE DOOR WHEEL IN THE ROOM". Test: hq-gun.test.js.

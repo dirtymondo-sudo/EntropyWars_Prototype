@@ -3,7 +3,7 @@
 // a vm over data.js's real DOOR_GUN_DOORS / DOOR_GUN_RULES / CAPTURE_RULES with a 10×10 board stubbed round them:
 // PLACE → its act fires at once; the Gust's wind blows EVERY body in the lane (the user: allies too), the far one first,
 // to the lane's end + 1; a body swung into a gust lane is blown onto a capture door and TAKEN (E′ before, D′ at the
-// landing); the Archers' volley; the cap (2 per player) folds the oldest; a Keyholder walks through wind; E′ acts once
+// landing); the Archers' volley; the cap (2 per player) folds the oldest; the wind moves a door agent like anyone; E′ acts once
 // per door per unit per round; THE DOORS' TURN; the aim's two clicks; enemies break a door. Plus the source sites.
 // Repo-only.
 'use strict';
@@ -166,18 +166,13 @@ test('THE CAP: two standing doors per PLAYER — a third folds the oldest; the o
     assert.ok(B.logs.some(l => /Archers' Door/.test(l) && /fold/i.test(l)), B.logs.join('\n'));
 });
 
-test('A KEYHOLDER WALKS THROUGH WIND: the lane never moves a doorImmune body — at the act, on arrival — but arrows still find it', () => {
+test('NO KEYHOLDER EXCEPTION (the user, 2026-09-25): the wind blows an enemy door agent like any body its weight', () => {
     const B = board();
     const a = B.mk('a', 1, 1, 2, { race: 'door agent' });
-    const k = B.mk('k', 2, 5, 2, { passives: { doorImmune: true } });
+    const k = B.mk('k', 2, 5, 2, { race: 'door agent' });
     B.place(a, 'gunGustDoor', 3, 2, 1, 0);
-    assert.equal(at(k), '5,2', 'the act');
-    k.x = 6; B.D.resolveTileArrival(k, { via: 'move' });
-    assert.equal(at(k), '6,2', 'the arrival');
-    B.state.round = 2; B.g('processDoorActs')(() => {});
-    assert.equal(at(k), '6,2', 'THE DOORS\' TURN');
-    B.place(a, 'gunArchersDoor', 4, 4);
-    assert.ok(k.hp < 1000, 'the archers still shoot it');
+    assert.equal(at(k), '8,2', 'the act blows it to the lane\'s end + 1');
+    assert.ok(!/doorImmune/.test(BT), 'no doorImmune check is left in battle.js');
 });
 
 test('THE GUST STREAM: every entry is blown (the same round too); the doors\' turn only blows a body still stuck in it', () => {

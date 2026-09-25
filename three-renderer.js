@@ -48525,7 +48525,14 @@ const ThreeRenderer = (function () {
         _hqPortalTickHold();   // THE RECALL (D3c): F held pulls the pair home, drawn or not
         var dtA = Math.min(0.05, (performance.now() - (H.portal.vmAt || performance.now())) / 1000); H.portal.vmAt = performance.now();
         _hqViewmodelTick(dtA);   // FIRST PERSON: the gun under the eye (hidden when holstered / third person)
+        /* THE DOOR WHEEL (Phase 3): a middle button held past holdMs opens it; a pause closes it untaken */
+        if (H.gun) {
+            if (H.gun.wheel && H.paused) _hqGunWheelClose(false);
+            else if (H.gun.mDown && !H.gun.wheel && performance.now() - H.gun.mAt >= _hqGunWheelRules().holdMs) { H.gun.mDown = false; _hqGunWheelOpen(); }
+            if (H.gun.ghost && (!H.portal.drawn || H.gun.door === 'threshold')) H.gun.ghost.visible = false;
+        }
         if (!H.portal.drawn) return;
+        if (H.gun && H.gun.door !== 'threshold') { _hqGunDoorTickAim(); return; }   // a standing door's ghost + lane (the Threshold's ghost below is revs 1-5)
         var aim = _hqPortalAim(null);   // rev 5: the ONE ghost judges the surface for EITHER button (THE TWIN only when neither door could take it)
         H.portal.aim = aim;
         var g = _hqPortalGhost(); if (!g) return;
@@ -48947,6 +48954,481 @@ const ThreeRenderer = (function () {
             var spec = P[s];
             if (spec && spec.room === roomId) { try { _hqPortalBuild(s, spec); } catch (e) { console.warn('[HQ] portal', s, 'failed', e); } }
         });
+    }
+    /* ══ THE DOOR WHEEL IN THE ROOM (DOOR_GUN_PLAN.md §5.1-5.2, Phase 3, 2026-09-25) ══════════════════════
+       THE WHEEL: hold MIDDLE CLICK (DOOR_GUN_RULES.wheel.holdMs) and a radial of the gun's doors opens round
+       the crosshair (#hqWheel, index.html; the wedges are data.js doorGunWheel(profile, { room: true }) — the
+       Threshold and the seven standing doors); the room runs slowed (wheel.slow) while it is open, it never
+       pauses. Move the mouse toward a wedge, RELEASE the middle button to take it (a sealed wedge is greyed
+       with its place and cannot be taken). THE MODES (H.gun.door): 'threshold' is revs 1-5 exactly (LEFT A,
+       RIGHT B); a standing door = LEFT CLICK fires it onto the floor under the aim, RIGHT CLICK turns its lane
+       45° (the ghost shows the frame and the lane; the default faces away from you). THE LIVE DOORS
+       (H.gun.doors): upright frames in the door's colour with the lane on the floor, jambs that block; each
+       ACTS the whole time it stands — the gust blows the walker and every kickable in its lane toward the lane's
+       end (a carry, the portal's pl.mvx / mvz), the maw draws them in, the hell lane burns, the frost lane is
+       ice, the laser runs to the first wall, the light door is a real SpotLight; every door pulses once a
+       room round (HQ_GUN_RULES.actMs; the archers loose at the nearest native in reach — the arrows are the
+       look, the strike is Phase 4). The record is map.js's (onGunDoorPlace → data.js hqGunDoorPlace, one
+       profile transaction), rebuilt on every room entry (opts.gun.placed). Viewer-local: nothing on `state`,
+       nothing relayed (RULE #2). */
+    function _hqGunRulesRoom() {
+        var R = (typeof window !== 'undefined' && window.HQ_GUN_RULES) || {};
+        return { cell: R.cell || 1.75, actMs: R.actMs || 2500, cap: R.cap || 2, halfW: R.halfW || 0.8, gust: R.gust || { speed: 6, accel: 18 },
+                 maw: R.maw || { speed: 2.4, stopM: 0.9 }, beamMaxM: R.beamMaxM || 40, near: R.minFromWalker || 1.2, gap: R.minGap || 1.4, step: R.faceStepDeg || 45 };
+    }
+    function _hqGunWheelRules() {
+        var W = (typeof window !== 'undefined' && window.DOOR_GUN_RULES && window.DOOR_GUN_RULES.wheel) || {};
+        return { holdMs: W.holdMs || 140, slow: (W.slow != null) ? W.slow : 0.15, dead: 26, reach: 120 };
+    }
+    function _hqGunDef(key) { return (typeof window !== 'undefined' && window.DOOR_GUN_DOORS && window.DOOR_GUN_DOORS[key]) || null; }
+    function _hqGunLane(key, face) {
+        if (typeof window !== 'undefined' && typeof window.hqGunDoorLane === 'function') return window.hqGunDoorLane(key, face);
+        var a = (face || 0) * Math.PI / 180; return { dx: Math.sin(a), dz: Math.cos(a), len: 7, r: 0, halfW: 0.8 };
+    }
+    function _hqGunCovers(rec, x, z) {
+        if (typeof window !== 'undefined' && typeof window.hqGunDoorCovers === 'function') return window.hqGunDoorCovers({ key: rec.key, x: rec.x, z: rec.z, face: rec.face }, x, z);
+        return false;
+    }
+    function _hqGunSnap(deg) {
+        if (typeof window !== 'undefined' && typeof window.hqGunDoorSnapFace === 'function') return window.hqGunDoorSnapFace(deg);
+        return ((Math.round((deg || 0) / 45) * 45) % 360 + 360) % 360;
+    }
+    function _hqGunWedges() {
+        var H = _hq; if (!H) return [];
+        if (H.gun.wedges) return H.gun.wedges;
+        var list = [];
+        try { if (typeof window !== 'undefined' && typeof window.doorGunWheel === 'function') list = window.doorGunWheel(H.profile || H.opts.profile || null, { room: true }); } catch (e) { list = []; }
+        if (!list.length) list = [{ key: 'threshold', name: 'The Threshold', icon: '🌀', kind: 'shot', sealed: false }];
+        H.gun.wedges = list;
+        return list;
+    }
+    /* ── THE WHEEL (DOM) ── */
+    function _hqGunWheelEl() {
+        var el = (typeof document !== 'undefined') ? document.getElementById('hqWheel') : null;
+        if (!el && typeof document !== 'undefined') { el = document.createElement('div'); el.id = 'hqWheel'; el.className = 'hq-wheel'; el.style.display = 'none'; (document.getElementById('hqPage') || document.body).appendChild(el); }
+        return el;
+    }
+    function _hqGunPlaceName(site) {
+        try { var M = (typeof PREBUILT_MAPS !== 'undefined' && PREBUILT_MAPS) ? PREBUILT_MAPS[site] : null; if (M && M.name) return String(M.name); } catch (e) {}
+        return site ? String(site).replace(/^prebuilt_/, '').replace(/_/g, ' ') : '';
+    }
+    function _hqGunWheelOpen() {
+        var H = _hq; if (!H || !H.gun || H.gun.wheel || H.paused) return false;
+        if (!H.portal || !H.portal.issued) { if (H.opts.onPortal) { try { H.opts.onPortal({ kind: 'unissued' }); } catch (e) {} } return false; }
+        var el = _hqGunWheelEl(); if (!el) return false;
+        var list = _hqGunWedges(), n = list.length, html = '';
+        for (var i = 0; i < n; i++) {
+            var w = list[i], a = i * 2 * Math.PI / n;
+            var x = Math.sin(a) * 118, y = -Math.cos(a) * 118;
+            var sub = w.sealed ? (_hqGunPlaceName(w.place).toUpperCase() + ' · NOT YET') : (w.key === 'threshold' ? 'L = A · R = B' : (w.kind === 'standing' ? 'STANDING' : ''));
+            html += '<div class="hq-wheel-wedge' + (w.sealed ? ' sealed' : '') + (w.key === H.gun.door ? ' current' : '') + '" data-i="' + i + '" style="transform:translate(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px)">'
+                + '<i>' + (w.icon || '🚪') + '</i><b>' + String(w.name || w.key).toUpperCase() + '</b><span>' + sub + '</span></div>';
+        }
+        html += '<div class="hq-wheel-hub"><b></b><span></span></div>';
+        el.innerHTML = html; el.style.display = ''; el.classList.add('open');
+        H.gun.wheel = { vx: 0, vy: 0, sel: -1, cx: null, cy: null, at: performance.now() };
+        _hqGunWheelHover(list.indexOf(list.filter(function (w) { return w.key === H.gun.door; })[0]));
+        if (H.opts.onPortal) { try { H.opts.onPortal({ kind: 'wheel', open: true }); } catch (e) {} }
+        H.dirty = true;
+        return true;
+    }
+    function _hqGunWheelHover(i) {
+        var H = _hq; if (!H || !H.gun.wheel) return;
+        var el = _hqGunWheelEl(); if (!el) return;
+        H.gun.wheel.sel = i;
+        var ws = el.querySelectorAll('.hq-wheel-wedge');
+        for (var k = 0; k < ws.length; k++) ws[k].classList.toggle('hover', k === i);
+        var list = _hqGunWedges(), w = list[i], hub = el.querySelector('.hq-wheel-hub');
+        if (hub) {
+            var d = w ? _hqGunDef(w.key) : null;
+            var what = !w ? 'MOVE TO A DOOR · RELEASE' : w.sealed ? ('A DOOR FROM ' + _hqGunPlaceName(w.place).toUpperCase() + ' · NOT ON YOUR WHEEL YET')
+                : w.key === 'threshold' ? 'THE PAIR · WALK INTO ONE, OUT OF THE OTHER'
+                : d && d.act === 'lanePush' ? 'A WIND LANE · BLOWS WHAT STANDS IN IT' : d && d.act === 'volley' ? 'ARCHERS · LOOSE AT WHAT COMES NEAR'
+                : d && d.act === 'laneTerrain' ? (d.terrain === 'ice' ? 'AN ICE LANE' : 'A LANE OF FIRE') : d && d.act === 'pullIn' ? 'A DRAUGHT · DRAWS WHAT IS NEAR IN'
+                : d && d.act === 'beam' ? 'A BEAM TO THE FIRST WALL' : d && d.act === 'laneLight' ? 'A SHAFT OF LIGHT' : '';
+            hub.querySelector('b').textContent = w ? ((w.icon || '') + ' ' + String(w.name || w.key).toUpperCase()) : 'THE DOOR WHEEL';
+            hub.querySelector('span').textContent = what;
+        }
+    }
+    function _hqGunWheelMove(dx, dy, abs) {
+        var H = _hq, W = H && H.gun && H.gun.wheel; if (!W) return;
+        var R = _hqGunWheelRules();
+        if (abs) { if (W.cx === null) { W.cx = abs.x; W.cy = abs.y; } W.vx = abs.x - W.cx; W.vy = abs.y - W.cy; }
+        else { W.vx += dx; W.vy += dy; }
+        var m = Math.hypot(W.vx, W.vy);
+        if (m > R.reach) { W.vx *= R.reach / m; W.vy *= R.reach / m; m = R.reach; }
+        if (m < R.dead) return;
+        var n = _hqGunWedges().length;
+        var a = Math.atan2(W.vx, -W.vy); if (a < 0) a += Math.PI * 2;
+        var i = Math.round(a / (2 * Math.PI / n)) % n;
+        if (i !== W.sel) { _hqGunWheelHover(i); try { if (typeof playSfx === 'function') playSfx('uiCursorMove'); } catch (e) {} }
+    }
+    function _hqGunWheelClose(take) {
+        var H = _hq; if (!H || !H.gun || !H.gun.wheel) return;
+        var W = H.gun.wheel; H.gun.wheel = null;
+        var el = _hqGunWheelEl(); if (el) { el.classList.remove('open'); el.style.display = 'none'; el.innerHTML = ''; }
+        var w = (take && W.sel >= 0) ? _hqGunWedges()[W.sel] : null;
+        if (w && w.sealed) { if (H.opts.onPortal) { try { H.opts.onPortal({ kind: 'gunSealed', key: w.key, place: w.place }); } catch (e) {} } w = null; }
+        if (w) _hqGunSelect(w.key);
+        if (H.opts.onPortal) { try { H.opts.onPortal({ kind: 'wheel', open: false }); } catch (e) {} }
+        H.dirty = true;
+    }
+    /* take a door off the wheel: the gun's LEFT CLICK fires it now (drawn on the way — the wheel is the gun's) */
+    function _hqGunSelect(key) {
+        var H = _hq; if (!H || !H.gun) return false;
+        if (key !== 'threshold' && !_hqGunDef(key)) return false;
+        var changed = H.gun.door !== key;
+        H.gun.door = key; H.gun.turn = 0;
+        if (H.portal) { H.portal.lastKey = ''; if (H.portal.ghost) H.portal.ghost.visible = false; }
+        if (H.gun.ghost) H.gun.ghost.visible = false;
+        if (H.portal && !H.portal.drawn) _hqPortalDraw(true);
+        if (H.opts.onPortal) { try { H.opts.onPortal({ kind: 'gunSelect', key: key, changed: changed }); } catch (e) {} }
+        H.dirty = true;
+        return true;
+    }
+    /* ── THE GHOST (an upright frame + the lane on the floor) ── */
+    function _hqGunFrame(ow, oh, mat, U) {
+        var g = new THREE.Group(), jw = 0.16, lh = 0.2;
+        var jL = new THREE.Mesh(new THREE.BoxGeometry(jw * U, (oh + lh) * U, 0.2 * U), mat); jL.position.set(-(ow / 2 + jw / 2) * U, (oh + lh) / 2 * U, 0);
+        var jR = jL.clone(); jR.position.x = -jL.position.x;
+        var lin = new THREE.Mesh(new THREE.BoxGeometry((ow + jw * 2) * U, lh * U, 0.2 * U), mat); lin.position.set(0, (oh + lh / 2) * U, 0);
+        g.add(jL, jR, lin);
+        return g;
+    }
+    function _hqGunLaneDecal(key, U, mat) {
+        var L = _hqGunLane(key, 0), g = new THREE.Group();
+        if (L.r) {
+            var ring = new THREE.Mesh(new THREE.RingGeometry((L.r - 0.1) * U, L.r * U, 56), mat); ring.rotation.x = -Math.PI / 2; ring.position.y = 0.03 * U; g.add(ring);
+            return g;
+        }
+        var len = L.len > 12 ? 3.5 : L.len;   // a beam's decal is its first two tiles (the beam itself is drawn to the wall)
+        var strip = new THREE.Mesh(new THREE.PlaneGeometry(L.halfW * 2 * U, len * U), mat); strip.rotation.x = -Math.PI / 2; strip.position.set(0, 0.03 * U, (0.2 + len / 2) * U); g.add(strip);
+        var C = _hqGunRulesRoom().cell;
+        for (var s = C * 0.5; s < len; s += C) {
+            var chev = new THREE.Mesh(new THREE.ConeGeometry(0.28 * U, 0.42 * U, 3), mat); chev.rotation.x = Math.PI / 2; chev.scale.z = 0.08; chev.position.set(0, 0.05 * U, (0.2 + s) * U); g.add(chev);
+        }
+        return g;
+    }
+    function _hqGunGhost(key) {
+        var H = _hq; if (!H) return null;
+        if (H.gun.ghost && H.gun.ghostKey === key) return H.gun.ghost;
+        if (H.gun.ghost) { try { H.propGroup.remove(H.gun.ghost); _disposeR(H.gun.ghost); } catch (e) {} H.gun.ghost = null; }
+        var U = _hqUnits();
+        var mat = new THREE.MeshBasicMaterial({ color: HQ_PORTAL_COLORS.ok, transparent: true, opacity: 0.4, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, side: THREE.DoubleSide });
+        var g = new THREE.Group(); g.name = 'hq-gun-ghost'; g.visible = false;
+        g.add(_hqGunFrame(1.1, 2.2, mat, U));
+        var pane = new THREE.Mesh(new THREE.PlaneGeometry(1.1 * U, 2.2 * U), mat); pane.position.set(0, 1.1 * U, 0); g.add(pane);
+        g.add(_hqGunLaneDecal(key, U, mat));
+        var lblMat = new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, depthTest: false, fog: false, side: THREE.DoubleSide, opacity: 0.95 });
+        var lbl = new THREE.Mesh(new THREE.PlaneGeometry(1.7 * U, 0.3 * U), lblMat); lbl.position.set(0, 2.85 * U, 0); lbl.renderOrder = 7; lbl.visible = false; g.add(lbl);
+        g.userData = { mat: mat, lbl: lbl, lblKey: '' };
+        H.propGroup.add(g);
+        H.gun.ghost = g; H.gun.ghostKey = key;
+        return g;
+    }
+    /* THE AIM for a standing door: the floor under the gun's march (a wall / ceiling hit refuses — a standing door
+       stands on a floor), clear of your feet and of the other standing door. { ok, reason, x, y, z, face } */
+    function _hqGunDoorAim() {
+        var H = _hq, pl = H && H.player; if (!pl) return null;
+        var a = _hqPortalAim(null);
+        if (!a || !a.dist) return { ok: false, reason: 'none' };
+        var out = { ok: false, reason: null, x: a.x, y: a.y, z: a.z, dist: a.dist, surf: a.surf };
+        var R = _hqGunRulesRoom();
+        var fwd = Math.atan2(a.x - pl.x, a.z - pl.z) * 180 / Math.PI;
+        out.face = _hqGunSnap(fwd + (H.gun.turn || 0) * R.step);
+        if (a.surf !== 'floor') { out.reason = (a.surf === 'wall' || a.surf === 'ceiling') ? 'upright' : (a.reason || 'none'); return out; }
+        if (!a.ok && a.reason && a.reason !== 'twin' && a.reason !== 'near') { out.reason = a.reason; return out; }
+        if (Math.hypot(a.x - pl.x, a.z - pl.z) < R.near) { out.reason = 'near'; return out; }
+        for (var i = 0; i < H.gun.doors.length; i++) { var d = H.gun.doors[i]; if (Math.hypot(d.x - a.x, d.z - a.z) < R.gap && Math.abs(d.y - a.y) < 1.5) { out.reason = 'gap'; return out; } }
+        out.ok = true;
+        return out;
+    }
+    var HQ_GUN_REASONS = { upright: 'A STANDING DOOR NEEDS A FLOOR', near: 'TOO CLOSE', gap: 'TOO CLOSE TO YOUR OTHER DOOR', fluid: 'NOT ON WATER', door: 'A DOOR IS THERE', room: 'NO ROOM FOR THE FRAME', wall: 'NOT A FLOOR', none: 'NOTHING THERE' };
+    function _hqGunDoorTickAim() {
+        var H = _hq, pl = H.player; if (!pl) return;
+        var key = H.gun.door, def = _hqGunDef(key);
+        if (H.portal.ghost) H.portal.ghost.visible = false;
+        var aim = _hqGunDoorAim(); H.gun.aim = aim;
+        var g = _hqGunGhost(key), sight = _hqPortalSight(), U = _hqUnits();
+        if (!pl.moving && !(H.ride && H.ride.on)) pl.targetYaw = Math.atan2(Math.sin(H.cam.yaw), -Math.cos(H.cam.yaw));
+        if (!aim || aim.reason === 'none' || !isFinite(aim.x)) { if (g) g.visible = false; if (sight) sight.visible = false; return; }
+        var hex = aim.ok ? (def && def.color != null ? def.color : HQ_PORTAL_COLORS.ok) : HQ_PORTAL_COLORS.bad;
+        if (g) {
+            g.visible = true;
+            g.position.set(aim.x * U, (aim.y + 0.01) * U, aim.z * U);
+            g.rotation.set(0, (aim.face || 0) * Math.PI / 180, 0);
+            g.userData.mat.color.setHex(hex); g.userData.mat.opacity = 0.3 + 0.1 * Math.sin(performance.now() * 0.006);
+            var word = aim.ok ? String((def && def.name) || key).toUpperCase() + ' · R-CLICK TURNS' : (HQ_GUN_REASONS[aim.reason] || 'NOT HERE');
+            var lk = (aim.ok ? 'ok:' : 'no:') + word;
+            if (lk !== g.userData.lblKey) {
+                g.userData.lblKey = lk;
+                try { var tex = _hzTextTex('hq_gun_lbl_' + lk, [word], { w: 640, h: 104, color: aim.ok ? '#f2efe6' : '#ffb3b3', pad: 0.12, weight: 'bold', font: '"Courier New", Courier, monospace' }); g.userData.lbl.material.map = tex || null; g.userData.lbl.material.needsUpdate = true; } catch (e) {}
+            }
+            g.userData.lbl.visible = !!g.userData.lbl.material.map;
+            /* the label faces the eye */
+            g.userData.lbl.rotation.y = -g.rotation.y + Math.atan2(H.camera.position.x - g.position.x, H.camera.position.z - g.position.z);
+        }
+        if (sight) {
+            var mz = _hqGunMuzzle();
+            if (mz) {
+                var pos = sight.userData.line.geometry.attributes.position;
+                pos.setXYZ(0, mz.x * U, mz.y * U, mz.z * U); pos.setXYZ(1, aim.x * U, (aim.y + 0.03) * U, aim.z * U); pos.needsUpdate = true;
+                sight.userData.line.geometry.computeBoundingSphere();
+                sight.userData.mat.color.setHex(hex); sight.userData.dot.material.color.setHex(hex);
+                sight.userData.dot.position.set(aim.x * U, (aim.y + 0.04) * U, aim.z * U);
+                sight.visible = true;
+            } else sight.visible = false;
+        }
+        var key2 = (aim.ok ? 'gok:' : 'gno:') + (aim.reason || '') + ':' + key;
+        if (key2 !== H.portal.lastKey) { H.portal.lastKey = key2; if (H.opts.onPortal) { try { H.opts.onPortal({ kind: 'aim', ok: !!aim.ok, surf: aim.surf, reason: aim.reason, door: key }); } catch (e) {} } }
+    }
+    /* RIGHT CLICK: the lane turns 45° clockwise */
+    function _hqGunDoorTurn() {
+        var H = _hq; if (!H || !H.gun) return false;
+        H.gun.turn = ((H.gun.turn || 0) + 1) % 8;
+        H.portal.lastKey = '';
+        try { if (typeof playSfx === 'function') playSfx('uiCursorMove'); } catch (e) {}
+        return true;
+    }
+    /* LEFT CLICK: the shot. map.js files it (the cap folds the oldest), the door flies out of the gun and unfolds */
+    function _hqGunDoorFire() {
+        var H = _hq; if (!H || !H.portal || !H.portal.drawn || !H.gun || H.gun.door === 'threshold') return false;
+        var aim = _hqGunDoorAim();
+        if (!aim || !aim.ok) { if (H.opts.onPortal) { try { H.opts.onPortal({ kind: 'gunRefused', reason: aim ? aim.reason : 'none', door: H.gun.door }); } catch (e) {} } return false; }
+        var spec = { room: H.opts.room || 'central_egress', key: H.gun.door, x: aim.x, y: aim.y, z: aim.z, face: aim.face };
+        var filed = null;
+        if (H.opts.onGunDoorPlace) { try { filed = H.opts.onGunDoorPlace(spec); } catch (e) { console.warn('[HQ] gun door place failed', e); filed = null; } }
+        else {   // no filer (a probe): the cap folds the oldest here
+            var R = _hqGunRulesRoom(), fold = [];
+            var all = H.gun.doors.map(function (d) { return d.row; }).sort(function (a, b) { return a.at - b.at; });
+            while (all.length >= R.cap) fold.push(all.shift());
+            var at = Math.max(Date.now(), all.length ? all[all.length - 1].at + 1 : 0);
+            filed = { ok: true, row: { room: spec.room, key: spec.key, x: spec.x, y: spec.y, z: spec.z, face: _hqGunSnap(spec.face), hits: 3, at: at }, folded: fold };
+        }
+        if (!filed || !filed.ok || !filed.row) return false;
+        (filed.folded || []).forEach(function (f) { _hqGunDoorRemove(f.at, { fold: true }); });
+        var from = _hqGunMuzzle();
+        _hqGunDoorBuild(filed.row, { fresh: true, from: from });
+        _hqGunFire(from, null);
+        H.gun.turn = 0; H.portal.lastKey = '';
+        return true;
+    }
+    /* ── THE LIVE DOOR ── */
+    function _hqGunDoorRemove(at, opts) {
+        var H = _hq; if (!H || !H.gun) return false;
+        var i = -1; for (var k = 0; k < H.gun.doors.length; k++) if (H.gun.doors[k].at === at) i = k;
+        if (i < 0) return false;
+        var rec = H.gun.doors.splice(i, 1)[0];
+        H.blockers = H.blockers.filter(function (b) { return b.gunDoor !== rec.at; });
+        if (rec.light) { try { H.scene.remove(rec.light); H.scene.remove(rec.light.target); } catch (e) {} }
+        var grp = rec.grp;
+        if (opts && opts.fold && grp && grp.parent) {   // the fold: the frame shrinks into the floor
+            var t0 = performance.now();
+            H.tickers.push(function (dt, now) { if (!grp.parent) return; var k2 = Math.min(1, (now - t0) / 320); grp.scale.set(1 - k2 * 0.9, 1 - k2, 1 - k2 * 0.9); if (k2 >= 1) { try { H.propGroup.remove(grp); _disposeR(grp); } catch (e) {} } H.dirty = true; });
+        } else if (grp) { try { H.propGroup.remove(grp); _disposeR(grp); } catch (e) {} }
+        H.dirty = true;
+        return true;
+    }
+    function _hqGunDoorBuild(row, opts) {
+        var H = _hq; if (!H || !H.gun || !row) return null;
+        opts = opts || {};
+        var def = _hqGunDef(row.key); if (!def) return null;
+        _hqGunDoorRemove(row.at);
+        var U = _hqUnits(), R = _hqGunRulesRoom();
+        var hex = (def.color != null) ? def.color : 0xffffff;
+        var ow = 1.1, oh = 2.2;
+        var tint = new THREE.Color(hex).lerp(new THREE.Color(0x3a3d44), 0.45).getHex();
+        var frameMat = _hqMat('teal', 0.6, 2.2, { color: tint, shininess: 30, specular: 0x555555 });
+        var glowMat = new THREE.MeshBasicMaterial({ color: hex, transparent: true, opacity: 0.32, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false });
+        var laneMat = new THREE.MeshBasicMaterial({ color: hex, transparent: true, opacity: 0.22, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false });
+        var grp = new THREE.Group(); grp.name = 'hq-gun-door-' + row.key;
+        grp.position.set(row.x * U, row.y * U, row.z * U);
+        grp.rotation.y = (row.face || 0) * Math.PI / 180;
+        var body = new THREE.Group(); grp.add(body);
+        body.add(_hqGunFrame(ow, oh, frameMat, U));
+        var sill = _hqBox(ow + 0.6, 0.05, 0.5, frameMat); sill.position.set(0, 0.025 * U, 0); body.add(sill);
+        var pane = new THREE.Mesh(new THREE.PlaneGeometry(ow * U, oh * U), glowMat); pane.position.set(0, oh / 2 * U, 0); body.add(pane);
+        var lamp = _hzGlowSprite(1.6 * U, hex, 0.4, 0.1, 0.08, 1.2); lamp.position.set(0, oh * 0.5 * U, 0.35 * U); body.add(lamp);
+        try {
+            var tex = _hzTextTex('hq_gun_door_' + row.key, [String(def.name || row.key).toUpperCase()], { w: 512, h: 96, color: '#f2efe6', pad: 0.14, weight: 'bold', font: '"Courier New", Courier, monospace' });
+            if (tex) {
+                var tm = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, fog: false, side: THREE.DoubleSide });
+                var tp = new THREE.Mesh(new THREE.PlaneGeometry((ow + 0.32) * 0.92 * U, 0.15 * U), tm); tp.position.set(0, (oh + 0.1) * U, 0.105 * U); body.add(tp);
+                var tp2 = tp.clone(); tp2.position.z = -tp.position.z; tp2.rotation.y = Math.PI; body.add(tp2);
+            }
+        } catch (e) {}
+        var decal = _hqGunLaneDecal(row.key, U, laneMat); grp.add(decal);
+        /* the act's own dress: the wind's motes, the fire's tongues, the ice, the beam, the light's cone */
+        var fx = { motes: [], beam: null, beamLen: 0, beamAt: 0, flames: [] };
+        var L = _hqGunLane(row.key, 0);
+        if (def.act === 'lanePush' || def.act === 'pullIn') {
+            for (var m = 0; m < 14; m++) { var s = _hzGlowSprite(0.16 * U, hex, 0.55, 0, 0, 0); s.userData.t = Math.random(); s.userData.o = (Math.random() - 0.5) * 2; s.userData.h = 0.3 + Math.random() * 1.6; grp.add(s); fx.motes.push(s); }
+        } else if (def.act === 'laneTerrain') {
+            var C = R.cell, n = Math.max(1, Math.round(L.len / C));
+            for (var t = 0; t < n; t++) {
+                if (def.terrain === 'ice') {
+                    var ice = new THREE.Mesh(new THREE.PlaneGeometry((L.halfW * 2 - 0.1) * U, (C - 0.08) * U), new THREE.MeshPhongMaterial({ color: 0xbfeeff, transparent: true, opacity: 0.72, shininess: 120, specular: 0xffffff, depthWrite: false }));
+                    ice.rotation.x = -Math.PI / 2; ice.position.set(0, 0.04 * U, (0.2 + C * (t + 0.5)) * U); grp.add(ice);
+                } else for (var f = 0; f < 3; f++) {
+                    var fl = _hzGlowSprite(0.9 * U, f % 2 ? 0xffb040 : 0xff4a1a, 0.6, 0.3, 0.3, 6 + f); fl.position.set((f - 1) * 0.45 * U, 0.35 * U, (0.2 + C * (t + 0.5)) * U); grp.add(fl); fx.flames.push(fl);
+                }
+            }
+        } else if (def.act === 'beam') {
+            fx.beam = new THREE.Mesh(new THREE.BoxGeometry(0.06 * U, 0.06 * U, 1 * U), new THREE.MeshBasicMaterial({ color: hex, transparent: true, opacity: 0.85, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
+            fx.beam.position.set(0, 1.1 * U, 0); grp.add(fx.beam);
+            fx.dot = _hzGlowSprite(0.5 * U, hex, 0.8, 0.2, 0.2, 9); grp.add(fx.dot);
+        } else if (def.act === 'laneLight' && !(typeof window !== 'undefined' && window.EW_HQ_NO_GUN_LIGHT)) {
+            var cone = new THREE.Mesh(new THREE.CylinderGeometry(0.5 * U, L.halfW * 1.6 * U, L.len * U, 20, 1, true), new THREE.MeshBasicMaterial({ color: hex, transparent: true, opacity: 0.08, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false }));
+            cone.rotation.x = Math.PI / 2 - 0.12; cone.position.set(0, 1.2 * U, (0.2 + L.len / 2) * U); grp.add(cone);
+            try {
+                var sl = new THREE.SpotLight(hex, 1.6, (L.len + 3) * U, 0.5, 0.6, 1);
+                var dir = _hqGunLane(row.key, row.face);
+                sl.position.set(row.x * U, (row.y + 2.1) * U, row.z * U);
+                sl.target.position.set((row.x + dir.dx * L.len) * U, row.y * U, (row.z + dir.dz * L.len) * U);
+                H.scene.add(sl); H.scene.add(sl.target);
+                fx.light = sl;
+            } catch (e) {}
+        }
+        H.propGroup.add(grp);
+        /* THE JAMBS block (the opening is an opening: you can walk through a standing door) */
+        var fr = (row.face || 0) * Math.PI / 180, px = Math.cos(fr), pz = -Math.sin(fr);
+        [-1, 1].forEach(function (sgn) {
+            var o = sgn * (ow / 2 + 0.08), d = new THREE.Object3D(); d.position.set((row.x + px * o) * U, row.y * U, (row.z + pz * o) * U);
+            H.blockers.push({ obj: d, rad: 0.16, y: row.y, top: row.y + oh + 0.2, gunDoor: row.at });
+        });
+        var rec = { at: row.at, key: row.key, row: row, x: row.x, y: row.y, z: row.z, face: row.face || 0, grp: grp, body: body, pane: pane, lamp: lamp, fx: fx, light: fx.light || null,
+                    lane: _hqGunLane(row.key, row.face || 0), pulseAt: performance.now(), born: performance.now(), glowMat: glowMat };
+        H.gun.doors.push(rec);
+        if (opts.fresh) {
+            /* the comet out of the muzzle, then the unfold (the frame grows out of the floor) and the first act */
+            var shotMs = 220, unfoldMs = 300, from = opts.from, t0 = performance.now();
+            body.scale.set(0.05, 0.05, 0.05); decal.visible = false;
+            var comet = from ? _hzGlowSprite(0.6 * U, hex, 0.95, 0, 0, 0) : null;
+            if (comet) { comet.position.set(from.x * U, from.y * U, from.z * U); H.propGroup.add(comet); }
+            rec.pulseAt = t0 + shotMs + unfoldMs - _hqGunRulesRoom().actMs;   // the placement act, the moment it stands
+            H.tickers.push(function (dt, now) {
+                var k = (now - t0) / shotMs;
+                if (comet && comet.parent) {
+                    var c = Math.min(1, k);
+                    comet.position.set((from.x + (row.x - from.x) * c) * U, (from.y + (row.y + 1.1 - from.y) * c) * U, (from.z + (row.z - from.z) * c) * U);
+                    if (c >= 1) { try { H.propGroup.remove(comet); _disposeR(comet); } catch (e) {} }
+                }
+                var u = Math.max(0, Math.min(1, (now - t0 - shotMs) / unfoldMs));
+                if (!grp.parent) return;
+                if (u > 0) { var e = 1 - Math.pow(1 - u, 3); body.scale.set(0.05 + 0.95 * e, 0.05 + 0.95 * e, 0.05 + 0.95 * e); decal.visible = true; }
+                H.dirty = true;
+            });
+            try { if (typeof playDoorSfx === 'function') setTimeout(function () { try { playDoorSfx('doorGunLand', { volume: 0.6 }); } catch (e) {} }, shotMs); } catch (e) {}
+        }
+        H.dirty = true;
+        return rec;
+    }
+    /* on every room entry: the standing doors on file in THIS room (map.js hands them in) */
+    function _hqBuildGunDoors(room, opts) {
+        var H = _hq; if (!H || !H.gun) return;
+        var list = (opts.gun && Array.isArray(opts.gun.placed)) ? opts.gun.placed : [];
+        var roomId = opts.room || 'central_egress';
+        list.forEach(function (row) { if (row && row.room === roomId) { try { _hqGunDoorBuild(row); } catch (e) { console.warn('[HQ] gun door', row.key, 'failed', e); } } });
+    }
+    /* the laser's reach: the march from the door's face to the first solid (a wall, a blocker, the room's edge) */
+    function _hqGunBeamLen(rec) {
+        var R = _hqGunRulesRoom(), L = rec.lane, y = rec.y + 1.1, step = 0.15;
+        for (var t = 0.45; t < R.beamMaxM; t += step) {
+            var x = rec.x + L.dx * t, z = rec.z + L.dz * t;
+            if (_hqPortalSolidAt(x, z, y)) return Math.max(0.3, t - step);
+        }
+        return R.beamMaxM;
+    }
+    /* THE ACTS (every frame): the wind / the draught move the walker and the kickables; the dresses breathe; the pulse */
+    function _hqTickGunDoors(dt, now) {
+        var H = _hq; if (!H || !H.gun || !H.gun.doors.length || H.paused) return;
+        var R = _hqGunRulesRoom(), U = _hqUnits(), pl = H.player;
+        var bodyFree = pl && !pl.sit && !(H.ride && H.ride.on) && !(H.vehicle && H.vehicle.on) && !pl.swim && !pl.climb && !H.snap;
+        for (var i = 0; i < H.gun.doors.length; i++) {
+            var rec = H.gun.doors[i], def = _hqGunDef(rec.key); if (!def) continue;
+            var L = rec.lane, act = def.act;
+            if (now - rec.born < 520) continue;   // still unfolding
+            /* the push: toward the lane's end (the gust) or the mouth (the maw) at the door's speed */
+            var push = function (x, z, y) {
+                if (Math.abs(y - rec.y) > 1.6) return null;
+                if (act === 'lanePush') { if (!_hqGunCovers(rec, x, z)) return null; return { vx: L.dx * R.gust.speed, vz: L.dz * R.gust.speed, k: R.gust.accel }; }
+                if (act === 'pullIn') {
+                    var dx = rec.x - x, dz = rec.z - z, d = Math.hypot(dx, dz);
+                    if (d > L.r || d < R.maw.stopM) return null;
+                    return { vx: dx / d * R.maw.speed, vz: dz / d * R.maw.speed, k: 8 };
+                }
+                return null;
+            };
+            if (act === 'lanePush' || act === 'pullIn') {
+                if (bodyFree) {
+                    var p = push(pl.x, pl.z, pl.y);
+                    if (p) {
+                        var sp = Math.hypot(p.vx, p.vz), ux = p.vx / sp, uz = p.vz / sp;
+                        var along = (pl.mvx || 0) * ux + (pl.mvz || 0) * uz;
+                        if (along < sp) { var add = Math.min(sp - along, p.k * dt); pl.mvx = (pl.mvx || 0) + ux * add; pl.mvz = (pl.mvz || 0) + uz * add; }
+                        if (!rec.touched) { rec.touched = true; if (H.opts.onPortal) { try { H.opts.onPortal({ kind: 'gunAct', door: rec.key, on: 'walker' }); } catch (e) {} } }
+                    } else rec.touched = false;
+                }
+                for (var k = 0; k < H.kicks.length; k++) {
+                    var kr = H.kicks[k], q = push(kr.x, kr.z, kr.y); if (!q) continue;
+                    var qs = Math.hypot(q.vx, q.vz), qx = q.vx / qs, qz = q.vz / qs, qa = kr.vx * qx + kr.vz * qz;
+                    if (qa < qs * 0.9) { var qadd = Math.min(qs * 0.9 - qa, q.k * dt * 1.4); kr.vx += qx * qadd; kr.vz += qz * qadd; if (kr.vy === 0 && qadd > 0.5) kr.vy = 0.8; }
+                }
+                /* the motes: along the lane (the gust) or spiralling into the mouth (the maw) */
+                for (var m = 0; m < rec.fx.motes.length; m++) {
+                    var s = rec.fx.motes[m]; s.userData.t = (s.userData.t + dt * (act === 'lanePush' ? 0.9 : 0.5)) % 1;
+                    if (act === 'lanePush') s.position.set(s.userData.o * L.halfW * 0.8 * U, s.userData.h * U, (0.3 + s.userData.t * L.len) * U);
+                    else { var rr = L.r * (1 - s.userData.t), aa = s.userData.o * 3.14 + s.userData.t * 5; s.position.set(Math.cos(aa) * rr * U, s.userData.h * 0.6 * U, Math.sin(aa) * rr * U); }
+                    s.material.opacity = 0.55 * Math.sin(s.userData.t * Math.PI);
+                }
+                H.dirty = true;
+            } else if (act === 'beam' && rec.fx.beam) {
+                if (!rec.fx.beamAt || now - rec.fx.beamAt > 400) { rec.fx.beamAt = now; rec.fx.beamLen = _hqGunBeamLen(rec); }
+                var bl = rec.fx.beamLen;
+                rec.fx.beam.scale.z = bl; rec.fx.beam.position.z = (bl / 2) * U;
+                rec.fx.beam.material.opacity = 0.7 + 0.25 * Math.sin(now * 0.03);
+                rec.fx.dot.position.set(0, 1.1 * U, bl * U);
+                H.dirty = true;
+            }
+            /* THE PULSE: once a room round (the placement's first) the door flares; the archers loose at the nearest native in reach */
+            if (now - rec.pulseAt >= R.actMs) {
+                rec.pulseAt = now;
+                _hqGunDoorPulse(rec, def);
+            }
+            if (rec.pulseK > 0) { rec.pulseK = Math.max(0, rec.pulseK - dt * 2.2); rec.glowMat.opacity = 0.32 + 0.5 * rec.pulseK; H.dirty = true; }
+        }
+    }
+    function _hqGunDoorPulse(rec, def) {
+        var H = _hq, U = _hqUnits();
+        rec.pulseK = 1;
+        if (def.act === 'volley') {
+            var L = rec.lane, best = null, bestD = 1e9;
+            var okFn = (typeof hqEncounterCharOk === 'function') ? hqEncounterCharOk : function (ch) { return ch && ch.kind === 'npc' && !!ch.race && !ch.cast; };
+            for (var i = 0; i < H.chars.length; i++) {
+                var ch = H.chars[i]; if (!ch || ch === H.player || ch.away || !okFn(ch)) continue;
+                var d = Math.hypot(ch.x - rec.x, ch.z - rec.z);
+                if (d > L.r || Math.abs(ch.y - rec.y) > 2.5) continue;
+                if (typeof _hqLosClear === 'function' && !_hqLosClear(rec.x, rec.z, rec.y + 2.2, ch.x, ch.z, ch.y + 1.1)) continue;
+                if (d < bestD) { bestD = d; best = ch; }
+            }
+            if (best) {
+                var from = { x: rec.x, y: rec.y + 2.3, z: rec.z }, to = { x: best.x, y: best.y + 1.1, z: best.z };
+                for (var a = 0; a < 3; a++) (function (a) {
+                    var arrow = _hzGlowSprite(0.18 * U, 0xffe2a0, 0.95, 0, 0, 0), t0 = performance.now() + a * 90, ms = 260;
+                    arrow.visible = false; H.propGroup.add(arrow);
+                    H.tickers.push(function (dt, now) {
+                        if (!arrow.parent) return;
+                        var k = (now - t0) / ms; if (k < 0) return; arrow.visible = true;
+                        var c = Math.min(1, k), jx = (a - 1) * 0.12;
+                        arrow.position.set((from.x + (to.x - from.x) * c + jx) * U, (from.y + (to.y - from.y) * c + Math.sin(c * Math.PI) * 0.6) * U, (from.z + (to.z - from.z) * c) * U);
+                        if (c >= 1) { try { H.propGroup.remove(arrow); _disposeR(arrow); } catch (e) {} }
+                        H.dirty = true;
+                    });
+                })(a);
+                if (H.opts.onPortal) { try { H.opts.onPortal({ kind: 'gunAct', door: rec.key, on: 'native', id: best.id }); } catch (e) {} }
+            }
+        }
+        try { if (typeof playDoorSfx === 'function' && H.player && Math.hypot(H.player.x - rec.x, H.player.z - rec.z) < 14) playDoorSfx(def.act === 'volley' ? 'doorGunShot' : 'doorGunLand', { volume: 0.25 }); } catch (e) {}
     }
     /* THE MOUTH: is the body in this threshold's opening? A floor door reads
        the FEET, a ceiling door reads the HEAD (you jump up into it), a wall
@@ -49970,16 +50452,20 @@ const ThreeRenderer = (function () {
             if (!_hq) return; var k = _hqKeyName(e); if (k) H.keys[k] = false;
             if (k === 'f' && H.portal && H.portal.fAt) { var fired = H.portal.fFired; H.portal.fAt = 0; H.portal.fFired = false; if (!fired && !H.paused) _hqPortalDraw(!(H.portal && H.portal.drawn)); }
         };
-        H.onBlur = function () { if (_hq) { H.keys = {}; H.drag = null; _hqRideStickUp(); } };
+        H.onBlur = function () { if (_hq) { H.keys = {}; H.drag = null; _hqRideStickUp(); if (H.gun) { H.gun.mDown = false; if (H.gun.wheel) _hqGunWheelClose(false); } } };
         H.onMouseDown = function (e) {
             if (!_hq || H.paused) return;
+            /* THE DOOR WHEEL (DOOR_GUN_PLAN Phase 3): the MIDDLE button held opens the wheel (the tick opens it after holdMs) */
+            if (e.button === 1) { e.preventDefault(); if (H.gun) { H.gun.mDown = true; H.gun.mAt = performance.now(); } return; }
+            if (H.gun && H.gun.wheel) { e.preventDefault(); return; }
             /* THE DOOR GUN (HQ plan 9.5; rev 2 2026-09-15, the user's brief; rev 5
                2026-09-18 — back to it, straight from Portal): drawn, LEFT CLICK
                shoots THRESHOLD A and RIGHT CLICK shoots THRESHOLD B — two
                buttons, two colours. F / Q holster it. */
             if (H.portal && H.portal.drawn) {
                 _hqTryLock();
-                if (e.button === 0) _hqPortalFire('a'); else if (e.button === 2) _hqPortalFire('b');
+                if (H.gun && H.gun.door !== 'threshold') { if (e.button === 0) _hqGunDoorFire(); else if (e.button === 2) _hqGunDoorTurn(); }   // a standing door: LEFT fires it, RIGHT turns its lane
+                else if (e.button === 0) _hqPortalFire('a'); else if (e.button === 2) _hqPortalFire('b');
                 e.preventDefault(); return;
             }
             /* THE STICK (SKATEBOARDING rev 4, 2026-09-19): on the deck the mouse buttons are the
@@ -50002,6 +50488,7 @@ const ThreeRenderer = (function () {
         H.onMouseMove = function (e) {
             if (!_hq || H.paused) return;
             var gainL = 0.0032;
+            if (H.gun && H.gun.wheel) { if (document.pointerLockElement === canvas) _hqGunWheelMove(e.movementX || 0, e.movementY || 0); else _hqGunWheelMove(0, 0, { x: e.clientX, y: e.clientY }); return; }   // THE DOOR WHEEL owns the mouse while it is open
             if (H.ride && H.ride.on && H.ride.stick && _hqRideStickMove(e.movementX || 0, e.movementY || 0)) { H.lastDragAt = performance.now(); return; }   // THE STICK owns the mouse in the air
             if (document.pointerLockElement === canvas) {
                 H.cam.yaw += (e.movementX || 0) * gainL;
@@ -50033,6 +50520,7 @@ const ThreeRenderer = (function () {
         };
         H.onMouseUp = function (e) {
             if (!_hq) return;
+            if (e.button === 1 && H.gun) { H.gun.mDown = false; if (H.gun.wheel) _hqGunWheelClose(true); e.preventDefault(); return; }   // THE DOOR WHEEL: the release takes the wedge
             var d = H.drag; H.drag = null;
             _hqRideStickUp();
             /* the lock refused (a preview, a denied request): a LEFT CLICK that did not drag is still the attack */
@@ -54250,15 +54738,18 @@ const ThreeRenderer = (function () {
             if (ThreePost && ThreePost.resize) ThreePost.resize(w, h);
             if (css2dRenderer) css2dRenderer.setSize(w, h);
         }
-        _hqTickWalker(dt);
+        /* THE DOOR WHEEL (Phase 3): the room runs slowed while the wheel is open (never paused — the world keeps breathing) */
+        var wdt = (H.gun && H.gun.wheel) ? dt * _hqGunWheelRules().slow : dt;
+        _hqTickWalker(wdt);
         /* THE FIELD stage B (2026-09-16, measured): THE SLIDE's callback runs inside the walker's tick and LEAVES the
            building (_hqEncounterStart → _hqLeave) — the frame must not tick a disposed room's characters; the same
            guard covers a portal step that re-enters another room from the crossing tick below */
         if (_hq !== H) return;
         _hqTickPortalCross(dt);   /* THE DOOR GUN rev 2: a flat threshold is crossed by touch, the same frame the feet land in it */
         if (_hq !== H) return;
-        _hqTickRounds(dt);   /* THE ROUNDS (2026-09-19): the population walks its loops (the nav lattice builds here first, a few ms a frame) */
-        _hqTickChars(dt);
+        try { _hqTickGunDoors(wdt, now); } catch (e) { if (!H._gunTickWarned) { H._gunTickWarned = true; console.warn('[HQ] gun doors tick', e); } }   /* THE DOOR WHEEL IN THE ROOM (Phase 3): the standing doors act */
+        _hqTickRounds(wdt);   /* THE ROUNDS (2026-09-19): the population walks its loops (the nav lattice builds here first, a few ms a frame) */
+        _hqTickChars(wdt);
         _hqTickCamera(dt);
         _hqTickWorld(dt, now);
         _hqTickRipples(dt);   // THE RIPPLES (5.3): the wader's / the swimmer's / the skiff's rings
@@ -55022,7 +55513,8 @@ const ThreeRenderer = (function () {
             climbs: [], climbNear: null,   /* THE CLIMB (AREA_CONTENT_PLAN D1, 2026-09-19): the room's ladders / ropes / vines (_hqBuildClimbs) and the one within reach */
             boats: [], vehicle: null, seaFx: null, seaWayLatch: null,   /* THE DEEP (2026-09-18): the moored vehicles (the prop placer registers a catalogue `vehicle`), the one you are aboard, the water's effects, the whirlpool latch */
             finds: [], findLights: 0,   /* THE FINDS (9.1, 2026-09-15): the takeable objects standing in the room (_hqPlaceFinds) and the count of their point lights */
-            portal: { drawn: false, ghost: null, aim: null, placed: {}, lastKey: '', hold: null, cross: null, issued: !!(opts.portal && opts.portal.issued), sight: null, fAt: 0, fFired: false, slot: (opts.portal && (opts.portal.slot === 'b')) ? 'b' : 'a', vm: null },   /* rev 4: `vm` = the first-person viewmodel; rev 5: `slot` = the LAST button pressed (the sights + the selector are gone — LEFT = A, RIGHT = B) */   /* THE DOOR GUN (9.5, rev 13; rev 2 2026-09-15: `hold` = the mouth you came out of, `cross` = the entry's speed): the drawn state, the ghost, the last aim, the placed door records by slot */
+            portal: { drawn: false, ghost: null, aim: null, placed: {}, lastKey: '', hold: null, cross: null, issued: !!(opts.portal && opts.portal.issued), sight: null, fAt: 0, fFired: false, slot: (opts.portal && (opts.portal.slot === 'b')) ? 'b' : 'a', vm: null },
+            gun: { door: (opts.gun && opts.gun.door && opts.gun.door !== 'threshold' && typeof window !== 'undefined' && window.DOOR_GUN_DOORS && window.DOOR_GUN_DOORS[opts.gun.door]) ? opts.gun.door : 'threshold', turn: 0, wheel: null, mDown: false, mAt: 0, doors: [], wedges: (opts.gun && Array.isArray(opts.gun.wedges)) ? opts.gun.wedges : null, ghost: null, ghostKey: null, aim: null },   /* THE DOOR WHEEL IN THE ROOM (DOOR_GUN_PLAN Phase 3): the selected door, the lane's turn (45° steps), the open wheel, the standing doors */   /* rev 4: `vm` = the first-person viewmodel; rev 5: `slot` = the LAST button pressed (the sights + the selector are gone — LEFT = A, RIGHT = B) */   /* THE DOOR GUN (9.5, rev 13; rev 2 2026-09-15: `hold` = the mouth you came out of, `cross` = the entry's speed): the drawn state, the ghost, the last aim, the placed door records by slot */
             tickers: [], propLights: 0,   /* Phase 8 (2026-09-14): per-frame callbacks registered by procs (the orb, the torches, the shaft); the count of catalogue `light`s placed */
             kicks: [], seats: [], sways: [], shadows: null, atmos: null, heightFog: null, ao: null, keyLight: null, keyDir: null, shafts: 0, ripples: null, decals: 0, heroLit: null,   /* THE PREMIUM POLISH (2026-09-21): the kickable bodies, the seats, the swaying props, the light pass's records */
             props: [], focus: null,   /* props: { key, grp } per placed catalogue prop (the terminal's camera finds the CRT by key); focus: the screen push (_hqFocusScreen) */
@@ -55167,6 +55659,7 @@ const ThreeRenderer = (function () {
         try { _hqSeaArm(room); } catch (e) { console.error('[HQ] sea failed', e); }
         /* THE DOOR GUN (HQ plan 9.5): the pair's doors standing in this room, from the profile record */
         try { _hqBuildPortals(room, opts); } catch (e) { console.error('[HQ] portals failed', e); }
+        try { _hqBuildGunDoors(room, opts); } catch (e) { console.error('[HQ] gun doors failed', e); }   // THE DOOR WHEEL IN THE ROOM (Phase 3)
         var _p3d = _hq3DOn();   // THE BUILDING IS 3D (2026-09-22): the roster / cast / skin reads inside ignore the board's sprite preference
         try { _hqSpawnPopulation(room, opts); } catch (e) { console.error('[HQ] population failed', e); } finally { _hq3DOff(_p3d); }
         /* SKATEBOARDING (9.8): the rider's record — and the board through a door */
@@ -55346,6 +55839,7 @@ const ThreeRenderer = (function () {
         _ewHeightFogSet(0, 1, 0, 0); _HQ_AO.w = 0;   // THE PREMIUM POLISH: the height fog and the room-box AO are the building's alone
         try { if (typeof ThreePost !== 'undefined' && ThreePost.setMotion) ThreePost.setMotion(0); } catch (e) {}   // THE THIRD PASS 6.4: the blur is the building's
         try { (H.reflectors || []).forEach(function (r) { if (r.rt) r.rt.dispose(); }); } catch (e) {}   // 5.4: the mirrored targets
+        try { if (H.gun && H.gun.wheel) { H.gun.wheel = null; var wEl = document.getElementById('hqWheel'); if (wEl) { wEl.classList.remove('open'); wEl.style.display = 'none'; wEl.innerHTML = ''; } } } catch (e) {}   // THE DOOR WHEEL: never left open over the next screen
         if (opts && opts.dissolve) { try { _hqDissolveStart(H, (typeof opts.dissolve === 'object') ? opts.dissolve : null); } catch (e) { console.warn('[HQ] the dissolve did not start', e); } }
         _hqUnbindInput();
         _hq = null;
@@ -55623,7 +56117,18 @@ const ThreeRenderer = (function () {
         portalRemove: _hqPortalRemove,
         portalRecall: _hqPortalRecall,   /* rev 3: both doors back into the gun (the F hold; the pill) */
         portalSlot: function () { return (_hq && _hq.portal) ? (_hq.portal.slot || 'a') : 'a'; },
-        portalFire: _hqPortalFire,   /* rev 5: portalFire('a' | 'b') — LEFT CLICK is A, RIGHT CLICK is B */
+        portalFire: _hqPortalFire,
+        /* THE DOOR WHEEL IN THE ROOM (DOOR_GUN_PLAN Phase 3): the selected door, take one, open / close the wheel, fire / turn a standing door, the doors standing here */
+        gunDoor: function () { return (_hq && _hq.gun) ? _hq.gun.door : 'threshold'; },
+        gunSelect: _hqGunSelect,
+        gunWheelOpen: _hqGunWheelOpen,
+        gunWheelClose: _hqGunWheelClose,
+        gunWheelOpenNow: function () { return !!(_hq && _hq.gun && _hq.gun.wheel); },
+        gunDoorFire: _hqGunDoorFire,
+        gunDoorTurn: _hqGunDoorTurn,
+        gunDoorAim: function () { return _hq ? _hqGunDoorAim() : null; },
+        gunDoors: function () { return (_hq && _hq.gun) ? _hq.gun.doors.map(function (d) { return { at: d.at, key: d.key, x: d.x, y: d.y, z: d.z, face: d.face }; }) : []; },
+        gunDoorRemove: _hqGunDoorRemove,   /* rev 5: portalFire('a' | 'b') — LEFT CLICK is A, RIGHT CLICK is B */
         portalCarryFor: _hqPortalCarryFor,   /* rev 4: map.js hands the twin's row before a room change so the carry crosses with you */
         portalMapCarry: _hqPortalMapCarry,
         portalViewmodel: function () { return (_hq && _hq.portal) ? _hq.portal.vm : null; },   /* a probe's read (the first-person gun group) */

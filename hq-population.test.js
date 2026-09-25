@@ -170,8 +170,8 @@ test('THE YIELD: the officer standing in the way holds a walker; EW_HQ_NO_ROUNDS
 
 test('THE SITES: the spawn hook, the frame tick, the door swing, the walk clip, the hidden walker, the API, the patrols, the exports', () => {
     assert.ok(/try \{ _hqSpawnRounds\(room, opts\); \}/.test(extract('_hqSpawnPopulation')), 'the population spawns the rounds');
-    assert.ok(/_hqTickRounds\(dt\);/.test(extract('_hqFrame')), 'the frame ticks them before the characters');
-    assert.ok(extract('_hqFrame').indexOf('_hqTickRounds(dt);') < extract('_hqFrame').indexOf('_hqTickChars(dt);'));
+    assert.ok(/_hqTickRounds\(w?dt\);[\s\S]*_hqTickChars\(w?dt\)/.test(extract('_hqFrame')), 'the frame ticks them before the characters');
+    assert.ok(extract('_hqFrame').indexOf('_hqTickRounds(wdt);') < extract('_hqFrame').indexOf('_hqTickChars(wdt);'));
     assert.ok(/d\.npcOpenUntil && d\.npcOpenUntil > performance\.now\(\)/.test(extract('_hqTickDoors')), 'a walker swings the leaf');
     assert.ok(/if \(ch\.rounds && ch\.kind !== 'player'\) \{ want = ch\.moving \? 'walk' : 'idle';/.test(extract('_hqTickChars')), 'the walk clip');
     assert.ok(/ch\.kind === 'player' \|\| ch\.away/.test(extract('_hqFindTarget')) && /ch\.away \|\| !okFn\(ch\)/.test(extract('_hqEncounterAim')), 'an away walker is neither E\'s nor the strike\'s');

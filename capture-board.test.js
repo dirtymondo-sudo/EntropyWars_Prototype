@@ -71,14 +71,14 @@ test('PLACE: the story seat only, a legal tile, the item and 1 AP, one a turn; a
     assert.equal(on.g('captureDoorPlaceCheck')(c, 1, 3, 'captureDoor'), 'story', 'never online');
 });
 
-test('TAKE: an enemy arriving is HELD under the seal time; never a friend, a flyer, a door-immune unit or one in its grace', () => {
+test('TAKE: an enemy arriving is HELD under the seal time; never a friend, a flyer or one in its grace', () => {
     const B = board(); const a = B.mk('a', 1, 1, 1, { items: { captureDoor: 1 } });
     const e = B.mk('e', 2, 5, 5, { hp: 400 }); const f = B.mk('f', 2, 6, 6); const ally = B.mk('b', 1, 0, 0);
     const d = B.g('captureDoorPlace')(a, 1, 3, 'captureDoor');
     const take = B.g('captureDoorTake'), can = B.g('captureDoorCanTake');
     assert.equal(can(d, ally), false, 'a friend walks through its own door');
     assert.equal(can(d, Object.assign({}, e, { flying: true })), false, 'a flyer in the air');
-    assert.equal(can(d, Object.assign({}, e, { passives: { doorImmune: true } })), false, 'the Keyholder');
+    assert.equal(can(d, Object.assign({}, e, { race: 'door agent' })), true, 'a door agent is taken like anyone');
     assert.equal(can(d, Object.assign({}, e, { _captureGraceUntil: 1 })), false, 'the grace');
     e.x = 1; e.y = 3;
     assert.equal(take(d, e, 'displaced'), true);

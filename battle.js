@@ -32474,7 +32474,7 @@
                 const _cd = (typeof captureDoorAt === 'function') ? captureDoorAt(x, y) : null;
                 if (_cd && captureDoorCanTake(_cd, unit)) return { kind: 'capture', x, y };
                 /* 🌬 THE GUST STREAM (the user, 2026-09-25): a walk into a Gust Door's lane stops on the first windy tile and
-                   the wind takes it from there (the chain's E′) — a body the wind cannot move (colossal, a Keyholder) walks on */
+                   the wind takes it from there (the chain's E′) — a body the wind cannot move (colossal) walks on */
                 if (typeof gustStreamAt === 'function' && gustStreamAt(unit, x, y)) return { kind: 'gust', x, y };
             }
             const visibleHourglasses = groundHourglassesAt(x, y).filter(h => h.visibleTo?.[unit.player]);
@@ -52764,8 +52764,7 @@
         function checkTrapTrigger(unit) {
             if (!state.traps || !state.traps.length || !unit || unit.dead) return false;
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return false;
-            const idx = state.traps.findIndex(t => t.x === unit.x && t.y === unit.y && t.owner !== unit.player
-                && !(t.trapType === 'trapdoor' && typeof unitPassiveValue === 'function' && unitPassiveValue(unit, 'doorImmune')));   // 🗝 Keyholder (rev 3): no trapdoor ever takes the agent
+            const idx = state.traps.findIndex(t => t.x === unit.x && t.y === unit.y && t.owner !== unit.player);
             if (idx < 0) return false;
             const trap = state.traps.splice(idx, 1)[0];
             _springTrap(trap, unit);
@@ -54635,8 +54634,7 @@
                      occupancy gates), sight + projectiles (doorBlocksSightBetween
                      — map.js isRangeBlockedByTerrain).
              HITS  — DOOR_RULES.hits basic attacks / damage spells break a door
-                     AND its twin (damageDoorAt → breakDoorPair). Keyholder
-                     (`doorHits`) gives the owner's doors 4.
+                     AND its twin (damageDoorAt → breakDoorPair).
              CAP   — 1 pair per agent, 2 per team; a new pair replaces the
                      oldest (placeDoorPair). Doors never expire.
            Grave Passage / Tunnel Network (`deployPair`) place the same object
@@ -54665,9 +54663,8 @@
             }
             return false;
         }
-        function doorMaxHits(unit) {
-            const v = (unit && typeof unitPassiveValue === 'function') ? unitPassiveValue(unit, 'doorHits') : null;
-            return v || DOOR_RULES.hits;
+        function doorMaxHits(unit) {   // every door the same (the user, 2026-09-25: no Keyholder exceptions)
+            return DOOR_RULES.hits;
         }
         function doorIsFriendly(door, unit) { return !!(door && unit && door.owner === unit.player); }
         function _doorCheb(a, x, y) { return Math.max(Math.abs(a.x - x), Math.abs(a.y - y)); }
@@ -55178,7 +55175,6 @@
             if (!unit || unit.dead || unit._dying || unit._sealed) return false;
             if (door.owner === unit.player) return false;
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return false;
-            if (typeof unitPassiveValue === 'function' && unitPassiveValue(unit, 'doorImmune')) return false;
             if (unit._isBoss || unit.isBoss || unit._isCube) return false;
             if ((unit._captureGraceUntil | 0) >= (state.round || 0)) return false;
             if (unitHasStatus(unit, 'captured') || unitHasStatus(unit, 'exited')) return false;
@@ -55380,8 +55376,7 @@
            user's ruling; the capture door never counts); a third folds the
            oldest. Enemies break one with basic attacks / blasts (damageDoorAt,
            _structureAt already reads any enemy door); its owner's side cannot.
-           A Keyholder (`doorImmune`) walks through wind: the lanes never move
-           it (arrows still find it). Host-authoritative: the record syncs in the
+           Host-authoritative: the record syncs in the
            snapshot; every beat is window._doorGeom (relayed `vfx3d-x`), the
            slides ride animateDisplacementPath (relayed), the numbers ride the
            damage path. The recipes are '<spellId>:open / act / fold / hit'
@@ -55518,7 +55513,6 @@
                 if (!u || u.dead || u._dying) continue;
                 const foe = isEnemyUnit(u, unit);
                 if (def.act === 'lanePush') {
-                    if (typeof unitPassiveValue === 'function' && unitPassiveValue(u, 'doorImmune')) continue;
                     const endX = x + fx * L, endY = y + fy * L;
                     const T = isInside(endX, endY) && typeof getTerrainRule === 'function' ? getTerrainRule(getTerrainAt(endX, endY)) : null;
                     const hazard = !isInside(endX, endY) || !!(T && (T.isLava || T.deepWater || T.lava || T.damagePerTurn > 0)) || !!captureDoorAt(endX, endY);
@@ -55569,10 +55563,10 @@
            should push them that direction. Immovable units like the kaiju and giant should be able to stand in it just
            fine"): the live Gust Door whose lane holds (x, y) and would move THIS body, or null. The walk stops there
            (getPathPickupEvent `gust`) and E′ blows it; a body the wind cannot move — colossal weight (kaiju, giant, mech,
-           dragon…: getUnitPushDistance 0), a Keyholder, a flyer in the air, a held body — is never stopped. */
+           dragon…: getUnitPushDistance 0) or a held body — is never stopped. Nobody else is special (the user, 2026-09-25:
+           no Keyholder exception; a flyer is blown like any body its weight lets the wind move). */
         function gustStreamAt(unit, x, y) {
             if (!_gunDoorMovable(unit)) return null;
-            if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return null;
             if (typeof getUnitPushDistance === 'function' && getUnitPushDistance(unit, 1) <= 0) return null;
             for (const door of standingDoorsOf(null)) {
                 if (door._revealAt) continue;
@@ -55688,7 +55682,6 @@
         function _gunDoorMawBite(door, u, opts = {}) {
             const def = _gunDoorDef(door), sp = _gunDoorSpell(door);
             if (!u || u.dead || u._dying || u.x !== door.x || u.y !== door.y || u.player === door.owner) return false;
-            if (typeof unitPassiveValue === 'function' && unitPassiveValue(u, 'doorImmune')) return false;
             if (!door.laneStamps || typeof door.laneStamps !== 'object') door.laneStamps = {};
             const key = 'bite' + (typeof _chainRootSeq !== 'undefined' ? _chainRootSeq : 0);
             if (door.laneStamps['b:' + u.id] === key) return false;
@@ -55709,8 +55702,7 @@
             const def = _gunDoorDef(door);
             const R = def.radius | 0;
             const inReach = u => Math.max(Math.abs(u.x - door.x), Math.abs(u.y - door.y)) <= R;
-            let bodies = state.units.filter(u => !u.dead && !u._dying && u.player !== door.owner && _gunDoorMovable(u)
-                && !(typeof isUnitAirborne === 'function' && isUnitAirborne(u)) && inReach(u))
+            let bodies = state.units.filter(u => !u.dead && !u._dying && u.player !== door.owner && _gunDoorMovable(u) && inReach(u))
                 .sort((a, b) => (Math.max(Math.abs(a.x - door.x), Math.abs(a.y - door.y)) - Math.max(Math.abs(b.x - door.x), Math.abs(b.y - door.y))) || String(a.id).localeCompare(String(b.id)));
             if (only) bodies = bodies.filter(u => u.id === only.id);
             if (!only && !_skipVisuals()) window._doorGeom(door.spellId + ':act', door.x, door.y, { pull: 1, r: R, delay: opts.delayMs || 0, owner: door.owner });
@@ -55802,7 +55794,6 @@
         function _gunDoorMovable(u) {
             if (!u || u.dead || u._dying || u._sealed) return false;
             if (u.status && u.status.captured > 0) return false;   // in the void: nothing reaches it
-            if (typeof unitPassiveValue === 'function' && unitPassiveValue(u, 'doorImmune')) return false;   // a Keyholder walks through wind
             return true;
         }
         /* 🌬 GUST — the wind tunnel. `only` = one unit (the chain's E′); else every body in the lane, the far one first (nobody
@@ -55940,7 +55931,6 @@
         function _chainStandingDoors(unit, opts = {}) {
             const list = _doors();
             if (!list.length || !unit) return 0;
-            if (typeof unitPassiveValue === 'function' && unitPassiveValue(unit, 'doorImmune')) return 0;
             let fired = 0;
             const co = { fromChain: true, delayMs: opts.fxDelayMs || 0 };
             for (const door of standingDoorsOf(null)) {
@@ -56030,7 +56020,7 @@
             if (def.act !== 'lanePush') return true;
             return standingDoorLaneTiles(door).some(t => {
                 const u = unitAt(t.x, t.y);
-                return u && _gunDoorMovable(u) && !(typeof isUnitAirborne === 'function' && isUnitAirborne(u))
+                return u && _gunDoorMovable(u)
                     && !(typeof getUnitPushDistance === 'function' && getUnitPushDistance(u, 1) <= 0);
             });
         }
@@ -56038,7 +56028,6 @@
            once per door per round (the walk loop in doMove calls this per step) */
         function gunDoorWalkCross(unit, x, y) {
             if (!unit || unit.dead || unit._dying) return 0;
-            if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return 0;
             let n = 0;
             for (const door of standingDoorsOf(null)) {
                 if (door._revealAt || door.owner === unit.player) continue;
@@ -63826,7 +63815,7 @@
             else if (spell.kind === 'doorSlam') {
                 /* SLAM: shut a friendly door; its twin slams — enemies on or
                    beside the twin take the hit and a radial push, allies are
-                   pushed only, the Keyholder (doorImmune) is left alone. */
+                   pushed only. */
                 const door = doorAt(x, y);
                 if (!door || door.owner !== unit.player) { if (!_silentReject) { addLog('Slam: pick one of your doors.'); playErrorSfx(); } return 0; }
                 if (door.fixed) { if (!_silentReject) { addLog('That gate has no leaf to slam.'); playErrorSfx(); } return 0; }
@@ -63846,8 +63835,7 @@
                 window._doorGeom('raceSlam', door.x, door.y, { fromX: twin.x, fromY: twin.y });
                 window._doorGeom('raceSlam', twin.x, twin.y, { fromX: door.x, fromY: door.y, big: true });
                 const _slamDir = { dx: Math.sign(twin.x - door.x) || 1, dy: Math.sign(twin.y - door.y) };
-                const victims = state.units.filter(u => !u.dead && u.id !== unit.id && _doorCheb(u, twin.x, twin.y) <= 1
-                    && !(typeof unitPassiveValue === 'function' && unitPassiveValue(u, 'doorImmune') && u.player === unit.player));
+                const victims = state.units.filter(u => !u.dead && u.id !== unit.id && _doorCheb(u, twin.x, twin.y) <= 1);
                 let _slamMax = 0, _hit = 0;
                 for (const v of victims) {
                     const enemy = isEnemyUnit(v, unit);

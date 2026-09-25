@@ -1306,7 +1306,7 @@
     // ── 🚪 THE STANDING DOORS' LANES (the door wheel Phase 2, DOOR_GUN_PLAN §6.2) ──────────────────────
     // THE GUST STREAM stops any walk that enters it (battle.js getPathPickupEvent 'gust') and blows the walker down
     // the lane, so a destination whose ENGINE path enters a stream the wind can move this body in is not a destination
-    // at all: drop it (a colossal body, a Keyholder or a flyer walks through — battle.js gustStreamAt says who).
+    // at all: drop it (only a colossal body walks through — battle.js gustStreamAt says who).
     // The other doors' lanes are hazards to END on (aiHazardPenaltyAt → _gdLaneHazardAt).
     function _gdOn() { return !(typeof window !== 'undefined' && window.EW_AI_NO_GUN_DOORS); }
     function _gdDoors(g) {

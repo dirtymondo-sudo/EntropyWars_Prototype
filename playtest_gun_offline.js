@@ -5,6 +5,7 @@
 // key events on every evaluate). Steps: [{eval}, {wait}, {teleport}, {shot}, {keydown|keyup}, {sample: ms, n, hold: key}] → shots/gun/.
 //   node playtest_gun_offline.js medwing '''[{"eval":"ThreeRenderer.hq.portalDraw(true)"},{"wait":5000},{"teleport":{"x":1.5,"z":0,"face":0,"fp":true},"eval":"ThreeRenderer.hq.portalFire()","shot":"A"}]''' tag
 // Needs the server (npm start) + npm i --no-save three@0.128.0 react@18 react-dom@18 playwright three.meshline. See PLAYTEST_NOTES "THE DOOR GUN PROBE".
+const fs = require('fs'), path = require('path'), zlib = require('zlib');
 const REPO = __dirname;
 const { chromium } = require(path.join(REPO, 'node_modules/playwright'));
 const OUT = path.join(REPO, 'shots/gun'); fs.mkdirSync(OUT, { recursive: true });

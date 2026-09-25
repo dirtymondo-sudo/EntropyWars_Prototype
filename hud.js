@@ -7408,7 +7408,7 @@ function _tileQuickObjectInfo(actingUnit, tx, ty) {
     let what;
     let when = ' It acts at the end of every round, and at once on anyone who steps or is knocked into its reach. ';
     if (gd.act === 'lanePush') {
-      what = 'A standing wind blows ' + _plural(gd.lane | 0, 'tile') + ' ' + dir(sdoor.faceX, sdoor.faceY) + ' out of it: anyone who walks, is knocked or teleports into that lane (either side) is blown to the end of it and one tile past. A walk stops at the first windy tile. Colossal bodies, flyers and a Keyholder stand in it unmoved.';
+      what = 'A standing wind blows ' + _plural(gd.lane | 0, 'tile') + ' ' + dir(sdoor.faceX, sdoor.faceY) + ' out of it: anyone who walks, is knocked or teleports into that lane (either side) is blown to the end of it and one tile past. A walk stops at the first windy tile. Only colossal bodies (a kaiju, a giant) stand in it unmoved.';
       when = ' ';
     }
     else if (gd.act === 'volley') what = 'Archers loose ' + ((sp && sp.arrows) || 3) + ' arrows at the nearest enemy within ' + _plural(gd.radius | 0, 'tile') + ' they can see.';

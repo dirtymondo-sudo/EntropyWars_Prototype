@@ -109,18 +109,17 @@ test('the rows: five destinations join the wheel with their table\'s tier, type 
     assert.ok(/stand in it unmoved/.test(D.SPELL_BY_ID.gunGustDoor.desc) && /walks/.test(D.SPELL_BY_ID.gunGustDoor.desc), 'the Gust row reads as a stream');
 });
 
-test('THE GUST STREAM: a walk into it stops on the first windy tile; the colossal, a Keyholder and a flyer walk on', () => {
+test('THE GUST STREAM: a walk into it stops on the first windy tile; only the colossal walks on (a flyer is blown too)', () => {
     const B = board();
     const a = B.mk('a', 1, 1, 2, { race: 'door agent' });
     B.place(a, 'gunGustDoor', 3, 2, 1, 0);
     const stream = B.g('gustStreamAt');
-    const e = B.mk('e', 2, 5, 5), kaiju = B.mk('k', 2, 6, 6, { colossal: true }), key = B.mk('kh', 2, 7, 7, { passives: { doorImmune: true } }), fly = B.mk('f', 2, 8, 8, { flying: true });
+    const e = B.mk('e', 2, 5, 5), kaiju = B.mk('k', 2, 6, 6, { colossal: true }), fly = B.mk('f', 2, 8, 8, { flying: true });
     assert.ok(stream(e, 5, 2), 'a lane tile stops the walk');
     assert.equal(stream(e, 5, 3), null, 'beside the lane: nothing');
     assert.equal(stream(e, 3, 2), null, 'the door\'s own tile is not the wind');
     assert.equal(stream(kaiju, 5, 2), null, 'the kaiju stands in it');
-    assert.equal(stream(key, 5, 2), null, 'a Keyholder walks through wind');
-    assert.equal(stream(fly, 5, 2), null, 'a flyer passes over');
+    assert.ok(stream(fly, 5, 2), 'a flyer is caught by the wind like any body its weight lets it move');
     /* the kaiju walks INTO the stream and stays; the wind never budges it at the doors' turn either */
     kaiju.x = 5; kaiju.y = 2; B.D.resolveTileArrival(kaiju, { via: 'move' });
     assert.equal(at(kaiju), '5,2');

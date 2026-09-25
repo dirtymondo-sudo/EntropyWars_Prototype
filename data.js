@@ -3112,14 +3112,11 @@ const RACE_PROFILES = {
                                  basicAttackRangeBonus)
      healMult: 1.2               heals this unit CASTS are scaled
      speedTiePriority: true      buildBlitzTurnOrder: first among equal SPD
-   DOOR_RACE_DESIGN §3 (2026-09-14, Keyholder):
-     doorHits: 4                 doors this unit OWNS take this many hits
-                                 (doorMaxHits, battle.js)
+   DOOR_RACE_DESIGN §3 (2026-09-14, Keyholder; the door exceptions — doorHits /
+   doorImmune — removed 2026-09-25, the user never asked for them):
      doorFreeToggle: true        once per turn, open / shut a friendly door the
                                  unit stands on or beside for free (the
                                  DOOR HUD verb, ui.js / battle.js doorToggleFree)
-     doorImmune: true            never damaged / pushed / EXITED by a friendly
-                                 door (doorSlam / doorExit skip the unit)
    `flying` has no flag — being a SKY_RACE (canFly/isUnitAirborne, map.js) IS
    the hook; the registry entry exists so flight shows up, and counts, as a
    passive.
@@ -3226,8 +3223,8 @@ const PASSIVE_DEFS = {
     /* 🗝️ Keyholder (DOOR_RACE_DESIGN §3, 2026-09-14): a key to every room. */
     keyholder: {
         id: 'keyholder', icon: '🗝️', name: 'Keyholder',
-        doorHits: 4, doorFreeToggle: true, doorImmune: true,
-        desc: 'A key to every room: no trapdoor ever takes the agent, a friendly door never harms, moves or EXITs them, and a door they own takes 4 hits to break. (rev 3, 2026-09-20: the agent shoots doors now instead of placing them — the free toggle waits on a door to toggle.)',
+        doorFreeToggle: true,
+        desc: 'A key to every room: once a turn the agent opens or shuts a friendly door beside them for free.',
     },
     shank: {
         id: 'shank', icon: '🔪', name: 'Shank',
@@ -9072,7 +9069,7 @@ const DOOR_GUN_SPELLS = [
     { id: 'gunGustDoor', spellType: 'anomaly', element: 'wind', name: 'Gust Door',
       type: 'utility', cost: 50, range: 4, apCost: 1, cooldownRounds: 0,
       kind: 'doorDeploy', door: 'gust', doorGun: true,
-      desc: 'A door to the top of Mt Shasta. Shoot it onto an empty tile within 4 and turn it to face a lane: the mountain wind blows 4 tiles out of it for as long as it stands. EVERY body in that lane (yours too) is blown to the end of it and one tile past, walls, bodies and hazards as ever: when it lands, and whenever anyone walks, is knocked or teleports into the stream (a walk stops at the first windy tile). Colossal bodies (a kaiju, a giant), flyers and a Keyholder stand in it unmoved. 3 hits to break; two standing doors per player.' },
+      desc: 'A door to the top of Mt Shasta. Shoot it onto an empty tile within 4 and turn it to face a lane: the mountain wind blows 4 tiles out of it for as long as it stands. EVERY body in that lane (yours too) is blown to the end of it and one tile past, walls, bodies and hazards as ever: when it lands, and whenever anyone walks, is knocked or teleports into the stream (a walk stops at the first windy tile). Only colossal bodies (a kaiju, a giant) stand in it unmoved. 3 hits to break; two standing doors per player.' },
     { id: 'gunArchersDoor', spellType: 'human', element: 'physical', name: "Archers' Door",
       type: 'utility', cost: 50, range: 4, apCost: 1, cooldownRounds: 0,
       kind: 'doorDeploy', door: 'archers', doorGun: true, damageType: 'physical', arrows: 3, arrowDmg: 25,
@@ -17949,7 +17946,7 @@ function flRacePool(race) {
 const DOOR_GUN_RULES = {
     allUnlocked: true,
     standingCap: 2,                     // standing doors per PLAYER at a time (the user, 2026-09-25); the oldest folds
-    hits: 3,                            // a standing door's hits (a Keyholder's: 4 — doorMaxHits)
+    hits: 3,                            // a standing door's hits (every door the same)
     ap: 1, range: 4, los: true,
     lane: { max: 6 },                   // the longest lane any door paints
     actOrder: 'placed',                 // THE DOORS' TURN walks the doors oldest first
@@ -18017,6 +18014,9 @@ function doorGunWheel(profile, opts) {
         const d = DOOR_GUN_DOORS[key];
         if (o.battle && (d.roomOnly || d.kind === 'capture')) continue;
         if (o.story === false && d.story) continue;
+        /* THE ROOM's wheel (Phase 3): the Threshold + the standing doors — eight wedges. The two shot rows are battle
+           verbs (a hinge push, a dash off a board tile) and the capture door is pre-placed in the room from Phase 4. */
+        if (o.room && !(d.roomOnly || d.kind === 'standing')) continue;
         out.push({ key, name: d.name, icon: d.icon, kind: d.kind, spell: d.spell || null, tier: d.tier || 0,
             sealed: !doorGunUnlocked(profile, key), place: d.unlock ? d.unlock.site : null });
     }
@@ -47193,6 +47193,99 @@ function hqPortalDoorsIn(profile, roomId) {
     return out;
 }
 
+/* ══ THE DOOR WHEEL IN THE ROOM (DOOR_GUN_PLAN.md §5.1-5.2, Phase 3, 2026-09-25) ══
+   The gun's wheel (hold MIDDLE CLICK) picks the door LEFT CLICK fires: the Threshold (revs 1-5, unchanged) or one of
+   the seven STANDING doors. A standing door in the room is a live object: it stands upright on the floor, faces the
+   lane the officer turned it to (RIGHT CLICK, 45° a click), and acts on what is in its lane the whole time it stands
+   (the gust blows the walker and the kickables along it, the maw draws them in) and pulses on `actMs`. The cap is the
+   battle's (DOOR_GUN_RULES.standingCap, 2 — the user's per-player rule), the oldest folds. The record is viewer-local:
+   profile.door.hq.gunPlaced = { list: [{ room, key, x, y, z, face, hits, at }] } (NOT door.hq.gunDoors — that is the
+   earned-doors ledger), cleared on a fresh arrival from Play like the Threshold pair. Nothing on `state`, nothing
+   relayed (RULE #2: the room is single-player). */
+const HQ_GUN_RULES = {
+    cell: HQ_CAVE_CELL,                 // one board tile in the room (1.75 m): a lane of 4 is 7 m, the size it reads on the board
+    actMs: 2500,                        // the room's round (the live plan's HQ_LIVE_RULES.roundMs): every door pulses once a round
+    cap: DOOR_GUN_RULES.standingCap,    // two standing doors, the oldest folds (the user, 2026-09-25: per player)
+    hits: DOOR_GUN_RULES.hits,
+    halfW: 0.8,                         // a lane's half-width in metres (a tile is 1.75 m wide)
+    gust: { speed: 6, accel: 18 },      // m/s along the lane (the plan's HQ_GUST_MS), the carry eases to it
+    maw: { speed: 2.4, stopM: 0.9 },    // m/s toward the door, until this close to its mouth
+    beamMaxM: 40,                       // the laser's reach (it stops on the first wall)
+    minFromWalker: 1.2,                 // never on your own feet
+    minGap: 1.4,                        // two standing doors keep this apart
+    faceStepDeg: 45,                    // RIGHT CLICK turns the lane this much
+};
+/* the record, sanitised: only standing-door keys, finite numbers, a real room, the newest `cap` rows */
+function hqGunDoorRecord(profile) {
+    const src = profile && profile.door && profile.door.hq && profile.door.hq.gunPlaced;
+    const list = (src && Array.isArray(src.list)) ? src.list : [];
+    const out = [];
+    for (const r of list) {
+        if (!r || typeof r !== 'object' || typeof r.room !== 'string' || !DOOR_HQ.rooms[r.room]) continue;
+        if (!DOOR_GUN_DOORS[r.key] || DOOR_GUN_DOORS[r.key].kind !== 'standing') continue;
+        if (![r.x, r.y, r.z].every(v => typeof v === 'number' && isFinite(v))) continue;
+        out.push({ room: r.room, key: r.key, x: r.x, y: r.y, z: r.z, face: (((r.face | 0) % 360) + 360) % 360,
+                   hits: Math.max(1, Math.min(HQ_GUN_RULES.hits, (r.hits | 0) || HQ_GUN_RULES.hits)), at: +r.at || 0 });
+    }
+    out.sort((a, b) => a.at - b.at);
+    return out.slice(-HQ_GUN_RULES.cap);
+}
+/* the facing snapped to the eight (degrees, 0 = +z, clockwise seen from above — the walker's yaw convention) */
+function hqGunDoorSnapFace(deg) {
+    const st = HQ_GUN_RULES.faceStepDeg;
+    return ((Math.round((+deg || 0) / st) * st) % 360 + 360) % 360;
+}
+/* the lane in room metres: { dx, dz } the unit direction, `len` metres ahead (0 for a radius door), `r` the radius */
+function hqGunDoorLane(key, face) {
+    const d = DOOR_GUN_DOORS[key] || {};
+    const a = hqGunDoorSnapFace(face) * Math.PI / 180;
+    const C = HQ_GUN_RULES.cell;
+    return { dx: Math.round(Math.sin(a) * 1e6) / 1e6, dz: Math.round(Math.cos(a) * 1e6) / 1e6,
+             len: d.radius ? 0 : d.beam ? HQ_GUN_RULES.beamMaxM : (d.lane | 0) * C, r: d.radius ? (d.radius | 0) * C : 0, halfW: HQ_GUN_RULES.halfW };
+}
+/* is a room point (x, z) in this door's lane / radius? (the live act's read; pure) */
+function hqGunDoorCovers(door, x, z) {
+    const L = hqGunDoorLane(door.key, door.face);
+    const vx = x - door.x, vz = z - door.z;
+    if (L.r) { const d = Math.hypot(vx, vz); return d > 0.05 && d <= L.r; }
+    const along = vx * L.dx + vz * L.dz, side = Math.abs(vx * L.dz - vz * L.dx);
+    return along > 0.2 && along <= L.len && side <= L.halfW;
+}
+/* file a placement: `spec` = { room, key, x, y, z, face } (the renderer's aim). The cap folds the oldest (returned in
+   `folded`); refused: not a standing door / sealed, no room, bad numbers, too close to another standing door. The
+   caller saves the profile. */
+function hqGunDoorPlace(profile, spec, opts) {
+    opts = opts || {};
+    if (!profile) return { ok: false, reason: 'noprofile' };
+    if (!spec || !DOOR_GUN_DOORS[spec.key] || DOOR_GUN_DOORS[spec.key].kind !== 'standing') return { ok: false, reason: 'door' };
+    if (!doorGunUnlocked(profile, spec.key)) return { ok: false, reason: 'sealed' };
+    if (typeof spec.room !== 'string' || !DOOR_HQ.rooms[spec.room]) return { ok: false, reason: 'room' };
+    if (![spec.x, spec.y, spec.z].every(v => typeof v === 'number' && isFinite(v))) return { ok: false, reason: 'spec' };
+    const list = hqGunDoorRecord(profile);
+    if (list.some(r => r.room === spec.room && Math.hypot(r.x - spec.x, r.z - spec.z) < HQ_GUN_RULES.minGap && Math.abs(r.y - spec.y) < 1.5)) return { ok: false, reason: 'gap' };
+    const row = { room: spec.room, key: spec.key, x: Math.round(spec.x * 100) / 100, y: Math.round(spec.y * 100) / 100, z: Math.round(spec.z * 100) / 100,
+                  face: hqGunDoorSnapFace(spec.face), hits: HQ_GUN_RULES.hits, at: Math.max(Date.now(), list.length ? list[list.length - 1].at + 1 : 0) };
+    const folded = [];
+    while (list.length >= HQ_GUN_RULES.cap) folded.push(list.shift());
+    list.push(row);
+    if (!profile.door || typeof profile.door !== 'object') profile.door = {};
+    if (!profile.door.hq || typeof profile.door.hq !== 'object') profile.door.hq = {};
+    profile.door.hq.gunPlaced = { list };
+    return { ok: true, row, folded, count: list.length };
+}
+/* a fresh arrival from Play clears the room's standing doors (the Threshold's rule: the rope is for one visit) */
+function hqGunDoorClear(profile) {
+    try {
+        const P = profile && profile.door && profile.door.hq && profile.door.hq.gunPlaced;
+        if (!P) return false;
+        const had = !!(P.list && P.list.length);
+        profile.door.hq.gunPlaced = { list: [] };
+        return had;
+    } catch (e) { return false; }
+}
+/* the standing doors in `roomId` (the renderer rebuilds these on entry) */
+function hqGunDoorsIn(profile, roomId) { return hqGunDoorRecord(profile).filter(r => r.room === roomId); }
+
 /* ── THE ROOM REGISTER (HQ plan 7.1, 2026-09-07) ───────────────────────
    Every site and every numbered HQ room wears ONE number (7.0 rule 1). The
    number lives with the thing it names — `roomNo` on the threshold (site),
@@ -49005,6 +49098,7 @@ if (typeof window !== 'undefined') {
     window.hqTerrainDoorLanding = hqTerrainDoorLanding; window.hqTerrainDump = hqTerrainDump; window.hqTerrainClimbs = hqTerrainClimbs; window.hqTerrainClimbEdges = hqTerrainClimbEdges; window.HQ_CLIMB_LOOKS = HQ_CLIMB_LOOKS; window.HQ_WALK_LESSONS = HQ_WALK_LESSONS; window.hqWalkLessons = hqWalkLessons; window.hqCityShell = hqCityShell; window.hqAirbaseShell = hqAirbaseShell; window.hqCastleShell = hqCastleShell; window.hqSewerShell = hqSewerShell; window.hqSiteEntry = hqSiteEntry; window.hqSiteEntryOf = hqSiteEntryOf; window.hqApplySiteEntries = hqApplySiteEntries; window.hqFindHardReachTerrain = hqFindHardReachTerrain; window.hqTerrainFindSpot = hqTerrainFindSpot; window._hqTPolyDist = _hqTPolyDist; window._hqTEllipse = _hqTEllipse; window._hqTRectIn = _hqTRectIn; window._hqTRamp = _hqTRamp;   // THE FLOATING PIECES (2026-09-18): the renderer's underFloat cut reads the same frames the compiler does
     /* THE DOOR GUN (HQ plan 9.5, 2026-09-15 rev 13) */
     window.HQ_PORTAL_RULES = HQ_PORTAL_RULES; window.hqPortalRecord = hqPortalRecord; window.hqPortalStatus = hqPortalStatus; window.hqPortalIssue = hqPortalIssue;
+    window.HQ_GUN_RULES = HQ_GUN_RULES; window.hqGunDoorRecord = hqGunDoorRecord; window.hqGunDoorPlace = hqGunDoorPlace; window.hqGunDoorClear = hqGunDoorClear; window.hqGunDoorsIn = hqGunDoorsIn; window.hqGunDoorLane = hqGunDoorLane; window.hqGunDoorCovers = hqGunDoorCovers; window.hqGunDoorSnapFace = hqGunDoorSnapFace;   // THE DOOR WHEEL IN THE ROOM (Phase 3)
     window.hqPortalPlace = hqPortalPlace; window.hqPortalClear = hqPortalClear; window.hqPortalLeaf = hqPortalLeaf; window.hqPortalNextSlot = hqPortalNextSlot; window.hqPortalTwin = hqPortalTwin; window.hqPortalSafeRoom = hqPortalSafeRoom; window.hqPortalDoorsIn = hqPortalDoorsIn;
     /* THE ENCOUNTER (HQ plan 9.4 stage 1, 2026-09-15 rev 16) */
     window.HQ_POPULATION_RULES = HQ_POPULATION_RULES; window.hqSiteResidents = hqSiteResidents; window.hqRosterRaces = hqRosterRaces; window.hqRoomFloorM2 = hqRoomFloorM2; window.hqRoomPopulation = hqRoomPopulation; window.hqSpotRoams = hqSpotRoams;   // THE POPULATION (2026-09-19)
