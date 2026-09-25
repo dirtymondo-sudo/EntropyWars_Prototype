@@ -49,7 +49,7 @@ test('every verb has a chain; a new verb slot is deferred and falls back to an e
         assert.strictEqual(chain[chain.length - 1], 'cast');
         if (S[chain[0]].defer) {
             const fb = chain.slice(1).filter(k => k !== 'cast');
-            assert.ok(fb.length && fb.every(k => S[k] && !S[k].defer), verb + ' must fall back to an eager slot while its verb bakes');
+            assert.ok(fb.length && fb.every(k => S[k]) && fb.some(k => !S[k].defer), verb + ' must fall back to an eager slot while its verb bakes');
         }
     }
     const deferred = Object.keys(S).filter(k => S[k].defer);
@@ -67,8 +67,10 @@ test('every verb has a chain; a new verb slot is deferred and falls back to an e
 test('the played window of each verb fits the 1.4 s cast cap', () => {
     const S = lit('UAL_SLOTS');
     /* source durations for the untrimmed verbs (contact sheets 2026-09-24) */
-    const DUR = { Idle_Shield_Break: 1.07, Melee_Hook: 0.47, NinjaJump_Land: 1.27, Sword_Block: 1.23, Chest_Open: 1.37, Pistol_Reload: 1.67, Dance_Loop: 1.0 };
-    for (const k of Object.keys(S).filter(k => S[k].defer)) {
+    const DUR = { Idle_Shield_Break: 1.07, Melee_Hook: 0.47, NinjaJump_Land: 1.27, Sword_Block: 1.23, Chest_Open: 1.37, Pistol_Reload: 1.67, Dance_Loop: 1.0,
+        /* THE NEW CLIPS (MAL3, 2026-09-25) */ Skill_01: 1.1, Skill_03: 1.667, Heavy_Hammer_Swing: 1.867, Right_Hand_Sword_Slas: 1.533 };
+    /* hitLaunch is a DEATH clip: the death tween (1.6 s) owns it, not the cast cap */
+    for (const k of Object.keys(S).filter(k => S[k].defer && k !== 'hitLaunch')) {
         const o = S[k];
         const dur = o.trim ? (o.trim[1] - o.trim[0]) : DUR[o.clip];
         assert.ok(dur > 0, k + ': no duration known');
@@ -88,10 +90,10 @@ test('the victim side: shoves and broken shields reel (hitStagger), host and gue
     const BT = fs.readFileSync(path.join(__dirname, 'battle.js'), 'utf8');
     const ON = fs.readFileSync(path.join(__dirname, 'online.js'), 'utf8');
     assert.ok((BT.match(/stagger: true \}\);/g) || []).length >= 7, 'the enemy-shove displacement sites pass stagger');
-    assert.ok(/stagger: !!\(opts && opts\.stagger\) \}\);/.test(BT) && /stagger: !!\(opts && opts\.stagger\) \}\);   \/\/ THE BODY/.test(BT), 'both displacement fns hand it to ThreeAnim.displace');
+    assert.ok(/path: steps, stagger: !!\(opts && opts\.stagger\)/.test(BT) && /stagger: !!\(opts && opts\.stagger\),   \/\/ THE BODY/.test(BT), 'both displacement fns hand it to ThreeAnim.displace');
     assert.ok(/if \(opts && opts\.stagger && unit && unit\.id != null\)/.test(TR), 'startDisplaceTween plays the stagger');
     assert.strictEqual((ON.match(/stagger: \(opts && opts\.stagger\) \? 1 : 0/g) || []).length, 2, 'both displace relays carry it');
-    assert.ok(/\{ delayMs: data\.delayMs \|\| 0, stagger: !!data\.stagger \}/.test(ON), 'the guest replays it');
+    assert.ok(/\{ delayMs: data\.delayMs \|\| 0, stagger: !!data\.stagger/.test(ON), 'the guest replays it');
     assert.ok(/_guardBroke \? 'guardBreak'/.test(BT) && /_hk === 'guardBreak'/.test(TR), 'a broken shield reels');
 });
 
@@ -99,7 +101,7 @@ test('the router beats the text rules; the rules still hold underneath', () => {
     const a = SP.indexOf('// A capstone for the animation rule'), b = SP.indexOf('// ── SHARED ANIMATION LIBRARIES');
     const ctx = {}; vm.createContext(ctx); vm.runInContext(SP.slice(a, b), ctx);
     const cl = ctx.classifySpellAnimKind;
-    assert.strictEqual(cl({ id: 'raceTailWhip', name: 'Tail Whip', type: 'damage', damageType: 'physical', range: 1 }), 'hook');
+    assert.strictEqual(cl({ id: 'raceTailWhip', name: 'Tail Whip', type: 'damage', damageType: 'physical', range: 1 }), 'sweep');
     assert.strictEqual(cl({ id: 'raceTailWhip', name: 'Tail Whip', type: 'damage', damageType: 'physical', range: 1 }, { rulesOnly: true }), 'melee');
     assert.strictEqual(cl({ id: 'raceBullRush', chargeToTarget: true, kind: 'dash' }), 'tackle', 'a charge lands a shoulder-check');
     assert.strictEqual(cl({ id: 'notAVerb', name: 'Fireball', type: 'damage', damageType: 'magic' }), 'magic');

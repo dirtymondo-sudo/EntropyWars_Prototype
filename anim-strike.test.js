@@ -21,7 +21,7 @@ function slotTable() {
     assert.ok(m, 'UAL_SLOTS literal not found in sprites.js');
     return vm.runInNewContext('(' + m[1] + ')');
 }
-const LIBS = ['Assets_Models_UAL1_Standard.glb', 'Assets_Models_UAL2_Standard.glb', 'Assets_Models_MAL1_Sniper.glb', 'Assets_Models_MAL2_Sniper.glb'];
+const LIBS = ['Assets_Models_UAL1_Standard.glb', 'Assets_Models_UAL2_Standard.glb', 'Assets_Models_MAL1_Sniper.glb', 'Assets_Models_MAL2_Sniper.glb', 'Assets_Models_MAL3_Sniper.glb'];
 const ANIM_DIR = path.join(__dirname, 'rigged_animations');
 
 /* clip name → duration (s) from a GLB's JSON chunk + its animation samplers */

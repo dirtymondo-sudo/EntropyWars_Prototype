@@ -1827,6 +1827,29 @@
         const TRAVEL_HANDLERS = {
             strikeLeap(ctx) {
                 const { unit, spell, target, cam, projectileDelay } = ctx;
+                /* THE NEW CLIPS (2026-09-25): a lunge clip (Thrust_Slash,
+                   Charged_Upward_Slash…) already carries the body out and home
+                   — ride it (the clip starts castStrikeMs before the launch,
+                   so its strike frame IS the launch) instead of stacking the
+                   board leap on top; the hit lands on that frame. */
+                const _trv = _castClipTravel(unit, spell);
+                if (_trv && _trv.back) {
+                    const _impact = projectileDelay;
+                    animateClipTravel(unit, target.x, target.y, {
+                        stopShort: 0.62, targetId: target.id,
+                        waitMs: projectileDelay + 400, fallbackMs: 520
+                    });
+                    window.setTimeout(() => { playSfx(spellLaunchSfx(spell)); }, projectileDelay);
+                    const _VFXc = window.ThreeVFXEffects;
+                    if (_VFXc && _VFXc.hasMapping(spell.id, 'impact')) {
+                        window.setTimeout(() => {
+                            if (state.phase !== 'battle' || _skipVisuals()) return;
+                            _VFXc.fire('impact', spell.id, { tx: target.x, ty: target.y, fromX: unit.x, fromY: unit.y });
+                        }, _impact);
+                    }
+                    return { impactDelay: _impact, completionDelay: Math.max(_impact + actionMs(700),
+                        (cam?.totalMs ?? (_impact + actionMs(360))) + actionMs(120)) };
+                }
                 const impactDelay = projectileDelay + actionMs(260);
                 const completionDelay = Math.max(impactDelay + actionMs(120),
                     (cam?.totalMs ?? (impactDelay + actionMs(360))) + actionMs(120));
@@ -2406,7 +2429,13 @@
             // 150ms/tile — the renderer's displace tween floors there anyway,
             // so anything shorter made the strike land before the model did
             // (and the chase cam finish ahead of its charger).
-            const chargeMs = Math.max(200, dist * 150);
+            /* THE NEW CLIPS (2026-09-25): a charge whose clip LEAPS the gap
+               itself (Heroic Leap's Jumping_Punch, Sky Tackle's
+               Rising_Flying_Kick) rides that clip in place of the sprint +
+               vault — the run is the clip's, the strike its strike frame. */
+            const _chTrv = _castClipTravel(unit, spell);
+            const _chClip = !!(_chTrv && !_chTrv.back);
+            const chargeMs = _chClip ? Math.max(200, _chTrv.strikeMs) : Math.max(200, dist * 150);
 
             playSfx(spellLaunchSfx(spell));
             focusUnitPanel(target.id);
@@ -2450,6 +2479,10 @@
             // it so _runPostEffects doesn't run its own charge hop on top of
             // this (its swapOnHit half still runs). The strike lands on arrival.
             unit._chargeHandledExternally = true;
+            const _chFromZ = unit.z;
+            // The clip starts ON the chase cut (the lead is traded out of the
+            // hold), so its strike frame lands at _chargeDelay + chargeMs.
+            if (_chClip) _releaseCastSprite(unit, _chargeDelay + _chTrv.strikeMs);
             const _runCharge = () => {
                 unit.x = landTile.x;
                 unit.y = landTile.y;
@@ -2458,7 +2491,14 @@
                 // THE LEAP (2026-09-14): the charge runs the lane and VAULTS
                 // the last stretch — onto the ledge when the victim stands
                 // higher, off the edge when lower, a leaping strike on the flat.
-                animateDisplacement(unit, fromX, fromY, landTile.x, landTile.y, chargeMs, { leap: true });
+                if (_chClip) {
+                    animateClipTravel(unit, landTile.x, landTile.y, {
+                        fromX, fromY, fromZ: _chFromZ, toZ: unit.z, oneWay: true,
+                        waitMs: 300, fallbackMs: chargeMs
+                    });
+                } else {
+                    animateDisplacement(unit, fromX, fromY, landTile.x, landTile.y, chargeMs, { leap: true, charge: true });
+                }
                 resolveTileArrival(unit, { via: 'self' });   // ⛓ the charge's landing
                 addLog(`${unitDisplayName(unit)} charges from ${coordLabel(fromX, fromY)} to ${coordLabel(landTile.x, landTile.y)}!`);
                 scheduleBoardRender();
@@ -30525,7 +30565,23 @@
                 // own flashColor (burn/poison/…) and are untouched.
                 const _heavyFlinch = finalDamage >= 60 || !!opts.isCrit
                     || !!(typeNote && typeNote.includes('super effective'));
-                flashUnit(target.id, opts.flashColor || (_guardBroke ? 'guardBreak' : (_heavyFlinch ? 'hitHeavy' : 'hit')));
+                /* THE NEW CLIPS (2026-09-25, MAL3): an ordinary PHYSICAL hit
+                   reads its source — from range it is a round landing
+                   (hitShot, Gunshot_Reaction's jolt), up close a light blow
+                   knocks the head aside (hitSlap, Slap_Reaction); magic keeps
+                   the plain flinch. A heavy physical KILLING blow from up
+                   close blows the body up and over (the death style — a plain
+                   id→string map on state, so it rides state-sync). */
+                const _hitPhys = !!sourceUnit && sourceUnit.id !== target.id
+                    && (opts.damageType || 'physical') === 'physical';
+                const _hitRange = _hitPhys ? Math.max(Math.abs(sourceUnit.x - target.x), Math.abs(sourceUnit.y - target.y)) : 0;
+                const _lightKind = !_hitPhys ? 'hit' : (_hitRange > 1 ? 'hitShot' : (finalDamage < 30 ? 'hitSlap' : 'hit'));
+                flashUnit(target.id, opts.flashColor || (_guardBroke ? 'guardBreak' : (_heavyFlinch ? 'hitHeavy' : _lightKind)));
+                if (target.hp <= 0) {
+                    state._deathStyleById = state._deathStyleById || {};
+                    if (_hitPhys && _hitRange <= 1 && (_heavyFlinch || finalDamage >= 40)) state._deathStyleById[target.id] = 'launch';
+                    else delete state._deathStyleById[target.id];
+                }
 
                 // Damage number style: crit hits pop gold, counter/follow-up
                 // chain hits pop electric blue (kind supplied by the caller),
@@ -52919,7 +52975,8 @@
                 window.ThreeAnim.displace(unit, fromX, fromY, toX, toY, durationMs,
                     { delayMs: (opts && opts.delayMs) || 0,
                       leap: (opts && opts.leap !== undefined) ? opts.leap : undefined,
-                      stagger: !!(opts && opts.stagger) });   // THE BODY: a body shoved by an enemy reels (hitStagger)
+                      stagger: !!(opts && opts.stagger),   // THE BODY: a body shoved by an enemy reels (hitStagger)
+                      charge: !!(opts && opts.charge) });  // THE NEW CLIPS: a charge spell sprints on RunFast
                 return;
             }
             if (!boardEl || _skipVisuals()) return;
@@ -52995,7 +53052,7 @@
                 // Full waypoint path: bounce rebounds and slam "bump" overshoots
                 // ride through to the 3D tween instead of a straight A→B glide.
                 window.ThreeAnim.displace(unit, fromX, fromY, last.x, last.y, (perStepMs || 150) * steps.length,
-                    { delayMs: (opts && opts.delayMs) || 0, path: steps, stagger: !!(opts && opts.stagger) });
+                    { delayMs: (opts && opts.delayMs) || 0, path: steps, stagger: !!(opts && opts.stagger), charge: !!(opts && opts.charge) });
                 return;
             }
             if (!boardEl || _skipVisuals()) return;
@@ -53232,6 +53289,35 @@
             }
 
             requestAnimationFrame(tick);
+        }
+
+        /* THE CLIP TRAVEL (THE NEW CLIPS, 2026-09-25): the caster's travel
+           clip (a lunge, a jumping punch, a flying kick — sprites.js UAL_SLOTS
+           `travel`) carries the body to (tx, ty) on the clip's own timing, in
+           place of the board strike leap / leap arc / sprint. Primitives only
+           in opts (online.js relays it). Rigged-model path only: callers ask
+           _castClipTravel first, which is null for sprites. */
+        function animateClipTravel(unit, tx, ty, opts) {
+            if (!unit || _skipVisuals()) return false;
+            if (window.ThreeAnim && window.ThreeAnim.isActive() && typeof window.ThreeAnim.clipTravel === 'function') {
+                return window.ThreeAnim.clipTravel(unit, tx, ty, opts || {});
+            }
+            return false;
+        }
+        window.animateClipTravel = animateClipTravel;
+
+        /* Would this cast's clip carry the body? → { back, strikeMs } or null.
+           `back`: a lunge that comes home (the unit keeps its tile); else a
+           one-way leap (the caller moves the unit). strikeMs: the strike
+           frame's offset into the clip. */
+        function _castClipTravel(unit, spell) {
+            if (!unit || !spell || _skipVisuals() || !window.ThreeAnim
+                || typeof window.ThreeAnim.castTravels !== 'function') return null;
+            const kind = (typeof classifySpellAnimKind === 'function') ? classifySpellAnimKind(spell) : null;
+            const trv = window.ThreeAnim.castTravels(unit, kind);
+            if (!trv) return null;
+            const strikeMs = window.ThreeAnim.castStrikeMs(unit, kind);
+            return strikeMs > 0 ? { back: !!trv.back, strikeMs } : null;
         }
 
         function animateStrikeLeap(unit, tx, ty, opts) {
@@ -64686,7 +64772,15 @@
                 });
                 const _lsLaunchAt = Math.max(0, _lsCam?.sourceHold ?? 0);
 
-                window.setTimeout(() => {
+                /* THE NEW CLIPS (2026-09-25): a leap clip (Jumping_Punch,
+                   Rising_Flying_Kick) jumps the caster over itself — ride it
+                   onto the landing tile instead of the throw arc, and land
+                   the hit on the clip's strike frame (the clip starts
+                   castStrikeMs before the launch, or at once when the lead is
+                   longer than the hold). */
+                const _lsTrv = _castClipTravel(unit, spell);
+                const _lsClip = !!(_lsTrv && !_lsTrv.back);
+                if (!_lsClip) window.setTimeout(() => {
                     if (!_skipVisuals()) _vfxDash(casterFromX, casterFromY, x, y);
                 }, _lsLaunchAt);
 
@@ -64781,6 +64875,28 @@
                         window.setTimeout(() => _lsApplyLanding(true), actionMs(300));
                     }
                 };
+                if (_lsClip) {
+                    const _lsLand0 = [
+                        { x: target.x + 1, y: target.y }, { x: target.x - 1, y: target.y },
+                        { x: target.x, y: target.y + 1 }, { x: target.x, y: target.y - 1 }
+                    ].find(t => isInside(t.x, t.y) && canOccupy(t.x, t.y)) || { x: casterFromX, y: casterFromY };
+                    const _lsToZ = (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(_lsLand0.x, _lsLand0.y, unit.z) : unit.z;
+                    const _lsImpactAt = Math.max(_lsLaunchAt, _lsTrv.strikeMs);
+                    animateClipTravel(unit, _lsLand0.x, _lsLand0.y, {
+                        fromX: casterFromX, fromY: casterFromY, toZ: _lsToZ, oneWay: true,
+                        waitMs: _lsImpactAt + 300, fallbackMs: 420
+                    });
+                    window.setTimeout(() => {
+                        _lsApplyLanding(false);
+                        if (_skipVisuals()) return;
+                        if (typeof shakeBoard === 'function') shakeBoard('normal');
+                        try {
+                            const VFX = window.ThreeVFXEffects;
+                            if (VFX && VFX.sigShockRing3D) VFX.sigShockRing3D(x, y, { r0: _lsTs * 0.2, r1: _lsTs * 1.5, ms: 420 });
+                        } catch (e) {}
+                    }, _lsImpactAt);
+                    completionDelay = Math.max(_lsImpactAt + actionMs(650), (_lsCam?.totalMs ?? 0) + actionMs(120));
+                } else {
                 if (_lsLaunchAt > 0) window.setTimeout(_lsRunDive, _lsLaunchAt);
                 else _lsRunDive();
 
@@ -64788,6 +64904,7 @@
                     _lsLaunchAt + _lsLiftMs + _lsHangMs + _lsFlingMs + actionMs(450),
                     _lsLaunchAt + actionMs(700),
                     (_lsCam?.totalMs ?? 0) + actionMs(120));
+                }
             }
 
             if (panelFocusTarget) focusUnitPanel(panelFocusTarget.id);

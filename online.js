@@ -2259,6 +2259,38 @@
             return _origAnimateStrikeLeap(unit, tx, ty, opts);
         };
 
+        /* THE CLIP TRAVEL (THE NEW CLIPS, 2026-09-25): a travel clip (a
+           lunge / a leap strike / a leaping charge) moves the body on its own
+           curve — the board move the guest would otherwise never see (the
+           sync just teleports the lander). Primitives only; the guest's rig
+           plays the same cast clip from state-sync and the tween rides it. */
+        const _origAnimateClipTravel = (typeof animateClipTravel === 'function') ? animateClipTravel : null;
+        if (_origAnimateClipTravel) {
+            window._ewOrigAnimateClipTravel = _origAnimateClipTravel;
+            animateClipTravel = function(unit, tx, ty, opts) {
+                var _netOnline = window._NET && window._NET.online;
+                if ((_netOnline && _isHost() || _ewRecOn()) && unit) {
+                    var _co = opts || {};
+                    _emit('relay', {
+                        type: 'clip-travel',
+                        unitId: unit.id, tx: tx, ty: ty,
+                        opts: {
+                            fromX: (_co.fromX != null) ? _co.fromX : unit.x,
+                            fromY: (_co.fromY != null) ? _co.fromY : unit.y,
+                            fromZ: (_co.fromZ != null) ? _co.fromZ : null,
+                            toZ: (_co.toZ != null) ? _co.toZ : null,
+                            stopShort: _co.stopShort || 0,
+                            targetId: (_co.targetId != null) ? _co.targetId : null,
+                            waitMs: _co.waitMs || 0, fallbackMs: _co.fallbackMs || 0,
+                            oneWay: !!_co.oneWay
+                        }
+                    });
+                }
+                return _origAnimateClipTravel(unit, tx, ty, opts);
+            };
+            window.animateClipTravel = animateClipTravel;
+        }
+
         /* BASIC ATTACK DELIVERY (2026-09-14): the bullet / orb / arrow /
            thrown prop of a basic attack (battle.js playBasicAttackShot) —
            host-only otherwise (playProjectile is never relayed). Delivery
@@ -2317,7 +2349,8 @@
                     steps: [{ x: toX, y: toY }],
                     perStepMs: durationMs || 220,
                     delayMs: (opts && opts.delayMs) || 0,
-                    stagger: (opts && opts.stagger) ? 1 : 0
+                    stagger: (opts && opts.stagger) ? 1 : 0,
+                    charge: (opts && opts.charge) ? 1 : 0   // THE NEW CLIPS: the charge's RunFast sprint
                 });
             }
             return _origAnimateDisplacement(unit, fromX, fromY, toX, toY, durationMs, opts);
@@ -4098,7 +4131,7 @@
                                 dispUnit.x = data.fromX;
                                 dispUnit.y = data.fromY;
                                 window.animateDisplacementPath(dispUnit, data.fromX, data.fromY,
-                                    data.steps, data.perStepMs || 120, { delayMs: data.delayMs || 0, stagger: !!data.stagger });
+                                    data.steps, data.perStepMs || 120, { delayMs: data.delayMs || 0, stagger: !!data.stagger, charge: !!data.charge });
                                 dispUnit.x = _savedDX;
                                 dispUnit.y = _savedDY;
                                 dispUnit.z = _savedDZ;
@@ -4148,6 +4181,29 @@
                                 } else if (window.ThreeAnim && window.ThreeAnim.isActive()) {
                                     window.ThreeAnim.strikeLeap(leapUnit, data.tx, data.ty, _lopts);
                                 }
+                            }
+                        }
+                    }
+
+                    if (data.type === 'clip-travel' && _ewMirrorView() && data.opts) {
+                        var _ctU = st && st.units ? st.units.find(function(u) { return u.id === data.unitId; }) : null;
+                        if (_ctU) {
+                            var _ctShow = true;
+                            if (st.fogOfWar && _ctU.player !== NET.myPlayer && typeof window._isTileVisibleToViewer === 'function') {
+                                _ctShow = window._isTileVisibleToViewer(data.opts.fromX, data.opts.fromY)
+                                    || window._isTileVisibleToViewer(Math.round(data.tx), Math.round(data.ty));
+                            }
+                            var _ctFn = window._ewOrigAnimateClipTravel
+                                || (window.ThreeAnim && window.ThreeAnim.clipTravel ? function(u, x, y, o) { return window.ThreeAnim.clipTravel(u, x, y, o); } : null);
+                            if (_ctShow && _ctFn) {
+                                var _cto = { fromX: data.opts.fromX, fromY: data.opts.fromY, oneWay: !!data.opts.oneWay };
+                                if (data.opts.fromZ != null) _cto.fromZ = data.opts.fromZ;
+                                if (data.opts.toZ != null) _cto.toZ = data.opts.toZ;
+                                if (data.opts.stopShort > 0) _cto.stopShort = data.opts.stopShort;
+                                if (data.opts.targetId != null) _cto.targetId = data.opts.targetId;
+                                if (data.opts.waitMs > 0) _cto.waitMs = data.opts.waitMs;
+                                if (data.opts.fallbackMs > 0) _cto.fallbackMs = data.opts.fallbackMs;
+                                _ctFn(_ctU, data.tx, data.ty, _cto);
                             }
                         }
                     }

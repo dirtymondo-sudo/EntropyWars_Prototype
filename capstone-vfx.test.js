@@ -120,11 +120,12 @@ test('the charged cast: castUltimate slot, the chain, and the classify rules', (
     /* THE ANIM ROUTER beats the rules for the spells it names */
     assert.strictEqual(cl0(by.raceTsunami), 'push', 'the wave is shoved');
     assert.strictEqual(cl0(by.raceHallelujah), 'cheer');
-    assert.strictEqual(cl0(by.raceShamblingHorde), 'call', 'the horde is called');
-    assert.strictEqual(cl0(by.raceColossalCrush), 'hook');
+    assert.strictEqual(cl0(by.raceShamblingHorde), 'rise', 'the horde rises (THE NEW CLIPS: MAL3 mage_soell_cast_6)');
+    assert.strictEqual(cl0(by.raceColossalCrush), 'smash', 'THE NEW CLIPS: MAL3 Heavy_Hammer_Swing');
     assert.strictEqual(cl0(by.racePlasmaCannon), 'channel');
     assert.strictEqual(cl0(by.healAll), 'heal');
-    assert.strictEqual(cl0(by.raceSupernova), 'ultimate', 'an unrouted capstone still charges');
+    assert.strictEqual(cl0(by.raceSupernova), 'nova', 'THE NEW CLIPS: the spin nova');
+    assert.strictEqual(cl0(by.raceMarrowstorm), 'ultimate', 'an unrouted capstone still charges');
 });
 
 test('every capstone stages as an ultimate and blooms; the VFX hooks are wired', () => {

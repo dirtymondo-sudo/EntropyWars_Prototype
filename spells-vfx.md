@@ -1070,9 +1070,92 @@ the Entropy Strike, the combos (Phase 4).
 **UNSEEN LIVE (RULE #1c):** the family directors' look with real art (the
 plan's §10 entry lists the edits).
 
+## THE NEW CLIPS — MAL3, twenty cast verbs, travelling clips, the victim's reactions (SPELL_DIRECTOR_PLAN Phase 8) — 2026-09-25, local delivery
 
-## THE CAPSTONES — the 44 bare ultimates get a signature + a director (SPELL_DIRECTOR_PLAN Phase 6) — 2026-09-24, local delivery
-- **Signatures:** three-vfx-effects.js THE CAPSTONES (after THE CRAFT KIT). `_CAP_SIGS[id] = { charge, hit, detonate? }`; `_fireStage` calls `_capStage` so the relayed `windup` beat plays the charge and the `burst` beat plays the hit (the guest draws both — no online.js change). Registered in `_spell3DGeometry` for the census, but `_capRun` ignores every call without `p._cap` except a delayed spell's detonation (deduped per tile, 4 s). Builders: `_capShell`, `_capLance`, `_capSpikes`, `_capTendrils`, `_capEye`, `_capCar` (the honda civic's sedan via `ThreeRenderer.sedan`, the kit's cars while it streams). Kill-switch `EW_DISABLE_CAPSTONE_SIGS`.
-- **Directors:** battle.js `CAPSTONE_DIRECTOR_SHOTS` (open / pay / after per id) run by `_capstoneDirector` through `_capSeq` (44 literal `CINE_SEQUENCES.<id> = _capSeq;` lines — the census regex needs them literal). No `pay` → the family director runs whole. Kill-switch `EW_DISABLE_CAPSTONE_DIRECTOR`.
-- **Tests:** capstone-director.test.js (census 0, both registrations, every signature runs clean on a stubbed scene, beats inside the window). Probe A/B: `NOCAP=1 node playtest_spellcam.js`.
-- **Known, not fixed:** a delayed spell's mark turn runs on the support rig, where the delayed family's mark / dread beats never fire (pre-existing).
+**The library.** mondo's 31 new Meshy clips (exported from the male sniper,
+some named `mage_soell_cast_N` — the "spell" typo is the real file name) are
+consolidated into `Assets/Models/MAL3_Sniper.glb` (2.0 MB, animation-only,
+`node build_mal2.js <dir> MAL3_Sniper.glb MAL1_Sniper.glb`; the repo copy is
+`rigged_animations/Assets_Models_MAL3_Sniper.glb`). It is library **index 4**
+in sprites.js `EW_ANIM_LIB_URLS`. Every new slot is `defer: true` (baked one
+per idle tick after the load bake), so a cast in the first seconds plays the
+old fallback slot.
+
+**Contact sheets, not file names.** `node anim-sheets.js --dir=<clips>
+[--follow]` renders every clip as a frame strip plus the hips path
+(`--follow` keeps a travelling body in frame). The findings (source seconds)
+are in each UAL_SLOTS row's comment: e.g. `mage_soell_cast_2` spins, raises
+both arms at 1.0 and drives both hands to the ground at 1.35 (castSkyward),
+`Headache_Relief` holds the temples then releases at 2.85 (castPsychic),
+`Skill_03` is a leaping spin into a pointing lunge (castCurse).
+
+**The verbs** (sprites.js `SPELL_ANIM_VERBS`, chains in three-renderer.js
+`_castChainFor`): roar, skyward, hurl, nova, rise, curse, psychic, smash,
+sweep, jab, rally, slash, doubleSlash, roundhouse, plus the travel verbs
+thrust, upSlash, leapSlash, leapPunch, flyKick. The old `call` / `push`
+verbs lead with castSkyward / castShove now. The census's most-played clip
+is 7 % of spells (the cap is 15 %).
+
+**Travelling clips (`travel: true`).** Five clips move the body themselves:
+Thrust_Slash and Charged_Upward_Slash lunge out and come home; Jumping_Punch
+(4.1 hips-heights) and Rising_Flying_Kick (2.8) leap one way; Sword_Judgment
+jumps in place and walks forward late. The bake pins them in the ground
+plane (like pinXZ) and records the source hips' progress along the clip's
+own main direction as a 0→1 curve (`_libTravelCurve`, kept on the ACTION as
+`_ew_travel` because r128's clip.clone() drops userData). `back` = the
+curve ends near 0 (a lunge).
+- `ThreeAnim.clipTravel(unit, tx, ty, opts)` (`startClipTravelTween`) waits
+  for the travel one-shot to start, then moves the unit group along the
+  curve sampled from the action's own time — board distance, animator's
+  timing. No clip within `waitMs` → a plain eased move. It ends on the
+  unit's rest spot. `opts`: fromX/fromY/fromZ, toZ, stopShort, targetId,
+  oneWay, waitMs, fallbackMs.
+- `ThreeAnim.castTravels(unit, kind)` → `{back, slot}` or null: the slot a
+  cast of that kind would play right now. battle.js `_castClipTravel(unit,
+  spell)` adds the strike ms.
+- battle.js: the **strikeLeap** travel handler rides a `back` clip instead
+  of the board leap (stopShort 0.62, the hit on the launch = the strike
+  frame); **leapStrike** rides a one-way clip onto its landing tile instead
+  of the throw arc, the hit at max(launch, strikeMs); a **charge**
+  (`_runChargeToTargetSpell`) with a one-way clip releases the clip on the
+  chase cut (`_releaseCastSprite(unit, windup + strikeMs)`) and lands the
+  hit on its strike frame; other charges sprint on RunFast (`charge: true`
+  → the renderer's `runCharge` want).
+- online.js relays `clip-travel` (primitives, fog-gated like
+  `strike-leap`) and the `charge` flag on `displace-anim`.
+
+**The victim.** applyDamageToUnit picks the flinch for an ordinary physical
+hit: from range `hitShot` (Gunshot_Reaction), up close under 30 damage
+`hitSlap` (Slap_Reaction). A heavy (crit / super effective / ≥ 40) physical
+killing blow from an adjacent source sets `state._deathStyleById[id] =
+'launch'` (a plain id→string map; it rides state-sync), and the death tween
+plays `hitLaunch` (BeHit_FlyUp) instead of the knock-down. `dodge` is now
+MAL3 Stand_Dodge (the UAL roll is the fallback).
+
+**Unused from the batch:** Archery_Shot_2 (a static hold), Archery_Shot_3,
+Dive_Down_and_Land (starts ~5 high: no spell drops from that height yet),
+Kung_Fu_Punch (7 s and drifting), Climb_Up_Rope / Fast_Ladder_Climb (for the
+HQ climb, not wired).
+
+**Two old bugs found in the live check (both fixed here):**
+- The kept-rig rebuild (every entry is rebuilt after a walk / spell and
+  reuses the cached rig) dropped `_ew_libBaked` / `_ew_def`, so
+  `castStrikeMs` answered -1 after a unit's first action and every clip
+  went back to starting at the launch — the Phase 1-7 strike-frame timing
+  only held for a unit's first move. The flags now ride the rig record.
+- `startDisplaceTween` used `ts` without declaring it: every vault (a
+  charge's leap, a slide between levels, a tackle carrying a flyer) threw
+  and the slide never played.
+
+**Live check (playtest_clips.js, a paused Playwright clock stepped 50 ms
+at a time):** Valkyrie Spear — Thrust_Slash binds, the body lunges to 0.62
+short of the victim, the hit lands on clip time 0.65 (the strike frame),
+the body walks home with no pop. Sky Tackle over 3 tiles — the flying kick
+carries the body onto the landing tile and the hit lands on clip time 0.50,
+the moment it arrives. Both curves are measured from the clip's first frame
+(Thrust_Slash opens a step off its rest pose), and a one-way clip's curve
+reaches 1 ON its strike frame (the kick connects at half its glide).
+
+**Tests:** new-clips.test.js (slot table → bake → tween → battle → relay,
+plus the curve maths); spell-body.test.js (a verb's fallbacks need SOME eager
+slot now); anim-strike.test.js pins the MAL3 clip names and durations.

@@ -9,6 +9,9 @@
               time (a first guess at the strike frame), hips Y range, travel.
      --only   only files whose name contains the substring
      --view   camera: q = ¾ front-left (default), side, front
+     --follow the camera tracks the hips (root-motion clips stay in frame;
+              the grid shows the travel)
+     --dir    read the GLBs from another directory (default rigged_animations/)
    Setup:  npm install --no-save playwright three@0.128.0   (Chromium is
            preinstalled at /opt/pw-browsers; PW_CHROMIUM overrides the path)
    Reads:  rigged_animations/*.glb (the user's 2026-09-09 commit: the UAL
@@ -27,7 +30,7 @@ const args = process.argv.slice(2);
 const outDir = path.resolve(args.find((a) => !a.startsWith('--')) || path.join(__dirname, 'shots', 'anim-sheets'));
 const only = (args.find((a) => a.startsWith('--only=')) || '').slice(7);
 const view = (args.find((a) => a.startsWith('--view=')) || '--view=q').slice(7);
-const ANIM_DIR = path.join(__dirname, 'rigged_animations');
+const ANIM_DIR = path.resolve((args.find((a) => a.startsWith('--dir=')) || '').slice(6) || path.join(__dirname, 'rigged_animations'));
 const THREE_DIR = path.join(__dirname, 'node_modules', 'three');
 if (!fs.existsSync(ANIM_DIR)) { console.error('rigged_animations/ not found'); process.exit(1); }
 if (!fs.existsSync(path.join(THREE_DIR, 'build', 'three.min.js'))) { console.error('run: npm install --no-save playwright three@0.128.0'); process.exit(1); }
@@ -63,6 +66,9 @@ window.renderClips = async function(jobs, view){
 };
 function renderOne(g, clips, view, ctx, rowBase, stats, label){
   const root=g.scene; scene.add(root);
+  // a skinned mesh keeps its REST bounding sphere — a root-motion clip that
+  // leaves it (a dive from 5 m up, a launch) was culled out of every frame
+  root.traverse(o=>{ if(o.isMesh) o.frustumCulled=false; });
   const mixer0=new THREE.AnimationMixer(root); if(clips[0]){ const a0=mixer0.clipAction(clips[0]); a0.play(); mixer0.update(0.01); a0.stop(); }
   root.updateMatrixWorld(true);
   const boneBox=()=>{ const b=new THREE.Box3(); root.traverse(o=>{ if(o.isBone) b.expandByPoint(o.getWorldPosition(new THREE.Vector3())); }); return b; };
@@ -75,24 +81,28 @@ function renderOne(g, clips, view, ctx, rowBase, stats, label){
   let hips=null; root.traverse(o=>{ if(!hips && o.isBone && /^(pelvis|hips)$/i.test(o.name)) hips=o; });
   for(let rr=0;rr<clips.length;rr++){ const r=rowBase+rr; const clip=clips[rr];
     const act=mixer.clipAction(clip); mixer.stopAllAction(); act.reset().play(); act.paused=true;
-    const N=60; let prevH=null, prevF=null; const hs=[], fs=[], hipsY=[], hipsXZ=[];
+    const N=60; let prevH=null, prevF=null; const hs=[], fs=[], hipsY=[], hipsXZ=[], hipsP=[];
     for(let i=0;i<=N;i++){ const t=clip.duration*i/N; act.time=t; mixer.update(0); root.updateMatrixWorld(true);
       const hp=hands.map(b=>b.getWorldPosition(new THREE.Vector3())); const fp=feet.map(b=>b.getWorldPosition(new THREE.Vector3()));
       if(prevH){ hs.push(Math.max(...hp.map((p,k)=>p.distanceTo(prevH[k])))); fs.push(Math.max(...fp.map((p,k)=>p.distanceTo(prevF[k])))); }
       prevH=hp; prevF=fp;
-      if(hips){ const p=hips.getWorldPosition(new THREE.Vector3()); hipsY.push(p.y); hipsXZ.push(Math.hypot(p.x,p.z)); }
+      if(hips){ const p=hips.getWorldPosition(new THREE.Vector3()); hipsY.push(p.y); hipsXZ.push(Math.hypot(p.x,p.z)); hipsP.push(p); }
     }
     const argmax=a=>a.indexOf(Math.max(...a)); const hi=argmax(hs), fi=argmax(fs);
     const st={src:label, clip:clip.name, dur:+clip.duration.toFixed(2), handPeakT:+(clip.duration*(hi+0.5)/N).toFixed(2), footPeakT:+(clip.duration*(fi+0.5)/N).toFixed(2), hipsYmin:+Math.min(...hipsY).toFixed(2), hipsYmax:+Math.max(...hipsY).toFixed(2), hipsTravel:+Math.max(...hipsXZ).toFixed(2)};
+    if(hipsP.length){ const a=hipsP[0], z=hipsP[hipsP.length-1]; st.hipsEnd=[+(z.x-a.x).toFixed(2), +(z.y-a.y).toFixed(2), +(z.z-a.z).toFixed(2)];
+      st.hipsPath=hipsP.filter((_,i)=>i%6===0).map(p=>[+(p.x-a.x).toFixed(2), +(p.y-a.y).toFixed(2), +(p.z-a.z).toFixed(2)]); }
     stats.push(st);
     const dist=(view==='side')?4.2:4.0; const ang=(view==='side')?Math.PI/2:(view==='front'?0:Math.PI/4);
     cam.position.set(Math.sin(ang)*dist, 1.55, Math.cos(ang)*dist); cam.lookAt(0,1.0,0);
     for(let c=0;c<COLS;c++){ const t=clip.duration*c/(COLS-1); act.time=Math.min(t,clip.duration-0.001); mixer.update(0);
+      if(window.FOLLOW && hips){ root.updateMatrixWorld(true); const hp=hips.getWorldPosition(new THREE.Vector3());
+        cam.position.set(hp.x+Math.sin(ang)*dist, hp.y+0.7, hp.z+Math.cos(ang)*dist); cam.lookAt(hp.x, hp.y+0.15, hp.z); }
       R.render(scene,cam); ctx.drawImage(R.domElement, c*FW, r*(FH+22)+22);
       ctx.fillStyle='#ddd'; ctx.font='12px monospace'; ctx.fillText(t.toFixed(2)+'s', c*FW+4, r*(FH+22)+22+FH-6);
     }
     ctx.fillStyle='#ffd866'; ctx.font='bold 14px monospace';
-    ctx.fillText(clip.name+'  '+clip.duration.toFixed(2)+'s  handPeak@'+st.handPeakT+'s footPeak@'+st.footPeakT+'s  hipsY '+st.hipsYmin+'-'+st.hipsYmax+' travel '+st.hipsTravel+'  ['+label+']', 8, r*(FH+22)+16);
+    ctx.fillText(clip.name+'  '+clip.duration.toFixed(2)+'s  handPeak@'+st.handPeakT+'s footPeak@'+st.footPeakT+'s  hipsY '+st.hipsYmin+'-'+st.hipsYmax+' travel '+st.hipsTravel+' end '+(st.hipsEnd||'')+'  ['+label+']', 8, r*(FH+22)+16);
     act.stop();
   }
   scene.remove(root);
@@ -125,7 +135,9 @@ function clipNames(file) {
       chunk(clipNames(path.join(ANIM_DIR, f)), 8).forEach((c, i) => jobs.push({ out: stem(f) + '-' + i, files: [{ file: f, clips: c }] }));
     }
   }
-  chunk(files.filter((f) => f.includes('withSkin')), 7).forEach((c, i) => jobs.push({ out: 'meshy-' + i, files: c.map((f) => ({ file: f })) }));
+  // 2026-09-25: the THIRD batch is named Meshy_AI_sniper_<Clip>.glb (no
+  // `_biped_Animation_` / `_withSkin`) — the same full-mesh exports.
+  chunk(files.filter((f) => f.includes('withSkin') || /^Meshy_AI_sniper_(?!biped_)/.test(f)), 7).forEach((c, i) => jobs.push({ out: 'meshy-' + i, files: c.map((f) => ({ file: f })) }));
   if (!jobs.length) { console.error('nothing to render'); process.exit(1); }
   const browser = await chromium.launch({
     executablePath: process.env.PW_CHROMIUM || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', headless: true,
@@ -136,6 +148,7 @@ function clipNames(file) {
   await page.goto(`http://127.0.0.1:${port}/`);
   const all = {};
   for (const j of jobs) {
+    if (args.includes('--follow')) await page.evaluate(() => { window.FOLLOW = true; });
     const stats = await page.evaluate(({ fs, v }) => renderClips(fs, v), { fs: j.files.map((f) => ({ url: '/anims/' + f.file, clips: f.clips || null, label: stem(f.file) })), v: view });
     all[j.out] = stats;
     await (await page.$('#sheet')).screenshot({ path: path.join(outDir, j.out + '.png') });

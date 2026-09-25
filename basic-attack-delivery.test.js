@@ -159,7 +159,7 @@ test('doAttack reads the delivery, never the distance, and the fist sprite is go
 
 test('the charge spells vault in (leap: true rides animateDisplacement to the renderer)', () => {
     const run = between(battle, '        function _runChargeToTargetSpell(', '        // TERRAIN × SPELL REACTIONS');
-    assert.ok(/animateDisplacement\(unit, fromX, fromY, landTile\.x, landTile\.y, chargeMs, \{ leap: true \}\)/.test(run), 'the chase-cam charge vaults');
+    assert.ok(/animateDisplacement\(unit, fromX, fromY, landTile\.x, landTile\.y, chargeMs, \{ leap: true, charge: true \}\)/.test(run), 'the chase-cam charge vaults (and sprints on RunFast)');
     assert.ok(/charges to \$\{coordLabel\(landTile\.x, landTile\.y\)\}\.`\);\s*animateDisplacement\(unit, fromX, fromY, landTile\.x, landTile\.y, 200, \{ leap: true \}\)/.test(battle), 'the post-effect hop vaults');
     const ad = between(battle, '        function animateDisplacement(unit, fromX, fromY, toX, toY, durationMs, opts) {', '        function animateDisplacementPath(');
     assert.ok(/leap: \(opts && opts\.leap !== undefined\) \? opts\.leap : undefined/.test(ad), 'animateDisplacement forwards opts.leap');

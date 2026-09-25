@@ -11248,13 +11248,20 @@ const ThreeRenderer = (function () {
             // clip slides the pelvis ~0.5 m behind the root, which put Rhonda
             // behind her chair instead of on it.
             var pinXZ = !pinHips && !!(ref && typeof ref === 'object' && ref.pinXZ);
+            // travel (THE NEW CLIPS, 2026-09-25): a clip that CARRIES THE BODY
+            // (a lunge, a leap) bakes pinned in the ground plane like pinXZ, and
+            // its source hips' forward travel becomes a 0→1 progress curve on
+            // the baked clip (_libTravelCurve) that ThreeAnim.clipTravel moves
+            // the unit group along — the board distance, the clip's timing.
+            var travel = !pinHips && !!(ref && typeof ref === 'object' && ref.travel);
+            if (travel) pinXZ = true;
             // trim [from, to] (2026-09-09, sprites.js UAL_SLOTS): bake only
             // that window of the source clip — the cowboy draw without its
             // 1.9 s of standing first, the heavy flinch without its guard.
             // Times are re-based to 0; strikeAt stays in SOURCE seconds and
             // _unitAnimStrikeMs subtracts the window's start.
             var trim = (ref && typeof ref === 'object' && Array.isArray(ref.trim) && ref.trim.length === 2) ? ref.trim : null;
-            var key = libIdx + ':' + clipName + (pinHips ? ':pin' : (pinXZ ? ':pxz' : '')) + (trim ? (':t' + trim[0] + '-' + trim[1]) : '');
+            var key = libIdx + ':' + clipName + (pinHips ? ':pin' : (pinXZ ? ':pxz' : '')) + (travel ? (':tr' + ((ref && typeof ref.strikeAt === 'number') ? ref.strikeAt : '')) : '') + (trim ? (':t' + trim[0] + '-' + trim[1]) : '');
             if (bakedByClip[key]) { out[slot] = bakedByClip[key]; return; }
             var ctx = libCtx(libIdx);
             if (!ctx) { missing.push(clipName + ' (lib ' + libIdx + ' unavailable)'); return; }
@@ -11268,6 +11275,7 @@ const ThreeRenderer = (function () {
             var nSamp = Math.max(2, Math.ceil(dur * _ANIMLIB_SAMPLE_HZ) + 1);
             var times = new Float32Array(nSamp);
             var quats = {}, hipsPos = new Float32Array(nSamp * 3);
+            var travXZ = travel ? new Float32Array(nSamp * 2) : null;
             setup.pairs.forEach(function (pr) { quats[pr.t] = new Float32Array(nSamp * 4); });
             var action = src.mixer.clipAction(srcClip);
             src.mixer.stopAllAction();
@@ -11319,6 +11327,7 @@ const ThreeRenderer = (function () {
                         setup.tgtHipsRestWp[0] + (pv.x - setup.srcHipsRestWp[0]) * setup.scaleRatio,
                         setup.tgtHipsRestWp[1] + (pv.y - setup.srcHipsRestWp[1]) * setup.scaleRatio,
                         setup.tgtHipsRestWp[2] + (pv.z - setup.srcHipsRestWp[2]) * setup.scaleRatio];
+                    if (travXZ) { travXZ[i * 2] = pv.x - setup.srcHipsRestWp[0]; travXZ[i * 2 + 1] = pv.z - setup.srcHipsRestWp[2]; }
                     if (pinXZ) { wpt[0] = setup.tgtHipsRestWp[0]; wpt[2] = setup.tgtHipsRestWp[2]; }
                     var loc = hp
                         ? _lqRotV(_lqInv(hp.wq), _lvSub(wpt, hp.wp))
@@ -11334,6 +11343,7 @@ const ThreeRenderer = (function () {
             });
             tracks.push(new THREE.VectorKeyframeTrack('Hips.position', times, hipsPos));
             var baked = new THREE.AnimationClip('EWLib_' + key, dur, tracks);
+            if (travXZ) baked.userData = { ewTravel: _libTravelCurve(times, travXZ, (ref && typeof ref.strikeAt === 'number') ? ref.strikeAt - t0 : -1) };
             bakedByClip[key] = baked;
             out[slot] = baked;
         });
@@ -11342,6 +11352,53 @@ const ThreeRenderer = (function () {
         }
         if (!only && !Object.keys(out).length) throw new Error('no library clips baked');
         return out;
+    }
+
+    /* THE TRAVEL CURVE (THE NEW CLIPS, 2026-09-25): the source hips' ground-
+       plane offset per baked sample → progress along the clip's own main
+       direction of travel (the sample farthest from the start), normalised so
+       the farthest point is 1 and clamped to [0, 1]. A lunge's curve rises
+       and comes back to ~0 (the body goes home); a leap's ends at ~1 (it
+       lands). `back` records which, `peakT` when the body is farthest. */
+    function _libTravelCurve(times, xz, strikeT) {
+        var n = times.length, far = 0, fx = 0, fz = 0, i;
+        // Measured from the FIRST baked frame, not the rest pose: a clip that
+        // opens already a step off its rest spot (a guard stance) must not
+        // jump the unit forward on frame one (seen live on Thrust_Slash).
+        var x0 = xz[0], z0 = xz[1];
+        xz = xz.slice();
+        for (i = 0; i < n; i++) { xz[i * 2] -= x0; xz[i * 2 + 1] -= z0; }
+        for (i = 0; i < n; i++) {
+            var d = xz[i * 2] * xz[i * 2] + xz[i * 2 + 1] * xz[i * 2 + 1];
+            if (d > far) { far = d; fx = xz[i * 2]; fz = xz[i * 2 + 1]; }
+        }
+        var len = Math.sqrt(far) || 1;
+        fx /= len; fz /= len;
+        var p = new Float32Array(n), peak = 0, peakT = 0;
+        for (i = 0; i < n; i++) {
+            var v = (xz[i * 2] * fx + xz[i * 2 + 1] * fz) / len;
+            p[i] = v < 0 ? 0 : (v > 1 ? 1 : v);
+            if (p[i] > peak) { peak = p[i]; peakT = times[i]; }
+        }
+        var back = p[n - 1] < 0.5;
+        /* A ONE-WAY clip lands its blow mid-flight (Rising_Flying_Kick kicks
+           at half its travel): the board's stop point is where the blow
+           lands, so the curve reaches 1 ON the strike frame and holds —
+           the rest of the clip's glide plays out on the spot. */
+        if (!back && strikeT >= 0) {
+            var pS = _travelAt({ times: times, p: p }, strikeT);
+            if (pS > 0.2 && pS < 0.999) for (i = 0; i < n; i++) p[i] = Math.min(1, p[i] / pS);
+        }
+        return { times: times, p: p, back: back, peakT: peakT };
+    }
+    function _travelAt(curve, t) {
+        var T = curve.times, P = curve.p, n = T.length;
+        if (!(t > T[0])) return P[0];
+        if (t >= T[n - 1]) return P[n - 1];
+        var lo = 0, hi = n - 1;
+        while (hi - lo > 1) { var mid = (lo + hi) >> 1; if (T[mid] <= t) lo = mid; else hi = mid; }
+        var f = (t - T[lo]) / ((T[hi] - T[lo]) || 1);
+        return P[lo] + (P[hi] - P[lo]) * f;
     }
 
     /* THE DEFERRED BAKE (THE BODY, 2026-09-24). The spell verbs (castChannel,
@@ -11606,6 +11663,12 @@ const ThreeRenderer = (function () {
             wrap.add(_rig.inner);
             entry.mixer = _rig.mixer;
             entry.actions = _rig.actions;
+            /* THE NEW CLIPS (2026-09-25): the library flags ride the kept rig
+               too — a rebuilt entry lost them, so every strike query
+               (castStrikeMs → _unitAnimStrikeMs) answered -1 after the first
+               structural rebuild and the clips fell back to start-at-launch. */
+            entry._ew_libBaked = !!_rig.libBaked;
+            entry._ew_def = _rig.libDef || null;
             entry.modelMats = _rig.modelMats;
             entry.modelSilMats = _rig.silMats;
             entry.modelOutlineMats = _rig.outlineMats || [];
@@ -11797,6 +11860,9 @@ const ThreeRenderer = (function () {
             // loop/timeScale settings — clone the clip in that case.
             function _wireSlot(name, clip, tScale) {
                 if (!clip || entry.mixer !== mixer) return;
+                // THE NEW CLIPS: r128's AnimationClip.clone() drops userData —
+                // keep a travel clip's progress curve on the ACTION.
+                var _trv = (clip.userData && clip.userData.ewTravel) || null;
                 for (var k in entry.actions) {
                     if (entry.actions[k] && entry.actions[k].getClip() === clip) { clip = clip.clone(); break; }
                 }
@@ -11818,6 +11884,7 @@ const ThreeRenderer = (function () {
                    walk pace (UAL Walking is wired at ~2×) and made every
                    real-time walker foot-skate. */
                 act._ew_ts0 = act.timeScale || 1;
+                act._ew_travel = _trv;
                 entry.actions[name] = act;
                 if (name === 'idle' && !entry._ew_curAnim) {
                     entry._ew_curAnim = 'idle';
@@ -11863,6 +11930,9 @@ const ThreeRenderer = (function () {
                     if (!baked) { _loadMeshyClips(); return; }
                     entry._ew_libBaked = true;      // the UAL_SLOTS strike table applies (see _unitAnimStrikeMs)
                     entry._ew_def = def;
+                    _rigRec.libBaked = true; _rigRec.libDef = def;
+                    var _curE = _getUnitEntry(unit.id);   // a rebuild since the bake began
+                    if (_curE && _curE !== entry && _curE.mixer === mixer) { _curE._ew_libBaked = true; _curE._ew_def = def; }
                     Object.keys(baked).forEach(function (name) {
                         _wireSlot(name, baked[name],
                             (def.libTimeScales && def.libTimeScales[name]) || 1);
@@ -11889,7 +11959,8 @@ const ThreeRenderer = (function () {
         var next = acts[name]
             || ((name === 'walk') ? acts.idle : null)
             || ((name === 'run') ? (acts.walk || acts.idle) : null)     // library-only slot
-            || ((name === 'dodge') ? acts.idle : null)                  // library-only slot
+            || ((name === 'dodge') ? (acts.dodgeRoll || acts.idle) : null)   // library-only slot (MAL3 Stand_Dodge, else the UAL roll)
+            || ((name === 'runCharge') ? (acts.run || acts.walk || acts.idle) : null)   // THE NEW CLIPS: the charge's sprint, else the run
             || ((name === 'hqRide') ? acts.idle : null)                 // SKATEBOARDING rev 2: the ride stance, else the idle
             || ((name === 'hqSkatePush') ? (acts.castKick || acts.run || acts.walk || acts.idle) : null)   // SKATEBOARDING rev 6: the push KICK (Spartan_Kick trimmed), else the board's kick slot, else the run
             || ((name === 'hqPush') ? (acts.run || acts.walk || acts.idle) : null)   // the cast's mop push, else the run
@@ -11945,7 +12016,7 @@ const ThreeRenderer = (function () {
                chain ends on the slot the kind used before — a cast in the
                first seconds of a match plays that, never nothing. */
             (kind === 'channel') ? ['castChannel', 'castMagic', 'cast'] :      // beams, drains, breath: the arm held out
-            (kind === 'call')    ? ['castSlam', 'castAOE', 'cast'] :             // summons, war cries: stomp it forth (Rail_Call cut by the playtest)
+            (kind === 'call')    ? ['castSkyward', 'castSlam', 'castAOE', 'cast'] :   // summons: arms to the sky, driven down (THE NEW CLIPS; was the stomp)
             (kind === 'reap')    ? ['castReap', 'castMelee', 'cast'] :         // steals, hooks, reaps: stoop and yank
             (kind === 'pour')    ? ['castThrow', 'castRanged', 'cast'] :       // splashes, floods: flung (Farm_Watering cut)
             (kind === 'heavySlash') ? ['castHeavySlash', 'castMelee', 'cast'] :   // the great blades: leap and cleave
@@ -11954,14 +12025,38 @@ const ThreeRenderer = (function () {
             (kind === 'guard')   ? ['castGuard', 'castSupport', 'cast'] :      // shields, armour: the brace
             (kind === 'open')    ? ['castOpen', 'castSupport', 'cast'] :       // presents, loot, wishes: open the box
             (kind === 'touch')   ? ['castTouch', 'castSupport', 'cast'] :      // runes, machines, links: reach and press
-            (kind === 'push')    ? ['castPush', 'castMelee', 'cast'] :         // shoves, waves: two-hand push
+            (kind === 'push')    ? ['castShove', 'castPush', 'castMelee', 'cast'] :   // shoves, waves: the shoulder shove (THE NEW CLIPS), else the two-hand push
             (kind === 'lantern') ? ['castLantern', 'castSupport', 'cast'] :    // scans, sights, reveals: the lamp held out
             (kind === 'phone')   ? ['castPhone', 'castSupport', 'cast'] :      // call-ins, orders: on the phone
             (kind === 'reload')  ? ['castRanged', 'cast'] :                    // ammo buffs: the draw (Pistol_Reload cut)
             (kind === 'dance')   ? ['castDance', 'castSupport', 'cast'] :      // encores, discos
             (kind === 'smug')    ? ['castSmug', 'castSupport', 'cast'] :       // untouchable self buffs: arms folded
             (kind === 'cheer')   ? ['castCheer', 'castSupport', 'cast'] :      // rallies, pep talks: thumbs up
-            (kind === 'stealth') ? ['castStealth', 'castSupport', 'cast'] : ['cast'];   // vanishes, camouflage: the crouch
+            (kind === 'stealth') ? ['castStealth', 'castSupport', 'cast'] :    // vanishes, camouflage: the crouch
+            /* THE NEW CLIPS (2026-09-25, SPELL_DIRECTOR_PLAN Phase 8): the MAL3
+               verbs (sprites.js UAL_SLOTS, lib 4, deferred). Every chain ends on
+               an eager slot the kind played before, so a rig without MAL3 (the
+               file not uploaded yet, the first seconds of a match) plays that. */
+            (kind === 'roar')    ? ['castRoar', 'castSlam', 'cast'] :          // war cries, roars, fears: the head thrown back
+            (kind === 'skyward') ? ['castSkyward', 'castAOE', 'castMagic', 'cast'] :   // storms, meteors: arms to the sky, driven down
+            (kind === 'hurl')    ? ['castHurl', 'castMagic', 'cast'] :         // the big ball: gathered overhead, thrown
+            (kind === 'nova')    ? ['castNova', 'castAOE', 'castMagic', 'cast'] :      // novas, pulses: the spin
+            (kind === 'rise')    ? ['castRise', 'castSupport', 'cast'] :       // power-ups, raise dead: crouch, rise, arm to the sky
+            (kind === 'curse')   ? ['castCurse', 'castSupport', 'cast'] :      // hexes, charms: the spin and the pointed thrust
+            (kind === 'psychic') ? ['castPsychic', 'castMagic', 'cast'] :      // mind spells: hands to the temples
+            (kind === 'smash')   ? ['castSmash', 'castChop', 'castMelee', 'cast'] :    // clubs, crushes: the overhead two-hand smash
+            (kind === 'sweep')   ? ['castSweep', 'castChop', 'castMelee', 'cast'] :    // tail whips: the low spinning sweep
+            (kind === 'jab')     ? ['castJab', 'castPunch', 'castMelee', 'cast'] :     // single punches: the jab from a guard
+            (kind === 'rally')   ? ['castRally', 'castCheer', 'castSupport', 'cast'] : // oaths, decrees: the blade to the sky
+            (kind === 'slash')   ? ['castSlash', 'castMelee', 'cast'] :        // one clean cut
+            (kind === 'doubleSlash') ? ['castDoubleSlash', 'castMeleeCombo', 'castMelee', 'cast'] :   // cross cuts: forehand, backhand
+            (kind === 'roundhouse') ? ['castRoundhouse', 'castKick', 'castMelee', 'cast'] :   // the spinning kick
+            /* the clips that CARRY THE BODY (UAL_SLOTS `travel`, ThreeAnim.clipTravel) */
+            (kind === 'thrust')  ? ['castThrust', 'castDash', 'castMelee', 'cast'] :   // spears: the lunge and back
+            (kind === 'upSlash') ? ['castUpSlash', 'castHeavySlash', 'castMelee', 'cast'] :   // the rising slash, stepping in
+            (kind === 'leapSlash') ? ['castLeapSlash', 'castHeavySlash', 'castMelee', 'cast'] :   // jump, the blade driven down
+            (kind === 'leapPunch') ? ['castLeapPunch', 'castLeap', 'castPunch', 'cast'] :   // the leap, the fist into the ground
+            (kind === 'flyKick') ? ['castFlyKick', 'castLeap', 'castKick', 'cast'] : ['cast'];   // the flying kick
     }
     /* THE STRIKE FRAME (2026-09-09). Every action slot in sprites.js
        UAL_SLOTS names `strikeAt` — the source-clip second on which the hit /
@@ -12158,6 +12253,7 @@ const ThreeRenderer = (function () {
             // teardown, snapshot restore), drop the sprint boost here.
             if (entry._ew_sprinting && !_displaceTweens.has(uid)) {
                 entry._ew_sprinting = false;
+                entry._ew_charging = false;
                 if (entry.actions && entry.actions.walk) {
                     entry.actions.walk.timeScale = entry.actions.walk._ew_ts0
                         || ((entry.modelDef && entry.modelDef.moveTimeScale) || 1);
@@ -12165,7 +12261,7 @@ const ThreeRenderer = (function () {
             }
             if (entry._ew_oneShot && now >= entry._ew_oneShot.until) entry._ew_oneShot = null;
             var want;
-            if (_deathTweens.has(uid)) want = 'death';
+            if (_deathTweens.has(uid)) want = (_deathTweens.get(uid).style === 'launch' && entry.actions && entry.actions.hitLaunch) ? 'hitLaunch' : 'death';   // THE NEW CLIPS: a heavy killing blow blows the body up
             else if (entry._ew_oneShot) want = entry._ew_oneShot.name;
             /* THE DEBRIEF (2026-09-21): a HELD pose — the result stage's victory dance / the
                defeat's kneel — plays under every one-shot and outranks the locomotion reads
@@ -12186,7 +12282,7 @@ const ThreeRenderer = (function () {
                 // animation library provides one (falls back to the boosted
                 // walk timescale the Meshy clip sets keep using).
                 want = (entry._ew_sprinting && entry.actions && entry.actions.run)
-                    ? 'run' : 'walk';
+                    ? ((entry._ew_charging && entry.actions.runCharge) ? 'runCharge' : 'run') : 'walk';
             else want = 'idle';
             if (entry._ew_animPaused) return;   // cine freeze (Blue Screen)
             if (want !== entry._ew_curAnim) _playUnitModelAnim(entry, want);
@@ -17479,7 +17575,7 @@ const ThreeRenderer = (function () {
             if (!uid) continue;
 
             if (_walkTweens.has(uid) || _displaceTweens.has(uid) || _jumpTweens.has(uid)
-                || _strikeTweens.has(uid) || _deathTweens.has(uid)) continue;
+                || _strikeTweens.has(uid) || _clipTravelTweens.has(uid) || _deathTweens.has(uid)) continue;
             var unit = _findUnit(uid);
             if (!unit || unit.dead) continue;
             if (!canFly(unit) || !isUnitAirborne(unit)) {
@@ -18656,6 +18752,11 @@ const ThreeRenderer = (function () {
            per-segment hop wherever consecutive waypoints step a level
            (`hops`) — the dash line over a step, a pool-ball rebound onto a
            ledge. The clip picker plays `jump` while `_air` is set. */
+        /* THE NEW CLIPS (2026-09-25): `ts` was never declared in this
+           function — every vault (a charge's leap, a slide onto another
+           level, a flyer carried by a tackle) threw a ReferenceError and the
+           slide never played (found live on Sky Tackle vs a ghost). */
+        var ts = CONFIG.tileSize || BASE_TILE;
         var _dpLeap = null, _dpHops = false;
         var _dpWantLeap = (opts && opts.leap === true);
         var _dpNoLeap = (opts && opts.leap === false);
@@ -18705,6 +18806,9 @@ const ThreeRenderer = (function () {
         if (_dpDist >= 2 && entry && entry.mixer && entry.actions && entry.actions.walk) {
             entry._ew_oneShot = null;
             entry._ew_sprinting = true;
+            /* THE NEW CLIPS (2026-09-25): a charge spell sprints on the MAL3
+               RunFast clip ('runCharge'), a plain dash keeps the run. */
+            entry._ew_charging = !!(opts && opts.charge);
             entry.actions.walk.timeScale = (entry.actions.walk._ew_ts0
                 || ((entry.modelDef && entry.modelDef.moveTimeScale) || 1)) * 1.15;
         }
@@ -18791,6 +18895,7 @@ const ThreeRenderer = (function () {
             if (t >= 1) {
                 if (ue && ue._ew_sprinting) {
                     ue._ew_sprinting = false;
+                    ue._ew_charging = false;
                     if (ue.actions && ue.actions.walk) {
                         ue.actions.walk.timeScale = ue.actions.walk._ew_ts0
                             || ((ue.modelDef && ue.modelDef.moveTimeScale) || 1);
@@ -19063,6 +19168,126 @@ const ThreeRenderer = (function () {
         }
         for (var r = 0; r < toRemove.length; r++) _strikeTweens.delete(toRemove[r]);
         if (toRemove.length) _shadowsDirty = true;   // THE STATIC SHADOW: a landing refreshes the field's depth pass
+    }
+
+    /* ── THE CLIP TRAVEL (THE NEW CLIPS, 2026-09-25) ──────────────────────
+       A MAL3 travel clip (sprites.js UAL_SLOTS `travel: true` — Thrust_Slash,
+       Jumping_Punch, Rising_Flying_Kick…) CARRIES the body itself: the bake
+       pins it in the ground plane and keeps its progress curve (0 = where it
+       started, 1 = the farthest it gets). This tween moves the unit group
+       from its tile to the stop point ALONG that curve, sampled from the
+       playing action's own time — so the board distance is the spell's, the
+       timing (wind-up, jump, strike, the walk home) is the animator's, and
+       there is never a board leap/lunge on top of a clip that already leaps.
+       It waits for the one-shot to start (battle.js starts the clip
+       castStrikeMs early so its strike frame lands on the launch), then
+       follows it; when no travel clip plays (a sprite, a rig without MAL3,
+       animations off) it runs a plain eased move instead. `oneWay` callers
+       have ALREADY moved the unit logically (leap strikes, charges): the
+       group ends on the unit's rest spot either way. ── */
+    var _clipTravelTweens = new Map();
+
+    function startClipTravelTween(unit, toX, toY, opts) {
+        if (!unit) return false;
+        opts = opts || {};
+        var fromX = (opts.fromX != null) ? opts.fromX : unit.x;
+        var fromY = (opts.fromY != null) ? opts.fromY : unit.y;
+        var fromSY;
+        if (opts.fromZ != null) fromSY = _tileSurfaceY(fromX, fromY, opts.fromZ);
+        else { try { fromSY = unitSurfaceY(unit); } catch (e) { fromSY = _tileSurfaceY(fromX, fromY); } }
+        var toSY = (opts.toZ != null) ? _tileSurfaceY(toX, toY, opts.toZ) : _tileSurfaceY(toX, toY);
+        var _ctTarget = (opts.targetId != null) ? _findUnit(opts.targetId) : null;
+        if (_ctTarget && !_ctTarget.dead && !opts.oneWay) { try { toSY = unitSurfaceY(_ctTarget); } catch (e) {} }
+        // stopShort (tiles): a lunge holds BESIDE its victim, never in it.
+        var landX = toX, landY = toY;
+        var stopShort = opts.stopShort > 0 ? opts.stopShort : 0;
+        if (stopShort > 0) {
+            var dx = toX - fromX, dy = toY - fromY, len = Math.sqrt(dx * dx + dy * dy);
+            if (len > 1e-6) {
+                var back = Math.min(stopShort, Math.max(0, len - 0.1));
+                landX = toX - (dx / len) * back;
+                landY = toY - (dy / len) * back;
+            }
+        }
+        _clipTravelTweens.set(unit.id, {
+            fromX: fromX, fromY: fromY, fromSY: fromSY,
+            toX: landX, toY: landY, toSY: toSY,
+            startTime: _animNow(),
+            waitMs: opts.waitMs > 0 ? opts.waitMs : 1500,
+            fallbackMs: opts.fallbackMs > 0 ? opts.fallbackMs : 520,
+            oneWay: !!opts.oneWay,
+            act: null, curve: null, shot: null,
+            fbStart: 0, landed: false
+        });
+        var entry = _getUnitEntry(unit.id);
+        if (entry && entry.group) entry.group.visible = true;
+        return true;
+    }
+
+    /* The travel curve of the slot a cast of `kind` would play on this unit
+       right now (the first slot of _castChainFor the rig carries — the same
+       pick _maybeStartModelAnim makes), or null: battle.js asks BEFORE it
+       schedules a board leap, and skips the leap when the clip travels. */
+    function castTravels(uid, kind) {
+        if (_ewAnimsOff()) return null;
+        var ue = _getUnitEntry(uid);
+        if (!ue || !ue.mixer || !ue.actions) return null;
+        var chain = _castChainFor(kind);
+        for (var i = 0; i < chain.length; i++) {
+            var a = ue.actions[chain[i]];
+            if (a) return a._ew_travel ? { back: !!a._ew_travel.back, slot: chain[i] } : null;
+        }
+        return null;
+    }
+
+    function _updateClipTravelTweens() {
+        if (_clipTravelTweens.size === 0) return;
+        var now = _animNow();
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var toRemove = [];
+        for (var e of _clipTravelTweens) {
+            var uid = e[0], tw = e[1];
+            var ue = _getUnitEntry(uid);
+            var unit = _unitById.get(uid) || _findUnit(uid);
+            if (!ue || !ue.group || !unit || unit.dead) { toRemove.push(uid); continue; }
+            // Another board move took the body (a tackle's carry, a knockback):
+            // it owns the group now — let go without snapping.
+            if (_displaceTweens.has(uid) || _strikeTweens.has(uid) || _throwTweens.has(uid) || _walkTweens.has(uid)) { toRemove.push(uid); continue; }
+            var p = null, done = false;
+            if (!tw.curve && !tw.fbStart) {
+                var os = ue._ew_oneShot;
+                var oa = (os && ue.actions) ? ue.actions[os.name] : null;
+                if (oa && oa._ew_travel) { tw.act = oa; tw.curve = oa._ew_travel; tw.shot = os; }
+                else if (now - tw.startTime > tw.waitMs) tw.fbStart = now;
+                else continue;   // the clip hasn't started: the body stays home
+            }
+            if (tw.curve) {
+                p = _travelAt(tw.curve, tw.act.time);
+                if (ue._ew_oneShot !== tw.shot || tw.act.time >= tw.curve.times[tw.curve.times.length - 1] - 1e-3) done = true;
+            } else {
+                var ft = Math.min((now - tw.fbStart) / tw.fallbackMs, 1);
+                p = tw.oneWay ? _easeInOut(ft) : Math.sin(ft * Math.PI);
+                if (ft >= 1) done = true;
+            }
+            var wx = (tw.fromX + (tw.toX - tw.fromX) * p) * ts + ts / 2;
+            var wz = (tw.fromY + (tw.toY - tw.fromY) * p) * ts + ts / 2;
+            var wy = tw.fromSY + (tw.toSY - tw.fromSY) * p;
+            ue.group.position.set(wx, wy, wz);
+            ue.group._ew_spriteTopY = wy + (ts * UNIT_SPRITE_SIZE_RATIO) + 4;
+            if (tw.oneWay && !tw.landed && p > 0.97) {
+                tw.landed = true;
+                if (ue.group.visible) _spawnGroundPuff(Math.round(tw.toX), Math.round(tw.toY), 6, { vxy: 150 });
+            }
+            if (done) {
+                var rest = _unitRestPos(unit);
+                ue.group.position.set(rest.x, rest.y, rest.z);
+                ue.group._ew_spriteTopY = rest.y + (ts * UNIT_SPRITE_SIZE_RATIO) + 4;
+                ue._ew_landAt = now;
+                toRemove.push(uid);
+            }
+        }
+        for (var r = 0; r < toRemove.length; r++) _clipTravelTweens.delete(toRemove[r]);
+        if (toRemove.length) _shadowsDirty = true;
     }
 
     var _throwTweens = new Map();
@@ -19416,6 +19641,12 @@ const ThreeRenderer = (function () {
             startTime: _animNow(),
             durationMs: _isModelDeath ? MODEL_DEATH_MS : DEATH_MS,
             isModel: _isModelDeath,
+            /* THE NEW CLIPS (2026-09-25): battle.js marks a heavy physical
+               killing blow in state._deathStyleById (a plain id → string map,
+               so it rides state-sync to the guest); 'launch' plays MAL3
+               BeHit_FlyUp instead of the knock-down. */
+            style: (typeof state !== 'undefined' && state && state._deathStyleById
+                && state._deathStyleById[unitId]) || null,
             group: entry.group,
             startX: entry.group.position.x,
             startY: entry.group.position.y
@@ -20591,6 +20822,8 @@ const ThreeRenderer = (function () {
                     // A zero-damage block raises the shield instead (battle.js
                     // tags the flash 'block' when the hit is fully absorbed).
                     if (_hk === 'hit' && !_deathTweens.has(uid)) _maybeStartModelAnim(uid, ['hit']);
+                    else if (_hk === 'hitShot' && !_deathTweens.has(uid)) _maybeStartModelAnim(uid, ['hitShot', 'hit']);   // THE NEW CLIPS: a bullet jolts the body
+                    else if (_hk === 'hitSlap' && !_deathTweens.has(uid)) _maybeStartModelAnim(uid, ['hitSlap', 'hit']);   // a fist / claw / kick knocks the head aside
                     else if (_hk === 'hitHeavy' && !_deathTweens.has(uid)) _maybeStartModelAnim(uid, ['hitHeavy', 'hit']);   // crit / super effective — big reel
                     else if (_hk === 'block' && !_deathTweens.has(uid)) _maybeStartModelAnim(uid, ['block', 'hit']);
                     else if (_hk === 'guardBreak' && !_deathTweens.has(uid)) _maybeStartModelAnim(uid, ['hitStagger', 'hitHeavy', 'hit']);   // THE BODY: the shield broke — reel back
@@ -21304,6 +21537,7 @@ const ThreeRenderer = (function () {
         _updateStrikeTweens();
         _updateCarryHolds();
         _updateThrowTweens();
+        _updateClipTravelTweens();
         _updateDeathTweens();
         _updateKeyFx();
         _updateProjectileTweens();
@@ -21335,6 +21569,7 @@ const ThreeRenderer = (function () {
         _castTweens.clear();
         _flashTweens.clear();
         _strikeTweens.clear();
+        _clipTravelTweens.clear();
         _prevAttackIds.clear();
         _prevCastIds.clear();
         _prevDodgeIds.clear();
@@ -32529,7 +32764,7 @@ const ThreeRenderer = (function () {
                rebuilds (deaths/respawns need them), and the snap it guards
                against is invisible anyway because _rtTick/_freeRoamTick
                reapply float positions on the very next frame. */
-            if (_walkTweens.size > 0 || _jumpTweens.size > 0 || _displaceTweens.size > 0 || _deathTweens.size > 0 || _strikeTweens.size > 0 || (_freeRoam && !_rtMode)) {
+            if (_walkTweens.size > 0 || _jumpTweens.size > 0 || _displaceTweens.size > 0 || _deathTweens.size > 0 || _strikeTweens.size > 0 || _clipTravelTweens.size > 0 || (_freeRoam && !_rtMode)) {
                 /* Structural rebuilds must wait for tweens to settle (a rebuild
                    would snap positions), but plate stats are DOM-only — patch
                    them live so damage still drains the HP bar mid-animation.
@@ -33157,6 +33392,7 @@ const ThreeRenderer = (function () {
         if (_displaceTweens.size > 0) return true;
         if (_jumpTweens.size > 0) return true;
         if (_strikeTweens.size > 0) return true;
+        if (_clipTravelTweens.size > 0) return true;
         if (_deathTweens.size > 0) return true;
         return false;
     }
@@ -55684,7 +55920,7 @@ const ThreeRenderer = (function () {
 
         showIntentBadges, clearIntentBadges, worldToScreen,
 
-        startWalkTween, startDisplaceTween, startJumpTween, startStrikeLeapTween, startThrowArcTween, startDeathTween,
+        startWalkTween, startDisplaceTween, startJumpTween, startStrikeLeapTween, startClipTravelTween, castTravels, startThrowArcTween, startDeathTween,
         startCarryHoldTween, endCarryHold, hasCarryHold,
         setTimeWarp,
         /* THE STRIKE FRAME (2026-09-09): played-ms into the clip the unit's
@@ -55765,6 +56001,17 @@ const ThreeRenderer = (function () {
         clickAtScreen: _screenClick,
         setUnderfootTile,
         getCanvas: function () { return canvas; },
+        /* THE NEW CLIPS probe hook (playtest_clips.js): a unit's live anim
+           state — group position, the playing slot + its clip time, the
+           library flags, and whether a clip-travel tween holds the body. */
+        devUnitAnim: function (uid) {
+            var e = _getUnitEntry(uid); if (!e) return null;
+            var ct = _clipTravelTweens.get(uid), os = e._ew_oneShot;
+            return { pos: e.group ? [e.group.position.x, e.group.position.y, e.group.position.z] : null,
+                cur: e._ew_curAnim || null, shot: os ? os.name : null,
+                at: (os && e.actions && e.actions[os.name]) ? +e.actions[os.name].time.toFixed(2) : null,
+                lib: !!e._ew_libBaked, travel: ct ? (ct.curve ? 'clip' : (ct.fbStart ? 'fallback' : 'waiting')) : null };
+        },
         /* World-space rendered height of a unit's model (same target height
            the GLB is scaled to) — Strike Mode anchors its shoulder camera to
            this so short and tall characters get identical framing. */
@@ -55933,6 +56180,19 @@ window.ThreeAnim = {
 
     strikeLeap: function(unit, tx, ty, opts) {
         if (ThreeRenderer.isActive()) ThreeRenderer.startStrikeLeapTween(unit, tx, ty, opts);
+    },
+
+    /* THE CLIP TRAVEL (2026-09-25): the body rides its travel clip's own
+       curve to (tx, ty) — see startClipTravelTween. castTravels(unit, kind)
+       says whether a cast of that kind would play such a clip right now
+       ({back} — a lunge that comes home — or null). */
+    clipTravel: function(unit, tx, ty, opts) {
+        if (!ThreeRenderer.isActive()) return false;
+        return ThreeRenderer.startClipTravelTween(unit, tx, ty, opts);
+    },
+    castTravels: function(unit, kind) {
+        if (!unit || !ThreeRenderer.isActive()) return null;
+        try { return ThreeRenderer.castTravels(unit.id, kind); } catch (_e) { return null; }
     },
 
     /* Lift → hang → fling → impact arc for thrown/dropped units (skyThrow &

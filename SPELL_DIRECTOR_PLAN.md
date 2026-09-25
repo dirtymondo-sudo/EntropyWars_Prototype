@@ -480,6 +480,15 @@ Wire the user's new animations (§6) as `UAL_SLOTS` / MAL3 slots through the
 anim router, read their strike frames, and hand the reactions to the victim
 side of every family director.
 
+**DONE 2026-09-25 (first batch):** 31 clips → `MAL3_Sniper.glb` (library 4),
+20 new cast verbs, five TRAVELLING clips that carry the body themselves
+(`ThreeAnim.clipTravel` rides the clip's own progress curve — the board
+leap / leap arc / sprint steps aside), hitShot / hitSlap / the launch death,
+Stand_Dodge, the RunFast charge. Details: docs/notes/spells-vfx.md "THE NEW
+CLIPS". Still wanted from §6 below: Beam_Channel, Summon_Circle,
+Blink_Vanish, the gun clips, Drain_Pull, Telekinesis, Levitate, Prayer, a
+get-up — see the reply of that delivery.
+
 ---
 
 ## 6. The 30 animations to create (for the user)

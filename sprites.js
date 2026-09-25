@@ -579,28 +579,24 @@ const SPELL_ANIM_VERBS = {
     'raceAbductionBeam', 'raceStasisBeam', 'sharedShrinkRay', 'raceSonicBreaker', 'racePlasmaCannon',
     'raceDrainingEmbrace', 'raceHellmouth', 'raceLaserBeam', 'raceDragonfire', 'raceAtomicBreath',
     'raceFractalNeedle', 'raceDeathGaze'],
-  call: ['warCry', 'raceWhistle', 'raceSummonCreation', 'raceCultSermon', 'raceCultGathering', 'raceSwarmSignal',
-    'raceKnightsOfRound', 'raceSirenSong', 'raceRaiseDead', 'raceCallOfTheDeep', 'raceShamblingHorde',
-    'raceWalkThePlank'],
+  call: ['raceWhistle', 'raceSummonCreation', 'raceCultSermon', 'raceCultGathering', 'raceSwarmSignal',
+    'raceSirenSong', 'raceCallOfTheDeep', 'raceWalkThePlank'],
   reap: ['raceHarvestHook', 'raceHitALick', 'raceCultTithe', 'raceStealFromRich', 'raceWeighTheHeart',
     'raceSpellsteal', 'raceEarthenGrasp'],
   pour: ['raceCultKoolAid', 'raceFluorideWater', 'raceSplash', 'raceCorrosiveSplash', 'racePoliceSpray',
     'raceOozeTrail', 'raceFlood', 'sharedPoisonSwamp', 'raceTidalBlessing', 'raceOvercharge', 'raceFairyDust'],
-  heavySlash: ['dragonSlash', 'raceExcaliburStrike', 'raceBlessedBlade', 'judgment'],
-  hook: ['skullCrack', 'racePoliceNightstick', 'raceTailWhip', 'raceDinoTailWhip', 'racePlasmaWhip',
-    'raceTendrilStrike', 'raceSasquatchSmash', 'raceColossalCrush', 'racePrimalSmash', 'raceElbowGrease',
-    'raceWingGust', 'raceAvalancheStrike', 'raceTentacleLash', 'raceNoMercy'],
-  leap: ['raceStoneDrop', 'racePredatorDrop', 'raceTitanDrop', 'raceCliffCharge', 'raceSeismicLeap',
-    'raceHeroicLeap', 'raceFeralDive', 'racePredatorLeap', 'raceDivineSwoop', 'raceDescendingWrath', 'raceAbduction'],
+  heavySlash: ['raceBlessedBlade'],
+  hook: ['racePlasmaWhip', 'raceTendrilStrike', 'raceElbowGrease', 'raceTentacleLash'],
+  leap: ['raceStoneDrop', 'racePredatorDrop', 'raceDescendingWrath', 'raceAbduction'],
   guard: ['fortify', 'protect1', 'raceStoneform', 'raceChivalry', 'raceIronBulwark', 'raceStoneSkin',
     'raceThickHide', 'raceChitinArmor', 'sentaiBlackGuard', 'racePsychicBarrier', 'raceSiegeMode',
     'raceSymbioteArmor', 'shieldBash', 'raceShieldWall', 'raceHolyBulwark', 'raceShieldMaiden',
     'raceLuminousShield', 'racePleiadianShield', 'raceAstralBarrier', 'racePupilShield'],
   open: ['raceBlizzardPresent', 'raceWishGranted', 'racePlunder'],
-  touch: ['raceTuneFrequency', 'racePrismMirror', 'raceNeuralHack', 'raceMemoryLeak', 'raceBlueScreen',
+  touch: ['raceTuneFrequency', 'racePrismMirror', 'raceNeuralHack', 'raceBlueScreen',
     'raceSystemAnalysis', 'raceVoodoo', 'raceSoulBind', 'raceFederationBeacon', 'fiveGTower',
     'raceClockworkTurret', 'raceCloneDecoy', 'raceGravityBoots', 'raceOvertinker', 'raceFirewallProtocol',
-    'raceTelepathicLink', 'raceTarotDraw', 'raceZigguratProtocol', 'freeEnergy', 'racePoliceCuffs'],
+    'raceTarotDraw', 'raceZigguratProtocol', 'freeEnergy', 'racePoliceCuffs'],
   push: ['raceBodyCheck', 'raceShockwaveClap', 'raceTsunami', 'sharedTidalSurge'],
   lantern: ['raceOmniVision', 'raceCosmicSight', 'raceRangefinder', 'racePredictiveModel', 'racePopSpotlight',
     'raceRedEyes', 'raceCrystalBall'],
@@ -610,8 +606,7 @@ const SPELL_ANIM_VERBS = {
   dance: ['encore', 'racePopEncore', 'raceEndZoneDance', 'raceSpaceDisco', 'racePopStadiumShow'],
   smug: ['racePlotArmor', 'raceInvulnerable', 'raceTinFoilHat', 'raceGrimResolve', 'raceSadBackstory',
     'raceUnderdogSpirit', 'raceIndomitableWill'],
-  cheer: ['jackOfAll', 'raceOathOfValor', 'raceAudible', 'raceRoyalDecree', 'raceYoHo', 'raceHallelujah',
-    'raceMeow'],
+  cheer: ['jackOfAll', 'raceAudible', 'raceHallelujah', 'raceMeow'],
   stealth: ['camouflage', 'raceAgentVanish', 'raceCryptidVanish', 'raceCorpseCrawl', 'raceTreelineRetreat',
     'raceForestAmbush', 'raceNimbleDodge', 'raceShedSkin', 'raceDeepDive'],
   // the verbs that already had a slot, now claimed by name
@@ -619,13 +614,51 @@ const SPELL_ANIM_VERBS = {
   consume: ['raceMonsterSerum', 'raceAdrenalineRush'],
   claw: ['raceJurassicJaw', 'raceMandibleStrike', 'raceAmbushLunge', 'raceTerrorPounce', 'racePounce',
     'raceBloodFrenzy', 'raceFrenzy', 'raceZombieRush'],
-  punch: ['raceDragonFist', 'raceFlurryOfBlows', 'raceDarkJustice'],
+  punch: ['raceFlurryOfBlows'],
   // the charges ran the old melee swing on arrival (chargeToTarget beat
   // their `dash` / `tackle` kind): the shoulder-check is what a charge lands
   tackle: ['raceGoreCharge', 'raceApexCharge', 'raceRamCharge', 'raceUnstoppableCharge', 'raceBullRush',
-    'raceBlitz', 'raceSkyTackle', 'racePopStageDive'],
-  dash: ['raceDarkFeather', 'raceShadowInfiltration', 'raceValkyrieSpear'],   // the low lunging stab (a spear thrust)
+    'raceBlitz'],
+  dash: ['raceDarkFeather', 'raceShadowInfiltration'],   // the low lunging stab (a spear thrust)
   throw: ['sharedSmokeScreen'],
+  // ── THE NEW CLIPS (2026-09-25, SPELL_DIRECTOR_PLAN Phase 8): mondo's third
+  // Meshy batch, consolidated into MAL3_Sniper.glb (lib 4). Each verb was
+  // assigned from the clip SEEN (anim-sheets.js --follow, the in-game viewer),
+  // not its file name. The slots and their strike frames are in UAL_SLOTS.
+  roar: ['warCry', 'raceApexRoar', 'raceDemonicRoar', 'raceLabyrinthRoar', 'raceDragonfear', 'raceFear',
+    'raceDreadAura', 'raceDeafeningWail', 'racePrimalRoar', 'raceHowl', 'raceChestPound', 'raceBoo'],
+  skyward: ['thunderstorm', 'sharedSummonBlizzard', 'sharedSummonBloodRain', 'sharedSummonSandstorm', 'meteor',
+    'raceStarDecree', 'raceCataclysmDecree', 'raceProphecyOfDisaster', 'raceCrowStorm', 'raceWhiteChristmas',
+    'raceKnightsOfRound'],
+  hurl: ['fire1', 'sentaiMegazordBlast', 'raceHeatDeath', 'raceDivineSmite', 'raceAncientMagic', 'raceHocusPocus',
+    'exorcism', 'raceMerkaba', 'raceRealityPulse', 'sharedNebula', 'raceDarkDominion', 'raceBaphometsRite'],
+  nova: ['raceToxicNova', 'racePhotonScatter', 'raceNightmarePulse', 'raceResonancePulse', 'raceSupernova',
+    'empBurst', 'requiem', 'racePoseidonsWrath', 'raceWingGust'],
+  rise: ['raceKiCharge', 'raceAwakening', 'raceHellfireCrown', 'raceInnerDemon', 'raceTransform', 'raceAbyssalWings',
+    'raceNitroBoost', 'raceApeFury', 'raceBloodRitual', 'raceDeathPact', 'raceOvercalculate', 'raceProphecyFulfilled',
+    'raceMimicry', 'raceMitosisSplit', 'raceRaiseDead', 'raceShamblingHorde'],
+  curse: ['discordance', 'provoke', 'raceAnchor', 'raceCalcify', 'raceCharm', 'raceContract',
+    'raceCurseOfMisfortune', 'raceHaunt', 'raceInfernalConscription', 'raceNaughtyList', 'racePolymorph',
+    'sharedHexOfToil', 'raceStarCrossed', 'raceCultIndoctrinate', 'racePossession', 'raceShadowRealm'],
+  psychic: ['mindShatter', 'raceMindCrush', 'raceBrainwash', 'psychosis', 'raceHypnoticPulse', 'raceDeneuralizer',
+    'raceEnthrall', 'raceTelepathicLink', 'raceSleepParalysis', 'sharedEgoDeath', 'raceBadTrip', 'raceMemoryLeak'],
+  smash: ['raceSasquatchSmash', 'raceColossalCrush', 'racePrimalSmash', 'skullCrack', 'raceAvalancheStrike',
+    'raceNoMercy', 'racePoliceNightstick', 'raceHydraulicCrush', 'raceGiantSmash'],
+  sweep: ['raceTailWhip', 'raceDinoTailWhip'],
+  jab: ['raceRoboPunch', 'raceFrozenPunch', 'raceHydraulicPunch', 'reallyGoodPunch', 'raceRocketFist', 'haymaker'],
+  rally: ['raceOathOfValor', 'raceRoyalDecree'],
+  slash: ['sentaiRedSlash', 'raceSyntheticBlade', 'sneakSlash'],
+  doubleSlash: ['crossSlash', 'bladeWaltz'],
+  roundhouse: ['raceBigKick'],
+  // the clips that CARRY THE BODY (UAL_SLOTS `travel`): the clip's own
+  // run / jump / lunge moves the unit, so the board's strike leap, dive arc
+  // or sprint is skipped for these (battle.js _clipOwnsTravel)
+  thrust: ['raceValkyrieSpear'],
+  upSlash: ['dragonSlash'],
+  leapSlash: ['judgment', 'raceExcaliburStrike'],
+  leapPunch: ['raceSeismicLeap', 'raceTitanDrop', 'raceCliffCharge', 'raceHeroicLeap', 'raceDragonFist',
+    'raceDarkJustice'],
+  flyKick: ['racePredatorLeap', 'raceFeralDive', 'raceDivineSwoop', 'raceSkyTackle', 'racePopStageDive'],
 };
 const _SPELL_VERB_BY_ID = {};
 for (const _v in SPELL_ANIM_VERBS) for (const _id of SPELL_ANIM_VERBS[_v]) _SPELL_VERB_BY_ID[_id] = _v;
@@ -762,6 +795,13 @@ const EW_ANIM_LIB_URLS = [
   // bake skips lib-3 slots and every fallback chain covers them — wiring is
   // safe to ship ahead of the asset.
   'https://cdn.entropywars.net/Assets/Models/MAL2_Sniper.glb',
+  // lib 4 — MAL3_Sniper.glb (2026-09-25, SPELL_DIRECTOR_PLAN Phase 8 THE NEW
+  // CLIPS): mondo's third Meshy batch (31 exports named
+  // Meshy_AI_sniper_<Clip>.glb — no `_biped_Animation_` / `_withSkin`),
+  // consolidated with build_mal2.js. Clip names are the file stems, typos
+  // kept (mage_soell_cast_*, Right_Hand_Sword_Slas). Until the file is on R2
+  // the lib-4 slots skip and every chain falls back as before.
+  'https://cdn.entropywars.net/Assets/Models/MAL3_Sniper.glb',
 ];
 
 // Game slot → library clip (+ which library file) + timeScale. Durations are
@@ -808,7 +848,16 @@ const UAL_SLOTS = {
   // dodge: UAL1 Roll 1.47s (→0.61s) — a real dive-and-tumble evade; Block3
   // (the old slot) is a static two-hand GUARD, it never moved. pinXZ keeps
   // the roll over the tile (the dodge tween owns the sidestep).
-  dodge:       { clip: 'Roll',                   lib: 0, ts: 2.4, pinXZ: true },
+  // dodge (2026-09-25): MAL3 Stand_Dodge — the Matrix lean-back, the body
+  // bent away 0.4–0.8 s and upright by 1.1 s, in place (pinXZ; the dodge
+  // tween owns the sidestep). The old UAL1 Roll stays as dodgeRoll, the
+  // fallback while MAL3 is missing (three-renderer.js _playUnitModelAnim).
+  dodge:       { clip: 'Stand_Dodge',            lib: 4, ts: 2.2, pinXZ: true },
+  dodgeRoll:   { clip: 'Roll',                   lib: 0, ts: 2.4, pinXZ: true },
+  // runCharge (2026-09-25): MAL3 RunFast — the head-down sprint, in place
+  // (0 net hips travel). The chargeToTarget sprint plays it instead of the
+  // jog (three-renderer.js startDisplaceTween `charge`); falls back to run.
+  runCharge:   { clip: 'RunFast',                lib: 4, ts: 1.0 },
   hit:         { clip: 'Hit_Reaction_1',         lib: 2, ts: 2.1  },
   death:       { clip: 'Dead',                   lib: 2, ts: 1.9  },
   cast:        { clip: 'Spell_Simple_Shoot',     lib: 0, ts: 0.5, strikeAt: 0.05 },
@@ -945,6 +994,93 @@ const UAL_SLOTS = {
   castCheer:      { clip: 'Yes',                 lib: 1, ts: 1.0, trim: [0, 1.4],   strikeAt: 0.50, defer: true },
   castStealth:    { clip: 'Crouch_Idle_Loop',    lib: 0, ts: 1.0, trim: [0, 1.3],   strikeAt: 0.30, pinXZ: true, defer: true },
   hitStagger:     { clip: 'Idle_Shield_Break',   lib: 1, ts: 1.0, pinXZ: true, defer: true },
+  // ── THE NEW CLIPS (2026-09-25, SPELL_DIRECTOR_PLAN Phase 8) — MAL3 (lib 4),
+  // deferred like THE BODY's verbs. Every clip was WATCHED first (anim-sheets.js
+  // --follow: the camera tracks the hips, so a clip that travels stays in
+  // frame) and its strike read off an FK table of the hands / feet / hips, not
+  // the file name (Skill_01 is a roar, Headache_Relief the psychic strain,
+  // mage_soell_cast_2 the sky-call, Sword_Shout the blade raised to the sky).
+  // Source seconds as everywhere above; each played window ≤ 1.4 s.
+  //   castRoar      Skill_01 — rise with the arms up 0.1–0.4, DROP into a wide
+  //                 stance, head thrown back, arms out 0.5 (war cries, roars, fears)
+  //   castSkyward   mage_soell_cast_2 — a half spin, both arms to the sky 1.0,
+  //                 then DRIVEN down to the ground 1.35 (storms, meteors, call-downs)
+  //   castHurl      mage_soell_cast_1 — step in, both arms gathered OVERHEAD
+  //                 0.9–2.2, the two-hand throw forward 2.5 (the big thrown ball)
+  //   castNova      mage_soell_cast_4 — arms up, then a spin with the arms flung
+  //                 out 0.6–0.8 (novas, pulses around the caster)
+  //   castRise      mage_soell_cast_6 — crouch 0.4–0.7, rise with one arm to the
+  //                 sky 1.1 (power-ups, transforms, raise the dead)
+  //   castCurse     Skill_03 — a leaping spin, then the lunge with the arm
+  //                 THRUST at the victim 1.2 (hexes, charms, marks)
+  //   castPsychic   Headache_Relief — both hands at the temples straining
+  //                 0.3–2.6, then flung away 2.85 (mind spells)
+  //   castSmash     Heavy_Hammer_Swing — crouch, both arms overhead 1.0–1.2, the
+  //                 two-hand SMASH down 1.5 (clubs, crushes, gorilla smashes)
+  //   castSweep     Sweeping_Kick — drop low, the 360° leg sweep along the
+  //                 ground 1.1–1.5 (tail whips)
+  //   castJab       Right_Jab_from_Guard — the jab from a boxer's guard 0.58,
+  //                 a small step in and back (kept: it is the punch's weight)
+  //   castShove     Shield_Push_Left — crouch 0.7–1.0, the shoulder SHOVE 1.15
+  //                 (the push verb's lead; Push_Loop stays as its fallback)
+  //   castRally     Sword_Shout — step in, the blade raised to the sky 1.2–2.2
+  //                 (oaths, decrees)
+  //   castSlash     Right_Hand_Sword_Slas — one forehand cut 0.6
+  //   castDoubleSlash Charged_Slash — forehand 0.5, backhand 1.2 (cross cuts)
+  //   castRoundhouse Roundhouse_Kick — the spinning jump kick 1.42 (pinXZ: the
+  //                 export drifts 1.9 hips SIDEWAYS)
+  // `travel: true` — the clips that CARRY THE BODY. The bake pins the hips over
+  // the tile (pinXZ: the vertical hop / crouch stays in the clip) and keeps
+  // the export's forward travel as a 0→1 PROGRESS CURVE on the baked clip
+  // (three-renderer.js _libTravelCurve). ThreeAnim.clipTravel then moves the
+  // unit group from the caster's tile to the stop point ON THAT CURVE, read
+  // off the playing action's own time — the body goes exactly as far as the
+  // board needs, on the clip's own feet, and nothing else leaps. A curve that
+  // comes back (the lunges) brings the body home; a one-way curve lands it.
+  //   castThrust    Thrust_Slash — the lunge 0.3–0.9, the THRUST 0.85, a slash,
+  //                 back home by 2.7 (spears)
+  //   castUpSlash   Charged_Upward_Slash — step in 0.8–1.5, the rising slash
+  //                 1.08, back by 2.4 (dragon slash)
+  //   castLeapSlash Sword_Judgment — crouch, the jump 0.7–1.0, the blade DRIVEN
+  //                 down kneeling 1.22 (Judgment, Excalibur)
+  //   castLeapPunch Jumping_Punch — a hop, the big jump 0.6–1.6, the fist into
+  //                 the ground 1.72, one way (seismic leaps, heroic leaps)
+  //   castFlyKick   Rising_Flying_Kick — straight up into the flying kick
+  //                 0.4–0.6, landed by 0.9, one way (predator leaps, sky tackles)
+  castRoar:       { clip: 'Skill_01',            lib: 4, ts: 0.82,                  strikeAt: 0.50, pinXZ: true, defer: true },
+  castSkyward:    { clip: 'mage_soell_cast_2',   lib: 4, ts: 1.4,  trim: [0.2, 2.1],  strikeAt: 1.35, defer: true },
+  castHurl:       { clip: 'mage_soell_cast_1',   lib: 4, ts: 1.85, trim: [0.4, 2.95], strikeAt: 2.50, pinXZ: true, defer: true },
+  castNova:       { clip: 'mage_soell_cast_4',   lib: 4, ts: 1.2,  trim: [0.15, 1.75], strikeAt: 0.68, defer: true },
+  castRise:       { clip: 'mage_soell_cast_6',   lib: 4, ts: 1.3,  trim: [0.1, 1.9],  strikeAt: 1.10, pinXZ: true, defer: true },
+  castCurse:      { clip: 'Skill_03',            lib: 4, ts: 1.2,                   strikeAt: 1.20, pinXZ: true, defer: true },
+  castPsychic:    { clip: 'Headache_Relief',     lib: 4, ts: 2.2,  trim: [0.3, 3.3],  strikeAt: 2.85, defer: true },
+  castSmash:      { clip: 'Heavy_Hammer_Swing',  lib: 4, ts: 1.35,                  strikeAt: 1.50, pinXZ: true, defer: true },
+  castSweep:      { clip: 'Sweeping_Kick',       lib: 4, ts: 1.3,  trim: [0.3, 2.1],  strikeAt: 1.30, pinXZ: true, defer: true },
+  castJab:        { clip: 'Right_Jab_from_Guard', lib: 4, ts: 1.0, trim: [0.1, 1.4],  strikeAt: 0.58, defer: true },
+  castShove:      { clip: 'Shield_Push_Left',    lib: 4, ts: 1.3,  trim: [0.4, 2.2],  strikeAt: 1.15, pinXZ: true, defer: true },
+  castRally:      { clip: 'Sword_Shout',         lib: 4, ts: 1.45, trim: [0.4, 2.4],  strikeAt: 1.20, pinXZ: true, defer: true },
+  castSlash:      { clip: 'Right_Hand_Sword_Slas', lib: 4, ts: 1.1,                 strikeAt: 0.60, pinXZ: true, defer: true },
+  castDoubleSlash:{ clip: 'Charged_Slash',       lib: 4, ts: 1.3,  trim: [0.2, 1.95], strikeAt: 0.50, pinXZ: true, defer: true },
+  castRoundhouse: { clip: 'Roundhouse_Kick',     lib: 4, ts: 1.25, trim: [0.5, 2.2],  strikeAt: 1.42, pinXZ: true, defer: true },
+  castThrust:     { clip: 'Thrust_Slash',        lib: 4, ts: 1.85, trim: [0.2, 2.75], strikeAt: 0.85, travel: true, defer: true },
+  castUpSlash:    { clip: 'Charged_Upward_Slash', lib: 4, ts: 1.45, trim: [0.5, 2.5], strikeAt: 1.08, travel: true, defer: true },
+  castLeapSlash:  { clip: 'Sword_Judgment',      lib: 4, ts: 1.6,  trim: [0.2, 2.4],  strikeAt: 1.22, travel: true, defer: true },
+  castLeapPunch:  { clip: 'Jumping_Punch',       lib: 4, ts: 1.4,  trim: [0.45, 2.4], strikeAt: 1.72, travel: true, defer: true },
+  castFlyKick:    { clip: 'Rising_Flying_Kick',  lib: 4, ts: 1.08, trim: [0, 1.5],    strikeAt: 0.50, travel: true, defer: true },
+  // The victim side (THE NEW CLIPS): the flash kind picks them (battle.js
+  // applyDamageToUnit → the renderer's hit-flash chains).
+  //   hitShot    Gunshot_Reaction — the body jolted, an arm flung back (a gun
+  //              hit; trimmed to the first jolt)
+  //   hitSlap    Slap_Reaction — the head knocked aside 1.0–1.4 (a fist, a
+  //              claw, a kick that doesn't reel)
+  //   hitLaunch  BeHit_FlyUp — blown two body-heights UP, tumbling, down on the
+  //              back by 0.7 and lying there: a DEATH clip only (a heavy
+  //              killing blow; three-renderer.js startDeathTween), never a
+  //              flinch — nothing gets up from it. Root travel kept (the
+  //              launch IS the clip).
+  hitShot:        { clip: 'Gunshot_Reaction',    lib: 4, ts: 1.8,  trim: [0.15, 1.5], pinXZ: true, defer: true },
+  hitSlap:        { clip: 'Slap_Reaction',       lib: 4, ts: 2.2,  trim: [0.85, 2.6], pinXZ: true, defer: true },
+  hitLaunch:      { clip: 'BeHit_FlyUp',         lib: 4, ts: 1.0,                                    defer: true },
 };
 // Female body-language defaults — applied to every `female:` def after
 // RACE_MODELS_3D is built (see _applyFemaleSlotDefaults) unless the
@@ -966,6 +1102,7 @@ function _ualClipRef(o) {
   if (Array.isArray(o.trim) && o.trim.length === 2) r.trim = [o.trim[0], o.trim[1]];
   if (typeof o.strikeAt === 'number') r.strikeAt = o.strikeAt;
   if (o.defer) r.defer = true;   // THE BODY: baked after load (three-renderer.js _libBakeDeferred)
+  if (o.travel) r.travel = true; // THE NEW CLIPS: the clip carries the body (three-renderer.js _libTravelCurve)
   return r;
 }
 for (const _slot in UAL_SLOTS) {

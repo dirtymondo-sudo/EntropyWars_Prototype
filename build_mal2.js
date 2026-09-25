@@ -20,7 +20,7 @@ const fs = require('fs');
 const path = require('path');
 const { NodeIO } = require('@gltf-transform/core');
 
-const [, , srcDir, outPath, refLibPath] = process.argv;
+const [, , srcDir, outPath, refLibPath] = process.argv.filter((a) => !a.startsWith('--'));
 if (!srcDir || !outPath) {
   console.error('usage: node build_mal2.js <src-dir> <out.glb> [refLib.glb]');
   process.exit(1);
@@ -29,8 +29,15 @@ const io = new NodeIO();
 
 const stemOf = (f) => {
   const m = f.match(/Meshy_AI_(?:[A-Za-z0-9_]*?_)?Animation_(.+?)_withSkin\.glb$/);
-  return m ? m[1] : path.basename(f, '.glb');
+  if (m) return m[1];
+  // the THIRD batch (2026-09-25, MAL3) is named Meshy_AI_sniper_<Clip>.glb
+  const m3 = f.match(/^Meshy_AI_sniper_(?!biped_)(.+)\.glb$/);
+  return m3 ? m3[1] : path.basename(f, '.glb');
 };
+// MAL3 usage: node build_mal2.js <src-dir> MAL3_Sniper.glb MAL1_Sniper.glb [--only=A,B,…]
+// (--only keeps just those clip stems; the batch's climbs and holds stay out)
+const onlyArg = (process.argv.find((a) => a.startsWith('--only=')) || '').slice(7);
+const onlySet = onlyArg ? new Set(onlyArg.split(',')) : null;
 
 const jointNames = (doc) =>
   doc.getRoot().listNodes().map((n) => n.getName()).filter(Boolean).sort();
@@ -84,7 +91,9 @@ function copyClip(outDoc, srcDoc, name, buffer) {
 }
 
 (async () => {
-  const files = fs.readdirSync(srcDir).filter((f) => f.endsWith('_withSkin.glb')).sort();
+  const files = fs.readdirSync(srcDir)
+    .filter((f) => f.endsWith('_withSkin.glb') || /^Meshy_AI_sniper_(?!biped_).+\.glb$/.test(f))
+    .filter((f) => !onlySet || onlySet.has(stemOf(f))).sort();
   if (!files.length) { console.error('no *_withSkin.glb files in ' + srcDir); process.exit(1); }
 
   let refJoints = null;
