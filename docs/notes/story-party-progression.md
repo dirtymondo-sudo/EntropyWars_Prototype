@@ -620,4 +620,10 @@ SWARM (6–8 low-level bodies + 1–2 elites) is the last phase.
 DOORS tab, the `captured` / `sealed` statuses, the synced `hq.captured` ledger, `hqCaptureEnlist`. `hqPartyUnlocked`
 now counts captured races as owned (the prune keeps them). The `story: true` gate lives in both normalizers
 (`_storyLoadoutOn`), the forge list and the random CPU loadout. hud.js's `_catOrder` does not know 'doors' yet
-(Phase 2 adds it with the item row). Next: Phase 1 THE DOOR ON THE BOARD (battle.js).
+(Phase 2 adds it with the item row).
+**Phase 1 THE DOOR ON THE BOARD built 2026-09-25** (`capture-board.test.js`; CAPTURE_PLAN.md §8 lists every hook).
+battle.js "THE ONE-WAY DOOR" block: place / take / hold tick / seal / break / match end; a SEALED body leaves
+`state.units` for `state.sealedUnits` and rides `state.captures` to the commit's `hqCaptureEnlist`. The user's
+answers (§7): a captured race is owned at once (isUnitOwned reads the captured ledger), natives never capture the
+party (`CAPTURE_RULES.playerOnly`), no healing a held unit, a lone enemy seals at the round's end. Next: Phase 2
+THE DELIVERY (the ITEMS row, the tile menu, the gun, the look).
