@@ -38475,7 +38475,29 @@
         }
         window._vicSetTab = _vicSetTab;
 
+        /* THE DEBRIEF NEVER HALF-BUILDS (2026-09-25 — the user: "the victory/defeat screen is missing all the leveling up
+           and achievements and buttons … I get soft locked after a battle", sometimes). One card that throws used to stop
+           the whole fill: the sheets stayed empty and the command bar never came, so there was no way out. Now every card
+           fails ON ITS OWN (_vicFail logs it under [Debrief] with its name) and, whatever happened in the fill, the overlay
+           shows with its way out: the encounter's BACK TO THE ROOM / WAKE UP button, else the standard bar. */
+        function _vicFail(label, e) { console.error('[Debrief] ' + label + ' failed — the rest of the screen still shows', e); }
+        let _vicShownKey = null;   // the match this screen was filled for — a second fill of a showing screen is dropped
         function showResultOverlay() {
+            const key = String(state.matchNumber || 0) + ':' + String(state.startTime || 0);
+            if (_vicShownKey === key && resultOverlay && !resultOverlay.classList.contains('hidden')) { console.warn('[Debrief] a second fill of the showing result screen was dropped'); return; }
+            _vicShownKey = key;
+            try { _showResultOverlayBody(); }
+            catch (e) { _vicFail('the result screen', e); }
+            try {
+                if (resultOverlay.classList.contains('hidden')) resultOverlay.classList.remove('hidden');
+                const bar = document.getElementById('vicBottom');
+                if (bar && !bar.querySelector('button')) {
+                    if (!(typeof _encounterResultButtons === 'function' && _encounterResultButtons()) && typeof _restoreResultOverlayButtons === 'function') _restoreResultOverlayButtons();
+                }
+                if (typeof _vicLayoutSync === 'function') _vicLayoutSync({ tab: 'rewards' });
+            } catch (e) { _vicFail('the way out', e); }
+        }
+        function _showResultOverlayBody() {
             const viewer = getViewerPlayer();
             const isNoContest = state.winner === 0;
             /* an encounter's one-button bar from the last match: the standard bar comes back first */
@@ -38571,6 +38593,7 @@
                 if (a.dead !== b.dead) return a.dead ? 1 : -1;
                 return (b._trackDmgDealt || 0) - (a._trackDmgDealt || 0);
             });
+            try {
             for (let i = 0; i < sortedParty.length && i < WIN_POS.length; i++) {
                 const u = sortedParty[i];
                 const p = WIN_POS[i];
@@ -38584,15 +38607,18 @@
           <div class="vic-unit-name ${nameClass}">${escapeHtml(unitDisplayName(u))}</div>
         </div>`;
             }
+            } catch (e) { _vicFail('the 2D lineup', e); }
             vicParty.innerHTML = use3d ? '' : partyHtml;
 
             /* ── THE MVP (the winning side's lead) ── */
+            let mvp = null;
+            try {
             const sortedWinners = [...winnerUnits].sort((a, b) => {
                 const ak = (a._matchKills || 0), bk = (b._matchKills || 0);
                 if (ak !== bk) return bk - ak;
                 return (b._trackDmgDealt || 0) - (a._trackDmgDealt || 0);
             });
-            const mvp = (!isNoContest && sortedWinners.length) ? sortedWinners[0] : null;
+            mvp = (!isNoContest && sortedWinners.length) ? sortedWinners[0] : null;
             const vicMvpTag = document.getElementById('vicMvpTag');
             if (vicMvpTag && mvp) {
                 const mvpSide = mvp.player === viewerSeat ? 'ally' : 'enemy';
@@ -38607,6 +38633,8 @@
                 vicMvpTag.style.display = '';
             }
 
+            } catch (e) { _vicFail('the MVP tag', e); }
+            try {
             /* ── THE HEAD'S FACT LINE: round · duration · alive · how it ended ── */
             const durationMs = Date.now() - (state.startTime || Date.now());
             const durationMin = Math.floor(durationMs / 60000);
@@ -38637,6 +38665,8 @@
             if (state.suddenDeathActive && state._winCondition !== 'sudden_death') facts.push('⚡ SUDDEN DEATH');
             vicMatchInfo.innerHTML = facts.map(f => `<span class="vic-fact">${f}</span>`).join('<span class="vic-fact-dot">·</span>');
 
+            } catch (e) { _vicFail('the fact line', e); }
+            try {
             /* ── THE FIELD REPORT (a filed condition / a stabilized threshold / a cleared
                   Code Red / an encounter) — one line under the head, the stamp mirrors it ── */
             const fr = document.getElementById('vicFieldReport');
@@ -38645,6 +38675,8 @@
                 fr.className = 'vic-field-report on';
             }
 
+            } catch (e) { _vicFail('the field report', e); }
+            try {
             /* ── PERFORMANCE: team damage · the mode's tally · the table ── */
             const vicTeamDmgBar = document.getElementById('vicTeamDmgBar');
             const vicTeamDmgLabels = document.getElementById('vicTeamDmgLabels');
@@ -38662,10 +38694,14 @@
             const vicStatsWrap = document.getElementById('vicStatsTableWrap');
             if (vicStatsWrap) vicStatsWrap.innerHTML = buildVicStatsTable();
 
+            } catch (e) { _vicFail('performance', e); }
+            try {
             /* ── HONOURS: the MVP card + the awards ── */
             const hon = document.getElementById('vicHonours');
             if (hon) hon.innerHTML = _vicBuildHonours(mvp, viewerSeat);
 
+            } catch (e) { _vicFail('honours', e); }
+            try {
             /* ── REWARDS: rank · achievements · records · almost there · career
                   (the hazard pay card lands first, from _accountBankMatchGold) ── */
             const vicEloBadge = document.getElementById('vicEloBadge');
@@ -38711,6 +38747,8 @@
             </div>`;
             vicAwards.innerHTML = achHtml;
 
+            } catch (e) { _vicFail('rewards + achievements', e); }
+            try {
             if (ONLINE_RULES.active) {
                 if (nextMatchBtn) nextMatchBtn.textContent = 'Request Rematch';
                 if (document.getElementById('startOverBtn')) document.getElementById('startOverBtn').style.display = 'none';
@@ -38720,7 +38758,10 @@
             if (exportLastMatchBtn) exportLastMatchBtn.disabled = !state.lastCompletedMatch;
             if (exportMatchHistoryBtn) exportMatchHistoryBtn.disabled = !state.matchHistory.length;
 
+            } catch (e) { _vicFail('the command bar', e); }
+            try {
             _accountBankMatchGold();
+            } catch (e) { _vicFail('hazard pay', e); }
 
             /* THE EXPERIENCE (2026-09-21): a story-mode encounter's XP — the card leads the REWARDS sheet, the fill plays once the overlay shows */
             let _vicXpParty = null;
@@ -38732,7 +38773,9 @@
 
             /* the sheets are filled — build the tab strip; the first sheet with anything in
                it opens (REWARDS on a paid match, HONOURS on a friendly / a no-contest) */
+            try {
             _vicLayoutSync({ tab: 'rewards' });
+            } catch (e) { _vicFail('the sheet tabs', e); }
 
             resultOverlay.classList.remove('hidden');
             try { _encounterResultButtons(); } catch (e) { console.warn('[HQ] the encounter result bar failed', e); }

@@ -49993,7 +49993,13 @@ const ThreeRenderer = (function () {
                    re-parented / the old scene torn down and the browser may release
                    the lock on its own — that is the door, not the walker's ESC.
                    The walk re-grabs the lock on its next gesture as always. */
-                if (esc && performance.now() - _hqRebuildAt < 2500) esc = false;
+                if (esc && performance.now() - _hqRebuildAt < 4000) esc = false;   // 4 s (2026-09-25; was 2.5): the load card, its fade and the arrival card ride it
+                /* THE PAUSE ON ENTRY (2026-09-25 — the user: "whenever I walk into a room the pause menu pops up"): a room
+                   still loading (the load card, the gate) is never paused by a lost lock — the swap's window above was
+                   stamped when the build STARTED and a slow room outlasts it; the window now also restarts when the room
+                   is READY, and a hidden tab / a blurred window is the browser's, never the walker's ESC */
+                if (esc && _hq && !_hq.ready) esc = false;
+                if (esc && ((typeof document.hidden === 'boolean' && document.hidden) || (typeof document.hasFocus === 'function' && !document.hasFocus()))) esc = false;
                 _hqHadLock = false;
                 if (esc) setTimeout(function () { try { if (_hq && !_hq.paused && _hq.opts.onEscape) _hq.opts.onEscape(); } catch (e) {} }, 0);
                 return;
@@ -54152,6 +54158,7 @@ const ThreeRenderer = (function () {
         var capped = now - H.t0 > HQ_GATE_CAP_MS;
         if (!((playerOk && gateOk) || capped)) return;
         H.ready = true;
+        _hqRebuildAt = performance.now();   // the room's arrival (2026-09-25): a lock the browser drops as the room settles is never the walker's ESC
         if (capped && G && !G.idle()) { try { console.warn('[HQ] the load card gave up after ' + Math.round(HQ_GATE_CAP_MS / 1000) + ' s — still in flight:', G.list().map(function (r) { return r.url; })); } catch (e) {} }
         if (G) { var failed = G.failed(); if (failed.length) { try { console.warn('[HQ] ' + failed.length + ' file(s) of this room never landed (missing from the bucket? a frozen 404? — window._ewAssetFailures):', failed); } catch (e) {} } G.close(); }
         if (H.opts.onReady) { try { H.opts.onReady(); } catch (e) {} }
@@ -54869,7 +54876,8 @@ const ThreeRenderer = (function () {
         /* room-to-room (a door): the lock is kept through the rebuild, but the
            browser may still drop it (a lock loss during the swap is never the
            walker's ESC — see _hqOnLockChange, 2026-09-14 rev 4) */
-        if (_hq) { _hqRebuildAt = performance.now(); _hqKeepLock = true; try { _hqLeave(); } finally { _hqKeepLock = false; } }
+        _hqRebuildAt = performance.now();   // EVERY entry (2026-09-25), not only room-to-room: the return from a fight / the menu re-parents the canvas too
+        if (_hq) { _hqKeepLock = true; try { _hqLeave(); } finally { _hqKeepLock = false; } }
         _hqHandoverDrop();   // THE HAND-OVER: a stash the battle never took
         if (active) { console.warn('[HQ] refusing to open over a live battle'); return false; }
         var room = D.rooms[opts.room || 'central_egress'];
@@ -55386,7 +55394,7 @@ const ThreeRenderer = (function () {
            walk into a door that must wait for THE SURVEY (map.js: the next room's floor plan compiling in
            the worker) freezes the old room under the load card; a released lock would read as the ESC the
            browser ate (_hqOnLockChange) and open the pause menu on top of the card */
-        hold: function (on) { if (!_hq) return; _hq.paused = !!on; if (on) { _hq.keys = {}; _hq.drag = null; } },
+        hold: function (on) { if (!_hq) return; _hq.paused = !!on; _hqRebuildAt = performance.now(); if (on) { _hq.keys = {}; _hq.drag = null; } },
         /* THE GATE (2026-09-20): the room's own file count for the load card — { total, done, pending, idle, ms, player } */
         gate: function () { var H = _hq; if (!H) return null; var p = H.gate ? H.gate.progress() : { total: 0, done: 0, pending: 0, idle: true, ms: 0 }; p.player = !!H.playerAttached; p.ready = !!H.ready; p.list = H.gate ? H.gate.list() : []; return p; },
         /* THE ARRIVAL WARM (2026-09-19): start the arrival room's downloads while the title / the menu / the

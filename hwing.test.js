@@ -126,8 +126,10 @@ test('THE DOOR THAT OPENED THE SETTINGS (2026-09-14 rev 4): a room-to-room rebui
     assert.match(TR, /if \(canvas\.parentNode !== host\) host\.appendChild\(canvas\);/, 'the canvas is appended only when it is not there already');
     assert.match(TR, /if \(css2dRenderer\.domElement\.parentNode !== host\) host\.appendChild\(css2dRenderer\.domElement\);/, 'the CSS2D layer too');
     assert.match(TR, /var _hqRebuildAt = 0;/);
-    assert.match(TR, /if \(_hq\) \{ _hqRebuildAt = performance\.now\(\); _hqKeepLock = true; try \{ _hqLeave\(\); \} finally \{ _hqKeepLock = false; \} \}/, 'the swap is stamped');
-    assert.match(TR, /if \(esc && performance\.now\(\) - _hqRebuildAt < 2500\) esc = false;/, 'and the handler honours the stamp');
+    assert.match(TR, /_hqRebuildAt = performance\.now\(\);   \/\/ EVERY entry[^\n]*\n\s*if \(_hq\) \{ _hqKeepLock = true; try \{ _hqLeave\(\); \} finally \{ _hqKeepLock = false; \} \}/, 'every entry is stamped (2026-09-25), the swap too');
+    assert.match(TR, /if \(esc && performance\.now\(\) - _hqRebuildAt < 4000\) esc = false;/, 'and the handler honours the stamp');
+    assert.match(TR, /if \(esc && _hq && !_hq\.ready\) esc = false;/, 'a room still loading is never paused by a lost lock (2026-09-25)');
+    assert.match(TR, /H\.ready = true;\n\s*_hqRebuildAt = performance\.now\(\);/, 'the window restarts when the room is ready');
     /* the C-28 rule itself is untouched (hq-floors.test.js pins the line) */
     assert.match(TR, /var esc = _hqHadLock && !!_hq && !_hq\.paused && \(performance\.now\(\) - _hqLockStaleAt > 2500\);/);
 });
