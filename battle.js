@@ -1972,9 +1972,10 @@
                     if (state.phase !== 'battle' || _skipVisuals()) return;
                     const VFX = window.ThreeVFXEffects;
                     if (VFX.hasMapping(spell.id, 'beam')) {
+                        // THE 3D LINE: body to body (a flyer gets a beam angled up at it)
                         VFX.fire('beam', spell.id, {
-                            sx: unit.x, sy: unit.y,
-                            tx: target.x, ty: target.y
+                            sx: unit.x, sy: unit.y, fromZ: _beamUnitZ(unit),
+                            tx: target.x, ty: target.y, tz: _beamUnitZ(target)
                         });
                     }
                 }, projectileDelay);
@@ -5628,14 +5629,135 @@
         // BEHIND a tall pillar is not. Every line walk (damage, highlights,
         // range footprint, VFX route, AI ray scoring) must consult this or
         // the previews promise hits the engine no longer delivers.
-        function _lineLosBlocked(unit, spell, cx, cy, obstruction) {
+        function _lineLosBlocked(unit, spell, cx, cy, obstruction, lineZ) {
             if (spell && spell.ignoresLineOfSight === true) return false;
             if (typeof isRangeBlockedByTerrain !== 'function') return false;
             // sourceZ null → isRangeBlockedByTerrain infers the caster's true
-            // standing height (unit z / column top) itself.
-            return isRangeBlockedByTerrain(unit.x, unit.y, cx, cy, unit.z ?? null, undefined, undefined, obstruction);
+            // standing height (unit z / column top) itself. lineZ (THE 3D
+            // LINE): the beam's own height over this cell, so a beam angled
+            // up at a flyer clears the low wall its ground ray would clip.
+            return isRangeBlockedByTerrain(unit.x, unit.y, cx, cy, unit.z ?? null,
+                (lineZ == null) ? undefined : lineZ, undefined, obstruction);
         }
         window._lineLosBlocked = _lineLosBlocked;
+
+        /* ═══ THE 3D LINE (mondo 2026-09-25) ═══════════════════════════════
+           "Beams need to shoot in a straight line from the caster to the
+           target, and anyone on that line gets hit." A beam still fires along
+           one of the eight headings, but it now runs as a straight 3D line
+           from the caster's body to the AIMED body (the unit clicked, else
+           the ground of the tile clicked) and carries on at that slope to the
+           end of its range. Every cell of the walk has a line height (in
+           block levels, the unit z scale); a unit is on the line when that
+           height passes through its body (0.75 of a level either side of its
+           own level). So a beam angled up at a flyer passes over the ground
+           unit behind it, and a level beam at a ground unit passes under the
+           flyer above the lane. Ground things (turrets, prisms, doors,
+           objects, the terrain a beam paints) are touched only where the line
+           runs at body height over the ground.
+           A spell with `beamZigzag` (Fractal Stitch) ignores the line: it
+           threads EVERY enemy in its lane, high or low, and its VFX zigzags
+           through each body. A walk with no aim (a legacy caller) keeps the
+           flat lane: the cell's unit, whatever its height.
+           Body reach = 0.75 of a level either side of the unit's own level. */
+        function _beamColumnUnits(x, y) {
+            return (state.units || []).filter(u => u && !u.dead && !u._dying && !u._insideBuildingId && (
+                (u.x === x && u.y === y) ||
+                (u._isBoss && u._bossSize === 2 && (x === u.x || x === u.x + 1) && (y === u.y || y === u.y + 1))));
+        }
+        function _beamUnitZ(u) {
+            return (u.z != null) ? u.z : (typeof getHeightAt === 'function' ? getHeightAt(u.x, u.y) : 0);
+        }
+        // The aimed height at (x, y): the unit there at z (else the one
+        // nearest z — a click on the tile under a lone flyer aims at the
+        // flyer), else z itself, else the tile's ground.
+        function lineBeamAimZ(x, y, z, casterId) {
+            const here = _beamColumnUnits(x, y).filter(u => u.id !== casterId);
+            if (here.length) {
+                if (z == null) {
+                    const g = here.find(u => !(typeof isUnitAirborne === 'function' && isUnitAirborne(u)));
+                    return _beamUnitZ(g || here[0]);
+                }
+                let best = here[0];
+                for (const u of here) if (Math.abs(_beamUnitZ(u) - z) < Math.abs(_beamUnitZ(best) - z)) best = u;
+                return _beamUnitZ(best);
+            }
+            if (z != null) return z;
+            return (typeof getHeightAt === 'function') ? getHeightAt(x, y) : 0;
+        }
+        // The line out of `from` along (dx, dy) toward aim {x, y, z}: zAt(step)
+        // is the line's height over the step-th cell (lanes share their spine
+        // cell's step). An aim off the heading or at the caster fires level.
+        function lineBeamLine(from, dx, dy, aim) {
+            const z0 = _beamUnitZ(from);
+            if (!aim) return { z0, aimZ: null, aimStep: 0, flat: true, zAt: () => null };
+            let n = 0, aimZ = z0;
+            if (aim && (dx || dy)) {
+                n = ((aim.x - from.x) * dx + (aim.y - from.y) * dy) / (dx * dx + dy * dy);
+                aimZ = (aim.lineZ != null) ? aim.lineZ : lineBeamAimZ(aim.x, aim.y, aim.z, from.id);
+            }
+            const slope = (n >= 1) ? (aimZ - z0) / n : 0;
+            return { z0, aimZ: n >= 1 ? aimZ : z0, aimStep: n >= 1 ? n : 0, zAt: (step) => z0 + slope * step };
+        }
+        function beamBodyOnLine(u, lineZ) {
+            if (lineZ == null) return true;
+            const lo = _beamUnitZ(u);
+            const hi = lo + ((u._isBoss && u._bossSize === 2) ? 1 : 0);
+            return lineZ >= lo - 0.75 && lineZ <= hi + 0.75;
+        }
+        // Does the line run at body height over the ground of (x, y)?
+        function _beamAtGround(x, y, lineZ) {
+            if (lineZ == null) return true;
+            const g = (typeof getHeightAt === 'function') ? getHeightAt(x, y) : 0;
+            return lineZ <= g + 0.75;
+        }
+        // The enemies of `unit` the beam strikes on cell (x, y).
+        function _beamCellVictims(unit, spell, x, y, lineZ) {
+            if (lineZ == null && !spell.beamZigzag) {
+                const u = unitAt(x, y);   // the flat lane (no aim)
+                return (u && !u.dead && u.player !== unit.player) ? [u] : [];
+            }
+            return _beamColumnUnits(x, y).filter(u => u.player !== unit.player
+                && (spell.beamZigzag || beamBodyOnLine(u, lineZ)));
+        }
+        // Would this cast's beam strike `victim`? (AI scoring, one call per victim.)
+        function lineBeamHits(from, spell, dx, dy, aim, victim) {
+            if (!victim) return false;
+            if (!aim || (spell && spell.beamZigzag)) return true;
+            const line = lineBeamLine(from, dx, dy, aim);
+            const step = ((victim.x - from.x) * dx + (victim.y - from.y) * dy) / (dx * dx + dy * dy);
+            return beamBodyOnLine(victim, line.zAt(Math.max(1, Math.round(step))));
+        }
+        // Read-only plan of the cast (no boring): the spine cells with their
+        // line heights, every enemy the beam would strike (in the order it
+        // reaches them), the line itself. Shared by the camera framing, the
+        // VFX route and the preview so all of them agree with _applyLineDamage.
+        function lineBeamPlan(unit, spell, dx, dy, aim) {
+            const line = lineBeamLine(unit, dx, dy, aim);
+            const zig = !!spell.beamZigzag;
+            const cells = [], victims = [];
+            const lanes = getLineSpellLaneOffsets(spell, dx, dy);
+            const lineRange = spell.range || 4;
+            const take = (x, y, z) => {
+                for (const u of _beamCellVictims(unit, spell, x, y, z)) if (!victims.includes(u)) victims.push(u);
+            };
+            for (let i = 1; i <= lineRange; i++) {
+                const x = unit.x + dx * i, y = unit.y + dy * i;
+                if (!isInside(x, y)) break;
+                if (!isTerrainPassable(x, y) && !spell.destroysObstacles) break;
+                const z = line.zAt(i);
+                if (_lineLosBlocked(unit, spell, x, y, undefined, zig ? null : z)) break;
+                cells.push({ x, y, z, step: i });
+                take(x, y, z);
+                for (const [ox, oy] of lanes) {
+                    const lx = x + ox, ly = y + oy;
+                    if (isInside(lx, ly) && isTerrainPassable(lx, ly)) take(lx, ly, z);
+                }
+            }
+            return { cells, victims, line };
+        }
+        window.lineBeamPlan = lineBeamPlan;
+        window.lineBeamHits = lineBeamHits;
 
         // Read-only beam forecast. Copy only touched rows/columns; no live-state
         // swap, renderer, RNG, rewards or combat callbacks run during scoring.
@@ -5748,12 +5870,16 @@
             return { tiles, spine, bores, uncertain };
         }
 
-        function _applyLineDamage(unit, spell, dx, dy, baseDmg, spellPower) {
+        function _applyLineDamage(unit, spell, dx, dy, baseDmg, spellPower, aim) {
             // Beams are capped at the spell's range (3-5 tiles) — they no longer
             // sweep the whole map. Matches the aimed-hover preview (spell.range || 4).
             const lineRange = spell.range || 4;
             const hitTargets = [];
             const _lineCells = [];
+            // THE 3D LINE: the beam's height over each step (lineBeamLine).
+            const _line = lineBeamLine(unit, dx, dy, aim || null);
+            const _zig = !!spell.beamZigzag;
+            const _groundCells = [];   // cells where the line runs at body height over the ground
             const _lnHitBldgs = new Set();   // 🏢 one structure hit per building per cast
             // 💥 Beam boring: a hot enough beam BLASTS through the wall in its
             // path — the blocks at the caster's body height shatter into
@@ -5772,9 +5898,10 @@
                 // Bore only that proven obstacle, then re-run the real ray: a
                 // surviving lintel, door, edge wall or Cube still stops the cast.
                 let _stopped = false;
+                const _lz = _line.zAt(i + 1);
                 while (true) {
                     const _obstruction = {};
-                    const _losBlocked = _lineLosBlocked(unit, spell, cx, cy, _obstruction);
+                    const _losBlocked = _lineLosBlocked(unit, spell, cx, cy, _obstruction, _zig ? null : _lz);
                     const _terrainBlocked = !isTerrainPassable(cx, cy) && !spell.destroysObstacles;
                     if (!_losBlocked && !_terrainBlocked) break;
                     const bx = _losBlocked ? _obstruction.x : cx;
@@ -5802,11 +5929,14 @@
                     if (!_bored) { _stopped = true; break; }
                 }
                 if (_stopped) break;
-                _lineCells.push({ x: cx, y: cy });
-                const hit = unitAt(cx, cy);
-                if (hit && hit.player !== unit.player && !hit.dead) {
-                    hitTargets.push(hit);
+                _lineCells.push({ x: cx, y: cy, z: _lz });
+                for (const hit of _beamCellVictims(unit, spell, cx, cy, _lz)) {
+                    if (!hitTargets.includes(hit)) hitTargets.push(hit);
                 }
+                // High in the air (a line angled up at a flyer) the beam passes
+                // over the ground's turrets, prisms, doors and objects.
+                if (!_zig && !_beamAtGround(cx, cy, _lz)) { cx += dx; cy += dy; continue; }
+                _groundCells.push({ x: cx, y: cy });
                 damageTurretAt(cx, cy, spell.dmg || 80, unit, { damageType: spell.damageType || 'magic' });
                 if (typeof damageMirrorAt === 'function') damageMirrorAt(cx, cy, unit);
                 // 🏢 Beams chip 1 structure hit per building crossed (once per cast).
@@ -5850,9 +5980,12 @@
                         const lx = c.x + ox, ly = c.y + oy;
                         if (!isInside(lx, ly) || !isTerrainPassable(lx, ly)) continue;
                         if (_lineCells.some(t => t.x === lx && t.y === ly)) continue;
-                        _lineCells.push({ x: lx, y: ly });
-                        const lh = unitAt(lx, ly);
-                        if (lh && lh.player !== unit.player && !lh.dead && !hitTargets.includes(lh)) hitTargets.push(lh);
+                        _lineCells.push({ x: lx, y: ly, z: c.z });
+                        for (const lh of _beamCellVictims(unit, spell, lx, ly, c.z)) {
+                            if (!hitTargets.includes(lh)) hitTargets.push(lh);
+                        }
+                        if (!_zig && !_beamAtGround(lx, ly, c.z)) continue;
+                        _groundCells.push({ x: lx, y: ly });
                         damageTurretAt(lx, ly, spell.dmg || 80, unit, { damageType: spell.damageType || 'magic' });
                         if (spell.leaveTerrain && getTerrainAt(lx, ly) !== spell.leaveTerrain) {
                             setTerrainAt(lx, ly, spell.leaveTerrain);
@@ -5869,7 +6002,7 @@
             if (spell.lineZone && _lineCells.length) {
                 if (!state._activeZones) state._activeZones = [];
                 let _lzN = 0;
-                for (const c of _lineCells) {
+                for (const c of _groundCells) {
                     if (!isTerrainPassable(c.x, c.y)) continue;
                     const _ez = state._activeZones.find(z => z.lineZone && z.x === c.x && z.y === c.y && z.spellName === spell.name);
                     if (_ez) { _ez.duration = Math.max(_ez.duration, spell.zoneDuration || 2); _lzN++; continue; }
@@ -5927,7 +6060,7 @@
                     }
                 }
             }
-            triggerTerrainSpellReaction(unit, spell, _lineCells);
+            triggerTerrainSpellReaction(unit, spell, _groundCells);
             return hitTargets;
         }
 
@@ -6160,14 +6293,8 @@
                     const _gh = lineSpellHeadingTo(spell, unit.x, unit.y, unit.z ?? null, tx, ty);
                     const dx = _gh ? _gh.dx : Math.sign(tx - unit.x), dy = _gh ? _gh.dy : Math.sign(ty - unit.y);
                     if (dx !== 0 || dy !== 0) {
-                        const lineRange = spell.range || 4;
-                        for (let i = 1; i <= lineRange; i++) {
-                            const lx = unit.x + dx * i, ly = unit.y + dy * i;
-                            if (!isInside(lx, ly)) break;
-                            if (!isTerrainPassable(lx, ly) && !spell.destroysObstacles) break;
-                            if (typeof _lineLosBlocked === 'function' && _lineLosBlocked(unit, spell, lx, ly)) break;
-                            tiles.push({ x: lx, y: ly });
-                        }
+                        // THE 3D LINE: the same cells the cast will fly (lineBeamPlan)
+                        for (const c of lineBeamPlan(unit, spell, dx, dy, { x: tx, y: ty, z: null }).cells) tiles.push({ x: c.x, y: c.y });
                         out.stagger = 45;
                     }
                 } else if (kind === 'dash') {
@@ -6672,7 +6799,7 @@
            boring) and answers the heading whose spine or lane holds (tx, ty),
            else null. Every aim reads it: doSpell, the glow preview, the quick
            menu's beamRayHits. */
-        function lineSpellHeadingTo(spell, fromX, fromY, fromZ, tx, ty) {
+        function lineSpellHeadingTo(spell, fromX, fromY, fromZ, tx, ty, tz) {
             if (!spell) return null;
             const lineRange = spell.range || 4;
             const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
@@ -6682,11 +6809,15 @@
             for (const [dx, dy] of dirs) {
                 if (adx * dx < 0 || ady * dy < 0) continue;   // the target lies behind this heading
                 const lanes = getLineSpellLaneOffsets(spell, dx, dy);
+                /* THE 3D LINE: sight is checked along the line the cast will
+                   really fly (caster → the body at tx/ty), not the ground ray */
+                const line = (!spell.beamZigzag && typeof lineBeamLine === 'function')
+                    ? lineBeamLine(probe, dx, dy, { x: tx, y: ty, z: (tz === undefined) ? null : tz }) : null;
                 for (let i = 1; i <= lineRange; i++) {
                     const cx = fromX + dx * i, cy = fromY + dy * i;
                     if (!isInside(cx, cy)) break;
                     if (!isTerrainPassable(cx, cy) && !spell.destroysObstacles) break;
-                    if (_lineLosBlocked(probe, spell, cx, cy)) break;
+                    if (_lineLosBlocked(probe, spell, cx, cy, undefined, line ? line.zAt(i) : null)) break;
                     if (cx === tx && cy === ty) return { dx, dy };
                     for (const [ox, oy] of lanes) {
                         if (cx + ox === tx && cy + oy === ty && isTerrainPassable(tx, ty)) return { dx, dy };
@@ -46108,7 +46239,7 @@
                             _spellWhiff(unit, spell);
                             return 600;
                         }
-                        cx = aim.x; cy = aim.y; cz = undefined;
+                        cx = aim.x; cy = aim.y; cz = aim.z;   // the aimed body's level (THE 3D LINE)
                     }
                 } else if (spell.hinge) {
                     /* 🚪 SWING DOOR: the CPU planned a VICTIM — aim at the hinge nearest us beside where it stands now */
@@ -49629,7 +49760,7 @@
             getMoveTiles, getAttackTiles, getInspectTiles, getInspectFootprint, getKeysToWin, getSpellRangeTiles,
             getJumpTiles, canJump, getUnitJumpStat, getUnitJumpClimb, getUnitJumpReach,
             getJumpBlockedTiles, findRouteTo,
-            isRangeBlockedByTerrain, getLinePoints, getLineForecast, getCubeAttackForecast, getTeamWipeoutCount,
+            isRangeBlockedByTerrain, getLinePoints, getLineForecast, lineBeamHits, lineBeamPlan, getCubeAttackForecast, getTeamWipeoutCount,
             unitHasStatus, unitHasFlair, unitHasWard,
             isUnitConcealedFrom, isUnitSeenByAnyEnemy, isUnitSeenByTeam, checkStealthReveals,
             unitHasTelescope, getTelescopeSkyTargets,
@@ -55754,6 +55885,10 @@
             const bodies = (only && opts.at) ? [only] : _gunDoorLaneBodies(door, false);   // opts.at: a walker crossing the beam
             for (const u of bodies) {
                 if (only && u.id !== only.id) continue;
+                /* THE 3D LINE (mondo 2026-09-25): the door's laser runs level out of
+                   its face at body height — a flyer in the air over the lane is
+                   not on that line */
+                if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) continue;
                 if (!only) _gunDoorStampOk(door, u);
                 _gunDoorHit(door, u, sp.beamDmg || 60, { flash: 'shock' });
                 hit.push(u);
@@ -62660,7 +62795,7 @@
                    became a diagonal beam that hit nobody). A human's click on
                    a tile no ray reaches is refused before anything is spent;
                    the AI's aim keeps the old snap. */
-                const _hd = lineSpellHeadingTo(spell, unit.x, unit.y, unit.z ?? null, x, y);
+                const _hd = lineSpellHeadingTo(spell, unit.x, unit.y, unit.z ?? null, x, y, z);
                 let dx, dy;
                 if (_hd) { dx = _hd.dx; dy = _hd.dy; }
                 else if (_silentReject) { dx = Math.sign(x - unit.x); dy = Math.sign(y - unit.y); }
@@ -62675,20 +62810,15 @@
                 if (dx === 0 && dy === 0) { addLog('Invalid line direction.'); completionDelay = 200; }
                 else {
                     const lineRange = spell.range || 4;   // capped beam — must match _applyLineDamage
-                    // Preview the WHOLE route (same walk as _applyLineDamage,
-                    // minus breach boring) and collect every enemy skewered —
-                    // beat 2 of the action shot frames the full kebab via
-                    // frameTiles, not just the first victim, and the duel
-                    // cinematic gets every extra defender.
-                    const _lineHits = [];
-                    for (let i = 1; i <= lineRange; i++) {
-                        const tx = unit.x + dx * i, ty = unit.y + dy * i;
-                        if (!isInside(tx, ty)) break;
-                        if (!isTerrainPassable(tx, ty) && !spell.destroysObstacles) break;
-                        if (_lineLosBlocked(unit, spell, tx, ty)) break;
-                        const _lu = unitAt(tx, ty);
-                        if (_lu && _lu.player !== unit.player && !_lu.dead) _lineHits.push(_lu);
-                    }
+                    /* THE 3D LINE: the aim is the body clicked (else that
+                       tile's ground), fixed now so every pass (the boomerang's
+                       return included) flies the same line. The plan is the
+                       same walk as _applyLineDamage minus breach boring — beat
+                       2 of the action shot frames every enemy it skewers, and
+                       the VFX flies its cells at their line heights. */
+                    const _beamAim = { x, y, lineZ: lineBeamAimZ(x, y, z, unit.id) };
+                    const _beamPlan = lineBeamPlan(unit, spell, dx, dy, _beamAim);
+                    const _lineHits = _beamPlan.victims.slice();
                     const _lineFirstHit = _lineHits[0] || null;
                     const _lineCamTarget = _lineFirstHit || { x: unit.x + dx * Math.min(lineRange, 3), y: unit.y + dy * Math.min(lineRange, 3) };
                     const cam = playOffensiveActionCamera(unit, _lineCamTarget, {
@@ -62737,23 +62867,34 @@
                             playProjectile(unit.x, unit.y, _endX, _endY, 'damage', _projFlyMs, spell.spellType, _lineProjOverride, spell);
                         }, _projLaunch);
                     } else if (_useVfx3dBeam) {
-                        const _beamTiles = [];
-                        { let _bx = unit.x + dx, _by = unit.y + dy;
-                            for (let _bi = 0; _bi < lineRange; _bi++) {
-                                if (!isInside(_bx, _by)) break;
-                                if (!isTerrainPassable(_bx, _by) && !spell.destroysObstacles) break;
-                                if (_lineLosBlocked(unit, spell, _bx, _by)) break;
-                                _beamTiles.push({ x: _bx, y: _by });
-                                _bx += dx; _by += dy;
+                        const _beamTiles = _beamPlan.cells.map(c => ({ x: c.x, y: c.y }));
+                        /* THE 3D LINE's VFX: fromZ = the caster's level, tx/ty/tz =
+                           the aimed body — the beam angles from one to the other
+                           and runs on to the last cell. A zigzag beam also gets
+                           its path: every victim's body in order, then the end. */
+                        const _beamFx = {
+                            fromX: unit.x, fromY: unit.y, fromZ: _beamPlan.line.z0,
+                            dx, dy, range: lineRange,
+                            hitTiles: _beamTiles
+                        };
+                        if (_beamPlan.line.aimStep >= 1) {
+                            _beamFx.tx = unit.x + dx * _beamPlan.line.aimStep;
+                            _beamFx.ty = unit.y + dy * _beamPlan.line.aimStep;
+                            _beamFx.tz = _beamPlan.line.aimZ;
+                        }
+                        if (spell.beamZigzag && _beamPlan.cells.length) {
+                            const _stepOf = (u) => ((u.x - unit.x) * dx + (u.y - unit.y) * dy) / (dx * dx + dy * dy);
+                            const _pts = _beamPlan.victims.slice().sort((a, b) => _stepOf(a) - _stepOf(b))
+                                .map(u => ({ x: u.x, y: u.y, z: _beamUnitZ(u) }));
+                            const _end = _beamPlan.cells[_beamPlan.cells.length - 1];
+                            if (!_pts.length || _pts[_pts.length - 1].x !== _end.x || _pts[_pts.length - 1].y !== _end.y) {
+                                _pts.push({ x: _end.x, y: _end.y, z: _pts.length ? _pts[_pts.length - 1].z : _beamPlan.line.z0 });
                             }
+                            _beamFx.beamPath = _pts;
                         }
                         window.setTimeout(() => {
                             if (state.phase !== 'battle' || _skipVisuals()) return;
-                            window.ThreeVFXEffects.fire('beam', spell.id, {
-                                fromX: unit.x, fromY: unit.y,
-                                dx, dy, range: lineRange,
-                                hitTiles: _beamTiles
-                            });
+                            window.ThreeVFXEffects.fire('beam', spell.id, _beamFx);
                         }, _beamLaunchMs);
                     } else {
                         // Legacy 2D beam: keep it alive through the damage
@@ -62765,7 +62906,7 @@
 
                     // Damage resolution
                     window.setTimeout(() => {
-                        const hitTargets = _applyLineDamage(unit, spell, dx, dy, (spell.dmg || 0), spellPower);
+                        const hitTargets = _applyLineDamage(unit, spell, dx, dy, (spell.dmg || 0), spellPower, _beamAim);
                         addLog(`${spell.name} hits ${hitTargets.length} target${hitTargets.length !== 1 ? 's' : ''} in a line.`);
                         scheduleBoardRender();
                     }, impactDelay);
@@ -62779,7 +62920,7 @@
                         const _boomReturnMs = actionMs(560);
                         window.setTimeout(() => {
                             if (state.phase !== 'battle') return;
-                            const backTargets = _applyLineDamage(unit, spell, dx, dy, (spell.dmg || 0), spellPower);
+                            const backTargets = _applyLineDamage(unit, spell, dx, dy, (spell.dmg || 0), spellPower, _beamAim);
                             if (backTargets.length > 0) {
                                 addLog(`🪃 ${spell.name} scythes back through the line — ${backTargets.length} target${backTargets.length !== 1 ? 's' : ''} hit again!`);
                             }

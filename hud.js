@@ -5647,6 +5647,11 @@ function _computeEnemyActions(actingUnit, targetUnit) {
       const seedGround = getTerrainAt(tx, ty);
       if (seedGround === 'mountain' || seedGround === 'lava') continue;
     }
+    // A seed roots in the GROUND — an airborne flyer is out of its reach
+    // (applySeedEffectToUnit skips airborne units), so never offer a seed
+    // row against one (mondo 2026-09-25).
+    if ((sp.kind === 'seedPoison' || sp.kind === 'leechSeed')
+        && typeof isUnitAirborne === 'function' && isUnitAirborne(targetUnit)) continue;
 
     const spellApCost = _tqApCost(sp);
     const mpPenalty = typeof getStatusMpCostDelta === 'function' ? getStatusMpCostDelta(actingUnit) : 0;
@@ -5721,7 +5726,7 @@ function _computeEnemyActions(actingUnit, targetUnit) {
          beams' lanes included — so the menu never offers a beam that stops
          short of the enemy ("Chemtrails hits 0 targets") */
       if (typeof window.lineSpellHeadingTo === 'function') {
-        return !!window.lineSpellHeadingTo(sp, sxx, syy, (szz === undefined) ? null : szz, tx, ty);
+        return !!window.lineSpellHeadingTo(sp, sxx, syy, (szz === undefined) ? null : szz, tx, ty, targetZ);
       }
       const ddx = Math.sign(tx - sxx), ddy = Math.sign(ty - syy);
       if (ddx === 0 && ddy === 0) return false;

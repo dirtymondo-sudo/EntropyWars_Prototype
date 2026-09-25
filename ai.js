@@ -289,6 +289,14 @@
         return tiles;
     }
 
+    // THE 3D LINE (battle.js, 2026-09-25): a beam flies straight from the
+    // caster to the AIMED body, so who it hits depends on the aim. The engine
+    // answers per victim (g.lineBeamHits); a harness without it keeps the
+    // flat lane (every enemy on the footprint).
+    function _lineBeamHitsAI(g, from, spell, dx, dy, aim, e) {
+        if (typeof g.lineBeamHits !== 'function' || !aim) return true;
+        try { return g.lineBeamHits(from, spell, dx, dy, aim, e); } catch (err) { return true; }
+    }
     function _bestLineAimAI(unit, spell, v, preferredTargetId) {
         const g = G();
         let best = null;
@@ -299,16 +307,26 @@
             if (!victims.length) continue;
             // Retain a victim identity for Simul's existing re-aim contract,
             // but never use an off-spine victim's coordinates as the direction.
-            const first = victims[0];
-            const ax = first.x - unit.x, ay = first.y - unit.y;
-            const onSpine = Math.sign(ax) === dx && Math.sign(ay) === dy
-                && (ax === 0 || ay === 0 || Math.abs(ax) === Math.abs(ay));
-            const target = onSpine ? first : { x: unit.x + dx, y: unit.y + dy, id: first.id };
-            const score = scoreSpell(unit, spell, target, v);
-            const preferred = victims.some(e => e.id === preferredTargetId);
+            // Each spine victim is a candidate AIM (the line to a flyer skips
+            // the ground unit behind it, and the other way round); the best
+            // scoring aim wins the heading, the first on a tie.
+            let pick = null;
+            for (const cand of victims) {
+                const ax = cand.x - unit.x, ay = cand.y - unit.y;
+                const onSpine = Math.sign(ax) === dx && Math.sign(ay) === dy
+                    && (ax === 0 || ay === 0 || Math.abs(ax) === Math.abs(ay));
+                if (pick && !onSpine) continue;
+                const target = onSpine ? cand : { x: unit.x + dx, y: unit.y + dy, id: cand.id };
+                const score = scoreSpell(unit, spell, target, v);
+                if (!pick || score > pick.score) pick = { target, score };
+                if (typeof g.lineBeamHits !== 'function') break;   // flat lane: every aim scores alike
+            }
+            const { target, score } = pick;
+            const hitList = victims.filter(e => _lineBeamHitsAI(g, unit, spell, dx, dy, target, e));
+            const preferred = hitList.some(e => e.id === preferredTargetId);
             if (score > 0 && (!best || score > best.score
                 || (score === best.score && preferred && !best.preferred))) {
-                best = { target, score, preferred, hits: victims.length };
+                best = { target, score, preferred, hits: hitList.length };
             }
         }
         return best;
@@ -2785,8 +2803,13 @@
             const dx = Math.sign(target.x - unit.x), dy = Math.sign(target.y - unit.y);
             let s = 0, hits = 0, first = true;
             for (const { x: tx, y: ty } of _lineFootprintAI(g, unit, spell, dx, dy)) {
-                const e = v.visibleEnemies.find(en => en.x === tx && en.y === ty);
-                if (e && !e.dead && !isProtected(g, e)) {
+                // THE 3D LINE: only the bodies the aimed line passes through
+                // (a flyer and a grounded unit can share a tile)
+                const here = (typeof g.lineBeamHits === 'function')
+                    ? v.visibleEnemies.filter(en => en.x === tx && en.y === ty)
+                    : [v.visibleEnemies.find(en => en.x === tx && en.y === ty)].filter(Boolean);
+                for (const e of here) {
+                    if (e.dead || isProtected(g, e) || !_lineBeamHitsAI(g, unit, spell, dx, dy, target, e)) continue;
                     hits++;
                     s += scoreOffensiveHit(g, unit, e, spell, v, { splash: !first }).val;
                     if (kind === 'linePush') s += (spell.pushDistance || 1) * 16;
@@ -4778,7 +4801,7 @@
             && (!g.state.fogOfWar || typeof g.isUnitSeenByTeam !== 'function'
                 || g.isUnitSeenByTeam(e, unit.player)));
         const best = _bestLineAimAI(unit, spell, { visibleEnemies: enemies }, preferredTargetId);
-        return best ? { x: best.target.x, y: best.target.y, hits: best.hits, score: best.score } : null;
+        return best ? { x: best.target.x, y: best.target.y, z: best.target.z, hits: best.hits, score: best.score } : null;
     }
     window._aiReaimLineSpell = _reaimLineSpell;
 
@@ -5973,7 +5996,7 @@
                             g.maybeTriggerComputerTurn();
                             return;
                         }
-                        _castX = aim.x; _castY = aim.y; _castZ = undefined;
+                        _castX = aim.x; _castY = aim.y; _castZ = aim.z;   // the aimed body's level (THE 3D LINE)
                     }
                     // Two-click casts (wave B): the chosen target is the FIRST
                     // pick — seat it as the engine's own pick and cast at the

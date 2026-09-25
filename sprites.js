@@ -577,7 +577,7 @@ const SPELL_ANIM_VERBS = {
     'raceKiWave', 'racePsychicBeam', 'sentaiBlueWave', 'raceJudgmentBeam', 'raceBalefulGaze', 'raceAuroraRay',
     'raceAbductionBeam', 'raceStasisBeam', 'sharedShrinkRay', 'raceSonicBreaker', 'racePlasmaCannon',
     'raceHellmouth', 'raceLaserBeam', 'raceDragonfire', 'raceAtomicBreath',
-    'raceFractalNeedle', 'raceDeathGaze'],
+    'raceFractalNeedle', 'raceDeathGaze', 'raceFractalStitch'],
   call: ['raceWhistle', 'raceSummonCreation', 'raceCultSermon', 'raceCultGathering', 'raceSwarmSignal',
     'raceSirenSong', 'raceCallOfTheDeep', 'raceWalkThePlank'],
   reap: ['raceHarvestHook', 'raceHitALick', 'raceCultTithe', 'raceStealFromRich', 'raceWeighTheHeart',

@@ -2504,6 +2504,13 @@
                                 return { x: t.x, y: t.y };
                             });
                         }
+                        /* THE 3D LINE (2026-09-25): a zigzag beam's stitch points
+                           carry their LEVEL too — {x, y, z} copies */
+                        if (Array.isArray(params.beamPath)) {
+                            safeParams.beamPath = params.beamPath.map(function(t) {
+                                return { x: t.x, y: t.y, z: t.z };
+                            });
+                        }
                         // tile-list params (wall segments, chain hops) — plain
                         // {x,y} copies so nothing non-serializable rides along
                         ['tiles', 'chain'].forEach(function(k) {

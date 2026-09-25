@@ -7663,6 +7663,15 @@ const RACE_ABILITIES = {
           splitCount: 2, splitDmg: 84, splitRadius: 2,
           bonusVsStatus: { status: 'stun', mult: 1.5 },
           desc: 'Deals HEAVY magic damage to All Enemies in a line. Splits into smaller beams that seek nearby enemies. Deals bonus damage to Stunned targets.' },
+        /* 2026-09-25 (mondo's "beam that hits every target in a line, zigzagging up
+           and down"): every other beam is a straight 3D line from the caster to the
+           aimed body (battle.js THE 3D LINE) — this one ignores the line
+           (beamZigzag) and threads EVERY enemy in its lane, flyers included. The
+           Ambush Lunge twin on the tree's rung III. */
+        { id: 'raceFractalStitch', spellType: 'alien', element: 'arcane', name: 'Fractal Stitch',
+          type: 'damage', cost: 40, dmg: 130, range: 5,
+          kind: 'line', damageType: 'magic', lineWidth: 1, beamZigzag: true,
+          desc: 'Deals MEDIUM magic damage to All Enemies in a line, high or low. The needle zigzags up and down through the air to stitch every body on the line, flyers included.' },
         SHARED_POISON_SWAMP,
     ],
     'djinn': [
@@ -17590,7 +17599,7 @@ const RACE_TREE = {
     'djinn':         ['raceDustDevil', 'sharedSummonSandstorm', 'raceWishGranted', 'raceAncientMagic'],
     'anubis':        ['sharedFissure', 'raceGravePassage', 'sharedSummonSandstorm', 'raceWeighTheHeart'],
     'catgirl':       ['raceLoveBite', 'raceNimbleDodge', 'raceMeow', 'raceNinefoldScratch'],
-    'mantid':        ['raceMandibleStrike', 'raceChitinArmor', 'raceAmbushLunge', 'raceFractalNeedle'],
+    'mantid':        ['raceMandibleStrike', 'raceChitinArmor', ['raceAmbushLunge', 'raceFractalStitch'], 'raceFractalNeedle'],   // Fractal Stitch twin 2026-09-25
     'antperson':     ['raceFormicAcid', 'sharedPoisonSwamp', 'raceTunnelNetwork', 'raceSwarmSignal'],
     'mothman':       ['raceRedEyes', 'thunderstorm', 'raceAbduction', 'raceProphecyOfDisaster'],
     'siren':         ['raceSonicBoomerang', 'raceRiptide', 'raceDeafeningWail', 'raceCallOfTheDeep'],

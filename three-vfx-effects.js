@@ -1590,6 +1590,11 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
 SPELL_MAP['racePlaguefield'] = Object.assign({}, SPELL_MAP['racePlaguefield'],
     { wall: 'sharedPoisonSwamp_tile' });
 SPELL_MAP['raceRaiseDead'] = { aura: 'raceDarkResurrection_aura' };
+/* Fractal Stitch (mantid, 2026-09-25): the Baleful Gaze impact per tile + a
+   zigzag needle beam (_sigFractalStitch3D) that threads every body. */
+EFFECTS['raceFractalStitch_beam'] = { chargeMs: 80, beamMs: 420, beamSprite: 'plasma', beamThickness: 8,
+    beamElement: 'arcane', beamType: 'alien', beamZigzag: true, stitchHopMs: 95, stitchThickness: 0.55, shake: 4 };
+SPELL_MAP['raceFractalStitch'] = { beam: 'raceFractalStitch_beam', impact: 'raceBalefulGaze_impact_tile' };
 SPELL_MAP['raceKnightsOfRound'] = { aura: 'raceRoyalDecree_aura' };
 EFFECTS['raceRigormortis_aoe'] = {
     shape: 'square',
@@ -4627,6 +4632,34 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (beamDef.beamGatling && typeof _crGatling === 'function' &&
             _crGatling(fromX, fromY, hitTiles, beamDef)) return;
 
+        /* FRACTAL STITCH (2026-09-25): the needle threads every body on the
+           line, high or low — a zigzag of lit segments through each one. */
+        if (beamDef.beamZigzag && Array.isArray(params.beamPath) && params.beamPath.length) {
+            try { _sigFractalStitch3D(fromX, fromY, params.fromZ, params.beamPath, beamDef, spellId); } catch (e) { console.warn('[VFX] fractal stitch failed', e); }
+            return;
+        }
+
+        /* THE 3D LINE (2026-09-25): battle.js names the caster's level
+           (fromZ) and the aimed body (tx/ty/tz). The beam runs straight from
+           one to the other and on to the last cell at the same slope — up at
+           a flyer, down into a pit — instead of torso-to-torso of whatever
+           the tiles hold. */
+        var _startW = null, _endW = null;
+        if (params.fromZ != null && params.tz != null && params.tx != null && params.ty != null && (dx || dy)) {
+            var _dd = dx * dx + dy * dy;
+            var _aimStep = ((params.tx - fromX) * dx + (params.ty - fromY) * dy) / _dd;
+            var _lt = hitTiles[hitTiles.length - 1];
+            var _endStep = ((_lt.x - fromX) * dx + (_lt.y - fromY) * dy) / _dd;
+            if (_aimStep >= 1 && _endStep >= 1) {
+                _startW = _worldTorsoAtLevel(fromX, fromY, params.fromZ);
+                var _aimW = _worldTorsoAtLevel(params.tx, params.ty, params.tz);
+                var _k = _endStep / _aimStep;
+                _endW = { x: _startW.x + (_aimW.x - _startW.x) * _k,
+                          y: _startW.y + (_aimW.y - _startW.y) * _k,
+                          z: _startW.z + (_aimW.z - _startW.z) * _k, ts: _startW.ts };
+            }
+        }
+
         var chargeMs        = beamDef.chargeMs != null ? beamDef.chargeMs : 80;
         var beamMs          = beamDef.beamMs != null ? beamDef.beamMs : 280;
         var beamSprite      = beamDef.beamSprite || 'plasma';
@@ -4672,7 +4705,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var _laserOk = _spawnLaserBeam3D(fromX, fromY, _lastTile.x, _lastTile.y, {
                 core: _bc.core, glow: _bc.glow, beamMs: beamMs, thickness: _laserThick,
                 shake: shake || false,
+                startW: _startW || undefined, endW: _endW || undefined,
             });
+            if (_startW && _endW) {
+                var _sS = _worldToSpawn(_startW), _eS = _worldToSpawn(_endW);
+                _casterPx = { x: _sS.x, y: _sS.y }; _casterZTorso = _sS.z;
+                _terminalPx = { x: _eS.x, y: _eS.y }; _terminalZTorso = _eS.z;
+            }
 
             if (!_laserOk) {
                 var _bdx = _terminalPx.x - _casterPx.x;
@@ -5718,14 +5757,94 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         return wp;
     }
 
+    /* THE 3D LINE (2026-09-25): the torso point of whatever stands at LEVEL
+       lz on tile (tx, ty) — the renderer's own surface for the unit at that
+       level (a flyer over a grounded unit is its own body, not the first unit
+       the tile lists), the rendered ground when lz is the tile's ground, else
+       the elevation of lz itself (a point in the air). */
+    function _worldTorsoAtLevel(tx, ty, lz) {
+        var wp = _worldPos(tx, ty);
+        var ix = Math.round(tx), iy = Math.round(ty);
+        var y = null;
+        if (!_VS.on && typeof state !== 'undefined' && Array.isArray(state.units)) {
+            for (var i = 0; i < state.units.length && y == null; i++) {
+                var c = state.units[i];
+                if (!c || c.dead || c._dying || c.z == null || Math.abs(c.z - lz) > 0.01) continue;
+                var on = (c.x === ix && c.y === iy) || (c._isBoss && c._bossSize === 2 &&
+                    (ix === c.x || ix === c.x + 1) && (iy === c.y || iy === c.y + 1));
+                if (!on) continue;
+                try {
+                    if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive
+                        && ThreeRenderer.isActive() && typeof ThreeRenderer.unitSurfaceY === 'function') {
+                        var ry = ThreeRenderer.unitSurfaceY(c);
+                        if (typeof ry === 'number' && isFinite(ry)) y = ry;
+                    }
+                } catch (e) {}
+                if (y == null && typeof window._getElevationPx === 'function') {
+                    var gh0 = (typeof getHeightAt === 'function') ? (getHeightAt(ix, iy) || 0) : 0;
+                    y = c.z > gh0 ? window._getElevationPx(c.z) : tileZ(tx, ty);
+                }
+            }
+        }
+        if (y == null) {
+            var gh = (typeof getHeightAt === 'function') ? (getHeightAt(ix, iy) || 0) : 0;
+            if (Math.abs(lz - gh) < 0.01 || typeof window._getElevationPx !== 'function') y = tileZ(tx, ty);
+            else y = window._getElevationPx(lz) + (tileZ(tx, ty) - window._getElevationPx(gh));
+        }
+        wp.y = y + 3 + unitZBoost();
+        return wp;
+    }
+    /* world point → the _spawn/tilePx space ({x, y} px + z height) */
+    function _worldToSpawn(w) {
+        var pad = _cfg().boardPadding || 2;
+        return { x: w.x + pad, y: w.z + pad, z: w.y - 3 };
+    }
+
+    /* FRACTAL STITCH — the Mantid's needle (2026-09-25). One lit laser
+       segment per hop: caster → each victim's body in the order the line
+       reaches them → the end of the line, each hop lancing a beat after the
+       last, so the needle visibly stitches up to a flyer and back down to the
+       ground unit behind it. Every stitch point flashes (the segment's own
+       terminus burst + light); the last hop shakes. No backdrop. */
+    function _sigFractalStitch3D(fromX, fromY, fromZ, path, beamDef, spellId) {
+        var bc = (typeof _crBeamPalette === 'function') ? _crBeamPalette(spellId, beamDef)
+               : _beamColorFor(beamDef.beamType || null, beamDef.beamElement || null);
+        var hopMs = beamDef.stitchHopMs != null ? beamDef.stitchHopMs : 95;
+        var prev = { x: fromX, y: fromY, w: (fromZ != null) ? _worldTorsoAtLevel(fromX, fromY, fromZ) : _worldTorso(fromX, fromY) };
+        var n = path.length;
+        for (var i = 0; i < n; i++) {
+            (function (i) {
+                var p = path[i];
+                var w = _worldTorsoAtLevel(p.x, p.y, p.z);
+                var from = prev;
+                prev = { x: p.x, y: p.y, w: w };
+                _fxDelay(function () {
+                    if (_suppressed()) return;
+                    _spawnLaserBeam3D(from.x, from.y, p.x, p.y, {
+                        startW: from.w, endW: w,
+                        core: bc.core, glow: bc.glow,
+                        /* the whole stitch holds until the last hop lands */
+                        beamMs: 380 + (n - 1 - i) * hopMs,
+                        thickness: beamDef.stitchThickness || 0.55,
+                        rings: 1,
+                        shake: (i === n - 1) ? (beamDef.shake || 4) : false,
+                        scorch: false,
+                    });
+                }, i * hopMs);
+            })(i);
+        }
+    }
+
     function _spawnLaserBeam3D(fromTx, fromTy, toTx, toTy, opts) {
         var scene = _getVFXScene();
         if (!scene) return false;
         opts = opts || {};
 
-        var a = _worldTorso(fromTx, fromTy);
-        var b = _worldTorso(toTx, toTy);
-        var ts = a.ts;
+        /* THE 3D LINE: explicit world end points (opts.startW / opts.endW)
+           angle the beam up to a flyer or down into a pit */
+        var a = opts.startW || _worldTorso(fromTx, fromTy);
+        var b = opts.endW || _worldTorso(toTx, toTy);
+        var ts = a.ts || (_cfg().tileSize || 128);
 
         var start = new THREE.Vector3(a.x, a.y, a.z);
         var end   = new THREE.Vector3(b.x, b.y, b.z);
@@ -5851,6 +5970,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         /* Muzzle flash + charge sparks at the caster */
         var mp = tilePx(fromTx, fromTy);
         var mz = unitSurfaceZ(fromTx, fromTy) + unitZBoost();
+        if (opts.startW) { var _msw = _worldToSpawn(opts.startW); mp = { x: _msw.x, y: _msw.y }; mz = _msw.z; }
         /* reverse-emitter gather INTO the muzzle during the lance — the beam
            visibly PULLS power in before it throws it (wawa-vfx trick) */
         for (var cvi = 0; cvi < 9; cvi++) {
@@ -5887,6 +6007,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var ip = tilePx(toTx, toTy);
         var iz = unitSurfaceZ(toTx, toTy) + unitZBoost();
         var izFloor = tileZ(toTx, toTy) + 1;
+        /* a line that ends in the air: the burst hangs there, no ground ring */
+        var _endAir = false;
+        if (opts.endW) {
+            var _esw = _worldToSpawn(opts.endW); ip = { x: _esw.x, y: _esw.y }; iz = _esw.z;
+            _endAir = (iz - tileZ(toTx, toTy)) > ts * 1.2;
+        }
         _fxDelay(function () {
             if (_suppressed()) return;
             /* the terminus ORB — beams used to just spark and stop; now the
@@ -5895,7 +6021,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 _sigOrbBurst3D(toTx, toTy, {
                     mode: 'out', color: glowColor,
                     r0: ts * 0.1, r1: ts * 0.85 * thick,
-                    ms: 380, opacity: 0.6
+                    ms: 380, opacity: 0.6,
+                    height: opts.endW ? (opts.endW.y - _worldPos(toTx, toTy).y) : undefined
                 });
             } catch (e) {}
             for (var f = 0; f < 5; f++) {
@@ -5916,7 +6043,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                     opacity0: 0.9, opacity1: 0, drag: 2.2, gravity: -20,
                 });
             }
-            _spawn({
+            if (!_endAir) _spawn({
                 x: ip.x, y: ip.y, z: izFloor,
                 mode: 'world', sprite: 'target-ring',
                 ml: 520, size0: ts * 0.3, size1: ts * 1.5,
@@ -5930,7 +6057,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         /* THE CRAFT: lights at both ends, sparks off the length, a burn line */
         if (typeof _crBeamExtras === 'function') {
             try { _crBeamExtras(fromTx, fromTy, toTx, toTy, { glow: glowColor, beamMs: beamMs, lanceMs: lanceMs,
-                                                              thickness: thick, scorch: opts.scorch }); } catch (e) {}
+                                                              thickness: thick,
+                                                              /* THE 3D LINE: the lights sit on the real ends; a beam up in
+                                                                 the air burns no groove into the ground */
+                                                              mz: opts.startW ? mz : undefined, iz: opts.endW ? iz : undefined,
+                                                              scorch: (opts.endW && _endAir) ? false : opts.scorch }); } catch (e) {}
         }
         return true;
     }
@@ -37381,7 +37512,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var glowC = o.glow != null ? o.glow : 0x88bbff;
         var beamMs = o.beamMs || 440, lanceMs = o.lanceMs || 80;
         var mp = tilePx(fromTx, fromTy), ip = tilePx(toTx, toTy);
-        var mz = unitSurfaceZ(fromTx, fromTy) + unitZBoost(), iz = unitSurfaceZ(toTx, toTy) + unitZBoost();
+        var mz = o.mz != null ? o.mz : unitSurfaceZ(fromTx, fromTy) + unitZBoost();
+        var iz = o.iz != null ? o.iz : unitSurfaceZ(toTx, toTy) + unitZBoost();
         var thick = o.thickness || 1;
         _crLight(mp.x, mp.y, mz, glowC, { intensity: 2.2 * Math.min(1.5, thick), ms: beamMs, hold: beamMs * 0.55, radius: 3.2 });
         _crLight(ip.x, ip.y, iz, glowC, { intensity: 2.8 * Math.min(1.5, thick), ms: beamMs + 180, attack: lanceMs, hold: beamMs * 0.4, radius: 3.6 });

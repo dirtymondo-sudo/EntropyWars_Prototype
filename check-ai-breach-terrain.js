@@ -26,7 +26,8 @@ const mapNames = ['getLinePoints', 'isRangeBlockedByTerrain', 'verticalSightBloc
 const battleNames = ['getTerrainMaterial', 'getTerrainHardness', 'spellBreachPower',
     '_breachWindowCheck', '_breachWallAt', '_tileHasTree', '_fellTreeAt', '_removePlantedTreeAt',
     '_doors', 'doorAt', 'doorBlocksSightBetween', 'damageDoorAt', 'breakDoorPair',
-    '_lineLosBlocked', 'getLineSpellLaneOffsets', 'getLineForecast'];
+    '_lineLosBlocked', '_beamColumnUnits', '_beamUnitZ', 'lineBeamAimZ', 'lineBeamLine', 'beamBodyOnLine',
+    '_beamAtGround', '_beamCellVictims', 'getLineSpellLaneOffsets', 'getLineForecast'];
 const prefix = fn(battle, '_applyLineDamage').split('            /* Phase 5 wave C')[0]
     + 'return {cells:_lineCells,hits:hitTargets.map(t=>t.id),bores:_bores};}';
 const LIMITS = 'Actual map LOS, columns, hardness, breach/tree removal and door damage; controlled board. '
