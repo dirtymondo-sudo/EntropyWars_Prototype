@@ -1,7 +1,7 @@
 # THE ONE-WAY DOOR — the capture mechanic of story mode
 
 *Plan document, 2026-09-23. Story mode (the encounters and the marker's fights) only — Online and
-Practice never see a capture door. Phases 0 (THE RULES), 1 (THE DOOR ON THE BOARD) and 2 (THE DELIVERY) are built (2026-09-25); §6 is the order to build the rest in.
+Practice never see a capture door. Phases 0 (THE RULES), 1 (THE DOOR ON THE BOARD), 2 (THE DELIVERY) and 3 (THE AI) are built (2026-09-25); §6 is the order to build the rest in.
 Read CLAUDE.md "THE CHAIN REACTION", "THE DOOR AGENT rev 3", "THE PARTY" and "THE BAG'S TABS" first —
 every hook this plan hangs on already exists.*
 
@@ -382,3 +382,22 @@ the item rows the server's loadout validation reads).
   PointLight on the door (a new light recompiles every lit shader); the real light is the pooled flash in the beats.
   Test: `capture-delivery.test.js`; live check `playtest_capture.js` (Football Stadium: place → take → seal, no page
   errors). Next: Phase 3 THE AI.
+- 2026-09-25 — **Phase 3 THE AI built** (token `20260925-capture-04-cors`, ai.js only). ai.js "THE ONE-WAY DOOR" block beside
+  `aiHazardPenaltyAt` (`CAP_TUNE` — the tuning table): §4.1 `_capHazardAt` (a door that would take this body: 260 ×
+  (1 + the seal steps it would lose, data.js `captureSealSteps`), ×2 for the team's last free body; 60 / 20 one / two tiles
+  off it in a straight or diagonal line, ×0.35 when no hostile carries a push / pull / swap) inside `aiHazardPenaltyAt`;
+  `_aiMoveTiles` (every scorer's move list: the door tile and every tile whose ENGINE path — `findMovePath`, doMove's own —
+  crosses the door are dropped, cached per activation) + `_capWalkFeeds` (the execute `move` gate). §4.2 `_capSpellFeeds`
+  in scoreSpells: a teleport / dash / swap landing on a door and a rally pull within 2 of one are refused; a shove whose
+  first collision body is an ally one tile short of a door costs `feedAlly` 220. §4.3 `_capHeldAllyDoors` /
+  `_capFreeValue` / `_capDoorAttacks` (scoreAttacks), the joint move×attack search, the `free_captive` move goal: a
+  swing is worth the ally's `killValue` ÷ the door's hits × the urgency (×1.6 at 1 round, ×1.25 at 2), + half the worth for
+  the breaking swing, + `focusCommitBonus` when the team's swings in reach can break it THIS round (the plan's "team
+  focus" — no pickTeamFocus change: the focus is a unit), + half the worth when the team has no round to spare, ×0.25 when
+  it cannot fall before the seal; an empty door is a spare 30. A held ally leaves `v.allies` (no heal, no buff). §4.4 is
+  dropped (the user: natives never capture). **Deviation:** the plan's "push forecasts" were a single `+80` trap bonus in
+  three scorers — the AI has no landing forecast, so `_capSpellFeeds` reads the lane itself (the first body in the push
+  direction). Kill-switch `window.EW_AI_NO_CAPTURE`; `EW_AI_VERSION` v4.12. Test: `capture-ai.test.js` (ai.js in a vm over
+  a stubbed GAME); live check `playtest_capture_ai.js` (Football Stadium: two natives never path through the door; with one
+  taken, its partner beside the door picks `attack` on it and a real CPU activation takes a hit off it). Next: Phase 4
+  THE PRIZE.

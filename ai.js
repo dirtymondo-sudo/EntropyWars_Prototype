@@ -67,7 +67,7 @@
     // so a stats file can never again be ambiguous about WHICH brain played
     // it (stats17 mixed old-AI matches into a post-rewrite export). Bump on
     // any behavior-relevant ai.js change.
-    try { window.EW_AI_VERSION = 'v4.11-2026-09-14-arena-cube-priority'; } catch (e) {}
+    try { window.EW_AI_VERSION = 'v4.12-2026-09-25-capture-door'; } catch (e) {}
 
     // ── CPU DIFFICULTY (schema 12, kept) ─────────────────────────────────
     // Difficulty changes HOW WELL the AI executes decisions, never its
@@ -945,7 +945,8 @@
 
         const allies = g._isFFA()
             ? []
-            : g.aliveUnitsFor(player).filter(a => a.id !== unit.id);
+            : g.aliveUnitsFor(player).filter(a => a.id !== unit.id
+                && !(g.unitHasStatus && g.unitHasStatus(a, 'captured')));   // 🚪 a HELD ally is in the void: no heal, no buff, no formation
 
         const visibleHourglasses = (g.state.hourglasses || []).filter(h =>
             h.carriedBy === null && h.visibleTo[player]
@@ -1203,6 +1204,228 @@
         };
     }
 
+    // ── 🚪 THE ONE-WAY DOOR (CAPTURE_PLAN.md §4, Phase 3, 2026-09-25) ────
+    // The party's capture door (story fights only — the natives never carry
+    // one, CAPTURE_RULES.playerOnly) is a hazard to every native: a body that
+    // ARRIVES on it by any means is HELD, and SEALED after the rounds the door
+    // shows. The AI (1) never walks onto one or THROUGH one (a walk stops on
+    // the door — _aiMoveTiles drops every tile whose engine path crosses it),
+    // (2) prices ending a turn on it or beside it (aiHazardPenaltyAt, so
+    // tileDangerCost / the safety moves / the final ranking all read it),
+    // (3) never feeds itself or an ally to it (a teleport / dash / swap
+    // landing, a push whose collision would slide an ally in), and (4) comes
+    // for a HELD ally: an attack on the door is a candidate worth the ally's
+    // kill value over the door's hits left, more the fewer seal rounds
+    // remain, and the door becomes the team's focus when it can fall this
+    // round. Every read is a no-op when no capture door stands (PvP never
+    // pays a cycle). Kill-switch: window.EW_AI_NO_CAPTURE = true.
+    const CAP_TUNE = {
+        doorTile: 260,        // ending on a live enemy door (× 1 + the seal steps this body would lose)
+        loneMult: 2,          // …doubled when the unit is its team's last free body (it seals at the round's end)
+        besideDoor: 60,       // ending 1 tile off an empty enemy door in a straight / diagonal line (a push away)
+        besideDoor2: 20,      // …2 tiles off
+        besideNoPusher: 0.35, // × when no visible hostile carries a push / pull / swap
+        feedAlly: 220,        // a push whose collision slides an ally onto an enemy door
+        freeUrgency: { 1: 1.6, 2: 1.25 },   // × a door hit's worth by seal rounds left (else 1)
+        freeBreakNow: 0.5,    // + × the ally's worth when THIS hit breaks the door
+        freeTeamFocus: 1,     // + × focusCommitBonus when the team can break it this round
+        freeHopeless: 0.25,   // × when the team cannot break it before it seals (a swing a round each)
+        freePivotal: 0.5,     // + × the ally's worth when the team has no round to spare (every swing counts)
+        freeGoal: 150,        // the move goal toward a held ally's door
+        emptyDoorHit: 30,     // a swing at an EMPTY enemy door (only wins when nothing better is on)
+    };
+    const _CAP_PUSH_KINDS = new Set(['linePush', 'tackle', 'displacement', 'pull', 'aoePull', 'swap', 'skyThrow']);
+    function _capOn() { return !(typeof window !== 'undefined' && window.EW_AI_NO_CAPTURE); }
+    // every live capture door on the board
+    function _capDoors(g) {
+        if (!_capOn()) return [];
+        const ds = g && g.state && g.state.doors;
+        if (!ds || !ds.length) return [];
+        return ds.filter(d => d && d.kind === 'capture' && d.hp > 0 && !d.sealed);
+    }
+    // can this enemy door take this body right now? (the engine's own rule when loaded)
+    function _capCanTake(g, door, unit) {
+        if (!door || door.held || door.owner === unit.player) return false;
+        if (typeof window !== 'undefined' && typeof window.captureDoorCanTake === 'function') {
+            try { return !!window.captureDoorCanTake(door, unit); } catch (e) {}
+        }
+        return !unit.dead && !((unit._captureGraceUntil | 0) >= (g.state.round || 0));
+    }
+    // the live doors that could take this body (empty, an enemy's)
+    function _capThreats(g, unit) {
+        return _capDoors(g).filter(d => _capCanTake(g, d, unit));
+    }
+    function _capDoorAt(doors, x, y) { return doors.find(d => d.x === x && d.y === y) || null; }
+    // the rounds a door would hold this body (data.js captureSealSteps) → how many steps it LOSES from the base
+    function _capSealLoss(door, unit) {
+        try {
+            if (typeof captureSealSteps === 'function') {
+                const r = captureSealSteps(door, unit, {});
+                return Math.max(0, (r.base | 0) - (r.seal | 0));
+            }
+        } catch (e) {}
+        return 0;
+    }
+    // is this the last body of its team still free (a take seals it at the round's end)?
+    function _capLoneBody(g, unit) {
+        return !g.state.units.some(u => u !== unit && u.id !== unit.id && !u.dead && !u._sealed
+            && u.player === unit.player && !g.unitHasStatus(u, 'captured'));
+    }
+    // does any hostile on the board carry a displacement tool?
+    function _capHostilePusher(g, unit) {
+        return g.state.units.some(u => u && !u.dead && u.player !== unit.player
+            && (u.spells || []).some(sp => sp && (_CAP_PUSH_KINDS.has(sp.kind) || sp.pushDistance > 0 || sp.pull)));
+    }
+    // §4.1 — the price of ENDING on (x, y) because of the doors (aiHazardPenaltyAt adds it)
+    function _capHazardAt(g, unit, x, y) {
+        const doors = _capThreats(g, unit);
+        if (!doors.length) return 0;
+        const on = _capDoorAt(doors, x, y);
+        if (on) {
+            let p = CAP_TUNE.doorTile * (1 + _capSealLoss(on, unit));
+            if (_capLoneBody(g, unit)) p *= CAP_TUNE.loneMult;
+            return p;
+        }
+        let p = 0, pusherK = null;
+        for (const d of doors) {
+            const dx = Math.abs(d.x - x), dy = Math.abs(d.y - y);
+            const inLine = dx === 0 || dy === 0 || dx === dy;
+            const k = Math.max(dx, dy);
+            if (!inLine || k > 2) continue;
+            if (pusherK == null) pusherK = _capHostilePusher(g, unit) ? 1 : CAP_TUNE.besideNoPusher;
+            p = Math.max(p, (k === 1 ? CAP_TUNE.besideDoor : CAP_TUNE.besideDoor2) * pusherK);
+        }
+        return p;
+    }
+    // §4.1 — the reachable tiles minus every tile whose ENGINE path (doMove's own
+    // findMovePath) crosses or ends on a door that would take this body.
+    let _capMoveCache = { key: '', tiles: null };
+    function _aiMoveTiles(g, unit) {
+        const tiles = g.TargetQuery.moveTiles(unit);
+        if (!tiles.length) return tiles;
+        const doors = _capThreats(g, unit);
+        if (!doors.length) return tiles;
+        const key = [unit.id, unit.x, unit.y, unit.z, unit.ap, unit.movesThisTurn, g.state.round,
+            tiles.length, doors.map(d => d.id + '@' + d.x + ',' + d.y).join('|')].join(';');
+        if (_capMoveCache.key === key && _capMoveCache.tiles) return _capMoveCache.tiles;
+        let budget = 0;
+        for (const t of tiles) budget = Math.max(budget, Math.abs(t.x - unit.x) + Math.abs(t.y - unit.y));
+        try { budget = Math.max(budget, g.getMoveRangeThisTurn ? (g.getMoveRangeThisTurn(unit) | 0) : 0); } catch (e) {}
+        const out = tiles.filter(t => {
+            if (_capDoorAt(doors, t.x, t.y)) return false;
+            // a path through a door is at least as long as the detour via it
+            const near = doors.filter(d => Math.abs(unit.x - d.x) + Math.abs(unit.y - d.y)
+                + Math.abs(d.x - t.x) + Math.abs(d.y - t.y) <= budget + 1);
+            if (!near.length || typeof g.findMovePath !== 'function') return true;
+            let path = null;
+            try { path = g.findMovePath(unit, t.x, t.y, t.z); } catch (e) { return true; }
+            return !(path || []).some(p => p && near.some(d => d.x === p.x && d.y === p.y));
+        });
+        _capMoveCache = { key, tiles: out };
+        return out;
+    }
+    // does the engine walk to (x, y) cross a door that would take this body? (the execute gate)
+    function _capWalkFeeds(g, unit, x, y, z) {
+        const doors = _capThreats(g, unit);
+        if (!doors.length) return false;
+        if (_capDoorAt(doors, x, y)) return true;
+        if (typeof g.findMovePath !== 'function') return false;
+        try { return (g.findMovePath(unit, x, y, z) || []).some(p => p && _capDoorAt(doors, p.x, p.y)); } catch (e) { return false; }
+    }
+    // §4.2 — would this cast feed the caster (a landing) or an ally (a push's collision) to a door?
+    // Returns a penalty (Infinity = refuse the candidate).
+    function _capSpellFeeds(g, unit, spell, target) {
+        if (!spell || !target) return 0;
+        const doors = _capDoors(g).filter(d => d.owner !== unit.player && !d.held);
+        if (!doors.length) return 0;
+        const kind = spell.kind;
+        // the caster lands on the target tile (a teleport, a dash's end, a swap's exchange)
+        if ((kind === 'teleport' || kind === 'dash' || kind === 'swap') && target.x != null) {
+            const d = _capDoorAt(doors, target.x, target.y);
+            if (d && _capCanTake(g, d, unit)) return Infinity;
+        }
+        // a rally pull drags every ally toward the caster — never beside an enemy door
+        if (kind === 'rallyPull' && doors.some(d => Math.abs(d.x - unit.x) + Math.abs(d.y - unit.y) <= 2)) return Infinity;
+        // a shove: the target slides away from the caster; a body in its lane is knocked one tile on
+        const shoves = _CAP_PUSH_KINDS.has(kind) && kind !== 'pull' && kind !== 'aoePull' && kind !== 'swap';
+        if ((shoves || spell.pushDistance > 0) && target.x != null) {
+            const sx = Math.sign(target.x - unit.x), sy = Math.sign(target.y - unit.y);
+            if (!sx && !sy) return 0;
+            const n = Math.max(1, spell.pushDistance || 1);
+            let pen = 0;
+            for (let i = 1; i <= n; i++) {
+                const bx = target.x + sx * i, by = target.y + sy * i;
+                const body = g.state.units.find(u => !u.dead && u.x === bx && u.y === by);
+                if (!body) continue;
+                if (body.player === unit.player) {
+                    const d = _capDoorAt(doors, bx + sx, by + sy);
+                    if (d && _capCanTake(g, d, body)) pen += CAP_TUNE.feedAlly;
+                }
+                break;   // the first body stops the slide
+            }
+            return pen;
+        }
+        return 0;
+    }
+    // §4.3 — the enemy doors holding one of OUR bodies
+    function _capHeldAllyDoors(g, unit) {
+        const out = [];
+        for (const d of _capDoors(g)) {
+            if (!d.held || d.owner === unit.player) continue;
+            const ally = g.state.units.find(u => u.id === d.held.unitId);
+            if (!ally || ally.dead || ally.player !== unit.player) continue;
+            out.push({ door: d, ally });
+        }
+        return out;
+    }
+    // how many of our bodies could swing at this door this round (a crude reach: move + range)
+    function _capTeamHits(g, unit, door) {
+        let n = 0;
+        for (const u of g.state.units) {
+            if (!u || u.dead || u._sealed || u.player !== unit.player) continue;
+            if (g.unitHasStatus(u, 'captured')) continue;
+            let mv = 2, rg = 1;
+            try { mv = g.getEffectiveMove(u) || 2; } catch (e) {}
+            try { rg = g.getEffectiveRange(u) || 1; } catch (e) {}
+            if (u.id === unit.id) mv = 0;
+            if (Math.abs(u.x - door.x) + Math.abs(u.y - door.y) <= mv + rg) n++;
+        }
+        return n;
+    }
+    // what ONE basic hit on this held door is worth to `unit`'s team
+    function _capFreeValue(g, unit, entry, v) {
+        const { door, ally } = entry;
+        const worth = killValue(g, (v && v.closestEnemy) || unit, ally, v);
+        const seal = Math.max(1, door.held.seal | 0);
+        const hp = Math.max(1, door.hp | 0);
+        const hits = _capTeamHits(g, unit, door);
+        const slack = hits * seal - hp;   // swings the team can spare before the seal (a swing a round each)
+        let s = worth * (CAP_TUNE.freeUrgency[seal] || 1) / hp;
+        if (hp <= 1) s += worth * CAP_TUNE.freeBreakNow;
+        if (slack < 0) return s * CAP_TUNE.freeHopeless;   // it seals before it can fall — a long shot
+        if (hits >= hp) s += tuneW(g, 'focusCommitBonus') * CAP_TUNE.freeTeamFocus;   // it can fall THIS round: the team's focus
+        if (slack < hits) s += worth * CAP_TUNE.freePivotal;   // no round to spare: skip this swing and the ally is lost
+        return s;
+    }
+    // the door-attack candidates from where the unit stands (scoreAttacks)
+    function _capDoorAttacks(g, unit, v, out) {
+        const doors = _capDoors(g).filter(d => d.owner !== unit.player);
+        if (!doors.length) return;
+        const range = v.effRange || 1;
+        const held = _capHeldAllyDoors(g, unit);
+        for (const d of doors) {
+            const dist = _dist(g, unit.x, unit.y, unit.z, d);
+            if (dist < 1 || dist > range) continue;
+            if (g.isRangeBlockedByTerrain && g.isRangeBlockedByTerrain(unit.x, unit.y, d.x, d.y)) continue;
+            const entry = held.find(h => h.door === d);
+            let s;
+            if (entry) s = _capFreeValue(g, unit, entry, v);
+            else if (!d.held) s = CAP_TUNE.emptyDoorHit;
+            else continue;   // it holds someone else's body — not ours to break
+            out.push({ type: 'attack', target: { x: d.x, y: d.y, z: d.z }, score: s, _objectAttack: true, _captureDoor: d.id });
+        }
+    }
+
     // ── Hazard awareness ─────────────────────────────────────────────────
     // Pending delayed blasts, lava, deep water, poison/scorched ground and
     // actively burning tiles — a penalty for ENDING a turn at (x,y).
@@ -1222,6 +1445,7 @@
         else if (terr === 'deep_water' && !(typeof unitIsDeepWaterAdapted === 'function' && unitIsDeepWaterAdapted(unit))) pen += 60;
         else if (terr === 'poison' || terr === 'scorched') pen += 30;
         if (typeof _tileIsBurning === 'function' && _tileIsBurning(x, y)) pen += 45;
+        pen += _capHazardAt(g, unit, x, y);   // 🚪 THE ONE-WAY DOOR: on an enemy capture door, or a push away from one
         return pen;
     }
 
@@ -1376,7 +1600,7 @@
         // ── fallbacks: nothing scored above zero ──
         if (!best || best.score <= 0) {
             if (!_skipMove && g.canUnitMove(unit)) {
-                const moveTiles = g.TargetQuery.moveTiles(unit);
+                const moveTiles = _aiMoveTiles(g, unit);
                 if (moveTiles.length > 0) {
                     // Safest fresh tile that still makes PROGRESS — idle units
                     // drift toward the enemy tower (or mid) instead of the
@@ -1699,6 +1923,9 @@
                 if (s > 0) out.push({ type: 'attack', target: { x: o.x, y: o.y }, score: s, _objectAttack: true });
             }
         }
+
+        // 🚪 THE ONE-WAY DOOR: break the door holding one of ours (§4.3)
+        _capDoorAttacks(g, unit, v, out);
     }
 
     function scoreTowerAttack(unit, v, out) {
@@ -2262,6 +2489,11 @@
             if (!target && !noTargetKinds.includes(spell.kind)) continue;
 
             let score = scoreSpell(unit, spell, target, v);
+            if (score <= 0) continue;
+            // 🚪 THE ONE-WAY DOOR (§4.2): never land ourselves on a door, never slide an ally onto one
+            const _capFeed = _capSpellFeeds(g, unit, spell, target);
+            if (_capFeed === Infinity) continue;
+            score -= _capFeed;
             if (score <= 0) continue;
 
             // MP is a real lever: every cast pays its cost in the currency.
@@ -3283,7 +3515,7 @@
         const g = G();
         if (_skipMove || !g.canUnitMove(unit)) return;
 
-        const moveTiles = g.TargetQuery.moveTiles(unit);
+        const moveTiles = _aiMoveTiles(g, unit);
         if (moveTiles.length === 0) return;
 
         // 1) joint move×action (needs AP for move + action afterwards)
@@ -3348,7 +3580,8 @@
         const g = G();
         const enemies = v.visibleEnemies.filter(e => !isProtected(g, e));
         const hasTower = v.enemyTower && v.enemyTower.hp > 0;
-        if (!enemies.length && !hasTower) return null;
+        const capHeld = _capHeldAllyDoors(g, unit);   // 🚪 a door holding one of ours is a target too
+        if (!enemies.length && !hasTower && !capHeld.length) return null;
 
         const recent = new Set(unit._aiRecentTiles || []);
         let atkRange = 1;
@@ -3420,6 +3653,14 @@
                     if (nearTowerEnemies === 0) towerVal += 200;
                     if (towerVal > bestShot) bestShot = towerVal;
                 }
+            }
+            // 🚪 THE ONE-WAY DOOR: a swing at the door holding one of ours from this tile
+            for (const h of capHeld) {
+                const d = _dist(g, t.x, t.y, t.z, h.door);
+                if (d < 1 || d > rangeAt(atkRange, th)) continue;
+                if (g.isRangeBlockedByTerrain && g.isRangeBlockedByTerrain(t.x, t.y, h.door.x, h.door.y)) continue;
+                const val = _capFreeValue(g, unit, h, v);
+                if (val > bestShot) bestShot = val;
             }
             if (bestShot <= 0) continue;
             let score = bestShot * tuneW(g, 'jointSearchDiscount');
@@ -3554,7 +3795,7 @@
         if (round <= 3 && v.visibleEnemies.length === 0 && v.visibleHourglasses.length === 0) {
             const exploreBonus = AI_TUNE.earlyExploreBonus;
             if (exploreBonus > 0 && g.canUnitMove(unit)) {
-                const moveTiles = g.TargetQuery.moveTiles(unit);
+                const moveTiles = _aiMoveTiles(g, unit);
                 if (moveTiles.length > 0) {
                     const cx = Math.floor(g.bw() / 2);
                     const cy = Math.floor(g.bh() / 2);
@@ -3577,7 +3818,7 @@
 
         // Loose hourglasses are a win condition — reachable this turn?
         if (v.visibleHourglasses.length > 0) {
-            const moveTiles = g.TargetQuery.moveTiles(unit);
+            const moveTiles = _aiMoveTiles(g, unit);
             const reachable = v.visibleHourglasses.filter(h =>
                 moveTiles.some(t => t.x === h.x && t.y === h.y));
             if (reachable.length > 0) {
@@ -3743,6 +3984,17 @@
 
         if (v.enemyTower && v.enemyTower.hp > 0) {
             goals.push({ x: v.enemyTower.x, y: v.enemyTower.y, score: 55, reason: 'default_siege' });
+        }
+
+        // 🚪 THE ONE-WAY DOOR (§4.3): go break the door holding one of ours — while it can still fall in time
+        for (const h of _capHeldAllyDoors(g, unit)) {
+            const seal = Math.max(1, h.door.held.seal | 0);
+            let mv = 2, rg = 1;
+            try { mv = g.getEffectiveMove(unit) || 2; } catch (e) {}
+            try { rg = g.getEffectiveRange(unit) || 1; } catch (e) {}
+            const d = Math.abs(unit.x - h.door.x) + Math.abs(unit.y - h.door.y);
+            if (d > mv * seal + rg) continue;   // it seals before we could swing
+            goals.push({ x: h.door.x, y: h.door.y, score: CAP_TUNE.freeGoal + (seal <= 1 ? 60 : 0), reason: 'free_captive' });
         }
 
         goals.push({
@@ -4214,7 +4466,7 @@
             const tgtY = Math.max(nex.zoneY, Math.min(nex.zoneY + nex.zoneSize - 1, unit.y));
             // Snap to an actually-reachable tile — pushing a raw clamped
             // coord doMove refuses just spins the stall counter.
-            const moveTiles = g.TargetQuery.moveTiles(unit);
+            const moveTiles = _aiMoveTiles(g, unit);
             let bt = null, bd = Infinity;
             for (const t of moveTiles) {
                 const d = Math.abs(t.x - tgtX) + Math.abs(t.y - tgtY);
@@ -4321,7 +4573,7 @@
 
         // (d) softlock escape
         const stuck = v.attackTargets.length === 0
-            && !!g.TargetQuery && g.TargetQuery.moveTiles(unit).length === 0;
+            && !!g.TargetQuery && _aiMoveTiles(g, unit).length === 0;
         if (stuck) {
             if (placeTool && !g._buildProblem(unit, placeTool, unit.x, unit.y)) {
                 out.push({ type: 'build', tool: placeTool, x: unit.x, y: unit.y, score: 120 });
@@ -5726,6 +5978,15 @@
                 if (!unit._aiRecentTiles) unit._aiRecentTiles = [];
                 unit._aiRecentTiles.push(g.posKey(unit.x, unit.y));
                 if (unit._aiRecentTiles.length > 3) unit._aiRecentTiles.shift();
+                // 🚪 THE ONE-WAY DOOR: the last gate — a walk that would cross or end on a
+                // door that takes us is refused (every scorer already drops those tiles)
+                if (_capWalkFeeds(g, unit, action.x, action.y, action.z)) {
+                    _skipMove = true;
+                    g.state.actionMode = null;
+                    g.state.aiThinking = false;
+                    g.maybeTriggerComputerTurn();
+                    break;
+                }
                 {
                     const prevX = unit.x, prevY = unit.y;
                     const moveResult = g.doMove(unit, action.x, action.y, action.z);
