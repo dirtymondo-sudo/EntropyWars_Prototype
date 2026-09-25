@@ -1974,7 +1974,7 @@
         }
         function _hqPauseSpellDesc(sp) { if (!sp) return ''; let d = sp.desc || ''; if (!d) { try { d = (typeof describeSpell === 'function') ? describeSpell(sp) : ''; } catch (e) {} } return d; }
         const _HQ_CIRC_ST_NOTE = { equipped: 'EQUIPPED · CLICK TO UNEQUIP', ok: 'CLICK TO EQUIP', slots: 'NO SLOT · UNEQUIP SOMETHING', sp: 'NOT ENOUGH SP · UNEQUIP SOMETHING', sealed: 'SEALED · NOT ALLOWED IN THIS MODE' };
-        const _HQ_CIRC_SRC = { race: '', job: '', borrowRace: 'BORROWED · RACE', borrowJob: 'BORROWED · JOB' };
+        const _HQ_CIRC_SRC = { race: '', job: '', borrowRace: 'BORROWED · RACE', borrowJob: 'BORROWED · JOB', wheel: 'DOOR WHEEL' };   // THE DOOR WHEEL (DOOR_GUN_PLAN §2.4)
         /* THE LOOK PASS (2026-09-24, mondo — the builder's rack and this one read alike): the battle spell menu's
            badges (hud.js _hrlgSpellBadges — type, element glyph, statuses) + its AOE footprint (hud.js _hrlgSpellShape),
            as HTML. hud.js is loaded by the time the HQ opens; without it the type badge stands alone. */

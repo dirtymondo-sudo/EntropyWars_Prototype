@@ -7420,19 +7420,29 @@ const RACE_ABILITIES = {
        gun where the spell needs one — for himself or at the enemy — and every
        row wears `doorGun: true` (sprites.js classifySpellAnimKind → the
        quick-draw clip; the recipes in three-vfx-effects.js "THE DOOR AGENT'S
-       DOORS"). Door to the Face ⇄ Breaking and Entering → Air Mail →
-       Trapdoor → Drop In★. Plain kinds on purpose: `damage` (the swing, the
+       DOORS"). Swing Door ⇄ Door Dash → Breaking and Entering ⇄ Air Mail →
+       Trapdoor → Drop In★ (the door wheel, 2026-09-25; was Door to the Face ⇄ B&E → Air Mail). Plain kinds on purpose: `damage` (the swing, the
        air drop), `doorBreach` (the way in — `fromAbove` + `splashDmg` for the
        capstone), `placeTrap` with `trapSize: 2` (the hidden 2×2 trapdoor:
        battle.js _springTrap's `trapdoor` branch sinks every tile of the
        group two levels under whoever steps on it). The execution is
        FINISHERS['door agent'] (Open House). */
     'door agent': [
-        { id: 'raceDoorToTheFace', spellType: 'anomaly', element: 'psychic', name: 'Door to the Face',
-          type: 'damage', cost: 20, dmg: 80, range: 1, apCost: 1,
-          kind: 'damage', damageType: 'physical', pushDistance: 1, doorGun: true,
+        /* THE DOOR WHEEL Phase 0 (DOOR_GUN_PLAN.md §2.1 / §3.5, 2026-09-25): Door to the Face is RETIRED —
+           SWING DOOR takes its rung. The aim is the HINGE, an EMPTY tile beside an enemy (8 neighbours): the
+           door unfolds there and its leaf swings through that enemy, pushing it 2 tiles STRAIGHT AWAY FROM THE
+           HINGE (`hinge: true` — battle.js swingDoorResolve / _runPostEffects' pushFrom). The player reads the
+           push off the board before the click (ui.js paints the victim and its two landing tiles). The rung-I
+           twin is DOOR DASH: the agent steps into a door and out of one on the landing (`teleport`, no strike). */
+        { id: 'raceSwingDoor', spellType: 'anomaly', element: 'psychic', name: 'Swing Door',
+          type: 'damage', cost: 25, dmg: 40, range: 3, apCost: 1,
+          kind: 'damage', damageType: 'physical', pushDistance: 2, hinge: true, doorGun: true,
           statusEffects: [{ id: 'stagger', duration: 1 }],
-          desc: 'Mind the door. Shoot a door down beside you and swing it into an adjacent enemy: WEAK physical damage, the target is pushed 1 tile and Staggered.' },
+          desc: 'Mind the door. Shoot a door onto an EMPTY tile beside an enemy within 3 — the hinge — and it swings through them: WEAK physical damage, Staggered, and they are pushed 2 tiles straight away from the hinge. Pick the hinge on the far side and you pick where they land.' },
+        { id: 'raceDoorDash', spellType: 'anomaly', element: 'psychic', name: 'Door Dash',
+          type: 'utility', cost: 25, range: 5, apCost: 1,
+          kind: 'teleport', doorGun: true,
+          desc: 'Take the short cut. Shoot a door onto an empty tile within 5, step into a door at your feet and out of that one. No damage, no opportunity strikes — you were never in between.' },
         { id: 'raceBreakingEntering', spellType: 'anomaly', element: 'psychic', name: 'Breaking and Entering',
           type: 'damage', cost: 25, dmg: 85, range: 4, apCost: 1,
           kind: 'doorBreach', damageType: 'physical', rearAttack: true, doorGun: true,
@@ -11370,7 +11380,7 @@ const ACH_RECORD_DEFS = [
 
 // Hard ceilings so a hostile blob can't balloon the stored row: key-count
 // caps per section plus a universal value clamp.
-const ACH_MERGE_CAPS = { counters: 256, champs: 256, unlocked: 12000, value: 1e9, finds: 4000, links: 512, cleared: 256, clearedIds: 32, rooms: 512, angles: 256, defeated: 256, captured: 256, bounties: 64 };
+const ACH_MERGE_CAPS = { counters: 256, champs: 256, unlocked: 12000, value: 1e9, finds: 4000, links: 512, cleared: 256, clearedIds: 32, rooms: 512, angles: 256, defeated: 256, captured: 256, bounties: 64, gunDoors: 32 };
 
 function mergeProgressBlobs(a, b) {
   const METRIC_RE = /^[A-Za-z0-9_]{1,48}$/;                 // counter metric names
@@ -11421,8 +11431,8 @@ function mergeProgressBlobs(a, b) {
   const SPOT_RE = /^[A-Za-z0-9_-]{1,48}$/;
   const RACE_KEY_RE = /^[a-z0-9][a-z0-9 _'-]{0,40}$/;
   const RACE_TXT = v => (typeof v === 'string' && v.length <= 48) ? v : null;
-  const out = { v: 2, counters: {}, champs: {}, records: {}, unlocked: {}, hq: { finds: { taken: {} }, links: { seen: {} }, rooms: { seen: {} }, angles: { found: {} }, cleared: {}, encounters: { count: 0, wins: 0, losses: 0, last: null }, skate: { best: null, total: 0, lines: 0, bails: 0 }, defeated: {}, captured: {}, bounties: {} } };
-  let nCounters = 0, nChamps = 0, nUnlocked = 0, nFinds = 0, nLinks = 0, nCleared = 0, nRooms = 0, nAngles = 0, nDefeated = 0, nCaptured = 0;
+  const out = { v: 2, counters: {}, champs: {}, records: {}, unlocked: {}, hq: { finds: { taken: {} }, links: { seen: {} }, rooms: { seen: {} }, angles: { found: {} }, cleared: {}, encounters: { count: 0, wins: 0, losses: 0, last: null }, skate: { best: null, total: 0, lines: 0, bails: 0 }, defeated: {}, captured: {}, bounties: {}, gunDoors: {} } };
+  let nCounters = 0, nChamps = 0, nUnlocked = 0, nFinds = 0, nLinks = 0, nCleared = 0, nRooms = 0, nAngles = 0, nDefeated = 0, nCaptured = 0, nGunDoors = 0;
   for (const src of [a, b]) {
     if (!src || typeof src !== 'object') continue;
     const hqSrc = (src.hq && typeof src.hq === 'object') ? src.hq : {};
@@ -11455,6 +11465,18 @@ function mergeProgressBlobs(a, b) {
        encounter counts), each clamped to CAPTURE_RULES.bountyPerDay; the newest `bounties` days are kept (the union below).
        The server pays the growth (hqCaptureBountySyncPay) — the local credit never reaches the wallet. */
     if (hqSrc.bounties && typeof hqSrc.bounties === 'object') out.hq.bounties = hqBountyUnion(out.hq.bounties, hqSrc.bounties);
+    /* THE DOOR WHEEL's LEDGER (DOOR_GUN_PLAN §3.1 / §7, 2026-09-25): hq.gunDoors = { '<door key>': 'YYYY-MM-DD' } — the
+       destination doors the officer EARNED; the EARLIER day wins; only DOOR_GUN_DOORS keys survive (the server feeds us
+       untrusted blobs). Dormant while DOOR_GUN_RULES.allUnlocked is true — every door is on the wheel anyway. */
+    const gunDoors = (hqSrc.gunDoors && typeof hqSrc.gunDoors === 'object') ? hqSrc.gunDoors : {};
+    for (const key of Object.keys(gunDoors)) {
+      if (badKey(key) || !doorGunLedgerKey(key)) continue;
+      const v = gunDoors[key];
+      if (typeof v !== 'string' || !DATE_RE.test(v)) continue;
+      const dst = out.hq.gunDoors;
+      if (dst[key] === undefined) { if (nGunDoors >= ACH_MERGE_CAPS.gunDoors) continue; nGunDoors++; dst[key] = v; continue; }
+      if (v < dst[key]) dst[key] = v;
+    }
     /* hq.cleared */
     const cleared = (hqSrc.cleared && typeof hqSrc.cleared === 'object') ? hqSrc.cleared : {};
     for (const key of Object.keys(cleared)) {
@@ -17501,7 +17523,7 @@ const RACE_TREE = {
     'priest':        ['raceDivineLight', 'protect1', 'raceSmite', 'exorcism'],
     'gangster':      ['raceStompOut', ['raceDriveBy', 'raceHitALick'], 'raceChoppa', 'raceExtendedClips'],   // §6.19 (Phase 6)
     'nun':           [['racePurify', 'raceSmite'], 'raceBlessing', 'racePrayer', 'raceHallelujah'],           // §6.20 (Phase 6)
-    'door agent':    [['raceDoorToTheFace', 'raceBreakingEntering'], 'raceAirMail', 'raceTrapdoor', 'raceDropIn'],   // DOOR_RACE_DESIGN §4 rev 3 (2026-09-20): the gun, not the doors
+    'door agent':    [['raceSwingDoor', 'raceDoorDash'], ['raceBreakingEntering', 'raceAirMail'], 'raceTrapdoor', 'raceDropIn'],   // DOOR_GUN_PLAN §2.4 (2026-09-25): the door wheel's starters on rung I, B&E joins Air Mail on II; the seven destinations are the WHEEL pool (unitSpellPoolParts.wheel)
     'police officer': ['racePoliceNightstick', ['racePoliceTaser', 'racePoliceSpray'], 'racePoliceCuffs', 'racePoliceLockdown'],   // 2026-09-21
     'jellyfish':     ['raceJellySting', ['raceJellyBloom', 'raceJellyDrift'], 'raceJellyNet', 'raceJellyRebirth'],                // 2026-09-21
     'cult leader':   ['raceCultSermon', ['raceCultKoolAid', 'raceCultTithe'], 'raceCultIndoctrinate', 'raceCultGathering'],       // 2026-09-21
@@ -17871,6 +17893,167 @@ function flRacePool(race) {
     return out;
 }
 
+/* ══ THE DOOR WHEEL — the door gun's table (DOOR_GUN_PLAN.md §3.1, Phase 0, 2026-09-25) ═════════════════════════
+   The gun is a WHEEL of doors. Three kinds: a SHOT door appears, acts, folds (Swing Door, Door Dash, the Threshold);
+   a STANDING door stays on its tile with a facing, hits and an ACT (Phase 1+); the CAPTURE door is CAPTURE_PLAN's item.
+   The user's rulings (2026-09-25, DOOR_GUN_PLAN §8): the standing cap is PER PLAYER (two, the capture door not counted);
+   ONLY THE DOOR AGENT fires the wheel's doors (the wheel pool is race 'door agent' only, never borrowable); the wind
+   pushes ALLIES too. Every door is unlocked for now (`allUnlocked`); the story ledger (hq.gunDoors) is dormant until
+   the user flips it. A destination door joins the rack only when its spell row exists (SPELL_BY_ID) — the rows land
+   with their engine (Phase 1: Gust + Archers; Phase 2: the rest), so no row is ever equippable before it works.
+   Pure: no board, no DOM. */
+const DOOR_GUN_RULES = {
+    allUnlocked: true,
+    standingCap: 2,                     // standing doors per PLAYER at a time (the user, 2026-09-25); the oldest folds
+    hits: 3,                            // a standing door's hits (a Keyholder's: 4 — doorMaxHits)
+    ap: 1, range: 4, los: true,
+    lane: { max: 6 },                   // the longest lane any door paints
+    actOrder: 'placed',                 // THE DOORS' TURN walks the doors oldest first
+    wheel: { holdMs: 140, slow: 0.15, wedges: 8 },
+    agentOnly: true,                    // the user: "only the DOOR agent can fire doors (OBVIOUSLY)"
+    windPushesAllies: true,             // the user: "yes wind should push allies too"
+};
+/* The wheel's doors in wedge order. `spell` = the SPELL_LIBRARY / RACE_ABILITIES row that fires it in battle (null =
+   room-only or an item); `tier` = its rung on the rack (1–4 SP); `lane` = tiles ahead of the face, `radius` = a disc
+   round the door, `beam` = to a wall; `act` = THE DOORS' TURN verb (§3.3); `unlock` = the site that earns it (§7). */
+const DOOR_GUN_DOORS = {
+    threshold: { name: 'The Threshold', kind: 'shot',     roomOnly: true, spell: null,             icon: '🌀', color: 0x7fd4ff },
+    swing:     { name: 'Swing Door',    kind: 'shot',     spell: 'raceSwingDoor',  tier: 1,       icon: '🚪', color: 0xe8c07a },
+    dash:      { name: 'Door Dash',     kind: 'shot',     spell: 'raceDoorDash',   tier: 1,       icon: '💨', color: 0xe8c07a },
+    capture:   { name: 'One-Way Door',  kind: 'capture',  spell: null, item: 'captureDoor', story: true, icon: '⛓', color: 0x9b7bff },
+    gust:      { name: 'Gust Door',     kind: 'standing', spell: 'gunGustDoor',    tier: 2, lane: 4,    act: 'lanePush',                     spellType: 'anomaly', element: 'wind',      icon: '🌬', color: 0xcfe8ff, unlock: { site: 'prebuilt_shasta' } },
+    archers:   { name: "Archers' Door", kind: 'standing', spell: 'gunArchersDoor', tier: 2, radius: 4,  act: 'volley',                       spellType: 'human',   element: 'physical',  icon: '🏹', color: 0xd9b36a, unlock: { site: 'prebuilt_camelot' } },
+    hell:      { name: 'Hell Door',     kind: 'standing', spell: 'gunHellDoor',    tier: 3, lane: 3,    act: 'laneTerrain', terrain: 'fire', spellType: 'unholy',  element: 'fire',      icon: '🔥', color: 0xff5a2a, unlock: { site: 'prebuilt_hell' } },
+    maw:       { name: 'Maw Door',      kind: 'standing', spell: 'gunMawDoor',     tier: 3, radius: 2,  act: 'pullIn',                       spellType: 'alien',   element: 'psychic',   icon: '🕳', color: 0x6a3cff, unlock: { site: 'prebuilt_singularity' } },
+    frost:     { name: 'Frost Door',    kind: 'standing', spell: 'gunFrostDoor',   tier: 2, lane: 4,    act: 'laneTerrain', terrain: 'ice',  spellType: 'anomaly', element: 'ice',       icon: '❄', color: 0x9fe6ff, unlock: { site: 'prebuilt_northpole' } },
+    laser:     { name: 'Laser Door',    kind: 'standing', spell: 'gunLaserDoor',   tier: 3, beam: true, act: 'beam',                         spellType: 'tech',    element: 'lightning', icon: '🔴', color: 0xff2a4a, unlock: { site: 'prebuilt_cyberpunk' } },
+    light:     { name: 'Light Door',    kind: 'standing', spell: 'gunLightDoor',   tier: 2, lane: 4,    act: 'laneLight',                    spellType: 'divine',  element: 'holy',      icon: '✨', color: 0xfff1b0, unlock: { site: 'prebuilt_heaven' } },
+};
+const DOOR_GUN_KEYS = Object.keys(DOOR_GUN_DOORS);
+/* the 8 facings, clockwise from north (the board's +y is south) */
+const DOOR_GUN_FACINGS = [[0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1]];
+function doorGunLedgerKey(key) { return typeof key === 'string' && Object.prototype.hasOwnProperty.call(DOOR_GUN_DOORS, key) && DOOR_GUN_DOORS[key].kind === 'standing'; }
+/* the ledger's join: { key: 'YYYY-MM-DD' }, the EARLIER day wins, only destination keys survive */
+function doorGunLedgerUnion(a, b) {
+    const out = {};
+    [a, b].forEach(src => {
+        if (!src || typeof src !== 'object') return;
+        Object.keys(src).forEach(k => {
+            if (!doorGunLedgerKey(k)) return;
+            const v = src[k];
+            if (typeof v !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return;
+            if (out[k] === undefined || v < out[k]) out[k] = v;
+        });
+    });
+    return out;
+}
+/* the officer's earned doors: the local door.hq record ∪ the synced blob */
+function doorGunLedger(profile) {
+    let local = null, synced = null;
+    try { const r = profile && profile.door && profile.door.hq && profile.door.hq.gunDoors; if (r && typeof r === 'object') local = r; } catch (e) {}
+    try { const h = profile && profile.progress && profile.progress.hq && profile.progress.hq.gunDoors; if (h && typeof h === 'object') synced = h; } catch (e) {}
+    return doorGunLedgerUnion(local, synced);
+}
+/* Is this door on the officer's wheel? The starters and the Threshold always; the capture door is an item (the bag
+   says); a destination door when `allUnlocked` or the ledger holds it. */
+function doorGunUnlocked(profile, key) {
+    const d = DOOR_GUN_DOORS[key];
+    if (!d) return false;
+    if (d.kind !== 'standing') return true;
+    if (DOOR_GUN_RULES.allUnlocked) return true;
+    if (typeof window !== 'undefined' && window._DEV_UNLOCK_ALL) return true;
+    return !!doorGunLedger(profile)[key];
+}
+/* The wheel's wedges in order: [{ key, name, icon, kind, sealed, place }] — `opts.battle` drops the room-only
+   Threshold and the capture item; `opts.story === false` (PvP / Practice) drops the capture door. */
+function doorGunWheel(profile, opts) {
+    const o = opts || {};
+    const out = [];
+    for (const key of DOOR_GUN_KEYS) {
+        const d = DOOR_GUN_DOORS[key];
+        if (o.battle && (d.roomOnly || d.kind === 'capture')) continue;
+        if (o.story === false && d.story) continue;
+        out.push({ key, name: d.name, icon: d.icon, kind: d.kind, spell: d.spell || null, tier: d.tier || 0,
+            sealed: !doorGunUnlocked(profile, key), place: d.unlock ? d.unlock.site : null });
+    }
+    return out;
+}
+/* door key ← spell id (the wheel's rows and the two starters) */
+function doorGunKeyOfSpell(id) {
+    if (!id) return null;
+    for (const key of DOOR_GUN_KEYS) if (DOOR_GUN_DOORS[key].spell === id) return key;
+    return null;
+}
+/* a wheel door's tier (spellTierOf reads it before the MP ladder); 0 = not a wheel door */
+function doorGunSpellTier(id) {
+    const key = doorGunKeyOfSpell(id);
+    const t = key ? (DOOR_GUN_DOORS[key].tier | 0) : 0;
+    return t ? Math.max(1, Math.min(4, t)) : 0;
+}
+/* THE WHEEL POOL: the destination doors a unit of `race` may equip — the Door Agent only (DOOR_GUN_RULES.agentOnly),
+   wedge order, only rows that exist; in STORY SCOPE (flPoolOwnedOnly) only the doors the officer's wheel holds. */
+function doorGunWheelPool(race) {
+    if (DOOR_GUN_RULES.agentOnly && race !== 'door agent') return [];
+    let profile = null;
+    const story = (typeof flPoolOwnedOnly === 'function') && flPoolOwnedOnly();
+    if (story) { try { profile = (typeof window !== 'undefined' && window.ProfileSystem && window.ProfileSystem.getActiveProfile) ? window.ProfileSystem.getActiveProfile() : null; } catch (e) { profile = null; } }
+    const out = [];
+    for (const key of DOOR_GUN_KEYS) {
+        const d = DOOR_GUN_DOORS[key];
+        if (d.kind !== 'standing' || !d.spell) continue;
+        if (typeof SPELL_BY_ID !== 'undefined' && !SPELL_BY_ID[d.spell]) continue;
+        if (story && !doorGunUnlocked(profile, key)) continue;
+        out.push(d.spell);
+    }
+    return out;
+}
+/* THE LANE (pure): the tiles a door at (x, y) facing (faceX, faceY) acts on — `lane` tiles straight ahead (never
+   behind, never its own tile), a `radius` disc round it (Chebyshev, its own tile excluded — the Maw's own tile is
+   its bite, not its pull), or a `beam` to the board's edge (walls and mirrors are the engine's, Phase 2). A diagonal
+   face walks the diagonal. `opts`: { w, h } the board (clips), `max` (DOOR_GUN_RULES.lane.max). */
+function doorGunLaneTiles(door, opts) {
+    const o = opts || {};
+    if (!door) return [];
+    const d = DOOR_GUN_DOORS[door.door] || {};
+    const W = o.w != null ? o.w : Infinity, H = o.h != null ? o.h : Infinity;
+    const inside = (x, y) => x >= 0 && y >= 0 && x < W && y < H;
+    const out = [];
+    const x0 = door.x | 0, y0 = door.y | 0;
+    if (d.radius) {
+        const r = d.radius | 0;
+        for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+            if (!dx && !dy) continue;
+            if (inside(x0 + dx, y0 + dy)) out.push({ x: x0 + dx, y: y0 + dy });
+        }
+        return out;
+    }
+    const fx = Math.sign(door.faceX || 0), fy = Math.sign(door.faceY || 0);
+    if (!fx && !fy) return out;
+    const cap = o.max != null ? o.max : DOOR_GUN_RULES.lane.max;
+    const n = d.beam ? (isFinite(W) && isFinite(H) ? Math.max(W, H) : cap) : Math.min(cap, d.lane | 0);
+    for (let i = 1; i <= n; i++) {
+        const x = x0 + fx * i, y = y0 + fy * i;
+        if (!inside(x, y)) break;
+        out.push({ x, y });
+    }
+    return out;
+}
+/* the facing (a unit step of the 8) nearest a free vector — the default face is AWAY from the placer (§3.2) */
+function doorGunSnapFacing(dx, dy) {
+    if (!dx && !dy) return { faceX: 0, faceY: 1 };
+    const a = Math.atan2(dy, dx);
+    const oct = Math.round(a / (Math.PI / 4));
+    const vx = Math.round(Math.cos(oct * Math.PI / 4)), vy = Math.round(Math.sin(oct * Math.PI / 4));
+    return { faceX: vx, faceY: vy };
+}
+/* SWING DOOR's push (pure, §3.5): straight away from the HINGE, `n` tiles — { dx, dy } per step (a diagonal hinge
+   pushes on the diagonal). Null when the hinge is not one of the victim's 8 neighbours. */
+function swingDoorPushDir(hx, hy, vx, vy) {
+    const dx = vx - hx, dy = vy - hy;
+    if ((!dx && !dy) || Math.abs(dx) > 1 || Math.abs(dy) > 1) return null;
+    return { dx, dy };
+}
+
 /* ═══════════ THE TIERS — the spell selection rework (2026-09-24, the user) ═══════════
    The user: "get rid of units having a secondary job. Ditch the branches. The node rung level that a spell is on
    becomes its tier — Tier I, II, III and IV, costing 1, 2, 3 and 4 Spell Points (SP). Still 7 spell slots. Total
@@ -17908,6 +18091,9 @@ function spellTierOf(spOrId) {
     if (sp && sp.kind === 'basicAttack') return 0;
     const r = treeRingOfSpell(id);
     if (r != null) return Math.max(1, Math.min(4, r + 1));
+    /* THE DOOR WHEEL (DOOR_GUN_PLAN §3.1): a wheel door's tier is its row in DOOR_GUN_DOORS, never the MP ladder */
+    const _dgTier = doorGunSpellTier(id);
+    if (_dgTier) return _dgTier;
     const c = sp && typeof sp.cost === 'number' ? sp.cost : 25;
     return c <= 37 ? 1 : c <= 62 ? 2 : c <= 87 ? 3 : 4;
 }
@@ -17938,22 +18124,26 @@ function spellSealedIds(ids) {
 
 /* The unit's pool in parts, each an ordered id list (rung order, a twin's alternates side by side):
      race   — the race row (every alternate), job — the job's four (none for a Freelancer),
-     borrowRace / borrowJob — a Freelancer's borrowable abilities (every other race's row / every job's four). */
+     borrowRace / borrowJob — a Freelancer's borrowable abilities (every other race's row / every job's four),
+     wheel — THE DOOR WHEEL (DOOR_GUN_PLAN §2.4, the user 2026-09-25: "only the DOOR agent can fire doors"): the
+             destination doors, offered to race 'door agent' ONLY (any job, a Freelancer agent too) and never
+             borrowable (flRacePool reads the race rows, which never carry them). */
 function unitSpellPoolParts(race, cls) {
     const known = (id) => !!id && (typeof SPELL_BY_ID === 'undefined' || !!SPELL_BY_ID[id]);
     const seen = new Set();
     const take = (ids) => { const out = []; for (const id of ids || []) if (known(id) && !seen.has(id)) { seen.add(id); out.push(id); } return out; };
-    const parts = { race: take(getRaceTreeAllIds(race, cls)), job: take(cls === 'Freelancer' ? [] : (getClassTreeSpells(cls) || [])), borrowRace: [], borrowJob: [] };
+    const parts = { race: take(getRaceTreeAllIds(race, cls)), job: take(cls === 'Freelancer' ? [] : (getClassTreeSpells(cls) || [])), borrowRace: [], borrowJob: [], wheel: [] };
     if (cls === 'Freelancer') {
         parts.borrowRace = take(flRacePool(race).map(sp => sp.id));
         parts.borrowJob = take(flWildcardPool(race).map(sp => sp.id));
     }
+    parts.wheel = take(doorGunWheelPool(race));
     return parts;
 }
 /* Every id the unit may equip (sealed ones included — spellSealedIds says which). */
 function unitSpellPool(race, cls) {
     const p = unitSpellPoolParts(race, cls);
-    return p.race.concat(p.job, p.borrowRace, p.borrowJob);
+    return p.race.concat(p.job, p.wheel, p.borrowRace, p.borrowJob);
 }
 
 /* Can `id` join this loadout? { ok, reason, note, slots, sp, need } — the ONE verdict every UI prints. */
@@ -18006,6 +18196,9 @@ function isTreeLoadoutLegal(race, cls, secJob, spellIds) {
     return true;
 }
 
+/* Retired ids whose rung a new row took — a saved loadout keeps the pick (treeLegalSubset maps it). */
+const SPELL_ID_RENAMED = { raceDoorToTheFace: 'raceSwingDoor' };
+
 /* Graceful repair for stale saves / vessel swaps / a hacked online kit: walk the wish-list in order, keep every id
    that is in the pool, unsealed, new, and still fits the slots AND the SP — skip (never truncate at) the rest. */
 function treeLegalSubset(race, cls, secJob, spellIds) {
@@ -18014,7 +18207,8 @@ function treeLegalSubset(race, cls, secJob, spellIds) {
     const pool = new Set(unitSpellPool(race, cls));
     const out = [];
     let sp = 0;
-    for (const id of (spellIds || [])) {
+    for (const _rawId of (spellIds || [])) {
+        const id = SPELL_ID_RENAMED[_rawId] || _rawId;   // a stale save keeps its pick under the new id (the door wheel, 2026-09-25)
         if (out.length >= cap) break;
         if (!id || out.includes(id) || !pool.has(id) || _spellSealed(id)) continue;
         const c = spellSpCost(id);
@@ -18035,7 +18229,7 @@ function buildTreeLegalLoadout(race, cls, secJob, budget, rng) {
     const rand = (typeof rng === 'function') ? rng : Math.random;
     const parts = unitSpellPoolParts(race, cls);
     const weighted = [];
-    for (const id of parts.race.concat(parts.job)) if (!_spellSealed(id)) weighted.push([id, 6]);
+    for (const id of parts.race.concat(parts.job, parts.wheel)) if (!_spellSealed(id)) weighted.push([id, 6]);
     for (const id of parts.borrowRace.concat(parts.borrowJob)) if (!_spellSealed(id)) weighted.push([id, 1]);
     const attempt = () => {
         const picks = [];
@@ -43947,6 +44141,7 @@ function hqDoorSyncFold(hq, door) {
     hq.defeated = hqDefeatedUnion(hq.defeated, L.defeated);   // THE DEFEATED LEDGER (2026-09-20)
     hq.captured = hqDefeatedUnion(hq.captured, L.captured);   // THE CAPTURED LEDGER (CAPTURE_PLAN.md §2.6) — the same shape, the same union
     hq.bounties = hqBountyUnion(hq.bounties, L.bounties);     // THE BOUNTY LEDGER (CAPTURE_PLAN.md Phase 4)
+    hq.gunDoors = doorGunLedgerUnion(hq.gunDoors, L.gunDoors); // THE DOOR WHEEL's LEDGER (DOOR_GUN_PLAN §3.1)
     return hq;
 }
 /* ── THE DEFEATED LEDGER (2026-09-20) ──────────────────────────────────────
@@ -45004,8 +45199,8 @@ function hqPartyTreeCircuit(m) {
     if (!T) return null;
     const { parts, equipped, cap } = T;
     const spOf = id => (id && typeof SPELL_BY_ID !== 'undefined') ? (SPELL_BY_ID[id] || null) : null;
-    const poolSet = new Set(parts.race.concat(parts.job, parts.borrowRace, parts.borrowJob));
-    const own = parts.race.map(id => [id, 'race']).concat(parts.job.map(id => [id, 'job']));
+    const poolSet = new Set(parts.race.concat(parts.job, parts.wheel || [], parts.borrowRace, parts.borrowJob));
+    const own = parts.race.map(id => [id, 'race']).concat(parts.job.map(id => [id, 'job']), (parts.wheel || []).map(id => [id, 'wheel']));
     const borrowed = T.isFreelancer ? equipped.filter(id => !parts.race.includes(id) && poolSet.has(id)).map(id => [id, parts.borrowRace.includes(id) ? 'borrowRace' : 'borrowJob']) : [];
     const tiers = [];
     for (let t = 4; t >= 1; t--) {
@@ -48785,6 +48980,8 @@ if (typeof window !== 'undefined') {
     window.HQ_LEVEL_RULES = HQ_LEVEL_RULES; window.HQ_AREA_LEVELS = HQ_AREA_LEVELS; window.XP_CURVE = XP_CURVE; window.xpThreshold = xpThreshold; window.xpLevelFor = xpLevelFor; window.xpToNext = xpToNext;
     window.hqPartyLevel = hqPartyLevel; window.hqPartyXp = hqPartyXp; window.hqPartyLevelGains = hqPartyLevelGains; window.hqPartyGrantXp = hqPartyGrantXp; window.hqPartyXpShare = hqPartyXpShare; window.hqEncounterLevels = hqEncounterLevels; window.hqEncounterGroup = hqEncounterGroup; window.hqSwarmRace = hqSwarmRace; window.hqRoomNatives = hqRoomNatives;
     window.HQ_DISPENSARY = HQ_DISPENSARY; window.hqBagRecord = hqBagRecord; window.hqBagCount = hqBagCount; window.hqBagAdd = hqBagAdd; window.hqBagTake = hqBagTake; window.hqBagList = hqBagList; window.hqBagTotal = hqBagTotal; window.HQ_BAG_TABS = HQ_BAG_TABS; window.hqBagCategoryOf = hqBagCategoryOf; window.hqBagTab = hqBagTab; window.hqBagTabs = hqBagTabs; window.HQ_DROP_RULES = HQ_DROP_RULES; window.hqDropBaneFor = hqDropBaneFor; window.hqEncounterDrops = hqEncounterDrops; window.hqBagSet = hqBagSet; window.hqBagForBattle = hqBagForBattle; window.hqBagCap = hqBagCap; window.hqShopStock = hqShopStock; window.hqCaptureDoorIssue = hqCaptureDoorIssue; window.hqShopQuote = hqShopQuote; window.hqShopBuyApply = hqShopBuyApply; window.hqShopSell = hqShopSell; window.hqPartyStock = hqPartyStock; window.hqPartyBagItems = hqPartyBagItems; window.hqPartyAutoHeal = hqPartyAutoHeal; window.hqPartyFieldSpells = hqPartyFieldSpells; window.hqPartyFieldTargets = hqPartyFieldTargets; window.hqPartyHealAmount = hqPartyHealAmount; window.hqPartyCast = hqPartyCast; window.hqPartyUseItem = hqPartyUseItem; window.hqPartyFieldItems = hqPartyFieldItems; window.hqPartySpec = hqPartySpec; window.hqPartyGenders = hqPartyGenders; window.hqPartyDefaultJob = hqPartyDefaultJob;
+    window.DOOR_GUN_RULES = DOOR_GUN_RULES; window.DOOR_GUN_DOORS = DOOR_GUN_DOORS; window.DOOR_GUN_KEYS = DOOR_GUN_KEYS; window.DOOR_GUN_FACINGS = DOOR_GUN_FACINGS; window.SPELL_ID_RENAMED = SPELL_ID_RENAMED;   // THE DOOR WHEEL (DOOR_GUN_PLAN.md Phase 0)
+    window.doorGunUnlocked = doorGunUnlocked; window.doorGunWheel = doorGunWheel; window.doorGunLaneTiles = doorGunLaneTiles; window.doorGunLedger = doorGunLedger; window.doorGunLedgerUnion = doorGunLedgerUnion; window.doorGunKeyOfSpell = doorGunKeyOfSpell; window.doorGunSpellTier = doorGunSpellTier; window.doorGunWheelPool = doorGunWheelPool; window.doorGunSnapFacing = doorGunSnapFacing; window.swingDoorPushDir = swingDoorPushDir;
     window.CAPTURE_RULES = CAPTURE_RULES; window.captureDoorItemKeys = captureDoorItemKeys; window.captureDoorTier = captureDoorTier; window.captureSealSteps = captureSealSteps; window.captureSealFor = captureSealFor; window.captureDoorHits = captureDoorHits; window.captureXp = captureXp; window.itemStoryOnly = itemStoryOnly; window.hqCapturedRecord = hqCapturedRecord; window.hqUnitCaptured = hqUnitCaptured; window.hqCapturedMark = hqCapturedMark; window.hqCaptureOwned = hqCaptureOwned; window.hqCaptureEnlist = hqCaptureEnlist; window.hqBountyUnion = hqBountyUnion; window.hqCaptureBountyRecord = hqCaptureBountyRecord; window.hqCaptureBountyMark = hqCaptureBountyMark; window.hqCaptureBountySyncPay = hqCaptureBountySyncPay; window.hqCapturedUnlockUnion = hqCapturedUnlockUnion;   // THE ONE-WAY DOOR (CAPTURE_PLAN.md Phase 0)
     /* THE FIELD stage B — the rasteriser on the cave (Phase 9 Delivery 8, 2026-09-16) */
     window.HQ_FIELD_RULES = HQ_FIELD_RULES; window.hqFieldRimBox = hqFieldRimBox; window.hqEncounterRoomLabel = hqEncounterRoomLabel; window.hqFieldDump = hqFieldDump; window.hqFieldRoomOk = hqFieldRoomOk; window.hqFieldTerrainInfo = hqFieldTerrainInfo; window.hqFieldRasterTerrain = hqFieldRasterTerrain; window.hqFieldTerrainStep = hqFieldTerrainStep; window.hqFieldId = hqFieldId; window.hqFieldParse = hqFieldParse; window.hqFieldRaster = hqFieldRaster; window.hqFieldReach = hqFieldReach;

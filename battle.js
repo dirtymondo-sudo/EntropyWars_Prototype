@@ -984,7 +984,11 @@
         }
 
         // Helper lookups that replace inline array checks
+        /* THE DOOR WHEEL (DOOR_GUN_PLAN §3.5, 2026-09-25): SWING DOOR is a `damage` row aimed at a TILE — the
+           hinge, an empty tile beside an enemy — so its meta is a tile aim that still reads as an attack. */
+        const _HINGE_KIND_META = { minRange: 1, offensive: true, tileTargeted: true, breaksStealth: true, noStrikeLeap: true };
         function _kindMeta(spell) {
+            if (spell && spell.hinge) return _HINGE_KIND_META;
             return SPELL_KIND_META[spell?.kind] || { minRange: 1, offensive: true };
         }
 
@@ -2089,6 +2093,7 @@
                recipe's swallow + fall and back in on its landing. */
             doorGun(ctx) {
                 const { unit, spell, target, cam, projectileDelay } = ctx;
+                const _swH = (spell.hinge && unit._swingHinge && unit._swingHinge.spellId === spell.id) ? { x: unit._swingHinge.x, y: unit._swingHinge.y } : null;
                 const tx = target ? target.x : ctx.tileXY?.x, ty = target ? target.y : ctx.tileXY?.y;
                 const dist = (tx != null) ? Math.max(Math.abs(tx - unit.x), Math.abs(ty - unit.y)) : 1;
                 const flyMs = actionMs(Math.max(120, Math.min(360, 90 + dist * 45)) + 60);
@@ -2099,9 +2104,16 @@
                 window.setTimeout(() => {
                     if (state.phase !== 'battle' || _skipVisuals() || tx == null) return;
                     playSfx(spellLaunchSfx(spell));
-                    const at = (spell.doorAt === 'between') ? { x: unit.x + (tx - unit.x) * 0.5, y: unit.y + (ty - unit.y) * 0.5 } : { x: tx, y: ty };
+                    const at = _swH ? { x: _swH.x, y: _swH.y }
+                        : (spell.doorAt === 'between') ? { x: unit.x + (tx - unit.x) * 0.5, y: unit.y + (ty - unit.y) * 0.5 } : { x: tx, y: ty };
                     window._doorGeom('raceDoorGun:shot', at.x, at.y, { fromX: unit.x, fromY: unit.y });
                 }, projectileDelay);
+                /* 🚪 SWING DOOR: the door unfolds on the HINGE the shot landed on and its leaf swings through the
+                   victim (the recipe reads the hinge as its origin — the push leaves the same way) */
+                if (_swH) window.setTimeout(() => {
+                    if (state.phase !== 'battle' || _skipVisuals()) return;
+                    window._doorGeom('raceSwingDoor:swing', tx, ty, { fromX: _swH.x, fromY: _swH.y });
+                }, Math.max(projectileDelay, impactDelay - actionMs(240)));
                 if (drop) window.setTimeout(() => {
                     if (state.phase !== 'battle' || _skipVisuals() || target.dead || typeof cineUnitFade !== 'function') return;
                     cineUnitFade(target, 1, 0, 0, () => { window.setTimeout(() => cineUnitFade(target, 0, 1, 140), actionMs(1150)); });
@@ -2347,10 +2359,14 @@
                    down the charge line and lands one tile behind the body.
                    A wall or a bystander at the end of the ride = the spell's
                    collisionBonus damage + collisionStatus (Stagger). */
+            /* 🚪 SWING DOOR: the push is straight away from the HINGE the player picked (doSpell stamped it) */
+            const _swH = (spell.hinge && unit._swingHinge && unit._swingHinge.spellId === spell.id) ? unit._swingHinge : null;
+            if (spell.hinge) delete unit._swingHinge;
             if (spell.pushDistance && target && !target.dead && !unit.dead
                 && (spell.kind === 'damage' || spell.kind === 'tackle')
                 && !(typeof _isClashMode === 'function' && _isClashMode())) {
-                const pdx = Math.sign(target.x - unit.x), pdy = Math.sign(target.y - unit.y);
+                const _swDir = _swH ? swingDoorPushDir(_swH.x, _swH.y, target.x, target.y) : null;
+                const pdx = _swDir ? _swDir.dx : Math.sign(target.x - unit.x), pdy = _swDir ? _swDir.dy : Math.sign(target.y - unit.y);
                 if (pdx || pdy) {
                     const _isTackle = spell.kind === 'tackle';
                     const slide = resolveForcedSlide(target, pdx, pdy, getUnitPushDistance(target, spell.pushDistance), {
@@ -6643,6 +6659,8 @@
                 const _drt = _doorRangeTiles(unit, spell);
                 if (_drt) return _drt;
             }
+            /* THE DOOR WHEEL: Swing Door's reach is the legal HINGES (swingDoorHingeTiles) */
+            if (unit && spell && spell.hinge) return swingDoorHingeTiles(unit, spell).map(t => ({ x: t.x, y: t.y }));
             // Self-cast / zero-range abilities (Howl, Reassemble, Siege Mode, …)
             // target the caster's own tile; without this they'd produce an empty
             // range set and any confirm/hover path would wrongly say "out of range".
@@ -33589,6 +33607,7 @@
         // to SPELL_KIND_META flags so new kinds still get a sensible line.
         function _spellTargetPromptText(spell, esc) {
             const nm = '<strong>' + esc(spell.name) + '</strong>';
+            if (spell.hinge) return nm + ': select the HINGE — an empty tile beside an enemy. The door swings through them and pushes them ' + (spell.pushDistance || 2) + ' tiles straight away from it.';
             switch (spell.kind || '') {
                 case 'heal':          return 'Select an ally to heal with ' + nm + '.';
                 case 'shield':        return 'Select an ally to shield with ' + nm + '.';
@@ -45981,6 +46000,12 @@
                         }
                         cx = aim.x; cy = aim.y; cz = undefined;
                     }
+                } else if (spell.hinge) {
+                    /* 🚪 SWING DOOR: the CPU planned a VICTIM — aim at the hinge nearest us beside where it stands now */
+                    const t = step.targetId ? state.units.find(u2 => u2.id === step.targetId) : unitAt(cx, cy);
+                    const sw = (t && !t.dead && !t._dying) ? swingDoorResolve(unit, spell, t.x, t.y, { auto: true }) : { error: 'gone' };
+                    if (sw.error) { _spellWhiff(unit, spell); return 600; }
+                    cx = sw.hinge.x; cy = sw.hinge.y; cz = undefined;
                 } else if (step.targetId && !meta.tileTargeted) {
                     const t = state.units.find(u2 => u2.id === step.targetId);
                     const valid = _getSpellValidTargets(unit, spell) || [];
@@ -50291,6 +50316,9 @@
                Special Delivery and EXIT list the enemies a door of yours
                reaches, never the caster's own disc. */
             if (spell.kind === 'door' || spell.kind === 'doorSlam') return targets;
+            /* THE DOOR WHEEL: Swing Door aims at a HINGE tile, never at a unit — the board is its drum (the painter
+               shows the victim and its landing on hover) */
+            if (spell.hinge) return targets;
             if (spell.kind === 'doorDelivery' || spell.kind === 'doorExit') {
                 const _dFog = state.fogOfWar && !state.autoPlayers?.[unit.player];
                 for (const u of state.units) {
@@ -54612,6 +54640,102 @@
             }
             return out;
         }
+        /* ══ SWING DOOR — the hinge (DOOR_GUN_PLAN §3.5, the door wheel Phase 0, 2026-09-25) ══════════════════
+           The aim is the HINGE: an EMPTY tile beside a hostile (its 8 neighbours), in range and sight of the agent.
+           The door unfolds on the hinge and its leaf swings through the victim, pushing it `pushDistance` tiles
+           STRAIGHT AWAY FROM THE HINGE (data.js swingDoorPushDir) — the player picks the push by picking the hinge,
+           and the painter (ui.js updateAoePreview) shows the victim and its landing before the click. One hinge,
+           one victim: a hinge with two hostile neighbours takes a SIDE neighbour before a corner one, then the one
+           nearest the agent (the painter shows which). The CPU (and an auto seat) may hand in the victim's own
+           tile instead — it then takes the hinge nearest itself (the old swing: pushed away from the agent). A
+           human click must be a hinge; the engine never picks one for a player. */
+        function _swingHostileAt(unit, x, y, fogFree) {
+            const v = unitAt(x, y);
+            if (!v || v.dead || v._dying || !isEnemyUnit(v, unit)) return null;
+            if (!fogFree && state.fogOfWar && !state.autoPlayers?.[unit.player] && !isInVision(unit, v.x, v.y)) return null;
+            return v;
+        }
+        function _swingHingeFree(x, y) {
+            return isInside(x, y) && !unitAt(x, y) && isTerrainPassable(x, y);
+        }
+        function _swingHingeReach(unit, spell, x, y) {
+            const effR = getEffectiveSpellRange(unit, spell);
+            const uz = unit.z ?? (typeof getHeightAt === 'function' ? getHeightAt(unit.x, unit.y) : 0);
+            const tz = (typeof _tileStandZ === 'function') ? _tileStandZ(x, y) : 0;
+            const d = combatReach(unit.x, unit.y, uz, x, y, tz, false);
+            if (d < 1 || d > effR) return false;
+            if (!spell.ignoresLineOfSight && isRangeBlockedByTerrain(unit.x, unit.y, x, y, uz)) return false;
+            return true;
+        }
+        /* the victim a hinge swings into (side first, then nearest the agent) */
+        function _swingVictimOf(unit, hx, hy, fogFree) {
+            let best = null, bestKey = Infinity;
+            for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+                if (!dx && !dy) continue;
+                const v = _swingHostileAt(unit, hx + dx, hy + dy, fogFree);
+                if (!v) continue;
+                const key = ((dx && dy) ? 100 : 0) + Math.abs(v.x - unit.x) + Math.abs(v.y - unit.y);
+                if (key < bestKey) { bestKey = key; best = v; }
+            }
+            return best;
+        }
+        /* the tiles the push is forecast to land on (the painter's read; the slide itself rules — walls, bodies, the chain) */
+        function _swingLanding(victim, dir, n) {
+            const out = [];
+            let x = victim.x, y = victim.y;
+            for (let i = 0; i < n; i++) {
+                x += dir.dx; y += dir.dy;
+                if (!isInside(x, y) || !isTerrainPassable(x, y) || unitAt(x, y)) break;
+                out.push({ x, y });
+            }
+            return out;
+        }
+        /* every legal hinge: [{ x, y, victimId }] */
+        function swingDoorHingeTiles(unit, spell) {
+            const out = [];
+            if (!unit || !spell) return out;
+            const r = getEffectiveSpellRange(unit, spell) || spell.range || 3;
+            const fog = state.fogOfWar && !state.autoPlayers?.[unit.player];
+            for (let dy = -r - 1; dy <= r + 1; dy++) for (let dx = -r - 1; dx <= r + 1; dx++) {
+                const x = unit.x + dx, y = unit.y + dy;
+                if (!_swingHingeFree(x, y)) continue;
+                if (fog && !isInVision(unit, x, y)) continue;
+                if (!_swingHingeReach(unit, spell, x, y)) continue;
+                const v = _swingVictimOf(unit, x, y, false);
+                if (v) out.push({ x, y, victimId: v.id });
+            }
+            return out;
+        }
+        /* The ONE read the cast, the painter and the tests share. (x, y) = the click. Returns { hinge, victim, dir,
+           dist, landing } or { error }. `opts.auto` lets a CPU seat hand in the victim's tile. */
+        function swingDoorResolve(unit, spell, x, y, opts) {
+            const o = opts || {};
+            if (!unit || !spell) return { error: 'nothing' };
+            let hinge = null, victim = null;
+            if (_swingHingeFree(x, y)) {
+                victim = _swingVictimOf(unit, x, y, !!o.auto);
+                if (!victim) return { error: 'noVictim' };
+                hinge = { x, y };
+            } else if (o.auto) {
+                victim = _swingHostileAt(unit, x, y, true);
+                if (!victim) return { error: 'noVictim' };
+                let bestD = Infinity;
+                for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+                    if (!dx && !dy) continue;
+                    const hx = victim.x + dx, hy = victim.y + dy;
+                    if (!_swingHingeFree(hx, hy) || !_swingHingeReach(unit, spell, hx, hy)) continue;
+                    const d = Math.abs(hx - unit.x) + Math.abs(hy - unit.y) + ((dx && dy) ? 0.5 : 0);
+                    if (d < bestD) { bestD = d; hinge = { x: hx, y: hy }; }
+                }
+                if (!hinge) return { error: 'noHinge' };
+            } else return { error: 'notHinge' };
+            const dir = swingDoorPushDir(hinge.x, hinge.y, victim.x, victim.y);
+            if (!dir) return { error: 'noVictim' };
+            const dist = getUnitPushDistance(victim, spell.pushDistance || 2);
+            return { hinge, victim, dir, dist, landing: _swingLanding(victim, dir, dist) };
+        }
+        window.swingDoorResolve = swingDoorResolve;
+        window.swingDoorHingeTiles = swingDoorHingeTiles;
         function _doorTouched() {
             state._doorSerial = (state._doorSerial | 0) + 1;
             if (typeof invalidateVisionCache === 'function') invalidateVisionCache();
@@ -59698,6 +59822,25 @@
                     return 0;
                 }
             }
+            /* 🚪 SWING DOOR (the door wheel, DOOR_GUN_PLAN §3.5): the click was the HINGE — every gate above judged
+               the hinge (range, sight, fog); from here the cast is the old single-target swing at the VICTIM, and
+               _runPostEffects pushes it away from the hinge (unit._swingHinge, a plain {x, y} — never a unit ref). */
+            if (spell.hinge) {
+                const _auto = state.controllers?.[unit.player] === CTRL.AI || !!state.autoPlayers?.[unit.player];
+                const _sw = swingDoorResolve(unit, spell, x, y, { auto: _auto });
+                if (_sw.error || (_sw.victim && isUnitRealmShieldedFrom(_sw.victim, unit))) {
+                    if (!_silentReject) {
+                        addLog(`${spell.name}: pick the hinge — an empty tile beside an enemy you can see.`);
+                        playErrorSfx();
+                    }
+                    delete unit._swingHinge;
+                    return 0;
+                }
+                unit._swingHinge = { x: _sw.hinge.x, y: _sw.hinge.y, spellId: spell.id };
+                x = _sw.victim.x; y = _sw.victim.y; z = _sw.victim.z ?? z;
+                _spellClickTarget = _sw.victim;
+            } else if (unit._swingHinge) delete unit._swingHinge;
+
             /* 📷 Cryptid (plan §5.2): a UNIT-targeted offensive cast can't aim
                at a bigfoot no friendly stands within his reveal radius of.
                Tile-targeted sweeps (AoE, lines, zones) still splash him —
@@ -63792,7 +63935,18 @@
                     state._teleportingUnit = null;
                     playSfx('teleport');
 
-                    if (typeof window !== 'undefined' && window.ThreeVFXEffects
+                    if (spell.doorGun) {
+                        /* 🚪 DOOR DASH (the door wheel, DOOR_GUN_PLAN §3.5): the gun's shot to the landing, a door
+                           at the agent's feet facing it, one at the landing facing back — in one, out the other
+                           (Breaking and Entering's door; every beat through _doorGeom → relayed, RULE #2) */
+                        window._doorGeom('raceDoorGun:shot', x, y, { fromX: tUnit.x, fromY: tUnit.y });
+                        window._doorGeom('raceBreakingEntering:door', tUnit.x, tUnit.y, { fromX: x, fromY: y });
+                        window._doorGeom('raceDoorDash:out', x, y, { fromX: tUnit.x, fromY: tUnit.y, delay: 260 });
+                        /* the agent is inside the doors between the two: hidden until the far one opens */
+                        if (!_skipVisuals() && typeof cineUnitFade === 'function') {
+                            try { cineUnitFade(tUnit, 1, 0, 0, () => { window.setTimeout(() => cineUnitFade(tUnit, 0, 1, 160), actionMs(380)); }); } catch (e) {}
+                        }
+                    } else if (typeof window !== 'undefined' && window.ThreeVFXEffects
                         && window.ThreeVFXEffects.hasMapping(spell.id, 'teleport')) {
                         if (state.phase === 'battle' && !_skipVisuals()) {
                             window.ThreeVFXEffects.fire('teleport', spell.id, {

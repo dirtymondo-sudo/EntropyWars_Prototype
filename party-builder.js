@@ -1562,16 +1562,18 @@ function pbSpUsed(ids) { return (ids || []).reduce((n, id) => n + (id ? pbSpCost
 /* One unit's rack: the pool in parts, the sealed set, the rows by tier, every
    id's source. Built per render from (race, job, equipped) — pure. */
 function pbTierCtx(race, cls, equipped) {
-  const parts = typeof window.unitSpellPoolParts === 'function' ? window.unitSpellPoolParts(race, cls) : { race: [], job: [], borrowRace: [], borrowJob: [] };
+  const parts = typeof window.unitSpellPoolParts === 'function' ? window.unitSpellPoolParts(race, cls) : { race: [], job: [], borrowRace: [], borrowJob: [], wheel: [] };
+  if (!parts.wheel) parts.wheel = [];
   const eq = (equipped || []).filter(Boolean);
   const sourceOf = {};
   parts.race.forEach(id => { sourceOf[id] = 'race'; });
   parts.job.forEach(id => { sourceOf[id] = 'job'; });
+  parts.wheel.forEach(id => { if (!sourceOf[id]) sourceOf[id] = 'wheel'; });   // THE DOOR WHEEL (DOOR_GUN_PLAN §2.4): the Door Agent's destination doors
   parts.borrowRace.forEach(id => { if (!sourceOf[id]) sourceOf[id] = 'borrowRace'; });
   parts.borrowJob.forEach(id => { if (!sourceOf[id]) sourceOf[id] = 'borrowJob'; });
   const pool = new Set(Object.keys(sourceOf));
   const isFreelancer = cls === 'Freelancer';
-  const own = parts.race.concat(parts.job);
+  const own = parts.race.concat(parts.job, parts.wheel);
   const borrowed = isFreelancer ? eq.filter(id => pool.has(id) && !own.includes(id)) : [];
   const rows = {};
   for (const t of PB_TIER_ORDER) rows[t] = own.concat(borrowed).filter(id => pbTierOf(id) === t);
@@ -1593,7 +1595,7 @@ function pbSpellVerdict(ctx, id) {
   if (!ctx || !id || typeof window.spellAddVerdict !== 'function') return null;
   return window.spellAddVerdict(ctx.race, ctx.cls, ctx.equipped, id, ctx.pool);
 }
-const PB_SOURCE_LABEL = { race: 'RACE', job: 'JOB', borrowRace: 'BORROWED · RACE', borrowJob: 'BORROWED · JOB' };
+const PB_SOURCE_LABEL = { race: 'RACE', job: 'JOB', borrowRace: 'BORROWED · RACE', borrowJob: 'BORROWED · JOB', wheel: 'DOOR WHEEL' };
 /* The keyboard's grid: one row per tier (its chips, then ＋ BORROW for a
    Freelancer), then the root (+ THE FINISHER). ↑ ↓ change row keeping the
    column (clamped), ← → walk the row. Empty tiers are skipped. */
@@ -1699,7 +1701,7 @@ function SpellTierPanel({ ctx, fc, clsName, raceLabel, onSpellClick, onBorrow, o
           h('span', { className: 'pb-tn-name' }, sp ? sp.name : id),
           st8 === 'equipped' ? h('b', { className: 'pb-tc-cost on', title: 'Equipped · ' + t + ' SP' }, '✓ ' + t + ' SP') : tag(t)),
         h('span', { className: 'pb-tc-badges' }, ...pbSpellBadges(sp, 4),
-          src === 'race' ? null : h('i', { className: 'pb-tc-src' }, src === 'job' ? 'JOB' : 'BORROWED')),
+          src === 'race' ? null : h('i', { className: 'pb-tc-src' }, src === 'job' ? 'JOB' : src === 'wheel' ? 'DOOR WHEEL' : 'BORROWED')),
         h('span', { className: 'pb-tc-bottom' },
           why ? h('i', { className: 'pb-tc-why' }, why)
             : h('span', { className: 'pb-tn-meta' },

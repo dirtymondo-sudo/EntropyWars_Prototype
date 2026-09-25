@@ -11343,6 +11343,22 @@
             clearAoePreview();
             clearIntentPreview();
 
+            // ── 🚪 SWING DOOR (the door wheel, DOOR_GUN_PLAN §3.5): hovering a HINGE paints the door's tile (gold,
+            // the cursor), the victim it swings into (red) and the tiles the push is forecast to land on (amber) —
+            // the player reads the push off the board before the click. Viewer-local (a guest paints its own).
+            if (spell.hinge && typeof window.swingDoorResolve === 'function') {
+                const sw = window.swingDoorResolve(unit, spell, x, y, {});
+                if (!sw.error && typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive()) {
+                    const tiles = [{ x: sw.hinge.x, y: sw.hinge.y, color: 0xe8c07a, opacity: 0.5, cursor: true },
+                        { x: sw.victim.x, y: sw.victim.y, color: 0xff3333, opacity: 0.5 }];
+                    sw.landing.forEach((t, i) => tiles.push({ x: t.x, y: t.y, color: 0xffa040, opacity: i === sw.landing.length - 1 ? 0.5 : 0.3 }));
+                    ThreeRenderer.setOverlay('aoe', tiles, 0xff3333, 0.35);
+                    _aoePreview3dActive = true;
+                }
+                updateIntentPreview(x, y);
+                return;
+            }
+
             // ── Terrain-shaping spells: voxel ghost preview ─────────────────
             // (2026-07-07 terraforming pass) Instead of the loud generic red
             // AoE tiles, terrain spells show translucent ghost BLOCKS at the

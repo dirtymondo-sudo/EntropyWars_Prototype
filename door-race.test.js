@@ -25,8 +25,8 @@ function between(src, a, b) {
 }
 
 const RACE = 'door agent';
-const TREE_IDS = ['raceDoorToTheFace', 'raceBreakingEntering', 'raceAirMail', 'raceTrapdoor', 'raceDropIn'];
-const RETIRED = ['raceKnockKnock', 'raceSpecialDelivery', 'raceSlam', 'raceExit', 'raceLongWayRound'];
+const TREE_IDS = ['raceSwingDoor', 'raceDoorDash', 'raceBreakingEntering', 'raceAirMail', 'raceTrapdoor', 'raceDropIn'];   // the door wheel (DOOR_GUN_PLAN §2.4, 2026-09-25)
+const RETIRED = ['raceKnockKnock', 'raceSpecialDelivery', 'raceSlam', 'raceExit', 'raceLongWayRound', 'raceDoorToTheFace'];
 
 test('door agent: every race table, both sides, the passive, the statuses the engine keeps', () => {
     assert.ok(D.AVAILABLE_RACES.includes(RACE));
@@ -47,13 +47,13 @@ test('door agent: every race table, both sides, the passive, the statuses the en
     for (const id of ['exited', 'castFromDoors']) assert.ok(D.STATUS_DEFS[id], 'STATUS_DEFS.' + id + ' (the engine keeps the door object)');
 });
 
-test('door agent rev 3: five rows on the homosapien-shaped tree, every one a shot from the gun, no placed door anywhere', () => {
+test('door agent (the door wheel): six rows on the tree, every one a shot from the gun, no placed door anywhere', () => {
     const tree = D.RACE_TREE[RACE];
     assert.equal(tree.length, 4);
-    assert.ok(Array.isArray(tree[0]) && !Array.isArray(tree[1]) && !Array.isArray(tree[2]) && !Array.isArray(tree[3]), 'twin · single · single · capstone');
+    assert.ok(Array.isArray(tree[0]) && Array.isArray(tree[1]) && !Array.isArray(tree[2]) && !Array.isArray(tree[3]), 'twin · twin · single · capstone');
     assert.equal(tree.flat().join(','), TREE_IDS.join(','));
     const rows = D.RACE_ABILITIES[RACE];
-    assert.equal(rows.length, 5);
+    assert.equal(rows.length, 6);
     const byId = Object.fromEntries(rows.map(r => [r.id, r]));
     for (const id of TREE_IDS) assert.ok(byId[id], id);
     for (const id of RETIRED) assert.ok(!byId[id] && !D.SPELL_BY_ID[id], id + ' is gone');
@@ -61,9 +61,13 @@ test('door agent rev 3: five rows on the homosapien-shaped tree, every one a sho
         assert.equal(r.doorGun, true, r.id + ' is shot from the door gun');
         assert.ok(!['door', 'doorSlam', 'doorDelivery', 'doorExit', 'doorTrap'].includes(r.kind), r.id + ' never places a door');
     }
-    /* the swing: plain damage, adjacent, the push and the stagger */
-    assert.ok(byId.raceDoorToTheFace.kind === 'damage' && byId.raceDoorToTheFace.range === 1 && byId.raceDoorToTheFace.pushDistance === 1 && byId.raceDoorToTheFace.damageType === 'physical');
-    assert.equal(byId.raceDoorToTheFace.statusEffects[0].id, 'stagger');
+    /* the swing: damage aimed at the HINGE, the push of 2 from the hinge, the stagger (DOOR_GUN_PLAN §3.5) */
+    const sw = byId.raceSwingDoor;
+    assert.ok(sw.kind === 'damage' && sw.hinge === true && sw.range === 3 && sw.pushDistance === 2 && sw.damageType === 'physical' && sw.apCost === 1);
+    assert.equal(sw.statusEffects[0].id, 'stagger');
+    /* the dash: a self teleport out of the gun, no damage */
+    const dd = byId.raceDoorDash;
+    assert.ok(dd.kind === 'teleport' && dd.range === 5 && !dd.dmg && !dd.teleportAnyUnit && dd.apCost === 1);
     /* the way in stays what it was */
     assert.ok(byId.raceBreakingEntering.kind === 'doorBreach' && byId.raceBreakingEntering.rearAttack === true && !byId.raceBreakingEntering.fromAbove);
     /* the drop: a shot at the enemy, the fall from three storeys */

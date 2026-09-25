@@ -23613,7 +23613,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* THE DOOR AGENT rev 3 (2026-09-20): five rows, each its OWN impact def
        (a capstone never shares an id with a sibling on its pillar — the
        capstone test) — the door recipes ride the geometry registry. */
-    EFFECTS['raceDoorToTheFace_impact'] = {       /* door to the face: the leaf's edge, the dust of the swing */
+    EFFECTS['raceSwingDoor_impact'] = {           /* swing door (was Door to the Face, the door wheel 2026-09-25): the leaf's edge, the dust of the swing */
         shake: 'normal',
         layers: [
             { sprite: 'flash', ml: 100, size0: 46, size1: 12, tint: 0xfff0cc, opacity0: 0.8 },
@@ -23667,7 +23667,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
               size0: [4, 8], size1: 1 },
         ]
     };
-    SPELL_MAP['raceDoorToTheFace']    = { impact: 'raceDoorToTheFace_impact' };                /* door agent — the swing */
+    SPELL_MAP['raceSwingDoor']        = { impact: 'raceSwingDoor_impact' };                    /* door agent — the swing (the door itself is 'raceSwingDoor:swing', fired from the hinge) */
     SPELL_MAP['raceBreakingEntering'] = { impact: 'raceStompOut_impact' };                     /* door agent — the kick-in */
     SPELL_MAP['raceAirMail']          = { impact: 'raceAirMail_impact' };                      /* door agent — the drop */
     SPELL_MAP['raceTrapdoor']         = { impact: 'raceTrapdoor_impact' };                     /* door agent — the floor gives way (fired by _springTrap) */
@@ -24862,7 +24862,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (_catOff('spells')) return null;
         var from = (o.fromX != null) ? { x: o.fromX, y: o.fromY } : _sigCasterPos(tx, ty);
         if (!from) from = { x: tx - 1, y: ty };
-        var mx = from.x + (tx - from.x) * 0.45, my = from.y + (ty - from.y) * 0.45;
+        var k = o.hinge ? 0.18 : 0.45;   // SWING DOOR: the frame stands on the hinge tile, the leaf reaches the victim
+        var mx = from.x + (tx - from.x) * k, my = from.y + (ty - from.y) * k;
         var rig = _sigDoorRig3D(mx, my, { yaw: _doorYaw(mx, my, tx, ty), scale: 1.05 });
         var ts = rig.ts;
         var riseMs = 110, swingMs = 150, holdMs = 260, fadeMs = 320, total = riseMs + swingMs + holdMs + fadeMs;
@@ -25118,7 +25119,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     }
     Object.assign(_spell3DGeometry, {
         /* rev 3 (2026-09-20): the new kit — the geometry key IS the spell id for the two damage rows (fire('impact') runs the registry with the caster in params) */
-        'raceDoorToTheFace':         function (tx, ty, r, x) { x = x || {}; _sigDoorSwing3D(tx, ty, { fromX: x.fromX, fromY: x.fromY }); },
+        /* THE DOOR WHEEL (2026-09-25): SWING DOOR — the door stands on the HINGE (x.fromX/fromY) and its leaf swings through
+           the victim on (tx, ty). Keyed off the spell id on purpose: battle.js's travel handler fires it from the hinge, so
+           the impact intent's caster-origin registry call never doubles it. */
+        'raceSwingDoor:swing':       function (tx, ty, r, x) { x = x || {}; _sigDoorSwing3D(tx, ty, { fromX: x.fromX, fromY: x.fromY, hinge: true }); },
+        /* DOOR DASH's far door: the agent steps OUT of it (the near one is 'raceBreakingEntering:door') */
+        'raceDoorDash:out':          function (tx, ty, r, x) { x = x || {}; _fxDelay(function () { try { _sigDoorPortal3D(tx, ty, { yaw: _doorYaw(tx, ty, x.fromX, x.fromY), riseMs: 110, openMs: 110, holdMs: 360, shutMs: 120, out: true }); } catch (e) {} }, x.delay || 0); },
         'raceAirMail':               function (tx, ty, r, x) { x = x || {}; _sigDoorAirMail3D(tx, ty, { fromX: x.fromX, fromY: x.fromY, lift: 3 }); },
         'raceTrapdoor:set':          function (tx, ty, r, x) { x = x || {}; _fxDelay(function () { try { _sigTrapdoorSet3D(tx, ty, { size: x.size || 1 }); } catch (e) {} }, x.delay || 0); },
         'raceDropIn:door':           function (tx, ty, r, x) { x = x || {}; _fxDelay(function () { try { _sigDoorDropIn3D(tx, ty, { yaw: _doorYaw(tx, ty, x.fromX, x.fromY), lift: x.lift || 3 }); } catch (e) {} }, x.delay || 0); },

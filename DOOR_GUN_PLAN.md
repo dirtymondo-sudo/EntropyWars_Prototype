@@ -422,28 +422,26 @@ Turning the flag off = `DOOR_GUN_RULES.allUnlocked: false` + shipping data.js to
 
 ---
 
-## 8. THE OPEN QUESTIONS (for the user; the plan's defaults in bold)
+## 8. THE OPEN QUESTIONS — ANSWERED (the user, 2026-09-25: "The cap is per player, only the DOOR agent can fire doors (OBVIOUSLY) and yes wind should push allies too")
 
-1. **Floor vs wall — upright or flat?** The plan's recommendation: **a STANDING door is always
-   UPRIGHT** (perpendicular to the ground, standing on the aim point, facing away from you; a wall
-   hit stands it against the wall facing out; a ceiling hit is refused for standing doors). A
-   standing door needs a FACE for its lane, and a hatch lying flat has none; upright also reads as
-   a turret, and the terrain's lack of flat walls stops mattering because a floor hit is the normal
-   case. The ONE flat door is Gust's launch pad (a gust aimed at the floor within 2 m of your feet
-   / cast on a friendly's tile). **The THRESHOLD pair keeps revs 1–5's any-surface flat placement**
-   (the fling loop is its whole fun). Open: whether the user wants the Threshold upright too, or
-   gone from the wheel altogether.
-2. **Per player or per unit?** **Per player** (the user's "the player can only place 2 doors at a
-   time"; `DOOR_RULES.perTeam` already), so two Door Agents on one side share the cap.
-3. **Who fires destination doors in a story fight?** **Only the Door Agent** (the officer; PvP: any
-   unit of the race). The capture door stays the one item any party member fires from the hip
-   (CAPTURE_PLAN §3.3). Open: whether allies should be able to equip a destination door as a
-   borrowed spell (a Freelancer could, by the tier rules — the plan EXCLUDES the wheel pool from
-   `flRacePool` so the doors stay the gun's).
-4. **Does the wind push allies?** **Yes** (the tool is predictable or it is nothing; the launch
-   pad is the friendly use). Open if it plays badly.
+1. **Floor vs wall — upright or flat?** NOT ANSWERED; the plan's recommendation stands as the
+   default until the user says otherwise: **a STANDING door is always UPRIGHT** (perpendicular to
+   the ground, standing on the aim point, facing away from you; a wall hit stands it against the
+   wall facing out; a ceiling hit is refused for standing doors). A standing door needs a FACE for
+   its lane, and a hatch lying flat has none; upright also reads as a turret. The ONE flat door is
+   Gust's launch pad. **The THRESHOLD pair keeps revs 1–5's any-surface flat placement** (the
+   fling loop is its whole fun).
+2. **Per player or per unit?** **RULED: PER PLAYER.** Two standing doors per player at a time
+   (`DOOR_GUN_RULES.standingCap` 2, `DOOR_RULES.perTeam`); two Door Agents on one side share it.
+3. **Who fires the doors?** **RULED: ONLY THE DOOR AGENT** ("obviously"). Every wheel door —
+   the starters and the seven destinations — is the Door Agent's alone: the wheel pool is offered
+   to `race === 'door agent'` only and is EXCLUDED from `flRacePool` (a Freelancer can never
+   borrow a door). The capture door stays the bag item any party member fires from the hip
+   (CAPTURE_PLAN §3.3) — it is an item, not a wheel door.
+4. **Does the wind push allies?** **RULED: YES.** The Gust lane moves every body in it, either
+   team (the Keyholder's `doorImmune` aside); the launch pad is the friendly use.
 5. **Does the Threshold get a battle row back** (a pair on the board, allies step through)? **No**
-   for now.
+   for now (the plan's default; not re-asked).
 
 ---
 
@@ -494,3 +492,12 @@ Line numbers are the 2026-09-25 clone's (token `20260925-capture-08-cors`); grep
 ## 11. Log
 
 - 2026-09-25 — the plan written; nothing built.
+- 2026-09-25 — the user answered §8 (per-player cap, Door Agent only, the wind pushes allies); upright stays the
+  default (unanswered).
+- 2026-09-25 — **Phase 0 shipped** (`door-gun/ENTROPY_WARS_DOOR_GUN_0.zip`, token `20260925-door-gun-01-cors`):
+  the table + the ledger + the wheel pool (data.js), Swing Door (the hinge: `swingDoorResolve`, the push from
+  the hinge, the painter) + Door Dash (battle.js, ui.js, three-vfx-effects.js), Door to the Face retired with
+  its saves mapped, B&E on rung II, the rack's DOOR WHEEL tag (party-builder.js, map.js). The wheel pool is
+  EMPTY until Phase 1 adds the Gust / Archers rows (a door row only joins the rack with its engine). No
+  sprites.js / hud.js change was needed (`doorGun` already routes to the quick-draw clip; the target prompt
+  lives in battle.js). Notes: docs/notes/champions-combat.md "THE DOOR AGENT rev 4". Test: door-gun.test.js.
