@@ -49,18 +49,21 @@ function board() {
     return { D, state, logs, fx, mk, g: n => vm.runInContext(n, D) };
 }
 
-test('THE TUNED DOOR tunes to the type of the enemy nearest the tile; a plain door stays untyped', () => {
+test('THE TUNED DOOR: THE PLAYER PICKS the type (the user, 2026-09-25: "Let the player choose the type"); no pick = no type; a plain door stays untyped', () => {
     const B = board();
     const a = B.mk('a', 1, 1, 1, { items: { captureDoorTuned: 1, captureDoor: 1 } });
-    B.mk('far', 2, 8, 8, { types: ['divine'] });
     B.mk('near', 2, 3, 4, { types: ['tech', 'human'] });
-    B.mk('pal', 1, 3, 3, { types: ['alien'] });
     const tune = B.g('captureDoorTuneFor');
-    assert.equal(tune(a, 3, 3, 'captureDoorTuned'), 'tech', 'the nearest enemy, its first door type');
-    assert.equal(tune(a, 8, 7, 'captureDoorTuned'), 'divine');
-    assert.equal(tune(a, 3, 3, 'captureDoor'), null, 'a plain door is never tuned');
-    const d = B.g('captureDoorPlace')(a, 1, 3, 'captureDoorTuned', { type: tune(a, 1, 3, 'captureDoorTuned') });
-    assert.ok(d && d.type === 'tech', 'the pick rides the record (captureSealFor reads it)');
+    assert.equal(tune(a, 3, 3, 'captureDoorTuned', 'alien'), 'alien', 'the pick, whoever stands near');
+    assert.equal(tune(a, 3, 3, 'captureDoorTuned', null), null, 'no pick: no type (never guessed from the nearest enemy)');
+    assert.equal(tune(a, 3, 3, 'captureDoorTuned', 'nonsense'), null, 'only the six types');
+    assert.equal(tune(a, 3, 3, 'captureDoor', 'alien'), null, 'a plain door is never tuned');
+    const d = B.g('captureDoorPlace')(a, 1, 3, 'captureDoorTuned', { type: tune(a, 1, 3, 'captureDoorTuned', 'unholy') });
+    assert.ok(d && d.type === 'unholy', 'the pick rides the record (captureSealFor reads it)');
+    const tile = between(fs.readFileSync(__dirname + '/hud.js', 'utf8'), '/* 🚪 THE ONE-WAY DOOR (CAPTURE_PLAN.md §3.2, Phase 2)', "if (typeof doWard === 'function'");
+    assert.ok(/rule\.tuned \? \(\(typeof CAPTURE_RULES !== 'undefined' && CAPTURE_RULES\.types\)/.test(tile) && /window\._ewCapDoorType = tune;/.test(tile), 'the tile menu: one row per type, the row files the pick');
+    const doItem = between(BT, 'function doItem(unit, x, y, z) {', '// ELEMENTAL SFX LAYER');
+    assert.ok(doItem.includes("if (ITEM_RULES[_cdKey].tuned && !_cdType) {") && doItem.includes('state._tileActionTarget = { x, y,'), 'armed from the Items menu with no pick: the tile menu opens on the tile');
 });
 
 test('MOVE-THEN-PLACE: one step that brings the tile into the gun\'s reach, keeping the AP for the shot', () => {
@@ -114,7 +117,7 @@ test('THE LOOK: the comet, then the door unfolds on its landing; take, seal, bre
 test('the ITEMS menu, the tile menu and the board click place a door', () => {
     const doItem = between(BT, 'function doItem(unit, x, y, z) {', '// ELEMENTAL SFX LAYER');
     assert.ok(/ITEM_RULES\[state\.selectedTool\]\?\.kind === 'captureDoor'/.test(doItem), 'doItem\'s capture branch');
-    assert.ok(/captureDoorPlace\(unit, x, y, _cdKey, \{ type: captureDoorTuneFor\(unit, x, y, _cdKey\) \}\)/.test(doItem), 'the branch places (tuned) through the Phase 1 engine');
+    assert.ok(/captureDoorPlace\(unit, x, y, _cdKey, \{ type: _cdType \}\)/.test(doItem) && doItem.includes('const _cdType = captureDoorTuneFor(unit, x, y, _cdKey);'), 'the branch places (tuned) through the Phase 1 engine');
     assert.ok(/triggerAttackAnim\(unit, x, y, 'ranged'\)/.test(doItem), 'fired from the hip: the ranged clip');
     const canUse = between(BT, 'function canUseItemNow(unit, itemKey) {', 'function anyUsableItemNow(unit) {');
     assert.ok(/kind === 'captureDoor'/.test(canUse) && /captureDoorLegalTiles\(unit\)/.test(canUse), 'the row greys when no tile would take it');

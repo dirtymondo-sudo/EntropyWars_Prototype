@@ -417,3 +417,13 @@ the item rows the server's loadout validation reads).
   the finds' id map (captures have no fixed ids); the daily ceiling bounds a hand-edited blob. **Trust note:** the captured
   ledger is client-written (story fights are client-side), so a hand-edited blob can claim a race — the same trust the
   defeated ledger already has. Test: `capture-prize.test.js`. Next: Phase 5 THE ECONOMY.
+- 2026-09-25 — **The user's fixes after Phase 4** (token `20260925-capture-06-cors`). (1) A capture joins the party at the
+  LEVEL IT WAS FOUGHT AT ("it should just remain that same level") — `hqPartyEnlist` takes `spec.lvl`, `hqCaptureEnlist`
+  passes the sealed record's `lvl`. (2) THE PLAYER PICKS a tuned door's type ("i dont like how you automatically choose the
+  type") — the Phase 2 nearest-enemy default is gone: `captureDoorTuneFor(unit, x, y, key, type?)` returns the pick
+  (viewer-local `window._ewCapDoorType`, never on state); hud.js's tile menu shows one row per type (`captureDoor:<key>:<type>`);
+  a tuned door armed from the Items menu with no pick opens the tile menu on the clicked tile. (3) Doors in the bag and the shop
+  (pulled forward from Phase 5): `HQ_DISPENSARY.stock` sells all four (Room 911's hatch and the Quartermaster's SUPPLIES shelf
+  read it); THE DOOR ISSUE `HQ_DISPENSARY.capIssue` (3 One-Way Doors + 1 Tuned Door) goes into the bag once per profile that
+  has the HQ (profile.js backfillProfile → data.js `hqCaptureDoorIssue`, flag `door.hq.capIssue`). Phase 5 still owes the
+  stashes, the drops and the intake's issue for a brand-new profile.

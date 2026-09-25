@@ -133,3 +133,24 @@ test('THE COMMIT + THE CARD + THE TOAST: rows learn who they were, new races joi
     assert.equal((html.match(/vic-cap-row /g) || []).length, 3, 'a skipped row is not shown');
     assert.equal(c._vicBuildCaptures({ rows: [] }), '');
 });
+
+test('THE USER\'S FIXES (2026-09-25): a capture joins at the level it was fought at; doors are issued once and sold at the hatch', () => {
+    const p = profile();
+    g('hqPartyEnsure')(p);
+    const inParty = g('hqPartyRecord')(p).members.map(m => m.meta.race);
+    const race = D.AVAILABLE_RACES.find(r => inParty.indexOf(r) < 0 && p.account.unlockedUnits.indexOf(r) < 0);
+    const r = g('hqCaptureEnlist')(p, [{ race, tier: 1, lvl: 17 }], { date: DAY });
+    assert.equal(r.rows[0].to, 'party');
+    assert.equal(r.rows[0].member.lvl, 17, '"it should just remain that same level"');
+    assert.equal(g('hqPartyRecord')(p).members.find(m => m.meta.race === race).xp, g('xpThreshold')(17));
+    // THE DOOR ISSUE
+    const q = profile(); q.door = { hq: { visits: 1 } };
+    const issue = g('hqCaptureDoorIssue');
+    deq(issue(q).added, D.HQ_DISPENSARY.capIssue);
+    Object.keys(D.HQ_DISPENSARY.capIssue).forEach(k => assert.equal(g('hqBagCount')(q, k), D.HQ_DISPENSARY.capIssue[k], k));
+    assert.equal(issue(q).ok, false, 'once');
+    assert.equal(g('hqBagCount')(q, 'captureDoor'), D.HQ_DISPENSARY.capIssue.captureDoor, 'never twice');
+    assert.equal(issue(profile()).ok, false, 'no HQ on the profile yet: nothing (the next load after the HQ issues)');
+    assert.ok(PF.includes('window.hqCaptureDoorIssue(p);'), 'profile.js backfillProfile issues');
+    ['captureDoor', 'captureDoor2', 'captureDoor3', 'captureDoorTuned'].forEach(k => assert.ok(g('hqShopStock')().some(r => r.key === k && r.price > 0), 'the hatch sells ' + k));
+});

@@ -4447,7 +4447,7 @@ const ITEM_RULES = {
         tuned: true,
         story: true,
         max: 3,
-        desc: 'Story only. A one-way door tuned to a type when you place it (Human, Divine, Unholy, Tech, Anomaly, Alien): a foe of that type seals one round faster.',
+        desc: 'Story only. A one-way door you tune to a type as you place it (you pick: Human, Divine, Unholy, Tech, Anomaly or Alien): a foe of that type seals one round faster.',
         shopPrice: 300
     }
 };
@@ -44072,8 +44072,8 @@ function hqCaptureOwned(profile, race) {
     return hqUnitCaptured(profile, race);
 }
 /* THE PRIZE (§2.6): every capture at victory, in order — captures = [{ race, gender, name, lvl, tier }].
-   1. a free party slot and the race not already in the party → JOINS THE PARTY (at the party's level, the first free
-      slot — the lead never moves);
+   1. a free party slot and the race not already in the party → JOINS THE PARTY (at the level it was fought at — the
+      user, 2026-09-25; the first free slot — the lead never moves);
    2. else a race the account does not own → THE ROSTER (the captured ledger is the claim; the server's union makes it
       owned — Phase 4);
    3. else → THE BOUNTY (CAPTURE_RULES.bounty[tier] gold; the commit credits it — Phase 4).
@@ -44087,7 +44087,7 @@ function hqCaptureEnlist(profile, captures, opts) {
         if (!race || (typeof AVAILABLE_RACES !== 'undefined' && AVAILABLE_RACES.indexOf(race) < 0)) { rows.push({ race, to: 'skip', reason: 'race' }); return; }
         const owned = hqCaptureOwned(profile, race);
         hqCapturedMark(profile, [race], date);   // the ledger first: it is what makes the race enlistable (hqPartyUnlocked)
-        const e = hqPartyEnlist(profile, { race, gender: c.gender, cls: hqPartyDefaultJob(race), name: c.name });
+        const e = hqPartyEnlist(profile, { race, gender: c.gender, cls: hqPartyDefaultJob(race), name: c.name, lvl: c.lvl | 0 });   // its OWN level (the user: "it should just remain that same level")
         if (e.ok) { rows.push({ race, to: 'party', member: e.member, owned }); return; }
         if (!owned) { rows.push({ race, to: 'roster', reason: e.reason }); return; }
         const tier = Math.max(1, Math.min(3, (c.tier | 0) || 1));
@@ -45051,7 +45051,8 @@ function hqPartyEnlist(profile, spec) {
     if (r.members.some(m => m.meta.race === race)) return { ok: false, reason: 'dup' };
     const m = hqPartySpec(race, spec.gender, spec.cls || null);
     if (spec.name) m.name = String(spec.name).slice(0, 24);
-    if (HQ_LEVEL_RULES.enlist === 'party') { m.xp = xpThreshold(Math.max(HQ_LEVEL_RULES.start, hqPartyLevel(profile))); m.lvl = xpLevelFor(m.xp); }   // THE LEVELS: a recruit joins at the party's level
+    if ((spec.lvl | 0) > 0) { m.xp = xpThreshold(spec.lvl | 0); m.lvl = xpLevelFor(m.xp); }   // THE ONE-WAY DOOR: a capture keeps the level it was fought at (the user, 2026-09-25)
+    else if (HQ_LEVEL_RULES.enlist === 'party') { m.xp = xpThreshold(Math.max(HQ_LEVEL_RULES.start, hqPartyLevel(profile))); m.lvl = xpLevelFor(m.xp); }   // THE LEVELS: a recruit joins at the party's level
     m.id = 'p' + (r.seq++);
     r.members.push(m); r.at = Date.now();
     return { ok: true, member: m, index: r.members.length - 1 };
@@ -45344,7 +45345,11 @@ function hqPartyFieldItems(m) { return HQ_PARTY_RULES.itemKinds.filter(k => (m &
    caster only when a heal is wanted and nobody can pay for it. */
 const HQ_DISPENSARY = {
     room: 'dispensary', counter: 'pharmacy',
-    stock: ['healPotion', 'manaPotion', 'reviveTonic', 'elixir', 'panacea', 'scanner'],   // ITEM_RULES keys, in the shelf's order (the price is the row's shopPrice)
+    stock: ['healPotion', 'manaPotion', 'reviveTonic', 'elixir', 'panacea', 'scanner',
+            'captureDoor', 'captureDoor2', 'captureDoor3', 'captureDoorTuned'],   // ITEM_RULES keys, in the shelf's order (the price is the row's shopPrice); the capture doors (the user, 2026-09-25: "Make them available in the shop too")
+    /* THE DOOR ISSUE (the user, 2026-09-25: "i need some actual doors in my bag to test"): once per profile, the HQ's first
+       load after this lands puts these in the bag (profile.js backfillProfile → hqCaptureDoorIssue; door.hq.capIssue marks it) */
+    capIssue: { captureDoor: 3, captureDoorTuned: 1 },
     labels: { buy: 'BUY', sell: 'SELL', bag: 'THE BAG' },
 };
 function hqBagRecord(profile, create) {
@@ -45434,6 +45439,16 @@ function hqBagForBattle(profile) {
     const b = hqBagRecord(profile, false), out = {};
     if (b) Object.keys(b.items).forEach(k => { const rule = (typeof ITEM_RULES !== 'undefined') ? ITEM_RULES[k] : null; if (rule && !rule.fieldOnly && (b.items[k] | 0) > 0) out[k] = b.items[k] | 0; });
     return out;
+}
+/* THE DOOR ISSUE: once, on a profile that has the HQ (door.hq) — the flag and the doors live in the same object, so
+   whichever save comes first files both; a load that is never saved issues nothing. Pure; the caller saves. */
+function hqCaptureDoorIssue(profile) {
+    const H = profile && profile.door && profile.door.hq;
+    if (!H || typeof H !== 'object' || H.capIssue) return { ok: false, added: {} };
+    const added = {};
+    Object.keys(HQ_DISPENSARY.capIssue || {}).forEach(k => { const a = hqBagAdd(profile, k, HQ_DISPENSARY.capIssue[k] | 0); if (a.added) added[k] = a.added; });
+    H.capIssue = 1;
+    return { ok: true, added };
 }
 /* THE SHELF: the dispensary's stock with prices */
 function hqShopStock() { return HQ_DISPENSARY.stock.filter(k => typeof ITEM_RULES !== 'undefined' && ITEM_RULES[k]).map(k => hqBagItemRow(k, 0)); }
@@ -48699,7 +48714,7 @@ if (typeof window !== 'undefined') {
     /* THE LEVELS (2026-09-21) */
     window.HQ_LEVEL_RULES = HQ_LEVEL_RULES; window.HQ_AREA_LEVELS = HQ_AREA_LEVELS; window.XP_CURVE = XP_CURVE; window.xpThreshold = xpThreshold; window.xpLevelFor = xpLevelFor; window.xpToNext = xpToNext;
     window.hqPartyLevel = hqPartyLevel; window.hqPartyXp = hqPartyXp; window.hqPartyLevelGains = hqPartyLevelGains; window.hqPartyGrantXp = hqPartyGrantXp; window.hqPartyXpShare = hqPartyXpShare; window.hqEncounterLevels = hqEncounterLevels; window.hqEncounterGroup = hqEncounterGroup;
-    window.HQ_DISPENSARY = HQ_DISPENSARY; window.hqBagRecord = hqBagRecord; window.hqBagCount = hqBagCount; window.hqBagAdd = hqBagAdd; window.hqBagTake = hqBagTake; window.hqBagList = hqBagList; window.hqBagTotal = hqBagTotal; window.HQ_BAG_TABS = HQ_BAG_TABS; window.hqBagCategoryOf = hqBagCategoryOf; window.hqBagTab = hqBagTab; window.hqBagTabs = hqBagTabs; window.HQ_DROP_RULES = HQ_DROP_RULES; window.hqDropBaneFor = hqDropBaneFor; window.hqEncounterDrops = hqEncounterDrops; window.hqBagSet = hqBagSet; window.hqBagForBattle = hqBagForBattle; window.hqBagCap = hqBagCap; window.hqShopStock = hqShopStock; window.hqShopQuote = hqShopQuote; window.hqShopBuyApply = hqShopBuyApply; window.hqShopSell = hqShopSell; window.hqPartyStock = hqPartyStock; window.hqPartyBagItems = hqPartyBagItems; window.hqPartyAutoHeal = hqPartyAutoHeal; window.hqPartyFieldSpells = hqPartyFieldSpells; window.hqPartyFieldTargets = hqPartyFieldTargets; window.hqPartyHealAmount = hqPartyHealAmount; window.hqPartyCast = hqPartyCast; window.hqPartyUseItem = hqPartyUseItem; window.hqPartyFieldItems = hqPartyFieldItems; window.hqPartySpec = hqPartySpec; window.hqPartyGenders = hqPartyGenders; window.hqPartyDefaultJob = hqPartyDefaultJob;
+    window.HQ_DISPENSARY = HQ_DISPENSARY; window.hqBagRecord = hqBagRecord; window.hqBagCount = hqBagCount; window.hqBagAdd = hqBagAdd; window.hqBagTake = hqBagTake; window.hqBagList = hqBagList; window.hqBagTotal = hqBagTotal; window.HQ_BAG_TABS = HQ_BAG_TABS; window.hqBagCategoryOf = hqBagCategoryOf; window.hqBagTab = hqBagTab; window.hqBagTabs = hqBagTabs; window.HQ_DROP_RULES = HQ_DROP_RULES; window.hqDropBaneFor = hqDropBaneFor; window.hqEncounterDrops = hqEncounterDrops; window.hqBagSet = hqBagSet; window.hqBagForBattle = hqBagForBattle; window.hqBagCap = hqBagCap; window.hqShopStock = hqShopStock; window.hqCaptureDoorIssue = hqCaptureDoorIssue; window.hqShopQuote = hqShopQuote; window.hqShopBuyApply = hqShopBuyApply; window.hqShopSell = hqShopSell; window.hqPartyStock = hqPartyStock; window.hqPartyBagItems = hqPartyBagItems; window.hqPartyAutoHeal = hqPartyAutoHeal; window.hqPartyFieldSpells = hqPartyFieldSpells; window.hqPartyFieldTargets = hqPartyFieldTargets; window.hqPartyHealAmount = hqPartyHealAmount; window.hqPartyCast = hqPartyCast; window.hqPartyUseItem = hqPartyUseItem; window.hqPartyFieldItems = hqPartyFieldItems; window.hqPartySpec = hqPartySpec; window.hqPartyGenders = hqPartyGenders; window.hqPartyDefaultJob = hqPartyDefaultJob;
     window.CAPTURE_RULES = CAPTURE_RULES; window.captureDoorItemKeys = captureDoorItemKeys; window.captureDoorTier = captureDoorTier; window.captureSealSteps = captureSealSteps; window.captureSealFor = captureSealFor; window.captureDoorHits = captureDoorHits; window.captureXp = captureXp; window.itemStoryOnly = itemStoryOnly; window.hqCapturedRecord = hqCapturedRecord; window.hqUnitCaptured = hqUnitCaptured; window.hqCapturedMark = hqCapturedMark; window.hqCaptureOwned = hqCaptureOwned; window.hqCaptureEnlist = hqCaptureEnlist; window.hqBountyUnion = hqBountyUnion; window.hqCaptureBountyRecord = hqCaptureBountyRecord; window.hqCaptureBountyMark = hqCaptureBountyMark; window.hqCaptureBountySyncPay = hqCaptureBountySyncPay; window.hqCapturedUnlockUnion = hqCapturedUnlockUnion;   // THE ONE-WAY DOOR (CAPTURE_PLAN.md Phase 0)
     /* THE FIELD stage B — the rasteriser on the cave (Phase 9 Delivery 8, 2026-09-16) */
     window.HQ_FIELD_RULES = HQ_FIELD_RULES; window.hqFieldRimBox = hqFieldRimBox; window.hqEncounterRoomLabel = hqEncounterRoomLabel; window.hqFieldDump = hqFieldDump; window.hqFieldRoomOk = hqFieldRoomOk; window.hqFieldTerrainInfo = hqFieldTerrainInfo; window.hqFieldRasterTerrain = hqFieldRasterTerrain; window.hqFieldTerrainStep = hqFieldTerrainStep; window.hqFieldId = hqFieldId; window.hqFieldParse = hqFieldParse; window.hqFieldRaster = hqFieldRaster; window.hqFieldReach = hqFieldReach;

@@ -69,7 +69,7 @@ test('THE ITEMS: three tiers + the tuned door, story only, a bag category of the
     const p = profile(); g('hqBagAdd')(p, 'captureDoor', 2); g('hqBagAdd')(p, 'healPotion', 1);
     deq(g('hqBagList')(p).map(r => [r.key, r.cat]), [['healPotion', 'healing'], ['captureDoor', 'doors']], 'doors sort last');
     assert.equal(g('hqBagForBattle')(p).captureDoor, 2, 'a door rides into a story fight in the bag');
-    assert.ok(D.HQ_DISPENSARY.stock.every(k => !D.ITEM_RULES[k].story), 'nothing sells a door yet (Phase 5)');
+    assert.ok(['captureDoor', 'captureDoor2', 'captureDoor3', 'captureDoorTuned'].every(k => D.HQ_DISPENSARY.stock.indexOf(k) >= 0), 'the hatch sells every door (the user, 2026-09-25: "Make them available in the shop too")');
 });
 
 test('THE STORY GATE: both loadout normalizers, the forge and the random CPU loadout refuse a story item outside a story fight', () => {

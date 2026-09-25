@@ -7930,9 +7930,11 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
       if (why === 'story' || why === 'seat') break;   // not a story fight / not the party: no row at all
       const mt = (why === 'tile' && typeof findCaptureDoorApproachTile === 'function') ? findCaptureDoorApproachTile(actingUnit, tx, ty, k) : null;
       const ok = !why || !!mt;
-      const tune = (!why || mt) && rule.tuned && typeof captureDoorTuneFor === 'function' ? captureDoorTuneFor(actingUnit, tx, ty, k) : null;
+      /* a TUNED door: one row per type — THE PLAYER PICKS (the user, 2026-09-25); a plain door: one row */
+      const _tunes = rule.tuned ? ((typeof CAPTURE_RULES !== 'undefined' && CAPTURE_RULES.types) || []) : [null];
+      for (const tune of _tunes) {
       actions.push({
-        id: 'captureDoor:' + k, icon: '🚪', category: 'actions',
+        id: 'captureDoor:' + k + (tune ? ':' + tune : ''), icon: '🚪', category: 'actions',
         label: 'Place ' + (rule.name || 'Capture Door') + (tune ? ' · ' + String(tune).toUpperCase() : ''),
         apCost: (typeof CAPTURE_RULES !== 'undefined' && CAPTURE_RULES.ap) || 1,
         available: ok,
@@ -7941,15 +7943,18 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
         itemKey: k, _count: actingUnit.items[k] || 0,
         handler: !ok ? null : !why ? () => {
           state._tileActionTarget = null;
+          window._ewCapDoorType = tune;
           state.actionMode = 'item';
           state.selectedTool = k;
           if (typeof doItem === 'function') doItem(actingUnit, tx, ty, tz);
         } : () => {
           state._tileActionTarget = null;
+          window._ewCapDoorType = tune;
           if (typeof hideSpellTooltip === 'function') hideSpellTooltip();
           _moveThenCaptureDoor(actingUnit, mt, tx, ty, k);
         },
       });
+      }
     }
   }
 

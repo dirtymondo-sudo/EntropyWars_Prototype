@@ -55041,21 +55041,15 @@
             }
             return (state.captures || []).slice();
         }
-        /* THE TUNED DOOR's type (Phase 2 default): the placement tunes it to the type of the living enemy nearest the
-           tile — the body the player means to push in. null for a plain door. */
-        function captureDoorTuneFor(unit, x, y, itemKey) {
+        /* THE TUNED DOOR's type — THE PLAYER PICKS IT (the user, 2026-09-25: "i dont like how you automatically choose the
+           type … Let the player choose the type"; the Phase 2 nearest-enemy default is gone). The pick is viewer-local
+           (window._ewCapDoorType — story fights are VS-CPU, never on state): the tile menu offers one row per type, and a
+           tuned door armed from the Items menu opens that menu on the clicked tile. null = not a tuned door / no pick. */
+        function captureDoorTuneFor(unit, x, y, itemKey, type) {
             const rule = (typeof ITEM_RULES !== 'undefined') ? ITEM_RULES[itemKey] : null;
-            if (!rule || !rule.tuned || !unit) return null;
-            const types = _capR().types || [];
-            let best = null, bestD = Infinity;
-            for (const u of state.units) {
-                if (!u || u.dead || u._dying || u._sealed || !isEnemyUnit(u, unit)) continue;
-                const t = (u.types || []).find(k => types.indexOf(k) >= 0);
-                if (!t) continue;
-                const d = Math.abs(u.x - x) + Math.abs(u.y - y);
-                if (d < bestD) { bestD = d; best = t; }
-            }
-            return best;
+            if (!rule || !rule.tuned) return null;
+            const t = (type !== undefined) ? type : (typeof window !== 'undefined' ? window._ewCapDoorType : null);
+            return ((_capR().types || []).indexOf(t) >= 0) ? t : null;
         }
         /* THE TILE MENU's move-then-place (§3.2): one walk step from which (tx, ty) takes the door, keeping the AP for
            the shot — findInspectApproachTile's twin (the tile FARTHEST from the door that still reaches it) */
@@ -58722,9 +58716,20 @@
                     state._actionExecuting = false;
                     return;
                 }
+                /* a TUNED door with no type picked: open the tile menu on this tile — its rows are one per type */
+                const _cdType = captureDoorTuneFor(unit, x, y, _cdKey);
+                if (ITEM_RULES[_cdKey].tuned && !_cdType) {
+                    state.actionMode = null; state.selectedTool = null; state.pendingTarget = null;
+                    state._actionExecuting = false;
+                    state._tileActionTarget = { x, y, z: (typeof z === 'number') ? z : undefined };
+                    addLog('🚪 Pick the Tuned Door\'s type.');
+                    markDirty('board', 'hud'); renderIfDirty();
+                    return;
+                }
+                if (typeof window !== 'undefined') window._ewCapDoorType = null;   // the pick is spent on this shot
                 pushUndoSnapshot(true);
                 triggerAttackAnim(unit, x, y, 'ranged');
-                const _cdDoor = captureDoorPlace(unit, x, y, _cdKey, { type: captureDoorTuneFor(unit, x, y, _cdKey) });
+                const _cdDoor = captureDoorPlace(unit, x, y, _cdKey, { type: _cdType });
                 if (!_cdDoor) { playErrorSfx(); state._actionExecuting = false; return; }
                 if (!unit._itemLog) unit._itemLog = {};
                 unit._itemLog[_cdKey] = (unit._itemLog[_cdKey] || 0) + 1;

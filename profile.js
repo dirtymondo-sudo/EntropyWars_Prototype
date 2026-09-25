@@ -102,6 +102,7 @@ function backfillProfile(p) {
     }
   }
   _unionCapturedIntoMirror(p);   // THE ONE-WAY DOOR (Phase 4): the captured ledger's races are owned on the mirror too
+  try { if (typeof window !== 'undefined' && typeof window.hqCaptureDoorIssue === 'function') window.hqCaptureDoorIssue(p); } catch (e) {}   // THE DOOR ISSUE: capture doors in the bag, once
   // One-time heal for profiles created BEFORE the account system: their account
   // block was seeded with 0 free tokens, so grant the founding token once. The
   // flag stops it from re-granting after the token is spent. Server-account
