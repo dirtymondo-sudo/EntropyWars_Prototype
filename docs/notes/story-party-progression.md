@@ -670,3 +670,10 @@ blob can claim a race; the bounty is bounded by the daily ceiling. Next: Phase 5
 fought at (`hqPartyEnlist` `spec.lvl`); the PLAYER picks a tuned door's type (tile menu row per type, the pick in
 `window._ewCapDoorType`; no more nearest-enemy guess); the Room 911 hatch sells all four doors and `hqCaptureDoorIssue`
 puts 3 One-Way Doors + 1 Tuned Door in the bag once (`door.hq.capIssue`).
+**Capture Phases 5 + 6 (2026-09-25, token 20260925-capture-07-cors):** doors are never loot (the user) — the shop and
+the one-time issue only; a brand-new profile gets the issue at its first party filing (`hqPartyEnsure` →
+`hqCaptureDoorIssue`). Never one enemy: `HQ_LEVEL_RULES.group.solo [1, 2]`. THE SWARM: `HQ_LEVEL_RULES.swarm` — a roaming
+group's second coin makes it 6–8 bodies of one race (the room's sub says A SWARM OF n; the room still walks 2–3), 1–2
+elites at the encounter level, the grunts 4 under the party level, all on the board (no enemy bench), the grunts' CPU
+turns on the training turbo (`_swarmGrunt`). CAPTURE_PLAN §8 has the hooks; test `capture-swarm.test.js`.
+
