@@ -637,6 +637,24 @@ it is true and three-renderer.js `_syncEnemyRangePreview` folds it into its sign
 when the camera lands. Unseen live (RULE #1c): the plate opacities against the busiest sheets, the
 one-click door pair's near spot on a crowded flank, the greyed rows' reasons, the wash's return timing.
 
+## THE DOOR AGENT rev 5 — THE STANDING DOORS (door wheel Phase 1: Gust + Archers) — 2026-09-25, local delivery
+DOOR_GUN_PLAN.md Phase 1 (full log in its §11). Two wheel rows, `gunGustDoor` / `gunArchersDoor`
+(`kind: 'doorDeploy'`, `door` = the DOOR_GUN_DOORS key). The Door Agent SHOOTS a door onto an empty tile (≤ 4,
+sight, seen) and it STANDS there: a `kind: 'standing'` record in `state.doors` (pairId = id, `fixed`, open,
+walkable, see-through, 3 hits, a Keyholder's 4, faceX/faceY, `laneStamps {unitId: round}`, ids only). Cap: 2
+per PLAYER (the oldest folds); the capture door never counts. **Gust** (lane 4) blows EVERY body in its lane,
+either team (the user), the far body first, to the lane's end + 1 via `resolveForcedSlide`. **Archers** (radius
+4) loose 3 arrows at the nearest hostile they can see; they move nobody. The act fires three ways: when the
+door lands (after the comet + the unfold), at **THE DOORS' TURN** (`processDoorActs`, end of round, after the
+turrets, oldest first, full camera beats), and on ARRIVAL, **chain step E′** (`_chainStandingDoors`, after E
+zones, before F vortex, once per door per unit per round). So a Swing Door into a gust lane that ends on a
+capture door is a capture: E′ blows, D′ takes at the landing. A Keyholder (`doorImmune`) walks through wind.
+The aim is `doorGunAimResolve`: a lane door takes two clicks (the tile, then any tile of its 8 lanes for
+the face, or the tile again for "away from me"); only CPU / auto seats auto-face. Enemies break a door with
+basic attacks (`damageDoorAt`, `attack:door` on the tile card); its owner's side can't. VFX recipes are keyed
+by spell id (`gunGustDoor:open/act/hit/break/fold`). A basic CPU placer is `window.doorGunAiPick`. Test:
+`door-gun-board.test.js` (the door block + the chain in one vm).
+
 ## THE DOOR AGENT rev 4 — THE DOOR WHEEL Phase 0 (Swing Door, Door Dash, the table) — 2026-09-25, local delivery
 DOOR_GUN_PLAN.md Phase 0. The tree is `[[raceSwingDoor, raceDoorDash], [raceBreakingEntering, raceAirMail],
 raceTrapdoor, raceDropIn★]` (six rows). **Door to the Face is RETIRED** — `SPELL_ID_RENAMED` (data.js) maps a
