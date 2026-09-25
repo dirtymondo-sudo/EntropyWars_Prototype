@@ -447,4 +447,13 @@ the item rows the server's loadout validation reads).
   turbo is the training path whole (no visuals for a grunt's turn — `swarm.turbo: false` turns it off). §4.4 (natives that
   carry doors) stays dropped (§7.2). Test: `capture-swarm.test.js`; the stale pins in `party-levels` / `hq-encounter`
   (a lone native's 0–2) and `hq-party` (two bag counts — the issue is pre-filed there) moved with it. The plan is done.
+- 2026-09-25 — **THE SWARM rev 2, the user's corrections** (token `20260925-capture-08-cors`). (1) "Swarms should be any enemy
+  that is native to that room — you could attack a ghoul and a swarm of some skeletons show up too, or it could be more
+  ghouls": the swarm race list is gone; `hqRoomNatives(roomId)` (the site's residents tagged native / biome) is the pool,
+  `hqSwarmRace(natives, rnd)` draws ONE race from it (the target's own is one of the choices); the fight is the TARGET + n − 1
+  of that race (`roster = [ch.race, swarm.race × (n − 1)]`); the room's group keeps its first walker and the rest take the
+  swarm's race; a LONE native's strike rolls the same `p` coin (`hqEncounterGroup(ch, seed, { natives })`, the launch hands
+  the room's natives). (2) "Of course I want animations — why would I want the player to experience a dev tool?": the
+  grunts' training turbo is REMOVED (`swarm.turbo`, `_swarmGrunt` and the `_trainingTurboWanted` branch gone) — every swarm
+  turn plays in full. Test: `capture-swarm.test.js`.
 

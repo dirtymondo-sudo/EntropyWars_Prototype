@@ -32966,8 +32966,7 @@
             state.bench = { 1: [], 2: [] };
             if (!_benchOn()) return;
             const deploy = _gauntletDeploy();
-            /* THE SWARM (CAPTURE_PLAN §5.2, 2026-09-25): a swarm's natives are ALL on the board (no enemy bench); the seats past
-               the elites are the GRUNTS (`_swarmGrunt` — their CPU turns ride the training turbo, _trainingTurboWanted) */
+            /* THE SWARM (CAPTURE_PLAN §5.2, 2026-09-25): a swarm's natives are ALL on the board (no enemy bench) */
             let _sw = null;
             try { const er = (typeof _encRun === 'function') ? _encRun() : null; _sw = (er && er.swarm && (er.swarm.n | 0) > 0) ? er.swarm : null; } catch (e) { _sw = null; }
             const keep = [];
@@ -32975,7 +32974,6 @@
                 const idx = parseInt(String(u.id).split('-')[1], 10);
                 if (_sw && u.player === 2) {
                     u._benched = false;
-                    if (Number.isFinite(idx) && idx >= Math.max(1, _sw.elite | 0)) u._swarmGrunt = true;
                     keep.push(u);
                     continue;
                 }
@@ -37330,10 +37328,7 @@
            still pop over the units. Offline only (isOnlineMatch → never). */
         const TRAINING_TURBO_MULT = 64;
         function _trainingTurboWanted(unit) {
-            /* THE SWARM (CAPTURE_PLAN §5.2): a swarm's grunts play on the same turbo path (HQ_LEVEL_RULES.swarm.turbo) — a VS-CPU
-               encounter only, so never online */
-            const _swarmTurbo = !!(unit && unit._swarmGrunt && typeof HQ_LEVEL_RULES !== 'undefined' && HQ_LEVEL_RULES.swarm && HQ_LEVEL_RULES.swarm.turbo);
-            if ((!state.trainingMatch && !_swarmTurbo) || state.devAutoSim) return false;
+            if (!state.trainingMatch || state.devAutoSim) return false;
             if (state.phase !== 'battle' || state.winner) return false;
             try { if (typeof isOnlineMatch === 'function' && isOnlineMatch()) return false; } catch (e) {}
             if (!unit || unit.dead) return false;

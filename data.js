@@ -43677,26 +43677,30 @@ function hqRoomPopulation(roomId, profile, opts) {
             /* THE SWARM (CAPTURE_PLAN §5.2, 2026-09-25): the group's second coin — one race, n bodies in the fight (hqEncounterGroup) */
             const SW = HQ_LEVEL_RULES.swarm;
             if (SW && SW.on !== false && rnd() < SW.p) {
-                const race = hqSwarmRace(draw[0].race, pool.filter(r => tiers[r] === 'native'), rnd);   // a TRUE native only — the room's first draw stays its own
+                const race = hqSwarmRace(pool.filter(r => tiers[r] === 'native' || tiers[r] === 'biome'), rnd);   // the room's own people
                 if (race) {
                     const n = (SW.size[0] | 0) + Math.floor(rnd() * ((SW.size[1] | 0) - (SW.size[0] | 0) + 1));
                     group.swarm = { n: Math.max(2, Math.min(8, n)), race };
-                    for (let i = 0; i < size; i++) draw[i].race = race;
+                    for (let i = 1; i < size; i++) draw[i].race = race;   // the first walker stays who it was (the room's first draw is a true native)
                 }
             }
         }
     } catch (e) { group = null; }
     return { kind, site, hub: hubId, pool, tiers, n: draw.length, draw, seed, m2: Math.round(m2), group };
 }
-/* THE SWARM'S RACE: the lead's own when it is a swarm race, else a swarm race among `natives` (the room's TRUE natives — a
-   swarm is always the site's own people, so the room's first draw stays a native), seeded by the caller's stream; null =
-   this room has no swarm race and the group stays a group */
-function hqSwarmRace(lead, natives, rnd) {
-    const SW = HQ_LEVEL_RULES.swarm; if (!SW || !Array.isArray(SW.races)) return null;
-    const known = SW.races.filter(r => typeof AVAILABLE_RACES === 'undefined' || AVAILABLE_RACES.indexOf(r) >= 0);
-    if (lead && known.indexOf(lead) >= 0) return lead;
-    const from = known.filter(r => Array.isArray(natives) && natives.indexOf(r) >= 0);
+/* THE SWARM'S RACE (rev 2): any of the room's natives, seeded by the caller's stream — the target's own race is one of them
+   ("more ghouls"), another is as likely ("a swarm of skeletons"); null = no native the roster carries */
+function hqSwarmRace(natives, rnd) {
+    const from = (Array.isArray(natives) ? natives : []).filter(r => r && (typeof AVAILABLE_RACES === 'undefined' || AVAILABLE_RACES.indexOf(r) >= 0));
     return from.length ? from[Math.floor((typeof rnd === 'function' ? rnd() : 0) * from.length) % from.length] : null;
+}
+/* the races NATIVE to a wild room: its site's residents tagged native / biome (the population's own "the room's people") */
+function hqRoomNatives(roomId) {
+    const site = hqRoomSite(roomId); if (!site) return [];
+    let res = [];
+    try { res = hqSiteResidents(site) || []; } catch (e) { res = []; }
+    const t = res.tiers || {};
+    return res.filter(r => t[r] === 'native' || t[r] === 'biome');
 }
 /* a seeded call: does an authored spot native LEAVE its spot for a loop? (never a posed / `stay` spot, never a clone) */
 function hqSpotRoams(roomId, si, spot) {
@@ -43782,13 +43786,13 @@ function hqEncounterLaunch(roomId, ch, cfg, opts) {
     /* THE GROUP (2026-09-21, the user: "attack one NPC and only 1–2 come with them; a roaming group is more"): the enemy's line is
        the target + its roaming group's members (their own races) + the companions the rule draws — never the crossing's team size;
        `teamSize` stays the OFFICER's deploy (the party's shift). THE LEVELS: every body's level about the party's (hqEncounterLevels). */
-    const grp = hqEncounterGroup(ch, (roomId || '') + '|' + (ch.id || ch.race) + '|group');
+    const grp = hqEncounterGroup(ch, (roomId || '') + '|' + (ch.id || ch.race) + '|group', { natives: hqRoomNatives(roomId) });
     const enemyTeam = Math.max(1, Math.min(8, grp.size | 0));   // the target + its group + the companions the rule drew
     const pool = (typeof hqMissionPool === 'function') ? hqMissionPool(site, Math.max(n, enemyTeam)) : [];
     const withGroup = [ch.race].concat(grp.members.map(x => x.race));
-    /* THE SWARM (CAPTURE_PLAN §5.2, 2026-09-25): every seat is the target's race; the grunts stand under the party level */
-    const swarm = grp.kind === 'swarm' ? { n: enemyTeam, elite: Math.min(grp.elite | 0, enemyTeam), race: ch.race, turbo: !!HQ_LEVEL_RULES.swarm.turbo } : null;
-    const roster = swarm ? Array.from({ length: enemyTeam }, () => ch.race)
+    /* THE SWARM (CAPTURE_PLAN §5.2 rev 2): the target leads, every other seat is the swarm's native race; the grunts stand under the party level */
+    const swarm = grp.kind === 'swarm' ? { n: enemyTeam, elite: Math.min(grp.elite | 0, enemyTeam), race: grp.race || ch.race } : null;
+    const roster = swarm ? [ch.race].concat(Array.from({ length: enemyTeam - 1 }, () => swarm.race))
         : withGroup.concat(pool.filter(r => withGroup.indexOf(r) < 0)).slice(0, Math.max(enemyTeam, 1));
     const lv = hqEncounterLevels(opts.partyLevel, site, enemyTeam, (roomId || '') + '|' + (ch.id || ch.race) + '|levels',
                                  swarm ? { grunts: { from: swarm.elite, offset: HQ_LEVEL_RULES.swarm.offset } } : null);
@@ -43802,7 +43806,7 @@ function hqEncounterLaunch(roomId, ch, cfg, opts) {
     return {
         site, delta: true, gm: c.gm, teamSize: n, rounds: c.rounds, roster, codeRed: !!opts.codeRed,
         enemyTeam, levels: lv.levels, partyLevel: lv.partyLevel, group: grp,   // THE LEVELS + THE GROUP (2026-09-21)
-        swarm,   // THE SWARM (CAPTURE_PLAN §5.2): { n, elite, race, turbo } or null — map.js seats all n on the board
+        swarm,   // THE SWARM (CAPTURE_PLAN §5.2): { n, elite, race } or null — map.js seats all n on the board
         seamless,
         launchId, area: launchId ? roomId : null,
         doorId: 'crossing', counterId: 'crossing',
@@ -44610,15 +44614,14 @@ const HQ_LEVEL_RULES = {
     /* THE SIZES (CAPTURE_PLAN §5.1, 2026-09-25): NEVER ONE ENEMY — a lone native brings 1 or 2 companions (55 % two bodies,
        45 % three), so a capture door is never the whole fight; the lone-seal rule stays for a fight REDUCED to one */
     group: { solo: [1, 2], soloWeights: [0.55, 0.45], roamExtra: [0, 1], roamSize: [2, 3], groupP: 0.55, marker: 4 },
-    /* THE SWARM (CAPTURE_PLAN §5.2, 2026-09-25): a roaming group that won the second coin (`p`) is a SWARM — `size` bodies of ONE
-       race (the lead's when it is a swarm race, else one of `races` among the room's true natives; a room with none has no swarm), `elite` of them at the ordinary encounter level and the
-       rest `offset` under the party level (the clamps hold). The room walks the group as drawn (2–3 bodies, sub A SWARM OF n);
-       the fight seats all n on the board (no enemy bench). `turbo`: the grunts' CPU turns run on the training turbo path
-       (battle.js _trainingTurboWanted) — six slow activations a round otherwise. `on: false` = no swarms. The plan's
-       cultist is not a race in the roster; the list is the eleven that are. */
-    swarm: { on: true, p: 0.18, size: [6, 8], elite: [1, 2], offset: -4, turbo: true,
-             races: ['antperson', 'zombie', 'ghoul', 'grey', 'scarecrow', 'jellyfish', 'glitch', 'demon', 'goatman', 'skinwalker', 'black goo'],
-             label: 'A SWARM OF' },
+    /* THE SWARM (CAPTURE_PLAN §5.2, rev 2 2026-09-25 — the user: "swarms should be any enemy that is native to that room; you
+       could attack a ghoul and a swarm of some skeletons show up too, or it could be more ghouls"): `p` is the coin — a roaming
+       group's second coin in the room (hqRoomPopulation), and the strike on a lone native (hqEncounterGroup with the room's
+       natives). A swarm is `size` bodies: the one you hit + the rest ONE race drawn from the room's natives (hqRoomNatives —
+       the target's own race is one of them). `elite` of them (the target first) stand at the ordinary encounter level, the
+       rest `offset` under the party level (the clamps hold). The room walks the group as drawn (2–3 bodies, sub A SWARM OF
+       n); the fight seats all n on the board (no enemy bench), every turn played in full. `on: false` = no swarms. */
+    swarm: { on: true, p: 0.18, size: [6, 8], elite: [1, 2], offset: -4, label: 'A SWARM OF' },
     milestones: { shop: SPELL_SHOP_LEVEL, every: 5 },   // the secondary-job milestone retired with the tier rework (2026-09-24)
     labels: { levelUp: 'LEVEL UP!', pool: 'THE ENCOUNTER', trickle: 'IN THE FIELD', battle: 'IN THE FIELD', fought: 'FOUGHT · FULL SHARE', present: 'DID NOT FIGHT · HALF SHARE', bench: 'DID NOT FIGHT · HALF SHARE', down: 'DOWN · NO SHARE', lost: 'THE ROOM WAS LOST · NO SHARE' },
 };
@@ -44709,20 +44712,29 @@ function hqEncounterLevels(partyLevel, siteId, n, seed, opts) {
 }
 /* THE GROUP the strike engages: the target's own roaming group (the aim reports `ch.group` = [{ id, race, gender }] — its
    members besides the target) plus `roamExtra`; a lone native brings `solo` companions by `soloWeights`. Seeded by the target. */
-function hqEncounterGroup(ch, seed) {
+function hqEncounterGroup(ch, seed, ctx) {
     const G = HQ_LEVEL_RULES.group;
     const rnd = hqLevelRng(seed != null ? seed : (ch && ch.id) || 'solo');
     const members = (ch && Array.isArray(ch.group)) ? ch.group.filter(x => x && x.race && x.id !== ch.id) : [];
     const span = (r) => Math.max(0, (r[0] | 0) + Math.floor(rnd() * ((r[1] | 0) - (r[0] | 0) + 1)));
-    /* THE SWARM (CAPTURE_PLAN §5.2): the aim reports `ch.swarm = { n }` (the room's group won the swarm coin) or an authored
-       spot says `swarm: true` — n bodies of the TARGET's race, `elite` of them at the encounter level; the room's walkers are
-       part of the n, never on top of it */
+    /* THE SWARM (CAPTURE_PLAN §5.2 rev 2): the aim reports `ch.swarm = { n, race }` (the room's group won the swarm coin), an
+       authored spot says `swarm: true`, or a lone native's strike wins the coin when the caller hands the room's natives
+       (`ctx.natives`) — the target + n − 1 bodies of ONE native race (the target's own or another), `elite` of them (the target
+       first) at the encounter level; the room's walkers are part of the n, never on top of it */
     const SW = HQ_LEVEL_RULES.swarm;
-    if (ch && ch.swarm && SW && SW.on !== false) {
-        const want = (typeof ch.swarm === 'object' && ch.swarm.n) ? (ch.swarm.n | 0) : span(SW.size);
+    const natives = (ctx && Array.isArray(ctx.natives)) ? ctx.natives : null;
+    const swarmOf = (want, race) => {
         const size = Math.max(2, Math.min(8, want));
         const elite = Math.max(1, Math.min(size, span(SW.elite)));
-        return { kind: 'swarm', members: [], extra: size - 1, size, elite, race: ch.race };
+        return { kind: 'swarm', members: [], extra: size - 1, size, elite, race: race || (ch && ch.race) };
+    };
+    if (ch && ch.swarm && SW && SW.on !== false) {
+        const want = (typeof ch.swarm === 'object' && ch.swarm.n) ? (ch.swarm.n | 0) : span(SW.size);
+        return swarmOf(want, (typeof ch.swarm === 'object' && ch.swarm.race) || hqSwarmRace(natives || [ch.race], rnd));
+    }
+    if (!members.length && natives && natives.length && SW && SW.on !== false && rnd() < SW.p) {
+        const race = hqSwarmRace(natives, rnd);
+        if (race) return swarmOf(span(SW.size), race);
     }
     if (members.length) { const extra = span(G.roamExtra); return { kind: 'roam', members, extra, size: 1 + members.length + extra }; }
     const W = G.soloWeights || [1], u = rnd();
@@ -48771,7 +48783,7 @@ if (typeof window !== 'undefined') {
     window.hqPartyForLaunch = hqPartyForLaunch; window.hqPartyAfterMatch = hqPartyAfterMatch; window.hqPartyResync = hqPartyResync; window.hqPartyScaledVitals = hqPartyScaledVitals; window.hqPartySpellIds = hqPartySpellIds; window.hqPartySpellTree = hqPartySpellTree; window.hqPartySpellState = hqPartySpellState; window.hqPartyTreeCircuit = hqPartyTreeCircuit; window.hqPartySetSpells = hqPartySetSpells; window.hqPartyTreeClick = hqPartyTreeClick; window.hqPartySocketPool = hqPartySocketPool; window.hqPartySocketEquip = hqPartySocketEquip; window.hqPartySpellsDefault = hqPartySpellsDefault; window.hqPartySpellsRandom = hqPartySpellsRandom; window.hqPartySpellsClear = hqPartySpellsClear;
     /* THE LEVELS (2026-09-21) */
     window.HQ_LEVEL_RULES = HQ_LEVEL_RULES; window.HQ_AREA_LEVELS = HQ_AREA_LEVELS; window.XP_CURVE = XP_CURVE; window.xpThreshold = xpThreshold; window.xpLevelFor = xpLevelFor; window.xpToNext = xpToNext;
-    window.hqPartyLevel = hqPartyLevel; window.hqPartyXp = hqPartyXp; window.hqPartyLevelGains = hqPartyLevelGains; window.hqPartyGrantXp = hqPartyGrantXp; window.hqPartyXpShare = hqPartyXpShare; window.hqEncounterLevels = hqEncounterLevels; window.hqEncounterGroup = hqEncounterGroup; window.hqSwarmRace = hqSwarmRace;
+    window.hqPartyLevel = hqPartyLevel; window.hqPartyXp = hqPartyXp; window.hqPartyLevelGains = hqPartyLevelGains; window.hqPartyGrantXp = hqPartyGrantXp; window.hqPartyXpShare = hqPartyXpShare; window.hqEncounterLevels = hqEncounterLevels; window.hqEncounterGroup = hqEncounterGroup; window.hqSwarmRace = hqSwarmRace; window.hqRoomNatives = hqRoomNatives;
     window.HQ_DISPENSARY = HQ_DISPENSARY; window.hqBagRecord = hqBagRecord; window.hqBagCount = hqBagCount; window.hqBagAdd = hqBagAdd; window.hqBagTake = hqBagTake; window.hqBagList = hqBagList; window.hqBagTotal = hqBagTotal; window.HQ_BAG_TABS = HQ_BAG_TABS; window.hqBagCategoryOf = hqBagCategoryOf; window.hqBagTab = hqBagTab; window.hqBagTabs = hqBagTabs; window.HQ_DROP_RULES = HQ_DROP_RULES; window.hqDropBaneFor = hqDropBaneFor; window.hqEncounterDrops = hqEncounterDrops; window.hqBagSet = hqBagSet; window.hqBagForBattle = hqBagForBattle; window.hqBagCap = hqBagCap; window.hqShopStock = hqShopStock; window.hqCaptureDoorIssue = hqCaptureDoorIssue; window.hqShopQuote = hqShopQuote; window.hqShopBuyApply = hqShopBuyApply; window.hqShopSell = hqShopSell; window.hqPartyStock = hqPartyStock; window.hqPartyBagItems = hqPartyBagItems; window.hqPartyAutoHeal = hqPartyAutoHeal; window.hqPartyFieldSpells = hqPartyFieldSpells; window.hqPartyFieldTargets = hqPartyFieldTargets; window.hqPartyHealAmount = hqPartyHealAmount; window.hqPartyCast = hqPartyCast; window.hqPartyUseItem = hqPartyUseItem; window.hqPartyFieldItems = hqPartyFieldItems; window.hqPartySpec = hqPartySpec; window.hqPartyGenders = hqPartyGenders; window.hqPartyDefaultJob = hqPartyDefaultJob;
     window.CAPTURE_RULES = CAPTURE_RULES; window.captureDoorItemKeys = captureDoorItemKeys; window.captureDoorTier = captureDoorTier; window.captureSealSteps = captureSealSteps; window.captureSealFor = captureSealFor; window.captureDoorHits = captureDoorHits; window.captureXp = captureXp; window.itemStoryOnly = itemStoryOnly; window.hqCapturedRecord = hqCapturedRecord; window.hqUnitCaptured = hqUnitCaptured; window.hqCapturedMark = hqCapturedMark; window.hqCaptureOwned = hqCaptureOwned; window.hqCaptureEnlist = hqCaptureEnlist; window.hqBountyUnion = hqBountyUnion; window.hqCaptureBountyRecord = hqCaptureBountyRecord; window.hqCaptureBountyMark = hqCaptureBountyMark; window.hqCaptureBountySyncPay = hqCaptureBountySyncPay; window.hqCapturedUnlockUnion = hqCapturedUnlockUnion;   // THE ONE-WAY DOOR (CAPTURE_PLAN.md Phase 0)
     /* THE FIELD stage B — the rasteriser on the cave (Phase 9 Delivery 8, 2026-09-16) */

@@ -50246,7 +50246,7 @@ const ThreeRenderer = (function () {
             /* THE ROAMING GROUP (2026-09-21): the members of a group (data.js hqRoomPopulation `draw[i].group`) share ONE loop — the same
                seed draws the same stops — and stand at one stop; the strike on one of them fights them all (_hqEncounterAim reports the group) */
             if (o && o.group) ch.group = o.group;
-            if (o && o.swarm) ch.swarm = o.swarm;   // THE SWARM (CAPTURE_PLAN §5.2): the group won the swarm coin — the aim reports { n }
+            if (o && o.swarm) ch.swarm = o.swarm;   // THE SWARM (CAPTURE_PLAN §5.2): the group won the swarm coin — the aim reports { n, race }
             var seedKey = (o && o.group) ? (roomId + '|' + o.group) : (roomId + '|' + id);
             var rd = _hqRoundsAssign(ch, { seed: (typeof hqHash === 'function') ? hqHash(seedKey) : seedKey.length * 131, arriving: o && o.arriving, home: o && o.home });
             if (rd) H.rounds.push(ch);
@@ -50281,7 +50281,7 @@ const ThreeRenderer = (function () {
                 var line = null; try { if (room.lines && room.lines.length && Math.random() < 0.5) line = room.lines[Math.floor(Math.random() * room.lines.length)]; } catch (e) {}
                 var g = genderOf(rk), sub = pop.kind === 'facility' ? 'PASSING THROUGH' : (d.tier === 'native' || d.tier === 'biome') ? 'A LOCAL' : 'PASSING THROUGH';
                 if (d.group) sub = 'ONE OF ' + groupSize(d.group) + ' · TOGETHER';   // THE ROAMING GROUP (2026-09-21)
-                var swarm = (d.group && pop.group && pop.group.id === d.group && pop.group.swarm) ? { n: pop.group.swarm.n } : null;
+                var swarm = (d.group && pop.group && pop.group.id === d.group && pop.group.swarm) ? { n: pop.group.swarm.n, race: pop.group.swarm.race } : null;
                 if (swarm) sub = ((typeof HQ_LEVEL_RULES !== 'undefined' && HQ_LEVEL_RULES.swarm && HQ_LEVEL_RULES.swarm.label) || 'A SWARM OF') + ' ' + swarm.n;   // THE SWARM: the room shows 2–3, the fight is n
                 /* THE EXTRAS ARRIVE (2026-09-20 — "why is there a loading screen between every little door"):
                    the population's rigs (2–6 × 5–9 MB per room, a new draw per room) were the bulk of what every

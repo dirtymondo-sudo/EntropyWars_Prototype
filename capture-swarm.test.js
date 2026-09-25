@@ -2,7 +2,9 @@
 // (CAPTURE_PLAN.md §5 / §6, 2026-09-25). Phase 5: a BRAND-NEW profile gets the door issue at its first party filing; doors
 // are never loot (the user: "I dont think doors should be part of loot") — no drop row, no stash row. Phase 6: never one
 // enemy (a lone native brings 1–2), the swarm (one race, 6–8 bodies, the elites at the encounter level, the grunts under
-// the party level, all on the board, the grunts on the turbo). Repo-only.
+// the party level, all on the board, every turn played in full). Rev 2 (the user): a swarm is ANY of the room's
+// natives — the target + n − 1 of one native race (the target's own or another) — and a lone native's strike can
+// bring one too. Repo-only.
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -52,12 +54,19 @@ test('PHASE 6 §5.1: never one enemy — a lone native brings one or two', () =>
 test('PHASE 6 §5.2: THE SWARM — the group, the levels, the launch', () => {
     const grp = g('hqEncounterGroup');
     for (let i = 0; i < 60; i++) {
-        const r = grp({ id: 'hq-roam-0', race: 'zombie', swarm: { n: 7 }, group: [{ id: 'hq-roam-1', race: 'zombie' }] }, 'w' + i);
-        assert.equal(r.kind, 'swarm'); assert.equal(r.size, 7, 'the room\'s count is the fight\'s'); assert.equal(r.race, 'zombie');
+        const r = grp({ id: 'hq-roam-0', race: 'ghoul', swarm: { n: 7, race: 'zombie' }, group: [{ id: 'hq-roam-1', race: 'zombie' }] }, 'w' + i);
+        assert.equal(r.kind, 'swarm'); assert.equal(r.size, 7, 'the room\'s count is the fight\'s'); assert.equal(r.race, 'zombie', 'the room\'s swarm race');
         assert.ok(r.elite >= SW.elite[0] && r.elite <= SW.elite[1]); assert.equal(r.members.length, 0, 'the walkers are part of the n');
     }
-    const auth = grp({ id: 'spot', race: 'ghoul', swarm: true }, 'x');
+    const auth = grp({ id: 'spot', race: 'ghoul', swarm: true }, 'x', { natives: ['ghoul', 'zombie'] });
     assert.ok(auth.kind === 'swarm' && auth.size >= SW.size[0] && auth.size <= SW.size[1], 'an authored `swarm: true` spot rolls its size');
+    assert.ok(['ghoul', 'zombie'].indexOf(auth.race) >= 0, 'a native race');
+    /* a LONE native's strike: the coin with the room's natives — the target's own race and another both come up ("more ghouls" / "skeletons") */
+    const races = {}; let sw = 0;
+    for (let i = 0; i < 400; i++) { const r = grp({ id: 'hq-roam-0', race: 'ghoul' }, 'l' + i, { natives: ['ghoul', 'zombie', 'skeleton'] }); if (r.kind !== 'swarm') { assert.equal(r.kind, 'solo'); continue; } sw++; races[r.race] = 1; }
+    assert.ok(sw > 400 * SW.p * 0.5 && sw < 400 * SW.p * 1.6, 'about p of the strikes (' + sw + ')');
+    assert.ok(races.ghoul && Object.keys(races).length >= 2, 'the target\'s own race and others');
+    for (let i = 0; i < 60; i++) assert.equal(grp({ id: 'hq-roam-0', race: 'ghoul' }, 'l' + i).kind, 'solo', 'no natives handed: never a swarm');
     /* the levels: the elites at the encounter level, the grunts `offset` about the PARTY level, the clamps hold */
     const lv = g('hqEncounterLevels')(20, 'prebuilt_hell', 8, 's', { grunts: { from: 2, offset: SW.offset } });
     assert.equal(lv.levels.length, 8);
@@ -65,19 +74,20 @@ test('PHASE 6 §5.2: THE SWARM — the group, the levels, the launch', () => {
     assert.ok(lv.levels[0] >= lv.base - R.lead.below, 'the lead is the ordinary lead');
     assert.deepEqual(J(g('hqEncounterLevels')(20, 'prebuilt_hell', 4, 's').levels), J(g('hqEncounterLevels')(20, 'prebuilt_hell', 4, 's', null).levels), 'no grunts: unchanged');
     /* the launch: every seat the target's race, a level per body, the swarm record rides */
-    const L = g('hqEncounterLaunch')('site_prebuilt_dumb', { kind: 'npc', id: 'hq-roam-0', race: 'grey', gender: 'male', label: 'A GREY', swarm: { n: 8 } }, '{"teamSize":4}', { partyLevel: 12 });
+    const nat = g('hqRoomNatives')('site_prebuilt_dumb');
+    assert.ok(nat.length >= 1 && nat.indexOf('grey') >= 0, 'the room\'s natives (' + nat.join(', ') + ')');
+    const other = nat.find(r => r !== 'grey') || 'grey';
+    const L = g('hqEncounterLaunch')('site_prebuilt_dumb', { kind: 'npc', id: 'hq-roam-0', race: 'grey', gender: 'male', label: 'A GREY', swarm: { n: 8, race: other } }, '{"teamSize":4}', { partyLevel: 12 });
     assert.equal(L.enemyTeam, 8); assert.equal(L.teamSize, 4, 'the officer\'s deploy is untouched');
-    assert.deepEqual(J(L.roster), Array(8).fill('grey')); assert.equal(L.levels.length, 8);
-    assert.ok(L.swarm && L.swarm.n === 8 && L.swarm.race === 'grey' && L.swarm.elite >= 1 && L.swarm.turbo === !!SW.turbo);
+    assert.deepEqual(J(L.roster), ['grey'].concat(Array(7).fill(other)), 'the target leads, the swarm fills the rest'); assert.equal(L.levels.length, 8);
+    assert.ok(L.swarm && L.swarm.n === 8 && L.swarm.race === other && L.swarm.elite >= 1 && L.swarm.turbo === undefined);
     L.levels.slice(L.swarm.elite).forEach(x => assert.ok(x <= 12 + SW.offset + R.band.above, 'grunts under the party'));
     assert.equal(L.encounter.swarm, 8);
-    const plain = g('hqEncounterLaunch')('site_prebuilt_dumb', { kind: 'npc', id: 'hq-roam-0', race: 'grey', gender: 'male' }, null, { partyLevel: 12 });
-    assert.equal(plain.swarm, null, 'no swarm without the coin');
+    const plain = g('hqEncounterLaunch')('site_prebuilt_dumb', { kind: 'npc', id: 'hq-roam-0', race: 'grey', gender: 'male', group: [{ id: 'hq-roam-1', race: 'grey' }] }, null, { partyLevel: 12 });
+    assert.equal(plain.swarm, null, 'a plain roaming group is no swarm');
 });
 
-test('PHASE 6 §5.2: the population rolls swarms in some wild rooms, one race, never in the hall', () => {
-    const A = g('AVAILABLE_RACES');
-    SW.races.forEach(r => assert.ok(A.indexOf(r) >= 0, r + ' is a race'));
+test('PHASE 6 §5.2: the population rolls swarms in some wild rooms, one native race, never in the hall', () => {
     let swarms = 0, groups = 0;
     const rooms = Object.keys(g('DOOR_HQ').rooms).filter(id => g('hqRoomSite')(id));
     for (let d = 1; d <= 20; d++) {
@@ -87,20 +97,22 @@ test('PHASE 6 §5.2: the population rolls swarms in some wild rooms, one race, n
             if (!pop.group) return; groups++;
             if (!pop.group.swarm) return; swarms++;
             const sw = pop.group.swarm;
-            assert.ok(sw.n >= SW.size[0] && sw.n <= SW.size[1]); assert.ok(SW.races.indexOf(sw.race) >= 0);
-            pop.draw.filter(x => x.group === pop.group.id).forEach(x => assert.equal(x.race, sw.race, 'the room\'s walkers are the swarm\'s race'));
+            assert.ok(sw.n >= SW.size[0] && sw.n <= SW.size[1]);
+            assert.ok(pop.tiers[sw.race] === 'native' || pop.tiers[sw.race] === 'biome', id + ': the swarm is the room\'s own (' + sw.race + ')');
+            pop.draw.filter(x => x.group === pop.group.id).slice(1).forEach(x => assert.equal(x.race, sw.race, 'the walkers after the first are the swarm\'s race'));
         });
     }
     assert.ok(swarms > 0 && swarms < groups, 'some groups are swarms, most are not (' + swarms + ' / ' + groups + ')');
     assert.equal(g('hqRoomPopulation')('central_egress', profile(), {}).group, null);
 });
 
-test('PHASE 6 §5.2: the wiring — the room sub, the aim, the launch marker, the spawns, no enemy bench, the grunts\' turbo', () => {
+test('PHASE 6 §5.2: the wiring — the room sub, the aim, the launch marker, the spawns, no enemy bench, every turn in full', () => {
     assert.ok(TR.includes("if (o && o.swarm) ch.swarm = o.swarm;"), 'the walker carries the swarm');
     assert.ok(TR.includes("HQ_LEVEL_RULES.swarm.label) || 'A SWARM OF') + ' ' + swarm.n;"), 'the room says A SWARM OF n');
     assert.ok(TR.includes("swarm: best.swarm || (best.spot && best.spot.swarm) || null };"), 'the aim reports it');
     assert.ok(MP.includes("party.swarm = L.swarm || null;") && MP.includes("swarm: L.swarm || null };"), 'map.js carries it to the party + the run marker');
     assert.ok(MP.includes("SPAWNS[2] = (mode.spawns[2] || []).slice(0, DEPLOY2);") && MP.includes("while (SPAWNS[2].length < DEPLOY2) {"), 'a spawn per body');
-    assert.ok(BT.includes("if (_sw && u.player === 2) {") && BT.includes("u._swarmGrunt = true;"), 'no enemy bench; the grunts marked');
-    assert.ok(BT.includes("if ((!state.trainingMatch && !_swarmTurbo) || state.devAutoSim) return false;"), 'the grunts ride the turbo');
+    assert.ok(BT.includes("if (_sw && u.player === 2) {"), 'no enemy bench');
+    assert.ok(!BT.includes('_swarmGrunt') && BT.includes("if (!state.trainingMatch || state.devAutoSim) return false;"), 'no turbo: a swarm plays with every animation (the user)');
+    assert.equal(SW.turbo, undefined);
 });
