@@ -176,3 +176,13 @@ Append new notes for this system at the end of this file.
   Placement is screenshot-driven: `node playtest_hq.js <room> [force-json]`
   (repo tooling; needs the server + `NODE_USE_ENV_PROXY=1`) — see
   PLAYTEST_NOTES "THE CAST IN THE HEADQUARTERS" before moving anyone.
+
+## THE DOOR WHEEL plan (2026-09-25)
+- `DOOR_GUN_PLAN.md` (repo root) — the DOOR gun rework: a weapon wheel of doors (hold middle
+  click in the room; the tier rack in a battle), STANDING doors that act like turrets (two per
+  player, the oldest folds, a health bar, a facing + a lane), the SWING DOOR + one-way door
+  capture combo, Door Dash, seven destination doors (Gust · Archers · Hell · Maw · Frost · Laser ·
+  Light) as spells, live room objects and puzzle tools, all through THE CHAIN REACTION (step E′).
+  Read it before any door gun / Door Agent / puzzle work; append to its §11 per phase. It
+  supersedes DOOR_RACE_DESIGN.md:23's "one door object" rule and rev 3's "never re-add a
+  door-placing row".
