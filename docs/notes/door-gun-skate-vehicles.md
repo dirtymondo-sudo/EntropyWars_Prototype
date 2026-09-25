@@ -645,3 +645,21 @@ first), and RIGHT CLICK cycles the kind the bag holds (`hqGunCaptureChoices`; a 
 the player picks it). The record is `profile.door.hq.gunPlaced.capture`, and every room entry runs
 `_hqGunCaptureSettle` (`hqGunCaptureRefund` unless it stands in that room), as does `hqGunDoorClear`. Probe API:
 `ThreeRenderer.hq.gunCaptureSel / gunStrikeCheck`. Not browser-probed this delivery. Test: hq-gun-carry.test.js.
+
+## DOOR DASH IN THE ROOM + THE PUZZLES DEFERRED (DOOR_GUN_PLAN.md §5.1 / §5.4) — 2026-09-25, local delivery
+
+The user: "make door dash an actual dash, like double tapping w or pressing c or something to dash, not on the door
+wheel but still with the door gun animation", and no puzzles from this plan ("an entirely other beast of a project
+that will need human planning and its own specific plan"). DOOR_GUN_PLAN §5.4 and Phase 5 are marked DEFERRED;
+nothing puzzle-shaped was built or stubbed. **The dash** (three-renderer.js): on foot, **C** or **W / ↑ tapped twice**
+inside `HQ_GUN_RULES.dash.tapMs` calls `_hqDash`: the way is the held keys (camera-relative, the walk's maths), else
+the camera's forward; the gun comes out if holstered (`_hqGunShow`, put back 380 ms after the landing unless drawn
+meanwhile), `_hqGunFire` plays the shot (the `hqShoot` clip as `pl.strike`, the flash, the kick, `doorGunShot`), and
+`_hqDashDoor` unfolds an upright frame (`_hqGunFrame` + a lit pane, the Door Dash colour) half a metre ahead.
+`_hqTickWalker` hands the frame to `_hqTickDash` while `pl.dash` is set: the walk's axis-separated slide at
+`m / ms` (5.25 m in 200 ms), no gravity (an air dash holds its height), a glow trail, a wall ends it, a Threshold in
+the path is crossed (`_hqPortalSweep`). `_hqDashEnd` leaves the officer at `exitV` (THE CARRY eases it) through a
+second door. Cooldown `dash.cooldownMs` (800). `_hqDashCan` refuses on the board, at the helm, swimming, climbing,
+seated, in the slide, with the wheel open, and without the issued gun (C then says NOT ISSUED; a double-tap stays
+silent) — so C keeps diving / descending (the key falls through to `H.keys.c`). The battle row `raceDoorDash` is
+unchanged. HQ-only, never online. API: `ThreeRenderer.hq.dash()` / `dashing()`. Test: hq-gun.test.js "Door Dash".
