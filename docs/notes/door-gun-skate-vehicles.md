@@ -617,3 +617,31 @@ SpotLight (`EW_HQ_NO_GUN_LIGHT`). Every door pulses each `HQ_GUN_RULES.actMs`, a
 nearest native (visual only until Phase 4's strike). Probe API: `ThreeRenderer.hq.gunSelect / gunWheelOpen /
 gunDoorAim / gunDoorFire / gunDoorTurn / gunDoors`. Headless probe gotcha: the aim's march treats a roaming native as a
 wall, so a shot from where a native stands in front reads "A STANDING DOOR NEEDS A FLOOR". Test: hq-gun.test.js.
+
+## THE ENGAGEMENT + THE CARRY-OVER (DOOR_GUN_PLAN.md Phase 4) — 2026-09-25, local delivery
+Zip `door-gun/ENTROPY_WARS_DOOR_GUN_4.zip`, token `20260925-door-gun-05-cors`. **THE STRIKE** (three-renderer.js
+"THE STRIKE"): every frame `_hqGunStrikeScan` looks for a roaming native (`hqEncounterCharOk`) inside a standing
+door's act: the gust / hell / frost / light lane (`hqGunDoorCovers`), the maw's disc, the laser to its wall. The
+archers strike when their arrows land (the pulse's timer). The report is the swing's own `onEncounter` with
+`gesture: 'door'` and `door: { key, at, x, y, z, face }`, and map.js `_hqEncounterFire` lets it through with the gun
+drawn (`if (drawn && !ev.door)`). Gates: map.js `_hqGunOpts().strike.ok` (a wild room, the encounter switch),
+`HQ_GUN_RULES.strike` = armed `armMs` 3000 after entry (a fight's return never re-engages at once), the native within
+`maxM` 12 m of the walker, one strike per `cooldownMs` 4000, and a refused launch (the party down…) backs off 11 s more.
+**THE CARRY** (data.js `hqGunDoorCarry`, filed by map.js `_hqEncounterStart` on `_hqEncounterRun.carry`): every
+standing door on the fight's board (`hqFieldTransform(field.board).inside`, same floor ±3 m) goes onto its cell with its
+hits and its facing (`hqGunDoorBoardFace`: board x = room x, board y = room z). No board (a rotated-seat fight) carries
+nothing. battle.js `encounterCarryDoors(free)` runs from map.js `_encounterPlaceSeats` BEFORE `hqEncounterSeats`, and
+the seats use `freeSeat` (no seat on a door). Records are `kind: 'standing'` / `'capture'`, `owner` = the party's seat,
+`ownerId` = its Door Agent (else null), `_roomAt` = the room record's `at`. **THE OPENING** (`hqGunDoorOpening`, battle.js
+`encounterOpening`, run on the arrival's landing before the first activation, and after the ROUND 1 card when there
+is no arrival): when the striking door was carried and covers the native lead, the door's own act runs on it
+(`_gunDoorGust(door, lead)`… so the chain runs: a native blown onto the carried capture door is TAKEN on the first
+frame). Otherwise the act lands as numbers from the battle row: the hit(s), the status, the gust's shove along its
+lane, the maw's one tile toward the door. **AFTER** (the commit, `hqGunDoorsAfterFight(p, carry, _encDoorResults(carry))`):
+each carried door gets the hp the board left it, a broken or folded one is removed, and a carried capture door is
+spent. **THE ONE-WAY WEDGE**: the room wheel is now nine wedges (`wheel.wedges: 9`; the capture wedge after the
+Threshold). LEFT CLICK stands a capture door from the bag (`hqGunCapturePlace`, one at a time, a second returns the
+first), and RIGHT CLICK cycles the kind the bag holds (`hqGunCaptureChoices`; a Tuned Door is one choice per type, so
+the player picks it). The record is `profile.door.hq.gunPlaced.capture`, and every room entry runs
+`_hqGunCaptureSettle` (`hqGunCaptureRefund` unless it stands in that room), as does `hqGunDoorClear`. Probe API:
+`ThreeRenderer.hq.gunCaptureSel / gunStrikeCheck`. Not browser-probed this delivery. Test: hq-gun-carry.test.js.
