@@ -593,3 +593,19 @@ path as the card's GO; the card says CLICK THE NODE AGAIN TO GO. `npm test`
 room's light, the floating plates' legibility against bright walls, the strip
 at narrow widths, the pill fade, the parchment theme's light ink in the
 building.
+
+## THE BUGFIX PASS (2026-09-25, token 20260925-bugfix-01-cors)
+- **The debrief never half-builds.** mondo: the victory/defeat screen sometimes came up with only the title and the
+  MVP tag (no XP, no achievements, no buttons: a soft lock). battle.js `showResultOverlay` is now a wrapper around
+  `_showResultOverlayBody`: every card (lineup, MVP, fact line, field report, performance, honours, rewards +
+  achievements, command bar, hazard pay, tabs) sits in its own try and logs `[Debrief] <card> failed` on a throw;
+  whatever happened, the wrapper shows the overlay, puts the encounter's BACK TO THE ROOM / WAKE UP (else the
+  standard bar) into an empty `#vicBottom`, and syncs the tabs. A second fill of a screen already showing for the
+  same match (`_vicShownKey`) is dropped. If the screen still comes up thin, the `[Debrief]` console line names the
+  card that threw. Test: debrief-safety.test.js.
+- **The pause menu on room entry.** three-renderer.js `_hqOnLockChange` reads a pointer-lock loss as the ESC the
+  browser ate. The swap window (`_hqRebuildAt`) was stamped only on room-to-room builds and only when the build
+  started, so a slow room, the return from a fight or the menu, or the load card / arrival card outlasting 2.5 s
+  opened the pause menu. Now every `_hqEnter` stamps it, `H.ready` and `hq.hold()` restamp it, the window is 4 s,
+  a room that is not ready is never paused by a lost lock, and a hidden tab / unfocused window never counts.
+  ESC and P still open the menu as before. Test: hwing.test.js.
