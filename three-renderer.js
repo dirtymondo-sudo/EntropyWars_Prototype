@@ -12015,7 +12015,7 @@ const ThreeRenderer = (function () {
                verbs. Each slot bakes AFTER load (sprites.js `defer`), so every
                chain ends on the slot the kind used before — a cast in the
                first seconds of a match plays that, never nothing. */
-            (kind === 'channel') ? ['castChannel', 'castMagic', 'cast'] :      // beams, drains, breath: the arm held out
+            (kind === 'channel') ? ['castMagic', 'castChannel', 'cast'] :      // beams, breath: mondo's Beam_Channel IS MAL1 mage_soell_cast_3 (castMagic)
             (kind === 'call')    ? ['castSkyward', 'castSlam', 'castAOE', 'cast'] :   // summons: arms to the sky, driven down (THE NEW CLIPS; was the stomp)
             (kind === 'reap')    ? ['castReap', 'castMelee', 'cast'] :         // steals, hooks, reaps: stoop and yank
             (kind === 'pour')    ? ['castThrow', 'castRanged', 'cast'] :       // splashes, floods: flung (Farm_Watering cut)
@@ -12040,7 +12040,10 @@ const ThreeRenderer = (function () {
             (kind === 'roar')    ? ['castRoar', 'castSlam', 'cast'] :          // war cries, roars, fears: the head thrown back
             (kind === 'skyward') ? ['castSkyward', 'castAOE', 'castMagic', 'cast'] :   // storms, meteors: arms to the sky, driven down
             (kind === 'hurl')    ? ['castHurl', 'castMagic', 'cast'] :         // the big ball: gathered overhead, thrown
-            (kind === 'nova')    ? ['castNova', 'castAOE', 'castMagic', 'cast'] :      // novas, pulses: the spin
+            (kind === 'nova')    ? ['castAOE', 'castMagic', 'cast'] :      // novas, pulses: the charged push (no nova clip yet)
+            (kind === 'drain')   ? ['castDrain', 'castChannel', 'castMagic', 'cast'] :      // THE NEW CLIPS: drains pull IN (MAL3 cast_4)
+            (kind === 'kinetic') ? ['castKinetic', 'castMagic', 'cast'] :      // gravity / telekinesis: lift and THROW (MAL3 cast_2)
+            (kind === 'earth')   ? ['castAOE', 'castMagic', 'cast'] :      // walls out of the ground (mondo: Earth_Raise = Charged_Spell_Cast)
             (kind === 'rise')    ? ['castRise', 'castSupport', 'cast'] :       // power-ups, raise dead: crouch, rise, arm to the sky
             (kind === 'curse')   ? ['castCurse', 'castSupport', 'cast'] :      // hexes, charms: the spin and the pointed thrust
             (kind === 'psychic') ? ['castPsychic', 'castMagic', 'cast'] :      // mind spells: hands to the temples
@@ -12091,7 +12094,7 @@ const ThreeRenderer = (function () {
        reach, 'chop' for tree felling, or the def's basicAttackKind). */
     function _attackChainFor(kind) {
         return (kind === 'ranged') ? ['castRanged', 'cast']
-            : (kind === 'chop')  ? ['castChop', 'castMelee', 'cast']   // tree chops + dig ops
+            : (kind === 'chop')  ? ['castSmash', 'castChop', 'castMelee', 'cast']   // tree chops + dig ops (mondo: the hammer swing chops trees too)
             : (kind === 'magic') ? ['castMagic', 'cast']
             : (kind === 'arrow') ? ['castArrow', 'castRanged', 'cast']
             : (kind === 'punch') ? ['castPunch', 'castMelee', 'cast']

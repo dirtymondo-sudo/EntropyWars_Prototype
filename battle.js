@@ -30575,7 +30575,10 @@
                 const _hitPhys = !!sourceUnit && sourceUnit.id !== target.id
                     && (opts.damageType || 'physical') === 'physical';
                 const _hitRange = _hitPhys ? Math.max(Math.abs(sourceUnit.x - target.x), Math.abs(sourceUnit.y - target.y)) : 0;
-                const _lightKind = !_hitPhys ? 'hit' : (_hitRange > 1 ? 'hitShot' : (finalDamage < 30 ? 'hitSlap' : 'hit'));
+                /* mondo's mapping: Gunshot_Reaction doubles as ELECTROCUTED — a
+                   lightning hit jolts the body the same way, whatever its type */
+                const _lightKind = (_affEl === 'lightning') ? 'hitShot'
+                    : (!_hitPhys ? 'hit' : (_hitRange > 1 ? 'hitShot' : (finalDamage < 30 ? 'hitSlap' : 'hit')));
                 flashUnit(target.id, opts.flashColor || (_guardBroke ? 'guardBreak' : (_heavyFlinch ? 'hitHeavy' : _lightKind)));
                 if (target.hp <= 0) {
                     state._deathStyleById = state._deathStyleById || {};

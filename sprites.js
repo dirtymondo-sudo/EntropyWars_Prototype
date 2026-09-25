@@ -573,11 +573,10 @@ function _isCapstoneSpellForAnim(spell) {
 // A spell not listed keeps the rules below. The census
 // (check-spell-presentation.js) reports the spread; target ≤ 15 % a clip.
 const SPELL_ANIM_VERBS = {
-  channel: ['lifeDrain', 'raceVoidContract', 'raceSoulSuck', 'raceKissOfDecay', 'raceDreamSiphon', 'raceLifetap',
-    'raceAbsorb', 'raceSoulDrain', 'raceSymbioticDrain', 'raceEntropicBeam', 'raceFreezeBreath', 'raceDragonBreath',
+  channel: ['raceEntropicBeam', 'raceFreezeBreath', 'raceDragonBreath',
     'raceKiWave', 'racePsychicBeam', 'sentaiBlueWave', 'raceJudgmentBeam', 'raceBalefulGaze', 'raceAuroraRay',
     'raceAbductionBeam', 'raceStasisBeam', 'sharedShrinkRay', 'raceSonicBreaker', 'racePlasmaCannon',
-    'raceDrainingEmbrace', 'raceHellmouth', 'raceLaserBeam', 'raceDragonfire', 'raceAtomicBreath',
+    'raceHellmouth', 'raceLaserBeam', 'raceDragonfire', 'raceAtomicBreath',
     'raceFractalNeedle', 'raceDeathGaze'],
   call: ['raceWhistle', 'raceSummonCreation', 'raceCultSermon', 'raceCultGathering', 'raceSwarmSignal',
     'raceSirenSong', 'raceCallOfTheDeep', 'raceWalkThePlank'],
@@ -627,6 +626,13 @@ const SPELL_ANIM_VERBS = {
   // not its file name. The slots and their strike frames are in UAL_SLOTS.
   roar: ['warCry', 'raceApexRoar', 'raceDemonicRoar', 'raceLabyrinthRoar', 'raceDragonfear', 'raceFear',
     'raceDreadAura', 'raceDeafeningWail', 'racePrimalRoar', 'raceHowl', 'raceChestPound', 'raceBoo'],
+  // THE NEW CLIPS, mondo's mapping (2026-09-25): drains pull IN (cast_4),
+  // gravity / kinetic spells lift and THROW (cast_2), walls rise out of the
+  // ground (Earth_Raise = the Charged_Spell_Cast push).
+  drain: ['lifeDrain', 'raceVoidContract', 'raceSoulSuck', 'raceKissOfDecay', 'raceDreamSiphon', 'raceLifetap',
+    'raceAbsorb', 'raceSoulDrain', 'raceSymbioticDrain', 'raceDrainingEmbrace', 'leechSeed'],
+  kinetic: ['kineticHurl', 'raceSingularity', 'raceGravityWell', 'sharedBlackHole', 'sharedLowGravity', 'sharedGravityCrush'],
+  earth: ['rampart', 'raceGothicRampart', 'sharedFissure', 'racePermafrost', 'wallOfFire', 'raceSacredGeometry'],
   skyward: ['thunderstorm', 'sharedSummonBlizzard', 'sharedSummonBloodRain', 'sharedSummonSandstorm', 'meteor',
     'raceStarDecree', 'raceCataclysmDecree', 'raceProphecyOfDisaster', 'raceCrowStorm', 'raceWhiteChristmas',
     'raceKnightsOfRound'],
@@ -999,18 +1005,25 @@ const UAL_SLOTS = {
   // --follow: the camera tracks the hips, so a clip that travels stays in
   // frame) and its strike read off an FK table of the hands / feet / hips, not
   // the file name (Skill_01 is a roar, Headache_Relief the psychic strain,
-  // mage_soell_cast_2 the sky-call, Sword_Shout the blade raised to the sky).
+  // mage_soell_cast_6 the sky-call, Sword_Shout the blade raised to the sky).
   // Source seconds as everywhere above; each played window ≤ 1.4 s.
   //   castRoar      Skill_01 — rise with the arms up 0.1–0.4, DROP into a wide
   //                 stance, head thrown back, arms out 0.5 (war cries, roars, fears)
-  //   castSkyward   mage_soell_cast_2 — a half spin, both arms to the sky 1.0,
-  //                 then DRIVEN down to the ground 1.35 (storms, meteors, call-downs)
+  // mondo's own mapping (2026-09-25, sent after the upload) re-cast four of
+  // them: cast_6 is the SKY CALL (and the telekinetic lift), cast_2 the
+  // TELEKINETIC THROW, cast_4 the DRAIN PULL, Skill_01 the power-up flex as
+  // well as the roar; the beam stance is MAL1 mage_soell_cast_3 (castMagic).
+  //   castSkyward   mage_soell_cast_6 — crouch 0.4–0.7, rise with one arm to the
+  //                 sky 1.1 (storms, meteors, call-downs)
+  //   castKinetic   mage_soell_cast_2 — a half spin, both arms up lifting 1.0,
+  //                 then the throw DRIVEN down 1.35 (kinetic hurls, gravity wells)
+  //   castDrain     mage_soell_cast_4 — arms out, the pull IN 0.6–0.8 (drains,
+  //                 siphons, soul sucks)
   //   castHurl      mage_soell_cast_1 — step in, both arms gathered OVERHEAD
   //                 0.9–2.2, the two-hand throw forward 2.5 (the big thrown ball)
-  //   castNova      mage_soell_cast_4 — arms up, then a spin with the arms flung
-  //                 out 0.6–0.8 (novas, pulses around the caster)
-  //   castRise      mage_soell_cast_6 — crouch 0.4–0.7, rise with one arm to the
-  //                 sky 1.1 (power-ups, transforms, raise the dead)
+  //   castRise      Skill_01 — the power-up flex (mondo: Power_Up_Flex = Skill 1),
+  //                 the roar's clip (power-ups, transforms, raise the dead)
+  //   (nova: no clip of its own — the Charged_Spell_Cast push, castAOE)
   //   castCurse     Skill_03 — a leaping spin, then the lunge with the arm
   //                 THRUST at the victim 1.2 (hexes, charms, marks)
   //   castPsychic   Headache_Relief — both hands at the temples straining
@@ -1048,10 +1061,11 @@ const UAL_SLOTS = {
   //   castFlyKick   Rising_Flying_Kick — straight up into the flying kick
   //                 0.4–0.6, landed by 0.9, one way (predator leaps, sky tackles)
   castRoar:       { clip: 'Skill_01',            lib: 4, ts: 0.82,                  strikeAt: 0.50, pinXZ: true, defer: true },
-  castSkyward:    { clip: 'mage_soell_cast_2',   lib: 4, ts: 1.4,  trim: [0.2, 2.1],  strikeAt: 1.35, defer: true },
+  castSkyward:    { clip: 'mage_soell_cast_6',   lib: 4, ts: 1.3,  trim: [0.1, 1.9],  strikeAt: 1.10, pinXZ: true, defer: true },
+  castKinetic:    { clip: 'mage_soell_cast_2',   lib: 4, ts: 1.4,  trim: [0.2, 2.1],  strikeAt: 1.35, defer: true },
   castHurl:       { clip: 'mage_soell_cast_1',   lib: 4, ts: 1.85, trim: [0.4, 2.95], strikeAt: 2.50, pinXZ: true, defer: true },
-  castNova:       { clip: 'mage_soell_cast_4',   lib: 4, ts: 1.2,  trim: [0.15, 1.75], strikeAt: 0.68, defer: true },
-  castRise:       { clip: 'mage_soell_cast_6',   lib: 4, ts: 1.3,  trim: [0.1, 1.9],  strikeAt: 1.10, pinXZ: true, defer: true },
+  castDrain:      { clip: 'mage_soell_cast_4',   lib: 4, ts: 1.2,  trim: [0.15, 1.75], strikeAt: 0.68, defer: true },
+  castRise:       { clip: 'Skill_01',            lib: 4, ts: 0.82,                  strikeAt: 0.50, pinXZ: true, defer: true },
   castCurse:      { clip: 'Skill_03',            lib: 4, ts: 1.2,                   strikeAt: 1.20, pinXZ: true, defer: true },
   castPsychic:    { clip: 'Headache_Relief',     lib: 4, ts: 2.2,  trim: [0.3, 3.3],  strikeAt: 2.85, defer: true },
   castSmash:      { clip: 'Heavy_Hammer_Swing',  lib: 4, ts: 1.35,                  strikeAt: 1.50, pinXZ: true, defer: true },

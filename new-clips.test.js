@@ -100,3 +100,19 @@ test('startDisplaceTween declares its tile size (a vault used to throw)', () => 
     assert.ok(/var ts = CONFIG\.tileSize \|\| BASE_TILE;/.test(body), 'ts is declared');
     assert.ok(body.indexOf('var ts = ') < body.indexOf('ts * ELEV_STEP_RATIO'), 'before its first use');
 });
+
+test("mondo's mapping (2026-09-25): which MAL3 clip is which", () => {
+    const S = lit('UAL_SLOTS'), V = lit('SPELL_ANIM_VERBS');
+    assert.strictEqual(S.castSkyward.clip, 'mage_soell_cast_6', 'Summon_Skyward = cast 6');
+    assert.strictEqual(S.castKinetic.clip, 'mage_soell_cast_2', 'Telekinesis_Throw = cast 2');
+    assert.strictEqual(S.castDrain.clip, 'mage_soell_cast_4', 'Drain_Pull = cast 4');
+    assert.strictEqual(S.castRise.clip, 'Skill_01', 'Power_Up_Flex = Skill 1');
+    assert.strictEqual(S.castRoar.clip, 'Skill_01', 'Roar_Howl = Skill 1');
+    assert.strictEqual(S.castMagic.clip, 'mage_soell_cast_3', 'Beam_Channel = cast 3');
+    assert.strictEqual(chainFor('channel')[0], 'castMagic', 'beams lead with the beam stance');
+    assert.strictEqual(chainFor('earth')[0], 'castAOE', 'Earth_Raise = Charged_Spell_Cast');
+    for (const v of ['drain', 'kinetic', 'earth']) assert.ok(V[v] && V[v].length, v + ' has spells');
+    assert.ok(!V.channel.includes('lifeDrain'), 'drains left the beam verb');
+    assert.ok(/\(kind === 'chop'\)\s+\? \['castSmash', 'castChop'/.test(TR), 'the hammer swing chops trees');
+    assert.ok(/\(_affEl === 'lightning'\) \? 'hitShot'/.test(BT), 'Electrocuted = Gunshot_Reaction');
+});

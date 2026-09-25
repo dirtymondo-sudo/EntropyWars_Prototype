@@ -66,17 +66,23 @@ test('every action slot in UAL_SLOTS carries a sane strikeAt / trim', () => {
 test('the strike table matches the library GLBs (skipped when rigged_animations/ is absent)', (t) => {
     if (!fs.existsSync(ANIM_DIR)) { t.skip('rigged_animations/ not in this checkout'); return; }
     const S = slotTable();
-    const durs = LIBS.map((f) => clipDurations(path.join(ANIM_DIR, f)));
-    const problems = [];
+    /* a library lives in rigged_animations/ as Assets_Models_<name> — or, uploaded by
+       hand, at the repo root under its R2 name (MAL3_Sniper.glb, 2026-09-25). A library
+       in NEITHER place skips its rows (a checkout without it is not a broken table). */
+    const libFile = (f) => [path.join(ANIM_DIR, f), path.join(__dirname, f.replace(/^Assets_Models_/, ''))].find((p) => fs.existsSync(p));
+    const durs = LIBS.map((f) => { const p = libFile(f); return p ? clipDurations(p) : null; });
+    const problems = [], skipped = new Set();
     for (const slot of Object.keys(S)) {
         const o = S[slot];
+        if ((o.lib || 0) >= LIBS.length) { problems.push(slot + ': lib ' + o.lib + ' is not in LIBS'); continue; }
         const lib = durs[o.lib || 0];
-        if (!lib) { problems.push(slot + ': lib ' + o.lib + ' has no file'); continue; }
+        if (!lib) { skipped.add(LIBS[o.lib || 0]); continue; }
         const d = lib[o.clip];
         if (d == null) { problems.push(slot + ': clip ' + o.clip + ' not in library ' + (o.lib || 0)); continue; }
         if (o.strikeAt != null && o.strikeAt > d + 0.01) problems.push(slot + ': strikeAt ' + o.strikeAt + ' past the clip end ' + d.toFixed(2));
         if (o.trim && o.trim[1] > d + 0.01) problems.push(slot + ': trim end ' + o.trim[1] + ' past the clip end ' + d.toFixed(2));
     }
+    if (skipped.size) t.diagnostic('library not in this checkout, its rows skipped: ' + [...skipped].join(', '));
     assert.deepStrictEqual(problems, []);
 });
 
