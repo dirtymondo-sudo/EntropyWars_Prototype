@@ -614,4 +614,10 @@ under a DETERMINISTIC seal time shown as pips (§2.3, no roll); its allies break
 attack) to free it, the seal makes it SEALED (off the board, counted gone for Wipeout), victory
 enlists every sealed / held unit into THE PARTY, else the roster (a synced `hq.captured` ledger the
 server unions into `unlockedUnits`), else a bounty. §5: every encounter is at least two bodies; THE
-SWARM (6–8 low-level bodies + 1–2 elites) is the last phase. Nothing built.
+SWARM (6–8 low-level bodies + 1–2 elites) is the last phase.
+**Phase 0 THE RULES built 2026-09-25** (`capture-door.test.js`; the full list is CAPTURE_PLAN.md §8): `CAPTURE_RULES`
++ `captureSealFor` in data.js, four story-only door items (three tiers + ONE tuned door — §7.3's default), the bag's
+DOORS tab, the `captured` / `sealed` statuses, the synced `hq.captured` ledger, `hqCaptureEnlist`. `hqPartyUnlocked`
+now counts captured races as owned (the prune keeps them). The `story: true` gate lives in both normalizers
+(`_storyLoadoutOn`), the forge list and the random CPU loadout. hud.js's `_catOrder` does not know 'doors' yet
+(Phase 2 adds it with the item row). Next: Phase 1 THE DOOR ON THE BOARD (battle.js).
