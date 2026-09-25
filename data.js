@@ -11370,7 +11370,7 @@ const ACH_RECORD_DEFS = [
 
 // Hard ceilings so a hostile blob can't balloon the stored row: key-count
 // caps per section plus a universal value clamp.
-const ACH_MERGE_CAPS = { counters: 256, champs: 256, unlocked: 12000, value: 1e9, finds: 4000, links: 512, cleared: 256, clearedIds: 32, rooms: 512, angles: 256, defeated: 256, captured: 256 };
+const ACH_MERGE_CAPS = { counters: 256, champs: 256, unlocked: 12000, value: 1e9, finds: 4000, links: 512, cleared: 256, clearedIds: 32, rooms: 512, angles: 256, defeated: 256, captured: 256, bounties: 64 };
 
 function mergeProgressBlobs(a, b) {
   const METRIC_RE = /^[A-Za-z0-9_]{1,48}$/;                 // counter metric names
@@ -11421,7 +11421,7 @@ function mergeProgressBlobs(a, b) {
   const SPOT_RE = /^[A-Za-z0-9_-]{1,48}$/;
   const RACE_KEY_RE = /^[a-z0-9][a-z0-9 _'-]{0,40}$/;
   const RACE_TXT = v => (typeof v === 'string' && v.length <= 48) ? v : null;
-  const out = { v: 2, counters: {}, champs: {}, records: {}, unlocked: {}, hq: { finds: { taken: {} }, links: { seen: {} }, rooms: { seen: {} }, angles: { found: {} }, cleared: {}, encounters: { count: 0, wins: 0, losses: 0, last: null }, skate: { best: null, total: 0, lines: 0, bails: 0 }, defeated: {}, captured: {} } };
+  const out = { v: 2, counters: {}, champs: {}, records: {}, unlocked: {}, hq: { finds: { taken: {} }, links: { seen: {} }, rooms: { seen: {} }, angles: { found: {} }, cleared: {}, encounters: { count: 0, wins: 0, losses: 0, last: null }, skate: { best: null, total: 0, lines: 0, bails: 0 }, defeated: {}, captured: {}, bounties: {} } };
   let nCounters = 0, nChamps = 0, nUnlocked = 0, nFinds = 0, nLinks = 0, nCleared = 0, nRooms = 0, nAngles = 0, nDefeated = 0, nCaptured = 0;
   for (const src of [a, b]) {
     if (!src || typeof src !== 'object') continue;
@@ -11450,6 +11450,11 @@ function mergeProgressBlobs(a, b) {
       if (dst[key] === undefined) { if (nCaptured >= ACH_MERGE_CAPS.captured) continue; nCaptured++; dst[key] = v; continue; }
       if (v < dst[key]) dst[key] = v;
     }
+    /* THE BOUNTY LEDGER (CAPTURE_PLAN.md §2.6, Phase 4, 2026-09-25): hq.bounties = { 'YYYY-MM-DD': [t1, t2, t3] } — how
+       many capture bounties of each door tier the officer was paid that day. Per-tier MAX (a G-counter per day, like the
+       encounter counts), each clamped to CAPTURE_RULES.bountyPerDay; the newest `bounties` days are kept (the union below).
+       The server pays the growth (hqCaptureBountySyncPay) — the local credit never reaches the wallet. */
+    if (hqSrc.bounties && typeof hqSrc.bounties === 'object') out.hq.bounties = hqBountyUnion(out.hq.bounties, hqSrc.bounties);
     /* hq.cleared */
     const cleared = (hqSrc.cleared && typeof hqSrc.cleared === 'object') ? hqSrc.cleared : {};
     for (const key of Object.keys(cleared)) {
@@ -43911,6 +43916,7 @@ function hqDoorSyncFold(hq, door) {
     hq.skate = { best: sk.best, total: sk.total, lines: sk.lines, bails: sk.bails };
     hq.defeated = hqDefeatedUnion(hq.defeated, L.defeated);   // THE DEFEATED LEDGER (2026-09-20)
     hq.captured = hqDefeatedUnion(hq.captured, L.captured);   // THE CAPTURED LEDGER (CAPTURE_PLAN.md §2.6) — the same shape, the same union
+    hq.bounties = hqBountyUnion(hq.bounties, L.bounties);     // THE BOUNTY LEDGER (CAPTURE_PLAN.md Phase 4)
     return hq;
 }
 /* ── THE DEFEATED LEDGER (2026-09-20) ──────────────────────────────────────
@@ -43994,6 +44000,7 @@ const CAPTURE_RULES = {
     playerOnly: true,                   // the user (2026-09-25): "enemies cannot capture your party, the capture gun is DOOR technology" — only the story party's seat places one
     healHeld: false,                    // the user (2026-09-25): allies cannot heal a held unit (the void is a realm)
     bounty: { 1: 40, 2: 80, 3: 160 },   // gold for a sealed race already owned with no party slot
+    bountyPerDay: 12,                   // Phase 4: bounties paid per tier per day (the server's ceiling on a hand-edited blob)
 };
 /* the capture-door item keys, best tier first (the tile menu's order) */
 function captureDoorItemKeys() {
@@ -44031,7 +44038,7 @@ function captureXp(killXp) { return Math.max(0, Math.round((+killXp || 0) * CAPT
 function itemStoryOnly(key) { return !!(typeof ITEM_RULES !== 'undefined' && ITEM_RULES[key] && ITEM_RULES[key].story); }
 
 /* ── THE CAPTURED LEDGER: `{ '<race>': 'YYYY-MM-DD' }` (the first day one was sealed), local (door.hq.captured) AND
-   synced (progress.hq.captured — mergeProgressBlobs carries it; server.js unions it into unlockedUnits in Phase 4).
+   synced (progress.hq.captured — mergeProgressBlobs carries it; server.js unions it into unlockedUnits — hqCapturedUnlockUnion).
    The defeated ledger's shape and union, a separate key: a capture is not a defeat (§7.1). */
 function hqCapturedRecord(profile) {
     let local = null, synced = null;
@@ -44083,11 +44090,83 @@ function hqCaptureEnlist(profile, captures, opts) {
         const e = hqPartyEnlist(profile, { race, gender: c.gender, cls: hqPartyDefaultJob(race), name: c.name });
         if (e.ok) { rows.push({ race, to: 'party', member: e.member, owned }); return; }
         if (!owned) { rows.push({ race, to: 'roster', reason: e.reason }); return; }
-        const g = CAPTURE_RULES.bounty[Math.max(1, Math.min(3, (c.tier | 0) || 1))] | 0;
+        const tier = Math.max(1, Math.min(3, (c.tier | 0) || 1));
+        /* Phase 4: the bounty is FILED on the bounty ledger (the server pays the ledger's growth on the next sync — the same
+           path the finds' Hazard Pay takes); a day's ceiling reached files nothing and pays nothing */
+        if (!hqCaptureBountyMark(profile, tier, date)) { rows.push({ race, to: 'bounty', gold: 0, reason: 'cap' }); return; }
+        const g = CAPTURE_RULES.bounty[tier] | 0;
         gold += g;
         rows.push({ race, to: 'bounty', gold: g, reason: e.reason });
     });
     return { ok: true, rows, gold };
+}
+/* ── THE BOUNTY LEDGER (Phase 4): `{ 'YYYY-MM-DD': [t1, t2, t3] }` — local (door.hq.bounties) AND synced (progress.hq.bounties).
+   Per-tier max per day, clamped to bountyPerDay, the newest ACH_MERGE_CAPS.bounties days kept (a dropped day is dropped on
+   both sides, so it can never be paid twice). */
+function hqBountyUnion(a, b) {
+    const cap = CAPTURE_RULES.bountyPerDay | 0, out = {};
+    [a, b].forEach(src => {
+        if (!src || typeof src !== 'object') return;
+        Object.keys(src).forEach(d => {
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || !Array.isArray(src[d])) return;
+            const row = out[d] || (out[d] = [0, 0, 0]);
+            for (let i = 0; i < 3; i++) { const n = Math.max(0, Math.min(cap, Math.floor(+src[d][i] || 0))); if (n > row[i]) row[i] = n; }
+        });
+    });
+    const keep = (typeof ACH_MERGE_CAPS !== 'undefined' ? ACH_MERGE_CAPS.bounties : 64) | 0;
+    const days = Object.keys(out).sort();
+    days.slice(0, Math.max(0, days.length - keep)).forEach(d => { delete out[d]; });
+    return out;
+}
+function hqCaptureBountyRecord(profile) {
+    let local = null, synced = null;
+    try { const r = profile && profile.door && profile.door.hq && profile.door.hq.bounties; if (r && typeof r === 'object') local = r; } catch (e) {}
+    try { const h = profile && profile.progress && profile.progress.hq && profile.progress.hq.bounties; if (h && typeof h === 'object') synced = h; } catch (e) {}
+    return hqBountyUnion(local, synced);
+}
+/* file ONE bounty of this tier on this day — false when the day's ceiling for the tier is reached */
+function hqCaptureBountyMark(profile, tier, date) {
+    if (!profile) return false;
+    const t = Math.max(1, Math.min(3, (tier | 0) || 1)) - 1;
+    const day = (typeof date === 'string' && HQ_SYNC_DATE_RE.test(date)) ? date : ((typeof hqToday === 'function') ? hqToday() : new Date().toISOString().slice(0, 10));
+    const have = hqCaptureBountyRecord(profile);
+    const row = have[day] || (have[day] = [0, 0, 0]);
+    if (row[t] >= (CAPTURE_RULES.bountyPerDay | 0)) return false;
+    row[t] += 1;
+    const H = hqPartyEnsureRoot(profile);
+    H.bounties = hqBountyUnion(have, null);
+    const S = hqSyncedHq(profile, true);
+    if (S) S.bounties = hqBountyUnion(have, null);
+    return true;
+}
+/* the server's pay (server.js /api/progress/sync, beside hqFindsSyncPay): the gold for every bounty the merge ADDED —
+   per day and tier, (after − before) × CAPTURE_RULES.bounty[tier]. Pays on the FIRST sync too (a local credit never
+   reached the server). Idempotent: a retry of the same blob adds nothing. */
+function hqCaptureBountySyncPay(before, after) {
+    const prev = hqBountyUnion(before && before.hq && before.hq.bounties, null);
+    const next = hqBountyUnion(after && after.hq && after.hq.bounties, null);
+    let gold = 0;
+    Object.keys(next).forEach(d => {
+        const p = prev[d] || [0, 0, 0];
+        for (let i = 0; i < 3; i++) gold += Math.max(0, (next[d][i] | 0) - (p[i] | 0)) * (CAPTURE_RULES.bounty[i + 1] | 0);
+    });
+    return gold;
+}
+/* the server's union (server.js getOrBackfillEconomy, Phase 4): a race the synced blob's captured ledger names is OWNED —
+   unlockedUnits ∪ progress.hq.captured (known races only). Returns { list, added } (added = the races that were missing). */
+function hqCapturedUnlockUnion(unlocked, progress) {
+    const list = Array.isArray(unlocked) ? unlocked.slice() : [];
+    const led = progress && progress.hq && progress.hq.captured;
+    const added = [];
+    if (led && typeof led === 'object') {
+        Object.keys(led).forEach(r => {
+            if (typeof led[r] !== 'string' || !HQ_DEFEATED_RE.test(r)) return;
+            if (typeof AVAILABLE_RACES !== 'undefined' && AVAILABLE_RACES.indexOf(r) < 0) return;
+            if (list.indexOf(r) >= 0) return;
+            list.push(r); added.push(r);
+        });
+    }
+    return { list, added };
 }
 /* the union reads */
 function hqClearedRecord(profile) {
@@ -48621,7 +48700,7 @@ if (typeof window !== 'undefined') {
     window.HQ_LEVEL_RULES = HQ_LEVEL_RULES; window.HQ_AREA_LEVELS = HQ_AREA_LEVELS; window.XP_CURVE = XP_CURVE; window.xpThreshold = xpThreshold; window.xpLevelFor = xpLevelFor; window.xpToNext = xpToNext;
     window.hqPartyLevel = hqPartyLevel; window.hqPartyXp = hqPartyXp; window.hqPartyLevelGains = hqPartyLevelGains; window.hqPartyGrantXp = hqPartyGrantXp; window.hqPartyXpShare = hqPartyXpShare; window.hqEncounterLevels = hqEncounterLevels; window.hqEncounterGroup = hqEncounterGroup;
     window.HQ_DISPENSARY = HQ_DISPENSARY; window.hqBagRecord = hqBagRecord; window.hqBagCount = hqBagCount; window.hqBagAdd = hqBagAdd; window.hqBagTake = hqBagTake; window.hqBagList = hqBagList; window.hqBagTotal = hqBagTotal; window.HQ_BAG_TABS = HQ_BAG_TABS; window.hqBagCategoryOf = hqBagCategoryOf; window.hqBagTab = hqBagTab; window.hqBagTabs = hqBagTabs; window.HQ_DROP_RULES = HQ_DROP_RULES; window.hqDropBaneFor = hqDropBaneFor; window.hqEncounterDrops = hqEncounterDrops; window.hqBagSet = hqBagSet; window.hqBagForBattle = hqBagForBattle; window.hqBagCap = hqBagCap; window.hqShopStock = hqShopStock; window.hqShopQuote = hqShopQuote; window.hqShopBuyApply = hqShopBuyApply; window.hqShopSell = hqShopSell; window.hqPartyStock = hqPartyStock; window.hqPartyBagItems = hqPartyBagItems; window.hqPartyAutoHeal = hqPartyAutoHeal; window.hqPartyFieldSpells = hqPartyFieldSpells; window.hqPartyFieldTargets = hqPartyFieldTargets; window.hqPartyHealAmount = hqPartyHealAmount; window.hqPartyCast = hqPartyCast; window.hqPartyUseItem = hqPartyUseItem; window.hqPartyFieldItems = hqPartyFieldItems; window.hqPartySpec = hqPartySpec; window.hqPartyGenders = hqPartyGenders; window.hqPartyDefaultJob = hqPartyDefaultJob;
-    window.CAPTURE_RULES = CAPTURE_RULES; window.captureDoorItemKeys = captureDoorItemKeys; window.captureDoorTier = captureDoorTier; window.captureSealSteps = captureSealSteps; window.captureSealFor = captureSealFor; window.captureDoorHits = captureDoorHits; window.captureXp = captureXp; window.itemStoryOnly = itemStoryOnly; window.hqCapturedRecord = hqCapturedRecord; window.hqUnitCaptured = hqUnitCaptured; window.hqCapturedMark = hqCapturedMark; window.hqCaptureOwned = hqCaptureOwned; window.hqCaptureEnlist = hqCaptureEnlist;   // THE ONE-WAY DOOR (CAPTURE_PLAN.md Phase 0)
+    window.CAPTURE_RULES = CAPTURE_RULES; window.captureDoorItemKeys = captureDoorItemKeys; window.captureDoorTier = captureDoorTier; window.captureSealSteps = captureSealSteps; window.captureSealFor = captureSealFor; window.captureDoorHits = captureDoorHits; window.captureXp = captureXp; window.itemStoryOnly = itemStoryOnly; window.hqCapturedRecord = hqCapturedRecord; window.hqUnitCaptured = hqUnitCaptured; window.hqCapturedMark = hqCapturedMark; window.hqCaptureOwned = hqCaptureOwned; window.hqCaptureEnlist = hqCaptureEnlist; window.hqBountyUnion = hqBountyUnion; window.hqCaptureBountyRecord = hqCaptureBountyRecord; window.hqCaptureBountyMark = hqCaptureBountyMark; window.hqCaptureBountySyncPay = hqCaptureBountySyncPay; window.hqCapturedUnlockUnion = hqCapturedUnlockUnion;   // THE ONE-WAY DOOR (CAPTURE_PLAN.md Phase 0)
     /* THE FIELD stage B — the rasteriser on the cave (Phase 9 Delivery 8, 2026-09-16) */
     window.HQ_FIELD_RULES = HQ_FIELD_RULES; window.hqFieldRimBox = hqFieldRimBox; window.hqEncounterRoomLabel = hqEncounterRoomLabel; window.hqFieldDump = hqFieldDump; window.hqFieldRoomOk = hqFieldRoomOk; window.hqFieldTerrainInfo = hqFieldTerrainInfo; window.hqFieldRasterTerrain = hqFieldRasterTerrain; window.hqFieldTerrainStep = hqFieldTerrainStep; window.hqFieldId = hqFieldId; window.hqFieldParse = hqFieldParse; window.hqFieldRaster = hqFieldRaster; window.hqFieldReach = hqFieldReach;
     window.hqFieldWindow = hqFieldWindow; window.hqFieldBuild = hqFieldBuild; window.hqFieldFixedCells = hqFieldFixedCells; window.hqFieldFixedAt = hqFieldFixedAt; window.hqFieldLayout = hqFieldLayout; window.hqFieldRegister = hqFieldRegister;

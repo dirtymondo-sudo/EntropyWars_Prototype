@@ -101,6 +101,7 @@ function backfillProfile(p) {
       if (!p.account.unlockedUnits.includes(r)) p.account.unlockedUnits.push(r);
     }
   }
+  _unionCapturedIntoMirror(p);   // THE ONE-WAY DOOR (Phase 4): the captured ledger's races are owned on the mirror too
   // One-time heal for profiles created BEFORE the account system: their account
   // block was seeded with 0 free tokens, so grant the founding token once. The
   // flag stops it from re-granting after the token is spent. Server-account
@@ -709,6 +710,7 @@ function _syncEconomyToLocal(econ) {
   if (typeof econ.gold === 'number') p.account.gold = econ.gold;
   if (Array.isArray(econ.unlockedUnits)) p.account.unlockedUnits = econ.unlockedUnits.slice();
   if (typeof econ.freeTokens === 'number') p.account.freeTokens = econ.freeTokens;
+  _unionCapturedIntoMirror(p);   // THE ONE-WAY DOOR: a capture the server has not synced yet stays on the mirror
   saveProfile(idx, p);
   try {
     if (typeof window !== 'undefined' && typeof window._refreshWallets === 'function') window._refreshWallets();
@@ -889,6 +891,41 @@ function localPurchaseUnit(raceKey, useToken) {
   return { ok: true, data: { gold: p.account.gold, unlockedUnits: p.account.unlockedUnits.slice(), freeTokens: p.account.freeTokens } };
 }
 
+// THE ONE-WAY DOOR (CAPTURE_PLAN.md §2.6 / Phase 4, 2026-09-25): a race a capture door SEALED is OWNED — never
+// bought (the user: "if you caught an enemy then why would you need to buy it in the shop?"). The mirror's twin of the
+// server's union (server.js unionCapturedUnits): the captured ledger's races join p.account.unlockedUnits. With a
+// profile handed in (battle.js's commit holds one and saves it itself) this only mutates it; else it loads, adds, saves.
+function _unionCapturedIntoMirror(p) {
+  try {
+    if (!p || typeof window === 'undefined' || typeof window.hqCapturedRecord !== 'function') return [];
+    if (!p.account || !Array.isArray(p.account.unlockedUnits)) return [];
+    const races = Array.isArray(window.AVAILABLE_RACES) ? window.AVAILABLE_RACES : null;
+    const added = [];
+    Object.keys(window.hqCapturedRecord(p) || {}).forEach(r => {
+      if (races && races.indexOf(r) === -1) return;
+      if (!p.account.unlockedUnits.includes(r)) { p.account.unlockedUnits.push(r); added.push(r); }
+    });
+    return added;
+  } catch (e) { return []; }
+}
+function localCaptureUnit(raceKey, profile) {
+  const own = !profile;
+  const idx = own ? getActiveProfileIndex() : null;
+  if (own && idx === null) return { ok: false, error: 'No profile selected.' };
+  const p = profile || loadProfile(idx);
+  if (!p) return { ok: false, error: 'No profile.' };
+  if (!p.account || !Array.isArray(p.account.unlockedUnits)) p.account = { gold: (p.account && p.account.gold) || 0, unlockedUnits: [], freeTokens: (p.account && p.account.freeTokens) || 0 };
+  const races = (typeof window !== 'undefined' && Array.isArray(window.AVAILABLE_RACES)) ? window.AVAILABLE_RACES : null;
+  if (races && races.indexOf(raceKey) === -1) return { ok: false, error: 'Unknown unit.' };
+  if (p.account.unlockedUnits.includes(raceKey)) return { ok: true, already: true };
+  p.account.unlockedUnits = p.account.unlockedUnits.concat([raceKey]);
+  if (own) {
+    saveProfile(idx, p);
+    try { if (typeof window !== 'undefined' && typeof window._refreshWallets === 'function') window._refreshWallets(); } catch {}
+  }
+  return { ok: true, data: { unlockedUnits: p.account.unlockedUnits.slice() } };
+}
+
 // ── THE DISPENSARY (2026-09-20): spend (or refund) Hazard Pay on goods. The server's
 // wallet is authoritative when there is one (/api/economy/spend — an atomic debit that
 // refuses an overdraft); a local profile spends its own mirror. A NEGATIVE amount is a
@@ -991,6 +1028,7 @@ window.ProfileSystem = {
   scheduleProgressSync,
   serverPurchaseUnit,
   localPurchaseUnit,
+  localCaptureUnit,
   spendGold,
   localSpendGold,
   creditLocalGold,

@@ -1,7 +1,7 @@
 # THE ONE-WAY DOOR — the capture mechanic of story mode
 
 *Plan document, 2026-09-23. Story mode (the encounters and the marker's fights) only — Online and
-Practice never see a capture door. Phases 0 (THE RULES), 1 (THE DOOR ON THE BOARD), 2 (THE DELIVERY) and 3 (THE AI) are built (2026-09-25); §6 is the order to build the rest in.
+Practice never see a capture door. Phases 0 (THE RULES), 1 (THE DOOR ON THE BOARD), 2 (THE DELIVERY), 3 (THE AI) and 4 (THE PRIZE) are built (2026-09-25); §6 is the order to build the rest in.
 Read CLAUDE.md "THE CHAIN REACTION", "THE DOOR AGENT rev 3", "THE PARTY" and "THE BAG'S TABS" first —
 every hook this plan hangs on already exists.*
 
@@ -401,3 +401,19 @@ the item rows the server's loadout validation reads).
   a stubbed GAME); live check `playtest_capture_ai.js` (Football Stadium: two natives never path through the door; with one
   taken, its partner beside the door picks `attack` on it and a real CPU activation takes a hit off it). Next: Phase 4
   THE PRIZE.
+- 2026-09-25 — **Phase 4 THE PRIZE built** (token `20260925-capture-05-cors`). data.js: THE BOUNTY LEDGER `hq.bounties =
+  { 'YYYY-MM-DD': [t1, t2, t3] }` (`hqBountyUnion` — per-tier max per day, clamped to the new `CAPTURE_RULES.bountyPerDay`
+  12, the newest `ACH_MERGE_CAPS.bounties` 64 days kept; mergeProgressBlobs + hqDoorSyncFold carry it;
+  `hqCaptureBountyRecord` / `hqCaptureBountyMark`); `hqCaptureEnlist`'s bounty files on it (a capped day: `gold: 0,
+  reason: 'cap'`); `hqCaptureBountySyncPay` (the server's pay: the growth × the tier's bounty, idempotent, pays on the first
+  sync like the finds); `hqCapturedUnlockUnion` (unlockedUnits ∪ the synced captured ledger, known races only). server.js:
+  `ACH.bountyPay` / `ACH.capturedUnion`; `getOrBackfillEconomy(player, progress?)` → `unionCapturedUnits` (persists to
+  unlocked_units, so the ranked guard and the purchase's "Already owned" see it; the sync hands it the merged blob);
+  /api/progress/sync adds `bountyGold` to the reward. profile.js: `localCaptureUnit(race, profile?)`,
+  `_unionCapturedIntoMirror` (backfillProfile + `_syncEconomyToLocal`). battle.js: the commit tags each row (name, gender,
+  lvl, tier, unitId, portrait) and adds a new race to the mirror roster; THE CAPTURES card `_vicBuildCaptures` →
+  index.html `#vicCaptures` under THE SPOILS; styles-cinematic.css `.vic-cap-*`. map.js (not in §6's list): the return toast
+  names who joined / went on the roster and the bounty. **Deviation:** the bounty rides a per-day counter ledger instead of
+  the finds' id map (captures have no fixed ids); the daily ceiling bounds a hand-edited blob. **Trust note:** the captured
+  ledger is client-written (story fights are client-side), so a hand-edited blob can claim a race — the same trust the
+  defeated ledger already has. Test: `capture-prize.test.js`. Next: Phase 5 THE ECONOMY.

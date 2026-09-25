@@ -17675,7 +17675,16 @@
                                         const caps = won ? (state.captures || []).filter(c => c && c.player === seat) : [];
                                         if (caps.length && typeof hqCaptureEnlist === 'function') {
                                             const cr = hqCaptureEnlist(p, caps.map(c => ({ race: c.race, gender: c.gender, name: c.name, lvl: c.lvl, tier: c.tier })));
-                                            if (cr && cr.gold > 0) { if (!p.account) p.account = { gold: 0, unlockedUnits: [], freeTokens: 0 }; p.account.gold = (p.account.gold | 0) + cr.gold; }   // the local mirror, on the profile this commit saves (creditLocalGold would be overwritten by it)
+                                            if (cr && cr.gold > 0) { if (!p.account) p.account = { gold: 0, unlockedUnits: [], freeTokens: 0 }; p.account.gold = (p.account.gold | 0) + cr.gold; }   // the local mirror, on the profile this commit saves (creditLocalGold would be overwritten by it); the server pays the bounty ledger on the sync (Phase 4)
+                                            /* THE PRIZE (Phase 4): each row learns who it was (index-aligned with caps) for THE CAPTURES card; a race
+                                               the account did not own joins the local mirror's roster (profile.js localCaptureUnit — the server's
+                                               union does the same on the sync) */
+                                            (cr.rows || []).forEach((r, i) => {
+                                                const c = caps[i] || {};
+                                                Object.assign(r, { name: c.name || '', gender: c.gender || null, lvl: c.lvl | 0, tier: c.tier | 0, unitId: c.unitId || null });
+                                                if (r.to !== 'skip' && !r.owned && r.to !== 'bounty' && PS && typeof PS.localCaptureUnit === 'function') { try { PS.localCaptureUnit(r.race, p); } catch (e) {} }
+                                            });
+                                            try { const _su = state.sealedUnits || []; cr.rows.forEach(r => { const u = _su.find(x => x && x.id === r.unitId); if (u) r.portrait = _vicPortrait(u); }); } catch (e) {}
                                             if (partyRes && typeof partyRes === 'object') partyRes.captures = cr; else partyRes = { captures: cr };
                                             (cr.rows || []).forEach(r => addLog(r.to === 'party' ? `🚪 ${String(r.race).toUpperCase()} joins THE PARTY.` : r.to === 'roster' ? `🚪 ${String(r.race).toUpperCase()} is on your roster — captured, never bought.` : r.to === 'bounty' ? `🚪 ${String(r.race).toUpperCase()} is already yours — a bounty of 💰 ${r.gold}.` : `🚪 The capture of ${r.race} did not file.`));
                                             try { if (typeof PS.scheduleProgressSync === 'function') PS.scheduleProgressSync(); } catch (e) {}
@@ -38345,7 +38354,7 @@
         function _vicPrepare() {
             /* the shared result DOM: empty every sheet + the head's extras so a campaign /
                dungeon / no-contest card never shows a previous match's rows */
-            ['vicExperience', 'vicDrops', 'vicGoldBreakdown', 'vicEloBadge', 'vicAwards', 'vicHonours', 'vicTeamDmgBar', 'vicTeamDmgLabels', 'vicModeTally', 'vicStatsTableWrap', 'vicKicker', 'vicMatchInfo', 'vicSubtitle'].forEach(id => {
+            ['vicExperience', 'vicDrops', 'vicGoldBreakdown', 'vicEloBadge', 'vicAwards', 'vicHonours', 'vicTeamDmgBar', 'vicTeamDmgLabels', 'vicModeTally', 'vicStatsTableWrap', 'vicKicker', 'vicMatchInfo', 'vicSubtitle', 'vicCaptures'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.innerHTML = '';
             });
@@ -38660,6 +38669,8 @@
             try { const _er = window._hqEncounterResult; if (_er && _er.party && Array.isArray(_er.party.xp) && _er.party.xp.length) { _vicXpParty = _er.party; const _xe = document.getElementById('vicExperience'); if (_xe) _xe.innerHTML = _vicBuildExperience(_vicXpParty); } } catch (e) { console.warn('[HQ] the experience card failed', e); _vicXpParty = null; }
             /* THE SPOILS (2026-09-23): what the fallen dropped — under the EXPERIENCE card on the REWARDS sheet (a win with a party only) */
             try { const _er = window._hqEncounterResult; const _dr = _er && _er.party && _er.party.drops; const _de = document.getElementById('vicDrops'); if (_de) _de.innerHTML = (_dr && _er.won) ? _vicBuildDrops(_dr) : ''; } catch (e) { console.warn('[HQ] the spoils card failed', e); }
+            /* 🚪 THE CAPTURES (CAPTURE_PLAN.md Phase 4): who the one-way doors sealed and where each went — under THE SPOILS (a win only) */
+            try { const _er = window._hqEncounterResult; const _cr = _er && _er.party && _er.party.captures; const _ce = document.getElementById('vicCaptures'); if (_ce) _ce.innerHTML = (_cr && _er.won && Array.isArray(_cr.rows) && _cr.rows.length) ? _vicBuildCaptures(_cr) : ''; } catch (e) { console.warn('[HQ] the captures card failed', e); }
 
             /* the sheets are filled — build the tab strip; the first sheet with anything in
                it opens (REWARDS on a paid match, HONOURS on a friendly / a no-contest) */
@@ -38721,6 +38732,33 @@
                 : `<div class="vic-drop-none">${escapeHtml(L.none || 'NOTHING DROPPED')}</div>`;
             const cap = `${escapeHtml(L.cap || 'THE SPOILS')}${rows.length ? ` · <em class="vic-drop-total">+${drops.total | 0} ${escapeHtml(L.bag || 'INTO THE BAG')}</em>` : ''}`;
             return `<div class="vic-card vic-drop-card${rows.length ? '' : ' empty'}"><div class="vic-card-cap">🎒 ${cap}</div>${body}</div>`;
+        }
+        /* 🚪 THE CAPTURES card (CAPTURE_PLAN.md §2.6, Phase 4): one row per native a one-way door SEALED — its portrait, its
+           name + race, the door's tier, and where it went: JOINS THE PARTY (at the party's level) · ON YOUR ROSTER (owned,
+           never bought) · A BOUNTY (already yours, no room: gold) — staggered in like THE SPOILS */
+        function _vicBuildCaptures(cr) {
+            const rows = (cr && Array.isArray(cr.rows)) ? cr.rows.filter(r => r && r.to !== 'skip') : [];
+            if (!rows.length) return '';
+            const T = ['', 'I', 'II', 'III'];
+            const body = rows.map((r, i) => {
+                const race = String(r.race || '').toUpperCase();
+                const name = String(r.name || '').trim();
+                const lvl = (r.to === 'party' && r.member && r.member.lvl) ? r.member.lvl : (r.lvl | 0);
+                const dest = r.to === 'party' ? `JOINS THE PARTY${lvl ? ' · LV ' + lvl : ''}`
+                    : r.to === 'roster' ? 'ON YOUR ROSTER · OWNED, NEVER BOUGHT'
+                    : (r.gold | 0) > 0 ? `ALREADY YOURS · BOUNTY +${(r.gold | 0).toLocaleString()} 💰` : 'ALREADY YOURS · NO BOUNTY TODAY';
+                let port = r.portrait || '';
+                if (!port) { try { port = _vicPortrait({ race: r.race, gender: r.gender || 'male', name: r.name, player: 2, types: [] }); } catch (e) { port = ''; } }
+                return `<div class="vic-cap-row ${escapeHtml(String(r.to))}" style="--d:${(i * 0.16).toFixed(2)}s">
+                    <div class="vic-cap-port"${port ? ` style="background-image:url('${escapeHtml(String(port))}')"` : ''}></div>
+                    <div class="vic-cap-col"><b class="vic-cap-name">${escapeHtml(name && name.toUpperCase() !== race ? name : race)}${name && name.toUpperCase() !== race ? `<em>${escapeHtml(race)}</em>` : ''}</b>
+                    <span class="vic-cap-dest">${escapeHtml(dest)}</span></div>
+                    <span class="vic-cap-tier">DOOR ${T[Math.max(1, Math.min(3, r.tier | 0 || 1))]}</span>
+                </div>`;
+            }).join('');
+            const joined = rows.filter(r => r.to === 'party').length, roster = rows.filter(r => r.to === 'roster').length;
+            const sum = [joined ? `${joined} JOINED` : '', roster ? `${roster} ON THE ROSTER` : '', (cr.gold | 0) > 0 ? `+${(cr.gold | 0).toLocaleString()} 💰` : ''].filter(Boolean).join(' · ');
+            return `<div class="vic-card vic-cap-card"><div class="vic-card-cap">🚪 THE CAPTURES${sum ? ` · <em class="vic-cap-total">${escapeHtml(sum)}</em>` : ''}</div><div class="vic-cap-rows">${body}</div></div>`;
         }
         function _vicBuildExperience(party) {
             const R = (typeof HQ_LEVEL_RULES !== 'undefined') ? HQ_LEVEL_RULES : { labels: {} };

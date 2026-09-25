@@ -1439,7 +1439,13 @@
                         const pr = encRes.party || null;
                         const partyLine = (pr ? (pr.restored ? ' · THE PARTY WAS TREATED' : pr.down ? ` · ${pr.down} DOWN — HEAL THEM OR REST IN MEDICAL` : ' · THE PARTY STANDS') : '')
                             + ((pr && pr.leveled) ? ` · ${pr.leveled} LEVELLED UP · THE PARTY IS LV ${pr.partyLevel}` : '')   // THE LEVELS (2026-09-21)
-                            + ((pr && pr.drops && pr.drops.total) ? ` · ${pr.drops.total} ITEM${pr.drops.total === 1 ? '' : 'S'} DROPPED · IN THE BAG` : '');   // THE SPOILS (2026-09-23)
+                            + ((pr && pr.drops && pr.drops.total) ? ` · ${pr.drops.total} ITEM${pr.drops.total === 1 ? '' : 'S'} DROPPED · IN THE BAG` : '')   // THE SPOILS (2026-09-23)
+                            + (() => {   // 🚪 THE CAPTURES (CAPTURE_PLAN.md Phase 4): who joined, who went on the roster, the bounty
+                                const cr = encRes.won && pr && pr.captures; const rows = (cr && Array.isArray(cr.rows)) ? cr.rows : [];
+                                const up = r => _hqEsc(String(r.race || '').toUpperCase());
+                                const j = rows.filter(r => r.to === 'party'), ro = rows.filter(r => r.to === 'roster');
+                                return (j.length ? ` · ${j.map(up).join(', ')} JOINED THE PARTY` : '') + (ro.length ? ` · ${ro.map(up).join(', ')} ON YOUR ROSTER` : '') + ((cr && cr.gold > 0) ? ` · CAPTURE BOUNTY 💰 +${cr.gold | 0}` : '');
+                            })();
                         _hqToast(encRes.won ? `<b>THRESHOLD HELD</b><span>${_hqEsc(String(encRes.label || encRes.race || 'THE NATIVE').toUpperCase())} · THE ROOM IS YOURS${partyLine}</span>` : `<b>EXITED</b><span>${encRes.wake === 'office' ? 'YOU CAME TO AT YOUR DESK' : 'YOU CAME TO IN THE WARD'} · ${_hqEsc(String(encRes.label || encRes.race || 'THE NATIVE').toUpperCase())} HAD THE ROOM${partyLine}</span>`, 4200);
                     } catch (e) {} }, 1400);
                     return true;

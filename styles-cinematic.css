@@ -448,6 +448,38 @@
         .vic-drop-row.rare { border-color: rgba(255, 216, 106, 0.45); box-shadow: 0 0 14px rgba(255, 190, 80, 0.12); }
         .vic-drop-none { font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: 0.2em; color: #a89c80; padding: 4px 2px; }
         @media (prefers-reduced-motion: reduce) { .vic-drop-row { animation: none; } }
+        /* ── 🚪 THE CAPTURES (CAPTURE_PLAN.md Phase 4, 2026-09-25) — who the one-way doors sealed and where each went, under
+              THE SPOILS: the capture door's teal, the void behind the portrait; JOINS THE PARTY lit, a bounty in gold ── */
+        .vic-captures { display: flex; flex-direction: column; gap: 10px; }
+        .vic-captures:empty { display: none; }
+        .vic-cap-card {
+            background: linear-gradient(168deg, rgba(10, 34, 38, 0.82), rgba(4, 12, 16, 0.92));
+            border-color: rgba(90, 230, 220, 0.42);
+            box-shadow: inset 0 1px 0 rgba(170, 255, 245, 0.14), 0 8px 26px rgba(0, 0, 0, 0.45), 0 0 30px rgba(60, 220, 210, 0.10);
+        }
+        .vic-cap-card .vic-card-cap { color: #7ff5e8; display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+        .vic-cap-total { font-style: normal; color: #d8fff9; letter-spacing: 0.12em; }
+        .vic-cap-rows { display: flex; flex-direction: column; gap: 6px; }
+        .vic-cap-row {
+            display: grid; grid-template-columns: 40px 1fr auto; gap: 2px 10px; align-items: center;
+            padding: 6px 10px; border-radius: 9px;
+            background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(120, 240, 230, 0.16);
+            animation: vicRowIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; animation-delay: var(--d, 0s);
+        }
+        .vic-cap-port {
+            width: 40px; height: 40px; border-radius: 8px; background: #000 center / cover no-repeat;
+            box-shadow: inset 0 0 0 1px rgba(120, 240, 230, 0.45), 0 0 12px rgba(60, 220, 210, 0.25);
+        }
+        .vic-cap-col { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+        .vic-cap-name { font-family: 'Cinzel', serif; font-size: 12px; font-weight: 800; letter-spacing: 0.08em; color: #eafffb; }
+        .vic-cap-name em { font-style: normal; margin-left: 6px; color: #7ff5e8; font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: 0.14em; }
+        .vic-cap-dest { font-family: 'IBM Plex Mono', monospace; font-size: 8.5px; letter-spacing: 0.16em; color: #a9cfca; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .vic-cap-row.party .vic-cap-dest { color: #7dffa8; text-shadow: 0 0 8px rgba(125, 255, 168, 0.35); }
+        .vic-cap-row.roster .vic-cap-dest { color: #9fe0ff; }
+        .vic-cap-row.bounty .vic-cap-dest { color: #ffd86a; }
+        .vic-cap-row.party { border-color: rgba(125, 255, 168, 0.40); box-shadow: 0 0 14px rgba(125, 255, 168, 0.10); }
+        .vic-cap-tier { font-family: 'IBM Plex Mono', monospace; font-size: 8px; letter-spacing: 0.2em; padding: 2px 7px; border-radius: 999px; border: 1px solid rgba(120, 240, 230, 0.45); color: #bff8f1; background: rgba(60, 220, 210, 0.08); }
+        @media (prefers-reduced-motion: reduce) { .vic-cap-row { animation: none; } }
         .vic-xp-tag { font-family: 'IBM Plex Mono', monospace; font-size: 8.5px; letter-spacing: 0.18em; color: var(--vic-dim); }
         .vic-xp-flash {
             position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%) scale(0.6);

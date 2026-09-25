@@ -275,7 +275,7 @@ test('mergeProgressBlobs: sanitizes hostile/garbage input', () => {
     // The evil '__proto__' bag must not have become the counters' prototype.
     assert.strictEqual(Object.getPrototypeOf(m.counters).pvp, undefined, 'prototype must be untouched');
     // Null/garbage inputs yield a clean empty blob.
-    assert.deepStrictEqual(norm(merge(null, undefined)), { v: 2, counters: {}, champs: {}, records: {}, unlocked: {}, hq: { finds: { taken: {} }, links: { seen: {} }, rooms: { seen: {} }, angles: { found: {} }, cleared: {}, encounters: { count: 0, wins: 0, losses: 0, last: null }, skate: { best: null, total: 0, lines: 0, bails: 0 }, defeated: {}, captured: {} } });   // captured: THE ONE-WAY DOOR's ledger (2026-09-25); hq.finds: THE LEDGER; cleared / encounters / skate: THE SYNCED BUILDING (2026-09-16); defeated: THE DEFEATED LEDGER (2026-09-20)
+    assert.deepStrictEqual(norm(merge(null, undefined)), { v: 2, counters: {}, champs: {}, records: {}, unlocked: {}, hq: { finds: { taken: {} }, links: { seen: {} }, rooms: { seen: {} }, angles: { found: {} }, cleared: {}, encounters: { count: 0, wins: 0, losses: 0, last: null }, skate: { best: null, total: 0, lines: 0, bails: 0 }, defeated: {}, captured: {}, bounties: {} } });   // bounties: the capture bounty ledger (Phase 4); captured: THE ONE-WAY DOOR's ledger (2026-09-25); hq.finds: THE LEDGER; cleared / encounters / skate: THE SYNCED BUILDING (2026-09-16); defeated: THE DEFEATED LEDGER (2026-09-20)
 });
 
 test('mergeProgressBlobs keeps the D.O.O.R. site flags (site:<mapId>:<cond>) — the sync used to drop every key with a colon and un-tick the stabilization checklist (2026-09-15)', () => {

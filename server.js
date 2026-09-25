@@ -196,6 +196,12 @@ const ACH = {
        map is the ledger, so a retry pays 0). Unlike the achievement tiers it pays on the FIRST sync too:
        a local credit never reaches the server, so nothing was ever paid before. */
     findsPay: (_dataJs && typeof _dataJs.hqFindsSyncPay === 'function') ? _dataJs.hqFindsSyncPay : null,
+    /* THE ONE-WAY DOOR (CAPTURE_PLAN.md Phase 4, 2026-09-25): a capture's bounty is filed on the blob's hq.bounties
+       ledger (per day, per door tier); the growth the merge adds is paid once, beside the finds (data.js
+       hqCaptureBountySyncPay). And a race the blob's hq.captured ledger names is OWNED — the economy reads union it
+       into unlocked_units (data.js hqCapturedUnlockUnion; the user: a captured race needs no shop). */
+    bountyPay: (_dataJs && typeof _dataJs.hqCaptureBountySyncPay === 'function') ? _dataJs.hqCaptureBountySyncPay : null,
+    capturedUnion: (_dataJs && typeof _dataJs.hqCapturedUnlockUnion === 'function') ? _dataJs.hqCapturedUnlockUnion : null,
 };
 if (!ACH.merge) console.error('[ACH] mergeProgressBlobs unavailable — /api/progress/sync disabled');
 
@@ -305,7 +311,7 @@ function parseUnlocked(raw) {
 
 // Returns normalized economy for a player row, backfilling starters + token for
 // existing accounts that predate the economy (empty unlocked_units).
-async function getOrBackfillEconomy(player) {
+async function getOrBackfillEconomy(player, progress) {
     let unlocked = parseUnlocked(player.unlocked_units);
     let freeTokens = player.free_tokens || 0;
     const gold = player.gold || 0;
@@ -330,7 +336,34 @@ async function getOrBackfillEconomy(player) {
             console.log(`[ECON] granted new starters (${missing.join(', ')}) to ${player.id}`);
         }
     }
+    unlocked = await unionCapturedUnits(player.id, unlocked, progress);
     return { gold, unlockedUnits: unlocked, freeTokens };
+}
+
+// THE ONE-WAY DOOR (CAPTURE_PLAN.md §2.6 / Phase 4): every race the synced progress blob's captured ledger names
+// joins unlocked_units (persisted, so the ranked party guard and the purchase endpoint see it too). `progress` is the
+// merged blob when the caller already holds it; otherwise the stored row is read. Never throws: a failed read keeps
+// the list as it was.
+async function unionCapturedUnits(playerId, unlocked, progress) {
+    if (!ACH.capturedUnion) return unlocked;
+    try {
+        let prog = progress;
+        if (prog === undefined) {
+            const prow = await d1.getOne('SELECT data FROM player_progress WHERE player_id = ?1', [playerId]);
+            prog = null;
+            if (prow) { try { prog = JSON.parse(prow.data); } catch { prog = null; } }
+        }
+        const u = ACH.capturedUnion(unlocked, prog);
+        if (!u || !Array.isArray(u.added) || !u.added.length) return unlocked;
+        const list = unlocked.concat(u.added.filter(r => ECON.AVAILABLE_RACES.has(r)));
+        if (list.length === unlocked.length) return unlocked;
+        await d1.execute('UPDATE players SET unlocked_units = ?1 WHERE id = ?2', [JSON.stringify(list), playerId]);
+        console.log(`[ECON] captured units (${u.added.join(', ')}) joined ${playerId}'s roster`);
+        return list;
+    } catch (e) {
+        console.warn('[ECON] captured-unit union skipped:', e.message);
+        return unlocked;
+    }
 }
 
 const rooms = new Map();
@@ -1351,7 +1384,7 @@ app.post('/api/progress/sync', limitProgress, async (req, res) => {
         // existing baseline — the FIRST sync stores silently, so a veteran's
         // migration-seeded pre-unlocks (never paid client-side either) don't
         // arrive as a windfall. Idempotent: a key is only ever new once.
-        let rewardGold = 0, rewardTokens = 0, findsGold = 0;
+        let rewardGold = 0, rewardTokens = 0, findsGold = 0, bountyGold = 0;
         if (stored && ACH.computeRewards) {
             const r = ACH.computeRewards(stored, merged);
             rewardGold = r.gold || 0;
@@ -1361,19 +1394,23 @@ app.post('/api/progress/sync', limitProgress, async (req, res) => {
             findsGold = Math.max(0, Math.round(Number(ACH.findsPay(stored, merged)) || 0));
             rewardGold += findsGold;
         }
+        if (ACH.bountyPay) {
+            bountyGold = Math.max(0, Math.round(Number(ACH.bountyPay(stored, merged)) || 0));
+            rewardGold += bountyGold;
+        }
         if (rewardGold > 0 || rewardTokens > 0) {
             await d1.execute(
                 'UPDATE players SET gold = gold + ?1, free_tokens = free_tokens + ?2 WHERE id = ?3',
                 [rewardGold, rewardTokens, player.id]
             );
-            console.log(`[ACH] ${player.id}: synced unlocks paid +${rewardGold}g (${findsGold}g Hazard Pay), +${rewardTokens} token(s)`);
+            console.log(`[ACH] ${player.id}: synced unlocks paid +${rewardGold}g (${findsGold}g Hazard Pay, ${bountyGold}g capture bounties), +${rewardTokens} token(s)`);
         }
 
         // Normalize through the starter backfill like the economy endpoints —
         // the client absorbs this wallet into its mirror, and a pre-economy
         // account's raw row would hand it an empty unlock list.
         const fresh = await d1.getOne('SELECT id, gold, unlocked_units, free_tokens FROM players WHERE id = ?1', [player.id]);
-        const econ = await getOrBackfillEconomy(fresh);
+        const econ = await getOrBackfillEconomy(fresh, merged);
         res.json({
             progress: merged,
             rewardGold, rewardTokens,
