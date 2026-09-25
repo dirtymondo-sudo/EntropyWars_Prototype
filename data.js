@@ -4402,6 +4402,53 @@ const ITEM_RULES = {
         elixir: true,
         desc: 'Field only. Restores a party member to full HP and MP; brings a DOWN member back at full.',
         shopPrice: 300
+    },
+    /* ── THE ONE-WAY DOOR (CAPTURE_PLAN.md §3.1, Phase 0, 2026-09-25): the capture door is a BAG item
+       (`kind: 'captureDoor'`), STORY ONLY (`story: true` — normalizeLoadoutForClass in battle.js AND
+       state.js caps it to 0 unless state.partyBag is set; the forge never offers one; Online and Practice
+       never see it). `tier` sets the door's hits (CAPTURE_RULES.hits) and its base seal time; the TUNED
+       door is the plan's §7.3 default — ONE item whose type is picked at placement (a typed door takes a
+       unit of that type one round faster), never six typed rows. Nothing sells or drops them yet (Phase 5). */
+    captureDoor: {
+        name: 'One-Way Door',
+        icon: '🚪',
+        kind: 'captureDoor',
+        tier: 1,
+        story: true,
+        max: 4,
+        desc: 'Story only. Fire an open door onto an empty tile within 4. An enemy that lands on it is HELD in the void; hold the door 3 rounds (fewer for a hurt or debuffed foe) and it is SEALED and joins you.',
+        shopPrice: 120
+    },
+    captureDoor2: {
+        name: 'Reinforced Door',
+        icon: '🚪',
+        kind: 'captureDoor',
+        tier: 2,
+        story: true,
+        max: 3,
+        desc: 'Story only. A sturdier capture door: 4 hits to break, seals a healthy foe in 2 rounds.',
+        shopPrice: 300
+    },
+    captureDoor3: {
+        name: 'Vault Door',
+        icon: '🚪',
+        kind: 'captureDoor',
+        tier: 3,
+        story: true,
+        max: 2,
+        desc: 'Story only. The vault leaf: 5 hits to break, seals a healthy foe at the end of the round.',
+        shopPrice: 800
+    },
+    captureDoorTuned: {
+        name: 'Tuned Door',
+        icon: '🚪',
+        kind: 'captureDoor',
+        tier: 1,
+        tuned: true,
+        story: true,
+        max: 3,
+        desc: 'Story only. A one-way door tuned to a type when you place it (Human, Divine, Unholy, Tech, Anomaly, Alien): a foe of that type seals one round faster.',
+        shopPrice: 300
     }
 };
 
@@ -4473,7 +4520,11 @@ const ITEM_META = {
     elixir: {
         icon: '✨',
         short: 'FULL'
-    }
+    },
+    captureDoor: { icon: '🚪', short: 'DOOR' },
+    captureDoor2: { icon: '🚪', short: 'DOOR II' },
+    captureDoor3: { icon: '🚪', short: 'VAULT' },
+    captureDoorTuned: { icon: '🚪', short: 'TUNED' }
 };
 
 // ── Job passives ──────────────────────────────────────────────────────────
@@ -10167,6 +10218,48 @@ const STATUS_DEFS = {
             delete unit._exitDoorId; delete unit._exited;
         }
     },
+    /* 🚪 CAPTURED (CAPTURE_PLAN.md §2.4, Phase 0, 2026-09-25): HELD in a one-way door's void — the
+       `exited` row's shape (realm-shielded, no move, no action, dispel-proof) so every existing reader
+       (isUnitRealmShieldedFrom, getNextBlitzUnit's skip) already treats it right. The body stays on the
+       door's tile. Only the door BREAKING (battle.js captureDoorFree, Phase 1) or the SEAL ends it — a
+       cleanse never does. `_captureDoorId` = the door holding it. */
+    captured: {
+        icon: '🚪',
+        glyph: '🚪',
+        short: 'HELD',
+        label: 'CAPTURED',
+        colorText: 'HELD behind a one-way door',
+        kind: 'marker',
+        category: 'status',
+        stack: 'max',
+        realm: true,
+        blockMove: true,
+        blockAction: true,
+        dispelProof: true,
+        iconSrc: createStatusIconDataUri('🚪', '#050508', '#f0e8d8', '#6a4cc8'),
+        onRemove(unit) {
+            if (unit && !unit._sealed && typeof window !== 'undefined' && typeof window.captureDoorFree === 'function') window.captureDoorFree(unit);
+            delete unit._captureDoorId;
+        }
+    },
+    /* 🚪 SEALED (CAPTURE_PLAN.md §2.4): the door stamped shut — off the board for the rest of the fight
+       (unit._sealed; x = y = -1), not an enemy to anyone, not counted for Wipeout, never freed. It joins
+       the capturer on victory (hqCaptureEnlist). */
+    sealed: {
+        icon: '🚪',
+        glyph: '🚪',
+        short: 'SEAL',
+        label: 'SEALED',
+        colorText: 'SEALED behind a one-way door',
+        kind: 'marker',
+        category: 'status',
+        stack: 'max',
+        realm: true,
+        blockMove: true,
+        blockAction: true,
+        dispelProof: true,
+        iconSrc: createStatusIconDataUri('🚪', '#050508', '#ffd870', '#c89a30')
+    },
     /* 🚪 The Long Way Round (DOOR_RACE_DESIGN §4 r4★): while it lasts the
        agent attacks and casts FROM the twin of any friendly open door they
        stand on or beside — range, line of sight and origin are the twin's,
@@ -10922,6 +11015,8 @@ const STATUS_LIBRARY_DESCS = {
     voodoo:    'A doll of this enemy is tied to an ally: whenever that ally takes damage, this enemy takes half of it. Bad Trip hits Voodoo targets harder.',
     shadowRealm: 'Dragged into the Shadow Realm with one other: invisible and untargetable to everyone else, immune to everything not from each other, and nobody else can heal either of them.',
     exited: 'EXITED through a door: off the board until the start of its next activation — untargetable, cannot act, holds no zone, carries no Key. Comes back out of the twin door, Staggered.',
+    captured: 'HELD behind a one-way door: in the void, untargetable, cannot move or act. Its allies free it by breaking the door; if the door holds for the seal time it is SEALED.',
+    sealed:   'SEALED behind a one-way door: gone from the board for the rest of the fight. It joins the capturer on victory.',
     castFromDoors: 'The Long Way Round: attacks and spells launch from the TWIN of any friendly open door the agent stands on or beside — range and line of sight from the twin, every hit a rear attack. 2 rounds.',
     tethered:  'Roped: cannot move on its own. Whenever the roper moves, the unit is dragged into the tile they left — 20 damage per tile dragged. High Noon hits Roped targets harder.',
     incendiary: 'Incendiary rounds loaded: every landed basic attack sets the target on fire (Burn, 2 rounds).',
@@ -11271,7 +11366,7 @@ const ACH_RECORD_DEFS = [
 
 // Hard ceilings so a hostile blob can't balloon the stored row: key-count
 // caps per section plus a universal value clamp.
-const ACH_MERGE_CAPS = { counters: 256, champs: 256, unlocked: 12000, value: 1e9, finds: 4000, links: 512, cleared: 256, clearedIds: 32, rooms: 512, angles: 256, defeated: 256 };
+const ACH_MERGE_CAPS = { counters: 256, champs: 256, unlocked: 12000, value: 1e9, finds: 4000, links: 512, cleared: 256, clearedIds: 32, rooms: 512, angles: 256, defeated: 256, captured: 256 };
 
 function mergeProgressBlobs(a, b) {
   const METRIC_RE = /^[A-Za-z0-9_]{1,48}$/;                 // counter metric names
@@ -11322,8 +11417,8 @@ function mergeProgressBlobs(a, b) {
   const SPOT_RE = /^[A-Za-z0-9_-]{1,48}$/;
   const RACE_KEY_RE = /^[a-z0-9][a-z0-9 _'-]{0,40}$/;
   const RACE_TXT = v => (typeof v === 'string' && v.length <= 48) ? v : null;
-  const out = { v: 2, counters: {}, champs: {}, records: {}, unlocked: {}, hq: { finds: { taken: {} }, links: { seen: {} }, rooms: { seen: {} }, angles: { found: {} }, cleared: {}, encounters: { count: 0, wins: 0, losses: 0, last: null }, skate: { best: null, total: 0, lines: 0, bails: 0 }, defeated: {} } };
-  let nCounters = 0, nChamps = 0, nUnlocked = 0, nFinds = 0, nLinks = 0, nCleared = 0, nRooms = 0, nAngles = 0, nDefeated = 0;
+  const out = { v: 2, counters: {}, champs: {}, records: {}, unlocked: {}, hq: { finds: { taken: {} }, links: { seen: {} }, rooms: { seen: {} }, angles: { found: {} }, cleared: {}, encounters: { count: 0, wins: 0, losses: 0, last: null }, skate: { best: null, total: 0, lines: 0, bails: 0 }, defeated: {}, captured: {} } };
+  let nCounters = 0, nChamps = 0, nUnlocked = 0, nFinds = 0, nLinks = 0, nCleared = 0, nRooms = 0, nAngles = 0, nDefeated = 0, nCaptured = 0;
   for (const src of [a, b]) {
     if (!src || typeof src !== 'object') continue;
     const hqSrc = (src.hq && typeof src.hq === 'object') ? src.hq : {};
@@ -11337,6 +11432,18 @@ function mergeProgressBlobs(a, b) {
       if (typeof v !== 'string' || !DATE_RE.test(v)) continue;
       const dst = out.hq.defeated;
       if (dst[key] === undefined) { if (nDefeated >= ACH_MERGE_CAPS.defeated) continue; nDefeated++; dst[key] = v; continue; }
+      if (v < dst[key]) dst[key] = v;
+    }
+    /* THE CAPTURED LEDGER (CAPTURE_PLAN.md §2.6, 2026-09-25): hq.captured = { '<race>': 'YYYY-MM-DD' } — the races a
+       one-way door SEALED for the officer; the EARLIER day wins, like the defeated ledger. The server unions it into
+       unlockedUnits (Phase 4). */
+    const captured = (hqSrc.captured && typeof hqSrc.captured === 'object') ? hqSrc.captured : {};
+    for (const key of Object.keys(captured)) {
+      if (!RACE_KEY_RE.test(key) || badKey(key)) continue;
+      const v = captured[key];
+      if (typeof v !== 'string' || !DATE_RE.test(v)) continue;
+      const dst = out.hq.captured;
+      if (dst[key] === undefined) { if (nCaptured >= ACH_MERGE_CAPS.captured) continue; nCaptured++; dst[key] = v; continue; }
       if (v < dst[key]) dst[key] = v;
     }
     /* hq.cleared */
@@ -43799,6 +43906,7 @@ function hqDoorSyncFold(hq, door) {
     const sk = hqSkateUnion(hq.skate, L.skate);
     hq.skate = { best: sk.best, total: sk.total, lines: sk.lines, bails: sk.bails };
     hq.defeated = hqDefeatedUnion(hq.defeated, L.defeated);   // THE DEFEATED LEDGER (2026-09-20)
+    hq.captured = hqDefeatedUnion(hq.captured, L.captured);   // THE CAPTURED LEDGER (CAPTURE_PLAN.md §2.6) — the same shape, the same union
     return hq;
 }
 /* ── THE DEFEATED LEDGER (2026-09-20) ──────────────────────────────────────
@@ -43856,6 +43964,123 @@ function hqUnitBuyable(profile, race) {
     const acct = profile && profile.account;
     if (acct && Array.isArray(acct.unlockedUnits) && acct.unlockedUnits.indexOf(race) >= 0) return true;
     return hqUnitDefeated(profile, race);
+}
+/* ══ THE ONE-WAY DOOR — the capture rules (CAPTURE_PLAN.md §2.3 / §2.6, Phase 0, 2026-09-25) ══════════════════════
+   The pure half of the capture mechanic: the table, the seal time, the captured ledger and the prize. Nothing here
+   touches a board — battle.js's door record, the chain step and the hold tick are Phase 1. Tune the TABLE, never the
+   code: the seal time is DETERMINISTIC (no roll) — computed ONCE at the take, written on the door, shown as pips. */
+const CAPTURE_RULES = {
+    baseSeal: { 1: 3, 2: 2, 3: 1 },     // rounds the door must hold a HEALTHY unit, by tier
+    hits: { 1: 3, 2: 4, 3: 5 },         // the door's HP (structure hits to break it), by tier
+    hpSteps: [0.5, 0.25],               // −1 round at ≤ 50 % HP, −1 more at ≤ 25 %
+    debuffStep: 1,                      // −1 when the unit carries any debuff or hard CC
+    typeMatch: 1,                       // −1 when a tuned door meets a unit of its type
+    leadStep: 1,                        // +1 for the encounter's LEAD (the named native — the prize)
+    minSeal: 1, maxSeal: 5,
+    loneSeal: 'round',                  // a unit with no free ally left seals at the END of the round it was taken in (nobody comes)
+    grace: 2,                           // rounds a freed unit cannot be re-taken
+    freeStagger: 1,                     // Staggered rounds on stepping out of a broken door
+    perPlayer: 1,                       // live capture doors per player (a second placement folds the first)
+    range: 4, los: true,                // the door gun's reach
+    ap: 1,                              // a placement costs 1 AP, one per unit per turn
+    xpShare: 0.5,                       // a capture pays half a kill's XP …
+    spoils: false,                      // … and no drop, no defeated-ledger mark
+    types: ['human', 'divine', 'unholy', 'tech', 'anomaly', 'alien'],   // a tuned door's choices (the banes' types)
+    bounty: { 1: 40, 2: 80, 3: 160 },   // gold for a sealed race already owned with no party slot
+};
+/* the capture-door item keys, best tier first (the tile menu's order) */
+function captureDoorItemKeys() {
+    if (typeof ITEM_RULES === 'undefined') return [];
+    return Object.keys(ITEM_RULES).filter(k => ITEM_RULES[k] && ITEM_RULES[k].kind === 'captureDoor')
+        .sort((a, b) => ((ITEM_RULES[b].tier | 0) - (ITEM_RULES[a].tier | 0)) || a.localeCompare(b));
+}
+function captureDoorTier(door) { const t = door ? (door.tier | 0) : 1; return Math.max(1, Math.min(3, t || 1)); }
+/* THE SEAL TIME, itemised: { seal, base, steps: [{ id, d, label }] } — the door's hover and the debrief read the steps.
+   door = { tier, type }; unit = { hp, maxHp, status, types }; opts = { lead } (battle.js passes the encounter's lead). */
+function captureSealSteps(door, unit, opts) {
+    const R = CAPTURE_RULES, tier = captureDoorTier(door), base = R.baseSeal[tier] | 0;
+    const steps = [];
+    if (unit) {
+        const maxHp = +unit.maxHp || 0, hp = Math.max(0, +unit.hp || 0);
+        if (maxHp > 0) R.hpSteps.forEach(t => { if (hp / maxHp <= t) steps.push({ id: 'hp' + Math.round(t * 100), d: -1, label: 'HP ≤ ' + Math.round(t * 100) + '%' }); });
+        const st = (unit.status && typeof unit.status === 'object') ? unit.status : {};
+        const hard = (typeof _MF_HARD_CC !== 'undefined') ? _MF_HARD_CC : {};
+        const hurt = Object.keys(st).some(k => (+st[k] || 0) > 0 && ((typeof STATUS_DEFS !== 'undefined' && STATUS_DEFS[k] && STATUS_DEFS[k].kind === 'debuff') || hard[k] != null));
+        if (hurt && R.debuffStep) steps.push({ id: 'debuff', d: -R.debuffStep, label: 'DEBUFFED' });
+        const type = door && door.type;
+        if (type && R.typeMatch && Array.isArray(unit.types) && unit.types.indexOf(type) >= 0) steps.push({ id: 'type', d: -R.typeMatch, label: String(type).toUpperCase() + ' DOOR' });
+    }
+    if (opts && opts.lead && R.leadStep) steps.push({ id: 'lead', d: R.leadStep, label: 'THE LEAD' });
+    const raw = base + steps.reduce((a, s) => a + s.d, 0);
+    return { seal: Math.max(R.minSeal, Math.min(R.maxSeal, raw)), base, steps };
+}
+/* the ONE read: rounds the door must hold this unit (never 0) */
+function captureSealFor(door, unit, opts) { return captureSealSteps(door, unit, opts).seal; }
+/* the door's HP by tier */
+function captureDoorHits(door) { return CAPTURE_RULES.hits[captureDoorTier(door)] | 0; }
+/* a capture's XP: half the kill's (the pool's share) */
+function captureXp(killXp) { return Math.max(0, Math.round((+killXp || 0) * CAPTURE_RULES.xpShare)); }
+/* is this item a story-only row? (the loadout gates' read) */
+function itemStoryOnly(key) { return !!(typeof ITEM_RULES !== 'undefined' && ITEM_RULES[key] && ITEM_RULES[key].story); }
+
+/* ── THE CAPTURED LEDGER: `{ '<race>': 'YYYY-MM-DD' }` (the first day one was sealed), local (door.hq.captured) AND
+   synced (progress.hq.captured — mergeProgressBlobs carries it; server.js unions it into unlockedUnits in Phase 4).
+   The defeated ledger's shape and union, a separate key: a capture is not a defeat (§7.1). */
+function hqCapturedRecord(profile) {
+    let local = null, synced = null;
+    try { const r = profile && profile.door && profile.door.hq && profile.door.hq.captured; if (r && typeof r === 'object') local = r; } catch (e) {}
+    try { const h = profile && profile.progress && profile.progress.hq && profile.progress.hq.captured; if (h && typeof h === 'object') synced = h; } catch (e) {}
+    return hqDefeatedUnion(local, synced);
+}
+function hqUnitCaptured(profile, race) { return !!hqCapturedRecord(profile)[String(race || '')]; }
+function hqCapturedMark(profile, races, date) {
+    if (!profile || !Array.isArray(races) || !races.length) return { ok: false, added: [] };
+    const day = (typeof date === 'string' && HQ_SYNC_DATE_RE.test(date)) ? date : ((typeof hqToday === 'function') ? hqToday() : new Date().toISOString().slice(0, 10));
+    const H = hqPartyEnsureRoot(profile);
+    if (!H.captured || typeof H.captured !== 'object') H.captured = {};
+    const have = hqCapturedRecord(profile);
+    const added = [];
+    races.forEach(r => {
+        r = String(r || '');
+        if (!HQ_DEFEATED_RE.test(r)) return;
+        if (!have[r]) { added.push(r); have[r] = day; }
+        H.captured[r] = have[r];
+    });
+    const S = hqSyncedHq(profile, true);
+    if (S) { if (!S.captured || typeof S.captured !== 'object') S.captured = {}; Object.keys(have).forEach(k => { S.captured[k] = have[k]; }); }
+    return { ok: true, added, date: day };
+}
+/* does the account already own this vessel? (a starter, the account's unlockedUnits, or an earlier capture) */
+function hqCaptureOwned(profile, race) {
+    if (typeof ACCT_STARTER_UNITS !== 'undefined' && ACCT_STARTER_UNITS.indexOf(race) >= 0) return true;
+    const acct = profile && profile.account;
+    if (acct && Array.isArray(acct.unlockedUnits) && acct.unlockedUnits.indexOf(race) >= 0) return true;
+    return hqUnitCaptured(profile, race);
+}
+/* THE PRIZE (§2.6): every capture at victory, in order — captures = [{ race, gender, name, lvl, tier }].
+   1. a free party slot and the race not already in the party → JOINS THE PARTY (at the party's level, the first free
+      slot — the lead never moves);
+   2. else a race the account does not own → THE ROSTER (the captured ledger is the claim; the server's union makes it
+      owned — Phase 4);
+   3. else → THE BOUNTY (CAPTURE_RULES.bounty[tier] gold; the commit credits it — Phase 4).
+   Every sealed race is written to the captured ledger. Returns { ok, rows: [{ race, to, member?, gold?, reason? }], gold }. */
+function hqCaptureEnlist(profile, captures, opts) {
+    if (!profile || !Array.isArray(captures)) return { ok: false, rows: [], gold: 0 };
+    const date = opts && opts.date;
+    const rows = []; let gold = 0;
+    captures.forEach(c => {
+        const race = c && c.race ? String(c.race) : '';
+        if (!race || (typeof AVAILABLE_RACES !== 'undefined' && AVAILABLE_RACES.indexOf(race) < 0)) { rows.push({ race, to: 'skip', reason: 'race' }); return; }
+        const owned = hqCaptureOwned(profile, race);
+        hqCapturedMark(profile, [race], date);   // the ledger first: it is what makes the race enlistable (hqPartyUnlocked)
+        const e = hqPartyEnlist(profile, { race, gender: c.gender, cls: hqPartyDefaultJob(race), name: c.name });
+        if (e.ok) { rows.push({ race, to: 'party', member: e.member, owned }); return; }
+        if (!owned) { rows.push({ race, to: 'roster', reason: e.reason }); return; }
+        const g = CAPTURE_RULES.bounty[Math.max(1, Math.min(3, (c.tier | 0) || 1))] | 0;
+        gold += g;
+        rows.push({ race, to: 'bounty', gold: g, reason: e.reason });
+    });
+    return { ok: true, rows, gold };
 }
 /* the union reads */
 function hqClearedRecord(profile) {
@@ -44408,7 +44633,9 @@ function hqPartyUnlocked(profile) {
     const all = (typeof AVAILABLE_RACES !== 'undefined') ? AVAILABLE_RACES : [];
     const dev = (typeof window !== 'undefined' && window._DEV_UNLOCK_ALL);
     const acct = profile && profile.account;
-    const owned = (acct && Array.isArray(acct.unlockedUnits) && acct.unlockedUnits.length) ? acct.unlockedUnits : ((typeof ACCT_STARTER_UNITS !== 'undefined') ? ACCT_STARTER_UNITS : []);
+    let owned = (acct && Array.isArray(acct.unlockedUnits) && acct.unlockedUnits.length) ? acct.unlockedUnits : ((typeof ACCT_STARTER_UNITS !== 'undefined') ? ACCT_STARTER_UNITS : []);
+    const caught = Object.keys(hqCapturedRecord(profile));   // THE ONE-WAY DOOR (CAPTURE_PLAN.md §2.6): a sealed race is the officer's — the prune never relieves it, before the server's union lands
+    if (caught.length) owned = owned.concat(caught);
     return all.filter(r => (dev || owned.indexOf(r) >= 0) && (typeof isRace3DReady !== 'function' || isRace3DReady(r)));
 }
 function hqPartyDefaultJob(race) {
@@ -45080,11 +45307,13 @@ const HQ_BAG_TABS = [
     { id: 'healing', label: 'HEALING', glyph: '♥', color: '#57d97e', desc: 'HP · MP · Panacea · Revive' },
     { id: 'battle', label: 'BATTLE ITEMS', glyph: '❖', color: '#7fc8ff', desc: 'Scanner · Warp Stone · Grenade · Stims' },
     { id: 'banes', label: 'BANES', glyph: '🗡', color: '#ff8a6a', desc: 'Thrown at an enemy of the matching type' },
+    { id: 'doors', label: 'DOORS', glyph: '🚪', color: '#b89cff', desc: 'One-way capture doors (story only)' },   // THE ONE-WAY DOOR (CAPTURE_PLAN.md §3.1)
 ];
-const _HQ_BAG_CAT_ORDER = ['healing', 'battle', 'banes'];
+const _HQ_BAG_CAT_ORDER = ['healing', 'battle', 'banes', 'doors'];
 function hqBagCategoryOf(key) {
     const r = (typeof ITEM_RULES !== 'undefined' && ITEM_RULES[key]) || null; if (!r) return 'battle';
     if (r.baneType && r.baneType !== 'none') return 'banes';
+    if (r.kind === 'captureDoor') return 'doors';
     if (r.healPct != null || r.mpPct != null || r.revivePct != null || r.fieldOnly || key === 'panacea' || r.cure || r.cleanse) return 'healing';
     return 'battle';
 }
@@ -48385,6 +48614,7 @@ if (typeof window !== 'undefined') {
     window.HQ_LEVEL_RULES = HQ_LEVEL_RULES; window.HQ_AREA_LEVELS = HQ_AREA_LEVELS; window.XP_CURVE = XP_CURVE; window.xpThreshold = xpThreshold; window.xpLevelFor = xpLevelFor; window.xpToNext = xpToNext;
     window.hqPartyLevel = hqPartyLevel; window.hqPartyXp = hqPartyXp; window.hqPartyLevelGains = hqPartyLevelGains; window.hqPartyGrantXp = hqPartyGrantXp; window.hqPartyXpShare = hqPartyXpShare; window.hqEncounterLevels = hqEncounterLevels; window.hqEncounterGroup = hqEncounterGroup;
     window.HQ_DISPENSARY = HQ_DISPENSARY; window.hqBagRecord = hqBagRecord; window.hqBagCount = hqBagCount; window.hqBagAdd = hqBagAdd; window.hqBagTake = hqBagTake; window.hqBagList = hqBagList; window.hqBagTotal = hqBagTotal; window.HQ_BAG_TABS = HQ_BAG_TABS; window.hqBagCategoryOf = hqBagCategoryOf; window.hqBagTab = hqBagTab; window.hqBagTabs = hqBagTabs; window.HQ_DROP_RULES = HQ_DROP_RULES; window.hqDropBaneFor = hqDropBaneFor; window.hqEncounterDrops = hqEncounterDrops; window.hqBagSet = hqBagSet; window.hqBagForBattle = hqBagForBattle; window.hqBagCap = hqBagCap; window.hqShopStock = hqShopStock; window.hqShopQuote = hqShopQuote; window.hqShopBuyApply = hqShopBuyApply; window.hqShopSell = hqShopSell; window.hqPartyStock = hqPartyStock; window.hqPartyBagItems = hqPartyBagItems; window.hqPartyAutoHeal = hqPartyAutoHeal; window.hqPartyFieldSpells = hqPartyFieldSpells; window.hqPartyFieldTargets = hqPartyFieldTargets; window.hqPartyHealAmount = hqPartyHealAmount; window.hqPartyCast = hqPartyCast; window.hqPartyUseItem = hqPartyUseItem; window.hqPartyFieldItems = hqPartyFieldItems; window.hqPartySpec = hqPartySpec; window.hqPartyGenders = hqPartyGenders; window.hqPartyDefaultJob = hqPartyDefaultJob;
+    window.CAPTURE_RULES = CAPTURE_RULES; window.captureDoorItemKeys = captureDoorItemKeys; window.captureDoorTier = captureDoorTier; window.captureSealSteps = captureSealSteps; window.captureSealFor = captureSealFor; window.captureDoorHits = captureDoorHits; window.captureXp = captureXp; window.itemStoryOnly = itemStoryOnly; window.hqCapturedRecord = hqCapturedRecord; window.hqUnitCaptured = hqUnitCaptured; window.hqCapturedMark = hqCapturedMark; window.hqCaptureOwned = hqCaptureOwned; window.hqCaptureEnlist = hqCaptureEnlist;   // THE ONE-WAY DOOR (CAPTURE_PLAN.md Phase 0)
     /* THE FIELD stage B — the rasteriser on the cave (Phase 9 Delivery 8, 2026-09-16) */
     window.HQ_FIELD_RULES = HQ_FIELD_RULES; window.hqFieldRimBox = hqFieldRimBox; window.hqEncounterRoomLabel = hqEncounterRoomLabel; window.hqFieldDump = hqFieldDump; window.hqFieldRoomOk = hqFieldRoomOk; window.hqFieldTerrainInfo = hqFieldTerrainInfo; window.hqFieldRasterTerrain = hqFieldRasterTerrain; window.hqFieldTerrainStep = hqFieldTerrainStep; window.hqFieldId = hqFieldId; window.hqFieldParse = hqFieldParse; window.hqFieldRaster = hqFieldRaster; window.hqFieldReach = hqFieldReach;
     window.hqFieldWindow = hqFieldWindow; window.hqFieldBuild = hqFieldBuild; window.hqFieldFixedCells = hqFieldFixedCells; window.hqFieldFixedAt = hqFieldFixedAt; window.hqFieldLayout = hqFieldLayout; window.hqFieldRegister = hqFieldRegister;

@@ -1,7 +1,7 @@
 # THE ONE-WAY DOOR — the capture mechanic of story mode
 
 *Plan document, 2026-09-23. Story mode (the encounters and the marker's fights) only — Online and
-Practice never see a capture door. Nothing in this document is built; §6 is the order to build it in.
+Practice never see a capture door. Phase 0 (THE RULES) is built (2026-09-25); §6 is the order to build the rest in.
 Read CLAUDE.md "THE CHAIN REACTION", "THE DOOR AGENT rev 3", "THE PARTY" and "THE BAG'S TABS" first —
 every hook this plan hangs on already exists.*
 
@@ -340,3 +340,16 @@ the item rows the server's loadout validation reads).
 ## 8. Log
 
 - 2026-09-23 — the plan written; nothing built.
+- 2026-09-25 — **Phase 0 THE RULES built** (token `20260925-capture-01-cors`). data.js: `CAPTURE_RULES` (the §2.3
+  table + `hits` by tier, `types`, `ap`, `loneSeal`), `captureSealSteps` / `captureSealFor` (itemised steps for the
+  door's hover), `captureDoorHits`, `captureXp`, `captureDoorItemKeys`, `itemStoryOnly`; four ITEM_RULES rows
+  (`captureDoor` T1, `captureDoor2` T2, `captureDoor3` T3, `captureDoorTuned` — **§7.3 decided by default: ONE tuned
+  door**, type picked at placement, 300 gold) + their ITEM_META; the bag's **DOORS** tab (`hqBagCategoryOf`: `kind ===
+  'captureDoor'`, sorted last); STATUS_DEFS `captured` (onRemove → `window.captureDoorFree`, skipped for a sealed
+  unit) + `sealed`; the `hq.captured` ledger (mergeProgressBlobs + `ACH_MERGE_CAPS.captured`, hqDoorSyncFold,
+  `hqCapturedRecord` / `hqUnitCaptured` / `hqCapturedMark`); `hqCaptureEnlist` (party → roster → bounty; it returns
+  the bounty gold, the commit credits it in Phase 4). **Deviation:** `hqPartyUnlocked` unions the captured ledger, so
+  a captured race is enlistable and THE PRUNE never relieves it before the server's union (Phase 4) lands. The story
+  gate: `_storyLoadoutOn()` in battle.js AND state.js `normalizeLoadoutForClass` (party bag on, not online), the
+  forge's item list (party-builder.js), the random CPU loadout. Nothing sells or drops a door yet. Test:
+  `capture-door.test.js`. Next: Phase 1 THE DOOR ON THE BOARD.

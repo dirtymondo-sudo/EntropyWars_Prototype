@@ -2998,6 +2998,7 @@ function PartyBuilder(props) {
   const allAccIds = typeof window.EQUIP_DEFS!=='undefined' ? Object.keys(window.EQUIP_DEFS).filter(id=>{const d=window.EQUIP_DEFS[id];return d&&(d.slot==='accessory1'||d.slot==='accessory2');}) : [];
   const allItemKeys = (typeof window.ITEM_RULES!=='undefined' ? Object.keys(window.ITEM_RULES) : [])
     .filter(k => !(window.ITEM_RULES[k] && window.ITEM_RULES[k].fieldOnly))   // THE BAG (2026-09-20): a field-only item is the pause menu's, never a battle slot's
+    .filter(k => !(window.ITEM_RULES[k] && window.ITEM_RULES[k].story))   // THE ONE-WAY DOOR (CAPTURE_PLAN.md §3.1): a story-only capture door is never a forge slot
     .filter(k => k !== 'warpStone' || !(typeof window._isClashMode === 'function' && window._isClashMode()));
   const itemSlotMax = window.CONFIG?.unitItemSlots || 3;
   const totalItemsUsed = Object.values(unitItems).reduce((s,v)=>s+(v||0),0);

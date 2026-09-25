@@ -365,7 +365,7 @@ test('THE SOURCE SITES (2026-09-20): the quick strip, the ITEMS sheet, the walk-
     ['function localSpendGold(amount)', 'async function spendGold(amount, reason)', "fetch('/api/economy/spend'", '  spendGold,', '  localSpendGold,'].forEach(s => assert.ok(PF.includes(s), 'profile.js: ' + s));
     ["app.post('/api/economy/spend', limitEcon, async (req, res) => {", "'UPDATE players SET gold = gold - ?1 WHERE id = ?2 AND gold >= ?1'", 'amt < -SPEND_REFUND_CAP'].forEach(s => assert.ok(SV.includes(s), 'server.js: ' + s));
     /* the field-only guard at every loadout funnel; the commit carries the pockets */
-    assert.ok(BT.includes("const cap = iRule.fieldOnly ? 0 : getItemCapForClass(cls, iKey);") && ST.includes("const cap = iRule.fieldOnly ? 0 : getItemCapForClass(cls, iKey);"), 'normalizeLoadoutForClass caps a field-only item to 0 on both sides');
+    assert.ok(BT.includes("const cap = (iRule.fieldOnly || (iRule.story && !_storyLoadoutOn())) ? 0 : getItemCapForClass(cls, iKey);") && ST.includes("const cap = (iRule.fieldOnly || (iRule.story && !_storyLoadoutOn())) ? 0 : getItemCapForClass(cls, iKey);"), 'normalizeLoadoutForClass caps a field-only item to 0 on both sides (and a story-only one outside a story fight — capture-door.test.js)');
     assert.ok(PB.includes(".filter(k => !(window.ITEM_RULES[k] && window.ITEM_RULES[k].fieldOnly))"), 'the forge never offers one');
     assert.ok(BT.includes("dead: !!(u.dead || u._dying), items: Object.assign({}, u.items || {}),"), 'the commit carries the pockets');
     /* the pay cache drops a potion */
@@ -607,7 +607,7 @@ test('THE BAG\'S TABS (2026-09-23): one category rule for every item, the list s
     ['healPotion', 'manaPotion', 'panacea', 'reviveTonic', 'elixir'].forEach(k => assert.equal(cat(k), 'healing', k));
     ['humanBane', 'divineBane', 'unholyBane', 'techBane', 'anomalyBane', 'alienBane'].forEach(k => assert.equal(cat(k), 'banes', k));
     ['scanner', 'warpStone', 'entropyGrenade', 'adrenalStim', 'bulwarkStim', 'psiStim'].forEach(k => assert.equal(cat(k), 'battle', k));
-    deq(D.HQ_BAG_TABS.map(t => t.id), ['all', 'healing', 'battle', 'banes']);
+    deq(D.HQ_BAG_TABS.map(t => t.id), ['all', 'healing', 'battle', 'banes', 'doors']);   // doors: THE ONE-WAY DOOR (capture-door.test.js)
     const p = profile(); ['techBane', 'scanner', 'healPotion', 'elixir', 'warpStone', 'manaPotion'].forEach(k => g('hqBagAdd')(p, k, 2));
     const all = g('hqBagList')(p);
     deq(all.map(r => r.cat), ['healing', 'healing', 'healing', 'battle', 'battle', 'banes'], 'healing, then battle, then banes');
@@ -615,7 +615,7 @@ test('THE BAG\'S TABS (2026-09-23): one category rule for every item, the list s
     deq(g('hqBagList')(p, { tab: 'banes' }).map(r => r.key), ['techBane']);
     deq(g('hqBagList')(p, { tab: 'all' }).map(r => r.key), all.map(r => r.key));
     const tabs = g('hqBagTabs')(p);
-    deq(tabs.map(t => [t.id, t.n, t.kinds]), [['all', 12, 6], ['healing', 6, 3], ['battle', 4, 2], ['banes', 2, 1]]);
+    deq(tabs.map(t => [t.id, t.n, t.kinds]), [['all', 12, 6], ['healing', 6, 3], ['battle', 4, 2], ['banes', 2, 1], ['doors', 0, 0]]);
     assert.equal(g('hqBagTab')('nonsense').id, 'all', 'an unknown tab is ALL');
     ['data-party-act="bagtab:', "verb === 'bagtab'", 'hq-pp-bagtabs', "bagTab: 'all'", 'data-cat="${_hqEsc(r.cat'].forEach(s => assert.ok(MP.includes(s), 'map.js: ' + s));
     assert.ok(CSS.includes('.hq-pp-bagtab.on'), 'the strip\'s CSS');

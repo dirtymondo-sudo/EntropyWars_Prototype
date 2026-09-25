@@ -31934,13 +31934,21 @@
             return out;
         }
 
+        /* THE ONE-WAY DOOR (CAPTURE_PLAN.md §3.1, 2026-09-25): a `story: true` item (the capture doors) is legal only in a
+           story fight — the party's bag is on (state.partyBag, set by map.js for an encounter) and the match is not online. */
+        function _storyLoadoutOn() {
+            try {
+                if (typeof window !== 'undefined' && typeof window.isOnlineMatch === 'function' && window.isOnlineMatch()) return false;
+                return !!(typeof state !== 'undefined' && state && state.partyBag && state.partyBag.items);
+            } catch (e) { return false; }
+        }
         function normalizeLoadoutForClass(loadout, cls) {
             const normalized = emptyLoadout();
 
             normalized.spells = [];
 
             for (const [iKey, iRule] of Object.entries(ITEM_RULES)) {
-                const cap = iRule.fieldOnly ? 0 : getItemCapForClass(cls, iKey);   // THE BAG (2026-09-20): a field-only item (a tonic, an elixir) never enters a battle loadout
+                const cap = (iRule.fieldOnly || (iRule.story && !_storyLoadoutOn())) ? 0 : getItemCapForClass(cls, iKey);   // THE BAG (2026-09-20): a field-only item (a tonic, an elixir) never enters a battle loadout; THE ONE-WAY DOOR (CAPTURE_PLAN.md §3.1): a story-only item (a capture door) only rides a story fight's bag
                 normalized.items[iKey] = Math.max(0, Math.min(cap, Number(loadout?.items?.[iKey] || 0)));
             }
             let totalItems = Object.values(normalized.items).reduce((a, b) => a + b, 0);
@@ -33001,7 +33009,7 @@
            Split out so the spell-tree branch and the Freelancer flat-pool
            branch roll identical item/equipment loadouts. */
         function _fillRandomLoadoutItems(loadout, cls) {
-            const allItemKeys = Object.keys(ITEM_RULES);
+            const allItemKeys = Object.keys(ITEM_RULES).filter(k => !ITEM_RULES[k].story);   // THE ONE-WAY DOOR: a random loadout never rolls a story-only door
             let remainingItems = CONFIG.unitItemSlots;
 
             // Survival staples first: every random loadout carries a heal potion

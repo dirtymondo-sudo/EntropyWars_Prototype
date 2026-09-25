@@ -3776,11 +3776,19 @@
             return ITEM_RULES[itemKey].max;
         }
 
+        /* THE ONE-WAY DOOR (CAPTURE_PLAN.md §3.1, 2026-09-25): a `story: true` item (the capture doors) is legal only in a
+           story fight — the party's bag is on (state.partyBag, set by map.js for an encounter) and the match is not online. */
+        function _storyLoadoutOn() {
+            try {
+                if (typeof window !== 'undefined' && typeof window.isOnlineMatch === 'function' && window.isOnlineMatch()) return false;
+                return !!(typeof state !== 'undefined' && state && state.partyBag && state.partyBag.items);
+            } catch (e) { return false; }
+        }
         function normalizeLoadoutForClass(loadout, cls) {
             const normalized = emptyLoadout();
             normalized.spells = [];
             for (const [iKey, iRule] of Object.entries(ITEM_RULES)) {
-                const cap = iRule.fieldOnly ? 0 : getItemCapForClass(cls, iKey);   // THE BAG (2026-09-20): a field-only item never enters a battle loadout
+                const cap = (iRule.fieldOnly || (iRule.story && !_storyLoadoutOn())) ? 0 : getItemCapForClass(cls, iKey);   // THE BAG (2026-09-20): a field-only item never enters a battle loadout; THE ONE-WAY DOOR: a story-only item only in a story fight
                 normalized.items[iKey] = Math.max(0, Math.min(cap, Number(loadout?.items?.[iKey] || 0)));
             }
             let totalItems = Object.values(normalized.items).reduce((a, b) => a + b, 0);
