@@ -11199,9 +11199,13 @@ function unitRosterScope() {
 function isUnitOwned(raceKey) {
   if (typeof window !== 'undefined' && window._DEV_UNLOCK_ALL) return true; // dev override, view-layer only
   if (typeof isRace3DReady === 'function' && !isRace3DReady(raceKey)) return false;
-  const acct = (typeof window !== 'undefined' && window.ProfileSystem && typeof window.ProfileSystem.getActiveProfile === 'function')
-    ? (window.ProfileSystem.getActiveProfile() || {}).account
+  const prof = (typeof window !== 'undefined' && window.ProfileSystem && typeof window.ProfileSystem.getActiveProfile === 'function')
+    ? (window.ProfileSystem.getActiveProfile() || {})
     : null;
+  const acct = prof ? prof.account : null;
+  /* THE ONE-WAY DOOR (2026-09-25, the user: "if you caught an enemy then why would you need to buy it in the shop? It should
+     already be unlocked"): a race a capture door SEALED is owned — the captured ledger (local + the synced blob) is the claim */
+  try { if (prof && typeof hqUnitCaptured === 'function' && hqUnitCaptured(prof, raceKey)) return true; } catch (e) {}
   if (!acct || !Array.isArray(acct.unlockedUnits)) return ACCT_STARTER_UNITS.includes(raceKey); // offline fallback
   return acct.unlockedUnits.includes(raceKey);
 }
@@ -19974,7 +19978,7 @@ const TUTORIAL_MECHANICS = {
     entropy: { label: 'the entropy gauge + strike', lessons: ['the_press'],
                pins: [{ name: 'ENTROPY_GAUGE_MAX', file: 'battle.js', value: 100 }, { name: 'ENTROPY_STRIKE_AP_COST', file: 'battle.js', value: 1 }],
                watch: [{ file: 'battle.js', fn: 'canUseEntropyStrike', hash: 'b27f726ec3' }, { file: 'battle.js', fn: 'getEntropyStrikeTargets', hash: 'b9fe29157b' }] },
-    arena:   { label: 'the arena win conditions', lessons: ['three_ways'], pins: [], watch: [{ file: 'battle.js', fn: 'checkWinConditionOnly', hash: 'a870c50e40' }, { file: 'battle.js', fn: 'getTeamWipeoutCount', hash: '216bb95ed8' }, { file: 'battle.js', fn: 'getArenaKeyRules', hash: 'ce10b994ec' }] },
+    arena:   { label: 'the arena win conditions', lessons: ['three_ways'], pins: [], watch: [{ file: 'battle.js', fn: 'checkWinConditionOnly', hash: 'a870c50e40' }, { file: 'battle.js', fn: 'getTeamWipeoutCount', hash: '355238aa1d' }, { file: 'battle.js', fn: 'getArenaKeyRules', hash: 'ce10b994ec' }] },
     keys:    { label: 'keys (hourglasses)', lessons: ['three_ways'], pins: [], watch: [{ file: 'battle.js', fn: 'getKeysToWin', hash: 'aca1e13cb1' }], modePins: { keySpawnCount: 5, keysToWin: 3 } },
     nexus:   { label: 'the nexus zones', lessons: ['three_ways'],
                pins: [{ name: 'NEXUS_CAPTURE_THRESHOLD', file: 'data.js', value: 4 }, { name: 'NEXUS_HOLD_HEAL_PCT', file: 'data.js', value: 0.15 }, { name: 'NEXUS_HOSTILE_DMG_PCT', file: 'data.js', value: 0.25 }, { name: 'NEXUS_CHANNEL_COST_AP', file: 'data.js', value: 1 }],
@@ -43963,6 +43967,7 @@ function hqUnitBuyable(profile, race) {
     if (typeof ACCT_STARTER_UNITS !== 'undefined' && ACCT_STARTER_UNITS.indexOf(race) >= 0) return true;
     const acct = profile && profile.account;
     if (acct && Array.isArray(acct.unlockedUnits) && acct.unlockedUnits.indexOf(race) >= 0) return true;
+    if (hqUnitCaptured(profile, race)) return true;   // THE ONE-WAY DOOR: a captured race is owned already
     return hqUnitDefeated(profile, race);
 }
 /* ══ THE ONE-WAY DOOR — the capture rules (CAPTURE_PLAN.md §2.3 / §2.6, Phase 0, 2026-09-25) ══════════════════════
@@ -43986,6 +43991,8 @@ const CAPTURE_RULES = {
     xpShare: 0.5,                       // a capture pays half a kill's XP …
     spoils: false,                      // … and no drop, no defeated-ledger mark
     types: ['human', 'divine', 'unholy', 'tech', 'anomaly', 'alien'],   // a tuned door's choices (the banes' types)
+    playerOnly: true,                   // the user (2026-09-25): "enemies cannot capture your party, the capture gun is DOOR technology" — only the story party's seat places one
+    healHeld: false,                    // the user (2026-09-25): allies cannot heal a held unit (the void is a realm)
     bounty: { 1: 40, 2: 80, 3: 160 },   // gold for a sealed race already owned with no party slot
 };
 /* the capture-door item keys, best tier first (the tile menu's order) */

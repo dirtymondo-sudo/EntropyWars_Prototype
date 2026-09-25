@@ -4331,6 +4331,8 @@
             bombs: [],
             mirrors: [],
             doors: [],              // 🚪 DOOR_RACE_DESIGN (2026-09-14) — battle.js THE DOOR block
+            captures: [],           // 🚪 THE ONE-WAY DOOR (CAPTURE_PLAN.md) — the sealed natives' records (battle.js captureDoorSeal)
+            sealedUnits: [],        // 🚪 the SEALED bodies, off state.units for the rest of the fight
             _mirrorFreq: { 1: 0, 2: 0 },
             _trickRoomRounds: 0,
             _trickRoomOrderRound: null,

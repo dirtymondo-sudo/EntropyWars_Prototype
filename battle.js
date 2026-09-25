@@ -3698,6 +3698,7 @@
 
         function resolveTileArrival(unit, opts = {}) {
             if (!unit || unit.dead || unit._dying) return 0;
+            if (unit._sealed || (unit.status && unit.status.captured > 0)) return 0;   // 🚪 in the void: nothing on the tile reaches it
             if (state.phase !== 'battle') return 0;
             const via = opts.via || 'displaced';
             const depth = _chainDepth;
@@ -3734,6 +3735,12 @@
                 // ── D · THE FUSES ───────────────────────────────────────────
                 fired += _chainFuses(unit, opts);
                 if (moved()) return fired;
+
+                // ── D′ · THE ONE-WAY DOOR (CAPTURE_PLAN.md §2.2) ───────────
+                {
+                    const _cd = (typeof captureDoorAt === 'function') ? captureDoorAt(unit.x, unit.y) : null;
+                    if (_cd && captureDoorTake(_cd, unit, via)) { fired++; return fired; }   // a held body reacts to nothing else (the void)
+                }
 
                 // ── E · THE ZONES ───────────────────────────────────────────
                 fired += _chainZones(unit);
@@ -9112,6 +9119,8 @@
         function isUnitRealmShieldedFrom(unit, actor) {
             /* 🚪 EXITED (DOOR_RACE_DESIGN r3): off the board — nobody reaches it. */
             if (unit && unitHasStatus(unit, 'exited')) return true;
+            /* 🚪 HELD / SEALED behind a one-way door (CAPTURE_PLAN.md): the void — no hit, no heal, no status */
+            if (unit && (unitHasStatus(unit, 'captured') || unitHasStatus(unit, 'sealed'))) return true;
             const pid = unitShadowRealmPartnerId(unit);
             if (!pid) return false;
             if (!actor) return true;
@@ -17660,6 +17669,18 @@
                                     let drops = null;
                                     try { if (won && typeof hqEncounterDrops === 'function') drops = hqEncounterDrops(_encFallenEnemies(seat)); } catch (e) { drops = null; }
                                     if (vit.length) partyRes = hqPartyAfterMatch(p, { won, units: vit, xpPool, bag: bagHome, gauge: gaugeHome, drops });
+                                    /* 🚪 THE ONE-WAY DOOR (CAPTURE_PLAN.md §2.6): every native the party SEALED joins — the party, else the roster
+                                       (the captured ledger: owned at once, never bought), else a bounty in gold */
+                                    try {
+                                        const caps = won ? (state.captures || []).filter(c => c && c.player === seat) : [];
+                                        if (caps.length && typeof hqCaptureEnlist === 'function') {
+                                            const cr = hqCaptureEnlist(p, caps.map(c => ({ race: c.race, gender: c.gender, name: c.name, lvl: c.lvl, tier: c.tier })));
+                                            if (cr && cr.gold > 0) { if (!p.account) p.account = { gold: 0, unlockedUnits: [], freeTokens: 0 }; p.account.gold = (p.account.gold | 0) + cr.gold; }   // the local mirror, on the profile this commit saves (creditLocalGold would be overwritten by it)
+                                            if (partyRes && typeof partyRes === 'object') partyRes.captures = cr; else partyRes = { captures: cr };
+                                            (cr.rows || []).forEach(r => addLog(r.to === 'party' ? `🚪 ${String(r.race).toUpperCase()} joins THE PARTY.` : r.to === 'roster' ? `🚪 ${String(r.race).toUpperCase()} is on your roster — captured, never bought.` : r.to === 'bounty' ? `🚪 ${String(r.race).toUpperCase()} is already yours — a bounty of 💰 ${r.gold}.` : `🚪 The capture of ${r.race} did not file.`));
+                                            try { if (typeof PS.scheduleProgressSync === 'function') PS.scheduleProgressSync(); } catch (e) {}
+                                        }
+                                    } catch (e) { console.warn('[HQ] the captures failed', e); }
                                 }
                             } catch (e) { console.warn('[HQ] the party record failed', e); }
                             PS.saveProfile(idx, p);
@@ -32368,6 +32389,9 @@
                     );
                     if (trap) return { kind: 'trap', x, y, trap };
                 }
+                /* 🚪 THE ONE-WAY DOOR: an enemy's capture door stops the walk on it (the chain's D′ takes the body) */
+                const _cd = (typeof captureDoorAt === 'function') ? captureDoorAt(x, y) : null;
+                if (_cd && captureDoorCanTake(_cd, unit)) return { kind: 'capture', x, y };
             }
             const visibleHourglasses = groundHourglassesAt(x, y).filter(h => h.visibleTo?.[unit.player]);
 
@@ -33122,6 +33146,7 @@
             state._delayedSpells = [];
             state._gatePairs = [];
             state.doors = [];
+            state.captures = []; state.sealedUnits = [];   // 🚪 THE ONE-WAY DOOR
             state._doorRearCast = null;
             state._flairRevealTiles = {
                 1: null,
@@ -41475,6 +41500,7 @@
             if (typeof elemSeenFold === 'function' && state._elemSeen) { try { elemSeenFold(state._elemSeen); } catch (e) {} }
             if (_finalizing) return;
             _finalizing = true;
+            try { captureMatchEnd(state.winner); } catch (e) { console.warn('[capture] match end', e); }   // 🚪 THE ONE-WAY DOOR: a win seals every held door, a loss frees them
             _setAiTurbo(false);   // training match: result screen / podium play normally
             _stopMatchClockInterval();
             revealAllHourglasses();
@@ -41743,6 +41769,7 @@
             state._delayedSpells = [];
             state._gatePairs = [];
             state.doors = [];
+            state.captures = []; state.sealedUnits = [];   // 🚪 THE ONE-WAY DOOR
             state._doorRearCast = null;
             state._flairRevealTiles = {
                 1: null,
@@ -42328,6 +42355,7 @@
             state._delayedSpells = [];
             state._gatePairs = [];
             state.doors = [];
+            state.captures = []; state.sealedUnits = [];   // 🚪 THE ONE-WAY DOOR
             state._doorRearCast = null;
             state._flairRevealTiles = {
                 1: null,
@@ -42562,6 +42590,7 @@
             state._delayedSpells = [];
             state._gatePairs = [];
             state.doors = [];
+            state.captures = []; state.sealedUnits = [];   // 🚪 THE ONE-WAY DOOR
             state._doorRearCast = null;
             state._flairRevealTiles = {
                 1: null,
@@ -44218,6 +44247,13 @@
                     const home = (typeof unitHomePlayer === 'function') ? unitHomePlayer(u) : u.player;
                     if (home === seat || home === 0) continue;
                     pool += computeKillXP(killer, u);
+                }
+                /* 🚪 THE ONE-WAY DOOR: a SEALED native pays half a kill (CAPTURE_RULES.xpShare) — a capture is no kill */
+                for (const u of (state.sealedUnits || [])) {
+                    if (!u) continue;
+                    const home = (typeof unitHomePlayer === 'function') ? unitHomePlayer(u) : u.player;
+                    if (home === seat || home === 0) continue;
+                    pool += (typeof captureXp === 'function') ? captureXp(computeKillXP(killer, u)) : 0;
                 }
                 /* THE VICTORY SHARE (2026-09-22): the kills already paid the killer LIVE — the pool the whole party shares is
                    the natives' worth × HQ_LEVEL_RULES.share.poolMult (the one dial) */
@@ -46168,6 +46204,8 @@
                     tickWetUnits();
                     meltIceNearLava();
                     _checkFrozenThaws();
+                    /* 🚪 THE ONE-WAY DOOR: every holding door counts down; a seal can end the fight (wipeout) */
+                    if (captureDoorHoldTick() > 0) { checkWin(); if (state.winner) return; }
                     state.round += 1;
                     _checkComebackArmed();
                     tickMatchClock();
@@ -54408,7 +54446,7 @@
         function _doors() { if (!Array.isArray(state.doors)) state.doors = []; return state.doors; }
         function doorAt(x, y) { return _doors().find(d => d.x === x && d.y === y && d.hp > 0) || null; }
         function doorById(id) { return _doors().find(d => d.id === id && d.hp > 0) || null; }
-        function doorTwin(door) { return door ? (_doors().find(d => d.pairId === door.pairId && d.id !== door.id && d.hp > 0) || null) : null; }
+        function doorTwin(door) { return (door && door.kind !== 'capture') ? (_doors().find(d => d.pairId === door.pairId && d.id !== door.id && d.hp > 0) || null) : null; }
         function doorBlocksMove(x, y) { const d = doorAt(x, y); return !!(d && !d.open); }
         function doorBlocksSightBetween(x1, y1, x2, y2, list = state.doors || []) {
             if (!list.length) return false;
@@ -54431,13 +54469,13 @@
         /* the friendly doors the unit stands ON or BESIDE (Chebyshev ≤ 1) */
         function doorsBeside(unit, opts = {}) {
             if (!unit) return [];
-            return _doors().filter(d => _doorCheb(d, unit.x, unit.y) <= 1
+            return _doors().filter(d => _doorCheb(d, unit.x, unit.y) <= 1 && d.kind !== 'capture'
                 && (opts.any || d.owner === unit.player) && (!opts.open || d.open));
         }
         /* one door per pair, oldest first */
         function doorTeamPairs(player) {
             const seen = new Set();
-            return _doors().filter(d => d.owner === player && !seen.has(d.pairId) && seen.add(d.pairId))
+            return _doors().filter(d => d.owner === player && d.kind !== 'capture' && !seen.has(d.pairId) && seen.add(d.pairId))
                 .sort((a, b) => (a.placedRound || 0) - (b.placedRound || 0));
         }
         function doorTileFree(x, y) {
@@ -54559,6 +54597,16 @@
             const both = _doors().filter(d => d.pairId === door.pairId);
             for (const d of both) d.hp = 0;
             state.doors = _doors().filter(d => d.pairId !== door.pairId);
+            if (door.kind === 'capture') {   // 🚪 THE ONE-WAY DOOR: no twin — the captive comes out
+                if (!opts.quiet && opts.reason !== 'replaced') {
+                    if (!_skipVisuals()) showFloatingTextAtTile(door.x, door.y, '🚪 BROKEN', 'damage');
+                    addLog(`${opts.label || ''}The capture door at ${coordLabel(door.x, door.y)} breaks.`);
+                    playSfx('uiConfirm');
+                }
+                _captureDoorBroken(door, { quiet: !!opts.quiet });
+                _doorTouched();
+                return;
+            }
             if (opts.reason === 'replaced') {
                 addLog(`The old doors at ${both.map(d => coordLabel(d.x, d.y)).join(' / ')} fold away.`);
             } else if (!opts.quiet) {
@@ -54711,6 +54759,228 @@
                 applyStatusPayload(unit, { id: 'stagger', duration: 1 }, 'EXIT: ');
                 _doorTouched();
             };
+        }
+
+        /* ═══════════════════════════════════════════════════════════════════
+           THE ONE-WAY DOOR (CAPTURE_PLAN.md Phase 1, 2026-09-25) — the capture
+           door on the board. STORY ONLY (the party's seat, never online): a
+           `kind: 'capture'` record in state.doors (ids only, RULE #2), no twin
+           (its pairId is its own), `fixed` (no toggle, no Slam), standing OPEN
+           (walkable, see-through). An ENEMY that arrives on it by any means —
+           a walk (the walk STOPS there, getPathPickupEvent's `capture`), a
+           push, a pull, a throw, a teleport — is HELD (THE CHAIN REACTION's
+           step D′): status `captured` (realm-shielded, no move, no action; no
+           heals — the user's rule), the body stays on the tile. The seal time
+           is data.js captureSealFor (deterministic), counted down by
+           captureDoorHoldTick at the round's end; at 0 — or at once when the
+           captive has no free ally left (the user: "a lone enemy seals") — the
+           door stamps shut: the unit is SEALED and leaves state.units for
+           state.sealedUnits (every team count, turn order and AI read forgets
+           it; it is no kill and no drop). Its allies break the door with
+           attacks (damageDoorAt — the HELD body on the tile is skipped for the
+           door); the break frees it Staggered with a grace. Victory seals every
+           held door; a loss breaks them all. The commit (commitAchProgress)
+           enlists state.captures through data.js hqCaptureEnlist.
+           ═══════════════════════════════════════════════════════════════════ */
+        function _capR() { return (typeof CAPTURE_RULES !== 'undefined') ? CAPTURE_RULES : { range: 4, los: true, perPlayer: 1, grace: 2, freeStagger: 1, ap: 1, playerOnly: true }; }
+        function captureDoorAt(x, y) { return _doors().find(d => d.kind === 'capture' && d.x === x && d.y === y && d.hp > 0) || null; }
+        function captureDoorById(id) { return _doors().find(d => d.kind === 'capture' && d.id === id && d.hp > 0) || null; }
+        function captureDoorsOf(player) { return _doors().filter(d => d.kind === 'capture' && d.owner === player && d.hp > 0); }
+        /* the story seat that may place one: the party bag's seat, never online (the user: "enemies cannot capture your party") */
+        function _captureSeat() {
+            if (typeof isOnlineMatch === 'function' && isOnlineMatch()) return 0;
+            if (!_partyBagOn()) return 0;
+            return state.partyBag.seat || 1;
+        }
+        /* the tiles a unit may fire a door onto: empty, walkable, no door / bomb / trap / object, within reach with sight */
+        function captureDoorLegalTiles(unit) {
+            const R = _capR(), out = [];
+            if (!unit || unit.dead) return out;
+            const r = R.range || 4;
+            for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+                if ((!dx && !dy) || Math.abs(dx) + Math.abs(dy) > r) continue;
+                const x = unit.x + dx, y = unit.y + dy;
+                if (!doorTileFree(x, y)) continue;
+                if (state.bombs && state.bombs.some(b => b.x === x && b.y === y)) continue;
+                if (state.traps && state.traps.some(t => t.x === x && t.y === y)) continue;
+                if (state._deployedObjects && state._deployedObjects.some(o => o.x === x && o.y === y && o.hp > 0)) continue;
+                const T = (typeof getTerrainRule === 'function') ? getTerrainRule(getTerrainAt(x, y)) : null;
+                if (T && (T.isLava || T.deepWater || T.lava || T.damagePerTurn > 0)) continue;
+                if (R.los && typeof isRangeBlockedByTerrain === 'function' && isRangeBlockedByTerrain(unit.x, unit.y, x, y, unit.z)) continue;
+                if (state.fogOfWar && !state.autoPlayers?.[unit.player] && typeof isInVision === 'function' && !isInVision(unit, x, y)) continue;
+                out.push({ x, y });
+            }
+            return out;
+        }
+        /* why a placement is refused ('' = legal) */
+        function captureDoorPlaceCheck(unit, x, y, itemKey) {
+            const R = _capR();
+            const rule = (typeof ITEM_RULES !== 'undefined') ? ITEM_RULES[itemKey] : null;
+            if (!unit || unit.dead) return 'unit';
+            if (!rule || rule.kind !== 'captureDoor') return 'item';
+            const seat = _captureSeat();
+            if (!seat) return 'story';
+            if (R.playerOnly && unitHomePlayer(unit) !== seat) return 'seat';
+            if (!unit.items || (unit.items[itemKey] | 0) <= 0) return 'none';
+            if ((unit.ap || 0) < (R.ap || 1)) return 'ap';
+            if (unit._captureDoorRound === (state.round || 0)) return 'once';
+            if (captureDoorsOf(unit.player).some(d => d.held)) return 'holding';
+            if (!captureDoorLegalTiles(unit).some(t => t.x === x && t.y === y)) return 'tile';
+            return '';
+        }
+        /* FIRE a door onto (x, y) — spends the item and the AP; a second live door folds the first (an empty one: a HOLDING door refuses the placement) */
+        function captureDoorPlace(unit, x, y, itemKey, opts = {}) {
+            const why = captureDoorPlaceCheck(unit, x, y, itemKey);
+            if (why) {
+                if (!opts.quiet) addLog({ story: 'The capture door is a story-mode tool.', seat: 'Only your party carries the capture gun.', none: 'No door of that kind in the bag.', ap: 'Not enough AP to fire a door.', once: 'One door a turn.', holding: 'Your door is holding someone — it cannot be folded.', tile: 'The door needs an empty tile within reach and sight.' }[why] || 'The door cannot go there.');
+                return null;
+            }
+            const R = _capR(), rule = ITEM_RULES[itemKey];
+            for (const old of captureDoorsOf(unit.player)) breakDoorPair(old, { quiet: true, reason: 'replaced' });
+            const tier = Math.max(1, Math.min(3, rule.tier | 0 || 1));
+            const type = (rule.tuned && opts.type && (R.types || []).indexOf(opts.type) >= 0) ? opts.type : null;
+            const hp = (typeof captureDoorHits === 'function') ? captureDoorHits({ tier }) : 3;
+            const id = `cap_${state.round || 0}_${unit.id}_${randInt(99999)}`;
+            const door = {
+                id, pairId: id, kind: 'capture', x, y,
+                z: (typeof getHeightAt === 'function') ? getHeightAt(x, y) : 0,
+                open: true, fixed: true, hp, maxHp: hp, owner: unit.player, ownerId: unit.id,
+                spellName: rule.name, placedRound: state.round || 0,
+                tier, type, itemKey, held: null, sealed: null,
+            };
+            _doors().push(door);
+            unit.items[itemKey] = Math.max(0, (unit.items[itemKey] | 0) - 1);
+            unit.ap = Math.max(0, (unit.ap || 0) - (R.ap || 1));
+            unit._captureDoorRound = state.round || 0;
+            setUnitFacing(unit, x - unit.x, y - unit.y);
+            if (!opts.quiet && !_skipVisuals()) {
+                window._doorGeom('raceDoorGun:shot', x, y, { fromX: unit.x, fromY: unit.y });
+                showFloatingTextAtTile(x, y, `🚪 ${rule.name.toUpperCase()}`, 'buff');
+            }
+            addLog(`🚪 ${unitDisplayName(unit)} fires a ${rule.name}${type ? ' (' + type.toUpperCase() + ')' : ''} onto ${coordLabel(x, y)} — whoever lands on it is held.`);
+            _doorTouched();
+            return door;
+        }
+        /* can this door take this unit now? */
+        function captureDoorCanTake(door, unit) {
+            if (!door || door.kind !== 'capture' || door.hp <= 0 || door.held || door.sealed) return false;
+            if (!unit || unit.dead || unit._dying || unit._sealed) return false;
+            if (door.owner === unit.player) return false;
+            if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return false;
+            if (typeof unitPassiveValue === 'function' && unitPassiveValue(unit, 'doorImmune')) return false;
+            if (unit._isBoss || unit.isBoss || unit._isCube) return false;
+            if ((unit._captureGraceUntil | 0) >= (state.round || 0)) return false;
+            if (unitHasStatus(unit, 'captured') || unitHasStatus(unit, 'exited')) return false;
+            return true;
+        }
+        /* the encounter's LEAD (the named native — it holds out a round longer) */
+        function _captureIsLead(unit) {
+            try {
+                if (!_encMatch) return false;
+                const f = _encMatch.field, sc = f && f.seats && f.seats.lead;
+                const lead = _encLeadUnit(unit.player, sc && sc[unit.player]);
+                return !!(lead && lead.id === unit.id);
+            } catch (e) { return false; }
+        }
+        /* TAKE: the door swallows the body — HELD under the seal time */
+        function captureDoorTake(door, unit, via) {
+            if (!captureDoorCanTake(door, unit)) return false;
+            const seal = (typeof captureSealFor === 'function') ? captureSealFor(door, unit, { lead: _captureIsLead(unit) }) : 3;
+            door.held = { unitId: unit.id, seal, total: seal, tookRound: state.round || 0, via: via || 'move' };
+            if (!unit.status) unit.status = {};
+            unit.status.captured = 99;   // set, never rolled against a resist — the door is not a spell
+            unit._captureDoorId = door.id;
+            unit.ap = 0;                 // a body taken on its own walk ends its turn in the void
+            if ((unit.hourglasses || 0) > 0 && typeof dropHourglassesFromUnit === 'function') dropHourglassesFromUnit(unit);
+            if (!_skipVisuals()) showFloatingTextForUnit(unit, `🚪 HELD · ${seal}`, 'debuff');
+            if (typeof playDoorSfx === 'function') playDoorSfx('stamp');
+            addLog(`🚪 The door at ${coordLabel(door.x, door.y)} takes ${unitDisplayName(unit)} — HELD. Hold it ${seal} round${seal === 1 ? '' : 's'} to seal it.`);
+            _doorTouched();
+            return true;
+        }
+        /* the free (STATUS_DEFS.captured.onRemove): the body is already on the tile — Staggered, a grace against a re-take */
+        function captureDoorFree(unit) {
+            if (!unit || unit.dead || unit._sealed) return;
+            const R = _capR();
+            unit._captureGraceUntil = (state.round || 0) + (R.grace || 0);
+            for (const d of _doors()) if (d.kind === 'capture' && d.held && d.held.unitId === unit.id) d.held = null;
+            if (R.freeStagger) applyStatusPayload(unit, { id: 'stagger', duration: R.freeStagger }, 'THE DOOR: ');
+            addLog(`🚪 ${unitDisplayName(unit)} stumbles out of the broken door at ${coordLabel(unit.x, unit.y)}.`);
+            _doorTouched();
+        }
+        /* BREAK (breakDoorPair's capture branch): the door is gone — its captive comes out */
+        function _captureDoorBroken(door, opts = {}) {
+            const u = door && door.held ? unitFromId(door.held.unitId) : null;
+            if (door) door.held = null;
+            if (u && unitHasStatus(u, 'captured')) {
+                if (opts.quiet) { u._captureGraceUntil = (state.round || 0) + (_capR().grace || 0); delete u.status.captured; delete u._captureDoorId; }
+                else clearStatus(u, 'captured');
+            }
+        }
+        /* SEAL: the door stamps shut — the captive leaves the board for good; its record rides state.captures */
+        function captureDoorSeal(door, opts = {}) {
+            if (!door || !door.held) return false;
+            const unit = unitFromId(door.held.unitId);
+            door.held = null;
+            state.doors = _doors().filter(d => d.id !== door.id);
+            if (!unit || unit.dead || unit._dying) { _doorTouched(); return false; }
+            unit._sealed = true;
+            if (unit.status) delete unit.status.captured;   // no onRemove: a sealed unit is never freed
+            delete unit._captureDoorId;
+            unit.status = unit.status || {};
+            unit.status.sealed = 99;
+            const rec = {
+                unitId: unit.id, player: door.owner, capturerId: door.ownerId, race: unit.race || (unit.meta && unit.meta.race) || '',
+                gender: unit.gender || (unit.meta && unit.meta.gender) || null, name: unit.name || '', lvl: getUnitLevel(unit),
+                tier: door.tier || 1, round: state.round || 0, x: door.x, y: door.y,
+            };
+            if (!Array.isArray(state.captures)) state.captures = [];
+            state.captures.push(rec);
+            door.sealed = rec;
+            const i = state.units.indexOf(unit);
+            if (i >= 0) state.units.splice(i, 1);
+            if (!Array.isArray(state.sealedUnits)) state.sealedUnits = [];
+            state.sealedUnits.push(unit);
+            if (state._blitzActiveUnitId === unit.id) state._blitzActiveUnitId = null;
+            if (!opts.quiet && !_skipVisuals()) showFloatingTextAtTile(door.x, door.y, '🚪 SEALED', 'buff');
+            if (typeof playDoorSfx === 'function') playDoorSfx('stamp');
+            addLog(`🚪 SEALED — ${unitDisplayName(unit)} is behind the door for good${opts.reason ? ' (' + opts.reason + ')' : ''}.`);
+            _doorTouched();
+            return true;
+        }
+        /* does this captive's team have anyone left who could free it? */
+        function _captureNobodyComes(unit) {
+            const home = unitHomePlayer(unit);
+            return !state.units.some(u => u !== unit && !u.dead && !u._dying && !u._sealed && unitHomePlayer(u) === home && !unitHasStatus(u, 'captured'))
+                && !(_benchOn() && _gauntletReservesAlive(home) > 0);
+        }
+        /* THE HOLD TICK (the round's end): every holding door counts down; 0 — or nobody left to come — seals */
+        function captureDoorHoldTick() {
+            let sealed = 0;
+            for (const door of _doors().filter(d => d.kind === 'capture' && d.held)) {
+                const u = unitFromId(door.held.unitId);
+                if (!u || u.dead || u._dying || u.x !== door.x || u.y !== door.y) { if (u && unitHasStatus(u, 'captured')) clearStatus(u, 'captured'); door.held = null; continue; }
+                door.held.seal = Math.max(0, (door.held.seal | 0) - 1);
+                if (door.held.seal <= 0) { if (captureDoorSeal(door)) sealed++; }
+                else if (_captureNobodyComes(u)) { if (captureDoorSeal(door, { reason: 'nobody came' })) sealed++; }
+                else { if (!_skipVisuals()) showFloatingTextAtTile(door.x, door.y, `🚪 ${door.held.seal} to seal`, 'buff'); addLog(`🚪 The door at ${coordLabel(door.x, door.y)} holds — ${door.held.seal} round${door.held.seal === 1 ? '' : 's'} to seal.`); }
+            }
+            return sealed;
+        }
+        /* THE END OF THE FIGHT: a win for the door's owner seals every held door (nobody is left to free it); every other
+           door breaks, its captive coming home quietly (a loss captures nothing) */
+        function captureMatchEnd(winner) {
+            for (const door of _doors().filter(d => d.kind === 'capture')) {
+                if (door.held && winner != null && winner === door.owner) captureDoorSeal(door, { quiet: true, reason: 'the fight is won' });
+                else { _captureDoorBroken(door, { quiet: true }); state.doors = _doors().filter(d => d.id !== door.id); }
+            }
+            return (state.captures || []).slice();
+        }
+        if (typeof window !== 'undefined') {
+            window.captureDoorAt = captureDoorAt; window.captureDoorById = captureDoorById; window.captureDoorsOf = captureDoorsOf;
+            window.captureDoorLegalTiles = captureDoorLegalTiles; window.captureDoorPlaceCheck = captureDoorPlaceCheck; window.captureDoorPlace = captureDoorPlace;
+            window.captureDoorCanTake = captureDoorCanTake; window.captureDoorTake = captureDoorTake; window.captureDoorFree = captureDoorFree;
+            window.captureDoorSeal = captureDoorSeal; window.captureDoorHoldTick = captureDoorHoldTick; window.captureMatchEnd = captureMatchEnd;
         }
 
         function _structureAt(x, y, unit) {
@@ -55075,6 +55345,8 @@
                 }
             }
 
+            /* 🚪 THE ONE-WAY DOOR: a swing at a HELD body lands on the door holding it (the void takes no hit) */
+            if (target && target.id !== unit.id && unitHasStatus(target, 'captured') && captureDoorAt(x, y) && captureDoorAt(x, y).owner !== unit.player) target = null;
             /* 🚪 Shooting a door: one hit; at 0 the door AND its twin break. */
             if ((!target || target.id === unit.id) && doorAt(x, y) && doorAt(x, y).owner !== unit.player) {
                 pushUndoSnapshot(true);
@@ -64935,7 +65207,7 @@
         // A controlled body keeps its home-team survival credit. Promised
         // reserves still count even though they are unavailable for switching.
         function getTeamWipeoutCount(player) {
-            return state.units.filter(u => unitHomePlayer(u) === player && !u.dead && !u._dying).length
+            return state.units.filter(u => unitHomePlayer(u) === player && !u.dead && !u._dying && !u._sealed).length
                 + (_benchOn() ? _gauntletReservesAlive(player) : 0);
         }
 

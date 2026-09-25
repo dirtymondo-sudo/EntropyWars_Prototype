@@ -138,3 +138,18 @@ test('THE PRIZE: party first (no duplicate race), then the roster, then the boun
     assert.equal(g('hqCaptureEnlist')(p, [{ race: 'no-such-race' }]).rows[0].to, 'skip');
     assert.ok(g('hqPartyUnlocked')(p).indexOf(pick[0]) >= 0, 'a captured race stays enlistable (the prune keeps it)');
 });
+
+test('CAPTURED = OWNED (the user, 2026-09-25: "if you caught an enemy then why would you need to buy it in the shop?"): isUnitOwned and the shop read the captured ledger; party-only doors', () => {
+    const p = profile(['knight']);
+    const race = D.AVAILABLE_RACES.find(r => r !== 'knight' && (D.ACCT_STARTER_UNITS || []).indexOf(r) < 0 && (typeof D.isRace3DReady !== 'function' || D.isRace3DReady(r)));
+    D.ProfileSystem = { getActiveProfile: () => p };
+    try {
+        assert.equal(g('isUnitOwned')(race), false);
+        g('hqCapturedMark')(p, [race], '2026-09-25');
+        assert.equal(g('isUnitOwned')(race), true, 'owned the moment it is on the ledger');
+        assert.equal(g('hqUnitBuyable')(p, race), true);
+    } finally { delete D.ProfileSystem; }
+    assert.equal(R.playerOnly, true, 'enemies never capture the party (the capture gun is D.O.O.R. technology)');
+    assert.equal(R.healHeld, false, 'allies cannot heal a held unit');
+    assert.equal(R.loneSeal, 'round', 'a lone enemy seals');
+});

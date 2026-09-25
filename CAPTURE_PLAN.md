@@ -1,7 +1,7 @@
 # THE ONE-WAY DOOR — the capture mechanic of story mode
 
 *Plan document, 2026-09-23. Story mode (the encounters and the marker's fights) only — Online and
-Practice never see a capture door. Phase 0 (THE RULES) is built (2026-09-25); §6 is the order to build the rest in.
+Practice never see a capture door. Phases 0 (THE RULES) and 1 (THE DOOR ON THE BOARD) are built (2026-09-25); §6 is the order to build the rest in.
 Read CLAUDE.md "THE CHAIN REACTION", "THE DOOR AGENT rev 3", "THE PARTY" and "THE BAG'S TABS" first —
 every hook this plan hangs on already exists.*
 
@@ -326,16 +326,16 @@ turbo for the swarm's LOW-level bodies' activations (an option row on `HQ_ENCOUN
 Ship data.js to R2 AND Render at every phase from 0 (the ledger's key regex, the server's union,
 the item rows the server's loadout validation reads).
 
-## 7. Open decisions (the user's)
+## 7. Decisions (answered by the user 2026-09-25)
 
-1. Does a CAPTURE count as a DEFEAT for the shop's DEFEAT ONE FIRST gate? (Plan: no — a capture
-   already owns the vessel; the gate is for buying a second-gender copy.)
-2. The player's own party capturable by natives (§4.4)? (Plan: yes, later — symmetric rules make
-   the AI's doors readable; a captured member is never lost.)
-3. Typed doors as six items, or ONE "tuned" door whose type is picked at placement (fewer rows, the
-   same strategy)? (Plan leans one tuned door at T2's price — the bag's tabs stay short.)
-4. A held unit's allies can HEAL it? (Plan: no — the void is a realm; the door is the only verb.)
-5. The seal cue on a lone enemy: end of the round it is taken in (plan), or one full round always?
+1. A capture does not need the shop: **a captured race is OWNED at once** ("if you caught an enemy then why would
+   you need to buy it in the shop? It should already be unlocked") — data.js isUnitOwned / hqUnitBuyable /
+   hqPartyUnlocked read the captured ledger. It is still not a DEFEAT (the defeated ledger is untouched).
+2. **Natives never capture the party** ("the capture gun is DOOR technology") — `CAPTURE_RULES.playerOnly`;
+   §4.4's native placers are dropped.
+3. ONE tuned door (the default taken in Phase 0; the user did not object).
+4. **No healing a held unit** (the realm shield).
+5. **A lone enemy seals** — at the end of the round, whatever the pips say (`loneSeal: 'round'`).
 
 ## 8. Log
 
@@ -353,3 +353,17 @@ the item rows the server's loadout validation reads).
   gate: `_storyLoadoutOn()` in battle.js AND state.js `normalizeLoadoutForClass` (party bag on, not online), the
   forge's item list (party-builder.js), the random CPU loadout. Nothing sells or drops a door yet. Test:
   `capture-door.test.js`. Next: Phase 1 THE DOOR ON THE BOARD.
+- 2026-09-25 — **Phase 1 THE DOOR ON THE BOARD built** (token `20260925-capture-02-cors`), with §7 answered. battle.js
+  "THE ONE-WAY DOOR" block after THE DOOR's exports: `captureDoorAt / ById / sOf`, `captureDoorLegalTiles`,
+  `captureDoorPlaceCheck` (reasons: story · seat · none · ap · once · holding · tile · item), `captureDoorPlace`
+  (the record: `kind: 'capture'`, `pairId === id`, `fixed: true`, `open: true`, tier / type / itemKey / held / sealed),
+  `captureDoorCanTake`, `captureDoorTake` (status `captured` SET at 99, AP to 0, Keys dropped), `captureDoorFree`
+  (the onRemove: Stagger + grace; the body never moved), `captureDoorSeal` (the unit leaves `state.units` for
+  `state.sealedUnits`; a record in `state.captures`), `captureDoorHoldTick` (before `state.round += 1`; a lone captive
+  seals), `captureMatchEnd` (first thing in finalizeMatch). Hooks: resolveTileArrival D′ + the held early-out,
+  getPathPickupEvent `capture`, isUnitRealmShieldedFrom, doorTwin / doorTeamPairs / doorsBeside skip capture doors,
+  breakDoorPair's capture branch frees the captive, doAttack's swing at a held body lands on the door,
+  getTeamWipeoutCount skips `_sealed`, `_encXpPool` pays `captureXp` per sealed native, the encounter commit runs
+  `hqCaptureEnlist` (the bounty onto the saved profile's gold). **Deviation from §2.4:** a sealed body leaves
+  `state.units` instead of sitting at (−1, −1), so no reader (turn order, AI, HUD, renderer) ever sees it. Nothing
+  in the UI places a door yet (Phase 2). Test: `capture-board.test.js` (the DOOR block in a vm). Next: Phase 2.
