@@ -860,3 +860,33 @@ with the mantid's existing Fractal Needle). **Seeds**: hud.js `_computeEnemyActi
 Seed rows against an airborne enemy (`applySeedEffectToUnit` already skipped airborne units). Test:
 `beam-3d-line.test.js`. Unseen live: the special beam renderers (breath cone, tsunami, sonic boomerang, gatling,
 sword wave, bow) still draw along the ground; the damage follows the line.
+
+## THE SPELL LIBRARY — Phase 0, THE SCHEMA (2026-09-26, local delivery: spell-library/ENTROPY_WARS_SPELL_LIBRARY_0.zip, token 20260925-spell-library-01-cors)
+SPELL_LIBRARY_PLAN.md §4 / §9 row 0, mondo's rulings 2026-09-25 (tiers and costs editable per row; passives and
+equipment one kind of row, at most 2 of the 7 slots — `PASSIVE_SLOT_MAX`; the 17 accessories a universal GEAR
+family). **THE TIER IS NOW A FIELD**: every row in data.js carries `tier: 1–4` (= its SP), written by
+`node bake-spell-mods.js --stamp-tiers` from the rung; `spellTierOf` reads it FIRST and falls back to
+`spellTierDerived` (rung → door tier → MP ladder) only for a row without one. The legacy `tier: 'I'/'II'/'III'`
+strings are gone (157 of 172 disagreed with the live tier — they were Hazard Pay shop labels). Every reader of the
+string now calls `spellTierOf` / `spellTierNumeral`; tests pin numbers (class trees 1,2,3,4; a capstone is 4).
+**The other fields** (stamped at boot by `stampSpellSchema`, before EWSpellMods clones, so they are fields not
+edits): `role` (derived by `spellRoleOf`: passive kind → damage / damageEffect by dmg + status/stat/shield →
+heal → movement / deploy / terrain kinds → effect → utility; `roleOverride` pins; `bonusVsStatus` is NOT an
+effect), `families` (the element's family unless the row lists its own; door-wheel rows carry `doors`),
+`upgrades: []`, `notes` (absent until written; the bake strips them to docs/spell-notes.md). **Registries**:
+`SPELL_FAMILIES` (15 elements + gear + doors), `SPELL_UPGRADES` (empty until Phase 5), `RACE_FAMILIES` (empty until
+Phase 7). **`AOE_PRESETS`** + `aoeMaskTiles/Bound/Valid/PresetOf` exist; the engine honours `aoeMask` from Phase 2.
+**The lint** (`spellLint`, `spellLintAll`, `spellReport`) never edits: THE TIER RULE (`damageEffect` with dmg ≥ 120
+below tier III — the 7 survey offenders), dead fields (`SPELL_DEAD_FIELDS`, 68 rows), the LOS triple, duplicate
+names (the two Tail Whips), off-pool rows (29), unknown families / upgrades, masks. **EWSpellMods v2**: doc keys
+`families / upgrades / raceFamilies / views` (id → row, null = delete), IMPORT MERGES by default (`{ mode:
+'replace' }` swaps; `pick` a Set of "group:key[:field]" from `diff(obj)`), export carries `spellNotes` + `report`,
+prune covers the registries. **THE ONLINE GUARD**: `setOnline(true)` from online.js `applyOnlineRules` restores
+vanilla tables for the match (`state.js transitionTo(MAIN_MENU)` calls `setOnline(false)`); any `apply()` while
+`isOnlineMatch()` stays vanilla; `_goToSpellLibrary` refuses to open and the v1 screen says EDITS OFF. **The bake**:
+`node bake-spell-mods.js <export.json> [--data] [--out] [--notes] [--dry-run] [--no-test]` patches the literal
+rows field by field (comments survive; factory-call rows like `_mkCharge({…})` and the two duplicate-id literals
+included; aliases warn), appends added rows to their home array, removes deleted rows (and warns about RACE_TREE /
+share references left behind), rewrites learn orders, turns movepool adds into the "Baked movepool shares" table,
+patches the registries row by row, then runs `npm run test:quick`. Test: `spell-schema.test.js`. Phase 1 (the new
+screen) is next; the v1 editor keeps working on the v2 doc meanwhile.
