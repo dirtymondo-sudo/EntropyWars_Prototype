@@ -1020,3 +1020,12 @@ Biology, Sentai Colors, Symbiosis); every race has 3–5 families in `RACE_FAMIL
 - The order is tree row → the job's four → the family members: a job row in a race family (Brave Charge in Knighthood)
   keeps its JOB source. sprites.js `SPELL_ANIM_VERBS` / battle.js `SPELL_DIRECTOR_ROWS` dropped the deleted ids.
 - Test `spell-families.test.js`; SPELL_CATALOGUE.md is the generated family / race table.
+
+## ✦ THE FAMILIES AS POOLS, PHASE 7 (SPELL_LIBRARY_PLAN.md Phase 7, 2026-09-26, token 20260926-spell-library-09-cors)
+A race's spells ARE its families' members: data.js `unitSpellPoolParts` takes the job's four, then `raceFamilyPoolIds(race)`;
+RACE_TREE is no longer read for the pool (kept for the MP ring, the twins and DEFAULTS; spell-families.test.js proves every rung
+sits in the race's families, and a rung re-tagged out of them leaves the pool). `spellFamilyIsUnique` + `raceFamilyIds` keep a
+unique family its race's alone. The Freelancer borrows family by family (`flBorrowFamilyIds` → `flRacePool`; unique / universal /
+own families never). `spellFamilyGroups(ids, race)` folds any id list for the racks. Job pools are still the job's four (job
+families wait for the user's ruling). Legality, the SP / slot / passive caps and the online host check are unchanged
+(`treeLegalSubset` repairs a save holding a row the new pool dropped).

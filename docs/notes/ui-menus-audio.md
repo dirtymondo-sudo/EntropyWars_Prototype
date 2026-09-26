@@ -714,3 +714,13 @@ range and lights the pool, a splash row's hover lights the splash tiles with dmg
   inspector's picker reads "⇄ move to family…", the bulk op "Move to a family", the member search "moves it here".
 - The ✕ on a family's member list is `.slb2-xbig` (28 × 24 button); the inspector's owner chips' ✕ grew to 13 px with a hover.
 - The matrix's lint is 3–10. Probe: playtest_library.js shoots `families_members`, `pools_race_families`, `pools_race_toggled`.
+
+## ✦ THE RACK BY FAMILY + THE CODEX FAMILY PAGE (SPELL_LIBRARY_PLAN.md Phase 7, 2026-09-26, token 20260926-spell-library-09-cors)
+The forge's TECHNIQUES rack and the HQ pause rack both FOLD BY FAMILY (default) or BY TIER — one per-viewer choice in localStorage
+`ew_rack_group` (party-builder.js `pbRackGroupGet/Set`, map.js `_hqRackFold/_hqRackFoldSet`, the `fold:` party act). By family: a
+row per family (`.pb-fam` / `.hq-circ-fam`, the family colour on the head's edge, the race's families first, others dimmer), chips
+tier I → IV; the keyboard grid follows the fold; a Freelancer gets ONE ＋ BORROW (key `B0`, every tier) instead of one per tier.
+Both borrow windows list family by family under `.pb-socket-fam` / `.hq-circ-famhead` headers; the forge's has a TIER filter in
+the family fold and its search matches a family's name. The codex dossier's DOCUMENTED CAPABILITIES is the race's families
+(ui.js `_codexBuildFamilies`, `.cdx-fam*` in styles-hud.css), RACE_ABILITIES the fallback. Pins: spell-families.test.js (Phase 7
+block), spell-tree-ux.test.js (the family grid + B0), party-builder.test.js (the borrow window anchor).
