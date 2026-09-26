@@ -9230,6 +9230,7 @@
                 case 'deleted': return r.deleted;
                 case 'passive': return r.passive;
                 case 'push': return !!r.push;
+                case 'riders': return !!(r.def.randomTargets || r.def.splash);   // THE TARGETING RIDERS (Phase 3)
                 default: return false;
             }
         }
@@ -9263,7 +9264,7 @@
         function _slb2FilterCounts(rows) {
             const c = { source: {}, families: {}, roles: {}, elements: {}, kinds: {}, owners: {}, tiers: {}, flags: {}, lint: {} };
             const inc = (g, k) => { c[g][k] = (c[g][k] || 0) + 1; };
-            const FLAGS = ['status', 'bonus', 'aoe', 'push', 'movement', 'heal', 'deploy', 'terrain', 'passive', 'notes', 'edited', 'offpool', 'deleted'];
+            const FLAGS = ['status', 'bonus', 'aoe', 'riders', 'push', 'movement', 'heal', 'deploy', 'terrain', 'passive', 'notes', 'edited', 'offpool', 'deleted'];
             rows.forEach(r => {
                 inc('source', r.isDoor ? 'door' : r.isRace ? 'race' : 'lib');
                 r.families.forEach(f => inc('families', f));
@@ -9710,7 +9711,7 @@
             if (!_slbSelectedId || !_slb2RowById(_slbSelectedId)) _slbSelectedId = rows[0] ? rows[0].id : null;
             _slb2RenderInspector();
         }
-        const _SLB2_FLAG_LABELS = { status: 'applies a status', bonus: 'status bonus', aoe: 'area', push: 'push / pull', movement: 'movement', heal: 'heals', deploy: 'deploys', terrain: 'terrain', passive: 'passive rows', notes: 'has notes', edited: 'edited', offpool: 'off-pool', deleted: 'deleted' };
+        const _SLB2_FLAG_LABELS = { status: 'applies a status', bonus: 'status bonus', aoe: 'area', riders: 'random / splash', push: 'push / pull', movement: 'movement', heal: 'heals', deploy: 'deploys', terrain: 'terrain', passive: 'passive rows', notes: 'has notes', edited: 'edited', offpool: 'off-pool', deleted: 'deleted' };
         function _slb2RenderRail() {
             const rail = document.getElementById('slbRail');
             if (!rail) return;
@@ -9984,8 +9985,8 @@
         };
         const _SLB2_EXTRA_HELP = {
             hooks: { t: 'json', h: 'Passive rows: { hookKey: value } with the keys PASSIVE_DEFS uses (immuneStatus, lowHpBonus, spellCostMult, rangeBonus, healMult, …) plus the Phase 4 keys (healOnceBelowPct, physicalElementRider, regenPerRound, buildBonus, weatherBonus, terrainBonus, zodiacBonus, statBonus).' },
-            splash: { t: 'json', h: 'After the primary hit, units around the VICTIM take dmg × mult: { mult: 0.5, radius: 1 | mask: [...], team: "enemies" } (the engine reads it from Phase 3).' },
-            randomTargets: { t: 'json', h: 'The cast needs no aim: { count: 3, scope: "enemies" | "units", distinct: true, mult: 1 } (the engine reads it from Phase 3).' },
+            splash: { t: 'json', h: 'After the primary hit, every enemy (or every unit) round the VICTIM takes dmg × mult — the victim is never hit twice, the caster never. Radius 1 = the 8 tiles round it; draw any shape on the SPLASH grid below. Damage rows only.' },
+            randomTargets: { t: 'json', h: 'No aim: the cast picks COUNT victims among the legal targets in range and sight (the host rolls; the guest sees the same picks) and hits each for dmg × mult. DISTINCT = never the same victim twice, so fewer victims ⇒ fewer shots. Damage rows only.' },
             chainProfile: { t: 'json', h: 'Chain lightning profile (see calcChainTargets).' },
             chainRadius: { t: 'num', h: 'Chain hop radius in tiles.' },
             splitCount: { t: 'num', h: 'Split beam: number of secondary beams.' },
@@ -10087,7 +10088,7 @@
             if (t === 'upgrades') return _slb2UpgradesTabHtml(r);
             const groups = _SLB2_GROUPS[t] || [];
             const shown = new Set();
-            const ALWAYS = { stats: ['cost', 'apCost', 'dmg', 'damageType', 'type', 'spellType', 'element'], target: ['kind', 'range', 'ignoresLineOfSight', 'aoeRadius'], effects: ['statusEffects', 'bonusVsStatus', 'statStageBoost'], look: ['vfxArchetype', 'vfxWeight', 'projectileOverride'] };
+            const ALWAYS = { stats: ['cost', 'apCost', 'dmg', 'damageType', 'type', 'spellType', 'element'], target: ['kind', 'range', 'ignoresLineOfSight', 'aoeRadius'].concat((d.kind || 'damage') === 'damage' ? ['randomTargets', 'splash'] : []), effects: ['statusEffects', 'bonusVsStatus', 'statStageBoost'], look: ['vfxArchetype', 'vfxWeight', 'projectileOverride'] };
             let html = '';
             groups.forEach(([title, keys]) => {
                 const present = keys.filter(k => Object.prototype.hasOwnProperty.call(d, k) || (ALWAYS[t] || []).includes(k));
@@ -10118,7 +10119,7 @@
             const val = d[f];
             const dead = (typeof SPELL_DEAD_FIELDS !== 'undefined') && SPELL_DEAD_FIELDS.includes(f);
             const orig = isMod ? `<button class="slb2-orig" data-act="revertField" data-id="${_slbEsc(id)}" data-field="${_slbEsc(f)}" title="shipped value ${_slbEsc(prisVal === undefined ? '(absent)' : JSON.stringify(prisVal))} — click to revert">↺ ${_slbEsc(prisVal === undefined ? '(absent)' : JSON.stringify(prisVal).slice(0, 26))}</button>` : '';
-            const wide = (spec && (spec.t === 'status' || spec.t === 'json' || spec.t === 'long')) || f === 'aoeMask' || f === 'hooks';
+            const wide = (spec && (spec.t === 'status' || spec.t === 'json' || spec.t === 'long')) || f === 'aoeMask' || f === 'hooks' || f === 'splash' || f === 'randomTargets';
             // a wide editor (status list, JSON, long text) takes the whole row: its ↺ / ✕ sit under the label instead of wrapping under the editor
             const drop = Object.prototype.hasOwnProperty.call(d, f) && !(ALWAYS_KEEP.has(f)) ? `<button class="slb2-fx" data-act="dropField" data-id="${_slbEsc(id)}" data-field="${_slbEsc(f)}" title="remove the field from the row">✕</button>` : '';
             return `<div class="slb2-field${isMod ? ' modded' : ''}${wide ? ' wide' : ''}${dead ? ' dead' : ''}" data-frow="${_slbEsc(f)}">
@@ -10133,6 +10134,7 @@
             const attrs = `data-field="${_slbEsc(f)}" data-id="${_slbEsc(id)}"`;
             if (t === 'status') return _slb2StatusEditor(id, f, val);
             if (f === 'bonusVsStatus') return _slb2BonusEditor(id, val);
+            if (f === 'randomTargets' || f === 'splash') return _slb2RiderEditor(id, f, val, d);
             if (f === 'ignoresLineOfSight') {
                 const los = d && d.requiresLineOfSight ? 'needs' : d && d.ignoresLineOfSight ? 'ignores' : 'default';
                 return `<div class="slb2-seg">${[['default', 'DEFAULT'], ['ignores', 'IGNORES COVER'], ['needs', 'NEEDS LOS']].map(([v, l]) => `<button class="slb2-segb${los === v ? ' on' : ''}" data-act="los" data-id="${_slbEsc(id)}" data-val="${v}">${l}</button>`).join('')}</div>`;
@@ -10183,6 +10185,47 @@
                 ${ids.length ? `<span class="slb2-dim">×</span><input type="number" step="0.1" min="1" value="${_slbEsc(mult)}" data-input="bonusMult" data-id="${_slbEsc(id)}" title="damage multiplier against the status" style="width:56px">` : ''}</div>
                 <div class="slb2-field-h">The combo finisher: ×mult damage against a target carrying the status (not consumed). A damage-only spell may carry it without becoming damage+effect.</div>
             </div>`;
+        }
+        /* THE TARGETING RIDERS (SPELL_LIBRARY_PLAN.md §5.3 TARGET, Phase 3): structured editors for `randomTargets`
+           (count · scope · distinct · × per hit) and `splash` (× · radius · team; the shape is the SPLASH grid below).
+           Unset ⇒ one ＋ button that writes the plan's defaults. Every change rewrites the whole object through
+           _slbSetField (one undo step); the ✕ on the field drops the rider. The engine reads the data.js normalisers,
+           so the editor shows what they make of the row (a non-damage kind is ignored — the lint says riderKind). */
+        const _SLB2_RIDER_DEFAULTS = { randomTargets: { count: 3, scope: 'enemies', distinct: true, mult: 1 }, splash: { mult: 0.5, radius: 1, team: 'enemies' } };
+        function _slb2RiderEditor(id, f, val, d) {
+            const A = (k, v, l, on, title) => `<button class="slb2-segb${on ? ' on' : ''}" data-act="riderSet" data-id="${_slbEsc(id)}" data-rider="${f}" data-key="${k}" data-val="${_slbEsc(String(v))}"${title ? ` title="${_slbEsc(title)}"` : ''}>${l}</button>`;
+            const N = (k, v, min, max, step, title) => `<input type="number" class="slb2-ridernum" min="${min}" max="${max}" step="${step}" value="${_slbEsc(v)}" data-input="riderNum" data-id="${_slbEsc(id)}" data-rider="${f}" data-key="${k}" title="${_slbEsc(title)}">`;
+            const isDmg = (d && (d.kind || 'damage')) === 'damage';
+            if (!val || typeof val !== 'object') {
+                return `<div class="slb2-rider off"><button class="slb2-btn" data-act="riderAdd" data-id="${_slbEsc(id)}" data-rider="${f}"${isDmg ? '' : ' disabled'}>＋ ${f === 'splash' ? 'SPLASH ROUND THE VICTIM' : 'RANDOM TARGETS (NO AIM)'}</button>${isDmg ? '' : `<span class="slb2-warn">damage rows only (kind is ${_slbEsc(d && d.kind || '?')})</span>`}</div>`;
+            }
+            const norm = f === 'splash' ? (typeof spellSplashOf === 'function' ? spellSplashOf(d) : null) : (typeof spellRandomTargetsOf === 'function' ? spellRandomTargetsOf(d) : null);
+            let html = '<div class="slb2-rider">';
+            if (f === 'randomTargets') {
+                const v = Object.assign({}, _SLB2_RIDER_DEFAULTS.randomTargets, val);
+                html += `<span class="slb2-rider-l">shots</span>${N('count', v.count, 1, typeof SPELL_RANDOM_MAX !== 'undefined' ? SPELL_RANDOM_MAX : 8, 1, 'how many victims the cast draws')}
+                    <span class="slb2-rider-l">at</span><div class="slb2-seg">${A('scope', 'enemies', 'ENEMIES', v.scope !== 'units', 'enemies only (the default)')}${A('scope', 'units', 'ANY UNIT', v.scope === 'units', 'allies in reach can be drawn too')}</div>
+                    <div class="slb2-seg">${A('distinct', 'true', 'DISTINCT', v.distinct !== false, 'never the same victim twice — fewer victims ⇒ fewer shots')}${A('distinct', 'false', 'REPEATS', v.distinct === false, 'every shot rolls again — one victim can take them all')}</div>
+                    <span class="slb2-rider-l">× per hit</span>${N('mult', v.mult, 0.1, 3, 0.05, 'damage multiplier on each shot')}`;
+                if (norm) html += `<div class="slb2-field-h">${norm.count} ${norm.distinct ? 'different' : 'rolled'} ${norm.scope === 'units' ? 'units' : 'enemies'} in range ${d.range || 0}, ${Math.round((d.dmg || 0) * norm.mult)} dmg each — up to ${Math.round((d.dmg || 0) * norm.mult * norm.count)} in all.</div>`;
+            } else {
+                const v = Object.assign({}, _SLB2_RIDER_DEFAULTS.splash, val);
+                const drawn = typeof aoeMaskValid === 'function' && aoeMaskValid(v.mask);
+                html += `<span class="slb2-rider-l">×</span>${N('mult', v.mult, 0.05, 2, 0.05, 'the splash damage as a fraction of the hit')}
+                    <span class="slb2-rider-l">radius</span>${drawn ? `<span class="slb2-dim" title="the drawn shape wins — CLEAR it on the grid to use a radius">drawn (${v.mask.length} tiles)</span>` : N('radius', v.radius || 1, 1, 3, 1, '1 = the 8 tiles round the victim')}
+                    <span class="slb2-rider-l">hits</span><div class="slb2-seg">${A('team', 'enemies', 'ENEMIES', v.team !== 'units', 'enemies only (the default)')}${A('team', 'units', 'ANY UNIT', v.team === 'units', 'friendly fire: allies round the victim are splashed too')}</div>`;
+                if (norm) html += `<div class="slb2-field-h">${Math.round((d.dmg || 0) * norm.mult)} dmg (${Math.round(norm.mult * 100)}%) to every ${norm.team === 'units' ? 'unit' : 'enemy'} on ${(typeof splashOffsets === 'function' ? splashOffsets(norm).length : 0)} tiles round the victim — shape on the SPLASH grid below.</div>`;
+            }
+            if (!norm) html += `<div class="slb2-warn">${isDmg ? 'this rider is malformed — the engine ignores it (see the lint)' : `damage rows only — kind "${_slbEsc(d && d.kind || '?')}" ignores it`}</div>`;
+            return html + '</div>';
+        }
+        function _slb2RiderWrite(id, f, patch) {
+            const d = SPELL_BY_ID[id];
+            if (!d) return;
+            const cur = (d[f] && typeof d[f] === 'object') ? d[f] : {};
+            const next = Object.assign({}, _SLB2_RIDER_DEFAULTS[f], cur, patch);
+            if (f === 'splash' && next.mask) delete next.radius;
+            window._slbSetField(id, f, JSON.stringify(next), 'json');
         }
         /* THE FOOTPRINT (§5.4): the 7×7 grid editor — see THE GRID below. A splash rider (Phase 3) gets its own, smaller. */
         function _slb2FootprintHtml(r) {
@@ -11707,6 +11750,8 @@
                 case 'revertField': window._slbRevertField(id, P('data-field')); return;
                 case 'dropField': window._slbSetField(id, P('data-field'), '', 'text'); return;
                 case 'preset': window._slbSetField(id, P('data-field'), P('data-val'), 'num'); return;
+                case 'riderAdd': _slb2RiderWrite(id, P('data-rider'), {}); return;
+                case 'riderSet': { const k = P('data-key'), v = P('data-val'); _slb2RiderWrite(id, P('data-rider'), { [k]: v === 'true' ? true : v === 'false' ? false : v }); return; }
                 case 'tier': { const d = SPELL_BY_ID[id]; if (!d) return; const t = Math.max(1, Math.min(4, ((typeof spellTierOf === 'function') ? spellTierOf(d) : d.tier || 1) + Number(P('data-delta')))); window._slbSetField(id, 'tier', String(t), 'num'); return; }
                 case 'unpinMp': { _slb2Mutate(`${id} · MP unpinned`, () => { _slb2WriteField(id, 'cost', null); _slb2WriteField(id, 'manaCostOverride', null); }); _slb2AfterEdit(id, 'cost'); return; }
                 case 'roleMenu': _slb2RoleMenu(el, id); return;
@@ -11786,6 +11831,7 @@
                 case 'assignRace': if (v) { window._slbAssign(id, 'race', v); } return;
                 case 'statusAdd': if (v) { const f = t.getAttribute('data-field'); const arr = _slb2StatusArr(id, f); arr.push({ id: v, duration: 2 }); _slb2StatusWrite(id, f, arr); } return;
                 case 'bonusAdd': if (v) { const d = SPELL_BY_ID[id]; const ids = d && d.bonusVsStatus ? [].concat(d.bonusVsStatus.status) : []; if (!ids.includes(v)) ids.push(v); _slb2BonusWrite(id, ids, (d && d.bonusVsStatus && d.bonusVsStatus.mult) || 1.5); } return;
+                case 'riderNum': { const k = t.getAttribute('data-key'), n = Number(v); if (!isFinite(n) || n <= 0) { _slbToast('✗ ' + k + ' must be a number above 0', true); return; } _slb2RiderWrite(id, t.getAttribute('data-rider'), { [k]: (k === 'count' || k === 'radius') ? Math.round(n) : n }); return; }
                 case 'bonusMult': { const d = SPELL_BY_ID[id]; const ids = d && d.bonusVsStatus ? [].concat(d.bonusVsStatus.status) : []; const m = Number(v); if (!isFinite(m) || m <= 0) { _slbToast('✗ multiplier must be a number above 0', true); return; } _slb2BonusWrite(id, ids, m); return; }
                 case 'upgradeToggle': { const d = SPELL_BY_ID[id]; const u = t.getAttribute('data-up'); const cur = d && Array.isArray(d.upgrades) ? d.upgrades.slice() : []; const next = t.checked ? (cur.includes(u) ? cur : cur.concat(u)) : cur.filter(x => x !== u); window._slbSetField(id, 'upgrades', JSON.stringify(next), 'json'); return; }
                 case 'importFile': window._slbImportFile(t); return;
@@ -12979,6 +13025,11 @@
 
         function getSpellAoeFootprint(spell, tx, ty, casterUnit) {
             if (!spell) return [];
+            /* THE SPLASH RIDER (SPELL_LIBRARY_PLAN.md §4.7, Phase 3): a damage row's splash lights the victim + the tiles
+               round it — the same tiles battle.js _splashVictims reads (data.js splashTilesAround) */
+            if (spell.splash && typeof spellSplashOf === 'function' && spellSplashOf(spell)) {
+                return [{ x: tx, y: ty }, ...splashTilesAround(spell, tx, ty, bw(), bh())];
+            }
             /* THE MASK (SPELL_LIBRARY_PLAN.md §6.1 #4, Phase 2): a drawn `aoeMask` wins over every radius / shape field.
                Centre = the caster for self-origin rows (and the placed tile for bombs), else the target tile. Mirrors
                battle.js getSpellAoeArea / getCrossArea — the mask branch sits first in all four footprint readers. */
@@ -13282,6 +13333,14 @@
             /* THE MASK (Phase 2): a drawn footprint sizes the wash by its reach and draws its own tiles below */
             const _selfMask = (spell.aoeOriginSelf && typeof aoeMaskValid === 'function' && aoeMaskValid(spell.aoeMask)) ? spell.aoeMask : null;
             if (_selfMask) radius = Math.max(1, aoeMaskBound(_selfMask));
+            /* THE TARGETING RIDERS (Phase 3): a random-target row washes its reach faintly and lights the victims it
+               may draw (the pool) — which ones it hits is the host's roll at the cast */
+            const _rndRow = kind === 'damage' && spell.randomTargets && typeof spellRandomTargetsOf === 'function' && spellRandomTargetsOf(spell);
+            const _rndKeys = new Set();
+            if (_rndRow) {
+                radius = Math.max(1, spell.range || 1);
+                if (typeof window._randomTargetPool === 'function') window._randomTargetPool(unit, spell).forEach(u => _rndKeys.add(u.x + ',' + u.y));
+            }
             if (radius <= 0 && kind !== 'selfHeal' && kind !== 'escape') return;
 
             // 2026-07-17 shape pass: self-centered aoe/cross kinds preview
@@ -13301,6 +13360,8 @@
                 }
             } else if (spell.aoeOriginSelf && (kind === 'aoe' || kind === 'cross' || (_selfMask && kind !== 'selfHeal' && kind !== 'escape'))) {
                 tiles = getSpellAoeFootprint(spell, unit.x, unit.y, unit);
+            } else if (_rndRow && typeof getSpellRangeTiles === 'function') {
+                tiles = getSpellRangeTiles(unit, spell);
             } else {
             for (let dy = -radius; dy <= radius; dy++) {
                 for (let dx = -radius; dx <= radius; dx++) {
@@ -13315,11 +13376,11 @@
 
             if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive()) {
                 const overlayTiles = tiles.map(t => {
-                    const isCenter = (t.x === unit.x && t.y === unit.y);
+                    const isCenter = (t.x === unit.x && t.y === unit.y) || _rndKeys.has(t.x + ',' + t.y);
                     return {
                         x: t.x, y: t.y,
                         color: isHeal ? (isCenter ? 0x33ff33 : 0x22cc22) : (isCenter ? 0xff3333 : 0xcc2222),
-                        opacity: isCenter ? 0.5 : 0.35
+                        opacity: isCenter ? 0.5 : (_rndRow ? 0.18 : 0.35)
                     };
                 });
                 ThreeRenderer.setOverlay('aoe', overlayTiles, 0xff3333, 0.35);
@@ -13800,6 +13861,8 @@
             if (!spell) return;
 
             const affectedTiles = _getIntentAffectedTiles(caster, spell, x, y);
+            // THE SPLASH RIDER (Phase 3): the tiles round the victim forecast dmg × mult and no statuses (battle.js _applySplashDamage)
+            const _iSplash = (spell.splash && typeof spellSplashOf === 'function') ? spellSplashOf(spell) : null;
             const kind = spell.kind;
             // 🜂 Elemental affinity of the aimed spell (ELEMENTAL_TYPES_PLAN
             // P3) — the element is per-spell, the affinity per-target below.
@@ -13824,7 +13887,9 @@
                             });
                             yOff += 14;
                         }
-                        const dmg = _estimateSpellDamage(caster, target, spell);
+                        let dmg = _estimateSpellDamage(caster, target, spell);
+                        const _iSplashed = _iSplash && (at.x !== x || at.y !== y);
+                        if (_iSplashed) dmg = (_iSplash.team === 'units' || isEnemyUnit(caster, target)) ? Math.max(1, Math.round(dmg * _iSplash.mult)) : 0;
                         if (dmg > 0) {
                             const willKill = target.hp <= dmg && target.shield <= 0;
                             badgeStack.push({ html: `−${dmg}`, cls: 'intent-damage', yOff });
@@ -13871,7 +13936,7 @@
                     }
                 }
 
-                const statusLabels = _getStatusPreviewLabels(spell);
+                const statusLabels = (_iSplash && (at.x !== x || at.y !== y)) ? [] : _getStatusPreviewLabels(spell);
                 for (const sl of statusLabels) {
                     const isFriendly = isAllyUnit(target, caster) || target.id === caster.id;
 

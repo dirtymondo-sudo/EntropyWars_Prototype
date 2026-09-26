@@ -9107,6 +9107,25 @@ const DOOR_GUN_SPELLS = [
 ];
 for (const sp of DOOR_GUN_SPELLS) { sp._doorWheel = true; SPELL_BY_ID[sp.id] = sp; }
 
+/* ══ THE TARGETING RIDERS' two example rows (SPELL_LIBRARY_PLAN.md §9 Phase 3, 2026-09-26) ═════════════════════
+   One row per rider, so the library, the rack's badges, the AI and a live cast each have a shipped row to show.
+   They sit on NO race row, job row or family (the lint's grey offPool) and outside SPELL_LIBRARY / RACE_ABILITIES,
+   so no player can equip them until the user keeps one — POOLS in the library puts it on a race or job row, or
+   DELETE drops it. Tier II = 2 SP / 50 MP (the ring ladder). */
+const SPELL_RIDER_EXAMPLES = [
+    { id: 'riderScatterShot', tier: 2, spellType: 'tech', element: 'metal', name: 'Scatter Shot',
+      type: 'damage', cost: 50, range: 4, apCost: 1, kind: 'damage', dmg: 64, damageType: 'physical',
+      projectileOverride: 'proj-bullet',
+      randomTargets: { count: 3, scope: 'enemies', distinct: true, mult: 1 },
+      desc: 'Deals WEAK physical damage to 3 different random enemies in range — no aim.' },
+    { id: 'riderImpactRound', tier: 2, spellType: 'tech', element: 'fire', name: 'Impact Round',
+      type: 'damage', cost: 50, range: 4, apCost: 1, kind: 'damage', dmg: 90, damageType: 'physical',
+      projectileOverride: 'proj-bullet',
+      splash: { mult: 0.5, radius: 1, team: 'enemies' },
+      desc: 'Deals WEAK physical damage to a Single Enemy. Splashes 50% of it onto every enemy adjacent to the target.' },
+];
+for (const sp of SPELL_RIDER_EXAMPLES) SPELL_BY_ID[sp.id] = sp;
+
 /* ── Baked movepool shares (2026-07-26, from the Spell Library editor) ────
    These races borrow spells DEFINED elsewhere (another race's array or the
    job spell library) by id, instead of duplicating the literals. Runs AFTER
@@ -9360,6 +9379,11 @@ function _mfEffectiveTargets(s){
     if (s.tileCount)   E = Math.max(E, 1 + (s.tileCount - 1) * 0.6);
     if (s.blastRadius) E = Math.max(E, s.blastRadius >= 2 ? 3.2 : 2.5);
     if (s.splitCount)  E = Math.max(E, s.splitCount);
+    // THE TARGETING RIDERS (§4.7): random targets = count hits of dmg × mult; a splash = the victim + a third of the
+    // splash tiles hit at × mult (the same "expected bodies in the area" the box radii price above)
+    const _rt = spellRandomTargetsOf(s), _spl = spellSplashOf(s);
+    if (_rt) E = Math.max(E, _rt.count * _rt.mult);
+    if (_spl) E = Math.max(E, 1 + splashOffsets(_spl).length * _spl.mult / 3);
     if (s.kind === 'healAll' || s.healAll || s.manaRestoreAll || s.auraHeal) E = Math.max(E, 3.5);
     if (s.kind === 'summonWeather') E = Math.max(E, 2.6);
     if (s.cross || s.kind === 'cross' || s.crossRadius) E = Math.max(E, s.diamond ? 3.4 : 2.8);
@@ -9377,6 +9401,7 @@ function computeSpellManaCost(s){
     const E = _mfEffectiveTargets(s);
     const k = s.kind;
     const areaDmg = !!(s.aoeRadius || s.tileCount || s.blastRadius || s.cross || s.crossRadius || s.lineWidth || aoeMaskValid(s.aoeMask)
+        || spellRandomTargetsOf(s) || spellSplashOf(s)
         || k === 'summonWeather' || k === 'cross' || k === 'line' || k === 'linePush' || k === 'barrage');
     const areaMult = areaDmg ? 1.3 : 1;
 
@@ -18492,6 +18517,64 @@ function aoeMaskPresetOf(mask) {
     return null;
 }
 
+/* ── THE TARGETING RIDERS (§4.7, Phase 3): two riders on a `damage` row. The engine (battle.js), the AI, the previews
+   and the library all read them through these normalisers, so a hand-typed or half-edited object never reaches a cast.
+   - randomTargets: { count, scope: 'enemies' | 'units', distinct: true, mult: 1 } — no aim; the host picks `count`
+     victims among the legal ones (range, sight, fog) with the seeded stream and resolves one hit each (dmg × mult).
+     distinct (the default, §7 Q9): fewer legal victims ⇒ fewer hits; distinct: false lets one victim be hit again.
+   - splash: { mult: 0.5, radius: 1 | mask: [[dx, dy], …], team: 'enemies' | 'units' } — after the primary hit every
+     unit of `team` on the tiles round the VICTIM (radius = a (2r+1)² box, or the drawn mask; the victim is the origin
+     and is never hit twice) takes dmg × mult. Enemies only by default (§7 Q10); the caster is never splashed. ── */
+const SPELL_RIDER_KINDS = ['damage'];
+const SPELL_RANDOM_MAX = 8;
+function spellRandomTargetsOf(d) {
+    const r = d && d.randomTargets;
+    if (!r || typeof r !== 'object' || !SPELL_RIDER_KINDS.includes(d.kind || 'damage')) return null;
+    const count = Math.max(1, Math.min(SPELL_RANDOM_MAX, Math.round(Number(r.count) || 0)));
+    if (!(Number(r.count) >= 1)) return null;
+    const mult = (typeof r.mult === 'number' && isFinite(r.mult) && r.mult > 0) ? r.mult : 1;
+    return { count, scope: r.scope === 'units' ? 'units' : 'enemies', distinct: r.distinct !== false, mult };
+}
+function spellSplashOf(d) {
+    const s = d && d.splash;
+    if (!s || typeof s !== 'object' || !SPELL_RIDER_KINDS.includes(d.kind || 'damage')) return null;
+    const mask = aoeMaskValid(s.mask) ? s.mask : null;
+    const radius = mask ? aoeMaskBound(mask) : Math.max(0, Math.min(3, Math.round(Number(s.radius) || 0)));
+    if (!mask && radius < 1) return null;
+    const mult = (typeof s.mult === 'number' && isFinite(s.mult) && s.mult > 0) ? s.mult : 0.5;
+    return { mult, radius, mask, team: s.team === 'units' ? 'units' : 'enemies' };
+}
+/* The splash's offsets round the victim — the origin [0, 0] is never in the list (the victim takes the primary hit). */
+function splashOffsets(d) {
+    const sp = (d && d.mult !== undefined && d.team !== undefined) ? d : spellSplashOf(d);
+    if (!sp) return [];
+    const out = [], seen = new Set();
+    const add = (x, y) => { const k = x + ',' + y; if ((x || y) && !seen.has(k)) { seen.add(k); out.push([x, y]); } };
+    if (sp.mask) for (const o of sp.mask) add(o[0] | 0, o[1] | 0);
+    else for (let y = -sp.radius; y <= sp.radius; y++) for (let x = -sp.radius; x <= sp.radius; x++) add(x, y);
+    return out;
+}
+/* The splash's tiles round (cx, cy), clipped to a w×h board when given. */
+function splashTilesAround(d, cx, cy, w, h) {
+    return splashOffsets(d).map(o => ({ x: cx + o[0], y: cy + o[1] }))
+        .filter(t => typeof w !== 'number' || (t.x >= 0 && t.y >= 0 && t.x < w && t.y < h));
+}
+/* The random pick, pure: `count` entries of `pool` drawn with rng() (one draw per pick — the seeded stream's
+   discipline). distinct ⇒ without replacement (a pool smaller than count gives fewer picks); else with replacement. */
+function pickRandomTargets(pool, count, distinct, rng) {
+    const out = [];
+    if (!Array.isArray(pool) || !pool.length || !(count >= 1)) return out;
+    const left = pool.slice();
+    for (let i = 0; i < count; i++) {
+        if (distinct && !left.length) break;
+        const src = distinct ? left : pool;
+        const idx = Math.min(src.length - 1, Math.floor(rng() * src.length));
+        out.push(src[idx]);
+        if (distinct) left.splice(idx, 1);
+    }
+    return out;
+}
+
 /* ── THE STAMP: every live row gets the Phase 0 fields it lacks — `tier` (numeric; the derived tier when the row has
    none), `role` (re-derived unless roleOverride pins it), `families` (its element's), `upgrades` ([]). Runs at boot
    BEFORE EWSpellMods captures its pristine clones (so the fields are not "edits") and again after every apply() (an
@@ -18574,6 +18657,13 @@ function spellLint(d, ctx) {
             if ((has('aoeRadius') && d.aoeRadius !== b) || (has('crossRadius') && d.crossRadius !== b) || (has('blastRadius') && d.blastRadius !== b))
                 hits.push({ rule: 'maskVsRadius', level: 'amber', text: 'the radius field differs from the mask\'s reach ' + b + ' — the mask wins; the grid editor sets it to ' + b });
         }
+    }
+    // THE TARGETING RIDERS (§4.7, Phase 3): a `damage` row's riders; any other kind never reads them
+    for (const rk of ['randomTargets', 'splash']) {
+        if (!has(rk) || d[rk] === null) continue;
+        if (!SPELL_RIDER_KINDS.includes(d.kind || 'damage')) hits.push({ rule: 'riderKind', level: 'red', text: `${rk} rides a damage row only (kind is ${d.kind}) — the cast ignores it` });
+        else if (!(rk === 'randomTargets' ? spellRandomTargetsOf(d) : spellSplashOf(d)))
+            hits.push({ rule: 'riderInvalid', level: 'red', text: rk === 'randomTargets' ? 'randomTargets needs { count ≥ 1 } (scope, distinct, mult optional)' : 'splash needs { radius 1–3 } or a drawn mask (mult, team optional)' });
     }
     // THE LOOK (§4.6): one animation pick per row — the reader takes animVerb, then animSlot, then animClip
     const picks = ['animVerb', 'animSlot', 'animClip'].filter(has);
@@ -19067,7 +19157,14 @@ function describeSpell(def) {
     // ── main clause per kind ──
     const dmgClause = tgt => `Deals ${tier || 'MEDIUM'} ${dmgType} damage to ${tgt}.`;
     switch (kind) {
-        case 'damage':      S.push(dmgClause('a Single Enemy')); break;
+        case 'damage': {
+            const _rt = spellRandomTargetsOf(d);   // THE TARGETING RIDERS (§4.7): no aim, N victims
+            if (_rt) S.push(`Deals ${tier || 'MEDIUM'} ${dmgType} damage ${_rt.distinct ? `to ${_rt.count} different random ${_rt.scope === 'units' ? 'units' : 'enemies'}` : `${_rt.count} times, each at a random ${_rt.scope === 'units' ? 'unit' : 'enemy'}`} in range — no aim.`);
+            else S.push(dmgClause('a Single Enemy'));
+            const _sp = spellSplashOf(d);
+            if (_sp) S.push(`Splashes ${Math.round(_sp.mult * 100)}% of it onto ${_sp.team === 'units' ? 'every unit' : 'every enemy'} ${_sp.mask ? 'in a ' + (_DSC_MASK_LABELS[aoeMaskPresetOf(_sp.mask)] || aoeMaskPresetOf(_sp.mask) || 'drawn') + ' shape round' : (_sp.radius === 1 ? 'adjacent to' : 'within ' + _sp.radius + ' tiles of')} the target.`);
+            break;
+        }
         case 'multiHit':    S.push(`Deals ${tier || 'MEDIUM'} ${dmgType} damage to a Single Enemy across ${hits ? hits.length : 2} hits.`); break;
         case 'ricochet':    S.push(`Deals ${tier || 'WEAK'} ${dmgType} damage to a Single Enemy, then bounces to nearby enemies.`); break;
         case 'lifeDrain':   S.push(dmgClause('a Single Enemy')); break;

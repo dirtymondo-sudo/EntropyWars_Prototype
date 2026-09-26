@@ -29,4 +29,11 @@ console.log(JSON.stringify({ registry: 'loadGameData().SPELL_BY_ID', spellCount:
     limitation: 'Direct dispatch source inventory only. Conditions, spell-ID utility subcases, caller gates, legality, balance and engine effects require separate validation. engineKindMention is textual evidence only.',
     missingDirectScorer: rows.filter(r => !r.directScorer).map(r => r.kind),
     missingDirectTargetPicker: rows.filter(r => !r.directTargetPicker).map(r => r.kind),
+    /* THE TARGETING RIDERS (SPELL_LIBRARY_PLAN §6.2, Phase 3): rows carrying randomTargets / splash, and whether
+       ai.js's scorer and target picker read each rider (the data.js normalisers, through _riderRandomOf / _riderSplashOf) */
+    riders: { random: spells.filter(s => s.randomTargets).map(s => s.id), splash: spells.filter(s => s.splash).map(s => s.id),
+        randomScored: /_riderRandomOf\(spell\)\) return target \? _randomTargetsScore/.test(source),
+        randomTargeted: /_riderRandomOf\(spell\)\) return _riderEnemiesInReach/.test(source),
+        splashScored: /hit\.val \+ _splashBonus\(/.test(source), splashTargeted: /_riderSplashOf\(spell\)\) \{\s*const worth/.test(source),
+        engineRandom: battle.includes('spellRandomTargetsOf(spell)'), engineSplash: battle.includes('_applySplashDamage(unit, spell, target, spellPower)') },
     wideBeams: spells.filter(s => ['line', 'linePush'].includes(s.kind) && s.lineWidth > 1).map(s => ({id:s.id,kind:s.kind,lineWidth:s.lineWidth,range:s.range})), rows }, null, 2));

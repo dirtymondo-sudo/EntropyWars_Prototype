@@ -2321,6 +2321,29 @@
             return _origPlayBasicAttackShot(unit, target, delivery, flyMs);
         };
 
+        /* THE TARGETING RIDERS (SPELL_LIBRARY_PLAN §6.2, Phase 3): the extra shots of a random-target cast and the
+           splash ring round a victim run host-side (battle.js playSpellRiderFx). The picks are the host's (seeded
+           stream) — the guest never re-rolls: it replays the presentation by ids here and gets the damage by
+           state-sync. Fog: a shot shows when either end is visible, a splash when its centre is. */
+        if (typeof playSpellRiderFx === 'function') {
+            const _origPlaySpellRiderFx = playSpellRiderFx;
+            playSpellRiderFx = function(kind, p) {
+                var _netOnR = window._NET && window._NET.online;
+                if ((_netOnR && _isHost() || _ewRecOn()) && p && !p.remote) {
+                    _emit('relay', {
+                        type: 'rider-fx', kind: kind,
+                        casterId: p.casterId != null ? p.casterId : null,
+                        targetId: p.targetId != null ? p.targetId : null,
+                        spellId: p.spellId || null,
+                        x: p.x != null ? p.x : null, y: p.y != null ? p.y : null,
+                        r: p.r || 0, flyMs: p.flyMs || 0
+                    });
+                }
+                return _origPlaySpellRiderFx(kind, p);
+            };
+            window.playSpellRiderFx = playSpellRiderFx;
+        }
+
         /* 🎱 Knockback / shove / drag animations (2026-07-26 bounce pass).
            Every push, pull, hurl and rebound funnels through these two — they
            were never relayed, so the guest just saw bodies teleport on the
@@ -4223,6 +4246,26 @@
                                 if (data.opts.fallbackMs > 0) _cto.fallbackMs = data.opts.fallbackMs;
                                 _ctFn(_ctU, data.tx, data.ty, _cto);
                             }
+                        }
+                    }
+
+                    if (data.type === 'rider-fx' && _ewMirrorView() && typeof window.playSpellRiderFx === 'function') {
+                        var _rfShow = true;
+                        if (st && st.fogOfWar && typeof window._isTileVisibleToViewer === 'function') {
+                            var _rfFog = window._isTileVisibleToViewer;
+                            if (data.kind === 'shot') {
+                                var _rfC = st.units ? st.units.find(function(u) { return u.id === data.casterId; }) : null;
+                                var _rfT = st.units ? st.units.find(function(u) { return u.id === data.targetId; }) : null;
+                                _rfShow = !!((_rfC && _rfFog(_rfC.x, _rfC.y)) || (_rfT && _rfFog(_rfT.x, _rfT.y)));
+                            } else {
+                                _rfShow = data.x != null && _rfFog(data.x, data.y);
+                            }
+                        }
+                        if (_rfShow) {
+                            window.playSpellRiderFx(data.kind, {
+                                remote: true, casterId: data.casterId, targetId: data.targetId, spellId: data.spellId,
+                                x: data.x, y: data.y, r: data.r, flyMs: data.flyMs
+                            });
                         }
                     }
 

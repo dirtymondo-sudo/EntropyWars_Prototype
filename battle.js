@@ -999,8 +999,13 @@
         /* THE DOOR WHEEL (DOOR_GUN_PLAN §3.5, 2026-09-25): SWING DOOR is a `damage` row aimed at a TILE — the
            hinge, an empty tile beside an enemy — so its meta is a tile aim that still reads as an attack. */
         const _HINGE_KIND_META = { minRange: 1, offensive: true, tileTargeted: true, breaksStealth: true, noStrikeLeap: true };
+        /* THE TARGETING RIDERS (SPELL_LIBRARY_PLAN §4.7 / §6.2, Phase 3): a `damage` row carrying `randomTargets` needs no
+           aim — it is cast on the caster (selfCast) and still reads as an attack (offensive, breaks stealth). The victims
+           are the legal targets of the row WITHOUT the rider (_riderBaseDef), picked host-side in doSpell. */
+        const _RANDOM_KIND_META = { minRange: 0, offensive: true, selfCast: true, breaksStealth: true, noStrikeLeap: true };
         function _kindMeta(spell) {
             if (spell && spell.hinge) return _HINGE_KIND_META;
+            if (spell && spell.randomTargets && typeof spellRandomTargetsOf === 'function' && spellRandomTargetsOf(spell)) return _RANDOM_KIND_META;
             return SPELL_KIND_META[spell?.kind] || { minRange: 1, offensive: true };
         }
 
@@ -4985,6 +4990,131 @@
                 opts.floor != null ? opts.floor : 32, v > 0 ? engineRng() : 0);
         }
 
+        /* ── THE TARGETING RIDERS (SPELL_LIBRARY_PLAN §4.7 / §6.2, Phase 3) ─────────────────────────────────────
+           randomTargets: the row minus its rider is an ordinary single-target damage row — its legal targets (range,
+           3D reach, sight, fog, taunt, per-target usability: _getSpellValidTargets) are the POOL; doSpell draws the
+           victims from it with engineRng (the host's seeded stream, one draw per pick) and resolves one hit each.
+           splash: after the primary hit, _applySplashDamage hits the units round the VICTIM. The guest never re-rolls:
+           damage arrives by state-sync and the extra shots / the splash ring by the 'rider-fx' relay (online.js). */
+        function _riderBaseDef(spell, anyTeam) {
+            const d = Object.assign({}, spell);
+            delete d.randomTargets;
+            if (anyTeam) d._riderAnyTeam = true;
+            return d;
+        }
+        function _randomTargetPool(unit, spell, rnd) {
+            if (!unit || !spell) return [];
+            rnd = rnd || spellRandomTargetsOf(spell);
+            if (!rnd) return [];
+            const out = [];
+            for (const t of _getSpellValidTargets(unit, _riderBaseDef(spell, rnd.scope === 'units'))) {
+                const u = t.unit;
+                if (!u || u.dead || u._dying || u.id === unit.id) continue;
+                if (rnd.scope !== 'units' && !isEnemyUnit(u, unit)) continue;
+                if (isEnemyUnit(u, unit) && typeof unitCryptidHiddenFrom === 'function' && unitCryptidHiddenFrom(u, unit.player)) continue;
+                if (typeof isUnitRealmShieldedFrom === 'function' && isUnitRealmShieldedFrom(u, unit)) continue;
+                if (!out.includes(u)) out.push(u);
+            }
+            return out;
+        }
+        window._randomTargetPool = _randomTargetPool;
+        /* The victims a splash would hit round (cx, cy): `team` units on the splash tiles — never the victim, never the caster. */
+        function _splashVictims(unit, spell, victim, cx, cy) {
+            const sp = spellSplashOf(spell);
+            if (!sp || !unit) return [];
+            const ox = cx != null ? cx : victim.x, oy = cy != null ? cy : victim.y;
+            const keys = new Set(splashTilesAround(sp, ox, oy, bw(), bh()).map(t => t.x + ',' + t.y));
+            return state.units.filter(u => !u.dead && !u._dying && keys.has(u.x + ',' + u.y)
+                && u.id !== unit.id && (!victim || u.id !== victim.id)
+                && (sp.team === 'units' || isEnemyUnit(u, unit))
+                && !(typeof isUnitRealmShieldedFrom === 'function' && isUnitRealmShieldedFrom(u, unit)));
+        }
+        window._splashVictims = _splashVictims;
+        function _applySplashDamage(unit, spell, victim, spellPower, cx, cy) {
+            const sp = spellSplashOf(spell);
+            if (!sp || !unit || !victim) return 0;
+            const ox = cx != null ? cx : victim.x, oy = cy != null ? cy : victim.y;
+            playSpellRiderFx('splash', { casterId: unit.id, spellId: spell.id, x: ox, y: oy, r: Math.max(1, sp.radius) });
+            const hit = _splashVictims(unit, spell, victim, ox, oy);
+            if (!hit.length) return 0;
+            // one variance draw per splash (only when something is splashed), × mult, floor 1
+            const dmg = Math.max(1, Math.round(computeSpellBase(spell, spellPower, { floor: 16 }) * sp.mult));
+            for (const u of hit) {
+                applyDamageToUnit(u, dmg, `${spell.name} splashes `, {
+                    sourceUnit: unit,
+                    allowMarkBonus: false,
+                    ignoreArmor: !!spell.ignoreArmor,
+                    damageType: spell.damageType || 'magic',
+                    spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell),
+                    element: classifySpellElement(spell)
+                });
+            }
+            addLog(`💥 ${spell.name} splashes ${hit.length} ${hit.length === 1 ? 'unit' : 'units'} round ${unitDisplayName(victim)}.`);
+            return hit.length;
+        }
+        /* The riders' extra presentation, one door for host and guest: 'shot' = a projectile from the caster to a
+           random victim (casterId, targetId, spellId, flyMs); 'splash' = the burst ring at the victim (x, y, r,
+           spellId). online.js relays every host call as 'rider-fx' and the guest replays it. */
+        function playSpellRiderFx(kind, p) {
+            if (!p || state.phase !== 'battle' || _skipVisuals()) return;
+            const caster = p.casterId != null ? state.units.find(u => u.id === p.casterId) : null;
+            const spell = (caster && [...(caster.spells || []), ...(caster._raceAbilities || [])].find(s => s && s.id === p.spellId))
+                || (typeof SPELL_BY_ID !== 'undefined' ? SPELL_BY_ID[p.spellId] : null) || null;
+            if (kind === 'shot') {
+                const tgt = state.units.find(u => u.id === p.targetId);
+                if (!caster || !tgt) return;
+                playProjectile(caster.x, caster.y, tgt.x, tgt.y, 'damage', p.flyMs || actionMs(360),
+                    spell ? spell.spellType : null, (spell && spell.projectileOverride) || null, spell);
+            } else if (kind === 'splash') {
+                const VFX = window.ThreeVFXEffects;
+                if (spell && VFX && VFX.hasMapping && VFX.hasMapping(spell.id, 'impact')) VFX.fire('impact', spell.id, { tx: p.x, ty: p.y });
+                playAoeRing(p.x, p.y, p.r || 1, spell ? spell.spellType : null, actionMs(450));
+            }
+        }
+        window.playSpellRiderFx = playSpellRiderFx;
+        /* randomTargets' cast: the caster's clip + camera + first shot through executeSpellAnimation (the first victim),
+           then one volley per further pick, `gap` apart. Returns the completion delay. */
+        function _castRandomTargets(unit, spell, rnd, picks, effectiveSpellCost, spellPower, finishAction, spellApCost) {
+            const hitSpell = rnd.mult !== 1 ? Object.assign({}, spell, { dmg: Math.round((spell.dmg || 0) * rnd.mult) }) : spell;
+            const first = picks[0];
+            const rest = picks.slice(1);
+            const gap = actionMs(260), fly = actionMs(360);
+            const _stage = _spellStageInfo(spell);
+            const _pace = _STAGE_PACE[_stage.weight] || _STAGE_PACE.standard;
+            const _others = rest.filter((u, i) => u !== first && rest.indexOf(u) === i);
+            let firstImpact = 0;
+            const completion = executeSpellAnimation(unit, hitSpell, first, { x: first.x, y: first.y },
+                effectiveSpellCost, spellPower, finishAction, spellApCost, {
+                    cameraOpts: {
+                        sourceHold: Math.round(1250 * _pace.source),
+                        targetHold: Math.round(1000 * _pace.target) + rest.length * gap,
+                        extraTargets: _others.length ? _others : undefined,
+                        frameTiles: _others.length ? [{ x: first.x, y: first.y }, ..._others.map(u => ({ x: u.x, y: u.y }))] : undefined
+                    },
+                    timingOverride: (t) => {
+                        firstImpact = t.impactDelay;
+                        return { completionDelay: Math.max(t.completionDelay, t.impactDelay + rest.length * gap + fly + actionMs(420)) };
+                    }
+                });
+            rest.forEach((victim, i) => {
+                const at = firstImpact + (i + 1) * gap;
+                window.setTimeout(() => {
+                    if (state.phase !== 'battle' || !victim || victim.dead || unit.dead) return;
+                    playSpellRiderFx('shot', { casterId: unit.id, targetId: victim.id, spellId: spell.id, flyMs: fly });
+                    playSfx(spellLaunchSfx(spell));
+                    window.setTimeout(() => {
+                        if (state.phase !== 'battle' || victim.dead) return;
+                        _applyDamageSpellHit(unit, hitSpell, victim, spellPower, 'none');
+                        markDirty('board', 'hud');
+                        renderIfDirty();
+                    }, fly);
+                }, at);
+            });
+            const names = picks.map(u => unitDisplayName(u));
+            addLog(`🎲 ${unitDisplayName(unit)} casts ${spell.name} — ${picks.length} ${picks.length === 1 ? 'shot' : 'shots'}: ${names.join(', ')}.`);
+            return completion;
+        }
+
         function _applyDamageSpellHit(unit, spell, target, spellPower, travelType) {
             const _spellEl = classifySpellElement(spell);
             if (spell.chainProfile?.length) {
@@ -5082,6 +5212,9 @@
                 if (target.dead && _activeCinematic?.showKO) _activeCinematic.showKO();
                 _applyOnKillRiders(unit, target, spell);
             }
+
+            // THE SPLASH RIDER (§4.7, Phase 3): the units round the victim, before any post-effect moves it
+            if (spell.splash && target) _applySplashDamage(unit, spell, target, spellPower);
 
             // Post-effects (chargeToTarget, swap, selfStun)
             _runPostEffects(unit, spell, target);
@@ -6862,6 +6995,12 @@
             // Self-cast / zero-range abilities (Howl, Reassemble, Siege Mode, …)
             // target the caster's own tile; without this they'd produce an empty
             // range set and any confirm/hover path would wrongly say "out of range".
+            /* THE TARGETING RIDERS: a random-target row is cast on the caster, but its REACH (where the victims may
+               stand) is the row's own range disc — the caster's tile first, so the self-cast click still lands */
+            if (unit && spell && spell.randomTargets && spell.kind === 'damage' && spellRandomTargetsOf(spell)) {
+                const _rd = getSpellRangeTiles(unit, _riderBaseDef(spell)).filter(t => t.x !== unit.x || t.y !== unit.y);
+                return [{ x: unit.x, y: unit.y }, ..._rd];
+            }
             if (unit && spell && isSpellSelfCast(spell)) return [{ x: unit.x, y: unit.y }];
             // Beams use the capped 8-ray footprint, not the Manhattan disc.
             // (Before the range guard: a rangeless line def still beams 4 tiles.)
@@ -35693,6 +35832,8 @@
             // cast through. Plain barrages keep the blanket pass (their radius is
             // the caster's problem, and casting into empty air is a player choice).
             if (kind === 'barrage' && spell.hitsWetOnly) return _barrageTargets(unit, spell).length > 0;
+            // THE TARGETING RIDERS: a random-target row is lit exactly when its pool holds a victim
+            if (spell.randomTargets && kind === 'damage' && spellRandomTargetsOf(spell)) return _randomTargetPool(unit, spell).length > 0;
 
             if (['healAll', 'manaRestoreAll', 'warCry', 'scan', 'barrage', 'remoteView', 'selfHeal', 'escape'].includes(kind)) return true;
 
@@ -50692,7 +50833,7 @@
                     if (_tcTeam === 'ally' ? !isAllyUnit(u, unit) : !isEnemyUnit(u, unit)) continue;
                     if (_tcPick && spell.pairRange && (Math.abs(u.x - _tcPick.x) + Math.abs(u.y - _tcPick.y)) > spell.pairRange) continue;
                 } else {
-                    if (isOffensive && isAllyUnit(u, unit)) continue;
+                    if (isOffensive && isAllyUnit(u, unit) && !(spell._riderAnyTeam && u.id !== unit.id)) continue;   // a random-target row's scope 'units' pool (_randomTargetPool)
                     if (!isOffensive && _skm.allyOnly && !isAllyUnit(u, unit)) continue;
                 }
                 // Tile-targeted AoE/zone spells: only suggest units the spell
@@ -61524,7 +61665,23 @@
                 renderIfDirty();
             };
 
-            if (spell.kind === 'damage' || spell.kind === 'tackle') {
+            const _rndRider = spell.kind === 'damage' ? spellRandomTargetsOf(spell) : null;
+            if (_rndRider) {
+                /* THE TARGETING RIDERS (§4.7 / §6.2, Phase 3): no aim — the host draws the victims from the legal pool
+                   with the seeded stream; fewer legal victims than `count` ⇒ fewer shots (distinct). */
+                const _rndPool = _randomTargetPool(unit, spell, _rndRider);
+                if (!_rndPool.length) {
+                    if (!_silentReject) {
+                        addLog(`${spell.name}: no ${_rndRider.scope === 'units' ? 'unit' : 'enemy'} in range and in sight to hit.`);
+                        playErrorSfx();
+                    }
+                    return 0;
+                }
+                const _rndPicks = pickRandomTargets(_rndPool, _rndRider.count, _rndRider.distinct, engineRng);
+                panelFocusTarget = _rndPicks[0];
+                completionDelay = _castRandomTargets(unit, spell, _rndRider, _rndPicks,
+                    effectiveSpellCost, spellPower, finishAction, spellApCost);
+            } else if (spell.kind === 'damage' || spell.kind === 'tackle') {
                 // Phase 4 migration: damage kind uses unified pipeline.
                 // `tackle` (Phase 5 wave A) is a charge-to-target damage spell
                 // whose carry + collision live in _runPostEffects.

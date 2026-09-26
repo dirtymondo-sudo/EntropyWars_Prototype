@@ -5004,6 +5004,11 @@ input.slb2-ins-name:hover, input.slb2-ins-name:focus { border-color: rgba(255,21
 .slb2-grid-origin { font: 10px 'DotGothic16', monospace; color: #8d84a8; margin-left: 6px; display: inline-flex; gap: 3px; align-items: center; }
 .slb2-maskro { font-size: 11px; color: #8fd7c8; }
 .slb2-warn { color: #f0b35a; }
+/* THE TARGETING RIDERS (Phase 3): the randomTargets / splash editors in the TARGET tab's RIDERS group */
+.slb2-rider { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; width: 100%; }
+.slb2-rider .slb2-field-h, .slb2-rider .slb2-warn { flex-basis: 100%; }
+.slb2-rider-l { font-size: 11px; color: rgba(220,210,240,0.6); text-transform: uppercase; letter-spacing: 0.06em; }
+.slb2-ridernum { width: 56px; }
 .slb2-maskro.bad { color: #ff8a8a; }
 /* ── THE LOOK (§5.5, Phase 2): the stage + the animation list ── */
 .slb2-stage-bar { display: flex; gap: 5px; align-items: center; flex-wrap: wrap; padding: 4px 0 6px; }

@@ -15,13 +15,15 @@ function setup(id) {
     const events = [], timers = [], fallback = [];
     const g = { state: { units: [unit, enemy, ally] }, STATUS_DEFS: data.STATUS_DEFS,
         bw: () => 8, bh: () => 8, unitHasStatus: (u, s) => !!u.status?.[s],
-        getEffectiveSpellRange: (u, s) => s.range, getEffectiveRange: () => 1,
+        getEffectiveSpellRange: (u, s) => s.range, getEffectiveRange: () => 1, getUnitStandingHeight: u => u.z || 0,
         isRangeBlockedByTerrain: () => false,
         TargetQuery: { apCost: s => s.apCost, canAfford: () => true },
         queueComputerAction: fn => fn(), doSpell: (u, x, y, z) => { events.push({ name: g.state.selectedTool, x, y, z }); return 650; },
         finishComputerAction: () => events.push('finished'), maybeTriggerComputerTurn: () => events.push('retry') };
     const ctx = { window: { GAME: g, EW_AI_DEBUG: true, setTimeout: (fn, ms) => timers.push({ fn, ms }) },
-        console: { log: (...args) => { if (String(args[0]).includes('generic fallback')) fallback.push(args); }, warn() {} } };
+        console: { log: (...args) => { if (String(args[0]).includes('generic fallback')) fallback.push(args); }, warn() {} },
+        // THE TARGETING RIDERS (Phase 3): ai.js reads data.js's rider normalisers as globals
+        spellRandomTargetsOf: data.spellRandomTargetsOf, spellSplashOf: data.spellSplashOf, splashOffsets: data.splashOffsets };
     vm.createContext(ctx);
     const end = source.lastIndexOf('})();');
     vm.runInContext(source.slice(0, end) + `
@@ -107,4 +109,37 @@ test('legacy utility Plunder and Mimic retain their own dispatch', () => {
     assert.equal(h.ai.findSpellTarget(h.unit, s, h.v), h.enemy);
     h.enemy.hourglasses = 1; assert.equal(h.ai.scoreSpell(h.unit, s, h.enemy, h.v), 150);
     assert.equal(h.ai.findSpellTarget(h.unit, { id: 'mimic', kind: 'utility' }, h.v), null);
+});
+
+/* THE TARGETING RIDERS (SPELL_LIBRARY_PLAN §6.2, Phase 3): the two shipped example rows */
+test('Scatter Shot (randomTargets) is cast on the caster once an enemy is in reach, worth hits × the mean hit', () => {
+    const h = setup('riderScatterShot');
+    assert.equal(h.ai.findSpellTarget(h.unit, h.spell, h.v), h.unit);
+    assert.equal(h.ai.scoreSpell(h.unit, h.spell, h.unit, h.v), 60);   // one enemy in reach, distinct ⇒ one hit
+    const e2 = { ...h.enemy, id: 'e2', x: 5 }, e3 = { ...h.enemy, id: 'e3', x: 3, y: 1 }, e4 = { ...h.enemy, id: 'e4', x: 1, y: 3 };
+    h.v.visibleEnemies.push(e2, e3, e4);
+    assert.equal(h.ai.scoreSpell(h.unit, h.spell, h.unit, h.v), 180);  // four in reach, count 3 ⇒ three hits
+    const actions = candidates(h); assert.equal(actions.length, 1); assert.equal(actions[0].target, h.unit);
+    h.ai.executeAction(h.unit, actions[0], h.v);
+    assert.equal(h.events[0].name, h.spell.name); assert.equal(h.events[0].x, h.unit.x); assert.equal(h.events[0].y, h.unit.y);
+    assert.equal(h.fallback.length, 0);
+});
+test('Scatter Shot has no target and no value with nobody in reach', () => {
+    const h = setup('riderScatterShot');
+    h.enemy.x = 7; h.enemy.y = 7;
+    assert.equal(h.ai.findSpellTarget(h.unit, h.spell, h.v), null);
+    assert.equal(h.ai.scoreSpell(h.unit, h.spell, null, h.v), 0);
+    assert.equal(candidates(h).length, 0);
+    h.enemy.x = 4; h.enemy.y = 3; h.enemy.protected = true; assert.equal(candidates(h).length, 0);
+});
+test('Impact Round (splash) prefers the victim with enemies round it and values the splash', () => {
+    const h = setup('riderImpactRound');
+    const lone = { ...h.enemy, id: 'lone', x: 3, y: 6 };
+    const packA = { ...h.enemy, id: 'packA', x: 5, y: 3 }, packB = { ...h.enemy, id: 'packB', x: 5, y: 2 };
+    h.v.visibleEnemies = [lone, packA, packB];
+    const t = h.ai.findSpellTarget(h.unit, h.spell, h.v);
+    assert.ok(t.id === 'packA' || t.id === 'packB', 'a victim with a neighbour');
+    assert.equal(h.ai.scoreSpell(h.unit, h.spell, lone, h.v), 60);        // nobody round it
+    assert.equal(h.ai.scoreSpell(h.unit, h.spell, packA, h.v), 120);      // + packB (the stub scores every hit a flat 60, so the × 0.5 is not visible here)
+    assert.equal(h.fallback.length, 0);
 });

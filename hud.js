@@ -3469,6 +3469,13 @@ const _HRLG_TYPE_PAD = '2px 7px';
 function _hrlgSpellShape(sp) {
   if (!sp) return null;
   const k = sp.kind || '';
+  // THE SPLASH RIDER (SPELL_LIBRARY_PLAN.md §4.7, Phase 3): the victim (centre) + the tiles the splash reaches
+  const _spl = (sp.splash && typeof spellSplashOf === 'function') ? spellSplashOf(sp) : null;
+  if (_spl) {
+    const cells = new Set(['0,0']);
+    splashOffsets(_spl).forEach(o => cells.add(o[0] + ',' + o[1]));
+    return { kind: 'mask', r: Math.max(1, _spl.radius), cells, label: 'Splash ' + Math.round(_spl.mult * 100) + '% round the target' };
+  }
   // THE MASK (SPELL_LIBRARY_PLAN.md §5.4, Phase 1): a drawn `aoeMask` wins over the radius fields. The
   // card caps it at 5×5 (r 2); the library's 7×7 asks for r 3 through _hrlgShapeTiles(shape, { max: 3 }).
   if (Array.isArray(sp.aoeMask) && sp.aoeMask.length && (typeof aoeMaskValid !== 'function' || aoeMaskValid(sp.aoeMask))) {
@@ -3665,7 +3672,25 @@ function _hrlgSpellBadges(sp, cat, quick) {
   }
   // the statuses it applies + the status it punishes
   for (const bd of _hrlgStatusBadges(sp)) badges.push(bd);
+  // THE TARGETING RIDERS (SPELL_LIBRARY_PLAN.md §4.7, Phase 3): random victims · a splash round the target
+  for (const bd of _hrlgRiderBadges(sp)) badges.push(bd);
   return badges;
+}
+function _hrlgRiderBadges(sp) {
+  const out = [];
+  const rt = (sp && sp.randomTargets && typeof spellRandomTargetsOf === 'function') ? spellRandomTargetsOf(sp) : null;
+  const spl = (sp && sp.splash && typeof spellSplashOf === 'function') ? spellSplashOf(sp) : null;
+  if (rt) out.push({
+    label: '🎲×' + rt.count,
+    style: Object.assign(typeBadgeStyle('#c9a2ff', { fontSize: 12, padding: '0 5px' }), { lineHeight: '18px' }),
+    title: 'Random targets — no aim: hits ' + rt.count + (rt.distinct ? ' different' : '') + ' random ' + (rt.scope === 'units' ? 'units' : 'enemies') + ' in range' + (rt.mult !== 1 ? ' at ×' + rt.mult + ' damage each' : ''),
+  });
+  if (spl) out.push({
+    label: 'SPL ' + Math.round(spl.mult * 100) + '%',
+    style: Object.assign(typeBadgeStyle('#ff9d5c', { fontSize: 11, padding: '0 5px' }), { lineHeight: '18px' }),
+    title: 'Splash — ' + Math.round(spl.mult * 100) + '% of the hit lands on every ' + (spl.team === 'units' ? 'unit' : 'enemy') + (spl.mask ? ' in the drawn shape' : spl.radius === 1 ? ' adjacent to' : ' within ' + spl.radius + ' tiles of') + ' the target',
+  });
+  return out;
 }
 
 // A combo is a two-unit pact — BOTH component types ride the row (the pair

@@ -908,3 +908,26 @@ change under `WEATHER_REGISTRY`).
   library GLBs from the repo so RAW CLIPS fills; the race model is R2-only, so the stage reads `ew-cv-fail` in the
   sandbox (the labels work; live it shows the race). Not yet: random targets / splash (Phase 3, next), the passive
   slot rule in the rack (4), upgrades in the rack (5).
+- 2026-09-26 — **Phase 3 shipped** (thread "Spell library Phase 3", `spell-library/ENTROPY_WARS_SPELL_LIBRARY_3.zip`,
+  token `20260926-spell-library-04-cors`). THE TARGETING: `randomTargets` and `splash` are riders on a `kind: 'damage'`
+  row (any other kind ignores them; lint `riderKind` / `riderInvalid`). data.js normalisers `spellRandomTargetsOf` /
+  `spellSplashOf` / `splashOffsets` / `splashTilesAround` and the pure `pickRandomTargets(pool, count, distinct, rng)`;
+  `computeSpellManaCost` and `describeSpell` read them. battle.js: `_kindMeta` makes a random row selfCast + offensive;
+  its POOL is `_getSpellValidTargets` of the row without the rider (`_riderBaseDef`) minus the caster, allies (unless
+  scope 'units'), realm-shielded and cryptid-hidden units; doSpell draws with `engineRng` (host only, one draw per
+  pick) and `_castRandomTargets` plays the caster's clip + one camera over every pick, then a volley per further pick;
+  `_applySplashDamage` runs in `_applyDamageSpellHit` after the primary hit and before the post-effects (units only —
+  turrets / doors / buildings on splash tiles are not hit; statuses stay on the primary hit). §7 defaults kept:
+  distinct enemies (Q9), splash enemies only (Q10). Online: no new state field (the skip list needs nothing); the
+  guest never re-rolls — the extra shots and the splash ring ride a new `'rider-fx'` relay (fog-gated), the damage
+  rides state-sync. AI: a random row is cast on the caster once an enemy is in reach and scores mean hit × hits; a
+  splash row adds the neighbours' worth and picks the victim with the most round it; check-ai-spell-dispatch.js prints
+  a `riders` block. Rack / HQ: 🎲×N and SPL N% badges, a splash row's card shape; board hover previews both. The
+  library's TARGET tab: structured rider editors (＋ adds the defaults) + the SPLASH grid from Phase 2; the rail's HAS
+  group gains "random / splash". Example rows (registered in SPELL_BY_ID only, on no pool — keep one through POOLS or
+  delete it): Scatter Shot `riderScatterShot`, Impact Round `riderImpactRound`. ONE DEVIATION from §6.2: the plan
+  routed splash through `_applyAoeDamage`; it has its own unit-only resolver instead, because `_applyAoeDamage` also
+  chips turrets at FULL damage, breaks doors and objects, damages buildings and paints `leaveTerrain` — a splash is a
+  rider on a single-target hit, not an area cast. The `extraTargets` upgrade (next-nearest enemies) waits for Phase 5
+  with the other upgrades. Tests: `spell-riders.test.js` (new), `ai-spell-routing.test.js` (+3). Not playtested live.
+  Next: Phase 4 (THE PASSIVES + THE GEAR MERGE).

@@ -2589,9 +2589,70 @@
         }
     }
 
+    /* ── THE TARGETING RIDERS (SPELL_LIBRARY_PLAN §6.2, Phase 3) ──────────────────────────────────────────────
+       randomTargets (no aim — the engine rolls the victims): worth the MEAN hit over the pool × the hits it will land
+       (distinct: min(count, pool)); the cast target is the caster itself. splash: the primary hit + every enemy the
+       splash reaches round the victim at × mult (minus allies caught when the splash hits 'units'); the target picker
+       prefers the victim with the most worth round it. data.js owns the normalisers (spellRandomTargetsOf /
+       spellSplashOf / splashOffsets). */
+    function _riderRandomOf(spell) {
+        return (spell && spell.randomTargets && typeof spellRandomTargetsOf === 'function') ? spellRandomTargetsOf(spell) : null;
+    }
+    function _riderSplashOf(spell) {
+        return (spell && spell.splash && typeof spellSplashOf === 'function') ? spellSplashOf(spell) : null;
+    }
+    function _riderEnemiesInReach(g, unit, spell, v) {
+        const R = _effRange(unit, spell);
+        const longR = _isLongRange(spell);
+        const srcZ = standH(g, unit);
+        return (v.visibleEnemies || []).filter(e => !e.dead && !isProtected(g, e)).filter(e => {
+            const d = _reach(g, unit.x, unit.y, srcZ, e, longR);
+            return d >= 1 && d <= R && (spell.ignoresLineOfSight || !g.isRangeBlockedByTerrain(unit.x, unit.y, e.x, e.y));
+        });
+    }
+    function _randomTargetsScore(g, unit, spell, rnd, v) {
+        const pool = _riderEnemiesInReach(g, unit, spell, v);
+        if (!pool.length) return 0;
+        const hitSpell = rnd.mult !== 1 ? Object.assign({}, spell, { dmg: Math.round((spell.dmg || 0) * rnd.mult) }) : spell;
+        let sum = 0;
+        for (const e of pool) sum += scoreOffensiveHit(g, unit, e, hitSpell, v, { splash: true }).val;
+        let n = pool.length;
+        if (rnd.scope === 'units') {
+            // our own side in reach dilutes the roll: each ally drawn is a hit on us
+            const R = _effRange(unit, spell);
+            for (const a of (v.allies || [])) {
+                if (!a || a.dead || a.id === unit.id) continue;
+                if (Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) > R) continue;
+                sum -= (hitSpell.dmg || 0) * 1.2; n++;
+            }
+        }
+        const hits = rnd.distinct ? Math.min(rnd.count, n) : rnd.count;
+        return Math.max(0, (sum / n) * hits);
+    }
+    function _splashBonus(g, unit, spell, target, v) {
+        const sp = _riderSplashOf(spell);
+        if (!sp || !target) return 0;
+        const keys = new Set(splashOffsets(sp).map(o => (target.x + o[0]) + ',' + (target.y + o[1])));
+        const hitSpell = Object.assign({}, spell, { dmg: Math.round((spell.dmg || 0) * sp.mult) });
+        let s = 0;
+        for (const e of (v.visibleEnemies || [])) {
+            if (!e || e.dead || e.id === target.id || !keys.has(e.x + ',' + e.y)) continue;
+            s += scoreOffensiveHit(g, unit, e, hitSpell, v, { splash: true }).val;
+        }
+        if (sp.team === 'units') {
+            for (const a of (v.allies || [])) {
+                if (!a || a.dead || a.id === unit.id || !keys.has(a.x + ',' + a.y)) continue;
+                s -= (hitSpell.dmg || 0) * 1.2;
+            }
+        }
+        return s;
+    }
+
     function scoreSpell(unit, spell, target, v) {
         const g = G();
         const kind = spell.kind;
+
+        if (kind === 'damage' && _riderRandomOf(spell)) return target ? _randomTargetsScore(g, unit, spell, _riderRandomOf(spell), v) : 0;
 
         // ── single-target damage family ──
         if (kind === 'guard') return _chivalryScore(unit, spell, target, v);
@@ -2607,7 +2668,9 @@
             const hit = scoreOffensiveHit(g, unit, target, spell, v, {});
             // tackle (Sky Tackle, Phase 5 wave A): the carry is worth what a
             // linePush's shove is — displacement per tile.
-            return kind === 'tackle' ? hit.val + (spell.pushDistance || 1) * 16 : hit.val;
+            if (kind === 'tackle') return hit.val + (spell.pushDistance || 1) * 16;
+            // THE SPLASH RIDER (Phase 3): the bodies round the victim
+            return kind === 'damage' ? hit.val + _splashBonus(g, unit, spell, target, v) : hit.val;
         }
 
         if (kind === 'transform') {
@@ -4833,6 +4896,9 @@
 
         if (kind === 'trickRoom') return unit;
 
+        // THE TARGETING RIDERS (Phase 3): a random-target row is cast on the caster once a victim is in reach
+        if (kind === 'damage' && _riderRandomOf(spell)) return _riderEnemiesInReach(g, unit, spell, v).length ? unit : null;
+
         if (kind === 'guard') {
             let best = null, bestValue = 0;
             for (const entry of g.TargetQuery.spellTargets?.(unit, spell) || []) {
@@ -4870,6 +4936,13 @@
             // reactive tile might still reach one.
             if (!inRange.length) return kind === 'damage' ? _elementalTileFallback(unit, spell, v) : null;
 
+            // THE SPLASH RIDER (Phase 3): the victim whose neighbourhood is worth the most (a kill still counts first)
+            if (kind === 'damage' && _riderSplashOf(spell)) {
+                const worth = e => e.priority + _splashBonus(g, unit, spell, e.enemy, v)
+                    + (estDamage(g, unit, e.enemy, spell) >= effHp(e.enemy) ? 60 : 0);
+                inRange.sort((a, b) => worth(b) - worth(a));
+                return inRange[0].enemy;
+            }
             if (['damage', 'ricochet', 'multiHit', 'lifeDrain', 'tackle'].includes(kind)) {
                 const killable = inRange.filter(e => estDamage(g, unit, e.enemy, spell) >= effHp(e.enemy));
                 if (killable.length > 0) {
