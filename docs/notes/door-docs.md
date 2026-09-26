@@ -186,3 +186,13 @@ Append new notes for this system at the end of this file.
   Read it before any door gun / Door Agent / puzzle work; append to its §11 per phase. It
   supersedes DOOR_RACE_DESIGN.md:23's "one door object" rule and rev 3's "never re-add a
   door-placing row".
+
+## THE OPEN WORLD plan (2026-09-26)
+- `OPEN_WORLD_PLAN.md` (repo root; copy in the project folder `open-world/`) — the explored world as
+  ZONES of stitched PARTS on one ground: `DOOR_HQ.world` frames + joins (§4), the STAGE that draws the
+  current part and its joined neighbours with no card at the crossing (§5), far shells as the weenies,
+  `HQ_WORLD_CLOCK` (the exploration day), the field beyond 8 × 8, download-once made whole (§6), the map
+  drawn from the frames (§7), the content track (the mall, Camelot, the Vatican, the bunker, the D.U.M.B.,
+  the medical merge, the woods as one field, the wells re-pointed, the buffer audit — §8), fifteen forks
+  with defaults (§9), ten phases (§10). Read it before any room / area / link / map work; append to its
+  §12 per phase. NO PUZZLES stands over it.
