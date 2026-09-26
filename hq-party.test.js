@@ -202,8 +202,9 @@ test('THE SOURCE SITES: the engine (no respawns, the bench fills a seat, the car
     assert.ok(BT.includes("if (!(_isGauntlet() || (state.noRespawns && _benchOn())) || !fallen) return;"), 'battle.js: the replacement queue takes the no-respawn bench');
     /* createUnit reads the carried vitals LAST */
     const cu = MP.slice(MP.indexOf('function createUnit('));
-    const vit = cu.indexOf("identityOverride && identityOverride.hp != null"), eq = cu.indexOf('computeEquipBonuses(newUnit.equipment)');
-    assert.ok(vit > 0 && eq > 0 && vit > eq, 'after the equipment tops the max off');
+    // (THE GEAR MERGE, SPELL_LIBRARY_PLAN Phase 4: the passive rows' statBonus is what tops the max off now)
+    const vit = cu.indexOf("identityOverride && identityOverride.hp != null"), eq = cu.indexOf('unitPassiveStatBonus(newUnit)');
+    assert.ok(vit > 0 && eq > 0 && vit > eq, 'after the passive / gear stats top the max off');
     assert.ok(cu.slice(vit).includes('newUnit.hp = Math.max(1, Math.min(newUnit.maxHp,'), 'never above the max, never under 1');
     /* the repair keeps the id + the vitals; the exact-seat cap */
     assert.ok(ST.includes("if (priorMeta.partyId) rebuiltMeta.partyId = priorMeta.partyId;") && ST.includes("['hp', 'hpMax', 'mp', 'mpMax'].forEach(k => { if (priorMeta[k] != null"), 'repairPartyBuilderState keeps the party fields');

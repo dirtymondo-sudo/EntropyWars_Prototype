@@ -61,12 +61,13 @@ test('the online lock flow in the foot survives verbatim', () => {
 });
 
 test('every mechanic keeps its function name (plan rule 3.5)', () => {
-    for (const fn of ['pickRace', 'toggleSpell', 'tierSpellClick', 'flEquipWildcard', 'equipAccessory', 'setItemCount', 'confirmSlot', 'doStart', 'saveTeamAs', 'loadTeamPreset', 'tbSaveTeam', 'selectSlot', 'doRandomize', 'doRandomizeAll', 'doDefaults', 'doBack', 'handleZodiacChange', 'handleNameChange', 'resetCustomSpells', 'clearAllSpells', 'randomizeSpells']) {
+    for (const fn of ['pickRace', 'toggleSpell', 'tierSpellClick', 'flEquipWildcard', 'setItemCount', 'confirmSlot', 'doStart', 'saveTeamAs', 'loadTeamPreset', 'tbSaveTeam', 'selectSlot', 'doRandomize', 'doRandomizeAll', 'doDefaults', 'doBack', 'handleZodiacChange', 'handleNameChange', 'resetCustomSpells', 'clearAllSpells', 'randomizeSpells']) {
         assert.ok(new RegExp('function ' + fn + '\\(|const ' + fn + ' = ').test(PB), `${fn} missing`);
     }
     assert.ok(/setPbTab\('tech'\);\s*\/\/ C-1/.test(PB), 'pickRace must flip to TECHNIQUES (decision C-1)');
     // 2026-09-24 SPELL TIERS: the secondary job and the node graph are retired
-    for (const gone of ['handleSecJobChange', 'treeNodeClick', 'twinPickSpell', 'computeTreeEquipPath']) {
+    // 2026-09-26 THE GEAR MERGE (SPELL_LIBRARY_PLAN Phase 4): the two accessory slots are retired — gear is a passive row in the rack
+    for (const gone of ['handleSecJobChange', 'treeNodeClick', 'twinPickSpell', 'computeTreeEquipPath', 'equipAccessory', 'handleAccChange']) {
         assert.ok(!new RegExp('function ' + gone + '\\(|const ' + gone + ' = ').test(PB), `${gone} should be gone`);
     }
 });
@@ -262,9 +263,9 @@ const IDX = read('index.html');
 const BT = read('battle.js');
 
 test('the sticky notes read the ENGINE passives (getUnitPassives on a pseudo-unit) and are stuck on the glass', () => {
-    assert.ok(PB.includes('function pbUnitNotes(identity, cls, equipment)'), 'pbUnitNotes missing');
+    assert.ok(PB.includes('function pbUnitNotes(identity, cls, equipment, spellIds)'), 'pbUnitNotes missing');
     assert.ok(/window\.getUnitPassives\(pseudo\)/.test(PB), 'the notes must come from data.js getUnitPassives (never the race table)');
-    assert.ok(/const pseudo = \{ race, gender: identity\.gender \|\| 'male', cls, types: identity\.types \|\| \[\], faction: identity\.faction,\s*zodiac: identity\.zodiac, status: \{\}, equipment: equipment \|\| \{\} \};/.test(PB), 'the pseudo-unit must carry race / gender / cls / types / equipment / an empty status (canFly reads them)');
+    assert.ok(/const pseudo = \{ race, gender: identity\.gender \|\| 'male', cls, types: identity\.types \|\| \[\], faction: identity\.faction,\s*zodiac: identity\.zodiac, status: \{\}, equipment: equipment \|\| \{\}, passiveRows \};/.test(PB), 'the pseudo-unit must carry race / gender / cls / types / equipment / an empty status (canFly reads them)');
     assert.ok(/const terrain = \(RACE_TRAITS\[race\] \|\| \[\]\)\.filter\(t => !passiveNames\.has\(t\.name\)\);/.test(PB), 'the TERRAIN note = the hand-authored rows that are not registry passives');
     assert.ok(/const PB_NOTE_PAPER = \{ chaos: 'pink', time: 'yellow', space: 'cream' \};/.test(PB), 'paper per faction (pink / yellow / cream)');
     assert.ok(/function pbNoteRot\(seed, i\)/.test(PB) && /\/ 10 - 3\)\.toFixed\(1\)/.test(PB), 'the rotation must be seeded, ±3°');

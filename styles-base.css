@@ -6299,6 +6299,13 @@ body.diorama-3d .tile-underpass.jump::before {
 .pb-tier-head b { font-size: 22px; }
 .pb-tier-head span { font-size: 10px; }
 .pb-tier-head i { font-size: 9px; }
+/* ◈ THE PASSIVES row (SPELL_LIBRARY_PLAN.md Phase 4): passive / gear rows under the tiers — a silver rule, the n/2 count;
+   a chip refused by THE PASSIVE CAP reads like one refused for SP / slots */
+.pb-tier.pb-tier-pas { border-top: 1px dashed rgba(217,210,184,0.45); }
+.pb-tier.pb-tier-pas .pb-tier-head b { color: #d9d2b8; font-family: 'DotGothic16', monospace; }
+.pb-tn.is-passives .pb-tn-disc { border-color: color-mix(in srgb, var(--nc) 40%, transparent); color: color-mix(in srgb, var(--nc) 55%, transparent); }
+.pb-tn.is-passives .pb-tn-name { color: var(--ph-dim); }
+.pb-tn.is-passives .pb-tn-meta { color: var(--ph-faint); }
 .pb-ls { height: 34px; }
 .pb-ls-disc { width: 22px; height: 22px; font-size: 12px; }
 .pb-ls-name { font-size: 13px; }

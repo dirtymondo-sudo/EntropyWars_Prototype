@@ -2493,7 +2493,8 @@
         const element = typeof statusAffinityElement === 'function' ? statusAffinityElement(effect.id, null) : null;
         const affinity = element && typeof unitElementAffinity === 'function' ? unitElementAffinity(target, element) : null;
         if (affinity === 'immune' || affinity === 'absorb') return 0;
-        if (typeof unitHasAccessory === 'function' && unitHasAccessory(target, 'purity_censer')
+        // the `purgeDebuff` hook (the Censer's gear row, or any passive row — SPELL_LIBRARY_PLAN Phase 4) eats this round's first debuff
+        if (typeof unitPassiveValue === 'function' && unitPassiveValue(target, 'purgeDebuff')
             && target._censerRound !== (g.state.round || 0)) return 0;
         const probability = typeof getStatusApplyChance === 'function'
             ? getStatusApplyChance(source, target, effect) : (affinity === 'resist' ? 0.45 : 0.9);

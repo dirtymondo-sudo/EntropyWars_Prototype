@@ -5010,6 +5010,27 @@ input.slb2-ins-name:hover, input.slb2-ins-name:focus { border-color: rgba(255,21
 .slb2-rider-l { font-size: 11px; color: rgba(220,210,240,0.6); text-transform: uppercase; letter-spacing: 0.06em; }
 .slb2-ridernum { width: 56px; }
 .slb2-maskro.bad { color: #ff8a8a; }
+.slb2-hooks { display: flex; flex-direction: column; gap: 5px; width: 100%; }
+.slb2-hooklint { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 11px; }
+.slb2-hookrow { display: grid; grid-template-columns: minmax(150px, auto) 1fr; gap: 3px 10px; align-items: center; padding: 5px 7px; background: rgba(0,0,0,0.22); border: 1px solid rgba(160,140,200,0.14); border-left: 2px solid rgba(110,200,180,0.45); border-radius: 4px; }
+.slb2-hookrow.unknown { border-left-color: rgba(220,80,90,0.75); }
+.slb2-hookrow.warn { border-left-color: rgba(255,190,60,0.7); }
+.slb2-hookrow.empty { display: block; border-left-color: rgba(160,140,200,0.3); }
+.slb2-hookrow-k { display: flex; align-items: center; gap: 6px; font: 11px 'IBM Plex Mono', monospace; }
+.slb2-hookrow-k b { color: #8fd7c8; font-weight: 500; }
+.slb2-hooktype { font: 9px 'IBM Plex Mono', monospace; font-style: normal; color: #8d84a8; border: 1px solid rgba(160,140,200,0.25); border-radius: 3px; padding: 0 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+.slb2-hookrow-e { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.slb2-hookrow-e input[type="text"], .slb2-hookrow-e input[type="number"] { background: rgba(0,0,0,0.4); border: 1px solid rgba(160,140,200,0.22); color: #e6e9f2; font: 11px 'IBM Plex Mono', monospace; padding: 3px 6px; border-radius: 3px; }
+.slb2-hooknum { width: 80px; }
+.slb2-hooktext { flex: 1; min-width: 0; }
+.slb2-hookjson { height: 40px; }
+.slb2-hookrow-h { grid-column: 1 / -1; font-size: 11px; color: #8d84a8; line-height: 1.35; }
+.slb2-hookrow-h i { color: #6d6584; }
+.slb2-hookrow .slb2-warn { grid-column: 1 / -1; font-size: 11px; }
+.slb2-hookbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding-top: 2px; font-size: 11px; }
+.slb2-hookmenu .slb2-menu-i b { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #8fd7c8; }
+.slb2-hookmenu .slb2-menu-i span { max-width: 230px; }
+@media (max-width: 700px) { .slb2-hookrow { grid-template-columns: 1fr; } }
 /* ── THE LOOK (§5.5, Phase 2): the stage + the animation list ── */
 .slb2-stage-bar { display: flex; gap: 5px; align-items: center; flex-wrap: wrap; padding: 4px 0 6px; }
 .slb2-stage-bar select { background: rgba(0,0,0,0.45); border: 1px solid rgba(160,140,200,0.25); color: #cfc8e0; font: 11px 'DotGothic16', monospace; padding: 3px 6px; border-radius: 4px; max-width: 200px; }

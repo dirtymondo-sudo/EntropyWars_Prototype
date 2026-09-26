@@ -9160,7 +9160,10 @@
             const lintMax = lint.reduce((m, h) => Math.max(m, _SLB2_LINT_LEVEL[h.level] || 0), 0);
             const bonus = d.bonusVsStatus && d.bonusVsStatus.status ? { ids: [].concat(d.bonusVsStatus.status), mult: d.bonusVsStatus.mult || 1.5 } : null;
             const races = meta.races || [], jobs = meta.jobs || [];
-            const owner = d._doorWheel ? 'door wheel' : races.length > 1 ? 'shared ×' + races.length : races.length === 1 ? races[0] : jobs.length ? jobs.join(', ') : (meta.added ? 'new' : '—');
+            /* THE GEAR MERGE (Phase 4): a row of a UNIVERSAL family (SPELL_FAMILIES.gear — the 16 old accessories) is in every
+               unit's pool, so its owner reads 'gear · universal' instead of an empty learnset. */
+            const gear = !!d._gear || (typeof SPELL_FAMILIES !== 'undefined' && fams.some(f => SPELL_FAMILIES[f] && SPELL_FAMILIES[f].universal));
+            const owner = d._doorWheel ? 'door wheel' : gear && !races.length && !jobs.length ? 'gear · universal' : races.length > 1 ? 'shared ×' + races.length : races.length === 1 ? races[0] : jobs.length ? jobs.join(', ') : (meta.added ? 'new' : '—');
             const searchText = [id, d.name, d.desc, d.notes, d.kind, d.type, d.element, fams.join(' '), owner, anim, statuses.map(s => s.id).join(' ')].join(' ').toLowerCase();
             return {
                 id, def: d, added: !!meta.added, modified: !!meta.modified, deleted: !!meta.deleted, isRace: !!meta.isRace,
@@ -9175,7 +9178,7 @@
                 deploy: d.maxActivePerCaster || 0, families: fams, anim, lint, lintMax,
                 hasNotes: typeof d.notes === 'string' && d.notes.trim().length > 0,
                 edit: meta.deleted ? 'del' : meta.added ? 'new' : meta.modified ? 'mod' : '',
-                passive: d.kind === 'passive', searchText,
+                passive: d.kind === 'passive', gear, searchText,
             };
         }
 
@@ -9370,6 +9373,76 @@
                 if (report.lintByRule) out.push('Lint: ' + (Object.keys(report.lintByRule).map(r => `${r} ${report.lintByRule[r]}`).join(' · ') || 'clean'));
             }
             return out.join('\n');
+        }
+        /* THE HOOKS EDITOR's model (SPELL_LIBRARY_PLAN.md §5.6, Phase 4): a passive row's `hooks` as one typed row per key
+           (typed from PASSIVE_HOOK_KEYS; a key the catalogue lacks is typed from its value and flagged), the palette of the
+           catalogue keys not yet present, the parse of one control, the shape check of the object hooks the engine reads
+           field by field, and the next hooks object — ALWAYS a new object (data.js caches passive wraps by identity). */
+        const _SLB2_STAGE_HOOKS = ['weatherBonus', 'terrainBonus', 'zodiacBonus'];
+        const _SLB2_STAGE_FIELDS = ['atkStages', 'defStages', 'mdefStages', 'spdStages', 'intStages'];   // battle.js STAT_STAGE_KEYS + 'Stages'
+        const _SLB2_STAT_BONUS_KEYS = ['hp', 'mp', 'atk', 'def', 'mdef', 'move', 'awr', 'int', 'spd'];     // data.js _sumStatBonus
+        function _slb2HookCatalogue() { return (typeof PASSIVE_HOOK_KEYS !== 'undefined' && PASSIVE_HOOK_KEYS) || {}; }
+        function _slb2HookType(key, val) {
+            const spec = _slb2HookCatalogue()[key];
+            if (spec && spec.type) return spec.type;
+            return Array.isArray(val) ? 'list' : typeof val === 'number' ? 'number' : typeof val === 'boolean' ? 'bool' : (val && typeof val === 'object') ? 'object' : 'string';
+        }
+        function _slb2HooksObj(hooks) { return (hooks && typeof hooks === 'object' && !Array.isArray(hooks)) ? hooks : null; }
+        function _slb2HookRows(hooks) {
+            const h = _slb2HooksObj(hooks);
+            if (!h) return [];
+            const C = _slb2HookCatalogue();
+            return Object.keys(h).map(key => {
+                const spec = C[key] || null;
+                return { key, value: h[key], type: _slb2HookType(key, h[key]), known: !!spec, desc: spec ? (spec.desc || '') : 'not in PASSIVE_HOOK_KEYS — no engine reader', reads: spec ? (spec.reads || '') : '', warn: _slb2HookCheck(key, h[key]) };
+            });
+        }
+        function _slb2HookPalette(hooks) {
+            const h = _slb2HooksObj(hooks) || {}, C = _slb2HookCatalogue();
+            return Object.keys(C).filter(k => !Object.prototype.hasOwnProperty.call(h, k))
+                .map(key => ({ key, type: C[key].type, example: C[key].example, desc: C[key].desc || '', reads: C[key].reads || '' }));
+        }
+        /* one control's raw value → { value } or { error } */
+        function _slb2HookParse(type, raw) {
+            switch (type) {
+                case 'number': { if (raw === '' || raw == null) return { error: 'type a number' }; const n = Number(raw); return isFinite(n) ? { value: n } : { error: 'not a number' }; }
+                case 'bool': return { value: raw === true || raw === 'true' };
+                case 'list': { const a = (Array.isArray(raw) ? raw : String(raw == null ? '' : raw).split(',')).map(x => String(x).trim()).filter(Boolean); return a.length ? { value: a } : { error: 'list at least one id (comma separated)' }; }
+                case 'object': {
+                    let v; try { v = typeof raw === 'string' ? JSON.parse(raw) : raw; } catch (e) { return { error: 'not JSON — ' + e.message }; }
+                    return (v && typeof v === 'object' && !Array.isArray(v)) ? { value: v } : { error: 'must be an object { … }' };
+                }
+                default: { const s = String(raw == null ? '' : raw).trim(); return s ? { value: s } : { error: 'type a value' }; }
+            }
+        }
+        /* the object hooks whose inner fields the engine reads by name: a wrong field is silently ignored in play, so say it */
+        function _slb2HookCheck(key, v) {
+            if (_SLB2_STAGE_HOOKS.includes(key)) {
+                if (!v || typeof v !== 'object' || Array.isArray(v)) return 'an object { <condition>: { atkStages: n } }';
+                for (const c of Object.keys(v)) {
+                    const s = v[c];
+                    if (!s || typeof s !== 'object' || Array.isArray(s)) return `${c}: needs { ${_SLB2_STAGE_FIELDS.join(' | ')}: n }`;
+                    const bad = Object.keys(s).filter(k => !_SLB2_STAGE_FIELDS.includes(k) || typeof s[k] !== 'number');
+                    if (bad.length) return `${c}: ${bad.join(', ')} — stat STAGES only (${_SLB2_STAGE_FIELDS.join(' ')}), as numbers`;
+                    if (!Object.keys(s).length) return `${c}: no stage set`;
+                }
+                return null;
+            }
+            if (key === 'statBonus') {
+                if (!v || typeof v !== 'object' || Array.isArray(v)) return 'an object { atk: n, … }';
+                const bad = Object.keys(v).filter(k => !_SLB2_STAT_BONUS_KEYS.includes(k) || typeof v[k] !== 'number');
+                return bad.length ? `${bad.join(', ')} — stats are ${_SLB2_STAT_BONUS_KEYS.join(' ')}, as numbers` : null;
+            }
+            return null;
+        }
+        /* the next hooks object: `value === undefined` drops the key; a key keeps its place; values are copies */
+        function _slb2HooksWith(hooks, key, value) {
+            const base = _slb2HooksObj(hooks) || {};
+            const cp = v => v === undefined ? v : JSON.parse(JSON.stringify(v));
+            const out = {};
+            Object.keys(base).forEach(k => { if (k !== key) out[k] = cp(base[k]); else if (value !== undefined) out[k] = cp(value); });
+            if (value !== undefined && !Object.prototype.hasOwnProperty.call(base, key)) out[key] = cp(value);
+            return out;
         }
         /* SLB2 PURE END */
         const _SLB_KINDS = ['damage','tackle','transform','possess','link','shadowRealm','transfer','cannibalize','summonUnit','steal','cleanseArea','door','doorBreach','doorDelivery','doorSlam','doorExit','doorTrap','buff','aoe','debuff','terrainCreate','line','dash','lifeDrain','barrage','warCry','aoeShield','zoneDebuff','escape','cross','deployObject','leapStrike','teleport','heal','healAll','multiHit','delayed','summonWeather','aoePull','deployTurret','displacement','swap','skyThrow','selfHeal','pull','ricochet','zoneHeal','skyDrop','linePush','shield','revive','placeTrap','deployPair','utility','skySlam','scan','bomb','seedHeal','seedPoison','warpRune','leechSeed','remoteView','encore','cleanse','trickRoom','guard','manaRestoreAll','splitBeam','placeMirror','tuneFrequency','pulseLattice','rallyPull','raiseDead','placeBlock','buildStructure'];
@@ -9823,7 +9896,7 @@
         function _slb2PassiveBar() {
             return `<div class="slb2-pasbar">
                 <div class="slb2-seg"><button class="slb2-segb${_slbPasSection === 'family' ? ' on' : ''}" data-act="pasSection" data-sec="family">FAMILY PASSIVES · rows in a slot</button><button class="slb2-segb${_slbPasSection === 'inherent' ? ' on' : ''}" data-act="pasSection" data-sec="inherent">INHERENT · fixed per race</button></div>
-                <span class="slb2-hint">A family passive is a row with kind <b>passive</b>: it takes a slot, costs its tier in SP, and its HOOKS carry the effect (the same keys the inherent passives use). At most ${typeof PASSIVE_SLOT_MAX !== 'undefined' ? PASSIVE_SLOT_MAX : 2} passive / equipment rows fit the 7 slots.</span>
+                <span class="slb2-hint">A family passive is a row with kind <b>passive</b>: it takes a slot, costs its tier in SP (the tier is editable — the ＋ / − in the header), and its HOOKS carry the effect (EFFECTS tab; the same keys the inherent passives use). The ${typeof universalPassiveIds === 'function' ? universalPassiveIds().length : 16} old accessories are <b>GEAR</b> rows — a universal family, so every unit can equip them. At most ${typeof PASSIVE_SLOT_MAX !== 'undefined' ? PASSIVE_SLOT_MAX : 2} passive rows (gear included) of the 7 slots; they equip in the rack's ◈ PASSIVES row.</span>
             </div>`;
         }
         function _slb2RenderWindow(force) {
@@ -9984,7 +10057,7 @@
             simTargeting: 'Sim targeting', simPhase: 'Sim phase', simFallback: 'Sim fallback', descAuto: 'Auto description',
         };
         const _SLB2_EXTRA_HELP = {
-            hooks: { t: 'json', h: 'Passive rows: { hookKey: value } with the keys PASSIVE_DEFS uses (immuneStatus, lowHpBonus, spellCostMult, rangeBonus, healMult, …) plus the Phase 4 keys (healOnceBelowPct, physicalElementRider, regenPerRound, buildBonus, weatherBonus, terrainBonus, zodiacBonus, statBonus).' },
+            hooks: { t: 'json', h: 'Passive rows: { hookKey: value }, one line per key from the PASSIVE_HOOK_KEYS catalogue (the keys PASSIVE_DEFS uses + the Phase 4 keys). ＋ HOOK adds a key with its example value; ✕ drops it; the RAW tab edits the whole row as JSON. weather / terrain / zodiac bonuses are stat STAGES ({ storm: { atkStages: 1 } }).' },
             splash: { t: 'json', h: 'After the primary hit, every enemy (or every unit) round the VICTIM takes dmg × mult — the victim is never hit twice, the caster never. Radius 1 = the 8 tiles round it; draw any shape on the SPLASH grid below. Damage rows only.' },
             randomTargets: { t: 'json', h: 'No aim: the cast picks COUNT victims among the legal targets in range and sight (the host rolls; the guest sees the same picks) and hits each for dmg × mult. DISTINCT = never the same victim twice, so fewer victims ⇒ fewer shots. Damage rows only.' },
             chainProfile: { t: 'json', h: 'Chain lightning profile (see calcChainTargets).' },
@@ -10043,7 +10116,7 @@
                     <input class="slb2-ins-name${modded('name') ? ' modded' : ''}" data-field="name" data-type="text" data-id="${_slbEsc(id)}" value="${_slbEsc(d.name || '')}" spellcheck="false" title="the display name — also the runtime cast key: keep it unique">
                     ${_slb2Cell('edit', r)}
                 </div>
-                <div class="slb2-ins-id">${_slbEsc(id)} · ${r.isDoor ? 'door wheel' : r.isRace ? 'race ability' : isNew ? 'new row' : 'job spell'}${d.kind === 'passive' ? ' · passive row' : ''} <button class="slb2-link" data-act="copyId" data-id="${_slbEsc(id)}" title="copy the id">⧉</button></div>
+                <div class="slb2-ins-id">${_slbEsc(id)} · ${r.isDoor ? 'door wheel' : r.isRace ? 'race ability' : isNew ? 'new row' : r.gear ? 'gear · every unit' : 'job spell'}${d.kind === 'passive' ? ' · passive row' : ''}${d.accessory ? ' · was the ' + _slbEsc(d.accessory) + ' accessory' : ''} <button class="slb2-link" data-act="copyId" data-id="${_slbEsc(id)}" title="copy the id">⧉</button></div>
                 <div class="slb2-ins-chips" id="slbInsChips">
                     <span class="slb2-tierstep" title="THE tier = SP cost (1–4); MP follows the ladder unless pinned">
                         <button class="slb2-stepb" data-act="tier" data-id="${_slbEsc(id)}" data-delta="-1">−</button>
@@ -10086,9 +10159,12 @@
             if (t === 'raw') return `<div class="slb2-rawwrap"><textarea id="slbRawTa" class="slb2-json" spellcheck="false">${_slbEsc(JSON.stringify(d, null, 2))}</textarea>
                 <div class="slb2-rawbar"><button class="slb2-btn on" data-act="applyRaw" data-id="${_slbEsc(id)}">APPLY JSON</button><span class="slb2-hint">The full effective def. APPLY diffs it against the shipped row; the id itself cannot change (DUPLICATE for a new id).</span></div></div>`;
             if (t === 'upgrades') return _slb2UpgradesTabHtml(r);
-            const groups = _SLB2_GROUPS[t] || [];
+            const isPassive = d.kind === 'passive';
+            /* a passive row's EFFECTS tab is THE HOOKS EDITOR first (Phase 4); the spell groups follow only when the row carries them */
+            let groups = _SLB2_GROUPS[t] || [];
+            if (isPassive && t === 'effects') { const hk = g => g[0].indexOf('HOOKS') === 0; groups = groups.filter(hk).concat(groups.filter(g => !hk(g))); }
             const shown = new Set();
-            const ALWAYS = { stats: ['cost', 'apCost', 'dmg', 'damageType', 'type', 'spellType', 'element'], target: ['kind', 'range', 'ignoresLineOfSight', 'aoeRadius'].concat((d.kind || 'damage') === 'damage' ? ['randomTargets', 'splash'] : []), effects: ['statusEffects', 'bonusVsStatus', 'statStageBoost'], look: ['vfxArchetype', 'vfxWeight', 'projectileOverride'] };
+            const ALWAYS = { stats: ['cost', 'apCost', 'dmg', 'damageType', 'type', 'spellType', 'element'], target: ['kind', 'range', 'ignoresLineOfSight', 'aoeRadius'].concat((d.kind || 'damage') === 'damage' ? ['randomTargets', 'splash'] : []), effects: isPassive ? ['hooks'] : ['statusEffects', 'bonusVsStatus', 'statStageBoost'], look: ['vfxArchetype', 'vfxWeight', 'projectileOverride'] };
             let html = '';
             groups.forEach(([title, keys]) => {
                 const present = keys.filter(k => Object.prototype.hasOwnProperty.call(d, k) || (ALWAYS[t] || []).includes(k));
@@ -10135,6 +10211,7 @@
             if (t === 'status') return _slb2StatusEditor(id, f, val);
             if (f === 'bonusVsStatus') return _slb2BonusEditor(id, val);
             if (f === 'randomTargets' || f === 'splash') return _slb2RiderEditor(id, f, val, d);
+            if (f === 'hooks' && d && d.kind === 'passive') return _slb2HooksEditor(id, val);
             if (f === 'ignoresLineOfSight') {
                 const los = d && d.requiresLineOfSight ? 'needs' : d && d.ignoresLineOfSight ? 'ignores' : 'default';
                 return `<div class="slb2-seg">${[['default', 'DEFAULT'], ['ignores', 'IGNORES COVER'], ['needs', 'NEEDS LOS']].map(([v, l]) => `<button class="slb2-segb${los === v ? ' on' : ''}" data-act="los" data-id="${_slbEsc(id)}" data-val="${v}">${l}</button>`).join('')}</div>`;
@@ -10185,6 +10262,64 @@
                 ${ids.length ? `<span class="slb2-dim">×</span><input type="number" step="0.1" min="1" value="${_slbEsc(mult)}" data-input="bonusMult" data-id="${_slbEsc(id)}" title="damage multiplier against the status" style="width:56px">` : ''}</div>
                 <div class="slb2-field-h">The combo finisher: ×mult damage against a target carrying the status (not consumed). A damage-only spell may carry it without becoming damage+effect.</div>
             </div>`;
+        }
+        /* THE HOOKS EDITOR (SPELL_LIBRARY_PLAN.md §5.6, Phase 4): a passive row's `hooks`, one line per key — the key, its
+           PASSIVE_HOOK_KEYS desc + reader, a typed control (number · yes/no · element / damage-type / status select · text ·
+           comma list · a small JSON box for the object hooks, shape-checked) and ✕; ＋ HOOK ▾ opens the catalogue of the keys
+           not yet present and adds one with its example. Every write is a WHOLE NEW hooks object through _slbSetField (one
+           undo step; data.js caches the passive wrap by object identity). The lint hits for hooks sit on top. */
+        function _slb2HookEnum(key) {
+            if (key === 'healedByElement' || key === 'physicalElementRider') return (typeof SPELL_ELEMENTS !== 'undefined' && Array.isArray(SPELL_ELEMENTS)) ? SPELL_ELEMENTS : _SLB_ELEMENTS;
+            if (key === 'immuneDamageType') return _SLB_DMGTYPES;
+            if (key === 'contactStatus') return _slbStatusIds().slice().sort((a, b) => a.localeCompare(b));
+            return null;
+        }
+        function _slb2HookControl(id, h) {
+            const a = `data-input="hookVal" data-id="${_slbEsc(id)}" data-hook="${_slbEsc(h.key)}" data-htype="${_slbEsc(h.type)}"`;
+            const v = h.value;
+            if (h.type === 'bool') return `<div class="slb2-seg">${[[true, 'YES'], [false, 'NO']].map(([b, l]) => `<button class="slb2-segb${!!v === b ? ' on' : ''}" data-act="hookBool" data-id="${_slbEsc(id)}" data-hook="${_slbEsc(h.key)}" data-val="${b}">${l}</button>`).join('')}</div>`;
+            if (h.type === 'number') return `<input type="number" step="any" class="slb2-hooknum" ${a} value="${typeof v === 'number' ? _slbEsc(v) : ''}">`;
+            if (h.type === 'list') return `<input type="text" class="slb2-hooktext" ${a} value="${_slbEsc(Array.isArray(v) ? v.join(', ') : v != null ? String(v) : '')}" placeholder="id, id, …" spellcheck="false" title="comma separated">`;
+            if (h.type === 'object') return `<textarea class="slb2-jsonmini slb2-hookjson" spellcheck="false" ${a}>${_slbEsc(JSON.stringify(v))}</textarea>`;
+            const opts = _slb2HookEnum(h.key);
+            if (opts) {
+                const list = typeof v === 'string' && v && !opts.includes(v) ? [v].concat(opts) : opts;
+                return `<select class="slb2-sel" ${a}>${list.map(o => `<option value="${_slbEsc(o)}"${v === o ? ' selected' : ''}>${_slbEsc(o)}</option>`).join('')}</select>`;
+            }
+            return `<input type="text" class="slb2-hooktext" ${a} value="${_slbEsc(v != null ? (typeof v === 'object' ? JSON.stringify(v) : String(v)) : '')}" spellcheck="false">`;
+        }
+        function _slb2HooksEditor(id, val) {
+            const r = _slb2RowById(id);
+            const lint = (r ? r.lint : []).filter(h => /^hook/.test(h.rule));
+            const lintHtml = lint.length ? `<div class="slb2-hooklint">${lint.map(h => `<span class="slb2-lintbadge ${h.level}" title="${_slbEsc(h.text)}">${_slbEsc(h.rule)}</span><span class="slb2-dim">${_slbEsc(h.text)}</span>`).join('')}</div>` : '';
+            if (val != null && !_slb2HooksObj(val)) {
+                /* not an object: the typed lines cannot read it — the raw box until it is */
+                return `<div class="slb2-hooks">${lintHtml}<textarea class="slb2-jsonmini" spellcheck="false" data-field="hooks" data-id="${_slbEsc(id)}" data-type="json">${_slbEsc(JSON.stringify(val))}</textarea></div>`;
+            }
+            const rows = _slb2HookRows(val);
+            const left = _slb2HookPalette(val).length;
+            return `<div class="slb2-hooks">${lintHtml}
+                ${rows.map(h => `<div class="slb2-hookrow${h.known ? '' : ' unknown'}${h.warn ? ' warn' : ''}" data-hook="${_slbEsc(h.key)}">
+                    <div class="slb2-hookrow-k"><b>${_slbEsc(h.key)}</b><span class="slb2-hooktype">${_slbEsc(h.type)}</span><button class="slb2-fx" data-act="hookDrop" data-id="${_slbEsc(id)}" data-hook="${_slbEsc(h.key)}" title="drop this hook">✕</button></div>
+                    <div class="slb2-hookrow-e">${_slb2HookControl(id, h)}</div>
+                    <div class="slb2-hookrow-h">${_slbEsc(h.desc)}${h.reads ? ` <i>· read by ${_slbEsc(h.reads)}</i>` : ''}</div>
+                    ${h.warn ? `<div class="slb2-warn">${_slbEsc(h.warn)}</div>` : ''}
+                </div>`).join('') || '<div class="slb2-hookrow empty"><span class="slb2-dim">no hooks — the row does nothing in play until one is added</span></div>'}
+                <div class="slb2-hookbar"><button class="slb2-btn" data-act="hookPalette" data-id="${_slbEsc(id)}"${left ? '' : ' disabled'}>＋ HOOK ▾</button><span class="slb2-dim">${left} more in the catalogue · the RAW tab edits the whole row as JSON</span></div>
+            </div>`;
+        }
+        function _slb2HookMenu(anchor, id) {
+            const d = SPELL_BY_ID[id]; if (!d) return;
+            const pal = _slb2HookPalette(d.hooks);
+            _slb2Popover(anchor, `<div class="slb2-menu slb2-hookmenu"><div class="slb2-menu-h">＋ HOOK · PASSIVE_HOOK_KEYS (${pal.length})</div>
+                ${pal.map(p => `<button class="slb2-menu-i" data-act="hookAdd" data-id="${_slbEsc(id)}" data-hook="${_slbEsc(p.key)}" title="${_slbEsc('adds ' + p.key + ': ' + JSON.stringify(p.example))}"><b>${_slbEsc(p.key)}</b><i class="slb2-hooktype">${_slbEsc(p.type)}</i><span>${_slbEsc(p.desc)}${p.reads ? ' · ' + _slbEsc(p.reads) : ''}</span></button>`).join('')}
+            </div>`);
+        }
+        function _slb2HookWrite(id, key, value) {
+            const d = SPELL_BY_ID[id]; if (!d) return;
+            const next = _slb2HooksWith(d.hooks, key, value);
+            window._slbSetField(id, 'hooks', Object.keys(next).length ? JSON.stringify(next) : '', 'json');
+            if (value !== undefined) { const w = _slb2HookCheck(key, next[key]); if (w) _slbToast(`⚠ ${key}: ${w}`, true); }
         }
         /* THE TARGETING RIDERS (SPELL_LIBRARY_PLAN.md §5.3 TARGET, Phase 3): structured editors for `randomTargets`
            (count · scope · distinct · × per hit) and `splash` (× · radius · team; the shape is the SPLASH grid below).
@@ -11251,7 +11386,7 @@
             ['weather', 'Weather bonus', { hooks: { weatherBonus: { storm: { atkStages: 1 } } } }, 'a stat stage while the weather holds'],
             ['terrain', 'Terrain bonus', { hooks: { terrainBonus: { water: { defStages: 1 } } } }, 'a stat stage on a terrain'],
             ['zodiac', 'Zodiac bonus', { hooks: { zodiacBonus: { earth: { atkStages: 1 } } } }, 'a stat stage under a sign'],
-            ['build', 'Build / dig', { hooks: { buildBonus: { dig: 1, build: 1 } } }, 'the builder and digger actions read it'],
+            ['build', 'Build / dig', { hooks: { buildBonus: { build: 1 } } }, '+1 block placed / dug per AP on the Build action'],
             ['immune', 'Immunity', { hooks: { immuneStatus: ['burn'] } }, 'never takes the status'],
         ];
         function _slb2TemplateFor(role) {
@@ -11297,7 +11432,7 @@
                     tier: 1, families: ['gear'], upgrades: [], desc: t[3], _home: { lib: true } }, JSON.parse(JSON.stringify(t[2])));
                 _slb2Mutate(`＋ ${id} created`, () => { _slb2Doc().added[id] = row; });
                 _slb2SelectNew(id);
-                _slbToast(`＋ ${id} — a passive row: set its HOOKS on the EFFECTS tab; it plays once Phase 4 lands`);
+                _slbToast(`＋ ${id} — a passive row: set its HOOKS on the EFFECTS tab; it equips in the rack's ◈ PASSIVES row (at most ${typeof PASSIVE_SLOT_MAX !== 'undefined' ? PASSIVE_SLOT_MAX : 2} per loadout)`);
             });
         }
         function _slb2CreateFamily() {
@@ -11461,13 +11596,22 @@
             const page = document.getElementById('spellLibraryPage') || document.body;
             const m = _slb2H(`<div class="slb2-modal${opts && opts.top ? ' top' : ''}" id="slbModal"><div class="slb2-modal-card">${html}</div></div>`);
             m.addEventListener('mousedown', e => { if (e.target === m) _slb2ModalClose(); });
+            _slb2BindFloat(m);
             page.appendChild(m);
+        }
+        /* the modal and the popover hang on #spellLibraryPage, OUTSIDE #spellLibraryBody where the delegation lives — so they
+           carry their own copy of it (their data-act buttons were unreachable before) */
+        function _slb2BindFloat(el) {
+            el.addEventListener('click', _slb2OnClick);
+            el.addEventListener('change', _slb2OnChange);
+            el.addEventListener('input', _slb2OnInput);
         }
         function _slb2ModalClose() { const m = document.getElementById('slbModal'); if (m) m.remove(); const p = document.getElementById('slbPopover'); if (p) p.remove(); }
         function _slb2Popover(anchor, html) {
             _slb2ModalClose();
             const page = document.getElementById('spellLibraryPage') || document.body;
             const p = _slb2H(`<div class="slb2-popover" id="slbPopover">${html}</div>`);
+            _slb2BindFloat(p);
             page.appendChild(p);
             const b = anchor.getBoundingClientRect(), pr = page.getBoundingClientRect();
             let left = b.left - pr.left, top = b.bottom - pr.top + 4;
@@ -11695,7 +11839,7 @@
         }
         function _slb2OnClick(e) {
             const el = e.target.closest('[data-act]');
-            if (!el || !document.getElementById('spellLibraryBody').contains(el)) return;
+            if (!el || !(document.getElementById('spellLibraryBody').contains(el) || el.closest('#slbPopover, #slbModal'))) return;
             const act = el.getAttribute('data-act'), id = el.getAttribute('data-id');
             const P = (k) => el.getAttribute(k);
             switch (act) {
@@ -11750,6 +11894,10 @@
                 case 'revertField': window._slbRevertField(id, P('data-field')); return;
                 case 'dropField': window._slbSetField(id, P('data-field'), '', 'text'); return;
                 case 'preset': window._slbSetField(id, P('data-field'), P('data-val'), 'num'); return;
+                case 'hookPalette': _slb2HookMenu(el, id); return;
+                case 'hookAdd': { _slb2ModalClose(); const spec = _slb2HookCatalogue()[P('data-hook')]; if (spec) _slb2HookWrite(id, P('data-hook'), spec.example); return; }
+                case 'hookDrop': _slb2HookWrite(id, P('data-hook'), undefined); return;
+                case 'hookBool': _slb2HookWrite(id, P('data-hook'), P('data-val') === 'true'); return;
                 case 'riderAdd': _slb2RiderWrite(id, P('data-rider'), {}); return;
                 case 'riderSet': { const k = P('data-key'), v = P('data-val'); _slb2RiderWrite(id, P('data-rider'), { [k]: v === 'true' ? true : v === 'false' ? false : v }); return; }
                 case 'tier': { const d = SPELL_BY_ID[id]; if (!d) return; const t = Math.max(1, Math.min(4, ((typeof spellTierOf === 'function') ? spellTierOf(d) : d.tier || 1) + Number(P('data-delta')))); window._slbSetField(id, 'tier', String(t), 'num'); return; }
@@ -11831,6 +11979,7 @@
                 case 'assignRace': if (v) { window._slbAssign(id, 'race', v); } return;
                 case 'statusAdd': if (v) { const f = t.getAttribute('data-field'); const arr = _slb2StatusArr(id, f); arr.push({ id: v, duration: 2 }); _slb2StatusWrite(id, f, arr); } return;
                 case 'bonusAdd': if (v) { const d = SPELL_BY_ID[id]; const ids = d && d.bonusVsStatus ? [].concat(d.bonusVsStatus.status) : []; if (!ids.includes(v)) ids.push(v); _slb2BonusWrite(id, ids, (d && d.bonusVsStatus && d.bonusVsStatus.mult) || 1.5); } return;
+                case 'hookVal': { const key = t.getAttribute('data-hook'); const res = _slb2HookParse(t.getAttribute('data-htype'), v); if (res.error) { _slbToast(`✗ ${key}: ${res.error}`, true); return; } _slb2HookWrite(id, key, res.value); return; }
                 case 'riderNum': { const k = t.getAttribute('data-key'), n = Number(v); if (!isFinite(n) || n <= 0) { _slbToast('✗ ' + k + ' must be a number above 0', true); return; } _slb2RiderWrite(id, t.getAttribute('data-rider'), { [k]: (k === 'count' || k === 'radius') ? Math.round(n) : n }); return; }
                 case 'bonusMult': { const d = SPELL_BY_ID[id]; const ids = d && d.bonusVsStatus ? [].concat(d.bonusVsStatus.status) : []; const m = Number(v); if (!isFinite(m) || m <= 0) { _slbToast('✗ multiplier must be a number above 0', true); return; } _slb2BonusWrite(id, ids, m); return; }
                 case 'upgradeToggle': { const d = SPELL_BY_ID[id]; const u = t.getAttribute('data-up'); const cur = d && Array.isArray(d.upgrades) ? d.upgrades.slice() : []; const next = t.checked ? (cur.includes(u) ? cur : cur.concat(u)) : cur.filter(x => x !== u); window._slbSetField(id, 'upgrades', JSON.stringify(next), 'json'); return; }

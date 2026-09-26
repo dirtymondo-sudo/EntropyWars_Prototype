@@ -548,15 +548,6 @@ function _withCritEva(s) {
 }
 const CODEX_CLASS_LABELS = { tank:'HEAVY ARMOR', bruiser:'ASSAULT', healer:'MEDICAL', support:'SUPPORT OPS', assassin:'BLACK OPS', caster:'PSI-OPS', ranged:'LONG RANGE', specialist:'SPECIALIST', hybrid:'MULTI-ROLE' };
 
-const ACC_ICONS = {
-  binoculars: '\u{1F52D}', walkie_talkie: '\u{1F4FB}', flair: '\u{1F525}',
-  ward: '\u{1F441}', telescope: '\u{1F52D}', jetpack: '\u{1F680}',
-  spelunking_gear: '\u{26CF}\uFE0F',
-  chrono_locket: '\u{231B}', martyrs_talisman: '\u{2728}', purity_censer: '\u{26B1}\uFE0F',
-  berserkers_brand: '\u{2694}\uFE0F', archons_focus: '\u{1F9FF}', grapnel_gauntlet: '\u{1FA9D}',
-  echo_band: '\u{1F4A2}', hagstone: '\u{1FAA8}', dowsing_rod: '\u{1FAA4}',
-  masons_gauntlets: '\u{1F9E4}',
-};
 
 const CODEX_LORE = {
   'homosapien': 'Baseline terrestrial bipedal species. Exhibits no anomalous physical traits but demonstrates exceptional cognitive adaptability and tool-use capacity. Historically underestimated in combat scenarios; subjects display resourcefulness and tactical unpredictability under duress. Classified as universal template for comparative xenobiological assessment.',
@@ -681,10 +672,13 @@ function computeStats(race, cls) {
     : (window.CLASS_TEMPLATES?.[cls] || window.CLASS_TEMPLATES?.Warrior || {});
   return _withCritEva({ ...s });
 }
+/* `equipment` = the loadout's spell ids since THE GEAR MERGE (SPELL_LIBRARY_PLAN Phase 4): the equipped passive rows'
+   `statBonus` hooks (data.js passiveIdsStatBonus); an old { accessory1, accessory2 } object still reads the retired table. */
 function computeFullStats(race, cls, secJob, equipment) {
   const base = computeStats(race, cls);
   const secB = (secJob && typeof window.computeSecJobBonuses === 'function') ? window.computeSecJobBonuses(secJob) : { hp:0,mp:0,atk:0,def:0,mdef:0,move:0,awr:0,int:0,spd:0 };
-  const eqB = (equipment && typeof window.computeEquipBonuses === 'function') ? window.computeEquipBonuses(equipment) : { hp:0,mp:0,atk:0,def:0,mdef:0,move:0,awr:0,int:0,spd:0 };
+  const eqB = (Array.isArray(equipment) && typeof window.passiveIdsStatBonus === 'function') ? window.passiveIdsStatBonus(equipment)
+    : (equipment && !Array.isArray(equipment) && typeof window.computeEquipBonuses === 'function') ? window.computeEquipBonuses(equipment) : { hp:0,mp:0,atk:0,def:0,mdef:0,move:0,awr:0,int:0,spd:0 };
   const delta = {};
   const final = {};
   for (const k of ['hp','mp','atk','def','mdef','awr','int','spd']) {
@@ -1571,14 +1565,21 @@ function pbTierCtx(race, cls, equipped) {
   parts.wheel.forEach(id => { if (!sourceOf[id]) sourceOf[id] = 'wheel'; });   // THE DOOR WHEEL (DOOR_GUN_PLAN §2.4): the Door Agent's destination doors
   parts.borrowRace.forEach(id => { if (!sourceOf[id]) sourceOf[id] = 'borrowRace'; });
   parts.borrowJob.forEach(id => { if (!sourceOf[id]) sourceOf[id] = 'borrowJob'; });
+  if (!parts.gear) parts.gear = [];
+  parts.gear.forEach(id => { if (!sourceOf[id]) sourceOf[id] = 'gear'; });   // THE GEAR POOL (Phase 4): universal, never "borrowed"
   const pool = new Set(Object.keys(sourceOf));
   const isFreelancer = cls === 'Freelancer';
   const own = parts.race.concat(parts.job, parts.wheel);
-  const borrowed = isFreelancer ? eq.filter(id => pool.has(id) && !own.includes(id)) : [];
+  const borrowed = isFreelancer ? eq.filter(id => pool.has(id) && !own.includes(id) && !parts.gear.includes(id)) : [];
+  /* THE PASSIVES (SPELL_LIBRARY_PLAN.md Phase 4): passive / gear rows leave the tier rows for their own ◈ row — the
+     unit's own passive rows (a race / job row's) first, then the universal GEAR; at most pasMax equipped. */
+  const isPas = (id) => typeof window.spellIsPassive === 'function' && window.spellIsPassive(id);
   const rows = {};
-  for (const t of PB_TIER_ORDER) rows[t] = own.concat(borrowed).filter(id => pbTierOf(id) === t);
-  const sealed = typeof window.spellSealedIds === 'function' ? window.spellSealedIds(own.concat(borrowed)) : new Set();
-  return { race, cls, parts, pool, sourceOf, rows, sealed, equipped: eq, isFreelancer,
+  for (const t of PB_TIER_ORDER) rows[t] = own.concat(borrowed).filter(id => !isPas(id) && pbTierOf(id) === t);
+  const passives = own.concat(borrowed).filter(isPas).concat(parts.gear.filter(id => !own.includes(id)));
+  const sealed = typeof window.spellSealedIds === 'function' ? window.spellSealedIds(own.concat(borrowed, parts.gear)) : new Set();
+  return { race, cls, parts, pool, sourceOf, rows, passives, sealed, equipped: eq, isFreelancer,
+    pasMax: typeof window.PASSIVE_SLOT_MAX === 'number' ? window.PASSIVE_SLOT_MAX : 2, pasUsed: eq.filter(isPas).length,
     cap: typeof window.SPELL_SLOT_MAX !== 'undefined' ? window.SPELL_SLOT_MAX : 7, spMax: pbSpMax(), spUsed: pbSpUsed(eq) };
 }
 /* equipped · ok · sp · slots · sealed · dup/pool (never drawn) */
@@ -1595,7 +1596,7 @@ function pbSpellVerdict(ctx, id) {
   if (!ctx || !id || typeof window.spellAddVerdict !== 'function') return null;
   return window.spellAddVerdict(ctx.race, ctx.cls, ctx.equipped, id, ctx.pool);
 }
-const PB_SOURCE_LABEL = { race: 'RACE', job: 'JOB', borrowRace: 'BORROWED · RACE', borrowJob: 'BORROWED · JOB', wheel: 'DOOR WHEEL' };
+const PB_SOURCE_LABEL = { race: 'RACE', job: 'JOB', borrowRace: 'BORROWED · RACE', borrowJob: 'BORROWED · JOB', wheel: 'DOOR WHEEL', gear: 'GEAR · EVERY UNIT' };
 /* The keyboard's grid: one row per tier (its chips, then ＋ BORROW for a
    Freelancer), then the root (+ THE FINISHER). ↑ ↓ change row keeping the
    column (clamped), ← → walk the row. Empty tiers are skipped. */
@@ -1606,6 +1607,7 @@ function pbTierGrid(ctx, finisher) {
     if (ctx.isFreelancer) row.push('B' + t);
     if (row.length) grid.push(row);
   }
+  if (ctx.passives && ctx.passives.length) grid.push(ctx.passives.slice());   // the ◈ PASSIVES row (Phase 4)
   grid.push(['root']);
   return grid;
 }
@@ -1623,6 +1625,12 @@ function pbTierStep(ctx, key, dir, finisher) {
 function pbNodeMeta(sp) {
   const m = [];
   if (!sp) return m;
+  if (sp.kind === 'passive') {   // THE PASSIVES (Phase 4): no MP, no range — the stat stick's numbers, else the word
+    const sb = sp.hooks && sp.hooks.statBonus;
+    if (sb && typeof sb === 'object') Object.keys(sb).forEach(k => { if (sb[k]) m.push(['+' + sb[k] + ' ' + (k === 'int' ? 'M.ATK' : k.toUpperCase()), '#8ee6a0']); });
+    m.push(['PASSIVE', null]);
+    return m.slice(0, 3);
+  }
   if (sp.cost) m.push(['MP ' + sp.cost, '#6fc3ff']);
   if (sp.range != null) m.push([sp.range === 0 ? 'SELF' : 'R' + sp.range, null]);
   const aoe = pbAoeLabel(sp);
@@ -1686,7 +1694,7 @@ function SpellTierPanel({ ctx, fc, clsName, raceLabel, onSpellClick, onBorrow, o
     const src = ctx.sourceOf[id] || 'race';
     const cls = 'pb-tn pb-tc is-' + st8 + (t === 4 ? ' cap' : '') + (selKey === id ? ' sel' : '') + (hoverKey === id ? ' hov' : '') + ' src-' + src + ' can';
     const aoeTiles = pbAoeTiles(sp);
-    const why = st8 === 'sp' ? 'NEEDS ' + t + ' SP · ' + spLeft + ' LEFT' : st8 === 'slots' ? 'NO SLOT · ' + eq.length + '/' + ctx.cap : st8 === 'sealed' ? 'SEALED' : null;
+    const why = st8 === 'sp' ? 'NEEDS ' + t + ' SP · ' + spLeft + ' LEFT' : st8 === 'slots' ? 'NO SLOT · ' + eq.length + '/' + ctx.cap : st8 === 'passives' ? ctx.pasMax + ' PASSIVES MAX' : st8 === 'sealed' ? 'SEALED' : null;
     return h('div', {
       key: id, className: cls, style: { '--nc': nc, animation: shakeKey === id ? 'ewTreeShake 0.3s linear' : undefined },
       onClick: () => { if (onSelect) onSelect(id); onSpellClick(id); },
@@ -1694,7 +1702,7 @@ function SpellTierPanel({ ctx, fc, clsName, raceLabel, onSpellClick, onBorrow, o
       onMouseLeave: () => onNodeHoverOut(id),
       title: sp ? sp.name + ' — Tier ' + PB_TIER_NUM[t] + ' · ' + t + ' SP' + (why ? ' · ' + why : '') : id,
     },
-      h('span', { className: 'pb-tn-disc' }, st8 === 'sealed' ? '🔒' : glyph),
+      h('span', { className: 'pb-tn-disc' }, st8 === 'sealed' ? '🔒' : (sp && sp.kind === 'passive') ? (sp.icon || '◈') : glyph),
       /* COMPACT (2026-09-24, mondo: "a lot of empty space between the left info and the right info … put 2 spells
          side by side"): no right-hand column — the SP tag rides the name line, the source rides the badge row,
          the AOE grid closes the meta line, a refusal replaces the meta's tail. Two cards per row. */
@@ -1703,7 +1711,7 @@ function SpellTierPanel({ ctx, fc, clsName, raceLabel, onSpellClick, onBorrow, o
           h('span', { className: 'pb-tn-name' }, sp ? sp.name : id),
           st8 === 'equipped' ? h('b', { className: 'pb-tc-cost on', title: 'Equipped · ' + t + ' SP' }, '✓ ' + t + ' SP') : tag(t)),
         h('span', { className: 'pb-tc-badges' }, ...pbSpellBadges(sp, 4),
-          src === 'race' ? null : h('i', { className: 'pb-tc-src' }, src === 'job' ? 'JOB' : src === 'wheel' ? 'DOOR WHEEL' : 'BORROWED')),
+          src === 'race' ? null : h('i', { className: 'pb-tc-src' }, src === 'job' ? 'JOB' : src === 'wheel' ? 'DOOR WHEEL' : src === 'gear' ? 'GEAR' : 'BORROWED')),
         h('span', { className: 'pb-tc-bottom' },
           why ? h('i', { className: 'pb-tc-why' }, why)
             : h('span', { className: 'pb-tn-meta' },
@@ -1737,7 +1745,7 @@ function SpellTierPanel({ ctx, fc, clsName, raceLabel, onSpellClick, onBorrow, o
         onClick: () => { if (onSelect) onSelect(id); onUnequipSlot(id); },
         onMouseEnter: (e) => onNodeHoverIn(id, sp, e), onMouseLeave: () => onNodeHoverOut(id),
         title: (sp ? sp.name : id) + ' — Tier ' + PB_TIER_NUM[t] + ' · ' + t + ' SP · click to unequip' },
-        h('span', { className: 'pb-ls-disc' }, glyph),
+        h('span', { className: 'pb-ls-disc' }, (sp && sp.kind === 'passive') ? (sp.icon || '◈') : glyph),
         h('span', { className: 'pb-ls-name' }, sp ? sp.name : id),
         h('b', { className: 'pb-ls-tier' }, PB_TIER_NUM[t]));
     }));
@@ -1764,10 +1772,18 @@ function SpellTierPanel({ ctx, fc, clsName, raceLabel, onSpellClick, onBorrow, o
       h('span', { className: 'pb-tn-name' }, 'Basic Attack'),
       h('span', { className: 'pb-tn-meta' }, h('em', null, 'ALWAYS EQUIPPED · NO SLOT · 0 SP'))));
   // mondo (2026-09-24): the most powerful at the top — the FINISHER over Tier IV, the basic attack at the foot
+  /* ◈ THE PASSIVES (SPELL_LIBRARY_PLAN.md Phase 4 — the user: equipment and passives are one kind of row, at most 2 of
+     the 7 slots; today's accessories are universal GEAR): a row under the tiers, each chip priced by its tier like a spell */
+  const pasRow = (ctx.passives && ctx.passives.length) ? h('div', { key: 'pas', className: 'pb-tier pb-tier-pas', 'data-tier': 'pas' },
+    h('div', { className: 'pb-tier-head', title: 'Passive and gear rows: they take a slot and cost their tier in SP; at most ' + ctx.pasMax + ' per loadout' },
+      h('b', null, '◈'),
+      h('span', null, ctx.pasUsed + '/' + ctx.pasMax),
+      h('i', null, 'PASSIVES')),
+    h('div', { className: 'pb-tier-cells' }, ...ctx.passives.map(chip))) : null;
   return h('div', { className: 'pb-circuit pb-rack' },
     loadout,
     finisher ? finStrip() : null,
-    h('div', { className: 'pb-tiers' }, ...PB_TIER_ORDER.map(tierRow)),
+    h('div', { className: 'pb-tiers' }, ...PB_TIER_ORDER.map(tierRow), pasRow),
     h('div', { className: 'pb-rack-foot' }, root));
 
   /* THE FINISHER strip (2026-09-19; over the rack since 2026-09-24): one ☠ row — the race's
@@ -2116,10 +2132,12 @@ function RangeDiamond({ radius, fill, edge, label, value, color, tip }) {
    the def's desc; a user-voiced marginalia line rides
    `PASSIVE_DEFS[id].note` when present (decision C-7 — Claude never writes
    it). Clicking a note opens the full list in a window. */
-function pbUnitNotes(identity, cls, equipment) {
+function pbUnitNotes(identity, cls, equipment, spellIds) {
   const race = identity.race || '';
+  // THE PASSIVES (Phase 4): the equipped passive / gear rows show as notes beside the race's inherent ones
+  const passiveRows = (spellIds || []).filter(id => id && typeof window.spellIsPassive === 'function' && window.spellIsPassive(id));
   const pseudo = { race, gender: identity.gender || 'male', cls, types: identity.types || [], faction: identity.faction,
-    zodiac: identity.zodiac, status: {}, equipment: equipment || {} };
+    zodiac: identity.zodiac, status: {}, equipment: equipment || {}, passiveRows };
   let passives = [];
   try { passives = (typeof window.getUnitPassives === 'function') ? (window.getUnitPassives(pseudo) || []) : []; } catch (e) { passives = []; }
   const passiveNames = new Set(passives.map(p => p.name));
@@ -2619,7 +2637,6 @@ function PartyBuilder(props) {
   if (st.partyMeta?.[player]?.[slot]?.secondaryJob) delete st.partyMeta[player][slot].secondaryJob;
   const unitLoadout = st.loadouts?.[player]?.[slot] || (typeof window.emptyLoadout === 'function' ? window.emptyLoadout() : {});
   const unitEquipment = unitLoadout.equipment || {};
-  const { final: fullStats, delta: statDeltas } = computeFullStats(unitRace, clsName, secJob, unitEquipment);
   const rawCustomSpells = Array.isArray(st.partyMeta?.[player]?.[slot]?.customSpells) ? st.partyMeta[player][slot].customSpells : null;
 
   const mpMode2 = typeof window.getActiveMultiplayerMode === 'function' ? window.getActiveMultiplayerMode() : null;
@@ -2652,6 +2669,18 @@ function PartyBuilder(props) {
       }
     }
   }
+  /* THE GEAR MERGE (SPELL_LIBRARY_PLAN Phase 4): an old save's two accessories become GEAR passive rows in the kit
+     (after its own picks; the rack's repair prices them and keeps at most 2 passives), and the retired slots empty. */
+  if ((unitEquipment.accessory1 || unitEquipment.accessory2) && typeof window.gearMigrateIds === 'function') {
+    if (!st.partyMeta[player]) st.partyMeta[player] = [];
+    if (!st.partyMeta[player][slot]) st.partyMeta[player][slot] = {};
+    let mig = window.gearMigrateIds(customSpells || [], unitEquipment) || [];
+    if (typeof window.treeLegalSubset === 'function' && typeof window.classHasSpellTree === 'function' && window.classHasSpellTree(clsName)) mig = window.treeLegalSubset(unitRace, clsName, secJob, mig);
+    st.partyMeta[player][slot].customSpells = mig;
+    customSpells = mig;
+    unitEquipment.accessory1 = null; unitEquipment.accessory2 = null;
+  }
+  const { final: fullStats, delta: statDeltas } = computeFullStats(unitRace, clsName, secJob, customSpells || []);
   const learnedSpells = getLearnedSpells(clsName, customSpells);
   const zodiacNature = typeof window.ZODIAC_NATURES !== 'undefined' ? window.ZODIAC_NATURES[identity.zodiac || 'aries'] : null;
   const unitItems = unitLoadout.items || {};
@@ -2745,7 +2774,6 @@ function PartyBuilder(props) {
   }
   function handleNameChange(val) { if (!st.partyNames) st.partyNames={}; if (!st.partyNames[player]) st.partyNames[player]=[]; st.partyNames[player][slot]=val; }
   function handleZodiacChange(val) { if (!st.partyMeta[player]) st.partyMeta[player]=[]; if (!st.partyMeta[player][slot]) st.partyMeta[player][slot]={}; st.partyMeta[player][slot].zodiac=val; refresh(); }
-  function handleAccChange(accSlot, val) { if (!st.loadouts[player]) st.loadouts[player]=[]; if (!st.loadouts[player][slot]) st.loadouts[player][slot]=typeof window.emptyLoadout==='function'?window.emptyLoadout():{}; if (!st.loadouts[player][slot].equipment) st.loadouts[player][slot].equipment=typeof window.emptyEquipment==='function'?window.emptyEquipment():{}; st.loadouts[player][slot].equipment[accSlot]=val||null; st.teamLockedIn=false; refresh(); }
   function toggleSpell(spellId) { if (!spellId) return; if (!st.partyMeta[player]) st.partyMeta[player]=[]; if (!st.partyMeta[player][slot]) st.partyMeta[player][slot]={}; const slotCap=typeof window.SPELL_SLOT_MAX!=='undefined'?window.SPELL_SLOT_MAX:6; const m=st.partyMeta[player][slot]; if (!Array.isArray(m.customSpells)) m.customSpells=[]; const arr=m.customSpells,idx=arr.indexOf(spellId); if(idx>=0)arr.splice(idx,1);else{if(usedSpellSlots(arr)+spellIdSlotCost(spellId)>slotCap||pbSpUsed(arr)+pbSpCost(spellId)>pbSpMax()){sfx('uiError');return;}arr.push(spellId); if (typeof window.getSpellById==='function') pbPreview(window.getSpellById(spellId), { equip: true });} st.teamLockedIn=false; sfx('uiCursorMove'); refresh(); }
   function resetCustomSpells() { if (!st.partyMeta[player]) st.partyMeta[player]=[]; if (!st.partyMeta[player][slot]) st.partyMeta[player][slot]={};
     st.partyMeta[player][slot].customSpells = buildDefaultCustomSpells(unitRace, clsName, secJob);
@@ -2767,18 +2795,6 @@ function PartyBuilder(props) {
     const pool=[...raIds,...freshPool.map(e=>e.id)],shuffled=pool.slice(); for(let i=shuffled.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[shuffled[i],shuffled[j]]=[shuffled[j],shuffled[i]];}
     const rndPicks=[]; let rndUsed=0; for(const sid of shuffled){const c=spellIdSlotCost(sid); if(rndUsed+c>slotCap)continue; rndPicks.push(sid); rndUsed+=c; if(rndUsed>=slotCap)break;}
     st.partyMeta[player][slot].customSpells=rndPicks; st.teamLockedIn=false; sfx('uiButtonConfirm'); refresh(); }
-  function equipAccessory(accId) {
-    if (!st.loadouts[player]) st.loadouts[player] = [];
-    if (!st.loadouts[player][slot]) st.loadouts[player][slot] = typeof window.emptyLoadout === 'function' ? window.emptyLoadout() : {};
-    if (!st.loadouts[player][slot].equipment) st.loadouts[player][slot].equipment = typeof window.emptyEquipment === 'function' ? window.emptyEquipment() : {};
-    const eq = st.loadouts[player][slot].equipment;
-    if (eq.accessory1 === accId) { eq.accessory1 = null; st.teamLockedIn = false; sfx('uiCursorMove'); refresh(); return; }
-    if (eq.accessory2 === accId) { eq.accessory2 = null; st.teamLockedIn = false; sfx('uiCursorMove'); refresh(); return; }
-    if (!eq.accessory1) eq.accessory1 = accId;
-    else if (!eq.accessory2) eq.accessory2 = accId;
-    else eq.accessory1 = accId;
-    st.teamLockedIn = false; sfx('uiCursorMove'); refresh();
-  }
   function setItemCount(itemKey, delta) {
     if (!st.loadouts[player]) st.loadouts[player] = [];
     if (!st.loadouts[player][slot]) st.loadouts[player][slot] = typeof window.emptyLoadout === 'function' ? window.emptyLoadout() : {};
@@ -2956,7 +2972,7 @@ function PartyBuilder(props) {
       if (!v || !v.ok) { flashTreeNote((v && v.note) || 'NOT A LEGAL PICK'); sfx('uiError'); shakeTreeNode(id); return; }
       arr.push(id);
       const spNow = typeof window.getSpellById === 'function' ? window.getSpellById(id) : null;
-      if (spNow) pbPreview(spNow, { equip: true });      // the equip plays the cast (+ its VFX, §5.3)
+      if (spNow && spNow.kind !== 'passive') pbPreview(spNow, { equip: true });      // the equip plays the cast (+ its VFX, §5.3); a passive row is never cast
     }
     st.teamLockedIn = false; sfx('uiCursorMove'); refresh();
   }
@@ -2965,7 +2981,7 @@ function PartyBuilder(props) {
   const treeNodeHoverIn = (key, sp, e) => {
     setTechHover(key);
     if (key === PB_FIN_KEY) { pbPreviewFinisher({ hover: true }); return; }
-    if (sp || key === 'root') pbPreview(sp || null, { hover: true });
+    if ((sp && sp.kind !== 'passive') || key === 'root') pbPreview(sp || null, { hover: true });
   };
   const treeNodeHoverOut = () => {
     setTechHover(null);
@@ -2999,7 +3015,6 @@ function PartyBuilder(props) {
 
   const numerals = ['I','II','III','IV','V','VI','VII','VIII'];
   const unitName = resolveUnitName(player, slot, clsName);
-  const allAccIds = typeof window.EQUIP_DEFS!=='undefined' ? Object.keys(window.EQUIP_DEFS).filter(id=>{const d=window.EQUIP_DEFS[id];return d&&(d.slot==='accessory1'||d.slot==='accessory2');}) : [];
   const allItemKeys = (typeof window.ITEM_RULES!=='undefined' ? Object.keys(window.ITEM_RULES) : [])
     .filter(k => !(window.ITEM_RULES[k] && window.ITEM_RULES[k].fieldOnly))   // THE BAG (2026-09-20): a field-only item is the pause menu's, never a battle slot's
     .filter(k => !(window.ITEM_RULES[k] && window.ITEM_RULES[k].story))   // THE ONE-WAY DOOR (CAPTURE_PLAN.md §3.1): a story-only capture door is never a forge slot
@@ -3421,18 +3436,24 @@ function PartyBuilder(props) {
       h('span', { style:{ fontSize:9, color:EW.inkDim, letterSpacing:'0.14em', marginLeft:'auto' } }, totalItemsUsed, '/', itemSlotMax, ' ITEMS CARRIED')),
     h('div', { className: 'pb-zone-body pb-gear' },
       h('button', { className: 'ms-tty-btn primary', onClick: () => setCreatorOpen(true) }, 'CHARACTER CREATOR'),
-      h('div', { className: 'pb-gear-row' },
-        h('div', { className: 'pb-gear-label' }, 'GEAR', h('small', null, 'TWO SLOTS')),
-        h('div', { className: 'pb-gear-slots' },
-          ['accessory1','accessory2'].map(sk => {
-            const accId = unitEquipment[sk];
-            const def = accId ? window.EQUIP_DEFS?.[accId] : null;
-            return h(EquipSlotBox, { key:sk, size:64, accent:fc,
-              filled:!!def, icon:def ? (ACC_ICONS[accId]||'\u{1F392}') : null,
-              label:def ? def.label : '', title:def ? `${def.label} — ${def.desc}` : 'Equip gear',
-              onClick:()=>{ setEquipPicker(sk); sfx('uiCursorMove'); },
-              onClear:def ? ()=>handleAccChange(sk, null) : null });
-          }))),
+      /* THE GEAR MERGE (SPELL_LIBRARY_PLAN.md Phase 4): gear is a passive row in the spell slots now — these boxes SHOW the
+         equipped passive / gear rows (at most 2); a click opens TECHNIQUES, where the ◈ PASSIVES row equips them. */
+      (() => {
+        const pasIds = (customSpells || []).filter(id => typeof window.spellIsPassive === 'function' && window.spellIsPassive(id));
+        const pasMax = typeof window.PASSIVE_SLOT_MAX === 'number' ? window.PASSIVE_SLOT_MAX : 2;
+        return h('div', { className: 'pb-gear-row' },
+          h('div', { className: 'pb-gear-label' }, 'GEAR', h('small', null, 'PASSIVES · IN THE RACK')),
+          h('div', { className: 'pb-gear-slots' },
+            Array.from({ length: pasMax }).map((_, gi) => {
+              const gid = pasIds[gi];
+              const sp = gid && typeof window.getSpellById === 'function' ? window.getSpellById(gid) : null;
+              return h(EquipSlotBox, { key: 'pas' + gi, size:64, accent:fc,
+                filled: !!sp, icon: sp ? (sp.icon || '◈') : null,
+                label: sp ? sp.name : '', title: sp ? `${sp.name} — ${sp.desc || ''} · Tier ${pbTierOf(sp)} · ${pbSpCost(sp)} SP` : 'Equip gear or a passive in TECHNIQUES → ◈ PASSIVES (a slot + its SP)',
+                onClick: () => { setTab('tech'); },
+                onClear: sp ? () => tierSpellClick(gid) : null });
+            })));
+      })(),
       h('div', { className: 'pb-gear-row' },
         h('div', { className: 'pb-gear-label' }, 'ITEMS', h('small', null, itemSlotMax + ' SLOTS')),
         h('div', { className: 'pb-gear-slots' },
@@ -3498,7 +3519,7 @@ function PartyBuilder(props) {
   })();
 
   // Stage 5: the vessel's notes (the engine's passives + the hand-authored terrain rows)
-  const unitNotes = pbUnitNotes(identity, clsName, unitEquipment);
+  const unitNotes = pbUnitNotes(identity, clsName, unitEquipment, customSpells || []);
   const notePaper = PB_NOTE_PAPER[unitFaction] || 'yellow';
 
   // STATS column (every tab but ROSTER): identity, vitals, the sheet, footprints, the type chart, the elements
@@ -3817,7 +3838,7 @@ function PartyBuilder(props) {
       (!unitNotes.passives.length && !unitNotes.terrain.length) ? h('div', { style:{ fontSize:11, color:EW.inkDim, fontStyle:'italic', padding:'12px 6px', textAlign:'center' } }, 'No notes on this vessel — field research pending.') : null));
 
   const pickerWindow = equipPicker && h(PbWindow, {
-      title: equipPicker === 'item' ? 'Battle Items' : 'Gear — Slot ' + (equipPicker === 'accessory1' ? '1' : '2'),
+      title: 'Battle Items',
       sub: equipPicker === 'item' ? (totalItemsUsed + ' / ' + itemSlotMax + ' CARRIED') : null,
       onClose: () => setEquipPicker(null), width: 470 },
     equipPicker === 'item'
@@ -3835,26 +3856,7 @@ function PartyBuilder(props) {
               count > 0 ? h('button', { className:'pb-stepper-btn', onClick:e=>{ e.stopPropagation(); setItemCount(ik, -1); }, style:{ width:20, height:20, borderRadius:'50%', background:'rgba(0,0,0,0.4)', border:`1px solid ${EW.panelEdge}`, color:EW.inkMute, fontSize:13, lineHeight:'18px', textAlign:'center', cursor:'pointer', padding:0, fontFamily:'DotGothic16, monospace' }}, '−') : null,
               h('span', { style:{ width:18, textAlign:'center', fontSize:12, color: count ? EW.ink : EW.inkDim, fontWeight:600 }}, count)));
         })
-      : (() => {
-          const other = equipPicker === 'accessory1' ? 'accessory2' : 'accessory1';
-          const rows = allAccIds.map(accId => {
-            const def = window.EQUIP_DEFS?.[accId];
-            if (!def) return null;
-            const here = unitEquipment[equipPicker] === accId, there = unitEquipment[other] === accId;
-            return h('div', { key:accId, className:'pbx-pick-row', style: here ? { borderColor:fc, background:`${fc}14` } : undefined,
-              onClick:()=>{ if (here) { handleAccChange(equipPicker, null); } else { if (there) handleAccChange(other, null); handleAccChange(equipPicker, accId); } sfx('uiButtonConfirm'); setEquipPicker(null); } },
-              h('span', { style:{ fontSize:18, flexShrink:0, width:26, textAlign:'center' }}, ACC_ICONS[accId] || '🎒'),
-              h('div', { style:{ flex:1, minWidth:0 }},
-                h('div', { style:{ fontSize:12, color: here ? EW.ink : '#c3c8d6' }}, def.label, there ? h('span', { style:{ fontSize:8, color:EW.inkDim }}, '  (in other slot)') : null),
-                h('div', { style:{ fontSize:10, color:EW.inkMute, lineHeight:1.35 }}, def.desc)),
-              def.stat && def.statVal ? h('span', { style:{ fontSize:10, color:EW.good, fontWeight:700, flexShrink:0 }}, '+' + def.statVal + ' ' + (def.stat || '').toUpperCase()) : null,
-              here ? h('span', { style:{ fontSize:9, color:fc, flexShrink:0, fontWeight:700, letterSpacing:'0.08em' }}, 'EQUIPPED') : null);
-          });
-          if (unitEquipment[equipPicker]) rows.push(h('div', { key:'__rm', className:'pbx-pick-row', onClick:()=>{ handleAccChange(equipPicker, null); setEquipPicker(null); } },
-            h('span', { style:{ width:26, textAlign:'center', color:EW.bad, flexShrink:0 }}, '✕'),
-            h('div', { style:{ flex:1, fontSize:11, color:EW.bad }}, 'Remove gear from this slot')));
-          return rows;
-        })());
+      : null);   // (the gear picker retired with the accessory slots — THE GEAR MERGE, Phase 4)
 
   /* ── the monitor ── */
   return h('div', { ref: crtRef, className: `ms-crt ms-crt-page ms-crt-forge pb-tarot pb-tarot-${unitFaction}`, style: { '--pb-fc': fc } },

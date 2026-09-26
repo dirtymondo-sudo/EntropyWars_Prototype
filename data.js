@@ -122,6 +122,10 @@ const FLYING_ALTITUDE_CONFIG = {
     woundedGroundPct: 0.25,
 };
 
+/* THE GEAR MERGE (SPELL_LIBRARY_PLAN.md Phase 4, 2026-09-26): the two accessory slots are RETIRED — every accessory is a
+   passive row in the GEAR family (GEAR_PASSIVES, equipped in the spell slots, at most 2 passive rows of the 7). This table
+   stays as the LABELS of the retired ids (an old save's `equipment`, the display mirror unit.equipment); nothing equips
+   from it. Spelunking Gear was dropped (nothing read it). */
 const EQUIPMENT_SLOTS = ['accessory1', 'accessory2'];
 
 const EQUIP_DEFS = {
@@ -131,7 +135,6 @@ const EQUIP_DEFS = {
     'ward': { slot: 'accessory1', label: 'Ward Totem', desc: 'Deployable ward (place within 3 tiles) that grants vision in an area. +14 AWR.', stat: 'awr', statVal: 14 },
     'telescope': { slot: 'accessory1', label: 'Telescope', desc: 'Spot and target enemies in the sky from the ground (range 5). +28 AWR.', stat: 'awr', statVal: 28 },
     'jetpack': { slot: 'accessory1', label: 'Jetpack', desc: 'Fly to the sky without nexus control. Ignores terrain movement cost. +1 MOV.', stat: 'move', statVal: 1 },
-    'spelunking_gear': { slot: 'accessory1', label: 'Spelunking Gear', desc: 'Descend underground without nexus control. +14 AWR.', stat: 'awr', statVal: 14 },
     // ── Combat & utility accessories (held-item effects, hooked in battle.js/map.js) ──
     'chrono_locket': { slot: 'accessory1', label: 'Chrono Locket', desc: 'A sliver of borrowed time. Regenerates an extra 5% max HP at the end of every round.' },
     'martyrs_talisman': { slot: 'accessory1', label: "Martyr's Talisman", desc: 'Defies the first killing blow each life — survive at 1 HP. Recharges on respawn.' },
@@ -3338,6 +3341,13 @@ function getUnitPassives(unit) {
         if (out.length >= MAX_UNIT_PASSIVES) break;
         const def = PASSIVE_DEFS[id];
         if (def && out.indexOf(def) === -1) out.push(def);
+    }
+    /* THE PASSIVES (SPELL_LIBRARY_PLAN.md §4.5, Phase 4): the EQUIPPED passive rows (gear + family passives) after the
+       inherent ones — MAX_UNIT_PASSIVES caps the inherent only; PASSIVE_SLOT_MAX caps the rows in the loadout. Each row
+       is wrapped with its hooks at top level, so every hook key reads through unitPassiveValue unchanged. */
+    for (const id of unitPassiveRowIds(unit)) {
+        const w = passiveRowWrap(id);
+        if (w && out.indexOf(w) === -1) out.push(w);
     }
     return out;
 }
@@ -9125,6 +9135,72 @@ const SPELL_RIDER_EXAMPLES = [
       desc: 'Deals WEAK physical damage to a Single Enemy. Splashes 50% of it onto every enemy adjacent to the target.' },
 ];
 for (const sp of SPELL_RIDER_EXAMPLES) SPELL_BY_ID[sp.id] = sp;
+
+/* ══ THE GEAR MERGE (SPELL_LIBRARY_PLAN.md §4.5 / §6.4, Phase 4, 2026-09-26) ═══════════════════════════════════════
+   The user's rulings (2026-09-25): equipment and passives are ONE kind of row, equipped in the spell slots, at most
+   PASSIVE_SLOT_MAX (2) of the 7; today's accessories are UNIVERSAL — the GEAR family every unit's pool carries.
+   So each accessory is a `kind: 'passive'` row here: tier I (1 SP) until the catalogue re-tiers it, its effect in
+   `hooks` (the SAME keys PASSIVE_DEFS uses — getUnitPassives unions the equipped rows, so unitPassiveValue reads them),
+   `accessory` = the retired EQUIP_DEFS id (GEAR_ID_OF_ACCESSORY maps an old save's pick onto the row; the map.js
+   helpers unitHasBinoculars / unitHasWard / … read it). Spelunking Gear is gone (nothing ever read it). A passive row
+   never sits in unit.spells: createUnit (map.js) moves it to unit.passiveRows (ids — they ride the snapshot, RULE #2). */
+const GEAR_PASSIVES = [
+    { id: 'gearBinoculars', tier: 1, name: 'Binoculars', icon: '🔭', accessory: 'binoculars',
+      hooks: { statBonus: { awr: 28 } },
+      desc: '+28 AWR. Sharper perception: higher crit chance, and at AWR 84+ senses hidden enemies from 2 tiles.' },
+    { id: 'gearWalkieTalkie', tier: 1, name: 'Walkie Talkie', icon: '📻', accessory: 'walkie_talkie',
+      hooks: { statBonus: { awr: 14 } },
+      desc: 'Shares line of sight with allied Walkie Talkie carriers. +14 AWR.' },
+    { id: 'gearSignalFlare', tier: 1, name: 'Signal Flare', icon: '🎆', accessory: 'flair',
+      hooks: { statBonus: { awr: 14 } },
+      desc: 'One-use flare that reveals an area of the map. +14 AWR.' },
+    { id: 'gearWardTotem', tier: 1, name: 'Ward Totem', icon: '🗿', accessory: 'ward',
+      hooks: { statBonus: { awr: 14 } },
+      desc: 'Deployable ward (place within 3 tiles) that grants vision in an area. +14 AWR.' },
+    { id: 'gearTelescope', tier: 1, name: 'Telescope', icon: '🔬', accessory: 'telescope',
+      hooks: { statBonus: { awr: 28 } },
+      desc: 'Spot and target enemies in the sky from the ground (range 5). +28 AWR.' },
+    { id: 'gearJetpack', tier: 1, name: 'Jetpack', icon: '🚀', accessory: 'jetpack',
+      hooks: { statBonus: { move: 1 } },
+      desc: 'Fly to the sky without nexus control. Ignores terrain movement cost. +1 MOV.' },
+    { id: 'gearChronoLocket', tier: 1, name: 'Chrono Locket', icon: '⏳', accessory: 'chrono_locket',
+      hooks: { regenPerRound: 5 },
+      desc: 'A sliver of borrowed time. Regenerates an extra 5% max HP at the end of every round.' },
+    { id: 'gearMartyrsTalisman', tier: 1, name: "Martyr's Talisman", icon: '✨', accessory: 'martyrs_talisman',
+      hooks: { surviveLethalOnce: true },
+      desc: 'Defies the first killing blow each life — survive at 1 HP. Recharges on respawn.' },
+    { id: 'gearPurityCenser', tier: 1, name: 'Censer of Purity', icon: '⚱️', accessory: 'purity_censer',
+      hooks: { purgeDebuff: { lashAtkPct: 0.4 } },
+      desc: 'Once per round, instantly purges an enemy-inflicted debuff and lashes back at the culprit for 40% of ATK.' },
+    { id: 'gearBerserkersBrand', tier: 1, name: "Berserker's Brand", icon: '🔥', accessory: 'berserkers_brand',
+      hooks: { statBonus: { atk: 16 }, spellLock: true },
+      desc: '+16 ATK, but each life this unit is locked to the first spell it casts until it falls.' },
+    { id: 'gearArchonsFocus', tier: 1, name: "Archon's Focus", icon: '🔮', accessory: 'archons_focus',
+      hooks: { statBonus: { int: 14 }, spellLock: true },
+      desc: '+14 M ATK, but each life this unit is locked to the first spell it casts until it falls.' },
+    { id: 'gearGrapnelGauntlet', tier: 1, name: 'Grapnel Gauntlet', icon: '🪝', accessory: 'grapnel_gauntlet',
+      hooks: { grantSpell: { id: 'raceGrapple', cost: 12 } },
+      desc: 'Built-in grappling hook: grants the Grapple ability — pull an enemy 2 tiles toward you and reel them in for a hit.' },
+    { id: 'gearEchoBand', tier: 1, name: 'Echo Band', icon: '🔁', accessory: 'echo_band',
+      hooks: { basicEcho: 0.5 },
+      desc: 'Basic attacks strike twice — the echo hits for 50% damage.' },
+    { id: 'gearHagstone', tier: 1, name: 'Hagstone', icon: '🪨', accessory: 'hagstone',
+      hooks: { revealInvisibleWithin: 4 },
+      desc: 'Peer through the veil: at the end of each round, invisible enemies within 4 tiles of the bearer are revealed.' },
+    { id: 'gearMasonsGauntlets', tier: 1, name: "Mason's Gauntlets", icon: '🧱', accessory: 'masons_gauntlets',
+      hooks: { buildBonus: { build: 1 } },
+      desc: 'A master builder’s grip: every AP spent on the Build action places or digs 2 blocks instead of 1.' },
+    { id: 'gearDowsingRod', tier: 1, name: 'Dowsing Rod', icon: '🪄', accessory: 'dowsing_rod',
+      hooks: { revealTrapsWithin: 3 },
+      desc: 'Twitches over buried danger: at the end of each round, enemy traps within 3 tiles of the bearer are revealed to your team.' },
+];
+const GEAR_ID_OF_ACCESSORY = {};
+for (const sp of GEAR_PASSIVES) {
+    Object.assign(sp, { kind: 'passive', type: 'utility', families: ['gear'], cost: 0, apCost: 0, range: 0 });
+    sp._gear = true;
+    SPELL_BY_ID[sp.id] = sp;
+    GEAR_ID_OF_ACCESSORY[sp.accessory] = sp.id;
+}
 
 /* ── Baked movepool shares (2026-07-26, from the Spell Library editor) ────
    These races borrow spells DEFINED elsewhere (another race's array or the
@@ -18231,12 +18307,15 @@ function unitSpellPoolParts(race, cls) {
         parts.borrowJob = take(flWildcardPool(race).map(sp => sp.id));
     }
     parts.wheel = take(doorGunWheelPool(race));
+    /* THE GEAR POOL (Phase 4, the user 2026-09-25): every row of a UNIVERSAL family (the GEAR family's accessories) is in
+       every unit's pool, a Freelancer's too — never "borrowed" (a race / job row's own passive stays in its part). */
+    parts.gear = take(universalPassiveIds());
     return parts;
 }
 /* Every id the unit may equip (sealed ones included — spellSealedIds says which). */
 function unitSpellPool(race, cls) {
     const p = unitSpellPoolParts(race, cls);
-    return p.race.concat(p.job, p.wheel, p.borrowRace, p.borrowJob);
+    return p.race.concat(p.job, p.wheel, p.gear || [], p.borrowRace, p.borrowJob);
 }
 
 /* Can `id` join this loadout? { ok, reason, note, slots, sp, need } — the ONE verdict every UI prints. */
@@ -18251,6 +18330,8 @@ function spellAddVerdict(race, cls, ids, id, poolSet) {
     if (!pool.has(id)) return Object.assign(out, { reason: 'pool', note: 'NOT IN THIS UNIT’S SPELLS' });
     if (_spellSealed(id)) return Object.assign(out, { reason: 'sealed', note: 'SEALED · NOT ALLOWED IN THIS MODE' });
     if (eq.length >= cap) return Object.assign(out, { reason: 'slots', note: 'NO SLOT · ' + eq.length + '/' + cap + ' SLOTS · UNEQUIP SOMETHING' });
+    // THE PASSIVE CAP (Phase 4, the user 2026-09-25): at most PASSIVE_SLOT_MAX passive / gear rows among the slots
+    if (spellIsPassive(id) && passiveRowCount(eq) >= PASSIVE_SLOT_MAX) return Object.assign(out, { reason: 'passives', note: PASSIVE_SLOT_MAX + ' PASSIVES MAX · UNEQUIP ONE' });
     if (used + need > SPELL_SP_MAX) return Object.assign(out, { reason: 'sp', note: 'NOT ENOUGH SP · ' + used + '/' + SPELL_SP_MAX + ' USED · NEEDS ' + need + ' · FREE ' + (used + need - SPELL_SP_MAX) + ' MORE' });
     return Object.assign(out, { ok: true, reason: 'ok', note: 'EQUIP · ' + need + ' SP' });
 }
@@ -18284,6 +18365,7 @@ function isTreeLoadoutLegal(race, cls, secJob, spellIds) {
     if (ids.length > cap) return false;
     if (new Set(ids).size !== ids.length) return false;
     if (loadoutSpUsed(ids) > SPELL_SP_MAX) return false;
+    if (passiveRowCount(ids) > PASSIVE_SLOT_MAX) return false;
     const pool = new Set(unitSpellPool(race, cls));
     for (const id of ids) if (!pool.has(id) || _spellSealed(id)) return false;
     return true;
@@ -18299,15 +18381,19 @@ function treeLegalSubset(race, cls, secJob, spellIds) {
     if (!classHasSpellTree(cls)) return (spellIds || []).filter(Boolean).slice(0, cap);
     const pool = new Set(unitSpellPool(race, cls));
     const out = [];
-    let sp = 0;
+    let sp = 0, pas = 0;
     for (const _rawId of (spellIds || [])) {
-        const id = SPELL_ID_RENAMED[_rawId] || _rawId;   // a stale save keeps its pick under the new id (the door wheel, 2026-09-25)
+        // a stale save keeps its pick under the new id (the door wheel, 2026-09-25); a retired accessory id → its gear row (Phase 4)
+        const id = SPELL_ID_RENAMED[_rawId] || GEAR_ID_OF_ACCESSORY[_rawId] || _rawId;
         if (out.length >= cap) break;
         if (!id || out.includes(id) || !pool.has(id) || _spellSealed(id)) continue;
         const c = spellSpCost(id);
         if (sp + c > SPELL_SP_MAX) continue;
+        const isPas = spellIsPassive(id);
+        if (isPas && pas >= PASSIVE_SLOT_MAX) continue;   // THE PASSIVE CAP — the third passive row is skipped (earlier picks win)
         out.push(id);
         sp += c;
+        if (isPas) pas++;
     }
     return out;
 }
@@ -18324,11 +18410,13 @@ function buildTreeLegalLoadout(race, cls, secJob, budget, rng) {
     const weighted = [];
     for (const id of parts.race.concat(parts.job, parts.wheel)) if (!_spellSealed(id)) weighted.push([id, 6]);
     for (const id of parts.borrowRace.concat(parts.borrowJob)) if (!_spellSealed(id)) weighted.push([id, 1]);
+    for (const id of (parts.gear || [])) if (!_spellSealed(id) && !weighted.some(w => w[0] === id)) weighted.push([id, 1]);   // THE GEAR POOL (Phase 4): a rare pick
     const attempt = () => {
         const picks = [];
         let sp = 0;
         while (picks.length < cap) {
-            const opts = weighted.filter(([id]) => !picks.includes(id) && sp + spellSpCost(id) <= SPELL_SP_MAX);
+            const pasFull = passiveRowCount(picks) >= PASSIVE_SLOT_MAX;
+            const opts = weighted.filter(([id]) => !picks.includes(id) && sp + spellSpCost(id) <= SPELL_SP_MAX && !(pasFull && spellIsPassive(id)));
             if (!opts.length) break;
             let total = 0;
             for (const o of opts) total += o[1];
@@ -18363,7 +18451,158 @@ function _flTierOf(sp) { return spellTierNumeral(sp); }
    THE RULINGS (the user, 2026-09-25): tiers and costs are the user's to set per row; passives and equipment are one
    kind of row equipped in the spell slots, AT MOST 2 of the 7 (PASSIVE_SLOT_MAX — enforced in Phase 4); today's 17
    accessories are UNIVERSAL — the GEAR family every pool carries, a Freelancer's too, priced tier I by default. */
-const PASSIVE_SLOT_MAX = 2;   // passive / equipment rows among the 7 slots (Phase 4 enforces it in spellAddVerdict / treeLegalSubset)
+const PASSIVE_SLOT_MAX = 2;   // passive / equipment rows among the 7 slots (enforced since Phase 4: spellAddVerdict / isTreeLoadoutLegal / treeLegalSubset)
+
+/* ══ THE PASSIVES (SPELL_LIBRARY_PLAN.md §4.5 / §6.4, Phase 4, 2026-09-26) ═══════════════════════════════════════════
+   A passive row is a SPELL_BY_ID row with `kind: 'passive'`: it takes a slot, costs its tier in SP, at most
+   PASSIVE_SLOT_MAX of them per loadout (spellAddVerdict 'passives' · isTreeLoadoutLegal · treeLegalSubset skips the
+   third), and its effect lives in `hooks: { <hook key>: value }` — PASSIVE_HOOK_KEYS below is the catalogue the
+   library's hook editor offers. On the board the row is NOT a spell: createUnit moves it out of unit.spells into
+   unit.passiveRows (ids), and getUnitPassives appends passiveRowWrap(id) after the race's inherent passives. ── */
+function spellIsPassive(spOrId) {
+    const sp = _spellOfIdOrDef(spOrId);
+    return !!(sp && sp.kind === 'passive');
+}
+function passiveRowCount(ids) {
+    let n = 0;
+    for (const id of (ids || [])) if (id && spellIsPassive(id)) n++;
+    return n;
+}
+/* every row of a UNIVERSAL family (SPELL_FAMILIES[f].universal — the GEAR family), in SPELL_BY_ID order */
+function universalPassiveIds() {
+    if (typeof SPELL_BY_ID === 'undefined') return [];
+    const uni = Object.keys(SPELL_FAMILIES).filter(f => SPELL_FAMILIES[f] && SPELL_FAMILIES[f].universal);
+    if (!uni.length) return [];
+    const out = [];
+    for (const id of Object.keys(SPELL_BY_ID)) {
+        const sp = SPELL_BY_ID[id];
+        if (!sp || sp.id !== id || sp.kind !== 'passive') continue;
+        if (spellFamiliesOf(sp).some(f => uni.includes(f))) out.push(id);
+    }
+    return out;
+}
+/* the unit's equipped passive rows (ids; map.js createUnit writes unit.passiveRows) */
+function unitPassiveRowIds(unit) {
+    return (unit && Array.isArray(unit.passiveRows)) ? unit.passiveRows : [];
+}
+/* a passive row as a PASSIVE_DEFS-shaped entry: { id, icon, name, desc, …hooks } — cached per row object, rebuilt when
+   the library replaces the row's hooks / name / desc (EWSpellMods writes a field as a new value, never in place) */
+const _passiveWrapCache = (typeof WeakMap === 'function') ? new WeakMap() : null;
+function passiveRowWrap(spOrId) {
+    const sp = _spellOfIdOrDef(spOrId);
+    if (!sp || sp.kind !== 'passive') return null;
+    const c = _passiveWrapCache && _passiveWrapCache.get(sp);
+    if (c && c.hooks === sp.hooks && c.name === sp.name && c.desc === sp.desc && c.icon === sp.icon) return c.wrap;
+    const hooks = (sp.hooks && typeof sp.hooks === 'object') ? sp.hooks : {};
+    const wrap = Object.assign({}, hooks, { id: sp.id, icon: sp.icon || '◈', name: sp.name || sp.id, desc: sp.desc || '', _row: true, _gear: !!sp._gear, tier: sp.tier });
+    if (_passiveWrapCache) _passiveWrapCache.set(sp, { hooks: sp.hooks, name: sp.name, desc: sp.desc, icon: sp.icon, wrap });
+    return wrap;
+}
+/* the retired accessory ids an old save carries (meta / loadout `equipment`) → their gear rows, appended AFTER the save's
+   own picks (earlier picks win; treeLegalSubset then trims to the slots, the SP and THE PASSIVE CAP). null when both
+   are empty, so callers keep their "no custom kit" branch. */
+function gearMigrateIds(ids, equipment) {
+    const out = Array.isArray(ids) ? ids.filter(Boolean).slice() : [];
+    if (equipment && typeof equipment === 'object') {
+        for (const k of ['accessory1', 'accessory2']) {
+            const g = equipment[k] && GEAR_ID_OF_ACCESSORY[equipment[k]];
+            if (g && !out.includes(g)) out.push(g);
+        }
+    }
+    return out.length ? out : (Array.isArray(ids) ? ids : null);
+}
+/* THE RETIRED SLOTS' MIRROR: the unit's gear rows as the old { accessory1, accessory2 } pair — read only by display code
+   (sprites, badges) that still names an accessory; the TRUTH is unit.passiveRows. */
+function passiveRowsEquipmentMirror(ids) {
+    const acc = [];
+    for (const id of (ids || [])) { const sp = _spellOfIdOrDef(id); if (sp && sp.accessory) acc.push(sp.accessory); }
+    return { accessory1: acc[0] || null, accessory2: acc[1] || null };
+}
+/* Does the unit carry the gear row of a retired accessory id? (map.js unitHasAccessory reads this.) Reads the row ids
+   directly — NEVER through getUnitPassives, which asks canFly, which asks unitHasJetpack → here. */
+function unitHasGear(unit, accessoryId) {
+    const g = GEAR_ID_OF_ACCESSORY[accessoryId];
+    return !!g && unitPassiveRowIds(unit).includes(g);
+}
+/* Σ statBonus over a unit's passives (inherent + rows) — { hp, mp, atk, def, mdef, move, awr, int, spd }. createUnit
+   folds it into the stats (the old computeEquipBonuses fold); party-builder's stat preview reads passiveIdsStatBonus. */
+function _sumStatBonus(list) {
+    const b = { hp: 0, mp: 0, atk: 0, def: 0, mdef: 0, move: 0, awr: 0, int: 0, spd: 0 };
+    for (const p of list) {
+        const sb = p && p.statBonus;
+        if (!sb || typeof sb !== 'object') continue;
+        for (const k of Object.keys(b)) if (typeof sb[k] === 'number' && isFinite(sb[k])) b[k] += sb[k];
+    }
+    return b;
+}
+function unitPassiveStatBonus(unit) { return _sumStatBonus(getUnitPassives(unit)); }
+function passiveIdsStatBonus(ids) {
+    return _sumStatBonus((ids || []).map(id => passiveRowWrap(id)).filter(Boolean));
+}
+/* THE HOOK CATALOGUE — every key a passive (inherent or row) may carry, its value's shape, and where the engine reads it.
+   The library's HOOKS editor lists these; the keys below `// Phase 4` are the new ones (the user's list + the eight
+   accessory behaviours, now reusable by any family passive). */
+const PASSIVE_HOOK_KEYS = {
+    immuneStatus:          { type: 'list',   example: ['burn'], reads: 'applyStatusPayload', desc: 'status ids that never take hold' },
+    immuneKind:            { type: 'string', example: 'debuff', reads: 'applyStatusPayload', desc: 'a whole status kind never takes hold' },
+    immuneStatDown:        { type: 'bool',   example: true, reads: 'stat stages', desc: 'stat drops never land' },
+    immuneDamageType:      { type: 'string', example: 'physical', reads: 'applyDamageToUnit', desc: 'hits of this damage type do nothing' },
+    healedByElement:       { type: 'string', example: 'fire', reads: 'applyDamageToUnit', desc: 'this element heals instead of harming' },
+    phasing:               { type: 'bool',   example: true, reads: 'movement', desc: 'moves through walls, units and barricades' },
+    basicAttackLifesteal:  { type: 'number', example: 0.25, reads: 'basic attack', desc: 'fraction of basic-attack damage healed' },
+    lowHpBonus:            { type: 'object', example: { threshold: 0.3, dmgMult: 1.25, spdStages: 1 }, reads: 'applyDamageToUnit', desc: 'more damage against wounded enemies' },
+    respawnMult:           { type: 'number', example: 0.5, reads: 'respawn', desc: 'respawn countdown multiplier' },
+    respawnAtDeathTile:    { type: 'bool',   example: true, reads: 'respawn', desc: 'respawns where it fell' },
+    rangeBonus:            { type: 'number', example: 1, reads: 'basic attack range', desc: '+tiles on basic attacks' },
+    targetableWithin:      { type: 'number', example: 3, reads: 'targeting / fog', desc: 'enemies see / target it only this close' },
+    doorFreeToggle:        { type: 'bool',   example: true, reads: 'doorToggleFree', desc: 'one free friendly door toggle a turn' },
+    oppAttackChance:       { type: 'number', example: 1, reads: 'opportunity attacks', desc: 'opportunity-attack hit chance' },
+    oppAttackMult:         { type: 'number', example: 1.5, reads: 'opportunity attacks', desc: 'opportunity-attack damage ×' },
+    physicalHitStatus:     { type: 'object', example: { id: 'bleed', duration: 2 }, reads: 'applyDamageToUnit', desc: 'every physical hit applies this status' },
+    basicAttackRange:      { type: 'number', example: 99, reads: 'basic attack range', desc: 'basic attack range override' },
+    closeRangeBonus:       { type: 'object', example: { within: 2, mult: 1.3 }, reads: 'basic attack', desc: 'basic attacks ×mult within N tiles' },
+    contactStatus:         { type: 'string', example: 'goo', reads: 'melee contact', desc: 'melee contact either way applies this status' },
+    trailTerrain:          { type: 'object', example: { terrain: 'swamp', rounds: 3 }, reads: 'turn end', desc: 'the tile it ends on becomes this terrain' },
+    spellCostMult:         { type: 'number', example: 1.5, reads: 'getSpellMpCostFor', desc: 'spell MP ×' },
+    mpOnBasicHit:          { type: 'number', example: 25, reads: 'basic attack', desc: 'MP gained per landed basic attack' },
+    mpFromMagicDamage:     { type: 'number', example: 0.3, reads: 'applyDamageToUnit', desc: 'fraction of magic damage taken stored as MP' },
+    stagePerRounds:        { type: 'object', example: { int: 1, every: 3 }, reads: 'round start', desc: '+stage every N rounds' },
+    resetOnDeath:          { type: 'bool',   example: true, reads: 'stagePerRounds', desc: 'the stages fall away at death' },
+    basicAttackMagic:      { type: 'bool',   example: true, reads: 'basic attack', desc: 'basic attacks use M.ATK vs M.DEF' },
+    basicAttackRangeBonus: { type: 'number', example: 1, reads: 'basic attack range', desc: '+tiles on basic attacks' },
+    healMult:              { type: 'number', example: 1.2, reads: 'heals cast', desc: 'heals it casts ×' },
+    speedTiePriority:      { type: 'bool',   example: true, reads: 'turn order', desc: 'wins speed ties' },
+    dayNightForms:         { type: 'object', example: { night: { atk: 2, spd: 3 } }, reads: 'day / night', desc: 'stages worn at night' },
+    // Phase 4 — the user's new keys (SPELL_LIBRARY_PLAN.md §4.5)
+    statBonus:             { type: 'object', example: { awr: 14 }, reads: 'createUnit', desc: 'flat stats at build: hp mp atk def mdef move awr int spd' },
+    regenPerRound:         { type: 'number', example: 4, reads: 'processEndOfRoundRegen', desc: 'extra % max HP regenerated each round end' },
+    healOnceBelowPct:      { type: 'object', example: { pct: 50, healPct: 40 }, reads: 'applyDamageToUnit', desc: 'once per life, dropping under pct% HP heals healPct% max HP' },
+    physicalElementRider:  { type: 'string', example: 'fire', reads: 'getSpellElement + basic attack', desc: 'physical spells and basic attacks carry this element' },
+    buildBonus:            { type: 'object', example: { build: 1 }, reads: 'unitBuildOpsPerAP', desc: '+blocks placed / dug per AP on the Build action' },
+    weatherBonus:          { type: 'object', example: { storm: { atkStages: 1 } }, reads: 'getStatStageCount', desc: 'stat stages (atk/def/mdef/spd/int + Stages) while standing in this weather' },
+    terrainBonus:          { type: 'object', example: { water: { defStages: 1 } }, reads: 'getStatStageCount', desc: 'stat stages while standing on this terrain' },
+    zodiacBonus:           { type: 'object', example: { earth: { atkStages: 1 } }, reads: 'getStatStageCount', desc: "stat stages while this sign (or element's signs, or 'own') is active" },
+    // Phase 4 — the eight accessory behaviours, as keys
+    surviveLethalOnce:     { type: 'bool',   example: true, reads: 'applyDamageToUnit', desc: 'first killing blow each life leaves 1 HP' },
+    purgeDebuff:           { type: 'object', example: { lashAtkPct: 0.4 }, reads: 'applyStatusPayload', desc: 'once a round an enemy debuff is purged; lashes back for lashAtkPct × ATK' },
+    spellLock:             { type: 'bool',   example: true, reads: 'doSpell', desc: 'each life, locked to the first spell cast' },
+    grantSpell:            { type: 'object', example: { id: 'raceGrapple', cost: 12 }, reads: 'createUnit', desc: 'adds this ability to the kit (MP override optional)' },
+    basicEcho:             { type: 'number', example: 0.5, reads: 'basic attack', desc: 'basic attacks strike again for this fraction' },
+    revealInvisibleWithin: { type: 'number', example: 4, reads: 'processEndOfRoundRegen', desc: 'round end: invisible enemies within N are revealed' },
+    revealTrapsWithin:     { type: 'number', example: 3, reads: 'processEndOfRoundRegen', desc: 'round end: enemy traps within N are revealed to the team' },
+};
+/* the passive-row lint (spellLint): unknown hook keys, a passive without hooks */
+function passiveHookLint(d) {
+    const hits = [];
+    if (!d || d.kind !== 'passive') return hits;
+    const hk = d.hooks;
+    if (hk !== undefined && (hk === null || typeof hk !== 'object' || Array.isArray(hk))) { hits.push({ rule: 'hookInvalid', level: 'red', text: 'hooks must be an object { key: value }' }); return hits; }
+    const keys = hk ? Object.keys(hk) : [];
+    if (!keys.length && !d.accessory) hits.push({ rule: 'hookNone', level: 'amber', text: 'a passive with no hooks does nothing' });
+    const unknown = keys.filter(k => !PASSIVE_HOOK_KEYS[k]);
+    if (unknown.length) hits.push({ rule: 'hookUnknown', level: 'red', text: 'unknown hook key' + (unknown.length > 1 ? 's' : '') + ': ' + unknown.join(', ') + ' (no engine reader)' });
+    return hits;
+}
 
 /* THE ROLES — a spell's ONE identity (§4.3). spellRoleOf derives it; `roleOverride` pins it. */
 const SPELL_ROLES = ['damage', 'damageEffect', 'effect', 'heal', 'utility', 'movement', 'deploy', 'terrain', 'passive'];
@@ -18616,6 +18855,7 @@ function spellReachableIds() {
     if (typeof RACE_TREE !== 'undefined') for (const row of Object.values(RACE_TREE)) addRow(row);
     if (typeof CLASS_TREE !== 'undefined') for (const ids of Object.values(CLASS_TREE)) for (const id of (ids || [])) out.add(id);
     if (typeof DOOR_GUN_SPELLS !== 'undefined') for (const sp of DOOR_GUN_SPELLS) out.add(sp.id);
+    for (const id of universalPassiveIds()) out.add(id);   // THE GEAR POOL: in every unit's pool (Phase 4)
     return out;
 }
 function spellLintContext() {
@@ -18671,6 +18911,7 @@ function spellLint(d, ctx) {
     if (has('animClip') && !(d.animClip && typeof d.animClip === 'object' && typeof d.animClip.name === 'string' && d.animClip.name
         && Number.isInteger(d.animClip.lib) && d.animClip.lib >= 0 && d.animClip.lib <= 4))
         hits.push({ rule: 'animClipInvalid', level: 'red', text: 'animClip must be { name: string, lib: 0–4 }' });
+    for (const h of passiveHookLint(d)) hits.push(h);   // THE PASSIVES (Phase 4): the hooks
     if (typeof d.tier === 'number' && (d.tier < 1 || d.tier > 4 || !Number.isInteger(d.tier)))
         hits.push({ rule: 'tierRange', level: 'red', text: `tier ${d.tier} is not 1–4` });
     if (ctx) {
@@ -19056,6 +19297,10 @@ Object.assign(window, {
   aoeMaskValid, aoeMaskTiles, aoeMaskBound, aoeMaskPresetOf, stampSpellSchema,
   spellReachableIds, spellLintContext, spellLint, spellLintAll, spellReport,
   spellSealedIds, unitSpellPoolParts, unitSpellPool, spellAddVerdict,
+  /* THE PASSIVES + THE GEAR MERGE (Phase 4) */
+  GEAR_PASSIVES, GEAR_ID_OF_ACCESSORY, PASSIVE_HOOK_KEYS, spellIsPassive, passiveRowCount, universalPassiveIds,
+  unitPassiveRowIds, passiveRowWrap, gearMigrateIds, passiveRowsEquipmentMirror, unitHasGear, unitPassiveStatBonus,
+  passiveIdsStatBonus, passiveHookLint,
   /* the Freelancer borrows any race / job ability */
   flWildcardPool, flRacePool, _flTierOf, treeRingOfSpell,
 });
@@ -45592,6 +45837,16 @@ function hqPartyNormMember(m, r) {
     if (!Array.isArray(m.loadout.spells)) m.loadout.spells = [];
     if (!m.loadout.items || typeof m.loadout.items !== 'object') m.loadout.items = {};
     if (!m.loadout.equipment || typeof m.loadout.equipment !== 'object') m.loadout.equipment = {};
+    /* THE GEAR MERGE (SPELL_LIBRARY_PLAN.md Phase 4): a member filed with the retired accessory slots carries them into the
+       kit as GEAR passive rows (after its own picks; the forge's repair prices them and keeps at most 2 passives) */
+    if (m.loadout.equipment.accessory1 || m.loadout.equipment.accessory2) {
+        const own = (Array.isArray(m.meta.customSpells) && m.meta.customSpells.length) ? m.meta.customSpells : m.loadout.spells;
+        let ids = gearMigrateIds(own, m.loadout.equipment) || [];
+        if (typeof classHasSpellTree !== 'function' || classHasSpellTree(m.cls)) ids = treeLegalSubset(m.meta.race, m.cls, '', ids);
+        m.meta.customSpells = ids.slice();
+        m.loadout.spells = ids.slice();
+        m.loadout.equipment = {};
+    }
     ['hp', 'hpMax', 'mp', 'mpMax'].forEach(k => { m[k] = (Number.isFinite(+m[k]) && m[k] !== null) ? Math.max(0, Math.round(+m[k])) : null; });
     if (m.hp != null && m.hpMax != null && m.hp > m.hpMax) m.hp = m.hpMax;
     if (m.mp != null && m.mpMax != null && m.mp > m.mpMax) m.mp = m.mpMax;
@@ -45825,20 +46080,26 @@ function hqPartyTreeCircuit(m) {
     if (!T) return null;
     const { parts, equipped, cap } = T;
     const spOf = id => (id && typeof SPELL_BY_ID !== 'undefined') ? (SPELL_BY_ID[id] || null) : null;
-    const poolSet = new Set(parts.race.concat(parts.job, parts.wheel || [], parts.borrowRace, parts.borrowJob));
+    const gear = parts.gear || [];
+    const poolSet = new Set(parts.race.concat(parts.job, parts.wheel || [], gear, parts.borrowRace, parts.borrowJob));
     const own = parts.race.map(id => [id, 'race']).concat(parts.job.map(id => [id, 'job']), (parts.wheel || []).map(id => [id, 'wheel']));
-    const borrowed = T.isFreelancer ? equipped.filter(id => !parts.race.includes(id) && poolSet.has(id)).map(id => [id, parts.borrowRace.includes(id) ? 'borrowRace' : 'borrowJob']) : [];
+    const borrowed = T.isFreelancer ? equipped.filter(id => !parts.race.includes(id) && !gear.includes(id) && poolSet.has(id)).map(id => [id, parts.borrowRace.includes(id) ? 'borrowRace' : 'borrowJob']) : [];
     const tiers = [];
     for (let t = 4; t >= 1; t--) {
-        const rows = own.concat(borrowed).filter(([id]) => spellTierOf(id) === t).map(([id, source]) => {
+        const rows = own.concat(borrowed).filter(([id]) => !spellIsPassive(id) && spellTierOf(id) === t).map(([id, source]) => {
             const st = hqPartySpellState(T, id, poolSet);
             return { id, sp: spOf(id), st, source, cost: t };
         });
         const borrowKey = T.isFreelancer ? 'B' + t : null;
         tiers.push({ tier: t, numeral: SPELL_TIER_NUMERALS[t], cost: SPELL_TIER_SP[t], rows, borrow: borrowKey, borrowCount: borrowKey ? parts.borrowRace.concat(parts.borrowJob).filter(id => spellTierOf(id) === t).length : 0 });
     }
+    /* ◈ THE PASSIVES (SPELL_LIBRARY_PLAN.md Phase 4): the passive / gear rows, out of the tier rows — the unit's own first, then
+       the universal GEAR; each priced by its tier; at most PASSIVE_SLOT_MAX equipped */
+    const pasRows = own.concat(borrowed).filter(([id]) => spellIsPassive(id)).concat(gear.filter(id => !own.some(([o]) => o === id)).map(id => [id, 'gear']))
+        .map(([id, source]) => ({ id, sp: spOf(id), st: hqPartySpellState(T, id, poolSet), source, cost: spellSpCost(id) }));
+    const passives = { rows: pasRows, used: passiveRowCount(equipped), max: PASSIVE_SLOT_MAX };
     const dropped = equipped.filter(id => !poolSet.has(id));
-    return { tiers, equipped: equipped.slice(), used: equipped.length, cap, spUsed: T.spUsed, spMax: T.spMax, isFreelancer: T.isFreelancer, unplaced: dropped, race: T.race, cls: T.cls };
+    return { tiers, passives, equipped: equipped.slice(), used: equipped.length, cap, spUsed: T.spUsed, spMax: T.spMax, isFreelancer: T.isFreelancer, unplaced: dropped, race: T.race, cls: T.cls };
 }
 /* THE ONE WRITE: a member's spell list, made legal (the forge's own repair), into both places */
 function hqPartySetSpells(profile, memberId, ids) {

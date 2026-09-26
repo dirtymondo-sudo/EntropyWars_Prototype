@@ -821,6 +821,9 @@
             deployTurret: { minRange: 0, offensive: false, tileTargeted: true, noStrikeLeap: true },
             // THE DOOR WHEEL (DOOR_GUN_PLAN §3.2, Phase 1): a STANDING door — a tile, then (a lane door) its facing
             doorDeploy:   { minRange: 1, offensive: false, tileTargeted: true, noStrikeLeap: true },
+            /* THE PASSIVES (SPELL_LIBRARY_PLAN.md Phase 4): a passive / gear row is equipped in a slot but never cast —
+               createUnit moves it to unit.passiveRows, and _getSpellValidTargets offers it nothing (defence in depth). */
+            passive:      { minRange: 0, offensive: false, passive: true, selfCast: false },
             buildBridge:  { minRange: 0, offensive: false, tileTargeted: true },
             terrainCreate:{ minRange: 0, offensive: false, tileTargeted: true, noStrikeLeap: true },
             summonWeather:{ minRange: 0, offensive: false, tileTargeted: true, noStrikeLeap: true },
@@ -7199,7 +7202,46 @@
                 const mod = STATUS_DEFS[key]?.stageMod;
                 if (mod && mod[stat]) stages += mod[stat];
             }
+            stages += _passiveSituationalStages(unit, stat);
             return stages;
+        }
+
+        /* THE PASSIVES (SPELL_LIBRARY_PLAN.md §4.5, Phase 4) — weatherBonus / terrainBonus / zodiacBonus: a passive row's
+           stat stages while the situation holds, e.g. { storm: { atkStages: 1 } }. They ride THIS count, so the ruler
+           clamp and every consumer (damage, armour, turn order, the move bands) read them like any stage. Keys:
+           weather = a WEATHER_REGISTRY type the unit stands in; terrain = the terrain under the unit; zodiac = a sign id,
+           an element ('fire' | 'earth' | 'air' | 'water' — its three signs) or 'own' (the unit's sign is the active one).
+           Pure reads of state the guest mirrors — nothing relayed. */
+        const _ZODIAC_ELEMENT_SIGNS = { fire: ['aries', 'leo', 'sagittarius'], earth: ['taurus', 'virgo', 'capricorn'],
+            air: ['gemini', 'libra', 'aquarius'], water: ['cancer', 'scorpio', 'pisces'] };
+        function _passiveSituationalStages(unit, stat) {
+            if (!unit || typeof unitPassiveRowIds !== 'function' || !unitPassiveRowIds(unit).length) return 0;
+            const key = stat + 'Stages';
+            let n = 0;
+            for (const p of getUnitPassives(unit)) {
+                if (!p || !p._row) continue;
+                if (p.weatherBonus && state.activeWeather) {
+                    const here = posKey(unit.x, unit.y);
+                    for (const w of state.activeWeather) {
+                        const b = p.weatherBonus[w.type];
+                        if (b && typeof b[key] === 'number' && (w.tiles || []).some(t => posKey(t.x, t.y) === here)) n += b[key];
+                    }
+                }
+                if (p.terrainBonus) {
+                    const b = p.terrainBonus[getTerrainAt(unit.x, unit.y)];
+                    if (b && typeof b[key] === 'number') n += b[key];
+                }
+                if (p.zodiacBonus && state.activeZodiac) {
+                    for (const zk of Object.keys(p.zodiacBonus)) {
+                        const b = p.zodiacBonus[zk];
+                        if (!b || typeof b[key] !== 'number') continue;
+                        const on = zk === state.activeZodiac || (zk === 'own' && unit.zodiac === state.activeZodiac)
+                            || (_ZODIAC_ELEMENT_SIGNS[zk] || []).includes(state.activeZodiac);
+                        if (on) n += b[key];
+                    }
+                }
+            }
+            return n;
         }
 
         function getStatStageDelta(unit, stat) {
@@ -7778,16 +7820,18 @@
             // instantly purged, and the censer lashes back at the culprit for
             // 40% of the bearer's ATK. The debuff still "landed" (resist rolls,
             // XP for the applier) — it just doesn't stick.
-            if (isEnemyDebuff && typeof unitHasAccessory === 'function'
-                && unitHasAccessory(target, 'purity_censer')
-                && target._censerRound !== (state.round || 0)) {
+            // (THE PASSIVES, Phase 4: the `purgeDebuff` hook — the Censer's gear row carries it, any passive row may)
+            const _purge = (isEnemyDebuff && typeof unitPassiveValue === 'function') ? unitPassiveValue(target, 'purgeDebuff') : null;
+            if (_purge && target._censerRound !== (state.round || 0)) {
+                const _purgeName = (getUnitPassives(target).find(p => p && p.purgeDebuff) || {}).name || 'Censer of Purity';
                 target._censerRound = state.round || 0;
                 clearStatus(target, payload.id);
                 if (payload.id === 'marked') target.markBonus = 0;
-                addLog(`⚱️ ${unitDisplayName(target)}'s Censer of Purity burns away ${meta.label}!`);
+                addLog(`⚱️ ${unitDisplayName(target)}'s ${_purgeName} burns away ${meta.label}!`);
                 showFloatingTextForUnit(target, '⚱️ PURGED', 'buff', { durationMs: 1100 });
-                if (sourceUnit && !sourceUnit.dead && !sourceUnit._dying) {
-                    const _censerDmg = Math.max(10, Math.floor(pwrAtk(target) * 0.4));
+                const _lashPct = (typeof _purge === 'object' && typeof _purge.lashAtkPct === 'number') ? _purge.lashAtkPct : 0.4;
+                if (sourceUnit && !sourceUnit.dead && !sourceUnit._dying && _lashPct > 0) {
+                    const _censerDmg = Math.max(10, Math.floor(pwrAtk(target) * _lashPct));
                     const _censerSrc = sourceUnit, _censerBearer = target;
                     window.setTimeout(() => {
                         if (_censerSrc.dead || _censerSrc._dying || state.winner) return;
@@ -8371,9 +8415,9 @@
             for (const u of state.units) {
                 if (u.dead || u._dying) continue;
                 if (u.hp < u.maxHp) {
-                    // Chrono Locket: +5% max HP on top of the baseline regen.
-                    const _regenPct = REGEN_PERCENT
-                        + (typeof unitHasAccessory === 'function' && unitHasAccessory(u, 'chrono_locket') ? 0.05 : 0);
+                    // The `regenPerRound` hook (% max HP; the Chrono Locket's gear row = 5) on top of the baseline regen.
+                    const _regenHook = (typeof unitPassiveValue === 'function') ? (+unitPassiveValue(u, 'regenPerRound') || 0) : 0;
+                    const _regenPct = REGEN_PERCENT + Math.max(0, _regenHook) / 100;
                     const amt = Math.max(1, Math.round(u.maxHp * _regenPct));
                     const before = u.hp;
                     u.hp = Math.min(u.maxHp, u.hp + amt);
@@ -8396,31 +8440,36 @@
             }
 
             // ── Detection accessories sweep at the end of every round ──
-            if (typeof unitHasAccessory === 'function') {
+            // (THE PASSIVES, Phase 4: the `revealInvisibleWithin` / `revealTrapsWithin` hooks — the Hagstone's and the
+            // Dowsing Rod's gear rows carry them; the radius is the hook's value)
+            if (typeof unitPassiveValue === 'function') {
                 for (const u of state.units) {
                     if (u.dead || u._dying) continue;
-                    // Hagstone: invisible enemies within 4 tiles of the bearer
+                    // Hagstone: invisible enemies within N tiles of the bearer
                     // are revealed (their camouflage is stripped outright).
-                    if (unitHasAccessory(u, 'hagstone')) {
+                    const _hagR = +unitPassiveValue(u, 'revealInvisibleWithin') || 0;
+                    if (_hagR > 0) {
+                        const _hagName = (getUnitPassives(u).find(p => p && p.revealInvisibleWithin) || {}).name || 'Hagstone';
                         for (const e of state.units) {
                             if (e.dead || e._dying || e.player === u.player) continue;
                             if (!unitHasStatus(e, 'invisible')) continue;
                             const _hd = Math.max(Math.abs(e.x - u.x), Math.abs(e.y - u.y));
-                            if (_hd > 4) continue;
+                            if (_hd > _hagR) continue;
                             clearStatus(e, 'invisible');
-                            addLog(`👁️ ${unitDisplayName(u)}'s Hagstone pierces the veil — ${unitDisplayName(e)} is revealed!`);
+                            addLog(`👁️ ${unitDisplayName(u)}'s ${_hagName} pierces the veil — ${unitDisplayName(e)} is revealed!`);
                             showFloatingTextForUnit(e, '👁️ Revealed!', 'debuff');
                         }
                     }
                     // Dowsing Rod: enemy traps within 3 tiles of the bearer are
                     // revealed to the bearer's whole team (rendered like own traps).
-                    if (unitHasAccessory(u, 'dowsing_rod') && state.traps && state.traps.length) {
+                    const _dowseR = +unitPassiveValue(u, 'revealTrapsWithin') || 0;
+                    if (_dowseR > 0 && state.traps && state.traps.length) {
                         let _found = 0;
                         for (const t of state.traps) {
                             if (t.owner === u.player) continue;
                             if (t._revealedTo && t._revealedTo[u.player]) continue;
                             const _td = Math.max(Math.abs(t.x - u.x), Math.abs(t.y - u.y));
-                            if (_td > 3) continue;
+                            if (_td > _dowseR) continue;
                             if (!t._revealedTo) t._revealedTo = {};
                             t._revealedTo[u.player] = true;
                             _found++;
@@ -30424,6 +30473,14 @@
             // fallback so those hazards hit affinities too. Side-agnostic on
             // purpose, like the combo layer: the yeti burns whoever lit the
             // fire, and a burn DoT ticks softer on a fire-resistant demon.
+            /* THE PASSIVES (SPELL_LIBRARY_PLAN.md §4.5, Phase 4) — `physicalElementRider`: a PHYSICAL hit (a physical spell or a
+               basic attack) from a unit carrying the hook takes the element when the hit names none — affinity, combos
+               and terrain reactions below all read it. */
+            if (!opts.spellElement && !opts.element && opts.damageType === 'physical' && opts.sourceUnit
+                && typeof unitPassiveValue === 'function') {
+                const _per = unitPassiveValue(opts.sourceUnit, 'physicalElementRider');
+                if (_per && typeof SPELL_ELEMENTS !== 'undefined' && SPELL_ELEMENTS.includes(_per)) opts = Object.assign({}, opts, { spellElement: _per });
+            }
             const _affEl = opts.spellElement
                 || ({ fire: 'fire', lightning: 'lightning', cold: 'ice' })[opts.element]
                 || null;
@@ -31212,14 +31269,35 @@
             // ── Martyr's Talisman: defy the first killing blow each life ──
             // Fires on ANY lethal damage (hits, DoT, environment) — one save
             // per life, recharged when the unit eventually dies and respawns.
-            if (target.hp <= 0 && !target._talismanSpent && typeof unitHasAccessory === 'function'
-                && unitHasAccessory(target, 'martyrs_talisman')) {
+            // (THE PASSIVES, Phase 4: the `surviveLethalOnce` hook — the Talisman's gear row carries it)
+            if (target.hp <= 0 && !target._talismanSpent && typeof unitPassiveValue === 'function'
+                && unitPassiveValue(target, 'surviveLethalOnce')) {
+                const _talName = (getUnitPassives(target).find(p => p && p.surviveLethalOnce) || {}).name || "Martyr's Talisman";
                 target._talismanSpent = true;
                 target.hp = 1;
-                addLog(`✨ ${unitDisplayName(target)}'s Martyr's Talisman flares — they defy death and hold on at 1 HP!`);
+                addLog(`✨ ${unitDisplayName(target)}'s ${_talName} flares — they defy death and hold on at 1 HP!`);
                 showFloatingTextForUnit(target, '✨ ENDURED!', 'buff', { durationMs: 1400 });
                 flashUnit(target.id, 'heal');
                 if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit: target });
+            }
+            /* THE PASSIVES (SPELL_LIBRARY_PLAN.md §4.5, Phase 4) — `healOnceBelowPct: { pct, healPct }`: once per life, a hit
+               that leaves the unit alive under pct% HP heals it healPct% of max HP. The ledger `_passiveSpent` is per life
+               (cleared at respawn beside `_talismanSpent`); host-side, the HP rides state-sync. */
+            if (target.hp > 0 && typeof unitPassiveValue === 'function') {
+                const _hob = unitPassiveValue(target, 'healOnceBelowPct');
+                if (_hob && typeof _hob === 'object' && !(target._passiveSpent && target._passiveSpent.healOnceBelowPct)
+                    && target.hp < (target.maxHp || 1) * ((+_hob.pct || 50) / 100)) {
+                    if (!target._passiveSpent) target._passiveSpent = {};
+                    target._passiveSpent.healOnceBelowPct = true;
+                    const _hobAmt = Math.max(1, Math.round((target.maxHp || 1) * ((+_hob.healPct || 40) / 100)));
+                    const _hobBefore = target.hp;
+                    target.hp = Math.min(target.maxHp, target.hp + _hobAmt);
+                    const _hobName = (getUnitPassives(target).find(p => p && p.healOnceBelowPct) || {}).name || 'Second Wind';
+                    addLog(`💚 ${unitDisplayName(target)}'s ${_hobName} answers — +${target.hp - _hobBefore} HP!`);
+                    showFloatingTextForUnit(target, `+${target.hp - _hobBefore}`, 'heal', { durationMs: 1200 });
+                    flashUnit(target.id, 'heal');
+                    if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit: target });
+                }
             }
 
             if (target.hp <= 0) {
@@ -33369,14 +33447,10 @@
             state.units = keep;
         }
 
+        /* THE GEAR MERGE (SPELL_LIBRARY_PLAN.md Phase 4): the accessory slots are retired — a random kit's gear is a GEAR
+           passive row that data.js buildTreeLegalLoadout may roll into the spell slots (priced, capped at 2 passives). */
         function randomizeEquipmentForClass(cls) {
-
-            const accPool = Object.keys(EQUIP_DEFS).filter(id => EQUIP_DEFS[id]?.slot === 'accessory1');
-            const shuffled = accPool.slice().sort(() => Math.random() - 0.5);
-            return {
-                accessory1: shuffled[0] || null,
-                accessory2: shuffled.find(a => a !== shuffled[0]) || shuffled[1] || null
-            };
+            return { accessory1: null, accessory2: null };
         }
 
         function randomSpellLoadoutForClass(cls, race) {
@@ -33612,27 +33686,8 @@
                     const loadout = state.loadouts[player][idx] || emptyLoadout();
 
                     if (!loadout.equipment) loadout.equipment = emptyEquipment();
-                    const accessoryPrefs = {
-                        'Agent': ['binoculars', 'telescope'],
-                        'Gunslinger': ['telescope', 'binoculars'],
-                        'Black Mage': ['flair', 'binoculars'],
-                        'White Mage': ['walkie_talkie', 'ward'],
-                        'Warrior': ['flair', 'ward'],
-                        'Tank': ['ward', 'flair'],
-                        'Swordmaster': ['flair', 'ward'],
-                        'Psychic': ['walkie_talkie', 'ward'],
-                        'Harvester': ['masons_gauntlets', 'ward'],
-                        'Engineer': ['masons_gauntlets', 'binoculars']
-                    } [cls] || ['ward', 'binoculars'];
-                    for (const accSlot of ['accessory1', 'accessory2']) {
-                        if (!loadout.equipment[accSlot]) {
-                            const pick = accessoryPrefs.find(a => a !== loadout.equipment.accessory1 && a !== loadout.equipment.accessory2);
-                            if (pick) {
-                                loadout.equipment[accSlot] = pick;
-                                accessoryPrefs.splice(accessoryPrefs.indexOf(pick), 1);
-                            }
-                        }
-                    }
+                    /* (THE GEAR MERGE, Phase 4: no accessory prefs — gear is a passive row in the spell slots now, and
+                       "optimize" fills the slots with the curated spells below) */
 
                     const existingSpells = (loadout.spells || []).slice();
                     let crossClassCount = countCrossClassSpells(existingSpells, cls);
@@ -34917,9 +34972,9 @@
                 // Berserker's Brand / Archon's Focus choice lock: each life the
                 // unit is bound to the FIRST spell it casts. doSpell already
                 // rejects other casts — this surfaces the lock in every menu.
-                if (typeof unitHasAccessory === 'function'
+                if (typeof unitPassiveValue === 'function'
                     && unit._brandLockSpellId && spell.id !== unit._brandLockSpellId
-                    && (unitHasAccessory(unit, 'berserkers_brand') || unitHasAccessory(unit, 'archons_focus'))) {
+                    && unitPassiveValue(unit, 'spellLock')) {
                     return '🔒 Brand-locked';
                 }
                 if ((unit.ap || 0) < TargetQuery.apCost(spell)) return 'No AP';
@@ -50709,6 +50764,7 @@
 
         function _getSpellValidTargets(unit, spell) {
             if (!unit || !spell) return [];
+            if (spell.kind === 'passive') return [];   // THE PASSIVES (Phase 4): a passive row is never cast
             const targets = [];
             // Direction beams: valid targets are the enemies sitting ON one of
             // the 8 capped rays (getLineSpellRayTiles = _applyLineDamage's
@@ -57396,17 +57452,18 @@
                     // hit at 50% damage. No crit reroll, no mark consumption, and
                     // it can't be dodged (the opening was already made); counters
                     // and follow-ups key off the FIRST hit only.
-                    if (!killed && !target.dead && !target._dying
-                        && typeof unitHasAccessory === 'function' && unitHasAccessory(unit, 'echo_band')) {
+                    // (THE PASSIVES, Phase 4: the `basicEcho` hook = the echo's damage fraction; the Echo Band's row = 0.5)
+                    const _echoFrac = (typeof unitPassiveValue === 'function') ? (+unitPassiveValue(unit, 'basicEcho') || 0) : 0;
+                    if (!killed && !target.dead && !target._dying && _echoFrac > 0) {
                         const _echoTarget = target;
-                        const _echoDmg = Math.max(12, Math.floor(damage * 0.5));
+                        const _echoDmg = Math.max(12, Math.floor(damage * _echoFrac));
                         window.setTimeout(() => {
                             if (state.winner || _echoTarget.dead || _echoTarget._dying || unit.dead) return;
                             if (_isMeleeStrike) _meleeStrikeAnim(unit, _echoTarget.x, _echoTarget.y, { targetId: _echoTarget.id });
                             else { triggerAttackAnim(unit, _echoTarget.x, _echoTarget.y); playBasicAttackShot(unit, _echoTarget, _delivery, actionMs(320)); }
                             playSfx('basicAttack');
                             showFloatingTextForUnit(unit, 'ECHO!', 'counter', { durationMs: 900 });
-                            applyDamageToUnit(_echoTarget, _echoDmg, `${unitDisplayName(unit)}'s Echo Band strikes again: `, {
+                            applyDamageToUnit(_echoTarget, _echoDmg, `${unitDisplayName(unit)}'s ${(getUnitPassives(unit).find(p => p && p.basicEcho) || {}).name || 'Echo Band'} strikes again: `, {
                                 sourceUnit: unit,
                                 allowMarkBonus: false,
                                 floatKind: 'combo'
@@ -58219,8 +58276,11 @@
            (tracked per-turn on unit._buildCharges). Anti-softlock: a unit in
            a pit can always quarry a wall block and stack its way out. */
 
+        /* (THE PASSIVES, Phase 4: the `buildBonus: { build: n }` hook — +n blocks per AP; the Mason's Gauntlets' row = 1) */
         function unitBuildOpsPerAP(unit) {
-            return (typeof unitHasAccessory === 'function' && unitHasAccessory(unit, 'masons_gauntlets')) ? 2 : 1;
+            const b = (typeof unitPassiveValue === 'function') ? unitPassiveValue(unit, 'buildBonus') : null;
+            const n = (b && typeof b === 'object') ? Math.max(+b.build || 0, +b.dig || 0) : 0;
+            return 1 + Math.max(0, Math.min(3, Math.round(n)));
         }
 
         // Family salvage for a deliberately dug block. Plain earth (grass /
@@ -61064,9 +61124,9 @@
             // boost comes at a price — each life, the unit is locked to the
             // first spell it commits to until it falls and respawns. Basic
             // attacks and items are unaffected.
-            const _brandAccName = (typeof unitHasAccessory === 'function')
-                ? (unitHasAccessory(unit, 'berserkers_brand') ? "Berserker's Brand"
-                    : unitHasAccessory(unit, 'archons_focus') ? "Archon's Focus" : null)
+            // (THE PASSIVES, Phase 4: the `spellLock` hook — both gear rows carry it; the lock names the row)
+            const _brandAccName = (typeof unitPassiveValue === 'function' && unitPassiveValue(unit, 'spellLock'))
+                ? ((getUnitPassives(unit).find(p => p && p.spellLock) || {}).name || "Berserker's Brand")
                 : null;
             if (_brandAccName && unit._brandLockSpellId && spell.id !== unit._brandLockSpellId) {
                 const _lockedSpell = (unit.spells || []).concat(unit._raceAbilities || [])

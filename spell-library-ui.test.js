@@ -192,6 +192,55 @@ test('the summary markdown: changed rows with their baseline, new rows as fenced
     assert.ok(md.includes('## Census') && md.includes(`${report.rows} rows`));
 });
 
+test('THE PASSIVES tab (Phase 4): the 16 gear rows are passive rows owned "gear · universal"', () => {
+    const gear = rows.filter(r => r.def._gear);
+    assert.strictEqual(gear.length, D.GEAR_PASSIVES.length);
+    for (const r of gear) {
+        assert.ok(r.passive && r.gear, r.id + ' passive + gear');
+        assert.strictEqual(r.owner, 'gear · universal', r.id + ' owner');
+        assert.ok(D._slb2RowHasFlag(r, 'passive'), r.id + ' shows on the PASSIVES tab');
+    }
+    assert.ok(rows.filter(r => !r.passive).every(r => !r.def._gear), 'no gear row on the SPELLS tab');
+});
+
+test('THE HOOKS EDITOR model: typed rows, the palette, the parse, the shape check, a new object per write', () => {
+    const C = D.PASSIVE_HOOK_KEYS;
+    const hooks = { statBonus: { atk: 16 }, spellLock: true, madeUp: 3 };
+    const hr = J(D._slb2HookRows(hooks));
+    assert.deepStrictEqual(hr.map(h => [h.key, h.type, h.known]), [['statBonus', 'object', true], ['spellLock', 'bool', true], ['madeUp', 'number', false]]);
+    assert.strictEqual(hr[0].desc, C.statBonus.desc);
+    assert.deepStrictEqual(J(D._slb2HookRows('nope')), []);
+    const pal = D._slb2HookPalette(hooks).map(p => p.key);
+    assert.strictEqual(pal.length, Object.keys(C).length - 2);
+    assert.ok(!pal.includes('statBonus') && pal.includes('regenPerRound'));
+    assert.strictEqual(D._slb2HookPalette(null).length, Object.keys(C).length);
+    // every catalogue example parses as its own type and passes the shape check
+    for (const k of Object.keys(C)) {
+        const raw = C[k].type === 'object' ? JSON.stringify(C[k].example) : C[k].type === 'list' ? C[k].example.join(', ') : C[k].example;
+        const res = D._slb2HookParse(C[k].type, raw);
+        assert.ok(!res.error, k + ' example parses: ' + res.error);
+        assert.deepStrictEqual(J(res.value), J(C[k].example), k);
+        assert.strictEqual(D._slb2HookCheck(k, C[k].example), null, k + ' example shape');
+    }
+    assert.ok(D._slb2HookParse('number', 'x').error);
+    assert.ok(D._slb2HookParse('object', '[1]').error);
+    assert.ok(D._slb2HookParse('object', '{bad').error);
+    assert.ok(D._slb2HookParse('list', ' , ').error);
+    assert.deepStrictEqual(J(D._slb2HookParse('list', 'burn, poison ,').value), ['burn', 'poison']);
+    // the stage hooks are STAGES (battle.js _passiveSituationalStages reads <stat>Stages), not multipliers
+    assert.ok(D._slb2HookCheck('weatherBonus', { storm: { dmgMult: 1.2 } }));
+    assert.strictEqual(D._slb2HookCheck('zodiacBonus', { own: { spdStages: 1, intStages: 1 } }), null);
+    assert.ok(D._slb2HookCheck('statBonus', { attack: 3 }));
+    // the write is a NEW object, keys keep their place, values are copies
+    const next = D._slb2HooksWith(hooks, 'spellLock', false);
+    assert.notStrictEqual(next, hooks);
+    assert.deepStrictEqual(Object.keys(next), ['statBonus', 'spellLock', 'madeUp']);
+    assert.notStrictEqual(next.statBonus, hooks.statBonus);
+    assert.strictEqual(hooks.spellLock, true, 'the source is never mutated');
+    assert.deepStrictEqual(Object.keys(D._slb2HooksWith(hooks, 'madeUp', undefined)), ['statBonus', 'spellLock']);
+    assert.deepStrictEqual(J(D._slb2HooksWith(undefined, 'regenPerRound', 4)), { regenPerRound: 4 });
+});
+
 test('the screen keeps the Lab\'s contract: the names it calls still exist in ui.js', () => {
     for (const name of ['_slbEsc', '_slbMods', '_slbJobs', '_slbRaces', '_slbAllRows', '_slbToast', '_slbArchetypes', '_slbStatusIds', 'window._slbSetField', 'window._slbLabRefreshSpell', 'window._slbEnterLab', 'window._renderSpellLibrary'])
         assert.ok(new RegExp('(?:function |)' + name.replace(/[.$]/g, '\\$&') + '\\s*(?:=|\\()').test(ui), name + ' defined');

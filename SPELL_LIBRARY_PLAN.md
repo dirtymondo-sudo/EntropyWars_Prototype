@@ -744,7 +744,7 @@ is live. Until baked, an export is the only way a change reaches another player.
 | 1 | **THE SHELL**: the new screen (§5.1–5.3, 5.7–5.9): rail, table + cards, sort / filter chips / saved views, the inspector's STATS · TARGET · EFFECTS · NOTES · RAW, DOM patching + undo, NEW ▾ templates, bulk edit, REPORT, EXPORT preview; the Lab + timeline docked as they are | ui.js, styles-hud.css, index.html, hud.js (`_hrlgShapeTiles` 7×7 option) | `spell-library-ui.test.js` (pure helpers: the column model, the filter model over the census, the undo stack, the summary markdown) + `playtest_library.js` screenshots |
 | 2 | **THE GRID + THE LOOK**: `aoeMask` in the 9 sites (§6.1), the grid editor + presets + splash grid, `animVerb` / `animSlot` / `animClip` + the dropdown + the viewer stage (`playClip`, `devLibClips`, the synthetic clip slots), the VFX selects moved to LOOK | battle.js, ui.js, hud.js, ai.js, state.js, data.js, sprites.js, three-renderer.js, three-vfx-effects.js (`_aoeBound`) | `aoe-mask.test.js`, `spell-anim-pick.test.js`; `check-spell-presentation.js` reads the field |
 | 3 | **THE TARGETING**: `randomTargets` and `splash` riders (§6.2), the relay check, the AI branches, two shipped example rows (a scatter shot; an impact round) as ADDED rows the user may keep or delete | battle.js, ai.js, online.js (skip-list audit), data.js, ui.js (the TARGET tab's controls go live) | `spell-riders.test.js`, `ai-spell-routing.test.js` rows, `check-ai-spell-dispatch.js` |
-| 4 | **THE PASSIVES + THE GEAR MERGE (ruled)**: passive rows, `PASSIVE_SLOT_MAX = 2` in the verdict / repair / rack, the universal GEAR family, the hook editor, the new hook keys' consumers, the rack's ◈ PASSIVE chips, the 17 accessories converted, the accessory UI retired, the save migration | data.js, battle.js, state.js, party-builder.js, map.js, hud.js, ui.js | `family-passives.test.js`, `champ-rework.test.js` (inherent passives unchanged), a save-migration pin |
+| 4 | **DONE 2026-09-26 (§11).** **THE PASSIVES + THE GEAR MERGE (ruled)**: passive rows, `PASSIVE_SLOT_MAX = 2` in the verdict / repair / rack, the universal GEAR family, the hook editor, the new hook keys' consumers, the rack's ◈ PASSIVE chips, the 17 accessories converted, the accessory UI retired, the save migration | data.js, battle.js, state.js, party-builder.js, map.js, hud.js, ui.js | `family-passives.test.js`, `champ-rework.test.js` (inherent passives unchanged), a save-migration pin |
 | 5 | **THE UPGRADES**: `SPELL_UPGRADES` (the registry seeded with the user's list: +15 % dmg, ricochet, +1 target ×0.5, status bonus, knockback / blowback, AOE preset, −10 MP, +1 deployable, turret ×, gun ×), `resolveUnitSpellDef`, the verdict, the loadout field, the rack's ⚙ popover, the HQ pause popover, `getDeployCap`, the AI's spend, the host validation | data.js, battle.js, party-builder.js, map.js, hud.js, online.js, ai.js, ui.js (UPGRADES tab live) | `spell-upgrades.test.js` (each patch key on a fixture def; SP maths; the repair skips an unaffordable upgrade; a derived def rides `_serializeState`) |
 | 6 | **THE CATALOGUE** (the user's second deliverable): a categorisation of the 535 rows into proposed families (with the unique family per race), each spell's ONE identity, the redundancy groups with a verdict each (keep / merge into X / becomes upgrade Y of X / delete), proposed upgrade lists per family, new spell and targeting proposals — delivered as an EXPORT DOC the library imports (families + notes + `upgrades` lists + the merges as deletions with a note) plus `SPELL_CATALOGUE.md`; nothing baked until the user edits and re-exports | the export json + the md (repo) | the REPORT's redundancy query reproduces the groups |
 | 7 | **THE FAMILIES AS POOLS**: `RACE_FAMILIES` (3–5 per race, one `unique`), `unitSpellPoolParts` from families, the rack grouped by family (tier rows inside each family column or family tabs), the Freelancer's borrow window by family, `treeLegalSubset` on the new pool, the codex's family page | data.js (R2 + Render), party-builder.js, map.js, hud.js, ui.js, online.js (validation only) | `spell-families.test.js` (every race has 3–5 families and one unique; every pool row is reachable; `treeLegalSubset` repairs the old saves) |
@@ -931,3 +931,33 @@ change under `WEATHER_REGISTRY`).
   rider on a single-target hit, not an area cast. The `extraTargets` upgrade (next-nearest enemies) waits for Phase 5
   with the other upgrades. Tests: `spell-riders.test.js` (new), `ai-spell-routing.test.js` (+3). Not playtested live.
   Next: Phase 4 (THE PASSIVES + THE GEAR MERGE).
+- 2026-09-26 — **Phase 4 shipped** (thread "Spell library Phase 4", `spell-library/ENTROPY_WARS_SPELL_LIBRARY_4.zip`,
+  token `20260926-spell-library-05-cors`). THE PASSIVES + THE GEAR MERGE, as ruled: a passive row (`kind: 'passive'`)
+  takes a slot and its tier in SP; **at most `PASSIVE_SLOT_MAX` = 2** per loadout — `spellAddVerdict` reason `'passives'`,
+  `isTreeLoadoutLegal`, `treeLegalSubset` (the third skipped, earlier picks win — the online host's check, so nothing new
+  in online.js). The 16 accessories are `GEAR_PASSIVES` rows (tier I, family `gear`, universal → `unitSpellPoolParts().gear`
+  in every pool); `GEAR_ID_OF_ACCESSORY` maps the retired ids; Spelunking Gear dropped. `getUnitPassives` = inherent
+  (MAX_UNIT_PASSIVES) + the equipped rows wrapped (`passiveRowWrap`). `PASSIVE_HOOK_KEYS` catalogues every hook key;
+  `passiveHookLint` joins `spellLint` (hookInvalid / hookNone / hookUnknown). Consumers: `statBonus`, `regenPerRound`,
+  `healOnceBelowPct`, `physicalElementRider`, `buildBonus`, `weatherBonus` / `terrainBonus` / `zodiacBonus`, plus the
+  accessory behaviours as keys (`surviveLethalOnce`, `purgeDebuff`, `spellLock`, `basicEcho`, `revealInvisibleWithin`,
+  `revealTrapsWithin`, `grantSpell`). The forge's ◈ PASSIVES row and GEAR boxes, the HQ rack's ◈ row and GEAR section,
+  the library's structured HOOKS editor. Saves: `gearMigrateIds` folds an old `equipment` pair into the kit (createUnit's
+  three kit paths, the forge, the HQ record). Test `family-passives.test.js`; hq-party / party-builder / spell-library-ui
+  pins brought to the merge. Not playtested live. DEVIATIONS, on purpose:
+  1. A passive row never sits in `unit.spells`: createUnit moves it to `unit.passiveRows` (ids, ride the snapshot), so no
+     spell menu, AI scorer or cooldown path ever meets one. `unit.equipment` is KEPT as the display mirror of the gear rows
+     (sprites, badges, the inventory's one-use flare / ward) — the truth is `passiveRows`; `unitHasAccessory` stays as a
+     thin reader of the rows for the six map-side gear flags (jetpack flight, binoculars, walkie, flare, ward, telescope),
+     which are not hook keys.
+  2. The accessory behaviours became hook keys named for what they do (`purgeDebuff`, `basicEcho`, `revealTrapsWithin`, …),
+     not §4.5's examples (`mpOnHit`, `cleanseOnTurn`), so any family passive can reuse them.
+  3. `physicalElementRider` is read in `applyDamageToUnit` (a physical hit with no element takes it: affinity + combos),
+     not `getSpellElement` — the cast's own terrain reaction still follows the spell's element.
+  4. `weatherBonus` / `terrainBonus` / `zodiacBonus` are STAT STAGES added in `getStatStageCount` (the Phase 1 templates'
+     shape `{ storm: { atkStages: 1 } }`), not multipliers in `getEffectiveAttackBonus`; zodiac keys take a sign, an
+     element's three signs, or `'own'`.
+  5. AI kits (`buildTreeLegalLoadout`) may roll gear rows (weight 1, capped); the per-job accessory prefs are gone.
+  6. The library's NEW ▾ passive defaults to the `gear` family (equippable by every unit at once); retag to scope it.
+  7. Fixed a Phase 1 bug: the library's popovers / modals sat outside its click delegation (dead buttons).
+  Next: Phase 5 (THE UPGRADES).
