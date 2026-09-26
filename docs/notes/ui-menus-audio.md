@@ -687,3 +687,20 @@ range and lights the pool, a splash row's hover lights the splash tiles with dmg
   (tested in spell-library-ui.test.js). Fixed a Phase 1 bug on the way: popovers and modals attach to
   `#spellLibraryPage`, outside the body's click delegation, so their buttons were dead (NEW ▾ items, ROLE, ⋯, the
   dialogs' CANCEL, EXPORT's COPY / DOWNLOAD) — `_slb2BindFloat` gives each its own listeners.
+
+## ⚙ THE UPGRADES IN THE RACKS + THE LIBRARY (SPELL_LIBRARY_PLAN.md Phase 5, 2026-09-26, token 20260926-spell-library-06-cors)
+- **The forge (party-builder.js):** a loadout cell whose spell takes upgrades wears a ⚙ button (lit ⚙n = n on); it
+  selects the spell without unequipping, and the TECHNIQUE PANEL shows ⚙ UPGRADES — one toggle per allowed upgrade (glyph,
+  name, its SP, the desc or the refusal from `spellUpgradeVerdict`). Off until the spell is equipped. The panel's chips
+  read the DERIVED def (`pbTechInfo` → `spD`), the kicker says "2 SP + 1 ⚙", an equipped chip shows its whole price and
+  ⚙n, UNEQUIP gives back tier + upgrades. `pbTierCtx(race, cls, equipped, ups)` holds the repaired map (`pbEffUps`); every
+  verdict and the SP meter count it. RST / CLR drop the map; RND rolls one (`buildRandomUpgrades`).
+- **The HQ pause rack (map.js):** under ◈ PASSIVES, a ⚙ UPGRADES block — one line per equipped spell that takes upgrades
+  (its upgraded numbers, ⚙ n / 2, +SP), a toggle per upgrade (`data-party-act="upg:member:spell:upgrade"` →
+  data.js `hqPartyUpgradeClick`). The model is `hqPartyTreeCircuit(m).upgrades`; unequip drops the spell's upgrades
+  (`hqPartySetSpells` repairs the map), RANDOM rolls them, CLEAR clears them.
+- **The battle menu (hud.js):** a derived def wears ⚙n (the names on hover), plus ↯ n% (ricochet) / ⑂+n (forked) rider badges.
+- **The library (ui.js):** a spell's UPGRADES tab — THE MODE (AUTO · CUSTOM · NONE; the first tick in AUTO pins the auto set
+  as CUSTOM, unticking the last turns NONE), a TRY pair (up to two, one of a kind) whose resolved line reads "= 92 dmg ·
+  15 MP · 4 SP" with the changed numbers bold, and the registry with each row's fit and its one-upgrade result. The
+  UPGRADES registry inspector gains `requires` (the fit test), `excl` (one-of-a-kind group) and `auto`.

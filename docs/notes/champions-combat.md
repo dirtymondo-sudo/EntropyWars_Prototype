@@ -963,3 +963,37 @@ are the user's to set. So:
   (`gearMigrateIds`) on createUnit's three kit paths, in the forge (party-builder) and in the HQ record
   (`hqPartyNormMember`), then the repair prices and caps them. `recordLastParty` still files the raw pair (migrated at build).
 - Test: `family-passives.test.js`. Not playtested live.
+
+## ⚙ THE UPGRADES (SPELL_LIBRARY_PLAN.md Phase 5, 2026-09-26, token 20260926-spell-library-06-cors)
+- **The rule (the user's standing defaults, §7 Q3):** an upgrade is a `SPELL_UPGRADES` row (data.js) with its OWN SP price
+  and a PATCH; at most `SPELL_UPGRADE_MAX` = 2 per spell; an equipped spell costs its tier + Σ its upgrades' SP; the rack
+  stays 7 slots / 16 SP. An upgrade never changes a spell's identity: `id` and `name` stay (casts resolve by name).
+- **The seed (14 rows):** Empowered `upDamage` (+15 % dmg, 1 SP) · Ricochet `upRicochet` (one bounce to the weakest enemy
+  within 2 of the victim, ×0.5, 2 SP) · Forked `upExtraTarget` (+1 target: the enemy nearest the victim among the spell's
+  legal targets, ×0.5, 2 SP) · Exploit `upFinisher` (bonusVsStatus +0.5) · Knockback `upKnockback` (+1 push; a single hit
+  with none pushes 1) · Undertow `upBlowback` (+1 pull) · Blast `upBlast` (a single hit gains a 3×3 SPLASH at ×0.5, 2 SP) ·
+  Widen `upWiden` (an area cast → 5×5, 2 SP) · Efficient `upEfficient` (−10 MP, floor 5) · Long Reach `upReach` (+1 range) ·
+  Lingering `upLinger` (statuses +1 round) · Surplus `upDeploy` (+1 deploy cap) · Overclocked `upTurret` (turret ×1.25 dmg /
+  HP, +1 range) · Hot Loads `upGun` (door-gun lane / arrow / beam / heal ×1.2, +1 bounce). Prices are first guesses.
+- **Which upgrades a spell takes (`spellAllowedUpgrades`):** the row's `upgrades` list when non-empty (CUSTOM); an EMPTY
+  list = AUTO — every registry row with `auto !== false` that FITS it (`spellUpgradeFits`: the row's `roles`, `families`,
+  and its `requires` test in `SPELL_UPGRADE_FITS` — dmg · singleDmg · area · finisher · status · push · pull · cost · ranged ·
+  cooldown · deployCap · turret · gun · heal); `upgradesAuto: false` = NONE. Passive rows never. `excl` groups make them one
+  of a kind per spell (Ricochet / Forked / Blast / Widen are all `spread`; Knockback / Undertow `shove`). Lint
+  `upgradeOffFit` (amber) when a CUSTOM list names one that does not fit.
+- **The loadout:** `meta.spellUpgrades = { spellId: [upIds] }` beside `meta.customSpells` (the forge, the team archive,
+  state.js's rebuilt meta + last party, the HQ record, party-config all carry it). `loadoutSpUsed(ids, ups)`,
+  `spellAddVerdict(…, poolSet, ups)` and `isTreeLoadoutLegal(…, ups)` count it; `spellUpgradeVerdict` → ok · unequipped ·
+  notAllowed · dup · cap · excl · sp. **THE REPAIR** `treeLegalUpgrades(race, cls, ids, ups)`: spells first (the kit
+  treeLegalSubset kept), then each spell's upgrades in order — off-list, duplicate, over the cap, excluded or unaffordable
+  ones are skipped. It runs in online.js's party-config receipt (the host) and in map.js createUnit (every unit).
+- **The board:** createUnit stores `unit.spellUpgrades` (ids) and turns each upgraded spell into ONE derived def in
+  `unit.spells` (`resolveSpellDef` — `dmg × 1.15`, `cost − 10`, a `splash`, `ricochetRider`, `extraTargets`, …, `_base` /
+  `_ups` / `_upSp`, the desc gains "Upgrades: …"). unit.spells rides the snapshot, so the guest reads the same numbers with
+  no new relay. Two new riders in battle.js `_applyDamageSpellHit` (after the splash): `_applyUpgradeRiders` — the bounce
+  (`calcBounceTarget`, the Ricochet spell's pick) and the forks (`_extraTargetVictims`: nearest the victim, then the
+  weaker); units only, enemies only, no statuses; presentation via `playSpellRiderFx('bounce' | 'shot')`, relayed as
+  'rider-fx' (new `fromId`). The door gun's `_gunDoorSpell(door)` reads the OWNER's derived row (Hot Loads).
+- **The AI:** state.js `applyRandomSpellsAndSecJob` and the forge / HQ RANDOM buttons spend leftover SP with
+  `buildRandomUpgrades` (damage upgrades weighted ×3, not always maxed). The AI's scorers read the derived def's numbers.
+- Test: `spell-upgrades.test.js`. Not playtested live.
