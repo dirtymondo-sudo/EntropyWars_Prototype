@@ -1024,3 +1024,22 @@ change under `WEATHER_REGISTRY`).
      `SPELL_DIRECTOR_ROWS` dropped the deleted ids (their capstone director entries stay, unreachable).
   Next: Phase 7's UI (the rack by family, the Freelancer's borrow window by family) once the user has played the pools.
 
+
+- **2026-09-26 · THE IDENTITY GENERATOR** (not a numbered phase; the user's ask in the thread "Spell library identity
+  generator": "an identity generator for any 3 combination of spell families … Krampus: Christmas Spirit, Horns & Hooves,
+  Blood Magic, Trickery"). Zip `spell-library/ENTROPY_WARS_SPELL_LIBRARY_IDENTITY.zip`, token `20260926-spell-library-08-cors`.
+  1. **The creative half is written, not generated:** the game has no AI at runtime, and a pure mashup of family names reads
+     like Mad Libs. So ui.js's DOM-free `SLB IDENTITY` block holds `SLB_IDENTITY_KITS` (every family: who / epithets / look /
+     vibe, `|`-separated) and `SLB_IDENTITY_ARCHETYPES` (241 written archetypes, 3-4 families each; the user's seven first).
+  2. **The IDENTITY tab** (between POOLS and REPORT): pick 1-4 families (chips, a filter, 🎲 RANDOM, or click an archetype).
+     The result: the archetypes WRITTEN FOR THIS COMBO (every pick in it, or all of it in the picks), a name + concept + look
+     COMPOSED FROM THE KITS (seeded; ↻ REROLL walks the noun family, the epithets and four name shapes), the SIGNATURE SPELL of
+     each family (its top tier), how the pool PLAYS (member roles folded into damage / control / support / mobility /
+     building), CLOSE archetypes (two shared), the RACES ON THIS COMBO (two shared) and PAIRS WELL WITH (families beside the
+     picks in the archetypes). ⧉ COPY puts it on the clipboard as text. It writes nothing to the doc.
+  3. **The IDENTITY KIT editor:** the FAMILIES inspector has four fields (who, epithets, look, vibe). A filled field is the
+     family row's `identity: { who: [...], … }`, written through the families registry, so it rides undo, the export and the
+     bake; blank keeps the written words (shown as the placeholder). A family with neither (new in the library) falls back to
+     its name minus "Magic / Abilities / …", its description and its top members.
+  4. A RACE flag marks an archetype whose name is already a race (Kraken, Siren, Yeti …). Test spell-identity.test.js pins a
+     kit for every live family, the archetypes' families, the user's seven examples as written matches and the seeding.

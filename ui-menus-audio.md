@@ -594,42 +594,134 @@ room's light, the floating plates' legibility against bright walls, the strip
 at narrow widths, the pill fade, the parchment theme's light ink in the
 building.
 
-## THE TIER RACK — the party builder's TECHNIQUES tab and the HQ pause spell screen redesigned for spell tiers (2026-09-24, local delivery)
-Rules: champions-combat.md "THE SPELL TIERS". **Party builder** (party-builder.js "THE TIER RACK", module level:
-`pbTierCtx`, `pbSpellVerdict`, `pbTierGrid` / `pbTierStep` (arrow keys walk rows IV → I → root → FIN), `SpellTierPanel`,
-`pbTechInfo`, `TechniquePanel`): a LOADOUT strip of 7 cells (`.pb-loadout` / `.pb-ls`, click to unequip) over four
-TIER rows (`.pb-tier`, Tier IV on top, head = numeral · N SP · n ON) of chips (`.pb-tn.pb-tc`, source tag RACE / JOB /
-BORROWED, SP tag, or the reason it can't go on: NEEDS n SP / NO SLOT / SEALED). A Freelancer gets a "＋ BORROW" chip on
-each row that opens the old socket window, now "＋ BORROW · TIER n" (tabs + filters kept, one tier per window). The
-tech bar carries an SP meter (`.pb-sp`) beside the slot pips; hover forecasts both (13−4/16). Click = `tierSpellClick`
-(toggle through the verdict); the technique panel verbs: EQUIP · n SP / UNEQUIP · +n SP BACK / NEEDS… / NO SLOT /
-SEALED / ＋ BROWSE. The finisher strip + panel are unchanged (the panel shows SP). Gone: TREE_NODE_POS, the lanes and
-bus, computeTreeEquipPath, the SUBCLASS pill / picker / bar, handleSecJobChange, the homosapien "Quick Study"
-subclass text (now "Picks up new techniques faster"). **HQ pause** (map.js): "✎ EDIT · SPELLS", an SP meter
-`.hq-circ-sp`, rows `.hq-circ-tier-row tN` of `.hq-circ-node st-*`; a Freelancer's `.hq-circ-borrow` opens
-"BORROW · TIER …" (data.js `hqPartyTreeCircuit` / `hqPartyTreeClick` / `hqPartySocketPool(m, 'B<t>')`).
-Seen in the builder probe (`playtest_builder.js`, a homosapien Warrior at 13/16 SP); UNSEEN: the HQ pause screen,
-the Freelancer borrow window live.
+## THE BUGFIX PASS (2026-09-25, token 20260925-bugfix-01-cors)
+- **The debrief never half-builds.** mondo: the victory/defeat screen sometimes came up with only the title and the
+  MVP tag (no XP, no achievements, no buttons: a soft lock). battle.js `showResultOverlay` is now a wrapper around
+  `_showResultOverlayBody`: every card (lineup, MVP, fact line, field report, performance, honours, rewards +
+  achievements, command bar, hazard pay, tabs) sits in its own try and logs `[Debrief] <card> failed` on a throw;
+  whatever happened, the wrapper shows the overlay, puts the encounter's BACK TO THE ROOM / WAKE UP (else the
+  standard bar) into an empty `#vicBottom`, and syncs the tabs. A second fill of a screen already showing for the
+  same match (`_vicShownKey`) is dropped. If the screen still comes up thin, the `[Debrief]` console line names the
+  card that threw. Test: debrief-safety.test.js.
+- **The pause menu on room entry.** three-renderer.js `_hqOnLockChange` reads a pointer-lock loss as the ESC the
+  browser ate. The swap window (`_hqRebuildAt`) was stamped only on room-to-room builds and only when the build
+  started, so a slow room, the return from a fight or the menu, or the load card / arrival card outlasting 2.5 s
+  opened the pause menu. Now every `_hqEnter` stamps it, `H.ready` and `hq.hold()` restamp it, the window is 4 s,
+  a room that is not ready is never paused by a lost lock, and a hidden tab / unfocused window never counts.
+  ESC and P still open the menu as before. Test: hwing.test.js.
 
-## THE LOOK PASS on the tier rack — lit when equipped, battle badges + AOE grid, the finisher on top, bigger text (2026-09-24, local delivery)
-mondo: "if an ability is selected its background needs to stay lit up … the TYPE circles need to be the regular type
-badges … put the FINISHER at the top (most powerful at the top, basic attack at the bottom) … the spells need to show the
-same elemental information like in the spell menu during battle, and the same AOE grid preview … the text needs to be
-bigger." **Builder** (party-builder.js): `pbSpellBadges(sp, max)` renders hud.js `_hrlgSpellBadges` (type badge, element
-glyph, status chips — the battle row's exact read; hud.js loads AFTER party-builder.js, so it is read at render time, the
-type badge alone as the fallback) and `pbAoeTiles(sp, big)` draws hud.js `_hrlgSpellShape` as `.pb-aoe` tiles (6 px; 8 px
-in the technique panel). The chip is name / badges / meta (the "AOE …" text drops when the grid shows) / grid / side
-(✓ EQUIPPED or the source, then the SP tag). The finisher strip renders ABOVE Tier IV (`pbTierGrid` puts `[FIN]` first,
-`['root']` last). The `.pb-tn-type` circles are gone. CSS: the LOOK PASS block at the END of styles-base.css (it must stay
-after the older .pb-technique / .pb-fin rules or they win) — every chip is framed, `.is-equipped` keeps a category-colour
-gradient fill on hover too (hover only turns the edge red = click to unequip), one chip per row (minmax 300 px; two
-columns truncated every name), the loadout wraps 4 + 3, text a size up everywhere (names 14–16 px, meta 10.5 px, SP 11 px,
-tier numerals 22 px, the technique panel 12 / 20 px). **HQ pause** (map.js): `_hqSpellBadgesHtml` (the same badges as
-HTML via `_hqCssOf`), `_hqAoeTilesHtml`, `_hqPauseFinisherHtml` (the race's finisher, read-only, above Tier IV), an
-equipped button reads ✓ EQUIPPED and keeps its fill; CSS "THE LOOK PASS in the field" at the end of styles-base.css.
-Test: spell-tree-ux.test.js "the look pass". Seen in the builder probe; the HQ pause screen UNSEEN live.
-**Two per row (same day, mondo: "a lot of empty space between the left info and the right info … put 2 spells side by
-side"):** the card lost its right-hand column: `.pb-tc-top` = the name (wraps to 2 lines) + the SP tag (✓ n SP when
-equipped), `.pb-tc-badges` = the battle badges + JOB / BORROWED (race is the default, unlabeled), `.pb-tc-bottom` = the
-meta (or the refusal) ⟷ the AOE grid. `.pb-tier-cells` is `repeat(2, …)`, the tier head 40 px, the disc 30–36 px.
-Token 20260924-spell-look-02-cors.
+## THE SPELL LIBRARY v2 — THE SHELL (2026-09-26, token 20260926-spell-library-02-cors)
+Settings → Developer → SPELL LIBRARY is a new screen (ui.js "SPELL LIBRARY v2 — THE SHELL", styles-hud.css
+`.slb2-*`; SPELL_LIBRARY_PLAN.md §5 is the spec, §11 the log). Layout: top bar (tabs SPELLS · PASSIVES ·
+FAMILIES · UPGRADES · POOLS · REPORT, search ⌘F, edit count, EDITS ON/OFF, undo/redo, EXPORT, IMPORT, LAB, ⋯),
+then rail (filters with counts) · centre (chips bar + virtualised table or cards) · inspector (420 px). Under
+1100 px the shell is `.narrow`: the rail is a drawer (☰), the inspector a sheet. The table renders only the
+visible 32 px rows (`_slb2RenderWindow` on scroll, rAF-coalesced); columns carry a priority and hide by the
+CENTRE's width, not the viewport's (`_slb2VisibleCols`), and what remains scrolls sideways (`--slb2-minw`).
+Every edit goes through `window._slbSetField(id, field, raw, ftype)` → `_slb2WriteField` (added rows edit
+whole, shipped rows a sparse patch in `EWSpellMods.doc.modified`) → `_slb2AfterEdit` patches ONE row + ONE
+field in place; the whole doc is snapshotted on the 50-deep undo stack first. The Spell Lab and its timeline
+(the `.slb-lab` / `.slb-tl` block) are unchanged and dock on the same names as before. Keys: ⌘K palette,
+⌘F search, ⌘S export, ⌘L lab, ⌘Z / ⌘⇧Z, ⌘A select all, ↑ ↓ walk rows, Enter opens the inspector sheet when
+narrow, Esc closes menus / the sheet / the drawer. Probe: `node playtest_library.js` (server on :3000) →
+shots/library/. Test: `node --test spell-library-ui.test.js`.
+
+## THE SPELL LIBRARY v2 — THE GRID + THE LOOK (2026-09-26, Phase 2, token 20260926-spell-library-03-cors)
+The TARGET tab's FOOTPRINT group is now a 7×7 click grid (ui.js "THE GRID", `_slb2GridHtml` / `_slb2WriteMask` /
+`_slb2GridDown` → `_slb2GridUp`; styles `.slb2-grid*`): the centre = the target tile (the caster for
+`aoeOriginSelf`, the victim for a splash rider), click paints, drag paints, right-click erases, the centre is
+locked ON; PRESET buttons stamp `AOE_PRESETS` (· 3×3 5×5 ◇1 ◇2 X1 X2 +1 +2 ○1 ○2 |3 |5 □), ↔ ↕ mirror, ⟳ rotate,
+▦ fill, ✕ CLEAR drops the mask (and puts the radius / shape fields back to the shipped row), ORIGIN target / self
+writes `aoeOriginSelf`. A row without a mask shows its computed footprint (radius / shape fields) and the first
+click converts it. Writing the mask is ONE undo step that also sets the kind's radius field (`crossRadius` for
+cross kinds, `blastRadius` for bombs, else `aoeRadius`) to the mask's reach — the engine's forty "is this an area?"
+gates test that field — and clears `aoeShape` / `diamond` / `diagonal`; the lint `maskVsRadius` only fires when the
+two disagree. A single-target kind (damage, heal…) gets an amber note: its mask only lights tiles; area damage on
+it is the SPLASH rider (Phase 3). The `aoeMask` field row is a readout ("x2 · 9 tiles · reach 2"), never a textarea.
+The LOOK tab (ui.js "THE LOOK", `_slb2LookExtraHtml`; styles `.slb2-stage*` / `.slb2-anim*`) mounts EWCharViewer
+on a race picker (the row's owner race, else the last race used, else the fortune teller; 300 px, idle-looping;
+`ew-cv-fail` when the model is off) with ▶ FULL · 🔁 LOOP · ■ · ✦ VFX (`previewSpell`, the real staging), the
+current pick in words ("AUTO hurl → cast · Spell_Simple_Shoot · UAL1 · 1.0 s · strike 0.10 s"), the strike lead
+(`animStrikeMs`, blank = the slot's strikeAt), a search box and the list: AUTO (`classifySpellAnimKind(d, {noPick})`),
+CAST VERBS (`SPELL_ANIM_KINDS` with `ThreeRenderer.castChainFor(kind)[0]` resolved through `EWCharViewer.slotInfo`),
+SLOTS (the 75 `UAL_SLOTS` rows: clip · library · played length · strike · TRAVEL tag), RAW CLIPS (the 69 unwired
+clips from `EWCharViewer.libClips` — "bakes at load / on first play"). Hovering plays the option once on the stage
+(`play(chain)` / `playClip(name, lib)`); clicking writes ONE of `animVerb` / `animSlot` / `animClip` and clears the
+other two (one undo step). TRAVEL is the Lab's `_animOverride.travel` select moved here; archetype · weight ·
+projectile stay the generic LOOK fields. The stage unmounts on every inspector re-render, on ▶ LAB and on BACK
+(ui.js wraps `_spellLibraryBack`). Probe: `node playtest_library.js` now serves the five library GLBs from the repo
+so RAW CLIPS fills (the race model itself is R2-only: the stage shows `ew-cv-fail` in the sandbox). Tests:
+`aoe-mask.test.js` (presets, clipping, the four readers' parity on every shipped aoe / cross row + every preset,
+the shaped fields on the card, the lint + the mana formula, `_aoeBound`) and `spell-anim-pick.test.js` (the pick's
+precedence, the slot: kind string, every verb's chain, `registerSpellAnimClips`, the census pin).
+
+## THE SPELL LIBRARY v2 — THE TARGETING (2026-09-26, Phase 3, token 20260926-spell-library-04-cors)
+The TARGET tab's RIDERS group always shows `randomTargets` and `splash` on a damage row (ui.js `_slb2RiderEditor`):
+unset = one ＋ button that writes the plan's defaults (`_SLB2_RIDER_DEFAULTS`: 3 distinct enemies × 1; splash × 0.5
+radius 1 enemies); set = SHOTS number · ENEMIES / ANY UNIT · DISTINCT / REPEATS · × per hit, or × · RADIUS (or
+"drawn" when the SPLASH grid holds a mask) · ENEMIES / ANY UNIT, with a line in words of what the normaliser makes
+of it (the engine reads data.js `spellRandomTargetsOf` / `spellSplashOf`). Every change rewrites the whole object
+through `_slbSetField` (one undo step, `_slb2RiderWrite`); the field's ✕ drops the rider; adding a splash makes
+the SPLASH grid appear under the FOOTPRINT. A non-damage kind gets the button greyed and an amber "damage rows only".
+The rail's HAS group gains "random / splash" (`riders` flag). The rack / HQ blades: 🎲×N and SPL N% badges
+(hud.js `_hrlgRiderBadges`) and a splash row's card shape; the board: a random row's self-cast preview washes its
+range and lights the pool, a splash row's hover lights the splash tiles with dmg × mult badges. CSS `.slb2-rider*`.
+
+## ◈ THE PASSIVES ROW (SPELL_LIBRARY_PLAN.md Phase 4, 2026-09-26)
+
+- **The forge's rack** (party-builder.js `pbTierCtx` → `ctx.passives`, `SpellTierPanel`'s `pb-tier pb-tier-pas`): passive /
+  gear rows leave the four tier rows for a ◈ PASSIVES row under Tier I (the unit's own passive rows first, then the
+  16 GEAR rows), head "◈ n/2"; a chip wears the row's icon, its statBonus as "+28 AWR", "PASSIVE", and a refused one
+  reads "2 PASSIVES MAX" (`is-passives`, styles-base.css). The keyboard grid walks it; a passive never previews a cast.
+- **The GEAR tab**: the two accessory slots are retired — the boxes SHOW the equipped passive rows (at most 2); a click
+  opens TECHNIQUES, ✕ unequips. The gear picker, `handleAccChange`, `equipAccessory` and `ACC_ICONS` are gone. The stat
+  preview reads `passiveIdsStatBonus(customSpells)`; the sticky notes show the rows (`pbUnitNotes(..., spellIds)`).
+- **The HQ pause rack** (data.js `hqPartyTreeCircuit().passives`, map.js `_hqPauseCircuitHtml`): the same ◈ PASSIVES row
+  under the tiers; the member sheet's GEAR section lists the kit's passive rows ("n / 2 · IN THE SPELL SLOTS").
+- **The library** (ui.js SPELL LIBRARY v2): a passive row's EFFECTS tab opens on the structured HOOKS editor
+  (`_slb2HooksEditor`: one line per key with its type, desc, reader and a typed control; ＋ HOOK ▾ lists every
+  `PASSIVE_HOOK_KEYS` key with its example; every write is a NEW hooks object through `_slbSetField`, one undo step;
+  the hook lint on top). The PASSIVES tab lists the gear rows (owner "gear · universal"); NEW ▾ passive templates match
+  the engine (build = `buildBonus: { build: 1 }`; new passives default to the `gear` family = equippable by every unit —
+  retag to scope one). Pure helpers `_slb2HookRows / _slb2HookPalette / _slb2HookParse / _slb2HookCheck / _slb2HooksWith`
+  (tested in spell-library-ui.test.js). Fixed a Phase 1 bug on the way: popovers and modals attach to
+  `#spellLibraryPage`, outside the body's click delegation, so their buttons were dead (NEW ▾ items, ROLE, ⋯, the
+  dialogs' CANCEL, EXPORT's COPY / DOWNLOAD) — `_slb2BindFloat` gives each its own listeners.
+
+## ⚙ THE UPGRADES IN THE RACKS + THE LIBRARY (SPELL_LIBRARY_PLAN.md Phase 5, 2026-09-26, token 20260926-spell-library-06-cors)
+- **The forge (party-builder.js):** a loadout cell whose spell takes upgrades wears a ⚙ button (lit ⚙n = n on); it
+  selects the spell without unequipping, and the TECHNIQUE PANEL shows ⚙ UPGRADES — one toggle per allowed upgrade (glyph,
+  name, its SP, the desc or the refusal from `spellUpgradeVerdict`). Off until the spell is equipped. The panel's chips
+  read the DERIVED def (`pbTechInfo` → `spD`), the kicker says "2 SP + 1 ⚙", an equipped chip shows its whole price and
+  ⚙n, UNEQUIP gives back tier + upgrades. `pbTierCtx(race, cls, equipped, ups)` holds the repaired map (`pbEffUps`); every
+  verdict and the SP meter count it. RST / CLR drop the map; RND rolls one (`buildRandomUpgrades`).
+- **The HQ pause rack (map.js):** under ◈ PASSIVES, a ⚙ UPGRADES block — one line per equipped spell that takes upgrades
+  (its upgraded numbers, ⚙ n / 2, +SP), a toggle per upgrade (`data-party-act="upg:member:spell:upgrade"` →
+  data.js `hqPartyUpgradeClick`). The model is `hqPartyTreeCircuit(m).upgrades`; unequip drops the spell's upgrades
+  (`hqPartySetSpells` repairs the map), RANDOM rolls them, CLEAR clears them.
+- **The battle menu (hud.js):** a derived def wears ⚙n (the names on hover), plus ↯ n% (ricochet) / ⑂+n (forked) rider badges.
+- **The library (ui.js):** a spell's UPGRADES tab — THE MODE (AUTO · CUSTOM · NONE; the first tick in AUTO pins the auto set
+  as CUSTOM, unticking the last turns NONE), a TRY pair (up to two, one of a kind) whose resolved line reads "= 92 dmg ·
+  15 MP · 4 SP" with the changed numbers bold, and the registry with each row's fit and its one-upgrade result. The
+  UPGRADES registry inspector gains `requires` (the fit test), `excl` (one-of-a-kind group) and `auto`.
+
+## ✦ POOLS · RACE FAMILIES + THE BIG ✕ (SPELL_LIBRARY_PLAN.md Phase 6, 2026-09-26, token 20260926-spell-library-07-cors)
+- POOLS → RACE FAMILIES (was RACE ROWS): the rail counts each race's families (red outside 3–10); the detail lists the race's
+  families (glyph, name, every member as a tier chip that jumps to the row, ↑ ↓ reorder, a big ✕), the tree rungs outside them,
+  and ALL FAMILIES as toggle chips (member count, races on hover). Writes go through the doc's `raceFamilies` registry
+  (`_slbRaceFamWrite` → `_slb2WriteReg('raceFamilies', …)`), so undo, export and the bake carry them; ↺ REVERT drops the row.
+- ONE FAMILY PER SPELL: `_slb2FamilyOf(id, fam, true)` REPLACES the row's family (the toast says where it came from); the
+  inspector's picker reads "⇄ move to family…", the bulk op "Move to a family", the member search "moves it here".
+- The ✕ on a family's member list is `.slb2-xbig` (28 × 24 button); the inspector's owner chips' ✕ grew to 13 px with a hover.
+- The matrix's lint is 3–10. Probe: playtest_library.js shoots `families_members`, `pools_race_families`, `pools_race_toggled`.
+
+## THE SPELL LIBRARY v2 — THE IDENTITY TAB (2026-09-26, token 20260926-spell-library-08-cors)
+- IDENTITY tab (ui.js `_slb2RenderIdentity`, styles-hud.css "IDENTITY tab"): pick 1-4 families → written archetypes that
+  match, a composed name / concept / look from the family kits (↻ REROLL = `_slbIdSeed++`), signature spells, how the pool
+  plays, close archetypes, races on the combo, pairs well with. State `_slbIdFams` / `_slbIdSeed` / `_slbIdQuery`; acts
+  `idToggle` / `idLoad` / `idRandom` / `idClear` / `idReroll` / `idCopy`, input `idQuery`.
+- The data + `slbIdentityBuild` live in the DOM-free `/* SLB IDENTITY BEGIN */ … END` block (sliced by spell-identity.test.js):
+  a new family needs a row in `SLB_IDENTITY_KITS` (the test fails without one) or an `identity` on its registry row; an
+  archetype is `[name, 'fam fam fam', line]`.
+- FAMILIES inspector → IDENTITY KIT: four `data-input="famIdentity"` textareas → `_slb2SetFamilyIdentity` → the row's
+  `identity` via `_slb2WriteReg('families', …)`.

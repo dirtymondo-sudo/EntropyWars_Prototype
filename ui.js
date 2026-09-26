@@ -9054,7 +9054,7 @@
            The block between SLB2 PURE BEGIN / END is DOM-free and runs in spell-library-ui.test.js.
            ═══════════════════════════════════════════════════════════════ */
 
-        let _slbTab = 'spells';               // spells | passives | families | upgrades | pools | report
+        let _slbTab = 'spells';               // spells | passives | families | upgrades | pools | identity | report
         let _slbSelectedId = null;            // the inspected row (the Lab reads it)
         let _slbSearch = '';
         let _slbFilters = null;               // _slb2EmptyFilters() — arrays, so a saved view is JSON
@@ -9069,6 +9069,7 @@
         let _slbFamKey = null;                // FAMILIES: the inspected family
         let _slbUpKey = null;                 // UPGRADES: the inspected upgrade
         let _slbPasSection = 'family';        // PASSIVES: family | inherent
+        let _slbIdFams = [], _slbIdSeed = 0, _slbIdQuery = '';   // IDENTITY: the picked families, the reroll, the filter
         let _slbRowsCache = null;             // _slb2Rows() memo, dropped by _slb2Dirty()
         let _slbFilteredCache = null;
         let _slbUndo = null;                  // _Slb2UndoStack
@@ -9445,6 +9446,487 @@
             return out;
         }
         /* SLB2 PURE END */
+        /* SLB IDENTITY BEGIN — THE IDENTITY GENERATOR (the user, 2026-09-26: "an identity generator for any 3 combination of spell
+           families … Krampus: Christmas Spirit, Horns & Hooves, Blood Magic, Trickery"). DOM-free; spell-identity.test.js slices this
+           block. The game has no AI at runtime, so the creative half was written once, by hand: a KIT per family (who, epithets,
+           look, vibe) and a list of ARCHETYPES (a name, its 3-4 families, a line). For any 1-4 picked families slbIdentityBuild
+           returns the written archetypes that match (all picks inside it, or it inside the picks), the near ones (two shared), the
+           races already built on the combo, a composed name + concept + look from the kits (seeded, so REROLL walks the options),
+           the signature spell of each family and how the combined pool plays (member roles). A family row's own `identity`
+           ({ who, adj, look, vibe } arrays, edited in the FAMILIES inspector) overrides its kit key by key; a family with neither
+           (new in the library) falls back to its name, description and members. */
+        // Each kit: [who (the person) | ..., epithets | ..., look | ..., vibe (a verb phrase after "who") | ...]
+        const SLB_IDENTITY_KITS = {
+            fire:                   ['Pyromancer|Firebrand|Arsonist|Fire-Eater', 'Burning|Scorched|Ember|Infernal', 'singed eyebrows|a coat of smouldering ash|hands that glow like coals', 'sets the floor on fire just to watch it burn|answers every problem with a fireball'],
+            ice:                    ['Frost Mage|Icebinder|Glacier Witch|Cryomancer', 'Frozen|Frostbitten|Glacial|Rime', 'breath that fogs in any weather|hair full of icicles|a crystal-blue mantle', 'freezes enemies where they stand|turns the battlefield into a skating rink'],
+            lightning:              ['Stormcaller|Thunderlord|Sparkwright|Voltaic', 'Thundering|Electric|Storm-Born|Crackling', 'hair standing on end|eyes that flicker like a bad bulb|a copper staff scorched black', 'chains lightning through a crowd|calls down the storm on cue'],
+            water:                  ['Tidecaller|Wavebreaker|Riverkeeper|Hydromancer', 'Tidal|Drowned|Brine-Soaked|Flooding', 'always dripping wet|seaweed tangled in the hair|a coral circlet', 'washes the board clean with a flood|pushes enemies around like driftwood'],
+            earth:                  ['Stonecaller|Geomancer|Quarryman|Earthshaker', 'Granite|Quaking|Bedrock|Stone-Fisted', 'fists caked in clay|boulders orbiting like moons|mossy shoulders', 'raises walls out of the ground|splits the floor with a stomp'],
+            wind:                   ['Windwalker|Sky Dancer|Galecaller|Aeromancer', 'Howling|Gusting|Sky-Born|Tempest', 'a cloak that never stops billowing|feathers in the hair|sandals that never touch the ground', 'blows enemies off the map|rides the wind above the fight'],
+            poison:                 ['Toxicologist|Venomist|Poisoner|Blightbringer', 'Toxic|Venomous|Blighted|Corrosive', 'green-stained fingers|a bandolier of vials|a sickly glow', 'lets the poison do the work|melts armour with acid'],
+            nature:                 ['Druid|Herbalist|Greenwarden|Gardener', 'Overgrown|Verdant|Thorned|Wild', 'vines wrapped round the arms|flowers growing from the shoulders|bark-brown skin', 'plants seeds that heal or strangle|grows cover wherever it stands'],
+            shadow:                 ['Shade|Umbral|Nightstalker|Darkling', 'Shadowed|Umbral|Midnight|Hollow', 'a face you can never quite see|a silhouette with no light source|smoke for a cape', 'steps through shadows to strike from behind|smothers the light and feeds on fear'],
+            light:                  ['Lightbringer|Radiant|Sunpriest|Beacon', 'Radiant|Shining|Dawn-Lit|Luminous', 'a halo that hums|robes brighter than the sun|eyes like lamps', 'blinds enemies and shields friends|burns the wicked with pure light'],
+            psychic:                ['Psion|Mentalist|Telekinetic|Mindbender', 'Psychic|Mind-Warped|Telekinetic|Third-Eyed', 'a nosebleed that never stops|floating debris around the head|glowing temples', 'throws enemies with a thought|scrambles minds until they hit their friends'],
+            sonic:                  ['Screamer|Bard|Soundwave|Echo', 'Deafening|Resonant|Shrieking|Harmonic', 'giant headphones|a throat that glows when it sings|speaker stacks on the back', 'shatters glass and eardrums alike|lulls enemies to sleep with a song'],
+            arcane:                 ['Wizard|Spellweaver|Magus|Runesmith', 'Arcane|Rune-Carved|Eldritch|Spellbound', 'a pointed hat|floating runes|a staff older than the kingdom', 'steals spells and turns foes into toads|bends the rules of magic'],
+            blood:                  ['Blood Mage|Hemomancer|Bloodletter|Sanguinist', 'Bloody|Crimson|Sanguine|Blood-Soaked', 'a bone knife|runes cut into the forearms|a cloak stained red', 'pays for power in blood, theirs or yours|makes it rain red'],
+            gear:                   ['Adventurer|Scavenger|Quartermaster|Packrat', 'Well-Equipped|Kitted-Out|Prepared|Stocked', 'a backpack full of gadgets|a belt of pouches', 'always has the right tool'],
+            doors:                  ['Door Agent|Doorman|Portal Gunner|Threshold Warden', 'Doorway|Threshold|Hinged|Portal', 'a gun that fires doors|a keyring the size of a hubcap', 'shoots doors into the battlefield that open onto somewhere worse'],
+            weaponstraining:        ['Gunslinger|Shooter|Sharpshooter|Trigger Man', 'Trigger-Happy|Sharpshooting|Loaded|Dead-Eye', 'twin holsters|shell casings rolling off the boots|a laser sight', 'never runs out of bullets|shoots the kneecap first and asks later'],
+            engineering:            ['Tinkerer|Engineer|Gadgeteer|Mechanic', 'Tinkering|Clockwork|Jury-Rigged|Wrench-Wielding', 'goggles on the forehead|a toolbelt that clanks|grease to the elbows', 'builds turrets faster than you can break them|repairs anything with duct tape'],
+            swordsmanship:          ['Swordsman|Duelist|Blademaster|Fencer', 'Blade-Dancing|Razor|Dueling|Steel', 'a sword taller than they are|a scar across the eye|a flowing sash', 'cuts beams of light out of thin air|waltzes through a crowd with a blade'],
+            alientechnology:        ['Raygunner|Invader|Star Trooper|Xeno-Tech', 'Alien|Extraterrestrial|Ray-Gun|Otherworldly', 'a chrome raygun|a bubble helmet|a jumpsuit with too many zips', 'shrinks enemies with a ray gun|freezes time in a stasis beam'],
+            demonicabilities:       ['Demon|Fiend|Hellspawn|Devil', 'Demonic|Hellborn|Infernal|Brimstone', 'horns and a forked tail|red skin|eyes like embers', 'makes deals that always cost too much|drags souls down to the pit'],
+            beastabilities:         ['Beast|Predator|Stalker|Hunter', 'Feral|Savage|Clawed|Snarling', 'claws and fangs|matted fur|a tail that lashes when angry', 'pounces from the long grass|tears through armour with teeth and claws'],
+            militarysupport:        ['Commander|Sergeant|Artillery Officer|General', 'Tactical|Decorated|Battle-Hardened|Strategic', 'a chest full of medals|a radio on the shoulder|camo fatigues', 'calls in artillery from off the map|rallies the squad and digs in'],
+            archery:                ['Archer|Bowman|Ranger|Fletcher', 'Keen-Eyed|Fletched|Longbow|Arrow-Swift', 'a quiver of trick arrows|a feathered cap|a longbow taller than a child', 'fires trick arrows from absurd range|splits an arrow in mid-air'],
+            spygear:                ['Spy|Operative|Infiltrator|Agent', 'Covert|Undercover|Classified|Silent', 'a tuxedo with hidden pockets|a wristwatch that is not a watch|a smoke pellet', 'plants bombs and vanishes in smoke|throws knives from the shadows'],
+            advancedtechnology:     ['Inventor|Black-Project Scientist|Technomancer|Rogue Engineer', 'Classified|Experimental|Prototype|Suppressed', 'a railgun strapped to the back|tesla coils on the shoulders|a lab badge from a place that does not exist', 'fires weapons the government denies building|runs on free energy'],
+            door:                   ['Doorman|Door Agent|Breacher|Doorkicker', 'Door-Kicking|Hinged|Breaching|Threshold', 'a door strapped to the back|a boot print on every lock', 'kicks down any door|drops through a trapdoor at the worst moment'],
+            chemistry:              ['Chemist|Alchemist|Cook|Apothecary', 'Volatile|Distilled|Bubbling|Chemical', 'a rubber apron|safety goggles|bubbling flasks at the belt', 'mixes volatile concoctions on the fly|throws whatever is in the flask'],
+            dragonabilities:        ['Dragon|Wyrm|Drake|Dragonkin', 'Draconic|Wyrm-Blooded|Scaled|Dragonfire', 'scaled skin|leathery wings|a hoard of gold teeth', 'breathes fire over a whole row|terrifies the brave'],
+            martialarts:            ['Martial Artist|Monk|Brawler|Sensei', 'Iron-Fisted|Disciplined|Kung Fu|Black Belt', 'a black belt|wrapped knuckles|a bare chest and baggy trousers', 'throws a flurry of blows faster than the eye|ends fights with one really good punch'],
+            superheropowers:        ['Superhero|Caped Crusader|Vigilante|Champion', 'Super|Invincible|Heroic|Caped', 'a cape|a logo on the chest|a mask that fools everyone', 'leaps tall buildings in a single bound|shoots heat from the eyes'],
+            football:               ['Quarterback|Linebacker|Coach|Wide Receiver', 'Varsity|All-Star|Gridiron|MVP', 'shoulder pads|a letterman jacket|eye black', 'throws a Hail Mary in the final second|reads the defence and calls an audible'],
+            fortunetelling:         ['Fortune Teller|Seer|Oracle|Clairvoyant', 'Fated|Prophetic|Foreseeing|Tarot', 'a crystal ball|a deck of tarot cards|a headscarf of coins', 'reads your palm before reading your moves|draws a tarot card to decide your fate'],
+            astrology:              ['Astrologer|Stargazer|Horoscope Reader|Zodiac Sage', 'Star-Crossed|Zodiac|Retrograde|Celestial', 'a star chart cloak|zodiac tattoos|a brass astrolabe', 'blames everything on Mercury in retrograde|crosses the stars against you'],
+            witchcraft:             ['Witch|Hag|Hexer|Coven Mother', 'Hexed|Cursed|Coven|Cauldron', 'a pointed hat|a black cat familiar|a cauldron on the hip', 'curses whole bloodlines|hexes enemies with agony'],
+            policetraining:         ['Cop|Detective|Officer|Sheriff', 'Badge-Carrying|Law-Abiding|Crooked|By-the-Book', 'a badge and aviators|a nightstick|a notepad full of tickets', 'cuffs suspects and locks down the scene|tases first and reads rights later'],
+            vampiricabilties:       ['Vampire|Nosferatu|Count|Bloodsucker', 'Undying|Nocturnal|Aristocratic|Fanged', 'a high-collared cape|fangs|skin that never saw the sun', 'turns into mist and bats|drains the living to stay young'],
+            computerhacking:        ['Hacker|Script Kiddie|Netrunner|Sysadmin', 'Hacked|Encrypted|Glitching|Root-Access', 'a hoodie in a dark room|three monitors of green text|a USB stick on a lanyard', 'blue-screens anything with a chip|crashes enemies into a boot loop'],
+            politics:               ['Politician|Senator|Lobbyist|Governor', 'Elected|Corrupt|Filibustering|Presidential', 'a flag pin|a perfect smile|a suit worth more than your house', 'filibusters until everyone falls asleep|rules by executive order'],
+            deepstate:              ['Handler|Spook|Fixer|Shadow Director', 'Deep-State|Redacted|Off-the-Books|Black-Budget', 'dark glasses|a black SUV|a file with your name on it', 'brainwashes assets with a word|pays for everything off the books'],
+            titan:                  ['Titan|Giant|Colossus|Ogre', 'Colossal|Towering|Titanic|Earth-Shaking', 'the size of a building|a club made from a tree trunk|footprints like craters', 'crushes whole squads underfoot|drops from the sky like a meteor'],
+            biblestudy:             ['Preacher|Evangelist|Deacon|Missionary', 'Holy|Righteous|Gospel|Born-Again', 'a dog-eared bible|a white collar|a collection plate', 'quotes scripture mid-fight|preaches a sermon that heals the faithful'],
+            seduction:              ['Seductress|Heartbreaker|Charmer|Siren', 'Seductive|Alluring|Heartbreaking|Irresistible', 'lipstick that leaves marks|a perfume that clouds the mind|a knowing smile', 'charms enemies into switching sides|kisses the life out of a victim'],
+            piracy:                 ['Pirate|Buccaneer|Corsair|Privateer', 'Swashbuckling|Plundering|Salty|Peg-Legged', 'a tricorn hat|an eyepatch|a parrot on the shoulder', 'fires cannonballs from a ship that is not there|makes you walk the plank'],
+            teamwork:               ['Captain|Team Player|Cheerleader|Squad Leader', 'Team-First|Rallying|Encouraging|Loyal', 'a whistle|a matching team jacket|a clipboard of plays', 'gives pep talks that actually work|lines up the team for a combined strike'],
+            ancientknowledge:       ['Archivist|Pharaoh|Keeper of Secrets|Ancient Sage', 'Ancient|Forgotten|Pyramid-Born|Antediluvian', 'hieroglyph tattoos|a golden ankh|scrolls older than language', 'knows the geometry the pyramids were built with|weighs your heart against a feather'],
+            christmasspirit:        ['Santa|Elf|Christmas Spirit|Gift-Giver', 'Festive|Jolly|Yuletide|Naughty-or-Nice', 'a red suit with white trim|a sack of presents|jingle bells', 'keeps a naughty list and checks it twice|delivers coal to the wicked'],
+            ki:                     ['Ki Fighter|Energy Master|Super Warrior|Chi Master', 'Powered-Up|Radiant|Ascended|Charged', 'hair that changes colour when angry|an aura that crackles|a torn gi', 'charges a ki blast for three whole rounds|teleports behind you'],
+            zombie:                 ['Zombie|Walker|Shambler|Patient Zero', 'Undead|Rotting|Infected|Shambling', 'grey skin|a missing jaw|torn hospital scrubs', 'turns the fallen into the horde|never stops coming'],
+            cosmic:                 ['Star Being|Cosmic Entity|Void Traveller|Stellar Herald', 'Cosmic|Stellar|Galactic|Void-Touched', 'skin like a night sky|orbiting planets|a nebula for a cloak', 'collapses stars into black holes|brings on the heat death of the universe'],
+            healingmagic:           ['Healer|Medic|Cleric|Nurse', 'Healing|Merciful|Restoring|Blessed', 'a white robe|a medical satchel|glowing hands', 'keeps everyone alive through the worst of it|brings the fallen back'],
+            angelic:                ['Angel|Guardian|Cherub|Herald', 'Heavenly|Divine|Seraphic|Sacred', 'white wings|a halo|a trumpet', 'hands down divine judgment|lifts the faithful in the rapture'],
+            astral:                 ['Dream Eater|Sandman|Nightmare|Night Hag', 'Dreaming|Nightmarish|Slumbering|Lucid', 'a nightcap and a sack of sand|eyes that never blink|a body that fades at the edges', 'feeds on dreams|paralyses sleepers in their beds'],
+            sasquatch:              ['Sasquatch|Bigfoot|Wild Man|Skunk Ape', 'Hairy|Big-Footed|Elusive|Musky', 'enormous feet|shaggy fur|a smell you notice first', 'kicks like a mule|smashes through the treeline'],
+            cryptid:                ['Cryptid|Monster|Legend|Unexplained', 'Unexplained|Blurry|Legendary|Red-Eyed', 'glowing red eyes|a silhouette in a blurry photo|tracks that end nowhere', 'vanishes before the photo comes out|prophesies disaster just by showing up'],
+            temporal:               ['Time Traveller|Chronomancer|Timekeeper|Paradox', 'Temporal|Rewound|Timeless|Out-of-Time', 'three wristwatches|clothes from four decades|an hourglass pendant', 'rewinds the last move|shifts enemies out of time'],
+            knight:                 ['Knight|Paladin|Crusader|Squire', 'Valiant|Chivalrous|Oathbound|Armoured', 'full plate armour|a crest on the shield|a lance', 'charges bravely into the front line|swears an oath and keeps it'],
+            royalty:                ['King|Queen|Monarch|Royal', 'Royal|Crowned|Regal|Round-Table', 'a crown|an ermine cloak|a sword pulled from a stone', 'rules by royal decree|raises the walls of Camelot around the court'],
+            streetsmarts:           ['Gangster|Hustler|Hood|Thug', 'Street|Hustling|Hard-Knock|Gangland', 'gold chains|a bandana|a car with tinted windows', 'hits a lick and gets out clean|does drive-bys'],
+            psychadelic:            ['Shaman|Tripper|Psychonaut|Mystic', 'Tripping|Kaleidoscopic|Mind-Expanded|Far-Out', 'dilated pupils|a tie-dye robe|a pouch of mushrooms', 'gives enemies a bad trip|dissolves the ego'],
+            fae:                    ['Fairy|Pixie|Sprite|Fae Noble', 'Fae|Glittering|Enchanted|Mischievous', 'dragonfly wings|a trail of glitter|a crown of flowers', 'dusts enemies with glitter bombs|traps foes in a fairy ring'],
+            trickery:               ['Trickster|Con Artist|Shapeshifter|Mimic', 'Tricky|Two-Faced|Shape-Shifting|Sly', 'a grin that is too wide|a different face every time|a stolen coat', 'swaps skins and stolen places|flips the turn order with a trick room'],
+            cult:                   ['Cult Leader|Prophet|Guru|Messiah', 'Charismatic|Devoted|Kool-Aid|Enlightened', 'white robes|a compound in the desert|followers who chant the name', 'passes round the Kool-Aid|gathers followers who would die for them'],
+            haunted:                ['Ghost|Poltergeist|Spirit|Phantom', 'Haunted|Spectral|Ghostly|Cursed', 'a see-through body|chains that rattle|a cold draught', 'possesses the living|throws furniture across the room'],
+            stagepresence:          ['Pop Star|Rock Star|Showman|Diva', 'Dazzling|Chart-Topping|Spotlit|Encore', 'sequins and a microphone|pyrotechnics|a fan club', 'steals the spotlight|stage-dives onto the enemy'],
+            astralprojection:       ['Astral Traveller|Spirit Walker|Projector|Out-of-Body', 'Astral|Disembodied|Ethereal|Spirit', 'a silver cord trailing behind|a translucent twin|eyes rolled back', 'leaves the body to scout ahead|walks through walls in spirit form'],
+            conspiracyknowledge:    ['Conspiracy Theorist|Truther|Whistleblower|Podcaster', 'Paranoid|Tin-Foil|Awakened|Red-Pilled', 'a tin-foil hat|a corkboard of red string|a podcast mic', 'blames chemtrails for everything|insists the earth is flat and fights like it'],
+            unethicalscience:       ['Mad Scientist|Doctor|Experimenter|Geneticist', 'Unethical|Mad|Experimental|Twisted', 'a bloodstained lab coat|a hunchbacked assistant|a syringe of green serum', 'experiments on anyone nearby|builds monsters in the lab'],
+            ufo:                    ['Abductor|Grey|Probe Specialist|Saucer Pilot', 'Abducting|Hovering|Probing|Unidentified', 'a flying saucer overhead|big black eyes|a probe', 'beams people up for probing|leaves crop circles behind'],
+            robot:                  ['Robot|Android|Automaton|Machine', 'Robotic|Chrome|Overclocked|Mechanical', 'chrome plating|a glowing visor|exposed wiring', 'overclocks into kill mode|rockets its fist across the room'],
+            machinery:              ['Machinist|Engine|Hydraulic Press|Factory Worker', 'Hydraulic|Industrial|Heavy-Duty|Piston-Driven', 'pistons for limbs|a smokestack|steel toe caps', 'crushes anything under hydraulic pressure'],
+            cyberpunkweapons:       ['Cyborg|Street Samurai|Chrome Merc|Gunbot', 'Cybernetic|Chrome|Plasma-Charged|Augmented', 'an arm that becomes a cannon|a synthetic blade|neon tattoos', 'fires cluster rockets from the shoulder|cuts with a plasma blade'],
+            huntingskills:          ['Hunter|Trapper|Woodsman|Tracker', 'Camouflaged|Tracking|Backwoods|Patient', 'a camo jacket|a long rifle|a string of trophies', 'waits in the treeline for the perfect shot|ambushes from the forest'],
+            necromancy:             ['Necromancer|Lich|Grave Lord|Deathspeaker', 'Deathly|Grave-Born|Undying|Necrotic', 'a skull staff|robes that smell of earth|a phylactery', 'raises the dead to fight again|drains life from the living'],
+            bonedensity:            ['Skeleton|Bone Collector|Ossuary Keeper|Bonesmith', 'Bony|Rattling|Marrow-Deep|Calcified', 'a ribcage you can see through|a bone crown|dice made from knuckles', 'throws its own bones and puts itself back together'],
+            insectoid:              ['Insect|Hive Warrior|Bug|Drone', 'Chitinous|Swarming|Many-Legged|Hive-Minded', 'a chitin carapace|compound eyes|mandibles', 'tunnels under the board|signals the swarm'],
+            holydefense:            ['Valkyrie|Shield Maiden|Templar|Guardian', 'Shield-Bearing|Holy|Warded|Valkyrie', 'a winged helm|a tower shield|a spear of light', 'guards the line with holy shields|chooses who dies in battle'],
+            mecha:                  ['Mech Pilot|Gundam Jockey|Tank Commander|Frame Pilot', 'Mech-Piloting|Armoured|Siege-Mode|Jet-Powered', 'a flight suit|a giant robot parked nearby|a helmet with a HUD', 'locks into siege mode and shells the board|ejects at the last second'],
+            drivingskills:          ['Driver|Street Racer|Getaway Driver|Road Warrior', 'Road-Raging|Turbo|Street-Racing|Hot-Rod', 'a racing jacket|keys on a carabiner|burnt-rubber smell', 'runs enemies over and hits the nitro|leaves an exhaust cloud behind'],
+            blackmagic:             ['Warlock|Voodoo Priest|Occultist|Dark Sorcerer', 'Occult|Unholy|Voodoo|Sacrificial', 'a voodoo doll|a goat skull|black candles', 'sticks pins in a doll of you|sacrifices for power'],
+            werewolf:               ['Werewolf|Lycan|Wolfman|Moon-Changer', 'Lycan|Moonstruck|Howling|Frenzied', 'torn clothes and fur|yellow eyes|a full moon behind', 'howls to rally the pack|goes into a blood frenzy'],
+            feline:                 ['Cat|Catgirl|Stray|Alley Cat', 'Feline|Purring|Nine-Lived|Curious', 'cat ears and a tail|slit pupils|a bell collar', 'scratches nine times and lands on its feet'],
+            athleticism:            ['Athlete|Sprinter|Linebacker|Olympian', 'Athletic|Unstoppable|Nimble|Tireless', 'a tracksuit|taped ankles|a gold medal', 'charges through anything in the way|dodges like it is nothing'],
+            dirtyfighting:          ['Brawler|Bruiser|Thug|Enforcer', 'Brutal|Merciless|Knuckle-Dusting|Dirty', 'brass knuckles|a broken nose|a stained vest', 'curb-stomps anyone who goes down|fights with no mercy and no rules'],
+            arachnid:               ['Spider|Weaver|Arachnid|Webslinger', 'Eight-Legged|Web-Spinning|Venom-Fanged|Skittering', 'eight eyes|webbing on the fingers|too many legs', 'snares enemies in webs|spins webs across dimensions'],
+            winter:                 ['Snow Soldier|Yeti|Winter Warrior|Frost Commando', 'Wintry|Snowbound|Avalanche|Frost-Hardened', 'a fur parka|snowshoes|frost on the eyebrows', 'buries enemies in an avalanche|throws snowballs that hurt'],
+            scarecrow:              ['Scarecrow|Straw Man|Harvest Spirit|Field Guard', 'Straw-Stuffed|Harvest|Crow-Haunted|Stitched', 'a burlap sack face|straw poking out of the sleeves|a hook for a hand', 'sends crows at the enemy|leaves a stuffed double to take the hit'],
+            artificialintelligence: ['AI|Supercomputer|Algorithm|Machine Mind', 'Sentient|Calculating|Recursive|Singular', 'a single red eye|a voice that is too calm|a server rack for a body', 'predicts your moves before you make them|recurses toward the singularity'],
+            cowboyskills:           ['Cowboy|Gunslinger|Outlaw|Sheriff', 'Wild West|Rootin-Tootin|Dusty|High Noon', 'a Stetson|spurs|a lasso', 'fans the hammer at high noon|lassos enemies and throws dynamite'],
+            fractal:                ['Machine Elf|Pattern Seer|Geometer|Fractal Mind', 'Fractal|Recursive|Infinite|Self-Similar', 'a body made of repeating patterns|kaleidoscope eyes|folds in space around it', 'sees the pattern in everything|folds space into needles'],
+            fallenangel:            ['Fallen Angel|Watcher|Exile|Grigori', 'Fallen|Exiled|Blackwinged|Wrathful', 'black charred wings|a broken halo|scars from the fall', 'descends in wrath|carries the grudge of the Watchers'],
+            eyesight:               ['Cyclops|Watcher|Beholder|Gazer', 'All-Seeing|Baleful|One-Eyed|Hypnotic', 'one enormous eye|eyes all over the body|a monocle', 'kills with a look|sees everything on the board'],
+            galacticfederation:     ['Ambassador|Starfleet Officer|Nordic Envoy|Federation Diplomat', 'Federated|Diplomatic|Interstellar|Benevolent', 'a silver uniform|long white hair|a beacon badge', 'calls in the Federation|signs peace accords mid-battle'],
+            livingstone:            ['Gargoyle|Golem|Statue|Stone Guardian', 'Living-Stone|Petrified|Carved|Granite-Skinned', 'a body carved from stone|moss in the cracks|a cathedral perch', 'turns to stone to shrug off hits|calcifies anyone who touches it'],
+            humangrit:              ['Everyman|Survivor|Underdog|Average Joe', 'Gritty|Stubborn|Underdog|Scrappy', 'a hoodie and sneakers|a bandage on the forehead|nothing special at all', 'has no powers and fights anyway|improvises with whatever is lying around'],
+            maincharacter:          ['Chosen One|Protagonist|Hero of Prophecy|Main Character', 'Chosen|Prophesied|Plot-Armoured|Destined', 'spiky hair|a tragic locket|a scar shaped like a symbol', 'has a sad backstory and plot armor to match|fulfills the prophecy right on time'],
+            deepsea:                ['Kraken|Deep One|Jellyfish|Leviathan', 'Abyssal|Tentacled|Deep-Sea|Bioluminescent', 'bioluminescent skin|tentacles|an ink sac', 'stings and drifts away|drags enemies into the deep'],
+            prismlattice:           ['Prism Keeper|Lattice Mind|Frequency Tuner|Lightbender', 'Prismatic|Refracted|Latticed|Tuned', 'crystal skin that splits light|a tuning fork|a lattice halo', 'bends lasers through a lattice of mirrors|tunes to the enemy\'s frequency'],
+            infernalcourt:          ['Hell Prince|Archduke|Demon Lord|Infernal Monarch', 'Infernal|Imperial|Crowned|Tyrannical', 'a crown of hellfire|a throne of bones|a court of lesser demons', 'rules hell by decree|conscripts the damned into its army'],
+            horns:                  ['Minotaur|Goatman|Satyr|Bull', 'Horned|Hoofed|Goring|Bull-Headed', 'curled horns|cloven hooves|a nose ring', 'gores and charges through walls|tosses enemies on its horns'],
+            apexpredator:           ['Dinosaur|Tyrant|Raptor|Apex', 'Primal|Prehistoric|Tyrant|Apex', 'scales and a huge jaw|tiny arms|a roar that shakes trees', 'sits at the top of the food chain|stampedes through the herd'],
+            ghoulish:               ['Ghoul|Graverobber|Corpse Eater|Carrion Feeder', 'Ghoulish|Starving|Grave-Hungry|Carrion', 'grave dirt under the nails|a gaunt ribcage|sharp teeth', 'feeds on the fallen|crawls out of graves'],
+            kaiju:                  ['Kaiju|Monster|Titan|Giant Ape', 'Atomic|City-Crushing|Radioactive|Colossal', 'the size of a skyscraper|spines that glow before the breath|a city under the feet', 'throws skyscrapers|breathes atomic fire'],
+            ooze:                   ['Ooze|Slime|Blob|Goo', 'Oozing|Gelatinous|Slimy|Amorphous', 'a body that jiggles|things floating inside it|a slime trail', 'absorbs enemies and splits in two|leaves a trail of goo'],
+            sentai:                 ['Ranger|Sentai|Color Warrior|Henshin Hero', 'Morphin|Color-Coded|Transformed|Team', 'a helmet with a visor|a colour-coded suit|a transformation belt', 'poses before every attack|combines into a Megazord'],
+            symbiosis:              ['Symbiote|Parasite|Host|Living Suit', 'Symbiotic|Parasitic|Bonded|Tendrilled', 'black goo over the skin|a toothy grin that is not its own|tendrils', 'bonds with a host and drains enemies|shoots webs from living tendrils'],
+        };
+        // Hand-written archetypes: [name, families (space-separated ids), one-line concept]. The first seven are the user's own.
+        const SLB_IDENTITY_ARCHETYPES = [
+            ['Krampus', 'christmasspirit horns blood trickery', 'Santa\'s horned shadow: punishes the naughty list with chains, birch and a sack.'],
+            ['Televangelist', 'biblestudy cult stagepresence', 'Preaches on camera, heals on cue and asks for a donation after every miracle.'],
+            ['Plague Doctor', 'unethicalscience poison chemistry', 'A beaked mask, a cane and a cure that is worse than the plague.'],
+            ['Ninja', 'martialarts spygear shadow', 'Smoke bombs, throwing stars and a blade from behind.'],
+            ['Ghost Pirate', 'piracy haunted deepsea', 'Died at sea and kept sailing: a crew of spectres and a ship that surfaces from the deep.'],
+            ['Chupacabra', 'cryptid beastabilities blood', 'Drains livestock dry in the night and is gone before anyone gets a photo.'],
+            ['Hitman', 'politics deepstate streetsmarts', 'Takes contracts from the powerful and makes problems disappear.'],
+            ['Mummy', 'ancientknowledge necromancy wind', 'A pharaoh wrapped in linen, back from the tomb with a sandstorm and a curse.'],
+            ['Grim Reaper', 'necromancy shadow bonedensity', 'A scythe, a hood and an appointment nobody misses.'],
+            ['Lich', 'necromancy arcane ice', 'A wizard who cheated death by hiding the soul in a jar.'],
+            ['Banshee', 'haunted sonic shadow', 'A wailing spirit whose scream means someone is about to die.'],
+            ['Siren', 'seduction sonic water', 'Sings sailors onto the rocks.'],
+            ['Headless Horseman', 'haunted swordsmanship drivingskills', 'Rides out every Halloween looking for a new head.'],
+            ['Jack-o\'-Lantern', 'scarecrow fire haunted', 'A carved pumpkin head with a candle that never goes out.'],
+            ['Wendigo', 'cryptid ghoulish winter', 'A starving spirit of the frozen woods that grows with every meal.'],
+            ['Mothman', 'cryptid wind eyesight', 'Red eyes on a bridge the night before the disaster.'],
+            ['Jersey Devil', 'cryptid demonicabilities horns', 'The thirteenth child, born with hooves and wings in the Pine Barrens.'],
+            ['Nosferatu', 'vampiricabilties shadow zombie', 'The rat-faced vampire: less count, more plague.'],
+            ['Dracula', 'vampiricabilties royalty seduction', 'The count in the castle, charming guests before dinner.'],
+            ['Frankenstein\'s Monster', 'unethicalscience lightning bonedensity', 'Stitched together from the dead and jolted to life by a storm.'],
+            ['Dr. Jekyll', 'chemistry unethicalscience dirtyfighting', 'A gentleman scientist whose potion unleashes the brute inside.'],
+            ['Invisible Man', 'chemistry spygear trickery', 'A formula that makes you vanish, and a temper that does not.'],
+            ['Swamp Thing', 'nature ooze water', 'Half man, half bog, all rage when the swamp is threatened.'],
+            ['Golem of Prague', 'livingstone ancientknowledge holydefense', 'Clay given life by a word in its mouth to guard the people.'],
+            ['Medusa', 'eyesight seduction poison', 'Snakes for hair and a look that turns you to stone.'],
+            ['Minotaur King', 'horns royalty earth', 'Lord of the labyrinth, charging down every corridor.'],
+            ['Cerberus', 'beastabilities fire demonicabilities', 'Three heads guarding the gate of hell.'],
+            ['Kitsune', 'fae trickery fire', 'A nine-tailed fox spirit with foxfire and a thousand disguises.'],
+            ['Tengu', 'wind martialarts trickery', 'A mountain crow-spirit that teaches swordplay and pranks monks.'],
+            ['Oni', 'demonicabilities titan dirtyfighting', 'A red-skinned ogre with an iron club.'],
+            ['Djinn', 'arcane wind trickery', 'Grants three wishes and makes each one a trap.'],
+            ['Leprechaun', 'fae trickery streetsmarts', 'Hides his gold and never plays fair.'],
+            ['Tooth Fairy', 'fae spygear astral', 'Sneaks into bedrooms at night; nobody asks what she does with the teeth.'],
+            ['Sandman', 'astral psychic wind', 'Blows sand in your eyes and walks into your dreams.'],
+            ['Boogeyman', 'shadow astral haunted', 'Lives under the bed and feeds on fear.'],
+            ['Easter Bunny', 'athleticism trickery nature', 'Hides eggs, some of which explode.'],
+            ['Cupid', 'archery seduction angelic', 'A winged archer whose arrows make you fall for the wrong person.'],
+            ['Grinch', 'christmasspirit trickery winter', 'Steals Christmas and then maybe learns a lesson.'],
+            ['Jack Frost', 'winter ice trickery', 'Nips noses and paints frost on windows, with a mean streak.'],
+            ['Snow Queen', 'ice royalty winter', 'Rules a palace of ice and freezes hearts solid.'],
+            ['Nutcracker', 'christmasspirit knight machinery', 'A wooden soldier who wakes on Christmas Eve to fight the Mouse King.'],
+            ['Nun of Vengeance', 'biblestudy dirtyfighting holydefense', 'A ruler across the knuckles and an exorcism in the other hand.'],
+            ['Exorcist', 'biblestudy haunted light', 'Holy water, a crucifix and a very long night.'],
+            ['Inquisitor', 'biblestudy fire policetraining', 'Nobody expects him, and everyone is on trial.'],
+            ['Faith Healer', 'biblestudy healingmagic stagepresence', 'Lays on hands in front of a live audience.'],
+            ['Doomsday Prophet', 'cult conspiracyknowledge fortunetelling', 'The end is nigh, and there is a sign to prove it.'],
+            ['Tech Bro Messiah', 'cult artificialintelligence stagepresence', 'Promises to upload you to the cloud for a subscription.'],
+            ['Pop Idol', 'stagepresence sonic seduction', 'Sold-out arenas and a voice that controls a crowd.'],
+            ['Rock God', 'stagepresence sonic fire', 'Smashes guitars and sets the stage on fire.'],
+            ['Wrestler', 'stagepresence dirtyfighting athleticism', 'Theme music, a chair shot and a finishing move from the top rope.'],
+            ['Magician', 'stagepresence trickery arcane', 'Saws the enemy in half, then forgets the second half of the trick.'],
+            ['Evil Clown', 'stagepresence trickery psychadelic', 'Balloons, a big red nose and something wrong behind the smile.'],
+            ['Mime', 'trickery stagepresence psychic', 'Trapped in an invisible box, and now so are you.'],
+            ['Spy Master', 'spygear deepstate psychic', 'Runs a network of agents and reads minds at the table.'],
+            ['Secret Agent', 'spygear weaponstraining seduction', 'Shaken, not stirred, and always armed.'],
+            ['Assassin', 'spygear shadow poison', 'A dart, a whisper and a body nobody finds.'],
+            ['Samurai', 'swordsmanship knight martialarts', 'A code of honour and a blade that never misses.'],
+            ['Ronin', 'swordsmanship streetsmarts humangrit', 'A masterless samurai selling a sword to anyone who pays.'],
+            ['Shaolin Monk', 'martialarts ki healingmagic', 'Shaved head, iron body, calm mind.'],
+            ['Drunken Master', 'martialarts psychadelic athleticism', 'The more he drinks, the harder he is to hit.'],
+            ['Luchador', 'athleticism stagepresence martialarts', 'A mask never removed and a flying cross-body off the ropes.'],
+            ['Boxer', 'martialarts humangrit athleticism', 'A mouthguard, taped hands and one really good punch.'],
+            ['Street Fighter', 'martialarts ki streetsmarts', 'Fights in alleys for money and throws fireballs from the hands.'],
+            ['Gladiator', 'swordsmanship stagepresence dirtyfighting', 'Fights for the crowd, and the crowd wants blood.'],
+            ['Viking Berserker', 'dirtyfighting blood winter', 'Bites the shield and charges into the ice fog.'],
+            ['Valkyrie', 'holydefense wind angelic', 'Rides down to choose who goes to Valhalla.'],
+            ['Spartan', 'knight athleticism teamwork', 'Shield wall, spear and a very small army that will not move.'],
+            ['Musketeer', 'swordsmanship weaponstraining royalty', 'All for one, one for all, and a rapier for the rest.'],
+            ['Highwayman', 'weaponstraining streetsmarts drivingskills', 'Stand and deliver, now in a getaway car.'],
+            ['Bounty Hunter', 'huntingskills weaponstraining spygear', 'Tracks the target across the galaxy for the reward.'],
+            ['Big-Game Hunter', 'huntingskills weaponstraining beastabilities', 'Mounts every monster he kills on the wall.'],
+            ['Sniper', 'weaponstraining huntingskills militarysupport', 'One shot from a mile away.'],
+            ['Commando', 'militarysupport weaponstraining humangrit', 'Face paint, a bandana and a very large gun.'],
+            ['Drill Sergeant', 'militarysupport teamwork dirtyfighting', 'Screams you into shape.'],
+            ['Tank Commander', 'militarysupport mecha drivingskills', 'Rolls over the board and shells what is left.'],
+            ['Riot Cop', 'policetraining holydefense dirtyfighting', 'Shield up, baton out, no questions.'],
+            ['Dirty Cop', 'policetraining streetsmarts deepstate', 'Takes the bribe and plants the evidence.'],
+            ['Private Eye', 'policetraining spygear fortunetelling', 'A trench coat, a hunch and a case nobody else will touch.'],
+            ['Mob Boss', 'streetsmarts politics seduction', 'Makes an offer you cannot refuse.'],
+            ['Drug Lord', 'streetsmarts chemistry psychadelic', 'Cooks the product and runs the block.'],
+            ['Getaway Driver', 'drivingskills streetsmarts athleticism', 'Keeps the engine running and never looks back.'],
+            ['Road Warrior', 'drivingskills dirtyfighting machinery', 'Rides the wasteland in a spiked car.'],
+            ['Corrupt Senator', 'politics seduction trickery', 'Kisses babies, shakes hands and sells the country.'],
+            ['Dictator', 'politics militarysupport cult', 'Statues everywhere and a parade every weekend.'],
+            ['Men in Black Agent', 'deepstate alientechnology spygear', 'A black suit, a neuralyzer and a cover story.'],
+            ['Reptilian Overlord', 'conspiracyknowledge politics trickery', 'Wears a human face and runs the world from the shadows.'],
+            ['Area 51 Scientist', 'advancedtechnology ufo deepstate', 'Reverse-engineers saucers in a hangar that does not exist.'],
+            ['Alien Abductee', 'ufo conspiracyknowledge humangrit', 'Came back from the probe with a tracker and something to prove.'],
+            ['Space Marine', 'militarysupport alientechnology cosmic', 'Power armour and a plasma rifle against the void.'],
+            ['Astronaut', 'cosmic humangrit advancedtechnology', 'Floats in low gravity with a tether and nerves of steel.'],
+            ['Star Knight', 'cosmic swordsmanship psychic', 'A beam of light for a sword and a mind that moves objects.'],
+            ['Cyber Ninja', 'cyberpunkweapons martialarts spygear', 'A synthetic blade and a stealth field.'],
+            ['Netrunner', 'computerhacking cyberpunkweapons streetsmarts', 'Jacks into the net and fries brains through the wire.'],
+            ['Killer Robot', 'robot artificialintelligence militarysupport', 'Sent back to finish the job.'],
+            ['Mech Knight', 'mecha knight robot', 'A giant robot sworn to a code of chivalry.'],
+            ['Steampunk Inventor', 'engineering machinery advancedtechnology', 'Brass gears, a steam cannon and a top hat.'],
+            ['Gremlin', 'engineering trickery computerhacking', 'Breaks every machine it touches, and laughs.'],
+            ['Glitch in the Matrix', 'computerhacking temporal trickery', 'Déjà vu, then the same cat walks by again.'],
+            ['Time Cop', 'temporal policetraining weaponstraining', 'Arrests criminals before the crime.'],
+            ['Doom Oracle', 'fortunetelling temporal shadow', 'Sees every future and they all end badly.'],
+            ['Gypsy Witch', 'fortunetelling witchcraft trickery', 'Reads your fortune and curses you for not tipping.'],
+            ['Swamp Witch', 'witchcraft poison nature', 'Brews potions in a bog and hexes trespassers.'],
+            ['Voodoo Priest', 'blackmagic necromancy witchcraft', 'A doll, a pin and the dead at his call.'],
+            ['Hedge Wizard', 'arcane nature humangrit', 'Self-taught magic from a book found in a ditch.'],
+            ['Battle Mage', 'arcane swordsmanship lightning', 'A sword in one hand and a thunderbolt in the other.'],
+            ['Alchemist', 'chemistry arcane earth', 'Turns lead into gold and enemies into lead.'],
+            ['Druid', 'nature wind beastabilities', 'Speaks for the forest and turns into a bear.'],
+            ['Beastmaster', 'beastabilities huntingskills teamwork', 'Fights alongside a pack of loyal animals.'],
+            ['Wolf Pack Alpha', 'werewolf beastabilities teamwork', 'Leads the pack under a full moon.'],
+            ['Skinwalker', 'trickery blackmagic beastabilities', 'Wears the skin of the thing it killed.'],
+            ['Chimera', 'beastabilities fire horns', 'Lion, goat and serpent, and all three want you dead.'],
+            ['Manticore', 'beastabilities poison wind', 'A lion\'s body, a scorpion\'s tail and wings.'],
+            ['Griffin', 'wind beastabilities royalty', 'Half eagle, half lion, guardian of the king\'s gold.'],
+            ['Hydra', 'deepsea poison titan', 'Cut off one head and two grow back.'],
+            ['Leviathan', 'deepsea titan water', 'A sea serpent the size of an island.'],
+            ['Mermaid Queen', 'deepsea royalty seduction', 'Rules the reef and sinks ships that cross it.'],
+            ['Sea Witch', 'deepsea witchcraft trickery', 'Trades legs for voices, and always wins the deal.'],
+            ['Poseidon', 'water royalty earth', 'The trident, the tides and the earthquakes.'],
+            ['Zeus', 'lightning royalty angelic', 'King of the gods, throwing thunderbolts from the clouds.'],
+            ['Hades', 'necromancy royalty fire', 'Keeper of the dead and their riches.'],
+            ['Anubis', 'ancientknowledge necromancy beastabilities', 'The jackal god weighing hearts at the gate of death.'],
+            ['Thor', 'lightning titan dirtyfighting', 'A hammer, a storm and a short temper.'],
+            ['Loki', 'trickery shadow fire', 'The god of mischief, lying to everyone at once.'],
+            ['Prometheus', 'fire titan humangrit', 'Stole fire for humanity and suffers for it daily.'],
+            ['Sun God', 'light fire cosmic', 'Rides the sun across the sky and burns the unworthy.'],
+            ['Moon Goddess', 'astrology shadow archery', 'A silver bow and the tides at her command.'],
+            ['Archangel', 'angelic holydefense swordsmanship', 'The flaming sword at the gate of paradise.'],
+            ['Nephilim', 'fallenangel titan angelic', 'Child of angels and humans, too big for either world.'],
+            ['Lucifer', 'fallenangel infernalcourt light', 'The morning star, fallen and crowned in hell.'],
+            ['Succubus', 'seduction astral demonicabilities', 'Visits in dreams and leaves you drained.'],
+            ['Imp', 'demonicabilities trickery fire', 'A tiny devil with a pitchfork and a grudge.'],
+            ['Hellhound', 'demonicabilities beastabilities fire', 'A burning dog loosed on the souls who owe.'],
+            ['Demon Lawyer', 'demonicabilities politics trickery', 'Reads the fine print so you do not have to.'],
+            ['Cult Demon', 'cult demonicabilities blackmagic', 'Summoned by a circle of chanting followers.'],
+            ['Baphomet', 'horns blackmagic infernalcourt', 'The goat-headed idol at the centre of the ritual.'],
+            ['Satyr', 'horns fae stagepresence', 'Plays the pipes and throws the wildest party in the woods.'],
+            ['Centaur', 'archery athleticism nature', 'Half horse, half archer, never misses on the run.'],
+            ['Faun Trickster', 'horns trickery nature', 'Leads travellers off the path to see what happens.'],
+            ['Kaiju Hunter', 'mecha militarysupport kaiju', 'Pilots a giant robot against giant monsters.'],
+            ['Giant Ape', 'kaiju beastabilities earth', 'Climbs towers and swats planes out of the air.'],
+            ['Atomic Lizard', 'kaiju apexpredator water', 'Rises from the sea glowing with radiation.'],
+            ['Raptor Rider', 'apexpredator huntingskills athleticism', 'Saddled a velociraptor and never looked back.'],
+            ['Caveman', 'humangrit earth beastabilities', 'A club, a fire and a lot of shouting.'],
+            ['Bigfoot Hunter', 'huntingskills cryptid conspiracyknowledge', 'Has seen it twice and nobody believes him.'],
+            ['Yeti', 'cryptid winter titan', 'The abominable snowman: huge, white and shy until it is not.'],
+            ['Loch Ness Monster', 'cryptid deepsea water', 'A long neck in a blurry photo of a lake.'],
+            ['Alien Grey', 'ufo psychic alientechnology', 'Big eyes, bigger brain and a probe.'],
+            ['Plague Rat King', 'poison zombie teamwork', 'A knot of rats that spreads sickness wherever it scurries.'],
+            ['Zombie Hunter', 'humangrit weaponstraining drivingskills', 'Survived the outbreak with a shotgun and a van.'],
+            ['Undertaker', 'necromancy bonedensity stagepresence', 'Runs the funeral home and the wrestling ring.'],
+            ['Graverobber', 'ghoulish streetsmarts necromancy', 'Digs up the rich dead for their rings.'],
+            ['Ghost Hunter', 'haunted advancedtechnology conspiracyknowledge', 'EMF meters, night vision and a proton pack.'],
+            ['Poltergeist Child', 'haunted psychic trickery', 'A ghost child who throws the furniture and giggles.'],
+            ['Haunted Doll', 'haunted blackmagic trickery', 'Sits on the shelf, and moves when you look away.'],
+            ['Possessed Car', 'haunted drivingskills machinery', 'Starts itself and runs over anyone who wrongs it.'],
+            ['Slime Scientist', 'ooze unethicalscience chemistry', 'Fell in the vat and is now the experiment.'],
+            ['Hive Queen', 'insectoid royalty teamwork', 'Commands the swarm from the heart of the nest.'],
+            ['Spider Witch', 'arachnid witchcraft poison', 'Weaves hexes into webs across the forest.'],
+            ['Moth Priestess', 'insectoid light cult', 'Worships the flame and leads the swarm into it.'],
+            ['Symbiote Hunter', 'symbiosis huntingskills beastabilities', 'A living suit that hunts on its host\'s behalf.'],
+            ['Sentai Commander', 'sentai teamwork militarysupport', 'Leads the colour squad and calls the Megazord.'],
+            ['Magical Girl', 'sentai light seduction', 'Transforms with a wand, ribbons and a speech about friendship.'],
+            ['Shonen Hero', 'maincharacter ki teamwork', 'Believes in friends and screams to power up.'],
+            ['Isekai Protagonist', 'maincharacter humangrit arcane', 'Hit by a truck and reborn with overpowered magic.'],
+            ['Edgy Rival', 'maincharacter shadow swordsmanship', 'Brooding, black-feathered and always one step behind.'],
+            ['Final Boss', 'infernalcourt cosmic maincharacter', 'Three forms, a monologue and a sad backstory.'],
+            ['Superhero Sidekick', 'superheropowers teamwork humangrit', 'No real powers, just loyalty and a great costume.'],
+            ['Supervillain', 'superheropowers unethicalscience politics', 'A lair, a doomsday device and a plan to run for office.'],
+            ['Vigilante', 'superheropowers dirtyfighting shadow', 'Patrols the rooftops at night and breaks bones.'],
+            ['Quarterback Hero', 'football teamwork maincharacter', 'Wins the big game in the last second.'],
+            ['Cheerleader', 'teamwork athleticism stagepresence', 'Pom-poms, pyramids and a team that fights harder.'],
+            ['Coach', 'football teamwork militarysupport', 'Draws the play on the board and yells until it works.'],
+            ['Cowboy Outlaw', 'cowboyskills streetsmarts drivingskills', 'Robs the train and rides off into the sunset.'],
+            ['Sheriff', 'cowboyskills policetraining humangrit', 'The only law in a town without one.'],
+            ['Undead Gunslinger', 'cowboyskills necromancy haunted', 'Crawled out of Boot Hill for one last duel.'],
+            ['Pirate Captain', 'piracy swordsmanship weaponstraining', 'A cutlass, a flintlock and a crew of cutthroats.'],
+            ['Sky Pirate', 'piracy wind mecha', 'Plunders airships from an airship.'],
+            ['Space Pirate', 'piracy cosmic alientechnology', 'Raids freighters between the stars.'],
+            ['Robin Hood', 'archery trickery huntingskills', 'Steals from the rich and hides in the forest.'],
+            ['Paladin', 'knight light healingmagic', 'A holy knight who heals as hard as he hits.'],
+            ['Dark Knight', 'knight shadow blood', 'A fallen paladin who fights with his own life.'],
+            ['Dragon Knight', 'dragonabilities knight wind', 'Rides a dragon into battle with a lance.'],
+            ['Dragon Hunter', 'huntingskills dragonabilities swordsmanship', 'Slays dragons and wears their scales.'],
+            ['Fire Giant', 'titan fire earth', 'A giant of molten rock with a flaming sword.'],
+            ['Frost Giant', 'titan ice winter', 'Walks from the frozen north with a glacier on his back.'],
+            ['Storm Giant', 'titan lightning wind', 'Strides through the clouds hurling lightning.'],
+            ['Gargoyle', 'livingstone wind holydefense', 'A cathedral guardian that wakes at night.'],
+            ['Stone Golem', 'livingstone earth titan', 'A walking fortress with no mind of its own.'],
+            ['Terracotta Soldier', 'livingstone militarysupport ancientknowledge', 'One of an army buried to guard an emperor.'],
+            ['Crystal Guardian', 'prismlattice livingstone light', 'A statue of crystal that bends light into lasers.'],
+            ['Machine Elf', 'fractal psychadelic prismlattice', 'A self-dribbling jewel from the other side of the trip.'],
+            ['Void Weaver', 'fractal arachnid cosmic', 'Spins webs between dimensions.'],
+            ['Dream Walker', 'astral astralprojection psychic', 'Enters dreams to fix them or feed on them.'],
+            ['Astral Monk', 'astralprojection martialarts ki', 'Leaves the body mid-meditation to fight in spirit.'],
+            ['Shaman', 'psychadelic nature astralprojection', 'Journeys to the spirit world with a drum and a brew.'],
+            ['Hippie', 'psychadelic nature healingmagic', 'Peace, love and a very strong herbal remedy.'],
+            ['Rave DJ', 'sonic psychadelic stagepresence', 'Drops the bass until the floor shakes.'],
+            ['Opera Phantom', 'sonic haunted stagepresence', 'A masked genius haunting the opera house.'],
+            ['Pied Piper', 'sonic trickery beastabilities', 'Plays a tune and the rats, or the children, follow.'],
+            ['Fairy Godmother', 'fae healingmagic arcane', 'Grants wishes that last until midnight.'],
+            ['Changeling', 'fae trickery shadow', 'A fairy child swapped into the cradle.'],
+            ['Wicked Queen', 'royalty witchcraft poison', 'A poisoned apple and a mirror that tells the truth.'],
+            ['King Arthur', 'royalty knight swordsmanship', 'Pulled the sword from the stone and gathered the round table.'],
+            ['Merlin', 'arcane temporal fortunetelling', 'Lives backwards in time and advises kings.'],
+            ['Nordic Envoy', 'galacticfederation light psychic', 'A tall, white-haired alien bringing warnings of peace.'],
+            ['Cosmic Horror', 'cosmic psychic deepsea', 'Too big to see, too old to understand, dreaming under the sea.'],
+            ['Eldritch Eye', 'eyesight cosmic psychic', 'An eye in the sky that sees everything and drives you mad.'],
+            ['Beholder', 'eyesight arcane titan', 'A floating eye with a dozen smaller eyes on stalks.'],
+            ['AI Overlord', 'artificialintelligence politics robot', 'Runs the government and the drones.'],
+            ['Chatbot Cult', 'artificialintelligence cult computerhacking', 'An AI that talks followers into anything.'],
+            ['Door Knocker', 'door spygear streetsmarts', 'Kicks in doors for a living, and never uses the handle.'],
+            ['Everyman Hero', 'humangrit teamwork maincharacter', 'Nobody special who refuses to give up.'],
+            ['Mad Bomber', 'chemistry engineering dirtyfighting', 'Builds bombs in the basement and throws them at everything.'],
+            ['Arsonist Firefighter', 'fire humangrit trickery', 'Starts the fires he gets praised for putting out.'],
+            ['Butcher', 'blood dirtyfighting ghoulish', 'A cleaver, an apron and a freezer you should not open.'],
+            ['Cannibal Chef', 'ghoulish chemistry stagepresence', 'Hosts a cooking show; do not ask about the meat.'],
+            ['Health Inspector', 'policetraining poison chemistry', 'Shuts you down with a clipboard and a swab.'],
+            ['Surgeon', 'healingmagic unethicalscience swordsmanship', 'Steady hands, a scalpel and no bedside manner.'],
+            ['Field Medic', 'healingmagic militarysupport humangrit', 'Patches up the squad under fire.'],
+            ['Snake Oil Salesman', 'chemistry trickery stagepresence', 'Sells a cure-all from a wagon and leaves town fast.'],
+            ['Sasquatch Shaman', 'sasquatch nature astralprojection', 'The forest giant who guards the old ways.'],
+            ['Beekeeper', 'insectoid nature teamwork', 'Commands a swarm in a veiled hat.'],
+            ['Cat Burglar', 'feline spygear athleticism', 'Slips through windows and steals the diamond.'],
+            ['Witch\'s Cat', 'feline witchcraft shadow', 'Black, clever and the real brains behind the coven.'],
+            ['Neko Maid', 'feline seduction teamwork', 'Serves tea with claws out.'],
+            ['Scarecrow King', 'scarecrow royalty cult', 'Rules the cornfield and its crows.'],
+            ['Bone Knight', 'bonedensity knight necromancy', 'A skeleton in armour still keeping its oath.'],
+            ['Blood Countess', 'blood royalty seduction', 'Bathes in the blood of the young to stay beautiful.'],
+            ['Vampire Hunter', 'huntingskills biblestudy weaponstraining', 'Stakes, holy water and silver bullets.'],
+            ['Dhampir', 'vampiricabilties huntingskills swordsmanship', 'Half vampire, hunting the other half.'],
+            ['Wolfman Detective', 'werewolf policetraining huntingskills', 'Sniffs out the killer, and sometimes is the killer.'],
+            ['Frost Lich Queen', 'ice necromancy royalty', 'Rules an undead empire from a frozen throne.'],
+            ['Winter Soldier', 'winter militarysupport weaponstraining', 'Fights in the snow where nobody else can.'],
+            ['Polar Bear Knight', 'winter knight beastabilities', 'An armoured bear sworn to the north.'],
+            ['Elf on the Shelf', 'christmasspirit spygear trickery', 'Watches you all December and reports back.'],
+            ['Evil Santa', 'christmasspirit dirtyfighting streetsmarts', 'Breaks in through the chimney with a sack and a crowbar.'],
+            ['Kaiju Cultist', 'kaiju cult deepsea', 'Awaits the monster that will rise from the sea to cleanse the world.'],
+            ['Deep One', 'deepsea cult poison', 'A fish-faced cultist from a sunken town.'],
+            ['Kraken', 'deepsea titan piracy', 'Pulls ships under with a hundred arms.'],
+            ['Jellyfish Priestess', 'deepsea healingmagic light', 'Glows in the dark water and heals the drowned.'],
+            ['Ooze Blob', 'ooze poison zombie', 'Crawls through the town and absorbs everyone it touches.'],
+        ];
+        const _SLB_ID_SUFFIX = /\s+(Magic|Abilities|Abilties|Powers|Skills|Knowledge|Knowldege|Training|Control|Anatomy|Features|Behavior|Behaviour|Protocol|Use|Recognition|Connections|Weapons|Duties|Hardware|Biology|Energy|IQ|Colors|Rampage)$/i;
+        function slbIdentityKit(famId, fam, members) {
+            const own = (fam && fam.identity && typeof fam.identity === 'object') ? fam.identity : {};
+            const kit = SLB_IDENTITY_KITS[famId];
+            const split = s => String(s || '').split('|').map(x => x.trim()).filter(Boolean);
+            const name = String((fam && fam.name) || famId).trim();
+            const core = name.replace(_SLB_ID_SUFFIX, '').trim() || name;
+            const top = (members || []).slice().sort((a, b) => (b.tier || 0) - (a.tier || 0)).slice(0, 2).map(m => m.name);
+            const desc = String((fam && fam.desc) || '').trim().replace(/[.!]+$/, '');
+            const fallback = {
+                who: [core + ' Adept', core + ' Master'],
+                adj: [core],
+                look: [(fam && fam.glyph ? 'a ' + fam.glyph + ' emblem' : 'a family crest') + ' worn with pride'],
+                vibe: [desc ? 'deals in ' + desc.charAt(0).toLowerCase() + desc.slice(1) : (top.length ? 'fights with ' + top.join(' and ') : 'fights with ' + core.toLowerCase())],
+            };
+            const pick = (k, i) => { const v = own[k]; if (Array.isArray(v) && v.filter(Boolean).length) return v.filter(Boolean).map(String); if (typeof v === 'string' && split(v).length) return split(v); return kit ? split(kit[i]) : fallback[k]; };
+            return { who: pick('who', 0), adj: pick('adj', 1), look: pick('look', 2), vibe: pick('vibe', 3), written: !!kit || Object.keys(own).length > 0 };
+        }
+        function _slbIdRng(seedStr) {
+            let h = 2166136261;
+            for (let i = 0; i < seedStr.length; i++) { h ^= seedStr.charCodeAt(i); h = Math.imul(h, 16777619); }
+            let s = h >>> 0;
+            return () => { s = (s + 0x6D2B79F5) >>> 0; let t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+        }
+        function _slbIdNorm(s) { return String(s || '').toLowerCase().replace(/[^a-z]/g, '').replace(/(es|s)$/, ''); }
+        function _slbIdArticle(w) { return /^[aeiou]/i.test(w) && !/^(uni|eu|one)/i.test(w) ? 'an' : 'a'; }
+        function _slbIdLower(w) { return w.split(/([\s-])/).map(x => (x.length > 1 && x === x.toUpperCase()) ? x : x.charAt(0).toLowerCase() + x.slice(1)).join(''); }
+        function _slbIdList(xs) { return xs.length <= 1 ? (xs[0] || '') : xs.slice(0, -1).join(', ') + ' and ' + xs[xs.length - 1]; }
+        /* The archetypes for a pick: exact = every pick is in it, or all of it is in the picks; near = at least two shared
+           (one when a single family is picked). Sorted by shared count, then fewest families outside the pick. */
+        function slbIdentityArchetypes(fams) {
+            const sel = new Set(fams);
+            const out = { exact: [], near: [] };
+            if (!sel.size) return out;
+            SLB_IDENTITY_ARCHETYPES.forEach(([name, list, line]) => {
+                const af = list.split(/\s+/).filter(Boolean);
+                const shared = af.filter(f => sel.has(f)).length;
+                const row = { name, families: af, line, shared, extra: af.length - shared };
+                if (shared === sel.size || shared === af.length) out.exact.push(row);
+                else if (shared >= Math.min(2, sel.size)) out.near.push(row);
+            });
+            const ord = (a, b) => b.shared - a.shared || a.extra - b.extra || a.name.localeCompare(b.name);
+            out.exact.sort(ord); out.near.sort(ord);
+            return out;
+        }
+        /* Families that most often sit beside the picks in the written archetypes: the "pairs well with" row. */
+        function slbIdentityPairs(fams, limit) {
+            const sel = new Set(fams), score = {};
+            if (!sel.size) return [];
+            SLB_IDENTITY_ARCHETYPES.forEach(([, list]) => {
+                const af = list.split(/\s+/);
+                const shared = af.filter(f => sel.has(f)).length;
+                if (!shared) return;
+                af.forEach(f => { if (!sel.has(f)) score[f] = (score[f] || 0) + shared * shared; });
+            });
+            return Object.keys(score).sort((a, b) => score[b] - score[a] || a.localeCompare(b)).slice(0, limit || 8);
+        }
+        /* ctx: { families: SPELL_FAMILIES, raceFamilies: RACE_FAMILIES, membersOf(famId) → [{ id, name, tier, role }],
+                  raceName(raceId) → display name }. */
+        function slbIdentityBuild(fams, seed, ctx) {
+            ctx = ctx || {};
+            const F = ctx.families || {}, R = ctx.raceFamilies || {};
+            const membersOf = ctx.membersOf || (() => []);
+            const raceName = ctx.raceName || (r => r);
+            const picks = (fams || []).filter((f, i, a) => f && a.indexOf(f) === i);
+            if (!picks.length) return null;
+            const mem = {}; picks.forEach(f => { mem[f] = membersOf(f) || []; });
+            const kits = picks.map(f => slbIdentityKit(f, F[f], mem[f]));
+            const rnd = _slbIdRng(picks.slice().sort().join('+') + '#' + (seed || 0));
+            const at = arr => arr[Math.floor(rnd() * arr.length) % arr.length];
+            // the noun comes from the rarest family (fewest races carry it: the most specific idea); a reroll rotates it
+            const users = f => Object.keys(R).filter(r => (R[r] || []).includes(f)).length;
+            const bySpecific = picks.map((f, i) => i).sort((a, b) => users(picks[a]) - users(picks[b]) || b - a);
+            const nIdx = bySpecific[(seed || 0) % bySpecific.length];
+            const others = picks.map((f, i) => i).filter(i => i !== nIdx);
+            const who = at(kits[nIdx].who);
+            const whoWords = new Set(who.toLowerCase().split(/[\s-]+/));
+            const adjOf = i => { const opts = kits[i].adj.filter(a => !a.toLowerCase().split(/[\s-]+/).some(w => whoWords.has(w))); return at(opts.length ? opts : kits[i].adj); };
+            const adjs = others.map(adjOf);
+            const shape = Math.floor(rnd() * 4);
+            let name;
+            if (!adjs.length) name = (shape % 2 ? 'The ' : '') + who;
+            else if (shape === 0 || adjs.length === 1) name = adjs[0] + ' ' + who;
+            else if (shape === 1) name = adjs[0] + ' ' + adjs[1] + ' ' + who;
+            else if (shape === 2) name = 'The ' + adjs[adjs.length - 1] + ' ' + who;
+            else { const o = others[Math.floor(rnd() * others.length)]; const w2 = at(kits[o].who); name = w2.toLowerCase() === who.toLowerCase() ? adjs[0] + ' ' + who : who + '-' + w2; }
+            const vibes = [kits[nIdx]].concat(others.map(i => kits[i])).map(k => at(k.vibe));
+            const whoLow = _slbIdLower(who);
+            const concept = `${_slbIdArticle(whoLow).replace(/^a/, 'A')} ${whoLow} who ${_slbIdList(vibes)}.`;
+            const looks = kits.map(k => at(k.look));
+            const look = looks.length ? looks[0].charAt(0).toUpperCase() + _slbIdList(looks).slice(1) + '.' : '';
+            // the signature spell of each family: its top tier, then the name
+            const signature = picks.map(f => { const top = mem[f].slice().sort((a, b) => (b.tier || 0) - (a.tier || 0) || String(a.name).localeCompare(String(b.name)))[0]; return top ? { family: f, id: top.id, name: top.name, tier: top.tier || 1 } : null; }).filter(Boolean);
+            // how the combined pool plays: member roles folded into five jobs
+            const JOB = { damage: 'damage', damageEffect: 'damage', effect: 'control', heal: 'support', utility: 'support', movement: 'mobility', deploy: 'builder', terrain: 'builder', passive: 'passive' };
+            const jobs = {}; let total = 0; const tiers = new Set();
+            picks.forEach(f => mem[f].forEach(m => { const j = JOB[m.role] || 'damage'; jobs[j] = (jobs[j] || 0) + 1; total++; tiers.add(m.tier || 1); }));
+            const ranked = Object.keys(jobs).sort((a, b) => jobs[b] - jobs[a]);
+            const SIDE = { damage: 'damage', control: 'control', support: 'support', mobility: 'mobility', builder: 'building', passive: 'passives' };
+            const NOUN = { damage: 'a damage dealer', control: 'a controller', support: 'a support', mobility: 'a skirmisher', builder: 'a builder', passive: 'a passive specialist' };
+            const plays = !total ? 'No spells in these families yet.' : `Plays as ${NOUN[ranked[0]]}${ranked[1] ? ` with ${SIDE[ranked[1]]} on the side` : ''}${ranked[2] && jobs[ranked[2]] >= 2 ? ` and some ${SIDE[ranked[2]]}` : ''} · ${total} spell${total === 1 ? '' : 's'}, tier${tiers.size === 1 ? '' : 's'} ${Array.from(tiers).sort().map(t => ['', 'I', 'II', 'III', 'IV'][t] || t).join(' / ')}.`;
+            // races already built on the combo (two or more shared; one when a single family is picked)
+            const need = Math.min(2, picks.length);
+            const races = Object.keys(R).map(r => ({ id: r, name: raceName(r), shared: picks.filter(f => (R[r] || []).includes(f)).length })).filter(x => x.shared >= need).sort((a, b) => b.shared - a.shared || a.name.localeCompare(b.name));
+            const raceKeys = new Set(Object.keys(R).map(_slbIdNorm));
+            const arch = slbIdentityArchetypes(picks);
+            [arch.exact, arch.near].forEach(list => list.forEach(a => { a.raceExists = raceKeys.has(_slbIdNorm(a.name)); }));
+            return { families: picks, seed: seed || 0, name, noun: picks[nIdx], concept, look, signature, plays, roles: jobs, races, archetypes: arch, pairs: slbIdentityPairs(picks, 8), written: kits.map(k => k.written) };
+        }
+        /* The identity as plain text: the COPY button (pastes into a race plan or a chat). */
+        function slbIdentityText(idn, famName) {
+            if (!idn) return '';
+            const fn = famName || (f => f);
+            const lines = [idn.name, 'Families: ' + idn.families.map(fn).join(', '), idn.concept, 'Look: ' + idn.look, idn.plays];
+            if (idn.signature.length) lines.push('Signature spells: ' + idn.signature.map(s => `${s.name} (${['', 'I', 'II', 'III', 'IV'][s.tier] || s.tier})`).join(', '));
+            if (idn.archetypes.exact.length) lines.push('Written archetypes: ' + idn.archetypes.exact.map(a => a.name).join(', '));
+            return lines.join('\n');
+        }
+        /* SLB IDENTITY END */
         const _SLB_KINDS = ['damage','tackle','transform','possess','link','shadowRealm','transfer','cannibalize','summonUnit','steal','cleanseArea','door','doorBreach','doorDelivery','doorSlam','doorExit','doorTrap','buff','aoe','debuff','terrainCreate','line','dash','lifeDrain','barrage','warCry','aoeShield','zoneDebuff','escape','cross','deployObject','leapStrike','teleport','heal','healAll','multiHit','delayed','summonWeather','aoePull','deployTurret','displacement','swap','skyThrow','selfHeal','pull','ricochet','zoneHeal','skyDrop','linePush','shield','revive','placeTrap','deployPair','utility','skySlam','scan','bomb','seedHeal','seedPoison','warpRune','leechSeed','remoteView','encore','cleanse','trickRoom','guard','manaRestoreAll','splitBeam','placeMirror','tuneFrequency','pulseLattice','rallyPull','raiseDead','placeBlock','buildStructure'];
         const _SLB_TYPES = ['damage', 'utility', 'buff', 'debuff', 'heal'];
         const _SLB_SPELLTYPES = ['anomaly', 'human', 'unholy', 'tech', 'alien', 'divine'];
@@ -9716,7 +10198,7 @@
         function _slb2RenderTop() {
             const top = document.getElementById('slbTop');
             if (!top) return;
-            const tabs = [['spells', 'SPELLS'], ['passives', 'PASSIVES'], ['families', 'FAMILIES'], ['upgrades', 'UPGRADES'], ['pools', 'POOLS'], ['report', 'REPORT']];
+            const tabs = [['spells', 'SPELLS'], ['passives', 'PASSIVES'], ['families', 'FAMILIES'], ['upgrades', 'UPGRADES'], ['pools', 'POOLS'], ['identity', 'IDENTITY'], ['report', 'REPORT']];
             top.innerHTML = `
                 <div class="slb2-tabs">${tabs.map(([k, l]) => `<button class="slb2-tab${_slbTab === k ? ' on' : ''}" data-act="tab" data-tab="${k}">${l}</button>`).join('')}</div>
                 <div class="slb2-top-mid">
@@ -9765,6 +10247,7 @@
             else if (_slbTab === 'families') _slb2RenderFamilies(main);
             else if (_slbTab === 'upgrades') _slb2RenderUpgrades(main);
             else if (_slbTab === 'pools') _slb2RenderPools(main);
+            else if (_slbTab === 'identity') _slb2RenderIdentity(main);
             else if (_slbTab === 'report') _slb2RenderReport(main);
         }
 
@@ -11191,6 +11674,7 @@
                 ${fld('desc', 'Description', `<textarea class="slb2-jsonmini long" data-reg="families" data-id="${_slbEsc(id)}" data-key="desc" spellcheck="false">${_slbEsc(f.desc || '')}</textarea>`)}
                 ${fld('notes', 'Notes', `<textarea class="slb2-jsonmini long" data-reg="families" data-id="${_slbEsc(id)}" data-key="notes" spellcheck="true" placeholder="what this family is for, what it needs">${_slbEsc(f.notes || '')}</textarea>`, 'Rides the export like a row\'s notes.')}
                 </div>
+                ${_slb2FamilyKitHtml(id, f)}
                 <div class="slb2-group"><div class="slb2-group-h">MEMBERS · ${members.length}</div>
                     <div class="slb2-memberlist">${members.map(m => `<div class="slb2-member" data-act="jump" data-id="${_slbEsc(m.id)}"><span class="slb2-tier t${m.tier}">${_slb2TierText(m.tier)}</span><span class="slb2-member-n">${_slbEsc(m.def.name || m.id)}</span>${_slb2RoleChip(m.role)}<span class="slb2-dim">${_slbEsc(m.isRace ? _slb2Race(m.owner) : m.owner)}</span><button class="slb2-xbig" data-act="famRemove" data-id="${_slbEsc(m.id)}" data-fam="${_slbEsc(id)}" title="remove from the family">✕</button></div>`).join('') || '<div class="slb2-dim">no members yet</div>'}</div>
                     <div class="slb2-addfield"><input class="slb2-sel slb2-sel-add" list="slbFamAddList" placeholder="＋ add a member by name / id (moves it here)…" data-input="famAddMember" data-fam="${_slbEsc(id)}" style="min-width:240px"><datalist id="slbFamAddList">${_slb2Rows().filter(r => !r.deleted && !r.families.includes(id)).map(r => `<option value="${_slbEsc(r.id)}">${_slbEsc(r.def.name || '')}</option>`).join('')}</datalist></div>
@@ -11399,6 +11883,129 @@
             </div>`;
         }
 
+        /* ── IDENTITY: pick 1-4 families → the written archetypes that match, the races on the combo and a composed
+           identity from the family kits (the SLB IDENTITY block above). A design aid only: it writes nothing to the doc. ── */
+        const _SLB_ID_MAX = 4;
+        function _slbIdCtx() {
+            const rows = _slb2Rows().filter(r => !r.deleted);
+            return {
+                families: SPELL_FAMILIES,
+                raceFamilies: (typeof RACE_FAMILIES !== 'undefined') ? RACE_FAMILIES : {},
+                membersOf: f => rows.filter(r => r.families.includes(f)).map(r => ({ id: r.id, name: r.def.name || r.id, tier: r.tier, role: r.role })),
+                raceName: _slb2Race,
+            };
+        }
+        function _slbIdPickable() { return Object.keys(SPELL_FAMILIES).filter(f => !SPELL_FAMILIES[f].universal).sort((a, b) => _slb2FamName(a).localeCompare(_slb2FamName(b))); }
+        function _slbIdChip(f, act, on) { return `<button class="slb2-rfchip${on ? ' on' : ''}" data-act="${act}" data-fam="${_slbEsc(f)}" style="--fc:${_slb2FamColor(f)}">${_slbEsc(_slb2Glyph(f))} ${_slbEsc(_slb2FamName(f))}${act === 'idToggle' && on ? ' ✕' : ''}</button>`; }
+        function _slb2RenderIdentity(main) {
+            _slbIdFams = _slbIdFams.filter(f => SPELL_FAMILIES[f]);
+            main.innerHTML = `<div class="slb2-center slb2-regcenter slb2-idleft" id="slbIdLeft"></div>
+            <div class="slb2-inspector open slb2-idres" id="slbInspector"></div>`;
+            _slbIdRenderLeft();
+            _slbIdRenderResult();
+        }
+        function _slbIdRenderLeft() {
+            const el = document.getElementById('slbIdLeft');
+            if (!el) return;
+            const q = _slbIdQuery.trim().toLowerCase();
+            const fams = _slbIdPickable().filter(f => !q || _slb2FamName(f).toLowerCase().includes(q) || f.includes(q));
+            const sel = new Set(_slbIdFams);
+            const arch = SLB_IDENTITY_ARCHETYPES.filter(([name, list, line]) => {
+                const af = list.split(/\s+/);
+                if (sel.size && !af.some(f => sel.has(f))) return false;
+                return !q || name.toLowerCase().includes(q) || line.toLowerCase().includes(q) || af.some(f => f.includes(q) || _slb2FamName(f).toLowerCase().includes(q));
+            });
+            el.innerHTML = `<div class="slb2-chips"><span class="slb2-count">${_slbIdFams.length ? `${_slbIdFams.length} of ${_SLB_ID_MAX} picked` : `pick 3 families (up to ${_SLB_ID_MAX})`}</span>
+                    ${_slbIdFams.map(f => _slbIdChip(f, 'idToggle', true)).join('')}
+                    <span class="slb2-chips-spacer"></span>
+                    <label class="slb2-searchwrap slb2-idsearch"><span>⌕</span><input class="slb2-search" type="text" placeholder="filter families · archetypes" value="${_slbEsc(_slbIdQuery)}" data-input="idQuery" spellcheck="false"></label>
+                    <button class="slb2-btn" data-act="idRandom" title="three random families">🎲 RANDOM</button>
+                    ${_slbIdFams.length ? '<button class="slb2-btn" data-act="idClear">CLEAR</button>' : ''}</div>
+                <div class="slb2-pad">
+                <div class="slb2-group"><div class="slb2-group-h">FAMILIES · ${fams.length}</div>
+                    <div class="slb2-rfpick">${fams.map(f => _slbIdChip(f, 'idToggle', sel.has(f))).join('') || '<span class="slb2-dim">no family matches</span>'}</div></div>
+                <div class="slb2-group"><div class="slb2-group-h">WRITTEN ARCHETYPES · ${arch.length}${sel.size ? ' with a picked family' : ''} · click one to load its families</div>
+                    <div class="slb2-idarch">${arch.map(([name, list, line]) => `<div class="slb2-idarow" data-act="idLoad" data-fams="${_slbEsc(list)}"><b>${_slbEsc(name)}</b><span class="slb2-idglyphs">${list.split(/\s+/).map(f => `<i class="${sel.has(f) ? 'on' : ''}" title="${_slbEsc(_slb2FamName(f))}">${_slbEsc(_slb2Glyph(f))}</i>`).join('')}</span><span class="slb2-dim">${_slbEsc(line)}</span></div>`).join('') || '<div class="slb2-dim">none</div>'}</div></div>
+                </div>`;
+        }
+        function _slbIdRenderResult() {
+            const el = document.getElementById('slbInspector');
+            if (!el) return;
+            const idn = slbIdentityBuild(_slbIdFams, _slbIdSeed, _slbIdCtx());
+            if (!idn) { el.innerHTML = `<div class="slb2-empty">Pick three families, or click a written archetype, or roll 🎲 RANDOM.<br><br>The generator shows the archetypes written for the combo, the races already built on it, and a composed identity from each family's kit (↻ REROLL walks the options).</div>`; return; }
+            const tierTxt = t => ['', 'I', 'II', 'III', 'IV'][t] || t;
+            const archRow = (a, exact) => `<div class="slb2-idarow${exact ? ' exact' : ''}" data-act="idLoad" data-fams="${_slbEsc(a.families.join(' '))}"><b>${_slbEsc(a.name)}</b>${a.raceExists ? '<span class="slb2-flag new" title="a race with this name is already in the game">RACE</span>' : ''}<span class="slb2-idglyphs">${a.families.map(f => `<i class="${_slbIdFams.includes(f) ? 'on' : ''}" title="${_slbEsc(_slb2FamName(f))}">${_slbEsc(_slb2Glyph(f))}</i>`).join('')}</span><span class="slb2-dim">${_slbEsc(a.line)}</span></div>`;
+            const unwritten = idn.families.filter((f, i) => !idn.written[i]);
+            el.innerHTML = `<div class="slb2-ins-head">
+                <div class="slb2-idname">${_slbEsc(idn.name)}</div>
+                <div class="slb2-ins-id">${idn.families.map(f => `${_slbEsc(_slb2Glyph(f))} ${_slbEsc(_slb2FamName(f))}`).join(' · ')}</div>
+                <div class="slb2-ins-verbs"><button class="slb2-btn" data-act="idReroll" title="another name and concept from the same kits">↻ REROLL</button><button class="slb2-btn" data-act="idCopy" title="copy the identity as text">⧉ COPY</button></div>
+            </div>
+            <div class="slb2-ins-body">
+                ${idn.archetypes.exact.length ? `<div class="slb2-group"><div class="slb2-group-h">WRITTEN FOR THIS COMBO · ${idn.archetypes.exact.length}</div>${idn.archetypes.exact.map(a => archRow(a, true)).join('')}</div>` : ''}
+                <div class="slb2-group"><div class="slb2-group-h">COMPOSED FROM THE KITS · roll ${idn.seed + 1}</div>
+                    <p class="slb2-idp">${_slbEsc(idn.concept)}</p>
+                    <p class="slb2-idp"><span class="slb2-dim">Look:</span> ${_slbEsc(idn.look)}</p>
+                    <p class="slb2-idp"><span class="slb2-dim">${_slbEsc(idn.plays)}</span></p>
+                    ${unwritten.length ? `<div class="slb2-field-h">No kit written for ${unwritten.map(f => _slbEsc(_slb2FamName(f))).join(', ')}: its words come from the family's name and description. Write one in FAMILIES → the family → IDENTITY KIT.</div>` : ''}
+                </div>
+                <div class="slb2-group"><div class="slb2-group-h">SIGNATURE SPELLS</div>
+                    ${idn.signature.map(s => `<div class="slb2-member" data-act="jump" data-id="${_slbEsc(s.id)}"><span class="slb2-tier t${s.tier}">${tierTxt(s.tier)}</span><span class="slb2-member-n">${_slbEsc(s.name)}</span><span class="slb2-dim">${_slbEsc(_slb2Glyph(s.family))} ${_slbEsc(_slb2FamName(s.family))}</span></div>`).join('') || '<div class="slb2-dim">these families have no spells yet</div>'}
+                </div>
+                ${idn.archetypes.near.length ? `<div class="slb2-group"><div class="slb2-group-h">CLOSE · shares ${Math.min(2, idn.families.length)}+ families</div>${idn.archetypes.near.slice(0, 8).map(a => archRow(a, false)).join('')}</div>` : ''}
+                <div class="slb2-group"><div class="slb2-group-h">RACES ON THIS COMBO · ${idn.races.length}</div>
+                    ${idn.races.length ? `<div class="slb2-idraces">${idn.races.map(r => `<span class="slb2-idrace" title="${r.shared} shared famil${r.shared === 1 ? 'y' : 'ies'}">${_slbEsc(r.name)} <span class="slb2-dim">${r.shared}</span></span>`).join('')}</div>` : '<div class="slb2-dim">no race carries two of these families: an open slot</div>'}
+                </div>
+                ${idn.pairs.length ? `<div class="slb2-group"><div class="slb2-group-h">PAIRS WELL WITH · from the archetypes</div><div class="slb2-rfpick">${idn.pairs.filter(f => SPELL_FAMILIES[f]).map(f => _slbIdChip(f, 'idToggle', false)).join('')}</div></div>` : ''}
+            </div>`;
+        }
+        function _slbIdSet(fams) {
+            _slbIdFams = fams.filter((f, i, a) => SPELL_FAMILIES[f] && a.indexOf(f) === i).slice(0, _SLB_ID_MAX);
+            _slbIdSeed = 0;
+            _slbIdRenderLeft(); _slbIdRenderResult();
+        }
+        function _slbIdToggle(f) {
+            if (_slbIdFams.includes(f)) return _slbIdSet(_slbIdFams.filter(x => x !== f));
+            if (_slbIdFams.length >= _SLB_ID_MAX) { _slbToast(`${_SLB_ID_MAX} families at most`, true); return; }
+            _slbIdSet(_slbIdFams.concat(f));
+        }
+        function _slbIdRandom() {
+            const pool = _slbIdPickable().filter(f => SPELL_FAMILIES[f].kind !== 'signature');
+            const out = [];
+            while (out.length < 3 && out.length < pool.length) { const f = pool[Math.floor(Math.random() * pool.length)]; if (!out.includes(f)) out.push(f); }
+            _slbIdSet(out);
+        }
+        function _slbIdCopy() {
+            const idn = slbIdentityBuild(_slbIdFams, _slbIdSeed, _slbIdCtx());
+            if (!idn) return;
+            const txt = slbIdentityText(idn, _slb2FamName);
+            const done = () => _slbToast('✓ identity copied');
+            try { navigator.clipboard.writeText(txt).then(done, () => { window.prompt('Copy the identity:', txt); }); } catch (e) { window.prompt('Copy the identity:', txt); }
+        }
+        /* FAMILIES inspector · IDENTITY KIT: the family row's own words for the generator (`identity`: { who, adj, look, vibe }),
+           written through the families registry like any other field, so it rides the export and the bake. */
+        const _SLB_ID_KIT_FIELDS = [['who', 'Who', 'the person: nouns for the name ("Preacher | Evangelist")'], ['adj', 'Epithets', 'adjectives for the name ("Holy | Righteous")'], ['look', 'Look', 'what they wear or carry ("a white collar | a dog-eared bible")'], ['vibe', 'Vibe', 'finishes "a preacher who …" ("quotes scripture mid-fight")']];
+        function _slb2FamilyKitHtml(id, f) {
+            const kit = slbIdentityKit(id, f, []);
+            const own = (f.identity && typeof f.identity === 'object') ? f.identity : {};
+            const base = slbIdentityKit(id, Object.assign({}, f, { identity: null }), []);
+            return `<div class="slb2-group"><div class="slb2-group-h">IDENTITY KIT · for the IDENTITY tab</div>
+                ${_SLB_ID_KIT_FIELDS.map(([k, label, help]) => `<div class="slb2-field"><div class="slb2-field-l"><span class="slb2-field-name">${label}${own[k] ? ' <span class="slb2-dot">●</span>' : ''}</span><span class="slb2-field-key">identity.${k}</span></div><div class="slb2-field-e"><textarea class="slb2-jsonmini" data-input="famIdentity" data-id="${_slbEsc(id)}" data-key="${k}" spellcheck="true" placeholder="${_slbEsc(base[k].join(' | '))}">${_slbEsc(own[k] ? kit[k].join(' | ') : '')}</textarea></div><div class="slb2-field-h">${help}. Separate options with |; blank keeps the built-in words (shown greyed).</div></div>`).join('')}
+            </div>`;
+        }
+        function _slb2SetFamilyIdentity(id, key, raw) {
+            const cur = SPELL_FAMILIES[id];
+            if (!cur) return;
+            const row = JSON.parse(JSON.stringify(cur));
+            const list = String(raw || '').split('|').map(x => x.trim()).filter(Boolean);
+            const idn = Object.assign({}, row.identity && typeof row.identity === 'object' ? row.identity : {});
+            if (list.length) idn[key] = list; else delete idn[key];
+            if (Object.keys(idn).length) row.identity = idn; else delete row.identity;
+            if (!_slb2WriteReg('families', id, row, `family ${id} · identity.${key}`)) return;
+            _slb2RenderFamilies(document.getElementById('slbMain'));
+            _slb2RefreshChrome();
+        }
+
         /* ── REPORT (§5.9): the census over the current doc ── */
         function _slb2RenderReport(main) {
             const rep = (typeof spellReport === 'function') ? spellReport() : { rows: 0, byRole: {}, byTier: {}, byKind: {}, byFamily: {}, lint: [], lintByRule: {} };
@@ -11604,7 +12211,7 @@
                 ['export', '⇩ EXPORT', 'JSON + markdown summary', '⌘S'], ['import', '⇪ IMPORT', 'merge or replace a JSON export', ''], ['lab', '▶ LAB', 'boot the Spell Lab on this spell', '⌘L'],
                 ['newMenu', '＋ NEW', 'a spell, passive, family or upgrade', ''], ['toggleEnabled', 'EDITS ON / OFF', 'apply the doc to the live tables, or play vanilla', ''],
                 ['viewToggle', 'TABLE / CARDS', 'switch the view', ''], ['tab:spells', 'SPELLS', 'the table', ''], ['tab:passives', 'PASSIVES', 'family passives + inherent', ''], ['tab:families', 'FAMILIES', 'the registry', ''],
-                ['tab:upgrades', 'UPGRADES', 'the registry', ''], ['tab:pools', 'POOLS', 'job learnsets · race rows', ''], ['tab:report', 'REPORT', 'the census + lint + redundancy', ''], ['undo', '↶ UNDO', '', '⌘Z'], ['redo', '↷ REDO', '', '⌘⇧Z'],
+                ['tab:upgrades', 'UPGRADES', 'the registry', ''], ['tab:pools', 'POOLS', 'job learnsets · race rows', ''], ['tab:identity', 'IDENTITY', 'families → a character idea', ''], ['tab:report', 'REPORT', 'the census + lint + redundancy', ''], ['undo', '↶ UNDO', '', '⌘Z'], ['redo', '↷ REDO', '', '⌘⇧Z'],
                 ['pruneApplied', '✓ CLEAR APPLIED', 'drop change groups already baked into this data.js', ''], ['resetAll', '⟲ DISCARD ALL', 'every pending edit', ''],
             ];
             _slb2Modal(`<div class="slb2-dialog slb2-palette">
@@ -11931,6 +12538,12 @@
             switch (act) {
                 case 'tab': _slbTab = P('data-tab'); _slbSelection = []; _slbSheetOpen = false; _slb2RenderTop(); _slb2RenderTab(); return;
                 case 'insTab': _slbInsTab = P('data-tab'); _slb2RenderInspector(); return;
+                case 'idToggle': _slbIdToggle(P('data-fam')); return;
+                case 'idLoad': _slbIdSet(String(P('data-fams') || '').split(/\s+/)); return;
+                case 'idRandom': _slbIdRandom(); return;
+                case 'idClear': _slbIdSet([]); return;
+                case 'idReroll': _slbIdSeed++; _slbIdRenderResult(); return;
+                case 'idCopy': _slbIdCopy(); return;
                 case 'row': { if (e.target.closest('a[data-act]')) return; _slb2Select(id, { shift: e.shiftKey, meta: e.metaKey || e.ctrlKey }); if (_slbNarrow && !e.shiftKey && !(e.metaKey || e.ctrlKey)) { _slbSheetOpen = true; const i = document.getElementById('slbInspector'); if (i) i.classList.add('open'); } return; }
                 case 'sort': { const key = P('data-key'); const cur = _slbSort.findIndex(s => s.key === key); const col = _SLB2_COL_BY_KEY[key];
                     if (e.shiftKey && _slbSort.length && _slbSort[0].key !== key) { if (cur > 0) _slbSort[cur].dir *= -1; else _slbSort = [_slbSort[0], { key, dir: col.desc ? -1 : 1 }]; }
@@ -12079,6 +12692,7 @@
                 case 'lookRace': { const [race, gender] = String(v).split('|'); if (!race) return; _slbLookRace = race; _slbLookGender = gender || null; const host = document.getElementById('slbLookStage'); if (host) { host.setAttribute('data-race', race); host.setAttribute('data-gender', gender || ''); host.classList.remove('off'); host.textContent = ''; } const gh = document.querySelector('.slb2-lookgroup .slb2-group-h'); if (gh) gh.textContent = `THE STAGE · ${_slb2Race(race)} ${gender || ''}`; _slb2LookMount(); return; }
                 case 'lookTravel': window._slbSetField(id, '_animOverride', v ? JSON.stringify(Object.assign({}, (SPELL_BY_ID[id] && SPELL_BY_ID[id]._animOverride) || {}, { travel: v })) : (SPELL_BY_ID[id] && SPELL_BY_ID[id]._animOverride && Object.keys(SPELL_BY_ID[id]._animOverride).length > 1 ? JSON.stringify(Object.assign({}, SPELL_BY_ID[id]._animOverride, { travel: undefined })) : ''), 'json'); return;
                 case 'famAdd': if (v) _slb2FamilyOf(id, v, true); return;
+                case 'famIdentity': _slb2SetFamilyIdentity(id, t.getAttribute('data-key'), v); return;
                 case 'assignJob': if (v) { window._slbAssign(id, 'job', v); } return;
                 case 'assignRace': if (v) { window._slbAssign(id, 'race', v); } return;
                 case 'statusAdd': if (v) { const f = t.getAttribute('data-field'); const arr = _slb2StatusArr(id, f); arr.push({ id: v, duration: 2 }); _slb2StatusWrite(id, f, arr); } return;
@@ -12109,6 +12723,7 @@
             const kind = t.getAttribute('data-input');
             if (kind === 'search') { _slbSearch = t.value; _slbFilteredCache = null; _slb2RenderRail(); _slb2RenderChips(); _slb2RenderCenter(); return; }
             if (kind === 'mpSearch') { _slbMpSearch = t.value; _slbMpRenderRail(); _slbMpRenderDetail(); return; }
+            if (kind === 'idQuery') { _slbIdQuery = t.value; _slbIdRenderLeft(); const q = document.querySelector('#slbIdLeft [data-input="idQuery"]'); if (q) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); } return; }
             if (kind === 'animSearch') { _slbAnimSearch = t.value; _slb2LookRefreshList(); return; }
             if (kind === 'notes') {
                 const id = t.getAttribute('data-id');

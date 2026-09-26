@@ -5093,6 +5093,25 @@ input.slb2-ins-name:hover, input.slb2-ins-name:focus { border-color: rgba(255,21
 .slb2-rfchip:hover { border-color: rgba(255,216,106,0.5); color: #fff; }
 .slb2-rfchip.on { background: rgba(255,216,106,0.16); border-color: rgba(255,216,106,0.7); color: #ffd86a; }
 .slb2-togglerow { display: flex; flex-wrap: wrap; gap: 3px; }
+/* IDENTITY tab (SPELL LIBRARY: the identity generator) */
+.slb2-idleft { flex: 1; min-width: 0; }
+.slb2-idsearch { max-width: 240px; }
+.slb2-idleft .slb2-chips { flex-wrap: wrap; row-gap: 6px; }
+.slb2-idres { width: 460px; }
+.slb2-idname { font-family: 'Cormorant SC', serif; font-size: 28px; line-height: 1.1; color: #ffd86a; padding: 2px 4px; }
+.slb2-idp { margin: 4px 0 8px; font-size: 13px; line-height: 1.5; color: #e4def0; }
+.slb2-idarch { display: flex; flex-direction: column; }
+.slb2-idarow { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; padding: 5px 6px; border-bottom: 1px dotted rgba(160,140,200,0.12); font-size: 12px; cursor: pointer; }
+.slb2-idarow:hover { background: rgba(255,216,106,0.07); }
+.slb2-idarow b { color: #f0e8ff; font-weight: 600; }
+.slb2-idarow > .slb2-dim { flex-basis: 100%; }
+.slb2-idarow.exact b { color: #ffd86a; }
+.slb2-idglyphs { white-space: nowrap; margin-left: auto; }
+.slb2-idglyphs i { font-style: normal; opacity: 0.45; margin-left: 2px; }
+.slb2-idglyphs i.on { opacity: 1; }
+.slb2-idraces { display: flex; flex-wrap: wrap; gap: 4px; }
+.slb2-idrace { font-size: 12px; padding: 3px 8px; border-radius: 10px; border: 1px solid rgba(143,215,200,0.35); color: #8fd7c8; }
+.slb2-shell.narrow .slb2-idres { position: static; transform: none; width: 50%; box-shadow: none; }
 .slb2-togglerow .slb2-tiny.on { border-left: 3px solid var(--fc, #ffd86a); }
 
 /* families */
