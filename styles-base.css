@@ -6447,3 +6447,37 @@ body.diorama-3d .tile-underpass.jump::before {
 .hq-wheel-hub { position: absolute; left: -70px; top: -28px; width: 140px; height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: #f2efe6; font-family: "Courier New", Courier, monospace; }
 .hq-wheel-hub b { font-size: 10px; letter-spacing: 0.05em; }
 .hq-wheel-hub span { font-size: 8px; opacity: 0.75; margin-top: 3px; }
+
+/* ══ THE LAND SHEET (OPEN_WORLD_PLAN.md §7, Phase 0, 2026-09-26) — map.js _hqLandSvg: the map drawn from the frames ══ */
+.hq-land-grid { fill: none; stroke: rgba(184,160,96,0.07); stroke-width: 0.6; }
+.hq-land-gridl { fill: none; stroke: rgba(184,160,96,0.16); stroke-width: 1; }
+.hq-land-zone { font-family: 'IBM Plex Mono', monospace; font-size: 15px; font-weight: 700; letter-spacing: 0.22em; fill: rgba(240,230,200,0.34); pointer-events: none; }
+.hq-land-part { cursor: pointer; }
+.hq-land-part .hq-land-rect { fill: rgba(28,44,64,0.72); stroke: #8fa6b6; stroke-width: 1.4; transition: fill 0.15s, stroke 0.15s; }
+.hq-land-part.interior .hq-land-rect { fill: rgba(52,40,30,0.85); stroke: #c8a26a; }
+.hq-land-part.absorbed .hq-land-rect { fill: rgba(30,58,40,0.72); stroke: #7fb08a; }
+.hq-land-part.planned .hq-land-rect { fill: rgba(20,24,30,0.35); stroke: #6f6f78; stroke-dasharray: 5 4; }
+.hq-land-part.st-q .hq-land-rect { fill: rgba(7,10,20,0.6); stroke: #4a4a52; stroke-dasharray: 3 3; }
+.hq-land-part.st-here .hq-land-rect { stroke: #39ff6a; stroke-width: 2.2; }
+.hq-land-part.sel .hq-land-rect, .hq-land-part:hover .hq-land-rect, .hq-land-part:focus .hq-land-rect { stroke: #f0e6c8; stroke-width: 2.4; }
+.hq-land-part .hq-land-lbl { font-family: 'IBM Plex Mono', monospace; letter-spacing: 0.08em; fill: #c9c2ae; pointer-events: none; }
+.hq-land-part.planned .hq-land-lbl { fill: #8f8a7a; font-style: italic; }
+.hq-land-part.st-here .hq-land-lbl, .hq-land-part.sel .hq-land-lbl { fill: #f0e6c8; }
+.hq-land-part .hq-map-q { display: block; font-size: 12px; }
+.hq-land-join { stroke-width: 4.5; stroke-linecap: butt; }
+.hq-land-join.k-road { stroke: #d8d2c0; }
+.hq-land-join.k-trail { stroke: #b8864e; stroke-dasharray: 4 2; }
+.hq-land-join.k-shore { stroke: #4fc3d8; }
+.hq-land-join.k-wall { stroke: #e0b050; }
+.hq-land-join.k-hall { stroke: #9a8ad0; }
+.hq-land-join.k-stair { stroke: #e07a5a; stroke-dasharray: 2 2; }
+.hq-land-dj rect, .hq-land-dj-key { fill: #f0e6c8; stroke: #1a1410; stroke-width: 0.8; }
+.hq-land-dj.k-island rect { fill: #4fc3d8; }
+.hq-land-door { fill: #d86a4a; stroke: #1a1410; stroke-width: 0.5; }
+.hq-land-door.way { fill: #b07ad8; }
+.hq-land-door.secret { fill: #6f6f78; }
+.hq-land-you circle { fill: #39ff6a; pointer-events: none; }
+.hq-land-you .ring { fill: none; stroke: #39ff6a; stroke-width: 1.6; animation: hqMapHere 1.6s ease-out infinite; }
+.hq-land-scale line { stroke: #f0e6c8; stroke-width: 1.4; }
+.hq-land-scale text { font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: 0.12em; fill: #f0e6c8; }
+#hqPage .hq-map-bar .hq-land-tab { font-size: 10px; }

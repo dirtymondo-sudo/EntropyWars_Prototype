@@ -319,7 +319,7 @@ test('delivery 4 · the battle radius: a prop / door / counter past keepM of the
 });
 
 test('delivery 4 · the readout: one frame-time average for both loops, ThreeRenderer.perf() and hq.perf(), the build logs one line and files the counts', () => {
-    assert.ok(TR.includes('        _perfTick(_frameNow);\n') && TR.includes('        _perfTick(performance.now());\n        try { _hqFrame(); }'), 'both loops tick it');
+    assert.ok(TR.includes('        _perfTick(_frameNow);\n') && TR.includes('        _perfTick(t0);\n') && TR.includes('        try { _hqFrame(); }'), 'both loops tick it');
     assert.ok(TR.includes("        perf: function () { return _perfRead(); },   // THE READOUT (SEAMLESS_FIELD_PLAN §6)") && TR.includes("        perf: function () { return _perfRead(); },   // THE READOUT: the same numbers on the walk"), 'the two API reads');
     const bb = TR.slice(TR.indexOf('    function _hqBuildRoomInBattle(ctx) {'), TR.indexOf('    function _hqEnter(opts) {'));
     assert.match(bb, /_fieldRoomStats = \{ room: R\.roomId, kept: kept, culled: dropped, props: culledProps, scenery: culledScenery, keepM: HR\.keepM, keepFarM: HR\.keepFarM, handover: !!hand/);

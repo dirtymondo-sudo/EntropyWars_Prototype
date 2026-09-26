@@ -12,7 +12,10 @@ The user's brief (2026-09-26), verbatim where it matters:
 
 - "Open connected world for exploration. Outside should be outside, inside buildings or separate dimensions
   can be their own area if necessary. Minimal load screens."
-- "Ability to go beyond the 8x8 area for exploration encounter fights."
+- "Ability to go beyond the 8x8 area for exploration encounter fights." The user's correction (2026-09-26):
+  "idc about 8 vs 8 battles, i meant how an encounter restricts me to an 8 by [8] grid area." The ask is
+  the SIZE OF THE GROUND a fight is confined to (the encounter's 8 × 8 window of the room), never the
+  number of fighters; team sizes are not part of this plan (§5.6).
 - "An actual highway from the city to area 51 or something. Dirt trails and stone paths. Mt Olympus as an
   actual mountain you can climb. An ocean to sail. Weenies in the distance like from Disneyland. Separate
   day night cycle for exploration."
@@ -324,7 +327,7 @@ position; no part has an outline; there is no metre anywhere on the sheet.
 |---|---|---|
 | open connected world, minimal loads | every door a rebuild; a warm walk is a blink, a cold one a card | zones + joins + the stage (§4, §5); the card only for another dimension or a cold first visit |
 | outside is outside | 40 outdoor rooms, each under its own sky, 54 m of ground then fog | one ground per zone, the neighbour visible and walkable, a far plane that reaches it (§5.4) |
-| beyond 8 × 8 fights | `HQ_FIELD_RULES.size` 8, `teamSize` 4; the engine runs 16–24 boards | 8 or 12 per encounter by the ground and the group (§5.6) |
+| beyond the 8 × 8 area | the encounter confines the fight to an 8 × 8 window of the room (`HQ_FIELD_RULES.size` 8); the engine runs 16–24 boards | the window sized by the GROUND round the strike: 8, 12 or 16 cells a side, the biggest the open ground holds; team sizes unchanged (§5.6) |
 | a highway to Area 51 | three `road` gantries between the cities, a load each | THE HIGHWAY zone: road parts on the desert from Downtown's edge to the flightline's gate (§4.5, Phase 5) |
 | dirt trails and stone paths | `path` is a texture swap in the terrain; the roads-out asphalt | trail parts between places (family A', `path` rows, the `marks` paint); paths are how joins are found (§4.5) |
 | Olympus a mountain you climb | the summit is a hub of terraces, 8.6 m of range | THE MOUNTAIN: three stacked parts, foothills → switchbacks → summit, 0 → 70 m (§4.5, Phase 6) |
@@ -668,22 +671,36 @@ summit to the highway's end): four minutes' walk end to end. "The world doesn't 
   change (instancing helps phones most). The readout goes on the HUD behind `ew_fpsCounter` (the counter
   ticks in the walk too), so the user's Phase 0 numbers are real.
 
-### 5.6 THE FIELD BEYOND 8 × 8
+### 5.6 THE FIELD BEYOND 8 × 8 — the ground a fight may use, never the number of fighters
 
-- `HQ_FIELD_RULES.size` becomes `sizes: { small: 8, wide: 12 }` and `hqFieldSizeFor(roomId, group)`:
-  **12 when the encounter is a SWARM** (the group is ≥ 6 bodies, capture-plan §5.2's phase) OR the
-  ground is open (the part's open reach round the feet holds a 12 × 12 window with ≥ 100 reachable
-  cells), **else 8**. The player never picks it (no dev shortcut), the strike's prompt reads WIDE FIELD
-  when it will be 12 (the existing prompt line), the crystal marker fights its Δ as today.
-- `hqFieldWindow` (~49289) is O(origins × cells): for 12 it scans origins on a 2-cell stride first and
-  refines the best three (`hqFieldWindowCoarse`), keeping the "most reach, then nearest centre" rule.
-  Seats: the party's four seats and up to `seatsWide` 8 enemy seats (`hqEncounterSeats` already seats a
-  swarm); the reach proof (≥ 8 → ≥ 12), the tier rule, the fixed cells, the strata beds all read the
-  window's `N` (they take `board.N` today). The 12 × 12 prebuilt boards prove the engine: the AI, the
-  camera, fog of war, the HUD's minimap all run 16–24 already.
-- Cost: a 12 × 12 window rasterises 144 cells per candidate; with the stride it is ~2 000 candidates,
-  well under a frame's worth in the worker — the window search moves into the survey worker
+The user's words: "how an encounter restricts me to an 8 by [8] grid area". Today `hqFieldWindow` cuts an
+8 × 8 window (14 m a side at the 1.75 m cell) out of the room round the strike and the fight never leaves
+it, even on Downtown's avenues, the ward's bailey or the flightline. The fix is the WINDOW, sized by the
+ground. The party's four seats and the enemy group are exactly what they are today (the user does not
+want bigger battles; nothing here reads the group's size).
+
+- `HQ_FIELD_RULES.size` becomes `sizes: [8, 12, 16]` and `hqFieldSizeFor(info, feet)`: the BIGGEST `N` in
+  `sizes` whose best window round the strike holds at least `reachShare` 0.55 of its `N²` cells as
+  reachable ground (the rasteriser's IN cells the walker's reach proof joins), else the next one down.
+  **8 is the floor**: a cramped room fights the 8 × 8 it fights today, a street or a meadow 12 × 12
+  (21 m), a plaza, a bailey or the bowl's pitch 16 × 16 (28 m). The group never changes the size.
+- `sizes` tops out at 16 (the biggest prebuilt boards are 16–24 and the AI, the camera, the fog of war
+  and the HUD's minimap run them). Whether a big open ground may fight 20 or 24 is fork 9.
+- The player never picks it (no dev shortcut); the strike's prompt line reads the size when it is over
+  8 ("WIDE FIELD 12 × 12"), the crystal marker fights its Δ as today.
+- `hqFieldWindow` (~49289) is O(origins × cells): for 12 and 16 it scans origins on a 2-cell stride first
+  and refines the best three (`hqFieldWindowCoarse`), keeping the "most reach, then nearest centre" rule.
+  Every rule that reads the window's size reads the window's `N` (the reach proof, the tier rule, the
+  fixed cells, the strata beds; they take `board.N` today). The seats (`hqEncounterSeats`) spread the
+  same four party seats and the same enemy group over the bigger window by the existing rules: the
+  party's edge and the group's edge are further apart, which is the point.
+- `keepM` 28 / `keepFarM` 48 (what the battle keeps drawn of the room) already cover a 16-cell window
+  (28 m a side); the camera's framing reads `board.N` as the prebuilt boards do.
+- Cost: a 16 × 16 window rasterises 256 cells per candidate; with the stride it is ~2 000 candidates,
+  well under a frame's worth in the worker. The window search moves into the survey worker
   (`hqTerrainWorkerServe` gains `fieldWindow`) so the strike's slide never waits on the main thread.
+- It needs NO zone: the window reads one part's field, which is what it reads today. The phase that owns
+  it (Phase 8, §10) can therefore run at any time, in parallel with the stage phases.
 - Online and Practice unchanged (they never fight a field).
 
 ### 5.7 THE SKY AND THE CLOCK (the renderer side of §4.4)
@@ -873,8 +890,12 @@ becomes the west zone's sky; Shasta's cone stays a landmark until Shasta is a pa
    the garage's ramp was widened for it, so the hook exists). Default: no. If yes: a `vehicle: 'car'` on
    the helm's code (`_hqTickVehicle` drives a hull already) as its own later plan, with the traffic's
    collision rules.
-9. **12 × 12 fights: enemies.** Default: the party's four seats stay four; the enemy side seats up to 8
-   (the swarm rule). Alternative: the wide field also seats 6 party members (a party-plan change).
+9. **How big the field may get.** (Rewritten 2026-09-26: the earlier fork asked about enemy seats on a
+   wide field, reading the ask as team size; the user ruled that out — "idc about 8 vs 8 battles".)
+   Default: the window is 8, 12 or 16 cells a side by the ground round the strike (§5.6); team sizes
+   unchanged. Alternative A: up to 24 on the biggest open grounds (the city's avenues, the flightline) —
+   longer walks per turn, the camera pulled further out. Alternative B: 16 everywhere the ground holds it
+   (no 12 step).
 10. **The scripts' token.** Default: one token, unchanged. Alternative: per-file hashes in deploy.js so a
     battle.js fix does not re-download data.js (a change to the delivery workflow, the user's call).
 11. **The world's own clock vs the real clock for the variants** (rush hour, last train, the dead hour).
@@ -898,7 +919,7 @@ becomes the west zone's sky; Shasta's cone stays a landmark until Shasta is a pa
 
 | # | Delivery | Files | Test |
 |---|---|---|---|
-| 0 | **THE TABLE + THE READOUT**: `DOOR_HQ.world` with EVERY zone of §4.5 as frames and joins (data only: nothing moves, nothing is drawn differently), `hqWorldValidate` + the readers, `HQ_WORLD_RULES` / `HQ_STAGE_RULES` / `HQ_WORLD_CLOCK` tables, THE MAP drawn from the frames (§7) beside the old WORLD tab (a toggle) so the user can argue with the geography before anything is built, the HUD readout (`hq.perf()` behind `ew_fpsCounter`, ticking in the walk), THE INSTANCE PASS (§5.5: it needs no zone and pays at once) | data.js (R2 + Render), map.js, three-renderer.js, styles-hud.css | `hq-world.test.js` grows the validator's pins; `hq-world-map.test.js`; the instance pass's call-count pin in a vm harness |
+| 0 | **THE TABLE + THE READOUT**: `DOOR_HQ.world` with EVERY zone of §4.5 as frames and joins (data only: nothing moves, nothing is drawn differently), `hqWorldValidate` + the readers, `HQ_WORLD_RULES` / `HQ_STAGE_RULES` / `HQ_WORLD_CLOCK` tables, THE MAP drawn from the frames (§7) beside the old WORLD tab (a toggle) so the user can argue with the geography before anything is built, the HUD readout (`hq.perf()` behind `ew_fpsCounter`, ticking in the walk), THE INSTANCE PASS (§5.5: it needs no zone and pays at once) | data.js (R2 + Render), map.js, three-renderer.js, styles-base.css (the map's CSS lives there, not in styles-hud.css) | `hq-world-map.test.js` (the validator's pins and its negative cases, the transforms, the sheet's fog, the instance pass on real three r128 in a vm harness); `hq-world.test.js` untouched (it pins the links, which Phase 0 does not move) — **DONE 2026-09-26, §12** |
 | 1 | **THE STAGE on THE CITY**: one scene per zone, parts as groups with frames, `_hqSurface` by part, the crossing swap, the ring (built / warm / far), the sliced build, the terrain tiles, the far shells, the far plane and the dome, the lamp budget, the disposal, the stash of the stage for a fight — proven on Downtown ⇄ the stadium ⇄ the Strip with `road` joins replacing the three gantry loads; THE FORECOURT part built (family E) with its road join to Downtown so the city is reached on foot from the front door (fork 1) | three-renderer.js, map.js, data.js | `hq-stage.test.js` (vm: two parts, the transforms, the crossing, the ring, the lamp budget, the tiles' count); `stadium-garage.test.js` keeps its pins; the offline HQ probe's screenshots from the join looking both ways |
 | 2 | **THE JOINS + THE MERGE**: `hqShellSideOpen`, the stitch profile in the compiler, the door join (`inner`), `hqRoomResolve` aliases; THE MEDICAL WING merged; the mall's street doors as a door join (the mall's rebuild §8.1 may land before or after — the join works on the old mall); the road/trail/shore/wall join dresses | data.js, three-renderer.js, map.js | `hq-joins.test.js` (the stitch: two parts compiled to one profile agree within `joinTol`; a swinging door blocks nothing open, everything closed; aliases resolve every ledger key); `hq-suites.test.js` re-pinned for the wing |
 | 3 | **THE SKY + THE CLOCK**: the zone sky, `hqWorldSun`, the dome's `sunDir` uniform, the lamps' dusk, `sky.lock`, the clock's hold in pause/battle, the variants on the world hour, the fight at the room's hour; the `tower`/`gate`/`mountain` landmark kinds | data.js, three-renderer.js, map.js | `hq-clock.test.js` (the hour's continuity across a save, the sun at noon/midnight, a locked part's lamps); `day-sky.test.js` re-pinned |
@@ -906,7 +927,7 @@ becomes the west zone's sky; Shasta's cone stays a landmark until Shasta is a pa
 | 5 | **THE SOUTH: THE HIGHWAY parts, the gate part, Area 51 joined (the hangar and the white rooms as door joins), THE D.U.M.B. as an underground zone of corridor joins, THE BUNKER rebuilt** | data.js, three-renderer.js | `hq-area51.test.js` / `hq-dumb.test.js` re-pinned; the highway's `marks` and its two parts' stitch |
 | 6 | **THE NORTH: the crown road, CAMELOT rebuilt in its frame, THE MOUNTAIN's three parts** | data.js, three-renderer.js | `hq-camelot.test.js` re-pinned; `hq-mountain.test.js` (the climb solved end to end by the walker proof, 0 → 70 m, `heavy`) |
 | 7 | **THE COAST: the sea part, the shore join at the docks, the cay and the Dutchman as parts on it, the helm across the join** | data.js, three-renderer.js | `hq-deep.test.js` re-pinned; the skiff's crossing in the vm harness |
-| 8 | **THE FIELD BEYOND 8 × 8**: `sizes`, `hqFieldSizeFor`, the coarse window in the worker, the seats, the prompt | data.js, map.js, battle.js (`board.N` reads), hud.js | `seamless-field.test.js` grows the 12 × 12 proofs (≥ 1500 windows, both squads seated, reach ≥ 12) |
+| 8 | **THE FIELD BEYOND 8 × 8** (the encounter's AREA, not its team size — the user's correction): `sizes` [8, 12, 16], `hqFieldSizeFor` by the ground round the strike, the coarse window in the worker, the same seats spread over the bigger window, the prompt's size line. Needs no zone: it can be pulled forward and run in parallel with any phase on the user's word | data.js, map.js, battle.js (`board.N` reads), hud.js | `seamless-field.test.js` grows the 12 and 16 proofs (open grounds get 12/16, a cramped room stays 8, the party and the group seated as today, reach ≥ the window's share) |
 | 9 | **THE ASSETS**: `optimize-assets.js`, `manifest-assets.js`, `MeshoptDecoder` in the loader, the manifest in the store's accounting and the warm, the cap by quota, the settings row, `hq.warmZone` | three-renderer.js, index.html, deploy.js (the manifest upload), sprites.js / data.js (the renamed URLs, in the user's upload delivery) | `asset-store.test.js` grows the manifest and cap pins; `load-diet.test.js` unchanged |
 | ∥ | **THE INTERIORS** (§8.1: the mall, the basilica, the bunker, the D.U.M.B. catwalks, then the remaining wing merges): any time from Phase 0, one thread each | data.js, three-renderer.js | one pinning test each, the BUILT checklist, screenshots |
 | ∥ | **THE VATICAN cortile, THE LEY's tell join**: after Phase 2 | | |
@@ -937,7 +958,7 @@ basilica rebuilds in parallel threads from day one.
 | the map | data.js `hqMapGraph` ~41132, `hqMapLayout` ~41196, `HQ_WORLD_L` ~41378 (the slots), `hqWorldOverviewGraph` ~41413, `hqWorldOverview` ~41495, `hqWorldRoutes` ~40894, the seen ledger `hqRoomSee`; map.js `_hqMapHtml` ~4950, `_hqWorldHtml` ~5166, the compass ~4573–4600 |
 | the built pieces | data.js `hqStandBowl`, `hqGridironMarks`, `hqRingWalls` / `hqRingQuad`, `wall` rows (`y`/`h`/`quad`/`slopeTop`/`tier`/`seat`/`ghost`/`rail`), `bridge` (straight, arc, `plain`, `glaze`), `spiral`, `terrain.marks`, `ramp kicker` — BUILT_ARCHITECTURE_PLAN §3 |
 | the rooms this plan moves | Downtown ~34781 (districts), Cyberpunk ~35268, the mall, the Strip, the stadium bowl, the woods' seven (`hqWoodsShell` ~22647, `HQ_WOODS_LANDMARKS`), THE WELL ROOM ~32554, the bunker ~37622, Camelot ~35990+, the Vatican ~35590–35940, Olympus (`HQ_AREA_SPECS` ~41919 `summit`), Bermuda's sea, `hqAreaRoom` ~41850 |
-| the perf readout | `_perfRead` ~33112 / `ThreeRenderer.hq.perf()`, `_tickFpsCounter` ~33133 (battle only today), `ew_fpsCounter` / `ew_fpsCap` ~1638–1653, `EW_PERF_LOW`, `hq.nav()`, `_ewAssetStore.stats()`, `EW_HQ_DEBUG` survey log map.js ~295 |
+| the perf readout | `_perfRead` ~33112 / `ThreeRenderer.hq.perf()`, `_tickFpsCounter` ~33103 (the battle, and since Phase 0 the walk: `· N CALLS · NK TRIS` summed over the frame's every render), `ew_fpsCounter` / `ew_fpsCap` ~1638–1653, `EW_PERF_LOW`, `hq.nav()`, `_ewAssetStore.stats()`, `EW_HQ_DEBUG` survey log map.js ~295 |
 | the tests that pin what moves | hq-cave (the one cave), hq-world (the seams, "the whole world is one piece" ~363), hq-woods, hq-camelot, hq-area51, hq-dumb, hq-deep, hq-suites, hq-floors, hq-map / hq-map-remembers, day-sky, seamless-field, stadium-garage, hq-floor-plan, world-ground, landscape-buildings |
 
 Line numbers are the 2026-09-26 clone's (token `20260926-bugfix-03-cors`); grep the names.
@@ -951,3 +972,55 @@ Line numbers are the 2026-09-26 clone's (token `20260926-bugfix-03-cors`); grep 
   probe's first entry in a page reports the hall's build (the boot enters the hall at the same time), so
   Downtown was re-measured second in a page; the probe is `measure_rooms.js` in the thread's scratchpad,
   not in the repo (a repo-only copy is worth adding at Phase 0 beside the HUD readout).
+- 2026-09-26 — **mondo's correction** (the Phase 0 thread's root message): "idc about 8 vs 8 battles, i meant
+  how an encounter restricts me to an 8 by grid area". The plan had read the 8 × 8 goal as team size; every
+  place is rewritten as the fight's GROUND: §3's row, §5.6 (THE FIELD BEYOND 8 × 8 — `sizes` [8, 12, 16]
+  picked by the ground round the strike, the same seats spread over the bigger window), fork 9 (how big the
+  field may get; default 8/12/16) and Phase 8's row. Team sizes are unchanged everywhere.
+- 2026-09-26 — **PHASE 0 SHIPPED** (thread "Open world Phase 0"; zip `open-world/ENTROPY_WARS_OPEN_WORLD_0.zip`,
+  token `20260926-open-world-01-cors`). Nothing moves and no room loads differently; what is new:
+  - **THE TABLE** (data.js, after `hqWorldFloorOf`): `HQ_WORLD_RULES`, `HQ_STAGE_RULES`, `HQ_WORLD_CLOCK`,
+    `HQ_WORLD` (= `DOOR_HQ.world`): four grounds, thirteen zones, 45 parts (10 of them `planned` parts with
+    a size and no room yet: the forecourt, the sea, the highway's two halves, the gate, the crown road,
+    Olympus's two lower parts, the woods field, the cavern field), 32 zone joins + 7 borders, the woods' six and
+    the cavern's six rooms `absorbs`-ed at their spots, `retires` for the well shaft. Every coordinate is
+    §4.5's compass; north is −z and a quarter turn carries north to the west (three.js's rotation.y).
+    Readers: `hqWorldZoneOf`, `hqWorldFrame`, `hqWorldPartSize`, `hqWorldPartRect`, `hqWorldToZone` /
+    `hqZoneToRoom`, `hqWorldJoinResolve`, `hqWorldJoins`, `hqWorldNeighbours`, `hqWorldRing`,
+    `hqWorldValidate` (§4.1's five rules; `ok` on the shipped table), `hqWorldSheet` (the map's model).
+  - **THE LAND TAB** (map.js `_hqLand*`, CSS in styles-base.css `.hq-land-*`): the directory's third tab
+    draws the frames in metres — rooms as rectangles, joins in their kind's ink, door joins as glyphs, the
+    link doors that are still doors on their walls, a 50 m scale bar, one tab per ground. Fog: the rooms you
+    have stood in are named, a room a seen door or join names is an UNCHARTED outline, the planned parts only
+    with `window.EW_HQ_MAP_ALL = true`. A first click picks a room (its card, its neighbours, BEYOND = its
+    doors off this ground), a second walks there (the old travel rule). The old WORLD and AREA tabs stay.
+  - **THE READOUT**: with the FPS counter on (Settings → Video), the walk shows `N FPS · N CALLS · NK TRIS`,
+    summed over every render of the frame (`renderer.info.autoReset` off for the frame); `hq.perf().frame`.
+  - **THE BUILDING MERGE** (three-renderer.js `_nrSpriteBuilding`): the finding that re-aimed the pass —
+    Downtown's 2,701 calls were mostly NOT props: the map-builder building prisms drew ~20 meshes each (a
+    plane per storey per face). A face is now ONE mesh (a quad per storey, the same vertices and UVs):
+    **Downtown 2,701 → 1,765 calls, 6,292 → 4,014 meshes**, same pixels.
+  - **THE INSTANCE PASS** (three-renderer.js, before THE GATE): once the room is ready, meshes that share a
+    `_ew_shared` geometry AND `_ew_shared` materials (the misc cache + `_hqPropMatPick`) draw as one
+    InstancedMesh per `instanceCell` 64 m square when a kind has `instanceMin` 2+ copies; files that land
+    later join as new batches (a 2 s rescan). The originals stay (hidden; raycast; moved by their owners);
+    the scene's `onBeforeRender` reads every copy back once a frame (a hidden or detached ancestor zeroes
+    it, a changed material or an owner's `visible = true` hands it back for good, a copy that leaves its
+    batch's sphere refits the batch), and each batch's frame is scaled so the shared geometry's bounding
+    sphere covers its square (culling stays right for the camera AND the shadow map). A mesh with a vertex
+    hook other than `_hqAoHook` (the wind, a sway), a skinned mesh, `_ew_noInstance` stay clones.
+    `_hqAoHook` gained the `USE_INSTANCING` branch; `_occFieldBig` skips `_ew_hqInst`; `_hqLeave` drops
+    the batches BEFORE the battle's hand-over, so the fight takes the originals exactly as before.
+    Kill-switch `window.EW_HQ_NO_INSTANCE = true` (re-enter); `ThreeRenderer.hq.dev.hqInst()`.
+    Measured on Downtown with a stand-in GLB served for every file (R2 is blocked in the sandbox): **2,299 →
+    1,931 calls** (240 batches, 980 copies); 32 m cells gave 2,041 and 128 m 1,832 (+35 % triangles).
+    The §5.5 guess (2,701 → ~900 from instancing alone) was wrong: the street furniture is ~15 % of the calls.
+    What remains in Downtown: ~1,300 shell meshes (the setting's procedural pieces, lamps, awnings, signs,
+    each its own material) — THE MERGE of static shell pieces per material per tile belongs to Phase 1's
+    tiles (§5.5), not to this pass.
+  - **The probe**: `measure_rooms.js` at the repo root (repo-only): enters rooms in one page and prints the
+    calls / meshes / materials / heap / ready time; `CENSUS=1` the top groups, `STANDIN=<glb>` serves one
+    file for every missing GLB, `NOQ=1` bypasses the model queue, `NOINST=1` the pass off, `CELL` / `MIN`
+    override the pass's numbers, `WAIT=ms` lets late files land, `SHOT=<prefix>` screenshots the LAND tab.
+  - Not playtested beyond the probe: the LAND tab was screenshotted headless; the instance pass was checked
+    by the probe's counts and hq-world-map.test.js (real three r128 in a vm), never walked by a person.

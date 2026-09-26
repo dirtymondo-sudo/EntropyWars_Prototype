@@ -41557,6 +41557,596 @@ function _hqWorldFloorOf(roomId) {
     return _hqWorldFloorCache.floor[roomId] || null;
 }
 function hqWorldFloorOf(roomId) { return _hqWorldFloorOf(roomId); }
+/* ══ THE OPEN WORLD — THE TABLE (OPEN_WORLD_PLAN.md Phase 0, 2026-09-26) ═══════════════════════════════════════════════
+   The geography of §4.5 as DATA: every outdoor and underground place as a ZONE of PARTS on one GROUND, each part a
+   room (or a PLANNED part a later phase builds) with a FRAME, and the JOINS where two parts share an edge (a road, a
+   trail, a shore, a gate in a wall, a corridor) or a door that will swing (§4.3). NOTHING MOVES AND NOTHING IS DRAWN
+   DIFFERENTLY YET: the rooms are exactly what they were; the stage (Phase 1) and the joins (Phase 2) read this table.
+   Today it feeds the WORLD tab's PLAN sheet (map.js, drawn from the frames) and the validator the tests run.
+
+   THE FRAME: metres on the part's GROUND (`surface` · `under` · `rome` · `ley`), x east, z SOUTH (three.js: north is
+   −z), the part's CENTRE at (x, z), its floor at `y`, turned `rot` quarter turns (rotation.y = rot·π/2, three.js's own
+   sense: a quarter turn carries the room's north side to the ground's west). The forecourt (HQ's front door) is the
+   surface's origin. A zone's parts share one sky and one clock (§4.4); a BORDER join (`HQ_WORLD.borders`) ties two
+   zones of one ground, so the surface is one walk from the Grove to the sea and from the summit to Area 51's gate.
+   A part row: `{ x, z, y, rot }` + `interior: true` (a ceiling: drawn only when current or joined, never a far shell)
+   + `on: '<part>'` (it stands INSIDE that part's rectangle — the mall on its lot, the keep in its ward, the cay on the
+   sea) + `planned: { w, d, h, label, family }` (a part no room is yet: its size is the plan's) + `absorbs: { roomId:
+   { x, z } }` (the rooms a planned field replaces, each at its spot in the field's own metres — they alias to it in the
+   phase that builds it, and until then the map draws them there) + `rise` (m the ground climbs inside the part: the
+   mountain's tiers).
+   A join row: `{ a, b, kind }` + for an EDGE join `side` (a's side in a's own frame) and `span: [t0, t1]` (along that
+   side in a's metres, from a's centre) + `y` (the join's height on the ground; default a's floor). `kind`: road ·
+   trail · shore · wall · hall (a corridor through two shells) · stair (a flight between floors) · door (a door that
+   swings: the two parts touch or one stands on the other) · island (a part standing on a sea part: its beach is the
+   shore). `hqWorldValidate()` proves every row; hq-world.test.js runs it. */
+const HQ_WORLD_RULES = {
+    far: 900,          // m — the camera's far plane in a zone (§5.4; Phase 1)
+    joinTol: 0.5,      // m — two parts' edges meet when they lie this close (the validator's tolerance)
+    stitchM: 6,        // m — the band either side of a join where the two height fields blend to the join's profile (§4.2; Phase 2)
+    swingM: 1.6,       // m — a door join swings open when the walker is this close (§4.3; Phase 2)
+    crossHys: 1.0,     // m — the crossing's hysteresis (§5.3; Phase 1)
+    warmDoorM: 20,     // m — a door to another zone warms its arrival when the walker is this close (§5.4)
+    farRes: 4,         // m — the far shell's ground sampling (§5.4)
+};
+const HQ_STAGE_RULES = {
+    partsBuilt: 3, lampsLive: 12, lampR: 60, buildMs: 6, heapMB: 700, cacheIdleMs: 120000,   // §5.1–5.2 (Phase 1)
+    tileM: 32, cullM: 1.2, cullFarM: 90, callsMax: 2500, trisMax: 1500000,                     // §5.5 (Phase 1)
+    /* THE INSTANCE PASS (§5.5, live since Phase 0): a GLB prop placed at least `instanceMin` times in a room is drawn as
+       one InstancedMesh per mesh of the model per `instanceCell` m square of the floor (so the frustum still drops the
+       squares behind the camera); the placements stay (their groups, blockers, seats, the fade, the battle's keep read
+       them) and the instance follows its placement every frame it moves. Measured on Downtown (every file landed):
+       32 m / 4 → 2,299 to 2,041 calls; 64 m / 2 → 1,931 (+17 % triangles drawn); 128 m / 2 → 1,832 (+35 %). */
+    instanceMin: 2, instanceCell: 64,
+};
+/* THE EXPLORATION DAY (§4.4; Phase 3 builds it — the table lives here so the phases share one set of numbers). */
+const HQ_WORLD_CLOCK = { dayMin: 24, start: 9.0, dawn: [5.5, 7.0], dusk: [18.5, 20.0], lampsOn: 18.0, lampsOff: 6.5,
+                         sun: { noonEl: 62, riseAz: 100, setAz: 260 }, moon: { el: 35 } };
+const HQ_WORLD = {
+    grounds: {
+        surface: { label: 'THE SURFACE', note: 'the forecourt at the origin; the kingdom and the mountain north, the city east, the coast off the docks, the highway south to Area 51, the woods west' },
+        under:   { label: 'UNDERGROUND', note: 'no sky: the underworld under the city, the cave under the woods, the D.U.M.B. under the desert' },
+        rome:    { label: 'ROME', note: 'the Vatican: its own ground, reached through the bureau\'s painting' },
+        ley:     { label: 'THE LEY', note: 'the tell over the ley tunnel; the far stations stay doors' },
+    },
+    zones: {
+        /* Z0 — THE FORECOURT (fork 1: the foyer's front door opens onto it; Phase 1 builds it, family E) */
+        forecourt: { label: 'THE FORECOURT', ground: 'surface', hub: 'hq_grounds', sky: null, clock: true,
+            parts: {
+                hq_grounds: { x: 0, z: 0, y: 0, rot: 0, planned: { w: 100, d: 80, h: 14, family: 'E', label: 'D.O.O.R. HQ · THE FORECOURT' } },
+            },
+            joins: [] },
+        /* Z1 — THE CITY (east). Downtown's west edge carries the forecourt's road into the old town's high street
+           (local z −64); its cross street runs west into the Strip (the road way that exists, Downtown W z0 ⇄ Strip E
+           z0); the avenue's north end meets the stadium's players' tunnel (the bowl turned half round so its north
+           tunnel faces the city); the mall stands on its financial-district lot (fork 12; the lot is cleared when the
+           mall is rebuilt). Cyberpunk stays a door: Downtown in 2047 (fork 3). */
+        city: { label: 'DISASTER CITY', ground: 'surface', hub: 'site_prebuilt_downtown_streets', sky: 'site_prebuilt_downtown_streets', clock: true,
+            parts: {
+                site_prebuilt_downtown_streets: { x: 162, z: 72, y: 0, rot: 0 },
+                site_prebuilt_stadium_bowl:     { x: 162, z: -82.1, y: 0, rot: 2 },
+                site_prebuilt_strip_streets:    { x: 0, z: 72, y: 0, rot: 0 },
+                site_prebuilt_downtown_mall:    { x: 102, z: 92, y: 0, rot: 0, interior: true, on: 'site_prebuilt_downtown_streets' },
+            },
+            joins: [
+                { a: 'site_prebuilt_downtown_streets', b: 'site_prebuilt_stadium_bowl', side: 'n', span: [-12, 12], kind: 'road' },
+                { a: 'site_prebuilt_downtown_streets', b: 'site_prebuilt_strip_streets', side: 'w', span: [-7, 7], kind: 'road' },
+                { a: 'site_prebuilt_downtown_streets', b: 'site_prebuilt_downtown_mall', kind: 'door' },
+            ] },
+        /* Z1b — THE COAST (fork 2: its own zone, joined at the docks' quay). The sea is a planned part; Bermuda's sea
+           (the cay) and the Dutchman's main deck stand ON it as islands — 120 m and 200 m out from the quay. */
+        coast: { label: 'THE COAST', ground: 'surface', hub: 'harbour_sea', sky: 'site_prebuilt_bermuda_sea', clock: true,
+            parts: {
+                harbour_sea:                  { x: 200, z: 310, y: 0, rot: 0, planned: { w: 300, d: 300, h: 8, family: 'sea', label: 'THE COAST · THE OPEN SEA' } },
+                site_prebuilt_bermuda_sea:    { x: 140, z: 280, y: 0, rot: 0, on: 'harbour_sea' },
+                site_prebuilt_revenge_deck:   { x: 290, z: 360, y: 0, rot: 0, on: 'harbour_sea' },
+            },
+            joins: [
+                { a: 'harbour_sea', b: 'site_prebuilt_bermuda_sea', kind: 'island' },
+                { a: 'harbour_sea', b: 'site_prebuilt_revenge_deck', kind: 'island' },
+            ] },
+        /* Z2 — THE HIGHWAY (south from the Strip, two parts of 210 m: 420 m of road, ~90 s on foot, ~60 on the board) */
+        highway: { label: 'THE HIGHWAY', ground: 'surface', hub: 'highway_north', sky: null, clock: true,
+            parts: {
+                highway_north: { x: 0, z: 209, y: 0, rot: 0, planned: { w: 80, d: 210, h: 9, family: 'E', label: 'THE HIGHWAY · THE STRIP END' } },
+                highway_south: { x: 0, z: 419, y: 0, rot: 0, planned: { w: 80, d: 210, h: 9, family: 'E', label: 'THE HIGHWAY · THE DESERT MILES' } },
+            },
+            joins: [
+                { a: 'highway_north', b: 'highway_south', side: 's', span: [-8, 8], kind: 'road' },
+            ] },
+        /* Z2b — THE DESERT: Area 51's gate (planned), the flight line, Hangar 18 off its east edge, the white rooms
+           behind the hangar. The D.U.M.B. below is its own zone (down is a load). */
+        desert: { label: 'AREA 51', ground: 'surface', hub: 'site_prebuilt_area51_flightline', sky: 'site_prebuilt_area51_flightline', clock: true,
+            parts: {
+                area51_gate:                      { x: 0, z: 544, y: 0, rot: 0, planned: { w: 60, d: 40, h: 9, family: 'E', label: 'AREA 51 · THE GATE' } },
+                site_prebuilt_area51_flightline:  { x: 0, z: 596, y: 0, rot: 0 },
+                site_prebuilt_area51_hangar:      { x: 84, z: 596, y: 0, rot: 0, interior: true },
+                site_prebuilt_area51_ward:        { x: 84, z: 635, y: 0, rot: 0, interior: true },
+            },
+            joins: [
+                { a: 'area51_gate', b: 'site_prebuilt_area51_flightline', side: 's', span: [-8, 8], kind: 'road' },
+                { a: 'site_prebuilt_area51_flightline', b: 'site_prebuilt_area51_hangar', kind: 'door' },
+                { a: 'site_prebuilt_area51_hangar', b: 'site_prebuilt_area51_ward', kind: 'door' },
+            ] },
+        /* Z4 — THE KINGDOM (north): the crown's road (planned, stone) from the forecourt to the ward's south gate; the
+           great hall and the keep stand in the ward (door joins); Merlin's undercroft (down) and the castle in the sky
+           (up) stay doors. The ward is rebuilt BUILT at 140 × 120 in Phase 6, in this frame. */
+        kingdom: { label: 'CAMELOT', ground: 'surface', hub: 'site_prebuilt_camelot_ward', sky: 'site_prebuilt_camelot_ward', clock: true,
+            parts: {
+                crown_road:                  { x: 0, z: -120, y: 0, rot: 0, planned: { w: 60, d: 160, h: 9, family: "A'", label: 'THE CROWN\'S ROAD' } },
+                site_prebuilt_camelot_ward:  { x: 0, z: -240, y: 0, rot: 0 },
+                site_prebuilt_camelot_hall:  { x: -30, z: -250, y: 0, rot: 0, interior: true, on: 'site_prebuilt_camelot_ward' },
+                site_prebuilt_camelot_keep:  { x: 22, z: -252, y: 0, rot: 0, interior: true, on: 'site_prebuilt_camelot_ward' },
+            },
+            joins: [
+                { a: 'crown_road', b: 'site_prebuilt_camelot_ward', side: 'n', span: [-6, 6], kind: 'wall' },
+                { a: 'site_prebuilt_camelot_ward', b: 'site_prebuilt_camelot_hall', kind: 'door' },
+                { a: 'site_prebuilt_camelot_ward', b: 'site_prebuilt_camelot_keep', kind: 'door' },
+            ] },
+        /* Z4b — THE MOUNTAIN (north of the kingdom): the foothills 0 → 25 m, the switchbacks 25 → 60 m, the summit lifted
+           to 60 m (its own terraces take it to ~70). Heaven's gate on the high terrace stays the door it is. */
+        mountain: { label: 'MOUNT OLYMPUS', ground: 'surface', hub: 'olympus_foothills', sky: 'site_prebuilt_olympus_summit', clock: true,
+            parts: {
+                olympus_foothills:             { x: 0, z: -340, y: 0, rot: 0, rise: 25, planned: { w: 140, d: 120, h: 9, family: "A'", label: 'MOUNT OLYMPUS · THE FOOTHILLS' } },
+                olympus_switchbacks:           { x: 0, z: -460, y: 25, rot: 0, rise: 35, planned: { w: 100, d: 120, h: 9, family: "A'", label: 'MOUNT OLYMPUS · THE SWITCHBACKS' } },
+                site_prebuilt_olympus_summit:  { x: 0, z: -546, y: 60, rot: 0, rise: 9 },
+            },
+            joins: [
+                { a: 'olympus_foothills', b: 'olympus_switchbacks', side: 'n', span: [-5, 5], y: 25, kind: 'trail' },
+                { a: 'olympus_switchbacks', b: 'site_prebuilt_olympus_summit', side: 'n', span: [-5, 5], y: 60, kind: 'trail' },
+            ] },
+        /* Z5 — THE WOODS (west): the haunted grounds off the forecourt's trail (the house on them), THE WOODS as ONE
+           field of clearings (planned, §8.5: it absorbs the six open woods rooms; Dead Man's cave stays a door, down),
+           Shasta's slopes at the old trail's top (fork 7), the Grove at the redwoods' west, the estate south of the
+           pasture with the lodge off its west side. */
+        woods: { label: 'THE WOODS', ground: 'surface', hub: 'woods_field', sky: 'site_prebuilt_fairy_forest_clearing', clock: true,
+            parts: {
+                site_prebuilt_haunted_grounds:       { x: -81, z: 0, y: 0, rot: 0 },
+                site_prebuilt_haunted_hall:          { x: -81, z: -8, y: 0, rot: 0, interior: true, on: 'site_prebuilt_haunted_grounds' },
+                /* the six rooms' clearings at the old rooms' bearings from the clearing (§8.5), in the field's own metres */
+                woods_field:                         { x: -192, z: 0, y: 0, rot: 0, planned: { w: 160, d: 140, h: 9, family: "A'", label: 'THE WOODS' },
+                                                       absorbs: { site_prebuilt_fairy_forest_clearing: { x: 0, z: 0 }, site_prebuilt_fairy_forest_trail: { x: -45, z: -45 },
+                                                                  site_prebuilt_fairy_forest_redwoods: { x: -62, z: 0 }, site_prebuilt_fairy_forest_pasture: { x: -35, z: 45 },
+                                                                  site_prebuilt_fairy_forest_stair: { x: 50, z: 5 }, site_prebuilt_fairy_forest_ritual: { x: 45, z: -45 } } },
+                site_prebuilt_shasta_slopes:         { x: -230, z: -100, y: 0, rot: 0 },
+                site_prebuilt_bohemian_grove_grove:  { x: -305, z: 0, y: 0, rot: 0 },
+                site_prebuilt_skinwalker_fields:     { x: -230, z: 93, y: 0, rot: 0 },
+                site_prebuilt_lodge_halls:           { x: -287, z: 93, y: 0, rot: 0, interior: true },
+            },
+            joins: [
+                { a: 'site_prebuilt_haunted_grounds', b: 'woods_field', side: 'w', span: [-6, 6], kind: 'trail' },
+                { a: 'site_prebuilt_haunted_grounds', b: 'site_prebuilt_haunted_hall', kind: 'door' },
+                { a: 'woods_field', b: 'site_prebuilt_shasta_slopes', side: 'n', span: [-45, -35], kind: 'trail' },
+                { a: 'woods_field', b: 'site_prebuilt_bohemian_grove_grove', side: 'w', span: [-6, 6], kind: 'trail' },
+                { a: 'woods_field', b: 'site_prebuilt_skinwalker_fields', side: 's', span: [-40, -30], kind: 'trail' },
+                { a: 'site_prebuilt_skinwalker_fields', b: 'site_prebuilt_lodge_halls', kind: 'door' },
+            ] },
+        /* Z3 — THE D.U.M.B. (under the desert, no sky): six halls parts joined corridor to corridor; the motorpool under
+           Hangar 18 (its ramp up stays a door), CERN's ring stays a door (Europe). */
+        dumb: { label: 'THE D.U.M.B.', ground: 'under', hub: 'site_prebuilt_dumb_motorpool', sky: null, clock: false,
+            parts: {
+                site_prebuilt_dumb_motorpool:  { x: 84, z: 596, y: -20, rot: 0 },
+                site_prebuilt_dumb_sublevel7:  { x: 84, z: 540, y: -20, rot: 0 },
+                site_prebuilt_dumb_dreamlab:   { x: 12, z: 540, y: -20, rot: 0 },
+                site_prebuilt_dumb_clonevats:  { x: 160, z: 540, y: -20, rot: 0 },
+                site_prebuilt_dumb_warroom:    { x: 84, z: 488, y: -20, rot: 0 },
+                site_prebuilt_dumb_bunker:     { x: 84, z: 452, y: -20, rot: 0 },
+            },
+            joins: [
+                { a: 'site_prebuilt_dumb_motorpool', b: 'site_prebuilt_dumb_sublevel7', side: 'n', span: [-6, 6], kind: 'hall' },
+                { a: 'site_prebuilt_dumb_sublevel7', b: 'site_prebuilt_dumb_dreamlab', side: 'w', span: [-3, 3], kind: 'hall' },
+                { a: 'site_prebuilt_dumb_sublevel7', b: 'site_prebuilt_dumb_clonevats', side: 'e', span: [-3, 3], kind: 'hall' },
+                { a: 'site_prebuilt_dumb_sublevel7', b: 'site_prebuilt_dumb_warroom', side: 'n', span: [-3, 3], kind: 'hall' },
+                { a: 'site_prebuilt_dumb_warroom', b: 'site_prebuilt_dumb_bunker', side: 'n', span: [-3, 3], kind: 'hall' },
+            ] },
+        /* Z6 — THE UNDER (under the woods and the estate, no sky): the cavern's six chambers as ONE cave field (planned);
+           THE WELL ROOM retires (§8.3: the wells land in DIFFERENT places, Phase 4). Its doors out stay doors. */
+        under: { label: 'THE CAVE', ground: 'under', hub: 'under_field', sky: null, clock: false,
+            parts: {
+                under_field: { x: -192, z: 20, y: -15, rot: 0, planned: { w: 120, d: 100, h: 11, family: 'A', label: 'THE CAVE' },
+                               absorbs: { site_prebuilt_hollow_earth_gallery: { x: 0, z: 0 }, site_prebuilt_hollow_earth_vent: { x: -45, z: -35 },
+                                          site_prebuilt_hollow_earth_blast: { x: -40, z: 5 }, site_prebuilt_hollow_earth_adit: { x: 42, z: -30 },
+                                          site_prebuilt_hollow_earth_mouth: { x: 45, z: 20 }, site_prebuilt_hollow_earth_oubliette: { x: 0, z: 38 } } },
+            },
+            joins: [] },
+        /* Z7 — THE UNDERWORLD (under the city, no sky): the sewers and the three halls off them. The gutters from the
+           streets stay ways (a climb down is a load worth having). */
+        underworld: { label: 'THE UNDERWORLD', ground: 'under', hub: 'site_prebuilt_downtown_sewers', sky: null, clock: false,
+            parts: {
+                site_prebuilt_downtown_sewers:   { x: 162, z: 72, y: -10, rot: 0 },
+                site_prebuilt_downtown_tunnels:  { x: 40, z: 72, y: -10, rot: 0 },
+                site_prebuilt_downtown_cells:    { x: 162, z: 6, y: -10, rot: 0 },
+                site_prebuilt_downtown_workings: { x: 252, z: 72, y: -10, rot: 0 },
+            },
+            joins: [
+                { a: 'site_prebuilt_downtown_sewers', b: 'site_prebuilt_downtown_tunnels', side: 'w', span: [-3, 3], kind: 'hall' },
+                { a: 'site_prebuilt_downtown_sewers', b: 'site_prebuilt_downtown_cells', side: 'n', span: [-3, 3], kind: 'hall' },
+                { a: 'site_prebuilt_downtown_sewers', b: 'site_prebuilt_downtown_workings', side: 'e', span: [-3, 3], kind: 'hall' },
+            ] },
+        /* Z8 — THE DIVINE (Rome): the cortile the hub, the basilica and the archive off it (door joins), the observatory
+           up a stair; the catacombs stay a door (down, the well). */
+        divine: { label: 'VATICAN CITY', ground: 'rome', hub: 'site_prebuilt_vatican_courtyard', sky: 'site_prebuilt_vatican_courtyard', clock: true,
+            parts: {
+                site_prebuilt_vatican_courtyard:   { x: 0, z: 0, y: 0, rot: 0 },
+                site_prebuilt_vatican_basilica:    { x: 0, z: -44, y: 0, rot: 0, interior: true },
+                site_prebuilt_vatican_library:     { x: 35, z: 0, y: 0, rot: 0, interior: true },
+                site_prebuilt_vatican_observatory: { x: -32, z: 0, y: 6, rot: 0 },
+            },
+            joins: [
+                { a: 'site_prebuilt_vatican_courtyard', b: 'site_prebuilt_vatican_basilica', kind: 'door' },
+                { a: 'site_prebuilt_vatican_courtyard', b: 'site_prebuilt_vatican_library', kind: 'door' },
+                { a: 'site_prebuilt_vatican_courtyard', b: 'site_prebuilt_vatican_observatory', side: 'w', span: [-3, 3], kind: 'stair' },
+            ] },
+        /* Z9 — THE LEY: the tell stands over the ley tunnel (12 m down); a door at the cistern joins them. Stonehenge,
+           Giza, Babel and Technoticlan stay doors at the tunnel's far stations. */
+        ley: { label: 'THE LEY LINES', ground: 'ley', hub: 'site_prebuilt_gobekli_leylines', sky: 'site_prebuilt_gobekli_tell', clock: false,
+            parts: {
+                site_prebuilt_gobekli_leylines: { x: 0, z: 0, y: -12, rot: 0 },
+                site_prebuilt_gobekli_tell:     { x: -45, z: -30, y: 0, rot: 0 },
+            },
+            joins: [
+                { a: 'site_prebuilt_gobekli_leylines', b: 'site_prebuilt_gobekli_tell', kind: 'door' },
+            ] },
+    },
+    /* THE BORDERS — joins between two zones of one ground (the forecourt's three roads, the docks' quay, the highway's
+       two ends, the kingdom's gate, the mountain's trailhead). */
+    borders: [
+        { a: 'hq_grounds', b: 'site_prebuilt_downtown_streets', side: 'e', span: [2, 14], kind: 'road' },
+        { a: 'hq_grounds', b: 'site_prebuilt_haunted_grounds', side: 'w', span: [-6, 6], kind: 'trail' },
+        { a: 'hq_grounds', b: 'crown_road', side: 'n', span: [-6, 6], kind: 'road' },
+        { a: 'site_prebuilt_downtown_streets', b: 'harbour_sea', side: 's', span: [-100, 100], kind: 'shore' },
+        { a: 'site_prebuilt_strip_streets', b: 'highway_north', side: 's', span: [-8, 8], kind: 'road' },
+        { a: 'highway_south', b: 'area51_gate', side: 's', span: [-8, 8], kind: 'road' },
+        { a: 'site_prebuilt_camelot_ward', b: 'olympus_foothills', side: 'n', span: [-6, 6], kind: 'trail' },
+    ],
+    retires: ['site_prebuilt_hollow_earth_shaft'],   // THE WELL ROOM (§8.3): deleted when the wells are re-pointed (Phase 4)
+};
+DOOR_HQ.world = HQ_WORLD;
+
+/* THE READERS. A room in no zone answers null everywhere (it is exactly what it was). A room a planned field ABSORBS
+   answers with the field's zone (`absorbedBy` names the field). */
+let _hqWorldIdx = null;
+function _hqWorldIndex() {
+    const W = DOOR_HQ.world;
+    if (_hqWorldIdx && _hqWorldIdx.W === W) return _hqWorldIdx;
+    const part = {}, absorbed = {}, joins = [], twice = [];
+    Object.keys((W && W.zones) || {}).forEach(zid => {
+        const Z = W.zones[zid];
+        Object.keys(Z.parts || {}).forEach(pid => {
+            const P = Z.parts[pid];
+            part[pid] = { zone: zid, ground: Z.ground, P };
+            Object.keys(P.absorbs || {}).forEach(r => { if (absorbed[r]) twice.push(r); absorbed[r] = pid; });
+        });
+        (Z.joins || []).forEach(j => joins.push(Object.assign({ zone: zid }, j)));
+    });
+    ((W && W.borders) || []).forEach(j => joins.push(Object.assign({ zone: null, border: true }, j)));
+    _hqWorldIdx = { W, part, absorbed, joins, twice };
+    return _hqWorldIdx;
+}
+function hqWorldZoneOf(roomId) {
+    const I = _hqWorldIndex(), p = I.part[roomId] || I.part[I.absorbed[roomId]];
+    return p ? p.zone : null;
+}
+/* the part's size in its OWN frame (w along its x, d along its z, h its headroom) */
+function hqWorldPartSize(partId) {
+    const I = _hqWorldIndex(), p = I.part[partId];
+    if (!p) { const S0 = I.absorbed[partId] ? ((DOOR_HQ.rooms || {})[partId] || {}).shell : null; return (S0 && S0.w > 0) ? { w: S0.w, d: S0.d, h: S0.h || 9 } : null; }
+    if (p.P.planned) return { w: p.P.planned.w, d: p.P.planned.d, h: p.P.planned.h || 9 };
+    const S = ((DOOR_HQ.rooms || {})[partId] || {}).shell;
+    return (S && S.w > 0 && S.d > 0) ? { w: S.w, d: S.d, h: S.h || 9 } : null;
+}
+function hqWorldFrame(roomId) {
+    const I = _hqWorldIndex(), id = I.part[roomId] ? roomId : I.absorbed[roomId];
+    const p = id ? I.part[id] : null;
+    if (!p) return null;
+    const rot = ((p.P.rot || 0) % 4 + 4) % 4;
+    let x = p.P.x || 0, z = p.P.z || 0;
+    if (id !== roomId) {   // an absorbed room: its spot in the field, carried onto the ground
+        const at = p.P.absorbs[roomId] || { x: 0, z: 0 }, c = _HQ_ROT[rot][0], s = _HQ_ROT[rot][1];
+        x += at.x * c + at.z * s; z += -at.x * s + at.z * c;
+    }
+    return { part: id, zone: p.zone, ground: p.ground, x, z, y: p.P.y || 0, rot,
+             absorbedBy: id !== roomId ? id : null, planned: !!p.P.planned && id === roomId, interior: !!p.P.interior, on: p.P.on || null };
+}
+/* the part's rectangle on its ground: { x0, z0, x1, z1, y0, y1 } (y1 = its floor + its rise + its headroom) */
+function hqWorldPartRect(partId) {
+    const F = hqWorldFrame(partId), S = hqWorldPartSize(partId);
+    if (!F || !S) return null;
+    const P = F.absorbedBy ? {} : _hqWorldIndex().part[partId].P;
+    const hw = (F.rot % 2 ? S.d : S.w) / 2, hd = (F.rot % 2 ? S.w : S.d) / 2;
+    return { x0: F.x - hw, z0: F.z - hd, x1: F.x + hw, z1: F.z + hd, y0: F.y, y1: F.y + (P.rise || 0) + S.h };
+}
+/* THE TWO TRANSFORMS: room metres (x, z) ⇄ ground metres. rot quarter turns in three.js's sense (rotation.y = rot·π/2):
+   x' = x·cosθ + z·sinθ, z' = −x·sinθ + z·cosθ. */
+const _HQ_ROT = [[1, 0], [0, 1], [-1, 0], [0, -1]];   // [cos, sin] per quarter turn
+function hqWorldToZone(roomId, x, z) {
+    const F = hqWorldFrame(roomId);
+    if (!F) return null;
+    const c = _HQ_ROT[F.rot][0], s = _HQ_ROT[F.rot][1];
+    return { x: F.x + x * c + z * s, z: F.z - x * s + z * c, y: F.y };
+}
+function hqZoneToRoom(roomId, gx, gz) {
+    const F = hqWorldFrame(roomId);
+    if (!F) return null;
+    const c = _HQ_ROT[F.rot][0], s = _HQ_ROT[F.rot][1], dx = gx - F.x, dz = gz - F.z;
+    return { x: dx * c - dz * s, z: dx * s + dz * c };
+}
+/* a side of a part in its own frame → the side it faces on the ground */
+const _HQ_SIDES = ['n', 'e', 's', 'w'];
+function _hqWorldSideOnGround(side, rot) {
+    const i = _HQ_SIDES.indexOf(side);
+    return i < 0 ? null : _HQ_SIDES[(i - rot + 4) % 4];   // a quarter turn carries north to the west
+}
+/* an EDGE join resolved on the ground: the line it lies on and its span, and the matching side + span of b.
+   → { kind, line: 'x' | 'z' (the axis the edge runs along), at (the fixed coordinate), g0, g1 (the span on the ground),
+       y, a: { side, span }, b: { side, span } } or null */
+function hqWorldJoinResolve(j) {
+    if (!j || !j.side || !Array.isArray(j.span)) return null;
+    const Fa = hqWorldFrame(j.a), Sa = hqWorldPartSize(j.a);
+    if (!Fa || !Sa || Fa.absorbedBy) return null;
+    const hw = Sa.w / 2, hd = Sa.d / 2, t0 = Math.min(j.span[0], j.span[1]), t1 = Math.max(j.span[0], j.span[1]);
+    /* the two ends of the span in a's own metres */
+    const ends = j.side === 'n' ? [[t0, -hd], [t1, -hd]] : j.side === 's' ? [[t0, hd], [t1, hd]]
+               : j.side === 'e' ? [[hw, t0], [hw, t1]] : j.side === 'w' ? [[-hw, t0], [-hw, t1]] : null;
+    if (!ends) return null;
+    const g = ends.map(e => hqWorldToZone(j.a, e[0], e[1]));
+    const gSide = _hqWorldSideOnGround(j.side, Fa.rot);
+    const line = (gSide === 'n' || gSide === 's') ? 'x' : 'z';
+    const at = line === 'x' ? g[0].z : g[0].x;
+    const g0 = Math.min(line === 'x' ? g[0].x : g[0].z, line === 'x' ? g[1].x : g[1].z);
+    const g1 = Math.max(line === 'x' ? g[0].x : g[0].z, line === 'x' ? g[1].x : g[1].z);
+    const out = { kind: j.kind, line, at, g0, g1, gSide, y: (j.y != null) ? j.y : Fa.y, a: { side: j.side, span: [t0, t1] }, b: null };
+    const Fb = hqWorldFrame(j.b);
+    if (Fb && !Fb.absorbedBy) {
+        const opp = { n: 's', s: 'n', e: 'w', w: 'e' }[gSide];
+        const bSide = _HQ_SIDES[(_HQ_SIDES.indexOf(opp) + Fb.rot) % 4];   // the ground side back into b's own frame
+        const m = [0, 1].map(k => { const q = line === 'x' ? [k ? g1 : g0, at] : [at, k ? g1 : g0]; return hqZoneToRoom(j.b, q[0], q[1]); });
+        const along = (bSide === 'n' || bSide === 's') ? 'x' : 'z';
+        const u0 = m[0][along], u1 = m[1][along];
+        out.b = { side: bSide, span: [Math.min(u0, u1), Math.max(u0, u1)] };
+    }
+    return out;
+}
+function hqWorldJoins(roomId) {
+    const I = _hqWorldIndex();
+    return roomId ? I.joins.filter(j => j.a === roomId || j.b === roomId) : I.joins.slice();
+}
+/* the parts one join away (the stage's CURRENT + JOINED ring, §5.1) — borders included: they are walked like any join */
+function hqWorldNeighbours(roomId) {
+    const F = hqWorldFrame(roomId);
+    if (!F) return [];
+    const id = F.part, out = [];
+    hqWorldJoins(id).forEach(j => { const o = j.a === id ? j.b : j.a; if (out.indexOf(o) < 0) out.push(o); });
+    return out;
+}
+/* the parts within `hops` joins, with their distance in hops: { partId: hops } (the stage's warm ring, §5.2) */
+function hqWorldRing(roomId, hops) {
+    const F = hqWorldFrame(roomId);
+    if (!F) return {};
+    const out = {}; out[F.part] = 0;
+    let front = [F.part];
+    for (let h = 1; h <= (hops == null ? 2 : hops); h++) {
+        const next = [];
+        front.forEach(id => hqWorldNeighbours(id).forEach(o => { if (out[o] == null) { out[o] = h; next.push(o); } }));
+        front = next;
+    }
+    return out;
+}
+/* THE VALIDATOR (§4.1). → { ok, errors: [...], parts, joins }. The rules:
+   1. every part is a box room of DOOR_HQ.rooms or a planned part with a size; an absorbed room exists and is no part;
+      a room stands in ONE zone; a zone names a ground the table lists and a hub among its parts; an `on` host is a part
+      of the same ground.
+   2. no two parts of one ground overlap (in plan AND in height) by more than joinTol — unless one stands ON the other,
+      or they are a door / island join's two ends (a door's two parts only need to touch).
+   3. a part ON a host lies inside the host's rectangle.
+   4. an EDGE join's span lies on a's side; b has the opposite side on the same line (within joinTol) and the span lies
+      within b's side; the join's height lies within both parts' floors + rise (a `stair` join may climb: it only
+      needs the two to touch). A door / island join's two parts touch or one stands on the other.
+   5. every part of a zone is reached from its hub through that zone's joins; every zone of the surface is reached from
+      the forecourt's hub through joins and borders. */
+function hqWorldValidate() {
+    const W = DOOR_HQ.world, R = DOOR_HQ.rooms || {}, tol = HQ_WORLD_RULES.joinTol, errors = [];
+    const I = _hqWorldIndex(), ids = Object.keys(I.part), seen = {};
+    const err = m => errors.push(m);
+    Object.keys(W.zones).forEach(zid => {
+        const Z = W.zones[zid];
+        if (!W.grounds[Z.ground]) err(zid + ': ground ' + Z.ground + ' is not in HQ_WORLD.grounds');
+        if (!Z.parts[Z.hub]) err(zid + ': the hub ' + Z.hub + ' is not one of its parts');
+        if (Z.sky && !R[Z.sky]) err(zid + ': the sky row ' + Z.sky + ' is not a room');
+        Object.keys(Z.parts).forEach(pid => {
+            const P = Z.parts[pid];
+            if (seen[pid]) err(pid + ': in two zones (' + seen[pid] + ', ' + zid + ')');
+            seen[pid] = zid;
+            if (P.planned) { if (R[pid]) err(pid + ': planned but already a room'); if (!(P.planned.w > 0 && P.planned.d > 0)) err(pid + ': planned without a size'); }
+            else if (!R[pid]) err(pid + ': not a room');
+            else if (!(R[pid].shell && R[pid].shell.w > 0 && R[pid].shell.d > 0)) err(pid + ': not a box room');
+            if (![0, 1, 2, 3].includes(P.rot || 0)) err(pid + ': rot is not a quarter turn 0–3');
+            Object.keys(P.absorbs || {}).forEach(r => {
+                if (!R[r]) { err(pid + ' absorbs ' + r + ', not a room'); return; }
+                if (I.part[r]) err(r + ': absorbed by ' + pid + ' and a part itself');
+                const S = R[r].shell, at = P.absorbs[r], F = P.planned;
+                if (!(S && S.w > 0 && S.d > 0)) { err(r + ': absorbed but not a box room'); return; }
+                if (F && (Math.abs(at.x) + S.w / 2 > F.w / 2 + tol || Math.abs(at.z) + S.d / 2 > F.d / 2 + tol)) err(r + ': its spot in ' + pid + ' lies outside the field');
+                Object.keys(P.absorbs).forEach(o => {
+                    if (o <= r || !R[o] || !R[o].shell) return;
+                    const T = R[o].shell, bt = P.absorbs[o];
+                    if (Math.abs(at.x - bt.x) < (S.w + T.w) / 2 - tol && Math.abs(at.z - bt.z) < (S.d + T.d) / 2 - tol) err(r + ' and ' + o + ' overlap in ' + pid);
+                });
+            });
+            if (P.on && !(I.part[P.on] && I.part[P.on].ground === Z.ground)) err(pid + ': stands on ' + P.on + ', not a part of its ground');
+        });
+    });
+    (I.twice || []).forEach(r => err(r + ': absorbed by two fields'));
+    (W.retires || []).forEach(r => { if (!R[r]) err('retires ' + r + ', not a room'); if (I.part[r] || I.absorbed[r]) err(r + ': retired and still in the world'); });
+    const rect = {}; ids.forEach(id => { rect[id] = hqWorldPartRect(id); });
+    const inside = (a, b) => a.x0 >= b.x0 - tol && a.x1 <= b.x1 + tol && a.z0 >= b.z0 - tol && a.z1 <= b.z1 + tol;
+    const touch = (a, b) => a.x0 <= b.x1 + tol && b.x0 <= a.x1 + tol && a.z0 <= b.z1 + tol && b.z0 <= a.z1 + tol;
+    const pairJoined = {}; I.joins.forEach(j => { pairJoined[j.a + '|' + j.b] = pairJoined[j.b + '|' + j.a] = j; });
+    ids.forEach(id => {
+        const P = I.part[id].P;
+        if (P.on && rect[P.on] && rect[id] && !inside(rect[id], rect[P.on])) err(id + ': stands on ' + P.on + ' but lies outside it');
+    });
+    for (let i = 0; i < ids.length; i++) for (let k = i + 1; k < ids.length; k++) {
+        const A = ids[i], B = ids[k], a = rect[A], b = rect[B];
+        if (!a || !b || I.part[A].ground !== I.part[B].ground) continue;
+        if (I.part[A].P.on === B || I.part[B].P.on === A) continue;
+        const ox = Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0), oz = Math.min(a.z1, b.z1) - Math.max(a.z0, b.z0), oy = Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0);
+        if (ox > tol && oz > tol && oy > tol) err(A + ' and ' + B + ' overlap (' + ox.toFixed(1) + ' × ' + oz.toFixed(1) + ' m)');
+    }
+    I.joins.forEach(j => {
+        const tag = j.a + ' ⇄ ' + j.b + ' (' + j.kind + ')';
+        if (!I.part[j.a] || !I.part[j.b]) { err(tag + ': an end is not a part'); return; }
+        if (I.part[j.a].ground !== I.part[j.b].ground) { err(tag + ': the ends stand on two grounds'); return; }
+        if (!j.border && (I.part[j.a].zone !== j.zone || I.part[j.b].zone !== j.zone)) err(tag + ': a zone join between two zones (a border belongs in HQ_WORLD.borders)');
+        if (j.border && I.part[j.a].zone === I.part[j.b].zone) err(tag + ': a border inside one zone');
+        const a = rect[j.a], b = rect[j.b];
+        if (!a || !b) return;
+        if (j.kind === 'door' || j.kind === 'island') {
+            if (!touch(a, b)) err(tag + ': the two parts do not touch');
+            if (j.kind === 'island' && I.part[j.b].P.on !== j.a) err(tag + ': an island stands on its sea');
+            return;
+        }
+        const J = hqWorldJoinResolve(j);
+        if (!J) { err(tag + ': no side/span'); return; }
+        const Sa = hqWorldPartSize(j.a), half = (j.side === 'n' || j.side === 's') ? Sa.w / 2 : Sa.d / 2;
+        if (J.a.span[0] < -half - tol || J.a.span[1] > half + tol) err(tag + ': the span leaves a\'s ' + j.side + ' side');
+        const bEdge = J.line === 'x' ? (J.gSide === 'n' ? b.z1 : b.z0) : (J.gSide === 'w' ? b.x1 : b.x0);
+        if (Math.abs(bEdge - J.at) > tol) err(tag + ': b\'s edge lies ' + Math.abs(bEdge - J.at).toFixed(2) + ' m off the join\'s line');
+        const lo = J.line === 'x' ? b.x0 : b.z0, hi = J.line === 'x' ? b.x1 : b.z1;
+        if (J.g0 < lo - tol || J.g1 > hi + tol) err(tag + ': the span leaves b\'s side');
+        if (j.kind !== 'stair') {
+            const Pa = I.part[j.a].P, Pb = I.part[j.b].P, ya = [Pa.y || 0, (Pa.y || 0) + (Pa.rise || 0)], yb = [Pb.y || 0, (Pb.y || 0) + (Pb.rise || 0)];
+            if (J.y < ya[0] - tol || J.y > ya[1] + tol || J.y < yb[0] - tol || J.y > yb[1] + tol) err(tag + ': the join\'s height ' + J.y + ' m is not on both parts\' ground');
+        }
+    });
+    Object.keys(W.zones).forEach(zid => {
+        const Z = W.zones[zid], reach = { [Z.hub]: true };
+        let grew = true;
+        while (grew) { grew = false; (Z.joins || []).forEach(j => { if (reach[j.a] && !reach[j.b]) { reach[j.b] = true; grew = true; } if (reach[j.b] && !reach[j.a]) { reach[j.a] = true; grew = true; } }); }
+        Object.keys(Z.parts).forEach(pid => { if (!reach[pid]) err(zid + ': ' + pid + ' is not reached from the hub ' + Z.hub); });
+    });
+    const surf = Object.keys(W.zones).filter(z => W.zones[z].ground === 'surface'), zr = { forecourt: true };
+    let grew = true;
+    while (grew) { grew = false; I.joins.forEach(j => { const za = I.part[j.a] && I.part[j.a].zone, zb = I.part[j.b] && I.part[j.b].zone; if (za && zb) { if (zr[za] && !zr[zb]) { zr[zb] = true; grew = true; } if (zr[zb] && !zr[za]) { zr[za] = true; grew = true; } } }); }
+    surf.forEach(z => { if (!zr[z]) err('the surface zone ' + z + ' is not reached from the forecourt'); });
+    return { ok: errors.length === 0, errors, parts: ids.length, joins: I.joins.length };
+}
+/* THE LAND SHEET (§7, Phase 0): the map drawn from the frames — map.js's LAND tab draws what this returns. Metres are
+   metres (x east, z south; the sheet's y is the ground's z). A part is its rectangle at its frame; an absorbed room is
+   its rectangle at its spot in its field; a JOIN is a span on an edge (drawn open, in its kind's ink); a DOOR JOIN is
+   a door glyph between its two parts; a LINK's door is a glyph on the wall it stands in (the way it is today — that is
+   what the stage will turn into joins). THE FOG (§7): a room you have stood in is drawn and named; a room a seen door
+   names is a blank outline ('q'); anything else is not on the sheet; a planned part is on the sheet only with `all`
+   (the console's EW_HQ_MAP_ALL, the same flag the other sheets honour). A ground with nothing on it is not offered.
+   → { grounds: [{ id, label, n }], ground, parts, joins, doors, zones, box: { x, y, w, h }, here, beyond } */
+function hqWorldSheet(profile, curRoom, opts) {
+    opts = opts || {};
+    const W = DOOR_HQ.world, R = DOOR_HQ.rooms || {}, I = _hqWorldIndex(), all = !!opts.all;
+    const seenRec = (typeof hqRoomsSeenRecord === 'function') ? (hqRoomsSeenRecord(profile) || {}) : {};
+    const seen = id => all || !!seenRec[id] || id === curRoom;
+    /* the question marks: a room a SEEN room's door names (the directory's own rule; a secret door names nothing) */
+    const q = {};
+    (DOOR_HQ.links || []).forEach(l => {
+        if (l.secret) return;
+        const a = hqLinkRoom(l.a), b = hqLinkRoom(l.b);
+        if (a && b) { if (seen(a) && !seen(b)) q[b] = true; if (seen(b) && !seen(a)) q[a] = true; }
+    });
+    I.joins.forEach(j => { if (seen(j.a) && !seen(j.b)) q[j.b] = true; if (seen(j.b) && !seen(j.a)) q[j.a] = true; });
+    const stOf = id => (id === curRoom) ? 'here' : seen(id) ? 'seen' : q[id] ? 'q' : null;
+    const labelOf = id => { const r = R[id]; const P = I.part[id] && I.part[id].P; return String((r && (r.label || r.name)) || (P && P.planned && P.planned.label) || id).toUpperCase(); };
+    /* every drawable rectangle: the parts, then the absorbed rooms */
+    const items = [];
+    Object.keys(I.part).forEach(id => {
+        const P = I.part[id].P, rc = hqWorldPartRect(id);
+        if (!rc) return;
+        let st = P.planned ? (all ? 'planned' : null) : stOf(id);
+        if (P.planned && !all && Object.keys(P.absorbs || {}).some(r => stOf(r))) st = null;   // a field not built yet: its rooms are drawn, not the field
+        items.push({ id, zone: I.part[id].zone, ground: I.part[id].ground, st, rc, planned: !!P.planned, interior: !!P.interior, on: P.on || null, rot: P.rot || 0, absorbedBy: null });
+    });
+    Object.keys(I.absorbed).forEach(id => {
+        const rc = hqWorldPartRect(id), f = I.part[I.absorbed[id]];
+        if (!rc || !f) return;
+        items.push({ id, zone: f.zone, ground: f.ground, st: stOf(id), rc, planned: false, interior: false, on: null, rot: f.P.rot || 0, absorbedBy: I.absorbed[id] });
+    });
+    const grounds = Object.keys(W.grounds).map(g => ({ id: g, label: W.grounds[g].label, n: items.filter(it => it.ground === g && it.st).length })).filter(g => g.n > 0);
+    const hereF = curRoom ? hqWorldFrame(curRoom) : null;
+    const ground = (opts.ground && grounds.some(g => g.id === opts.ground)) ? opts.ground : (hereF && grounds.some(g => g.id === hereF.ground)) ? hereF.ground : (grounds[0] ? grounds[0].id : 'surface');
+    const parts = items.filter(it => it.ground === ground && it.st).map(it => ({
+        id: it.id, zone: it.zone, st: it.st, planned: it.planned, interior: it.interior, on: it.on, absorbedBy: it.absorbedBy,
+        label: (it.st === 'q') ? 'UNCHARTED' : labelOf(it.id), x0: it.rc.x0, z0: it.rc.z0, x1: it.rc.x1, z1: it.rc.z1, y: it.rc.y0,
+        size: hqWorldPartSize(it.id) }));
+    const drawn = {}; parts.forEach(p => { drawn[p.id] = p; });
+    const joins = [];
+    I.joins.forEach(j => {
+        const A = drawn[j.a], B = drawn[j.b];
+        if (!A || !B || A.st === 'q' && B.st === 'q') return;
+        if (j.side) {
+            const J = hqWorldJoinResolve(j);
+            if (!J) return;
+            joins.push({ key: j.a + '|' + j.b, kind: j.kind, border: !!j.border, a: j.a, b: j.b,
+                x0: J.line === 'x' ? J.g0 : J.at, z0: J.line === 'x' ? J.at : J.g0, x1: J.line === 'x' ? J.g1 : J.at, z1: J.line === 'x' ? J.at : J.g1 });
+        } else {
+            /* a door join: its glyph on the smaller part's edge nearest the bigger one's centre (on a host: toward the host's centre) */
+            const small = ((A.x1 - A.x0) * (A.z1 - A.z0) <= (B.x1 - B.x0) * (B.z1 - B.z0)) ? A : B, big = small === A ? B : A;
+            const cx = (small.x0 + small.x1) / 2, cz = (small.z0 + small.z1) / 2, bx = (big.x0 + big.x1) / 2, bz = (big.z0 + big.z1) / 2;
+            const inside = small.x0 >= big.x0 && small.x1 <= big.x1 && small.z0 >= big.z0 && small.z1 <= big.z1;
+            let gx, gz;
+            if (inside) {   // on its host: the door faces the host's middle
+                const dx = bx - cx, dz = bz - cz;
+                if (Math.abs(dx) >= Math.abs(dz)) { gx = dx >= 0 ? small.x1 : small.x0; gz = cz; } else { gx = cx; gz = dz >= 0 ? small.z1 : small.z0; }
+            } else {        // beside it: the middle of the shared stretch of edge
+                gx = Math.max(small.x0, Math.min(small.x1, Math.max(big.x0, Math.min(big.x1, cx))));
+                gz = Math.max(small.z0, Math.min(small.z1, Math.max(big.z0, Math.min(big.z1, cz))));
+            }
+            joins.push({ key: j.a + '|' + j.b, kind: j.kind, border: !!j.border, a: j.a, b: j.b, x: gx, z: gz });
+        }
+    });
+    /* the doors that are still doors: every link end on a drawn, seen part's wall (the far end named when it is known) */
+    const doors = [];
+    (DOOR_HQ.links || []).forEach(l => {
+        [['a', 'b'], ['b', 'a']].forEach(([me, other]) => {
+            const e = l[me], rid = hqLinkRoom(e), P = rid ? drawn[rid] : null;
+            if (!P || P.st === 'q' || !e || e.door) return;
+            if (l.secret && !(seen(hqLinkRoom(l[other])))) return;   // a draught you have not found is on no sheet
+            const S = P.size; if (!S) return;
+            let lx = 0, lz = 0;
+            if (e.wall === 'free') { lx = e.x; lz = e.z; }
+            else if (e.wall === 'n' || e.wall === 's') { lx = e.x || 0; lz = (e.wall === 'n' ? -1 : 1) * S.d / 2; }
+            else if (e.wall === 'e' || e.wall === 'w') { lz = e.z || 0; lx = (e.wall === 'w' ? -1 : 1) * S.w / 2; }
+            else return;
+            const g = hqWorldToZone(rid, lx, lz); if (!g) return;
+            const far = hqLinkRoom(l[other]), fst = far ? stOf(far) : null;
+            doors.push({ key: (l.id || '') + ':' + me, room: rid, to: far, x: g.x, z: g.z, way: l.way || null, secret: !!l.secret, free: e.wall === 'free',
+                         toLabel: (fst && fst !== 'q') ? labelOf(far) : (fst === 'q' ? 'UNCHARTED' : '?'), toGround: far ? ((hqWorldFrame(far) || {}).ground || 'beyond') : null });
+        });
+    });
+    const zones = [];
+    Object.keys(W.zones).forEach(zid => {
+        const ps = parts.filter(p => p.zone === zid && p.st !== 'q');
+        if (!ps.length) return;
+        const hub = ps.find(p => p.id === W.zones[zid].hub) || ps[0];   // the name sits over the zone's hub (a zone's corner can lie over another zone)
+        zones.push({ id: zid, label: W.zones[zid].label, x0: Math.min(...ps.map(p => p.x0)), z0: Math.min(...ps.map(p => p.z0)), x1: Math.max(...ps.map(p => p.x1)), z1: Math.max(...ps.map(p => p.z1)), lx: hub.x0, lz: hub.z0 });
+    });
+    let x0 = Infinity, z0 = Infinity, x1 = -Infinity, z1 = -Infinity;
+    parts.forEach(p => { x0 = Math.min(x0, p.x0); z0 = Math.min(z0, p.z0); x1 = Math.max(x1, p.x1); z1 = Math.max(z1, p.z1); });
+    if (!parts.length) { x0 = -50; z0 = -50; x1 = 50; z1 = 50; }
+    let here = null;
+    if (hereF && hereF.ground === ground) {
+        const at = (opts.feet && Number.isFinite(opts.feet.x) && Number.isFinite(opts.feet.z)) ? opts.feet : { x: 0, z: 0 };
+        const g = hqWorldToZone(curRoom, at.x, at.z);
+        if (g) here = { room: curRoom, x: g.x, z: g.z };
+    }
+    /* BEYOND: the rooms you have stood in that stand on no ground (the facility, the planets, the other realms) — by site */
+    const beyond = {};
+    Object.keys(R).forEach(id => {
+        if (I.part[id] || I.absorbed[id] || !(seen(id) && !all || all && R[id].site)) return;
+        const site = R[id].site ? hqSiteId(R[id].site) : 'hq';
+        (beyond[site] = beyond[site] || []).push(id);
+    });
+    return { grounds, ground, parts, joins, doors, zones, box: { x: x0, y: z0, w: x1 - x0, h: z1 - z0 }, here,
+             beyond: Object.keys(beyond).sort().map(site => ({ site, rooms: beyond[site].length, here: beyond[site].indexOf(curRoom) >= 0,
+                 label: String(((R[beyond[site][0]] || {}).label || site)).split('·')[0].trim().toUpperCase() })) };   // the site's name: its rooms' label before the ·
+}
 /* ── THE COMPLEXES (HQ plan 9.2 stage 1, 2026-09-15) ─────────────────────
    A site that is several rooms. The GENERATED room (hqSiteRoom) stays the
    board room; a COMPLEX is hand-authored box rooms in DOOR_HQ.rooms with

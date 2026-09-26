@@ -1737,7 +1737,7 @@ const ThreeRenderer = (function () {
     function _hqAoHook(shader) {
         shader.uniforms.uHqAo = { value: _HQ_AO }; shader.uniforms.uHqAo2 = { value: _HQ_AO2 };
         shader.vertexShader = 'varying vec3 vHqWp;\nvarying vec3 vHqWn;\n' + shader.vertexShader
-            .replace('#include <project_vertex>', '#include <project_vertex>\nvHqWp = ( modelMatrix * vec4( transformed, 1.0 ) ).xyz;\nvHqWn = normalize( mat3( modelMatrix ) * objectNormal );');
+            .replace('#include <project_vertex>', '#include <project_vertex>\n#ifdef USE_INSTANCING\nvHqWp = ( modelMatrix * instanceMatrix * vec4( transformed, 1.0 ) ).xyz;\nvHqWn = normalize( mat3( modelMatrix ) * mat3( instanceMatrix ) * objectNormal );\n#else\nvHqWp = ( modelMatrix * vec4( transformed, 1.0 ) ).xyz;\nvHqWn = normalize( mat3( modelMatrix ) * objectNormal );\n#endif');   // THE INSTANCE PASS: a batched copy's world point
         shader.fragmentShader = 'uniform vec4 uHqAo;\nuniform vec4 uHqAo2;\nvarying vec3 vHqWp;\nvarying vec3 vHqWn;\n' + shader.fragmentShader
             .replace('#include <map_fragment>', '#include <map_fragment>\nif ( uHqAo.w > 0.0 ) {\n\tvec3 hqN = abs( normalize( vHqWn ) );\n\tfloat hqR = max( uHqAo2.x, 0.001 );\n\tfloat hqFx = 1.0 - smoothstep( 0.0, hqR, uHqAo.x - abs( vHqWp.x - uHqAo2.z ) );\n\tfloat hqFz = 1.0 - smoothstep( 0.0, hqR, uHqAo.y - abs( vHqWp.z - uHqAo2.w ) );\n\tfloat hqFy = 1.0 - smoothstep( 0.0, hqR, vHqWp.y - uHqAo2.y );\n\tfloat hqFc = 1.0 - smoothstep( 0.0, hqR, uHqAo.z - vHqWp.y );\n\tfloat hqAo = 1.0 - uHqAo.w * ( hqFx * ( 1.0 - hqN.x ) + hqFz * ( 1.0 - hqN.z ) + hqFy * ( 1.0 - hqN.y ) + hqFc * ( 1.0 - hqN.y ) * 0.6 );\n\tdiffuseColor.rgb *= clamp( hqAo, 0.3, 1.0 );\n}');
     }
@@ -16771,7 +16771,7 @@ const ThreeRenderer = (function () {
         var big = false;
         root.traverse(function (o) {
             if (big || !o.isMesh) return;
-            if (o._ew_hqTerrain || o._ew_hqOuter || o._ew_hqGround || o._ew_hqTexBuilding || o._ew_hqRoadMark || o._ew_hqRoad || o._ew_hqBackdrop) { big = true; return; }
+            if (o._ew_hqInst || o._ew_hqTerrain || o._ew_hqOuter || o._ew_hqGround || o._ew_hqTexBuilding || o._ew_hqRoadMark || o._ew_hqRoad || o._ew_hqBackdrop) { big = true; return; }
             var g = o.geometry, n = g ? (g.index ? g.index.count : (g.attributes && g.attributes.position ? g.attributes.position.count : 0)) : 0;
             if (n / 3 > OCC_FIELD_TRI_MAX) big = true;
         });
@@ -27390,11 +27390,24 @@ const ThreeRenderer = (function () {
                     var b = d[3], fm = _hzLit(tex, new THREE.Color(b, b, b).getHex(), { side: THREE.DoubleSide, transparent: true });
                     fm.alphaTest = 0.1; fm.emissive = fm.color.clone().multiplyScalar(lift != null ? lift : 0.22); fm.emissiveMap = tex; fm._ew_hzNear = true; fm.needsUpdate = true;
                     var fw = d[2] ? w : dd;   // the front / back faces are w wide, the sides dd
+                    /* OPEN WORLD Phase 0 (2026-09-26, THE BUILDING MERGE): the storeys of
+                       one face are ONE mesh — a quad per storey, each wearing the whole
+                       sprite (the old per-storey planes, same vertices, same UVs). Downtown
+                       drew ~20 meshes a building; a face is now one draw call. */
+                    var fp = [], fn = [], fu = [], fi = [];
                     for (var st = 0; st < stack; st++) {
-                        var fg = new THREE.PlaneGeometry(fw, h), uv = fg.getAttribute('uv');
-                        uv.setXY(0, uL, vT); uv.setXY(1, uR, vT); uv.setXY(2, uL, vB); uv.setXY(3, uR, vB); uv.needsUpdate = true;
-                        var f = new THREE.Mesh(fg, fm); f.position.set(d[1] * (w / 2 + 1.5), st * h + h / 2, d[2] * (dd / 2 + 1.5)); f.rotation.y = d[0]; K.lit(f, !!o.cast); g.add(f);
+                        var y0 = st * h, y1 = y0 + h, b0 = st * 4;
+                        fp.push(-fw / 2, y1, 0, fw / 2, y1, 0, -fw / 2, y0, 0, fw / 2, y0, 0);
+                        fn.push(0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1);
+                        fu.push(uL, vT, uR, vT, uL, vB, uR, vB);
+                        fi.push(b0, b0 + 2, b0 + 1, b0 + 2, b0 + 3, b0 + 1);
                     }
+                    var fg = new THREE.BufferGeometry();
+                    fg.setAttribute('position', new THREE.Float32BufferAttribute(fp, 3));
+                    fg.setAttribute('normal', new THREE.Float32BufferAttribute(fn, 3));
+                    fg.setAttribute('uv', new THREE.Float32BufferAttribute(fu, 2));
+                    fg.setIndex(fi);
+                    var f = new THREE.Mesh(fg, fm); f.name = 'nr_face'; f.position.set(d[1] * (w / 2 + 1.5), 0, d[2] * (dd / 2 + 1.5)); f.rotation.y = d[0]; K.lit(f, !!o.cast); g.add(f);
                 });
             }
             if (o.roofKit === true || (o.roofKit !== false && stack >= 3)) {   // a tower's mast + its beacon
@@ -33087,7 +33100,7 @@ const ThreeRenderer = (function () {
         return _fpsEl;
     }
 
-    function _tickFpsCounter(now) {
+    function _tickFpsCounter(now, frame) {
         _fpsFrames++;
         if (!_fpsWinStart) { _fpsWinStart = now; return; }
         var span = now - _fpsWinStart;
@@ -33095,7 +33108,9 @@ const ThreeRenderer = (function () {
         var fps = Math.round(_fpsFrames * 1000 / span);
         _fpsFrames = 0; _fpsWinStart = now;
         var el = _ensureFpsEl();
-        el.textContent = fps + ' FPS';
+        /* THE WALK'S READOUT (OPEN_WORLD_PLAN.md Phase 0): in the building the counter also reads the whole frame's draw
+           calls and triangles (every pass of it: the scene, the shadow map, the post chain — _hqFrameGuarded sums them) */
+        el.textContent = fps + ' FPS' + (frame ? ' · ' + frame.calls + ' CALLS · ' + (frame.tris >= 1e6 ? (frame.tris / 1e6).toFixed(2) + 'M' : Math.round(frame.tris / 1000) + 'K') + ' TRIS' : '');
         el.style.color = fps >= 50 ? '#7dff9a' : (fps >= 28 ? '#ffd866' : '#ff6b6b');
     }
 
@@ -33105,6 +33120,7 @@ const ThreeRenderer = (function () {
        round the field's kept / culled counts (_fieldRoomStats, written by _hqBuildRoomInBattle). Compare the walk's calls
        to the battle's in the same room: the battle should be at or under the walk. */
     var _perfFrameMs = 0, _perfLastT = 0, _fieldRoomStats = null;
+    var _hqFrameInfo = null;   // { calls, tris } of the walk's last WHOLE frame (the readout's, OPEN_WORLD_PLAN.md Phase 0; null while the counter is off)
     function _perfTick(now) {
         if (_perfLastT) { var d = now - _perfLastT; if (d > 0 && d < 1000) _perfFrameMs += (d - _perfFrameMs) * 0.08; }
         _perfLastT = now;
@@ -33115,6 +33131,8 @@ const ThreeRenderer = (function () {
                  calls: r ? r.calls : 0, triangles: r ? r.triangles : 0, points: r ? r.points : 0, lines: r ? r.lines : 0,
                  geometries: m ? m.geometries : 0, textures: m ? m.textures : 0, programs: inf && inf.programs ? inf.programs.length : 0,
                  field: _fieldGroundLive(), hq: !!_hq, room: _fieldRoomStats,
+                 /* the walk's last WHOLE frame (every pass summed) while the counter is on — OPEN_WORLD_PLAN.md Phase 0 */
+                 frame: _hqFrameInfo,
                  /* THE BLOCKER SET (step 5): the fade's list, and the LAST recompute's rays / candidate roots / a rolling ms */
                  occ: (typeof _occField !== 'undefined' && _occField) ? { roots: _occField.roots.length, merged: _occField.skipped, rays: _occField.rays, tests: _occField.tests, ms: +_occField.ms.toFixed(2) } : null };
     }
@@ -55435,7 +55453,23 @@ const ThreeRenderer = (function () {
     var _hqFrameErrs = {};
     function _hqFrameGuarded() {
         var H = _hq; if (!H || !renderer) return;
-        _perfTick(performance.now());
+        var t0 = performance.now();
+        _perfTick(t0);
+        /* THE READOUT IN THE WALK (OPEN_WORLD_PLAN.md Phase 0, 2026-09-26): behind the FPS counter setting (Video), the
+           building's frame counts its draw calls across EVERY render of the frame (renderer.info resets per render call,
+           so the post chain's last quad would read as the whole frame) — the numbers the stage's budget is set against */
+        var readout = _perfSettings.fpsCounter && renderer.info;
+        if (readout) { renderer.info.autoReset = false; renderer.info.reset(); }
+        try { _hqFrameBody(H); }
+        finally {
+            if (readout) {
+                _hqFrameInfo = { calls: renderer.info.render.calls, tris: renderer.info.render.triangles };
+                renderer.info.autoReset = true;
+                if (_hq === H) { var fe = _ensureFpsEl(); if (fe.style.display !== 'block') fe.style.display = 'block'; _tickFpsCounter(t0, _hqFrameInfo); }
+            } else _hqFrameInfo = null;
+        }
+    }
+    function _hqFrameBody(H) {
         try { _hqFrame(); }
         catch (e) {
             var msg = String((e && e.message) || e), now0 = performance.now();
@@ -55483,12 +55517,182 @@ const ThreeRenderer = (function () {
         if (!_polishOff('wind', 'EW_HQ_NO_WIND')) _EW_WIND.value = now * 0.001 * (((_hqLightRules().wind || {}).speed) || 1);   // THE WIND (5.1): the foliage's shared clock (a frozen clock = still trees)
         _hqTickMotionBlur(H);   // THE THIRD PASS 6.4: the deck at speed, the long fall
         if (!H.ready) _hqGateTick(H, now);
+        if (H.ready) _hqInstTick(H, now);   // THE INSTANCE PASS (OPEN_WORLD_PLAN Phase 0): the repeated props draw as batches once the room has landed
         if (H.shadows) _hqShadowTick(H, dt);   // THE LIGHT PASS 2.1: the frustum follows the walker, the depth pass pulses (autoUpdate is off)
         if (H.reflectors && H.reflectors.length) _hqTickReflectors(H);   // THE THIRD PASS 5.4: the mirrored render before the frame
         var noPost = (typeof window !== 'undefined' && window.EW_HQ_NO_POST);
         if (!noPost && ThreePost && ThreePost.renderScene) ThreePost.renderScene(H.scene, H.camera);
         else renderer.render(H.scene, H.camera);
         if (css2dRenderer) css2dRenderer.render(H.scene, H.camera);
+    }
+    /* ══ THE INSTANCE PASS (OPEN_WORLD_PLAN.md Phase 0, 2026-09-26) ══
+       A room's catalogue props are clones of a few Meshy files: every copy shares its GEOMETRY (the misc cache, _ew_shared)
+       and its MATERIAL (_hqPropMatPick's cache, _ew_shared), yet each drew itself. Once the room is READY the pass groups
+       the meshes that share both (+ the shadow flags, the render order, the pixel mask) and, where a kind has at least
+       HQ_STAGE_RULES.instanceMin copies, draws each HQ_STAGE_RULES.instanceCell-metre cell's copies as ONE InstancedMesh.
+       The originals stay where they are — hidden, still raycast (the seat ray, the gun), still moved by whoever moves
+       them: each frame (the scene's onBeforeRender, after the matrices update and before the draw) every copy's matrix is
+       read back, a hidden or detached ancestor zeroes its copy, and a copy whose own material changed or that someone
+       showed again is handed back to its original for good. Culling stays right: each batch's frame is scaled so the
+       shared geometry's bounding sphere covers the whole cell (the instance matrices carry the inverse). Nothing here
+       changes what the player sees. It is dropped before the room leaves (the battle's hand-over takes the originals as
+       they were) and re-run when files land after the gate. Off: window.EW_HQ_NO_INSTANCE = true (then re-enter). */
+    var _hqInstObr = null, _hqInstZero = null, _hqInstM = null, _hqInstV = null, _hqInstStamp = 0;
+    function _hqInstNoop() {}
+    function _hqInstRules() {
+        var R = (typeof HQ_STAGE_RULES !== 'undefined' && HQ_STAGE_RULES) ? HQ_STAGE_RULES : {};
+        return { min: (R.instanceMin > 1) ? (R.instanceMin | 0) : 2, cell: (R.instanceCell > 0) ? +R.instanceCell : 64, rescanMs: 2000 };
+    }
+    function _hqInstOff() { return typeof window !== 'undefined' && !!window.EW_HQ_NO_INSTANCE; }
+    /* a mesh's batch key, or null when it must draw itself */
+    function _hqInstKey(o) {
+        if (!o.isMesh || o.isInstancedMesh || o.isSkinnedMesh || o._ew_silhouette || o._ew_noInstance) return null;
+        if (o.morphTargetInfluences && o.morphTargetInfluences.length) return null;
+        var g = o.geometry; if (!g || !g.isBufferGeometry || !g._ew_shared || !g.attributes || !g.attributes.position) return null;
+        if (!_hqInstObr) _hqInstObr = THREE.Object3D.prototype.onBeforeRender;
+        if (o.onBeforeRender !== _hqInstObr) return null;   // a mesh that animates itself per draw
+        var ms = Array.isArray(o.material) ? o.material : [o.material], mk = '';
+        for (var i = 0; i < ms.length; i++) {
+            var m = ms[i];
+            if (!m || !m._ew_shared || m.isShaderMaterial || m.skinning || m.morphTargets) return null;
+            if (m.onBeforeCompile !== THREE.Material.prototype.onBeforeCompile && m.onBeforeCompile !== _hqAoHook) return null;   // a vertex hook that knows no instanceMatrix (the wind, a sway)
+            mk += m.uuid + ',';
+        }
+        for (var q = o.parent; q; q = q.parent) if (q._ew_noInstance || q.isBone) return null;
+        return g.uuid + '|' + mk + '|' + (o.castShadow ? 1 : 0) + (o.receiveShadow ? 1 : 0) + (o.frustumCulled ? 1 : 0) + (o._ew_pixelate ? 1 : 0) + '|' + (o.renderOrder || 0) + '|' + (o.customDepthMaterial ? o.customDepthMaterial.uuid : '') + (o.customDistanceMaterial ? o.customDistanceMaterial.uuid : '');
+    }
+    function _hqInstScan(H) {
+        var byKey = {}, n = 0;
+        [H.propGroup, H.shellGroup, H.doorGroup].forEach(function (G) {
+            if (!G || !G.parent) return;
+            G.traverseVisible(function (o) { var k = _hqInstKey(o); if (!k) return; n++; (byKey[k] || (byKey[k] = [])).push(o); });
+        });
+        return { byKey: byKey, n: n };
+    }
+    /* the batch's frame: centred on its copies, scaled so the shared geometry's sphere holds all of them */
+    function _hqInstFit(rec) {
+        var c = rec.copies, C = new THREE.Vector3(), P = [], R = 0, k = 0, v = _hqInstV || (_hqInstV = new THREE.Vector3());
+        for (var i = 0; i < c.length; i++) {
+            var p = rec.geoC.clone().applyMatrix4(c[i].matrixWorld), r = rec.geoR * c[i].matrixWorld.getMaxScaleOnAxis();
+            P.push([p, r]); C.add(p); k++;
+        }
+        if (k) C.multiplyScalar(1 / k);
+        for (var j = 0; j < P.length; j++) R = Math.max(R, P[j][0].distanceTo(C) + P[j][1]);
+        for (var t = 0; t < c.length; t++) { var te = c[t].matrixWorld.elements; R = Math.max(R, v.set(te[12], te[13], te[14]).distanceTo(C)); }   // the sync's leave test reads the copy's origin
+        R = Math.max(R, rec.geoR) * 1.02;
+        var s = R / rec.geoR;
+        v.copy(rec.geoC).multiplyScalar(-s).add(C);
+        rec.im.matrix.makeScale(s, s, s).setPosition(v);
+        rec.im.matrixWorldNeedsUpdate = true;
+        rec.inv.copy(rec.im.matrix).invert();
+        rec.C.copy(C); rec.R = R;
+        rec.cache.fill(NaN);
+    }
+    function _hqInstDrop(H) {
+        var I = H && H.inst; if (!I) return;
+        H.inst = null;
+        if (H.scene && H.scene.onBeforeRender === I.hook) H.scene.onBeforeRender = _hqInstObr || THREE.Object3D.prototype.onBeforeRender;
+        I.recs.forEach(function (rec) {
+            rec.copies.forEach(function (o, i) { if (!rec.rel[i] && o._ew_instHidden) { o.visible = true; } o._ew_instHidden = false; });
+            try { if (rec.im.parent) rec.im.parent.remove(rec.im); rec.im.dispose(); } catch (e) {}
+        });
+        if (I.group && I.group.parent) I.group.parent.remove(I.group);
+    }
+    function _hqInstBuild(H) {
+        _hqInstDrop(H);
+        if (_hqInstOff() || !H.scene) return null;
+        if (!_hqInstZero) { _hqInstZero = new THREE.Matrix4(); _hqInstZero.elements.fill(0); _hqInstM = new THREE.Matrix4(); }
+        var grp = new THREE.Group(); grp.name = 'hq_instances';
+        var I = { group: grp, recs: [], copies: 0, batches: 0, left: 0, adds: 0, per: {}, at: performance.now(), scanAt: performance.now(), hook: null };
+        H.inst = I;
+        H.scene.add(grp);
+        I.hook = function () { _hqInstSync(H); };
+        H.scene.onBeforeRender = I.hook;
+        _hqInstAdd(H, I);
+        return I;
+    }
+    /* batch what is drawing itself now (the first pass, then every file that lands after the gate): a kind counts its
+       copies already batched toward instanceMin, so three late bins join the five already batched as a batch of their own */
+    function _hqInstAdd(H, I) {
+        var RU = _hqInstRules(), cellU = RU.cell * _hqUnits();
+        if (H.shadows) [H.propGroup, H.doorGroup].forEach(function (G) { if (G) G.traverse(function (o) { if (o.isMesh && !o._ew_shadowFlagged) _flagMeshShadows(o); }); });   // the shadow tick's own flags, now — a batch copies them once
+        H.scene.updateMatrixWorld(true);
+        var sc = _hqInstScan(H), wp = new THREE.Vector3(), added = 0;
+        I.adds++; I.left = 0;
+        Object.keys(sc.byKey).forEach(function (key) {
+            var all = sc.byKey[key];
+            if (all.length + (I.per[key] || 0) < RU.min) { I.left += all.length; return; }
+            var cells = {};
+            all.forEach(function (o) { o.getWorldPosition(wp); var ck = Math.floor(wp.x / cellU) + ',' + Math.floor(wp.z / cellU); (cells[ck] || (cells[ck] = [])).push(o); });
+            Object.keys(cells).forEach(function (ck) {
+                var list = cells[ck];
+                if (list.length < 2) { I.left += list.length; return; }
+                var m0 = list[0], geo = m0.geometry;
+                if (!geo.boundingSphere) geo.computeBoundingSphere();
+                var im = new THREE.InstancedMesh(geo, m0.material, list.length);
+                im.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+                im.name = 'hq_inst'; im.matrixAutoUpdate = false; im.raycast = _hqInstNoop;
+                im.castShadow = m0.castShadow; im.receiveShadow = m0.receiveShadow; im.renderOrder = m0.renderOrder || 0; im.frustumCulled = m0.frustumCulled;
+                if (m0.customDepthMaterial) im.customDepthMaterial = m0.customDepthMaterial;
+                if (m0.customDistanceMaterial) im.customDistanceMaterial = m0.customDistanceMaterial;
+                im._ew_pixelate = !!m0._ew_pixelate; im._ew_shadowFlagged = true; im._ew_hqInst = true; im._ew_occSkip = true;
+                var rec = { im: im, copies: list, mat: m0.material, geoC: geo.boundingSphere.center.clone(), geoR: Math.max(geo.boundingSphere.radius || 0, 1e-3),
+                            inv: new THREE.Matrix4(), C: new THREE.Vector3(), R: 0, cache: new Float32Array(list.length * 16), rel: new Uint8Array(list.length) };
+                _hqInstFit(rec);
+                list.forEach(function (o) { o.visible = false; o._ew_instHidden = true; });
+                I.group.add(im); I.recs.push(rec); I.copies += list.length; I.batches++; added++;
+                I.per[key] = (I.per[key] || 0) + list.length;
+            });
+        });
+        if (added) _hqInstSync(H, true);
+        return added;
+    }
+    /* per frame (once — the reflectors and the pixel mask render the same scene): the copies' matrices, read back */
+    function _hqInstSync(H, force) {
+        var I = H.inst; if (!I || _hq !== H) return;
+        if (!force && I.stamp === _hqInstStamp) return;
+        I.stamp = _hqInstStamp;
+        var M = _hqInstM, Z = _hqInstZero.elements, sc = H.scene;
+        for (var r = 0; r < I.recs.length; r++) {
+            var rec = I.recs[r], c = rec.copies, im = rec.im, arr = im.instanceMatrix.array, cache = rec.cache, dirty = false, refit = false;
+            if (rec.fitStamp === _hqInstStamp) refit = null;   // one refit a frame per batch
+            for (var i = 0; i < c.length; i++) {
+                var o = c[i], off = i * 16, e = null;
+                if (rec.rel[i]) continue;
+                if (o.material !== rec.mat || o.visible) {   // tinted, faded, swapped, or shown by its owner: it draws itself from now on
+                    rec.rel[i] = 1; o._ew_instHidden = false; o._ew_noInstance = true; if (!o.visible && o.material !== rec.mat) o.visible = true;
+                    e = Z; I.copies--;
+                } else {
+                    var shown = true, q = o.parent;
+                    for (; q; q = q.parent) { if (!q.visible) { shown = false; break; } if (q === sc) break; }
+                    if (!shown || q !== sc) e = Z;
+                    else {
+                        var we = o.matrixWorld.elements;
+                        /* a copy that left its batch's sphere refits the batch (a seated mug never does; a carried one might) */
+                        var dx = we[12] - rec.C.x, dy = we[13] - rec.C.y, dz = we[14] - rec.C.z;
+                        if (refit === false && dx * dx + dy * dy + dz * dz > rec.R * rec.R) refit = true;
+                        M.multiplyMatrices(rec.inv, o.matrixWorld); e = M.elements;
+                    }
+                }
+                for (var j = 0; j < 16; j++) if (cache[off + j] !== e[j]) { for (var j2 = 0; j2 < 16; j2++) { cache[off + j2] = e[j2]; arr[off + j2] = e[j2]; } dirty = true; break; }
+            }
+            if (refit) { _hqInstFit(rec); rec.fitStamp = _hqInstStamp; r--; continue; }   // the frame moved: rewrite every copy against it (the cache was cleared)
+            if (dirty) im.instanceMatrix.needsUpdate = true;
+        }
+    }
+    /* the walk's tick: build once the room is ready, re-run when later files add copies (bounded) */
+    function _hqInstTick(H, now) {
+        if (!H.ready || _hqInstOff()) { if (H.inst && _hqInstOff()) _hqInstDrop(H); return; }
+        _hqInstStamp++;
+        var I = H.inst;
+        if (!I) { if (!H._instTried) { H._instTried = true; try { _hqInstBuild(H); } catch (e) { console.warn('[HQ] the instance pass failed — the props draw one by one', e); try { _hqInstDrop(H); } catch (e2) {} } } return; }
+        if (now - I.scanAt < _hqInstRules().rescanMs) return;
+        I.scanAt = now;
+        if (_hqInstScan(H).n !== I.left) { try { _hqInstAdd(H, I); } catch (e) { console.warn('[HQ] the instance pass failed — the props draw one by one', e); try { _hqInstDrop(H); } catch (e2) {} } }   // a file landed (or a copy was handed back): batch what now repeats
+    }
+    function _hqInstStats(H) {
+        var I = H && H.inst; if (!I) return null;
+        return { batches: I.batches, copies: I.copies, left: I.left, adds: I.adds };
     }
     /* THE GATE (2026-09-20): the room is READY — the load card may fade — when the walker's rig has attached
        (or the walker has no rig to wait for: 3D units off, a model that failed) AND the room's gate is idle:
@@ -56572,6 +56776,8 @@ const ThreeRenderer = (function () {
         if (opts && opts.dissolve) { try { _hqDissolveStart(H, (typeof opts.dissolve === 'object') ? opts.dissolve : null); } catch (e) { console.warn('[HQ] the dissolve did not start', e); } }
         _hqUnbindInput();
         _hq = null;
+        try { _hqInstDrop(H); } catch (e) {}   // THE INSTANCE PASS: the originals draw again before the hand-over / the disposal
+        _hqFrameInfo = null; if (_fpsEl && !active) _fpsEl.style.display = 'none';   // the walk's readout leaves with the walk (the battle's activate shows its own)
         try { if (H.gate) H.gate.close(); } catch (e) {}
         try { _mqDropQueued(2); } catch (e) {}   // THE ASSET LEDGER: this room's unstarted background jobs (its population, a warm) are forgotten with it
         try { if (typeof ThreePost !== 'undefined' && ThreePost.setSceneLook) ThreePost.setSceneLook(null); } catch (e) {}   // the room's look leaves with the room
@@ -56907,6 +57113,7 @@ const ThreeRenderer = (function () {
             renderer: function () { return renderer; },
             /* the building's own scene (the walkthrough probes, 2026-09-11) */
             hqScene: function () { return _hq ? _hq.scene : null; },
+            hqInst: function () { return _hqInstStats(_hq); },
             /* {deg, r} | {x, z}, level, y (extra), face (heading), pitch, dist, fp */
             teleport: function (o) {
                 if (!_hq || !_hq.player) return false;
@@ -57625,7 +57832,7 @@ const ThreeRenderer = (function () {
             _perfSettings.fpsCounter = !!on;
             _fpsFrames = 0; _fpsWinStart = 0;
             var el = _ensureFpsEl();
-            el.style.display = (on && active) ? 'block' : 'none';
+            el.style.display = (on && (active || _hq)) ? 'block' : 'none';   // the walk has the readout too (OPEN_WORLD_PLAN.md Phase 0)
             if (on) el.textContent = '-- FPS';
             try { localStorage.setItem('ew_fpsCounter', on ? '1' : '0'); } catch (e) {}
         },
