@@ -654,3 +654,15 @@ so RAW CLIPS fills (the race model itself is R2-only: the stage shows `ew-cv-fai
 `aoe-mask.test.js` (presets, clipping, the four readers' parity on every shipped aoe / cross row + every preset,
 the shaped fields on the card, the lint + the mana formula, `_aoeBound`) and `spell-anim-pick.test.js` (the pick's
 precedence, the slot: kind string, every verb's chain, `registerSpellAnimClips`, the census pin).
+
+## THE SPELL LIBRARY v2 — THE TARGETING (2026-09-26, Phase 3, token 20260926-spell-library-04-cors)
+The TARGET tab's RIDERS group always shows `randomTargets` and `splash` on a damage row (ui.js `_slb2RiderEditor`):
+unset = one ＋ button that writes the plan's defaults (`_SLB2_RIDER_DEFAULTS`: 3 distinct enemies × 1; splash × 0.5
+radius 1 enemies); set = SHOTS number · ENEMIES / ANY UNIT · DISTINCT / REPEATS · × per hit, or × · RADIUS (or
+"drawn" when the SPLASH grid holds a mask) · ENEMIES / ANY UNIT, with a line in words of what the normaliser makes
+of it (the engine reads data.js `spellRandomTargetsOf` / `spellSplashOf`). Every change rewrites the whole object
+through `_slbSetField` (one undo step, `_slb2RiderWrite`); the field's ✕ drops the rider; adding a splash makes
+the SPLASH grid appear under the FOOTPRINT. A non-damage kind gets the button greyed and an amber "damage rows only".
+The rail's HAS group gains "random / splash" (`riders` flag). The rack / HQ blades: 🎲×N and SPL N% badges
+(hud.js `_hrlgRiderBadges`) and a splash row's card shape; the board: a random row's self-cast preview washes its
+range and lights the pool, a splash row's hover lights the splash tiles with dmg × mult badges. CSS `.slb2-rider*`.

@@ -890,3 +890,39 @@ included; aliases warn), appends added rows to their home array, removes deleted
 share references left behind), rewrites learn orders, turns movepool adds into the "Baked movepool shares" table,
 patches the registries row by row, then runs `npm run test:quick`. Test: `spell-schema.test.js`. Phase 1 (the new
 screen) is next; the v1 editor keeps working on the v2 doc meanwhile.
+
+## THE SPELL LIBRARY — Phase 3, THE TARGETING (2026-09-26, local delivery: spell-library/ENTROPY_WARS_SPELL_LIBRARY_3.zip, token 20260926-spell-library-04-cors)
+SPELL_LIBRARY_PLAN.md §4.7 / §6.2 / §9 row 3. Two RIDERS on a `kind: 'damage'` row (any other kind ignores them —
+the lint says `riderKind`; a malformed object says `riderInvalid`). data.js owns the normalisers every reader goes
+through: `spellRandomTargetsOf(def)` → `{ count 1–8, scope 'enemies'|'units', distinct, mult }` or null,
+`spellSplashOf(def)` → `{ mult (0.5), radius 1–3, mask|null, team 'enemies'|'units' }` or null, `splashOffsets` /
+`splashTilesAround` (the origin is never a splash tile), `pickRandomTargets(pool, count, distinct, rng)` (pure, ONE
+rng draw per pick). **randomTargets**: `_kindMeta` returns `_RANDOM_KIND_META` (selfCast + offensive + breaks
+stealth, minRange 0) so the cast needs no aim; the POOL is `_getSpellValidTargets` of the row WITHOUT the rider
+(`_riderBaseDef` — range, 3D reach, LOS, fog, taunt, usability) minus the caster, allies (unless scope 'units', via
+`_riderAnyTeam`), realm-shielded and cryptid-hidden units (`_randomTargetPool`). doSpell's `_rndRider` branch draws
+with `engineRng` (host only) and `_castRandomTargets` runs the caster's clip + camera + the first shot through
+`executeSpellAnimation` (cameraOpts frame every pick), then one volley per further pick 260 ms apart
+(`playSpellRiderFx('shot')` + `_applyDamageSpellHit` with dmg × mult). No victim ⇒ the cast is refused before
+anything is spent; `hasSpellTargetInRange` greys the row the same way; `getSpellRangeTiles` = the caster's tile +
+the row's range disc (the self-cast preview washes it faintly and lights the pool). **splash**: `_applyDamageSpellHit`
+calls `_applySplashDamage` after the primary hit and BEFORE `_runPostEffects` (a push never moves the origin first):
+the `team` units on the splash tiles round the victim (never the victim, never the caster, not realm-shielded) take
+`computeSpellBase × mult` (one variance draw, only when something is splashed) through `applyDamageToUnit` —
+damage type, element, `bonusVsStatus` ride; statuses do NOT (the primary hit carries them). Turrets / doors /
+buildings / objects on splash tiles are NOT hit (the splash is a unit rider, not an area cast). **Online**: nothing
+new on `state` or units; the guest never re-rolls — damage arrives by state-sync and the extra shots + the splash
+ring by the `'rider-fx'` relay (online.js wraps `playSpellRiderFx`; the guest fog-gates a shot on either end, a
+ring on its centre). **AI** (ai.js): `findSpellTarget` returns the caster for a random row once an enemy is in
+reach; `scoreSpell` = mean hit over the pool × the hits it lands (allies in reach dilute a scope-'units' roll); a
+splash row's hit adds `_splashBonus` (enemies round the victim at × mult, minus allies for team 'units') and the
+picker prefers the victim with the most worth round it. check-ai-spell-dispatch.js prints a `riders` block.
+**Presentation**: the rack / HQ blades wear 🎲×N and SPL N% badges (hud.js `_hrlgRiderBadges`); a splash row's
+card shape is the victim + its splash tiles; the board hover paints the splash tiles and forecasts dmg × mult there
+(no statuses); `describeSpell` says "to 3 different random enemies in range — no aim" / "Splashes 50% of it onto
+every enemy adjacent to the target"; `computeSpellManaCost` prices random as count × mult targets and a splash as
+1 + tiles × mult / 3. **Two example rows** (`SPELL_RIDER_EXAMPLES`, registered in SPELL_BY_ID only — no race row,
+job row or family, so no player can equip them until the user keeps one via the library's POOLS or deletes it):
+Scatter Shot `riderScatterShot` (64 physical, 3 distinct random enemies in range 4) and Impact Round
+`riderImpactRound` (90 physical, 50 % splash radius 1). Tests: `spell-riders.test.js`, `ai-spell-routing.test.js`
+(three rows). Not playtested live.
