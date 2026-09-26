@@ -206,3 +206,19 @@ Append new notes for this system at the end of this file.
   readers + `HQ_STAGE_RULES.zones`; three-renderer.js `_hqPartFields` (the part's own record), `_hqStage*`
   (build, attach, feet past the edge, the swap, the ring, the lamp budget, the sky blend), the 32 m terrain
   tiles; map.js `_hqStageCrossed`. Off: `window.EW_HQ_NO_STAGE`. Test: hq-stage.test.js.
+- Phase 2 shipped 2026-09-26 (the plan's §12, token 20260926-open-world-03-cors), with THE FILE TRACKER
+  (fork 5 ruled to the default). three-renderer.js:
+  - owned gates (`_alGateOpen(name, { own: true })` plus `_alOwner`), `G.idleExcept`, `_hqTrkScan` and
+    `_hqStageReady` (a part attaches when its near files are in);
+  - THE FILE BOOK (`ew_hqFileBook_v1`, `hq.fileBook(id)`) and THE WARM (`_hqWarmTick`, `_asPrefetch`);
+  - door joins: `_hqJoinDoorTick`, `_hqDoorSleeve`, the wall cut in `_hqBuildBoxShell`, box lamps/people
+    on a neighbour, `_hqCharIdSuffix`.
+
+  data.js:
+  - zone `medwing` (the five medical rooms as door joins, ground `hq`);
+  - `hqWorldDoorJoinResolve`, `hqStageDoorJoin`, `hqShellSideOpen`;
+  - `hqTerrainStitchRows` plus the stitch in `hqTerrainCompile` (only between staged parts);
+  - `HQ_WORLD_RULES.wallM`, `HQ_STAGE_RULES.nearPropM / propsGate / trkMs / nbPeople`.
+
+  The plan's §5.9 lists the engine gaps (LOD, compression, workers, shader warm-up, batching, portals,
+  memory budget, 3D audio, cascades) as Phases 10-14. Test: hq-joins.test.js.
