@@ -9040,32 +9040,337 @@
             window._refreshWallets();
         };
 
-        /* ═══════════════════════════════════════════════════════════════════
-           SPELL LIBRARY — dev tool (Settings → Developer → Spell Library)
-
-           A codex-style screen over the live spell tables. Three jobs:
-           1. EDIT — every field of every spell/ability (add / delete /
-              duplicate / rename), backed by the EWSpellMods diff layer
-              (data.js tail): edits persist in localStorage, apply live to
-              the tables, and survive reloads.
-           2. MOVEPOOLS — reassign CLASS_SPELL_LEARN_ORDER (job learnsets)
-              and RACE_ABILITIES (race movepools) by id, with ordering.
-           3. SPELL LAB — boots a real-engine sandbox (8×8 flat, caster vs
-              inert dummy, free casting) to preview the full cast: rigged
-              cast anim + staging + projectile + impact VFX + action camera.
-           Export hands Claude a JSON diff to make permanent in data.js.
+        /* ═══════════════════════════════════════════════════════════════
+           SPELL LIBRARY v2 — THE SHELL (SPELL_LIBRARY_PLAN.md §5, Phase 1, 2026-09-26)
+           Settings → Developer → Spell Library. Same page (#spellLibraryPage), same diff layer
+           (EWSpellMods, data.js tail), same Spell Lab + timeline (the blocks after this one, docked
+           as they were). What is new: a RAIL of filter chips with counts, a virtualised TABLE with
+           every attribute a sortable column (two keys, shift-click), CARDS, saved views, an
+           INSPECTOR with STATS · TARGET · EFFECTS · UPGRADES · LOOK · NOTES · RAW tabs, a 50-deep
+           UNDO stack over the doc, NEW ▾ templates, BULK edit, the PASSIVES / FAMILIES / UPGRADES /
+           POOLS / REPORT tabs, the EXPORT preview and the IMPORT diff. Every edit is a DOM PATCH of
+           the one cell / field / chip (no innerHTML of the pane); the screen renders once per tab.
+           Events are delegated from #spellLibraryBody (data-act / data-field), never inline strings.
+           The block between SLB2 PURE BEGIN / END is DOM-free and runs in spell-library-ui.test.js.
            ═══════════════════════════════════════════════════════════════ */
 
-        let _slbTab = 'spells';               // 'spells' | 'movepools'
-        let _slbSelectedId = null;
+        let _slbTab = 'spells';               // spells | passives | families | upgrades | pools | report
+        let _slbSelectedId = null;            // the inspected row (the Lab reads it)
         let _slbSearch = '';
-        let _slbFilters = { source: 'all', type: 'all', kind: 'all', spellType: 'all', element: 'all', job: 'all', race: 'all' };
-        let _slbSort = 'name';
-        let _slbMpMode = 'jobs';              // 'jobs' | 'races'
+        let _slbFilters = null;               // _slb2EmptyFilters() — arrays, so a saved view is JSON
+        let _slbSort = [{ key: 'name', dir: 1 }];
+        let _slbView = 'table';               // table | cards
+        let _slbInsTab = 'stats';             // stats | target | effects | upgrades | look | notes | raw
+        let _slbSelection = [];               // bulk selection (ids), in click order
+        let _slbAnchorId = null;              // shift-click anchor
+        let _slbMpMode = 'jobs';              // POOLS: jobs | races
         let _slbMpKey = null;
         let _slbMpSearch = '';
-        let _slbRawOpen = false;
+        let _slbFamKey = null;                // FAMILIES: the inspected family
+        let _slbUpKey = null;                 // UPGRADES: the inspected upgrade
+        let _slbPasSection = 'family';        // PASSIVES: family | inherent
+        let _slbRowsCache = null;             // _slb2Rows() memo, dropped by _slb2Dirty()
+        let _slbFilteredCache = null;
+        let _slbUndo = null;                  // _Slb2UndoStack
+        let _slbWinFrom = -1, _slbWinTo = -1; // the rendered table window
+        let _slbNarrow = false;
+        let _slbRailOpen = false, _slbSheetOpen = false;
+        let _slbNoteTimer = null;
 
+        /* SLB2 PURE BEGIN — DOM-free: the row model, the column model, the filter / sort model, the undo stack,
+           the summary markdown, the redundancy query. spell-library-ui.test.js slices this block out of ui.js and
+           runs it in load-data's sandbox, so it may use data.js globals and nothing from the browser. */
+        const _SLB2_ROLE_COLORS = { damage: '#ff6a5c', damageEffect: '#ff9a3d', effect: '#b48cff', heal: '#5ad98a', utility: '#5cb8ff',
+            movement: '#4fe0e0', deploy: '#ffc247', terrain: '#c48a5a', passive: '#c9c9d6' };
+        const _SLB2_ROLE_LABELS = { damage: 'DAMAGE', damageEffect: 'DMG+FX', effect: 'EFFECT', heal: 'HEAL', utility: 'UTILITY',
+            movement: 'MOVE', deploy: 'DEPLOY', terrain: 'TERRAIN', passive: 'PASSIVE' };
+        const _SLB2_ROLES = ['damage', 'damageEffect', 'effect', 'heal', 'utility', 'movement', 'deploy', 'terrain', 'passive'];
+        const _SLB2_LINT_LEVEL = { red: 3, amber: 2, grey: 1 };
+        const _SLB2_UNDO_DEPTH = 50;
+
+        /* The footprint a row would light (7×7 around the centre): the mask first, then the cross / line / radius
+           fields the engine reads today. null = a single target. */
+        function _slb2Footprint(d) {
+            if (!d) return null;
+            const cells = new Set();
+            const add = (x, y) => { if (Math.abs(x) <= 3 && Math.abs(y) <= 3) cells.add(x + ',' + y); };
+            if (Array.isArray(d.aoeMask) && d.aoeMask.length && (typeof aoeMaskValid !== 'function' || aoeMaskValid(d.aoeMask))) {
+                d.aoeMask.forEach(p => add(p[0], p[1]));
+                const preset = (typeof aoeMaskPresetOf === 'function') ? aoeMaskPresetOf(d.aoeMask) : null;
+                return { kind: 'mask', cells, r: 3, label: preset ? preset : cells.size + ' tiles', n: cells.size };
+            }
+            const k = d.kind || '';
+            if (d.crossRadius) {
+                const r = Math.min(3, d.crossRadius);
+                for (let y = -r; y <= r; y++) for (let x = -r; x <= r; x++) {
+                    if (d.diamond ? (Math.abs(x) + Math.abs(y) <= r) : (x === 0 || y === 0 || (d.diagonal && Math.abs(x) === Math.abs(y)))) add(x, y);
+                }
+                return { kind: d.diamond ? 'diamond' : 'cross', cells, r, label: (d.diamond ? 'diamond ' : 'cross ') + d.crossRadius, n: cells.size };
+            }
+            if (d.lineWidth || k === 'line' || k === 'linePush') {
+                const len = Math.min(7, d.tileCount || d.range || 4), w = Math.min(3, d.lineWidth || 1);
+                const offs = w === 1 ? [0] : w === 2 ? [0, 1] : [-1, 0, 1];
+                for (let i = 0; i < len; i++) offs.forEach(j => add(j, i - 3));
+                return { kind: 'line', cells, r: 3, label: 'line' + (w > 1 ? ' ×' + w : ''), n: cells.size };
+            }
+            const r0 = d.blastRadius || ((d.aoeRadius != null && d.aoeRadius > 0) ? d.aoeRadius : 0);
+            if (r0) {
+                const r = Math.min(3, r0), shape = d.aoeShape || (d.diamond ? 'diamond' : 'square');
+                for (let y = -r; y <= r; y++) for (let x = -r; x <= r; x++) {
+                    const cheb = Math.max(Math.abs(x), Math.abs(y)), man = Math.abs(x) + Math.abs(y);
+                    const on = shape === 'diamond' ? man <= r : shape === 'ring' ? cheb === r : shape === 'round' ? (x * x + y * y <= r * r + r) : true;
+                    if (on) add(x, y);
+                }
+                return { kind: shape, cells, r, label: (r0 * 2 + 1) + '×' + (r0 * 2 + 1) + (shape !== 'square' ? ' ' + shape : ''), n: cells.size };
+            }
+            return null;
+        }
+        /* Every status a row applies (target / ally / team / self / collision), de-duplicated. */
+        function _slb2StatusRows(d) {
+            const out = [];
+            const push = (s, who) => {
+                if (!s) return;
+                const id = typeof s === 'string' ? s : s.id;
+                if (!id || out.some(r => r.id === id && r.who === who)) return;
+                out.push({ id, dur: (typeof s === 'object' && s.duration) || 0, who });
+            };
+            (Array.isArray(d.statusEffects) ? d.statusEffects : []).forEach(s => push(s, 'target'));
+            (Array.isArray(d.allyStatusEffects) ? d.allyStatusEffects : []).forEach(s => push(s, 'ally'));
+            (Array.isArray(d.teamStatusEffects) ? d.teamStatusEffects : []).forEach(s => push(s, 'team'));
+            (Array.isArray(d.selfStatusEffects) ? d.selfStatusEffects : []).forEach(s => push(s, 'self'));
+            if (d.collisionStatus) push(d.collisionStatus, 'target');
+            if (d.enterStatus) push(d.enterStatus, 'target');
+            return out;
+        }
+        function _slb2Sum(arr) { return Array.isArray(arr) ? arr.reduce((n, v) => n + (Number(v) || 0), 0) : 0; }
+        /* One row of the table: the def plus every computed cell. `meta` = { added, modified, deleted, isRace, jobs, races },
+           `ctx` = spellLintContext() (computed once per build). */
+        function _slb2RowOf(id, d, meta, ctx) {
+            const tier = (typeof spellTierOf === 'function') ? spellTierOf(d) : (d.tier || 1);
+            const role = (typeof spellRoleOf === 'function') ? spellRoleOf(d) : (d.role || 'utility');
+            const fams = (typeof spellFamiliesOf === 'function') ? spellFamiliesOf(d) : (Array.isArray(d.families) ? d.families : []);
+            const statuses = _slb2StatusRows(d);
+            const dmg = typeof d.dmg === 'number' ? d.dmg : (Array.isArray(d.hitDamages) && d.hitDamages.length ? _slb2Sum(d.hitDamages) : (typeof d.dashDamage === 'number' ? d.dashDamage : 0));
+            const heal = typeof d.heal === 'number' ? d.heal : typeof d.healAmt === 'number' ? d.healAmt : typeof d.healPerTurn === 'number' ? d.healPerTurn : 0;
+            const push = d.pushDistance ? '→' + d.pushDistance : d.pullToCenter ? '⇥' : d.pullDistance ? '←' + d.pullDistance : d.displaceDistance ? '↕' + d.displaceDistance : '';
+            const pushN = d.pushDistance || 0 || -(d.pullDistance || (d.pullToCenter ? 9 : 0)) || (d.displaceDistance || 0);
+            let anim = '';
+            try { if (typeof classifySpellAnimKind === 'function') anim = d.animVerb || d.animSlot || (d.animClip && d.animClip.name) || classifySpellAnimKind(d) || ''; } catch (e) { anim = ''; }
+            const lint = (typeof spellLint === 'function') ? spellLint(d, ctx) : [];
+            const lintMax = lint.reduce((m, h) => Math.max(m, _SLB2_LINT_LEVEL[h.level] || 0), 0);
+            const bonus = d.bonusVsStatus && d.bonusVsStatus.status ? { ids: [].concat(d.bonusVsStatus.status), mult: d.bonusVsStatus.mult || 1.5 } : null;
+            const races = meta.races || [], jobs = meta.jobs || [];
+            const owner = d._doorWheel ? 'door wheel' : races.length > 1 ? 'shared ×' + races.length : races.length === 1 ? races[0] : jobs.length ? jobs.join(', ') : (meta.added ? 'new' : '—');
+            const searchText = [id, d.name, d.desc, d.notes, d.kind, d.type, d.element, fams.join(' '), owner, anim, statuses.map(s => s.id).join(' ')].join(' ').toLowerCase();
+            return {
+                id, def: d, added: !!meta.added, modified: !!meta.modified, deleted: !!meta.deleted, isRace: !!meta.isRace,
+                jobs, races, owner, isDoor: !!d._doorWheel,
+                tier, sp: (typeof SPELL_TIER_SP !== 'undefined' && SPELL_TIER_SP[tier]) || tier, mp: typeof d.cost === 'number' ? d.cost : null,
+                ap: typeof d.apCost === 'number' ? d.apCost : 1, cd: d.cooldownRounds || 0,
+                role, element: d.element || '', combat: !!(d.element && typeof COMBAT_ELEMENTS !== 'undefined' && COMBAT_ELEMENTS.includes(d.element)),
+                faction: d.spellType || '', kind: d.kind || '', type: d.type || '',
+                dmg, hits: Array.isArray(d.hitDamages) ? d.hitDamages.length : 0, heal, range: typeof d.range === 'number' ? d.range : null,
+                minRange: typeof d.minRange === 'number' ? d.minRange : null,
+                foot: _slb2Footprint(d), statuses, bonus, push, pushN,
+                deploy: d.maxActivePerCaster || 0, families: fams, anim, lint, lintMax,
+                hasNotes: typeof d.notes === 'string' && d.notes.trim().length > 0,
+                edit: meta.deleted ? 'del' : meta.added ? 'new' : meta.modified ? 'mod' : '',
+                passive: d.kind === 'passive', searchText,
+            };
+        }
+
+        /* THE COLUMNS (§5.2). pri: 0 always shown, 1 hidden under 1,400 px, 2 hidden under 1,100 px (the CSS reads
+           slb-pri-N). sort: the comparable value; desc: numeric columns open descending. */
+        const _SLB2_COLUMNS = [
+            { key: 'name',     label: 'NAME',     pri: 0, w: 'minmax(150px, 1.6fr)', sort: r => String(r.def.name || r.id).toLowerCase() },
+            { key: 'tier',     label: 'TIER',     pri: 0, w: '62px',  sort: r => r.tier, desc: true },
+            { key: 'mp',       label: 'MP',       pri: 0, w: '44px',  sort: r => r.mp == null ? -1 : r.mp, desc: true },
+            { key: 'ap',       label: 'AP',       pri: 2, w: '36px',  sort: r => r.ap, desc: true },
+            { key: 'cd',       label: 'CD',       pri: 2, w: '36px',  sort: r => r.cd, desc: true },
+            { key: 'role',     label: 'ROLE',     pri: 0, w: '78px',  sort: r => _SLB2_ROLES.indexOf(r.role) },
+            { key: 'element',  label: 'ELEM',     pri: 0, w: '52px',  sort: r => r.element || '~' },
+            { key: 'faction',  label: 'FACTION',  pri: 1, w: '78px',  sort: r => r.faction || '~' },
+            { key: 'kind',     label: 'KIND',     pri: 1, w: 'minmax(90px, 0.9fr)', sort: r => r.kind },
+            { key: 'dmg',      label: 'DMG',      pri: 0, w: '60px',  sort: r => r.dmg, desc: true },
+            { key: 'heal',     label: 'HEAL',     pri: 1, w: '48px',  sort: r => r.heal, desc: true },
+            { key: 'range',    label: 'RANGE',    pri: 0, w: '62px',  sort: r => r.range == null ? -1 : r.range, desc: true },
+            { key: 'aoe',      label: 'AOE',      pri: 0, w: '62px',  sort: r => r.foot ? r.foot.n : 0, desc: true },
+            { key: 'status',   label: 'STATUS',   pri: 0, w: 'minmax(70px, 0.9fr)', sort: r => r.statuses.length ? r.statuses.map(s => s.id).join(',') : '~' },
+            { key: 'bonus',    label: 'BONUS',    pri: 1, w: '70px',  sort: r => r.bonus ? r.bonus.mult : 0, desc: true },
+            { key: 'push',     label: 'PUSH',     pri: 2, w: '46px',  sort: r => r.pushN, desc: true },
+            { key: 'deploy',   label: 'DEPLOY',   pri: 2, w: '52px',  sort: r => r.deploy, desc: true },
+            { key: 'families', label: 'FAMILIES', pri: 1, w: 'minmax(70px, 0.8fr)', sort: r => r.families.join(',') || '~' },
+            { key: 'owner',    label: 'OWNER',    pri: 0, w: 'minmax(80px, 0.9fr)', sort: r => r.owner },
+            { key: 'anim',     label: 'ANIM',     pri: 2, w: 'minmax(70px, 0.7fr)', sort: r => r.anim || '~' },
+            { key: 'lint',     label: 'LINT',     pri: 0, w: '44px',  sort: r => r.lintMax, desc: true },
+            { key: 'edit',     label: '',         pri: 0, w: '40px',  sort: r => r.edit === 'del' ? 3 : r.edit === 'new' ? 2 : r.edit === 'mod' ? 1 : 0, desc: true },
+        ];
+        const _SLB2_COL_BY_KEY = {};
+        _SLB2_COLUMNS.forEach(c => { _SLB2_COL_BY_KEY[c.key] = c; });
+
+        /* THE FILTERS — arrays so a saved view is plain JSON. owners hold 'race:<r>' / 'job:<j>'; flags are the
+           computed chips (status, bonus, aoe, movement, heal, deploy, terrain, edited, offpool, notes, deleted, passive);
+           lint holds rule ids; source ∈ lib | race | door. */
+        function _slb2EmptyFilters() {
+            return { source: [], families: [], roles: [], elements: [], kinds: [], owners: [], tiers: [], flags: [], lint: [] };
+        }
+        function _slb2FiltersEmpty(f) { return !f || Object.keys(f).every(k => !(f[k] || []).length); }
+        function _slb2RowHasFlag(r, flag) {
+            switch (flag) {
+                case 'status': return r.statuses.length > 0;
+                case 'bonus': return !!r.bonus;
+                case 'aoe': return !!r.foot;
+                case 'movement': return r.role === 'movement' || r.def.kind === 'dash' || !!r.def.dashDamage;
+                case 'heal': return r.heal > 0 || r.role === 'heal';
+                case 'deploy': return r.role === 'deploy' || r.deploy > 0;
+                case 'terrain': return r.role === 'terrain' || !!r.def.leaveTerrain || !!r.def.terrainType;
+                case 'edited': return r.added || r.modified || r.deleted;
+                case 'offpool': return r.lint.some(h => h.rule === 'offPool');
+                case 'notes': return r.hasNotes;
+                case 'deleted': return r.deleted;
+                case 'passive': return r.passive;
+                case 'push': return !!r.push;
+                default: return false;
+            }
+        }
+        function _slb2MatchRow(r, f, q) {
+            if (q && r.searchText.indexOf(q) < 0) return false;
+            if (!f) return true;
+            if (f.source.length && !f.source.some(s => s === 'lib' ? (!r.isRace && !r.isDoor) : s === 'race' ? r.isRace : s === 'door' ? r.isDoor : true)) return false;
+            if (f.families.length && !f.families.some(x => r.families.includes(x))) return false;
+            if (f.roles.length && !f.roles.includes(r.role)) return false;
+            if (f.elements.length && !f.elements.includes(r.element || '(none)')) return false;
+            if (f.kinds.length && !f.kinds.includes(r.kind)) return false;
+            if (f.owners.length && !f.owners.some(o => o.indexOf('race:') === 0 ? r.races.includes(o.slice(5)) : o.indexOf('job:') === 0 ? r.jobs.includes(o.slice(4)) : false)) return false;
+            if (f.tiers.length && !f.tiers.includes(r.tier)) return false;
+            if (f.flags.length && !f.flags.every(x => _slb2RowHasFlag(r, x))) return false;
+            if (f.lint.length && !f.lint.some(x => r.lint.some(h => h.rule === x))) return false;
+            return true;
+        }
+        function _slb2SortRows(rows, sort) {
+            const keys = (sort && sort.length ? sort : [{ key: 'name', dir: 1 }]).map(s => ({ col: _SLB2_COL_BY_KEY[s.key] || _SLB2_COL_BY_KEY.name, dir: s.dir || 1 }));
+            const cmp = (a, b) => {
+                for (const s of keys) {
+                    const av = s.col.sort(a), bv = s.col.sort(b);
+                    let c = typeof av === 'number' && typeof bv === 'number' ? av - bv : String(av).localeCompare(String(bv));
+                    if (c) return c * s.dir;
+                }
+                return String(a.def.name || a.id).localeCompare(String(b.def.name || b.id));
+            };
+            return rows.slice().sort(cmp);
+        }
+        /* Counts per chip over `rows` (the search-filtered set): what clicking the chip would show. */
+        function _slb2FilterCounts(rows) {
+            const c = { source: {}, families: {}, roles: {}, elements: {}, kinds: {}, owners: {}, tiers: {}, flags: {}, lint: {} };
+            const inc = (g, k) => { c[g][k] = (c[g][k] || 0) + 1; };
+            const FLAGS = ['status', 'bonus', 'aoe', 'push', 'movement', 'heal', 'deploy', 'terrain', 'passive', 'notes', 'edited', 'offpool', 'deleted'];
+            rows.forEach(r => {
+                inc('source', r.isDoor ? 'door' : r.isRace ? 'race' : 'lib');
+                r.families.forEach(f => inc('families', f));
+                inc('roles', r.role);
+                inc('elements', r.element || '(none)');
+                inc('kinds', r.kind || '(none)');
+                r.races.forEach(x => inc('owners', 'race:' + x));
+                r.jobs.forEach(x => inc('owners', 'job:' + x));
+                inc('tiers', r.tier);
+                FLAGS.forEach(fl => { if (_slb2RowHasFlag(r, fl)) inc('flags', fl); });
+                r.lint.forEach(h => inc('lint', h.rule));
+            });
+            return c;
+        }
+        /* THE UNDO STACK (§5.1): whole-doc snapshots (the doc is a sparse diff, so a snapshot is small), 50 deep. */
+        function _Slb2UndoStack(depth) {
+            this.depth = depth || _SLB2_UNDO_DEPTH;
+            this.past = []; this.future = [];
+        }
+        _Slb2UndoStack.prototype.push = function (label, before, after) {
+            this.past.push({ label, before: JSON.parse(JSON.stringify(before)), after: JSON.parse(JSON.stringify(after)) });
+            if (this.past.length > this.depth) this.past.shift();
+            this.future.length = 0;
+        };
+        _Slb2UndoStack.prototype.undo = function () { const e = this.past.pop(); if (!e) return null; this.future.push(e); return e; };
+        _Slb2UndoStack.prototype.redo = function () { const e = this.future.pop(); if (!e) return null; this.past.push(e); return e; };
+        _Slb2UndoStack.prototype.canUndo = function () { return this.past.length > 0; };
+        _Slb2UndoStack.prototype.canRedo = function () { return this.future.length > 0; };
+
+        /* A new id: camelCase, unique against the live map, the doc's added and deleted lists. */
+        function _slb2ValidId(id, taken) {
+            if (typeof id !== 'string' || !id.trim()) return 'type an id';
+            if (!/^[a-z][A-Za-z0-9]*$/.test(id)) return 'camelCase only (letters and digits, starting lower-case)';
+            if (taken && taken(id)) return `"${id}" is taken`;
+            return null;
+        }
+        function _slb2Median(nums) {
+            const a = nums.filter(n => typeof n === 'number' && isFinite(n)).sort((x, y) => x - y);
+            if (!a.length) return null;
+            return a.length & 1 ? a[a.length >> 1] : Math.round((a[a.length / 2 - 1] + a[a.length / 2]) / 2);
+        }
+        /* THE REDUNDANCY QUERY (§5.9): same kind + element + status set + AOE class, dmg within 20 → one group. */
+        function _slb2RedundancyGroups(rows) {
+            const buckets = {};
+            rows.filter(r => !r.deleted && !r.passive).forEach(r => {
+                const key = [r.kind, r.element || '-', r.statuses.map(s => s.id).sort().join('+') || '-', r.foot ? r.foot.kind + r.foot.r : 'single', r.heal ? 'heal' : ''].join('|');
+                (buckets[key] = buckets[key] || []).push(r);
+            });
+            const groups = [];
+            Object.keys(buckets).forEach(key => {
+                const arr = buckets[key].slice().sort((a, b) => a.dmg - b.dmg);
+                let cur = [arr[0]];
+                for (let i = 1; i < arr.length; i++) {
+                    if (Math.abs(arr[i].dmg - cur[cur.length - 1].dmg) <= 20) cur.push(arr[i]);
+                    else { if (cur.length > 1) groups.push({ key, rows: cur }); cur = [arr[i]]; }
+                }
+                if (cur.length > 1) groups.push({ key, rows: cur });
+            });
+            return groups.sort((a, b) => b.rows.length - a.rows.length);
+        }
+        /* THE SUMMARY (§5.7): the markdown a thread reads instead of a conversation. */
+        function _slb2SummaryMarkdown(doc, summaryLines, notes, report, liveDefs, baseline) {
+            const out = [];
+            const d = doc || {};
+            out.push('# Spell Library export — ' + new Date().toISOString().slice(0, 10));
+            out.push('');
+            const nMod = Object.keys(d.modified || {}).length, nAdd = Object.keys(d.added || {}).length, nDel = (d.deleted || []).length;
+            out.push(`${nMod} changed · ${nAdd} new · ${nDel} deleted · ${Object.keys(d.learnsets || {}).length} learnsets · ${Object.keys(d.raceAbilities || {}).length} movepools · ${Object.keys(d.families || {}).length} families · ${Object.keys(d.upgrades || {}).length} upgrades`);
+            if (d.notes) { out.push(''); out.push('## Library notes'); out.push(''); out.push(d.notes); }
+            if (nMod) {
+                out.push(''); out.push('## Changed rows');
+                Object.keys(d.modified).forEach(id => {
+                    const live = liveDefs && liveDefs[id];
+                    out.push(''); out.push(`### ${live && live.name ? live.name + ' (' + id + ')' : id}`);
+                    Object.keys(d.modified[id]).forEach(f => {
+                        if (f === 'notes') return;
+                        const was = baseline && baseline[id] && Object.prototype.hasOwnProperty.call(baseline[id], f) ? JSON.stringify(baseline[id][f]) : '?';
+                        out.push(`- ${f}: ${was} → ${d.modified[id][f] === null ? '(removed)' : JSON.stringify(d.modified[id][f])}`);
+                    });
+                    if (notes && notes[id]) { out.push(''); out.push('> ' + String(notes[id]).split('\n').join('\n> ')); }
+                    if (report && report.lint) { const row = report.lint.find(x => x.id === id); if (row) row.hits.forEach(h => out.push(`- LINT ${h.level} ${h.rule}: ${h.text}`)); }
+                });
+            }
+            if (nAdd) {
+                out.push(''); out.push('## New rows');
+                Object.keys(d.added).forEach(id => {
+                    const row = d.added[id];
+                    out.push(''); out.push(`### ${row.name || id} (${id}) — ${row.kind || '?'}, tier ${row.tier || '?'}, ${row._home && row._home.race ? 'race ' + row._home.race : 'spell library'}`);
+                    if (row.notes) { out.push(''); out.push('> ' + String(row.notes).split('\n').join('\n> ')); }
+                    const def = Object.assign({}, row); delete def.notes; delete def._home;
+                    out.push(''); out.push('```json'); out.push(JSON.stringify(def, null, 2)); out.push('```');
+                });
+            }
+            if (nDel) { out.push(''); out.push('## Deleted'); out.push(''); d.deleted.forEach(id => out.push('- ' + id)); }
+            const reg = (name, group) => { const keys = Object.keys(group || {}); if (!keys.length) return; out.push(''); out.push('## ' + name); out.push(''); keys.forEach(k => out.push(group[k] === null ? `- DELETE ${k}` : `- ${k}: ${JSON.stringify(group[k])}`)); };
+            reg('Families', d.families); reg('Upgrades', d.upgrades); reg('Race families', d.raceFamilies);
+            const pools = (name, group) => { const keys = Object.keys(group || {}); if (!keys.length) return; out.push(''); out.push('## ' + name); out.push(''); keys.forEach(k => out.push(`- ${k}: [${(group[k] || []).join(', ')}]`)); };
+            pools('Job learnsets', d.learnsets); pools('Race movepools', d.raceAbilities);
+            if (summaryLines && summaryLines.length) { out.push(''); out.push('## One line each'); out.push(''); summaryLines.forEach(l => out.push('- ' + l)); }
+            if (report && report.byRole) {
+                out.push(''); out.push('## Census'); out.push('');
+                out.push(`${report.rows} rows · ` + Object.keys(report.byRole).map(r => `${r} ${report.byRole[r]}`).join(' · '));
+                if (report.lintByRule) out.push('Lint: ' + (Object.keys(report.lintByRule).map(r => `${r} ${report.lintByRule[r]}`).join(' · ') || 'clean'));
+            }
+            return out.join('\n');
+        }
+        /* SLB2 PURE END */
         const _SLB_KINDS = ['damage','tackle','transform','possess','link','shadowRealm','transfer','cannibalize','summonUnit','steal','cleanseArea','door','doorBreach','doorDelivery','doorSlam','doorExit','doorTrap','buff','aoe','debuff','terrainCreate','line','dash','lifeDrain','barrage','warCry','aoeShield','zoneDebuff','escape','cross','deployObject','leapStrike','teleport','heal','healAll','multiHit','delayed','summonWeather','aoePull','deployTurret','displacement','swap','skyThrow','selfHeal','pull','ricochet','zoneHeal','skyDrop','linePush','shield','revive','placeTrap','deployPair','utility','skySlam','scan','bomb','seedHeal','seedPoison','warpRune','leechSeed','remoteView','encore','cleanse','trickRoom','guard','manaRestoreAll','splitBeam','placeMirror','tuneFrequency','pulseLattice','rallyPull','raiseDead','placeBlock','buildStructure'];
         const _SLB_TYPES = ['damage', 'utility', 'buff', 'debuff', 'heal'];
         const _SLB_SPELLTYPES = ['anomaly', 'human', 'unholy', 'tech', 'alien', 'divine'];
@@ -9215,13 +9520,11 @@
             vfxCues: { t: 'json', h: 'TIMELINE visual cues (edit visually in the Spell Lab timeline): [{fx, at, offsetMs, anchor:"target"|"caster"|"midpoint", scale, tint, durMs}]. fx = cue primitive or "bank:<effectId>".' },
         };
 
+        /* ── helpers the Lab + timeline also use (names kept) ───────────────── */
         function _slbEsc(s) {
             return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
         }
         function _slbMods() { return window.EWSpellMods; }
-        // Always alphabetical — these feed every job/race dropdown, filter and
-        // rail in the editor, and definition order in the data tables is
-        // arbitrary (a nightmare to scan at 60+ races).
         function _slbJobs() {
             return (typeof CLASS_SPELL_LEARN_ORDER !== 'undefined') ? Object.keys(CLASS_SPELL_LEARN_ORDER).sort((a, b) => a.localeCompare(b)) : [];
         }
@@ -9234,593 +9537,965 @@
         function _slbArchetypes() {
             try { return Object.keys(window.ThreeVFXEffects.STAGE_ARCHETYPES); } catch (e) { return []; }
         }
+        function _slb2Doc() { const M = _slbMods(); return M ? M.doc : { modified: {}, added: {}, deleted: [], learnsets: {}, raceAbilities: {}, families: {}, upgrades: {}, raceFamilies: {}, views: {}, notes: '' }; }
+        function _slb2Filters() { if (!_slbFilters) _slbFilters = _slb2EmptyFilters(); return _slbFilters; }
+        function _slb2Undo() { if (!_slbUndo) _slbUndo = new _Slb2UndoStack(); return _slbUndo; }
+        function _slb2Glyph(el) { const f = (typeof SPELL_FAMILIES !== 'undefined') && SPELL_FAMILIES[el]; return f ? f.glyph : (el ? el.slice(0, 2).toUpperCase() : ''); }
+        function _slb2FamColor(id) { const f = (typeof SPELL_FAMILIES !== 'undefined') && SPELL_FAMILIES[id]; return (f && f.color) || '#8d84a8'; }
+        function _slb2FamName(id) { const f = (typeof SPELL_FAMILIES !== 'undefined') && SPELL_FAMILIES[id]; return (f && f.name) || id; }
+        function _slb2StatusDef(sid) { return (typeof STATUS_DEFS !== 'undefined' && STATUS_DEFS[sid]) || {}; }
+        function _slb2StatusShort(sid) { const d = _slb2StatusDef(sid); return d.short || String(sid || '').replace(/[^a-z0-9]/gi, '').slice(0, 3).toUpperCase(); }
+        function _slb2StatusColor(sid) { try { return (typeof _HRLG_SB_COLORS !== 'undefined' && _HRLG_SB_COLORS[sid]) || '#777'; } catch (e) { return '#777'; } }
+        function _slb2TypeColor(t) { try { return (typeof TYPE_COLORS !== 'undefined' && TYPE_COLORS[t]) || '#8d84a8'; } catch (e) { return '#8d84a8'; } }
+        function _slb2Ink(hex) {
+            const m = /^#?([0-9a-f]{6})$/i.exec(hex || '');
+            if (!m) return '#fff';
+            const n = parseInt(m[1], 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255;
+            return (0.299 * r + 0.587 * g + 0.114 * b) > 150 ? '#141018' : '#ffffff';
+        }
+        /* A solid chip (THE BADGE PASS look) as HTML. */
+        function _slb2Chip(label, color, title, extraCls) {
+            return `<span class="slb2-chip${extraCls ? ' ' + extraCls : ''}" style="background:${_slbEsc(color)};color:${_slb2Ink(color)}" title="${_slbEsc(title || '')}">${_slbEsc(label)}</span>`;
+        }
+        function _slb2RoleChip(role, title) { return _slb2Chip(_SLB2_ROLE_LABELS[role] || role, _SLB2_ROLE_COLORS[role] || '#8d84a8', title || ('role: ' + role), 'slb2-role'); }
+        function _slb2TierText(t) { return (typeof SPELL_TIER_NUMERALS !== 'undefined' && SPELL_TIER_NUMERALS[t]) || String(t); }
+        function _slb2Tiles(foot, size) {
+            if (!foot) return '';
+            const r = Math.min(3, Math.max(1, foot.r || 1));
+            const cols = r * 2 + 1;
+            let html = `<span class="hrlg-shape slb2-tiles" style="grid-template-columns:repeat(${cols},${size || 5}px)" title="${_slbEsc(foot.label)}">`;
+            for (let y = -r; y <= r; y++) for (let x = -r; x <= r; x++) {
+                const on = foot.cells.has(x + ',' + y);
+                html += `<i class="${x === 0 && y === 0 ? (on ? 'ctr' : 'off') : (on ? '' : 'off')}" style="width:${size || 5}px;height:${size || 5}px"></i>`;
+            }
+            return html + '</span>';
+        }
+        function _slb2H(html) { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; }
+        function _slb2Q(sel, root) { return (root || document).querySelector(sel); }
+        function _slb2Race(r) { return String(r || '').replace(/\b\w/g, c => c.toUpperCase()); }
 
-        /* One row per unique spell id across SPELL_BY_ID (which already merges
-           race abilities) + ids deleted by the mod doc (pristine def shown). */
-        function _slbAllRows() {
+        /* ── THE ROW INDEX: one build per doc change ─────────────────────────── */
+        function _slb2Dirty() { _slbRowsCache = null; _slbFilteredCache = null; }
+        function _slb2Rows() {
+            if (_slbRowsCache) return _slbRowsCache;
             const M = _slbMods();
-            const doc = M ? M.doc : { modified: {}, added: {}, deleted: [] };
-            const rows = [];
-            const seen = new Set();
-            const jobsFor = id => _slbJobs().filter(j => (CLASS_SPELL_LEARN_ORDER[j] || []).includes(id));
-            const racesFor = id => _slbRaces().filter(r => (RACE_ABILITIES[r] || []).some(a => a.id === id));
+            const doc = _slb2Doc();
+            const jobsOf = {}, racesOf = {};
+            _slbJobs().forEach(j => (CLASS_SPELL_LEARN_ORDER[j] || []).forEach(id => { (jobsOf[id] = jobsOf[id] || []).push(j); }));
+            _slbRaces().forEach(r => (RACE_ABILITIES[r] || []).forEach(a => { if (a && a.id) (racesOf[a.id] = racesOf[a.id] || []).push(r); }));
+            const ctx = (typeof spellLintContext === 'function') ? spellLintContext() : null;
+            const rows = [], seen = new Set();
             Object.keys(SPELL_BY_ID).forEach(id => {
                 if (seen.has(id)) return;
                 seen.add(id);
                 const def = SPELL_BY_ID[id];
-                rows.push({
-                    id, def,
-                    added: !!doc.added[id],
-                    modified: !!doc.modified[id],
-                    deleted: false,
-                    isRace: !!(def._isRaceAbility || RACE_ABILITY_BY_ID[id]),
-                    jobs: jobsFor(id), races: racesFor(id),
-                });
+                if (!def || def.kind === 'basicAttack') return;
+                rows.push(_slb2RowOf(id, def, { added: !!doc.added[id], modified: !!doc.modified[id], deleted: false,
+                    isRace: !!(def._isRaceAbility || (typeof RACE_ABILITY_BY_ID !== 'undefined' && RACE_ABILITY_BY_ID[id])), jobs: jobsOf[id] || [], races: racesOf[id] || [] }, ctx));
             });
             (doc.deleted || []).forEach(id => {
                 if (seen.has(id)) return;
                 seen.add(id);
-                const def = (M && M.pristineDef(id)) || (doc.added[id] ? doc.added[id] : null);
+                const def = (M && M.pristineDef(id)) || doc.added[id] || null;
                 if (!def) return;
-                rows.push({ id, def, added: !!doc.added[id], modified: false, deleted: true, isRace: !!def._isRaceAbility, jobs: [], races: [] });
+                rows.push(_slb2RowOf(id, def, { added: !!doc.added[id], modified: false, deleted: true, isRace: !!def._isRaceAbility, jobs: [], races: [] }, ctx));
             });
+            _slbRowsCache = rows;
             return rows;
         }
-
-        function _slbFilteredRows() {
-            const f = _slbFilters;
+        function _slb2RowById(id) { return _slb2Rows().find(r => r.id === id) || null; }
+        function _slb2Scope() {
+            /* the PASSIVES tab is the same table pinned to passive rows; SPELLS hides them */
+            const f = JSON.parse(JSON.stringify(_slb2Filters()));
+            if (_slbTab === 'passives') { if (!f.flags.includes('passive')) f.flags.push('passive'); }
+            return f;
+        }
+        function _slb2Filtered() {
+            if (_slbFilteredCache) return _slbFilteredCache;
+            const f = _slb2Scope();
             const q = _slbSearch.trim().toLowerCase();
-            let rows = _slbAllRows().filter(r => {
-                const d = r.def;
-                if (f.source === 'lib' && (r.isRace || r.added)) return false;
-                if (f.source === 'race' && !r.isRace) return false;
-                if (f.source === 'added' && !r.added) return false;
-                if (f.source === 'modified' && !(r.modified || r.added || r.deleted)) return false;
-                if (f.source === 'deleted' && !r.deleted) return false;
-                if (f.type !== 'all' && d.type !== f.type) return false;
-                if (f.kind !== 'all' && d.kind !== f.kind) return false;
-                if (f.spellType !== 'all' && d.spellType !== f.spellType) return false;
-                if (f.element !== 'all' && (d.element || '(none)') !== f.element) return false;
-                if (f.job !== 'all' && !(r.jobs.includes(f.job) || d.school === f.job || d.classRestriction === f.job || (Array.isArray(d.classRestrictions) && d.classRestrictions.includes(f.job)))) return false;
-                if (f.race !== 'all' && !r.races.includes(f.race)) return false;
-                if (q && !(r.id.toLowerCase().includes(q) || String(d.name || '').toLowerCase().includes(q)
-                    || String(d.kind || '').toLowerCase().includes(q) || String(d.desc || '').toLowerCase().includes(q))) return false;
-                return true;
-            });
-            const key = _slbSort;
-            rows.sort((a, b) => {
-                if (key === 'name') return String(a.def.name || '').localeCompare(String(b.def.name || ''));
-                if (key === 'id') return a.id.localeCompare(b.id);
-                if (key === 'kind') return String(a.def.kind || '').localeCompare(String(b.def.kind || '')) || String(a.def.name || '').localeCompare(String(b.def.name || ''));
-                if (key === 'type') return String(a.def.type || '').localeCompare(String(b.def.type || '')) || String(a.def.name || '').localeCompare(String(b.def.name || ''));
-                const av = a.def[key] || 0, bv = b.def[key] || 0;
-                return bv - av || String(a.def.name || '').localeCompare(String(b.def.name || ''));
-            });
+            let rows = _slb2Rows().filter(r => (_slbTab === 'passives' || !r.passive) && _slb2MatchRow(r, f, q));
+            rows = _slb2SortRows(rows, _slbSort);
+            _slbFilteredCache = rows;
             return rows;
         }
+        /* Lab compatibility: the old flat list */
+        function _slbAllRows() { return _slb2Rows(); }
 
+        /* ── THE SCREEN ──────────────────────────────────────────────────────── */
         window._renderSpellLibrary = function() {
             const body = document.getElementById('spellLibraryBody');
-            if (!body || !_slbMods()) {
-                if (body) body.innerHTML = '<div style="padding:30px;color:var(--muted)">EWSpellMods layer missing (data.js out of date).</div>';
-                return;
-            }
-            /* THE ONLINE GUARD (SPELL_LIBRARY_PLAN.md §6.6): edits are off while an online match is live */
-            if (_slbMods().online) {
-                body.innerHTML = '<div style="padding:30px;color:var(--muted)">EDITS OFF — online match. The library reopens when the match ends.</div>';
-                return;
-            }
-            const rows = _slbAllRows();
-            if (!_slbSelectedId || !rows.some(r => r.id === _slbSelectedId)) _slbSelectedId = rows[0] ? rows[0].id : null;
-            const opt = (list, cur, allLabel) => `<option value="all"${cur === 'all' ? ' selected' : ''}>${allLabel}</option>` +
-                list.map(v => `<option value="${_slbEsc(v)}"${cur === v ? ' selected' : ''}>${_slbEsc(v)}</option>`).join('');
-            body.innerHTML = `
-                <div class="slb-tabs">
-                    <button class="slb-tab${_slbTab === 'spells' ? ' active' : ''}" onclick="window._slbSetTab('spells')">SPELLS</button>
-                    <button class="slb-tab${_slbTab === 'movepools' ? ' active' : ''}" onclick="window._slbSetTab('movepools')">MOVEPOOLS</button>
-                    <div class="slb-tabs-spacer"></div>
-                    <div class="slb-modcount" id="slbModCount"></div>
-                </div>
-                ${_slbTab === 'spells' ? `
-                <div class="slb-toolbar">
-                    <input id="slbSearch" class="slb-search" type="text" placeholder="⌕ search id / name / kind / desc" value="${_slbEsc(_slbSearch)}" oninput="window._slbOnSearch(this.value)">
-                    <select class="slb-sel" onchange="window._slbSetFilter('source', this.value)">
-                        ${['all', 'lib', 'race', 'added', 'modified', 'deleted'].map(v => `<option value="${v}"${_slbFilters.source === v ? ' selected' : ''}>${{ all: 'ALL SOURCES', lib: 'JOB SPELLS', race: 'RACE ABILITIES', added: 'ADDED', modified: 'CHANGED', deleted: 'DELETED' }[v]}</option>`).join('')}
-                    </select>
-                    <select class="slb-sel" onchange="window._slbSetFilter('type', this.value)">${opt(_SLB_TYPES, _slbFilters.type, 'ALL TYPES')}</select>
-                    <select class="slb-sel" onchange="window._slbSetFilter('kind', this.value)">${opt(_SLB_KINDS.slice().sort(), _slbFilters.kind, 'ALL KINDS')}</select>
-                    <select class="slb-sel" onchange="window._slbSetFilter('spellType', this.value)">${opt(_SLB_SPELLTYPES, _slbFilters.spellType, 'ALL FACTIONS')}</select>
-                    <select class="slb-sel" onchange="window._slbSetFilter('element', this.value)">${opt(['(none)'].concat(_SLB_ELEMENTS), _slbFilters.element, 'ALL ELEMENTS')}</select>
-                    <select class="slb-sel" onchange="window._slbSetFilter('job', this.value)">${opt(_slbJobs(), _slbFilters.job, 'ALL JOBS')}</select>
-                    <select class="slb-sel" onchange="window._slbSetFilter('race', this.value)">${opt(_slbRaces(), _slbFilters.race, 'ALL RACES')}</select>
-                    <select class="slb-sel" onchange="window._slbSetSort(this.value)">
-                        ${[['name', 'SORT: NAME'], ['id', 'SORT: ID'], ['cost', 'SORT: MP'], ['dmg', 'SORT: DMG'], ['range', 'SORT: RANGE'], ['kind', 'SORT: KIND'], ['type', 'SORT: TYPE']].map(([v, l]) => `<option value="${v}"${_slbSort === v ? ' selected' : ''}>${l}</option>`).join('')}
-                    </select>
-                    <button class="slb-btn slb-btn-add" onclick="window._slbAddSpell()">+ NEW SPELL</button>
-                </div>
-                <div class="slb-layout">
-                    <div class="slb-list" id="slbList"></div>
-                    <div class="slb-detail" id="slbDetail"></div>
-                </div>` : `
-                <div class="slb-toolbar">
-                    <button class="slb-btn${_slbMpMode === 'jobs' ? ' active' : ''}" onclick="window._slbMpSetMode('jobs')">JOB LEARNSETS</button>
-                    <button class="slb-btn${_slbMpMode === 'races' ? ' active' : ''}" onclick="window._slbMpSetMode('races')">RACE MOVEPOOLS</button>
-                    <input class="slb-search" type="text" placeholder="⌕ filter ${_slbMpMode}" value="${_slbEsc(_slbMpSearch)}" oninput="window._slbMpOnSearch(this.value)">
-                </div>
-                <div class="slb-layout">
-                    <div class="slb-list slb-mp-rail" id="slbMpRail"></div>
-                    <div class="slb-detail" id="slbMpDetail"></div>
-                </div>`}
-                <div class="slb-actionbar">
-                    <button class="slb-btn" id="slbToggleBtn" onclick="window._slbToggleEnabled()"></button>
-                    <button class="slb-btn" onclick="window._slbExport()">⇩ EXPORT JSON</button>
-                    <button class="slb-btn" onclick="window._slbCopySummary()">⧉ COPY SUMMARY</button>
-                    <button class="slb-btn" onclick="window._slbImportClick()">⇪ IMPORT</button>
-                    <input type="file" id="slbImportFile" accept="application/json,.json" style="display:none" onchange="window._slbImportFile(this)">
-                    <button class="slb-btn" title="drop pending change groups whose values are already live in this build's data.js (they were baked in)" onclick="window._slbPruneApplied()">✓ CLEAR APPLIED</button>
-                    <button class="slb-btn slb-btn-danger" onclick="window._slbResetAll()">⟲ DISCARD ALL EDITS</button>
-                    <div class="slb-tabs-spacer"></div>
-                    <button class="slb-btn slb-btn-lab" onclick="window._slbEnterLab()">▶ OPEN SPELL LAB</button>
-                </div>`;
-            _slbRefreshChrome();
-            if (_slbTab === 'spells') {
-                _slbRenderList();
-                _slbRenderDetail();
-            } else {
-                _slbMpRenderRail();
-                _slbMpRenderDetail();
-            }
+            if (!body) return;
+            const M = _slbMods();
+            if (!M) { body.innerHTML = '<div class="slb2-empty">EWSpellMods layer missing (data.js out of date).</div>'; return; }
+            if (M.online) { body.innerHTML = '<div class="slb2-empty">EDITS OFF — online match. The library reopens when the match ends.</div>'; return; }
+            _slb2Bind(body);
+            _slb2Dirty();
+            _slbNarrow = window.innerWidth < 1100;
+            body.innerHTML = `<div class="slb2-shell${_slbNarrow ? ' narrow' : ''}" id="slbShell">
+                <div class="slb2-top" id="slbTop"></div>
+                <div class="slb2-main" id="slbMain"></div>
+            </div>`;
+            _slb2RenderTop();
+            _slb2RenderTab();
         };
-
-        function _slbRefreshChrome() {
+        function _slb2RenderTop() {
+            const top = document.getElementById('slbTop');
+            if (!top) return;
+            const tabs = [['spells', 'SPELLS'], ['passives', 'PASSIVES'], ['families', 'FAMILIES'], ['upgrades', 'UPGRADES'], ['pools', 'POOLS'], ['report', 'REPORT']];
+            top.innerHTML = `
+                <div class="slb2-tabs">${tabs.map(([k, l]) => `<button class="slb2-tab${_slbTab === k ? ' on' : ''}" data-act="tab" data-tab="${k}">${l}</button>`).join('')}</div>
+                <div class="slb2-top-mid">
+                    ${_slbTab === 'spells' || _slbTab === 'passives' ? `<label class="slb2-searchwrap"><span>⌕</span><input id="slbSearch" class="slb2-search" type="text" placeholder="search id · name · desc · notes · families    ⌘F" value="${_slbEsc(_slbSearch)}" data-input="search" spellcheck="false"><kbd data-act="palette" title="field / command palette (⌘K)">⌘K</kbd></label>` : ''}
+                </div>
+                <div class="slb2-top-right">
+                    <span class="slb2-modcount" id="slbModCount"></span>
+                    <button class="slb2-btn" id="slbToggleBtn" data-act="toggleEnabled" title="apply the pending edits to the live tables, or play vanilla"></button>
+                    <button class="slb2-btn" data-act="undo" id="slbUndoBtn" title="undo (⌘Z)">↶</button>
+                    <button class="slb2-btn" data-act="redo" id="slbRedoBtn" title="redo (⌘⇧Z)">↷</button>
+                    <button class="slb2-btn" data-act="export" title="export the diff as JSON + a markdown summary (⌘S)">⇩ EXPORT</button>
+                    <button class="slb2-btn" data-act="import" title="import a JSON export — merge (default) or replace">⇪ IMPORT</button>
+                    <input type="file" id="slbImportFile" accept="application/json,.json" style="display:none" data-input="importFile">
+                    <button class="slb2-btn slb2-btn-lab" data-act="lab" title="open the Spell Lab on the inspected spell (⌘L)">▶ LAB</button>
+                    <button class="slb2-btn slb2-btn-more" data-act="more" title="clear applied · discard all">⋯</button>
+                </div>`;
+            _slb2RefreshChrome();
+        }
+        function _slb2RefreshChrome() {
             const M = _slbMods();
             const cEl = document.getElementById('slbModCount');
             if (cEl && M) {
                 const c = M.counts();
                 const bits = [];
-                if (c.modified) bits.push(`${c.modified} modified`);
-                if (c.added) bits.push(`${c.added} added`);
+                if (c.modified) bits.push(`${c.modified} changed`);
+                if (c.added) bits.push(`${c.added} new`);
                 if (c.deleted) bits.push(`${c.deleted} deleted`);
                 if (c.learnsets) bits.push(`${c.learnsets} learnsets`);
                 if (c.raceAbilities) bits.push(`${c.raceAbilities} movepools`);
-                cEl.innerHTML = bits.length ? `<span class="slb-dot">●</span> ${bits.join(' · ')}` : 'no pending edits';
+                if (c.families) bits.push(`${c.families} families`);
+                if (c.upgrades) bits.push(`${c.upgrades} upgrades`);
+                cEl.innerHTML = bits.length ? `<span class="slb2-dot">●</span> ${bits.join(' · ')}` : 'no pending edits';
             }
             const tBtn = document.getElementById('slbToggleBtn');
-            if (tBtn && M) {
-                tBtn.textContent = M.doc.enabled ? 'EDITS: APPLIED IN GAME' : 'EDITS: OFF (vanilla data)';
-                tBtn.classList.toggle('active', !!M.doc.enabled);
-            }
+            if (tBtn && M) { tBtn.textContent = M.doc.enabled ? 'EDITS ON' : 'EDITS OFF'; tBtn.classList.toggle('on', !!M.doc.enabled); }
+            const u = _slb2Undo();
+            const ub = document.getElementById('slbUndoBtn'), rb = document.getElementById('slbRedoBtn');
+            if (ub) { ub.disabled = !u.canUndo(); ub.title = u.canUndo() ? 'undo: ' + u.past[u.past.length - 1].label + ' (⌘Z)' : 'nothing to undo'; }
+            if (rb) { rb.disabled = !u.canRedo(); rb.title = u.canRedo() ? 'redo: ' + u.future[u.future.length - 1].label + ' (⌘⇧Z)' : 'nothing to redo'; }
+        }
+        function _slb2RenderTab() {
+            const main = document.getElementById('slbMain');
+            if (!main) return;
+            _slbFilteredCache = null;
+            if (_slbTab === 'spells' || _slbTab === 'passives') _slb2RenderSpells(main);
+            else if (_slbTab === 'families') _slb2RenderFamilies(main);
+            else if (_slbTab === 'upgrades') _slb2RenderUpgrades(main);
+            else if (_slbTab === 'pools') _slb2RenderPools(main);
+            else if (_slbTab === 'report') _slb2RenderReport(main);
         }
 
-        window._slbSetTab = function(t) { _slbTab = t; window._renderSpellLibrary(); };
-        window._slbOnSearch = function(v) { _slbSearch = v; _slbRenderList(); };
-        window._slbSetFilter = function(k, v) { _slbFilters[k] = v; _slbRenderList(); };
-        window._slbSetSort = function(v) { _slbSort = v; _slbRenderList(); };
-        window._slbSelect = function(id) { _slbSelectedId = id; _slbRawOpen = false; _slbRenderList(); _slbRenderDetail(); };
-
-        function _slbRenderList() {
-            const el = document.getElementById('slbList');
+        /* ── SPELLS / PASSIVES: rail · table (or cards) · inspector ──────────── */
+        function _slb2RenderSpells(main) {
+            main.innerHTML = `
+                <div class="slb2-rail${_slbRailOpen ? ' open' : ''}" id="slbRail"></div>
+                <div class="slb2-center" id="slbCenter">
+                    <div class="slb2-chips" id="slbChips"></div>
+                    <div class="slb2-tablewrap" id="slbTableWrap"></div>
+                </div>
+                <div class="slb2-inspector${_slbSheetOpen ? ' open' : ''}" id="slbInspector"></div>`;
+            _slb2RenderRail();
+            _slb2RenderChips();
+            _slb2RenderCenter();
+            const rows = _slb2Filtered();
+            if (!_slbSelectedId || !_slb2RowById(_slbSelectedId)) _slbSelectedId = rows[0] ? rows[0].id : null;
+            _slb2RenderInspector();
+        }
+        const _SLB2_FLAG_LABELS = { status: 'applies a status', bonus: 'status bonus', aoe: 'area', push: 'push / pull', movement: 'movement', heal: 'heals', deploy: 'deploys', terrain: 'terrain', passive: 'passive rows', notes: 'has notes', edited: 'edited', offpool: 'off-pool', deleted: 'deleted' };
+        function _slb2RenderRail() {
+            const rail = document.getElementById('slbRail');
+            if (!rail) return;
+            const f = _slb2Filters();
+            const q = _slbSearch.trim().toLowerCase();
+            const base = _slb2Rows().filter(r => (_slbTab === 'passives' ? r.passive : !r.passive) && (!q || r.searchText.indexOf(q) >= 0));
+            const counts = _slb2FilterCounts(base);
+            const group = (title, key, items, labelOf, colorOf) => {
+                const on = f[key] || [];
+                const list = items.filter(it => counts[key][it.k] || on.includes(it.k));
+                if (!list.length) return '';
+                return `<div class="slb2-rg"><div class="slb2-rg-h" data-act="railToggle" data-key="${key}">${title}${on.length ? ` <b>${on.length}</b>` : ''}</div>
+                    <div class="slb2-rg-b">${list.map(it => {
+                        const active = on.includes(it.k);
+                        const col = colorOf ? colorOf(it.k) : null;
+                        return `<button class="slb2-fchip${active ? ' on' : ''}" data-act="filter" data-key="${key}" data-val="${_slbEsc(it.k)}" ${col ? `style="--fc:${col}"` : ''} title="${_slbEsc(it.title || labelOf(it.k))}"><span class="slb2-fchip-l">${labelOf(it.k)}</span><span class="slb2-fchip-n">${counts[key][it.k] || 0}</span></button>`;
+                    }).join('')}</div></div>`;
+            };
+            const fams = Object.keys(typeof SPELL_FAMILIES !== 'undefined' ? SPELL_FAMILIES : {}).map(k => ({ k }));
+            const elems = ['(none)'].concat(typeof SPELL_ELEMENTS !== 'undefined' ? SPELL_ELEMENTS : _SLB_ELEMENTS).map(k => ({ k }));
+            const kinds = Object.keys(counts.kinds).sort().map(k => ({ k }));
+            const owners = Object.keys(counts.owners).sort((a, b) => a.localeCompare(b)).map(k => ({ k }));
+            const lintRules = Object.keys(counts.lint).sort().map(k => ({ k }));
+            const glyph = (k) => `<i class="slb2-fchip-g">${_slb2Glyph(k)}</i>${_slbEsc(_slb2FamName(k))}`;
+            rail.innerHTML = `
+                <div class="slb2-rail-head"><span>FILTERS</span>${_slb2FiltersEmpty(f) ? '' : '<button class="slb2-link" data-act="clearFilters">clear all</button>'}</div>
+                ${base.length ? '' : '<div class="slb2-hint slb2-pad">nothing to filter yet</div>'}
+                ${group('SOURCE', 'source', [{ k: 'lib' }, { k: 'race' }, { k: 'door' }], k => ({ lib: 'job spells', race: 'race abilities', door: 'door wheel' })[k])}
+                ${group('ROLES', 'roles', _SLB2_ROLES.map(k => ({ k })), k => _SLB2_ROLE_LABELS[k], k => _SLB2_ROLE_COLORS[k])}
+                ${group('TIER · SP', 'tiers', [1, 2, 3, 4].map(k => ({ k })), k => 'Tier ' + _slb2TierText(k) + ' · ' + k + ' SP')}
+                ${group('FAMILIES', 'families', fams, glyph, k => _slb2FamColor(k))}
+                ${group('ELEMENTS', 'elements', elems, k => k === '(none)' ? 'none' : `<i class="slb2-fchip-g">${_slb2Glyph(k)}</i>${_slbEsc(k)}`, k => k === '(none)' ? null : _slb2FamColor(k))}
+                ${group('HAS', 'flags', Object.keys(_SLB2_FLAG_LABELS).map(k => ({ k })), k => _SLB2_FLAG_LABELS[k])}
+                ${group('LINT', 'lint', lintRules, k => k)}
+                ${group('KINDS', 'kinds', kinds, k => _slbEsc(k))}
+                ${group('OWNER', 'owners', owners, k => _slbEsc(k.indexOf('race:') === 0 ? _slb2Race(k.slice(5)) : k.slice(4)), k => k.indexOf('race:') === 0 ? '#8fd7c8' : '#ffd86a')}`;
+            /* keep the rail's group open/closed state across renders */
+            rail.querySelectorAll('.slb2-rg').forEach(g => { const key = g.querySelector('.slb2-rg-h').getAttribute('data-key'); if (_slb2RailClosed.has(key)) g.classList.add('closed'); });
+        }
+        const _slb2RailClosed = new Set(['kinds', 'owners', 'lint']);
+        function _slb2RenderChips() {
+            const el = document.getElementById('slbChips');
             if (!el) return;
-            const rows = _slbFilteredRows();
-            el.innerHTML = `<div class="slb-list-count">${rows.length} spell${rows.length === 1 ? '' : 's'}</div>` + rows.map(r => {
-                const d = r.def;
-                const flags = `${r.deleted ? '<span class="slb-flag slb-flag-del">DEL</span>' : ''}${r.added ? '<span class="slb-flag slb-flag-add">NEW</span>' : ''}${r.modified ? '<span class="slb-flag slb-flag-mod">●</span>' : ''}`;
-                return `<div class="slb-row${r.id === _slbSelectedId ? ' selected' : ''}${r.deleted ? ' deleted' : ''}" onclick="window._slbSelect('${_slbEsc(r.id)}')">
-                    <div class="slb-row-top"><span class="slb-row-name">${_slbEsc(d.name || r.id)}</span>${flags}</div>
-                    <div class="slb-row-sub">
-                        <span class="slb-badge slb-badge-${_slbEsc(d.type || 'utility')}">${_slbEsc(d.type || '?')}</span>
-                        <span class="slb-badge">${_slbEsc(d.kind || '?')}</span>
-                        ${d.element ? `<span class="slb-badge slb-badge-elem">${_slbEsc(d.element)}</span>` : ''}
-                        <span class="slb-row-stats">${d.dmg != null ? '⚔' + d.dmg + ' ' : ''}${d.heal != null ? '✚' + d.heal + ' ' : ''}${d.healAmt != null ? '✚' + d.healAmt + ' ' : ''}✦${d.cost != null ? d.cost : '?'} ${d.range != null ? '↔' + d.range : ''}</span>
-                    </div>
-                </div>`;
+            const f = _slb2Filters();
+            const rows = _slb2Filtered();
+            const chips = [];
+            Object.keys(f).forEach(key => (f[key] || []).forEach(v => {
+                const label = key === 'roles' ? _SLB2_ROLE_LABELS[v] : key === 'tiers' ? 'Tier ' + _slb2TierText(v) : key === 'families' ? _slb2FamName(v) : key === 'flags' ? _SLB2_FLAG_LABELS[v] : key === 'owners' ? (String(v).indexOf('race:') === 0 ? _slb2Race(String(v).slice(5)) : String(v).slice(4)) : key === 'source' ? ({ lib: 'job spells', race: 'race abilities', door: 'door wheel' })[v] : v;
+                chips.push(`<button class="slb2-chipx" data-act="filter" data-key="${key}" data-val="${_slbEsc(v)}" title="remove this filter">${_slbEsc(label)} ✕</button>`);
+            }));
+            const views = Object.keys(_slb2Doc().views || {});
+            const sortTxt = _slbSort.map(s => (_SLB2_COL_BY_KEY[s.key] || {}).label + (s.dir < 0 ? ' ↓' : ' ↑')).join(' · ');
+            el.innerHTML = `
+                <button class="slb2-btn slb2-btn-rail" data-act="railOpen" title="filters">☰</button>
+                <span class="slb2-count">${rows.length} row${rows.length === 1 ? '' : 's'}</span>
+                ${chips.join('')}
+                ${chips.length || _slbSearch ? '<button class="slb2-link" data-act="clearFilters">clear</button>' : ''}
+                <span class="slb2-chips-spacer"></span>
+                <span class="slb2-sorttxt" title="click a column head to sort · shift-click for a second key">${_slbEsc(sortTxt)}</span>
+                <select class="slb2-sel" data-input="view" title="saved views (filters + sort + columns)">
+                    <option value="">views…</option>
+                    ${views.map(v => `<option value="${_slbEsc(v)}">${_slbEsc(v)}</option>`).join('')}
+                    <option value="__save">＋ save this view</option>
+                    ${views.length ? '<option value="__del">✕ delete a view…</option>' : ''}
+                </select>
+                <div class="slb2-seg"><button class="slb2-segb${_slbView === 'table' ? ' on' : ''}" data-act="view" data-view="table" title="table">☷</button><button class="slb2-segb${_slbView === 'cards' ? ' on' : ''}" data-act="view" data-view="cards" title="cards">▦</button></div>
+                <div class="slb2-newwrap"><button class="slb2-btn slb2-btn-add" data-act="newMenu">＋ NEW ▾</button></div>
+                ${_slbSelection.length > 1 ? `<button class="slb2-btn on" data-act="bulkOpen">${_slbSelection.length} SELECTED · BULK</button>` : ''}`;
+        }
+        function _slb2RenderCenter() {
+            const wrap = document.getElementById('slbTableWrap');
+            if (!wrap) return;
+            if (_slbTab === 'passives' && _slbPasSection === 'inherent') { _slb2RenderInherent(wrap); return; }
+            if (_slbView === 'cards') { _slb2RenderCards(wrap); return; }
+            _slb2RenderTable(wrap);
+        }
+        const _SLB2_ROW_H = 32;
+        /* Columns by priority against the CENTER's width (the rail + inspector eat 660 px of the
+           viewport, so a viewport media query hides the wrong set): pri 2 goes under 1300 px,
+           pri 1 under 1000 px, and .narrow hides both. What stays scrolls sideways when it still
+           does not fit (--slb2-minw = the sum of the visible columns' minimums). */
+        let _slbColsLevel = 2;
+        function _slb2ColsLevel() {
+            if (_slbNarrow) return 0;
+            const c = document.getElementById('slbCenter');
+            const w = c ? c.clientWidth : window.innerWidth - 660;
+            return w >= 1300 ? 2 : w >= 1000 ? 1 : 0;
+        }
+        function _slb2VisibleCols() { _slbColsLevel = _slb2ColsLevel(); return _SLB2_COLUMNS.filter(c => c.pri <= _slbColsLevel); }
+        function _slb2GridTemplate() { return _slb2VisibleCols().map(c => c.w).join(' '); }
+        function _slb2ColsMinWidth(cols) { return cols.reduce((n, c) => { const m = /^minmax\((\d+)px/.exec(c.w); return n + (m ? +m[1] : parseInt(c.w, 10) || 0); }, 0) + 3; }
+        function _slb2RenderTable(wrap) {
+            const rows = _slb2Filtered();
+            const cols = _slb2VisibleCols();
+            const tpl = _slb2GridTemplate();
+            const head = cols.map(c => {
+                const s = _slbSort.findIndex(x => x.key === c.key);
+                const dir = s >= 0 ? (_slbSort[s].dir < 0 ? '↓' : '↑') : '';
+                return `<div class="slb2-th slb-pri-${c.pri}${s >= 0 ? ' on' : ''}" data-act="sort" data-key="${c.key}" title="sort by ${c.label || 'edit state'} · shift-click = second key">${c.label}${s >= 0 ? `<i>${dir}${_slbSort.length > 1 ? s + 1 : ''}</i>` : ''}</div>`;
             }).join('');
+            wrap.innerHTML = `<div class="slb2-tscroll" id="slbTableScroll" style="--slb2-minw:${_slb2ColsMinWidth(cols)}px">
+                <div class="slb2-thead" id="slbTableHead" style="grid-template-columns:${tpl}">${head}</div>
+                <div class="slb2-tbody" id="slbTableBody" style="height:${rows.length * _SLB2_ROW_H}px">${rows.length ? '' : `<div class="slb2-empty">${_slbSearch || !_slb2FiltersEmpty(_slb2Filters()) ? 'No spell matches — clear a filter or the search.' : _slbTab === 'passives' ? 'No family passives yet — ＋ NEW ▾ → a passive template makes the first one; the INHERENT view lists the fixed per-race passives.' : 'No rows.'}</div>`}</div>
+            </div>`;
+            _slbWinFrom = -1; _slbWinTo = -1;
+            _slb2RenderWindow(true);
+            if (_slbTab === 'passives') wrap.insertAdjacentHTML('afterbegin', _slb2PassiveBar());
+        }
+        function _slb2PassiveBar() {
+            return `<div class="slb2-pasbar">
+                <div class="slb2-seg"><button class="slb2-segb${_slbPasSection === 'family' ? ' on' : ''}" data-act="pasSection" data-sec="family">FAMILY PASSIVES · rows in a slot</button><button class="slb2-segb${_slbPasSection === 'inherent' ? ' on' : ''}" data-act="pasSection" data-sec="inherent">INHERENT · fixed per race</button></div>
+                <span class="slb2-hint">A family passive is a row with kind <b>passive</b>: it takes a slot, costs its tier in SP, and its HOOKS carry the effect (the same keys the inherent passives use). At most ${typeof PASSIVE_SLOT_MAX !== 'undefined' ? PASSIVE_SLOT_MAX : 2} passive / equipment rows fit the 7 slots.</span>
+            </div>`;
+        }
+        function _slb2RenderWindow(force) {
+            const scroll = document.getElementById('slbTableScroll'), bodyEl = document.getElementById('slbTableBody');
+            if (!scroll || !bodyEl) return;
+            const rows = _slb2Filtered();
+            const headH = (document.getElementById('slbTableHead') || {}).offsetHeight || 30;
+            const top = Math.max(0, scroll.scrollTop - headH);
+            const from = Math.max(0, Math.floor(top / _SLB2_ROW_H) - 6);
+            const to = Math.min(rows.length, Math.ceil((top + scroll.clientHeight) / _SLB2_ROW_H) + 6);
+            if (!force && from === _slbWinFrom && to === _slbWinTo) return;
+            _slbWinFrom = from; _slbWinTo = to;
+            const tpl = _slb2GridTemplate();
+            let html = '';
+            for (let i = from; i < to; i++) html += _slb2RowHtml(rows[i], i, tpl);
+            bodyEl.innerHTML = html + (rows.length ? '' : bodyEl.innerHTML);
+        }
+        function _slb2RowHtml(r, i, tpl) {
+            const cols = _slb2VisibleCols();
+            const sel = r.id === _slbSelectedId, multi = _slbSelection.includes(r.id);
+            const fam = r.families[0];
+            return `<div class="slb2-tr${sel ? ' sel' : ''}${multi ? ' multi' : ''}${r.deleted ? ' del' : ''}${i & 1 ? ' odd' : ''}" data-act="row" data-id="${_slbEsc(r.id)}" style="top:${i * _SLB2_ROW_H}px;grid-template-columns:${tpl};--fam:${fam ? _slb2FamColor(fam) : 'transparent'}">${cols.map(c => `<div class="slb2-td slb2-td-${c.key} slb-pri-${c.pri}">${_slb2Cell(c.key, r)}</div>`).join('')}</div>`;
+        }
+        function _slb2Cell(key, r) {
+            const d = r.def;
+            switch (key) {
+                case 'name': return `<span class="slb2-name" title="${_slbEsc(r.id + (d.desc ? '\n' + d.desc : ''))}">${_slbEsc(d.name || r.id)}</span>${r.hasNotes ? '<i class="slb2-note" title="' + _slbEsc(String(d.notes).split('\n')[0]) + '">📝</i>' : ''}`;
+                case 'tier': return `<span class="slb2-tier t${r.tier}">${_slb2TierText(r.tier)}</span><span class="slb2-sp">${r.sp}</span>`;
+                case 'mp': return r.mp == null ? '<span class="slb2-dim">—</span>' : `<span${d.manaCostOverride != null ? ' class="slb2-pinned" title="MP pinned (manaCostOverride)"' : ''}>${r.mp}</span>`;
+                case 'ap': return String(r.ap);
+                case 'cd': return r.cd ? String(r.cd) : '<span class="slb2-dim">—</span>';
+                case 'role': return _slb2RoleChip(r.role, d.roleOverride ? 'role pinned: ' + r.role : 'role: ' + r.role);
+                case 'element': return r.element ? `<span class="slb2-elem" title="${_slbEsc(r.element + (r.combat ? ' · combat element (affinity)' : ' · flavour element (VFX only)'))}"><i style="background:${_slb2FamColor(r.element)}" class="slb2-elemdot${r.combat ? ' combat' : ''}"></i>${_slb2Glyph(r.element)}</span>` : '<span class="slb2-dim">—</span>';
+                case 'faction': return r.faction ? _slb2Chip(r.faction.toUpperCase(), _slb2TypeColor(r.faction), 'spell type: ' + r.faction) : '<span class="slb2-dim">—</span>';
+                case 'kind': return `<span class="slb2-kind" title="${_slbEsc(d.type || '')}">${_slbEsc(r.kind)}</span>`;
+                case 'dmg': return r.dmg ? `<b>${r.dmg}</b>${r.hits ? `<span class="slb2-dim"> ×${r.hits}</span>` : ''}` : '<span class="slb2-dim">—</span>';
+                case 'heal': return r.heal ? `<b class="slb2-heal">${r.heal}</b>` : '<span class="slb2-dim">—</span>';
+                case 'range': return r.range == null ? '<span class="slb2-dim">—</span>' : (r.minRange ? r.minRange + '–' : '') + r.range;
+                case 'aoe': return r.foot ? _slb2Tiles(r.foot, 4) : '<span class="slb2-dim">·</span>';
+                case 'status': return r.statuses.length ? r.statuses.slice(0, 3).map(s => _slb2Chip(_slb2StatusShort(s.id) + (s.dur ? ' ' + s.dur : ''), _slb2StatusColor(s.id), (_slb2StatusDef(s.id).label || s.id) + (s.dur ? ' · ' + s.dur + ' rounds' : '') + (s.who !== 'target' ? ' · ' + s.who : ''))).join('') + (r.statuses.length > 3 ? `<span class="slb2-dim">+${r.statuses.length - 3}</span>` : '') : '<span class="slb2-dim">—</span>';
+                case 'bonus': return r.bonus ? r.bonus.ids.map(id => _slb2Chip('×' + r.bonus.mult + ' ' + _slb2StatusShort(id), _slb2StatusColor(id), '×' + r.bonus.mult + ' against ' + (_slb2StatusDef(id).label || id), 'slb2-bonus')).join('') : '<span class="slb2-dim">—</span>';
+                case 'push': return r.push || '<span class="slb2-dim">—</span>';
+                case 'deploy': return r.deploy ? 'cap ' + r.deploy : '<span class="slb2-dim">—</span>';
+                case 'families': return r.families.length ? r.families.map(f => `<span class="slb2-fam" style="--fc:${_slb2FamColor(f)}" title="${_slbEsc(_slb2FamName(f))}">${_slb2Glyph(f)}</span>`).join('') : '<span class="slb2-dim">—</span>';
+                case 'owner': return `<span class="slb2-owner${r.isRace ? ' race' : ''}" title="${_slbEsc(r.races.map(_slb2Race).concat(r.jobs).join(', ') || r.owner)}">${_slbEsc(r.isRace ? _slb2Race(r.owner) : r.owner)}</span>`;
+                case 'anim': return r.anim ? `<span class="slb2-anim${d.animVerb || d.animSlot || d.animClip ? ' set' : ''}" title="${d.animVerb || d.animSlot || d.animClip ? 'picked on the row' : 'auto (classifySpellAnimKind)'}">${_slbEsc(r.anim)}</span>` : '<span class="slb2-dim">—</span>';
+                case 'lint': return r.lint.length ? `<span class="slb2-lint" title="${_slbEsc(r.lint.map(h => h.rule + ': ' + h.text).join('\n'))}">${['red', 'amber', 'grey'].map(lv => { const n = r.lint.filter(h => h.level === lv).length; return n ? `<i class="slb2-lint-${lv}">${n}</i>` : ''; }).join('')}</span>` : '';
+                case 'edit': return r.edit === 'del' ? '<span class="slb2-flag del">DEL</span>' : r.edit === 'new' ? '<span class="slb2-flag new">NEW</span>' : r.edit === 'mod' ? '<span class="slb2-flag mod">●</span>' : '';
+            }
+            return '';
+        }
+        /* Patch ONE row in place (after an edit) — the table never re-renders for a field change. */
+        function _slb2PatchRow(id) {
+            const rows = _slb2Filtered();
+            const i = rows.findIndex(r => r.id === id);
+            const old = _slb2Q(`#slbTableBody .slb2-tr[data-id="${CSS.escape(id)}"]`);
+            if (i < 0) { if (old) old.remove(); return; }
+            if (!old) return;
+            const fresh = _slb2H(_slb2RowHtml(rows[i], i, _slb2GridTemplate()));
+            old.replaceWith(fresh);
+            fresh.classList.add('flash');
+            setTimeout(() => fresh.classList.remove('flash'), 240);
+            const card = _slb2Q(`#slbCards .slb2-card[data-id="${CSS.escape(id)}"]`);
+            if (card) card.replaceWith(_slb2H(_slb2CardHtml(rows[i])));
+        }
+        function _slb2RenderCards(wrap) {
+            const rows = _slb2Filtered();
+            wrap.innerHTML = `<div class="slb2-cards" id="slbCards">${rows.map(_slb2CardHtml).join('') || `<div class="slb2-empty">No spell matches — clear a filter or the search.</div>`}</div>`;
+            if (_slbTab === 'passives') wrap.insertAdjacentHTML('afterbegin', _slb2PassiveBar());
+        }
+        function _slb2CardHtml(r) {
+            const d = r.def;
+            const fam = r.families[0];
+            return `<div class="slb2-card${r.id === _slbSelectedId ? ' sel' : ''}${_slbSelection.includes(r.id) ? ' multi' : ''}${r.deleted ? ' del' : ''}" data-act="row" data-id="${_slbEsc(r.id)}" style="--fam:${fam ? _slb2FamColor(fam) : '#3a3448'}">
+                <div class="slb2-card-top"><span class="slb2-tier t${r.tier}">${_slb2TierText(r.tier)}</span><span class="slb2-card-name" title="${_slbEsc(r.id)}">${_slbEsc(d.name || r.id)}</span>${_slb2Cell('edit', r)}</div>
+                <div class="slb2-card-badges">${_slb2RoleChip(r.role)}${r.faction ? _slb2Chip(r.faction.toUpperCase(), _slb2TypeColor(r.faction)) : ''}${r.element ? `<span class="slb2-elem">${_slb2Glyph(r.element)}</span>` : ''}${r.statuses.slice(0, 2).map(s => _slb2Chip(_slb2StatusShort(s.id), _slb2StatusColor(s.id))).join('')}${_slb2Cell('bonus', r).replace('<span class="slb2-dim">—</span>', '')}</div>
+                <div class="slb2-card-stats">${r.dmg ? `<span>⚔ ${r.dmg}</span>` : ''}${r.heal ? `<span class="slb2-heal">✚ ${r.heal}</span>` : ''}<span>✦ ${r.mp == null ? '—' : r.mp}</span>${r.range != null ? `<span>↔ ${r.range}</span>` : ''}${r.foot ? _slb2Tiles(r.foot, 4) : ''}<span class="slb2-card-owner">${_slbEsc(r.isRace ? _slb2Race(r.owner) : r.owner)}</span></div>
+                <div class="slb2-card-desc">${_slbEsc(d.desc || '')}</div>
+            </div>`;
+        }
+        /* INHERENT passives (§5.6): PASSIVE_DEFS per race, read-only. */
+        function _slb2RenderInherent(wrap) {
+            const P = (typeof PASSIVE_DEFS !== 'undefined') ? PASSIVE_DEFS : {};
+            const RP = (typeof RACE_PASSIVES !== 'undefined') ? RACE_PASSIVES : {};
+            const q = _slbSearch.trim().toLowerCase();
+            const HOOK_SKIP = new Set(['id', 'icon', 'name', 'desc']);
+            const races = Object.keys(RP).sort((a, b) => a.localeCompare(b)).filter(r => !q || r.includes(q) || (RP[r] || []).some(id => (P[id] && (P[id].name + ' ' + P[id].desc).toLowerCase().includes(q))));
+            const usedBy = {};
+            Object.keys(RP).forEach(r => (RP[r] || []).forEach(id => { (usedBy[id] = usedBy[id] || []).push(r); }));
+            const unused = Object.keys(P).filter(id => !usedBy[id]);
+            wrap.innerHTML = _slb2PassiveBar() + `<div class="slb2-inh">
+                <div class="slb2-inh-hint">Fixed to the character: no slot, no SP, never edited here (PASSIVE_DEFS + RACE_PASSIVES in data.js). ${Object.keys(P).length} passives · ${Object.keys(RP).length} races.</div>
+                ${races.map(r => `<div class="slb2-inh-race"><div class="slb2-inh-rn">${_slbEsc(_slb2Race(r))}</div>${(RP[r] || []).map(id => _slb2InherentCard(P[id], id, HOOK_SKIP)).join('')}</div>`).join('')}
+                ${unused.length ? `<div class="slb2-inh-race"><div class="slb2-inh-rn">on no race</div>${unused.map(id => _slb2InherentCard(P[id], id, HOOK_SKIP)).join('')}</div>` : ''}
+            </div>`;
+        }
+        function _slb2InherentCard(p, id, skip) {
+            if (!p) return `<div class="slb2-inh-card"><b>${_slbEsc(id)}</b> <span class="slb2-dim">(no PASSIVE_DEFS row)</span></div>`;
+            const hooks = Object.keys(p).filter(k => !skip.has(k));
+            return `<div class="slb2-inh-card"><div class="slb2-inh-h"><span class="slb2-inh-ic">${_slbEsc(p.icon || '')}</span><b>${_slbEsc(p.name || id)}</b><span class="slb2-dim">${_slbEsc(id)}</span></div>
+                <div class="slb2-inh-d">${_slbEsc(p.desc || '')}</div>
+                <div class="slb2-inh-hooks">${hooks.map(k => `<span class="slb2-hook" title="hook key ${_slbEsc(k)}"><b>${_slbEsc(k)}</b> ${_slbEsc(JSON.stringify(p[k]))}</span>`).join('') || '<span class="slb2-dim">desc only — its effect is hard-coded</span>'}</div>
+            </div>`;
         }
 
-        /* ── field mutation core ─────────────────────────────────────────── */
-        function _slbDeepEq(a, b) { return JSON.stringify(a === undefined ? null : a) === JSON.stringify(b === undefined ? null : b); }
+        /* ── THE INSPECTOR (§5.3) ────────────────────────────────────────────── */
+        const _SLB2_GROUPS = {
+            stats: [
+                ['COSTS', ['cost', 'apCost', 'cooldownRounds']],
+                ['DAMAGE', ['dmg', 'damageType', 'hitDamages', 'dashDamage', 'dmgPerLevel', 'collisionBonus', 'blastDmg', 'blastRadius', 'aoeDmgPct', 'ignoreArmor', 'sneakBonus', 'executePct', 'noDamage']],
+                ['HEAL · SHIELD · DRAIN', ['heal', 'healAmt', 'healPerTurn', 'selfHealPct', 'drainPct', 'shield', 'shieldHp', 'shieldCapPct']],
+                ['RECOIL', ['selfDamagePct', 'recoilPct', 'selfStun']],
+                ['IDENTITY', ['type', 'spellType', 'element', 'school', 'classRestriction', 'classRestrictions', 'jobPreference', 'jobRequirement']],
+            ],
+            target: [
+                ['TARGETING', ['kind', 'range', 'ignoresLineOfSight', 'requireVision', 'requiresFlight', 'allyOnly', 'friendlyFire', 'chargeToTarget', 'groundsFlyers', 'longRange']],
+                ['AREA', ['aoeRadius', 'aoeShape', 'aoeOriginSelf', 'crossRadius', 'diamond', 'diagonal', 'squareFlood', 'lineWidth', 'tileCount', 'orientable', 'auraRadius', 'scanRadius', 'aoeMask']],
+                ['RIDERS', ['splash', 'randomTargets', 'chainProfile', 'chainRadius', 'splitCount', 'splitRadius', 'splitDmg']],
+                ['PUSH · PULL · MOVE', ['pushDistance', 'pullDistance', 'pullToCenter', 'displaceDistance', 'swapOnHit', 'teleportDistance', 'teleportAnyUnit', 'carryHeight', 'throwRange', 'arcThrow']],
+            ],
+            effects: [
+                ['STATUSES', ['statusEffects', 'allyStatusEffects', 'teamStatusEffects', 'selfStatusEffects', 'burningRounds']],
+                ['STATS · CLEANSE · COMBO', ['statStageBoost', 'selfStatStageBoost', 'randomTeamBuff', 'cleanse', 'bonusVsStatus']],
+                ['TERRAIN · WEATHER', ['terrainType', 'terrainDeform', 'leaveTerrain', 'blocksMovement', 'destroysObstacles', 'demolishesBuildings', 'gravityField', 'trickRoomDuration', 'weatherType', 'weatherDuration', 'weatherTiles']],
+                ['DEPLOY · TRAP · ZONE', ['maxActivePerCaster', 'objectHp', 'turretHp', 'turretDmg', 'turretRange', 'trapType', 'detonateOnStep', 'zoneDuration', 'delayTurns']],
+                ['REVIVE', ['revivePct', 'oneRevivePerUnitPerMatch']],
+                ['HOOKS (passive rows)', ['hooks']],
+            ],
+            look: [
+                ['ANIMATION', ['animVerb', 'animSlot', 'animClip', 'animStrikeMs', '_animOverride']],
+                ['VFX · SFX', ['vfxArchetype', 'vfxWeight', 'projectileOverride', 'impactSfx', 'sfxCues', 'vfxCues']],
+            ],
+        };
+        const _SLB2_LABELS = {
+            cost: 'MP', apCost: 'AP', cooldownRounds: 'Cooldown', dmg: 'Damage', damageType: 'Damage type', hitDamages: 'Multi-hit damages', dashDamage: 'Dash damage',
+            dmgPerLevel: 'Damage per level', collisionBonus: 'Collision bonus', blastDmg: 'Blast damage', blastRadius: 'Blast radius', aoeDmgPct: 'Splash fraction',
+            ignoreArmor: 'Ignores armour', sneakBonus: 'Backstab bonus', executePct: 'Execute below', noDamage: 'Never damages', heal: 'Heal', healAmt: 'Area heal',
+            healPerTurn: 'Heal per turn', selfHealPct: 'Self-heal', drainPct: 'Drain', shield: 'Shield', shieldHp: 'Area shield', shieldCapPct: 'Shield cap',
+            selfDamagePct: 'Recoil', recoilPct: 'Recoil (combo)', selfStun: 'Self-stun', type: 'Category', spellType: 'Faction', element: 'Element', school: 'School (job)',
+            classRestriction: 'Job gate', classRestrictions: 'Job gates', jobPreference: 'Preferred jobs', jobRequirement: 'Race ability job', kind: 'Kind (engine branch)',
+            range: 'Range', ignoresLineOfSight: 'Ignores line of sight', requireVision: 'Needs vision', requiresFlight: 'Needs flight', allyOnly: 'Allies only',
+            friendlyFire: 'Friendly fire', chargeToTarget: 'Charges in', groundsFlyers: 'Grounds flyers', longRange: 'Long range', aoeRadius: 'Area radius',
+            aoeShape: 'Area shape', aoeOriginSelf: 'Area on the caster', crossRadius: 'Cross arm', diamond: 'Diamond', diagonal: 'Diagonals', squareFlood: 'Square flood',
+            lineWidth: 'Line width', tileCount: 'Tiles', orientable: 'Orientable', auraRadius: 'Aura radius', scanRadius: 'Scan radius', aoeMask: 'Drawn footprint',
+            splash: 'Splash rider', randomTargets: 'Random targets', chainProfile: 'Chain profile', chainRadius: 'Chain radius', splitCount: 'Split count', splitRadius: 'Split radius',
+            splitDmg: 'Split damage', pushDistance: 'Push', pullDistance: 'Pull', pullToCenter: 'Pull to centre', displaceDistance: 'Displace', swapOnHit: 'Swap on hit',
+            teleportDistance: 'Teleport', teleportAnyUnit: 'Teleports others', carryHeight: 'Carry height', throwRange: 'Throw range', arcThrow: 'Arcing throw',
+            statusEffects: 'Statuses on targets', allyStatusEffects: 'Statuses on allies', teamStatusEffects: 'Statuses on the team', selfStatusEffects: 'Statuses on self',
+            burningRounds: 'Burn rounds', statStageBoost: 'Stat stages', selfStatStageBoost: 'Self stat stages', randomTeamBuff: 'Random team buff', cleanse: 'Cleanse',
+            bonusVsStatus: 'Bonus vs status', terrainType: 'Terrain painted', terrainDeform: 'Terrain deform', leaveTerrain: 'Terrain left', blocksMovement: 'Blocks movement',
+            destroysObstacles: 'Destroys obstacles', demolishesBuildings: 'Demolishes buildings', gravityField: 'Gravity field', trickRoomDuration: 'Trick room',
+            weatherType: 'Weather', weatherDuration: 'Weather rounds', weatherTiles: 'Weather radius', maxActivePerCaster: 'Deploy cap', objectHp: 'Object HP',
+            turretHp: 'Turret HP', turretDmg: 'Turret damage', turretRange: 'Turret range', trapType: 'Trap type', detonateOnStep: 'Detonates on step', zoneDuration: 'Zone rounds',
+            delayTurns: 'Fuse', revivePct: 'Revive HP', oneRevivePerUnitPerMatch: 'One revive each', hooks: 'Hooks', animVerb: 'Cast verb', animSlot: 'Clip slot',
+            animClip: 'Raw clip', animStrikeMs: 'Strike (ms)', _animOverride: 'Travel override', vfxArchetype: 'Staging archetype', vfxWeight: 'Staging weight',
+            projectileOverride: 'Projectile', impactSfx: 'Impact sound', sfxCues: 'Sound cues', vfxCues: 'Visual cues', name: 'Name', desc: 'Description', notes: 'Notes',
+            tier: 'Tier', role: 'Role', roleOverride: 'Role override', families: 'Families', upgrades: 'Allowed upgrades', manaCostOverride: 'MP pin',
+            simTargeting: 'Sim targeting', simPhase: 'Sim phase', simFallback: 'Sim fallback', descAuto: 'Auto description',
+        };
+        const _SLB2_EXTRA_HELP = {
+            hooks: { t: 'json', h: 'Passive rows: { hookKey: value } with the keys PASSIVE_DEFS uses (immuneStatus, lowHpBonus, spellCostMult, rangeBonus, healMult, …) plus the Phase 4 keys (healOnceBelowPct, physicalElementRider, regenPerRound, buildBonus, weatherBonus, terrainBonus, zodiacBonus, statBonus).' },
+            splash: { t: 'json', h: 'After the primary hit, units around the VICTIM take dmg × mult: { mult: 0.5, radius: 1 | mask: [...], team: "enemies" } (the engine reads it from Phase 3).' },
+            randomTargets: { t: 'json', h: 'The cast needs no aim: { count: 3, scope: "enemies" | "units", distinct: true, mult: 1 } (the engine reads it from Phase 3).' },
+            chainProfile: { t: 'json', h: 'Chain lightning profile (see calcChainTargets).' },
+            chainRadius: { t: 'num', h: 'Chain hop radius in tiles.' },
+            splitCount: { t: 'num', h: 'Split beam: number of secondary beams.' },
+            splitRadius: { t: 'num', h: 'Split beam: pick radius around the first victim.' },
+            splitDmg: { t: 'num', h: 'Split beam: damage per secondary beam.' },
+            selfStatusEffects: { t: 'status', h: 'Statuses the caster takes on cast.' },
+            selfStatStageBoost: { t: 'json', h: 'Stat stages on the caster: {atk,def,mdef,int,spd} each -2..+2.' },
+            animVerb: { t: 'text', h: 'A _castChainFor kind (drain, slam, throw, …) — read first by classifySpellAnimKind from Phase 2; the dropdown + live preview land then.' },
+            animSlot: { t: 'text', h: 'A raw UAL_SLOTS slot name (castSlam, castThrust, …) — the chain becomes [slot, …auto].' },
+            animClip: { t: 'json', h: '{ name, lib } — an unwired raw clip, baked into a synthetic slot at load (Phase 2).' },
+            animStrikeMs: { t: 'num', h: 'Overrides the strike lead of the picked clip (ms).' },
+            minRange: { t: 'num', h: 'Minimum cast range (the kind meta sets 1 for offensive kinds).' },
+            collisionStatus: { t: 'text', h: 'Status a thrown / pushed body takes on collision.' },
+            enterStatus: { t: 'text', h: 'Status a unit takes on entering the zone / lane.' },
+        };
+        function _slb2Spec(f) { return _SLB_FIELD_HELP[f] || _SLB2_EXTRA_HELP[f] || null; }
+        function _slb2Label(f) { return _SLB2_LABELS[f] || f.replace(/([A-Z])/g, ' $1').replace(/^_/, '').replace(/^\w/, c => c.toUpperCase()); }
+        const _SLB2_HEADER_FIELDS = new Set(['name', 'desc', 'tier', 'role', 'roleOverride', 'families', 'upgrades', 'notes', 'manaCostOverride', 'descAuto', 'id', '_race', '_isRaceAbility', '_home', '_sentaiColor', '_doorWheel', '_legacyTier', 'simTargeting', 'simPhase', 'simFallback', 'requiresLineOfSight', 'lineOfSight']);
 
-        window._slbSetField = function(id, field, raw, ftype) {
+        function _slb2RenderInspector() {
+            const el = document.getElementById('slbInspector');
+            if (!el) return;
+            if (_slbSelection.length > 1) { el.innerHTML = _slb2BulkHtml(); return; }
+            const id = _slbSelectedId;
+            const r = id ? _slb2RowById(id) : null;
+            if (!r) { el.innerHTML = '<div class="slb2-empty">Pick a row — ↑ ↓ walk the table, Enter inspects.</div>'; return; }
+            el.innerHTML = `<div class="slb2-ins-head" id="slbInsHead">${_slb2InsHeadHtml(r)}</div>
+                <div class="slb2-ins-tabs">${[['stats', 'STATS'], ['target', 'TARGET'], ['effects', 'EFFECTS'], ['upgrades', 'UPGRADES'], ['look', 'LOOK'], ['notes', 'NOTES'], ['raw', 'RAW']].map(([k, l]) => `<button class="slb2-itab${_slbInsTab === k ? ' on' : ''}" data-act="insTab" data-tab="${k}">${l}${k === 'notes' && r.hasNotes ? ' 📝' : ''}</button>`).join('')}</div>
+                <div class="slb2-ins-body" id="slbInsBody">${_slb2InsBodyHtml(r)}</div>`;
+        }
+        function _slb2InsHeadHtml(r) {
+            const d = r.def, id = r.id, M = _slbMods(), doc = _slb2Doc();
+            const mod = doc.modified[id] || {};
+            const pris = M.pristineDef(id);
+            const isNew = !!doc.added[id];
+            if (r.deleted) {
+                return `<div class="slb2-ins-name del">${_slbEsc(d.name || id)}</div>
+                    <div class="slb2-ins-id">${_slbEsc(id)} · DELETED — the row is gone from every table until you restore it (or until the bake drops it)</div>
+                    <div class="slb2-ins-verbs"><button class="slb2-btn on" data-act="restore" data-id="${_slbEsc(id)}">↻ RESTORE</button></div>`;
+            }
+            const modded = f => !isNew && Object.prototype.hasOwnProperty.call(mod, f);
+            const ladderMp = (typeof TREE_RING_MP_COSTS !== 'undefined') ? TREE_RING_MP_COSTS[r.tier - 1] : null;
+            const lint = r.lint.map(h => `<span class="slb2-lintbadge ${h.level}" title="${_slbEsc(h.text)}">${_slbEsc(h.rule)}</span>`).join('');
+            const homeSel = isNew ? `<span class="slb2-owner-l">LIVES IN</span><select class="slb2-sel" data-input="home" data-id="${_slbEsc(id)}">
+                    <option value="lib"${!(doc.added[id]._home && doc.added[id]._home.race) ? ' selected' : ''}>the spell library (job spell)</option>
+                    ${_slbRaces().map(x => `<option value="${_slbEsc(x)}"${doc.added[id]._home && doc.added[id]._home.race === x ? ' selected' : ''}>race: ${_slbEsc(x)}</option>`).join('')}
+                </select>` : '';
+            let gen = '';
+            try { if (typeof describeSpell === 'function') gen = describeSpell(d) || ''; } catch (e) {}
+            return `
+                <div class="slb2-ins-row1">
+                    <input class="slb2-ins-name${modded('name') ? ' modded' : ''}" data-field="name" data-type="text" data-id="${_slbEsc(id)}" value="${_slbEsc(d.name || '')}" spellcheck="false" title="the display name — also the runtime cast key: keep it unique">
+                    ${_slb2Cell('edit', r)}
+                </div>
+                <div class="slb2-ins-id">${_slbEsc(id)} · ${r.isDoor ? 'door wheel' : r.isRace ? 'race ability' : isNew ? 'new row' : 'job spell'}${d.kind === 'passive' ? ' · passive row' : ''} <button class="slb2-link" data-act="copyId" data-id="${_slbEsc(id)}" title="copy the id">⧉</button></div>
+                <div class="slb2-ins-chips" id="slbInsChips">
+                    <span class="slb2-tierstep" title="THE tier = SP cost (1–4); MP follows the ladder unless pinned">
+                        <button class="slb2-stepb" data-act="tier" data-id="${_slbEsc(id)}" data-delta="-1">−</button>
+                        <b class="t${r.tier}">Tier ${_slb2TierText(r.tier)}</b><span class="slb2-sp">${r.sp} SP</span>
+                        <button class="slb2-stepb" data-act="tier" data-id="${_slbEsc(id)}" data-delta="1">＋</button>
+                    </span>
+                    <span class="slb2-mpread" title="${d.manaCostOverride != null ? 'MP pinned — click UNPIN to follow the ladder again' : 'MP from the tier ladder (' + ladderMp + ')'}">✦ ${r.mp == null ? '—' : r.mp} MP${d.manaCostOverride != null ? ` <button class="slb2-link" data-act="unpinMp" data-id="${_slbEsc(id)}">unpin</button>` : (ladderMp != null && r.mp !== ladderMp ? ` <i class="slb2-ghost">ladder ${ladderMp}</i>` : '')}</span>
+                    <span class="slb2-rolewrap" title="${d.roleOverride ? 'role pinned — click to change or clear' : 'derived from the fields — click to pin another'}"><button class="slb2-chipbtn" data-act="roleMenu" data-id="${_slbEsc(id)}">${_slb2RoleChip(r.role)}${d.roleOverride ? '<i class="slb2-pin">📌</i>' : ''}</button></span>
+                    ${lint}
+                </div>
+                <div class="slb2-ins-owners" id="slbInsOwners">
+                    ${homeSel}
+                    <span class="slb2-owner-l">FAMILIES</span>${r.families.map(f => `<span class="slb2-ochip" style="--fc:${_slb2FamColor(f)}">${_slb2Glyph(f)} ${_slbEsc(_slb2FamName(f))}<a data-act="famRemove" data-id="${_slbEsc(id)}" data-fam="${_slbEsc(f)}" title="remove">✕</a></span>`).join('') || '<span class="slb2-ochip empty">no family</span>'}
+                    <select class="slb2-sel slb2-sel-add" data-input="famAdd" data-id="${_slbEsc(id)}"><option value="">＋ family…</option>${Object.keys(SPELL_FAMILIES).filter(f => !r.families.includes(f)).map(f => `<option value="${_slbEsc(f)}">${_slb2Glyph(f)} ${_slbEsc(_slb2FamName(f))}</option>`).join('')}</select>
+                    ${r.isDoor ? '' : `<span class="slb2-owner-l">JOBS</span>${r.jobs.map(j => `<span class="slb2-ochip job">${_slbEsc(j)}<a data-act="unassign" data-id="${_slbEsc(id)}" data-kind="job" data-key="${_slbEsc(j)}" title="remove from the ${_slbEsc(j)} learnset">✕</a></span>`).join('') || '<span class="slb2-ochip empty">no learnset</span>'}
+                    <input class="slb2-sel slb2-sel-add" list="slbAssignJobList" placeholder="＋ job…" data-input="assignJob" data-id="${_slbEsc(id)}"><datalist id="slbAssignJobList">${_slbJobs().filter(j => !r.jobs.includes(j)).map(j => `<option value="${_slbEsc(j)}"></option>`).join('')}</datalist>
+                    <span class="slb2-owner-l">RACES</span>${r.races.map(x => `<span class="slb2-ochip race">${_slbEsc(_slb2Race(x))}<a data-act="unassign" data-id="${_slbEsc(id)}" data-kind="race" data-key="${_slbEsc(x)}" title="remove from the ${_slbEsc(x)} movepool">✕</a></span>`).join('') || '<span class="slb2-ochip empty">no race row</span>'}
+                    <input class="slb2-sel slb2-sel-add" list="slbAssignRaceList" placeholder="＋ race…" data-input="assignRace" data-id="${_slbEsc(id)}"><datalist id="slbAssignRaceList">${_slbRaces().filter(x => !r.races.includes(x)).map(x => `<option value="${_slbEsc(x)}"></option>`).join('')}</datalist>`}
+                </div>
+                <div class="slb2-ins-desc">
+                    <textarea class="slb2-desc${modded('desc') ? ' modded' : ''}" data-field="desc" data-type="text" data-id="${_slbEsc(id)}" spellcheck="false" placeholder="description (the HUD tooltip)">${_slbEsc(d.desc || '')}</textarea>
+                    <div class="slb2-desc-tools">
+                        <button class="slb2-tiny${d.descAuto ? ' on' : ''}" data-act="descAuto" data-id="${_slbEsc(id)}" title="regenerate the description from the data after every edit">AUTO ${d.descAuto ? 'ON' : 'OFF'}</button>
+                        <button class="slb2-tiny" data-act="genDesc" data-id="${_slbEsc(id)}" title="fill the description from the generator once">↻ GENERATE</button>
+                        ${!d.descAuto && gen && gen !== d.desc ? `<span class="slb2-ghost" title="${_slbEsc(gen)}">auto: ${_slbEsc(gen.length > 90 ? gen.slice(0, 90) + '…' : gen)}</span>` : ''}
+                    </div>
+                </div>
+                <div class="slb2-ins-verbs">
+                    <button class="slb2-btn slb2-btn-lab" data-act="lab" data-id="${_slbEsc(id)}" title="boot the Spell Lab on this spell (⌘L)">▶ LAB THIS</button>
+                    <button class="slb2-btn" data-act="dupe" data-id="${_slbEsc(id)}" title="copy to a new id">⧉ DUPLICATE</button>
+                    ${r.modified ? `<button class="slb2-btn" data-act="revert" data-id="${_slbEsc(id)}" title="drop every pending edit on this row">↺ REVERT</button>` : ''}
+                    <button class="slb2-btn slb2-btn-danger" data-act="delete" data-id="${_slbEsc(id)}" title="${isNew ? 'discard this new row' : 'mark the shipped row deleted until baked'}">✕ DELETE</button>
+                </div>`;
+        }
+        function _slb2InsBodyHtml(r) {
+            const d = r.def, id = r.id;
+            if (r.deleted) return `<pre class="slb2-pre">${_slbEsc(JSON.stringify(d, null, 2))}</pre>`;
+            const t = _slbInsTab;
+            if (t === 'notes') return _slb2NotesHtml(r);
+            if (t === 'raw') return `<div class="slb2-rawwrap"><textarea id="slbRawTa" class="slb2-json" spellcheck="false">${_slbEsc(JSON.stringify(d, null, 2))}</textarea>
+                <div class="slb2-rawbar"><button class="slb2-btn on" data-act="applyRaw" data-id="${_slbEsc(id)}">APPLY JSON</button><span class="slb2-hint">The full effective def. APPLY diffs it against the shipped row; the id itself cannot change (DUPLICATE for a new id).</span></div></div>`;
+            if (t === 'upgrades') return _slb2UpgradesTabHtml(r);
+            const groups = _SLB2_GROUPS[t] || [];
+            const shown = new Set();
+            const ALWAYS = { stats: ['cost', 'apCost', 'dmg', 'damageType', 'type', 'spellType', 'element'], target: ['kind', 'range', 'ignoresLineOfSight', 'aoeRadius', 'aoeMask'], effects: ['statusEffects', 'bonusVsStatus', 'statStageBoost'], look: ['animVerb', 'vfxArchetype', 'vfxWeight', 'projectileOverride'] };
+            let html = '';
+            groups.forEach(([title, keys]) => {
+                const present = keys.filter(k => Object.prototype.hasOwnProperty.call(d, k) || (ALWAYS[t] || []).includes(k));
+                if (title.indexOf('HOOKS') === 0 && d.kind !== 'passive') return;
+                if (!present.length) return;
+                present.forEach(k => shown.add(k));
+                html += `<div class="slb2-group" data-group="${_slbEsc(title)}"><div class="slb2-group-h">${title}</div>${present.map(k => _slb2FieldHtml(r, k)).join('')}</div>`;
+            });
+            if (t === 'target') html += _slb2FootprintHtml(r);
+            if (t === 'look') html += _slb2LookExtraHtml(r);
+            if (t === 'stats') {
+                const known = new Set(); Object.keys(_SLB2_GROUPS).forEach(g => _SLB2_GROUPS[g].forEach(([, keys]) => keys.forEach(k => known.add(k))));
+                const other = Object.keys(d).filter(k => !known.has(k) && !_SLB2_HEADER_FIELDS.has(k) && !shown.has(k)).sort();
+                if (other.length) html += `<div class="slb2-group" data-group="OTHER"><div class="slb2-group-h">OTHER FIELDS ON THIS ROW</div>${other.map(k => _slb2FieldHtml(r, k)).join('')}</div>`;
+            }
+            html += `<div class="slb2-addfield"><button class="slb2-btn" data-act="palette" data-id="${_slbEsc(id)}" title="add a field from the catalogue (⌘K)">＋ FIELD…</button></div>`;
+            return html;
+        }
+        /* One field row: label in words · the key · the editor · ↺ when modified · help under it. Patched in place by _slb2PatchField. */
+        function _slb2FieldHtml(r, f) {
+            const d = r.def, id = r.id, M = _slbMods(), doc = _slb2Doc();
+            const mod = doc.modified[id] || {};
+            const isNew = !!doc.added[id];
+            const isMod = !isNew && Object.prototype.hasOwnProperty.call(mod, f);
+            const pris = M.pristineDef(id);
+            const prisVal = pris && Object.prototype.hasOwnProperty.call(pris, f) ? pris[f] : undefined;
+            const spec = _slb2Spec(f);
+            const val = d[f];
+            const dead = (typeof SPELL_DEAD_FIELDS !== 'undefined') && SPELL_DEAD_FIELDS.includes(f);
+            const orig = isMod ? `<button class="slb2-orig" data-act="revertField" data-id="${_slbEsc(id)}" data-field="${_slbEsc(f)}" title="shipped value ${_slbEsc(prisVal === undefined ? '(absent)' : JSON.stringify(prisVal))} — click to revert">↺ ${_slbEsc(prisVal === undefined ? '(absent)' : JSON.stringify(prisVal).slice(0, 26))}</button>` : '';
+            const wide = (spec && (spec.t === 'status' || spec.t === 'json' || spec.t === 'long')) || f === 'aoeMask' || f === 'hooks';
+            // a wide editor (status list, JSON, long text) takes the whole row: its ↺ / ✕ sit under the label instead of wrapping under the editor
+            const drop = Object.prototype.hasOwnProperty.call(d, f) && !(ALWAYS_KEEP.has(f)) ? `<button class="slb2-fx" data-act="dropField" data-id="${_slbEsc(id)}" data-field="${_slbEsc(f)}" title="remove the field from the row">✕</button>` : '';
+            return `<div class="slb2-field${isMod ? ' modded' : ''}${wide ? ' wide' : ''}${dead ? ' dead' : ''}" data-frow="${_slbEsc(f)}">
+                <div class="slb2-field-l"><span class="slb2-field-name">${_slbEsc(_slb2Label(f))}</span><span class="slb2-field-key">${_slbEsc(f)}${wide ? drop : ''}</span>${dead ? '<span class="slb2-field-dead" title="the engine never reads this field">DEAD</span>' : ''}${wide ? orig : ''}</div>
+                <div class="slb2-field-e">${_slb2FieldInput(id, f, val, spec, d)}${wide ? '' : orig + drop}</div>
+                ${spec && spec.h ? `<div class="slb2-field-h">${_slbEsc(spec.h)}</div>` : ''}
+            </div>`;
+        }
+        const ALWAYS_KEEP = new Set(['name', 'kind', 'type', 'cost', 'range', 'apCost', 'element', 'spellType', 'damageType', 'tier']);
+        function _slb2FieldInput(id, f, val, spec, d) {
+            const t = spec ? spec.t : (typeof val === 'number' ? 'num' : typeof val === 'boolean' ? 'bool' : (val && typeof val === 'object') ? 'json' : 'text');
+            const attrs = `data-field="${_slbEsc(f)}" data-id="${_slbEsc(id)}"`;
+            if (t === 'status') return _slb2StatusEditor(id, f, val);
+            if (f === 'bonusVsStatus') return _slb2BonusEditor(id, val);
+            if (f === 'ignoresLineOfSight') {
+                const los = d && d.requiresLineOfSight ? 'needs' : d && d.ignoresLineOfSight ? 'ignores' : 'default';
+                return `<div class="slb2-seg">${[['default', 'DEFAULT'], ['ignores', 'IGNORES COVER'], ['needs', 'NEEDS LOS']].map(([v, l]) => `<button class="slb2-segb${los === v ? ' on' : ''}" data-act="los" data-id="${_slbEsc(id)}" data-val="${v}">${l}</button>`).join('')}</div>`;
+            }
+            if (f === 'cost') {
+                let ghost = null;
+                try { if (typeof computeSpellManaCost === 'function' && d) ghost = (typeof snapCostToLadder === 'function') ? snapCostToLadder(computeSpellManaCost(d)) : computeSpellManaCost(d); } catch (e) { ghost = null; }
+                return `<input type="number" step="1" min="0" ${attrs} data-type="num" value="${val != null ? _slbEsc(val) : ''}" title="editing pins the MP (manaCostOverride)"><span class="slb2-ghost" title="what the mana formula would charge">${ghost != null ? 'formula ' + ghost : ''}</span>${d && d.manaCostOverride != null ? `<button class="slb2-tiny on" data-act="unpinMp" data-id="${_slbEsc(id)}" title="follow the ladder again">PINNED</button>` : ''}`;
+            }
+            if (t === 'bool') return `<label class="slb2-switch"><input type="checkbox" ${attrs} data-type="bool"${val ? ' checked' : ''}><i></i><span>${val ? 'yes' : 'no'}</span></label>`;
+            if (t === 'num') {
+                const input = `<input type="number" step="any" ${attrs} data-type="num" value="${val != null ? _slbEsc(val) : ''}">`;
+                const tiers = f === 'dmg' ? _SLB_DMG_TIERS : (f === 'heal' || f === 'healAmt') ? _SLB_HEAL_TIERS : (f === 'selfDamagePct' || f === 'recoilPct') ? _SLB_RECOIL_TIERS : null;
+                if (!tiers) return input;
+                return `${input}<span class="slb2-presets">${tiers.map(([l, v]) => `<button class="slb2-tiny${val === v ? ' on' : ''}" data-act="preset" data-id="${_slbEsc(id)}" data-field="${_slbEsc(f)}" data-val="${v}" title="${l} = ${v}">${l}</button>`).join('')}</span>`;
+            }
+            if (t === 'enum') {
+                const opts = (f === 'vfxArchetype' ? _slbArchetypes() : (spec.o || []));
+                return `<select ${attrs} data-type="text"><option value=""${val == null ? ' selected' : ''}>(unset)</option>${opts.map(o => `<option value="${_slbEsc(o)}"${val === o ? ' selected' : ''}>${_slbEsc(o)}</option>`).join('')}</select>`;
+            }
+            if (t === 'json') return `<textarea class="slb2-jsonmini" spellcheck="false" ${attrs} data-type="json">${val !== undefined ? _slbEsc(JSON.stringify(val)) : ''}</textarea>`;
+            if (t === 'long') return `<textarea class="slb2-jsonmini long" spellcheck="false" ${attrs} data-type="text">${_slbEsc(val != null ? val : '')}</textarea>`;
+            return `<input type="text" ${attrs} data-type="text" value="${_slbEsc(val != null ? val : '')}" spellcheck="false">`;
+        }
+        function _slb2StatusEditor(id, f, val) {
+            const arr = Array.isArray(val) ? val : [];
+            const sids = _slbStatusIds().slice().sort((a, b) => a.localeCompare(b));
+            const rows = arr.map((e, i) => `<div class="slb2-status-row">
+                    <select data-act-change="statusMut" data-id="${_slbEsc(id)}" data-field="${_slbEsc(f)}" data-i="${i}" data-key="id" title="${_slbEsc(_slb2StatusDef(e.id).label || e.id)}">${sids.map(s => `<option value="${_slbEsc(s)}"${e.id === s ? ' selected' : ''}>${_slbEsc(_slb2StatusDef(s).icon || '')} ${_slbEsc(_slb2StatusDef(s).label || s)}</option>`).join('')}</select>
+                    <input type="number" min="1" step="1" value="${e.duration != null ? _slbEsc(e.duration) : 1}" title="duration (rounds)" data-act-change="statusMut" data-id="${_slbEsc(id)}" data-field="${_slbEsc(f)}" data-i="${i}" data-key="duration"><span class="slb2-dim">rnd</span>
+                    <input type="number" step="1" value="${e.bonusDamage != null ? _slbEsc(e.bonusDamage) : ''}" placeholder="+dmg" title="bonusDamage rider — blank = none" data-act-change="statusMut" data-id="${_slbEsc(id)}" data-field="${_slbEsc(f)}" data-i="${i}" data-key="bonusDamage">
+                    <button class="slb2-fx" data-act="statusRemove" data-id="${_slbEsc(id)}" data-field="${_slbEsc(f)}" data-i="${i}" title="remove">✕</button>
+                </div>`).join('');
+            return `<div class="slb2-status-ed">${rows}<select class="slb2-sel" data-input="statusAdd" data-id="${_slbEsc(id)}" data-field="${_slbEsc(f)}"><option value="">＋ add status…</option>${sids.map(s => `<option value="${_slbEsc(s)}">${_slbEsc(_slb2StatusDef(s).icon || '')} ${_slbEsc(_slb2StatusDef(s).label || s)} (${_slbEsc(s)})</option>`).join('')}</select></div>`;
+        }
+        function _slb2BonusEditor(id, val) {
+            const sids = _slbStatusIds().slice().sort((a, b) => a.localeCompare(b));
+            const ids = val && val.status ? [].concat(val.status) : [];
+            const mult = val && val.mult != null ? val.mult : 1.5;
+            return `<div class="slb2-status-ed">
+                ${ids.map((s, i) => `<div class="slb2-status-row">${_slb2Chip('×' + mult + ' ' + _slb2StatusShort(s), _slb2StatusColor(s), _slb2StatusDef(s).label || s)}<span class="slb2-dim">${_slbEsc(_slb2StatusDef(s).label || s)}</span><button class="slb2-fx" data-act="bonusRemove" data-id="${_slbEsc(id)}" data-i="${i}" title="remove">✕</button></div>`).join('')}
+                <div class="slb2-status-row"><select class="slb2-sel" data-input="bonusAdd" data-id="${_slbEsc(id)}"><option value="">＋ punish a status…</option>${sids.filter(s => !ids.includes(s)).map(s => `<option value="${_slbEsc(s)}">${_slbEsc(_slb2StatusDef(s).icon || '')} ${_slbEsc(_slb2StatusDef(s).label || s)}</option>`).join('')}</select>
+                ${ids.length ? `<span class="slb2-dim">×</span><input type="number" step="0.1" min="1" value="${_slbEsc(mult)}" data-input="bonusMult" data-id="${_slbEsc(id)}" title="damage multiplier against the status" style="width:56px">` : ''}</div>
+                <div class="slb2-field-h">The combo finisher: ×mult damage against a target carrying the status (not consumed). A damage-only spell may carry it without becoming damage+effect.</div>
+            </div>`;
+        }
+        /* THE FOOTPRINT (§5.4 preview): the 7×7 the row lights today. Drawing lands with the engine sites in Phase 2. */
+        function _slb2FootprintHtml(r) {
+            const foot = r.foot;
+            const origin = r.def.aoeOriginSelf ? 'the caster' : 'the target tile';
+            return `<div class="slb2-group"><div class="slb2-group-h">FOOTPRINT · centre = ${origin}</div>
+                <div class="slb2-footwrap">${foot ? _slb2Tiles(Object.assign({}, foot, { r: 3 }), 22) : '<span class="slb2-dim">single target — no area</span>'}
+                <div class="slb2-foot-l">${foot ? `<b>${_slbEsc(foot.label)}</b> · ${foot.n} tile${foot.n === 1 ? '' : 's'}${foot.kind === 'mask' ? ' · drawn mask (wins over the radius fields)' : ' · from the radius / shape fields'}` : ''}</div></div>
+            </div>`;
+        }
+        function _slb2LookExtraHtml(r) {
+            const d = r.def;
+            const n = (Array.isArray(d.sfxCues) ? d.sfxCues.length : 0) + (Array.isArray(d.vfxCues) ? d.vfxCues.length : 0);
+            return `<div class="slb2-group"><div class="slb2-group-h">THE TIMELINE</div>
+                <div class="slb2-field-h">${n ? n + ' cue' + (n === 1 ? '' : 's') + ' on the cast / launch / impact beats' : 'no cues — the default launch sound plays'}. Cues are placed on the Spell Lab's timeline, on the real board beats. <button class="slb2-tiny" data-act="lab" data-id="${_slbEsc(r.id)}">▶ OPEN THE LAB</button></div>
+                <div class="slb2-field-h">Auto animation today: <b>${_slbEsc(r.anim || '?')}</b> (classifySpellAnimKind). The slot / clip dropdown with the live 3D preview lands in Phase 2 with the engine read; the fields above are honoured then.</div>
+            </div>`;
+        }
+        function _slb2UpgradesTabHtml(r) {
+            const reg = (typeof SPELL_UPGRADES !== 'undefined') ? SPELL_UPGRADES : {};
+            const ids = Object.keys(reg).sort();
+            const allowed = Array.isArray(r.def.upgrades) ? r.def.upgrades : [];
+            if (!ids.length) return `<div class="slb2-group"><div class="slb2-group-h">ALLOWED UPGRADES</div><div class="slb2-field-h">The upgrade registry is empty. Add upgrades on the UPGRADES tab (name, SP, roles, families, the patch), then allow them here per spell. The rack's ⚙ picker, the derived defs and the host validation land in Phase 5.</div></div>`;
+            return `<div class="slb2-group"><div class="slb2-group-h">ALLOWED UPGRADES · ${allowed.length} of ${ids.length}</div>
+                ${ids.map(u => { const row = reg[u] || {}; const on = allowed.includes(u); const fits = (!row.roles || !row.roles.length || row.roles.includes(r.role)) && (!row.families || !row.families.length || row.families.some(f => r.families.includes(f)));
+                    return `<label class="slb2-uprow${on ? ' on' : ''}${fits ? '' : ' dim'}"><input type="checkbox" data-input="upgradeToggle" data-id="${_slbEsc(r.id)}" data-up="${_slbEsc(u)}"${on ? ' checked' : ''}><b>${_slbEsc(row.glyph || '')} ${_slbEsc(row.name || u)}</b><span class="slb2-sp">${row.sp || 1} SP</span><span class="slb2-dim">${_slbEsc(_slb2PatchChips(row.patch))}</span>${fits ? '' : '<span class="slb2-dim" title="its roles / families do not name this spell">off-role</span>'}</label>`; }).join('')}
+            </div>`;
+        }
+        function _slb2PatchChips(patch) {
+            if (!patch || typeof patch !== 'object') return '';
+            return Object.keys(patch).map(k => {
+                const v = patch[k];
+                if (k === 'dmgMult') return (v >= 1 ? '+' : '') + Math.round((v - 1) * 100) + '% dmg';
+                if (k === 'dmgDelta') return (v > 0 ? '+' : '') + v + ' dmg';
+                if (k === 'costDelta') return (v > 0 ? '+' : '') + v + ' MP';
+                if (k === 'costMult') return '×' + v + ' MP';
+                if (k === 'apDelta') return (v > 0 ? '+' : '') + v + ' AP';
+                if (k === 'rangeDelta') return (v > 0 ? '+' : '') + v + ' range';
+                if (k === 'aoe') return 'AOE ' + (v.preset || 'mask');
+                if (k === 'ricochet') return 'ricochet ' + (v.radius || 1) + ' ×' + (v.mult || 0.5);
+                if (k === 'extraTargets') return '+' + v + ' target' + (patch.extraTargetsMult ? ' ×' + patch.extraTargetsMult : '');
+                if (k === 'extraTargetsMult') return '';
+                if (k === 'statusBonus') return '×' + (v.mult || 1.5) + ' vs ' + v.status;
+                if (k === 'deployCapDelta') return '+' + v + ' deployable';
+                return k + ' ' + JSON.stringify(v);
+            }).filter(Boolean).join(' · ');
+        }
+        function _slb2NotesHtml(r) {
+            const d = r.def;
+            return `<div class="slb2-notes">
+                <textarea id="slbNotesTa" class="slb2-notes-ta" data-input="notes" data-id="${_slbEsc(r.id)}" spellcheck="true" placeholder="Your intent for this row — look, feel, balance, what to merge it with. Markdown. Rides the export; never shipped to players (the bake strips notes into docs/spell-notes.md).">${_slbEsc(d.notes || '')}</textarea>
+                <div class="slb2-notes-prev" id="slbNotesPrev">${_slb2Markdown(d.notes || '')}</div>
+            </div>`;
+        }
+        /* A small markdown: headings, bold, italics, code, bullets, paragraphs — enough for notes and the summary preview. */
+        function _slb2Markdown(md) {
+            const esc = _slbEsc;
+            const lines = String(md || '').split('\n');
+            let html = '', inList = false, inCode = false;
+            const inline = s => esc(s).replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/\*([^*]+)\*/g, '<i>$1</i>');
+            lines.forEach(l => {
+                if (/^```/.test(l)) { if (inList) { html += '</ul>'; inList = false; } inCode = !inCode; html += inCode ? '<pre>' : '</pre>'; return; }
+                if (inCode) { html += esc(l) + '\n'; return; }
+                const h = /^(#{1,3})\s+(.*)$/.exec(l);
+                if (h) { if (inList) { html += '</ul>'; inList = false; } html += `<h${h[1].length + 2}>${inline(h[2])}</h${h[1].length + 2}>`; return; }
+                const li = /^\s*[-*]\s+(.*)$/.exec(l);
+                if (li) { if (!inList) { html += '<ul>'; inList = true; } html += `<li>${inline(li[1])}</li>`; return; }
+                if (inList) { html += '</ul>'; inList = false; }
+                if (/^>\s?/.test(l)) { html += `<blockquote>${inline(l.replace(/^>\s?/, ''))}</blockquote>`; return; }
+                if (!l.trim()) return;
+                html += `<p>${inline(l)}</p>`;
+            });
+            if (inList) html += '</ul>';
+            if (inCode) html += '</pre>';
+            return html;
+        }
+
+        /* ── EDITING: every mutation goes through _slb2Mutate (undo + save + apply + patch) ── */
+        function _slb2Snapshot() { return JSON.parse(JSON.stringify(_slb2Doc())); }
+        function _slb2Mutate(label, fn, opts) {
             const M = _slbMods();
-            if (!M) return;
-            let value;
-            try {
-                if (ftype === 'num') { value = raw === '' ? null : Number(raw); if (value !== null && !isFinite(value)) throw new Error('not a number'); }
-                else if (ftype === 'bool') value = !!raw;
-                else if (ftype === 'json') value = raw.trim() === '' ? null : JSON.parse(raw);
-                else value = raw === '' ? null : raw;
-            } catch (e) { _slbToast('✗ ' + field + ': ' + e.message, true); return; }
+            if (!M) return false;
+            const before = _slb2Snapshot();
+            try { if (fn() === false) return false; } catch (e) { _slbToast('✗ ' + e.message, true); return false; }
+            const after = _slb2Snapshot();
+            if (JSON.stringify(before) === JSON.stringify(after)) return false;
+            _slb2Undo().push(label, before, after);
+            M.save();
+            M.apply();
+            _slb2Dirty();
+            if (!(opts && opts.quiet)) _slbToast(label, false, { label: 'UNDO', act: 'undo' });
+            return true;
+        }
+        function _slb2ReplaceDoc(snap) {
+            const M = _slbMods();
             const doc = M.doc;
+            Object.keys(doc).forEach(k => { delete doc[k]; });
+            Object.assign(doc, JSON.parse(JSON.stringify(snap)));
+            M.save(); M.apply(); _slb2Dirty();
+        }
+        window._slbUndo = function() {
+            const e = _slb2Undo().undo();
+            if (!e) { _slbToast('nothing to undo'); return; }
+            _slb2ReplaceDoc(e.before);
+            _slbToast('↶ undid: ' + e.label, false, { label: 'REDO', act: 'redo' });
+            _slb2RenderTab(); _slb2RefreshChrome();
+        };
+        window._slbRedo = function() {
+            const e = _slb2Undo().redo();
+            if (!e) { _slbToast('nothing to redo'); return; }
+            _slb2ReplaceDoc(e.after);
+            _slbToast('↷ redid: ' + e.label, false, { label: 'UNDO', act: 'undo' });
+            _slb2RenderTab(); _slb2RefreshChrome();
+        };
+        /* Write one field into the doc (an added row's own field, or a sparse patch against the pristine def). */
+        function _slb2WriteField(id, field, value) {
+            const M = _slbMods(), doc = M.doc;
             if (doc.added[id]) {
                 if (value === null) delete doc.added[id][field];
                 else doc.added[id][field] = value;
                 if (field === 'cost') { if (value === null) delete doc.added[id].manaCostOverride; else doc.added[id].manaCostOverride = value; }
-            } else {
-                const pris = M.pristineDef(id);
-                const prisVal = pris && Object.prototype.hasOwnProperty.call(pris, field) ? pris[field] : undefined;
-                const mod = doc.modified[id] = doc.modified[id] || {};
-                if (_slbDeepEq(value, prisVal) || (value === null && prisVal === undefined)) {
-                    delete mod[field];
-                    if (field === 'cost') delete mod.manaCostOverride;
-                } else {
-                    mod[field] = value;
-                    if (field === 'cost' && value !== null) mod.manaCostOverride = value;
-                }
-                if (!Object.keys(mod).length) delete doc.modified[id];
+                return;
             }
-            M.save();
-            M.apply();
+            const pris = M.pristineDef(id);
+            const prisVal = pris && Object.prototype.hasOwnProperty.call(pris, field) ? pris[field] : undefined;
+            const mod = doc.modified[id] = doc.modified[id] || {};
+            const eq = JSON.stringify(value === undefined ? null : value) === JSON.stringify(prisVal === undefined ? null : prisVal);
+            if (eq || (value === null && prisVal === undefined)) {
+                delete mod[field];
+                if (field === 'cost') delete mod.manaCostOverride;
+            } else {
+                mod[field] = value;
+                if (field === 'cost' && value !== null) mod.manaCostOverride = value;
+            }
+            if (!Object.keys(mod).length) delete doc.modified[id];
+        }
+        function _slb2Parse(raw, ftype, field) {
+            if (ftype === 'num') { const v = raw === '' || raw == null ? null : Number(raw); if (v !== null && !isFinite(v)) throw new Error(field + ': not a number'); return v; }
+            if (ftype === 'bool') return !!raw;
+            if (ftype === 'json') { if (typeof raw !== 'string') return raw; return raw.trim() === '' ? null : JSON.parse(raw); }
+            return raw === '' || raw == null ? null : raw;
+        }
+        /* The Lab + timeline call this by name with the old signature. */
+        window._slbSetField = function(id, field, raw, ftype, opts) {
+            let value;
+            try { value = _slb2Parse(raw, ftype, field); } catch (e) { _slbToast('✗ ' + e.message, true); return; }
+            const before = SPELL_BY_ID[id] ? JSON.stringify(SPELL_BY_ID[id][field] === undefined ? null : SPELL_BY_ID[id][field]) : '?';
+            const label = `${SPELL_BY_ID[id] ? (SPELL_BY_ID[id].name || id) : id} · ${field} ${before === 'null' ? '(absent)' : before.slice(0, 24)} → ${value === null ? '(removed)' : JSON.stringify(value).slice(0, 24)}`;
+            const ok = _slb2Mutate(label, () => { _slb2WriteField(id, field, value); }, opts);
+            if (!ok) return;
             try { if (window.ThreeVFXEffects && window.ThreeVFXEffects.clearStageInfoCache) window.ThreeVFXEffects.clearStageInfoCache(id); } catch (e) {}
-            // AUTO-DESC: when the spell opts in (descAuto), every data edit
-            // regenerates `desc` so the tooltip never drifts from the truth.
-            // Guarded on field !== desc/descAuto so the nested write can't
-            // recurse.
             if (field !== 'desc' && field !== 'descAuto') {
                 try {
                     const live = SPELL_BY_ID[id];
                     if (live && live.descAuto && typeof describeSpell === 'function') {
                         const gen = describeSpell(live);
-                        if (gen && gen !== live.desc) window._slbSetField(id, 'desc', gen, 'text');
+                        if (gen && gen !== live.desc) { _slb2Mutate('auto desc', () => _slb2WriteField(id, 'desc', gen), { quiet: true }); }
                     }
                 } catch (e) {}
             }
-            if (field === 'name') {
-                const dupes = _slbAllRows().filter(r => !r.deleted && String(r.def.name) === String(value) && r.id !== id);
-                if (value && dupes.length) _slbToast(`⚠ name "${value}" also used by ${dupes.map(r => r.id).join(', ')} — casts resolve by name, keep names unique!`, true);
+            if (field === 'name' && value) {
+                const dupes = _slb2Rows().filter(r => !r.deleted && String(r.def.name) === String(value) && r.id !== id);
+                if (dupes.length) _slbToast(`⚠ "${value}" is also the name of ${dupes.map(r => r.id).join(', ')} — casts resolve by name, keep names unique`, true);
             }
-            _slbRenderList();
-            _slbRenderDetail();
-            _slbRefreshChrome();
-            if (window._spellLabActive) window._slbLabRefreshSpell();
+            _slb2AfterEdit(id, field);
         };
-
+        /* THE PATCH after an edit: the field row, the header chips, the table row, the chrome. Never the pane. */
+        function _slb2AfterEdit(id, field) {
+            _slb2PatchRow(id);
+            _slb2RefreshChrome();
+            if (window._spellLabActive && typeof window._slbLabRefreshSpell === 'function') window._slbLabRefreshSpell();
+            if (_slbSelectedId !== id) return;
+            const r = _slb2RowById(id);
+            if (!r) { _slb2RenderInspector(); return; }
+            const head = document.getElementById('slbInsHead');
+            if (head && !['name', 'desc'].includes(field)) {
+                const active = document.activeElement;
+                const keep = active && head.contains(active) ? { field: active.getAttribute('data-field'), sel: [active.selectionStart, active.selectionEnd] } : null;
+                head.innerHTML = _slb2InsHeadHtml(r);
+                if (keep && keep.field) { const el = head.querySelector(`[data-field="${CSS.escape(keep.field)}"]`); if (el) { el.focus(); try { el.setSelectionRange(keep.sel[0], keep.sel[1]); } catch (e) {} } }
+            } else if (head) {
+                const el = head.querySelector(`[data-field="${CSS.escape(field)}"]`);
+                if (el) el.classList.toggle('modded', !!(_slb2Doc().modified[id] && Object.prototype.hasOwnProperty.call(_slb2Doc().modified[id], field)));
+                if (field === 'desc') { const tools = head.querySelector('.slb2-desc-tools'); if (tools) { const tmp = _slb2H('<div>' + _slb2InsHeadHtml(r) + '</div>'); const nt = tmp.querySelector('.slb2-desc-tools'); if (nt) tools.replaceWith(nt); } }
+            }
+            _slb2PatchField(r, field);
+            /* dependants: the MP ghost after a power edit, the LOS control, the footprint after an area edit */
+            const power = (typeof EWSpellMods !== 'undefined' && EWSpellMods.POWER_FIELDS) || ['dmg', 'heal', 'healAmt', 'statusEffects', 'aoeRadius', 'range', 'apCost', 'kind'];
+            if (field !== 'cost' && power.indexOf(field) >= 0) _slb2PatchField(r, 'cost');
+            if (['aoeRadius', 'aoeShape', 'aoeOriginSelf', 'crossRadius', 'diamond', 'diagonal', 'lineWidth', 'tileCount', 'blastRadius', 'aoeMask', 'kind', 'range'].includes(field)) {
+                const body = document.getElementById('slbInsBody');
+                const old = body && body.querySelector('.slb2-footwrap');
+                if (old) old.closest('.slb2-group').replaceWith(_slb2H(_slb2FootprintHtml(r)));
+            }
+            if (['requiresLineOfSight', 'ignoresLineOfSight', 'lineOfSight'].includes(field)) _slb2PatchField(r, 'ignoresLineOfSight');
+            if (field === 'notes') { const tab = _slb2Q('#slbInspector .slb2-itab[data-tab="notes"]'); if (tab) tab.textContent = 'NOTES' + (r.hasNotes ? ' 📝' : ''); }
+        }
+        function _slb2PatchField(r, field) {
+            const body = document.getElementById('slbInsBody');
+            if (!body) return;
+            const row = body.querySelector(`.slb2-field[data-frow="${CSS.escape(field)}"]`);
+            if (!row) {
+                /* a field added from the palette lands in its group, else under OTHER */
+                if (!Object.prototype.hasOwnProperty.call(r.def, field)) return;
+                const groups = _SLB2_GROUPS[_slbInsTab] || [];
+                const g = groups.find(([, keys]) => keys.includes(field));
+                let host = g ? body.querySelector(`.slb2-group[data-group="${CSS.escape(g[0])}"]`) : null;
+                if (!host && g) { host = _slb2H(`<div class="slb2-group" data-group="${_slbEsc(g[0])}"><div class="slb2-group-h">${g[0]}</div></div>`); const add = body.querySelector('.slb2-addfield'); body.insertBefore(host, add); }
+                if (!host && _slbInsTab === 'stats') { host = body.querySelector('.slb2-group[data-group="OTHER"]'); if (!host) { host = _slb2H('<div class="slb2-group" data-group="OTHER"><div class="slb2-group-h">OTHER FIELDS ON THIS ROW</div></div>'); body.insertBefore(host, body.querySelector('.slb2-addfield')); } }
+                if (host) { const fresh = _slb2H(_slb2FieldHtml(r, field)); host.appendChild(fresh); fresh.classList.add('flash'); }
+                return;
+            }
+            const active = document.activeElement;
+            if (active && row.contains(active) && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA') && active.getAttribute('data-field') === field) {
+                /* the user is still in the editor: patch the modified marker + revert only, keep the input */
+                const fresh = _slb2H(_slb2FieldHtml(r, field));
+                row.className = fresh.className;
+                const oldOrig = row.querySelector('.slb2-orig'), newOrig = fresh.querySelector('.slb2-orig');
+                if (oldOrig && !newOrig) oldOrig.remove();
+                else if (newOrig && !oldOrig) active.insertAdjacentElement('afterend', newOrig);
+                else if (oldOrig && newOrig) oldOrig.replaceWith(newOrig);
+                return;
+            }
+            const fresh = _slb2H(_slb2FieldHtml(r, field));
+            row.replaceWith(fresh);
+            fresh.classList.add('flash');
+            setTimeout(() => fresh.classList.remove('flash'), 240);
+        }
+        window._slbRevertField = function(id, f) {
+            _slb2Mutate(`↺ ${f} reverted`, () => {
+                const doc = _slb2Doc(); const mod = doc.modified[id];
+                if (!mod) return false;
+                delete mod[f];
+                if (f === 'cost') delete mod.manaCostOverride;
+                if (!Object.keys(mod).length) delete doc.modified[id];
+            });
+            _slb2AfterEdit(id, f);
+        };
         window._slbRevertSpell = function(id) {
-            const M = _slbMods();
-            if (!M) return;
-            delete M.doc.modified[id];
-            M.save(); M.apply();
-            _slbToast('↺ reverted ' + id);
-            _slbRenderList(); _slbRenderDetail(); _slbRefreshChrome();
+            if (!_slb2Mutate(`↺ ${id} reverted`, () => { const doc = _slb2Doc(); if (!doc.modified[id]) return false; delete doc.modified[id]; })) return;
+            _slb2PatchRow(id); _slb2RefreshChrome(); _slb2RenderInspector();
         };
-
         window._slbDeleteSpell = function(id) {
-            const M = _slbMods();
-            if (!M) return;
-            if (M.doc.added[id]) {
-                delete M.doc.added[id];
-                delete M.doc.modified[id];
-            } else if (!M.doc.deleted.includes(id)) {
-                M.doc.deleted.push(id);
-            }
-            M.save(); M.apply();
-            _slbToast('✕ deleted ' + id + ' (restore any time)');
-            _slbRenderList(); _slbRenderDetail(); _slbRefreshChrome();
+            const ok = _slb2Mutate(`✕ ${id} deleted`, () => {
+                const doc = _slb2Doc();
+                if (doc.added[id]) { delete doc.added[id]; delete doc.modified[id]; }
+                else if (!doc.deleted.includes(id)) doc.deleted.push(id);
+                else return false;
+            });
+            if (!ok) return;
+            _slb2RenderCenter(); _slb2RefreshChrome(); _slb2RenderRail();
+            if (!_slb2RowById(id)) { const rows = _slb2Filtered(); _slbSelectedId = rows[0] ? rows[0].id : null; }
+            _slb2RenderInspector();
         };
-
         window._slbRestoreSpell = function(id) {
-            const M = _slbMods();
-            if (!M) return;
-            M.doc.deleted = M.doc.deleted.filter(x => x !== id);
-            M.save(); M.apply();
-            _slbToast('↻ restored ' + id);
-            _slbRenderList(); _slbRenderDetail(); _slbRefreshChrome();
+            if (!_slb2Mutate(`↻ ${id} restored`, () => { const doc = _slb2Doc(); if (!doc.deleted.includes(id)) return false; doc.deleted = doc.deleted.filter(x => x !== id); })) return;
+            _slb2RenderCenter(); _slb2RefreshChrome(); _slb2RenderRail(); _slb2RenderInspector();
         };
-
         function _slbUniqueId(base) {
             let id = base, n = 2;
-            while (SPELL_BY_ID[id] || _slbMods().doc.added[id] || _slbMods().doc.deleted.includes(id)) id = base + (n++);
+            const doc = _slb2Doc();
+            while (SPELL_BY_ID[id] || doc.added[id] || doc.deleted.includes(id)) id = base + (n++);
             return id;
         }
-
-        window._slbAddSpell = function() {
-            const M = _slbMods();
-            if (!M) return;
-            const id = _slbUniqueId('customSpell');
-            M.doc.added[id] = {
-                name: 'New Spell', type: 'damage', kind: 'damage', spellType: 'human', element: 'arcane',
-                dmg: 100, range: 3, apCost: 2, damageType: 'magic',
-                tier: 1, families: ['arcane'], upgrades: [], school: 'Black Mage', classRestriction: 'Black Mage',
-                desc: 'Deals MEDIUM magic damage to a Single Enemy.',
-                descAuto: true,
-                _home: { lib: true },
-            };
-            M.save(); M.apply();
-            _slbSelectedId = id;
-            _slbFilters.source = 'all';
-            _slbSearch = '';
-            window._renderSpellLibrary();
-            _slbToast('+ created ' + id + ' — rename fields freely, then assign it in MOVEPOOLS');
-        };
-
+        function _slb2IdTaken(id) { const doc = _slb2Doc(); return !!(SPELL_BY_ID[id] || doc.added[id] || doc.deleted.includes(id) || (typeof RACE_ABILITY_BY_ID !== 'undefined' && RACE_ABILITY_BY_ID[id])); }
         window._slbDuplicate = function(id) {
             const M = _slbMods();
             const src = SPELL_BY_ID[id] || M.pristineDef(id);
-            if (!M || !src) return;
-            const nid = _slbUniqueId(id + 'Copy');
-            const clone = JSON.parse(JSON.stringify(src));
-            delete clone.id;
-            delete clone._race; delete clone._isRaceAbility;
-            delete clone.simTargeting; delete clone.simPhase; delete clone.simFallback;
-            clone.name = (clone.name || id) + ' Copy';
-            clone._home = (src._isRaceAbility && src._race) ? { race: src._race } : { lib: true };
-            M.doc.added[nid] = clone;
-            M.save(); M.apply();
-            _slbSelectedId = nid;
-            window._renderSpellLibrary();
-            _slbToast('⧉ duplicated to ' + nid);
+            if (!src) return;
+            _slb2AskId(`Duplicate ${src.name || id} as`, _slbUniqueId(id + 'Copy'), (nid) => {
+                const clone = JSON.parse(JSON.stringify(src));
+                delete clone.id; delete clone._race; delete clone._isRaceAbility; delete clone._doorWheel;
+                delete clone.simTargeting; delete clone.simPhase; delete clone.simFallback; delete clone._legacyTier;
+                clone.name = (clone.name || id) + ' Copy';
+                clone._home = (src._isRaceAbility && src._race) ? { race: src._race } : { lib: true };
+                _slb2Mutate(`⧉ ${id} → ${nid}`, () => { _slb2Doc().added[nid] = clone; });
+                _slb2SelectNew(nid);
+            });
         };
-
+        function _slb2SelectNew(id) {
+            _slbFilters = _slb2EmptyFilters(); _slbSearch = ''; _slbSelection = [];
+            _slbSelectedId = id;
+            if (_slbTab !== 'spells' && _slbTab !== 'passives') _slbTab = (SPELL_BY_ID[id] && SPELL_BY_ID[id].kind === 'passive') ? 'passives' : 'spells';
+            else if (SPELL_BY_ID[id] && SPELL_BY_ID[id].kind === 'passive') _slbTab = 'passives';
+            _slb2RenderTop(); _slb2RenderTab();
+            _slb2ScrollToRow(id);
+        }
+        function _slb2ScrollToRow(id) {
+            const rows = _slb2Filtered(), i = rows.findIndex(r => r.id === id);
+            const scroll = document.getElementById('slbTableScroll');
+            if (i < 0 || !scroll) return;
+            const y = i * _SLB2_ROW_H, headH = (document.getElementById('slbTableHead') || {}).offsetHeight || 30;
+            if (y < scroll.scrollTop || y + _SLB2_ROW_H > scroll.scrollTop + scroll.clientHeight - headH) scroll.scrollTop = Math.max(0, y - scroll.clientHeight / 2);
+            _slb2RenderWindow(true);
+        }
         window._slbSetHome = function(id, v) {
-            const M = _slbMods();
-            if (!M || !M.doc.added[id]) return;
-            M.doc.added[id]._home = v === 'lib' ? { lib: true } : { race: v };
-            M.save(); M.apply();
-            _slbRenderDetail(); _slbRefreshChrome();
+            _slb2Mutate(`${id} lives in ${v}`, () => { const doc = _slb2Doc(); if (!doc.added[id]) return false; doc.added[id]._home = v === 'lib' ? { lib: true } : { race: v }; });
+            _slb2PatchRow(id); _slb2RefreshChrome(); _slb2RenderInspector();
         };
-
-        /* movepool quick-assign from the detail pane */
         window._slbAssign = function(id, kind, key) {
             if (!key) return;
-            const M = _slbMods();
-            if (!M) return;
-            // free-typed via the search inputs — resolve case-insensitively,
-            // reject unknowns instead of minting a garbage learnset/movepool
             const pool = kind === 'job' ? _slbJobs() : _slbRaces();
             const match = pool.find(k => k === key) || pool.find(k => k.toLowerCase() === String(key).toLowerCase());
             if (!match) { _slbToast(`✗ unknown ${kind}: "${key}"`, true); return; }
             key = match;
-            if (kind === 'job') {
-                const cur = (CLASS_SPELL_LEARN_ORDER[key] || []).slice();
-                if (!cur.includes(id)) cur.push(id);
-                M.doc.learnsets[key] = cur;
-            } else {
-                const cur = (RACE_ABILITIES[key] || []).map(a => a.id);
-                if (!cur.includes(id)) cur.push(id);
-                M.doc.raceAbilities[key] = cur;
-            }
-            M.save(); M.apply();
-            _slbRenderDetail(); _slbRefreshChrome();
-            _slbToast(`→ added ${id} to ${key}`);
+            _slb2Mutate(`→ ${id} added to ${key}`, () => {
+                const doc = _slb2Doc();
+                if (kind === 'job') { const cur = (CLASS_SPELL_LEARN_ORDER[key] || []).slice(); if (cur.includes(id)) return false; cur.push(id); doc.learnsets[key] = cur; }
+                else { const cur = (RACE_ABILITIES[key] || []).map(a => a.id); if (cur.includes(id)) return false; cur.push(id); doc.raceAbilities[key] = cur; }
+            });
+            _slb2PatchRow(id); _slb2RefreshChrome(); _slb2RenderInspector(); _slb2RenderRail();
         };
-
         window._slbUnassign = function(id, kind, key) {
-            const M = _slbMods();
-            if (!M) return;
-            if (kind === 'job') M.doc.learnsets[key] = (CLASS_SPELL_LEARN_ORDER[key] || []).filter(x => x !== id);
-            else M.doc.raceAbilities[key] = (RACE_ABILITIES[key] || []).map(a => a.id).filter(x => x !== id);
-            M.save(); M.apply();
-            _slbRenderDetail(); _slbRefreshChrome();
+            _slb2Mutate(`✕ ${id} off ${key}`, () => {
+                const doc = _slb2Doc();
+                if (kind === 'job') doc.learnsets[key] = (CLASS_SPELL_LEARN_ORDER[key] || []).filter(x => x !== id);
+                else doc.raceAbilities[key] = (RACE_ABILITIES[key] || []).map(a => a.id).filter(x => x !== id);
+            });
+            _slb2PatchRow(id); _slb2RefreshChrome(); _slb2RenderInspector(); _slb2RenderRail();
         };
-
-        function _slbFieldInput(id, f, val, spec) {
-            const t = spec ? spec.t : (typeof val === 'number' ? 'num' : typeof val === 'boolean' ? 'bool' : (val && typeof val === 'object') ? 'json' : 'text');
-            const set = (raw, ft) => `window._slbSetField('${_slbEsc(id)}','${_slbEsc(f)}',${raw},'${ft}')`;
-            if (t === 'status') return _slbStatusEditor(id, f, val);
-            if (t === 'bool') return `<input type="checkbox"${val ? ' checked' : ''} onchange="${set('this.checked', 'bool')}">`;
-            if (t === 'num') {
-                const input = `<input type="number" step="any" value="${val != null ? _slbEsc(val) : ''}" onchange="${set('this.value', 'num')}">`;
-                const tiers = f === 'dmg' ? _SLB_DMG_TIERS
-                    : (f === 'heal' || f === 'healAmt') ? _SLB_HEAL_TIERS
-                    : (f === 'selfDamagePct' || f === 'recoilPct') ? _SLB_RECOIL_TIERS
-                    : null;
-                if (!tiers) return input;
-                return `<span class="slb-numwrap">${input}${tiers.map(([l, v]) =>
-                    `<button class="slb-tier${val === v ? ' on' : ''}" title="${l} = ${v}" onclick="${set(v, 'num')}">${l}</button>`).join('')}</span>`;
-            }
-            if (t === 'enum') {
-                const opts = (f === 'vfxArchetype' ? _slbArchetypes() : (spec.o || []));
-                return `<select onchange="${set('this.value', 'text')}"><option value=""${val == null ? ' selected' : ''}>(unset)</option>${opts.map(o => `<option value="${_slbEsc(o)}"${val === o ? ' selected' : ''}>${_slbEsc(o)}</option>`).join('')}</select>`;
-            }
-            if (t === 'json') return `<textarea class="slb-json-mini" spellcheck="false" onchange="${set('this.value', 'json')}">${val !== undefined ? _slbEsc(JSON.stringify(val)) : ''}</textarea>`;
-            if (t === 'long') return `<textarea class="slb-json-mini slb-long" spellcheck="false" onchange="${set('this.value', 'text')}">${_slbEsc(val != null ? val : '')}</textarea>`;
-            return `<input type="text" value="${_slbEsc(val != null ? val : '')}" onchange="${set('this.value', 'text')}">`;
-        }
-
-        /* ── status-effect chip editor ───────────────────────────────────────
-           Replaces the raw-JSON textarea for statusEffects / allyStatusEffects /
-           teamStatusEffects: each applied status is a row (status picker ·
-           duration · optional bonus dmg · remove), plus "+ add status…" fed
-           from STATUS_DEFS. Every mutation round-trips through _slbSetField as
-           JSON, so diffing / revert / repricing all keep working. */
-        function _slbStatusDef(sid) {
-            return (typeof STATUS_DEFS !== 'undefined' && STATUS_DEFS[sid]) || {};
-        }
-        function _slbStatusEditor(id, f, val) {
-            const arr = Array.isArray(val) ? val : [];
-            const sids = _slbStatusIds().slice().sort((a, b) => a.localeCompare(b));
-            const call = (fn, extra) => `window.${fn}('${_slbEsc(id)}','${_slbEsc(f)}'${extra})`;
-            const rows = arr.map((e, i) => {
-                const opts = sids.map(s => {
-                    const d = _slbStatusDef(s);
-                    return `<option value="${_slbEsc(s)}"${e.id === s ? ' selected' : ''}>${_slbEsc(d.icon || '')} ${_slbEsc(d.label || s)}</option>`;
-                }).join('');
-                return `<div class="slb-status-row">
-                    <select title="${_slbEsc(_slbStatusDef(e.id).label || e.id)}" onchange="${call('_slbStatusMut', `,${i},'id',this.value`)}">${opts}</select>
-                    <input type="number" min="1" step="1" value="${e.duration != null ? _slbEsc(e.duration) : 1}" title="duration (rounds)" onchange="${call('_slbStatusMut', `,${i},'duration',this.value`)}">
-                    <span class="slb-status-l">rnd</span>
-                    <input type="number" step="1" value="${e.bonusDamage != null ? _slbEsc(e.bonusDamage) : ''}" placeholder="＋dmg" title="bonusDamage rider (marked-style statuses) — blank = none" onchange="${call('_slbStatusMut', `,${i},'bonusDamage',this.value`)}">
-                    <button class="slb-status-x" title="remove this status" onclick="${call('_slbStatusRemove', `,${i}`)}">✕</button>
-                </div>`;
-            }).join('');
-            const addOpts = sids.map(s => {
-                const d = _slbStatusDef(s);
-                return `<option value="${_slbEsc(s)}">${_slbEsc(d.icon || '')} ${_slbEsc(d.label || s)} (${_slbEsc(s)})</option>`;
-            }).join('');
-            return `<div class="slb-status-ed">${rows}
-                <select class="slb-status-add" onchange="if(this.value){${call('_slbStatusAdd', `,this.value`)};this.value='';}">
-                    <option value="">＋ add status…</option>${addOpts}
-                </select>
-            </div>`;
-        }
-        function _slbStatusArr(id, f) {
-            const d = SPELL_BY_ID[id];
-            return (d && Array.isArray(d[f])) ? JSON.parse(JSON.stringify(d[f])) : [];
-        }
-        function _slbStatusWrite(id, f, arr) {
-            window._slbSetField(id, f, arr.length ? JSON.stringify(arr) : '', 'json');
-        }
-        window._slbStatusAdd = function(id, f, sid) {
-            const arr = _slbStatusArr(id, f);
-            arr.push({ id: sid, duration: 2 });
-            _slbStatusWrite(id, f, arr);
-        };
-        window._slbStatusRemove = function(id, f, i) {
-            const arr = _slbStatusArr(id, f);
-            arr.splice(i, 1);
-            _slbStatusWrite(id, f, arr);
-        };
-        window._slbStatusMut = function(id, f, i, key, raw) {
-            const arr = _slbStatusArr(id, f);
-            if (!arr[i]) return;
-            if (key === 'id') arr[i].id = raw;
-            else if (raw === '' || raw == null) delete arr[i][key];
-            else {
-                const n = Number(raw);
-                if (!isFinite(n)) { _slbToast('✗ ' + key + ': not a number', true); return; }
-                arr[i][key] = n;
-            }
-            _slbStatusWrite(id, f, arr);
-        };
-
-        function _slbRenderDetail() {
-            const el = document.getElementById('slbDetail');
-            if (!el) return;
-            const M = _slbMods();
-            const id = _slbSelectedId;
-            const row = id ? _slbAllRows().find(r => r.id === id) : null;
-            if (!row) { el.innerHTML = '<div class="slb-empty">No spell selected.</div>'; return; }
-            const d = row.def;
-            const doc = M.doc;
-            const mod = doc.modified[id] || {};
-            const pris = M.pristineDef(id);
-            if (row.deleted) {
-                el.innerHTML = `<div class="slb-detail-scroll">
-                    <div class="slb-head">
-                        <div class="slb-head-name deleted">${_slbEsc(d.name || id)}</div>
-                        <div class="slb-head-id">${_slbEsc(id)} — DELETED</div>
-                        <div class="slb-head-actions"><button class="slb-btn" onclick="window._slbRestoreSpell('${_slbEsc(id)}')">↻ RESTORE</button></div>
-                    </div>
-                    <pre class="slb-pre">${_slbEsc(JSON.stringify(d, null, 2))}</pre>
-                </div>`;
-                return;
-            }
-            /* fields, ordered: core first, then whatever else the def carries, then add-a-field */
-            const CORE = ['name', 'desc', 'type', 'kind', 'spellType', 'element', 'damageType', 'cost', 'apCost', 'range', 'dmg', 'heal', 'healAmt', 'aoeRadius', 'cooldownRounds', 'statusEffects', 'selfDamagePct', 'statStageBoost', 'tier', 'school', 'classRestriction', 'projectileOverride', 'vfxArchetype', 'vfxWeight'];
-            const hidden = ['id', '_race', '_isRaceAbility', '_home', '_sentaiColor'];
-            const present = Object.keys(d).filter(k => !hidden.includes(k));
-            const rest = present.filter(k => !CORE.includes(k)).sort();
-            // dmg / statusEffects / selfDamagePct always render (blank when
-            // unset) — "how do I change the damage / add a status / add
-            // recoil" should never require hunting the +add-field picker.
-            const shown = CORE.filter(k => Object.prototype.hasOwnProperty.call(d, k) || ['name', 'desc', 'type', 'kind', 'spellType', 'element', 'damageType', 'cost', 'range', 'dmg', 'statusEffects', 'selfDamagePct', 'vfxArchetype', 'vfxWeight'].includes(k)).concat(rest);
-            const catalogLeft = Object.keys(_SLB_FIELD_HELP).filter(k => !shown.includes(k)).sort();
-            const fieldRow = f => {
-                const spec = _SLB_FIELD_HELP[f];
-                const val = d[f];
-                const isMod = doc.added[id] ? false : Object.prototype.hasOwnProperty.call(mod, f);
-                const prisVal = pris && Object.prototype.hasOwnProperty.call(pris, f) ? pris[f] : undefined;
-                const origHtml = isMod ? `<span class="slb-orig" title="original value — click to revert" onclick="window._slbRevertField('${_slbEsc(id)}','${_slbEsc(f)}')">↺ ${prisVal === undefined ? '(absent)' : _slbEsc(JSON.stringify(prisVal))}</span>` : '';
-                const wide = (spec && spec.t === 'status') || f === 'desc';
-                // desc row grows AUTO-DESC controls: toggle continuous sync,
-                // one-shot generate, and a live preview of the generated text
-                // while sync is off.
-                let descTools = '';
-                if (f === 'desc' && typeof describeSpell === 'function') {
-                    const auto = !!d.descAuto;
-                    let gen = '';
-                    try { gen = describeSpell(d) || ''; } catch (e) {}
-                    descTools = `<div class="slb-desc-tools">
-                        <button class="slb-tier${auto ? ' on' : ''}" title="regenerate desc from the spell data after every edit" onclick="window._slbToggleDescAuto('${_slbEsc(id)}')">AUTO-DESC ${auto ? 'ON' : 'OFF'}</button>
-                        <button class="slb-tier" title="fill desc from the generator once" onclick="window._slbGenDesc('${_slbEsc(id)}')">↻ GENERATE</button>
-                        ${!auto && gen && gen !== d.desc ? `<span class="slb-desc-preview" title="${_slbEsc(gen)}">auto: ${_slbEsc(gen.length > 110 ? gen.slice(0, 110) + '…' : gen)}</span>` : ''}
-                    </div>`;
-                }
-                return `<div class="slb-field${isMod ? ' modded' : ''}${wide ? ' slb-field-wide' : ''}" title="${_slbEsc(spec ? spec.h : '')}">
-                    <label>${_slbEsc(f)}</label>
-                    ${_slbFieldInput(id, f, val, spec)}
-                    ${origHtml}
-                    ${descTools}
-                </div>`;
-            };
-            const jobsChips = row.jobs.map(j => `<span class="slb-chip">${_slbEsc(j)} <a onclick="window._slbUnassign('${_slbEsc(id)}','job','${_slbEsc(j)}')" title="remove from ${_slbEsc(j)} learnset">✕</a></span>`).join('')
-                || '<span class="slb-chip slb-chip-empty">no job learnset</span>';
-            const raceChips = row.races.map(r => `<span class="slb-chip">${_slbEsc(r)} <a onclick="window._slbUnassign('${_slbEsc(id)}','race','${_slbEsc(r)}')" title="remove from ${_slbEsc(r)} movepool">✕</a></span>`).join('')
-                || '<span class="slb-chip slb-chip-empty">no race movepool</span>';
-            const homeSel = doc.added[id] ? `<div class="slb-assign-row"><span class="slb-assign-label">LIVES IN</span>
-                <select class="slb-sel" onchange="window._slbSetHome('${_slbEsc(id)}', this.value)">
-                    <option value="lib"${!(doc.added[id]._home && doc.added[id]._home.race) ? ' selected' : ''}>Spell Library (job spell)</option>
-                    ${_slbRaces().map(r => `<option value="${_slbEsc(r)}"${doc.added[id]._home && doc.added[id]._home.race === r ? ' selected' : ''}>race: ${_slbEsc(r)}</option>`).join('')}
-                </select></div>` : '';
-            el.innerHTML = `<div class="slb-detail-scroll">
-                <div class="slb-head">
-                    <div class="slb-head-name">${_slbEsc(d.name || id)}</div>
-                    <div class="slb-head-id">${_slbEsc(id)}${row.isRace ? ' · race ability' : ' · job spell'}${row.added ? ' · ADDED' : ''}${row.modified ? ' · <span class="slb-dot">●</span> modified' : ''}</div>
-                    <div class="slb-head-actions">
-                        <button class="slb-btn" onclick="window._slbEnterLab('${_slbEsc(id)}')">▶ LAB</button>
-                        <button class="slb-btn" onclick="window._slbDuplicate('${_slbEsc(id)}')">⧉ DUPLICATE</button>
-                        ${row.modified ? `<button class="slb-btn" onclick="window._slbRevertSpell('${_slbEsc(id)}')">↺ REVERT</button>` : ''}
-                        <button class="slb-btn slb-btn-danger" onclick="window._slbDeleteSpell('${_slbEsc(id)}')">✕ DELETE</button>
-                    </div>
-                </div>
-                <div class="slb-assign">
-                    ${homeSel}
-                    <div class="slb-assign-row"><span class="slb-assign-label">JOBS</span>${jobsChips}
-                        <input class="slb-search slb-assign-search" list="slbAssignJobList" placeholder="＋ job… (type to search)"
-                            onchange="if(this.value){window._slbAssign('${_slbEsc(id)}','job',this.value);this.value='';}">
-                        <datalist id="slbAssignJobList">${_slbJobs().filter(j => !row.jobs.includes(j)).map(j => `<option value="${_slbEsc(j)}"></option>`).join('')}</datalist></div>
-                    <div class="slb-assign-row"><span class="slb-assign-label">RACES</span>${raceChips}
-                        <input class="slb-search slb-assign-search" list="slbAssignRaceList" placeholder="＋ race… (type to search)"
-                            onchange="if(this.value){window._slbAssign('${_slbEsc(id)}','race',this.value);this.value='';}">
-                        <datalist id="slbAssignRaceList">${_slbRaces().filter(r => !row.races.includes(r)).map(r => `<option value="${_slbEsc(r)}"></option>`).join('')}</datalist></div>
-                </div>
-                <div class="slb-field-grid">${shown.map(fieldRow).join('')}</div>
-                <div class="slb-addfield">
-                    <select class="slb-sel" onchange="if(this.value){window._slbSetField('${_slbEsc(id)}', this.value, window._slbDefaultFor(this.value), window._slbTypeFor(this.value));this.value='';}">
-                        <option value="">+ add field…</option>
-                        ${catalogLeft.map(f => `<option value="${_slbEsc(f)}" title="${_slbEsc(_SLB_FIELD_HELP[f].h)}">${_slbEsc(f)} — ${_slbEsc(_SLB_FIELD_HELP[f].h.slice(0, 60))}</option>`).join('')}
-                    </select>
-                    <button class="slb-btn" onclick="window._slbToggleRaw()">${_slbRawOpen ? '✕ CLOSE JSON' : '{ } RAW JSON'}</button>
-                </div>
-                ${_slbRawOpen ? `<div class="slb-rawwrap">
-                    <textarea id="slbRawTa" class="slb-json" spellcheck="false">${_slbEsc(JSON.stringify(d, null, 2))}</textarea>
-                    <button class="slb-btn" onclick="window._slbApplyRaw('${_slbEsc(id)}')">APPLY JSON</button>
-                    <span class="slb-hint">Full effective def. Apply diffs it against the original — id itself can't be changed (use DUPLICATE for a new id).</span>
-                </div>` : ''}
-            </div>`;
-        }
-
-        window._slbTypeFor = function(f) { const s = _SLB_FIELD_HELP[f]; return s ? (s.t === 'enum' || s.t === 'long' ? 'text' : s.t === 'status' ? 'json' : s.t) : 'text'; };
-        window._slbDefaultFor = function(f) {
-            const s = _SLB_FIELD_HELP[f];
-            if (!s) return '';
-            if (s.t === 'num') return '1';
-            if (s.t === 'bool') return true;
-            if (s.t === 'status') return '[{"id":"burn","duration":2}]';
-            if (s.t === 'json') {
-                if (f === 'statStageBoost') return '{"atk":-1}';
-                if (f === 'terrainDeform') return '{"centerDelta":-1,"edgeDelta":0}';
-                if (f === '_animOverride') return '{"travel":"beam"}';
-                return '{}';
-            }
-            if (s.t === 'enum') return (f === 'vfxArchetype' ? (_slbArchetypes()[0] || '') : (s.o && s.o[0]) || '');
-            return 'value';
-        };
-
-        window._slbRevertField = function(id, f) {
-            const M = _slbMods();
-            if (!M) return;
-            const mod = M.doc.modified[id];
-            if (mod) {
-                delete mod[f];
-                if (f === 'cost') delete mod.manaCostOverride;
-                if (!Object.keys(mod).length) delete M.doc.modified[id];
-            }
-            M.save(); M.apply();
-            _slbRenderList(); _slbRenderDetail(); _slbRefreshChrome();
-        };
-
-        window._slbToggleRaw = function() { _slbRawOpen = !_slbRawOpen; _slbRenderDetail(); };
-
         window._slbApplyRaw = function(id) {
             const ta = document.getElementById('slbRawTa');
             const M = _slbMods();
@@ -9828,39 +10503,224 @@
             let parsed;
             try { parsed = JSON.parse(ta.value); } catch (e) { _slbToast('✗ JSON: ' + e.message, true); return; }
             if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) { _slbToast('✗ must be an object', true); return; }
-            const skip = ['id', '_race', '_isRaceAbility'];
-            if (M.doc.added[id]) {
-                const home = M.doc.added[id]._home;
-                skip.forEach(k => delete parsed[k]);
-                delete parsed._home;
-                M.doc.added[id] = parsed;
-                M.doc.added[id]._home = home;
-            } else {
-                const pris = M.pristineDef(id) || {};
-                const mod = {};
-                const keys = new Set([...Object.keys(parsed), ...Object.keys(pris)]);
-                keys.forEach(k => {
-                    if (skip.includes(k)) return;
-                    const inNew = Object.prototype.hasOwnProperty.call(parsed, k);
-                    const inOld = Object.prototype.hasOwnProperty.call(pris, k);
-                    if (inNew && (!inOld || !_slbDeepEq(parsed[k], pris[k]))) mod[k] = parsed[k];
-                    else if (!inNew && inOld) mod[k] = null;
-                });
-                if (Object.prototype.hasOwnProperty.call(mod, 'cost') && mod.cost !== null && !Object.prototype.hasOwnProperty.call(mod, 'manaCostOverride')) mod.manaCostOverride = mod.cost;
-                if (Object.keys(mod).length) M.doc.modified[id] = mod;
-                else delete M.doc.modified[id];
-            }
-            M.save(); M.apply();
+            const skip = ['id', '_race', '_isRaceAbility', '_doorWheel'];
+            const ok = _slb2Mutate(`{ } ${id} JSON applied`, () => {
+                const doc = _slb2Doc();
+                if (doc.added[id]) {
+                    const home = doc.added[id]._home;
+                    skip.forEach(k => delete parsed[k]); delete parsed._home;
+                    doc.added[id] = parsed; doc.added[id]._home = home;
+                } else {
+                    const pris = M.pristineDef(id) || {};
+                    const mod = {};
+                    new Set([...Object.keys(parsed), ...Object.keys(pris)]).forEach(k => {
+                        if (skip.includes(k)) return;
+                        const inNew = Object.prototype.hasOwnProperty.call(parsed, k), inOld = Object.prototype.hasOwnProperty.call(pris, k);
+                        if (inNew && (!inOld || JSON.stringify(parsed[k]) !== JSON.stringify(pris[k]))) mod[k] = parsed[k];
+                        else if (!inNew && inOld) mod[k] = null;
+                    });
+                    if (Object.prototype.hasOwnProperty.call(mod, 'cost') && mod.cost !== null && !Object.prototype.hasOwnProperty.call(mod, 'manaCostOverride')) mod.manaCostOverride = mod.cost;
+                    if (Object.keys(mod).length) doc.modified[id] = mod; else delete doc.modified[id];
+                }
+            });
+            if (!ok) { _slbToast('nothing changed'); return; }
             try { if (window.ThreeVFXEffects && window.ThreeVFXEffects.clearStageInfoCache) window.ThreeVFXEffects.clearStageInfoCache(id); } catch (e) {}
-            _slbToast('✓ applied JSON to ' + id);
-            _slbRenderList(); _slbRenderDetail(); _slbRefreshChrome();
+            _slb2PatchRow(id); _slb2RefreshChrome(); _slb2RenderInspector();
         };
+        /* status chips (the editors above), by delegation */
+        function _slb2StatusArr(id, f) { const d = SPELL_BY_ID[id]; return (d && Array.isArray(d[f])) ? JSON.parse(JSON.stringify(d[f])) : []; }
+        function _slb2StatusWrite(id, f, arr) { window._slbSetField(id, f, arr.length ? JSON.stringify(arr) : '', 'json'); }
+        function _slb2BonusWrite(id, ids, mult) { window._slbSetField(id, 'bonusVsStatus', ids.length ? JSON.stringify({ status: ids.length === 1 ? ids[0] : ids, mult }) : '', 'json'); }
 
-        /* ── movepools tab ───────────────────────────────────────────────── */
-        window._slbMpSetMode = function(m) { _slbMpMode = m; _slbMpKey = null; window._renderSpellLibrary(); };
-        window._slbMpOnSearch = function(v) { _slbMpSearch = v; _slbMpRenderRail(); };
-        window._slbMpSelect = function(k) { _slbMpKey = k; _slbMpRenderRail(); _slbMpRenderDetail(); };
+        /* ── FAMILIES (§5.6): the registry as cards; click = the table filtered to it ── */
+        function _slb2RegRow(group, id) {
+            const reg = group === 'families' ? SPELL_FAMILIES : group === 'upgrades' ? SPELL_UPGRADES : RACE_FAMILIES;
+            return reg[id] || null;
+        }
+        function _slb2RegState(group, id) {
+            const doc = _slb2Doc(), M = _slbMods();
+            if (doc[group] && doc[group][id] === null) return 'del';
+            if (doc[group] && doc[group][id]) return M.pristineRegistryRow && M.pristineRegistryRow(group, id) ? 'mod' : 'new';
+            return '';
+        }
+        function _slb2WriteReg(group, id, row, label) {
+            return _slb2Mutate(label || `${group} ${id}`, () => {
+                const doc = _slb2Doc(), M = _slbMods();
+                const pris = M.pristineRegistryRow ? M.pristineRegistryRow(group, id) : null;
+                if (row === null) { if (!pris) delete doc[group][id]; else doc[group][id] = null; return; }
+                if (pris && JSON.stringify(pris) === JSON.stringify(row)) delete doc[group][id];
+                else doc[group][id] = row;
+            });
+        }
+        function _slb2RenderFamilies(main) {
+            const rows = _slb2Rows();
+            const counts = {}; rows.forEach(r => r.families.forEach(f => { counts[f] = (counts[f] || 0) + 1; }));
+            const ids = Object.keys(SPELL_FAMILIES);
+            const doc = _slb2Doc();
+            const deleted = Object.keys(doc.families || {}).filter(k => doc.families[k] === null);
+            if (!_slbFamKey || (!SPELL_FAMILIES[_slbFamKey] && !deleted.includes(_slbFamKey))) _slbFamKey = ids[0] || null;
+            const kindOrder = { element: 0, weapon: 1, discipline: 2, support: 3, signature: 4 };
+            const sorted = ids.slice().sort((a, b) => (kindOrder[SPELL_FAMILIES[a].kind] || 9) - (kindOrder[SPELL_FAMILIES[b].kind] || 9) || a.localeCompare(b));
+            main.innerHTML = `<div class="slb2-center slb2-regcenter">
+                <div class="slb2-chips"><span class="slb2-count">${ids.length} families · ${rows.filter(r => !r.families.length).length} rows with none</span><span class="slb2-chips-spacer"></span><button class="slb2-btn slb2-btn-add" data-act="newFamily">＋ NEW FAMILY</button></div>
+                <div class="slb2-famgrid">${sorted.map(id => { const f = SPELL_FAMILIES[id]; const st = _slb2RegState('families', id);
+                    return `<div class="slb2-famcard${_slbFamKey === id ? ' sel' : ''}" data-act="famPick" data-id="${_slbEsc(id)}" style="--fc:${_slbEsc(f.color || '#8d84a8')}">
+                        <div class="slb2-famcard-g">${_slbEsc(f.glyph || '')}</div>
+                        <div class="slb2-famcard-n">${_slbEsc(f.name || id)}${st === 'new' ? ' <span class="slb2-flag new">NEW</span>' : st === 'mod' ? ' <span class="slb2-flag mod">●</span>' : ''}</div>
+                        <div class="slb2-famcard-k">${_slbEsc(f.kind || '')}${f.unique ? ' · unique to ' + _slbEsc(_slb2Race(f.unique)) : ''}${f.universal ? ' · universal' : ''}</div>
+                        <div class="slb2-famcard-c">${counts[id] || 0} row${counts[id] === 1 ? '' : 's'}</div>
+                    </div>`; }).join('')}
+                ${deleted.map(id => `<div class="slb2-famcard del${_slbFamKey === id ? ' sel' : ''}" data-act="famPick" data-id="${_slbEsc(id)}"><div class="slb2-famcard-n">${_slbEsc(id)} <span class="slb2-flag del">DEL</span></div><div class="slb2-famcard-k">deleted until baked</div></div>`).join('')}
+                </div>
+                ${typeof RACE_FAMILIES !== 'undefined' && Object.keys(RACE_FAMILIES).length ? _slb2FamilyMatrixHtml() : '<div class="slb2-hint slb2-pad">The races × families matrix appears once RACE_FAMILIES has rows (Phase 7, after the catalogue).</div>'}
+            </div>
+            <div class="slb2-inspector open" id="slbInspector">${_slb2FamilyInsHtml()}</div>`;
+        }
+        function _slb2FamilyMatrixHtml() {
+            const fams = Object.keys(SPELL_FAMILIES), races = Object.keys(RACE_FAMILIES).sort();
+            return `<div class="slb2-matrixwrap"><table class="slb2-matrix"><thead><tr><th>race</th>${fams.map(f => `<th title="${_slbEsc(f)}">${_slbEsc(SPELL_FAMILIES[f].glyph || f.slice(0, 2))}</th>`).join('')}<th>n</th></tr></thead><tbody>
+                ${races.map(r => { const list = RACE_FAMILIES[r] || []; return `<tr><td>${_slbEsc(_slb2Race(r))}</td>${fams.map(f => `<td>${list.includes(f) ? (SPELL_FAMILIES[f].unique === r ? '★' : '●') : ''}</td>`).join('')}<td class="${list.length < 3 || list.length > 5 ? 'slb2-lint-red' : ''}">${list.length}</td></tr>`; }).join('')}
+            </tbody></table></div>`;
+        }
+        function _slb2FamilyInsHtml() {
+            const id = _slbFamKey;
+            const f = id && SPELL_FAMILIES[id];
+            const doc = _slb2Doc();
+            if (!id) return '<div class="slb2-empty">Pick a family.</div>';
+            if (!f) return `<div class="slb2-ins-head"><div class="slb2-ins-name del">${_slbEsc(id)}</div><div class="slb2-ins-id">deleted — restore to keep the shipped family</div><div class="slb2-ins-verbs"><button class="slb2-btn on" data-act="famRestore" data-id="${_slbEsc(id)}">↻ RESTORE</button></div></div>`;
+            const members = _slb2Rows().filter(r => r.families.includes(id) && !r.deleted).sort((a, b) => a.tier - b.tier || String(a.def.name).localeCompare(String(b.def.name)));
+            const byTier = [1, 2, 3, 4].map(t => members.filter(m => m.tier === t).length);
+            const shipped = !!(_slbMods().pristineRegistryRow && _slbMods().pristineRegistryRow('families', id));
+            const fld = (k, label, html, help) => `<div class="slb2-field"><div class="slb2-field-l"><span class="slb2-field-name">${label}</span><span class="slb2-field-key">${k}</span></div><div class="slb2-field-e">${html}</div>${help ? `<div class="slb2-field-h">${help}</div>` : ''}</div>`;
+            const kinds = (typeof SPELL_FAMILY_KINDS !== 'undefined') ? SPELL_FAMILY_KINDS : ['element', 'weapon', 'discipline', 'support', 'signature'];
+            return `<div class="slb2-ins-head">
+                <div class="slb2-ins-row1"><span class="slb2-famcard-g big" style="--fc:${_slbEsc(f.color || '#8d84a8')}">${_slbEsc(f.glyph || '')}</span><input class="slb2-ins-name" data-reg="families" data-id="${_slbEsc(id)}" data-key="name" value="${_slbEsc(f.name || '')}" spellcheck="false"></div>
+                <div class="slb2-ins-id">${_slbEsc(id)} · ${shipped ? 'shipped family' : 'new family'} · ${members.length} member${members.length === 1 ? '' : 's'} · tiers ${byTier.join(' / ')}${byTier[0] === 0 && members.length ? ' <span class="slb2-lintbadge amber" title="coverage: no tier-I row in this family">no tier I</span>' : ''}</div>
+                <div class="slb2-ins-verbs"><button class="slb2-btn" data-act="famFilter" data-id="${_slbEsc(id)}" title="the SPELLS table filtered to this family">☷ SHOW MEMBERS</button><button class="slb2-btn slb2-btn-danger" data-act="famDelete" data-id="${_slbEsc(id)}">✕ DELETE</button></div>
+            </div>
+            <div class="slb2-ins-body">
+                <div class="slb2-group"><div class="slb2-group-h">THE FAMILY</div>
+                ${fld('glyph', 'Glyph', `<input type="text" data-reg="families" data-id="${_slbEsc(id)}" data-key="glyph" value="${_slbEsc(f.glyph || '')}" style="width:60px">`, 'One character (an emoji is fine): rides the rail, the chips, the rack.')}
+                ${fld('color', 'Colour', `<input type="color" data-reg="families" data-id="${_slbEsc(id)}" data-key="color" value="${_slbEsc(/^#[0-9a-f]{6}$/i.test(f.color || '') ? f.color : '#8d84a8')}"><input type="text" data-reg="families" data-id="${_slbEsc(id)}" data-key="color" value="${_slbEsc(f.color || '')}" style="width:90px">`, 'The 3 px edge on every member row and the chip colour.')}
+                ${fld('kind', 'Kind', `<select data-reg="families" data-id="${_slbEsc(id)}" data-key="kind">${kinds.map(k => `<option value="${k}"${f.kind === k ? ' selected' : ''}>${k}</option>`).join('')}</select>`, 'element (the 15 seeded), weapon, discipline, support (gear), signature (a character\'s own).')}
+                ${fld('unique', 'Unique to', `<input type="text" list="slbFamRaceList" data-reg="families" data-id="${_slbEsc(id)}" data-key="unique" value="${_slbEsc(f.unique || '')}" placeholder="(shared)"><datalist id="slbFamRaceList">${_slbRaces().map(x => `<option value="${_slbEsc(x)}"></option>`).join('')}</datalist>`, 'A race id makes this that character\'s own family (the Door Wheel is the model); blank = shared.')}
+                ${fld('universal', 'Universal', `<label class="slb2-switch"><input type="checkbox" data-reg="families" data-id="${_slbEsc(id)}" data-key="universal" data-type="bool"${f.universal ? ' checked' : ''}><i></i><span>${f.universal ? 'in every pool' : 'no'}</span></label>`, 'GEAR is universal: every unit\'s pool carries it (the user\'s ruling on the 17 accessories).')}
+                ${fld('desc', 'Description', `<textarea class="slb2-jsonmini long" data-reg="families" data-id="${_slbEsc(id)}" data-key="desc" spellcheck="false">${_slbEsc(f.desc || '')}</textarea>`)}
+                ${fld('notes', 'Notes', `<textarea class="slb2-jsonmini long" data-reg="families" data-id="${_slbEsc(id)}" data-key="notes" spellcheck="true" placeholder="what this family is for, what it needs">${_slbEsc(f.notes || '')}</textarea>`, 'Rides the export like a row\'s notes.')}
+                </div>
+                <div class="slb2-group"><div class="slb2-group-h">MEMBERS · ${members.length}</div>
+                    <div class="slb2-memberlist">${members.map(m => `<div class="slb2-member" data-act="jump" data-id="${_slbEsc(m.id)}"><span class="slb2-tier t${m.tier}">${_slb2TierText(m.tier)}</span><span class="slb2-member-n">${_slbEsc(m.def.name || m.id)}</span>${_slb2RoleChip(m.role)}<span class="slb2-dim">${_slbEsc(m.isRace ? _slb2Race(m.owner) : m.owner)}</span><a data-act="famRemove" data-id="${_slbEsc(m.id)}" data-fam="${_slbEsc(id)}" title="remove from the family">✕</a></div>`).join('') || '<div class="slb2-dim">no members yet</div>'}</div>
+                    <div class="slb2-addfield"><input class="slb2-sel slb2-sel-add" list="slbFamAddList" placeholder="＋ add a member by name / id…" data-input="famAddMember" data-fam="${_slbEsc(id)}" style="min-width:240px"><datalist id="slbFamAddList">${_slb2Rows().filter(r => !r.deleted && !r.families.includes(id)).map(r => `<option value="${_slbEsc(r.id)}">${_slbEsc(r.def.name || '')}</option>`).join('')}</datalist></div>
+                </div>
+            </div>`;
+        }
+        function _slb2SetFamilyField(id, key, raw, type) {
+            const cur = SPELL_FAMILIES[id];
+            if (!cur) return;
+            const row = JSON.parse(JSON.stringify(cur));
+            let v = type === 'bool' ? !!raw : (raw === '' ? null : raw);
+            if (key === 'unique' && v && !_slbRaces().includes(v)) { const m = _slbRaces().find(x => x.toLowerCase() === String(v).toLowerCase()); if (!m) { _slbToast(`✗ unknown race "${v}"`, true); return; } v = m; }
+            if (v === null || v === false) delete row[key]; else row[key] = v;
+            if (key === 'unique' && v === null) row.unique = null;
+            if (!_slb2WriteReg('families', id, row, `family ${id} · ${key}`)) return;
+            _slb2RenderFamilies(document.getElementById('slbMain'));
+            _slb2RefreshChrome();
+        }
+        function _slb2FamilyOf(id, fam, add) {
+            const d = SPELL_BY_ID[id];
+            if (!d) return;
+            const cur = (typeof spellFamiliesOf === 'function') ? spellFamiliesOf(d).slice() : (Array.isArray(d.families) ? d.families.slice() : []);
+            const next = add ? (cur.includes(fam) ? cur : cur.concat(fam)) : cur.filter(x => x !== fam);
+            if (next.join() === cur.join()) return;
+            window._slbSetField(id, 'families', JSON.stringify(next), 'json');
+        }
 
+        /* ── UPGRADES (§5.6): the registry as a table + a PATCH builder ── */
+        const _SLB2_PATCH_KEYS = [
+            ['dmgMult', 'num', 'damage × (1.15 = +15 %)'], ['dmgDelta', 'num', 'damage + n'], ['costDelta', 'num', 'MP + n (−10)'], ['costMult', 'num', 'MP × (0.8)'],
+            ['apDelta', 'num', 'AP + n (−1)'], ['cooldownDelta', 'num', 'cooldown rounds + n'], ['rangeDelta', 'num', 'range + n tiles'], ['pushDistance', 'num', 'knockback + n'],
+            ['pullDistance', 'num', 'pull + n'], ['aoe', 'json', '{ "preset": "3x3" } or { "mask": [...] }'], ['extraTargets', 'num', '+n targets'], ['extraTargetsMult', 'num', 'their damage ×'],
+            ['ricochet', 'json', '{ "radius": 2, "mult": 0.5 }'], ['statusBonus', 'json', '{ "status": "burn", "mult": 1.5 }'], ['statusDuration', 'num', 'status rounds + n'], ['statusChance', 'num', 'apply chance'],
+            ['elementRider', 'text', 'an element id'], ['deployCapDelta', 'num', 'deploy cap + n'], ['turret', 'json', '{ "dmgMult", "hpMult", "rangeDelta" }'], ['gun', 'json', 'the gun rows\' knobs'],
+            ['selfDamagePct', 'num', 'recoil + n'], ['drainPct', 'num', 'drain + n'], ['healMult', 'num', 'heal ×'],
+        ];
+        function _slb2RenderUpgrades(main) {
+            const reg = SPELL_UPGRADES;
+            const ids = Object.keys(reg).sort();
+            const doc = _slb2Doc();
+            const deleted = Object.keys(doc.upgrades || {}).filter(k => doc.upgrades[k] === null);
+            if (!_slbUpKey || (!reg[_slbUpKey] && !deleted.includes(_slbUpKey))) _slbUpKey = ids[0] || null;
+            const usedBy = {};
+            _slb2Rows().forEach(r => (Array.isArray(r.def.upgrades) ? r.def.upgrades : []).forEach(u => { (usedBy[u] = usedBy[u] || []).push(r); }));
+            main.innerHTML = `<div class="slb2-center slb2-regcenter">
+                <div class="slb2-chips"><span class="slb2-count">${ids.length} upgrade${ids.length === 1 ? '' : 's'} in the registry</span><span class="slb2-chips-spacer"></span><button class="slb2-btn slb2-btn-add" data-act="newUpgrade">＋ NEW UPGRADE</button></div>
+                ${ids.length ? `<div class="slb2-uptable">
+                    <div class="slb2-uphead"><span>NAME</span><span>SP</span><span>ROLES</span><span>FAMILIES</span><span>PATCH</span><span>USED BY</span></div>
+                    ${ids.map(u => { const row = reg[u]; const st = _slb2RegState('upgrades', u); return `<div class="slb2-uprow2${_slbUpKey === u ? ' sel' : ''}" data-act="upPick" data-id="${_slbEsc(u)}">
+                        <span><b>${_slbEsc(row.glyph || '')} ${_slbEsc(row.name || u)}</b> ${st === 'new' ? '<span class="slb2-flag new">NEW</span>' : st === 'mod' ? '<span class="slb2-flag mod">●</span>' : ''}<br><span class="slb2-dim">${_slbEsc(u)}</span></span>
+                        <span class="slb2-sp">${row.sp != null ? row.sp : 1}</span>
+                        <span>${(row.roles || []).map(r => _slb2RoleChip(r)).join('') || '<span class="slb2-dim">any</span>'}</span>
+                        <span>${(row.families || []).map(f => `<span class="slb2-fam" style="--fc:${_slb2FamColor(f)}">${_slb2Glyph(f)}</span>`).join('') || '<span class="slb2-dim">any</span>'}</span>
+                        <span>${_slbEsc(_slb2PatchChips(row.patch)) || '<span class="slb2-dim">no patch</span>'}</span>
+                        <span>${(usedBy[u] || []).length}</span></div>`; }).join('')}
+                    ${deleted.map(u => `<div class="slb2-uprow2 del${_slbUpKey === u ? ' sel' : ''}" data-act="upPick" data-id="${_slbEsc(u)}"><span>${_slbEsc(u)} <span class="slb2-flag del">DEL</span></span><span></span><span></span><span></span><span class="slb2-dim">deleted until baked</span><span></span></div>`).join('')}
+                </div>` : `<div class="slb2-hint slb2-pad">No upgrades yet. An upgrade is a registry row with an SP price and a PATCH (+15 % dmg, −10 MP, ricochet, +1 target × 0.5, a status bonus, knockback, an AOE preset, +1 deployable, turret ×, gun ×). Spells list which upgrades they allow on their UPGRADES tab; the rack's picker and the derived defs land in Phase 5.</div>`}
+            </div>
+            <div class="slb2-inspector open" id="slbInspector">${_slb2UpgradeInsHtml(usedBy)}</div>`;
+        }
+        function _slb2UpgradeInsHtml(usedBy) {
+            const id = _slbUpKey;
+            if (!id) return '<div class="slb2-empty">Pick an upgrade, or make one.</div>';
+            const u = SPELL_UPGRADES[id];
+            if (!u) return `<div class="slb2-ins-head"><div class="slb2-ins-name del">${_slbEsc(id)}</div><div class="slb2-ins-id">deleted — restore to keep the shipped upgrade</div><div class="slb2-ins-verbs"><button class="slb2-btn on" data-act="upRestore" data-id="${_slbEsc(id)}">↻ RESTORE</button></div></div>`;
+            const patch = u.patch || {};
+            const fld = (k, label, html, help) => `<div class="slb2-field"><div class="slb2-field-l"><span class="slb2-field-name">${label}</span><span class="slb2-field-key">${k}</span></div><div class="slb2-field-e">${html}</div>${help ? `<div class="slb2-field-h">${help}</div>` : ''}</div>`;
+            const A = `data-reg="upgrades" data-id="${_slbEsc(id)}"`;
+            const users = (usedBy && usedBy[id]) || [];
+            return `<div class="slb2-ins-head">
+                <div class="slb2-ins-row1"><input class="slb2-ins-name" ${A} data-key="name" value="${_slbEsc(u.name || '')}" spellcheck="false"></div>
+                <div class="slb2-ins-id">${_slbEsc(id)} · ${u.sp != null ? u.sp : 1} SP · allowed on ${users.length} spell${users.length === 1 ? '' : 's'}</div>
+                <div class="slb2-ins-verbs"><button class="slb2-btn slb2-btn-danger" data-act="upDelete" data-id="${_slbEsc(id)}">✕ DELETE</button></div>
+            </div>
+            <div class="slb2-ins-body">
+                <div class="slb2-group"><div class="slb2-group-h">THE UPGRADE</div>
+                ${fld('glyph', 'Glyph', `<input type="text" ${A} data-key="glyph" value="${_slbEsc(u.glyph || '')}" style="width:60px">`)}
+                ${fld('sp', 'SP price', `<input type="number" min="0" max="4" step="1" ${A} data-key="sp" data-type="num" value="${_slbEsc(u.sp != null ? u.sp : 1)}">`, 'An equipped spell costs its tier + Σ upgrade SP; at most 2 upgrades per spell (§7 Q3).')}
+                ${fld('roles', 'Roles', `<div class="slb2-togglerow">${_SLB2_ROLES.map(r => `<button class="slb2-tiny${(u.roles || []).includes(r) ? ' on' : ''}" data-act="upToggle" data-id="${_slbEsc(id)}" data-key="roles" data-val="${r}">${_SLB2_ROLE_LABELS[r]}</button>`).join('')}</div>`, 'Which roles it makes sense on (none = any).')}
+                ${fld('families', 'Families', `<div class="slb2-togglerow">${Object.keys(SPELL_FAMILIES).map(f => `<button class="slb2-tiny${(u.families || []).includes(f) ? ' on' : ''}" data-act="upToggle" data-id="${_slbEsc(id)}" data-key="families" data-val="${_slbEsc(f)}" style="--fc:${_slb2FamColor(f)}">${_slb2Glyph(f)} ${_slbEsc(_slb2FamName(f))}</button>`).join('')}</div>`, 'Only spells in these families may list it (none = any).')}
+                ${fld('desc', 'Description', `<textarea class="slb2-jsonmini long" ${A} data-key="desc" spellcheck="false">${_slbEsc(u.desc || '')}</textarea>`)}
+                ${fld('notes', 'Notes', `<textarea class="slb2-jsonmini long" ${A} data-key="notes" spellcheck="true">${_slbEsc(u.notes || '')}</textarea>`)}
+                </div>
+                <div class="slb2-group"><div class="slb2-group-h">THE PATCH · ${_slbEsc(_slb2PatchChips(patch) || 'empty')}</div>
+                    ${Object.keys(patch).map(k => { const spec = _SLB2_PATCH_KEYS.find(p => p[0] === k) || [k, typeof patch[k] === 'number' ? 'num' : typeof patch[k] === 'object' ? 'json' : 'text', '']; return `<div class="slb2-field"><div class="slb2-field-l"><span class="slb2-field-name">${_slbEsc(k)}</span><span class="slb2-field-key">${_slbEsc(spec[2])}</span></div><div class="slb2-field-e">${spec[1] === 'json' ? `<textarea class="slb2-jsonmini" ${A} data-patch="${_slbEsc(k)}" data-type="json" spellcheck="false">${_slbEsc(JSON.stringify(patch[k]))}</textarea>` : `<input type="${spec[1] === 'num' ? 'number' : 'text'}" step="any" ${A} data-patch="${_slbEsc(k)}" data-type="${spec[1]}" value="${_slbEsc(patch[k])}">`}<button class="slb2-fx" data-act="upPatchDrop" data-id="${_slbEsc(id)}" data-key="${_slbEsc(k)}" title="remove from the patch">✕</button></div></div>`; }).join('')}
+                    <div class="slb2-addfield"><select class="slb2-sel" data-input="upPatchAdd" data-id="${_slbEsc(id)}"><option value="">＋ patch key…</option>${_SLB2_PATCH_KEYS.filter(p => !Object.prototype.hasOwnProperty.call(patch, p[0])).map(p => `<option value="${p[0]}">${p[0]} — ${_slbEsc(p[2])}</option>`).join('')}</select></div>
+                </div>
+                <div class="slb2-group"><div class="slb2-group-h">ALLOWED ON · ${users.length}</div><div class="slb2-memberlist">${users.map(m => `<div class="slb2-member" data-act="jump" data-id="${_slbEsc(m.id)}"><span class="slb2-tier t${m.tier}">${_slb2TierText(m.tier)}</span><span class="slb2-member-n">${_slbEsc(m.def.name || m.id)}</span>${_slb2RoleChip(m.role)}</div>`).join('') || '<div class="slb2-dim">no spell lists it yet — allow it on a spell\'s UPGRADES tab</div>'}</div></div>
+            </div>`;
+        }
+        function _slb2SetUpgradeField(id, key, raw, type, patchKey) {
+            const cur = SPELL_UPGRADES[id];
+            if (!cur) return;
+            const row = JSON.parse(JSON.stringify(cur));
+            let v;
+            try { v = _slb2Parse(raw, type, patchKey || key); } catch (e) { _slbToast('✗ ' + e.message, true); return; }
+            if (patchKey) { row.patch = row.patch || {}; if (v === null) delete row.patch[patchKey]; else row.patch[patchKey] = v; }
+            else if (v === null) delete row[key]; else row[key] = v;
+            if (!_slb2WriteReg('upgrades', id, row, `upgrade ${id} · ${patchKey || key}`)) return;
+            _slb2RenderUpgrades(document.getElementById('slbMain'));
+            _slb2RefreshChrome();
+        }
+
+        /* ── POOLS (the old MOVEPOOLS tab, kept): job learnsets + race rows ── */
+        function _slb2RenderPools(main) {
+            main.innerHTML = `<div class="slb2-rail open slb2-poolrail" id="slbMpRail"></div>
+                <div class="slb2-center"><div class="slb2-chips">
+                    <div class="slb2-seg"><button class="slb2-segb${_slbMpMode === 'jobs' ? ' on' : ''}" data-act="mpMode" data-mode="jobs">JOB LEARNSETS</button><button class="slb2-segb${_slbMpMode === 'races' ? ' on' : ''}" data-act="mpMode" data-mode="races">RACE ROWS</button></div>
+                    <input class="slb2-search" type="text" placeholder="⌕ filter ${_slbMpMode}" value="${_slbEsc(_slbMpSearch)}" data-input="mpSearch" style="min-width:160px">
+                    <span class="slb2-hint">${_slbMpMode === 'jobs' ? 'A job\'s learn order: the position sets the unlock level.' : 'A race\'s movepool: every unit of the race can equip these (RACE_TREE rungs read from it). Families replace this in Phase 7.'}</span>
+                </div><div class="slb2-tablewrap slb2-pad" id="slbMpDetail"></div></div>`;
+            _slbMpRenderRail(); _slbMpRenderDetail();
+        }
         function _slbMpRenderRail() {
             const el = document.getElementById('slbMpRail');
             if (!el) return;
@@ -9868,198 +10728,462 @@
             const q = _slbMpSearch.trim().toLowerCase();
             const keys = (_slbMpMode === 'jobs' ? _slbJobs() : _slbRaces()).filter(k => !q || k.toLowerCase().includes(q));
             if (!_slbMpKey || !keys.includes(_slbMpKey)) _slbMpKey = keys[0] || null;
-            el.innerHTML = keys.map(k => {
+            el.innerHTML = `<div class="slb2-rail-head"><span>${_slbMpMode === 'jobs' ? 'JOBS' : 'RACES'} · ${keys.length}</span></div>` + keys.map(k => {
                 const n = _slbMpMode === 'jobs' ? (CLASS_SPELL_LEARN_ORDER[k] || []).length : (RACE_ABILITIES[k] || []).length;
                 const touched = _slbMpMode === 'jobs' ? !!M.doc.learnsets[k] : !!M.doc.raceAbilities[k];
-                return `<div class="slb-row${k === _slbMpKey ? ' selected' : ''}" onclick="window._slbMpSelect('${_slbEsc(k)}')">
-                    <div class="slb-row-top"><span class="slb-row-name">${_slbEsc(k)}</span>${touched ? '<span class="slb-flag slb-flag-mod">●</span>' : ''}</div>
-                    <div class="slb-row-sub"><span class="slb-row-stats">${n} spell${n === 1 ? '' : 's'}</span></div>
-                </div>`;
-            }).join('') || '<div class="slb-empty">nothing matches</div>';
+                return `<div class="slb2-poolrow${k === _slbMpKey ? ' sel' : ''}" data-act="mpPick" data-key="${_slbEsc(k)}"><span>${_slbEsc(_slbMpMode === 'races' ? _slb2Race(k) : k)}</span>${touched ? '<span class="slb2-flag mod">●</span>' : ''}<span class="slb2-dim">${n}</span></div>`;
+            }).join('');
         }
-
-        function _slbMpIds(key) {
-            return _slbMpMode === 'jobs' ? (CLASS_SPELL_LEARN_ORDER[key] || []).slice() : (RACE_ABILITIES[key] || []).map(a => a.id);
-        }
-
-        function _slbMpWrite(key, ids) {
-            const M = _slbMods();
-            if (!M) return;
-            const kind = _slbMpMode === 'jobs' ? 'learnsets' : 'raceAbilities';
-            // storing the pristine order back = untouched → drop the override
-            const prisArr = _slbMpMode === 'jobs'
-                ? ((M.pristineState() && M.pristineState().learn[key]) || [])
-                : ((M.pristineState() && M.pristineState().raceRefs[key]) || []).map(a => a.id);
-            if (JSON.stringify(ids) === JSON.stringify(prisArr)) delete M.doc[kind][key];
-            else M.doc[kind][key] = ids;
-            M.save(); M.apply();
-            _slbMpRenderRail(); _slbMpRenderDetail(); _slbRefreshChrome();
-        }
-
-        window._slbMpMove = function(key, idx, dir) {
-            const ids = _slbMpIds(key);
-            const j = idx + dir;
-            if (j < 0 || j >= ids.length) return;
-            const t = ids[idx]; ids[idx] = ids[j]; ids[j] = t;
-            _slbMpWrite(key, ids);
-        };
-        window._slbMpRemove = function(key, idx) {
-            const ids = _slbMpIds(key);
-            ids.splice(idx, 1);
-            _slbMpWrite(key, ids);
-        };
-        window._slbMpAdd = function(key, id) {
-            if (!id) return;
-            const ids = _slbMpIds(key);
-            if (!ids.includes(id)) ids.push(id);
-            _slbMpWrite(key, ids);
-        };
-        window._slbMpRevert = function(key) {
+        function _slbMpIds(key) { return _slbMpMode === 'jobs' ? (CLASS_SPELL_LEARN_ORDER[key] || []).slice() : (RACE_ABILITIES[key] || []).map(a => a.id); }
+        function _slbMpWrite(key, ids, label) {
             const M = _slbMods();
             const kind = _slbMpMode === 'jobs' ? 'learnsets' : 'raceAbilities';
-            delete M.doc[kind][key];
-            M.save(); M.apply();
-            _slbMpRenderRail(); _slbMpRenderDetail(); _slbRefreshChrome();
-        };
-
+            const prisArr = _slbMpMode === 'jobs' ? ((M.pristineState() && M.pristineState().learn[key]) || []) : ((M.pristineState() && M.pristineState().raceRefs[key]) || []).map(a => a.id);
+            _slb2Mutate(label || `${key} pool`, () => { if (JSON.stringify(ids) === JSON.stringify(prisArr)) delete M.doc[kind][key]; else M.doc[kind][key] = ids; });
+            _slbMpRenderRail(); _slbMpRenderDetail(); _slb2RefreshChrome();
+        }
         function _slbMpRenderDetail() {
             const el = document.getElementById('slbMpDetail');
             if (!el) return;
             const key = _slbMpKey;
-            if (!key) { el.innerHTML = '<div class="slb-empty">Pick a ' + (_slbMpMode === 'jobs' ? 'job' : 'race') + '.</div>'; return; }
+            if (!key) { el.innerHTML = '<div class="slb2-empty">Pick a ' + (_slbMpMode === 'jobs' ? 'job' : 'race') + '.</div>'; return; }
             const M = _slbMods();
             const ids = _slbMpIds(key);
             const touched = _slbMpMode === 'jobs' ? !!M.doc.learnsets[key] : !!M.doc.raceAbilities[key];
-            const lvl = i => (_slbMpMode === 'jobs' && typeof getSpellUnlockLevel === 'function') ? `<span class="slb-mp-lvl">Lv ${getSpellUnlockLevel(key, i)}</span>` : '';
-            const allIds = _slbAllRows().filter(r => !r.deleted).map(r => r.id).sort();
-            el.innerHTML = `<div class="slb-detail-scroll">
-                <div class="slb-head">
-                    <div class="slb-head-name">${_slbEsc(key)}</div>
-                    <div class="slb-head-id">${_slbMpMode === 'jobs' ? 'learn order — position sets the unlock level' : 'race movepool — every unit of this race can equip these'}${touched ? ' · <span class="slb-dot">●</span> modified' : ''}</div>
-                    <div class="slb-head-actions">${touched ? `<button class="slb-btn" onclick="window._slbMpRevert('${_slbEsc(key)}')">↺ REVERT</button>` : ''}</div>
+            const lvl = i => (_slbMpMode === 'jobs' && typeof getSpellUnlockLevel === 'function') ? `<span class="slb2-dim">Lv ${getSpellUnlockLevel(key, i)}</span>` : '';
+            const allIds = _slb2Rows().filter(r => !r.deleted).map(r => r.id).sort();
+            el.innerHTML = `<div class="slb2-ins-head">
+                <div class="slb2-ins-name">${_slbEsc(_slbMpMode === 'races' ? _slb2Race(key) : key)}</div>
+                <div class="slb2-ins-id">${ids.length} row${ids.length === 1 ? '' : 's'}${touched ? ' · <span class="slb2-dot">●</span> changed' : ''}</div>
+                <div class="slb2-ins-verbs">${touched ? `<button class="slb2-btn" data-act="mpRevert" data-key="${_slbEsc(key)}">↺ REVERT</button>` : ''}</div>
+            </div>
+            <div class="slb2-mplist">${ids.map((id, i) => { const d = SPELL_BY_ID[id] || {}; const r = _slb2RowById(id); return `<div class="slb2-mprow">
+                <span class="slb2-dim slb2-mpidx">${i + 1}</span>${lvl(i)}
+                <span class="slb2-tier t${r ? r.tier : 1}">${_slb2TierText(r ? r.tier : 1)}</span>
+                <span class="slb2-member-n" data-act="jump" data-id="${_slbEsc(id)}" title="open in the table">${_slbEsc(d.name || id)}</span>
+                ${r ? _slb2RoleChip(r.role) : ''}<span class="slb2-dim">${_slbEsc(id)}</span>
+                <span class="slb2-mpctl"><button data-act="mpMove" data-key="${_slbEsc(key)}" data-i="${i}" data-dir="-1" title="earlier">↑</button><button data-act="mpMove" data-key="${_slbEsc(key)}" data-i="${i}" data-dir="1" title="later">↓</button><button data-act="mpRemove" data-key="${_slbEsc(key)}" data-i="${i}" title="remove">✕</button></span>
+            </div>`; }).join('') || '<div class="slb2-empty">empty</div>'}</div>
+            <div class="slb2-addfield"><input class="slb2-sel slb2-sel-add" list="slbMpAddList" placeholder="＋ add a spell by id…" data-input="mpAdd" data-key="${_slbEsc(key)}" style="min-width:260px"><datalist id="slbMpAddList">${allIds.filter(id => !ids.includes(id)).map(id => `<option value="${_slbEsc(id)}">${_slbEsc((SPELL_BY_ID[id] || {}).name || '')}</option>`).join('')}</datalist></div>`;
+        }
+
+        /* ── REPORT (§5.9): the census over the current doc ── */
+        function _slb2RenderReport(main) {
+            const rep = (typeof spellReport === 'function') ? spellReport() : { rows: 0, byRole: {}, byTier: {}, byKind: {}, byFamily: {}, lint: [], lintByRule: {} };
+            const rows = _slb2Rows().filter(r => !r.deleted);
+            const roleTier = {}; rows.forEach(r => { roleTier[r.role] = roleTier[r.role] || [0, 0, 0, 0, 0]; roleTier[r.role][r.tier] = (roleTier[r.role][r.tier] || 0) + 1; });
+            const byElem = {}; rows.forEach(r => { const e = r.element || '(none)'; byElem[e] = (byElem[e] || 0) + 1; });
+            const kinds = Object.keys(rep.byKind || {}).sort((a, b) => rep.byKind[b] - rep.byKind[a]);
+            const offenders = rows.filter(r => r.lint.some(h => h.rule === 'tierRule'));
+            const lintByRule = {}; rows.forEach(r => r.lint.forEach(h => { (lintByRule[h.rule] = lintByRule[h.rule] || { level: h.level, rows: [] }).rows.push(r); }));
+            const groups = _slb2RedundancyGroups(rows);
+            const noTierOne = Object.keys(SPELL_FAMILIES).filter(f => !rows.some(r => r.families.includes(f) && r.tier === 1) && rows.some(r => r.families.includes(f)));
+            const animCount = {}; rows.forEach(r => { const a = r.anim || '?'; animCount[a] = (animCount[a] || 0) + 1; });
+            const anims = Object.keys(animCount).sort((a, b) => animCount[b] - animCount[a]).slice(0, 12);
+            const doc = _slb2Doc();
+            const jump = r => `<span class="slb2-member" data-act="jump" data-id="${_slbEsc(r.id)}"><span class="slb2-tier t${r.tier}">${_slb2TierText(r.tier)}</span><span class="slb2-member-n">${_slbEsc(r.def.name || r.id)}</span>${_slb2RoleChip(r.role)}<span class="slb2-dim">${r.dmg ? '⚔' + r.dmg : ''} ${_slbEsc(r.isRace ? _slb2Race(r.owner) : r.owner)}</span></span>`;
+            main.innerHTML = `<div class="slb2-report">
+                <div class="slb2-rep-col">
+                    <div class="slb2-group"><div class="slb2-group-h">ROWS BY ROLE × TIER · ${rows.length}</div>
+                        <table class="slb2-matrix"><thead><tr><th>role</th><th>I</th><th>II</th><th>III</th><th>IV</th><th>all</th></tr></thead><tbody>
+                        ${_SLB2_ROLES.filter(r => roleTier[r]).map(r => `<tr><td>${_slb2RoleChip(r)}</td>${[1, 2, 3, 4].map(t => `<td><a data-act="repFilter" data-role="${r}" data-tier="${t}">${roleTier[r][t] || ''}</a></td>`).join('')}<td><b>${rep.byRole[r] || roleTier[r].reduce((a, b) => a + b, 0)}</b></td></tr>`).join('')}
+                        </tbody></table>
+                        <div class="slb2-field-h">damage only ${rep.byRole.damage || 0} · damage + effect ${rep.byRole.damageEffect || 0} · effect ${rep.byRole.effect || 0} · heal ${rep.byRole.heal || 0}</div>
+                    </div>
+                    <div class="slb2-group"><div class="slb2-group-h">THE TIER RULE · ${offenders.length} offender${offenders.length === 1 ? '' : 's'}</div>
+                        <div class="slb2-field-h">damage + effect at ≥ ${typeof SPELL_TIER_RULE !== 'undefined' ? SPELL_TIER_RULE.dmg : 120} dmg needs tier III or IV — yours to re-tier or split; never auto-fixed.</div>
+                        <div class="slb2-memberlist">${offenders.map(jump).join('') || '<span class="slb2-dim">none</span>'}</div>
+                    </div>
+                    <div class="slb2-group"><div class="slb2-group-h">LINT · ${Object.keys(lintByRule).reduce((n, k) => n + lintByRule[k].rows.length, 0)} hits</div>
+                        ${Object.keys(lintByRule).sort((a, b) => (_SLB2_LINT_LEVEL[lintByRule[b].level] - _SLB2_LINT_LEVEL[lintByRule[a].level]) || (lintByRule[b].rows.length - lintByRule[a].rows.length)).map(rule => `<details class="slb2-lintgroup"><summary><span class="slb2-lintbadge ${lintByRule[rule].level}">${rule}</span> ${lintByRule[rule].rows.length} <button class="slb2-link" data-act="lintFilter" data-rule="${rule}">show in the table</button></summary><div class="slb2-memberlist">${lintByRule[rule].rows.slice(0, 60).map(jump).join('')}${lintByRule[rule].rows.length > 60 ? `<span class="slb2-dim">+${lintByRule[rule].rows.length - 60} more — use the filter</span>` : ''}</div></details>`).join('') || '<span class="slb2-dim">clean</span>'}
+                    </div>
+                    <div class="slb2-group"><div class="slb2-group-h">COVERAGE</div>
+                        <div class="slb2-field-h">Families with members but no tier-I row: ${noTierOne.map(f => `<b style="color:${_slb2FamColor(f)};white-space:nowrap">${_slb2Glyph(f)} ${_slbEsc(_slb2FamName(f))}</b>`).join(', ') || 'none'}.</div>
+                        <div class="slb2-field-h">Off-pool rows (no race row, job row or family): ${rows.filter(r => r.lint.some(h => h.rule === 'offPool')).length}. Races × families: ${typeof RACE_FAMILIES !== 'undefined' && Object.keys(RACE_FAMILIES).length ? Object.keys(RACE_FAMILIES).filter(r => (RACE_FAMILIES[r] || []).length < 3).length + ' races under 3 families' : 'RACE_FAMILIES is empty until Phase 7'}.</div>
+                    </div>
                 </div>
-                <div class="slb-mp-list">
-                    ${ids.map((id, i) => {
-                        const d = SPELL_BY_ID[id] || {};
-                        return `<div class="slb-mp-row">
-                            <span class="slb-mp-idx">${i + 1}</span>${lvl(i)}
-                            <span class="slb-mp-name" onclick="window._slbJumpToSpell('${_slbEsc(id)}')" title="open in editor">${_slbEsc(d.name || id)}</span>
-                            <span class="slb-mp-id">${_slbEsc(id)}</span>
-                            <span class="slb-badge">${_slbEsc(d.kind || '?')}</span>
-                            <span class="slb-mp-ctl">
-                                <button onclick="window._slbMpMove('${_slbEsc(key)}',${i},-1)" title="earlier">↑</button>
-                                <button onclick="window._slbMpMove('${_slbEsc(key)}',${i},1)" title="later">↓</button>
-                                <button onclick="window._slbMpRemove('${_slbEsc(key)}',${i})" title="remove">✕</button>
-                            </span>
-                        </div>`;
-                    }).join('') || '<div class="slb-empty">empty movepool</div>'}
-                </div>
-                <div class="slb-addfield">
-                    <input class="slb-search" list="slbMpAddList" id="slbMpAddInput" placeholder="+ add spell by id (type to search)…"
-                        onchange="window._slbMpAdd('${_slbEsc(key)}', this.value); this.value='';">
-                    <datalist id="slbMpAddList">${allIds.filter(id => !ids.includes(id)).map(id => `<option value="${_slbEsc(id)}">${_slbEsc((SPELL_BY_ID[id] || {}).name || '')}</option>`).join('')}</datalist>
+                <div class="slb2-rep-col">
+                    <div class="slb2-group"><div class="slb2-group-h">REDUNDANCY · ${groups.length} groups</div>
+                        <div class="slb2-field-h">Same kind + element + statuses + area class, damage within 20. Each group is a merge candidate: keep one, turn the others into upgrades of it, or delete.</div>
+                        ${groups.slice(0, 40).map(g => `<details class="slb2-lintgroup"><summary>${_slbEsc(g.key.split('|')[0])} · ${_slbEsc(g.key.split('|')[1])}${g.key.split('|')[2] !== '-' ? ' · ' + _slbEsc(g.key.split('|')[2]) : ''} · ${_slbEsc(g.key.split('|')[3])} — <b>${g.rows.length}</b></summary><div class="slb2-memberlist">${g.rows.map(jump).join('')}</div></details>`).join('')}
+                        ${groups.length > 40 ? `<div class="slb2-dim">+${groups.length - 40} smaller groups</div>` : ''}
+                    </div>
+                    <div class="slb2-group"><div class="slb2-group-h">BY ELEMENT · FAMILY · KIND · CLIP</div>
+                        <div class="slb2-field-h">${Object.keys(byElem).sort((a, b) => byElem[b] - byElem[a]).map(e => `<a data-act="repFilter" data-element="${_slbEsc(e)}">${_slb2Glyph(e === '(none)' ? '' : e)} ${_slbEsc(e)} <b>${byElem[e]}</b></a>`).join(' · ')}</div>
+                        <div class="slb2-field-h">${Object.keys(rep.byFamily || {}).sort((a, b) => rep.byFamily[b] - rep.byFamily[a]).map(f => `<a data-act="repFilter" data-family="${_slbEsc(f)}">${_slb2Glyph(f)} ${_slbEsc(_slb2FamName(f))} <b>${rep.byFamily[f]}</b></a>`).join(' · ')}</div>
+                        <div class="slb2-field-h">${kinds.slice(0, 24).map(k => `<a data-act="repFilter" data-kind="${_slbEsc(k)}">${_slbEsc(k)} <b>${rep.byKind[k]}</b></a>`).join(' · ')}${kinds.length > 24 ? ` · +${kinds.length - 24} kinds` : ''}</div>
+                        <div class="slb2-field-h">Clip spread (auto animation): ${anims.map(a => `${_slbEsc(a)} <b>${Math.round(100 * animCount[a] / rows.length)}%</b>`).join(' · ')}</div>
+                    </div>
+                    <div class="slb2-group"><div class="slb2-group-h">LIBRARY NOTES · the session brief</div>
+                        <textarea class="slb2-notes-ta" data-input="libNotes" spellcheck="true" placeholder="What this pass is about. Rides the export as the library's notes.">${_slbEsc(doc.notes || '')}</textarea>
+                    </div>
                 </div>
             </div>`;
         }
 
-        window._slbJumpToSpell = function(id) {
-            _slbTab = 'spells';
-            _slbSelectedId = id;
-            _slbFilters = { source: 'all', type: 'all', kind: 'all', spellType: 'all', element: 'all', job: 'all', race: 'all' };
-            _slbSearch = '';
-            window._renderSpellLibrary();
+        /* ── NEW ▾ (§5.8): role templates from the census medians, passive templates, families, upgrades ── */
+        const _SLB2_ROLE_TEMPLATES = {
+            damage:       { type: 'damage', kind: 'damage', spellType: 'human', element: 'arcane', damageType: 'magic', dmg: 100, range: 3, apCost: 2 },
+            damageEffect: { type: 'damage', kind: 'damage', spellType: 'human', element: 'fire', damageType: 'magic', dmg: 80, range: 3, apCost: 2, statusEffects: [{ id: 'burn', duration: 2 }] },
+            effect:       { type: 'debuff', kind: 'debuff', spellType: 'human', element: 'shadow', range: 3, apCost: 1, statusEffects: [{ id: 'slow', duration: 2 }] },
+            heal:         { type: 'heal', kind: 'heal', spellType: 'divine', element: 'light', heal: 100, range: 3, apCost: 1 },
+            utility:      { type: 'utility', kind: 'scan', spellType: 'tech', range: 0, apCost: 1, scanRadius: 4 },
+            movement:     { type: 'utility', kind: 'dash', spellType: 'human', range: 3, apCost: 1, dashDamage: 40 },
+            deploy:       { type: 'utility', kind: 'deployTurret', spellType: 'tech', element: 'metal', range: 2, apCost: 2, turretHp: 120, turretDmg: 40, turretRange: 3, maxActivePerCaster: 1 },
+            terrain:      { type: 'utility', kind: 'terrainCreate', spellType: 'anomaly', element: 'earth', range: 3, apCost: 2, terrainType: 'mountain', tileCount: 3, orientable: true },
         };
+        const _SLB2_PASSIVE_TEMPLATES = [
+            ['statStick', 'Stat stick', { hooks: { statBonus: { atk: 10 } } }, '+stat while equipped (the nine accessory sticks)'],
+            ['elementRider', 'Elemental rider', { hooks: { physicalElementRider: 'fire' } }, 'physical spells and basics carry the element'],
+            ['onceHeal', 'Once-per-life heal', { hooks: { healOnceBelowPct: { pct: 50, healPct: 40 } } }, 'heals once when HP drops under the line'],
+            ['regen', 'Regen', { hooks: { regenPerRound: 4 } }, '% max HP back every round'],
+            ['weather', 'Weather bonus', { hooks: { weatherBonus: { storm: { atkStages: 1 } } } }, 'a stat stage while the weather holds'],
+            ['terrain', 'Terrain bonus', { hooks: { terrainBonus: { water: { defStages: 1 } } } }, 'a stat stage on a terrain'],
+            ['zodiac', 'Zodiac bonus', { hooks: { zodiacBonus: { earth: { atkStages: 1 } } } }, 'a stat stage under a sign'],
+            ['build', 'Build / dig', { hooks: { buildBonus: { dig: 1, build: 1 } } }, 'the builder and digger actions read it'],
+            ['immune', 'Immunity', { hooks: { immuneStatus: ['burn'] } }, 'never takes the status'],
+        ];
+        function _slb2TemplateFor(role) {
+            const base = JSON.parse(JSON.stringify(_SLB2_ROLE_TEMPLATES[role] || _SLB2_ROLE_TEMPLATES.damage));
+            const peers = _slb2Rows().filter(r => !r.deleted && r.role === role && r.tier === 1);
+            if (peers.length >= 3) {
+                const md = k => _slb2Median(peers.map(r => typeof r.def[k] === 'number' ? r.def[k] : null));
+                if (base.dmg != null && md('dmg')) base.dmg = md('dmg');
+                if (base.heal != null && md('heal')) base.heal = md('heal');
+                if (md('range') != null) base.range = md('range');
+                if (md('apCost') != null) base.apCost = md('apCost');
+            }
+            base.tier = 1; base.families = base.element ? [base.element] : []; base.upgrades = []; base.descAuto = true;
+            base.school = 'Black Mage'; base.classRestriction = 'Black Mage';
+            return base;
+        }
+        function _slb2NewMenu(anchor) {
+            _slb2Popover(anchor, `<div class="slb2-menu">
+                <div class="slb2-menu-h">NEW SPELL · from a role</div>
+                ${_SLB2_ROLES.filter(r => r !== 'passive').map(r => `<button class="slb2-menu-i" data-act="newSpell" data-role="${r}">${_slb2RoleChip(r)}<span>${({ damage: 'damage only', damageEffect: 'less damage + a status', effect: 'a status, no damage', heal: 'heals an ally', utility: 'scan, reveal, misc', movement: 'dash / teleport', deploy: 'turret / object / trap', terrain: 'paints the board' })[r]}</span></button>`).join('')}
+                <div class="slb2-menu-h">NEW PASSIVE · takes a slot</div>
+                ${_SLB2_PASSIVE_TEMPLATES.map(([k, n, , h]) => `<button class="slb2-menu-i" data-act="newPassive" data-tpl="${k}">${_slb2RoleChip('passive')}<b>${_slbEsc(n)}</b><span>${_slbEsc(h)}</span></button>`).join('')}
+                <div class="slb2-menu-h">REGISTRIES</div>
+                <button class="slb2-menu-i" data-act="newFamily"><b>＋ family</b><span>a tag with a glyph and a colour</span></button>
+                <button class="slb2-menu-i" data-act="newUpgrade"><b>＋ upgrade</b><span>an SP price and a patch</span></button>
+            </div>`);
+        }
+        function _slb2CreateSpell(role) {
+            const tpl = _slb2TemplateFor(role);
+            _slb2AskId(`New ${_SLB2_ROLE_LABELS[role] || role} spell — its id`, _slbUniqueId(role === 'damageEffect' ? 'newStrike' : 'new' + role.charAt(0).toUpperCase() + role.slice(1)), (id) => {
+                tpl.name = 'New ' + (_SLB2_ROLE_LABELS[role] || role).toLowerCase().replace('dmg+fx', 'strike');
+                try { if (typeof describeSpell === 'function') tpl.desc = describeSpell(Object.assign({ id }, tpl)) || ''; } catch (e) { tpl.desc = ''; }
+                tpl._home = { lib: true };
+                _slb2Mutate(`＋ ${id} created`, () => { _slb2Doc().added[id] = tpl; });
+                _slb2SelectNew(id);
+                _slbToast(`＋ ${id} — rename it, pick its families and a home row (JOBS / RACES) in the header`);
+            });
+        }
+        function _slb2CreatePassive(tplKey) {
+            const t = _SLB2_PASSIVE_TEMPLATES.find(x => x[0] === tplKey) || _SLB2_PASSIVE_TEMPLATES[0];
+            _slb2AskId(`New passive (${t[1]}) — its id`, _slbUniqueId('passive' + t[0].charAt(0).toUpperCase() + t[0].slice(1)), (id) => {
+                const row = Object.assign({ name: t[1], type: 'utility', kind: 'passive', spellType: 'human', range: 0, apCost: 0, cost: 0, manaCostOverride: 0, noDamage: true,
+                    tier: 1, families: ['gear'], upgrades: [], desc: t[3], _home: { lib: true } }, JSON.parse(JSON.stringify(t[2])));
+                _slb2Mutate(`＋ ${id} created`, () => { _slb2Doc().added[id] = row; });
+                _slb2SelectNew(id);
+                _slbToast(`＋ ${id} — a passive row: set its HOOKS on the EFFECTS tab; it plays once Phase 4 lands`);
+            });
+        }
+        function _slb2CreateFamily() {
+            _slb2AskId('New family — its id', '', (id) => {
+                if (SPELL_FAMILIES[id]) { _slbToast('✗ that family exists', true); return; }
+                _slb2WriteReg('families', id, { id, name: id.charAt(0).toUpperCase() + id.slice(1), glyph: '✦', color: '#a08cc8', kind: 'discipline', desc: '', unique: null }, `＋ family ${id}`);
+                _slbFamKey = id; _slbTab = 'families'; _slb2RenderTop(); _slb2RenderTab();
+            }, id => !!SPELL_FAMILIES[id] || (_slb2Doc().families && _slb2Doc().families[id] === null));
+        }
+        function _slb2CreateUpgrade() {
+            _slb2AskId('New upgrade — its id', '', (id) => {
+                _slb2WriteReg('upgrades', id, { id, name: id.charAt(0).toUpperCase() + id.slice(1), glyph: '⚙', desc: '', sp: 1, roles: [], families: [], patch: {} }, `＋ upgrade ${id}`);
+                _slbUpKey = id; _slbTab = 'upgrades'; _slb2RenderTop(); _slb2RenderTab();
+            }, id => !!SPELL_UPGRADES[id]);
+        }
+        /* The one prompt: an id typed once, validated live (unique, camelCase). */
+        function _slb2AskId(title, suggestion, onOk, takenFn) {
+            const taken = takenFn || _slb2IdTaken;
+            _slb2Modal(`<div class="slb2-dialog slb2-askid">
+                <div class="slb2-dialog-h">${_slbEsc(title)}</div>
+                <input id="slbAskId" class="slb2-search" type="text" value="${_slbEsc(suggestion)}" spellcheck="false" autocomplete="off" placeholder="camelCaseId">
+                <div class="slb2-hint" id="slbAskIdHint"></div>
+                <div class="slb2-dialog-b"><button class="slb2-btn" data-act="modalClose">CANCEL</button><button class="slb2-btn on" id="slbAskIdOk">CREATE</button></div>
+            </div>`);
+            const inp = document.getElementById('slbAskId'), hint = document.getElementById('slbAskIdHint'), ok = document.getElementById('slbAskIdOk');
+            const check = () => { const err = _slb2ValidId(inp.value.trim(), taken); hint.textContent = err || 'free'; hint.classList.toggle('err', !!err); ok.disabled = !!err; return !err; };
+            inp.addEventListener('input', check);
+            inp.addEventListener('keydown', e => { if (e.key === 'Enter' && check()) { e.preventDefault(); ok.click(); } });
+            ok.addEventListener('click', () => { if (!check()) return; const v = inp.value.trim(); _slb2ModalClose(); onOk(v); });
+            check(); inp.focus(); inp.select();
+        }
 
-        /* ── footer: toggle / export / import / reset ────────────────────── */
-        window._slbToggleEnabled = function() {
-            const M = _slbMods();
-            if (!M) return;
-            M.doc.enabled = !M.doc.enabled;
-            M.save(); M.apply();
-            _slbToast(M.doc.enabled ? '✓ edits APPLIED to live data' : '◌ edits disabled — vanilla data restored');
-            window._renderSpellLibrary();
+        /* ── BULK (§5.2): the inspector over a multi-selection; one undo step ── */
+        function _slb2BulkHtml() {
+            const ids = _slbSelection.filter(id => _slb2RowById(id));
+            const rows = ids.map(_slb2RowById);
+            return `<div class="slb2-ins-head">
+                <div class="slb2-ins-name">${ids.length} rows selected</div>
+                <div class="slb2-ins-id">${_slbEsc(rows.slice(0, 6).map(r => r.def.name || r.id).join(', '))}${rows.length > 6 ? ` +${rows.length - 6}` : ''}</div>
+                <div class="slb2-ins-verbs"><button class="slb2-btn" data-act="selectNone">CLEAR SELECTION</button><button class="slb2-btn" data-act="selectAll" title="every row in the current filter (⌘A)">SELECT ALL ${_slb2Filtered().length}</button></div>
+            </div>
+            <div class="slb2-ins-body">
+                <div class="slb2-group"><div class="slb2-group-h">BULK EDIT · one undo step</div>
+                    <div class="slb2-field"><div class="slb2-field-l"><span class="slb2-field-name">Add a family</span></div><div class="slb2-field-e"><select class="slb2-sel" data-input="bulk" data-op="addFamily"><option value="">pick…</option>${Object.keys(SPELL_FAMILIES).map(f => `<option value="${_slbEsc(f)}">${_slb2Glyph(f)} ${_slbEsc(_slb2FamName(f))}</option>`).join('')}</select></div></div>
+                    <div class="slb2-field"><div class="slb2-field-l"><span class="slb2-field-name">Remove a family</span></div><div class="slb2-field-e"><select class="slb2-sel" data-input="bulk" data-op="removeFamily"><option value="">pick…</option>${Object.keys(SPELL_FAMILIES).map(f => `<option value="${_slbEsc(f)}">${_slb2Glyph(f)} ${_slbEsc(_slb2FamName(f))}</option>`).join('')}</select></div></div>
+                    <div class="slb2-field"><div class="slb2-field-l"><span class="slb2-field-name">Set the tier</span></div><div class="slb2-field-e"><div class="slb2-seg">${[1, 2, 3, 4].map(t => `<button class="slb2-segb" data-act="bulkTier" data-tier="${t}">Tier ${_slb2TierText(t)}</button>`).join('')}</div></div></div>
+                    <div class="slb2-field"><div class="slb2-field-l"><span class="slb2-field-name">Set the element</span></div><div class="slb2-field-e"><select class="slb2-sel" data-input="bulk" data-op="setElement"><option value="">pick…</option><option value="__none">(none)</option>${_SLB_ELEMENTS.map(e => `<option value="${e}">${_slb2Glyph(e)} ${e}</option>`).join('')}</select></div></div>
+                    <div class="slb2-field"><div class="slb2-field-l"><span class="slb2-field-name">Allow an upgrade</span></div><div class="slb2-field-e"><select class="slb2-sel" data-input="bulk" data-op="addUpgrade"><option value="">pick…</option>${Object.keys(SPELL_UPGRADES).map(u => `<option value="${_slbEsc(u)}">${_slbEsc(SPELL_UPGRADES[u].name || u)}</option>`).join('')}</select>${Object.keys(SPELL_UPGRADES).length ? '' : '<span class="slb2-dim">the registry is empty</span>'}</div></div>
+                    <div class="slb2-field wide"><div class="slb2-field-l"><span class="slb2-field-name">Append to notes</span></div><div class="slb2-field-e"><input type="text" class="slb2-search" data-input="bulk" data-op="appendNote" placeholder="a line added to every selected row's notes — Enter"></div></div>
+                    <div class="slb2-field"><div class="slb2-field-l"><span class="slb2-field-name">Delete</span></div><div class="slb2-field-e"><button class="slb2-btn slb2-btn-danger" data-act="bulkDelete">✕ DELETE ${ids.length} ROWS</button></div></div>
+                </div>
+                <div class="slb2-group"><div class="slb2-group-h">THE SELECTION</div><div class="slb2-memberlist">${rows.map(r => `<div class="slb2-member"><span class="slb2-tier t${r.tier}">${_slb2TierText(r.tier)}</span><span class="slb2-member-n" data-act="row" data-id="${_slbEsc(r.id)}">${_slbEsc(r.def.name || r.id)}</span>${_slb2RoleChip(r.role)}<a data-act="deselect" data-id="${_slbEsc(r.id)}" title="drop from the selection">✕</a></div>`).join('')}</div></div>
+            </div>`;
+        }
+        function _slb2Bulk(op, val) {
+            const ids = _slbSelection.filter(id => SPELL_BY_ID[id]);
+            if (!ids.length) return;
+            const label = `bulk ${op}${val != null ? ' ' + val : ''} on ${ids.length} rows`;
+            const ok = _slb2Mutate(label, () => {
+                ids.forEach(id => {
+                    const d = SPELL_BY_ID[id];
+                    if (op === 'addFamily' || op === 'removeFamily') {
+                        const cur = (typeof spellFamiliesOf === 'function') ? spellFamiliesOf(d).slice() : (d.families || []).slice();
+                        const next = op === 'addFamily' ? (cur.includes(val) ? cur : cur.concat(val)) : cur.filter(x => x !== val);
+                        if (next.join() !== cur.join()) _slb2WriteField(id, 'families', next);
+                    } else if (op === 'setTier') _slb2WriteField(id, 'tier', Number(val));
+                    else if (op === 'setElement') _slb2WriteField(id, 'element', val === '__none' ? null : val);
+                    else if (op === 'addUpgrade') { const cur = Array.isArray(d.upgrades) ? d.upgrades.slice() : []; if (!cur.includes(val)) _slb2WriteField(id, 'upgrades', cur.concat(val)); }
+                    else if (op === 'appendNote') _slb2WriteField(id, 'notes', (d.notes ? d.notes + '\n' : '') + val);
+                    else if (op === 'delete') { const doc = _slb2Doc(); if (doc.added[id]) { delete doc.added[id]; delete doc.modified[id]; } else if (!doc.deleted.includes(id)) doc.deleted.push(id); }
+                });
+            });
+            if (!ok) { _slbToast('nothing changed'); return; }
+            if (op === 'delete') _slbSelection = [];
+            _slb2RenderCenter(); _slb2RenderRail(); _slb2RenderChips(); _slb2RefreshChrome(); _slb2RenderInspector();
+        }
+
+        /* ── THE PALETTE (⌘K): add a field to the row, or run a command ── */
+        function _slb2OpenPalette(id) {
+            const r = (id && _slb2RowById(id)) || (_slbSelectedId && _slb2RowById(_slbSelectedId));
+            const fields = r ? Object.keys(_SLB_FIELD_HELP).concat(Object.keys(_SLB2_EXTRA_HELP)).filter((k, i, a) => a.indexOf(k) === i && !Object.prototype.hasOwnProperty.call(r.def, k) && !(typeof SPELL_DEAD_FIELDS !== 'undefined' && SPELL_DEAD_FIELDS.includes(k)) && !['role', 'simTargeting', 'simPhase', 'simFallback', 'requiresLineOfSight', 'lineOfSight'].includes(k)).sort() : [];
+            const cmds = [
+                ['export', '⇩ EXPORT', 'JSON + markdown summary', '⌘S'], ['import', '⇪ IMPORT', 'merge or replace a JSON export', ''], ['lab', '▶ LAB', 'boot the Spell Lab on this spell', '⌘L'],
+                ['newMenu', '＋ NEW', 'a spell, passive, family or upgrade', ''], ['toggleEnabled', 'EDITS ON / OFF', 'apply the doc to the live tables, or play vanilla', ''],
+                ['viewToggle', 'TABLE / CARDS', 'switch the view', ''], ['tab:spells', 'SPELLS', 'the table', ''], ['tab:passives', 'PASSIVES', 'family passives + inherent', ''], ['tab:families', 'FAMILIES', 'the registry', ''],
+                ['tab:upgrades', 'UPGRADES', 'the registry', ''], ['tab:pools', 'POOLS', 'job learnsets · race rows', ''], ['tab:report', 'REPORT', 'the census + lint + redundancy', ''], ['undo', '↶ UNDO', '', '⌘Z'], ['redo', '↷ REDO', '', '⌘⇧Z'],
+                ['pruneApplied', '✓ CLEAR APPLIED', 'drop change groups already baked into this data.js', ''], ['resetAll', '⟲ DISCARD ALL', 'every pending edit', ''],
+            ];
+            _slb2Modal(`<div class="slb2-dialog slb2-palette">
+                <input id="slbPalIn" class="slb2-search" type="text" placeholder="${r ? 'add a field to ' + _slbEsc(r.def.name || r.id) + ', or a command…' : 'a command…'}" spellcheck="false" autocomplete="off">
+                <div class="slb2-pal-list" id="slbPalList"></div>
+            </div>`, { top: true });
+            const inp = document.getElementById('slbPalIn'), list = document.getElementById('slbPalList');
+            let items = [], cursor = 0;
+            const render = () => {
+                const q = inp.value.trim().toLowerCase();
+                const fi = fields.filter(f => !q || f.toLowerCase().includes(q) || _slb2Label(f).toLowerCase().includes(q) || ((_slb2Spec(f) || {}).h || '').toLowerCase().includes(q)).slice(0, 40)
+                    .map(f => ({ kind: 'field', key: f, label: _slb2Label(f), sub: f + ' — ' + ((_slb2Spec(f) || {}).h || '') }));
+                const ci = cmds.filter(c => !q || c[1].toLowerCase().includes(q) || c[2].toLowerCase().includes(q)).map(c => ({ kind: 'cmd', key: c[0], label: c[1], sub: c[2], kbd: c[3] }));
+                items = q ? fi.concat(ci) : ci.concat(fi);
+                cursor = Math.min(cursor, Math.max(0, items.length - 1));
+                list.innerHTML = items.map((it, i) => `<div class="slb2-pal-i${i === cursor ? ' on' : ''}" data-i="${i}"><b>${it.kind === 'field' ? '＋ ' : ''}${_slbEsc(it.label)}</b><span>${_slbEsc(it.sub.slice(0, 110))}</span>${it.kbd ? `<kbd>${it.kbd}</kbd>` : ''}</div>`).join('') || '<div class="slb2-dim slb2-pad">nothing matches</div>';
+            };
+            const pick = (i) => {
+                const it = items[i]; if (!it) return;
+                _slb2ModalClose();
+                if (it.kind === 'field' && r) { window._slbSetField(r.id, it.key, window._slbDefaultFor(it.key), window._slbTypeFor(it.key)); const grp = Object.keys(_SLB2_GROUPS).find(g => _SLB2_GROUPS[g].some(([, ks]) => ks.includes(it.key))); if (grp && grp !== _slbInsTab) { _slbInsTab = grp; _slb2RenderInspector(); } }
+                else _slb2Command(it.key);
+            };
+            inp.addEventListener('input', () => { cursor = 0; render(); });
+            inp.addEventListener('keydown', e => {
+                if (e.key === 'ArrowDown') { e.preventDefault(); cursor = Math.min(items.length - 1, cursor + 1); render(); }
+                else if (e.key === 'ArrowUp') { e.preventDefault(); cursor = Math.max(0, cursor - 1); render(); }
+                else if (e.key === 'Enter') { e.preventDefault(); pick(cursor); }
+            });
+            list.addEventListener('click', e => { const it = e.target.closest('.slb2-pal-i'); if (it) pick(+it.getAttribute('data-i')); });
+            render(); inp.focus();
+        }
+        window._slbTypeFor = function(f) { const s = _slb2Spec(f); return s ? (s.t === 'enum' || s.t === 'long' ? 'text' : s.t === 'status' ? 'json' : s.t) : 'text'; };
+        window._slbDefaultFor = function(f) {
+            const s = _slb2Spec(f);
+            if (!s) return '';
+            if (s.t === 'num') return '1';
+            if (s.t === 'bool') return true;
+            if (s.t === 'status') return '[{"id":"burn","duration":2}]';
+            if (s.t === 'json') {
+                if (f === 'statStageBoost' || f === 'selfStatStageBoost') return '{"atk":-1}';
+                if (f === 'terrainDeform') return '{"centerDelta":-1,"edgeDelta":0}';
+                if (f === '_animOverride') return '{"travel":"beam"}';
+                if (f === 'aoeMask') return JSON.stringify((typeof AOE_PRESETS !== 'undefined' && AOE_PRESETS['3x3']) || [[0, 0]]);
+                if (f === 'splash') return '{"mult":0.5,"radius":1,"team":"enemies"}';
+                if (f === 'randomTargets') return '{"count":3,"scope":"enemies","distinct":true}';
+                if (f === 'bonusVsStatus') return '{"status":"burn","mult":1.5}';
+                if (f === 'hooks') return '{"statBonus":{"atk":10}}';
+                if (f === 'animClip') return '{"name":"","lib":""}';
+                if (f === 'families' || f === 'upgrades' || f === 'hitDamages' || f === 'classRestrictions' || f === 'jobPreference') return '[]';
+                return '{}';
+            }
+            if (s.t === 'enum') return (f === 'vfxArchetype' ? (_slbArchetypes()[0] || '') : (s.o && s.o[0]) || '');
+            return 'value';
         };
+        function _slb2Command(key) {
+            if (key.indexOf('tab:') === 0) { _slbTab = key.slice(4); _slbSelection = []; _slb2RenderTop(); _slb2RenderTab(); return; }
+            switch (key) {
+                case 'export': return _slb2ExportDialog();
+                case 'import': { const inp = document.getElementById('slbImportFile'); if (inp) inp.click(); return; }
+                case 'lab': return window._slbEnterLab(_slbSelectedId);
+                case 'newMenu': { const b = _slb2Q('[data-act="newMenu"]'); if (b) _slb2NewMenu(b); return; }
+                case 'toggleEnabled': return window._slbToggleEnabled();
+                case 'viewToggle': _slbView = _slbView === 'table' ? 'cards' : 'table'; _slb2RenderChips(); _slb2RenderCenter(); return;
+                case 'undo': return window._slbUndo();
+                case 'redo': return window._slbRedo();
+                case 'pruneApplied': return window._slbPruneApplied();
+                case 'resetAll': return window._slbResetAll();
+            }
+        }
 
-        window._slbExport = function() {
+        /* ── the modal + popover shells ── */
+        function _slb2Modal(html, opts) {
+            _slb2ModalClose();
+            const page = document.getElementById('spellLibraryPage') || document.body;
+            const m = _slb2H(`<div class="slb2-modal${opts && opts.top ? ' top' : ''}" id="slbModal"><div class="slb2-modal-card">${html}</div></div>`);
+            m.addEventListener('mousedown', e => { if (e.target === m) _slb2ModalClose(); });
+            page.appendChild(m);
+        }
+        function _slb2ModalClose() { const m = document.getElementById('slbModal'); if (m) m.remove(); const p = document.getElementById('slbPopover'); if (p) p.remove(); }
+        function _slb2Popover(anchor, html) {
+            _slb2ModalClose();
+            const page = document.getElementById('spellLibraryPage') || document.body;
+            const p = _slb2H(`<div class="slb2-popover" id="slbPopover">${html}</div>`);
+            page.appendChild(p);
+            const b = anchor.getBoundingClientRect(), pr = page.getBoundingClientRect();
+            let left = b.left - pr.left, top = b.bottom - pr.top + 4;
+            page.offsetWidth; // layout
+            if (left + p.offsetWidth > pr.width - 8) left = Math.max(8, pr.width - p.offsetWidth - 8);
+            if (top + p.offsetHeight > pr.height - 8) top = Math.max(8, b.top - pr.top - p.offsetHeight - 4);
+            p.style.left = left + 'px'; p.style.top = top + 'px';
+            setTimeout(() => document.addEventListener('mousedown', _slb2PopoverAway, { once: true }), 0);
+        }
+        function _slb2PopoverAway(e) { const p = document.getElementById('slbPopover'); if (p && !p.contains(e.target)) p.remove(); else if (p) setTimeout(() => document.addEventListener('mousedown', _slb2PopoverAway, { once: true }), 0); }
+        function _slb2RoleMenu(anchor, id) {
+            const d = SPELL_BY_ID[id]; if (!d) return;
+            const derived = (typeof spellRoleDerived === 'function') ? spellRoleDerived(d) : d.role;
+            _slb2Popover(anchor, `<div class="slb2-menu"><div class="slb2-menu-h">ROLE · derived: ${_slb2RoleChip(derived)}</div>
+                ${d.roleOverride ? `<button class="slb2-menu-i" data-act="roleSet" data-id="${_slbEsc(id)}" data-role=""><b>↺ follow the fields</b><span>drop the override</span></button>` : ''}
+                ${_SLB2_ROLES.map(r => `<button class="slb2-menu-i${d.roleOverride === r ? ' on' : ''}" data-act="roleSet" data-id="${_slbEsc(id)}" data-role="${r}">${_slb2RoleChip(r)}<span>${r === derived ? 'what the fields say' : 'pin it (the lint shows roleDrift)'}</span></button>`).join('')}
+            </div>`);
+        }
+        function _slb2MoreMenu(anchor) {
+            _slb2Popover(anchor, `<div class="slb2-menu">
+                <button class="slb2-menu-i" data-act="copySummary"><b>⧉ COPY SUMMARY</b><span>the one-line-per-change list</span></button>
+                <button class="slb2-menu-i" data-act="pruneApplied"><b>✓ CLEAR APPLIED</b><span>drop change groups already baked into this data.js</span></button>
+                <button class="slb2-menu-i" data-act="resetAll"><b>⟲ DISCARD ALL EDITS</b><span>every pending change — export first</span></button>
+                <div class="slb2-menu-h">KEYS</div>
+                <div class="slb2-menu-k">↑ ↓ walk · Enter inspect · ⌘K palette · ⌘F search · ⌘Z / ⌘⇧Z undo · ⌘S export · ⌘L lab · ⌘A select the filter · Esc close</div>
+            </div>`);
+        }
+
+        /* ── EXPORT (§5.7) with the markdown preview; IMPORT (§4.9) with the diff ── */
+        function _slb2ExportDialog() {
             const M = _slbMods();
-            if (!M) return;
             const ex = M.export();
-            const json = JSON.stringify(ex, null, 2);
+            const md = _slb2SummaryMarkdown(M.doc, ex.summary, ex.spellNotes, ex.report, SPELL_BY_ID, ex.baseline);
+            const n = M.total();
+            _slb2Modal(`<div class="slb2-dialog slb2-exportdlg">
+                <div class="slb2-dialog-h">EXPORT · ${n} change group${n === 1 ? '' : 's'} <span class="slb2-dim">— what a thread reads, then bakes with node bake-spell-mods.js</span></div>
+                <div class="slb2-export-prev">${_slb2Markdown(md)}</div>
+                <div class="slb2-dialog-b">
+                    <button class="slb2-btn" data-act="modalClose">CLOSE</button><span class="slb2-chips-spacer"></span>
+                    <button class="slb2-btn" data-act="copySummaryMd">⧉ COPY MARKDOWN</button>
+                    <button class="slb2-btn" data-act="copyJson">⧉ COPY JSON</button>
+                    <button class="slb2-btn on" data-act="downloadJson">⇩ DOWNLOAD JSON</button>
+                </div>
+            </div>`);
+            const m = document.getElementById('slbModal');
+            m._json = JSON.stringify(ex, null, 2); m._md = md;
+        }
+        function _slb2Download(json) {
             const stamp = new Date().toISOString().slice(0, 10);
             try {
                 const a = document.createElement('a');
                 a.href = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
                 a.download = `entropy-wars-spell-mods-${stamp}.json`;
-                document.body.appendChild(a);
-                a.click();
+                document.body.appendChild(a); a.click();
                 setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 800);
             } catch (e) { console.error('[SLB] export', e); }
-            try { navigator.clipboard && navigator.clipboard.writeText(json); } catch (e) {}
-            _slbToast('⇩ exported JSON (downloaded + copied) — hand the file to Claude to make it live');
-        };
-
-        window._slbCopySummary = function() {
-            const M = _slbMods();
-            if (!M) return;
-            const s = M.summary();
-            const text = s.length ? s.join('\n') : '(no edits)';
-            try { navigator.clipboard && navigator.clipboard.writeText(text); } catch (e) {}
-            _slbToast('⧉ summary copied (' + s.length + ' lines)');
-        };
-
-        window._slbImportClick = function() {
-            const inp = document.getElementById('slbImportFile');
-            if (inp) inp.click();
-        };
+        }
+        function _slb2Copy(text, what) { try { navigator.clipboard && navigator.clipboard.writeText(text); _slbToast('⧉ ' + what + ' copied'); } catch (e) { _slbToast('✗ clipboard unavailable', true); } }
+        window._slbExport = function() { const M = _slbMods(); if (!M) return; _slb2Download(JSON.stringify(M.export(), null, 2)); _slbToast('⇩ exported — hand the file to a thread to bake'); };
+        window._slbCopySummary = function() { const M = _slbMods(); if (!M) return; const s = M.summary(); _slb2Copy(s.length ? s.join('\n') : '(no edits)', 'summary (' + s.length + ' lines)'); };
         window._slbImportFile = function(inp) {
             const file = inp && inp.files && inp.files[0];
             if (!file) return;
             const fr = new FileReader();
             fr.onload = () => {
-                try {
-                    _slbMods().import(JSON.parse(fr.result));   // Phase 0: MERGES onto the stored doc (SPELL_LIBRARY_PLAN.md §4.9); REPLACE is Phase 1's second button
-                    _slbToast('⇪ merged ' + file.name);
-                    window._renderSpellLibrary();
-                } catch (e) { _slbToast('✗ import failed: ' + e.message, true); }
+                let obj;
+                try { obj = JSON.parse(fr.result); } catch (e) { _slbToast('✗ not JSON: ' + e.message, true); return; }
+                if (obj.format && obj.format !== 'entropy-wars-spell-mods') { _slbToast('✗ unrecognized format', true); return; }
+                _slb2ImportDialog(obj, file.name);
             };
             fr.readAsText(file);
             inp.value = '';
         };
-
+        function _slb2ImportDialog(obj, name) {
+            const M = _slbMods();
+            const rows = M.diff(obj);
+            const st = { add: 0, change: 0, same: 0, conflict: 0 };
+            rows.forEach(r => { st[r.state] = (st[r.state] || 0) + 1; });
+            const key = r => `${r.group}:${r.key}${r.field ? ':' + r.field : ''}`;
+            _slb2Modal(`<div class="slb2-dialog slb2-importdlg">
+                <div class="slb2-dialog-h">IMPORT · ${_slbEsc(name)} <span class="slb2-dim">— ${rows.length} rows: ${st.add} new · ${st.conflict} conflict · ${st.same} same${obj.summary ? ' · exported ' + _slbEsc(String(obj.exportedAt || '').slice(0, 10)) : ''}</span></div>
+                <div class="slb2-hint">MERGE lands the ticked rows on top of your doc (a conflict takes the file's value). REPLACE swaps the whole doc for the file.</div>
+                <div class="slb2-import-list">${rows.map(r => `<label class="slb2-import-row ${r.state}"><input type="checkbox" data-pick="${_slbEsc(key(r))}"${r.state === 'same' ? '' : ' checked'}><span class="slb2-flag ${r.state === 'conflict' ? 'del' : r.state === 'add' ? 'new' : 'mod'}">${r.state.toUpperCase()}</span><b>${_slbEsc(r.group)}</b> ${_slbEsc(r.key)}${r.field ? ' · ' + _slbEsc(r.field) : ''}<span class="slb2-dim">${r.state === 'conflict' ? 'mine ' + _slbEsc(JSON.stringify(r.mine).slice(0, 40)) + ' → ' : ''}${_slbEsc(JSON.stringify(r.theirs).slice(0, 60))}</span></label>`).join('') || '<div class="slb2-dim slb2-pad">the file changes nothing you do not already have</div>'}</div>
+                <div class="slb2-dialog-b"><button class="slb2-btn" data-act="modalClose">CANCEL</button><span class="slb2-chips-spacer"></span><button class="slb2-btn slb2-btn-danger" data-act="importReplace">REPLACE</button><button class="slb2-btn on" data-act="importMerge">MERGE TICKED</button></div>
+            </div>`);
+            document.getElementById('slbModal')._import = obj;
+        }
+        function _slb2ImportRun(mode) {
+            const m = document.getElementById('slbModal');
+            const obj = m && m._import;
+            if (!obj) return;
+            const pick = new Set(); m.querySelectorAll('[data-pick]').forEach(cb => { if (cb.checked) pick.add(cb.getAttribute('data-pick')); });
+            const before = _slb2Snapshot();
+            try { _slbMods().import(obj, mode === 'replace' ? { mode: 'replace' } : { mode: 'merge', pick }); }
+            catch (e) { _slbToast('✗ import failed: ' + e.message, true); return; }
+            _slb2Undo().push(mode === 'replace' ? 'import (replace)' : 'import (merge)', before, _slb2Snapshot());
+            _slb2ModalClose(); _slb2Dirty();
+            _slbToast(mode === 'replace' ? '⇪ replaced the doc' : `⇪ merged ${pick.size} rows`, false, { label: 'UNDO', act: 'undo' });
+            _slb2RenderTop(); _slb2RenderTab();
+        }
+        window._slbToggleEnabled = function() {
+            const M = _slbMods(); if (!M) return;
+            M.doc.enabled = !M.doc.enabled; M.save(); M.apply(); _slb2Dirty();
+            _slbToast(M.doc.enabled ? '✓ edits APPLIED to the live tables' : '◌ edits OFF — vanilla data');
+            _slb2RefreshChrome(); _slb2RenderTab();
+        };
         window._slbResetAll = function() {
-            const M = _slbMods();
-            if (!M) return;
-            const c = M.counts();
-            const n = c.modified + c.added + c.deleted + c.learnsets + c.raceAbilities;
-            if (n && !window.confirm(`Discard ALL ${n} pending change group(s)? This clears every spell edit, addition, deletion and movepool change. Export first if you want to keep them.`)) return;
-            M.reset();
-            _slbToast('⟲ all edits discarded — vanilla data restored');
-            window._renderSpellLibrary();
+            const M = _slbMods(); if (!M) return;
+            const n = M.total();
+            if (n && !window.confirm(`Discard ALL ${n} pending change group(s)? Every spell edit, addition, deletion, pool and registry change goes. Export first to keep them.`)) return;
+            const before = _slb2Snapshot();
+            M.reset(); _slb2Undo().push('discard all', before, _slb2Snapshot()); _slb2Dirty();
+            _slbToast('⟲ all edits discarded — vanilla data restored', false, { label: 'UNDO', act: 'undo' });
+            _slb2RenderTop(); _slb2RenderTab();
         };
-
-        /* Drop stored change groups that are already baked into this build's
-           data.js (runs automatically at boot too — see EWSpellMods.prune).
-           This is what un-sticks the "N pending change groups" counter after
-           an export has been made permanent. */
         window._slbPruneApplied = function() {
-            const M = _slbMods();
-            if (!M) return;
-            if (typeof M.prune !== 'function') { _slbToast('✗ prune unavailable — data.js out of date', true); return; }
-            const r = M.prune();
-            M.apply();
-            _slbToast((r.groups || r.fields)
-                ? `✓ cleared ${r.groups} baked change group(s) / ${r.fields} field(s) — they're already live in data.js`
-                : 'nothing to clear — no stored change matches data.js');
-            window._renderSpellLibrary();
+            const M = _slbMods(); if (!M || typeof M.prune !== 'function') return;
+            const before = _slb2Snapshot();
+            const r = M.prune(); M.apply(); _slb2Dirty();
+            if (r.groups || r.fields) _slb2Undo().push('clear applied', before, _slb2Snapshot());
+            _slbToast((r.groups || r.fields) ? `✓ cleared ${r.groups} baked change group(s) / ${r.fields} field(s)` : 'nothing to clear — no stored change matches data.js');
+            _slb2RenderTop(); _slb2RenderTab();
         };
-
-        /* ── AUTO-DESC controls (desc row in the editor) ─────────────────── */
         window._slbToggleDescAuto = function(id) {
             const d = SPELL_BY_ID[id];
             const on = !(d && d.descAuto);
-            // OFF stores '' (field removed) instead of false so untouched
-            // spells don't accumulate a descAuto:false diff entry.
-            window._slbSetField(id, 'descAuto', on ? true : '', on ? 'bool' : 'text');
+            window._slbSetField(id, 'descAuto', on ? true : '', on ? 'bool' : 'text', { quiet: true });
             if (on) window._slbGenDesc(id);
         };
         window._slbGenDesc = function(id) {
@@ -10067,27 +11191,261 @@
             if (!d || typeof describeSpell !== 'function') return;
             let gen = '';
             try { gen = describeSpell(d) || ''; } catch (e) {}
-            if (gen && gen !== d.desc) {
-                window._slbSetField(id, 'desc', gen, 'text');
-                _slbToast('↻ desc regenerated from spell data');
-            } else if (gen) {
-                _slbToast('desc already matches the generator');
-            }
+            if (gen && gen !== d.desc) window._slbSetField(id, 'desc', gen, 'text');
+            else if (gen) _slbToast('the description already matches the generator');
         };
+        /* saved views (§5.2): filters + sort + view + search in doc.views */
+        function _slb2ApplyView(name) {
+            const v = (_slb2Doc().views || {})[name];
+            if (!v) return;
+            _slbFilters = Object.assign(_slb2EmptyFilters(), v.filters || {});
+            _slbSort = Array.isArray(v.sort) && v.sort.length ? v.sort : [{ key: 'name', dir: 1 }];
+            _slbView = v.view === 'cards' ? 'cards' : 'table';
+            _slbSearch = v.search || '';
+            _slb2RenderTop(); _slb2RenderTab();
+            _slbToast('view: ' + name);
+        }
+        function _slb2SaveView() {
+            _slb2AskId('Save this view as', '', (name) => {
+                _slb2Mutate(`view "${name}" saved`, () => { _slb2Doc().views[name] = { filters: _slb2Filters(), sort: _slbSort, view: _slbView, search: _slbSearch }; }, { quiet: true });
+                _slb2RenderChips(); _slb2RefreshChrome(); _slbToast('view saved: ' + name);
+            }, () => false);
+        }
+        function _slb2DeleteViewMenu(anchor) {
+            const views = Object.keys(_slb2Doc().views || {});
+            _slb2Popover(anchor, `<div class="slb2-menu"><div class="slb2-menu-h">DELETE A VIEW</div>${views.map(v => `<button class="slb2-menu-i" data-act="viewDelete" data-view="${_slbEsc(v)}"><b>✕ ${_slbEsc(v)}</b></button>`).join('')}</div>`);
+        }
 
-        let _slbToastTimer = null;
-        function _slbToast(msg, isErr) {
-            let t = document.getElementById('slbToast');
-            if (!t) {
-                t = document.createElement('div');
-                t.id = 'slbToast';
-                document.body.appendChild(t);
+        /* ── EVENTS: one delegated set on #spellLibraryBody ── */
+        function _slb2Bind(body) {
+            if (body._slb2Bound) return;
+            body._slb2Bound = true;
+            body.addEventListener('click', _slb2OnClick);
+            body.addEventListener('change', _slb2OnChange);
+            body.addEventListener('input', _slb2OnInput);
+            body.addEventListener('scroll', e => { if (e.target && e.target.id === 'slbTableScroll') { if (!_slbScrollRaf) _slbScrollRaf = requestAnimationFrame(() => { _slbScrollRaf = 0; _slb2RenderWindow(false); }); } }, true);
+            body.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target && e.target.getAttribute && e.target.getAttribute('data-input') === 'bulk' && e.target.getAttribute('data-op') === 'appendNote') { e.preventDefault(); if (e.target.value.trim()) { _slb2Bulk('appendNote', e.target.value.trim()); } } });
+            window.addEventListener('resize', () => { const shell = document.getElementById('slbShell'); if (!shell) return; const narrow = window.innerWidth < 1100; if (narrow !== _slbNarrow) { _slbNarrow = narrow; shell.classList.toggle('narrow', narrow); } if (_slbTab === 'spells' || _slbTab === 'passives') { if (_slbView === 'table' && _slb2ColsLevel() !== _slbColsLevel) _slb2RenderCenter(); else _slb2RenderWindow(true); } });
+            if (!window._slb2KeysBound) { window._slb2KeysBound = true; document.addEventListener('keydown', _slb2OnKey, true); }
+        }
+        let _slbScrollRaf = 0;
+        function _slb2Active() { const p = document.getElementById('spellLibraryPage'); return !!(p && p.classList.contains('active') && !window._spellLabActive && document.getElementById('slbShell')); }
+        function _slb2InEditor(t) { return t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable); }
+        function _slb2OnKey(e) {
+            if (!_slb2Active()) return;
+            const meta = e.metaKey || e.ctrlKey;
+            const t = e.target;
+            if (e.key === 'Escape') {
+                if (document.getElementById('slbModal') || document.getElementById('slbPopover')) { e.preventDefault(); e.stopPropagation(); _slb2ModalClose(); return; }
+                if (_slbSheetOpen || _slbRailOpen) { e.preventDefault(); e.stopPropagation(); _slbSheetOpen = false; _slbRailOpen = false; const i = document.getElementById('slbInspector'), r = document.getElementById('slbRail'); if (i) i.classList.remove('open'); if (r) r.classList.remove('open'); return; }
+                if (_slb2InEditor(t)) { t.blur(); e.stopPropagation(); return; }
+                return;
             }
-            t.textContent = msg;
+            if (meta && (e.key === 'k' || e.key === 'K')) { e.preventDefault(); e.stopPropagation(); _slb2OpenPalette(_slbSelectedId); return; }
+            if (meta && (e.key === 'f' || e.key === 'F')) { const s = document.getElementById('slbSearch'); if (s) { e.preventDefault(); e.stopPropagation(); s.focus(); s.select(); } return; }
+            if (meta && (e.key === 's' || e.key === 'S')) { e.preventDefault(); e.stopPropagation(); _slb2ExportDialog(); return; }
+            if (meta && (e.key === 'l' || e.key === 'L')) { e.preventDefault(); e.stopPropagation(); window._slbEnterLab(_slbSelectedId); return; }
+            if (_slb2InEditor(t)) return;
+            if (meta && (e.key === 'z' || e.key === 'Z')) { e.preventDefault(); e.stopPropagation(); if (e.shiftKey) window._slbRedo(); else window._slbUndo(); return; }
+            if (meta && (e.key === 'a' || e.key === 'A') && (_slbTab === 'spells' || _slbTab === 'passives')) { e.preventDefault(); e.stopPropagation(); _slbSelection = _slb2Filtered().map(r => r.id); _slb2RenderChips(); _slb2RenderCenter(); _slb2RenderInspector(); return; }
+            if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && (_slbTab === 'spells' || _slbTab === 'passives') && !document.getElementById('slbModal')) {
+                const rows = _slb2Filtered(); if (!rows.length) return;
+                e.preventDefault(); e.stopPropagation();
+                let i = rows.findIndex(r => r.id === _slbSelectedId);
+                i = e.key === 'ArrowDown' ? Math.min(rows.length - 1, i + 1) : Math.max(0, i - 1);
+                _slb2Select(rows[i].id, {});
+                _slb2ScrollToRow(rows[i].id);
+                return;
+            }
+            if (e.key === 'Enter' && (_slbTab === 'spells' || _slbTab === 'passives') && _slbSelectedId && !document.getElementById('slbModal')) {
+                e.preventDefault(); e.stopPropagation();
+                _slbSheetOpen = true; const i = document.getElementById('slbInspector'); if (i) { i.classList.add('open'); const n = i.querySelector('[data-field="name"]'); if (n && !_slbNarrow) { /* keep the table's focus; Enter just reveals */ } }
+                return;
+            }
+        }
+        function _slb2Select(id, mods) {
+            if (mods.shift && _slbAnchorId) {
+                const rows = _slb2Filtered(); const a = rows.findIndex(r => r.id === _slbAnchorId), b = rows.findIndex(r => r.id === id);
+                if (a >= 0 && b >= 0) { const [lo, hi] = a < b ? [a, b] : [b, a]; _slbSelection = rows.slice(lo, hi + 1).map(r => r.id); }
+            } else if (mods.meta) {
+                if (_slbSelection.includes(id)) _slbSelection = _slbSelection.filter(x => x !== id); else _slbSelection = _slbSelection.concat(id);
+                if (!_slbSelection.includes(_slbSelectedId) && _slbSelectedId) _slbSelection = [_slbSelectedId].concat(_slbSelection.filter(x => x !== _slbSelectedId));
+                _slbAnchorId = id;
+            } else { _slbSelection = []; _slbAnchorId = id; }
+            const prev = _slbSelectedId;
+            _slbSelectedId = id;
+            if (_slbView === 'cards') { _slb2Q('#slbCards .slb2-card.sel') && _slb2Q('#slbCards .slb2-card.sel').classList.remove('sel'); const c = _slb2Q(`#slbCards .slb2-card[data-id="${CSS.escape(id)}"]`); if (c) c.classList.add('sel'); }
+            else { if (prev) _slb2PatchRow(prev); _slb2PatchRow(id); }
+            if (_slbSelection.length > 1 || mods.shift || mods.meta) { _slb2RenderWindow(true); _slb2RenderChips(); }
+            _slb2RenderInspector();
+        }
+        function _slb2OnClick(e) {
+            const el = e.target.closest('[data-act]');
+            if (!el || !document.getElementById('spellLibraryBody').contains(el)) return;
+            const act = el.getAttribute('data-act'), id = el.getAttribute('data-id');
+            const P = (k) => el.getAttribute(k);
+            switch (act) {
+                case 'tab': _slbTab = P('data-tab'); _slbSelection = []; _slbSheetOpen = false; _slb2RenderTop(); _slb2RenderTab(); return;
+                case 'insTab': _slbInsTab = P('data-tab'); _slb2RenderInspector(); return;
+                case 'row': { if (e.target.closest('a[data-act]')) return; _slb2Select(id, { shift: e.shiftKey, meta: e.metaKey || e.ctrlKey }); if (_slbNarrow && !e.shiftKey && !(e.metaKey || e.ctrlKey)) { _slbSheetOpen = true; const i = document.getElementById('slbInspector'); if (i) i.classList.add('open'); } return; }
+                case 'sort': { const key = P('data-key'); const cur = _slbSort.findIndex(s => s.key === key); const col = _SLB2_COL_BY_KEY[key];
+                    if (e.shiftKey && _slbSort.length && _slbSort[0].key !== key) { if (cur > 0) _slbSort[cur].dir *= -1; else _slbSort = [_slbSort[0], { key, dir: col.desc ? -1 : 1 }]; }
+                    else if (cur === 0) _slbSort[0].dir *= -1; else _slbSort = [{ key, dir: col.desc ? -1 : 1 }];
+                    _slbFilteredCache = null; _slb2RenderChips(); _slb2RenderCenter(); return; }
+                case 'filter': { const key = P('data-key'), raw = P('data-val'); const val = key === 'tiers' ? Number(raw) : raw; const f = _slb2Filters(); const i = f[key].indexOf(val); if (i >= 0) f[key].splice(i, 1); else f[key].push(val); _slbFilteredCache = null; _slb2RenderRail(); _slb2RenderChips(); _slb2RenderCenter(); return; }
+                case 'clearFilters': _slbFilters = _slb2EmptyFilters(); _slbSearch = ''; _slbFilteredCache = null; { const s = document.getElementById('slbSearch'); if (s) s.value = ''; } _slb2RenderRail(); _slb2RenderChips(); _slb2RenderCenter(); return;
+                case 'railToggle': { const g = el.closest('.slb2-rg'); const key = P('data-key'); g.classList.toggle('closed'); if (g.classList.contains('closed')) _slb2RailClosed.add(key); else _slb2RailClosed.delete(key); return; }
+                case 'railOpen': { _slbRailOpen = !_slbRailOpen; const r = document.getElementById('slbRail'); if (r) r.classList.toggle('open', _slbRailOpen); return; }
+                case 'view': _slbView = P('data-view'); _slb2RenderChips(); _slb2RenderCenter(); return;
+                case 'pasSection': _slbPasSection = P('data-sec'); _slb2RenderCenter(); return;
+                case 'palette': _slb2OpenPalette(id || _slbSelectedId); return;
+                case 'newMenu': _slb2NewMenu(el); return;
+                case 'newSpell': _slb2ModalClose(); _slb2CreateSpell(P('data-role')); return;
+                case 'newPassive': _slb2ModalClose(); _slb2CreatePassive(P('data-tpl')); return;
+                case 'newFamily': _slb2ModalClose(); _slb2CreateFamily(); return;
+                case 'newUpgrade': _slb2ModalClose(); _slb2CreateUpgrade(); return;
+                case 'more': _slb2MoreMenu(el); return;
+                case 'copySummary': _slb2ModalClose(); window._slbCopySummary(); return;
+                case 'pruneApplied': _slb2ModalClose(); window._slbPruneApplied(); return;
+                case 'resetAll': _slb2ModalClose(); window._slbResetAll(); return;
+                case 'toggleEnabled': window._slbToggleEnabled(); return;
+                case 'undo': window._slbUndo(); return;
+                case 'redo': window._slbRedo(); return;
+                case 'export': _slb2ExportDialog(); return;
+                case 'import': { const inp = document.getElementById('slbImportFile'); if (inp) inp.click(); return; }
+                case 'importMerge': _slb2ImportRun('merge'); return;
+                case 'importReplace': if (window.confirm('Replace the whole doc with the file? Your pending edits go (undo keeps one step).')) _slb2ImportRun('replace'); return;
+                case 'modalClose': _slb2ModalClose(); return;
+                case 'copySummaryMd': { const m = document.getElementById('slbModal'); if (m) _slb2Copy(m._md, 'markdown summary'); return; }
+                case 'copyJson': { const m = document.getElementById('slbModal'); if (m) _slb2Copy(m._json, 'JSON'); return; }
+                case 'downloadJson': { const m = document.getElementById('slbModal'); if (m) { _slb2Download(m._json); _slbToast('⇩ downloaded — hand the file to a thread to bake'); } return; }
+                case 'lab': window._slbEnterLab(id || _slbSelectedId); return;
+                case 'dupe': window._slbDuplicate(id); return;
+                case 'revert': window._slbRevertSpell(id); return;
+                case 'delete': window._slbDeleteSpell(id); return;
+                case 'restore': window._slbRestoreSpell(id); return;
+                case 'copyId': _slb2Copy(id, id); return;
+                case 'revertField': window._slbRevertField(id, P('data-field')); return;
+                case 'dropField': window._slbSetField(id, P('data-field'), '', 'text'); return;
+                case 'preset': window._slbSetField(id, P('data-field'), P('data-val'), 'num'); return;
+                case 'tier': { const d = SPELL_BY_ID[id]; if (!d) return; const t = Math.max(1, Math.min(4, ((typeof spellTierOf === 'function') ? spellTierOf(d) : d.tier || 1) + Number(P('data-delta')))); window._slbSetField(id, 'tier', String(t), 'num'); return; }
+                case 'unpinMp': { _slb2Mutate(`${id} · MP unpinned`, () => { _slb2WriteField(id, 'cost', null); _slb2WriteField(id, 'manaCostOverride', null); }); _slb2AfterEdit(id, 'cost'); return; }
+                case 'roleMenu': _slb2RoleMenu(el, id); return;
+                case 'roleSet': _slb2ModalClose(); window._slbSetField(id, 'roleOverride', P('data-role') || '', 'text'); return;
+                case 'los': { const v = P('data-val'); _slb2Mutate(`${id} · line of sight ${v}`, () => { _slb2WriteField(id, 'ignoresLineOfSight', v === 'ignores' ? true : null); _slb2WriteField(id, 'requiresLineOfSight', v === 'needs' ? true : null); _slb2WriteField(id, 'lineOfSight', null); }); _slb2AfterEdit(id, 'ignoresLineOfSight'); return; }
+                case 'famRemove': _slb2FamilyOf(id, P('data-fam'), false); if (_slbTab === 'families') _slb2RenderFamilies(document.getElementById('slbMain')); return;
+                case 'unassign': window._slbUnassign(id, P('data-kind'), P('data-key')); return;
+                case 'descAuto': window._slbToggleDescAuto(id); return;
+                case 'genDesc': window._slbGenDesc(id); return;
+                case 'applyRaw': window._slbApplyRaw(id); return;
+                case 'statusRemove': { const f = P('data-field'), arr = _slb2StatusArr(id, f); arr.splice(+P('data-i'), 1); _slb2StatusWrite(id, f, arr); return; }
+                case 'bonusRemove': { const d = SPELL_BY_ID[id]; const ids = d && d.bonusVsStatus ? [].concat(d.bonusVsStatus.status) : []; ids.splice(+P('data-i'), 1); _slb2BonusWrite(id, ids, d.bonusVsStatus.mult || 1.5); return; }
+                case 'jump': _slb2SelectNew(id); return;
+                case 'selectNone': _slbSelection = []; _slb2RenderChips(); _slb2RenderCenter(); _slb2RenderInspector(); return;
+                case 'selectAll': _slbSelection = _slb2Filtered().map(r => r.id); _slb2RenderChips(); _slb2RenderCenter(); _slb2RenderInspector(); return;
+                case 'deselect': _slbSelection = _slbSelection.filter(x => x !== id); _slb2RenderChips(); _slb2RenderCenter(); _slb2RenderInspector(); return;
+                case 'bulkOpen': { const i = document.getElementById('slbInspector'); if (i) { i.classList.add('open'); _slbSheetOpen = true; } _slb2RenderInspector(); return; }
+                case 'bulkTier': _slb2Bulk('setTier', P('data-tier')); return;
+                case 'bulkDelete': if (window.confirm(`Delete ${_slbSelection.length} rows? (one undo step)`)) _slb2Bulk('delete'); return;
+                case 'famPick': _slbFamKey = id; _slb2RenderFamilies(document.getElementById('slbMain')); return;
+                case 'famFilter': _slbFilters = _slb2EmptyFilters(); _slbFilters.families = [id]; _slbSearch = ''; _slbTab = 'spells'; _slb2RenderTop(); _slb2RenderTab(); return;
+                case 'famDelete': if (!window.confirm(`Delete the family "${id}"? Rows keep the tag until you remove it (the lint says familyUnknown).`)) return; _slb2WriteReg('families', id, null, `✕ family ${id}`); _slb2RenderFamilies(document.getElementById('slbMain')); _slb2RefreshChrome(); return;
+                case 'famRestore': _slb2Mutate(`↻ family ${id}`, () => { delete _slb2Doc().families[id]; }); _slb2RenderFamilies(document.getElementById('slbMain')); _slb2RefreshChrome(); return;
+                case 'upPick': _slbUpKey = id; _slb2RenderUpgrades(document.getElementById('slbMain')); return;
+                case 'upDelete': if (!window.confirm(`Delete the upgrade "${id}"?`)) return; _slb2WriteReg('upgrades', id, null, `✕ upgrade ${id}`); _slb2RenderUpgrades(document.getElementById('slbMain')); _slb2RefreshChrome(); return;
+                case 'upRestore': _slb2Mutate(`↻ upgrade ${id}`, () => { delete _slb2Doc().upgrades[id]; }); _slb2RenderUpgrades(document.getElementById('slbMain')); _slb2RefreshChrome(); return;
+                case 'upToggle': { const u = SPELL_UPGRADES[id]; if (!u) return; const key = P('data-key'), v = P('data-val'); const cur = Array.isArray(u[key]) ? u[key] : []; _slb2SetUpgradeField(id, key, JSON.stringify(cur.includes(v) ? cur.filter(x => x !== v) : cur.concat(v)), 'json'); return; }
+                case 'upPatchDrop': _slb2SetUpgradeField(id, 'patch', '', 'text', P('data-key')); return;
+                case 'mpMode': _slbMpMode = P('data-mode'); _slbMpKey = null; _slb2RenderPools(document.getElementById('slbMain')); return;
+                case 'mpPick': _slbMpKey = P('data-key'); _slbMpRenderRail(); _slbMpRenderDetail(); return;
+                case 'mpMove': { const key = P('data-key'), i = +P('data-i'), j = i + Number(P('data-dir')); const ids = _slbMpIds(key); if (j < 0 || j >= ids.length) return; const t = ids[i]; ids[i] = ids[j]; ids[j] = t; _slbMpWrite(key, ids, `${key}: ${t} moved`); return; }
+                case 'mpRemove': { const key = P('data-key'), ids = _slbMpIds(key); const gone = ids.splice(+P('data-i'), 1); _slbMpWrite(key, ids, `${key}: ${gone[0]} removed`); return; }
+                case 'mpRevert': { const key = P('data-key'); _slb2Mutate(`↺ ${key} pool`, () => { delete _slbMods().doc[_slbMpMode === 'jobs' ? 'learnsets' : 'raceAbilities'][key]; }); _slbMpRenderRail(); _slbMpRenderDetail(); _slb2RefreshChrome(); return; }
+                case 'repFilter': { _slbFilters = _slb2EmptyFilters(); if (P('data-role')) _slbFilters.roles = [P('data-role')]; if (P('data-tier')) _slbFilters.tiers = [Number(P('data-tier'))]; if (P('data-element')) _slbFilters.elements = [P('data-element')]; if (P('data-family')) _slbFilters.families = [P('data-family')]; if (P('data-kind')) _slbFilters.kinds = [P('data-kind')]; _slbSearch = ''; _slbTab = 'spells'; _slb2RenderTop(); _slb2RenderTab(); return; }
+                case 'lintFilter': { _slbFilters = _slb2EmptyFilters(); _slbFilters.lint = [P('data-rule')]; _slbSearch = ''; _slbTab = 'spells'; _slb2RenderTop(); _slb2RenderTab(); return; }
+                case 'toastAct': { const a = P('data-what'); const t = document.getElementById('slbToast'); if (t) t.style.opacity = '0'; if (a === 'undo') window._slbUndo(); else if (a === 'redo') window._slbRedo(); return; }
+                case 'viewDelete': { const v = P('data-view'); _slb2ModalClose(); _slb2Mutate(`view "${v}" deleted`, () => { delete _slb2Doc().views[v]; }, { quiet: true }); _slb2RenderChips(); _slb2RefreshChrome(); return; }
+            }
+        }
+        function _slb2OnChange(e) {
+            const t = e.target;
+            if (!t || !t.getAttribute) return;
+            const id = t.getAttribute('data-id');
+            if (t.getAttribute('data-field')) {
+                const type = t.getAttribute('data-type') || 'text';
+                const raw = type === 'bool' ? t.checked : t.value;
+                if (type === 'bool') { const lbl = t.parentElement && t.parentElement.querySelector('span'); if (lbl) lbl.textContent = t.checked ? 'yes' : 'no'; }
+                window._slbSetField(id, t.getAttribute('data-field'), raw, type);
+                return;
+            }
+            if (t.getAttribute('data-reg')) {
+                const reg = t.getAttribute('data-reg'), key = t.getAttribute('data-key'), patch = t.getAttribute('data-patch'), type = t.getAttribute('data-type') || 'text';
+                const raw = type === 'bool' ? t.checked : t.value;
+                if (reg === 'families') _slb2SetFamilyField(id, key, raw, type);
+                else _slb2SetUpgradeField(id, patch ? 'patch' : key, raw, type, patch || null);
+                return;
+            }
+            if (t.getAttribute('data-act-change') === 'statusMut') {
+                const f = t.getAttribute('data-field'), i = +t.getAttribute('data-i'), key = t.getAttribute('data-key');
+                const arr = _slb2StatusArr(id, f); if (!arr[i]) return;
+                if (key === 'id') arr[i].id = t.value;
+                else if (t.value === '') delete arr[i][key];
+                else { const n = Number(t.value); if (!isFinite(n)) { _slbToast('✗ ' + key + ': not a number', true); return; } arr[i][key] = n; }
+                _slb2StatusWrite(id, f, arr);
+                return;
+            }
+            const kind = t.getAttribute('data-input');
+            if (!kind) return;
+            const v = t.value;
+            switch (kind) {
+                case 'view': if (v === '__save') _slb2SaveView(); else if (v === '__del') _slb2DeleteViewMenu(t); else if (v) _slb2ApplyView(v); t.value = ''; return;
+                case 'home': window._slbSetHome(id, v); return;
+                case 'famAdd': if (v) _slb2FamilyOf(id, v, true); return;
+                case 'assignJob': if (v) { window._slbAssign(id, 'job', v); } return;
+                case 'assignRace': if (v) { window._slbAssign(id, 'race', v); } return;
+                case 'statusAdd': if (v) { const f = t.getAttribute('data-field'); const arr = _slb2StatusArr(id, f); arr.push({ id: v, duration: 2 }); _slb2StatusWrite(id, f, arr); } return;
+                case 'bonusAdd': if (v) { const d = SPELL_BY_ID[id]; const ids = d && d.bonusVsStatus ? [].concat(d.bonusVsStatus.status) : []; if (!ids.includes(v)) ids.push(v); _slb2BonusWrite(id, ids, (d && d.bonusVsStatus && d.bonusVsStatus.mult) || 1.5); } return;
+                case 'bonusMult': { const d = SPELL_BY_ID[id]; const ids = d && d.bonusVsStatus ? [].concat(d.bonusVsStatus.status) : []; const m = Number(v); if (!isFinite(m) || m <= 0) { _slbToast('✗ multiplier must be a number above 0', true); return; } _slb2BonusWrite(id, ids, m); return; }
+                case 'upgradeToggle': { const d = SPELL_BY_ID[id]; const u = t.getAttribute('data-up'); const cur = d && Array.isArray(d.upgrades) ? d.upgrades.slice() : []; const next = t.checked ? (cur.includes(u) ? cur : cur.concat(u)) : cur.filter(x => x !== u); window._slbSetField(id, 'upgrades', JSON.stringify(next), 'json'); return; }
+                case 'importFile': window._slbImportFile(t); return;
+                case 'mpAdd': if (v) { const key = t.getAttribute('data-key'); const ids = _slbMpIds(key); const match = SPELL_BY_ID[v] ? v : (_slb2Rows().find(r => String(r.def.name).toLowerCase() === v.toLowerCase()) || {}).id; if (!match) { _slbToast(`✗ unknown spell "${v}"`, true); return; } if (!ids.includes(match)) { ids.push(match); _slbMpWrite(key, ids, `${key}: ${match} added`); } t.value = ''; } return;
+                case 'famAddMember': if (v) { const fam = t.getAttribute('data-fam'); const match = SPELL_BY_ID[v] ? v : (_slb2Rows().find(r => String(r.def.name).toLowerCase() === v.toLowerCase()) || {}).id; if (!match) { _slbToast(`✗ unknown spell "${v}"`, true); return; } _slb2FamilyOf(match, fam, true); _slb2RenderFamilies(document.getElementById('slbMain')); } return;
+                case 'upPatchAdd': if (v) { const spec = _SLB2_PATCH_KEYS.find(p => p[0] === v); const def = spec ? (spec[1] === 'num' ? (v === 'dmgMult' ? '1.15' : v === 'costDelta' ? '-10' : v === 'costMult' ? '0.8' : v === 'extraTargetsMult' ? '0.5' : '1') : spec[1] === 'json' ? (v === 'aoe' ? '{"preset":"3x3"}' : v === 'ricochet' ? '{"radius":2,"mult":0.5}' : v === 'statusBonus' ? '{"status":"burn","mult":1.5}' : v === 'turret' ? '{"dmgMult":1.2}' : '{}') : 'fire') : '1'; _slb2SetUpgradeField(id, 'patch', def, spec ? spec[1] : 'text', v); } return;
+                case 'bulk': if (v) _slb2Bulk(t.getAttribute('data-op'), v); t.value = ''; return;
+            }
+        }
+        function _slb2OnInput(e) {
+            const t = e.target;
+            if (!t || !t.getAttribute) return;
+            const kind = t.getAttribute('data-input');
+            if (kind === 'search') { _slbSearch = t.value; _slbFilteredCache = null; _slb2RenderRail(); _slb2RenderChips(); _slb2RenderCenter(); return; }
+            if (kind === 'mpSearch') { _slbMpSearch = t.value; _slbMpRenderRail(); _slbMpRenderDetail(); return; }
+            if (kind === 'notes') {
+                const id = t.getAttribute('data-id');
+                const prev = document.getElementById('slbNotesPrev'); if (prev) prev.innerHTML = _slb2Markdown(t.value);
+                if (_slbNoteTimer) clearTimeout(_slbNoteTimer);
+                _slbNoteTimer = setTimeout(() => { _slbNoteTimer = null; window._slbSetField(id, 'notes', t.value, 'text', { quiet: true }); }, 500);
+                return;
+            }
+            if (kind === 'libNotes') {
+                if (_slbNoteTimer) clearTimeout(_slbNoteTimer);
+                _slbNoteTimer = setTimeout(() => { _slbNoteTimer = null; _slb2Mutate('library notes', () => { _slb2Doc().notes = t.value; }, { quiet: true }); _slb2RefreshChrome(); }, 500);
+                return;
+            }
+            if (t.getAttribute('data-reg') === 'families' && t.getAttribute('data-key') === 'color' && t.type === 'color') { const twin = t.parentElement.querySelector('input[type="text"]'); if (twin) twin.value = t.value; }
+        }
+
+        /* ── the toast, with an optional action (UNDO) ── */
+        let _slbToastTimer = null;
+        function _slbToast(msg, isErr, action) {
+            let t = document.getElementById('slbToast');
+            if (!t) { t = document.createElement('div'); t.id = 'slbToast'; document.body.appendChild(t); }
+            t.innerHTML = `<span>${_slbEsc(msg)}</span>${action ? `<button class="slb2-toast-act" data-act="toastAct" data-what="${_slbEsc(action.act)}">${_slbEsc(action.label)}</button>` : ''}`;
             t.className = 'slb-toast' + (isErr ? ' err' : '');
             t.style.opacity = '1';
+            if (!t._bound) { t._bound = true; t.addEventListener('click', e => { const b = e.target.closest('[data-act="toastAct"]'); if (!b) return; const a = b.getAttribute('data-what'); t.style.opacity = '0'; if (a === 'undo') window._slbUndo(); else if (a === 'redo') window._slbRedo(); }); }
             if (_slbToastTimer) clearTimeout(_slbToastTimer);
-            _slbToastTimer = setTimeout(() => { t.style.opacity = '0'; }, isErr ? 5200 : 3000);
+            _slbToastTimer = setTimeout(() => { t.style.opacity = '0'; }, isErr ? 5200 : (action ? 4200 : 2600));
         }
 
         /* ═══════════════════════════════════════════════════════════════════

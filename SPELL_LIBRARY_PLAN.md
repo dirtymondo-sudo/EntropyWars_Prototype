@@ -847,3 +847,31 @@ change under `WEATHER_REGISTRY`).
   champ-rework / door-race pins numeric. Census: 528 rows — damage 160, damageEffect 143, effect 126, heal 27,
   deploy 27, movement 28, utility 14, terrain 3; the tier rule's 7 offenders as surveyed; 68 rows carry a dead
   field (62 `equipCost`); two rows share the name "Tail Whip"; 29 off-pool. Phase 1 (THE SHELL) is next.
+- 2026-09-26 — **Phase 1 shipped** (thread "Spell library Phase 1", `spell-library/ENTROPY_WARS_SPELL_LIBRARY_1.zip`,
+  token `20260926-spell-library-02-cors`). THE SHELL replaces the v1 screen in ui.js (the "SPELL LIBRARY v2" block;
+  the `_SLB_*` constants, `_SLB_FIELD_HELP`, the Spell Lab and its timeline are kept and still dock on
+  `window._slbSetField(id, field, raw, ftype)` / `_slbLabRefreshSpell` / `_goToSpellLibrary`). What it does:
+  a filter RAIL (source · roles · tier/SP · families · elements · has · lint · kinds · owner, with live counts,
+  OR inside a group, AND across groups); a VIRTUALISED table (32 px rows, only the visible window is in the DOM,
+  535 rows scroll at 60 fps) with the §5.2 columns, one-click sort + shift-click for a second key, priorities by
+  the centre's width (`_slb2VisibleCols`: pri 2 under 1300 px, pri 1 under 1000 px, sideways scroll for the rest);
+  a CARDS view; saved VIEWS (filters + sort, in `EWSpellMods.doc.views`); the INSPECTOR with STATS · TARGET ·
+  EFFECTS · UPGRADES · LOOK · NOTES · RAW (the header edits name / tier stepper / MP with the ladder ghost / role
+  menu / families / jobs / races / desc with AUTO + GENERATE; every field has ↺ shipped-value revert, ✕ drop,
+  and a help line from `_SLB_FIELD_HELP`; statuses and bonusVsStatus are structured editors, LOS a segmented
+  control, damage / heal / recoil carry the house-scale presets; the footprint preview draws the 7×7 mask through
+  hud.js `_hrlgShapeTiles(shape, { max: 3 })`); DOM PATCHING (`_slb2PatchRow` / `_slb2PatchField` — an edit
+  rewrites one row and one field, never the screen); 50-deep UNDO / REDO of the whole doc (`_Slb2UndoStack`,
+  ⌘Z / ⌘⇧Z, the toast carries UNDO); NEW ▾ from role templates (census medians) and passive templates, plus new
+  family / upgrade; BULK edit over a shift / ⌘ selection (family, tier, element, upgrade, note, delete);
+  PASSIVES (family-passive rows + the INHERENT view), FAMILIES (cards + editable registry + members),
+  UPGRADES (registry table + PATCH builder), POOLS (job learnsets / race rows, reorder, add by id), REPORT
+  (role × tier matrix, the tier rule's offenders, lint by rule, coverage, redundancy groups, spreads, the library
+  notes); EXPORT preview (markdown summary + COPY / DOWNLOAD JSON); IMPORT diff (add / same / conflict rows with
+  pick, MERGE or REPLACE); ⌘K palette (fields + commands); the online guard text. styles-hud.css: the `.slb2-*`
+  sheet replaces `.slb-*` (the Lab's `.slb-lab` / `.slb-tl` rules stay). hud.js: `_hrlgSpellShape` returns the
+  mask first, `_hrlgShapeTiles` takes `opts.max`. Tests: `spell-library-ui.test.js` (the pure block — row model,
+  footprint, columns, filters, sort, undo, ids, summary — plus the Lab-contract pins). Probe: `playtest_library.js`
+  (screenshots to `shots/library/`; the run of 2026-09-26 had zero page errors). Not yet: the AOE grid editor and
+  the clip dropdown with the live viewer (Phase 2, THE GRID + THE LOOK, next), random targets / splash (3), the
+  passive slot rule in the rack (4), upgrades in the rack (5).

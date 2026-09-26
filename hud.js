@@ -3469,21 +3469,37 @@ const _HRLG_TYPE_PAD = '2px 7px';
 function _hrlgSpellShape(sp) {
   if (!sp) return null;
   const k = sp.kind || '';
+  // THE MASK (SPELL_LIBRARY_PLAN.md §5.4, Phase 1): a drawn `aoeMask` wins over the radius fields. The
+  // card caps it at 5×5 (r 2); the library's 7×7 asks for r 3 through _hrlgShapeTiles(shape, { max: 3 }).
+  if (Array.isArray(sp.aoeMask) && sp.aoeMask.length && (typeof aoeMaskValid !== 'function' || aoeMaskValid(sp.aoeMask))) {
+    const cells = new Set(sp.aoeMask.map(p => p[0] + ',' + p[1]));
+    let r = 0; sp.aoeMask.forEach(p => { r = Math.max(r, Math.abs(p[0]), Math.abs(p[1])); });
+    const preset = (typeof aoeMaskPresetOf === 'function') ? aoeMaskPresetOf(sp.aoeMask) : null;
+    return { kind: 'mask', r: Math.max(1, r), cells, label: preset ? preset + ' (drawn)' : cells.size + ' tiles (drawn)' };
+  }
   if (sp.crossRadius) return { kind: sp.diamond ? 'diamond' : 'cross', r: sp.crossRadius, label: (sp.diamond ? 'Diamond r' : 'Cross r') + sp.crossRadius };
   if (sp.lineWidth || k === 'line' || k === 'linePush') return { kind: 'line', w: sp.lineWidth || 1, len: Math.min(5, sp.lineLength || sp.range || 4), label: 'Line' + (sp.lineWidth > 1 ? ' ×' + sp.lineWidth + ' wide' : '') };
   const r = sp.blastRadius || ((sp.aoeRadius != null && sp.aoeRadius > 0) ? sp.aoeRadius : 0);
   if (r) return { kind: 'aoe', r, label: (r * 2 + 1) + '×' + (r * 2 + 1) + ' area' };
   return null;
 }
-function _hrlgShapeTiles(shape) {
+function _hrlgShapeTiles(shape, opts) {
   const cells = [];
   let cols;
-  if (shape.kind === 'line') {
+  const max = (opts && opts.max) || 2;
+  if (shape.kind === 'mask') {
+    const r = Math.min(max, shape.r || 1);
+    cols = r * 2 + 1;
+    for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+      const on = shape.cells.has(dx + ',' + dy);
+      cells.push(on ? (dx === 0 && dy === 0 ? 'c' : true) : false);
+    }
+  } else if (shape.kind === 'line') {
     cols = shape.len || 4;
     const rows = Math.min(3, shape.w || 1);
     for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) cells.push(true);
   } else {
-    const r = Math.min(2, shape.r || 1);
+    const r = Math.min(max, shape.r || 1);
     cols = r * 2 + 1;
     for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
       const on = shape.kind === 'cross' ? (dx === 0 || dy === 0)
