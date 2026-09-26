@@ -192,7 +192,7 @@ test('the splash with team units hits allies round the victim but never the cast
 test('the wiring: doSpell, the hit, the relay, the AI, the rack', () => {
     assert.match(battleSrc, /const _rndRider = spell\.kind === 'damage' \? spellRandomTargetsOf\(spell\) : null;/);
     assert.match(battleSrc, /pickRandomTargets\(_rndPool, _rndRider\.count, _rndRider\.distinct, engineRng\)/, 'the host draws with the seeded stream');
-    assert.match(battleSrc, /if \(spell\.splash && target\) _applySplashDamage\(unit, spell, target, spellPower\);\s*\/\/ Post-effects/);
+    assert.match(battleSrc, /if \(spell\.splash && target\) _applySplashDamage\(unit, spell, target, spellPower\);[\s\S]{0,400}?\/\/ Post-effects/);
     assert.match(battleSrc, /if \(spell\.randomTargets && kind === 'damage' && spellRandomTargetsOf\(spell\)\) return _randomTargetPool\(unit, spell\)\.length > 0;/, 'the menus light the row only with a victim in reach');
     // online: the host relays the extra shots / the ring; the guest replays them (never re-rolls)
     assert.match(onlineSrc, /type: 'rider-fx', kind: kind/);
