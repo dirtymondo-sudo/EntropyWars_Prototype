@@ -704,3 +704,13 @@ range and lights the pool, a splash row's hover lights the splash tiles with dmg
   as CUSTOM, unticking the last turns NONE), a TRY pair (up to two, one of a kind) whose resolved line reads "= 92 dmg ·
   15 MP · 4 SP" with the changed numbers bold, and the registry with each row's fit and its one-upgrade result. The
   UPGRADES registry inspector gains `requires` (the fit test), `excl` (one-of-a-kind group) and `auto`.
+
+## ✦ POOLS · RACE FAMILIES + THE BIG ✕ (SPELL_LIBRARY_PLAN.md Phase 6, 2026-09-26, token 20260926-spell-library-07-cors)
+- POOLS → RACE FAMILIES (was RACE ROWS): the rail counts each race's families (red outside 3–10); the detail lists the race's
+  families (glyph, name, every member as a tier chip that jumps to the row, ↑ ↓ reorder, a big ✕), the tree rungs outside them,
+  and ALL FAMILIES as toggle chips (member count, races on hover). Writes go through the doc's `raceFamilies` registry
+  (`_slbRaceFamWrite` → `_slb2WriteReg('raceFamilies', …)`), so undo, export and the bake carry them; ↺ REVERT drops the row.
+- ONE FAMILY PER SPELL: `_slb2FamilyOf(id, fam, true)` REPLACES the row's family (the toast says where it came from); the
+  inspector's picker reads "⇄ move to family…", the bulk op "Move to a family", the member search "moves it here".
+- The ✕ on a family's member list is `.slb2-xbig` (28 × 24 button); the inspector's owner chips' ✕ grew to 13 px with a hover.
+- The matrix's lint is 3–10. Probe: playtest_library.js shoots `families_members`, `pools_race_families`, `pools_race_toggled`.

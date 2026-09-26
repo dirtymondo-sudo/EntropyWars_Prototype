@@ -997,3 +997,26 @@ are the user's to set. So:
 - **The AI:** state.js `applyRandomSpellsAndSecJob` and the forge / HQ RANDOM buttons spend leftover SP with
   `buildRandomUpgrades` (damage upgrades weighted ×3, not always maxed). The AI's scorers read the derived def's numbers.
 - Test: `spell-upgrades.test.js`. Not playtested live.
+
+## ✦ THE FAMILIES AS POOLS (SPELL_LIBRARY_PLAN.md Phase 6, 2026-09-26, token 20260926-spell-library-07-cors)
+The user's library export (90 families, 359 row edits, 5 deletions, Metal deleted) was baked first, then the Phase 6 pass
+(`/tmp`-built doc baked with bake-spell-mods.js): the 125 rows with no family, the 14 still tagged with the deleted Metal and
+the 2 with two families each got ONE family; 13 new families in the user's pattern (Living Stone, Human Grit, Main Character
+Energy, Deep Sea Anatomy, Prism Lattice, Infernal Court, Horns & Hooves, Apex Predator, Grave Hunger, Kaiju Rampage, Ooze
+Biology, Sentai Colors, Symbiosis); every race has 3–5 families in `RACE_FAMILIES` (the user's rule is 3–10).
+- **The pool:** data.js `unitSpellPoolParts(race, cls).race` = the RACE_TREE row (rung order, twins) THEN every member of the
+  race's families (`raceFamilyPoolIds` → `familyMemberIds`, tier then name, from `familyMemberIndex()`, dropped by
+  `stampSpellSchema` after every library apply). Door-wheel rows stay in `parts.wheel`, universal families (GEAR) in
+  `parts.gear`. The verdict, `isTreeLoadoutLegal`, `treeLegalSubset` (the online host's repair) and the AI's
+  `buildTreeLegalLoadout` all read the pool, so no other site changed. `spellReachableIds` (the offPool lint) adds the family
+  pools: 0 rows are off-pool now (Scatter Shot / Impact Round ride Gun Training, Green Arrow rides Archery).
+- **One family per spell:** lint `familyMulti` (red); `elementFamily` fires only on a row with NO family (a row's family is
+  its identity, its element only a damage type).
+- **The deleted five:** the tree rungs moved to rows of the race's families (reptilian capstone = Flat Earth, chosen one R2 =
+  Plot Armor, anubis R2 = Rigormortis, mothman R3 = Cryptid Vanish + R1 twin Red Eyes / Dread Aura, popstar R2 = Stage Dive),
+  shared into the races' RACE_ABILITIES. raceTailWhip's capstone director is still registered (dead, unreachable).
+- **Bake fixes:** a row a movepool drops MOVES to SPELL_LIBRARY (sentaiGreenArrow) instead of being deleted; an empty
+  registry (`RACE_FAMILIES = {}`) takes its rows as one block; two inserts at one spot keep their order.
+- The order is tree row → the job's four → the family members: a job row in a race family (Brave Charge in Knighthood)
+  keeps its JOB source. sprites.js `SPELL_ANIM_VERBS` / battle.js `SPELL_DIRECTOR_ROWS` dropped the deleted ids.
+- Test `spell-families.test.js`; SPELL_CATALOGUE.md is the generated family / race table.
