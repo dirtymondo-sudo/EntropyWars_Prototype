@@ -518,7 +518,7 @@ const WAVE_B = {
     raceInfect:       ['zombie',   'possess',     { range: 1, activations: 4 }],
     raceCannibalize:  ['zombie',   'cannibalize', { range: 2, healPct: 0.35, corpseDelay: 2 }],
     raceSoulBind:     ['demon',    'link',        { range: 3, linkTargets: 'enemy-enemy', pairRange: 4 }],
-    raceShadowRealm:  ['demon',    'shadowRealm', { range: 3, tier: 'III', cooldownRounds: 3 }],
+    raceShadowRealm:  ['demon',    'shadowRealm', { range: 3, tier: 4, cooldownRounds: 3 }],
     raceSacrifice:    ['shaman',   'transfer',    { range: 3, linkTargets: 'ally-ally', takePct: 0.30, givePct: 1.5 }],
     raceVoodoo:       ['shaman',   'link',        { range: 3, linkTargets: 'enemy-ally' }],
     raceThrallBite:   ['vampire',  'possess',     { range: 1, activations: 1, dmg: 80, damageType: 'physical', drainPct: 0.25 }],
@@ -668,8 +668,8 @@ const WAVE_C = {
     raceGlitterBomb:    ['fairy',         'aoe',        { range: 4, dmg: 100, aoeRadius: 1, damageType: 'magic' }],
     raceFrenzy:         ['ghoul',         'lifeDrain',  { range: 1, dmg: 120, damageType: 'physical', drainPct: 0.30 }],
     raceFear:           ['ghoul',         'barrage',    { range: 0, aoeRadius: 3, aoeOriginSelf: true, noDamage: true }],
-    raceTerrorPounce:   ['ghoul',         'damage',     { range: 3, dmg: 180, tier: 'III', damageType: 'physical', chargeToTarget: true, purgeBuffs: true }],
-    raceTsunami:        ['atlantean',     'linePush',   { range: 4, dmg: 160, tier: 'III', lineWidth: 3, pushDistance: 2 }],
+    raceTerrorPounce:   ['ghoul',         'damage',     { range: 3, dmg: 180, tier: 4, damageType: 'physical', chargeToTarget: true, purgeBuffs: true }],
+    raceTsunami:        ['atlantean',     'linePush',   { range: 4, dmg: 160, tier: 4, lineWidth: 3, pushDistance: 2 }],
     raceDragonBreath:   ['dragon',        'line',       { range: 3, dmg: 90, lineWidth: 1, lineZone: true, zoneDuration: 2 }],
 };
 /* id → the ONE status each applies (+ duration); Fairy Dust's rides teamStatusEffects. */
@@ -709,7 +709,7 @@ test('Phase 5 wave C: every §6 spell exists on its race with its kind, numbers,
     same(raceSpell('cowboy', 'raceHighNoon').bonusVsStatus, { status: ['stagger', 'tethered'], mult: 1.5 });
     same(raceSpell('black goo', 'raceAbsorb').bonusVsStatus, { status: ['poison', 'goo'], mult: 1.5 });
     same(raceSpell('ghoul', 'raceTerrorPounce').bonusVsStatus, { status: 'feared', mult: 1.5 });
-    assert.strictEqual(raceSpell('ghoul', 'raceCarrionFeast').tier, 'II', 'Carrion Feast demoted to tier II');
+    assert.strictEqual(raceSpell('ghoul', 'raceCarrionFeast').tier, 3, 'Carrion Feast sits on ring 3 (Phase 0: the explicit numeric tier, stamped from the rung)');
     assert.ok(!raceSpell('mad scientist', 'raceOvercharge').bonusVsStatus, 'Chemical Concoction dropped the Poison payoff (Corroded IS poison)');
     assert.ok(raceSpell('atlantean', 'raceFlood'), 'Great Flood stays authored (off-tree, §10 #15)');
     // Twins: every wave-C pair is a 2-array on its node.
@@ -803,13 +803,13 @@ const PHASE_6 = {
     raceStompOut:      ['gangster', 'damage',      { range: 1, dmg: 120, damageType: 'physical' }],
     raceDriveBy:       ['gangster', 'dash',        { range: 3, dmg: 0, afterShot: { dmg: 100, range: 3 } }],
     raceHitALick:      ['gangster', 'steal',       { range: 2, dmg: 60, damageType: 'physical', stealKeys: 1, stealItems: 1 }],
-    raceChoppa:        ['gangster', 'line',        { range: 5, dmg: 110, damageType: 'physical', lineWidth: 1, tier: 'II' }],
-    raceExtendedClips: ['gangster', 'warCry',      { range: 0, auraRadius: 3, tier: 'III' }],
+    raceChoppa:        ['gangster', 'line',        { range: 5, dmg: 110, damageType: 'physical', lineWidth: 1, tier: 3 }],
+    raceExtendedClips: ['gangster', 'warCry',      { range: 0, auraRadius: 3, tier: 4 }],
     racePurify:        ['nun',      'cleanseArea', { range: 3, aoeRadius: 1 }],
     raceSmite:         ['nun',      'damage',      { range: 3, dmg: 100, damageType: 'magic' }],
     raceBlessing:      ['nun',      'buff',        { range: 3 }],
-    racePrayer:        ['nun',      'shield',      { range: 3, shield: 150, tier: 'II' }],
-    raceHallelujah:    ['nun',      'healAll',     { range: 0, healAmt: 180, cleanse: 2, tier: 'III' }],
+    racePrayer:        ['nun',      'shield',      { range: 3, shield: 150, tier: 3 }],
+    raceHallelujah:    ['nun',      'healAll',     { range: 0, healAmt: 180, cleanse: 2, tier: 4 }],
 };
 const PHASE_6_STATUS = {
     raceStompOut:      ['grievous', 2],

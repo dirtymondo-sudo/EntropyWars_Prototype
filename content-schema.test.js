@@ -74,6 +74,19 @@ function validateSpell(sp, where, classes, problems) {
     if (sp.dmg !== undefined && (typeof sp.dmg !== 'number' || !isFinite(sp.dmg))) {
         problems.push(`${label}: dmg is ${sp.dmg}`);
     }
+    /* THE SPELL LIBRARY Phase 0 — THE SCHEMA (SPELL_LIBRARY_PLAN.md §4.1): the five fields, typed */
+    if (sp.kind !== 'basicAttack') {
+        if (!Number.isInteger(sp.tier) || sp.tier < 1 || sp.tier > 4) problems.push(`${label}: tier is ${JSON.stringify(sp.tier)} (want 1–4)`);
+        if (!D.SPELL_ROLES.includes(sp.role)) problems.push(`${label}: role is ${JSON.stringify(sp.role)}`);
+        if (!Array.isArray(sp.families)) problems.push(`${label}: families is not an array`);
+        else for (const f of sp.families) if (!D.SPELL_FAMILIES[f]) problems.push(`${label}: unknown family '${f}'`);
+        if (!Array.isArray(sp.upgrades)) problems.push(`${label}: upgrades is not an array`);
+        else for (const u of sp.upgrades) if (!D.SPELL_UPGRADES[u]) problems.push(`${label}: unknown upgrade '${u}'`);
+    }
+    if (sp.roleOverride !== undefined && !D.SPELL_ROLES.includes(sp.roleOverride)) problems.push(`${label}: roleOverride '${sp.roleOverride}' is not a role`);
+    if (sp.aoeMask !== undefined && !D.aoeMaskValid(sp.aoeMask)) problems.push(`${label}: aoeMask is not a list of [dx, dy] within ±3`);
+    if (sp.notes !== undefined && typeof sp.notes !== 'string') problems.push(`${label}: notes is not a string`);
+    if (typeof sp._legacyTier === 'string') problems.push(`${label}: still carries the legacy tier string '${sp._legacyTier}' — run node bake-spell-mods.js --stamp-tiers`);
 }
 
 test('every SPELL_LIBRARY entry is well-formed', () => {
@@ -125,13 +138,13 @@ test('map metadata is well-formed', () => {
 
 /* ── Spell tree (Tree of Life selector) — SPELL_TREE_REDESIGN §5 ────────── */
 
-test('every CLASS_TREE branch is 4 known spells in ring-tier order (I,I,II,III)', () => {
+test('every CLASS_TREE branch is 4 known spells in ring-tier order (tiers 1,2,3,4)', () => {
     const problems = [];
     for (const [job, ids] of Object.entries(D.CLASS_TREE)) {
         if (!Array.isArray(ids) || ids.length !== 4) { problems.push(`job '${job}' tree is not 4 spells`); continue; }
         const tiers = ids.map(id => D.SPELL_BY_ID[id] ? D.SPELL_BY_ID[id].tier : null);
         ids.forEach((id, i) => { if (!D.SPELL_BY_ID[id]) problems.push(`job '${job}' ring ${i + 1} id '${id}' unknown`); });
-        const want = ['I', 'I', 'II', 'III'];
+        const want = [1, 2, 3, 4];   // Phase 0 (SPELL_LIBRARY_PLAN.md §4.1): the explicit numeric tier, stamped from the rung
         if (JSON.stringify(tiers) !== JSON.stringify(want)) {
             problems.push(`job '${job}' ring tiers are ${tiers.join(',')} (want ${want.join(',')})`);
         }
@@ -189,17 +202,19 @@ test('every available race has a curated RACE_TREE row (Phase B: no fallbacks le
     assert.strictEqual(JSON.stringify(missing), '[]');
 });
 
-test('every race capstone (ring 4) is tier III; rings 1–3 are not — twins share their ring\'s tier', () => {
+test('every race capstone (ring 4) is tier 4; rings 1–3 are not — twins share their ring\'s tier', () => {
+    /* Phase 0 (SPELL_LIBRARY_PLAN.md §4.1): `tier` is the explicit number on the row (= its SP). The stamp wrote it from
+       the rung, so today ring 4 = tier 4; a later bake that re-tiers a capstone in the library moves this pin with it. */
     const problems = [];
     for (const [race, row] of Object.entries(D.RACE_TREE)) {
         for (const id of treeEntryIds(row[3])) {
             const cap = D.SPELL_BY_ID[id];
-            if (!cap || cap.tier !== 'III') problems.push(`race '${race}' capstone '${id}' is not tier III`);
+            if (!cap || cap.tier !== 4) problems.push(`race '${race}' capstone '${id}' is not tier 4`);
         }
         row.slice(0, 3).forEach((entry, i) => {
             for (const id of treeEntryIds(entry)) {
                 const sp = D.SPELL_BY_ID[id];
-                if (sp && sp.tier === 'III') problems.push(`race '${race}' ring ${i + 1} '${id}' is tier III`);
+                if (sp && sp.tier === 4) problems.push(`race '${race}' ring ${i + 1} '${id}' is tier 4`);
             }
         });
     }
@@ -251,7 +266,7 @@ test('§2.1 single-stat rule: only capstones may boost two stats at once', () =>
             const b = a.statStageBoost || null;
             if (!b) continue;
             const raised = Object.keys(b).filter(k => b[k] > 0);
-            if (raised.length >= 2 && !capIds.includes(a.id) && a.tier !== 'III') {
+            if (raised.length >= 2 && !capIds.includes(a.id) && a.tier !== 4) {
                 problems.push(`${race} :: ${a.id} raises ${raised.join('+')} (non-capstone)`);
             }
         }

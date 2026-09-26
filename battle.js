@@ -34721,7 +34721,7 @@
                 if (!unit || !spell) return null;
                 if (unitSpellsBlocked(unit)) return 'Silenced';
                 if (!unitMeetsSpellTierReq(unit, spell)) {
-                    const trl = spell.tier === 'II' ? 2 : spell.tier === 'III' ? 3 : 1;
+                    const trl = Math.max(1, Math.min(3, (typeof spellTierOf === 'function' ? spellTierOf(spell) : 1) || 1));   // Phase 0: tier is numeric
                     return 'Req Lv.' + trl;
                 }
                 const cdLeft = getSpellCooldownRemaining(unit, spell);

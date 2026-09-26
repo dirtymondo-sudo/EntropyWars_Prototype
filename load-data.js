@@ -56,7 +56,7 @@ function makeSandbox({ quiet = true } = {}) {
 // data.js is a property on the returned object (sandbox === its own window).
 function loadGameData(opts) {
     const sandbox = makeSandbox(opts);
-    const file = path.join(REPO_ROOT, 'data.js');
+    const file = (opts && opts.file) ? path.resolve(opts.file) : path.join(REPO_ROOT, 'data.js');   // opts.file: another copy (bake-spell-mods.js round-trips)
     const src = fs.readFileSync(file, 'utf8');
     vm.runInContext(src, sandbox, { filename: 'data.js' });
     return sandbox;

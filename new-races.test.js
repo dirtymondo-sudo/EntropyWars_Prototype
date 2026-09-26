@@ -68,8 +68,8 @@ test('the kits: four-node trees on the twin rule, five rows each, plain kinds, a
             for (const st of sts) assert.ok(D.STATUS_DEFS[st.id], row.id + ': status ' + st.id);
         }
         const cap = rows.find(x => x.id === tree[3]);
-        assert.strictEqual(cap.tier, 'III', r + ': the capstone is tier III');
-        assert.strictEqual(rows.find(x => x.id === tree[2]).tier, 'II', r + ': r3 is tier II');
+        assert.strictEqual(cap.tier, 4, r + ': the capstone is tier 4');          // Phase 0 (SPELL_LIBRARY_PLAN.md): numeric tiers, stamped from the rung
+        assert.strictEqual(rows.find(x => x.id === tree[2]).tier, 3, r + ': r3 is tier 3');
         assert.ok(D.isCapstoneSpellId(tree[3]), tree[3] + ' is a capstone');
         const f = D.FINISHERS[r];
         assert.ok(f && typeof f.sig === 'string' && f.built === true, r + ': the finisher is BUILT (delivery 17 — a director + a signature + a stage script; finishers.test.js pins the three)');

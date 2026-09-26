@@ -98,6 +98,10 @@ diffs. The deliverable is always the full edited file, produced in chat.
 - `load-data.js` — loads data.js headlessly in a Node vm sandbox (real
   values, not a copy). Use it for any new data validation/tooling instead of
   regex-scraping data.js.
+- `bake-spell-mods.js` (2026-09-26, SPELL_LIBRARY_PLAN.md Phase 0) — bakes a
+  Spell Library export into data.js's literal rows (`node bake-spell-mods.js
+  <export.json>`; `--stamp-tiers` wrote the explicit numeric `tier` on every
+  row). Notes go to docs/spell-notes.md, never data.js. Test: spell-schema.test.js.
 - `migrations/*.sql` (added 2026-07-29) — versioned D1 schema, applied at
   boot by server.js `runMigrations` (recorded in `schema_migrations`;
   duplicate-column/already-exists errors are tolerated so it converges on

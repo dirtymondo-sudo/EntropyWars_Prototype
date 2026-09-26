@@ -9071,7 +9071,7 @@
         const _SLB_SPELLTYPES = ['anomaly', 'human', 'unholy', 'tech', 'alien', 'divine'];
         const _SLB_ELEMENTS = ['fire','water','ice','lightning','earth','wind','nature','poison','light','shadow','arcane','psychic','sonic','metal','blood'];
         const _SLB_DMGTYPES = ['physical', 'magic'];
-        const _SLB_TIERS = ['I', 'II', 'III'];
+        const _SLB_TIERS = [1, 2, 3, 4];   // Phase 0 (SPELL_LIBRARY_PLAN.md §4.1): THE tier, numeric = its SP cost
         const _SLB_TRAVELS = ['strikeLeap','descent','boulder','iceSpear','beam','aura','aoe','teleport','chain','tether','bolt','domProjectile','none'];
         const _SLB_WEIGHTS = ['light', 'standard', 'heavy', 'ultimate'];
         const _SLB_PROJECTILES = ['proj-fire','proj-bullet','proj-knife','proj-debuff','proj-spiderweb','proj-arrow','proj-rock'];
@@ -9187,7 +9187,13 @@
             weatherDuration: { t: 'json', h: '[min,max] rounds.' },
             weatherTiles: { t: 'json', h: '[min,max] coverage radius.' },
             cooldownRounds: { t: 'num', h: 'Rounds between casts (per unit).' },
-            tier: { t: 'enum', o: _SLB_TIERS, h: 'Shop price tier (I:40 / II:80 / III:140 Hazard Pay).' },
+            tier: { t: 'num', h: 'THE TIER 1–4 = its SP cost in the rack (Tier I 1 SP … Tier IV 4 SP). Explicit on every row since Phase 0; the rung is only the fallback for a row without one.' },
+            role: { t: 'text', h: 'DERIVED identity (damage · damageEffect · effect · heal · utility · movement · deploy · terrain · passive) — re-stamped after every edit; set roleOverride to pin it.' },
+            roleOverride: { t: 'enum', o: ['damage', 'damageEffect', 'effect', 'heal', 'utility', 'movement', 'deploy', 'terrain', 'passive'], h: 'Pins the role when the derived one is wrong (the lint shows roleDrift).' },
+            families: { t: 'json', h: 'Family tags, e.g. ["fire","ordnance"] — ids from SPELL_FAMILIES (the 15 elements, gear, doors, and any the doc adds).' },
+            upgrades: { t: 'json', h: 'Upgrade ids THIS spell allows (SPELL_UPGRADES; the registry is seeded in Phase 5).' },
+            aoeMask: { t: 'json', h: 'Drawn footprint [[dx,dy],…] around the centre [0,0], within ±3 (AOE_PRESETS: single, 3x3, 5x5, diamond1/2, x1/2, cross1/2, ring1/2, line3/5, hollow3x3). Honoured by the engine from Phase 2; the mask wins over aoeRadius.' },
+            notes: { t: 'text', h: 'Your notes on look / feel / balance (markdown). Ride the export; the bake strips them into docs/spell-notes.md — never shipped to players.' },
             school: { t: 'text', h: 'Owning job (job spells) — cross-class slot penalty pivots on it.' },
             classRestriction: { t: 'text', h: 'Hard job gate (one job name).' },
             classRestrictions: { t: 'json', h: 'Multi-job gate: ["Agent", ...].' },
@@ -9297,6 +9303,11 @@
             const body = document.getElementById('spellLibraryBody');
             if (!body || !_slbMods()) {
                 if (body) body.innerHTML = '<div style="padding:30px;color:var(--muted)">EWSpellMods layer missing (data.js out of date).</div>';
+                return;
+            }
+            /* THE ONLINE GUARD (SPELL_LIBRARY_PLAN.md §6.6): edits are off while an online match is live */
+            if (_slbMods().online) {
+                body.innerHTML = '<div style="padding:30px;color:var(--muted)">EDITS OFF — online match. The library reopens when the match ends.</div>';
                 return;
             }
             const rows = _slbAllRows();
@@ -9508,7 +9519,7 @@
             M.doc.added[id] = {
                 name: 'New Spell', type: 'damage', kind: 'damage', spellType: 'human', element: 'arcane',
                 dmg: 100, range: 3, apCost: 2, damageType: 'magic',
-                tier: 'I', school: 'Black Mage', classRestriction: 'Black Mage',
+                tier: 1, families: ['arcane'], upgrades: [], school: 'Black Mage', classRestriction: 'Black Mage',
                 desc: 'Deals MEDIUM magic damage to a Single Enemy.',
                 descAuto: true,
                 _home: { lib: true },
@@ -10006,8 +10017,8 @@
             const fr = new FileReader();
             fr.onload = () => {
                 try {
-                    _slbMods().import(JSON.parse(fr.result));
-                    _slbToast('⇪ imported ' + file.name);
+                    _slbMods().import(JSON.parse(fr.result));   // Phase 0: MERGES onto the stored doc (SPELL_LIBRARY_PLAN.md §4.9); REPLACE is Phase 1's second button
+                    _slbToast('⇪ merged ' + file.name);
                     window._renderSpellLibrary();
                 } catch (e) { _slbToast('✗ import failed: ' + e.message, true); }
             };

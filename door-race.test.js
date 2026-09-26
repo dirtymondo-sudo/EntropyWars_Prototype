@@ -75,11 +75,11 @@ test('door agent (the door wheel): six rows on the tree, every one a shot from t
     assert.equal(byId.raceAirMail.statusEffects[0].id, 'stagger');
     /* the trapdoor: a hidden 2×2 deployable on the trap arsenal, NOT a capstone */
     const td = byId.raceTrapdoor;
-    assert.ok(td.kind === 'placeTrap' && td.trapType === 'trapdoor' && td.trapSize === 2 && td.maxActivePerCaster === 1 && td.tier === 'II' && td.apCost === 1);
+    assert.ok(td.kind === 'placeTrap' && td.trapType === 'trapdoor' && td.trapSize === 2 && td.maxActivePerCaster === 1 && td.tier === 3 && td.apCost === 1);   // Phase 0: tier is the explicit number (its rung)
     assert.ok(!D.isCapstoneSpellId('raceTrapdoor'), 'definitely not a capstone');
     /* the capstone: the aerial assault */
     const di = byId.raceDropIn;
-    assert.ok(di.kind === 'doorBreach' && di.fromAbove === true && di.rearAttack === true && di.splashDmg > 0 && di.tier === 'III' && di.apCost === 2 && di.dmg > byId.raceBreakingEntering.dmg);
+    assert.ok(di.kind === 'doorBreach' && di.fromAbove === true && di.rearAttack === true && di.splashDmg > 0 && di.tier === 4 && di.apCost === 2 && di.dmg > byId.raceBreakingEntering.dmg);
     assert.ok(D.isCapstoneSpellId('raceDropIn') && !D.isCapstoneSpellId('raceBreakingEntering'), 'ring 4 is the capstone');
     /* the execution */
     const fin = D.FINISHERS[RACE];

@@ -824,3 +824,26 @@ change under `WEATHER_REGISTRY`).
 - 2026-09-25 — the user ruled: tiers and spell costs are editable in the library (Q1); equipment and
   passives merge (Q5) with **at most 2 passive / equipment rows among the 7 slots**; the 17 current
   accessories are universal (the GEAR family), later ones may be family-specific.
+- 2026-09-26 — **Phase 0 shipped** (thread "Spell library Phase 0", `spell-library/ENTROPY_WARS_SPELL_LIBRARY_0.zip`,
+  token `20260925-spell-library-01-cors`). data.js: `spellTierOf` reads the row's explicit numeric `tier` first
+  (`spellTierDerived` is the rung fallback) and `bake-spell-mods.js --stamp-tiers` wrote `tier: N` onto all 530
+  literal rows (172 legacy `'I'/'II'/'III'` strings replaced — 157 of them disagreed with the live tier);
+  `SPELL_ROLES` + `spellRoleOf` / `spellRoleDerived` / `roleOverride`; `SPELL_FAMILIES` (15 elements + `gear`
+  universal + `doors` unique to the Door Agent), `SPELL_UPGRADES = {}`, `RACE_FAMILIES = {}`, `spellFamiliesOf`;
+  `AOE_PRESETS` (line3/line5 run THROUGH the centre so they fit the 7×7 grid) + `aoeMaskValid / aoeMaskTiles /
+  aoeMaskBound / aoeMaskPresetOf`; `SPELL_DEAD_FIELDS`, `SPELL_LOS_FIELDS`, `SPELL_TIER_RULE`; `spellLint` (tierRule,
+  roleDrift, elementFamily, familyUnknown, upgradeUnknown, deadField, losTriple, maskInvalid, maskVsRadius,
+  tierRange, nameDup, offPool) + `spellLintAll` + `spellReport`; `stampSpellSchema()` runs at boot before the diff
+  layer clones (so `role` / `families` / `upgrades` are fields, not edits) and after every `apply()`;
+  `PASSIVE_SLOT_MAX = 2` declared (enforced in Phase 4). `EWSpellMods` v2: `families / upgrades / raceFamilies /
+  views` groups, `import(obj, { mode: 'merge' | 'replace', pick })` — MERGE is the default, `diff(obj)` lists
+  add / same / conflict rows, `export()` adds `spellNotes` + `report`, `prune()` covers the registries,
+  `setOnline(on)` + the guard (online.js `applyOnlineRules` → vanilla tables; state.js `transitionTo(MAIN_MENU)`
+  → mods back; map.js `_goToSpellLibrary` refuses while online; the v1 screen says "EDITS OFF — online match").
+  The v1 editor edits `tier` as a number and offers `role / roleOverride / families / upgrades / aoeMask / notes`.
+  Readers of the legacy string moved to `spellTierOf` (battle.js spellBlockReason, hud.js ×2, map.js
+  `_cshopRenderSpells` — the old 'III' shop label = the capstone tier 4). Tests: `spell-schema.test.js` (new);
+  content-schema.test.js validates the five fields and pins numeric tiers (class trees 1,2,3,4; capstones 4);
+  champ-rework / door-race pins numeric. Census: 528 rows — damage 160, damageEffect 143, effect 126, heal 27,
+  deploy 27, movement 28, utility 14, terrain 3; the tier rule's 7 offenders as surveyed; 68 rows carry a dead
+  field (62 `equipCost`); two rows share the name "Tail Whip"; 29 off-pool. Phase 1 (THE SHELL) is next.

@@ -6799,6 +6799,12 @@
            editor + Spell Lab. Rendering lives in ui.js (_renderSpellLibrary),
            same innerHTML-screen pattern as the codex. ── */
         window._goToSpellLibrary = function() {
+            /* THE ONLINE GUARD (SPELL_LIBRARY_PLAN.md §6.6, Phase 0): local spell mods are off in an online match and the
+               library stays shut until it ends — both peers must run the same tables. */
+            if (typeof isOnlineMatch === 'function' && isOnlineMatch()) {
+                if (typeof _hqToast === 'function') _hqToast('SPELL LIBRARY · closed during an online match', 2200);
+                return;
+            }
             playSfx('uiButtonConfirm');
             _showTitlePage('spellLibraryPage');
             if (typeof window._renderSpellLibrary === 'function') window._renderSpellLibrary();
@@ -7491,7 +7497,7 @@
 
         function _cshopRenderSpells(body, save) {
             const allSpells = (typeof SPELL_LIBRARY !== 'undefined') ? SPELL_LIBRARY : [];
-            const tier3 = allSpells.filter(s => s.tier === 'III');
+            const tier3 = allSpells.filter(s => (typeof spellTierOf === 'function' ? spellTierOf(s) : s.tier) === 4);   // Phase 0: the legacy 'III' label is the capstone tier, now numeric 4
             const price = (typeof SPELL_SHOP_PRICES !== 'undefined' && SPELL_SHOP_PRICES['III']) ? SPELL_SHOP_PRICES['III'] : 140;
 
             tier3.sort((a, b) => {

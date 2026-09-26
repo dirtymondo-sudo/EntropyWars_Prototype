@@ -105,8 +105,8 @@ test('the popstar\'s kit: the four-node tree on the twin rule, plain kinds, one 
     assert.strictEqual(D.SPELL_BY_ID.racePopSpotlight.kind, 'debuff');
     assert.deepStrictEqual(JSON.stringify(D.SPELL_BY_ID.racePopSpotlight.statStageBoost), '{"def":-1,"mdef":-1}', '§5.6: a non-capstone stage move is ±1');
     assert.strictEqual(D.SPELL_BY_ID.racePopStadiumShow.kind, 'aoe');
-    assert.strictEqual(D.SPELL_BY_ID.racePopSpotlight.tier, 'II');
-    assert.strictEqual(D.SPELL_BY_ID.racePopStadiumShow.tier, 'III');
+    assert.strictEqual(D.SPELL_BY_ID.racePopSpotlight.tier, 3);      // Phase 0 (SPELL_LIBRARY_PLAN.md): the explicit numeric tier = the rung (r3)
+    assert.strictEqual(D.SPELL_BY_ID.racePopStadiumShow.tier, 4);    // the capstone
     assert.ok(D.isCapstoneSpellId('racePopStadiumShow'));
     /* the passive */
     assert.deepStrictEqual(D.RACE_PASSIVES.popstar.join(','), 'showMustGoOn');

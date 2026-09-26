@@ -3710,7 +3710,7 @@ function _hrlgSpellBlades(unit, st) {
       const _why = _tqBlockReason(unit, sp);
       if (_why) reason = _why;
       else if (isSilenced) reason = 'Silenced';
-      else if (!tierOk) { const trl = sp.tier === 'II' ? 2 : sp.tier === 'III' ? 3 : 1; reason = 'Req Lv.' + trl; }
+      else if (!tierOk) { const trl = Math.max(1, Math.min(3, (typeof spellTierOf === 'function' ? spellTierOf(sp) : 1) || 1)); reason = 'Req Lv.' + trl; }
       else if (cdLeft > 0) reason = '⏳ CD ' + cdLeft;
       else if (unit.mp < cost) reason = 'No MP';
       else if ((unit.ap || 0) < apCost) reason = 'No AP';
@@ -8335,7 +8335,7 @@ function _renderSpellDescBar() {
     const apCost = _tqApCost(sp);
     details.push(cost + ' MP · ' + apCost + ' AP');
   }
-  if (sp.tier) details.push('T·' + sp.tier);
+  if (sp.tier) details.push('T·' + (typeof spellTierNumeral === 'function' ? spellTierNumeral(sp) : sp.tier));   // Phase 0: the tier is a number (1–4)
 
   let statusLine = '';
   const _fxParts = [];
