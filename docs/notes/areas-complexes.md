@@ -1506,3 +1506,31 @@ facility box with no counter, no tape, no stash, no `say` and no cast spot FAILS
 a room = give it one of the four. hq-finds' kind pin reads four kinds. Ship data.js to R2 AND Render (the
 ledger's key regex). UNSEEN LIVE (RULE #1c): the tin's scale on the pipe run and the shelves, the six panels'
 rows at the panel's width, the day's line on the roster draw.
+
+## THE BOWL — the stadium as a real football stadium; BUILT architecture instead of raised floors (2026-09-26, local delivery)
+mondo: "a normal flat rectangular grass football field with a bowl/stadium/stands around it, with a tunnel leading
+from the field through the stadium back to the city … walk through the stands and on the field and the sidelines
+and through the tunnel … the maps are using raised floors too much when there need to be objects or buildings or
+stairs or bridges … that sit on top of the floor but the player can still walk on and into."
+- **THE ROOM** (`HQ_AREA_SPECS.prebuilt_stadium`): 85.4 × 132.2, no `gen`, noise 0, typology 'bowl', grass_2
+  floor, concrete paths in the tunnels, `floorColor 0xc8ecc8` (it tints the path sheet too — greener went green).
+- **THE PITCH**: `hqGridironMarks(o)` paints end zones (+ ENTROPY / WARS text), the border, yard lines every 5,
+  hashes, numbers, the midfield Δ. `hqAreaRoom` passes `A.marks` → `terrain.marks`; three-renderer.js
+  `_hqBuildMarks` merges rects/lines per colour and draws text on a canvas. Goal posts at z ±43.9.
+- **THE STANDS**: `hqStandBowl(o)` (data.js, before the DIVINE STAIR shell) builds rings round a rounded rectangle,
+  high → low: facade, concourse, 14 rows (rise 0.42, tread 0.85), fascia. Each ring is wall rows with walkable flat
+  tops, mitred `quad`s, an inward `front`; rows carry `seat` colours (west crimson, east navy, ends gold —
+  `_hqBuildTierSeats` instances them). TUNNELS (n w 11 hc 4.4 → the city; s w 7 hc 3.0 turnstiles + ticket booth;
+  e at z 12 w 4 hc 2.6 → the pitch drain): a row cut by a tunnel continues OVER it as a `plain` bridge slab, so the
+  stands walk over the tunnel roof; `ghost` walls (collision only, never drawn) line the tunnel sides. AISLES are
+  gaps in every row (a tread is 0.42 — the walker steps it) plus fascia openings onto the sideline. `box` fills
+  the corners outside the facade. Press box: a `plain` + `glaze` bridge over the west stand (x −39, y 11.2), the
+  hard tape on its roof. Scoreboard proc (catalogue `scoreboard`) over the south end, four flood masts, benches,
+  four quarter pipes on the sidelines, concourse carts.
+- **THE ROAD**: `stadium_downtown` leaves from the north tunnel's mouth (a.x 0; hq-city / urban-pack pins).
+- **ENGINE PIECES** (reusable): wall rows take `ghost`, `slopeTop [ya, yb]`, `tier`, `quad`, `seat`, `front`,
+  `rail: 'front' | false | [y0, y1]`; straight bridges take `plain`, `tier`, `seat`, `drawW`, `glaze`; arc bridges
+  `drawR0` / `drawR1`; `hqRingQuad(w, r, t)` mitres a ring chord; `spiral` is a ramp swept round a centre. A bridge
+  OVERRIDES walls in `hqTerrainFeet` — keep a bridge's footprint off any wall you mean to stop the walker.
+- check-terrain: every door reached, nothing traps (663 walls, 25 bridges). `stadium-garage.test.js` (the bowl's
+  walker proof is `heavy`). hq-areas accepts a BUILT area (no gen + tier rows) for the plan / weenie / park rules.

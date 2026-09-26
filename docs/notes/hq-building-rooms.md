@@ -930,7 +930,7 @@ names the far destination again — name the room, put the rest in `sub`. `npm t
 Render too (the finds ledger). Unseen live (RULE #1c): the corn banks, the circles, the butte, the hub rings, the re-plated
 hall.
 
-## THE ROUND GARAGE — Room P1 as a drum, three decks in one room, the helix, the hidden stair (2026-09-20, local delivery)
+## THE ROUND GARAGE — Room P1 as a drum, three decks in one room, the helix, the hidden stair (2026-09-20, local delivery) — SUPERSEDED 2026-09-26 by THE PARKING GARAGE (end of file): one deck, no helix, no H-Wing stair
 The user: "make the parking garage bigger and better — a skating playground; a ROUND parking garage since it is part of DOOR's
 facility; multiple floors in one room; the H-Wing door needs to be hidden way better." data.js `rooms.garage` is a TERRAIN
 room now (the facility's first; still `kind: 'box'`, `roomNo` P1, the same door ids): a 48 × 48 × 12.4 box whose `halls` plan
@@ -998,3 +998,34 @@ forge's spawn lane is rows 0–1 / 6–7 at x 2..5 and a +2 block never stands w
 UNSEEN LIVE (RULE #1c): the clone standing in the corner (the Player rig facing a wall), the
 chair's runners, the mobile's shapes at 2.7 m, the dancer, the directory's legibility, the
 lift's plate on the floor between, the tags beside six copies of the officer.
+
+## THE PARKING GARAGE — Room P1 rebuilt round, open and skateable; the H-Wing stair removed (2026-09-26, local delivery)
+mondo: "way more open space … supposed to be round but it's all jagged and I get stuck between the floor pieces …
+round like central egress … the ramp isn't even big enough to drive a car on … no door to H-wing (the garage is
+easily accessible and H-wing needs to be hard to find) … better maps to skate on." The room is now BUILT, not
+generated (`terrain` has no `gen`, noise 0, `stalactites: false`): 56×56 box, h 10.2, ambient 0.9, 10 ceiling lights.
+- **THE DRUM**: one `hqRingWalls` ring r 27.8, n 96, every chord a mitred `quad` (`hqRingQuad`) so the wall draws
+  as one smooth cylinder, `tier: true` (merged draw), `rail: false`. Three gaps (N dock, E elevator + tunnel, W the
+  motor-pool ramp door) end on SIX JAMBS placed at the chord boundaries (the ring's skip ranges are midpoint-based,
+  so a jamb at the nominal angle left a pocket — that pocket was a trap).
+- **THE RAMP**: ONE `spiral` (r 17.9 → 28.0, 130° → 230°, 0 → 4.2 m, `edge: 0.01`) — a 10 m band, two cars
+  abreast. Its inner parapet is 36 wall rows at r 17.5 with `slopeTop` (the renderer's `_hqPrismInto` draws a
+  sloped mitred prism — no stair-steps) and a sloped `rail: [y0, y1]` to grind. An end wall at 230.76°.
+- **THE DECK**: an arc `bridge` r 18 → 27.5 (drawn to 27.8 with `drawR1`), 230° → 490°, y 4.2, `rails: 'inner'`.
+  **r1 stays INSIDE the drum**: a bridge overrides walls in `hqTerrainFeet`, so a deck that reached r 28.3 let the
+  walker stroll over the drum into the box corners (traps). The three gaps get their own small decks (deck_n /
+  deck_e / deck_w, r 27.2 → 29.2) clear of the jamb capsules. Eight columns at r 18.6 under it.
+- **THE PLAZA**: nothing parked inside r 20 — the five cars (parked_car, ambulance, cop on the ground; suv, cadillac
+  on the deck) park TANGENTIALLY at r 25.9. Centre: the island (a 0.45 m mitred ring ledge, r 3.4); two KICKERS
+  (`ramp` rows with `kicker: true`, x ±11.6 → ±9.0 aimed at the island — three-renderer.js `_hqBuildKicker` draws a
+  plywood wedge + steel coping instead of a mound); two quarter pipes at z ±14 facing in; a manual pad with a
+  `rail: 'front'` ledge; a handrail. Paint (`marks`): lane dashes at r 22.4 on the ground and the deck, bay lines,
+  P1 / UP text, the island ring.
+- **THE DOCK OFFICE** landing (18, −17, y 7.2) on the deck with the ladder (y0 4.2 → y1 7.45) and the plaque.
+- **H-WING**: the garage's `p2` door and hwing_lobby's `stair` are GONE; `DOOR_HQ.hwing.entries` is only
+  deadend/hwing (the draught in the room at the end). Secret doors 47 → 46 (hq-floors pin). The booth panel copy
+  (map.js) reads TWO DECKS, ONE RAMP.
+- Tests: `stadium-garage.test.js` (shape + walker proof); hq-climb (one deck), hq-skate (kickers in the plaza; the
+  traced-wall check now reads the motor pool's plan), hwing, hq-dumb, hq-floors updated. check-terrain: every door
+  reached, nothing traps. Screenshots: the playtest probe needs WAIT ≥ 30 s for the garage (GLB 404 retries in the
+  sandbox), else the shot shows Central Egress.
