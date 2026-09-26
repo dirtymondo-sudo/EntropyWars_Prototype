@@ -466,3 +466,17 @@ Downtown with a stand-in GLB for every file: 2,299 → 1,931 calls. Kill-switch 
 `ThreeRenderer.hq.dev.hqInst()`. THE READOUT: the FPS counter (Settings → Video) in the walk prints
 `N CALLS · NK TRIS` summed over the frame's every render (`renderer.info.autoReset` off for the frame).
 Test: hq-world-map.test.js (the pass on real three r128 in a vm; skipped without three).
+
+**THE STAGE (OPEN_WORLD_PLAN.md Phase 1, 2026-09-26).** A staged room (a part of a zone in
+`HQ_STAGE_RULES.zones`, today the city) builds its joined neighbours INTO THE SAME SCENE after it is ready:
+the same builders, one step a frame, each into its own part record (`_hqPartFields`) under a root at the
+neighbour's frame, `_hq` pointed at a stand-in while it builds (`_hqStageRun`). The record split is the rule
+for every later edit: a key a builder writes that belongs to the ROOM stays out of `_HQ_ZONE_KEYS`; a key the
+visit owns (the walker, the camera, the sky, the input, the light pass) goes in it, or the crossing will swap
+it. A reader that asks about a point past the current box goes through `_hqStageSurface` / `_hqStageCam`
+(the neighbour's own rules, in its metres). THE LAMP BUDGET keeps the count of lit point lights constant (a
+change recompiles every material). The terrain field is 32 m tiles (`_hqTerrainTiles`; each tile its own
+geometry — the battle's dig moves one mesh's vertices — with the whole field's normals). A neighbour attaches
+only when its own gate is idle (the black-texture rule). Kill-switches: `window.EW_HQ_NO_STAGE`,
+`window.EW_HQ_NO_TILES`. Measured headless (software GL ≈ 1 s a frame, stand-in textures): both Downtown
+neighbours stood ~80 s after the card; the crossing itself is one frame. Test: hq-stage.test.js.

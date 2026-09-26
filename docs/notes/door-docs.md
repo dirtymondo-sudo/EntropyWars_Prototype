@@ -201,3 +201,8 @@ Append new notes for this system at the end of this file.
   `hqWorldValidate` / `hqWorldSheet`; the map's LAND tab (map.js `_hqLand*`); THE BUILDING MERGE and THE
   INSTANCE PASS (three-renderer.js); the walk's CALLS · TRIS readout. Nothing moved: the rooms still load
   one at a time until Phase 1's stage. Test: hq-world-map.test.js. Probe: measure_rooms.js.
+- Phase 1 shipped 2026-09-26 (the plan's §12): THE STAGE on the city — Downtown ⇄ the stadium ⇄ the Strip
+  are one scene; the road joins replace the gantry loads (no card at the crossing). data.js `hqStage*`
+  readers + `HQ_STAGE_RULES.zones`; three-renderer.js `_hqPartFields` (the part's own record), `_hqStage*`
+  (build, attach, feet past the edge, the swap, the ring, the lamp budget, the sky blend), the 32 m terrain
+  tiles; map.js `_hqStageCrossed`. Off: `window.EW_HQ_NO_STAGE`. Test: hq-stage.test.js.
