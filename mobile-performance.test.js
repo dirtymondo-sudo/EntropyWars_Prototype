@@ -200,8 +200,8 @@ test('the rig lane is marked by the arrival warm and the player spawn in the sou
     const spawn = fn(renderer, '_hqSpawnCharacter');
     assert.ok(/spec\.kind === 'player' && def\.model[\s\S]*_rigLaneMark\(_lane\)/.test(spawn), 'the player spawn marks its rig');
     assert.ok(/_scheduleModelLoad\(function \(done\) \{[\s\S]*?\}, url, bg, _onDrop\);/.test(fn(renderer, '_loadMiscModel')), 'the misc loader hands its url, its lane and its drop to the scheduler');
-    const warmRoom = renderer.slice(renderer.indexOf('warmRoom: function (roomId)'), renderer.indexOf('warmAvatar: function (av)'));
-    assert.ok(/_loadMiscModel\(url, true, function \(\) \{\}, \{ bg: true \}\)/.test(warmRoom), 'warmRoom files its props in the background lane');
+    assert.ok(/warmRoom: function \(roomId, o\) \{ return _hqWarmRoom\(roomId, o\); \}/.test(renderer), 'warmRoom is THE WARM (Phase 2)');
+    assert.ok(/_loadMiscModel\(url, [^\n]*\{ bg: true \}\)/.test(fn(renderer, '_hqWarmRoom')), 'warmRoom files its props in the background lane');
     assert.ok(/_bgLoadDepth\+\+;[\s\S]*?pop\.draw\.forEach/.test(fn(renderer, '_hqSpawnRounds')), 'the extras spawn under the background flag');
 });
 
@@ -240,6 +240,7 @@ function ledgerContext() {
         + 'var _mobileModelJobs = [], _mobileModelBusy = false; var _rigLaneUrls = {}, _rigLaneLive = {}; var _bgLoadDepth = 0; var MODEL_MAX_INFLIGHT = 4, MODEL_JOB_TIMEOUT_MS = 90000; var _mqJobs = [], _mqLive = 0, _mqSeq = 0;\n'
         + 'var _texInflight = 0, _texHoldUntil = 0, TEX_HOLD_MS = 2500; var _mqTexTimer = null;\n'
         + 'var AL_SETTLE_MS = 300, AL_STALL_MS = 60000; var _alSeq = 0, _alLive = {}, _alLiveN = 0, _alSessions = [], _alLastEventAt = 0;\n'
+        + 'var _alOwner = null; function _alOwns(G) { return !G.own || G === _alOwner; }\n'   // THE FILE TRACKER (Phase 2): an owned gate records its own build only
         + fn(renderer, '_alNow') + fn(renderer, '_alTrack') + fn(renderer, '_alJoin') + fn(renderer, '_alPending') + fn(renderer, '_alPendingList') + fn(renderer, '_alGateOpen')
         + fn(renderer, '_texLanded') + fn(renderer, '_texFetch')
         + fn(renderer, '_rigLaneMark') + fn(renderer, '_mqPriority') + fn(renderer, '_mqStart') + fn(renderer, '_mqTexHold') + fn(renderer, '_mqPump') + fn(renderer, '_scheduleModelLoad') + fn(renderer, '_mqDropQueued') + fn(renderer, '_bgPromote')

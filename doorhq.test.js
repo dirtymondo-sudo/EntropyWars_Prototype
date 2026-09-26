@@ -1804,7 +1804,7 @@ test('the edge: outdoor site rooms stand without facility walls unless the place
     /* the renderer: the shell reads the edge, the walker roams past an open one, the setting keeps its own perimeter, the kit stands on the boards */
     const tr = require('fs').readFileSync(require('path').join(__dirname, 'three-renderer.js'), 'utf8');
     assert.match(tr, /var edge = \(S\.edge === 'open' \|\| S\.edge === 'low'\) \? S\.edge : 'walls';/, 'the box shell reads shell.edge');
-    assert.match(tr, /if \(edge === 'walls'\) \{\s*G\.add\(slab\(0, H, -0\.02, 0\.04/, 'full walls only on a walled room');
+    assert.match(tr, /if \(edge === 'walls'\) \{[\s\S]{0,2600}?G\.add\(slab\([^\n]*H, -0\.02, 0\.04/, 'full walls only on a walled room (a door join cuts its doorway out of the run, Phase 2)');
     assert.match(tr, /var HQ_EDGE_KERB_H = 0\.05;/, 'an open edge is a flush paving line');
     assert.match(tr, /var HQ_EDGE_LOW_H = 0\.95;/, 'a low edge is knee-high');
     assert.match(tr, /rect: \{ hw: ax \? L \/ 2 : 0\.25, hd: ax \? 0\.25 : L \/ 2 \}, site: true \}\);/, 'the field wall is a wall to the walker');

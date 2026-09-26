@@ -731,6 +731,35 @@ want bigger battles; nothing here reads the group's size).
 
 ---
 
+### 5.9 THE ENGINE GAPS — what a AAA engine has that this one doesn't (read from the code, 2026-09-26)
+
+mondo asked: "What do professional 3D game engines and 3D game worlds have that this plan/game doesn't
+include?" The list comes from reading three-renderer.js (three r128, the 2021 release) and the loaders. Each
+row says what is there today, what's missing, and where it lands. Rows marked **NEW** add phases 10-14 to
+§10. Rows marked **(§x)** were already in this plan.
+
+| AAA engines have | This game today | Where it lands |
+|---|---|---|
+| **An asset manifest / file tracker**: the engine knows every file a level needs before loading it | Nothing knew. `hq.warmRoom` guessed from prop rows; each gate learned a room's files only by building it | **BUILT in Phase 2**: THE FILE BOOK (each room's recorded files, in localStorage), per-part owned gates, and the near/far split (fork 5). The build-time manifest is Phase 9's `manifest-assets.js` |
+| **Streaming by distance priority**: near things load first | The model queue has lanes (scene / warm / bg) but no distance order. Now: a part's far props don't hold its attach, and doors are warmed within `warmDoorM` | Phase 2 (the gate half). Sorting the queue by distance is **NEW Phase 10** |
+| **LOD + impostors**: far things drawn with fewer triangles, or as cards | No `THREE.LOD` anywhere; every prop draws at full detail to the fog | **NEW Phase 10**: 2-3 levels per Meshy prop, baked offline by the Phase 9 tool (meshopt `simplify`), plus a camera-facing impostor past ~80 m; the far shells (§5.4) are the zone-scale version |
+| **Mesh + texture compression** (Draco/meshopt, KTX2/Basis GPU textures) | Raw GLB, PNG/JPG sheets decoded to full RGBA in VRAM | Phase 9 (§6: meshopt), plus KTX2 in the same tool (**NEW**, into Phase 9): 4-6× less VRAM and no decode stall |
+| **Off-main-thread loading**: parse and decode in workers | GLTFLoader parses on the main thread; images decode on it too. Only the terrain survey runs in a worker | **NEW Phase 11**: `ImageBitmapLoader` for textures (decoded off-thread); meshopt decoding already runs in a worker |
+| **Shader warm-up / pipeline cache**: no hitch the first time a material shows | No `renderer.compile`: the first frame that shows a new part's materials compiles them (the attach hitch) | **NEW Phase 11**: `renderer.compile(partRoot, camera)` before a part attaches, one part per frame |
+| **A frame budget for streaming work** | One builder step per frame (a big terrain step can take 100 ms+). `HQ_STAGE_RULES.buildMs` exists but is unused | **NEW Phase 11**: split the heavy steps (terrain tiles, props) into sub-steps under a ms budget |
+| **Static batching**: one draw for a room's unmoving pieces | Instancing of repeated props (Phase 0), but each shell / trim / wall piece is its own draw (~1,300 on Downtown) | **NEW Phase 11**: merge static shell meshes per terrain tile and material (`BufferGeometryUtils.mergeBufferGeometries`, already in r128) |
+| **Occlusion / portal culling**: rooms behind walls aren't drawn | Frustum culling only (the "occlusion" in the code is the camera fade and the AO) | **NEW Phase 12**: portals for the door joins (a neighbour through a closed door isn't drawn; through an open one, only if the doorway is in view). Cheap, and the wing is its first user |
+| **A memory budget**: evict what you haven't used | Parsed model caches are never freed; a long walk only grows | **NEW Phase 12**: LRU eviction of `_miscModelCache` / rigs by last use, capped by a VRAM estimate (the perf readout gets a MEM line) |
+| **Positional (3D) audio** | Sounds are flat: no `PannerNode` | **NEW Phase 13**: room tone and props (a fountain, a crowd, a door) as positional sources on the stage, faded by the neighbour ring |
+| **Cascaded shadows + baked light / probes** | One 2048 shadow map following the walker; a forward renderer with a point-light budget (the lamp picker) | **NEW Phase 14** (optional, big): 2-3 cascades on the open ground; light probes baked per part for the interiors |
+| **A modern renderer core** (WebGPU, `BatchedMesh`, parallel shader compile) | three r128 (2021) | A fork (§9, 16): upgrading three.js touches every file and every shader patch. Worth its own thread after Phase 9; nothing in Phases 10-13 needs it |
+| **Floating origin** | Present: the crossing re-anchors every root to the current part (Phase 1) | done |
+| **Instancing, tiled terrain, a disk asset cache, a perf HUD** | Present (Phase 0 / 1; the asset store `ew-assets-v1`; `ew_fpsCounter`) | done |
+
+The biggest wins for "smoother", in order: **shader warm-up + the ms slice** (the attach hitch), then
+**texture compression** (VRAM and decode), **LOD** (triangles past 60 m), and **portals** (the interior
+zones).
+
 ## 6. THE ASSETS — download once, made whole
 
 1. **Compress offline, rename, re-point** (the user's upload; Claude ships the tool): `optimize-assets.js`
@@ -881,6 +910,8 @@ becomes the west zone's sky; Shasta's cone stays a landmark until Shasta is a pa
    bridges and the props within 60 m of the join are in; farther props arrive under the fog. Alternative:
    whole-or-nothing like today's room gate (the part stays a far shell until every file lands — slower
    to appear, never a pop). The black-texture rule holds either way.
+   **RULED 2026-09-26 (mondo: "if we need a file tracker then make a god damn file tracker"): the DEFAULT.**
+   Built in Phase 2 (§12): THE FILE TRACKER (owned part gates, the near/far scan) + THE FILE BOOK + THE WARM.
 6. **The day's length.** Default: 24 real minutes a day (a full cycle in a session, dusk every 12 min).
    Alternatives: 48 (slower, more "a day"), 12 (a demo).
 7. **Shasta.** Default: Shasta's slopes join THE WOODS at the old trail's top as a fourth outdoor part
@@ -912,6 +943,9 @@ becomes the west zone's sky; Shasta's cone stays a landmark until Shasta is a pa
 15. **The order of the outdoor rebuilds.** Default (the user's list, then the frames): the forecourt
     (Phase 1 needs it to see anything) → the city joins → the woods → the highway and Area 51 → Camelot
     and the mountain → the coast → the Vatican. The interiors (§8.1) run whenever a thread is free.
+16. **The renderer core (§5.9).** Default: stay on three r128 through Phase 14 (every phase above works on
+    it). Alternative: upgrade three.js in its own thread after Phase 9 (WebGPU, `BatchedMesh`, parallel
+    shader compile), which touches every shader patch in three-renderer.js and three-vfx-effects.js.
 
 ---
 
@@ -921,7 +955,7 @@ becomes the west zone's sky; Shasta's cone stays a landmark until Shasta is a pa
 |---|---|---|---|
 | 0 | **THE TABLE + THE READOUT**: `DOOR_HQ.world` with EVERY zone of §4.5 as frames and joins (data only: nothing moves, nothing is drawn differently), `hqWorldValidate` + the readers, `HQ_WORLD_RULES` / `HQ_STAGE_RULES` / `HQ_WORLD_CLOCK` tables, THE MAP drawn from the frames (§7) beside the old WORLD tab (a toggle) so the user can argue with the geography before anything is built, the HUD readout (`hq.perf()` behind `ew_fpsCounter`, ticking in the walk), THE INSTANCE PASS (§5.5: it needs no zone and pays at once) | data.js (R2 + Render), map.js, three-renderer.js, styles-base.css (the map's CSS lives there, not in styles-hud.css) | `hq-world-map.test.js` (the validator's pins and its negative cases, the transforms, the sheet's fog, the instance pass on real three r128 in a vm harness); `hq-world.test.js` untouched (it pins the links, which Phase 0 does not move) — **DONE 2026-09-26, §12** |
 | 1 | **THE STAGE on THE CITY**: one scene per zone, parts as groups with frames, `_hqSurface` by part, the crossing swap, the ring (built / warm / far), the sliced build, the terrain tiles, the far shells, the far plane and the dome, the lamp budget, the disposal, the stash of the stage for a fight — proven on Downtown ⇄ the stadium ⇄ the Strip with `road` joins replacing the three gantry loads; THE FORECOURT part built (family E) with its road join to Downtown so the city is reached on foot from the front door (fork 1) | three-renderer.js, map.js, data.js | `hq-stage.test.js` (vm: two parts, the transforms, the crossing, the ring, the lamp budget, the tiles' count); `stadium-garage.test.js` keeps its pins; the offline HQ probe's screenshots from the join looking both ways |
-| 2 | **THE JOINS + THE MERGE**: `hqShellSideOpen`, the stitch profile in the compiler, the door join (`inner`), `hqRoomResolve` aliases; THE MEDICAL WING merged; the mall's street doors as a door join (the mall's rebuild §8.1 may land before or after — the join works on the old mall); the road/trail/shore/wall join dresses | data.js, three-renderer.js, map.js | `hq-joins.test.js` (the stitch: two parts compiled to one profile agree within `joinTol`; a swinging door blocks nothing open, everything closed; aliases resolve every ledger key); `hq-suites.test.js` re-pinned for the wing |
+| 2 | **THE JOINS + THE MERGE**: `hqShellSideOpen`, the stitch profile in the compiler, the door join (`inner`), `hqRoomResolve` aliases; THE MEDICAL WING merged; the mall's street doors as a door join (the mall's rebuild §8.1 may land before or after — the join works on the old mall); the road/trail/shore/wall join dresses | data.js, three-renderer.js, map.js | `hq-joins.test.js` (the stitch: two parts compiled to one profile agree within `joinTol`; a swinging door blocks nothing open, everything closed; aliases resolve every ledger key); `hq-suites.test.js` re-pinned for the wing — **DONE 2026-09-26 with deviations (§12): the wing is DOOR JOINS on the stage, not a merge (no aliases needed); the mall's join waits for its lot; the join dresses beyond the road are the later zones'. Plus THE FILE TRACKER (fork 5)** |
 | 3 | **THE SKY + THE CLOCK**: the zone sky, `hqWorldSun`, the dome's `sunDir` uniform, the lamps' dusk, `sky.lock`, the clock's hold in pause/battle, the variants on the world hour, the fight at the room's hour; the `tower`/`gate`/`mountain` landmark kinds | data.js, three-renderer.js, map.js | `hq-clock.test.js` (the hour's continuity across a save, the sun at noon/midnight, a locked part's lamps); `day-sky.test.js` re-pinned |
 | 4 | **THE WEST: THE WOODS as one field + the haunted grounds + the estate + the Grove joined; THE WELLS re-pointed; THE WELL ROOM and the board rooms deleted; the basement merge** | data.js, three-renderer.js | `hq-woods.test.js` rewritten (one field, six aliases, every old find/tape/native present); `hq-cave.test.js` / `hq-world.test.js` re-pinned to §8.3; `hq-floors.test.js` for the basement |
 | 5 | **THE SOUTH: THE HIGHWAY parts, the gate part, Area 51 joined (the hangar and the white rooms as door joins), THE D.U.M.B. as an underground zone of corridor joins, THE BUNKER rebuilt** | data.js, three-renderer.js | `hq-area51.test.js` / `hq-dumb.test.js` re-pinned; the highway's `marks` and its two parts' stitch |
@@ -929,6 +963,11 @@ becomes the west zone's sky; Shasta's cone stays a landmark until Shasta is a pa
 | 7 | **THE COAST: the sea part, the shore join at the docks, the cay and the Dutchman as parts on it, the helm across the join** | data.js, three-renderer.js | `hq-deep.test.js` re-pinned; the skiff's crossing in the vm harness |
 | 8 | **THE FIELD BEYOND 8 × 8** (the encounter's AREA, not its team size — the user's correction): `sizes` [8, 12, 16], `hqFieldSizeFor` by the ground round the strike, the coarse window in the worker, the same seats spread over the bigger window, the prompt's size line. Needs no zone: it can be pulled forward and run in parallel with any phase on the user's word | data.js, map.js, battle.js (`board.N` reads), hud.js | `seamless-field.test.js` grows the 12 and 16 proofs (open grounds get 12/16, a cramped room stays 8, the party and the group seated as today, reach ≥ the window's share) |
 | 9 | **THE ASSETS**: `optimize-assets.js`, `manifest-assets.js`, `MeshoptDecoder` in the loader, the manifest in the store's accounting and the warm, the cap by quota, the settings row, `hq.warmZone` | three-renderer.js, index.html, deploy.js (the manifest upload), sprites.js / data.js (the renamed URLs, in the user's upload delivery) | `asset-store.test.js` grows the manifest and cap pins; `load-diet.test.js` unchanged |
+| 10 | **THE FAR, SMARTER** (§5.9): LOD levels + impostors for the Meshy props (baked by Phase 9's tool), the model queue sorted by distance to the walker, the far shells (§5.4) | three-renderer.js, the Phase 9 tool | `hq-lod.test.js` (a prop's levels switch at their distances; the queue orders near first) |
+| 11 | **THE SMOOTH ATTACH** (§5.9): `renderer.compile` before a part attaches, the ms-budget build slice (`buildMs`), `ImageBitmapLoader` textures, static batching of the shell per tile | three-renderer.js | `hq-stage.test.js` grows the slice (no step over budget on the vm clock) and the merge count pins |
+| 12 | **PORTALS + THE MEMORY BUDGET** (§5.9): a door join is a portal (a neighbour through a shut door is not drawn), LRU eviction of parsed models under a VRAM estimate, the MEM line on the readout | three-renderer.js | `hq-joins.test.js` grows the portal rule; `asset-store.test.js` the eviction |
+| 13 | **SOUND IN SPACE** (§5.9): positional room tone / props on the stage (`PannerNode`), faded by the ring | audio.js, three-renderer.js | `audio-space.test.js` |
+| 14 | **THE LIGHT** (§5.9, optional): shadow cascades on the open ground, light probes per interior part | three-renderer.js | screenshots + `day-sky.test.js` |
 | ∥ | **THE INTERIORS** (§8.1: the mall, the basilica, the bunker, the D.U.M.B. catwalks, then the remaining wing merges): any time from Phase 0, one thread each | data.js, three-renderer.js | one pinning test each, the BUILT checklist, screenshots |
 | ∥ | **THE VATICAN cortile, THE LEY's tell join**: after Phase 2 | | |
 
@@ -1093,3 +1132,53 @@ Line numbers are the 2026-09-26 clone's (token `20260926-bugfix-03-cors`); grep 
     Re-pinned: hq-deep (the boats are the part's record), hq-gallery (`gallery: null` lives in
     `_hqPartFields`). Probe: `_probe_stage.js` in the thread's scratchpad (enters Downtown, waits for both
     neighbours, walks the three joins, screenshots).
+- 2026-09-26 — **Phase 2 + THE FILE TRACKER** (thread "Open world Phase 2", zip
+  open-world/ENTROPY_WARS_OPEN_WORLD_2.zip, token `20260926-open-world-03-cors`). mondo: "if we need a file
+  tracker then make a god damn file tracker ... AAA game engine." Fork 5 is RULED to its default.
+  - **THE FILE TRACKER**: a gate opened `{ own: true }` records only the files asked for while it is
+    `_alOwner` (set around each of a part's build steps), so two neighbours never wait on each other.
+    `_loadMiscModel` tags its records `lane: 'misc'` and each instance `_ew_mm = url`. `_hqTrkScan` walks a
+    building part's instances, puts each one in part metres, and splits them by `HQ_STAGE_RULES.nearPropM`
+    (60 m) from the joined spans (`_hqTrkDist`). `_hqStageReady` attaches the part when `gate.idleExcept(far)`
+    (the near files are in plus a settle beat). The far props keep landing under the fog. `propsGate: 'whole'`
+    brings back Phase 1's rule. `hq.stage().parts[id].trk` shows the counts.
+  - **THE FILE BOOK** (`ew_hqFileBook_v1`, 48 rooms, 900 URLs each): each room's card (`_hqGateTick`) and
+    each part attach writes down every file its gate recorded. `hq.fileBook(id)` reads it.
+  - **THE WARM** (`_hqWarmTick`, every 500 ms): a door's room within `warmDoorM` is warmed from its book
+    (models parsed on the background lane, sheets and rigs fetched to the disk store). A stage part two
+    joins away is fetched to disk only (`_asPrefetch`, 2 at a time, skipping what the store already holds).
+    Phones (EW_PERF_LOW) warm nothing.
+  - **THE DOOR JOIN** (deviation from §4.3's MERGE: the five rooms stay whole, so their ids, tests,
+    ledgers and finds don't move). Zone `medwing` on ground `hq` (THE BUILDING): the medwing hub, the
+    ward (quarter turn), the dispensary, the interrogation room, and the padded cell off the ward. Its
+    four `kind: 'door'` joins name a door on each side, `HQ_WORLD_RULES.wallM` 0.2 apart and facing (the
+    validator checks both). Readers: `hqDoorOpening`, `hqWorldDoorJoinResolve`, `hqStageDoorJoin`, and
+    `hqShellSideOpen`. A door span on `hqStageNeighbours` (`door`, `pad`, `depth`) replaces no link. The
+    renderer:
+    - cuts the doorway through the wall and dado, and puts a header over the opening;
+    - lines this room's half of the gap (`_hqDoorSleeve`);
+    - swings the leaf as the walker comes within reach from EITHER side (`_hqJoinDoorTick`, also run on a
+      neighbour's doors in the walker's position in that part's metres);
+    - skips the press-in and the door target.
+    A closed box neighbour brings its own lamps and (`nbPeople: 'interior'`) its people, with ids suffixed
+    `@room`. The box lights ease hemi, key and fill across the crossing, and a room you step out of keeps
+    its people standing. map.js records the door used.
+  - **THE STITCH** (§4.2): `hqTerrainStitchRows(roomId)` gives, for each edge join between two STAGED parts,
+    the join's `y` (default: part a's floor) or its `profile` in zone metres. `hqTerrainCompile` eases the
+    field toward it within `stitchM` of the side and past the span's ends. On the city it moves at most
+    5 cm; Downtown and the Strip agree along their line (the heavy proof). Zones that aren't staged are not
+    stitched yet (the Vatican's observatory join would move 6 m, so it gets authored when that zone is
+    staged).
+  - **Not in Phase 2**: the mall's door join (its frame overlaps the financial district's buildings: the
+    lot must clear, or the mall rebuild (§8.1) lands first); `hqRoomResolve` aliases (no merge, so none
+    needed); the trail/shore/wall dresses (their zones' phases); a door-open sound on a joined leaf; an
+    outdoor neighbour's crowd (it still comes out at the crossing).
+  - **§5.9 THE ENGINE GAPS** was written and Phases 10-14 were added to §10.
+  - **Fixed from Phase 1**: a neighbour's plates (the door, counter and bay labels) showed through walls.
+    CSS2DRenderer rewrites `display` from `visible` every frame, so Phase 1's hide never held.
+    `_hqStageCssShow` now switches `visible`, and the crossing shows the new part's plates.
+  - Headless walk (`probe_wing.js` in open-world/, stand-in textures): the three neighbours stood beside the
+    hub about 67 s after the card at software GL's ~1 s a frame. The walker went hub → ward through the
+    door in 6 ms, with no load. `test:full` ends with the same 25 heavy reds as before this phase (checked
+    against HEAD, test by test).
+  - Tests: `hq-joins.test.js` (new, one `heavy` proof); `hq-stage.test.js` re-pinned (the zones).

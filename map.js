@@ -6212,7 +6212,7 @@
             if (!_hqRoomExists(to)) return;
             _hqCurRoom = to; _hqLastRoom = to; _hqLastDoor = null;
             let link = null;
-            try { const nb = (typeof window.hqStageNeighbours === 'function') ? (window.hqStageNeighbours(from) || []).find(n => n.id === to) : null; link = (nb && nb.links && nb.links[0]) || null; } catch (e) {}
+            try { const nb = (typeof window.hqStageNeighbours === 'function') ? (window.hqStageNeighbours(from) || []).find(n => n.id === to) : null; link = (nb && nb.links && nb.links[0]) || null; if (!link && nb) { const ds = (nb.spans || []).find(sp => sp.door); if (ds) link = ds.door; } } catch (e) {}   // a door join (Phase 2): the doorway you walked through is the door you used
             if (link) _hqRecordVisit(link);
             if (typeof _hqRecordRoomSeen === 'function') _hqRecordRoomSeen(to);
             setTimeout(() => { try { if (_hqCurRoom === to) _hqArrivalFire(to); } catch (e) {} }, 300);

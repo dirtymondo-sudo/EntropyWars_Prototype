@@ -1387,14 +1387,20 @@ const ThreeRenderer = (function () {
             for (var i = 0; i < _alSessions.length; i++) if (_alSessions[i].has[rec.id]) _alSessions[i].done++;
         };
         try { rec.stall = setTimeout(function () { if (!rec.done) { try { console.warn('[ThreeRenderer] ' + kind + ' did not land in ' + (AL_STALL_MS / 1000) + ' s — the gate stops waiting for it: ' + rec.url); } catch (e) {} rec.settle(false); } }, AL_STALL_MS); } catch (e) {}
-        for (var s = 0; s < _alSessions.length; s++) if (_alSessions[s].open) _alSessions[s].add(rec);
+        for (var s = 0; s < _alSessions.length; s++) if (_alSessions[s].open && _alOwns(_alSessions[s])) _alSessions[s].add(rec);
         return rec;
     }
+    /* THE FILE TRACKER (OPEN_WORLD_PLAN.md fork 5, 2026-09-26): a gate opened with `own: true` is the gate of ONE build (a
+       stage neighbour's): it records only the requests made while it is the OWNER (_alOwner — set round each of that part's
+       build steps), so two neighbours building one after the other never wait on each other's files. Every other gate still
+       records everything, as before. */
+    var _alOwner = null;
+    function _alOwns(G) { return !G.own || G === _alOwner; }
     /* a cache hit on a file still streaming: the open gates wait for it too */
     function _alJoin(rec) {
         if (!rec || rec.done) return;
         if (rec.bg && !(typeof _bgLoadDepth === 'number' && _bgLoadDepth > 0)) rec.bg = false;   // the scene on screen asks for a file the extras queued: a gate waits for it now
-        for (var s = 0; s < _alSessions.length; s++) if (_alSessions[s].open) _alSessions[s].add(rec);
+        for (var s = 0; s < _alSessions.length; s++) if (_alSessions[s].open && _alOwns(_alSessions[s])) _alSessions[s].add(rec);
     }
     function _alPending() { return _alLiveN; }
     function _alPendingList() { var out = [], now = _alNow(); for (var k in _alLive) out.push({ kind: _alLive[k].kind, url: _alLive[k].url, ms: Math.round(now - _alLive[k].at) }); return out; }
@@ -1402,7 +1408,7 @@ const ThreeRenderer = (function () {
        o.minMs: the gate is never idle before this long has passed (a scene whose build runs a frame later) */
     function _alGateOpen(name, o) {
         o = o || {};
-        var G = { name: name || 'gate', open: true, closed: false, has: {}, recs: [], total: 0, done: 0, t0: _alNow(), lastAt: _alNow(), minMs: (o.minMs > 0) ? +o.minMs : 0 };
+        var G = { name: name || 'gate', open: true, closed: false, own: !!o.own, has: {}, recs: [], total: 0, done: 0, t0: _alNow(), lastAt: _alNow(), minMs: (o.minMs > 0) ? +o.minMs : 0 };
         G.add = function (rec) { if (!rec || G.has[rec.id] || (rec.bg && !o.all)) return; G.has[rec.id] = 1; G.recs.push(rec); G.total++; G.lastAt = _alNow(); if (rec.done) G.done++; };
         G.pending = function () { return G.total - G.done; };
         G.list = function () { var now = _alNow(); return G.recs.filter(function (r) { return !r.done; }).map(function (r) { return { kind: r.kind, url: r.url, ms: Math.round(now - r.at) }; }); };
@@ -1412,6 +1418,21 @@ const ThreeRenderer = (function () {
             if (G.minMs && now - G.t0 < G.minMs) return false;
             if (G.pending() > 0) return false;
             return (now - Math.max(G.lastAt, _alLastEventAt || 0)) >= AL_SETTLE_MS;   // a beat: a file that just landed may ask for another
+        };
+        /* THE FILE TRACKER: idle but for the records in `skip` (a stage part's FAR props — fork 5's default: the part stands
+           once its ground, walls and near props are in; the far ones land under the fog). The beat is this gate's own: the
+           last request it recorded or the last of its counted files to land, AL_SETTLE_MS ago. */
+        G.pendingExcept = function (skip) { var n = 0; for (var i = 0; i < G.recs.length; i++) { var r = G.recs[i]; if (!r.done && !(skip && skip[r.id])) n++; } return n; };
+        G.idleExcept = function (skip) {
+            var now = _alNow(), last = G.lastAt;
+            if (G.minMs && now - G.t0 < G.minMs) return false;
+            for (var i = 0; i < G.recs.length; i++) {
+                var r = G.recs[i];
+                if (skip && skip[r.id]) continue;
+                if (!r.done) return false;
+                if (r.doneAt > last) last = r.doneAt;
+            }
+            return (now - last) >= AL_SETTLE_MS;
         };
         G.close = function () { if (G.closed) return; G.closed = true; G.open = false; var i = _alSessions.indexOf(G); if (i >= 0) _alSessions.splice(i, 1); };
         G.progress = function () { var cached = 0; for (var i = 0; i < G.recs.length; i++) if (G.recs[i].cached) cached++; return { name: G.name, total: G.total, done: G.done, cached: cached, pending: G.pending(), idle: G.idle(), ms: Math.round(_alNow() - G.t0) }; };
@@ -23774,6 +23795,7 @@ const ThreeRenderer = (function () {
         }
         e = _miscModelCache[url] = { root: null, loading: true, failed: false, cbs: [cb] };
         var rec = e._alRec = _alTrack('model', url);
+        rec.lane = 'misc';   // THE FILE BOOK: a misc model (a prop, a door leaf, a vehicle) — warmed back through this loader
         function _onLoad(res) {
             var obj = (res && res.scene) ? res.scene : res;   // GLTF → {scene}, OBJ → Object3D
             _compactMobileModelTextures(obj);
@@ -23874,6 +23896,7 @@ const ThreeRenderer = (function () {
     function _miscModelInstance(url, isGLB, target, opts) {
         opts = opts || {};
         var g = new THREE.Group();
+        g._ew_mm = url;   // THE FILE TRACKER: which file this instance waits on (a stage part tells its near props from its far ones by it)
         _loadMiscModel(url, isGLB, function (root) {
             if (!root || !root._ew_bbox) return;
             var bb = root._ew_bbox;
@@ -40006,11 +40029,31 @@ const ThreeRenderer = (function () {
             if (S.wallColor != null) wallOpts.color = S.wallColor;
             if (S.dadoColor != null) dadoOpts.color = S.dadoColor;
             if (edge === 'walls') {
-                G.add(slab(0, H, -0.02, 0.04, _hqMat(texWall, len / (TR || 3.2), H / (TR || 3.2), wallOpts)));
-                G.add(slab(0.06, S.dadoH, 0.02, 0.03, _hqMat(texDado, len / (TR || 2.2), TR ? S.dadoH / TR : 1, dadoOpts)));
+                /* THE DOOR JOIN (Phase 2): a doorway into a room on the stage is CUT through the wall (the runs either side,
+                   the wall over the opening); every other wall is the one slab it always was */
+                var cuts = (room.doors || []).map(function (d) {
+                    if (!d || d.wall !== ws[0]) return null;
+                    var dj = _hqDoorJoinOf(d); if (!dj) return null;
+                    return { at: (ws[0] === 'e' || ws[0] === 'w') ? (d.z || 0) : (d.x || 0), half: dj.ow / 2 + 0.03, top: dj.oh + 0.03 };
+                }).filter(Boolean);
+                var wRuns = [[-len / 2, len / 2]];
+                cuts.forEach(function (c) {
+                    var nx = [];
+                    wRuns.forEach(function (rn) {
+                        if (c.at - c.half > rn[0]) nx.push([rn[0], Math.min(rn[1], c.at - c.half)]);
+                        if (c.at + c.half < rn[1]) nx.push([Math.max(rn[0], c.at + c.half), rn[1]]);
+                    });
+                    wRuns = nx.filter(function (rn) { return rn[1] - rn[0] > 0.01; });
+                });
+                var cutRun = cuts.length ? wRuns : [null];
+                cutRun.forEach(function (rn) {
+                    var L = rn ? rn[1] - rn[0] : len;
+                    G.add(slab(0, H, -0.02, 0.04, _hqMat(texWall, L / (TR || 3.2), H / (TR || 3.2), wallOpts), rn));
+                    G.add(slab(0.06, S.dadoH, 0.02, 0.03, _hqMat(texDado, L / (TR || 2.2), TR ? S.dadoH / TR : 1, dadoOpts), rn));
+                });
+                cuts.forEach(function (c) { if (H - c.top > 0.02) G.add(slab(c.top, H, -0.02, 0.04, _hqMat(texWall, 2 * c.half / (TR || 3.2), (H - c.top) / (TR || 3.2), wallOpts), [c.at - c.half, c.at + c.half])); });
                 var trim = _hqMat(texTrim, len / 1.5, 1, { shininess: 40, specular: 0x555555 });
-                G.add(slab(0, 0.08, 0.03, 0.05, trim));
-                G.add(slab(S.dadoH, S.dadoH + 0.09, 0.03, 0.05, trim));
+                cutRun.forEach(function (rn) { G.add(slab(0, 0.08, 0.03, 0.05, trim, rn)); G.add(slab(S.dadoH, S.dadoH + 0.09, 0.03, 0.05, trim, rn)); });
                 G.add(slab(H - 0.1, H, 0.03, 0.05, trim));
                 return;
             }
@@ -47802,6 +47845,8 @@ const ThreeRenderer = (function () {
             if (box && typeof door.wall === 'string' && door.wall !== 'free') grp._ew_hqWall = door.wall;   // THE ROOM ROUND THE FIELD: a door fades with its wall
             G.add(grp);
             var rec = { door: door, group: grp, lens: lens, glow: glow, plate: plate, plateEl: el, plateChip: chip, state: 'open', level: level, Rw: Rw, y0: y0, wide: wide, ow: ow, inward: inward, box: box, leaf: leafKey, motion: motion, openT: 0, angle: !!(secret && !found), glimmer: glimmer };
+            var dj = box ? _hqDoorJoinOf(door) : null;
+            if (dj) { rec.join = dj; rec.joinBack = back; _hqDoorSleeve(grp, dj, ow, oh, pd, wallMat, capMat, U); }   // THE DOOR JOIN (Phase 2)
             if (motion && motion.clips) {
                 /* clip planes live in world space: each pocket's jamb edge,
                    keeping the side of the opening AWAY from that pocket
@@ -48237,7 +48282,9 @@ const ThreeRenderer = (function () {
        flag for the resolution and _hq3DOff() puts it back — the board's own reads are untouched. */
     function _hq3DOn() { if (typeof window === 'undefined' || !window.EW_DISABLE_3D_UNITS) return false; window.EW_DISABLE_3D_UNITS = false; return true; }
     function _hq3DOff(was) { if (was && typeof window !== 'undefined') window.EW_DISABLE_3D_UNITS = true; }
+    var _hqCharIdSuffix = '';   // THE DOOR JOIN (Phase 2): a stage neighbour's cast is spawned as '<id>@<room>' — two rooms' 'hq-agent-0' never share a rig
     function _hqSpawnCharacter(spec) {
+        if (_hqCharIdSuffix && spec && spec.id && spec.id.indexOf('@') < 0) spec = Object.assign({}, spec, { id: spec.id + _hqCharIdSuffix });
         var U = _hqUnits(), S = _hq.room.shell;
         var _h3d = _hq3DOn();
         var race = spec.race, gender = spec.gender || 'male';
@@ -51043,6 +51090,7 @@ const ThreeRenderer = (function () {
             if (distV < bestD) { bestD = distV; best = { kind: 'vehicle', id: b.id, label: b.label, sub: b.sub, verb: 'BOARD', vehicle: b.kind }; }
         });
         _hq.doors.forEach(function (d) {
+            if (d.join && _hqJoinOn(_hq, d.join.nb)) return;   // THE DOOR JOIN (Phase 2): an open doorway into a room on the stage — nothing to press, you walk on
             if (d.portalSurf && d.portalSurf !== 'wall') {
                 /* THE DOOR GUN rev 2: a hatch under your feet / over your head — read it in 3D, not through a wall plane */
                 var dF = Math.hypot(d.px - pl.x, d.pz - pl.z);
@@ -54735,6 +54783,7 @@ const ThreeRenderer = (function () {
         if (!pl || H.paused || !H.opts.onEnterDoor) return;
         var rec = (t && t.kind === 'door') ? t.rec : null;
         if (!rec || !rec.motion || rec.angle || rec.openT < 0.55 || HQ_DOOR_LOCKED[rec.state]) { H.enterDoorLatch = null; return; }   // THE SUSPICIOUS ANGLE: an unmeasured draught is a wall
+        if (rec.join && _hqJoinOn(H, rec.join.nb)) { H.enterDoorLatch = null; return; }   // THE DOOR JOIN (Phase 2): the room beyond stands on the stage — walking on is the crossing
         if (rec.portalSurf && rec.portalSurf !== 'wall') { H.enterDoorLatch = null; return; }   /* THE DOOR GUN rev 2: a flat threshold is crossed by touch (_hqTickPortalCross), never by the press-in */
         var press = false, toward = 0;
         var dirX = Math.sin(pl.targetYaw), dirZ = Math.cos(pl.targetYaw);
@@ -54764,21 +54813,61 @@ const ThreeRenderer = (function () {
         var H = _hq;
         for (var i = 0; i < H.doors.length; i++) {
             var d = H.doors[i], mo = d.motion;
+            if (d.join && H.player && _hqJoinDoorTick(H, d, H.player.x, H.player.z, dt)) continue;   // THE DOOR JOIN (Phase 2)
             if (!mo) continue;
             /* THE DOOR GUN rev 2: a FLAT threshold (a floor hatch, a ceiling hatch) stands open — it is a hole you fall through, not a door you press into */
             /* rev 5: a placed WALL door stands open too (HQ_PORTAL_RULES.leafAlways) — Portal's are always open; the leaf lies near flat beside the frame */
             var want = (d.portalSurf && (d.portalSurf !== 'wall' || _hqPortalRules().leafAlways)) ? 1 : ((targetKey === 'door:' + d.door.id && !HQ_DOOR_LOCKED[d.state] && !d.angle) ? 1 : 0);   // THE SUSPICIOUS ANGLE: no swing until measured
             if (!want && d.npcOpenUntil && d.npcOpenUntil > performance.now() && !HQ_DOOR_LOCKED[d.state]) want = 1;   // THE ROUNDS (2026-09-19): a walker going through swings the leaf
-            if (d.openT === want && d.openApplied === want) continue;
-            var speed = (mo.mode === 'swing') ? 1.9 : (mo.mode === 'way') ? 1.5 : 2.4;
-            d.openT = want ? Math.min(1, d.openT + dt * speed) : Math.max(0, d.openT - dt * speed);
-            var k = d.openT < 0.5 ? 2 * d.openT * d.openT : 1 - Math.pow(-2 * d.openT + 2, 2) / 2;   // ease in-out
-            if (mo.mode === 'swing') mo.pivot.rotation.y = mo.dir * mo.angle * k;
-            else if (mo.mode === 'slide') mo.carrier.position.x = mo.dir * mo.travel * k;
-            else if (mo.mode === 'elevator') for (var j = 0; j < mo.parts.length; j++) mo.parts[j].m.position.x = mo.parts[j].x0 + mo.parts[j].dir * mo.travel * k;
-            else if (mo.mode === 'way' && mo.tick) { try { mo.tick(k); } catch (e) {} }
-            d.openApplied = (d.openT === want) ? want : -1;
+            _hqDoorMotionStep(d, want, dt);
         }
+    }
+    function _hqDoorMotionStep(d, want, dt) {
+        var mo = d.motion; if (!mo) return;
+        if (d.openT === want && d.openApplied === want) return;
+        var speed = (mo.mode === 'swing') ? 1.9 : (mo.mode === 'way') ? 1.5 : 2.4;
+        d.openT = want ? Math.min(1, d.openT + dt * speed) : Math.max(0, d.openT - dt * speed);
+        var k = d.openT < 0.5 ? 2 * d.openT * d.openT : 1 - Math.pow(-2 * d.openT + 2, 2) / 2;   // ease in-out
+        if (mo.mode === 'swing') mo.pivot.rotation.y = mo.dir * mo.angle * k;
+        else if (mo.mode === 'slide') mo.carrier.position.x = mo.dir * mo.travel * k;
+        else if (mo.mode === 'elevator') for (var j = 0; j < mo.parts.length; j++) mo.parts[j].m.position.x = mo.parts[j].x0 + mo.parts[j].dir * mo.travel * k;
+        else if (mo.mode === 'way' && mo.tick) { try { mo.tick(k); } catch (e) {} }
+        d.openApplied = (d.openT === want) ? want : -1;
+    }
+    /* ══ THE DOOR JOIN (OPEN_WORLD_PLAN.md §4.3, Phase 2, 2026-09-26) ══════════════════════════════════════════════════
+       A door whose room beyond is ON THE STAGE (data.js hqStageDoorJoin — the medical wing's four doors) is a doorway:
+       its wall is cut behind it (_hqBuildBoxShell), its dark back plate is hidden, a sleeve lines the wall between the two
+       rooms, and its leaf swings open whenever the walker is within HQ_WORLD_RULES.swingM of it — from either side (the
+       neighbour's leaf is ticked in the walker's position turned into that room's metres, _hqStageTickPart) — and closes
+       behind. No prompt, no press-in: walking on through the doorway is the crossing (the Phase 1 swap). Until the room
+       beyond stands on the stage (built, attached) the door is the door it always was: the back plate is up, E / the
+       press-in load the room. A locked state keeps the leaf shut. → true when the join owns the door this frame. */
+    function _hqJoinOn(H, id) {
+        var st = H && H.stage; if (!st || !id) return false;
+        if (st.id === id) return true;
+        var E = st.parts[id]; return !!(E && E.attached);
+    }
+    function _hqJoinDoorTick(H, d, px, pz, dt) {
+        var on = _hqJoinOn(H, d.join.nb);
+        if (d.joinBack) d.joinBack.visible = !on;
+        if (!on) return false;
+        var near = !!d.box && Math.hypot(px - d.box.wx, pz - d.box.wz) <= (HQ_WORLD_RULES.swingM || 1.6) + (d.ow || 1.1) / 2;
+        _hqDoorMotionStep(d, (near && !HQ_DOOR_LOCKED[d.state]) ? 1 : 0, dt);
+        return true;
+    }
+    function _hqDoorJoinOf(door) {
+        var id = _hq && _hq.opts && _hq.opts.room;
+        if (!id || !door || door.way || door.secret || door.hidden || door.portal || _hqStageOff() || typeof hqStageDoorJoin !== 'function') return null;
+        try { return hqStageDoorJoin(id, door.id); } catch (e) { return null; }
+    }
+    /* the lining of the wall between the two rooms, on this room's half of it (the other room lines the other half) */
+    function _hqDoorSleeve(grp, dj, ow, oh, pd, wallMat, capMat, U) {
+        var wz0 = -(pd / 2 - 0.05), dep = Math.max(0.04, dj.gap / 2 + 0.03), zc = (wz0 - dep / 2) * U;
+        var fl = _hqBox(ow + 0.06, 0.03, dep, capMat); fl.position.set(0, 0.015 * U, zc);
+        var jl = _hqBox(0.04, oh + 0.04, dep, wallMat); jl.position.set(-(ow / 2 + 0.02) * U, ((oh + 0.04) / 2) * U, zc);
+        var jr = _hqBox(0.04, oh + 0.04, dep, wallMat); jr.position.set((ow / 2 + 0.02) * U, ((oh + 0.04) / 2) * U, zc);
+        var hd = _hqBox(ow + 0.08, 0.04, dep, wallMat); hd.position.set(0, (oh + 0.02) * U, zc);
+        [fl, jl, jr, hd].forEach(function (m) { m._ew_hqPart = 'door'; grp.add(m); });
     }
     /* ══════════════════════════════════════════════════════════════════════════════
        THE PREMIUM POLISH (PREMIUM_POLISH_PLAN.md, 2026-09-21) — THE LIGHT PASS + THE AIR PASS
@@ -55611,7 +55700,8 @@ const ThreeRenderer = (function () {
         _hqTickChars(wdt);
         _hqTickCamera(dt);
         _hqTickWorld(dt, now);
-        if (H.stage) { try { _hqStageTick(H, dt, now); } catch (e) { if (!H.stage.warnedTick) { H.stage.warnedTick = true; console.warn('[HQ stage] tick', e); } } if (_hq !== H) return; }   // THE STAGE (OPEN_WORLD_PLAN Phase 1): the neighbours build, tick, light — and the crossing
+        if (H.stage) { try { _hqStageTick(H, dt, now); } catch (e) { if (!H.stage.warnedTick) { H.stage.warnedTick = true; console.warn('[HQ stage] tick', e); } } if (_hq !== H) return; }
+        try { _hqWarmTick(H, now); } catch (e) {}   // THE WARM (2026-09-26): the rooms behind the doors near you, the parts two joins away   // THE STAGE (OPEN_WORLD_PLAN Phase 1): the neighbours build, tick, light — and the crossing
         _hqTickRipples(dt);   // THE RIPPLES (5.3): the wader's / the swimmer's / the skiff's rings
         if (!_polishOff('wind', 'EW_HQ_NO_WIND')) _EW_WIND.value = now * 0.001 * (((_hqLightRules().wind || {}).speed) || 1);   // THE WIND (5.1): the foliage's shared clock (a frozen clock = still trees)
         _hqTickMotionBlur(H);   // THE THIRD PASS 6.4: the deck at speed, the long fall
@@ -55809,7 +55899,7 @@ const ThreeRenderer = (function () {
         H.ready = true;
         _hqRebuildAt = performance.now();   // the room's arrival (2026-09-25): a lock the browser drops as the room settles is never the walker's ESC
         if (capped && G && !G.idle()) { try { console.warn('[HQ] the load card gave up after ' + Math.round(HQ_GATE_CAP_MS / 1000) + ' s — still in flight:', G.list().map(function (r) { return r.url; })); } catch (e) {} }
-        if (G) { var failed = G.failed(); if (failed.length) { try { console.warn('[HQ] ' + failed.length + ' file(s) of this room never landed (missing from the bucket? a frozen 404? — window._ewAssetFailures):', failed); } catch (e) {} } G.close(); }
+        if (G) { var failed = G.failed(); if (failed.length) { try { console.warn('[HQ] ' + failed.length + ' file(s) of this room never landed (missing from the bucket? a frozen 404? — window._ewAssetFailures):', failed); } catch (e) {} } try { _hqBookWrite(H.opts && H.opts.room, G); } catch (e) {} G.close(); }
         if (H.opts.onReady) { try { H.opts.onReady(); } catch (e) {} }
     }
 
@@ -56528,8 +56618,9 @@ const ThreeRenderer = (function () {
        to the new part's over HQ_STAGE_BLEND_MS (fork 4's default: the Strip keeps its own night).
        THE RING (§5.1): the one-hop neighbours are built (one builder step a frame, after the room is ready + the
        beat HQ_STAGE_RULES.buildDelayMs); a part two hops away is detached (kept built); past partsBuilt it is
-       disposed. A neighbour ATTACHES only when its own gate is idle (fork 5's default: the black-texture rule — a
-       part is never drawn with its sheets in flight). THE LAMPS (§5.2): the point lights of every part on the stage
+       disposed. A neighbour ATTACHES when its ground, walls, sheets and NEAR props are in (THE FILE TRACKER below —
+       fork 5's default since 2026-09-26; Phase 1 waited for every file: the black-texture rule still holds, a sheet
+       always gates, a far prop lands whole). THE LAMPS (§5.2): the point lights of every part on the stage
        are one budget — the nearest N lit, N constant (never below the current part's own count, so a room looks as
        it did before; a changing count would recompile every material). THE HAND-OVER: a fight flattens the drawn
        neighbours into the current part's groups (the battle's radius culls them per piece).
@@ -56575,10 +56666,10 @@ const ThreeRenderer = (function () {
         try { fn(_hq); } finally { _hq = keep; }
     }
     function _hqStageRun(H, E, fn) {
-        var T = _hqStageT(H, E), keep = _hq, ok = true;
-        _hq = T;
+        var T = _hqStageT(H, E), keep = _hq, ok = true, own = _alOwner;
+        _hq = T; _alOwner = E.gate || null;   // THE FILE TRACKER: what this part's builders ask for is this part's
         try { fn(T); } catch (e) { ok = false; console.warn('[HQ stage] ' + E.id + ':', e); }
-        finally { _hq = keep; }
+        finally { _hq = keep; _alOwner = own; }
         for (var k in T) if (!_hqZoneKey(k)) E.P[k] = T[k];   // what the builder wrote on the part (its terrain, its outer ground, its site…)
         return ok;
     }
@@ -56592,15 +56683,34 @@ const ThreeRenderer = (function () {
         function (room) { _hqPlaceProps(room); },
         function (room) { _hqBuildClimbs(room); _hqPlaceFinds(room); },
         function (room) { try { _hqPlaceLightShafts(room); } catch (e) {} try { _hqBuildDecals(room); } catch (e) {} try { _hqShadowFlags(room); } catch (e) {} },
+        /* Phase 2 (THE DOOR JOIN): a closed room's own lamps, and — HQ_STAGE_RULES.nbPeople 'interior' — its cast, so the ward is
+           lit and staffed through its open door (an outdoor part's crowd still comes out at the crossing) */
+        function (room) {
+            if (!_hqStageClosedBox(room)) return;
+            _hqBoxRoomLamps(room, _hq.scene);
+            if (HQ_STAGE_RULES.nbPeople === 'interior') {
+                var sfx = _hqCharIdSuffix; _hqCharIdSuffix = '@' + (_hq.opts && _hq.opts.room);
+                try { _hqSpawnPopulation(room, Object.assign({}, _hq.opts, { _stageNoPlayer: true })); } finally { _hqCharIdSuffix = sfx; }
+                _hq._stagePeopled = true;
+            }
+        },
     ];
+    function _hqStageClosedBox(room) { return !!(room && room.kind === 'box' && room.shell && !(room.shell.open && room.shell.sky) && !room.terrain && !room.cave); }
     function _hqStageRootPlace(H, E) {
         var rel = E.rel || (E.rel = hqStageRel(H.stage.id, E.id)); if (!rel) return;
         var U = _hqUnits(), R = E.P.partRoot;
         R.position.set(rel.x * U, (rel.y || 0) * U, rel.z * U); R.rotation.set(0, rel.rot * Math.PI / 2, 0);
         R.updateMatrixWorld(true);
     }
+    /* a neighbour's plates (the door / counter / bay labels) are the current part's only: the CSS2D layer draws through walls,
+       so the ward's CHART and COT floated over the hub's wall (Phase 2). CSS2DRenderer rewrites `display` from `visible` every
+       frame, so the switch is `visible` (the value before the stage hid it is kept and given back) */
     function _hqStageCssShow(root, on) {
-        root.traverse(function (o) { if (o.isCSS2DObject && o.element) o.element.style.display = on ? '' : 'none'; });
+        root.traverse(function (o) {
+            if (!o.isCSS2DObject || !o.element) return;
+            if (!on) { if (o._ew_stageVis == null) o._ew_stageVis = o.visible; o.visible = false; o.element.style.display = 'none'; }
+            else if (o._ew_stageVis != null) { o.visible = o._ew_stageVis; o._ew_stageVis = null; }
+        });
     }
     function _hqStageAttach(H, E, on) {
         if (!!E.attached === !!on) return;
@@ -56651,10 +56761,12 @@ const ThreeRenderer = (function () {
         for (var i = 0; i < st.nbs.length; i++) {
             var nb = st.nbs[i], E = st.parts[nb.id];
             if (E && E.built) {
-                if (!E.attached && E.rel && ((E.gate && (E.gate.idle() || E.gate.closed)) || now - E.t0 > HQ_GATE_CAP_MS)) {
+                if (!E.attached && E.rel && _hqStageReady(H, E, now)) {
+                    try { _hqBookWrite(E.id, E.gate); } catch (e) {}
                     try { if (E.gate) E.gate.close(); } catch (e) {}
                     _hqStageAttach(H, E, true);
-                    console.log('[HQ stage] ' + nb.id + ' stands beside ' + st.id + ' (' + Math.round(now - E.t0) + ' ms)');
+                    var late = E.trk ? E.trk.farPending : 0;
+                    console.log('[HQ stage] ' + nb.id + ' stands beside ' + st.id + ' (' + Math.round(now - E.t0) + ' ms' + (late ? ', ' + late + ' far file(s) still landing under the fog' : '') + ')');
                 }
                 continue;
             }
@@ -56664,7 +56776,7 @@ const ThreeRenderer = (function () {
                 if (!st.warned[nb.id]) { st.warned[nb.id] = 1; if (H.opts.stageWarm) { try { H.opts.stageWarm(nb.id); } catch (e) {} } }
                 continue;
             }
-            if (!E) { E = st.parts[nb.id] = _hqStagePartNew(H, nb.id); if (!E) continue; E.rel = nb.rel; E.t0 = now; E.gate = _alGateOpen('part:' + nb.id); }
+            if (!E) { E = st.parts[nb.id] = _hqStagePartNew(H, nb.id); if (!E) continue; E.rel = nb.rel; E.t0 = now; E.gate = _alGateOpen('part:' + nb.id, { own: true }); }
             var fn = _HQ_STAGE_STEPS[E.step++];
             var p3 = _hq3DOn();
             try { _hqStageRun(H, E, function () { fn(room); }); } finally { _hq3DOff(p3); }
@@ -56672,13 +56784,210 @@ const ThreeRenderer = (function () {
             return;   // one step a frame, whoever it was for
         }
     }
+    /* a closed box room's light (the hemisphere, the key, the fill): `mood.ambient` scales them, never below the floor */
+    function _hqBoxLightVals(room) {
+        var S = room.shell || {}, LRb = _hqLightRules();
+        var amb = (S.mood && S.mood.ambient != null) ? S.mood.ambient : 1; amb = Math.max(amb, LRb.ambientFloor);
+        return { hemiI: 0.5 * amb, keyI: 0.22 * amb, fillI: LRb.fill * amb };
+    }
+    /* a closed box room's own lamps (the fluorescents at shell.light / shell.lights, a warm pool at each desk lamp) — _hqEnter
+       hangs them on the scene; a stage neighbour hangs them in its part (Phase 2: the ward is lit through its open door) */
+    function _hqBoxRoomLamps(room, sc) {
+        var U = _hqUnits(), S = room.shell;
+        var lightsAt = (S.lights && S.lights.length) ? S.lights : [S.light || { x: 0, z: 0 }];
+        var plC = (S.mood && S.mood.light != null) ? S.mood.light : 0xe6eeff;   // a site room's mood (blue under the collider, yellow in the Backrooms)
+        lightsAt.forEach(function (Lt) {
+            var fl1 = new THREE.PointLight(plC, lightsAt.length > 1 ? 0.5 : 0.55, (lightsAt.length > 1 ? 12 : 9) * U, 2); fl1.position.set(Lt.x * U, (S.h - 0.35) * U, Lt.z * U); sc.add(fl1);
+        });
+        (room.props || []).forEach(function (pp) {
+            if (pp.key !== 'desk_lamp' && pp.key !== 'table_lamp') return;
+            var wl = new THREE.PointLight(0xffd9a0, 0.5, 5 * U, 2); wl.position.set((pp.x || 0) * U, ((pp.y || 0) + 0.5) * U, (pp.z || 0) * U); sc.add(wl);
+        });
+    }
+    /* ══ THE FILE TRACKER (OPEN_WORLD_PLAN.md fork 5 — back to the plan's default, 2026-09-26; the user: "if we need a file
+       tracker then make a god damn file tracker") ══════════════════════════════════════════════════════════════════════
+       Phase 1 attached a neighbour WHOLE-OR-NOTHING (its gate idle = every file it asked for had landed), because the gate
+       could not tell a prop at the join from one 200 m away. Now every misc-model instance carries the file it waits on
+       (`_ew_mm`, _miscModelInstance), a part's gate records only ITS OWN requests (`own`, _alOwner round its build steps),
+       and before the attach the tracker walks the part: an instance within HQ_STAGE_RULES.nearPropM of the joined span
+       (in the part's own metres, to the span's segment) is NEAR, the rest FAR. The part stands beside you when its ground,
+       walls, bridges, sheets and every NEAR file are in (G.idleExcept(far-only)); the far files land under the fog and
+       fill their instances where they stand. A GLB lands whole (its textures ride inside it, the loader parses them before
+       the callback), so a far prop is never drawn half-dressed; a SHEET is never skipped (the black-texture rule: every
+       texture record is structural and gates). `HQ_STAGE_RULES.propsGate: 'whole'` = the fork's alternative (Phase 1's).
+       The scan runs every `trkMs` while a built part waits; ThreeRenderer.hq.stage() reports near / far per part. */
+    var _hqTrkV = null, _hqTrkM = null;
+    /* the joined spans of part E's edge that face the current part, in E's own metres */
+    function _hqTrkSpans(E, curId) {
+        if (E._trkSpans && E._trkSpansFor === curId) return E._trkSpans;
+        var out = [];
+        try { (hqStageNeighbours(E.id) || []).forEach(function (nb) { if (nb.id === curId) out = out.concat(nb.spans); }); } catch (e) {}
+        E._trkSpans = out; E._trkSpansFor = curId;
+        return out;
+    }
+    /* metres from (x, z) to the nearest span (∞ with no span) — hw / hd = the part's half size */
+    function _hqTrkDist(spans, hw, hd, x, z) {
+        var best = Infinity;
+        for (var i = 0; i < spans.length; i++) {
+            var sp = spans[i], ax, az, bx, bz;
+            if (sp.side === 'n' || sp.side === 's') { az = bz = (sp.side === 'n') ? -hd : hd; ax = sp.t0; bx = sp.t1; }
+            else { ax = bx = (sp.side === 'w') ? -hw : hw; az = sp.t0; bz = sp.t1; }
+            var dx = bx - ax, dz = bz - az, L2 = dx * dx + dz * dz, t = L2 > 0 ? Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / L2)) : 0;
+            var ex = ax + t * dx - x, ez = az + t * dz - z, d = Math.sqrt(ex * ex + ez * ez);
+            if (d < best) best = d;
+        }
+        return best;
+    }
+    /* → { near: n instances, far: n, nearPending, farPending, farOnly: { recId: 1 } } */
+    function _hqTrkScan(H, E) {
+        var U = _hqUnits(), R = E.P.partRoot, room = _hqData().rooms[E.id], S = (room && room.shell) || {};
+        var hw = (S.w || 0) / 2, hd = (S.d || 0) / 2, nearM = HQ_STAGE_RULES.nearPropM || 60;
+        var spans = _hqTrkSpans(E, H.stage.id);
+        var v = _hqTrkV || (_hqTrkV = new THREE.Vector3()), inv = _hqTrkM || (_hqTrkM = new THREE.Matrix4());
+        R.updateMatrixWorld(true);
+        inv.copy(R.matrixWorld).invert();
+        var out = { near: 0, far: 0, nearPending: 0, farPending: 0, farOnly: {} }, nearRec = {}, farRec = {};
+        R.traverse(function (o) {
+            if (!o._ew_mm) return;
+            var e = _miscModelCache[o._ew_mm], rec = e && e._alRec;
+            v.setFromMatrixPosition(o.matrixWorld).applyMatrix4(inv);
+            var near = !spans.length || _hqTrkDist(spans, hw, hd, v.x / U, v.z / U) <= nearM;
+            if (near) out.near++; else out.far++;
+            if (!rec || rec.done) return;
+            (near ? nearRec : farRec)[rec.id] = 1;
+        });
+        for (var id in farRec) if (!nearRec[id]) { out.farOnly[id] = 1; out.farPending++; }
+        for (var id2 in nearRec) out.nearPending++;
+        return out;
+    }
+    /* may built part E stand beside the current part now? (fork 5) */
+    function _hqStageReady(H, E, now) {
+        if (!E.gate || E.gate.closed) return true;
+        if (now - E.t0 > HQ_GATE_CAP_MS) { try { console.warn('[HQ stage] ' + E.id + ': the part gate gave up after ' + Math.round(HQ_GATE_CAP_MS / 1000) + ' s', E.gate.list().map(function (r) { return r.url; })); } catch (e) {} return true; }
+        if (HQ_STAGE_RULES.propsGate === 'whole') return E.gate.idle();
+        if (!E.trk || now - (E.trkAt || 0) >= (HQ_STAGE_RULES.trkMs || 250)) { E.trkAt = now; E.trk = _hqTrkScan(H, E); }
+        return E.gate.idleExcept(E.trk.farOnly);
+    }
+
+    /* ══ THE FILE BOOK + THE WARM (OPEN_WORLD_PLAN.md §5.2 / §5.4, 2026-09-26) ══════════════════════════════════════════
+       Nothing knew which files a room needs until the room was built (hq.warmRoom guessed from its prop rows: no terrain
+       scatter, no setting, no sheets, no rigs). THE BOOK learns it: when a room's card drops (_hqGateTick) or a stage part
+       attaches, every file its gate recorded is written down under the room (localStorage `ew_hqFileBook_v1`, the newest
+       HQ_BOOK_ROOMS rooms, the CDN prefix folded). THE WARM reads it: a door's room is warmed while you stand within
+       HQ_WORLD_RULES.warmDoorM of the door (its models parsed on the background lane, its sheets and rigs fetched onto the
+       disk store) so the walk through stays a blink; a stage part two joins away is fetched onto the disk (bytes only, no
+       parse) so it builds from the disk when you get near. Phones (EW_PERF_LOW) warm nothing, as before. */
+    var HQ_BOOK_KEY = 'ew_hqFileBook_v1', HQ_BOOK_ROOMS = 48, HQ_BOOK_URLS = 900, HQ_BOOK_CDN = 'https://cdn.entropywars.net/';
+    var _hqBook = null, _hqBookSaveT = null;
+    function _hqBookLoad() {
+        if (_hqBook) return _hqBook;
+        _hqBook = {};
+        try { var raw = localStorage.getItem(HQ_BOOK_KEY), o = raw ? JSON.parse(raw) : null; if (o && typeof o === 'object') _hqBook = o; } catch (e) { _hqBook = {}; }
+        return _hqBook;
+    }
+    function _hqBookSave() {
+        if (_hqBookSaveT) return;
+        _hqBookSaveT = setTimeout(function () {
+            _hqBookSaveT = null;
+            var B = _hqBookLoad(), ids = Object.keys(B);
+            if (ids.length > HQ_BOOK_ROOMS) { ids.sort(function (a, b) { return (B[a].t || 0) - (B[b].t || 0); }); ids.slice(0, ids.length - HQ_BOOK_ROOMS).forEach(function (k) { delete B[k]; }); }
+            try { localStorage.setItem(HQ_BOOK_KEY, JSON.stringify(B)); } catch (e) {}
+        }, 1000);
+    }
+    function _hqBookFold(u) { return u.indexOf(HQ_BOOK_CDN) === 0 ? '~' + u.slice(HQ_BOOK_CDN.length) : u; }
+    function _hqBookUnfold(u) { return u.charAt(0) === '~' ? HQ_BOOK_CDN + u.slice(1) : u; }
+    /* a record's letter: m = a misc model (the prop loader), r = a rig, f = foliage, t = a sheet / an image */
+    function _hqBookLane(rec) { return rec.lane === 'misc' ? 'm' : rec.kind === 'model' ? 'r' : rec.kind === 'foliage' ? 'f' : 't'; }
+    function _hqBookWrite(roomId, G) {
+        if (!roomId || !G || !G.recs || !G.recs.length) return;
+        var seen = {}, list = [];
+        for (var i = 0; i < G.recs.length && list.length < HQ_BOOK_URLS; i++) {
+            var r = G.recs[i]; if (!r.url || /^(data|blob):/i.test(r.url) || (r.done && r.ok === false)) continue;
+            var k = _hqBookLane(r) + _hqBookFold(r.url); if (seen[k]) continue; seen[k] = 1; list.push(k);
+        }
+        if (!list.length) return;
+        _hqBookLoad()[roomId] = { t: Date.now(), f: list };
+        _hqBookSave();
+    }
+    function _hqBookRead(roomId) {
+        var e = _hqBookLoad()[roomId]; if (!e || !Array.isArray(e.f)) return [];
+        return e.f.map(function (k) { return { lane: k.charAt(0), url: _hqBookUnfold(k.slice(1)) }; });
+    }
+    /* THE DISK WARM: bytes onto the asset store, two at a time, lowest priority — a file already on disk is skipped */
+    var _asPreQ = [], _asPreN = 0, _asPreSeen = {};
+    function _asPrefetch(url) {
+        if (!url || _asPreSeen[url] || !_asAvailable()) return false;
+        if (typeof window !== 'undefined' && window.EW_PERF_LOW) return false;
+        var ix = _asIndexLoad(); if (ix[url]) return false;
+        _asPreSeen[url] = 1; _asPreQ.push(url); _asPrePump();
+        return true;
+    }
+    function _asPrePump() {
+        while (_asPreN < 2 && _asPreQ.length) {
+            var u = _asPreQ.shift(); _asPreN++;
+            _asFetch(u, { priority: 'low' }).then(function (res) { return res.blob(); }).then(function () {}, function () {}).then(function () { _asPreN--; _asPrePump(); });
+        }
+    }
+    /* warm a room: o.disk = bytes only (a part two joins away); else the models parsed on the background lane (a door's
+       room, the menu's arrival). The book's files + the rows' own guesses (the doors' leaves, the props, the shell's sheets). */
+    function _hqWarmRoom(roomId, o) {
+        o = o || {};
+        var D = _hqData(), room = D && D.rooms ? D.rooms[roomId] : null;
+        if (!room || !D.catalogue) return 0;
+        if (typeof window !== 'undefined' && window.EW_PERF_LOW) return 0;   // a phone streams the room on entry, one model at a time (the mobile pass)
+        var n = 0, seen = {};
+        function model(url) {
+            if (!url || seen[url]) return; seen[url] = 1;
+            if (o.disk) { if (_asPrefetch(url)) n++; return; }
+            var e = _miscModelCache[url]; if (e && (e.root || e.loading || e.failed)) return;
+            n++; try { _loadMiscModel(url, !/\.obj($|\?)/i.test(url), function () {}, { bg: true }); } catch (err) {}   // the background lane (2026-09-20)
+        }
+        function warmCat(cat) { if (cat && cat.file) model(_hqModelUrl(cat)); }
+        (room.doors || []).forEach(function (d) { if (d && d.leaf) warmCat(D.catalogue[d.leaf]); });
+        (room.props || []).forEach(function (p) { if (p && p.key) warmCat(D.catalogue[p.key]); });
+        warmCat(D.catalogue.door_gun);
+        _hqBookRead(roomId).forEach(function (f) {
+            if (f.lane === 'm') model(f.url);
+            else if (!seen[f.url]) { seen[f.url] = 1; if (_asPrefetch(f.url)) n++; }   // a rig, a sheet, a foliage file: onto the disk
+        });
+        if (!o.disk) {
+            var S = room.shell || {};
+            [S.floor || 'terrazzo', S.wall || 'stone', S.dado || 'oxblood', S.ceiling || 'ceiling', S.trim || 'teal'].forEach(function (k) { try { _hqTex(k, 1, 1); } catch (e) {} });
+        }
+        return n;
+    }
+    /* every half second in the walk: the doors near the walker warm their rooms; on a stage, the parts two joins away warm
+       onto the disk (once per visit each) */
+    function _hqWarmTick(H, now) {
+        if (!H || !H.player || !H.ready || now - (H._warmAt || 0) < 500) return;
+        H._warmAt = now;
+        var W = H._warmed || (H._warmed = {}), pl = H.player, R = HQ_WORLD_RULES.warmDoorM || 20, st = H.stage;
+        var here = (H.opts && H.opts.room) || null;
+        (H.doors || []).forEach(function (d) {
+            var to = d.door && d.door.action && d.door.action.room; if (!to || to === here || W[to]) return;
+            if (st && (st.parts[to] || st.nbs.some(function (nb) { return nb.id === to; }))) return;   // on the stage already
+            if (!d.group) return;
+            var gx = d.group.position.x / _hqUnits(), gz = d.group.position.z / _hqUnits();
+            if (Math.hypot(gx - pl.x, gz - pl.z) > R) return;
+            W[to] = 1;
+            try { var n = _hqWarmRoom(to); if (n && typeof window !== 'undefined' && window.EW_HQ_DEBUG) console.log('[HQ warm] ' + to + ': ' + n + ' file(s) ahead of the door'); } catch (e) {}
+        });
+        if (st && typeof hqWorldRing === 'function') {
+            var ring = {}; try { ring = hqWorldRing(st.id, 2) || {}; } catch (e) { ring = {}; }
+            for (var id in ring) { if (ring[id] !== 2 || W['disk:' + id] || !_hqData().rooms[id]) continue; W['disk:' + id] = 1; try { _hqWarmRoom(id, { disk: true }); } catch (e) {} }
+        }
+    }
+
     /* a drawn neighbour's life: its tickers (the traffic, the torches), its glows, its plates' fade by the eye's distance */
     var _hqStageV = null;
     function _hqStageTickPart(H, E, dt, now) {
         var P = E.P, U = _hqUnits(), cam = H.camera.position, v = _hqStageV || (_hqStageV = new THREE.Vector3());
+        var pl = H.player, q = (pl && E.rel) ? hqStageFromRoom(E.rel, pl.x, pl.z) : null;
         _hqStageRun(H, E, function (T) {
             for (var tk = 0; tk < T.tickers.length; tk++) { try { T.tickers[tk](dt, now); } catch (e) {} }
             if (T.sways && T.sways.length) { try { _hqTickSways(dt, now); } catch (e) {} }
+            if (T._stagePeopled && T.chars && T.chars.length) { try { _hqTickChars(dt); } catch (e) {} }   // Phase 2: the cast of a room beside you breathes
+            if (q) for (var di = 0; di < T.doors.length; di++) { var dd = T.doors[di]; if (dd.join) _hqJoinDoorTick(H, dd, q.x, q.z, dt); }   // THE DOOR JOIN: its leaf swings for you from this side too
         });
         for (var fp = 0; fp < P.fxPulse.length; fp++) { var fx = P.fxPulse[fp]; fx.mat.opacity = Math.max(0, fx.baseOp + Math.sin(now * 0.001 * fx.spd + fx.phase) * fx.opAmp); }
         var plates = P.doors.concat(P.counters);
@@ -56734,18 +57043,28 @@ const ThreeRenderer = (function () {
         var Q = { id: fromId, P: {}, extra: null, opts: Object.assign({}, H.opts, { room: fromId }), gate: null, step: _HQ_STAGE_STEPS.length, built: true, attached: true, t0: t0, rel: null };
         for (var k in H) if (!_hqZoneKey(k)) Q.P[k] = H[k];
         var pl = H.player;
-        (Q.P.chars || []).forEach(function (ch) {
-            if (ch === pl) return;
-            try { var rig = _unitModelRigs.get(ch.id); if (rig) { _disposeModelRig(rig); _unitModelRigs.delete(ch.id); } _modelAnimState.delete(ch.id); } catch (e) {}
-            try { if (ch.entry && ch.entry.group) { if (ch.entry.group.parent) ch.entry.group.parent.remove(ch.entry.group); ch.entry.group.traverse(function (o) { _disposeR(o); }); } } catch (e) {}
-        });
-        Q.P.chars = []; Q.P.blockers = (Q.P.blockers || []).filter(function (b) { return !b.npc; });
-        Q.P.rounds = null; Q.P.roundsExits = null; Q.P.roundsStops = null; Q.P.nav = null;
+        /* THE DOOR JOIN (Phase 2): a closed room keeps its cast when you step out of it (HQ_STAGE_RULES.nbPeople) — the nurse
+           stays at her desk behind you; they stand still until you come back (their rounds resume then) */
+        var keepCast = HQ_STAGE_RULES.nbPeople === 'interior' && _hqStageClosedBox(fromRoom);
+        if (keepCast) {
+            Q.P.chars = (Q.P.chars || []).filter(function (ch) { return ch !== pl; });
+            Q.P.chars.forEach(function (ch) { ch.moving = false; });
+            Q.P._stagePeopled = true;
+        } else {
+            (Q.P.chars || []).forEach(function (ch) {
+                if (ch === pl) return;
+                try { var rig = _unitModelRigs.get(ch.id); if (rig) { _disposeModelRig(rig); _unitModelRigs.delete(ch.id); } _modelAnimState.delete(ch.id); } catch (e) {}
+                try { if (ch.entry && ch.entry.group) { if (ch.entry.group.parent) ch.entry.group.parent.remove(ch.entry.group); ch.entry.group.traverse(function (o) { _disposeR(o); }); } } catch (e) {}
+            });
+            Q.P.chars = []; Q.P.blockers = (Q.P.blockers || []).filter(function (b) { return !b.npc; });
+            Q.P.rounds = null; Q.P.roundsExits = null; Q.P.roundsStops = null; Q.P.nav = null;
+        }
         Q.extra = new THREE.Group(); Q.extra.name = 'hq_part_scene'; Q.P.partRoot.add(Q.extra);
         Q.P.heroLit = Q.P.heroLit || { _stage: true };
         /* the new current part: its keys onto the visit's record */
         for (var k2 in Q.P) delete H[k2];
         for (var k3 in E.P) H[k3] = E.P[k3];
+        _hqStageCssShow(Q.P.partRoot, false); _hqStageCssShow(H.partRoot, true);   // the plates are the current part's
         /* re-anchor: A = RotY(−rot·π/2) · T(−rel) takes the old frame to the new one (the new part's root becomes the identity;
            its `extra` group — what its builders hung on the scene — rides inside it) */
         var th = -rel.rot * Math.PI / 2, RY = new THREE.Matrix4().makeRotationY(th), A = RY.clone().multiply(new THREE.Matrix4().makeTranslation(-rel.x * U, -(rel.y || 0) * U, -rel.z * U));
@@ -56770,7 +57089,8 @@ const ThreeRenderer = (function () {
         rv(pl, 'mvx', 'mvz'); rv(pl, 'velX', 'velZ'); rv(pl, 'pushX', 'pushZ');
         pl.yaw += th; if (pl.targetYaw != null) pl.targetYaw += th;
         if (pl.entry && pl.entry.group) { H.charGroup.add(pl.entry.group); pl.entry.group.position.set(pl.x * U, pl.visY * U, pl.z * U); }
-        H.chars = [pl];
+        var peopled = !!H._stagePeopled;   // the new part's cast already stands (built with it as a neighbour, or kept when you left it)
+        H.chars = [pl].concat(peopled ? (H.chars || []).filter(function (ch) { return ch !== pl; }) : []);
         var c = H.cam; c.yaw -= th;
         if (c.init) { var ce = mp(c.ex, c.ez), cl = mp(c.lx, c.lz); c.ex = ce.x; c.ez = ce.z; c.lx = cl.x; c.lz = cl.z; c.ey -= (rel.y || 0); c.ly -= (rel.y || 0); }
         H.camera.position.applyMatrix4(A); H.camera.lookAt(c.lx * U, c.ly * U, c.lz * U);
@@ -56784,7 +57104,7 @@ const ThreeRenderer = (function () {
         _hqStageRing(H);
         /* the part's people, the light pass on its box */
         var p3 = _hq3DOn();
-        try { _hqSpawnPopulation(H.room, Object.assign({}, H.opts, { _stageNoPlayer: true })); } catch (e) { console.warn('[HQ stage] population', e); } finally { _hq3DOff(p3); }
+        try { if (!peopled) _hqSpawnPopulation(H.room, Object.assign({}, H.opts, { _stageNoPlayer: true })); } catch (e) { console.warn('[HQ stage] population', e); } finally { _hq3DOff(p3); }
         try { _hqShadowArm(H.room); } catch (e) {}
         try { _hqAoArm(H.room); } catch (e) {}
         try { _hqHeightFogArm(H.room); } catch (e) {}
@@ -56811,13 +57131,29 @@ const ThreeRenderer = (function () {
         };
     }
     function _hqStageBlendStart(H, fromRoom, toRoom) {
-        var st = H.stage; if (!H.sky || !toRoom.shell || !toRoom.shell.sky) { try { if (typeof ThreePost !== 'undefined' && ThreePost.setSceneLook) ThreePost.setSceneLook(_sceneLookOf(toRoom.shell.look, toRoom.label)); } catch (e) {} return; }
+        var st = H.stage;
+        /* THE DOOR JOIN (Phase 2): room to room indoors — the hemisphere, the key and the fill ease to the new room's mood */
+        if (!H.sky && _hqStageClosedBox(fromRoom) && _hqStageClosedBox(toRoom)) {
+            var ba = st.blend && st.blend.box ? st.blend.cur : _hqBoxLightVals(fromRoom);
+            st.blend = { box: true, a: ba, b: _hqBoxLightVals(toRoom), t0: performance.now(), looked: false, cur: ba, lookB: toRoom.shell.look, labelB: toRoom.label };
+            return;
+        }
+        if (!H.sky || !toRoom.shell || !toRoom.shell.sky) { try { if (typeof ThreePost !== 'undefined' && ThreePost.setSceneLook) ThreePost.setSceneLook(_sceneLookOf(toRoom.shell.look, toRoom.label)); } catch (e) {} return; }
         var a = st.blend ? st.blend.cur : _hqStageSkyVals(fromRoom);
         st.blend = { a: a, b: _hqStageSkyVals(toRoom), t0: performance.now(), looked: false, cur: null };
         _hqStageBlendTick(H, st.blend.t0);
     }
     function _hqStageBlendTick(H, now) {
         var B = H.stage.blend, t = Math.min(1, (now - B.t0) / HQ_STAGE_BLEND_MS), k = t * t * (3 - 2 * t), a = B.a, b = B.b;
+        if (B.box) {
+            B.cur = { hemiI: a.hemiI + (b.hemiI - a.hemiI) * k, keyI: a.keyI + (b.keyI - a.keyI) * k, fillI: a.fillI + (b.fillI - a.fillI) * k };
+            if (H.hemiLight) H.hemiLight.intensity = B.cur.hemiI;
+            if (H.keyLight) H.keyLight.intensity = B.cur.keyI;
+            if (H.fillLight) H.fillLight.intensity = B.cur.fillI;
+            if (!B.looked && k >= 0.5) { B.looked = true; try { if (typeof ThreePost !== 'undefined' && ThreePost.setSceneLook) ThreePost.setSceneLook(_sceneLookOf(B.lookB, B.labelB)); } catch (e) {} }
+            if (t >= 1) H.stage.blend = null;
+            return;
+        }
         var L = function (x, y) { return x + (y - x) * k; };
         var ea = a.env, eb = b.env;
         var cur = { fogC: a.fogC.clone().lerp(b.fogC, k), fogD: L(a.fogD, b.fogD), hemiC: a.hemiC.clone().lerp(b.hemiC, k), hemiI: L(a.hemiI, b.hemiI), keyC: a.keyC.clone().lerp(b.keyC, k), keyI: L(a.keyI, b.keyI),
@@ -56896,7 +57232,7 @@ const ThreeRenderer = (function () {
     }
     function _hqStageStatus() {
         var H = _hq, st = H && H.stage; if (!st) return null;
-        var parts = {}; for (var id in st.parts) { var E = st.parts[id]; parts[id] = { built: E.built, step: E.step, attached: E.attached, rel: E.rel }; }
+        var parts = {}; for (var id in st.parts) { var E = st.parts[id]; parts[id] = { built: E.built, step: E.step, attached: E.attached, rel: E.rel, trk: E.trk ? { near: E.trk.near, far: E.trk.far, nearPending: E.trk.nearPending, farPending: E.trk.farPending } : null, waitMs: E.attached ? null : Math.round(performance.now() - (E.t0 || 0)) }; }
         return { id: st.id, nbs: st.nbs.map(function (n) { return n.id; }), parts: parts, crossed: st.crossed, lampN: st.lampN, skyYaw: st.skyYaw, blending: !!st.blend };
     }
 
@@ -57008,19 +57344,11 @@ const ThreeRenderer = (function () {
             var amb = (S.mood && S.mood.ambient != null) ? S.mood.ambient : 1;
             /* THE FLOOR (2026-09-20): a room's mood may dim the fill, never below HQ_LIGHT_RULES.ambientFloor — the
                torches carry the vibe, the key + a cool fill keep every face readable */
-            var LRb = _hqLightRules(); amb = Math.max(amb, LRb.ambientFloor);
-            sc.add(new THREE.HemisphereLight(0xd9d2c0, 0x1c1a1e, 0.5 * amb));
-            var bxk = new THREE.DirectionalLight(0xe8ecf5, 0.22 * amb); bxk.position.set(0.3, 1, 0.2).multiplyScalar(1000); sc.add(bxk); _hq.keyLight = bxk;
-            var bxf = new THREE.DirectionalLight(LRb.fillColor, LRb.fill * amb); bxf.position.set(-0.55, 0.45, -0.4).multiplyScalar(1000); sc.add(bxf);
-            var lightsAt = (S.lights && S.lights.length) ? S.lights : [S.light || { x: 0, z: 0 }];
-            var plC = (S.mood && S.mood.light != null) ? S.mood.light : 0xe6eeff;   // a site room's mood (blue under the collider, yellow in the Backrooms)
-            lightsAt.forEach(function (Lt) {
-                var fl1 = new THREE.PointLight(plC, lightsAt.length > 1 ? 0.5 : 0.55, (lightsAt.length > 1 ? 12 : 9) * U, 2); fl1.position.set(Lt.x * U, (S.h - 0.35) * U, Lt.z * U); sc.add(fl1);
-            });
-            (room.props || []).forEach(function (pp) {
-                if (pp.key !== 'desk_lamp' && pp.key !== 'table_lamp') return;
-                var wl = new THREE.PointLight(0xffd9a0, 0.5, 5 * U, 2); wl.position.set((pp.x || 0) * U, ((pp.y || 0) + 0.5) * U, (pp.z || 0) * U); sc.add(wl);
-            });
+            var LRb = _hqLightRules(), bxV = _hqBoxLightVals(room);
+            _hq.hemiLight = new THREE.HemisphereLight(0xd9d2c0, 0x1c1a1e, bxV.hemiI); sc.add(_hq.hemiLight);   // (THE STAGE eases it at a door join's crossing)
+            var bxk = new THREE.DirectionalLight(0xe8ecf5, bxV.keyI); bxk.position.set(0.3, 1, 0.2).multiplyScalar(1000); sc.add(bxk); _hq.keyLight = bxk;
+            var bxf = new THREE.DirectionalLight(LRb.fillColor, bxV.fillI); bxf.position.set(-0.55, 0.45, -0.4).multiplyScalar(1000); sc.add(bxf); _hq.fillLight = bxf;
+            _hqBoxRoomLamps(room, sc);
             _hq.cam.dist = Math.min(_hq.cam.dist, Math.max(2.2, S.d * 0.6));
         } else if (room.kind === 'bay') {
             /* a fluorescent corridor: cooler, flatter, point lights along the centreline */
@@ -57466,19 +57794,8 @@ const ThreeRenderer = (function () {
            door beat play — every door leaf, every catalogue prop, the door gun and the shell's sheets go
            through the same caches the build reads (_miscModelCache / _hqTexCache), so the build finds
            them landed or in flight instead of starting 40 requests behind the walker's rig */
-        warmRoom: function (roomId) {
-            var D = _hqData(); var room = D && D.rooms ? D.rooms[roomId] : null;
-            if (!room || !D.catalogue) return 0;
-            if (typeof window !== 'undefined' && window.EW_PERF_LOW) return 0;   // a phone streams the room on entry, one model at a time (the mobile pass)
-            var n = 0, seen = {};
-            function warmCat(cat) { if (!cat || !cat.file) return; var url = _hqModelUrl(cat); if (seen[url]) return; seen[url] = 1; n++; try { _loadMiscModel(url, true, function () {}, { bg: true }); } catch (e) {} }   // the background lane (2026-09-20)
-            (room.doors || []).forEach(function (d) { if (d && d.leaf) warmCat(D.catalogue[d.leaf]); });
-            (room.props || []).forEach(function (p) { if (p && p.key) warmCat(D.catalogue[p.key]); });
-            warmCat(D.catalogue.door_gun);
-            var S = room.shell || {};
-            [S.floor || 'terrazzo', S.wall || 'stone', S.dado || 'oxblood', S.ceiling || 'ceiling', S.trim || 'teal'].forEach(function (k) { try { _hqTex(k, 1, 1); } catch (e) {} });
-            return n;
-        },
+        warmRoom: function (roomId, o) { return _hqWarmRoom(roomId, o); },   // THE FILE BOOK (2026-09-26): the book's files + the rows' guesses
+        fileBook: function (roomId) { return roomId ? _hqBookRead(roomId) : Object.keys(_hqBookLoad()); },
         /* the walker's own rig + the shared animation libraries (the load card waits for exactly this model:
            H.ready is set when the player's model attaches) — resolved the way _hqSpawnCharacter resolves it */
         warmAvatar: function (av) {

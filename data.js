@@ -41588,6 +41588,7 @@ const HQ_WORLD_RULES = {
     crossHys: 1.0,     // m — the crossing's hysteresis (§5.3; Phase 1)
     warmDoorM: 20,     // m — a door to another zone warms its arrival when the walker is this close (§5.4)
     farRes: 4,         // m — the far shell's ground sampling (§5.4)
+    wallM: 0.2,        // m — the wall between two rooms joined by a door (Phase 2): the two shells stand this far apart, the doorway's sleeve lines the gap
 };
 const HQ_STAGE_RULES = {
     partsBuilt: 3, lampsLive: 12, lampR: 60, buildMs: 6, heapMB: 700, cacheIdleMs: 120000,   // §5.1–5.2 (Phase 1)
@@ -41603,7 +41604,17 @@ const HQ_STAGE_RULES = {
        rebuild). A zone not listed keeps today's rooms and doors exactly; a later phase adds its zone here when its
        joins are built. `buildDelayMs` = the beat after the room's card drops before the first neighbour builds (the
        arrival stays smooth); `lampPickMs` = how often the lamp budget re-picks the nearest `lampsLive` point lights. */
-    zones: ['city'], buildDelayMs: 600, lampPickMs: 500,
+    zones: ['city', 'medwing'], buildDelayMs: 600, lampPickMs: 500,
+    /* a neighbour's PEOPLE (Phase 2): 'interior' = a closed room's cast (the nurse at her desk, the patient on his cot) is
+       spawned with the room when it is built beside you, so the ward is not empty through its open door; an outdoor part's
+       crowd still comes out when you cross (Phase 1's rule — a city block is dozens of rigs). 'none' = Phase 1's rule
+       everywhere. */
+    nbPeople: 'interior',
+    /* THE FILE TRACKER (fork 5 — the plan's DEFAULT since 2026-09-26, the user's ruling: "make a god damn file tracker"): a
+       built neighbour stands beside you once its ground, walls, sheets and every prop within `nearPropM` of the joined span
+       are in; its farther props land under the fog where they stand. `propsGate: 'whole'` = the fork's alternative (every
+       file first, Phase 1's rule). `trkMs` = how often the tracker re-walks a waiting part. */
+    nearPropM: 60, propsGate: 'near', trkMs: 250,
 };
 /* THE EXPLORATION DAY (§4.4; Phase 3 builds it — the table lives here so the phases share one set of numbers). */
 const HQ_WORLD_CLOCK = { dayMin: 24, start: 9.0, dawn: [5.5, 7.0], dusk: [18.5, 20.0], lampsOn: 18.0, lampsOff: 6.5,
@@ -41614,6 +41625,8 @@ const HQ_WORLD = {
         under:   { label: 'UNDERGROUND', note: 'no sky: the underworld under the city, the cave under the woods, the D.U.M.B. under the desert' },
         rome:    { label: 'ROME', note: 'the Vatican: its own ground, reached through the bureau\'s painting' },
         ley:     { label: 'THE LEY', note: 'the tell over the ley tunnel; the far stations stay doors' },
+
+        hq:      { label: 'THE BUILDING', note: 'D.O.O.R. HQ inside: a wing whose rooms open into one another (Phase 2, the door joins)' },
     },
     zones: {
         /* Z0 — THE FORECOURT (fork 1: the foyer's front door opens onto it; Phase 1 builds it, family E) */
@@ -41792,6 +41805,27 @@ const HQ_WORLD = {
             },
             joins: [
                 { a: 'site_prebuilt_gobekli_leylines', b: 'site_prebuilt_gobekli_tell', kind: 'door' },
+            ] },
+        /* Z10 — THE MEDICAL WING (Phase 2, 2026-09-26 — the user: "I hate walking into the medical bay and every single little
+           room in there is a different loading screen"). The five rooms stay the rooms they are (every id, number, counter,
+           ledger key and save is untouched) and stand round the wing's corridor as they would in the building: the ward and
+           the dispensary north of it, the interrogation room east, Room 5150 behind the ward. Each DOOR JOIN (`door` = a's
+           door, `bDoor` = b's) is a pair of real doors back to back through a HQ_WORLD_RULES.wallM wall: both leaves swing
+           when you come near and you walk through — no card. The wing's west door to the main hall stays a door (the hall
+           is a round room of its own). Frames: the wing at the origin; a quarter turn carries a room's north to the west. */
+        medwing: { label: 'THE MEDICAL WING', ground: 'hq', hub: 'medwing', sky: null, clock: false,
+            parts: {
+                medwing:       { x: 0,    z: 0,     y: 0, rot: 0 },
+                medical:       { x: -2.2, z: -8.2,  y: 0, rot: 1 },    // the ward's west door (its way out) faces the wing's north door at x −2.2
+                dispensary:    { x: 4.4,  z: -6.9,  y: 0, rot: 0 },    // its south door at x −2.2 faces the wing's north door at x 2.2
+                interrogation: { x: 9.7,  z: 0,     y: 0, rot: 0 },    // its west door faces the wing's east door
+                padded:        { x: -7.2, z: -10.8, y: 0, rot: 1 },    // behind the ward's cell door (the ward's north wall is the ground's west)
+            },
+            joins: [
+                { a: 'medwing', b: 'medical',       kind: 'door', door: 'ward',          bDoor: 'egress' },
+                { a: 'medwing', b: 'dispensary',    kind: 'door', door: 'dispensary',    bDoor: 'egress' },
+                { a: 'medwing', b: 'interrogation', kind: 'door', door: 'interrogation', bDoor: 'egress' },
+                { a: 'medical', b: 'padded',        kind: 'door', door: 'padded',        bDoor: 'egress' },
             ] },
     },
     /* THE BORDERS — joins between two zones of one ground (the forecourt's three roads, the docks' quay, the highway's
@@ -41975,12 +42009,21 @@ function hqStageNeighbours(roomId) {
     if (!hqStagePart(roomId)) return [];
     const out = [], R = DOOR_HQ.rooms[roomId];
     hqWorldJoins(roomId).forEach(j => {
-        if (!j.side || !Array.isArray(j.span)) return;   // a door / island join is Phase 2's
         const other = j.a === roomId ? j.b : j.a;
         if (other === roomId || !hqStagePart(other)) return;
-        const J = hqWorldJoinResolve(j);
-        if (!J || !J.b) return;
-        const mine = j.a === roomId ? J.a : J.b;
+        let mine = null;
+        if (j.kind === 'door') {
+            /* THE DOOR JOIN (Phase 2): the span is the doorway on this room's wall — `pad` = the walker's margin along it (the
+               opening less the body), `depth` = how far past the edge the doorway runs (the wall between + a step) */
+            const D = hqWorldDoorJoinResolve(j); if (!D) return;
+            const me = j.a === roomId ? D.a : D.b, half = D.ow / 2;
+            mine = { side: me.wall, span: [me.t - half, me.t + half], door: me.door, pad: 0.3, depth: D.gap + 0.5 };
+        } else {
+            if (!j.side || !Array.isArray(j.span)) return;   // an island join is a later phase's
+            const J = hqWorldJoinResolve(j);
+            if (!J || !J.b) return;
+            mine = j.a === roomId ? J.a : J.b;
+        }
         let nb = out.find(n => n.id === other);
         if (!nb) {
             const rel = hqStageRel(roomId, other), S = DOOR_HQ.rooms[other].shell, hw = S.w / 2, hd = S.d / 2;
@@ -41989,7 +42032,9 @@ function hqStageNeighbours(roomId) {
             nb = { id: other, rel, rect: { x0: Math.min(...cs.map(p => p.x)), z0: Math.min(...cs.map(p => p.z)), x1: Math.max(...cs.map(p => p.x)), z1: Math.max(...cs.map(p => p.z)) }, spans: [], links: [] };
             out.push(nb);
         }
-        nb.spans.push({ side: mine.side, t0: mine.span[0], t1: mine.span[1], kind: j.kind });
+        const sp = { side: mine.side, t0: mine.span[0], t1: mine.span[1], kind: j.kind };
+        if (mine.door) { sp.door = mine.door; sp.pad = mine.pad; sp.depth = mine.depth; }
+        nb.spans.push(sp);
     });
     /* the link doors a span replaces: a link between these two rooms whose door on THIS room stands on the joined side
        inside the span (Downtown's cross street west ⇄ the Strip's boulevard; the avenue north ⇄ the players' tunnel) */
@@ -42002,6 +42047,13 @@ function hqStageNeighbours(roomId) {
         });
     });
     return out;
+}
+/* THE OPEN SIDE (Phase 2, §4.2): the spans of a staged part's shell side that stand open onto a neighbour — an edge join's
+   span, or a door join's doorway (with `door`). → [{ t0, t1, nb, kind, door? }] (the side's wall is cut there) */
+function hqShellSideOpen(roomId, side) {
+    const out = [];
+    hqStageNeighbours(roomId).forEach(nb => nb.spans.forEach(sp => { if (sp.side === side) out.push({ t0: sp.t0, t1: sp.t1, nb: nb.id, kind: sp.kind, door: sp.door || null }); }));
+    return out.sort((a, b) => a.t0 - b.t0);
 }
 /* is this door of this room replaced by a stage join (the renderer builds no door record for it, only the gantry)? */
 function hqStageJoinedDoor(roomId, doorId) {
@@ -42025,12 +42077,61 @@ function hqStageSpanAt(hw, hd, nbs, x, z, pad) {
             const s = sp[k];
             const near = s.side === 'n' ? z < -hd + pad : s.side === 's' ? z > hd - pad : s.side === 'e' ? x > hw - pad : x < -hw + pad;
             if (!near) continue;
-            const t = (s.side === 'n' || s.side === 's') ? x : z;
-            if (t >= s.t0 + pad && t <= s.t1 - pad) return { nb: nbs[i], span: s };
+            const t = (s.side === 'n' || s.side === 's') ? x : z, along = (s.pad != null) ? s.pad : pad;   // a doorway's own margin (Phase 2)
+            if (t >= s.t0 + along && t <= s.t1 - along) return { nb: nbs[i], span: s };
         }
     }
     return null;
 }
+/* ══ THE DOOR JOIN (OPEN_WORLD_PLAN.md §4.3, Phase 2, 2026-09-26) ══════════════════════════════════════════════════
+   A join row with `kind: 'door'` and `door` / `bDoor` is a pair of REAL doors back to back: a's door on a's wall and b's
+   door on b's wall stand at one point of the ground, facing each other through HQ_WORLD_RULES.wallM of wall. The stage
+   builds b beside a (the Phase 1 machinery), cuts both walls at the doorway, swings both leaves as you come near, and
+   the crossing is walking through (no card, no press-in). A door join with no door ids (the mall on its lot, the tell's
+   cistern) is a map fact only until its place is built. */
+/* the opening a door's leaf makes (the renderer's rule, _hqBuildDoors: the leaf's measured aspect sets the width) */
+function hqDoorOpening(door) {
+    const cat = (door && door.leaf && DOOR_HQ.catalogue) ? DOOR_HQ.catalogue[door.leaf] : null;
+    const wide = cat ? !!cat.wide : !!(door && door.wide), oh = wide ? 2.45 : 2.25;
+    let ow = wide ? 2.2 : 1.1;
+    if (cat && cat.aspect > 0) ow = Math.round(Math.max(wide ? 1.9 : 0.95, Math.min(wide ? 2.5 : 1.6, cat.aspect * oh)) * 100) / 100;
+    return { ow, oh, wide };
+}
+/* a box room's door on its own wall: { wall, t (along the wall, from the centre), x, z (the door's point on the wall) } */
+function _hqDoorOnWall(room, door) {
+    const S = room && room.shell; if (!S || !door || typeof door.wall !== 'string') return null;
+    const t = (door.wall === 'e' || door.wall === 'w') ? (door.z || 0) : (door.x || 0);
+    const x = door.wall === 'e' ? S.w / 2 : door.wall === 'w' ? -S.w / 2 : t, z = door.wall === 's' ? S.d / 2 : door.wall === 'n' ? -S.d / 2 : t;
+    return (['n', 's', 'e', 'w'].indexOf(door.wall) >= 0) ? { wall: door.wall, t, x, z } : null;
+}
+/* → { a: { room, door, wall, t, g }, b: {…}, gap (m between the two points), faceOk, ow, oh } | null */
+function hqWorldDoorJoinResolve(j) {
+    if (!j || j.kind !== 'door' || !j.door || !j.bDoor) return null;
+    const R = DOOR_HQ.rooms || {}, A = R[j.a], B = R[j.b];
+    if (!A || !B) return null;
+    const da = (A.doors || []).find(d => d && d.id === j.door), db = (B.doors || []).find(d => d && d.id === j.bDoor);
+    if (!da || !db) return null;
+    const pa = _hqDoorOnWall(A, da), pb = _hqDoorOnWall(B, db);
+    if (!pa || !pb) return null;
+    const ga = hqWorldToZone(j.a, pa.x, pa.z), gb = hqWorldToZone(j.b, pb.x, pb.z);
+    if (!ga || !gb) return null;
+    const Fa = hqWorldFrame(j.a), Fb = hqWorldFrame(j.b);
+    const sa = _hqWorldSideOnGround(pa.wall, Fa.rot), sb = _hqWorldSideOnGround(pb.wall, Fb.rot);
+    const oa = hqDoorOpening(da), ob = hqDoorOpening(db);
+    return { a: { room: j.a, door: da.id, wall: pa.wall, t: pa.t, g: ga, gSide: sa }, b: { room: j.b, door: db.id, wall: pb.wall, t: pb.t, g: gb, gSide: sb },
+             gap: Math.hypot(ga.x - gb.x, ga.z - gb.z), faceOk: ({ n: 's', s: 'n', e: 'w', w: 'e' })[sa] === sb, ow: Math.min(oa.ow, ob.ow), oh: Math.min(oa.oh, ob.oh) };
+}
+/* the door join (if any) that door `doorId` of room `roomId` belongs to, on a staged part: { nb, gap, ow, oh, other door id } */
+function hqStageDoorJoin(roomId, doorId) {
+    if (!hqStagePart(roomId)) return null;
+    const j = hqWorldJoins(roomId).find(x => x.kind === 'door' && ((x.a === roomId && x.door === doorId) || (x.b === roomId && x.bDoor === doorId)));
+    if (!j) return null;
+    const other = j.a === roomId ? j.b : j.a;
+    if (!hqStagePart(other)) return null;
+    const J = hqWorldDoorJoinResolve(j); if (!J) return null;
+    return { nb: other, gap: J.gap, ow: J.ow, oh: J.oh, otherDoor: j.a === roomId ? j.bDoor : j.door };
+}
+
 /* THE VALIDATOR (§4.1). → { ok, errors: [...], parts, joins }. The rules:
    1. every part is a box room of DOOR_HQ.rooms or a planned part with a size; an absorbed room exists and is no part;
       a room stands in ONE zone; a zone names a ground the table lists and a hub among its parts; an `on` host is a part
@@ -42102,6 +42203,15 @@ function hqWorldValidate() {
         if (!a || !b) return;
         if (j.kind === 'door' || j.kind === 'island') {
             if (!touch(a, b)) err(tag + ': the two parts do not touch');
+            if (j.kind === 'door' && (j.door || j.bDoor)) {
+                /* THE DOOR JOIN (Phase 2): both doors exist, stand back to back (one wall apart) and face each other */
+                const D = hqWorldDoorJoinResolve(j);
+                if (!D) err(tag + ': a door join names ' + j.door + ' / ' + j.bDoor + ' — not a door on each wall');
+                else {
+                    if (Math.abs(D.gap - HQ_WORLD_RULES.wallM) > 0.05) err(tag + ': the two doors stand ' + D.gap.toFixed(2) + ' m apart, not one wall (' + HQ_WORLD_RULES.wallM + ' m)');
+                    if (!D.faceOk) err(tag + ': the two doors do not face each other (' + D.a.gSide + ' / ' + D.b.gSide + ')');
+                }
+            }
             if (j.kind === 'island' && I.part[j.b].P.on !== j.a) err(tag + ': an island stands on its sea');
             return;
         }
@@ -45466,6 +45576,34 @@ function hqTerrainWorkerServe(scope) {
         catch (e) { try { scope.postMessage(msg); } catch (e2) { scope.postMessage({ id: m.id, roomId: m.roomId, info: null, err: String((e2 && e2.message) || e2), ms: Date.now() - t0 }); } }
     };
 }
+/* THE STITCH's rows for a part (Phase 2): per edge join, the side + span in the part's own metres, the blend width and
+   the target height along it in the part's own metres (the zone's y less the part's y). [] = no world, no edge join. */
+function hqTerrainStitchRows(roomId) {
+    if (!roomId || typeof hqWorldJoins !== 'function' || !DOOR_HQ.world) return [];
+    const F = hqWorldFrame(roomId); if (!F || F.absorbedBy) return [];
+    const m = HQ_WORLD_RULES.stitchM || 6, out = [];
+    hqWorldJoins(roomId).forEach(j => {
+        if (j.kind === 'door' || j.kind === 'island') return;
+        if (!hqStagePart(j.a) || !hqStagePart(j.b)) return;   // stitched where the stage walks it (HQ_STAGE_RULES.zones); a planned zone stitches when it is staged
+        const J = hqWorldJoinResolve(j); if (!J || !J.b) return;
+        const mine = j.a === roomId ? J.a : J.b, py = F.y || 0;
+        let yAt;
+        if (Array.isArray(j.profile) && j.profile.length) {
+            /* the profile's t runs along a's span in a's metres; b maps its own t back through the zone line */
+            const P = j.profile.slice().sort((p, q) => p[0] - q[0]);
+            const lerp = t => { if (t <= P[0][0]) return P[0][1]; for (let i = 1; i < P.length; i++) if (t <= P[i][0]) { const u = (t - P[i - 1][0]) / ((P[i][0] - P[i - 1][0]) || 1); return P[i - 1][1] + (P[i][1] - P[i - 1][1]) * u; } return P[P.length - 1][1]; };
+            if (j.a === roomId) yAt = t => lerp(t) - py;
+            else {
+                const Sb = hqWorldPartSize(roomId), hw = Sb.w / 2, hd = Sb.d / 2;
+                yAt = t => { const q = mine.side === 'n' ? [t, -hd] : mine.side === 's' ? [t, hd] : mine.side === 'e' ? [hw, t] : [-hw, t];
+                             const g = hqWorldToZone(roomId, q[0], q[1]), a = hqZoneToRoom(j.a, g.x, g.z);
+                             return lerp((j.side === 'n' || j.side === 's') ? a.x : a.z) - py; };
+            }
+        } else { const y = J.y - py; yAt = () => y; }
+        out.push({ side: mine.side, t0: mine.span[0], t1: mine.span[1], m, yAt, other: j.a === roomId ? j.b : j.a });
+    });
+    return out;
+}
 function hqTerrainCompile(room, roomId) {
     const T = room.terrain, S = room.shell || {}, R = HQ_TERRAIN_RULES;
     const roam = (S.edge === 'open' && S.roam > 0) ? S.roam : 0;
@@ -45597,8 +45735,25 @@ function hqTerrainCompile(room, roomId) {
         }
         return h;
     };
+    /* THE STITCH (OPEN_WORLD_PLAN §4.2, Phase 2): an EDGE join of this part (a road, a trail, a shore) is a target profile —
+       the join's `y` in zone metres (default: part a's floor), or `profile: [[t, y] …]` along the span in zone metres; within
+       HQ_WORLD_RULES.stitchM of the joined side (and stitchM past the span's ends) the field eases to it. Both parts read the
+       same authored numbers, so each compiles alone and the two agree at the line (hq-joins.test.js). */
+    const stitch = hqTerrainStitchRows(roomId);
+    const hStitch = (px, pz, h) => {
+        for (const s of stitch) {
+            const din = s.side === 'n' ? pz + S.d / 2 : s.side === 's' ? S.d / 2 - pz : s.side === 'e' ? S.w / 2 - px : px + S.w / 2;
+            if (din >= s.m) continue;
+            const t = (s.side === 'n' || s.side === 's') ? px : pz;
+            const out = Math.max(s.t0 - t, t - s.t1, 0); if (out >= s.m) continue;
+            const w = _hqTSmooth(1 - Math.max(0, din) / s.m) * _hqTSmooth(1 - out / s.m);
+            h = h * (1 - w) + s.yAt(Math.max(s.t0, Math.min(s.t1, t))) * w;
+        }
+        return h;
+    };
     const hFinal = (px, pz) => {
         let h = hPads(px, pz, hBefore(px, pz));
+        if (stitch.length) h = hStitch(px, pz, h);
         if (closed) { const din = Math.min(S.w / 2 - Math.abs(px), S.d / 2 - Math.abs(pz)); if (din < R.rim && h < base) h = base; }
         return h;
     };
