@@ -625,3 +625,32 @@ field in place; the whole doc is snapshotted on the 50-deep undo stack first. Th
 ⌘F search, ⌘S export, ⌘L lab, ⌘Z / ⌘⇧Z, ⌘A select all, ↑ ↓ walk rows, Enter opens the inspector sheet when
 narrow, Esc closes menus / the sheet / the drawer. Probe: `node playtest_library.js` (server on :3000) →
 shots/library/. Test: `node --test spell-library-ui.test.js`.
+
+## THE SPELL LIBRARY v2 — THE GRID + THE LOOK (2026-09-26, Phase 2, token 20260926-spell-library-03-cors)
+The TARGET tab's FOOTPRINT group is now a 7×7 click grid (ui.js "THE GRID", `_slb2GridHtml` / `_slb2WriteMask` /
+`_slb2GridDown` → `_slb2GridUp`; styles `.slb2-grid*`): the centre = the target tile (the caster for
+`aoeOriginSelf`, the victim for a splash rider), click paints, drag paints, right-click erases, the centre is
+locked ON; PRESET buttons stamp `AOE_PRESETS` (· 3×3 5×5 ◇1 ◇2 X1 X2 +1 +2 ○1 ○2 |3 |5 □), ↔ ↕ mirror, ⟳ rotate,
+▦ fill, ✕ CLEAR drops the mask (and puts the radius / shape fields back to the shipped row), ORIGIN target / self
+writes `aoeOriginSelf`. A row without a mask shows its computed footprint (radius / shape fields) and the first
+click converts it. Writing the mask is ONE undo step that also sets the kind's radius field (`crossRadius` for
+cross kinds, `blastRadius` for bombs, else `aoeRadius`) to the mask's reach — the engine's forty "is this an area?"
+gates test that field — and clears `aoeShape` / `diamond` / `diagonal`; the lint `maskVsRadius` only fires when the
+two disagree. A single-target kind (damage, heal…) gets an amber note: its mask only lights tiles; area damage on
+it is the SPLASH rider (Phase 3). The `aoeMask` field row is a readout ("x2 · 9 tiles · reach 2"), never a textarea.
+The LOOK tab (ui.js "THE LOOK", `_slb2LookExtraHtml`; styles `.slb2-stage*` / `.slb2-anim*`) mounts EWCharViewer
+on a race picker (the row's owner race, else the last race used, else the fortune teller; 300 px, idle-looping;
+`ew-cv-fail` when the model is off) with ▶ FULL · 🔁 LOOP · ■ · ✦ VFX (`previewSpell`, the real staging), the
+current pick in words ("AUTO hurl → cast · Spell_Simple_Shoot · UAL1 · 1.0 s · strike 0.10 s"), the strike lead
+(`animStrikeMs`, blank = the slot's strikeAt), a search box and the list: AUTO (`classifySpellAnimKind(d, {noPick})`),
+CAST VERBS (`SPELL_ANIM_KINDS` with `ThreeRenderer.castChainFor(kind)[0]` resolved through `EWCharViewer.slotInfo`),
+SLOTS (the 75 `UAL_SLOTS` rows: clip · library · played length · strike · TRAVEL tag), RAW CLIPS (the 69 unwired
+clips from `EWCharViewer.libClips` — "bakes at load / on first play"). Hovering plays the option once on the stage
+(`play(chain)` / `playClip(name, lib)`); clicking writes ONE of `animVerb` / `animSlot` / `animClip` and clears the
+other two (one undo step). TRAVEL is the Lab's `_animOverride.travel` select moved here; archetype · weight ·
+projectile stay the generic LOOK fields. The stage unmounts on every inspector re-render, on ▶ LAB and on BACK
+(ui.js wraps `_spellLibraryBack`). Probe: `node playtest_library.js` now serves the five library GLBs from the repo
+so RAW CLIPS fills (the race model itself is R2-only: the stage shows `ew-cv-fail` in the sandbox). Tests:
+`aoe-mask.test.js` (presets, clipping, the four readers' parity on every shipped aoe / cross row + every preset,
+the shaped fields on the card, the lint + the mana formula, `_aoeBound`) and `spell-anim-pick.test.js` (the pick's
+precedence, the slot: kind string, every verb's chain, `registerSpellAnimClips`, the census pin).

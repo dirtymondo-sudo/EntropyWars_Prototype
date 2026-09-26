@@ -1184,3 +1184,44 @@ last cell; `_spawnLaserBeam3D` takes `opts.startW / opts.endW`, the muzzle / ter
 `_sigFractalStitch3D`: one thin lit laser segment per hop (caster → each victim's body in line order → the end),
 95 ms apart, arcane palette, the last hop shakes; no backdrop. battle.js sends `beamPath` [{x, y, z}]; online.js
 relays it with z. The special renderers (breath, tsunami, boomerang, gatling, sword wave, bow) are unchanged.
+
+## THE LOOK — the per-spell animation pick (2026-09-26, Spell Library Phase 2, token 20260926-spell-library-03-cors)
+Three row fields pick the caster's clip, read FIRST by sprites.js `classifySpellAnimKind` (skipped by
+`opts.rulesOnly` / `opts.noPick`): `animVerb` (a `SPELL_ANIM_KINDS` entry = a `_castChainFor` kind; an unknown verb is
+ignored), `animSlot` (a raw `UAL_SLOTS` slot; the kind string becomes `'slot:<slot>/<autoKind>'`), `animClip:
+{ name, lib }` (an unwired library clip → `'slot:clip:<name>/<autoKind>'`). Only the KIND STRING travels
+(`state._castAnimKind`), so three-renderer.js `_castChainFor` decodes `slot:` to `[slot, ...chain(autoKind)]` — an
+unknown slot simply falls down the chain (`_maybeStartModelAnim` walks it). `'clip:<name>'` is a SYNTHETIC slot:
+data.js `stampSpellSchema()` (boot + every editor apply) calls sprites.js `registerSpellAnimClips(defs)`, which
+writes `{ clip, lib, defer: true }` into `_UAL_CLIPS` and every per-race `libClips` copy; the bake key ignores
+`clip:` keys so a late registration never re-bakes a model — `_libBakeSlotNow(modelEntry, def, slot, cb)` bakes the
+one slot on demand (the board's cast site warms it through `_castClipWarm` before the play; the viewer through
+`EWCharViewer.playClip(name, lib)`), and `_libDeferCbs` listeners now stay alive after the deferred queue drains so
+every live rig wires the late clip. `clip:` slots play once like casts. `animStrikeMs` overrides the strike lead
+in battle.js (`_releaseCastSprite`'s hold and `_castClipTravel`) and the viewer's `_cvStrikeMs`. Dev reads:
+`ThreeRenderer.devLibClips(cb)` (every library's raw clip list), `ThreeRenderer.castChainFor(kind)`,
+`EWCharViewer.slotInfo(slot)` (clip · lib · ts · trim · strikeAt · strikeMs · playedMs · travel · baked),
+`EWCharViewer.libClips(cb)`; sprites.js exports `UAL_SLOTS`, `SPELL_ANIM_KINDS`, `EW_ANIM_LIB_URLS`,
+`spellAnimLibName(i)`. check-spell-presentation.js reads the pick through the same classifier (a `slot:` kind
+leads with its slot; a `clip:X` slot reports clip X). Online: the pick is a def field on the caster's def and both
+peers classify locally — nothing to relay. Test: spell-anim-pick.test.js.
+
+## THE MASK on the board (2026-09-26, Spell Library Phase 2)
+`aoeMask` (`[[dx,dy],…]`, ±3, fixed on the board) wins over every radius / shape field at the engine sites of
+SPELL_LIBRARY_PLAN.md §6.1: battle.js `_spellMaskOf` / `_spellMaskTiles` / `_spellAoeReach` (above
+`getSpellAoeArea`; the reach = the mask's Chebyshev bound, else the radius fields — rings, cameras, terrain deform
+and the real-time converter size by it), `getSpellAoeArea` / `getCrossArea` first line (so doSpell aoe / cross, the
+glow tiles, `_selfNovaHasTarget`, `findAoeCastCenterForTarget` — which now also runs the centre picker for a HOLLOW
+mask —, `_findSelfNovaApproachTile` inherit it), `_spellGlowTiles` (a generic first branch, so bombs / zones /
+cleanse / aoePull / delayed light the mask), `previewSpellRange`, `_focusPlatesForAction` / `_focusPlatesForImpact`,
+cleanseArea, aoePull, aoeShield, zoneDebuff / zoneHeal (the zone stores `aoeMask`; `_zoneTiles` / `_zoneCovers`
+serve the round tick, gravity, smoke concealment and the chain zones), terrainCreate `squareFlood`, teleport
+`aoeOnArrival`, skySlam and leapStrike splash loops, delayed strikes (`_delayedSpells` carries `aoeMask`; state.js
+`_detonateDelayedSpell` reads it), deployed objects and `_newBomb` (`aoeMask` on the object; `detonateDeployedObject`
+/ `detonateBomb` read it). three-vfx-effects.js `_maskTileOffsets` overrides the tile offsets of `_fireAoeMapped`,
+`_fireDescent` and `_fireAura` from `params.aoeMask` (battle passes it) or the def. ai.js `getSpellAoeAreaAI` /
+`_crossFootprintAI` / `_aoeTilesAI` / `_aoeSplashTestAI`; hud.js `_hrlgSpellShape` (X, ring, diamond, round now draw
+their true cells), the rack's ring aim, `crossArmHits`; party-builder.js `pbAoeTiles` and map.js `_hqAoeTilesHtml`
+draw the mask; data.js `_mfEffectiveTargets` prices it by tile count, `describeSpell` names the shape ("in a ring
+area"), `stampSpellSchema` stamps `_aoeBound`. Test: aoe-mask.test.js. Everything rides the state snapshot as plain
+data — never a function or a unit object on a zone / delayed / deployed entry.
