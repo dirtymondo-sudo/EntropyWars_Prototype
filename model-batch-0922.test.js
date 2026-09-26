@@ -86,10 +86,11 @@ test('the popstar sits in every data.js table, both sides of the parity line, an
 });
 
 test('the popstar\'s kit: the four-node tree on the twin rule, plain kinds, one status a cast, the passive, the finisher built', () => {
-    const tree = ['racePopMicDrop', ['racePopEncore', 'racePopStageDive'], 'racePopSpotlight', 'racePopStadiumShow'];
+    // SPELL LIBRARY Phase 6 (2026-09-26): the user's library export deleted Encore — the ring-2 twin is Stage Dive alone
+    const tree = ['racePopMicDrop', 'racePopStageDive', 'racePopSpotlight', 'racePopStadiumShow'];
     assert.strictEqual(D.RACE_TREE.popstar.flat().join(','), tree.flat().join(','));
     const rows = D.RACE_ABILITIES.popstar;
-    assert.strictEqual(rows.length, 5);
+    assert.strictEqual(rows.length, 4);
     for (const r of rows) {
         assert.ok(D.SPELL_BY_ID[r.id], r.id);
         assert.ok(D.RACE_PROFILES.popstar.types.includes(r.spellType), r.id + ': spellType');
@@ -100,7 +101,7 @@ test('the popstar\'s kit: the four-node tree on the twin rule, plain kinds, one 
         assert.ok(VFX.includes("SPELL_MAP['" + r.id + "']"), r.id + ' in SPELL_MAP');
     }
     assert.strictEqual(D.SPELL_BY_ID.racePopMicDrop.kind, 'damage');
-    assert.strictEqual(D.SPELL_BY_ID.racePopEncore.kind, 'encore');
+    assert.ok(!D.SPELL_BY_ID.racePopEncore, 'Encore deleted in the user\'s library export (Phase 6)');
     assert.strictEqual(D.SPELL_BY_ID.racePopStageDive.kind, 'tackle');
     assert.strictEqual(D.SPELL_BY_ID.racePopSpotlight.kind, 'debuff');
     assert.deepStrictEqual(JSON.stringify(D.SPELL_BY_ID.racePopSpotlight.statStageBoost), '{"def":-1,"mdef":-1}', '§5.6: a non-capstone stage move is ±1');

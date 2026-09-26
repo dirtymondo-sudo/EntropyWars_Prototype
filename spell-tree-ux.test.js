@@ -126,8 +126,9 @@ test('the rack helpers: rows by tier, states, the keyboard grid, the panel', () 
     const ctx = vm.runInContext("pbTierCtx('knight', 'Warrior', eq)", H);
     H.ctx = ctx;
     assert.strictEqual(ctx.spUsed, 14);
-    assert.deepStrictEqual(JSON.stringify(ctx.rows[4].slice().sort()), JSON.stringify(['judgment', 'raceCrusade'].sort()));
-    assert.deepStrictEqual(JSON.stringify(ctx.rows[1].slice().sort()), JSON.stringify(['guardSlash', 'raceChivalry'].sort()));
+    // Phase 6: the knight's families (Knighthood, Camelot Powers, Swordsmanship) add their members to the tier rows
+    assert.deepStrictEqual(JSON.stringify(ctx.rows[4].slice().sort()), JSON.stringify(['judgment', 'raceCrusade', 'dragonSlash', 'raceBlessedBlade', 'raceExcaliburStrike'].sort()));
+    assert.deepStrictEqual(JSON.stringify(ctx.rows[1].slice().sort()), JSON.stringify(['guardSlash', 'raceChivalry', 'crossSlash', 'raceRoyalDecree'].sort()));
     assert.strictEqual(vm.runInContext("pbSpellState(ctx, 'judgment')", H), 'equipped');
     assert.strictEqual(vm.runInContext("pbSpellState(ctx, 'warCry')", H), 'ok');         // 14 + 2 = 16
     H.eq2 = H.eq.concat(['warCry']);

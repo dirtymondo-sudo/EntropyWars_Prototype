@@ -10130,7 +10130,7 @@
                 <div class="slb2-ins-owners" id="slbInsOwners">
                     ${homeSel}
                     <span class="slb2-owner-l">FAMILIES</span>${r.families.map(f => `<span class="slb2-ochip" style="--fc:${_slb2FamColor(f)}">${_slb2Glyph(f)} ${_slbEsc(_slb2FamName(f))}<a data-act="famRemove" data-id="${_slbEsc(id)}" data-fam="${_slbEsc(f)}" title="remove">✕</a></span>`).join('') || '<span class="slb2-ochip empty">no family</span>'}
-                    <select class="slb2-sel slb2-sel-add" data-input="famAdd" data-id="${_slbEsc(id)}"><option value="">＋ family…</option>${Object.keys(SPELL_FAMILIES).filter(f => !r.families.includes(f)).map(f => `<option value="${_slbEsc(f)}">${_slb2Glyph(f)} ${_slbEsc(_slb2FamName(f))}</option>`).join('')}</select>
+                    <select class="slb2-sel slb2-sel-add" data-input="famAdd" data-id="${_slbEsc(id)}"><option value="">${r.families.length ? '⇄ move to family…' : '＋ family…'}</option>${Object.keys(SPELL_FAMILIES).filter(f => !r.families.includes(f)).map(f => `<option value="${_slbEsc(f)}">${_slb2Glyph(f)} ${_slbEsc(_slb2FamName(f))}</option>`).join('')}</select>
                     ${r.isDoor ? '' : `<span class="slb2-owner-l">JOBS</span>${r.jobs.map(j => `<span class="slb2-ochip job">${_slbEsc(j)}<a data-act="unassign" data-id="${_slbEsc(id)}" data-kind="job" data-key="${_slbEsc(j)}" title="remove from the ${_slbEsc(j)} learnset">✕</a></span>`).join('') || '<span class="slb2-ochip empty">no learnset</span>'}
                     <input class="slb2-sel slb2-sel-add" list="slbAssignJobList" placeholder="＋ job…" data-input="assignJob" data-id="${_slbEsc(id)}"><datalist id="slbAssignJobList">${_slbJobs().filter(j => !r.jobs.includes(j)).map(j => `<option value="${_slbEsc(j)}"></option>`).join('')}</datalist>
                     <span class="slb2-owner-l">RACES</span>${r.races.map(x => `<span class="slb2-ochip race">${_slbEsc(_slb2Race(x))}<a data-act="unassign" data-id="${_slbEsc(id)}" data-kind="race" data-key="${_slbEsc(x)}" title="remove from the ${_slbEsc(x)} movepool">✕</a></span>`).join('') || '<span class="slb2-ochip empty">no race row</span>'}
@@ -11162,7 +11162,7 @@
         function _slb2FamilyMatrixHtml() {
             const fams = Object.keys(SPELL_FAMILIES), races = Object.keys(RACE_FAMILIES).sort();
             return `<div class="slb2-matrixwrap"><table class="slb2-matrix"><thead><tr><th>race</th>${fams.map(f => `<th title="${_slbEsc(f)}">${_slbEsc(SPELL_FAMILIES[f].glyph || f.slice(0, 2))}</th>`).join('')}<th>n</th></tr></thead><tbody>
-                ${races.map(r => { const list = RACE_FAMILIES[r] || []; return `<tr><td>${_slbEsc(_slb2Race(r))}</td>${fams.map(f => `<td>${list.includes(f) ? (SPELL_FAMILIES[f].unique === r ? '★' : '●') : ''}</td>`).join('')}<td class="${list.length < 3 || list.length > 5 ? 'slb2-lint-red' : ''}">${list.length}</td></tr>`; }).join('')}
+                ${races.map(r => { const list = RACE_FAMILIES[r] || []; return `<tr><td>${_slbEsc(_slb2Race(r))}</td>${fams.map(f => `<td>${list.includes(f) ? (SPELL_FAMILIES[f].unique === r ? '★' : '●') : ''}</td>`).join('')}<td class="${list.length < 3 || list.length > 10 ? 'slb2-lint-red' : ''}">${list.length}</td></tr>`; }).join('')}
             </tbody></table></div>`;
         }
         function _slb2FamilyInsHtml() {
@@ -11192,8 +11192,8 @@
                 ${fld('notes', 'Notes', `<textarea class="slb2-jsonmini long" data-reg="families" data-id="${_slbEsc(id)}" data-key="notes" spellcheck="true" placeholder="what this family is for, what it needs">${_slbEsc(f.notes || '')}</textarea>`, 'Rides the export like a row\'s notes.')}
                 </div>
                 <div class="slb2-group"><div class="slb2-group-h">MEMBERS · ${members.length}</div>
-                    <div class="slb2-memberlist">${members.map(m => `<div class="slb2-member" data-act="jump" data-id="${_slbEsc(m.id)}"><span class="slb2-tier t${m.tier}">${_slb2TierText(m.tier)}</span><span class="slb2-member-n">${_slbEsc(m.def.name || m.id)}</span>${_slb2RoleChip(m.role)}<span class="slb2-dim">${_slbEsc(m.isRace ? _slb2Race(m.owner) : m.owner)}</span><a data-act="famRemove" data-id="${_slbEsc(m.id)}" data-fam="${_slbEsc(id)}" title="remove from the family">✕</a></div>`).join('') || '<div class="slb2-dim">no members yet</div>'}</div>
-                    <div class="slb2-addfield"><input class="slb2-sel slb2-sel-add" list="slbFamAddList" placeholder="＋ add a member by name / id…" data-input="famAddMember" data-fam="${_slbEsc(id)}" style="min-width:240px"><datalist id="slbFamAddList">${_slb2Rows().filter(r => !r.deleted && !r.families.includes(id)).map(r => `<option value="${_slbEsc(r.id)}">${_slbEsc(r.def.name || '')}</option>`).join('')}</datalist></div>
+                    <div class="slb2-memberlist">${members.map(m => `<div class="slb2-member" data-act="jump" data-id="${_slbEsc(m.id)}"><span class="slb2-tier t${m.tier}">${_slb2TierText(m.tier)}</span><span class="slb2-member-n">${_slbEsc(m.def.name || m.id)}</span>${_slb2RoleChip(m.role)}<span class="slb2-dim">${_slbEsc(m.isRace ? _slb2Race(m.owner) : m.owner)}</span><button class="slb2-xbig" data-act="famRemove" data-id="${_slbEsc(m.id)}" data-fam="${_slbEsc(id)}" title="remove from the family">✕</button></div>`).join('') || '<div class="slb2-dim">no members yet</div>'}</div>
+                    <div class="slb2-addfield"><input class="slb2-sel slb2-sel-add" list="slbFamAddList" placeholder="＋ add a member by name / id (moves it here)…" data-input="famAddMember" data-fam="${_slbEsc(id)}" style="min-width:240px"><datalist id="slbFamAddList">${_slb2Rows().filter(r => !r.deleted && !r.families.includes(id)).map(r => `<option value="${_slbEsc(r.id)}">${_slbEsc(r.def.name || '')}</option>`).join('')}</datalist></div>
                 </div>
             </div>`;
         }
@@ -11213,9 +11213,12 @@
             const d = SPELL_BY_ID[id];
             if (!d) return;
             const cur = (typeof spellFamiliesOf === 'function') ? spellFamiliesOf(d).slice() : (Array.isArray(d.families) ? d.families.slice() : []);
-            const next = add ? (cur.includes(fam) ? cur : cur.concat(fam)) : cur.filter(x => x !== fam);
+            // ONE FAMILY PER SPELL (the user, 2026-09-26: "I do not want a spell to appear in more than one family"): adding MOVES it
+            const next = add ? [fam] : cur.filter(x => x !== fam);
             if (next.join() === cur.join()) return;
             window._slbSetField(id, 'families', JSON.stringify(next), 'json');
+            const was = cur.filter(x => x !== fam);
+            if (add && was.length) _slbToast(`${(d.name || id)} moved to ${_slb2FamName(fam)} (was ${was.map(_slb2FamName).join(', ')})`);
         }
 
         /* ── UPGRADES (§5.6): the registry as a table + a PATCH builder ── */
@@ -11301,9 +11304,9 @@
         function _slb2RenderPools(main) {
             main.innerHTML = `<div class="slb2-rail open slb2-poolrail" id="slbMpRail"></div>
                 <div class="slb2-center"><div class="slb2-chips">
-                    <div class="slb2-seg"><button class="slb2-segb${_slbMpMode === 'jobs' ? ' on' : ''}" data-act="mpMode" data-mode="jobs">JOB LEARNSETS</button><button class="slb2-segb${_slbMpMode === 'races' ? ' on' : ''}" data-act="mpMode" data-mode="races">RACE ROWS</button></div>
+                    <div class="slb2-seg"><button class="slb2-segb${_slbMpMode === 'jobs' ? ' on' : ''}" data-act="mpMode" data-mode="jobs">JOB LEARNSETS</button><button class="slb2-segb${_slbMpMode === 'races' ? ' on' : ''}" data-act="mpMode" data-mode="races">RACE FAMILIES</button></div>
                     <input class="slb2-search" type="text" placeholder="⌕ filter ${_slbMpMode}" value="${_slbEsc(_slbMpSearch)}" data-input="mpSearch" style="min-width:160px">
-                    <span class="slb2-hint">${_slbMpMode === 'jobs' ? 'A job\'s learn order: the position sets the unlock level.' : 'A race\'s movepool: every unit of the race can equip these (RACE_TREE rungs read from it). Families replace this in Phase 7.'}</span>
+                    <span class="slb2-hint">${_slbMpMode === 'jobs' ? 'A job\'s learn order: the position sets the unlock level.' : 'A race\'s families (3 to 10): every unit of the race can equip every member of them, plus its RACE_TREE rungs. Click a family below to add or remove it.'}</span>
                 </div><div class="slb2-tablewrap slb2-pad" id="slbMpDetail"></div></div>`;
             _slbMpRenderRail(); _slbMpRenderDetail();
         }
@@ -11315,9 +11318,10 @@
             const keys = (_slbMpMode === 'jobs' ? _slbJobs() : _slbRaces()).filter(k => !q || k.toLowerCase().includes(q));
             if (!_slbMpKey || !keys.includes(_slbMpKey)) _slbMpKey = keys[0] || null;
             el.innerHTML = `<div class="slb2-rail-head"><span>${_slbMpMode === 'jobs' ? 'JOBS' : 'RACES'} · ${keys.length}</span></div>` + keys.map(k => {
-                const n = _slbMpMode === 'jobs' ? (CLASS_SPELL_LEARN_ORDER[k] || []).length : (RACE_ABILITIES[k] || []).length;
-                const touched = _slbMpMode === 'jobs' ? !!M.doc.learnsets[k] : !!M.doc.raceAbilities[k];
-                return `<div class="slb2-poolrow${k === _slbMpKey ? ' sel' : ''}" data-act="mpPick" data-key="${_slbEsc(k)}"><span>${_slbEsc(_slbMpMode === 'races' ? _slb2Race(k) : k)}</span>${touched ? '<span class="slb2-flag mod">●</span>' : ''}<span class="slb2-dim">${n}</span></div>`;
+                const n = _slbMpMode === 'jobs' ? (CLASS_SPELL_LEARN_ORDER[k] || []).length : _slbRaceFams(k).length;
+                const touched = _slbMpMode === 'jobs' ? !!M.doc.learnsets[k] : Object.prototype.hasOwnProperty.call(M.doc.raceFamilies || {}, k);
+                const bad = _slbMpMode === 'races' && (n < _SLB_RACE_FAM_MIN || n > _SLB_RACE_FAM_MAX);
+                return `<div class="slb2-poolrow${k === _slbMpKey ? ' sel' : ''}" data-act="mpPick" data-key="${_slbEsc(k)}"><span>${_slbEsc(_slbMpMode === 'races' ? _slb2Race(k) : k)}</span>${touched ? '<span class="slb2-flag mod">●</span>' : ''}<span class="${bad ? 'slb2-lint-red' : 'slb2-dim'}">${n}</span></div>`;
             }).join('');
         }
         function _slbMpIds(key) { return _slbMpMode === 'jobs' ? (CLASS_SPELL_LEARN_ORDER[key] || []).slice() : (RACE_ABILITIES[key] || []).map(a => a.id); }
@@ -11333,6 +11337,7 @@
             if (!el) return;
             const key = _slbMpKey;
             if (!key) { el.innerHTML = '<div class="slb2-empty">Pick a ' + (_slbMpMode === 'jobs' ? 'job' : 'race') + '.</div>'; return; }
+            if (_slbMpMode === 'races') { el.innerHTML = _slbRaceFamHtml(key); return; }
             const M = _slbMods();
             const ids = _slbMpIds(key);
             const touched = _slbMpMode === 'jobs' ? !!M.doc.learnsets[key] : !!M.doc.raceAbilities[key];
@@ -11351,6 +11356,47 @@
                 <span class="slb2-mpctl"><button data-act="mpMove" data-key="${_slbEsc(key)}" data-i="${i}" data-dir="-1" title="earlier">↑</button><button data-act="mpMove" data-key="${_slbEsc(key)}" data-i="${i}" data-dir="1" title="later">↓</button><button data-act="mpRemove" data-key="${_slbEsc(key)}" data-i="${i}" title="remove">✕</button></span>
             </div>`; }).join('') || '<div class="slb2-empty">empty</div>'}</div>
             <div class="slb2-addfield"><input class="slb2-sel slb2-sel-add" list="slbMpAddList" placeholder="＋ add a spell by id…" data-input="mpAdd" data-key="${_slbEsc(key)}" style="min-width:260px"><datalist id="slbMpAddList">${allIds.filter(id => !ids.includes(id)).map(id => `<option value="${_slbEsc(id)}">${_slbEsc((SPELL_BY_ID[id] || {}).name || '')}</option>`).join('')}</datalist></div>`;
+        }
+
+        /* ── POOLS · RACE FAMILIES (SPELL LIBRARY Phase 6, the user 2026-09-26: "in the pools section, I need to be able to select
+           families, not individual spells" · "minimum 3 families per character, maximum 10"). A race's pool = its RACE_TREE row +
+           every member of its families (data.js unitSpellPoolParts); the list is RACE_FAMILIES[race], written through the doc's
+           raceFamilies registry (export → bake-spell-mods.js). ── */
+        const _SLB_RACE_FAM_MIN = 3, _SLB_RACE_FAM_MAX = 10;
+        function _slbRaceFams(race) { return (typeof raceFamilyIds === 'function') ? raceFamilyIds(race) : ((typeof RACE_FAMILIES !== 'undefined' && RACE_FAMILIES[race]) || []).slice(); }
+        function _slbRaceFamWrite(race, list, label) {
+            if (list.length > _SLB_RACE_FAM_MAX) { _slbToast(`✗ ${_SLB_RACE_FAM_MAX} families at most`, true); return; }
+            _slb2WriteReg('raceFamilies', race, list.slice(), label);
+            _slbMpRenderRail(); _slbMpRenderDetail(); _slb2RefreshChrome();
+        }
+        function _slbRaceFamHtml(race) {
+            const M = _slbMods();
+            const fams = _slbRaceFams(race);
+            const touched = Object.prototype.hasOwnProperty.call(M.doc.raceFamilies || {}, race);
+            // the pool index leaves the wheel's doors to the wheel part: show a family's own rows when the index has none
+            const members = f => { const ids = (typeof familyMemberIds === 'function') ? familyMemberIds(f) : []; return ids.length ? ids : _slb2Rows().filter(r => !r.deleted && r.families.includes(f)).map(r => r.id); };
+            const pool = (typeof unitSpellPoolParts === 'function') ? unitSpellPoolParts(race, 'Warrior').race : [];
+            const famPool = new Set(fams.flatMap(members));
+            const treeOnly = ((typeof getRaceTreeAllIds === 'function') ? getRaceTreeAllIds(race) : []).filter(id => !famPool.has(id));
+            const n = fams.length, bad = n < _SLB_RACE_FAM_MIN || n > _SLB_RACE_FAM_MAX;
+            const name = id => _slbEsc((SPELL_BY_ID[id] || {}).name || id);
+            const all = Object.keys(SPELL_FAMILIES).filter(f => !SPELL_FAMILIES[f].universal).sort((a, b) => _slb2FamName(a).localeCompare(_slb2FamName(b)));
+            const users = f => Object.keys(RACE_FAMILIES).filter(r => (RACE_FAMILIES[r] || []).includes(f)).length;
+            return `<div class="slb2-ins-head">
+                <div class="slb2-ins-name">${_slbEsc(_slb2Race(race))}</div>
+                <div class="slb2-ins-id"><span class="${bad ? 'slb2-lint-red' : ''}">${n} famil${n === 1 ? 'y' : 'ies'} (${_SLB_RACE_FAM_MIN} to ${_SLB_RACE_FAM_MAX})</span> · ${pool.length} spells in the pool${touched ? ' · <span class="slb2-dot">●</span> changed' : ''}</div>
+                <div class="slb2-ins-verbs">${touched ? `<button class="slb2-btn" data-act="rfRevert" data-key="${_slbEsc(race)}">↺ REVERT</button>` : ''}</div>
+            </div>
+            <div class="slb2-rflist">${fams.map((f, i) => `<div class="slb2-rfrow" style="--fc:${_slb2FamColor(f)}">
+                <span class="slb2-famcard-g">${_slbEsc(_slb2Glyph(f))}</span>
+                <span class="slb2-rfrow-n" data-act="rfOpen" data-fam="${_slbEsc(f)}" title="open the family">${_slbEsc(_slb2FamName(f))}<span class="slb2-dim"> · ${members(f).length} spell${members(f).length === 1 ? '' : 's'}</span></span>
+                <span class="slb2-rfrow-m">${members(f).map(id => `<span class="slb2-rfspell" data-act="jump" data-id="${_slbEsc(id)}"><span class="slb2-tier t${spellTierOf(id)}">${_slb2TierText(spellTierOf(id))}</span>${name(id)}</span>`).join('') || '<span class="slb2-dim">no members</span>'}</span>
+                <span class="slb2-mpctl"><button data-act="rfMove" data-key="${_slbEsc(race)}" data-i="${i}" data-dir="-1" title="earlier">↑</button><button data-act="rfMove" data-key="${_slbEsc(race)}" data-i="${i}" data-dir="1" title="later">↓</button><button class="slb2-xbig" data-act="rfToggle" data-key="${_slbEsc(race)}" data-fam="${_slbEsc(f)}" title="remove this family">✕</button></span>
+            </div>`).join('') || '<div class="slb2-empty">no families yet</div>'}</div>
+            ${treeOnly.length ? `<div class="slb2-field-h">Tree rungs outside these families (still in the pool): ${treeOnly.map(name).join(', ')}</div>` : ''}
+            <div class="slb2-group"><div class="slb2-group-h">ALL FAMILIES · click to add or remove</div>
+                <div class="slb2-rfpick">${all.map(f => `<button class="slb2-rfchip${fams.includes(f) ? ' on' : ''}" data-act="rfToggle" data-key="${_slbEsc(race)}" data-fam="${_slbEsc(f)}" style="--fc:${_slb2FamColor(f)}" title="${members(f).length} spells · on ${users(f)} race${users(f) === 1 ? '' : 's'}">${_slbEsc(_slb2Glyph(f))} ${_slbEsc(_slb2FamName(f))} <span class="slb2-dim">${members(f).length}</span></button>`).join('')}</div>
+            </div>`;
         }
 
         /* ── REPORT (§5.9): the census over the current doc ── */
@@ -11516,7 +11562,7 @@
             </div>
             <div class="slb2-ins-body">
                 <div class="slb2-group"><div class="slb2-group-h">BULK EDIT · one undo step</div>
-                    <div class="slb2-field"><div class="slb2-field-l"><span class="slb2-field-name">Add a family</span></div><div class="slb2-field-e"><select class="slb2-sel" data-input="bulk" data-op="addFamily"><option value="">pick…</option>${Object.keys(SPELL_FAMILIES).map(f => `<option value="${_slbEsc(f)}">${_slb2Glyph(f)} ${_slbEsc(_slb2FamName(f))}</option>`).join('')}</select></div></div>
+                    <div class="slb2-field"><div class="slb2-field-l"><span class="slb2-field-name">Move to a family</span></div><div class="slb2-field-e"><select class="slb2-sel" data-input="bulk" data-op="addFamily"><option value="">pick…</option>${Object.keys(SPELL_FAMILIES).map(f => `<option value="${_slbEsc(f)}">${_slb2Glyph(f)} ${_slbEsc(_slb2FamName(f))}</option>`).join('')}</select></div></div>
                     <div class="slb2-field"><div class="slb2-field-l"><span class="slb2-field-name">Remove a family</span></div><div class="slb2-field-e"><select class="slb2-sel" data-input="bulk" data-op="removeFamily"><option value="">pick…</option>${Object.keys(SPELL_FAMILIES).map(f => `<option value="${_slbEsc(f)}">${_slb2Glyph(f)} ${_slbEsc(_slb2FamName(f))}</option>`).join('')}</select></div></div>
                     <div class="slb2-field"><div class="slb2-field-l"><span class="slb2-field-name">Set the tier</span></div><div class="slb2-field-e"><div class="slb2-seg">${[1, 2, 3, 4].map(t => `<button class="slb2-segb" data-act="bulkTier" data-tier="${t}">Tier ${_slb2TierText(t)}</button>`).join('')}</div></div></div>
                     <div class="slb2-field"><div class="slb2-field-l"><span class="slb2-field-name">Set the element</span></div><div class="slb2-field-e"><select class="slb2-sel" data-input="bulk" data-op="setElement"><option value="">pick…</option><option value="__none">(none)</option>${_SLB_ELEMENTS.map(e => `<option value="${e}">${_slb2Glyph(e)} ${e}</option>`).join('')}</select></div></div>
@@ -11536,7 +11582,7 @@
                     const d = SPELL_BY_ID[id];
                     if (op === 'addFamily' || op === 'removeFamily') {
                         const cur = (typeof spellFamiliesOf === 'function') ? spellFamiliesOf(d).slice() : (d.families || []).slice();
-                        const next = op === 'addFamily' ? (cur.includes(val) ? cur : cur.concat(val)) : cur.filter(x => x !== val);
+                        const next = op === 'addFamily' ? [val] : cur.filter(x => x !== val);   // ONE FAMILY PER SPELL: the bulk add moves (Phase 6)
                         if (next.join() !== cur.join()) _slb2WriteField(id, 'families', next);
                     } else if (op === 'setTier') _slb2WriteField(id, 'tier', Number(val));
                     else if (op === 'setElement') _slb2WriteField(id, 'element', val === '__none' ? null : val);
@@ -11986,6 +12032,10 @@
                 case 'mpPick': _slbMpKey = P('data-key'); _slbMpRenderRail(); _slbMpRenderDetail(); return;
                 case 'mpMove': { const key = P('data-key'), i = +P('data-i'), j = i + Number(P('data-dir')); const ids = _slbMpIds(key); if (j < 0 || j >= ids.length) return; const t = ids[i]; ids[i] = ids[j]; ids[j] = t; _slbMpWrite(key, ids, `${key}: ${t} moved`); return; }
                 case 'mpRemove': { const key = P('data-key'), ids = _slbMpIds(key); const gone = ids.splice(+P('data-i'), 1); _slbMpWrite(key, ids, `${key}: ${gone[0]} removed`); return; }
+                case 'rfToggle': { const key = P('data-key'), f = P('data-fam'); const list = _slbRaceFams(key); const on = list.includes(f); _slbRaceFamWrite(key, on ? list.filter(x => x !== f) : list.concat(f), `${key}: ${on ? '−' : '+'}${f}`); return; }
+                case 'rfMove': { const key = P('data-key'), i = +P('data-i'), j = i + Number(P('data-dir')); const list = _slbRaceFams(key); if (j < 0 || j >= list.length) return; const t = list[i]; list[i] = list[j]; list[j] = t; _slbRaceFamWrite(key, list, `${key}: ${t} moved`); return; }
+                case 'rfRevert': { const key = P('data-key'); _slb2Mutate(`↺ ${key} families`, () => { delete _slbMods().doc.raceFamilies[key]; }); _slbMpRenderRail(); _slbMpRenderDetail(); _slb2RefreshChrome(); return; }
+                case 'rfOpen': { _slbFamKey = P('data-fam'); _slbTab = 'families'; _slb2RenderTop(); _slb2RenderTab(); return; }
                 case 'mpRevert': { const key = P('data-key'); _slb2Mutate(`↺ ${key} pool`, () => { delete _slbMods().doc[_slbMpMode === 'jobs' ? 'learnsets' : 'raceAbilities'][key]; }); _slbMpRenderRail(); _slbMpRenderDetail(); _slb2RefreshChrome(); return; }
                 case 'repFilter': { _slbFilters = _slb2EmptyFilters(); if (P('data-role')) _slbFilters.roles = [P('data-role')]; if (P('data-tier')) _slbFilters.tiers = [Number(P('data-tier'))]; if (P('data-element')) _slbFilters.elements = [P('data-element')]; if (P('data-family')) _slbFilters.families = [P('data-family')]; if (P('data-kind')) _slbFilters.kinds = [P('data-kind')]; _slbSearch = ''; _slbTab = 'spells'; _slb2RenderTop(); _slb2RenderTab(); return; }
                 case 'lintFilter': { _slbFilters = _slb2EmptyFilters(); _slbFilters.lint = [P('data-rule')]; _slbSearch = ''; _slbTab = 'spells'; _slb2RenderTop(); _slb2RenderTab(); return; }

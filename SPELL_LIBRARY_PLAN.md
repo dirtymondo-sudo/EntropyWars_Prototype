@@ -993,3 +993,34 @@ change under `WEATHER_REGISTRY`).
   6. **`describeSpell` is untouched**: the derived def's `desc` gains "Upgrades: Empowered (+15 % damage), …"; the library
      shows a TRY pair's resolved numbers instead of ▶ LAB WITH THESE.
   Next: Phase 6 (THE CATALOGUE — the user's second deliverable).
+- 2026-09-26 — **Phase 6 shipped** (thread "Spell library Phase 6", `spell-library/ENTROPY_WARS_SPELL_LIBRARY_6.zip`, token
+  `20260926-spell-library-07-cors`), from the user's own library export (`entropy-wars-spell-mods-2026-09-26.json`: 90 families,
+  359 row edits, 5 spells and the Metal family deleted), baked FIRST; where this plan and the export disagree the export won.
+  The user's asks: a bigger ✕ on the FAMILIES member list; POOLS selects families, not spells (Phase 7's direction pulled
+  forward); families for every unassigned spell following the user's pattern; families for every unit, 3 to 10 each; a spell in
+  exactly one family. Built: 13 new families (Living Stone, Human Grit, Main Character Energy, Deep Sea Anatomy, Prism Lattice,
+  Infernal Court, Horns & Hooves, Apex Predator, Grave Hunger, Kaiju Rampage, Ooze Biology, Sentai Colors, Symbiosis); 145 rows
+  re-tagged to one family (125 with none, 14 on the deleted Metal, the 2 with two — each kept the user's pick); `RACE_FAMILIES`
+  for all 103 races (3–5 each, every RACE_TREE rung inside them); the pool = the tree row + every member of the race's families
+  (`unitSpellPoolParts`, `familyMemberIndex`); the POOLS · RACE FAMILIES editor; lint `familyMulti`; SPELL_CATALOGUE.md (the
+  generated family / race table). Tests: `spell-families.test.js` (new); spell-schema, content-schema, champ-rework and
+  capstone-director pins brought to the export. DEVIATIONS, on purpose:
+  1. **Phase 6 was to be a proposal the user edits before anything is baked** (§9); the user asked for the families to be made
+     and assigned, so they are baked and live. Every assignment is editable in the library (FAMILIES / POOLS) and re-exportable.
+  2. **Phase 7's pool rule is in, its UI is not:** the pool reads `RACE_FAMILIES`, but the rack is still grouped by tier (not by
+     family), the Freelancer still borrows by race row, `RACE_TREE` stays (the rungs, the twins, the ring MP prices) and is kept
+     inside the families. The user's 3–10 replaces §4.2's 3–5; no family is `unique` (the user's own families set none).
+  3. **The redundancy verdicts, per-family upgrade lists and new-spell proposals of §9 row 6 are not in this delivery** (the
+     user asked for the categorisation and the pools); the REPORT tab's redundancy query still lists the groups.
+  4. **The element-family rule is retired:** the user moved rows out of their element's family (Lightning → Engineering …),
+     so `elementFamily` fires only on a row with no family, and a second family is the red `familyMulti`.
+  5. **The five deleted spells' tree rungs** took rows of the races' families: reptilian capstone Flat Earth, chosen one R2 Plot
+     Armor, anubis R2 Rigormortis, mothman R3 Cryptid Vanish (R1 twins Red Eyes / Dread Aura), popstar R2 Stage Dive alone.
+  6. **Bake fixes:** a row a movepool edit drops now MOVES to SPELL_LIBRARY (the export took Green Arrow off the sentai's list
+     after re-making it as a heal; deleting it would have lost the edit) — a delete is `deleted`; an empty registry takes its
+     rows as one block; two inserts at one spot keep their order.
+  7. **The pool's order:** tree row, then the job's four, then the family members, so a job row that sits in a race family
+     (Brave Charge in Knighthood) keeps its JOB source in the racks. sprites.js `SPELL_ANIM_VERBS` and battle.js
+     `SPELL_DIRECTOR_ROWS` dropped the deleted ids (their capstone director entries stay, unreachable).
+  Next: Phase 7's UI (the rack by family, the Freelancer's borrow window by family) once the user has played the pools.
+

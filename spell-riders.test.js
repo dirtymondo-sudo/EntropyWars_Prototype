@@ -96,14 +96,16 @@ test('the lint, the mana formula and the description read the riders', () => {
     assert.match(D.describeSpell(D.SPELL_BY_ID.riderImpactRound), /Splashes 50% of it onto every enemy adjacent to the target/);
 });
 
-test('the two example rows ship off every pool (the user keeps or deletes them)', () => {
+test('the two example rows: registered off the race / job rows, reachable through the user\'s Gun Training family (Phase 6)', () => {
     for (const id of ['riderScatterShot', 'riderImpactRound']) {
         const sp = D.SPELL_BY_ID[id];
         assert.ok(sp, id);
         assert.strictEqual(sp.kind, 'damage');
         assert.ok(!D.SPELL_LIBRARY.includes(sp), id + ' is not a job-library row');
         assert.ok(!Object.values(D.RACE_ABILITIES).some(a => a.includes(sp)), id + ' is not a race row');
-        assert.ok(D.spellLint(sp, D.spellLintContext()).some(h => h.rule === 'offPool'));
+        // Phase 6: the user's library export put both in Gun Training, so a race holding that family equips them
+        assert.deepStrictEqual(JSON.parse(JSON.stringify(sp.families)), ['weaponstraining']);
+        assert.ok(D.unitSpellPool('cowboy', 'Warrior').includes(id), id + ' in a Gun Training race\'s pool');
         assert.strictEqual(sp.tier, 2); assert.strictEqual(sp.role, 'damage');
     }
     assert.ok(D.spellRandomTargetsOf(D.SPELL_BY_ID.riderScatterShot));

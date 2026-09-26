@@ -275,12 +275,13 @@ function indexRows(src, spans) {
 function makeEditor(src) {
     const edits = [];
     return {
-        replace(start, end, text) { edits.push({ start, end, text }); },
+        replace(start, end, text) { edits.push({ start, end, text, i: edits.length }); },
         apply() {
-            edits.sort((a, b) => b.start - a.start || b.end - a.end);
+            // back to front; two inserts at one spot keep their push order (the later one is applied first, so it lands after)
+            edits.sort((a, b) => b.start - a.start || b.end - a.end || b.i - a.i);
             let out = src, last = Infinity;
             for (const e of edits) {
-                if (e.end > last) throw new Error(`overlapping edits at ${e.start}`);
+                if (e.end > last) throw new Error(`overlapping edits at ${e.start}-${e.end} (next starts ${last}): ${JSON.stringify(src.slice(e.start, Math.min(e.end, e.start + 200)))}`);
                 out = out.slice(0, e.start) + e.text + out.slice(e.end);
                 last = e.start;
             }
@@ -379,6 +380,7 @@ function bakeSource(src, doc, D, opts) {
     const notes = {};
     const registryDecl = { families: 'const SPELL_FAMILIES = {', upgrades: 'const SPELL_UPGRADES = {', raceFamilies: 'const RACE_FAMILIES = {' };
     const touched = new Set();   // spans already edited as a whole (deleted rows) — field edits on them are skipped
+    const moves = [];            // own-literal rows a movepool drops: moved to SPELL_LIBRARY after the patches (moveRowsToLibrary)
 
     // 1. registries — row by row on the object literal (comments survive)
     for (const g of Object.keys(registryDecl)) {
@@ -388,6 +390,18 @@ function bakeSource(src, doc, D, opts) {
         const span = tableSpan(src, spans, registryDecl[g]);
         if (!span) { warn.push(`${registryDecl[g]} not found in data.js — ${ids.length} ${g} row(s) NOT baked`); continue; }
         const reg = { id: g, span, props: objectProps(src, span) };
+        /* an EMPTY registry (`const RACE_FAMILIES = {};` — Phase 6 filled it first) takes every row as one block */
+        if (!reg.props.some(p => p.key !== null)) {
+            const live = ids.filter(id => group[id] !== null);
+            const body = live.map(id => {
+                let row = group[id];
+                if (row && typeof row === 'object' && !Array.isArray(row)) { row = Object.assign({ id }, row); if (row.notes) { notes[`${g}:${id}`] = row.notes; delete row.notes; } }
+                say(`  ${g} ${id}: ${toJs(row)}`);
+                return `    ${jsKey(id)}: ${toJs(row, '    ')},`;
+            });
+            if (live.length) ed.replace(span.start, span.end, `{\n${body.join('\n')}\n}`);
+            continue;
+        }
         for (const id of ids) {
             if (group[id] === null) { if (!delProp(src, ed, reg, id, null)) warn.push(`${g}: '${id}' is not shipped — delete ignored`); else say(`  ${g} −${id}`); continue; }
             let row = group[id];
@@ -507,7 +521,10 @@ function bakeSource(src, doc, D, opts) {
         }
         for (const id of removed) {
             const lit = ownLiteral(id);
-            if (lit && !touched.has(lit.span)) { removeArrayElement(src, ed, lit.span, say, `${id} from race ${race} (movepool)`); touched.add(lit.span); continue; }
+            /* a row that lives only in this race's array MOVES to SPELL_LIBRARY (its patches ride along) — dropping a spell from
+               a movepool is not deleting it (Phase 6: the user's export took sentaiGreenArrow off the sentai's list AND re-made
+               it, and the families are the pools now); a real delete is `deleted`. */
+            if (lit && !touched.has(lit.span)) { moves.push({ id, race }); say(`  movepool ${race}: −${id} (row moves to SPELL_LIBRARY)`); continue; }
             // a share: drop it from the table row(s)
             if (sharesSpan) {
                 const rowsInTable = spans.filter(s => s.parent === spans.indexOf(sharesSpan) && s.ch === '[');
@@ -529,8 +546,31 @@ function bakeSource(src, doc, D, opts) {
         }
     }
 
-    const out = ed.apply();
-    return { src: out, changes: log, warnings: warn, notes, edits: ed.count };
+    let out = ed.apply();
+    if (moves.length) out = moveRowsToLibrary(out, moves);   // after the patches, so a moved row carries them
+    return { src: out, changes: log, warnings: warn, notes, edits: ed.count, moves };
+}
+
+/* ── THE MOVE (Phase 6): a race array's own row → the end of SPELL_LIBRARY, text unchanged (run on the patched source) ── */
+function moveRowsToLibrary(src, moves) {
+    let out = src;
+    for (const mv of moves) {
+        const spans = scanSpans(out);
+        const T = indexRows(out, spans);
+        const lit = (T.rows[mv.id] || []).find(r => r.home === 'race' && r.race === mv.race);
+        if (!lit || !T.lib) continue;
+        const text = out.slice(lit.span.start, lit.span.end);
+        const ed = makeEditor(out);
+        removeArrayElement(out, ed, lit.span, null, '');
+        const closing = T.lib.end - 1;
+        let before = closing;
+        while (before > T.lib.start && /[ \t\r\n]/.test(out[before - 1])) before--;
+        const needComma = out[before - 1] !== ',' && out[before - 1] !== '[';
+        // the note goes ABOVE the row: a trailing comment after the last element would hide its comma from the next insert
+        ed.replace(before, before, `${needComma ? ',' : ''}\n        /* moved from RACE_ABILITIES['${mv.race}'] by the bake (off that movepool) */\n        ${text},\n`);
+        out = ed.apply();
+    }
+    return out;
 }
 
 /* ── THE STAMP (Phase 0's migration): tier = spellTierOf(id) on every shipped row literal ── */
@@ -599,6 +639,6 @@ function main(argv) {
     return 0;
 }
 
-module.exports = { scanSpans, objectProps, indexRows, bakeSource, stampTiers, serializeRow, toJs, mergeNotesFile };
+module.exports = { scanSpans, objectProps, indexRows, bakeSource, moveRowsToLibrary, stampTiers, serializeRow, toJs, mergeNotesFile };
 
 if (require.main === module) process.exit(main(process.argv));

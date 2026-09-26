@@ -452,7 +452,8 @@ test('Phase 5 wave A: renames, retunes and retirements', () => {
     // Perch Form is retired (Stoneform replaced it); the reptilian keeps ITS Tail Whip id.
     assert.ok(!raceSpell('gargoyle', 'racePerchForm'), 'Perch Form retired');
     assert.ok(!D.SPELL_BY_ID.racePerchForm, 'no orphan racePerchForm');
-    assert.ok(raceSpell('reptilian', 'raceTailWhip') && raceSpell('dinosaur', 'raceDinoTailWhip'), 'two Tail Whips, two ids');
+    // SPELL LIBRARY Phase 6 (2026-09-26): the user's library export deleted the reptilian's Tail Whip; the dinosaur keeps its own id.
+    assert.ok(!raceSpell('reptilian', 'raceTailWhip') && raceSpell('dinosaur', 'raceDinoTailWhip'), 'one Tail Whip left, the dinosaur\'s');
     // Mecha reaches +2 with spells too (Robo Punch at 3).
     same(D.STATUS_DEFS.mechaForm.spellRangeDelta, 2);
     same(D.STATUS_DEFS.mechaForm.rangeDelta, 2);

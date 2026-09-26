@@ -351,8 +351,9 @@ test('Freelancer borrows: race + job pools, any tier, same SP / slot budget', ()
     assert.ok(D.flRacePool('knight').some(sp => sp.id === 'reallyGoodPunch'), 'a knight Freelancer may borrow the homosapien capstone');
     // the unit pool is own row + both borrow pools
     const parts = D.unitSpellPoolParts('homosapien', 'Freelancer');
-    assert.strictEqual(parts.borrowRace.length, rp.length);
-    assert.strictEqual(parts.borrowJob.length, pool.length);
+    // SPELL LIBRARY Phase 6: the unit's own part now carries its families' members, so the borrow part skips those
+    assert.strictEqual(parts.borrowRace.length, rp.filter(sp => !parts.race.includes(sp.id)).length);
+    assert.strictEqual(parts.borrowJob.length, pool.filter(sp => !parts.race.includes(sp.id)).length);
     const byTier = (list, t) => list.filter(sp => D.spellTierOf(sp) === t).map(sp => sp.id);
     const j4 = byTier(pool, 4), r4 = byTier(rp, 4), j1 = byTier(pool, 1);
     assert.ok(fl([j4[0]]), 'a Tier IV job borrow alone is legal');

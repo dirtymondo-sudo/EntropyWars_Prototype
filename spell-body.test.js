@@ -101,8 +101,9 @@ test('the router beats the text rules; the rules still hold underneath', () => {
     const a = SP.indexOf('// A capstone for the animation rule'), b = SP.indexOf('// ── SHARED ANIMATION LIBRARIES');
     const ctx = {}; vm.createContext(ctx); vm.runInContext(SP.slice(a, b), ctx);
     const cl = ctx.classifySpellAnimKind;
-    assert.strictEqual(cl({ id: 'raceTailWhip', name: 'Tail Whip', type: 'damage', damageType: 'physical', range: 1 }), 'sweep');
-    assert.strictEqual(cl({ id: 'raceTailWhip', name: 'Tail Whip', type: 'damage', damageType: 'physical', range: 1 }, { rulesOnly: true }), 'melee');
+    // Phase 6: the reptilian's Tail Whip was deleted — the dinosaur's row carries the router pin
+    assert.strictEqual(cl({ id: 'raceDinoTailWhip', name: 'Tail Whip', type: 'damage', damageType: 'physical', range: 1 }), 'sweep');
+    assert.strictEqual(cl({ id: 'raceDinoTailWhip', name: 'Tail Whip', type: 'damage', damageType: 'physical', range: 1 }, { rulesOnly: true }), 'melee');
     assert.strictEqual(cl({ id: 'raceBullRush', chargeToTarget: true, kind: 'dash' }), 'tackle', 'a charge lands a shoulder-check');
     assert.strictEqual(cl({ id: 'notAVerb', name: 'Fireball', type: 'damage', damageType: 'magic' }), 'magic');
 });

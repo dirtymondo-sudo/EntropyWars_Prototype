@@ -182,6 +182,21 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   for (const t of ['passives', 'families', 'upgrades', 'pools', 'report']) {
     if (await click(`#slbTop .slb2-tab[data-tab="${t}"]`)) { await sleep(500); await shot('tab_' + t); }
   }
+  // Phase 6: a family's member list (the big ✕), then POOLS · RACE FAMILIES for one race and a toggle
+  if (await click('#slbTop .slb2-tab[data-tab="families"]')) {
+    await sleep(400);
+    if (await click('.slb2-famcard[data-id="christmasspirit"]')) { await sleep(400); await shot('families_members'); }
+  }
+  if (await click('#slbTop .slb2-tab[data-tab="pools"]')) {
+    await sleep(400);
+    if (await click('[data-act="mpMode"][data-mode="races"]')) {
+      await sleep(400);
+      if (await click('.slb2-poolrow[data-key="santa clause"]')) { await sleep(400); await shot('pools_race_families'); }
+      if (await click('.slb2-rfchip[data-fam="drivingskills"]')) { await sleep(400); await shot('pools_race_toggled'); }
+      console.log('race families:', JSON.stringify(await page.evaluate(() => window.RACE_FAMILIES && window.RACE_FAMILIES['santa clause'])));
+      if (await click('[data-act="rfRevert"]')) { await sleep(300); }
+    }
+  }
   await click('#slbTop .slb2-tab[data-tab="spells"]'); await sleep(400);
   // EXPORT preview, IMPORT diff, the palette
   if (await click('#slbTop [data-act="export"]')) { await sleep(500); await shot('export'); await page.keyboard.press('Escape'); await sleep(200); }

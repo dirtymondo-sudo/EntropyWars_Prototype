@@ -27372,7 +27372,6 @@
             sharedVortexSlam:    { grade: 'dim', gradeMs: 800 },
             raceMissileBarrage:  { grade: 'speedlines', gradeMs: 700 },
             raceCannonball:      { slow: [0.4, 260] },
-            raceTailWhip:        { slow: [0.35, 260] },
             raceSasquatchSmash:  { slow: [0.35, 280], grade: 'speedlines', gradeMs: 600 },
             raceColossalCrush:   { slow: [0.35, 280], grade: 'speedlines', gradeMs: 600 },
             raceTerrorPounce:    { slow: [0.35, 260], grade: 'crimson', gradeMs: 600 },

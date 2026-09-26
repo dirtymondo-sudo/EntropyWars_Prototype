@@ -24,9 +24,11 @@ test('every row carries an explicit numeric tier equal to the rung-derived tier 
     const rows = uniqRows();
     assert.ok(rows.length >= 500, `expected the 500+ rows, found ${rows.length}`);
     const problems = [];
+    const rings = D.buildTreeRingIndex();
     for (const sp of rows) {
         if (!Number.isInteger(sp.tier) || sp.tier < 1 || sp.tier > 4) problems.push(`${sp.id}: tier ${JSON.stringify(sp.tier)}`);
-        if (sp.tier !== D.spellTierDerived(sp.id)) problems.push(`${sp.id}: tier ${sp.tier} vs rung ${D.spellTierDerived(sp.id)}`);
+        // the rung check holds on the trees (the ring prices the MP); off-tree rows carry the tier the user set in the library (Phase 6)
+        if (rings[sp.id] !== undefined && sp.tier !== D.spellTierDerived(sp.id)) problems.push(`${sp.id}: tier ${sp.tier} vs rung ${D.spellTierDerived(sp.id)}`);
         if (D.spellTierOf(sp.id) !== sp.tier) problems.push(`${sp.id}: spellTierOf ${D.spellTierOf(sp.id)} vs tier ${sp.tier}`);
         if (sp._legacyTier) problems.push(`${sp.id}: legacy '${sp._legacyTier}' survived`);
     }
@@ -68,8 +70,12 @@ test('roles cover every row; the tier rule finds exactly the seven survey offend
     assert.ok(lint.some(h => h.rule === 'roleDrift'));
 });
 
-test('SPELL_FAMILIES seeds the 15 elements, GEAR (universal) and the door wheel (unique to the Door Agent); rows carry their element family', () => {
-    for (const el of D.SPELL_ELEMENTS) { const f = D.SPELL_FAMILIES[el]; assert.ok(f && f.kind === 'element' && f.glyph && f.color && f.id === el, `family ${el}`); }
+test('SPELL_FAMILIES: GEAR (universal), the door wheel (unique to the Door Agent), every row in exactly ONE known family', () => {
+    /* Phase 6 (the user's export, 2026-09-26): the element families are the user's to rename, re-kind or delete (Metal is gone,
+       Ice is a discipline) and a row's family is its identity — no longer its element. */
+    for (const el of ['fire', 'ice', 'lightning', 'water', 'earth', 'wind', 'poison', 'nature', 'shadow', 'light', 'psychic', 'sonic', 'arcane', 'blood']) {
+        const f = D.SPELL_FAMILIES[el]; assert.ok(f && f.glyph && f.color && f.id === el, `family ${el}`);
+    }
     assert.ok(D.SPELL_FAMILIES.gear && D.SPELL_FAMILIES.gear.universal === true && D.SPELL_FAMILIES.gear.kind === 'support', 'the GEAR pool is universal');
     assert.strictEqual(D.SPELL_FAMILIES.doors.unique, 'door agent');
     for (const f of Object.values(D.SPELL_FAMILIES)) assert.ok(D.SPELL_FAMILY_KINDS.includes(f.kind), `${f.id} kind`);
@@ -77,7 +83,7 @@ test('SPELL_FAMILIES seeds the 15 elements, GEAR (universal) and the door wheel 
     const rows = uniqRows();
     const problems = [];
     for (const sp of rows) {
-        if (sp.element && D.SPELL_FAMILIES[sp.element] && !sp.families.includes(sp.element)) problems.push(`${sp.id}: element ${sp.element} not in families`);
+        if (sp.kind !== 'basicAttack' && sp.families.length !== 1) problems.push(`${sp.id}: ${sp.families.length} families (${sp.families.join(', ')}) — exactly one`);
         if (sp._doorWheel && !sp.families.includes('doors')) problems.push(`${sp.id}: a wheel door outside the doors family`);
         for (const f of sp.families) if (!D.SPELL_FAMILIES[f]) problems.push(`${sp.id}: unknown family ${f}`);
         // Phase 5: every shipped row's list is [] — AUTO (the registry's `auto` rows that fit it); the catalogue pins lists later
@@ -119,7 +125,8 @@ test('the lint: dead fields, the LOS triple, duplicate names, off-pool rows, unk
     assert.ok(hits({ id: 'q', name: 'Q', equipCost: 15 }).includes('deadField'));
     assert.ok(hits({ id: 'q', name: 'Q', ignoresLineOfSight: true, lineOfSight: false }).includes('losTriple'));
     assert.ok(!hits({ id: 'q', name: 'Q', ignoresLineOfSight: true }).includes('losTriple'));
-    assert.ok(hits({ id: 'q', name: 'Tail Whip' }).includes('nameDup'), 'the census found the one duplicate name');
+    assert.ok(D.spellLint({ id: 'q', name: 'Twin Name' }, Object.assign({}, ctx, { names: { 'twin name': 2 } })).some(h => h.rule === 'nameDup'), 'two rows under one name are flagged');
+    assert.ok(!hits({ id: 'q', name: 'Tail Whip' }).includes('nameDup'), 'the reptilian\'s Tail Whip is gone (Phase 6): one Tail Whip left');
     assert.ok(hits({ id: 'q', name: 'Q' }).includes('offPool'));
     assert.ok(!hits({ id: 'fortify', name: 'Q' }).includes('offPool'));
     assert.ok(hits({ id: 'q', name: 'Q', families: ['nope'] }).includes('familyUnknown'));
@@ -127,8 +134,11 @@ test('the lint: dead fields, the LOS triple, duplicate names, off-pool rows, unk
     assert.ok(hits({ id: 'q', name: 'Q', element: 'fire', families: [] }).includes('elementFamily'));
     assert.ok(hits({ id: 'q', name: 'Q', tier: 7 }).includes('tierRange'));
     const all = D.spellLintAll();
-    assert.strictEqual(all.filter(r => r.hits.some(h => h.rule === 'nameDup')).length, 2, 'the two Tail Whips');
-    assert.ok(all.filter(r => r.hits.some(h => h.rule === 'offPool')).length >= 20, 'the ~29 off-tree library spells');
+    assert.strictEqual(all.filter(r => r.hits.some(h => h.rule === 'nameDup')).length, 0, 'no duplicate names (the reptilian\'s Tail Whip was deleted in Phase 6)');
+    assert.strictEqual(all.filter(r => r.hits.some(h => h.rule === 'familyMulti')).length, 0, 'no row in two families');
+    assert.ok(hits({ id: 'q', name: 'Q', families: ['fire', 'ice'] }).includes('familyMulti'));
+    // Phase 6: the race families put every shipped row in some race's pool (the ~29 off-tree library rows were Phase 0's count)
+    assert.strictEqual(all.filter(r => r.hits.some(h => h.rule === 'offPool')).length, 0, 'every row reachable through a race family');
     assert.strictEqual(all.filter(r => r.hits.some(h => h.rule === 'losTriple')).length, 0);
     for (const f of D.SPELL_DEAD_FIELDS) assert.strictEqual(typeof f, 'string');
 });
@@ -139,6 +149,7 @@ test('EWSpellMods v2: the doc, merge import (a v1 doc too), registries, notes, t
     assert.strictEqual(M.doc.version, 2);
     for (const k of ['families', 'upgrades', 'raceFamilies', 'views']) assert.ok(M.doc[k] && typeof M.doc[k] === 'object', `doc.${k}`);
     const shield0 = D.SPELL_BY_ID.fortify.shield, dmg0 = D.SPELL_BY_ID.raceDivineJudgment.dmg;
+    const seraphFams0 = J(D.RACE_FAMILIES.seraphim);   // Phase 6 ships a list for every race
     // a v1 export merges in
     M.import({ format: 'entropy-wars-spell-mods', version: 1, modified: { fortify: { shield: shield0 + 10, notes: 'note A' } } });
     assert.strictEqual(D.SPELL_BY_ID.fortify.shield, shield0 + 10);
@@ -174,7 +185,7 @@ test('EWSpellMods v2: the doc, merge import (a v1 doc too), registries, notes, t
     M.setOnline(true);
     assert.ok(M.suspended && M.online);
     assert.strictEqual(D.SPELL_BY_ID.fortify.shield, shield0); assert.strictEqual(D.SPELL_BY_ID.raceDivineJudgment.dmg, dmg0);
-    assert.ok(D.SPELL_FAMILIES.blood && !D.SPELL_FAMILIES.mystic && !D.SPELL_UPGRADES.upHot && !D.RACE_FAMILIES.seraphim, 'registries vanilla online');
+    assert.ok(D.SPELL_FAMILIES.blood && !D.SPELL_FAMILIES.mystic && !D.SPELL_UPGRADES.upHot && JSON.stringify(D.RACE_FAMILIES.seraphim) === JSON.stringify(seraphFams0), 'registries vanilla online');
     assert.strictEqual(D.SPELL_BY_ID.fire1.role, 'damage', 'roles re-derive on the vanilla row');
     M.setOnline(false);
     assert.strictEqual(D.SPELL_BY_ID.fortify.shield, shield0 + 10); assert.ok(D.SPELL_FAMILIES.mystic);
@@ -237,6 +248,8 @@ test('bake-spell-mods.js: a doc round-trips onto a copy of data.js, load-data st
     assert.deepStrictEqual(JSON.parse(JSON.stringify(E.CLASS_SPELL_LEARN_ORDER.Tank)), ['fortify', 'rampart', 'provoke', 'shieldBash']);
     const kk = E.RACE_ABILITIES['king kong'].map(a => a.id);
     assert.ok(!kk.includes('raceChestPound') && kk.includes('raceBite') && kk.includes('raceBoulderHurl'), kk.join(','));
+    // Phase 6: a row dropped from the only movepool that holds its literal MOVES to SPELL_LIBRARY (a delete is `deleted`)
+    assert.ok(E.SPELL_LIBRARY.some(s => s.id === 'raceChestPound'), 'the dropped row moved to the library, not deleted');
     assert.ok(E.SPELL_FAMILIES.ordnance && E.SPELL_FAMILIES.ordnance.id === 'ordnance' && !E.SPELL_FAMILIES.blood);
     assert.ok(E.SPELL_UPGRADES.upHotter && E.SPELL_UPGRADES.upHotter.patch.dmgMult === 1.15);
     assert.deepStrictEqual(JSON.parse(JSON.stringify(E.RACE_FAMILIES.seraphim)), ['light', 'gear', 'doors']);

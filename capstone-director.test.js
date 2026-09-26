@@ -22,7 +22,11 @@ const IDS = ('rampart revive1 leechSeed rampage empBurst requiem voidRush raceSt
     + 'raceHallelujah raceStarDecree raceGiantSmash raceDarkDominion raceDarkLullaby racePredatorDrop raceTsunami '
     + 'raceTerrorPounce raceOvertinker sharedVortexSlam raceTidalSlam raceSpaceDisco raceMitosisSplit raceQuake '
     + 'raceMissileBarrage raceUnstoppableCharge raceDragonFist racePrimalSmash raceBullRush sentaiMegazordBlast '
-    + 'raceTendrilStrike raceRealityPulse').split(' ');
+    + 'raceTendrilStrike raceRealityPulse').split(' ')
+    /* SPELL LIBRARY Phase 6 (2026-09-26): the user's library export deleted the reptilian's Tail Whip (its director stays
+       registered, dead weight); the census only sees live rows */
+    .filter(id => id !== 'raceTailWhip');
+const RETIRED = ['raceTailWhip'];   // a deleted row whose director entries stay registered (battle.js / three-vfx-effects.js), never reached
 const DELAYED = ['sharedNuke', 'raceFireForEffect', 'raceStarDecree'];
 
 const fxBlock = (() => {
@@ -123,7 +127,7 @@ test('every director is a row, and its beats land inside the window', () => {
         _cineFamilyKey: (s) => s._fam, _spellDirKillConfirm: () => {} }, kit);
     vm.createContext(sb);
     vm.runInContext(src + '\nthis.SHOTS = CAPSTONE_DIRECTOR_SHOTS; this.run = _capstoneDirector;', sb);
-    assert.deepStrictEqual(Object.keys(sb.SHOTS).sort(), IDS.slice().sort());
+    assert.deepStrictEqual(Object.keys(sb.SHOTS).sort(), IDS.concat(RETIRED).sort());
     for (const id of IDS) {
         const beats = [];
         const end = 2600, cut = 1100;

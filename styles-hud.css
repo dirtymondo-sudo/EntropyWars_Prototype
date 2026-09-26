@@ -4929,7 +4929,8 @@ input.slb2-ins-name:hover, input.slb2-ins-name:focus { border-color: rgba(255,21
 .slb2-ochip { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: #cfc8e0; background: rgba(160,140,200,0.1); border: 1px solid rgba(160,140,200,0.25); border-left: 3px solid var(--fc, rgba(160,140,200,0.25)); border-radius: 3px; padding: 1px 6px; }
 .slb2-ochip.job { border-left-color: #ffd86a; } .slb2-ochip.race { border-left-color: #8fd7c8; }
 .slb2-ochip.empty { color: #6d6584; border-style: dashed; border-left-width: 1px; }
-.slb2-ochip a { color: #ff8a95; cursor: pointer; font-size: 10px; }
+.slb2-ochip a { color: #ff8a95; cursor: pointer; font-size: 13px; display: inline-block; padding: 0 5px; margin-left: 2px; border-radius: 3px; }
+.slb2-ochip a:hover { background: rgba(255,138,149,0.25); color: #fff; }
 .slb2-ins-desc { display: flex; flex-direction: column; gap: 4px; }
 .slb2-desc { width: 100%; min-height: 46px; background: rgba(0,0,0,0.35); border: 1px solid rgba(160,140,200,0.2); color: #cfc8e0; font: 12px 'DotGothic16', monospace; padding: 5px 7px; border-radius: 4px; resize: vertical; line-height: 1.35; }
 .slb2-desc:focus { outline: none; border-color: rgba(255,216,106,0.5); }
@@ -5071,6 +5072,26 @@ input.slb2-ins-name:hover, input.slb2-ins-name:focus { border-color: rgba(255,21
 .slb2-member:hover { background: rgba(160,140,200,0.07); }
 .slb2-member-n { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #e6e9f2; }
 .slb2-member a { color: #ff8a95; font-size: 10px; cursor: pointer; }
+/* THE BIG ✕ (Phase 6, the user: "the x to remove a spell is really tiny and i keep misclicking") — a 28 × 24 button, not a 10 px glyph */
+.slb2-xbig { flex: none; display: inline-flex; align-items: center; justify-content: center; min-width: 28px; height: 24px; margin-left: 6px; padding: 0 6px;
+  background: rgba(255,138,149,0.08); border: 1px solid rgba(255,138,149,0.4); border-radius: 4px; color: #ff8a95; font-size: 14px; line-height: 1; cursor: pointer; }
+.slb2-xbig:hover { background: rgba(255,138,149,0.22); border-color: #ff8a95; color: #fff; }
+.slb2-memberlist .slb2-member { padding: 4px 4px; min-height: 30px; }
+/* POOLS · RACE FAMILIES (Phase 6) */
+.slb2-rflist { display: flex; flex-direction: column; gap: 6px; margin: 8px 0; }
+.slb2-rfrow { display: grid; grid-template-columns: 28px minmax(140px, 220px) 1fr auto; align-items: start; gap: 8px; padding: 6px 8px;
+  border: 1px solid rgba(160,140,200,0.18); border-left: 3px solid var(--fc, #8d84a8); border-radius: 4px; background: rgba(20,18,30,0.45); }
+.slb2-rfrow-n { font-size: 13px; color: #e6e9f2; cursor: pointer; padding-top: 3px; }
+.slb2-rfrow-n:hover { color: #ffd86a; }
+.slb2-rfrow-m { display: flex; flex-wrap: wrap; gap: 3px; }
+.slb2-rfspell { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: #cfc8e0; padding: 1px 6px 1px 2px; border-radius: 3px; background: rgba(160,140,200,0.08); cursor: pointer; }
+.slb2-rfspell:hover { background: rgba(160,140,200,0.2); }
+.slb2-rfrow .slb2-mpctl { align-items: center; }
+.slb2-rfpick { display: flex; flex-wrap: wrap; gap: 4px; }
+.slb2-rfchip { font-size: 12px; padding: 4px 8px; border-radius: 12px; border: 1px solid rgba(160,140,200,0.3); border-left: 3px solid var(--fc, #8d84a8);
+  background: rgba(20,18,30,0.6); color: #cfc8e0; cursor: pointer; }
+.slb2-rfchip:hover { border-color: rgba(255,216,106,0.5); color: #fff; }
+.slb2-rfchip.on { background: rgba(255,216,106,0.16); border-color: rgba(255,216,106,0.7); color: #ffd86a; }
 .slb2-togglerow { display: flex; flex-wrap: wrap; gap: 3px; }
 .slb2-togglerow .slb2-tiny.on { border-left: 3px solid var(--fc, #ffd86a); }
 

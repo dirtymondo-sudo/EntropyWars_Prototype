@@ -37,8 +37,8 @@ test('animVerb: a known kind wins over the verb table and the rules; an unknown 
     assert.strictEqual(R.classify(fire), 'magic');
     assert.strictEqual(R.classify(Object.assign({}, fire, { animVerb: 'drain' })), 'drain');
     assert.strictEqual(R.classify(Object.assign({}, fire, { animVerb: 'nope' })), 'magic', 'a bad verb is ignored');
-    assert.strictEqual(R.classify({ id: 'raceTailWhip', name: 'Tail Whip', animVerb: 'slam' }), 'slam', 'the pick beats the verb table');
-    assert.strictEqual(R.classify({ id: 'raceTailWhip', name: 'Tail Whip', animVerb: 'slam' }, { noPick: true }), 'sweep', 'noPick = the verb table + the rules');
+    assert.strictEqual(R.classify({ id: 'raceDinoTailWhip', name: 'Tail Whip', animVerb: 'slam' }), 'slam', 'the pick beats the verb table');
+    assert.strictEqual(R.classify({ id: 'raceDinoTailWhip', name: 'Tail Whip', animVerb: 'slam' }, { noPick: true }), 'sweep', 'noPick = the verb table + the rules');
     assert.strictEqual(R.classify(Object.assign({}, fire, { animVerb: 'drain' }), { rulesOnly: true }), 'magic', 'rulesOnly skips the pick too');
     assert.ok(Array.isArray(R.KINDS) && R.KINDS.length >= 58 && R.KINDS.includes('drain') && R.KINDS.includes('flyKick'));
 });
