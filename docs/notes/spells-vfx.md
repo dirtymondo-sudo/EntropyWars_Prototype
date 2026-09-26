@@ -1225,3 +1225,6 @@ their true cells), the rack's ring aim, `crossArmHits`; party-builder.js `pbAoeT
 draw the mask; data.js `_mfEffectiveTargets` prices it by tile count, `describeSpell` names the shape ("in a ring
 area"), `stampSpellSchema` stamps `_aoeBound`. Test: aoe-mask.test.js. Everything rides the state snapshot as plain
 data — never a function or a unit object on a zone / delayed / deployed entry.
+
+## THE FREE `spell` (2026-09-26 bugfix, token 20260926-bugfix-03-cors)
+Phase 2's `animStrikeMs` read `spell` inside battle.js `_releaseCastSprite(unit, holdMs)`, which has no `spell`. Every 3D cast released by the camera's source-hold threw a ReferenceError inside `_execAction` / the AI's `safeAction`: the VFX played, no damage landed, the AP was refunded and the AI stalled. `triggerCastAnim` now stores the row's strike ms in `state._castAnimStrikeMs[unitId]` and the release reads that. Test: spell-anim-pick.test.js runs both functions in a sandbox. The same sweep (eslint no-undef over the game scripts) fixed `getSpellPower` (never existed) in the teleport arrival blast and ui.js's bare `_hlCellMap` on keyboard Enter.
