@@ -113,3 +113,28 @@ test('the boot stamp registers the shipped rows\' clips and the census reads the
     assert.match(RT, /devLibClips/, 'ThreeRenderer.devLibClips exists');
     assert.match(RT, /castChainFor:/, 'ThreeRenderer.castChainFor exists');
 });
+
+test('the cast release reads the row\'s strike ms without a free `spell` (2026-09-26: every 3D cast threw)', () => {
+    // _releaseCastSprite only gets the unit; triggerCastAnim stores the row's
+    // animStrikeMs per unit. Run the two functions for real in a sandbox.
+    const vm = require('node:vm');
+    const src = read('battle.js');
+    const slice = name => { const i = src.indexOf('function ' + name + '('); const j = src.indexOf('\n        function ', i + 10); return src.slice(i, j); };
+    const timers = [], leads = [];
+    const ctx = {
+        state: {}, console,
+        window: { setTimeout: (f) => timers.push(f), _v2UnitSystemActive: () => false },
+        ThreeAnim: { castStrikeMs: () => 999 },
+        _skipVisuals: () => false,
+        classifySpellAnimKind: () => 'magic'
+    };
+    vm.createContext(ctx);
+    vm.runInContext(slice('triggerCastAnim') + '\n' + slice('_releaseCastSprite'), ctx);
+    const unit = { id: 'u1', x: 0, y: 0 };
+    // capture the lead the release trades for: holdMs 1000 minus the lead reaches the scheduled start
+    ctx.window.setTimeout = (f, ms) => { leads.push(ms); };
+    assert.doesNotThrow(() => { ctx.triggerCastAnim(unit, { id: 'x', dmg: 10, animStrikeMs: 300 }); ctx._releaseCastSprite(unit, 1000); });
+    assert.strictEqual(ctx.state._castAnimStrikeMs.u1, 300, 'the row\'s strike ms is kept for the release');
+    assert.doesNotThrow(() => { ctx.triggerCastAnim(unit, { id: 'y', dmg: 10 }); ctx._releaseCastSprite(unit, 1000); });
+    assert.strictEqual(ctx.state._castAnimStrikeMs.u1, undefined, 'a row without animStrikeMs falls back to the clip\'s');
+});

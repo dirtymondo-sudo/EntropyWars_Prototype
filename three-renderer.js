@@ -47900,7 +47900,7 @@ const ThreeRenderer = (function () {
             if (!t.grp.parent) return;
             t.grp.getWorldPosition(wp);
             var yA = t.y * U;                                    // the authored height in world units (the group's y before any seat)
-            rc.set(new THREE.Vector3(wp.x, yA + 0.45 * U, wp.z), down); rc.near = 0; rc.far = 0.95 * U;
+            rc.set(new THREE.Vector3(wp.x, yA + 0.45 * U, wp.z), down); rc.near = 0; rc.far = 0.95 * U; rc.camera = H.camera || null;   // sprites need a camera or three.js logs an error per sprite (they are skipped below anyway)
             var best = null, hits = [];
             for (var r = 0; r < roots.length; r++) { try { rc.intersectObject(roots[r], true, hits); } catch (e) { } }
             for (var i = 0; i < hits.length; i++) {

@@ -10177,6 +10177,12 @@
             if (!state._castAnimKind) state._castAnimKind = {};
             state._castAnimKind[unit.id] = (typeof classifySpellAnimKind === 'function')
                 ? classifySpellAnimKind(spell) : 'magic';
+            /* Phase 2 `animStrikeMs`: remember the row's explicit strike offset
+               for _releaseCastSprite, which only gets the unit (it read a
+               free `spell` there and every 3D cast threw — 2026-09-26). */
+            if (!state._castAnimStrikeMs) state._castAnimStrikeMs = {};
+            if (spell && typeof spell.animStrikeMs === 'number' && spell.animStrikeMs >= 0) state._castAnimStrikeMs[unit.id] = spell.animStrikeMs;
+            else delete state._castAnimStrikeMs[unit.id];
 
             // The cast sprite-sheet / glow used to start HERE, immediately — but
             // the projectile / particle effect doesn't launch until the camera's
@@ -10214,7 +10220,8 @@
             if (holdMs > 0 && window.ThreeAnim && typeof ThreeAnim.castStrikeMs === 'function') {
                 const _kind = state._castAnimKind ? state._castAnimKind[unit.id] : null;
                 /* Phase 2 `animStrikeMs`: a row's explicit strike offset beats the clip's measured one. */
-                const _lead = (spell && typeof spell.animStrikeMs === 'number' && spell.animStrikeMs >= 0) ? spell.animStrikeMs : ThreeAnim.castStrikeMs(unit, _kind);
+                const _rowMs = state._castAnimStrikeMs ? state._castAnimStrikeMs[unit.id] : undefined;
+                const _lead = (typeof _rowMs === 'number' && _rowMs >= 0) ? _rowMs : ThreeAnim.castStrikeMs(unit, _kind);
                 if (_lead > 0) holdMs = Math.max(0, holdMs - _lead);
             }
             const _v2 = window._v2UnitSystemActive?.();
@@ -46282,7 +46289,7 @@
                         : st.type === 'guard' ? '🛡 Guard'
                         : st.type === 'item' ? `🎒 ${st.tool}`
                         : st.type === 'entropyStrike' ? ('⚛ ' + ((st.strikeType && typeof getEntropyStrikeType === 'function') ? getEntropyStrikeType(st.strikeType).name.toUpperCase() : 'ENTROPY STRIKE'))
-                        : st.type === 'finisher' ? ('☠ ' + ((typeof getFinisherFor === 'function' && getFinisherFor(unit)) ? getFinisherFor(unit).name.toUpperCase() : 'FINISHER'))
+                        : st.type === 'finisher' ? ('☠ ' + ((typeof getFinisherFor === 'function' && getFinisherFor(e.unit)) ? getFinisherFor(e.unit).name.toUpperCase() : 'FINISHER'))
                         : st.type === 'build' ? '🔨 Build'
                         : st.type).join(' → ');
                 return `${unitDisplayName(e.unit)} (SPD ${e.speed}): ${verbs}`;
@@ -65553,7 +65560,7 @@
                     if (spell.aoeOnArrival && spell.dmg && tUnit === unit) {
                         const _tpM = _spellMaskOf(spell);   // Phase 2 mask: only the mask's offsets (minus the landing tile)
                         const aoeR = _tpM ? Math.max(1, aoeMaskBound(_tpM)) : (spell.aoeRadius || 1);
-                        const spellPwr = getSpellPower(unit, spell);
+                        const spellPwr = spellPower;   // getSpellPower never existed (a ReferenceError on every arrival blast)
                         for (let dy = -aoeR; dy <= aoeR; dy++) {
                             for (let dx = -aoeR; dx <= aoeR; dx++) {
                                 if (dx === 0 && dy === 0) continue;

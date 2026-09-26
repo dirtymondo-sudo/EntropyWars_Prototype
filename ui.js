@@ -16750,7 +16750,7 @@
                     event.preventDefault();
 
                     const _kbPk = posKey(state._kbCursorX, state._kbCursorY);
-                    const _kbHlC = _hlCellMap.get(_kbPk);
+                    const _kbHlC = (typeof _hlCellMap !== 'undefined' && _hlCellMap) ? _hlCellMap.get(_kbPk) : null;   // _hlCellMap is not defined in this build — the bare read threw on keyboard Enter
                     const _kbZ = _kbHlC ? _kbHlC._tileZ : undefined;
                     state._clickedUnitId = null;
                     clickTile(state._kbCursorX, state._kbCursorY, _kbZ);
