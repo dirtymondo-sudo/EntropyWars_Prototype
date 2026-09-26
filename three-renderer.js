@@ -41032,22 +41032,42 @@ const ThreeRenderer = (function () {
             if (info.gen && info.gen.kind === 'city') { var eo = Math.hypot(Math.max(0, Math.abs(px) - hx), Math.max(0, Math.abs(pz) - hz)), ek = eo / 2.5; if (ek > 1) ek = 1; rk = Math.max(rk, ek); }   // THE STREETS IN THE PACK (2026-09-17): a city's outer ground is the cliff sheet (concrete), never the asphalt running to the fog
             blend[k * 2] = rk * rk * (3 - 2 * rk); blend[k * 2 + 1] = 0;
         }
+        /* THE STAGE (OPEN_WORLD_PLAN Phase 1): the outer ground lying inside a staged neighbour's frame is cut into its OWN mesh
+           per neighbour (`_hq.outerSides[id]`) — drawn while that neighbour is not on the stage (the ground runs on as today),
+           hidden while it is (its own field is the ground there) */
+        var stNbs = _hqStageNbsOf((_hq.opts && _hq.opts.room) || room.id), sideIdx = {};
         for (var j2 = 0; j2 + 1 < nz; j2++) for (var i2 = 0; i2 + 1 < nx; i2++) {
             /* a quad wholly inside the field's bound is the field's own */
             var qx0 = X0 + i2 * cs, qz0 = Z0 + j2 * cs, qx1 = qx0 + cs, qz1 = qz0 + cs;
             if (qx0 > -hx && qx1 < hx && qz0 > -hz && qz1 < hz) continue;
-            var a = j2 * nx + i2, b = a + 1, c = a + nx, d = c + 1;
-            idx.push(a, c, b, b, c, d);
+            var a = j2 * nx + i2, b = a + 1, c = a + nx, d = c + 1, into = idx;
+            for (var ni = 0; ni < stNbs.length; ni++) {
+                var nr = stNbs[ni].rect, qcx = qx0 + cs / 2, qcz = qz0 + cs / 2;
+                if (qcx > nr.x0 && qcx < nr.x1 && qcz > nr.z0 && qcz < nr.z1) { into = sideIdx[stNbs[ni].id] || (sideIdx[stNbs[ni].id] = []); break; }
+            }
+            into.push(a, c, b, b, c, d);
         }
         var geo = new THREE.BufferGeometry();
         geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
         geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
         geo.setAttribute('aBlend', new THREE.BufferAttribute(blend, 2));
         geo.setAttribute('aAO', new THREE.BufferAttribute(aoO, 1));   // the same material as the field: the attribute must exist (a missing one reads 0 = black)
-        geo.setIndex(idx); geo.computeVertexNormals();
-        var outer = new THREE.Mesh(geo, mat);
-        outer.position.y = 0.2; outer.receiveShadow = true; outer.renderOrder = 0; outer._ew_hqPart = 'floor'; outer._ew_hqGround = true; outer._ew_hqOuter = true;
-        G.add(outer);
+        var allIdx = idx.slice(); Object.keys(sideIdx).forEach(function (id) { Array.prototype.push.apply(allIdx, sideIdx[id]); });
+        geo.setIndex(allIdx); geo.computeVertexNormals();   // the normals of the WHOLE ground (no seam where a side is cut out)
+        var mkOuter = function (ix) {
+            var g = geo;
+            if (ix) { g = new THREE.BufferGeometry(); ['position', 'uv', 'aBlend', 'aAO', 'normal'].forEach(function (k) { g.setAttribute(k, geo.attributes[k].clone()); }); g.setIndex(ix); g.computeBoundingSphere(); }
+            var m = new THREE.Mesh(g, mat);
+            m.position.y = 0.2; m.receiveShadow = true; m.renderOrder = 0; m._ew_hqPart = 'floor'; m._ew_hqGround = true; m._ew_hqOuter = true;
+            G.add(m); return m;
+        };
+        var sideIds = Object.keys(sideIdx);
+        if (sideIds.length) {
+            _hq.outerSides = {};
+            sideIds.forEach(function (id) { var m = mkOuter(sideIdx[id]); m._ew_hqOuterSide = id; _hq.outerSides[id] = m; });
+            geo.setIndex(idx); geo.computeBoundingSphere();
+        }
+        mkOuter(null);
     }
     /* the treeline of an open room (THE WOODS): rings of the foliage models on the apron past the shell, the door lanes kept clear */
     function _hqPlantTreeline(room, S, halfX, halfZ, plantTree, rng) {
@@ -41541,6 +41561,53 @@ const ThreeRenderer = (function () {
         if (info.maskD && info.gen && typeof hqTerrainMaskAt === 'function') { var mdA = hqTerrainMaskAt(info, px, pz); if (mdA > 0 && mdA < 0.6) aoV -= aoT * aoF * (1 - mdA / 0.6); }
         return Math.max(0.5, aoV);
     }
+    /* THE TILES (OPEN_WORLD_PLAN §5.5): the field's grid cut into squares of HQ_STAGE_RULES.tileM — each tile its own small
+       geometry (its block of the grid's vertices, the whole field's normals copied in, its own bounding sphere), so a
+       tile behind the camera is never drawn, and a dig in the battle moves each tile's own vertices. null = one tile
+       (a small room) or the switch (window.EW_HQ_NO_TILES). */
+    function _hqTerrainTiles(geo, idx, nx, nz, res) {
+        if (typeof window !== 'undefined' && window.EW_HQ_NO_TILES) return null;
+        var tileM = (typeof HQ_STAGE_RULES !== 'undefined' && HQ_STAGE_RULES.tileM > 0) ? HQ_STAGE_RULES.tileM : 32;
+        var nT = Math.max(4, Math.round(tileM / res)), tx = Math.ceil((nx - 1) / nT), tz = Math.ceil((nz - 1) / nT);
+        if (tx * tz <= 1) return null;
+        var A = geo.attributes, P = A.position.array, N = A.normal.array, UV = A.uv.array, B = A.aBlend.array, O = A.aAO.array;
+        var byTile = {};
+        for (var q = 0; q < idx.length; q += 6) {   // a quad's six indices: a, c, b, b, c, d (a = its low corner)
+            var a = idx[q], ai = a % nx, aj = (a - ai) / nx, key = Math.floor(aj / nT) * tx + Math.floor(ai / nT);
+            (byTile[key] || (byTile[key] = [])).push(q);
+        }
+        var out = [];
+        Object.keys(byTile).forEach(function (key) {
+            var k = +key, ti = k % tx, tj = (k - ti) / tx, i0 = ti * nT, j0 = tj * nT, i1 = Math.min(nx - 1, i0 + nT), j1 = Math.min(nz - 1, j0 + nT);
+            var bw = i1 - i0 + 1, bh = j1 - j0 + 1, n = bw * bh;
+            var pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), uv = new Float32Array(n * 2), bl = new Float32Array(n * 2), ao = new Float32Array(n);
+            var y0 = Infinity, y1 = -Infinity;
+            for (var j = j0; j <= j1; j++) for (var i = i0; i <= i1; i++) {
+                var src = j * nx + i, dst = (j - j0) * bw + (i - i0);
+                pos[dst * 3] = P[src * 3]; pos[dst * 3 + 1] = P[src * 3 + 1]; pos[dst * 3 + 2] = P[src * 3 + 2];
+                nor[dst * 3] = N[src * 3]; nor[dst * 3 + 1] = N[src * 3 + 1]; nor[dst * 3 + 2] = N[src * 3 + 2];
+                uv[dst * 2] = UV[src * 2]; uv[dst * 2 + 1] = UV[src * 2 + 1]; bl[dst * 2] = B[src * 2]; bl[dst * 2 + 1] = B[src * 2 + 1]; ao[dst] = O[src];
+                var py = P[src * 3 + 1]; if (py < y0) y0 = py; if (py > y1) y1 = py;
+            }
+            var li = [], qs = byTile[key];
+            var loc = function (v) { var vi = v % nx, vj = (v - vi) / nx; return (vj - j0) * bw + (vi - i0); };
+            for (var m = 0; m < qs.length; m++) for (var e = 0; e < 6; e++) li.push(loc(idx[qs[m] + e]));
+            var tg = new THREE.BufferGeometry();
+            tg.setAttribute('position', new THREE.BufferAttribute(pos, 3)); tg.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+            tg.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); tg.setAttribute('aBlend', new THREE.BufferAttribute(bl, 2)); tg.setAttribute('aAO', new THREE.BufferAttribute(ao, 1));
+            tg.setIndex(li);
+            tg.computeBoundingBox(); tg.computeBoundingSphere();
+            tg._ew_hqTile = [ti, tj];
+            out.push(tg);
+        });
+        return out.length > 1 ? out : null;
+    }
+    /* the staged neighbours of a room being built (data.js hqStageNeighbours; [] off the stage or under the switch) */
+    function _hqStageNbsOf(roomId) {
+        if (!roomId || _hqStageOff() || typeof hqStageNeighbours !== 'function') return [];
+        try { return hqStageNeighbours(roomId) || []; } catch (e) { return []; }
+    }
+    function _hqStageOff() { return (typeof window !== 'undefined' && !!window.EW_HQ_NO_STAGE) || (typeof HQ_STAGE_RULES === 'undefined'); }
     function _hqBuildTerrain(room) {
         if (typeof hqTerrainInfo !== 'function') return;
         var U = _hqUnits(), S = room.shell, G = _hq.shellGroup;
@@ -41597,6 +41664,14 @@ const ThreeRenderer = (function () {
             }
             return false;
         };
+        /* THE STAGE (OPEN_WORLD_PLAN Phase 1): the field runs a metre past the shell; where a staged neighbour lies past that
+           edge, the ground there is the NEIGHBOUR's (both would draw the same street a centimetre apart — the flicker) */
+        var stNbs = _hqStageNbsOf(roomId), hwS = S.w / 2, hdS = S.d / 2;
+        var nbGround = function (mx, mz) {
+            if (!stNbs.length || (Math.abs(mx) <= hwS && Math.abs(mz) <= hdS)) return false;
+            for (var ni = 0; ni < stNbs.length; ni++) { var nr = stNbs[ni].rect; if (mx > nr.x0 && mx < nr.x1 && mz > nr.z0 && mz < nr.z1) return true; }
+            return false;
+        };
         for (var j2 = 0; j2 + 1 < nz; j2++) for (var i2 = 0; i2 + 1 < nx; i2++) {
             var a = j2 * nx + i2, b = a + 1, c = a + nx, d = c + 1;
             var mx = info.x0 + (i2 + 0.5) * res, mz = info.z0 + (j2 + 0.5) * res;
@@ -41605,7 +41680,7 @@ const ThreeRenderer = (function () {
                 var q = { t: ((mx - f.x0) * dx + (mz - f.z0) * dz) / (len * len), v: (-(mx - f.x0) * dz + (mz - f.z0) * dx) / len };
                 return q.t >= 0 && q.t <= 1 && Math.abs(q.v) <= f.w / 2;
             });
-            if (!underEscalator && !(floats.length && underFloat(mx, mz))) idx.push(a, c, b, b, c, d);
+            if (!underEscalator && !(floats.length && underFloat(mx, mz)) && !nbGround(mx, mz)) idx.push(a, c, b, b, c, d);
         }
         var geo = new THREE.BufferGeometry();
         geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
@@ -41614,9 +41689,17 @@ const ThreeRenderer = (function () {
         geo.setAttribute('aAO', new THREE.BufferAttribute(ao, 1));   // THE LIGHT PASS 2.3
         geo.setIndex(idx); geo.computeVertexNormals();
         info._TM = TM;   // THE TRIPLANAR CLIFF: the sheet's tile in world units (the uv = pos / TM rule, now on every axis)
-        var field = new THREE.Mesh(geo, _hqTerrainMat(info, S));
-        field.position.y = 0.3; field.receiveShadow = true; field.renderOrder = 1; field._ew_hqPart = 'floor'; field._ew_hqTerrain = true;
-        G.add(field);
+        var fieldMat = _hqTerrainMat(info, S), field = null;
+        /* THE TILES (OPEN_WORLD_PLAN §5.5, Phase 1): the field is cut into HQ_STAGE_RULES.tileM squares — one mesh each, the
+           same material, the normals of the WHOLE field (no seam in the light) — so the frustum drops the squares behind the
+           camera: "only a chunk of the map is being rendered". A field of one tile stays one mesh. */
+        var tiles = _hqTerrainTiles(geo, idx, nx, nz, res);
+        (tiles || [geo]).forEach(function (tg) {
+            var fm = new THREE.Mesh(tg, fieldMat);
+            fm.position.y = 0.3; fm.receiveShadow = true; fm.renderOrder = 1; fm._ew_hqPart = 'floor'; fm._ew_hqTerrain = true;
+            G.add(fm); if (!field) field = fm;
+        });
+        if (tiles) geo.dispose();
         /* THE OUTER GROUND (2026-09-17): an open field no longer ends at a square edge over a flat apron — the ground
            runs on past the shell to HQ_OUTER_M, matched to the field's own edge, rolling, swelling into low rises and
            then falling away under the fog (the sky's fog colour: scene.fog is the room's, _hqEnter). The treeline
@@ -43661,13 +43744,14 @@ const ThreeRenderer = (function () {
         console.log('[HQ] sky:', theme, '—', group.children.length, 'bodies');
     }
     function _hqTickSky(now, Hx) {
-        var H = Hx || _hq, sk = H && H.sky, env = H && H.room.shell.sky;
+        var H = Hx || _hq, sk = H && H.sky, env = H && ((H.stage && _hqStageSkyEnv(H)) || H.room.shell.sky);   // THE STAGE: a crossing's blend
         if (!sk || !env || !_envUni) return;
         sk.dome.position.copy(H.camera.position);
         var u = _envUni, t = now / 1000;
         u.uTime.value = t; u.uDayNight.value = sk.night; u.uSkyEvent.value = 0; u.uSkyAmt.value = 0; u.uZodiac.value = 0;
         u.uWeather.value.set(0, 0, 0, 0); u.uMoonMesh.value = 0;
         u.uSkyFlow.value = 0; u.uSunNear.value = 0; u.uMoonNear.value = 0; u.uSkyYaw.value = 0; u.uSkyLift.value = 0;   // MOVING MAPS: still in the building
+        if (H.stage && H.stage.skyYaw) u.uSkyYaw.value = H.stage.skyYaw;   // THE STAGE: the dome stays put while the frame turns under it (a crossing into a turned part)
         u.uCenter.value.set(0, 0, 0); u.uDiscR.value = 6000;
         u.uMapTint.value.set(sk.tint.r, sk.tint.g, sk.tint.b);
         u.uMapTintAmt.value = (env.tint != null && env.tintAmt != null) ? env.tintAmt : 0;
@@ -47292,6 +47376,8 @@ const ThreeRenderer = (function () {
         road: function (U, ctx) {
             var g = new THREE.Group(), door = ctx.door || {}, W = door.w || (ctx.cat && ctx.cat.w) || 9, H = (ctx.cat && ctx.cat.h) || 5.2;
             var LEN = (_hq && _hq.terrain) ? 40 : 13;   // a terrain room's outer ground runs to the fog; a site room's apron ends 16 m out — the road stops on it, never over the void
+            var joinedR = (typeof _hqStageJoined === 'function') && _hqStageJoined(ctx.room, door);
+            if (joinedR) LEN = 0;   // THE STAGE (OPEN_WORLD_PLAN Phase 1): a joined road runs on into the neighbour's own street — no strip of ours, only the gantry
             var neon = !!(ctx.room && ctx.room.shell && ctx.room.shell.sky && ctx.room.shell.sky.night);
             var grp = ctx.group || null;   // the placed group (position / rotation) — the ground under the strip is sampled in the room's frame
             var texOf = (typeof _hzTex === 'function') ? _hzTex : function () { return null; };   // the stub scene (hq-world.test.js) has no sheet loader
@@ -47340,12 +47426,12 @@ const ThreeRenderer = (function () {
             var lamps = [];
             [-0.3, 0.3].forEach(function (f) { var lp = _hzGlowSprite(1.2 * U, 0xfff2c8, 0.16, 0.0, 0.0, 0.0); lp.position.set(f * pw * U, (H - 0.05) * U, -1.9 * U); g.add(lp); lamps.push(lp); });
             /* THE LEAVING plate on the right shoulder, the pack's speed plate on the left */
-            var lv = (typeof _hzTextTex === 'function') ? _hzTextTex('hq_road_leaving_' + (ctx.room && ctx.room.label || ''), ['LEAVING', String((ctx.room && ctx.room.label) || '').split('·')[0].trim() || 'TOWN'], { w: 512, h: 256, color: '#ffffff', bg: '#1d5a30', border: '#f0f0f0', pad: 0.12, weight: 'bold' }) : null;
+            var lv = (!joinedR && typeof _hzTextTex === 'function') ? _hzTextTex('hq_road_leaving_' + (ctx.room && ctx.room.label || ''), ['LEAVING', String((ctx.room && ctx.room.label) || '').split('·')[0].trim() || 'TOWN'], { w: 512, h: 256, color: '#ffffff', bg: '#1d5a30', border: '#f0f0f0', pad: 0.12, weight: 'bold' }) : null;
             if (lv) { var lpst = new THREE.Mesh(new THREE.CylinderGeometry(0.04 * U, 0.05 * U, 2.6 * U, 6), steel); lpst.position.set((W / 2 + 1.1) * U, 1.3 * U, -6 * U); g.add(lpst); var lvM = _hqBasic(0xffffff, { side: THREE.DoubleSide }); lvM.map = lv; var lpl = new THREE.Mesh(new THREE.PlaneGeometry(1.4 * U, 0.7 * U), lvM); lpl.position.set((W / 2 + 1.1) * U, 2.3 * U, -6 * U); g.add(lpl); }
-            var spd = texOf('urban:SignSpeedUsa045-small');
+            var spd = joinedR ? null : texOf('urban:SignSpeedUsa045-small');   // (a joined road: no LEAVING plate, no speed sign — you are not leaving)
             if (spd) { var sp = new THREE.Mesh(new THREE.CylinderGeometry(0.035 * U, 0.04 * U, 2.6 * U, 6), steel); sp.position.set(-(W / 2 + 0.9) * U, 1.3 * U, -9 * U); g.add(sp); var spm = _hqMat(null, 1, 1, { transparent: true, emissive: 0x202020, emissiveIntensity: 1 }); spm.map = spd; spm.alphaTest = 0.2; spm.needsUpdate = true; var spl = new THREE.Mesh(new THREE.PlaneGeometry(0.62 * U, 0.78 * U), spm); spl.position.set(-(W / 2 + 0.9) * U, 2.35 * U, -9 * U); g.add(spl); }
             /* the fog takes the far end: a dark gradient plane across the road's end */
-            var fade = new THREE.Mesh(new THREE.PlaneGeometry((W + 2) * U, 6 * U), _hqBasic(0x000000, { transparent: true, opacity: 0.0, depthWrite: false })); fade.rotation.x = -Math.PI / 2; fade.position.set(0, 0.06 * U, -(LEN - 3) * U); g.add(fade);
+            var fade = new THREE.Mesh(new THREE.PlaneGeometry((W + 2) * U, 6 * U), _hqBasic(0x000000, { transparent: true, opacity: 0.0, depthWrite: false })); fade.rotation.x = -Math.PI / 2; fade.position.set(0, 0.06 * U, -(LEN - 3) * U); if (!joinedR) g.add(fade);
             var motion = { mode: 'way', ow: W, tick: function (k) { lamps.forEach(function (lp) { lp.material.opacity = 0.16 + 0.5 * k; lp.scale.setScalar((1.2 + 0.8 * k) * U); }); } };
             return { g: g, motion: motion, ow: W, oh: H, plateY: H + 0.5, blockers: [] };
         },
@@ -47459,8 +47545,15 @@ const ThreeRenderer = (function () {
         var motion = { mode: 'way', ow: holeW, tick: function (k) { light.material.opacity = 0.16 + 0.62 * k; glow.material.opacity = 0.18 + 0.5 * k; glow.scale.setScalar((1.4 + 1.0 * k) * U); } };
         return { g: g, motion: motion, ow: holeW, oh: holeH, plateY: 2.6 };
     }
+    /* THE STAGE (OPEN_WORLD_PLAN Phase 1): a link door standing on a joined span is no longer a door — the road runs on into
+       the neighbour; only its gantry stands (data.js hqStageJoinedDoor) */
+    function _hqStageJoined(room, door) {
+        var id = (_hq && _hq.opts && _hq.opts.room) || null;
+        if (!id || !door || !door.link || _hqStageOff() || typeof hqStageJoinedDoor !== 'function') return false;
+        try { return hqStageJoinedDoor(id, door.id); } catch (e) { return false; }
+    }
     function _hqBuildWay(room, door, level, y0, Rw, inward) {
-        var U = _hqUnits(), S = room.shell, G = _hq.doorGroup;
+        var U = _hqUnits(), S = room.shell, G = _hq.doorGroup, joined = (typeof _hqStageJoined === 'function') && _hqStageJoined(room, door);
         var kind = door.way, b = _hqWayBuilders[kind];
         var W = ((_hqData() || {}).ways || {})[kind] || {};
         if (!b) { console.warn('[HQ] no builder for way', kind, door.id); return; }
@@ -47470,6 +47563,7 @@ const ThreeRenderer = (function () {
         else { grp.position.copy(_hqPolarW(door.deg, Rw, y0)); grp.rotation.y = _hqFaceCentreYaw(door.deg) + (inward ? Math.PI : 0); }
         var built = b(U, { room: room, door: door, free: !!(box && box.free), cat: W, wx: grp.position.x / U, wz: grp.position.z / U, yaw: grp.rotation.y, y0: y0 });   // THE ROAD (2026-09-17): the placed frame, for a builder that samples the ground
         grp.add(built.g);
+        if (joined) { grp._ew_hqJoined = door.id; G.add(grp); return; }   // THE STAGE: the gantry alone — no plate, no record (nothing to press: you walk on)
         var ow = built.ow || W.w || 1.2, oh = built.oh || W.h || 2.2;
         var el = document.createElement('div');
         el.className = 'hq-plate hq-plate-way';
@@ -50401,7 +50495,7 @@ const ThreeRenderer = (function () {
         /* the avatar: the Player cast model (map.js _hqAvatar → {cast: 'player'},
            2026-09-06) or a roster vessel / the agent in black */
         var avDef = (av.cast && typeof getCastModel === 'function') ? getCastModel(av.cast) : null;   // (resolved under _hq3DOn — the population call lifts the board's sprite preference)
-        _hq.player = _hqSpawnCharacter({ id: 'hq-player', kind: 'player', race: av.race || 'men in black', gender: av.gender || 'male', def: avDef || undefined, appearance: av.appearance || null, deg: sp.deg, r: sp.r, x: sp.x, z: sp.z, level: sp.level || 0, face: sp.face || 0, label: 'YOU' });
+        if (!opts._stageNoPlayer) _hq.player = _hqSpawnCharacter({ id: 'hq-player', kind: 'player', race: av.race || 'men in black', gender: av.gender || 'male', def: avDef || undefined, appearance: av.appearance || null, deg: sp.deg, r: sp.r, x: sp.x, z: sp.z, level: sp.level || 0, face: sp.face || 0, label: 'YOU' });
         (room.agents || []).forEach(function (ag, i) {
             var g = ag.gender || ((i % 2) ? 'female' : 'male');
             /* an agent with a building pose (a seated clerk) borrows the MIB
@@ -50640,6 +50734,8 @@ const ThreeRenderer = (function () {
             /* a box: inside the four walls, one level — an 'open' site room
                (THE EDGE, 2026-09-11) lets you roam `shell.roam` m past the
                old wall line onto the apron */
+            /* THE STAGE (OPEN_WORLD_PLAN Phase 1): past the edge through a joined span, or over a drawn neighbour */
+            if (_hq.stage) { var stY = _hqStageSurface(x, z, curY, ignoreBlockers); if (stY !== undefined) return stY; }
             var roamB = _hqRoamM(S);
             if (Math.abs(x) > S.w / 2 + roamB - HQ_BODY_R - 0.08 || Math.abs(z) > S.d / 2 + roamB - HQ_BODY_R - 0.08) return null;
             if (S.round > 0 && _hqInFillet(x, z, S, HQ_BODY_R + 0.08)) return null;   // THE RETRO-FUTURIST KIT: the filleted corner is wall
@@ -50822,6 +50918,7 @@ const ThreeRenderer = (function () {
         var room = _hq.room, S = room.shell;
         var r = Math.hypot(x, z);
         if (room.kind === 'box') {
+            if (_hq.stage) { var stA = _hqStageSurface(x, z, null, true); if (stA !== undefined) return stA !== null && y >= stA - 0.05; }   // THE STAGE: the air past the edge is the road's / the neighbour's
             var roamA = _hqRoamM(S);
             if (Math.abs(x) > S.w / 2 + roamA - HQ_BODY_R - 0.08 || Math.abs(z) > S.d / 2 + roamA - HQ_BODY_R - 0.08) return false;
             if (S.round > 0 && _hqInFillet(x, z, S, HQ_BODY_R + 0.08)) return false;   // THE RETRO-FUTURIST KIT: the filleted corner is wall in the air too
@@ -50885,6 +50982,7 @@ const ThreeRenderer = (function () {
         var r = Math.hypot(px, pz);
         if (_hqCamInDoorway(px, pz, py)) return true;
         if (_hq.room.kind === 'box') {
+            if (_hq.stage) { var stC = _hqStageCam(px, pz, py); if (stC !== undefined) return stC; }   // THE STAGE: the boom over the road through the edge / a drawn neighbour
             var roamC = _hqRoamM(S);
             if (Math.abs(px) > S.w / 2 + roamC - 0.28 || Math.abs(pz) > S.d / 2 + roamC - 0.28) return true;
             if (S.round > 0 && _hqInFillet(px, pz, S, 0.28)) return true;   // THE RETRO-FUTURIST KIT: the boom never enters a filleted corner
@@ -55513,6 +55611,7 @@ const ThreeRenderer = (function () {
         _hqTickChars(wdt);
         _hqTickCamera(dt);
         _hqTickWorld(dt, now);
+        if (H.stage) { try { _hqStageTick(H, dt, now); } catch (e) { if (!H.stage.warnedTick) { H.stage.warnedTick = true; console.warn('[HQ stage] tick', e); } } if (_hq !== H) return; }   // THE STAGE (OPEN_WORLD_PLAN Phase 1): the neighbours build, tick, light — and the crossing
         _hqTickRipples(dt);   // THE RIPPLES (5.3): the wader's / the swimmer's / the skiff's rings
         if (!_polishOff('wind', 'EW_HQ_NO_WIND')) _EW_WIND.value = now * 0.001 * (((_hqLightRules().wind || {}).speed) || 1);   // THE WIND (5.1): the foliage's shared clock (a frozen clock = still trees)
         _hqTickMotionBlur(H);   // THE THIRD PASS 6.4: the deck at speed, the long fall
@@ -56416,6 +56515,414 @@ const ThreeRenderer = (function () {
             + (occF ? ' · blockers ' + occF.roots.length + ' (' + occF.skipped + ' merged out)' : '') + (skyN ? ' · sky ' + skyN : ''));
     }
 
+    /* ══ THE STAGE (OPEN_WORLD_PLAN.md §5.1–5.3, Phase 1, 2026-09-26) ══════════════════════════════════════════════
+       A room that is a part of a staged zone (data.js HQ_STAGE_RULES.zones — the city) no longer ends at its edge: its
+       joined neighbours (data.js hqStageNeighbours — Downtown ⇄ the stadium, Downtown ⇄ the Strip) are BUILT INTO THE
+       SAME SCENE beside it, by the same builders, each into a record of its own (the part's keys, _hqPartFields) whose
+       root group stands at the neighbour's frame (hqStageRel). The CURRENT part always stands at the scene's origin
+       (every reader in this file works in its metres); the walker walks on through a joined span (the avenue into the
+       players' tunnel, the cross street onto the boulevard), and when the feet are HQ_WORLD_RULES.crossHys past the
+       edge THE CROSSING swaps the records (_hqStageSwap): the neighbour becomes the current part, every root, the
+       walker, the camera, the key light and the sky's yaw are re-anchored to its frame — no card, no rebuild, the
+       people of the part you left stand down and the new part's come out. The sky, the fog, the key and the look ease
+       to the new part's over HQ_STAGE_BLEND_MS (fork 4's default: the Strip keeps its own night).
+       THE RING (§5.1): the one-hop neighbours are built (one builder step a frame, after the room is ready + the
+       beat HQ_STAGE_RULES.buildDelayMs); a part two hops away is detached (kept built); past partsBuilt it is
+       disposed. A neighbour ATTACHES only when its own gate is idle (fork 5's default: the black-texture rule — a
+       part is never drawn with its sheets in flight). THE LAMPS (§5.2): the point lights of every part on the stage
+       are one budget — the nearest N lit, N constant (never below the current part's own count, so a room looks as
+       it did before; a changing count would recompile every material). THE HAND-OVER: a fight flattens the drawn
+       neighbours into the current part's groups (the battle's radius culls them per piece).
+       Not in Phase 1: far shells (the city's fog, 0.016 / m, closes before them), the forecourt part (fork 1),
+       door joins (Phase 2). Off: window.EW_HQ_NO_STAGE = true (then re-enter — every room is its own again). */
+    var HQ_STAGE_PAD = 1.5, HQ_STAGE_BLEND_MS = 2000;
+    var _HQ_ZONE_KEYS = {};
+    ['opts', 'host', 'profile', 'snap', 'scene', 'camera', 'player', 'sky', 'portal', 'gun', 'ride', 'vehicle', 'shadows', 'atmos', 'heightFog', 'ao',
+     'keyLight', 'keyDir', 'hemiLight', 'fillLight', 'focus', 'stage', 'keys', 'drag', 'lastDragAt', 'fp', 'paused', 'ready', 't0', 'lastMs', 'lastDebug',
+     'cam', 'targetKey', 'w', 'h', 'dirty', 'gate', 'playerAttached', 'arrive', 'ripples', 'inst', '_instTried', 'roomDef', '_dashReadyAt', '_dashTapAt',
+     '_lockTryAt', '_ew_fpHid', '_gunTickWarned', 'enterDoorLatch', 'kickPrev', 'strikeAt'].forEach(function (k) { _HQ_ZONE_KEYS[k] = 1; });
+    function _hqZoneKey(k) { return !!_HQ_ZONE_KEYS[k] || /^on[A-Z]/.test(k) || /^_bound|^_on/.test(k); }
+    /* the room's stage record (in _hqEnter, after the camera, before the builders read hqStageNeighbours) */
+    function _hqStageArm(H) {
+        H.stage = null;
+        var id = H.opts && H.opts.room;
+        if (!id || _hqStageOff() || typeof hqStagePart !== 'function' || !hqStagePart(id) || !H.room || H.room.kind !== 'box') return;
+        var nbs = _hqStageNbsOf(id); if (!nbs.length) return;
+        H.stage = { id: id, nbs: nbs, parts: {}, skyYaw: 0, readyAt: 0, lampAt: 0, lampN: -1, blend: null, crossed: 0, loadAsked: null, warned: {} };
+    }
+    /* a neighbour's record: its part fields, a stand-in `scene` group (a builder that adds to the scene adds to the part),
+       its own opts (the room it is), its own gate (the black-texture rule) */
+    function _hqStagePartNew(H, id) {
+        var room = _hqData().rooms[id]; if (!room) return null;
+        var P = _hqPartFields(room);
+        P.partRoot.name = 'hq_part:' + id;
+        P.heroLit = { _stage: true };   // a neighbour's torch never claims the hero's shadow light
+        var extra = new THREE.Group(); extra.name = 'hq_part_scene'; P.partRoot.add(extra);
+        (room.stairs || []).forEach(function (st) { var dir = (st.to > st.from) ? 1 : -1; var L = { a0: st.to, a1: st.to + dir * 6, rIn: st.rIn }; st._landing = L; P.landings.push(L); });
+        var E = { id: id, P: P, extra: extra, opts: Object.assign({}, H.opts, { room: id }), gate: null, step: 0, built: false, attached: false, t0: 0, rel: null };
+        return E;
+    }
+    /* the record a builder / a ticker of neighbour E sees as _hq: the zone's keys + the part's, the player absent */
+    function _hqStageT(H, E) {
+        var T = {};
+        for (var k in H) if (_hqZoneKey(k)) T[k] = H[k];
+        for (var k2 in E.P) T[k2] = E.P[k2];
+        T.opts = E.opts; T.scene = E.extra; T.player = null; T.stage = null; T.gate = E.gate || H.gate; T.shadows = null; T.focus = null;
+        return T;
+    }
+    function _hqStageAsk(H, E, fn) {   // a read (the feet, the boom): the part's record as _hq, nothing written back
+        var keep = _hq; _hq = _hqStageT(H, E);
+        try { fn(_hq); } finally { _hq = keep; }
+    }
+    function _hqStageRun(H, E, fn) {
+        var T = _hqStageT(H, E), keep = _hq, ok = true;
+        _hq = T;
+        try { fn(T); } catch (e) { ok = false; console.warn('[HQ stage] ' + E.id + ':', e); }
+        finally { _hq = keep; }
+        for (var k in T) if (!_hqZoneKey(k)) E.P[k] = T[k];   // what the builder wrote on the part (its terrain, its outer ground, its site…)
+        return ok;
+    }
+    /* the builders, one step a frame — the same order as _hqEnter's */
+    var _HQ_STAGE_STEPS = [
+        function (room) { _hq.gallery = _hqGalleryFrame(room); _hqBuildBoxShell(room); },
+        function (room) { if (_hq.gallery) _hqBuildGallery(room); if (room.fx === 'site') _hqBuildSiteBoard(room); if (room.cave) _hqBuildCave(room); },
+        function (room) { if (room.terrain) _hqBuildTerrain(room); },
+        function (room) { if (room.fx === 'site' && room.shell.near) _hqBuildSetting(room); _hqBuildStairs(room); _hqBuildDesk(room); },
+        function (room) { _hqBuildDoors(room); _hqBuildCounters(room); },
+        function (room) { _hqPlaceProps(room); },
+        function (room) { _hqBuildClimbs(room); _hqPlaceFinds(room); },
+        function (room) { try { _hqPlaceLightShafts(room); } catch (e) {} try { _hqBuildDecals(room); } catch (e) {} try { _hqShadowFlags(room); } catch (e) {} },
+    ];
+    function _hqStageRootPlace(H, E) {
+        var rel = E.rel || (E.rel = hqStageRel(H.stage.id, E.id)); if (!rel) return;
+        var U = _hqUnits(), R = E.P.partRoot;
+        R.position.set(rel.x * U, (rel.y || 0) * U, rel.z * U); R.rotation.set(0, rel.rot * Math.PI / 2, 0);
+        R.updateMatrixWorld(true);
+    }
+    function _hqStageCssShow(root, on) {
+        root.traverse(function (o) { if (o.isCSS2DObject && o.element) o.element.style.display = on ? '' : 'none'; });
+    }
+    function _hqStageAttach(H, E, on) {
+        if (!!E.attached === !!on) return;
+        E.attached = !!on;
+        if (on) { _hqStageRootPlace(H, E); H.scene.add(E.P.partRoot); }
+        else { if (E.P.partRoot.parent) E.P.partRoot.parent.remove(E.P.partRoot); _hqStageCssShow(E.P.partRoot, false); }
+        _hqStageOuterSides(H);
+        H.stage.lampN = -1;   // the budget re-counts
+    }
+    /* the outer ground's side pieces: hidden where a part on the stage lies (its own field is the ground there) */
+    function _hqStageOuterSides(H) {
+        var st = H.stage, on = {}; on[st.id] = 1;
+        for (var id in st.parts) if (st.parts[id].attached) on[id] = 1;
+        var recs = [H]; for (var id2 in st.parts) if (st.parts[id2].attached) recs.push(st.parts[id2].P);
+        recs.forEach(function (R) { var sides = R.outerSides; if (!sides) return; for (var sid in sides) if (sides[sid]) sides[sid].visible = !on[sid]; });
+    }
+    function _hqStageDispose(H, E) {
+        _hqStageAttach(H, E, false);
+        try { if (E.gate) E.gate.close(); } catch (e) {}
+        try { E.P.partRoot.traverse(function (o) { _disposeR(o); }); } catch (e) {}
+        delete H.stage.parts[E.id];
+    }
+    /* THE RING: build the one-hop neighbours, detach the rest, dispose past partsBuilt (the farthest first) */
+    function _hqStageRing(H) {
+        var st = H.stage, want = {};
+        st.nbs.forEach(function (nb) { want[nb.id] = nb; });
+        for (var id in st.parts) {
+            var E = st.parts[id];
+            if (want[id]) { E.rel = want[id].rel; if (E.attached) _hqStageRootPlace(H, E); }
+            else { E.rel = null; _hqStageAttach(H, E, false); }
+        }
+        var ids = Object.keys(st.parts), cap = Math.max(1, (HQ_STAGE_RULES.partsBuilt || 3) - 1);
+        if (ids.length > cap) ids.filter(function (i) { return !want[i]; }).slice(0, ids.length - cap).forEach(function (i) { _hqStageDispose(H, st.parts[i]); });
+        _hqStageOuterSides(H);
+    }
+    /* one frame of the stage: the build step, the attach, the neighbours' tick, the lamps, the blend, the crossing */
+    function _hqStageTick(H, dt, now) {
+        var st = H.stage; if (!st || !H.ready) return;
+        if (!st.readyAt) { st.readyAt = now + (HQ_STAGE_RULES.buildDelayMs || 600); _hqStageRing(H); }
+        if (now >= st.readyAt) _hqStageBuildTick(H, now);
+        for (var id in st.parts) { var E = st.parts[id]; if (E.attached) _hqStageTickPart(H, E, dt, now); }
+        if (now - st.lampAt > (HQ_STAGE_RULES.lampPickMs || 500) || st.lampN < 0) { st.lampAt = now; _hqStageLamps(H); }
+        if (st.blend) _hqStageBlendTick(H, now);
+        _hqStageCross(H, now);
+    }
+    function _hqStageBuildTick(H, now) {
+        var st = H.stage;
+        for (var i = 0; i < st.nbs.length; i++) {
+            var nb = st.nbs[i], E = st.parts[nb.id];
+            if (E && E.built) {
+                if (!E.attached && E.rel && ((E.gate && (E.gate.idle() || E.gate.closed)) || now - E.t0 > HQ_GATE_CAP_MS)) {
+                    try { if (E.gate) E.gate.close(); } catch (e) {}
+                    _hqStageAttach(H, E, true);
+                    console.log('[HQ stage] ' + nb.id + ' stands beside ' + st.id + ' (' + Math.round(now - E.t0) + ' ms)');
+                }
+                continue;
+            }
+            var room = _hqData().rooms[nb.id];
+            /* the floor plan is compiled off the main thread (map.js THE SURVEY) — never here: the part waits for it */
+            if (room.terrain && !room._terrainInfo) {
+                if (!st.warned[nb.id]) { st.warned[nb.id] = 1; if (H.opts.stageWarm) { try { H.opts.stageWarm(nb.id); } catch (e) {} } }
+                continue;
+            }
+            if (!E) { E = st.parts[nb.id] = _hqStagePartNew(H, nb.id); if (!E) continue; E.rel = nb.rel; E.t0 = now; E.gate = _alGateOpen('part:' + nb.id); }
+            var fn = _HQ_STAGE_STEPS[E.step++];
+            var p3 = _hq3DOn();
+            try { _hqStageRun(H, E, function () { fn(room); }); } finally { _hq3DOff(p3); }
+            if (E.step >= _HQ_STAGE_STEPS.length) { E.built = true; _hqStageCssShow(E.P.partRoot, false); }
+            return;   // one step a frame, whoever it was for
+        }
+    }
+    /* a drawn neighbour's life: its tickers (the traffic, the torches), its glows, its plates' fade by the eye's distance */
+    var _hqStageV = null;
+    function _hqStageTickPart(H, E, dt, now) {
+        var P = E.P, U = _hqUnits(), cam = H.camera.position, v = _hqStageV || (_hqStageV = new THREE.Vector3());
+        _hqStageRun(H, E, function (T) {
+            for (var tk = 0; tk < T.tickers.length; tk++) { try { T.tickers[tk](dt, now); } catch (e) {} }
+            if (T.sways && T.sways.length) { try { _hqTickSways(dt, now); } catch (e) {} }
+        });
+        for (var fp = 0; fp < P.fxPulse.length; fp++) { var fx = P.fxPulse[fp]; fx.mat.opacity = Math.max(0, fx.baseOp + Math.sin(now * 0.001 * fx.spd + fx.phase) * fx.opAmp); }
+        var plates = P.doors.concat(P.counters);
+        for (var i = 0; i < plates.length; i++) {
+            var d = plates[i]; if (!d.plateEl || !d.group) continue;
+            d.group.getWorldPosition(v);
+            _hqPlateDist(d.plateEl, Math.hypot(v.x - cam.x, v.z - cam.z) / U, d);
+        }
+    }
+    /* THE LAMPS (§5.2): every point light on the stage, the nearest N lit — N = max(lampsLive, the current part's own) */
+    function _hqStageLamps(H) {
+        var st = H.stage, cam = H.camera.position, all = [], own = 0, v = _hqStageV || (_hqStageV = new THREE.Vector3());
+        var roots = [H.partRoot]; for (var id in st.parts) if (st.parts[id].attached) roots.push(st.parts[id].P.partRoot);
+        roots.forEach(function (R, ri) {
+            R.traverse(function (o) {
+                if (!o.isPointLight) return;
+                if (o._ew_stageOn == null) o._ew_stageOn = o.visible;   // a light its owner switched off stays off
+                if (!o._ew_stageOn) return;
+                o.getWorldPosition(v); all.push({ o: o, d: v.distanceToSquared(cam) }); if (ri === 0) own++;
+            });
+        });
+        var N = Math.min(all.length, Math.max(HQ_STAGE_RULES.lampsLive || 12, own));
+        all.sort(function (a, b) { return a.d - b.d; });
+        for (var i = 0; i < all.length; i++) all[i].o.visible = i < N;
+        st.lampN = N;
+    }
+    /* THE CROSSING (§5.3) */
+    function _hqStageCross(H, now) {
+        var st = H.stage, pl = H.player; if (!pl || H.snap || pl.dash || pl.climb || pl.sit || pl.swim || (H.ride && H.ride.on) || (H.vehicle && H.vehicle.on)) return;
+        var S = H.room.shell, hw = S.w / 2, hd = S.d / 2;
+        var to = hqStageWhere(hw, hd, st.nbs, pl.x, pl.z, HQ_WORLD_RULES.crossHys);
+        if (!to) return;
+        var E = st.parts[to];
+        var placed = (H.portal && H.portal.placed && Object.keys(H.portal.placed).length) || (H.gun && H.gun.doors && H.gun.doors.length);
+        if (E && E.attached && !placed) { _hqStageSwap(H, to); return; }
+        _hqStageLoad(H, to, now);
+    }
+    /* the neighbour is not on the stage yet (or the door gun's pair stands in this part): a plain load to the same spot */
+    function _hqStageLoad(H, to, now) {
+        var st = H.stage; if (st.loadAsked && now - st.loadAsked < 4000) return;
+        st.loadAsked = now;
+        var nb = st.nbs.filter(function (n) { return n.id === to; })[0]; if (!nb || !H.opts.onStageLoad) return;
+        var pl = H.player, at = hqStageFromRoom(nb.rel, pl.x, pl.z);
+        var face = _hqNormDeg((H.cam.yaw + nb.rel.rot * Math.PI / 2) * 180 / Math.PI);   // the eye keeps looking where it looked
+        try { H.opts.onStageLoad(to, { x: at.x, z: at.z, face: face }); } catch (e) { console.warn('[HQ stage] the load fallback failed', e); }
+    }
+    /* THE SWAP: the neighbour `to` becomes the current part; everything is re-anchored to its frame */
+    function _hqStageSwap(H, to) {
+        var st = H.stage, E = st.parts[to], rel = E.rel, U = _hqUnits(), t0 = performance.now();
+        var fromId = st.id, fromRoom = H.room;
+        try { _hqInstDrop(H); } catch (e) {} H._instTried = false;
+        /* the part you leave: its people stand down (the walker stays), its record becomes a neighbour's */
+        var Q = { id: fromId, P: {}, extra: null, opts: Object.assign({}, H.opts, { room: fromId }), gate: null, step: _HQ_STAGE_STEPS.length, built: true, attached: true, t0: t0, rel: null };
+        for (var k in H) if (!_hqZoneKey(k)) Q.P[k] = H[k];
+        var pl = H.player;
+        (Q.P.chars || []).forEach(function (ch) {
+            if (ch === pl) return;
+            try { var rig = _unitModelRigs.get(ch.id); if (rig) { _disposeModelRig(rig); _unitModelRigs.delete(ch.id); } _modelAnimState.delete(ch.id); } catch (e) {}
+            try { if (ch.entry && ch.entry.group) { if (ch.entry.group.parent) ch.entry.group.parent.remove(ch.entry.group); ch.entry.group.traverse(function (o) { _disposeR(o); }); } } catch (e) {}
+        });
+        Q.P.chars = []; Q.P.blockers = (Q.P.blockers || []).filter(function (b) { return !b.npc; });
+        Q.P.rounds = null; Q.P.roundsExits = null; Q.P.roundsStops = null; Q.P.nav = null;
+        Q.extra = new THREE.Group(); Q.extra.name = 'hq_part_scene'; Q.P.partRoot.add(Q.extra);
+        Q.P.heroLit = Q.P.heroLit || { _stage: true };
+        /* the new current part: its keys onto the visit's record */
+        for (var k2 in Q.P) delete H[k2];
+        for (var k3 in E.P) H[k3] = E.P[k3];
+        /* re-anchor: A = RotY(−rot·π/2) · T(−rel) takes the old frame to the new one (the new part's root becomes the identity;
+           its `extra` group — what its builders hung on the scene — rides inside it) */
+        var th = -rel.rot * Math.PI / 2, RY = new THREE.Matrix4().makeRotationY(th), A = RY.clone().multiply(new THREE.Matrix4().makeTranslation(-rel.x * U, -(rel.y || 0) * U, -rel.z * U));
+        var moveObj = function (o) { o.updateMatrix(); o.matrix.premultiply(A); o.matrix.decompose(o.position, o.quaternion, o.scale); o.updateMatrixWorld(true); };
+        H.partRoot.position.set(0, 0, 0); H.partRoot.rotation.set(0, 0, 0); H.partRoot.updateMatrixWorld(true);
+        moveObj(Q.P.partRoot);
+        for (var id in st.parts) if (id !== to && st.parts[id].attached) moveObj(st.parts[id].P.partRoot);
+        /* the scene's loose things: the lamp masts / the shafts of the part you left go into its root (their local frame IS
+           the old part's), the directional lights and the sky's bodies turn with the frame; the rest is the zone's */
+        var spotT = []; H.scene.children.forEach(function (c) { if (c.isSpotLight && c.target) spotT.push(c.target); });
+        H.scene.children.slice().forEach(function (c) {
+            if (c.isDirectionalLight) { c.position.applyMatrix4(RY); return; }
+            if (H.sky && (c === H.sky.group || c === H.sky.landmarks)) { c.rotation.y += th; c.updateMatrixWorld(true); return; }
+            if (c.isPointLight || c.isSpotLight || spotT.indexOf(c) >= 0) { H.scene.remove(c); Q.extra.add(c); }
+        });
+        if (H.keyDir) H.keyDir.applyAxisAngle(new THREE.Vector3(0, 1, 0), th);
+        st.skyYaw -= rel.rot * Math.PI / 2;
+        /* the walker, its body, the camera's state */
+        var mp = function (x, z) { return hqStageFromRoom(rel, x, z); };
+        var p = mp(pl.x, pl.z); pl.x = p.x; pl.z = p.z; pl.y -= (rel.y || 0); pl.visY -= (rel.y || 0);
+        var rv = function (o, kx, kz) { if (o[kx] == null || o[kz] == null) return; var c = Math.cos(th), s = Math.sin(th), x = o[kx], z = o[kz]; o[kx] = x * c + z * s; o[kz] = -x * s + z * c; };
+        rv(pl, 'mvx', 'mvz'); rv(pl, 'velX', 'velZ'); rv(pl, 'pushX', 'pushZ');
+        pl.yaw += th; if (pl.targetYaw != null) pl.targetYaw += th;
+        if (pl.entry && pl.entry.group) { H.charGroup.add(pl.entry.group); pl.entry.group.position.set(pl.x * U, pl.visY * U, pl.z * U); }
+        H.chars = [pl];
+        var c = H.cam; c.yaw -= th;
+        if (c.init) { var ce = mp(c.ex, c.ez), cl = mp(c.lx, c.lz); c.ex = ce.x; c.ez = ce.z; c.lx = cl.x; c.lz = cl.z; c.ey -= (rel.y || 0); c.ly -= (rel.y || 0); }
+        H.camera.position.applyMatrix4(A); H.camera.lookAt(c.lx * U, c.ly * U, c.lz * U);
+        /* the stage's own books */
+        delete st.parts[to];
+        Q.rel = hqStageRel(to, fromId);
+        st.parts[fromId] = Q;
+        st.id = to; st.nbs = _hqStageNbsOf(to); st.crossed++; st.lampN = -1;
+        H.opts = Object.assign({}, H.opts, { room: to });
+        H.roomDef = H.room;
+        _hqStageRing(H);
+        /* the part's people, the light pass on its box */
+        var p3 = _hq3DOn();
+        try { _hqSpawnPopulation(H.room, Object.assign({}, H.opts, { _stageNoPlayer: true })); } catch (e) { console.warn('[HQ stage] population', e); } finally { _hq3DOff(p3); }
+        try { _hqShadowArm(H.room); } catch (e) {}
+        try { _hqAoArm(H.room); } catch (e) {}
+        try { _hqHeightFogArm(H.room); } catch (e) {}
+        _hqStageBlendStart(H, fromRoom, H.room);
+        H.targetKey = '';
+        console.log('[HQ stage] crossed ' + fromId + ' → ' + to + ' in ' + Math.round(performance.now() - t0) + ' ms (no load)');
+        if (H.opts.onCross) { try { H.opts.onCross(to, fromId); } catch (e) { console.warn('[HQ stage] onCross', e); } }
+        return true;
+    }
+    /* THE BLEND: the fog, the hemisphere, the key, the dome's values ease from the part you left to this one's; the
+       look (the retro grade, the bloom) turns at the half-way beat */
+    function _hqStageSkyVals(room) {
+        var S = room.shell || {}, sky = S.sky || {}, U = _hqUnits(), LRo = _hqLightRules().open, night = sky.night ? 1 : 0;
+        var rig = Object.assign({}, (_hqLightRules().key && _hqLightRules().key.open) || {}, S.rig || {});
+        var skyC = new THREE.Color((sky.tint != null) ? sky.tint : 0x8090b0);
+        return {
+            fogC: new THREE.Color((sky.fog && sky.fog.color != null) ? sky.fog.color : 0x0d0e12), fogD: ((sky.fog && sky.fog.density > 0) ? sky.fog.density : 0.00005 * U) / U,
+            hemiC: skyC.clone().lerp(new THREE.Color(0xffffff), night ? 0.22 : 0.45), hemiI: night ? LRo.nightHemi : LRo.dayHemi,
+            keyC: new THREE.Color(rig.color != null ? rig.color : (night ? 0xaabfe0 : 0xfff1d6)), keyI: (rig.intensity != null) ? +rig.intensity : (night ? LRo.nightSun : LRo.daySun),
+            tint: new THREE.Color((sky.tint != null) ? sky.tint : 0x000000), night: night,
+            env: { tint: sky.tint, tintAmt: (sky.tint != null && sky.tintAmt != null) ? sky.tintAmt : 0, stars: (sky.stars != null) ? sky.stars : 1, nebula: (sky.nebula != null) ? sky.nebula : 1,
+                   day: sky.day || 0, clouds: sky.clouds || 0, fog: sky.fog ? { amount: sky.fog.amount || 0, top: sky.fog.top || 0, band: (sky.fog.band != null) ? sky.fog.band : 0.5 } : { amount: 0, top: 0, band: 0.5 } },
+            look: S.look, label: room.label,
+        };
+    }
+    function _hqStageBlendStart(H, fromRoom, toRoom) {
+        var st = H.stage; if (!H.sky || !toRoom.shell || !toRoom.shell.sky) { try { if (typeof ThreePost !== 'undefined' && ThreePost.setSceneLook) ThreePost.setSceneLook(_sceneLookOf(toRoom.shell.look, toRoom.label)); } catch (e) {} return; }
+        var a = st.blend ? st.blend.cur : _hqStageSkyVals(fromRoom);
+        st.blend = { a: a, b: _hqStageSkyVals(toRoom), t0: performance.now(), looked: false, cur: null };
+        _hqStageBlendTick(H, st.blend.t0);
+    }
+    function _hqStageBlendTick(H, now) {
+        var B = H.stage.blend, t = Math.min(1, (now - B.t0) / HQ_STAGE_BLEND_MS), k = t * t * (3 - 2 * t), a = B.a, b = B.b;
+        var L = function (x, y) { return x + (y - x) * k; };
+        var ea = a.env, eb = b.env;
+        var cur = { fogC: a.fogC.clone().lerp(b.fogC, k), fogD: L(a.fogD, b.fogD), hemiC: a.hemiC.clone().lerp(b.hemiC, k), hemiI: L(a.hemiI, b.hemiI), keyC: a.keyC.clone().lerp(b.keyC, k), keyI: L(a.keyI, b.keyI),
+                    tint: a.tint.clone().lerp(b.tint, k), night: L(a.night, b.night),
+                    env: { tint: (ea.tint != null || eb.tint != null) ? 1 : null, tintAmt: L(ea.tintAmt, eb.tintAmt), stars: L(ea.stars, eb.stars), nebula: L(ea.nebula, eb.nebula), day: L(ea.day, eb.day), clouds: L(ea.clouds, eb.clouds),
+                           fog: { amount: L(ea.fog.amount, eb.fog.amount), top: L(ea.fog.top, eb.fog.top), band: L(ea.fog.band, eb.fog.band) } }, look: k < 0.5 ? a.look : b.look, label: k < 0.5 ? a.label : b.label };
+        B.cur = cur;
+        if (H.scene.fog) { H.scene.fog.color.copy(cur.fogC); if (H.scene.fog.density != null) H.scene.fog.density = cur.fogD; }
+        if (H.hemiLight) { H.hemiLight.color.copy(cur.hemiC); H.hemiLight.intensity = cur.hemiI; }
+        if (H.keyLight) { H.keyLight.color.copy(cur.keyC); H.keyLight.intensity = cur.keyI; }
+        if (H.sky) { H.sky.tint.copy(cur.tint); H.sky.fogC.copy(cur.fogC); H.sky.night = cur.night; }
+        if (!B.looked && k >= 0.5) { B.looked = true; try { if (typeof ThreePost !== 'undefined' && ThreePost.setSceneLook) ThreePost.setSceneLook(_sceneLookOf(b.look, b.label)); } catch (e) {} }
+        if (t >= 1) { H.stage.blend = null; try { _gradeHorizonScenery(H.sky ? H.sky.night : 0, 0, 0); } catch (e) {} }
+    }
+    /* the sky's values while a blend runs (_hqTickSky reads these before the room's own) */
+    function _hqStageSkyEnv(H) { var B = H && H.stage && H.stage.blend; return (B && B.cur) ? B.cur.env : null; }
+    /* THE FEET past the edge (_hqSurface's box branch asks first): undefined = not the stage's business (the room's own
+       rules), null = no floor, else the height. The strip along a joined span is the road through the edge; beyond
+       it, a drawn neighbour's own surface (its field, its blockers, its step rule), read in its frame. */
+    function _hqStageSurface(x, z, curY, ignoreBlockers) {
+        var H = _hq, st = H.stage; if (!st) return undefined;
+        var S = H.room.shell, hw = S.w / 2, hd = S.d / 2, over = Math.max(Math.abs(x) - hw, Math.abs(z) - hd);
+        if (over < -HQ_STAGE_PAD) return undefined;
+        var sp = hqStageSpanAt(hw, hd, st.nbs, x, z, HQ_STAGE_PAD);
+        if (sp && over < HQ_STAGE_PAD) {
+            if (over <= 0 && H.terrain) return hqTerrainHeight(H.terrain, x, z);
+            var E0 = st.parts[sp.nb.id];
+            if (over > 0 && E0 && E0.attached && E0.P.terrain) { var q0 = hqStageFromRoom(sp.nb.rel, x, z); return hqTerrainHeight(E0.P.terrain, q0.x, q0.z) + (sp.nb.rel.y || 0); }
+            return H.terrain ? hqTerrainHeight(H.terrain, Math.max(-hw, Math.min(hw, x)), Math.max(-hd, Math.min(hd, z))) : 0;
+        }
+        if (over <= 0) return undefined;
+        for (var i = 0; i < st.nbs.length; i++) {
+            var nb = st.nbs[i], r = nb.rect;
+            if (!(x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1)) continue;
+            var E = st.parts[nb.id]; if (!E || !E.attached) return null;
+            var q = hqStageFromRoom(nb.rel, x, z), y = null, ry = nb.rel.y || 0;
+            _hqStageAsk(H, E, function () { y = _hqSurface(q.x, q.z, curY == null ? null : curY - ry, ignoreBlockers); });
+            return (y == null) ? null : y + ry;
+        }
+        return undefined;
+    }
+    /* the boom past the edge: through a span it clears the road; over a drawn neighbour it asks the neighbour */
+    function _hqStageCam(px, pz, py) {
+        var H = _hq, st = H.stage; if (!st) return undefined;
+        var S = H.room.shell, hw = S.w / 2, hd = S.d / 2, over = Math.max(Math.abs(px) - hw, Math.abs(pz) - hd);
+        if (over < -HQ_STAGE_PAD) return undefined;
+        var sp = hqStageSpanAt(hw, hd, st.nbs, px, pz, HQ_STAGE_PAD * 0.5);
+        if (sp && over < HQ_STAGE_PAD) { var gy = _hqStageSurface(px, pz, null, true); return py < ((gy == null) ? 0 : gy) + 0.22; }
+        if (over <= 0) return undefined;
+        for (var i = 0; i < st.nbs.length; i++) {
+            var nb = st.nbs[i], r = nb.rect;
+            if (!(px > r.x0 && px < r.x1 && pz > r.z0 && pz < r.z1)) continue;
+            var E = st.parts[nb.id]; if (!E || !E.attached) return true;
+            var q = hqStageFromRoom(nb.rel, px, pz), b = true;
+            _hqStageAsk(H, E, function () { b = _hqCamBlocked(q.x, q.z, py - (nb.rel.y || 0)); });
+            return b;
+        }
+        return undefined;
+    }
+    /* THE HAND-OVER: a fight flattens the drawn neighbours into the current part's groups (baked through their root) */
+    function _hqStageFlatten(H) {
+        var st = H && H.stage; if (!st) return;
+        for (var id in st.parts) {
+            var E = st.parts[id]; if (!E.attached) continue;
+            var M = E.P.partRoot.matrix;
+            [['shellGroup', H.shellGroup], ['doorGroup', H.doorGroup], ['propGroup', H.propGroup]].forEach(function (pr) {
+                var from = E.P[pr[0]]; if (!from || !pr[1]) return;
+                from.children.slice().forEach(function (c) { from.remove(c); c.applyMatrix4(M); pr[1].add(c); });
+            });
+        }
+    }
+    /* leaving the room: the neighbours' gates close, the detached ones are disposed (the attached ones go with the scene) */
+    function _hqStageLeave(H) {
+        var st = H && H.stage; if (!st) return;
+        for (var id in st.parts) { var E = st.parts[id]; try { if (E.gate) E.gate.close(); } catch (e) {} if (!E.attached) { try { E.P.partRoot.traverse(function (o) { _disposeR(o); }); } catch (e) {} } }
+    }
+    function _hqStageStatus() {
+        var H = _hq, st = H && H.stage; if (!st) return null;
+        var parts = {}; for (var id in st.parts) { var E = st.parts[id]; parts[id] = { built: E.built, step: E.step, attached: E.attached, rel: E.rel }; }
+        return { id: st.id, nbs: st.nbs.map(function (n) { return n.id; }), parts: parts, crossed: st.crossed, lampN: st.lampN, skyYaw: st.skyYaw, blending: !!st.blend };
+    }
+
+    /* THE PART'S OWN RECORD (OPEN_WORLD_PLAN Phase 1, 2026-09-26): everything a room's builders write that belongs to
+       THAT room — its four groups in their root, its doors, counters, blockers, props, finds, rails, ramps, climbs,
+       people, tickers. The visit's record (_hq) is the zone's things (the scene, the camera, the walker, the sky, the
+       light pass, the input) + the CURRENT part's record; a staged neighbour is built into a record of its own
+       (_hqStagePartRecord) and the crossing swaps the two (_hqStageSwap). */
+    function _hqPartFields(room) {
+        var F = {
+            room: room, cube: null,
+            shellGroup: new THREE.Group(), doorGroup: new THREE.Group(), propGroup: new THREE.Group(), charGroup: new THREE.Group(), partRoot: new THREE.Group(),
+            doors: [], counters: [], chars: [], blockers: [], landings: [], fxPulse: [], site: null, setting: null,
+            gallery: null,   /* THE GALLERY (9.2 stage 2, 2026-09-15 rev 20): the box room's two-floor frame (_hqGalleryFrame), read by _hqSurface / _hqAirOK / _hqCamBlocked / _hqBlockerFloor */
+            rails: [], ramps: [],   /* SKATEBOARDING (9.8, 2026-09-15): THE PARK RULE's registers (every builder pushes its rails / ramps) */
+            climbs: [], climbNear: null,   /* THE CLIMB (AREA_CONTENT_PLAN D1, 2026-09-19): the room's ladders / ropes / vines (_hqBuildClimbs) and the one within reach */
+            boats: [], seaFx: null, seaWayLatch: null,   /* THE DEEP (2026-09-18): the moored vehicles (the prop placer registers a catalogue `vehicle`), the water's effects, the whirlpool latch */
+            finds: [], findLights: 0,   /* THE FINDS (9.1, 2026-09-15): the takeable objects standing in the room (_hqPlaceFinds) and the count of their point lights */
+            tickers: [], propLights: 0,   /* Phase 8 (2026-09-14): per-frame callbacks registered by procs (the orb, the torches, the shaft); the count of catalogue `light`s placed */
+            kicks: [], seats: [], sways: [], shafts: 0, decals: 0, heroLit: null,   /* THE PREMIUM POLISH (2026-09-21): the kickable bodies, the seats, the swaying props */
+            props: [],   /* props: { key, grp } per placed catalogue prop (the terminal's camera finds the CRT by key) */
+        };
+        F.partRoot.name = 'hq_part';
+        F.partRoot.add(F.shellGroup, F.doorGroup, F.propGroup, F.charGroup);
+        return F;
+    }
     function _hqEnter(opts) {
         opts = opts || {};
         var D = _hqData();
@@ -56433,24 +56940,20 @@ const ThreeRenderer = (function () {
         var room = D.rooms[opts.room || 'central_egress'];
         if (!room) return false;
         var U = _hqUnits(), S = room.shell;
-        _hq = {
-            opts: opts, host: opts.host, room: room, profile: opts.profile || null,
+        _hq = Object.assign({
+            opts: opts, host: opts.host, profile: opts.profile || null,
             snap: null,   // THE SLIDE (Delivery 6): the walker + the native easing onto their cells before the cut
-            scene: new THREE.Scene(), camera: null, cube: null,
-            shellGroup: new THREE.Group(), doorGroup: new THREE.Group(), propGroup: new THREE.Group(), charGroup: new THREE.Group(),
-            doors: [], counters: [], chars: [], blockers: [], landings: [], player: null, fxPulse: [], site: null, sky: null, setting: null,
-            gallery: null,   /* THE GALLERY (9.2 stage 2, 2026-09-15 rev 20): the box room's two-floor frame (_hqGalleryFrame), read by _hqSurface / _hqAirOK / _hqCamBlocked / _hqBlockerFloor */
-            rails: [], ramps: [], ride: null,   /* SKATEBOARDING (9.8, 2026-09-15): THE PARK RULE's registers (every builder pushes its rails / ramps) and the rider (_hqRideArm) */
-            climbs: [], climbNear: null,   /* THE CLIMB (AREA_CONTENT_PLAN D1, 2026-09-19): the room's ladders / ropes / vines (_hqBuildClimbs) and the one within reach */
-            boats: [], vehicle: null, seaFx: null, seaWayLatch: null,   /* THE DEEP (2026-09-18): the moored vehicles (the prop placer registers a catalogue `vehicle`), the one you are aboard, the water's effects, the whirlpool latch */
-            finds: [], findLights: 0,   /* THE FINDS (9.1, 2026-09-15): the takeable objects standing in the room (_hqPlaceFinds) and the count of their point lights */
+            scene: new THREE.Scene(), camera: null,
+            player: null, sky: null,
+            ride: null,   /* SKATEBOARDING (9.8, 2026-09-15): the rider (_hqRideArm) — the rails / ramps registers are the part's (_hqPartFields) */
+            vehicle: null,   /* THE DEEP (2026-09-18): the vehicle you are aboard (the moored ones are the part's) */
             portal: { drawn: false, ghost: null, aim: null, placed: {}, lastKey: '', hold: null, cross: null, issued: !!(opts.portal && opts.portal.issued), sight: null, fAt: 0, fFired: false, slot: (opts.portal && (opts.portal.slot === 'b')) ? 'b' : 'a', vm: null },
             gun: { door: (opts.gun && opts.gun.door && opts.gun.door !== 'threshold' && typeof window !== 'undefined' && window.DOOR_GUN_DOORS && window.DOOR_GUN_DOORS[opts.gun.door]) ? opts.gun.door : 'threshold', turn: 0, wheel: null, mDown: false, mAt: 0, doors: [], wedges: (opts.gun && Array.isArray(opts.gun.wedges)) ? opts.gun.wedges : null, ghost: null, ghostKey: null, aim: null,
                    cap: { choices: (opts.gun && opts.gun.capture && Array.isArray(opts.gun.capture.choices)) ? opts.gun.capture.choices : [], sel: 0 },
                    strike: (opts.gun && opts.gun.strike) || null, armAt: performance.now() + (((opts.gun && opts.gun.strike) || {}).armMs || 3000), strikeAt: 0 },   /* Phase 4: `cap` = the ONE-WAY wedge's choices (the bag's capture doors) + the pick; `strike` = map.js's gate + HQ_GUN_RULES.strike, armed `armMs` after entry */   /* THE DOOR WHEEL IN THE ROOM (DOOR_GUN_PLAN Phase 3): the selected door, the lane's turn (45° steps), the open wheel, the standing doors */   /* rev 4: `vm` = the first-person viewmodel; rev 5: `slot` = the LAST button pressed (the sights + the selector are gone — LEFT = A, RIGHT = B) */   /* THE DOOR GUN (9.5, rev 13; rev 2 2026-09-15: `hold` = the mouth you came out of, `cross` = the entry's speed): the drawn state, the ghost, the last aim, the placed door records by slot */
-            tickers: [], propLights: 0,   /* Phase 8 (2026-09-14): per-frame callbacks registered by procs (the orb, the torches, the shaft); the count of catalogue `light`s placed */
-            kicks: [], seats: [], sways: [], shadows: null, atmos: null, heightFog: null, ao: null, keyLight: null, keyDir: null, shafts: 0, ripples: null, decals: 0, heroLit: null,   /* THE PREMIUM POLISH (2026-09-21): the kickable bodies, the seats, the swaying props, the light pass's records */
-            props: [], focus: null,   /* props: { key, grp } per placed catalogue prop (the terminal's camera finds the CRT by key); focus: the screen push (_hqFocusScreen) */
+            shadows: null, atmos: null, heightFog: null, ao: null, keyLight: null, keyDir: null, ripples: null,   /* THE PREMIUM POLISH (2026-09-21): the light pass's records (the zone's: one key, one shadow, one air) */
+            focus: null,   /* the screen push (_hqFocusScreen) */
+            stage: null,   /* THE STAGE (OPEN_WORLD_PLAN Phase 1): the zone's parts on this one scene (_hqStageArm) — null in a room no staged zone names */
             keys: {}, drag: null, lastDragAt: 0, fp: false, paused: false, ready: false, t0: performance.now(), lastMs: 0, lastDebug: 0,
             cam: { yaw: 0, pitch: -0.24, dist: 3.6, init: false }, targetKey: '', w: 0, h: 0, dirty: true,
             /* THE GATE (2026-09-20): every file this room asks for — the shell's sheets, the leaves, the props, the
@@ -56461,7 +56964,8 @@ const ThreeRenderer = (function () {
             gate: _alGateOpen('room:' + (opts.room || 'central_egress')), playerAttached: false,
             /* THE WAY BACK (2026-09-22): the debrief camera's eye in room metres — the HQ camera starts THERE and eases onto the boom once the room is ready */
             arrive: (opts.arrive && isFinite(+opts.arrive.x) && isFinite(+opts.arrive.z)) ? { eye: opts.arrive, ms: (isFinite(+opts.arrive.ms) && +opts.arrive.ms > 0) ? +opts.arrive.ms : HQ_RETURN_EASE_MS, t0: 0 } : null,
-        };
+        }, _hqPartFields(room));
+        _hqStageArm(_hq);   // THE STAGE (OPEN_WORLD_PLAN Phase 1): before the builders (the field, the outer ground, the joined doors read it)
         /* stair landings (top of each flight) are needed by the shell + collision */
         (room.stairs || []).forEach(function (st) {
             var dir = (st.to > st.from) ? 1 : -1;
@@ -56474,7 +56978,7 @@ const ThreeRenderer = (function () {
         sc.fog = new THREE.FogExp2(0x0d0e12, 0.00017);
         /* a closed room's own haze (2026-09-17): shell.fog = { color, density (per metre) } — the cave's warm dark */
         if (S.fog && S.fog.color != null) sc.fog = new THREE.FogExp2(S.fog.color, (S.fog.density > 0 ? S.fog.density : 0.012) / U);
-        sc.add(_hq.shellGroup, _hq.doorGroup, _hq.propGroup, _hq.charGroup);
+        sc.add(_hq.partRoot);   // THE STAGE (Phase 1): the part's four groups stand in its root (the current part's root is the identity)
         /* lights: warm ceiling / cool floor hemisphere, a soft key, point lights over the hall */
         if (room.kind === 'box' && S.open && S.sky) {
             /* an OUTDOOR room (HQ plan 7.2 stage 3): the map's sky lights it —
@@ -56485,7 +56989,7 @@ const ThreeRenderer = (function () {
             /* THE KEY LIGHT (2026-09-20): the numbers are HQ_LIGHT_RULES.open — a night room keeps a real MOON key
                (the user: "I have to turn the brightness all the way up in some places that are dark") */
             var LRo = _hqLightRules().open;
-            sc.add(new THREE.HemisphereLight(skyC.clone().lerp(new THREE.Color(0xffffff), nightO ? 0.22 : 0.45), 0x2a2620, nightO ? LRo.nightHemi : LRo.dayHemi));
+            _hq.hemiLight = new THREE.HemisphereLight(skyC.clone().lerp(new THREE.Color(0xffffff), nightO ? 0.22 : 0.45), 0x2a2620, nightO ? LRo.nightHemi : LRo.dayHemi); sc.add(_hq.hemiLight);   // (THE STAGE blends it at a crossing)
             var sun = new THREE.DirectionalLight(nightO ? 0xaabfe0 : 0xfff1d6, nightO ? LRo.nightSun : LRo.daySun); sun.position.set(0.45, 1, 0.3).multiplyScalar(1000); sc.add(sun); _hq.keyLight = sun;
             var ofill = new THREE.DirectionalLight(_hqLightRules().fillColor, _hqLightRules().fill); ofill.position.set(-0.55, 0.45, -0.4).multiplyScalar(1000); sc.add(ofill);   // the cool fill from behind: no black side on a face
             var mplC = (S.mood && S.mood.light != null) ? S.mood.light : 0xfff0d0;
@@ -56760,6 +57264,7 @@ const ThreeRenderer = (function () {
         _hqHandoverDrop();
         if (!opts || !opts.handover || !_hqHandoverRules().handover || !H || !H.scene) return false;
         try { (H.reflectors || []).forEach(function (r) { (r.targets || []).forEach(function (t) { if (t._ew_reflectOld) { try { t.material.dispose && t.material.dispose(); } catch (e) {} t.material = t._ew_reflectOld; t._ew_reflectOld = null; } }); }); } catch (e) {}
+        try { _hqStageFlatten(H); } catch (e) { console.warn('[HQ stage] the hand-over flatten failed', e); }   // THE STAGE: the drawn neighbours join the fight's room, baked through their roots
         [H.shellGroup, H.doorGroup, H.propGroup].forEach(function (g) { if (g && g.parent) g.parent.remove(g); });
         /* THE SKY ONCE (§8.4): an open room's own floaters + landmarks go with it — the battle hangs them, never the site's roster */
         var sky = (H.sky && (H.sky.group || H.sky.landmarks)) ? { group: H.sky.group || null, landmarks: H.sky.landmarks || null } : null;
@@ -56784,6 +57289,7 @@ const ThreeRenderer = (function () {
         try { if (typeof ThreePost !== 'undefined' && ThreePost.setExposureContext) ThreePost.setExposureContext('battle'); } catch (e) {}   // THE TWO BRIGHTNESSES: the battle's / the menu's value, eased
         if (H.sky) _horizonFogDirty = true;   // an outdoor room drove the shared sky uniforms: the battle re-applies its fog
         try { renderer.setAnimationLoop(active ? renderFrame : null); } catch (e) {}
+        try { _hqStageLeave(H); } catch (e) {}   // THE STAGE: the neighbours' gates, the detached parts
         var handed = _hqHandoverStash(H, opts);   // THE HAND-OVER: the room's groups leave the scene before the disposal below
         /* characters: evict their rig-cache records (ids are ours) */
         H.chars.forEach(function (ch) {
@@ -56939,6 +57445,8 @@ const ThreeRenderer = (function () {
         leave: _hqLeave,
         active: function () { return !!_hq; },
         room: function () { return _hq ? (_hq.opts.room || 'central_egress') : null; },
+        /* THE STAGE (OPEN_WORLD_PLAN Phase 1): { id, nbs, parts: { id: { built, step, attached, rel } }, crossed, lampN, skyYaw, blending } | null */
+        stage: _hqStageStatus,
         setPaused: function (on) {
             if (!_hq) return;
             _hq.paused = !!on;

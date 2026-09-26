@@ -402,7 +402,7 @@ test('THE SOURCE: the renderer\'s block (the walker tick hands the frame to the 
     assert.ok(/try \{ _hqSeaArm\(room\); \}/.test(renderer) && /if \(H\.seaFx\) \{ try \{ _hqTickSea\(dt, now\); \}/.test(renderer), 'armed on entry, ticked per frame');
     assert.ok(/if \(cat\.vehicle\) \{ try \{ _hqVehicleRegister\(p, cat, grp, y\); \}/.test(renderer) && /if \(cat\.float && seaP\) y = seaP\.y \+ \(p\.y \|\| 0\);/.test(renderer) && /else if \(cat\.hover\) y = y0 \+ cat\.hover/.test(renderer), 'the prop placer: the vehicle, the float, the hover');
     assert.ok(/if \(d\.way && d\.wayOpen\) continue;/.test(renderer) && /wayOpen: !!W\.open/.test(renderer) && /mouthY: \(built\.mouthY != null\) \? built\.mouthY : null/.test(renderer), 'the doorway blocker skips an open way; the way record carries its mouth');
-    assert.ok(/boats: \[\], vehicle: null, seaFx: null, seaWayLatch: null,/.test(renderer), 'the record');
+    assert.ok(/boats: \[\], seaFx: null, seaWayLatch: null,/.test(renderer) && /vehicle: null,/.test(renderer), 'the record (THE STAGE, 2026-09-26: the moored boats are the part\'s record, the vehicle aboard the visit\'s)');
     for (const k of ['waterspout', 'whale']) assert.ok(new RegExp('^        ' + k + ': function \\(U, o, rng\\)', 'm').test(BLOCK), k + ' landmark');
     /* sprites.js */
     assert.ok(/const HQ_SWIM_CLIPS = \{ swim: \{ clip: 'Swim_Fwd_Loop', lib: 0/.test(sprites) && /idle: \{ clip: 'Swim_Idle_Loop', lib: 0/.test(sprites), 'the UAL1 swim pair');

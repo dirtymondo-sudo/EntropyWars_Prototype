@@ -1024,3 +1024,72 @@ Line numbers are the 2026-09-26 clone's (token `20260926-bugfix-03-cors`); grep 
     override the pass's numbers, `WAIT=ms` lets late files land, `SHOT=<prefix>` screenshots the LAND tab.
   - Not playtested beyond the probe: the LAND tab was screenshotted headless; the instance pass was checked
     by the probe's counts and hq-world-map.test.js (real three r128 in a vm), never walked by a person.
+- 2026-09-26 — **PHASE 1 SHIPPED: THE STAGE on the city** (thread "Open world Phase 1"; zip
+  `open-world/ENTROPY_WARS_OPEN_WORLD_1.zip`, token `20260926-open-world-02-cors`). Downtown ⇄ the stadium ⇄
+  the Strip are one walk: the two road joins replace the gantry loads.
+  - **THE READERS** (data.js, before THE VALIDATOR): `HQ_STAGE_RULES.zones` (`['city']` — a zone not listed
+    keeps today's rooms exactly), `buildDelayMs` 600, `lampPickMs` 500; `hqStagePart`, `hqStageRel`,
+    `hqStageToRoom` / `hqStageFromRoom`, `hqStageNeighbours` (rel, the neighbour's box in this room's metres,
+    the joined spans, the link doors a span replaces), `hqStageJoinedDoor`, `hqStageWhere` (the crossing's
+    rule: `crossHys` past the edge AND inside the neighbour), `hqStageSpanAt` (the doorway strip).
+  - **THE PART RECORD** (three-renderer.js `_hqPartFields`): everything a room's builders write that is the
+    room's (its four groups in a `partRoot`, doors, blockers, props, finds, rails, tickers, people…); the
+    visit's record `_hq` = the zone's keys (`_HQ_ZONE_KEYS`: the scene, the camera, the walker, the sky, the
+    light pass, the input) + the CURRENT part's. The current part always stands at the scene's origin.
+  - **THE BUILD** (`_hqStageBuildTick`): after the room is ready + `buildDelayMs`, each one-hop neighbour is
+    built by the SAME builders (`_HQ_STAGE_STEPS`, `_hqEnter`'s order, one step a frame) into its own record,
+    with `_hq` pointed at a stand-in (`_hqStageT`: the zone's keys + the part's, the player absent, a group
+    for `scene`). Its floor plan is never compiled on the main thread: the part waits for THE SURVEY
+    (`opts.stageWarm` → map.js `_hqSurvey(id, true)`). Skipped for a neighbour: the sky, the portals, the
+    gun doors, the people, the ride, the light pass, the atmosphere, the reflectors, the sea.
+  - **THE ATTACH** (fork 5 — deviation: WHOLE-OR-NOTHING, the fork's alternative): a built neighbour joins
+    the scene when its own gate (`part:<id>`, opened at its first step) is idle, or after `HQ_GATE_CAP_MS`.
+    The default (the part's near props first) needs a per-prop gate; the part gate cannot tell near from far.
+    Measured headless (stand-in textures, R2 blocked): both neighbours stood ~80 s after Downtown's card at
+    software GL's ~1 s a frame; a real GPU runs the same steps in a few seconds.
+  - **THE FEET PAST THE EDGE** (`_hqStageSurface`, asked first in `_hqSurface`'s box branch, `_hqAirOK` and
+    — `_hqStageCam` — `_hqCamBlocked`): `HQ_STAGE_PAD` 1.5 m either side of the edge along a joined span
+    less the pad is the road through (its height, either side's field); beyond it a DRAWN neighbour's own
+    `_hqSurface` (its field, its blockers, its step rule) in its own metres. Beside the span the edge stays
+    a wall; an undrawn neighbour is no floor.
+  - **THE CROSSING** (`_hqStageCross` → `_hqStageSwap`): never mid-dash / climb / seat / swim / ride / helm.
+    The records swap in place (the `_hq` object stays: the frame's `_hq !== H` guards hold); the part you
+    left keeps its build and becomes a neighbour, its people stand down (rigs disposed) and the new part's
+    come out (`_hqSpawnPopulation` with `_stageNoPlayer`); every root is re-anchored by A = RotY(−rot·π/2)·
+    T(−rel); the walker, its velocities, its yaw, the camera's eased eye / look / yaw, the key's and fill's
+    directions and the sky's bodies turn with the frame; the dome's `uSkyYaw` carries the turn (so the sky
+    never moves); the scene-hung lamp masts / shafts of the part you left go into its root; the instance
+    pass, the shadow, the AO and the height fog re-arm on the new box. map.js `onCross` → `_hqStageCrossed`
+    (the room, the link charted by `_hqRecordVisit`, the room seen + its first-sight card, the strip, the
+    tone, the music, the survey's warm). A neighbour not drawn yet — or a door-gun pair / standing door in
+    this part (they belong to this room) — falls back to the plain load at the same spot, looking the same
+    way (`opts.onStageLoad` → `_hqGoRoom(to, { x, z, face })`).
+  - **THE BLEND** (fork 4's default: the Strip keeps its own night): the fog, the hemisphere, the key, the
+    dome's tint / stars / nebula / day / clouds / fog ease over `HQ_STAGE_BLEND_MS` 2 s; the look (the retro
+    grade, the bloom) turns at the half-way beat. Phase 3's clock replaces this with `sky.lock`.
+  - **THE RING**: one-hop neighbours built; a part two hops away detached (kept built; its CSS plates hidden
+    — r128's CSS2DRenderer never sees a detached root); past `partsBuilt` 3 disposed, farthest first.
+  - **THE LAMPS** (`_hqStageLamps`, every `lampPickMs`): every point light on the stage, the nearest N lit,
+    N = max(`lampsLive` 12, the current part's own count) — a constant count (a changing one recompiles every
+    material), and a room with no neighbour drawn keeps every lamp exactly as before.
+  - **THE GROUND**: the field's quads past the shell that lie in a staged neighbour's box are trimmed (the
+    two fields no longer z-fight in the overlap); the outer ground's quads in a neighbour's box are cut into
+    `_hq.outerSides[id]`, hidden while that neighbour is drawn. **THE TILES** (§5.5): every terrain field is
+    now `tileM` 32 m squares (`_hqTerrainTiles`: each its own geometry — the battle's dig edits a mesh's own
+    vertices — with the whole field's normals, so no seam in the light); off: `window.EW_HQ_NO_TILES`.
+  - **THE JOINED DOORS**: `link_downtown_strip` and `link_stadium_downtown` build no door record, no plate
+    and no road strip (the road builder's `LEN` 0 on a joined door, no LEAVING plate): the gantry alone,
+    one each side, facing each other across the join. `link_streets_strip` (Downtown's west z 18) stays a
+    door.
+  - **THE FIGHT** (`_hqStageFlatten` in `_hqHandoverStash`): the drawn neighbours' pieces join the current
+    part's groups, baked through their roots; the battle's keep radius culls them per piece.
+  - `ThreeRenderer.hq.stage()` → `{ id, nbs, parts: { id: { built, step, attached, rel } }, crossed, lampN,
+    skyYaw, blending }`. Kill-switch `window.EW_HQ_NO_STAGE = true` (then re-enter: every room is its own).
+  - **Not in Phase 1** (said so in the thread): the far shells (the city fog, 0.016 / m, closes at ~150 m;
+    the camera's far stays the building's 274 m), THE FORECOURT part (fork 1 — a BUILT content job of its
+    own), the neighbours' people (they come out when you cross), a 6 ms slice (the build is sliced per
+    builder step; a big field is one step), the door joins (Phase 2).
+  - Test: `hq-stage.test.js` (the readers; the renderer's crossing, feet, lamps, ring and tiles in a vm).
+    Re-pinned: hq-deep (the boats are the part's record), hq-gallery (`gallery: null` lives in
+    `_hqPartFields`). Probe: `_probe_stage.js` in the thread's scratchpad (enters Downtown, waits for both
+    neighbours, walks the three joins, screenshots).

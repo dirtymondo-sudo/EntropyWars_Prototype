@@ -1149,6 +1149,12 @@
                             }
                         }, wait);
                     },
+                    /* THE STAGE (OPEN_WORLD_PLAN Phase 1): the walker crossed a join into the next part of the zone (no load);
+                       a crossing the stage cannot take yet falls back to the plain load at the same spot; a neighbour
+                       waiting on its floor plan asks THE SURVEY for it first */
+                    onCross: (typeof _hqStageCrossed === 'function') ? _hqStageCrossed : null,
+                    onStageLoad: (to, at) => { try { window._hqGoRoom(to, at); } catch (e) { console.warn('[HQ stage] load fallback', e); } },
+                    stageWarm: (id) => { try { const p = _hqSurvey(id, true); if (p) p.catch(() => {}); } catch (e) {} },
                     onView: (fp) => { const h = _hqEl('hqHints'); if (h) h.classList.toggle('fp', !!fp); },
                     onFrameError: (msg) => { try { _hqToast('THE FRAME THREW · ' + String(msg).slice(0, 90) + ' · see the console', 6000); } catch (e) {} },   // THE FRAME GUARD (2026-09-22): the loop survives a throw; the officer is told
                     onDebug: debug ? (d) => { if (dbg) dbg.textContent = `deg ${d.deg} · r ${d.r} · y ${d.y} · L${d.level} · x ${d.x} z ${d.z}${d.fp ? ' · FP' : ''}`; } : null,
@@ -6199,6 +6205,22 @@
         /* walking into a door that swung open (renderer onEnterDoor,
            2026-09-05): same direct set, silently ignored for panel doors —
            you cannot walk through a door that stayed shut anyway */
+        /* THE STAGE (OPEN_WORLD_PLAN Phase 1): a crossing IS arriving in the part — the room you are in, the route charted
+           (the link door the join replaced), the map's room seen (its first-sight card), the strip, the room's tone and
+           music, the survey's warm around it. No card, no door beat: you walked there. */
+        function _hqStageCrossed(to, from) {
+            if (!_hqRoomExists(to)) return;
+            _hqCurRoom = to; _hqLastRoom = to; _hqLastDoor = null;
+            let link = null;
+            try { const nb = (typeof window.hqStageNeighbours === 'function') ? (window.hqStageNeighbours(from) || []).find(n => n.id === to) : null; link = (nb && nb.links && nb.links[0]) || null; } catch (e) {}
+            if (link) _hqRecordVisit(link);
+            if (typeof _hqRecordRoomSeen === 'function') _hqRecordRoomSeen(to);
+            setTimeout(() => { try { if (_hqCurRoom === to) _hqArrivalFire(to); } catch (e) {} }, 300);
+            try { _hqFillStrip(_hqProfile()); } catch (e) {}
+            try { if (typeof startDoorRoomTone === 'function') startDoorRoomTone(); } catch (e) {}
+            try { syncMusicToState().catch(() => {}); } catch (e) {}
+            try { _hqSurveyWarmAround(to); } catch (e) {}
+        }
         function _hqWalkThroughDoor(t) {
             if (!t || t.kind !== 'door' || !t.door) return;
             if (t.door.portal) { window._hqPortalStep(t.door.portal); return; }   // THE DOOR GUN (9.5)

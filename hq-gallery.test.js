@@ -178,7 +178,7 @@ test('the source sites: _hqSurface reads the layer, _hqBlockerFloor / _hqAirOK /
     const enter = renderer.slice(renderer.indexOf('    function _hqEnter('), renderer.indexOf('    function _hqLeave('));
     const frameAt = enter.indexOf('_hq.gallery = _hqGalleryFrame(room);'), shellAt = enter.indexOf('_hqBuildBoxShell(room)'), buildAt = enter.indexOf('_hqBuildGallery(room)');
     assert.ok(frameAt > 0 && frameAt < shellAt && shellAt < buildAt, '_hqEnter: the frame, then the shell, then the gallery');
-    assert.ok(/gallery: null/.test(enter), 'the _hq record carries gallery');
+    assert.ok(/gallery: null/.test(renderer.slice(renderer.indexOf('    function _hqPartFields('), renderer.indexOf('    function _hqEnter('))) && enter.includes('_hqPartFields(room)'), 'the _hq record carries gallery (THE STAGE, 2026-09-26: in the part\'s own fields)');
     assert.ok(/if \(d\.box\) \{ if \(Math\.abs\(pl\.y - d\.y0\) > 1\.2\) return; \}/.test(fn('_hqFindTarget')), '_hqFindTarget: a box door by height');
     assert.ok(/room\.shell\.gallery/.test(fn('_hqDoorFloorY')), '_hqDoorFloorY reads shell.gallery');
     assert.ok(!/gallery/.test(fn('_hqBuildBoxShell')), 'the box shell builder leaves the gallery to _hqBuildGallery');

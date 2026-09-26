@@ -41598,6 +41598,12 @@ const HQ_STAGE_RULES = {
        them) and the instance follows its placement every frame it moves. Measured on Downtown (every file landed):
        32 m / 4 → 2,299 to 2,041 calls; 64 m / 2 → 1,931 (+17 % triangles drawn); 128 m / 2 → 1,832 (+35 %). */
     instanceMin: 2, instanceCell: 64,
+    /* THE STAGE (§5.1–5.3, Phase 1, 2026-09-26): the zones whose parts stand on ONE stage — the joined neighbours are
+       built into the same scene, drawn and walked, and the feet crossing a join SWAP the current part (no card, no
+       rebuild). A zone not listed keeps today's rooms and doors exactly; a later phase adds its zone here when its
+       joins are built. `buildDelayMs` = the beat after the room's card drops before the first neighbour builds (the
+       arrival stays smooth); `lampPickMs` = how often the lamp budget re-picks the nearest `lampsLive` point lights. */
+    zones: ['city'], buildDelayMs: 600, lampPickMs: 500,
 };
 /* THE EXPLORATION DAY (§4.4; Phase 3 builds it — the table lives here so the phases share one set of numbers). */
 const HQ_WORLD_CLOCK = { dayMin: 24, start: 9.0, dawn: [5.5, 7.0], dusk: [18.5, 20.0], lampsOn: 18.0, lampsOff: 6.5,
@@ -41931,6 +41937,99 @@ function hqWorldRing(roomId, hops) {
         front = next;
     }
     return out;
+}
+/* ══ THE STAGE (OPEN_WORLD_PLAN.md §5.1–5.3, Phase 1, 2026-09-26) ══════════════════════════════════════════════════
+   The readers the renderer's stage stands on. A STAGED part is a real box room that is a part of a zone listed in
+   HQ_STAGE_RULES.zones (not planned, not absorbed, not an `interior` — a door join is Phase 2). Its EDGE joins to
+   other staged parts are the stage's joins: the neighbour is built beside it in the same scene, and its link doors
+   that stand ON a joined span (the road gantries) are no longer doors — the road simply runs on. Every value here is
+   in the CURRENT part's room metres (the renderer keeps the current part at the scene's origin and moves the rest). */
+function hqStagePart(roomId) {
+    const F = hqWorldFrame(roomId);
+    if (!F || F.absorbedBy || F.planned || F.interior) return null;
+    if ((HQ_STAGE_RULES.zones || []).indexOf(F.zone) < 0) return null;
+    const R = (DOOR_HQ.rooms || {})[roomId];
+    if (!R || R.kind !== 'box' || !(R.shell && R.shell.w > 0 && R.shell.d > 0)) return null;
+    return F;
+}
+/* toId's frame seen from fromId's room: a point (x, z) of toId's room lies at hqStageToRoom(rel, x, z) in fromId's.
+   rot = toId's quarter turns relative to fromId's (rotation.y = rot·π/2 on the group that carries toId). */
+function hqStageRel(fromId, toId) {
+    const A = hqWorldFrame(fromId), B = hqWorldFrame(toId);
+    if (!A || !B || A.ground !== B.ground || A.absorbedBy || B.absorbedBy) return null;
+    const o = hqZoneToRoom(fromId, B.x, B.z);
+    return { x: o.x, z: o.z, y: B.y - A.y, rot: (((B.rot - A.rot) % 4) + 4) % 4 };
+}
+function hqStageToRoom(rel, x, z) {
+    const c = _HQ_ROT[rel.rot][0], s = _HQ_ROT[rel.rot][1];
+    return { x: rel.x + x * c + z * s, z: rel.z - x * s + z * c };
+}
+function hqStageFromRoom(rel, x, z) {
+    const c = _HQ_ROT[rel.rot][0], s = _HQ_ROT[rel.rot][1], dx = x - rel.x, dz = z - rel.z;
+    return { x: dx * c - dz * s, z: dx * s + dz * c };
+}
+/* the staged neighbours of a staged part: [{ id, rel, rect: { x0, z0, x1, z1 } (the neighbour's box in THIS room's
+   metres), spans: [{ side, t0, t1, kind }] (the joined stretches of THIS room's edge, in its own metres), links: [ids of
+   the link doors on this room that a span replaces] }]. Empty for a room that is not staged. */
+function hqStageNeighbours(roomId) {
+    if (!hqStagePart(roomId)) return [];
+    const out = [], R = DOOR_HQ.rooms[roomId];
+    hqWorldJoins(roomId).forEach(j => {
+        if (!j.side || !Array.isArray(j.span)) return;   // a door / island join is Phase 2's
+        const other = j.a === roomId ? j.b : j.a;
+        if (other === roomId || !hqStagePart(other)) return;
+        const J = hqWorldJoinResolve(j);
+        if (!J || !J.b) return;
+        const mine = j.a === roomId ? J.a : J.b;
+        let nb = out.find(n => n.id === other);
+        if (!nb) {
+            const rel = hqStageRel(roomId, other), S = DOOR_HQ.rooms[other].shell, hw = S.w / 2, hd = S.d / 2;
+            if (!rel) return;
+            const cs = [[-hw, -hd], [hw, -hd], [hw, hd], [-hw, hd]].map(p => hqStageToRoom(rel, p[0], p[1]));
+            nb = { id: other, rel, rect: { x0: Math.min(...cs.map(p => p.x)), z0: Math.min(...cs.map(p => p.z)), x1: Math.max(...cs.map(p => p.x)), z1: Math.max(...cs.map(p => p.z)) }, spans: [], links: [] };
+            out.push(nb);
+        }
+        nb.spans.push({ side: mine.side, t0: mine.span[0], t1: mine.span[1], kind: j.kind });
+    });
+    /* the link doors a span replaces: a link between these two rooms whose door on THIS room stands on the joined side
+       inside the span (Downtown's cross street west ⇄ the Strip's boulevard; the avenue north ⇄ the players' tunnel) */
+    out.forEach(nb => {
+        (R.doors || []).forEach(d => {
+            if (!d || !d.link || !d.action || d.action.room !== nb.id) return;
+            const t = (d.wall === 'n' || d.wall === 's') ? (d.x || 0) : (d.wall === 'e' || d.wall === 'w') ? (d.z || 0) : null;
+            if (t == null) return;
+            if (nb.spans.some(sp => sp.side === d.wall && t >= sp.t0 - 0.01 && t <= sp.t1 + 0.01)) nb.links.push(d.id);
+        });
+    });
+    return out;
+}
+/* is this door of this room replaced by a stage join (the renderer builds no door record for it, only the gantry)? */
+function hqStageJoinedDoor(roomId, doorId) {
+    return hqStageNeighbours(roomId).some(nb => nb.links.indexOf(doorId) >= 0);
+}
+/* THE CROSSING's rule (§5.3), pure: given the current part's box half-sizes, its neighbours (hqStageNeighbours) and
+   the feet (x, z) in its metres, the neighbour the feet stand in — the feet must be `hys` metres past the current
+   part's edge AND inside the neighbour's box (the band belongs to whoever you came from: no flip-flop). null = stay. */
+function hqStageWhere(hw, hd, nbs, x, z, hys) {
+    const over = Math.max(Math.abs(x) - hw, Math.abs(z) - hd);
+    if (!(over > (hys == null ? HQ_WORLD_RULES.crossHys : hys))) return null;
+    for (let i = 0; i < nbs.length; i++) { const r = nbs[i].rect; if (x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1) return nbs[i].id; }
+    return null;
+}
+/* the joined span the point stands in front of: the point lies within `pad` of (or past) the current part's edge on a
+   joined side, and along that side inside the span less `pad` — the doorway through the edge. → { nb, span } | null */
+function hqStageSpanAt(hw, hd, nbs, x, z, pad) {
+    for (let i = 0; i < nbs.length; i++) {
+        const sp = nbs[i].spans;
+        for (let k = 0; k < sp.length; k++) {
+            const s = sp[k];
+            const near = s.side === 'n' ? z < -hd + pad : s.side === 's' ? z > hd - pad : s.side === 'e' ? x > hw - pad : x < -hw + pad;
+            if (!near) continue;
+            const t = (s.side === 'n' || s.side === 's') ? x : z;
+            if (t >= s.t0 + pad && t <= s.t1 - pad) return { nb: nbs[i], span: s };
+        }
+    }
+    return null;
 }
 /* THE VALIDATOR (§4.1). → { ok, errors: [...], parts, joins }. The rules:
    1. every part is a box room of DOOR_HQ.rooms or a planned part with a size; an absorbed room exists and is no part;
