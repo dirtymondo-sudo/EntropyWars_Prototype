@@ -41,6 +41,7 @@ them. The names below are the ones the code uses; the games / papers they come f
 | **C · ROOMS-AND-HALLWAYS (maze / rogue)** | `terrain.gen.kind: 'halls'` (2026-09-17, D.U.M.B.) — a BSP of the shell into leaves with a rectangular ROOM in each, plus AUTHORED rooms (`gen.rooms`, the prefab chambers) and AUTHORED halls (`gen.halls` polylines, a ring or a spine), joined by a Prim tree + `loops` of L-SHAPED corridors; the solid a MASS to the ceiling (the city's rule), its boundary TRACED into `info.planWalls` (wall rows in an `urban:` sheet; `simplify` collapses the raster stairs); `bsp: false` = the authored rooms and halls alone. Still by hand: H-Wing, the Works' tunnel, the service corridors, the dungeon cells | dungeons, sewers, bunkers, back-of-house, D.U.M.B., Portal-style chamber chains | corridors between rooms, doors on rooms, keys and locks |
 | **C' · THE LINES (straight corridors that fork)** | `terrain.gen.kind: 'ley'` (2026-09-18, THE LEY LINES) — AUTHORED straight lines between the stations (`gen.lines`), generated FORKS at ley angles (`forkDeg`, narrower than a line) that run straight until they meet another corridor, the rim, or run out into a NICHE (a round dead end — the design, never a `deadEnd`), a chamber at every crossing and behind every station (`gen.chambers` for the authored ones); the solid a MASS to a low ceiling, traced into walls that light themselves (three-renderer.js `_hqBuildLeyVeins`) | the ley lines, a mine's drifts, a catacomb's galleries, an ant nest, anything DUG in straight lines by someone with a plan you cannot read | claustrophobic, ruler-straight, forks you cannot see the end of |
 | **D · STREETS (roads first)** | `terrain.gen.kind: 'city'` — authored polyline streets are the corridors, the blocks the solid, lots terraced along every face, buildings as MASS at street level (§4) | any city, a suburb, a base with roads, a harbour | a grid you navigate by street names |
+| **E · BUILT (architecture on a flat floor)** | no `gen`, noise 0: authored `wall` rows (walkable tops, `quad` / `slopeTop` / `tier` / `seat` / `ghost`), `bridge` slabs you walk ON and UNDER (straight or arc), `spiral` ramps, `terrain.marks` paint; helpers `hqStandBowl`, `hqGridironMarks`, `hqRingWalls` + `hqRingQuad` (2026-09-26 — BUILT_ARCHITECTURE_PLAN.md; THE BOWL and THE PARKING GARAGE) | stadiums, arenas, parking garages, stations, grandstands, piers, overpasses, anything with a real-world plan and space UNDER its raised parts | a real building: tunnels under stands, decks on columns, round things round |
 
 Two more things exist and are NOT families:
 
@@ -59,6 +60,10 @@ Two more things exist and are NOT families:
 - Is it a place whose POINT is the getting-through — a dungeon, sewers, a bunker, a test
   facility? → **C**. The player should be able to draw the map from memory afterwards.
 - Does it have roads? → **D**. Roads first, then blocks, then buildings, then the life.
+- Is it a building with a known real-world plan, with space UNDER its raised parts (stands over
+  tunnels, decks on columns, a press box over a concourse)? → **E**. Never a `plateau` for
+  something you should walk under; never a generator for a plan that is known
+  (BUILT_ARCHITECTURE_PLAN.md §2 says why the old stadium and garage read badly).
 
 ### Mixing families in one map (the user's rule: tell a story with the hand-off)
 
@@ -463,6 +468,9 @@ The design (build in this order; each step is one delivery):
 - [ ] natives with `say`, a tape per part (re-homed; the hundred is fixed), no envelope in a
       `quiet` room
 - [ ] on THE MAP by construction (hq-map.test.js's DIRECTORY GUARD); a new site = 7.10
+- [ ] a BUILT part (E): no `gen`, noise 0, sized to the real thing; every raised surface with
+      space under it is a `bridge` / `spiral`, not a `plateau`; no rescue climbs or
+      pocket-patch paths (a pocket means the shape is wrong)
 - [ ] `npm test`; the build-plan §9 entry; MODEL_INDEX for any GLB; this doc's §10 line
 
 ---
@@ -689,3 +697,4 @@ The scan then starts on the top and the foot (`climbReach` back) lands 0.3 m out
 - 2026-09-21 — **D5 (AREA_CONTENT_PLAN): THE PURPOSE RULE for the facility.** A facility box (no site, no field) carries ONE of: a by-id
   panel reading something real off the profile, a stash (`DOOR_HQ.stashes` — a daily find of THE BAG's goods), a daily line (a `say`
   list), or a cast spot; hq-purpose.test.js names any room without one. A corridor is worth walking to the end of.
+- 2026-09-26: family **E · BUILT** added (BUILT_ARCHITECTURE_PLAN.md) after THE BOWL and THE PARKING GARAGE were rebuilt as architecture on a flat floor; §1 row, "which one" line, §8 checklist line.

@@ -561,3 +561,4 @@ The questions as they were asked:
   until a `gen.open` circle forced the plan open along that face; read `RETURN:` on every room before claiming it. The suites were not
   run at the user's word (the three rooms were solved and audited by the two tools; `npm run test:quick` passed). NEXT: the Flatlands, the
   Looking-Glass's garden, the Lodge, the Singularity, Saturn, Hollow Earth, the Dutchman's deck, the Backrooms — then D4, D5.
+- 2026-09-26: BUILT_ARCHITECTURE_PLAN.md — the stadium and the garage rebuilt as architecture (bridges, stands, spiral ramps, paint) instead of plateaus; §5 there lists the rooms here that would gain (the parking deck, the skyway, the mezzanine, Camelot's walls, the Divine Stair).
