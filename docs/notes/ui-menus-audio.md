@@ -609,3 +609,19 @@ building.
   opened the pause menu. Now every `_hqEnter` stamps it, `H.ready` and `hq.hold()` restamp it, the window is 4 s,
   a room that is not ready is never paused by a lost lock, and a hidden tab / unfocused window never counts.
   ESC and P still open the menu as before. Test: hwing.test.js.
+
+## THE SPELL LIBRARY v2 — THE SHELL (2026-09-26, token 20260926-spell-library-02-cors)
+Settings → Developer → SPELL LIBRARY is a new screen (ui.js "SPELL LIBRARY v2 — THE SHELL", styles-hud.css
+`.slb2-*`; SPELL_LIBRARY_PLAN.md §5 is the spec, §11 the log). Layout: top bar (tabs SPELLS · PASSIVES ·
+FAMILIES · UPGRADES · POOLS · REPORT, search ⌘F, edit count, EDITS ON/OFF, undo/redo, EXPORT, IMPORT, LAB, ⋯),
+then rail (filters with counts) · centre (chips bar + virtualised table or cards) · inspector (420 px). Under
+1100 px the shell is `.narrow`: the rail is a drawer (☰), the inspector a sheet. The table renders only the
+visible 32 px rows (`_slb2RenderWindow` on scroll, rAF-coalesced); columns carry a priority and hide by the
+CENTRE's width, not the viewport's (`_slb2VisibleCols`), and what remains scrolls sideways (`--slb2-minw`).
+Every edit goes through `window._slbSetField(id, field, raw, ftype)` → `_slb2WriteField` (added rows edit
+whole, shipped rows a sparse patch in `EWSpellMods.doc.modified`) → `_slb2AfterEdit` patches ONE row + ONE
+field in place; the whole doc is snapshotted on the 50-deep undo stack first. The Spell Lab and its timeline
+(the `.slb-lab` / `.slb-tl` block) are unchanged and dock on the same names as before. Keys: ⌘K palette,
+⌘F search, ⌘S export, ⌘L lab, ⌘Z / ⌘⇧Z, ⌘A select all, ↑ ↓ walk rows, Enter opens the inspector sheet when
+narrow, Esc closes menus / the sheet / the drawer. Probe: `node playtest_library.js` (server on :3000) →
+shots/library/. Test: `node --test spell-library-ui.test.js`.
