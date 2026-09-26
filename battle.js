@@ -5055,6 +5055,75 @@
             addLog(`💥 ${spell.name} splashes ${hit.length} ${hit.length === 1 ? 'unit' : 'units'} round ${unitDisplayName(victim)}.`);
             return hit.length;
         }
+        /* ── THE UPGRADE RIDERS (SPELL_LIBRARY_PLAN.md §4.4 / §6.3, Phase 5) — an upgraded spell's derived def carries them
+           (data.js resolveSpellDef): `ricochetRider: { radius, mult }` — one bounce from the victim to the weakest enemy within
+           `radius` (calcBounceTarget, the Ricochet spell's own pick) for dmg × mult; `extraTargets: { count, mult }` — the
+           `count` enemies nearest the victim among the spell's legal targets (range, sight, fog) take dmg × mult each, no
+           statuses (those stay on the primary hit). Units only, enemies only, never the caster; no RNG beyond the damage
+           variance. Host-side like every hit; the guest gets the damage by state-sync and the shots by 'rider-fx'. ── */
+        function _extraTargetVictims(unit, spell, victim, count) {
+            if (!unit || !spell || !victim || !(count > 0)) return [];
+            const pool = [];
+            for (const t of _getSpellValidTargets(unit, spell)) {
+                const u = t && t.unit;
+                if (!u || u.dead || u._dying || u.id === unit.id || u.id === victim.id || !isEnemyUnit(u, unit)) continue;
+                if (typeof unitCryptidHiddenFrom === 'function' && unitCryptidHiddenFrom(u, unit.player)) continue;
+                if (typeof isUnitRealmShieldedFrom === 'function' && isUnitRealmShieldedFrom(u, unit)) continue;
+                if (!pool.includes(u)) pool.push(u);
+            }
+            const dist = (u) => Math.abs(u.x - victim.x) + Math.abs(u.y - victim.y);
+            pool.sort((a, b) => (dist(a) - dist(b)) || ((a.hp || 0) - (b.hp || 0)) || String(a.id).localeCompare(String(b.id)));
+            return pool.slice(0, count);
+        }
+        window._extraTargetVictims = _extraTargetVictims;
+        function _applyUpgradeRiders(unit, spell, victim, spellPower) {
+            if (!unit || !spell || !victim) return 0;
+            const ric = spellRicochetRiderOf(spell), ext = spellExtraTargetsOf(spell);
+            const skip = _skipVisuals();
+            const opts = () => ({
+                sourceUnit: unit, allowMarkBonus: false, ignoreArmor: !!spell.ignoreArmor,
+                damageType: spell.damageType || 'magic', spellType: spell.spellType || null,
+                bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), element: classifySpellElement(spell)
+            });
+            let n = 0;
+            if (ric) {
+                const second = calcBounceTarget(victim, state.units.filter(u => !u._dying && isEnemyUnit(u, unit)
+                    && !(typeof isUnitRealmShieldedFrom === 'function' && isUnitRealmShieldedFrom(u, unit))), ric.radius, victim.id);
+                if (second) {
+                    n++;
+                    const fly = actionMs(300);
+                    playSpellRiderFx('bounce', { casterId: unit.id, fromId: victim.id, targetId: second.id, spellId: spell.id, flyMs: fly });
+                    window.setTimeout(() => {
+                        if (state.phase !== 'battle' || second.dead || unit.dead) return;
+                        const dmg = Math.max(1, Math.round(computeSpellBase(spell, spellPower, { floor: 16 }) * ric.mult));
+                        applyDamageToUnit(second, dmg, `${spell.name} ricochets to `, opts());
+                        markDirty('board', 'hud');
+                        renderIfDirty();
+                    }, skip ? 0 : fly + actionMs(60));
+                }
+            }
+            if (ext) {
+                const list = _extraTargetVictims(unit, spell, victim, ext.count);
+                const gap = actionMs(160), fly = actionMs(320);
+                list.forEach((u, i) => {
+                    n++;
+                    window.setTimeout(() => {
+                        if (state.phase !== 'battle' || u.dead || unit.dead) return;
+                        playSpellRiderFx('shot', { casterId: unit.id, targetId: u.id, spellId: spell.id, flyMs: fly });
+                        window.setTimeout(() => {
+                            if (state.phase !== 'battle' || u.dead) return;
+                            const dmg = Math.max(1, Math.round(computeSpellBase(spell, spellPower, { floor: 16 }) * ext.mult));
+                            applyDamageToUnit(u, dmg, `${spell.name} forks to `, opts());
+                            markDirty('board', 'hud');
+                            renderIfDirty();
+                        }, skip ? 0 : fly);
+                    }, skip ? 0 : (i + 1) * gap);
+                });
+                if (list.length) addLog(`⑂ ${spell.name} forks to ${list.map(u => unitDisplayName(u)).join(', ')}.`);
+            }
+            return n;
+        }
+        window._applyUpgradeRiders = _applyUpgradeRiders;
         /* The riders' extra presentation, one door for host and guest: 'shot' = a projectile from the caster to a
            random victim (casterId, targetId, spellId, flyMs); 'splash' = the burst ring at the victim (x, y, r,
            spellId). online.js relays every host call as 'rider-fx' and the guest replays it. */
@@ -5068,6 +5137,11 @@
                 if (!caster || !tgt) return;
                 playProjectile(caster.x, caster.y, tgt.x, tgt.y, 'damage', p.flyMs || actionMs(360),
                     spell ? spell.spellType : null, (spell && spell.projectileOverride) || null, spell);
+            } else if (kind === 'bounce') {
+                // THE UPGRADES (Phase 5): a Ricochet upgrade's bounce — from the first victim to the second (fromId, targetId)
+                const from = state.units.find(u => u.id === p.fromId), tgt = state.units.find(u => u.id === p.targetId);
+                if (!from || !tgt) return;
+                playProjectile(from.x, from.y, tgt.x, tgt.y, 'proj-ricochet', p.flyMs || actionMs(300), spell ? spell.spellType : null, null, spell);
             } else if (kind === 'splash') {
                 const VFX = window.ThreeVFXEffects;
                 if (spell && VFX && VFX.hasMapping && VFX.hasMapping(spell.id, 'impact')) VFX.fire('impact', spell.id, { tx: p.x, ty: p.y });
@@ -5218,6 +5292,8 @@
 
             // THE SPLASH RIDER (§4.7, Phase 3): the units round the victim, before any post-effect moves it
             if (spell.splash && target) _applySplashDamage(unit, spell, target, spellPower);
+            // THE UPGRADE RIDERS (§6.3, Phase 5): a Ricochet bounce off the victim, the Forked extra targets
+            if (target && (spell.ricochetRider || spell.extraTargets)) _applyUpgradeRiders(unit, spell, target, spellPower);
 
             // Post-effects (chargeToTarget, swap, selfStun)
             _runPostEffects(unit, spell, target);
@@ -55800,7 +55876,7 @@
             const out = [];
             let fx = Math.sign(door.faceX || 0), fy = Math.sign(door.faceY || 0);
             if (!door || (!fx && !fy)) return out;
-            const sp = (typeof SPELL_BY_ID !== 'undefined' && door.spellId && SPELL_BY_ID[door.spellId]) || {};
+            const sp = (typeof _gunDoorSpell === 'function') ? _gunDoorSpell(door) : ((typeof SPELL_BY_ID !== 'undefined' && door.spellId && SPELL_BY_ID[door.spellId]) || {});   // Hot Loads' +1 bounce rides the owner's def (Phase 5)
             const maxB = sp.bounces != null ? sp.bounces : 3;
             const blocked = (x, y) => !isInside(x, y)
                 || (typeof isTerrainPassable === 'function' && !isTerrainPassable(x, y))
@@ -55946,7 +56022,14 @@
             return { x, y, faceX: f.faceX, faceY: f.faceY, pick: false };
         }
         function _gdPlural(n, w) { return n + ' ' + w + (n === 1 ? '' : 's'); }
-        function _gunDoorSpell(door) { return (typeof SPELL_BY_ID !== 'undefined' && door && SPELL_BY_ID[door.spellId]) || {}; }
+        /* the door's row — its owner's DERIVED def when the owner carries an upgraded one (THE UPGRADES, Phase 5: Hot Loads
+           raises laneDmg / arrowDmg / beamDmg on the unit's own def), else the shipped row */
+        function _gunDoorSpell(door) {
+            if (!door) return {};
+            const owner = (door.ownerId != null && state.units) ? state.units.find(u => u.id === door.ownerId) : null;
+            const own = owner ? (owner.spells || []).find(s => s && s.id === door.spellId && s._ups) : null;
+            return own || (typeof SPELL_BY_ID !== 'undefined' && SPELL_BY_ID[door.spellId]) || {};
+        }
         function _gunDoorOnLane(door, x, y) { return standingDoorLaneTiles(door).some(t => t.x === x && t.y === y); }
         /* 🌬 THE GUST STREAM (the user, 2026-09-25: "a persistent hazard on the field … if a unit walks into the gust stream it
            should push them that direction. Immovable units like the kaiju and giant should be able to stand in it just
@@ -56245,7 +56328,7 @@
            first and the hits land when they arrive (the placement and THE DOORS' TURN); the chain lands them at once. */
         function _gunDoorVolley(door, only, opts = {}) {
             const def = _gunDoorDef(door);
-            const spell = (typeof SPELL_BY_ID !== 'undefined' && SPELL_BY_ID[door.spellId]) || {};
+            const spell = _gunDoorSpell(door);   // the owner's derived def when upgraded (Phase 5)
             let tgts = _gunDoorVolleyTargets(door);
             if (only) tgts = tgts.filter(u => u.id === only.id);
             const target = tgts[0];

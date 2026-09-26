@@ -1552,10 +1552,31 @@ function pbTierOf(spOrId) {
   return sp && sp.tier === 'III' ? 3 : sp && sp.tier === 'II' ? 2 : 1;
 }
 function pbSpCost(spOrId) { return typeof window.spellSpCost === 'function' ? window.spellSpCost(spOrId) : pbTierOf(spOrId); }
-function pbSpUsed(ids) { return (ids || []).reduce((n, id) => n + (id ? pbSpCost(id) : 0), 0); }
+function pbSpUsed(ids, ups) {
+  if (ups && typeof window.loadoutSpUsed === 'function') return window.loadoutSpUsed(ids, ups);   // THE UPGRADES (Phase 5): tier + Σ upgrade SP
+  return (ids || []).reduce((n, id) => n + (id ? pbSpCost(id) : 0), 0);
+}
+/* THE UPGRADES (SPELL_LIBRARY_PLAN.md §6.3, Phase 5): the kit's upgrade map as the repair keeps it (allowed, ≤ 2 per spell,
+   inside the SP) — what the SP meter counts and what createUnit will build. */
+function pbEffUps(race, cls, ids, ups) {
+  if (!ups || typeof ups !== 'object' || typeof window.treeLegalUpgrades !== 'function') return {};
+  return window.treeLegalUpgrades(race, cls, (ids || []).filter(Boolean), ups);
+}
+/* One spell's upgrade rows for the technique panel: every allowed upgrade with its state (on · ok · the refusal). */
+function pbUpgradeRows(ctx, id) {
+  if (!ctx || !id || typeof window.spellAllowedUpgrades !== 'function') return [];
+  const reg = window.SPELL_UPGRADES || {};
+  const on = (ctx.ups && ctx.ups[id]) || [];
+  return window.spellAllowedUpgrades(id).map(u => {
+    const row = reg[u] || {};
+    if (on.includes(u)) return { id: u, row, st8: 'on', note: 'ON · CLICK TO REMOVE · +' + window.spellUpgradeSp(u) + ' SP BACK' };
+    const v = window.spellUpgradeVerdict(ctx.race, ctx.cls, ctx.equipped, ctx.ups, id, u);
+    return { id: u, row, st8: v.ok ? 'ok' : v.reason, note: v.note };
+  });
+}
 /* One unit's rack: the pool in parts, the sealed set, the rows by tier, every
    id's source. Built per render from (race, job, equipped) — pure. */
-function pbTierCtx(race, cls, equipped) {
+function pbTierCtx(race, cls, equipped, upsWish) {
   const parts = typeof window.unitSpellPoolParts === 'function' ? window.unitSpellPoolParts(race, cls) : { race: [], job: [], borrowRace: [], borrowJob: [], wheel: [] };
   if (!parts.wheel) parts.wheel = [];
   const eq = (equipped || []).filter(Boolean);
@@ -1578,23 +1599,24 @@ function pbTierCtx(race, cls, equipped) {
   for (const t of PB_TIER_ORDER) rows[t] = own.concat(borrowed).filter(id => !isPas(id) && pbTierOf(id) === t);
   const passives = own.concat(borrowed).filter(isPas).concat(parts.gear.filter(id => !own.includes(id)));
   const sealed = typeof window.spellSealedIds === 'function' ? window.spellSealedIds(own.concat(borrowed, parts.gear)) : new Set();
-  return { race, cls, parts, pool, sourceOf, rows, passives, sealed, equipped: eq, isFreelancer,
+  const ups = pbEffUps(race, cls, eq, upsWish);   // THE UPGRADES (Phase 5): every verdict and the meter count them
+  return { race, cls, parts, pool, sourceOf, rows, passives, sealed, equipped: eq, isFreelancer, ups,
     pasMax: typeof window.PASSIVE_SLOT_MAX === 'number' ? window.PASSIVE_SLOT_MAX : 2, pasUsed: eq.filter(isPas).length,
-    cap: typeof window.SPELL_SLOT_MAX !== 'undefined' ? window.SPELL_SLOT_MAX : 7, spMax: pbSpMax(), spUsed: pbSpUsed(eq) };
+    cap: typeof window.SPELL_SLOT_MAX !== 'undefined' ? window.SPELL_SLOT_MAX : 7, spMax: pbSpMax(), spUsed: pbSpUsed(eq, ups) };
 }
 /* equipped · ok · sp · slots · sealed · dup/pool (never drawn) */
 function pbSpellState(ctx, id) {
   if (!ctx || !id) return 'empty';
   if (ctx.equipped.includes(id)) return 'equipped';
   if (typeof window.spellAddVerdict === 'function') {
-    const v = window.spellAddVerdict(ctx.race, ctx.cls, ctx.equipped, id, ctx.pool);
+    const v = window.spellAddVerdict(ctx.race, ctx.cls, ctx.equipped, id, ctx.pool, ctx.ups);
     return v.ok ? 'ok' : v.reason;
   }
   return 'ok';
 }
 function pbSpellVerdict(ctx, id) {
   if (!ctx || !id || typeof window.spellAddVerdict !== 'function') return null;
-  return window.spellAddVerdict(ctx.race, ctx.cls, ctx.equipped, id, ctx.pool);
+  return window.spellAddVerdict(ctx.race, ctx.cls, ctx.equipped, id, ctx.pool, ctx.ups);
 }
 const PB_SOURCE_LABEL = { race: 'RACE', job: 'JOB', borrowRace: 'BORROWED · RACE', borrowJob: 'BORROWED · JOB', wheel: 'DOOR WHEEL', gear: 'GEAR · EVERY UNIT' };
 /* The keyboard's grid: one row per tier (its chips, then ＋ BORROW for a
@@ -1677,7 +1699,7 @@ function pbAoeTiles(sp, big) {
     ...cells.map((c, i) => h('i', { key: i, className: c === 'c' ? 'ctr' : (c ? '' : 'off') })));
 }
 function SpellTierPanel({ ctx, fc, clsName, raceLabel, onSpellClick, onBorrow, onNodeHoverIn, onNodeHoverOut,
-                          selKey, hoverKey, onSelect, shakeKey, finisher, onUnequipSlot }) {
+                          selKey, hoverKey, onSelect, shakeKey, finisher, onUnequipSlot, onUpgradeOpen }) {
   const spellOf = (id) => (id && typeof window.getSpellById === 'function') ? window.getSpellById(id) : null;
   const colourOf = (sp) => {
     const cat = sp ? classifySpellLocal(sp) : null;
@@ -1709,7 +1731,12 @@ function SpellTierPanel({ ctx, fc, clsName, raceLabel, onSpellClick, onBorrow, o
       h('span', { className: 'pb-tn-text' },
         h('span', { className: 'pb-tc-top' },
           h('span', { className: 'pb-tn-name' }, sp ? sp.name : id),
-          st8 === 'equipped' ? h('b', { className: 'pb-tc-cost on', title: 'Equipped · ' + t + ' SP' }, '✓ ' + t + ' SP') : tag(t)),
+          st8 === 'equipped' ? (() => {
+            // THE UPGRADES (Phase 5): an upgraded spell shows its whole price (tier + upgrades) and ⚙ n
+            const upN = (ctx.ups && ctx.ups[id]) ? ctx.ups[id].length : 0;
+            const upSp = upN && typeof window.spellUpgradesSpOf === 'function' ? window.spellUpgradesSpOf(ctx.ups, id) : 0;
+            return h('b', { className: 'pb-tc-cost on', title: 'Equipped · ' + t + ' SP' + (upN ? ' + ' + upSp + ' SP of upgrades' : '') }, '✓ ' + (t + upSp) + ' SP' + (upN ? ' · ⚙' + upN : ''));
+          })() : tag(t)),
         h('span', { className: 'pb-tc-badges' }, ...pbSpellBadges(sp, 4),
           src === 'race' ? null : h('i', { className: 'pb-tc-src' }, src === 'job' ? 'JOB' : src === 'wheel' ? 'DOOR WHEEL' : src === 'gear' ? 'GEAR' : 'BORROWED')),
         h('span', { className: 'pb-tc-bottom' },
@@ -1747,6 +1774,14 @@ function SpellTierPanel({ ctx, fc, clsName, raceLabel, onSpellClick, onBorrow, o
         title: (sp ? sp.name : id) + ' — Tier ' + PB_TIER_NUM[t] + ' · ' + t + ' SP · click to unequip' },
         h('span', { className: 'pb-ls-disc' }, (sp && sp.kind === 'passive') ? (sp.icon || '◈') : glyph),
         h('span', { className: 'pb-ls-name' }, sp ? sp.name : id),
+        /* ⚙ THE UPGRADES (SPELL_LIBRARY_PLAN.md §6.3, Phase 5): the cell's ⚙ opens the spell's upgrades in the technique
+           panel below (selects it, never unequips); a lit ⚙n = n upgrades on */
+        (typeof window.spellAllowedUpgrades === 'function' && window.spellAllowedUpgrades(id).length)
+          ? h('button', { className: 'pb-ls-up' + ((ctx.ups && ctx.ups[id] && ctx.ups[id].length) ? ' on' : ''), type: 'button',
+              title: 'Upgrades — ' + ((ctx.ups && ctx.ups[id] && ctx.ups[id].length) || 0) + ' of ' + (window.SPELL_UPGRADE_MAX || 2) + ' on',
+              onClick: (e) => { e.stopPropagation(); if (onSelect) onSelect(id); if (onUpgradeOpen) onUpgradeOpen(id); } },
+              '⚙' + ((ctx.ups && ctx.ups[id] && ctx.ups[id].length) ? ctx.ups[id].length : ''))
+          : null,
         h('b', { className: 'pb-ls-tier' }, PB_TIER_NUM[t]));
     }));
   const tierRow = (t) => {
@@ -1833,12 +1868,17 @@ function pbTechInfo(ctx, key, finisher) {
   const sp = typeof window.getSpellById === 'function' ? window.getSpellById(key) : null;
   if (!sp) return null;
   const t = pbTierOf(key);
-  return { key, st8: pbSpellState(ctx, key), id: key, sp, tier: t, cost: pbSpCost(key), verdict: pbSpellVerdict(ctx, key), source: ctx.sourceOf[key] || null };
+  /* THE UPGRADES (Phase 5): the equipped spell's upgrades, its DERIVED def (what the board will use — the chips read it),
+     their SP, and every allowed upgrade's row for the toggles */
+  const ups = (ctx.ups && ctx.ups[key]) || [];
+  const spD = (ups.length && typeof window.resolveSpellDef === 'function') ? window.resolveSpellDef(sp, ups) : sp;
+  const upSp = ups.length && typeof window.spellUpgradesSpOf === 'function' ? window.spellUpgradesSpOf(ctx.ups, key) : 0;
+  return { key, st8: pbSpellState(ctx, key), id: key, sp, spD, ups, upSp, upgrades: pbUpgradeRows(ctx, key), tier: t, cost: pbSpCost(key), verdict: pbSpellVerdict(ctx, key), source: ctx.sourceOf[key] || null };
 }
 function pbFinisherInfo(key, fin) {
   return { key, st8: 'finisher', id: null, sp: null, fin: fin || null, tier: 0, cost: 0, verdict: null, source: null };
 }
-function TechniquePanel({ info, clsName, raceLabel, fc, onVerb, onPreview, previewLabel, previewOff, previewing, used, slotCap, spUsed, spMax }) {
+function TechniquePanel({ info, clsName, raceLabel, fc, onVerb, onPreview, previewLabel, previewOff, previewing, used, slotCap, spUsed, spMax, onUpgrade }) {
   if (info && info.st8 === 'finisher') return h(FinisherPanel, { info, raceLabel, onPreview, previewOff, previewing, used, slotCap, spUsed, spMax });
   const budget = used + ' / ' + slotCap + ' SLOTS · ' + spUsed + ' / ' + spMax + ' SP';
   if (!info) {
@@ -1850,14 +1890,15 @@ function TechniquePanel({ info, clsName, raceLabel, fc, onVerb, onPreview, previ
         h('div', { className: 'pb-technique-desc' }, 'CLICK any spell to equip it · CLICK it again (or its slot) to unequip · Tier I–IV cost 1–4 SP · 7 slots · ' + spMax + ' SP · any tier, any order'),
         h('div', { className: 'pb-technique-keys' }, h('kbd', null, '↑↓←→'), ' walk ', h('kbd', null, 'ENTER'), ' equip / unequip ', h('kbd', null, '⌫'), ' unequip ', h('kbd', null, 'SPACE'), ' replay')));
   }
-  const { st8, sp, key } = info;
+  const { st8, key } = info;
+  const sp = info.spD || info.sp;   // THE UPGRADES (Phase 5): an upgraded spell's numbers are its derived def's
   const cat = sp ? classifySpellLocal(sp) : null;
   const nc = cat ? (TREE_CAT_C[cat] || TREE_CAT_C.utility) : (st8 === 'root' ? '#e6e9f2' : EW.time);
   const glyph = cat ? (TREE_CAT_GLYPH[cat] || TREE_CAT_GLYPH.utility) : (st8 === 'root' ? '⚔' : st8 === 'borrow' ? '＋' : '◯');
   const srcTxt = info.source === 'race' ? (raceLabel || 'RACE').toUpperCase() : info.source === 'job' ? getJobDisplay(clsName).toUpperCase() : info.source ? PB_SOURCE_LABEL[info.source] : null;
   const kicker = st8 === 'root' ? 'ALWAYS EQUIPPED · NO SLOT · 0 SP'
     : st8 === 'borrow' ? 'TIER ' + PB_TIER_NUM[info.tier] + ' · ' + info.cost + ' SP EACH · THE FREELANCER BORROWS'
-    : ['TIER ' + PB_TIER_NUM[info.tier], info.cost + ' SP', cat ? spellCategoryLabel(cat).toUpperCase() : null, srcTxt,
+    : ['TIER ' + PB_TIER_NUM[info.tier], info.cost + ' SP' + (info.upSp ? ' + ' + info.upSp + ' ⚙' : ''), cat ? spellCategoryLabel(cat).toUpperCase() : null, srcTxt,
        st8 === 'equipped' ? 'EQUIPPED' : null].filter(Boolean).join(' · ');
   const name = st8 === 'root' ? 'Basic Attack' : st8 === 'borrow' ? 'Borrow · Tier ' + PB_TIER_NUM[info.tier] : (sp ? sp.name : '—');
   const desc = st8 === 'root' ? 'The vessel\'s plain strike — melee or ranged by reach. Every loadout carries it, free.'
@@ -1876,13 +1917,33 @@ function TechniquePanel({ info, clsName, raceLabel, fc, onVerb, onPreview, previ
   }
   const effects = sp ? pbSpellEffects(sp) : [];
   let verb = null, verbCls = '', verbTitle = '';
-  if (st8 === 'equipped') { verb = 'UNEQUIP · +' + info.cost + ' SP BACK'; verbCls = 'danger'; verbTitle = 'Remove it — only it'; }
+  if (st8 === 'equipped') { verb = 'UNEQUIP · +' + (info.cost + (info.upSp || 0)) + ' SP BACK'; verbCls = 'danger'; verbTitle = 'Remove it — only it (its upgrades go with it)'; }
   else if (st8 === 'ok') { verb = 'EQUIP · ' + info.cost + ' SP'; verbCls = 'primary'; verbTitle = 'Equip this technique'; }
   else if (st8 === 'sp') { verb = 'NEEDS ' + info.cost + ' SP · ' + (spMax - spUsed) + ' LEFT'; verbCls = 'off'; verbTitle = 'Unequip something to free SP'; }
   else if (st8 === 'slots') { verb = 'NO SLOT · ' + used + '/' + slotCap; verbCls = 'off'; verbTitle = 'All seven slots are full — unequip something first'; }
   else if (st8 === 'sealed') { verb = 'SEALED — CLASH RULES'; verbCls = 'off'; verbTitle = 'Not allowed in this mode'; }
   else if (st8 === 'borrow') { verb = '＋ BROWSE TIER ' + PB_TIER_NUM[info.tier]; verbCls = 'gold'; verbTitle = 'Open the pool'; }
   const canPreview = st8 !== 'borrow';
+  /* ⚙ THE UPGRADES (SPELL_LIBRARY_PLAN.md §6.3, Phase 5): the spell's allowed upgrades as toggles — each its own SP price,
+     at most 2 per spell, one of a kind per group; the refusal is data.js spellUpgradeVerdict's words. Off until equipped. */
+  const upRows = (sp && info.upgrades) ? info.upgrades : [];
+  const upMax = window.SPELL_UPGRADE_MAX || 2;
+  const upBox = upRows.length ? h('div', { className: 'pb-upgrades' + (st8 === 'equipped' ? '' : ' off') },
+    h('div', { className: 'pb-upgrades-head' },
+      h('b', null, '⚙ UPGRADES'),
+      h('span', null, st8 === 'equipped' ? ((info.ups || []).length + ' / ' + upMax + ' ON' + (info.upSp ? ' · +' + info.upSp + ' SP' : '')) : 'EQUIP IT TO UPGRADE')),
+    h('div', { className: 'pb-upgrades-list' },
+      ...upRows.map(u => {
+        const on = u.st8 === 'on', ok = u.st8 === 'ok';
+        const spC = typeof window.spellUpgradeSp === 'function' ? window.spellUpgradeSp(u.id) : (u.row.sp || 1);
+        return h('button', { key: u.id, type: 'button', className: 'pb-up' + (on ? ' on' : ok ? '' : ' no'),
+          disabled: st8 !== 'equipped' || (!on && !ok), title: (u.row.desc || '') + ' — ' + u.note,
+          onClick: () => onUpgrade && onUpgrade(key, u.id) },
+          h('i', null, u.row.glyph || '⚙'),
+          h('b', null, u.row.name || u.id),
+          h('em', null, (on ? '✓ ' : '+') + spC + ' SP'),
+          h('small', null, on || ok ? (u.row.desc || '') : u.note));
+      }))) : null;
   return h('div', { className: 'pb-technique', style: { '--tc': nc } },
     h('div', { className: 'pb-technique-disc', style: { borderColor: nc, color: st8 === 'equipped' || st8 === 'root' ? TREE_NODE_BG : nc, background: (st8 === 'equipped' || st8 === 'root') ? nc : 'transparent' } }, glyph),
     h('div', { className: 'pb-technique-main' },
@@ -1894,6 +1955,7 @@ function TechniquePanel({ info, clsName, raceLabel, fc, onVerb, onPreview, previ
       (chips.length || effects.length) ? h('div', { className: 'pb-technique-chips' },
         ...chips.map(([t, c], i) => h('span', { key: 'c' + i, className: 'pb-technique-chip', style: { color: c } }, t)),
         ...effects.map((ef, i) => h('span', { key: 'e' + i, className: 'pb-technique-chip fx', style: { color: ef.color || EW.inkMute, borderColor: (ef.color || EW.inkMute) + '66' }, title: ef.txt }, ef.txt))) : null,
+      upBox,
       h('div', { className: 'pb-technique-verbs' },
         verb ? h('button', { className: 'pb-verb ' + verbCls, disabled: verbCls === 'off', onClick: () => onVerb && onVerb(info), title: verbTitle }, verb) : h('span', { className: 'pb-verb-note' }, st8 === 'root' ? 'ALWAYS EQUIPPED' : ''),
         canPreview ? h('button', { className: 'pb-verb ghost' + (previewing ? ' live' : ''), onClick: () => onPreview && onPreview(info), disabled: !!previewOff, title: previewOff ? 'Preview off' : 'Play the cast on the stage (SPACE)' }, previewOff ? '▶ PREVIEW OFF' : (previewing ? '■ PLAYING' : '▶ PREVIEW')) : null,
@@ -2428,6 +2490,7 @@ function PartyBuilder(props) {
         appearance: window.normalizeCharacterAppearance?.(mt.appearance) || null,
         unitName: (st.partyNames?.[player] || [])[i] || cn,
         customSpells: mt.customSpells ? mt.customSpells.slice() : [],
+        spellUpgrades: mt.spellUpgrades ? JSON.parse(JSON.stringify(mt.spellUpgrades)) : {},   // THE UPGRADES (Phase 5)
         secondaryJob: mt.secondaryJob || null,
         zodiac: mt.zodiac || 'aries',
         loadout: { items: lo.items ? { ...lo.items } : {}, equipment: lo.equipment ? { ...lo.equipment } : {} },
@@ -2496,6 +2559,8 @@ function PartyBuilder(props) {
       st.partyMeta[player][i].zodiac = s.zodiac || 'aries';
       if (s.customSpells?.length) st.partyMeta[player][i].customSpells = s.customSpells.slice();
       else delete st.partyMeta[player][i].customSpells;
+      if (s.spellUpgrades && Object.keys(s.spellUpgrades).length) st.partyMeta[player][i].spellUpgrades = JSON.parse(JSON.stringify(s.spellUpgrades));
+      else delete st.partyMeta[player][i].spellUpgrades;
       st.partyMeta[player][i].secondaryJob = s.secondaryJob || null;
       if (!st.partyNames) st.partyNames = {};
       if (!st.partyNames[player]) st.partyNames[player] = [];
@@ -2577,7 +2642,7 @@ function PartyBuilder(props) {
       ...preset,
       id: 'team-' + Date.now(),
       name: (preset.name || 'Team') + ' copy',
-      slots: (preset.slots || []).map(s => ({ ...s, customSpells: (s.customSpells || []).slice(), loadout: { items: { ...(s.loadout?.items || {}) }, equipment: { ...(s.loadout?.equipment || {}) } } })),
+      slots: (preset.slots || []).map(s => ({ ...s, customSpells: (s.customSpells || []).slice(), spellUpgrades: JSON.parse(JSON.stringify(s.spellUpgrades || {})), loadout: { items: { ...(s.loadout?.items || {}) }, equipment: { ...(s.loadout?.equipment || {}) } } })),
       createdAt: now, lastUsed: now,
     });
     window.ProfileSystem.saveProfile(idx, p);
@@ -2777,8 +2842,9 @@ function PartyBuilder(props) {
   function toggleSpell(spellId) { if (!spellId) return; if (!st.partyMeta[player]) st.partyMeta[player]=[]; if (!st.partyMeta[player][slot]) st.partyMeta[player][slot]={}; const slotCap=typeof window.SPELL_SLOT_MAX!=='undefined'?window.SPELL_SLOT_MAX:6; const m=st.partyMeta[player][slot]; if (!Array.isArray(m.customSpells)) m.customSpells=[]; const arr=m.customSpells,idx=arr.indexOf(spellId); if(idx>=0)arr.splice(idx,1);else{if(usedSpellSlots(arr)+spellIdSlotCost(spellId)>slotCap||pbSpUsed(arr)+pbSpCost(spellId)>pbSpMax()){sfx('uiError');return;}arr.push(spellId); if (typeof window.getSpellById==='function') pbPreview(window.getSpellById(spellId), { equip: true });} st.teamLockedIn=false; sfx('uiCursorMove'); refresh(); }
   function resetCustomSpells() { if (!st.partyMeta[player]) st.partyMeta[player]=[]; if (!st.partyMeta[player][slot]) st.partyMeta[player][slot]={};
     st.partyMeta[player][slot].customSpells = buildDefaultCustomSpells(unitRace, clsName, secJob);
+    delete st.partyMeta[player][slot].spellUpgrades;
     st.teamLockedIn=false; sfx('uiButtonConfirm'); refresh(); }
-  function clearAllSpells() { if (!st.partyMeta[player]) st.partyMeta[player]=[]; if (!st.partyMeta[player][slot]) st.partyMeta[player][slot]={}; st.partyMeta[player][slot].customSpells=[]; st.teamLockedIn=false; sfx('uiButtonConfirm'); refresh(); }
+  function clearAllSpells() { if (!st.partyMeta[player]) st.partyMeta[player]=[]; if (!st.partyMeta[player][slot]) st.partyMeta[player][slot]={}; st.partyMeta[player][slot].customSpells=[]; delete st.partyMeta[player][slot].spellUpgrades; st.teamLockedIn=false; sfx('uiButtonConfirm'); refresh(); }
   function randomizeSpells() { if (!st.partyMeta[player]) st.partyMeta[player]=[]; if (!st.partyMeta[player][slot]) st.partyMeta[player][slot]={}; const slotCap=typeof window.SPELL_SLOT_MAX!=='undefined'?window.SPELL_SLOT_MAX:6;
 
     const mainJob = st.partyBuilds?.[player]?.[slot] || clsName;
@@ -2787,6 +2853,7 @@ function PartyBuilder(props) {
     if (typeof window.classHasSpellTree === 'function' && window.classHasSpellTree(mainJob)
         && typeof window.buildTreeLegalLoadout === 'function') {
       st.partyMeta[player][slot].customSpells = window.buildTreeLegalLoadout(unitRace, mainJob, curSecJob);
+      st.partyMeta[player][slot].spellUpgrades = typeof window.buildRandomUpgrades === 'function' ? window.buildRandomUpgrades(unitRace, mainJob, st.partyMeta[player][slot].customSpells) : {};   // THE UPGRADES (Phase 5)
       st.teamLockedIn=false; sfx('uiButtonConfirm'); refresh(); return;
     }
     const raIds=raceAbilities.filter(a=>a.id&&clashSpellOk(a)).map(a=>a.id);
@@ -2820,8 +2887,9 @@ function PartyBuilder(props) {
      tier, the sealed set, the equipped list + its SP). */
   const useTree = !isArena && typeof window.classHasSpellTree === 'function'
     && window.classHasSpellTree(clsName) && typeof window.unitSpellPoolParts === 'function';
-  const unitTiers = React.useMemo(() => useTree ? pbTierCtx(unitRace, clsName, customSpells || []) : null,
-    [useTree, unitRace, clsName, customSpells, _]);
+  const unitUpsWish = st.partyMeta?.[player]?.[slot]?.spellUpgrades || null;   // THE UPGRADES (Phase 5): meta.spellUpgrades
+  const unitTiers = React.useMemo(() => useTree ? pbTierCtx(unitRace, clsName, customSpells || [], unitUpsWish) : null,
+    [useTree, unitRace, clsName, customSpells, unitUpsWish, _]);
   const [treeShake, setTreeShake] = React.useState(null);
   // A Freelancer's BORROW window: which tier's pool is open ('B1'–'B4' or null).
   const [flSocketPick, setFlSocketPick] = React.useState(null);
@@ -2966,7 +3034,9 @@ function PartyBuilder(props) {
     const cost = pbSpCost(id);
     if (arr.includes(id)) {
       m.customSpells = arr.filter(s => s !== id);
-      flashTreeNote('UNEQUIPPED · +' + cost + ' SP BACK');
+      const upBack = (unitTiers.ups && unitTiers.ups[id] && typeof window.spellUpgradesSpOf === 'function') ? window.spellUpgradesSpOf(unitTiers.ups, id) : 0;
+      if (m.spellUpgrades && m.spellUpgrades[id]) delete m.spellUpgrades[id];   // its upgrades leave with it (Phase 5)
+      flashTreeNote('UNEQUIPPED · +' + (cost + upBack) + ' SP BACK');
     } else {
       const v = pbSpellVerdict(unitTiers, id);
       if (!v || !v.ok) { flashTreeNote((v && v.note) || 'NOT A LEGAL PICK'); sfx('uiError'); shakeTreeNode(id); return; }
@@ -2974,6 +3044,30 @@ function PartyBuilder(props) {
       const spNow = typeof window.getSpellById === 'function' ? window.getSpellById(id) : null;
       if (spNow && spNow.kind !== 'passive') pbPreview(spNow, { equip: true });      // the equip plays the cast (+ its VFX, §5.3); a passive row is never cast
     }
+    st.teamLockedIn = false; sfx('uiCursorMove'); refresh();
+  }
+  /* ⚙ THE UPGRADES (SPELL_LIBRARY_PLAN.md §6.3, Phase 5): a toggle in the technique panel — on → off gives its SP back;
+     off → on when data.js spellUpgradeVerdict allows (equipped, allowed, ≤ 2, one of a kind, the SP) — else the bar says why.
+     The map lives in meta.spellUpgrades beside customSpells (party-config, saves and the last party carry it). */
+  function tierUpgradeClick(spellId, upId) {
+    if (!unitTiers || !spellId || !upId) return;
+    if (!st.partyMeta[player]) st.partyMeta[player] = [];
+    if (!st.partyMeta[player][slot]) st.partyMeta[player][slot] = {};
+    const m = st.partyMeta[player][slot];
+    const eff = Object.assign({}, unitTiers.ups || {});
+    const cur = (eff[spellId] || []).slice();
+    const row = (window.SPELL_UPGRADES || {})[upId] || {};
+    if (cur.includes(upId)) {
+      eff[spellId] = cur.filter(u => u !== upId);
+      if (!eff[spellId].length) delete eff[spellId];
+      flashTreeNote('UPGRADE OFF · ' + String(row.name || upId).toUpperCase() + ' · +' + window.spellUpgradeSp(upId) + ' SP BACK');
+    } else {
+      const v = window.spellUpgradeVerdict(unitRace, clsName, unitTiers.equipped, unitTiers.ups, spellId, upId);
+      if (!v.ok) { flashTreeNote(v.note || 'NOT ALLOWED'); sfx('uiError'); return; }
+      eff[spellId] = cur.concat([upId]);
+      flashTreeNote('UPGRADED · ' + String(row.name || upId).toUpperCase() + ' · ' + v.need + ' SP');
+    }
+    m.spellUpgrades = eff;
     st.teamLockedIn = false; sfx('uiCursorMove'); refresh();
   }
   // The rack's hover: the technique panel follows it, the SP meter + pips
@@ -3148,7 +3242,7 @@ function PartyBuilder(props) {
   const pipPend = techInfo && techInfo.st8 === 'ok' ? 1 : 0;
   const pipDrop = techInfo && techInfo.st8 === 'equipped' ? 1 : 0;
   const spMax = pbSpMax();
-  const spUsedNow = pbSpUsed(customSpells || []);
+  const spUsedNow = unitTiers ? unitTiers.spUsed : pbSpUsed(customSpells || []);   // tier + upgrades (Phase 5)
   const spPend = pipPend ? techInfo.cost : 0;
   const spDrop = pipDrop ? techInfo.cost : 0;
 
@@ -3302,6 +3396,7 @@ function PartyBuilder(props) {
           h(SpellTierPanel, { ctx: unitTiers, fc, clsName,
             raceLabel: (typeof window.getRaceLabel === 'function' ? window.getRaceLabel(unitRace) : unitRace),
             onSpellClick: tierSpellClick, onUnequipSlot: tierSpellClick,
+            onUpgradeOpen: () => { setTechHover(null); sfx('uiCursorMove'); },
             onBorrow: (key) => { setFlSocketPick(flSocketPick === key ? null : key); sfx('uiCursorMove'); },
             onNodeHoverIn: treeNodeHoverIn, onNodeHoverOut: treeNodeHoverOut, shakeKey: treeShake,
             selKey: techSel, hoverKey: techHover, onSelect: (key) => { setTechSel(key); },
@@ -3641,7 +3736,7 @@ function PartyBuilder(props) {
     h(TechniquePanel, { info: techInfo, clsName, fc, spUsed: spUsedNow, spMax,
       raceLabel: (typeof window.getRaceLabel === 'function' ? window.getRaceLabel(unitRace) : unitRace),
       onVerb: techVerb, onPreview: (info) => (info && info.st8 === 'finisher') ? pbPreviewFinisher() : pbPreview(info.sp || null),
-      previewOff, previewing: !!previewState, used: (customSpells || []).length, slotCap })) : null;
+      previewOff, previewing: !!previewState, used: (customSpells || []).length, slotCap, onUpgrade: tierUpgradeClick })) : null;
   // Cosmetics belong to the selected slot, independent of its job/loadout.
   // THE CHARACTER CREATOR (rev 3, 2026-09-11): every control writes ONE
   // sanitized appearance object (sprites.js normalizeCharacterAppearance —

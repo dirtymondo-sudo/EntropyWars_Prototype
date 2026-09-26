@@ -80,12 +80,13 @@ test('SPELL_FAMILIES seeds the 15 elements, GEAR (universal) and the door wheel 
         if (sp.element && D.SPELL_FAMILIES[sp.element] && !sp.families.includes(sp.element)) problems.push(`${sp.id}: element ${sp.element} not in families`);
         if (sp._doorWheel && !sp.families.includes('doors')) problems.push(`${sp.id}: a wheel door outside the doors family`);
         for (const f of sp.families) if (!D.SPELL_FAMILIES[f]) problems.push(`${sp.id}: unknown family ${f}`);
-        if (!Array.isArray(sp.upgrades) || sp.upgrades.length) problems.push(`${sp.id}: upgrades should be [] until Phase 5`);
+        // Phase 5: every shipped row's list is [] — AUTO (the registry's `auto` rows that fit it); the catalogue pins lists later
+        if (!Array.isArray(sp.upgrades) || sp.upgrades.length) problems.push(`${sp.id}: a shipped row's upgrades list should be [] (AUTO) until the catalogue`);
     }
     assert.deepStrictEqual(problems, []);
     assert.deepStrictEqual(J(D.spellFamiliesOf({ element: 'fire' })), ['fire']);
     assert.deepStrictEqual(J(D.spellFamiliesOf({ element: 'physical' })), [], 'an element with no family tags nothing');
-    assert.deepStrictEqual(J(Object.keys(D.SPELL_UPGRADES)), [], 'the upgrade registry is seeded in Phase 5');
+    assert.ok(Object.keys(D.SPELL_UPGRADES).length >= 10 && D.SPELL_UPGRADES.upDamage, 'the upgrade registry is seeded (Phase 5 — spell-upgrades.test.js pins it)');
 });
 
 test('AOE presets and the mask helpers: every preset valid, the centre where it belongs, tiles clipped, bounds, preset lookup', () => {

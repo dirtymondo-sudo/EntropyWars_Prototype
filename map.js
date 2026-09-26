@@ -2041,12 +2041,14 @@
             return `<div class="hq-circ-fin" style="--cc:${tc}" title="${_hqEsc((fin.name || '') + ' — ' + (fin.tagline || ''))}"><i class="hq-circ-disc">${_hqEsc(fin.glyph || '☠')}</i><b>☠ FINISHER · ${_hqEsc(fin.name || '')}</b>`
                 + `<span><i class="hq-pp-type" style="--tc:${tc}">${_hqEsc(t.toUpperCase())}</i> ${_hqEsc(fin.tagline || '')}</span><em>FULL GAUGE + 1 AP</em></div>`;
         }
-        function _hqPauseCircuitNodeHtml(m, row) {
+        function _hqPauseCircuitNodeHtml(m, row, C) {
             /* one ability of a tier row: category disc + name + type chip / meta + the verdict */
-            const id = row.id, sp = row.sp, st = row.st, cost = row.cost;
+            const id = row.id, st = row.st, cost = row.cost;
+            const upOn = (C && C.ups && C.ups[id]) || [];   // THE UPGRADES (Phase 5): an upgraded spell reads its derived numbers + ⚙n
+            const sp = (upOn.length && typeof resolveSpellDef === 'function') ? resolveSpellDef(row.sp, upOn) : row.sp;
             const cat = (sp && sp.kind === 'passive') ? { g: sp.icon || '◈', c: '#d9d2b8' } : sp ? (_HQ_CAT[sp.type] || _HQ_CAT.utility) : { g: '·', c: '#8a8270' };
             const aoe = _hqAoeTilesHtml(sp);
-            const verdict = st === 'equipped' ? '✓ EQUIPPED' : st === 'ok' ? `+${cost} SP` : st === 'slots' ? 'NO SLOT' : st === 'sp' ? `NEEDS ${cost} SP` : st === 'passives' ? '2 PASSIVES MAX' : st === 'sealed' ? 'SEALED' : '';
+            const verdict = st === 'equipped' ? ('✓ EQUIPPED' + (upOn.length ? ' · ⚙' + upOn.length : '')) : st === 'ok' ? `+${cost} SP` : st === 'slots' ? 'NO SLOT' : st === 'sp' ? `NEEDS ${cost} SP` : st === 'passives' ? '2 PASSIVES MAX' : st === 'sealed' ? 'SEALED' : '';
             const src = _HQ_CIRC_SRC[row.source] || '';
             const title = `${sp ? (sp.name || id) : id} — ${_HQ_CIRC_ST_NOTE[st] || ''}${sp ? ' — ' + _hqPauseSpellDesc(sp) : ''}`;
             return `<button type="button" class="hq-circ-node st-${st}${src ? ' borrowed' : ''}" data-party-act="node:${_hqEsc(m.id)}:${_hqEsc(id)}"${st === 'sealed' ? ' disabled' : ''} title="${_hqEsc(title)}" style="--cc:${cat.c}">`
@@ -2070,7 +2072,7 @@
             html += `<div class="hq-circ-tiers">`;
             C.tiers.forEach(T => {
                 html += `<div class="hq-circ-tier-row t${T.tier}"><div class="hq-circ-head"><b>TIER ${_hqEsc(T.numeral)}</b><i>${T.cost} SP</i></div><div class="hq-circ-row-nodes">`;
-                T.rows.forEach(row => { html += _hqPauseCircuitNodeHtml(m, row); });
+                T.rows.forEach(row => { html += _hqPauseCircuitNodeHtml(m, row, C); });
                 if (T.borrow) html += `<button type="button" class="hq-circ-borrow${P && P.socket === T.borrow ? ' on' : ''}" data-party-act="node:${_hqEsc(m.id)}:${_hqEsc(T.borrow)}"${T.borrowCount ? '' : ' disabled'} title="Borrow any race or job ability of Tier ${_hqEsc(T.numeral)}">＋ BORROW · ${T.borrowCount}</button>`;
                 if (!T.rows.length && !T.borrow) html += `<span class="hq-circ-none">NOTHING AT THIS TIER</span>`;
                 html += `</div></div>`;
@@ -2078,8 +2080,23 @@
             /* ◈ THE PASSIVES (SPELL_LIBRARY_PLAN.md Phase 4): passive / gear rows under the tiers — a slot + their tier's SP each, at most 2 */
             if (C.passives && C.passives.rows.length) {
                 html += `<div class="hq-circ-tier-row tpas"><div class="hq-circ-head"><b>◈ PASSIVES</b><i>${C.passives.used} / ${C.passives.max}</i></div><div class="hq-circ-row-nodes">`;
-                C.passives.rows.forEach(row => { html += _hqPauseCircuitNodeHtml(m, row); });
+                C.passives.rows.forEach(row => { html += _hqPauseCircuitNodeHtml(m, row, C); });
                 html += `</div></div>`;
+            }
+            /* ⚙ THE UPGRADES (SPELL_LIBRARY_PLAN.md §6.3, Phase 5): each equipped spell that takes upgrades, its allowed upgrades as
+               toggles (own SP price each, at most 2 per spell, one of a kind per group); the line shows the upgraded numbers */
+            if (C.upgrades && C.upgrades.length) {
+                html += `<div class="hq-circ-ups"><div class="hq-circ-head"><b>⚙ UPGRADES</b><i>AT MOST ${C.upMax || 2} PER SPELL · EACH ITS OWN SP</i></div>`;
+                C.upgrades.forEach(E => {
+                    const d = E.derived || E.sp;
+                    html += `<div class="hq-circ-uprow"><div class="hq-circ-upname"><b>${_hqEsc((E.sp && E.sp.name) || E.id)}</b><span>${_hqEsc(_hqPauseSpellMeta(d))}${E.on.length ? ` · ⚙ ${E.on.length} / ${C.upMax || 2} · +${E.upSp} SP` : ''}</span></div><div class="hq-circ-upbtns">`;
+                    E.rows.forEach(u => {
+                        const on = u.st === 'on', ok = u.st === 'ok', row = u.row || {};
+                        html += `<button type="button" class="hq-circ-up${on ? ' on' : ok ? '' : ' no'}" data-party-act="upg:${_hqEsc(m.id)}:${_hqEsc(E.id)}:${_hqEsc(u.id)}"${on || ok ? '' : ' disabled'} title="${_hqEsc((row.desc || '') + ' — ' + (u.note || ''))}"><i>${_hqEsc(row.glyph || '⚙')}</i><b>${_hqEsc(row.name || u.id)}</b><em>${on ? '✓ ' : '+'}${u.cost} SP</em></button>`;
+                    });
+                    html += `</div></div>`;
+                });
+                html += `</div>`;
             }
             html += `</div><div class="hq-circ-root"><i>⚔</i><b>BASIC ATTACK</b><span>ALWAYS EQUIPPED · FREE</span></div>`;
             /* THE BORROW PICKER (a Freelancer's ＋ BORROW): every race / job ability of that tier, a search, a row per ability */
@@ -2133,6 +2150,7 @@
             if (verb === 'spelldef') { land(_hqPartyTx(p => window.hqPartySpellsDefault(p, a)), 'DEFAULTS'); P.socket = null; return true; }
             if (verb === 'spellrnd') { land(_hqPartyTx(p => window.hqPartySpellsRandom(p, a)), 'RANDOMISED'); P.socket = null; return true; }
             if (verb === 'spellclr') { land(_hqPartyTx(p => window.hqPartySpellsClear(p, a)), 'CLEARED'); P.socket = null; return true; }
+            if (verb === 'upg') { const r = _hqPartyTx(p => window.hqPartyUpgradeClick(p, a, b, c)); land(r, '⚙'); return true; }   // ⚙ THE UPGRADES (Phase 5)
             return false;
         }
         /* the PARTY sheet's actions (data-party-act): enlist · relieve · swap / swapto · cast / castto · item / itemto · cancel */
@@ -2144,7 +2162,7 @@
             const units = rec ? _hqPauseUnits(rec) : {};
             const nameOf = id => { const m = rec.members.find(x => x.id === id); return m ? _hqEsc(m.name || m.cls) : ''; };
             const say = (h, bad) => _hqPauseSay(h, bad);
-            if (verb === 'circuit' || verb === 'node' || verb === 'sock' || verb === 'sockclose' || verb === 'spelldef' || verb === 'spellrnd' || verb === 'spellclr') { _hqPartyCircuitAct(verb, a, b, String(act).split(':')[3] || null); }   // THE CIRCUIT IN THE FIELD (2026-09-21)
+            if (verb === 'circuit' || verb === 'node' || verb === 'sock' || verb === 'sockclose' || verb === 'spelldef' || verb === 'spellrnd' || verb === 'spellclr' || verb === 'upg') { _hqPartyCircuitAct(verb, a, b, String(act).split(':')[3] || null); }   // THE CIRCUIT IN THE FIELD (2026-09-21)
             else if (verb === 'cancel') { P.arm = null; }
             else if (verb === 'enlist') {
                 const r = _hqPartyTx(p => window.hqPartyEnlist(p, { race: a, gender: b }));
@@ -14790,6 +14808,25 @@
                 }
                 newUnit.passiveRows = _pasIds;
                 if (typeof passiveRowsEquipmentMirror === 'function') newUnit.equipment = Object.assign({}, newUnit.equipment || {}, passiveRowsEquipmentMirror(_pasIds));
+            }
+
+            /* ── THE UPGRADES (SPELL_LIBRARY_PLAN.md §6.3, Phase 5) ─────────────────────────────────────────
+               The kit's upgrades ride the identity beside customSpells (meta.spellUpgrades = { spellId: [ids] }).
+               The repair runs HERE, on the kit treeLegalSubset kept (THE authority checkpoint — the host builds
+               every unit online): not allowed / over the cap / over the SP → skipped. Each upgraded spell becomes
+               ONE derived def in unit.spells (data.js resolveSpellDef: dmg × 1.15, cost − 10, a splash / ricochet
+               / extra-target rider …); unit.spells rides the snapshot, so the guest reads the same numbers with no
+               new relay (RULE #2). unit.spellUpgrades keeps the map (ids only). */
+            {
+                const _upWish = identityOverride && identityOverride.spellUpgrades;
+                let _ups = {};
+                if (_upWish && typeof _upWish === 'object' && typeof treeLegalUpgrades === 'function' && Array.isArray(newUnit._spellSlots) && newUnit._spellSlots.length) {
+                    _ups = treeLegalUpgrades(newUnit.race, template.cls, newUnit._spellSlots, _upWish);
+                }
+                newUnit.spellUpgrades = _ups;
+                if (Object.keys(_ups).length && typeof resolveSpellDef === 'function' && Array.isArray(newUnit.spells)) {
+                    newUnit.spells = newUnit.spells.map(sp => (sp && _ups[sp.id]) ? resolveSpellDef(sp, _ups[sp.id]) : sp);
+                }
             }
 
             // ── Passive stat bonuses become REAL here ──────────────────────

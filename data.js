@@ -18269,10 +18269,11 @@ function spellTierDerived(spOrId) {
 function spellTierNumeral(spOrId) { return SPELL_TIER_NUMERALS[spellTierOf(spOrId)] || 'I'; }
 /* SP price of one spell (Tier N = N SP; the basic attack is free). */
 function spellSpCost(spOrId) { return SPELL_TIER_SP[spellTierOf(spOrId)] || 0; }
-/* SP a list of ids spends. */
-function loadoutSpUsed(ids) {
+/* SP a list of ids spends — plus, when `ups` (meta.spellUpgrades) is given, the SP of each equipped spell's upgrades
+   (THE UPGRADES, SPELL_LIBRARY_PLAN.md Phase 5: an equipped spell costs its tier + Σ its upgrades). */
+function loadoutSpUsed(ids, ups) {
     let n = 0;
-    for (const id of (ids || [])) if (id) n += spellSpCost(id);
+    for (const id of (ids || [])) if (id) { n += spellSpCost(id); if (ups) n += spellUpgradesSpOf(ups, id); }
     return n;
 }
 
@@ -18319,10 +18320,10 @@ function unitSpellPool(race, cls) {
 }
 
 /* Can `id` join this loadout? { ok, reason, note, slots, sp, need } — the ONE verdict every UI prints. */
-function spellAddVerdict(race, cls, ids, id, poolSet) {
+function spellAddVerdict(race, cls, ids, id, poolSet, ups) {
     const eq = (ids || []).filter(Boolean);
     const cap = (typeof SPELL_SLOT_MAX !== 'undefined') ? SPELL_SLOT_MAX : 7;
-    const used = loadoutSpUsed(eq), need = spellSpCost(id);
+    const used = loadoutSpUsed(eq, ups), need = spellSpCost(id);   // `ups` (Phase 5): the kit's upgrades spend SP too
     const out = { ok: false, reason: '', note: '', slots: eq.length, cap, sp: used, spMax: SPELL_SP_MAX, need };
     if (!id) return Object.assign(out, { reason: 'none', note: 'NOTHING TO EQUIP' });
     if (eq.includes(id)) return Object.assign(out, { reason: 'dup', note: 'ALREADY EQUIPPED' });
@@ -18358,13 +18359,19 @@ function buildUnitSpellTree(race, cls, secJob, equippedIds) {
 }
 
 /* THE loadout legality check (builder, createUnit, online host authority). */
-function isTreeLoadoutLegal(race, cls, secJob, spellIds) {
+function isTreeLoadoutLegal(race, cls, secJob, spellIds, ups) {
     if (!classHasSpellTree(cls)) return true;
     const ids = (spellIds || []).filter(Boolean);
     const cap = (typeof SPELL_SLOT_MAX !== 'undefined') ? SPELL_SLOT_MAX : 7;
     if (ids.length > cap) return false;
     if (new Set(ids).size !== ids.length) return false;
-    if (loadoutSpUsed(ids) > SPELL_SP_MAX) return false;
+    if (loadoutSpUsed(ids, ups) > SPELL_SP_MAX) return false;
+    /* THE UPGRADES (Phase 5): a kit with upgrades is legal only when the repair would keep every one of them */
+    if (ups && typeof ups === 'object') {
+        const clean = spellUpgradesClean(ids, ups);
+        for (const k of Object.keys(ups)) if (Array.isArray(ups[k]) && ups[k].length && !clean[k]) return false;   // an upgrade on a spell that is not equipped
+        if (JSON.stringify(treeLegalUpgrades(race, cls, ids, clean)) !== JSON.stringify(clean)) return false;
+    }
     if (passiveRowCount(ids) > PASSIVE_SLOT_MAX) return false;
     const pool = new Set(unitSpellPool(race, cls));
     for (const id of ids) if (!pool.has(id) || _spellSealed(id)) return false;
@@ -18687,10 +18694,321 @@ const SPELL_FAMILIES = {
     /* THE DOOR WHEEL: the Door Agent's own family — the standing doors (DOOR_GUN_SPELLS), never borrowable. */
     doors:     { id: 'doors',     name: 'The Door Wheel', glyph: '🚪', color: '#ffd86a', kind: 'signature', desc: "The Door Agent's destinations — the standing doors on the wheel.", unique: 'door agent' },
 };
-/* THE UPGRADES registry (§4.4) — Phase 5 seeds it (+15 % dmg, ricochet, +1 target × 0.5, status bonus, knockback, AOE
-   preset, −10 MP, +1 deployable, turret ×, gun ×). A row: { id, name, glyph, desc, sp, families, roles, patch }. Empty
-   until then; a spell's `upgrades: []` lists the ids it allows. */
-const SPELL_UPGRADES = {};
+/* ══ THE UPGRADES (SPELL_LIBRARY_PLAN.md §4.4 / §6.3, Phase 5, 2026-09-26) ════════════════════════════════════════════
+   An upgrade never changes a spell's identity: it is a registry row with an SP price and a PATCH, and the engine sees ONE
+   derived def per unit (resolveSpellDef — `dmg × 1.15` is a field the engine already reads). The rules (§7 Q3, the
+   defaults the user left standing): each upgrade has its OWN SP price (`sp`), AT MOST SPELL_UPGRADE_MAX (2) per spell, an
+   equipped spell costs its tier + Σ its upgrades' SP, the rack stays 7 slots / 16 SP.
+   A row: { id, name, glyph, desc, sp, roles: [] (none = any), families: [] (none = any), requires: '<fit key>' (the
+   SPELL_UPGRADE_FITS test that says the patch means something on this row), excl: '<group>' (at most one upgrade of a group
+   per spell), auto: true (offered on every row it fits when the row lists none — see spellAllowedUpgrades), patch: {…} }.
+   Which upgrades a spell ALLOWS: its explicit `upgrades: [ids]` when the list is non-empty (the library's toggles, the
+   catalogue's lists); an EMPTY list means AUTO — every `auto` registry row that fits it (roles · families · requires);
+   `upgradesAuto: false` on a row turns AUTO off (no upgrades at all). Passive rows never take upgrades.
+   The loadout: meta.spellUpgrades = { spellId: [upgradeIds] } beside meta.customSpells (saves, party-config, the last
+   party, the HQ record all carry `meta`). spellUpgradeVerdict says whether one more fits; treeLegalUpgrades is the repair
+   (the online host's check, createUnit's too): walk the kit in order, keep each spell's allowed, affordable, uncapped
+   upgrades, skip the rest — spells come first, an upgrade never pushes a spell out. ══ */
+const SPELL_UPGRADE_MAX = 2;
+/* The fit tests a row's `requires` names — pure predicates on a def. */
+const _UPG_AOE_KINDS = new Set(['aoe', 'cross', 'bomb', 'delayed', 'aoeStatus', 'aoeDebuff', 'zoneDebuff', 'aoePull']);
+const SPELL_UPGRADE_FITS = {
+    dmg:        { label: 'deals damage',              test: d => spellHasDamage(d) || _upgGunDmg(d) > 0 },
+    singleDmg:  { label: 'a single-target damage hit', test: d => (d.kind || 'damage') === 'damage' && spellHasDamage(d)
+                    && !d.aoeRadius && !aoeMaskValid(d.aoeMask) && !(Array.isArray(d.chainProfile) && d.chainProfile.length)
+                    && !d.randomTargets && !d.splash && !d.pierce && !d.lineWidth },
+    area:       { label: 'an area damage cast',        test: d => spellHasDamage(d) && (_UPG_AOE_KINDS.has(d.kind) && (d.aoeRadius > 0 || d.crossRadius > 0 || d.blastRadius > 0 || aoeMaskValid(d.aoeMask))) },
+    finisher:   { label: 'carries a status bonus',     test: d => !!(d.bonusVsStatus && d.bonusVsStatus.status) },
+    status:     { label: 'applies a status',           test: d => Array.isArray(d.statusEffects) && d.statusEffects.some(e => e && e.id && (e.duration | 0) > 0) },
+    push:       { label: 'knocks back',                test: d => (d.pushDistance | 0) > 0 || ((d.kind || 'damage') === 'damage' && spellHasDamage(d) && !d.aoeRadius && !aoeMaskValid(d.aoeMask)) },
+    pull:       { label: 'pulls',                      test: d => (d.pullDistance | 0) > 0 },
+    cost:       { label: 'costs 15 MP or more',        test: d => typeof d.cost === 'number' && d.cost >= 15 },
+    ranged:     { label: 'reaches 2 tiles or more',    test: d => typeof d.range === 'number' && d.range >= 2 && d.range < 20 },
+    cooldown:   { label: 'has a cooldown',             test: d => (d.cooldownRounds | 0) > 0 },
+    deployCap:  { label: 'has a deploy cap',           test: d => typeof d.maxActivePerCaster === 'number' && d.maxActivePerCaster >= 1 && d.maxActivePerCaster < 8 },
+    turret:     { label: 'deploys a turret',           test: d => d.kind === 'deployTurret' || (d.turretDmg | 0) > 0 },
+    gun:        { label: 'a door-gun / gun row',       test: d => _upgGunDmg(d) > 0 || (d.bounces | 0) > 0 },
+    heal:       { label: 'heals',                      test: d => (d.heal | 0) > 0 || (d.healAmt | 0) > 0 || (d.healPerTurn | 0) > 0 || (d.laneHeal | 0) > 0 },
+};
+function _upgGunDmg(d) { return d ? ((d.laneDmg | 0) + (d.arrowDmg | 0) + (d.beamDmg | 0)) : 0; }
+/* THE SEED (§9 row 5, the user's list): +15 % dmg, ricochet, +1 target × 0.5, status bonus, knockback / blowback (pull), an
+   AOE preset, −10 MP, +1 deployable, turret ×, gun × — plus +1 range and +1 status round (patch keys the plan already
+   names). Prices are first guesses for the user to tune in the library (UPGRADES tab). */
+const SPELL_UPGRADES = {
+    upDamage:     { id: 'upDamage',     name: 'Empowered',    glyph: '✦', sp: 1, roles: ['damage', 'damageEffect'], families: [], requires: 'dmg', excl: 'power', auto: true,
+                    desc: '+15 % damage.', patch: { dmgMult: 1.15 } },
+    upRicochet:   { id: 'upRicochet',   name: 'Ricochet',     glyph: '↯', sp: 2, roles: ['damage', 'damageEffect'], families: [], requires: 'singleDmg', excl: 'spread', auto: true,
+                    desc: 'The hit bounces once to the weakest enemy within 2 tiles of the victim for half damage.', patch: { ricochet: { radius: 2, mult: 0.5 } } },
+    upExtraTarget:{ id: 'upExtraTarget',name: 'Forked',       glyph: '⑂', sp: 2, roles: ['damage', 'damageEffect'], families: [], requires: 'singleDmg', excl: 'spread', auto: true,
+                    desc: '+1 target: the nearest other enemy in range takes half damage.', patch: { extraTargets: 1, extraTargetsMult: 0.5 } },
+    upFinisher:   { id: 'upFinisher',   name: 'Exploit',      glyph: '⚑', sp: 1, roles: ['damage', 'damageEffect'], families: [], requires: 'finisher', excl: null, auto: true,
+                    desc: 'The status bonus rises by +0.5 (×1.5 → ×2).', patch: { statusBonus: { add: 0.5 } } },
+    upKnockback:  { id: 'upKnockback',  name: 'Knockback',    glyph: '⇥', sp: 1, roles: ['damage', 'damageEffect', 'movement'], families: [], requires: 'push', excl: 'shove', auto: true,
+                    desc: '+1 knockback tile (a single-target hit that had none knocks back 1).', patch: { pushDistance: 1 } },
+    upBlowback:   { id: 'upBlowback',   name: 'Undertow',     glyph: '⇤', sp: 1, roles: [], families: [], requires: 'pull', excl: 'shove', auto: true,
+                    desc: '+1 pull tile.', patch: { pullDistance: 1 } },
+    upBlast:      { id: 'upBlast',      name: 'Blast',        glyph: '✸', sp: 2, roles: ['damage', 'damageEffect'], families: [], requires: 'singleDmg', excl: 'spread', auto: true,
+                    desc: 'A 3×3 burst round the victim: every enemy next to it takes half damage.', patch: { aoe: { preset: '3x3', mult: 0.5 } } },
+    upWiden:      { id: 'upWiden',      name: 'Widen',        glyph: '◎', sp: 2, roles: ['damage', 'damageEffect'], families: [], requires: 'area', excl: 'spread', auto: true,
+                    desc: 'The area grows to a 5×5 square.', patch: { aoe: { preset: '5x5' } } },
+    upEfficient:  { id: 'upEfficient',  name: 'Efficient',    glyph: '◇', sp: 1, roles: [], families: [], requires: 'cost', excl: null, auto: true,
+                    desc: '−10 MP (never below 5).', patch: { costDelta: -10 } },
+    upReach:      { id: 'upReach',      name: 'Long Reach',   glyph: '➚', sp: 1, roles: [], families: [], requires: 'ranged', excl: null, auto: true,
+                    desc: '+1 range.', patch: { rangeDelta: 1 } },
+    upLinger:     { id: 'upLinger',     name: 'Lingering',    glyph: '⧗', sp: 1, roles: ['damageEffect', 'effect'], families: [], requires: 'status', excl: null, auto: true,
+                    desc: 'Its statuses last +1 round.', patch: { statusDuration: 1 } },
+    upDeploy:     { id: 'upDeploy',     name: 'Surplus',      glyph: '⊕', sp: 1, roles: ['deploy'], families: [], requires: 'deployCap', excl: null, auto: true,
+                    desc: '+1 deployable active at once.', patch: { deployCapDelta: 1 } },
+    upTurret:     { id: 'upTurret',     name: 'Overclocked',  glyph: '⚙', sp: 2, roles: ['deploy'], families: [], requires: 'turret', excl: null, auto: true,
+                    desc: 'The turret: +25 % damage, +25 % HP, +1 range.', patch: { turret: { dmgMult: 1.25, hpMult: 1.25, rangeDelta: 1 } } },
+    upGun:        { id: 'upGun',        name: 'Hot Loads',    glyph: '⁍', sp: 1, roles: [], families: [], requires: 'gun', excl: null, auto: true,
+                    desc: 'The gun row: +20 % lane / arrow / beam damage and heal, +1 bounce.', patch: { gun: { dmgMult: 1.2, bounces: 1 } } },
+};
+/* Does upgrade `up` (a row or id) make sense on def `d`? roles · families · requires. */
+function spellUpgradeFits(d, up) {
+    const u = typeof up === 'string' ? SPELL_UPGRADES[up] : up;
+    if (!d || !u || d.kind === 'passive' || d.kind === 'basicAttack') return false;
+    if (Array.isArray(u.roles) && u.roles.length && !u.roles.includes(spellRoleOf(d))) return false;
+    if (Array.isArray(u.families) && u.families.length && !u.families.some(f => spellFamiliesOf(d).includes(f))) return false;
+    if (u.requires) { const f = SPELL_UPGRADE_FITS[u.requires]; if (f && !f.test(d)) return false; }
+    return true;
+}
+/* The upgrade ids a spell allows (§4.4): its explicit list, else AUTO (every `auto` row that fits), else none. */
+function spellAllowedUpgrades(spOrId) {
+    const d = _spellOfIdOrDef(spOrId);
+    if (!d || d.kind === 'passive' || d.kind === 'basicAttack') return [];
+    if (Array.isArray(d.upgrades) && d.upgrades.length) return d.upgrades.filter(u => !!SPELL_UPGRADES[u]);
+    if (d.upgradesAuto === false) return [];
+    return Object.keys(SPELL_UPGRADES).filter(u => SPELL_UPGRADES[u] && SPELL_UPGRADES[u].auto !== false && spellUpgradeFits(d, u));
+}
+function spellUpgradeSp(upId) { const u = SPELL_UPGRADES[upId]; return u ? Math.max(0, Math.min(4, Math.round(Number(u.sp != null ? u.sp : 1)) || 0)) : 0; }
+/* A kit's upgrade map, sanitized to the ids a record can hold: { spellId: [upIds] } for spells in `ids` only. */
+function spellUpgradesClean(ids, ups) {
+    const out = {};
+    if (!ups || typeof ups !== 'object') return out;
+    for (const id of (ids || [])) {
+        const list = Array.isArray(ups[id]) ? ups[id].filter((u, i, a) => typeof u === 'string' && a.indexOf(u) === i) : [];
+        if (list.length) out[id] = list;
+    }
+    return out;
+}
+/* SP the upgrades on one spell spend. */
+function spellUpgradesSpOf(ups, id) {
+    let n = 0;
+    for (const u of ((ups && Array.isArray(ups[id])) ? ups[id] : [])) n += spellUpgradeSp(u);
+    return n;
+}
+/* Can upgrade `upId` join spell `spellId` in this kit? { ok, reason: ok | none | unequipped | notAllowed | dup | cap | excl | sp, note, need } */
+function spellUpgradeVerdict(race, cls, ids, ups, spellId, upId) {
+    const eq = (ids || []).filter(Boolean);
+    const cur = (ups && Array.isArray(ups[spellId])) ? ups[spellId] : [];
+    const u = SPELL_UPGRADES[upId];
+    const need = spellUpgradeSp(upId);
+    const used = loadoutSpUsed(eq, ups);
+    const out = { ok: false, reason: '', note: '', need, sp: used, spMax: SPELL_SP_MAX, count: cur.length, max: SPELL_UPGRADE_MAX };
+    if (!u || !spellId) return Object.assign(out, { reason: 'none', note: 'NO SUCH UPGRADE' });
+    if (!eq.includes(spellId)) return Object.assign(out, { reason: 'unequipped', note: 'EQUIP THE SPELL FIRST' });
+    if (cur.includes(upId)) return Object.assign(out, { reason: 'dup', note: 'ALREADY ON' });
+    if (!spellAllowedUpgrades(spellId).includes(upId)) return Object.assign(out, { reason: 'notAllowed', note: 'THIS SPELL DOES NOT TAKE IT' });
+    if (cur.length >= SPELL_UPGRADE_MAX) return Object.assign(out, { reason: 'cap', note: SPELL_UPGRADE_MAX + ' UPGRADES MAX · REMOVE ONE' });
+    if (u.excl && cur.some(o => SPELL_UPGRADES[o] && SPELL_UPGRADES[o].excl === u.excl)) {
+        const o = cur.find(x => SPELL_UPGRADES[x] && SPELL_UPGRADES[x].excl === u.excl);
+        return Object.assign(out, { reason: 'excl', note: 'ONE OF A KIND · ' + String((SPELL_UPGRADES[o] && SPELL_UPGRADES[o].name) || o).toUpperCase() + ' IS ON' });
+    }
+    if (used + need > SPELL_SP_MAX) return Object.assign(out, { reason: 'sp', note: 'NOT ENOUGH SP · ' + used + '/' + SPELL_SP_MAX + ' USED · NEEDS ' + need });
+    return Object.assign(out, { ok: true, reason: 'ok', note: 'UPGRADE · ' + need + ' SP' });
+}
+/* THE REPAIR (the host's check, createUnit's, every write's): the kit `ids` is already legal (treeLegalSubset); walk it in
+   order and keep each spell's upgrades that are allowed, new, uncapped, not excluded and still fit the SP — skip the rest. */
+function treeLegalUpgrades(race, cls, ids, ups) {
+    const eq = (ids || []).filter(Boolean);
+    const out = {};
+    if (!ups || typeof ups !== 'object') return out;
+    let sp = loadoutSpUsed(eq);
+    for (const id of eq) {
+        const want = Array.isArray(ups[id]) ? ups[id] : [];
+        if (!want.length) continue;
+        const allowed = spellAllowedUpgrades(id);
+        const keep = [];
+        for (const u of want) {
+            if (typeof u !== 'string' || keep.includes(u) || !allowed.includes(u)) continue;
+            if (keep.length >= SPELL_UPGRADE_MAX) break;
+            const row = SPELL_UPGRADES[u];
+            if (row.excl && keep.some(o => SPELL_UPGRADES[o].excl === row.excl)) continue;
+            const c = spellUpgradeSp(u);
+            if (sp + c > SPELL_SP_MAX) continue;
+            keep.push(u); sp += c;
+        }
+        if (keep.length) out[id] = keep;
+    }
+    return out;
+}
+/* A random spend for the AI / RANDOM buttons (§6.3 "dmg first"): leftover SP buys allowed upgrades, damage upgrades weighted
+   up, never more than SPELL_UPGRADE_MAX per spell. `rng` optional. */
+function buildRandomUpgrades(race, cls, ids, rng) {
+    const rand = (typeof rng === 'function') ? rng : Math.random;
+    const eq = (ids || []).filter(id => id && !spellIsPassive(id));
+    const ups = {};
+    for (let guard = 0; guard < 24; guard++) {
+        const opts = [];
+        for (const id of eq) for (const u of spellAllowedUpgrades(id)) {
+            if (!spellUpgradeVerdict(race, cls, ids, ups, id, u).ok) continue;
+            const row = SPELL_UPGRADES[u];
+            opts.push([id, u, (row.patch && (row.patch.dmgMult || row.patch.dmgDelta)) ? 3 : 1]);
+        }
+        if (!opts.length) break;
+        let total = 0; for (const o of opts) total += o[2];
+        let roll = rand() * total, pick = opts[opts.length - 1];
+        for (const o of opts) { roll -= o[2]; if (roll < 0) { pick = o; break; } }
+        (ups[pick[0]] = ups[pick[0]] || []).push(pick[1]);
+        if (rand() < 0.35) break;   // a CPU kit is not always maxed — some leftover SP stays unspent
+    }
+    return ups;
+}
+/* ── THE DERIVED DEF (§4.4, pure): the base row with its upgrades' patches applied, in list order. It keeps the base's
+   `id` and `name` (a cast resolves by name), and gains `_base` (the base id), `_ups` (the upgrade ids), `_upSp` (their
+   SP). Every patch key is ONE field the engine already reads, or a rider battle.js resolves (ricochetRider,
+   extraTargets). No upgrades → the base object itself (a copy is the caller's business). ── */
+function _upgScale(v, m) { return (typeof v === 'number' && v > 0) ? Math.max(1, Math.round(v * m)) : v; }
+function _upgApplyPatch(d, patch) {
+    if (!patch || typeof patch !== 'object') return d;
+    const num = (v) => (typeof v === 'number' && isFinite(v)) ? v : 0;
+    for (const k of Object.keys(patch)) {
+        const v = patch[k];
+        switch (k) {
+            case 'dmgMult': {
+                const m = num(v) || 1;
+                d.dmg = _upgScale(d.dmg, m);
+                if (Array.isArray(d.hitDamages)) d.hitDamages = d.hitDamages.map(x => _upgScale(x, m));
+                if (Array.isArray(d.chainProfile)) d.chainProfile = d.chainProfile.map(x => _upgScale(x, m));
+                for (const f of ['splitDmg', 'dashDamage', 'bounceDamage', 'collisionBonus', 'laneDmg', 'arrowDmg', 'beamDmg']) if (typeof d[f] === 'number') d[f] = _upgScale(d[f], m);
+                break;
+            }
+            case 'dmgDelta':
+                if (typeof d.dmg === 'number' && d.dmg > 0) d.dmg = Math.max(1, d.dmg + num(v));
+                else if (Array.isArray(d.hitDamages) && d.hitDamages.length) { d.hitDamages = d.hitDamages.slice(); d.hitDamages[0] = Math.max(1, (d.hitDamages[0] || 0) + num(v)); }
+                break;
+            case 'costDelta': if (typeof d.cost === 'number' && d.cost > 0) d.cost = Math.max(5, Math.round(d.cost + num(v))); break;
+            case 'costMult': if (typeof d.cost === 'number' && d.cost > 0) d.cost = Math.max(5, Math.round(d.cost * (num(v) || 1))); break;
+            case 'apDelta': d.apCost = Math.max(1, (typeof d.apCost === 'number' ? d.apCost : 1) + num(v)); break;
+            case 'cooldownDelta': if (d.cooldownRounds || num(v) > 0) d.cooldownRounds = Math.max(0, (d.cooldownRounds | 0) + num(v)); break;
+            case 'rangeDelta': if (typeof d.range === 'number' && d.range > 0) d.range = Math.max(1, d.range + num(v)); break;
+            case 'pushDistance': d.pushDistance = Math.max(0, (d.pushDistance | 0) + num(v)); break;
+            case 'pullDistance': d.pullDistance = Math.max(0, (d.pullDistance | 0) + num(v)); break;
+            case 'aoe': {
+                if (!v || typeof v !== 'object') break;
+                const mask = (v.preset && AOE_PRESETS[v.preset]) ? AOE_PRESETS[v.preset] : (aoeMaskValid(v.mask) ? v.mask : null);
+                if (!mask) break;
+                if (SPELL_UPGRADE_FITS.singleDmg.test(d)) {
+                    // a single-target damage hit gains an area as THE SPLASH RIDER (Phase 3's resolver: units only, enemies only)
+                    d.splash = { mult: (typeof v.mult === 'number' && v.mult > 0) ? v.mult : 0.5, mask: mask.map(o => [o[0], o[1]]), team: 'enemies' };
+                } else {
+                    // an area cast takes the drawn footprint (Phase 2's rule: the mask SETS the kind's radius field to its reach)
+                    const reach = aoeMaskBound(mask);
+                    d.aoeMask = mask.map(o => [o[0], o[1]]);
+                    if (d.kind === 'cross' || d.crossRadius != null) d.crossRadius = reach;
+                    else if (d.kind === 'bomb' || d.blastRadius != null) d.blastRadius = reach;
+                    else d.aoeRadius = reach;
+                    delete d.aoeShape; delete d.diamond; delete d.diagonal;
+                    d._aoeBound = reach;
+                }
+                break;
+            }
+            case 'extraTargets': {
+                const n = Math.max(0, Math.round(num(v)));
+                if (!n) break;
+                const prev = (d.extraTargets && typeof d.extraTargets === 'object') ? d.extraTargets : null;
+                d.extraTargets = { count: Math.min(4, (prev ? prev.count : 0) + n), mult: (typeof patch.extraTargetsMult === 'number' && patch.extraTargetsMult > 0) ? patch.extraTargetsMult : (prev ? prev.mult : 0.5) };
+                break;
+            }
+            case 'extraTargetsMult': break;   // read with extraTargets
+            case 'ricochet':
+                if (v && typeof v === 'object') d.ricochetRider = { radius: Math.max(1, Math.min(4, Math.round(num(v.radius) || 2))), mult: num(v.mult) > 0 ? v.mult : 0.5 };
+                break;
+            case 'statusBonus': {
+                if (!v || typeof v !== 'object') break;
+                const cur = d.bonusVsStatus && d.bonusVsStatus.status ? d.bonusVsStatus : null;
+                if (cur) d.bonusVsStatus = { status: cur.status, mult: Math.round(((typeof v.mult === 'number' ? Math.max(cur.mult || 1.5, v.mult) : (cur.mult || 1.5) + (num(v.add) || 0.5))) * 100) / 100 };
+                else if (v.status) d.bonusVsStatus = { status: v.status, mult: num(v.mult) > 0 ? v.mult : 1.5 };
+                break;
+            }
+            case 'statusDuration':
+                if (Array.isArray(d.statusEffects)) d.statusEffects = d.statusEffects.map(e => (e && (e.duration | 0) > 0) ? Object.assign({}, e, { duration: Math.max(1, (e.duration | 0) + Math.round(num(v))) }) : e);
+                break;
+            case 'statusChance':
+                if (Array.isArray(d.statusEffects)) d.statusEffects = d.statusEffects.map(e => e ? Object.assign({}, e, { chance: Math.max(0, Math.min(1, (typeof e.chance === 'number' ? e.chance : 1) + num(v))) }) : e);
+                break;
+            case 'elementRider':
+                if (typeof v === 'string' && v && !d.element) { d.element = v; if (Array.isArray(d.families) && !d.families.includes(v)) d.families = d.families.concat([v]); }
+                break;
+            case 'deployCapDelta': if (typeof d.maxActivePerCaster === 'number') d.maxActivePerCaster = Math.max(1, d.maxActivePerCaster + Math.round(num(v))); break;
+            case 'turret':
+                if (v && typeof v === 'object') {
+                    if (num(v.dmgMult) > 0) d.turretDmg = _upgScale(d.turretDmg, v.dmgMult);
+                    if (num(v.hpMult) > 0) d.turretHp = _upgScale(d.turretHp, v.hpMult);
+                    if (num(v.rangeDelta) && typeof d.turretRange === 'number') d.turretRange = Math.max(1, d.turretRange + Math.round(v.rangeDelta));
+                }
+                break;
+            case 'gun':
+                if (v && typeof v === 'object') {
+                    if (num(v.dmgMult) > 0) for (const f of ['laneDmg', 'arrowDmg', 'beamDmg', 'laneHeal']) if (typeof d[f] === 'number') d[f] = _upgScale(d[f], v.dmgMult);
+                    if (num(v.bounces) && typeof d.bounces === 'number') d.bounces = Math.max(0, d.bounces + Math.round(v.bounces));
+                    if (num(v.arrows) && typeof d.arrows === 'number') d.arrows = Math.max(1, d.arrows + Math.round(v.arrows));
+                }
+                break;
+            case 'selfDamagePct':
+                if (typeof d.recoilPct === 'number' && d.selfDamagePct == null) d.recoilPct = Math.max(0, d.recoilPct + num(v));
+                else if (d.selfDamagePct || num(v) > 0) d.selfDamagePct = Math.max(0, (d.selfDamagePct || 0) + num(v));
+                break;
+            case 'drainPct': d.drainPct = Math.max(0, (d.drainPct || 0) + num(v)); break;
+            case 'healMult': { const m = num(v) || 1; for (const f of ['heal', 'healAmt', 'healPerTurn', 'laneHeal']) if (typeof d[f] === 'number') d[f] = _upgScale(d[f], m); break; }
+            default: break;   // an unknown key is data (the library may carry it); the engine reads nothing for it
+        }
+    }
+    return d;
+}
+/* The one line an upgraded spell's desc gains ("Upgrades: Empowered (+15 % damage), Efficient (−10 MP)."). */
+function spellUpgradesLine(upIds) {
+    const names = (upIds || []).map(u => SPELL_UPGRADES[u]).filter(Boolean).map(u => u.name + (u.desc ? ' (' + String(u.desc).replace(/\.$/, '') + ')' : ''));
+    return names.length ? 'Upgrades: ' + names.join(', ') + '.' : '';
+}
+function resolveSpellDef(base, upIds) {
+    if (!base || typeof base !== 'object') return base;
+    const list = (upIds || []).filter(u => typeof u === 'string' && SPELL_UPGRADES[u]);
+    if (!list.length) return base;
+    const d = JSON.parse(JSON.stringify(base));
+    for (const u of list) _upgApplyPatch(d, SPELL_UPGRADES[u].patch);
+    d._base = base.id;
+    d._ups = list.slice();
+    d._upSp = list.reduce((n, u) => n + spellUpgradeSp(u), 0);
+    const line = spellUpgradesLine(list);
+    if (line) d.desc = (base.desc ? String(base.desc).trim() + ' ' : '') + line;
+    return d;
+}
+/* The unit's derived def for one of its spells — the unit's own map (unit.spellUpgrades), or `upIds` when given. */
+function resolveUnitSpellDef(unit, baseDef, upIds) {
+    if (!baseDef) return baseDef;
+    const ups = Array.isArray(upIds) ? upIds : ((unit && unit.spellUpgrades && Array.isArray(unit.spellUpgrades[baseDef.id])) ? unit.spellUpgrades[baseDef.id] : []);
+    return resolveSpellDef(baseDef, ups);
+}
+/* The upgrade rider normalisers (battle.js _applyDamageSpellHit reads them; a damage-kind row only, like Phase 3's riders). */
+function spellRicochetRiderOf(d) {
+    const r = d && d.ricochetRider;
+    if (!r || typeof r !== 'object' || (d.kind || 'damage') !== 'damage') return null;
+    return { radius: Math.max(1, Math.min(4, Math.round(Number(r.radius) || 2))), mult: (typeof r.mult === 'number' && r.mult > 0) ? r.mult : 0.5 };
+}
+function spellExtraTargetsOf(d) {
+    const r = d && d.extraTargets;
+    if (!r || typeof r !== 'object' || (d.kind || 'damage') !== 'damage') return null;
+    const count = Math.max(0, Math.min(4, Math.round(Number(r.count) || 0)));
+    if (!count) return null;
+    return { count, mult: (typeof r.mult === 'number' && r.mult > 0) ? r.mult : 0.5 };
+}
+/* The rack's words for one upgrade on one spell: "Empowered · +15 % damage · 1 SP". */
+function spellUpgradeLabel(upId) {
+    const u = SPELL_UPGRADES[upId];
+    return u ? ((u.glyph ? u.glyph + ' ' : '') + (u.name || upId)) : upId;
+}
 /* RACE_FAMILIES[race] = [3–5 family ids, one unique] — Phase 7 fills it from the catalogue; until then RACE_TREE is the pool. */
 const RACE_FAMILIES = {};
 /* A row's families (§4.2): the explicit tags, else its element's family, plus the wheel's for a door-wheel row. */
@@ -18886,6 +19204,7 @@ function spellLint(d, ctx) {
         hits.push({ rule: 'elementFamily', level: 'amber', text: `element ${d.element} is not in its families` });
     for (const f of fams) if (!SPELL_FAMILIES[f]) hits.push({ rule: 'familyUnknown', level: 'red', text: `family '${f}' is not in SPELL_FAMILIES` });
     for (const u of (Array.isArray(d.upgrades) ? d.upgrades : [])) if (!SPELL_UPGRADES[u]) hits.push({ rule: 'upgradeUnknown', level: 'red', text: `upgrade '${u}' is not in SPELL_UPGRADES` });
+    for (const u of (Array.isArray(d.upgrades) ? d.upgrades : [])) if (SPELL_UPGRADES[u] && !spellUpgradeFits(d, u)) hits.push({ rule: 'upgradeOffFit', level: 'amber', text: `upgrade '${u}' is listed but does not fit this row (its roles / families / requires)` });
     const dead = SPELL_DEAD_FIELDS.filter(has);
     if (dead.length) hits.push({ rule: 'deadField', level: 'amber', text: `dead field${dead.length > 1 ? 's' : ''}: ${dead.join(', ')} (the engine never reads them)` });
     const los = SPELL_LOS_FIELDS.filter(has);
@@ -19293,6 +19612,10 @@ Object.assign(window, {
   /* THE SPELL LIBRARY Phase 0 — THE SCHEMA (SPELL_LIBRARY_PLAN.md §4, 2026-09-25) */
   PASSIVE_SLOT_MAX, SPELL_ROLES, SPELL_TIER_RULE, SPELL_DEAD_FIELDS, SPELL_LOS_FIELDS, SPELL_FAMILY_KINDS,
   SPELL_FAMILIES, SPELL_UPGRADES, RACE_FAMILIES, AOE_PRESETS,
+  /* THE UPGRADES (Phase 5) */
+  SPELL_UPGRADE_MAX, SPELL_UPGRADE_FITS, spellUpgradeFits, spellAllowedUpgrades, spellUpgradeSp, spellUpgradesClean,
+  spellUpgradesSpOf, spellUpgradeVerdict, treeLegalUpgrades, buildRandomUpgrades, resolveSpellDef, resolveUnitSpellDef,
+  spellUpgradesLine, spellRicochetRiderOf, spellExtraTargetsOf, spellUpgradeLabel,
   spellTierDerived, spellRoleOf, spellRoleDerived, spellHasDamage, spellHasEffect, spellHasHeal, spellFamiliesOf,
   aoeMaskValid, aoeMaskTiles, aoeMaskBound, aoeMaskPresetOf, stampSpellSchema,
   spellReachableIds, spellLintContext, spellLint, spellLintAll, spellReport,
@@ -46065,12 +46388,13 @@ function hqPartySpellTree(m) {
     if (typeof classHasSpellTree === 'function' && !classHasSpellTree(cls)) return null;
     const equipped = hqPartySpellIds(m);
     const parts = unitSpellPoolParts(race, cls);
-    return { parts, equipped, race, cls, cap: hqPartySpellCap(), spMax: SPELL_SP_MAX, spUsed: loadoutSpUsed(equipped), isFreelancer: cls === 'Freelancer' };
+    const ups = treeLegalUpgrades(race, cls, equipped, m.meta && m.meta.spellUpgrades);   // THE UPGRADES (Phase 5): as createUnit will keep them
+    return { parts, equipped, ups, race, cls, cap: hqPartySpellCap(), spMax: SPELL_SP_MAX, spUsed: loadoutSpUsed(equipped, ups), isFreelancer: cls === 'Freelancer' };
 }
 /* one ability's state for the rack: equipped · ok · slots (no slot left) · sp (not enough SP) · sealed */
 function hqPartySpellState(T, id, poolSet) {
     if (T.equipped.includes(id)) return 'equipped';
-    const v = spellAddVerdict(T.race, T.cls, T.equipped, id, poolSet);
+    const v = spellAddVerdict(T.race, T.cls, T.equipped, id, poolSet, T.ups);
     return v.ok ? 'ok' : v.reason;
 }
 /* THE MODEL the pause menu draws: four tier rows, IV → I, every ability of the unit's pool on its tier with its state;
@@ -46099,7 +46423,18 @@ function hqPartyTreeCircuit(m) {
         .map(([id, source]) => ({ id, sp: spOf(id), st: hqPartySpellState(T, id, poolSet), source, cost: spellSpCost(id) }));
     const passives = { rows: pasRows, used: passiveRowCount(equipped), max: PASSIVE_SLOT_MAX };
     const dropped = equipped.filter(id => !poolSet.has(id));
-    return { tiers, passives, equipped: equipped.slice(), used: equipped.length, cap, spUsed: T.spUsed, spMax: T.spMax, isFreelancer: T.isFreelancer, unplaced: dropped, race: T.race, cls: T.cls };
+    /* ⚙ THE UPGRADES (SPELL_LIBRARY_PLAN.md §6.3, Phase 5): every equipped spell that takes upgrades, with each allowed upgrade's
+       state (on · ok · the verdict's reason) — the rack's ⚙ section */
+    const upgrades = equipped.filter(id => !spellIsPassive(id) && spellAllowedUpgrades(id).length).map(id => {
+        const on = (T.ups && T.ups[id]) || [];
+        return { id, sp: spOf(id), on: on.slice(), upSp: spellUpgradesSpOf(T.ups, id), derived: on.length ? resolveSpellDef(spOf(id), on) : null,
+            rows: spellAllowedUpgrades(id).map(u => {
+                if (on.includes(u)) return { id: u, row: SPELL_UPGRADES[u], st: 'on', cost: spellUpgradeSp(u), note: 'ON · CLICK TO REMOVE' };
+                const v = spellUpgradeVerdict(T.race, T.cls, equipped, T.ups, id, u);
+                return { id: u, row: SPELL_UPGRADES[u], st: v.ok ? 'ok' : v.reason, cost: spellUpgradeSp(u), note: v.note };
+            }) };
+    });
+    return { tiers, passives, upgrades, ups: T.ups, upMax: SPELL_UPGRADE_MAX, equipped: equipped.slice(), used: equipped.length, cap, spUsed: T.spUsed, spMax: T.spMax, isFreelancer: T.isFreelancer, unplaced: dropped, race: T.race, cls: T.cls };
 }
 /* THE ONE WRITE: a member's spell list, made legal (the forge's own repair), into both places */
 function hqPartySetSpells(profile, memberId, ids) {
@@ -46113,6 +46448,8 @@ function hqPartySetSpells(profile, memberId, ids) {
     out = out.slice(0, hqPartySpellCap());
     m.meta.customSpells = out.slice();
     m.loadout.spells = out.slice();
+    // THE UPGRADES (Phase 5): the kept spells keep the upgrades that still fit (an unequipped spell's leave with it)
+    if (m.meta.spellUpgrades) { m.meta.spellUpgrades = treeLegalUpgrades(race, cls, out, m.meta.spellUpgrades); if (!Object.keys(m.meta.spellUpgrades).length) delete m.meta.spellUpgrades; }
     if (m.meta.secondaryJob) delete m.meta.secondaryJob;   // the tier rework retired the second job
     r.at = Date.now();
     return { ok: true, ids: out.slice(), trimmed, member: m };
@@ -46132,10 +46469,11 @@ function hqPartyTreeClick(profile, memberId, key, altId) {
     if (!id) return { ok: false, reason: 'empty', note: 'NOTHING HERE' };
     const t = spellTierOf(id);
     if (T.equipped.includes(id)) {
+        const back = t + spellUpgradesSpOf(T.ups, id);
         const w = hqPartySetSpells(profile, memberId, T.equipped.filter(s => s !== id));
-        return { ok: true, kind: 'unequip', ids: w.ids, dropped: [id], note: 'UNEQUIPPED · +' + t + ' SP BACK' };
+        return { ok: true, kind: 'unequip', ids: w.ids, dropped: [id], note: 'UNEQUIPPED · +' + back + ' SP BACK' };
     }
-    const v = spellAddVerdict(T.race, T.cls, T.equipped, id);
+    const v = spellAddVerdict(T.race, T.cls, T.equipped, id, null, T.ups);
     if (!v.ok) return { ok: false, reason: v.reason === 'slots' ? 'cap' : v.reason, note: v.note };
     const w = hqPartySetSpells(profile, memberId, T.equipped.concat([id]));
     return { ok: true, kind: 'equip', ids: w.ids, added: [id], note: 'EQUIPPED · TIER ' + SPELL_TIER_NUMERALS[t] + ' · ' + t + ' SP' };
@@ -46157,7 +46495,7 @@ function hqPartySocketEquip(profile, memberId, key, spellId) {
     const T = hqPartySpellTree(m); if (!T || !T.isFreelancer) return { ok: false, reason: 'notree' };
     if (!spellId || T.equipped.includes(spellId)) return { ok: false, reason: 'dup', note: 'ALREADY EQUIPPED' };
     if (!hqPartySocketPool(m, key).some(x => x.id === spellId)) return { ok: false, reason: 'pool', note: 'NOT IN THIS POOL' };
-    const v = spellAddVerdict(T.race, T.cls, T.equipped, spellId);
+    const v = spellAddVerdict(T.race, T.cls, T.equipped, spellId, null, T.ups);
     if (!v.ok) return { ok: false, reason: v.reason === 'slots' ? 'cap' : v.reason, note: v.note };
     const w = hqPartySetSpells(profile, memberId, T.equipped.concat([spellId]));
     return { ok: true, kind: 'socket', ids: w.ids, added: [spellId], note: 'BORROWED · ' + spellTierOf(spellId) + ' SP' };
@@ -46178,10 +46516,37 @@ function hqPartySpellsRandom(profile, memberId, rng) {
     const r = hqPartyRecord(profile); if (!r) return { ok: false, reason: 'noprofile' };
     const m = r.members.find(x => x.id === memberId); if (!m) return { ok: false, reason: 'member' };
     const ids = buildTreeLegalLoadout(m.meta.race || 'homosapien', m.cls, '', hqPartySpellCap(), rng);
+    delete m.meta.spellUpgrades;
     const w = hqPartySetSpells(profile, memberId, ids);
+    const ups = buildRandomUpgrades(m.meta.race || 'homosapien', m.cls, w.ids || [], rng);   // THE UPGRADES (Phase 5): the RANDOM kit spends its leftover SP too
+    if (Object.keys(ups).length) m.meta.spellUpgrades = ups;
     return Object.assign({ kind: 'random', note: 'A RANDOM LEGAL KIT' }, w);
 }
-function hqPartySpellsClear(profile, memberId) { const w = hqPartySetSpells(profile, memberId, []); return Object.assign({ kind: 'clear', note: 'NOTHING EQUIPPED' }, w); }
+/* ⚙ THE UPGRADE CLICK (Phase 5): toggle upgrade `upId` on equipped spell `spellId` — off gives its SP back; on when
+   spellUpgradeVerdict allows (allowed · ≤ 2 · one of a kind · the SP). Viewer-local like every rack write (RULE #2). */
+function hqPartyUpgradeClick(profile, memberId, spellId, upId) {
+    const r = hqPartyRecord(profile); if (!r) return { ok: false, reason: 'noprofile' };
+    const m = r.members.find(x => x.id === memberId); if (!m) return { ok: false, reason: 'member' };
+    const T = hqPartySpellTree(m); if (!T) return { ok: false, reason: 'notree', note: 'THIS JOB HAS NO SPELLS TO PICK' };
+    const u = SPELL_UPGRADES[upId]; if (!u) return { ok: false, reason: 'none', note: 'NO SUCH UPGRADE' };
+    const ups = JSON.parse(JSON.stringify(T.ups || {}));
+    const cur = ups[spellId] || [];
+    let note;
+    if (cur.includes(upId)) {
+        ups[spellId] = cur.filter(x => x !== upId);
+        if (!ups[spellId].length) delete ups[spellId];
+        note = 'UPGRADE OFF · ' + String(u.name || upId).toUpperCase() + ' · +' + spellUpgradeSp(upId) + ' SP BACK';
+    } else {
+        const v = spellUpgradeVerdict(T.race, T.cls, T.equipped, T.ups, spellId, upId);
+        if (!v.ok) return { ok: false, reason: v.reason, note: v.note };
+        ups[spellId] = cur.concat([upId]);
+        note = 'UPGRADED · ' + String(u.name || upId).toUpperCase() + ' · ' + v.need + ' SP';
+    }
+    if (Object.keys(ups).length) m.meta.spellUpgrades = ups; else delete m.meta.spellUpgrades;
+    r.at = Date.now();
+    return { ok: true, kind: 'upgrade', ups, note, member: m };
+}
+function hqPartySpellsClear(profile, memberId) { const _r = hqPartyRecord(profile); const _m = _r && _r.members.find(x => x.id === memberId); if (_m && _m.meta) delete _m.meta.spellUpgrades; const w = hqPartySetSpells(profile, memberId, []); return Object.assign({ kind: 'clear', note: 'NOTHING EQUIPPED' }, w); }
 function hqPartyDown(m) { return m.hp === 0; }
 /* the party's condition: who can fight — the launch refuses a party with nobody fit */
 function hqPartyFit(profile) {
@@ -50128,7 +50493,7 @@ if (typeof window !== 'undefined') {
     window.HQ_OFFICER_RULES = HQ_OFFICER_RULES; window.hqOfficerRecord = hqOfficerRecord; window.hqOfficerOnFile = hqOfficerOnFile; window.hqOfficerEnlist = hqOfficerEnlist;   // THE INTAKE (2026-09-21)
     window.HQ_PARTY_RULES = HQ_PARTY_RULES; window.hqPartyRecord = hqPartyRecord; window.hqPartyEnsure = hqPartyEnsure; window.hqPartyPrune = hqPartyPrune; window.hqPartyOfficer = hqPartyOfficer; window.hqPartyLead = hqPartyLead; window.hqPartyLeadAvatar = hqPartyLeadAvatar; window.hqPartyGauge = hqPartyGauge; window.hqPartyUnlocked = hqPartyUnlocked; window.hqPartyMember = hqPartyMember; window.hqPartyShifts = hqPartyShifts;
     window.hqPartyVitals = hqPartyVitals; window.hqPartyFit = hqPartyFit; window.hqPartyEnlist = hqPartyEnlist; window.hqPartyRelieve = hqPartyRelieve; window.hqPartySwap = hqPartySwap; window.hqPartyOnCall = hqPartyOnCall; window.hqPartyRestore = hqPartyRestore;
-    window.hqPartyForLaunch = hqPartyForLaunch; window.hqPartyAfterMatch = hqPartyAfterMatch; window.hqPartyResync = hqPartyResync; window.hqPartyScaledVitals = hqPartyScaledVitals; window.hqPartySpellIds = hqPartySpellIds; window.hqPartySpellTree = hqPartySpellTree; window.hqPartySpellState = hqPartySpellState; window.hqPartyTreeCircuit = hqPartyTreeCircuit; window.hqPartySetSpells = hqPartySetSpells; window.hqPartyTreeClick = hqPartyTreeClick; window.hqPartySocketPool = hqPartySocketPool; window.hqPartySocketEquip = hqPartySocketEquip; window.hqPartySpellsDefault = hqPartySpellsDefault; window.hqPartySpellsRandom = hqPartySpellsRandom; window.hqPartySpellsClear = hqPartySpellsClear;
+    window.hqPartyForLaunch = hqPartyForLaunch; window.hqPartyAfterMatch = hqPartyAfterMatch; window.hqPartyResync = hqPartyResync; window.hqPartyScaledVitals = hqPartyScaledVitals; window.hqPartySpellIds = hqPartySpellIds; window.hqPartySpellTree = hqPartySpellTree; window.hqPartySpellState = hqPartySpellState; window.hqPartyTreeCircuit = hqPartyTreeCircuit; window.hqPartySetSpells = hqPartySetSpells; window.hqPartyTreeClick = hqPartyTreeClick; window.hqPartySocketPool = hqPartySocketPool; window.hqPartySocketEquip = hqPartySocketEquip; window.hqPartySpellsDefault = hqPartySpellsDefault; window.hqPartySpellsRandom = hqPartySpellsRandom; window.hqPartySpellsClear = hqPartySpellsClear; window.hqPartyUpgradeClick = hqPartyUpgradeClick;
     /* THE LEVELS (2026-09-21) */
     window.HQ_LEVEL_RULES = HQ_LEVEL_RULES; window.HQ_AREA_LEVELS = HQ_AREA_LEVELS; window.XP_CURVE = XP_CURVE; window.xpThreshold = xpThreshold; window.xpLevelFor = xpLevelFor; window.xpToNext = xpToNext;
     window.hqPartyLevel = hqPartyLevel; window.hqPartyXp = hqPartyXp; window.hqPartyLevelGains = hqPartyLevelGains; window.hqPartyGrantXp = hqPartyGrantXp; window.hqPartyXpShare = hqPartyXpShare; window.hqEncounterLevels = hqEncounterLevels; window.hqEncounterGroup = hqEncounterGroup; window.hqSwarmRace = hqSwarmRace; window.hqRoomNatives = hqRoomNatives;

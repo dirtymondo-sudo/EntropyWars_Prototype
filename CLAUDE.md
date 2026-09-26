@@ -106,6 +106,7 @@ diffs. The deliverable is always the full edited file, produced in chat.
   the look): tests aoe-mask.test.js + spell-anim-pick.test.js; notes in ui-menus-audio.md + spells-vfx.md.
   Phase 3 (random targets + splash riders): spell-riders.test.js; notes in champions-combat.md.
   Phase 4 (passive rows + the gear merge): family-passives.test.js; notes in champions-combat.md + ui-menus-audio.md.
+  Phase 5 (upgrades): spell-upgrades.test.js; same two notes files.
 - `migrations/*.sql` (added 2026-07-29) — versioned D1 schema, applied at
   boot by server.js `runMigrations` (recorded in `schema_migrations`;
   duplicate-column/already-exists errors are tolerated so it converges on

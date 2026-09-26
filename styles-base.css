@@ -5060,6 +5060,27 @@ body.diorama-3d .tile-underpass.jump::before {
 .pb-ls-tier { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); font-family: 'Cinzel', 'Cormorant SC', serif; font-size: 8px; font-weight: 900; color: var(--ph-gold); letter-spacing: 0.04em; }
 .pb-ls.empty { border: 1px dashed rgba(255,255,255,0.16); background: transparent; cursor: default; justify-content: center; padding: 0; }
 .pb-ls.empty:hover { border-color: rgba(255,255,255,0.16); background: transparent; }
+/* ⚙ THE UPGRADES (SPELL_LIBRARY_PLAN.md §6.3, Phase 5): the loadout cell's ⚙ (lit = upgrades on) and the technique
+   panel's toggles — each upgrade its own SP price, at most 2 per spell. */
+.pb-ls-up { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); font: inherit; font-size: 10px; line-height: 1; padding: 2px 4px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.18); background: rgba(0,0,0,0.55); color: var(--ph-dim); cursor: pointer; }
+.pb-ls-up:hover { color: var(--ph-gold); border-color: var(--ph-gold); }
+.pb-ls:has(.pb-ls-up) { padding-right: 40px; }
+.pb-ls-up.on { color: #0d0d13; background: var(--ph-gold); border-color: var(--ph-gold); font-weight: 700; }
+.pb-upgrades { margin-top: 4px; padding: 5px 6px; border: 1px solid var(--ph-line); border-radius: var(--pb-r-sm, 6px); background: rgba(0,0,0,0.35); }
+.pb-upgrades.off { opacity: 0.6; }
+.pb-upgrades-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+.pb-upgrades-head b { font-size: 10px; letter-spacing: 0.18em; color: var(--ph-gold); }
+.pb-upgrades-head span { font-size: 9px; letter-spacing: 0.14em; color: var(--ph-dim); }
+.pb-upgrades-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 4px; }
+.pb-up { font: inherit; display: grid; grid-template-columns: 18px 1fr auto; grid-template-rows: auto auto; column-gap: 6px; align-items: center; text-align: left; padding: 4px 7px; border-radius: 6px; border: 1px solid var(--ph-line); background: rgba(255,255,255,0.03); color: var(--ph); cursor: pointer; transition: border-color 0.12s, background 0.12s; }
+.pb-up i { grid-row: 1 / span 2; font-style: normal; font-size: 13px; text-align: center; color: var(--ph-gold); }
+.pb-up b { font-family: 'Cormorant SC', serif; font-size: 12px; font-weight: 700; color: #f1e9cf; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pb-up em { font-style: normal; font-size: 9px; letter-spacing: 0.12em; color: var(--ph-gold); white-space: nowrap; }
+.pb-up small { grid-column: 2 / span 2; font-size: 9px; line-height: 1.25; color: var(--ph-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pb-up:hover:not(:disabled) { border-color: var(--ph-gold); background: rgba(255,205,107,0.08); }
+.pb-up.on { border-color: var(--ph-gold); background: rgba(255,205,107,0.16); }
+.pb-up.no, .pb-up:disabled { cursor: default; opacity: 0.55; }
+.pb-up.no small { color: #ff9b9b; }
 .pb-ls.empty i { font-style: normal; font-size: 9px; letter-spacing: 0.1em; color: var(--ph-faint); }
 .pb-tiers { display: flex; flex-direction: column; gap: 6px; flex: 1 0 auto; }
 .pb-tier { display: grid; grid-template-columns: 46px minmax(0, 1fr); gap: 8px; align-items: stretch; padding: 4px 0; border-top: 1px solid var(--ph-line); }
@@ -6147,6 +6168,20 @@ body.diorama-3d .tile-underpass.jump::before {
 #hqPage .hq-circ-node:not([disabled]):hover { background: rgba(184,160,96,0.18); border-color: #d9b45a; transform: translateY(-1px); }
 #hqPage .hq-circ-node.st-equipped:not([disabled]):hover { border-color: #ff6a6a; background: rgba(255,74,74,0.14); }
 #hqPage .hq-circ-node.st-equipped:not([disabled]):hover em { color: #ffb0b0; }
+/* ⚙ THE UPGRADES (SPELL_LIBRARY_PLAN.md §6.3, Phase 5): the HQ rack's upgrade toggles, one row per equipped spell that takes them */
+#hqPage .hq-circ-ups { margin-top: 8px; padding: 6px 8px; border: 1px solid rgba(255,224,138,0.28); background: rgba(255,224,138,0.04); }
+#hqPage .hq-circ-uprow { display: grid; grid-template-columns: minmax(140px, 220px) 1fr; gap: 8px; align-items: center; padding: 4px 0; border-top: 1px solid rgba(255,255,255,0.06); }
+#hqPage .hq-circ-uprow:first-of-type { border-top: 0; }
+#hqPage .hq-circ-upname b { display: block; font-family: 'Cormorant SC', serif; font-size: 14px; letter-spacing: 0.06em; color: #ece7d8; }
+#hqPage .hq-circ-upname span { display: block; font-size: 10px; letter-spacing: 0.1em; color: #b8a060; }
+#hqPage .hq-circ-upbtns { display: flex; flex-wrap: wrap; gap: 4px; }
+#hqPage .hq-circ-up { display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px; font-family: inherit; font-size: 11px; color: #ece7d8; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.03); cursor: pointer; }
+#hqPage .hq-circ-up i { font-style: normal; color: #ffe08a; }
+#hqPage .hq-circ-up b { font-family: 'Cormorant SC', serif; font-size: 13px; letter-spacing: 0.04em; }
+#hqPage .hq-circ-up em { font-style: normal; font-size: 10px; letter-spacing: 0.1em; color: #ffe08a; }
+#hqPage .hq-circ-up:hover:not(:disabled) { border-color: #ffe08a; background: rgba(255,224,138,0.1); }
+#hqPage .hq-circ-up.on { border-color: #ffe08a; background: rgba(255,224,138,0.2); }
+#hqPage .hq-circ-up.no, #hqPage .hq-circ-up:disabled { opacity: 0.45; cursor: default; }
 #hqPage .hq-circ-root { display: grid; grid-template-columns: 26px 1fr; column-gap: 8px; align-items: center; margin: 8px auto 0; max-width: 360px; padding: 6px 10px; border: 1px solid rgba(184,160,96,0.5); background: rgba(184,160,96,0.1); }
 #hqPage .hq-circ-root i { grid-row: 1 / span 2; font-style: normal; text-align: center; font-size: 14px; color: #ffe08a; }
 #hqPage .hq-circ-root b { font-family: 'Cormorant SC', serif; font-size: 14px; letter-spacing: 0.16em; }

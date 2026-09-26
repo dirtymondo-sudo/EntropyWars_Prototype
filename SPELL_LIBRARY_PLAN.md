@@ -745,7 +745,7 @@ is live. Until baked, an export is the only way a change reaches another player.
 | 2 | **THE GRID + THE LOOK**: `aoeMask` in the 9 sites (§6.1), the grid editor + presets + splash grid, `animVerb` / `animSlot` / `animClip` + the dropdown + the viewer stage (`playClip`, `devLibClips`, the synthetic clip slots), the VFX selects moved to LOOK | battle.js, ui.js, hud.js, ai.js, state.js, data.js, sprites.js, three-renderer.js, three-vfx-effects.js (`_aoeBound`) | `aoe-mask.test.js`, `spell-anim-pick.test.js`; `check-spell-presentation.js` reads the field |
 | 3 | **THE TARGETING**: `randomTargets` and `splash` riders (§6.2), the relay check, the AI branches, two shipped example rows (a scatter shot; an impact round) as ADDED rows the user may keep or delete | battle.js, ai.js, online.js (skip-list audit), data.js, ui.js (the TARGET tab's controls go live) | `spell-riders.test.js`, `ai-spell-routing.test.js` rows, `check-ai-spell-dispatch.js` |
 | 4 | **DONE 2026-09-26 (§11).** **THE PASSIVES + THE GEAR MERGE (ruled)**: passive rows, `PASSIVE_SLOT_MAX = 2` in the verdict / repair / rack, the universal GEAR family, the hook editor, the new hook keys' consumers, the rack's ◈ PASSIVE chips, the 17 accessories converted, the accessory UI retired, the save migration | data.js, battle.js, state.js, party-builder.js, map.js, hud.js, ui.js | `family-passives.test.js`, `champ-rework.test.js` (inherent passives unchanged), a save-migration pin |
-| 5 | **THE UPGRADES**: `SPELL_UPGRADES` (the registry seeded with the user's list: +15 % dmg, ricochet, +1 target ×0.5, status bonus, knockback / blowback, AOE preset, −10 MP, +1 deployable, turret ×, gun ×), `resolveUnitSpellDef`, the verdict, the loadout field, the rack's ⚙ popover, the HQ pause popover, `getDeployCap`, the AI's spend, the host validation | data.js, battle.js, party-builder.js, map.js, hud.js, online.js, ai.js, ui.js (UPGRADES tab live) | `spell-upgrades.test.js` (each patch key on a fixture def; SP maths; the repair skips an unaffordable upgrade; a derived def rides `_serializeState`) |
+| 5 | **DONE 2026-09-26 (§11).** **THE UPGRADES**: `SPELL_UPGRADES` (the registry seeded with the user's list: +15 % dmg, ricochet, +1 target ×0.5, status bonus, knockback / blowback, AOE preset, −10 MP, +1 deployable, turret ×, gun ×), `resolveUnitSpellDef`, the verdict, the loadout field, the rack's ⚙ popover, the HQ pause popover, `getDeployCap`, the AI's spend, the host validation | data.js, battle.js, party-builder.js, map.js, hud.js, online.js, ai.js, ui.js (UPGRADES tab live) | `spell-upgrades.test.js` (each patch key on a fixture def; SP maths; the repair skips an unaffordable upgrade; a derived def rides `_serializeState`) |
 | 6 | **THE CATALOGUE** (the user's second deliverable): a categorisation of the 535 rows into proposed families (with the unique family per race), each spell's ONE identity, the redundancy groups with a verdict each (keep / merge into X / becomes upgrade Y of X / delete), proposed upgrade lists per family, new spell and targeting proposals — delivered as an EXPORT DOC the library imports (families + notes + `upgrades` lists + the merges as deletions with a note) plus `SPELL_CATALOGUE.md`; nothing baked until the user edits and re-exports | the export json + the md (repo) | the REPORT's redundancy query reproduces the groups |
 | 7 | **THE FAMILIES AS POOLS**: `RACE_FAMILIES` (3–5 per race, one `unique`), `unitSpellPoolParts` from families, the rack grouped by family (tier rows inside each family column or family tabs), the Freelancer's borrow window by family, `treeLegalSubset` on the new pool, the codex's family page | data.js (R2 + Render), party-builder.js, map.js, hud.js, ui.js, online.js (validation only) | `spell-families.test.js` (every race has 3–5 families and one unique; every pool row is reachable; `treeLegalSubset` repairs the old saves) |
 
@@ -961,3 +961,35 @@ change under `WEATHER_REGISTRY`).
   6. The library's NEW ▾ passive defaults to the `gear` family (equippable by every unit at once); retag to scope it.
   7. Fixed a Phase 1 bug: the library's popovers / modals sat outside its click delegation (dead buttons).
   Next: Phase 5 (THE UPGRADES).
+- 2026-09-26 — **Phase 5 shipped** (thread "Spell library Phase 5", `spell-library/ENTROPY_WARS_SPELL_LIBRARY_5.zip`,
+  token `20260926-spell-library-06-cors`). THE UPGRADES, on the §7 Q3 defaults (own SP price each, at most 2 per spell,
+  7 slots / 16 SP, local mods off online). data.js: `SPELL_UPGRADES` seeded with 14 rows (the user's list — +15 % dmg,
+  ricochet, +1 target ×0.5, status bonus, knockback / blowback, AOE preset, −10 MP, +1 deployable, turret ×, gun × — plus
+  Widen for area casts, +1 range, +1 status round); `SPELL_UPGRADE_MAX = 2`; `spellUpgradeFits` / `spellAllowedUpgrades`;
+  `spellUpgradeVerdict`; `treeLegalUpgrades` (the repair); `loadoutSpUsed(ids, ups)`, `spellAddVerdict(…, ups)`,
+  `isTreeLoadoutLegal(…, ups)`; `resolveSpellDef` / `resolveUnitSpellDef` (pure; every §4.4 patch key);
+  `buildRandomUpgrades`; the lint `upgradeOffFit`; the HQ's `hqPartyUpgradeClick` + the circuit's `upgrades` model.
+  Engine: map.js createUnit repairs `meta.spellUpgrades` on the kept kit and builds the derived defs into `unit.spells`
+  (`unit.spellUpgrades` holds the ids; the snapshot carries both, no new relay); online.js's party-config receipt runs the
+  same repair host-side; battle.js `_applyUpgradeRiders` (Ricochet bounce + Forked extra targets) after the splash, the
+  'bounce' rider-fx (relay gains `fromId`); the door gun reads its owner's derived row. UI: the forge's ⚙ cell + the
+  technique panel's toggles, the HQ pause rack's ⚙ UPGRADES block, hud.js ⚙n / ↯ / ⑂ badges, the library's UPGRADES tab
+  (mode, TRY pair, fit per row) and the registry editor's requires / excl / auto. Test `spell-upgrades.test.js`;
+  spell-schema.test.js brought to the seeded registry. Not playtested live. DEVIATIONS, on purpose:
+  1. **An empty `upgrades` list means AUTO, not none** (§4.4 said "empty = none"): with every shipped row at `[]` until
+     the Phase 6 catalogue, "none" would have shipped a feature no player could reach. AUTO offers every registry row
+     with `auto !== false` that FITS the spell; a row pins a CUSTOM list in the library, or NONE with
+     `upgradesAuto: false`. The registry rows gained `requires` (a `SPELL_UPGRADE_FITS` test — the patch only means
+     something on such a row), `excl` (one of a kind per spell: Ricochet / Forked / Blast / Widen are `spread`) and `auto`.
+  2. **No `getDeployCap`**: the nine `maxActivePerCaster` reads already take the spell object, which is now the derived
+     def; Surplus is offered only on rows with an explicit cap (`requires: 'deployCap'`), so the per-site kind defaults
+     never apply to an upgraded row. The turret reads take the derived `turretDmg` / `turretHp` / `turretRange` the same way.
+  3. **The ⚙ opens the forge's technique panel** (the inspector already under the rack) instead of a new popover; the HQ
+     pause rack shows the toggles inline under ◈ PASSIVES.
+  4. **Ricochet is its own rider** (`ricochetRider`, resolved in `_applyUpgradeRiders` with `calcBounceTarget`), not
+     `_applyRicochetDamage`, which lands its own primary hit and needs `kind: 'ricochet'`.
+  5. **The AI's spend is `buildRandomUpgrades`**, called where a CPU / RANDOM kit is rolled (state.js
+     `applyRandomSpellsAndSecJob`, the forge's RND, the HQ's RANDOM); `buildTreeLegalLoadout` still returns an id list.
+  6. **`describeSpell` is untouched**: the derived def's `desc` gains "Upgrades: Empowered (+15 % damage), …"; the library
+     shows a TRY pair's resolved numbers instead of ▶ LAB WITH THESE.
+  Next: Phase 6 (THE CATALOGUE — the user's second deliverable).

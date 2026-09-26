@@ -2139,6 +2139,13 @@
                             mEntry.customSpells.length, '→', mFixed.length);
                         mEntry.customSpells = mFixed;
                     }
+                    /* THE UPGRADES (SPELL_LIBRARY_PLAN §6.3, Phase 5): the kit's upgrades are re-validated the same way —
+                       allowed on that spell, at most 2 each, inside the 16 SP with the spells — createUnit repeats it. */
+                    if (mEntry.spellUpgrades != null && typeof window.treeLegalUpgrades === 'function') {
+                        var mUps = window.treeLegalUpgrades(mEntry.race || '', mCls, mEntry.customSpells, mEntry.spellUpgrades);
+                        if (JSON.stringify(mUps) !== JSON.stringify(mEntry.spellUpgrades)) console.warn('[NET GUARD] spell upgrades trimmed for guest slot', mIdx);
+                        mEntry.spellUpgrades = mUps;
+                    }
                 });
             }
 
@@ -2334,6 +2341,7 @@
                         type: 'rider-fx', kind: kind,
                         casterId: p.casterId != null ? p.casterId : null,
                         targetId: p.targetId != null ? p.targetId : null,
+                        fromId: p.fromId != null ? p.fromId : null,   // THE UPGRADES (Phase 5): a ricochet's bounce flies from the first victim
                         spellId: p.spellId || null,
                         x: p.x != null ? p.x : null, y: p.y != null ? p.y : null,
                         r: p.r || 0, flyMs: p.flyMs || 0
@@ -4253,8 +4261,8 @@
                         var _rfShow = true;
                         if (st && st.fogOfWar && typeof window._isTileVisibleToViewer === 'function') {
                             var _rfFog = window._isTileVisibleToViewer;
-                            if (data.kind === 'shot') {
-                                var _rfC = st.units ? st.units.find(function(u) { return u.id === data.casterId; }) : null;
+                            if (data.kind === 'shot' || data.kind === 'bounce') {
+                                var _rfC = st.units ? st.units.find(function(u) { return u.id === (data.kind === 'bounce' ? data.fromId : data.casterId); }) : null;
                                 var _rfT = st.units ? st.units.find(function(u) { return u.id === data.targetId; }) : null;
                                 _rfShow = !!((_rfC && _rfFog(_rfC.x, _rfC.y)) || (_rfT && _rfFog(_rfT.x, _rfT.y)));
                             } else {
@@ -4263,7 +4271,7 @@
                         }
                         if (_rfShow) {
                             window.playSpellRiderFx(data.kind, {
-                                remote: true, casterId: data.casterId, targetId: data.targetId, spellId: data.spellId,
+                                remote: true, casterId: data.casterId, targetId: data.targetId, fromId: data.fromId, spellId: data.spellId,
                                 x: data.x, y: data.y, r: data.r, flyMs: data.flyMs
                             });
                         }

@@ -3747,6 +3747,7 @@
                         meta: {
                             race: meta.race || '', gender: meta.gender || '',
                             customSpells: Array.isArray(meta.customSpells) ? meta.customSpells.filter(Boolean).slice() : null,
+                            spellUpgrades: (meta.spellUpgrades && typeof meta.spellUpgrades === 'object') ? JSON.parse(JSON.stringify(meta.spellUpgrades)) : null,   // THE UPGRADES (Phase 5)
                             zodiac: meta.zodiac || '', appearance: meta.appearance || null,
                         },
                         loadout: lo ? {
@@ -3940,6 +3941,10 @@
                     if (Array.isArray(priorMeta.customSpells) && priorMeta.customSpells.length > 0) {
                         rebuiltMeta.customSpells = priorMeta.customSpells.slice();
                     }
+                    /* THE UPGRADES (SPELL_LIBRARY_PLAN.md Phase 5): the kit's upgrade map rides beside customSpells */
+                    if (priorMeta.spellUpgrades && typeof priorMeta.spellUpgrades === 'object') {
+                        rebuiltMeta.spellUpgrades = JSON.parse(JSON.stringify(priorMeta.spellUpgrades));
+                    }
 
                     if (!rebuiltMeta.customSpells && repairedLo.spells.some(s => s)) {
                         rebuiltMeta.customSpells = repairedLo.spells.filter(Boolean).slice(0, CONFIG.unitSkillSlots);
@@ -4063,6 +4068,8 @@
             if (typeof classHasSpellTree === 'function' && classHasSpellTree(cls)
                 && typeof buildTreeLegalLoadout === 'function') {
                 meta.customSpells = buildTreeLegalLoadout(meta.race || '', cls, secJob);
+                /* THE UPGRADES (Phase 5): the leftover SP buys random allowed upgrades (damage first) */
+                meta.spellUpgrades = (typeof buildRandomUpgrades === 'function') ? buildRandomUpgrades(meta.race || '', cls, meta.customSpells) : {};
                 return;
             }
 

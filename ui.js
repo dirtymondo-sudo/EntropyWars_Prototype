@@ -10739,14 +10739,51 @@
             const kind = el.getAttribute('data-pick-kind'), key = el.getAttribute('data-pick'), lib = el.getAttribute('data-lib');
             _slbAnimHoverTimer = setTimeout(() => { _slbAnimHoverTimer = null; _slb2LookPlayPick(kind, key, lib); }, 140);
         }
+        /* ⚙ A spell's UPGRADES tab (§5.6, Phase 5 live): the mode (AUTO = every `auto` registry row that fits the row · CUSTOM =
+           the row's own list · NONE), the registry as toggles with each one's fit and resolved numbers, and a TRY pair (up to 2)
+           whose resolved line reads "Fireball + Empowered + Efficient = 92 dmg · 15 MP · 4 SP" — data.js resolveSpellDef, the
+           same derived def createUnit builds. */
+        let _slbUpTry = {};
+        function _slb2UpSummary(d, base) {
+            if (!d) return '';
+            const bits = [];
+            const dmg = Array.isArray(d.hitDamages) ? d.hitDamages.join('+') : d.dmg;
+            const bdmg = base ? (Array.isArray(base.hitDamages) ? base.hitDamages.join('+') : base.dmg) : null;
+            if (dmg) bits.push((base && String(dmg) !== String(bdmg) ? '<b>' : '') + dmg + ' dmg' + (base && String(dmg) !== String(bdmg) ? '</b>' : ''));
+            const ch = (k, lbl) => { if (d[k] == null) return; const on = base && JSON.stringify(d[k]) !== JSON.stringify(base[k]); bits.push((on ? '<b>' : '') + lbl(d[k]) + (on ? '</b>' : '')); };
+            ch('cost', v => v + ' MP'); ch('range', v => v === 0 ? 'self' : 'range ' + v); ch('pushDistance', v => 'push ' + v); ch('pullDistance', v => 'pull ' + v);
+            ch('maxActivePerCaster', v => 'cap ' + v); ch('turretDmg', v => 'turret ' + v); ch('laneDmg', v => 'lane ' + v); ch('arrowDmg', v => 'arrows ' + v); ch('beamDmg', v => 'beam ' + v); ch('bounces', v => v + ' bounces');
+            if (d.splash && (!base || !base.splash)) { const sp = (typeof spellSplashOf === 'function') ? spellSplashOf(d) : null; if (sp) bits.push('<b>splash ' + Math.round(sp.mult * 100) + '%' + (sp.mask ? ' ' + (aoeMaskPresetOf(sp.mask) || 'shape') : '') + '</b>'); }
+            if (d.aoeMask && base && JSON.stringify(d.aoeMask) !== JSON.stringify(base.aoeMask)) bits.push('<b>AOE ' + (aoeMaskPresetOf(d.aoeMask) || 'shape') + '</b>');
+            if (d.ricochetRider) bits.push('<b>ricochet ' + d.ricochetRider.radius + ' ×' + d.ricochetRider.mult + '</b>');
+            if (d.extraTargets) bits.push('<b>+' + d.extraTargets.count + ' target ×' + d.extraTargets.mult + '</b>');
+            if (d.bonusVsStatus && base && JSON.stringify(d.bonusVsStatus) !== JSON.stringify(base.bonusVsStatus)) bits.push('<b>×' + d.bonusVsStatus.mult + ' vs ' + [].concat(d.bonusVsStatus.status).join('/') + '</b>');
+            if (Array.isArray(d.statusEffects) && base && JSON.stringify(d.statusEffects) !== JSON.stringify(base.statusEffects)) bits.push('<b>statuses ' + d.statusEffects.map(e => e.id + ' ' + e.duration).join(', ') + '</b>');
+            return bits.join(' · ');
+        }
         function _slb2UpgradesTabHtml(r) {
             const reg = (typeof SPELL_UPGRADES !== 'undefined') ? SPELL_UPGRADES : {};
             const ids = Object.keys(reg).sort();
-            const allowed = Array.isArray(r.def.upgrades) ? r.def.upgrades : [];
-            if (!ids.length) return `<div class="slb2-group"><div class="slb2-group-h">ALLOWED UPGRADES</div><div class="slb2-field-h">The upgrade registry is empty. Add upgrades on the UPGRADES tab (name, SP, roles, families, the patch), then allow them here per spell. The rack's ⚙ picker, the derived defs and the host validation land in Phase 5.</div></div>`;
-            return `<div class="slb2-group"><div class="slb2-group-h">ALLOWED UPGRADES · ${allowed.length} of ${ids.length}</div>
-                ${ids.map(u => { const row = reg[u] || {}; const on = allowed.includes(u); const fits = (!row.roles || !row.roles.length || row.roles.includes(r.role)) && (!row.families || !row.families.length || row.families.some(f => r.families.includes(f)));
-                    return `<label class="slb2-uprow${on ? ' on' : ''}${fits ? '' : ' dim'}"><input type="checkbox" data-input="upgradeToggle" data-id="${_slbEsc(r.id)}" data-up="${_slbEsc(u)}"${on ? ' checked' : ''}><b>${_slbEsc(row.glyph || '')} ${_slbEsc(row.name || u)}</b><span class="slb2-sp">${row.sp || 1} SP</span><span class="slb2-dim">${_slbEsc(_slb2PatchChips(row.patch))}</span>${fits ? '' : '<span class="slb2-dim" title="its roles / families do not name this spell">off-role</span>'}</label>`; }).join('')}
+            const d = r.def;
+            const explicit = Array.isArray(d.upgrades) ? d.upgrades : [];
+            const mode = explicit.length ? 'custom' : d.upgradesAuto === false ? 'none' : 'auto';
+            const allowed = (typeof spellAllowedUpgrades === 'function') ? spellAllowedUpgrades(d) : explicit;
+            if (d.kind === 'passive') return `<div class="slb2-group"><div class="slb2-group-h">UPGRADES</div><div class="slb2-field-h">Passive rows take no upgrades.</div></div>`;
+            if (!ids.length) return `<div class="slb2-group"><div class="slb2-group-h">ALLOWED UPGRADES</div><div class="slb2-field-h">The upgrade registry is empty. Add upgrades on the UPGRADES tab (name, SP, roles, families, the patch), then allow them here per spell.</div></div>`;
+            const tier = (typeof spellTierOf === 'function') ? spellTierOf(d) : (d.tier || 1);
+            const tryIds = (_slbUpTry[r.id] || []).filter(u => allowed.includes(u));
+            const tried = tryIds.length && typeof resolveSpellDef === 'function' ? resolveSpellDef(d, tryIds) : null;
+            const trySp = tier + tryIds.reduce((n, u) => n + ((typeof spellUpgradeSp === 'function') ? spellUpgradeSp(u) : (reg[u].sp || 1)), 0);
+            const modeBtn = (m, lbl, help) => `<button class="slb2-tiny${mode === m ? ' on' : ''}" data-act="upMode" data-id="${_slbEsc(r.id)}" data-mode="${m}" title="${_slbEsc(help)}">${lbl}</button>`;
+            return `<div class="slb2-group"><div class="slb2-group-h">THE MODE · ${allowed.length} ALLOWED</div>
+                <div class="slb2-togglerow">${modeBtn('auto', 'AUTO', 'every registry upgrade marked auto that fits this row (roles · families · requires)')}${modeBtn('custom', 'CUSTOM', 'only the upgrades ticked below (the row’s upgrades list)')}${modeBtn('none', 'NONE', 'this spell takes no upgrades')}</div>
+                <div class="slb2-field-h">${mode === 'auto' ? 'AUTO: the list is empty, so the rack offers every <code>auto</code> upgrade that fits this row. Ticking or unticking one below switches to CUSTOM with the rest kept.' : mode === 'custom' ? 'CUSTOM: the rack offers exactly the ticked upgrades (fit or not — an off-fit tick lints amber).' : 'NONE: <code>upgradesAuto: false</code> — the rack shows no ⚙ for this spell.'} At most ${(typeof SPELL_UPGRADE_MAX !== 'undefined') ? SPELL_UPGRADE_MAX : 2} per spell in a loadout; the spell then costs its tier + each upgrade's SP.</div></div>
+            <div class="slb2-group"><div class="slb2-group-h">TRY · ${_slbEsc(d.name || r.id)}${tryIds.map(u => ' + ' + _slbEsc(reg[u].name || u)).join('')}</div>
+                <div class="slb2-field-h">${tried ? `= ${_slb2UpSummary(tried, d)} · <b>${trySp} SP</b>` : `${_slb2UpSummary(d, null) || '—'} · ${tier} SP — press TRY on up to two upgrades to see the resolved spell`}</div></div>
+            <div class="slb2-group"><div class="slb2-group-h">THE REGISTRY · ${ids.length}</div>
+                ${ids.map(u => { const row = reg[u] || {}; const on = allowed.includes(u); const fits = (typeof spellUpgradeFits === 'function') ? spellUpgradeFits(d, u) : true;
+                    const one = (typeof resolveSpellDef === 'function') ? resolveSpellDef(d, [u]) : null; const isTry = tryIds.includes(u);
+                    return `<div class="slb2-uprow${on ? ' on' : ''}${fits ? '' : ' dim'}"><label><input type="checkbox" data-input="upgradeToggle" data-id="${_slbEsc(r.id)}" data-up="${_slbEsc(u)}"${on ? ' checked' : ''}${mode === 'none' ? ' disabled' : ''}><b>${_slbEsc(row.glyph || '')} ${_slbEsc(row.name || u)}</b></label><span class="slb2-sp">${row.sp != null ? row.sp : 1} SP</span><span class="slb2-dim">${_slbEsc(_slb2PatchChips(row.patch))}</span>${fits ? '' : `<span class="slb2-dim" title="${_slbEsc('does not fit: ' + ((typeof SPELL_UPGRADE_FITS !== 'undefined' && row.requires && SPELL_UPGRADE_FITS[row.requires]) ? 'needs a row that ' + SPELL_UPGRADE_FITS[row.requires].label : 'roles / families'))}">off-fit</span>`}${on && one ? `<span class="slb2-uprow-res">${_slb2UpSummary(one, d)}</span>` : ''}${on ? `<button class="slb2-tiny${isTry ? ' on' : ''}" data-act="upTry" data-id="${_slbEsc(r.id)}" data-up="${_slbEsc(u)}" title="add to / remove from the TRY pair">TRY</button>` : ''}</div>`; }).join('')}
             </div>`;
         }
         function _slb2PatchChips(patch) {
@@ -11210,7 +11247,7 @@
                         <span>${_slbEsc(_slb2PatchChips(row.patch)) || '<span class="slb2-dim">no patch</span>'}</span>
                         <span>${(usedBy[u] || []).length}</span></div>`; }).join('')}
                     ${deleted.map(u => `<div class="slb2-uprow2 del${_slbUpKey === u ? ' sel' : ''}" data-act="upPick" data-id="${_slbEsc(u)}"><span>${_slbEsc(u)} <span class="slb2-flag del">DEL</span></span><span></span><span></span><span></span><span class="slb2-dim">deleted until baked</span><span></span></div>`).join('')}
-                </div>` : `<div class="slb2-hint slb2-pad">No upgrades yet. An upgrade is a registry row with an SP price and a PATCH (+15 % dmg, −10 MP, ricochet, +1 target × 0.5, a status bonus, knockback, an AOE preset, +1 deployable, turret ×, gun ×). Spells list which upgrades they allow on their UPGRADES tab; the rack's picker and the derived defs land in Phase 5.</div>`}
+                </div>` : `<div class="slb2-hint slb2-pad">No upgrades yet. An upgrade is a registry row with an SP price and a PATCH (+15 % dmg, −10 MP, ricochet, +1 target × 0.5, a status bonus, knockback, an AOE preset, +1 deployable, turret ×, gun ×). A spell with an empty list takes every <code>auto</code> upgrade that fits it; its UPGRADES tab pins a CUSTOM list or NONE. The forge's rack and the HQ pause rack pick them per unit (⚙), and the board plays the derived spell.</div>`}
             </div>
             <div class="slb2-inspector open" id="slbInspector">${_slb2UpgradeInsHtml(usedBy)}</div>`;
         }
@@ -11234,6 +11271,9 @@
                 ${fld('sp', 'SP price', `<input type="number" min="0" max="4" step="1" ${A} data-key="sp" data-type="num" value="${_slbEsc(u.sp != null ? u.sp : 1)}">`, 'An equipped spell costs its tier + Σ upgrade SP; at most 2 upgrades per spell (§7 Q3).')}
                 ${fld('roles', 'Roles', `<div class="slb2-togglerow">${_SLB2_ROLES.map(r => `<button class="slb2-tiny${(u.roles || []).includes(r) ? ' on' : ''}" data-act="upToggle" data-id="${_slbEsc(id)}" data-key="roles" data-val="${r}">${_SLB2_ROLE_LABELS[r]}</button>`).join('')}</div>`, 'Which roles it makes sense on (none = any).')}
                 ${fld('families', 'Families', `<div class="slb2-togglerow">${Object.keys(SPELL_FAMILIES).map(f => `<button class="slb2-tiny${(u.families || []).includes(f) ? ' on' : ''}" data-act="upToggle" data-id="${_slbEsc(id)}" data-key="families" data-val="${_slbEsc(f)}" style="--fc:${_slb2FamColor(f)}">${_slb2Glyph(f)} ${_slbEsc(_slb2FamName(f))}</button>`).join('')}</div>`, 'Only spells in these families may list it (none = any).')}
+                ${fld('requires', 'Requires', `<select class="slb2-sel" ${A} data-key="requires"><option value=""${u.requires ? '' : ' selected'}>— any row —</option>${Object.keys((typeof SPELL_UPGRADE_FITS !== 'undefined') ? SPELL_UPGRADE_FITS : {}).map(k => `<option value="${k}"${u.requires === k ? ' selected' : ''}>${k} — ${_slbEsc(SPELL_UPGRADE_FITS[k].label)}</option>`).join('')}</select>`, 'The fit test: the patch only means something on a row that passes it (AUTO offers the upgrade only there).')}
+                ${fld('excl', 'One of a kind', `<input type="text" ${A} data-key="excl" value="${_slbEsc(u.excl || '')}" placeholder="a group name, e.g. spread" style="width:160px">`, 'At most one upgrade of the same group per spell (Ricochet · Forked · Blast are all “spread”).')}
+                ${fld('auto', 'Auto', `<label class="slb2-bool"><input type="checkbox" ${A} data-key="auto" data-type="bool"${u.auto !== false ? ' checked' : ''}><span>${u.auto !== false ? 'yes' : 'no'}</span></label>`, 'Offered on every row it fits whose own list is empty (AUTO mode). Off = only rows that tick it.')}
                 ${fld('desc', 'Description', `<textarea class="slb2-jsonmini long" ${A} data-key="desc" spellcheck="false">${_slbEsc(u.desc || '')}</textarea>`)}
                 ${fld('notes', 'Notes', `<textarea class="slb2-jsonmini long" ${A} data-key="notes" spellcheck="true">${_slbEsc(u.notes || '')}</textarea>`)}
                 </div>
@@ -11928,6 +11968,20 @@
                 case 'upRestore': _slb2Mutate(`↻ upgrade ${id}`, () => { delete _slb2Doc().upgrades[id]; }); _slb2RenderUpgrades(document.getElementById('slbMain')); _slb2RefreshChrome(); return;
                 case 'upToggle': { const u = SPELL_UPGRADES[id]; if (!u) return; const key = P('data-key'), v = P('data-val'); const cur = Array.isArray(u[key]) ? u[key] : []; _slb2SetUpgradeField(id, key, JSON.stringify(cur.includes(v) ? cur.filter(x => x !== v) : cur.concat(v)), 'json'); return; }
                 case 'upPatchDrop': _slb2SetUpgradeField(id, 'patch', '', 'text', P('data-key')); return;
+                case 'upMode': {   // ⚙ a spell's upgrade mode (Phase 5): AUTO (empty list) · CUSTOM (the current allowed set, pinned) · NONE
+                    const d = SPELL_BY_ID[id]; if (!d) return; const m = P('data-mode');
+                    if (m === 'auto') { window._slbSetField(id, 'upgrades', '[]', 'json'); if (d.upgradesAuto === false) window._slbSetField(id, 'upgradesAuto', '', 'json'); }
+                    else if (m === 'none') { window._slbSetField(id, 'upgrades', '[]', 'json'); window._slbSetField(id, 'upgradesAuto', 'false', 'json'); }
+                    else { const cur = (typeof spellAllowedUpgrades === 'function') ? spellAllowedUpgrades(Object.assign({}, d, { upgradesAuto: true, upgrades: [] })) : []; window._slbSetField(id, 'upgrades', JSON.stringify(cur), 'json'); if (d.upgradesAuto === false) window._slbSetField(id, 'upgradesAuto', '', 'json'); }
+                    _slb2RenderInspector(); return;
+                }
+                case 'upTry': {
+                    const u = P('data-up'); const cur = (_slbUpTry[id] || []).slice(); const reg = SPELL_UPGRADES;
+                    let next = cur.includes(u) ? cur.filter(x => x !== u) : cur.concat(u);
+                    if (reg[u] && reg[u].excl) next = next.filter(x => x === u || !reg[x] || reg[x].excl !== reg[u].excl);   // one of a kind, like the rack
+                    _slbUpTry[id] = next.slice(-((typeof SPELL_UPGRADE_MAX !== 'undefined') ? SPELL_UPGRADE_MAX : 2));
+                    _slb2RenderInspector(); return;
+                }
                 case 'mpMode': _slbMpMode = P('data-mode'); _slbMpKey = null; _slb2RenderPools(document.getElementById('slbMain')); return;
                 case 'mpPick': _slbMpKey = P('data-key'); _slbMpRenderRail(); _slbMpRenderDetail(); return;
                 case 'mpMove': { const key = P('data-key'), i = +P('data-i'), j = i + Number(P('data-dir')); const ids = _slbMpIds(key); if (j < 0 || j >= ids.length) return; const t = ids[i]; ids[i] = ids[j]; ids[j] = t; _slbMpWrite(key, ids, `${key}: ${t} moved`); return; }
@@ -11982,7 +12036,16 @@
                 case 'hookVal': { const key = t.getAttribute('data-hook'); const res = _slb2HookParse(t.getAttribute('data-htype'), v); if (res.error) { _slbToast(`✗ ${key}: ${res.error}`, true); return; } _slb2HookWrite(id, key, res.value); return; }
                 case 'riderNum': { const k = t.getAttribute('data-key'), n = Number(v); if (!isFinite(n) || n <= 0) { _slbToast('✗ ' + k + ' must be a number above 0', true); return; } _slb2RiderWrite(id, t.getAttribute('data-rider'), { [k]: (k === 'count' || k === 'radius') ? Math.round(n) : n }); return; }
                 case 'bonusMult': { const d = SPELL_BY_ID[id]; const ids = d && d.bonusVsStatus ? [].concat(d.bonusVsStatus.status) : []; const m = Number(v); if (!isFinite(m) || m <= 0) { _slbToast('✗ multiplier must be a number above 0', true); return; } _slb2BonusWrite(id, ids, m); return; }
-                case 'upgradeToggle': { const d = SPELL_BY_ID[id]; const u = t.getAttribute('data-up'); const cur = d && Array.isArray(d.upgrades) ? d.upgrades.slice() : []; const next = t.checked ? (cur.includes(u) ? cur : cur.concat(u)) : cur.filter(x => x !== u); window._slbSetField(id, 'upgrades', JSON.stringify(next), 'json'); return; }
+                case 'upgradeToggle': {
+                    // AUTO → CUSTOM keeps the auto set; unticking the last one turns the row to NONE (an empty list would mean AUTO again)
+                    const d = SPELL_BY_ID[id]; const u = t.getAttribute('data-up');
+                    const cur = d && Array.isArray(d.upgrades) && d.upgrades.length ? d.upgrades.slice() : ((d && typeof spellAllowedUpgrades === 'function') ? spellAllowedUpgrades(d) : []);
+                    const next = t.checked ? (cur.includes(u) ? cur : cur.concat(u)) : cur.filter(x => x !== u);
+                    window._slbSetField(id, 'upgrades', JSON.stringify(next), 'json');
+                    if (!next.length) window._slbSetField(id, 'upgradesAuto', 'false', 'json');
+                    else if (d && d.upgradesAuto === false) window._slbSetField(id, 'upgradesAuto', '', 'json');
+                    return;
+                }
                 case 'importFile': window._slbImportFile(t); return;
                 case 'mpAdd': if (v) { const key = t.getAttribute('data-key'); const ids = _slbMpIds(key); const match = SPELL_BY_ID[v] ? v : (_slb2Rows().find(r => String(r.def.name).toLowerCase() === v.toLowerCase()) || {}).id; if (!match) { _slbToast(`✗ unknown spell "${v}"`, true); return; } if (!ids.includes(match)) { ids.push(match); _slbMpWrite(key, ids, `${key}: ${match} added`); } t.value = ''; } return;
                 case 'famAddMember': if (v) { const fam = t.getAttribute('data-fam'); const match = SPELL_BY_ID[v] ? v : (_slb2Rows().find(r => String(r.def.name).toLowerCase() === v.toLowerCase()) || {}).id; if (!match) { _slbToast(`✗ unknown spell "${v}"`, true); return; } _slb2FamilyOf(match, fam, true); _slb2RenderFamilies(document.getElementById('slbMain')); } return;

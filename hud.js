@@ -3674,6 +3674,15 @@ function _hrlgSpellBadges(sp, cat, quick) {
   for (const bd of _hrlgStatusBadges(sp)) badges.push(bd);
   // THE TARGETING RIDERS (SPELL_LIBRARY_PLAN.md §4.7, Phase 3): random victims · a splash round the target
   for (const bd of _hrlgRiderBadges(sp)) badges.push(bd);
+  // ⚙ THE UPGRADES (Phase 5): a derived def (unit.spells holds it) wears its upgrades as one badge — ⚙n, the names on hover
+  if (sp && Array.isArray(sp._ups) && sp._ups.length) {
+    const reg = (typeof SPELL_UPGRADES !== 'undefined') ? SPELL_UPGRADES : {};
+    badges.push({
+      label: '⚙' + sp._ups.length,
+      style: Object.assign(typeBadgeStyle('#ffcd6b', { fontSize: 11, padding: '0 5px' }), { lineHeight: '18px' }),
+      title: 'Upgraded — ' + sp._ups.map(u => (reg[u] && (reg[u].name + (reg[u].desc ? ': ' + reg[u].desc : ''))) || u).join(' · '),
+    });
+  }
   return badges;
 }
 function _hrlgRiderBadges(sp) {
@@ -3684,6 +3693,19 @@ function _hrlgRiderBadges(sp) {
     label: '🎲×' + rt.count,
     style: Object.assign(typeBadgeStyle('#c9a2ff', { fontSize: 12, padding: '0 5px' }), { lineHeight: '18px' }),
     title: 'Random targets — no aim: hits ' + rt.count + (rt.distinct ? ' different' : '') + ' random ' + (rt.scope === 'units' ? 'units' : 'enemies') + ' in range' + (rt.mult !== 1 ? ' at ×' + rt.mult + ' damage each' : ''),
+  });
+  // THE UPGRADE RIDERS (Phase 5): a Ricochet bounce · Forked extra targets
+  const ric = (sp && sp.ricochetRider && typeof spellRicochetRiderOf === 'function') ? spellRicochetRiderOf(sp) : null;
+  const ext = (sp && sp.extraTargets && typeof spellExtraTargetsOf === 'function') ? spellExtraTargetsOf(sp) : null;
+  if (ric) out.push({
+    label: '↯ ' + Math.round(ric.mult * 100) + '%',
+    style: Object.assign(typeBadgeStyle('#9ad7ff', { fontSize: 11, padding: '0 5px' }), { lineHeight: '18px' }),
+    title: 'Ricochet — the hit bounces once to the weakest enemy within ' + ric.radius + ' tiles of the target for ' + Math.round(ric.mult * 100) + '% damage',
+  });
+  if (ext) out.push({
+    label: '⑂+' + ext.count,
+    style: Object.assign(typeBadgeStyle('#9ad7ff', { fontSize: 11, padding: '0 5px' }), { lineHeight: '18px' }),
+    title: 'Forked — ' + ext.count + ' more ' + (ext.count === 1 ? 'enemy' : 'enemies') + ' in range (the nearest to the target) take ' + Math.round(ext.mult * 100) + '% damage',
   });
   if (spl) out.push({
     label: 'SPL ' + Math.round(spl.mult * 100) + '%',
