@@ -926,3 +926,40 @@ job row or family, so no player can equip them until the user keeps one via the 
 Scatter Shot `riderScatterShot` (64 physical, 3 distinct random enemies in range 4) and Impact Round
 `riderImpactRound` (90 physical, 50 % splash radius 1). Tests: `spell-riders.test.js`, `ai-spell-routing.test.js`
 (three rows). Not playtested live.
+
+## THE PASSIVES + THE GEAR MERGE (SPELL_LIBRARY_PLAN.md Phase 4, 2026-09-26)
+
+The user's rulings (2026-09-25): equipment and passives are ONE kind of row, equipped in the spell slots, **at most 2
+of the 7** (`PASSIVE_SLOT_MAX`); today's accessories are **universal** (the GEAR family in every pool); tiers and SP
+are the user's to set. So:
+
+- **A passive row** = a `SPELL_BY_ID` row with `kind: 'passive'` (role passive), a numeric `tier` (= its SP), `families`,
+  `icon`, `desc` and `hooks: { <key>: value }`. It takes a slot and its tier in SP like a spell. The verdict
+  (`spellAddVerdict` reason `'passives'`, "2 PASSIVES MAX · UNEQUIP ONE"), `isTreeLoadoutLegal` and `treeLegalSubset`
+  (the third is skipped, earlier picks win — also the online host's check) enforce the cap. `buildTreeLegalLoadout`
+  may roll gear (weight 1, capped).
+- **The 16 gear rows** (`GEAR_PASSIVES`, ids `gearBinoculars` … `gearDowsingRod`, `accessory: '<old id>'`,
+  `GEAR_ID_OF_ACCESSORY` maps the retired ids): tier I, family `gear` (`universal: true` → `unitSpellPoolParts(...).gear`
+  in every unit's pool, a Freelancer's too). Spelunking Gear is gone (nothing read it). `EQUIP_DEFS` stays only as the
+  labels of the retired ids.
+- **On the board a passive row is never a spell**: map.js `createUnit` moves it out of `unit.spells` into
+  `unit.passiveRows` (ids — they ride the snapshot, so the guest reads the same rows; nothing relayed). `getUnitPassives`
+  = the race's inherent passives (still capped by `MAX_UNIT_PASSIVES`) + `passiveRowWrap(id)` per row (hooks at top
+  level, cached per row object), so every hook key reads through `unitPassiveValue` unchanged. `SPELL_KIND_META.passive`
+  + `_getSpellValidTargets` → [] are defence in depth. `unit.equipment` survives only as the DISPLAY mirror of the gear
+  rows (sprites, badges, the inventory's flare / ward); the truth is `passiveRows`. `unitHasAccessory(unit, accId)` reads
+  the rows (`unitHasGear` — never through getUnitPassives: canFly asks unitHasJetpack); a one-use flare / ward leaves the rows.
+- **The hook keys** (`PASSIVE_HOOK_KEYS` is the catalogue): the accessory behaviours became keys any passive may carry —
+  `statBonus` (the stat sticks; folded into the stats at build by `unitPassiveStatBonus`), `regenPerRound` (% max HP,
+  Chrono Locket 5), `surviveLethalOnce` (Talisman), `purgeDebuff: { lashAtkPct }` (Censer), `spellLock` (Brand / Focus;
+  the lock names the row), `basicEcho` (Echo Band 0.5), `revealInvisibleWithin` (Hagstone 4), `revealTrapsWithin`
+  (Dowsing Rod 3), `buildBonus: { build | dig }` (Mason's Gauntlets 1 → 2 ops / AP, capped 4), `grantSpell: { id, cost }`
+  (Grapnel Gauntlet). New keys the user named: `healOnceBelowPct: { pct, healPct }` (once per life, `_passiveSpent`,
+  recharged at respawn), `physicalElementRider: '<element>'` (a physical hit with no element takes it —
+  applyDamageToUnit, so affinity + combos read it), `weatherBonus` / `terrainBonus` / `zodiacBonus` = STAT STAGES
+  (`{ storm: { atkStages: 1 } }`; zodiac keys: a sign, an element's three signs, or `'own'`) added in
+  `getStatStageCount`, so the ruler clamp and every consumer inherit them.
+- **Old saves**: the retired `equipment` pair folds into the kit as gear rows after the save's own picks
+  (`gearMigrateIds`) on createUnit's three kit paths, in the forge (party-builder) and in the HQ record
+  (`hqPartyNormMember`), then the repair prices and caps them. `recordLastParty` still files the raw pair (migrated at build).
+- Test: `family-passives.test.js`. Not playtested live.

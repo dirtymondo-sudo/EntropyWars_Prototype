@@ -666,3 +666,24 @@ the SPLASH grid appear under the FOOTPRINT. A non-damage kind gets the button gr
 The rail's HAS group gains "random / splash" (`riders` flag). The rack / HQ blades: 🎲×N and SPL N% badges
 (hud.js `_hrlgRiderBadges`) and a splash row's card shape; the board: a random row's self-cast preview washes its
 range and lights the pool, a splash row's hover lights the splash tiles with dmg × mult badges. CSS `.slb2-rider*`.
+
+## ◈ THE PASSIVES ROW (SPELL_LIBRARY_PLAN.md Phase 4, 2026-09-26)
+
+- **The forge's rack** (party-builder.js `pbTierCtx` → `ctx.passives`, `SpellTierPanel`'s `pb-tier pb-tier-pas`): passive /
+  gear rows leave the four tier rows for a ◈ PASSIVES row under Tier I (the unit's own passive rows first, then the
+  16 GEAR rows), head "◈ n/2"; a chip wears the row's icon, its statBonus as "+28 AWR", "PASSIVE", and a refused one
+  reads "2 PASSIVES MAX" (`is-passives`, styles-base.css). The keyboard grid walks it; a passive never previews a cast.
+- **The GEAR tab**: the two accessory slots are retired — the boxes SHOW the equipped passive rows (at most 2); a click
+  opens TECHNIQUES, ✕ unequips. The gear picker, `handleAccChange`, `equipAccessory` and `ACC_ICONS` are gone. The stat
+  preview reads `passiveIdsStatBonus(customSpells)`; the sticky notes show the rows (`pbUnitNotes(..., spellIds)`).
+- **The HQ pause rack** (data.js `hqPartyTreeCircuit().passives`, map.js `_hqPauseCircuitHtml`): the same ◈ PASSIVES row
+  under the tiers; the member sheet's GEAR section lists the kit's passive rows ("n / 2 · IN THE SPELL SLOTS").
+- **The library** (ui.js SPELL LIBRARY v2): a passive row's EFFECTS tab opens on the structured HOOKS editor
+  (`_slb2HooksEditor`: one line per key with its type, desc, reader and a typed control; ＋ HOOK ▾ lists every
+  `PASSIVE_HOOK_KEYS` key with its example; every write is a NEW hooks object through `_slbSetField`, one undo step;
+  the hook lint on top). The PASSIVES tab lists the gear rows (owner "gear · universal"); NEW ▾ passive templates match
+  the engine (build = `buildBonus: { build: 1 }`; new passives default to the `gear` family = equippable by every unit —
+  retag to scope one). Pure helpers `_slb2HookRows / _slb2HookPalette / _slb2HookParse / _slb2HookCheck / _slb2HooksWith`
+  (tested in spell-library-ui.test.js). Fixed a Phase 1 bug on the way: popovers and modals attach to
+  `#spellLibraryPage`, outside the body's click delegation, so their buttons were dead (NEW ▾ items, ROLE, ⋯, the
+  dialogs' CANCEL, EXPORT's COPY / DOWNLOAD) — `_slb2BindFloat` gives each its own listeners.
