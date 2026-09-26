@@ -1136,7 +1136,10 @@
                 return;
             }
 
-            const area = getSquareArea(ds.x, ds.y, ds.aoeRadius || 1);
+            /* Phase 2 mask: a masked delayed spell blasts exactly its mask's tiles (battle.js stored `aoeMask`). */
+            const area = (ds.aoeMask && typeof aoeMaskValid === 'function' && aoeMaskValid(ds.aoeMask) && typeof aoeMaskTiles === 'function')
+                ? aoeMaskTiles(ds.aoeMask, ds.x, ds.y, bw(), bh())
+                : getSquareArea(ds.x, ds.y, ds.aoeRadius || 1);
             const allUnits = state.units.filter(u => !u.dead);
             for (const tile of area) {
                 const hit = allUnits.find(u => u.x === tile.x && u.y === tile.y && (ds.friendlyFire || u.player !== ds.sourcePlayer));

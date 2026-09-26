@@ -3477,11 +3477,28 @@ function _hrlgSpellShape(sp) {
     const preset = (typeof aoeMaskPresetOf === 'function') ? aoeMaskPresetOf(sp.aoeMask) : null;
     return { kind: 'mask', r: Math.max(1, r), cells, label: preset ? preset + ' (drawn)' : cells.size + ' tiles (drawn)' };
   }
+  // THE SHAPED FIELDS (Phase 2): an X-cross (diagonal) and a round / diamond / ring aoeShape draw as a cell set, not a full box / plus
+  if (sp.crossRadius && sp.diagonal && !sp.diamond) return _hrlgCellShape(sp.crossRadius, (x, y) => Math.abs(x) === Math.abs(y), 'X r' + sp.crossRadius);
   if (sp.crossRadius) return { kind: sp.diamond ? 'diamond' : 'cross', r: sp.crossRadius, label: (sp.diamond ? 'Diamond r' : 'Cross r') + sp.crossRadius };
+  const _ar = sp.blastRadius || ((sp.aoeRadius != null && sp.aoeRadius > 0) ? sp.aoeRadius : 0);
+  if (_ar && sp.aoeShape === 'ring') return _hrlgCellShape(_ar, (x, y) => Math.max(Math.abs(x), Math.abs(y)) === _ar, 'Ring r' + _ar);
+  if (_ar && sp.aoeShape === 'diamond') return _hrlgCellShape(_ar, (x, y) => Math.abs(x) + Math.abs(y) <= _ar, 'Diamond r' + _ar);
+  if (_ar && sp.aoeShape === 'round') return _hrlgCellShape(_ar, (x, y) => !(Math.abs(x) === _ar && Math.abs(y) === _ar), 'Round r' + _ar);   // the engine's getRoundArea: the box minus its corners
   if (sp.lineWidth || k === 'line' || k === 'linePush') return { kind: 'line', w: sp.lineWidth || 1, len: Math.min(5, sp.lineLength || sp.range || 4), label: 'Line' + (sp.lineWidth > 1 ? ' ×' + sp.lineWidth + ' wide' : '') };
   const r = sp.blastRadius || ((sp.aoeRadius != null && sp.aoeRadius > 0) ? sp.aoeRadius : 0);
   if (r) return { kind: 'aoe', r, label: (r * 2 + 1) + '×' + (r * 2 + 1) + ' area' };
   return null;
+}
+/* A shaped footprint as a 'mask' shape (r ≤ 3): `on(dx, dy)` says which cells of the (2r+1)² box are lit. */
+function _hrlgCellShape(r, on, label) {
+  r = Math.max(1, Math.min(3, r | 0));
+  const cells = new Set();
+  for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) if (on(dx, dy)) cells.add(dx + ',' + dy);
+  return { kind: 'mask', r, cells, label };
+}
+/* A drawn mask that spares its centre (a ring, a hollow box) needs the ring aim: a cast CENTRE whose footprint covers the enemy. */
+function _hudMaskIsHollow(sp) {
+  return !!(sp && typeof aoeMaskValid === 'function' && aoeMaskValid(sp.aoeMask) && !sp.aoeMask.some(o => o[0] === 0 && o[1] === 0));
 }
 function _hrlgShapeTiles(shape, opts) {
   const cells = [];
@@ -5773,9 +5790,11 @@ function _computeEnemyActions(actingUnit, targetUnit) {
                    { x: targetUnit.x, y: targetUnit.y + 1 },
                    { x: targetUnit.x + 1, y: targetUnit.y + 1 });
       }
+      const _mask = (typeof aoeMaskValid === 'function' && aoeMaskValid(sp.aoeMask)) ? sp.aoeMask : null;   // THE AOE MASK (§4.7): the drawn footprint replaces the arms
       return cells.some(c => {
         const adx = Math.abs(c.x - sxx), ady = Math.abs(c.y - syy);
         if (adx === 0 && ady === 0) return false;
+        if (_mask) return _mask.some(o => o[0] === c.x - sxx && o[1] === c.y - syy);
         if (sp.diamond) return adx + ady <= r;
         if (sp.diagonal) return adx === ady && adx <= r;
         return (adx === 0 && ady <= r) || (ady === 0 && adx <= r);
@@ -5831,7 +5850,7 @@ function _computeEnemyActions(actingUnit, targetUnit) {
         ? (targetUnit.z ?? (typeof getHeightAt === 'function' ? getHeightAt(tx, ty) : 0))
         : 0;
       inSpellRange = !!targetUnit && dist >= 1 && dist <= spRange && !spLos && _csh > _tsh;
-    } else if (sp.aoeShape === 'ring' && typeof findAoeCastCenterForTarget === 'function') {
+    } else if ((sp.aoeShape === 'ring' || _hudMaskIsHollow(sp)) && typeof findAoeCastCenterForTarget === 'function') {
 
       // Ring-shaped AOEs (Fae Ring) spare their center: "castable on this
       // enemy" = a legal cast CENTER exists whose rim covers them — NOT the
@@ -6543,7 +6562,8 @@ function _showMoveArrowPreview(actingUnit, targetUnit, mt, action) {
   if (action && action.spell && typeof getSpellAoeFootprint === 'function') {
     const sp = action.spell;
     const hasAoe = sp.aoeRadius || sp.crossRadius || sp.kind === 'cross' || sp.kind === 'aoe'
-                 || sp.kind === 'barrage' || sp.kind === 'aoePull' || sp.kind === 'aoePush';
+                 || sp.kind === 'barrage' || sp.kind === 'aoePull' || sp.kind === 'aoePush'
+                 || (typeof aoeMaskValid === 'function' && aoeMaskValid(sp.aoeMask));
     if (hasAoe) {
       const aoeTiles = getSpellAoeFootprint(sp, tx, ty, actingUnit);
       if (aoeTiles && aoeTiles.length > 0) {
@@ -6836,7 +6856,7 @@ function _fireEnemyAction(actingUnit, targetUnit, a) {
       // after any move-then-cast walk above). Aiming at the enemy themselves
       // would put them in the ring's hole and guarantee a miss.
       let _aimX = tx, _aimY = ty, _aimZ = tz;
-      if (spell.aoeShape === 'ring' && typeof findAoeCastCenterForTarget === 'function') {
+      if ((spell.aoeShape === 'ring' || _hudMaskIsHollow(spell)) && typeof findAoeCastCenterForTarget === 'function') {
         const _rc = findAoeCastCenterForTarget(actingUnit, spell, tx, ty);
         if (_rc) { _aimX = _rc.x; _aimY = _rc.y; _aimZ = undefined; }
       }

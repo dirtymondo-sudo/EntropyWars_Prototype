@@ -4157,6 +4157,18 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         return out;
     }
 
+    /* THE MASK (SPELL_LIBRARY_PLAN.md §6.1, Phase 2): a spell's `aoeMask` ([dx,dy] offsets, fixed on the
+       board) IS the footprint — the mapped aoe / descent / aura effects paint exactly its tiles. The
+       engine hands the mask in params (with the reach as params.aoeRadius); a bare fire() falls back to
+       the spell def's own row. Returns { tileOffsets, aoeRadius } or null when the spell has no mask. */
+    function _maskTileOffsets(spellId, params, aoeRadius) {
+        var sd = (params && params.aoeMask && params.aoeMask.length) ? { aoeMask: params.aoeMask } : (typeof _spellDefFor === 'function' ? _spellDefFor(spellId) : null);
+        if (!sd || typeof aoeMaskValid !== 'function' || !aoeMaskValid(sd.aoeMask)) return null;
+        var offs = sd.aoeMask.map(function (o) { return { dx: o[0], dy: o[1] }; });
+        var r = (params && params.aoeRadius != null) ? aoeRadius : Math.max(1, aoeMaskBound(sd.aoeMask));
+        return { tileOffsets: offs, aoeRadius: r };
+    }
+
     function _fireDescent(spellId, params) {
         if (_catOff('spells')) return;
         if (!_canSpawn()) return;
@@ -4188,6 +4200,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var shape = descentDef.shape || 'square';
 
         var tileOffsets = _buildTileOffsets(shape, aoeRadius);
+        var _mo = _maskTileOffsets(spellId, params, aoeRadius);
+        if (_mo) { tileOffsets = _mo.tileOffsets; aoeRadius = _mo.aoeRadius; }
         /* The flyover's altitude above the strike tile (px), once known —
            the warhead drops FROM the aircraft (2026-09-13). */
         var _flyRel = null;
@@ -5224,6 +5238,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             : (aoeDef.aoeRadius != null ? aoeDef.aoeRadius : 0);
         var shape = aoeDef.shape || 'square';
         var tileOffsets = _buildTileOffsets(shape, aoeRadius);
+        var _mo = _maskTileOffsets(spellId, params, aoeRadius);
+        if (_mo) { tileOffsets = _mo.tileOffsets; aoeRadius = _mo.aoeRadius; }
 
         if (aoeDef.missiles && params.cx != null && params.cy != null) {
             var m = aoeDef.missiles;
@@ -20406,6 +20422,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             : (auraDef.aoeRadius != null ? auraDef.aoeRadius : 0);
         var shape = auraDef.shape || 'square';
         var tileOffsets = _buildTileOffsets(shape, aoeRadius);
+        var _mo = _maskTileOffsets(spellId, params, aoeRadius);
+        if (_mo) { tileOffsets = _mo.tileOffsets; aoeRadius = _mo.aoeRadius; }
 
         if (auraDef.pillarSprite) {
             var c = tilePx(tx, ty);
@@ -21012,7 +21030,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         else if (tier === 'I') s += 0.4;
         var pow = Math.max(def.dmg || 0, def.heal || def.healAmt || 0);
         s += Math.min(2.5, pow / 70);                       /* 0–2.5 */
-        s += Math.min(2, (def.aoeRadius || 0) * 0.9);
+        var _sr = def.aoeRadius || ((typeof aoeMaskValid === 'function' && aoeMaskValid(def.aoeMask)) ? aoeMaskBound(def.aoeMask) : 0);
+        s += Math.min(2, (_sr || 0) * 0.9);
         if (def.range >= 6) s += 0.4;                       /* reach = spectacle */
         if (def.oneRevivePerUnitPerMatch || def.cooldown || def.cd) s += 1.2;
         if (def.ultimate || def.isUltimate || def.limitBreak) s += 3;
@@ -39303,7 +39322,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var S = _CAP_SIGS[id];
         if (!S || _capOff() || _suppressed() || _catOff('spells')) return;
         var def = _spellDefFor(id) || {};
-        var P = { tx: tx, ty: ty, r: r != null ? r : (def.aoeRadius || 0), def: def, ts: _capTs() };
+        var _dr = def.aoeRadius || ((typeof aoeMaskValid === 'function' && aoeMaskValid(def.aoeMask)) ? Math.max(1, aoeMaskBound(def.aoeMask)) : 0);
+        var P = { tx: tx, ty: ty, r: r != null ? r : _dr, def: def, ts: _capTs() };
         if (p && p._cap) {
             P.sx = p.sx != null ? p.sx : tx; P.sy = p.sy != null ? p.sy : ty;
             P.tx = p.tx != null ? p.tx : tx; P.ty = p.ty != null ? p.ty : ty;

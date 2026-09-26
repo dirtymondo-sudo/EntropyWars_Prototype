@@ -11747,7 +11747,7 @@ const ThreeRenderer = (function () {
         if (!queue.length) return;
         var ctx = {};
         function tick() {
-            if (modelEntry._libBakedFrom !== bakeKey || !modelEntry._libBaked) { modelEntry._libDeferCbs = null; return; }
+            if (modelEntry._libBakedFrom !== bakeKey || !modelEntry._libBaked) return;   // a newer bake owns the model (and its listener list)
             var slot = queue.shift();
             var clip = null;
             try { clip = _libBakeClips(entries, modelEntry, def, { only: slot, ctx: ctx })[slot] || null; }
@@ -11762,7 +11762,9 @@ const ThreeRenderer = (function () {
                 }
             }
             if (queue.length) _libDeferNext(tick);
-            else modelEntry._libDeferCbs = null;   // every verb is in _libBaked now — later rigs wire it with the rest
+            /* the list stays open after the queue drains (THE LOOK): a raw clip
+               picked on a spell row bakes on demand later (_libBakeSlotNow) and
+               reaches every live rig the same way */
         }
         _libDeferNext(tick);
     }
@@ -11772,9 +11774,117 @@ const ThreeRenderer = (function () {
     }
     /* a rig that wired its eager slots listens for the verbs still baking;
        listen(slot, clip) returns false once the rig is gone */
-    function _libOnDeferred(modelEntry, listen) {
+    function _libOnDeferred(modelEntry, listen, alive) {
         if (!modelEntry || !modelEntry._libDeferCbs) return;
-        modelEntry._libDeferCbs.push(listen);
+        if (typeof alive === 'function') listen.alive = alive;
+        var cbs = modelEntry._libDeferCbs;
+        for (var i = cbs.length - 1; i >= 0; i--) {   // the list lives as long as the model: drop the rigs that are gone
+            if (typeof cbs[i].alive === 'function') { var ok = false; try { ok = !!cbs[i].alive(); } catch (_e) {} if (!ok) cbs.splice(i, 1); }
+        }
+        cbs.push(listen);
+    }
+    /* THE LOOK (2026-09-26): bake ONE slot now — a raw library clip a spell row
+       picked (sprites.js animClip → the synthetic slot 'clip:<name>'), or any
+       slot the eager / deferred bakes have not reached. Ensures the library
+       GLBs are resident (they are, for any rig that baked), bakes with the
+       same retarget as the load bake, caches the clip on the model's
+       _libBaked so every later rig wires it with the rest, and fires the
+       model's deferred listeners so every LIVE rig wires it at once. A slot
+       the def does not name is synthesized from its 'clip:' name (opts.lib,
+       else the first library that carries the clip). cb(clip | null). */
+    function _libBakeSlotNow(modelEntry, def, slot, cb, opts) {
+        cb = (typeof cb === 'function') ? cb : function () {};
+        try {
+            if (!modelEntry || !modelEntry.root || !def || typeof slot !== 'string' || !slot) { cb(null); return; }
+            if (modelEntry._libBaked && modelEntry._libBaked[slot]) { cb(modelEntry._libBaked[slot]); return; }
+            if (!_animLibActive(def)) { cb(null); return; }
+            var urls = _libUrls(def);
+            if (!urls.length) { cb(null); return; }
+            var pending = urls.length, done = false;
+            function bake() {
+                if (done) return;
+                done = true;
+                try {
+                    if (modelEntry._libBaked && modelEntry._libBaked[slot]) { cb(modelEntry._libBaked[slot]); return; }
+                    var entries = urls.map(function (u) { return _unitGlbCache[u]; });
+                    if (!def.libClips) def.libClips = {};
+                    if (!def.libClips[slot]) {
+                        if (slot.indexOf('clip:') !== 0) { cb(null); return; }
+                        var name = slot.slice(5);
+                        var lib = (opts && typeof opts.lib === 'number' && opts.lib >= 0) ? (opts.lib | 0) : -1;
+                        for (var i = 0; i < entries.length && lib < 0; i++) {
+                            var cl = (entries[i] && entries[i].clips) || [];
+                            for (var j = 0; j < cl.length; j++) if (cl[j].name === name) { lib = i; break; }
+                        }
+                        def.libClips[slot] = { clip: name, lib: lib < 0 ? 0 : lib, defer: true };
+                    }
+                    var out = _libBakeClips(entries, modelEntry, def, { only: slot });
+                    var clip = (out && out[slot]) || null;
+                    if (clip && modelEntry._libBaked) {
+                        modelEntry._libBaked[slot] = clip;
+                        var cbs = modelEntry._libDeferCbs || [];
+                        for (var k = cbs.length - 1; k >= 0; k--) {
+                            var keep = false;
+                            try { keep = cbs[k](slot, clip) !== false; } catch (_e) {}
+                            if (!keep) cbs.splice(k, 1);
+                        }
+                    }
+                    cb(clip);
+                } catch (ex) {
+                    console.warn('[ThreeRenderer] on-demand bake failed for', slot, ex && ex.message);
+                    cb(null);
+                }
+            }
+            function onOne() { if (--pending <= 0) bake(); }
+            urls.forEach(function (url) {
+                _loadUnitGLB(url, function () {});
+                var le = _unitGlbCache[url];
+                if (!le || le.root || le.failed) { onOne(); return; }
+                (le.doneCbs = le.doneCbs || []).push(onOne);
+            });
+        } catch (ex2) { cb(null); }
+    }
+    /* the board's side of it: a cast whose chain leads with a 'clip:' slot the
+       rig has not wired yet bakes it now (synchronously when the libraries are
+       resident — the clip plays on THIS cast; otherwise the chain's next slot
+       plays and the clip is there for the next one). One attempt per rig+slot. */
+    function _castClipWarm(uid, slot) {
+        var ue = _getUnitEntry(uid);
+        if (!ue || !ue.actions || ue.actions[slot] || !ue._ew_libBaked || !ue._ew_def) return;
+        if (ue._ew_clipWarm && ue._ew_clipWarm[slot]) return;
+        (ue._ew_clipWarm = ue._ew_clipWarm || {})[slot] = true;
+        var me = _unitGlbCache[ue._ew_def.model];
+        if (!me) return;
+        _libBakeSlotNow(me, ue._ew_def, slot, function () {});   // the rig's _libOnDeferred listener wires it
+    }
+    /* every animation library's clip list (the spell editor's clip picker):
+       returns what is resident now; cb(list) once every library has loaded or
+       failed. [{ lib, url, file, loaded, failed, clips: [{ name, duration }] }] */
+    function _libUrlsAll() {
+        if (typeof window !== 'undefined' && Array.isArray(window.EW_ANIM_LIB_URLS)) return window.EW_ANIM_LIB_URLS;
+        return (typeof EW_ANIM_LIB_URLS !== 'undefined' && Array.isArray(EW_ANIM_LIB_URLS)) ? EW_ANIM_LIB_URLS : [];
+    }
+    function devLibClips(cb) {
+        var urls = _libUrlsAll();
+        function list() {
+            return urls.map(function (u, i) {
+                var e = _unitGlbCache[u];
+                return { lib: i, url: u, file: u.slice(u.lastIndexOf('/') + 1), loaded: !!(e && e.root), failed: !!(e && e.failed),
+                         clips: ((e && e.clips) || []).map(function (c) { return { name: c.name, duration: c.duration }; }) };
+            });
+        }
+        if (typeof cb === 'function') {
+            var pending = urls.length, fired = false;
+            var onOne = function () { if (--pending <= 0 && !fired) { fired = true; try { cb(list()); } catch (_e) {} } };
+            urls.forEach(function (u) {
+                try { _loadUnitGLB(u, function () {}); } catch (_e) {}
+                var le = _unitGlbCache[u];
+                if (!le || le.root || le.failed) { onOne(); return; }
+                (le.doneCbs = le.doneCbs || []).push(onOne);
+            });
+            if (!urls.length) onOne();
+        }
+        return list();
     }
 
     /* Async wrapper: loads every library GLB (once each, shared by every
@@ -11785,7 +11895,7 @@ const ThreeRenderer = (function () {
        falls back to the def's Meshy clip GLBs. */
     function _animLibBakeForModel(def, modelEntry, cb) {
         var urls = _libUrls(def);
-        var bakeKey = urls.join('|') + (_libStandardPose(def) ? '|std' : '|keep') + '|' + Object.keys(def.libClips || {}).length;
+        var bakeKey = urls.join('|') + (_libStandardPose(def) ? '|std' : '|keep') + '|' + Object.keys(def.libClips || {}).filter(function (k) { return k.indexOf('clip:') !== 0; }).length;   // THE LOOK: a 'clip:' slot bakes on demand (_libBakeSlotNow), never forces a re-bake
         if (modelEntry._libBakedFrom === bakeKey) { cb(modelEntry._libBaked); return; }
         if (modelEntry._libBakeCbs) {
             /* a bake is in flight on this model: join it only when it is the
@@ -12202,7 +12312,7 @@ const ThreeRenderer = (function () {
                 // shield block, the fall flail, and every cast variant
                 // (cast / castMagic / … — sprites.js role guide).
                 if (name === 'death' || name.indexOf('hit') === 0 || name === 'block'
-                    || name === 'fall' || name.indexOf('cast') === 0) {
+                    || name === 'fall' || name.indexOf('cast') === 0 || name.indexOf('clip:') === 0) {   // THE LOOK: a raw clip pick plays once too
                     act.setLoop(THREE.LoopOnce, 0);
                     act.clampWhenFinished = true;
                 } else {
@@ -12272,7 +12382,7 @@ const ThreeRenderer = (function () {
                         if (entry.mixer !== mixer) return false;
                         if (!entry.actions[name]) _wireSlot(name, clip, (def.libTimeScales && def.libTimeScales[name]) || 1);
                         return true;
-                    });
+                    }, function () { return entry.mixer === mixer; });   // THE LOOK: the list outlives the deferred queue — this prunes a gone rig
                 });
             } else {
                 _loadMeshyClips();
@@ -12324,6 +12434,19 @@ const ThreeRenderer = (function () {
        inline this table again: the viewer's MOVE PREVIEW must not drift from
        what the battle plays (party-builder.test.js checks both call sites). */
     function _castChainFor(kind) {
+        /* THE LOOK (2026-09-26, SPELL_LIBRARY_PLAN.md §4.6): a row's own slot
+           pick rides in the kind as 'slot:<slot>/<autoKind>' (sprites.js
+           classifySpellAnimKind — animSlot, or animClip as 'clip:<name>');
+           the slot leads and the auto kind's chain follows, so a slot the rig
+           lacks (not baked yet, a typo) falls down to what it played before. */
+        if (typeof kind === 'string' && kind.indexOf('slot:') === 0) {
+            var cut = kind.lastIndexOf('/');
+            var slot = (cut >= 5) ? kind.slice(5, cut) : kind.slice(5);
+            var auto = (cut >= 5) ? kind.slice(cut + 1) : 'melee';
+            return slot ? [slot].concat(base(auto)) : base(auto);
+        }
+        return base(kind);
+        function base(kind) {
         return (kind === 'support') ? ['castSupport', 'castMagic', 'cast'] :
             (kind === 'ranged')  ? ['castRanged', 'cast'] :
             (kind === 'throw')   ? ['castThrow', 'castRanged', 'cast'] :
@@ -12391,6 +12514,7 @@ const ThreeRenderer = (function () {
             (kind === 'leapSlash') ? ['castLeapSlash', 'castHeavySlash', 'castMelee', 'cast'] :   // jump, the blade driven down
             (kind === 'leapPunch') ? ['castLeapPunch', 'castLeap', 'castPunch', 'cast'] :   // the leap, the fist into the ground
             (kind === 'flyKick') ? ['castFlyKick', 'castLeap', 'castKick', 'cast'] : ['cast'];   // the flying kick
+        }
     }
     /* THE STRIKE FRAME (2026-09-09). Every action slot in sprites.js
        UAL_SLOTS names `strikeAt` — the source-clip second on which the hit /
@@ -21121,6 +21245,7 @@ const ThreeRenderer = (function () {
                     // battle.js triggerCastAnim via classifySpellAnimKind).
                     var _ck = state._castAnimKind ? state._castAnimKind[uid] : null;
                     var _castChain = _castChainFor(_ck);   // shared table (the builder preview uses it too)
+                    if (_castChain[0] && _castChain[0].indexOf('clip:') === 0) _castClipWarm(uid, _castChain[0]);   // THE LOOK: a raw clip pick bakes on demand
                     if (!_maybeStartModelAnim(uid, _castChain)
                         && !_maybeStartSpriteAnim(uid, _dmg ? 'attack' : 'spell')) {
                         _castTweens.set(uid, {
@@ -37976,6 +38101,7 @@ const ThreeRenderer = (function () {
             var ms = (clip.duration / scale) * 1000;
             if (!opts.full) ms = Math.min(ms, 1400);   // the board's cap
             if (opts.ms > 0) ms = opts.ms;              // a fixed length (a run held for the charge)
+            else if (opts.loop) ms = 60000;             // THE LOOK: a looped preview runs until stopPreview()
             ms = Math.max(120, Math.round(ms));
             // a run loops for its length; everything else plays once and holds its last frame
             if (opts.loop) act.setLoop(THREE.LoopRepeat, Infinity); else act.setLoop(THREE.LoopOnce, 0);
@@ -38016,6 +38142,7 @@ const ThreeRenderer = (function () {
        the beat then falls back to its old 45 % guess. */
     function _cvStrikeMs(spell, opts) {
         var v = _cv;
+        if (spell && typeof spell.animStrikeMs === 'number' && spell.animStrikeMs >= 0) return Math.round(spell.animStrikeMs);   // THE LOOK: the row's own strike ms
         if (!v || !v.def || !v.clips) return -1;
         var slot = _cvFirstSlot(_cvSpellChain(spell, opts));
         if (!slot || !v.clips[slot]) return -1;          // only library bakes carry the table
@@ -38027,6 +38154,57 @@ const ThreeRenderer = (function () {
             if (ref && typeof ref.strikeAt === 'number') ms = Math.round(((ref.strikeAt - (ref.trim ? ref.trim[0] : 0)) / (ts || 1)) * 1000);
         }
         return ms;
+    }
+
+    /* THE LOOK (2026-09-26, SPELL_LIBRARY_PLAN.md §6.5): the editor's clip
+       picker. playClip(name, lib, opts) plays a RAW library clip on the vessel
+       — baked on demand into the synthetic slot 'clip:<name>' (the same slot
+       the board plays for a row's animClip). Returns the played ms, 1 when a
+       bake was started (the clip plays when it lands), 0 = nothing to play. */
+    function _cvPlayClip(name, lib, opts) {
+        var v = _cv;
+        opts = opts || {};
+        if (!v || !v.mixer || !v.model || typeof name !== 'string' || !name) return 0;
+        var slot = 'clip:' + name;
+        if (v.clips && v.clips[slot]) return _cvPlay(slot, opts);
+        if (!v.def || !_animLibActive(v.def)) return 0;
+        var me = _unitGlbCache[v.def.model];
+        if (!me || !me.root) return 0;
+        if (!v.def.libClips[slot]) v.def.libClips[slot] = { clip: name, lib: (typeof lib === 'number' && lib >= 0) ? (lib | 0) : 0, defer: true };
+        var tok = _cvToken;
+        _libBakeSlotNow(me, v.def, slot, function (clip) {
+            if (!clip || !_cv || _cv !== v || tok !== _cvToken || !v.mixer) return;
+            v.clips = v.clips || {};
+            v.clips[slot] = clip;
+            _cvPlay(slot, opts);
+        }, { lib: lib });
+        return 1;
+    }
+    /* slotInfo(slot): the slot's table row + the source clip's length —
+       { slot, clip, lib, ts, trim, strikeAt, strikeMs, playedMs, travel,
+         defer, baked, duration }; null for a slot no table names. Static
+       fields work without a mounted viewer (UAL_SLOTS); durations need the
+       library loaded (devLibClips / libClips(cb) warms them). */
+    function _cvSlotInfo(slot) {
+        var v = _cv, def = v && v.def;
+        if (typeof slot !== 'string' || !slot) return null;
+        var ref = (def && def.libClips && def.libClips[slot]) || (typeof UAL_SLOTS !== 'undefined' && UAL_SLOTS[slot]) || null;
+        if (!ref) return null;
+        var clipName = (typeof ref === 'string') ? ref : ref.clip;
+        var lib = (typeof ref === 'object' && ref.lib) || 0;
+        var ts = (def && def.libTimeScales && def.libTimeScales[slot]) || (typeof UAL_SLOTS !== 'undefined' && UAL_SLOTS[slot] && UAL_SLOTS[slot].ts) || (typeof ref === 'object' && ref.ts) || 1;
+        var trim = (typeof ref === 'object' && Array.isArray(ref.trim) && ref.trim.length === 2) ? [ref.trim[0], ref.trim[1]] : null;
+        var strikeAt = (typeof ref === 'object' && typeof ref.strikeAt === 'number') ? ref.strikeAt : -1;
+        var urls = def ? _libUrls(def) : _libUrlsAll();
+        var le = _unitGlbCache[urls[lib]], duration = -1;
+        if (le && le.clips) for (var i = 0; i < le.clips.length; i++) if (le.clips[i].name === clipName) { duration = le.clips[i].duration; break; }
+        var span = trim ? (trim[1] - trim[0]) : duration;
+        var playedMs = (span >= 0) ? Math.round((span / ts) * 1000) : -1;
+        var st = (strikeAt >= 0) ? strikeAt - (trim ? trim[0] : 0) : -1;   // as _slotStrikeMs
+        var strikeMs = (st >= 0) ? Math.round((st / ts) * 1000) : -1;
+        return { slot: slot, clip: clipName, lib: lib, ts: ts, trim: trim, strikeAt: strikeAt, strikeMs: strikeMs,
+                 playedMs: playedMs, duration: duration, travel: !!(typeof ref === 'object' && ref.travel),
+                 defer: !!(typeof ref === 'object' && ref.defer), baked: !!(v && v.clips && v.clips[slot]) };
     }
 
     /* ── THE STAGE (PARTY_BUILDER_PLAN §5.3) — the spell LIGHTS UP the viewer ──
@@ -38603,6 +38781,12 @@ const ThreeRenderer = (function () {
            isPlaying(). Sprite-only vessels return 0 from both plays. */
         play: function (names, opts) { return _cvPlay(names, opts); },
         playSpell: function (spell, opts) { return _cvPlaySpell(spell, opts); },
+        /* THE LOOK (2026-09-26): playClip(name, lib, opts) → ms | 1 (baking) | 0;
+           slotInfo(slot) → the slot's row + clip length; libClips(cb) → every
+           library's clips (ThreeRenderer.devLibClips). */
+        playClip: function (name, lib, opts) { return _cvPlayClip(name, lib, opts); },
+        slotInfo: function (slot) { return _cvSlotInfo(slot); },
+        libClips: function (cb) { return devLibClips(cb); },
         stopPreview: function () { _cvPreviewEnd(false); },
         isPlaying: function () { return !!(_cv && _cv.preview); },
         onState: function (fn) { var v = _cv || _cvEnsure(); if (v) v.onState = (typeof fn === 'function') ? fn : null; },
@@ -57050,6 +57234,10 @@ const ThreeRenderer = (function () {
            rigged library clip (sprite, Meshy fallback, unknown kind). */
         castStrikeMs: function (uid, kind) { return _unitAnimStrikeMs(uid, _castChainFor(kind)); },
         attackStrikeMs: function (uid, kind) { return _unitAnimStrikeMs(uid, _attackChainFor(kind)); },
+        /* THE LOOK (2026-09-26): the spell editor reads the chain a kind resolves
+           to ("drain → castDrain") and every library's clip list. */
+        castChainFor: function (kind) { return _castChainFor(kind); },
+        devLibClips: devLibClips,
 
         /* Opening cinematic (battle.js playOpeningCinematic) */
         introCineStart, introCineFadeDoors, introCineEnd, introCineWarm,

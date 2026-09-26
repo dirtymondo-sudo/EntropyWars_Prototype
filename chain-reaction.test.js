@@ -21,7 +21,8 @@ function between(src, a, b) {
     const j = src.indexOf(b, i); assert.ok(j > i, 'missing end anchor ' + b);
     return src.slice(i, j);
 }
-const CHAIN_SRC = between(battle, '        const CHAIN_RULES = { maxDepth: 8', '        // 🌋 Knockback into hazards (the historical name');
+const ZONE_SRC = between(battle, '        function _zoneMaskOf(zone)', '        function getGravityFieldAt(x, y)');   // THE MASK (Phase 2): a zone's footprint helpers the chain reads
+const CHAIN_SRC = ZONE_SRC + between(battle, '        const CHAIN_RULES = { maxDepth: 8', '        // 🌋 Knockback into hazards (the historical name');
 
 function sandbox(o = {}) {
     const log = [], floats = [], statuses = [], dmg = [];

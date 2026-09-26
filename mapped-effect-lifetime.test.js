@@ -19,7 +19,7 @@ function harness(laser=true){
  _beamColorFor:()=>({core:1,glow:2}),_spawnLaserBeam3D:(...p)=>{events.push(['laser',...p.slice(0,4)]);return laser;},
  state:{units:[{x:3,y:2}]}
  });
- vm.runInContext(section('    var _fxLifetime','    function rn')+section('    function _fireWall(','    /* ─── BOLT SYSTEM'),ctx);
+ vm.runInContext(section('    var _fxLifetime','    function rn')+section('    function _maskTileOffsets(','    function _fireDescent(')+section('    function _fireWall(','    /* ─── BOLT SYSTEM'),ctx);
  return {ctx,timers,events,run(t){t.ran=true;t.fn();},drain(){for(const t of timers)if(!t.ran&&!t.canceled)this.run(t);},fire(kind){if(kind==='wall')ctx._fireWall('wall',{tiles:[{x:2,y:2},{x:3,y:2}]});if(kind==='chain')ctx._fireChain('chain',{chain:[{x:1,y:2},{x:2,y:2},{x:3,y:2}]});if(kind==='beam')ctx._fireBeamMapped('beam',{sx:1,sy:2,tx:3,ty:2});}};
 }
 for(const kind of ['wall','chain','beam']){

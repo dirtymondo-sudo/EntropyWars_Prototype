@@ -669,8 +669,33 @@ const SPELL_ANIM_VERBS = {
 const _SPELL_VERB_BY_ID = {};
 for (const _v in SPELL_ANIM_VERBS) for (const _id of SPELL_ANIM_VERBS[_v]) _SPELL_VERB_BY_ID[_id] = _v;
 
+// THE LOOK (2026-09-26, SPELL_LIBRARY_PLAN.md §4.6, Phase 2): a row may pick
+// its caster's animation itself — `animVerb` (a kind below, = a _castChainFor
+// chain), `animSlot` (a raw UAL_SLOTS slot) or `animClip: { name, lib }` (an
+// unwired library clip, baked on demand into the synthetic slot 'clip:<name>'
+// — registerSpellAnimClips). Only a KIND STRING travels to the renderer, so a
+// slot pick is encoded as 'slot:<slot>/<autoKind>' and _castChainFor decodes
+// it to [slot, ...chain(autoKind)] — an unknown slot falls down the chain.
+const SPELL_ANIM_KINDS = ['support', 'ranged', 'throw', 'plant', 'melee', 'heal', 'aoe', 'ultimate', 'slam',
+  'arrow', 'kick', 'punch', 'claw', 'consume', 'deploy', 'dash', 'tackle', 'magic', 'channel', 'call', 'reap',
+  'pour', 'heavySlash', 'hook', 'leap', 'guard', 'open', 'touch', 'push', 'lantern', 'phone', 'reload', 'dance',
+  'smug', 'cheer', 'stealth', 'roar', 'skyward', 'hurl', 'nova', 'drain', 'kinetic', 'earth', 'rise', 'curse',
+  'psychic', 'smash', 'sweep', 'jab', 'rally', 'slash', 'doubleSlash', 'roundhouse', 'thrust', 'upSlash',
+  'leapSlash', 'leapPunch', 'flyKick'];
+// the synthetic slot a row's animClip bakes into ('clip:<name>'), or null
+function spellAnimClipSlot(def) { return (def && def.animClip && typeof def.animClip === 'object' && def.animClip.name) ? 'clip:' + def.animClip.name : null; }
+
 function classifySpellAnimKind(spell, opts) {
   if (!spell) return 'melee';
+  // THE LOOK (SPELL_LIBRARY_PLAN.md §4.6, Phase 2): a row's own pick beats the
+  // verb table and the rules (opts.rulesOnly and opts.noPick skip it — the
+  // tests pin the rules, the editor's AUTO row wants the unpicked kind).
+  if (!(opts && (opts.rulesOnly || opts.noPick))) {
+    if (typeof spell.animVerb === 'string' && SPELL_ANIM_KINDS.indexOf(spell.animVerb) >= 0) return spell.animVerb;
+    const _auto = () => classifySpellAnimKind(spell, { noPick: true });
+    if (typeof spell.animSlot === 'string' && spell.animSlot) return 'slot:' + spell.animSlot + '/' + _auto();
+    if (spell.animClip && typeof spell.animClip === 'object' && typeof spell.animClip.name === 'string' && spell.animClip.name) return 'slot:clip:' + spell.animClip.name + '/' + _auto();
+  }
   // THE ANIM ROUTER first: a named verb beats every rule below
   // (opts.rulesOnly skips it — the tests pin the rules themselves).
   if (spell.id && !(opts && opts.rulesOnly) && Object.prototype.hasOwnProperty.call(_SPELL_VERB_BY_ID, spell.id)) return _SPELL_VERB_BY_ID[spell.id];
@@ -2212,6 +2237,66 @@ const RACE_MODELS_3D = {
     def.libClips = lc; def.libTimeScales = lt;
   }
 })();
+
+// ── THE LOOK: raw library clips picked on a spell row (2026-09-26) ─────────
+// registerSpellAnimClips(defs): every def with `animClip: { name, lib }` gets
+// the synthetic slot 'clip:<name>' → { clip, lib, defer: true } (ts 1) in the
+// shared _UAL_CLIPS / _UAL_TS AND in every per-character copy of the table
+// (the `lib:` overrides and the female defaults copy it at module load).
+// Idempotent; data.js stampSpellSchema() calls it at boot and after every
+// editor apply. Returns the number of slots newly registered. The renderer
+// bakes a `clip:` slot on demand (three-renderer.js _libBakeSlotNow) — it is
+// excluded from the bake key, so registering one never forces a re-bake.
+function spellAnimLibName(i) {
+  const u = EW_ANIM_LIB_URLS[i | 0];
+  if (!u) return 'lib ' + (i | 0);
+  return u.slice(u.lastIndexOf('/') + 1).replace(/\.glb$/i, '').replace(/_(Standard|Sniper)$/i, '');
+}
+function registerSpellAnimClips(defs) {
+  let added = 0;
+  const list = Array.isArray(defs) ? defs : (defs && typeof defs === 'object' ? Object.values(defs) : []);
+  const tables = [];
+  const seenT = new Set([_UAL_CLIPS]);
+  tables.push({ lc: _UAL_CLIPS, lt: _UAL_TS });
+  if (typeof RACE_MODELS_3D !== 'undefined') {
+    for (const race in RACE_MODELS_3D) {
+      const byG = RACE_MODELS_3D[race];
+      if (!byG) continue;
+      for (const g in byG) {
+        const def = byG[g];
+        if (!def || !def.libClips || typeof def.libClips !== 'object' || seenT.has(def.libClips)) continue;
+        seenT.add(def.libClips);
+        if (!def.libTimeScales) def.libTimeScales = {};
+        tables.push({ lc: def.libClips, lt: def.libTimeScales });
+      }
+    }
+  }
+  for (const d of list) {
+    const slot = spellAnimClipSlot(d);
+    if (!slot || typeof d.animClip.name !== 'string') continue;
+    const lib = Number.isInteger(d.animClip.lib) && d.animClip.lib >= 0 && d.animClip.lib < EW_ANIM_LIB_URLS.length ? d.animClip.lib : 0;
+    let isNew = false;
+    for (const t of tables) {
+      if (t.lc[slot]) continue;
+      t.lc[slot] = { clip: d.animClip.name, lib, defer: true };
+      if (!t.lt[slot]) t.lt[slot] = 1;
+      isNew = true;
+    }
+    if (isNew) added++;
+  }
+  return added;
+}
+// THE LOOK (2026-09-26): the spell editor's animation pickers + the engine read these
+// (own block — the creator's export block below is sliced by character-creator.test.js).
+if (typeof window !== 'undefined') {
+  window.UAL_SLOTS = UAL_SLOTS;
+  window.SPELL_ANIM_KINDS = SPELL_ANIM_KINDS;
+  window.EW_ANIM_LIB_URLS = EW_ANIM_LIB_URLS;
+  window.registerSpellAnimClips = registerSpellAnimClips;
+  window.classifySpellAnimKind = classifySpellAnimKind;
+  window.spellAnimClipSlot = spellAnimClipSlot;
+  window.spellAnimLibName = spellAnimLibName;
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CHARACTER CREATOR — cosmetic data only (v2, 2026-09-11)

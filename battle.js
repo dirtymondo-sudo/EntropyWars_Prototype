@@ -488,14 +488,24 @@
            end-of-round zone tick that keeps flyers slammed down.
            Exported on window because state.js applyFallDamage/predictFallDamage
            live in a different script scope. */
+        /* THE ZONE FOOTPRINT (Phase 2 masks): a zone cast from a masked spell carries `aoeMask`
+           (plain data, rides the snapshot) and covers exactly those tiles; otherwise the
+           Chebyshev square of `radius`. Every zone reader goes through these two. */
+        function _zoneMaskOf(zone) { return (zone && zone.aoeMask && typeof aoeMaskValid === 'function' && aoeMaskValid(zone.aoeMask)) ? zone.aoeMask : null; }
+        function _zoneTiles(zone) { const m = _zoneMaskOf(zone); return m ? aoeMaskTiles(m, zone.x, zone.y, bw(), bh()) : getSquareArea(zone.x, zone.y, (zone.radius ?? 1)); }
+        function _zoneCovers(zone, x, y) {
+            const m = _zoneMaskOf(zone);
+            if (m) return aoeMaskTiles(m, zone.x, zone.y).some(t => t.x === x && t.y === y);
+            const r = (zone.radius ?? 1);
+            return Math.abs(x - zone.x) <= r && Math.abs(y - zone.y) <= r;
+        }
         function getGravityFieldAt(x, y) {
             const zones = state._activeZones;
             if (!zones || !zones.length) return null;
             let field = null;
             for (const zone of zones) {
                 if (!zone.gravityField) continue;
-                const r = (zone.radius ?? 1);
-                if (Math.abs(x - zone.x) > r || Math.abs(y - zone.y) > r) continue;
+                if (!_zoneCovers(zone, x, y)) continue;
                 if (zone.gravityField === 'super') return 'super';
                 field = zone.gravityField;
             }
@@ -2015,7 +2025,9 @@
                     if (VFX && VFX.hasMapping(spell.id, 'aoe')) {
                         VFX.fire('aoe', spell.id, {
                             tx: tileXY.x, ty: tileXY.y,
-                            radius: spell.aoeRadius || 1
+                            radius: _spellAoeReach(spell, 1),
+                            aoeMask: _spellMaskOf(spell) || undefined,
+                            aoeRadius: _spellMaskOf(spell) ? _spellAoeReach(spell, 1) : undefined
                         });
                     }
                 }, projectileDelay);
@@ -3719,7 +3731,7 @@
             if (!zones || !zones.length) return [];
             return zones.filter(z => z && z.type === 'debuff' && !z.gravityField
                 && z.ownerPlayer !== unit.player
-                && Math.abs(unit.x - z.x) <= (z.radius ?? 1) && Math.abs(unit.y - z.y) <= (z.radius ?? 1));
+                && _zoneCovers(z, unit.x, unit.y));
         }
         window._chainZonesAt = _chainZonesAt;
 
@@ -5495,7 +5507,7 @@
             }
             if (spell.terrainDeform) {
                 const dc = opts.deformCenter || tiles[0] || { x: 0, y: 0 };
-                applyTerrainDeform(dc.x, dc.y, spell.aoeRadius || 1, spell.terrainDeform);
+                applyTerrainDeform(dc.x, dc.y, _spellAoeReach(spell, 1), spell.terrainDeform);
                 _invalidateBoardGrid();
                 scheduleBoardRender();
             }
@@ -5566,6 +5578,11 @@
             const hasDescent = VFX && VFX.hasMapping(spell.id, 'descent');
             const hasAoe = !hasDescent && VFX && VFX.hasMapping(spell.id, 'aoe');
             const _useStrikeLeap = opts.useStrikeLeap || false;
+            /* Phase 2 mask: the ring / fleet / mapped effect size to the mask's reach, and the
+               mapped effect gets the mask itself (only then overriding the effect-def radius). */
+            const _r = _spellAoeReach(spell, 1);
+            const _m = _spellMaskOf(spell);
+            const _aoeParams = () => { const p = { tx, ty, cx: unit.x, cy: unit.y }; if (_m) { p.aoeMask = _m; p.aoeRadius = _r; } return p; };
 
             if (_useStrikeLeap) {
                 window.setTimeout(() => {
@@ -5575,10 +5592,10 @@
                 if (hasAoe) {
                     window.setTimeout(() => {
                         if (state.phase !== 'battle' || _skipVisuals()) return;
-                        VFX.fire('aoe', spell.id, { tx, ty, cx: unit.x, cy: unit.y });
+                        VFX.fire('aoe', spell.id, _aoeParams());
                     }, impactDelay);
                 } else if (!hasDescent) {
-                    window.setTimeout(() => playAoeRing(tx, ty, spell.aoeRadius || spell.crossRadius || 1, spell.spellType, actionMs(550)), impactDelay);
+                    window.setTimeout(() => playAoeRing(tx, ty, _r, spell.spellType, actionMs(550)), impactDelay);
                 }
             } else if (hasDescent) {
                 window.setTimeout(() => {
@@ -5594,7 +5611,7 @@
                     const fleetLead = Math.min(impactDelay, actionMs(1100));
                     window.setTimeout(() => {
                         if (state.phase !== 'battle' || _skipVisuals()) return;
-                        VFX.sigUFOFleet3D(tx, ty, spell.aoeRadius || 2,
+                        VFX.sigUFOFleet3D(tx, ty, _m ? _r : (spell.aoeRadius || 2),
                             { beamDelayMs: fleetLead, beamMs: actionMs(950) });
                     }, impactDelay - fleetLead);
                 } else if (unit.x !== tx || unit.y !== ty) {
@@ -5604,13 +5621,13 @@
                 }
                 window.setTimeout(() => {
                     if (state.phase !== 'battle' || _skipVisuals()) return;
-                    VFX.fire('aoe', spell.id, { tx, ty, cx: unit.x, cy: unit.y });
+                    VFX.fire('aoe', spell.id, _aoeParams());
                 }, impactDelay);
             } else {
                 if (unit.x !== tx || unit.y !== ty) {
                     window.setTimeout(() => playProjectile(unit.x, unit.y, tx, ty, 'damage', cam?.travelMs ?? actionMs(480), spell.spellType, spell.projectileOverride || null, spell), projectileDelay);
                 }
-                window.setTimeout(() => playAoeRing(tx, ty, spell.aoeRadius || spell.crossRadius || 1, spell.spellType, actionMs(550)), impactDelay);
+                window.setTimeout(() => playAoeRing(tx, ty, _r, spell.spellType, actionMs(550)), impactDelay);
             }
         }
 
@@ -6275,7 +6292,11 @@
             const inside = (t) => isInside(t.x, t.y);
             let tiles = [];
             try {
-                if (kind === 'aoe') {
+                const _gm = _spellMaskOf(spell);
+                if (_gm && kind !== 'line' && kind !== 'linePush' && kind !== 'dash' && !spell.hitsWetOnly) {
+                    /* Phase 2 mask: the glow IS the mask (bombs sit on the target tile). */
+                    tiles = aoeMaskTiles(_gm, kind === 'bomb' ? tx : cx, kind === 'bomb' ? ty : cy, bw(), bh());
+                } else if (kind === 'aoe') {
                     if (spell.hitsWetOnly && typeof _isWetTile === 'function') {
                         for (let wy = 0; wy < bh(); wy++) for (let wx = 0; wx < bw(); wx++) {
                             if (_isWetTile(wx, wy)) tiles.push({ x: wx, y: wy });
@@ -7838,7 +7859,7 @@
 
             if (state._activeZones?.length) {
                 state._activeZones = state._activeZones.filter(zone => {
-                    const area = getSquareArea(zone.x, zone.y, (zone.radius ?? 1));
+                    const area = _zoneTiles(zone);
                     if (zone.type === 'heal') {
                         const allies = state.units.filter(u => !u.dead && u.player === zone.ownerPlayer);
                         for (const ally of allies) {
@@ -8846,8 +8867,7 @@
             if (state._activeZones && state._activeZones.length) {
                 for (const zone of state._activeZones) {
                     if (!zone.smokeConcealment || zone.ownerPlayer === viewer) continue;
-                    const r = (zone.radius ?? 1);
-                    if (Math.abs(unit.x - zone.x) <= r && Math.abs(unit.y - zone.y) <= r) { smokeHidden = true; break; }
+                    if (_zoneCovers(zone, unit.x, unit.y)) { smokeHidden = true; break; }
                 }
             }
 
@@ -9025,8 +9045,7 @@
                     let inSmoke = false;
                     for (const zone of (state._activeZones || [])) {
                         if (!zone.smokeConcealment || zone.ownerPlayer !== unit.player) continue;
-                        const r = (zone.radius ?? 1);
-                        if (Math.abs(x - zone.x) <= r && Math.abs(y - zone.y) <= r) { inSmoke = true; break; }
+                        if (_zoneCovers(zone, x, y)) { inSmoke = true; break; }
                     }
                     if (!inSmoke) { invisRestore = unit.status.invisible; unit.status.invisible = 0; }
                 }
@@ -9930,7 +9949,8 @@
             // support release (holdMs 0) still starts on the beat.
             if (holdMs > 0 && window.ThreeAnim && typeof ThreeAnim.castStrikeMs === 'function') {
                 const _kind = state._castAnimKind ? state._castAnimKind[unit.id] : null;
-                const _lead = ThreeAnim.castStrikeMs(unit, _kind);
+                /* Phase 2 `animStrikeMs`: a row's explicit strike offset beats the clip's measured one. */
+                const _lead = (spell && typeof spell.animStrikeMs === 'number' && spell.animStrikeMs >= 0) ? spell.animStrikeMs : ThreeAnim.castStrikeMs(unit, _kind);
                 if (_lead > 0) holdMs = Math.max(0, holdMs - _lead);
             }
             const _v2 = window._v2UnitSystemActive?.();
@@ -11076,9 +11096,10 @@
             addLog(`💥 ${obj.spellName || 'Deployed object'} at ${coordLabel(bx, by)} detonates!`);
             showFloatingTextAtTile(bx, by, '💥 BOOM', 'damage');
             playSfx('explosion');
-            playAoeRing(bx, by, radius, 'tech', actionMs(450));
+            const _omask = (obj.aoeMask && typeof aoeMaskValid === 'function' && aoeMaskValid(obj.aoeMask)) ? obj.aoeMask : null;
+            playAoeRing(bx, by, _omask ? Math.max(1, aoeMaskBound(_omask)) : radius, 'tech', actionMs(450));
 
-            const blastArea = getSquareArea(bx, by, radius);
+            const blastArea = _omask ? aoeMaskTiles(_omask, bx, by, bw(), bh()) : getSquareArea(bx, by, radius);
             for (const tile of blastArea) {
                 const hit = unitAt(tile.x, tile.y);
                 if (hit && !hit.dead) {
@@ -23582,7 +23603,7 @@
                     cdMs,
                     mp: sp.cost || 0,
                     range: Math.max(1, sp.range || 3),
-                    radius: sp.aoeRadius || sp.blastRadius
+                    radius: (_spellMaskOf(sp) ? _spellAoeReach(sp, 0) : 0) || sp.aoeRadius || sp.blastRadius
                         || (kind === 'summonWeather' ? 2 : 0)
                         || (kind === 'healAll' || kind === 'manaRestoreAll' || kind === 'warCry' || kind === 'aoeShield' ? 3 : 0)
                         || (kind === 'terrainCreate' ? 1 : 0),
@@ -23717,7 +23738,7 @@
                 const tx = Math.round(gx), ty = Math.round(gy);
                 try {
                     if (_vfxMap(sp, 'aoe')) {
-                        ThreeVFXEffects.fire('aoe', sp.id, { tx: tx, ty: ty, aoeRadius: sp.aoeRadius });
+                        ThreeVFXEffects.fire('aoe', sp.id, { tx: tx, ty: ty, aoeRadius: _spellMaskOf(sp) ? _spellAoeReach(sp, 1) : sp.aoeRadius, aoeMask: _spellMaskOf(sp) || undefined });
                         return;
                     }
                 } catch (e) {}
@@ -23725,7 +23746,7 @@
                     /* signature 3D apparitions with no intent mapping (orbs,
                        visions, gas clouds) still deserve their geometry */
                     if (typeof ThreeVFXEffects !== 'undefined' && ThreeVFXEffects.fireGeometry
-                        && ThreeVFXEffects.fireGeometry(sp.id, tx, ty, sp.aoeRadius)) {
+                        && ThreeVFXEffects.fireGeometry(sp.id, tx, ty, _spellMaskOf(sp) ? _spellAoeReach(sp, 1) : sp.aoeRadius)) {
                         return;
                     }
                 } catch (e) {}
@@ -23872,7 +23893,7 @@
                         ms = (ThreeVFXEffects.getDescentTelegraphMs ? ThreeVFXEffects.getDescentTelegraphMs(sp.id) : 700)
                             + (ThreeVFXEffects.getDescentDescentMs ? ThreeVFXEffects.getDescentDescentMs(sp.id) : 700);
                     } catch (e) {}
-                    try { ThreeVFXEffects.fire('descent', sp.id, { tx: Math.round(gx), ty: Math.round(gy), aoeRadius: sp.aoeRadius }); } catch (e) {}
+                    try { ThreeVFXEffects.fire('descent', sp.id, { tx: Math.round(gx), ty: Math.round(gy), aoeRadius: _spellMaskOf(sp) ? _spellAoeReach(sp, 1) : sp.aoeRadius, aoeMask: _spellMaskOf(sp) || undefined }); } catch (e) {}
                     pendingFx.push({
                         at: _now() + ms,
                         fn: () => { const c = _findU(cid); if (c) _groundImpact(c, sp, d, gx, gy, true); },
@@ -27399,7 +27420,7 @@
                     c.stockHit();
                 }, 'hit');
                 const printAt = c.impact + Math.round(c.timings.targetHold * 0.42);
-                c.at(printAt, () => cineGodShot(c.target, ((c.spell.aoeRadius || 1) * 2) + 4,
+                c.at(printAt, () => cineGodShot(c.target, (_spellAoeReach(c.spell, 1) * 2) + 4,
                     { cut: false, duration: Math.min(520, c.raw(c.left(printAt))) }), 'print');
                 _spellDirKillConfirm(c);
             },
@@ -28172,7 +28193,7 @@
                 const T0 = timings.sourceHold;
                 const tele = actionMs(Math.max(120, _dc.telegraphMs || 800));
                 const fall = actionMs(Math.max(180, _dc.descentMs || 700));
-                const span = (spell?.aoeRadius || 1) * 2 + 4;
+                const span = _spellAoeReach(spell, 1) * 2 + 4;
                 _cineAt(T0 + tele - actionMs(160), sequenceId,
                     () => cineSkyWatch(target, { ms: fall + actionMs(160), span }));
                 _cineAt(T0 + tele + fall + actionMs(80), sequenceId,
@@ -28207,7 +28228,7 @@
                         cineWitnessCam(target, [caster], {});
                     });
                     _cineAt(tail + actionMs(60), sequenceId, () => {
-                        cineGodShot(target, (spell?.aoeRadius || 1) * 2 + 4, { cut: false, duration: 520 });
+                        cineGodShot(target, _spellAoeReach(spell, 1) * 2 + 4, { cut: false, duration: 520 });
                     });
                     break;
                 }
@@ -31747,7 +31768,7 @@
             if (!spell) return 1;
             if (spell.demolishesBuildings) return Infinity;
             // Cataclysms: crater-forming area bombardments (meteor, nuke, …).
-            if (spell.terrainDeform && (spell.aoeRadius || 0) >= 1 && (spell.dmg || 0) >= 150) return Infinity;
+            if (spell.terrainDeform && _spellAoeReach(spell, 0) >= 1 && (spell.dmg || 0) >= 150) return Infinity;
             return 1;
         }
 
@@ -32130,8 +32151,17 @@
         /* One dispatcher for every kind:'aoe' footprint so the handler, the
            hover preview and the AI all agree: aoeShape 'round' → getRoundArea,
            'diamond' → getDiamondArea, 'ring' → getRingArea (perimeter only),
-           default → the classic square. */
+           default → the classic square.
+           THE MASK (SPELL_LIBRARY_PLAN.md §6.1, Phase 2): a valid `aoeMask` ([dx,dy] offsets
+           within ±3, fixed on the board) wins over every radius / shape field — here, in
+           getCrossArea, and in the ui.js / ai.js mirrors (keep in sync). */
+        function _spellMaskOf(spell) { return (spell && typeof aoeMaskValid === 'function' && aoeMaskValid(spell.aoeMask)) ? spell.aoeMask : null; }
+        function _spellMaskTiles(spell, cx, cy) { const m = _spellMaskOf(spell); return m ? aoeMaskTiles(m, cx, cy).filter(t => isInside(t.x, t.y)) : null; }
+        /* The reach a ring / camera / deform should size to: the mask's bound, else the radius fields. */
+        function _spellAoeReach(spell, fallback) { const m = _spellMaskOf(spell); if (m) return Math.max(1, aoeMaskBound(m)); const r = spell ? (spell.aoeRadius || spell.crossRadius || spell.blastRadius || 0) : 0; return r || (fallback == null ? 1 : fallback); }
+        window._spellMaskOf = _spellMaskOf; window._spellMaskTiles = _spellMaskTiles; window._spellAoeReach = _spellAoeReach;
         function getSpellAoeArea(spell, cx, cy) {
+            const _mt = _spellMaskTiles(spell, cx, cy); if (_mt) return _mt;
             const r = spell.aoeRadius || 1;
             if (spell.aoeShape === 'round') return getRoundArea(cx, cy, r);
             if (spell.aoeShape === 'diamond') return getDiamondArea(cx, cy, r);
@@ -32144,6 +32174,7 @@
            Sigil), or the full Manhattan diamond when `diamond: true`
            (Resonance Pulse, Blade Waltz, Diamond Dust). */
         function getCrossArea(spell, cx, cy) {
+            const _mt = _spellMaskTiles(spell, cx, cy); if (_mt) return _mt;
             const radius = spell.crossRadius || 1;
             if (spell.diamond) return getDiamondArea(cx, cy, radius);
             const tiles = [{ x: cx, y: cy }];
@@ -32633,8 +32664,7 @@
             let inFriendlySmoke = false;
             for (const zone of state._activeZones) {
                 if (!zone.smokeConcealment || zone.ownerPlayer !== unit.player) continue;
-                const r = (zone.radius ?? 1);
-                if (Math.abs(unit.x - zone.x) > r || Math.abs(unit.y - zone.y) > r) continue;
+                if (!_zoneCovers(zone, unit.x, unit.y)) continue;
                 inFriendlySmoke = true;
                 if (!unitHasStatus(unit, 'invisible')) {
                     for (const eff of (zone.allyStatusEffects || [])) {
@@ -35634,7 +35664,9 @@
            Shared by the quick-cast menu (hud.js) and the AI. */
         function findAoeCastCenterForTarget(unit, spell, tx, ty) {
             if (!unit || !spell) return null;
-            if (spell.aoeShape !== 'ring') return { x: tx, y: ty };
+            /* A hollow mask (no [0,0]) needs the centre picker too — its centre never hits. */
+            const _m = _spellMaskOf(spell); const _hollow = !!(_m && !_m.some(o => !o[0] && !o[1]));
+            if (spell.aoeShape !== 'ring' && !_hollow) return { x: tx, y: ty };
             const enemies = aliveUnitsFor(enemyOf(unit.player));
             let best = null, bestScore = -Infinity;
             for (const c of getSpellRangeTiles(unit, spell)) {
@@ -35668,7 +35700,7 @@
             // always castable, but a self-origin DAMAGE cross (Crossfire's X)
             // only has a target when something hittable stands on the arms.
             if (spell.aoeOriginSelf) {
-                if (kind === 'cross' && (spell.dmg || 0) > 0) return _selfNovaHasTarget(unit, spell);
+                if ((kind === 'cross' || (kind === 'aoe' && _spellMaskOf(spell))) && (spell.dmg || 0) > 0) return _selfNovaHasTarget(unit, spell);
                 return true;
             }
 
@@ -50824,6 +50856,18 @@
                 const sp = (unit.spells || []).find(s => s.name === state.selectedTool)
                     || (unit._raceAbilities || []).find(s => s.name === state.selectedTool);
                 r = sp ? (sp.aoeRadius || sp.auraRadius || 0) : 0;
+                const _fm = _spellMaskOf(sp);
+                if (_fm) {
+                    // Masked footprint (Phase 2): exactly the mask's tiles, not a Manhattan disc.
+                    const _mt = aoeMaskTiles(_fm, x, y);
+                    const s = new Set([unit.id]);
+                    for (const u of state.units) {
+                        if (u.dead) continue;
+                        if (_mt.some(t => t.x === u.x && t.y === u.y)) s.add(u.id);
+                    }
+                    window._ewTargetableUnitIds = s;
+                    return;
+                }
             }
             const s = new Set([unit.id]);
             for (const u of state.units) {
@@ -51533,9 +51577,13 @@
                 // Cardinal/diagonal cross novae (Crossfire) get their true
                 // footprint via getCrossArea instead of a misleading wash.
                 const auraR = spell.auraRadius || spell.aoeRadius || (spell.diamond ? (spell.crossRadius || 1) : 0) || 0;
-                if (!auraR && !(spell.kind === 'cross' && spell.crossRadius)) return;
+                const _pvMask = _spellMaskOf(spell);
+                if (!auraR && !(spell.kind === 'cross' && spell.crossRadius) && !_pvMask) return;
                 let auraTiles = [];
-                if (!auraR) {
+                if (_pvMask) {
+                    // The mask IS the footprint (Phase 2) — fixed on the board around the caster.
+                    auraTiles = aoeMaskTiles(_pvMask, unit.x, unit.y, bw(), bh());
+                } else if (!auraR) {
                     auraTiles = getCrossArea(spell, unit.x, unit.y);
                 } else {
                 for (let ty = 0; ty < bh(); ty++) {
@@ -51564,7 +51612,10 @@
             const isCross = spell.kind === 'cross';
             let rangeTiles;
 
-            if (isCross && spell.diamond) {
+            if (isCross && spell.aoeOriginSelf && _spellMaskOf(spell)) {
+                // Masked self-origin cross (Phase 2): the mask's own tiles, minus the caster.
+                rangeTiles = getCrossArea(spell, unit.x, unit.y).filter(t => t.x !== unit.x || t.y !== unit.y);
+            } else if (isCross && spell.diamond) {
                 // Full-diamond nova preview (Resonance Pulse).
                 rangeTiles = getDiamondArea(unit.x, unit.y, spell.crossRadius || 1)
                     .filter(t => t.x !== unit.x || t.y !== unit.y);
@@ -52688,7 +52739,8 @@
                     if (opts.fxDelayMs > 0) window.setTimeout(_bvFire, opts.fxDelayMs); else _bvFire();
                 }
             }
-            const area = getSquareArea(bomb.x, bomb.y, 1);
+            const area = (bomb.aoeMask && typeof aoeMaskValid === 'function' && aoeMaskValid(bomb.aoeMask))
+                ? aoeMaskTiles(bomb.aoeMask, bomb.x, bomb.y, bw(), bh()) : getSquareArea(bomb.x, bomb.y, 1);
             /* THE TYPED BLAST (2026-09-23): the blast is the row's own type
                (Place Bomb is TECH) and element, judged vs every victim like
                any spell — the type chart (weak / resist + the placer's STAB),
@@ -53709,7 +53761,7 @@
             const kind = (typeof classifySpellAnimKind === 'function') ? classifySpellAnimKind(spell) : null;
             const trv = window.ThreeAnim.castTravels(unit, kind);
             if (!trv) return null;
-            const strikeMs = window.ThreeAnim.castStrikeMs(unit, kind);
+            const strikeMs = (typeof spell.animStrikeMs === 'number' && spell.animStrikeMs >= 0) ? spell.animStrikeMs : window.ThreeAnim.castStrikeMs(unit, kind);
             return strikeMs > 0 ? { back: !!trv.back, strikeMs } : null;
         }
 
@@ -58767,7 +58819,7 @@
                     const tiles = getOrientedLineTiles(tx, ty, count, state._spellOrientation || 'horizontal');
                     for (const t of tiles) pushChange(t.x, t.y);
                 } else if (spell.squareFlood) {
-                    for (const t of getSquareArea(tx, ty, spell.aoeRadius || 1)) pushChange(t.x, t.y);
+                    for (const t of (_spellMaskTiles(spell, tx, ty) || getSquareArea(tx, ty, spell.aoeRadius || 1))) pushChange(t.x, t.y);
                 } else {
                     // mirror of the handler's cardinal BFS flood
                     const visited = new Set();
@@ -61147,7 +61199,7 @@
             // burn MP/AP for nothing. Menus grey these out; this guards direct
             // map clicks and move-then-cast paths. (AoE/team kinds pass: some
             // OTHER unit in the blast may still need the status.)
-            if ((spell.kind === 'debuff' || spell.kind === 'buff') && !spell.aoeRadius
+            if ((spell.kind === 'debuff' || spell.kind === 'buff') && !spell.aoeRadius && !_spellMaskOf(spell)
                 && spellIsPureStatus(spell)) {
                 const _psT = unitAt(x, y, z) || unitAt(x, y);
                 if (_psT && !_psT.dead && !spellTargetUsableOn(unit, spell, _psT)) {
@@ -61237,10 +61289,13 @@
             // Nameplate focus for the cast: caster + everything in the blast
             // (AoE/aura radius, beam line, or the whole team for healAll).
             // Fires for AI/online casters too — see _focusPlatesForImpact.
+            const _fpMask = _spellMaskOf(spell);
             _focusPlatesForImpact(unit, x, y, {
-                radius: spell.aoeRadius || spell.auraRadius || 0,
-                tiles: isLineDirection && typeof getLinePoints === 'function'
-                    ? getLinePoints(unit.x, unit.y, x, y) : null,
+                radius: _fpMask ? 0 : (spell.aoeRadius || spell.auraRadius || 0),
+                tiles: _fpMask
+                    ? aoeMaskTiles(_fpMask, spell.aoeOriginSelf ? unit.x : x, spell.aoeOriginSelf ? unit.y : y)
+                    : (isLineDirection && typeof getLinePoints === 'function'
+                        ? getLinePoints(unit.x, unit.y, x, y) : null),
                 allies: spell.kind === 'healAll',
                 holdMs: 2600
             });
@@ -61898,7 +61953,8 @@
                     radius: spell.blastRadius || 1,
                     spellId: spell.id,
                     spellType: spell.spellType || 'tech',          // THE TYPED BLAST (detonateBomb)
-                    spellElement: getSpellElement(spell) || null
+                    spellElement: getSpellElement(spell) || null,
+                    aoeMask: _spellMaskOf(spell) || undefined       // Phase 2 mask: plain data, rides the snapshot
                 };
                 /* Contact detonation: a bomb placed straight onto a grounded
                    enemy goes off immediately — no Detonate needed. This
@@ -62490,7 +62546,7 @@
                 if (spell.id === 'raceWebSnare') {
                     window.setTimeout(() => {
                         if (state.phase !== 'battle' || _skipVisuals()) return;
-                        _spawnSpiderwebFade(x, y, spell.aoeRadius || 1);
+                        _spawnSpiderwebFade(x, y, _spellAoeReach(spell, 1));
                     }, timing.impactDelay);
                 }
                 unit.mp -= effectiveSpellCost;
@@ -62523,7 +62579,8 @@
                     if (state.phase === 'battle' && !_skipVisuals()) {
                         window.ThreeVFXEffects.fire('aura', spell.id, {
                             tx: unit.x, ty: unit.y,
-                            aoeRadius: spell.aoeRadius != null ? spell.aoeRadius : 2,
+                            aoeRadius: _spellMaskOf(spell) ? _spellAoeReach(spell, 2) : (spell.aoeRadius != null ? spell.aoeRadius : 2),
+                            aoeMask: _spellMaskOf(spell) || undefined,
                         });
                     }
                 }
@@ -62640,7 +62697,7 @@
                     return 0;
                 }
                 const _caRadius = spell.aoeRadius != null ? spell.aoeRadius : 1;
-                const _caUnits = getSquareArea(x, y, _caRadius)
+                const _caUnits = (_spellMaskTiles(spell, x, y) || getSquareArea(x, y, _caRadius))
                     .map(t => unitAt(t.x, t.y)).filter(u => u && !u.dead);
                 playSfx(spellLaunchSfx(spell));
                 _spellFocusCamera(unit, x, y, { spellName: spell.name, spellId: spell.id });
@@ -63687,7 +63744,7 @@
                 // Phase 4 migration: aoePull uses shared AoE helpers
                 playSfx(spellLaunchSfx(spell));
                 unit.mp -= effectiveSpellCost;
-                const _apArea = getSquareArea(x, y, spell.aoeRadius || 1);
+                const _apArea = _spellMaskTiles(spell, x, y) || getSquareArea(x, y, spell.aoeRadius || 1);
                 const timing = _setupAoeCameraAndTiming(unit, spell, x, y, _apArea);
                 completionDelay = timing.completionDelay;
 
@@ -63698,13 +63755,15 @@
                 if (_apUseVfx3dAoe) {
                     window.setTimeout(() => {
                         if (state.phase !== 'battle' || _skipVisuals()) return;
-                        window.ThreeVFXEffects.fire('aoe', spell.id, { tx: x, ty: y, cx: unit.x, cy: unit.y });
+                        const _apP = { tx: x, ty: y, cx: unit.x, cy: unit.y };
+                        if (_spellMaskOf(spell)) { _apP.aoeMask = _spellMaskOf(spell); _apP.aoeRadius = _spellAoeReach(spell, 1); }
+                        window.ThreeVFXEffects.fire('aoe', spell.id, _apP);
                     }, timing.impactDelay);
                 } else {
-                    window.setTimeout(() => playAoeRing(x, y, spell.aoeRadius || 1, spell.spellType, actionMs(550)), timing.impactDelay);
+                    window.setTimeout(() => playAoeRing(x, y, _spellAoeReach(spell, 1), spell.spellType, actionMs(550)), timing.impactDelay);
                 }
                 window.setTimeout(() => {
-                    const area = getSquareArea(x, y, spell.aoeRadius || 1);
+                    const area = _spellMaskTiles(spell, x, y) || getSquareArea(x, y, spell.aoeRadius || 1);
                     const hitCount = _applyAoeDamage(unit, spell, area,
                         Math.max(32, (spell.dmg || 0) + spellPower), spellPower, {
                             rngRange: 20, minDmg: 32,
@@ -63724,7 +63783,7 @@
                         }
                     }
                     if (spell.terrainDeform) {
-                        applyTerrainDeform(x, y, spell.aoeRadius || 1, spell.terrainDeform);
+                        applyTerrainDeform(x, y, _spellAoeReach(spell, 1), spell.terrainDeform);
                         _invalidateBoardGrid();
                     }
                     scheduleBoardRender();
@@ -63816,7 +63875,8 @@
                 state._delayedSpells.push({
                     x, y, z,
                     dmg: spell.dmg || 128,
-                    aoeRadius: spell.aoeRadius || 1,
+                    aoeRadius: _spellAoeReach(spell, 1),
+                    aoeMask: _spellMaskOf(spell) || undefined,   // Phase 2 mask: the footprint (state.js _detonateDelayedSpell)
                     sourceUnitId: unit.id,
                     sourcePlayer: unit.player,
                     spellId: spell.id,
@@ -63867,7 +63927,8 @@
                             ownerUnitId: unit.id, ownerId: unit.id, ownerPlayer: unit.player,
                             blastRadius: spell.blastRadius, blastDmg: spell.blastDmg,
                             statusEffects: spell.statusEffects || [],
-                            spellId: spell.id, spellName: spell.name
+                            spellId: spell.id, spellName: spell.name,
+                            aoeMask: _spellMaskOf(spell) || undefined
                         }, unit);
                     } else {
                         // Status snare (Lucid Trap): spring the effects directly.
@@ -63905,7 +63966,8 @@
                     healOnTurnStart: !!spell.healOnTurnStart,
                     spellId: spell.id,
                     statusEffects: spell.statusEffects || [],
-                    spellName: spell.name
+                    spellName: spell.name,
+                    aoeMask: _spellMaskOf(spell) || undefined       // Phase 2 mask: plain data, rides the snapshot
                 };
 
                 if (spell.drawsRangedAttack || spell.drawsMeleeAttack) {
@@ -64227,13 +64289,13 @@
                 playSfx('manaRegen');
                 _spellFocusCamera(unit, x, y);
                 unit.mp -= effectiveSpellCost;
-                const area = getSquareArea(x, y, spell.aoeRadius || 1);
+                const area = _spellMaskTiles(spell, x, y) || getSquareArea(x, y, spell.aoeRadius || 1);
                 const allies = aliveUnitsOnFloor(unit.player).filter(a => area.some(t => t.x === a.x && t.y === a.y));
                 const _shTotal = (typeof levelScale === 'function') ? Math.round((spell.shieldHp || 200) * levelScale(getUnitLevel(unit))) : (spell.shieldHp || 200);
                 const shieldPerAlly = Math.floor(_shTotal / Math.max(1, allies.length));
                 const VFX = window.ThreeVFXEffects;
                 if (VFX && VFX.hasMapping(spell.id, 'aura')) {
-                    if (state.phase === 'battle' && !_skipVisuals()) VFX.fire('aura', spell.id, { tx: x, ty: y, aoeRadius: spell.aoeRadius != null ? spell.aoeRadius : 1 });
+                    if (state.phase === 'battle' && !_skipVisuals()) VFX.fire('aura', spell.id, { tx: x, ty: y, aoeRadius: _spellMaskOf(spell) ? _spellAoeReach(spell, 1) : (spell.aoeRadius != null ? spell.aoeRadius : 1), aoeMask: _spellMaskOf(spell) || undefined });
                 }
                 for (const ally of allies) {
                     // Clamp like the other shield paths (_buffUnit): stacked
@@ -64256,7 +64318,8 @@
                 if (!state._activeZones) state._activeZones = [];
                 state._activeZones.push({
                     x, y,
-                    radius: spell.aoeRadius || 1,
+                    radius: _spellAoeReach(spell, 1),
+                    aoeMask: _spellMaskOf(spell) || undefined,   // Phase 2 mask: the zone's footprint (_zoneTiles / _zoneCovers)
                     type: 'debuff',
                     ownerPlayer: unit.player,
                     casterUnitId: unit.id,
@@ -64275,7 +64338,7 @@
                 // field — EITHER team's — is slammed down on the spot (forced
                 // fall damage, ×3 from the field itself).
                 if (spell.gravityField === 'super' && typeof isUnitAirborne === 'function') {
-                    const _gcArea = getSquareArea(x, y, spell.aoeRadius || 1);
+                    const _gcArea = _spellMaskTiles(spell, x, y) || getSquareArea(x, y, spell.aoeRadius || 1);
                     for (const _gcU of state.units.filter(u => !u.dead && !u._dying)) {
                         if (!_gcArea.some(t => t.x === _gcU.x && t.y === _gcU.y)) continue;
                         if (canFly(_gcU) && isUnitAirborne(_gcU)) {
@@ -64285,7 +64348,7 @@
                 }
                 // Apply ally buffs (e.g. Smoke Screen invisibility) to friendly units already inside the zone.
                 if (spell.allyStatusEffects && spell.allyStatusEffects.length) {
-                    const zoneArea = getSquareArea(x, y, spell.aoeRadius || 1);
+                    const zoneArea = _spellMaskTiles(spell, x, y) || getSquareArea(x, y, spell.aoeRadius || 1);
                     for (const ally of state.units.filter(u => !u.dead && u.player === unit.player)) {
                         if (zoneArea.some(t => t.x === ally.x && t.y === ally.y)) {
                             for (const eff of spell.allyStatusEffects) {
@@ -64302,11 +64365,12 @@
                     if (state.phase === 'battle' && !_skipVisuals()) {
                         window.ThreeVFXEffects.fire('aura', spell.id, {
                             tx: x, ty: y,
-                            aoeRadius: spell.aoeRadius != null ? spell.aoeRadius : 1
+                            aoeRadius: _spellMaskOf(spell) ? _spellAoeReach(spell, 1) : (spell.aoeRadius != null ? spell.aoeRadius : 1),
+                            aoeMask: _spellMaskOf(spell) || undefined
                         });
                     }
                 } else {
-                    _vfxZone(x, y, spell.aoeRadius || 1, 'debuff');
+                    _vfxZone(x, y, _spellAoeReach(spell, 1), 'debuff');
                 }
                 scheduleBoardRender();
                 completionDelay = actionMs(400);
@@ -64319,7 +64383,8 @@
                 if (!state._activeZones) state._activeZones = [];
                 state._activeZones.push({
                     x, y,
-                    radius: spell.aoeRadius || 1,
+                    radius: _spellAoeReach(spell, 1),
+                    aoeMask: _spellMaskOf(spell) || undefined,   // Phase 2 mask: the zone's footprint (_zoneTiles / _zoneCovers)
                     type: 'heal',
                     ownerPlayer: unit.player,
                     duration: spell.zoneDuration || 2,
@@ -64331,10 +64396,10 @@
                 if (typeof window !== 'undefined' && window.ThreeVFXEffects
                     && window.ThreeVFXEffects.hasMapping(spell.id, 'aura')) {
                     if (state.phase === 'battle' && !_skipVisuals()) {
-                        window.ThreeVFXEffects.fire('aura', spell.id, { tx: x, ty: y });
+                        window.ThreeVFXEffects.fire('aura', spell.id, _spellMaskOf(spell) ? { tx: x, ty: y, aoeMask: _spellMaskOf(spell), aoeRadius: _spellAoeReach(spell, 1) } : { tx: x, ty: y });
                     }
                 } else {
-                    _vfxZone(x, y, spell.aoeRadius || 1, 'heal');
+                    _vfxZone(x, y, _spellAoeReach(spell, 1), 'heal');
                 }
                 scheduleBoardRender();
                 completionDelay = actionMs(400);
@@ -64598,7 +64663,7 @@
 
                         // Flood a clean square block (e.g. a 3×3 with aoeRadius 1)
                         // rather than the default diamond/plus BFS shape.
-                        const sq = getSquareArea(x, y, spell.aoeRadius || 1);
+                        const sq = _spellMaskTiles(spell, x, y) || getSquareArea(x, y, spell.aoeRadius || 1);
                         for (const tile of sq) {
                             if (!isInside(tile.x, tile.y)) continue;
                             _paintSpellTile(tile.x, tile.y);
@@ -65187,11 +65252,13 @@
                     resolveTileArrival(tUnit, { via: tUnit === unit ? 'self' : 'teleport' });   // ⛓ the blink's landing
 
                     if (spell.aoeOnArrival && spell.dmg && tUnit === unit) {
-                        const aoeR = spell.aoeRadius || 1;
+                        const _tpM = _spellMaskOf(spell);   // Phase 2 mask: only the mask's offsets (minus the landing tile)
+                        const aoeR = _tpM ? Math.max(1, aoeMaskBound(_tpM)) : (spell.aoeRadius || 1);
                         const spellPwr = getSpellPower(unit, spell);
                         for (let dy = -aoeR; dy <= aoeR; dy++) {
                             for (let dx = -aoeR; dx <= aoeR; dx++) {
                                 if (dx === 0 && dy === 0) continue;
+                                if (_tpM && !_tpM.some(o => o[0] === dx && o[1] === dy)) continue;
                                 const hit = unitAt(x + dx, y + dy);
                                 if (hit && !hit.dead && isEnemyUnit(hit, unit)) {
                                     const dmg = Math.max(1, spell.dmg + spellPwr);
@@ -66486,10 +66553,12 @@
 
                     if (spell.aoeRadius && spell.aoeDmgPct) {
                         const aoeDmg = Math.floor(totalDmg * spell.aoeDmgPct);
-                        const _aoeR = spell.aoeRadius;
+                        const _ssM = _spellMaskOf(spell);   // Phase 2 mask: only the mask's offsets (minus the slam tile)
+                        const _aoeR = _ssM ? Math.max(1, aoeMaskBound(_ssM)) : spell.aoeRadius;
                         for (let dy = -_aoeR; dy <= _aoeR; dy++) {
                             for (let dx = -_aoeR; dx <= _aoeR; dx++) {
                                 if (dx === 0 && dy === 0) continue;
+                                if (_ssM && !_ssM.some(o => o[0] === dx && o[1] === dy)) continue;
                                 const ax = slamX + dx, ay = slamY + dy;
                                 if (!isInside(ax, ay)) continue;
                                 const aoeVictim = unitAt(ax, ay);
@@ -66647,10 +66716,12 @@
 
                     if (spell.aoeRadius && spell.aoeDmgPct) {
                         const aoeDmg = Math.floor(totalDmg * spell.aoeDmgPct);
-                        const _aoeR = spell.aoeRadius;
+                        const _lsM = _spellMaskOf(spell);   // Phase 2 mask: only the mask's offsets (minus the victim's tile)
+                        const _aoeR = _lsM ? Math.max(1, aoeMaskBound(_lsM)) : spell.aoeRadius;
                         for (let dy = -_aoeR; dy <= _aoeR; dy++) {
                             for (let dx = -_aoeR; dx <= _aoeR; dx++) {
                                 if (dx === 0 && dy === 0) continue;
+                                if (_lsM && !_lsM.some(o => o[0] === dx && o[1] === dy)) continue;
                                 const ax = target.x + dx, ay = target.y + dy;
                                 if (!isInside(ax, ay)) continue;
                                 const aoeVictim = unitAt(ax, ay);

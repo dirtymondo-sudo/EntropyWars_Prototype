@@ -104,13 +104,14 @@ function census() {
         const bespoke = SEQ.has(s.id);
         let anim = '?';
         try { anim = classify(s); } catch (e) { anim = 'ERR'; }
-        const slot = (castChainFor(anim) || ['cast'])[0];
+        const slot = (castChainFor(anim) || ['cast'])[0];   // a 'slot:<slot>/<auto>' kind (THE LOOK: animSlot / animClip) leads with its own slot
+        const clip = slot.indexOf('clip:') === 0 ? slot.slice(5) : (slotClip[slot] || '?');   // a raw clip pick IS the clip
         return {
             id: s.id, name: s.name, kind: s.kind, src: s._src, race: s._race,
             capstone: capSet.has(s.id),
             director: bespoke ? 'bespoke' : (family ? 'family:' + family : null),
             family, bespoke, row: !!dr,
-            anim, slot, clip: slotClip[slot] || '?',
+            anim, slot, clip,
             vfxRow: !!row, ownEffects: own, sharedOnly: !!row && own === 0,
             signature: GEOM.has(s.id)
         };

@@ -1517,7 +1517,10 @@
         for (const ds of delayed) {
             if (!ds || ds.markedUnitId || ds.x == null) continue;  // unit-tracking shots follow the unit
             const r = ds.aoeRadius != null ? ds.aoeRadius : 1;
-            if (Math.abs(x - ds.x) <= r && Math.abs(y - ds.y) <= r) {
+            const hit = (typeof aoeMaskValid === 'function' && aoeMaskValid(ds.aoeMask))
+                ? aoeMaskTiles(ds.aoeMask, ds.x, ds.y).some(t => t.x === x && t.y === y)   // THE AOE MASK (§4.7): the drawn footprint, not the radius
+                : (Math.abs(x - ds.x) <= r && Math.abs(y - ds.y) <= r);
+            if (hit) {
                 pen += Math.max(60, Math.min(140, ds.dmg || 100));
             }
         }
@@ -2736,7 +2739,7 @@
 
         if (kind === 'aoePull') {
             if (!target) return 0;
-            const area = getSquareArea(target.x, target.y, spell.aoeRadius || 1);
+            const area = _aoeTilesAI(spell, target.x, target.y, spell.aoeRadius || 1);
             const victims = v.visibleEnemies.filter(e => area.some(t => t.x === e.x && t.y === e.y) && !isProtected(g, e));
             if (!victims.length) return 0;
             let s = 0, first = true;
@@ -2846,7 +2849,7 @@
             // P(still there): rooted/stunned/frozen/sleeping targets can't
             // walk out — that is this kind's REAL use case (its own
             // bonusVsStatus, usually). Never scored as a kill-securer.
-            const area = getSquareArea(target.x, target.y, spell.aoeRadius || 1);
+            const area = _aoeTilesAI(spell, target.x, target.y, spell.aoeRadius || 1);
             const victims = v.visibleEnemies.filter(e => area.some(t => t.x === e.x && t.y === e.y) && !isProtected(g, e));
             if (!victims.length) return 0;
             const tracking = !!spell.delayedMark;
@@ -2916,10 +2919,8 @@
                 s += nearbyEnemies * (spell.collisionBonus || 50) * 0.5;
             }
             if (kind === 'skySlam' && spell.aoeRadius) {
-                const aoeHits = v.visibleEnemies.filter(e =>
-                    e.id !== target.id &&
-                    Math.abs(e.x - target.x) <= spell.aoeRadius &&
-                    Math.abs(e.y - target.y) <= spell.aoeRadius).length;
+                const inSplash = _aoeSplashTestAI(spell, target);
+                const aoeHits = v.visibleEnemies.filter(e => e.id !== target.id && inSplash(e)).length;
                 s += aoeHits * est * (spell.aoeDmgPct || 0.5) * 0.6;
             }
             if (spell.drainPct) s += healValue(g, unit, unit, est * spell.drainPct, v) * 0.6;
@@ -2944,10 +2945,8 @@
             s += statusRiderValue(g, unit, target, spell, v);
             s += getTargetPriority(target, unit, v) * 0.35;
             if (spell.aoeRadius) {
-                const aoeHits = v.visibleEnemies.filter(e =>
-                    e.id !== target.id &&
-                    Math.abs(e.x - target.x) <= spell.aoeRadius &&
-                    Math.abs(e.y - target.y) <= spell.aoeRadius).length;
+                const inSplash = _aoeSplashTestAI(spell, target);
+                const aoeHits = v.visibleEnemies.filter(e => e.id !== target.id && inSplash(e)).length;
                 s += aoeHits * est * (spell.aoeDmgPct || 0.4) * 0.6;
             }
             return s;
@@ -2971,7 +2970,7 @@
         }
         if (kind === 'zoneHeal') {
             if (!target) return 0;
-            const area = getSquareArea(target.x, target.y, spell.aoeRadius || 1);
+            const area = _aoeTilesAI(spell, target.x, target.y, spell.aoeRadius || 1);
             const inArea = [unit, ...v.allies].filter(a => !a.dead && area.some(t => t.x === a.x && t.y === a.y));
             if (!inArea.length) return 0;
             const perTick = spell.healAmt || spell.heal || 20;
@@ -3021,7 +3020,7 @@
         }
         if (kind === 'aoeShield') {
             if (!target) return 0;
-            const area = getSquareArea(target.x, target.y, spell.aoeRadius || 1);
+            const area = _aoeTilesAI(spell, target.x, target.y, spell.aoeRadius || 1);
             const inArea = [unit, ...v.allies].filter(a => !a.dead && area.some(t => t.x === a.x && t.y === a.y)).length;
             if (!inArea) return 0;
             const threatened = v.visibleEnemies.length > 0 ? 1 : AI_TUNE.healNoEnemyDiscount;
@@ -3116,7 +3115,7 @@
 
         if (kind === 'zoneDebuff') {
             if (!target) return 0;
-            const area = getSquareArea(target.x, target.y, spell.aoeRadius || 1);
+            const area = _aoeTilesAI(spell, target.x, target.y, spell.aoeRadius || 1);
             // Low Gravity is a FRIENDLY mobility field.
             if (spell.gravityField === 'weak') {
                 const alliesInArea = [unit, ...v.allies].filter(a =>
@@ -3484,7 +3483,7 @@
         if (kind === 'cleanseArea') {
             if (!target) return 0;
             const defs = (typeof STATUS_DEFS !== 'undefined') ? STATUS_DEFS : (g.STATUS_DEFS || {});
-            const area = getSquareArea(target.x, target.y, spell.aoeRadius || 1);
+            const area = _aoeTilesAI(spell, target.x, target.y, spell.aoeRadius || 1);
             const inArea = u => !u.dead && area.some(t => t.x === u.x && t.y === u.y);
             let s = 0;
             for (const a of [unit, ...v.allies]) {
@@ -4806,6 +4805,7 @@
     window._aiReaimLineSpell = _reaimLineSpell;
 
     function _crossFootprintAI(spell, cx, cy) {
+        if (typeof aoeMaskValid === 'function' && aoeMaskValid(spell.aoeMask)) return aoeMaskTiles(spell.aoeMask, cx, cy);   // THE AOE MASK (§4.7) replaces the shape
         const r = spell.crossRadius || 1;
         const tiles = [{ x: cx, y: cy }];
         if (spell.diamond) {
@@ -5075,7 +5075,7 @@
             let best = null, bestScore = 0;
             for (const c of centres) {
                 if (Math.abs(c.x - unit.x) + Math.abs(c.y - unit.y) > R) continue;
-                const area = getSquareArea(c.x, c.y, spell.aoeRadius || 1);
+                const area = _aoeTilesAI(spell, c.x, c.y, spell.aoeRadius || 1);
                 let score = 0;
                 for (const a of [unit, ...v.allies]) if (!a.dead && area.some(t => t.x === a.x && t.y === a.y)) score += countOf(a, 'debuff') * 2;
                 for (const e of v.visibleEnemies) if (area.some(t => t.x === e.x && t.y === e.y)) score += countOf(e, 'buff');
@@ -5513,7 +5513,7 @@
                 const d = _dist(g, unit.x, unit.y, unit.z, e);
                 if (d < 1 || d > R) continue;
                 if (!spell.ignoresLineOfSight && g.isRangeBlockedByTerrain(unit.x, unit.y, e.x, e.y)) continue;
-                const area = getSquareArea(e.x, e.y, spell.aoeRadius || 1);
+                const area = _aoeTilesAI(spell, e.x, e.y, spell.aoeRadius || 1);
                 const hits = area.filter(t => v.visibleEnemies.some(en => en.x === t.x && en.y === t.y)).length;
                 const score = hits * 10;
                 if (score > bestScore) { bestScore = score; best = e; }
@@ -5545,7 +5545,7 @@
             for (const e of v.visibleEnemies) {
                 const d = _dist(g, unit.x, unit.y, unit.z, e);
                 if (d < 1 || d > _effRange(unit, spell)) continue;
-                const area = getSquareArea(e.x, e.y, spell.aoeRadius || 1);
+                const area = _aoeTilesAI(spell, e.x, e.y, spell.aoeRadius || 1);
                 let hits = area.filter(t => v.visibleEnemies.some(en => en.x === t.x && en.y === t.y)).length;
                 try {
                     if (['root', 'stun', 'freeze', 'frozen', 'sleep'].some(id => g.unitHasStatus(e, id))) hits += 3;
@@ -5615,7 +5615,7 @@
             const candidates = [unit, ...v.allies].filter(a =>
                 !a.dead && Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) <= (_effRange(unit, spell) || 3));
             for (const c of candidates) {
-                const area = getSquareArea(c.x, c.y, spell.aoeRadius || 1);
+                const area = _aoeTilesAI(spell, c.x, c.y, spell.aoeRadius || 1);
                 const count = [unit, ...v.allies].filter(a =>
                     !a.dead && area.some(t => t.x === a.x && t.y === a.y)).length;
                 if (count > bestAllies) { bestAllies = count; best = c; }
@@ -5630,7 +5630,7 @@
                     if (a.dead) continue;
                     const d = Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y);
                     if (d > (_effRange(unit, spell) || 4)) continue;
-                    const area = getSquareArea(a.x, a.y, spell.aoeRadius || 1);
+                    const area = _aoeTilesAI(spell, a.x, a.y, spell.aoeRadius || 1);
                     const inArea = [unit, ...v.allies].filter(h => !h.dead && area.some(t => t.x === h.x && t.y === h.y)).length;
                     if (inArea > bestAllyScore) { bestAllyScore = inArea; bestAlly = a; }
                 }
@@ -5640,7 +5640,7 @@
             for (const e of v.visibleEnemies) {
                 const d = _dist(g, unit.x, unit.y, unit.z, e);
                 if (d < 1 || d > (_effRange(unit, spell) || 4)) continue;
-                const area = getSquareArea(e.x, e.y, spell.aoeRadius || 1);
+                const area = _aoeTilesAI(spell, e.x, e.y, spell.aoeRadius || 1);
                 let hits = area.filter(t => v.visibleEnemies.some(en => en.x === t.x && en.y === t.y)).length;
                 if (spell.gravityField === 'super' && typeof g.canFly === 'function' && g.canFly(e)) hits += 3;
                 const score = hits * 10;
@@ -5656,7 +5656,7 @@
                 if (a.dead) continue;
                 const d = Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y);
                 if (d > (_effRange(unit, spell) || 3)) continue;
-                const area = getSquareArea(a.x, a.y, spell.aoeRadius || 1);
+                const area = _aoeTilesAI(spell, a.x, a.y, spell.aoeRadius || 1);
                 const hurtInArea = hurtAllies.filter(h => area.some(t => t.x === h.x && t.y === h.y)).length;
                 const allInArea = [unit, ...v.allies].filter(h => !h.dead && area.some(t => t.x === h.x && t.y === h.y)).length;
                 const score = hurtInArea * 12 + allInArea * 4;
@@ -6241,6 +6241,7 @@
         return tiles;
     }
     function getSpellAoeAreaAI(spell, cx, cy) {
+        if (typeof aoeMaskValid === 'function' && aoeMaskValid(spell.aoeMask)) return aoeMaskTiles(spell.aoeMask, cx, cy);   // THE AOE MASK (§4.7) replaces the radius / shape
         const r = spell.aoeRadius || 1;
         if (spell.aoeShape === 'round') return getRoundArea(cx, cy, r);
         if (spell.aoeShape === 'diamond') {
@@ -6249,6 +6250,20 @@
         if (spell.aoeShape === 'ring') {
             return getSquareArea(cx, cy, r).filter(t => Math.max(Math.abs(t.x - cx), Math.abs(t.y - cy)) === r);
         }
+        return getSquareArea(cx, cy, r);
+    }
+    /* The splash-count test around a struck target: is `e` inside the row's mask (centre = the target), else its aoeRadius box? */
+    function _aoeSplashTestAI(spell, target) {
+        if (typeof aoeMaskValid === 'function' && aoeMaskValid(spell.aoeMask)) {
+            const keys = new Set(aoeMaskTiles(spell.aoeMask, target.x, target.y).map(t => t.x + ',' + t.y));
+            return (e) => keys.has(e.x + ',' + e.y);
+        }
+        const r = spell.aoeRadius;
+        return (e) => Math.abs(e.x - target.x) <= r && Math.abs(e.y - target.y) <= r;
+    }
+    /* The plain-square sites' footprint: the mask when the row draws one, else the r-square (unclipped, like getSquareArea). */
+    function _aoeTilesAI(spell, cx, cy, r) {
+        if (spell && typeof aoeMaskValid === 'function' && aoeMaskValid(spell.aoeMask)) return aoeMaskTiles(spell.aoeMask, cx, cy);
         return getSquareArea(cx, cy, r);
     }
 

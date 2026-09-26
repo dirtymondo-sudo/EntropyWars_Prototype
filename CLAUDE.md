@@ -102,7 +102,8 @@ diffs. The deliverable is always the full edited file, produced in chat.
   Spell Library export into data.js's literal rows (`node bake-spell-mods.js
   <export.json>`; `--stamp-tiers` wrote the explicit numeric `tier` on every
   row). Notes go to docs/spell-notes.md, never data.js. Test: spell-schema.test.js.
-  Phase 1 (the v2 screen): test spell-library-ui.test.js, probe playtest_library.js.
+  Phase 1 (the v2 screen): test spell-library-ui.test.js, probe playtest_library.js. Phase 2 (the grid +
+  the look): tests aoe-mask.test.js + spell-anim-pick.test.js; notes in ui-menus-audio.md + spells-vfx.md.
 - `migrations/*.sql` (added 2026-07-29) — versioned D1 schema, applied at
   boot by server.js `runMigrations` (recorded in `schema_migrations`;
   duplicate-column/already-exists errors are tolerated so it converges on

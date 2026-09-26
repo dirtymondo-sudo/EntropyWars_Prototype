@@ -9355,6 +9355,8 @@ function _mfStatusPoints(list, isAlly, areaMult){
 function _mfEffectiveTargets(s){
     let E = 1;
     if (s.aoeRadius)   E = s.aoeRadius >= 2 ? 3.6 : 2.6;
+    // THE AOE MASK (§4.7): a valid mask REPLACES the radius — priced by its tile count (r1 box = 9 → 2.6, r2 box = 25 → 3.6).
+    if (aoeMaskValid(s.aoeMask)) { const n = aoeMaskTiles(s.aoeMask, 0, 0).length; E = n <= 1 ? 1 : n <= 5 ? 2.0 : n <= 9 ? 2.6 : n <= 13 ? 3.0 : 3.6; }
     if (s.tileCount)   E = Math.max(E, 1 + (s.tileCount - 1) * 0.6);
     if (s.blastRadius) E = Math.max(E, s.blastRadius >= 2 ? 3.2 : 2.5);
     if (s.splitCount)  E = Math.max(E, s.splitCount);
@@ -9374,7 +9376,7 @@ function computeSpellManaCost(s){
     const MF = MANA_FORMULA;
     const E = _mfEffectiveTargets(s);
     const k = s.kind;
-    const areaDmg = !!(s.aoeRadius || s.tileCount || s.blastRadius || s.cross || s.crossRadius || s.lineWidth
+    const areaDmg = !!(s.aoeRadius || s.tileCount || s.blastRadius || s.cross || s.crossRadius || s.lineWidth || aoeMaskValid(s.aoeMask)
         || k === 'summonWeather' || k === 'cross' || k === 'line' || k === 'linePush' || k === 'barrage');
     const areaMult = areaDmg ? 1.3 : 1;
 
@@ -18513,8 +18515,14 @@ function stampSpellSchema() {
         sp.role = spellRoleOf(sp);
         if (!Array.isArray(sp.families)) sp.families = spellFamiliesOf(sp);
         if (!Array.isArray(sp.upgrades)) sp.upgrades = [];
+        // THE AOE MASK (§4.7): the mask's Chebyshev reach, cached for the VFX ring sizers (three-vfx-effects reads _aoeBound)
+        if (aoeMaskValid(sp.aoeMask)) sp._aoeBound = aoeMaskBound(sp.aoeMask);
+        else if (sp._aoeBound !== undefined) delete sp._aoeBound;
         n++;
     }
+    // THE LOOK (§4.6): rows carrying `animClip: { name, lib }` get a synthetic `clip:<name>` animation slot — sprites.js
+    // (loaded before data.js) defines registerSpellAnimClips(defs); re-run after every apply() so editor rows register too.
+    if (typeof registerSpellAnimClips === 'function') { try { registerSpellAnimClips(Array.from(seen)); } catch (e) {} }
     return n;
 }
 
@@ -18561,8 +18569,18 @@ function spellLint(d, ctx) {
     if (los.length > 1) hits.push({ rule: 'losTriple', level: 'red', text: `two line-of-sight spellings: ${los.join(', ')} (keep ignoresLineOfSight)` });
     if (has('aoeMask')) {
         if (!aoeMaskValid(d.aoeMask)) hits.push({ rule: 'maskInvalid', level: 'red', text: 'aoeMask must be a list of [dx, dy] within ±3' });
-        else if (has('aoeRadius') || has('crossRadius')) hits.push({ rule: 'maskVsRadius', level: 'amber', text: 'both aoeMask and a radius field — the mask wins' });
+        else {
+            const b = aoeMaskBound(d.aoeMask);
+            if ((has('aoeRadius') && d.aoeRadius !== b) || (has('crossRadius') && d.crossRadius !== b) || (has('blastRadius') && d.blastRadius !== b))
+                hits.push({ rule: 'maskVsRadius', level: 'amber', text: 'the radius field differs from the mask\'s reach ' + b + ' — the mask wins; the grid editor sets it to ' + b });
+        }
     }
+    // THE LOOK (§4.6): one animation pick per row — the reader takes animVerb, then animSlot, then animClip
+    const picks = ['animVerb', 'animSlot', 'animClip'].filter(has);
+    if (picks.length > 1) hits.push({ rule: 'animPick', level: 'amber', text: `${picks.join(' + ')} — only one animation pick is read: animVerb, then animSlot, then animClip` });
+    if (has('animClip') && !(d.animClip && typeof d.animClip === 'object' && typeof d.animClip.name === 'string' && d.animClip.name
+        && Number.isInteger(d.animClip.lib) && d.animClip.lib >= 0 && d.animClip.lib <= 4))
+        hits.push({ rule: 'animClipInvalid', level: 'red', text: 'animClip must be { name: string, lib: 0–4 }' });
     if (typeof d.tier === 'number' && (d.tier < 1 || d.tier > 4 || !Number.isInteger(d.tier)))
         hits.push({ rule: 'tierRange', level: 'red', text: `tier ${d.tier} is not 1–4` });
     if (ctx) {
@@ -19021,6 +19039,9 @@ function _dscStages(boost, verbUp, verbDown) {
     return parts;
 }
 
+/* The mask preset → the words describeSpell uses for it; `single` maps to '' (no area), an unknown mask is 'drawn'. */
+const _DSC_MASK_LABELS = { '3x3': '3×3', '5x5': '5×5', diamond1: 'diamond', diamond2: 'diamond', x1: 'X-shaped', x2: 'X-shaped',
+    cross1: 'cross-shaped', cross2: 'cross-shaped', ring1: 'ring', ring2: 'ring', line3: 'line', line5: 'line', hollow3x3: 'hollow 3×3', single: '' };
 function describeSpell(def) {
     if (!def || typeof def !== 'object') return '';
     const d = def;
@@ -19030,10 +19051,16 @@ function describeSpell(def) {
     const hits = Array.isArray(d.hitDamages) ? d.hitDamages : null;
     const totalDmg = hits ? hits.reduce((a, b) => a + (b || 0), 0) : d.dmg;
     const tier = _dscDmgWord(totalDmg);
-    const radius = d.aoeRadius != null ? d.aoeRadius : d.crossRadius;
+    const hasMask = typeof aoeMaskValid === 'function' && aoeMaskValid(d.aoeMask);   // THE AOE MASK (§4.7) — the drawn footprint replaces the radius fields
+    const maskPreset = hasMask ? aoeMaskPresetOf(d.aoeMask) : null;
+    const maskLabel = hasMask ? (_DSC_MASK_LABELS[maskPreset] !== undefined ? _DSC_MASK_LABELS[maskPreset] : 'drawn') : null;
+    const radius = hasMask ? (maskLabel ? aoeMaskBound(d.aoeMask) : 0)
+        : d.aoeRadius != null ? d.aoeRadius : d.crossRadius;
 
     // ── target phrase for offensive area kinds ──
-    const aoeTarget = kind === 'cross' ? 'All Enemies in an X-shaped AOE'
+    const aoeTarget = maskLabel ? `All Enemies in a ${maskLabel} area`
+        : (hasMask && !maskLabel) ? 'a Single Enemy'   // the `single` preset: one tile, no area
+        : kind === 'cross' ? 'All Enemies in an X-shaped AOE'
         : (kind === 'line' || kind === 'linePush' || kind === 'splitBeam') ? 'All Enemies in a line'
         : 'All Enemies in an AOE';
 

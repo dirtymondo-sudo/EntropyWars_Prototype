@@ -875,3 +875,36 @@ change under `WEATHER_REGISTRY`).
   (screenshots to `shots/library/`; the run of 2026-09-26 had zero page errors). Not yet: the AOE grid editor and
   the clip dropdown with the live viewer (Phase 2, THE GRID + THE LOOK, next), random targets / splash (3), the
   passive slot rule in the rack (4), upgrades in the rack (5).
+- 2026-09-26 — **Phase 2 shipped** (thread "Spell library Phase 2", `spell-library/ENTROPY_WARS_SPELL_LIBRARY_2.zip`,
+  token `20260926-spell-library-03-cors`). THE GRID: the TARGET tab's FOOTPRINT is a 7×7 click grid (click / drag paint,
+  right-click erases, the centre locked ON, the 14 `AOE_PRESETS` as buttons, mirror ↔ ↕, rotate, fill, CLEAR, ORIGIN
+  target / self); a row without a mask shows its computed footprint and the first click converts it; the same widget,
+  smaller, edits `splash.mask` when a row carries a `splash` object (Phase 3's rider). ONE DEVIATION from §5.4, on
+  purpose: writing the mask does not CLEAR the radius field — it SETS the kind's radius field (`crossRadius` for cross
+  kinds, `blastRadius` for bombs, else `aoeRadius`) to the mask's reach and clears only `aoeShape` / `diamond` /
+  `diagonal`, because ~40 engine gates test `spell.aoeRadius` for "is this an area?" (`hasSpellTargetInRange`,
+  `computeSpellManaCost`, the hud's card, the AI's scoring…); the lint `maskVsRadius` now fires only when the two
+  disagree, and CLEAR restores the shipped radius / shape fields. `aoeMask` is honoured at every §6.1 site plus the
+  ones the survey missed (bombs / deployed objects / delayed strikes carry the mask as plain data; zones store it and
+  `_zoneTiles` / `_zoneCovers` serve the round tick, gravity, smoke and chain zones; cleanseArea, aoePull, aoeShield,
+  terrainCreate flood, teleport arrival, skySlam / leapStrike splash loops; the focus plates; `previewSpellRange`; the
+  ring aim for a HOLLOW mask; map.js `_hqAoeTilesHtml` and party-builder.js `pbAoeTiles` draw it; three-vfx-effects.js
+  sizes rings / descents / auras by the mask's offsets). `_aoeBound` is stamped by `stampSpellSchema`;
+  `_spellAoeReach(spell)` is the one battle.js reader for VFX / camera / deform radii. A single-target kind (damage,
+  heal…) gets an amber note on the grid: its mask only lights tiles — area damage on it is the SPLASH rider (Phase 3).
+  THE LOOK: `animVerb` / `animSlot` / `animClip` read first by `classifySpellAnimKind` (`SPELL_ANIM_KINDS` = the 58
+  `_castChainFor` kinds; a slot pick rides the kind string as `'slot:<slot>/<auto>'`, decoded by `_castChainFor`;
+  `'clip:<name>'` is a synthetic slot registered by sprites.js `registerSpellAnimClips` from `stampSpellSchema` and
+  baked on demand by `_libBakeSlotNow` — the board warms it before the cast, the viewer through `EWCharViewer.playClip`);
+  `animStrikeMs` overrides the strike lead in battle.js and the viewer. The LOOK tab: a race picker + the live
+  EWCharViewer stage (▶ FULL · 🔁 LOOP · ■ · ✦ VFX), the pick in words, the strike lead, a searchable list — AUTO ·
+  CAST VERBS (each with its resolved first slot + clip + library + length + strike) · SLOTS (75) · RAW CLIPS (69
+  unwired, from `ThreeRenderer.devLibClips`) — hover plays, click writes ONE pick and clears the other two; TRAVEL
+  (`_animOverride.travel`) moved here from the Lab; archetype · weight · projectile stay the generic LOOK fields.
+  check-spell-presentation.js reads the pick. Lint: `animPick` (two picks) and `animClipInvalid`. Tests:
+  `aoe-mask.test.js` (the four readers agree on every shipped aoe / cross row and on every preset over four fixture
+  kinds; the shaped radius fields now draw their true cells on the card; the lint, the mana formula, `_aoeBound`),
+  `spell-anim-pick.test.js`; content-schema.test.js type-checks the five new fields. The probe serves the five
+  library GLBs from the repo so RAW CLIPS fills; the race model is R2-only, so the stage reads `ew-cv-fail` in the
+  sandbox (the labels work; live it shows the race). Not yet: random targets / splash (Phase 3, next), the passive
+  slot rule in the rack (4), upgrades in the rack (5).

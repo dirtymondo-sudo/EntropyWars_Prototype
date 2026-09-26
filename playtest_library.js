@@ -1,7 +1,8 @@
 // playtest_library.js — SPELL LIBRARY v2 screenshot probe (repo tooling, SPELL_LIBRARY_PLAN.md §8, 2026-09-26).
 // Boots the title with the LOCAL R2 files, enters the main menu → Settings → Developer → SPELL LIBRARY
 // (window._goToSpellLibrary), then photographs the shell: the table, a two-key sort, a selected row +
-// the inspector on every tab, an edit through window._slbSetField (the row patches in place), the
+// the inspector on every tab, THE GRID (a preset, a drawn cell, a mirror, clear) and THE LOOK (the stage, the
+// animation search, a slot pick, a verb pick, back to auto), an edit through window._slbSetField (the row patches in place), the
 // rail filters, the cards view, PASSIVES / FAMILIES / UPGRADES / POOLS / REPORT, the NEW ▾ menu, the
 // EXPORT preview, the IMPORT diff and the palette → shots/library/<tag>_<moment>.png. Prints page
 // errors, the table's window (rows rendered vs rows filtered) and the shell's geometry.
@@ -43,6 +44,10 @@ async function installNodeFetchCache(context) {
     const ct = CT[ext] || 'application/octet-stream';
     const serve = (file) => { local++; return route.fulfill({ status: 200, contentType: ct, body: fs.readFileSync(file) }); };
     if (u.host === 'cdn.entropywars.net' && fs.existsSync(path.join(REPO, base)) && /\.(js|css)$/.test(base)) return serve(path.join(REPO, base));
+    // the five shared animation libraries have repo copies (CI reads them) — serve them so THE LOOK's RAW CLIPS list fills
+    if (u.host === 'cdn.entropywars.net' && /^\/Assets\/Models\/(UAL\d_Standard|MAL\d_Sniper)\.glb$/.test(u.pathname)) {
+      for (const f of [path.join(REPO, 'rigged_animations', 'Assets_Models_' + base), path.join(REPO, 'rigged_animations', base), path.join(REPO, base)]) if (fs.existsSync(f)) return serve(f);
+    }
     if (u.host === 'cdn.entropywars.net' && base === 'react.production.min.js') return serve(path.join(NM, 'react/umd/react.production.min.js'));
     if (u.host === 'cdn.entropywars.net' && base === 'react-dom.production.min.js') return serve(path.join(NM, 'react-dom/umd/react-dom.production.min.js'));
     if (u.host === 'cdnjs.cloudflare.com' && base === 'three.min.js') return serve(path.join(NM, 'three/build/three.min.js'));
@@ -118,6 +123,31 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   for (const t of ['target', 'effects', 'upgrades', 'look', 'notes', 'raw']) {
     if (await click(`#slbInspector .slb2-itab[data-tab="${t}"]`)) { await sleep(250); await shot('inspector_' + t); }
   }
+  // THE GRID (Phase 2): the TARGET tab's 7×7 editor — a preset, a drawn cell, a mirror, the readout
+  await click('#slbInspector .slb2-itab[data-tab="target"]'); await sleep(250);
+  console.log('grid before:', JSON.stringify(await page.evaluate(() => ({ cells: document.querySelectorAll('#slbInsBody .slb2-gcell').length, on: document.querySelectorAll('#slbInsBody .slb2-gcell.on').length, drawn: !!document.querySelector('#slbInsBody .slb2-gridwrap.drawn'), label: (document.querySelector('#slbInsBody .slb2-grid-l') || {}).textContent }))));
+  await click('#slbInsBody [data-act="gridPreset"][data-preset="x2"]'); await sleep(350);
+  await shot('grid_preset_x2');
+  { const cell = await page.$('#slbInsBody .slb2-gcell[data-gx="2"][data-gy="0"]'); if (cell) { await cell.click(); await sleep(350); } }
+  await click('#slbInsBody [data-act="gridXform"][data-op="mirrorY"]'); await sleep(350);
+  console.log('grid after:', JSON.stringify(await page.evaluate(() => ({ on: document.querySelectorAll('#slbInsBody .slb2-gcell.on').length, drawn: !!document.querySelector('#slbInsBody .slb2-gridwrap.drawn'), label: (document.querySelector('#slbInsBody .slb2-grid-l') || {}).textContent, mask: JSON.stringify(window.SPELL_BY_ID.fire1.aoeMask), aoeRadius: window.SPELL_BY_ID.fire1.aoeRadius, lint: (typeof spellLint === 'function' ? spellLint(window.SPELL_BY_ID.fire1, spellLintContext()).map(h => h.rule) : null), foot: (typeof getSpellAoeFootprint === 'function' ? getSpellAoeFootprint(window.SPELL_BY_ID.fire1, 5, 5, { x: 2, y: 2 }).length : null), edits: (document.querySelector('#slbModCount') || {}).textContent }))));
+  await shot('grid_drawn');
+  await click('#slbInsBody [data-act="gridClear"]'); await sleep(300);
+  console.log('grid cleared:', JSON.stringify(await page.evaluate(() => ({ mask: window.SPELL_BY_ID.fire1.aoeMask, on: document.querySelectorAll('#slbInsBody .slb2-gcell.on').length }))));
+  // THE LOOK (Phase 2): the stage + the animation list — search, pick a slot, pick a verb, back to auto
+  await click('#slbInspector .slb2-itab[data-tab="look"]'); await sleep(1500);
+  console.log('look:', JSON.stringify(await page.evaluate(() => ({ stage: !!document.getElementById('slbLookStage'), canvas: !!document.querySelector('#slbLookStage canvas'), stageCls: (document.getElementById('slbLookStage') || {}).className, race: (document.querySelector('[data-input="lookRace"]') || {}).value, opts: document.querySelectorAll('#slbAnimList .slb2-anim-opt').length, groups: [...document.querySelectorAll('#slbAnimList .slb2-anim-grp')].map(g => g.textContent), pick: (document.getElementById('slbLookPick') || {}).textContent }))));
+  await shot('look_stage');
+  await page.fill('#slbInsBody .slb2-anim-search', 'thrust'); await sleep(300);
+  await shot('look_search');
+  await click('#slbAnimList .slb2-anim-opt[data-pick-kind="slot"][data-pick="castThrust"]'); await sleep(500);
+  console.log('picked slot:', JSON.stringify(await page.evaluate(() => ({ animSlot: window.SPELL_BY_ID.fire1.animSlot, animVerb: window.SPELL_BY_ID.fire1.animVerb, kind: classifySpellAnimKind(window.SPELL_BY_ID.fire1), chain: window.ThreeRenderer && window.ThreeRenderer.castChainFor(classifySpellAnimKind(window.SPELL_BY_ID.fire1)), pick: (document.getElementById('slbLookPick') || {}).textContent, state: (document.getElementById('slbLookState') || {}).textContent }))));
+  await shot('look_picked');
+  await page.fill('#slbInsBody .slb2-anim-search', ''); await sleep(300);
+  await click('#slbAnimList .slb2-anim-opt[data-pick-kind="verb"][data-pick="drain"]'); await sleep(400);
+  console.log('picked verb:', JSON.stringify(await page.evaluate(() => ({ animSlot: window.SPELL_BY_ID.fire1.animSlot, animVerb: window.SPELL_BY_ID.fire1.animVerb, kind: classifySpellAnimKind(window.SPELL_BY_ID.fire1) }))));
+  await click('#slbAnimList .slb2-anim-opt[data-pick-kind="auto"]'); await sleep(400);
+  console.log('back to auto:', JSON.stringify(await page.evaluate(() => ({ animSlot: window.SPELL_BY_ID.fire1.animSlot, animVerb: window.SPELL_BY_ID.fire1.animVerb, kind: classifySpellAnimKind(window.SPELL_BY_ID.fire1), edits: (document.querySelector('#slbModCount') || {}).textContent }))));
   await click('#slbInspector .slb2-itab[data-tab="stats"]'); await sleep(200);
   // an edit through the Lab's contract → the row patches in place, the chrome shows 1 edit
   await page.evaluate(() => window._slbSetField('fire1', 'dmg', '55', 'num'));

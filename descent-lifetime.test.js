@@ -23,7 +23,7 @@ function harness(warm=false){
  _spawnEffect:d=>events.push(['effect',d.id||d.layers.map(l=>l.sprite).join(',')]),
  _geom3D:()=>null,_LT:()=>({strikeFromSky:()=>events.push(['lightning'])}),state:{}
  });
- vm.runInContext(section('    var _fxLifetime','    function rn')+section('    function _fireDescent(','    function _fireWall(')+section('    function _sigMissileDrop3D(','    /* ── 3D greatsword builder'),ctx);
+ vm.runInContext(section('    var _fxLifetime','    function rn')+section('    function _maskTileOffsets(','    function _fireDescent(')+section('    function _fireDescent(','    function _fireWall(')+section('    function _sigMissileDrop3D(','    /* ── 3D greatsword builder'),ctx);
  return {ctx,timers,events,fire(){ctx._fireDescent('thunder',{tx:2,ty:3});},run(t){t.ran=true;t.fn();},drain(start=0){for(let i=start;i<timers.length;i++)if(!timers[i].ran)this.run(timers[i]);},retire(){ctx._fxCancelDelays();}};
 }
 for(const warm of [false,true]){

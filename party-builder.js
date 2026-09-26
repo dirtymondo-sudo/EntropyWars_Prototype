@@ -1659,7 +1659,9 @@ function pbAoeTiles(sp, big) {
     const r = Math.min(2, shape.r || 1);
     cols = r * 2 + 1;
     for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
-      const on = shape.kind === 'cross' ? (dx === 0 || dy === 0) : shape.kind === 'diamond' ? (Math.abs(dx) + Math.abs(dy) <= r) : true;
+      // a 'mask' shape (a drawn aoeMask, an X / ring / round field) lights the cells its set names — mirrors hud.js _hrlgShapeTiles
+      const on = shape.kind === 'mask' ? shape.cells.has(dx + ',' + dy)
+        : shape.kind === 'cross' ? (dx === 0 || dy === 0) : shape.kind === 'diamond' ? (Math.abs(dx) + Math.abs(dy) <= r) : true;
       cells.push(on ? (dx === 0 && dy === 0 ? 'c' : true) : false);
     }
   }

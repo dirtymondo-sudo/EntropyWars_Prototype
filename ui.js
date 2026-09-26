@@ -9103,7 +9103,7 @@
             if (d.crossRadius) {
                 const r = Math.min(3, d.crossRadius);
                 for (let y = -r; y <= r; y++) for (let x = -r; x <= r; x++) {
-                    if (d.diamond ? (Math.abs(x) + Math.abs(y) <= r) : (x === 0 || y === 0 || (d.diagonal && Math.abs(x) === Math.abs(y)))) add(x, y);
+                    if (d.diamond ? (Math.abs(x) + Math.abs(y) <= r) : d.diagonal ? (Math.abs(x) === Math.abs(y)) : (x === 0 || y === 0)) add(x, y);   // an X cross is the diagonals ONLY (battle.js getCrossArea)
                 }
                 return { kind: d.diamond ? 'diamond' : 'cross', cells, r, label: (d.diamond ? 'diamond ' : 'cross ') + d.crossRadius, n: cells.size };
             }
@@ -10008,13 +10008,15 @@
         function _slb2RenderInspector() {
             const el = document.getElementById('slbInspector');
             if (!el) return;
-            if (_slbSelection.length > 1) { el.innerHTML = _slb2BulkHtml(); return; }
+            if (_slbSelection.length > 1) { _slb2LookUnmount(); el.innerHTML = _slb2BulkHtml(); return; }
             const id = _slbSelectedId;
             const r = id ? _slb2RowById(id) : null;
-            if (!r) { el.innerHTML = '<div class="slb2-empty">Pick a row — ↑ ↓ walk the table, Enter inspects.</div>'; return; }
+            if (!r) { _slb2LookUnmount(); el.innerHTML = '<div class="slb2-empty">Pick a row — ↑ ↓ walk the table, Enter inspects.</div>'; return; }
+            _slb2LookUnmount();
             el.innerHTML = `<div class="slb2-ins-head" id="slbInsHead">${_slb2InsHeadHtml(r)}</div>
                 <div class="slb2-ins-tabs">${[['stats', 'STATS'], ['target', 'TARGET'], ['effects', 'EFFECTS'], ['upgrades', 'UPGRADES'], ['look', 'LOOK'], ['notes', 'NOTES'], ['raw', 'RAW']].map(([k, l]) => `<button class="slb2-itab${_slbInsTab === k ? ' on' : ''}" data-act="insTab" data-tab="${k}">${l}${k === 'notes' && r.hasNotes ? ' 📝' : ''}</button>`).join('')}</div>
                 <div class="slb2-ins-body" id="slbInsBody">${_slb2InsBodyHtml(r)}</div>`;
+            if (_slbInsTab === 'look' && !r.deleted) requestAnimationFrame(_slb2LookMount);
         }
         function _slb2InsHeadHtml(r) {
             const d = r.def, id = r.id, M = _slbMods(), doc = _slb2Doc();
@@ -10085,7 +10087,7 @@
             if (t === 'upgrades') return _slb2UpgradesTabHtml(r);
             const groups = _SLB2_GROUPS[t] || [];
             const shown = new Set();
-            const ALWAYS = { stats: ['cost', 'apCost', 'dmg', 'damageType', 'type', 'spellType', 'element'], target: ['kind', 'range', 'ignoresLineOfSight', 'aoeRadius', 'aoeMask'], effects: ['statusEffects', 'bonusVsStatus', 'statStageBoost'], look: ['animVerb', 'vfxArchetype', 'vfxWeight', 'projectileOverride'] };
+            const ALWAYS = { stats: ['cost', 'apCost', 'dmg', 'damageType', 'type', 'spellType', 'element'], target: ['kind', 'range', 'ignoresLineOfSight', 'aoeRadius'], effects: ['statusEffects', 'bonusVsStatus', 'statStageBoost'], look: ['vfxArchetype', 'vfxWeight', 'projectileOverride'] };
             let html = '';
             groups.forEach(([title, keys]) => {
                 const present = keys.filter(k => Object.prototype.hasOwnProperty.call(d, k) || (ALWAYS[t] || []).includes(k));
@@ -10095,7 +10097,7 @@
                 html += `<div class="slb2-group" data-group="${_slbEsc(title)}"><div class="slb2-group-h">${title}</div>${present.map(k => _slb2FieldHtml(r, k)).join('')}</div>`;
             });
             if (t === 'target') html += _slb2FootprintHtml(r);
-            if (t === 'look') html += _slb2LookExtraHtml(r);
+            if (t === 'look') html = _slb2LookExtraHtml(r) + html;   // the stage + the pick first, the raw fields under them
             if (t === 'stats') {
                 const known = new Set(); Object.keys(_SLB2_GROUPS).forEach(g => _SLB2_GROUPS[g].forEach(([, keys]) => keys.forEach(k => known.add(k))));
                 const other = Object.keys(d).filter(k => !known.has(k) && !_SLB2_HEADER_FIELDS.has(k) && !shown.has(k)).sort();
@@ -10151,6 +10153,11 @@
                 const opts = (f === 'vfxArchetype' ? _slbArchetypes() : (spec.o || []));
                 return `<select ${attrs} data-type="text"><option value=""${val == null ? ' selected' : ''}>(unset)</option>${opts.map(o => `<option value="${_slbEsc(o)}"${val === o ? ' selected' : ''}>${_slbEsc(o)}</option>`).join('')}</select>`;
             }
+            if (f === 'aoeMask') {
+                const ok = typeof aoeMaskValid === 'function' && aoeMaskValid(val);
+                const preset = ok && typeof aoeMaskPresetOf === 'function' ? aoeMaskPresetOf(val) : null;
+                return `<span class="slb2-maskro${ok ? '' : ' bad'}" title="${_slbEsc(JSON.stringify(val))}">${ok ? `${preset ? preset + ' · ' : ''}${val.length} tile${val.length === 1 ? '' : 's'} · reach ${aoeMaskBound(val)} — drawn on the FOOTPRINT grid` : 'invalid mask — redraw it on the grid'}</span>`;
+            }
             if (t === 'json') return `<textarea class="slb2-jsonmini" spellcheck="false" ${attrs} data-type="json">${val !== undefined ? _slbEsc(JSON.stringify(val)) : ''}</textarea>`;
             if (t === 'long') return `<textarea class="slb2-jsonmini long" spellcheck="false" ${attrs} data-type="text">${_slbEsc(val != null ? val : '')}</textarea>`;
             return `<input type="text" ${attrs} data-type="text" value="${_slbEsc(val != null ? val : '')}" spellcheck="false">`;
@@ -10177,22 +10184,382 @@
                 <div class="slb2-field-h">The combo finisher: ×mult damage against a target carrying the status (not consumed). A damage-only spell may carry it without becoming damage+effect.</div>
             </div>`;
         }
-        /* THE FOOTPRINT (§5.4 preview): the 7×7 the row lights today. Drawing lands with the engine sites in Phase 2. */
+        /* THE FOOTPRINT (§5.4): the 7×7 grid editor — see THE GRID below. A splash rider (Phase 3) gets its own, smaller. */
         function _slb2FootprintHtml(r) {
-            const foot = r.foot;
-            const origin = r.def.aoeOriginSelf ? 'the caster' : 'the target tile';
-            return `<div class="slb2-group"><div class="slb2-group-h">FOOTPRINT · centre = ${origin}</div>
-                <div class="slb2-footwrap">${foot ? _slb2Tiles(Object.assign({}, foot, { r: 3 }), 22) : '<span class="slb2-dim">single target — no area</span>'}
-                <div class="slb2-foot-l">${foot ? `<b>${_slbEsc(foot.label)}</b> · ${foot.n} tile${foot.n === 1 ? '' : 's'}${foot.kind === 'mask' ? ' · drawn mask (wins over the radius fields)' : ' · from the radius / shape fields'}` : ''}</div></div>
+            let html = `<div class="slb2-group slb2-gridgroup" data-group="FOOTPRINT"><div class="slb2-group-h">FOOTPRINT · draw the tiles the cast lights</div>${_slb2GridHtml(r, 'aoeMask')}</div>`;
+            if (r.def.splash && typeof r.def.splash === 'object') html += `<div class="slb2-group slb2-gridgroup" data-group="SPLASH"><div class="slb2-group-h">SPLASH · the rider's shape around the victim</div>${_slb2GridHtml(r, 'splash')}</div>`;
+            return html;
+        }
+        /* ── THE GRID (SPELL_LIBRARY_PLAN.md §5.4, Phase 2) ────────────────────────────────────────────────────
+           A 7×7 click grid (the centre = the target tile, or the caster for self-origin rows; the victim for a
+           splash rider). Click paints, drag paints, right-click erases, the centre is locked ON. PRESETS stamp
+           AOE_PRESETS; MIRROR ↔ ↕ and ROTATE transform; CLEAR drops the mask so the radius fields rule again.
+           A row without a mask shows its computed footprint (from the radius / shape fields) and the first click
+           converts it. Writing the mask ALSO sets the kind's radius field to the mask's reach (the engine's
+           forty "is this an area?" gates test that field) and clears aoeShape / diamond / diagonal — one undo
+           step. The same widget, smaller, edits a splash rider's shape (`splash.mask`, Phase 3). */
+        const _SLB2_PRESET_LABELS = { single: '·', '3x3': '3×3', '5x5': '5×5', diamond1: '◇1', diamond2: '◇2', x1: 'X1', x2: 'X2', cross1: '+1', cross2: '+2', ring1: '○1', ring2: '○2', line3: '|3', line5: '|5', hollow3x3: '□' };
+        let _slbGridDrag = null;   // { id, field, cells:Set, paint:'on'|'off', wrap } while the mouse is down on a grid
+        function _slb2GridCells(d, field) {
+            const cells = new Set(['0,0']);
+            if (field === 'splash') {
+                const m = d.splash && d.splash.mask;
+                if (typeof aoeMaskValid === 'function' && aoeMaskValid(m)) m.forEach(p => cells.add(p[0] + ',' + p[1]));
+                else if (d.splash && d.splash.radius) { const r = Math.min(3, d.splash.radius | 0); for (let y = -r; y <= r; y++) for (let x = -r; x <= r; x++) cells.add(x + ',' + y); }
+                return cells;
+            }
+            const foot = _slb2Footprint(d);
+            if (foot) foot.cells.forEach(k => cells.add(k));
+            return cells;
+        }
+        function _slb2GridMaskOf(d, field) { return field === 'splash' ? (d.splash && d.splash.mask) : d.aoeMask; }
+        function _slb2GridHtml(r, field) {
+            const d = r.def, id = r.id;
+            const cells = _slb2GridCells(d, field);
+            const mask = _slb2GridMaskOf(d, field);
+            const drawn = typeof aoeMaskValid === 'function' && aoeMaskValid(mask);
+            const preset = (drawn && typeof aoeMaskPresetOf === 'function') ? aoeMaskPresetOf(mask) : null;
+            const size = field === 'splash' ? 18 : 28;
+            const n = cells.size;
+            const self = !!d.aoeOriginSelf;
+            const origin = field === 'splash' ? 'the victim' : self ? 'the caster' : 'the target tile';
+            let grid = `<div class="slb2-grid" style="grid-template-columns:repeat(7,${size}px)" data-grid="${_slbEsc(field)}" data-id="${_slbEsc(id)}" oncontextmenu="return false">`;
+            for (let y = -3; y <= 3; y++) for (let x = -3; x <= 3; x++) {
+                const on = cells.has(x + ',' + y), ctr = x === 0 && y === 0;
+                grid += `<i class="slb2-gcell${on ? ' on' : ''}${ctr ? ' ctr' : ''}" data-gx="${x}" data-gy="${y}" style="width:${size}px;height:${size}px" title="${ctr ? 'centre — always hit' : (x > 0 ? '+' : '') + x + ', ' + (y > 0 ? '+' : '') + y}"></i>`;
+            }
+            grid += '</div>';
+            const presets = (typeof AOE_PRESETS !== 'undefined') ? Object.keys(AOE_PRESETS) : [];
+            const label = drawn ? (preset ? preset : 'drawn') : (field === 'splash' ? (d.splash && d.splash.radius ? 'radius ' + d.splash.radius : 'none') : (r.foot ? r.foot.label : 'single target'));
+            return `<div class="slb2-gridwrap${drawn ? ' drawn' : ' computed'}" data-gridwrap="${_slbEsc(field)}">
+                ${grid}
+                <div class="slb2-grid-side">
+                    <div class="slb2-grid-l"><b>${_slbEsc(label)}</b> · ${n} tile${n === 1 ? '' : 's'} · centre = ${origin}<br><span class="slb2-dim">${drawn ? 'drawn mask — wins over the radius / shape fields' : 'from the radius / shape fields — click a tile to draw'}</span>${field !== 'splash' && !_SLB2_AREA_KINDS.has(d.kind) ? `<br><span class="slb2-warn">kind "${_slbEsc(d.kind || '?')}" hits one target — a mask only lights tiles here; area damage on it is the SPLASH rider (Phase 3)</span>` : ''}</div>
+                    <div class="slb2-grid-presets">${presets.map(p => `<button class="slb2-tiny${preset === p ? ' on' : ''}" data-act="gridPreset" data-id="${_slbEsc(id)}" data-grid="${_slbEsc(field)}" data-preset="${p}" title="${p}">${_SLB2_PRESET_LABELS[p] || p}</button>`).join('')}</div>
+                    <div class="slb2-grid-tools">
+                        <button class="slb2-tiny" data-act="gridXform" data-id="${_slbEsc(id)}" data-grid="${_slbEsc(field)}" data-op="mirrorX" title="mirror left ↔ right">↔</button>
+                        <button class="slb2-tiny" data-act="gridXform" data-id="${_slbEsc(id)}" data-grid="${_slbEsc(field)}" data-op="mirrorY" title="mirror up ↕ down">↕</button>
+                        <button class="slb2-tiny" data-act="gridXform" data-id="${_slbEsc(id)}" data-grid="${_slbEsc(field)}" data-op="rotate" title="rotate a quarter turn">⟳</button>
+                        <button class="slb2-tiny" data-act="gridXform" data-id="${_slbEsc(id)}" data-grid="${_slbEsc(field)}" data-op="fill" title="every tile within the reach">▦</button>
+                        <button class="slb2-tiny${drawn ? '' : ' dim'}" data-act="gridClear" data-id="${_slbEsc(id)}" data-grid="${_slbEsc(field)}" title="drop the mask — the radius / shape fields rule again">✕ CLEAR</button>
+                        ${field === 'splash' ? '' : `<span class="slb2-grid-origin">origin <button class="slb2-tiny${self ? '' : ' on'}" data-act="gridOrigin" data-id="${_slbEsc(id)}" data-self="0">target</button><button class="slb2-tiny${self ? ' on' : ''}" data-act="gridOrigin" data-id="${_slbEsc(id)}" data-self="1">self</button></span>`}
+                    </div>
+                </div>
             </div>`;
+        }
+        function _slb2MaskFromCells(cells) {
+            const out = [];
+            cells.forEach(k => { const [x, y] = k.split(',').map(Number); if (Math.abs(x) <= 3 && Math.abs(y) <= 3) out.push([x, y]); });
+            if (!out.some(p => !p[0] && !p[1])) out.push([0, 0]);
+            out.sort((a, b) => a[1] - b[1] || a[0] - b[0]);
+            return out;
+        }
+        /* The radius field a kind's engine gates read: crossRadius for cross kinds, blastRadius for bombs, else aoeRadius. */
+        function _slb2RadiusFieldFor(d) {
+            if (d.kind === 'cross' || (typeof d.crossRadius === 'number' && d.aoeRadius == null)) return 'crossRadius';
+            if (d.kind === 'bomb') return 'blastRadius';
+            return 'aoeRadius';
+        }
+        function _slb2WriteMask(id, field, mask, label) {
+            const d = SPELL_BY_ID[id];
+            if (!d) return;
+            const bound = (typeof aoeMaskBound === 'function') ? aoeMaskBound(mask) : 0;
+            const touched = [];
+            const ok = _slb2Mutate(label || `${id} · footprint drawn (${mask.length} tiles)`, () => {
+                if (field === 'splash') {
+                    const sp = Object.assign({}, d.splash || {}); sp.mask = mask; delete sp.radius;
+                    _slb2WriteField(id, 'splash', sp); touched.push('splash');
+                    return;
+                }
+                _slb2WriteField(id, 'aoeMask', mask); touched.push('aoeMask');
+                const rf = _slb2RadiusFieldFor(d);
+                _slb2WriteField(id, rf, bound); touched.push(rf);
+                ['aoeShape', 'diamond', 'diagonal'].forEach(f => { if (Object.prototype.hasOwnProperty.call(d, f)) { _slb2WriteField(id, f, null); touched.push(f); } });
+            });
+            if (!ok) return;
+            _slb2AfterEdit(id, touched[0]);
+            const r = _slb2RowById(id);
+            if (r) touched.slice(1).forEach(f => _slb2PatchField(r, f));
+        }
+        function _slb2GridRefresh(id, field) {
+            const r = _slb2RowById(id);
+            const body = document.getElementById('slbInsBody');
+            if (!r || !body) return;
+            const old = body.querySelector(`.slb2-gridwrap[data-gridwrap="${CSS.escape(field)}"]`);
+            if (old) old.replaceWith(_slb2H(_slb2GridHtml(r, field)));
+        }
+        function _slb2GridCellsOf(wrap) {
+            const cells = new Set();
+            wrap.querySelectorAll('.slb2-gcell.on').forEach(c => cells.add(c.getAttribute('data-gx') + ',' + c.getAttribute('data-gy')));
+            cells.add('0,0');
+            return cells;
+        }
+        function _slb2GridApply(cell, paint) {
+            if (!cell || cell.classList.contains('ctr')) return;
+            cell.classList.toggle('on', paint === 'on');
+        }
+        function _slb2GridDown(e) {
+            const cell = e.target.closest && e.target.closest('.slb2-gcell');
+            if (!cell) return;
+            const grid = cell.closest('.slb2-grid');
+            if (!grid) return;
+            e.preventDefault();
+            const paint = (e.button === 2) ? 'off' : (cell.classList.contains('on') ? 'off' : 'on');
+            _slbGridDrag = { id: grid.getAttribute('data-id'), field: grid.getAttribute('data-grid'), paint, grid, moved: false };
+            _slb2GridApply(cell, paint);
+        }
+        function _slb2GridOver(e) {
+            if (!_slbGridDrag) return;
+            const cell = e.target.closest && e.target.closest('.slb2-gcell');
+            if (!cell || cell.closest('.slb2-grid') !== _slbGridDrag.grid) return;
+            _slbGridDrag.moved = true;
+            _slb2GridApply(cell, _slbGridDrag.paint);
+        }
+        function _slb2GridUp() {
+            const drag = _slbGridDrag;
+            if (!drag) return;
+            _slbGridDrag = null;
+            if (!drag.grid.isConnected) return;
+            const mask = _slb2MaskFromCells(_slb2GridCellsOf(drag.grid));
+            _slb2WriteMask(drag.id, drag.field, mask);
+        }
+        function _slb2GridXform(id, field, op) {
+            const d = SPELL_BY_ID[id]; if (!d) return;
+            const cells = _slb2GridCells(d, field);
+            const pts = [...cells].map(k => k.split(',').map(Number));
+            let out;
+            if (op === 'mirrorX') out = pts.map(([x, y]) => [-x, y]);
+            else if (op === 'mirrorY') out = pts.map(([x, y]) => [x, -y]);
+            else if (op === 'rotate') out = pts.map(([x, y]) => [-y, x]);
+            else if (op === 'fill') { const b = Math.max(1, pts.reduce((m, p) => Math.max(m, Math.abs(p[0]), Math.abs(p[1])), 0)); out = []; for (let y = -b; y <= b; y++) for (let x = -b; x <= b; x++) out.push([x, y]); }
+            else return;
+            const mask = _slb2MaskFromCells(new Set(out.map(p => p[0] + ',' + p[1])));
+            _slb2WriteMask(id, field, mask, `${id} · footprint ${op === 'fill' ? 'filled' : op === 'rotate' ? 'rotated' : 'mirrored'}`);
+        }
+        function _slb2GridClear(id, field) {
+            const d = SPELL_BY_ID[id]; if (!d) return;
+            if (field === 'splash') {
+                if (!(d.splash && d.splash.mask)) return;
+                const sp = Object.assign({}, d.splash); delete sp.mask; if (!sp.radius) sp.radius = 1;
+                if (_slb2Mutate(`${id} · splash mask cleared`, () => { _slb2WriteField(id, 'splash', sp); })) _slb2AfterEdit(id, 'splash');
+                return;
+            }
+            if (!Object.prototype.hasOwnProperty.call(d, 'aoeMask')) return;
+            /* the radius / shape fields the grid rewrote go back to the shipped row (an added row keeps what it has) */
+            const M = _slbMods(), pris = M.pristineDef(id), touched = ['aoeMask'];
+            const ok = _slb2Mutate(`${id} · mask cleared (the radius fields rule)`, () => {
+                _slb2WriteField(id, 'aoeMask', null);
+                if (pris) ['aoeRadius', 'crossRadius', 'blastRadius', 'aoeShape', 'diamond', 'diagonal'].forEach(f => {
+                    const pv = Object.prototype.hasOwnProperty.call(pris, f) ? pris[f] : null;
+                    if (JSON.stringify(d[f] === undefined ? null : d[f]) !== JSON.stringify(pv)) { _slb2WriteField(id, f, pv); touched.push(f); }
+                });
+            });
+            if (!ok) return;
+            _slb2AfterEdit(id, 'aoeMask');
+            const r = _slb2RowById(id);
+            if (r) touched.slice(1).forEach(f => _slb2PatchField(r, f));
+        }
+        /* The kinds whose engine path reads a footprint (battle.js §6.1 sites). Any other kind hits one target: its drawn
+           mask only lights tiles — area damage on a single-target spell is the SPLASH rider (Phase 3). */
+        const _SLB2_AREA_KINDS = new Set(['aoe', 'cross', 'bomb', 'aoePull', 'zoneDebuff', 'zoneHeal', 'aoeShield', 'delayed', 'cleanseArea', 'skySlam', 'leapStrike', 'teleport', 'terrainCreate', 'barrage', 'summonWeather']);
+
+        /* ── THE LOOK (SPELL_LIBRARY_PLAN.md §5.5, Phase 2) ────────────────────────────────────────────────────
+           The inspector's LOOK tab mounts EWCharViewer (the builder's hero stage) on the row's race and lists every
+           animation the board could play: AUTO (what classifySpellAnimKind picks), CAST VERBS (the _castChainFor
+           kinds with their resolved first slot), SLOTS (UAL_SLOTS with clip · library · played length · strike),
+           RAW CLIPS (the unwired clips of the five libraries — baked on demand through EWCharViewer.playClip).
+           Hovering plays the option once on the stage; picking writes animVerb / animSlot / animClip (only one is
+           read: verb, then slot, then clip). ▶ FULL / 🔁 LOOP / ■ STOP drive the stage; ✦ VFX runs the real
+           staging through previewSpell. The VFX selects (archetype · weight · projectile · travel) live here too. */
+        let _slbLookRace = null;          // last race shown on the stage (sticks across rows)
+        let _slbLookGender = null;
+        let _slbAnimSearch = '';
+        let _slbAnimHoverTimer = null;
+        let _slbLookClips = null;         // [{ lib, name, clips:[{name,duration}] }] once the libraries are listed
+        let _slbLookClipsPending = false;
+        const _SLB2_ANIM_KIND_NOTE = { channel: 'held beam', call: 'summons', reap: 'harvest hook', pour: 'a pour', hook: 'chop / hook', guard: 'guard up', open: 'opens a door', touch: 'a touch', push: 'a shove', lantern: 'lifts a lantern', phone: 'the phone call', reload: 'reload', dance: 'a dance', smug: 'smug pose', cheer: 'a cheer', stealth: 'sneak', roar: 'a roar', skyward: 'to the sky', hurl: 'a hurl', nova: 'nova burst', drain: 'drain', kinetic: 'kinetic push', earth: 'earth call', rise: 'power up', curse: 'a curse', psychic: 'psychic', smash: 'hammer smash', sweep: 'sweeping kick', jab: 'a jab', rally: 'rally shout', slash: 'a slash', doubleSlash: 'double slash', roundhouse: 'roundhouse', thrust: 'thrust (travels)', upSlash: 'upward slash (travels)', leapSlash: 'leap slash (travels)', leapPunch: 'leap punch (travels)', flyKick: 'flying kick (travels)' };
+        function _slb2LookRaces() {
+            const out = [];
+            try {
+                if (typeof RACE_MODELS_3D === 'undefined' || !window.EWCharViewer) return out;
+                Object.keys(RACE_MODELS_3D).forEach(race => { const set = RACE_MODELS_3D[race]; Object.keys(set || {}).forEach(g => { if (window.EWCharViewer.supports(race, g)) out.push({ race, gender: g }); }); });
+            } catch (e) {}
+            out.sort((a, b) => a.race.localeCompare(b.race) || (a.gender === 'male' ? -1 : b.gender === 'male' ? 1 : a.gender.localeCompare(b.gender)));
+            return out;
+        }
+        function _slb2LookPickRace(r) {
+            const races = _slb2LookRaces();
+            if (!races.length) return null;
+            if (_slbLookRace && races.some(x => x.race === _slbLookRace && x.gender === _slbLookGender) && !(r.races || []).length) return { race: _slbLookRace, gender: _slbLookGender };
+            const own = (r.races || []).map(x => races.find(y => y.race === x)).find(Boolean);
+            if (own) return own;
+            if (_slbLookRace && races.some(x => x.race === _slbLookRace && x.gender === _slbLookGender)) return { race: _slbLookRace, gender: _slbLookGender };
+            return races.find(x => x.race === 'fortune teller') || races[0];
+        }
+        function _slb2LibName(i) {
+            try { if (typeof spellAnimLibName === 'function') return spellAnimLibName(i); } catch (e) {}
+            return ['UAL1', 'UAL2', 'MAL1', 'MAL2', 'MAL3'][i | 0] || ('lib ' + i);
+        }
+        function _slb2SlotInfo(slot) {
+            try { if (window.EWCharViewer && typeof window.EWCharViewer.slotInfo === 'function') return window.EWCharViewer.slotInfo(slot) || null; } catch (e) {}
+            const s = (typeof UAL_SLOTS !== 'undefined') ? UAL_SLOTS[slot] : null;
+            return s ? { slot, clip: s.clip, lib: s.lib || 0, ts: s.ts || 1, trim: s.trim || null, strikeAt: s.strikeAt, travel: !!s.travel, defer: !!s.defer } : null;
+        }
+        function _slb2ChainFor(kind) {
+            try { if (window.ThreeRenderer && typeof window.ThreeRenderer.castChainFor === 'function') return window.ThreeRenderer.castChainFor(kind) || ['cast']; } catch (e) {}
+            return ['cast'];
+        }
+        function _slb2SlotLabel(slot) {
+            const i = _slb2SlotInfo(slot);
+            if (!i) return `<b>${_slbEsc(slot)}</b> <span class="slb2-dim">— not a slot</span>`;
+            const ms = i.playedMs > 0 ? (i.playedMs / 1000).toFixed(1) + ' s' : (i.trim ? ((i.trim[1] - i.trim[0]) / (i.ts || 1)).toFixed(1) + ' s' : '');
+            const strike = i.strikeMs > 0 ? 'strike ' + (i.strikeMs / 1000).toFixed(2) + ' s' : (typeof i.strikeAt === 'number' ? 'strike ' + ((i.strikeAt - (i.trim ? i.trim[0] : 0)) / (i.ts || 1)).toFixed(2) + ' s' : '');
+            return `<b>${_slbEsc(slot)}</b> · ${_slbEsc(i.clip)} · ${_slbEsc(_slb2LibName(i.lib))}${ms ? ' · ' + ms : ''}${strike ? ' · ' + strike : ''}${i.travel ? ' <span class="slb2-tag">TRAVEL · moves the unit</span>' : ''}${i.defer && i.baked === false ? ' <span class="slb2-dim">(bakes on idle)</span>' : ''}`;
+        }
+        function _slb2AutoKind(d) {
+            try { if (typeof classifySpellAnimKind === 'function') return classifySpellAnimKind(d, { noPick: true }) || 'magic'; } catch (e) {}
+            return 'magic';
+        }
+        function _slb2LookPick(d) {
+            if (typeof d.animVerb === 'string' && d.animVerb) return { kind: 'verb', key: d.animVerb };
+            if (typeof d.animSlot === 'string' && d.animSlot) return { kind: 'slot', key: d.animSlot };
+            if (d.animClip && d.animClip.name) return { kind: 'clip', key: d.animClip.name, lib: d.animClip.lib | 0 };
+            return { kind: 'auto', key: 'auto' };
+        }
+        function _slb2LookPickText(d) {
+            const p = _slb2LookPick(d);
+            const auto = _slb2AutoKind(d);
+            if (p.kind === 'verb') { const c = _slb2ChainFor(p.key); return `VERB <b>${_slbEsc(p.key)}</b> → ${_slb2SlotLabel(c[0])}`; }
+            if (p.kind === 'slot') return `SLOT ${_slb2SlotLabel(p.key)} <span class="slb2-dim">then the auto chain (${_slbEsc(auto)})</span>`;
+            if (p.kind === 'clip') return `RAW CLIP <b>${_slbEsc(p.key)}</b> · ${_slbEsc(_slb2LibName(p.lib))} <span class="slb2-dim">baked as clip:${_slbEsc(p.key)}, then the auto chain (${_slbEsc(auto)})</span>`;
+            const c = _slb2ChainFor(auto);
+            return `AUTO <b>${_slbEsc(auto)}</b> → ${_slb2SlotLabel(c[0])}`;
         }
         function _slb2LookExtraHtml(r) {
             const d = r.def;
             const n = (Array.isArray(d.sfxCues) ? d.sfxCues.length : 0) + (Array.isArray(d.vfxCues) ? d.vfxCues.length : 0);
-            return `<div class="slb2-group"><div class="slb2-group-h">THE TIMELINE</div>
+            const pick = _slb2LookPickRace(r);
+            const races = _slb2LookRaces();
+            const canStage = !!(pick && window.EWCharViewer);
+            const strike = (typeof d.animStrikeMs === 'number') ? d.animStrikeMs : null;
+            const travel = d._animOverride && d._animOverride.travel;
+            return `<div class="slb2-group slb2-lookgroup" data-group="STAGE"><div class="slb2-group-h">THE STAGE${pick ? ` · ${_slbEsc(_slb2Race(pick.race))} ${_slbEsc(pick.gender)}` : ''}</div>
+                <div class="slb2-stage-bar">
+                    <select data-input="lookRace" title="the race on the stage">${races.length ? races.map(x => `<option value="${_slbEsc(x.race + '|' + x.gender)}"${pick && pick.race === x.race && pick.gender === x.gender ? ' selected' : ''}>${_slbEsc(_slb2Race(x.race))} · ${_slbEsc(x.gender)}</option>`).join('') : '<option value="">no 3D races</option>'}</select>
+                    <button class="slb2-tiny" data-act="lookPlay" data-id="${_slbEsc(r.id)}" data-mode="full" title="play the picked animation once, uncapped">▶ FULL</button>
+                    <button class="slb2-tiny" data-act="lookPlay" data-id="${_slbEsc(r.id)}" data-mode="loop" title="loop it">🔁 LOOP</button>
+                    <button class="slb2-tiny" data-act="lookStop" title="back to idle">■</button>
+                    <button class="slb2-tiny" data-act="lookVfx" data-id="${_slbEsc(r.id)}" title="the real staging on the stage (previewSpell)">✦ VFX</button>
+                </div>
+                <div class="slb2-stage${canStage ? '' : ' off'}" id="slbLookStage" data-race="${_slbEsc(pick ? pick.race : '')}" data-gender="${_slbEsc(pick ? pick.gender : '')}">${canStage ? '' : '<span class="slb2-dim">no live stage — WebGL or the 3D models are off; the labels below still work</span>'}</div>
+                <div class="slb2-stage-state" id="slbLookState">idle</div>
+            </div>
+            <div class="slb2-group slb2-lookgroup" data-group="ANIMATION PICK"><div class="slb2-group-h">ANIMATION · what the caster's body does</div>
+                <div class="slb2-look-pick" id="slbLookPick">${_slb2LookPickText(d)}</div>
+                <div class="slb2-look-strike">strike lead <input type="number" step="10" min="0" data-field="animStrikeMs" data-id="${_slbEsc(r.id)}" data-type="num" value="${strike != null ? strike : ''}" placeholder="auto" style="width:72px"> ms <span class="slb2-dim">— when the hit lands inside the clip (blank = the slot's strikeAt)</span></div>
+                <input type="search" class="slb2-anim-search" data-input="animSearch" placeholder="search verbs · slots · raw clips" value="${_slbEsc(_slbAnimSearch)}" spellcheck="false">
+                <div class="slb2-animlist" id="slbAnimList" data-id="${_slbEsc(r.id)}">${_slb2AnimListHtml(r)}</div>
+                <div class="slb2-field-h">Hover an option to play it on the stage; click to pick it. One pick is read: a VERB (a cast kind, its chain of slots), a SLOT (played first, then the auto chain), or a RAW CLIP (baked into a synthetic slot at load).</div>
+            </div>
+            <div class="slb2-group slb2-lookgroup" data-group="VFX TRAVEL"><div class="slb2-group-h">TRAVEL · how the effect moves</div>
+                <div class="slb2-field"><div class="slb2-field-l"><span class="slb2-field-name">Travel</span><span class="slb2-field-key">_animOverride.travel</span></div>
+                <div class="slb2-field-e"><select data-input="lookTravel" data-id="${_slbEsc(r.id)}"><option value=""${!travel ? ' selected' : ''}>(auto)</option>${_SLB_TRAVELS.map(t => `<option value="${t}"${travel === t ? ' selected' : ''}>${t}</option>`).join('')}</select></div>
+                <div class="slb2-field-h">The Lab's travel type — strike leap, descent, beam, aura, bolt… — previewed on the stage by ✦ VFX.</div></div>
+            </div>
+            <div class="slb2-group"><div class="slb2-group-h">THE TIMELINE</div>
                 <div class="slb2-field-h">${n ? n + ' cue' + (n === 1 ? '' : 's') + ' on the cast / launch / impact beats' : 'no cues — the default launch sound plays'}. Cues are placed on the Spell Lab's timeline, on the real board beats. <button class="slb2-tiny" data-act="lab" data-id="${_slbEsc(r.id)}">▶ OPEN THE LAB</button></div>
-                <div class="slb2-field-h">Auto animation today: <b>${_slbEsc(r.anim || '?')}</b> (classifySpellAnimKind). The slot / clip dropdown with the live 3D preview lands in Phase 2 with the engine read; the fields above are honoured then.</div>
             </div>`;
+        }
+        function _slb2AnimListHtml(r) {
+            const d = r.def, id = r.id;
+            const q = _slbAnimSearch.trim().toLowerCase();
+            const pick = _slb2LookPick(d);
+            const auto = _slb2AutoKind(d);
+            const hit = (s) => !q || String(s).toLowerCase().indexOf(q) >= 0;
+            const opt = (kind, key, html, extra) => `<div class="slb2-anim-opt${pick.kind === kind && pick.key === key ? ' on' : ''}${extra && extra.dim ? ' dim' : ''}" data-act="animPick" data-id="${_slbEsc(id)}" data-pick-kind="${kind}" data-pick="${_slbEsc(key)}"${extra && extra.lib != null ? ` data-lib="${extra.lib}"` : ''}>${html}</div>`;
+            let html = '';
+            const autoChain = _slb2ChainFor(auto);
+            if (hit('auto ' + auto)) html += `<div class="slb2-anim-grp">AUTO</div>` + opt('auto', 'auto', `<b>auto</b> — ${_slbEsc(auto)} → ${_slb2SlotLabel(autoChain[0])} <span class="slb2-dim">(the verb table + the rules)</span>`);
+            const kinds = (typeof SPELL_ANIM_KINDS !== 'undefined') ? SPELL_ANIM_KINDS : [];
+            const verbs = kinds.filter(k => hit(k + ' ' + (_SLB2_ANIM_KIND_NOTE[k] || '') + ' ' + _slb2ChainFor(k)[0]));
+            if (verbs.length) html += `<div class="slb2-anim-grp">CAST VERBS · ${verbs.length}</div>` + verbs.map(k => { const c = _slb2ChainFor(k); return opt('verb', k, `<b>${_slbEsc(k)}</b>${_SLB2_ANIM_KIND_NOTE[k] ? ` <span class="slb2-dim">${_slbEsc(_SLB2_ANIM_KIND_NOTE[k])}</span>` : ''} → ${_slb2SlotLabel(c[0])}`); }).join('');
+            const slots = (typeof UAL_SLOTS !== 'undefined') ? Object.keys(UAL_SLOTS) : [];
+            const wired = new Set();
+            slots.forEach(s => { const u = UAL_SLOTS[s]; if (u && u.clip) wired.add((u.lib || 0) + ':' + u.clip); });
+            const slotHits = slots.filter(s => { const u = UAL_SLOTS[s] || {}; return hit(s + ' ' + (u.clip || '') + ' ' + _slb2LibName(u.lib || 0)); });
+            if (slotHits.length) html += `<div class="slb2-anim-grp">SLOTS · ${slotHits.length} of ${slots.length}</div>` + slotHits.map(s => opt('slot', s, _slb2SlotLabel(s))).join('');
+            if (_slbLookClips) {
+                const raws = [];
+                _slbLookClips.forEach(L => (L.clips || []).forEach(c => { if (!wired.has(L.lib + ':' + c.name) && hit(c.name + ' ' + _slb2LibName(L.lib))) raws.push({ lib: L.lib, name: c.name, duration: c.duration }); }));
+                if (raws.length) html += `<div class="slb2-anim-grp">RAW CLIPS · ${raws.length} unwired</div>` + raws.map(c => opt('clip', c.name, `<b>${_slbEsc(c.name)}</b> · ${_slbEsc(_slb2LibName(c.lib))} · ${(c.duration || 0).toFixed(1)} s <span class="slb2-dim">not baked — bakes at load / on first play</span>`, { lib: c.lib })).join('');
+            } else {
+                html += `<div class="slb2-anim-grp">RAW CLIPS · <span class="slb2-dim">${_slbLookClipsPending ? 'listing the five libraries…' : (window.EWCharViewer ? 'loading…' : 'the renderer is off')}</span></div>`;
+            }
+            return html || '<div class="slb2-dim" style="padding:6px">nothing matches</div>';
+        }
+        function _slb2LookRefreshList(id) {
+            const r = _slb2RowById(id || _slbSelectedId);
+            const list = document.getElementById('slbAnimList');
+            if (!r || !list) return;
+            list.innerHTML = _slb2AnimListHtml(r);
+            const pk = document.getElementById('slbLookPick');
+            if (pk) pk.innerHTML = _slb2LookPickText(r.def);
+        }
+        function _slb2LookMount() {
+            const host = document.getElementById('slbLookStage');
+            if (!host || !window.EWCharViewer) return;
+            const race = host.getAttribute('data-race'), gender = host.getAttribute('data-gender');
+            if (!race) return;
+            _slbLookRace = race; _slbLookGender = gender;
+            try {
+                window.EWCharViewer.onState(ps => { const st = document.getElementById('slbLookState'); if (st) st.textContent = ps && ps.playing ? `▶ ${ps.name || ps.playing} · ${Math.round(ps.ms || 0)} ms` : 'idle'; });
+                window.EWCharViewer.mount(host, race, gender || null, { accent: '#ffd86a' });
+            } catch (e) { console.warn('[SpellLibrary] stage mount failed', e); }
+            if (!_slbLookClips && !_slbLookClipsPending && typeof window.EWCharViewer.libClips === 'function') {
+                _slbLookClipsPending = true;
+                try { window.EWCharViewer.libClips(list => { _slbLookClips = Array.isArray(list) ? list : []; _slbLookClipsPending = false; if (_slbInsTab === 'look') _slb2LookRefreshList(); }); } catch (e) { _slbLookClipsPending = false; }
+            }
+        }
+        function _slb2LookUnmount() {
+            try { if (window.EWCharViewer && window.EWCharViewer.isMounted && window.EWCharViewer.isMounted()) { const c = document.querySelector('#slbLookStage canvas[data-ew-charviewer]'); if (c) window.EWCharViewer.unmount(); } } catch (e) {}
+        }
+        function _slb2LookPlayPick(kind, key, lib, opts) {
+            const cv = window.EWCharViewer;
+            if (!cv || !cv.isMounted || !cv.isMounted()) return 0;
+            const o = Object.assign({ full: true }, opts || {});
+            try {
+                if (kind === 'verb' || kind === 'auto') { const chain = _slb2ChainFor(key === 'auto' ? _slb2AutoKind(SPELL_BY_ID[_slbSelectedId] || {}) : key); return cv.play(chain, Object.assign({ name: key }, o)); }
+                if (kind === 'slot') return cv.play(key, Object.assign({ name: key }, o));
+                if (kind === 'clip' && typeof cv.playClip === 'function') return cv.playClip(key, lib | 0, Object.assign({ name: key }, o));
+            } catch (e) { console.warn('[SpellLibrary] preview failed', e); }
+            return 0;
+        }
+        function _slb2LookPlayRow(id, mode) {
+            const d = SPELL_BY_ID[id]; if (!d) return;
+            const p = _slb2LookPick(d);
+            const ms = _slb2LookPlayPick(p.kind, p.key, p.lib, mode === 'loop' ? { loop: true } : {});
+            if (!ms) _slbToast('no clip on this stage for that pick (sprite vessel, or the bake is still running)', true);
+        }
+        function _slb2LookSetPick(id, kind, key, lib) {
+            const d = SPELL_BY_ID[id]; if (!d) return;
+            const ok = _slb2Mutate(`${id} · animation ${kind === 'auto' ? 'back to auto' : kind + ' ' + key}`, () => {
+                _slb2WriteField(id, 'animVerb', kind === 'verb' ? key : null);
+                _slb2WriteField(id, 'animSlot', kind === 'slot' ? key : null);
+                _slb2WriteField(id, 'animClip', kind === 'clip' ? { name: key, lib: lib | 0 } : null);
+            });
+            if (!ok) return;
+            _slb2AfterEdit(id, 'animVerb');
+            const r = _slb2RowById(id);
+            if (r) { _slb2PatchField(r, 'animSlot'); _slb2PatchField(r, 'animClip'); }
+            _slb2LookRefreshList(id);
+            _slb2LookPlayPick(kind, key, lib);
+        }
+        function _slb2LookHover(e) {
+            const el = e.target.closest && e.target.closest('.slb2-anim-opt');
+            if (!el || !document.getElementById('slbAnimList')) return;
+            if (_slbAnimHoverTimer) clearTimeout(_slbAnimHoverTimer);
+            const kind = el.getAttribute('data-pick-kind'), key = el.getAttribute('data-pick'), lib = el.getAttribute('data-lib');
+            _slbAnimHoverTimer = setTimeout(() => { _slbAnimHoverTimer = null; _slb2LookPlayPick(kind, key, lib); }, 140);
         }
         function _slb2UpgradesTabHtml(r) {
             const reg = (typeof SPELL_UPGRADES !== 'undefined') ? SPELL_UPGRADES : {};
@@ -10365,11 +10732,12 @@
             /* dependants: the MP ghost after a power edit, the LOS control, the footprint after an area edit */
             const power = (typeof EWSpellMods !== 'undefined' && EWSpellMods.POWER_FIELDS) || ['dmg', 'heal', 'healAmt', 'statusEffects', 'aoeRadius', 'range', 'apCost', 'kind'];
             if (field !== 'cost' && power.indexOf(field) >= 0) _slb2PatchField(r, 'cost');
-            if (['aoeRadius', 'aoeShape', 'aoeOriginSelf', 'crossRadius', 'diamond', 'diagonal', 'lineWidth', 'tileCount', 'blastRadius', 'aoeMask', 'kind', 'range'].includes(field)) {
+            if (['aoeRadius', 'aoeShape', 'aoeOriginSelf', 'crossRadius', 'diamond', 'diagonal', 'lineWidth', 'tileCount', 'blastRadius', 'aoeMask', 'splash', 'kind', 'range'].includes(field)) {
                 const body = document.getElementById('slbInsBody');
-                const old = body && body.querySelector('.slb2-footwrap');
-                if (old) old.closest('.slb2-group').replaceWith(_slb2H(_slb2FootprintHtml(r)));
+                const groups = body ? body.querySelectorAll('.slb2-gridgroup') : [];
+                if (groups.length) { const fresh = _slb2H('<div>' + _slb2FootprintHtml(r) + '</div>'); groups[0].replaceWith(...fresh.children); for (let i = 1; i < groups.length; i++) groups[i].remove(); }
             }
+            if (['animVerb', 'animSlot', 'animClip', 'animStrikeMs', '_animOverride'].includes(field) && _slbInsTab === 'look') _slb2LookRefreshList(id);
             if (['requiresLineOfSight', 'ignoresLineOfSight', 'lineOfSight'].includes(field)) _slb2PatchField(r, 'ignoresLineOfSight');
             if (field === 'notes') { const tab = _slb2Q('#slbInspector .slb2-itab[data-tab="notes"]'); if (tab) tab.textContent = 'NOTES' + (r.hasNotes ? ' 📝' : ''); }
         }
@@ -11223,6 +11591,9 @@
             body.addEventListener('click', _slb2OnClick);
             body.addEventListener('change', _slb2OnChange);
             body.addEventListener('input', _slb2OnInput);
+            body.addEventListener('mousedown', _slb2GridDown);
+            body.addEventListener('mouseover', e => { _slb2GridOver(e); _slb2LookHover(e); });
+            document.addEventListener('mouseup', _slb2GridUp);
             body.addEventListener('scroll', e => { if (e.target && e.target.id === 'slbTableScroll') { if (!_slbScrollRaf) _slbScrollRaf = requestAnimationFrame(() => { _slbScrollRaf = 0; _slb2RenderWindow(false); }); } }, true);
             body.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target && e.target.getAttribute && e.target.getAttribute('data-input') === 'bulk' && e.target.getAttribute('data-op') === 'appendNote') { e.preventDefault(); if (e.target.value.trim()) { _slb2Bulk('appendNote', e.target.value.trim()); } } });
             window.addEventListener('resize', () => { const shell = document.getElementById('slbShell'); if (!shell) return; const narrow = window.innerWidth < 1100; if (narrow !== _slbNarrow) { _slbNarrow = narrow; shell.classList.toggle('narrow', narrow); } if (_slbTab === 'spells' || _slbTab === 'passives') { if (_slbView === 'table' && _slb2ColsLevel() !== _slbColsLevel) _slb2RenderCenter(); else _slb2RenderWindow(true); } });
@@ -11320,6 +11691,14 @@
                 case 'copyJson': { const m = document.getElementById('slbModal'); if (m) _slb2Copy(m._json, 'JSON'); return; }
                 case 'downloadJson': { const m = document.getElementById('slbModal'); if (m) { _slb2Download(m._json); _slbToast('⇩ downloaded — hand the file to a thread to bake'); } return; }
                 case 'lab': window._slbEnterLab(id || _slbSelectedId); return;
+                case 'gridPreset': { const m = (typeof AOE_PRESETS !== 'undefined') && AOE_PRESETS[P('data-preset')]; if (m) _slb2WriteMask(id, P('data-grid'), m.map(p => [p[0], p[1]]), `${id} · footprint ${P('data-preset')}`); return; }
+                case 'gridXform': _slb2GridXform(id, P('data-grid'), P('data-op')); return;
+                case 'gridClear': _slb2GridClear(id, P('data-grid')); return;
+                case 'gridOrigin': window._slbSetField(id, 'aoeOriginSelf', P('data-self') === '1', 'bool'); return;
+                case 'lookPlay': _slb2LookPlayRow(id, P('data-mode')); return;
+                case 'lookStop': try { if (window.EWCharViewer) window.EWCharViewer.stopPreview(); } catch (e2) {} return;
+                case 'lookVfx': { const d = SPELL_BY_ID[id]; const cv = window.EWCharViewer; if (!d || !cv || !cv.isMounted || !cv.isMounted()) { _slbToast('no live stage', true); return; } try { const ms = typeof cv.previewSpell === 'function' ? cv.previewSpell(d, { name: d.name }) : cv.playSpell(d, { name: d.name, full: true }); if (!ms) _slbToast('no clip on this stage for that pick', true); } catch (e2) { _slbToast('✗ ' + e2.message, true); } return; }
+                case 'animPick': _slb2LookSetPick(id, P('data-pick-kind'), P('data-pick'), P('data-lib')); return;
                 case 'dupe': window._slbDuplicate(id); return;
                 case 'revert': window._slbRevertSpell(id); return;
                 case 'delete': window._slbDeleteSpell(id); return;
@@ -11400,6 +11779,8 @@
             switch (kind) {
                 case 'view': if (v === '__save') _slb2SaveView(); else if (v === '__del') _slb2DeleteViewMenu(t); else if (v) _slb2ApplyView(v); t.value = ''; return;
                 case 'home': window._slbSetHome(id, v); return;
+                case 'lookRace': { const [race, gender] = String(v).split('|'); if (!race) return; _slbLookRace = race; _slbLookGender = gender || null; const host = document.getElementById('slbLookStage'); if (host) { host.setAttribute('data-race', race); host.setAttribute('data-gender', gender || ''); host.classList.remove('off'); host.textContent = ''; } const gh = document.querySelector('.slb2-lookgroup .slb2-group-h'); if (gh) gh.textContent = `THE STAGE · ${_slb2Race(race)} ${gender || ''}`; _slb2LookMount(); return; }
+                case 'lookTravel': window._slbSetField(id, '_animOverride', v ? JSON.stringify(Object.assign({}, (SPELL_BY_ID[id] && SPELL_BY_ID[id]._animOverride) || {}, { travel: v })) : (SPELL_BY_ID[id] && SPELL_BY_ID[id]._animOverride && Object.keys(SPELL_BY_ID[id]._animOverride).length > 1 ? JSON.stringify(Object.assign({}, SPELL_BY_ID[id]._animOverride, { travel: undefined })) : ''), 'json'); return;
                 case 'famAdd': if (v) _slb2FamilyOf(id, v, true); return;
                 case 'assignJob': if (v) { window._slbAssign(id, 'job', v); } return;
                 case 'assignRace': if (v) { window._slbAssign(id, 'race', v); } return;
@@ -11420,6 +11801,7 @@
             const kind = t.getAttribute('data-input');
             if (kind === 'search') { _slbSearch = t.value; _slbFilteredCache = null; _slb2RenderRail(); _slb2RenderChips(); _slb2RenderCenter(); return; }
             if (kind === 'mpSearch') { _slbMpSearch = t.value; _slbMpRenderRail(); _slbMpRenderDetail(); return; }
+            if (kind === 'animSearch') { _slbAnimSearch = t.value; _slb2LookRefreshList(); return; }
             if (kind === 'notes') {
                 const id = t.getAttribute('data-id');
                 const prev = document.getElementById('slbNotesPrev'); if (prev) prev.innerHTML = _slb2Markdown(t.value);
@@ -11488,7 +11870,14 @@
             return all.sort((a, b) => (ready(b) - ready(a)) || a.localeCompare(b)).map(r => ({ race: r, has3d: ready(r) }));
         }
 
+        /* The stage leaves with the screen: Back (map.js _spellLibraryBack) and the Lab both unmount it. */
+        if (typeof window._spellLibraryBack === 'function' && !window._spellLibraryBack._slb2Wrapped) {
+            const _back0 = window._spellLibraryBack;
+            window._spellLibraryBack = function() { _slb2LookUnmount(); return _back0.apply(this, arguments); };
+            window._spellLibraryBack._slb2Wrapped = true;
+        }
         window._slbEnterLab = function(spellId) {
+            _slb2LookUnmount();
             const cfg = _slbLab.cfg;
             if (spellId) cfg.spellId = spellId;
             if (!cfg.spellId) {
@@ -12590,6 +12979,15 @@
 
         function getSpellAoeFootprint(spell, tx, ty, casterUnit) {
             if (!spell) return [];
+            /* THE MASK (SPELL_LIBRARY_PLAN.md §6.1 #4, Phase 2): a drawn `aoeMask` wins over every radius / shape field.
+               Centre = the caster for self-origin rows (and the placed tile for bombs), else the target tile. Mirrors
+               battle.js getSpellAoeArea / getCrossArea — the mask branch sits first in all four footprint readers. */
+            if (typeof aoeMaskValid === 'function' && aoeMaskValid(spell.aoeMask)
+                && spell.kind !== 'line' && spell.kind !== 'linePush' && spell.kind !== 'dash' && !(spell.kind === 'terrainCreate' && spell.orientable)) {
+                const mcx = (spell.aoeOriginSelf && casterUnit && spell.kind !== 'bomb') ? casterUnit.x : tx;
+                const mcy = (spell.aoeOriginSelf && casterUnit && spell.kind !== 'bomb') ? casterUnit.y : ty;
+                return aoeMaskTiles(spell.aoeMask, mcx, mcy, bw(), bh());
+            }
             if (spell.kind === 'aoe') {
                 const cx = spell.aoeOriginSelf ? casterUnit.x : tx;
                 const cy = spell.aoeOriginSelf ? casterUnit.y : ty;
@@ -12881,6 +13279,9 @@
                 radius = spell.aoeRadius || spell.crossRadius || 1;
                 isHeal = (kind === 'zoneHeal' || kind === 'aoeShield');
             }
+            /* THE MASK (Phase 2): a drawn footprint sizes the wash by its reach and draws its own tiles below */
+            const _selfMask = (spell.aoeOriginSelf && typeof aoeMaskValid === 'function' && aoeMaskValid(spell.aoeMask)) ? spell.aoeMask : null;
+            if (_selfMask) radius = Math.max(1, aoeMaskBound(_selfMask));
             if (radius <= 0 && kind !== 'selfHeal' && kind !== 'escape') return;
 
             // 2026-07-17 shape pass: self-centered aoe/cross kinds preview
@@ -12898,7 +13299,7 @@
                         if (_isWetTile(wx, wy)) tiles.push({ x: wx, y: wy });
                     }
                 }
-            } else if (spell.aoeOriginSelf && (kind === 'aoe' || kind === 'cross')) {
+            } else if (spell.aoeOriginSelf && (kind === 'aoe' || kind === 'cross' || (_selfMask && kind !== 'selfHeal' && kind !== 'escape'))) {
                 tiles = getSpellAoeFootprint(spell, unit.x, unit.y, unit);
             } else {
             for (let dy = -radius; dy <= radius; dy++) {

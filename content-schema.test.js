@@ -85,6 +85,12 @@ function validateSpell(sp, where, classes, problems) {
     }
     if (sp.roleOverride !== undefined && !D.SPELL_ROLES.includes(sp.roleOverride)) problems.push(`${label}: roleOverride '${sp.roleOverride}' is not a role`);
     if (sp.aoeMask !== undefined && !D.aoeMaskValid(sp.aoeMask)) problems.push(`${label}: aoeMask is not a list of [dx, dy] within ±3`);
+    if (sp._aoeBound !== undefined && sp._aoeBound !== D.aoeMaskBound(sp.aoeMask)) problems.push(`${label}: _aoeBound ${sp._aoeBound} is not the mask's reach`);
+    /* THE LOOK (§4.6, Phase 2): the animation picks, typed */
+    for (const str of ['animVerb', 'animSlot']) if (sp[str] !== undefined && typeof sp[str] !== 'string') problems.push(`${label}: ${str} is not a string`);
+    if (sp.animStrikeMs !== undefined && (typeof sp.animStrikeMs !== 'number' || !isFinite(sp.animStrikeMs) || sp.animStrikeMs < 0)) problems.push(`${label}: animStrikeMs is ${sp.animStrikeMs}`);
+    if (sp.animClip !== undefined && !(sp.animClip && typeof sp.animClip === 'object' && typeof sp.animClip.name === 'string' && Number.isInteger(sp.animClip.lib) && sp.animClip.lib >= 0 && sp.animClip.lib <= 4))
+        problems.push(`${label}: animClip is not { name: string, lib: 0–4 }`);
     if (sp.notes !== undefined && typeof sp.notes !== 'string') problems.push(`${label}: notes is not a string`);
     if (typeof sp._legacyTier === 'string') problems.push(`${label}: still carries the legacy tier string '${sp._legacyTier}' — run node bake-spell-mods.js --stamp-tiers`);
 }
