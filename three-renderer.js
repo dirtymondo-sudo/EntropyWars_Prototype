@@ -41217,9 +41217,26 @@ const ThreeRenderer = (function () {
         var steel = new THREE.MeshPhongMaterial({ color: 0x8a8f94, shininess: 60 });
         var kerbMat = new THREE.MeshPhongMaterial({ color: 0xb9b6ae, shininess: 10 });
         _hq.blockers = _hq.blockers || [];
+        var keyMats = {};
         info.bridges.forEach(function (b) {
-            var keyMat = b.key ? new THREE.MeshPhongMaterial({ map: _hzTex(b.key) || null, color: 0xffffff, shininess: 8 }) : topMat;
+            var keyMat = b.key ? (keyMats[b.key] || (keyMats[b.key] = new THREE.MeshPhongMaterial({ map: _hzTex(b.key) || null, color: 0xffffff, shininess: 8 }))) : topMat;
+            /* THE ROUND PIECES (2026-09-26): an ARC bridge is one ring-sector slab (the garage's deck) — _hqBuildArcBridge */
+            if (b.arc) { try { _hqBuildArcBridge(b, G, TM, U, keyMat, sideMat, steel); } catch (e) { console.warn('[HQ] an arc bridge failed', b.id, e); } return; }
             var L = b.len, yaw = Math.atan2(b.x1 - b.x0, b.z1 - b.z0), cx = (b.x0 + b.x1) / 2, cz = (b.z0 + b.z1) / 2;
+            /* THE STANDS (2026-09-26): a PLAIN bridge (a row of seating over a tunnel, a lintel) is a block of the stand's own concrete —
+               no girder, no kerb lips, no rails, no piers; its seats are drawn with the rows' (_hqBuildTierSeats) */
+            if (b.plain || b.tier) {
+                var bw = b.drawW || b.w;   // a tier bridge is read a little wider than it is drawn (the rows' slabs overlap, so no walker falls between them)
+                var pg = new THREE.BoxGeometry(bw * U, b.thick * U, L * U); _hzBoxUV(pg, bw * U, b.thick * U, L * U, TM);
+                var pm = new THREE.Mesh(pg, b.key ? keyMat : sideMat); pm.position.set(cx * U, (b.y - b.thick / 2) * U + 0.3, cz * U); pm.rotation.y = yaw;
+                pm.castShadow = true; pm.receiveShadow = true; pm.renderOrder = 1; G.add(pm);
+                /* THE PRESS BOX: a `glaze` block wears a lit window band down both long sides */
+                if (b.glaze) [-1, 1].forEach(function (sg) {
+                    var wm = new THREE.Mesh(new THREE.PlaneGeometry(Math.max(0.5, L - 0.8) * U, Math.min(1.1, b.thick * 0.45) * U), new THREE.MeshBasicMaterial({ color: typeof b.glaze === 'number' ? b.glaze : 0xffe2a8 }));
+                    wm.rotation.y = yaw + sg * Math.PI / 2; wm.position.set((cx + Math.cos(yaw) * sg * (bw / 2 + 0.02)) * U, (b.y - b.thick * 0.42) * U, (cz - Math.sin(yaw) * sg * (bw / 2 + 0.02)) * U); G.add(wm);
+                });
+                return;
+            }
             /* THE FLICKER (2026-09-21): the slab's top stood 4 mm over the tier it lands on at either mouth — the field's own
                triangles under it z-fought from any distance. The deck rides 2.5 cm over its height (the feet read the data rule). */
             var g = new THREE.Group(); g.position.set(cx * U, (b.y + 0.025) * U, cz * U); g.rotation.y = yaw;
@@ -41257,6 +41274,243 @@ const ThreeRenderer = (function () {
                 });
             }
         });
+    }
+    /* THE ROUND PIECES (2026-09-26 — the user: "why can't it be round like Door HQ Central Egress?"): an ARC bridge (data.js
+       hqTerrainBridges `b.arc` = { x, z, r0, r1, a0, a1 }, degrees clockwise from north) is ONE ring-sector slab — the top in its
+       sheet (planar UVs, so the paint lines up with the field's), the underside, the inner and outer fascias, the two end faces when
+       it is not a whole ring — and its rails as true arcs (`rails`: true = both edges, 'inner' / 'outer' = one, false = none) on
+       posts, registered as RING GRINDS when the arc is centred on the room's origin (the rider's arc rails are). */
+    function _hqBuildArcBridge(b, G, TM, U, topMat, sideMat, steel) {
+        var A = b.arc, span = A.a1 - A.a0, full = span >= 359.99;
+        if (b.drawR0 != null || b.drawR1 != null) A = { x: A.x, z: A.z, a0: A.a0, a1: A.a1, r0: (b.drawR0 != null) ? b.drawR0 : A.r0, r1: (b.drawR1 != null) ? b.drawR1 : A.r1 };   // read wider than drawn (a seam the walker never falls through, no z-fight)
+        var n = Math.max(12, Math.ceil(span / 2.5)), y1 = b.y, y0 = b.y - b.thick;
+        var P = [], N = [], UV = [], I = [], P2 = [], N2 = [], UV2 = [], I2 = [];
+        var pt = function (r, d) { var q = d * Math.PI / 180; return [A.x + Math.sin(q) * r, A.z - Math.cos(q) * r, Math.sin(q), -Math.cos(q)]; };
+        /* the top (in the key sheet) and the underside (the side sheet): a strip of quads r0 → r1 */
+        var ring = function (Pa, Na, UVa, Ia, y, up) {
+            var base = Pa.length / 3;
+            for (var i = 0; i <= n; i++) {
+                var d = A.a0 + span * i / n, pI = pt(A.r0, d), pO = pt(A.r1, d);
+                Pa.push(pI[0] * U, y * U, pI[1] * U, pO[0] * U, y * U, pO[1] * U);
+                Na.push(0, up ? 1 : -1, 0, 0, up ? 1 : -1, 0);
+                UVa.push(pI[0] * U / TM, pI[1] * U / TM, pO[0] * U / TM, pO[1] * U / TM);
+                if (i > 0) { var a = base + (i - 1) * 2; if (up) Ia.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); else Ia.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }   // counter-clockwise seen from its own side (θ runs clockwise from above)
+            }
+        };
+        ring(P, N, UV, I, y1, true);
+        ring(P2, N2, UV2, I2, y0, false);
+        /* the fascias: inner (facing the centre) and outer, the side sheet; U runs along the arc, V up */
+        [[A.r0, -1], [A.r1, 1]].forEach(function (fr) {
+            var r = fr[0], out = fr[1], base = P2.length / 3, along = 0, prev = null;
+            for (var i = 0; i <= n; i++) {
+                var d = A.a0 + span * i / n, p = pt(r, d);
+                if (prev) along += Math.hypot(p[0] - prev[0], p[1] - prev[1]); prev = p;
+                P2.push(p[0] * U, y1 * U, p[1] * U, p[0] * U, y0 * U, p[1] * U);
+                N2.push(p[2] * out, 0, p[3] * out, p[2] * out, 0, p[3] * out);
+                UV2.push(along * U / TM, y1 * U / TM, along * U / TM, y0 * U / TM);
+                if (i > 0) { var a = base + (i - 1) * 2; if (out > 0) I2.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); else I2.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
+            }
+        });
+        /* the ends (a sector that is not a whole ring) */
+        if (!full) [[A.a0, -1], [A.a1, 1]].forEach(function (fe) {
+            var d = fe[0], s = fe[1], pI = pt(A.r0, d), pO = pt(A.r1, d), q = d * Math.PI / 180, nx = Math.cos(q) * s, nz = Math.sin(q) * s, base = P2.length / 3;
+            P2.push(pI[0] * U, y1 * U, pI[1] * U, pO[0] * U, y1 * U, pO[1] * U, pI[0] * U, y0 * U, pI[1] * U, pO[0] * U, y0 * U, pO[1] * U);
+            for (var k = 0; k < 4; k++) N2.push(nx, 0, nz);
+            UV2.push(0, y1 * U / TM, (A.r1 - A.r0) * U / TM, y1 * U / TM, 0, y0 * U / TM, (A.r1 - A.r0) * U / TM, y0 * U / TM);
+            if (s > 0) I2.push(base, base + 2, base + 1, base + 1, base + 2, base + 3); else I2.push(base, base + 1, base + 2, base + 1, base + 3, base + 2);
+        });
+        var mk = function (Pa, Na, UVa, Ia, mat) {
+            var g = new THREE.BufferGeometry();
+            g.setAttribute('position', new THREE.Float32BufferAttribute(Pa, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(Na, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(UVa, 2)); g.setIndex(Ia);
+            var m = new THREE.Mesh(g, mat); m.position.y = 0.025 * U + 0.3; m.receiveShadow = true; m.castShadow = true; m.renderOrder = 1; G.add(m); return m;
+        };
+        mk(P, N, UV, I, topMat); mk(P2, N2, UV2, I2, sideMat);
+        /* the rails: a top bar at 1.05 and a mid bar at 0.55 on posts every ~1.6 m, one arc per edge asked for */
+        var which = b.rails === true ? [A.r0 + 0.12, A.r1 - 0.12] : b.rails === 'inner' ? [A.r0 + 0.12] : b.rails === 'outer' ? [A.r1 - 0.12] : [];
+        var grp = new THREE.Group(); grp.position.set(A.x * U, (b.y + 0.025) * U + 0.3, A.z * U); G.add(grp);
+        which.forEach(function (r) {
+            [1.05, 0.55].forEach(function (rh) { grp.add(_hqRailArc(r, A.a0, A.a1, rh, 0.03, steel)); });
+            var np = Math.max(2, Math.round(r * span * Math.PI / 180 / 1.6));
+            for (var pk = 0; pk <= np; pk++) {
+                if (full && pk === np) break;
+                var q = (A.a0 + span * pk / np) * Math.PI / 180;
+                var post = new THREE.Mesh(new THREE.CylinderGeometry(0.035 * U, 0.04 * U, 1.05 * U, 6), steel); post.position.set(Math.sin(q) * r * U, 0.525 * U, -Math.cos(q) * r * U); grp.add(post);
+            }
+            if (Math.abs(A.x) < 0.01 && Math.abs(A.z) < 0.01) _hq.rails.push({ arc: true, r: r, a0: A.a0, a1: A.a1, y: b.y + 1.05, bridge: true, ring: true });
+        });
+    }
+    /* THE STANDS (2026-09-26 — the user: "the stadium should be a normal flat rectangular grass football field with a bowl of stands
+       round it … actual architecture, not raised floors"): the seats on every TIER row (data.js hqStandBowl → wall rows and the
+       bridges over a tunnel wearing `tier`, `seat` = the colour, `front` = the unit normal toward the pitch, `gaps` = the aisles
+       along the row, metres from its start) — ONE InstancedMesh per colour: a pedestal, a pan at 0.42 and a back, every 0.55 m, at
+       the back of the tread facing the pitch. Drawn only (the walker climbs the treads — 0.42 a row — and walks through the seats'
+       low backs like a crowd's legs; the aisles are the clean lines). */
+    function _hqBuildTierSeats(info, G, U) {
+        var rows = (info.walls || []).filter(function (w) { return w.seat && w.front; }).concat((info.bridges || []).filter(function (b) { return b.seat && b.front && !b.arc; }));
+        if (!rows.length || typeof THREE.InstancedMesh !== 'function') return 0;
+        /* one seat: three boxes merged by hand (local +Z = the way it faces) */
+        var boxes = [[0.10, 0.40, 0.10, 0, 0.20, -0.02], [0.46, 0.07, 0.42, 0, 0.435, 0.02], [0.46, 0.40, 0.06, 0, 0.64, -0.19]];
+        var P = [], Nn = [], I = [];
+        boxes.forEach(function (bx) {
+            var g = new THREE.BoxGeometry(bx[0] * U, bx[1] * U, bx[2] * U); g.translate(bx[3] * U, bx[4] * U, bx[5] * U);
+            var base = P.length / 3, pa = g.attributes.position.array, na = g.attributes.normal.array, ia = g.index.array;
+            for (var i = 0; i < pa.length; i++) { P.push(pa[i]); Nn.push(na[i]); }
+            for (var j = 0; j < ia.length; j++) I.push(ia[j] + base);
+            g.dispose();
+        });
+        var seatGeo = new THREE.BufferGeometry(); seatGeo.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); seatGeo.setAttribute('normal', new THREE.Float32BufferAttribute(Nn, 3)); seatGeo.setIndex(I);
+        var byCol = {};
+        rows.forEach(function (w) {
+            var L = Math.hypot(w.x1 - w.x0, w.z1 - w.z0); if (L < 0.6) return;
+            var tx = (w.x1 - w.x0) / L, tz = (w.z1 - w.z0) / L, fx = w.front[0], fz = w.front[1], back = (w.drawW || w.t || w.w || 0.85) / 2 - 0.3, top = (w.top != null) ? w.top : w.y;
+            var yaw = Math.atan2(fx, fz), gaps = w.gaps || [], col = w.seat;
+            var list = byCol[col] || (byCol[col] = []);
+            for (var s = 0.3; s <= L - 0.25; s += 0.55) {
+                var inGap = false; for (var gi = 0; gi < gaps.length; gi++) if (s > gaps[gi][0] - 0.25 && s < gaps[gi][1] + 0.25) { inGap = true; break; }
+                if (inGap) continue;
+                list.push([w.x0 + tx * s - fx * back, top, w.z0 + tz * s - fz * back, yaw]);
+            }
+        });
+        var made = 0, m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), sc = new THREE.Vector3(1, 1, 1), p3 = new THREE.Vector3();
+        Object.keys(byCol).forEach(function (col) {
+            var list = byCol[col]; if (!list.length) return;
+            var mat = new THREE.MeshLambertMaterial({ color: +col });
+            var im = new THREE.InstancedMesh(seatGeo, mat, list.length);
+            list.forEach(function (it, k) { q.setFromAxisAngle(up, it[3]); p3.set(it[0] * U, it[1] * U + 0.3, it[2] * U); m4.compose(p3, q, sc); im.setMatrixAt(k, m4); });
+            im.instanceMatrix.needsUpdate = true; im.castShadow = false; im.receiveShadow = true; im.renderOrder = 1; im.frustumCulled = false; im._ew_hqSeats = true;
+            G.add(im); made += list.length;
+        });
+        return made;
+    }
+    /* THE STANDS: the tier rows are hundreds of boxes in one or two sheets — merged into ONE mesh per sheet (a draw call per sheet, not
+       per row). Each box is the drawWall box (t × (top − base) × (L + t)) with its box UVs, turned and moved on the CPU. */
+    function _hqMergeWallBoxes(list, G, U, TM, matFor) {
+        var bySheet = {};
+        list.forEach(function (w) { var k = w.key || '_'; (bySheet[k] || (bySheet[k] = [])).push(w); });
+        var m4 = new THREE.Matrix4(), e = new THREE.Euler();
+        Object.keys(bySheet).forEach(function (k) {
+            var P = [], Nn = [], UVs = [], I = [];
+            bySheet[k].forEach(function (w) {
+                if (w.quad && w.quad.length === 4) { _hqPrismInto(w.quad, w.base, w.slopeTop || w.top, U, TM / U, P, Nn, UVs, I); return; }   // a mitred row (hqStandBowl): no overlap at the joints, no z-fight on the treads
+                var L = Math.hypot(w.x1 - w.x0, w.z1 - w.z0), yaw = Math.atan2(w.x1 - w.x0, w.z1 - w.z0), hM = w.top - w.base;
+                var g = new THREE.BoxGeometry(w.t * U, hM * U, (L + w.t) * U); _hzBoxUV(g, w.t * U, hM * U, (L + w.t) * U, TM);
+                e.set(0, yaw, 0); m4.makeRotationFromEuler(e); m4.setPosition((w.x0 + w.x1) / 2 * U, (w.base + hM / 2) * U + 0.3, (w.z0 + w.z1) / 2 * U); g.applyMatrix4(m4);
+                var base = P.length / 3, pa = g.attributes.position.array, na = g.attributes.normal.array, ua = g.attributes.uv.array, ia = g.index.array;
+                for (var i = 0; i < pa.length; i++) { P.push(pa[i]); Nn.push(na[i]); }
+                for (var u = 0; u < ua.length; u++) UVs.push(ua[u]);
+                for (var j = 0; j < ia.length; j++) I.push(ia[j] + base);
+                g.dispose();
+            });
+            var geo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); geo.setAttribute('normal', new THREE.Float32BufferAttribute(Nn, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(UVs, 2));
+            geo.setIndex(P.length / 3 > 65535 ? new THREE.Uint32BufferAttribute(I, 1) : new THREE.Uint16BufferAttribute(I, 1));
+            var m = new THREE.Mesh(geo, matFor(k === '_' ? null : k)); m.castShadow = true; m.receiveShadow = true; m.renderOrder = 1; m._ew_hqTiers = true; G.add(m);
+        });
+    }
+    /* a vertical prism over a 4-corner footprint [[x, z] × 4] (metres) from y0 to y1 — top, bottom-less, four sides — appended
+       to the merge buffers; every face's winding is turned to face out; UVs in tiles (the top in world x/z, a side along it × y) */
+    function _hqPrismInto(q, y0, y1, U, tile, P, Nn, UVs, I) {
+        /* `y1` may be [yStart, yEnd] — a SLOPED top (the ramp's parapet): corners 0 + 3 stand at the start, 1 + 2 at the end */
+        var yT = function (i) { return Array.isArray(y1) ? ((i === 0 || i === 3) ? y1[0] : y1[1]) : y1; };
+        var cx = (q[0][0] + q[1][0] + q[2][0] + q[3][0]) / 4, cz = (q[0][1] + q[1][1] + q[2][1] + q[3][1]) / 4, cy = (y0 + (yT(0) + yT(1)) / 2) / 2;
+        var face = function (vs, uvs) {
+            var a = vs[0], b = vs[1], c = vs[2];
+            var ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2], vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2];
+            var nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx, nl = Math.hypot(nx, ny, nz) || 1; nx /= nl; ny /= nl; nz /= nl;
+            var mx = (vs[0][0] + vs[1][0] + vs[2][0] + vs[3][0]) / 4 - cx, my = (vs[0][1] + vs[1][1] + vs[2][1] + vs[3][1]) / 4 - cy, mz = (vs[0][2] + vs[1][2] + vs[2][2] + vs[3][2]) / 4 - cz;
+            var flip = (nx * mx + ny * my + nz * mz) < 0; if (flip) { nx = -nx; ny = -ny; nz = -nz; }
+            var base = P.length / 3;
+            for (var i = 0; i < 4; i++) { P.push(vs[i][0] * U, vs[i][1] * U + 0.3, vs[i][2] * U); Nn.push(nx, ny, nz); UVs.push(uvs[i][0], uvs[i][1]); }
+            if (!flip) I.push(base, base + 1, base + 2, base, base + 2, base + 3); else I.push(base, base + 2, base + 1, base, base + 3, base + 2);
+        };
+        var T = q.map(function (p, i) { return [p[0], yT(i), p[1]]; });
+        face(T, q.map(function (p) { return [p[0] / tile, p[1] / tile]; }));
+        for (var e = 0; e < 4; e++) {
+            var e1 = (e + 1) % 4, p0 = q[e], p1 = q[e1], L = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]); if (L < 1e-4) continue;
+            var o = (p0[0] + p0[1]) / tile, ya = yT(e), yb = yT(e1);
+            face([[p0[0], y0, p0[1]], [p1[0], y0, p1[1]], [p1[0], yb, p1[1]], [p0[0], ya, p0[1]]], [[o, y0 / tile], [o + L / tile, y0 / tile], [o + L / tile, yb / tile], [o, ya / tile]]);
+        }
+    }
+    /* THE KICKER (2026-09-26): a terrain ramp marked `kicker: true` wears a built wedge over its field (plywood top, dark sides, a
+       steel coping at the lip) — the field under it is the walker's, the wedge is the look (a blended mound read as raised floor) */
+    function _hqBuildKicker(f, info, G, U) {
+        var L = Math.hypot(f.x1 - f.x0, f.z1 - f.z0); if (L < 0.2) return;
+        var ux = (f.x1 - f.x0) / L, uz = (f.z1 - f.z0) / L, vx = -uz * f.w / 2, vz = ux * f.w / 2, g0 = hqTerrainHeight(info, f.x0 - ux * 0.3, f.z0 - uz * 0.3), lift = 0.012;
+        var lo = g0 + (f.h0 || 0) + lift, hi = g0 + f.h1 + lift, base = g0;
+        var A0 = [f.x0 - vx, f.z0 - vz], B0 = [f.x0 + vx, f.z0 + vz], A1 = [f.x1 - vx, f.z1 - vz], B1 = [f.x1 + vx, f.z1 + vz];
+        var P = [], Nn = [], UVs = [], I = [], cxm = (f.x0 + f.x1) / 2, czm = (f.z0 + f.z1) / 2, cym = (base + hi) / 2;
+        var face = function (vs, uvs) {
+            var a = vs[0], b = vs[1], c = vs[2];
+            var ax = b[0] - a[0], ay = b[1] - a[1], az = b[2] - a[2], bx = c[0] - a[0], by = c[1] - a[1], bz = c[2] - a[2];
+            var nx = ay * bz - az * by, ny = az * bx - ax * bz, nz = ax * by - ay * bx, nl = Math.hypot(nx, ny, nz) || 1; nx /= nl; ny /= nl; nz /= nl;
+            var mx = 0, my = 0, mz = 0; vs.forEach(function (v) { mx += v[0]; my += v[1]; mz += v[2]; }); mx = mx / vs.length - cxm; my = my / vs.length - cym; mz = mz / vs.length - czm;
+            var flip = (nx * mx + ny * my + nz * mz) < 0; if (flip) { nx = -nx; ny = -ny; nz = -nz; }
+            var b0 = P.length / 3;
+            vs.forEach(function (v, i) { P.push(v[0] * U, v[1] * U + 0.3, v[2] * U); Nn.push(nx, ny, nz); UVs.push(uvs[i][0], uvs[i][1]); });
+            var tri = vs.length === 3 ? [[0, 1, 2]] : [[0, 1, 2], [0, 2, 3]];
+            tri.forEach(function (t) { if (flip) I.push(b0 + t[0], b0 + t[2], b0 + t[1]); else I.push(b0 + t[0], b0 + t[1], b0 + t[2]); });
+        };
+        var top = function (p, y) { return [p[0], y, p[1]]; };
+        face([top(A0, lo), top(B0, lo), top(B1, hi), top(A1, hi)], [[0, 0], [f.w, 0], [f.w, L], [0, L]]);
+        var sides = { P: P, Nn: Nn, UVs: UVs, I: I }; var nTop = I.length;
+        face([top(A0, base), top(A1, base), top(A1, hi)], [[0, 0], [L, 0], [L, hi - base]]);
+        face([top(B0, base), top(B1, base), top(B1, hi)], [[0, 0], [L, 0], [L, hi - base]]);
+        face([top(A1, base), top(B1, base), top(B1, hi), top(A1, hi)], [[0, 0], [f.w, 0], [f.w, hi - base], [0, hi - base]]);
+        var geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); geo.setAttribute('normal', new THREE.Float32BufferAttribute(Nn, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(UVs, 2));
+        geo.setIndex(I); geo.addGroup(0, nTop, 0); geo.addGroup(nTop, I.length - nTop, 1);
+        var ply = _hqMat('wood', 2, 1, { color: 0xc9b08a, shininess: 8 }), dark = _hqMat(null, 1, 1, { color: 0x3a3430, shininess: 6 });
+        var m = new THREE.Mesh(geo, [ply, dark]); m.castShadow = true; m.receiveShadow = true; m.renderOrder = 1; G.add(m);
+        var cope = new THREE.Mesh(new THREE.CylinderGeometry(0.035 * U, 0.035 * U, f.w * U, 8), _hqMat(null, 1, 1, { color: 0x9aa2aa, shininess: 60, specular: 0x888888 }));
+        cope.rotation.z = Math.PI / 2; cope.rotation.y = Math.atan2(-ux, -uz); cope.position.set(f.x1 * U, (hi + 0.02) * U + 0.3, f.z1 * U); G.add(cope);
+    }
+    /* THE PAINT (2026-09-26): flat marks on the ground or a deck — a football field's chalk (the yard lines, the hashes, the numbers,
+       the end zones), a garage's bay lines, lane rings and arrows. `room.terrain.marks` rows: { k: 'rect', x, z, w, d, rot?, color, a? } ·
+       { k: 'line', x0, z0, x1, z1, w, color } · { k: 'ring', x, z, r, w, a0?, a1?, color } · { k: 'text', x, z, text, size, rot?, color }
+       — `y` = the surface (else the ground under the mark), `rot` degrees clockwise. Drawn only: 1.5 cm proud, no depth write fight. */
+    function _hqBuildMarks(room, info, G, U) {
+        var marks = (room.terrain && room.terrain.marks) || []; if (!marks.length) return 0;
+        var matCache = {};
+        var matOf = function (col, a) { var k = col + '|' + (a || 1); if (!matCache[k]) { matCache[k] = new THREE.MeshLambertMaterial({ color: col, transparent: (a || 1) < 1, opacity: a || 1, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }); } return matCache[k]; };
+        var yAt = function (m, x, z) { return (typeof m.y === 'number') ? m.y + 0.025 : hqTerrainHeight(info, x, z); };
+        var quad = function (cx, cz, w, d, yaw, y, mat) {
+            var g = new THREE.PlaneGeometry(w * U, d * U); g.rotateX(-Math.PI / 2);
+            var mesh = new THREE.Mesh(g, mat); mesh.rotation.y = yaw; mesh.position.set(cx * U, (y + 0.015) * U + 0.3, cz * U); mesh.renderOrder = 2; G.add(mesh); return mesh;
+        };
+        /* the chalk is hundreds of strips (a hash every yard): a flat rect / line goes into ONE buffer per colour, a draw call per colour */
+        var bufs = {};
+        var strip = function (cx, cz, w, d, yaw, y, ck) {
+            var B = bufs[ck] || (bufs[ck] = { P: [], I: [] }), c = Math.cos(yaw), sn = Math.sin(yaw), base = B.P.length / 3, yy = (y + 0.015) * U + 0.3;
+            [[-w / 2, -d / 2], [w / 2, -d / 2], [w / 2, d / 2], [-w / 2, d / 2]].forEach(function (p) { B.P.push((cx + p[0] * c + p[1] * sn) * U, yy, (cz - p[0] * sn + p[1] * c) * U); });
+            B.I.push(base, base + 2, base + 1, base, base + 3, base + 2);
+        };
+        var n = 0;
+        marks.forEach(function (m) {
+            try {
+                var col = (m.color != null) ? m.color : 0xffffff;
+                if (m.k === 'rect') { strip(m.x, m.z, m.w, m.d, -((m.rot || 0) * Math.PI / 180), yAt(m, m.x, m.z), col + '|' + (m.a || 1)); n++; }
+                else if (m.k === 'line') { var L = Math.hypot(m.x1 - m.x0, m.z1 - m.z0); if (L < 0.01) return; strip((m.x0 + m.x1) / 2, (m.z0 + m.z1) / 2, m.w || 0.12, L, Math.atan2(m.x1 - m.x0, m.z1 - m.z0), yAt(m, (m.x0 + m.x1) / 2, (m.z0 + m.z1) / 2) + 0.008, col + '|' + (m.a || 1)); n++; }   // a line rides over a painted rect (the goal line over the end zone)
+                else if (m.k === 'ring') {
+                    var a0 = (m.a0 != null) ? m.a0 : 0, a1 = (m.a1 != null) ? m.a1 : 360, segs = Math.max(8, Math.ceil((a1 - a0) / 3)), rg = new THREE.RingGeometry((m.r - (m.w || 0.12) / 2) * U, (m.r + (m.w || 0.12) / 2) * U, segs, 1, 0, (a1 - a0) * Math.PI / 180);
+                    rg.rotateX(-Math.PI / 2);
+                    var rm = new THREE.Mesh(rg, matOf(col, m.a)); rm.rotation.y = Math.PI / 2 - a1 * Math.PI / 180; rm.position.set(m.x * U, (yAt(m, m.x, m.z) + 0.015) * U + 0.3, m.z * U); rm.renderOrder = 2; G.add(rm); n++;
+                }
+                else if (m.k === 'text' && typeof document !== 'undefined') {
+                    var cv = document.createElement('canvas'), txt = String(m.text || ''); cv.width = 64 * Math.max(1, txt.length); cv.height = 96;
+                    var cx2 = cv.getContext('2d'); if (!cx2) return;
+                    cx2.clearRect(0, 0, cv.width, cv.height); cx2.fillStyle = '#' + ('000000' + col.toString(16)).slice(-6); cx2.font = 'bold 84px Impact, "Arial Black", sans-serif'; cx2.textAlign = 'center'; cx2.textBaseline = 'middle'; cx2.fillText(txt, cv.width / 2, cv.height / 2 + 4);
+                    var tex = new THREE.CanvasTexture(cv); tex.anisotropy = 4;
+                    var tm = new THREE.MeshLambertMaterial({ map: tex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 });
+                    var sz = m.size || 1.8; quad(m.x, m.z, sz * cv.width / cv.height, sz, -((m.rot || 0) * Math.PI / 180), yAt(m, m.x, m.z) + 0.005, tm); n++;
+                }
+            } catch (e) { console.warn('[HQ] a mark failed', m, e); }
+        });
+        Object.keys(bufs).forEach(function (ck) {
+            var B = bufs[ck], parts = ck.split('|'), geo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.Float32BufferAttribute(B.P, 3)); geo.setIndex(B.P.length / 3 > 65535 ? new THREE.Uint32BufferAttribute(B.I, 1) : new THREE.Uint16BufferAttribute(B.I, 1)); geo.computeVertexNormals();
+            var mesh = new THREE.Mesh(geo, matOf(+parts[0], +parts[1])); mesh.renderOrder = 2; mesh._ew_hqMarks = true; G.add(mesh);
+        });
+        return n;
     }
     /* THE LIGHT PASS 2.3 (2026-09-21): a field sample's baked occlusion — a gully / the foot of a cliff darkens by its
        concavity (the Laplacian of the sampled heights), the ground within 0.6 m of a plan's solid darkens at the wall's foot */
@@ -41446,7 +41700,12 @@ const ThreeRenderer = (function () {
             m.position.set((w.x0 + w.x1) / 2 * U, (w.base + hM / 2) * U + 0.3, (w.z0 + w.z1) / 2 * U); m.rotation.y = yaw; m.renderOrder = 1; m.castShadow = !w.plan; G.add(m);
             if (w.plan) { m._ew_hqPart = 'wall'; m._ew_hqPlanWall = true; }   // THE ROOM ROUND THE FIELD: a plan wall is a wall (never drawn under the battle's floor hole)
         };
-        info.walls.forEach(drawWall);
+        /* THE STANDS (2026-09-26): the tier rows (data.js hqStandBowl) are merged into one mesh per sheet, their seats instanced */
+        var tierWalls = info.walls.filter(function (w) { return w.tier && !w.ghost; });
+        info.walls.forEach(function (w) { if (!w.tier && !w.ghost) drawWall(w); });   // a `ghost` wall is the walker's only (the stands' tunnel lining)
+        if (tierWalls.length) { try { _hqMergeWallBoxes(tierWalls, G, U, TM, function (k) { return k ? keyedMat(k) : wallMat; }); } catch (e) { console.warn('[HQ] the stands failed — drawn row by row', e); tierWalls.forEach(drawWall); } }
+        try { _hqBuildTierSeats(info, G, U); } catch (e) { console.warn('[HQ] the seats failed', e); }
+        try { _hqBuildMarks(room, info, G, U); } catch (e) { console.warn('[HQ] the paint failed', e); }
         /* THE HALLS (D.U.M.B., 2026-09-17): the floor plan's own walls — the mask's boundary traced by data.js _hqTTraceMaskWalls, drawn to the ceiling in the plan's sheet; the walker never reads them (the mass is) */
         (info.planWalls || []).forEach(drawWall);
         if (info.genPlan && info.gen && info.gen.kind === 'halls') { try { _hqBuildHallsLights(room, info, G, TM, rng); } catch (e) { console.warn('[HQ] the halls’ strip lights failed', e); } }
@@ -41464,6 +41723,7 @@ const ThreeRenderer = (function () {
         /* ── THE RAMPS on the park register (a rise taken at speed is a hop) ── */
         (room.terrain.features || []).forEach(function (f) {
             if (f.k !== 'ramp') return;
+            if (f.kicker) { try { _hqBuildKicker(f, info, G, U); } catch (e) { console.warn('[HQ] a kicker failed', e); } }
             var L = Math.hypot(f.x1 - f.x0, f.z1 - f.z0), yaw = Math.atan2(f.x1 - f.x0, f.z1 - f.z0);
             /* _hqRampLocal: the low end at local +Z — a ramp rising from (x0,z0) toward (x1,z1) has its low end at the start, so face the frame the other way */
             _hq.ramps.push({ x: (f.x0 + f.x1) / 2, z: (f.z0 + f.z1) / 2, yaw: yaw + Math.PI, hw: f.w / 2, hd: L / 2, y0: Math.min(f.h0, f.h1), y1: Math.max(f.h0, f.h1), prof: null, terrain: true });
@@ -46151,6 +46411,27 @@ const ThreeRenderer = (function () {
                 var head = new THREE.Mesh(new THREE.BoxGeometry(0.34 * U, 0.3 * U, 0.26 * U), dark); head.position.set(x, 6.62 * U, 0.06 * U); head.rotation.x = 0.55; g.add(head);
                 var lens = new THREE.Mesh(new THREE.PlaneGeometry(0.28 * U, 0.24 * U), lampMat); lens.position.set(x, 6.55 * U, 0.2 * U); lens.rotation.x = -Math.PI / 2 + 0.55; g.add(lens);
             }
+            return g;
+        },
+        /* THE BOWL (2026-09-26): the scoreboard over the north concourse — two steel legs, an 11 m frame, a lit screen (the score of a
+           game nobody plays, the clock at 00:00), a ticker strip under it; +Z faces the pitch */
+        scoreboard: function (U) {
+            var g = new THREE.Group();
+            var steel = _hqMat(null, 1, 1, { color: 0x3a3e44, shininess: 30 });
+            [-4.2, 4.2].forEach(function (x) { var leg = _hqBox(0.5, 3.4, 0.5, steel); leg.position.set(x * U, 1.7 * U, 0); leg.castShadow = true; g.add(leg); });
+            var frame = _hqBox(11, 5.4, 0.6, steel); frame.position.y = 6.1 * U; frame.castShadow = true; g.add(frame);
+            var scrMat;
+            try {
+                var cv = document.createElement('canvas'); cv.width = 512; cv.height = 220; var c = cv.getContext('2d');
+                c.fillStyle = '#05080c'; c.fillRect(0, 0, 512, 220);
+                c.fillStyle = '#ffd34a'; c.font = 'bold 30px Impact, "Arial Black", sans-serif'; c.textAlign = 'center'; c.fillText('HOME', 110, 44); c.fillText('AWAY', 402, 44);
+                c.fillStyle = '#ff5a3a'; c.font = 'bold 96px Impact, "Arial Black", sans-serif'; c.fillText('00', 110, 140); c.fillText('00', 402, 140);
+                c.fillStyle = '#86e8ff'; c.font = 'bold 44px Impact, "Arial Black", sans-serif'; c.fillText('00:00', 256, 120);
+                c.fillStyle = '#f4f4ee'; c.font = 'bold 26px Impact, "Arial Black", sans-serif'; c.fillText('ENTROPY WARS', 256, 196);
+                var tex = new THREE.CanvasTexture(cv); scrMat = new THREE.MeshBasicMaterial({ map: tex });
+            } catch (e) { scrMat = new THREE.MeshBasicMaterial({ color: 0x86e8ff }); }
+            var scr = new THREE.Mesh(new THREE.PlaneGeometry(10.2 * U, 4.4 * U), scrMat); scr.position.set(0, 6.3 * U, 0.31 * U); g.add(scr);
+            var tick = new THREE.Mesh(new THREE.PlaneGeometry(10.2 * U, 0.35 * U), new THREE.MeshBasicMaterial({ color: 0xffd34a })); tick.position.set(0, 3.7 * U, 0.31 * U); g.add(tick);
             return g;
         },
         /* THE LEY LINES (2026-09-18 — GÖBEKLI TEPE · THE TELL): a T-pillar in metres — the board's _hzTPillar at room scale (the shaft, the

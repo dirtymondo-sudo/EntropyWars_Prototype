@@ -5459,12 +5459,12 @@
                 const cars = ((_hqRoom() || {}).props || []).filter(p => p.key === 'parked_car' || ((DOOR_HQ.catalogue[p.key] || {}).vehicle)).length;   // the Sedan + the vehicle batch (catalogue `vehicle: true`)
                 html += '<p class="hq-panel-desc">' + _hqEsc(c.desc || 'The booth.') + '</p>';
                 html += '<div class="hq-rows">'
-                    + `<div class="hq-row hq-row-tray"><b>THE LOT</b><span>${cars} CAR${cars === 1 ? '' : 'S'} ON THE LEVEL · EIGHT BAYS</span><i class="hq-lamp-chip st-codered">FULL</i></div>`
-                    + `<div class="hq-row hq-row-tray"><b>THE RAMP</b><span>UP TO DAYLIGHT · THE ARM IS DOWN</span><i class="hq-lamp-chip st-sealed">NO EXIT</i></div>`
+                    + `<div class="hq-row hq-row-tray"><b>THE LOT</b><span>${cars} CAR${cars === 1 ? '' : 'S'} ON THE LEVEL · TWO DECKS, ONE RAMP</span><i class="hq-lamp-chip st-open">SPACES</i></div>`
+                    + `<div class="hq-row hq-row-tray"><b>THE RAMP</b><span>UP TO THE TOP DECK · STILL P1</span><i class="hq-lamp-chip st-sealed">NO EXIT</i></div>`
                     + `<div class="hq-row hq-row-tray"><b>YOUR TICKET</b><span>${ic && ic.onFile ? 'STAMPED ON ENTRY · ' + _hqEsc(ic.empNo) : 'NO CARD — THE BOOTH DOES NOT ISSUE ONE'}</span><i class="hq-lamp-chip st-${ic && ic.onFile ? 'open' : 'off'}">${ic && ic.onFile ? 'P1' : '—'}</i></div>`
                     + '</div>';
                 html += '<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-close="1">NOTED</button></div>';
-                html += '<p class="hq-panel-note">The dock beside the ramp is a step up into the laundry. The car is the other way out. The ramp is neither.</p>';
+                html += '<p class="hq-panel-note">The dock on the north wall is a step up into the laundry. The car is the other way out. The ramp goes up and comes back down to the same level, which is the joke nobody laughs at twice.</p>';
                 return html;
             }
             /* H-WING (HQ plan 5.5, 2026-09-14 rev 4): THE FLOOR PLAN by the stair — an H, every door on it, the dot moved */

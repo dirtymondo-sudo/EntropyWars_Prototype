@@ -40,13 +40,14 @@ test('EVERY BOARD IS AN AREA: every built site but Room 64 is bypassed; the entr
     for (const rid of AREA_ROOMS) {
         const r = HQ.rooms[rid];
         assert.ok(r && r.kind === 'box' && r.terrain && r.area && r.shell.w > 0 && r.shell.d > 0, rid + ': a terrain box room');
-        assert.ok(r.terrain.gen && ['cave', 'rooms', 'halls'].includes(r.terrain.gen.kind), rid + ': a generated floor plan');
+        const built = !r.terrain.gen && r.terrain.features.some(f => f.tier);   // THE BOWL (2026-09-26): the stadium is BUILT — stands, a concourse, tunnels — not a generated plan
+        assert.ok(built || (r.terrain.gen && ['cave', 'rooms', 'halls'].includes(r.terrain.gen.kind)), rid + ': a generated floor plan (or a built stand)');
         assert.ok(r.shell.look && r.shell.look.name, rid + ': a grade');
         if (r.shell.open) assert.ok(r.shell.sky && r.shell.sky.fog && r.shell.sky.fog.density > 0 && !r.shell.sky.motion, rid + ': the site\'s sky with a fog per metre, still');
         else assert.ok(r.shell.fog && r.shell.fog.density > 0, rid + ': a closed room\'s fog');
         assert.ok(!(r.shell.lights || []).length, rid + ': a terrain room lights itself');
-        assert.ok(r.terrain.features.some(f => f.k === 'plateau' && f.h >= 2.3), rid + ': a weenie the tape stands on (2.35 under the Backrooms\' 3 m ceiling)');
-        assert.ok(r.terrain.features.some(f => f.k === 'rail' || f.k === 'wall') && r.terrain.features.some(f => f.k === 'ramp' || f.k === 'plateau'), rid + ': the park rule');
+        assert.ok(r.terrain.features.some(f => (f.k === 'plateau' && f.h >= 2.3) || (built && (f.k === 'wall' || f.k === 'bridge') && f.y >= 2.3)), rid + ': a weenie the tape stands on (2.35 under the Backrooms\' 3 m ceiling; a built room\'s roof or row)');
+        assert.ok(r.terrain.features.some(f => f.k === 'rail' || f.k === 'wall') && r.terrain.features.some(f => f.k === 'ramp' || f.k === 'plateau' || (built && f.tier)), rid + ': the park rule (a built room\'s rows are its ledges)');
     }
     const fairy = D.hqSiteEntryOf('prebuilt_fairy_forest');
     const tree = HQ.rooms[fairy.room].doors.find(d => d.id === 'forest');

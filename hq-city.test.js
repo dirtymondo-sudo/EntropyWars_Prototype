@@ -186,10 +186,10 @@ test('THE SEAMS: the Strip (streets_strip — the chapel’s west wall, a motel 
     for (const l of [strip, stad, tm, gut]) { assert.ok(l && D.hqLinkLive(l) && l.why && l.note && l.draft === true, l && l.id); assert.ok(!(HQ.catalogue[l.leaf] || {}).rank); }
     assert.ok(strip.route === 'highway' && strip.a.part === 'streets' && strip.a.wall === 'w' && strip.a.z === 18 && strip.b.site === 'prebuilt_strip' && strip.b.part === 'chapel' && strip.b.wall === 'w' && strip.leaf === 'leaf_motel');
     assert.equal(D.hqLinkRoom(strip.a), STREETS); assert.equal(D.hqLinkRoom(strip.b), CHAPEL);
-    assert.ok(stad.route === 'highway' && stad.way === 'road' && !stad.leaf && stad.b.part === 'streets' && stad.b.wall === 'n' && stad.b.x === 0 && stad.a.site === 'prebuilt_stadium' && stad.a.part === 'bowl' && stad.a.wall === 'n' && stad.a.x === -5, 'the avenue\'s north end is the stadium road (THE AREAS, 2026-09-18: out of THE BOWL)');
+    assert.ok(stad.route === 'highway' && stad.way === 'road' && !stad.leaf && stad.b.part === 'streets' && stad.b.wall === 'n' && stad.b.x === 0 && stad.a.site === 'prebuilt_stadium' && stad.a.part === 'bowl' && stad.a.wall === 'n' && stad.a.x === 0, 'the avenue\'s north end is the stadium road (THE AREAS, 2026-09-18: out of THE BOWL; THE BOWL rebuilt 2026-09-26: out of the north tunnel\'s mouth, x 0)');
     const BOWL = STADIUM + '_bowl';   // THE AREAS (2026-09-18): the stadium is an area — the road leaves the bowl
     assert.equal(D.hqLinkRoom(stad.a), BOWL); assert.equal(D.hqLinkRoom(stad.b), STREETS);
-    for (const o of HQ.rooms[BOWL].doors) if (o.id !== 'link_stadium_downtown' && o.wall === 'n') assert.ok(Math.abs(o.x - (-5)) >= 4.4, 'the stadium road shares a lane with ' + o.id);
+    for (const o of HQ.rooms[BOWL].doors) if (o.id !== 'link_stadium_downtown' && o.wall === 'n') assert.ok(Math.abs(o.x - stad.a.x) >= 4.4, 'the stadium road shares a lane with ' + o.id);
     for (const id of ['downtown_strip', 'strip_cyberpunk']) { const l = L(id); assert.ok(l && l.way === 'road' && D.hqLinkLive(l), id + ': a road way'); }
     const ends = HQ.rooms[STREETS].doors.filter(d => d.way === 'road').map(d => d.wall + ':' + (d.x != null ? d.x : d.z)).sort().join(' ');
     assert.equal(ends, 'n:0 w:0', 'the cross street\'s west end and the avenue\'s north end are roads out (the east end went with Nuketown, 2026-09-18); the avenue\'s south end is the mall\'s door');

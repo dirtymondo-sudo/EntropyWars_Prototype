@@ -155,5 +155,5 @@ test('THE SOURCE SITES: hqTerrainFeet reads the bridge first and the headroom la
     for (const s of ['function _hqBuildBridges(room, info, G, TM, U) {', "if (info.bridges && info.bridges.length) { try { _hqBuildBridges(room, info, G, TM, U); }", 'var bb = hqTerrainBridgeBelow(_hq.terrain, x, z, ry); if (bb && bb.y > base) base = bb.y;', 'var bl = hqTerrainBridgesAt(H.terrain, hit.x - hit.nx * 0.55, hit.z - hit.nz * 0.55, 0);', "_hq.blockers.push({ obj: pier, y: gy, top: null, rad: 0.3, pier: true });"])
         assert.ok(renderer.includes(s), 'three-renderer.js: ' + s.slice(0, 70));
     assert.ok(fs.readFileSync(__dirname + '/check-terrain.js', 'utf8').includes("' · bridges '"), 'the tool prints the count');
-    assert.ok(fs.readFileSync(__dirname + '/hq-terrain.test.js', 'utf8').includes("'climb', 'bridge']"), 'the KINDS pin');
+    assert.ok(fs.readFileSync(__dirname + '/hq-terrain.test.js', 'utf8').includes("'climb', 'bridge'"), 'the KINDS pin (the spiral follows it, 2026-09-26)');
 });

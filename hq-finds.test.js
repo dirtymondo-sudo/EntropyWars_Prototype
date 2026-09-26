@@ -126,10 +126,11 @@ test('a terrain find stands on dry ground at its height, `hard` exactly when the
         if (room.terrain) {   // THE TERRAIN ROOMS (2026-09-17): the cave and the woods
             caves++;
             const info = D.hqTerrainInfo(f.room);
-            assert.ok(typeof f.y === 'number' && Math.abs(f.y - D.hqTerrainHeight(info, f.x, f.z)) < 0.05, f.id + ': at its ground');
+            const onDeck = typeof f.y === 'number' && (info.bridges || []).length && D.hqTerrainFeet(info, f.x, f.z, f.y) != null && Math.abs(D.hqTerrainFeet(info, f.x, f.z, f.y) - f.y) < 0.05 && f.y > D.hqTerrainHeight(info, f.x, f.z) + 1.95;   // THE BOWL (2026-09-26): the press box roof is a bridge slab over the concourse
+            assert.ok(typeof f.y === 'number' && (onDeck || Math.abs(f.y - D.hqTerrainHeight(info, f.x, f.z)) < 0.05), f.id + ': at its ground (or on a bridge over it)');
             assert.ok(!D.hqTerrainFluidAt(info, f.x, f.z), f.id + ': dry');
             const L0 = D.hqTerrainDoorLanding(room, room.doors[0]);
-            const reached = D.hqTerrainReach(info, L0.x, L0.z).has(D.hqTerrainNodeKey(info, f.x, f.z));
+            const reached = D.hqTerrainReach(info, L0.x, L0.z).has(D.hqTerrainNodeKey(info, f.x, f.z, f.y));   // the node AT the find's height (a bridge's layer when it stands on one)
             assert.equal(!!f.hard, !reached, f.id + ': hard ⇔ the first door never reaches it');
             if (f.hard) hard++;
         }

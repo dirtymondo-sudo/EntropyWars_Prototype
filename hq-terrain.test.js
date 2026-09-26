@@ -27,7 +27,7 @@ const D = loadGameData(), HQ = D.DOOR_HQ;
 const TR_RULES = vm.runInContext('TERRAIN_RULES', D);
 const renderer = fs.readFileSync(__dirname + '/three-renderer.js', 'utf8');
 const ROOMS = D.hqTerrainRooms();
-const KINDS = ['hill', 'dip', 'ridge', 'plateau', 'ramp', 'deck', 'pool', 'stream', 'wall', 'rail', 'path', 'tree', 'grove', 'scatter', 'climb', 'bridge'];   // + THE CLIMB (AREA_CONTENT_PLAN D1, 2026-09-19) + THE BRIDGE LAYER (D2b)
+const KINDS = ['hill', 'dip', 'ridge', 'plateau', 'ramp', 'deck', 'pool', 'stream', 'wall', 'rail', 'path', 'tree', 'grove', 'scatter', 'climb', 'bridge', 'spiral'];   // + THE ROUND PIECES (2026-09-26: the garage's spiral ramp)   // + THE CLIMB (AREA_CONTENT_PLAN D1, 2026-09-19) + THE BRIDGE LAYER (D2b)
 const SPRITES_SRC = fs.readFileSync(require('node:path').join(__dirname, 'sprites.js'), 'utf8');
 const sheetOk = k => !!(HQ.textures[k] || TR_RULES[k] || (typeof k === 'string' && k.startsWith('urban:') && SPRITES_SRC.includes("'" + k.slice(6) + "'")));   // THE URBAN PACK (2026-09-17): `urban:<Name>` is a sheet too
 const num = re => { const m = re.exec(renderer); assert.ok(m, String(re)); return parseFloat(m[1]); };
@@ -94,7 +94,7 @@ test('THE HARD TAPES: every find in a terrain room wears its ground height, and 
         assert.ok(typeof f.y === 'number', f.id + ': a height');
         const L0 = D.hqTerrainDoorLanding(room, room.doors[0]);
         const reach = D.hqTerrainReach(info, L0.x, L0.z);
-        const reached = reach.has(D.hqTerrainNodeKey(info, f.x, f.z));
+        const reached = reach.has(D.hqTerrainNodeKey(info, f.x, f.z, f.y));   // the node AT the find's height (THE BOWL, 2026-09-26: the press box roof is a bridge over the concourse)
         assert.equal(!!f.hard, !reached, f.id + ': hard ⇔ unreachable');
         if (f.hard) { hard++; assert.ok(f.y >= 2.0, f.id + ': a hard find stands high (' + f.y + ')'); }
         else assert.ok(D.hqTerrainFeet(info, f.x, f.z, null) != null, f.id + ': on walkable ground');

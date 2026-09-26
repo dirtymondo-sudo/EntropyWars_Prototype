@@ -122,7 +122,7 @@ test('THE WAYS IN = THE ENTRY (2026-09-18): the two board rooms are BYPASSED —
         const far = at(d.action.room, d.action.at); assert.ok(far && far.link === d.link && far.action.room === room, room + '/' + id + ' pairs');
     }
     for (const l of [a51, dc, cb, cd, gm]) assert.ok(!(HQ.catalogue[l.leaf] || {}).rank, l.id + ': never a rank leaf');
-    assert.ok(!at('garage', 'p2').minClearance && at('garage', 'link_garage_motorpool') && Math.abs(at('garage', 'p2').z - at('garage', 'link_garage_motorpool').z) > 4.4, 'the ramp door and the H-Wing stair share the west wall, lanes apart');
+    assert.ok(!at('garage', 'p2') && at('garage', 'link_garage_motorpool'), 'the ramp door is on the west wall; the H-Wing stair is gone (THE PARKING GARAGE, 2026-09-26: H-Wing is hard to find)');
     const line = D.hqWorldRoutes(MOTOR).find(r => r.id === 'bases');
     assert.ok(line && line.legs.some(l => (l.fromRoom === MOTOR && l.toRoom === RING) || (l.fromRoom === RING && l.toRoom === MOTOR)) && line.legs.some(l => l.fromRoom === 'garage' || l.toRoom === 'garage'), 'the bases line runs through the motor pool and up the ramp');
 });
@@ -315,7 +315,7 @@ test('the shell helper, the looks, the generator table and the source sites: hqB
     assert.ok(H && H.leafMin > 0 && H.leafMax > H.leafMin && H.roomMin > 0 && H.corridor.length === 2 && H.wallT > 0 && H.simplify > 0 && H.solidPad > 0 && H.minOpen < G.minOpen && H.minDegree === 2, 'the halls row');
     for (const s of ["} else if (gen.kind === 'halls') {", 'function _hqTTraceMaskWalls(info, mask, o) {', 'function _hqTRdp(pts, i0, i1, tol, out) {', "|| gen.kind === 'halls' || gen.kind === 'ley';", 'info.planWalls = _hqTTraceMaskWalls(info, mask, {', "if (gen.kind === 'halls' || gen.kind === 'ley') for (let pass = 0; pass < 2; pass++) {"])
         assert.ok(fs.readFileSync(__dirname + '/data.js', 'utf8').includes(s), 'data.js: ' + s);
-    for (const s of ['var drawWall = function (w) {', 'info.walls.forEach(drawWall);', '(info.planWalls || []).forEach(drawWall);', 'function _hqBuildHallsLights(room, info, G, TM, rng) {', "if (info.genPlan && info.gen && info.gen.kind === 'halls') { try { _hqBuildHallsLights(room, info, G, TM, rng); }", 'var keyedMat = function (key) {', "if (w.plan) { m._ew_hqPart = 'wall'; m._ew_hqPlanWall = true; }"])
+    for (const s of ['var drawWall = function (w) {', 'info.walls.forEach(function (w) { if (!w.tier && !w.ghost) drawWall(w); });', '(info.planWalls || []).forEach(drawWall);', 'function _hqBuildHallsLights(room, info, G, TM, rng) {', "if (info.genPlan && info.gen && info.gen.kind === 'halls') { try { _hqBuildHallsLights(room, info, G, TM, rng); }", 'var keyedMat = function (key) {', "if (w.plan) { m._ew_hqPart = 'wall'; m._ew_hqPlanWall = true; }"])
         assert.ok(renderer.includes(s), 'three-renderer.js: ' + s);
     const { spawnSync } = require('node:child_process');
     const r = spawnSync(process.execPath, ['check-terrain.js', '--json', ...IDS], { cwd: __dirname, encoding: 'utf8' });

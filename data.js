@@ -21622,6 +21622,164 @@ function hqRingWalls(o) {
     }
     return out;
 }
+/* a ring chord's mitred footprint (the round wall with no joints): the chord's two ends pushed in and out radially by half its thickness */
+function hqRingQuad(w, r, t) {
+    const k0 = (r - t / 2) / r, k1 = (r + t / 2) / r, R = v => Math.round(v * 1000) / 1000;
+    return [[R(w.x0 * k0), R(w.z0 * k0)], [R(w.x1 * k0), R(w.z1 * k0)], [R(w.x1 * k1), R(w.z1 * k1)], [R(w.x0 * k1), R(w.z0 * k1)]];
+}
+/* ── THE STANDS (2026-09-26, the user: "the stadium should be a normal flat rectangular grass football field with a bowl/stadium/stands
+   around it, with a tunnel leading from the field through the stadium back to the city … not raised floors … actual architecture") ──
+   A BOWL of seating rows round a rounded rectangle (the pitch's inner line, half extents hx × hz, corner radius rc), built from WALL rows,
+   never height-field plateaus: each row a crisp mitred slab (`quad`, three-renderer.js _hqPrismInto) whose top is a tread one `rise` above
+   the row in front (0.42 — a step the walker takes), seats drawn along it facing the pitch (`seat`, `front`). In front THE FASCIA (a
+   low wall — a grind ledge — with openings at the aisles), behind THE CONCOURSE (a wide walk one step over the top row) and THE FACADE
+   (the outer wall, tall). A TUNNEL cuts the bowl on a straight side: the low rows are cut (a trench, its sides the rows' own ends), the
+   rows whose top stands `hc + 0.3` over its floor carry on OVER it as plain bridges (the stand over the tunnel's roof), the facade over
+   the mouth is a lintel. Invisible `ghost` walls line the cut so the round ends of the rows' capsules never nibble the walker in the
+   tunnel. Rows run HIGH → LOW in the output (the terrain reads the first wall a body touches). Returns terrain features. */
+function hqStandBowl(o) {
+    const hx = o.hx, hz = o.hz, rc = o.rc, N = o.rows || 14, rise = o.rise || 0.42, tread = o.tread || 0.85, lead = o.lead || 0.3;
+    const C = o.concourse || 4, Fw = o.facade || 1.0, cn = o.cornerN || 6, key = o.key || null;
+    const tunnels = (o.tunnels || []).map(T => Object.assign({ hc: 3.0 }, T));
+    const seats = o.seats || {};
+    /* the ring at offset d from the inner line: segments clockwise from the north side's west end, each { a, b, side } */
+    const ring = (d, extra) => {
+        const sx = hx - rc, sz = hz - rc, R = rc + d, segs = [];
+        const straight = (side, a, b) => {
+            /* split at every tunnel edge (and aisle opening) on this side */
+            const along = (side === 'n' || side === 's') ? 0 : 1, cuts = [];
+            tunnels.concat(extra || []).forEach(T => { if (T.side !== side) return; cuts.push(T.at - T.w / 2, T.at + T.w / 2); });
+            const lo = Math.min(a[along], b[along]), hi = Math.max(a[along], b[along]), dir = b[along] > a[along] ? 1 : -1;
+            const cs = cuts.filter(c => c > lo + 1e-6 && c < hi - 1e-6).sort((p, q) => (p - q) * dir);
+            let prev = a;
+            cs.concat([null]).forEach(c => { const nxt = (c == null) ? b : (along === 0 ? [c, a[1]] : [a[0], c]); segs.push({ a: prev, b: nxt, side }); prev = nxt; });
+        };
+        const corner = (cx, cz, t0, side) => { for (let i = 0; i < cn; i++) { const q0 = (t0 + 90 * i / cn) * Math.PI / 180, q1 = (t0 + 90 * (i + 1) / cn) * Math.PI / 180; segs.push({ a: [cx + R * Math.sin(q0), cz - R * Math.cos(q0)], b: [cx + R * Math.sin(q1), cz - R * Math.cos(q1)], side, ci: i }); } };
+        straight('n', [-sx, -(hz + d)], [sx, -(hz + d)]); corner(sx, -sz, 0, 'ne');
+        straight('e', [hx + d, -sz], [hx + d, sz]); corner(sx, sz, 90, 'se');
+        straight('s', [sx, hz + d], [-sx, hz + d]); corner(-sx, sz, 180, 'sw');
+        straight('w', [-(hx + d), sz], [-(hx + d), -sz]); corner(-sx, -sz, 270, 'nw');
+        segs.forEach(g => {
+            const dx = g.b[0] - g.a[0], dz = g.b[1] - g.a[1], L = Math.hypot(dx, dz) || 1; let nx = -dz / L, nz = dx / L;
+            const mx = (g.a[0] + g.b[0]) / 2, mz = (g.a[1] + g.b[1]) / 2; if (nx * -mx + nz * -mz < 0) { nx = -nx; nz = -nz; }
+            g.L = L; g.front = [nx, nz]; g.mid = [mx, mz];
+        });
+        return segs;
+    };
+    const inSpan = (g, list) => { if (!(g.side === 'n' || g.side === 's' || g.side === 'e' || g.side === 'w')) return null; const c = (g.side === 'n' || g.side === 's') ? g.mid[0] : g.mid[1]; return list.find(T => T.side === g.side && Math.abs(c - T.at) < T.w / 2) || null; };
+    const layers = [];   // high → low: the facade, the concourse, the rows N…1, the fascia
+    const conTop = (N + 1) * rise;
+    layers.push({ d: lead + N * tread + C + Fw / 2, t: Fw, top: conTop + (o.facadeH || 4.2), key: o.facadeKey || key, role: 'facade', open: o.facadeGaps || [] });
+    layers.push({ d: lead + N * tread + C / 2, t: C, top: conTop, key: o.concourseKey || key, role: 'concourse', rail: 'front', open: [] });
+    for (let k = N; k >= 1; k--) layers.push({ d: lead + (k - 0.5) * tread, t: tread, top: k * rise, key, role: 'row', k, open: [] });
+    layers.push({ d: lead / 2, t: lead, top: o.fasciaH || 1.1, key: o.fasciaKey || key, role: 'fascia', rail: 'front', open: (o.aisleGaps || []) });
+    const out = [], ghosts = [];
+    layers.forEach(Ly => {
+        const segs = ring(Ly.d, Ly.open), hw = Ly.t / 2, n = segs.length;
+        const cut = segs.map(g => inSpan(g, tunnels) || inSpan(g, Ly.open));
+        /* the miter at the joint between segs[i] and segs[i+1] (both kept) — the offset of a corner point per unit of half-thickness */
+        const miter = (g1, g2) => { const ox = -(g1.front[0] + g2.front[0]), oz = -(g1.front[1] + g2.front[1]), ol = Math.hypot(ox, oz) || 1; const mx = ox / ol, mz = oz / ol, c = mx * -g1.front[0] + mz * -g1.front[1]; return [mx / Math.max(0.3, c), mz / Math.max(0.3, c)]; };
+        segs.forEach((g, i) => {
+            const T = cut[i];
+            if (T) {
+                /* over a tunnel: the row carries on as a plain bridge when its top clears the tunnel's ceiling */
+                if (T.hc != null && tunnels.indexOf(T) >= 0 && Ly.top - T.hc >= 0.3) {
+                    const b = { k: 'bridge', x0: g.a[0], z0: g.a[1], x1: g.b[0], z1: g.b[1], w: Ly.t + 0.3, drawW: Ly.t, y: Ly.top, thick: Math.round((Ly.top - T.hc) * 1000) / 1000, plain: true, rails: false, key: Ly.key, id: 'stand:' + Ly.role + (Ly.k || '') + ':' + T.side };
+                    if (Ly.role === 'row') { b.tier = true; b.front = g.front.slice(); if (seats[g.side]) b.seat = seats[g.side]; }
+                    out.push(b);
+                }
+                return;
+            }
+            const pi = (i - 1 + n) % n, ni = (i + 1) % n;
+            const endA = !!cut[pi], endB = !!cut[ni];
+            const oa = endA ? [-g.front[0], -g.front[1]] : miter(segs[pi], g), ob = endB ? [-g.front[0], -g.front[1]] : miter(g, segs[ni]);
+            const quad = [[g.a[0] - oa[0] * hw, g.a[1] - oa[1] * hw], [g.b[0] - ob[0] * hw, g.b[1] - ob[1] * hw], [g.b[0] + ob[0] * hw, g.b[1] + ob[1] * hw], [g.a[0] + oa[0] * hw, g.a[1] + oa[1] * hw]].map(p => [Math.round(p[0] * 1000) / 1000, Math.round(p[1] * 1000) / 1000]);
+            /* the capsule: pulled in by half its thickness at an open end (its round cap never pokes into the tunnel / the aisle) */
+            const ux = (g.b[0] - g.a[0]) / g.L, uz = (g.b[1] - g.a[1]) / g.L, pull = Math.min(hw, g.L / 2 - 0.05);
+            const a = endA ? [g.a[0] + ux * pull, g.a[1] + uz * pull] : g.a, bb = endB ? [g.b[0] - ux * pull, g.b[1] - uz * pull] : g.b;
+            const w = { k: 'wall', x0: a[0], z0: a[1], x1: bb[0], z1: bb[1], y: Ly.top, t: Ly.t, key: Ly.key, tier: true, quad, front: g.front.slice(), rail: Ly.rail || false };
+            if (Ly.role === 'row' && seats[g.side] != null) w.seat = seats[g.side];
+            /* the aisles: the seats stop either side of an aisle line crossing the row (m along the row, from its capsule start) */
+            if (Ly.role === 'row') {
+                const gaps = [];
+                (o.aisles || []).forEach(A => {
+                    if (A.side !== g.side) return;
+                    if (A.ci != null) { if (g.ci === A.ci) gaps.push([-1, 0.6]); else if (g.ci === A.ci - 1) gaps.push([Math.hypot(bb[0] - a[0], bb[1] - a[1]) - 0.6, 99]); return; }
+                    const c = (g.side === 'n' || g.side === 's') ? 0 : 1, s = (A.at - a[c]) / ((c === 0 ? ux : uz) || 1);
+                    if (s > -0.6 && s < Math.hypot(bb[0] - a[0], bb[1] - a[1]) + 0.6) gaps.push([s - 0.6, s + 0.6]);
+                });
+                if (gaps.length) w.gaps = gaps;
+            }
+            out.push(w);
+        });
+        /* the ghosts: along each tunnel's two edges, a thin wall per layer (its top the layer's), outside the cut */
+        tunnels.forEach(T => {
+            const ns = (T.side === 'n' || T.side === 's'), sg = (T.side === 'n' || T.side === 'w') ? -1 : 1;
+            [-1, 1].forEach(e => {
+                const edge = T.at + e * T.w / 2 + e * 0.2, d0 = Ly.d - Ly.t / 2 + 0.2, d1 = Ly.d + Ly.t / 2 - 0.2;
+                if (d1 <= d0) return;
+                const base = ns ? hz : hx;
+                const p = (dd) => ns ? [edge, sg * (base + dd)] : [sg * (base + dd), edge];
+                const A = p(d0), B = p(d1);
+                ghosts.push({ k: 'wall', x0: A[0], z0: A[1], x1: B[0], z1: B[1], y: Ly.top, t: 0.4, key: Ly.key, ghost: true, rail: false });
+            });
+        });
+    });
+    /* THE CORNERS: the room is a rectangle, the facade is round at the corners — the four pockets between them are filled to the
+       facade's top (a fan of prisms from each corner chord's outer edge to the room's corner), never a patch of grass outside */
+    if (o.box) {
+        const Fd = lead + N * tread + C + Fw, R = rc + Fd, sx = hx - rc, sz = hz - rc, top = conTop + (o.facadeH || 4.2);
+        [[sx, -sz, 0, 1, -1], [sx, sz, 90, 1, 1], [-sx, sz, 180, -1, 1], [-sx, -sz, 270, -1, -1]].forEach(c => {
+            const Q = [c[3] * o.box.w / 2, c[4] * o.box.d / 2];
+            for (let i = 0; i < cn; i++) {
+                const q0 = (c[2] + 90 * i / cn) * Math.PI / 180, q1 = (c[2] + 90 * (i + 1) / cn) * Math.PI / 180;
+                const a = [c[0] + R * Math.sin(q0), c[1] - R * Math.cos(q0)], b = [c[0] + R * Math.sin(q1), c[1] - R * Math.cos(q1)];
+                out.push({ k: 'wall', x0: a[0], z0: a[1], x1: b[0], z1: b[1], y: top, t: 0.3, key: o.facadeKey || key, tier: true, rail: false, fill: true,
+                           quad: [a, b, Q, Q].map(p => [Math.round(p[0] * 1000) / 1000, Math.round(p[1] * 1000) / 1000]) });
+            }
+        });
+    }
+    return out.concat(ghosts);
+}
+/* THE CHALK (2026-09-26): an American football field's paint as `terrain.marks` rows (three-renderer.js _hqBuildMarks) — the
+   field `yard` metres to the yard (0.8 scale: 0.7315), long axis north–south: the sidelines and end lines (a broad white border), a
+   yard line every five, the hashes every yard (the sideline ticks and the two inbound rows), the numbers every ten facing their
+   sideline, two painted end zones with their words, the midfield ring. */
+function hqGridironMarks(o) {
+    const y = o.yard || 0.7315, hw = 26.667 * y, goal = 50 * y, end = 60 * y, out = [], W = 0xf4f4ee;
+    const ez = o.endZones || [{ color: 0xb02a2a, text: 'ENTROPY' }, { color: 0x2a4ab0, text: 'WARS' }];
+    /* the end zones (north, south), painted under the lines */
+    [-1, 1].forEach((sg, i) => {
+        const E = ez[i] || ez[0];
+        out.push({ k: 'rect', x: 0, z: sg * (goal + end) / 2, w: 2 * hw, d: end - goal, color: E.color, a: 0.9 });
+        out.push({ k: 'text', x: 0, z: sg * (goal + end) / 2, text: E.text, size: (end - goal) * 0.62, rot: sg < 0 ? 0 : 180, color: W });
+    });
+    /* the border (6 ft wide, outside the field of play) */
+    const bw = 1.83 * (y / 0.9144);
+    out.push({ k: 'line', x0: -hw - bw / 2, z0: -end - bw, x1: -hw - bw / 2, z1: end + bw, w: bw, color: W });
+    out.push({ k: 'line', x0: hw + bw / 2, z0: -end - bw, x1: hw + bw / 2, z1: end + bw, w: bw, color: W });
+    out.push({ k: 'line', x0: -hw - bw, z0: -end - bw / 2, x1: hw + bw, z1: -end - bw / 2, w: bw, color: W });
+    out.push({ k: 'line', x0: -hw - bw, z0: end + bw / 2, x1: hw + bw, z1: end + bw / 2, w: bw, color: W });
+    /* the yard lines (the goal lines a touch broader) */
+    for (let i = 0; i <= 20; i++) { const z = -goal + i * 5 * y; out.push({ k: 'line', x0: -hw, z0: z, x1: hw, z1: z, w: (i === 0 || i === 20) ? 0.2 : 0.1, color: W }); }
+    /* the hashes: every yard between the goal lines — a tick at each sideline and one at each inbound row */
+    const hash = 2.82 * (y / 0.9144), tick = 0.61 * (y / 0.9144);
+    for (let i = 1; i < 100; i++) {
+        if (i % 5 === 0) continue;
+        const z = -goal + i * y;
+        [[-hw, -hw + tick], [hw - tick, hw], [-hash - tick / 2, -hash + tick / 2], [hash - tick / 2, hash + tick / 2]].forEach(p => out.push({ k: 'line', x0: p[0], z0: z, x1: p[1], z1: z, w: 0.1, color: W }));
+    }
+    /* the numbers: 10 … 50 … 10, their tops toward the nearer sideline */
+    for (let i = 1; i <= 9; i++) {
+        const z = -goal + i * 10 * y, n = String(i <= 5 ? i * 10 : (10 - i) * 10), nx = hw - 12 * y;
+        out.push({ k: 'text', x: -nx, z, text: n, size: 1.83 * (y / 0.9144), rot: -90, color: W });
+        out.push({ k: 'text', x: nx, z, text: n, size: 1.83 * (y / 0.9144), rot: 90, color: W });
+    }
+    /* midfield */
+    out.push({ k: 'ring', x: 0, z: 0, r: 4.2, w: 0.35, color: W, a: 0.9 });
+    if (o.logo) out.push({ k: 'text', x: 0, z: 0, text: o.logo, size: 3.2, rot: 0, color: o.logoColor || W });
+    return out;
+}
 /* ── THE DIVINE STAIR'S SHELL (HQ plan 9.3 stage 6, 2026-09-17) ──────────
    Heaven's two parts (the stairway, the cloud fields) are OPEN rooms under
    Heaven's own sky (EW_MAP_META prebuilt_heaven env: the cream tint, the
@@ -22473,6 +22631,7 @@ const DOOR_HQ = {
         dream_screen:    { proc: 'dream_screen',    h: 1.2,  foot: 0,    wall: true, mount: 1.1, depth: 0.1, glow: { y: 0.6, size: 2.2, color: 0xc0a0ff } },   // Room REM: what the sleepers see (ticker: the drawing drifts)
         iso_tank:        { proc: 'iso_tank',        h: 1.3,  foot: 1.2,  rect: { hw: 1.2, hd: 0.8 }, block: true, glow: { y: 0.9, size: 2.0, color: 0x60a0ff }, light: { color: 0x4080ff, intensity: 0.7, dist: 5, y: 1.0 } },   // Room 0dB: the pod, lid ajar (ticker: it breathes)
         evac_button:     { proc: 'evac_button',     h: 0.3,  foot: 0,    wall: true, mount: 1.2, depth: 0.1, glow: { y: 0.15, size: 0.8, color: 0xff3020 }, light: { color: 0xff3020, intensity: 0.5, dist: 3, y: 0.15 } },   // Room 4B: the red button under its cover
+        scoreboard:      { proc: 'scoreboard',      h: 8.8,  foot: 0.5,  rect: { hw: 5.5, hd: 0.35 }, block: true, glow: { y: 6.3, size: 9.0, color: 0x86e8ff } },   // THE BOWL (2026-09-26): over the north concourse
         flood_mast:      { proc: 'flood_mast',      h: 7.0,  foot: 0.35, block: true, glow: { y: 6.6, size: 5.0, color: 0xeaf4ff }, light: { color: 0xeaf4ff, intensity: 1.2, dist: 26, y: 6.6 } },   // THE FLIGHT LINE (2026-09-18): a floodlight mast — the outdoor room's own light
         saucer_rig:      { proc: 'saucer_rig',      h: 4.6,  foot: 3.2,  block: true, glow: { y: 2.9, size: 7.0, color: 0xbfe0ff }, light: { color: 0xdfefff, intensity: 1.5, dist: 22, y: 3.4 } },   // HANGAR 18 (2026-09-18): the saucer on its test rig under a tarp, the floodlights on it — the near weenie
         warning_tape:    { proc: 'warning_tape',    h: 0.01, foot: 0 },                                                       // Room 4B: the striped line on the floor you do not cross
@@ -22854,7 +23013,7 @@ const DOOR_HQ = {
        leaf, exclusive); HOME's front door is `leaf_suburban_house`. */
     hwing: {
         rooms: ['hwing_lobby', 'hwing_w', 'hwing_bar', 'hwing_e', 'hwing_office', 'hwing_pool', 'hwing_break', 'hwing_home'],
-        entries: [{ room: 'garage', door: 'p2' }, { room: 'deadend', door: 'hwing' }],
+        entries: [{ room: 'deadend', door: 'hwing' }],   // 2026-09-26 (the user): no door from the garage — the wing is hard to find and hard to reach
         crossing: 'prebuilt_backrooms',
         legM: 48, barM: 12,
     },
@@ -23109,7 +23268,7 @@ const DOOR_HQ = {
            garage, maybe connect them"): THE GARAGE (P1) ⇄ THE MOTOR POOL (P3) — a facility room seaming into a wild one (the
            garden well's precedent, never gated); the motor pool is the parking level the car's panel never had */
         { id: 'garage_motorpool', route: 'bases', leaf: 'leaf_bulkhead',
-          a: { room: 'garage', wall: 'w', z: -2.5, sub: 'THE RAMP DOWN · P3 · THE MOTOR POOL' },   // THE ROUND GARAGE (2026-09-20): its own vestibule off the loop's west side (a `halls` row in the garage's plan)
+          a: { room: 'garage', wall: 'w', z: 0, sub: 'THE RAMP DOWN · P3 · THE MOTOR POOL' },   // THE ROUND GARAGE (rebuilt 2026-09-26): in the drum wall's west opening, under the deck
           b: { site: 'prebuilt_dumb', part: 'motorpool', wall: 's', x: -16, sub: 'THE RAMP UP · P1 · THE GARAGE' },
           why: 'the ramp in the garage goes up to an exit sign and down to a level the panel does not have; the cars signed out of P1 are parked on P3 and both sheets are fine with it', note: 'the panel stops at P1', draft: true },
         { id: 'dumb_cern', route: 'bases', leaf: 'leaf_wired_double',
@@ -23270,12 +23429,12 @@ const DOOR_HQ = {
           b: { site: 'prebuilt_cyberpunk', part: 'streets', wall: 'e', z: 0, sub: 'THE CROSS · EAST · THE STRIP' },
           why: 'the same road, later; the last exit is the city the Strip was practising for', note: 'the last exit', draft: true },
         { id: 'stadium_downtown', route: 'highway', way: 'road',
-          a: { site: 'prebuilt_stadium', part: 'bowl', wall: 'n', x: -5, sub: 'THE STADIUM ROAD · DISASTER CITY' },   // THE AREAS (2026-09-18): the road out of THE BOWL
+          a: { site: 'prebuilt_stadium', part: 'bowl', wall: 'n', x: 0, sub: 'THE STADIUM ROAD · DISASTER CITY' },   // THE AREAS (2026-09-18): the road out of THE BOWL — 2026-09-26: at the end of THE PLAYERS' TUNNEL
           b: { site: 'prebuilt_downtown', part: 'streets', wall: 'n', x: 0, sub: 'THE AVENUE · NORTH · THE STADIUM' },
           why: 'the parking structure joins the stadium to the block; on game day the road is the crowd', note: 'the parking structure', draft: true },
         /* AREA CONTENT D3 (2026-09-19): THE PITCH DRAIN — a DRAUGHT behind the east stand into the sewers' east return (the bowl's earned exit; the road out is never one) */
         { id: 'stadium_sewers', route: 'sewers', leaf: 'leaf_cell', secret: true,   // a draught still names a catalogued leaf (hqLinkLive's wear rule) — the door wears none
-          a: { site: 'prebuilt_stadium', part: 'bowl', wall: 'e', z: 12, sub: 'THE PITCH DRAIN · BEHIND THE EAST STAND' },
+          a: { site: 'prebuilt_stadium', part: 'bowl', wall: 'e', z: 12, sub: 'THE PITCH DRAIN · UNDER THE EAST STAND' },   // 2026-09-26: at the end of THE CULVERT (the service tunnel under the east stand)
           b: { site: 'prebuilt_downtown', part: 'sewers', wall: 'e', z: 14, sub: 'THE STADIUM DRAIN · UP TO THE PITCH' },
           why: 'the pitch drains into the east return; the groundsman\'s culvert was never on the plan, and the plate on the back of the east stand says so', note: 'a draught behind the east stand', draft: true },
         /* THE WONDERLAND (the Looking-Glass has no free wall for a landing
@@ -23575,7 +23734,7 @@ const DOOR_HQ = {
             /* THE AREAS (2026-09-18 — the user: "replace all board maps with areas, except for Room 64"): every remaining board is bypassed —
                the twenty generated areas (HQ_AREA_SPECS → hqBuildAreas) and the woods' clearing (its hollow tree IS the bay door) */
             prebuilt_backrooms:           { room: 'site_prebuilt_backrooms_levels',           door: { id: 'bay', wall: 's', x: 0 } },
-            prebuilt_stadium:             { room: 'site_prebuilt_stadium_bowl',               door: { id: 'bay', wall: 's', x: 0, y: 3.4 } },   // AREA CONTENT D3 (2026-09-19): the bay door stands ON THE CONCOURSE — you come in at the top
+            prebuilt_stadium:             { room: 'site_prebuilt_stadium_bowl',               door: { id: 'bay', wall: 's', x: 0 } },   // 2026-09-26: at the end of THE GATE (the south tunnel) — you come in at pitch level, the concourse is up the stands
             prebuilt_technoticlan:        { room: 'site_prebuilt_technoticlan_templecity',    door: { id: 'bay', wall: 's', x: 0 } },
             prebuilt_agartha:             { room: 'site_prebuilt_agartha_crystalcity',        door: { id: 'bay', wall: 's', x: 0 } },
             prebuilt_antarctica:          { room: 'site_prebuilt_antarctica_station',         door: { id: 'bay', wall: 's', x: 0 } },
@@ -27689,207 +27848,341 @@ const DOOR_HQ = {
             ],
             spawn: { x: 0, z: 0.1, face: 180 },
         },
-        /* ── G · THE GARAGE (Room P1) — THE ROUND GARAGE (2026-09-20; the user: "make the parking garage bigger and
-           better — a skating playground; a ROUND parking garage since it is part of DOOR's facility; multiple floors in
-           one room; the H-Wing door needs to be hidden way better"). The biggest room in the building is a DRUM now:
-           a terrain room whose `halls` floor plan opens ONE circle (r 22.4 — the traced plan wall is the round concrete
-           wall; the box's corners are solid) with a short vestibule to every door, and THREE DECKS in the one room —
-           every one signed P1, because the panel has no P2 and the lore likes it that way:
-             P1 · LOWER  (0 m)   the outer annulus, 8.5 m wide and 110 m round: THE LOOP — the half-pipe, the kickers, the
-                                 fun box, the kerb ledge, the handrail, the painted lane, the cars along the wall
-             P1 · UPPER  (3.9 m) THE RING — a bridge ring (THE BRIDGE LAYER, sixteen chords) hung over the whole annulus,
-                                 rails on both edges (grinds), two cars, THE DOCK OFFICE up its ladder
-             P1 · TOP    (7.8 m) THE CORE (a 9.9 m disc with a parapet ring = a grind ring) + a second bridge ring over the
-                                 south half (stacked over the UPPER ring) + THE RAMP OUT that the arm never lifts
-           THE HELIX: one spiral ramp (hqHelixRamp) winds ONE full turn round the core, 0 → 3.9 → 7.8 in the 4 m band
-           r 9.5–13.5, a flat landing at the north (UPPER) and the south (TOP) — the rule: a spiral on one height field
-           climbs the whole way in one turn; the decks above the ground are bridge rings. The parapets step with the ramp.
-           THE HIDDEN STAIR: the H-Wing door is a SECRET slab (no leaf, no lamp, no plate) at the end of a dog-leg
-           service alcove off the south-west of the loop — a dead end to the eye, the door round the corner behind the
-           shelving. THE RAMP DOWN (links.garage_motorpool, P3) stays on the west wall. node check-terrain.js garage
-           solves it (every door from every door, no trap). ── */
+        /* ── G · THE GARAGE (Room P1) — THE ROUND GARAGE, REBUILT (2026-09-26; the user: "it needs to have way more open space.
+           There is barely any room to skate because of the cars. It's supposed to be round but it's all jagged and I get stuck in
+           between the floor pieces. Why can't it be round like DOOR HQ Central Egress? The ramp isn't even big enough to drive a car
+           on. It looks nothing like a parking garage. Also it should not have a door to H-wing"). No floor plan any more (the `halls`
+           plan's traced walls were the jags and the snags): ONE smooth drum wall (96 chords, r 27.8, floor to ceiling, open at the
+           doors), and two levels —
+             P1 · LOWER  (0 m)    THE PLAZA — the open disc under the 10 m roof (r < 18): the half-pipe (two quarter pipes north and
+                                  south), two kickers east and west aimed at THE ISLAND (a round kerb, a grind ring), a manual pad,
+                                  a handrail — and THE LOWER RING under the deck (r 18–27.6): the lane, the bays, three cars parked
+                                  along the wall (parallel — never across the lane), the booth at the ramp's foot
+             P1 · UPPER  (4.2 m)  THE DECK — ONE round slab (an ARC BRIDGE, r 18 → 28.3, 230° → 130° clockwise), a rail round its
+                                  inner edge (a grind 80 m long), columns under its inner edge, two cars, THE DOCK OFFICE up its
+                                  ladder, THE RAMP OUT at its end (the barrier arm the attendant never lifts)
+           THE RAMP: ONE smooth spiral (`spiral`, linear in the angle — no chords, no joints), 130° → 230°, the full ten-metre band
+           r 17.9 → 28.3, 0 → 4.2 m over ~40 m (10.5 %: two lanes, a car's grade), its inner edge a concrete parapet with a sloped
+           grind on top. Doors: the elevator and the tunnel hatch on the east, the loading dock north, THE RAMP DOWN (links.garage_motorpool,
+           P3) west. There is NO door to H-Wing here any more — the wing is found from the room at the end (deadend) only.
+           node check-terrain.js garage solves it (every door from every door, no trap). ── */
         garage: {
             label: 'THE GARAGE',
-            sub: 'PARKING · LEVEL P1 · THREE DECKS, ALL OF THEM P1',
-            roomNo: 'P1', why: 'the first parking level — three decks in one drum (LOWER · UPPER · TOP) and every one of them signed P1; there is no P2 on the panel and the helix does not go there either — the hidden stair in the service alcove does (H-Wing); P3 is the D.U.M.B.’s motor pool, down THE RAMP by the west wall (links.garage_motorpool, 2026-09-18)',
+            sub: 'PARKING · LEVEL P1 · TWO DECKS, BOTH OF THEM P1',
+            roomNo: 'P1', why: 'the first parking level — a round drum with a deck and a ramp, and both levels signed P1; there is no P2 on the panel and the ramp does not go there either; P3 is the D.U.M.B.’s motor pool, down THE RAMP by the west wall (links.garage_motorpool, 2026-09-18)',
             kind: 'box',
-            /* THE CLIMB (AREA_CONTENT_PLAN D1 / R9, 2026-09-19): THE TEACHING ROOM — THE DOCK OFFICE is a platform 3 m over
-               the UPPER deck now (y 6.9 on the ring at the north-east, its top 7.15 under a 12.4 m ceiling), reached by ONE
-               ladder whose foot stands ON the ring (`y0: 3.9` — a box climb's free query reads the ground, never a bridge);
-               the lesson plaque stands at its foot; walk off the platform's edge to come down (or S at the head) */
+            /* THE CLIMB (AREA_CONTENT_PLAN D1 / R9, 2026-09-19): THE TEACHING ROOM — THE DOCK OFFICE is a platform 3 m over the DECK
+               (the landing at y 7.2 on the deck at the north-east, its top 7.45 under a 10.2 m roof), reached by ONE ladder whose foot
+               stands ON the deck (`y0: 4.2` — a box climb's free query reads the ground, never a bridge); the lesson plaque stands at
+               its foot; walk off the platform's edge to come down (or S at the head) */
             climbs: [
-                { id: 'dock_office', x: 15.6, z: -8.02, y0: 3.9, y1: 7.15, face: 0, look: 'ladder' },   // the climber faces north, the platform's south edge is the mass; the head lands on the landing's top
+                { id: 'dock_office', x: 18.0, z: -15.42, y0: 4.2, y1: 7.45, face: 0, look: 'ladder' },   // the climber faces north, the platform's south edge is the mass; the head lands on the landing's top
             ],
             shell: {
-                w: 48, d: 48, h: 12.4,
-                wallH: 12.4, dadoH: 1.1,
+                w: 56, d: 56, h: 10.2,
+                wallH: 10.2, dadoH: 1.1,
                 floor: 'concrete_floor', wall: 'concrete', dado: 'concrete', trim: 'teal', ceiling: 'concrete',
                 floorColor: 0x9b9a96, wallColor: 0xa8a6a0, dadoColor: 0x6e6c66, ceilColor: 0x8e8c88,
                 pipes: true,
-                lights: [{ x: 0, z: -18 }, { x: 0, z: 18 }, { x: -18, z: 0 }, { x: 18, z: 0 }, { x: -12.7, z: -12.7 }, { x: 12.7, z: -12.7 }, { x: -12.7, z: 12.7 }, { x: 12.7, z: 12.7 }, { x: 0, z: 0 }],
-                mood: { light: 0xffe4a8, ambient: 0.78 },      // sodium lamps; nothing in here is white
-                fog: { color: 0x2a2620, density: 0.018 },       // the far side of the drum goes soft (THE FAR END rule 3.5: half gone at 60 % of the diagonal)
+                lights: [{ x: 0, z: 0 }, { x: 7.8, z: -7.8 }, { x: 7.8, z: 7.8 }, { x: -7.8, z: 7.8 }, { x: -7.8, z: -7.8 },
+                         { x: 0, z: -23 }, { x: 21.9, z: -7.1 }, { x: 13.5, z: 18.6 }, { x: -13.5, z: 18.6 }, { x: -21.9, z: -7.1 }],
+                mood: { light: 0xffe4a8, ambient: 0.9 },       // sodium lamps; nothing in here is white
+                fog: { color: 0x2a2620, density: 0.014 },
                 look: HQ_ROOM_LOOKS.garage,   // the object, never the key (the woods' rule)
-                plate: { x: 20.6, z: 7.6, y: 2.4 },
+                plate: { x: 26.4, z: 9.4, y: 2.4 },
             },
             terrain: {
                 floor: 'concrete_floor', cliff: 'concrete', path: 'urban:ConcreteStriped2a',
-                noise: { amp: 0, scale: 5 }, crag: false,
-                gen: { kind: 'halls', seed: 1971, bsp: false, loops: 0, minDegree: 0, wallKey: 'urban:ConcreteStriped2c', corridor: [3.0, 3.4],
-                       /* THE DRUM: the one open circle (`open`); every door's vestibule is an AUTHORED HALL whose wall end is the pad's own
-                          node — so the Prim tree joins each pad to its own vestibule with a zero-length corridor and carves NOTHING else
-                          (as `open` rows the pads were still nodes, and the tree ran service corridors along the box walls from pad to
-                          pad — one of them straight from THE RAMP DOWN's vestibule to the hidden stair's, which is the one thing the
-                          alcove must never have); the dog-leg alcove to the hidden stair is a hall too */
-                       open: [{ x: 0, z: 0, r: 22.4 }],
-                       halls: [{ id: 'elevator', pts: [[23.6, 4], [19, 4]], w: 4.0 },                   // the elevator's vestibule
-                               { id: 'tunnel', pts: [[23.6, -6], [19, -6]], w: 4.4 },                   // the tunnel hatch's
-                               { id: 'dock', pts: [[-4, -23.6], [-4, -19]], w: 4.4 },                   // the loading dock's
-                               { id: 'rampdown', pts: [[-23.6, -2.5], [-19, -2.5]], w: 4.0 },           // THE RAMP DOWN's (the motor pool link)
-                               { id: 'alcove', pts: [[-12.5, 17.6], [-22.2, 17.6], [-22.2, 14]], w: 2.4 }] },   // THE SERVICE ALCOVE: west into the solid (a dead end to the eye), then north round the corner to the hidden stair's pad
+                noise: { amp: 0, scale: 5 }, crag: false, stalactites: false,
+                /* THE PAINT: the lane's dashes on both levels, the bay lines along the wall, the P1s, the UP at the ramp's foot, the ring round the island */
+                marks: [
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 232, a1: 234.5, color: 0xffd34a },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 238, a1: 240.5, color: 0xffd34a },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 244, a1: 246.5, color: 0xffd34a },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 250, a1: 252.5, color: 0xffd34a },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 256, a1: 258.5, color: 0xffd34a },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 262, a1: 264.5, color: 0xffd34a },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 268, a1: 270.5, color: 0xffd34a },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 274, a1: 276.5, color: 0xffd34a },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 280, a1: 282.5, color: 0xffd34a },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 286, a1: 288.5, color: 0xffd34a },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 292, a1: 294.5, color: 0xffd34a },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 298, a1: 300.5, color: 0xffd34a },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 304, a1: 306.5, color: 0xffd34a },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 310, a1: 312.5, color: 0xffd34a },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 316, a1: 318.5, color: 0xffd34a },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 322, a1: 324.5, color: 0xffd34a },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 328, a1: 330.5, color: 0xffd34a },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 334, a1: 336.5, color: 0xffd34a },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 340, a1: 342.5, color: 0xffd34a },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 346, a1: 348.5, color: 0xffd34a },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 352, a1: 354.5, color: 0xffd34a },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 358, a1: 360.5, color: 0xffd34a },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 364, a1: 366.5, color: 0xffd34a },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 370, a1: 372.5, color: 0xffd34a },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 376, a1: 378.5, color: 0xffd34a },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 382, a1: 384.5, color: 0xffd34a },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 388, a1: 390.5, color: 0xffd34a },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 394, a1: 396.5, color: 0xffd34a },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 400, a1: 402.5, color: 0xffd34a },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 406, a1: 408.5, color: 0xffd34a },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 412, a1: 414.5, color: 0xffd34a },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 418, a1: 420.5, color: 0xffd34a },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 424, a1: 426.5, color: 0xffd34a },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 430, a1: 432.5, color: 0xffd34a },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 436, a1: 438.5, color: 0xffd34a },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 442, a1: 444.5, color: 0xffd34a },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 448, a1: 450.5, color: 0xffd34a },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 454, a1: 456.5, color: 0xffd34a },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 460, a1: 462.5, color: 0xffd34a },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 466, a1: 468.5, color: 0xffd34a },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 472, a1: 474.5, color: 0xffd34a },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 478, a1: 480.5, color: 0xffd34a },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 484, a1: 486.5, color: 0xffd34a },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 232, a1: 234.5, color: 0xffd34a, y: 4.2 },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 238, a1: 240.5, color: 0xffd34a, y: 4.2 },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 244, a1: 246.5, color: 0xffd34a, y: 4.2 },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 250, a1: 252.5, color: 0xffd34a, y: 4.2 },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 256, a1: 258.5, color: 0xffd34a, y: 4.2 },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 262, a1: 264.5, color: 0xffd34a, y: 4.2 },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 268, a1: 270.5, color: 0xffd34a, y: 4.2 },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 274, a1: 276.5, color: 0xffd34a, y: 4.2 },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 280, a1: 282.5, color: 0xffd34a, y: 4.2 },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 286, a1: 288.5, color: 0xffd34a, y: 4.2 },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 292, a1: 294.5, color: 0xffd34a, y: 4.2 },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 298, a1: 300.5, color: 0xffd34a, y: 4.2 },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 304, a1: 306.5, color: 0xffd34a, y: 4.2 },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 310, a1: 312.5, color: 0xffd34a, y: 4.2 },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 316, a1: 318.5, color: 0xffd34a, y: 4.2 },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 322, a1: 324.5, color: 0xffd34a, y: 4.2 },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 328, a1: 330.5, color: 0xffd34a, y: 4.2 },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 334, a1: 336.5, color: 0xffd34a, y: 4.2 },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 340, a1: 342.5, color: 0xffd34a, y: 4.2 },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 346, a1: 348.5, color: 0xffd34a, y: 4.2 },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 352, a1: 354.5, color: 0xffd34a, y: 4.2 },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 358, a1: 360.5, color: 0xffd34a, y: 4.2 },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 364, a1: 366.5, color: 0xffd34a, y: 4.2 },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 370, a1: 372.5, color: 0xffd34a, y: 4.2 },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 376, a1: 378.5, color: 0xffd34a, y: 4.2 },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 382, a1: 384.5, color: 0xffd34a, y: 4.2 },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 388, a1: 390.5, color: 0xffd34a, y: 4.2 },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 394, a1: 396.5, color: 0xffd34a, y: 4.2 },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 400, a1: 402.5, color: 0xffd34a, y: 4.2 },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 406, a1: 408.5, color: 0xffd34a, y: 4.2 },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 412, a1: 414.5, color: 0xffd34a, y: 4.2 },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 418, a1: 420.5, color: 0xffd34a, y: 4.2 },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 424, a1: 426.5, color: 0xffd34a, y: 4.2 },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 430, a1: 432.5, color: 0xffd34a, y: 4.2 },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 436, a1: 438.5, color: 0xffd34a, y: 4.2 },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 442, a1: 444.5, color: 0xffd34a, y: 4.2 },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 448, a1: 450.5, color: 0xffd34a, y: 4.2 },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 454, a1: 456.5, color: 0xffd34a, y: 4.2 },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 460, a1: 462.5, color: 0xffd34a, y: 4.2 },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 466, a1: 468.5, color: 0xffd34a, y: 4.2 },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 472, a1: 474.5, color: 0xffd34a, y: 4.2 },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 478, a1: 480.5, color: 0xffd34a, y: 4.2 },
+                    { k: 'ring', x: 0, z: 0, r: 22.4, w: 0.16, a0: 484, a1: 486.5, color: 0xffd34a, y: 4.2 },
+                    { k: 'ring', x: 0, z: 0, r: 24.6, w: 0.12, a0: 232, a1: 488, color: 0xf4f4ee },
+                    { k: 'line', x0: -20.39, z0: 13.76, x1: -22.8, z1: 15.38, w: 0.12, color: 0xf4f4ee },
+                    { k: 'line', x0: -22.97, z0: 8.82, x1: -25.67, z1: 9.86, w: 0.12, color: 0xf4f4ee },
+                    { k: 'line', x0: -23.4, z0: -7.6, x1: -26.15, z1: -8.5, w: 0.12, color: 0xf4f4ee },
+                    { k: 'line', x0: -21.09, z0: -12.67, x1: -23.57, z1: -14.16, w: 0.12, color: 0xf4f4ee },
+                    { k: 'line', x0: -17.7, z0: -17.09, x1: -19.78, z1: -19.1, w: 0.12, color: 0xf4f4ee },
+                    { k: 'line', x0: -13.4, z0: -20.63, x1: -14.98, z1: -23.06, w: 0.12, color: 0xf4f4ee },
+                    { k: 'line', x0: -8.41, z0: -23.12, x1: -9.41, z1: -25.84, w: 0.12, color: 0xf4f4ee },
+                    { k: 'line', x0: 8.01, z0: -23.26, x1: 8.95, z1: -26, w: 0.12, color: 0xf4f4ee },
+                    { k: 'line', x0: 13.04, z0: -20.86, x1: 14.57, z1: -23.32, w: 0.12, color: 0xf4f4ee },
+                    { k: 'line', x0: 17.39, z0: -17.39, x1: 19.45, z1: -19.45, w: 0.12, color: 0xf4f4ee },
+                    { k: 'line', x0: 20.86, z0: -13.04, x1: 23.32, z1: -14.57, w: 0.12, color: 0xf4f4ee },
+                    { k: 'line', x0: 23.26, z0: -8.01, x1: 26, z1: -8.95, w: 0.12, color: 0xf4f4ee },
+                    { k: 'line', x0: 23.12, z0: 8.41, x1: 25.84, z1: 9.41, w: 0.12, color: 0xf4f4ee },
+                    { k: 'line', x0: 20.63, z0: 13.4, x1: 23.06, z1: 14.98, w: 0.12, color: 0xf4f4ee },
+                    { k: 'ring', x: 0, z: 0, r: 24.6, w: 0.12, a0: 232, a1: 488, color: 0xf4f4ee, y: 4.2 },
+                    { k: 'line', x0: -20.39, z0: 13.76, x1: -22.8, z1: 15.38, w: 0.12, color: 0xf4f4ee, y: 4.2 },
+                    { k: 'line', x0: -22.97, z0: 8.82, x1: -25.67, z1: 9.86, w: 0.12, color: 0xf4f4ee, y: 4.2 },
+                    { k: 'line', x0: -24.36, z0: 3.42, x1: -27.23, z1: 3.83, w: 0.12, color: 0xf4f4ee, y: 4.2 },
+                    { k: 'line', x0: -24.51, z0: -2.14, x1: -27.4, z1: -2.4, w: 0.12, color: 0xf4f4ee, y: 4.2 },
+                    { k: 'line', x0: -23.4, z0: -7.6, x1: -26.15, z1: -8.5, w: 0.12, color: 0xf4f4ee, y: 4.2 },
+                    { k: 'line', x0: -21.09, z0: -12.67, x1: -23.57, z1: -14.16, w: 0.12, color: 0xf4f4ee, y: 4.2 },
+                    { k: 'line', x0: -17.7, z0: -17.09, x1: -19.78, z1: -19.1, w: 0.12, color: 0xf4f4ee, y: 4.2 },
+                    { k: 'line', x0: -13.4, z0: -20.63, x1: -14.98, z1: -23.06, w: 0.12, color: 0xf4f4ee, y: 4.2 },
+                    { k: 'line', x0: -8.41, z0: -23.12, x1: -9.41, z1: -25.84, w: 0.12, color: 0xf4f4ee, y: 4.2 },
+                    { k: 'line', x0: -3, z0: -24.42, x1: -3.35, z1: -27.3, w: 0.12, color: 0xf4f4ee, y: 4.2 },
+                    { k: 'line', x0: 2.57, z0: -24.47, x1: 2.87, z1: -27.35, w: 0.12, color: 0xf4f4ee, y: 4.2 },
+                    { k: 'line', x0: 8.01, z0: -23.26, x1: 8.95, z1: -26, w: 0.12, color: 0xf4f4ee, y: 4.2 },
+                    { k: 'line', x0: 13.04, z0: -20.86, x1: 14.57, z1: -23.32, w: 0.12, color: 0xf4f4ee, y: 4.2 },
+                    { k: 'line', x0: 17.39, z0: -17.39, x1: 19.45, z1: -19.45, w: 0.12, color: 0xf4f4ee, y: 4.2 },
+                    { k: 'line', x0: 20.86, z0: -13.04, x1: 23.32, z1: -14.57, w: 0.12, color: 0xf4f4ee, y: 4.2 },
+                    { k: 'line', x0: 23.26, z0: -8.01, x1: 26, z1: -8.95, w: 0.12, color: 0xf4f4ee, y: 4.2 },
+                    { k: 'line', x0: 24.47, z0: -2.57, x1: 27.35, z1: -2.87, w: 0.12, color: 0xf4f4ee, y: 4.2 },
+                    { k: 'line', x0: 24.42, z0: 3, x1: 27.3, z1: 3.35, w: 0.12, color: 0xf4f4ee, y: 4.2 },
+                    { k: 'line', x0: 23.12, z0: 8.41, x1: 25.84, z1: 9.41, w: 0.12, color: 0xf4f4ee, y: 4.2 },
+                    { k: 'line', x0: 20.63, z0: 13.4, x1: 23.06, z1: 14.98, w: 0.12, color: 0xf4f4ee, y: 4.2 },
+                    { k: 'text', x: -17.37, z: -12.16, text: 'P1', size: 2.6, rot: 125, color: 0xffd34a },
+                    { k: 'text', x: -17.37, z: -12.16, text: 'P1', size: 2.6, rot: 125, color: 0xffd34a, y: 4.2 },
+                    { k: 'text', x: 19.78, z: 10.52, text: 'UP', size: 2.4, rot: 208, color: 0xf4f4ee },
+                    { k: 'ring', x: 0, z: 0, r: 6.2, w: 0.2, color: 0xffd34a },
+                ],
                 features: [
-                    /* THE CORE + THE TWO LANDINGS (the heights the helix climbs to) */
-                    { k: 'plateau', x: 0, z: 0, r: 9.9, h: 7.8, edge: 0.35 },                                   // THE CORE · P1 TOP
-                    { k: 'plateau', x: 0, z: 11.0, w: 9.4, d: 5.2, h: 7.8, edge: 0.35 },                        // THE TOP LANDING (south; its inner edge a metre inside the core — two edge blends meeting made a pocket)
-                    { k: 'plateau', x: 0, z: -11.0, w: 9.4, d: 5.2, h: 3.9, edge: 0.35 },                       // THE UPPER LANDING (north; the same)
-                ].concat(
-                    /* THE HELIX: 195° → 345° up to the upper landing, 15° → 165° up to the top landing (13 % — a car's grade); the parapet on the outer edge from 232° (where the drop is over 0.9 m) */
-                    hqHelixRamp({ id: 'helix_a', r: 11.5, w: 4, a0: 195, a1: 345, h0: 0, h1: 3.9, n: 10, wall: { h: 1.05, from: 232, key: 'urban:ConcreteStriped2c' } }),
-                    hqHelixRamp({ id: 'helix_b', r: 11.5, w: 4, a0: 15, a1: 165, h0: 3.9, h1: 7.8, n: 10, wall: { h: 1.05, from: 15, key: 'urban:ConcreteStriped2c' } }),
-                    /* the landings' parapets (the connector bridges pass through the gaps), the top landing's west wall over the helix's foot */
-                    [{ k: 'wall', x0: -4.4, z0: -13.25, x1: -2.6, z1: -13.25, h: 1.05, t: 0.35, parapet: true }, { k: 'wall', x0: 2.6, z0: -13.25, x1: 4.4, z1: -13.25, h: 1.05, t: 0.35, parapet: true },
-                     { k: 'wall', x0: -4.4, z0: 13.25, x1: -2.6, z1: 13.25, h: 1.05, t: 0.35, parapet: true }, { k: 'wall', x0: 2.6, z0: 13.25, x1: 4.4, z1: 13.25, h: 1.05, t: 0.35, parapet: true },
-                     { k: 'wall', x0: -4.4, z0: 9.7, x1: -4.4, z1: 13.4, h: 1.05, t: 0.35, parapet: true }],
-                    /* THE CORE'S RIM: a parapet ring (a grind ring 60 m round), open where the two landings join */
-                    hqRingWalls({ id: 'core_rim', r: 9.5, h: 1.05, n: 24, skip: [[150, 210], [330, 30]] }),
-                    /* THE UPPER RING (P1 · UPPER, 3.9): sixteen chords over the whole annulus, r 14.2–21.8, rails both edges; the connector from the north landing */
-                    hqRingBridges({ id: 'upper', r: 18.0, w: 7.6, y: 3.9, a0: 0, a1: 360, n: 16 }),
-                    [{ k: 'bridge', x0: 0, z0: -12.6, x1: 0, z1: -15.6, w: 5, y: 3.9, rails: false, ring: 'upper', connector: true }],
-                    /* THE TOP RING (P1 · TOP, 7.8): eight chords over the south half, stacked over the upper ring; the connector from the top landing */
-                    hqRingBridges({ id: 'top', r: 18.0, w: 7.6, y: 7.8, a0: 100, a1: 260, n: 8 }),
-                    [{ k: 'bridge', x0: 0, z0: 12.6, x1: 0, z1: 15.6, w: 5, y: 7.8, rails: false, ring: 'top', connector: true }],
-                    /* THE LOOP (P1 · LOWER): the painted lane, two kickers, THE FUN BOX, the kerb ledge, the handrail */
-                    [{ k: 'path', pts: hqRingPts(0, 0, 17.8, 36), w: 3.2 },                                                    // the lane round the annulus
-                     /* THE KICKERS (SKATEBOARDING rev 8, 2026-09-21): both ALONG the lane, rising with the clockwise roll — the west one used to run
-                        INTO the loop (its lip a metre from a pillar and the south quarter pipe's back); now it stands at 330° with the kerb ledge
-                        past its landing (kicker → ledge grind is the line), the east one at 60° as it was. A kicker's run-up is the lane behind it */
-                     { k: 'ramp', x0: -10.05, z0: -14.41, x1: -7.45, z1: -15.91, w: 2.6, h0: 0, h1: 0.9, edge: 0.3 },              // THE KICKER (north-west, at 330°)
-                     { k: 'ramp', x0: 14.65, z0: -10.2, x1: 16.15, z1: -7.6, w: 2.6, h0: 0, h1: 0.9, edge: 0.3 },                // THE KICKER (east, at 60°)
-                     { k: 'plateau', x: 0, z: 18.5, w: 6, d: 2.8, h: 0.5, edge: 0.3 },                                           // THE FUN BOX (south, under the top ring)
-                     { k: 'wall', x0: -7, z0: -18.5, x1: 7, z1: -18.5, h: 0.45, t: 0.4, key: 'urban:ConcreteStriped2a' },        // THE KERB LEDGE (north, under the upper ring)
-                     { k: 'rail', x0: 14.9, z0: 11.3, x1: 11.3, z1: 14.9 },                                                        // THE HANDRAIL (at 135°)
-                     { k: 'scatter', key: 'traffic_cone', n: 7, x: 0, z: 0, r: 20, seed: 3 },
-                     { k: 'scatter', key: 'cinder_block', n: 4, x: -16, z: 14, r: 5, seed: 4 }]
-                ),
+                    /* THE DRUM: one wall, floor to roof, open at the doors (the dock north, the elevator + the hatch east, THE RAMP DOWN west — the openings on the chords' own joints: 352.5–7.5°, 75–105°, 262.5–277.5°), the jambs closing the corners behind it */
+                    ...hqRingWalls({ id: 'drum', r: 27.8, h: 10.2, t: 0.5, n: 96, key: 'concrete', skip: [[352, 368], [76, 104], [262, 278]] }).map(w => Object.assign(w, { rail: false, y: 10.2, tier: true, quad: hqRingQuad(w, 27.8, 0.5) })),
+                    { k: 'wall', x0: -3.63, z0: -27.56, x1: -3.69, z1: -28, h: 10.2, t: 0.5, key: 'concrete', rail: false },
+                    { k: 'wall', x0: 3.63, z0: -27.56, x1: 3.69, z1: -28, h: 10.2, t: 0.5, key: 'concrete', rail: false },
+                    { k: 'wall', x0: 26.85, z0: -7.2, x1: 28, z1: -7.5, h: 10.2, t: 0.5, key: 'concrete', rail: false },
+                    { k: 'wall', x0: 26.85, z0: 7.2, x1: 28, z1: 7.5, h: 10.2, t: 0.5, key: 'concrete', rail: false },
+                    { k: 'wall', x0: -27.56, z0: 3.63, x1: -28, z1: 3.69, h: 10.2, t: 0.5, key: 'concrete', rail: false },
+                    { k: 'wall', x0: -27.56, z0: -3.63, x1: -28, z1: -3.69, h: 10.2, t: 0.5, key: 'concrete', rail: false },
+                    /* THE RAMP (0 → 4.2, 130° → 230° clockwise): one smooth surface, the band from the parapet into the drum wall */
+                    { k: 'spiral', x: 0, z: 0, r0: 17.9, r1: 28.0, a0: 130, a1: 230, h0: 0, h1: 4.2, edge: 0.01, id: 'ramp' },
+                    /* the parapet along its inner edge (from where the drop passes a step), a sloped grind on top; the wall across its top end under the deck */
+                    { k: 'wall', x0: 11.249, z0: 13.406, x1: 10.653, z1: 13.884, y: 1.523, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [1.47, 1.575], slopeTop: [1.47, 1.575], tier: true, quad: [[10.992, 13.099], [10.41, 13.566], [10.897, 14.201], [11.506, 13.712]], parapet: true },
+                    { k: 'wall', x0: 10.653, z0: 13.884, x1: 10.038, z1: 14.335, y: 1.628, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [1.575, 1.68], slopeTop: [1.575, 1.68], tier: true, quad: [[10.41, 13.566], [9.808, 14.007], [10.267, 14.663], [10.897, 14.201]], parapet: true },
+                    { k: 'wall', x0: 10.038, z0: 14.335, x1: 9.403, z1: 14.759, y: 1.733, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [1.68, 1.785], slopeTop: [1.68, 1.785], tier: true, quad: [[9.808, 14.007], [9.188, 14.422], [9.618, 15.097], [10.267, 14.663]], parapet: true },
+                    { k: 'wall', x0: 9.403, z0: 14.759, x1: 8.75, z1: 15.155, y: 1.838, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [1.785, 1.89], slopeTop: [1.785, 1.89], tier: true, quad: [[9.188, 14.422], [8.55, 14.809], [8.95, 15.502], [9.618, 15.097]], parapet: true },
+                    { k: 'wall', x0: 8.75, z0: 15.155, x1: 8.081, z1: 15.523, y: 1.943, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [1.89, 1.995], slopeTop: [1.89, 1.995], tier: true, quad: [[8.55, 14.809], [7.896, 15.168], [8.265, 15.877], [8.95, 15.502]], parapet: true },
+                    { k: 'wall', x0: 8.081, z0: 15.523, x1: 7.396, z1: 15.86, y: 2.048, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [1.995, 2.1], slopeTop: [1.995, 2.1], tier: true, quad: [[7.896, 15.168], [7.227, 15.498], [7.565, 16.223], [8.265, 15.877]], parapet: true },
+                    { k: 'wall', x0: 7.396, z0: 15.86, x1: 6.697, z1: 16.168, y: 2.152, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [2.1, 2.205], slopeTop: [2.1, 2.205], tier: true, quad: [[7.227, 15.498], [6.544, 15.798], [6.85, 16.537], [7.565, 16.223]], parapet: true },
+                    { k: 'wall', x0: 6.697, z0: 16.168, x1: 5.985, z1: 16.445, y: 2.258, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [2.205, 2.31], slopeTop: [2.205, 2.31], tier: true, quad: [[6.544, 15.798], [5.849, 16.069], [6.122, 16.82], [6.85, 16.537]], parapet: true },
+                    { k: 'wall', x0: 5.985, z0: 16.445, x1: 5.262, z1: 16.69, y: 2.362, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [2.31, 2.415], slopeTop: [2.31, 2.415], tier: true, quad: [[5.849, 16.069], [5.142, 16.309], [5.383, 17.072], [6.122, 16.82]], parapet: true },
+                    { k: 'wall', x0: 5.262, z0: 16.69, x1: 4.529, z1: 16.904, y: 2.468, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [2.415, 2.52], slopeTop: [2.415, 2.52], tier: true, quad: [[5.142, 16.309], [4.426, 16.517], [4.633, 17.29], [5.383, 17.072]], parapet: true },
+                    { k: 'wall', x0: 4.529, z0: 16.904, x1: 3.788, z1: 17.085, y: 2.572, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [2.52, 2.625], slopeTop: [2.52, 2.625], tier: true, quad: [[4.426, 16.517], [3.701, 16.695], [3.874, 17.476], [4.633, 17.29]], parapet: true },
+                    { k: 'wall', x0: 3.788, z0: 17.085, x1: 3.039, z1: 17.234, y: 2.678, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [2.625, 2.73], slopeTop: [2.625, 2.73], tier: true, quad: [[3.701, 16.695], [2.969, 16.84], [3.108, 17.628], [3.874, 17.476]], parapet: true },
+                    { k: 'wall', x0: 3.039, z0: 17.234, x1: 2.284, z1: 17.35, y: 2.783, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [2.73, 2.835], slopeTop: [2.73, 2.835], tier: true, quad: [[2.969, 16.84], [2.232, 16.954], [2.336, 17.747], [3.108, 17.628]], parapet: true },
+                    { k: 'wall', x0: 2.284, z0: 17.35, x1: 1.525, z1: 17.433, y: 2.888, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [2.835, 2.94], slopeTop: [2.835, 2.94], tier: true, quad: [[2.232, 16.954], [1.49, 17.035], [1.56, 17.832], [2.336, 17.747]], parapet: true },
+                    { k: 'wall', x0: 1.525, z0: 17.433, x1: 0.763, z1: 17.483, y: 2.993, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [2.94, 3.045], slopeTop: [2.94, 3.045], tier: true, quad: [[1.49, 17.035], [0.746, 17.084], [0.781, 17.883], [1.56, 17.832]], parapet: true },
+                    { k: 'wall', x0: 0.763, z0: 17.483, x1: 0, z1: 17.5, y: 3.098, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [3.045, 3.15], slopeTop: [3.045, 3.15], tier: true, quad: [[0.746, 17.084], [0, 17.1], [0, 17.9], [0.781, 17.883]], parapet: true },
+                    { k: 'wall', x0: 0, z0: 17.5, x1: -0.763, z1: 17.483, y: 3.203, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [3.15, 3.255], slopeTop: [3.15, 3.255], tier: true, quad: [[0, 17.1], [-0.746, 17.084], [-0.781, 17.883], [0, 17.9]], parapet: true },
+                    { k: 'wall', x0: -0.763, z0: 17.483, x1: -1.525, z1: 17.433, y: 3.308, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [3.255, 3.36], slopeTop: [3.255, 3.36], tier: true, quad: [[-0.746, 17.084], [-1.49, 17.035], [-1.56, 17.832], [-0.781, 17.883]], parapet: true },
+                    { k: 'wall', x0: -1.525, z0: 17.433, x1: -2.284, z1: 17.35, y: 3.413, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [3.36, 3.465], slopeTop: [3.36, 3.465], tier: true, quad: [[-1.49, 17.035], [-2.232, 16.954], [-2.336, 17.747], [-1.56, 17.832]], parapet: true },
+                    { k: 'wall', x0: -2.284, z0: 17.35, x1: -3.039, z1: 17.234, y: 3.518, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [3.465, 3.57], slopeTop: [3.465, 3.57], tier: true, quad: [[-2.232, 16.954], [-2.969, 16.84], [-3.108, 17.628], [-2.336, 17.747]], parapet: true },
+                    { k: 'wall', x0: -3.039, z0: 17.234, x1: -3.788, z1: 17.085, y: 3.623, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [3.57, 3.675], slopeTop: [3.57, 3.675], tier: true, quad: [[-2.969, 16.84], [-3.701, 16.695], [-3.874, 17.476], [-3.108, 17.628]], parapet: true },
+                    { k: 'wall', x0: -3.788, z0: 17.085, x1: -4.529, z1: 16.904, y: 3.728, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [3.675, 3.78], slopeTop: [3.675, 3.78], tier: true, quad: [[-3.701, 16.695], [-4.426, 16.517], [-4.633, 17.29], [-3.874, 17.476]], parapet: true },
+                    { k: 'wall', x0: -4.529, z0: 16.904, x1: -5.262, z1: 16.69, y: 3.833, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [3.78, 3.885], slopeTop: [3.78, 3.885], tier: true, quad: [[-4.426, 16.517], [-5.142, 16.309], [-5.383, 17.072], [-4.633, 17.29]], parapet: true },
+                    { k: 'wall', x0: -5.262, z0: 16.69, x1: -5.985, z1: 16.445, y: 3.938, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [3.885, 3.99], slopeTop: [3.885, 3.99], tier: true, quad: [[-5.142, 16.309], [-5.849, 16.069], [-6.122, 16.82], [-5.383, 17.072]], parapet: true },
+                    { k: 'wall', x0: -5.985, z0: 16.445, x1: -6.697, z1: 16.168, y: 4.043, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [3.99, 4.095], slopeTop: [3.99, 4.095], tier: true, quad: [[-5.849, 16.069], [-6.544, 15.798], [-6.85, 16.537], [-6.122, 16.82]], parapet: true },
+                    { k: 'wall', x0: -6.697, z0: 16.168, x1: -7.396, z1: 15.86, y: 4.147, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [4.095, 4.2], slopeTop: [4.095, 4.2], tier: true, quad: [[-6.544, 15.798], [-7.227, 15.498], [-7.565, 16.223], [-6.85, 16.537]], parapet: true },
+                    { k: 'wall', x0: -7.396, z0: 15.86, x1: -8.081, z1: 15.523, y: 4.253, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [4.2, 4.305], slopeTop: [4.2, 4.305], tier: true, quad: [[-7.227, 15.498], [-7.896, 15.168], [-8.265, 15.877], [-7.565, 16.223]], parapet: true },
+                    { k: 'wall', x0: -8.081, z0: 15.523, x1: -8.75, z1: 15.155, y: 4.357, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [4.305, 4.41], slopeTop: [4.305, 4.41], tier: true, quad: [[-7.896, 15.168], [-8.55, 14.809], [-8.95, 15.502], [-8.265, 15.877]], parapet: true },
+                    { k: 'wall', x0: -8.75, z0: 15.155, x1: -9.403, z1: 14.759, y: 4.463, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [4.41, 4.515], slopeTop: [4.41, 4.515], tier: true, quad: [[-8.55, 14.809], [-9.188, 14.422], [-9.618, 15.097], [-8.95, 15.502]], parapet: true },
+                    { k: 'wall', x0: -9.403, z0: 14.759, x1: -10.038, z1: 14.335, y: 4.567, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [4.515, 4.62], slopeTop: [4.515, 4.62], tier: true, quad: [[-9.188, 14.422], [-9.808, 14.007], [-10.267, 14.663], [-9.618, 15.097]], parapet: true },
+                    { k: 'wall', x0: -10.038, z0: 14.335, x1: -10.653, z1: 13.884, y: 4.673, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [4.62, 4.725], slopeTop: [4.62, 4.725], tier: true, quad: [[-9.808, 14.007], [-10.41, 13.566], [-10.897, 14.201], [-10.267, 14.663]], parapet: true },
+                    { k: 'wall', x0: -10.653, z0: 13.884, x1: -11.249, z1: 13.406, y: 4.777, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [4.725, 4.83], slopeTop: [4.725, 4.83], tier: true, quad: [[-10.41, 13.566], [-10.992, 13.099], [-11.506, 13.712], [-10.897, 14.201]], parapet: true },
+                    { k: 'wall', x0: -11.249, z0: 13.406, x1: -11.823, z1: 12.902, y: 4.883, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [4.83, 4.935], slopeTop: [4.83, 4.935], tier: true, quad: [[-10.992, 13.099], [-11.553, 12.607], [-12.093, 13.197], [-11.506, 13.712]], parapet: true },
+                    { k: 'wall', x0: -11.823, z0: 12.902, x1: -12.374, z1: 12.374, y: 4.988, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [4.935, 5.04], slopeTop: [4.935, 5.04], tier: true, quad: [[-11.553, 12.607], [-12.092, 12.092], [-12.657, 12.657], [-12.093, 13.197]], parapet: true },
+                    { k: 'wall', x0: -12.374, z0: 12.374, x1: -12.902, z1: 11.823, y: 5.092, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [5.04, 5.145], slopeTop: [5.04, 5.145], tier: true, quad: [[-12.092, 12.092], [-12.607, 11.553], [-13.197, 12.093], [-12.657, 12.657]], parapet: true },
+                    { k: 'wall', x0: -12.902, z0: 11.823, x1: -13.406, z1: 11.249, y: 5.197, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [5.145, 5.25], slopeTop: [5.145, 5.25], tier: true, quad: [[-12.607, 11.553], [-13.099, 10.992], [-13.712, 11.506], [-13.197, 12.093]], parapet: true },
+                    { k: 'wall', x0: -13.86, z0: 11.32, x1: -21.38, z1: 17.46, y: 4.2, t: 0.6, key: 'concrete', rail: false },
+                    /* THE DECK (4.2): one round slab from the ramp's top (230°) round the north to its end over the ramp's foot (130°), out to the drum's jambs; a rail on its inner edge */
+                    { k: 'bridge', arc: { x: 0, z: 0, r0: 18, r1: 27.5, a0: 230, a1: 490 }, drawR1: 27.8, y: 4.2, thick: 0.45, rails: 'inner', key: 'concrete_floor', id: 'deck' },
+                    /* …and in the drum's openings the deck runs on to the doors' wall (a walker on a bridge walks over a wall, so the deck stops INSIDE the drum everywhere else) */
+                    { k: 'bridge', arc: { x: 0, z: 0, r0: 27.2, r1: 29.2, a0: 353.8, a1: 366.2 }, drawR0: 27.5, y: 4.2, thick: 0.45, rails: false, key: 'concrete_floor', id: 'deck_n' },
+                    { k: 'bridge', arc: { x: 0, z: 0, r0: 27.2, r1: 29.2, a0: 76.3, a1: 103.7 }, drawR0: 27.5, y: 4.2, thick: 0.45, rails: false, key: 'concrete_floor', id: 'deck_e' },
+                    { k: 'bridge', arc: { x: 0, z: 0, r0: 27.2, r1: 29.2, a0: 263.8, a1: 276.2 }, drawR0: 27.5, y: 4.2, thick: 0.45, rails: false, key: 'concrete_floor', id: 'deck_w' },
+                    /* the columns under the deck's inner edge (never in the ramp's band, never in a kicker's lane) */
+                    { k: 'wall', x0: -17.97, z0: 4.81, x1: -17.98, z1: 4.77, y: 3.75, t: 0.7, key: 'urban:ConcreteStriped2c', rail: false, column: true },
+                    { k: 'wall', x0: -17.97, z0: -4.81, x1: -17.95, z1: -4.86, y: 3.75, t: 0.7, key: 'urban:ConcreteStriped2c', rail: false, column: true },
+                    { k: 'wall', x0: -13.15, z0: -13.15, x1: -13.12, z1: -13.19, y: 3.75, t: 0.7, key: 'urban:ConcreteStriped2c', rail: false, column: true },
+                    { k: 'wall', x0: -4.81, z0: -17.97, x1: -4.77, z1: -17.98, y: 3.75, t: 0.7, key: 'urban:ConcreteStriped2c', rail: false, column: true },
+                    { k: 'wall', x0: 4.81, z0: -17.97, x1: 4.86, z1: -17.95, y: 3.75, t: 0.7, key: 'urban:ConcreteStriped2c', rail: false, column: true },
+                    { k: 'wall', x0: 13.15, z0: -13.15, x1: 13.19, z1: -13.12, y: 3.75, t: 0.7, key: 'urban:ConcreteStriped2c', rail: false, column: true },
+                    { k: 'wall', x0: 17.97, z0: -4.81, x1: 17.98, z1: -4.77, y: 3.75, t: 0.7, key: 'urban:ConcreteStriped2c', rail: false, column: true },
+                    { k: 'wall', x0: 17.97, z0: 4.81, x1: 17.95, z1: 4.86, y: 3.75, t: 0.7, key: 'urban:ConcreteStriped2c', rail: false, column: true },
+                    /* THE PLAZA: THE ISLAND (a round kerb — a grind ring), the kickers (east and west, rising toward the island), the manual pad, the handrail */
+                    ...hqRingWalls({ id: 'island', r: 3.4, h: 0.45, t: 0.4, n: 32, key: 'urban:ConcreteStriped2a' }).map(w => Object.assign(w, { y: 0.45, tier: true, quad: hqRingQuad(w, 3.4, 0.4) })),
+                    { k: 'ramp', x0: -11.6, z0: 0, x1: -9.0, z1: 0, w: 2.6, h0: 0, h1: 0.9, edge: 0.01, kicker: true },                           // THE KICKER (west)
+                    { k: 'ramp', x0: 11.6, z0: 0, x1: 9.0, z1: 0, w: 2.6, h0: 0, h1: 0.9, edge: 0.01, kicker: true },                             // THE KICKER (east)
+                    { k: 'wall', x0: -11.4, z0: 7.0, x1: -6.6, z1: 10.8, y: 0.4, t: 1.6, key: 'urban:ConcreteStriped2a', rail: 'front', front: [0.621, -0.784] },   // THE MANUAL PAD (a ledge on its island side)
+                    { k: 'rail', x0: 7.0, z0: -10.5, x1: 11.0, z1: -7.0 },                                                            // THE HANDRAIL
+                ],
             },
             doors: [
-                { id: 'elevator', wall: 'e', z: 4, leaf: null, proc: 'elevator',
+                { id: 'elevator', wall: 'e', z: 3.5, leaf: null, proc: 'elevator',
                   label: 'ELEVATOR', sub: 'THE CAR',
                   action: { room: 'car', at: 'panel' },
                   desc: 'The car. It came down here; it will go anywhere on the panel.' },
-                /* Phase 8 stage 2 (2026-09-15): THE TUNNEL's service hatch — a maintenance door down to the platform (it comes out in a vestibule off the loop) */
-                { id: 'tunnel', wall: 'e', z: -6, leaf: 'leaf_bulkhead', wide: true,
+                /* Phase 8 stage 2 (2026-09-15): THE TUNNEL's service hatch — a maintenance door down to the platform (beside the elevator, under the deck) */
+                { id: 'tunnel', wall: 'e', z: -3.5, leaf: 'leaf_bulkhead', wide: true,
                   label: 'THE TUNNEL', sub: 'SERVICE HATCH · THE PLATFORM',
                   action: { room: 'tunnel', at: 'garage' },
-                  desc: 'A maintenance door in its own little vestibule off the loop. Tiles at the bottom of the steps, a draught, a train that is always there.' },
-                { id: 'dock', wall: 'n', x: -4, leaf: 'leaf_wired_double', wide: true,
+                  desc: 'A maintenance door beside the elevator, under the deck. Tiles at the bottom of the steps, a draught, a train that is always there.' },
+                { id: 'dock', wall: 'n', x: 0, leaf: 'leaf_wired_double', wide: true,
                   label: 'THE LOADING DOCK', sub: 'DELIVERIES · UP TO THE LAUNDRY',
                   action: { room: 'dock', at: 'garage' },
                   desc: 'Deliveries. The dock is a step up into the service side of B; the laundry is through the far side of it.' },
-                /* H-WING (2026-09-14 rev 4; HIDDEN 2026-09-20 — the user: "the H-Wing door needs to be hidden way better"): the stair down to the level the helix does not go to is a SECRET slab at the end of the dog-leg service alcove — no leaf, no lamp, no plate; OPEN for now, the gate goes here (minClearance) when the chapter says so */
-                { id: 'p2', wall: 'w', z: 14, leaf: null, secret: true,
-                  label: 'A DRAUGHT', sub: 'THE SERVICE ALCOVE · A WALL THAT IS NOT',
-                  action: { room: 'hwing_lobby', at: 'stair' },
-                  desc: 'The alcove behind the shelving is a dead end: a wall, a breaker panel, a draught along the floor. The draught has a stair behind it going down. The panel in the car has no P2. The helix has no P2. The draught has.' },
             ],
             counters: [
-                { id: 'booth', x: -8.6, z: 15.6, face: 20, plateY: 1.9, radius: 2.0, verb: 'ASK',
+                { id: 'booth', x: 13.4, z: 8.2, face: 300, plateY: 1.9, radius: 2.0, verb: 'ASK',
                   label: 'THE BOOTH', sub: 'THE ATTENDANT · LOT FULL', action: {},
-                  desc: 'The attendant’s booth at the foot of the helix. The sign says LOT FULL. There are five cars on three decks.' },
+                  desc: 'The attendant’s booth at the foot of the ramp. The sign says LOT FULL. There are five cars on two decks.' },
             ],
             props: [
-                /* ── the pillars: a ring of fourteen under the UPPER ring (none where the connectors pass), six more on the ring under the TOP ring ── */
-                { key: 'concrete_pillar', x: 5.93, z: -14.33 }, { key: 'concrete_pillar', x: 10.96, z: -10.96 }, { key: 'concrete_pillar', x: 14.33, z: -5.93 }, { key: 'concrete_pillar', x: 15.5, z: 0 },
-                { key: 'concrete_pillar', x: 14.33, z: 5.93 }, { key: 'concrete_pillar', x: 10.96, z: 10.96 }, { key: 'concrete_pillar', x: 5.93, z: 14.33 },
-                { key: 'concrete_pillar', x: -5.93, z: 14.33 }, { key: 'concrete_pillar', x: -10.96, z: 10.96 }, { key: 'concrete_pillar', x: -14.33, z: 5.93 }, { key: 'concrete_pillar', x: -15.5, z: 0 },
-                { key: 'concrete_pillar', x: -14.33, z: -5.93 }, { key: 'concrete_pillar', x: -10.96, z: -10.96 }, { key: 'concrete_pillar', x: -5.93, z: -14.33 },
-                { key: 'concrete_pillar', x: 14.33, z: 5.93, y: 3.9 }, { key: 'concrete_pillar', x: 10.96, z: 10.96, y: 3.9 }, { key: 'concrete_pillar', x: 5.93, z: 14.33, y: 3.9 },
-                { key: 'concrete_pillar', x: -5.93, z: 14.33, y: 3.9 }, { key: 'concrete_pillar', x: -10.96, z: 10.96, y: 3.9 }, { key: 'concrete_pillar', x: -14.33, z: 5.93, y: 3.9 },
-                /* ── THE RAMP OUT on the TOP deck's far south: the way out you can see and not take (a barrier arm, daylight at the top of a ramp that goes nowhere), the exit sign standing free over it ── */
-                { key: 'garage_ramp',    x: 0, z: 17.6, y: 7.8, face: 180 },
-                { key: 'exit_sign',      x: 0, z: 21.5, y: 7.8, face: 0, mount: 2.75 },              // over the ramp: the way out that is not
-                /* ── THE BOOTH at the helix's foot ── */
-                { key: 'steel_table',    x: -8.6, z: 16.6, face: 20 },
-                { key: 'crt_terminal',   x: -8.8, z: 16.7, y: 0.76, face: 20 },
-                { key: 'papers_b',       x: -8.1, z: 16.5, y: 0.76, face: 40 },
-                { key: 'folding_chair',  x: -8.9, z: 17.4, face: 20 },
-                { key: 'railing_1m',     x: -10.2, z: 16.0, face: 110 },
-                { key: 'railing_1m',     x: -7.0, z: 17.1, face: 110 },
-                /* SKATEBOARDING (9.8): THE HALF-PIPE — two quarter pipes facing each other down the west side of the loop (THE PARK RULE's first ramps that launch) */
-                { key: 'quarter_pipe',   x: -18.3, z: 7.4,  face: 0 },                      // rev 8: 0.9 m further out — the pillar at (−15.5, 0) stood in the half-pipe's flat (the backs' corners 0.2 m inside the drum)
-                { key: 'quarter_pipe',   x: -18.3, z: -7.4, face: 180 },
-                /* ── the bays: five cars — three on the LOWER deck along the south-east wall, two on the UPPER ring ── */
+                /* ── THE RAMP OUT at the deck's end: the way out you can see and not take (a barrier arm, daylight at the top of a ramp that goes nowhere), the exit sign over it ── */
+                { key: 'garage_ramp',    x: 19.93, z: 11.05, y: 4.2, face: 209 },
+                { key: 'exit_sign',      x: 18.44, z: 13.4, y: 4.2, face: 216, mount: 2.75 },   // over the ramp: the way out that is not
+                /* ── THE BOOTH at the ramp's foot ── */
+                { key: 'steel_table',    x: 13.9, z: 8.9, face: 300 },
+                { key: 'crt_terminal',   x: 13.8, z: 8.8, y: 0.76, face: 300 },
+                { key: 'papers_b',       x: 14.2, z: 9.2, y: 0.76, face: 320 },
+                { key: 'folding_chair',  x: 14.5, z: 9.6, face: 300 },
+                { key: 'railing_1m',     x: 12.2, z: 9.6, face: 30 },
+                { key: 'railing_1m',     x: 15.2, z: 7.0, face: 30 },
+                /* SKATEBOARDING (9.8): THE HALF-PIPE — two quarter pipes facing each other across the plaza, north and south */
+                { key: 'quarter_pipe',   x: 0, z: -14.0, face: 180 },
+                { key: 'quarter_pipe',   x: 0, z: 14.0,  face: 0 },
+                /* ── the bays: five cars parked ALONG the drum wall (parallel — the lane and the plaza stay open): three on the LOWER ring, two on the DECK ── */
                 /* THE VEHICLE BATCH (2026-09-15): the building's Sedan, the agents' black SUV, the executive's Cadillac, the cop car nobody signed for, Medical's ambulance */
-                { key: 'parking_bay',    x: 17.49, z: 10.1, face: 120 }, { key: 'car_ambulance', x: 17.49, z: 10.1, face: 300 },
-                { key: 'parking_bay',    x: 12.98, z: 15.47, face: 140 }, { key: 'parked_car', x: 12.98, z: 15.47, face: 320 },
-                { key: 'parking_bay',    x: 6.91, z: 18.98, face: 160 }, { key: 'car_cop', x: 6.91, z: 18.98, face: 340 },
-                { key: 'parking_bay',    x: 3.45, z: 19.9, face: 170 },
-                { key: 'parking_bay',    x: 11.89, z: -14.17, y: 3.9, face: 40 }, { key: 'car_suv', x: 11.89, z: -14.17, y: 3.9, face: 220 },
-                { key: 'parking_bay',    x: 16.02, z: -9.25, y: 3.9, face: 60 }, { key: 'car_cadillac', x: 16.02, z: -9.25, y: 3.9, face: 240 },
-                { key: 'parking_bay',    x: 18.5, z: -3.25, y: 3.9, face: 80 },
-                { key: 'floor_stain',    x: 12.98, z: 15.47 },                               // the one that leaks
-                { key: 'floor_stain',    x: -6, z: -17 },
-                /* ── THE SERVICE ALCOVE: the shelving across its mouth, the boxes, the tape on the floor, the panel on the wall at the dead end (the draught is round the corner) ── */
-                { key: 'metal_shelving', x: -13.4, z: 16.2, face: 90, mount: 0 },
-                { key: 'cardboard_boxes', x: -14.6, z: 18.6, face: 20 },
-                { key: 'warning_tape',   x: -13.0, z: 17.6, face: 90 },
-                { key: 'breaker_panel',  x: -22.55, z: 17.6, face: 90, mount: 1.25 },
-                { key: 'cardboard_boxes', x: -21.2, z: 18.4, face: 200 },
-                { key: 'wet_floor_sign', x: -18.5, z: 17.0, face: 200 },
-                /* ── the loop's clutter ── */
-                { key: 'fire_extinguisher', x: 21.6, z: -1.6, face: 270, mount: 1.0 },
-                { key: 'pipe_run',       x: -8, z: -19.5, face: 60 },
-                { key: 'pipe_run',       x: 19.5, z: 8, face: 150 },
-                { key: 'trash_bin',      x: 20.0, z: 6.2, face: 270 },
-                { key: 'traffic_barrel', x: -20.8, z: -6.0, face: 30 },                     // rev 8: off the north quarter pipe's deck (it stood a metre behind the coping)
-                { key: 'wet_floor_sign', x: -14.4, z: 3.4, face: 200 },                     // rev 8: off the lane's inner edge (it stood in the helix's foot)
-                { key: 'security_camera', x: -20.9, z: 14.6, face: 60, mount: 2.5 },        // on the alcove's mouth, looking down the loop — never into the alcove
-                { key: 'nameplate',      x: 21.7, z: 6.4, face: 270, mount: 1.55 },
-                /* ── THE DOCK OFFICE (THE CLIMB, 2026-09-19; on the UPPER ring since 2026-09-20): a landing 3 m over the ring at the north-east, a desk and a chair on it, a rail on its west edge, the plaque at the ladder's foot ── */
-                { key: 'stair_landing',  x: 15.6, z: -9.6, y: 6.9 },
-                { key: 'railing_1m',     x: 13.35, z: -10.5, y: 7.15, face: 90 },
-                { key: 'railing_1m',     x: 13.35, z: -8.9, y: 7.15, face: 90 },
-                { key: 'steel_table',    x: 16.6, z: -10.0, y: 7.15, face: 270 },
-                { key: 'folding_chair',  x: 15.7, z: -10.0, y: 7.15, face: 90 },
-                { key: 'papers_b',       x: 16.6, z: -9.8, y: 7.91, face: 10 },
-                { key: 'nameplate',      x: 17.8, z: -9.6, y: 7.15, face: 250, mount: 1.55 },   // THE DOCK OFFICE — the name is on the plate, the office is a desk
-                { key: 'lesson_plaque',  x: 19.3, z: -11.15, y: 3.9, face: 240, mount: 1.35, lesson: 'climb' },   // on the drum's wall at the ring's edge by the ladder's foot (a halls room hangs its wall props FREE on the plan wall: x / z / face / mount)
-                /* ── the bulbs: a bare bulb over each landing and the loop's four quarters (the strips are 12.4 m up; doorhq's light rule reads the props) ── */
-                { key: 'bare_bulb',      x: 0, z: -11, ceil: true }, { key: 'bare_bulb', x: 0, z: 11, ceil: true },
-                { key: 'bare_bulb',      x: 17.8, z: 0, ceil: true }, { key: 'bare_bulb', x: -17.8, z: 0, ceil: true }, { key: 'bare_bulb', x: 0, z: -17.8, ceil: true }, { key: 'bare_bulb', x: 0, z: 17.8, ceil: true },
-                /* ── the decks' clutter ── */
-                { key: 'traffic_barrel', x: -16.5, z: 6.4, y: 3.9, face: 30 },
-                { key: 'cardboard_boxes', x: -12.4, z: 12.3, y: 7.8, face: 40 },
-                { key: 'trash_bin',      x: 6.2, z: 6.6, y: 7.8, face: 200 },
+                { key: 'parked_car', x: 12.95, z: -22.43, face: 120 },
+                { key: 'car_ambulance', x: 21.72, z: -14.11, face: 147 },
+                { key: 'car_cop', x: -15.95, z: -20.41, face: 52 },
+                { key: 'car_suv', x: -24.01, z: -9.7, y: 4.2, face: 22 },
+                { key: 'car_cadillac', x: -9.7, z: -24.01, y: 4.2, face: 68 },
+                { key: 'floor_stain',    x: 12.95, z: -22.43 },                               // the one that leaks (under the Sedan)
+                { key: 'floor_stain',    x: -6, z: -9 },
+                { key: 'signpost',       x: 0, z: 0 },                                        // on THE ISLAND: P1
+                /* ── the lower ring's clutter (against the drum wall, never in the lane) ── */
+                { key: 'fire_extinguisher', x: 26.1, z: -9.5, face: 290, mount: 1.0 },
+                { key: 'pipe_run',       x: -26.2, z: 9.2, face: 70 },
+                { key: 'trash_bin',      x: 25.9, z: 8.9, face: 270 },
+                { key: 'traffic_barrel', x: -25.9, z: -8.9, face: 30 },
+                { key: 'traffic_cone',   x: -20.4, z: 12.4 }, { key: 'traffic_cone', x: -19.8, z: 13.6 }, { key: 'traffic_cone', x: 21.0, z: -12.0 }, { key: 'traffic_cone', x: 5.5, z: -24.6 },
+                { key: 'wet_floor_sign', x: -24.3, z: 4.6, face: 200 },
+                { key: 'security_camera', x: -25.6, z: -10.6, face: 70, mount: 2.5 },        // under the deck, looking down the lane
+                { key: 'nameplate',      x: 26.6, z: 8.0, face: 270, mount: 1.55 },
+                /* ── THE DOCK OFFICE (THE CLIMB, 2026-09-19; on the DECK since 2026-09-26): a landing 3 m over the deck at the north-east, a desk and a chair on it, a rail on its west edge, the plaque at the ladder's foot ── */
+                { key: 'stair_landing',  x: 18.0, z: -17.0, y: 7.2 },
+                { key: 'railing_1m',     x: 15.75, z: -17.9, y: 7.45, face: 90 },
+                { key: 'railing_1m',     x: 15.75, z: -16.3, y: 7.45, face: 90 },
+                { key: 'steel_table',    x: 19.0, z: -17.4, y: 7.45, face: 270 },
+                { key: 'folding_chair',  x: 18.1, z: -17.4, y: 7.45, face: 90 },
+                { key: 'papers_b',       x: 19.0, z: -17.2, y: 8.21, face: 10 },
+                { key: 'nameplate',      x: 20.2, z: -17.0, y: 7.45, face: 250, mount: 1.55 },   // THE DOCK OFFICE — the name is on the plate, the office is a desk
+                { key: 'lesson_plaque',  x: 22.53, z: -15.77, y: 4.2, face: 235, mount: 1.35, lesson: 'climb' },   // on the drum's wall at the deck's edge by the ladder's foot
+                /* ── the bulbs: over the plaza and the lane (the strips are 10 m up; doorhq's light rule reads the props) ── */
+                { key: 'bare_bulb',      x: 0, z: -9, ceil: true }, { key: 'bare_bulb', x: 0, z: 9, ceil: true }, { key: 'bare_bulb', x: 9, z: 0, ceil: true }, { key: 'bare_bulb', x: -9, z: 0, ceil: true },
+                { key: 'bare_bulb',      x: 0, z: -23, ceil: true }, { key: 'bare_bulb', x: -21.9, z: -7.1, ceil: true }, { key: 'bare_bulb', x: 21.9, z: -7.1, ceil: true },
+                /* ── the deck's clutter ── */
+                { key: 'traffic_barrel', x: -26.0, z: 3.0, y: 4.2, face: 30 },
+                { key: 'cardboard_boxes', x: 8.4, z: -25.6, y: 4.2, face: 40 },
+                { key: 'trash_bin',      x: -19.8, z: -19.8, y: 4.2, face: 200 },
             ],
             agents: [
-                { x: -8.9, z: 17.4, face: 200, pose: 'hqSit', gender: 'male', label: 'THE ATTENDANT', reach: 2.4,
-                  line: '“Lot’s full.” “There are five cars.” “Three decks, five cars, lot’s full.”' },
+                { x: 14.5, z: 9.6, face: 300, pose: 'hqSit', gender: 'male', label: 'THE ATTENDANT', reach: 2.4,
+                  line: '“Lot’s full.” “There are five cars.” “Two decks, five cars, lot’s full.”' },
             ],
             npcSpots: [
-                { x: -3.2, z: 15.6, face: 20 },       // at the foot of the helix, looking up it (off the top landing's edge blend — a cliff is a hazard to a body)
-                { x: 8.2, z: -16.4, face: 0 },        // looking at the kerb ledge
+                { x: -4.5, z: 10.5, face: 160 },      // by the south quarter pipe, watching the island
+                { x: 8.2, z: -14.2, face: 0 },        // by the handrail
             ],
             onlineSpots: [
-                { x: -15.8, z: -14.2, face: 45 },
+                { x: -12.0, z: -12.0, face: 45 },
             ],
             lines: [
-                '“Where does the helix go?” “Up.” “Up to what?” “P1.” “We are on P1.” “Every deck is P1. The arm is down. Ask the arm.”',
+                '“Where does the ramp go?” “Up.” “Up to what?” “P1.” “We are on P1.” “Both decks are P1. The arm is down. Ask the arm.”',
                 '“Whose Sedan is that?” “The building’s.” “The building does not drive.” “It does not need to. It has the ramp.”',
                 '“P2?” “There is no P2.” “The sign says P1.” “The sign on every deck says P1.” “Exactly.”',
                 '“Why is it round?” “It is part of the facility.” “The facility is round.” “So is the garage.”',
             ],
-            spawn: { x: 18.6, z: 4, face: 270 },
+            spawn: { x: 22.0, z: 3.5, face: 270 },
         },
         /* ── THE LOADING DOCK — the step between the garage (G) and the
            laundry (B); a shortcut round the car. ── */
@@ -37874,8 +38167,9 @@ const DOOR_HQ = {
            blank plates, no number. The legs run north (-z); the crossbar
            runs east–west; the lobby is at the south end of the west leg.
            ══════════════════════════════════════════════════════════════════ */
-        /* ── THE LOBBY — the foot of the stair from P1; the car's door that
-           the car never arrives at; the corridor straight on ── */
+        /* ── THE LOBBY — the car's door that the car never arrives at; the
+           corridor straight on (the stair up to P1 is gone — 2026-09-26, the
+           user: the garage is easy to reach, the wing must not be) ── */
         hwing_lobby: {
             label: 'H-WING',
             sub: 'SUBLEVEL · NOT ON THE PLAN',
@@ -37891,10 +38185,6 @@ const DOOR_HQ = {
                 plate: { x: 0, z: -2.75, y: 2.3 },
             },
             doors: [
-                { id: 'stair', wall: 's', x: 0, leaf: 'leaf_coffee',
-                  label: 'THE STAIR', sub: 'UP TO P1 · THE GARAGE',
-                  action: { room: 'garage', at: 'p2' },
-                  desc: 'The stair up. It comes out through a wall at the dead end of a service alcove in the garage, where a stair should not be — and where, from the garage side, there is no door at all.' },
                 { id: 'elevator', wall: 'e', z: 0, leaf: null, proc: 'elevator',
                   label: 'ELEVATOR', sub: 'THE CAR · H IS ON NO BUTTON',
                   action: { room: 'car', at: 'panel' },
@@ -40431,7 +40721,7 @@ function hqAreaRoom(mapId, A) {
     ].concat((A.features || []).map(f => ((f.k === 'pool' || f.k === 'stream') && f.y == null) ? Object.assign({ y: 0 }, f) : f));   // a fluid's sheet sits at the ground unless the spec says (hqTerrainCompile reads `y - depth` for the bed — no `y`, no number)
     const gen = A.gen ? Object.assign({}, A.gen) : null;
     if (gen) gen.open = (gen.open || []).concat([{ x: plaza.x, z: plaza.z, r: A.plazaR || HQ_AREA_RULES.plazaR }]);
-    const terrain = Object.assign({ floor: floor, cliff: cliff, path: path, noise: A.noise || { amp: 0.12, scale: 8 } }, gen ? { gen: gen } : {}, A.crag != null ? { crag: A.crag } : {}, A.sea ? { sea: A.sea } : {}, { features: features });
+    const terrain = Object.assign({ floor: floor, cliff: cliff, path: path, noise: A.noise || { amp: 0.12, scale: 8 } }, gen ? { gen: gen } : {}, A.marks ? { marks: A.marks.map(m => Object.assign({}, m)) } : {}, A.crag != null ? { crag: A.crag } : {}, A.sea ? { sea: A.sea } : {}, { features: features });
     const label = String(meta.label || id).toUpperCase();
     const room = {
         label: label + ' · ' + A.label, sub: A.sub || 'THE AREA · THE BOARD IS THE MARKER',
@@ -40498,62 +40788,60 @@ const HQ_AREA_SPECS = {
         props: [{ key: 'railing_1m', x: -6, z: 13.6, face: 0 }, { key: 'riser_1', x: 10, z: 10 }, { key: 'bare_bulb', x: 0, z: 8 }, { key: 'bare_bulb', x: -18, z: -10 }, { key: 'bare_bulb', x: 16, z: -8 }, { key: 'office_chair', x: 17, z: 12, face: 200 }, { key: 'potted_plant', x: -3, z: 5 }],
         npcSpots: [{ x: 3, z: 5, face: 200, race: 'glitch', say: '“Level 0. There is no level 1. Do not clip.”' }],
         lines: ['“The carpet is wet.” “The carpet is always wet.” “Where does the water come from?” “The pools.” “Where do the pools come from?” “The carpet.”'] },
-    /* ROOM 50 · FOOTBALL STADIUM · THE BOWL (AREA CONTENT D3, 2026-09-19): you arrive on THE CONCOURSE — the south stand, 3.4 m up, the bay door
-       standing ON it (a door you climb DOWN from) — with the pitch in the bowl below; four stands round it joined at the corners by THE GANTRIES
-       (level spans on the bridge layer, stand to stand), THE PRESS BOX on the north stand (the tape — the door gun's), two floodlight pylons with
-       ladders, the dugouts and the stands' rails (the grind), THE PITCH DRAIN = a draught behind the east stand into the sewers under Disaster City
-       (the earned exit; `links.stadium_sewers`), the stadium road out at the north-west */
-    prebuilt_stadium: { part: 'bowl', label: 'THE BOWL', sub: 'THE CONCOURSE · THE PITCH · THE STANDS · THE PRESS BOX', w: 72, d: 58, night: 1, look: 'city', fogD: 0.02,
-        parti: 'A bowl of empty seats round a pitch nobody plays on; you come in at the top, and the only way down that is not a stair is the drain.', typology: 'ring',
-        floor: 'grass_2', cliff: 'concrete_floor', path: 'marble_light', floorColor: 0x5ec46a, cliffColor: 0xb0b0b0,
-        gen: { kind: 'rooms', seed: 50, loops: 3, rMin: 9, rMax: 15, wallH: 3.2, thicket: false, open: [{ x: -28, z: -22, r: 4 }, { x: 28, z: 24, r: 4 }] }, noise: { amp: 0.06, scale: 9 },   // the corners round the pylons stay open — the ground behind a stand is a pocket the walker drops into unless THE SERVICE ROAD reaches it
-        plaza: { x: 0, z: 6 },
+    /* ROOM 50 · FOOTBALL STADIUM · THE BOWL (rebuilt 2026-09-26, the user: "the football stadium doesn't even look like a football stadium
+       … a normal flat rectangular grass football field with a bowl/stadium/stands around it, with a tunnel leading from the field through
+       the stadium back to the city. I should be able to walk through the stands and on the field and the sidelines and through the
+       tunnel"): a FLAT pitch (no noise) chalked as a gridiron at 0.8 scale (hqGridironMarks — 39 × 88 m with the end zones), a sideline
+       band, and THE BOWL round it (hqStandBowl): the fascia (a grind ledge, open at the aisles), fourteen rows of seats a step apart
+       (walk up any of them), THE CONCOURSE round the top, THE FACADE outside. Three tunnels cut the stands: THE PLAYERS' TUNNEL north to
+       the stadium road (the city — `links.stadium_downtown`), THE GATE south from the bay door (the turnstiles), THE CULVERT east (a
+       service tunnel to the draught into the sewers — `links.stadium_sewers`, the earned exit). THE PRESS BOX hangs over the west stand
+       (the tape — the door gun's), the scoreboard stands on the south concourse, the masts at the corners. The marker at midfield. */
+    prebuilt_stadium: { part: 'bowl', label: 'THE BOWL', sub: 'THE PITCH · THE STANDS · THE CONCOURSE · THE TUNNELS', w: 85.4, d: 132.2, night: 0, look: 'city', fogD: 0.006,
+        parti: 'A bowl of empty seats round a pitch nobody plays on; three tunnels under the stands — the road, the gate, the drain.', typology: 'bowl',
+        floor: 'grass_2', cliff: 'concrete_floor', path: 'concrete_floor', floorColor: 0xc8ecc8, cliffColor: 0xc4c4c0,   // a light tint: it multiplies the path sheet too (the tunnels' concrete)
+        noise: { amp: 0, scale: 9 },
+        plaza: { x: 0, z: 47.6 }, marker: { x: 0, z: 0 },
+        marks: hqGridironMarks({ yard: 0.7315, logo: 'Δ', logoColor: 0xffd34a, endZones: [{ color: 0xb02a2a, text: 'ENTROPY' }, { color: 0x2a4ab0, text: 'WARS' }] }),
         features: [
-            { k: 'path', pts: [[-12, 13], [-12, -14], [12, -14], [12, 13], [-12, 13]], w: 1.2 },                       // the touchlines
-            /* THE CONCOURSE = THE SOUTH STAND (3.4): the bay door stands ON it; two stairs down to the pitch, the hand-holds down its face at the tunnel mouth */
-            { k: 'plateau', x: 0, z: 22.5, w: 30, d: 13, h: 3.4, edge: 0.4 },
-            { k: 'ramp', x0: -10, z0: 8.6, x1: -10, z1: 16.7, w: 3.0, h0: 0, h1: 3.4, stairs: true }, { k: 'ramp', x0: 10, z0: 8.6, x1: 10, z1: 16.7, w: 3.0, h0: 0, h1: 3.4, stairs: true },
-            { k: 'climb', x: 0, z: 16.3, face: 180, look: 'wall' },   // a climb's LINE stands 0.3 m INSIDE the tier's nominal edge: the face rises from the edge inward over half a metre, the head scan starts on the top, the foot lands 0.3 m out
-            /* THE WEST STAND and THE EAST STAND (3.0) up their stairs; THE NORTH STAND (3.0) under THE PRESS BOX (6.4, the tape — no stair, the door gun's) */
-            { k: 'plateau', x: -26, z: 4, w: 10, d: 30, h: 3.0, edge: 0.4 }, { k: 'ramp', x0: -14.6, z0: 2, x1: -21.7, z1: 2, w: 3.0, h0: 0, h1: 3.0, stairs: true },
-            { k: 'plateau', x: 26, z: 4, w: 10, d: 30, h: 3.0, edge: 0.4 }, { k: 'ramp', x0: 14.6, z0: 2, x1: 21.7, z1: 2, w: 3.0, h0: 0, h1: 3.0, stairs: true },
-            { k: 'plateau', x: 9.5, z: -22, w: 17, d: 8, h: 3.0, edge: 0.4 }, { k: 'ramp', x0: 4.5, z0: -11.3, x1: 4.5, z1: -18.7, w: 3.0, h0: 0, h1: 3.0, stairs: true },
-            { k: 'plateau', x: 12.5, z: -21.5, w: 8, d: 6, h: 6.4, edge: 0.4 },
-            /* THE GANTRIES: level spans stand to stand at the corners (THE BRIDGE LAYER — the walker passes under them) */
-            { k: 'deck', x0: -14.3, z0: 17.5, x1: -21.7, z1: 17.5, w: 2.4, y: 3.4, over: true },
-            { k: 'deck', x0: 14.3, z0: 17.5, x1: 21.7, z1: 17.5, w: 2.4, y: 3.4, over: true },
-            { k: 'deck', x0: 17.3, z0: -18.7, x1: 21.7, z1: -10.3, w: 2.4, y: 3.0, over: true },
-            /* THE FLOODLIGHT PYLONS: a plinth (1.8) with a ladder, the mast on top */
-            { k: 'plateau', x: -28, z: -22, r: 2.4, h: 1.8, edge: 0.35 }, { k: 'climb', x: -28, z: -19.9, face: 0, look: 'ladder' },
-            { k: 'plateau', x: 28, z: 24, r: 2.4, h: 1.8, edge: 0.35 }, { k: 'climb', x: 28, z: 21.3, face: 180, look: 'ladder' },
-            /* THE DUGOUTS' roofs and the stands' front rails (the grind) */
-            { k: 'wall', x0: 13.5, z0: 5, x1: 13.5, z1: 11, h: 1.0, t: 0.6, key: 'concrete_floor' }, { k: 'wall', x0: 13.5, z0: -9, x1: 13.5, z1: -3, h: 1.0, t: 0.6, key: 'concrete_floor' },
-            { k: 'wall', x0: -13.5, z0: 5, x1: -13.5, z1: 11, h: 1.0, t: 0.6, key: 'concrete_floor' }, { k: 'wall', x0: -13.5, z0: -9, x1: -13.5, z1: -3, h: 1.0, t: 0.6, key: 'concrete_floor' },
-            /* the back ways up: the pipe run up the west stand's back from the service road, the hand-holds up the north stand's west end */
-            { k: 'climb', x: -30.7, z: 8, face: 90, look: 'pipe' }, { k: 'climb', x: 1.3, z: -22, face: 90, look: 'wall' },
-            { k: 'rail', x0: -22.8, z0: -9, x1: -22.8, z1: 17 }, { k: 'rail', x0: 22.8, z0: -9, x1: 22.8, z1: 17 }, { k: 'rail', x0: -13, z0: 17.8, x1: 13, z1: 17.8 },
-            { k: 'path', pts: [[0, 6], [0, -10], [4.5, -11.3]], w: 2.6 }, { k: 'path', pts: [[0, 6], [-10, 8.6]], w: 2.6 }, { k: 'path', pts: [[0, 6], [10, 8.6]], w: 2.6 },
-            { k: 'path', pts: [[0, 6], [-14.6, 2]], w: 2.4 }, { k: 'path', pts: [[0, 6], [14.6, 2]], w: 2.4 }, { k: 'path', pts: [[0, 6], [-5, -14], [-5, -28]], w: 3.0 },
-            /* THE SERVICE ROAD behind the stands: from the road round the west end to the south-west corner, and round the east end to the drain — the strip behind a stand is otherwise a pocket the walker drops into */
-            { k: 'path', pts: [[-5, -20], [-25, -22], [-33, -16], [-33.5, 10], [-33, 24], [-26, 26], [-18, 26], [-18, 12]], w: 2.2 },
-            { k: 'path', pts: [[18, 12], [18, 26], [28, 24], [34, 22], [34.5, 12], [33.5, -20], [24, -27], [2, -27]], w: 2.2 },
-            { k: 'scatter', key: 'traffic_cone', n: 8, seed: 2 }, { k: 'scatter', key: 'cinder_block', n: 6, seed: 5 }, { k: 'scatter', key: 'solo_cup', n: 8, seed: 9 },
+            /* THE TUNNELS' floors */
+            { k: 'path', pts: [[0, -66.1], [0, -48.4]], w: 10.4 }, { k: 'path', pts: [[0, 66.1], [0, 48.4]], w: 6.4 }, { k: 'path', pts: [[42.7, 12], [25, 12]], w: 3.4 },
+            /* THE BOWL (rows HIGH → LOW, then the tunnels' linings) */
+            ...hqStandBowl({ hx: 25.5, hz: 48.9, rc: 10, rows: 14, rise: 0.42, tread: 0.85, lead: 0.3, concourse: 4, facade: 1.0, facadeH: 4.2, fasciaH: 1.1, cornerN: 6,
+                key: 'concrete_floor', facadeKey: 'concrete', fasciaKey: 'concrete',
+                seats: { w: 0xb02a2a, nw: 0xb02a2a, sw: 0xb02a2a, e: 0x2a4ab0, ne: 0x2a4ab0, se: 0x2a4ab0, n: 0xd8b030, s: 0xd8b030 },
+                tunnels: [{ side: 'n', at: 0, w: 11, hc: 4.4 }, { side: 's', at: 0, w: 7, hc: 3.0 }, { side: 'e', at: 12, w: 4, hc: 2.6 }],
+                aisles: [{ side: 'w', at: -30 }, { side: 'w', at: -18 }, { side: 'w', at: -6 }, { side: 'w', at: 6 }, { side: 'w', at: 18 }, { side: 'w', at: 30 },
+                         { side: 'e', at: -30 }, { side: 'e', at: -18 }, { side: 'e', at: -6 }, { side: 'e', at: 6 }, { side: 'e', at: 18 }, { side: 'e', at: 30 },
+                         { side: 'n', at: -11 }, { side: 'n', at: 11 }, { side: 's', at: -9 }, { side: 's', at: 9 },
+                         { side: 'ne', ci: 3 }, { side: 'se', ci: 3 }, { side: 'sw', ci: 3 }, { side: 'nw', ci: 3 }],
+                box: { w: 85.4, d: 132.2 },
+                aisleGaps: [{ side: 'w', at: -30, w: 2 }, { side: 'w', at: -18, w: 2 }, { side: 'w', at: -6, w: 2 }, { side: 'w', at: 6, w: 2 }, { side: 'w', at: 18, w: 2 }, { side: 'w', at: 30, w: 2 },
+                            { side: 'e', at: -30, w: 2 }, { side: 'e', at: -18, w: 2 }, { side: 'e', at: -6, w: 2 }, { side: 'e', at: 6, w: 2 }, { side: 'e', at: 18, w: 2 }, { side: 'e', at: 30, w: 2 },
+                            { side: 'n', at: -11, w: 2 }, { side: 'n', at: 11, w: 2 }, { side: 's', at: -9, w: 2 }, { side: 's', at: 9, w: 2 }] }),
+            /* THE PRESS BOX: a glazed block hung over the west stand's top rows and the concourse (the walker passes under it; its roof is the tape's) */
+            { k: 'bridge', x0: -39.0, z0: -9, x1: -39.0, z1: 9, w: 5.4, y: 11.2, thick: 2.6, plain: true, rails: false, key: 'concrete', glaze: 0xffe2a8, id: 'pressbox' },
         ],
-        props: [{ key: 'field_goal_post', x: 0, z: -13.3, face: 0 }, { key: 'field_goal_post', x: 0, z: 12.3, face: 180 },   // THE 2026-09-22 BATCH: the two goal lines
-                { key: 'railing_1m', x: 0, z: 17.6, face: 0, y: 3.4 }, { key: 'railing_1m', x: -22.6, z: 4, face: 90, y: 3.0 }, { key: 'railing_1m', x: 22.6, z: 4, face: 90, y: 3.0 }, { key: 'railing_1m', x: 6, z: -19.6, face: 0, y: 3.0 },
-                { key: 'riser_2', x: 8, z: 12 }, { key: 'quarter_pipe', x: -6, z: 13.5, face: 0 }, { key: 'quarter_pipe', x: 6, z: 13.5, face: 0 },
-                { key: 'lifeguard_chair', x: 16, z: -9, face: 270 }, { key: 'bus_shelter', x: 15.5, z: 8, face: 270 }, { key: 'bus_shelter', x: 15.5, z: -6, face: 270 },
-                { key: 'flood_mast', x: -28, z: -22, y: 1.8 }, { key: 'flood_mast', x: 28, z: 24, y: 1.8 }, { key: 'flood_mast', x: -30, z: 26 }, { key: 'flood_mast', x: 32, z: -24 },
-                { key: 'folding_chair', x: -27, z: -6, y: 3.0, face: 90 }, { key: 'folding_chair', x: -27, z: -2, y: 3.0, face: 90 }, { key: 'folding_chair', x: 27, z: 8, y: 3.0, face: 270 }, { key: 'folding_chair', x: 27, z: 12, y: 3.0, face: 270 },
-                { key: 'folding_chair', x: -6, z: 24, y: 3.4, face: 0 }, { key: 'folding_chair', x: 6, z: 24, y: 3.4, face: 0 },
-                { key: 'park_bench', x: -4, z: 26, y: 3.4, face: 0 }, { key: 'park_bench', x: 4, z: 26, y: 3.4, face: 0 }, { key: 'signpost', x: 2, z: 21, y: 3.4 },
-                { key: 'trash_bin', x: -12, z: 24, y: 3.4 }, { key: 'trash_bin', x: 12, z: 24, y: 3.4 }, { key: 'trash_bin', x: 0, z: -12 }, { key: 'city_bin', x: -24, z: 21 }, { key: 'city_bin', x: 24, z: -14 },
-                { key: 'popcorn_cart', x: -8, z: 27, y: 3.4 }, { key: 'popcorn_cart', x: 9, z: 27, y: 3.4 }, { key: 'ticket_booth', x: -2, z: 20, y: 3.4, face: 0 },
-                { key: 'cardboard_boxes', x: 30, z: -20 }, { key: 'fire_hydrant', x: -20, z: 24 }, { key: 'fire_hydrant', x: 20, z: -26 }, { key: 'traffic_barrel', x: 2, z: -27 }, { key: 'traffic_barrel', x: 4, z: -27.5 },
-                { key: 'crashed_car', x: -33.5, z: 10, face: 90 }, { key: 'traffic_barrel', x: -33, z: -14 }, { key: 'traffic_barrel', x: 33.5, z: -18 }, { key: 'city_bin', x: -18, z: 24 }, { key: 'city_bin', x: 33, z: 20 },
-                { key: 'trash_bin', x: 20, z: -27 }, { key: 'folding_chair', x: -27, z: 10, y: 3.0, face: 90 }, { key: 'folding_chair', x: 27, z: -4, y: 3.0, face: 270 }, { key: 'bus_shelter', x: -15.5, z: 8, face: 90 }],
-        npcSpots: [{ x: -2, z: 12, face: 20, race: 'quarterback', say: '“Eighty thousand seats. Count the ones that are looking at you.”' }, { x: 9, z: -4, face: 270, race: 'super sentai', say: '“The press box has the best view of the pitch. The pitch has the best view of the press box.”' },
-                   { x: -26, z: 8, y: 3.0, face: 90, race: 'zombie', say: '“Season ticket. Row F. I have never missed a game. There has never been a game.”' }],
+        props: [{ key: 'field_goal_post', x: 0, z: -43.9, face: 0 }, { key: 'field_goal_post', x: 0, z: 43.9, face: 180 },   // THE 2026-09-22 BATCH: on the end lines
+                { key: 'scoreboard', x: 0, z: 63.4, y: 6.3, face: 0 },
+                { key: 'flood_mast', x: -32.6, z: -56.0, y: 6.3, face: 135 }, { key: 'flood_mast', x: 32.6, z: -56.0, y: 6.3, face: 225 }, { key: 'flood_mast', x: -32.6, z: 56.0, y: 6.3, face: 45 }, { key: 'flood_mast', x: 32.6, z: 56.0, y: 6.3, face: 315 },
+                /* the benches on the sidelines, the skate's quarter pipes against the fascia between the aisles */
+                { key: 'park_bench', x: -23.4, z: -9, face: 90 }, { key: 'park_bench', x: -23.4, z: -3, face: 90 }, { key: 'park_bench', x: -23.4, z: 3, face: 90 }, { key: 'park_bench', x: -23.4, z: 9, face: 90 },
+                { key: 'park_bench', x: 23.4, z: -9, face: 270 }, { key: 'park_bench', x: 23.4, z: -1, face: 270 }, { key: 'park_bench', x: 23.4, z: 8, face: 270 },
+                { key: 'quarter_pipe', x: -23.9, z: -24, face: 90 }, { key: 'quarter_pipe', x: -23.9, z: 24, face: 90 }, { key: 'quarter_pipe', x: 23.9, z: -24, face: 270 }, { key: 'quarter_pipe', x: 23.9, z: 24, face: 270 },
+                { key: 'lifeguard_chair', x: -22.6, z: -16, face: 90 }, { key: 'trash_bin', x: -22.8, z: 14 }, { key: 'trash_bin', x: 22.8, z: -14 },
+                /* THE GATE: the turnstiles, the ticket booth */
+                { key: 'turnstile', x: -2.2, z: 56 }, { key: 'turnstile', x: 0, z: 56 }, { key: 'turnstile', x: 2.2, z: 56 }, { key: 'ticket_booth', x: -2.4, z: 61.5, face: 90 },
+                /* the concourse: the carts, the benches, the bins */
+                { key: 'popcorn_cart', x: -39.7, z: -22, y: 6.3 }, { key: 'hot_dog_stand', x: -39.9, z: 22, y: 6.3, face: 90 }, { key: 'popcorn_cart', x: 39.7, z: -24, y: 6.3 }, { key: 'hot_dog_stand', x: 39.9, z: 30, y: 6.3, face: 270 },
+                { key: 'park_bench', x: -12, z: 64.2, y: 6.3, face: 0 }, { key: 'park_bench', x: 12, z: 64.2, y: 6.3, face: 0 }, { key: 'park_bench', x: -12, z: -64.2, y: 6.3, face: 180 }, { key: 'park_bench', x: 12, z: -64.2, y: 6.3, face: 180 },
+                { key: 'trash_bin', x: -40.8, z: 0, y: 6.3 }, { key: 'trash_bin', x: 40.8, z: -6, y: 6.3 }, { key: 'city_bin', x: -8, z: 64.6, y: 6.3 }, { key: 'city_bin', x: 8, z: -64.6, y: 6.3 },
+                /* THE PLAYERS' TUNNEL: the kit carts, the cones */
+                { key: 'traffic_cone', x: -4.4, z: -52 }, { key: 'traffic_cone', x: 4.4, z: -52 }, { key: 'traffic_cone', x: -4.4, z: -60 }, { key: 'traffic_cone', x: 4.4, z: -60 },
+                { key: 'cardboard_boxes', x: 4.6, z: -63.5 }, { key: 'traffic_barrel', x: -4.6, z: -63.5 }],
+        npcSpots: [{ x: -2, z: 12, face: 20, race: 'quarterback', say: '“Eighty thousand seats. Count the ones that are looking at you.”' },
+                   { x: -39.6, z: -12, y: 6.3, face: 90, race: 'super sentai', say: '“The press box has the best view of the pitch. The pitch has the best view of the press box.”' },
+                   { x: -30.5, z: 10, y: 2.52, face: 90, race: 'zombie', say: '“Season ticket. Row F. I have never missed a game. There has never been a game.”' }],
         lines: ['“Who is winning?” “The stadium.”'] },
     /* ROOM 2012 · TECHNOTICLAN · THE TEMPLE CITY (AREA CONTENT D3, 2026-09-19 — brought up to the cave): the causeway from the bay door
        over THE CANAL (a wade, two planks) to THE PYRAMID — three tiers, THE GREAT STAIR up the south face, THE OTHER STAIR up the west
@@ -41893,6 +42181,32 @@ function _hqTRamp(px, pz, f) {
     const dx = f.x1 - f.x0, dz = f.z1 - f.z0, L = Math.hypot(dx, dz) || 1, ux = dx / L, uz = dz / L;
     const rx = px - f.x0, rz = pz - f.z0, along = rx * ux + rz * uz, across = -rx * uz + rz * ux;
     return { t: along / L, s: along, v: across, L, ux, uz };
+}
+/* THE ROUND PIECES (2026-09-26 — the user: "it's supposed to be round but it's all jagged and I get stuck in between the floor
+   pieces; why can't it be round like Door HQ Central Egress?"). An ARC in hqRingPts' frame (θ degrees clockwise from north:
+   x = cx + r·sin θ, z = cz − r·cos θ) — `{ x, z, r0, r1, a0, a1 }`, a1 > a0 (a full ring 0 → 360). _hqTArc gives a point's
+   radius, its angle past a0 (0 … 360) and the span; a `spiral` terrain row and an arc `bridge` read it, so a ramp round a
+   drum and a ring deck are ONE smooth surface each — never a chain of chords whose joints the walker snagged on. */
+function _hqTArc(A, px, pz) {
+    const dx = px - (A.x || 0), dz = pz - (A.z || 0), r = Math.hypot(dx, dz);
+    const deg = Math.atan2(dx, -dz) * 180 / Math.PI;
+    return { r, da: ((deg - A.a0) % 360 + 360) % 360, span: Math.min(360, A.a1 - A.a0) };
+}
+/* is (px, pz) on the arc band, grown by `pad` m (negative shrinks) across the band and along it */
+function _hqTArcIn(A, px, pz, pad) {
+    pad = pad || 0;
+    const L = _hqTArc(A, px, pz);
+    if (L.r < A.r0 - pad || L.r > A.r1 + pad) return false;
+    if (L.span >= 359.99) return true;
+    const pd = L.r > 0.05 ? pad / L.r * 180 / Math.PI : 0;
+    if (pd >= 0) return L.da <= L.span + pd || L.da >= 360 - pd;
+    return L.da >= -pd && L.da <= L.span + pd;
+}
+/* does a compiled bridge's slab cover (px, pz) — `pad` grows (negative shrinks) its half width; an arc bridge by its band */
+function _hqTBridgeCover(b, px, pz, pad) {
+    if (b.arc) return _hqTArcIn(b.arc, px, pz, pad || 0);
+    const L = _hqTRamp(px, pz, b);
+    return L.t >= 0 && L.t <= 1 && Math.abs(L.v) <= b.w / 2 + (pad || 0);
 }
 /* ═══════════════════════════════════════════════════════════════════════
    THE GENERATED FLOOR PLAN (HQ plan 9.3 stage 5 — 2026-09-17)
@@ -43325,7 +43639,7 @@ function hqTerrainCompile(room, roomId) {
     F.forEach(f => {
         switch (f.k) {
             case 'hill': case 'dip': case 'ridge': relief.push(f); break;
-            case 'plateau': case 'ramp': standing.push(f); break;
+            case 'plateau': case 'ramp': case 'spiral': standing.push(f); break;   // THE ROUND PIECES (2026-09-26): a `spiral` is a ramp round a centre
             case 'deck': if (f.over) { bridges.push(f); break; } standing.push(f); decks.push(f); break;   // `over: true` = a bridge (below)
             case 'bridge': bridges.push(f); break;   // THE BRIDGE LAYER (2026-09-19): a deck OVER walked ground — a layer, never a height
             case 'pool': basins.push(f); fluids.push({ kind: 'pool', x: f.x, z: f.z, r: f.r, rz: f.rz, rot: f.rot, y: f.y, key: f.key || 'water', depth: f.depth || 0.8 }); break;
@@ -43379,7 +43693,7 @@ function hqTerrainCompile(room, roomId) {
         }
         return h;
     };
-    const ordered = F.filter(f => /^(hill|dip|ridge|plateau|ramp|deck|pool|stream)$/.test(f.k) && !(f.k === 'deck' && f.over));   // THE BRIDGE LAYER: a deck wearing `over` is a bridge — never a height
+    const ordered = F.filter(f => /^(hill|dip|ridge|plateau|ramp|spiral|deck|pool|stream)$/.test(f.k) && !(f.k === 'deck' && f.over));   // THE BRIDGE LAYER: a deck wearing `over` is a bridge — never a height
     const hBefore = (px, pz) => {
         let h = hBase(px, pz);
         for (const f of ordered) {
@@ -43405,6 +43719,15 @@ function hqTerrainCompile(room, roomId) {
                 if (f.stairs) { const tread = 2 * res, n = Math.max(1, Math.round(L.L / tread)); t = Math.min(1, Math.floor(t * n + 0.001) / n); }
                 let fh = f.h0 + (f.h1 - f.h0) * t;
                 const side = f.w / 2 - Math.abs(L.v); if (side < edge) fh = fh * _hqTSmooth(side / edge) + h * (1 - _hqTSmooth(side / edge));
+                if (fh > h) h = fh;
+            } else if (f.k === 'spiral') {
+                /* THE ROUND PIECES (2026-09-26): `{ k: 'spiral', x, z, r0, r1, a0, a1, h0, h1, edge }` — a ramp swept round (x, z) between
+                   the radii r0…r1, rising h0 → h1 from angle a0 to a1 (degrees clockwise from north), the height LINEAR IN THE ANGLE: one
+                   smooth surface (the car ramp round the garage's drum), never chords with joints; the side edges blend like a ramp's */
+                const A = _hqTArc(f, px, pz), edge = (f.edge != null) ? f.edge : 0.35;
+                if (A.r < f.r0 || A.r > f.r1 || A.da > A.span + 0.01) continue;
+                let fh = f.h0 + (f.h1 - f.h0) * Math.min(1, A.da / A.span);
+                const side = Math.min(A.r - f.r0, f.r1 - A.r); if (side < edge) fh = fh * _hqTSmooth(side / edge) + h * (1 - _hqTSmooth(side / edge));
                 if (fh > h) h = fh;
             } else if (f.k === 'deck') {
                 const L = _hqTRamp(px, pz, f);
@@ -43470,8 +43793,15 @@ function hqTerrainCompile(room, roomId) {
         let gmax = -Infinity, gmin = Infinity;
         for (let k = 0; k <= 8; k++) { const g = hAt(w.x0 + (w.x1 - w.x0) * k / 8, w.z0 + (w.z1 - w.z0) * k / 8); if (g > gmax) gmax = g; if (g < gmin) gmin = g; }
         const top = (typeof w.y === 'number') ? w.y : gmax + w.h;
-        info.walls.push({ x0: w.x0, z0: w.z0, x1: w.x1, z1: w.z1, t: w.t || 0.35, base: gmin - 0.3, top, h: w.h, key: w.key || null });
-        info.rails.push({ x0: w.x0, z0: w.z0, x1: w.x1, z1: w.z1, y: top, wall: true });
+        const row = { x0: w.x0, z0: w.z0, x1: w.x1, z1: w.z1, t: w.t || 0.35, base: gmin - 0.3, top, h: w.h, key: w.key || null };
+        /* THE STANDS (2026-09-26): a TIER wall is a row of seating (its top a tread the walker steps up, 0.42 a row); `front` = the unit
+           normal toward the pitch (the seats face it), `seat` = the seats' colour (hex) — three-renderer.js draws them; `rail: false` =
+           no grind rail on its top (a tread is not a ledge), `rail: 'front'` = the grind on its FRONT edge (a ledge's lip) */
+        if (w.ghost) row.ghost = true; if (w.slopeTop) row.slopeTop = w.slopeTop.slice(); if (w.tier) row.tier = true; if (w.quad) row.quad = w.quad.map(q => q.slice()); if (w.seat) row.seat = w.seat; if (w.front) row.front = w.front.slice(); if (w.gaps) row.gaps = w.gaps.map(g => g.slice());
+        info.walls.push(row);
+        if (Array.isArray(w.rail)) info.rails.push({ x0: w.x0, z0: w.z0, x1: w.x1, z1: w.z1, y: Math.max(w.rail[0], w.rail[1]), y0: w.rail[0], y1: w.rail[1], wall: true, ledge: true });   // THE ROUND PIECES (2026-09-26): a SLOPED grind along a wall's top (the ramp's parapet), y0 → y1
+        else if (w.rail === 'front' && w.front) { const o = (w.t || 0.35) / 2 - 0.02; info.rails.push({ x0: w.x0 + w.front[0] * o, z0: w.z0 + w.front[1] * o, x1: w.x1 + w.front[0] * o, z1: w.z1 + w.front[1] * o, y: top, wall: true, ledge: true }); }
+        else if (w.rail !== false) info.rails.push({ x0: w.x0, z0: w.z0, x1: w.x1, z1: w.z1, y: top, wall: true });
     });
     rails.forEach(r => {
         const y = (hAt(r.x0, r.z0) + hAt(r.x1, r.z1)) / 2 + (r.h != null ? r.h : 0.98);
@@ -43495,8 +43825,9 @@ function hqTerrainCompile(room, roomId) {
         for (const p of doorPads) { const din = p.r ? p.r - Math.hypot(px - p.x, pz - p.z) : _hqTRectIn(px, pz, p); if (din > -(rad + 0.4)) return false; }
         if (!opts.onPath) for (const p of paths) if (_hqTPolyDist(px, pz, p.pts).d < p.w / 2 + rad) return false;
         for (const d of decks) { const L = _hqTRamp(px, pz, d); if (L.t > -0.1 && L.t < 1.1 && Math.abs(L.v) < d.w / 2 + rad + 0.3) return false; }
-        for (const b of info.bridges) { const L = _hqTRamp(px, pz, b); if (L.t > -0.1 && L.t < 1.1 && Math.abs(L.v) < b.w / 2 + rad + 0.3) return false; }   // THE BRIDGE LAYER: nothing under a bridge's mouth or its span
+        for (const b of info.bridges) { if (b.arc) { if (_hqTArcIn(b.arc, px, pz, rad + 0.3)) return false; continue; } const L = _hqTRamp(px, pz, b); if (L.t > -0.1 && L.t < 1.1 && Math.abs(L.v) < b.w / 2 + rad + 0.3) return false; }   // THE BRIDGE LAYER: nothing under a bridge's mouth or its span
         /* THE MALL, THE THIRD PASS (2026-09-17 — the plant pot on the escalator): nothing stands on a ramp, a stair or an escalator, nor on the field's skirt beside it */
+        for (const f of F) if (f.k === 'spiral' && _hqTArcIn(f, px, pz, rad + 0.7)) return false;   // THE ROUND PIECES: nothing stands on a spiral ramp either
         for (const f of F) if (f.k === 'ramp') { const L = _hqTRamp(px, pz, f); if (L.t > -0.15 && L.t < 1.15 && Math.abs(L.v) < f.w / 2 + rad + 0.7) return false; }
         /* THE RUN-UP (SKATEBOARDING rev 8, 2026-09-21): nothing in the lane before a kicker's foot or in the landing past its top — a rider needs the run to gain speed and the room to come down */
         if (!opts.own) for (const zn of runUps) { const L = _hqTRamp(px, pz, zn); if (Math.abs(L.v) < zn.w / 2 + rad + 0.3 && L.s > -zn.back - rad && L.s < L.L + zn.past + rad) return false; }   // (a row with its own centre — the collapse's rubble — keeps its ground)
@@ -43570,9 +43901,27 @@ function hqTerrainClimbs(info, rows) {
 function hqTerrainBridges(info, rows) {
     const R = info.rules || HQ_TERRAIN_RULES, out = [];
     (rows || []).forEach((f, i) => {
+        /* THE ROUND PIECES (2026-09-26): an ARC bridge — `arc: { x, z, r0, r1, a0, a1 }` — is one ring-sector slab (a round deck); its
+           x0…z1 are the mid-band chord's ends (a reader that only wants a rough span), `w` the band, `len` the mid-band arc */
+        if (f && f.arc && typeof f.y === 'number') {
+            const A = f.arc; if (!(A.r1 > A.r0) || !(A.a1 > A.a0)) return;
+            const a = { x: A.x || 0, z: A.z || 0, r0: A.r0, r1: A.r1, a0: A.a0, a1: A.a0 + Math.min(360, A.a1 - A.a0) }, rm = (a.r0 + a.r1) / 2, span = a.a1 - a.a0, L = rm * span * Math.PI / 180;
+            const pt = (r, d) => { const q = d * Math.PI / 180; return [a.x + Math.sin(q) * r, a.z - Math.cos(q) * r]; };
+            const e0 = pt(rm, a.a0), e1 = pt(rm, a.a1);
+            const b = { i, layer: out.length + 1, arc: a, x0: e0[0], z0: e0[1], x1: e1[0], z1: e1[1], w: a.r1 - a.r0, y: f.y, thick: (typeof f.thick === 'number') ? f.thick : R.bridgeThick,
+                        rails: f.rails === undefined ? true : f.rails, key: f.key || null, len: L, id: f.id || ('bridge:' + i), plain: !!f.plain, tier: !!f.tier, seat: f.seat || null };
+            if (typeof f.drawR0 === 'number') b.drawR0 = f.drawR0; if (typeof f.drawR1 === 'number') b.drawR1 = f.drawR1;
+            let gmax = -Infinity, low = 0;
+            [a.r0 + 0.2, rm, a.r1 - 0.2].forEach(r => { const n = Math.max(2, Math.ceil(r * span * Math.PI / 180)); for (let k = 0; k <= n; k++) { const p = pt(r, a.a0 + span * k / n), g = hqTerrainHeight(info, p[0], p[1]); if (g > gmax) gmax = g; if (b.y - b.thick - g < R.headroom && b.y - g > R.climb + 0.05) low++; } });
+            b.gmax = gmax;
+            if (low && typeof console !== 'undefined') console.warn('[terrain] arc bridge', b.id, 'in', info.roomId, 'leaves under', R.headroom, 'm of headroom on', low, 'samples — the ground there is a wall to the walker');
+            out.push(b); return;
+        }
         if (!f || typeof f.x0 !== 'number' || typeof f.z0 !== 'number' || typeof f.x1 !== 'number' || typeof f.z1 !== 'number' || typeof f.y !== 'number') return;
         const L = Math.hypot(f.x1 - f.x0, f.z1 - f.z0); if (L < 0.5) return;
         const b = { i, layer: out.length + 1, x0: f.x0, z0: f.z0, x1: f.x1, z1: f.z1, w: f.w || 3, y: f.y, thick: (typeof f.thick === 'number') ? f.thick : R.bridgeThick, rails: f.rails !== false, key: f.key || null, len: L, id: f.id || ('bridge:' + i) };
+        /* THE STANDS (2026-09-26): a TIER bridge is a row of seating carried over a tunnel — no girder, no kerb, no piers (plain), seats drawn on it */
+        if (f.plain) b.plain = true; if (f.tier) b.tier = true; if (typeof f.drawW === 'number') b.drawW = f.drawW; if (f.glaze) b.glaze = f.glaze; if (f.seat) b.seat = f.seat; if (f.front) b.front = f.front.slice(); if (f.gaps) b.gaps = f.gaps.map(g => g.slice());
         /* the ground under the span (the piers' feet, the headroom check): sampled every metre */
         let gmax = -Infinity, low = 0;
         for (let k = 0; k <= Math.ceil(L); k++) { const t = Math.min(1, k / Math.max(1, L)); const g = hqTerrainHeight(info, f.x0 + (f.x1 - f.x0) * t, f.z0 + (f.z1 - f.z0) * t); if (g > gmax) gmax = g; if (b.y - b.thick - g < R.headroom && b.y - g > R.climb + 0.05) low++; }
@@ -43586,7 +43935,7 @@ function hqTerrainBridges(info, rows) {
 function hqTerrainBridgesAt(info, x, z, pad) {
     const B = info.bridges; if (!B || !B.length) return [];
     const out = [];
-    for (const b of B) { const L = _hqTRamp(x, z, b); if (L.t >= 0 && L.t <= 1 && Math.abs(L.v) <= b.w / 2 + (pad || 0)) out.push(b); }
+    for (const b of B) { if (_hqTBridgeCover(b, x, z, pad || 0)) out.push(b); }   // THE ROUND PIECES (2026-09-26): an arc bridge by its band
     return out;
 }
 /* the bridge a walker whose feet are at curY STANDS on at (x, z): the highest whose top is within a climb of the feet (a
@@ -44393,7 +44742,7 @@ DOOR_HQ.findSpots = { coldroom: { tape: { x: 1.3, z: -1.35 }, pay: { x: 0.4, z: 
     site_prebuilt_babel_tower:      { tape: { x: 3, z: -5.5 } },
     /* THE AREAS (2026-09-18): the hard tape on every generated area's weenie — the door gun's twenty */
     site_prebuilt_backrooms_levels: { tape: { x: -18, z: -10 } },
-    site_prebuilt_stadium_bowl: { tape: { x: 12.5, z: -21.5 } },   // AREA CONTENT D3 (2026-09-19): THE PRESS BOX moved onto the north stand
+    site_prebuilt_stadium_bowl: { tape: { x: -39.0, z: 0, y: 11.2 } },   // 2026-09-26: THE PRESS BOX's roof over the west stand (the door gun's)   // AREA CONTENT D3 (2026-09-19): THE PRESS BOX moved onto the north stand
     site_prebuilt_technoticlan_templecity: { tape: { x: 14, z: -21 } },   // AREA CONTENT D3 (2026-09-19): THE PYRAMID moved east of the ley terrace
     site_prebuilt_agartha_crystalcity: { tape: { x: 6, z: -16 } },   // AREA CONTENT D3 (2026-09-19): THE SPIRE moved over the lake's west bank
     site_prebuilt_antarctica_station: { tape: { x: 17, z: -21.5 } },   // AREA CONTENT D3 (2026-09-19): THE ICE WALL moved east of the hull
@@ -44492,12 +44841,21 @@ const HQ_HARD_REACH = { eye: 1.6, step: 0.5, band: 0.35 };
 function hqFindHardReachTerrain(row, ri) {
     const ti = ri.terrain, R = (typeof HQ_PORTAL_RULES !== 'undefined') ? HQ_PORTAL_RULES : { reach: 14, ledgeSnapM: 0.9 };
     const snap = R.ledgeSnapM || 0.9, reach = R.reach || 14, top = row.y, hy = top - HQ_HARD_REACH.band;
+    /* THE BOWL (2026-09-26): a find standing on BUILT architecture (a bridge slab, a wall row's top — the press box roof) has its
+       face where that architecture ends; a find on the height field keeps the height field (every older tape, unchanged) */
+    const built = top > hqTerrainHeight(ti, row.x, row.z) + 0.3;
+    const surf = !built ? ((x, z) => hqTerrainHeight(ti, x, z)) : ((x, z) => {
+        let h = hqTerrainHeight(ti, x, z);
+        const w = hqTerrainWallAt(ti, x, z, 0); if (w && w.top > h && w.top <= top + 0.05) h = w.top;
+        if (ti.bridges && ti.bridges.length) for (const b of hqTerrainBridgesAt(ti, x, z, 0)) if (b.y > h && b.y <= top + 0.05) h = b.y;
+        return h;
+    });
     const faces = [];
     for (let a = 0; a < 16; a++) {
         const dx = Math.sin(a * Math.PI / 8), dz = -Math.cos(a * Math.PI / 8);
         for (let r = 0.1; r <= 6; r += 0.1) {
-            const g = hqTerrainHeight(ti, row.x + dx * r, row.z + dz * r);
-            if (g < top - 0.25) { if (hqTerrainHeight(ti, row.x + dx * (r + 0.5), row.z + dz * (r + 0.5)) < top - snap) faces.push({ deg: a * 22.5, x: row.x + dx * r, z: row.z + dz * r, nx: dx, nz: dz }); break; }
+            const g = surf(row.x + dx * r, row.z + dz * r);
+            if (g < top - 0.25) { if (surf(row.x + dx * (r + 0.5), row.z + dz * (r + 0.5)) < top - snap) faces.push({ deg: a * 22.5, x: row.x + dx * r, z: row.z + dz * r, nx: dx, nz: dz }); break; }
         }
     }
     if (!faces.length) return { ok: false, reason: 'no open face' };
@@ -50520,6 +50878,7 @@ if (typeof window !== 'undefined') {
     window.hqShipResolve = hqShipResolve;
     window.hqShipApplyCourse = hqShipApplyCourse;
     /* THE AREAS (2026-09-18) */
+    window.hqStandBowl = hqStandBowl; window.hqGridironMarks = hqGridironMarks; window.hqRingQuad = hqRingQuad;
     window.HQ_AREA_SPECS = HQ_AREA_SPECS; window.HQ_AREA_MARKERS = HQ_AREA_MARKERS; window.HQ_AREA_KEPT_LEAVES = HQ_AREA_KEPT_LEAVES; window.HQ_AREA_RULES = HQ_AREA_RULES;
     window.hqAreaRoom = hqAreaRoom; window.hqAreaSites = hqAreaSites; window.hqAreaRoomOf = hqAreaRoomOf; window.hqAreaMarker = hqAreaMarker; window.hqLinkPlain = hqLinkPlain; window.hqBuildAreas = hqBuildAreas;
     window.hqShipDoor = hqShipDoor;

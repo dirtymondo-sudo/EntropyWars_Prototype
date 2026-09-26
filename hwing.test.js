@@ -1,8 +1,8 @@
 // hwing.test.js — H-WING (HQ plan 5.5, stage 1 — 2026-09-14 rev 4).
 //
 // Guards the forbidden straight corridor beneath the facility: the eight
-// rooms and their look, the H (two legs + the bar), the two ways in (the
-// garage's stair, the room at the end's other wall), the fractal (one office
+// rooms and their look, the H (two legs + the bar), the one way in (the
+// room at the end's other wall; the garage's stair went 2026-09-26), the fractal (one office
 // behind eight doors whose way out is the first door; the east leg's far end
 // opening onto the west leg's start; HOME's kitchen door opening onto its
 // front door), the Backrooms crossing at the EXIT with the site room's BACK
@@ -61,15 +61,14 @@ test('the H: two 48 m legs, straight, joined by the crossbar; every door in the 
     }
 });
 
-test('the ways in: the garage’s stair (P2) and the room at the end’s other wall; the car never stops here', () => {
-    const p2 = at('garage', 'p2');
-    assert.ok(p2 && p2.wall === 'w' && p2.action.room === 'hwing_lobby' && p2.action.at === 'stair' && !p2.minClearance, 'THE STAIR down from P1, ungated');
-    assert.ok(at('hwing_lobby', 'stair').action.room === 'garage' && at('hwing_lobby', 'stair').action.at === 'p2', 'and back up');
+test('the way in: the room at the end’s other wall, and nothing else (THE PARKING GARAGE, 2026-09-26: the garage’s stair is gone — the garage is easy to reach, H-Wing must be hard); the car never stops here', () => {
+    assert.ok(!at('garage', 'p2') && !at('hwing_lobby', 'stair'), 'no stair between the garage and the lobby');
+    for (const d of HQ.rooms.garage.doors || []) assert.ok(!(d.action && /^hwing/.test(d.action.room || '')), 'garage/' + d.id + ' is a way into H-Wing');
     const sd = at('deadend', 'hwing');
     assert.ok(sd && sd.secret === true && sd.leaf == null && sd.wall === 'w' && /DRAUGHT/.test(sd.label) && sd.action.room === 'hwing_e' && sd.action.at === 'deadend', 'the second wall that is not a wall');
     assert.ok(at('hwing_e', 'deadend').action.room === 'deadend' && at('hwing_e', 'deadend').action.at === 'hwing' && at('hwing_e', 'deadend').leaf === 'leaf_cell', 'a cell door from the wing side');
     assert.ok(D.hqSecretDoors().some(s => s.room === 'deadend' && s.id === 'hwing'), 'listed with the secrets');
-    assert.strictEqual(D.hqHWingEntries().map(e => e.room + '/' + e.door).join(','), 'garage/p2,deadend/hwing');   // .join: a vm-realm array never deepStrictEquals
+    assert.strictEqual(D.hqHWingEntries().map(e => e.room + '/' + e.door).join(','), 'deadend/hwing');   // .join: a vm-realm array never deepStrictEquals
     assert.ok(!HQ.elevator.stops.some(s => /^H$/i.test(s.id) || /hwing/.test(s.room)), 'H is on no button');
     const el = at('hwing_lobby', 'elevator');
     assert.ok(el && el.proc === 'elevator' && el.action.room === 'car' && el.action.at === 'panel', 'the lobby’s elevator door still calls the car');

@@ -853,25 +853,30 @@ test('REV 8 — THE RUN-UP + THE TRACED WALL: every ramp lane in the garage and 
     for (const sc of info.scatter) for (const zn of zones) { const L = tramp(sc.x, sc.z, zn); assert.ok(!(Math.abs(L.v) < zn.w / 2 + (sc.r || 0.45) + 0.3 && L.s > -zn.back - (sc.r || 0.45) && L.s < L.L + zn.past + (sc.r || 0.45)), 'garage: ' + sc.key + ' at ' + sc.x + ',' + sc.z + ' in the lane of ' + zn.name); }
     const kick = HQ.rooms.garage.terrain.features.filter(f => f.k === 'ramp' && !f.helix);
     assert.equal(kick.length, 2, 'two kickers');
-    for (const k of kick) { const r0 = Math.hypot(k.x0, k.z0), r1 = Math.hypot(k.x1, k.z1); assert.ok(Math.abs(r0 - r1) < 0.4 && r0 > 16.2 && r0 < 19.4, 'the kicker runs ALONG the lane (r ' + r0.toFixed(1) + ' → ' + r1.toFixed(1) + ')'); }
-    assert.ok(info.gen.wallSlack > 0.3 && info.planWalls.every(w => w.push > 0), 'the tracer records its push; the room wears the slack (' + info.gen.wallSlack + ')');
+    /* THE PARKING GARAGE (2026-09-26): the kickers stand in the open plaza, launching at the island — clear of the island (r 3.4) and of the ramp's parapet (r 17.5) */
+    for (const k of kick) { const r0 = Math.hypot(k.x0, k.z0), r1 = Math.hypot(k.x1, k.z1); assert.ok(k.kicker && Math.min(r0, r1) > 5 && Math.max(r0, r1) < 15, 'the kicker stands in the open plaza (r ' + r0.toFixed(1) + ' → ' + r1.toFixed(1) + ')'); }
+    /* the traced wall: the garage is BUILT (no floor plan) since 2026-09-26, so the drawn-face check reads the motor pool (P3, a halls plan) */
+    const PLAN = 'site_prebuilt_dumb_motorpool';
+    const planInfo = g('hqTerrainInfo')(PLAN);
+    assert.ok(!info.gen && !(info.planWalls || []).length, 'the garage wears no plan walls');
+    assert.ok(planInfo.gen.wallSlack > 0.3 && planInfo.planWalls.every(w => w.push > 0), 'the tracer records its push; the room wears the slack (' + planInfo.gen.wallSlack + ')');
     const feet = g('hqTerrainFeet'), maskAt = g('hqTerrainMaskAt'), wallAt = g('hqTerrainWallAt');
     let checked = 0;
-    for (const w of info.planWalls) {
+    for (const w of planInfo.planWalls) {
         if (w.push < 0.45) continue;   // a wall pushed deep behind the mask line: the band the walker could never reach
         const mx = (w.x0 + w.x1) / 2, mz = (w.z0 + w.z1) / 2, L = Math.hypot(w.x1 - w.x0, w.z1 - w.z0), nx = -(w.z1 - w.z0) / L, nz = (w.x1 - w.x0) / L;
         const face = w.t / 2;
-        const side = maskAt(info, mx + nx * (face + 0.40), mz + nz * (face + 0.40)) > maskAt(info, mx - nx * (face + 0.40), mz - nz * (face + 0.40)) ? 1 : -1;   // toward the open side (judged at the candidate points themselves)
+        const side = maskAt(planInfo, mx + nx * (face + 0.40), mz + nz * (face + 0.40)) > maskAt(planInfo, mx - nx * (face + 0.40), mz - nz * (face + 0.40)) ? 1 : -1;   // toward the open side (judged at the candidate points themselves)
         const px = mx + nx * side * (face + 0.40), pz = mz + nz * side * (face + 0.40);   // the body 6 cm clear of the drawn face
-        if (maskAt(info, px, pz) > 0.3) continue;   // the mask already allowed it here
-        if (maskAt(info, px, pz) < -0.3) continue;   // a wall standing inside the mass on both sides (the solid corners behind the vestibules) — nothing to walk on either side
-        const wh = wallAt(info, px, pz, TRR.bodyR); if (wh && wh !== w) continue;   // at a chain's corner the NEXT segment's pad covers the point — that one is the wall there
-        const y = feet(info, px, pz, null);
-        assert.ok(y !== null, 'walkable 0.4 m off the drawn face at ' + px.toFixed(1) + ',' + pz.toFixed(1) + ' (maskD ' + maskAt(info, px, pz).toFixed(2) + ', a wall? ' + !!wallAt(info, px, pz, TRR.bodyR) + ')');
-        assert.equal(feet(info, mx + nx * side * (face + 0.25), mz + nz * side * (face + 0.25), null), null, 'the wall itself refuses the body');
+        if (maskAt(planInfo, px, pz) > 0.3) continue;   // the mask already allowed it here
+        if (maskAt(planInfo, px, pz) < -0.3) continue;   // a wall standing inside the mass on both sides (the solid corners behind the vestibules) — nothing to walk on either side
+        const wh = wallAt(planInfo, px, pz, TRR.bodyR); if (wh && wh !== w) continue;   // at a chain's corner the NEXT segment's pad covers the point — that one is the wall there
+        const y = feet(planInfo, px, pz, null);
+        assert.ok(y !== null, 'walkable 0.4 m off the drawn face at ' + px.toFixed(1) + ',' + pz.toFixed(1) + ' (maskD ' + maskAt(planInfo, px, pz).toFixed(2) + ', a wall? ' + !!wallAt(planInfo, px, pz, TRR.bodyR) + ')');
+        assert.equal(feet(planInfo, mx + nx * side * (face + 0.25), mz + nz * side * (face + 0.25), null), null, 'the wall itself refuses the body');
         checked++;
     }
-    assert.ok(checked >= 3, 'the drum\'s deep-pushed walls were checked: ' + checked);
+    assert.ok(checked >= 3, PLAN + '\'s deep-pushed walls were checked: ' + checked);
     const DS = fs.readFileSync(__dirname + '/data.js', 'utf8');
     assert.ok(/const slack = \(gn\.wallSlack > 0/.test(DS) && /if \(w\.plan\) \{ if \(band === null\) band = hqTerrainMaskAt\(info, x, z\) < \(info\.gen\.solidPad \|\| 0\); if \(!band\) continue; \}/.test(DS) && /if \(w\) \{ if \(w\.plan\) return null;/.test(DS), 'the slack rule; a plan wall counts inside the band only and is never a floor');
 });

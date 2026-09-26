@@ -151,7 +151,7 @@ test('THE TEACHING ROOMS (R9): the garage\'s ladder climbs onto THE DOCK OFFICE 
     assert.ok(g.shell.h >= c.y1 + 2.0, 'head room over the platform: ' + g.shell.h);
     /* THE ROUND GARAGE (2026-09-20): the decks are bridge rings — a prop at a ring's height stands on the ring (the ladder's foot too: y0 = the UPPER ring); anything else that high stands on the landing */
     const deckYs = new Set((g.terrain && g.terrain.features || []).filter(f => f.k === 'bridge').map(f => f.y));
-    assert.ok(deckYs.size >= 2 && deckYs.has(c.y0), 'the ladder rises off a deck');
+    assert.ok(deckYs.size >= 1 && deckYs.has(c.y0), 'the ladder rises off a deck');   // THE PARKING GARAGE (2026-09-26): one upper deck (P1 UP), one ramp
     for (const p of g.props) if (p.y >= 3 && !deckYs.has(p.y)) assert.ok(Math.abs(p.x - land.x) <= cat.rect.hw && Math.abs(p.z - land.z) <= cat.rect.hd, p.key + ' on the platform');
     const L = D.hqWalkLessons();
     assert.equal(L.map(l => l.id + ':' + l.room).join(','), 'climb:garage,skate:locker,swim:natatorium');
