@@ -196,3 +196,8 @@ Append new notes for this system at the end of this file.
   the medical merge, the woods as one field, the wells re-pointed, the buffer audit — §8), fifteen forks
   with defaults (§9), ten phases (§10). Read it before any room / area / link / map work; append to its
   §12 per phase. NO PUZZLES stands over it.
+- Phase 0 shipped 2026-09-26 (the plan's §12): `DOOR_HQ.world` (data.js, after `hqWorldFloorOf`) with the
+  readers `hqWorldFrame` / `hqWorldToZone` / `hqZoneToRoom` / `hqWorldJoinResolve` / `hqWorldRing` /
+  `hqWorldValidate` / `hqWorldSheet`; the map's LAND tab (map.js `_hqLand*`); THE BUILDING MERGE and THE
+  INSTANCE PASS (three-renderer.js); the walk's CALLS · TRIS readout. Nothing moved: the rooms still load
+  one at a time until Phase 1's stage. Test: hq-world-map.test.js. Probe: measure_rooms.js.

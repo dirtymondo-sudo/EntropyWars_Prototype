@@ -448,3 +448,21 @@ turn loop reads (`actionExecuting · roundAdvanceInProgress · pendingReplace ·
 walkAnim · dying · cinematic · cameraBusy · bootPending · simul · spellLab · autoPlayers · controllers ·
 order`) and kicks `maybeAdvanceTurn` once unless a dialog / a cinematic / a seat pick owns the frame — READ
 THAT LINE FIRST on the next "the fight starts but nothing happens" report.
+
+**THE BUILDING MERGE + THE INSTANCE PASS + THE WALK'S READOUT (OPEN_WORLD_PLAN.md Phase 0, 2026-09-26).**
+Measured first (`measure_rooms.js`, repo root): Downtown drew 2,701 calls for 6,292 meshes, and the props
+were NOT the bulk — the map-builder building prisms (`_nrSpriteBuilding`) drew a plane per storey per face
+(~20 meshes a building). A face is now ONE mesh (a quad per storey, same vertices + UVs): 2,701 → 1,765.
+THE INSTANCE PASS (three-renderer.js, before THE GATE; `HQ_STAGE_RULES.instanceMin` 2 / `instanceCell` 64)
+batches, once the room is ready, the meshes that share a `_ew_shared` geometry and `_ew_shared` materials
+(the misc cache + `_hqPropMatPick`) into one InstancedMesh per 64 m square; later files join as new batches
+(2 s rescan). The originals stay (hidden, still raycast, still moved by their owners); `H.scene.onBeforeRender`
+reads every copy back once a frame (hidden/detached ancestor → zeroed; changed material or an owner's
+`visible = true` → handed back for good, `_ew_noInstance`), and a batch's matrix is scaled so the shared
+geometry's bounding sphere covers the square (culling stays right for the camera AND the shadow map). Vertex
+hooks other than `_hqAoHook` (which gained the `USE_INSTANCING` branch) keep a mesh out. `_hqLeave` drops the
+batches (after `_hq = null`, before `_hqHandoverStash`) so the battle takes the originals as before.
+Downtown with a stand-in GLB for every file: 2,299 → 1,931 calls. Kill-switch `window.EW_HQ_NO_INSTANCE`;
+`ThreeRenderer.hq.dev.hqInst()`. THE READOUT: the FPS counter (Settings → Video) in the walk prints
+`N CALLS · NK TRIS` summed over the frame's every render (`renderer.info.autoReset` off for the frame).
+Test: hq-world-map.test.js (the pass on real three r128 in a vm; skipped without three).
