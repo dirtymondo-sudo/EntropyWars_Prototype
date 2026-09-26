@@ -1139,6 +1139,14 @@
         .cdx-ability-meta { font-size: 9px; color: var(--muted); letter-spacing: 0.5px; font-weight: 600; }
         .cdx-ability-desc { font-size: 10px; color: rgba(208,203,192,0.7); line-height: 1.5; font-family: 'Courier New', monospace; }
         .cdx-section-note { font-size: 10px; color: var(--muted); font-style: italic; letter-spacing: 0.5px; }
+        /* THE CODEX'S FAMILY PAGE (SPELL_LIBRARY_PLAN.md Phase 7): a block per spell family, its colour on the edge */
+        .cdx-fam { margin: 12px 0 14px; padding: 8px 0 2px 12px; border-left: 3px solid var(--fam, #b8a060); max-width: 78ch; }
+        .cdx-fam-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+        .cdx-fam-glyph { font-size: 15px; color: var(--fam, #ffd86a); }
+        .cdx-fam-name { font-size: 12px; font-weight: 900; letter-spacing: 1.5px; text-transform: uppercase; color: #f1e6c6; }
+        .cdx-fam-meta { font-size: 9px; letter-spacing: 1px; color: var(--muted); font-weight: 700; }
+        .cdx-fam-desc { font-size: 10px; color: rgba(208,203,192,0.62); font-style: italic; margin-bottom: 8px; line-height: 1.45; }
+        .cdx-fam .cdx-fam-ability { margin-bottom: 6px; padding: 7px 10px; border-left-color: var(--fam, rgba(255,216,106,0.35)); }
 
         /* footer stamp */
         .cdx-footer-stamp { margin-top: 26px; padding-top: 12px; border-top: 2px solid rgba(160,140,200,0.10); text-align: center; }

@@ -402,9 +402,9 @@ test('THE BORROW PICKER (2026-09-14, per tier since 2026-09-24): five category t
     assert.ok(m, 'PB_SOCKET_TABS missing');
     const ids = [...m[1].matchAll(/id:\s*'([a-z]+)'/g)].map(x => x[1]);
     assert.deepStrictEqual(ids, ['all', 'damage', 'utility', 'buff', 'debuff', 'heal']);
-    const win = PB.slice(PB.indexOf("title = '＋ BORROW · TIER '"), PB.indexOf("return h(PbWindow, { title, sub, onClose: close, zone: true }, rows);"));
+    const win = PB.slice(PB.indexOf("title = bt ? '＋ BORROW · TIER '"), PB.indexOf("return h(PbWindow, { title, sub, onClose: close, zone: true }, rows);"));
     assert.ok(win.length > 0, 'socket window not found');
-    for (const needle of ['pb-socket-tabs', 'pb-socket-filters', "'DMG'", "'TYPE'", "'SHAPE'", "'TIER'", 'pb-pill-input', 'pbSocketFilterMatch(sp, F)', 'pb-socket-empty', 'PB_SOCKET_FILTER_EMPTY'])
+    for (const needle of ['pb-socket-tabs', 'pb-socket-filters', "'DMG'", "'TYPE'", "'SHAPE'", "'TIER'", 'pb-pill-input', 'match(e, F)', 'pb-socket-fam', 'pb-socket-empty', 'PB_SOCKET_FILTER_EMPTY'])
         assert.ok(win.includes(needle), 'socket window lacks ' + needle);
     assert.ok(!/h\('select'/.test(win), 'no native <select> in the picker (C-9)');
     assert.ok(/React\.useEffect\(\(\) => \{ setFlSocketFilt\(PB_SOCKET_FILTER_EMPTY\); \}, \[flSocketPick\]\)/.test(PB), 'a fresh socket must open with no filters');

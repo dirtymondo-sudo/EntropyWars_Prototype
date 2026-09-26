@@ -1543,7 +1543,13 @@ function pbFinisherDef(race) {
    / treeLegalSubset — also the host's online check). ══ */
 const PB_TIER_ORDER = [4, 3, 2, 1];
 const PB_TIER_NUM = ['', 'I', 'II', 'III', 'IV'];
-const PB_BORROW_RE = /^B[1-4]$/;
+const PB_BORROW_RE = /^B[0-4]$/;   // 'B0' = the rack by family's one ＋ BORROW (every tier, Phase 7)
+/* THE RACK BY FAMILY (SPELL_LIBRARY_PLAN.md §9 row 7, Phase 7, 2026-09-26): the rack folds the pool by FAMILY (the default —
+   a unit's spells are its families' members now) or by TIER (the 2026-09-24 rows). The fold is a per-viewer preference
+   (localStorage, never state, never relayed); both folds equip by the same verdict. */
+const PB_RACK_GROUP_KEY = 'ew_rack_group';
+function pbRackGroupGet() { try { const v = window.localStorage && window.localStorage.getItem(PB_RACK_GROUP_KEY); return v === 'tier' ? 'tier' : 'family'; } catch (e) { return 'family'; } }
+function pbRackGroupSet(v) { try { if (window.localStorage) window.localStorage.setItem(PB_RACK_GROUP_KEY, v === 'tier' ? 'tier' : 'family'); } catch (e) {} }
 function pbSpMax() { return typeof window.SPELL_SP_MAX === 'number' ? window.SPELL_SP_MAX : 16; }
 function pbTierOf(spOrId) {
   if (!spOrId) return 0;
@@ -1576,7 +1582,7 @@ function pbUpgradeRows(ctx, id) {
 }
 /* One unit's rack: the pool in parts, the sealed set, the rows by tier, every
    id's source. Built per render from (race, job, equipped) — pure. */
-function pbTierCtx(race, cls, equipped, upsWish) {
+function pbTierCtx(race, cls, equipped, upsWish, group) {
   const parts = typeof window.unitSpellPoolParts === 'function' ? window.unitSpellPoolParts(race, cls) : { race: [], job: [], borrowRace: [], borrowJob: [], wheel: [] };
   if (!parts.wheel) parts.wheel = [];
   const eq = (equipped || []).filter(Boolean);
@@ -1600,7 +1606,12 @@ function pbTierCtx(race, cls, equipped, upsWish) {
   const passives = own.concat(borrowed).filter(isPas).concat(parts.gear.filter(id => !own.includes(id)));
   const sealed = typeof window.spellSealedIds === 'function' ? window.spellSealedIds(own.concat(borrowed, parts.gear)) : new Set();
   const ups = pbEffUps(race, cls, eq, upsWish);   // THE UPGRADES (Phase 5): every verdict and the meter count them
-  return { race, cls, parts, pool, sourceOf, rows, passives, sealed, equipped: eq, isFreelancer, ups,
+  /* THE RACK BY FAMILY (Phase 7): the same chips folded by family (data.js spellFamilyGroups — the race's families first) */
+  const nonPas = own.concat(borrowed).filter(id => !isPas(id));
+  const famRows = typeof window.spellFamilyGroups === 'function' ? window.spellFamilyGroups(nonPas, race)
+    : [{ fam: null, name: 'Spells', glyph: '◇', color: '#8a8270', own: true, ids: nonPas }];
+  const borrowCount = parts.borrowRace.length + parts.borrowJob.length;
+  return { race, cls, parts, pool, sourceOf, rows, famRows, borrowCount, group: group === 'tier' ? 'tier' : 'family', passives, sealed, equipped: eq, isFreelancer, ups,
     pasMax: typeof window.PASSIVE_SLOT_MAX === 'number' ? window.PASSIVE_SLOT_MAX : 2, pasUsed: eq.filter(isPas).length,
     cap: typeof window.SPELL_SLOT_MAX !== 'undefined' ? window.SPELL_SLOT_MAX : 7, spMax: pbSpMax(), spUsed: pbSpUsed(eq, ups) };
 }
@@ -1624,7 +1635,10 @@ const PB_SOURCE_LABEL = { race: 'RACE', job: 'JOB', borrowRace: 'BORROWED · RAC
    column (clamped), ← → walk the row. Empty tiers are skipped. */
 function pbTierGrid(ctx, finisher) {
   const grid = finisher ? [[PB_FIN_KEY]] : [];   // the finisher row leads (2026-09-24), the basic attack closes
-  for (const t of PB_TIER_ORDER) {
+  if (ctx.group === 'family') {   // THE RACK BY FAMILY (Phase 7): a row per family, then the Freelancer's one ＋ BORROW
+    for (const g of (ctx.famRows || [])) if (g.ids.length) grid.push(g.ids.slice());
+    if (ctx.isFreelancer) grid.push(['B0']);
+  } else for (const t of PB_TIER_ORDER) {
     const row = (ctx.rows[t] || []).slice();
     if (ctx.isFreelancer) row.push('B' + t);
     if (row.length) grid.push(row);
@@ -1699,7 +1713,7 @@ function pbAoeTiles(sp, big) {
     ...cells.map((c, i) => h('i', { key: i, className: c === 'c' ? 'ctr' : (c ? '' : 'off') })));
 }
 function SpellTierPanel({ ctx, fc, clsName, raceLabel, onSpellClick, onBorrow, onNodeHoverIn, onNodeHoverOut,
-                          selKey, hoverKey, onSelect, shakeKey, finisher, onUnequipSlot, onUpgradeOpen }) {
+                          selKey, hoverKey, onSelect, shakeKey, finisher, onUnequipSlot, onUpgradeOpen, onGroup }) {
   const spellOf = (id) => (id && typeof window.getSpellById === 'function') ? window.getSpellById(id) : null;
   const colourOf = (sp) => {
     const cat = sp ? classifySpellLocal(sp) : null;
@@ -1747,18 +1761,18 @@ function SpellTierPanel({ ctx, fc, clsName, raceLabel, onSpellClick, onBorrow, o
   };
   const borrowChip = (t) => {
     const key = 'B' + t;
-    const n = ctx.parts.borrowRace.concat(ctx.parts.borrowJob).filter(id => pbTierOf(id) === t).length;
+    const n = t ? ctx.parts.borrowRace.concat(ctx.parts.borrowJob).filter(id => pbTierOf(id) === t).length : ctx.borrowCount;
     return h('div', {
       key, className: 'pb-tn pb-tc pb-tc-borrow is-socket can' + (selKey === key ? ' sel' : ''),
       onClick: () => { if (onSelect) onSelect(key); onBorrow(key); },
       onMouseEnter: (e) => onNodeHoverIn(key, null, e),
       onMouseLeave: () => onNodeHoverOut(key),
-      title: 'Borrow any race or job ability of Tier ' + PB_TIER_NUM[t],
+      title: t ? 'Borrow any race or job ability of Tier ' + PB_TIER_NUM[t] : 'Borrow from any other family or job — every tier, family by family',
     },
       h('span', { className: 'pb-tn-disc' }, '＋'),
       h('span', { className: 'pb-tn-text' },
         h('span', { className: 'pb-tn-name' }, 'Borrow'),
-        h('span', { className: 'pb-tn-meta' }, h('em', null, n + ' TIER ' + PB_TIER_NUM[t] + ' ABILITIES'))));
+        h('span', { className: 'pb-tn-meta' }, h('em', null, t ? n + ' TIER ' + PB_TIER_NUM[t] + ' ABILITIES' : n + ' ABILITIES · EVERY FAMILY'))));
   };
   // THE LOADOUT — seven cells, pick order; a click unequips that one spell
   const loadout = h('div', { className: 'pb-loadout', 'aria-label': 'Equipped spells' },
@@ -1797,6 +1811,22 @@ function SpellTierPanel({ ctx, fc, clsName, raceLabel, onSpellClick, onBorrow, o
         ctx.isFreelancer ? borrowChip(t) : null,
         (!ids.length && !ctx.isFreelancer) ? h('span', { className: 'pb-tier-none' }, 'NOTHING ON THIS TIER') : null));
   };
+  /* THE RACK BY FAMILY (Phase 7): one row per family — its glyph, name and colour on the head, its chips tier I → IV */
+  const famRow = (g) => {
+    const worn = g.ids.filter(id => eq.includes(id)).length;
+    return h('div', { key: 'f' + (g.fam || '_none'), className: 'pb-tier pb-fam' + (g.own ? ' own' : ''), 'data-family': g.fam || '', style: { '--fam': g.color } },
+      h('div', { className: 'pb-tier-head pb-fam-head', title: g.name + (g.desc ? ' — ' + g.desc : '') + (g.own ? '' : ' · not one of this race\'s families') },
+        h('b', null, g.glyph),
+        h('span', null, g.name),
+        worn ? h('i', null, worn + ' ON') : null),
+      h('div', { className: 'pb-tier-cells' }, ...g.ids.map(chip)));
+  };
+  const byFam = ctx.group === 'family';
+  const groupBar = h('div', { className: 'pb-rack-fold', role: 'radiogroup', 'aria-label': 'Fold the rack' },
+    h('span', null, 'FOLD'),
+    ...[['family', 'BY FAMILY', 'A row per spell family — the race\'s families first'], ['tier', 'BY TIER', 'A row per tier, IV at the top']].map(([id, label, title]) =>
+      h('button', { key: id, type: 'button', className: 'pb-pill-btn' + (ctx.group === id ? ' on' : ''), 'aria-pressed': ctx.group === id, title,
+        onClick: () => { if (onGroup && ctx.group !== id) onGroup(id); } }, label)));
   const rootSel = selKey === 'root';
   const root = h('div', { className: 'pb-tn pb-tc is-root can' + (rootSel ? ' sel' : ''), style: { '--nc': '#e6e9f2' },
     onClick: () => { if (onSelect) onSelect('root'); },
@@ -1818,7 +1848,14 @@ function SpellTierPanel({ ctx, fc, clsName, raceLabel, onSpellClick, onBorrow, o
   return h('div', { className: 'pb-circuit pb-rack' },
     loadout,
     finisher ? finStrip() : null,
-    h('div', { className: 'pb-tiers' }, ...PB_TIER_ORDER.map(tierRow), pasRow),
+    groupBar,
+    byFam
+      ? h('div', { className: 'pb-tiers pb-fams' }, ...(ctx.famRows || []).filter(g => g.ids.length).map(famRow),
+          ctx.isFreelancer ? h('div', { key: 'fb', className: 'pb-tier pb-fam pb-fam-borrow' },
+            h('div', { className: 'pb-tier-head pb-fam-head' }, h('b', null, '＋'), h('span', null, 'Borrow')),
+            h('div', { className: 'pb-tier-cells' }, borrowChip(0))) : null,
+          pasRow)
+      : h('div', { className: 'pb-tiers' }, ...PB_TIER_ORDER.map(tierRow), pasRow),
     h('div', { className: 'pb-rack-foot' }, root));
 
   /* THE FINISHER strip (2026-09-19; over the rack since 2026-09-24): one ☠ row — the race's
@@ -1861,9 +1898,9 @@ function pbTechInfo(ctx, key, finisher) {
   if (key === PB_FIN_KEY) return pbFinisherInfo(key, finisher);
   if (key === 'root') return { key, st8: 'root', id: null, sp: null, tier: 0, cost: 0, verdict: null, source: null };
   if (PB_BORROW_RE.test(key)) {
-    const t = +key.slice(1);
+    const t = +key.slice(1);   // 0 = every tier (the rack by family)
     return { key, st8: 'borrow', id: null, sp: null, tier: t, cost: t, verdict: null, source: null,
-      count: ctx.parts.borrowRace.concat(ctx.parts.borrowJob).filter(id => pbTierOf(id) === t).length };
+      count: t ? ctx.parts.borrowRace.concat(ctx.parts.borrowJob).filter(id => pbTierOf(id) === t).length : ctx.borrowCount };
   }
   const sp = typeof window.getSpellById === 'function' ? window.getSpellById(key) : null;
   if (!sp) return null;
@@ -1897,12 +1934,12 @@ function TechniquePanel({ info, clsName, raceLabel, fc, onVerb, onPreview, previ
   const glyph = cat ? (TREE_CAT_GLYPH[cat] || TREE_CAT_GLYPH.utility) : (st8 === 'root' ? '⚔' : st8 === 'borrow' ? '＋' : '◯');
   const srcTxt = info.source === 'race' ? (raceLabel || 'RACE').toUpperCase() : info.source === 'job' ? getJobDisplay(clsName).toUpperCase() : info.source ? PB_SOURCE_LABEL[info.source] : null;
   const kicker = st8 === 'root' ? 'ALWAYS EQUIPPED · NO SLOT · 0 SP'
-    : st8 === 'borrow' ? 'TIER ' + PB_TIER_NUM[info.tier] + ' · ' + info.cost + ' SP EACH · THE FREELANCER BORROWS'
+    : st8 === 'borrow' ? (info.tier ? 'TIER ' + PB_TIER_NUM[info.tier] + ' · ' + info.cost + ' SP EACH · THE FREELANCER BORROWS' : 'EVERY TIER · 1–4 SP · THE FREELANCER BORROWS BY FAMILY')
     : ['TIER ' + PB_TIER_NUM[info.tier], info.cost + ' SP' + (info.upSp ? ' + ' + info.upSp + ' ⚙' : ''), cat ? spellCategoryLabel(cat).toUpperCase() : null, srcTxt,
        st8 === 'equipped' ? 'EQUIPPED' : null].filter(Boolean).join(' · ');
-  const name = st8 === 'root' ? 'Basic Attack' : st8 === 'borrow' ? 'Borrow · Tier ' + PB_TIER_NUM[info.tier] : (sp ? sp.name : '—');
+  const name = st8 === 'root' ? 'Basic Attack' : st8 === 'borrow' ? (info.tier ? 'Borrow · Tier ' + PB_TIER_NUM[info.tier] : 'Borrow · any family') : (sp ? sp.name : '—');
   const desc = st8 === 'root' ? 'The vessel\'s plain strike — melee or ranged by reach. Every loadout carries it, free.'
-    : st8 === 'borrow' ? 'A Freelancer has no job row: it may equip any race\'s or any job\'s technique. ' + info.count + ' Tier ' + PB_TIER_NUM[info.tier] + ' techniques to pick from.'
+    : st8 === 'borrow' ? 'A Freelancer has no job row: it may equip any other family\'s or any job\'s technique. ' + info.count + (info.tier ? ' Tier ' + PB_TIER_NUM[info.tier] : '') + ' techniques to pick from' + (info.tier ? '.' : ', family by family.')
     : (sp ? (sp.desc || spellCategoryLabel(cat)) : '');
   const chips = [];
   if (sp) {
@@ -1922,7 +1959,7 @@ function TechniquePanel({ info, clsName, raceLabel, fc, onVerb, onPreview, previ
   else if (st8 === 'sp') { verb = 'NEEDS ' + info.cost + ' SP · ' + (spMax - spUsed) + ' LEFT'; verbCls = 'off'; verbTitle = 'Unequip something to free SP'; }
   else if (st8 === 'slots') { verb = 'NO SLOT · ' + used + '/' + slotCap; verbCls = 'off'; verbTitle = 'All seven slots are full — unequip something first'; }
   else if (st8 === 'sealed') { verb = 'SEALED — CLASH RULES'; verbCls = 'off'; verbTitle = 'Not allowed in this mode'; }
-  else if (st8 === 'borrow') { verb = '＋ BROWSE TIER ' + PB_TIER_NUM[info.tier]; verbCls = 'gold'; verbTitle = 'Open the pool'; }
+  else if (st8 === 'borrow') { verb = info.tier ? '＋ BROWSE TIER ' + PB_TIER_NUM[info.tier] : '＋ BROWSE THE FAMILIES'; verbCls = 'gold'; verbTitle = 'Open the pool'; }
   const canPreview = st8 !== 'borrow';
   /* ⚙ THE UPGRADES (SPELL_LIBRARY_PLAN.md §6.3, Phase 5): the spell's allowed upgrades as toggles — each its own SP price,
      at most 2 per spell, one of a kind per group; the refusal is data.js spellUpgradeVerdict's words. Off until equipped. */
@@ -2888,8 +2925,10 @@ function PartyBuilder(props) {
   const useTree = !isArena && typeof window.classHasSpellTree === 'function'
     && window.classHasSpellTree(clsName) && typeof window.unitSpellPoolParts === 'function';
   const unitUpsWish = st.partyMeta?.[player]?.[slot]?.spellUpgrades || null;   // THE UPGRADES (Phase 5): meta.spellUpgrades
-  const unitTiers = React.useMemo(() => useTree ? pbTierCtx(unitRace, clsName, customSpells || [], unitUpsWish) : null,
-    [useTree, unitRace, clsName, customSpells, unitUpsWish, _]);
+  const [rackGroup, setRackGroupState] = React.useState(pbRackGroupGet);   // THE RACK BY FAMILY (Phase 7): 'family' | 'tier'
+  const setRackGroup = (g) => { pbRackGroupSet(g); setRackGroupState(g); setFlSocketPick(null); };
+  const unitTiers = React.useMemo(() => useTree ? pbTierCtx(unitRace, clsName, customSpells || [], unitUpsWish, rackGroup) : null,
+    [useTree, unitRace, clsName, customSpells, unitUpsWish, rackGroup, _]);
   const [treeShake, setTreeShake] = React.useState(null);
   // A Freelancer's BORROW window: which tier's pool is open ('B1'–'B4' or null).
   const [flSocketPick, setFlSocketPick] = React.useState(null);
@@ -3097,13 +3136,19 @@ function PartyBuilder(props) {
     if (typeof window.getSpellById === 'function') pbPreview(window.getSpellById(spellId), { equip: true });
     st.teamLockedIn = false; sfx('uiCursorMove'); refresh();
   }
+  /* THE BORROW POOL — family by family since Phase 7 (data.js spellFamilyGroups; each sp carries _famKey for the headers);
+     'B0' = every tier (the rack by family), 'B1'–'B4' = one tier (the rack by tier) */
   const flSocketPool = React.useMemo(() => {
     if (!flSocketPick || !unitTiers || !unitTiers.isFreelancer) return [];
     const t = +String(flSocketPick).slice(1);
-    const ids = unitTiers.parts.borrowRace.concat(unitTiers.parts.borrowJob);
-    return ids.map(id => (typeof window.getSpellById === 'function' ? window.getSpellById(id) : null))
-      .filter(sp => sp && pbTierOf(sp) === t && clashSpellOk(sp))
-      .sort((a, b) => pbCatRank(a) - pbCatRank(b) || (a.name || '').localeCompare(b.name || ''));
+    const ids = unitTiers.parts.borrowRace.concat(unitTiers.parts.borrowJob).filter(id => {
+      const sp = typeof window.getSpellById === 'function' ? window.getSpellById(id) : null;
+      return sp && (!t || pbTierOf(sp) === t) && clashSpellOk(sp);
+    });
+    const groups = typeof window.spellFamilyGroups === 'function' ? window.spellFamilyGroups(ids, null) : [{ fam: null, name: '', ids }];
+    const out = [];
+    for (const g of groups) for (const id of g.ids) { const sp = window.getSpellById(id); if (sp) out.push({ sp, fam: g.fam || '', famName: g.name, famGlyph: g.glyph, famColor: g.color }); }
+    return out;
   }, [flSocketPick, unitTiers, _]);
   const spellPool = React.useMemo(() => { if (typeof window.SPELL_LIBRARY==='undefined') return []; const mainJob=clsName,secJ=secJob,pool=[]; for (const sp of Object.values(window.SPELL_LIBRARY)){if(!sp||sp.kind==='basicAttack'||!clashSpellOk(sp))continue;const isM=typeof window.isSpellNativeToClass==='function'&&window.isSpellNativeToClass(sp,mainJob);const isS=secJ&&typeof window.isSpellNativeToClass==='function'&&window.isSpellNativeToClass(sp,secJ)&&sp.tier!=='III';if(isM||isS){pool.push(sp);}} return pool; }, [clsName, secJob, _]);
 
@@ -3398,6 +3443,7 @@ function PartyBuilder(props) {
             onSpellClick: tierSpellClick, onUnequipSlot: tierSpellClick,
             onUpgradeOpen: () => { setTechHover(null); sfx('uiCursorMove'); },
             onBorrow: (key) => { setFlSocketPick(flSocketPick === key ? null : key); sfx('uiCursorMove'); },
+            onGroup: (g) => { setRackGroup(g); sfx('uiCursorMove'); },
             onNodeHoverIn: treeNodeHoverIn, onNodeHoverOut: treeNodeHoverOut, shakeKey: treeShake,
             selKey: techSel, hoverKey: techHover, onSelect: (key) => { setTechSel(key); },
             finisher: unitFinisher })),
@@ -3465,18 +3511,21 @@ function PartyBuilder(props) {
       const close = () => { setFlSocketPick(null); hideSpellTip(); };
       let title, sub, rows;
       {
-        const bt = +String(flSocketPick).slice(1);
-        title = '＋ BORROW · TIER ' + PB_TIER_NUM[bt];
-        sub = bt + ' SP EACH · ANY RACE OR JOB · ' + spUsedNow + '/' + spMax + ' SP · ' + (customSpells || []).length + '/' + slotCap + ' SLOTS';
+        const bt = +String(flSocketPick).slice(1);   // 0 = every tier (the rack by family, Phase 7)
+        title = bt ? '＋ BORROW · TIER ' + PB_TIER_NUM[bt] : '＋ BORROW · BY FAMILY';
+        sub = (bt ? bt + ' SP EACH' : '1–4 SP') + ' · ANY OTHER FAMILY OR JOB · ' + spUsedNow + '/' + spMax + ' SP · ' + (customSpells || []).length + '/' + slotCap + ' SLOTS';
         const F = flSocketFilt;
+        // a family's name finds its members too (the search box)
+        const famHit = (e, f) => !!(f.q && f.q.trim() && String(e.famName || '').toLowerCase().includes(f.q.trim().toLowerCase()));
+        const match = (e, f) => pbSocketFilterMatch(e.sp, f) || (famHit(e, f) && pbSocketFilterMatch(e.sp, { ...f, q: '' }));
         const setF = (patch) => setFlSocketFilt(prev => ({ ...prev, ...patch }));
         // the tabs count within the OTHER filters, so a tab never lies
         const sansCat = { ...F, cat: 'all' };
         const tabCount = {};
-        for (const sp of flSocketPool) { if (!pbSocketFilterMatch(sp, sansCat)) continue; const c = classifySpellLocal(sp); tabCount[c] = (tabCount[c] || 0) + 1; tabCount.all = (tabCount.all || 0) + 1; }
-        const socketTiers = [];   // one tier per window since the tier rework
-        const poolTypes = new Set(flSocketPool.map(sp => (sp.spellType || '').toLowerCase()));
-        const shown = flSocketPool.filter(sp => pbSocketFilterMatch(sp, F));
+        for (const e of flSocketPool) { if (!match(e, sansCat)) continue; const c = classifySpellLocal(e.sp); tabCount[c] = (tabCount[c] || 0) + 1; tabCount.all = (tabCount.all || 0) + 1; }
+        const socketTiers = bt ? [] : ['I', 'II', 'III', 'IV'];   // one tier per window in the tier fold; the family fold filters by tier
+        const poolTypes = new Set(flSocketPool.map(e => (e.sp.spellType || '').toLowerCase()));
+        const shown = flSocketPool.filter(e => match(e, F));
         const filtOn = pbSocketFilterActive(F);
         const tabs = h('div', { className: 'pb-socket-tabs' },
           ...PB_SOCKET_TABS.map(t => {
@@ -3511,14 +3560,25 @@ function PartyBuilder(props) {
           h('input', { className: 'pb-pill-input', placeholder: 'SEARCH…', value: F.q, onChange: e => setF({ q: e.target.value }), 'aria-label': 'Search the pool' }),
           filtOn ? h('button', { className: 'pb-pill-btn danger', onClick: () => setFlSocketFilt(PB_SOCKET_FILTER_EMPTY), title: 'Clear every filter' }, '✕ CLEAR') : null);
         sub += ' · ' + shown.length + ' / ' + flSocketPool.length;
-        rows = [tabs, filters, ...shown.map(sp => {
+        /* THE BORROW WINDOW BY FAMILY (Phase 7): a header per family (glyph · name · its count here), its members tier I → IV */
+        const famCount = {};
+        for (const e of shown) famCount[e.fam] = (famCount[e.fam] || 0) + 1;
+        let lastFam = null;
+        rows = [tabs, filters];
+        for (const e of shown) {
+          const sp = e.sp;
+          if (e.fam !== lastFam) {
+            lastFam = e.fam;
+            rows.push(h('div', { key: 'fh-' + (e.fam || '_none'), className: 'pb-socket-fam', style: { '--fam': e.famColor || '#8a8270' } },
+              h('b', null, e.famGlyph || '◇'), h('span', null, e.famName || 'Unsorted'), h('em', null, famCount[e.fam] || 0)));
+          }
           const already = (customSpells || []).includes(sp.id);
           const v = already ? null : pbSpellVerdict(unitTiers, sp.id);
           const cantEquip = already || !v || !v.ok;
-          return h(SpellBlade, { key: sp.id, sp, pool:true, equipped: already, dim: cantEquip && !already,
+          rows.push(h(SpellBlade, { key: sp.id, sp, pool:true, equipped: already, dim: cantEquip && !already,
             onClick: () => flEquipWildcard(sp.id),
-            onHoverIn: e=>showSpellTip(sp, e), onHoverOut: hideSpellTip });
-        })];
+            onHoverIn: ev=>showSpellTip(sp, ev), onHoverOut: hideSpellTip }));
+        }
         if (!shown.length) rows.push(h('div', { key: 'none', className: 'pb-socket-empty' }, 'NOTHING IN THIS POOL FITS THOSE FILTERS'));
       }
       return h(PbWindow, { title, sub, onClose: close, zone: true }, rows);

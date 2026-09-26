@@ -123,7 +123,7 @@ test('the rack helpers: rows by tier, states, the keyboard grid, the panel', () 
     const H = helpers();
     const race = 'knight', cls = 'Warrior';
     H.eq = ['judgment', 'raceCrusade', 'groundSlam', 'raceOathOfValor'];   // 14 SP
-    const ctx = vm.runInContext("pbTierCtx('knight', 'Warrior', eq)", H);
+    const ctx = vm.runInContext("pbTierCtx('knight', 'Warrior', eq, null, 'tier')", H);   // the TIER fold (Phase 7's family fold below)
     H.ctx = ctx;
     assert.strictEqual(ctx.spUsed, 14);
     // Phase 6: the knight's families (Knighthood, Camelot Powers, Swordsmanship) add their members to the tier rows
@@ -132,7 +132,7 @@ test('the rack helpers: rows by tier, states, the keyboard grid, the panel', () 
     assert.strictEqual(vm.runInContext("pbSpellState(ctx, 'judgment')", H), 'equipped');
     assert.strictEqual(vm.runInContext("pbSpellState(ctx, 'warCry')", H), 'ok');         // 14 + 2 = 16
     H.eq2 = H.eq.concat(['warCry']);
-    H.ctx2 = vm.runInContext("pbTierCtx('knight', 'Warrior', eq2)", H);
+    H.ctx2 = vm.runInContext("pbTierCtx('knight', 'Warrior', eq2, null, 'tier')", H);
     assert.strictEqual(vm.runInContext("pbSpellState(ctx2, 'guardSlash')", H), 'sp');    // 16 + 1
     // the panel reads tier + cost + verdict
     const info = vm.runInContext("pbTechInfo(ctx, 'warCry', null)", H);
@@ -144,12 +144,20 @@ test('the rack helpers: rows by tier, states, the keyboard grid, the panel', () 
     assert.strictEqual(vm.runInContext("pbTierStep(ctx, grid[grid.length - 2][0], 'down', null)", Object.assign(H, { grid })), 'root');
     // a Freelancer's rows end in BORROW keys and its borrowed picks join their tier
     H.fe = [jobRung(4)[0]];
-    const fl = vm.runInContext("pbTierCtx('homosapien', 'Freelancer', fe)", H);
+    const fl = vm.runInContext("pbTierCtx('homosapien', 'Freelancer', fe, null, 'tier')", H);
     assert.ok(fl.isFreelancer && fl.rows[4].includes(jobRung(4)[0]), 'borrowed IV on the IV row');
     H.fl = fl;
     assert.ok(vm.runInContext("pbTierGrid(fl, null)", H).some(r => r.includes('B4')), 'the B4 key');
     const b = vm.runInContext("pbTechInfo(fl, 'B2', null)", H);
     assert.strictEqual(b.st8, 'borrow'); assert.ok(b.count > 0);
+    // THE FAMILY FOLD (Phase 7, the default): a grid row per family, the Freelancer's one 'B0' borrow row, the root last
+    H.ff = vm.runInContext("pbTierCtx('homosapien', 'Freelancer', fe)", H);
+    assert.strictEqual(H.ff.group, 'family');
+    const fg = vm.runInContext("pbTierGrid(ff, null)", H);
+    assert.strictEqual(fg.length, H.ff.famRows.filter(g => g.ids.length).length + (H.ff.passives.length ? 1 : 0) + 2);
+    assert.deepStrictEqual(JSON.stringify(fg[fg.length - 2 - (H.ff.passives.length ? 1 : 0)]), JSON.stringify(['B0']));
+    const b0 = vm.runInContext("pbTechInfo(ff, 'B0', null)", H);
+    assert.strictEqual(b0.st8, 'borrow'); assert.strictEqual(b0.count, H.ff.borrowCount);
 });
 
 test('the builder: the rack replaced the circuit, no subclass anywhere, the SP meter + verdicts explain', () => {

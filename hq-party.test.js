@@ -512,7 +512,7 @@ test('THE SPELL TIERS IN THE FIELD: the source sites — the sheet\'s EDIT · SP
     assert.match(block, /data-party-act="node:\$\{_hqEsc\(m\.id\)\}:\$\{_hqEsc\(id\)\}"/, 'an ability button toggles by id');
     assert.match(block, /st-\$\{st\}/); assert.match(block, /'NO SLOT'/); assert.match(block, /`NEEDS \$\{cost\} SP`/); assert.match(block, /'SEALED'/); assert.match(block, /`\+\$\{cost\} SP`/);
     assert.match(block, /＋ BORROW · \$\{T\.borrowCount\}/); assert.match(block, /data-party-act="node:\$\{_hqEsc\(m\.id\)\}:\$\{_hqEsc\(T\.borrow\)\}"/);
-    assert.match(block, /BORROW · TIER \$\{_hqEsc\(numeral\)\} · ANY RACE OR JOB/);
+    assert.match(block, /'TIER ' \+ _hqEsc\(numeral\) \+ ' · ANY RACE OR JOB' : 'BY FAMILY · ANY OTHER FAMILY OR JOB'/);   // Phase 7: 'B0' = by family
     assert.match(block, /data-party-act="sock:\$\{_hqEsc\(m\.id\)\}:\$\{_hqEsc\(key\)\}:\$\{_hqEsc\(x\.id\)\}"/);
     assert.match(block, /BASIC ATTACK/); assert.match(block, /DROPPED AT THE NEXT WRITE/);
     assert.doesNotMatch(block, /hq-circ-lane|hq-circ-fork|SECOND JOB/, 'no lanes, no forks, no second job');

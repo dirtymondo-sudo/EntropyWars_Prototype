@@ -104,7 +104,7 @@ diffs. The deliverable is always the full edited file, produced in chat.
   row). Notes go to docs/spell-notes.md, never data.js. Test: spell-schema.test.js.
   Phase 1 (the v2 screen): test spell-library-ui.test.js, probe playtest_library.js. Phase 2 (the grid +
   the look): tests aoe-mask.test.js + spell-anim-pick.test.js; notes in ui-menus-audio.md + spells-vfx.md.
-  Phases 3/4/5/6 (riders/passives/upgrades/families): spell-riders, family-passives, spell-upgrades, spell-families
+  Phases 3/4/5/6/7 (riders/passives/upgrades/families/pools): spell-riders, family-passives, spell-upgrades, spell-families
   .test.js; notes in champions-combat.md + ui-menus-audio.md. Phase 6: RACE_FAMILIES is the pool; SPELL_CATALOGUE.md.
 - `migrations/*.sql` (added 2026-07-29) — versioned D1 schema, applied at
   boot by server.js `runMigrations` (recorded in `schema_migrations`;

@@ -18065,7 +18065,7 @@ function flOwnedJobs() {
    job trees, minus ids on this race's own tree (the no-duplicate rule) —
    in story scope the trees of the jobs the owned vessels carry only. */
 function flWildcardPool(race) {
-    const raceIds = new Set(getRaceTreeAllIds(race, 'Freelancer') || []);
+    const raceIds = new Set(raceFamilyPoolIds(race));   // THE FAMILIES AS POOLS (Phase 7): the race's own spells are its families' members
     const out = [];
     const seen = new Set();
     const jobs = flPoolOwnedOnly() ? flOwnedJobs() : null;
@@ -18081,18 +18081,30 @@ function flWildcardPool(race) {
     return out;
 }
 
-/* Every spell a Freelancer RACE socket (P1–P4) may hold: the union of every
-   race tree (both alternates of every twin), minus this unit's own race
-   pillar (already on the tree) and minus anything a job tree owns. A race
+/* Every spell a Freelancer may BORROW from another race. THE FAMILIES AS POOLS (SPELL_LIBRARY_PLAN.md §9 row 7, Phase 7,
+   2026-09-26): a race's spells are the members of its families (RACE_FAMILIES), so the borrow window is family by family —
+   every family some (owned, in story scope) race carries that this race does not, never a UNIQUE family (the door wheel's
+   kind: one race's own) and never a universal one (GEAR is in every pool already). Minus anything a job tree owns; a race
    ability that demands a job (jobRequirement) stays with that job. */
+function flBorrowFamilyIds(race) {
+    const own = new Set(raceFamilyIds(race));
+    const out = [];
+    for (const r of flOwnedRaces()) {   // THE STORY ROSTER: the owned races only in story scope, the whole roster elsewhere
+        if (r === race) continue;
+        for (const f of raceFamilyIds(r)) {
+            const fam = SPELL_FAMILIES[f];
+            if (!fam || own.has(f) || out.includes(f) || fam.universal || spellFamilyIsUnique(f)) continue;
+            out.push(f);
+        }
+    }
+    return out;
+}
 function flRacePool(race) {
-    const own = new Set(getRaceTreeAllIds(race, 'Freelancer') || []);
-    const races = flOwnedRaces();   // THE STORY ROSTER: the owned races only in story scope, the whole roster elsewhere
+    const own = new Set(raceFamilyPoolIds(race));
     const out = [];
     const seen = new Set();
-    for (const r of races) {
-        if (r === race) continue;
-        for (const id of getRaceTreeAllIds(r, 'Freelancer') || []) {
+    for (const f of flBorrowFamilyIds(race)) {
+        for (const id of familyMemberIds(f)) {
             const sp = SPELL_BY_ID[id];
             if (!sp || seen.has(id) || own.has(id) || _JOB_TREE_IDS.has(id)) continue;
             if (sp.jobRequirement && sp.jobRequirement !== 'Freelancer') continue;
@@ -18379,10 +18391,41 @@ function familyMemberIndex() {
 }
 function familyMemberIndexDrop() { _familyMemberIdx = null; }
 function familyMemberIds(fam) { return (familyMemberIndex()[fam] || []).slice(); }
-/* The race's families (known ids only, in its order). */
+/* A UNIQUE family is one race's own (`unique: '<race id>'`, the Door Agent's wheel is the model): no other race's pool takes
+   it and no Freelancer borrows it (Phase 7). */
+function spellFamilyIsUnique(f) { const fam = SPELL_FAMILIES[f]; return !!(fam && typeof fam.unique === 'string' && fam.unique); }
+/* The race's families (known ids only, in its order; a family unique to ANOTHER race is skipped). */
 function raceFamilyIds(race) {
     const list = (typeof RACE_FAMILIES !== 'undefined' && RACE_FAMILIES[race]) || [];
-    return Array.isArray(list) ? list.filter(f => typeof f === 'string' && SPELL_FAMILIES[f]) : [];
+    return Array.isArray(list) ? list.filter(f => typeof f === 'string' && SPELL_FAMILIES[f] && !(spellFamilyIsUnique(f) && SPELL_FAMILIES[f].unique !== race)) : [];
+}
+/* THE RACK BY FAMILY (SPELL_LIBRARY_PLAN.md §9 row 7, Phase 7): a list of ids folded into family groups for the racks — the
+   race's own families first in its RACE_FAMILIES order, then every other family by name (a job's rows, a Freelancer's borrowed
+   rows), then the rows with no family; inside a group tier I → IV, then name. Pure; the forge and the HQ rack both read it.
+   → [{ fam, name, glyph, color, desc, own, ids }] */
+function spellFamilyGroups(ids, race) {
+    const order = race ? raceFamilyIds(race) : [];
+    const byFam = new Map();
+    for (const id of (ids || [])) {
+        const sp = id && typeof SPELL_BY_ID !== 'undefined' ? SPELL_BY_ID[id] : null;
+        if (!sp) continue;
+        const f = spellFamiliesOf(sp).find(x => SPELL_FAMILIES[x]) || '';
+        if (!byFam.has(f)) byFam.set(f, []);
+        if (!byFam.get(f).includes(id)) byFam.get(f).push(id);
+    }
+    const name = (f) => (SPELL_FAMILIES[f] && SPELL_FAMILIES[f].name) || f;
+    const keys = Array.from(byFam.keys()).sort((a, b) => {
+        if (!a !== !b) return a ? -1 : 1;   // the rows with no family close the list
+        const ia = order.indexOf(a), ib = order.indexOf(b);
+        if ((ia < 0) !== (ib < 0)) return ia < 0 ? 1 : -1;
+        if (ia >= 0) return ia - ib;
+        return String(name(a)).localeCompare(String(name(b)));
+    });
+    return keys.map(f => {
+        const fam = SPELL_FAMILIES[f] || null;
+        const list = byFam.get(f).slice().sort((a, b) => (spellTierOf(a) - spellTierOf(b)) || String((SPELL_BY_ID[a] || {}).name || a).localeCompare(String((SPELL_BY_ID[b] || {}).name || b)));
+        return { fam: f || null, name: fam ? fam.name : 'Unsorted', glyph: (fam && fam.glyph) || '◇', color: (fam && fam.color) || '#8a8270', desc: (fam && fam.desc) || '', own: !!f && order.includes(f), ids: list };
+    });
 }
 /* Every member of the race's families, family by family. */
 function raceFamilyPoolIds(race) {
@@ -18395,9 +18438,12 @@ function unitSpellPoolParts(race, cls) {
     const known = (id) => !!id && (typeof SPELL_BY_ID === 'undefined' || !!SPELL_BY_ID[id]);
     const seen = new Set();
     const take = (ids) => { const out = []; for (const id of ids || []) if (known(id) && !seen.has(id)) { seen.add(id); out.push(id); } return out; };
-    /* race = the RACE_TREE row (rung order, twins side by side), then every member of the race's families (Phase 6) */
-    const parts = { race: take(getRaceTreeAllIds(race, cls)), job: take(cls === 'Freelancer' ? [] : (getClassTreeSpells(cls) || [])), borrowRace: [], borrowJob: [], wheel: [] };
-    parts.race = parts.race.concat(take(raceFamilyPoolIds(race)));   // after the job's four, so a job row in a race family keeps its JOB source
+    /* THE FAMILIES AS POOLS (SPELL_LIBRARY_PLAN.md §7 Q2 default, Phase 7, 2026-09-26): the race part IS the members of the
+       race's families (RACE_FAMILIES) — RACE_TREE is no longer read for the pool. It stays the source of the rungs' MP ring,
+       the twins and the DEFAULTS kit, and every rung sits inside the race's families (spell-families.test.js). The job's four
+       are taken first, so a job row that sits in a race family keeps its JOB source in the racks. */
+    const job = take(cls === 'Freelancer' ? [] : (getClassTreeSpells(cls) || []));
+    const parts = { race: take(raceFamilyPoolIds(race)), job, borrowRace: [], borrowJob: [], wheel: [] };
     if (cls === 'Freelancer') {
         parts.borrowRace = take(flRacePool(race).map(sp => sp.id));
         parts.borrowJob = take(flWildcardPool(race).map(sp => sp.id));
@@ -20268,8 +20314,7 @@ function stampSpellSchema() {
 /* ── THE LINT (§4.3): spellLint(def, ctx) → [{ rule, level: 'red' | 'amber' | 'grey', text }]. Never edits. ── */
 function spellReachableIds() {
     const out = new Set();
-    const addRow = (row) => { for (const e of (row || [])) for (const id of _treeEntryIds(e)) out.add(id); };
-    if (typeof RACE_TREE !== 'undefined') for (const row of Object.values(RACE_TREE)) addRow(row);
+    // RACE_TREE is not read: THE FAMILIES AS POOLS (Phase 7) — a race's spells are its families' members (below)
     if (typeof CLASS_TREE !== 'undefined') for (const ids of Object.values(CLASS_TREE)) for (const id of (ids || [])) out.add(id);
     if (typeof DOOR_GUN_SPELLS !== 'undefined') for (const sp of DOOR_GUN_SPELLS) out.add(sp.id);
     for (const id of universalPassiveIds()) out.add(id);   // THE GEAR POOL: in every unit's pool (Phase 4)
@@ -20341,7 +20386,7 @@ function spellLint(d, ctx) {
         const nm = String(d.name || '').trim().toLowerCase();
         if (nm && ctx.names[nm] > 1) hits.push({ rule: 'nameDup', level: 'red', text: `another spell is also named "${d.name}" (casts resolve by name)` });
         if (d.id && ctx.reachable && !ctx.reachable.has(d.id) && !d._doorWheel)
-            hits.push({ rule: 'offPool', level: 'grey', text: 'on no race row, job row or family — no unit can equip it' });
+            hits.push({ rule: 'offPool', level: 'grey', text: 'on no race family, job row or the door wheel — no unit can equip it' });
     }
     return hits;
 }
@@ -20725,7 +20770,7 @@ Object.assign(window, {
   spellTierDerived, spellRoleOf, spellRoleDerived, spellHasDamage, spellHasEffect, spellHasHeal, spellFamiliesOf,
   aoeMaskValid, aoeMaskTiles, aoeMaskBound, aoeMaskPresetOf, stampSpellSchema,
   spellReachableIds, spellLintContext, spellLint, spellLintAll, spellReport,
-  spellSealedIds, unitSpellPoolParts, unitSpellPool, spellAddVerdict,
+  spellSealedIds, unitSpellPoolParts, unitSpellPool, spellAddVerdict, spellFamilyGroups, spellFamilyIsUnique, flBorrowFamilyIds,
   /* THE PASSIVES + THE GEAR MERGE (Phase 4) */
   GEAR_PASSIVES, GEAR_ID_OF_ACCESSORY, PASSIVE_HOOK_KEYS, spellIsPassive, passiveRowCount, universalPassiveIds,
   unitPassiveRowIds, passiveRowWrap, gearMigrateIds, passiveRowsEquipmentMirror, unitHasGear, unitPassiveStatBonus,
@@ -47886,6 +47931,14 @@ function hqPartyTreeCircuit(m) {
     const pasRows = own.concat(borrowed).filter(([id]) => spellIsPassive(id)).concat(gear.filter(id => !own.some(([o]) => o === id)).map(id => [id, 'gear']))
         .map(([id, source]) => ({ id, sp: spOf(id), st: hqPartySpellState(T, id, poolSet), source, cost: spellSpCost(id) }));
     const passives = { rows: pasRows, used: passiveRowCount(equipped), max: PASSIVE_SLOT_MAX };
+    /* THE RACK BY FAMILY (SPELL_LIBRARY_PLAN.md §9 row 7, Phase 7): the same rows folded by family (spellFamilyGroups — the
+       race's families first, then a job's / a borrowed row's family), each chip still priced by its tier; a Freelancer's one
+       ＋ BORROW key 'B0' opens the picker over every tier, family by family. The pause menu shows either fold. */
+    const srcOf = new Map(own.concat(borrowed));
+    const families = spellFamilyGroups(own.concat(borrowed).map(([id]) => id).filter(id => !spellIsPassive(id)), T.race).map(g => Object.assign(g, {
+        rows: g.ids.map(id => ({ id, sp: spOf(id), st: hqPartySpellState(T, id, poolSet), source: srcOf.get(id) || 'race', cost: spellSpCost(id) })),
+    }));
+    const borrowAll = T.isFreelancer ? { key: 'B0', count: parts.borrowRace.length + parts.borrowJob.length } : null;
     const dropped = equipped.filter(id => !poolSet.has(id));
     /* ⚙ THE UPGRADES (SPELL_LIBRARY_PLAN.md §6.3, Phase 5): every equipped spell that takes upgrades, with each allowed upgrade's
        state (on · ok · the verdict's reason) — the rack's ⚙ section */
@@ -47898,7 +47951,7 @@ function hqPartyTreeCircuit(m) {
                 return { id: u, row: SPELL_UPGRADES[u], st: v.ok ? 'ok' : v.reason, cost: spellUpgradeSp(u), note: v.note };
             }) };
     });
-    return { tiers, passives, upgrades, ups: T.ups, upMax: SPELL_UPGRADE_MAX, equipped: equipped.slice(), used: equipped.length, cap, spUsed: T.spUsed, spMax: T.spMax, isFreelancer: T.isFreelancer, unplaced: dropped, race: T.race, cls: T.cls };
+    return { tiers, families, borrowAll, passives, upgrades, ups: T.ups, upMax: SPELL_UPGRADE_MAX, equipped: equipped.slice(), used: equipped.length, cap, spUsed: T.spUsed, spMax: T.spMax, isFreelancer: T.isFreelancer, unplaced: dropped, race: T.race, cls: T.cls };
 }
 /* THE ONE WRITE: a member's spell list, made legal (the forge's own repair), into both places */
 function hqPartySetSpells(profile, memberId, ids) {
@@ -47925,7 +47978,7 @@ function hqPartyTreeClick(profile, memberId, key, altId) {
     const m = r.members.find(x => x.id === memberId); if (!m) return { ok: false, reason: 'member' };
     const T = hqPartySpellTree(m); if (!T) return { ok: false, reason: 'notree', note: 'THIS JOB HAS NO SPELLS TO PICK' };
     if (key === 'root') return { ok: false, reason: 'root', note: 'THE BASIC ATTACK IS ALWAYS EQUIPPED' };
-    if (/^B[1-4]$/.test(String(key || ''))) {
+    if (/^B[0-4]$/.test(String(key || ''))) {   // 'B0' = every tier (the rack by family, Phase 7)
         if (!T.isFreelancer) return { ok: false, reason: 'empty', note: 'ONLY A FREELANCER BORROWS' };
         return { ok: false, reason: 'socket', note: 'BORROW · PICK FROM THE POOL', socket: key };
     }
@@ -47942,16 +47995,22 @@ function hqPartyTreeClick(profile, memberId, key, altId) {
     const w = hqPartySetSpells(profile, memberId, T.equipped.concat([id]));
     return { ok: true, kind: 'equip', ids: w.ids, added: [id], note: 'EQUIPPED · TIER ' + SPELL_TIER_NUMERALS[t] + ' · ' + t + ' SP' };
 }
-/* a Freelancer's borrowable abilities of one tier (key 'B1'–'B4'; THE STORY ROSTER's ledger rule rides inside) */
+/* a Freelancer's borrowable abilities of one tier (key 'B1'–'B4'), or of every tier ('B0' — the rack by family, Phase 7);
+   each row names its family, and the list runs family by family (spellFamilyGroups), tier I → IV inside one.
+   THE STORY ROSTER's ledger rule rides inside. */
 function hqPartySocketPool(m, key) {
     const T = hqPartySpellTree(m); if (!T || !T.isFreelancer) return [];
     const t = parseInt(String(key || '').replace(/^B/, ''), 10);
-    if (!(t >= 1 && t <= 4)) return [];
+    if (!(t >= 0 && t <= 4)) return [];
     const sealed = spellSealedIds(T.parts.borrowRace.concat(T.parts.borrowJob));
-    return T.parts.borrowRace.map(id => [id, 'race']).concat(T.parts.borrowJob.map(id => [id, 'job']))
-        .filter(([id]) => spellTierOf(id) === t && !sealed.has(id))
-        .map(([id, pool]) => ({ id, sp: SPELL_BY_ID[id], tier: SPELL_TIER_NUMERALS[t], pool, equipped: T.equipped.includes(id) }))
-        .sort((a, b) => String(a.sp.name || a.id).localeCompare(String(b.sp.name || b.id)));
+    const poolOf = new Map(T.parts.borrowRace.map(id => [id, 'race']).concat(T.parts.borrowJob.map(id => [id, 'job'])));
+    const ids = Array.from(poolOf.keys()).filter(id => (!t || spellTierOf(id) === t) && !sealed.has(id));
+    const out = [];
+    for (const g of spellFamilyGroups(ids, null)) for (const id of g.ids) {
+        const ti = spellTierOf(id);
+        out.push({ id, sp: SPELL_BY_ID[id], tier: SPELL_TIER_NUMERALS[ti], pool: poolOf.get(id), fam: g.fam, famName: g.name, famGlyph: g.glyph, famColor: g.color, equipped: T.equipped.includes(id) });
+    }
+    return out;
 }
 function hqPartySocketEquip(profile, memberId, key, spellId) {
     const r = hqPartyRecord(profile); if (!r) return { ok: false, reason: 'noprofile' };

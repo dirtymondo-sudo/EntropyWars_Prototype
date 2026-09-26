@@ -747,7 +747,7 @@ is live. Until baked, an export is the only way a change reaches another player.
 | 4 | **DONE 2026-09-26 (§11).** **THE PASSIVES + THE GEAR MERGE (ruled)**: passive rows, `PASSIVE_SLOT_MAX = 2` in the verdict / repair / rack, the universal GEAR family, the hook editor, the new hook keys' consumers, the rack's ◈ PASSIVE chips, the 17 accessories converted, the accessory UI retired, the save migration | data.js, battle.js, state.js, party-builder.js, map.js, hud.js, ui.js | `family-passives.test.js`, `champ-rework.test.js` (inherent passives unchanged), a save-migration pin |
 | 5 | **DONE 2026-09-26 (§11).** **THE UPGRADES**: `SPELL_UPGRADES` (the registry seeded with the user's list: +15 % dmg, ricochet, +1 target ×0.5, status bonus, knockback / blowback, AOE preset, −10 MP, +1 deployable, turret ×, gun ×), `resolveUnitSpellDef`, the verdict, the loadout field, the rack's ⚙ popover, the HQ pause popover, `getDeployCap`, the AI's spend, the host validation | data.js, battle.js, party-builder.js, map.js, hud.js, online.js, ai.js, ui.js (UPGRADES tab live) | `spell-upgrades.test.js` (each patch key on a fixture def; SP maths; the repair skips an unaffordable upgrade; a derived def rides `_serializeState`) |
 | 6 | **THE CATALOGUE** (the user's second deliverable): a categorisation of the 535 rows into proposed families (with the unique family per race), each spell's ONE identity, the redundancy groups with a verdict each (keep / merge into X / becomes upgrade Y of X / delete), proposed upgrade lists per family, new spell and targeting proposals — delivered as an EXPORT DOC the library imports (families + notes + `upgrades` lists + the merges as deletions with a note) plus `SPELL_CATALOGUE.md`; nothing baked until the user edits and re-exports | the export json + the md (repo) | the REPORT's redundancy query reproduces the groups |
-| 7 | **THE FAMILIES AS POOLS**: `RACE_FAMILIES` (3–5 per race, one `unique`), `unitSpellPoolParts` from families, the rack grouped by family (tier rows inside each family column or family tabs), the Freelancer's borrow window by family, `treeLegalSubset` on the new pool, the codex's family page | data.js (R2 + Render), party-builder.js, map.js, hud.js, ui.js, online.js (validation only) | `spell-families.test.js` (every race has 3–5 families and one unique; every pool row is reachable; `treeLegalSubset` repairs the old saves) |
+| 7 | **DONE 2026-09-26 (§11).** **THE FAMILIES AS POOLS**: `RACE_FAMILIES` (3–5 per race, one `unique`), `unitSpellPoolParts` from families, the rack grouped by family (tier rows inside each family column or family tabs), the Freelancer's borrow window by family, `treeLegalSubset` on the new pool, the codex's family page | data.js (R2 + Render), party-builder.js, map.js, hud.js, ui.js, online.js (validation only) | `spell-families.test.js` (every race has 3–5 families and one unique; every pool row is reachable; `treeLegalSubset` repairs the old saves) |
 
 `npm run test:quick` before every delivery; the one test that names the phase; `npm test` once before
 each zip (the CI rule); `test:full` never (no phase touches rooms). Every R2 delivery bumps `?v=`
@@ -1043,3 +1043,29 @@ change under `WEATHER_REGISTRY`).
      its name minus "Magic / Abilities / …", its description and its top members.
   4. A RACE flag marks an archetype whose name is already a race (Kraken, Siren, Yeti …). Test spell-identity.test.js pins a
      kit for every live family, the archetypes' families, the user's seven examples as written matches and the seeding.
+
+- **2026-09-26 · Phase 7 shipped** (thread "Spell library, Phase 7", `spell-library/ENTROPY_WARS_SPELL_LIBRARY_7.zip`, token
+  `20260926-spell-library-09-cors`). THE FAMILIES AS POOLS, on the §7 Q2 default (families REPLACE `RACE_TREE` as the pool):
+  1. **The pool** (data.js `unitSpellPoolParts`): the race part is the members of the race's families only; `RACE_TREE` is no
+     longer read for the pool (it stays the source of the rungs' MP ring, the twins and the DEFAULTS kit, and every rung sits in
+     the race's families). `spellReachableIds` (the lint's `offPool`) reads the families, not the tree rows. Old saves repair
+     through `treeLegalSubset` as before (an id off the new pool is skipped, never a crash; the online host runs the same check).
+  2. **Unique families:** `spellFamilyIsUnique`; `raceFamilyIds` drops a family unique to ANOTHER race, and no Freelancer borrows
+     one. No new unique families were authored (the user's own families set none; only the door wheel is unique).
+  3. **The Freelancer borrows by family:** `flBorrowFamilyIds(race)` = every family an (owned, in story scope) other race carries,
+     minus its own, unique and universal ones; `flRacePool` = their members (minus job rows, as before). The job borrow
+     (`flWildcardPool`) is unchanged.
+  4. **The racks fold by family** (the default) or by tier, one per-viewer choice shared by the forge and the HQ pause rack
+     (localStorage `ew_rack_group`): data.js `spellFamilyGroups(ids, race)` folds a list (the race's families first in its
+     RACE_FAMILIES order, then others by name, tier I → IV inside). Forge: the FOLD toggle, a row per family (colour edge, glyph,
+     name, n ON), the keyboard grid follows the fold, a Freelancer's one ＋ BORROW row (key `B0`, every tier). HQ: the same FOLD,
+     `hqPartyTreeCircuit().families` + `borrowAll`, `hqPartySocketPool(m, 'B0')`. Both borrow windows list family by family with
+     a header per family; the forge's gains a TIER filter in the family fold, and a family's name finds its members in search.
+  5. **The codex's family page:** the dossier's DOCUMENTED CAPABILITIES reads family by family (ui.js `_codexBuildFamilies`),
+     each technique with its tier and numbers; RACE_ABILITIES is the fallback. The library's POOLS page now flags a tree rung
+     outside the race's families in red (it is no longer equippable).
+  NOT DONE, left for the user: **job families** — §7 Q2's "job learnsets become the jobs' families" would put every member of a
+  job's families in its pool (a Warrior's four sit in Knighthood, Sonic, Earth and Light, 33 rows); the job part stays the job's
+  four until the user rules. The Phase 6 thread's suggested family merges / renames / splits are untouched. Tests:
+  `spell-families.test.js` (+5 Phase 7 tests); hq-intake / hq-party / party-builder / spell-tree-ux pins brought to the family
+  pool and fold. Probe: `playtest_builder.js p7` (the forge's TECHNIQUES tab folds by family, no page errors).

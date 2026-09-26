@@ -90,7 +90,7 @@ test('THE OFFICER without an intake: the legacy seed still stands (the DOOR Agen
 test('THE STORY ROSTER: the borrow pools are whole in the sandbox / scope all, and the ledger\'s in story scope', () => {
     const w = D.window;
     const all = g('flRacePool')('door agent').length, allJobs = g('flWildcardPool')('door agent').length;
-    assert.ok(all > 300 && allJobs > 50, 'the whole catalogue without a scope');
+    assert.ok(all > 300 && allJobs > 40, 'the whole catalogue without a scope');   // Phase 7: the job rows in the agent's own families are its own, not borrowed
     assert.equal(g('flPoolOwnedOnly')(), false, 'no scope set = the tooling sees everything');
     /* story scope: the ledger is the starters (no ProfileSystem in the sandbox → isUnitOwned's offline fallback) */
     w._ewRosterScope = 'owned';
@@ -100,8 +100,9 @@ test('THE STORY ROSTER: the borrow pools are whole in the sandbox / scope all, a
         assert.deepEqual(J(owned).sort(), J(D.ACCT_STARTER_UNITS.filter(r => g('isUnitOwned')(r))).sort(), 'the owned races are the ledger');
         const rp = g('flRacePool')('door agent');
         assert.ok(rp.length > 0 && rp.length < all, 'the race pool shrank to the owned vessels');
-        const ownedIds = new Set(); for (const r of owned) if (r !== 'door agent') for (const id of g('getRaceTreeAllIds')(r, 'Freelancer') || []) ownedIds.add(id);
-        assert.ok(rp.every(sp => ownedIds.has(sp.id)), 'every race-socket spell is on an owned race\'s tree');
+        // Phase 7 (families as pools): a race's spells are its families' members, so the borrow runs over the owned races' families
+        const ownedIds = new Set(); for (const r of owned) if (r !== 'door agent') for (const id of g('raceFamilyPoolIds')(r) || []) ownedIds.add(id);
+        assert.ok(rp.every(sp => ownedIds.has(sp.id)), 'every borrowable race spell is in an owned race\'s families');
         assert.ok(!rp.some(sp => sp.id === 'raceLasso'), 'a cowboy\'s spell is not on offer to a profile that never unlocked one');
         const jobs = g('flOwnedJobs')();
         assert.ok(jobs.has('Agent'), 'the agent\'s own job is owned');

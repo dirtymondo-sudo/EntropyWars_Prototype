@@ -8246,6 +8246,44 @@
             return html;
         }
 
+        /* THE CODEX'S FAMILY PAGE (SPELL_LIBRARY_PLAN.md §9 row 7, Phase 7, 2026-09-26): a race's spells ARE its families'
+           members now (data.js RACE_FAMILIES → unitSpellPoolParts), so the dossier's capabilities read family by family — the
+           family's glyph, name, colour and description, then its techniques tier I → IV with their numbers. A race without
+           families (none today) falls back to its RACE_ABILITIES list. */
+        function _codexBuildFamilies(race) {
+            const fams = (typeof raceFamilyIds === 'function') ? raceFamilyIds(race) : [];
+            if (!fams.length || typeof familyMemberIds !== 'function') return '';
+            const esc = (v) => String(v == null ? '' : v).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+            const numeral = (t) => (typeof SPELL_TIER_NUMERALS !== 'undefined' && SPELL_TIER_NUMERALS[t]) || String(t);
+            let html = `<div class="cdx-section-note">${fams.length} SPELL FAMILIES · EVERY TECHNIQUE BELOW IS THIS VESSEL'S TO EQUIP · TIER I–IV COSTS 1–4 SP</div>`;
+            for (const f of fams) {
+                const fam = SPELL_FAMILIES[f] || {};
+                const ids = familyMemberIds(f);
+                html += `<div class="cdx-fam" style="--fam:${esc(fam.color || '#b8a060')}">
+                    <div class="cdx-fam-head"><span class="cdx-fam-glyph">${esc(fam.glyph || '◇')}</span><span class="cdx-fam-name">${esc(fam.name || f)}</span>`
+                    + `<span class="cdx-fam-meta">${esc(String(fam.kind || '').toUpperCase())}${fam.unique ? ' · ★ THIS VESSEL\'S OWN' : ''} · ${ids.length} TECHNIQUE${ids.length === 1 ? '' : 'S'}</span></div>`
+                    + (fam.desc ? `<div class="cdx-fam-desc">${esc(fam.desc)}</div>` : '');
+                for (const id of ids) {
+                    const ab = (typeof SPELL_BY_ID !== 'undefined') ? SPELL_BY_ID[id] : null;
+                    if (!ab) continue;
+                    const t = (typeof spellTierOf === 'function') ? spellTierOf(id) : 1;
+                    const bits = ['TIER ' + numeral(t)];
+                    if (ab.kind === 'passive') bits.push('PASSIVE');
+                    else if (ab.cost) bits.push(ab.cost + ' MP');
+                    if (ab.apCost) bits.push(ab.apCost + ' AP');
+                    if (ab.dmg) bits.push(ab.dmg + ' DMG');
+                    if (ab.healAmt) bits.push(ab.healAmt + ' HEAL');
+                    if (ab.range != null && ab.kind !== 'passive') bits.push('RNG ' + ab.range);
+                    html += `<div class="cdx-ability cdx-fam-ability">
+                        <div class="cdx-ability-header"><span class="cdx-ability-name">${esc(ab.name || id)}</span><span class="cdx-ability-meta">${esc(bits.join(' · '))}</span></div>
+                        <div class="cdx-ability-desc">${esc(ab.desc || 'Classified.')}</div>
+                    </div>`;
+                }
+                html += `</div>`;
+            }
+            return html;
+        }
+
         // ── Shared dossier building blocks (codex + shop) ──
         function _codexHexToRgb(hex) {
             const m = /^#?([0-9a-f]{6})$/i.exec(hex || '');
@@ -8408,7 +8446,7 @@
                 </div>
                 <div class="cdx-section">
                     <div class="cdx-section-header">4. &nbsp;DOCUMENTED CAPABILITIES:</div>
-                    ${_codexBuildAbilities(race)}
+                    ${_codexBuildFamilies(race) || _codexBuildAbilities(race)}
                 </div>
                 ${_codexDoorSection(race)}`;
         }
@@ -11877,7 +11915,7 @@
                 <span class="slb2-rfrow-m">${members(f).map(id => `<span class="slb2-rfspell" data-act="jump" data-id="${_slbEsc(id)}"><span class="slb2-tier t${spellTierOf(id)}">${_slb2TierText(spellTierOf(id))}</span>${name(id)}</span>`).join('') || '<span class="slb2-dim">no members</span>'}</span>
                 <span class="slb2-mpctl"><button data-act="rfMove" data-key="${_slbEsc(race)}" data-i="${i}" data-dir="-1" title="earlier">↑</button><button data-act="rfMove" data-key="${_slbEsc(race)}" data-i="${i}" data-dir="1" title="later">↓</button><button class="slb2-xbig" data-act="rfToggle" data-key="${_slbEsc(race)}" data-fam="${_slbEsc(f)}" title="remove this family">✕</button></span>
             </div>`).join('') || '<div class="slb2-empty">no families yet</div>'}</div>
-            ${treeOnly.length ? `<div class="slb2-field-h">Tree rungs outside these families (still in the pool): ${treeOnly.map(name).join(', ')}</div>` : ''}
+            ${treeOnly.length ? `<div class="slb2-field-h slb2-lint-red">Tree rungs outside these families (Phase 7: the families ARE the pool, so these are NOT equippable — add their family or re-tag them): ${treeOnly.map(name).join(', ')}</div>` : ''}
             <div class="slb2-group"><div class="slb2-group-h">ALL FAMILIES · click to add or remove</div>
                 <div class="slb2-rfpick">${all.map(f => `<button class="slb2-rfchip${fams.includes(f) ? ' on' : ''}" data-act="rfToggle" data-key="${_slbEsc(race)}" data-fam="${_slbEsc(f)}" style="--fc:${_slb2FamColor(f)}" title="${members(f).length} spells · on ${users(f)} race${users(f) === 1 ? '' : 's'}">${_slbEsc(_slb2Glyph(f))} ${_slbEsc(_slb2FamName(f))} <span class="slb2-dim">${members(f).length}</span></button>`).join('')}</div>
             </div>`;

@@ -5089,6 +5089,17 @@ body.diorama-3d .tile-underpass.jump::before {
 .pb-tier-head span { font-size: 8px; letter-spacing: 0.14em; color: var(--ph-gold); white-space: nowrap; }
 .pb-tier-head i { font-style: normal; font-size: 7px; letter-spacing: 0.14em; color: var(--ph-dim); white-space: nowrap; }
 .pb-tier[data-tier="4"] .pb-tier-head b { color: var(--ph-gold); text-shadow: 0 0 8px rgba(255,205,107,0.45); }
+/* THE RACK BY FAMILY (SPELL_LIBRARY_PLAN.md Phase 7, 2026-09-26): a row per family — the family's colour on the head's edge,
+   its glyph, its name (wraps); a family that is not the race's own (a job's, a borrowed one) reads dimmer. The FOLD toggle. */
+.pb-rack-fold { display: flex; align-items: center; gap: 6px; padding: 2px 0 4px; }
+.pb-rack-fold > span { font-size: 9px; letter-spacing: 0.2em; color: var(--ph-dim); margin-right: 2px; }
+.pb-rack-fold .pb-pill-btn { font-size: 9px; padding: 3px 10px; }
+.pb-rack-fold .pb-pill-btn.on { color: #1a1408; background: var(--ph-gold); border-color: var(--ph-gold); }
+.pb-tier.pb-fam { grid-template-columns: 78px minmax(0, 1fr); }
+.pb-fam-head { border-right: 3px solid var(--fam, var(--ph-line)); padding: 2px 6px 2px 0; text-align: center; }
+.pb-fam-head b { font-family: inherit; font-size: 16px; font-weight: 400; color: var(--fam, var(--ph)); }
+.pb-fam-head span { white-space: normal; font-size: 9px; line-height: 1.15; color: var(--ph); letter-spacing: 0.08em; text-transform: uppercase; }
+.pb-tier.pb-fam:not(.own):not(.pb-fam-borrow) .pb-fam-head span { color: var(--ph-dim); }
 .pb-tier-cells { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 2px 8px; align-content: start; min-width: 0; }
 .pb-tier-none { align-self: center; font-size: 8px; letter-spacing: 0.18em; color: var(--ph-faint); padding: 0 4px; }
 .pb-tn.pb-tc { padding-right: 6px; }
@@ -5300,6 +5311,9 @@ body.diorama-3d .tile-underpass.jump::before {
 .pb-socket-filters { padding: 4px 2px 6px; margin-bottom: 2px; }
 .pb-socket-filters .pb-pill-btn { font-size: 9px; padding: 3px 9px; }
 .pb-socket-filters .pb-pill-input { width: 110px; }
+.pb-socket-fam { display: flex; align-items: center; gap: 8px; margin: 8px 6px 2px; padding: 3px 8px; border-left: 3px solid var(--fam, var(--ph-line)); background: rgba(255,255,255,0.03); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ph); }
+.pb-socket-fam b { font-weight: 400; color: var(--fam, var(--ph)); }
+.pb-socket-fam em { margin-left: auto; font-style: normal; font-size: 10px; color: var(--ph-dim); }
 .pb-socket-empty { padding: 26px 10px; text-align: center; font-size: 10px; letter-spacing: 0.2em; color: var(--ph-faint); font-style: italic; }
 /* ── the archive (standalone landing view) — a full-glass view over the forge ── */
 .pb-locker { position: absolute; inset: 0; z-index: 4; display: flex; flex-direction: column; gap: 10px; padding: 12px 18px 10px; background: radial-gradient(ellipse 90% 80% at 50% 45%, #0c0e0a 0%, #070806 65%, #040403 100%); text-shadow: var(--ph-glow); }
@@ -6220,6 +6234,16 @@ body.diorama-3d .tile-underpass.jump::before {
 #hqPage .hq-circ-borrow:not([disabled]):hover, #hqPage .hq-circ-borrow.on { background: rgba(127,217,221,0.16); border-style: solid; }
 #hqPage .hq-circ-borrow[disabled] { opacity: 0.38; cursor: not-allowed; }
 #hqPage .hq-circ-none { align-self: center; font-size: 8px; letter-spacing: 0.2em; color: rgba(184,160,96,0.6); }
+/* THE RACK BY FAMILY (SPELL_LIBRARY_PLAN.md Phase 7): the FOLD toggle, a family row's head in the family's colour (names wrap),
+   the borrow picker's family headers */
+#hqPage .hq-circ-fold { display: flex; align-items: center; gap: 6px; margin: 4px 0; }
+#hqPage .hq-circ-fold > span { font-size: 9px; letter-spacing: 0.22em; color: #b8a060; }
+#hqPage .hq-circ-fold .hq-btn.on { background: rgba(232,207,138,0.22); border-color: #e8cf8a; color: #fff3cf; }
+#hqPage .hq-circ-fam .hq-circ-head { border-left: 3px solid var(--fam, #b8a060); }
+#hqPage .hq-circ-tier-row.hq-circ-fam .hq-circ-head b { font-family: 'Cormorant SC', serif; font-weight: 700; font-size: 11px; letter-spacing: 0.06em; white-space: normal; line-height: 1.15; color: #e8cf8a; }
+#hqPage .hq-circ-fam:not(.own) .hq-circ-head b { color: #b3a47a; }
+#hqPage .hq-circ-famhead { grid-column: 1 / -1; margin: 6px 0 2px; padding: 3px 8px; border-left: 3px solid var(--fam, #b8a060); font-size: 11px; letter-spacing: 0.16em; color: #e8cf8a; background: rgba(184,160,96,0.06); }
+#hqPage .hq-circ-famhead b { font-weight: 400; color: var(--fam, #e8cf8a); }
 @media (max-width: 900px) { #hqPage .hq-circ-tier-row { grid-template-columns: 1fr; } #hqPage .hq-circ-tier-row .hq-circ-head { flex-direction: row; gap: 8px; } }
 
 /* ══ THE UNDISCOVERED DOOR (2026-09-21) — a plate that reads '?' (the room through it not yet stood in) ══ */

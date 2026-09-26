@@ -1990,6 +1990,9 @@
             if (sp.aoeRadius) bits.push(`AOE ${sp.aoeRadius}`);
             return bits.join(' · ');
         }
+        /* the rack's fold, shared with the forge (party-builder.js pbRackGroupGet): 'family' (the default) | 'tier' — viewer-local */
+        function _hqRackFold() { try { return (window.localStorage && window.localStorage.getItem('ew_rack_group')) === 'tier' ? 'tier' : 'family'; } catch (e) { return 'family'; } }
+        function _hqRackFoldSet(v) { try { if (window.localStorage) window.localStorage.setItem('ew_rack_group', v === 'tier' ? 'tier' : 'family'); } catch (e) {} }
         function _hqPauseSpellDesc(sp) { if (!sp) return ''; let d = sp.desc || ''; if (!d) { try { d = (typeof describeSpell === 'function') ? describeSpell(sp) : ''; } catch (e) {} } return d; }
         const _HQ_CIRC_ST_NOTE = { equipped: 'EQUIPPED · CLICK TO UNEQUIP', ok: 'CLICK TO EQUIP', slots: 'NO SLOT · UNEQUIP SOMETHING', sp: 'NOT ENOUGH SP · UNEQUIP SOMETHING', passives: '2 PASSIVES MAX · UNEQUIP ONE', sealed: 'SEALED · NOT ALLOWED IN THIS MODE' };
         const _HQ_CIRC_SRC = { race: '', job: '', borrowRace: 'BORROWED · RACE', borrowJob: 'BORROWED · JOB', wheel: 'DOOR WHEEL', gear: 'GEAR' };   // THE DOOR WHEEL (DOOR_GUN_PLAN §2.4)
@@ -2069,8 +2072,19 @@
             html += `<p class="hq-circ-note">ANY ABILITY, ANY TIER · TIER I–IV COSTS 1–4 SP · ${C.cap} SLOTS · ${spMax} SP · AT MOST ${(C.passives && C.passives.max) || 2} PASSIVES / GEAR${C.isFreelancer ? ' · A FREELANCER BORROWS ANY RACE OR JOB ABILITY' : ''}</p>`;
             if (C.unplaced.length) html += `<p class="hq-circ-note bad">${C.unplaced.length} ABILIT${C.unplaced.length === 1 ? 'Y' : 'IES'} ON THE RECORD NO LONGER FIT THIS UNIT (${_hqEsc(C.unplaced.join(', '))}) — THEY ARE DROPPED AT THE NEXT WRITE</p>`;
             html += _hqPauseFinisherHtml(m);
+            /* THE RACK BY FAMILY (SPELL_LIBRARY_PLAN.md §9 row 7, Phase 7): the FOLD — a row per family (the default; C.families,
+               the race's families first) or a row per tier; the choice is the forge's own (localStorage 'ew_rack_group') */
+            const fold = _hqRackFold();
+            html += `<div class="hq-circ-fold"><span>FOLD</span>${[['family', 'BY FAMILY'], ['tier', 'BY TIER']].map(([k, l]) => `<button type="button" class="hq-btn hq-btn-xs${fold === k ? ' on' : ''}" data-party-act="fold:${_hqEsc(m.id)}:${k}" aria-pressed="${fold === k}">${l}</button>`).join('')}</div>`;
             html += `<div class="hq-circ-tiers">`;
-            C.tiers.forEach(T => {
+            if (fold === 'family' && C.families) {
+                C.families.forEach(G => {
+                    html += `<div class="hq-circ-tier-row hq-circ-fam${G.own ? ' own' : ''}" style="--fam:${_hqEsc(G.color)}"><div class="hq-circ-head" title="${_hqEsc(G.name + (G.desc ? ' — ' + G.desc : ''))}"><b>${_hqEsc(G.glyph)} ${_hqEsc(String(G.name).toUpperCase())}</b><i>${G.rows.filter(r => r.st === 'equipped').length ? G.rows.filter(r => r.st === 'equipped').length + ' ON' : ''}</i></div><div class="hq-circ-row-nodes">`;
+                    G.rows.forEach(row => { html += _hqPauseCircuitNodeHtml(m, row, C); });
+                    html += `</div></div>`;
+                });
+                if (C.borrowAll) html += `<div class="hq-circ-tier-row hq-circ-fam"><div class="hq-circ-head"><b>＋ BORROW</b><i>ANY TIER</i></div><div class="hq-circ-row-nodes"><button type="button" class="hq-circ-borrow${P && P.socket === C.borrowAll.key ? ' on' : ''}" data-party-act="node:${_hqEsc(m.id)}:${C.borrowAll.key}"${C.borrowAll.count ? '' : ' disabled'} title="Borrow from any other family or job, family by family">＋ BORROW · ${C.borrowAll.count}</button></div></div>`;
+            } else C.tiers.forEach(T => {
                 html += `<div class="hq-circ-tier-row t${T.tier}"><div class="hq-circ-head"><b>TIER ${_hqEsc(T.numeral)}</b><i>${T.cost} SP</i></div><div class="hq-circ-row-nodes">`;
                 T.rows.forEach(row => { html += _hqPauseCircuitNodeHtml(m, row, C); });
                 if (T.borrow) html += `<button type="button" class="hq-circ-borrow${P && P.socket === T.borrow ? ' on' : ''}" data-party-act="node:${_hqEsc(m.id)}:${_hqEsc(T.borrow)}"${T.borrowCount ? '' : ' disabled'} title="Borrow any race or job ability of Tier ${_hqEsc(T.numeral)}">＋ BORROW · ${T.borrowCount}</button>`;
@@ -2102,19 +2116,21 @@
             /* THE BORROW PICKER (a Freelancer's ＋ BORROW): every race / job ability of that tier, a search, a row per ability */
             if (C.isFreelancer && P && P.socket) {
                 const key = P.socket;
-                const t = parseInt(String(key).replace(/^B/, ''), 10) || 0;
+                const t = parseInt(String(key).replace(/^B/, ''), 10) || 0;   // 0 = every tier (the rack by family)
                 const numeral = (typeof SPELL_TIER_NUMERALS !== 'undefined' && SPELL_TIER_NUMERALS[t]) || String(t);
                 const pool = (typeof window.hqPartySocketPool === 'function') ? window.hqPartySocketPool(m, key) : [];
                 const q = String(P.sockQ || '').trim().toLowerCase();
-                const rows = q ? pool.filter(x => ((x.sp.name || '') + ' ' + (x.sp.desc || '') + ' ' + (x.sp.school || '') + ' ' + (x.sp.type || '') + ' ' + (x.sp.spellType || '')).toLowerCase().includes(q)) : pool;
-                html += `<div class="hq-circ-picker"><div class="hq-circ-bar"><b>BORROW · TIER ${_hqEsc(numeral)} · ANY RACE OR JOB</b><span class="hq-circ-count">${t} SP · ${rows.length} / ${pool.length}</span><input type="search" class="hq-circ-search" data-circ-search="1" placeholder="SEARCH THE POOL" value="${_hqEsc(P.sockQ || '')}" autocomplete="off"><span class="hq-circ-tools"><button class="hq-btn hq-btn-sm" data-party-act="sockclose">✕ CLOSE</button></span></div>`;
+                const rows = q ? pool.filter(x => ((x.sp.name || '') + ' ' + (x.sp.desc || '') + ' ' + (x.sp.school || '') + ' ' + (x.sp.type || '') + ' ' + (x.sp.spellType || '') + ' ' + (x.famName || '')).toLowerCase().includes(q)) : pool;
+                html += `<div class="hq-circ-picker"><div class="hq-circ-bar"><b>BORROW · ${t ? 'TIER ' + _hqEsc(numeral) + ' · ANY RACE OR JOB' : 'BY FAMILY · ANY OTHER FAMILY OR JOB'}</b><span class="hq-circ-count">${t ? t + ' SP' : '1–4 SP'} · ${rows.length} / ${pool.length}</span><input type="search" class="hq-circ-search" data-circ-search="1" placeholder="SEARCH THE POOL" value="${_hqEsc(P.sockQ || '')}" autocomplete="off"><span class="hq-circ-tools"><button class="hq-btn hq-btn-sm" data-party-act="sockclose">✕ CLOSE</button></span></div>`;
                 if (!pool.length) html += `<p class="hq-panel-note">Nothing to borrow at this tier — in story mode a Freelancer borrows only from the vessels you own.</p>`;
                 else if (!rows.length) html += `<p class="hq-panel-note">Nothing matches.</p>`;
                 else {
                     html += `<div class="hq-circ-pool">`;
+                    let lastFam = null;   // THE BORROW PICKER BY FAMILY (Phase 7): a header per family
                     rows.forEach(x => {
+                        if (x.fam !== lastFam) { lastFam = x.fam; html += `<div class="hq-circ-famhead" style="--fam:${_hqEsc(x.famColor || '#8a8270')}"><b>${_hqEsc(x.famGlyph || '◇')}</b> ${_hqEsc(String(x.famName || 'Unsorted').toUpperCase())}</div>`; }
                         const sp = x.sp; const cat = _HQ_CAT[sp.type] || _HQ_CAT.utility; const tc = _HQ_TYPE_COLORS[sp.spellType] || '#aaa';
-                        html += `<button type="button" class="hq-circ-row${x.equipped ? ' on' : ''}" data-party-act="sock:${_hqEsc(m.id)}:${_hqEsc(key)}:${_hqEsc(x.id)}"${x.equipped ? ' disabled' : ''} style="--cc:${cat.c}"><i class="hq-circ-disc">${cat.g}</i><b>${_hqEsc(sp.name || x.id)}</b><span>${sp.spellType ? `<i class="hq-pp-type" style="--tc:${tc}">${_hqEsc(String(sp.spellType).toUpperCase())}</i> ` : ''}<i class="hq-circ-tier">${x.pool === 'race' ? 'RACE' : 'JOB'}</i> ${_hqEsc(_hqPauseSpellMeta(sp))}</span><p>${_hqEsc(_hqPauseSpellDesc(sp))}</p><em>${x.equipped ? 'EQUIPPED' : 'BORROW ▸'}</em></button>`;
+                        html += `<button type="button" class="hq-circ-row${x.equipped ? ' on' : ''}" data-party-act="sock:${_hqEsc(m.id)}:${_hqEsc(key)}:${_hqEsc(x.id)}"${x.equipped ? ' disabled' : ''} style="--cc:${cat.c}"><i class="hq-circ-disc">${cat.g}</i><b>${_hqEsc(sp.name || x.id)}</b><span>${sp.spellType ? `<i class="hq-pp-type" style="--tc:${tc}">${_hqEsc(String(sp.spellType).toUpperCase())}</i> ` : ''}<i class="hq-circ-tier">${t ? '' : _hqEsc(x.tier) + ' · '}${x.pool === 'race' ? 'RACE' : 'JOB'}</i> ${_hqEsc(_hqPauseSpellMeta(sp))}</span><p>${_hqEsc(_hqPauseSpellDesc(sp))}</p><em>${x.equipped ? 'EQUIPPED' : 'BORROW ▸'}</em></button>`;
                     });
                     html += `</div>`;
                 }
@@ -2135,6 +2151,7 @@
             };
             if (verb === 'circuit') { P.circuit = (P.circuit === a) ? null : a; P.socket = null; P.sockQ = ''; sfx('uiCursorMove'); return true; }
             if (verb === 'sockclose') { P.socket = null; P.sockQ = ''; sfx('uiCursorMove'); return true; }
+            if (verb === 'fold') { _hqRackFoldSet(b); P.socket = null; P.sockQ = ''; sfx('uiCursorMove'); return true; }   // THE RACK BY FAMILY (Phase 7)
             if (verb === 'node') {
                 const r = _hqPartyTx(p => window.hqPartyTreeClick(p, a, b, null));
                 if (r && !r.ok && r.reason === 'socket') { P.socket = (P.socket === b) ? null : b; P.sockQ = ''; sfx('uiCursorMove'); return true; }   // ＋ BORROW toggles the picker
@@ -2162,7 +2179,7 @@
             const units = rec ? _hqPauseUnits(rec) : {};
             const nameOf = id => { const m = rec.members.find(x => x.id === id); return m ? _hqEsc(m.name || m.cls) : ''; };
             const say = (h, bad) => _hqPauseSay(h, bad);
-            if (verb === 'circuit' || verb === 'node' || verb === 'sock' || verb === 'sockclose' || verb === 'spelldef' || verb === 'spellrnd' || verb === 'spellclr' || verb === 'upg') { _hqPartyCircuitAct(verb, a, b, String(act).split(':')[3] || null); }   // THE CIRCUIT IN THE FIELD (2026-09-21)
+            if (verb === 'circuit' || verb === 'node' || verb === 'fold' || verb === 'sock' || verb === 'sockclose' || verb === 'spelldef' || verb === 'spellrnd' || verb === 'spellclr' || verb === 'upg') { _hqPartyCircuitAct(verb, a, b, String(act).split(':')[3] || null); }   // THE CIRCUIT IN THE FIELD (2026-09-21)
             else if (verb === 'cancel') { P.arm = null; }
             else if (verb === 'enlist') {
                 const r = _hqPartyTx(p => window.hqPartyEnlist(p, { race: a, gender: b }));
