@@ -19,7 +19,7 @@
 //      offensive product (type 1.30/0.75 × STAB 1.25 × downhill × range
 //      profile × bonusVsStatus, cap ×3.0), marked +40, offenseScale
 //      (level magnitude × 1.75 pace × gap), real armor × defenseScale,
-//      height soak, Tank bulwark, status damage-taken mults. Kill checks
+//      height soak, Bulwark soak, status damage-taken mults. Kill checks
 //      beat hp + shield.
 //   3. Plan the turn shape — the engine turn is [≤1 setup action or
 //      move] + [1 damaging action → turn ends], with ONE press refund
@@ -395,7 +395,9 @@
         let p = u.spellPower || 0;
         try { if (typeof g.getSpellStatBonus === 'function') p += (g.getSpellStatBonus(u, sp) || 0); } catch (e) {}
         try { if (typeof g.getHourglassPower === 'function') p += (g.getHourglassPower(u) || 0); } catch (e) {}
-        if (u.cls === 'Black Mage') p += 8;   // Arcane Surge (data.js JOB_PASSIVES)
+        // Arcane Surge's rider — the passive rows' `spellPower` hook (sum), mirroring battle.js getPassiveSpellPowerBonus.
+        // THE JOBS REMOVAL (the user 2026-09-27): was a flat +8 for the Black Mage job.
+        if (typeof unitPassiveSum === 'function') p += (unitPassiveSum(u, 'spellPower') || 0);
         return p;
     }
     function _baseSpellDmg(sp) {
@@ -531,12 +533,14 @@
         // Level magnitude / pace / gap.
         est *= _offScale(unit, tg);
 
-        // Mitigation (defense-scaled armor; flat height soak; Tank bulwark).
+        // Mitigation (defense-scaled armor; flat height soak; Bulwark's damageSoak hook).
         if (!ignoreArmor) {
             const ds = _defScale(tg);
             est -= Math.round(_armorOf(tg, damageType) * ds);
             if (tgH > myH) est -= 5 * (tgH - myH);
-            if (tg.cls === 'Tank') est -= Math.round(8 * ds);
+            // Bulwark (passive row, `damageSoak` hook, sum — was the Tank job; THE JOBS REMOVAL 2026-09-27)
+            const _soak = (typeof unitPassiveSum === 'function') ? (unitPassiveSum(tg, 'damageSoak') || 0) : 0;
+            if (_soak) est -= Math.round(_soak * ds);
         }
         if (est < 1) est = 1;
 
@@ -2498,7 +2502,9 @@
             && target._censerRound !== (g.state.round || 0)) return 0;
         const probability = typeof getStatusApplyChance === 'function'
             ? getStatusApplyChance(source, target, effect) : (affinity === 'resist' ? 0.45 : 0.9);
-        const duration = (effect.duration || 1) + (source.cls === 'Psychic' ? 1 : 0);
+        // Third Eye (the `debuffTurnsBonus` hook, sum — was the Psychic job; THE JOBS REMOVAL 2026-09-27)
+        const duration = (effect.duration || 1)
+            + ((typeof unitPassiveSum === 'function') ? (unitPassiveSum(source, 'debuffTurnsBonus') || 0) : 0);
         return probability * (ccDenialValue(g, source, target, effect.id, duration, v)
             + statusSetupValue(g, source, target, effect.id, v));
     }
@@ -4495,7 +4501,9 @@
         const t = v.threatFn(unit.x, unit.y, unit.z);
         if (t.totalDmg <= 0) return;
         let score = Math.min(140, t.totalDmg * 0.18);
-        if ((unit.def || 0) >= 10 || unit.cls === 'Tank') score += 20;
+        // (THE JOBS REMOVAL 2026-09-27: "a Tank" is a Bulwark bearer now — the damageSoak hook)
+        if ((unit.def || 0) >= 10
+            || (typeof unitPassiveSum === 'function' && (unitPassiveSum(unit, 'damageSoak') || 0) > 0)) score += 20;
         if ((unit.hourglasses || 0) > 0) score += 25;
         if (v.closestEnemyDist > 5) score = Math.min(score, 8);
         const ws = v.winState;

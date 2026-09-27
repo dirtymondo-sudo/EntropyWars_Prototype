@@ -114,23 +114,26 @@ test('EWCharViewer exposes the MOVE PREVIEW API', () => {
     assert.ok(/Math\.min\(ms, 1400\)/.test(TR), 'the preview keeps the board\'s 1.4 s cap (opts.full lifts it)');
 });
 
-test('the tier rack, the technique panel and the preview triggers are in the builder', () => {
+test('the family-tab rack, the technique panel and the preview triggers are in the builder', () => {
     for (const sym of ['function SpellTierPanel(', 'function pbTierCtx(', 'function pbTierGrid(', 'function pbTierStep(', 'function pbTechInfo(', 'function TechniquePanel(', 'const pbPreview = ', 'const techVerb = ']) {
         assert.ok(PB.includes(sym), `${sym} missing`);
     }
-    assert.ok(PB.includes("className: 'pb-circuit pb-rack'") && PB.includes("className: 'pb-technique'"), 'rack / technique classes missing');
-    // 2026-09-24 SPELL TIERS: a loadout strip of 7 cells over four tier rows (IV → I), chips carry their SP cost
-    for (const sym of ["className: 'pb-loadout'", "className: 'pb-tiers'", "className: 'pb-tier'", "className: 'pb-tier-head'", "className: 'pb-tier-cells'", "className: 'pb-tc-cost'", "className: 'pb-tn-disc'", "className: 'pb-tn-name'", "className: 'pb-tn-meta'", 'function pbNodeMeta(sp)', "className: 'pb-sp'"]) {
+    assert.ok(PB.includes("className: 'pb-circuit pb-rack pb-rack-tabs'") && PB.includes("className: 'pb-technique'"), 'rack / technique classes missing');
+    // 2026-09-27 THE FAMILY TABS: seven slot cards (+ the ALWAYS READY cell) over one tab per family; cards carry their SP cost
+    for (const sym of ["className: 'pb-loadout'", "className: 'pb-ls-ready'", "'pb-ls-mini pb-ls-root'", "className: 'pb-rack-head'", "className: 'pb-rack-body'",
+                       "className: 'pb-famtabs'", "className: 'pb-fambody'", "className: 'pb-famhead'", "className: 'pb-famrule'", "className: 'pb-tier-cells'",
+                       "className: 'pb-tc-cost'", "className: 'pb-tn-disc'", "className: 'pb-tn-name'", "className: 'pb-tn-meta'", 'function pbNodeMeta(sp)', "className: 'pb-sp'"]) {
         assert.ok(PB.includes(sym), `${sym} missing from the rack`);
     }
+    for (const gone of ["className: 'pb-tiers'", "className: 'pb-tier'", "className: 'pb-tier-head'", 'ew_rack_group']) assert.ok(!PB.includes(gone), `${gone}: the tier rows are gone`);
     assert.ok(!/const TREE_NODE_POS = \{/.test(PB) && !/function treeStepKey\(/.test(PB), 'the node graph is gone');
-    assert.ok(/const PB_TIER_ORDER = \[4, 3, 2, 1\];/.test(PB), 'the rack reads Tier IV first');
+    assert.ok(/'pb-famtab k-' \+ t\.kind/.test(PB) && /t\.locked \? ' locked' : ''/.test(PB), 'a tab wears its kind and its lock');
     assert.ok(PB.includes("className: 'pb-stage-pill live'"), 'the MOVE PREVIEW pill is missing');
     assert.ok(PB.includes('window.EW_NO_PB_PREVIEW') && PB.includes('st.animationsDisabled'), 'the preview kill-switches are missing');
     assert.ok(/pbPreview\(sp \|\| null, \{ hover: true \}\)/.test(PB), 'node hover must preview (debounced)');
     assert.ok(/cv\.playSpell\(sp, \{ attack: !sp/.test(PB), 'the builder must go through EWCharViewer.playSpell');
     assert.ok(!/VFX3D\.fire\(/.test(PB), 'party-builder.js must never call the relayed VFX3D.fire');
-    for (const sel of ['.pb-rack', '.pb-loadout', '.pb-ls', '.pb-tiers', '.pb-tier', '.pb-tier-head', '.pb-tier-cells', '.pb-tn', '.pb-tn-disc', '.pb-sp', '.pb-tech-bar', '.pb-pips', '.pb-technique', '.pb-verb', '.pb-stage-pill']) {
+    for (const sel of ['.pb-rack', '.pb-loadout', '.pb-ls', '.pb-ls-ready', '.pb-famtabs', '.pb-famtab', '.pb-fambody', '.pb-famhead', '.pb-famrule', '.pb-tier-cells', '.pb-tn', '.pb-tn-disc', '.pb-sp', '.pb-tech-bar', '.pb-pips', '.pb-technique', '.pb-verb', '.pb-stage-pill']) {
         assert.ok(CSS.includes(sel + ' {') || CSS.includes(sel + ','), `${sel} rule missing`);
     }
 });
@@ -251,7 +254,10 @@ test('ROSTER is the wall (Stage 4): tiles, round filters, hover → the stage, n
     assert.ok(/const PB_TYPE_GLYPH = \{ human: 'HU', alien: 'AL', divine: 'DV', unholy: 'UH', tech: 'TK', anomaly: 'AN' \};/.test(PB), 'the six type glyphs are missing');
     assert.ok(/onMouseEnter: \(\) => rosterHoverIn\(entry\)/.test(PB) && /className: 'pb-roster', onMouseLeave: rosterHoverOut/.test(PB), 'the wall must preview on hover and restore on leave');
     assert.ok(/h\(HeroViewer3D, \{ race:stageRace, gender:stageGender, cls:stageCls, faction:stageFaction, focus: stageCx, appearance: !stageEntry && unitRace === 'homosapien' \? meta\.appearance : null \}\)/.test(PB), 'the stage must follow the hovered vessel');
-    assert.ok(/pbMenu === 'sort'/.test(PB) && /pbMenu === 'job'/.test(PB), 'the SORT / JOB menus must be glass windows');
+    assert.ok(/pbMenu === 'sort'/.test(PB), 'the SORT menu must be a glass window');
+    // THE JOBS REMOVAL (2026-09-27): no JOB filter on the wall; the tile's role line reads the race's role
+    assert.ok(!/pbMenu === 'job'/.test(PB) && !/jobFilter/.test(PB), 'the JOB menu / filter is gone');
+    assert.ok(PB.includes("h('div', { className: 'pb-rtile-job' }, pbRoleLabel(entry.race))"), 'the tile names the race role');
     const rosterSrc = PB.slice(PB.indexOf('const rosterPanel = h(React.Fragment'), PB.indexOf('// TECHNIQUES: the abilities head'));
     assert.ok(!/h\('select'/.test(rosterSrc), 'no native <select> on the wall (C-9)');
     assert.ok(!PB.includes("className:'pb-vessel-card'"), 'the old codex card must be gone');
@@ -397,7 +403,7 @@ test('party-builder: the archive grows a sheet to the reserve roster and the pre
     assert.ok(PB.includes('teamWindow, pickWindow,'), 'the picker window is not mounted');
 });
 
-test('THE BORROW PICKER (2026-09-14, per tier since 2026-09-24): five category tabs + the filter row on the Freelancer pool; the classifiers hold on the real race pool', () => {
+test('THE BORROW PICKER (2026-09-14; Adaptable since the jobs removal, 2026-09-27): five category tabs + the filter row on the borrowed pool; the classifiers hold on the real pool', () => {
     const m = PB.match(/const PB_SOCKET_TABS = \[([\s\S]*?)\];/);
     assert.ok(m, 'PB_SOCKET_TABS missing');
     const ids = [...m[1].matchAll(/id:\s*'([a-z]+)'/g)].map(x => x[1]);
@@ -420,8 +426,13 @@ test('THE BORROW PICKER (2026-09-14, per tier since 2026-09-24): five category t
     const ctx = { window: { _flTierOf: D._flTierOf }, classifySpellLocal: (sp) => D.classifySpell ? D.classifySpell(sp) : 'damage' };
     vm.createContext(ctx);
     vm.runInContext(block + '\nthis.pbSpellShape = pbSpellShape; this.pbSpellDmgKind = pbSpellDmgKind; this.pbSocketFilterMatch = pbSocketFilterMatch;', ctx);
-    const pool = D.flRacePool('homosapien').concat(D.flWildcardPool('homosapien'));
-    assert.ok(pool.length > 100, 'the pool is the race + job abilities');
+    // the window opens only on an Adaptable kit and lists the borrowed families (data.js unitSpellPoolParts.borrowRace)
+    assert.ok(/if \(!flSocketPick \|\| !unitTiers \|\| !unitTiers\.borrows\) return \[\];/.test(PB) && /unitTiers\.parts\.borrowRace\.filter\(/.test(PB), 'the pool is the Adaptable borrow window');
+    assert.ok(/const socketOpen = flSocketPick && unitTiers\.borrows;/.test(PB), 'no Adaptable, no window');
+    assert.strictEqual(D.unitSpellPoolParts('homosapien', D.UNIT_CLASS, []).borrowRace.length, 0, 'no Adaptable → nothing borrowed');
+    const borrowed = D.unitSpellPoolParts('homosapien', D.UNIT_CLASS, [D.ADAPTABLE_ROW_ID]).borrowRace.map(id => D.SPELL_BY_ID[id]).filter(Boolean);
+    const pool = D.unitSpellPoolParts('homosapien', D.UNIT_CLASS, []).race.map(id => D.SPELL_BY_ID[id]).filter(Boolean).concat(borrowed);
+    assert.ok(borrowed.length > 100, 'the borrow window is every other race\'s families');
     const shapes = { single: 0, multi: 0, aoe: 0, line: 0, self: 0 };
     for (const sp of pool) {
         const sh = ctx.pbSpellShape(sp);

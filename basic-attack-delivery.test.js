@@ -43,7 +43,7 @@ function makeCtx(opts) {
         _unitAttacksWithClip: (u) => !!(opts.defs && opts.defs[u.race]),
     };
     vm.createContext(ctx);
-    vm.runInContext(between(battle, '        const BASIC_ATTACK_JOB_KINDS = {', '        function triggerCastAnim('), ctx);
+    vm.runInContext(between(battle, '        const BASIC_ATTACK_RACE_FIRST = {', '        function triggerCastAnim('), ctx);
     return ctx;
 }
 
@@ -51,46 +51,64 @@ const defs = {
     minotaur: { basicAttackKind: 'punch' },
     fairy: { basicAttackKind: 'magic' },
     cowboy: {},
-    robinhood: { basicAttackKind: 'arrow' },
+    reptilian: { basicAttackKind: 'punch' },
+    archer: { basicAttackKind: 'arrow' },
+    pitcher: { basicAttackKind: 'throw' },
     quarterback: { basicAttackKind: 'throw' },
     priest: { basicAttackKind: 'magic' },
 };
 
-test('the kind: gun jobs first, then the authored def, then the mage jobs, the race table, the reach', () => {
+/* THE JOBS REMOVAL (2026-09-27): the job-keyed tables (BASIC_ATTACK_JOB_KINDS / BASIC_ATTACK_MAGE_JOBS) are gone;
+   the same precedence is keyed by RACE (BASIC_ATTACK_RACE_FIRST / BASIC_ATTACK_RACE_CASTERS), and unit.cls is
+   never read. */
+test('the job tables are gone: the classifier is keyed by race, never by cls', () => {
+    assert.doesNotMatch(battle, /BASIC_ATTACK_JOB_KINDS|BASIC_ATTACK_MAGE_JOBS/, 'the job-keyed tables are deleted');
+    const body = between(battle, '        function basicAttackKindOf(', '        function basicAttackDelivery(');
+    assert.doesNotMatch(body, /\.cls\b/, 'basicAttackKindOf never reads unit.cls');
+    assert.match(body, /BASIC_ATTACK_RACE_FIRST\[unit\.race\][\s\S]*getRace3DModel[\s\S]*BASIC_ATTACK_RACE_CASTERS\[unit\.race\][\s\S]*BASIC_ATTACK_RACE_KINDS\[unit\.race\]/,
+        'the order: gun / psychic races, the def, the caster races, the race table, the reach');
+});
+
+test('the kind: gun / psychic races first, then the authored def, then the caster races, the race table, the reach', () => {
     const ctx = makeCtx({ defs });
     const K = ctx.basicAttackKindOf;
-    assert.equal(K({ race: 'minotaur', cls: 'Warrior' }), 'punch', 'the def');
-    assert.equal(K({ race: 'minotaur', cls: 'Gunslinger', range: 2 }), 'ranged', 'a Gunslinger of any race shoots');
-    assert.equal(K({ race: 'minotaur', cls: 'Psychic', range: 2 }), 'magic', 'a Psychic zaps');
-    assert.equal(K({ race: 'fairy', cls: 'Warrior' }), 'magic', 'the def beats the job for non-gun jobs');
-    assert.equal(K({ race: 'cowboy', cls: 'Raider' }), 'ranged', 'the race table (no def kind)');
-    assert.equal(K({ race: 'ki fighter', cls: 'Black Mage' }), 'magic', 'a Black Mage with no def kind zaps');
-    assert.equal(K({ race: 'nordic', cls: 'Warrior', range: 1 }), 'melee', 'reach 1, nothing else known');
-    assert.equal(K({ race: 'nordic', cls: 'Warrior', range: 3 }), 'ranged', 'reach > 1, nothing else known');
+    assert.equal(K({ race: 'minotaur', cls: 'Vessel' }), 'punch', 'the def');
+    assert.equal(K({ race: 'minotaur', cls: 'Gunslinger', range: 2 }), 'punch', 'a stale job string changes nothing');
+    assert.equal(K({ race: 'reptilian', cls: 'Vessel' }), 'ranged', 'a gun race beats its def');
+    assert.equal(K({ race: 'ghost', cls: 'Vessel' }), 'magic', 'a psychic race zaps before any def');
+    assert.equal(K({ race: 'fairy', cls: 'Vessel' }), 'magic', 'the def');
+    assert.equal(K({ race: 'cowboy', cls: 'Vessel' }), 'ranged', 'a gun race (no def kind)');
+    assert.equal(K({ race: 'wizard', cls: 'Vessel' }), 'magic', 'a caster race with no def kind zaps');
+    assert.equal(K({ race: 'ki fighter', cls: 'Vessel' }), 'punch', 'the race table');
+    assert.equal(K({ race: 'nordic', cls: 'Vessel', range: 1 }), 'melee', 'reach 1, nothing else known');
+    assert.equal(K({ race: 'nordic', cls: 'Vessel', range: 3 }), 'ranged', 'reach > 1, nothing else known');
     assert.equal(K(null), 'melee');
 });
 
 test('the delivery: shots carry a bolt / prop, leaps carry nothing', () => {
-    const ctx = makeCtx({ defs, projOverride: { quarterback: 'proj-football' } });
+    const ctx = makeCtx({ defs, projOverride: { quarterback: 'proj-football', pitcher: 'proj-football' } });
     /* vm-realm objects are never reference-equal to ours — compare by value */
     const D = (u) => JSON.parse(JSON.stringify(ctx.basicAttackDelivery(u)));
-    const gun = D({ race: 'cowboy', cls: 'Raider' });
+    const gun = D({ race: 'cowboy', cls: 'Vessel' });
     assert.deepEqual(gun, { mode: 'shot', kind: 'ranged', bolt: '_bolt_bullet', proj: 'proj-bullet' });
-    const orb = D({ race: 'fairy', cls: 'Warrior', types: ['anomaly'] });
+    const orb = D({ race: 'fairy', cls: 'Vessel', types: ['anomaly'] });
     assert.deepEqual(orb, { mode: 'shot', kind: 'magic', bolt: '_bolt_psi', proj: null });
     assert.equal(D({ race: 'priest', types: ['divine'] }).bolt, '_bolt_divine');
     assert.equal(D({ race: 'priest', types: ['nothing'] }).bolt, '_bolt_ki', 'an unknown type gets the ki orb');
-    const arrow = D({ race: 'robinhood' });
+    const arrow = D({ race: 'archer' });
     assert.deepEqual(arrow, { mode: 'shot', kind: 'arrow', bolt: '_bolt_arrow', proj: null });
-    const ball = D({ race: 'quarterback' });
-    assert.deepEqual(ball, { mode: 'shot', kind: 'throw', bolt: null, proj: 'proj-football' }, 'the football IS the shot');
-    const leap = D({ race: 'minotaur', cls: 'Warrior', range: 3 });
+    const ball = D({ race: 'pitcher' });
+    assert.deepEqual(ball, { mode: 'shot', kind: 'throw', bolt: null, proj: 'proj-football' }, 'the thrown prop IS the shot');
+    const qb = D({ race: 'quarterback' });
+    assert.deepEqual(qb, { mode: 'shot', kind: 'ranged', bolt: null, proj: 'proj-football' },
+        'the quarterback is a gun race (his old job) and still throws his football');
+    const leap = D({ race: 'minotaur', cls: 'Vessel', range: 3 });
     assert.deepEqual(leap, { mode: 'leap', kind: 'punch', bolt: null, proj: null }, 'a brawler leaps at any reach');
 });
 
 test('playBasicAttackShot: the bolt + the round for a gun, the orb alone for magic, the prop alone for a thrower', () => {
     const ctx = makeCtx({ defs, projOverride: { quarterback: 'proj-football' } });
-    const me = { id: 1, x: 0, y: 0, z: 0, race: 'cowboy', cls: 'Raider' };
+    const me = { id: 1, x: 0, y: 0, z: 0, race: 'cowboy', cls: 'Vessel' };
     const foe = { id: 2, x: 3, y: 0, z: 2 };
     ctx.playBasicAttackShot(me, foe, null, 400);
     assert.equal(ctx.calls.bolts.length, 1);

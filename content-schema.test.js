@@ -12,29 +12,40 @@ const { loadGameData } = require('./load-data');
 
 const D = loadGameData();
 
-test('every race has a profile and a valid default job', () => {
-    const classes = new Set(Object.keys(D.CLASS_TEMPLATES));
+/* THE JOBS REMOVAL (the user, 2026-09-27): no jobs — every unit's class is the one neutral UNIT_CLASS; a race's
+   basic-attack / inspect reach is its RACE_KITS row (raceKit, defaults 1 / 1). */
+test('every race has a profile and a valid raceKit; the one class is UNIT_CLASS', () => {
+    assert.strictEqual(D.UNIT_CLASS, 'Vessel');
+    assert.strictEqual(JSON.stringify(Object.keys(D.CLASS_TEMPLATES)), JSON.stringify([D.UNIT_CLASS]), 'CLASS_TEMPLATES holds only the Vessel');
+    for (const gone of ['RACE_DEFAULT_JOBS', 'JOB_ARCHETYPES', 'JOB_KITS', 'JOB_MODIFIERS', 'computeSecJobBonuses', 'JOB_PASSIVES',
+                        'CLASS_PASSIVES', 'getJobPassive', 'JOB_DISPLAY_NAMES', 'getJobDisplayName'])
+        assert.strictEqual(typeof D[gone], 'undefined', gone + ' is deleted');
     const problems = [];
     for (const race of D.AVAILABLE_RACES) {
         const prof = D.RACE_PROFILES[race];
         if (!prof) { problems.push(`race '${race}' has no RACE_PROFILES entry`); continue; }
         if (!prof.label) problems.push(`race '${race}' profile has no label`);
         if (!Array.isArray(prof.types) || !prof.types.length) problems.push(`race '${race}' profile has no types`);
-        const job = D.RACE_DEFAULT_JOBS[race];
-        if (!job) problems.push(`race '${race}' has no RACE_DEFAULT_JOBS entry`);
-        else if (!classes.has(job)) problems.push(`race '${race}' default job '${job}' is not a CLASS_TEMPLATES class`);
+        const kit = D.raceKit(race);
+        if (!kit || !Number.isInteger(kit.range) || kit.range < 1 || kit.range > 4) problems.push(`race '${race}' raceKit range is ${kit && kit.range}`);
+        if (!kit || !Number.isInteger(kit.inspect) || kit.inspect < 1) problems.push(`race '${race}' raceKit inspect is ${kit && kit.inspect}`);
     }
     assert.deepStrictEqual(problems, []);
+    assert.strictEqual(JSON.stringify(D.raceKit('no such race')), JSON.stringify({ range: 1, inspect: 1 }), 'an unlisted race is melee / inspect 1');
+    assert.strictEqual(D.raceKit('marksman').range, 4, 'the old Sniper races keep their reach');
 });
 
-test('every RACE_PROFILES / RACE_DEFAULT_JOBS key is a known race', () => {
+test('every RACE_PROFILES / RACE_KITS key is a known race', () => {
     const races = new Set(D.AVAILABLE_RACES);
     const problems = [];
     for (const k of Object.keys(D.RACE_PROFILES)) {
         if (!races.has(k)) problems.push(`RACE_PROFILES key '${k}' is not in AVAILABLE_RACES`);
     }
-    for (const k of Object.keys(D.RACE_DEFAULT_JOBS)) {
-        if (!races.has(k)) problems.push(`RACE_DEFAULT_JOBS key '${k}' is not in AVAILABLE_RACES`);
+    for (const k of Object.keys(D.RACE_KITS)) {
+        if (!races.has(k)) problems.push(`RACE_KITS key '${k}' is not in AVAILABLE_RACES`);
+    }
+    for (const side of [1, 2]) for (const r of D.DEFAULT_PARTY_RACES[side]) {
+        if (!races.has(r)) problems.push(`DEFAULT_PARTY_RACES[${side}] race '${r}' is not in AVAILABLE_RACES`);
     }
     assert.deepStrictEqual(problems, []);
 });
@@ -68,9 +79,9 @@ function validateSpell(sp, where, classes, problems) {
             problems.push(`${label}: ${num} is ${sp[num]}`);
         }
     }
-    if (sp.classRestriction && !classes.has(sp.classRestriction)) {
-        problems.push(`${label}: classRestriction '${sp.classRestriction}' is not a known class`);
-    }
+    /* THE JOBS REMOVAL (2026-09-27): the job gates are deleted from every row */
+    if (sp.classRestriction !== undefined) problems.push(`${label}: still carries classRestriction '${sp.classRestriction}'`);
+    if (sp.jobRequirement !== undefined) problems.push(`${label}: still carries jobRequirement '${sp.jobRequirement}'`);
     if (sp.dmg !== undefined && (typeof sp.dmg !== 'number' || !isFinite(sp.dmg))) {
         problems.push(`${label}: dmg is ${sp.dmg}`);
     }
@@ -144,27 +155,24 @@ test('map metadata is well-formed', () => {
 
 /* ── Spell tree (Tree of Life selector) — SPELL_TREE_REDESIGN §5 ────────── */
 
-test('every CLASS_TREE branch is 4 known spells in ring-tier order (tiers 1,2,3,4)', () => {
+/* THE JOBS REMOVAL (2026-09-27): the job trees are gone (CLASS_TREE / getClassTreeSpells / _JOB_TREE_IDS). What stays is
+   CLASS_SPELL_LEARN_ORDER as PRICING DATA only — its rows still set the MP ring of 52 spells (buildTreeRingIndex). */
+test('no job trees; CLASS_SPELL_LEARN_ORDER is ring-pricing data: known spells, rungs in tier order 1,2,3,4', () => {
+    for (const gone of ['CLASS_TREE', 'getClassTreeSpells', '_JOB_TREE_IDS', 'flWildcardPool', 'flOwnedJobs', 'SECONDARY_JOB_LEVEL'])
+        assert.strictEqual(typeof D[gone], 'undefined', gone + ' is deleted');
+    assert.ok(D.classHasSpellTree(D.UNIT_CLASS) && D.classHasSpellTree('Freelancer') && D.classHasSpellTree(undefined),
+        'classHasSpellTree always says yes — every unit has the one kit');
     const problems = [];
-    for (const [job, ids] of Object.entries(D.CLASS_TREE)) {
-        if (!Array.isArray(ids) || ids.length !== 4) { problems.push(`job '${job}' tree is not 4 spells`); continue; }
-        const tiers = ids.map(id => D.SPELL_BY_ID[id] ? D.SPELL_BY_ID[id].tier : null);
-        ids.forEach((id, i) => { if (!D.SPELL_BY_ID[id]) problems.push(`job '${job}' ring ${i + 1} id '${id}' unknown`); });
-        const want = [1, 2, 3, 4];   // Phase 0 (SPELL_LIBRARY_PLAN.md §4.1): the explicit numeric tier, stamped from the rung
-        if (JSON.stringify(tiers) !== JSON.stringify(want)) {
-            problems.push(`job '${job}' ring tiers are ${tiers.join(',')} (want ${want.join(',')})`);
-        }
-        // learn order must stay the tree in ring order (level unlocks = rings)
-        const order = (D.CLASS_SPELL_LEARN_ORDER[job] || []).slice(0, 4);
-        if (JSON.stringify(order) !== JSON.stringify(ids)) {
-            problems.push(`job '${job}' CLASS_SPELL_LEARN_ORDER diverges from CLASS_TREE`);
-        }
+    for (const [job, ids] of Object.entries(D.CLASS_SPELL_LEARN_ORDER)) {
+        if (!Array.isArray(ids) || ids.length < 4) { problems.push(`learn order '${job}' is not 4+ spells`); continue; }
+        ids.forEach((id, i) => { if (!D.SPELL_BY_ID[id]) problems.push(`learn order '${job}' #${i + 1} id '${id}' unknown`); });
+        const tiers = ids.slice(0, 4).map(id => D.SPELL_BY_ID[id] ? D.SPELL_BY_ID[id].tier : null);
+        if (JSON.stringify(tiers) !== '[1,2,3,4]') problems.push(`learn order '${job}' rung tiers are ${tiers.join(',')} (want 1,2,3,4)`);
     }
-    assert.ok(Object.keys(D.CLASS_TREE).length >= 13, 'expected 13+ job trees');
-    // Freelancer's tree is part-fixed/part-socket (FL_FIXED + FL_SOCKET_TIERS),
-    // so it has no CLASS_TREE row — but classHasSpellTree must route it in.
-    assert.ok(!D.CLASS_TREE.Freelancer, 'Freelancer has no CLASS_TREE row (socket tree instead)');
-    assert.ok(D.classHasSpellTree('Freelancer'), 'Freelancer must be tree-routed (Phase B)');
+    assert.ok(Object.keys(D.CLASS_SPELL_LEARN_ORDER).length >= 13, 'the pricing rows survive');
+    const rings = D.buildTreeRingIndex();
+    assert.strictEqual(rings.kneecapShot, 0, 'an old pillar rung 1 still prices at ring 1');
+    assert.strictEqual(rings.headshot, 3, 'an old capstone still prices at ring 4');
     assert.deepStrictEqual(problems, []);
 });
 
@@ -172,8 +180,7 @@ test('every CLASS_TREE branch is 4 known spells in ring-tier order (tiers 1,2,3,
    CHAMP_REWORK_PLAN §4: the node holds two alternates, one equips. */
 const treeEntryIds = (e) => Array.isArray(e) ? e : [e];
 
-test('every RACE_TREE entry is 4 known abilities of that race (or twin pairs), none owned by a job tree', () => {
-    const jobIds = new Set(Object.values(D.CLASS_TREE).flat());
+test('every RACE_TREE entry is 4 known abilities of that race (or twin pairs)', () => {
     const problems = [];
     for (const [race, row] of Object.entries(D.RACE_TREE)) {
         if (!D.RACE_ABILITIES[race]) { problems.push(`RACE_TREE race '${race}' unknown`); continue; }
@@ -192,7 +199,6 @@ test('every RACE_TREE entry is 4 known abilities of that race (or twin pairs), n
             for (const id of treeEntryIds(entry)) {
                 if (!D.SPELL_BY_ID[id]) problems.push(`race '${race}' tree id '${id}' unknown`);
                 else if (!own.has(id)) problems.push(`race '${race}' tree id '${id}' not in its RACE_ABILITIES`);
-                if (jobIds.has(id)) problems.push(`race '${race}' tree id '${id}' also lives in a job tree`);
                 if (seen.has(id)) problems.push(`race '${race}' tree repeats '${id}'`);
                 seen.add(id);
             }
@@ -227,7 +233,7 @@ test('every race capstone (ring 4) is tier 4; rings 1–3 are not — twins shar
     assert.deepStrictEqual(problems, []);
 });
 
-test('twin nodes: faces, alts, both alternates equippable, shared tier, Freelancer', () => {
+test('twin nodes: faces, alts, both alternates equippable, shared tier, the Adaptable borrow', () => {
     // at least the Phase-2 free twins exist
     const twinRaces = Object.keys(D.RACE_TREE).filter(r => D.RACE_TREE[r].some(Array.isArray));
     assert.ok(twinRaces.length >= 8, `expected the Phase-2 twin rows, found ${twinRaces.length}`);
@@ -239,7 +245,7 @@ test('twin nodes: faces, alts, both alternates equippable, shared tier, Freelanc
     assert.ok(D.getRaceTreeAllIds('quarterback').includes('raceSpikeTheBall'));
     assert.strictEqual(JSON.stringify(D.getRaceTreeAlts('knight')), '{}');
     // 2026-09-24 SPELL TIERS: a twin is two spells of the same tier — both may be equipped
-    const ok = (ids) => D.isTreeLoadoutLegal('quarterback', 'Sniper', '', ids);
+    const ok = (ids) => D.isTreeLoadoutLegal('quarterback', D.UNIT_CLASS, '', ids);
     assert.ok(ok(['raceAudible', 'raceSpikeTheBall']), 'both alternates legal together');
     assert.ok(ok(['raceSpikeTheBall']), 'an alternate needs no lower rung');
     assert.strictEqual(D.spellTierOf('raceSpikeTheBall'), D.spellTierOf('raceAudible'), 'twins share a tier');
@@ -249,19 +255,20 @@ test('twin nodes: faces, alts, both alternates equippable, shared tier, Freelanc
     assert.strictEqual(D.SPELL_BY_ID.raceSpikeTheBall.cost, D.TREE_RING_MP_COSTS[2]);
     // repair keeps both alternates
     assert.strictEqual(
-        JSON.stringify(D.treeLegalSubset('quarterback', 'Sniper', '', ['raceBulletPass', 'raceSpikeTheBall', 'raceAudible'])),
+        JSON.stringify(D.treeLegalSubset('quarterback', D.UNIT_CLASS, '', ['raceBulletPass', 'raceSpikeTheBall', 'raceAudible'])),
         JSON.stringify(['raceBulletPass', 'raceSpikeTheBall', 'raceAudible']));
     // random kits over twin races stay legal
     for (const race of twinRaces) {
-        const cls = D.RACE_DEFAULT_JOBS[race] || 'Warrior';
+        const cls = D.UNIT_CLASS;
         for (let i = 0; i < 10; i++) {
             const walk = D.buildTreeLegalLoadout(race, cls, '');
             assert.ok(D.isTreeLoadoutLegal(race, cls, '', walk), `twin kit illegal for ${race}: ${walk.join(',')}`);
         }
     }
-    // Freelancer: own race twins behave the same; the job pool never holds race ids
-    assert.ok(D.isTreeLoadoutLegal('ki fighter', 'Freelancer', '', ['raceKiBlast', 'raceKiWave', 'raceFlurryOfBlows']), 'FL both alternates legal');
-    assert.ok(!D.flWildcardPool('ki fighter').some(sp => sp.id === 'raceKiWave' || sp.id === 'raceKiBlast'), 'FL job pool excludes race twins');
+    // an Adaptable (borrowing) kit: own race twins behave the same; the borrow pool never holds the race's own twins
+    const A = D.ADAPTABLE_ROW_ID;
+    assert.ok(D.isTreeLoadoutLegal('ki fighter', D.UNIT_CLASS, '', [A, 'raceKiBlast', 'raceKiWave', 'raceFlurryOfBlows']), 'Adaptable: both alternates legal');
+    assert.ok(!D.flRacePool('ki fighter').some(sp => sp.id === 'raceKiWave' || sp.id === 'raceKiBlast'), 'the borrow pool excludes the own twins');
 });
 
 test('§2.1 single-stat rule: only capstones may boost two stats at once', () => {
@@ -283,95 +290,104 @@ test('§2.1 single-stat rule: only capstones may boost two stats at once', () =>
 test('tier legality: SP cost by rung, 16 SP, 7 slots, no adjacency, random kits', () => {
     assert.strictEqual(D.SPELL_SP_MAX, 16);
     assert.strictEqual(D.SPELL_SLOT_MAX, 7);
-    // vampire Sniper — a fully-audited race with a full job pillar
-    const ok = (ids) => D.isTreeLoadoutLegal('vampire', 'Sniper', '', ids);
-    for (const [id, sp] of [['kneecapShot', 1], ['camouflage', 2], ['precisionShot', 3], ['headshot', 4],
-                            ['raceBite', 1], ['racePredatorDrop', 4]]) {
+    // THE JOBS REMOVAL (2026-09-27): the marksman — the old Sniper pillar is its MARKSMANSHIP family now (+ camouflage in HUNTING)
+    const C = D.UNIT_CLASS;
+    const ok = (ids) => D.isTreeLoadoutLegal('marksman', C, '', ids);
+    const [r1, r2, r3, r4] = D.getRaceTreeSpells('marksman', C);
+    for (const [id, sp] of [['kneecapShot', 1], ['camouflage', 2], ['precisionShot', 3], ['headshot', 4], [r1, 1], [r2, 2], [r3, 3], [r4, 4]]) {
         assert.strictEqual(D.spellSpCost(id), sp, `${id} costs ${sp} SP`);
     }
     assert.ok(ok([]), 'empty loadout legal');
     assert.ok(ok(['headshot']), 'a Tier IV alone is legal — no climbing');
-    assert.ok(ok(['raceMistForm']), 'a Tier II race spell alone is legal');
-    assert.ok(ok(['headshot', 'racePredatorDrop']), 'two capstones legal (8 SP)');
-    assert.ok(ok(['kneecapShot', 'camouflage', 'precisionShot', 'headshot', 'raceBite', 'raceMistForm']),
-        'full job pillar + two race rungs = 13 SP, 6 slots');
+    assert.ok(ok([r2]), 'a Tier II race spell alone is legal');
+    assert.ok(ok(['headshot', r4]), 'two capstones legal (8 SP)');
+    assert.ok(ok(['kneecapShot', 'camouflage', 'precisionShot', 'headshot', r1, r2]),
+        'the old pillar + two race rungs = 13 SP, 6 slots');
     assert.strictEqual(D.loadoutSpUsed(['kneecapShot', 'camouflage', 'precisionShot', 'headshot']), 10);
-    assert.ok(!ok(['raceBite', 'raceBite']), 'duplicates illegal');
+    assert.ok(!ok([r1, r1]), 'duplicates illegal');
     assert.ok(!ok(['fire1']), 'off-pool spell illegal');
-    // SP cap: find the race's own ring-3 spell for a 4+4+4+3+… budget check
-    const r3 = D.getRaceTreeSpells('vampire', 'Sniper')[2];
-    assert.ok(ok(['headshot', 'racePredatorDrop', 'precisionShot', r3, 'raceBite', 'kneecapShot']),
-        '4+4+3+3+1+1 = 16 SP exactly is legal');
-    assert.ok(!ok(['headshot', 'racePredatorDrop', 'precisionShot', r3, 'camouflage', 'kneecapShot']), '4+4+3+3+2+1 = 17 SP is over');
-    assert.strictEqual(D.spellAddVerdict('vampire', 'Sniper', ['headshot', 'racePredatorDrop', 'precisionShot', r3, 'camouflage'], 'kneecapShot').reason, 'sp');
+    assert.ok(ok(['headshot', r4, 'precisionShot', r3, r1, 'kneecapShot']), '4+4+3+3+1+1 = 16 SP exactly is legal');
+    assert.ok(!ok(['headshot', r4, 'precisionShot', r3, 'camouflage', 'kneecapShot']), '4+4+3+3+2+1 = 17 SP is over');
+    assert.strictEqual(D.spellAddVerdict('marksman', C, ['headshot', r4, 'precisionShot', r3, 'camouflage'], 'kneecapShot').reason, 'sp');
     // verdict reasons
-    assert.strictEqual(D.spellAddVerdict('vampire', 'Sniper', ['headshot'], 'headshot').reason, 'dup');
-    assert.strictEqual(D.spellAddVerdict('vampire', 'Sniper', [], 'fire1').reason, 'pool');
+    assert.strictEqual(D.spellAddVerdict('marksman', C, ['headshot'], 'headshot').reason, 'dup');
+    assert.strictEqual(D.spellAddVerdict('marksman', C, [], 'fire1').reason, 'pool');
     // random kits are always legal, within both budgets
-    for (const [race, cls] of [['vampire', 'Sniper'], ['homosapien', 'Warrior'], ['gnome', 'Engineer'], ['dragon', 'Black Mage']]) {
+    for (const race of ['marksman', 'vampire', 'homosapien', 'gnome', 'dragon']) {
         for (let i = 0; i < 20; i++) {
-            const walk = D.buildTreeLegalLoadout(race, cls, '');
-            assert.ok(D.isTreeLoadoutLegal(race, cls, '', walk), `random kit illegal for ${race}/${cls}: ${walk.join(',')}`);
+            const walk = D.buildTreeLegalLoadout(race, C, '');
+            assert.ok(D.isTreeLoadoutLegal(race, C, '', walk), `random kit illegal for ${race}: ${walk.join(',')}`);
             assert.ok(walk.length <= D.SPELL_SLOT_MAX, 'kit within slot cap');
             assert.ok(D.loadoutSpUsed(walk) <= D.SPELL_SP_MAX, 'kit within SP cap');
         }
     }
     // repair: off-pool and over-budget ids drop, earlier picks win (JSON compare — vm realm)
     assert.strictEqual(
-        JSON.stringify(D.treeLegalSubset('vampire', 'Sniper', 'Raider', ['raceBite', 'fire1', 'headshot', 'raceMistForm', 'raceBite'])),
-        JSON.stringify(['raceBite', 'headshot', 'raceMistForm']));
+        JSON.stringify(D.treeLegalSubset('marksman', C, '', [r1, 'fire1', 'headshot', r2, r1])),
+        JSON.stringify([r1, 'headshot', r2]));
     assert.strictEqual(
-        JSON.stringify(D.treeLegalSubset('vampire', 'Sniper', '', ['headshot', 'racePredatorDrop', 'precisionShot', r3, 'camouflage', 'kneecapShot'])),
-        JSON.stringify(['headshot', 'racePredatorDrop', 'precisionShot', r3, 'camouflage']));
+        JSON.stringify(D.treeLegalSubset('marksman', C, '', ['headshot', r4, 'precisionShot', r3, 'camouflage', 'kneecapShot'])),
+        JSON.stringify(['headshot', r4, 'precisionShot', r3, 'camouflage']));
 });
 
-test('Freelancer borrows: race + job pools, any tier, same SP / slot budget', () => {
-    const fl = (ids) => D.isTreeLoadoutLegal('homosapien', 'Freelancer', '', ids);
+/* THE JOBS REMOVAL (2026-09-27): the Freelancer is gone — the ADAPTABLE training row (1 SP, a passive slot) opens the
+   borrow window (every other race's families); no job pool exists any more. */
+test('Adaptable borrows: other races\' families, any tier, same SP / slot budget; no job pool', () => {
+    const C = D.UNIT_CLASS, A = D.ADAPTABLE_ROW_ID;
+    assert.strictEqual(A, 'passiveAdaptable');
+    assert.strictEqual(D.spellSpCost(A), 1, 'Adaptable costs 1 SP');
+    const fl = (ids) => D.isTreeLoadoutLegal('homosapien', C, '', ids);
     // 2026-09-14: the old fixed spells are homosapien RACE abilities
     for (const id of ['improvise', 'jackOfAll', 'reallyGoodPunch']) {
         assert.ok(D.RACE_ABILITIES.homosapien.some(sp => sp.id === id), id + ' is a homosapien ability');
         assert.ok(!D.SPELL_LIBRARY.some(sp => sp.id === id), id + ' left the job library');
     }
     // 2026-09-27: the user's family export left Really Good Punch in Martial Arts, off the homosapien families → off its tree
-    for (const id of ['improvise', 'jackOfAll']) assert.ok(D.getRaceTreeAllIds('homosapien', 'Freelancer').includes(id), id + ' sits on the homosapien tree');
-    assert.ok(!D.getRaceTreeAllIds('homosapien', 'Freelancer').includes('reallyGoodPunch'));
+    for (const id of ['improvise', 'jackOfAll']) assert.ok(D.getRaceTreeAllIds('homosapien', C).includes(id), id + ' sits on the homosapien tree');
+    assert.ok(!D.getRaceTreeAllIds('homosapien', C).includes('reallyGoodPunch'));
     assert.strictEqual(D.RACE_TREE.homosapien.filter(Array.isArray).length, 2, 'two homosapien twin nodes');
     assert.ok(fl(['improvise', 'jackOfAll', 'raceUnderdogSpirit', 'raceIndomitableWill']), 'the homosapien race row');
     assert.ok(fl(['improvise', 'raceElbowGrease']), 'both alternates of a homosapien twin legal');
-    // the JOB pool
-    const pool = D.flWildcardPool('homosapien');
-    assert.ok(pool.length >= 40, 'job pool spans the job trees');
-    assert.ok(pool.every(sp => !['improvise', 'jackOfAll', 'reallyGoodPunch'].includes(sp.id)),
-        'the homosapien twins are not in the job pool');
-    // the RACE pool: every other race's tree, never this race's own
+    // no job pool: the parts keep the keys, empty
+    assert.strictEqual(typeof D.flWildcardPool, 'undefined', 'the Freelancer job pool is deleted');
+    const plain = D.unitSpellPoolParts('homosapien', C);
+    assert.strictEqual(plain.job.length, 0, 'no job part');
+    assert.strictEqual(plain.borrowJob.length, 0, 'no borrowed job part');
+    assert.strictEqual(plain.borrowRace.length, 0, 'no Adaptable → no borrow');
+    assert.ok(!D.loadoutBorrows([]) && !D.loadoutBorrows(undefined) && D.loadoutBorrows([A]));
+    // the RACE pool: every other race's families, never this race's own
     const rp = D.flRacePool('homosapien');
-    assert.ok(rp.length >= 200, 'race pool spans the race trees');
-    const own = new Set(D.getRaceTreeAllIds('homosapien', 'Freelancer'));
+    assert.ok(rp.length >= 200, 'race pool spans the other races\' families');
+    const own = new Set(D.getRaceTreeAllIds('homosapien', C));
     assert.ok(rp.every(sp => !own.has(sp.id)), 'own race row is not in the race pool');
-    const jobIds = new Set(Object.values(D.CLASS_TREE).flat());
-    assert.ok(rp.every(sp => !jobIds.has(sp.id)), 'no job-tree id in the race pool');
-    assert.ok(D.flRacePool('knight').some(sp => sp.id === 'raceIndomitableWill'), 'a knight Freelancer may borrow the homosapien capstone');
-    // the unit pool is own row + both borrow pools
-    const parts = D.unitSpellPoolParts('homosapien', 'Freelancer');
-    // SPELL LIBRARY Phase 6: the unit's own part now carries its families' members, so the borrow part skips those
+    assert.ok(D.flRacePool('knight').some(sp => sp.id === 'raceIndomitableWill'), 'an Adaptable knight may borrow the homosapien capstone');
+    // the Adaptable loadout's pool is own families + the borrow
+    const parts = D.unitSpellPoolParts('homosapien', C, [A]);
+    // SPELL LIBRARY Phase 6: the unit's own part carries its families' members, so the borrow part skips those
     assert.strictEqual(parts.borrowRace.length, rp.filter(sp => !parts.race.includes(sp.id)).length);
-    assert.strictEqual(parts.borrowJob.length, pool.filter(sp => !parts.race.includes(sp.id)).length);
-    const byTier = (list, t) => list.filter(sp => D.spellTierOf(sp) === t).map(sp => sp.id);
-    const j4 = byTier(pool, 4), r4 = byTier(rp, 4), j1 = byTier(pool, 1);
-    assert.ok(fl([j4[0]]), 'a Tier IV job borrow alone is legal');
-    assert.ok(fl([r4[0], j4[0]]), 'race + job capstones side by side');
-    assert.ok(fl([r4[0], r4[1], j4[0], j4[1]]), 'four Tier IVs = 16 SP');
-    assert.ok(!fl([r4[0], r4[1], j4[0], j4[1], j1[0]]), 'a fifth spell breaks 16 SP');
-    assert.ok(fl(j1.slice(0, 7)), 'seven Tier I borrows fill the slots');
-    assert.ok(!fl(j1.slice(0, 8)), 'an eighth never fits');
+    assert.strictEqual(parts.borrowJob.length, 0);
+    const byTier = (list, t) => list.filter(sp => D.spellTierOf(sp) === t && sp.kind !== 'passive').map(sp => sp.id);
+    const r4 = byTier(rp, 4), r3 = byTier(rp, 3), r1 = byTier(rp, 1);
+    assert.ok(!fl([r4[0]]), 'a borrow without Adaptable is off-pool');
+    assert.strictEqual(D.spellAddVerdict('homosapien', C, [], r4[0]).reason, 'pool');
+    assert.ok(D.spellAddVerdict('homosapien', C, [A], r4[0]).ok, 'with Adaptable the borrow may join');
+    assert.ok(fl([A, r4[0]]), 'a Tier IV borrow alone is legal (no climbing)');
+    assert.ok(fl([A, r4[0], r4[1], r4[2], r3[0]]), 'Adaptable + three Tier IVs + a Tier III = 16 SP');
+    assert.ok(!fl([A, r4[0], r4[1], r4[2], r3[0], r1[0]]), 'one more breaks 16 SP');
+    assert.ok(fl([A].concat(r1.slice(0, 6))), 'Adaptable + six Tier I borrows fill the slots');
+    assert.ok(!fl([A].concat(r1.slice(0, 7))), 'an eighth never fits');
     for (let i = 0; i < 20; i++) {
-        const walk = D.buildTreeLegalLoadout('homosapien', 'Freelancer', '');
-        assert.ok(fl(walk), `Freelancer random kit illegal: ${walk.join(',')}`);
+        const walk = D.buildTreeLegalLoadout('homosapien', C, '');
+        assert.ok(fl(walk), `random kit illegal: ${walk.join(',')}`);
+        assert.ok(!walk.includes(A), 'the AI never picks Adaptable');
     }
-    // repair: off-pool ids drop, earlier picks win
+    // repair: off-pool ids drop, earlier picks win; unequipping Adaptable drops every borrow
     assert.strictEqual(
-        JSON.stringify(D.treeLegalSubset('homosapien', 'Freelancer', '', [r4[0], 'noSuchSpell', r4[1], j4[0], j4[1], j1[0]])),
-        JSON.stringify([r4[0], r4[1], j4[0], j4[1]]));
+        JSON.stringify(D.treeLegalSubset('homosapien', C, '', [A, r4[0], 'noSuchSpell', r4[1], r4[2], r3[0], r1[0]])),
+        JSON.stringify([A, r4[0], r4[1], r4[2], r3[0]]));
+    assert.strictEqual(JSON.stringify(D.treeLegalSubset('homosapien', C, '', [r4[0], 'improvise', r4[1]])), JSON.stringify(['improvise']));
+    // the story officer starts Adaptable
+    assert.strictEqual(D.hqOfficerKit()[0], A, 'the officer\'s default kit leads with Adaptable');
 });
 
 /* ── Elemental affinity system (2026-09-01, ELEMENTAL_TYPES_PLAN.md) ────── */

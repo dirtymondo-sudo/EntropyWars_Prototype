@@ -96,8 +96,8 @@
                     2: [{x:3,y:1},{x:3,y:2}]
                 },
                 defaultBuilds: {
-                    1: ['Warrior', 'Black Mage'],
-                    2: ['Warrior', 'Black Mage']
+                    1: ['Vessel', 'Vessel'],
+                    2: ['Vessel', 'Vessel']
                 }
             },
             medium: {
@@ -122,8 +122,8 @@
                     2: [{x:7,y:2},{x:7,y:3},{x:7,y:4},{x:7,y:5}]
                 },
                 defaultBuilds: {
-                    1: ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage'],
-                    2: ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage']
+                    1: ['Vessel', 'Vessel', 'Vessel', 'Vessel'],
+                    2: ['Vessel', 'Vessel', 'Vessel', 'Vessel']
                 }
             },
             large: {
@@ -148,8 +148,8 @@
                     2: [{x:11,y:4},{x:10,y:4},{x:11,y:5},{x:11,y:6},{x:10,y:6},{x:11,y:7}]
                 },
                 defaultBuilds: {
-                    1: ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage', 'Agent', 'Tank'],
-                    2: ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage', 'Agent', 'Tank']
+                    1: ['Vessel', 'Vessel', 'Vessel', 'Vessel', 'Vessel', 'Vessel'],
+                    2: ['Vessel', 'Vessel', 'Vessel', 'Vessel', 'Vessel', 'Vessel']
                 }
             },
             xlarge: {
@@ -174,8 +174,8 @@
                     2: [{x:17,y:7},{x:16,y:7},{x:17,y:8},{x:16,y:8},{x:17,y:11},{x:16,y:11},{x:17,y:12},{x:16,y:12}]
                 },
                 defaultBuilds: {
-                    1: ['Warrior', 'Tank', 'Gunslinger', 'Gunslinger', 'Black Mage', 'White Mage', 'Agent', 'Agent'],
-                    2: ['Warrior', 'Tank', 'Gunslinger', 'Gunslinger', 'Black Mage', 'White Mage', 'Agent', 'Agent']
+                    1: ['Vessel', 'Vessel', 'Vessel', 'Vessel', 'Vessel', 'Vessel', 'Vessel', 'Vessel'],
+                    2: ['Vessel', 'Vessel', 'Vessel', 'Vessel', 'Vessel', 'Vessel', 'Vessel', 'Vessel']
                 }
             },
             huge: {
@@ -201,8 +201,8 @@
                     2: [{x:33,y:11},{x:34,y:12},{x:33,y:12},{x:34,y:13},{x:33,y:13},{x:34,y:14},{x:33,y:14},{x:34,y:15},{x:33,y:15},{x:34,y:16}]
                 },
                 defaultBuilds: {
-                    1: ['Warrior','Tank','Gunslinger','Gunslinger','Black Mage','Black Mage','White Mage','White Mage','Agent','Agent'],
-                    2: ['Warrior','Tank','Gunslinger','Gunslinger','Black Mage','Black Mage','White Mage','White Mage','Agent','Agent']
+                    1: ['Vessel','Vessel','Vessel','Vessel','Vessel','Vessel','Vessel','Vessel','Vessel','Vessel'],
+                    2: ['Vessel','Vessel','Vessel','Vessel','Vessel','Vessel','Vessel','Vessel','Vessel','Vessel']
                 }
             },
             prebuilt_custommap: {
@@ -212,7 +212,7 @@
                 hasTowers: false, isPrebuilt: true,
                 terrainPatches: { water: [0,0,0], desert: [0,0,0], mountain: [0,0,0] },
                 spawns: { 1: [{x:7,y:19},{x:8,y:19},{x:9,y:19},{x:10,y:19},{x:11,y:19},{x:12,y:19}], 2: [{x:7,y:0},{x:8,y:0},{x:9,y:0},{x:10,y:0},{x:11,y:0},{x:12,y:0}] },
-                defaultBuilds: { 1: ["Warrior","Gunslinger","Black Mage","White Mage","Agent","Tank"], 2: ["Warrior","Gunslinger","Black Mage","White Mage","Agent","Tank"] }
+                defaultBuilds: { 1: ["Vessel","Vessel","Vessel","Vessel","Vessel","Vessel"], 2: ["Vessel","Vessel","Vessel","Vessel","Vessel","Vessel"] }
             },
         };
 
@@ -223,12 +223,11 @@
            hand-written entry above. */
         (function _generatePrebuiltGameModes() {
             if (typeof EW_MAP_META === 'undefined' || typeof PREBUILT_MAPS === 'undefined') return;
-            const JOBS = ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage', 'Agent', 'Tank'];
             EW_MAP_META.forEach(meta => {
                 const pb = PREBUILT_MAPS[meta.id];
                 if (!pb || !pb.spawns) return;
                 const builds = [];
-                for (let i = 0; i < meta.teamSize; i++) builds.push(JOBS[i % JOBS.length]);
+                for (let i = 0; i < meta.teamSize; i++) builds.push(UNIT_CLASS);   // THE JOBS REMOVAL (the user 2026-09-27): one neutral class
                 const area = meta.w * meta.h;
                 GAME_MODES[meta.id] = {
                     id: meta.id, label: meta.label, desc: meta.desc,
@@ -429,8 +428,8 @@
                 2: [{ x: 6, y: 6 }, { x: 6, y: 5 }, { x: 6, y: 4 }, { x: 6, y: 3 }],
             },
             defaultBuilds: {
-                1: ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage'],
-                2: ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage'],
+                1: ['Vessel', 'Vessel', 'Vessel', 'Vessel'],
+                2: ['Vessel', 'Vessel', 'Vessel', 'Vessel'],
             },
         };
 
@@ -450,7 +449,7 @@
                     blitzMode: true, hasTowers: false, isPrebuilt: true,
                     terrainPatches: { water: [0, 0, 0], desert: [0, 0, 0], mountain: [0, 0, 0] },
                     spawns: { 1: hub.spawns[1].map(p => ({ x: p.x, y: p.y })), 2: hub.spawns[2].map(p => ({ x: p.x, y: p.y })) },
-                    defaultBuilds: { 1: ['Warrior'], 2: ['Warrior'] },
+                    defaultBuilds: { 1: ['Vessel'], 2: ['Vessel'] },
                 };
             }
         })();
@@ -1302,7 +1301,7 @@
                 const oldSize = state.partyBuilds?.[player]?.length || 0;
                 if (oldSize < mode.teamSize) {
                     for (let i = oldSize; i < mode.teamSize; i++) {
-                        state.partyBuilds[player][i] = mode.defaultBuilds[player][i] || 'Warrior';
+                        state.partyBuilds[player][i] = mode.defaultBuilds[player][i] || UNIT_CLASS;
                         state.partyNames[player][i] = getDefaultUnitName(state.partyBuilds[player][i]);
                         state.loadouts[player][i] = emptyLoadout();
                         if (!state.partyMeta[player]) state.partyMeta[player] = [];
@@ -2865,44 +2864,38 @@
             return mult;
         }
 
+        /* THE JOBS REMOVAL (the user 2026-09-27): a default-party slot's race comes from DEFAULT_PARTY_RACES[player][slot]
+           (data.js; it used to ride in on the slot's job archetype). Slots past the table wrap around it. */
+        function _defaultPartyRace(player, slot) {
+            const row = (typeof DEFAULT_PARTY_RACES !== 'undefined' && DEFAULT_PARTY_RACES[player]) || [];
+            return row.length ? row[slot % row.length] : getDefaultIdentity().race;
+        }
+
         // Pick a starting race for a default-party slot that the local human
-        // (player 1) actually owns. The archetype default race (e.g. Gunslinger
-        // -> martian) is often a locked vessel, which would make the team fail
-        // the unlock gate on Lock In / Start. If that default isn't unlocked,
-        // fall back to an owned race whose default job matches the slot, then to
-        // any owned race. Returns undefined to keep the archetype default when
-        // no unlock list applies (dev unlock, etc.).
-        function ownedRaceForJobSlot(job) {
+        // (player 1) actually owns. The slot's default race is often a locked
+        // vessel, which would make the team fail the unlock gate on Lock In /
+        // Start. If that default isn't unlocked, fall back to any owned race.
+        // Returns undefined to keep the default when no unlock list applies
+        // (dev unlock, etc.).
+        function ownedRaceForSlot(defaultRace) {
             if (typeof isUnitUnlocked !== 'function') return undefined;
-            const archetypeRace = (getArchetypeForJob(job) || {}).race;
-            // Keep the archetype default when the player already owns it.
-            if (archetypeRace && isUnitUnlocked(archetypeRace)) return archetypeRace;
-            if (typeof AVAILABLE_RACES === 'undefined' || typeof RACE_DEFAULT_JOBS === 'undefined') {
-                return undefined;
-            }
-            // Prefer an owned vessel whose natural job matches this slot.
-            const sameJob = AVAILABLE_RACES.filter(r => RACE_DEFAULT_JOBS[r] === job && isUnitUnlocked(r));
-            if (sameJob.length) return sameJob[0];
+            // Keep the default when the player already owns it.
+            if (defaultRace && isUnitUnlocked(defaultRace)) return defaultRace;
+            if (typeof AVAILABLE_RACES === 'undefined') return undefined;
             // Otherwise any owned vessel keeps the team legal.
             const anyOwned = AVAILABLE_RACES.filter(r => isUnitUnlocked(r));
             if (anyOwned.length) return anyOwned[0];
             return undefined;
         }
 
-        // CPU counterpart of ownedRaceForJobSlot: the CPU ignores account
+        // CPU counterpart of ownedRaceForSlot: the CPU ignores account
         // unlocks but must still obey the 3D-only roster rule — if a slot's
-        // archetype default race has no rigged 3D model (e.g. White Mage ->
-        // angel), swap in a 3D-ready race, preferring one with the same
-        // default job, so matches stay 3D vs 3D.
-        function cpu3DRaceForJobSlot(job) {
+        // default race has no rigged 3D model, swap in a 3D-ready race, so
+        // matches stay 3D vs 3D.
+        function cpu3DRaceForSlot(defaultRace) {
             if (typeof isRace3DReady !== 'function') return undefined;
-            const archetypeRace = (getArchetypeForJob(job) || {}).race;
-            if (archetypeRace && isRace3DReady(archetypeRace)) return archetypeRace;
-            if (typeof AVAILABLE_RACES === 'undefined' || typeof RACE_DEFAULT_JOBS === 'undefined') {
-                return undefined;
-            }
-            const sameJob = AVAILABLE_RACES.filter(r => RACE_DEFAULT_JOBS[r] === job && isRace3DReady(r));
-            if (sameJob.length) return sameJob[0];
+            if (defaultRace && isRace3DReady(defaultRace)) return defaultRace;
+            if (typeof AVAILABLE_RACES === 'undefined') return undefined;
             const any3D = AVAILABLE_RACES.filter(r => isRace3DReady(r));
             if (any3D.length) return any3D[0];
             return undefined;
@@ -2917,12 +2910,12 @@
                 const builds = (typeof DEFAULT_BUILDS !== 'undefined' ? DEFAULT_BUILDS[player] : []) || [];
                 const size = Math.max(CONFIG.teamSize, builds.length);
                 for (let i = 0; i < size; i++) {
-                    const job = builds[i] || 'Gunslinger';
+                    const cls = builds[i] || UNIT_CLASS;
+                    const dRace = _defaultPartyRace(player, i);
                     // Only the local human (player 1) is gated on unlocks; the
                     // CPU is gated on 3D-model availability instead.
-                    const identity = (player === 1) ? { race: ownedRaceForJobSlot(job) }
-                                                    : { race: cpu3DRaceForJobSlot(job) };
-                    out[player].push(resolveIdentityForBuild(job, identity));
+                    const identity = { race: (player === 1 ? ownedRaceForSlot(dRace) : cpu3DRaceForSlot(dRace)) || dRace };
+                    out[player].push(resolveIdentityForBuild(cls, identity));
                 }
             });
             return out;
@@ -2935,33 +2928,35 @@
                 const size = Math.max(CONFIG.teamSize, state.partyBuilds?.[player]?.length || 0);
                 for (let i = 0; i < size; i++) {
                     if (!state.partyMeta[player][i]) {
-                        const job = (state.partyBuilds?.[player]?.[i]) || 'Gunslinger';
-                        const identity = (player === 1) ? { race: ownedRaceForJobSlot(job) }
-                                                        : { race: cpu3DRaceForJobSlot(job) };
-                        state.partyMeta[player][i] = resolveIdentityForBuild(job, identity);
+                        const cls = (state.partyBuilds?.[player]?.[i]) || UNIT_CLASS;
+                        const dRace = _defaultPartyRace(player, i);
+                        const identity = { race: (player === 1 ? ownedRaceForSlot(dRace) : cpu3DRaceForSlot(dRace)) || dRace };
+                        state.partyMeta[player][i] = resolveIdentityForBuild(cls, identity);
                     }
                 }
             });
             return state.partyMeta;
         }
 
+        /* THE JOBS REMOVAL (the user 2026-09-27): every unit is the one neutral class (data.js UNIT_CLASS) */
         function normalizeJobName(job) {
-            return job === 'Black Mage' ? 'Black Mage' : job;
+            return (typeof UNIT_CLASS !== 'undefined') ? UNIT_CLASS : 'Vessel';
         }
 
-        function getArchetypeForJob(job) {
-            return JSON.parse(JSON.stringify(JOB_ARCHETYPES[normalizeJobName(job)] || JOB_ARCHETYPES['Gunslinger']));
+        /* THE JOBS REMOVAL (2026-09-27): the neutral identity (data.js DEFAULT_IDENTITY) replaces the per-job archetypes */
+        function getDefaultIdentity() {
+            const base = (typeof DEFAULT_IDENTITY !== 'undefined') ? DEFAULT_IDENTITY : { race: 'homosapien' };
+            return JSON.parse(JSON.stringify(base));
         }
 
         function normalizeRaceKey(race) {
             return String(race || '').trim().toLowerCase();
         }
 
-        function getRaceProfile(race, fallbackJob = 'Gunslinger') {
+        function getRaceProfile(race) {
             const key = normalizeRaceKey(race);
             if (RACE_PROFILES[key]) return JSON.parse(JSON.stringify(RACE_PROFILES[key]));
-            const archetype = getArchetypeForJob(fallbackJob);
-            const fallbackKey = normalizeRaceKey(archetype.race || 'homosapien');
+            const fallbackKey = normalizeRaceKey(getDefaultIdentity().race || 'homosapien');
             return JSON.parse(JSON.stringify(RACE_PROFILES[fallbackKey] || RACE_PROFILES.homosapien));
         }
 
@@ -3032,12 +3027,14 @@
             return 'none';
         }
 
-        function resolveIdentityForBuild(job, identity = {}) {
-            const archetype = getArchetypeForJob(job);
+        function resolveIdentityForBuild(cls, identity = {}) {
+            /* THE JOBS REMOVAL (the user 2026-09-27): cls is the one neutral class — the fallback identity is data.js
+               DEFAULT_IDENTITY, no longer a per-job archetype */
+            const archetype = (typeof DEFAULT_IDENTITY !== 'undefined') ? DEFAULT_IDENTITY : {};
             const race = normalizeRaceKey(identity.race || archetype.race || 'homosapien') || 'homosapien';
-            const raceProfile = getRaceProfile(race, job);
+            const raceProfile = getRaceProfile(race);
 
-            const defaultHand = job === 'Black Mage' ? 'left' : 'right';
+            const defaultHand = 'right';
 
             const validGenders = (typeof getAvailableGendersForRace === 'function')
                 ? getAvailableGendersForRace(race) : ['male', 'female'];
@@ -3742,7 +3739,7 @@
                     const meta = (state.partyMeta && state.partyMeta[seat] && state.partyMeta[seat][i]) || {};
                     const lo = (state.loadouts && state.loadouts[seat] && state.loadouts[seat][i]) || null;
                     return {
-                        cls: String(cls || 'Freelancer'),
+                        cls: String(cls || (typeof UNIT_CLASS !== 'undefined' ? UNIT_CLASS : 'Vessel')),
                         name: (state.partyNames && state.partyNames[seat] && state.partyNames[seat][i]) || '',
                         meta: {
                             race: meta.race || '', gender: meta.gender || '',
@@ -3776,7 +3773,8 @@
         window._ewLoadLastParty = loadLastParty;
 
         function getItemCapForClass(cls, itemKey) {
-            if (itemKey === 'scanner') return cls === 'Agent' ? 2 : 1;
+            /* THE JOBS REMOVAL (2026-09-27): no Agent job — pass the UNIT and the Field Operative passive's scannerCap lifts it (battle.js' copy wins at runtime) */
+            if (itemKey === 'scanner') return Math.max(1, (cls && typeof cls === 'object' && typeof unitPassiveMax === 'function') ? (unitPassiveMax(cls, 'scannerCap') || 0) : 0);
             return ITEM_RULES[itemKey].max;
         }
 
@@ -3825,8 +3823,8 @@
                     if (typeof randomSpellLoadoutForClass === 'undefined') {
                         out[player].push(emptyLoadout());
                     } else {
-                        const cls = builds[i] || 'Gunslinger';
-                        const meta = partyMeta?.[player]?.[i] || getArchetypeForJob(cls);
+                        const cls = builds[i] || UNIT_CLASS;
+                        const meta = partyMeta?.[player]?.[i] || { race: _defaultPartyRace(player, i) };
                         const race = meta.race || '';
                         out[player].push(optimizeLoadoutForClass(cls, race));
                     }
@@ -3866,11 +3864,9 @@
             return name.slice(0, 12);
         }
 
+        /* THE JOBS REMOVAL (the user 2026-09-27): one neutral class — any build normalizes to data.js UNIT_CLASS */
         function normalizeClassName(cls, fallback = null) {
-            const clean = String(cls || '').trim();
-            if (clean && CLASS_TEMPLATES[clean]) return clean;
-            if (fallback && CLASS_TEMPLATES[fallback]) return fallback;
-            return Object.keys(CLASS_TEMPLATES)[0] || 'Warrior';
+            return (typeof UNIT_CLASS !== 'undefined') ? UNIT_CLASS : 'Vessel';
         }
 
         function repairPartyBuilderState() {
@@ -3892,17 +3888,17 @@
                 const slotCount = Math.max(_slotsCap || CONFIG.teamSize, state.partyBuilds[player].length);
 
                 for (let idx = 0; idx < slotCount; idx++) {
-                    const fallbackCls = DEFAULT_BUILDS[player]?.[idx] || Object.keys(CLASS_TEMPLATES)[0] || 'Warrior';
-                    const cls = normalizeClassName(state.partyBuilds[player][idx], fallbackCls);
+                    const cls = normalizeClassName(state.partyBuilds[player][idx]);
                     repairedClasses.push(cls);
                     repairedNames.push(normalizeDisplayedUnitName(state.partyNames[player]?.[idx], cls, player, idx));
                     let repairedLo = normalizeLoadoutForClass(state.loadouts[player]?.[idx] || emptyLoadout(), cls);
-                    const archetype = getArchetypeForJob(cls);
+                    const archetype = getDefaultIdentity();
                     const priorMeta = state.partyMeta[player]?.[idx] || {};
                     // For the local human (player 1), don't fall back to a locked
-                    // archetype default race — pick an owned vessel so the team
-                    // can pass the unlock gate on Lock In / Start.
-                    const defaultRace = (player === 1 ? ownedRaceForJobSlot(cls) : null) || archetype.race || 'homosapien';
+                    // default race — pick an owned vessel so the team can pass
+                    // the unlock gate on Lock In / Start.
+                    const slotRace = _defaultPartyRace(player, idx);
+                    const defaultRace = (player === 1 ? ownedRaceForSlot(slotRace) : null) || slotRace || 'homosapien';
                     const race = priorMeta.race || defaultRace;
 
                     // The builder keeps a unit's spells in partyMeta.customSpells
@@ -3935,7 +3931,7 @@
                         sleepPreference: priorMeta.sleepPreference || archetype.sleepPreference || 'none',
                         terrainPreference: getTerrainPreferenceForRace(race),
                         weatherPreference: priorMeta.weatherPreference || archetype.weatherPreference || 'none',
-                        dominantHand: priorMeta.dominantHand || (cls === 'Black Mage' ? 'left' : 'right')
+                        dominantHand: priorMeta.dominantHand || 'right'
                     };
 
                     if (Array.isArray(priorMeta.customSpells) && priorMeta.customSpells.length > 0) {
@@ -3974,7 +3970,6 @@
 
         function renderBuilderFallback(reason = null) {
             repairPartyBuilderState();
-            const classOptions = Object.keys(CLASS_TEMPLATES).map(name => `<option value="${name}">${name}</option>`).join('');
             const fallbackTarget = document.getElementById('builderOverlay') || builderEl;
             const issueNote = reason ? `<div class="tiny-note" style="margin:0 0 12px;color:#ffd3d3">Builder recovery mode is active because the richer builder hit an error. Core party editing is still available.</div>` : '';
             fallbackTarget.innerHTML = `<div class="builder-center">${issueNote}${[1,2].map(player => {
@@ -3985,7 +3980,7 @@
               <h3 class="party-builder-title">Player ${player} Party</h3>
               <span class="party-badge">${player === 1 ? 'Human Player' : 'Computer Opponent'}</span>
             </div>
-            <div class="party-builder-meta">Recovery builder: name and class editing only, so you can get back into combat fast.</div>
+            <div class="party-builder-meta">Recovery builder: name editing only, so you can get back into combat fast.</div>
             <div class="slot-grid">${state.partyBuilds[player].map((clsName, idx) => `
               <div class="slot-card">
                 <div class="builder-unit-head">
@@ -3994,26 +3989,13 @@
                 </div>
                 <div class="form-grid" style="display:grid;grid-template-columns:1fr;gap:8px;margin-top:10px">
                   <label>Name<input type="text" id="p${player}-slot${idx}-name" maxlength="18" value="${escapeHtml(normalizeDisplayedUnitName(state.partyNames?.[player]?.[idx], clsName, player, idx))}" /></label>
-                  <label>Job<select id="p${player}-slot${idx}">${classOptions}</select></label>
                 </div>
               </div>
             `).join('')}</div>
           </div>
         `;
       }).join('')}</div>`;
-
-            [1, 2].forEach(player => {
-                state.partyBuilds[player].forEach((clsName, idx) => {
-                    const select = document.getElementById(`p${player}-slot${idx}`);
-                    if (select) {
-                        select.value = normalizeClassName(clsName, DEFAULT_BUILDS[player]?.[idx]);
-                        select.onchange = () => {
-                            syncPartyBuildsFromInputs();
-                            render();
-                        };
-                    }
-                });
-            });
+            /* THE JOBS REMOVAL (the user 2026-09-27): the recovery builder's job select is gone (one neutral class) */
         }
 
         function isGeneratedDefaultName(name, cls, player = null, idx = null) {
@@ -4047,124 +4029,24 @@
             state.loadouts[player][idx] = optimizeLoadoutForClass(cls, race);
             const fallback = getDefaultUnitName(cls);
             state.partyNames[player][idx] = sanitizeUnitName(state.partyNames[player][idx], fallback);
-            addLog(`Reset Player ${player} Slot ${idx + 1} to default loadout for ${cls}.`);
+            addLog(`Reset Player ${player} Slot ${idx + 1} to its default loadout.`);
             state.teamLockedIn = false;
             render();
         }
 
+        /* THE JOBS REMOVAL (the user 2026-09-27): the name is history (no jobs, no secondary job) — kept because
+           battle.js calls it. Every unit rolls a random legal kit from its race's pool (data.js buildTreeLegalLoadout);
+           the old flat per-job pools (classRestriction / isSpellNativeToClass) are gone with the jobs. */
         function applyRandomSpellsAndSecJob(meta, cls) {
-            if (!meta || !cls) return;
-
-            if (typeof SPELL_LIBRARY === 'undefined' || typeof isSpellNativeToClass !== 'function') return;
-            const allJobs = (typeof JOB_MODIFIERS !== 'undefined') ? Object.keys(JOB_MODIFIERS)
-                          : (typeof CLASS_TEMPLATES !== 'undefined') ? Object.keys(CLASS_TEMPLATES) : [];
-
-            /* THE TIERS (2026-09-24): no unit has a secondary job any more — the name of this fn is history. */
-            const secJob = '';
-            delete meta.secondaryJob;
-
-            /* Every class: a random legal kit (any spell of its pool, 7 slots, 16 SP — data.js
-               buildTreeLegalLoadout). The flat pools below are the no-tree fallback only. */
-            if (typeof classHasSpellTree === 'function' && classHasSpellTree(cls)
-                && typeof buildTreeLegalLoadout === 'function') {
-                meta.customSpells = buildTreeLegalLoadout(meta.race || '', cls, secJob);
-                /* THE UPGRADES (Phase 5): the leftover SP buys random allowed upgrades (damage first) */
-                meta.spellUpgrades = (typeof buildRandomUpgrades === 'function') ? buildRandomUpgrades(meta.race || '', cls, meta.customSpells) : {};
-                return;
-            }
-
-            const isFreelancer = cls === 'Freelancer';
-            const mainPool = [];
-            const secPool = [];
-            const crossPool = [];
-            for (const spell of SPELL_LIBRARY) {
-                if (!spell || !spell.id || !spell.tier) continue;
-                if (spell.kind === 'basicAttack') continue;
-                const isMainNative = isSpellNativeToClass(spell, cls);
-                const isSecNative = secJob && isSpellNativeToClass(spell, secJob);
-                const hasClassRestriction = spell.classRestriction || (Array.isArray(spell.classRestrictions) && spell.classRestrictions.length > 0);
-                const isCrossClass = !hasClassRestriction && !isMainNative && !isSecNative;
-                const freelancerAccess = isFreelancer && !isMainNative;
-                if (isMainNative) { mainPool.push(spell); continue; }
-                /* Tier III = a job's signature ultimate: PRIMARY job only. It never
-                   leaks into the secondary-job pool (or cross-class, below). */
-                if (isSecNative) {
-                    if (spell.tier !== 'III') secPool.push(spell);
-                    continue;
-                }
-                if (isCrossClass || freelancerAccess) {
-                    if (spell.tier === 'I' || spell.tier === 'II') crossPool.push(spell);
-                }
-            }
-
-            const race = meta.race || '';
-            if (race && typeof RACE_ABILITIES !== 'undefined' && RACE_ABILITIES[race]) {
-                const racePool = RACE_ABILITIES[race].filter(a =>
-                    !a.jobRequirement || a.jobRequirement === cls
-                );
-                const mainIds = new Set(mainPool.map(s => s.id));
-                for (const ra of racePool) {
-                    if (!mainIds.has(ra.id)) mainPool.push(ra);
-                }
-            }
-            const shuffle = (arr) => {
-                const a = arr.slice();
-                for (let i = a.length - 1; i > 0; i--) {
-                    const j = randInt(i + 1);
-                    [a[i], a[j]] = [a[j], a[i]];
-                }
-                return a;
-            };
-            const slotCap = (typeof SPELL_SLOT_MAX !== 'undefined') ? SPELL_SLOT_MAX : 6;
-            // Slot budget: spells occupy 1-3 slots each (getSpellSlotCost).
-            const slotCostOf = (sp) => (typeof getSpellSlotCost === 'function') ? getSpellSlotCost(sp, cls, secJob) : 1;
-
-            const picks = [];
-            const seenIds = new Set();
-            let slotsUsed = 0;
-            const tryPick = (sp) => {
-                if (!sp || seenIds.has(sp.id)) return false;
-                const c = slotCostOf(sp);
-                if (slotsUsed + c > slotCap) return false;
-                picks.push(sp.id);
-                seenIds.add(sp.id);
-                slotsUsed += c;
-                return true;
-            };
-            const mainDamage = mainPool.filter(s => s.type === 'damage' || s.kind === 'damage');
-            if (mainDamage.length > 0) {
-                tryPick(mainDamage[randInt(mainDamage.length)]);
-            }
-
-            const pushFrom = (pool, count) => {
-                const shuffled = shuffle(pool);
-                for (const sp of shuffled) {
-                    if (slotsUsed >= slotCap) break;
-                    if (count <= 0) break;
-                    if (tryPick(sp)) count--;
-                }
-            };
-
-            const remainingSlots = slotCap - slotsUsed;
-            const mainCount = Math.max(1, Math.round(remainingSlots * 0.6));
-            const secCount = secPool.length > 0 ? Math.max(1, Math.round(remainingSlots * 0.3)) : 0;
-            const crossCount = Math.max(0, remainingSlots - mainCount - secCount);
-            pushFrom(mainPool, mainCount);
-            pushFrom(secPool, secCount);
-            pushFrom(crossPool, crossCount);
-
-            if (slotsUsed < slotCap) {
-                const leftover = shuffle([...mainPool, ...secPool, ...crossPool]);
-                for (const sp of leftover) {
-                    if (slotsUsed >= slotCap) break;
-                    tryPick(sp);
-                }
-            }
-            meta.customSpells = picks;
+            if (!meta) return;
+            if (typeof buildTreeLegalLoadout !== 'function') return;
+            const c = cls || UNIT_CLASS;
+            meta.customSpells = buildTreeLegalLoadout(meta.race || '', c, '');
+            /* THE UPGRADES (Phase 5): the leftover SP buys random allowed upgrades (damage first) */
+            meta.spellUpgrades = (typeof buildRandomUpgrades === 'function') ? buildRandomUpgrades(meta.race || '', c, meta.customSpells) : {};
         }
 
         function optimizeRandomizeParty(player) {
-            const classNames = Object.keys(CLASS_TEMPLATES);
             const size = Math.max(CONFIG.teamSize, state.partyBuilds?.[player]?.length || 0);
 
             if (!state.partyMeta) state.partyMeta = {};
@@ -4190,12 +4072,7 @@
                 const mi = randomizeIdentity(false, mm.race);
                 if (mi.race === mm.race) { if (mm.gender === 'male' || mm.gender === 'female') mi.gender = mm.gender; state.partyMeta[player][i] = mi; }
             });
-            state.partyBuilds[player] = state.partyMeta[player].map(meta => {
-                const race = meta.race || 'homosapien';
-                const lockedJob = (race !== 'homosapien' && typeof RACE_DEFAULT_JOBS !== 'undefined' && RACE_DEFAULT_JOBS[race])
-                    ? RACE_DEFAULT_JOBS[race] : null;
-                return lockedJob || classNames[randInt(classNames.length)];
-            });
+            state.partyBuilds[player] = state.partyMeta[player].map(() => UNIT_CLASS);   // THE JOBS REMOVAL (2026-09-27)
             state.partyNames[player] = state.partyBuilds[player].map(cls => getDefaultUnitName(cls));
             if (lead && lead.name && state.partyMeta[player][0] && state.partyMeta[player][0].race === lead.race) state.partyNames[player][0] = sanitizeUnitName(lead.name, getDefaultUnitName(state.partyBuilds[player][0]));
             _grpMembers.forEach((mm, k) => { const i = k + 1; if (mm && mm.name && state.partyMeta[player][i] && state.partyMeta[player][i].race === mm.race) state.partyNames[player][i] = sanitizeUnitName(mm.name, getDefaultUnitName(state.partyBuilds[player][i])); });
@@ -4516,26 +4393,26 @@
         let _activeChallengeType = null;
         let _campaignRosterIdCounter = 0;
 
-        function createRosterInstance(race, gender, job, name) {
+        function createRosterInstance(race, gender, _cls, name) {
             const id = 'roster_' + (_campaignRosterIdCounter++);
-            const defaultJob = (typeof RACE_DEFAULT_JOBS !== 'undefined' && RACE_DEFAULT_JOBS[race]) || 'Freelancer';
-            const finalJob = job || defaultJob;
             const finalGender = gender || 'male';
             const finalName = name || (race.charAt(0).toUpperCase() + race.slice(1));
 
-            const learnOrder = (typeof CLASS_SPELL_LEARN_ORDER !== 'undefined') ? CLASS_SPELL_LEARN_ORDER[finalJob] : null;
-            const startingSpells = [];
-            if (learnOrder) {
-                if (learnOrder[0]) startingSpells.push(learnOrder[0]);
-                if (learnOrder[1]) startingSpells.push(learnOrder[1]);
-            }
+            /* THE JOBS REMOVAL (the user 2026-09-27): no job, no learn order — a recruit starts with the two
+               lowest-tier active spells of its race's families (data.js raceFamilyPoolIds) */
+            const tierOf = (sid) => (typeof spellTierOf === 'function') ? spellTierOf(sid) : 1;
+            const racePool = (typeof raceFamilyPoolIds === 'function') ? raceFamilyPoolIds(race) : [];
+            const startingSpells = racePool
+                .filter(sid => { const sp = (typeof SPELL_BY_ID !== 'undefined') ? SPELL_BY_ID[sid] : null; return !!sp && sp.kind !== 'passive'; })
+                .sort((a, b) => tierOf(a) - tierOf(b))
+                .slice(0, 2);
 
             return {
                 id,
                 race,
                 gender: finalGender,
                 name: finalName,
-                job: finalJob,
+                cls: UNIT_CLASS,
                 level: 1,
                 xp: 0,
                 spells: startingSpells.slice(),
@@ -4552,7 +4429,7 @@
             const instance = createRosterInstance(
                 firstUnit.race || 'homosapien',
                 firstUnit.gender || 'male',
-                firstUnit.job || 'Freelancer',
+                UNIT_CLASS,
                 firstUnit.name || 'Recruit'
             );
             const cType = challengeType || 'survival';
@@ -5122,7 +4999,6 @@
                 id: unit.id,
                 name: unit.name || unit.cls,
                 cls: unit.cls,
-                job: unit.job || unit.cls,
                 race: unit.race || '',
                 faction: unit.faction || '',
                 types: [...(unit.types || [])],
@@ -5339,18 +5215,12 @@
         }
 
         function rerollOpponentForNextMatch() {
-            const classNames = Object.keys(CLASS_TEMPLATES);
             const size = Math.max(CONFIG.teamSize, state.partyBuilds?.[2]?.length || 0);
 
             if (!state.partyMeta) state.partyMeta = {};
             const pinned = (typeof window !== 'undefined' && Array.isArray(window._hqCpuPool)) ? window._hqCpuPool : null;
             state.partyMeta[2] = randomizePartyIdentities(size, false, pinned);
-            state.partyBuilds[2] = state.partyMeta[2].map(meta => {
-                const race = meta.race || 'homosapien';
-                const lockedJob = (race !== 'homosapien' && typeof RACE_DEFAULT_JOBS !== 'undefined' && RACE_DEFAULT_JOBS[race])
-                    ? RACE_DEFAULT_JOBS[race] : null;
-                return lockedJob || classNames[randInt(classNames.length)];
-            });
+            state.partyBuilds[2] = state.partyMeta[2].map(() => UNIT_CLASS);   // THE JOBS REMOVAL (2026-09-27)
             state.partyNames[2] = state.partyBuilds[2].map(cls => getDefaultUnitName(cls));
             state.loadouts[2] = state.partyBuilds[2].map((cls, idx) => randomSpellLoadoutForClass(cls, state.partyMeta[2][idx]?.race || ''));
 

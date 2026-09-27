@@ -547,6 +547,10 @@ function _withCritEva(s) {
   return s;
 }
 const CODEX_CLASS_LABELS = { tank:'HEAVY ARMOR', bruiser:'ASSAULT', healer:'MEDICAL', support:'SUPPORT OPS', assassin:'BLACK OPS', caster:'PSI-OPS', ranged:'LONG RANGE', specialist:'SPECIALIST', hybrid:'MULTI-ROLE' };
+/* THE JOBS REMOVAL (the user, 2026-09-27): where a label named the job, the race's ROLE reads instead (data.js RACE_CLASS) */
+/* data.js declares RACE_CLASS as a top-level const (a global binding, not a window property) */
+function pbRaceClass(race) { const t = (typeof RACE_CLASS !== 'undefined') ? RACE_CLASS : window.RACE_CLASS; return (t && t[race]) || 'hybrid'; }
+function pbRoleLabel(race) { return CODEX_CLASS_LABELS[pbRaceClass(race)] || 'MULTI-ROLE'; }
 
 
 const CODEX_LORE = {
@@ -660,23 +664,22 @@ function getTypeColor(type) { return TYPE_C[type] || EW.human; }
 function _grl(race, gender) { return typeof window.getRaceLabel === 'function' ? window.getRaceLabel(race, gender) : (window.RACE_PROFILES?.[race]?.label || race || '?'); }
 function getSpriteUrl(race, gender, cls) {
   if (race && typeof window.getR2RaceSpriteUrl === 'function') {
-    const url = window.getR2RaceSpriteUrl(race, gender || 'male', cls || 'Freelancer');
+    const url = window.getR2RaceSpriteUrl(race, gender || 'male', cls);
     if (url) return url;
   }
   return '';
 }
-function getJobDisplay(job) { return typeof window.getJobDisplayName === 'function' ? window.getJobDisplayName(job) : job; }
 function computeStats(race, cls) {
   const s = (typeof window.computeUnitStats === 'function')
     ? window.computeUnitStats(race || 'homosapien', cls)
-    : (window.CLASS_TEMPLATES?.[cls] || window.CLASS_TEMPLATES?.Warrior || {});
+    : (window.CLASS_TEMPLATES?.Vessel || {});
   return _withCritEva({ ...s });
 }
 /* `equipment` = the loadout's spell ids since THE GEAR MERGE (SPELL_LIBRARY_PLAN Phase 4): the equipped passive rows'
    `statBonus` hooks (data.js passiveIdsStatBonus); an old { accessory1, accessory2 } object still reads the retired table. */
 function computeFullStats(race, cls, secJob, equipment) {
   const base = computeStats(race, cls);
-  const secB = (secJob && typeof window.computeSecJobBonuses === 'function') ? window.computeSecJobBonuses(secJob) : { hp:0,mp:0,atk:0,def:0,mdef:0,move:0,awr:0,int:0,spd:0 };
+  const secB = { hp:0,mp:0,atk:0,def:0,mdef:0,move:0,awr:0,int:0,spd:0 };   // THE JOBS REMOVAL (2026-09-27): no second job
   const eqB = (Array.isArray(equipment) && typeof window.passiveIdsStatBonus === 'function') ? window.passiveIdsStatBonus(equipment)
     : (equipment && !Array.isArray(equipment) && typeof window.computeEquipBonuses === 'function') ? window.computeEquipBonuses(equipment) : { hp:0,mp:0,atk:0,def:0,mdef:0,move:0,awr:0,int:0,spd:0 };
   const delta = {};
@@ -693,7 +696,8 @@ function computeFullStats(race, cls, secJob, equipment) {
   final.move = bandOf(final.spd) + (eqB.move || 0) + (secB.move || 0);
   delta.move = final.move - bandOf(base.spd || 1);
   final.range = base.range || 1;
-  final.inspect = base.inspect || 1;
+  // THE TRAINING (2026-09-27): Field Operative's +1 inspect reach
+  final.inspect = (base.inspect || 1) + (Array.isArray(equipment) && equipment.includes('passiveFieldOperative') ? 1 : 0);
   delta.range = 0;
   delta.inspect = 0;
   // CRT/EVA follow the stats they derive from, so gear/sub-job AWR/MOV
@@ -705,10 +709,10 @@ function computeFullStats(race, cls, secJob, equipment) {
 }
 function getRaceAbilities(race, cls) {
   if (typeof window.RACE_ABILITIES === 'undefined' || !window.RACE_ABILITIES[race]) return [];
-  return window.RACE_ABILITIES[race].filter(a => !a.jobRequirement || a.jobRequirement === cls);
+  return window.RACE_ABILITIES[race].slice();
 }
 function getLearnedSpells(cls, customSpells) {
-  const order = customSpells || (typeof window.CLASS_SPELL_LEARN_ORDER !== 'undefined' && window.CLASS_SPELL_LEARN_ORDER[cls]) || [];
+  const order = customSpells || [];
   return order.map(id => typeof window.getSpellById === 'function' ? window.getSpellById(id) : null).filter(Boolean);
 }
 
@@ -726,97 +730,20 @@ function usedSpellSlots(ids) {
 }
 
 function buildDefaultCustomSpells(race, cls, secJob) {
-  /* THE TIERS (2026-09-24): default = the job's four + the race's first two
-     rungs ("master your job, dabble in your blood" — 1+2+3+4 + 1+2 = 13 of
-     16 SP, 6 of 7 slots), trimmed to the budget by data.js treeLegalSubset.
-     A Freelancer (no job row) takes its race row. No secondary job. */
-  if (typeof window.classHasSpellTree === 'function' && window.classHasSpellTree(cls)
-      && typeof window.treeLegalSubset === 'function') {
-    const p = (cls === 'Freelancer') ? []
-      : ((typeof window.getClassTreeSpells === 'function' && window.getClassTreeSpells(cls)) || []);
-    const r = (typeof window.getRaceTreeSpells === 'function' && window.getRaceTreeSpells(race, cls)) || [];
-    const wish = [...p.filter(Boolean), ...(cls === 'Freelancer' ? r : r.slice(0, 2)).filter(Boolean)];
-    const picks = window.treeLegalSubset(race, cls, '', wish);
-    if (picks.length) return picks;
-  }
-  const slotCap = typeof window.SPELL_SLOT_MAX !== 'undefined' ? window.SPELL_SLOT_MAX : 7;
-  const picks = [];
-  const seen = new Set();
-  let used = 0;
-  const tryAdd = (sid) => {
-    if (!sid || seen.has(sid)) return;
-    const _sp = typeof window.getSpellById === 'function' ? window.getSpellById(sid) : null;
-    if (_sp && !clashSpellOk(_sp)) return;
-    const c = spellIdSlotCost(sid);
-    if (used + c > slotCap) return;
-    picks.push(sid);
-    seen.add(sid);
-    used += c;
-  };
-
-  const ra = (typeof window.RACE_ABILITIES !== 'undefined' && window.RACE_ABILITIES[race])
-    ? window.RACE_ABILITIES[race].filter(a => (!a.jobRequirement || a.jobRequirement === cls) && a.id && clashSpellOk(a))
-    : [];
-  for (const a of ra) {
-    if (used >= slotCap) break;
-    tryAdd(a.id);
-  }
-
-  const learnOrder = (typeof window.CLASS_SPELL_LEARN_ORDER !== 'undefined' && window.CLASS_SPELL_LEARN_ORDER[cls]) || [];
-  for (const sid of learnOrder) {
-    if (used >= slotCap) break;
-    const sp = typeof window.getSpellById === 'function' ? window.getSpellById(sid) : null;
-    if (!sp || sp.kind === 'basicAttack') continue;
-    tryAdd(sid);
-  }
-
-  if (secJob) {
-    const secOrder = (typeof window.CLASS_SPELL_LEARN_ORDER !== 'undefined' && window.CLASS_SPELL_LEARN_ORDER[secJob]) || [];
-    for (const sid of secOrder) {
-      if (used >= slotCap) break;
-      const sp = typeof window.getSpellById === 'function' ? window.getSpellById(sid) : null;
-      if (!sp || sp.kind === 'basicAttack') continue;
-      if (sp.tier === 'III') continue; // Tier III ultimates are primary-job only
-      tryAdd(sid);
-    }
-  }
-
-  if (used < slotCap && typeof window.SPELL_LIBRARY !== 'undefined' && typeof window.isSpellNativeToClass === 'function') {
-    for (const sp of window.SPELL_LIBRARY) {
-      if (used >= slotCap) break;
-      if (!sp || !sp.id || sp.kind === 'basicAttack') continue;
-      if (window.isSpellNativeToClass(sp, cls)) tryAdd(sp.id);
-    }
-  }
-  return picks;
+  /* THE JOBS REMOVAL (the user, 2026-09-27): the default kit is data.js raceDefaultKit — the race's four curated rungs,
+     then the rest of its families cheapest first, trimmed to the 7 slots / 16 SP (the Clash seal inside the repair). */
+  if (typeof window.raceDefaultKit === 'function') return window.raceDefaultKit(race);
+  return [];
 }
 
-// Every spell id this unit may legally equip — used to scrub stale picks left
-// behind by a vessel/job swap or an old saved team (a retired secondary job's
-// spells included). THE TIERS (2026-09-24): the unit's pool (data.js
-// unitSpellPool — race row + job four, a Freelancer's borrowables too) minus
-// the Clash-sealed; the slot / SP budget is checked by treeLegalSubset.
-function legalCustomSpellIds(race, cls, secJob) {
-  if (typeof window.classHasSpellTree === 'function' && window.classHasSpellTree(cls)
-      && typeof window.unitSpellPool === 'function') {
-    const ids = window.unitSpellPool(race, cls);
-    const sealed = typeof window.spellSealedIds === 'function' ? window.spellSealedIds(ids) : new Set();
-    return new Set(ids.filter(id => !sealed.has(id)));
-  }
-  const ok = new Set();
-  const ra = (typeof window.RACE_ABILITIES !== 'undefined' && window.RACE_ABILITIES[race])
-    ? window.RACE_ABILITIES[race].filter(a => (!a.jobRequirement || a.jobRequirement === cls) && a.id && clashSpellOk(a))
-    : [];
-  for (const a of ra) ok.add(a.id);
-  if (typeof window.SPELL_LIBRARY !== 'undefined' && typeof window.isSpellNativeToClass === 'function') {
-    for (const sp of window.SPELL_LIBRARY) {
-      if (!sp || !sp.id || sp.kind === 'basicAttack' || !clashSpellOk(sp)) continue;
-      const isMain = window.isSpellNativeToClass(sp, cls);
-      const isSec = secJob && window.isSpellNativeToClass(sp, secJob) && sp.tier !== 'III';
-      if (isMain || isSec) ok.add(sp.id);
-    }
-  }
-  return ok;
+// Every spell id this unit may legally equip — used to scrub stale picks left behind by a vessel swap or an old saved
+// team. The unit's pool (data.js unitSpellPool — its families, the universal GEAR / TRAINING, and the borrowed families
+// while `ids` carry Adaptable) minus the Clash-sealed; the slot / SP budget is checked by treeLegalSubset.
+function legalCustomSpellIds(race, cls, secJob, ids) {
+  if (typeof window.unitSpellPool !== 'function') return new Set();
+  const pool = window.unitSpellPool(race, cls, ids || []);
+  const sealed = typeof window.spellSealedIds === 'function' ? window.spellSealedIds(pool) : new Set();
+  return new Set(pool.filter(id => !sealed.has(id)));
 }
 /* Clash (classic JRPG battle): movement/positioning spells can't be equipped —
    there is nothing for them to do on a formation stage. Mirrors the battle-side
@@ -1235,7 +1162,7 @@ function pbAoeLabel(sp) {
 }
 
 // ── THE SOCKET PICKER'S TABS + FILTERS (2026-09-14) ─────────────────
-// The Freelancer's race pool is ~400 rows in one window. The picker
+// The borrow window (Adaptable) is ~500 rows in one window. The picker
 // wears the five category TABS (the same buckets the blade colours by —
 // classifySpellLocal) and a filter row: PHYS / MAGIC (the damage kind the
 // ew-dmgicon shows, damage-dealers only), the six TYPE discs
@@ -1535,21 +1462,18 @@ function pbFinisherDef(race) {
        side by side — each its own pick now). A click equips or unequips.
        A chip's state is data.js spellAddVerdict's: equipped · ok · sp (not
        enough SP left) · slots (all seven full) · sealed (Clash).
-     · A Freelancer has no job row; each tier row ends in ＋ BORROW, which
-       opens the pool window over every race / job ability of that tier.
-     · The basic attack + THE FINISHER strip stay under the rows.
+     · (2026-09-27, THE JOBS REMOVAL + THE FAMILY TABS: the rows became one tab per family — see pbTierCtx; the
+       borrow is the Adaptable training row's BORROW tab; the basic attack + THE FINISHER close the rack.)
    The SP meter (16 cells) and the slot pips live in the tech bar; hovering a
    chip forecasts +N / −N on both. Legality is data.js's (isTreeLoadoutLegal
    / treeLegalSubset — also the host's online check). ══ */
 const PB_TIER_ORDER = [4, 3, 2, 1];
 const PB_TIER_NUM = ['', 'I', 'II', 'III', 'IV'];
-const PB_BORROW_RE = /^B[0-4]$/;   // 'B0' = the rack by family's one ＋ BORROW (every tier, Phase 7)
-/* THE RACK BY FAMILY (SPELL_LIBRARY_PLAN.md §9 row 7, Phase 7, 2026-09-26): the rack folds the pool by FAMILY (the default —
-   a unit's spells are its families' members now) or by TIER (the 2026-09-24 rows). The fold is a per-viewer preference
-   (localStorage, never state, never relayed); both folds equip by the same verdict. */
-const PB_RACK_GROUP_KEY = 'ew_rack_group';
-function pbRackGroupGet() { try { const v = window.localStorage && window.localStorage.getItem(PB_RACK_GROUP_KEY); return v === 'tier' ? 'tier' : 'family'; } catch (e) { return 'family'; } }
-function pbRackGroupSet(v) { try { if (window.localStorage) window.localStorage.setItem(PB_RACK_GROUP_KEY, v === 'tier' ? 'tier' : 'family'); } catch (e) {} }
+const PB_BORROW_RE = /^B[0-4]$/;   // 'B0' = the whole borrow window (every tier, family by family)
+/* THE FAMILY TABS (the user, 2026-09-27: "Easy to read spell slots organized by family, maybe tabs for the families, with
+   one section that shows the spell info for whichever one you have selected/hovered on"). The rack is ONE family at a
+   time: the race's families in their RACE_FAMILIES order, then TRAINING (the old job passives, 1 SP each), GEAR, and
+   BORROW (the Adaptable row's window). The open tab is a per-viewer UI state (never state, never relayed — RULE #2). */
 function pbSpMax() { return typeof window.SPELL_SP_MAX === 'number' ? window.SPELL_SP_MAX : 16; }
 function pbTierOf(spOrId) {
   if (!spOrId) return 0;
@@ -1580,38 +1504,53 @@ function pbUpgradeRows(ctx, id) {
     return { id: u, row, st8: v.ok ? 'ok' : v.reason, note: v.note };
   });
 }
-/* One unit's rack: the pool in parts, the sealed set, the rows by tier, every
-   id's source. Built per render from (race, job, equipped) — pure. */
-function pbTierCtx(race, cls, equipped, upsWish, group) {
-  const parts = typeof window.unitSpellPoolParts === 'function' ? window.unitSpellPoolParts(race, cls) : { race: [], job: [], borrowRace: [], borrowJob: [], wheel: [] };
-  if (!parts.wheel) parts.wheel = [];
+/* One unit's rack: the pool in parts (data.js unitSpellPoolParts — its families, the door wheel, the universal TRAINING /
+   GEAR, and the families other races carry while the kit holds Adaptable), every id's source, THE TABS, the sealed set,
+   the equipped list + its SP. `tabWish` = the open tab's key (a stale or null key opens the first tab). Pure. */
+function pbTierCtx(race, cls, equipped, upsWish, tabWish) {
   const eq = (equipped || []).filter(Boolean);
+  const parts = typeof window.unitSpellPoolParts === 'function' ? window.unitSpellPoolParts(race, cls, eq) : { race: [], job: [], borrowRace: [], borrowJob: [], wheel: [], gear: [] };
+  if (!parts.wheel) parts.wheel = [];
+  if (!parts.gear) parts.gear = [];
+  const famOf = (id) => {
+    const sp = id && typeof window.getSpellById === 'function' ? window.getSpellById(id) : null;
+    const fs = (sp && typeof window.spellFamiliesOf === 'function') ? window.spellFamiliesOf(sp) : [];
+    return fs.find(f => window.SPELL_FAMILIES && window.SPELL_FAMILIES[f]) || '';
+  };
   const sourceOf = {};
   parts.race.forEach(id => { sourceOf[id] = 'race'; });
-  parts.job.forEach(id => { sourceOf[id] = 'job'; });
   parts.wheel.forEach(id => { if (!sourceOf[id]) sourceOf[id] = 'wheel'; });   // THE DOOR WHEEL (DOOR_GUN_PLAN §2.4): the Door Agent's destination doors
   parts.borrowRace.forEach(id => { if (!sourceOf[id]) sourceOf[id] = 'borrowRace'; });
-  parts.borrowJob.forEach(id => { if (!sourceOf[id]) sourceOf[id] = 'borrowJob'; });
-  if (!parts.gear) parts.gear = [];
-  parts.gear.forEach(id => { if (!sourceOf[id]) sourceOf[id] = 'gear'; });   // THE GEAR POOL (Phase 4): universal, never "borrowed"
+  parts.gear.forEach(id => { if (!sourceOf[id]) sourceOf[id] = famOf(id) === 'training' ? 'training' : 'gear'; });   // universal, never "borrowed"
   const pool = new Set(Object.keys(sourceOf));
-  const isFreelancer = cls === 'Freelancer';
-  const own = parts.race.concat(parts.job, parts.wheel);
-  const borrowed = isFreelancer ? eq.filter(id => pool.has(id) && !own.includes(id) && !parts.gear.includes(id)) : [];
-  /* THE PASSIVES (SPELL_LIBRARY_PLAN.md Phase 4): passive / gear rows leave the tier rows for their own ◈ row — the
-     unit's own passive rows (a race / job row's) first, then the universal GEAR; at most pasMax equipped. */
+  const borrows = typeof window.loadoutBorrows === 'function' ? window.loadoutBorrows(eq) : eq.includes('passiveAdaptable');
+  const own = parts.race.concat(parts.wheel);
+  const borrowed = borrows ? eq.filter(id => pool.has(id) && !own.includes(id) && !parts.gear.includes(id)) : [];
   const isPas = (id) => typeof window.spellIsPassive === 'function' && window.spellIsPassive(id);
-  const rows = {};
-  for (const t of PB_TIER_ORDER) rows[t] = own.concat(borrowed).filter(id => !isPas(id) && pbTierOf(id) === t);
-  const passives = own.concat(borrowed).filter(isPas).concat(parts.gear.filter(id => !own.includes(id)));
   const sealed = typeof window.spellSealedIds === 'function' ? window.spellSealedIds(own.concat(borrowed, parts.gear)) : new Set();
   const ups = pbEffUps(race, cls, eq, upsWish);   // THE UPGRADES (Phase 5): every verdict and the meter count them
-  /* THE RACK BY FAMILY (Phase 7): the same chips folded by family (data.js spellFamilyGroups — the race's families first) */
-  const nonPas = own.concat(borrowed).filter(id => !isPas(id));
-  const famRows = typeof window.spellFamilyGroups === 'function' ? window.spellFamilyGroups(nonPas, race)
-    : [{ fam: null, name: 'Spells', glyph: '◇', color: '#8a8270', own: true, ids: nonPas }];
-  const borrowCount = parts.borrowRace.length + parts.borrowJob.length;
-  return { race, cls, parts, pool, sourceOf, rows, famRows, borrowCount, group: group === 'tier' ? 'tier' : 'family', passives, sealed, equipped: eq, isFreelancer, ups,
+  const FAM = window.SPELL_FAMILIES || {};
+  const tabs = [];
+  /* the race's own families (data.js spellFamilyGroups — RACE_FAMILIES order, tier I → IV inside each; a family passive
+     row sits in its family's tab), the door wheel's rows in theirs */
+  const groups = typeof window.spellFamilyGroups === 'function' ? window.spellFamilyGroups(own, race)
+    : [{ fam: null, name: 'Spells', glyph: '◇', color: '#8a8270', desc: '', own: true, ids: own }];
+  for (const g of groups) if (g.ids.length) tabs.push({ key: 'f:' + (g.fam || '_'), kind: 'family', fam: g.fam, name: g.name, glyph: g.glyph, color: g.color, desc: g.desc || '', ids: g.ids.slice() });
+  const uni = (f) => {
+    const ids = parts.gear.filter(id => famOf(id) === f);
+    const d = FAM[f] || {};
+    if (ids.length) tabs.push({ key: f, kind: f, fam: f, name: d.name || f, glyph: d.glyph || '◈', color: d.color || '#d9d2b8', desc: d.desc || '', ids });
+  };
+  uni('training');   // THE TRAINING (the jobs removal): the old job passives, 1 SP each
+  uni('gear');
+  const borrowGroups = borrowed.length && typeof window.spellFamilyGroups === 'function' ? window.spellFamilyGroups(borrowed, null) : [];
+  tabs.push({ key: 'borrow', kind: 'borrow', fam: null, name: 'Borrow', glyph: '＋', color: '#7fd9dd', locked: !borrows,
+    desc: borrows ? 'Adaptable is equipped: take spells from the families other races carry.' : 'Equip ADAPTABLE (Training, 1 SP) to take spells from the families other races carry.',
+    ids: borrowGroups.length ? borrowGroups.reduce((a, g) => a.concat(g.ids), []) : borrowed.slice() });
+  for (const t of tabs) t.on = t.ids.filter(id => eq.includes(id)).length;
+  const tab = tabs.find(t => t.key === tabWish) || tabs[0];
+  const passives = own.concat(borrowed).filter(isPas).concat(parts.gear.filter(id => !own.includes(id)));
+  return { race, cls, parts, pool, sourceOf, famOf, tabs, tab, borrowCount: parts.borrowRace.length, passives, sealed, equipped: eq, borrows, isFreelancer: borrows, ups,
     pasMax: typeof window.PASSIVE_SLOT_MAX === 'number' ? window.PASSIVE_SLOT_MAX : 2, pasUsed: eq.filter(isPas).length,
     cap: typeof window.SPELL_SLOT_MAX !== 'undefined' ? window.SPELL_SLOT_MAX : 7, spMax: pbSpMax(), spUsed: pbSpUsed(eq, ups) };
 }
@@ -1629,22 +1568,17 @@ function pbSpellVerdict(ctx, id) {
   if (!ctx || !id || typeof window.spellAddVerdict !== 'function') return null;
   return window.spellAddVerdict(ctx.race, ctx.cls, ctx.equipped, id, ctx.pool, ctx.ups);
 }
-const PB_SOURCE_LABEL = { race: 'RACE', job: 'JOB', borrowRace: 'BORROWED · RACE', borrowJob: 'BORROWED · JOB', wheel: 'DOOR WHEEL', gear: 'GEAR · EVERY UNIT' };
-/* The keyboard's grid: one row per tier (its chips, then ＋ BORROW for a
-   Freelancer), then the root (+ THE FINISHER). ↑ ↓ change row keeping the
-   column (clamped), ← → walk the row. Empty tiers are skipped. */
+const PB_SOURCE_LABEL = { race: 'RACE', borrowRace: 'BORROWED', wheel: 'DOOR WHEEL', training: 'EVERY UNIT', gear: 'EVERY UNIT' };
+/* The keyboard's grid (THE FAMILY TABS): the open tab's cards two to a row (as drawn), then ＋ BROWSE on the BORROW tab,
+   then the ALWAYS READY foot (THE FINISHER, the basic attack). ↑ ↓ change row keeping the column (clamped), ← → walk the
+   row; , and . (or < >) change the tab. */
 function pbTierGrid(ctx, finisher) {
-  const grid = finisher ? [[PB_FIN_KEY]] : [];   // the finisher row leads (2026-09-24), the basic attack closes
-  if (ctx.group === 'family') {   // THE RACK BY FAMILY (Phase 7): a row per family, then the Freelancer's one ＋ BORROW
-    for (const g of (ctx.famRows || [])) if (g.ids.length) grid.push(g.ids.slice());
-    if (ctx.isFreelancer) grid.push(['B0']);
-  } else for (const t of PB_TIER_ORDER) {
-    const row = (ctx.rows[t] || []).slice();
-    if (ctx.isFreelancer) row.push('B' + t);
-    if (row.length) grid.push(row);
-  }
-  if (ctx.passives && ctx.passives.length) grid.push(ctx.passives.slice());   // the ◈ PASSIVES row (Phase 4)
-  grid.push(['root']);
+  const grid = [];
+  const tab = ctx.tab;
+  const ids = tab ? tab.ids.slice() : [];
+  for (let i = 0; i < ids.length; i += 2) grid.push(ids.slice(i, i + 2));
+  if (tab && tab.kind === 'borrow' && ctx.borrows) grid.push(['B0']);
+  grid.push(finisher ? [PB_FIN_KEY, 'root'] : ['root']);
   return grid;
 }
 function pbTierStep(ctx, key, dir, finisher) {
@@ -1713,15 +1647,18 @@ function pbAoeTiles(sp, big) {
     ...cells.map((c, i) => h('i', { key: i, className: c === 'c' ? 'ctr' : (c ? '' : 'off') })));
 }
 function SpellTierPanel({ ctx, fc, clsName, raceLabel, onSpellClick, onBorrow, onNodeHoverIn, onNodeHoverOut,
-                          selKey, hoverKey, onSelect, shakeKey, finisher, onUnequipSlot, onUpgradeOpen, onGroup }) {
+                          selKey, hoverKey, onSelect, shakeKey, finisher, onUnequipSlot, onUpgradeOpen, onTab }) {
   const spellOf = (id) => (id && typeof window.getSpellById === 'function') ? window.getSpellById(id) : null;
   const colourOf = (sp) => {
     const cat = sp ? classifySpellLocal(sp) : null;
     return { cat, nc: cat ? (TREE_CAT_C[cat] || TREE_CAT_C.utility) : EW.time, glyph: cat ? (TREE_CAT_GLYPH[cat] || TREE_CAT_GLYPH.utility) : '' };
   };
+  const FAM = window.SPELL_FAMILIES || {};
+  const famLook = (id) => { const f = ctx.famOf(id); const d = FAM[f] || {}; return { f, name: d.name || 'Unsorted', glyph: d.glyph || '◇', color: d.color || '#8a8270' }; };
   const eq = ctx.equipped;
   const spLeft = ctx.spMax - ctx.spUsed;
   const tag = (t) => h('b', { className: 'pb-tc-cost', title: 'Tier ' + PB_TIER_NUM[t] + ' · costs ' + t + ' SP' }, t + ' SP');
+  const upN = (id) => (ctx.ups && ctx.ups[id]) ? ctx.ups[id].length : 0;
   const chip = (id) => {
     const sp = spellOf(id);
     const t = pbTierOf(id);
@@ -1731,6 +1668,7 @@ function SpellTierPanel({ ctx, fc, clsName, raceLabel, onSpellClick, onBorrow, o
     const cls = 'pb-tn pb-tc is-' + st8 + (t === 4 ? ' cap' : '') + (selKey === id ? ' sel' : '') + (hoverKey === id ? ' hov' : '') + ' src-' + src + ' can';
     const aoeTiles = pbAoeTiles(sp);
     const why = st8 === 'sp' ? 'NEEDS ' + t + ' SP · ' + spLeft + ' LEFT' : st8 === 'slots' ? 'NO SLOT · ' + eq.length + '/' + ctx.cap : st8 === 'passives' ? ctx.pasMax + ' PASSIVES MAX' : st8 === 'sealed' ? 'SEALED' : null;
+    const bf = src === 'borrowRace' ? famLook(id) : null;   // a borrowed card names the family it came from
     return h('div', {
       key: id, className: cls, style: { '--nc': nc, animation: shakeKey === id ? 'ewTreeShake 0.3s linear' : undefined },
       onClick: () => { if (onSelect) onSelect(id); onSpellClick(id); },
@@ -1739,153 +1677,124 @@ function SpellTierPanel({ ctx, fc, clsName, raceLabel, onSpellClick, onBorrow, o
       title: sp ? sp.name + ' — Tier ' + PB_TIER_NUM[t] + ' · ' + t + ' SP' + (why ? ' · ' + why : '') : id,
     },
       h('span', { className: 'pb-tn-disc' }, st8 === 'sealed' ? '🔒' : (sp && sp.kind === 'passive') ? (sp.icon || '◈') : glyph),
-      /* COMPACT (2026-09-24, mondo: "a lot of empty space between the left info and the right info … put 2 spells
-         side by side"): no right-hand column — the SP tag rides the name line, the source rides the badge row,
-         the AOE grid closes the meta line, a refusal replaces the meta's tail. Two cards per row. */
+      /* COMPACT (2026-09-24, mondo: "put 2 spells side by side"): the SP tag rides the name line, the badges under it,
+         the meta line ⟷ the AOE grid closes the card, a refusal replaces the meta. Two cards per row. */
       h('span', { className: 'pb-tn-text' },
         h('span', { className: 'pb-tc-top' },
           h('span', { className: 'pb-tn-name' }, sp ? sp.name : id),
           st8 === 'equipped' ? (() => {
             // THE UPGRADES (Phase 5): an upgraded spell shows its whole price (tier + upgrades) and ⚙ n
-            const upN = (ctx.ups && ctx.ups[id]) ? ctx.ups[id].length : 0;
-            const upSp = upN && typeof window.spellUpgradesSpOf === 'function' ? window.spellUpgradesSpOf(ctx.ups, id) : 0;
-            return h('b', { className: 'pb-tc-cost on', title: 'Equipped · ' + t + ' SP' + (upN ? ' + ' + upSp + ' SP of upgrades' : '') }, '✓ ' + (t + upSp) + ' SP' + (upN ? ' · ⚙' + upN : ''));
+            const n = upN(id);
+            const upSp = n && typeof window.spellUpgradesSpOf === 'function' ? window.spellUpgradesSpOf(ctx.ups, id) : 0;
+            return h('b', { className: 'pb-tc-cost on', title: 'Equipped · ' + t + ' SP' + (n ? ' + ' + upSp + ' SP of upgrades' : '') }, '✓ ' + (t + upSp) + ' SP' + (n ? ' · ⚙' + n : ''));
           })() : tag(t)),
         h('span', { className: 'pb-tc-badges' }, ...pbSpellBadges(sp, 4),
-          src === 'race' ? null : h('i', { className: 'pb-tc-src' }, src === 'job' ? 'JOB' : src === 'wheel' ? 'DOOR WHEEL' : src === 'gear' ? 'GEAR' : 'BORROWED')),
+          src === 'wheel' ? h('i', { className: 'pb-tc-src' }, 'DOOR WHEEL') : null,
+          bf ? h('i', { className: 'pb-tc-src', style: { color: bf.color } }, bf.glyph + ' ' + bf.name.toUpperCase()) : null),
         h('span', { className: 'pb-tc-bottom' },
           why ? h('i', { className: 'pb-tc-why' }, why)
             : h('span', { className: 'pb-tn-meta' },
                 ...pbNodeMeta(sp).filter(([tx]) => !(aoeTiles && /^AOE /.test(tx))).map(([tx, c], i) => h('em', { key: i, style: c ? { color: c } : undefined }, tx))),
           aoeTiles)));
   };
-  const borrowChip = (t) => {
-    const key = 'B' + t;
-    const n = t ? ctx.parts.borrowRace.concat(ctx.parts.borrowJob).filter(id => pbTierOf(id) === t).length : ctx.borrowCount;
-    return h('div', {
-      key, className: 'pb-tn pb-tc pb-tc-borrow is-socket can' + (selKey === key ? ' sel' : ''),
-      onClick: () => { if (onSelect) onSelect(key); onBorrow(key); },
-      onMouseEnter: (e) => onNodeHoverIn(key, null, e),
-      onMouseLeave: () => onNodeHoverOut(key),
-      title: t ? 'Borrow any race or job ability of Tier ' + PB_TIER_NUM[t] : 'Borrow from any other family or job — every tier, family by family',
-    },
-      h('span', { className: 'pb-tn-disc' }, '＋'),
-      h('span', { className: 'pb-tn-text' },
-        h('span', { className: 'pb-tn-name' }, 'Borrow'),
-        h('span', { className: 'pb-tn-meta' }, h('em', null, t ? n + ' TIER ' + PB_TIER_NUM[t] + ' ABILITIES' : n + ' ABILITIES · EVERY FAMILY'))));
-  };
-  // THE LOADOUT — seven cells, pick order; a click unequips that one spell
+  const borrowChip = () => h('div', {
+    key: 'B0', className: 'pb-tn pb-tc pb-tc-borrow is-socket can' + (selKey === 'B0' ? ' sel' : ''),
+    onClick: () => { if (onSelect) onSelect('B0'); onBorrow('B0'); },
+    onMouseEnter: (e) => onNodeHoverIn('B0', null, e),
+    onMouseLeave: () => onNodeHoverOut('B0'),
+    title: 'Browse the families other races carry — every tier, family by family',
+  },
+    h('span', { className: 'pb-tn-disc' }, '＋'),
+    h('span', { className: 'pb-tn-text' },
+      h('span', { className: 'pb-tn-name' }, 'Browse other families'),
+      h('span', { className: 'pb-tn-meta' }, h('em', null, ctx.borrowCount + ' SPELLS · FAMILY BY FAMILY'))));
+  /* THE LOADOUT — seven slot cards in pick order (a click unequips that one spell) + the basic attack in the eighth cell:
+     the category disc, the WHOLE name (two lines), then its family (glyph + name, the family colour on the card's edge),
+     the tier numeral, the ⚙ upgrades key. */
   const loadout = h('div', { className: 'pb-loadout', 'aria-label': 'Equipped spells' },
     ...Array.from({ length: ctx.cap }).map((_, i) => {
       const id = eq[i];
-      if (!id) return h('div', { key: 'e' + i, className: 'pb-ls empty' }, h('i', null, String(i + 1)));
+      if (!id) return h('div', { key: 'e' + i, className: 'pb-ls empty' }, h('i', null, String(i + 1)), h('small', null, 'EMPTY SLOT'));
       const sp = spellOf(id);
       const t = pbTierOf(id);
       const { nc, glyph } = colourOf(sp);
-      return h('div', { key: id, className: 'pb-ls' + (selKey === id ? ' sel' : ''), style: { '--nc': nc },
+      const fl = famLook(id);
+      const canUp = typeof window.spellAllowedUpgrades === 'function' && window.spellAllowedUpgrades(id).length;
+      return h('div', { key: id, className: 'pb-ls' + (selKey === id ? ' sel' : '') + (hoverKey === id ? ' hov' : '') + ((sp && sp.kind === 'passive') ? ' pas' : ''), style: { '--nc': nc, '--fam': fl.color },
         onClick: () => { if (onSelect) onSelect(id); onUnequipSlot(id); },
         onMouseEnter: (e) => onNodeHoverIn(id, sp, e), onMouseLeave: () => onNodeHoverOut(id),
-        title: (sp ? sp.name : id) + ' — Tier ' + PB_TIER_NUM[t] + ' · ' + t + ' SP · click to unequip' },
+        title: (sp ? sp.name : id) + ' — ' + fl.name + ' · Tier ' + PB_TIER_NUM[t] + ' · ' + t + ' SP · click to unequip' },
         h('span', { className: 'pb-ls-disc' }, (sp && sp.kind === 'passive') ? (sp.icon || '◈') : glyph),
-        h('span', { className: 'pb-ls-name' }, sp ? sp.name : id),
+        h('span', { className: 'pb-ls-text' },
+          h('span', { className: 'pb-ls-name' }, sp ? sp.name : id),
+          h('span', { className: 'pb-ls-fam' }, fl.glyph + ' ' + fl.name)),
         /* ⚙ THE UPGRADES (SPELL_LIBRARY_PLAN.md §6.3, Phase 5): the cell's ⚙ opens the spell's upgrades in the technique
            panel below (selects it, never unequips); a lit ⚙n = n upgrades on */
-        (typeof window.spellAllowedUpgrades === 'function' && window.spellAllowedUpgrades(id).length)
-          ? h('button', { className: 'pb-ls-up' + ((ctx.ups && ctx.ups[id] && ctx.ups[id].length) ? ' on' : ''), type: 'button',
-              title: 'Upgrades — ' + ((ctx.ups && ctx.ups[id] && ctx.ups[id].length) || 0) + ' of ' + (window.SPELL_UPGRADE_MAX || 2) + ' on',
+        canUp
+          ? h('button', { className: 'pb-ls-up' + (upN(id) ? ' on' : ''), type: 'button',
+              title: 'Upgrades — ' + upN(id) + ' of ' + (window.SPELL_UPGRADE_MAX || 2) + ' on',
               onClick: (e) => { e.stopPropagation(); if (onSelect) onSelect(id); if (onUpgradeOpen) onUpgradeOpen(id); } },
-              '⚙' + ((ctx.ups && ctx.ups[id] && ctx.ups[id].length) ? ctx.ups[id].length : ''))
+              '⚙' + (upN(id) || ''))
           : null,
         h('b', { className: 'pb-ls-tier' }, PB_TIER_NUM[t]));
-    }));
-  const tierRow = (t) => {
-    const ids = ctx.rows[t] || [];
-    const worn = ids.filter(id => eq.includes(id)).length;
-    return h('div', { key: 't' + t, className: 'pb-tier', 'data-tier': t },
-      h('div', { className: 'pb-tier-head', title: 'Tier ' + PB_TIER_NUM[t] + ': every spell on this rung costs ' + t + ' SP' },
-        h('b', null, PB_TIER_NUM[t]),
-        h('span', null, t + ' SP'),
-        worn ? h('i', null, worn + ' ON') : null),
-      h('div', { className: 'pb-tier-cells' },
-        ...ids.map(chip),
-        ctx.isFreelancer ? borrowChip(t) : null,
-        (!ids.length && !ctx.isFreelancer) ? h('span', { className: 'pb-tier-none' }, 'NOTHING ON THIS TIER') : null));
+    }),
+    /* ALWAYS READY (the eighth cell): the race's ☠ FINISHER over the ⚔ BASIC ATTACK — no slot, no SP; each half
+       selects / hovers into the technique panel like a slot card */
+    h('div', { key: 'ready', className: 'pb-ls-ready', title: 'Always ready — no slot, no SP' },
+      finisher ? (() => {
+        const ft = String(finisher.type || 'anomaly').toLowerCase();
+        return h('div', { key: 'fin', className: 'pb-ls-mini pb-ls-fin is-finisher' + (selKey === PB_FIN_KEY ? ' sel' : '') + (hoverKey === PB_FIN_KEY ? ' hov' : ''),
+          style: { '--fam': TYPE_C[ft] || EW.time }, 'data-finisher': finisher.id || '',
+          onClick: () => { if (onSelect) onSelect(PB_FIN_KEY); },
+          onMouseEnter: (e) => onNodeHoverIn(PB_FIN_KEY, null, e), onMouseLeave: () => onNodeHoverOut(PB_FIN_KEY),
+          title: '☠ THE FINISHER · ' + finisher.name + ' — ' + (finisher.tagline || '') + ' · full gauge + 1 AP' },
+          h('i', null, finisher.glyph || '☠'), h('span', null, finisher.name));
+      })() : null,
+      h('div', { key: 'root', className: 'pb-ls-mini pb-ls-root' + (selKey === 'root' ? ' sel' : '') + (hoverKey === 'root' ? ' hov' : ''), style: { '--fam': '#e6e9f2' },
+        onClick: () => { if (onSelect) onSelect('root'); },
+        onMouseEnter: (e) => onNodeHoverIn('root', null, e), onMouseLeave: () => onNodeHoverOut('root'),
+        title: 'Basic Attack — always equipped, free' },
+        h('i', null, '⚔'), h('span', null, 'Basic Attack'))));
+  /* THE TABS — one per family: its glyph, its name, how many of its spells are on (n/m) */
+  const tabBar = h('div', { className: 'pb-famtabs', role: 'tablist', 'aria-label': 'Spell families' },
+    ...ctx.tabs.map(t => h('button', { key: t.key, type: 'button', role: 'tab', 'aria-selected': ctx.tab === t,
+      className: 'pb-famtab k-' + t.kind + (ctx.tab === t ? ' on' : '') + (t.on ? ' has' : '') + (t.locked ? ' locked' : ''), style: { '--fam': t.color },
+      title: t.name + (t.desc ? ' — ' + t.desc : ''),
+      onClick: () => { if (onTab) onTab(t.key); } },
+      h('i', null, t.glyph),
+      h('span', null, t.name),
+      t.kind === 'borrow' ? (t.locked ? h('em', null, '🔒') : (t.on ? h('em', null, t.on) : null))
+        : h('em', null, t.on ? t.on + '/' + t.ids.length : t.ids.length))));
+  /* THE OPEN TAB — its name, its line, then its cards tier I → IV (a thin rule names each tier's price) */
+  const tab = ctx.tab;
+  const tierRuled = (ids) => {
+    const out = [];
+    let last = 0;
+    for (const id of ids) {
+      const t = pbTierOf(id);
+      if (t !== last) { out.push(h('div', { key: 'r' + t, className: 'pb-famrule' }, h('b', null, 'TIER ' + PB_TIER_NUM[t]), h('span', null, t + ' SP EACH'))); last = t; }
+      out.push(chip(id));
+    }
+    return out;
   };
-  /* THE RACK BY FAMILY (Phase 7): one row per family — its glyph, name and colour on the head, its chips tier I → IV */
-  const famRow = (g) => {
-    const worn = g.ids.filter(id => eq.includes(id)).length;
-    return h('div', { key: 'f' + (g.fam || '_none'), className: 'pb-tier pb-fam' + (g.own ? ' own' : ''), 'data-family': g.fam || '', style: { '--fam': g.color } },
-      h('div', { className: 'pb-tier-head pb-fam-head', title: g.name + (g.desc ? ' — ' + g.desc : '') + (g.own ? '' : ' · not one of this race\'s families') },
-        h('b', null, g.glyph),
-        h('span', null, g.name),
-        worn ? h('i', null, worn + ' ON') : null),
-      h('div', { className: 'pb-tier-cells' }, ...g.ids.map(chip)));
-  };
-  const byFam = ctx.group === 'family';
-  const groupBar = h('div', { className: 'pb-rack-fold', role: 'radiogroup', 'aria-label': 'Fold the rack' },
-    h('span', null, 'FOLD'),
-    ...[['family', 'BY FAMILY', 'A row per spell family — the race\'s families first'], ['tier', 'BY TIER', 'A row per tier, IV at the top']].map(([id, label, title]) =>
-      h('button', { key: id, type: 'button', className: 'pb-pill-btn' + (ctx.group === id ? ' on' : ''), 'aria-pressed': ctx.group === id, title,
-        onClick: () => { if (onGroup && ctx.group !== id) onGroup(id); } }, label)));
-  const rootSel = selKey === 'root';
-  const root = h('div', { className: 'pb-tn pb-tc is-root can' + (rootSel ? ' sel' : ''), style: { '--nc': '#e6e9f2' },
-    onClick: () => { if (onSelect) onSelect('root'); },
-    onMouseEnter: (e) => onNodeHoverIn('root', null, e), onMouseLeave: () => onNodeHoverOut('root'),
-    title: 'Basic Attack — always equipped, free' },
-    h('span', { className: 'pb-tn-disc' }, '⚔'),
-    h('span', { className: 'pb-tn-text' },
-      h('span', { className: 'pb-tn-name' }, 'Basic Attack'),
-      h('span', { className: 'pb-tn-meta' }, h('em', null, 'ALWAYS EQUIPPED · NO SLOT · 0 SP'))));
-  // mondo (2026-09-24): the most powerful at the top — the FINISHER over Tier IV, the basic attack at the foot
-  /* ◈ THE PASSIVES (SPELL_LIBRARY_PLAN.md Phase 4 — the user: equipment and passives are one kind of row, at most 2 of
-     the 7 slots; today's accessories are universal GEAR): a row under the tiers, each chip priced by its tier like a spell */
-  const pasRow = (ctx.passives && ctx.passives.length) ? h('div', { key: 'pas', className: 'pb-tier pb-tier-pas', 'data-tier': 'pas' },
-    h('div', { className: 'pb-tier-head', title: 'Passive and gear rows: they take a slot and cost their tier in SP; at most ' + ctx.pasMax + ' per loadout' },
-      h('b', null, '◈'),
-      h('span', null, ctx.pasUsed + '/' + ctx.pasMax),
-      h('i', null, 'PASSIVES')),
-    h('div', { className: 'pb-tier-cells' }, ...ctx.passives.map(chip))) : null;
-  return h('div', { className: 'pb-circuit pb-rack' },
-    loadout,
-    finisher ? finStrip() : null,
-    groupBar,
-    byFam
-      ? h('div', { className: 'pb-tiers pb-fams' }, ...(ctx.famRows || []).filter(g => g.ids.length).map(famRow),
-          ctx.isFreelancer ? h('div', { key: 'fb', className: 'pb-tier pb-fam pb-fam-borrow' },
-            h('div', { className: 'pb-tier-head pb-fam-head' }, h('b', null, '＋'), h('span', null, 'Borrow')),
-            h('div', { className: 'pb-tier-cells' }, borrowChip(0))) : null,
-          pasRow)
-      : h('div', { className: 'pb-tiers' }, ...PB_TIER_ORDER.map(tierRow), pasRow),
-    h('div', { className: 'pb-rack-foot' }, root));
-
-  /* THE FINISHER strip (2026-09-19; over the rack since 2026-09-24): one ☠ row — the race's
-     execution, always ready, the full gauge its price. Not a slot, no SP. */
-  function finStrip() {
-    const fin = finisher;
-    const t = String(fin.type || 'anomaly').toLowerCase();
-    const nc = TYPE_C[t] || EW.time;
-    const selected = selKey === PB_FIN_KEY;
-    const cls = 'pb-tn pb-tn-fin is-finisher can' + (selected ? ' sel' : '') + (fin.built ? ' built' : ' typed');
-    return h('div', { className: 'pb-fin', 'data-finisher': fin.id || '' },
-      h('div', { className: 'pb-fin-head' },
-        h('span', { className: 'pb-fin-title' }, '☠ THE FINISHER'),
-        h('span', { className: 'pb-fin-tag' }, 'THE GAUGE’S OTHER VERB · ONE UNIT · ONE VICTIM')),
-      h('div', {
-        className: cls, style: { '--nc': nc },
-        onClick: () => { if (onSelect) onSelect(PB_FIN_KEY); },
-        onMouseEnter: (e) => onNodeHoverIn(PB_FIN_KEY, null, e),
-        onMouseLeave: () => onNodeHoverOut(PB_FIN_KEY),
-        title: fin.name + ' — ' + (fin.tagline || '') + (fin.built ? '' : ' (plays the typed execution until its own is built)'),
-      },
-        h('span', { className: 'pb-tn-disc' }, fin.glyph || '☠'),
-        h('span', { className: 'pb-tn-text' },
-          h('span', { className: 'pb-tn-name' }, fin.name),
-          h('span', { className: 'pb-tn-meta' },
-            h('span', { className: 'pb-badge', style: pbTypeBadgeStyle(t, 10), title: 'Execution type' }, t.toUpperCase()),
-            h('em', null, fin.tagline || ''),
-            h('em', { style: { color: fin.built ? nc : EW.inkMute } }, fin.built ? 'BESPOKE' : 'TYPED EXECUTION'),
-            h('em', { style: { color: EW.inkMute } }, 'FULL GAUGE + 1 AP')))));
-  }
+  const body = !tab ? null : h('div', { className: 'pb-fambody', 'data-family': tab.fam || tab.kind, style: { '--fam': tab.color } },
+    h('div', { className: 'pb-famhead' },
+      h('b', null, tab.glyph),
+      h('span', { className: 'pb-famhead-name' }, tab.name),
+      h('span', { className: 'pb-famhead-desc' }, tab.desc || ''),
+      h('em', null, tab.kind === 'borrow' ? (tab.locked ? 'LOCKED' : tab.on + ' BORROWED') : tab.on + ' OF ' + tab.ids.length + ' ON')),
+    tab.kind === 'borrow'
+      ? h('div', { className: 'pb-tier-cells' },
+          ...(ctx.borrows ? tab.ids.map(chip).concat([borrowChip()]) : [h('div', { key: 'lock', className: 'pb-famlock' },
+            h('b', null, '🃏 ADAPTABLE'),
+            h('span', null, 'The Training passive that opens this tab: equip it and this unit may take spells from the families other races carry (in story mode, only the vessels you own).'),
+            h('button', { type: 'button', className: 'pb-pill-btn', onClick: () => { if (onTab) onTab('training'); } }, 'OPEN TRAINING'))]))
+      : h('div', { className: 'pb-tier-cells' }, ...tierRuled(tab.ids)));
+  /* The rack: a fixed head (the loadout + the tabs), the open family scrolling under it. The finisher and the basic
+     attack live in the loadout's eighth cell (ALWAYS READY), so there is no foot strip any more. */
+  return h('div', { className: 'pb-circuit pb-rack pb-rack-tabs' },
+    h('div', { className: 'pb-rack-head' }, loadout, tabBar),
+    h('div', { className: 'pb-rack-body' }, body));
 }
 
 /* ══ THE TECHNIQUE PANEL (plan §5.2 item 3) — under the rack: a category
@@ -1898,9 +1807,9 @@ function pbTechInfo(ctx, key, finisher) {
   if (key === PB_FIN_KEY) return pbFinisherInfo(key, finisher);
   if (key === 'root') return { key, st8: 'root', id: null, sp: null, tier: 0, cost: 0, verdict: null, source: null };
   if (PB_BORROW_RE.test(key)) {
-    const t = +key.slice(1);   // 0 = every tier (the rack by family)
+    const t = +key.slice(1);   // 0 = every tier (the whole window)
     return { key, st8: 'borrow', id: null, sp: null, tier: t, cost: t, verdict: null, source: null,
-      count: t ? ctx.parts.borrowRace.concat(ctx.parts.borrowJob).filter(id => pbTierOf(id) === t).length : ctx.borrowCount };
+      count: t ? ctx.parts.borrowRace.filter(id => pbTierOf(id) === t).length : ctx.borrowCount };
   }
   const sp = typeof window.getSpellById === 'function' ? window.getSpellById(key) : null;
   if (!sp) return null;
@@ -1910,7 +1819,10 @@ function pbTechInfo(ctx, key, finisher) {
   const ups = (ctx.ups && ctx.ups[key]) || [];
   const spD = (ups.length && typeof window.resolveSpellDef === 'function') ? window.resolveSpellDef(sp, ups) : sp;
   const upSp = ups.length && typeof window.spellUpgradesSpOf === 'function' ? window.spellUpgradesSpOf(ctx.ups, key) : 0;
-  return { key, st8: pbSpellState(ctx, key), id: key, sp, spD, ups, upSp, upgrades: pbUpgradeRows(ctx, key), tier: t, cost: pbSpCost(key), verdict: pbSpellVerdict(ctx, key), source: ctx.sourceOf[key] || null };
+  const fam = ctx.famOf ? ctx.famOf(key) : '';
+  const famDef = (fam && window.SPELL_FAMILIES && window.SPELL_FAMILIES[fam]) || null;
+  return { key, st8: pbSpellState(ctx, key), id: key, sp, spD, ups, upSp, upgrades: pbUpgradeRows(ctx, key), tier: t, cost: pbSpCost(key), verdict: pbSpellVerdict(ctx, key), source: ctx.sourceOf[key] || null,
+    fam: famDef ? { id: fam, name: famDef.name || fam, glyph: famDef.glyph || '◇', color: famDef.color || '#8a8270' } : null };
 }
 function pbFinisherInfo(key, fin) {
   return { key, st8: 'finisher', id: null, sp: null, fin: fin || null, tier: 0, cost: 0, verdict: null, source: null };
@@ -1924,22 +1836,23 @@ function TechniquePanel({ info, clsName, raceLabel, fc, onVerb, onPreview, previ
       h('div', { className: 'pb-technique-main' },
         h('div', { className: 'pb-technique-kicker' }, 'THE RACK · ' + budget),
         h('div', { className: 'pb-technique-name', style: { color: EW.inkMute } }, 'Select a technique'),
-        h('div', { className: 'pb-technique-desc' }, 'CLICK any spell to equip it · CLICK it again (or its slot) to unequip · Tier I–IV cost 1–4 SP · 7 slots · ' + spMax + ' SP · any tier, any order'),
-        h('div', { className: 'pb-technique-keys' }, h('kbd', null, '↑↓←→'), ' walk ', h('kbd', null, 'ENTER'), ' equip / unequip ', h('kbd', null, '⌫'), ' unequip ', h('kbd', null, 'SPACE'), ' replay')));
+        h('div', { className: 'pb-technique-desc' }, 'Pick a family tab · HOVER a spell to read it here · CLICK to equip · CLICK it again (or its slot) to unequip · Tier I–IV cost 1–4 SP · 7 slots · ' + spMax + ' SP'),
+        h('div', { className: 'pb-technique-keys' }, h('kbd', null, ', .'), ' tab ', h('kbd', null, '↑↓←→'), ' walk ', h('kbd', null, 'ENTER'), ' equip / unequip ', h('kbd', null, '⌫'), ' unequip ', h('kbd', null, 'SPACE'), ' replay')));
   }
   const { st8, key } = info;
   const sp = info.spD || info.sp;   // THE UPGRADES (Phase 5): an upgraded spell's numbers are its derived def's
   const cat = sp ? classifySpellLocal(sp) : null;
   const nc = cat ? (TREE_CAT_C[cat] || TREE_CAT_C.utility) : (st8 === 'root' ? '#e6e9f2' : EW.time);
   const glyph = cat ? (TREE_CAT_GLYPH[cat] || TREE_CAT_GLYPH.utility) : (st8 === 'root' ? '⚔' : st8 === 'borrow' ? '＋' : '◯');
-  const srcTxt = info.source === 'race' ? (raceLabel || 'RACE').toUpperCase() : info.source === 'job' ? getJobDisplay(clsName).toUpperCase() : info.source ? PB_SOURCE_LABEL[info.source] : null;
+  // the family names the card's home (THE FAMILY TABS, 2026-09-27); a borrowed / universal row adds where it came from
+  const srcTxt = info.source && info.source !== 'race' ? PB_SOURCE_LABEL[info.source] : null;
   const kicker = st8 === 'root' ? 'ALWAYS EQUIPPED · NO SLOT · 0 SP'
-    : st8 === 'borrow' ? (info.tier ? 'TIER ' + PB_TIER_NUM[info.tier] + ' · ' + info.cost + ' SP EACH · THE FREELANCER BORROWS' : 'EVERY TIER · 1–4 SP · THE FREELANCER BORROWS BY FAMILY')
-    : ['TIER ' + PB_TIER_NUM[info.tier], info.cost + ' SP' + (info.upSp ? ' + ' + info.upSp + ' ⚙' : ''), cat ? spellCategoryLabel(cat).toUpperCase() : null, srcTxt,
+    : st8 === 'borrow' ? (info.tier ? 'TIER ' + PB_TIER_NUM[info.tier] + ' · ' + info.cost + ' SP EACH · ADAPTABLE BORROWS' : 'EVERY TIER · 1–4 SP · ADAPTABLE BORROWS BY FAMILY')
+    : [info.fam ? info.fam.glyph + ' ' + info.fam.name.toUpperCase() : null, 'TIER ' + PB_TIER_NUM[info.tier], info.cost + ' SP' + (info.upSp ? ' + ' + info.upSp + ' ⚙' : ''), cat ? spellCategoryLabel(cat).toUpperCase() : null, srcTxt,
        st8 === 'equipped' ? 'EQUIPPED' : null].filter(Boolean).join(' · ');
   const name = st8 === 'root' ? 'Basic Attack' : st8 === 'borrow' ? (info.tier ? 'Borrow · Tier ' + PB_TIER_NUM[info.tier] : 'Borrow · any family') : (sp ? sp.name : '—');
   const desc = st8 === 'root' ? 'The vessel\'s plain strike — melee or ranged by reach. Every loadout carries it, free.'
-    : st8 === 'borrow' ? 'A Freelancer has no job row: it may equip any other family\'s or any job\'s technique. ' + info.count + (info.tier ? ' Tier ' + PB_TIER_NUM[info.tier] : '') + ' techniques to pick from' + (info.tier ? '.' : ', family by family.')
+    : st8 === 'borrow' ? 'Adaptable is equipped: this unit may take techniques from the families other races carry. ' + info.count + (info.tier ? ' Tier ' + PB_TIER_NUM[info.tier] : '') + ' techniques to pick from' + (info.tier ? '.' : ', family by family.')
     : (sp ? (sp.desc || spellCategoryLabel(cat)) : '');
   const chips = [];
   if (sp) {
@@ -1981,7 +1894,7 @@ function TechniquePanel({ info, clsName, raceLabel, fc, onVerb, onPreview, previ
           h('em', null, (on ? '✓ ' : '+') + spC + ' SP'),
           h('small', null, on || ok ? (u.row.desc || '') : u.note));
       }))) : null;
-  return h('div', { className: 'pb-technique', style: { '--tc': nc } },
+  return h('div', { className: 'pb-technique', style: { '--tc': nc, '--fam': info.fam ? info.fam.color : nc } },
     h('div', { className: 'pb-technique-disc', style: { borderColor: nc, color: st8 === 'equipped' || st8 === 'root' ? TREE_NODE_BG : nc, background: (st8 === 'equipped' || st8 === 'root') ? nc : 'transparent' } }, glyph),
     h('div', { className: 'pb-technique-main' },
       h('div', { className: 'pb-technique-kicker' }, kicker),
@@ -2420,7 +2333,6 @@ function PartyBuilder(props) {
   const [sortDir, setSortDir] = React.useState('desc');
   const [factionFilter, setFactionFilter] = React.useState(null);
   const [typeFilter, setTypeFilter] = React.useState(null);
-  const [jobFilter, setJobFilter] = React.useState(null);
   const [rosterSearch, setRosterSearch] = React.useState('');
   const [showTeamModal, setShowTeamModal] = React.useState(false);
   /* THE DEPLOY PICK (2026-09-14): a saved team may carry up to
@@ -2528,7 +2440,6 @@ function PartyBuilder(props) {
         unitName: (st.partyNames?.[player] || [])[i] || cn,
         customSpells: mt.customSpells ? mt.customSpells.slice() : [],
         spellUpgrades: mt.spellUpgrades ? JSON.parse(JSON.stringify(mt.spellUpgrades)) : {},   // THE UPGRADES (Phase 5)
-        secondaryJob: mt.secondaryJob || null,
         zodiac: mt.zodiac || 'aries',
         loadout: { items: lo.items ? { ...lo.items } : {}, equipment: lo.equipment ? { ...lo.equipment } : {} },
       });
@@ -2598,7 +2509,6 @@ function PartyBuilder(props) {
       else delete st.partyMeta[player][i].customSpells;
       if (s.spellUpgrades && Object.keys(s.spellUpgrades).length) st.partyMeta[player][i].spellUpgrades = JSON.parse(JSON.stringify(s.spellUpgrades));
       else delete st.partyMeta[player][i].spellUpgrades;
-      st.partyMeta[player][i].secondaryJob = s.secondaryJob || null;
       if (!st.partyNames) st.partyNames = {};
       if (!st.partyNames[player]) st.partyNames[player] = [];
       st.partyNames[player][i] = s.unitName || s.cls;
@@ -2727,7 +2637,7 @@ function PartyBuilder(props) {
   };
 
   const clsName = typeof window.normalizeClassName === 'function' ? window.normalizeClassName(st.partyBuilds?.[player]?.[slot], window.DEFAULT_BUILDS?.[player]?.[slot]) : (st.partyBuilds?.[player]?.[slot] || 'Warrior');
-  const meta = st.partyMeta?.[player]?.[slot] || (typeof window.getArchetypeForJob === 'function' ? window.getArchetypeForJob(clsName) : {});
+  const meta = st.partyMeta?.[player]?.[slot] || (typeof window.getDefaultIdentity === 'function' ? window.getDefaultIdentity() : {});
   const identity = typeof window.resolveIdentityForBuild === 'function' ? window.resolveIdentityForBuild(clsName, meta) : { race: meta.race || 'homosapien', faction: 'time', types: ['human'], gender: meta.gender || 'male', zodiac: meta.zodiac || 'aries' };
   const unitRace = identity.race || '', unitFaction = identity.faction || 'time', unitTypes = identity.types || [];
   const fc = getFactionColor(unitFaction);
@@ -2754,7 +2664,7 @@ function PartyBuilder(props) {
   } else {
     // Self-heal: drop any equipped spell this unit can't actually learn
     // (leftovers from a vessel swap, subjob change, or an old saved team).
-    const legal = legalCustomSpellIds(unitRace, clsName, secJob);
+    const legal = legalCustomSpellIds(unitRace, clsName, secJob, rawCustomSpells);
     if (rawCustomSpells.some(id => !legal.has(id))) {
       const scrubbed = rawCustomSpells.filter(id => legal.has(id));
       st.partyMeta[player][slot].customSpells = scrubbed;
@@ -2792,9 +2702,9 @@ function PartyBuilder(props) {
     for (const rk of races) {
       const p = window.RACE_PROFILES?.[rk]; if (!p) continue;
       const genders = typeof window.getAvailableGendersForRace === 'function' ? window.getAvailableGendersForRace(rk) : ['male'];
-      if (rk === 'homosapien') { for (const g of genders) entries.push({ race:rk, gender:g, job:'Freelancer', label:`${_grl(rk,g)} ${g==='female'?'\u2640':'\u2642'}`, cls:'Freelancer', faction:p.faction, types:p.types||[], prof:p }); }
-      else if (genders.length > 1) { const dj = window.RACE_DEFAULT_JOBS?.[rk] || 'Freelancer'; for (const g of genders) entries.push({ race:rk, gender:g, job:dj, label:`${_grl(rk,g)} ${g==='female'?'\u2640':'\u2642'}`, cls:dj, faction:p.faction, types:p.types||[], prof:p }); }
-      else { const dj = window.RACE_DEFAULT_JOBS?.[rk] || 'Freelancer'; entries.push({ race:rk, gender:genders[0], job:dj, label:_grl(rk,genders[0]), cls:dj, faction:p.faction, types:p.types||[], prof:p }); }
+      const uc = window.UNIT_CLASS || 'Vessel';   // THE JOBS REMOVAL (2026-09-27): no job per vessel
+      if (genders.length > 1) { for (const g of genders) entries.push({ race:rk, gender:g, label:`${_grl(rk,g)} ${g==='female'?'\u2640':'\u2642'}`, cls:uc, faction:p.faction, types:p.types||[], prof:p }); }
+      else entries.push({ race:rk, gender:genders[0], label:_grl(rk,genders[0]), cls:uc, faction:p.faction, types:p.types||[], prof:p });
     }
     return entries;
   }, [_]);
@@ -2804,18 +2714,12 @@ function PartyBuilder(props) {
     rosterEntries.forEach(e => (e.types || []).forEach(t => { if (t) s.add(t); }));
     return Array.from(s).sort();
   }, [rosterEntries]);
-  const availableJobs = React.useMemo(() => {
-    const s = new Set();
-    rosterEntries.forEach(e => { if (e.cls) s.add(e.cls); });
-    return Array.from(s).sort((a, b) => getJobDisplay(a).localeCompare(getJobDisplay(b)));
-  }, [rosterEntries]);
 
   const filteredRoster = React.useMemo(() => {
     let list = rosterEntries;
     if (factionFilter) list = list.filter(e => e.faction === factionFilter);
     if (typeFilter) list = list.filter(e => e.types.includes(typeFilter));
-    if (jobFilter) list = list.filter(e => e.cls === jobFilter);
-    if (rosterSearch) { const q = rosterSearch.toLowerCase(); list = list.filter(e => e.label.toLowerCase().includes(q) || e.cls.toLowerCase().includes(q) || e.race.toLowerCase().includes(q)); }
+    if (rosterSearch) { const q = rosterSearch.toLowerCase(); list = list.filter(e => e.label.toLowerCase().includes(q) || e.race.toLowerCase().includes(q)); }
     const getStatVal = (entry, key) => { const s = computeStats(entry.race, entry.cls), mapped = STAT_MAP[key]; return s[mapped] ?? s[key] ?? s[key.toLowerCase()] ?? 0; };
     list = [...list].sort((a, b) => {
       // Owned (unlocked) vessels always come first, then favorites, then the chosen stat.
@@ -2825,22 +2729,21 @@ function PartyBuilder(props) {
       if (af !== bf) return bf - af;
       if (STAT_KEYS.includes(sortKey)) { return sortDir === 'desc' ? getStatVal(b, sortKey) - getStatVal(a, sortKey) : getStatVal(a, sortKey) - getStatVal(b, sortKey); } const av = a[sortKey]||a.label, bv = b[sortKey]||b.label; return sortDir === 'desc' ? String(bv).localeCompare(String(av)) : String(av).localeCompare(String(bv)); });
     return list;
-  }, [rosterEntries, factionFilter, typeFilter, jobFilter, rosterSearch, sortKey, sortDir, _, favRaces]);
+  }, [rosterEntries, factionFilter, typeFilter, rosterSearch, sortKey, sortDir, _, favRaces]);
 
-  function pickRace(raceKey, gender, jobName) {
+  function pickRace(raceKey, gender) {
     if (!st.partyMeta[player]) st.partyMeta[player] = []; if (!st.partyMeta[player][slot]) st.partyMeta[player][slot] = {};
-    const prevJob = st.partyBuilds[player][slot]; const prevRace = st.partyMeta[player][slot].race; st.partyMeta[player][slot].race = raceKey; st.partyMeta[player][slot].gender = gender;
-    if (raceKey === 'homosapien') st.partyBuilds[player][slot] = jobName; else { const lj = window.RACE_DEFAULT_JOBS?.[raceKey]; if (lj) st.partyBuilds[player][slot] = lj; }
-    // A different vessel OR a different job = a different spell pool — the old
-    // unit's picks (race abilities included) must never carry over.
-    if (st.partyBuilds[player][slot] !== prevJob || raceKey !== prevRace) delete st.partyMeta[player][slot].customSpells;
+    const prevRace = st.partyMeta[player][slot].race; st.partyMeta[player][slot].race = raceKey; st.partyMeta[player][slot].gender = gender;
+    st.partyBuilds[player][slot] = window.UNIT_CLASS || 'Vessel';   // THE JOBS REMOVAL (2026-09-27): one neutral class
+    // A different vessel = a different spell pool (its families) — the old unit's picks must never carry over.
+    if (raceKey !== prevRace) { delete st.partyMeta[player][slot].customSpells; delete st.partyMeta[player][slot].spellUpgrades; }
     if (!st.loadouts[player]) st.loadouts[player] = []; if (!st.loadouts[player][slot]) st.loadouts[player][slot] = typeof window.emptyLoadout === 'function' ? window.emptyLoadout() : {};
     const lo = st.loadouts[player][slot]; if (typeof window.ITEM_RULES !== 'undefined') { lo.items = Object.fromEntries(Object.keys(window.ITEM_RULES).map(k=>[k,0])); lo.items.healPotion=1;lo.items.manaPotion=1;lo.items.panacea=1; }
     lo.equipment = typeof window.getDefaultEquipment === 'function' ? window.getDefaultEquipment(st.partyBuilds[player][slot]) : {};
 
     const _mm = typeof window.getActiveMultiplayerMode === 'function' ? window.getActiveMultiplayerMode() : null;
     if (!st.partyMeta[player][slot].customSpells) {
-      st.partyMeta[player][slot].customSpells = buildDefaultCustomSpells(raceKey, st.partyBuilds[player][slot], st.partyMeta[player][slot].secondaryJob || '');
+      st.partyMeta[player][slot].customSpells = buildDefaultCustomSpells(raceKey, st.partyBuilds[player][slot], '');
     }
     st.teamLockedIn = false; if (st.builderConfirmedSlots?.[player]) delete st.builderConfirmedSlots[player][slot]; sfx('uiCursorMove');
     setPbTab('tech');   // C-1: a picked vessel goes straight to its techniques
@@ -2884,21 +2787,12 @@ function PartyBuilder(props) {
   function clearAllSpells() { if (!st.partyMeta[player]) st.partyMeta[player]=[]; if (!st.partyMeta[player][slot]) st.partyMeta[player][slot]={}; st.partyMeta[player][slot].customSpells=[]; delete st.partyMeta[player][slot].spellUpgrades; st.teamLockedIn=false; sfx('uiButtonConfirm'); refresh(); }
   function randomizeSpells() { if (!st.partyMeta[player]) st.partyMeta[player]=[]; if (!st.partyMeta[player][slot]) st.partyMeta[player][slot]={}; const slotCap=typeof window.SPELL_SLOT_MAX!=='undefined'?window.SPELL_SLOT_MAX:6;
 
-    const mainJob = st.partyBuilds?.[player]?.[slot] || clsName;
-    const curSecJob = '';   // no secondary job since the tier rework (2026-09-24)
-    // Every class: a random legal kit (any tier, 7 slots, 16 SP — data.js buildTreeLegalLoadout).
-    if (typeof window.classHasSpellTree === 'function' && window.classHasSpellTree(mainJob)
-        && typeof window.buildTreeLegalLoadout === 'function') {
-      st.partyMeta[player][slot].customSpells = window.buildTreeLegalLoadout(unitRace, mainJob, curSecJob);
-      st.partyMeta[player][slot].spellUpgrades = typeof window.buildRandomUpgrades === 'function' ? window.buildRandomUpgrades(unitRace, mainJob, st.partyMeta[player][slot].customSpells) : {};   // THE UPGRADES (Phase 5)
-      st.teamLockedIn=false; sfx('uiButtonConfirm'); refresh(); return;
+    // a random legal kit (any tier, 7 slots, 16 SP — data.js buildTreeLegalLoadout over the race's families)
+    if (typeof window.buildTreeLegalLoadout === 'function') {
+      st.partyMeta[player][slot].customSpells = window.buildTreeLegalLoadout(unitRace, clsName, '');
+      st.partyMeta[player][slot].spellUpgrades = typeof window.buildRandomUpgrades === 'function' ? window.buildRandomUpgrades(unitRace, clsName, st.partyMeta[player][slot].customSpells) : {};   // THE UPGRADES (Phase 5)
     }
-    const raIds=raceAbilities.filter(a=>a.id&&clashSpellOk(a)).map(a=>a.id);
-
-    const freshPool = []; if (typeof window.SPELL_LIBRARY!=='undefined'&&typeof window.isSpellNativeToClass==='function') { for (const sp of Object.values(window.SPELL_LIBRARY)){if(!sp||sp.kind==='basicAttack'||!clashSpellOk(sp))continue;const isM=window.isSpellNativeToClass(sp,mainJob);const isS=curSecJob&&window.isSpellNativeToClass(sp,curSecJob)&&sp.tier!=='III';if(isM||isS){freshPool.push(sp);}}}
-    const pool=[...raIds,...freshPool.map(e=>e.id)],shuffled=pool.slice(); for(let i=shuffled.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[shuffled[i],shuffled[j]]=[shuffled[j],shuffled[i]];}
-    const rndPicks=[]; let rndUsed=0; for(const sid of shuffled){const c=spellIdSlotCost(sid); if(rndUsed+c>slotCap)continue; rndPicks.push(sid); rndUsed+=c; if(rndUsed>=slotCap)break;}
-    st.partyMeta[player][slot].customSpells=rndPicks; st.teamLockedIn=false; sfx('uiButtonConfirm'); refresh(); }
+    st.teamLockedIn=false; sfx('uiButtonConfirm'); refresh(); }
   function setItemCount(itemKey, delta) {
     if (!st.loadouts[player]) st.loadouts[player] = [];
     if (!st.loadouts[player][slot]) st.loadouts[player][slot] = typeof window.emptyLoadout === 'function' ? window.emptyLoadout() : {};
@@ -2919,18 +2813,15 @@ function PartyBuilder(props) {
 
   const mpMode = typeof window.getActiveMultiplayerMode === 'function' ? window.getActiveMultiplayerMode() : null;
   const isArena = false;
-  /* THE RACK (2026-09-24, the tier rework): every job picks from its pool by
-     tier — no graph. unitTiers = pbTierCtx (the pool in parts, the rows by
-     tier, the sealed set, the equipped list + its SP). */
-  const useTree = !isArena && typeof window.classHasSpellTree === 'function'
-    && window.classHasSpellTree(clsName) && typeof window.unitSpellPoolParts === 'function';
+  /* THE RACK (the tier rework 2026-09-24; THE FAMILY TABS 2026-09-27): every unit picks from its pool — its families —
+     one family tab at a time. unitTiers = pbTierCtx (the pool in parts, the tabs, the sealed set, the equipped list + its SP). */
+  const useTree = !isArena && typeof window.unitSpellPoolParts === 'function';
   const unitUpsWish = st.partyMeta?.[player]?.[slot]?.spellUpgrades || null;   // THE UPGRADES (Phase 5): meta.spellUpgrades
-  const [rackGroup, setRackGroupState] = React.useState(pbRackGroupGet);   // THE RACK BY FAMILY (Phase 7): 'family' | 'tier'
-  const setRackGroup = (g) => { pbRackGroupSet(g); setRackGroupState(g); setFlSocketPick(null); };
-  const unitTiers = React.useMemo(() => useTree ? pbTierCtx(unitRace, clsName, customSpells || [], unitUpsWish, rackGroup) : null,
-    [useTree, unitRace, clsName, customSpells, unitUpsWish, rackGroup, _]);
+  const [rackTab, setRackTab] = React.useState(null);   // THE FAMILY TABS: the open tab's key (null = the first)
+  const unitTiers = React.useMemo(() => useTree ? pbTierCtx(unitRace, clsName, customSpells || [], unitUpsWish, rackTab) : null,
+    [useTree, unitRace, clsName, customSpells, unitUpsWish, rackTab, _]);
   const [treeShake, setTreeShake] = React.useState(null);
-  // A Freelancer's BORROW window: which tier's pool is open ('B1'–'B4' or null).
+  // THE BORROW window (an Adaptable kit): which tier's pool is open ('B0'–'B4' or null).
   const [flSocketPick, setFlSocketPick] = React.useState(null);
   const [flSocketFilt, setFlSocketFilt] = React.useState(PB_SOCKET_FILTER_EMPTY);
   // a fresh pool opens on ALL with no filters
@@ -2943,7 +2834,7 @@ function PartyBuilder(props) {
     if (treeNoteTimer.current) clearTimeout(treeNoteTimer.current);
     treeNoteTimer.current = setTimeout(() => setTreeNote(null), 1600);
   };
-  React.useEffect(() => { setFlSocketPick(null); }, [player, slot, clsName, unitRace]);
+  React.useEffect(() => { setFlSocketPick(null); setRackTab(null); }, [player, slot, clsName, unitRace]);
   React.useEffect(() => () => { if (treeNoteTimer.current) clearTimeout(treeNoteTimer.current); }, []);
   const treeShakeTimer = React.useRef(null);
   React.useEffect(() => { setTechSel(null); setTechHover(null); setPreviewState(null); }, [player, slot, clsName, unitRace]);
@@ -3120,8 +3011,8 @@ function PartyBuilder(props) {
     setTechHover(null);
     if (previewHoverTimer.current) { clearTimeout(previewHoverTimer.current); previewHoverTimer.current = 0; }
   };
-  /* A Freelancer's BORROW: ＋ on a tier row opens that tier's pool; picking
-     a spell equips it through the same verdict. */
+  /* THE BORROW (an Adaptable kit): ＋ BROWSE on the BORROW tab opens the window; picking a spell equips it through the
+     same verdict. */
   function flEquipWildcard(spellId) {
     if (!spellId || !unitTiers) return;
     if (!st.partyMeta[player]) st.partyMeta[player] = [];
@@ -3139,9 +3030,9 @@ function PartyBuilder(props) {
   /* THE BORROW POOL — family by family since Phase 7 (data.js spellFamilyGroups; each sp carries _famKey for the headers);
      'B0' = every tier (the rack by family), 'B1'–'B4' = one tier (the rack by tier) */
   const flSocketPool = React.useMemo(() => {
-    if (!flSocketPick || !unitTiers || !unitTiers.isFreelancer) return [];
+    if (!flSocketPick || !unitTiers || !unitTiers.borrows) return [];
     const t = +String(flSocketPick).slice(1);
-    const ids = unitTiers.parts.borrowRace.concat(unitTiers.parts.borrowJob).filter(id => {
+    const ids = unitTiers.parts.borrowRace.filter(id => {
       const sp = typeof window.getSpellById === 'function' ? window.getSpellById(id) : null;
       return sp && (!t || pbTierOf(sp) === t) && clashSpellOk(sp);
     });
@@ -3150,7 +3041,7 @@ function PartyBuilder(props) {
     for (const g of groups) for (const id of g.ids) { const sp = window.getSpellById(id); if (sp) out.push({ sp, fam: g.fam || '', famName: g.name, famGlyph: g.glyph, famColor: g.color }); }
     return out;
   }, [flSocketPick, unitTiers, _]);
-  const spellPool = React.useMemo(() => { if (typeof window.SPELL_LIBRARY==='undefined') return []; const mainJob=clsName,secJ=secJob,pool=[]; for (const sp of Object.values(window.SPELL_LIBRARY)){if(!sp||sp.kind==='basicAttack'||!clashSpellOk(sp))continue;const isM=typeof window.isSpellNativeToClass==='function'&&window.isSpellNativeToClass(sp,mainJob);const isS=secJ&&typeof window.isSpellNativeToClass==='function'&&window.isSpellNativeToClass(sp,secJ)&&sp.tier!=='III';if(isM||isS){pool.push(sp);}} return pool; }, [clsName, secJob, _]);
+  const spellPool = [];   // the flat-pool fallback's library read went with the jobs (2026-09-27) — the rack is the pool
 
   const numerals = ['I','II','III','IV','V','VI','VII','VIII'];
   const unitName = resolveUnitName(player, slot, clsName);
@@ -3168,7 +3059,7 @@ function PartyBuilder(props) {
   const spellSlotsUsed = learnedSpells.reduce((s, sp) => s + spellSlotCost(sp), 0);
   const zodiacs = typeof window.AVAILABLE_ZODIACS!=='undefined' ? window.AVAILABLE_ZODIACS : ['aries','taurus','gemini','cancer','leo','virgo','libra','scorpio','sagittarius','capricorn','aquarius','pisces'];
   const codexLore = getCodexLore(unitRace);
-  const raceClass = typeof window.RACE_CLASS !== 'undefined' ? window.RACE_CLASS[unitRace] : 'hybrid';
+  const raceClass = pbRaceClass(unitRace);
   const classLabel = CODEX_CLASS_LABELS[raceClass] || 'MULTI-ROLE';
   const slotCap = typeof window.SPELL_SLOT_MAX !== 'undefined' ? window.SPELL_SLOT_MAX : 7;
   const docNum = 'EW-' + (Math.abs((unitRace||'').split('').reduce((a,c)=>a+c.charCodeAt(0),0)*7)%9000+1000);
@@ -3182,7 +3073,7 @@ function PartyBuilder(props) {
      when a tab changes. ══ */
   const raceLabelTxt = _grl(unitRace, identity.gender) || unitRace;
   const officer = pbOfficer();
-  const anyWindow = !!(equipPicker || showTeamModal || teamPick || pbMenu || notesOpen || (flSocketPick && unitTiers && unitTiers.isFreelancer));
+  const anyWindow = !!(equipPicker || showTeamModal || teamPick || pbMenu || notesOpen || (flSocketPick && unitTiers && unitTiers.borrows));
   // the wall's hover → the stage (Stage 4); cleared on leave, on a pick and off the ROSTER tab
   const rosterHoverIn = (entry) => {
     if (rosterHoverTimer.current) clearTimeout(rosterHoverTimer.current);
@@ -3240,6 +3131,13 @@ function PartyBuilder(props) {
       if (k === 'q' || k === 'Q' || k === '[') { e.preventDefault(); cycleTab(-1); }
       else if (k === 'e' || k === 'E' || k === ']') { e.preventDefault(); cycleTab(1); }
       else if (k >= '1' && k <= '4' && PB_TABS[+k - 1]) { e.preventDefault(); setTab(PB_TABS[+k - 1].id); }
+      else if (circuitKeys && (k === ',' || k === '<' || k === '.' || k === '>')) {   // THE FAMILY TABS: , . walk the tabs
+        e.preventDefault();
+        const tabs = unitTiers.tabs || [];
+        const at = Math.max(0, tabs.indexOf(unitTiers.tab));
+        const nx = tabs[(at + ((k === ',' || k === '<') ? -1 : 1) + tabs.length) % tabs.length];
+        if (nx) { setRackTab(nx.key); setTechSel(null); setTechHover(null); sfx('uiCursorMove'); }
+      }
       else if (circuitKeys && !e.shiftKey && (k === 'ArrowUp' || k === 'ArrowDown' || k === 'ArrowLeft' || k === 'ArrowRight')) {
         e.preventDefault();
         const dir = k === 'ArrowUp' ? 'up' : k === 'ArrowDown' ? 'down' : k === 'ArrowLeft' ? 'left' : 'right';
@@ -3278,7 +3176,7 @@ function PartyBuilder(props) {
     const { st8, key } = info;
     if (st8 === 'finisher') { pbPreviewFinisher(); return; }
     if (st8 === 'root') { pbPreview(null); return; }
-    if (st8 === 'borrow') { if (unitTiers.isFreelancer) { setFlSocketPick(key); sfx('uiCursorMove'); } return; }
+    if (st8 === 'borrow') { if (unitTiers.borrows) { setFlSocketPick(key); sfx('uiCursorMove'); } return; }
     tierSpellClick(key);
   };
   const unitFinisher = pbFinisherDef(unitRace);
@@ -3328,11 +3226,6 @@ function PartyBuilder(props) {
               h('i', null, arrow), statLabel(k), h('small', null, d === 'desc' ? 'HIGHEST FIRST' : 'LOWEST FIRST')))).flat(),
           h('button', { key: 'la', className: 'pb-menu-row' + (sortKey === 'label' && sortDir === 'asc' ? ' on' : ''), onClick: () => { setSortKey('label'); setSortDir('asc'); setPbMenu(null); sfx('uiCursorMove'); } }, h('i', null, 'A'), 'NAME', h('small', null, 'A – Z')),
           h('button', { key: 'ld', className: 'pb-menu-row' + (sortKey === 'label' && sortDir === 'desc' ? ' on' : ''), onClick: () => { setSortKey('label'); setSortDir('desc'); setPbMenu(null); sfx('uiCursorMove'); } }, h('i', null, 'Z'), 'NAME', h('small', null, 'Z – A'))))
-    : pbMenu === 'job'
-    ? h(PbWindow, { title: 'FILTER BY JOB', sub: jobFilter ? getJobDisplay(jobFilter) : 'EVERY JOB', onClose: () => setPbMenu(null), zone: true, width: 320 },
-        h('div', { className: 'pb-menu-list' },
-          h('button', { key: 'all', className: 'pb-menu-row' + (!jobFilter ? ' on' : ''), onClick: () => { setJobFilter(null); setPbMenu(null); sfx('uiCursorMove'); } }, h('i', null, '∗'), 'ALL JOBS'),
-          ...availableJobs.map(j => h('button', { key: j, className: 'pb-menu-row' + (jobFilter === j ? ' on' : ''), onClick: () => { setJobFilter(j); setPbMenu(null); sfx('uiCursorMove'); } }, h('i', null, getJobDisplay(j).charAt(0)), getJobDisplay(j)))))
     : null;
   const rosterPanel = h(React.Fragment, null,
     h('div', { className: 'pb-zone-head pb-wall-head' },
@@ -3342,7 +3235,7 @@ function PartyBuilder(props) {
       h('div', { style: { flex: 1 } }),
       h('input', { className: 'pb-pill-input', placeholder:'SEARCH…', value:rosterSearch, onChange:e=>setRosterSearch(e.target.value), 'aria-label': 'Search the wall' }),
       h('button', { className: 'pb-pill-btn' + (pbMenu === 'sort' ? ' on' : ''), onClick: () => setPbMenu(pbMenu === 'sort' ? null : 'sort'), title: 'Sort the wall' }, '⇅ ', sortLabelTxt),
-      h('button', { className: 'pb-pill-btn' + (jobFilter || pbMenu === 'job' ? ' on' : ''), onClick: () => setPbMenu(pbMenu === 'job' ? null : 'job'), title: 'Filter by job' }, jobFilter ? getJobDisplay(jobFilter).toUpperCase() : 'ALL JOBS', ' ▾')),
+      null),
     h('div', { className: 'pb-wall-filters' },
       h('span', { className: 'pb-wall-flabel' }, 'TYPE'),
       ...['human','alien','divine','unholy','tech','anomaly'].map(t => {
@@ -3355,7 +3248,7 @@ function PartyBuilder(props) {
       h('span', { className: 'pb-wall-flabel' }, 'FACTION'),
       ...['space','time','chaos'].map(fk => h('button', { key: fk, className: 'pb-faction-ring' + (factionFilter === fk ? ' on' : ''), style: { '--fc': FACTION_C[fk] },
         onClick: () => setFactionFilter(factionFilter === fk ? null : fk), title: fk.toUpperCase() }, fk)),
-      (typeFilter || factionFilter || jobFilter || rosterSearch) ? h('button', { className: 'pb-pill-btn danger', onClick: () => { setTypeFilter(null); setFactionFilter(null); setJobFilter(null); setRosterSearch(''); }, title: 'Clear every filter' }, '✕ CLEAR') : null),
+      (typeFilter || factionFilter || rosterSearch) ? h('button', { className: 'pb-pill-btn danger', onClick: () => { setTypeFilter(null); setFactionFilter(null); setRosterSearch(''); }, title: 'Clear every filter' }, '✕ CLEAR') : null),
     h('div', { className: 'pb-roster', onMouseLeave: rosterHoverOut },
       filteredRoster.map((entry, ei) => {
         const isActive = entry.race===unitRace && entry.gender===(identity.gender||'male') && (entry.race!=='homosapien'||entry.cls===clsName);
@@ -3365,10 +3258,10 @@ function PartyBuilder(props) {
         const locked = isLockedEntry(entry.race);
         const onCardClick = locked
           ? ()=>{ try{ sfx('uiError'); }catch(e){} if (typeof window._goToShop==='function') window._goToShop(entry.race); }
-          : ()=>{ rosterHoverOut(); pickRace(entry.race,entry.gender,entry.job); };
+          : ()=>{ rosterHoverOut(); pickRace(entry.race,entry.gender); };
         const pUrl = (typeof window.getUnitPortraitUrl === 'function') ? window.getUnitPortraitUrl({ race: entry.race, gender: entry.gender }) : null;
         const hovered = !!(rosterHover && rosterHover.race === entry.race && rosterHover.gender === entry.gender && rosterHover.cls === entry.cls);
-        return h('div', { key:ei, onClick:onCardClick, onMouseEnter: () => rosterHoverIn(entry), title: locked?'NOT DECLASSIFIED — unlock this vessel in the Shop':`${entry.label} · ${getJobDisplay(entry.cls)}`,
+        return h('div', { key:ei, onClick:onCardClick, onMouseEnter: () => rosterHoverIn(entry), title: locked?'NOT DECLASSIFIED — unlock this vessel in the Shop':`${entry.label} · ${pbRoleLabel(entry.race)}`,
             className:'pb-rtile'+(locked?' locked':'')+(isActive?' on':'')+(hovered?' hover':''), style:{ '--fc': entryFc } },
           h('div', { className: 'pb-rtile-art' + (pUrl ? ' portrait' : '') },
             pUrl ? h('div', { className: 'pb-rtile-portrait', style: { backgroundImage: `url('${pUrl}')` } })
@@ -3377,7 +3270,7 @@ function PartyBuilder(props) {
             !locked ? h('button', { className: 'pb-rtile-star' + (starred ? ' on' : ''), onClick:e=>{e.stopPropagation();toggleFav(entry.race,entry.gender);}, title: starred ? 'Unfavourite' : 'Favourite' }, starred ? '★' : '☆') : null,
             h('div', { className: 'pb-rtile-types' }, ...(entry.types || []).slice(0, 3).map((t, ti) => h('i', { key: ti, style: { background: getTypeColor(t) }, title: String(t).toUpperCase() })))),
           h('div', { className: 'pb-rtile-name' }, entry.label),
-          h('div', { className: 'pb-rtile-job' }, getJobDisplay(entry.cls)));
+          h('div', { className: 'pb-rtile-job' }, pbRoleLabel(entry.race)));
       })),
     rosterMenu);
 
@@ -3435,15 +3328,15 @@ function PartyBuilder(props) {
           return rows;
         })())),
 
-      // ── THE RACK (2026-09-24): the loadout, four tier rows, the root + THE FINISHER ──
+      // ── THE RACK (THE FAMILY TABS, 2026-09-27): the loadout, the family tabs, the open family, ALWAYS READY ──
       useTree&&unitTiers&&h(React.Fragment, null,
-        h('div', { className: 'pb-circuit-scroll', onMouseLeave: treeNodeHoverOut },
+        h('div', { className: 'pb-circuit-scroll pb-circuit-tabs', onMouseLeave: treeNodeHoverOut },
           h(SpellTierPanel, { ctx: unitTiers, fc, clsName,
             raceLabel: (typeof window.getRaceLabel === 'function' ? window.getRaceLabel(unitRace) : unitRace),
             onSpellClick: tierSpellClick, onUnequipSlot: tierSpellClick,
             onUpgradeOpen: () => { setTechHover(null); sfx('uiCursorMove'); },
             onBorrow: (key) => { setFlSocketPick(flSocketPick === key ? null : key); sfx('uiCursorMove'); },
-            onGroup: (g) => { setRackGroup(g); sfx('uiCursorMove'); },
+            onTab: (k) => { setRackTab(k); setTechSel(null); setTechHover(null); sfx('uiCursorMove'); },
             onNodeHoverIn: treeNodeHoverIn, onNodeHoverOut: treeNodeHoverOut, shakeKey: treeShake,
             selKey: techSel, hoverKey: techHover, onSelect: (key) => { setTechSel(key); },
             finisher: unitFinisher })),
@@ -3453,7 +3346,7 @@ function PartyBuilder(props) {
       (!useTree&&!isArena&&(spellPool.length>0||raceAbilities.length>0))&&h(React.Fragment, null,
         h('div', { style:{ display:'flex', alignItems:'center', gap:6, flexShrink:0, margin:'6px 6px 3px 10px', paddingTop:6, borderTop:`1px solid ${EW.panelEdge}` } },
           h('span', { style:{ fontSize:10, color:EW.inkMute, letterSpacing:'0.16em' } }, 'SPELL POOL'),
-          h('span', { style:{ fontSize:9, color:`${fc}bb`, letterSpacing:'0.08em', textTransform:'uppercase' } }, getJobDisplay(clsName)),
+          h('span', { style:{ fontSize:9, color:`${fc}bb`, letterSpacing:'0.08em', textTransform:'uppercase' } }, pbRoleLabel(unitRace)),
           h('span', { style:{ fontSize:9, color:EW.inkDim, letterSpacing:'0.06em', marginLeft:'auto' } }, spellPool.length + raceAbilities.length, ' AVAILABLE · CLICK TO EQUIP')),
         h('div', { style:{ flex:1, minHeight:0, overflowY:'auto', display:'flex', flexDirection:'column', gap:3, paddingTop:2, paddingBottom:2 } },
           (()=>{
@@ -3501,19 +3394,18 @@ function PartyBuilder(props) {
         h('span',{style:{fontSize:10,color:'rgba(200,180,150,0.6)',letterSpacing:'0.1em',marginBottom:1,paddingLeft:10}},'RACE ABILITIES'),
         raceAbilities.map((a,ai)=>h(SpellBlade,{key:ai,sp:a,raceAbility:true,onHoverIn:e=>showSpellTip(a,e),onHoverOut:hideSpellTip})))),
 
-    // ── THE BORROW window: a Freelancer's ＋ on a tier row opens every race /
-    //    job ability of that tier (tabs + filters + search; a row that would
-    //    break the budget is dimmed and says why on click). ──
+    // ── THE BORROW window: an Adaptable kit's ＋ BROWSE opens every spell of the families other races carry
+    //    (tabs + filters + search; a row that would break the budget is dimmed and says why on click). ──
     (() => {
       if (!unitTiers) return null;
-      const socketOpen = flSocketPick && unitTiers.isFreelancer;
+      const socketOpen = flSocketPick && unitTiers.borrows;
       if (!socketOpen) return null;
       const close = () => { setFlSocketPick(null); hideSpellTip(); };
       let title, sub, rows;
       {
         const bt = +String(flSocketPick).slice(1);   // 0 = every tier (the rack by family, Phase 7)
         title = bt ? '＋ BORROW · TIER ' + PB_TIER_NUM[bt] : '＋ BORROW · BY FAMILY';
-        sub = (bt ? bt + ' SP EACH' : '1–4 SP') + ' · ANY OTHER FAMILY OR JOB · ' + spUsedNow + '/' + spMax + ' SP · ' + (customSpells || []).length + '/' + slotCap + ' SLOTS';
+        sub = (bt ? bt + ' SP EACH' : '1–4 SP') + ' · ANY OTHER RACE\'S FAMILY · ' + spUsedNow + '/' + spMax + ' SP · ' + (customSpells || []).length + '/' + slotCap + ' SLOTS';
         const F = flSocketFilt;
         // a family's name finds its members too (the search box)
         const famHit = (e, f) => !!(f.q && f.q.trim() && String(e.famName || '').toLowerCase().includes(f.q.trim().toLowerCase()));
@@ -3661,7 +3553,7 @@ function PartyBuilder(props) {
       h('div', { className: 'pb-zone-body', style:{ overflowY:'auto', overflowX:'hidden', gap:6, padding:'10px 14px 10px 12px', position:'relative' } },
         DOOR && h('div', { className:'door-wm', style:{ right:'2%', top:'6%', width:'44%', aspectRatio:'1' } }),
         h('div', { style:{ fontFamily:'Cormorant SC, serif', fontSize:'clamp(18px,1.6vw,24px)', fontWeight:600, lineHeight:1.05, color:'#f1e9cf', position:'relative', zIndex:1 } }, raceLabelTxt),
-        h('div', { style:{ fontSize:9, color:EW.inkDim, letterSpacing:'0.16em', position:'relative', zIndex:1 } }, getJobDisplay(clsName).toUpperCase(), ' · ', unitFaction.toUpperCase(), ' ALIGNMENT'),
+        h('div', { style:{ fontSize:9, color:EW.inkDim, letterSpacing:'0.16em', position:'relative', zIndex:1 } }, pbRoleLabel(unitRace), ' · ', unitFaction.toUpperCase(), ' ALIGNMENT'),
         DOOR && h('div', { className:'door-file-h', style:{ position:'relative', zIndex:1, marginTop:4 } }, '1.  EXECUTIVE SUMMARY'),
         h('div', { style:{ fontSize:12, lineHeight:1.55, color:'#d3caae', fontFamily:'Cormorant SC, serif', fontStyle:'italic', borderLeft:`2px solid ${fc}55`, paddingLeft:8, position:'relative', zIndex:1 } }, codexLore),
         cs && h('div', { className:'door-file-h', style:{ position:'relative', zIndex:1, marginTop:2 } }, '2.  CUSTOMS DISPOSITION'),
@@ -3682,7 +3574,7 @@ function PartyBuilder(props) {
   const statsPanel = h(React.Fragment, null,
     h('div', { className: 'pb-ident' },
       h('b', null, unitName),
-      h('span', null, raceLabelTxt.toUpperCase(), ' · ', getJobDisplay(clsName).toUpperCase(),
+      h('span', null, raceLabelTxt.toUpperCase(), ' · ', pbRoleLabel(unitRace),
         ''),
       h('div', { className: 'pb-ident-types' }, ...unitTypes.map((t,i)=>h(TypeChip,{key:i,type:t,size:9})),
         h('em', { style:{ color:`${fc}bb` }, title: factionBonusTxt || undefined }, unitFaction))),
@@ -3714,11 +3606,11 @@ function PartyBuilder(props) {
         h(PbElementRing, { race: unitRace })),
 ));
 
-  // ROSTER's quick read under the hero: name · race · job · types · four pills · CONFIRM
+  // ROSTER's quick read under the hero: name · race · role · types · four pills · CONFIRM
   const quickCard = h('div', { className: 'pb-stage-card' },
     h('div', { style:{ display:'flex', alignItems:'baseline', gap:8, minWidth:0 } },
       h('span', { style:{ fontFamily:'Cormorant SC, serif', fontSize:15, fontWeight:600, color:'#f1e9cf', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', minWidth:0 } }, stageEntry ? stageLabel : unitName),
-      h('span', { style:{ fontSize:8, color:EW.inkDim, letterSpacing:'0.14em', flexShrink:0, textTransform:'uppercase' } }, getJobDisplay(stageCls))),
+      h('span', { style:{ fontSize:8, color:EW.inkDim, letterSpacing:'0.14em', flexShrink:0, textTransform:'uppercase' } }, pbRoleLabel(stageEntry ? stageEntry.race : unitRace))),
     h('div', { style:{ display:'flex', alignItems:'center', gap:4, flexWrap:'wrap' } }, ...unitTypes.map((t,i)=>h(TypeChip,{key:i,type:t,size:9}))),
     h('div', { style:{ display:'flex', flexDirection:'column', gap:2 } },
       ['HP','ATK','DEF','SPD'].map(k => {
@@ -3745,13 +3637,13 @@ function PartyBuilder(props) {
     h('div', { className: 'pb-party-slots' },
       Array.from({length: teamSize}).map((_, i) => {
         const cn = typeof window.normalizeClassName==='function' ? window.normalizeClassName(st.partyBuilds?.[player]?.[i], window.DEFAULT_BUILDS?.[player]?.[i]) : (st.partyBuilds?.[player]?.[i]||'Warrior');
-        const mt = st.partyMeta?.[player]?.[i] || (typeof window.getArchetypeForJob==='function' ? window.getArchetypeForJob(cn) : {});
+        const mt = st.partyMeta?.[player]?.[i] || (typeof window.getDefaultIdentity==='function' ? window.getDefaultIdentity() : {});
         const id = typeof window.resolveIdentityForBuild==='function' ? window.resolveIdentityForBuild(cn,mt) : {race:'homosapien',faction:'time',types:['human'],gender:'male'};
         const isActive = i===slot, fCol = getFactionColor(id.faction);
         const confirmed = !!(st.builderConfirmedSlots?.[player]?.[i]);
         const nm = resolveUnitName(player, i, cn);
         const rl = (_grl(id.race,id.gender)||id.race||'?');
-        return h('div', { key:i, onClick:()=>selectSlot(i), className:'pb-party-slot' + (isActive ? ' on' : '') + (confirmed ? ' filed' : ''), style:{ '--slot-fc': fCol }, title: nm + ' · ' + rl + ' · ' + getJobDisplay(cn) },
+        return h('div', { key:i, onClick:()=>selectSlot(i), className:'pb-party-slot' + (isActive ? ' on' : '') + (confirmed ? ' filed' : ''), style:{ '--slot-fc': fCol }, title: nm + ' · ' + rl + ' · ' + pbRoleLabel(id.race) },
           h('div', { className:'pb-party-ring' },
             h('div', { className:'pb-party-portrait' }, h(PortraitSprite, { race:id.race, gender:id.gender||'male', cls:cn, glow:isActive?id.faction:null })),
             h('span', { className:'pb-party-no' }, numerals[i]),
@@ -3759,7 +3651,7 @@ function PartyBuilder(props) {
               ? h('span', { className:'door-stamp door-stamp-sm admit pb-party-filed', title:'Locked in' }, 'FILED')
               : h('span', { className:'pb-party-filed pb-party-tick' }, '✓'))),
           h('div', { className:'pb-party-name' }, nm),
-          h('div', { className:'pb-party-sub' }, rl, ' · ', getJobDisplay(cn)));
+          h('div', { className:'pb-party-sub' }, rl, ' · ', pbRoleLabel(id.race)));
       })),
     h('div', { className: 'pb-party-right ms-tty-foot pb-foot' },
       h('div', { className: 'pb-tools' },
@@ -3823,7 +3715,7 @@ function PartyBuilder(props) {
         ? h('p', null, 'Select a Homosapien on the Roster tab to customize the male or female base model.')
         : !appearance
           ? h(React.Fragment, null,
-              h('p', null, 'Build a custom appearance for this character. Your job, techniques and equipment stay attached to this slot.'),
+              h('p', null, 'Build a custom appearance for this character. Your techniques and equipment stay attached to this slot.'),
               h('div', { className: 'pb-creator-options' },
                 h('button', { className: 'ms-tty-btn primary', disabled: isWaitingOnline, onClick: () => changeAppearance({}) }, 'CREATE APPEARANCE'),
                 h('button', { className: 'ms-tty-btn', disabled: isWaitingOnline, onClick: () => changeAppearance(window.randomCharacterAppearance ? window.randomCharacterAppearance() : {}) }, '⚄ RANDOM')))
@@ -3911,7 +3803,7 @@ function PartyBuilder(props) {
                 h('span', { style:{ fontFamily:'Cormorant SC, serif', fontSize:18, fontWeight:600, letterSpacing:'0.06em', color:EW.ink, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', minWidth:0, flex:1 }}, preset.name || 'Unnamed'),
                 h('span', { style:{ fontSize:9, color:EW.inkDim, letterSpacing:'0.1em', flexShrink:0 }}, slots.length, ' VESSELS')),
               h('div', { style:{ display:'flex', gap:5, flexWrap:'wrap' }},
-                slots.slice(0, 8).map((s, si) => h('div', { key:si, className:'pb-team-mini', title:(_grl(s.race, s.gender)||s.race)+' · '+getJobDisplay(s.cls) },
+                slots.slice(0, 8).map((s, si) => h('div', { key:si, className:'pb-team-mini', title:(_grl(s.race, s.gender)||s.race)+' · '+pbRoleLabel(s.race) },
                   h(PortraitSprite, { race:s.race, gender:s.gender||'male', cls:s.cls })))),
               h('div', { style:{ display:'flex', alignItems:'center', gap:6, marginTop:2 }},
                 h('span', { style:{ fontSize:8, color:EW.inkDim, letterSpacing:'0.08em', flex:1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }},
@@ -3967,8 +3859,8 @@ function PartyBuilder(props) {
           return h('div', { key:i, className:'pbx-pick-row', onClick:()=>toggleTeamPick(i), style:{ borderRadius:'var(--pb-r-sm)', cursor:'pointer', opacity: on ? 1 : 0.55, border: on ? '1px solid rgba(242,196,104,0.7)' : undefined } },
             h('div', { className:'pb-team-mini', style:{ width:36, height:36 } }, h(PortraitSprite, { race:s.race, gender:s.gender||'male', cls:s.cls })),
             h('div', { style:{ flex:1, minWidth:0, display:'flex', flexDirection:'column', gap:2 }},
-              h('div', { style:{ fontFamily:'Cormorant SC, serif', fontSize:13, letterSpacing:'0.1em', color:EW.ink }}, s.unitName || s.cls),
-              h('div', { style:{ fontSize:9, color:EW.inkMute }}, rl, ' · ', getJobDisplay(s.cls))),
+              h('div', { style:{ fontFamily:'Cormorant SC, serif', fontSize:13, letterSpacing:'0.1em', color:EW.ink }}, s.unitName || rl),
+              h('div', { style:{ fontSize:9, color:EW.inkMute }}, rl, ' · ', pbRoleLabel(s.race))),
             h('span', { style:{ fontSize:10, letterSpacing:'0.12em', color: on ? EW.warn : EW.inkDim }}, on ? '✓ CROSSING' : 'ON FILE'));
         }),
         h('div', { style:{ display:'flex', gap:6, justifyContent:'flex-end', marginTop:6 }},
@@ -4083,7 +3975,7 @@ function OfficerCreator() {
      barbershop's as before; its SAVE re-files an enlisted officer's look on the party too. */
   const props = arguments[0] || {};
   const intake = !!props.intake;
-  const OR = window.HQ_OFFICER_RULES || { race: 'door agent', cls: 'Freelancer', labels: {} };
+  const OR = window.HQ_OFFICER_RULES || { race: 'door agent', cls: 'Vessel', labels: {} };
   const L = OR.labels || {};
   const PS = window.ProfileSystem;
   const idx = PS && typeof PS.getActiveProfileIndex === 'function' ? PS.getActiveProfileIndex() : null;
@@ -4154,7 +4046,7 @@ function OfficerCreator() {
         h('button', { className: 'ms-tty-btn', onClick: close }, intake ? (L.back || 'BACK TO THE MENU') : (dirty ? 'CLOSE · UNSAVED' : 'CLOSE')))),
     h('div', { className: 'pb-officer-body' },
       h('div', { className: 'pb-officer-stage' },
-        h(HeroViewer3D, { race: 'homosapien', gender, cls: 'Freelancer', faction: 'human', focus: 0.5, appearance }),
+        h(HeroViewer3D, { race: 'homosapien', gender, cls: 'Vessel', faction: 'human', focus: 0.5, appearance }),
         !viewerLoads ? h('p', { className: 'pb-creator-note', style: { position: 'absolute', left: 16, top: 16 } }, 'The 3D stage is unavailable here — the look still files.') : null),
       h('div', { className: 'pb-officer-controls' },
         h('div', { className: 'pb-creator' },

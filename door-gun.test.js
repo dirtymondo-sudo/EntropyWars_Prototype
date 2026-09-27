@@ -101,18 +101,20 @@ test('the ledger: hq.gunDoors merges earlier-day-wins, destination keys only, ca
 });
 
 test('the pool: the wheel is the Door Agent\'s alone, never borrowable, and holds only rows that exist', () => {
-    const parts = D.unitSpellPoolParts('door agent', 'Agent');
+    const parts = D.unitSpellPoolParts('door agent', 'Vessel');
     assert.ok(Array.isArray(parts.wheel));
     for (const id of parts.wheel) assert.ok(D.SPELL_BY_ID[id], id + ' is a real row');
     const expected = Object.values(D.DOOR_GUN_DOORS).filter(d => d.kind === 'standing' && D.SPELL_BY_ID[d.spell]).map(d => d.spell);
     deq(parts.wheel, expected, 'wedge order, rows that exist');
-    deq(D.unitSpellPoolParts('door agent', 'Freelancer').wheel, expected, 'a Freelancer agent keeps the wheel');
+    /* THE JOBS REMOVAL (2026-09-27): the borrow window is the Adaptable row, not the Freelancer job */
+    deq(D.unitSpellPoolParts('door agent', 'Vessel', ['passiveAdaptable']).wheel, expected, 'an Adaptable agent keeps the wheel');
     for (const race of ['homosapien', 'knight', 'wizard']) {
-        const p = D.unitSpellPoolParts(race, 'Freelancer');
+        const p = D.unitSpellPoolParts(race, 'Vessel', ['passiveAdaptable']);
+        assert.ok(p.borrowRace.length > 0, race + ' borrows with Adaptable');
         deq(p.wheel, [], race + ' has no wheel');
         for (const d of Object.values(D.DOOR_GUN_DOORS)) if (d.spell) assert.ok(!p.borrowRace.includes(d.spell) || d.spell === 'raceSwingDoor' || d.spell === 'raceDoorDash', race + ' cannot borrow ' + d.spell);
     }
-    const pool = D.unitSpellPool('door agent', 'Agent');
+    const pool = D.unitSpellPool('door agent', 'Vessel');
     for (const id of expected) assert.ok(pool.includes(id));
 });
 
@@ -235,5 +237,6 @@ test('source guards: the cast remaps the hinge, the push leaves from the hinge, 
     assert.ok(/window\.swingDoorResolve\(unit, spell, x, y, \{\}\)/.test(paint) && /sw\.landing\.forEach/.test(paint), 'the painter shows the victim and the landing');
     assert.ok(/'raceSwingDoor:swing':\s+function/.test(vfx) && /'raceDoorDash:out':\s+function/.test(vfx));
     assert.ok(!/'raceSwingDoor':\s+function/.test(vfx), 'never keyed by the spell id — the impact intent would double it');
-    assert.ok(/wheel: 'DOOR WHEEL'/.test(pb) && /parts\.race\.concat\(parts\.job, parts\.wheel\)/.test(pb), 'the rack draws the wheel rows');
+    assert.ok(/wheel: 'DOOR WHEEL'/.test(pb) && /parts\.race\.concat\(parts\.wheel\)/.test(pb), 'the rack draws the wheel rows');
+    assert.ok(!/parts\.job\b/.test(pb), 'THE JOBS REMOVAL (2026-09-27): the rack reads no job pool');
 });

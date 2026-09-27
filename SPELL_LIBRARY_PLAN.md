@@ -1095,3 +1095,8 @@ change under `WEATHER_REGISTRY`).
      Acclimation, Caveman → Stone Age, Cat Burglar → Thievery …); 68 new characters written from the new families (260 total).
      spell-identity.test.js: no archetype name equals a race name / label; every new family has a kit and two archetypes.
   5. **Jobs:** the removal is mapped (`/mnt/project-files/spell-library/JOBS_REMOVAL_MAP.md`), not done. Next pass.
+  6. **Jobs removed (2026-09-27, zip spell-library/ENTROPY_WARS_SPELL_LIBRARY_12.zip, token 20260927-spell-library-12-cors):**
+     no jobs, no Freelancer, no secondary job. Pool = race families + GEAR + the new TRAINING family (13 former job
+     passives, 1 SP each; Adaptable opens the borrow window) + the door wheel. Marksmanship / Agriculture seated on races.
+     The forge rack is family tabs + slot cards + one info panel. Detail: docs/notes/champions-combat.md "THE JOBS
+     REMOVAL", docs/notes/ui-menus-audio.md "THE FAMILY TABS".

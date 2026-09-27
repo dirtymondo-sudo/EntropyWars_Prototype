@@ -199,12 +199,14 @@
             return Math.max(0.05, Math.min(0.95, baseChance + (intModifier || 0)));
         }
 
-        // Counter-attack chance table (Riposte / bulwark classes / high DEF),
+        // Counter-attack chance table (Riposte / Warpath / Bulwark rows / high DEF),
         // plus any temporary guard bonus, hard-capped at 75%.
-        function calcCounterChance(cls, def, guardBonus) {
+        // THE JOBS REMOVAL (the user 2026-09-27): the first arg was the job name ('Swordmaster' 0.35, 'Warrior' / 'Tank'
+        // 0.30); it is now the unit's `counterChance` passive hook (unitPassiveMax — Riposte 0.35, Warpath / Bulwark 0.30,
+        // the best one wins, 0 when none), so the numbers are the old ones and this stays a pure function.
+        function calcCounterChance(passiveChance, def, guardBonus) {
             let base = 0.12;
-            if (cls === 'Swordmaster') base = 0.35;   // Riposte passive
-            else if (cls === 'Warrior' || cls === 'Tank') base = 0.30;
+            if ((passiveChance || 0) > 0) base = passiveChance;
             else if ((def || 0) >= 12) base = 0.20;
             return Math.min(0.75, base + (guardBonus || 0));
         }
@@ -412,7 +414,7 @@
         // a fully-compressed HP bar — that is why two level-1 units chipped
         // each other for 2 HP a round. levelPowerStat() adds back the growth
         // not yet earned (data.js "LEVEL COMBAT MATH"), which flattens the
-        // LEVEL component only — race and job differences are untouched, and
+        // LEVEL component only — race differences are untouched, and
         // level ADVANTAGE is carried by levelGapMult() at the chokepoint
         // instead. Adds exactly 0 at the cap ⇒ PvP rolls are unchanged.
         function pwrAtk(u) {
@@ -2856,7 +2858,7 @@
             return out;
         }
 
-        // ── Tree / lumber economy (Harvester) ─────────────────────────────────
+        // ── Tree / lumber economy (the planter; "Harvester" below is the old job name) ──
         // Trees are no longer just cosmetic LOS/movement blockers:
         //  • ANY unit can chop a tree down with a basic attack. A deliberate chop
         //    banks one "lumber" (🪵 build material) for the chopper's team.
@@ -5514,7 +5516,7 @@
         function _applyRicochetDamage(unit, spell, first, spellPower, bounceDelay, bounceProjectileMs) {
             // Primary hit
             const dmg = calcFlatSpellDamage(spell.dmg || 0, spellPower, 0);
-            applyDamageToUnit(first, dmg, `Ricochet from ${unit.cls}: `, {
+            applyDamageToUnit(first, dmg, `Ricochet from ${unitDisplayName(unit)}: `, {
                 sourceUnit: unit,
                 damageType: spell.damageType || 'physical',
                 spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell),
@@ -6946,14 +6948,17 @@
             // are class passives whose own descriptions state them (below).
             // High ground still pays via damage/defense/vision, and basic
             // attacks keep their bonus because the HUD RNG stat shows it live.
-            // Grace (White Mage passive): heal and revive spells reach +2.
-            if (range > 0 && unit.cls === 'White Mage'
+            // Grace (passive row): heal and revive spells reach +2 — the `healRangeBonus` hook (sum).
+            // THE JOBS REMOVAL (the user 2026-09-27): Grace / Crescendo were the White Mage / Harbinger jobs; they are
+            // equippable TRAINING passive rows now, read through the hooks so two rows touching one number stack.
+            const _graceRange = range > 0 ? (unitPassiveSum(unit, 'healRangeBonus') || 0) : 0;
+            if (_graceRange
                 && (spell.heal || spell.healAmt || spell.kind === 'heal'
                     || spell.kind === 'healAll' || spell.kind === 'revive')) {
-                range += 2;
+                range += _graceRange;
             }
-            // Crescendo (Harbinger passive): Lullaby carries +1 tile.
-            if (unit.cls === 'Harbinger' && spell.id === 'lullaby') range += 1;
+            // Crescendo (passive row): Lullaby carries +1 tile — the `lullabyRangeBonus` hook (sum).
+            if (spell.id === 'lullaby') range += (unitPassiveSum(unit, 'lullabyRangeBonus') || 0);
             return range;
         }
 
@@ -7417,8 +7422,9 @@
                     continue;
                 }
                 let left = STAT_STAGE_DURATION;
-                if (applied < 0 && isEnemy && sourceUnit.cls === 'Psychic') left += 1;      // Third Eye
-                if (applied > 0 && isAllyBuff && sourceUnit.cls === 'Harbinger') left += 1; // Crescendo
+                // THE JOBS REMOVAL (the user 2026-09-27): Third Eye / Crescendo are passive rows now (were Psychic / Harbinger).
+                if (applied < 0 && isEnemy) left += (unitPassiveSum(sourceUnit, 'debuffTurnsBonus') || 0);    // Third Eye
+                if (applied > 0 && isAllyBuff) left += (unitPassiveSum(sourceUnit, 'buffTurnsBonus') || 0);   // Crescendo
                 // opts.perm (Mad Genius, plan §5.2): a PERMANENT entry — never
                 // ticks, never feeds the statUp/statDown badge timer, survives a
                 // buff purge; only death (the respawn ledger reset) clears it.
@@ -7779,13 +7785,14 @@
                 }
             }
             let nextValue = Math.max(1, Number(payload.duration ?? payload.value ?? 1));
-            // Third Eye (Psychic passive): debuff statuses the Psychic applies
-            // last +1 turn. (Generalized from the old Glare-only bonus — the
-            // Glare spell is a stat-stage debuff now, not a status.)
-            if (isEnemyDebuff && sourceUnit.cls === 'Psychic') nextValue += 1;
-            // Crescendo (Harbinger passive): buffs this unit grants last +1 turn.
-            if (sourceUnit && sourceUnit.cls === 'Harbinger' && meta.kind === 'buff'
-                && !isEnemyUnit(sourceUnit, target)) nextValue += 1;
+            // Third Eye (passive row, the `debuffTurnsBonus` hook): debuff statuses
+            // its bearer applies last +1 turn. (Generalized from the old Glare-only
+            // bonus — the Glare spell is a stat-stage debuff now, not a status.)
+            // THE JOBS REMOVAL (the user 2026-09-27): was the Psychic job; Crescendo below was the Harbinger job.
+            if (isEnemyDebuff) nextValue += (unitPassiveSum(sourceUnit, 'debuffTurnsBonus') || 0);
+            // Crescendo (passive row, the `buffTurnsBonus` hook): buffs this unit grants last +1 turn.
+            if (sourceUnit && meta.kind === 'buff'
+                && !isEnemyUnit(sourceUnit, target)) nextValue += (unitPassiveSum(sourceUnit, 'buffTurnsBonus') || 0);
             const _hadBefore = Number(status[payload.id] || 0) > 0;
             if (meta.stack === 'replace') {
                 status[payload.id] = nextValue;
@@ -10056,15 +10063,30 @@
         //            edge) and the attack clip swings ON ARRIVAL beside it,
         //            at ANY reach (a high-ground strike two tiles down leaps
         //            down and swipes; it used to lob proj_human.png).
-        // The kind: the gun / psychic JOB KITS first (a Gunslinger of any
-        // race shoots — that IS the job), then the 3D def's authored
-        // basicAttackKind, then the mage jobs, then the sprite-only race
-        // table below, then reach (> 1 = a shot, else melee).
+        // The kind: the gun / psychic RACES first (BASIC_ATTACK_RACE_FIRST),
+        // then the 3D def's authored basicAttackKind, then the caster races
+        // (BASIC_ATTACK_RACE_CASTERS), then the sprite-only race table below,
+        // then reach (> 1 = a shot, else melee).
+        // THE JOBS REMOVAL (the user 2026-09-27): the first and third tables were keyed by JOB ('Gunslinger' / 'Sniper'
+        // / 'Agent' → ranged, 'Psychic' / 'Black Mage' / 'White Mage' → magic). There are no jobs now, so they are
+        // re-keyed by the races whose default job it was (the old RACE_DEFAULT_JOBS) — every race keeps the exact
+        // look its units had, in the same precedence (the gun races still beat the def: a reptilian still shoots).
         // ═══════════════════════════════════════════════════════════════════
-        const BASIC_ATTACK_JOB_KINDS = {
-            'Gunslinger': 'ranged', 'Sniper': 'ranged', 'Agent': 'ranged', 'Psychic': 'magic'
+        const BASIC_ATTACK_RACE_FIRST = {
+            'ghost': 'magic', 'android': 'ranged', 'shadow entity': 'ranged', 'reptilian': 'ranged', 'martian': 'ranged',
+            'mech': 'ranged', 'catgirl': 'ranged', 'annunaki': 'ranged', 'mantid': 'magic', 'grey': 'magic',
+            'succubus': 'magic', 'skinwalker': 'magic', 'cowboy': 'ranged', 'men in black': 'ranged', 'telepath': 'magic',
+            'marksman': 'ranged', 'gangster': 'ranged', 'door agent': 'ranged', 'police officer': 'ranged',
+            'dreameater': 'magic', 'halfdemon': 'ranged', 'vampire': 'ranged', 'cosmic wraith': 'ranged',
+            'chosen one': 'ranged', 'ghoul': 'ranged', 'barbarella': 'ranged', 'quarterback': 'ranged',
+            'robinhood': 'ranged', 'symbiote': 'ranged'
         };
-        const BASIC_ATTACK_MAGE_JOBS = { 'Black Mage': 'magic', 'White Mage': 'magic' };
+        const BASIC_ATTACK_RACE_CASTERS = {
+            'angel': 'magic', 'fairy': 'magic', 'seraphim': 'magic', 'djinn': 'magic', 'demon': 'magic', 'anubis': 'magic',
+            'priest': 'magic', 'nun': 'magic', 'jellyfish': 'magic', 'wizard': 'magic', 'demon prince': 'magic',
+            'mermaid': 'magic', 'voidweaver': 'magic', 'atlantean': 'magic', 'dragon': 'magic', 'ice queen': 'magic',
+            'necromancer': 'magic', 'santa clause': 'magic'
+        };
         /* races whose 3D def carries no basicAttackKind (or that have no 3D
            model at all): the weapon the character plainly holds */
         const BASIC_ATTACK_RACE_KINDS = {
@@ -10088,13 +10110,13 @@
         };
         function basicAttackKindOf(unit) {
             if (!unit) return 'melee';
-            const _job = BASIC_ATTACK_JOB_KINDS[unit.cls];
-            if (_job) return _job;
+            const _first = BASIC_ATTACK_RACE_FIRST[unit.race];
+            if (_first) return _first;
             if (typeof getRace3DModel === 'function') {
                 const _def = getRace3DModel(unit.race, unit.gender);
                 if (_def && _def.basicAttackKind) return _def.basicAttackKind;
             }
-            const _mage = BASIC_ATTACK_MAGE_JOBS[unit.cls];
+            const _mage = BASIC_ATTACK_RACE_CASTERS[unit.race];
             if (_mage) return _mage;
             const _race = BASIC_ATTACK_RACE_KINDS[unit.race];
             if (_race) return _race;
@@ -11068,7 +11090,9 @@
 
         function getCritMultiplier(unit) {
             const base = 1.8;
-            return unit?.cls === 'Gunslinger' ? base + 0.2 : base;
+            // THE JOBS REMOVAL (the user 2026-09-27): Deadeye's ×2.0 crit is the `critMult` hook (max) of the passive row, not the Gunslinger job.
+            const hook = unit ? (unitPassiveMax(unit, 'critMult') || 0) : 0;
+            return hook > base ? hook : base;
         }
 
         function rollCrit(unit) {
@@ -11088,7 +11112,7 @@
 
         function getCounterChance(unit) {
             if (!unit || unit.dead) return 0;
-            return calcCounterChance(unit.cls, unit.def || 0, unit._guardCounterBonus || 0);
+            return calcCounterChance(unitPassiveMax(unit, 'counterChance') || 0, unit.def || 0, unit._guardCounterBonus || 0);
         }
 
         function rollCounter(unit) {
@@ -11097,8 +11121,8 @@
         }
 
         function getCounterDamage(unit) {
-            // Riposte passive: Swordmaster counters swing at full sword strength.
-            const atkPct = unit && unit.cls === 'Swordmaster' ? 0.6 : 0.4;
+            // Riposte passive: counters swing at full sword strength (the `counterAtkPct` hook, max — was the Swordmaster job; THE JOBS REMOVAL 2026-09-27).
+            const atkPct = (unit && unitPassiveMax(unit, 'counterAtkPct')) || 0.4;
             return Math.max(24, Math.floor(pwrAtk(unit) * atkPct) + engineRandInt(24));
         }
 
@@ -11750,7 +11774,7 @@
                         + '<div class="ssq-speed"></div>'
                         + '<div class="ssq-vig"></div>'
                         + '<div class="ssq-frame"></div>'
-                        + `<div class="ssq-nm">${_ccinEsc(unitDisplayName(u))}<small>${_ccinEsc(u.cls || '')}</small></div>`
+                        + `<div class="ssq-nm">${_ccinEsc(unitDisplayName(u))}<small>${_ccinEsc(u.race ? getRaceLabel(u.race, u.gender) : '')}</small></div>`
                         + '</div>');
                 });
             }
@@ -19096,7 +19120,7 @@
                 stats.totalCrits += u._matchCrits || 0;
                 stats.totalDodges += u._matchDodges || 0;
                 stats.totalCounters += u._matchCounters || 0;
-                stats.classCounts[u.cls] = (stats.classCounts[u.cls] || 0) + 1;
+                // (THE JOBS REMOVAL 2026-09-27: no per-job classCounts — every unit is the neutral UNIT_CLASS; raceCounts carry it)
                 stats.raceCounts[u.race] = (stats.raceCounts[u.race] || 0) + 1;
             }
 
@@ -20104,7 +20128,9 @@
             const defUnit = defender.cls ? defender : unitAt(defender.x, defender.y);
             if (!defUnit) return null;
 
-            if (attacker.cls === 'Gunslinger' && defUnit.cls === 'Gunslinger') {
+            // THE JOBS REMOVAL (the user 2026-09-27): the duel stinger was Gunslinger vs Gunslinger; Deadeye (the gunslinger's
+            // passive, now an equippable row) is what marks a gunslinger, so two Deadeye bearers get it.
+            if (unitHasPassive(attacker, 'passiveDeadeye') && unitHasPassive(defUnit, 'passiveDeadeye')) {
                 playGunslingerDuelStinger();
             }
 
@@ -23906,7 +23932,7 @@
                 let p = u.spellPower || 0;
                 try { if (typeof getSpellStatBonus === 'function') p += (getSpellStatBonus(u, sp) || 0); } catch (e) {}
                 try { if (typeof getHourglassPower === 'function') p += (getHourglassPower(u) || 0); } catch (e) {}
-                try { if (typeof getJobPassiveSpellBonus === 'function') p += (getJobPassiveSpellBonus(u) || 0); } catch (e) {}
+                try { if (typeof unitPassiveSum === 'function') p += (unitPassiveSum(u, 'spellPower') || 0); } catch (e) {}   // Arcane Surge's rider (THE JOBS REMOVAL 2026-09-27: was getJobPassiveSpellBonus)
                 return p;
             }
 
@@ -24336,8 +24362,8 @@
                     z: (typeof getHeightAt === 'function') ? getHeightAt(tx, ty) : 0,
                     owner: caster.player, casterUnitId: caster.id,
                     hp: sp.turretHp || 150, maxHp: sp.turretHp || 150,
-                    // Tinker (Engineer passive): turrets reach +1 tile.
-                    dmg: sp.turretDmg || 40, range: (sp.turretRange || 4) + (caster.cls === 'Engineer' ? 1 : 0),
+                    // Tinker (passive row, the `turretRangeBonus` hook — was the Engineer job, THE JOBS REMOVAL 2026-09-27): turrets reach +1 tile.
+                    dmg: sp.turretDmg || 40, range: (sp.turretRange || 4) + (unitPassiveSum(caster, 'turretRangeBonus') || 0),
                     spellId: sp.id, hitsToKill: sp.hitsToKill,
                 });
                 try { playSfx('turret', { volume: 0.7 }); } catch (e) {}
@@ -24423,10 +24449,10 @@
             }
             function _hitBasic(att, tgt) {
                 let dmg = Math.max(24, Math.floor(pwrAtk(att) * 0.65) + randInt(2 * SPELL_DMG_VARIANCE + 1) - SPELL_DMG_VARIANCE);
-                // Brute Force (Raider passive): basic attacks land +20% harder.
-                if (att.cls === 'Raider') dmg = Math.floor(dmg * 1.2);
-                // Warpath (Warrior passive): basic attacks hit +15% harder.
-                else if (att.cls === 'Warrior') dmg = Math.floor(dmg * 1.15);
+                // Brute Force ×1.2 / Warpath ×1.15 (passive rows, the `basicDmgMult` hook, they multiply — were the Raider /
+                // Warrior jobs; THE JOBS REMOVAL 2026-09-27): basic attacks land harder.
+                const _bdm = unitPassiveMult(att, 'basicDmgMult') || 1;
+                if (_bdm !== 1) dmg = Math.floor(dmg * _bdm);
                 let isCrit = false;
                 try {
                     if (typeof rollCrit === 'function' && rollCrit(att)) {
@@ -30911,9 +30937,11 @@
             const _defLs = (typeof defenseScale === 'function') ? defenseScale(_tgtLvl)
                 : ((typeof levelScale === 'function') ? levelScale(_tgtLvl) : 1);
             const hourglassReduction = opts.ignoreArmor ? 0 : Math.round(getHourglassDamageReduction(target) * _defLs);
-            // Bulwark (Tank passive): a flat 8 shaved off every hit that
-            // respects armor — the tank shrugs off chip damage.
-            const _bulwarkSoak = (!opts.ignoreArmor && target.cls === 'Tank') ? Math.round(8 * _defLs) : 0;
+            // Bulwark (passive row, the `damageSoak` hook, sum): a flat 8 shaved off
+            // every hit that respects armor — the tank shrugs off chip damage.
+            // THE JOBS REMOVAL (the user 2026-09-27): was the Tank job.
+            const _soakHook = opts.ignoreArmor ? 0 : (unitPassiveSum(target, 'damageSoak') || 0);
+            const _bulwarkSoak = _soakHook ? Math.round(_soakHook * _defLs) : 0;
             const effectiveArmor = opts.ignoreArmor ? 0 : Math.round(getEffectiveArmor(target, damageType) * _defLs);
 
             // Resolve cap → marked → level scale → armor/soaks → status
@@ -32594,10 +32622,17 @@
             return n;
         }
         window._partyBagOn = _partyBagOn; window._partyBagUnit = _partyBagUnit; window._partyBagBind = _partyBagBind;
+        /* THE JOBS REMOVAL (the user 2026-09-27): the first arg is a UNIT (in battle: loot, hand-offs, the items panel) or
+           the neutral class string (a loadout being normalized before there is a unit). The scanner cap was 2 for the Agent
+           job; it is the Field Operative row's `scannerCap` hook (max) now, which only a unit carries — a class string
+           answers the base 1 (state.js's copy agrees). */
         function getItemCapForClass(cls, itemKey) {
             if (_partyBagOn()) return 9999;   // THE SHARED BAG: no cap on the bag — the enemy's own pockets are what they were built with anyway
             const _mdBag = typeof _isDungeonMode === 'function' && _isDungeonMode();
-            if (itemKey === 'scanner') return (cls === 'Agent' ? 2 : 1) + (_mdBag ? 1 : 0);
+            if (itemKey === 'scanner') {
+                const _opCap = (cls && typeof cls === 'object') ? (unitPassiveMax(cls, 'scannerCap') || 0) : 0;
+                return Math.max(1, _opCap) + (_mdBag ? 1 : 0);
+            }
             const base = ITEM_RULES[itemKey].max;
             return _mdBag ? base * 2 : base;
         }
@@ -32676,7 +32711,7 @@
         function moveSingleItemBetweenUnits(fromUnit, toUnit, itemKey) {
             if (!fromUnit || !toUnit || !itemKey) return false;
             if ((fromUnit.items?.[itemKey] || 0) <= 0) return false;
-            const cap = getItemCapForClass(toUnit.cls, itemKey);
+            const cap = getItemCapForClass(toUnit, itemKey);
             if ((toUnit.items?.[itemKey] || 0) >= cap) return false;
             if (unitItemsFull(toUnit)) return false;
             fromUnit.items[itemKey] -= 1;
@@ -33227,7 +33262,7 @@
             const itemOrder = Object.keys(ITEM_RULES);
             for (const itemKey of itemOrder) {
                 while ((corpse.items?.[itemKey] || 0) > 0) {
-                    const cap = getItemCapForClass(looter.cls, itemKey);
+                    const cap = getItemCapForClass(looter, itemKey);
                     if ((looter.items?.[itemKey] || 0) >= cap) break;
                     if (unitItemsFull(looter)) break;
                     looter.items[itemKey] = (looter.items[itemKey] || 0) + 1;
@@ -33485,7 +33520,7 @@
                 state.partyBuilds[player].forEach((clsName, idx) => {
                     clsName = normalizeClassName(clsName, DEFAULT_BUILDS[player]?.[idx]);
                     const spawn = SPAWNS[player]?.[idx] || SPAWNS[player]?.[0] || { x: 1 + idx, y: player === 1 ? 1 : (CONFIG.boardHeight || CONFIG.boardSize || 16) - 2 };
-                    const template = CLASS_TEMPLATES[clsName] || CLASS_TEMPLATES[Object.keys(CLASS_TEMPLATES)[0]];
+                    const template = CLASS_TEMPLATES[UNIT_CLASS];   // THE JOBS REMOVAL (the user 2026-09-27): one neutral class, no per-job template
                     const loadout = normalizeLoadoutForClass(state.loadouts[player]?.[idx] || emptyLoadout(), clsName);
                     ensurePartyMeta();
                     const unit = createUnit(`${player}-${idx}`, player, spawn.x, spawn.y, template, loadout, state.partyMeta?.[player]?.[idx] || null);
@@ -33537,57 +33572,16 @@
 
         function randomSpellLoadoutForClass(cls, race) {
             const loadout = emptyLoadout();
-            /* Spell-tree classes roll a tree-legal random walk (secondary job
-               is picked later in createUnit — a no-secondary walk stays legal
-               once one is added, the tree only ever GAINS nodes). Freelancer
-               rolls its wildcard-socket walk through the same call (Phase B);
-               the flat-pool roll below is only the no-tree fallback. */
-            if (typeof classHasSpellTree === 'function' && classHasSpellTree(cls)
-                && typeof buildTreeLegalLoadout === 'function') {
-                const treeIds = buildTreeLegalLoadout(race, cls, '');
-                treeIds.forEach((tid, ti) => { loadout.spells[ti] = tid; });
-                return _fillRandomLoadoutItems(loadout, cls);
-            }
-            const pool = getEligibleSpellsForClass(cls, race).slice().sort(() => Math.random() - 0.5);
-            const slotBudget = typeof SPELL_SLOT_MAX !== 'undefined' ? SPELL_SLOT_MAX : CONFIG.unitSkillSlots;
-            let slot = 0;
-            let slotsUsed = 0;
-            let crossClassCount = 0;
-            for (const spell of pool) {
-                if (slotsUsed >= slotBudget) break;
-                const isCross = !isSpellNativeToClass(spell, cls);
-                if (isCross && crossClassCount >= CONFIG.maxCrossClassSpells) continue;
-                const sc = getEffectiveEquipCost(spell, cls, race);
-                if (slotsUsed + sc > slotBudget) continue;
-                loadout.spells[slot] = spell.id;
-                slot += 1;
-                slotsUsed += sc;
-                if (isCross) crossClassCount++;
-            }
-
-            if (slotsUsed < slotBudget) {
-                const usedIds = new Set(loadout.spells.filter(Boolean));
-                const remaining = getEligibleSpellsForClass(cls, race)
-                    .filter(s => !usedIds.has(s.id));
-                for (const spell of remaining) {
-                    if (slotsUsed >= slotBudget) break;
-                    const isCross = !isSpellNativeToClass(spell, cls);
-                    if (isCross && crossClassCount >= CONFIG.maxCrossClassSpells) continue;
-                    const sc = getEffectiveEquipCost(spell, cls, race);
-                    if (slotsUsed + sc > slotBudget) continue;
-                    loadout.spells[slot] = spell.id;
-                    slot += 1;
-                    slotsUsed += sc;
-                    if (isCross) crossClassCount++;
-                }
-            }
-
+            /* A tree-legal random walk of the RACE pool (data.js buildTreeLegalLoadout — the race families + the universal
+               ones + the door wheel). THE JOBS REMOVAL (the user 2026-09-27): classHasSpellTree is always true now, so the
+               old flat per-job pool fallback (getEligibleSpellsForClass / isSpellNativeToClass / cross-class caps) is gone,
+               and the class is the neutral UNIT_CLASS whatever the caller passed. */
+            const treeIds = buildTreeLegalLoadout(race, UNIT_CLASS, '');
+            treeIds.forEach((tid, ti) => { loadout.spells[ti] = tid; });
             return _fillRandomLoadoutItems(loadout, cls);
         }
 
-        /* Shared tail of randomSpellLoadoutForClass: items + accessories.
-           Split out so the spell-tree branch and the Freelancer flat-pool
-           branch roll identical item/equipment loadouts. */
+        /* Shared tail of randomSpellLoadoutForClass: items + accessories. */
         function _fillRandomLoadoutItems(loadout, cls) {
             const allItemKeys = Object.keys(ITEM_RULES).filter(k => !ITEM_RULES[k].story);   // THE ONE-WAY DOOR: a random loadout never rolls a story-only door
             let remainingItems = CONFIG.unitItemSlots;
@@ -33635,14 +33629,10 @@
                 return;
             }
             syncPartyBuildsFromInputs();
-            const classNames = Object.keys(CLASS_TEMPLATES);
 
             state.partyMeta[player] = randomizePartyIdentities(CONFIG.teamSize, _acctRestrictRoster(player));
-            state.partyBuilds[player] = state.partyMeta[player].map(meta => {
-                const race = meta.race || 'homosapien';
-                const lockedJob = (race !== 'homosapien' && RACE_DEFAULT_JOBS[race]) ? RACE_DEFAULT_JOBS[race] : null;
-                return lockedJob || classNames[randInt(classNames.length)];
-            });
+            // THE JOBS REMOVAL (the user 2026-09-27): no race-locked / random job — every build is the neutral UNIT_CLASS
+            state.partyBuilds[player] = state.partyMeta[player].map(() => UNIT_CLASS);
             state.partyNames[player] = state.partyBuilds[player].map(cls => getDefaultUnitName(cls));
             state.loadouts[player] = state.partyBuilds[player].map((cls, idx) => randomSpellLoadoutForClass(cls, state.partyMeta[player][idx]?.race || ''));
 
@@ -33719,19 +33709,17 @@
                 return;
             }
             syncPartyBuildsFromInputs();
-            const classNames = Object.keys(CLASS_TEMPLATES);
             ensurePartyMeta();
             state.partyMeta[player][idx] = randomizeIdentity(_acctRestrictRoster(player));
             const slotRace = state.partyMeta[player][idx]?.race || '';
-            const lockedJob = (slotRace !== 'homosapien' && RACE_DEFAULT_JOBS[slotRace]) ? RACE_DEFAULT_JOBS[slotRace] : null;
-            const cls = lockedJob || classNames[randInt(classNames.length)];
+            const cls = UNIT_CLASS;   // THE JOBS REMOVAL (the user 2026-09-27): no race-locked / random job
             state.partyBuilds[player][idx] = cls;
             state.partyNames[player][idx] = getDefaultUnitName(cls);
             state.loadouts[player][idx] = randomSpellLoadoutForClass(cls, slotRace);
 
             if (typeof applyRandomSpellsAndSecJob === 'function') applyRandomSpellsAndSecJob(state.partyMeta[player][idx], cls);
             state.units = makeUnitsFromBuilds();
-            addLog(`Randomized Player ${player} Slot ${idx + 1} as ${cls}.`);
+            addLog(`Randomized Player ${player} Slot ${idx + 1} as ${getRaceLabel(slotRace, state.partyMeta[player][idx]?.gender)}.`);   // the race, never the neutral class
             state.teamLockedIn = false;
             render();
         }
@@ -33739,13 +33727,8 @@
         function randomizeAllTeams() {
             if (!state.devAutoSim) syncPartyBuildsFromInputs();
             _buildersToUpdate().forEach(player => {
-                const classNames = Object.keys(CLASS_TEMPLATES);
                 state.partyMeta[player] = randomizePartyIdentities(CONFIG.teamSize, _acctRestrictRoster(player));
-                state.partyBuilds[player] = state.partyMeta[player].map(meta => {
-                    const race = meta.race || 'homosapien';
-                    const lockedJob = (race !== 'homosapien' && RACE_DEFAULT_JOBS[race]) ? RACE_DEFAULT_JOBS[race] : null;
-                    return lockedJob || classNames[randInt(classNames.length)];
-                });
+                state.partyBuilds[player] = state.partyMeta[player].map(() => UNIT_CLASS);   // THE JOBS REMOVAL (2026-09-27): no job to roll
                 state.partyNames[player] = state.partyBuilds[player].map(cls => getDefaultUnitName(cls));
                 state.loadouts[player] = state.partyBuilds[player].map((cls, idx) => randomSpellLoadoutForClass(cls, state.partyMeta[player][idx]?.race || ''));
 
@@ -33772,65 +33755,25 @@
                        "optimize" fills the slots with the curated spells below) */
 
                     const existingSpells = (loadout.spells || []).slice();
-                    let crossClassCount = countCrossClassSpells(existingSpells, cls);
-                    const usedSpellIds = new Set(existingSpells.filter(Boolean));
 
-                    /* Spell-tree classes: "optimize" = the curated kit — keep
-                       existing picks, top up with the full primary branch +
-                       race r1–r2, and let connectivity repair the rest.
-                       Freelancer falls through to the flat preferred lists. */
-                    if (typeof classHasSpellTree === 'function' && classHasSpellTree(cls)
-                        && typeof treeLegalSubset === 'function') {
-                        const _secJ = '';   // no secondary job since the tier rework (2026-09-24)
-                        const _p = (typeof getClassTreeSpells === 'function' && getClassTreeSpells(cls)) || [];
-                        const _r = (typeof getRaceTreeSpells === 'function' && getRaceTreeSpells(race, cls)) || [];
-                        const _wish = [...existingSpells.filter(Boolean), ..._p, ..._r.slice(0, 2)];
-                        loadout.spells = treeLegalSubset(race, cls, _secJ, _wish);
-                    } else {
-                    const preferred = {
-                        'Freelancer': ['jackOfAll', 'improvise', 'reallyGoodPunch']
-                    } [cls] || [];
-                    const eligible = getEligibleSpellsForClass(cls, race);
-                    const candidateIds = [...preferred, ...eligible.map(s => s.id)];
-                    const seen = new Set();
-                    const uniqueCandidates = candidateIds.filter(id => {
-                        if (seen.has(id) || usedSpellIds.has(id)) return false;
-                        seen.add(id);
-                        return true;
-                    });
-
-                    const _slotBudget = typeof SPELL_SLOT_MAX !== 'undefined' ? SPELL_SLOT_MAX : CONFIG.unitSkillSlots;
-                    let _slotsUsed = existingSpells.reduce((t, id) => {
-                        const sp = id ? getSpellById(id) : null;
-                        return t + (sp ? getEffectiveEquipCost(sp, cls, race) : 0);
-                    }, 0);
-                    for (let s = 0; s < CONFIG.unitSkillSlots; s++) {
-                        if (existingSpells[s]) continue;
-                        if (_slotsUsed >= _slotBudget) break;
-                        for (let c = 0; c < uniqueCandidates.length; c++) {
-                            const spellId = uniqueCandidates[c];
-                            const spell = getSpellById(spellId);
-                            if (!spell) continue;
-                            const isCross = !isSpellNativeToClass(spell, cls);
-                            if (isCross && crossClassCount >= CONFIG.maxCrossClassSpells) continue;
-                            const sc = getEffectiveEquipCost(spell, cls, race);
-                            if (_slotsUsed + sc > _slotBudget) continue;
-                            existingSpells[s] = spellId;
-                            _slotsUsed += sc;
-                            if (isCross) crossClassCount++;
-                            uniqueCandidates.splice(c, 1);
-                            break;
-                        }
-                    }
-                    loadout.spells = existingSpells;
-                    }
+                    /* "optimize" = the curated kit — keep existing picks, top up with the race row (R1–R4), then a random
+                       tree-legal walk of the race pool, and let treeLegalSubset keep what fits the slots / SP.
+                       THE JOBS REMOVAL (the user 2026-09-27): the top-up used to be the JOB's four (getClassTreeSpells)
+                       + race r1–r2, and the Freelancer fell through to a flat preferred list; neither exists now. */
+                    const _r = (typeof getRaceTreeSpells === 'function' && getRaceTreeSpells(race, UNIT_CLASS)) || [];
+                    const _wish = [...existingSpells.filter(Boolean), ..._r, ...buildTreeLegalLoadout(race, UNIT_CLASS, '')];
+                    loadout.spells = treeLegalSubset(race, UNIT_CLASS, '', _wish);
 
                     const totalItems = Object.values(loadout.items || {}).reduce((a, b) => a + b, 0);
                     let remaining = CONFIG.unitItemSlots - totalItems;
                     if (remaining > 0) {
 
+                        // THE JOBS REMOVAL (the user 2026-09-27): the scanner went to the Agent / Gunslinger jobs; it goes to the
+                        // scout roles now (data.js RACE_CLASS 'assassin' / 'ranged'), and the heal-first split below to the
+                        // frontline + healer roles (was Warrior / Tank / White Mage / Harvester).
+                        const _role = (typeof RACE_CLASS !== 'undefined' && RACE_CLASS[race]) || '';
                         const scannerCap = getItemCapForClass(cls, 'scanner');
-                        if ((loadout.items.scanner || 0) < scannerCap && (cls === 'Agent' || cls === 'Gunslinger') && remaining > 0) {
+                        if ((loadout.items.scanner || 0) < scannerCap && (_role === 'assassin' || _role === 'ranged') && remaining > 0) {
                             const toAdd = Math.min(remaining, scannerCap - (loadout.items.scanner || 0));
                             loadout.items.scanner = (loadout.items.scanner || 0) + toAdd;
                             remaining -= toAdd;
@@ -33844,7 +33787,7 @@
                             remaining -= 1;
                         }
 
-                        const healFirst = ['Warrior', 'Tank', 'White Mage', 'Harvester'].includes(cls);
+                        const healFirst = ['tank', 'bruiser', 'healer'].includes(_role);
                         if (healFirst) {
                             const healAdd = Math.min(remaining, Math.ceil(remaining * 0.6));
                             loadout.items.healPotion = (loadout.items.healPotion || 0) + healAdd;
@@ -33931,7 +33874,7 @@
                         if (!payload) { ewToast('Save not found.'); return; }
                         [1, 2].forEach(player => {
                             state.partyBuilds[player] = (payload.partyBuilds?.[player] || DEFAULT_BUILDS[player]).slice(0, CONFIG.teamSize);
-                            while (state.partyBuilds[player].length < CONFIG.teamSize) state.partyBuilds[player].push(DEFAULT_BUILDS[player][state.partyBuilds[player].length] || Object.keys(CLASS_TEMPLATES)[0]);
+                            while (state.partyBuilds[player].length < CONFIG.teamSize) state.partyBuilds[player].push(DEFAULT_BUILDS[player][state.partyBuilds[player].length] || UNIT_CLASS);
                             state.partyNames[player] = state.partyBuilds[player].map((cls, idx) => normalizeDisplayedUnitName(payload.partyNames?.[player]?.[idx], cls, player, idx));
                             state.loadouts[player] = state.partyBuilds[player].map((cls, idx) => normalizeLoadoutForClass(payload.loadouts?.[player]?.[idx] || emptyLoadout(), cls));
                             if (payload.partyMeta?.[player]) {
@@ -34712,26 +34655,12 @@
         function applyLevelUpRewards(unit, level) {
             if (!unit) return;
             const name = unitDisplayName(unit);
-            const cls = unit.job || unit.cls;
 
             // Stat growth lives in _recomputeStatsForLevel (additive classic
-            // scale, delta-applied). This function only grants spells and level
-            // milestones.
-
-            const learnOrder = typeof CLASS_SPELL_LEARN_ORDER !== 'undefined' ? CLASS_SPELL_LEARN_ORDER[cls] : null;
-
-            // Spells unlock via the generalized hook (data.js getSpellUnlockLevel),
-            // so a future per-class CLASS_SPELL_UNLOCKS table drops in with no
-            // engine change. Default spread reproduces today's Lv1/1/5/15/30 feel.
-            let spellsToLearn = [];
-            if (learnOrder && typeof getSpellUnlockLevel === 'function') {
-                for (let i = 0; i < learnOrder.length; i++) {
-                    if (learnOrder[i] && getSpellUnlockLevel(cls, i) === level) spellsToLearn.push(learnOrder[i]);
-                }
-            }
-            for (const spellId of spellsToLearn) {
-                learnSpellForUnit(unit, spellId);
-            }
+            // scale, delta-applied). This function only grants level milestones.
+            // THE JOBS REMOVAL (the user 2026-09-27): a level no longer grants the job's spells from
+            // CLASS_SPELL_LEARN_ORDER (that table is only MP-ring pricing data now) — spells come from the
+            // race families the player equips, so learnSpellForUnit went with the grants.
 
             const _shopLvl = (typeof SPELL_SHOP_LEVEL !== 'undefined') ? SPELL_SHOP_LEVEL : 10;
             const _apLvls = (typeof AP_BONUS_LEVELS !== 'undefined') ? AP_BONUS_LEVELS : [];
@@ -34760,7 +34689,7 @@
             // Only surface the level-up banner in battle for meaningful beats:
             // spell learns, milestones, or every 5th level (avoids 99 popups when
             // a unit is pre-leveled at build time — that runs outside battle).
-            const _worthShowing = spellsToLearn.length > 0 || milestoneMsg || (level % 5 === 0);
+            const _worthShowing = milestoneMsg || (level % 5 === 0);
             if (level > 1 && _worthShowing && !_skipVisuals() && _inBattle
                 && !unit._lvlDlgSuppress /* grantXP shows ONE consolidated stat card instead */) {
                 showFloatingTextForUnit(unit, `⬆ LEVEL ${level}!`, 'levelup', { durationMs: 1800 });
@@ -34771,47 +34700,14 @@
                 if (milestoneMsg) {
                     dlgLines.push(`<span class="dlg-levelup" style="font-size:16px">${escapeHtml(milestoneMsg)}</span>`);
                 }
-                for (const spellId of spellsToLearn) {
-                    const sp = getSpellById(spellId);
-                    if (sp) dlgLines.push(`<span class="dlg-spell-learn">✨ Learned ${escapeHtml(sp.name)}!</span>`);
-                }
-                showBattleDialogue(dlgLines, 2200 + spellsToLearn.length * 400);
+                showBattleDialogue(dlgLines, 2200);
             }
             markDirty('selectedUnit', 'actions', 'board');
         }
 
-        function learnSpellForUnit(unit, spellId) {
-            if (!unit || !spellId) return;
-            const cls = unit.job || unit.cls;
-            const spell = getSpellById(spellId);
-            if (!spell) return;
-
-            if (unit.spells && unit.spells.some(s => s && s.id === spellId)) return;
-            const adjusted = adjustSpellForClass(spell, cls);
-            if (!adjusted) return;
-
-            if (!unit._spellSlots) unit._spellSlots = [];
-            const maxSlots = typeof SPELL_SLOT_MAX !== 'undefined' ? SPELL_SLOT_MAX : 6;
-            const usedSlots = (unit.spells || []).reduce((t, s) => t + (s ? getEffectiveEquipCost(s, cls) : 0), 0);
-            if (usedSlots + getEffectiveEquipCost(spell, cls) > maxSlots) return;
-            unit._spellSlots.push(spellId);
-
-            if (!unit.spells) unit.spells = [];
-            unit.spells.push(adjusted);
-
-        }
-
-        /* THE SECONDARY JOB IS RETIRED (2026-09-24, the tier rework — the user: "get rid of units having a
-           secondary job"). Both names stay exported (map.js / ui.js / old saves may still call them) but do
-           nothing: no stat bonus, no borrowed spell, no level-15 pick. */
-        function applySecondaryJob(unit, jobName) {
-            if (unit) { unit._secondaryJob = null; unit._pendingSecondaryJobPick = false; }
-        }
-
-        function aiPickSecondaryJob(unit) {
-            if (unit) unit._pendingSecondaryJobPick = false;
-        }
-
+        /* THE SECONDARY JOB IS RETIRED (2026-09-24) and THE JOBS REMOVAL (the user 2026-09-27) took the rest:
+           applySecondaryJob / aiPickSecondaryJob (no-ops since the tier rework) and the blitz secondaryJobPick prompt
+           are deleted — there is no job to pick. */
         function unitMeetsSpellTierReq(unit, spell) {
             return true;
         }
@@ -34993,7 +34889,8 @@
             mirrorHitProfile(unit, spell, net, kind = 'pulse', offset = 0) {
                 const power = kind === 'pulse'
                     ? (unit.spellPower || 0) + getHourglassPower(unit) + getSpellStatBonus(unit, spell)
-                        + getPlantedTreeBonus(unit) + getTreeThrowBonus(unit, spell) + getJobPassiveSpellBonus(unit)
+                        + getPlantedTreeBonus(unit) + getTreeThrowBonus(unit, spell)
+                        + ((typeof unitPassiveSum === 'function') ? (unitPassiveSum(unit, 'spellPower') || 0) : 0)   // Arcane Surge (was getJobPassiveSpellBonus; THE JOBS REMOVAL 2026-09-27)
                     : _networkPower(unit.player);
                 const source = kind === 'pulse' ? unit : unitFromId(laserOwnerUnitId(unit.player));
                 return { ...getMirrorHitProfile(unit.player, kind, power, net, offset), source };
@@ -37658,17 +37555,16 @@
         function unitDisplayName(unit) {
             if (!unit) return 'Unit';
             const mode = state.nametagMode || 'race';
-            if (mode === 'race' && unit.race) {
+            // THE JOBS REMOVAL (the user 2026-09-27): the 'job' nametag mode showed unit.cls — there is no job, and the
+            // neutral class is never shown, so a stale 'job' setting reads as 'race'.
+            if ((mode === 'race' || mode === 'job') && unit.race) {
                 // Canonical gendered race label (data.js RACE_PROFILES) — a
                 // female men in black reads "Glowie", a female priest
                 // "Priestess", every word capitalized ("Mad Scientist").
                 if (typeof getRaceLabel === 'function') return getRaceLabel(unit.race, unit.gender);
                 return unit.race.charAt(0).toUpperCase() + unit.race.slice(1);
             }
-            if (mode === 'job') {
-                return unit.cls || unit.name || 'Unit';
-            }
-            return unit.name || unit.cls || 'Unit';
+            return unit.name || (unit.race && typeof getRaceLabel === 'function' ? getRaceLabel(unit.race, unit.gender) : '') || 'Unit';
         }
 
         function getDevSimSpeedMultiplier() {
@@ -38232,13 +38128,8 @@
 
         function _mirrorRandomizeTeams() {
 
-            const classNames = Object.keys(CLASS_TEMPLATES);
             state.partyMeta[1] = randomizePartyIdentities(CONFIG.teamSize);
-            state.partyBuilds[1] = state.partyMeta[1].map(meta => {
-                const race = meta.race || 'homosapien';
-                const lockedJob = (race !== 'homosapien' && RACE_DEFAULT_JOBS[race]) ? RACE_DEFAULT_JOBS[race] : null;
-                return lockedJob || classNames[randInt(classNames.length)];
-            });
+            state.partyBuilds[1] = state.partyMeta[1].map(() => UNIT_CLASS);   // THE JOBS REMOVAL (the user 2026-09-27): no job to roll
             state.partyNames[1] = state.partyBuilds[1].map(cls => getDefaultUnitName(cls));
             state.loadouts[1] = state.partyBuilds[1].map((cls, idx) =>
                 randomSpellLoadoutForClass(cls, state.partyMeta[1][idx]?.race || '')
@@ -39348,7 +39239,7 @@
                 return `<div class="${cls}" data-xp="${escapeHtml(String(b.id))}">
                     <div class="vic-xp-port" style="background-image:url('${_vicXpPortrait(b)}')"></div>
                     <div class="vic-xp-col">
-                        <div class="vic-xp-head"><b class="vic-xp-name">${escapeHtml(String(b.name || b.cls || ''))}</b><span class="vic-xp-lv">LV <i>${b.before.lvl}</i></span><span class="vic-xp-gain">+${b.gain.toLocaleString()} XP</span></div>
+                        <div class="vic-xp-head"><b class="vic-xp-name">${escapeHtml(String(b.name || (b.race ? getRaceLabel(b.race, b.gender) : '')))}</b><span class="vic-xp-lv">LV <i>${b.before.lvl}</i></span><span class="vic-xp-gain">+${b.gain.toLocaleString()} XP</span></div>
                         <div class="vic-xp-bar"><i style="width:${(b.before.pct * 100).toFixed(1)}%"></i><em class="vic-xp-num">${into.toLocaleString()} / ${need.toLocaleString()}</em></div>
                         <div class="vic-xp-gains"></div>
                         ${tag ? `<div class="vic-xp-tag">${escapeHtml(tag)}</div>` : ''}
@@ -39513,7 +39404,7 @@
                     <div class="vic-mvp-card-col">
                         <div class="vic-card-cap">☩ MATCH MVP${side === 'enemy' ? ' · ENEMY' : ''}</div>
                         <div class="vic-mvp-card-name">${escapeHtml(unitDisplayName(mvp))}</div>
-                        <div class="vic-mvp-card-sub">${escapeHtml(mvp.cls || '')}${mvp._level > 1 ? ' · Lv ' + mvp._level : ''}</div>
+                        <div class="vic-mvp-card-sub">${escapeHtml(mvp.race ? getRaceLabel(mvp.race, mvp.gender) : '')}${mvp._level > 1 ? ' · Lv ' + mvp._level : ''}</div>
                         <div class="vic-mvp-card-stats">
                             <span><b>${mvp._matchKills || 0}</b>KILLS</span>
                             <span><b>${(mvp._trackDmgDealt || 0).toLocaleString()}</b>DAMAGE</span>
@@ -39586,7 +39477,7 @@
                         ${sprite ? `<div style="width:24px;height:24px;background-image:url('${sprite}');background-size:contain;background-position:center;background-repeat:no-repeat;image-rendering:pixelated"></div>` : ''}
                         <span class="unit-name-text">${escapeHtml(unitDisplayName(u))}</span>
                     </div></td>
-                    <td style="font-size:10px;color:var(--muted)">${u.cls}${lvl > 1 ? ` Lv${lvl}` : ''}</td>
+                    <td style="font-size:10px;color:var(--muted)">${escapeHtml(u.race ? getRaceLabel(u.race, u.gender) : '')}${lvl > 1 ? ` Lv${lvl}` : ''}</td>
                     ${cell('_matchKills')}
                     ${cell('_matchDeaths')}
                     ${cell('_matchAssists')}
@@ -39680,7 +39571,7 @@
                 const rosterId = rosterSlots[i];
                 const rInst = rosterId ? save.roster.find(r => r.id === rosterId) : null;
                 if (rInst) {
-                    state.partyBuilds[1][i] = rInst.job || 'Freelancer';
+                    state.partyBuilds[1][i] = UNIT_CLASS;   // THE JOBS REMOVAL (the user 2026-09-27): a roster member's old job is ignored
                     state.partyNames[1][i] = rInst.name || rInst.race;
                     state.loadouts[1][i] = emptyLoadout();
 
@@ -39708,14 +39599,12 @@
                     const allyRace = (pool.length ? pool : lvl.allyRacePool)[
                         Math.floor(Math.random() * (pool.length || lvl.allyRacePool.length))
                     ];
-                    const allyJob = (typeof RACE_DEFAULT_JOBS !== 'undefined' && RACE_DEFAULT_JOBS[allyRace])
-                        ? RACE_DEFAULT_JOBS[allyRace] : 'Freelancer';
                     const validGenders = (typeof getAvailableGendersForRace === 'function')
                         ? getAvailableGendersForRace(allyRace) : ['male', 'female'];
                     const allyGender = validGenders[Math.floor(Math.random() * validGenders.length)];
                     const allyName = allyRace.charAt(0).toUpperCase() + allyRace.slice(1);
 
-                    state.partyBuilds[1][i] = allyJob;
+                    state.partyBuilds[1][i] = UNIT_CLASS;   // THE JOBS REMOVAL (2026-09-27): was the race's default job
                     state.partyNames[1][i] = allyName;
                     state.loadouts[1][i] = emptyLoadout();
                     state.partyMeta[1][i] = {
@@ -39730,7 +39619,7 @@
                     state._campaignAllyRace = allyRace;
                 } else {
 
-                    state.partyBuilds[1][i] = 'Freelancer';
+                    state.partyBuilds[1][i] = UNIT_CLASS;
                     state.partyNames[1][i] = 'Recruit';
                     state.loadouts[1][i] = emptyLoadout();
                     state.partyMeta[1][i] = { race: 'homosapien', gender: 'male' };
@@ -39752,13 +39641,11 @@
                 {
 
                     const eRace = enemyRaces[i % enemyRaces.length];
-                    const eJob = (typeof RACE_DEFAULT_JOBS !== 'undefined' && RACE_DEFAULT_JOBS[eRace])
-                        ? RACE_DEFAULT_JOBS[eRace] : 'Freelancer';
                     const validGenders = (typeof getAvailableGendersForRace === 'function')
                         ? getAvailableGendersForRace(eRace) : ['male', 'female'];
                     const eGender = validGenders[Math.floor(Math.random() * validGenders.length)];
 
-                    state.partyBuilds[2][i] = eJob;
+                    state.partyBuilds[2][i] = UNIT_CLASS;   // THE JOBS REMOVAL (2026-09-27): was the race's default job
                     state.partyNames[2][i] = eRace.charAt(0).toUpperCase() + eRace.slice(1);
                     state.loadouts[2][i] = emptyLoadout();
                     state.partyMeta[2][i] = {
@@ -39791,7 +39678,7 @@
              _mdStairs / _mdEntrance   trigger tiles for the current board
              _mdEnded / _mdTransitioning   re-entrancy guards
            Flow: hub → step on entrance → _mdOpenPartySelect (uiDialog
-           'mdParty': pick up to 4 delvers + jobs) → _mdStartRun(cfg) →
+           'mdParty': pick up to 4 delvers) → _mdStartRun(cfg) →
            _mdLoadFloor → startMatch … leader steps/JUMPS onto stairs →
            _mdPromptDescend (uiDialog 'mdStairs', plus the persistent
            ⬇ DESCEND button in the HUD floor badge) → _mdAdvanceFloor
@@ -39952,8 +39839,7 @@
             const n = Math.min(spots.length, pool.length);
             for (let i = 0; i < n; i++) {
                 const race = pool[i];
-                const job = (typeof RACE_DEFAULT_JOBS !== 'undefined' && RACE_DEFAULT_JOBS[race]) || 'Freelancer';
-                const template = CLASS_TEMPLATES[job] || CLASS_TEMPLATES[Object.keys(CLASS_TEMPLATES)[0]];
+                const template = CLASS_TEMPLATES[UNIT_CLASS];   // THE JOBS REMOVAL (the user 2026-09-27): was the race's default job
                 const genders = (typeof getAvailableGendersForRace === 'function') ? getAvailableGendersForRace(race) : ['male'];
                 try {
                     const npc = createUnit('npc-' + i, 1, spots[i].x, spots[i].y, template, emptyLoadout(), { race, gender: genders[randInt(genders.length)] || 'male' });
@@ -40890,7 +40776,7 @@
            Every non-boss monster felled on a dungeon floor rolls a recruit
            chance. On success it rises at its tile as a PARTY member (open
            slot required, 4 max) with the run's level, AUTO tactics and the
-           job's stock kit — and its race joins the Guild Hub roster for
+           race's stock kit — and its race joins the Guild Hub roster for
            future runs. With a full party the race still joins the roster. */
         const MD_RECRUIT_CHANCE = 0.22;
         function _mdMaybeOfferRecruit(victim, killer) {
@@ -40984,8 +40870,8 @@
                 if (!near) return;
                 tx = near.x; ty = near.y;
             }
-            const job = (typeof RACE_DEFAULT_JOBS !== 'undefined' && RACE_DEFAULT_JOBS[race]) || 'Freelancer';
-            const template = CLASS_TEMPLATES[job] || CLASS_TEMPLATES[Object.keys(CLASS_TEMPLATES)[0]];
+            const job = UNIT_CLASS;   // THE JOBS REMOVAL (the user 2026-09-27): was the race's default job
+            const template = CLASS_TEMPLATES[UNIT_CLASS];
             const D = _mdActiveDungeon();
             const runLvl = Math.min((typeof XP_MAX_LEVEL !== 'undefined') ? XP_MAX_LEVEL : 100,
                 Math.max(5, Math.round(state._mdRun.floor * ((D && D.levelPerFloor) || 1))));
@@ -41007,7 +40893,7 @@
             state.loadouts[1][slot] = loadout || emptyLoadout();
             if (!state.partyMeta[1]) state.partyMeta[1] = [];
             state.partyMeta[1][slot] = { race, gender, _campaignLevel: runLvl, _mdTactic: 'auto' };
-            addLog(`🤝 The defeated ${label} rises and JOINS the party! (Lv.${runLvl} ${job} — AUTO tactics)`
+            addLog(`🤝 The defeated ${label} rises and JOINS the party! (Lv.${runLvl} — AUTO tactics)`   // no job label (THE JOBS REMOVAL 2026-09-27)
                 + (newToRoster ? ` ${label} is now on the roster at headquarters.` : ''));
             try { showFloatingTextForUnit(recruit, '🤝 RECRUITED!', 'levelup', { durationMs: 1800 }); } catch (e) {}
             if (typeof showCombatBanner === 'function') showCombatBanner('🤝 ' + label + ' joins!', 'A defeated foe changes sides', 'neutral');
@@ -41059,7 +40945,7 @@
                 const name = (rule && rule.name) || it.type;
                 unit.items = unit.items || {};
                 const cap = (typeof getItemCapForClass === 'function')
-                    ? getItemCapForClass(unit.cls, it.type) : ((rule && rule.max) || 1);
+                    ? getItemCapForClass(unit, it.type) : ((rule && rule.max) || 1);
                 const bagFull = (typeof unitItemsFull === 'function') && unitItemsFull(unit);
                 if ((unit.items[it.type] || 0) >= cap || bagFull) {
                     addLog(`🎒 ${unitDisplayName(unit)} steps over a ${name} — pockets full, it stays on the floor.`);
@@ -41113,8 +40999,8 @@
 
         /* ── Pre-run party select ──────────────────────────────────────────
            Stepping on the cave gate opens the roster instead of instantly
-           starting the run: pick up to 4 delvers (leader locked in), choose
-           each one's job — the auto-kit builds the matching loadout. */
+           starting the run: pick up to 4 delvers (leader locked in) — the
+           auto-kit builds each one's loadout from its race. */
         function _mdOpenPartySelect() {
             if (state.uiDialog || state._mdTransitioning || state._mdEnded) return;
             _mdStopFreeRoam();
@@ -41122,7 +41008,8 @@
             const sv = (typeof loadMdSave === 'function') ? loadMdSave() : { unlockedRaces: [] };
             const leadMeta = (state.partyMeta[1] && state.partyMeta[1][0]) || {};
             const leadRace = leadMeta.race || 'homosapien';
-            const defJob = rk => (typeof RACE_DEFAULT_JOBS !== 'undefined' && RACE_DEFAULT_JOBS[rk]) || 'Freelancer';
+            /* THE JOBS REMOVAL (the user 2026-09-27): a delver is its race — no per-member job, no job pickers
+               (_mdPartyJob / _mdPartyLeaderJob deleted); every member builds as the neutral UNIT_CLASS. */
             const pool = ((typeof AVAILABLE_RACES !== 'undefined') ? AVAILABLE_RACES : [])
                 .filter(rk => (sv.unlockedRaces || []).includes(rk) && rk !== leadRace);
             state._mdPartySel = {
@@ -41130,11 +41017,9 @@
                     race: leadRace,
                     gender: leadMeta.gender || 'male',
                     name: (state.partyNames[1] && state.partyNames[1][0]) || _mdRaceLabelB(leadRace),
-                    job: (state.partyBuilds[1] && state.partyBuilds[1][0]) || defJob(leadRace),
                 },
                 options: pool.map((rk, i) => ({
                     race: rk,
-                    job: defJob(rk),
                     gender: (typeof getAvailableGendersForRace === 'function')
                         ? ((getAvailableGendersForRace(rk) || ['male'])[0] || 'male') : 'male',
                     on: i < 3,
@@ -41166,20 +41051,6 @@
             playSfx('uiCursorMove');
             markDirty('dialog');
             renderIfDirty();
-        };
-        window._mdPartyJob = function (i, job) {
-            const sel = state._mdPartySel;
-            if (!sel || !sel.options[i]) return;
-            if (typeof CLASS_TEMPLATES === 'undefined' || !CLASS_TEMPLATES[job]) return;
-            sel.options[i].job = job;
-            playSfx('uiCursorMove');
-        };
-        window._mdPartyLeaderJob = function (job) {
-            const sel = state._mdPartySel;
-            if (!sel) return;
-            if (typeof CLASS_TEMPLATES === 'undefined' || !CLASS_TEMPLATES[job]) return;
-            sel.leader.job = job;
-            playSfx('uiCursorMove');
         };
         window._mdPartyStart = function () {
             const sel = state._mdPartySel;
@@ -41218,15 +41089,16 @@
                 meta: (state.partyMeta[1] || []).map(m => JSON.parse(JSON.stringify(m || {}))),
             };
             /* the gate's party-select choice becomes the delving party (slot 0
-               = leader). Auto spell/item kit per job, no surprise accessories —
+               = leader). Auto spell/item kit per race (THE JOBS REMOVAL 2026-09-27: was per job; the cfg carries
+               no job now — map.js _mdCharStart sends cls: UNIT_CLASS), no surprise accessories —
                same treatment the solo delver gets at char select. */
             if (partyCfg && partyCfg.length) {
-                state.partyBuilds[1] = partyCfg.map(c => c.job);
+                state.partyBuilds[1] = partyCfg.map(() => UNIT_CLASS);
                 state.partyNames[1] = partyCfg.map(c => c.name || _mdRaceLabelB(c.race));
                 state.partyMeta[1] = partyCfg.map(c => ({ race: c.race, gender: c.gender || 'male' }));
                 state.loadouts[1] = partyCfg.map(c => {
                     const ld = (typeof optimizeLoadoutForClass === 'function')
-                        ? optimizeLoadoutForClass(c.job, c.race) : emptyLoadout();
+                        ? optimizeLoadoutForClass(UNIT_CLASS, c.race) : emptyLoadout();
                     if (ld) ld.equipment = { accessory1: null, accessory2: null };
                     return ld;
                 });
@@ -41300,11 +41172,10 @@
             for (let i = 0; i < spec.count; i++) {
                 const isBoss = !!(spec.boss && i === 0);
                 const race = isBoss ? spec.boss.race : spec.races[i % spec.races.length];
-                const job = (typeof RACE_DEFAULT_JOBS !== 'undefined' && RACE_DEFAULT_JOBS[race]) || 'Freelancer';
                 const lo = spec.levelRange[0], hi = spec.levelRange[1];
                 const lvl = isBoss ? spec.boss.level : (lo + randInt(Math.max(1, hi - lo + 1)));
                 const genders = (typeof getAvailableGendersForRace === 'function') ? getAvailableGendersForRace(race) : ['male'];
-                state.partyBuilds[2][i] = job;
+                state.partyBuilds[2][i] = UNIT_CLASS;   // THE JOBS REMOVAL (the user 2026-09-27): was the race's default job
                 state.partyNames[2][i] = isBoss ? 'Dungeon Lord' : race.charAt(0).toUpperCase() + race.slice(1);
                 state.loadouts[2][i] = emptyLoadout();
                 state.partyMeta[2][i] = {
@@ -41723,7 +41594,7 @@
                     name: unitDisplayName(unit),
                     race: unit.race,
                     gender: unit.gender,
-                    job: unit.job || unit.cls,
+                    cls: unit.cls,   // the sprite key only (THE JOBS REMOVAL 2026-09-27: was `job`)
                     rosterId,
                     xpGained,
                     prevLevel,
@@ -41930,7 +41801,7 @@
             let awardsHtml = '<div class="camp-xp-section"><div class="camp-xp-title">Unit Progress</div>';
             for (const ur of result.unitResults) {
                 const sprite = (typeof getR2RaceSpriteUrl === 'function')
-                    ? getR2RaceSpriteUrl(ur.race, ur.gender, ur.job) : '';
+                    ? getR2RaceSpriteUrl(ur.race, ur.gender, ur.cls) : '';
                 const lvlUpTag = ur.leveledUp
                     ? `<span class="camp-lvlup">⬆ LVL ${ur.newLevel}!</span>` : '';
                 const fallenTag = ur.dead ? `<span class="camp-lvlup" style="background:#a33;color:#fff">✝ Fallen</span>` : '';
@@ -43048,8 +42919,10 @@
                     const totalItems = Object.values(loadout?.items || {}).reduce((a, b) => a + b, 0);
                     if (totalItems === 0) emptySlots.push('no items');
                     if (emptySlots.length > 0) {
-                        const unitName = state.partyNames[player]?.[idx] || cls;
-                        warnings.push(`P${player} ${unitName} (${cls}): ${emptySlots.join(', ')}`);
+                        // THE JOBS REMOVAL (the user 2026-09-27): the race labels the unit, never the neutral class
+                        const _wRace = getRaceLabel(state.partyMeta?.[player]?.[idx]?.race || '', state.partyMeta?.[player]?.[idx]?.gender);
+                        const unitName = state.partyNames[player]?.[idx] || _wRace;
+                        warnings.push(`P${player} ${unitName} (${_wRace}): ${emptySlots.join(', ')}`);
                     }
                 });
             });
@@ -43068,8 +42941,9 @@
                             const eq = lo?.equipment || {};
                             const hasEmpty = (lo?.spells || []).some((s, si) => si < CONFIG.unitSkillSlots && !s);
                             if (hasEmpty) {
-                                const hasCandidate = getEligibleSpellsForClass(c, r).some(sp =>
-                                    !usedIds.has(sp.id)
+                                // the race pool (THE JOBS REMOVAL 2026-09-27: was the job's flat eligible list)
+                                const hasCandidate = unitSpellPool(r, UNIT_CLASS, (lo?.spells || []).filter(Boolean)).some(id =>
+                                    !usedIds.has(id)
                                 );
                                 if (hasCandidate) canAutoFill = true;
                             }
@@ -43084,42 +42958,12 @@
                                 const r = state.partyMeta?.[p]?.[i]?.race || '';
                                 const eq = lo?.equipment || {};
                                 const existingSpells = (lo?.spells || []).slice();
-                                /* Spell-tree classes: top up with a tree-legal
-                                   random walk instead of flat-pool picks. */
-                                if (typeof classHasSpellTree === 'function' && classHasSpellTree(c)
-                                    && typeof treeLegalSubset === 'function') {
-                                    const _afSec = '';   // no secondary job since the tier rework
-                                    const _afWish = [...existingSpells.filter(Boolean),
-                                        ...buildTreeLegalLoadout(r, c, _afSec)];
-                                    lo.spells = treeLegalSubset(r, c, _afSec, _afWish);
-                                    return;
-                                }
-                                let ccCount = countCrossClassSpells ? countCrossClassSpells(existingSpells, c) : 0;
-                                const usedIds = new Set(existingSpells.filter(Boolean));
-                                const eligible = getEligibleSpellsForClass(c, r)
-                                    .filter(sp => !usedIds.has(sp.id));
-                                const afBudget = typeof SPELL_SLOT_MAX !== 'undefined' ? SPELL_SLOT_MAX : CONFIG.unitSkillSlots;
-                                let afUsed = existingSpells.reduce((t, id) => {
-                                    const sp = id ? getSpellById(id) : null;
-                                    return t + (sp ? getEffectiveEquipCost(sp, c, r) : 0);
-                                }, 0);
-                                for (let s = 0; s < CONFIG.unitSkillSlots; s++) {
-                                    if (existingSpells[s]) continue;
-                                    if (afUsed >= afBudget) break;
-                                    for (const spell of eligible) {
-                                        if (usedIds.has(spell.id)) continue;
-                                        const isCross = !isSpellNativeToClass(spell, c);
-                                        if (isCross && ccCount >= CONFIG.maxCrossClassSpells) continue;
-                                        const sc = getEffectiveEquipCost(spell, c, r);
-                                        if (afUsed + sc > afBudget) continue;
-                                        existingSpells[s] = spell.id;
-                                        usedIds.add(spell.id);
-                                        afUsed += sc;
-                                        if (isCross) ccCount++;
-                                        break;
-                                    }
-                                }
-                                lo.spells = existingSpells;
+                                /* Top up with a tree-legal random walk of the race pool. THE JOBS REMOVAL (the user
+                                   2026-09-27): classHasSpellTree is always true now, so the flat per-job pool
+                                   fallback (cross-class caps) is gone. */
+                                const _afWish = [...existingSpells.filter(Boolean),
+                                    ...buildTreeLegalLoadout(r, UNIT_CLASS, '')];
+                                lo.spells = treeLegalSubset(r, UNIT_CLASS, '', _afWish);
                             });
                         });
                         state.units = makeUnitsFromBuilds();
@@ -44601,8 +44445,7 @@
                     const nameEl = document.createElement('div');
                     nameEl.className = 'vs-sprite-name';
                     const raceName = u.race ? u.race.charAt(0).toUpperCase() + u.race.slice(1) : '';
-                    const jobName = u.cls || '';
-                    nameEl.textContent = raceName || jobName || 'Unit';
+                    nameEl.textContent = raceName || 'Unit';   // (no job fallback — THE JOBS REMOVAL 2026-09-27)
 
                     slot.appendChild(spriteDiv);
                     slot.appendChild(nameEl);
@@ -45406,8 +45249,8 @@
             return `<div class="enemy-roster-card${deadClass}">
           <div class="enemy-roster-icon">${s.dead ? '☠' : '⚔'}</div>
           <div class="enemy-roster-info">
-            <div class="enemy-roster-name">${escapeHtml(s.name || s.cls || '?')}${statusIcons ? ' ' + statusIcons : ''}</div>
-            <div class="enemy-roster-stats">${s.race || '?'} · ${s.cls || '?'} · ${posLabel}${s.dead ? ` · VOID${s._respawnIn ? ' (' + s._respawnIn + ' rnd)' : ''}` : ` · ${s.hp}/${s.maxHp} HP`}</div>
+            <div class="enemy-roster-name">${escapeHtml(s.name || (s.race ? getRaceLabel(s.race, s.gender) : '?'))}${statusIcons ? ' ' + statusIcons : ''}</div>
+            <div class="enemy-roster-stats">${s.race || '?'} · ${posLabel}${s.dead ? ` · VOID${s._respawnIn ? ' (' + s._respawnIn + ' rnd)' : ''}` : ` · ${s.hp}/${s.maxHp} HP`}</div>
             ${!s.dead ? `<div class="enemy-mini-bar"><div class="enemy-mini-fill" style="width:${hpPct}%"></div></div>` : ''}
             ${staleLabel}
           </div>
@@ -45439,7 +45282,7 @@
       if (blitzUnit && typeof blitzUnit === 'object') {
         const spriteSrc = getBattleMapSpriteUrl(blitzUnit);
         const name = unitDisplayName(blitzUnit);
-        const spdText = `SPD ${blitzUnit.spd || 0} · ${blitzUnit.cls}`;
+        const spdText = `SPD ${blitzUnit.spd || 0} · ${blitzUnit.race ? getRaceLabel(blitzUnit.race, blitzUnit.gender) : ''}`;   // the race, never the neutral class (THE JOBS REMOVAL 2026-09-27)
         const pLabel = `P${blitzUnit.player}`;
         const autoLabel = state.autoPlayers?.[blitzUnit.player] ? ' · CPU' : '';
         const pClass = blitzUnit.player;
@@ -47508,38 +47351,6 @@
                    and show the stolen face. */
                 if (unitIsControlled(nextUnit)) showPossessedActivation(nextUnit);
 
-                if (nextUnit._pendingSecondaryJobPick) {
-                    if (state.autoPlayers?.[nextUnit.player]) {
-
-                        aiPickSecondaryJob(nextUnit);
-                        renderBoard();
-                        render();
-
-                    } else {
-
-                        const gen = _blitzTurnGen;
-                        window.setTimeout(() => {
-                            if (_blitzTurnGen !== gen || state.winner) return;
-                            const u = state.units.find(u => u.id === pendingUnitId && !u.dead);
-                            if (!u) { maybeAdvanceTurn(); return; }
-                            state.uiDialog = {
-                                type: 'secondaryJobPick',
-                                unitId: pendingUnitId,
-                                onComplete: function() {
-
-                                    state._blitzActiveUnitId = pendingUnitId;
-                                    state.activePlayer = u.player;
-                                    playUnitSwitchChime();
-                                    selectUnit(pendingUnitId, { _auto: true });
-                                }
-                            };
-                            markDirty('dialog');
-                            renderIfDirty();
-                        }, humanDelay);
-                        return;
-                    }
-                }
-
                 /* Mystery Dungeon: AUTO-tactic companions are player-1 units
                    driven by the stock unit AI — route them down the AI branch
                    even though controllers[1] is LOCAL. */
@@ -48974,14 +48785,14 @@
         //     tuning the AI; useless for judging the GAME.
         //   • Balance Lab does the opposite: BOTH sides run the SAME champion
         //     weights (AI held equal) while teams are RANDOMISED independently.
-        //     With the AI controlled-for, any job / race / spell whose win rate
+        //     With the AI controlled-for, any race / spell whose win rate
         //     drifts away from 50% is a signal that THE GAME is imbalanced.
-        // Per-unit outcomes are bucketed by job, race, secondary job and spell
+        // Per-unit outcomes are bucketed by race and spell (no job buckets since THE JOBS REMOVAL 2026-09-27)
         // and surfaced in a live dashboard (reusing the training panel slot).
         // ════════════════════════════════════════════════════════════════════
         let _balanceSimMode = false;
         let _balanceStats = null;
-        let _balanceTab = 'jobs';
+        let _balanceTab = 'races';   // THE JOBS REMOVAL (the user 2026-09-27): the Jobs / 2nd Job tabs are gone
         // Per-cast spell telemetry (balance sim only): armed in doSpell,
         // damage/kills attributed in applyDamageToUnit while the cast
         // resolves, flushed into _balanceStats.spellUse by finishAction.
@@ -48993,13 +48804,11 @@
         const BALANCE_MIN_SAMPLE = 12;   // games before an entry is trusted/flagged
         const BALANCE_MATCH_LOG_CAP = 400; // raw per-match records kept for offline analysis
         const _BAL_TABS = [
-            { id: 'jobs', label: 'Jobs' },
             { id: 'races', label: 'Races' },
             { id: 'builds', label: 'Builds' },
             { id: 'treeShapes', label: 'Tree' },
             { id: 'spells', label: 'Spells' },
             { id: 'spellUse', label: 'Casts' },
-            { id: 'secondaryJobs', label: '2nd Job' },
         ];
         // Dashboard view state (survives the per-match re-render).
         let _balanceFilter = '';
@@ -49008,12 +48817,12 @@
         const _balanceOpenBuilds = new Set();
 
         /* v2 additions (2026-07-07 balance pass):
-           • builds — bucket per "race | job (+ secondary)" combo, each with a
+           • builds — bucket per race (was "race | job (+ secondary)"), each with a
              nested loadouts map keyed by the full sorted spell list, so
              specific spell-combo win rates are queryable (it's rarely a class
              that's broken — it's an interaction).
            • matchLog — capped raw per-match records: mode, rounds, winner,
-             BOTH team compositions (race/job/sec/spells per unit), first
+             BOTH team compositions (race/spells per unit), first
              kill, first death, comeback flag. Opponent-composition and
              build-vs-build questions get answered offline from this.
            • roundsTotal / comebackWins / firstKillWins — match-length and
@@ -49033,14 +48842,14 @@
                 roundsTotal: 0,
                 comebackWins: 0,
                 firstKillWins: 0,
-                jobs: {}, races: {}, secondaryJobs: {}, spells: {}, modes: {},
+                races: {}, spells: {}, modes: {},
                 builds: {},
                 treeShapes: {},
                 spellUse: {},
                 // BUILD-verb telemetry (2026-07-13): the universal place/dig
                 // action was invisible to every prior dataset — no way to tell
                 // if terrain-craft is a real strategic axis or dead weight.
-                buildUse: { tools: {}, jobs: {} },
+                buildUse: { tools: {} },
                 // How matches end (per state._winCondition): n + summed rounds.
                 winConds: {},
                 matchLog: [],
@@ -49050,14 +48859,13 @@
 
         function ensureBalanceStats() {
             if (!_balanceStats) _balanceStats = _freshBalanceStats();
-            for (const k of ['jobs', 'races', 'secondaryJobs', 'spells', 'modes', 'builds', 'treeShapes', 'spellUse']) {
+            for (const k of ['races', 'spells', 'modes', 'builds', 'treeShapes', 'spellUse']) {
                 if (!_balanceStats[k]) _balanceStats[k] = {};
             }
             if (!Array.isArray(_balanceStats.matchLog)) _balanceStats.matchLog = [];
             if (!_balanceStats.winConds) _balanceStats.winConds = {};
-            if (!_balanceStats.buildUse) _balanceStats.buildUse = { tools: {}, jobs: {} };
+            if (!_balanceStats.buildUse) _balanceStats.buildUse = { tools: {} };
             if (!_balanceStats.buildUse.tools) _balanceStats.buildUse.tools = {};
-            if (!_balanceStats.buildUse.jobs) _balanceStats.buildUse.jobs = {};
             if (_balanceStats.noContests == null) _balanceStats.noContests = 0;
             if (_balanceStats.totalMatches == null) _balanceStats.totalMatches = 0;
             if (_balanceStats.roundsTotal == null) _balanceStats.roundsTotal = 0;
@@ -49080,7 +48888,7 @@
             if (kp === 1 || kp === 2) {
                 m.kills[kp]++;
                 if (!m.firstKill) {
-                    m.firstKill = { round: state.round || 0, player: kp, race: killer.race || null, job: killer.cls || killer.job || null };
+                    m.firstKill = { round: state.round || 0, player: kp, race: killer.race || null };
                 }
                 for (const p of [1, 2]) {
                     const opp = p === 1 ? 2 : 1;
@@ -49088,7 +48896,7 @@
                 }
             }
             if (victim && (victim.player === 1 || victim.player === 2) && !m.firstDeath) {
-                m.firstDeath = { round: state.round || 0, player: victim.player, race: victim.race || null, job: victim.cls || victim.job || null };
+                m.firstDeath = { round: state.round || 0, player: victim.player, race: victim.race || null };
             }
         }
 
@@ -49138,15 +48946,13 @@
 
         // Tally one successful BUILD op (dig / tree chop / block place) so
         // exports can answer "does anyone actually terraform?" — keyed by tool
-        // and by the digger's job.
+        // (THE JOBS REMOVAL 2026-09-27: no longer by the digger's job).
         function _balRecordBuildOp(unit, tool, isTree) {
             if (!_balanceSimMode) return;
             ensureBalanceStats();
             const bu = _balanceStats.buildUse;
             const toolKey = (tool === 'dig' && isTree) ? 'chopTree' : (tool || 'dig');
             bu.tools[toolKey] = (bu.tools[toolKey] || 0) + 1;
-            const jobKey = unit && (unit.cls || unit.job);
-            if (jobKey) bu.jobs[jobKey] = (bu.jobs[jobKey] || 0) + 1;
         }
 
         /* Reduce one unit's equipped spells to its Tree-of-Life shape:
@@ -49158,18 +48964,17 @@
            maps 6/6 (verified over the full stats17 match log). */
         function _balUnitTreeShape(u) {
             try {
-                const cls = u.cls || u.job;
-                if (typeof classHasSpellTree !== 'function' || !classHasSpellTree(cls)) return null;
                 if (typeof buildUnitSpellTree !== 'function') return null;
                 const ids = (u.spells || []).map(s => s && s.id).filter(Boolean);
                 if (!ids.length) return null;
                 /* THE TIERS (2026-09-24): the shape is the kit's tier spread — how many Tier I / II / III / IV
-                   spells it carries (R/P still counts race vs job picks). */
-                const tree = buildUnitSpellTree(u.race || '', cls, '', ids);
+                   spells it carries (R counts the race row's picks). THE JOBS REMOVAL (the user 2026-09-27): the P
+                   (job row) count is gone with the jobs. */
+                const tree = buildUnitSpellTree(u.race || '', UNIT_CLASS, '', ids);
                 if (!tree || !tree.nodes) return null;
                 const eq = new Set(ids);
-                const d = { R: 0, P: 0 };
-                for (const pf of ['R', 'P']) {
+                const d = { R: 0 };
+                for (const pf of ['R']) {
                     for (let i = 1; i <= 4; i++) {
                         const nid = tree.nodes[pf + i];
                         if (nid && eq.has(nid)) d[pf]++;
@@ -49178,7 +48983,7 @@
                 const t = [0, 0, 0, 0, 0];
                 for (const id of ids) t[(typeof spellTierOf === 'function') ? spellTierOf(id) : 1]++;
                 return {
-                    sig: `R${d.R}·P${d.P}·T${t[1]}${t[2]}${t[3]}${t[4]}`,
+                    sig: `R${d.R}·T${t[1]}${t[2]}${t[3]}${t[4]}`,
                     sorted: [t[4], t[3], t[2], t[1]].join('-'),
                     cap: t[4] > 0 ? 'IV' : null,
                 };
@@ -49186,26 +48991,19 @@
         }
 
         /* Static dump of the current tree DEFINITIONS (what sits on every
-           node of every job/race pillar) — shipped with the JSON export so
+           node of every race pillar) — shipped with the JSON export so
            offline analysis can join shape/win data back to actual spells,
            and so tree redesigns are diffable across exports. */
         function _balSpellTreeDefs() {
-            const defs = { jobs: {}, races: {}, freelancer: null };
+            /* THE JOBS REMOVAL (the user 2026-09-27): no job pillars (CLASS_TREE) and no Freelancer sockets — races only */
+            const defs = { races: {} };
             try {
                 const nameOf = id => (typeof SPELL_BY_ID !== 'undefined' && SPELL_BY_ID[id] && SPELL_BY_ID[id].name) || id;
-                if (typeof CLASS_TREE !== 'undefined') {
-                    for (const job of Object.keys(CLASS_TREE)) {
-                        defs.jobs[job] = CLASS_TREE[job].map((id, i) => ({ node: 'P' + (i + 1), id, name: nameOf(id) }));
-                    }
-                }
                 if (typeof getRaceTreeSpells === 'function' && typeof AVAILABLE_RACES !== 'undefined') {
                     for (const race of AVAILABLE_RACES) {
-                        const ids = getRaceTreeSpells(race, (typeof RACE_DEFAULT_JOBS !== 'undefined' && RACE_DEFAULT_JOBS[race]) || null) || [];
+                        const ids = getRaceTreeSpells(race, UNIT_CLASS) || [];
                         defs.races[race] = ids.map((id, i) => ({ node: 'R' + (i + 1), id, name: nameOf(id) }));
                     }
-                }
-                if (typeof FL_FIXED !== 'undefined') {
-                    defs.freelancer = { fixed: FL_FIXED, socketTiers: (typeof FL_SOCKET_TIERS !== 'undefined') ? FL_SOCKET_TIERS : null, socketPool: (typeof FL_SOCKET_POOL !== 'undefined') ? FL_SOCKET_POOL : null };
                 }
             } catch (e) {}
             return defs;
@@ -49238,7 +49036,7 @@
         }
 
         // Tally one finished balance match. Every living-or-dead unit on a
-        // decisive side is a sample for its job/race/secondary/spells; a draw or
+        // decisive side is a sample for its race/spells; a draw or
         // no-contest only bumps the no-contest counter (no win attribution).
         function recordBalanceMatch() {
             ensureBalanceStats();
@@ -49278,14 +49076,13 @@
                 const dt = u._trackDmgReceived || 0;
                 const died = u.dead ? 1 : 0;
 
-                _balAdd(_balanceStats.jobs, u.cls || u.job, won, kills, dd, dt, died);
                 if (u.race) _balAdd(_balanceStats.races, u.race, won, kills, dd, dt, died);
-                if (u._secondaryJob) _balAdd(_balanceStats.secondaryJobs, u._secondaryJob, won, kills, dd, dt, died);
 
-                // Full-build bucket: race | job (+ secondary), with the exact
-                // spell loadout tallied underneath. Interactions, not classes.
+                // Full-build bucket: the race, with the exact spell loadout
+                // tallied underneath. Interactions, not classes. (THE JOBS
+                // REMOVAL 2026-09-27: was "race | job (+ secondary)".)
                 const spellNames = (u.spells || []).map(s => s && s.name).filter(Boolean);
-                const buildKey = `${u.race || '?'} | ${u.cls || u.job || '?'}${u._secondaryJob ? ' + ' + u._secondaryJob : ''}`;
+                const buildKey = `${u.race || '?'}`;
                 _balAdd(_balanceStats.builds, buildKey, won, kills, dd, dt, died);
                 // Tree shape: pillar depths as their own bucket, the same
                 // sig stamped on the build's loadout row and the match log.
@@ -49304,8 +49101,6 @@
 
                 teams[u.player].push({
                     race: u.race || null,
-                    job: u.cls || u.job || null,
-                    sec: u._secondaryJob || null,
                     spells: spellNames,
                     shape: shape ? shape.sig : null,
                 });
@@ -49441,7 +49236,7 @@
         }
 
         // Tree tab: archetype + capstone-pillar summary above the concrete
-        // shape rows (R=race pillar depth, P=primary job, S=secondary job).
+        // shape rows (R=race pillar depth; the P/S job pillars are gone — THE JOBS REMOVAL 2026-09-27).
         function _balTreeSummaryHtml(shapeMap) {
             const agg = { archetype: {}, cap: { R: null, P: null, S: null, none: null } };
             const bump = (map, k, b) => {
@@ -49479,10 +49274,10 @@
             const nc = s.noContests || 0;
             const decisive = totalM - nc;
 
-            // Balance flags: jobs + races whose win rate has drifted off 50%
+            // Balance flags: races whose win rate has drifted off 50%
             // with enough games behind it — the headline "is the game fair?" read.
             const flags = [];
-            for (const src of [{ tag: 'Job', map: s.jobs }, { tag: 'Race', map: s.races }]) {
+            for (const src of [{ tag: 'Race', map: s.races }]) {
                 for (const r of _balRows(src.map)) {
                     if (r.games < BALANCE_MIN_SAMPLE) continue;
                     if (r.wr >= 0.56 || r.wr <= 0.44) {
@@ -49581,7 +49376,7 @@
             const legend = _balanceTab === 'spellUse'
                 ? 'd = dmg/cast · d/mp = dmg per MP · k = kills/100MP · w = whiff rate · c = casts'
                 : _balanceTab === 'treeShapes'
-                ? 'R/P/S = race / primary / secondary pillar depth · 4 = capstone · % ±CI = win rate (Wilson-95)'
+                ? 'R = race row picks · T = Tier I/II/III/IV counts · % ±CI = win rate (Wilson-95)'
                 : _balanceTab === 'builds'
                 ? 'click a build to see its spell loadouts · % ±CI = win rate · g = games'
                 : showPerf
@@ -49632,7 +49427,7 @@
                     <button class="train-btn danger" onclick="if(confirm('Reset all balance data?')){resetBalanceStats().then(()=>{renderBalanceDashboard();addLog('Balance data reset.');});}">Reset</button>
                     <button class="train-btn" onclick="_exportBalanceStats()">Export JSON</button>
                     <button class="train-btn" onclick="_exportBalanceCsv()">Export CSV</button>
-                    <button class="train-btn" title="dump the spell-tree definitions (every job/race pillar) as JSON" onclick="_exportSpellTrees()">Export Trees</button>
+                    <button class="train-btn" title="dump the spell-tree definitions (every race pillar) as JSON" onclick="_exportSpellTrees()">Export Trees</button>
                 </div>
             `;
 
@@ -49652,42 +49447,23 @@
 
         /* Derived analysis for the export — computes what every balance pass in
            BALANCE_NOTES.md previously derived by hand:
-           • Wilson 95% CIs on every job/race WR (is the outlier real or noise?)
-           • race WR decomposed into JOB EXPECTATION (the WR of the job the race
-             is locked to) + RACE RESIDUAL (what the race's own kit/stats add) —
-             the 2026-07-09b method, now automatic.
+           • Wilson 95% CIs on every race WR (is the outlier real or noise?)
+             (THE JOBS REMOVAL 2026-09-27: the job rows and the race-vs-locked-job
+             residual went with the jobs.)
            • spellUse efficiency league: dmg/cast, dmg/MP, kills per 100 MP,
              whiff rate — judged per CAST, independent of who owns the spell. */
         function _balBuildAnalysis() {
             ensureBalanceStats();
             const s = _balanceStats;
-            const jobRows = {};
-            for (const k of Object.keys(s.jobs || {})) {
-                const b = s.jobs[k];
-                if (!b || !b.games) continue;
-                const ci = _wilson(b.wins, b.games);
-                jobRows[k] = {
-                    games: b.games, wr: Number((b.wins / b.games).toFixed(4)),
-                    wilson95: [Number(ci.lo.toFixed(4)), Number(ci.hi.toFixed(4))],
-                    kpg: Number((b.kills / b.games).toFixed(2)),
-                    survival: Number((1 - b.deaths / b.games).toFixed(3)),
-                };
-            }
             const raceRows = {};
             for (const k of Object.keys(s.races || {})) {
                 const b = s.races[k];
                 if (!b || !b.games) continue;
                 const ci = _wilson(b.wins, b.games);
                 const wr = b.wins / b.games;
-                const defJob = (typeof RACE_DEFAULT_JOBS !== 'undefined' && RACE_DEFAULT_JOBS[k]) || null;
-                const jb = defJob && s.jobs && s.jobs[defJob] && s.jobs[defJob].games
-                    ? s.jobs[defJob].wins / s.jobs[defJob].games : null;
                 raceRows[k] = {
                     games: b.games, wr: Number(wr.toFixed(4)),
                     wilson95: [Number(ci.lo.toFixed(4)), Number(ci.hi.toFixed(4))],
-                    defaultJob: defJob,
-                    jobExpectation: jb != null ? Number(jb.toFixed(4)) : null,
-                    residual: jb != null ? Number((wr - jb).toFixed(4)) : null,
                     kpg: Number((b.kills / b.games).toFixed(2)),
                     survival: Number((1 - b.deaths / b.games).toFixed(3)),
                 };
@@ -49708,7 +49484,7 @@
                 };
             }
             const decisive = (s.totalMatches || 0) - (s.noContests || 0);
-            const bu = s.buildUse || { tools: {}, jobs: {} };
+            const bu = s.buildUse || { tools: {} };
             let buildOps = 0;
             for (const k of Object.keys(bu.tools || {})) buildOps += bu.tools[k];
 
@@ -49756,7 +49532,6 @@
                 avgRounds: decisive > 0 ? Number(((s.roundsTotal || 0) / decisive).toFixed(2)) : null,
                 comebackRate: decisive > 0 ? Number(((s.comebackWins || 0) / decisive).toFixed(3)) : null,
                 firstKillWinRate: decisive > 0 ? Number(((s.firstKillWins || 0) / decisive).toFixed(3)) : null,
-                jobs: jobRows,
                 races: raceRows,
                 spellEfficiency: spellEff,
                 treeShapes: {
@@ -49768,13 +49543,12 @@
                     totalOps: buildOps,
                     opsPerMatch: decisive > 0 ? Number((buildOps / decisive).toFixed(2)) : null,
                     byTool: bu.tools || {},
-                    byJob: bu.jobs || {},
                 },
             };
         }
 
         // Standalone spell-tree definition dump ("Export Trees" button):
-        // every job pillar, every race pillar, the Freelancer socket rules —
+        // every race pillar —
         // the reference file that shape sigs and node ids join against.
         function _exportSpellTrees() {
             const data = {
@@ -49782,7 +49556,7 @@
                     game: 'Entropy Wars',
                     kind: 'spell-trees',
                     exportedAt: new Date().toISOString(),
-                    note: 'Node keys: R1-R4 race row, P1-P4 job row; the rung is the tier (I-IV, 1-4 SP). Since 2026-09-24 there are no edges and no secondary job: any spell, 7 slots, 16 SP.',
+                    note: 'Node keys: R1-R4 race row; the rung is the tier (I-IV, 1-4 SP). Since 2026-09-24 there are no edges; since 2026-09-27 there are no jobs: any spell of the pool, 7 slots, 16 SP.',
                 },
                 edges: (typeof getTreeEdges === 'function') ? getTreeEdges() : null,
                 trees: _balSpellTreeDefs(),
@@ -49820,31 +49594,24 @@
 
         function _exportBalanceCsv() {
             ensureBalanceStats();
-            const lines = ['category,name,games,wins,winRate,wilsonLow,wilsonHigh,avgKills,avgDmgDealt,avgDmgTaken,survivalRate,residualVsJob'];
+            // (THE JOBS REMOVAL 2026-09-27: no job / secondaryJob rows, no residualVsJob column)
+            const lines = ['category,name,games,wins,winRate,wilsonLow,wilsonHigh,avgKills,avgDmgDealt,avgDmgTaken,survivalRate'];
             const cats = [
-                ['job', _balanceStats.jobs], ['race', _balanceStats.races],
-                ['secondaryJob', _balanceStats.secondaryJobs], ['spell', _balanceStats.spells],
+                ['race', _balanceStats.races], ['spell', _balanceStats.spells],
                 ['build', _balanceStats.builds], ['treeShape', _balanceStats.treeShapes],
             ];
-            const jm = _balanceStats.jobs || {};
             for (const [cat, m] of cats) {
                 for (const key of Object.keys(m || {})) {
                     const b = m[key];
                     if (!b || !b.games) continue;
                     const g = b.games;
                     const ci = _wilson(b.wins, g);
-                    let resid = '';
-                    if (cat === 'race' && typeof RACE_DEFAULT_JOBS !== 'undefined' && RACE_DEFAULT_JOBS[key]) {
-                        const jb = jm[RACE_DEFAULT_JOBS[key]];
-                        if (jb && jb.games) resid = (b.wins / g - jb.wins / jb.games).toFixed(3);
-                    }
                     const safe = '"' + String(key).replace(/"/g, '""') + '"';
                     lines.push([
                         cat, safe, g, b.wins, (b.wins / g).toFixed(3),
                         ci.lo.toFixed(3), ci.hi.toFixed(3),
                         (b.kills / g).toFixed(2), (b.dmgDealt / g).toFixed(1),
                         (b.dmgTaken / g).toFixed(1), (1 - b.deaths / g).toFixed(3),
-                        resid,
                     ].join(','));
                 }
             }
@@ -50174,11 +49941,7 @@
             get UNIT_MAX_MOVES() { return UNIT_MAX_MOVES; },
             get XP_MAX_LEVEL() { return XP_MAX_LEVEL; },
             get SPELL_SLOT_MAX() { return typeof SPELL_SLOT_MAX !== 'undefined' ? SPELL_SLOT_MAX : 6; },
-            get CLASS_SPELL_LEARN_ORDER() { return typeof CLASS_SPELL_LEARN_ORDER !== 'undefined' ? CLASS_SPELL_LEARN_ORDER : {}; },
             get SPELL_SHOP_PRICES() { return typeof SPELL_SHOP_PRICES !== 'undefined' ? SPELL_SHOP_PRICES : {}; },
-            learnSpellForUnit,
-            applySecondaryJob,
-            aiPickSecondaryJob,
             get getSpawnZone() { return getSpawnZone; },
             get getSpawnZoneOwnerAt() { return getSpawnZoneOwnerAt; },
             get STATUS_DEFS() { return STATUS_DEFS; },
@@ -57204,7 +56967,8 @@
                 // Harvesters live and die by the tree economy, so only they see
                 // the running lumber tally; for everyone else it's just clearing
                 // cover (and banking 🪵 build material).
-                const _lumberNote = unit.cls === 'Harvester' ? ` (Lumber felled: ${state.lumber[unit.player] || 0})` : '';
+                // (THE JOBS REMOVAL 2026-09-27: a Green Thumb bearer — the `plantedTrees` hook — was the Harvester job)
+                const _lumberNote = unitPassiveValue(unit, 'plantedTrees') ? ` (Lumber felled: ${state.lumber[unit.player] || 0})` : '';
                 addLog(`🪓 ${unitDisplayName(unit)} chops down a ${wasPlanted ? 'planted ' : ''}tree at ${coordLabel(x, y)}!${_lumberNote}`);
                 showFloatingTextAtTile(x, y, '🪓 TIMBER!', 'damage', { durationMs: 1100 });
                 playSfx('basicAttack');
@@ -57319,10 +57083,10 @@
             const _rayGun = (typeof unitPassiveValue === 'function') && unitPassiveValue(unit, 'basicAttackMagic') === true;
             const _atkStat = _rayGun ? pwrInt(unit) : pwrAtk(unit);
             let damage = Math.max(24, Math.floor(_atkStat * 0.65) + getPlantedTreeBonus(unit) + getHourglassPower(unit) + randInt(2 * SPELL_DMG_VARIANCE + 1) - SPELL_DMG_VARIANCE);
-            // Brute Force (Raider passive): basic attacks land +20% harder.
-            if (unit.cls === 'Raider') damage = Math.floor(damage * 1.2);
-            // Warpath (Warrior passive): basic attacks hit +15% harder.
-            else if (unit.cls === 'Warrior') damage = Math.floor(damage * 1.15);
+            // Brute Force ×1.2 / Warpath ×1.15 (passive rows, the `basicDmgMult` hook, they multiply): basic attacks land
+            // harder. THE JOBS REMOVAL (the user 2026-09-27): were the Raider / Warrior jobs (one or the other).
+            const _bdm = unitPassiveMult(unit, 'basicDmgMult') || 1;
+            if (_bdm !== 1) damage = Math.floor(damage * _bdm);
             // 💥 Point Blank (marksman passive): ×mult from ≤N tiles.
             const _pbRule = (typeof unitPassiveValue === 'function') ? unitPassiveValue(unit, 'closeRangeBonus') : undefined;
             const _pointBlank = !!(_pbRule && _pbRule.mult && d <= (_pbRule.within || 2));
@@ -60716,10 +60480,13 @@
             return Math.floor((pwrInt(unit) + getNecroDeathPower(unit)) * 0.35);
         }
 
-        // Arcane Surge (Black Mage passive, data.js JOB_PASSIVES): +8 spell
+        // Arcane Surge (the passive row passiveArcaneSurge): +8 spell
         // power on every cast. Cheap flat rider folded into spellPower.
-        function getJobPassiveSpellBonus(unit) {
-            return (unit && unit.cls === 'Black Mage') ? 8 : 0;
+        // THE JOBS REMOVAL (the user 2026-09-27): was getJobPassiveSpellBonus (the Black Mage job); now the passive
+        // rows' `spellPower` hook (sum), read on the unit. createUnit (map.js) also folds the same hook into
+        // unit.spellPower, exactly as the job used to set spellPower 8 AND add this +8 — the old total is kept.
+        function getPassiveSpellPowerBonus(unit) {
+            return unit ? (unitPassiveSum(unit, 'spellPower') || 0) : 0;
         }
 
         // ── Necromancer racial PASSIVE: Deathfeed ───────────────────────────
@@ -61658,7 +61425,7 @@
             }
 
             const spellPower = (unit.spellPower || 0) + getHourglassPower(unit) + getSpellStatBonus(unit, spell)
-                + getPlantedTreeBonus(unit) + getTreeThrowBonus(unit, spell) + getJobPassiveSpellBonus(unit);
+                + getPlantedTreeBonus(unit) + getTreeThrowBonus(unit, spell) + getPassiveSpellPowerBonus(unit);
             let panelFocusTarget = null;
             let completionDelay = 0;
             const spellApCost = getSpellApCost(spell);
@@ -61927,8 +61694,8 @@
                 const _baseHeal = spell.healAmt != null ? spell.healAmt : (spell.heal || 0);
                 let healAmount = _baseHeal + getEffectiveHealBonus(unit, _baseHeal, _ht) + getHourglassPower(unit);
                 if (spell.lowHpBonus && _ht.hp / _ht.maxHp < 0.4) healAmount += spell.lowHpBonus;
-                // Tinker (Engineer passive): Repair heals 20% more.
-                if (spell.id === 'repair' && unit.cls === 'Engineer') healAmount = Math.round(healAmount * 1.2);
+                // Tinker (passive row, the `repairMult` hook, mult — was the Engineer job, THE JOBS REMOVAL 2026-09-27): Repair heals 20% more.
+                if (spell.id === 'repair') { const _rm = unitPassiveMult(unit, 'repairMult') || 1; if (_rm !== 1) healAmount = Math.round(healAmount * _rm); }
                 // The HP lands when the gift ARRIVES (support cinematic beat 2)
                 // so the +N and the glow pop while the recipient is on camera.
                 window.setTimeout(() => {
@@ -63687,7 +63454,7 @@
                         const took = Math.max(0, hpB - target.hp);
                         if (spell.drainPct && took > 0) {
                             let drainMult = spell.drainPct;
-                            if (unit.cls === 'Harvester') drainMult *= 1.20;
+                            drainMult *= (unitPassiveMult(unit, 'lifeSapMult') || 1);   // Green Thumb (was the Harvester job; THE JOBS REMOVAL 2026-09-27)
                             const healed = applyHealingToUnit(unit, Math.max(1, Math.round(took * drainMult)), unit);
                             if (healed > 0) {
                                 addLog(`${unitDisplayName(unit)} absorbs ${healed} HP.`);
@@ -65545,7 +65312,9 @@
                         _vfxTeleport(tUnit.x, tUnit.y, x, y);
                     }
                     _spellFocusCamera(unit, x, y);
-                    const mpCost = (unit.cls === 'Psychic') ? Math.max(1, effectiveSpellCost - 1) : effectiveSpellCost;
+                    // Third Eye (the `teleportMpDiscount` hook, sum — was the Psychic job; THE JOBS REMOVAL 2026-09-27)
+                    const _tpOff = unitPassiveSum(unit, 'teleportMpDiscount') || 0;
+                    const mpCost = _tpOff ? Math.max(1, effectiveSpellCost - _tpOff) : effectiveSpellCost;
                     unit.mp -= mpCost;
                     const oldLabel = coordLabel(tUnit.x, tUnit.y);
                     const _tpWasAir = typeof canFly === 'function' && canFly(tUnit) && typeof isUnitAirborne === 'function' && isUnitAirborne(tUnit);
@@ -65783,7 +65552,7 @@
                         spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell)
                     });
                     let drainMult = spell.drainPct || 0.50;
-                    if (unit.cls === 'Harvester') drainMult *= 1.20;
+                    drainMult *= (unitPassiveMult(unit, 'lifeSapMult') || 1);   // Green Thumb (was the Harvester job; THE JOBS REMOVAL 2026-09-27)
                     const healAmt = Math.max(1, Math.round(dmg * drainMult));
                     const healed = applyHealingToUnit(unit, healAmt, unit);
                     if (healed > 0) {
@@ -65923,8 +65692,8 @@
                 unit.mp -= effectiveSpellCost;
                 const turretHp = spell.turretHp || 20;
                 const turretDmg = spell.turretDmg || 8;
-                // Tinker (Engineer passive): turrets reach +1 tile.
-                const turretRange = (spell.turretRange || 2) + (unit.cls === 'Engineer' ? 1 : 0);
+                // Tinker (passive row, the `turretRangeBonus` hook — was the Engineer job, THE JOBS REMOVAL 2026-09-27): turrets reach +1 tile.
+                const turretRange = (spell.turretRange || 2) + (unitPassiveSum(unit, 'turretRangeBonus') || 0);
 
                 let _initFacing = Math.PI * 0.75;
                 const _deployEnemies = aliveUnitsOnFloor(enemyOf(unit.player), null);
@@ -66166,7 +65935,7 @@
                     return 0;
                 }
                 if (target.id === unit.id) {
-                    addLog('The Harbinger cannot Encore themselves.');
+                    addLog(`${unitDisplayName(unit)} cannot Encore themselves.`);   // no job name (THE JOBS REMOVAL 2026-09-27)
                     playErrorSfx();
                     return 0;
                 }

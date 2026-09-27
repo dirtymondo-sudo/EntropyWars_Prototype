@@ -35,7 +35,8 @@ test('door agent: every race table, both sides, the passive, the statuses the en
     assert.ok(D.AVAILABLE_RACES.includes(RACE));
     assert.equal(D.RACE_PROFILES[RACE].label, 'DOOR Agent');
     assert.equal(D.RACE_PROFILES[RACE].types.join(','), 'human,anomaly');
-    assert.equal(D.RACE_DEFAULT_JOBS[RACE], 'Agent');
+    assert.equal(typeof D.RACE_DEFAULT_JOBS, 'undefined', 'no default jobs (THE JOBS REMOVAL, 2026-09-27)');
+    assert.equal(JSON.stringify(D.raceKit(RACE)), JSON.stringify({ range: 2, inspect: 2 }), 'the old Agent kit rides on the race: reach 2, inspect 2');
     assert.ok(D.RACE_BASE_STATS[RACE] && D.RACE_BASE_STATS[RACE].awr >= 80, 'they check their corners');
     assert.equal(D.RACE_PASSIVES[RACE].join(','), 'keyholder');
     const kh = D.PASSIVE_DEFS.keyholder;

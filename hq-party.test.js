@@ -397,33 +397,40 @@ test('THE LEVEL\'S MAX (2026-09-21): a stored max from a cap-level fight is read
 
 /* ══ THE SPELL TIERS IN THE FIELD (2026-09-24 — the tier rework; was THE CIRCUIT IN THE FIELD, 2026-09-21): no second job,
    no paths — every ability sits on its TIER (I–IV = 1–4 SP), 7 slots, 16 SP, any ability of the pool, a click toggles ══ */
-test('THE SPELL TIERS IN THE FIELD: the model (four tier rows IV → I, the race row + the job\'s four, the states), a click toggles one ability, the 16 SP cap and the 7 slots refuse, the writes land in BOTH places', () => {
+/* THE JOBS REMOVAL (2026-09-27): no job rows, no Freelancer — every member is a 'Vessel'; the pool is the race's families
+   (+ the door wheel, + the universal GEAR / TRAINING passives); the ADAPTABLE training row opens the borrow window. */
+test('THE SPELL TIERS IN THE FIELD: the model (four tier rows IV → I, the race\'s families, no job, the states), a click toggles one ability, the 16 SP cap and the 7 slots refuse, the writes land in BOTH places', () => {
     const p = profile();
     g('hqPartyEnsure')(p, {});
     const rec = g('hqPartyRecord')(p);
-    const knight = rec.members.find(m => m.meta.race === 'knight') || rec.members.find(m => m.cls !== 'Freelancer' && m.meta.race !== 'door agent');
-    assert.ok(knight, 'a job member on the seed');
+    assert.ok(rec.members.every(m => m.cls === 'Vessel'), 'every member is a Vessel');
+    const knight = rec.members.find(m => m.meta.race === 'knight');
+    assert.ok(knight, 'a knight on the seed');
     const C0 = g('hqPartyTreeCircuit')(knight);
     assert.equal(C0.tiers.length, 4); assert.equal(C0.tiers.map(t => t.tier).join(''), '4321');
     assert.equal(C0.tiers.map(t => t.numeral).join(','), 'IV,III,II,I');
     assert.equal(C0.tiers.map(t => t.cost).join(''), '4321');
     assert.equal(C0.cap, D.SPELL_SLOT_MAX); assert.equal(C0.spMax, 16); assert.equal(D.SPELL_SP_MAX, 16);
-    assert.ok(!C0.isFreelancer); assert.ok(C0.tiers.every(t => t.borrow === null), 'only a Freelancer borrows');
-    assert.ok(C0.tiers.every(t => t.rows.some(r => r.source === 'race') && t.rows.some(r => r.source === 'job')), 'every tier holds the race row and the job');
+    assert.ok(!C0.borrows && !C0.isFreelancer); assert.ok(C0.tiers.every(t => t.borrow === null), 'only an Adaptable kit borrows');
+    assert.ok(C0.tiers.every(t => t.rows.some(r => r.source === 'race')), 'every tier holds race-family rows');
+    assert.ok(C0.tiers.every(t => t.rows.every(r => r.source !== 'job')), 'no job rows (THE JOBS REMOVAL)');
+    const fam = new Set(J(g('raceFamilyPoolIds')('knight')));
+    assert.ok(C0.tiers.every(t => t.rows.every(r => r.source !== 'race' || fam.has(r.id))), 'the race rows are the knight\'s families');
     assert.ok(C0.tiers.every(t => t.rows.every(r => r.st === 'ok' && r.cost === t.tier)), 'an empty kit can take anything');
-    const judgment = C0.tiers[0].rows.find(r => r.id === 'judgment'); assert.ok(judgment, 'the job capstone on TIER IV');
-    const guardSlash = C0.tiers[3].rows.find(r => r.id === 'guardSlash'); assert.ok(guardSlash, 'the job opener on TIER I');
+    assert.ok(C0.passives.rows.some(r => r.id === 'passiveAdaptable' && r.st === 'ok'), 'the Adaptable training row is on offer to every unit');
+    const cap4 = C0.tiers[0].rows.find(r => r.id === 'raceExcaliburStrike'); assert.ok(cap4, 'a race capstone on TIER IV');
+    const guardSlash = C0.tiers[3].rows.find(r => r.id === 'guardSlash'); assert.ok(guardSlash, 'a family opener on TIER I');
     /* one click equips ONE ability — no path, any tier first */
-    const r1 = g('hqPartyTreeClick')(p, knight.id, 'judgment');
-    assert.ok(r1.ok && r1.kind === 'equip' && r1.added.length === 1 && r1.added[0] === 'judgment', JSON.stringify(r1));
+    const r1 = g('hqPartyTreeClick')(p, knight.id, 'raceExcaliburStrike');
+    assert.ok(r1.ok && r1.kind === 'equip' && r1.added.length === 1 && r1.added[0] === 'raceExcaliburStrike', JSON.stringify(r1));
     let m = g('hqPartyRecord')(p).members.find(x => x.id === knight.id);
-    assert.equal(m.meta.customSpells.join(','), 'judgment'); assert.equal(m.loadout.spells.join(','), m.meta.customSpells.join(','), 'both places');
+    assert.equal(m.meta.customSpells.join(','), 'raceExcaliburStrike'); assert.equal(m.loadout.spells.join(','), m.meta.customSpells.join(','), 'both places');
     assert.ok(g('isTreeLoadoutLegal')(m.meta.race, m.cls, '', m.meta.customSpells));
     const C1 = g('hqPartyTreeCircuit')(m);
     assert.equal(C1.used, 1); assert.equal(C1.spUsed, 4);
-    assert.equal(C1.tiers[0].rows.find(r => r.id === 'judgment').st, 'equipped');
+    assert.equal(C1.tiers[0].rows.find(r => r.id === 'raceExcaliburStrike').st, 'equipped');
     /* THE 16 SP CAP: IV + IV + III + III + II = 16, then a Tier I (1 SP) no longer fits */
-    for (const id of ['raceCrusade', 'groundSlam', 'raceOathOfValor', 'warCry']) { const r = g('hqPartyTreeClick')(p, knight.id, id); assert.ok(r.ok, id + ' ' + JSON.stringify(r)); }
+    for (const id of ['raceCrusade', 'raceOathOfValor', 'bladeWaltz', 'swordBeam']) { const r = g('hqPartyTreeClick')(p, knight.id, id); assert.ok(r.ok, id + ' ' + JSON.stringify(r)); }
     m = g('hqPartyRecord')(p).members.find(x => x.id === knight.id);
     const C2 = g('hqPartyTreeCircuit')(m);
     assert.equal(C2.spUsed, 16); assert.equal(C2.used, 5);
@@ -432,12 +439,12 @@ test('THE SPELL TIERS IN THE FIELD: the model (four tier rows IV → I, the race
     assert.ok(!r2.ok && r2.reason === 'sp' && /SP/.test(r2.note), JSON.stringify(r2));
     deq(g('spellAddVerdict')(m.meta.race, m.cls, m.meta.customSpells, 'guardSlash').reason, 'sp');
     /* unequip ONE (no cascade) — the SP comes back and the Tier I fits */
-    const r3 = g('hqPartyTreeClick')(p, knight.id, 'warCry');
-    assert.ok(r3.ok && r3.kind === 'unequip' && r3.dropped.length === 1 && r3.dropped[0] === 'warCry', JSON.stringify(r3));
+    const r3 = g('hqPartyTreeClick')(p, knight.id, 'swordBeam');
+    assert.ok(r3.ok && r3.kind === 'unequip' && r3.dropped.length === 1 && r3.dropped[0] === 'swordBeam', JSON.stringify(r3));
     m = g('hqPartyRecord')(p).members.find(x => x.id === knight.id);
     assert.equal(m.meta.customSpells.length, 4); assert.equal(g('loadoutSpUsed')(m.meta.customSpells), 14);
     assert.ok(g('hqPartyTreeClick')(p, knight.id, 'guardSlash').ok);
-    /* the root and an unknown id refuse; a BORROW key refuses a job member */
+    /* the root and an unknown id refuse; a BORROW key refuses a kit without Adaptable */
     assert.equal(g('hqPartyTreeClick')(p, knight.id, 'root').reason, 'root');
     assert.equal(g('hqPartyTreeClick')(p, knight.id, 'B1').reason, 'empty');
     assert.equal(g('hqPartyTreeClick')(p, knight.id, 'nonsense').reason, 'pool');
@@ -449,53 +456,66 @@ test('THE SPELL TIERS IN THE FIELD: the model (four tier rows IV → I, the race
     assert.equal(g('hqPartyRecord')(p).members.find(x => x.id === agent.id).meta.customSpells.length, 2);
     /* DEFAULTS · RANDOM · CLEAR are legal writes inside the budget */
     const rd = g('hqPartySpellsDefault')(p, knight.id); assert.ok(rd.ok && rd.ids.length >= 1 && g('loadoutSpUsed')(rd.ids) <= 16);
+    deq(rd.ids, g('raceDefaultKit')('knight'), 'a non-officer member\'s DEFAULTS = raceDefaultKit(race)');
     const rr = g('hqPartySpellsRandom')(p, knight.id); assert.ok(rr.ok && rr.ids.length >= 1 && g('isTreeLoadoutLegal')(m.meta.race, m.cls, '', rr.ids) && g('loadoutSpUsed')(rr.ids) <= 16);
     const rc = g('hqPartySpellsClear')(p, knight.id); assert.ok(rc.ok && rc.ids.length === 0);
     /* a stale wish-list is repaired, never refused: the unknown id drops */
-    const rw = g('hqPartySetSpells')(p, knight.id, ['judgment', 'guardSlash', 'nonsense']);
-    assert.ok(rw.ok && rw.trimmed && rw.ids.join(',') === 'judgment,guardSlash', JSON.stringify(rw));
+    const rw = g('hqPartySetSpells')(p, knight.id, ['raceExcaliburStrike', 'guardSlash', 'nonsense']);
+    assert.ok(rw.ok && rw.trimmed && rw.ids.join(',') === 'raceExcaliburStrike,guardSlash', JSON.stringify(rw));
     /* the retired second job is stripped at the write */
     m = g('hqPartyRecord')(p).members.find(x => x.id === knight.id); m.meta.secondaryJob = 'Sniper';
-    g('hqPartySetSpells')(p, knight.id, ['judgment']);
+    g('hqPartySetSpells')(p, knight.id, ['raceExcaliburStrike']);
     assert.equal(g('hqPartyRecord')(p).members.find(x => x.id === knight.id).meta.secondaryJob, undefined);
+    assert.equal(g('hqPartyDefaultJob')('knight'), 'Vessel', 'the old name answers the one neutral class');
 });
 
-test('THE SPELL TIERS IN THE FIELD: a Freelancer borrows by tier — B1–B4 opens the picker, the pool is that tier of every race / job, the borrow lands on its row, the 7 slots refuse', () => {
+test('THE SPELL TIERS IN THE FIELD: an Adaptable kit borrows by tier — equip Adaptable, B1–B4 opens the picker, the pool is that tier of every other race, the borrow lands on its row, the 7 slots refuse, unequip Adaptable and the borrows go', () => {
     const p = profile();
     g('hqPartyEnsure')(p, {});
     const rec = g('hqPartyRecord')(p);
-    const fl = rec.members.find(m => m.cls === 'Freelancer'); assert.ok(fl, 'a Freelancer on the seed');
-    const C = g('hqPartyTreeCircuit')(fl);
-    assert.ok(C.isFreelancer);
+    const fl = rec.members.find(m => m.meta.race === 'door agent'); assert.ok(fl, 'the door agent on the seed');
+    assert.equal(g('hqPartyTreeCircuit')(fl).borrows, false, 'no Adaptable, no borrow');
+    assert.equal(g('hqPartyTreeClick')(p, fl.id, 'B1').reason, 'empty', 'a BORROW key refuses until Adaptable is equipped');
+    assert.equal(g('hqPartySocketPool')(fl, 'B1').length, 0);
+    const ad = g('hqPartyTreeClick')(p, fl.id, 'passiveAdaptable'); assert.ok(ad.ok && ad.kind === 'equip', JSON.stringify(ad));
+    let m = g('hqPartyRecord')(p).members.find(x => x.id === fl.id);
+    const C = g('hqPartyTreeCircuit')(m);
+    assert.ok(C.borrows); assert.equal(C.isFreelancer, C.borrows, 'the old name is an alias');
+    assert.equal(C.spUsed, 1, 'Adaptable is a Tier I training row (1 SP)');
     assert.equal(C.tiers.map(t => t.borrow).join(','), 'B4,B3,B2,B1');
     assert.ok(C.tiers.every(t => t.borrowCount > 0));
-    assert.ok(C.tiers.every(t => t.rows.every(r => r.source === 'race')), 'no job row for a Freelancer');
+    assert.ok(C.tiers.every(t => t.rows.every(r => r.source !== 'job')), 'no job rows');
     const click = g('hqPartyTreeClick')(p, fl.id, 'B1');
     assert.equal(click.reason, 'socket', 'a BORROW click asks for the picker'); assert.equal(click.socket, 'B1');
-    const pool = g('hqPartySocketPool')(fl, 'B1'); assert.ok(pool.length > 20); assert.ok(pool.every(x => x.tier === 'I'));
-    assert.ok(pool.some(x => x.pool === 'race') && pool.some(x => x.pool === 'job'), 'any race OR job');
-    const p4 = g('hqPartySocketPool')(fl, 'B4'); assert.ok(p4.length && p4.every(x => x.tier === 'IV'));
-    assert.equal(g('hqPartySocketPool')(fl, 'B9').length, 0);
+    const pool = g('hqPartySocketPool')(m, 'B1'); assert.ok(pool.length > 20); assert.ok(pool.every(x => x.tier === 'I'));
+    assert.ok(pool.every(x => x.pool === 'race'), 'any other race — never a job');
+    const p4 = g('hqPartySocketPool')(m, 'B4'); assert.ok(p4.length && p4.every(x => x.tier === 'IV'));
+    assert.equal(g('hqPartySocketPool')(m, 'B9').length, 0);
     const bad = g('hqPartySocketEquip')(p, fl.id, 'B1', p4[0].id); assert.equal(bad.reason, 'pool', 'a Tier IV is not in the Tier I picker');
     const high = g('hqPartySocketEquip')(p, fl.id, 'B4', p4[0].id); assert.ok(high.ok, 'no path: a Tier IV borrows first ' + JSON.stringify(high));
-    let m = g('hqPartyRecord')(p).members.find(x => x.id === fl.id);
-    assert.equal(m.meta.customSpells[0], p4[0].id); assert.equal(m.loadout.spells[0], p4[0].id);
+    m = g('hqPartyRecord')(p).members.find(x => x.id === fl.id);
+    assert.equal(m.meta.customSpells[1], p4[0].id); assert.equal(m.loadout.spells[1], p4[0].id);
     const C1 = g('hqPartyTreeCircuit')(m);
     const onRow = C1.tiers[0].rows.find(r => r.id === p4[0].id);
     assert.ok(onRow && onRow.st === 'equipped' && /^borrow/.test(onRow.source), 'the borrow sits on its tier row');
-    assert.equal(C1.spUsed, 4);
+    assert.equal(C1.spUsed, 5);
     assert.equal(g('hqPartySocketEquip')(p, fl.id, 'B4', p4[0].id).reason, 'dup');
     assert.ok(g('hqPartySocketPool')(m, 'B4').find(x => x.id === p4[0].id).equipped);
-    /* THE 7 SLOTS: six Tier I borrows beside the IV = 7 slots, 10 SP — the eighth refuses on slots, not SP */
-    const tierI = pool.slice(0, 7);
-    for (const x of tierI.slice(0, 6)) { const r = g('hqPartySocketEquip')(p, fl.id, 'B1', x.id); assert.ok(r.ok, x.id + ' ' + JSON.stringify(r)); }
+    /* THE 7 SLOTS: Adaptable + the IV + five Tier I borrows = 7 slots, 10 SP — the eighth refuses on slots, not SP */
+    const tierI = pool.slice(0, 6);
+    for (const x of tierI.slice(0, 5)) { const r = g('hqPartySocketEquip')(p, fl.id, 'B1', x.id); assert.ok(r.ok, x.id + ' ' + JSON.stringify(r)); }
     m = g('hqPartyRecord')(p).members.find(x => x.id === fl.id);
     assert.equal(m.meta.customSpells.length, 7); assert.equal(g('loadoutSpUsed')(m.meta.customSpells), 10);
-    const over = g('hqPartySocketEquip')(p, fl.id, 'B1', tierI[6].id);
+    const over = g('hqPartySocketEquip')(p, fl.id, 'B1', tierI[5].id);
     assert.ok(!over.ok && over.reason === 'cap', JSON.stringify(over));
     assert.ok(g('hqPartyTreeCircuit')(m).tiers[3].rows.filter(r => r.source === 'race').every(r => r.st === 'slots'), 'the rack reads NO SLOT');
     /* a borrowed ability unequips with a click on its id */
     const off = g('hqPartyTreeClick')(p, fl.id, p4[0].id); assert.ok(off.ok && off.kind === 'unequip', JSON.stringify(off));
+    /* unequip Adaptable and every borrowed pick leaves with it (treeLegalSubset) */
+    const unAd = g('hqPartyTreeClick')(p, fl.id, 'passiveAdaptable'); assert.ok(unAd.ok && unAd.kind === 'unequip', JSON.stringify(unAd));
+    m = g('hqPartyRecord')(p).members.find(x => x.id === fl.id);
+    assert.equal(m.meta.customSpells.length, 0, 'the borrowed Tier I picks are dropped with the window');
+    assert.equal(g('hqPartyTreeCircuit')(m).borrows, false);
 });
 
 test('THE SPELL TIERS IN THE FIELD: the source sites — the sheet\'s EDIT · SPELLS button, the tier rack renderer (SP meter, tier rows, verdicts, BORROW), the actions, the keys, the CSS, the exports', () => {
@@ -512,7 +532,8 @@ test('THE SPELL TIERS IN THE FIELD: the source sites — the sheet\'s EDIT · SP
     assert.match(block, /data-party-act="node:\$\{_hqEsc\(m\.id\)\}:\$\{_hqEsc\(id\)\}"/, 'an ability button toggles by id');
     assert.match(block, /st-\$\{st\}/); assert.match(block, /'NO SLOT'/); assert.match(block, /`NEEDS \$\{cost\} SP`/); assert.match(block, /'SEALED'/); assert.match(block, /`\+\$\{cost\} SP`/);
     assert.match(block, /＋ BORROW · \$\{T\.borrowCount\}/); assert.match(block, /data-party-act="node:\$\{_hqEsc\(m\.id\)\}:\$\{_hqEsc\(T\.borrow\)\}"/);
-    assert.match(block, /'TIER ' \+ _hqEsc\(numeral\) \+ ' · ANY RACE OR JOB' : 'BY FAMILY · ANY OTHER FAMILY OR JOB'/);   // Phase 7: 'B0' = by family
+    assert.match(block, /'TIER ' \+ _hqEsc\(numeral\) \+ ' · ANY OTHER RACE' : 'BY FAMILY · ANY OTHER RACE\\'S FAMILY'/);   // Phase 7: 'B0' = by family
+    assert.doesNotMatch(block, /OR JOB/, 'THE JOBS REMOVAL: the picker offers no job');
     assert.match(block, /data-party-act="sock:\$\{_hqEsc\(m\.id\)\}:\$\{_hqEsc\(key\)\}:\$\{_hqEsc\(x\.id\)\}"/);
     assert.match(block, /BASIC ATTACK/); assert.match(block, /DROPPED AT THE NEXT WRITE/);
     assert.doesNotMatch(block, /hq-circ-lane|hq-circ-fork|SECOND JOB/, 'no lanes, no forks, no second job');

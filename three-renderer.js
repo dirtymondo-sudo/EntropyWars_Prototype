@@ -13950,9 +13950,9 @@ const ThreeRenderer = (function () {
         var lvl = (typeof getUnitLevel === 'function') ? getUnitLevel(unit) : 1;
         var mode = state.nametagMode || 'name';
         var label = '';
-        if (mode === 'job') label = (typeof getJobDisplayName === 'function') ? getJobDisplayName(unit.cls) : (unit.cls || '');
-        else if (mode === 'race') label = _plateRaceLabel(unit);
-        else if (mode !== 'none') label = unit.name || unit.cls || '';
+        /* THE JOBS REMOVAL (the user 2026-09-27): no job — a stale 'job' nametag setting reads as 'race' */
+        if (mode === 'race' || mode === 'job') label = _plateRaceLabel(unit);
+        else if (mode !== 'none') label = unit.name || _plateRaceLabel(unit);
 
         var hpPct = Math.max(0, Math.round(100 * unit.hp / (unit.maxHp || 1)));
         var mpPct = Math.max(0, Math.round(100 * unit.mp / (unit.maxMp || 1)));
@@ -14084,9 +14084,9 @@ const ThreeRenderer = (function () {
 
         var mode = state.nametagMode || 'name';
         var label = '';
-        if (mode === 'job') label = (typeof getJobDisplayName === 'function') ? getJobDisplayName(su.cls) : (su.cls || '');
-        else if (mode === 'race') label = _plateRaceLabel(su);
-        else if (mode !== 'none') label = su.name || su.cls || '';
+        /* THE JOBS REMOVAL (the user 2026-09-27): no job — a stale 'job' nametag setting reads as 'race' */
+        if (mode === 'race' || mode === 'job') label = _plateRaceLabel(su);
+        else if (mode !== 'none') label = su.name || _plateRaceLabel(su);
 
         var maxHp = su.maxHp || 1, maxMp = su.maxMp || 0;
         var allyCls = _isAllyPlayer(ownerPlayer) ? 'tp-hp-ally' : 'tp-hp-enemy';
@@ -48108,8 +48108,7 @@ const ThreeRenderer = (function () {
         }
         var unit;
         try {
-            var job = (typeof RACE_DEFAULT_JOBS !== 'undefined' && RACE_DEFAULT_JOBS[race]) || 'Freelancer';
-            var template = CLASS_TEMPLATES[job] || CLASS_TEMPLATES[Object.keys(CLASS_TEMPLATES)[0]];
+            var template = CLASS_TEMPLATES[UNIT_CLASS];   // THE JOBS REMOVAL (2026-09-27): one neutral template
             unit = createUnit(spec.id, 1, 0, 0, template, emptyLoadout(), { race: race, gender: gender });
         } catch (e) { console.warn('[HQ] createUnit failed for', race, e); return null; }
         unit.ap = 1;

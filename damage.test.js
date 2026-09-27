@@ -198,14 +198,14 @@ test('calcStatusApplyChance clamps to the 5%–95% window', () => {
     approx(calcStatusApplyChance(0.3, 0.2), 0.5, 'INT modifier adds');
 });
 
-test('calcCounterChance: class table, DEF threshold, guard bonus, 75% cap', () => {
-    approx(calcCounterChance('Swordmaster', 0, 0), 0.35, 'Riposte');
-    approx(calcCounterChance('Warrior', 0, 0), 0.30, 'Warrior');
-    approx(calcCounterChance('Tank', 0, 0), 0.30, 'Tank');
-    approx(calcCounterChance('Mage', 12, 0), 0.20, 'high DEF fallback');
-    approx(calcCounterChance('Mage', 11, 0), 0.12, 'baseline');
-    approx(calcCounterChance('Mage', 0, 0.1), 0.22, 'guard bonus adds');
-    approx(calcCounterChance('Swordmaster', 0, 0.5), 0.75, 'hard cap at 75%');
+test('calcCounterChance: the passive chance (Riposte / Warpath / Bulwark), DEF threshold, guard bonus, 75% cap', () => {
+    // THE JOBS REMOVAL (2026-09-27): the first argument is the unit's counterChance hook (unitPassiveMax), not a job name.
+    approx(calcCounterChance(0.35, 0, 0), 0.35, 'Riposte');
+    approx(calcCounterChance(0.30, 0, 0), 0.30, 'Warpath / Bulwark');
+    approx(calcCounterChance(0, 12, 0), 0.20, 'high DEF fallback');
+    approx(calcCounterChance(0, 11, 0), 0.12, 'baseline');
+    approx(calcCounterChance(0, 0, 0.1), 0.22, 'guard bonus adds');
+    approx(calcCounterChance(0.35, 0, 0.5), 0.75, 'hard cap at 75%');
 });
 
 test('elemental combo table: lightning/fire vs soaked/tech', () => {

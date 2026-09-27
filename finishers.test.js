@@ -279,19 +279,20 @@ test('THE AI: scoreFinisher competes with the strike on the same scale, the exec
 });
 
 /* ═══ THE FINISHER ON THE CIRCUIT (2026-09-19) — the forge shows it and plays it ═══ */
-test('THE FORGE: the ☠ FINISHER strip stands on the TECHNIQUES tier rack and previews the execution on the stage', () => {
+test('THE FORGE: the ☠ FINISHER stands in the TECHNIQUES rack\'s ALWAYS READY cell and previews the execution on the stage', () => {
     const PB = src('party-builder.js'), CSS = src('styles-base.css');
-    /* the strip + the panel + the keys */
-    for (const sym of ["const PB_FIN_KEY = 'FIN';", 'function pbFinisherDef(race)', 'function pbFinisherInfo(key, fin)', "className: 'pb-fin'", "className: 'pb-fin-head'",
-                       "'pb-tn pb-tn-fin is-finisher can'", 'function FinisherPanel(', "if (info && info.st8 === 'finisher') return h(FinisherPanel,",
+    /* the cell + the panel + the keys (THE FAMILY TABS, 2026-09-27: the finisher strip moved into the loadout's eighth cell,
+       ALWAYS READY, over the basic attack; the keyboard grid ends on that row) */
+    for (const sym of ["const PB_FIN_KEY = 'FIN';", 'function pbFinisherDef(race)', 'function pbFinisherInfo(key, fin)', "className: 'pb-ls-ready'",
+                       "className: 'pb-ls-mini pb-ls-fin is-finisher'", 'function FinisherPanel(', "if (info && info.st8 === 'finisher') return h(FinisherPanel,",
                        'const pbPreviewFinisher = (opts) => {', 'cv.previewFinisher(fin, {', "if (key === PB_FIN_KEY) { pbPreviewFinisher({ hover: true }); return; }",
-                       "if (st8 === 'finisher') { pbPreviewFinisher(); return; }", "const grid = finisher ? [[PB_FIN_KEY]] : [];",
+                       "if (st8 === 'finisher') { pbPreviewFinisher(); return; }", "grid.push(finisher ? [PB_FIN_KEY, 'root'] : ['root']);",
                        "if (key === PB_FIN_KEY) return pbFinisherInfo(key, finisher);", 'finisher: unitFinisher }))']) {
         assert.ok(PB.includes(sym), 'party-builder.js: ' + sym);
     }
     assert.ok(PB.includes('window.getFinisherDefForRace'), 'the ONE read is data.js getFinisherDefForRace');
     assert.ok(!/pbFinisherDef[\s\S]{0,400}customSpells\.push/.test(PB), 'the finisher is never written into a loadout');
-    for (const sel of ['.pb-fin ', '.pb-fin-head ', '.pb-tn.is-finisher .pb-tn-disc ', '.pb-tn.is-finisher.built .pb-tn-disc::after', '.pb-technique-fin .pb-technique-tagline']) assert.ok(CSS.includes(sel), 'styles-base.css: ' + sel);
+    for (const sel of ['.pb-ls-fin ', '.pb-fin ', '.pb-fin-head ', '.pb-tn.is-finisher .pb-tn-disc ', '.pb-tn.is-finisher.built .pb-tn-disc::after', '.pb-technique-fin .pb-technique-tagline']) assert.ok(CSS.includes(sel), 'styles-base.css: ' + sel);
     /* the viewer's beat */
     assert.match(TR, /function _cvPreviewFinisher\(def, opts\)/);
     assert.match(TR, /previewFinisher: function \(def, opts\) \{ return _cvPreviewFinisher\(def, opts\); \},/, 'EWCharViewer.previewFinisher');

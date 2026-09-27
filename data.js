@@ -2374,147 +2374,19 @@ const OBJECT_RULES = {
         gameHeight: 2,
     },
 };
-const JOB_ARCHETYPES = {
-    'Gunslinger': {
-        race: 'martian',
-        faction: 'space',
-        types: ['alien'],
-        gender: 'other',
-        zodiac: 'aries',
-        sleepPreference: 'none',
-        terrainPreference: 'grass',
-        weatherPreference: 'none'
-    },
-    'Warrior': {
-        race: 'knight',
-        faction: 'time',
-        types: ['human'],
-        gender: 'other',
-        zodiac: 'aries',
-        sleepPreference: 'none',
-        terrainPreference: 'grass',
-        weatherPreference: 'none'
-    },
-    'Tank': {
-        race: 'giant',
-        faction: 'time',
-        types: ['human'],
-        gender: 'other',
-        zodiac: 'taurus',
-        sleepPreference: 'none',
-        terrainPreference: 'grass',
-        weatherPreference: 'none'
-    },
-    'Black Mage': {
-        race: 'seraphim',
-        faction: 'time',
-        types: ['divine'],
-        gender: 'other',
-        zodiac: 'scorpio',
-        sleepPreference: 'none',
-        terrainPreference: 'grass',
-        weatherPreference: 'none'
-    },
-    'White Mage': {
-        race: 'angel',
-        faction: 'time',
-        types: ['divine'],
-        gender: 'other',
-        zodiac: 'pisces',
-        sleepPreference: 'daywalker',
-        terrainPreference: 'grass',
-        weatherPreference: 'none'
-    },
-    'Agent': {
-        race: 'android',
-        faction: 'space',
-        types: ['tech'],
-        gender: 'other',
-        zodiac: 'gemini',
-        sleepPreference: 'none',
-        terrainPreference: 'grass',
-        weatherPreference: 'none'
-    },
-    'Psychic': {
-        race: 'grey',
-        faction: 'chaos',
-        types: ['alien'],
-        gender: 'other',
-        zodiac: 'aquarius',
-        sleepPreference: 'nocturnal',
-        terrainPreference: 'grass',
-        weatherPreference: 'none'
-    },
-    'Harvester': {
-        race: 'bigfoot',
-        faction: 'space',
-        types: ['anomaly'],
-        gender: 'other',
-        zodiac: 'virgo',
-        sleepPreference: 'daywalker',
-        terrainPreference: 'grass',
-        weatherPreference: 'none'
-    },
-    'Engineer': {
-        race: 'ai',
-        faction: 'space',
-        types: ['tech'],
-        gender: 'other',
-        zodiac: 'capricorn',
-        sleepPreference: 'none',
-        terrainPreference: 'grass',
-        weatherPreference: 'none'
-    },
-    'Harbinger': {
-        race: 'orb of light',
-        faction: 'time',
-        types: ['divine'],
-        gender: 'other',
-        zodiac: 'libra',
-        sleepPreference: 'none',
-        terrainPreference: 'grass',
-        weatherPreference: 'none'
-    },
-    'Freelancer': {
-        race: 'homosapien',
-        faction: 'space',
-        types: ['human'],
-        gender: 'other',
-        zodiac: 'sagittarius',
-        sleepPreference: 'none',
-        terrainPreference: 'grass',
-        weatherPreference: 'none'
-    },
-    'Raider': {
-        race: 'werewolf',
-        faction: 'chaos',
-        types: ['human', 'unholy'],
-        gender: 'other',
-        zodiac: 'scorpio',
-        sleepPreference: 'none',   // Lycanthropy (PASSIVE_DEFS) owns the night now
-        terrainPreference: 'grass',
-        weatherPreference: 'none'
-    },
-    'Sniper': {
-        race: 'annunaki',
-        faction: 'space',
-        types: ['human', 'alien'],
-        gender: 'other',
-        zodiac: 'capricorn',
-        sleepPreference: 'none',
-        terrainPreference: 'grass',
-        weatherPreference: 'none'
-    },
-    'Swordmaster': {
-        race: 'swordfighter',
-        faction: 'time',
-        types: ['human'],
-        gender: 'other',
-        zodiac: 'leo',
-        sleepPreference: 'none',
-        terrainPreference: 'grass',
-        weatherPreference: 'none'
-    }
+/* THE JOBS REMOVAL (the user, 2026-09-27: "get rid of the job system"): the per-job identity table (JOB_ARCHETYPES)
+   is gone. A build's identity comes from its meta (the race picked); DEFAULT_IDENTITY is the neutral fallback
+   (state.js resolveIdentityForBuild) and DEFAULT_PARTY_RACES seats the default party (the races the old default
+   jobs carried). */
+const DEFAULT_IDENTITY = {
+    race: 'homosapien',
+    faction: 'space',
+    types: ['human'],
+    gender: 'other',
+    zodiac: 'sagittarius',
+    sleepPreference: 'none',
+    terrainPreference: 'grass',
+    weatherPreference: 'none'
 };
 
 const RACE_PROFILES = {
@@ -3375,117 +3247,38 @@ function unitPassiveBlocksStatus(unit, statusId) {
     return null;
 }
 
+/* THE TRAINING hooks (THE JOBS REMOVAL, 2026-09-27): how two passives that touch one number stack —
+   Σ for flat bonuses (armor, spellPower, …), Π for multipliers (basicDmgMult, …), max for chances / caps. */
+function _passiveNums(unit, key) {
+    const out = [];
+    for (const p of getUnitPassives(unit)) if (p && typeof p[key] === 'number' && isFinite(p[key])) out.push(p[key]);
+    return out;
+}
+function unitPassiveSum(unit, key) { let n = 0; for (const v of _passiveNums(unit, key)) n += v; return n; }
+function unitPassiveMult(unit, key) { let n = 1; for (const v of _passiveNums(unit, key)) n *= v; return n; }
+function unitPassiveMax(unit, key) { let n = 0; for (const v of _passiveNums(unit, key)) if (v > n) n = v; return n; }
+
 const AVAILABLE_RACES = ['homosapien', 'pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'nun', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar'];
 
-const RACE_DEFAULT_JOBS = {
-    // NOTE (2026-07-18): 'Warrior' and 'Tank' are now SEPARATE jobs (the old
-    // single 'Warrior' job used to display as "Tank"). 'Agent' still displays
-    // as "Assassin" and 'Raider' as "Bruiser" (JOB_DISPLAY_NAMES).
-    'giant': 'Tank',
-    'skeleton': 'Swordmaster',
-    'robot': 'Warrior',
-    'nordic': 'Harbinger',
-    'angel': 'White Mage',
-    'fairy': 'White Mage',
-    'ghost': 'Psychic',
-    'seraphim': 'Black Mage',
-    'djinn': 'Black Mage',
-    'demon': 'Black Mage',
-    'anubis': 'Black Mage',
-    'android': 'Agent',
-    'shadow entity': 'Agent',
-    'reptilian': 'Agent',
-    'martian': 'Gunslinger',
-    'mech': 'Gunslinger',
-    'catgirl': 'Gunslinger',
-    'annunaki': 'Sniper',
-    'gargoyle': 'Tank',             // 2026-09-07 champ rework: close-range stone guardian (was Sniper)
-    'bigfoot': 'Harvester',
-    'antperson': 'Harvester',
-    'scarecrow': 'Harvester',
-    'mantid': 'Psychic',
-    'grey': 'Psychic',
-    'succubus': 'Psychic',
-    'skinwalker': 'Psychic',
-    'ai': 'Engineer',
-    'machine elves': 'Engineer',
-    'glitch': 'Engineer',
-    'orb of light': 'Harbinger',
-    'mothman': 'Harbinger',
-    'siren': 'Harbinger',
-    'homosapien': 'Freelancer',
-    'pirate': 'Swordmaster',
-    'swordfighter': 'Swordmaster',
-    'knight': 'Warrior',
-    'shaman': 'Harvester',
-    'mad scientist': 'Engineer',
-    'cowboy': 'Gunslinger',
-    'men in black': 'Agent',
-    'telepath': 'Psychic',
-    'marksman': 'Sniper',
-    'priest': 'White Mage',
-    'gangster': 'Gunslinger',   // CHAMP REWORK Phase 6 (plan §6.19)
-    'nun': 'White Mage',        // CHAMP REWORK Phase 6 (plan §6.20)
-    'door agent': 'Agent',      // DOOR_RACE_DESIGN §1 (2026-09-14) — the Closer's kit
-    'police officer': 'Gunslinger',   // 2026-09-21
-    'jellyfish': 'Black Mage',        // 2026-09-21
-    'cult leader': 'Harbinger',       // 2026-09-21
-    'popstar': 'Harbinger',           // 2026-09-22
-    'wizard': 'Black Mage',
-    'fortune teller': 'Harbinger',
-    'zombie': 'Raider',
-    'werewolf': 'Raider',
-    'cyclops': 'Warrior',
-    'cyborg': 'Engineer',           // 2026-09-07 champ rework: high-M.ATK tech caster (was Raider)
-    'demon prince': 'Black Mage',
-    'demon princess': 'Harbinger',
-    'dreameater': 'Psychic',
-    'fallen angel': 'Harbinger',
-    'goatman': 'Raider',
-    'halfdemon': 'Agent',
-    'mermaid': 'White Mage',
-    'nephilim': 'Warrior',
-    'vampire': 'Agent',
-    'voidweaver': 'Black Mage',
-    'cosmic wraith': 'Sniper',
-    'superhero': 'Freelancer',
-    'general': 'Warrior',
-    'droid': 'Engineer',
-    'antihero': 'Freelancer',
-    'conspiracy theorist': 'Harbinger',
-    'overlord': 'Warrior',
-    'chosen one': 'Agent',
-    'politician': 'Freelancer',
-    'atlantean': 'White Mage',
-    'dinosaur': 'Raider',
-    'dragon': 'Black Mage',
-    'ghoul': 'Agent',
-    'gnome': 'Engineer',
-    'kaiju': 'Raider',
-    'kraken': 'Harbinger',
-    'loch ness monster': 'Tank',
-    'yeti': 'Raider',
-
-    'barbarella': 'Agent',
-    'black goo': 'Tank',            // 2026-09-07 champ rework: melee ooze (was Psychic)
-    'golem': 'Tank',
-    'honda civic': 'Engineer',
-    'ice queen': 'Black Mage',
-    'juggernaut': 'Tank',
-    'ki fighter': 'Raider',
-    'king arthur': 'Swordmaster',
-    'king kong': 'Harvester',
-    'minotaur': 'Raider',
-    'necromancer': 'Black Mage',
-    'occulus': 'Harbinger',
-    'quarterback': 'Sniper',
-    'robinhood': 'Sniper',
-    'santa clause': 'Black Mage',   // 2026-09-07 champ rework: bulky AOE-CC caster (was Tank)
-    'super sentai': 'Freelancer',
-    'symbiote': 'Agent',
-    'valkraye': 'Swordmaster',
-    'watcher': 'Harbinger'
+/* THE RACE KITS (THE JOBS REMOVAL, the user 2026-09-27): a race's basic-attack reach and inspect reach — what the old
+   default job's kit (JOB_KITS) gave it, so ranged races stay ranged: the old Sniper races reach 4 (kit 3 + the Sniper's
+   +1) and inspect 2, the old Gunslinger / Assassin / Psychic races reach 2 (the Assassins inspect 2). Every race not
+   listed is { range: 1, inspect: 1 }. computeUnitStats reads raceKit(race). */
+const RACE_KITS = {
+    'ghost': { range: 2 }, 'android': { range: 2, inspect: 2 }, 'shadow entity': { range: 2, inspect: 2 },
+    'reptilian': { range: 2, inspect: 2 }, 'martian': { range: 2 }, 'mech': { range: 2 }, 'catgirl': { range: 2 },
+    'annunaki': { range: 4, inspect: 2 }, 'mantid': { range: 2 }, 'grey': { range: 2 }, 'succubus': { range: 2 },
+    'skinwalker': { range: 2 }, 'cowboy': { range: 2 }, 'men in black': { range: 2, inspect: 2 }, 'telepath': { range: 2 },
+    'marksman': { range: 4, inspect: 2 }, 'gangster': { range: 2 }, 'door agent': { range: 2, inspect: 2 },
+    'police officer': { range: 2 }, 'dreameater': { range: 2 }, 'halfdemon': { range: 2, inspect: 2 },
+    'vampire': { range: 2, inspect: 2 }, 'cosmic wraith': { range: 4, inspect: 2 }, 'chosen one': { range: 2, inspect: 2 },
+    'ghoul': { range: 2, inspect: 2 }, 'barbarella': { range: 2, inspect: 2 }, 'quarterback': { range: 4, inspect: 2 },
+    'robinhood': { range: 4, inspect: 2 }, 'symbiote': { range: 2, inspect: 2 },
 };
+function raceKit(race) {
+    const k = RACE_KITS[race] || {};
+    return { range: k.range || 1, inspect: k.inspect || 1 };
+}
 
 const RACE_CLASS = {
     'giant': 'tank',
@@ -3645,10 +3438,8 @@ const SKY_EVENT_CHANCE = 0.15;
 const SKY_EVENT_DURATION = 2;
 
 // ── RACE BASE STATS (2026-08-14 stat identity rework) ──────────────────────
-// These are FINAL base statlines — each race's locked primary job
-// (RACE_DEFAULT_JOBS) is already baked in. computeUnitStats applies NO
-// primary-job stat delta anymore; JOB_MODIFIERS below is now the
-// secondary-job "training" system (Pokémon-nature-style).
+// These are FINAL base statlines — what the race's old primary job gave
+// it is already baked in (the jobs are gone since 2026-09-27).
 // Rules of the rework:
 //   • Every race has 2–3 clearly HIGH stats and 2–3 clearly LOW stats —
 //     no good-at-everything statlines. ATK and INT (M.ATK) are mutually
@@ -3915,62 +3706,6 @@ const RACE_PHYSIQUE = {
     'watcher':             { h: 2.00, w: 50 },
 };
 
-/* ── JOB KITS ── the job's weapon profile ───────────────────────────────
-   Absolute values, not balance modifiers: attack range and inspect
-   strength describe what the job IS (a sniper shoots far, an agent cases
-   a room). Applied for the PRIMARY job only, in computeUnitStats. */
-const JOB_KITS = {
-    'Warrior':     { range: 1, inspect: 1 },
-    'Tank':        { range: 1, inspect: 1 },
-    'Gunslinger':  { range: 2, inspect: 1 },
-    'Black Mage':  { range: 1, inspect: 1 },
-    'White Mage':  { range: 1, inspect: 1 },
-    'Agent':       { range: 2, inspect: 2 },
-    'Psychic':     { range: 2, inspect: 1 },
-    'Harvester':   { range: 1, inspect: 1 },
-    'Engineer':    { range: 1, inspect: 1 },
-    'Harbinger':   { range: 1, inspect: 1 },
-    'Freelancer':  { range: 1, inspect: 1 },
-    'Raider':      { range: 1, inspect: 1 },
-    'Sniper':      { range: 3, inspect: 2 },
-    'Swordmaster': { range: 1, inspect: 1 }
-};
-
-/* ── JOB MODIFIERS (2026-08-14 rework) — secondary-job training ─────────
-   Pokémon-nature-style: every job boosts EXACTLY two stats and cuts two
-   stats of equal worth — never all-positive, never a ±1 rounding error.
-   One grade = ±80 HP / ±40 MP / ±12 ATK / ±14 DEF / ±19 MDEF / ±12 INT /
-   ±20 SPD / ±28 AWR (the 2026-08-29 stat rework rescaled DEF ×1.2,
-   MDEF ×1.6, SPD ×10, AWR ×14 — same felt strength as the old
-   ±12/±12/±2/±2: 12 ATK ≈ +8 dmg per basic attack, 40 MP = an extra
-   ring-1 cast + change, 14 DEF ≈ 3 armor soak per hit, 28 AWR = +4% crit.
-   NOTE the one real change the rework brings: ±20 SPD is exactly one
-   letter band, so a SPD-modifying nature now also means ±1 movement tile
-   — SPD *is* movement now).
-   These apply ONLY through the secondary job (applySecondaryJob /
-   computeSecJobBonuses, at FULL value) — the primary job is identity, not
-   a modifier: its influence is baked into RACE_BASE_STATS. MOVE is never
-   modified directly (it derives from SPD). Freelancer is the neutral nature.
-   2026-07-18 note still applies: 'Warrior' is the offensive front-liner,
-   'Tank' the wall; 'Agent' displays as "Assassin", 'Raider' as "Bruiser"
-   (JOB_DISPLAY_NAMES). */
-const JOB_MODIFIERS = {
-    'Warrior':     { atk: 12, hp: 80,  mp: -40, int: -12 },
-    'Tank':        { def: 14, hp: 80,  spd: -20, int: -12 },
-    'Gunslinger':  { atk: 12, spd: 20,  def: -14, mp: -40 },
-    'Black Mage':  { int: 12, mp: 40,  atk: -12, hp: -80 },
-    'White Mage':  { mdef: 19, mp: 40, atk: -12, def: -14 },
-    'Agent':       { spd: 20,  awr: 28,  hp: -80, def: -14 },
-    'Psychic':     { int: 12, mdef: 19, atk: -12, def: -14 },
-    'Harvester':   { hp: 80,  mp: 40,  spd: -20, awr: -28 },
-    'Engineer':    { def: 14, mdef: 19, atk: -12, spd: -20 },
-    'Harbinger':   { int: 12, spd: 20,  hp: -80, def: -14 },
-    'Freelancer':  {},
-    'Raider':      { atk: 12, hp: 80,  mdef: -19, awr: -28 },
-    'Sniper':      { atk: 12, awr: 28,  hp: -80, mdef: -19 },
-    'Swordmaster': { atk: 12, spd: 20,  int: -12, mdef: -19 }
-};
-
 /* ── SPD → MOVE (2026-08-29 stat rework, phase 3) ──────────────────────────
    Movement range is no longer a stored stat: one letter of SPD = one tile.
      SPD 1–20 (F) → 1 · 21–40 (C) → 2 · 41–60 (B) → 3 · 61–80 (A) → 4 ·
@@ -3985,12 +3720,10 @@ function moveFromSpd(spd) {
 
 function computeUnitStats(race, cls) {
     const base = RACE_BASE_STATS[race] || RACE_BASE_STATS['homosapien'];
-    const kit = JOB_KITS[cls] || JOB_KITS['Freelancer'];
+    const kit = raceKit(race);   // THE JOBS REMOVAL (2026-09-27): the reach is the race's (RACE_KITS); `cls` is ignored
     const spd = Math.max(1, Math.min(100, base.spd || 50));
     return {
-        // Base stats are FINAL — the primary job is baked into
-        // RACE_BASE_STATS (2026-08-14 rework); only the job's kit
-        // (range/inspect) comes from the class.
+        // Base stats are FINAL — RACE_BASE_STATS already carries what the old primary job baked in.
         hp: base.hp,
         mp: base.mp,
         atk: base.atk,
@@ -4004,20 +3737,6 @@ function computeUnitStats(race, cls) {
         range: kit.range,
         inspect: kit.inspect
     };
-}
-
-function computeSecJobBonuses(secJobName) {
-    const bonuses = { hp: 0, mp: 0, atk: 0, def: 0, mdef: 0, move: 0, awr: 0, int: 0, spd: 0 };
-    if (!secJobName) return bonuses;
-    const mods = JOB_MODIFIERS[secJobName];
-    if (!mods) return bonuses;
-    // FULL value since the 2026-08-14 rework — JOB_MODIFIERS is already the
-    // nature-sized training shift (it used to be a primary-job stat delta
-    // applied here at 25%, which rounded to meaningless ±1s).
-    for (const k of ['hp', 'mp', 'atk', 'def', 'mdef', 'move', 'awr', 'int', 'spd']) {
-        if (mods[k]) bonuses[k] = mods[k];
-    }
-    return bonuses;
 }
 
 function computeEquipBonuses(equipment) {
@@ -4040,150 +3759,14 @@ function formatEquipStat(itemId) {
     return '+' + def.statVal + ' ' + def.stat.toUpperCase();
 }
 
+/* THE JOBS REMOVAL (the user, 2026-09-27): no jobs, so ONE unit template. `cls` survives only as an internal field every
+   unit carries ('Vessel' — never shown to the player); the numbers below are placeholders createUnit overwrites from
+   computeUnitStats(race). */
+const UNIT_CLASS = 'Vessel';
 const CLASS_TEMPLATES = {
-    Gunslinger: {
-        cls: 'Gunslinger',
-        job: 'Gunslinger',
-        hp: 580,
-        mp: 100,
-        atk: 80,
-        def: 40,
-        mdef: 27,
-        range: 2,
-        move: 2,
-        inspect: 1,
-        awr: 3,
-        int: 30
-    },
-    Warrior: {
-        cls: 'Warrior',
-        job: 'Warrior',
-        hp: 620,
-        mp: 100,
-        atk: 92,
-        def: 45,
-        mdef: 22,
-        range: 1,
-        move: 3,
-        inspect: 1,
-        awr: 2,
-        int: 20
-    },
-    Tank: {
-        cls: 'Tank',
-        job: 'Tank',
-        hp: 720,
-        mp: 90,
-        atk: 64,
-        def: 65,
-        mdef: 26,
-        range: 1,
-        move: 2,
-        inspect: 1,
-        awr: 2,
-        int: 18
-    },
-    'Black Mage': {
-        cls: 'Black Mage',
-        job: 'Black Mage',
-        hp: 470,
-        mp: 160,
-        atk: 32,
-        def: 25,
-        mdef: 38,
-        range: 1,
-        move: 2,
-        inspect: 1,
-        awr: 3,
-        int: 50
-    },
-    'White Mage': {
-        cls: 'White Mage',
-        job: 'White Mage',
-        hp: 520,
-        mp: 155,
-        atk: 32,
-        def: 35,
-        mdef: 35,
-        range: 1,
-        move: 2,
-        inspect: 1,
-        awr: 3,
-        int: 45
-    },
-    Agent: {
-        cls: 'Agent',
-        job: 'Agent',
-        hp: 550,
-        mp: 120,
-        atk: 64,
-        def: 35,
-        mdef: 32,
-        range: 2,
-        move: 3,
-        inspect: 2,
-        awr: 5,
-        int: 40
-    },
-    Psychic: {
-        cls: 'Psychic',
-        job: 'Psychic',
-        hp: 470,
-        mp: 170,
-        atk: 24,
-        def: 25,
-        mdef: 40,
-        range: 2,
-        move: 2,
-        inspect: 1,
-        awr: 4,
-        int: 55
-    },
-    Harvester: {
-        cls: 'Harvester',
-        job: 'Harvester',
-        hp: 630,
-        mp: 125,
-        atk: 72,
-        def: 45,
-        mdef: 29,
-        range: 1,
-        move: 2,
-        inspect: 1,
-        awr: 3,
-        int: 35
-    },
-    Engineer: {
-        cls: 'Engineer',
-        job: 'Engineer',
-        hp: 600,
-        mp: 115,
-        atk: 56,
-        def: 45,
-        mdef: 29,
-        range: 1,
-        move: 2,
-        inspect: 1,
-        awr: 3,
-        int: 35
-    },
-    Harbinger: {
-        cls: 'Harbinger',
-        job: 'Harbinger',
-        hp: 550,
-        mp: 145,
-        atk: 48,
-        def: 35,
-        mdef: 35,
-        range: 1,
-        move: 2,
-        inspect: 1,
-        awr: 4,
-        int: 45
-    },
-    Freelancer: {
-        cls: 'Freelancer',
-        job: 'Freelancer',
+    Vessel: {
+        cls: 'Vessel',
+        job: 'Vessel',
         hp: 570,
         mp: 115,
         atk: 64,
@@ -4195,58 +3778,21 @@ const CLASS_TEMPLATES = {
         awr: 4,
         int: 35
     },
-    Raider: {
-        cls: 'Raider',
-        job: 'Raider',
-        hp: 610,
-        mp: 110,
-        atk: 80,
-        def: 40,
-        mdef: 24,
-        range: 1,
-        move: 2,
-        inspect: 1,
-        awr: 3,
-        int: 25
-    },
-    Sniper: {
-        cls: 'Sniper',
-        job: 'Sniper',
-        hp: 500,
-        mp: 105,
-        atk: 72,
-        def: 25,
-        mdef: 27,
-        range: 5,
-        move: 2,
-        inspect: 2,
-        awr: 6,
-        int: 30
-    },
-    Swordmaster: {
-        cls: 'Swordmaster',
-        job: 'Swordmaster',
-        hp: 595,
-        mp: 105,
-        atk: 88,
-        def: 42,
-        mdef: 28,
-        range: 1,
-        move: 3,
-        inspect: 1,
-        awr: 4,
-        int: 26
-    },
 };
 
 let DEFAULT_BUILDS = {
-    1: ['Gunslinger', 'Warrior', 'Black Mage', 'White Mage'],
-    2: ['Gunslinger', 'Warrior', 'Agent', 'White Mage']
+    1: ['Vessel', 'Vessel', 'Vessel', 'Vessel'],
+    2: ['Vessel', 'Vessel', 'Vessel', 'Vessel']
+};
+/* THE JOBS REMOVAL (2026-09-27): the default party's races (they used to ride in on the default jobs' archetypes) */
+const DEFAULT_PARTY_RACES = {
+    1: ['martian', 'knight', 'seraphim', 'angel'],
+    2: ['martian', 'knight', 'android', 'angel']
 };
 
 const DEFAULT_PARTY_NAMES = {
-    1: ['P1 Gunslinger', 'P1 Knight', 'P1 Black Mage', 'P1 White Mage'],
-    2: ['P2 Gunslinger', 'P2 Knight', 'P2 Assassin', 'P2 White Mage']
+    1: ['P1 Martian', 'P1 Knight', 'P1 Seraphim', 'P1 Angel'],
+    2: ['P2 Martian', 'P2 Knight', 'P2 Android', 'P2 Angel']
 };
 
 const ITEM_RULES = {
@@ -4534,50 +4080,6 @@ const ITEM_META = {
     captureDoorTuned: { icon: '🚪', short: 'TUNED' }
 };
 
-// ── Job passives ──────────────────────────────────────────────────────────
-// Innate, always-on identity abilities that shape each primary job's playstyle.
-// These are SEPARATE from the flat stat deltas in JOB_MODIFIERS — a passive is a
-// rule, not a number. This registry is the single source of truth for the name +
-// description surfaced in the party builder and unit panels; the mechanics for
-// the focus jobs are wired in battle.js (Harvester) and map.js (Freelancer).
-// `id` lets combat code branch on a passive without matching text.
-// 2026-08-15: Sniper's "Bullet Drop" passive was REMOVED — the range curve is
-// now the same universal close-range falloff for every job (battle.js
-// calcRangeMult), so Snipers no longer invert it. Sniper has no job passive.
-const JOB_PASSIVES = {
-    Gunslinger:  { id: 'deadeye',        name: 'Deadeye',         desc: '+1 SPD. Always ready to draw first.' },
-    Warrior:     { id: 'warpath',        name: 'Warpath',         desc: 'Basic attacks hit +15% harder, and the Warrior counterattacks at a hardened 30% rate. Born for the front line.' },
-    Tank:        { id: 'bulwark',        name: 'Bulwark',         desc: 'Reduces incoming damage by 8. Fortify shields cap at 25% max HP.' },
-    'Black Mage':{ id: 'arcaneSurge',    name: 'Arcane Surge',    desc: '+8 spell damage on every cast.' },
-    'White Mage':{ id: 'grace',          name: 'Grace',           desc: 'Heal and revive spells gain +2 range and +24 healing power.' },
-    Agent:       { id: 'fieldOperative', name: 'Field Operative', desc: 'Can equip up to 2 scanners and has longer inspect reach.' },
-    Psychic:     { id: 'thirdEye',       name: 'Third Eye',       desc: 'Debuff statuses this unit applies last +1 turn. Teleport costs 1 less MP.' },
-    Harvester:   { id: 'greenThumb',     name: 'Green Thumb',     desc: 'Trees grown from this unit\'s seeds buff its ATK & spell power (+7 each, up to 6 living trees) and fuel Trunk Throw (+30 damage each). Life Sap heals 20% more. Enemies can chop or burn the forest to shut it down.' },
-    Engineer:    { id: 'tinker',         name: 'Tinker',          desc: 'Turrets have +1 range and Repair heals 20% more.' },
-    Harbinger:   { id: 'crescendo',      name: 'Crescendo',       desc: "This unit's buffs last +1 turn. Lullaby has +1 range." },
-    Freelancer:  { id: 'adaptable',      name: 'Adaptable',       desc: 'No school restrictions — can learn and equip abilities from ANY race and ANY job. A blank slate that borrows every playstyle.' },
-    Raider:      { id: 'bruteForce',     name: 'Brute Force',     desc: 'Basic attacks deal +20% damage. Gains +8 DEF while below 50% HP.' },
-    Swordmaster: { id: 'riposte',        name: 'Riposte',         desc: '35% chance to counterattack when struck in melee, and counters swing at full sword strength (60% ATK instead of 40%).' },
-};
-// Back-compat: some older lookups expect a flat "Name: desc" string map.
-const CLASS_PASSIVES = Object.fromEntries(
-    Object.entries(JOB_PASSIVES).map(([job, p]) => [job, `${p.name}: ${p.desc}`])
-);
-function getJobPassive(job) { return JOB_PASSIVES[job] || null; }
-
-const JOB_DISPLAY_NAMES = {
-    // Display-only renames (2026-07-13). Internal ids ('Agent', 'Raider') are
-    // load-bearing — saves, the online protocol, AI role tables and battle.js
-    // cls checks all key on them — so renames happen HERE, the same way
-    // Raider→Bruiser did. Everything player-facing routes through
-    // getJobDisplayName().
-    // 2026-07-18: the 'Warrior'→"Tank" display rename is GONE — Warrior and
-    // Tank are two real jobs now.
-    'Raider': 'Bruiser',
-    'Agent': 'Assassin'
-};
-function getJobDisplayName(job) { return JOB_DISPLAY_NAMES[job] || job; }
-
 function getRaceLabel(race, gender) {
     const p = RACE_PROFILES[race];
     if (!p) return race || '?';
@@ -4620,7 +4122,6 @@ const SPELL_LIBRARY = [
         tier: 1,
         families: ['militarysupport'],
         school: 'Tank',
-        classRestriction: 'Tank',
         jobPreference: ['Tank'],
         shield: 96,
         shieldCapPct: 0.25,
@@ -4658,7 +4159,6 @@ const SPELL_LIBRARY = [
         /* Tank capstone (ring 4 = tier III, spell-tree redesign). */
         tier: 4,
         school: 'Tank',
-        classRestriction: 'Tank',
         jobPreference: ['Tank'],
         desc: 'Raise three standing stones in a line — a wall two tiles high that blocks the way and the sight. Enemies on the targeted tiles take damage. Hold the line — build the line.'
     },
@@ -4678,7 +4178,6 @@ const SPELL_LIBRARY = [
         tier: 1,
         families: ['healingmagic'],
         school: 'White Mage',
-        classRestriction: 'White Mage',
         jobPreference: ['White Mage'],
         lowHpBonus: 48,
         desc: 'Restores a LARGE amount of HP to a Single Ally. Heals more on allies below 40% HP.'
@@ -4697,7 +4196,6 @@ const SPELL_LIBRARY = [
         damageType: 'magic',
         tier: 1,
         school: 'Black Mage',
-        classRestriction: 'Black Mage',
         jobPreference: ['Black Mage'],
         projectileOverride: 'proj-fire',
         /* 2026-08-09 balance pass: weak poke, no Burn — Wall of Fire is the
@@ -4720,7 +4218,6 @@ const SPELL_LIBRARY = [
         tier: 1,
         families: ['horsebackriding'],
         school: 'Warrior',
-        classRestriction: 'Warrior',
         jobPreference: ['Warrior'],
         chargeToTarget: true,
         statusEffects: [],
@@ -4741,7 +4238,6 @@ const SPELL_LIBRARY = [
         tier: 3,
         families: ['militarysupport'],
         school: 'Tank',
-        classRestriction: 'Tank',
         jobPreference: ['Tank'],
         statStageBoost: { def: 1 },
         desc: 'Empowers All Allies. Raises DEF by 1 stage.'
@@ -4765,7 +4261,6 @@ const SPELL_LIBRARY = [
         tier: 4,
         families: ['swordsmanship'],
         school: 'Swordmaster',
-        classRestriction: 'Swordmaster',
         jobPreference: ['Swordmaster'],
         bonusVsStatus: { status: 'burn', mult: 1.5 },
         desc: 'Deals HEAVY physical damage to a Single Enemy. Ignores DEF. Deals bonus damage to targets with Burn.'
@@ -4786,7 +4281,6 @@ const SPELL_LIBRARY = [
         tier: 1,
         families: ['angelic'],
         school: 'White Mage',
-        classRestriction: 'White Mage',
         jobPreference: ['White Mage'],
         unholyBonus: 40,
         desc: 'Deals MEDIUM magic damage to a Single Enemy.'
@@ -4805,7 +4299,6 @@ const SPELL_LIBRARY = [
         tier: 4,
         families: ['healingmagic'],
         school: 'White Mage',
-        classRestriction: 'White Mage',
         revivePct: 0.45,
         oneRevivePerUnitPerMatch: true,
         desc: 'Revives a fallen ally. Works once per unit per match.'
@@ -4824,7 +4317,6 @@ const SPELL_LIBRARY = [
         kind: 'buff',
         tier: 2,
         school: 'White Mage',
-        classRestriction: 'White Mage',
         statusEffects: [{
             id: 'protect',
             duration: 1
@@ -4845,7 +4337,6 @@ const SPELL_LIBRARY = [
         tier: 3,
         families: ['healingmagic'],
         school: 'White Mage',
-        classRestriction: 'White Mage',
         desc: 'Restores a MEDIUM amount of HP to All Allies.'
     },
 
@@ -4863,7 +4354,6 @@ const SPELL_LIBRARY = [
         damageType: 'magic',
         tier: 2,
         school: 'Black Mage',
-        classRestriction: 'Black Mage',
         chainProfile: [125, 82, 50],
         chainRadius: 1,
         desc: 'Deals MEDIUM magic damage to a Single Enemy.'
@@ -4880,7 +4370,6 @@ const SPELL_LIBRARY = [
         kind: 'summonWeather',
         tier: 2,
         school: 'Black Mage',
-        classRestriction: 'Black Mage',
         weatherType: 'thunderstorm',
         weatherDuration: [3, 5],
         weatherTiles: [3, 5],
@@ -4904,7 +4393,6 @@ const SPELL_LIBRARY = [
         damageType: 'magic',
         tier: 3,
         school: 'Black Mage',
-        classRestriction: 'Black Mage',
         projectileOverride: 'proj-fire',
         statusEffects: [{
             id: 'burn',
@@ -4928,7 +4416,6 @@ const SPELL_LIBRARY = [
         tier: 1,
         families: ['weaponstraining'],
         school: 'Gunslinger',
-        classRestriction: 'Gunslinger',
         hitDamages: [60, 60],
         markedSecondHitBonus: 3,
         desc: 'Deals MEDIUM physical damage to a Single Enemy across 2 hits. Hits harder on Marked targets.'
@@ -4949,7 +4436,6 @@ const SPELL_LIBRARY = [
         tier: 2,
         families: ['weaponstraining'],
         school: 'Gunslinger',
-        classRestriction: 'Gunslinger',
         bounceDamage: 8,
         bounceRadius: 2,
         bounceShieldIgnore: 2,
@@ -4977,7 +4463,6 @@ const SPELL_LIBRARY = [
         tier: 3,
         families: ['weaponstraining'],
         school: 'Gunslinger',
-        classRestriction: 'Gunslinger',
         jobPreference: ['Gunslinger'],
         desc: 'Deals MEDIUM physical damage to All Enemies in an X-shaped AOE.'
     },
@@ -4997,7 +4482,6 @@ const SPELL_LIBRARY = [
         tier: 2,
         families: ['spygear'],
         school: 'Agent',
-        classRestriction: 'Agent',
         maxActivePerCaster: 3,
         blastRadius: 1,
         desc: 'Places a bomb. Detonate it to deal MEDIUM magic damage in an AOE.'
@@ -5017,7 +4501,6 @@ const SPELL_LIBRARY = [
         tier: 1,
         families: ['agriculture'],
         school: 'Harvester',
-        classRestriction: 'Harvester',
         jobPreference: ['Harvester'],
         desc: 'Plants a seed that heals nearby allies each turn.'
     },
@@ -5036,7 +4519,6 @@ const SPELL_LIBRARY = [
         tier: 2,
         families: ['agriculture'],
         school: 'Harvester',
-        classRestriction: 'Harvester',
         jobPreference: ['Harvester'],
         desc: 'Plants a seed that poisons nearby enemies each turn.'
     },
@@ -5055,7 +4537,6 @@ const SPELL_LIBRARY = [
         tier: 3,
         families: ['psychic'],
         school: 'Psychic',
-        classRestriction: 'Psychic',
         desc: 'Warp any unit — self, ally, or enemy — to any unoccupied tile within range. Costs 1 less MP for Psychics.'
     },
     /* (warpRune was CUT 2026-07-26 via the Spell Library; the kind:'warpRune'
@@ -5072,7 +4553,6 @@ const SPELL_LIBRARY = [
         kind: 'debuff',
         tier: 2,
         school: 'Psychic',
-        classRestriction: 'Psychic',
         statStageBoost: { mdef: -1 },
         desc: 'Weakens a Single Enemy. Lowers M DEF by 1 stage.'
     },
@@ -5092,7 +4572,6 @@ const SPELL_LIBRARY = [
         tier: 3,
         families: ['blood'],
         school: 'Harvester',
-        classRestriction: 'Harvester',
         drainPct: 0.70,
         bonusVsStatus: { status: 'poison', mult: 1.5 },
         desc: 'Deals MEDIUM magic damage to a Single Enemy. Heals the caster for part of the damage dealt. Deals bonus damage to targets with Poison.'
@@ -5111,7 +4590,6 @@ const SPELL_LIBRARY = [
         tier: 4,
         families: ['agriculture'],
         school: 'Harvester',
-        classRestriction: 'Harvester',
         desc: 'Plants a seed on a Single Enemy: drains HP each turn and heals the caster.'
     },
     {
@@ -5131,7 +4609,6 @@ const SPELL_LIBRARY = [
         treeCap: 180,
         tier: 3,
         school: 'Harvester',
-        classRestriction: 'Harvester',
         jobPreference: ['Harvester'],
         desc: 'Deals MEDIUM physical damage to a Single Enemy.'
     },
@@ -5152,7 +4629,6 @@ const SPELL_LIBRARY = [
         tier: 1,
         families: ['spygear'],
         school: 'Agent',
-        classRestriction: 'Agent',
         equipReq: 'knife',
         statusEffects: [{
             id: 'marked',
@@ -5176,7 +4652,6 @@ const SPELL_LIBRARY = [
         tier: 4,
         families: ['spygear'],
         school: 'Agent',
-        classRestriction: 'Agent',
         equipReq: 'knife',
         sneakBonus: true,
         bonusVsStatus: { status: 'poison', mult: 1.5 },
@@ -5197,7 +4672,6 @@ const SPELL_LIBRARY = [
         tier: 2,
         families: ['engineering'],
         school: 'Engineer',
-        classRestriction: 'Engineer',
         maxActivePerCaster: 2,
         turretHp: 60,
         turretDmg: 110,
@@ -5220,7 +4694,6 @@ const SPELL_LIBRARY = [
         tier: 2,
         families: ['robot'],
         school: 'Engineer',
-        classRestriction: 'Engineer',
         statusEffects: [{
             id: 'overclock',
             duration: 2
@@ -5244,7 +4717,6 @@ const SPELL_LIBRARY = [
         tier: 4,
         families: ['advancedtechnology'],
         school: 'Engineer',
-        classRestriction: 'Engineer',
         bonusVsStatus: { status: 'jammed', mult: 1.5 },
         desc: 'Deals HEAVY physical damage to All Enemies in a line. Ignores DEF. Deals bonus damage to Jammed targets.'
     },
@@ -5264,7 +4736,6 @@ const SPELL_LIBRARY = [
         kind: 'warCry',
         tier: 2,
         school: 'Warrior',
-        classRestriction: 'Warrior',
         jobPreference: ['Warrior'],
         auraRadius: 3,
         desc: 'Rally all allies within 3 tiles: +2 ATK stages each. The Warrior himself gains +1 ATK stage.'
@@ -5285,7 +4756,6 @@ const SPELL_LIBRARY = [
         kind: 'debuff',
         tier: 2,
         school: 'Tank',
-        classRestriction: 'Tank',
         jobPreference: ['Tank'],
         statusEffects: [{
             id: 'taunt',
@@ -5305,7 +4775,6 @@ const SPELL_LIBRARY = [
         kind: 'debuff',
         tier: 1,
         school: 'Harbinger',
-        classRestriction: 'Harbinger',
         statusEffects: [{
             id: 'discord',
             duration: 2
@@ -5326,7 +4795,6 @@ const SPELL_LIBRARY = [
         tier: 2,
         families: ['teamwork'],
         school: 'Harbinger',
-        classRestriction: 'Harbinger',
         desc: 'Grant a friendly unit that already acted this turn 1 bonus AP, letting them take one more action. Each unit can only receive Encore once per round.'
     },
     {
@@ -5346,7 +4814,6 @@ const SPELL_LIBRARY = [
            feeds Cross Slash now costs a real 75 MP. */
         tier: 3,
         school: 'Harbinger',
-        classRestriction: 'Harbinger',
         statusEffects: [{
             id: 'slow',
             duration: 2
@@ -5370,7 +4837,6 @@ const SPELL_LIBRARY = [
         tier: 1,
         families: ['martialarts'],
         school: 'Raider',
-        classRestriction: 'Raider',
         jobPreference: ['Raider'],
         statusEffects: [],
         /* Retuned vs-Stagger → vs-Rooted (SPELL_TREE_REDESIGN §2.2): can't
@@ -5396,7 +4862,6 @@ const SPELL_LIBRARY = [
         tier: 3,
         /* 2026-07-18: moved Raider → Warrior (Warrior/Tank split). */
         school: 'Warrior',
-        classRestriction: 'Warrior',
         jobPreference: ['Warrior'],
         selfCenter: true,
         terrainDeform: { centerDelta: -1, edgeDelta: 0 },
@@ -5416,7 +4881,6 @@ const SPELL_LIBRARY = [
         tier: 2,
         families: ['dirtyfighting'],
         school: 'Raider',
-        classRestriction: 'Raider',
         jobPreference: ['Raider'],
         groundsFlyers: true,
         statusEffects: [{ id: 'root', duration: 2 }],
@@ -5436,7 +4900,6 @@ const SPELL_LIBRARY = [
         tier: 4,
         families: ['athleticism'],
         school: 'Raider',
-        classRestriction: 'Raider',
         jobPreference: ['Raider'],
         dashDamage: 64,
         desc: 'Charges at a Single Enemy, dealing HEAVY physical damage. Enemies along the path also take damage.'
@@ -5455,7 +4918,6 @@ const SPELL_LIBRARY = [
         tier: 3,
         families: ['dirtyfighting'],
         school: 'Raider',
-        classRestriction: 'Raider',
         jobPreference: ['Raider'],
         statusEffects: [{ id: 'silence', duration: 1 }],
         desc: 'Deals MEDIUM physical damage to a Single Enemy. Applies Silence.'
@@ -5478,7 +4940,6 @@ const SPELL_LIBRARY = [
         tier: 3,
         families: ['marksmanship'],
         school: 'Sniper',
-        classRestriction: 'Sniper',
         jobPreference: ['Sniper'],
         bonusVsStatus: { status: 'root', mult: 1.5 },
         desc: 'Deals MEDIUM physical damage to a Single Enemy. Deals bonus damage to targets with Rooted.'
@@ -5503,7 +4964,6 @@ const SPELL_LIBRARY = [
         tier: 4,
         families: ['marksmanship'],
         school: 'Sniper',
-        classRestriction: 'Sniper',
         jobPreference: ['Sniper'],
         bonusVsStatus: { status: 'stun', mult: 1.5 },
         /* CHAMP_REWORK_PLAN §5.3 / §6.11 (Phase 5 wave A): a Sniper's shot
@@ -5526,7 +4986,6 @@ const SPELL_LIBRARY = [
         tier: 2,
         families: ['huntingskills'],
         school: 'Sniper',
-        classRestriction: 'Sniper',
         jobPreference: ['Sniper'],
         statusEffects: [{
             id: 'invisible',
@@ -5553,7 +5012,6 @@ const SPELL_LIBRARY = [
         damageType: 'physical',
         tier: 4,
         school: 'Warrior',
-        classRestriction: 'Warrior',
         /* 2026-08-09 balance pass: HEAVY, Stun rider removed — raw damage is
            the capstone's whole budget now. */
         statusEffects: [],
@@ -5577,7 +5035,6 @@ const SPELL_LIBRARY = [
         tier: 4,
         families: ['weaponstraining'],
         school: 'Gunslinger',
-        classRestriction: 'Gunslinger',
         guaranteedCrit: true,
         statusEffects: [{
             id: 'marked',
@@ -5604,7 +5061,6 @@ const SPELL_LIBRARY = [
         damageType: 'magic',
         tier: 4,
         school: 'Black Mage',
-        classRestriction: 'Black Mage',
         aoeRadius: 1,
         groundsFlyers: true,
         leaveTerrain: 'scorched',
@@ -5639,7 +5095,6 @@ const SPELL_LIBRARY = [
         // 2026-07-13: moved out of the shared Assassin pool (a vampire with an
         // EMP made no sense) — now Engineer school + a racial for tech races.
         school: 'Engineer',
-        classRestriction: 'Engineer',
         aoeRadius: 2,
         aoeOriginSelf: true,
         statusEffects: [{
@@ -5663,7 +5118,6 @@ const SPELL_LIBRARY = [
         damageType: 'magic',
         tier: 4,
         school: 'Psychic',
-        classRestriction: 'Psychic',
         statusEffects: [{
             id: 'silence',
             duration: 1
@@ -5685,7 +5139,6 @@ const SPELL_LIBRARY = [
         tier: 3,
         families: ['engineering'],
         school: 'Engineer',
-        classRestriction: 'Engineer',
         maxActivePerCaster: 1,
         turretHp: 3,
         hitsToKill: 3,
@@ -5710,7 +5163,6 @@ const SPELL_LIBRARY = [
         tier: 1,
         families: ['engineering'],
         school: 'Engineer',
-        classRestriction: 'Engineer',
         jobPreference: ['Engineer'],
         desc: 'Restores a MEDIUM amount of HP to a Single Ally.'
     },
@@ -5738,7 +5190,6 @@ const SPELL_LIBRARY = [
         damageType: 'magic',
         tier: 4,
         school: 'Harbinger',
-        classRestriction: 'Harbinger',
         statusEffects: [{
             id: 'discord',
             duration: 2
@@ -5765,7 +5216,6 @@ const SPELL_LIBRARY = [
         tier: 4,
         families: ['shadow'],
         school: 'Psychic',
-        classRestriction: 'Psychic',
         teleportDistance: 4,
         aoeRadius: 1,
         aoeOnArrival: true,
@@ -5788,7 +5238,6 @@ const SPELL_LIBRARY = [
         tier: 2,
         families: ['meditation'],
         school: 'White Mage',
-        classRestriction: 'White Mage',
         desc: 'Removes harmful status effects from a Single Ally.'
     },
 
@@ -5812,7 +5261,6 @@ const SPELL_LIBRARY = [
         tier: 1,
         families: ['marksmanship'],
         school: 'Sniper',
-        classRestriction: 'Sniper',
         jobPreference: ['Sniper'],
         statusEffects: [{ id: 'root', duration: 1 }],
         desc: 'Deals WEAK physical damage to a Single Enemy. Applies Rooted.'
@@ -5832,7 +5280,6 @@ const SPELL_LIBRARY = [
         damageType: 'magic',
         tier: 1,
         school: 'Psychic',
-        classRestriction: 'Psychic',
         displaceDistance: 2,
         collisionBonus: 64,
         arcThrow: true,
@@ -5878,7 +5325,6 @@ const SPELL_LIBRARY = [
         tier: 3,
         families: ['spygear'],
         school: 'Agent',
-        classRestriction: 'Agent',
         statusEffects: [{
             id: 'poison',
             duration: 3
@@ -5903,7 +5349,6 @@ const SPELL_LIBRARY = [
         tier: 1,
         families: ['swordsmanship'],
         school: 'Swordmaster',
-        classRestriction: 'Swordmaster',
         jobPreference: ['Swordmaster'],
         bonusVsStatus: { status: 'slow', mult: 1.5 },
         desc: 'Deals MEDIUM physical damage to a Single Enemy. Deals bonus damage to targets with Slow.'
@@ -5924,7 +5369,6 @@ const SPELL_LIBRARY = [
         tier: 2,
         families: ['swordsmanship'],
         school: 'Swordmaster',
-        classRestriction: 'Swordmaster',
         desc: 'Deals MEDIUM physical damage to All Enemies in a line.'
     },
     {
@@ -5949,7 +5393,6 @@ const SPELL_LIBRARY = [
         tier: 3,
         families: ['swordsmanship'],
         school: 'Swordmaster',
-        classRestriction: 'Swordmaster',
         desc: 'Deals MEDIUM physical damage to All Enemies in an X-shaped AOE.'
     },
         /* moved from RACE_ABILITIES['super sentai'] by the bake (off that movepool; SPELL LIBRARY Phase 6, the user's export) */
@@ -9125,7 +8568,7 @@ for (const [race, abilities] of Object.entries(RACE_ABILITIES)) {
 
 /* ══ THE DOOR WHEEL's destination rows (DOOR_GUN_PLAN.md §2.2 / §3.1, Phase 1, 2026-09-25) ═════════════════════
    The STANDING doors. They are the Door Agent's WHEEL pool (doorGunWheelPool — race 'door agent' only) and live
-   OUTSIDE RACE_ABILITIES on purpose: flRacePool reads the race rows, so no Freelancer can ever borrow a door (the
+   OUTSIDE RACE_ABILITIES on purpose: flRacePool reads the race rows, so no Adaptable kit can ever borrow a door (the
    user: "only the DOOR agent can fire doors"). kind 'doorDeploy' (battle.js doorGunPlace): shoot a door onto an empty
    tile within 4 you can see, then pick which way it FACES (a lane door — two clicks: the tile, then a direction; the
    first hover shows the lane pointing away from you); a radius door (Archers) is one click. The door STANDS: hits
@@ -9250,6 +8693,59 @@ for (const sp of GEAR_PASSIVES) {
     sp._gear = true;
     SPELL_BY_ID[sp.id] = sp;
     GEAR_ID_OF_ACCESSORY[sp.accessory] = sp.id;
+}
+
+/* ══ THE TRAINING (THE JOBS REMOVAL, the user 2026-09-27: "The job passives can be added to the optional passives for
+   1 SP") ══════════════════════════════════════════════════════════════════════════════════════════════════════════
+   The 13 old job passives, each its own passive row: tier I (1 SP), family TRAINING (universal — every unit's pool, like
+   GEAR), equipped in the spell slots under THE PASSIVE CAP (2 of the 7). The effects are the engine's hook keys
+   (PASSIVE_HOOK_KEYS: critMult, basicDmgMult, counterChance, armor, damageSoak, spellPower, healBonus, …) read through
+   unitPassiveSum / unitPassiveMult / unitPassiveMax — two rows that touch one number stack (sum / product / max). The
+   numbers are the ones the jobs ran (the code, not the old text: Deadeye is +10 SPD and ×2.0 crits). */
+const TRAINING_PASSIVES = [
+    { id: 'passiveDeadeye', tier: 1, name: 'Deadeye', icon: '🎯',
+      hooks: { statBonus: { spd: 10 }, critMult: 2.0 },
+      desc: '+10 SPD, and basic-attack crits hit ×2.0 instead of ×1.8. Always ready to draw first.' },
+    { id: 'passiveWarpath', tier: 1, name: 'Warpath', icon: '⚔️',
+      hooks: { basicDmgMult: 1.15, counterChance: 0.30, armor: 5 },
+      desc: 'Basic attacks hit +15% harder, +5 armor, and counterattacks at a hardened 30% rate. Born for the front line.' },
+    { id: 'passiveBulwark', tier: 1, name: 'Bulwark', icon: '🛡️',
+      hooks: { damageSoak: 8, counterChance: 0.30, armor: 5 },
+      desc: 'Reduces incoming damage by 8, +5 armor, and counterattacks at a 30% rate.' },
+    { id: 'passiveArcaneSurge', tier: 1, name: 'Arcane Surge', icon: '✴️',
+      hooks: { spellPower: 8 },
+      desc: '+8 spell damage on every cast.' },
+    { id: 'passiveGrace', tier: 1, name: 'Grace', icon: '🕊️',
+      hooks: { healRangeBonus: 2, healBonus: 24 },
+      desc: 'Heal and revive spells gain +2 range and +24 healing power.' },
+    { id: 'passiveFieldOperative', tier: 1, name: 'Field Operative', icon: '🕵️',
+      hooks: { scannerCap: 2, inspectBonus: 1 },
+      desc: 'Can carry up to 2 scanners and inspects 1 tile farther.' },
+    { id: 'passiveThirdEye', tier: 1, name: 'Third Eye', icon: '👁️',
+      hooks: { debuffTurnsBonus: 1, teleportMpDiscount: 1 },
+      desc: 'Debuff statuses this unit applies last +1 turn. Teleport costs 1 less MP.' },
+    { id: 'passiveGreenThumb', tier: 1, name: 'Green Thumb', icon: '🌱',
+      hooks: { lifeSapMult: 1.2, plantedTrees: true },
+      desc: 'Trees grown from this unit\'s seeds buff its ATK & spell power (+7 each, up to 6 living trees) and fuel Trunk Throw (+30 damage each). Life Sap heals 20% more. Enemies can chop or burn the forest to shut it down.' },
+    { id: 'passiveTinker', tier: 1, name: 'Tinker', icon: '🔧',
+      hooks: { turretRangeBonus: 1, repairMult: 1.2 },
+      desc: 'Turrets have +1 range and Repair heals 20% more.' },
+    { id: 'passiveCrescendo', tier: 1, name: 'Crescendo', icon: '🎵',
+      hooks: { buffTurnsBonus: 1, lullabyRangeBonus: 1 },
+      desc: 'Buffs this unit applies last +1 turn. Lullaby has +1 range.' },
+    { id: 'passiveAdaptable', tier: 1, name: 'Adaptable', icon: '🃏',
+      hooks: { borrowFamilies: true },
+      desc: 'Borrow spells from the families other races carry (in story mode: only the vessels you own). Unequip it and the borrowed spells come off too.' },
+    { id: 'passiveBruteForce', tier: 1, name: 'Brute Force', icon: '👊',
+      hooks: { basicDmgMult: 1.2, swim: true },
+      desc: 'Basic attacks deal +20% damage, and the unit can swim.' },
+    { id: 'passiveRiposte', tier: 1, name: 'Riposte', icon: '🤺',
+      hooks: { counterChance: 0.35, counterAtkPct: 0.6 },
+      desc: '35% chance to counterattack when struck in melee, and counters swing at full sword strength (60% ATK instead of 40%).' },
+];
+for (const sp of TRAINING_PASSIVES) {
+    Object.assign(sp, { kind: 'passive', type: 'utility', families: ['training'], cost: 0, apCost: 0, range: 0 });
+    SPELL_BY_ID[sp.id] = sp;
 }
 
 /* ── Baked movepool shares (2026-07-26, from the Spell Library editor) ────
@@ -17739,9 +17235,6 @@ function getSpellUnlockLevel(cls, spellIdx) {
 
 // Milestone levels (single place to tune).
 const SPELL_SHOP_LEVEL = 10;
-/* RETIRED 2026-09-24 (the tier rework: no unit has a secondary job) — kept only so an old reader's typeof check
-   finds a number; nothing unlocks at it any more. */
-const SECONDARY_JOB_LEVEL = 15;
 // Units always have exactly UNIT_MAX_AP (3) AP — no bonus-AP level milestones.
 const AP_BONUS_LEVELS = [];
 
@@ -17770,10 +17263,11 @@ function getRaceXpYield(race) {
     return Math.round(30 + price * 0.15);
 }
 
-/* Spell-tree redesign (SPELL_TREE_REDESIGN doc §3/§5): each job's learn
-   order IS its tree branch in ring order r1→r2→r3→r4★ (opener → tool →
-   payoff → capstone). CLASS_TREE below is derived from this table.
-   Freelancer has no row — its tree is all sockets (the FREELANCER block). */
+/* THE MP LADDERS OF THE 52 FORMER JOB SPELLS. THE JOBS REMOVAL (the user, 2026-09-27): no unit has a job and nothing
+   grants a spell from this table any more — each spell is reached through its FAMILY (RACE_FAMILIES). It stays as
+   pure PRICE data: buildTreeRingIndex reads each row's position (r1→r2→r3→r4★) for the spell's MP ring
+   (25/50/75/100) and capstone status, and the library's export / bake-spell-mods still round-trip it. The keys are
+   the old job names, nothing more. */
 const CLASS_SPELL_LEARN_ORDER = {
 
     'Gunslinger':  ['doubleShot', 'ricochet1', 'crossfire', 'deadEye'],
@@ -17812,11 +17306,6 @@ const CLASS_SPELL_LEARN_ORDER = {
    pass) — it keeps the flat pool, and every tree entry point must route
    through classHasSpellTree() so Freelancer falls through to legacy. */
 
-const CLASS_TREE = {};
-for (const [_job, _order] of Object.entries(CLASS_SPELL_LEARN_ORDER)) {
-    if (_job === 'Freelancer') continue;
-    CLASS_TREE[_job] = _order.slice(0, 4);
-}
 
 /* Curated race branches (ring order r1→r4★) from the doc's §4 audit —
    only races whose four abilities all exist today. Races that still need
@@ -17955,8 +17444,6 @@ const RACE_TREE = {
     'watcher':       ['raceJudgmentBeam', 'raceCosmicSight', 'raceTemporalShift', 'raceRealityPulse'],
 };
 
-const _JOB_TREE_IDS = new Set();
-for (const _ids of Object.values(CLASS_TREE)) for (const _id of _ids) _JOB_TREE_IDS.add(_id);
 
 /* ═══════════ TREE-POSITION MP COSTS (owner request 2026-08-12) ═══════════
    MP costs no longer derive from what a spell does — they read straight off
@@ -18075,17 +17562,8 @@ function applyTreeRingCosts(skipIds, snapOffTree) {
     console.log(`[ManaEconomy] Tree-position MP costs: ${n.treed} tree spells priced 25/50/75/100 by ring, ${n.snapped} off-tree spells snapped to the ladder`);
 })();
 
-function classHasSpellTree(cls) {
-    /* Freelancer joined the tree in Phase B (wildcard sockets, see the
-       FREELANCER block below) — it has no CLASS_TREE row because BOTH its
-       job pillars are sockets (race abilities on P, job abilities on S). */
-    if (cls === 'Freelancer') return true;
-    return !!(cls && CLASS_TREE[cls]);
-}
-
-function getClassTreeSpells(cls) {
-    return CLASS_TREE[cls] ? CLASS_TREE[cls].slice() : null;
-}
+/* THE JOBS REMOVAL (2026-09-27): every unit has the one kit — the tiers, the 7 slots, the 16 SP. Kept for old callers. */
+function classHasSpellTree(cls) { return true; }
 
 /* A tree-row entry is a spell id or a twin pair (2-element array). */
 function _treeEntryIds(entry) {
@@ -18096,16 +17574,13 @@ function _treeEntryFace(entry) {
 }
 
 /* Audited races use their curated final-4 (twin pairs intact); everything
-   else falls back to its first 4 existing abilities (job-gated), skipping
-   ids owned by a job tree (rampart/groundSlam/rampage/empBurst stay with
-   their branch owner). */
+   else falls back to its first 4 existing abilities. */
 function getRaceTreeRow(race, cls) {
     if (RACE_TREE[race]) return RACE_TREE[race].map(e => Array.isArray(e) ? e.slice() : e);
     const abs = (typeof RACE_ABILITIES !== 'undefined' && RACE_ABILITIES[race]) || [];
     const out = [];
     for (const a of abs) {
-        if (!a || !a.id || _JOB_TREE_IDS.has(a.id)) continue;
-        if (a.jobRequirement && cls && a.jobRequirement !== cls) continue;
+        if (!a || !a.id) continue;
         if (!out.includes(a.id)) out.push(a.id);
         if (out.length >= 4) break;
     }
@@ -18172,18 +17647,18 @@ function _treeTwinConflict(race, cls, ids) {
     return false;
 }
 
-/* ═══════════ FREELANCER — THE BORROWER (since the tier rework, 2026-09-24) ═══════════
-   A Freelancer has no job row: besides its own race row it may equip ANY race ability (flRacePool) and ANY job
-   ability (flWildcardPool) — no sockets, no socket tiers any more; the 7 slots and the 16 SP are the only limits,
-   exactly as for everyone else. */
+/* ═══════════ ADAPTABLE — THE BORROWER (THE JOBS REMOVAL, the user 2026-09-27) ═══════════
+   The Freelancer job is gone; its passive is a TRAINING row any unit may equip (passiveAdaptable, 1 SP). A loadout
+   that carries it may also equip spells of the families OTHER races carry (flRacePool) — the 7 slots and the 16 SP
+   are the only limits, as for everyone else. unitSpellPoolParts(race, cls, ids) fills `borrowRace` only when `ids`
+   hold the row (loadoutBorrows). */
 /* THE STORY ROSTER (2026-09-21, the user: "you can only learn spells of units you have unlocked in your
    roster"): in STORY SCOPE — the building, THE PARTY, the crossings filed there (map.js sets
-   window._ewRosterScope = 'owned'; data.js unitRosterScope) — a Freelancer's sockets offer ONLY the spells
-   of the vessels the account OWNS (isUnitOwned — the ledger, never the scope): a RACE socket an owned
-   race's tree, a JOB socket the trees of the jobs the owned vessels carry (RACE_DEFAULT_JOBS). Online /
-   Practice / Room 64's range / the dev switch (scope 'all'), and the tooling (no window, or no scope set
-   yet — the vm sandbox), see the whole catalogue. An equipped id outside the pool is `unplaced` in
-   buildFreelancerTree, so treeLegalSubset drops it at the build — never a lock on a saved row. */
+   window._ewRosterScope = 'owned'; data.js unitRosterScope) — the borrow window offers ONLY the families of
+   the vessels the account OWNS (isUnitOwned — the ledger, never the scope). Online / Practice / Room 64's
+   range / the dev switch (scope 'all'), and the tooling (no window, or no scope set yet — the vm sandbox),
+   see the whole catalogue. An equipped id outside the pool is dropped by treeLegalSubset at the build —
+   never a lock on a saved row. */
 function flPoolOwnedOnly() {
     if (typeof window === 'undefined') return false;
     if (window._ewRosterScope !== 'owned') return false;
@@ -18194,37 +17669,10 @@ function flOwnedRaces() {
     if (!flPoolOwnedOnly() || typeof isUnitOwned !== 'function') return races.slice();
     return races.filter(r => { try { return isUnitOwned(r); } catch (e) { return false; } });
 }
-function flOwnedJobs() {
-    const out = new Set();
-    for (const r of flOwnedRaces()) { const j = (typeof RACE_DEFAULT_JOBS !== 'undefined') ? RACE_DEFAULT_JOBS[r] : null; if (j) out.add(j); }
-    return out;
-}
-
-/* Every spell a Freelancer JOB socket (S1–S4) may hold: the union of all
-   job trees, minus ids on this race's own tree (the no-duplicate rule) —
-   in story scope the trees of the jobs the owned vessels carry only. */
-function flWildcardPool(race) {
-    const raceIds = new Set(raceFamilyPoolIds(race));   // THE FAMILIES AS POOLS (Phase 7): the race's own spells are its families' members
-    const out = [];
-    const seen = new Set();
-    const jobs = flPoolOwnedOnly() ? flOwnedJobs() : null;
-    for (const [job, ids] of Object.entries(CLASS_TREE)) {
-        if (jobs && !jobs.has(job)) continue;
-        for (const id of ids) {
-            const sp = SPELL_BY_ID[id];
-            if (!sp || seen.has(id) || raceIds.has(id)) continue;
-            seen.add(id);
-            out.push(sp);
-        }
-    }
-    return out;
-}
-
-/* Every spell a Freelancer may BORROW from another race. THE FAMILIES AS POOLS (SPELL_LIBRARY_PLAN.md §9 row 7, Phase 7,
+/* Every family an Adaptable loadout may BORROW from. THE FAMILIES AS POOLS (SPELL_LIBRARY_PLAN.md §9 row 7, Phase 7,
    2026-09-26): a race's spells are the members of its families (RACE_FAMILIES), so the borrow window is family by family —
    every family some (owned, in story scope) race carries that this race does not, never a UNIQUE family (the door wheel's
-   kind: one race's own) and never a universal one (GEAR is in every pool already). Minus anything a job tree owns; a race
-   ability that demands a job (jobRequirement) stays with that job. */
+   kind: one race's own) and never a universal one (GEAR / TRAINING are in every pool already). */
 function flBorrowFamilyIds(race) {
     const own = new Set(raceFamilyIds(race));
     const out = [];
@@ -18245,8 +17693,7 @@ function flRacePool(race) {
     for (const f of flBorrowFamilyIds(race)) {
         for (const id of familyMemberIds(f)) {
             const sp = SPELL_BY_ID[id];
-            if (!sp || seen.has(id) || own.has(id) || _JOB_TREE_IDS.has(id)) continue;
-            if (sp.jobRequirement && sp.jobRequirement !== 'Freelancer') continue;
+            if (!sp || seen.has(id) || own.has(id)) continue;
             seen.add(id);
             out.push(sp);
         }
@@ -18427,8 +17874,9 @@ function swingDoorPushDir(hx, hy, vx, vy) {
    So there is NO graph any more (no root, no edges, no path, no cascade, no fork, no socket) and no second job. A
    loadout is LEGAL iff:
      · every id is in the unit's POOL — its race row (BOTH alternates of a twin rung: a twin is two spells on one
-       rung now, each its own pick) + its job's four; a Freelancer (no job row) also BORROWS any race ability
-       (flRacePool) and any job ability (flWildcardPool) — THE STORY ROSTER's owned-only rule rides inside those;
+       rung now, each its own pick) — since THE FAMILIES AS POOLS its families' members — and, with the Adaptable
+       row in the kit (THE JOBS REMOVAL, 2026-09-27), the families other races carry (flRacePool; THE STORY ROSTER's
+       owned-only rule rides inside);
      · no duplicates, at most SPELL_SLOT_MAX (7) spells, at most SPELL_SP_MAX (16) SP;
      · nothing Clash-sealed (movement spells are banned on a formation stage).
    The TIER is the RUNG: buildTreeRingIndex's ring 0–3 → Tier I–IV (a shared id takes its LOWEST rung — the same read
@@ -18501,11 +17949,12 @@ function spellSealedIds(ids) {
 }
 
 /* The unit's pool in parts, each an ordered id list (rung order, a twin's alternates side by side):
-     race   — the race row (every alternate), job — the job's four (none for a Freelancer),
-     borrowRace / borrowJob — a Freelancer's borrowable abilities (every other race's row / every job's four),
+     race   — the members of the race's families,
+     borrowRace — an Adaptable loadout's borrowable spells (the families other races carry; empty without the row),
+     job / borrowJob — RETIRED with the jobs (2026-09-27): always empty, kept so old concat readers stay whole,
      wheel — THE DOOR WHEEL (DOOR_GUN_PLAN §2.4, the user 2026-09-25: "only the DOOR agent can fire doors"): the
-             destination doors, offered to race 'door agent' ONLY (any job, a Freelancer agent too) and never
-             borrowable (flRacePool reads the race rows, which never carry them). */
+             destination doors, offered to race 'door agent' ONLY and never borrowable,
+     gear   — every row of a UNIVERSAL family (GEAR + TRAINING), in every pool. */
 /* THE FAMILY POOL (SPELL LIBRARY Phase 6, the user 2026-09-26: "in the pools section, I need to be able to select families, not
    individual spells"): family id → its member ids (tier, then name), built from the live defs and dropped by stampSpellSchema
    after every library apply. Door-wheel rows stay in the wheel part and universal families (GEAR) in the gear part. */
@@ -18531,7 +17980,7 @@ function familyMemberIndex() {
 function familyMemberIndexDrop() { _familyMemberIdx = null; }
 function familyMemberIds(fam) { return (familyMemberIndex()[fam] || []).slice(); }
 /* A UNIQUE family is one race's own (`unique: '<race id>'`, the Door Agent's wheel is the model): no other race's pool takes
-   it and no Freelancer borrows it (Phase 7). */
+   it and no Adaptable kit borrows it (Phase 7). */
 function spellFamilyIsUnique(f) { const fam = SPELL_FAMILIES[f]; return !!(fam && typeof fam.unique === 'string' && fam.unique); }
 /* The race's families (known ids only, in its order; a family unique to ANOTHER race is skipped). */
 function raceFamilyIds(race) {
@@ -18539,7 +17988,7 @@ function raceFamilyIds(race) {
     return Array.isArray(list) ? list.filter(f => typeof f === 'string' && SPELL_FAMILIES[f] && !(spellFamilyIsUnique(f) && SPELL_FAMILIES[f].unique !== race)) : [];
 }
 /* THE RACK BY FAMILY (SPELL_LIBRARY_PLAN.md §9 row 7, Phase 7): a list of ids folded into family groups for the racks — the
-   race's own families first in its RACE_FAMILIES order, then every other family by name (a job's rows, a Freelancer's borrowed
+   race's own families first in its RACE_FAMILIES order, then every other family by name (an Adaptable kit's borrowed
    rows), then the rows with no family; inside a group tier I → IV, then name. Pure; the forge and the HQ rack both read it.
    → [{ fam, name, glyph, color, desc, own, ids }] */
 function spellFamilyGroups(ids, race) {
@@ -18573,30 +18022,32 @@ function raceFamilyPoolIds(race) {
     return out;
 }
 
-function unitSpellPoolParts(race, cls) {
+/* Does this loadout borrow? (THE JOBS REMOVAL, 2026-09-27: the Adaptable row opens the borrow window) */
+const ADAPTABLE_ROW_ID = 'passiveAdaptable';
+function loadoutBorrows(ids) {
+    return Array.isArray(ids) && ids.includes(ADAPTABLE_ROW_ID);
+}
+function unitSpellPoolParts(race, cls, ids) {
     const known = (id) => !!id && (typeof SPELL_BY_ID === 'undefined' || !!SPELL_BY_ID[id]);
     const seen = new Set();
     const take = (ids) => { const out = []; for (const id of ids || []) if (known(id) && !seen.has(id)) { seen.add(id); out.push(id); } return out; };
     /* THE FAMILIES AS POOLS (SPELL_LIBRARY_PLAN.md §7 Q2 default, Phase 7, 2026-09-26): the race part IS the members of the
        race's families (RACE_FAMILIES) — RACE_TREE is no longer read for the pool. It stays the source of the rungs' MP ring,
-       the twins and the DEFAULTS kit, and every rung sits inside the race's families (spell-families.test.js). The job's four
-       are taken first, so a job row that sits in a race family keeps its JOB source in the racks. */
-    const job = take(cls === 'Freelancer' ? [] : (getClassTreeSpells(cls) || []));
-    const parts = { race: take(raceFamilyPoolIds(race)), job, borrowRace: [], borrowJob: [], wheel: [] };
-    if (cls === 'Freelancer') {
-        parts.borrowRace = take(flRacePool(race).map(sp => sp.id));
-        parts.borrowJob = take(flWildcardPool(race).map(sp => sp.id));
-    }
+       the twins and the DEFAULTS kit, and every rung sits inside the race's families (spell-families.test.js).
+       THE JOBS REMOVAL (the user, 2026-09-27): no job part — `cls` is ignored; `ids` (the loadout) says whether the
+       Adaptable row borrows. */
+    const parts = { race: take(raceFamilyPoolIds(race)), job: [], borrowRace: [], borrowJob: [], wheel: [] };
     parts.wheel = take(doorGunWheelPool(race));
-    /* THE GEAR POOL (Phase 4, the user 2026-09-25): every row of a UNIVERSAL family (the GEAR family's accessories) is in
-       every unit's pool, a Freelancer's too — never "borrowed" (a race / job row's own passive stays in its part). */
+    /* THE GEAR POOL (Phase 4, the user 2026-09-25): every row of a UNIVERSAL family (GEAR, and TRAINING since the jobs
+       removal) is in every unit's pool — never "borrowed". */
     parts.gear = take(universalPassiveIds());
+    if (loadoutBorrows(ids)) parts.borrowRace = take(flRacePool(race).map(sp => sp.id));
     return parts;
 }
-/* Every id the unit may equip (sealed ones included — spellSealedIds says which). */
-function unitSpellPool(race, cls) {
-    const p = unitSpellPoolParts(race, cls);
-    return p.race.concat(p.job, p.wheel, p.gear || [], p.borrowRace, p.borrowJob);
+/* Every id the unit may equip (sealed ones included — spellSealedIds says which). `ids` = the loadout (the borrow). */
+function unitSpellPool(race, cls, ids) {
+    const p = unitSpellPoolParts(race, cls, ids);
+    return p.race.concat(p.wheel, p.gear || [], p.borrowRace);
 }
 
 /* Can `id` join this loadout? { ok, reason, note, slots, sp, need } — the ONE verdict every UI prints. */
@@ -18607,8 +18058,8 @@ function spellAddVerdict(race, cls, ids, id, poolSet, ups) {
     const out = { ok: false, reason: '', note: '', slots: eq.length, cap, sp: used, spMax: SPELL_SP_MAX, need };
     if (!id) return Object.assign(out, { reason: 'none', note: 'NOTHING TO EQUIP' });
     if (eq.includes(id)) return Object.assign(out, { reason: 'dup', note: 'ALREADY EQUIPPED' });
-    const pool = poolSet || new Set(unitSpellPool(race, cls));
-    if (!pool.has(id)) return Object.assign(out, { reason: 'pool', note: 'NOT IN THIS UNIT’S SPELLS' });
+    const pool = poolSet || new Set(unitSpellPool(race, cls, eq));
+    if (!pool.has(id)) return Object.assign(out, { reason: 'pool', note: loadoutBorrows(eq) || !new Set(unitSpellPool(race, cls, eq.concat(ADAPTABLE_ROW_ID))).has(id) ? 'NOT IN THIS UNIT’S SPELLS' : 'BORROWED · EQUIP ADAPTABLE FIRST' });
     if (_spellSealed(id)) return Object.assign(out, { reason: 'sealed', note: 'SEALED · NOT ALLOWED IN THIS MODE' });
     if (eq.length >= cap) return Object.assign(out, { reason: 'slots', note: 'NO SLOT · ' + eq.length + '/' + cap + ' SLOTS · UNEQUIP SOMETHING' });
     // THE PASSIVE CAP (Phase 4, the user 2026-09-25): at most PASSIVE_SLOT_MAX passive / gear rows among the slots
@@ -18621,8 +18072,8 @@ function spellAddVerdict(race, cls, ids, id, poolSet, ups) {
 /* No graph since the tier rework: every pillar is a flat pool. Kept for readers that export the tree. */
 function getTreeEdges() { return []; }
 
-/* One unit's rows, keyed by rung: R1–R4 = the race row (a twin rung wears its equipped alternate, else its first),
-   P1–P4 = the job's four (empty for a Freelancer). `tiers` = id → tier for everything on it. No edges. */
+/* One unit's rows, keyed by rung: R1–R4 = the race row (a twin rung wears its equipped alternate, else its first).
+   `tiers` = id → tier for everything in the pool. No edges. (The job's P1–P4 went with the jobs, 2026-09-27.) */
 function buildUnitSpellTree(race, cls, secJob, equippedIds) {
     const eq = new Set((equippedIds || []).filter(Boolean));
     const row = getRaceTreeRow(race, cls);
@@ -18632,10 +18083,8 @@ function buildUnitSpellTree(race, cls, secJob, equippedIds) {
         if (ids.length > 1) alts['R' + (i + 1)] = ids.slice();
         nodes['R' + (i + 1)] = ids.find(id => eq.has(id)) || ids[0] || null;
     }
-    const job = cls === 'Freelancer' ? [] : (getClassTreeSpells(cls) || []);
-    for (let i = 0; i < 4; i++) nodes['P' + (i + 1)] = job[i] || null;
-    for (const id of unitSpellPool(race, cls)) tiers[id] = spellTierOf(id);
-    return { nodes, edges: [], alts, tiers, isFreelancer: cls === 'Freelancer' };
+    for (const id of unitSpellPool(race, cls, Array.from(eq))) tiers[id] = spellTierOf(id);
+    return { nodes, edges: [], alts, tiers, borrows: loadoutBorrows(Array.from(eq)) };
 }
 
 /* THE loadout legality check (builder, createUnit, online host authority). */
@@ -18653,7 +18102,7 @@ function isTreeLoadoutLegal(race, cls, secJob, spellIds, ups) {
         if (JSON.stringify(treeLegalUpgrades(race, cls, ids, clean)) !== JSON.stringify(clean)) return false;
     }
     if (passiveRowCount(ids) > PASSIVE_SLOT_MAX) return false;
-    const pool = new Set(unitSpellPool(race, cls));
+    const pool = new Set(unitSpellPool(race, cls, ids));
     for (const id of ids) if (!pool.has(id) || _spellSealed(id)) return false;
     return true;
 }
@@ -18665,28 +18114,36 @@ const SPELL_ID_RENAMED = { raceDoorToTheFace: 'raceSwingDoor' };
    that is in the pool, unsealed, new, and still fits the slots AND the SP — skip (never truncate at) the rest. */
 function treeLegalSubset(race, cls, secJob, spellIds) {
     const cap = (typeof SPELL_SLOT_MAX !== 'undefined') ? SPELL_SLOT_MAX : 7;
-    if (!classHasSpellTree(cls)) return (spellIds || []).filter(Boolean).slice(0, cap);
-    const pool = new Set(unitSpellPool(race, cls));
-    const out = [];
-    let sp = 0, pas = 0;
-    for (const _rawId of (spellIds || [])) {
-        // a stale save keeps its pick under the new id (the door wheel, 2026-09-25); a retired accessory id → its gear row (Phase 4)
-        const id = SPELL_ID_RENAMED[_rawId] || GEAR_ID_OF_ACCESSORY[_rawId] || _rawId;
-        if (out.length >= cap) break;
-        if (!id || out.includes(id) || !pool.has(id) || _spellSealed(id)) continue;
-        const c = spellSpCost(id);
-        if (sp + c > SPELL_SP_MAX) continue;
-        const isPas = spellIsPassive(id);
-        if (isPas && pas >= PASSIVE_SLOT_MAX) continue;   // THE PASSIVE CAP — the third passive row is skipped (earlier picks win)
-        out.push(id);
-        sp += c;
-        if (isPas) pas++;
+    // a stale save keeps its pick under the new id (the door wheel, 2026-09-25); a retired accessory id → its gear row (Phase 4)
+    const wish = (spellIds || []).map(_rawId => SPELL_ID_RENAMED[_rawId] || GEAR_ID_OF_ACCESSORY[_rawId] || _rawId);
+    const walk = (borrow) => {
+        const pool = new Set(unitSpellPool(race, cls, borrow ? [ADAPTABLE_ROW_ID] : []));
+        const out = [];
+        let sp = 0, pas = 0;
+        for (const id of wish) {
+            if (out.length >= cap) break;
+            if (!id || out.includes(id) || !pool.has(id) || _spellSealed(id)) continue;
+            const c = spellSpCost(id);
+            if (sp + c > SPELL_SP_MAX) continue;
+            const isPas = spellIsPassive(id);
+            if (isPas && pas >= PASSIVE_SLOT_MAX) continue;   // THE PASSIVE CAP — the third passive row is skipped (earlier picks win)
+            out.push(id);
+            sp += c;
+            if (isPas) pas++;
+        }
+        return out;
+    };
+    /* ADAPTABLE (THE JOBS REMOVAL, 2026-09-27): a borrowed pick is legal only while the Adaptable row survives the walk —
+       when the walk drops the row (slots / SP / the passive cap), walk again without the borrow window. */
+    if (loadoutBorrows(wish)) {
+        const out = walk(true);
+        if (loadoutBorrows(out)) return out;
     }
-    return out;
+    return walk(false);
 }
 
 /* A random legal kit for the AI / the RANDOM buttons: random affordable picks until nothing fits (slots or SP).
-   A Freelancer leans on its own race row (weight 6) over the borrowable catalogue (weight 1). Retries a few times
+   The race's families weigh 6, a universal passive row 1. Retries a few times
    so a CPU unit never rolls an all-utility kit. `budget` = a slot cap under SPELL_SLOT_MAX (optional). */
 function buildTreeLegalLoadout(race, cls, secJob, budget, rng) {
     if (!classHasSpellTree(cls)) return [];
@@ -18695,9 +18152,9 @@ function buildTreeLegalLoadout(race, cls, secJob, budget, rng) {
     const rand = (typeof rng === 'function') ? rng : Math.random;
     const parts = unitSpellPoolParts(race, cls);
     const weighted = [];
-    for (const id of parts.race.concat(parts.job, parts.wheel)) if (!_spellSealed(id)) weighted.push([id, 6]);
-    for (const id of parts.borrowRace.concat(parts.borrowJob)) if (!_spellSealed(id)) weighted.push([id, 1]);
-    for (const id of (parts.gear || [])) if (!_spellSealed(id) && !weighted.some(w => w[0] === id)) weighted.push([id, 1]);   // THE GEAR POOL (Phase 4): a rare pick
+    for (const id of parts.race.concat(parts.wheel)) if (!_spellSealed(id)) weighted.push([id, 6]);
+    // THE GEAR POOL (Phase 4): a rare pick — never Adaptable (a random kit has no borrowed spells to open)
+    for (const id of (parts.gear || [])) if (!_spellSealed(id) && id !== ADAPTABLE_ROW_ID && !weighted.some(w => w[0] === id)) weighted.push([id, 1]);
     const attempt = () => {
         const picks = [];
         let sp = 0;
@@ -18737,7 +18194,7 @@ function _flTierOf(sp) { return spellTierNumeral(sp); }
    spellTierOf reads the row's numeric `tier` first (above).
    THE RULINGS (the user, 2026-09-25): tiers and costs are the user's to set per row; passives and equipment are one
    kind of row equipped in the spell slots, AT MOST 2 of the 7 (PASSIVE_SLOT_MAX — enforced in Phase 4); today's 17
-   accessories are UNIVERSAL — the GEAR family every pool carries, a Freelancer's too, priced tier I by default. */
+   accessories are UNIVERSAL — the GEAR family every pool carries, priced tier I by default. */
 const PASSIVE_SLOT_MAX = 2;   // passive / equipment rows among the 7 slots (enforced since Phase 4: spellAddVerdict / isTreeLoadoutLegal / treeLegalSubset)
 
 /* ══ THE PASSIVES (SPELL_LIBRARY_PLAN.md §4.5 / §6.4, Phase 4, 2026-09-26) ═══════════════════════════════════════════
@@ -18877,6 +18334,28 @@ const PASSIVE_HOOK_KEYS = {
     basicEcho:             { type: 'number', example: 0.5, reads: 'basic attack', desc: 'basic attacks strike again for this fraction' },
     revealInvisibleWithin: { type: 'number', example: 4, reads: 'processEndOfRoundRegen', desc: 'round end: invisible enemies within N are revealed' },
     revealTrapsWithin:     { type: 'number', example: 3, reads: 'processEndOfRoundRegen', desc: 'round end: enemy traps within N are revealed to the team' },
+    // THE TRAINING (THE JOBS REMOVAL, 2026-09-27) — the old job passives' effects as keys; two rows stack (Σ / Π / max)
+    critMult:              { type: 'number', example: 2.0, reads: 'basic attack crit (max)', desc: 'basic-attack crit damage × (default 1.8)' },
+    basicDmgMult:          { type: 'number', example: 1.15, reads: 'basic attack (product)', desc: 'basic-attack damage ×' },
+    counterChance:         { type: 'number', example: 0.3, reads: 'counterattack (max)', desc: 'chance to counter when struck in melee' },
+    counterAtkPct:         { type: 'number', example: 0.6, reads: 'counterattack (max)', desc: 'counter damage as a fraction of ATK (default 0.4)' },
+    armor:                 { type: 'number', example: 5, reads: 'createUnit (sum)', desc: 'flat armor' },
+    damageSoak:            { type: 'number', example: 8, reads: 'applyDamageToUnit (sum)', desc: 'incoming damage reduced by N' },
+    spellPower:            { type: 'number', example: 8, reads: 'spell damage (sum)', desc: '+spell damage on every cast' },
+    healBonus:             { type: 'number', example: 24, reads: 'heals cast (sum)', desc: '+healing power' },
+    healRangeBonus:        { type: 'number', example: 2, reads: 'heal / revive range (sum)', desc: '+tiles on heal and revive spells' },
+    scannerCap:            { type: 'number', example: 2, reads: 'scanners (max)', desc: 'scanners the unit may carry' },
+    inspectBonus:          { type: 'number', example: 1, reads: 'createUnit (sum)', desc: '+inspect reach' },
+    debuffTurnsBonus:      { type: 'number', example: 1, reads: 'applyStatusPayload (sum)', desc: 'debuffs it applies last +N turns' },
+    buffTurnsBonus:        { type: 'number', example: 1, reads: 'applyStatusPayload (sum)', desc: 'buffs it applies last +N turns' },
+    teleportMpDiscount:    { type: 'number', example: 1, reads: 'teleport cost (sum)', desc: 'teleport MP −N' },
+    lifeSapMult:           { type: 'number', example: 1.2, reads: 'Life Sap (product)', desc: 'Life Sap healing ×' },
+    plantedTrees:          { type: 'bool',   example: true, reads: 'getPlantedTreeBonus', desc: 'its seeds grow trees that buff it' },
+    turretRangeBonus:      { type: 'number', example: 1, reads: 'turrets (sum)', desc: '+turret range' },
+    repairMult:            { type: 'number', example: 1.2, reads: 'Repair (product)', desc: 'Repair healing ×' },
+    lullabyRangeBonus:     { type: 'number', example: 1, reads: 'Lullaby range (sum)', desc: '+tiles on Lullaby' },
+    borrowFamilies:        { type: 'bool',   example: true, reads: 'unitSpellPoolParts', desc: 'the loadout may borrow other races\' families (Adaptable)' },
+    swim:                  { type: 'bool',   example: true, reads: 'movement', desc: 'can swim' },
 };
 /* the passive-row lint (spellLint): unknown hook keys, a passive without hooks */
 function passiveHookLint(d) {
@@ -19058,6 +18537,8 @@ const SPELL_FAMILIES = {
     },
     /* THE GEAR POOL (the user, 2026-09-25): today's 17 accessories become passive rows here in Phase 4 — universal, tier I by default. */
     gear:      { id: 'gear',      name: 'Gear',      glyph: '◈', color: '#d9d2b8', kind: 'support', desc: 'Equipment as passive rows: the universal accessories every unit may carry (at most 2 passive / gear rows among the 7 slots).', unique: null, universal: true },
+    /* THE TRAINING (THE JOBS REMOVAL, the user 2026-09-27): the 13 old job passives, universal like GEAR, 1 SP each. */
+    training:  { id: 'training',  name: 'Training',  glyph: '✦', color: '#c9b27a', kind: 'support', desc: 'Edges any unit can train: 1 SP each, at most 2 passive or gear rows among the 7 slots.', unique: null, universal: true },
     /* THE DOOR WHEEL: the Door Agent's own family — the standing doors (DOOR_GUN_SPELLS), never borrowable. */
     doors:     {
         id: 'doors',
@@ -20397,21 +19878,23 @@ function spellUpgradeLabel(upId) {
    Phase 6 filled it from the catalogue. A race's pool is its RACE_TREE row plus every member of these families (unitSpellPoolParts);
    the library's POOLS tab edits it. Every spell sits in exactly ONE family (spell-families.test.js). */
 const RACE_FAMILIES = {
+    /* THE JOBS REMOVAL (2026-09-27): MARKSMANSHIP (the Sniper's shots) and AGRICULTURE (the Harvester's seeds) sat on no
+       race — the job was their only road — so they go to the races whose default job was Sniper / Harvester. */
     ai: ['artificialintelligence', 'computerhacking', 'internetaddiction'],
     android: ['robot', 'computerhacking', 'cyberpunkweapons'],
     angel: ['angelic', 'light', 'wind', 'healingmagic'],
-    annunaki: ['cosmic', 'ancientknowledge', 'earth'],
+    annunaki: ['cosmic', 'ancientknowledge', 'earth', 'marksmanship'],
     antihero: ['dirtyfighting', 'cosmic', 'superheropowers'],
-    antperson: ['insectoid', 'poison', 'teamwork'],
+    antperson: ['insectoid', 'poison', 'teamwork', 'agriculture'],
     anubis: ['ancientknowledge', 'necromancy', 'desertacclimation'],
     atlantean: ['water', 'ice', 'arcane'],
     barbarella: ['alientechnology', 'seduction', 'astronautcamp'],
-    bigfoot: ['sasquatch', 'nature', 'cryptid'],
+    bigfoot: ['sasquatch', 'nature', 'cryptid', 'agriculture'],
     'black goo': ['ooze', 'poison', 'alientechnology'],
     catgirl: ['feline', 'athleticism', 'seduction'],
     'chosen one': ['maincharacter', 'psychic', 'light'],
     'conspiracy theorist': ['conspiracyknowledge', 'internetaddiction', 'advancedtechnology'],
-    'cosmic wraith': ['cosmic', 'shadow', 'temporal'],
+    'cosmic wraith': ['cosmic', 'shadow', 'temporal', 'marksmanship'],
     cowboy: ['cowboyskills', 'huntingskills', 'weaponstraining', 'horsebackriding', 'ropework'],
     'cult leader': ['cult', 'temporal', 'persuasion', 'healingmagic', 'meditation'],
     cyborg: ['cyberpunkweapons', 'robot', 'humangrit'],
@@ -20448,14 +19931,14 @@ const RACE_FAMILIES = {
     kaiju: ['kaiju', 'earth', 'deepsea'],
     'ki fighter': ['ki', 'martialarts', 'athleticism'],
     'king arthur': ['royalty', 'knight', 'swordsmanship'],
-    'king kong': ['kaiju', 'beastabilities', 'apeintelligence'],
+    'king kong': ['kaiju', 'beastabilities', 'apeintelligence', 'agriculture'],
     knight: ['knight', 'royalty', 'swordsmanship', 'horsebackriding'],
     kraken: ['deepsea', 'water', 'wind', 'tentacleappendages'],
     'loch ness monster': ['deepsea', 'water', 'cryptid', 'ice'],
     'machine elves': ['prismlattice', 'fractal', 'psychadelic', 'trickery'],
     'mad scientist': ['unethicalscience', 'advancedtechnology', 'chemistry'],
     mantid: ['insectoid', 'fractal', 'psychic'],
-    marksman: ['militarysupport', 'weaponstraining', 'huntingskills'],
+    marksman: ['militarysupport', 'weaponstraining', 'huntingskills', 'marksmanship'],
     martian: ['alientechnology', 'ufo', 'fire', 'desertacclimation'],
     mech: ['mecha', 'militarysupport', 'cyberpunkweapons'],
     'men in black': ['spygear', 'advancedtechnology', 'alientechnology', 'deepstate'],
@@ -20474,15 +19957,15 @@ const RACE_FAMILIES = {
     politician: ['politics', 'deepstate', 'militarysupport'],
     popstar: ['stagepresence', 'sonic', 'seduction', 'musictheory'],
     priest: ['biblestudy', 'light', 'angelic', 'healingmagic'],
-    quarterback: ['football', 'athleticism', 'teamwork'],
+    quarterback: ['football', 'athleticism', 'teamwork', 'marksmanship'],
     reptilian: ['conspiracyknowledge', 'trickery', 'poison', 'spygear'],
-    robinhood: ['archery', 'huntingskills', 'thievery'],
+    robinhood: ['archery', 'huntingskills', 'thievery', 'marksmanship'],
     robot: ['robot', 'machinery', 'cyberpunkweapons'],
     'santa clause': ['christmasspirit', 'winter', 'ice'],
-    scarecrow: ['scarecrow', 'witchcraft', 'nature'],
+    scarecrow: ['scarecrow', 'witchcraft', 'nature', 'agriculture'],
     seraphim: ['angelic', 'biblestudy', 'light'],
     'shadow entity': ['shadow', 'haunted', 'spygear'],
-    shaman: ['nature', 'psychadelic', 'astralprojection'],
+    shaman: ['nature', 'psychadelic', 'astralprojection', 'agriculture'],
     siren: ['sonic', 'water', 'seduction'],
     skeleton: ['bonedensity', 'haunted', 'swordsmanship'],
     skinwalker: ['trickery', 'beastabilities', 'blackmagic', 'cryptid'],
@@ -20661,7 +20144,6 @@ function stampSpellSchema() {
 function spellReachableIds() {
     const out = new Set();
     // RACE_TREE is not read: THE FAMILIES AS POOLS (Phase 7) — a race's spells are its families' members (below)
-    if (typeof CLASS_TREE !== 'undefined') for (const ids of Object.values(CLASS_TREE)) for (const id of (ids || [])) out.add(id);
     if (typeof DOOR_GUN_SPELLS !== 'undefined') for (const sp of DOOR_GUN_SPELLS) out.add(sp.id);
     for (const id of universalPassiveIds()) out.add(id);   // THE GEAR POOL: in every unit's pool (Phase 4)
     if (typeof RACE_FAMILIES !== 'undefined') for (const race of Object.keys(RACE_FAMILIES)) for (const id of raceFamilyPoolIds(race)) out.add(id);   // THE FAMILY POOL (Phase 6)
@@ -21057,9 +20539,8 @@ const STAT_HELP = {
 Object.assign(window, {
   critChanceFromStats, evasionChanceFromStats, STAT_HELP,
   STAT_GRADE_LETTERS, STAT_GRADE_BANDS, STAT_GRADE_COLORS, STAT_GRADE_FACE, statGrade, statGradePct, statGradeNode, statGradeNodeHtml, statGradeChipHtml,
-  moveFromSpd, RACE_BASE_STATS, JOB_KITS,
-  CONFIG, EQUIP_DEFS, RACE_PROFILES, AVAILABLE_RACES, RACE_DEFAULT_JOBS,
-  MAX_UNIT_PASSIVES, PASSIVE_DEFS, RACE_PASSIVES,
+  moveFromSpd, RACE_BASE_STATS, RACE_KITS, raceKit, UNIT_CLASS, DEFAULT_IDENTITY, DEFAULT_PARTY_RACES,
+  TRAINING_PASSIVES, ADAPTABLE_ROW_ID, loadoutBorrows, unitPassiveSum, unitPassiveMult, unitPassiveMax, CONFIG, EQUIP_DEFS, RACE_PROFILES, AVAILABLE_RACES, MAX_UNIT_PASSIVES, PASSIVE_DEFS, RACE_PASSIVES,
   getUnitPassives, unitHasPassive, unitPassiveValue, unitPassiveBlocksStatus,
   /* type chart + the Entropy Strike's six apocalypses (2026-09-07) */
   TYPE_CHART, STAB_MULTIPLIER, ENTROPY_STRIKE_TYPE_ORDER, ENTROPY_STRIKE_TYPES,
@@ -21073,8 +20554,7 @@ Object.assign(window, {
   /* THE ELEMENT BOX + THE ELEMENT KNOWLEDGE (2026-09-23) */
   ELEM_KNOWLEDGE_KEY, ELEM_REACTION_UI, elemSeenRecord, elemSeenMark, elemSeenFold,
   elemAffinityKnown, elemAffinityBox, elemAffinityBoxHtml, elemPressTier,
-  AVAILABLE_ZODIACS, ZODIAC_ICONS, JOB_MODIFIERS, CLASS_TEMPLATES,
-  JOB_PASSIVES, CLASS_PASSIVES, getJobPassive,
+  AVAILABLE_ZODIACS, ZODIAC_ICONS, CLASS_TEMPLATES,
   DEFAULT_BUILDS, ITEM_RULES, SPELL_LIBRARY, SPELL_SLOT_MAX,
   SPELL_BY_ID, RACE_ABILITY_BY_ID, STATUS_DEFS,
   getSpellSlotCost, getSpellIdsSlotCost, trimSpellIdsToSlotBudget,
@@ -21085,10 +20565,10 @@ Object.assign(window, {
   ewUnitLevel, levelGrowthDeficit, levelPowerStat, levelGapMult,
   XP_CURVE, xpThreshold, xpLevelFor, xpToNext,
   offenseScale, offenseMagnitude, defenseScale, supportScale,
-  getSpellUnlockLevel, SPELL_SHOP_LEVEL, SECONDARY_JOB_LEVEL, AP_BONUS_LEVELS,
+  getSpellUnlockLevel, SPELL_SHOP_LEVEL, AP_BONUS_LEVELS,
   MODE_LEVEL_RULES, isProgressionMode, RACE_XP_YIELD_OVERRIDES, getRaceXpYield,
   getRaceLabel, GAUNTLET_MAX_LEVEL, getGauntletRetryCost,
-  computeSecJobBonuses, computeEquipBonuses,
+  computeEquipBonuses,
   ACCT_UNIT_PRICE, ACCT_BASE_COMPLETE, ACCT_WIN_MULT, ACCT_FLAWLESS_MULT,
   ACCT_WIPEOUT_MULT, ACCT_STARTING_GOLD, ACCT_FREE_TOKENS, ACCT_MATCH_GOLD_CAP,
   ACCT_STARTER_UNITS, ACCT_PVP_MODES, isUnitUnlocked, isUnitOwned, unitRosterScope, computeAccountMatchGold,
@@ -21097,7 +20577,7 @@ Object.assign(window, {
   mergeProgressBlobs, achUnlockKeyReward, achCountMasteredChamps, achComputeSyncRewards, hqFindsSyncPay,
   STEAM_STAT_DEFS, STEAM_ACH_DEFS, steamComputeStats, steamEvalAchievements,
   /* spell tree (Tree of Life selector) */
-  CLASS_TREE, RACE_TREE, classHasSpellTree, getClassTreeSpells, getRaceTreeSpells,
+  RACE_TREE, classHasSpellTree, getRaceTreeSpells,
   getRaceTreeRow, getRaceTreeAlts, getRaceTreeAllIds,   // twin nodes (CHAMP_REWORK_PLAN §4)
   TREE_RING_MP_COSTS, buildTreeRingIndex, getTreeRingCost, applyTreeRingCosts, snapCostToLadder,
   getTreeEdges, buildUnitSpellTree, isTreeLoadoutLegal, treeLegalSubset,
@@ -21121,8 +20601,8 @@ Object.assign(window, {
   GEAR_PASSIVES, GEAR_ID_OF_ACCESSORY, PASSIVE_HOOK_KEYS, spellIsPassive, passiveRowCount, universalPassiveIds,
   unitPassiveRowIds, passiveRowWrap, gearMigrateIds, passiveRowsEquipmentMirror, unitHasGear, unitPassiveStatBonus,
   passiveIdsStatBonus, passiveHookLint,
-  /* the Freelancer borrows any race / job ability */
-  flWildcardPool, flRacePool, _flTierOf, treeRingOfSpell,
+  /* an Adaptable kit borrows other races' families (THE JOBS REMOVAL, 2026-09-27) */
+  flRacePool, _flTierOf, treeRingOfSpell,
 });
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -48355,7 +47835,7 @@ function hqPartyRecord(profile) {
 }
 function hqPartyNormMember(m, r) {
     if (!m.id) m.id = 'p' + (r.seq++);
-    m.cls = String(m.cls || 'Freelancer');
+    m.cls = UNIT_CLASS;   // THE JOBS REMOVAL (2026-09-27): one neutral class for every member
     m.name = typeof m.name === 'string' ? m.name.slice(0, 24) : '';
     if (!m.meta || typeof m.meta !== 'object') m.meta = {};
     if (!m.meta.race) m.meta.race = 'homosapien';
@@ -48393,10 +47873,18 @@ function hqPartyUnlocked(profile) {
     if (caught.length) owned = owned.concat(caught);
     return all.filter(r => (dev || owned.indexOf(r) >= 0) && (typeof isRace3DReady !== 'function' || isRace3DReady(r)));
 }
-function hqPartyDefaultJob(race) {
-    if (typeof RACE_DEFAULT_JOBS !== 'undefined' && RACE_DEFAULT_JOBS[race]) return RACE_DEFAULT_JOBS[race];
-    return race === 'homosapien' ? 'Freelancer' : 'Warrior';
+/* THE JOBS REMOVAL (2026-09-27): no jobs — every member's class is the one neutral UNIT_CLASS (the old name stays for callers) */
+function hqPartyDefaultJob(race) { return UNIT_CLASS; }
+/* THE DEFAULT KIT (THE JOBS REMOVAL, 2026-09-27): `lead` ids first, then the race's four curated rungs, then the rest of
+   its families cheapest first — trimmed to the 7 slots / 16 SP by treeLegalSubset. The forge's DEFAULTS and THE OFFICER's
+   starting kit (lead = the Adaptable row: the story rule "only learn spells of units you have unlocked" rides on it). */
+function raceDefaultKit(race, lead) {
+    const rung = (typeof getRaceTreeSpells === 'function') ? (getRaceTreeSpells(race, UNIT_CLASS) || []) : [];
+    const fam = raceFamilyPoolIds(race).slice().sort((a, b) => spellTierOf(a) - spellTierOf(b));
+    const wish = (lead || []).concat(rung, fam).filter(Boolean);
+    return treeLegalSubset(race, UNIT_CLASS, '', wish);
 }
+function hqOfficerKit(race) { return raceDefaultKit(race || HQ_OFFICER_RULES.race, [ADAPTABLE_ROW_ID]); }
 function hqPartyGenders(race) {
     let g = null;
     try { g = (typeof getAvailableGendersForRace === 'function') ? getAvailableGendersForRace(race) : null; } catch (e) { g = null; }
@@ -48405,21 +47893,23 @@ function hqPartyGenders(race) {
 /* ══ THE INTAKE (2026-09-21) — the first thing a new profile does is create its agent ══
    The user: "the first thing you do when you start a new profile is create a character. They should be a
    Freelancer DOOR agent, but you can only learn spells of units you have unlocked in your roster."
-   THE OFFICER is a FREELANCER D.O.O.R. AGENT (HQ_OFFICER_RULES.race / .cls) wearing the LOOK the intake's
+   THE JOBS REMOVAL (the user, 2026-09-27): the Freelancer job is gone — the officer's borrowing is the ADAPTABLE
+   training row, equipped in his starting kit (hqOfficerKit); he may take it off like any passive.
+   THE OFFICER is a D.O.O.R. AGENT (HQ_OFFICER_RULES.race) wearing the LOOK the intake's
    creator filed — the mirror's own record (door.hq.look: the creator appearance, the gender, the name, THE
    PHOTO on the ID card). `door.hq.officer = { created, at, race, cls, name }` says the intake was done;
    map.js _goToPlayHub sends a profile without one to THE INTAKE (the creator, party-builder.js
    OfficerCreator in intake mode) before the building opens. hqOfficerEnlist(profile, look) is the ONE
    write (pure over the profile handed in — THE CALLER SAVES ONCE): the look, the chair ('look'), the
    record, and member 0 of THE PARTY rewritten in place (its id, its ledger and its vitals kept; a race /
-   job change drops the old customSpells — the tree is another). The mirror's SAVE re-files it, so a new
-   haircut walks into the next fight. The Freelancer's socket pools read THE ROSTER LEDGER in story
-   scope (flPoolOwnedOnly, below the FREELANCER block) — a socket offers only what the account owns. */
+   change starts the officer's kit over — hqOfficerKit). The mirror's SAVE re-files it, so a new
+   haircut walks into the next fight. Adaptable's borrow window reads THE ROSTER LEDGER in story
+   scope (flPoolOwnedOnly, the ADAPTABLE block) — it offers only what the account owns. */
 const HQ_OFFICER_RULES = {
     race: 'door agent',      // the officer's vessel — a D.O.O.R. Agent in the creator's clothes (sprites.js EW_CREATOR_LOOK_RACES)
-    cls: 'Freelancer',       // the officer's job — the socket racks, filled from the roster you own
+    cls: 'Vessel',           // THE JOBS REMOVAL (2026-09-27): no job — the one neutral class (UNIT_CLASS)
     intake: true,            // false = Play opens the building without the intake (dev: ?nointake / EW_HQ_NO_INTAKE)
-    labels: { title: 'THE INTAKE', sub: 'D.O.O.R. HEADQUARTERS · FORM 1 · YOUR AGENT', brief: 'A FREELANCER D.O.O.R. AGENT · YOUR LOOK, YOUR NAME · LEVEL 5 · THE SOCKETS TAKE THE SPELLS OF THE VESSELS YOU OWN', enlist: 'ENLIST · FILE THE AGENT', back: 'BACK TO THE MENU' },
+    labels: { title: 'THE INTAKE', sub: 'D.O.O.R. HEADQUARTERS · FORM 1 · YOUR AGENT', brief: 'A D.O.O.R. AGENT · YOUR LOOK, YOUR NAME · LEVEL 5 · ADAPTABLE BORROWS THE SPELLS OF THE VESSELS YOU OWN', enlist: 'ENLIST · FILE THE AGENT', back: 'BACK TO THE MENU' },
 };
 function hqOfficerRecord(profile) {
     try { const r = profile && profile.door && profile.door.hq && profile.door.hq.officer; return (r && typeof r === 'object') ? r : null; } catch (e) { return null; }
@@ -48443,13 +47933,13 @@ function hqOfficerEnlist(profile, look) {
         m0.you = true; m0.cls = spec.cls; m0.name = spec.name;
         const meta = Object.assign({}, m0.meta || {}, spec.meta);
         if (!spec.meta.appearance) delete meta.appearance;
-        if (changed) { delete meta.customSpells; delete meta.secondaryJob; m0.loadout.spells = []; }
+        if (changed) { delete meta.secondaryJob; meta.customSpells = hqOfficerKit(spec.meta.race); m0.loadout.spells = meta.customSpells.slice(); }
         m0.meta = meta;
         rec.at = Date.now();
     } else hqPartyEnsure(profile);
     return H.officer;
 }
-/* THE OFFICER: the walker as a member — the enlisted agent (a Freelancer D.O.O.R. Agent in the intake's look), else the
+/* THE OFFICER: the walker as a member — the enlisted agent (a D.O.O.R. Agent in the intake's look, Adaptable in his kit), else the
    mirror's look (Homosapien in the creator's clothes), the barbershop's race pick, else the DOOR Agent */
 function hqPartyOfficer(profile) {
     let pref = null, look = null;
@@ -48468,7 +47958,9 @@ function hqPartyOfficer(profile) {
     if (!name) name = String((profile && profile.username) || 'THE OFFICER').slice(0, 24);
     const meta = { race, gender };
     if (appearance) meta.appearance = appearance;
-    return { you: true, cls: cls || hqPartyDefaultJob(race), name, meta, loadout: { spells: [], items: { healPotion: 2, manaPotion: 1 }, equipment: {} }, hp: null, hpMax: null, mp: null, mpMax: null };
+    const kit = (off && off.created) ? hqOfficerKit(race) : [];
+    if (kit.length) meta.customSpells = kit.slice();
+    return { you: true, cls: UNIT_CLASS, name, meta, loadout: { spells: kit, items: { healPotion: 2, manaPotion: 1 }, equipment: {} }, hp: null, hpMax: null, mp: null, mpMax: null };
 }
 /* a member off a LAST ROSTER row (state.js recordLastParty's shape) — the officer's own crossings seed the party */
 function hqPartyMemberFromRoster(m) {
@@ -48573,8 +48065,8 @@ function hqPartyResync(profile, units) {
 }
 /* ══ THE SPELL TIERS IN THE FIELD (2026-09-24 — the tier rework; was THE CIRCUIT IN THE FIELD, 2026-09-21) — the pause
    menu equips abilities by the SAME rules as the forge, through these pure helpers: the pool is unitSpellPoolParts, a
-   click on an ability toggles it (spellAddVerdict says why an add is refused — no slot, not enough SP, sealed), a
-   Freelancer's BORROW key ('B1'–'B4') opens a picker over every race / job ability of that tier, the caps are
+   click on an ability toggles it (spellAddVerdict says why an add is refused — no slot, not enough SP, sealed), an
+   Adaptable kit's BORROW key ('B1'–'B4', 'B0') opens a picker over the borrowable families (THE JOBS REMOVAL), the caps are
    SPELL_SLOT_MAX (7) and SPELL_SP_MAX (16), and every write lands through isTreeLoadoutLegal / treeLegalSubset —
    never a lock on a saved row. The member's record keeps ONE list in two places (meta.customSpells = what createUnit
    reads; loadout.spells = the mirror every older reader prints). Nothing on `state`, nothing relayed (RULE #2: the
@@ -48588,12 +48080,12 @@ function hqPartySpellIds(m) {
 function hqPartySpellCap() { return (typeof SPELL_SLOT_MAX !== 'undefined') ? SPELL_SLOT_MAX : 7; }
 function hqPartySpellTree(m) {
     if (!m) return null;
-    const race = (m.meta && m.meta.race) || 'homosapien', cls = m.cls || 'Freelancer';
-    if (typeof classHasSpellTree === 'function' && !classHasSpellTree(cls)) return null;
+    const race = (m.meta && m.meta.race) || 'homosapien', cls = UNIT_CLASS;
     const equipped = hqPartySpellIds(m);
-    const parts = unitSpellPoolParts(race, cls);
+    const parts = unitSpellPoolParts(race, cls, equipped);   // the Adaptable row in the kit opens the borrow part
     const ups = treeLegalUpgrades(race, cls, equipped, m.meta && m.meta.spellUpgrades);   // THE UPGRADES (Phase 5): as createUnit will keep them
-    return { parts, equipped, ups, race, cls, cap: hqPartySpellCap(), spMax: SPELL_SP_MAX, spUsed: loadoutSpUsed(equipped, ups), isFreelancer: cls === 'Freelancer' };
+    const borrows = loadoutBorrows(equipped);
+    return { parts, equipped, ups, race, cls, cap: hqPartySpellCap(), spMax: SPELL_SP_MAX, spUsed: loadoutSpUsed(equipped, ups), borrows, isFreelancer: borrows };
 }
 /* one ability's state for the rack: equipped · ok · slots (no slot left) · sp (not enough SP) · sealed */
 function hqPartySpellState(T, id, poolSet) {
@@ -48602,38 +48094,39 @@ function hqPartySpellState(T, id, poolSet) {
     return v.ok ? 'ok' : v.reason;
 }
 /* THE MODEL the pause menu draws: four tier rows, IV → I, every ability of the unit's pool on its tier with its state;
-   a Freelancer's rows also carry its borrowed (equipped) abilities and a BORROW key per tier. */
+   an Adaptable kit's rows also carry its borrowed (equipped) abilities and a BORROW key per tier. (`isFreelancer` is the
+   old name of `borrows`, kept for the drawer.) */
 function hqPartyTreeCircuit(m) {
     const T = hqPartySpellTree(m);
     if (!T) return null;
     const { parts, equipped, cap } = T;
     const spOf = id => (id && typeof SPELL_BY_ID !== 'undefined') ? (SPELL_BY_ID[id] || null) : null;
     const gear = parts.gear || [];
-    const poolSet = new Set(parts.race.concat(parts.job, parts.wheel || [], gear, parts.borrowRace, parts.borrowJob));
-    const own = parts.race.map(id => [id, 'race']).concat(parts.job.map(id => [id, 'job']), (parts.wheel || []).map(id => [id, 'wheel']));
-    const borrowed = T.isFreelancer ? equipped.filter(id => !parts.race.includes(id) && !gear.includes(id) && poolSet.has(id)).map(id => [id, parts.borrowRace.includes(id) ? 'borrowRace' : 'borrowJob']) : [];
+    const poolSet = new Set(parts.race.concat(parts.wheel || [], gear, parts.borrowRace));
+    const own = parts.race.map(id => [id, 'race']).concat((parts.wheel || []).map(id => [id, 'wheel']));
+    const borrowed = T.borrows ? equipped.filter(id => !parts.race.includes(id) && !gear.includes(id) && poolSet.has(id)).map(id => [id, 'borrowRace']) : [];
     const tiers = [];
     for (let t = 4; t >= 1; t--) {
         const rows = own.concat(borrowed).filter(([id]) => !spellIsPassive(id) && spellTierOf(id) === t).map(([id, source]) => {
             const st = hqPartySpellState(T, id, poolSet);
             return { id, sp: spOf(id), st, source, cost: t };
         });
-        const borrowKey = T.isFreelancer ? 'B' + t : null;
-        tiers.push({ tier: t, numeral: SPELL_TIER_NUMERALS[t], cost: SPELL_TIER_SP[t], rows, borrow: borrowKey, borrowCount: borrowKey ? parts.borrowRace.concat(parts.borrowJob).filter(id => spellTierOf(id) === t).length : 0 });
+        const borrowKey = T.borrows ? 'B' + t : null;
+        tiers.push({ tier: t, numeral: SPELL_TIER_NUMERALS[t], cost: SPELL_TIER_SP[t], rows, borrow: borrowKey, borrowCount: borrowKey ? parts.borrowRace.filter(id => spellTierOf(id) === t).length : 0 });
     }
     /* ◈ THE PASSIVES (SPELL_LIBRARY_PLAN.md Phase 4): the passive / gear rows, out of the tier rows — the unit's own first, then
-       the universal GEAR; each priced by its tier; at most PASSIVE_SLOT_MAX equipped */
+       the universal GEAR + TRAINING; each priced by its tier; at most PASSIVE_SLOT_MAX equipped */
     const pasRows = own.concat(borrowed).filter(([id]) => spellIsPassive(id)).concat(gear.filter(id => !own.some(([o]) => o === id)).map(id => [id, 'gear']))
         .map(([id, source]) => ({ id, sp: spOf(id), st: hqPartySpellState(T, id, poolSet), source, cost: spellSpCost(id) }));
     const passives = { rows: pasRows, used: passiveRowCount(equipped), max: PASSIVE_SLOT_MAX };
     /* THE RACK BY FAMILY (SPELL_LIBRARY_PLAN.md §9 row 7, Phase 7): the same rows folded by family (spellFamilyGroups — the
-       race's families first, then a job's / a borrowed row's family), each chip still priced by its tier; a Freelancer's one
+       race's families first, then a borrowed row's family), each chip still priced by its tier; an Adaptable kit's one
        ＋ BORROW key 'B0' opens the picker over every tier, family by family. The pause menu shows either fold. */
     const srcOf = new Map(own.concat(borrowed));
     const families = spellFamilyGroups(own.concat(borrowed).map(([id]) => id).filter(id => !spellIsPassive(id)), T.race).map(g => Object.assign(g, {
         rows: g.ids.map(id => ({ id, sp: spOf(id), st: hqPartySpellState(T, id, poolSet), source: srcOf.get(id) || 'race', cost: spellSpCost(id) })),
     }));
-    const borrowAll = T.isFreelancer ? { key: 'B0', count: parts.borrowRace.length + parts.borrowJob.length } : null;
+    const borrowAll = T.borrows ? { key: 'B0', count: parts.borrowRace.length } : null;
     const dropped = equipped.filter(id => !poolSet.has(id));
     /* ⚙ THE UPGRADES (SPELL_LIBRARY_PLAN.md §6.3, Phase 5): every equipped spell that takes upgrades, with each allowed upgrade's
        state (on · ok · the verdict's reason) — the rack's ⚙ section */
@@ -48646,13 +48139,13 @@ function hqPartyTreeCircuit(m) {
                 return { id: u, row: SPELL_UPGRADES[u], st: v.ok ? 'ok' : v.reason, cost: spellUpgradeSp(u), note: v.note };
             }) };
     });
-    return { tiers, families, borrowAll, passives, upgrades, ups: T.ups, upMax: SPELL_UPGRADE_MAX, equipped: equipped.slice(), used: equipped.length, cap, spUsed: T.spUsed, spMax: T.spMax, isFreelancer: T.isFreelancer, unplaced: dropped, race: T.race, cls: T.cls };
+    return { tiers, families, borrowAll, passives, upgrades, ups: T.ups, upMax: SPELL_UPGRADE_MAX, equipped: equipped.slice(), used: equipped.length, cap, spUsed: T.spUsed, spMax: T.spMax, borrows: T.borrows, isFreelancer: T.borrows, unplaced: dropped, race: T.race, cls: T.cls };
 }
 /* THE ONE WRITE: a member's spell list, made legal (the forge's own repair), into both places */
 function hqPartySetSpells(profile, memberId, ids) {
     const r = hqPartyRecord(profile); if (!r) return { ok: false, reason: 'noprofile' };
     const m = r.members.find(x => x.id === memberId); if (!m) return { ok: false, reason: 'member' };
-    const race = m.meta.race || 'homosapien', cls = m.cls;
+    const race = m.meta.race || 'homosapien', cls = UNIT_CLASS;
     let out = (ids || []).filter(Boolean);
     out = out.filter((id, i) => out.indexOf(id) === i);
     let trimmed = false;
@@ -48667,14 +48160,14 @@ function hqPartySetSpells(profile, memberId, ids) {
     return { ok: true, ids: out.slice(), trimmed, member: m };
 }
 /* THE CLICK — `key` is an ability id (altId, the old fork option, wins when given): equipped → unequip it (just it);
-   else equip it when the verdict allows; a Freelancer BORROW key → the picker (the caller's). */
+   else equip it when the verdict allows; an Adaptable kit's BORROW key → the picker (the caller's). */
 function hqPartyTreeClick(profile, memberId, key, altId) {
     const r = hqPartyRecord(profile); if (!r) return { ok: false, reason: 'noprofile' };
     const m = r.members.find(x => x.id === memberId); if (!m) return { ok: false, reason: 'member' };
-    const T = hqPartySpellTree(m); if (!T) return { ok: false, reason: 'notree', note: 'THIS JOB HAS NO SPELLS TO PICK' };
+    const T = hqPartySpellTree(m); if (!T) return { ok: false, reason: 'notree', note: 'NO SPELLS TO PICK' };
     if (key === 'root') return { ok: false, reason: 'root', note: 'THE BASIC ATTACK IS ALWAYS EQUIPPED' };
     if (/^B[0-4]$/.test(String(key || ''))) {   // 'B0' = every tier (the rack by family, Phase 7)
-        if (!T.isFreelancer) return { ok: false, reason: 'empty', note: 'ONLY A FREELANCER BORROWS' };
+        if (!T.borrows) return { ok: false, reason: 'empty', note: 'EQUIP ADAPTABLE TO BORROW' };
         return { ok: false, reason: 'socket', note: 'BORROW · PICK FROM THE POOL', socket: key };
     }
     const id = altId || key;
@@ -48690,15 +48183,15 @@ function hqPartyTreeClick(profile, memberId, key, altId) {
     const w = hqPartySetSpells(profile, memberId, T.equipped.concat([id]));
     return { ok: true, kind: 'equip', ids: w.ids, added: [id], note: 'EQUIPPED · TIER ' + SPELL_TIER_NUMERALS[t] + ' · ' + t + ' SP' };
 }
-/* a Freelancer's borrowable abilities of one tier (key 'B1'–'B4'), or of every tier ('B0' — the rack by family, Phase 7);
+/* an Adaptable kit's borrowable abilities of one tier (key 'B1'–'B4'), or of every tier ('B0' — the rack by family, Phase 7);
    each row names its family, and the list runs family by family (spellFamilyGroups), tier I → IV inside one.
    THE STORY ROSTER's ledger rule rides inside. */
 function hqPartySocketPool(m, key) {
-    const T = hqPartySpellTree(m); if (!T || !T.isFreelancer) return [];
+    const T = hqPartySpellTree(m); if (!T || !T.borrows) return [];
     const t = parseInt(String(key || '').replace(/^B/, ''), 10);
     if (!(t >= 0 && t <= 4)) return [];
-    const sealed = spellSealedIds(T.parts.borrowRace.concat(T.parts.borrowJob));
-    const poolOf = new Map(T.parts.borrowRace.map(id => [id, 'race']).concat(T.parts.borrowJob.map(id => [id, 'job'])));
+    const sealed = spellSealedIds(T.parts.borrowRace);
+    const poolOf = new Map(T.parts.borrowRace.map(id => [id, 'race']));
     const ids = Array.from(poolOf.keys()).filter(id => (!t || spellTierOf(id) === t) && !sealed.has(id));
     const out = [];
     for (const g of spellFamilyGroups(ids, null)) for (const id of g.ids) {
@@ -48710,7 +48203,7 @@ function hqPartySocketPool(m, key) {
 function hqPartySocketEquip(profile, memberId, key, spellId) {
     const r = hqPartyRecord(profile); if (!r) return { ok: false, reason: 'noprofile' };
     const m = r.members.find(x => x.id === memberId); if (!m) return { ok: false, reason: 'member' };
-    const T = hqPartySpellTree(m); if (!T || !T.isFreelancer) return { ok: false, reason: 'notree' };
+    const T = hqPartySpellTree(m); if (!T || !T.borrows) return { ok: false, reason: 'notree' };
     if (!spellId || T.equipped.includes(spellId)) return { ok: false, reason: 'dup', note: 'ALREADY EQUIPPED' };
     if (!hqPartySocketPool(m, key).some(x => x.id === spellId)) return { ok: false, reason: 'pool', note: 'NOT IN THIS POOL' };
     const v = spellAddVerdict(T.race, T.cls, T.equipped, spellId, null, T.ups);
@@ -48718,16 +48211,12 @@ function hqPartySocketEquip(profile, memberId, key, spellId) {
     const w = hqPartySetSpells(profile, memberId, T.equipped.concat([spellId]));
     return { ok: true, kind: 'socket', ids: w.ids, added: [spellId], note: 'BORROWED · ' + spellTierOf(spellId) + ' SP' };
 }
-/* DEFAULTS (the forge's rule: the job's four + the race's first two, trimmed to the budget; a Freelancer = its race
-   row) · RANDOM (buildTreeLegalLoadout) · CLEAR */
+/* DEFAULTS (raceDefaultKit — THE OFFICER's leads with Adaptable) · RANDOM (buildTreeLegalLoadout) · CLEAR */
 function hqPartySpellsDefault(profile, memberId) {
     const r = hqPartyRecord(profile); if (!r) return { ok: false, reason: 'noprofile' };
     const m = r.members.find(x => x.id === memberId); if (!m) return { ok: false, reason: 'member' };
-    const race = m.meta.race || 'homosapien', cls = m.cls;
-    const p = (cls === 'Freelancer') ? [] : (getClassTreeSpells(cls) || []);
-    const rr = getRaceTreeSpells(race, cls) || [];
-    const wish = p.filter(Boolean).concat((cls === 'Freelancer' ? rr : rr.slice(0, 2)).filter(Boolean));
-    const w = hqPartySetSpells(profile, memberId, wish);
+    const race = m.meta.race || 'homosapien';
+    const w = hqPartySetSpells(profile, memberId, m.you ? hqOfficerKit(race) : raceDefaultKit(race));
     return Object.assign({ kind: 'defaults', note: 'THE DEFAULT KIT' }, w);
 }
 function hqPartySpellsRandom(profile, memberId, rng) {
@@ -48745,7 +48234,7 @@ function hqPartySpellsRandom(profile, memberId, rng) {
 function hqPartyUpgradeClick(profile, memberId, spellId, upId) {
     const r = hqPartyRecord(profile); if (!r) return { ok: false, reason: 'noprofile' };
     const m = r.members.find(x => x.id === memberId); if (!m) return { ok: false, reason: 'member' };
-    const T = hqPartySpellTree(m); if (!T) return { ok: false, reason: 'notree', note: 'THIS JOB HAS NO SPELLS TO PICK' };
+    const T = hqPartySpellTree(m); if (!T) return { ok: false, reason: 'notree', note: 'NO SPELLS TO PICK' };
     const u = SPELL_UPGRADES[upId]; if (!u) return { ok: false, reason: 'none', note: 'NO SUCH UPGRADE' };
     const ups = JSON.parse(JSON.stringify(T.ups || {}));
     const cur = ups[spellId] || [];
@@ -52718,7 +52207,7 @@ if (typeof window !== 'undefined') {
     /* THE LEVELS (2026-09-21) */
     window.HQ_LEVEL_RULES = HQ_LEVEL_RULES; window.HQ_AREA_LEVELS = HQ_AREA_LEVELS; window.XP_CURVE = XP_CURVE; window.xpThreshold = xpThreshold; window.xpLevelFor = xpLevelFor; window.xpToNext = xpToNext;
     window.hqPartyLevel = hqPartyLevel; window.hqPartyXp = hqPartyXp; window.hqPartyLevelGains = hqPartyLevelGains; window.hqPartyGrantXp = hqPartyGrantXp; window.hqPartyXpShare = hqPartyXpShare; window.hqEncounterLevels = hqEncounterLevels; window.hqEncounterGroup = hqEncounterGroup; window.hqSwarmRace = hqSwarmRace; window.hqRoomNatives = hqRoomNatives;
-    window.HQ_DISPENSARY = HQ_DISPENSARY; window.hqBagRecord = hqBagRecord; window.hqBagCount = hqBagCount; window.hqBagAdd = hqBagAdd; window.hqBagTake = hqBagTake; window.hqBagList = hqBagList; window.hqBagTotal = hqBagTotal; window.HQ_BAG_TABS = HQ_BAG_TABS; window.hqBagCategoryOf = hqBagCategoryOf; window.hqBagTab = hqBagTab; window.hqBagTabs = hqBagTabs; window.HQ_DROP_RULES = HQ_DROP_RULES; window.hqDropBaneFor = hqDropBaneFor; window.hqEncounterDrops = hqEncounterDrops; window.hqBagSet = hqBagSet; window.hqBagForBattle = hqBagForBattle; window.hqBagCap = hqBagCap; window.hqShopStock = hqShopStock; window.hqCaptureDoorIssue = hqCaptureDoorIssue; window.hqShopQuote = hqShopQuote; window.hqShopBuyApply = hqShopBuyApply; window.hqShopSell = hqShopSell; window.hqPartyStock = hqPartyStock; window.hqPartyBagItems = hqPartyBagItems; window.hqPartyAutoHeal = hqPartyAutoHeal; window.hqPartyFieldSpells = hqPartyFieldSpells; window.hqPartyFieldTargets = hqPartyFieldTargets; window.hqPartyHealAmount = hqPartyHealAmount; window.hqPartyCast = hqPartyCast; window.hqPartyUseItem = hqPartyUseItem; window.hqPartyFieldItems = hqPartyFieldItems; window.hqPartySpec = hqPartySpec; window.hqPartyGenders = hqPartyGenders; window.hqPartyDefaultJob = hqPartyDefaultJob;
+    window.HQ_DISPENSARY = HQ_DISPENSARY; window.hqBagRecord = hqBagRecord; window.hqBagCount = hqBagCount; window.hqBagAdd = hqBagAdd; window.hqBagTake = hqBagTake; window.hqBagList = hqBagList; window.hqBagTotal = hqBagTotal; window.HQ_BAG_TABS = HQ_BAG_TABS; window.hqBagCategoryOf = hqBagCategoryOf; window.hqBagTab = hqBagTab; window.hqBagTabs = hqBagTabs; window.HQ_DROP_RULES = HQ_DROP_RULES; window.hqDropBaneFor = hqDropBaneFor; window.hqEncounterDrops = hqEncounterDrops; window.hqBagSet = hqBagSet; window.hqBagForBattle = hqBagForBattle; window.hqBagCap = hqBagCap; window.hqShopStock = hqShopStock; window.hqCaptureDoorIssue = hqCaptureDoorIssue; window.hqShopQuote = hqShopQuote; window.hqShopBuyApply = hqShopBuyApply; window.hqShopSell = hqShopSell; window.hqPartyStock = hqPartyStock; window.hqPartyBagItems = hqPartyBagItems; window.hqPartyAutoHeal = hqPartyAutoHeal; window.hqPartyFieldSpells = hqPartyFieldSpells; window.hqPartyFieldTargets = hqPartyFieldTargets; window.hqPartyHealAmount = hqPartyHealAmount; window.hqPartyCast = hqPartyCast; window.hqPartyUseItem = hqPartyUseItem; window.hqPartyFieldItems = hqPartyFieldItems; window.hqPartySpec = hqPartySpec; window.hqPartyGenders = hqPartyGenders; window.hqPartyDefaultJob = hqPartyDefaultJob; window.raceDefaultKit = raceDefaultKit; window.hqOfficerKit = hqOfficerKit;
     window.DOOR_GUN_RULES = DOOR_GUN_RULES; window.DOOR_GUN_DOORS = DOOR_GUN_DOORS; window.DOOR_GUN_KEYS = DOOR_GUN_KEYS; window.DOOR_GUN_FACINGS = DOOR_GUN_FACINGS; window.SPELL_ID_RENAMED = SPELL_ID_RENAMED; window.DOOR_GUN_SPELLS = DOOR_GUN_SPELLS;   // THE DOOR WHEEL (DOOR_GUN_PLAN.md Phase 0)
     window.doorGunUnlocked = doorGunUnlocked; window.doorGunWheel = doorGunWheel; window.doorGunLaneTiles = doorGunLaneTiles; window.doorGunLedger = doorGunLedger; window.doorGunLedgerUnion = doorGunLedgerUnion; window.doorGunKeyOfSpell = doorGunKeyOfSpell; window.doorGunSpellTier = doorGunSpellTier; window.doorGunWheelPool = doorGunWheelPool; window.doorGunSnapFacing = doorGunSnapFacing; window.swingDoorPushDir = swingDoorPushDir;
     window.CAPTURE_RULES = CAPTURE_RULES; window.captureDoorItemKeys = captureDoorItemKeys; window.captureDoorTier = captureDoorTier; window.captureSealSteps = captureSealSteps; window.captureSealFor = captureSealFor; window.captureDoorHits = captureDoorHits; window.captureXp = captureXp; window.itemStoryOnly = itemStoryOnly; window.hqCapturedRecord = hqCapturedRecord; window.hqUnitCaptured = hqUnitCaptured; window.hqCapturedMark = hqCapturedMark; window.hqCaptureOwned = hqCaptureOwned; window.hqCaptureEnlist = hqCaptureEnlist; window.hqBountyUnion = hqBountyUnion; window.hqCaptureBountyRecord = hqCaptureBountyRecord; window.hqCaptureBountyMark = hqCaptureBountyMark; window.hqCaptureBountySyncPay = hqCaptureBountySyncPay; window.hqCapturedUnlockUnion = hqCapturedUnlockUnion;   // THE ONE-WAY DOOR (CAPTURE_PLAN.md Phase 0)

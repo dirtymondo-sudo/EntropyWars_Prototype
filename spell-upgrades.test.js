@@ -45,7 +45,8 @@ const BLAST = { id: 'tBlast', name: 'Test Blast', kind: 'aoe', type: 'damage', d
 
 /* a real kit to test the loadout maths on: a unit whose pool holds single-target damage rows */
 function realKit() {
-    for (const [race, cls] of [['knight', 'Black Mage'], ['knight', 'Warrior'], ['homosapien', 'Gunslinger'], ['seraphim', 'White Mage']]) {
+    const cls = D.UNIT_CLASS;   // THE JOBS REMOVAL (2026-09-27): one neutral class; the pool is the race's families
+    for (const race of ['knight', 'homosapien', 'seraphim']) {
         const pool = D.unitSpellPool(race, cls).filter(id => !D.spellIsPassive(id));
         const dmg = pool.filter(id => D.spellAllowedUpgrades(id).includes('upDamage'));
         if (dmg.length >= 3) return { race, cls, pool, dmg };

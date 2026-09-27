@@ -13,7 +13,7 @@ function setup(seat=1){
  const net={count:3,isPrism:false,is3DVolume:false,beamTiles:new Set(['4,3']),volumeTiles:new Set(),segments:[]};
  const hits=[];
  const ctx={state,window:{},console:{log(){},warn(){}},STATUS_DEFS:data.STATUS_DEFS,
- getHourglassPower:()=>0,getSpellStatBonus:()=>0,getPlantedTreeBonus:()=>0,getTreeThrowBonus:()=>0,getJobPassiveSpellBonus:()=>0,
+ getHourglassPower:()=>0,getSpellStatBonus:()=>0,getPlantedTreeBonus:()=>0,getTreeThrowBonus:()=>0,unitPassiveSum:()=>0,
  unitFromId:id=>state.units.find(u=>u.id===id),getEffectiveArmor:()=>0,getTypeDamageMultiplier:(u,t,type)=>t.typeMult?.[type]??1,
  getStatusDamageTakenMultiplier:()=>1,unitPassiveValue:(u,k)=>u[k],unitPassiveBlocksStatus:(u,k)=>u.immuneStatuses?.includes(k),
  statusAffinityElement:k=>k==='burn'?'fire':null,unitElementAffinity:(u,el)=>u.affinities?.[el],getSpellElement:()=> 'fire',
@@ -87,7 +87,7 @@ test('Tune values burn tiles but does not invent crossing paths or a burn inside
  const h=setup();h.unit.spells=[h.tune];h.net.volumeTiles.add('4,3');h.net.beamTiles.clear();assert.equal(h.score(h.tune),0);
 });
 test('pulse profile includes each engine spell-power term once and beam power uses the owner network',()=>{
- const h=setup();h.unit.spellPower=1;h.ctx.getHourglassPower=()=>2;h.ctx.getSpellStatBonus=()=>3;h.ctx.getPlantedTreeBonus=()=>4;h.ctx.getTreeThrowBonus=()=>5;h.ctx.getJobPassiveSpellBonus=()=>6;
+ const h=setup();h.unit.spellPower=1;h.ctx.getHourglassPower=()=>2;h.ctx.getSpellStatBonus=()=>3;h.ctx.getPlantedTreeBonus=()=>4;h.ctx.getTreeThrowBonus=()=>5;h.ctx.unitPassiveSum=(u,k)=>k==='spellPower'?6:0;
  assert.equal(h.g.TargetQuery.mirrorHitProfile(h.unit,h.pulse,h.net).damage,Math.floor((95+21)*1.15));
  h.state.mirrors[0].power=20;assert.equal(h.g.TargetQuery.mirrorHitProfile(h.unit,h.tune,h.net,'burn').damage,Math.floor((34+9)*1.15));
 });

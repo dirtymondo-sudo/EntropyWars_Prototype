@@ -79,11 +79,12 @@ function board(opts) {
 }
 const at = u => u.x + ',' + u.y;
 
-test('the rows: the wheel is the Door Agent\'s alone — a Freelancer never borrows a door', () => {
+test('the rows: the wheel is the Door Agent\'s alone — an Adaptable kit never borrows a door', () => {
     const D = loadGameData();
-    assert.deepEqual([...D.unitSpellPoolParts('door agent', 'Agent').wheel], ['gunGustDoor', 'gunArchersDoor', 'gunHellDoor', 'gunMawDoor', 'gunFrostDoor', 'gunLaserDoor', 'gunLightDoor']);
-    for (const [race, job] of [['freelancer', 'Freelancer'], ['human', 'Freelancer'], ['knight', 'Freelancer']]) {
-        const p = D.unitSpellPoolParts(race, job);
+    assert.deepEqual([...D.unitSpellPoolParts('door agent', 'Vessel').wheel], ['gunGustDoor', 'gunArchersDoor', 'gunHellDoor', 'gunMawDoor', 'gunFrostDoor', 'gunLaserDoor', 'gunLightDoor']);
+    /* THE JOBS REMOVAL (2026-09-27): the Freelancer job is gone — the Adaptable row opens the borrow window */
+    for (const race of ['homosapien', 'human', 'knight']) {
+        const p = D.unitSpellPoolParts(race, 'Vessel', ['passiveAdaptable']);
         for (const k of Object.keys(p)) assert.ok(!(p[k] || []).some(s => /^gun.*Door$/.test(typeof s === 'string' ? s : s.id)), race + ' ' + k);
     }
     for (const id of ['gunGustDoor', 'gunArchersDoor', 'gunHellDoor', 'gunMawDoor', 'gunFrostDoor', 'gunLaserDoor', 'gunLightDoor']) {

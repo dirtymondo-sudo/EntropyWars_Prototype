@@ -271,13 +271,12 @@ function migrateOldData() {
         const pb = builds[1] || [];
         for (let i = 0; i < pb.length; i++) {
           slots.push({
-            cls: pb[i],
+            cls: UNIT_CLASS,   // THE JOBS REMOVAL (2026-09-27): one neutral class
             race: meta[1]?.[i]?.race || 'human',
             gender: meta[1]?.[i]?.gender || 'male',
             appearance: window.normalizeCharacterAppearance?.(meta[1]?.[i]?.appearance) || null,
-            unitName: (names[1] || [])[i] || pb[i],
+            unitName: (names[1] || [])[i] || _profRaceLabel(meta[1]?.[i]?.race),
             customSpells: meta[1]?.[i]?.customSpells || [],
-            secondaryJob: meta[1]?.[i]?.secondaryJob || null,
             loadout: (loadouts[1] || [])[i] || { items: {}, equipment: {} },
           });
         }
@@ -539,8 +538,12 @@ function profileUpdatePostMatch(viewerUnits, playerWon, matchSummary) {
   if (!p) return;
 
   for (const u of viewerUnits) {
-    const cls = u.cls;
+    /* THE JOBS REMOVAL (the user 2026-09-27): there is no job to count — classStats (the CHAMPIONS tab) is keyed by
+       the unit's RACE now (the field keeps its name) and counts its own games here: battle.js no longer feeds
+       per-job classCounts, so the career round trip only hands the same numbers back */
+    const cls = u.race || 'unknown';
     if (!p.classStats[cls]) p.classStats[cls] = { played: 0, wins: 0, kills: 0, deaths: 0, assists: 0, dmg: 0, healing: 0 };
+    p.classStats[cls].played += 1;
 
     p.classStats[cls].wins += playerWon ? 1 : 0;
     p.classStats[cls].kills += u._matchKills || 0;
@@ -1075,9 +1078,8 @@ function buildProfileMatchSummary() {
     const maxKillStreak = u._killStreak || 0;
     const level = typeof getUnitLevel === 'function' ? getUnitLevel(u) : 1;
     return {
-      cls: u.cls,
       race: u.race || 'unknown',
-      name: u.name || u.cls,
+      name: u.name || _profRaceLabel(u.race),
       kills, deaths, assists,
       dmgDealt, dmgReceived, healDone, crits,
       maxKillStreak, levelReached: level,
@@ -1210,6 +1212,14 @@ function StatCard({ label, value, sub, color }) {
   );
 }
 
+/* THE JOBS REMOVAL (the user 2026-09-27): the profile's unit stats read the RACE (no job) */
+function _profIsRace(k) { return !!k && typeof RACE_PROFILES !== 'undefined' && !!RACE_PROFILES[k]; }
+function _profRaceLabel(race) {
+  if (!race) return '';
+  if (typeof getRaceLabel === 'function' && _profIsRace(race)) return getRaceLabel(race);
+  return String(race).replace(/\b\w/g, c => c.toUpperCase());
+}
+
 function OverviewTab({ profile }) {
   const c = profile.career;
   const winRate = c.matchesPlayed > 0 ? ((c.wins / c.matchesPlayed) * 100).toFixed(1) + '%' : '—';
@@ -1217,14 +1227,16 @@ function OverviewTab({ profile }) {
 
   let topClass = null, topClassCount = 0;
   for (const [cls, cs] of Object.entries(profile.classStats)) {
-    if (cs.played > topClassCount) { topClass = cls; topClassCount = cs.played; }
+    if (!_profIsRace(cls)) continue;   // THE JOBS REMOVAL (2026-09-27): race-keyed; a stale job key is skipped
+    if (cs.played > topClassCount) { topClass = _profRaceLabel(cls); topClassCount = cs.played; }
   }
 
   let bestWrClass = null, bestWr = 0;
   for (const [cls, cs] of Object.entries(profile.classStats)) {
+    if (!_profIsRace(cls)) continue;
     if (cs.played >= 5) {
       const wr = cs.wins / cs.played;
-      if (wr > bestWr) { bestWr = wr; bestWrClass = cls; }
+      if (wr > bestWr) { bestWr = wr; bestWrClass = _profRaceLabel(cls); }
     }
   }
 
@@ -1273,10 +1285,11 @@ function MatchHistoryTab({ profile }) {
   if (rankFilter === 'unranked') matches = matches.filter(m => !m.ranked);
   if (resultFilter === 'wins') matches = matches.filter(m => m.result === 'win');
   if (resultFilter === 'losses') matches = matches.filter(m => m.result === 'loss');
-  if (classFilter !== 'all') matches = matches.filter(m => m.units && m.units.some(u => u.cls === classFilter));
+  /* THE JOBS REMOVAL (2026-09-27): the unit filter reads the race (no job) */
+  if (classFilter !== 'all') matches = matches.filter(m => m.units && m.units.some(u => u.race === classFilter));
 
   const allClasses = new Set();
-  (profile.matchHistory || []).forEach(m => (m.units || []).forEach(u => allClasses.add(u.cls)));
+  (profile.matchHistory || []).forEach(m => (m.units || []).forEach(u => { if (u.race) allClasses.add(u.race); }));
 
   const filterBtn = (label, active, onClick) => h('button', {
     onClick,
@@ -1307,8 +1320,8 @@ function MatchHistoryTab({ profile }) {
           fontFamily: 'DotGothic16, monospace',
         }
       },
-        h('option', { value: 'all' }, 'All Classes'),
-        ...[...allClasses].sort().map(cls => h('option', { key: cls, value: cls }, cls))
+        h('option', { value: 'all' }, 'All Races'),
+        ...[...allClasses].sort().map(cls => h('option', { key: cls, value: cls }, _profRaceLabel(cls)))
       ) : null,
     ),
 
@@ -1352,7 +1365,7 @@ function MatchHistoryTab({ profile }) {
               color: (m.eloDelta || 0) > 0 ? EW.good : (m.eloDelta || 0) < 0 ? EW.bad : EW.inkDim,
             }}, (m.eloDelta > 0 ? '+' : '') + (m.eloDelta || 0)) : null,
 
-            mvp ? h('div', { style: { fontSize: 11, color: EW.warn, marginLeft: 4 } }, '⭐ ' + (mvp.cls || '')) : null,
+            mvp ? h('div', { style: { fontSize: 11, color: EW.warn, marginLeft: 4 } }, '⭐ ' + _profRaceLabel(mvp.race)) : null,
           ),
 
           isExpanded && m.units ? h('div', { style: {
@@ -1363,7 +1376,7 @@ function MatchHistoryTab({ profile }) {
             h('table', { style: { width: '100%', borderCollapse: 'collapse', fontSize: 11, color: EW.ink } },
               h('thead', null,
                 h('tr', { style: { color: EW.inkMute, textAlign: 'left' } },
-                  ['Unit', 'Class', 'K', 'D', 'A', 'Dmg', 'Heal', 'Lv'].map(col =>
+                  ['Unit', 'Race', 'K', 'D', 'A', 'Dmg', 'Heal', 'Lv'].map(col =>
                     h('th', { key: col, style: { padding: '4px 6px', fontWeight: 400 } }, col)
                   )
                 )
@@ -1371,8 +1384,8 @@ function MatchHistoryTab({ profile }) {
               h('tbody', null,
                 m.units.map((u, j) =>
                   h('tr', { key: j, style: { borderTop: '1px solid rgba(255,255,255,0.04)' } },
-                    h('td', { style: { padding: '4px 6px' } }, (u.mvp ? '⭐ ' : '') + (u.name || u.cls)),
-                    h('td', { style: { padding: '4px 6px', color: EW.inkMute } }, u.cls),
+                    h('td', { style: { padding: '4px 6px' } }, (u.mvp ? '⭐ ' : '') + (u.name || _profRaceLabel(u.race))),
+                    h('td', { style: { padding: '4px 6px', color: EW.inkMute } }, _profRaceLabel(u.race)),
                     h('td', { style: { padding: '4px 6px' } }, u.kills),
                     h('td', { style: { padding: '4px 6px' } }, u.deaths),
                     h('td', { style: { padding: '4px 6px' } }, u.assists),
@@ -1391,11 +1404,13 @@ function MatchHistoryTab({ profile }) {
 }
 
 function ChampionsTab({ profile }) {
+  /* THE JOBS REMOVAL (2026-09-27): classStats is race-keyed — a stale job key is not a champion */
   const entries = Object.entries(profile.classStats)
-    .map(([cls, s]) => ({ cls, ...s }))
+    .filter(([cls]) => _profIsRace(cls))
+    .map(([cls, s]) => ({ cls: _profRaceLabel(cls), ...s }))
     .sort((a, b) => b.played - a.played);
 
-  if (!entries.length) return h('div', { style: { color: EW.inkDim, padding: 20, textAlign: 'center' } }, 'No class data yet. Play some matches!');
+  if (!entries.length) return h('div', { style: { color: EW.inkDim, padding: 20, textAlign: 'center' } }, 'No champion data yet. Play some matches!');
 
   const minGames = 5;
   const qualified = entries.filter(e => e.played >= minGames);
@@ -2874,8 +2889,8 @@ window._mePlayCommunityMap = function(mapData) {
           2: spawns[2].map(function(s) { return { x: s.x, y: s.y }; })
         },
         defaultBuilds: {
-          1: Array(teamSize).fill('Warrior'),
-          2: Array(teamSize).fill('Warrior')
+          1: Array(teamSize).fill(UNIT_CLASS),
+          2: Array(teamSize).fill(UNIT_CLASS)
         }
       };
     }

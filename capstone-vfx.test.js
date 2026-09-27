@@ -80,7 +80,10 @@ test('data.js names the capstones: ring 3 of every pillar, cached, cleared on a 
         const last = tree[tree.length - 1];
         for (const id of (Array.isArray(last) ? last : [last])) assert.ok(caps.has(id), id + ' should be a capstone');
     }
-    for (const tree of Object.values(g.CLASS_TREE)) assert.ok(caps.has(tree[tree.length - 1]));
+    /* THE JOBS REMOVAL (2026-09-27): CLASS_TREE is gone; the old job pillars live on as CLASS_SPELL_LEARN_ORDER pricing rows,
+       whose last rung still prices (and stages) as a capstone */
+    assert.strictEqual(g.CLASS_TREE, undefined, 'the job trees are deleted');
+    for (const order of Object.values(g.CLASS_SPELL_LEARN_ORDER)) assert.ok(caps.has(order[order.length - 1]), order[order.length - 1] + ' should be a capstone');
     assert.ok(caps.has('raceIndomitableWill'), 'the homosapien capstone (2026-09-27: Really Good Punch is Martial Arts, off its families)');
     assert.ok(!caps.has('raceRiptide'), 'a ring-1 spell is not a capstone');
     assert.ok(caps.has('sharedNuke'), 'Nuke sits on no lower ring');
@@ -151,7 +154,7 @@ test('no capstone shares an effect recipe with a sibling on its own pillar', () 
     const S = runtimeSpellMap();
     const problems = [];
     const trees = Object.assign({}, g.RACE_TREE);
-    for (const [job, t] of Object.entries(g.CLASS_TREE)) trees['JOB:' + job] = t;
+    for (const [job, t] of Object.entries(g.CLASS_SPELL_LEARN_ORDER)) trees['JOB:' + job] = t;   // the old pillars (pricing rows since the jobs removal)
     for (const [race, tree] of Object.entries(trees)) {
         const ids = (e) => (Array.isArray(e) ? e : [e]);
         const caps = ids(tree[tree.length - 1]);

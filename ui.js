@@ -61,49 +61,15 @@
                 }
             };
             const team = palettes[player] || palettes[1];
-            const sprites = {
-                'Gunslinger': [
-                    [5, 1, 6, 2, team.team],
-                    [4, 3, 8, 2, '#f0d5b7'],
-                    [3, 5, 10, 3, '#6d4c41'],
-                    [4, 8, 8, 4, team.team],
-                    [2, 12, 4, 3, '#2b2b36'],
-                    [10, 12, 4, 3, '#2b2b36']
-                ],
-                'Warrior': [
-                    [5, 1, 6, 2, '#cfd8e6'],
-                    [4, 3, 8, 2, '#f0d5b7'],
-                    [3, 5, 10, 3, '#8f99aa'],
-                    [4, 8, 8, 4, team.team],
-                    [2, 12, 4, 3, '#6c7383'],
-                    [10, 12, 4, 3, '#6c7383']
-                ],
-                'Black Mage': [
-                    [4, 0, 8, 3, team.accent],
-                    [5, 3, 6, 2, '#f0d5b7'],
-                    [4, 5, 8, 3, '#49306b'],
-                    [3, 8, 10, 5, team.team],
-                    [2, 13, 4, 2, '#2b2b36'],
-                    [10, 13, 4, 2, '#2b2b36']
-                ],
-                'White Mage': [
-                    [4, 0, 8, 2, team.accent],
-                    [5, 2, 6, 3, '#f0d5b7'],
-                    [3, 5, 10, 3, '#ffffff'],
-                    [3, 8, 10, 5, team.team],
-                    [2, 13, 4, 2, '#d9dde8'],
-                    [10, 13, 4, 2, '#d9dde8']
-                ],
-                'Agent': [
-                    [4, 1, 8, 2, '#1f2534'],
-                    [5, 3, 6, 2, '#e2c0a0'],
-                    [3, 5, 10, 3, '#2b2f3f'],
-                    [4, 8, 8, 4, team.team],
-                    [2, 12, 4, 3, '#1c1f2b'],
-                    [10, 12, 4, 3, '#1c1f2b']
-                ]
-            };
-            const parts = sprites[cls] || sprites['Warrior'];
+            /* THE JOBS REMOVAL (the user 2026-09-27): one placeholder figure (the per-job pixel sprites went with the jobs) */
+            const parts = [
+                [5, 1, 6, 2, '#cfd8e6'],
+                [4, 3, 8, 2, '#f0d5b7'],
+                [3, 5, 10, 3, '#8f99aa'],
+                [4, 8, 8, 4, team.team],
+                [2, 12, 4, 3, '#6c7383'],
+                [10, 12, 4, 3, '#6c7383']
+            ];
             const rects = parts.map(([x, y, w, h, fill]) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${fill}"/>`).join('');
             const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" shape-rendering="crispEdges"><rect width="16" height="16" fill="transparent"/>${rects}</svg>`;
             return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
@@ -111,7 +77,7 @@
 
         function renderUnitSprite(cls, player, cssClass, race, equipment, gender) {
             const src = getUnitSpriteByRace(cls, player, race, equipment, gender);
-            return `<img class="${cssClass}" src="${src}" alt="${cls}" draggable="false" />`;
+            return `<img class="${cssClass}" src="${src}" alt="${race || 'unit'}" draggable="false" />`;
         }
         window.renderUnitSprite = renderUnitSprite;
 
@@ -377,13 +343,13 @@
                 if (rosterUnit) {
                     const prof = (typeof RACE_PROFILES !== 'undefined') ? RACE_PROFILES[rosterUnit.race] : null;
                     const spriteUrl = (typeof getR2RaceSpriteUrl === 'function')
-                        ? getR2RaceSpriteUrl(rosterUnit.race, rosterUnit.gender, rosterUnit.job)
+                        ? getR2RaceSpriteUrl(rosterUnit.race, rosterUnit.gender, UNIT_CLASS)
                         : '';
                     slotsHtml += `<div class="cpb-slot${isSel ? ' cpb-slot-sel' : ''}" onclick="window._cpbSelectSlot(${i})">
                         <div class="cpb-slot-sprite" style="background-image:url('${spriteUrl}')"></div>
                         <div class="cpb-slot-info">
                             <div class="cpb-slot-name">${_escHtml(rosterUnit.name)}</div>
-                            <div class="cpb-slot-sub">${_escHtml(prof?.label || rosterUnit.race)} · ${_escHtml(rosterUnit.job)} · Lv.${rosterUnit.level}</div>
+                            <div class="cpb-slot-sub">${_escHtml(prof?.label || rosterUnit.race)} · Lv.${rosterUnit.level}</div>
                         </div>
                         <button class="cpb-slot-remove" onclick="event.stopPropagation();window._cpbUnassign(${i})" title="Remove">✕</button>
                     </div>`;
@@ -405,7 +371,7 @@
                 const assignedSlotIdx = save.partySlots.indexOf(ru.id);
                 const prof = (typeof RACE_PROFILES !== 'undefined') ? RACE_PROFILES[ru.race] : null;
                 const spriteUrl = (typeof getR2RaceSpriteUrl === 'function')
-                    ? getR2RaceSpriteUrl(ru.race, ru.gender, ru.job) : '';
+                    ? getR2RaceSpriteUrl(ru.race, ru.gender, UNIT_CLASS) : '';
 
                 const xpThresholds = (typeof XP_THRESHOLDS !== 'undefined') ? XP_THRESHOLDS : [];
                 const curLvlXp = xpThresholds[ru.level - 1] || 0;
@@ -419,7 +385,7 @@
                     <div class="cpb-rc-sprite" style="background-image:url('${spriteUrl}')"></div>
                     <div class="cpb-rc-info">
                         <div class="cpb-rc-name">${_escHtml(ru.name)}</div>
-                        <div class="cpb-rc-sub">${_escHtml(prof?.label || ru.race)} · ${_escHtml(ru.job)}</div>
+                        <div class="cpb-rc-sub">${_escHtml(prof?.label || ru.race)}</div>
                         <div class="cpb-rc-level">Lv.${ru.level}</div>
                         <div class="cpb-rc-xpbar"><div class="cpb-rc-xpfill" style="width:${xpPct}%"></div></div>
                     </div>
@@ -610,9 +576,9 @@
                         return `<div class="roster-panel">
                           <div class="roster-panel-title"><span>${escapeHtml(pLabel)}</span><span style="font-size:9px;color:var(--muted)">${CONFIG.teamSize} slots</span></div>
                           ${state.partyBuilds[pNum].map((cn, i) => {
-                            cn = normalizeClassName(cn, DEFAULT_BUILDS[pNum]?.[i]);
+                            cn = normalizeClassName(cn);
                             const nm = normalizeDisplayedUnitName(state.partyNames?.[pNum]?.[i], cn, pNum, i);
-                            const mt = state.partyMeta?.[pNum]?.[i] || getArchetypeForJob(cn);
+                            const mt = state.partyMeta?.[pNum]?.[i] || {};
                             const id = resolveIdentityForBuild(cn, mt);
                             const sel = pNum === bp && i === bs;
                             const fClass = id.faction ? ('faction-' + id.faction) : '';
@@ -620,7 +586,7 @@
                               <div class="roster-sprite-wrap">${renderUnitSprite(cn, pNum, 'roster-sprite-inner', id.race || '', getDefaultEquipment(cn), id.gender || mt.gender || '')}</div>
                               <div class="roster-slot-info">
                                 <div class="roster-slot-name">${escapeHtml(typeof getRaceLabel==='function' ? getRaceLabel(id.race, id.gender||mt.gender||'male') : (RACE_PROFILES[id.race]?.label || id.race || '?'))}</div>
-                                <div class="roster-slot-sub">${escapeHtml(cn)}</div>
+                                <div class="roster-slot-sub">${escapeHtml(nm)}</div>
                                 <div class="roster-slot-badges">${renderTypeBadges(id.types || [])}</div>
                               </div>
                             </div>`;
@@ -3729,7 +3695,7 @@
 
             if (unit?._heroSpriteUrl) return unit._heroSpriteUrl;
             if (unit?.race && typeof getR2RaceSpriteUrl === 'function') {
-                const url = getR2RaceSpriteUrl(unit.race, unit.gender || 'male', unit.cls || cls || 'Freelancer');
+                const url = getR2RaceSpriteUrl(unit.race, unit.gender || 'male', unit.cls || cls || UNIT_CLASS);
                 if (url) return url;
             }
             return unitSpriteDataUri(cls, player);
@@ -3737,7 +3703,7 @@
 
         function getUnitSpriteByRace(cls, player, race, equipment, gender) {
             if (race && typeof getR2RaceSpriteUrl === 'function') {
-                const url = getR2RaceSpriteUrl(race, gender || 'male', cls || 'Freelancer');
+                const url = getR2RaceSpriteUrl(race, gender || 'male', cls || UNIT_CLASS);
                 if (url) return url;
             }
             return unitSpriteDataUri(cls, player);
@@ -3832,7 +3798,7 @@
         window._sprFallback = function(img) {
             img.onerror = null;
             try {
-                img.src = unitSpriteDataUri(img.dataset.cls || 'Warrior', parseInt(img.dataset.player) || 1);
+                img.src = unitSpriteDataUri(img.dataset.cls || UNIT_CLASS, parseInt(img.dataset.player) || 1);
             } catch(e) {
                 img.style.display = 'none';
             }
@@ -4011,8 +3977,8 @@
           <div class="ins-head">
             ${renderUnitPortrait(unit)}
             <div class="ins-head-text">
-              <div class="ins-name">${escapeHtml(unit.name || unit.cls)}<span class="ins-lv">Lv.${getUnitLevel(unit)}</span></div>
-              <div class="ins-sub">${escapeHtml(getJobDisplayName(unit.cls))} · ${escapeHtml(unit.race || '')}</div>
+              <div class="ins-name">${escapeHtml(unit.name || unit.race || '')}<span class="ins-lv">Lv.${getUnitLevel(unit)}</span></div>
+              <div class="ins-sub">${escapeHtml(typeof getRaceLabel === 'function' ? getRaceLabel(unit.race, unit.gender || 'male') : (unit.race || ''))}</div>
               <div class="ins-sub"><span class="ins-side ${isAlly ? 'ally' : 'enemy'}">${isAlly ? 'ALLY' : 'ENEMY'}</span></div>
             </div>
           </div>
@@ -4148,8 +4114,8 @@
             <div class="roster-card clickable with-actions ${u.dead ? 'dead' : ''} ${isSelected ? 'selected-roster' : ''}" data-uid="${u.id}" ${onclick} style="${offSectionStyle}">
               ${renderUnitSprite(u.cls, u.player, 'builder-sprite', u.race || '', u.equipment, u.gender || '')}
               <div class="roster-main">
-                <div class="roster-name">${u.name || u.cls} ${sectionBadge}</div>
-                <div class="roster-sub">${u.race || '?'} · ${u.cls} · ${coordLabel(u.x, u.y)}</div>
+                <div class="roster-name">${u.name || u.race || '?'} ${sectionBadge}</div>
+                <div class="roster-sub">${u.race || '?'} · ${coordLabel(u.x, u.y)}</div>
                 <div class="type-badges-block">${renderTypeBadges(u.types || [])}${u.faction ? `<span style="font-size:8px;color:var(--muted);margin-left:2px">${u.faction}</span>` : ''}</div>
                 ${renderAccessoryBadges(u)}
                 <div class="mini-vital"><span class="mini-lbl">HP</span><div class="mini-track"><div class="mini-fill-hp${u.player === getViewerPlayer() ? '' : ' enemy'}" style="width:${hpPct}%"></div></div><span class="mini-num">${u.hp}/${u.maxHp}</span></div>
@@ -4256,7 +4222,7 @@
             let selectedText = 'No unit selected.';
             const unit = getSelectedUnit();
             if (unit) {
-                selectedText = `${unit.cls} selected. Move ${getEffectiveMove(unit)}, Attack ${getEffectiveRange(unit)}, Inspect ${getEffectiveInspect(unit)} reach · ${getInspectTileCount(unit)} tiles, AWR ${getEffectiveAwr(unit)}, INT ${getEffectiveInt(unit)}. MP ${unit.mp}/${unit.maxMp}. ${getStatusLabels(unit).join(', ') || ''}`;
+                selectedText = `${unit.name || unit.race || 'Unit'} selected. Move ${getEffectiveMove(unit)}, Attack ${getEffectiveRange(unit)}, Inspect ${getEffectiveInspect(unit)} reach · ${getInspectTileCount(unit)} tiles, AWR ${getEffectiveAwr(unit)}, INT ${getEffectiveInt(unit)}. MP ${unit.mp}/${unit.maxMp}. ${getStatusLabels(unit).join(', ') || ''}`;
             }
 
             let phaseText = state.phase;
@@ -6151,9 +6117,7 @@
             if (dialog.type === 'mdParty') {
                 const sel = state._mdPartySel;
                 if (!sel) { state.uiDialog = null; overlay.classList.add('hidden'); card.onclick = null; return; }
-                const jobs = (typeof CLASS_TEMPLATES !== 'undefined') ? Object.keys(CLASS_TEMPLATES) : [];
-                const jobOpts = cur => jobs.map(j =>
-                    `<option value="${escapeHtml(j)}"${j === cur ? ' selected' : ''}>${escapeHtml(j)}</option>`).join('');
+                /* THE JOBS REMOVAL (the user 2026-09-27): no job pickers — a delver is its race */
                 const raceLabel = rk => {
                     try { if (typeof RACE_PROFILES !== 'undefined' && RACE_PROFILES[rk] && RACE_PROFILES[rk].label) return RACE_PROFILES[rk].label; } catch (e) {}
                     return String(rk || '').replace(/\b\w/g, c => c.toUpperCase());
@@ -6163,18 +6127,16 @@
               <div class="md-party-row${o.on ? ' on' : ''}" data-md-party-toggle="${i}">
                 <span class="md-party-check">${o.on ? '✓' : ''}</span>
                 <span class="md-party-name">${escapeHtml(raceLabel(o.race))}</span>
-                <select class="md-party-job" data-md-party-job="${i}">${jobOpts(o.job)}</select>
               </div>`).join('');
                 card.innerHTML = `
           <div class="md-party-dialog">
             <div class="ui-dialog-kicker">🗝️ Agartha Depths — 10 floors, no respawns</div>
             <div class="ui-dialog-title">Assemble Your Party</div>
-            <div class="ui-dialog-subtitle">Take up to 4 delvers and pick each one's job (spells &amp; items auto-kit to it).<br>Companions fight on <b>⚔ AUTO</b> — tap their chip on the floor badge in battle to switch tactics.</div>
+            <div class="ui-dialog-subtitle">Take up to 4 delvers (spells &amp; items auto-kit to each).<br>Companions fight on <b>⚔ AUTO</b> — tap their chip on the floor badge in battle to switch tactics.</div>
             <div class="md-party-list">
               <div class="md-party-row leader on">
                 <span class="md-party-check">👑</span>
                 <span class="md-party-name">${escapeHtml(sel.leader.name || raceLabel(sel.leader.race))} <small>(you)</small></span>
-                <select class="md-party-job" data-md-party-leader-job="1">${jobOpts(sel.leader.job)}</select>
               </div>
               ${rows || '<div class="md-party-empty">No companions in the guild yet — clear floors to recruit allies!</div>'}
             </div>
@@ -6191,7 +6153,6 @@
             </div>
           </div>`;
                 card.onclick = function(e) {
-                    if (e.target.closest('select')) return;   // job dropdowns handle themselves
                     const tog = e.target.closest('[data-md-party-toggle]');
                     if (tog) {
                         if (window._mdPartyToggle) window._mdPartyToggle(parseInt(tog.getAttribute('data-md-party-toggle'), 10));
@@ -6202,16 +6163,7 @@
                     if (btn.getAttribute('data-dialog-action') === 'primary') handleUiDialogPrimary();
                     else handleUiDialogSecondary();
                 };
-                card.onchange = function(e) {
-                    const jobSel = e.target.closest('[data-md-party-job]');
-                    if (jobSel) {
-                        if (window._mdPartyJob) window._mdPartyJob(parseInt(jobSel.getAttribute('data-md-party-job'), 10), jobSel.value);
-                        return;
-                    }
-                    if (e.target.closest('[data-md-party-leader-job]')) {
-                        if (window._mdPartyLeaderJob) window._mdPartyLeaderJob(e.target.value);
-                    }
-                };
+                card.onchange = null;
                 return;
             }
 
@@ -6286,43 +6238,6 @@
                 return;
             }
 
-            if (dialog.type === 'secondaryJobPick') {
-                const unit = state.units.find(u => u.id === dialog.unitId) || null;
-                if (!unit) { state.uiDialog = null; overlay.classList.add('hidden'); return; }
-                const mainJob = unit.job || unit.cls;
-                const allJobs = typeof JOB_MODIFIERS !== 'undefined' ? Object.keys(JOB_MODIFIERS) : [];
-                const eligible = allJobs.filter(j => j !== mainJob);
-
-                const jobIcons = {
-                    'Warrior': '⚔', 'Tank': '🛡', 'Gunslinger': '🔫', 'Black Mage': '🔥', 'White Mage': '✝',
-                    'Agent': '🗡', 'Psychic': '🔮', 'Harvester': '🌿', 'Engineer': '🔧',
-                    'Harbinger': '🎵', 'Freelancer': '🃏', 'Raider': '☠', 'Sniper': '🎯',
-                    'Swordmaster': '⚔'
-                };
-
-                const jobCards = eligible.map(job => {
-                    const icon = jobIcons[job] || '⚔';
-                    const learnOrder = typeof CLASS_SPELL_LEARN_ORDER !== 'undefined' ? CLASS_SPELL_LEARN_ORDER[job] : [];
-                    const firstSpell = learnOrder?.[0] ? getSpellById(learnOrder[0]) : null;
-                    const spellName = firstSpell?.name || '—';
-                    return `<button class="sec-job-btn" onclick="event.stopPropagation(); handleSecondaryJobSelect('${escapeHtml(job)}')">
-                        <span class="sec-job-icon">${icon}</span>
-                        <span class="sec-job-info">
-                            <strong>${escapeHtml(job)}</strong>
-                            <small>✨ ${escapeHtml(spellName)}</small>
-                        </span>
-                    </button>`;
-                }).join('');
-
-                card.innerHTML = `
-                    <div class="ui-dialog-kicker">🎭 Level 4 — Choose Secondary Job</div>
-                    <div class="ui-dialog-title">${escapeHtml(unitDisplayName(unit))}</div>
-                    <div class="ui-dialog-subtitle">Pick a secondary class. You'll gain its first spell.<br><em>This choice is permanent!</em></div>
-                    <div class="sec-job-grid">${jobCards}</div>`;
-                card.onclick = null;
-                return;
-            }
-
             if (dialog.type === 'itemFound') {
                 const unit = state.units.find(u => u.id === dialog.unitId) || null;
                 if (!unit) { state.uiDialog = null; overlay.classList.add('hidden'); return; }
@@ -6392,8 +6307,8 @@
                         tgtCount: stg.tgtItems[k] || 0,
                         srcOrig: source.items?.[k] || 0,
                         tgtOrig: target.items?.[k] || 0,
-                        canGive: (stg.srcItems[k] || 0) > 0 && (stg.tgtItems[k] || 0) < getItemCapForClass(target.cls, k),
-                        canTake: (stg.tgtItems[k] || 0) > 0 && (stg.srcItems[k] || 0) < getItemCapForClass(source.cls, k)
+                        canGive: (stg.srcItems[k] || 0) > 0 && (stg.tgtItems[k] || 0) < getItemCapForClass(target, k),
+                        canTake: (stg.tgtItems[k] || 0) > 0 && (stg.srcItems[k] || 0) < getItemCapForClass(source, k)
                     })).filter(row => row.srcOrig > 0 || row.tgtOrig > 0 || row.srcCount > 0 || row.tgtCount > 0)
                 ];
 
@@ -6415,7 +6330,7 @@
                 <div style="width:64px;height:64px;background-image:url('${getUnitSprite(unit.cls, unit.player, unit)}');background-size:contain;background-position:center;background-repeat:no-repeat;image-rendering:pixelated"></div>
                 <div class="trade-unit-info">
                   <div class="trade-unit-name">${escapeHtml(unitDisplayName(unit))}</div>
-                  <div class="trade-unit-meta">${escapeHtml(getJobDisplayName(unit.cls))} · ${coordLabel(unit.x, unit.y)}</div>
+                  <div class="trade-unit-meta">${escapeHtml(typeof getRaceLabel === 'function' ? getRaceLabel(unit.race, unit.gender || 'male') : (unit.race || ''))} · ${coordLabel(unit.x, unit.y)}</div>
                   <div class="trade-unit-bars">
                     <div class="trade-bar"><div class="trade-bar-fill-hp" style="width:${hpPct}%"></div></div>
                     <div class="trade-bar"><div class="trade-bar-fill-mp" style="width:${mpPct}%"></div></div>
@@ -6533,7 +6448,6 @@
                 return;
             }
 
-            if (dialog.type === 'secondaryJobPick') return;
             if (dialog.type === 'pickupDecision' || dialog.type === 'confirm') {
                 const action = dialog.onCancel;
                 state.uiDialog = null;
@@ -6553,27 +6467,7 @@
             }
         }
 
-        function handleSecondaryJobSelect(jobName) {
-            const dialog = state.uiDialog;
-            if (!dialog || dialog.type !== 'secondaryJobPick') return;
-            const unit = state.units.find(u => u.id === dialog.unitId);
-            if (!unit) return;
-            const onComplete = dialog.onComplete;
-
-            applySecondaryJob(unit, jobName);
-
-            state.uiDialog = null;
-            markDirty('dialog');
-            renderIfDirty();
-            renderBoard();
-            render();
-
-            if (typeof onComplete === 'function') {
-                window.setTimeout(onComplete, 300);
-            }
-        }
-
-        window.handleSecondaryJobSelect = handleSecondaryJobSelect;
+        /* THE JOBS REMOVAL (the user 2026-09-27): the secondary-job pick dialog (secondaryJobPick / handleSecondaryJobSelect) is gone */
         window.itemFoundDiscard = itemFoundDiscard;
         window.itemFoundSkip = itemFoundSkip;
 
@@ -6601,14 +6495,14 @@
                 }
             } else if (stg.srcItems.hasOwnProperty(itemKey)) {
                 if (direction === 'give') {
-                    if (stg.srcItems[itemKey] <= 0 || stg.tgtItems[itemKey] >= getItemCapForClass(target.cls, itemKey)) {
+                    if (stg.srcItems[itemKey] <= 0 || stg.tgtItems[itemKey] >= getItemCapForClass(target, itemKey)) {
                         playErrorSfx();
                         return;
                     }
                     stg.srcItems[itemKey] -= 1;
                     stg.tgtItems[itemKey] += 1;
                 } else if (direction === 'take') {
-                    if (stg.tgtItems[itemKey] <= 0 || stg.srcItems[itemKey] >= getItemCapForClass(source.cls, itemKey)) {
+                    if (stg.tgtItems[itemKey] <= 0 || stg.srcItems[itemKey] >= getItemCapForClass(source, itemKey)) {
                         playErrorSfx();
                         return;
                     }
@@ -7062,7 +6956,7 @@
                         <div class="pm-unit-sprite" style="background-image:url('${sprite}')"></div>
                         <span class="pm-unit-name">${escapeHtml(unitDisplayName(u))}</span>
                     </div></td>
-                    <td class="pm-cls-cell">${u.cls}${lvl > 1 ? ` Lv${lvl}` : ''}</td>
+                    <td class="pm-cls-cell">${escapeHtml((typeof getRaceLabel === 'function' ? getRaceLabel(u.race, u.gender) : (u.race || '')))}${lvl > 1 ? ` Lv${lvl}` : ''}</td>
                     ${cell('_matchKills')}
                     ${cell('_matchDeaths')}
                     ${cell('_matchAssists')}
@@ -7095,7 +6989,7 @@
             <div class="pm-stats-wrap">
                 <table class="pm-stats-table">
                     <thead><tr>
-                        <th>Unit</th><th>Class</th><th>K</th><th>D</th><th>A</th><th>Dmg</th><th>Recv</th><th>Heal</th><th>Crit</th>
+                        <th>Unit</th><th>Race</th><th>K</th><th>D</th><th>A</th><th>Dmg</th><th>Recv</th><th>Heal</th><th>Crit</th>
                     </tr></thead>
                     <tbody>
                         <tr class="pm-team-hdr p1"><td colspan="9">Player 1</td></tr>
@@ -7597,7 +7491,6 @@
                         <div class="pm-seg-group">
                             <button class="pm-seg-btn${nametagMode==='name'?' active':''}" onclick="state.nametagMode='name';markDirty('board');renderIfDirty();${RJ}">Name</button>
                             <button class="pm-seg-btn${nametagMode==='race'?' active':''}" onclick="state.nametagMode='race';markDirty('board');renderIfDirty();${RJ}">Race</button>
-                            <button class="pm-seg-btn${nametagMode==='job'?' active':''}" onclick="state.nametagMode='job';markDirty('board');renderIfDirty();${RJ}">Job</button>
                             <button class="pm-seg-btn${nametagMode==='none'?' active':''}" onclick="state.nametagMode='none';markDirty('board');renderIfDirty();${RJ}">Lv</button>
                         </div>
                     </div>` : ''}
@@ -8156,8 +8049,7 @@
         function _codexGetSpriteUrl(race) {
 
             const g = 'male';
-            const cls = RACE_DEFAULT_JOBS[race] || 'Freelancer';
-            return getR2RaceSpriteUrl(race, g, cls);
+            return getR2RaceSpriteUrl(race, g, UNIT_CLASS);   // THE JOBS REMOVAL (2026-09-27)
         }
 
         function _codexBuildStatBar(val, max, label, color, tip, gradeKey) {
@@ -8328,8 +8220,7 @@
             const faction = _CODEX_FACTION[profile.faction] || { label: '???', color: '#888', stamp: '❓' };
             const raceClass = RACE_CLASS[race] || 'hybrid';
             const classLabel = _CODEX_CLASS_LABELS[raceClass] || 'UNCLASSIFIED';
-            const defaultJob = RACE_DEFAULT_JOBS[race] || 'Freelancer';
-            const types = profile.types || [];
+            const types = profile.types || [];   // THE JOBS REMOVAL (2026-09-27): no default job — the role line reads RACE_CLASS
             const sprUrl = _codexGetSpriteUrl(race);
             const docNum = _codexDocNum(race);
             const locked = !!opts.locked;
@@ -8359,12 +8250,11 @@
             const poeHtml = poe ? ` · POINT OF ENTRY: ${locked ? blk(8) : escapeHtml(poe.toUpperCase())}` : '';
             const nameHtml = locked
                 ? `${blk(9)}<span class="cdx-subject-role">designation withheld</span>`
-                : `${profile.label.toUpperCase()}<span class="cdx-subject-role">the ${defaultJob.toLowerCase()}</span>`;
+                : `${profile.label.toUpperCase()}<span class="cdx-subject-role">the ${escapeHtml(raceClass)}</span>`;
             const chips = locked
-                ? `<span class="cdx-meta-tag">Class: <b>${blk(5)}</b></span><span class="cdx-meta-tag">Default Role: <b>${blk(7)}</b></span>`
+                ? `<span class="cdx-meta-tag">Class: <b>${blk(5)}</b></span>`
                 : `${types.map(t => `<span class="type-badge type-${t}">${t.toUpperCase()}</span>`).join('')}
-                   <span class="cdx-meta-tag">Class: <b>${classLabel}</b></span>
-                   <span class="cdx-meta-tag">Default Role: <b>${defaultJob}</b></span>`;
+                   <span class="cdx-meta-tag">Class: <b>${classLabel}</b></span>`;
             const traits = locked ? [] : _codexTraits(race);
             const traitsHtml = traits.length
                 ? `<div class="cdx-traits-row">${traits.map(t => `<span class="cdx-trait-tag">${t}</span>`).join('')}</div>` : '';
@@ -9101,7 +8991,7 @@
         let _slbInsTab = 'stats';             // stats | target | effects | upgrades | look | notes | raw
         let _slbSelection = [];               // bulk selection (ids), in click order
         let _slbAnchorId = null;              // shift-click anchor
-        let _slbMpMode = 'jobs';              // POOLS: jobs | races
+        let _slbMpMode = 'races';             // POOLS: races (THE JOBS REMOVAL 2026-09-27: the job learnsets went with the jobs)
         let _slbMpKey = null;
         let _slbMpSearch = '';
         let _slbFamKey = null;                // FAMILIES: the inspected family
@@ -9182,7 +9072,7 @@
             return out;
         }
         function _slb2Sum(arr) { return Array.isArray(arr) ? arr.reduce((n, v) => n + (Number(v) || 0), 0) : 0; }
-        /* One row of the table: the def plus every computed cell. `meta` = { added, modified, deleted, isRace, jobs, races },
+        /* One row of the table: the def plus every computed cell. `meta` = { added, modified, deleted, isRace, races },
            `ctx` = spellLintContext() (computed once per build). */
         function _slb2RowOf(id, d, meta, ctx) {
             const tier = (typeof spellTierOf === 'function') ? spellTierOf(d) : (d.tier || 1);
@@ -9198,15 +9088,17 @@
             const lint = (typeof spellLint === 'function') ? spellLint(d, ctx) : [];
             const lintMax = lint.reduce((m, h) => Math.max(m, _SLB2_LINT_LEVEL[h.level] || 0), 0);
             const bonus = d.bonusVsStatus && d.bonusVsStatus.status ? { ids: [].concat(d.bonusVsStatus.status), mult: d.bonusVsStatus.mult || 1.5 } : null;
-            const races = meta.races || [], jobs = meta.jobs || [];
-            /* THE GEAR MERGE (Phase 4): a row of a UNIVERSAL family (SPELL_FAMILIES.gear — the 16 old accessories) is in every
-               unit's pool, so its owner reads 'gear · universal' instead of an empty learnset. */
-            const gear = !!d._gear || (typeof SPELL_FAMILIES !== 'undefined' && fams.some(f => SPELL_FAMILIES[f] && SPELL_FAMILIES[f].universal));
-            const owner = d._doorWheel ? 'door wheel' : gear && !races.length && !jobs.length ? 'gear · universal' : races.length > 1 ? 'shared ×' + races.length : races.length === 1 ? races[0] : jobs.length ? jobs.join(', ') : (meta.added ? 'new' : '—');
+            const races = meta.races || [];
+            /* THE GEAR MERGE (Phase 4): a row of a UNIVERSAL family (SPELL_FAMILIES.gear — the 16 old accessories; .training — the
+               old job passives) is in every unit's pool, so its owner reads '<family> · universal' instead of an empty learnset.
+               THE JOBS REMOVAL (the user 2026-09-27): no job learnsets — a row no race lists is sourced by its families. */
+            const uniFam = (typeof SPELL_FAMILIES !== 'undefined') ? fams.find(f => SPELL_FAMILIES[f] && SPELL_FAMILIES[f].universal) : null;
+            const gear = !!d._gear || !!uniFam;
+            const owner = d._doorWheel ? 'door wheel' : gear && !races.length ? (d._gear ? 'gear' : uniFam) + ' · universal' : races.length > 1 ? 'shared ×' + races.length : races.length === 1 ? races[0] : meta.added ? 'new' : fams.length ? fams.join(', ') : '—';
             const searchText = [id, d.name, d.desc, d.notes, d.kind, d.type, d.element, fams.join(' '), owner, anim, statuses.map(s => s.id).join(' ')].join(' ').toLowerCase();
             return {
                 id, def: d, added: !!meta.added, modified: !!meta.modified, deleted: !!meta.deleted, isRace: !!meta.isRace,
-                jobs, races, owner, isDoor: !!d._doorWheel,
+                races, owner, isDoor: !!d._doorWheel,
                 tier, sp: (typeof SPELL_TIER_SP !== 'undefined' && SPELL_TIER_SP[tier]) || tier, mp: typeof d.cost === 'number' ? d.cost : null,
                 ap: typeof d.apCost === 'number' ? d.apCost : 1, cd: d.cooldownRounds || 0,
                 role, element: d.element || '', combat: !!(d.element && typeof COMBAT_ELEMENTS !== 'undefined' && COMBAT_ELEMENTS.includes(d.element)),
@@ -9250,7 +9142,7 @@
         const _SLB2_COL_BY_KEY = {};
         _SLB2_COLUMNS.forEach(c => { _SLB2_COL_BY_KEY[c.key] = c; });
 
-        /* THE FILTERS — arrays so a saved view is plain JSON. owners hold 'race:<r>' / 'job:<j>'; flags are the
+        /* THE FILTERS — arrays so a saved view is plain JSON. owners hold 'race:<r>'; flags are the
            computed chips (status, bonus, aoe, movement, heal, deploy, terrain, edited, offpool, notes, deleted, passive);
            lint holds rule ids; source ∈ lib | race | door. */
         function _slb2EmptyFilters() {
@@ -9284,7 +9176,7 @@
             if (f.roles.length && !f.roles.includes(r.role)) return false;
             if (f.elements.length && !f.elements.includes(r.element || '(none)')) return false;
             if (f.kinds.length && !f.kinds.includes(r.kind)) return false;
-            if (f.owners.length && !f.owners.some(o => o.indexOf('race:') === 0 ? r.races.includes(o.slice(5)) : o.indexOf('job:') === 0 ? r.jobs.includes(o.slice(4)) : false)) return false;
+            if (f.owners.length && !f.owners.some(o => o.indexOf('race:') === 0 ? r.races.includes(o.slice(5)) : false)) return false;
             if (f.tiers.length && !f.tiers.includes(r.tier)) return false;
             if (f.flags.length && !f.flags.every(x => _slb2RowHasFlag(r, x))) return false;
             if (f.lint.length && !f.lint.some(x => r.lint.some(h => h.rule === x))) return false;
@@ -9314,7 +9206,6 @@
                 inc('elements', r.element || '(none)');
                 inc('kinds', r.kind || '(none)');
                 r.races.forEach(x => inc('owners', 'race:' + x));
-                r.jobs.forEach(x => inc('owners', 'job:' + x));
                 inc('tiers', r.tier);
                 FLAGS.forEach(fl => { if (_slb2RowHasFlag(r, fl)) inc('flags', fl); });
                 r.lint.forEach(h => inc('lint', h.rule));
@@ -9374,7 +9265,7 @@
             out.push('# Spell Library export — ' + new Date().toISOString().slice(0, 10));
             out.push('');
             const nMod = Object.keys(d.modified || {}).length, nAdd = Object.keys(d.added || {}).length, nDel = (d.deleted || []).length;
-            out.push(`${nMod} changed · ${nAdd} new · ${nDel} deleted · ${Object.keys(d.learnsets || {}).length} learnsets · ${Object.keys(d.raceAbilities || {}).length} movepools · ${Object.keys(d.families || {}).length} families · ${Object.keys(d.upgrades || {}).length} upgrades`);
+            out.push(`${nMod} changed · ${nAdd} new · ${nDel} deleted · ${Object.keys(d.raceAbilities || {}).length} movepools · ${Object.keys(d.families || {}).length} families · ${Object.keys(d.upgrades || {}).length} upgrades`);
             if (d.notes) { out.push(''); out.push('## Library notes'); out.push(''); out.push(d.notes); }
             if (nMod) {
                 out.push(''); out.push('## Changed rows');
@@ -9404,7 +9295,7 @@
             const reg = (name, group) => { const keys = Object.keys(group || {}); if (!keys.length) return; out.push(''); out.push('## ' + name); out.push(''); keys.forEach(k => out.push(group[k] === null ? `- DELETE ${k}` : `- ${k}: ${JSON.stringify(group[k])}`)); };
             reg('Families', d.families); reg('Upgrades', d.upgrades); reg('Race families', d.raceFamilies);
             const pools = (name, group) => { const keys = Object.keys(group || {}); if (!keys.length) return; out.push(''); out.push('## ' + name); out.push(''); keys.forEach(k => out.push(`- ${k}: [${(group[k] || []).join(', ')}]`)); };
-            pools('Job learnsets', d.learnsets); pools('Race movepools', d.raceAbilities);
+            pools('Race movepools', d.raceAbilities);
             if (summaryLines && summaryLines.length) { out.push(''); out.push('## One line each'); out.push(''); summaryLines.forEach(l => out.push('- ' + l)); }
             if (report && report.byRole) {
                 out.push(''); out.push('## Census'); out.push('');
@@ -9510,6 +9401,7 @@
             arcane:                 ['Wizard|Spellweaver|Magus|Runesmith', 'Arcane|Rune-Carved|Eldritch|Spellbound', 'a pointed hat|floating runes|a staff older than the kingdom', 'steals spells and turns foes into toads|bends the rules of magic'],
             blood:                  ['Blood Mage|Hemomancer|Bloodletter|Sanguinist', 'Bloody|Crimson|Sanguine|Blood-Soaked', 'a bone knife|runes cut into the forearms|a cloak stained red', 'pays for power in blood, theirs or yours|makes it rain red'],
             gear:                   ['Adventurer|Scavenger|Quartermaster|Packrat', 'Well-Equipped|Kitted-Out|Prepared|Stocked', 'a backpack full of gadgets|a belt of pouches', 'always has the right tool'],
+            training:               ['Veteran|Specialist|Drillmaster|Journeyman', 'Trained|Seasoned|Drilled|Schooled', "a lifetime of drills|a specialist's habits", 'fights the way it was trained'],   // THE JOBS REMOVAL (2026-09-27): the old job passives' family
             doors:                  ['Door Agent|Doorman|Portal Gunner|Threshold Warden', 'Doorway|Threshold|Hinged|Portal', 'a gun that fires doors|a keyring the size of a hubcap', 'shoots doors into the battlefield that open onto somewhere worse'],
             weaponstraining:        ['Gunslinger|Shooter|Gun Nut|Trigger Man', 'Trigger-Happy|Loaded|Full-Auto|Hot-Barrelled', 'twin holsters|shell casings rolling off the boots|a bandolier of shells', 'never runs out of bullets|ricochets a shot off every wall'],
             engineering:            ['Tinkerer|Engineer|Gadgeteer|Mechanic', 'Tinkering|Clockwork|Jury-Rigged|Wrench-Wielding', 'goggles on the forehead|a toolbelt that clanks|grease to the elbows', 'builds turrets faster than you can break them|repairs anything with duct tape'],
@@ -10043,7 +9935,7 @@
             cost:   { t: 'num', h: 'MP cost. Editing pins it (sets manaCostOverride); otherwise the mana formula re-derives it from power fields.' },
             manaCostOverride: { t: 'num', h: 'Pins MP cost, bypassing the derivation formula.' },
             apCost: { t: 'num', h: 'Action points (1 or 2). Missing → engine default.' },
-            equipCost: { t: 'num', h: 'Legacy loadout weight (job spells only).' },
+            equipCost: { t: 'num', h: 'Legacy loadout weight (unused).' },
             slotCost: { t: 'num', h: 'Loadout slots 1-3; overrides the mana-derived slot cost.' },
             range:  { t: 'num', h: 'Cast range in tiles. 0 = self / self-centred.' },
             dmg:    { t: 'num', h: 'Base damage. House scale: WEAK 80 · MEDIUM 120 · HEAVY 160 · SEVERE 210 — click a preset or type any number. Mana cost re-derives from it unless pinned.' },
@@ -10140,11 +10032,8 @@
             upgrades: { t: 'json', h: 'Upgrade ids THIS spell allows (SPELL_UPGRADES; the registry is seeded in Phase 5).' },
             aoeMask: { t: 'json', h: 'Drawn footprint [[dx,dy],…] around the centre [0,0], within ±3 (AOE_PRESETS: single, 3x3, 5x5, diamond1/2, x1/2, cross1/2, ring1/2, line3/5, hollow3x3). Honoured by the engine from Phase 2; the mask wins over aoeRadius.' },
             notes: { t: 'text', h: 'Your notes on look / feel / balance (markdown). Ride the export; the bake strips them into docs/spell-notes.md — never shipped to players.' },
-            school: { t: 'text', h: 'Owning job (job spells) — cross-class slot penalty pivots on it.' },
-            classRestriction: { t: 'text', h: 'Hard job gate (one job name).' },
-            classRestrictions: { t: 'json', h: 'Multi-job gate: ["Agent", ...].' },
-            jobPreference: { t: 'json', h: 'AI/builder hint: preferred jobs array.' },
-            jobRequirement: { t: 'text', h: 'Race abilities: only this job gets it.' },
+            school: { t: 'text', h: 'Legacy school tag — no gate since THE JOBS REMOVAL (2026-09-27); a spell\'s source is its families.' },
+            jobPreference: { t: 'json', h: 'Legacy AI hint array — no gate since THE JOBS REMOVAL (2026-09-27).' },
             equipReq: { t: 'text', h: 'Weapon requirement (knife/tarot) — currently stubbed true.' },
             projectileOverride: { t: 'enum', o: _SLB_PROJECTILES, h: 'VFX projectile sprite id.' },
             impactSfx: { t: 'text', h: 'Sound key override on impact.' },
@@ -10166,9 +10055,6 @@
             return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
         }
         function _slbMods() { return window.EWSpellMods; }
-        function _slbJobs() {
-            return (typeof CLASS_SPELL_LEARN_ORDER !== 'undefined') ? Object.keys(CLASS_SPELL_LEARN_ORDER).sort((a, b) => a.localeCompare(b)) : [];
-        }
         function _slbRaces() {
             return (typeof RACE_ABILITIES !== 'undefined') ? Object.keys(RACE_ABILITIES).sort((a, b) => a.localeCompare(b)) : [];
         }
@@ -10178,7 +10064,7 @@
         function _slbArchetypes() {
             try { return Object.keys(window.ThreeVFXEffects.STAGE_ARCHETYPES); } catch (e) { return []; }
         }
-        function _slb2Doc() { const M = _slbMods(); return M ? M.doc : { modified: {}, added: {}, deleted: [], learnsets: {}, raceAbilities: {}, families: {}, upgrades: {}, raceFamilies: {}, views: {}, notes: '' }; }
+        function _slb2Doc() { const M = _slbMods(); return M ? M.doc : { modified: {}, added: {}, deleted: [], raceAbilities: {}, families: {}, upgrades: {}, raceFamilies: {}, views: {}, notes: '' }; }
         function _slb2Filters() { if (!_slbFilters) _slbFilters = _slb2EmptyFilters(); return _slbFilters; }
         function _slb2Undo() { if (!_slbUndo) _slbUndo = new _Slb2UndoStack(); return _slbUndo; }
         function _slb2Glyph(el) { const f = (typeof SPELL_FAMILIES !== 'undefined') && SPELL_FAMILIES[el]; return f ? f.glyph : (el ? el.slice(0, 2).toUpperCase() : ''); }
@@ -10221,8 +10107,7 @@
             if (_slbRowsCache) return _slbRowsCache;
             const M = _slbMods();
             const doc = _slb2Doc();
-            const jobsOf = {}, racesOf = {};
-            _slbJobs().forEach(j => (CLASS_SPELL_LEARN_ORDER[j] || []).forEach(id => { (jobsOf[id] = jobsOf[id] || []).push(j); }));
+            const racesOf = {};   // THE JOBS REMOVAL (2026-09-27): no job learnsets to index
             _slbRaces().forEach(r => (RACE_ABILITIES[r] || []).forEach(a => { if (a && a.id) (racesOf[a.id] = racesOf[a.id] || []).push(r); }));
             const ctx = (typeof spellLintContext === 'function') ? spellLintContext() : null;
             const rows = [], seen = new Set();
@@ -10232,14 +10117,14 @@
                 const def = SPELL_BY_ID[id];
                 if (!def || def.kind === 'basicAttack') return;
                 rows.push(_slb2RowOf(id, def, { added: !!doc.added[id], modified: !!doc.modified[id], deleted: false,
-                    isRace: !!(def._isRaceAbility || (typeof RACE_ABILITY_BY_ID !== 'undefined' && RACE_ABILITY_BY_ID[id])), jobs: jobsOf[id] || [], races: racesOf[id] || [] }, ctx));
+                    isRace: !!(def._isRaceAbility || (typeof RACE_ABILITY_BY_ID !== 'undefined' && RACE_ABILITY_BY_ID[id])), races: racesOf[id] || [] }, ctx));
             });
             (doc.deleted || []).forEach(id => {
                 if (seen.has(id)) return;
                 seen.add(id);
                 const def = (M && M.pristineDef(id)) || doc.added[id] || null;
                 if (!def) return;
-                rows.push(_slb2RowOf(id, def, { added: !!doc.added[id], modified: false, deleted: true, isRace: !!def._isRaceAbility, jobs: [], races: [] }, ctx));
+                rows.push(_slb2RowOf(id, def, { added: !!doc.added[id], modified: false, deleted: true, isRace: !!def._isRaceAbility, races: [] }, ctx));
             });
             _slbRowsCache = rows;
             return rows;
@@ -10311,7 +10196,6 @@
                 if (c.modified) bits.push(`${c.modified} changed`);
                 if (c.added) bits.push(`${c.added} new`);
                 if (c.deleted) bits.push(`${c.deleted} deleted`);
-                if (c.learnsets) bits.push(`${c.learnsets} learnsets`);
                 if (c.raceAbilities) bits.push(`${c.raceAbilities} movepools`);
                 if (c.families) bits.push(`${c.families} families`);
                 if (c.upgrades) bits.push(`${c.upgrades} upgrades`);
@@ -10380,7 +10264,7 @@
             rail.innerHTML = `
                 <div class="slb2-rail-head"><span>FILTERS</span>${_slb2FiltersEmpty(f) ? '' : '<button class="slb2-link" data-act="clearFilters">clear all</button>'}</div>
                 ${base.length ? '' : '<div class="slb2-hint slb2-pad">nothing to filter yet</div>'}
-                ${group('SOURCE', 'source', [{ k: 'lib' }, { k: 'race' }, { k: 'door' }], k => ({ lib: 'job spells', race: 'race abilities', door: 'door wheel' })[k])}
+                ${group('SOURCE', 'source', [{ k: 'lib' }, { k: 'race' }, { k: 'door' }], k => ({ lib: 'library rows', race: 'race abilities', door: 'door wheel' })[k])}
                 ${group('ROLES', 'roles', _SLB2_ROLES.map(k => ({ k })), k => _SLB2_ROLE_LABELS[k], k => _SLB2_ROLE_COLORS[k])}
                 ${group('TIER · SP', 'tiers', [1, 2, 3, 4].map(k => ({ k })), k => 'Tier ' + _slb2TierText(k) + ' · ' + k + ' SP')}
                 ${group('FAMILIES', 'families', fams, glyph, k => _slb2FamColor(k))}
@@ -10400,7 +10284,7 @@
             const rows = _slb2Filtered();
             const chips = [];
             Object.keys(f).forEach(key => (f[key] || []).forEach(v => {
-                const label = key === 'roles' ? _SLB2_ROLE_LABELS[v] : key === 'tiers' ? 'Tier ' + _slb2TierText(v) : key === 'families' ? _slb2FamName(v) : key === 'flags' ? _SLB2_FLAG_LABELS[v] : key === 'owners' ? (String(v).indexOf('race:') === 0 ? _slb2Race(String(v).slice(5)) : String(v).slice(4)) : key === 'source' ? ({ lib: 'job spells', race: 'race abilities', door: 'door wheel' })[v] : v;
+                const label = key === 'roles' ? _SLB2_ROLE_LABELS[v] : key === 'tiers' ? 'Tier ' + _slb2TierText(v) : key === 'families' ? _slb2FamName(v) : key === 'flags' ? _SLB2_FLAG_LABELS[v] : key === 'owners' ? (String(v).indexOf('race:') === 0 ? _slb2Race(String(v).slice(5)) : String(v)) : key === 'source' ? ({ lib: 'library rows', race: 'race abilities', door: 'door wheel' })[v] : v;
                 chips.push(`<button class="slb2-chipx" data-act="filter" data-key="${key}" data-val="${_slbEsc(v)}" title="remove this filter">${_slbEsc(label)} ✕</button>`);
             }));
             const views = Object.keys(_slb2Doc().views || {});
@@ -10509,7 +10393,7 @@
                 case 'push': return r.push || '<span class="slb2-dim">—</span>';
                 case 'deploy': return r.deploy ? 'cap ' + r.deploy : '<span class="slb2-dim">—</span>';
                 case 'families': return r.families.length ? r.families.map(f => `<span class="slb2-fam" style="--fc:${_slb2FamColor(f)}" title="${_slbEsc(_slb2FamName(f))}">${_slb2Glyph(f)}</span>`).join('') : '<span class="slb2-dim">—</span>';
-                case 'owner': return `<span class="slb2-owner${r.isRace ? ' race' : ''}" title="${_slbEsc(r.races.map(_slb2Race).concat(r.jobs).join(', ') || r.owner)}">${_slbEsc(r.isRace ? _slb2Race(r.owner) : r.owner)}</span>`;
+                case 'owner': return `<span class="slb2-owner${r.isRace ? ' race' : ''}" title="${_slbEsc(r.races.map(_slb2Race).join(', ') || r.owner)}">${_slbEsc(r.isRace ? _slb2Race(r.owner) : r.owner)}</span>`;
                 case 'anim': return r.anim ? `<span class="slb2-anim${d.animVerb || d.animSlot || d.animClip ? ' set' : ''}" title="${d.animVerb || d.animSlot || d.animClip ? 'picked on the row' : 'auto (classifySpellAnimKind)'}">${_slbEsc(r.anim)}</span>` : '<span class="slb2-dim">—</span>';
                 case 'lint': return r.lint.length ? `<span class="slb2-lint" title="${_slbEsc(r.lint.map(h => h.rule + ': ' + h.text).join('\n'))}">${['red', 'amber', 'grey'].map(lv => { const n = r.lint.filter(h => h.level === lv).length; return n ? `<i class="slb2-lint-${lv}">${n}</i>` : ''; }).join('')}</span>` : '';
                 case 'edit': return r.edit === 'del' ? '<span class="slb2-flag del">DEL</span>' : r.edit === 'new' ? '<span class="slb2-flag new">NEW</span>' : r.edit === 'mod' ? '<span class="slb2-flag mod">●</span>' : '';
@@ -10577,7 +10461,7 @@
                 ['DAMAGE', ['dmg', 'damageType', 'hitDamages', 'dashDamage', 'dmgPerLevel', 'collisionBonus', 'blastDmg', 'blastRadius', 'aoeDmgPct', 'ignoreArmor', 'sneakBonus', 'executePct', 'noDamage']],
                 ['HEAL · SHIELD · DRAIN', ['heal', 'healAmt', 'healPerTurn', 'selfHealPct', 'drainPct', 'shield', 'shieldHp', 'shieldCapPct']],
                 ['RECOIL', ['selfDamagePct', 'recoilPct', 'selfStun']],
-                ['IDENTITY', ['type', 'spellType', 'element', 'school', 'classRestriction', 'classRestrictions', 'jobPreference', 'jobRequirement']],
+                ['IDENTITY', ['type', 'spellType', 'element', 'school', 'jobPreference']],
             ],
             target: [
                 ['TARGETING', ['kind', 'range', 'ignoresLineOfSight', 'requireVision', 'requiresFlight', 'allyOnly', 'friendlyFire', 'chargeToTarget', 'groundsFlyers', 'longRange']],
@@ -10603,8 +10487,8 @@
             dmgPerLevel: 'Damage per level', collisionBonus: 'Collision bonus', blastDmg: 'Blast damage', blastRadius: 'Blast radius', aoeDmgPct: 'Splash fraction',
             ignoreArmor: 'Ignores armour', sneakBonus: 'Backstab bonus', executePct: 'Execute below', noDamage: 'Never damages', heal: 'Heal', healAmt: 'Area heal',
             healPerTurn: 'Heal per turn', selfHealPct: 'Self-heal', drainPct: 'Drain', shield: 'Shield', shieldHp: 'Area shield', shieldCapPct: 'Shield cap',
-            selfDamagePct: 'Recoil', recoilPct: 'Recoil (combo)', selfStun: 'Self-stun', type: 'Category', spellType: 'Faction', element: 'Element', school: 'School (job)',
-            classRestriction: 'Job gate', classRestrictions: 'Job gates', jobPreference: 'Preferred jobs', jobRequirement: 'Race ability job', kind: 'Kind (engine branch)',
+            selfDamagePct: 'Recoil', recoilPct: 'Recoil (combo)', selfStun: 'Self-stun', type: 'Category', spellType: 'Faction', element: 'Element', school: 'School (legacy)',
+            jobPreference: 'AI hint (legacy)', kind: 'Kind (engine branch)',
             range: 'Range', ignoresLineOfSight: 'Ignores line of sight', requireVision: 'Needs vision', requiresFlight: 'Needs flight', allyOnly: 'Allies only',
             friendlyFire: 'Friendly fire', chargeToTarget: 'Charges in', groundsFlyers: 'Grounds flyers', longRange: 'Long range', aoeRadius: 'Area radius',
             aoeShape: 'Area shape', aoeOriginSelf: 'Area on the caster', crossRadius: 'Cross arm', diamond: 'Diamond', diagonal: 'Diagonals', squareFlood: 'Square flood',
@@ -10674,7 +10558,7 @@
             const ladderMp = (typeof TREE_RING_MP_COSTS !== 'undefined') ? TREE_RING_MP_COSTS[r.tier - 1] : null;
             const lint = r.lint.map(h => `<span class="slb2-lintbadge ${h.level}" title="${_slbEsc(h.text)}">${_slbEsc(h.rule)}</span>`).join('');
             const homeSel = isNew ? `<span class="slb2-owner-l">LIVES IN</span><select class="slb2-sel" data-input="home" data-id="${_slbEsc(id)}">
-                    <option value="lib"${!(doc.added[id]._home && doc.added[id]._home.race) ? ' selected' : ''}>the spell library (job spell)</option>
+                    <option value="lib"${!(doc.added[id]._home && doc.added[id]._home.race) ? ' selected' : ''}>the spell library (its families)</option>
                     ${_slbRaces().map(x => `<option value="${_slbEsc(x)}"${doc.added[id]._home && doc.added[id]._home.race === x ? ' selected' : ''}>race: ${_slbEsc(x)}</option>`).join('')}
                 </select>` : '';
             let gen = '';
@@ -10684,7 +10568,7 @@
                     <input class="slb2-ins-name${modded('name') ? ' modded' : ''}" data-field="name" data-type="text" data-id="${_slbEsc(id)}" value="${_slbEsc(d.name || '')}" spellcheck="false" title="the display name — also the runtime cast key: keep it unique">
                     ${_slb2Cell('edit', r)}
                 </div>
-                <div class="slb2-ins-id">${_slbEsc(id)} · ${r.isDoor ? 'door wheel' : r.isRace ? 'race ability' : isNew ? 'new row' : r.gear ? 'gear · every unit' : 'job spell'}${d.kind === 'passive' ? ' · passive row' : ''}${d.accessory ? ' · was the ' + _slbEsc(d.accessory) + ' accessory' : ''} <button class="slb2-link" data-act="copyId" data-id="${_slbEsc(id)}" title="copy the id">⧉</button></div>
+                <div class="slb2-ins-id">${_slbEsc(id)} · ${r.isDoor ? 'door wheel' : r.isRace ? 'race ability' : isNew ? 'new row' : r.gear ? _slbEsc(String(r.owner).replace(' · universal', '')) + ' · every unit' : 'library row · its families'}${d.kind === 'passive' ? ' · passive row' : ''}${d.accessory ? ' · was the ' + _slbEsc(d.accessory) + ' accessory' : ''} <button class="slb2-link" data-act="copyId" data-id="${_slbEsc(id)}" title="copy the id">⧉</button></div>
                 <div class="slb2-ins-chips" id="slbInsChips">
                     <span class="slb2-tierstep" title="THE tier = SP cost (1–4); MP follows the ladder unless pinned">
                         <button class="slb2-stepb" data-act="tier" data-id="${_slbEsc(id)}" data-delta="-1">−</button>
@@ -10699,9 +10583,7 @@
                     ${homeSel}
                     <span class="slb2-owner-l">FAMILIES</span>${r.families.map(f => `<span class="slb2-ochip" style="--fc:${_slb2FamColor(f)}">${_slb2Glyph(f)} ${_slbEsc(_slb2FamName(f))}<a data-act="famRemove" data-id="${_slbEsc(id)}" data-fam="${_slbEsc(f)}" title="remove">✕</a></span>`).join('') || '<span class="slb2-ochip empty">no family</span>'}
                     <select class="slb2-sel slb2-sel-add" data-input="famAdd" data-id="${_slbEsc(id)}"><option value="">${r.families.length ? '⇄ move to family…' : '＋ family…'}</option>${Object.keys(SPELL_FAMILIES).filter(f => !r.families.includes(f)).map(f => `<option value="${_slbEsc(f)}">${_slb2Glyph(f)} ${_slbEsc(_slb2FamName(f))}</option>`).join('')}</select>
-                    ${r.isDoor ? '' : `<span class="slb2-owner-l">JOBS</span>${r.jobs.map(j => `<span class="slb2-ochip job">${_slbEsc(j)}<a data-act="unassign" data-id="${_slbEsc(id)}" data-kind="job" data-key="${_slbEsc(j)}" title="remove from the ${_slbEsc(j)} learnset">✕</a></span>`).join('') || '<span class="slb2-ochip empty">no learnset</span>'}
-                    <input class="slb2-sel slb2-sel-add" list="slbAssignJobList" placeholder="＋ job…" data-input="assignJob" data-id="${_slbEsc(id)}"><datalist id="slbAssignJobList">${_slbJobs().filter(j => !r.jobs.includes(j)).map(j => `<option value="${_slbEsc(j)}"></option>`).join('')}</datalist>
-                    <span class="slb2-owner-l">RACES</span>${r.races.map(x => `<span class="slb2-ochip race">${_slbEsc(_slb2Race(x))}<a data-act="unassign" data-id="${_slbEsc(id)}" data-kind="race" data-key="${_slbEsc(x)}" title="remove from the ${_slbEsc(x)} movepool">✕</a></span>`).join('') || '<span class="slb2-ochip empty">no race row</span>'}
+                    ${r.isDoor ? '' : `<span class="slb2-owner-l">RACES</span>${r.races.map(x => `<span class="slb2-ochip race">${_slbEsc(_slb2Race(x))}<a data-act="unassign" data-id="${_slbEsc(id)}" data-kind="race" data-key="${_slbEsc(x)}" title="remove from the ${_slbEsc(x)} movepool">✕</a></span>`).join('') || '<span class="slb2-ochip empty">no race row</span>'}
                     <input class="slb2-sel slb2-sel-add" list="slbAssignRaceList" placeholder="＋ race…" data-input="assignRace" data-id="${_slbEsc(id)}"><datalist id="slbAssignRaceList">${_slbRaces().filter(x => !r.races.includes(x)).map(x => `<option value="${_slbEsc(x)}"></option>`).join('')}</datalist>`}
                 </div>
                 <div class="slb2-ins-desc">
@@ -11628,22 +11510,22 @@
         };
         window._slbAssign = function(id, kind, key) {
             if (!key) return;
-            const pool = kind === 'job' ? _slbJobs() : _slbRaces();
+            if (kind !== 'race') return;   // THE JOBS REMOVAL (2026-09-27): a race movepool is the only row to assign to
+            const pool = _slbRaces();
             const match = pool.find(k => k === key) || pool.find(k => k.toLowerCase() === String(key).toLowerCase());
             if (!match) { _slbToast(`✗ unknown ${kind}: "${key}"`, true); return; }
             key = match;
             _slb2Mutate(`→ ${id} added to ${key}`, () => {
                 const doc = _slb2Doc();
-                if (kind === 'job') { const cur = (CLASS_SPELL_LEARN_ORDER[key] || []).slice(); if (cur.includes(id)) return false; cur.push(id); doc.learnsets[key] = cur; }
-                else { const cur = (RACE_ABILITIES[key] || []).map(a => a.id); if (cur.includes(id)) return false; cur.push(id); doc.raceAbilities[key] = cur; }
+                const cur = (RACE_ABILITIES[key] || []).map(a => a.id); if (cur.includes(id)) return false; cur.push(id); doc.raceAbilities[key] = cur;
             });
             _slb2PatchRow(id); _slb2RefreshChrome(); _slb2RenderInspector(); _slb2RenderRail();
         };
         window._slbUnassign = function(id, kind, key) {
             _slb2Mutate(`✕ ${id} off ${key}`, () => {
                 const doc = _slb2Doc();
-                if (kind === 'job') doc.learnsets[key] = (CLASS_SPELL_LEARN_ORDER[key] || []).filter(x => x !== id);
-                else doc.raceAbilities[key] = (RACE_ABILITIES[key] || []).map(a => a.id).filter(x => x !== id);
+                if (kind !== 'race') return false;
+                doc.raceAbilities[key] = (RACE_ABILITIES[key] || []).map(a => a.id).filter(x => x !== id);
             });
             _slb2PatchRow(id); _slb2RefreshChrome(); _slb2RenderInspector(); _slb2RenderRail();
         };
@@ -11869,13 +11751,14 @@
             _slb2RefreshChrome();
         }
 
-        /* ── POOLS (the old MOVEPOOLS tab, kept): job learnsets + race rows ── */
+        /* ── POOLS (the old MOVEPOOLS tab, kept): race families. THE JOBS REMOVAL (the user 2026-09-27): the JOB LEARNSETS
+           mode (and its id-list editor) went with the jobs — a spell's source is its families. ── */
         function _slb2RenderPools(main) {
             main.innerHTML = `<div class="slb2-rail open slb2-poolrail" id="slbMpRail"></div>
                 <div class="slb2-center"><div class="slb2-chips">
-                    <div class="slb2-seg"><button class="slb2-segb${_slbMpMode === 'jobs' ? ' on' : ''}" data-act="mpMode" data-mode="jobs">JOB LEARNSETS</button><button class="slb2-segb${_slbMpMode === 'races' ? ' on' : ''}" data-act="mpMode" data-mode="races">RACE FAMILIES</button></div>
-                    <input class="slb2-search" type="text" placeholder="⌕ filter ${_slbMpMode}" value="${_slbEsc(_slbMpSearch)}" data-input="mpSearch" style="min-width:160px">
-                    <span class="slb2-hint">${_slbMpMode === 'jobs' ? 'A job\'s learn order: the position sets the unlock level.' : 'A race\'s families (3 to 10): every unit of the race can equip every member of them, plus its RACE_TREE rungs. Click a family below to add or remove it.'}</span>
+                    <div class="slb2-seg"><span class="slb2-segb on">RACE FAMILIES</span></div>
+                    <input class="slb2-search" type="text" placeholder="⌕ filter races" value="${_slbEsc(_slbMpSearch)}" data-input="mpSearch" style="min-width:160px">
+                    <span class="slb2-hint">A race's families (3 to 10): every unit of the race can equip every member of them, plus its RACE_TREE rungs. Click a family below to add or remove it.</span>
                 </div><div class="slb2-tablewrap slb2-pad" id="slbMpDetail"></div></div>`;
             _slbMpRenderRail(); _slbMpRenderDetail();
         }
@@ -11884,47 +11767,21 @@
             if (!el) return;
             const M = _slbMods();
             const q = _slbMpSearch.trim().toLowerCase();
-            const keys = (_slbMpMode === 'jobs' ? _slbJobs() : _slbRaces()).filter(k => !q || k.toLowerCase().includes(q));
+            const keys = _slbRaces().filter(k => !q || k.toLowerCase().includes(q));
             if (!_slbMpKey || !keys.includes(_slbMpKey)) _slbMpKey = keys[0] || null;
-            el.innerHTML = `<div class="slb2-rail-head"><span>${_slbMpMode === 'jobs' ? 'JOBS' : 'RACES'} · ${keys.length}</span></div>` + keys.map(k => {
-                const n = _slbMpMode === 'jobs' ? (CLASS_SPELL_LEARN_ORDER[k] || []).length : _slbRaceFams(k).length;
-                const touched = _slbMpMode === 'jobs' ? !!M.doc.learnsets[k] : Object.prototype.hasOwnProperty.call(M.doc.raceFamilies || {}, k);
-                const bad = _slbMpMode === 'races' && (n < _SLB_RACE_FAM_MIN || n > _SLB_RACE_FAM_MAX);
-                return `<div class="slb2-poolrow${k === _slbMpKey ? ' sel' : ''}" data-act="mpPick" data-key="${_slbEsc(k)}"><span>${_slbEsc(_slbMpMode === 'races' ? _slb2Race(k) : k)}</span>${touched ? '<span class="slb2-flag mod">●</span>' : ''}<span class="${bad ? 'slb2-lint-red' : 'slb2-dim'}">${n}</span></div>`;
+            el.innerHTML = `<div class="slb2-rail-head"><span>RACES · ${keys.length}</span></div>` + keys.map(k => {
+                const n = _slbRaceFams(k).length;
+                const touched = Object.prototype.hasOwnProperty.call(M.doc.raceFamilies || {}, k);
+                const bad = n < _SLB_RACE_FAM_MIN || n > _SLB_RACE_FAM_MAX;
+                return `<div class="slb2-poolrow${k === _slbMpKey ? ' sel' : ''}" data-act="mpPick" data-key="${_slbEsc(k)}"><span>${_slbEsc(_slb2Race(k))}</span>${touched ? '<span class="slb2-flag mod">●</span>' : ''}<span class="${bad ? 'slb2-lint-red' : 'slb2-dim'}">${n}</span></div>`;
             }).join('');
-        }
-        function _slbMpIds(key) { return _slbMpMode === 'jobs' ? (CLASS_SPELL_LEARN_ORDER[key] || []).slice() : (RACE_ABILITIES[key] || []).map(a => a.id); }
-        function _slbMpWrite(key, ids, label) {
-            const M = _slbMods();
-            const kind = _slbMpMode === 'jobs' ? 'learnsets' : 'raceAbilities';
-            const prisArr = _slbMpMode === 'jobs' ? ((M.pristineState() && M.pristineState().learn[key]) || []) : ((M.pristineState() && M.pristineState().raceRefs[key]) || []).map(a => a.id);
-            _slb2Mutate(label || `${key} pool`, () => { if (JSON.stringify(ids) === JSON.stringify(prisArr)) delete M.doc[kind][key]; else M.doc[kind][key] = ids; });
-            _slbMpRenderRail(); _slbMpRenderDetail(); _slb2RefreshChrome();
         }
         function _slbMpRenderDetail() {
             const el = document.getElementById('slbMpDetail');
             if (!el) return;
             const key = _slbMpKey;
-            if (!key) { el.innerHTML = '<div class="slb2-empty">Pick a ' + (_slbMpMode === 'jobs' ? 'job' : 'race') + '.</div>'; return; }
-            if (_slbMpMode === 'races') { el.innerHTML = _slbRaceFamHtml(key); return; }
-            const M = _slbMods();
-            const ids = _slbMpIds(key);
-            const touched = _slbMpMode === 'jobs' ? !!M.doc.learnsets[key] : !!M.doc.raceAbilities[key];
-            const lvl = i => (_slbMpMode === 'jobs' && typeof getSpellUnlockLevel === 'function') ? `<span class="slb2-dim">Lv ${getSpellUnlockLevel(key, i)}</span>` : '';
-            const allIds = _slb2Rows().filter(r => !r.deleted).map(r => r.id).sort();
-            el.innerHTML = `<div class="slb2-ins-head">
-                <div class="slb2-ins-name">${_slbEsc(_slbMpMode === 'races' ? _slb2Race(key) : key)}</div>
-                <div class="slb2-ins-id">${ids.length} row${ids.length === 1 ? '' : 's'}${touched ? ' · <span class="slb2-dot">●</span> changed' : ''}</div>
-                <div class="slb2-ins-verbs">${touched ? `<button class="slb2-btn" data-act="mpRevert" data-key="${_slbEsc(key)}">↺ REVERT</button>` : ''}</div>
-            </div>
-            <div class="slb2-mplist">${ids.map((id, i) => { const d = SPELL_BY_ID[id] || {}; const r = _slb2RowById(id); return `<div class="slb2-mprow">
-                <span class="slb2-dim slb2-mpidx">${i + 1}</span>${lvl(i)}
-                <span class="slb2-tier t${r ? r.tier : 1}">${_slb2TierText(r ? r.tier : 1)}</span>
-                <span class="slb2-member-n" data-act="jump" data-id="${_slbEsc(id)}" title="open in the table">${_slbEsc(d.name || id)}</span>
-                ${r ? _slb2RoleChip(r.role) : ''}<span class="slb2-dim">${_slbEsc(id)}</span>
-                <span class="slb2-mpctl"><button data-act="mpMove" data-key="${_slbEsc(key)}" data-i="${i}" data-dir="-1" title="earlier">↑</button><button data-act="mpMove" data-key="${_slbEsc(key)}" data-i="${i}" data-dir="1" title="later">↓</button><button data-act="mpRemove" data-key="${_slbEsc(key)}" data-i="${i}" title="remove">✕</button></span>
-            </div>`; }).join('') || '<div class="slb2-empty">empty</div>'}</div>
-            <div class="slb2-addfield"><input class="slb2-sel slb2-sel-add" list="slbMpAddList" placeholder="＋ add a spell by id…" data-input="mpAdd" data-key="${_slbEsc(key)}" style="min-width:260px"><datalist id="slbMpAddList">${allIds.filter(id => !ids.includes(id)).map(id => `<option value="${_slbEsc(id)}">${_slbEsc((SPELL_BY_ID[id] || {}).name || '')}</option>`).join('')}</datalist></div>`;
+            if (!key) { el.innerHTML = '<div class="slb2-empty">Pick a race.</div>'; return; }
+            el.innerHTML = _slbRaceFamHtml(key);
         }
 
         /* ── POOLS · RACE FAMILIES (SPELL LIBRARY Phase 6, the user 2026-09-26: "in the pools section, I need to be able to select
@@ -11944,7 +11801,7 @@
             const touched = Object.prototype.hasOwnProperty.call(M.doc.raceFamilies || {}, race);
             // the pool index leaves the wheel's doors to the wheel part: show a family's own rows when the index has none
             const members = f => { const ids = (typeof familyMemberIds === 'function') ? familyMemberIds(f) : []; return ids.length ? ids : _slb2Rows().filter(r => !r.deleted && r.families.includes(f)).map(r => r.id); };
-            const pool = (typeof unitSpellPoolParts === 'function') ? unitSpellPoolParts(race, 'Warrior').race : [];
+            const pool = (typeof unitSpellPoolParts === 'function') ? unitSpellPoolParts(race, UNIT_CLASS).race : [];
             const famPool = new Set(fams.flatMap(members));
             const treeOnly = ((typeof getRaceTreeAllIds === 'function') ? getRaceTreeAllIds(race) : []).filter(id => !famPool.has(id));
             const n = fams.length, bad = n < _SLB_RACE_FAM_MIN || n > _SLB_RACE_FAM_MAX;
@@ -12123,7 +11980,7 @@
                     </div>
                     <div class="slb2-group"><div class="slb2-group-h">COVERAGE</div>
                         <div class="slb2-field-h">Families with members but no tier-I row: ${noTierOne.map(f => `<b style="color:${_slb2FamColor(f)};white-space:nowrap">${_slb2Glyph(f)} ${_slbEsc(_slb2FamName(f))}</b>`).join(', ') || 'none'}.</div>
-                        <div class="slb2-field-h">Off-pool rows (no race row, job row or family): ${rows.filter(r => r.lint.some(h => h.rule === 'offPool')).length}. Races × families: ${typeof RACE_FAMILIES !== 'undefined' && Object.keys(RACE_FAMILIES).length ? Object.keys(RACE_FAMILIES).filter(r => (RACE_FAMILIES[r] || []).length < 3).length + ' races under 3 families' : 'RACE_FAMILIES is empty until Phase 7'}.</div>
+                        <div class="slb2-field-h">Off-pool rows (no race row or family): ${rows.filter(r => r.lint.some(h => h.rule === 'offPool')).length}. Races × families: ${typeof RACE_FAMILIES !== 'undefined' && Object.keys(RACE_FAMILIES).length ? Object.keys(RACE_FAMILIES).filter(r => (RACE_FAMILIES[r] || []).length < 3).length + ' races under 3 families' : 'RACE_FAMILIES is empty until Phase 7'}.</div>
                     </div>
                 </div>
                 <div class="slb2-rep-col">
@@ -12178,8 +12035,7 @@
                 if (md('apCost') != null) base.apCost = md('apCost');
             }
             base.tier = 1; base.families = base.element ? [base.element] : []; base.upgrades = []; base.descAuto = true;
-            base.school = 'Black Mage'; base.classRestriction = 'Black Mage';
-            return base;
+            return base;   // THE JOBS REMOVAL (2026-09-27): no school / job gate stamped on a new row
         }
         function _slb2NewMenu(anchor) {
             _slb2Popover(anchor, `<div class="slb2-menu">
@@ -12200,7 +12056,7 @@
                 tpl._home = { lib: true };
                 _slb2Mutate(`＋ ${id} created`, () => { _slb2Doc().added[id] = tpl; });
                 _slb2SelectNew(id);
-                _slbToast(`＋ ${id} — rename it, pick its families and a home row (JOBS / RACES) in the header`);
+                _slbToast(`＋ ${id} — rename it, pick its families and a home row (RACES) in the header`);
             });
         }
         function _slb2CreatePassive(tplKey) {
@@ -12296,7 +12152,7 @@
                 ['export', '⇩ EXPORT', 'JSON + markdown summary', '⌘S'], ['import', '⇪ IMPORT', 'merge or replace a JSON export', ''], ['lab', '▶ LAB', 'boot the Spell Lab on this spell', '⌘L'],
                 ['newMenu', '＋ NEW', 'a spell, passive, family or upgrade', ''], ['toggleEnabled', 'EDITS ON / OFF', 'apply the doc to the live tables, or play vanilla', ''],
                 ['viewToggle', 'TABLE / CARDS', 'switch the view', ''], ['tab:spells', 'SPELLS', 'the table', ''], ['tab:passives', 'PASSIVES', 'family passives + inherent', ''], ['tab:families', 'FAMILIES', 'the registry', ''],
-                ['tab:upgrades', 'UPGRADES', 'the registry', ''], ['tab:pools', 'POOLS', 'job learnsets · race rows', ''], ['tab:identity', 'IDENTITY', 'families → a character idea', ''], ['tab:report', 'REPORT', 'the census + lint + redundancy', ''], ['undo', '↶ UNDO', '', '⌘Z'], ['redo', '↷ REDO', '', '⌘⇧Z'],
+                ['tab:upgrades', 'UPGRADES', 'the registry', ''], ['tab:pools', 'POOLS', 'race families', ''], ['tab:identity', 'IDENTITY', 'families → a character idea', ''], ['tab:report', 'REPORT', 'the census + lint + redundancy', ''], ['undo', '↶ UNDO', '', '⌘Z'], ['redo', '↷ REDO', '', '⌘⇧Z'],
                 ['pruneApplied', '✓ CLEAR APPLIED', 'drop change groups already baked into this data.js', ''], ['resetAll', '⟲ DISCARD ALL', 'every pending edit', ''],
             ];
             _slb2Modal(`<div class="slb2-dialog slb2-palette">
@@ -12346,7 +12202,7 @@
                 if (f === 'bonusVsStatus') return '{"status":"burn","mult":1.5}';
                 if (f === 'hooks') return '{"statBonus":{"atk":10}}';
                 if (f === 'animClip') return '{"name":"","lib":""}';
-                if (f === 'families' || f === 'upgrades' || f === 'hitDamages' || f === 'classRestrictions' || f === 'jobPreference') return '[]';
+                if (f === 'families' || f === 'upgrades' || f === 'hitDamages' || f === 'jobPreference') return '[]';
                 return '{}';
             }
             if (s.t === 'enum') return (f === 'vfxArchetype' ? (_slbArchetypes()[0] || '') : (s.o && s.o[0]) || '');
@@ -12726,15 +12582,11 @@
                     _slbUpTry[id] = next.slice(-((typeof SPELL_UPGRADE_MAX !== 'undefined') ? SPELL_UPGRADE_MAX : 2));
                     _slb2RenderInspector(); return;
                 }
-                case 'mpMode': _slbMpMode = P('data-mode'); _slbMpKey = null; _slb2RenderPools(document.getElementById('slbMain')); return;
                 case 'mpPick': _slbMpKey = P('data-key'); _slbMpRenderRail(); _slbMpRenderDetail(); return;
-                case 'mpMove': { const key = P('data-key'), i = +P('data-i'), j = i + Number(P('data-dir')); const ids = _slbMpIds(key); if (j < 0 || j >= ids.length) return; const t = ids[i]; ids[i] = ids[j]; ids[j] = t; _slbMpWrite(key, ids, `${key}: ${t} moved`); return; }
-                case 'mpRemove': { const key = P('data-key'), ids = _slbMpIds(key); const gone = ids.splice(+P('data-i'), 1); _slbMpWrite(key, ids, `${key}: ${gone[0]} removed`); return; }
                 case 'rfToggle': { const key = P('data-key'), f = P('data-fam'); const list = _slbRaceFams(key); const on = list.includes(f); _slbRaceFamWrite(key, on ? list.filter(x => x !== f) : list.concat(f), `${key}: ${on ? '−' : '+'}${f}`); return; }
                 case 'rfMove': { const key = P('data-key'), i = +P('data-i'), j = i + Number(P('data-dir')); const list = _slbRaceFams(key); if (j < 0 || j >= list.length) return; const t = list[i]; list[i] = list[j]; list[j] = t; _slbRaceFamWrite(key, list, `${key}: ${t} moved`); return; }
                 case 'rfRevert': { const key = P('data-key'); _slb2Mutate(`↺ ${key} families`, () => { delete _slbMods().doc.raceFamilies[key]; }); _slbMpRenderRail(); _slbMpRenderDetail(); _slb2RefreshChrome(); return; }
                 case 'rfOpen': { _slbFamKey = P('data-fam'); _slbTab = 'families'; _slb2RenderTop(); _slb2RenderTab(); return; }
-                case 'mpRevert': { const key = P('data-key'); _slb2Mutate(`↺ ${key} pool`, () => { delete _slbMods().doc[_slbMpMode === 'jobs' ? 'learnsets' : 'raceAbilities'][key]; }); _slbMpRenderRail(); _slbMpRenderDetail(); _slb2RefreshChrome(); return; }
                 case 'repFilter': { _slbFilters = _slb2EmptyFilters(); if (P('data-role')) _slbFilters.roles = [P('data-role')]; if (P('data-tier')) _slbFilters.tiers = [Number(P('data-tier'))]; if (P('data-element')) _slbFilters.elements = [P('data-element')]; if (P('data-family')) _slbFilters.families = [P('data-family')]; if (P('data-kind')) _slbFilters.kinds = [P('data-kind')]; _slbSearch = ''; _slbTab = 'spells'; _slb2RenderTop(); _slb2RenderTab(); return; }
                 case 'lintFilter': { _slbFilters = _slb2EmptyFilters(); _slbFilters.lint = [P('data-rule')]; _slbSearch = ''; _slbTab = 'spells'; _slb2RenderTop(); _slb2RenderTab(); return; }
                 case 'toastAct': { const a = P('data-what'); const t = document.getElementById('slbToast'); if (t) t.style.opacity = '0'; if (a === 'undo') window._slbUndo(); else if (a === 'redo') window._slbRedo(); return; }
@@ -12778,7 +12630,6 @@
                 case 'lookTravel': window._slbSetField(id, '_animOverride', v ? JSON.stringify(Object.assign({}, (SPELL_BY_ID[id] && SPELL_BY_ID[id]._animOverride) || {}, { travel: v })) : (SPELL_BY_ID[id] && SPELL_BY_ID[id]._animOverride && Object.keys(SPELL_BY_ID[id]._animOverride).length > 1 ? JSON.stringify(Object.assign({}, SPELL_BY_ID[id]._animOverride, { travel: undefined })) : ''), 'json'); return;
                 case 'famAdd': if (v) _slb2FamilyOf(id, v, true); return;
                 case 'famIdentity': _slb2SetFamilyIdentity(id, t.getAttribute('data-key'), v); return;
-                case 'assignJob': if (v) { window._slbAssign(id, 'job', v); } return;
                 case 'assignRace': if (v) { window._slbAssign(id, 'race', v); } return;
                 case 'statusAdd': if (v) { const f = t.getAttribute('data-field'); const arr = _slb2StatusArr(id, f); arr.push({ id: v, duration: 2 }); _slb2StatusWrite(id, f, arr); } return;
                 case 'bonusAdd': if (v) { const d = SPELL_BY_ID[id]; const ids = d && d.bonusVsStatus ? [].concat(d.bonusVsStatus.status) : []; if (!ids.includes(v)) ids.push(v); _slb2BonusWrite(id, ids, (d && d.bonusVsStatus && d.bonusVsStatus.mult) || 1.5); } return;
@@ -12796,7 +12647,6 @@
                     return;
                 }
                 case 'importFile': window._slbImportFile(t); return;
-                case 'mpAdd': if (v) { const key = t.getAttribute('data-key'); const ids = _slbMpIds(key); const match = SPELL_BY_ID[v] ? v : (_slb2Rows().find(r => String(r.def.name).toLowerCase() === v.toLowerCase()) || {}).id; if (!match) { _slbToast(`✗ unknown spell "${v}"`, true); return; } if (!ids.includes(match)) { ids.push(match); _slbMpWrite(key, ids, `${key}: ${match} added`); } t.value = ''; } return;
                 case 'famAddMember': if (v) { const fam = t.getAttribute('data-fam'); const match = SPELL_BY_ID[v] ? v : (_slb2Rows().find(r => String(r.def.name).toLowerCase() === v.toLowerCase()) || {}).id; if (!match) { _slbToast(`✗ unknown spell "${v}"`, true); return; } _slb2FamilyOf(match, fam, true); _slb2RenderFamilies(document.getElementById('slbMain')); } return;
                 case 'upPatchAdd': if (v) { const spec = _SLB2_PATCH_KEYS.find(p => p[0] === v); const def = spec ? (spec[1] === 'num' ? (v === 'dmgMult' ? '1.15' : v === 'costDelta' ? '-10' : v === 'costMult' ? '0.8' : v === 'extraTargetsMult' ? '0.5' : '1') : spec[1] === 'json' ? (v === 'aoe' ? '{"preset":"3x3"}' : v === 'ricochet' ? '{"radius":2,"mult":0.5}' : v === 'statusBonus' ? '{"status":"burn","mult":1.5}' : v === 'turret' ? '{"dmgMult":1.2}' : '{}') : 'fire') : '1'; _slb2SetUpgradeField(id, 'patch', def, spec ? spec[1] : 'text', v); } return;
                 case 'bulk': if (v) _slb2Bulk(t.getAttribute('data-op'), v); t.value = ''; return;
@@ -12853,7 +12703,7 @@
 
         window._spellLabActive = false;
         const _slbLab = {
-            cfg: { spellId: null, casterRace: 'homosapien', casterJob: 'Black Mage', dummyRace: 'homosapien', distance: 3, targetGround: false, immortal: true, repeat: false, repeatGapMs: 1200 },
+            cfg: { spellId: null, casterRace: 'homosapien', dummyRace: 'homosapien', distance: 3, targetGround: false, immortal: true, repeat: false, repeatGapMs: 1200 },
             saved: null,
             tickTimer: null,
             repeatTimer: null,
@@ -12861,14 +12711,17 @@
         };
 
         function _slbLabLearnerFor(spellId) {
-            const out = { job: null, race: null };
-            const jobs = _slbJobs().filter(j => (CLASS_SPELL_LEARN_ORDER[j] || []).includes(spellId));
+            /* THE JOBS REMOVAL (the user 2026-09-27): no job learner — the caster is a race that lists the row, else a
+               3D-ready race whose families hold it (data.js raceFamilyPoolIds) */
+            const out = { race: null };
             const def = SPELL_BY_ID[spellId];
-            if (jobs.length) out.job = jobs[0];
-            else if (def && (def.classRestriction || (def.classRestrictions && def.classRestrictions[0]))) out.job = def.classRestriction || def.classRestrictions[0];
             const races = _slbRaces().filter(r => (RACE_ABILITIES[r] || []).some(a => a.id === spellId));
             if (races.length) out.race = races[0];
             else if (def && def._race) out.race = def._race;
+            else if (typeof raceFamilyPoolIds === 'function') {
+                const hit = _slbLab3DRaces().find(x => x.has3d && raceFamilyPoolIds(x.race).includes(spellId));
+                if (hit) out.race = hit.race;
+            }
             return out;
         }
 
@@ -12894,14 +12747,7 @@
             }
             if (!cfg.spellId) { _slbToast('✗ no spell to preview', true); return; }
             const learner = _slbLabLearnerFor(cfg.spellId);
-            if (learner.race) {
-                cfg.casterRace = learner.race;
-                cfg.casterJob = (typeof RACE_DEFAULT_JOBS !== 'undefined' && RACE_DEFAULT_JOBS[learner.race]) || learner.job || cfg.casterJob;
-            } else if (learner.job) {
-                cfg.casterJob = learner.job;
-                const owned = (typeof cpu3DRaceForJobSlot === 'function') ? cpu3DRaceForJobSlot(cfg.casterJob) : null;
-                if (owned) cfg.casterRace = owned;
-            }
+            if (learner.race) cfg.casterRace = learner.race;
             _slbLabBoot();
         };
 
@@ -12922,7 +12768,7 @@
                     winHourglasses: 99, hiddenItemSpawns: 0, blitzMode: true, hasTowers: false,
                     terrainPatches: { water: [0, 0, 0], desert: [0, 0, 0], mountain: [0, 0, 0] },
                     spawns: { 1: [{ x: Math.max(0, 4 - Math.ceil(cfg.distance / 2)), y: 4 }], 2: [{ x: Math.min(7, 4 + Math.floor(cfg.distance / 2)), y: 4 }] },
-                    defaultBuilds: { 1: [cfg.casterJob], 2: ['Warrior'] },
+                    defaultBuilds: { 1: [UNIT_CLASS], 2: [UNIT_CLASS] },
                 };
                 MAP_LAYOUT_PRESETS.spelllab = {
                     sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 7, label: 'Earth', baseTerrain: 'grass' }, buffer2: null, below: null },
@@ -12944,7 +12790,7 @@
                 state.isCampaign = false;
                 state._customRoundLimit = 0;
 
-                state.partyBuilds = { 1: [cfg.casterJob], 2: ['Warrior'] };
+                state.partyBuilds = { 1: [UNIT_CLASS], 2: [UNIT_CLASS] };
                 state.partyNames = { 1: ['Caster'], 2: ['Dummy'] };
                 state.loadouts = { 1: [emptyLoadout()], 2: [emptyLoadout()] };
                 state.partyMeta = {
@@ -13251,8 +13097,7 @@
             const rows = _slbAllRows().filter(r => !r.deleted).sort((a, b) => String(a.def.name || '').localeCompare(String(b.def.name || '')));
             const def = SPELL_BY_ID[cfg.spellId] || {};
             const races = _slbLab3DRaces();
-            const jobs = _slbJobs();
-            const learners = _slbJobs().filter(j => (CLASS_SPELL_LEARN_ORDER[j] || []).includes(cfg.spellId));
+            const fams = (typeof spellFamiliesOf === 'function') ? spellFamiliesOf(def) : (Array.isArray(def.families) ? def.families : []);   // THE JOBS REMOVAL (2026-09-27): a spell's source is its families
             const learnerRaces = _slbRaces().filter(r => (RACE_ABILITIES[r] || []).some(a => a.id === cfg.spellId));
             const chip = (on, label, cb) => `<button class="slb-lab-chip${on ? ' on' : ''}" onclick="${cb}">${label}</button>`;
             panel.innerHTML = `
@@ -13264,14 +13109,11 @@
                         ${rows.map(r => `<option value="${_slbEsc(r.id)}"${r.id === cfg.spellId ? ' selected' : ''}>${_slbEsc(r.def.name || r.id)}${r.modified || r.added ? ' ●' : ''}</option>`).join('')}
                     </select>
                 </div>
-                <div class="slb-lab-row slb-lab-hint">${learners.length ? 'learned by: ' + _slbEsc(learners.join(', ')) : (learnerRaces.length ? 'race ability: ' + _slbEsc(learnerRaces.slice(0, 4).join(', ')) + (learnerRaces.length > 4 ? '…' : '') : 'unassigned spell')}</div>
+                <div class="slb-lab-row slb-lab-hint">${learnerRaces.length ? 'race ability: ' + _slbEsc(learnerRaces.slice(0, 4).join(', ')) + (learnerRaces.length > 4 ? '…' : '') : (fams.length ? 'families: ' + _slbEsc(fams.map(_slb2FamName).join(', ')) : 'unassigned spell')}</div>
                 <div class="slb-lab-row">
                     <label>CASTER</label>
                     <input class="slb-lab-race" list="slbLabRaceList" value="${_slbEsc(cfg.casterRace)}" placeholder="race… (type to search)"
                         title="type to search — ★-prefixed races have a rigged 3D model" onchange="window._slbLabSetCfg('casterRace', this.value)">
-                    <select onchange="window._slbLabSetCfg('casterJob', this.value)">
-                        ${jobs.map(j => `<option value="${_slbEsc(j)}"${j === cfg.casterJob ? ' selected' : ''}>${_slbEsc(j)}</option>`).join('')}
-                    </select>
                 </div>
                 <div class="slb-lab-row">
                     <label>DUMMY</label>
@@ -14375,7 +14217,7 @@
             // Mirrors doSpell's spellPower assembly (incl. Arcane Surge).
             const spellPower = (caster.spellPower || 0) + getHourglassPower(caster)
                 + (typeof getSpellStatBonus === 'function' ? getSpellStatBonus(caster, spell) : 0)
-                + (typeof getJobPassiveSpellBonus === 'function' ? getJobPassiveSpellBonus(caster) : 0);
+                + (typeof unitPassiveSum === 'function' ? (unitPassiveSum(caster, 'spellPower') || 0) : 0);   // Arcane Surge's rider (THE JOBS REMOVAL 2026-09-27: was getJobPassiveSpellBonus)
             let baseDmg = 0;
 
             // Mirror the engine's resolution-time scaling (data.js "LEVEL
@@ -14448,8 +14290,9 @@
                 if (armor > 0) baseDmg = Math.max(1, baseDmg - armor);
                 const _hs = Math.round(heightSoak * _esLsT);
                 if (_hs > 0) baseDmg = Math.max(1, baseDmg - _hs);
-                // Bulwark (Tank passive): flat 8 soak on armor-respecting hits.
-                if (target.cls === 'Tank') baseDmg = Math.max(1, baseDmg - Math.round(8 * _esLsT));
+                // Bulwark (the passive row's `damageSoak` hook, sum — THE JOBS REMOVAL 2026-09-27: was the Tank job): flat soak on armor-respecting hits.
+                const _esSoak = (typeof unitPassiveSum === 'function') ? (unitPassiveSum(target, 'damageSoak') || 0) : 0;
+                if (_esSoak) baseDmg = Math.max(1, baseDmg - Math.round(_esSoak * _esLsT));
                 const hgRed = Math.round(getHourglassDamageReduction(target) * _esLsT);
                 if (hgRed > 0) baseDmg = Math.max(1, baseDmg - hgRed);
             }
@@ -14490,10 +14333,9 @@
             let dmg = Math.max(24, Math.floor(((typeof levelPowerStat === 'function') ? levelPowerStat(attacker, 'atk') : (attacker.atk || 0)) * 0.65)
                 + (typeof getPlantedTreeBonus === 'function' ? getPlantedTreeBonus(attacker) : 0)
                 + getHourglassPower(attacker));
-            // Brute Force (Raider passive): basic attacks land +20% harder.
-            if (attacker.cls === 'Raider') dmg = Math.floor(dmg * 1.2);
-            // Warpath (Warrior passive): basic attacks hit +15% harder.
-            else if (attacker.cls === 'Warrior') dmg = Math.floor(dmg * 1.15);
+            // Brute Force ×1.2 / Warpath ×1.15 (passive rows, the `basicDmgMult` hook, they multiply — THE JOBS REMOVAL 2026-09-27: were the Raider / Warrior jobs).
+            const _baBdm = (typeof unitPassiveMult === 'function') ? (unitPassiveMult(attacker, 'basicDmgMult') || 1) : 1;
+            if (_baBdm !== 1) dmg = Math.floor(dmg * _baBdm);
             let heightSoak = 0;
             if (isEnemyUnit(attacker, target)) {
                 dmg += getEffectiveAttackBonus(attacker, 'physical');
@@ -14525,8 +14367,9 @@
             if (armor > 0) dmg = Math.max(1, dmg - armor);
             const _bhs = Math.round(heightSoak * _baLsT);
             if (_bhs > 0) dmg = Math.max(1, dmg - _bhs);
-            // Bulwark (Tank passive): flat 8 soak on armor-respecting hits.
-            if (target.cls === 'Tank') dmg = Math.max(1, dmg - Math.round(8 * _baLsT));
+            // Bulwark (the passive row's `damageSoak` hook, sum — THE JOBS REMOVAL 2026-09-27: was the Tank job): flat soak on armor-respecting hits.
+            const _baSoak = (typeof unitPassiveSum === 'function') ? (unitPassiveSum(target, 'damageSoak') || 0) : 0;
+            if (_baSoak) dmg = Math.max(1, dmg - Math.round(_baSoak * _baLsT));
             const hgRed = Math.round(getHourglassDamageReduction(target) * _baLsT);
             if (hgRed > 0) dmg = Math.max(1, dmg - hgRed);
             return Math.max(1, dmg);
@@ -14612,8 +14455,9 @@
             if (armor > 0) dmg = Math.max(1, dmg - armor);
             const _hs = Math.round(heightSoak * _cbLsT);
             if (_hs > 0) dmg = Math.max(1, dmg - _hs);
-            // Bulwark (Tank passive): flat 8 soak on armor-respecting hits.
-            if (target.cls === 'Tank') dmg = Math.max(1, dmg - Math.round(8 * _cbLsT));
+            // Bulwark (the passive row's `damageSoak` hook, sum — THE JOBS REMOVAL 2026-09-27: was the Tank job): flat soak on armor-respecting hits.
+            const _cbSoak = (typeof unitPassiveSum === 'function') ? (unitPassiveSum(target, 'damageSoak') || 0) : 0;
+            if (_cbSoak) dmg = Math.max(1, dmg - Math.round(_cbSoak * _cbLsT));
             const hgRed = Math.round(getHourglassDamageReduction(target) * _cbLsT);
             if (hgRed > 0) dmg = Math.max(1, dmg - hgRed);
             return Math.max(1, dmg);
@@ -15672,10 +15516,10 @@
                 CONFIG.gauntletDeploy = 0;
                 SPAWNS[1] = L.board.p1.map(u => ({ x: u.x, y: u.y }));
                 SPAWNS[2] = L.board.p2.map(u => ({ x: u.x, y: u.y }));
-                DEFAULT_BUILDS[1] = L.board.p1.map(u => u.job);
-                DEFAULT_BUILDS[2] = L.board.p2.map(u => u.job);
+                DEFAULT_BUILDS[1] = L.board.p1.map(() => UNIT_CLASS);   // THE JOBS REMOVAL (2026-09-27): one neutral class
+                DEFAULT_BUILDS[2] = L.board.p2.map(() => UNIT_CLASS);
                 const side = (list) => ({
-                    builds: list.map(u => u.job),
+                    builds: list.map(() => UNIT_CLASS),
                     names: list.map(u => u.name),
                     loadouts: list.map(u => { const lo = emptyLoadout(); if (u.items) Object.assign(lo.items, u.items); return lo; }),
                     meta: list.map(u => ({ race: u.race, gender: u.gender || 'male', customSpells: (u.spells && u.spells.length) ? u.spells.slice() : undefined })),

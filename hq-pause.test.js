@@ -125,7 +125,10 @@ test('ESC / P opens the pause overlay inside #hqPage, never the settings page', 
     assert.match(mp, /_hqOpenCounter\('directory'\);/);
     /* the party: the last roster built with the real createUnit */
     assert.match(mp, /function _hqLastParty\(\) \{ return \(typeof window\._ewLoadLastParty === 'function'\) \? window\._ewLoadLastParty\(\) : null; \}/);
-    assert.match(mp, /u = createUnit\('hq-pause-' \+ i, rec\.seat \|\| 1, 0, 0, \{ cls: m\.cls, job: m\.cls \}, lo, meta\);/);
+    /* THE JOBS REMOVAL (2026-09-27): every member builds from the one neutral template, never a job read off the record */
+    assert.match(mp, /u = createUnit\('hq-pause-' \+ i, rec\.seat \|\| 1, 0, 0, CLASS_TEMPLATES\[UNIT_CLASS\], lo, meta\);/);
+    assert.doesNotMatch(mp, /\{ cls: m\.cls, job: m\.cls \}/, 'no job template off the member');
+    assert.match(mp, /function _hqMemberName\(m\) \{ return \(m && m\.name\) \|\| _hqPauseRaceLabel\(m \|\| \{\}, null\); \}/, 'a nameless member reads its race, never its class');
     assert.match(mp, /getUnitPassives\(u\)/);
     assert.match(mp, /_hqPauseBar\('HP'/);
     /* settings render INTO the overlay and rerender in place */

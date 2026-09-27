@@ -5117,8 +5117,6 @@ body.diorama-3d .tile-underpass.jump::before {
 .pb-tn.is-sp .pb-tn-meta, .pb-tn.is-slots .pb-tn-meta { color: var(--ph-faint); }
 .pb-tn.pb-tc-borrow .pb-tn-name { color: var(--ph-teal); }
 .pb-tn.pb-tc-borrow .pb-tn-disc { border-color: rgba(127,217,221,0.6); color: var(--ph-teal); }
-.pb-rack-foot { display: flex; justify-content: center; padding-top: 4px; border-top: 1px solid var(--ph-line); flex-shrink: 0; }
-.pb-rack-foot .pb-tn { max-width: 320px; flex: 1; }
 /* the SP meter in the tech bar: one cell per Spell Point, grouped by four */
 .pb-sp { display: inline-flex; align-items: center; gap: 5px; }
 .pb-sp b { font-family: 'Cinzel', 'Cormorant SC', serif; font-size: 9px; font-weight: 900; letter-spacing: 0.1em; color: var(--ph-gold); }
@@ -6481,3 +6479,66 @@ body.diorama-3d .tile-underpass.jump::before {
 .hq-land-scale line { stroke: #f0e6c8; stroke-width: 1.4; }
 .hq-land-scale text { font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: 0.12em; fill: #f0e6c8; }
 #hqPage .hq-map-bar .hq-land-tab { font-size: 10px; }
+
+/* ══ THE FAMILY TABS (THE JOBS REMOVAL, the user 2026-09-27: "Easy to read spell slots organized by family, maybe tabs
+   for the families, with one section that shows the spell info for whichever one you have selected/hovered on") ══
+   The rack is a fixed head (the loadout 4 × 2 — seven slot cards + the ALWAYS READY cell, the finisher over the basic
+   attack — and the family tabs) and a scrolling body (the open family: its head line, then its cards tier I → IV). The
+   technique panel under the rack is the one info section (it follows hover, else the selection). */
+.pb-circuit-scroll.pb-circuit-tabs { overflow: hidden; }
+.pb-rack.pb-rack-tabs { flex: 1 1 auto; min-height: 0; gap: 6px; }
+.pb-rack-head { flex: none; display: flex; flex-direction: column; gap: 6px; }
+.pb-rack-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 0 3px 4px 0; }
+.pb-rack-tabs .pb-loadout { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; }
+.pb-rack-tabs .pb-ls { --fam: var(--nc); height: auto; min-height: 44px; gap: 5px; border-radius: 8px; padding: 4px 20px 4px 5px; align-items: center;
+  border: 1px solid color-mix(in srgb, var(--fam) 50%, transparent); border-left: 4px solid var(--fam);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--fam) 24%, #0d0d13) 0%, rgba(13,13,19,0.92) 100%); }
+.pb-rack-tabs .pb-ls:hover { border-color: var(--ph-red); border-left-color: var(--ph-red); background: rgba(255,106,92,0.14); }
+.pb-rack-tabs .pb-ls.hov { background: color-mix(in srgb, var(--fam) 34%, #0d0d13); }
+.pb-rack-tabs .pb-ls.sel { box-shadow: 0 0 0 1px #000, 0 0 0 2px var(--ph-gold); }
+.pb-rack-tabs .pb-ls-disc { width: 20px; height: 20px; font-size: 11px; flex: none; }
+.pb-ls-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.pb-rack-tabs .pb-ls-name { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.05; font-size: 12px; letter-spacing: 0; overflow-wrap: anywhere; }
+.pb-ls-fam { font-size: 8.5px; letter-spacing: 0.1em; color: color-mix(in srgb, var(--fam) 75%, #fff); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-transform: uppercase; }
+.pb-rack-tabs .pb-ls-tier { right: 7px; top: 6px; transform: none; font-size: 10px; }
+.pb-rack-tabs .pb-ls-up { right: 4px; top: auto; bottom: 4px; transform: none; font-size: 9px; }
+.pb-rack-tabs .pb-ls.empty { flex-direction: column; justify-content: center; gap: 1px; padding: 4px; border: 1px dashed rgba(255,255,255,0.16); background: rgba(0,0,0,0.18); }
+.pb-rack-tabs .pb-ls.empty:hover { border-color: rgba(255,255,255,0.16); background: rgba(0,0,0,0.18); }
+.pb-ls.empty small { font-size: 7.5px; letter-spacing: 0.16em; color: var(--ph-faint); }
+/* the tabs — one pill per family: glyph · name · n/m on (lit in the family colour when it holds an equipped spell) */
+.pb-famtabs { display: flex; flex-wrap: wrap; gap: 4px; padding-top: 6px; border-top: 1px solid var(--ph-line); }
+.pb-famtab { --fam: var(--ph-dim); display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px 4px 7px; border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--fam) 45%, transparent); background: rgba(0,0,0,0.4); color: var(--ph); font: inherit;
+  font-size: 10.5px; letter-spacing: 0.07em; text-transform: uppercase; cursor: pointer; line-height: 1.2; transition: background 0.12s, border-color 0.12s, box-shadow 0.12s; }
+.pb-famtab i { font-style: normal; color: var(--fam); font-size: 12px; line-height: 1; }
+.pb-famtab em { font-style: normal; font-size: 9px; letter-spacing: 0.04em; color: var(--ph-dim); padding: 0 5px; border-radius: 999px; background: rgba(255,255,255,0.07); }
+.pb-famtab.has em { color: #0d0d13; background: var(--fam); font-weight: 700; }
+.pb-famtab:hover { border-color: var(--fam); background: color-mix(in srgb, var(--fam) 14%, #0d0d13); }
+.pb-famtab.on { border-color: var(--fam); background: color-mix(in srgb, var(--fam) 34%, #0d0d13); color: #fff; box-shadow: 0 0 10px color-mix(in srgb, var(--fam) 40%, transparent), inset 0 -2px 0 var(--fam); }
+.pb-famtab.on i { color: #fff; }
+.pb-famtab.k-training, .pb-famtab.k-gear, .pb-famtab.k-borrow { border-style: dashed; }
+.pb-famtab.locked { opacity: 0.55; }
+/* the open family: its head, then its cards tier by tier */
+.pb-fambody { display: flex; flex-direction: column; gap: 6px; }
+.pb-famhead { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; column-gap: 8px; row-gap: 0; align-items: baseline; padding: 4px 8px;
+  border-left: 3px solid var(--fam); border-radius: 4px; background: linear-gradient(90deg, color-mix(in srgb, var(--fam) 18%, transparent), transparent 80%); }
+.pb-famhead b { grid-row: 1 / span 2; align-self: center; font-size: 19px; font-weight: 400; line-height: 1; color: var(--fam); }
+.pb-famhead-name { font-family: 'Cormorant SC', serif; font-size: 16px; font-weight: 700; line-height: 1.05; color: #f1e9cf; letter-spacing: 0.04em; }
+.pb-famhead em { grid-column: 3; grid-row: 1; font-style: normal; font-size: 9.5px; letter-spacing: 0.14em; color: var(--ph-gold); white-space: nowrap; }
+.pb-famhead-desc { grid-column: 2 / span 2; font-size: 10.5px; line-height: 1.3; color: var(--ph-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pb-famhead-desc:empty { display: none; }
+.pb-famrule { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; margin-top: 3px; font-size: 9px; letter-spacing: 0.16em; color: var(--ph-dim); }
+.pb-famrule b { font-family: 'Cinzel', 'Cormorant SC', serif; font-weight: 900; font-size: 10.5px; color: var(--ph); letter-spacing: 0.08em; }
+.pb-famrule::after { content: ''; flex: 1; height: 1px; background: var(--ph-line); }
+.pb-famlock { grid-column: 1 / -1; display: flex; flex-direction: column; align-items: flex-start; gap: 7px; padding: 12px 14px; border: 1px dashed rgba(127,217,221,0.45); border-radius: 8px; font-size: 11.5px; line-height: 1.45; color: var(--ph-dim); }
+.pb-famlock b { color: var(--ph-teal); letter-spacing: 0.12em; font-size: 12px; }
+/* ALWAYS READY (the loadout's eighth cell; the old foot strip is gone): the ☠ finisher over the ⚔ basic attack, two half-height rows */
+.pb-ls-ready { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.pb-ls-mini { --fam: #e6e9f2; flex: 1; display: flex; align-items: center; gap: 5px; min-width: 0; padding: 0 6px; border-radius: 6px; cursor: pointer;
+  border: 1px solid color-mix(in srgb, var(--fam) 40%, transparent); border-left: 3px solid var(--fam); background: color-mix(in srgb, var(--fam) 12%, #0d0d13);
+  font-size: 10.5px; letter-spacing: 0.05em; color: var(--ph); transition: background 0.12s, border-color 0.12s; }
+.pb-ls-mini i { font-style: normal; color: var(--fam); font-size: 11px; line-height: 1; }
+.pb-ls-mini span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pb-ls-mini:hover, .pb-ls-mini.hov { border-color: var(--fam); background: color-mix(in srgb, var(--fam) 24%, #0d0d13); }
+.pb-ls-mini.sel { box-shadow: 0 0 0 1px #000, 0 0 0 2px var(--ph-gold); }
+.pb-ls-fin { font-family: 'Cormorant SC', serif; font-weight: 700; font-size: 12px; }

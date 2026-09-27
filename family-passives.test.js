@@ -33,6 +33,7 @@ function fnSrc(src, name) {
 }
 
 const GEAR = D.GEAR_PASSIVES.map(sp => sp.id);
+const TRAINING = D.TRAINING_PASSIVES.map(sp => sp.id);   // THE JOBS REMOVAL (2026-09-27): the old job passives, universal like GEAR
 
 test('the 16 accessories are GEAR passive rows: tier I, the gear family, hooks, the retired id mapped', () => {
     assert.strictEqual(GEAR.length, 16);
@@ -52,16 +53,53 @@ test('the 16 accessories are GEAR passive rows: tier I, the gear family, hooks, 
     assert.strictEqual(D.SPELL_BY_ID.gearChronoLocket.hooks.regenPerRound, 5);
 });
 
-test('THE GEAR POOL: every unit — a Freelancer too — may equip every gear row; the lint never calls them off-pool', () => {
-    for (const [race, cls] of [['knight', 'Warrior'], ['homosapien', 'Freelancer'], ['door agent', 'Freelancer'], ['fairy', 'White Mage']]) {
-        const parts = D.unitSpellPoolParts(race, cls);
-        same(parts.gear, GEAR, race + ' / ' + cls);
-        const pool = new Set(D.unitSpellPool(race, cls));
-        for (const id of GEAR) assert.ok(pool.has(id), race + ' pool has ' + id);
+test('THE GEAR POOL: every unit — an Adaptable kit too — may equip every gear + training row; the lint never calls them off-pool', () => {
+    for (const [race, ids] of [['knight', []], ['homosapien', [D.ADAPTABLE_ROW_ID]], ['door agent', [D.ADAPTABLE_ROW_ID]], ['fairy', []]]) {
+        const parts = D.unitSpellPoolParts(race, D.UNIT_CLASS, ids);
+        same(parts.gear, GEAR.concat(TRAINING), race + ' / ' + ids.join(','));
+        const pool = new Set(D.unitSpellPool(race, D.UNIT_CLASS, ids));
+        for (const id of GEAR.concat(TRAINING)) assert.ok(pool.has(id), race + ' pool has ' + id);
+        for (const id of GEAR.concat(TRAINING)) assert.ok(!parts.borrowRace.includes(id), id + ' is never "borrowed"');
     }
     const ctx = D.spellLintContext();
-    for (const id of GEAR) assert.ok(!D.spellLint(D.SPELL_BY_ID[id], ctx).some(h => h.rule === 'offPool'), id + ' is on a pool');
+    for (const id of GEAR.concat(TRAINING)) assert.ok(!D.spellLint(D.SPELL_BY_ID[id], ctx).some(h => h.rule === 'offPool'), id + ' is on a pool');
     assert.ok(D.SPELL_FAMILIES.gear.universal);
+    assert.ok(D.SPELL_FAMILIES.training.universal);
+});
+
+/* THE JOBS REMOVAL (the user, 2026-09-27): "The job passives can be added to the optional passives for 1 SP." */
+test('THE TRAINING rows: the 13 old job passives are tier I passive rows in the universal training family, with catalogued hooks', () => {
+    same(TRAINING, ['passiveDeadeye', 'passiveWarpath', 'passiveBulwark', 'passiveArcaneSurge', 'passiveGrace', 'passiveFieldOperative',
+        'passiveThirdEye', 'passiveGreenThumb', 'passiveTinker', 'passiveCrescendo', 'passiveAdaptable', 'passiveBruteForce', 'passiveRiposte']);
+    for (const sp of D.TRAINING_PASSIVES) {
+        assert.strictEqual(sp.kind, 'passive', sp.id);
+        assert.strictEqual(sp.tier, 1, sp.id + ' — tier I = 1 SP');
+        assert.strictEqual(D.spellSpCost(sp.id), 1, sp.id);
+        same(sp.families, ['training'], sp.id);
+        assert.strictEqual(D.SPELL_BY_ID[sp.id], sp);
+        assert.ok(sp.hooks && Object.keys(sp.hooks).length, sp.id + ' carries its effect as hooks');
+        for (const k of Object.keys(sp.hooks)) assert.ok(D.PASSIVE_HOOK_KEYS[k], sp.id + ': hook ' + k + ' is catalogued');
+        same(D.passiveHookLint(sp), [], sp.id + ' lints clean');
+    }
+    const H = id => D.SPELL_BY_ID[id].hooks;
+    same(H('passiveDeadeye').statBonus, { spd: 10 });
+    assert.strictEqual(H('passiveDeadeye').critMult, 2.0);
+    assert.strictEqual(H('passiveArcaneSurge').spellPower, 8);
+    assert.strictEqual(H('passiveGrace').healBonus, 24);
+    assert.strictEqual(H('passiveRiposte').counterChance, 0.35);
+    assert.strictEqual(H('passiveAdaptable').borrowFamilies, true);
+    // the combine rules: flat bonuses sum, multipliers multiply, chances / caps take the max
+    const u = { race: 'knight', passiveRows: ['passiveWarpath', 'passiveBulwark'] };
+    assert.strictEqual(D.unitPassiveSum(u, 'armor'), 10, 'armor sums');
+    assert.strictEqual(D.unitPassiveMax(u, 'counterChance'), 0.30, 'counter chance takes the max');
+    const b = { race: 'knight', passiveRows: ['passiveWarpath', 'passiveBruteForce'] };
+    assert.ok(Math.abs(D.unitPassiveMult(b, 'basicDmgMult') - 1.15 * 1.2) < 1e-9, 'basic multipliers multiply');
+    const none = { race: 'knight', passiveRows: [] };
+    assert.strictEqual(D.unitPassiveSum(none, 'armor'), 0);
+    assert.strictEqual(D.unitPassiveMult(none, 'basicDmgMult'), 1);
+    assert.strictEqual(D.unitPassiveMax(none, 'counterChance'), 0);
+    // two training rows fill the passive cap like any gear
+    assert.strictEqual(D.spellAddVerdict('knight', D.UNIT_CLASS, ['passiveWarpath', 'gearEchoBand'], 'passiveBulwark').reason, 'passives');
 });
 
 test('THE PASSIVE CAP: at most 2 passive rows — the verdict, the legality check, the repair; each costs its tier in SP', () => {
@@ -163,11 +201,15 @@ test('weather / terrain / zodiac bonus = stat stages while the situation holds (
     assert.strictEqual(f({ x: 3, y: 4, passiveRows: [] }, 'atk'), 0, 'no rows = no read');
 });
 
-test('the forge: the ◈ PASSIVES row, the retired gear slots, the stat preview and the old-save fold', () => {
-    assert.match(fnSrc(pbSrc, 'pbTierCtx'), /rows\[t\] = own\.concat\(borrowed\)\.filter\(id => !isPas\(id\)/, 'passives leave the tier rows');
-    assert.match(fnSrc(pbSrc, 'pbTierCtx'), /const passives = /);
-    assert.match(pbSrc, /className: 'pb-tier pb-tier-pas'/);
-    assert.match(fnSrc(pbSrc, 'pbTierGrid'), /ctx\.passives/, 'the keyboard walks the ◈ row');
+test('the forge: the ✦ TRAINING / ◈ GEAR tabs, the retired gear slots, the stat preview and the old-save fold', () => {
+    /* THE FAMILY TABS (the jobs removal, 2026-09-27): the passive rows sit in their family's tab — the universal TRAINING and
+       GEAR each get one — instead of a ◈ row under the tiers */
+    const ctx = fnSrc(pbSrc, 'pbTierCtx');
+    assert.match(ctx, /uni\('training'\);/, 'the TRAINING tab');
+    assert.match(ctx, /uni\('gear'\);/, 'the GEAR tab');
+    assert.match(ctx, /const passives = /, 'the ctx still lists the passive rows');
+    assert.doesNotMatch(pbSrc, /className: 'pb-tier pb-tier-pas'/, 'the ◈ row is gone');
+    assert.match(fnSrc(pbSrc, 'pbTierGrid'), /tab\.ids/, 'the keyboard walks the open tab');
     assert.doesNotMatch(pbSrc, /function handleAccChange\(|function equipAccessory\(|const allAccIds/, 'the two accessory slots are retired');
     assert.match(pbSrc, /computeFullStats\(unitRace, clsName, secJob, customSpells \|\| \[\]\)/);
     assert.match(pbSrc, /window\.gearMigrateIds\(customSpells \|\| \[\], unitEquipment\)/);
@@ -182,7 +224,7 @@ test('the HQ: a member filed with the old slots carries them into the kit; the r
     same(m.loadout.spells, m.meta.customSpells);
     same(m.loadout.equipment, {});
     const C = D.hqPartyTreeCircuit(m);
-    assert.ok(C.passives && C.passives.rows.length === 16, 'every gear row on the ◈ row');
+    assert.ok(C.passives && GEAR.concat(TRAINING).every(id => C.passives.rows.some(x => x.id === id)), 'every gear + training row on the ◈ row');
     assert.strictEqual(C.passives.used, 2);
     assert.ok(C.tiers.every(T => T.rows.every(row => !D.spellIsPassive(row.id))), 'no passive in a tier row');
     assert.strictEqual(C.passives.rows.find(x => x.id === 'gearHagstone').st, 'passives', 'a third is refused');

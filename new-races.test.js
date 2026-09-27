@@ -25,7 +25,7 @@ test('the three races sit in every data.js table, both sides of the parity line,
     const problems = [];
     for (const r of RACES) {
         if (!D.AVAILABLE_RACES.includes(r)) problems.push(r + ': AVAILABLE_RACES');
-        for (const T of ['RACE_PROFILES', 'RACE_DEFAULT_JOBS', 'RACE_BASE_STATS', 'RACE_ABILITIES', 'RACE_TREE', 'RACE_PASSIVES', 'EW_RACE_BIOMES', 'FINISHERS']) {
+        for (const T of ['RACE_PROFILES', 'RACE_FAMILIES', /* THE JOBS REMOVAL (2026-09-27): was RACE_DEFAULT_JOBS */ 'RACE_BASE_STATS', 'RACE_ABILITIES', 'RACE_TREE', 'RACE_PASSIVES', 'EW_RACE_BIOMES', 'FINISHERS']) {
             if (!D[T] || !D[T][r]) problems.push(r + ': ' + T);
         }
         /* three tables the sandbox does not expose — read off the source */

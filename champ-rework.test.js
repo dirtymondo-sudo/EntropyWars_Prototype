@@ -20,7 +20,6 @@ const dataSrc = src('data.js');
 // data.js only exposes what it Object.assigns onto window; the two tables
 // below are plain literals, so read them straight out of the source.
 const STATUS_LIBRARY_DESCS = extractConst(dataSrc, 'STATUS_LIBRARY_DESCS');
-const JOB_ARCHETYPES = extractConst(dataSrc, 'JOB_ARCHETYPES');
 // Values from the data.js vm realm carry that realm's prototypes — compare
 // by structure, not identity (deepStrictEqual would fail on Array/Object).
 const same = (actual, expected, msg) => assert.deepStrictEqual(JSON.parse(JSON.stringify(actual)), expected, msg);
@@ -159,9 +158,10 @@ test('check-grades prices every live passive and plans none that already shipped
 });
 
 test('werewolf: Lycanthropy replaced the nocturnal sleep nudge', () => {
-    const raider = Object.values(JOB_ARCHETYPES).find(a => a && a.race === 'werewolf');
-    assert.ok(raider, 'werewolf job archetype');
-    assert.strictEqual(raider.sleepPreference, 'none');
+    /* THE JOBS REMOVAL (2026-09-27): the per-job archetypes are gone — every build's fallback identity is the neutral
+       DEFAULT_IDENTITY, which carries no sleep nudge (the werewolf's night comes from Lycanthropy alone) */
+    assert.ok(!/const JOB_ARCHETYPES\b/.test(dataSrc), 'JOB_ARCHETYPES is deleted');
+    assert.strictEqual(D.DEFAULT_IDENTITY.sleepPreference, 'none');
     assert.ok(/dayNightForms/.test(mapSrc), 'map.js getSleepAffinityModifier honours dayNightForms');
 });
 
@@ -842,8 +842,10 @@ test('Phase 6: gangster + nun exist in every race table, with the §6 stats and 
     }
     same(D.RACE_BASE_STATS.gangster, { hp: 540, mp: 100, atk: 78, def: 44, mdef: 44, int: 10, awr: 56, spd: 64 });
     same(D.RACE_BASE_STATS.nun,      { hp: 460, mp: 250, atk: 8, def: 26, mdef: 58, int: 90, awr: 70, spd: 30 });
-    assert.strictEqual(D.RACE_DEFAULT_JOBS.gangster, 'Gunslinger');
-    assert.strictEqual(D.RACE_DEFAULT_JOBS.nun, 'White Mage');
+    // THE JOBS REMOVAL (2026-09-27): no default jobs — the old Gunslinger reach rides on the race kit
+    assert.strictEqual(typeof D.RACE_DEFAULT_JOBS, 'undefined');
+    same(D.raceKit('gangster'), { range: 2, inspect: 1 });
+    same(D.raceKit('nun'), { range: 1, inspect: 1 });
     same(D.RACE_PASSIVES.gangster, ['shank']);
     same(D.RACE_PASSIVES.nun, ['devout']);
     assert.strictEqual(D.PASSIVE_DEFS.shank.oppAttackMult, 1.5);

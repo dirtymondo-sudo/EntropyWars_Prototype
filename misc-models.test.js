@@ -84,6 +84,7 @@ test('the kit helper: yaw pivot, hang, sink, foot disc, fallback (THREE double)'
         CONFIG: { tileSize: 100 }, BASE_TILE: 100, window: {},
         _R2_MISC: 'misc/', _MISC_GLB: { thing: 'thing.glb' },
         _loadMiscModel(url, isGLB, cb) { cb(root); },
+        _miscModelCache: {}, _mqSpotAdd() {},   // THE NEAR FIRST (the file tracker): _miscModelInstance marks where a file is wanted
         _objectsDirty: false,
     };
     vm.createContext(ctx);

@@ -26,21 +26,27 @@ const IDX = fs.readFileSync(__dirname + '/index.html', 'utf8');
 const profile = (o) => Object.assign({ username: 'MONDO', account: { gold: 0, unlockedUnits: D.ACCT_STARTER_UNITS.slice() }, door: { clearance: 1, hq: {} } }, o || {});
 const look = { gender: 'female', appearance: { hair: 'hair003', skin: '#c68642' }, portrait: 'data:image/jpeg;base64,AAAA', name: 'AGENT BELLE' };
 
-test('THE RULES: the officer is a Freelancer D.O.O.R. Agent, the intake is on, the race is a starter with a rigged model', () => {
+/* THE JOBS REMOVAL (2026-09-27): the Freelancer job is gone — the officer is a 'Vessel' (UNIT_CLASS) D.O.O.R. Agent whose
+   starting kit (hqOfficerKit) equips the ADAPTABLE training row, which opens the borrow window. */
+test('THE RULES: the officer is a Vessel D.O.O.R. Agent with Adaptable in his kit, the intake is on, the race is a starter with a rigged model', () => {
     const R = D.HQ_OFFICER_RULES;
-    assert.equal(R.race, 'door agent'); assert.equal(R.cls, 'Freelancer'); assert.equal(R.intake, true);
+    assert.equal(R.race, 'door agent'); assert.equal(R.cls, g('UNIT_CLASS')); assert.equal(R.cls, 'Vessel'); assert.equal(R.intake, true);
     assert.ok(D.ACCT_STARTER_UNITS.includes(R.race), 'the agent is a starter on every profile');
     assert.ok(D.AVAILABLE_RACES.includes(R.race));
-    assert.ok(g('classHasSpellTree')(R.cls), 'the Freelancer has the socket tree');
+    assert.ok(g('classHasSpellTree')(R.cls), 'the Vessel has the spell tiers');
+    const kit = J(g('hqOfficerKit')(R.race));
+    assert.ok(kit.includes(g('ADAPTABLE_ROW_ID')), 'the officer\'s kit equips Adaptable (the old Freelancer borrow)');
+    assert.deepEqual(kit, J(g('raceDefaultKit')(R.race, [g('ADAPTABLE_ROW_ID')])), 'hqOfficerKit = raceDefaultKit(race, [Adaptable])');
+    assert.equal(g("typeof getJobPassive"), 'undefined'); assert.equal(g("typeof flWildcardPool"), 'undefined'); assert.equal(g("typeof flOwnedJobs"), 'undefined');
     assert.equal(D.HQ_LEVEL_RULES.start, 5, 'story mode starts at 5');
 });
 
-test('THE ENLIST: no record → hqOfficerOnFile false; enlist files the look, the chair, the record and member 0 (a Freelancer DOOR agent in the look, LV 5)', () => {
+test('THE ENLIST: no record → hqOfficerOnFile false; enlist files the look, the chair, the record and member 0 (a Vessel DOOR agent in the look, Adaptable, LV 5)', () => {
     const p = profile();
     assert.equal(g('hqOfficerOnFile')(p), false);
     assert.equal(g('hqOfficerRecord')(p), null);
     const rec = g('hqOfficerEnlist')(p, look);
-    assert.ok(rec && rec.created && rec.race === 'door agent' && rec.cls === 'Freelancer', 'the record');
+    assert.ok(rec && rec.created && rec.race === 'door agent' && rec.cls === 'Vessel', 'the record');
     assert.equal(rec.name, 'AGENT BELLE');
     assert.equal(g('hqOfficerOnFile')(p), true);
     const lk = g('hqLook')(p);
@@ -49,14 +55,15 @@ test('THE ENLIST: no record → hqOfficerOnFile false; enlist files the look, th
     const party = g('hqPartyRecord')(p);
     assert.ok(party && party.members.length >= 1, 'the party was seeded');
     const m0 = party.members[0];
-    assert.equal(m0.you, true); assert.equal(m0.cls, 'Freelancer'); assert.equal(m0.meta.race, 'door agent'); assert.equal(m0.meta.gender, 'female');
+    assert.equal(m0.you, true); assert.equal(m0.cls, 'Vessel');
+    assert.ok(m0.loadout.spells.includes('passiveAdaptable') && m0.meta.customSpells.includes('passiveAdaptable'), 'the officer walks in with Adaptable equipped'); assert.equal(m0.meta.race, 'door agent'); assert.equal(m0.meta.gender, 'female');
     assert.equal(m0.name, 'AGENT BELLE');
     assert.deepEqual(J(m0.meta.appearance.hair), 'hair003', 'the look rides the member');
     assert.equal(g('hqPartyXp')(m0).lvl, 5, 'the officer starts at the start level');
     assert.equal(g('hqPartyLevel')(p), 5, 'the party level is the start level on a fresh profile');
     const L = g('hqPartyForLaunch')(p);
     assert.equal(L.members[0].meta.storyLevel, 5, 'the launch builds the officer at 5');
-    assert.equal(L.members[0].meta.race, 'door agent'); assert.equal(L.members[0].cls, 'Freelancer');
+    assert.equal(L.members[0].meta.race, 'door agent'); assert.equal(L.members[0].cls, 'Vessel');
     /* one vessel per race: the seed never adds a second door agent beside the officer */
     assert.equal(party.members.filter(m => m.meta.race === 'door agent').length, 1);
 });
@@ -78,19 +85,21 @@ test('THE ENLIST twice: a re-file keeps member 0\'s id, ledger and vitals; a new
     assert.equal(g('hqPartyRecord')(p).members[0].meta.appearance.hair, 'hair010'); assert.equal(g('hqPartyRecord')(p).members[0].name, 'AGENT J');
 });
 
-test('THE OFFICER without an intake: the legacy seed still stands (the DOOR Agent in its own job; the mirror\'s look = a homosapien)', () => {
+test('THE OFFICER without an intake: the legacy seed still stands (the DOOR Agent, a Vessel; the mirror\'s look = a homosapien)', () => {
     const p = profile();
     const off = g('hqPartyOfficer')(p);
-    assert.equal(off.meta.race, 'door agent'); assert.equal(off.cls, D.RACE_DEFAULT_JOBS['door agent']);
+    assert.equal(off.meta.race, 'door agent'); assert.equal(off.cls, 'Vessel');
+    assert.equal(g('typeof RACE_DEFAULT_JOBS'), 'undefined', 'no default jobs (THE JOBS REMOVAL)');
     g('hqSetLook')(p, look); g('hqSetAvatar')(p, 'look');
     const off2 = g('hqPartyOfficer')(p);
-    assert.equal(off2.meta.race, 'homosapien'); assert.equal(off2.cls, 'Freelancer');
+    assert.equal(off2.meta.race, 'homosapien'); assert.equal(off2.cls, 'Vessel');
 });
 
 test('THE STORY ROSTER: the borrow pools are whole in the sandbox / scope all, and the ledger\'s in story scope', () => {
     const w = D.window;
-    const all = g('flRacePool')('door agent').length, allJobs = g('flWildcardPool')('door agent').length;
-    assert.ok(all > 300 && allJobs > 40, 'the whole catalogue without a scope');   // Phase 7: the job rows in the agent's own families are its own, not borrowed
+    const all = g('flRacePool')('door agent').length;
+    assert.ok(all > 300, 'the whole catalogue without a scope');
+    assert.equal(g('typeof flWildcardPool'), 'undefined', 'no job pool (THE JOBS REMOVAL)');
     assert.equal(g('flPoolOwnedOnly')(), false, 'no scope set = the tooling sees everything');
     /* story scope: the ledger is the starters (no ProfileSystem in the sandbox → isUnitOwned's offline fallback) */
     w._ewRosterScope = 'owned';
@@ -104,15 +113,16 @@ test('THE STORY ROSTER: the borrow pools are whole in the sandbox / scope all, a
         const ownedIds = new Set(); for (const r of owned) if (r !== 'door agent') for (const id of g('raceFamilyPoolIds')(r) || []) ownedIds.add(id);
         assert.ok(rp.every(sp => ownedIds.has(sp.id)), 'every borrowable race spell is in an owned race\'s families');
         assert.ok(!rp.some(sp => sp.id === 'raceLasso'), 'a cowboy\'s spell is not on offer to a profile that never unlocked one');
-        const jobs = g('flOwnedJobs')();
-        assert.ok(jobs.has('Agent'), 'the agent\'s own job is owned');
-        const wp = g('flWildcardPool')('door agent');
-        assert.ok(wp.length > 0 && wp.length < allJobs, 'the job pool shrank to the owned vessels\' jobs');
-        const jobIds = new Set(); for (const j of jobs) for (const id of D.CLASS_TREE[j] || []) jobIds.add(id);
-        assert.ok(wp.every(sp => jobIds.has(sp.id)), 'every job-socket spell is on an owned vessel\'s job tree');
+        assert.equal(g('typeof flOwnedJobs'), 'undefined', 'no owned-jobs ledger (THE JOBS REMOVAL)');
+        /* the pool: the borrow window opens only with Adaptable in the loadout */
+        const parts = g('unitSpellPoolParts')('door agent', 'Vessel', ['passiveAdaptable']);
+        assert.deepEqual(J(parts.borrowRace).sort(), J(rp.map(sp => sp.id)).sort(), 'Adaptable borrows exactly the owned race pool');
+        assert.deepEqual(J(parts.job), [], 'no job part'); assert.deepEqual(J(parts.borrowJob), [], 'no job borrow');
+        assert.deepEqual(J(g('unitSpellPoolParts')('door agent', 'Vessel', []).borrowRace), [], 'without Adaptable nothing is borrowed');
         /* the repair drops what the pool no longer offers, keeps what it does (2026-09-24 SPELL TIERS: borrows, no sockets) */
-        const keep = rp[0].id, kept = J(g('treeLegalSubset')('door agent', 'Freelancer', '', [keep, 'raceLasso']));
-        assert.ok(kept.includes(keep) && !kept.includes('raceLasso'), 'an unowned spell is dropped; an owned one is kept');
+        const keep = rp[0].id, kept = J(g('treeLegalSubset')('door agent', 'Vessel', '', ['passiveAdaptable', keep, 'raceLasso']));
+        assert.ok(kept.includes('passiveAdaptable') && kept.includes(keep) && !kept.includes('raceLasso'), 'an unowned spell is dropped; an owned one is kept');
+        assert.ok(!J(g('treeLegalSubset')('door agent', 'Vessel', '', [keep])).includes(keep) || g('raceFamilyPoolIds')('door agent').includes(keep), 'unequip Adaptable and the borrowed spell goes');
         /* the dev switch / scope all re-open the catalogue */
         w._ewRosterScope = 'all';
         assert.equal(g('flRacePool')('door agent').length, all);

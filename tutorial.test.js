@@ -7,7 +7,7 @@
 //      (watch) still has the body it was written against, the type wheel and
 //      the arena row still say what the copy says. A drift FAILS here with the
 //      lesson named: re-read it, fix it, re-stamp (check-tutorial-drift.js).
-//   2. THE LESSONS' SCHEMA — every race / job / spell / tile / verb / goal /
+//   2. THE LESSONS' SCHEMA — every race / spell / tile / verb / goal /
 //      focus / cpu plan a lesson names exists and is legal on an 8×8 Δ board.
 //   3. THE WIRING — the engine hooks the runtime relies on are present in
 //      battle.js / ui.js / state.js / hud.js / map.js / index.html / the CSS.
@@ -92,7 +92,11 @@ test('the type wheel the copy recites is TYPE_CHART, and the tape / lessons neve
     assert.strictEqual(wheel.divine, 'unholy'); assert.strictEqual(wheel.alien, 'divine');
 });
 
-test('every lesson is a legal scripted crossing (races, jobs, spells, tiles, verbs, goals, plans)', () => {
+test('every lesson is a legal scripted crossing (races, spells, tiles, verbs, goals, plans)', () => {
+    /* THE JOBS REMOVAL (2026-09-27): a lesson unit has no job — ui.js builds every side from the one neutral UNIT_CLASS
+       (a leftover `job` on a row is never read) */
+    assert.match(read('ui.js'), /DEFAULT_BUILDS\[1\] = L\.board\.p1\.map\(\(\) => UNIT_CLASS\);/);
+    assert.match(read('ui.js'), /DEFAULT_BUILDS\[2\] = L\.board\.p2\.map\(\(\) => UNIT_CLASS\);/);
     const problems = [];
     const spellIds = new Set(Object.keys(D.SPELL_BY_ID || {}));
     for (const L of LESSONS) {
@@ -104,7 +108,6 @@ test('every lesson is a legal scripted crossing (races, jobs, spells, tiles, ver
         [['p1', 1], ['p2', 2]].forEach(([k, p]) => (L.board[k] || []).forEach((u, i) => {
             const uw = where + ' ' + k + '[' + i + ']';
             if (!D.RACE_PROFILES[u.race]) problems.push(uw + ': race ' + u.race);
-            if (!D.CLASS_TEMPLATES[u.job]) problems.push(uw + ': job ' + u.job);
             if (!(u.x >= 0 && u.x < 8 && u.y >= 0 && u.y < 8)) problems.push(uw + ': tile off the board');
             if (seen.has(u.x + ',' + u.y)) problems.push(uw + ': shares a tile'); seen.add(u.x + ',' + u.y);
             if (p === 1 && u.y < 4) problems.push(uw + ': P1 stands on the north half'); if (p === 2 && u.y > 3) problems.push(uw + ': P2 stands on the south half');

@@ -1947,8 +1947,8 @@
                             }
                             DEFAULT_BUILDS[1] = (gm.defaultBuilds[1] || []).slice(0, ts);
                             DEFAULT_BUILDS[2] = (gm.defaultBuilds[2] || []).slice(0, ts);
-                            while (DEFAULT_BUILDS[1].length < ts) DEFAULT_BUILDS[1].push('Warrior');
-                            while (DEFAULT_BUILDS[2].length < ts) DEFAULT_BUILDS[2].push('Warrior');
+                            while (DEFAULT_BUILDS[1].length < ts) DEFAULT_BUILDS[1].push(UNIT_CLASS);
+                            while (DEFAULT_BUILDS[2].length < ts) DEFAULT_BUILDS[2].push(UNIT_CLASS);
                         }
                     }
 
@@ -1958,7 +1958,7 @@
                             var oldSize = (st.partyBuilds[player] || []).length;
                             if (oldSize < ts) {
                                 for (var i = oldSize; i < ts; i++) {
-                                    st.partyBuilds[player][i] = DEFAULT_BUILDS[player][i] || 'Warrior';
+                                    st.partyBuilds[player][i] = DEFAULT_BUILDS[player][i] || UNIT_CLASS;
                                     st.partyNames[player][i] = typeof getDefaultUnitName === 'function'
                                         ? getDefaultUnitName(st.partyBuilds[player][i]) : 'Unit';
                                     st.loadouts[player][i] = typeof emptyLoadout === 'function' ? emptyLoadout() : {};
@@ -2020,8 +2020,8 @@
                             }
                             DEFAULT_BUILDS[1] = (fgm.defaultBuilds[1] || []).slice(0, fts);
                             DEFAULT_BUILDS[2] = (fgm.defaultBuilds[2] || []).slice(0, fts);
-                            while (DEFAULT_BUILDS[1].length < fts) DEFAULT_BUILDS[1].push('Warrior');
-                            while (DEFAULT_BUILDS[2].length < fts) DEFAULT_BUILDS[2].push('Warrior');
+                            while (DEFAULT_BUILDS[1].length < fts) DEFAULT_BUILDS[1].push(UNIT_CLASS);
+                            while (DEFAULT_BUILDS[2].length < fts) DEFAULT_BUILDS[2].push(UNIT_CLASS);
                         }
                     }
 
@@ -2031,7 +2031,7 @@
                             var fOldSize = (fst.partyBuilds[player] || []).length;
                             if (fOldSize < fts) {
                                 for (var fi = fOldSize; fi < fts; fi++) {
-                                    fst.partyBuilds[player][fi] = DEFAULT_BUILDS[player][fi] || 'Warrior';
+                                    fst.partyBuilds[player][fi] = DEFAULT_BUILDS[player][fi] || UNIT_CLASS;
                                     fst.partyNames[player][fi] = typeof getDefaultUnitName === 'function'
                                         ? getDefaultUnitName(fst.partyBuilds[player][fi]) : 'Unit';
                                     fst.loadouts[player][fi] = typeof emptyLoadout === 'function' ? emptyLoadout() : {};
@@ -2119,7 +2119,8 @@
                     }
                 }
             }
-            if (data.builds) state.partyBuilds[2] = data.builds;
+            /* THE JOBS REMOVAL (the user 2026-09-27): every build is the one neutral class — whatever the guest sent */
+            if (Array.isArray(data.builds)) state.partyBuilds[2] = data.builds.map(function () { return UNIT_CLASS; });
             if (data.loadouts) state.loadouts[2] = data.loadouts;
             if (data.name && state.partyNames) state.partyNames[2] = String(data.name).slice(0, 24);
             if (data.meta && state.partyMeta) state.partyMeta[2] = data.meta;
@@ -2127,13 +2128,13 @@
                received loadout against the sender's own tree — off-tree or
                disconnected picks are dropped here AND again in createUnit
                (belt and braces; a hacked guest can't smuggle spells). */
-            if (Array.isArray(state.partyMeta?.[2]) && typeof window.treeLegalSubset === 'function'
-                && typeof window.classHasSpellTree === 'function') {
+            if (Array.isArray(state.partyMeta?.[2]) && typeof window.treeLegalSubset === 'function') {
                 state.partyMeta[2].forEach(function (mEntry, mIdx) {
                     if (!mEntry || !Array.isArray(mEntry.customSpells)) return;
-                    var mCls = state.partyBuilds?.[2]?.[mIdx];
-                    if (!mCls || !window.classHasSpellTree(mCls)) return;
-                    var mFixed = window.treeLegalSubset(mEntry.race || '', mCls, mEntry.secondaryJob || '', mEntry.customSpells);
+                    /* THE JOBS REMOVAL (2026-09-27): no job — the pool is the race's families (+ the
+                       loadout's own Adaptable borrow), so the check runs on every slot, never skipped on the build */
+                    var mCls = UNIT_CLASS;
+                    var mFixed = window.treeLegalSubset(mEntry.race || '', mCls, '', mEntry.customSpells);
                     if (mFixed.length !== mEntry.customSpells.length) {
                         console.warn('[NET GUARD] spell-tree loadout trimmed for guest slot', mIdx,
                             mEntry.customSpells.length, '→', mFixed.length);

@@ -32,7 +32,7 @@ function harness() {
         _mmSettingsActive: () => false });
     const src = fs.readFileSync(path.join(__dirname, 'ui.js'), 'utf8');
     const start = src.indexOf('        let _uiDialogFocusOwner = null;');
-    const end = src.indexOf('        function handleSecondaryJobSelect(', start);
+    const end = src.indexOf('        /* THE JOBS REMOVAL (the user 2026-09-27): the secondary-job pick dialog', start);
     assert.ok(start >= 0 && end > start, 'production dialog functions exist');
     vm.runInContext(src.slice(start, end), ctx);
     ctx.renderIfDirty = () => ctx.renderUiDialog();

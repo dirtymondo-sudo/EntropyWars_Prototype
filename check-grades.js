@@ -121,11 +121,10 @@ const WEREWOLF_NIGHT_STAGES = { atk: 2, spd: 3, def: 2, mdef: 1 };
 const SKY_RACES = ['fairy', 'shadow entity', 'ai', 'angel', 'seraphim', 'orb of light', 'demon', 'mech', 'ghost',
     'annunaki', 'gargoyle', 'djinn', 'mothman', 'glitch', 'demon prince', 'demon princess', 'fallen angel', 'cyborg',
     'nephilim', 'vampire', 'superhero', 'antihero', 'chosen one', 'dragon', 'occulus', 'valkraye', 'watcher', 'telepath', 'jellyfish'];
-const JOB_KITS = D.JOB_KITS || { Gunslinger: { range: 2 }, Agent: { range: 2 }, Psychic: { range: 2 }, Sniper: { range: 3 } };
-
+// THE JOBS REMOVAL (2026-09-27): a race's reach is its own kit (data.js RACE_KITS / raceKit), no longer its default job's.
 function kitRange(race) {
-    const job = (D.RACE_DEFAULT_JOBS || {})[race];
-    return (JOB_KITS[job] && JOB_KITS[job].range) || 1;
+    const k = (typeof D.raceKit === 'function') ? D.raceKit(race) : null;
+    return (k && k.range) || 1;
 }
 function passiveAllowance(race) {
     let v = SKY_RACES.includes(race) ? PASSIVE_VALUE.flying : 0;

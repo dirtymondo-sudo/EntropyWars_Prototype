@@ -62,7 +62,7 @@ test('every upload is wired: the row, the gender, the file (an explicit model or
 test('the popstar sits in every data.js table, both sides of the parity line, and the sprite tables', () => {
     const r = 'popstar', problems = [];
     if (!D.AVAILABLE_RACES.includes(r)) problems.push('AVAILABLE_RACES');
-    for (const T of ['RACE_PROFILES', 'RACE_DEFAULT_JOBS', 'RACE_BASE_STATS', 'RACE_ABILITIES', 'RACE_TREE', 'RACE_PASSIVES', 'EW_RACE_BIOMES', 'FINISHERS']) if (!D[T] || !D[T][r]) problems.push(T);
+    for (const T of ['RACE_PROFILES', 'RACE_FAMILIES', /* THE JOBS REMOVAL (2026-09-27): was RACE_DEFAULT_JOBS */ 'RACE_BASE_STATS', 'RACE_ABILITIES', 'RACE_TREE', 'RACE_PASSIVES', 'EW_RACE_BIOMES', 'FINISHERS']) if (!D[T] || !D[T][r]) problems.push(T);
     for (const [T, re] of [['RACE_CLASS', "^    '" + r + "': 'support',"], ['RACE_PHYSIQUE', "^    '" + r + "': +\\{ h: [0-9.]+, w: [0-9]+ \\}"], ['CAMPAIGN_RACE_PRICES', "^  '" + r + "': [0-9]+,"]]) if (!new RegExp(re, 'm').test(DATA)) problems.push(T);
     if (!D.DOOR_TEXT.CUSTOMS_OVERRIDES[r]) problems.push('CUSTOMS_OVERRIDES');
     if (!D.DOOR_TEXT.POINT_OF_ENTRY[r]) problems.push('POINT_OF_ENTRY');

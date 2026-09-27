@@ -40,7 +40,7 @@ function setup(id) {
     vm.runInContext(battle.slice(start, endNetwork) + 'window.computeMirrorNetwork = computeMirrorNetwork;', ctx);
     ctx.unitFromId = id => g.state.units.find(u => u.id === id);
     vm.runInContext(battle.slice(battle.indexOf('        function laserOwnerUnitId('), battle.indexOf('        // Beam tiles a moving unit')), ctx);
-    for (const name of ['getHourglassPower', 'getSpellStatBonus', 'getPlantedTreeBonus', 'getTreeThrowBonus', 'getJobPassiveSpellBonus']) ctx[name] = () => 0;
+    for (const name of ['getHourglassPower', 'getSpellStatBonus', 'getPlantedTreeBonus', 'getTreeThrowBonus', 'unitPassiveSum']) ctx[name] = () => 0;
     vm.runInContext(battle.slice(battle.indexOf('        const MIRROR_FREQS = ['), battle.indexOf('        // Distinct players')), ctx);
     ctx._mirrorTileHeight = (x,y) => g.state.mirrors.find(m => m.x===x && m.y===y)?.z || 0;
     const qa = battle.indexOf('            mirrorHitProfile(unit,');

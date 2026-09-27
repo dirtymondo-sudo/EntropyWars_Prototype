@@ -23,8 +23,7 @@ const G = (name) => vm.runInContext(name, D);
 const J = (v) => JSON.parse(JSON.stringify(v));   // sandbox values cross a vm realm — compare by value   // top-level consts of a vm script are not on the sandbox global — read them by name
 
 const rows = (() => {
-    const jobsOf = {}, racesOf = {};
-    Object.keys(D.CLASS_SPELL_LEARN_ORDER).forEach(j => D.CLASS_SPELL_LEARN_ORDER[j].forEach(id => { (jobsOf[id] = jobsOf[id] || []).push(j); }));
+    const racesOf = {};   // THE JOBS REMOVAL (2026-09-27): no job learnsets — owners are races
     Object.keys(D.RACE_ABILITIES).forEach(r => D.RACE_ABILITIES[r].forEach(ab => { (racesOf[ab.id] = racesOf[ab.id] || []).push(r); }));
     const ctx = D.spellLintContext();
     const out = [], seen = new Set();
@@ -32,7 +31,7 @@ const rows = (() => {
         const def = D.SPELL_BY_ID[id];
         if (!def || def.kind === 'basicAttack' || seen.has(id)) continue;
         seen.add(id);
-        out.push(D._slb2RowOf(id, def, { isRace: !!def._isRaceAbility, jobs: jobsOf[id] || [], races: racesOf[id] || [] }, ctx));
+        out.push(D._slb2RowOf(id, def, { isRace: !!def._isRaceAbility, races: racesOf[id] || [] }, ctx));
     }
     return out;
 })();
@@ -111,8 +110,14 @@ test('the filter model over the census: chips AND across groups, OR within; the 
     assert.ok(rows.filter(r => D._slb2MatchRow(r, flags, '')).every(r => r.statuses.length && r.foot));
     const lint = F(); lint.lint.push('tierRule');
     assert.strictEqual(rows.filter(r => D._slb2MatchRow(r, lint, '')).length, 7);
-    const owner = F(); owner.owners.push('job:Black Mage');
-    assert.deepStrictEqual(J(rows.filter(r => D._slb2MatchRow(r, owner, '')).map(r => r.id).sort()), J(D.CLASS_SPELL_LEARN_ORDER['Black Mage'].slice().sort()));
+    const owner = F(); owner.owners.push('race:knight');
+    const knightIds = [...new Set(D.RACE_ABILITIES.knight.map(ab => ab.id))].filter(id => rows.some(r => r.id === id)).sort();
+    assert.ok(knightIds.length > 0);
+    assert.deepStrictEqual(J(rows.filter(r => D._slb2MatchRow(r, owner, '')).map(r => r.id).sort()), J(knightIds));
+    // THE JOBS REMOVAL (2026-09-27): a stale 'job:' owner chip (an old saved view) matches nothing; the census counts no job owners
+    const stale = F(); stale.owners.push('job:Black Mage');
+    assert.strictEqual(rows.filter(r => D._slb2MatchRow(r, stale, '')).length, 0);
+    assert.ok(!Object.keys(D._slb2FilterCounts(rows).owners).some(k => k.indexOf('job:') === 0), 'no job owners');
     // search matches id / name / desc / notes / families
     const fire = rows.filter(r => D._slb2MatchRow(r, F(), 'wall of fire'));
     assert.ok(fire.length >= 1 && fire.some(r => r.id === 'wallOfFire'));
@@ -188,7 +193,8 @@ test('the summary markdown: changed rows with their baseline, new rows as fenced
     assert.ok(!md.includes('"notes": "a test row"'), 'a new row\'s notes are quoted, not in the fenced def');
     assert.ok(md.includes('- raceFrenzy'));
     assert.ok(md.includes('## Families') && md.includes('- plasma:'));
-    assert.ok(md.includes('## Job learnsets') && md.includes('Black Mage: [fire1]'));
+    // THE JOBS REMOVAL (2026-09-27): no job learnsets section, even when a stale doc still carries the key
+    assert.ok(!md.includes('## Job learnsets') && !md.includes('Black Mage: [fire1]'));
     assert.ok(md.includes('## Census') && md.includes(`${report.rows} rows`));
 });
 
@@ -242,7 +248,8 @@ test('THE HOOKS EDITOR model: typed rows, the palette, the parse, the shape chec
 });
 
 test('the screen keeps the Lab\'s contract: the names it calls still exist in ui.js', () => {
-    for (const name of ['_slbEsc', '_slbMods', '_slbJobs', '_slbRaces', '_slbAllRows', '_slbToast', '_slbArchetypes', '_slbStatusIds', 'window._slbSetField', 'window._slbLabRefreshSpell', 'window._slbEnterLab', 'window._renderSpellLibrary'])
+    assert.ok(!/function _slbJobs\(|_slbJobs\s*=/.test(ui), '_slbJobs went with the jobs (2026-09-27)');
+    for (const name of ['_slbEsc', '_slbMods', '_slbRaces', '_slbAllRows', '_slbToast', '_slbArchetypes', '_slbStatusIds', 'window._slbSetField', 'window._slbLabRefreshSpell', 'window._slbEnterLab', 'window._renderSpellLibrary'])
         assert.ok(new RegExp('(?:function |)' + name.replace(/[.$]/g, '\\$&') + '\\s*(?:=|\\()').test(ui), name + ' defined');
     for (const c of ['_SLB_ELEMENTS', '_SLB_PROJECTILES', '_SLB_WEIGHTS', '_SLB_TRAVELS', '_SLB_FIELD_HELP'])
         assert.ok(ui.includes('const ' + c), c);

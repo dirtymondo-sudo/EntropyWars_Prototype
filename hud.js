@@ -417,7 +417,7 @@ function UnitSprite({ unit, size, glow }) {
     }
     if (typeof getUnitSprite === 'function') return [getUnitSprite(unit.cls, unit.player, unit), false];
     if (typeof getR2RaceSpriteUrl === 'function') {
-      return [getR2RaceSpriteUrl(unit.race, unit.gender || 'male', unit.cls || 'Freelancer') || '', false];
+      return [getR2RaceSpriteUrl(unit.race, unit.gender || 'male', unit.cls || UNIT_CLASS) || '', false];
     }
     return ['', false];
   }, [unit?.id, unit?.race, unit?.cls, unit?.gender, unit?.player]);
@@ -445,7 +445,7 @@ function UnitSprite({ unit, size, glow }) {
 /* ActiveUnitPanel (the top-left unit card) is GONE — the horologe action
    menu now carries everything it showed: the clock face wears the active
    unit's portrait, the core line reads slot + name, a sub-line adds
-   Lv · race · job, and HP/MP/AP live in the vitals under the watch. One
+   Lv · race, and HP/MP/AP live in the vitals under the watch. One
    instrument, zero duplicated chrome. */
 
 function _getMultiplayerMode() {
@@ -3199,7 +3199,7 @@ function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, 
           onClick: (e) => { e.stopPropagation(); onInfo(); },
         }, 'ⓘ'),
       ),
-      /* identity sub-line — Lv · race · job, in real type, in flow */
+      /* identity sub-line — Lv · race, in real type, in flow */
       subLine ? h('div', { className: 'hrlg-core-sub' }, subLine) : null,
       /* the unit's TYPE badge(s) — same canonical chips the target rows
          wear, so the player's own matchup profile reads at a glance */
@@ -5159,16 +5159,15 @@ function ActionMenu({ st, hidden }) {
   const onItem = (key) => { if (typeof chooseItemAction === 'function') chooseItemAction(key); };
 
   // Identity readout replacing the retired top-left panel: portrait on the
-  // clock face, Lv · race · job under the name (race skipped when the name
-  // already IS the race label — the default nametag mode).
+  // clock face, Lv · race under the name (race skipped when the name
+  // already IS the race label — the default nametag mode). THE JOBS REMOVAL
+  // (the user 2026-09-27): the job label is gone.
   const _lvl = typeof getUnitLevel === 'function' ? getUnitLevel(unit) : 1;
   const _raceLbl = (unit.race && typeof getRaceLabel === 'function')
     ? getRaceLabel(unit.race, unit.gender)
     : (unit.race ? unit.race.charAt(0).toUpperCase() + unit.race.slice(1) : '');
-  const _jobLbl = typeof getJobDisplayName === 'function' ? getJobDisplayName(unit.cls) : (unit.cls || '');
   const subLine = 'Lv' + _lvl
-    + (_raceLbl && _raceLbl !== unitName ? ' · ' + String(_raceLbl).toUpperCase() : '')
-    + (_jobLbl ? ' · ' + String(_jobLbl).toUpperCase() : '');
+    + (_raceLbl && _raceLbl !== unitName ? ' · ' + String(_raceLbl).toUpperCase() : '');
 
   // Clock-face art: dedicated face portrait when the race has one, else the
   // unit's map sprite — the disc must never sit empty (races without a
@@ -9414,7 +9413,7 @@ function _injectHudHideStyles() {
     }
     .hrlg-roman { font-family: 'Cormorant SC', serif; font-style: italic; font-size: 12px; color: var(--hfc); }
     .hrlg-name  { font-family: 'Cormorant SC', serif; font-weight: 700; font-size: 18px; letter-spacing: 0.1em; color: #e8e4d8; }
-    /* Lv · race · job identity line */
+    /* Lv · race identity line */
     .hrlg-core-sub {
       text-align: center; font-size: 10px; letter-spacing: 0.18em; color: #7a7490;
       pointer-events: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;

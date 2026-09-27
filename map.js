@@ -136,7 +136,7 @@
                to it as well. */
             if (typeof window._hqEnabled === 'function' && window._hqEnabled()) {
                 /* THE INTAKE (2026-09-21): a profile with no agent on file creates one FIRST — the creator over the
-                   menu; ENLIST files the officer (a Freelancer D.O.O.R. Agent) and Play resumes into the building */
+                   menu; ENLIST files the officer (a D.O.O.R. agent) and Play resumes into the building */
                 if (!opts.enlisted && _hqIntakeNeeded()) { _hqIntakeOpen(); return; }
                 if (window._hqEnter({ from: 'play' })) return;
             }
@@ -1663,7 +1663,7 @@
             if (!rec) { _hqPartySeed(); rec = window.hqPartyRecord(_hqProfile()); }
             return rec;
         }
-        /* a member as a REAL unit (createUnit: level, sec job, tree-legal spells, gear bonuses; its carried vitals ride the
+        /* a member as a REAL unit (createUnit: level, tree-legal spells, gear bonuses; its carried vitals ride the
            identity) — cached per open by member id; null when the build fails (the sheet then reads the record's bare ids) */
         function _hqPauseUnit(i) {
             const P = _hqPause; if (!P) return null;
@@ -1681,7 +1681,7 @@
                     const meta = Object.assign({}, m.meta || {});
                     if ((!Array.isArray(meta.customSpells) || !meta.customSpells.length) && lo.spells.some(Boolean)) meta.customSpells = lo.spells.filter(Boolean);
                     try { if (typeof window.hqPartyXp === 'function') { const mx = window.hqPartyXp(m); meta.storyLevel = mx.lvl; meta.storyXp = mx.xp; } } catch (e) {}   // THE LEVELS: the sheet's stats are the level's
-                    u = createUnit('hq-pause-' + i, rec.seat || 1, 0, 0, { cls: m.cls, job: m.cls }, lo, meta);
+                    u = createUnit('hq-pause-' + i, rec.seat || 1, 0, 0, CLASS_TEMPLATES[UNIT_CLASS], lo, meta);
                     if (m.name) u.name = m.name;
                 } catch (e) { console.warn('[HQ] pause: could not build', m && m.cls, e); u = null; }
             }
@@ -1707,7 +1707,7 @@
             try { if (m && m.you && typeof window.hqLook === 'function') { const lk = window.hqLook(_hqProfile()); if (lk && lk.portrait && m.meta && m.meta.appearance) return { url: lk.portrait, kind: 'portrait' }; } } catch (e) {}
             try { if (typeof getUnitPortraitUrl === 'function') url = getUnitPortraitUrl(u || { race: m.meta && m.meta.race, gender: m.meta && m.meta.gender }); } catch (e) {}
             if (url) return { url, kind: 'portrait' };
-            try { if (typeof getR2RaceSpriteUrl === 'function') url = getR2RaceSpriteUrl((m.meta && m.meta.race) || 'homosapien', (m.meta && m.meta.gender) || 'male', m.cls || 'Freelancer'); } catch (e) {}
+            try { if (typeof getR2RaceSpriteUrl === 'function') url = getR2RaceSpriteUrl((m.meta && m.meta.race) || 'homosapien', (m.meta && m.meta.gender) || 'male', UNIT_CLASS); } catch (e) {}
             return url ? { url, kind: 'sprite' } : null;
         }
         function _hqPauseRaceLabel(m, u) {
@@ -1716,6 +1716,9 @@
             try { if (race && typeof getRaceLabel === 'function') return getRaceLabel(race, g); } catch (e) {}
             return race ? race.replace(/\b\w/g, c => c.toUpperCase()) : 'VESSEL';
         }
+        /* THE JOBS REMOVAL (the user 2026-09-27): a member's cls is the neutral UNIT_CLASS and never shown — a nameless
+           member reads as its race */
+        function _hqMemberName(m) { return (m && m.name) || _hqPauseRaceLabel(m || {}, null); }
         function _hqPauseTypeChips(types) {
             return (types || []).map(t => `<i class="hq-pp-type" style="--tc:${_HQ_TYPE_COLORS[t] || '#aaa'}">${_hqEsc(String(t).toUpperCase())}</i>`).join('');
         }
@@ -1747,15 +1750,14 @@
             const u = units[m.id];
             const po = _hqPausePortrait(m, u);
             const v = _hqPauseVitals(m, u);
-            const sec = '';   // the tier rework (2026-09-24): no secondary job
-            const name = m.name || (u && u.name) || m.cls;
+            const name = m.name || (u && u.name) || _hqMemberName(m);
             const tgt = arm ? _hqPauseTargetOk(arm, m, rec, units) : false;
             const self = arm && arm.from === m.id;
             const cls = 'hq-pp-card' + (_hqPause.member === m.id ? ' sel' : '') + (v.down ? ' down' : '') + (arm ? (tgt ? ' tgt' : (self ? ' src' : ' dim')) : '') + (m.you ? ' you' : '');
             const shift = i < HQ_PARTY_RULES.shift ? 1 : 2;
             return `<div class="${cls}" data-member="${_hqEsc(m.id)}" role="button" tabindex="0"${arm && !tgt ? ' aria-disabled="true"' : ''}>`
                 + `<span class="hq-pp-face${po && po.kind === 'sprite' ? ' sprite' : ''}"${po ? ` style="background-image:url('${po.url}')"` : ''}>${v.down ? '<i class="hq-pp-downstamp">DOWN</i>' : ''}</span>`
-                + `<span class="hq-pp-id"><b>${_hqEsc(name)}${m.you ? ' <i class="hq-pp-you">YOU</i>' : ''}</b><i>${_hqPauseLvChip(m)}${_hqEsc(_hqPauseRaceLabel(m, u))} · ${_hqEsc(m.cls)}${sec ? ' / ' + _hqEsc(sec) : ''}</i>`
+                + `<span class="hq-pp-id"><b>${_hqEsc(name)}${m.you ? ' <i class="hq-pp-you">YOU</i>' : ''}</b><i>${_hqPauseLvChip(m)}${_hqEsc(_hqPauseRaceLabel(m, u))}</i>`
                 + `<span class="hq-pp-vit"><span class="hq-pp-vbar hp"><i style="width:${(v.pct * 100).toFixed(1)}%"></i></span><em>HP ${v.hp} / ${v.hpMax}</em></span>`
                 + `<span class="hq-pp-vit"><span class="hq-pp-vbar mp"><i style="width:${(v.mpPct * 100).toFixed(1)}%"></i></span><em>MP ${v.mp} / ${v.mpMax}</em></span>`
                 + _hqPauseXpRow(m)
@@ -1866,7 +1868,7 @@
                     const items = (m.loadout && m.loadout.items) || {};
                     const keys = Object.keys(items).filter(k => (items[k] | 0) > 0 && ITEM_RULES[k]);
                     const v = _hqPauseVitals(m, units[m.id]);
-                    html += `<div class="hq-pp-pocket${v.down ? ' down' : ''}"><b>${i < HQ_PARTY_RULES.shift ? '1ST' : '2ND'} · ${_hqEsc(m.name || m.cls)}</b><span>` + (keys.length ? keys.map(k => `<i class="hq-chip">${ITEM_RULES[k].icon || ''} ${_hqEsc(ITEM_RULES[k].name)} × ${items[k]}</i>`).join('') : '<i class="hq-chip dim">EMPTY</i>') + `</span></div>`;
+                    html += `<div class="hq-pp-pocket${v.down ? ' down' : ''}"><b>${i < HQ_PARTY_RULES.shift ? '1ST' : '2ND'} · ${_hqEsc(_hqMemberName(m))}</b><span>` + (keys.length ? keys.map(k => `<i class="hq-chip">${ITEM_RULES[k].icon || ''} ${_hqEsc(ITEM_RULES[k].name)} × ${items[k]}</i>`).join('') : '<i class="hq-chip dim">EMPTY</i>') + `</span></div>`;
                 });
                 html += '</div>';
             }
@@ -1875,7 +1877,7 @@
         }
         function _hqPauseArmHtml(arm, rec, units) {
             if (!arm) return '';
-            const from = rec.members.find(m => m.id === arm.from); const who = from ? _hqEsc(from.name || from.cls) : '';
+            const from = rec.members.find(m => m.id === arm.from); const who = from ? _hqEsc(_hqMemberName(from)) : '';
             let what = '';
             if (arm.kind === 'swap') what = `<b>⇄ SWAP</b><span>${who} TRADES SLOTS WITH… PICK A CARD (AN EMPTY SLOT MOVES THEM TO THE END OF THE ORDER)</span>`;
             else if (arm.kind === 'cast') what = `<b>♥ ${_hqEsc(arm.spell.name)}</b><span>${who} CASTS ON… PICK A CARD · ${arm.spell.cost | 0} MP</span>`;
@@ -1941,7 +1943,7 @@
                 const full = rec.members.length >= R.roster;
                 html += `<div class="hq-pp-oncall">` + oc.map(o => {
                     const gs = o.genders.map(g => `<button class="hq-btn hq-btn-sm" data-party-act="enlist:${_hqEsc(o.race)}:${g}"${full || arm ? ' disabled' : ''} title="${full ? 'THE PARTY IS FULL — RELIEVE SOMEONE FIRST' : 'ENLIST'}">${o.genders.length > 1 ? (g === 'female' ? '♀' : '♂') + ' ' : ''}ENLIST</button>`).join('');
-                    return `<div class="hq-pp-oc"><b>${_hqEsc(String(o.label).toUpperCase())}</b><i>${_hqEsc(o.cls)}</i><span>${gs}</span></div>`;
+                    return `<div class="hq-pp-oc"><b>${_hqEsc(String(o.label).toUpperCase())}</b><span>${gs}</span></div>`;
                 }).join('') + `</div>`;
             }
             html += `<p class="hq-panel-note">Click a member for the sheet — SWAP a slot (slot 1 is THE LEAD: whoever stands there is the one you walk the building as), RELIEVE them, or USE a heal spell or a potion on the party (FIELD MEDICINE: the caster's own MP, no board). Health carries between encounters; a member at 0 stays DOWN until a revive or THE COT in Medical (Room 1111), which rests the whole party for free. An EXIT (a loss) wakes the party treated.</p>`;
@@ -1954,10 +1956,9 @@
             const units = _hqPauseUnits(rec); const u = units[m.id];
             const po = _hqPausePortrait(m, u);
             const v = _hqPauseVitals(m, u);
-            const name = m.name || (u && u.name) || m.cls;
+            const name = m.name || (u && u.name) || _hqMemberName(m);
             const xp = _hqPauseXpOf(m);
             const lvl = xp ? xp.lvl : (u ? ((typeof getUnitLevel === 'function') ? getUnitLevel(u) : (u.level || 1)) : null);
-            const sec = '';   // the tier rework (2026-09-24): no secondary job
             const n = rec.members.length;
             const prev = rec.members[(idx + n - 1) % n], next = rec.members[(idx + 1) % n];
             let html = `<div class="hq-pp-nav"><button class="hq-btn hq-btn-sm" data-cmd="party">◂ PARTY</button><span>${idx < HQ_PARTY_RULES.shift ? 'FIRST SHIFT' : 'SECOND SHIFT'} · ${String(idx + 1).padStart(2, '0')} / ${String(n).padStart(2, '0')}</span><span class="hq-pp-nav-r"><button class="hq-btn hq-btn-sm" data-member="${_hqEsc(prev.id)}" title="← previous">◂</button><button class="hq-btn hq-btn-sm" data-member="${_hqEsc(next.id)}" title="→ next">▸</button></span></div>`;
@@ -1966,7 +1967,7 @@
             /* left: the face + identity + the vitals + the stats + the duty actions */
             html += `<div class="hq-pp-left">`;
             html += `<div class="hq-pp-face big${po && po.kind === 'sprite' ? ' sprite' : ''}"${po ? ` style="background-image:url('${po.url}')"` : ''}>${v.down ? '<i class="hq-pp-downstamp">DOWN</i>' : ''}</div>`;
-            html += `<div class="hq-panel-hd"><b>${_hqEsc(name)}${m.you ? ' <i class="hq-pp-you">YOU</i>' : ''}</b><span>${_hqEsc(_hqPauseRaceLabel(m, u))} · ${_hqEsc(m.cls)}${sec ? ' / ' + _hqEsc(sec) : ''}${lvl != null ? ' · Lv ' + lvl : ''}</span></div>`;
+            html += `<div class="hq-panel-hd"><b>${_hqEsc(name)}${m.you ? ' <i class="hq-pp-you">YOU</i>' : ''}</b><span>${_hqEsc(_hqPauseRaceLabel(m, u))}${lvl != null ? ' · Lv ' + lvl : ''}</span></div>`;
             html += '<div class="hq-pp-stats">';
             html += _hqPauseBar('HP', v.hp | 0, Math.max(1, v.hpMax | 0), v.down ? '#ff4a4a' : '#2ed158', `${v.hp} / ${v.hpMax}`);
             html += _hqPauseBar('MP', v.mp | 0, Math.max(1, v.mpMax | 0), '#2f9dff', `${v.mp} / ${v.mpMax}`);
@@ -1984,7 +1985,7 @@
             if (u) html += `<div class="hq-chips">${_hqPauseTypeChips(u.types)}<i class="hq-chip dim">${_hqEsc(String(u.faction || '').toUpperCase())}</i>${u.zodiac ? `<i class="hq-chip dim">${_hqEsc(String(u.zodiac).toUpperCase())}</i>` : ''}</div>`;
             /* THE ELEMENT BOX (2026-09-23): a party member's reactions are always read (own: true) */
             if (u && typeof window.elemAffinityBoxHtml === 'function') html += `<div class="hq-pp-elem">${window.elemAffinityBoxHtml(u.race, { own: true, size: 'md', label: 'ELEMENTS' })}</div>`;
-            else html += `<p class="hq-panel-note">The sheet could not be rebuilt from the record (a retired vessel or job?). The bare loadout is below.</p>`;
+            else html += `<p class="hq-panel-note">The sheet could not be rebuilt from the record (a retired vessel?). The bare loadout is below.</p>`;
             /* THE DUTY ROSTER: swap the slot (a shift change), relieve (never the officer) */
             html += `<div class="hq-pp-duty"><b>DUTY</b><span>${v.down ? 'DOWN — A REVIVE OR THE COT IN MEDICAL BRINGS THEM BACK' : idx === 0 ? 'THE LEAD · SLOT 1 · YOU WALK THE BUILDING AS THEM' : idx < HQ_PARTY_RULES.shift ? 'FIRST SHIFT · SENT OUT FIRST' : 'SECOND SHIFT · ON THE BENCH'}</span>`
                 + `<div class="hq-panel-actions">`
@@ -2060,9 +2061,10 @@
            16 SP." The member sheet's ABILITIES section opens THE TIER RACK (data.js hqPartyTreeCircuit): a bar with the SP
            meter (16 segments, the spent ones lit) + the slot count + DEFAULTS / RANDOM / CLEAR / DONE, then four rows,
            TIER IV at the top → TIER I at the bottom, one button per ability of the unit's pool (the race row, both
-           alternates of a twin rung, + the job's four). A click toggles it through hqPartyTreeClick; a refused add prints
-           spellAddVerdict's reason (NO SLOT · NEEDS n SP · SEALED). A Freelancer's row carries ＋ BORROW (key 'B1'–'B4'),
-           which opens the picker over every race / job ability of that tier (hqPartySocketPool / hqPartySocketEquip).
+           alternates of a twin rung, the universal families). A click toggles it through hqPartyTreeClick; a refused add
+           prints spellAddVerdict's reason (NO SLOT · NEEDS n SP · SEALED). A kit wearing the Adaptable passive (C.borrows —
+           the jobs removal 2026-09-27; was the Freelancer) carries ＋ BORROW (key 'B1'–'B4'), which opens the picker over
+           every other race's ability of that tier (hqPartySocketPool / hqPartySocketEquip).
            Every write is one _hqPartyTx, the unit cache drops, the sheet re-reads. _hqPause.circuit = the member id whose
            rack is open; _hqPause.socket = the open BORROW key; _hqPause.sockQ = the picker's search. Viewer-local
            (RULE #2). ══ */
@@ -2082,7 +2084,7 @@
         function _hqRackFoldSet(v) { try { if (window.localStorage) window.localStorage.setItem('ew_rack_group', v === 'tier' ? 'tier' : 'family'); } catch (e) {} }
         function _hqPauseSpellDesc(sp) { if (!sp) return ''; let d = sp.desc || ''; if (!d) { try { d = (typeof describeSpell === 'function') ? describeSpell(sp) : ''; } catch (e) {} } return d; }
         const _HQ_CIRC_ST_NOTE = { equipped: 'EQUIPPED · CLICK TO UNEQUIP', ok: 'CLICK TO EQUIP', slots: 'NO SLOT · UNEQUIP SOMETHING', sp: 'NOT ENOUGH SP · UNEQUIP SOMETHING', passives: '2 PASSIVES MAX · UNEQUIP ONE', sealed: 'SEALED · NOT ALLOWED IN THIS MODE' };
-        const _HQ_CIRC_SRC = { race: '', job: '', borrowRace: 'BORROWED · RACE', borrowJob: 'BORROWED · JOB', wheel: 'DOOR WHEEL', gear: 'GEAR' };   // THE DOOR WHEEL (DOOR_GUN_PLAN §2.4)
+        const _HQ_CIRC_SRC = { race: '', borrowRace: 'BORROWED · RACE', wheel: 'DOOR WHEEL', gear: 'GEAR' };   // (the jobs removal 2026-09-27: no job / borrowJob source)   // THE DOOR WHEEL (DOOR_GUN_PLAN §2.4)
         /* THE LOOK PASS (2026-09-24, mondo — the builder's rack and this one read alike): the battle spell menu's
            badges (hud.js _hrlgSpellBadges — type, element glyph, statuses) + its AOE footprint (hud.js _hrlgSpellShape),
            as HTML. hud.js is loaded by the time the HQ opens; without it the type badge stands alone. */
@@ -2150,13 +2152,13 @@
         }
         function _hqPauseCircuitHtml(m) {
             const C = (typeof window.hqPartyTreeCircuit === 'function') ? window.hqPartyTreeCircuit(m) : null;
-            if (!C) return `<div class="hq-circ"><p class="hq-panel-note">This job has no spells to pick — its abilities are fixed.</p><div class="hq-panel-actions"><button class="hq-btn hq-btn-sm" data-party-act="circuit:${_hqEsc(m.id)}">◂ DONE</button></div></div>`;
+            if (!C) return `<div class="hq-circ"><p class="hq-panel-note">This vessel has no spells to pick — its abilities are fixed.</p><div class="hq-panel-actions"><button class="hq-btn hq-btn-sm" data-party-act="circuit:${_hqEsc(m.id)}">◂ DONE</button></div></div>`;
             const P = _hqPause;
             const spMax = C.spMax || 16, spUsed = C.spUsed || 0;
             let html = `<div class="hq-circ">`;
             html += `<div class="hq-circ-bar"><b>SPELLS</b><span class="hq-circ-sp" title="Spell Points: Tier I–IV costs 1–4">${Array.from({ length: spMax }, (_, i) => `<i${i < spUsed ? ' class="on"' : ''}></i>`).join('')}</span><span class="hq-circ-count">SP ${spUsed} / ${spMax}</span><span class="hq-circ-count">${C.used} / ${C.cap} SLOTS</span>`
-                + `<span class="hq-circ-tools"><button class="hq-btn hq-btn-xs" data-party-act="spelldef:${_hqEsc(m.id)}" title="The job's four + the race's first two, trimmed to the budget">DEFAULTS</button><button class="hq-btn hq-btn-xs" data-party-act="spellrnd:${_hqEsc(m.id)}">RANDOM</button><button class="hq-btn hq-btn-xs danger" data-party-act="spellclr:${_hqEsc(m.id)}"${C.used ? '' : ' disabled'}>CLEAR</button><button class="hq-btn hq-btn-sm" data-party-act="circuit:${_hqEsc(m.id)}">◂ DONE</button></span></div>`;
-            html += `<p class="hq-circ-note">ANY ABILITY, ANY TIER · TIER I–IV COSTS 1–4 SP · ${C.cap} SLOTS · ${spMax} SP · AT MOST ${(C.passives && C.passives.max) || 2} PASSIVES / GEAR${C.isFreelancer ? ' · A FREELANCER BORROWS ANY RACE OR JOB ABILITY' : ''}</p>`;
+                + `<span class="hq-circ-tools"><button class="hq-btn hq-btn-xs" data-party-act="spelldef:${_hqEsc(m.id)}" title="The race's default kit, trimmed to the budget">DEFAULTS</button><button class="hq-btn hq-btn-xs" data-party-act="spellrnd:${_hqEsc(m.id)}">RANDOM</button><button class="hq-btn hq-btn-xs danger" data-party-act="spellclr:${_hqEsc(m.id)}"${C.used ? '' : ' disabled'}>CLEAR</button><button class="hq-btn hq-btn-sm" data-party-act="circuit:${_hqEsc(m.id)}">◂ DONE</button></span></div>`;
+            html += `<p class="hq-circ-note">ANY ABILITY, ANY TIER · TIER I–IV COSTS 1–4 SP · ${C.cap} SLOTS · ${spMax} SP · AT MOST ${(C.passives && C.passives.max) || 2} PASSIVES / GEAR${C.borrows ? ' · ADAPTABLE: BORROWS ANY OTHER RACE\'S ABILITY' : ''}</p>`;
             if (C.unplaced.length) html += `<p class="hq-circ-note bad">${C.unplaced.length} ABILIT${C.unplaced.length === 1 ? 'Y' : 'IES'} ON THE RECORD NO LONGER FIT THIS UNIT (${_hqEsc(C.unplaced.join(', '))}) — THEY ARE DROPPED AT THE NEXT WRITE</p>`;
             html += _hqPauseFinisherHtml(m);
             /* THE RACK BY FAMILY (SPELL_LIBRARY_PLAN.md §9 row 7, Phase 7): the FOLD — a row per family (the default; C.families,
@@ -2170,11 +2172,11 @@
                     G.rows.forEach(row => { html += _hqPauseCircuitNodeHtml(m, row, C); });
                     html += `</div></div>`;
                 });
-                if (C.borrowAll) html += `<div class="hq-circ-tier-row hq-circ-fam"><div class="hq-circ-head"><b>＋ BORROW</b><i>ANY TIER</i></div><div class="hq-circ-row-nodes"><button type="button" class="hq-circ-borrow${P && P.socket === C.borrowAll.key ? ' on' : ''}" data-party-act="node:${_hqEsc(m.id)}:${C.borrowAll.key}"${C.borrowAll.count ? '' : ' disabled'} title="Borrow from any other family or job, family by family">＋ BORROW · ${C.borrowAll.count}</button></div></div>`;
+                if (C.borrowAll) html += `<div class="hq-circ-tier-row hq-circ-fam"><div class="hq-circ-head"><b>＋ BORROW</b><i>ANY TIER</i></div><div class="hq-circ-row-nodes"><button type="button" class="hq-circ-borrow${P && P.socket === C.borrowAll.key ? ' on' : ''}" data-party-act="node:${_hqEsc(m.id)}:${C.borrowAll.key}"${C.borrowAll.count ? '' : ' disabled'} title="Borrow from any other race's family, family by family">＋ BORROW · ${C.borrowAll.count}</button></div></div>`;
             } else C.tiers.forEach(T => {
                 html += `<div class="hq-circ-tier-row t${T.tier}"><div class="hq-circ-head"><b>TIER ${_hqEsc(T.numeral)}</b><i>${T.cost} SP</i></div><div class="hq-circ-row-nodes">`;
                 T.rows.forEach(row => { html += _hqPauseCircuitNodeHtml(m, row, C); });
-                if (T.borrow) html += `<button type="button" class="hq-circ-borrow${P && P.socket === T.borrow ? ' on' : ''}" data-party-act="node:${_hqEsc(m.id)}:${_hqEsc(T.borrow)}"${T.borrowCount ? '' : ' disabled'} title="Borrow any race or job ability of Tier ${_hqEsc(T.numeral)}">＋ BORROW · ${T.borrowCount}</button>`;
+                if (T.borrow) html += `<button type="button" class="hq-circ-borrow${P && P.socket === T.borrow ? ' on' : ''}" data-party-act="node:${_hqEsc(m.id)}:${_hqEsc(T.borrow)}"${T.borrowCount ? '' : ' disabled'} title="Borrow any other race's ability of Tier ${_hqEsc(T.numeral)}">＋ BORROW · ${T.borrowCount}</button>`;
                 if (!T.rows.length && !T.borrow) html += `<span class="hq-circ-none">NOTHING AT THIS TIER</span>`;
                 html += `</div></div>`;
             });
@@ -2200,16 +2202,16 @@
                 html += `</div>`;
             }
             html += `</div><div class="hq-circ-root"><i>⚔</i><b>BASIC ATTACK</b><span>ALWAYS EQUIPPED · FREE</span></div>`;
-            /* THE BORROW PICKER (a Freelancer's ＋ BORROW): every race / job ability of that tier, a search, a row per ability */
-            if (C.isFreelancer && P && P.socket) {
+            /* THE BORROW PICKER (the Adaptable passive's ＋ BORROW): every other race's ability of that tier, a search, a row per ability */
+            if (C.borrows && P && P.socket) {
                 const key = P.socket;
                 const t = parseInt(String(key).replace(/^B/, ''), 10) || 0;   // 0 = every tier (the rack by family)
                 const numeral = (typeof SPELL_TIER_NUMERALS !== 'undefined' && SPELL_TIER_NUMERALS[t]) || String(t);
                 const pool = (typeof window.hqPartySocketPool === 'function') ? window.hqPartySocketPool(m, key) : [];
                 const q = String(P.sockQ || '').trim().toLowerCase();
                 const rows = q ? pool.filter(x => ((x.sp.name || '') + ' ' + (x.sp.desc || '') + ' ' + (x.sp.school || '') + ' ' + (x.sp.type || '') + ' ' + (x.sp.spellType || '') + ' ' + (x.famName || '')).toLowerCase().includes(q)) : pool;
-                html += `<div class="hq-circ-picker"><div class="hq-circ-bar"><b>BORROW · ${t ? 'TIER ' + _hqEsc(numeral) + ' · ANY RACE OR JOB' : 'BY FAMILY · ANY OTHER FAMILY OR JOB'}</b><span class="hq-circ-count">${t ? t + ' SP' : '1–4 SP'} · ${rows.length} / ${pool.length}</span><input type="search" class="hq-circ-search" data-circ-search="1" placeholder="SEARCH THE POOL" value="${_hqEsc(P.sockQ || '')}" autocomplete="off"><span class="hq-circ-tools"><button class="hq-btn hq-btn-sm" data-party-act="sockclose">✕ CLOSE</button></span></div>`;
-                if (!pool.length) html += `<p class="hq-panel-note">Nothing to borrow at this tier — in story mode a Freelancer borrows only from the vessels you own.</p>`;
+                html += `<div class="hq-circ-picker"><div class="hq-circ-bar"><b>BORROW · ${t ? 'TIER ' + _hqEsc(numeral) + ' · ANY OTHER RACE' : 'BY FAMILY · ANY OTHER RACE\'S FAMILY'}</b><span class="hq-circ-count">${t ? t + ' SP' : '1–4 SP'} · ${rows.length} / ${pool.length}</span><input type="search" class="hq-circ-search" data-circ-search="1" placeholder="SEARCH THE POOL" value="${_hqEsc(P.sockQ || '')}" autocomplete="off"><span class="hq-circ-tools"><button class="hq-btn hq-btn-sm" data-party-act="sockclose">✕ CLOSE</button></span></div>`;
+                if (!pool.length) html += `<p class="hq-panel-note">Nothing to borrow at this tier — in story mode Adaptable borrows only from the vessels you own.</p>`;
                 else if (!rows.length) html += `<p class="hq-panel-note">Nothing matches.</p>`;
                 else {
                     html += `<div class="hq-circ-pool">`;
@@ -2217,7 +2219,7 @@
                     rows.forEach(x => {
                         if (x.fam !== lastFam) { lastFam = x.fam; html += `<div class="hq-circ-famhead" style="--fam:${_hqEsc(x.famColor || '#8a8270')}"><b>${_hqEsc(x.famGlyph || '◇')}</b> ${_hqEsc(String(x.famName || 'Unsorted').toUpperCase())}</div>`; }
                         const sp = x.sp; const cat = _HQ_CAT[sp.type] || _HQ_CAT.utility; const tc = _HQ_TYPE_COLORS[sp.spellType] || '#aaa';
-                        html += `<button type="button" class="hq-circ-row${x.equipped ? ' on' : ''}" data-party-act="sock:${_hqEsc(m.id)}:${_hqEsc(key)}:${_hqEsc(x.id)}"${x.equipped ? ' disabled' : ''} style="--cc:${cat.c}"><i class="hq-circ-disc">${cat.g}</i><b>${_hqEsc(sp.name || x.id)}</b><span>${sp.spellType ? `<i class="hq-pp-type" style="--tc:${tc}">${_hqEsc(String(sp.spellType).toUpperCase())}</i> ` : ''}<i class="hq-circ-tier">${t ? '' : _hqEsc(x.tier) + ' · '}${x.pool === 'race' ? 'RACE' : 'JOB'}</i> ${_hqEsc(_hqPauseSpellMeta(sp))}</span><p>${_hqEsc(_hqPauseSpellDesc(sp))}</p><em>${x.equipped ? 'EQUIPPED' : 'BORROW ▸'}</em></button>`;
+                        html += `<button type="button" class="hq-circ-row${x.equipped ? ' on' : ''}" data-party-act="sock:${_hqEsc(m.id)}:${_hqEsc(key)}:${_hqEsc(x.id)}"${x.equipped ? ' disabled' : ''} style="--cc:${cat.c}"><i class="hq-circ-disc">${cat.g}</i><b>${_hqEsc(sp.name || x.id)}</b><span>${sp.spellType ? `<i class="hq-pp-type" style="--tc:${tc}">${_hqEsc(String(sp.spellType).toUpperCase())}</i> ` : ''}<i class="hq-circ-tier">${t ? '' : _hqEsc(x.tier) + ' · '}RACE</i> ${_hqEsc(_hqPauseSpellMeta(sp))}</span><p>${_hqEsc(_hqPauseSpellDesc(sp))}</p><em>${x.equipped ? 'EQUIPPED' : 'BORROW ▸'}</em></button>`;
                     });
                     html += `</div>`;
                 }
@@ -2264,7 +2266,7 @@
             const [verb, a, b] = String(act || '').split(':');
             const rec = _hqParty(); if (!rec && verb !== 'cancel') return;
             const units = rec ? _hqPauseUnits(rec) : {};
-            const nameOf = id => { const m = rec.members.find(x => x.id === id); return m ? _hqEsc(m.name || m.cls) : ''; };
+            const nameOf = id => { const m = rec.members.find(x => x.id === id); return m ? _hqEsc(_hqMemberName(m)) : ''; };
             const say = (h, bad) => _hqPauseSay(h, bad);
             if (verb === 'circuit' || verb === 'node' || verb === 'fold' || verb === 'sock' || verb === 'sockclose' || verb === 'spelldef' || verb === 'spellrnd' || verb === 'spellclr' || verb === 'upg') { _hqPartyCircuitAct(verb, a, b, String(act).split(':')[3] || null); }   // THE CIRCUIT IN THE FIELD (2026-09-21)
             else if (verb === 'cancel') { P.arm = null; }
@@ -2275,7 +2277,7 @@
             }
             else if (verb === 'relieve') {
                 const r = _hqPartyTx(p => window.hqPartyRelieve(p, a));
-                if (r && r.ok) { say(`<b>RELIEVED</b> ${_hqEsc(r.member.name || r.member.cls)} IS OFF DUTY · ON CALL`); P.member = null; try { playSfx('uiButtonConfirm'); } catch (e) {} }
+                if (r && r.ok) { say(`<b>RELIEVED</b> ${_hqEsc(_hqMemberName(r.member))} IS OFF DUTY · ON CALL`); P.member = null; try { playSfx('uiButtonConfirm'); } catch (e) {} }
                 else { say(`<b>NO</b> ${r && r.reason === 'you' ? 'YOU CANNOT RELIEVE YOURSELF' : 'THE BUILDING SAID NO'}`, true); }
             }
             else if (verb === 'swap') { P.arm = { kind: 'swap', from: a }; P.member = null; }
@@ -2330,7 +2332,7 @@
         }
         /* an item from a pocket or THE BAG onto a member, at once (the quick strip; the armed pick lands here too) */
         function _hqPartyItemOn(owner, key, target, units, rec) {
-            const nameOf = id => { const m = rec.members.find(x => x.id === id); return m ? _hqEsc(m.name || m.cls) : ''; };
+            const nameOf = id => { const m = rec.members.find(x => x.id === id); return m ? _hqEsc(_hqMemberName(m)) : ''; };
             const r = _hqPartyTx(p => window.hqPartyUseItem(p, units, owner, key, target));
             if (r && r.ok) { _hqPauseSay(`<b>${_hqEsc(r.name).toUpperCase()}</b> ${r.from === 'bag' ? 'FROM THE BAG · ' : ''}${nameOf(r.target)} ${r.revived ? 'IS UP · ' + r.amount + ' HP' : '+' + r.amount + ' ' + r.stat.toUpperCase()} · ${r.left} LEFT`); try { playSfx(r.revived ? 'levelUp' : r.stat === 'mp' ? 'manaRegen' : 'healRegen'); } catch (e) {} }
             else _hqPauseSay(`<b>NO</b> ${r && r.reason === 'full' ? 'ALREADY FULL' : r && r.reason === 'down' ? 'THEY ARE DOWN — A REVIVE FIRST' : r && r.reason === 'notdown' ? 'THEY ARE NOT DOWN' : r && r.reason === 'none' ? 'NONE LEFT' : 'THE ITEM STAYED WHERE IT WAS'}`, true);
@@ -2341,8 +2343,8 @@
             const r = _hqPartyTx(p => window.hqPartyCast(p, units, casterId, sp.id, targetId));
             if (r && r.ok) {
                 const who = rec.members.find(x => x.id === casterId);
-                const lines = r.healed.map(h => { const m = rec.members.find(x => x.id === h.id); return `${_hqEsc(m ? (m.name || m.cls) : h.id)} ${h.revived ? 'IS UP · ' : '+'}${h.amount} HP` + (h.hp >= h.hpMax ? ' (FULL)' : ''); });
-                _hqPauseSay(`<b>♥ ${_hqEsc(sp.name).toUpperCase()}</b> ${_hqEsc(who ? (who.name || who.cls) : '')} · ${lines.join(' · ')} · ${r.cost} MP (${r.mp} LEFT)`);
+                const lines = r.healed.map(h => { const m = rec.members.find(x => x.id === h.id); return `${_hqEsc(m ? _hqMemberName(m) : h.id)} ${h.revived ? 'IS UP · ' : '+'}${h.amount} HP` + (h.hp >= h.hpMax ? ' (FULL)' : ''); });
+                _hqPauseSay(`<b>♥ ${_hqEsc(sp.name).toUpperCase()}</b> ${_hqEsc(who ? _hqMemberName(who) : '')} · ${lines.join(' · ')} · ${r.cost} MP (${r.mp} LEFT)`);
                 try { playSfx('healRegen'); } catch (e) {}
             } else {
                 const why = { mp: 'NOT ENOUGH MP', full: 'EVERYONE IS FULL', nobodydown: 'NOBODY IS DOWN', down: 'THE CASTER IS DOWN' }[r && r.reason] || 'THE SPELL DID NOT TAKE';
@@ -3780,8 +3782,8 @@
             if (!members.length && !(party && party.fallback)) return false;   // `fallback`: no roster on file — the mode's default squad stands in (Delivery 6)
             const builds = [], names = [], metas = [], los = [];
             members.forEach(m => {
-                builds.push(String(m.cls || 'Freelancer'));
-                names.push(m.name || getDefaultUnitName(String(m.cls || 'Freelancer')));
+                builds.push(UNIT_CLASS);   // THE JOBS REMOVAL (the user 2026-09-27): every member is the one neutral class
+                names.push(m.name || getDefaultUnitName(UNIT_CLASS));
                 const meta = Object.assign({}, m.meta || {});
                 if (meta.customSpells && !Array.isArray(meta.customSpells)) delete meta.customSpells;
                 metas.push(meta);
@@ -3794,7 +3796,7 @@
                 los.push(lo);
             });
             while (!(party && party.exact) && builds.length < n) {   // THE PARTY (2026-09-19): an exact party is never padded with the mode's defaults
-                const cls = (DEFAULT_BUILDS[seat] && DEFAULT_BUILDS[seat][builds.length]) || 'Warrior';
+                const cls = UNIT_CLASS;
                 builds.push(cls); names.push(getDefaultUnitName(cls)); metas.push({}); los.push(emptyLoadout());
             }
             state.partyBuilds[seat] = builds; state.partyNames[seat] = names; state.loadouts[seat] = los;
@@ -3897,8 +3899,7 @@
             try { reg = window.hqFieldRegister(win.room, win.ox, win.oz, { cells: (field && field.cells) || win.cells || null }); } catch (e) { console.warn('[HQ] the field failed to register', e); reg = null; }
             if (!reg || !reg.entry || !reg.entry.spawns) return null;
             const S = reg.meta.w, n = reg.meta.teamSize;
-            const JOBS = ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage', 'Agent', 'Tank'];
-            const builds = []; for (let i = 0; i < n; i++) builds.push(JOBS[i % JOBS.length]);
+            const builds = []; for (let i = 0; i < n; i++) builds.push(UNIT_CLASS);   // (the jobs removal 2026-09-27)
             GAME_MODES[reg.id] = {
                 id: reg.id, label: reg.meta.label, desc: reg.meta.desc,
                 boardSize: S, boardWidth: S, boardHeight: S, teamSize: n,
@@ -5507,7 +5508,7 @@
             html += '<p class="hq-panel-desc">' + _hqEsc(c.desc || 'The crystal. Touch it and the room is the board: your party as it stands, the site\u2019s own natives across from it.') + '</p>';
             if (S.members.length) {
                 html += '<div class="hq-rows">';
-                S.members.forEach((m, i) => { const v = window.hqPartyVitals(m, null); const hp = v.hpMax ? `${v.hp} / ${v.hpMax}` : 'FULL'; html += `<div class="hq-row hq-row-tray"><b>${i < HQ_PARTY_RULES.shift ? '1ST' : '2ND'} · ${_hqEsc(m.name || m.cls)}</b><span>${_hqEsc(String(m.meta.race || '').toUpperCase())} · ${_hqEsc(String(m.cls).toUpperCase())}${m.you ? ' · YOU' : ''}</span><i class="hq-lamp-chip st-${v.down ? 'codered' : (v.hpMax && v.hp < v.hpMax) ? 'unstable' : 'open'}">${v.down ? 'DOWN' : 'HP ' + hp}</i></div>`; });
+                S.members.forEach((m, i) => { const v = window.hqPartyVitals(m, null); const hp = v.hpMax ? `${v.hp} / ${v.hpMax}` : 'FULL'; html += `<div class="hq-row hq-row-tray"><b>${i < HQ_PARTY_RULES.shift ? '1ST' : '2ND'} · ${_hqEsc(_hqMemberName(m))}</b><span>${_hqEsc(String(m.meta.race || '').toUpperCase())}${m.you ? ' · YOU' : ''}</span><i class="hq-lamp-chip st-${v.down ? 'codered' : (v.hpMax && v.hp < v.hpMax) ? 'unstable' : 'open'}">${v.down ? 'DOWN' : 'HP ' + hp}</i></div>`; });
                 html += '</div>';
             } else html += '<p class="hq-panel-note">NO PARTY ON FILE — the officer walks in alone with a stand-in squad; the pause menu (ESC · PARTY) enlists what the account owns.</p>';
             if (L) html += `<div class="hq-chips"><span>ACROSS THE BOARD · ${L.teamSize}v${L.teamSize}</span>${L.roster.map(r => `<i class="hq-chip">${_hqEsc(String(r).toUpperCase())}</i>`).join('')}</div>`;
@@ -5634,7 +5635,7 @@
                 html += '<p class="hq-panel-desc">' + _hqEsc(c.desc || 'A cot, made up.') + '</p>';
                 if (pf && pf.total) {
                     html += '<div class="hq-rows">';
-                    S.members.forEach((m, i) => { const v = window.hqPartyVitals(m, null); const hp = v.hpMax ? `${v.hp} / ${v.hpMax}` : 'FULL'; html += `<div class="hq-row hq-row-tray"><b>${i < HQ_PARTY_RULES.shift ? '1ST' : '2ND'} · ${_hqEsc(m.name || m.cls)}</b><span>${_hqEsc(String(m.cls).toUpperCase())}${m.you ? ' · YOU' : ''}</span><i class="hq-lamp-chip st-${v.down ? 'codered' : (v.hpMax && v.hp < v.hpMax) ? 'unstable' : 'open'}">${v.down ? 'DOWN' : 'HP ' + hp}</i></div>`; });
+                    S.members.forEach((m, i) => { const v = window.hqPartyVitals(m, null); const hp = v.hpMax ? `${v.hp} / ${v.hpMax}` : 'FULL'; html += `<div class="hq-row hq-row-tray"><b>${i < HQ_PARTY_RULES.shift ? '1ST' : '2ND'} · ${_hqEsc(_hqMemberName(m))}</b><span>${_hqEsc(String((m.meta && m.meta.race) || '').toUpperCase())}${m.you ? ' · YOU' : ''}</span><i class="hq-lamp-chip st-${v.down ? 'codered' : (v.hpMax && v.hp < v.hpMax) ? 'unstable' : 'open'}">${v.down ? 'DOWN' : 'HP ' + hp}</i></div>`; });
                     html += '</div>';
                     html += `<div class="hq-rows"><div class="hq-row hq-row-tray"><b>THE PARTY</b><span>${_hqEsc(pf.note)}</span><i class="hq-lamp-chip st-${pf.fit === pf.total && !pf.hurt ? 'open' : pf.ready ? 'unstable' : 'codered'}">${pf.fit} / ${pf.total} FIT</i></div></div>`;
                 }
@@ -6041,7 +6042,7 @@
                 html += '<p class="hq-panel-desc">' + _hqEsc(c.desc || '') + '</p><div class="hq-rows">';
                 const members = (party && Array.isArray(party.members)) ? party.members : [];
                 if (!members.length) html += '<div class="hq-row hq-row-tray"><b>NO SUBJECTS ON FILE</b><span>NOBODY HAS CROSSED YET · THE COTS DREAM OF THE BUILDING</span><i class="hq-lamp-chip st-open">—</i></div>';
-                members.slice(0, 8).forEach((m, i) => { const nm = (m.name || (m.meta && m.meta.race) || m.cls || 'SUBJECT').toString().toUpperCase(); html += `<div class="hq-row hq-row-tray"><b>SUBJECT ${i + 1} · ${_hqEsc(nm)}</b><span>${_hqEsc((m.meta && m.meta.race ? m.meta.race + ' · ' : '') + (m.cls || ''))}</span><i class="hq-lamp-chip ${i % 4 === 3 ? 'st-codered' : 'st-stabilized'}">${_hqEsc(stages[i % 4])}</i></div>`; });
+                members.slice(0, 8).forEach((m, i) => { const nm = (m.name || (m.meta && m.meta.race) || 'SUBJECT').toString().toUpperCase(); html += `<div class="hq-row hq-row-tray"><b>SUBJECT ${i + 1} · ${_hqEsc(nm)}</b><span>${_hqEsc((m.meta && m.meta.race) || '')}</span><i class="hq-lamp-chip ${i % 4 === 3 ? 'st-codered' : 'st-stabilized'}">${_hqEsc(stages[i % 4])}</i></div>`; });
                 html += `<div class="hq-row hq-row-tray"><b>THE SCREEN</b><span>DREW ${party && party.mode ? _hqEsc(String(party.mode).toUpperCase()) : 'THIS ROOM'} · FROM ABOVE · FOR AN HOUR</span><i class="hq-lamp-chip st-unstable">DRAWN</i></div>`;
                 html += '</div><div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-close="1">DO NOT WAKE THEM</button></div>';
                 html += '<p class="hq-panel-note">Your last crossing is in the log, dreamt by someone who was not there. The details are right.</p>';
@@ -6502,8 +6503,8 @@
         /* ── Mystery Dungeon entry point ──────────────────────────────────────
            Flow (2026-09-05): the CONDEMNED CROSSING door in the Training
            Facility (or the classic main menu) → the delver page: pick your
-           hero and their job, tick up to three companions from the MD roster
-           (a job each) → ENTER — straight down to Floor 1 (_mdLaunchRun,
+           hero, tick up to three companions from the MD roster (no job —
+           the jobs removal 2026-09-27) → ENTER — straight down to Floor 1 (_mdLaunchRun,
            battle.js). The 8×8 Guild Hub free-roam map is GONE from the flow:
            the D.O.O.R. headquarters is the hub now (the roster hangs out
            there as vessels), and the party menu that used to sit at the
@@ -6514,9 +6515,9 @@
            null = deliberately going alone, string = companion race. The
            companion picker only shows on a FRESH save (roster of 1) — that's
            your FIRST companion; later allies are recruited by clearing runs.
-           party: race → { on, job } for the roster companions (sticky across
-           re-renders); job: the hero's job (reset when the hero changes). */
-        let _mdCharSel = { race: null, gender: null, job: null, comp: undefined, party: {} };
+           party: race → { on } for the roster companions (sticky across
+           re-renders). */
+        let _mdCharSel = { race: null, gender: null, comp: undefined, party: {} };
 
         window._goToMysteryDungeon = function() {
             playSfx('uiButtonConfirm');
@@ -6553,7 +6554,6 @@
         }
 
         function _mdCharImgUrl(rk, gender) {
-            const job = (typeof RACE_DEFAULT_JOBS !== 'undefined' && RACE_DEFAULT_JOBS[rk]) || 'Freelancer';
             try {
                 if (typeof getUnitPortraitUrl === 'function') {
                     const p = getUnitPortraitUrl({ race: rk, gender });
@@ -6561,7 +6561,7 @@
                 }
             } catch (e) {}
             try {
-                if (typeof window.getR2RaceSpriteUrl === 'function') return window.getR2RaceSpriteUrl(rk, gender || 'male', job) || '';
+                if (typeof window.getR2RaceSpriteUrl === 'function') return window.getR2RaceSpriteUrl(rk, gender || 'male', UNIT_CLASS) || '';
             } catch (e) {}
             return '';
         }
@@ -6593,11 +6593,9 @@
                 const sel = rk === _mdCharSel.race;
                 const g = sel ? _mdCharSel.gender : ((typeof getAvailableGendersForRace === 'function') ? (getAvailableGendersForRace(rk) || ['male'])[0] : 'male');
                 const img = _mdCharImgUrl(rk, g);
-                const job = (typeof RACE_DEFAULT_JOBS !== 'undefined' && RACE_DEFAULT_JOBS[rk]) || 'Freelancer';
                 html += `<div class="md-char-card${sel ? ' selected' : ''}" onclick="window._mdCharPick('${rk.replace(/'/g, "\\'")}')">`
                     + (img ? `<div class="md-char-img" style="background-image:url('${img}')"></div>` : '<div class="md-char-img"></div>')
                     + `<div class="md-char-name">${_mdRaceLabel(rk)}</div>`
-                    + `<div class="md-char-job">${job}</div>`
                     + '</div>';
             }
             html += '</div>';
@@ -6620,42 +6618,35 @@
                     const cSel = rk === _mdCharSel.comp;
                     const cg = (typeof getAvailableGendersForRace === 'function') ? ((getAvailableGendersForRace(rk) || ['male'])[0] || 'male') : 'male';
                     const cImg = _mdCharImgUrl(rk, cg);
-                    const cJob = (typeof RACE_DEFAULT_JOBS !== 'undefined' && RACE_DEFAULT_JOBS[rk]) || 'Freelancer';
                     html += `<div class="md-char-card${cSel ? ' selected' : ''}" onclick="window._mdCompPick('${rk.replace(/'/g, "\\'")}')">`
                         + (cImg ? `<div class="md-char-img" style="background-image:url('${cImg}')"></div>` : '<div class="md-char-img"></div>')
                         + `<div class="md-char-name">${_mdRaceLabel(rk)}</div>`
-                        + `<div class="md-char-job">${cJob}</div>`
                         + '</div>';
                 }
                 html += '</div>';
             }
 
-            /* ── The party: the hero's job + roster companions with a job
-               each — the menu that used to be the hub's cave gate
-               (2026-09-05). Up to 3 companions; the first-companion pick
-               above joins automatically on a fresh save. ─────────────── */
-            const jobs = (typeof CLASS_TEMPLATES !== 'undefined') ? Object.keys(CLASS_TEMPLATES) : [];
-            const defJob = rk => (typeof RACE_DEFAULT_JOBS !== 'undefined' && RACE_DEFAULT_JOBS[rk]) || 'Freelancer';
+            /* ── The party: the hero + roster companions — the menu that
+               used to be the hub's cave gate (2026-09-05). Up to 3
+               companions; the first-companion pick above joins
+               automatically on a fresh save. (THE JOBS REMOVAL, the user
+               2026-09-27: no job select — the race is the whole pick.) ── */
             const esc = v => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-            const jobOpts = cur => jobs.map(j => `<option value="${esc(j)}"${j === cur ? ' selected' : ''}>${esc(j)}</option>`).join('');
-            if (!_mdCharSel.job || !jobs.includes(_mdCharSel.job)) _mdCharSel.job = defJob(_mdCharSel.race);
             const comps = pool.filter(rk => rk !== _mdCharSel.race);
             let onCount = 0;
             comps.forEach((rk, i) => {
-                if (!_mdCharSel.party[rk]) _mdCharSel.party[rk] = { on: i < 3, job: defJob(rk) };
+                if (!_mdCharSel.party[rk]) _mdCharSel.party[rk] = { on: i < 3 };
                 const e = _mdCharSel.party[rk];
                 if (e.on) { if (onCount >= 3) e.on = false; else onCount++; }   // the hero changed: re-clamp to 3
             });
-            html += '<div class="md-char-section">🗝 YOUR PARTY — up to 4 delvers, a job each (spells &amp; items auto-kit to it); companions fight on ⚔ AUTO tactics, switchable in battle</div>';
+            html += '<div class="md-char-section">🗝 YOUR PARTY — up to 4 delvers (spells &amp; items auto-kit); companions fight on ⚔ AUTO tactics, switchable in battle</div>';
             html += '<div class="md-party-list md-party-list-page">';
-            html += `<div class="md-party-row leader on"><span class="md-party-check">👑</span><span class="md-party-name">${esc(_mdRaceLabel(_mdCharSel.race))} <small>(you)</small></span>`
-                + `<select class="md-party-job" onchange="window._mdCharJob(this.value)">${jobOpts(_mdCharSel.job)}</select></div>`;
+            html += `<div class="md-party-row leader on"><span class="md-party-check">👑</span><span class="md-party-name">${esc(_mdRaceLabel(_mdCharSel.race))} <small>(you)</small></span></div>`;
             for (const rk of comps) {
                 const e = _mdCharSel.party[rk];
                 const key = rk.replace(/'/g, "\\'");
                 html += `<div class="md-party-row${e.on ? ' on' : ''}" onclick="window._mdPartyPick('${key}')"><span class="md-party-check">${e.on ? '✓' : ''}</span>`
-                    + `<span class="md-party-name">${esc(_mdRaceLabel(rk))}</span>`
-                    + `<select class="md-party-job" onclick="event.stopPropagation()" onchange="window._mdPartyPickJob('${key}', this.value)">${jobOpts(e.job)}</select></div>`;
+                    + `<span class="md-party-name">${esc(_mdRaceLabel(rk))}</span></div>`;
             }
             if (!comps.length && !fresh) html += '<div class="md-party-empty">No companions on the roster yet — clear floors to recruit allies!</div>';
             html += '</div>';
@@ -6673,7 +6664,7 @@
             body.innerHTML = html;
         }
 
-        /* the party rows (2026-09-05): toggle a companion (3 max), set a job */
+        /* the party rows (2026-09-05): toggle a companion (3 max) */
         window._mdPartyPick = function(rk) {
             const e = _mdCharSel.party[rk];
             if (!e) return;
@@ -6684,17 +6675,6 @@
             e.on = !e.on;
             playSfx('uiCursorMove');
             _mdRenderCharSelect();
-        };
-        window._mdPartyPickJob = function(rk, job) {
-            const e = _mdCharSel.party[rk];
-            if (!e || typeof CLASS_TEMPLATES === 'undefined' || !CLASS_TEMPLATES[job]) return;
-            e.job = job;
-            playSfx('uiCursorMove');
-        };
-        window._mdCharJob = function(job) {
-            if (typeof CLASS_TEMPLATES === 'undefined' || !CLASS_TEMPLATES[job]) return;
-            _mdCharSel.job = job;
-            playSfx('uiCursorMove');
         };
 
         /* Races eligible as the starter companion: 3D-ready, not the hero,
@@ -6720,7 +6700,6 @@
             playSfx('uiButtonConfirm');
             _mdCharSel.race = rk;
             _mdCharSel.gender = null;
-            _mdCharSel.job = null;   // the new hero's default job
             _mdRenderCharSelect();
         };
 
@@ -6735,11 +6714,10 @@
             if (!_mdCharSel.race) return;
             if (typeof window._mdLaunchRun !== 'function') { addLog('Mystery Dungeon runtime failed to load.'); return; }
             const race = _mdCharSel.race, gender = _mdCharSel.gender || 'male';
-            const defJob = rk => (typeof RACE_DEFAULT_JOBS !== 'undefined' && RACE_DEFAULT_JOBS[rk]) || 'Freelancer';
             const firstGender = rk => (typeof getAvailableGendersForRace === 'function') ? ((getAvailableGendersForRace(rk) || ['male'])[0] || 'male') : 'male';
-            const jobOk = j => !!(j && typeof CLASS_TEMPLATES !== 'undefined' && CLASS_TEMPLATES[j]);
             const fresh = _mdUnlockedRoster().length === 1;
-            const cfg = [{ race, gender, name: _mdRaceLabel(race), job: jobOk(_mdCharSel.job) ? _mdCharSel.job : defJob(race) }];
+            /* THE JOBS REMOVAL (the user 2026-09-27): every delver is the one neutral UNIT_CLASS (no job) */
+            const cfg = [{ race, gender, name: _mdRaceLabel(race), cls: UNIT_CLASS }];
             /* the chosen first companion (fresh save) joins the MD roster
                permanently and walks in with you on this first run */
             let compRace = null;
@@ -6752,16 +6730,16 @@
                         saveMdSave(sv);
                     }
                 } catch (e) {}
-                cfg.push({ race: compRace, gender: firstGender(compRace), job: defJob(compRace) });
+                cfg.push({ race: compRace, gender: firstGender(compRace), cls: UNIT_CLASS });
             }
             /* the ticked roster companions (the page's party rows) */
             for (const rk of _mdUnlockedRoster()) {
                 if (rk === race || rk === compRace || cfg.length >= 4) continue;
                 const e = _mdCharSel.party[rk];
                 if (!e || !e.on) continue;
-                cfg.push({ race: rk, gender: firstGender(rk), job: jobOk(e.job) ? e.job : defJob(rk) });
+                cfg.push({ race: rk, gender: firstGender(rk), cls: UNIT_CLASS });
             }
-            _mdSeatDelvers(race, gender, cfg[0].job);
+            _mdSeatDelvers(race, gender);
             window._mdLaunchRun(cfg);
         };
 
@@ -6770,7 +6748,7 @@
            set the mode — battle.js _mdLaunchRun builds the delving party
            from the page's picks and loads Floor 1; no party builder, no hub
            board in between). */
-        function _mdSeatDelvers(race, gender, heroJob) {
+        function _mdSeatDelvers(race, gender) {
             window._msCpuOnly = true;
             state.isRankedMatch = false;
             state.trainingMatch = false; state.storyLevel = 0;
@@ -6788,7 +6766,7 @@
             activeMultiplayerMode = 'dungeon';
             CONFIG.teamSize = 1;
 
-            const job = heroJob || (typeof RACE_DEFAULT_JOBS !== 'undefined' && RACE_DEFAULT_JOBS[race]) || 'Freelancer';
+            const job = UNIT_CLASS;   // (the jobs removal 2026-09-27)
             state.partyBuilds[1] = [job];
             state.partyNames[1] = [_mdRaceLabel(race)];
             state.partyMeta[1] = [{ race, gender }];
@@ -6799,10 +6777,10 @@
             state.loadouts[1] = [_mdLd];
 
             /* CPU slot must merely validate — the hub strips team 2 anyway */
-            state.partyBuilds[2] = ['Warrior'];
-            state.partyNames[2] = [getDefaultUnitName('Warrior')];
+            state.partyBuilds[2] = [UNIT_CLASS];
+            state.partyNames[2] = [getDefaultUnitName(UNIT_CLASS)];
             state.partyMeta[2] = [{}];
-            state.loadouts[2] = [(typeof optimizeLoadoutForClass === 'function') ? optimizeLoadoutForClass('Warrior', '') : emptyLoadout()];
+            state.loadouts[2] = [(typeof optimizeLoadoutForClass === 'function') ? optimizeLoadoutForClass(UNIT_CLASS, '') : emptyLoadout()];
 
             state.controllers[1] = CTRL.LOCAL;
             state.controllers[2] = CTRL.AI;
@@ -7090,16 +7068,11 @@
         };
 
         let _cccGender = 'male';
-        let _cccJob = 'Freelancer';
         let _cccRace = 'homosapien';
-
-        const _CCC_JOB_NAMES = {
-            'Freelancer': 'Wanderer', 'Warrior': 'Vanguard', 'Tank': 'Sentinel', 'Black Mage': 'Arcanist',
-            'White Mage': 'Cleric', 'Gunslinger': 'Ranger', 'Agent': 'Shadow',
-            'Psychic': 'Psion', 'Harvester': 'Warden', 'Engineer': 'Tinker',
-            'Harbinger': 'Herald', 'Raider': 'Corsair', 'Sniper': 'Hawk',
-            'Swordmaster': 'Blade'
-        };
+        /* THE JOBS REMOVAL (the user 2026-09-27): the creator picks a race + gender + name — no job (the default
+           name is the race label, the sprite the neutral UNIT_CLASS) */
+        const _cccRaceLabel = rk => (typeof RACE_PROFILES !== 'undefined' && RACE_PROFILES[rk] && RACE_PROFILES[rk].label)
+            ? RACE_PROFILES[rk].label : rk.charAt(0).toUpperCase() + rk.slice(1);
 
         window._goToCampaign = function() {
             playSfx('uiButtonConfirm');
@@ -7121,7 +7094,6 @@
 
                 state.gameState = GS.CAMPAIGN_CHAR_CREATE;
                 _cccGender = 'male';
-                _cccJob = 'Freelancer';
                 _cccRace = 'homosapien';
                 _cccRenderForm();
                 _showTitlePage('campaignCharCreatePage');
@@ -7150,7 +7122,6 @@
             window._activeChallengeType = cType;
             state.gameState = GS.CAMPAIGN_CHAR_CREATE;
             _cccGender = 'male';
-            _cccJob = 'Freelancer';
             _cccRace = 'homosapien';
             _cccRenderForm();
             _showTitlePage('campaignCharCreatePage');
@@ -7185,10 +7156,8 @@
                     const prof = RACE_PROFILES[rKey];
                     if (!prof) continue;
                     const sel = (rKey === _cccRace) ? ' selected' : '';
-                    const defaultJob = (typeof RACE_DEFAULT_JOBS !== 'undefined' && RACE_DEFAULT_JOBS[rKey])
-                        ? RACE_DEFAULT_JOBS[rKey] : 'Freelancer';
                     const spriteUrl = (typeof getR2RaceSpriteUrl === 'function')
-                        ? getR2RaceSpriteUrl(rKey, _cccGender, defaultJob) : '';
+                        ? getR2RaceSpriteUrl(rKey, _cccGender, UNIT_CLASS) : '';
                     html += `<div class="ccc-race-cell${sel}" data-race="${rKey}" onclick="window._cccPickRace('${rKey}')">
                         <div class="ccc-race-sprite" style="background-image:url('${spriteUrl}')"></div>
                         <div class="ccc-race-label">${prof.label || rKey}</div>
@@ -7197,26 +7166,10 @@
                 raceGrid.innerHTML = html;
             }
 
-            const sel = document.getElementById('cccJobSelect');
-            if (sel) {
-                const isLocked = (_cccRace !== 'homosapien' && typeof RACE_DEFAULT_JOBS !== 'undefined' && RACE_DEFAULT_JOBS[_cccRace]);
-                if (isLocked) {
-                    _cccJob = RACE_DEFAULT_JOBS[_cccRace];
-                    sel.innerHTML = `<option value="${_cccJob}" selected>${_cccJob} 🔒</option>`;
-                    sel.disabled = true;
-                } else {
-                    sel.disabled = false;
-                    const jobs = typeof CLASS_SPELL_LEARN_ORDER !== 'undefined'
-                        ? Object.keys(CLASS_SPELL_LEARN_ORDER) : ['Freelancer'];
-                    sel.innerHTML = jobs.map(j =>
-                        `<option value="${j}" ${j === _cccJob ? 'selected' : ''}>${j}</option>`
-                    ).join('');
-                }
-            }
 
             const nameInput = document.getElementById('cccNameInput');
             if (nameInput && !nameInput.value) {
-                nameInput.value = _CCC_JOB_NAMES[_cccJob] || 'Recruit';
+                nameInput.value = _cccRaceLabel(_cccRace);
             }
 
             _cccUpdateSprite();
@@ -7225,20 +7178,15 @@
         }
 
         window._cccPickRace = function(raceKey) {
+            const prevLabel = _cccRaceLabel(_cccRace);
             _cccRace = raceKey;
             playSfx('uiCursorMove');
 
-            if (raceKey !== 'homosapien' && typeof RACE_DEFAULT_JOBS !== 'undefined' && RACE_DEFAULT_JOBS[raceKey]) {
-                _cccJob = RACE_DEFAULT_JOBS[raceKey];
-            }
-
             const nameInput = document.getElementById('cccNameInput');
             if (nameInput) {
-                const allDefaults = Object.values(_CCC_JOB_NAMES);
-                const rLabel = (typeof RACE_PROFILES !== 'undefined' && RACE_PROFILES[raceKey])
-                    ? RACE_PROFILES[raceKey].label : raceKey.charAt(0).toUpperCase() + raceKey.slice(1);
-                if (!nameInput.value || allDefaults.includes(nameInput.value) || nameInput.value === rLabel) {
-                    nameInput.value = _CCC_JOB_NAMES[_cccJob] || rLabel;
+                // the name follows the race while it is still the default (empty or the previous race's label)
+                if (!nameInput.value || nameInput.value === prevLabel) {
+                    nameInput.value = _cccRaceLabel(raceKey);
                 }
             }
             _cccRenderForm();
@@ -7248,7 +7196,7 @@
             const preview = document.getElementById('cccSpritePreview');
             if (!preview) return;
             const url = (typeof getR2RaceSpriteUrl === 'function')
-                ? getR2RaceSpriteUrl(_cccRace, _cccGender, _cccJob)
+                ? getR2RaceSpriteUrl(_cccRace, _cccGender, UNIT_CLASS)
                 : null;
             if (url) {
                 preview.style.backgroundImage = `url('${url}')`;
@@ -7274,31 +7222,14 @@
             _cccRenderForm();
         };
 
-        window._cccOnJobChange = function() {
-            const sel = document.getElementById('cccJobSelect');
-            if (!sel) return;
-            _cccJob = sel.value;
-            playSfx('uiCursorMove');
-
-            const nameInput = document.getElementById('cccNameInput');
-            if (nameInput) {
-                const allDefaults = Object.values(_CCC_JOB_NAMES);
-                if (!nameInput.value || allDefaults.includes(nameInput.value)) {
-                    nameInput.value = _CCC_JOB_NAMES[_cccJob] || 'Recruit';
-                }
-            }
-            _cccUpdateSprite();
-        };
-
         window._cccConfirm = function() {
             playSfx('uiButtonConfirm');
             const nameInput = document.getElementById('cccNameInput');
-            const name = (nameInput?.value || '').trim() || _CCC_JOB_NAMES[_cccJob] || 'Recruit';
+            const name = (nameInput?.value || '').trim() || _cccRaceLabel(_cccRace);
 
             const save = newCampaignSave({
                 race: _cccRace,
                 gender: _cccGender,
-                job: _cccJob,
                 name: name
             }, window._activeChallengeType || 'survival');
             saveCampaign(save);
@@ -7637,13 +7568,13 @@
                     const c2 = _CHAL_REVIVE_COST_PER_UNIT;
                     const ca2 = save.gold >= c2;
                     const spriteUrl = (typeof getR2RaceSpriteUrl === 'function')
-                        ? getR2RaceSpriteUrl(inst.race, inst.gender || 'male', inst.job || 'Freelancer') : '';
+                        ? getR2RaceSpriteUrl(inst.race, inst.gender || 'male', UNIT_CLASS) : '';
                     const portrait = spriteUrl;
                     html += `<div class="cshop-card cshop-service-card cshop-dead-card">
                         <div class="cshop-card-sprite" style="background-image:url('${portrait}')"></div>
                         <div class="cshop-card-info">
                             <div class="cshop-card-name">${_cshopEsc(inst.name || inst.race)}</div>
-                            <div class="cshop-card-sub">Lv.${inst.level || 1} · ${_cshopEsc(inst.job || 'Freelancer')}</div>
+                            <div class="cshop-card-sub">Lv.${inst.level || 1} · ${_cshopEsc((typeof getRaceLabel === 'function') ? getRaceLabel(inst.race, inst.gender || 'male') : inst.race)}</div>
                             <div class="cshop-card-desc">✝ Fallen in battle.</div>
                         </div>
                         <div class="cshop-card-action">
@@ -7695,7 +7626,6 @@
         function _cshopRenderRaces(body, save) {
             const prices = (typeof CAMPAIGN_RACE_PRICES !== 'undefined') ? CAMPAIGN_RACE_PRICES : {};
             const profiles = (typeof RACE_PROFILES !== 'undefined') ? RACE_PROFILES : {};
-            const defaultJobs = (typeof RACE_DEFAULT_JOBS !== 'undefined') ? RACE_DEFAULT_JOBS : {};
 
             const raceKeys = Object.keys(prices).sort((a, b) => {
                 const pDiff = prices[a] - prices[b];
@@ -7711,18 +7641,17 @@
                 const owned = save.unlockedRaces.includes(race);
                 const canAfford = save.gold >= price;
                 const label = prof ? prof.label : (race.charAt(0).toUpperCase() + race.slice(1));
-                const defaultJob = defaultJobs[race] || 'Freelancer';
                 const types = prof ? (prof.types || []).join(', ') : '';
                 const faction = prof ? (prof.faction || '') : '';
 
                 const spriteUrl = (typeof getR2RaceSpriteUrl === 'function')
-                    ? getR2RaceSpriteUrl(race, 'male', defaultJob) : '';
+                    ? getR2RaceSpriteUrl(race, 'male', UNIT_CLASS) : '';
 
                 html += `<div class="cshop-card${owned ? ' cshop-owned' : ''}">
                     <div class="cshop-card-sprite" style="background-image:url('${spriteUrl}')"></div>
                     <div class="cshop-card-info">
                         <div class="cshop-card-name">${_cshopEsc(label)}</div>
-                        <div class="cshop-card-sub">${_cshopEsc(defaultJob)} · ${_cshopEsc(types)}</div>
+                        <div class="cshop-card-sub">${_cshopEsc(types)}</div>
                         <div class="cshop-card-faction">${_cshopEsc(faction)}</div>
                     </div>
                     <div class="cshop-card-action">`;
@@ -7803,8 +7732,7 @@
 
             save.unlockedRaces.push(race);
 
-            const defaultJob = (typeof RACE_DEFAULT_JOBS !== 'undefined' && RACE_DEFAULT_JOBS[race]) || 'Freelancer';
-            const newUnit = createRosterInstance(race, 'male', defaultJob, null);
+            const newUnit = createRosterInstance(race, 'male', UNIT_CLASS, null);   // (the jobs removal 2026-09-27: no default job per race)
             save.roster.push(newUnit);
 
             if (typeof saveCampaign === 'function') saveCampaign(save);
@@ -8666,17 +8594,18 @@
                     SPAWNS[2].push({ x: bw - 1 - col, y: Math.min(bh - 1 - row, bh - 1) });
                 }
 
-                DEFAULT_BUILDS[1] = mode.defaultBuilds[1].slice(0, customTeam);
-                DEFAULT_BUILDS[2] = mode.defaultBuilds[2].slice(0, customTeam);
+                // THE JOBS REMOVAL (the user 2026-09-27): every build is the one neutral UNIT_CLASS (a mode row's stale job names map to it)
+                DEFAULT_BUILDS[1] = mode.defaultBuilds[1].slice(0, customTeam).map(() => UNIT_CLASS);
+                DEFAULT_BUILDS[2] = mode.defaultBuilds[2].slice(0, customTeam).map(() => UNIT_CLASS);
 
-                while (DEFAULT_BUILDS[1].length < customTeam) DEFAULT_BUILDS[1].push('Warrior');
-                while (DEFAULT_BUILDS[2].length < customTeam) DEFAULT_BUILDS[2].push('Warrior');
+                while (DEFAULT_BUILDS[1].length < customTeam) DEFAULT_BUILDS[1].push(UNIT_CLASS);
+                while (DEFAULT_BUILDS[2].length < customTeam) DEFAULT_BUILDS[2].push(UNIT_CLASS);
 
                 [1, 2].forEach(player => {
                     const oldSize = state.partyBuilds?.[player]?.length || 0;
                     if (oldSize < customTeam) {
                         for (let i = oldSize; i < customTeam; i++) {
-                            state.partyBuilds[player][i] = DEFAULT_BUILDS[player][i] || 'Warrior';
+                            state.partyBuilds[player][i] = UNIT_CLASS;
                             state.partyNames[player][i] = getDefaultUnitName(state.partyBuilds[player][i]);
                             state.loadouts[player][i] = emptyLoadout();
                             if (!state.partyMeta[player]) state.partyMeta[player] = [];
@@ -8743,16 +8672,17 @@
                     SPAWNS[2].push({ x: bw - 1 - idx % 2, y: Math.min(bh - 1 - Math.floor(idx / 2), bh - 1) });
                 }
 
-                DEFAULT_BUILDS[1] = (mode.defaultBuilds[1] || []).slice(0, ROSTER);
-                DEFAULT_BUILDS[2] = (mode.defaultBuilds[2] || []).slice(0, ROSTER);
-                while (DEFAULT_BUILDS[1].length < ROSTER) DEFAULT_BUILDS[1].push('Warrior');
-                while (DEFAULT_BUILDS[2].length < ROSTER) DEFAULT_BUILDS[2].push('Warrior');
+                // THE JOBS REMOVAL (the user 2026-09-27): every build is the one neutral UNIT_CLASS
+                DEFAULT_BUILDS[1] = (mode.defaultBuilds[1] || []).slice(0, ROSTER).map(() => UNIT_CLASS);
+                DEFAULT_BUILDS[2] = (mode.defaultBuilds[2] || []).slice(0, ROSTER).map(() => UNIT_CLASS);
+                while (DEFAULT_BUILDS[1].length < ROSTER) DEFAULT_BUILDS[1].push(UNIT_CLASS);
+                while (DEFAULT_BUILDS[2].length < ROSTER) DEFAULT_BUILDS[2].push(UNIT_CLASS);
 
                 [1, 2].forEach(player => {
                     const oldSize = state.partyBuilds?.[player]?.length || 0;
                     if (oldSize < ROSTER) {
                         for (let i = oldSize; i < ROSTER; i++) {
-                            state.partyBuilds[player][i] = DEFAULT_BUILDS[player][i] || 'Warrior';
+                            state.partyBuilds[player][i] = UNIT_CLASS;
                             state.partyNames[player][i] = getDefaultUnitName(state.partyBuilds[player][i]);
                             state.loadouts[player][i] = emptyLoadout();
                             if (!state.partyMeta[player]) state.partyMeta[player] = [];
@@ -10733,7 +10663,8 @@
                this is a per-frame hot path. */
             if (unit.status && (unit.status.levitating | 0) > 0) return true;
 
-            if ((unit.race === 'homosapien' && unit.cls === 'Psychic') || unit.race === 'telepath') return true;
+            /* (the jobs removal 2026-09-27: the homosapien Psychic's levitation went with the job) */
+            if (unit.race === 'telepath') return true;
             return unitHasJetpack(unit);
         }
 
@@ -12366,7 +12297,7 @@
         }
 
         function unitIsDeepWaterAdapted(unit) {
-            return !!unit && (unit?.terrainPreference === 'deep_water' || unitHasSnorkel(unit) || unit?.cls === 'Raider' || unit?.race === 'siren' || unit?.race === 'reptilian' || unit?.race === 'ghost' || unit?.race === 'atlantean' || unit?.race === 'kraken' || unit?.race === 'loch ness monster');
+            return !!unit && (unit?.terrainPreference === 'deep_water' || unitHasSnorkel(unit) || (typeof unitPassiveValue === 'function' && !!unitPassiveValue(unit, 'swim')) /* passiveBruteForce (was the Raider job; the jobs removal 2026-09-27) */ || unit?.race === 'siren' || unit?.race === 'reptilian' || unit?.race === 'ghost' || unit?.race === 'atlantean' || unit?.race === 'kraken' || unit?.race === 'loch ness monster');
         }
 
         function unitIsLavaAdapted(unit) {
@@ -13668,7 +13599,7 @@
             if (!dialog || dialog.type !== 'itemFound') return;
             const pending = dialog.foundItems.find(fi => !fi._ref.collectedBy);
             if (pending) {
-                const cap = getItemCapForClass(unit.cls, pending.type);
+                const cap = getItemCapForClass(unit, pending.type);   // the unit: its scannerCap hook (the jobs removal 2026-09-27)
                 if ((unit.items[pending.type] || 0) < cap && !unitItemsFull(unit)) {
                     unit.items[pending.type] = (unit.items[pending.type] || 0) + 1;
                     pending._ref.collectedBy = unit.id;
@@ -14767,8 +14698,10 @@
         }
 
         function createUnit(id, player, x, y, template, loadout = emptyLoadout(), identityOverride = null) {
+            /* THE JOBS REMOVAL (the user 2026-09-27): one template (CLASS_TEMPLATES[UNIT_CLASS]); a stale job key falls back to it */
+            if (!template || template.cls !== UNIT_CLASS) template = CLASS_TEMPLATES[UNIT_CLASS] || { cls: UNIT_CLASS };
             const identity = resolveIdentityForBuild(template.cls, identityOverride || {});
-            const stats = computeUnitStats(identity.race, template.cls);
+            const stats = computeUnitStats(identity.race);   // RACE_KITS inside (range / inspect)
             const equip = (loadout.equipment && Object.values(loadout.equipment).some(v => v)) ? loadout.equipment : getDefaultEquipment(template.cls);
 
             equip.handL = null;
@@ -14778,9 +14711,10 @@
                 x,
                 y,
                 z: (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(x, y) : 0,
-                name: template.cls,
+                /* THE JOBS REMOVAL (the user 2026-09-27): cls is the one neutral UNIT_CLASS ('Vessel'), never shown —
+                   the default name is the race label, and there is no job */
+                name: (typeof getRaceLabel === 'function') ? getRaceLabel(identity.race, identity.gender) : identity.race,
                 cls: template.cls,
-                job: normalizeJobName(template.job || template.cls),
                 faction: identity.faction,
                 race: identity.race,
                 types: [...identity.types],
@@ -14794,7 +14728,6 @@
                 baseUnit: {
                     faction: identity.faction,
                     race: identity.race,
-                    job: normalizeJobName(template.job || template.cls),
                     types: [...identity.types],
                     gender: identity.gender,
                     zodiac: identity.zodiac,
@@ -14810,22 +14743,21 @@
                 atk: stats.atk,
                 def: stats.def,
                 mdef: stats.mdef || 0,
-                range: stats.range + (template.cls === 'Sniper' ? 1 : 0),
+                range: stats.range,   // RACE_KITS (the jobs removal 2026-09-27: the Sniper +1 lives in the race's kit)
                 // move derives from SPD (2026-08-29 rework) — recomputed below
-                // once every SPD bonus (job kicker, gear, sec-job) has landed.
+                // once every SPD bonus (gear / passive statBonus) has landed.
                 move: stats.move,
                 inspect: stats.inspect,
                 awr: stats.awr,
                 intStat: stats.int,
-                spd: stats.spd + (template.cls === 'Gunslinger' ? 10 : 0),
-                armor: (template.cls === 'Warrior' || template.cls === 'Tank') ? 5 : 0,
-                spellPower: template.cls === 'Black Mage' ? 8 : 0,
-                healBonus: template.cls === 'White Mage' ? 24 : 0,
+                spd: stats.spd,   // (the Gunslinger +10 is passiveDeadeye's statBonus now)
+                // armor / spellPower / healBonus come from the passive rows' hooks — set once passiveRows is known (below)
+                armor: 0,
+                spellPower: 0,
+                healBonus: 0,
                 items: Object.fromEntries(Object.keys(ITEM_RULES).map(k => [k, loadout.items?.[k] || 0])),
                 spells: [],
                 _spellSlots: [],
-                _secondaryJob: null,
-                _pendingSecondaryJobPick: false,
                 _shopPurchases: [],
                 bombs: [],
                 terrainStay: {
@@ -14862,7 +14794,6 @@
 
             const _availableRaceAbilities = (typeof RACE_ABILITIES !== 'undefined' && RACE_ABILITIES[identity.race])
                 ? RACE_ABILITIES[identity.race]
-                    .filter(a => !a.jobRequirement || a.jobRequirement === template.cls)
                 : [];
             newUnit._availableRaceAbilities = _availableRaceAbilities.map(a => a.id);
 
@@ -14904,9 +14835,14 @@
                 }
 
                 // THE GEAR MERGE (Phase 4): an old save's accessories (loadout.equipment) join the wish-list as gear rows, after its own picks
-                const _customSpells = (typeof gearMigrateIds === 'function')
+                let _customSpells = (typeof gearMigrateIds === 'function')
                     ? gearMigrateIds(Array.isArray(identityOverride?.customSpells) ? identityOverride.customSpells : null, loadout && loadout.equipment)
                     : (Array.isArray(identityOverride?.customSpells) ? identityOverride.customSpells : null);
+                /* THE JOBS REMOVAL (the user 2026-09-27): a unit whose kit holds no active spell (a party seat never opened in
+                   the builder, a native with no picks) gets its race's default kit ahead of any gear — the job's level-up
+                   learnset used to fill it. Deterministic (data.js raceDefaultKit), and the host builds every unit online. */
+                if (typeof raceDefaultKit === 'function' && !(_customSpells || []).some(id => { const _s = getSpellById(id); return _s && _s.kind !== 'passive'; }))
+                    _customSpells = raceDefaultKit(newUnit.race).concat(_customSpells || []);
                 if (_customSpells && _customSpells.length > 0) {
                     const _slotCap = (typeof SPELL_SLOT_MAX !== 'undefined') ? SPELL_SLOT_MAX : 6;
                     // Slot-budget aware: over-budget saved builds are trimmed
@@ -14914,16 +14850,14 @@
                     // earlier picks are kept).
                     const _secJobForBudget = '';   // the tier rework (2026-09-24): no secondary job
                     let _validIds;
-                    if (typeof classHasSpellTree === 'function' && classHasSpellTree(template.cls)
-                        && typeof treeLegalSubset === 'function') {
-                        /* Spell-tree classes: THE authority checkpoint (host
-                           builds every unit online — RULE #2). Keeps the
-                           largest root-connected subset of the wish-list, so
-                           an off-tree or disconnected loadout can't reach
-                           battle no matter where it came from. */
+                    if (typeof treeLegalSubset === 'function') {
+                        /* THE authority checkpoint (host builds every unit
+                           online — RULE #2). Keeps the largest root-connected
+                           subset of the wish-list, so an off-tree or
+                           disconnected loadout can't reach battle no matter
+                           where it came from. (The jobs removal 2026-09-27:
+                           every unit is on the tree — no non-tree branch.) */
                         _validIds = treeLegalSubset(newUnit.race, template.cls, _secJobForBudget, _customSpells);
-                    } else if (typeof trimSpellIdsToSlotBudget === 'function') {
-                        _validIds = trimSpellIdsToSlotBudget(_customSpells, template.cls, _secJobForBudget, _slotCap);
                     } else {
                         const _seen = new Set();
                         _validIds = [];
@@ -14961,9 +14895,14 @@
                 const _sxp = +identityOverride.storyXp;
                 if (Number.isFinite(_sxp) && _sxp >= (XP_THRESHOLDS[targetLevel - 1] || 0) && (targetLevel >= XP_MAX_LEVEL || _sxp < XP_THRESHOLDS[targetLevel])) { newUnit._xp = Math.round(_sxp); newUnit._lvlCacheXp = newUnit._xp; newUnit._lvlCache = targetLevel; }
                 // THE GEAR MERGE (Phase 4): an old save's accessories (loadout.equipment) join the wish-list as gear rows, after its own picks
-                const _customSpells = (typeof gearMigrateIds === 'function')
+                let _customSpells = (typeof gearMigrateIds === 'function')
                     ? gearMigrateIds(Array.isArray(identityOverride?.customSpells) ? identityOverride.customSpells : null, loadout && loadout.equipment)
                     : (Array.isArray(identityOverride?.customSpells) ? identityOverride.customSpells : null);
+                /* THE JOBS REMOVAL (the user 2026-09-27): a unit whose kit holds no active spell (a party seat never opened in
+                   the builder, a native with no picks) gets its race's default kit ahead of any gear — the job's level-up
+                   learnset used to fill it. Deterministic (data.js raceDefaultKit), and the host builds every unit online. */
+                if (typeof raceDefaultKit === 'function' && !(_customSpells || []).some(id => { const _s = getSpellById(id); return _s && _s.kind !== 'passive'; }))
+                    _customSpells = raceDefaultKit(newUnit.race).concat(_customSpells || []);
                 if (_customSpells && _customSpells.length > 0) {
                     const _slotCap = (typeof SPELL_SLOT_MAX !== 'undefined') ? SPELL_SLOT_MAX : 6;
                     // Slot-budget aware: over-budget saved builds are trimmed
@@ -14971,16 +14910,14 @@
                     // earlier picks are kept).
                     const _secJobForBudget = '';   // the tier rework (2026-09-24): no secondary job
                     let _validIds;
-                    if (typeof classHasSpellTree === 'function' && classHasSpellTree(template.cls)
-                        && typeof treeLegalSubset === 'function') {
-                        /* Spell-tree classes: THE authority checkpoint (host
-                           builds every unit online — RULE #2). Keeps the
-                           largest root-connected subset of the wish-list, so
-                           an off-tree or disconnected loadout can't reach
-                           battle no matter where it came from. */
+                    if (typeof treeLegalSubset === 'function') {
+                        /* THE authority checkpoint (host builds every unit
+                           online — RULE #2). Keeps the largest root-connected
+                           subset of the wish-list, so an off-tree or
+                           disconnected loadout can't reach battle no matter
+                           where it came from. (The jobs removal 2026-09-27:
+                           every unit is on the tree — no non-tree branch.) */
                         _validIds = treeLegalSubset(newUnit.race, template.cls, _secJobForBudget, _customSpells);
-                    } else if (typeof trimSpellIdsToSlotBudget === 'function') {
-                        _validIds = trimSpellIdsToSlotBudget(_customSpells, template.cls, _secJobForBudget, _slotCap);
                     } else {
                         const _seen = new Set();
                         _validIds = [];
@@ -15019,9 +14956,14 @@
                 newUnit.mp = newUnit.maxMp;
 
                 // THE GEAR MERGE (Phase 4): an old save's accessories (loadout.equipment) join the wish-list as gear rows, after its own picks
-                const _customSpells = (typeof gearMigrateIds === 'function')
+                let _customSpells = (typeof gearMigrateIds === 'function')
                     ? gearMigrateIds(Array.isArray(identityOverride?.customSpells) ? identityOverride.customSpells : null, loadout && loadout.equipment)
                     : (Array.isArray(identityOverride?.customSpells) ? identityOverride.customSpells : null);
+                /* THE JOBS REMOVAL (the user 2026-09-27): a unit whose kit holds no active spell (a party seat never opened in
+                   the builder, a native with no picks) gets its race's default kit ahead of any gear — the job's level-up
+                   learnset used to fill it. Deterministic (data.js raceDefaultKit), and the host builds every unit online. */
+                if (typeof raceDefaultKit === 'function' && !(_customSpells || []).some(id => { const _s = getSpellById(id); return _s && _s.kind !== 'passive'; }))
+                    _customSpells = raceDefaultKit(newUnit.race).concat(_customSpells || []);
                 if (_customSpells && _customSpells.length > 0) {
                     const _slotCap = (typeof SPELL_SLOT_MAX !== 'undefined') ? SPELL_SLOT_MAX : 6;
                     // Slot-budget aware: over-budget saved builds are trimmed
@@ -15029,16 +14971,14 @@
                     // earlier picks are kept).
                     const _secJobForBudget = '';   // the tier rework (2026-09-24): no secondary job
                     let _validIds;
-                    if (typeof classHasSpellTree === 'function' && classHasSpellTree(template.cls)
-                        && typeof treeLegalSubset === 'function') {
-                        /* Spell-tree classes: THE authority checkpoint (host
-                           builds every unit online — RULE #2). Keeps the
-                           largest root-connected subset of the wish-list, so
-                           an off-tree or disconnected loadout can't reach
-                           battle no matter where it came from. */
+                    if (typeof treeLegalSubset === 'function') {
+                        /* THE authority checkpoint (host builds every unit
+                           online — RULE #2). Keeps the largest root-connected
+                           subset of the wish-list, so an off-tree or
+                           disconnected loadout can't reach battle no matter
+                           where it came from. (The jobs removal 2026-09-27:
+                           every unit is on the tree — no non-tree branch.) */
                         _validIds = treeLegalSubset(newUnit.race, template.cls, _secJobForBudget, _customSpells);
-                    } else if (typeof trimSpellIdsToSlotBudget === 'function') {
-                        _validIds = trimSpellIdsToSlotBudget(_customSpells, template.cls, _secJobForBudget, _slotCap);
                     } else {
                         const _seen = new Set();
                         _validIds = [];
@@ -15085,6 +15025,15 @@
                 }
                 newUnit.passiveRows = _pasIds;
                 if (typeof passiveRowsEquipmentMirror === 'function') newUnit.equipment = Object.assign({}, newUnit.equipment || {}, passiveRowsEquipmentMirror(_pasIds));
+                /* THE JOBS REMOVAL (the user 2026-09-27): the old job stat kickers are TRAINING passive hooks now
+                   (passiveWarpath / passiveBulwark armor 5, passiveArcaneSurge spellPower 8, passiveGrace healBonus 24,
+                   passiveFieldOperative inspect +1). Only createUnit sets these fields (no level-up recompute touches them). */
+                if (typeof unitPassiveSum === 'function') {
+                    newUnit.armor = (newUnit.armor || 0) + unitPassiveSum(newUnit, 'armor');
+                    newUnit.spellPower = (newUnit.spellPower || 0) + unitPassiveSum(newUnit, 'spellPower');
+                    newUnit.healBonus = (newUnit.healBonus || 0) + unitPassiveSum(newUnit, 'healBonus');
+                    newUnit.inspect = (newUnit.inspect || 0) + unitPassiveSum(newUnit, 'inspectBonus');
+                }
             }
 
             /* ── THE UPGRADES (SPELL_LIBRARY_PLAN.md §6.3, Phase 5) ─────────────────────────────────────────
@@ -15137,7 +15086,7 @@
                 const _pmm = (identityOverride.mpMax > 0) ? identityOverride.mpMax : newUnit.maxMp;
                 newUnit.mp = Math.max(0, Math.min(newUnit.maxMp, Math.round((+identityOverride.mp) * (newUnit.maxMp / Math.max(1, _pmm)))));
             }
-            // SPD is settled (job kicker + gear): derive the stored base move.
+            // SPD is settled (gear + passive statBonus): derive the stored base move.
             // Live movement always re-derives from SPD in getEffectiveMove
             // (stages included); this field is the display/fallback baseline.
             if (typeof moveFromSpd === 'function') {
@@ -15172,23 +15121,14 @@
             return newUnit;
         }
 
+        /* THE JOBS REMOVAL (the user 2026-09-27): classes restrict nothing any more (spells carry no classRestriction /
+           jobRequirement) — every spell is allowed and native; kept as functions for their callers */
         function spellAllowedForClass(spell, cls) {
-            if (!spell) return false;
-            if (cls === 'Freelancer') return true;
-            if (Array.isArray(spell.classRestrictions) && spell.classRestrictions.length) return spell.classRestrictions.includes(cls);
-            if (spell.classRestriction) return spell.classRestriction === cls;
-            return true;
+            return !!spell;
         }
 
         function isSpellNativeToClass(spell, cls) {
-            if (!spell || !cls) return false;
-
-            if (cls === 'Freelancer') return true;
-            if (spell._isRaceAbility) return true;
-            if (spell.classRestriction === cls) return true;
-            if (Array.isArray(spell.classRestrictions) && spell.classRestrictions.includes(cls)) return true;
-            if (!spell.classRestriction && !spell.classRestrictions && spell.school === cls) return true;
-            return false;
+            return !!spell;
         }
 
         function countCrossClassSpells(spellIds, cls) {
@@ -15205,9 +15145,7 @@
             const spells = SPELL_LIBRARY.filter(spell => spellAllowedForClass(spell, cls));
 
             if (race && typeof RACE_ABILITIES !== 'undefined' && RACE_ABILITIES[race]) {
-                const raceSpells = RACE_ABILITIES[race].filter(a =>
-                    !a.jobRequirement || a.jobRequirement === cls
-                );
+                const raceSpells = RACE_ABILITIES[race];
 
                 const ids = new Set(spells.map(s => s.id));
                 for (const rs of raceSpells) {
@@ -15228,11 +15166,14 @@
             return spellId ? SPELL_BY_ID[spellId] || null : null;
         }
 
-        function adjustSpellForClass(spell, cls) {
+        /* THE JOBS REMOVAL (the user 2026-09-27): the White Mage's +2 heal / revive range is passiveGrace's healRangeBonus
+           hook — pass the UNIT as the 2nd arg to get it (a class string gets a plain copy) */
+        function adjustSpellForClass(spell, unitOrCls) {
             if (!spell) return null;
             const copy = JSON.parse(JSON.stringify(spell));
-            if (cls === 'White Mage' && (copy.kind === 'heal' || copy.kind === 'revive')) {
-                copy.range = Math.min(bmax() * 2, copy.range + 2);
+            const _hrb = (unitOrCls && typeof unitOrCls === 'object' && typeof unitPassiveSum === 'function') ? unitPassiveSum(unitOrCls, 'healRangeBonus') : 0;
+            if (_hrb && (copy.kind === 'heal' || copy.kind === 'revive')) {
+                copy.range = Math.min(bmax() * 2, copy.range + _hrb);
             }
             return copy;
         }
@@ -21736,8 +21677,8 @@
                     2: _meSpawns[2].map(s => ({ x: s.x, y: s.y, z: s.z }))
                 },
                 defaultBuilds: {
-                    1: Array(teamSize).fill('Warrior'),
-                    2: Array(teamSize).fill('Warrior')
+                    1: Array(teamSize).fill(UNIT_CLASS),   // (the jobs removal 2026-09-27)
+                    2: Array(teamSize).fill(UNIT_CLASS)
                 }
             };
 
