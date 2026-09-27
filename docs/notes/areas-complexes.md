@@ -1552,3 +1552,20 @@ Full log: OPEN_WORLD_PLAN.md §12 "PHASE 6". Test: hq-mountain.test.js (+ hq-cam
   `terrain.outer.keep` / `outer.lift` shape the land past the shell (three-renderer.js `_hqBuildOuterGround`).
 - A closed staged part is roofed (three-renderer.js, `_ew_hqRoof`); the parts beside (`beside: true` on
   `hqStageNeighbours`) draw the hall and the keep from the road and the hills.
+
+## THE COAST — the harbour, the cay and the Dutchman on one sea (OPEN WORLD Phase 7, 2026-09-27)
+- `site_prebuilt_downtown_harbour` (Downtown part `harbour`, zone `coast`, 300 × 300, sea −0.4 over a −6 floor) under
+  Downtown's quay: a `shore` border on Downtown's south side (stitchM 2), THE LONG PIER on the avenue's line (Downtown x 0
+  = harbour x −38) to a T-head, THE WATER STEPS out of the water, the slipway, THE BREAKWATER and its lighthouse, four
+  buoys, the harbour's skiff at the T-head. Δ board `site_prebuilt_downtown_harbour_delta`.
+- THE ISLAND JOIN (`kind: 'island'`): the cay (`site_prebuilt_bermuda_sea`, frame y −0.4, edges stitched to −6) and the
+  Dutchman (`site_prebuilt_revenge_deck`, frame y 2.2, her own sea −2.6 over −8.2, the hull a plateau) stand INSIDE the
+  harbour's box. The host's floor sinks under them; one surface (validated). Readers: `hqStageNeighbours` (`inside` /
+  `host`), `hqStageWhere` (containment first), `hqTerrainIslandSinks`, `info.seaExits`.
+- The renderer asks the owning part for the swimmer's / the hull's ground (`_hqStageOwner`, `_hqSeaGroundAt`), crosses
+  swimming and aboard, and carries the vehicle and the sea's look through the swap (`_hqSeaDisarm` / `_hqSeaArm`,
+  `_hqDryFog`). An island's sea sheet hides while its host is drawn (`outerSides['~sea']`).
+- Downtown's bay door → east wall z 64; the mall's entrance → west wall z 30. The cay's bay door is FREE on its beach.
+  The Dutchman: board from the skiff (step off alongside); a swimmer cannot climb her.
+- Test: `hq-coast.test.js` (the skiff's crossing in a vm harness). Plan log: OPEN_WORLD_PLAN.md §12.
+
