@@ -480,3 +480,21 @@ geometry — the battle's dig moves one mesh's vertices — with the whole field
 only when its own gate is idle (the black-texture rule). Kill-switches: `window.EW_HQ_NO_STAGE`,
 `window.EW_HQ_NO_TILES`. Measured headless (software GL ≈ 1 s a frame, stand-in textures): both Downtown
 neighbours stood ~80 s after the card; the crossing itself is one frame. Test: hq-stage.test.js.
+
+## THE SMOOTH ATTACH — the sliced build, the warm-up, the static batch, the bitmaps (2026-09-27, OPEN_WORLD_PLAN Phase 11, zip 14)
+Full entry: OPEN_WORLD_PLAN.md §12 "PHASE 11 SHIPPED". What a later thread needs:
+- **The slice**: `_hqBuildTerrain`, `_hqBuildOuterGround`, `_hqPlaceProps` are generators inside. Set `_hqSliceAsk = true`
+  just before the call to get the iterator back; otherwise they drain themselves (the old synchronous behaviour).
+  A new heavy loop inside them should add `if (_hqSliceDue()) yield;` (it is a no-op outside the stage's slice,
+  `_hqSliceEnd` 0). A nested builder that is itself sliced is called with `yield*`. Budget: `HQ_STAGE_RULES.buildMs`.
+  `hq.stage().parts[id].slice` shows frames, units, the longest unit and frame.
+- **The warm-up** (`_hqWarmNew` / `_hqWarmRun`): a built part attaches only after its programs compiled under the
+  lamp pick it will draw with (`_hqStagePick`). A new stage step that adds lights must go through `_hqStagePick`, or
+  the warm-up compiles for the wrong light count and the attach stalls anyway. `HQ_STAGE_RULES.compileMs` (optional).
+- **The static batch** (`_hqBatch*`, `hq.batch()`, `EW_HQ_NO_BATCH`): originals stay in the scene and hide only during
+  `renderer.render`. To animate or recolour a shell mesh after attach, just do it: the watchdog breaks its batch
+  within 500 ms. To opt a mesh out up front, give it one of the `_HQ_BATCH_FLAG_OFF` keys, a custom
+  `onBeforeRender`, or `frustumCulled = false`.
+- **The bitmaps** (`_texBmpOk` / `_texFetch` `o.bitmap`): Chromium only, walk sheets only; `EW_NO_BITMAPS` off.
+- Test: `hq-attach.test.js`. A vm test that extracts `_hqStageRun` must also extract `_hqStageTZone` (and
+  `_hqStageLamps` needs `_hqStagePick`).
