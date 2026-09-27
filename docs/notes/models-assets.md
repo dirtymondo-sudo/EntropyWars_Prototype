@@ -253,3 +253,21 @@ Full log: OPEN_WORLD_PLAN.md §12 "PHASE 9". The short of it:
   original on a failure; `window.EW_NO_OPT_ASSETS` = originals), `_asNetUrl` (`?h=<sha>`), `_asStale` (a stored copy under an
   old sha is refetched), `_asWireMeshopt` (every GLTFLoader gets MeshoptDecoder), `_asCapFor` / `_asQuotaRead`,
   `hq.warmZone` / `hq.zoneState`, the settings group "The World on Disk" (map.js `_buildWorldDiskHTML`). Test: asset-store.test.js.
+
+## THE LOD LEVELS + THE NEAR FIRST + THE FAR SHELLS (2026-09-27, OPEN_WORLD_PLAN Phase 10, zip open-world 13)
+Full log: OPEN_WORLD_PLAN.md §12 "PHASE 10". The short of it:
+- **To bake levels**: the Phase 9 deps, then `npm run optimize -- <folder> --lod --check`. A PROP GLB (no skin, no morph, no
+  clip, ≥ 3,000 triangles) gets `<name>.lod1.glb` (~25 % of the triangles) and `<name>.lod2.glb` (~6 %): welded, simplified
+  with meshoptimizer, meshopt-compressed (no quantize), NO textures (the game draws a level with the full file's own
+  materials). The meshes keep their names and order; `--check` proves it with three r128. Upload beside the originals,
+  `npm run manifest`, deploy. Measured: a Meshy door frame 6,592 → 1,690 → 636 triangles in 70 KB / 35 KB files.
+- **The game** (three-renderer.js): `_lodUrls` (the manifest's levels), `_lodAttach` (the full file's load queues its levels on
+  the background lane), `_lodPair` (order + name + attributes, else refused), `_hqLodTick` (by screen size: HQ_STAGE_RULES
+  `lodScreen` [0.12, 0.04] of the viewport height, `lodHys` band; a batch of the instance pass by its nearest copy; a prop
+  under `cullM` culled below `lodCull` by switching its layer 0 off), `_hqLodReset` (the swap, the leave, the hand-over).
+  `ThreeRenderer.hq.lod()`; off `window.EW_NO_LOD`.
+- **The near first**: `_mqSpotAdd` (every misc-model instance names its spot), `_mqDistances` / `_mqCmp` (inside a lane the file
+  nearest the walker starts first; the phone's one-at-a-time queue too). Off `window.EW_NO_NEAR_FIRST`.
+- **The far shells**: data.js `hqFarParts` / `hqFarShell` / `hqFarColor`, three-renderer.js `_hqFarTick` (HQ_WORLD_RULES `farHaze`,
+  `farMinM`, `farMax`, `farTris`), map.js `farWarm` (the survey compiles a far part behind everything). `ThreeRenderer.hq.far()`;
+  off `window.EW_HQ_NO_FAR`. Test for all three: hq-lod.test.js.
