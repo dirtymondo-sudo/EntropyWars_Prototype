@@ -72,7 +72,7 @@ function propBlocks(room, p, x, z, margin) {
 }
 
 test('the sheet: the cave is Hollow Earth’s complex — seven parts, each site + part, none numbered, the register still lists 180 once; every chamber a terrain room, none a grid', heavy, () => {
-    assert.deepStrictEqual(D.hqSiteComplex(SITE).join(','), [BOARD].concat(PART_IDS, [BOARD + '_innersun']).join(','), 'the board room, then the parts in sheet order (+ THE INNER SUN, the area — THE AREAS, 2026-09-18)');
+    assert.deepStrictEqual(D.hqSiteComplex(SITE).join(','), PART_IDS.concat([BOARD + '_innersun']).join(','), 'the parts in sheet order (+ THE INNER SUN, the area — the entry part; the board room is gone, 2026-09-27)');
     for (const p of PARTS) {
         const id = D.hqComplexRoomId(SITE, p), r = HQ.rooms[id];
         assert.strictEqual(id, BOARD + '_' + p);
@@ -208,7 +208,8 @@ test('THE UNDERCROFT: a dashed line whose every leg is a well or an exit; the ex
     assert.ok(R && R.dashed && R.label && R.sub, 'the route is catalogued and dashed');
     assert.strictEqual(R.legs.length, WELLS.length + EXITS.length + DRAUGHTS.length, 'ten legs, plus the cave’s two draughts (AREA CONTENT D4)');
     const wellLeg = l => WELLS.some(w => w.id === l.link || w.id === l.id);
-    assert.ok(R.legs.filter(l => !wellLeg(l)).every(l => l.from === BOARD || l.to === BOARD), 'every exit touches HOLLOW EARTH');
+    const HUB = D.hqSiteEntryOf(SITE).room;   // a station is its site's entry part (THE INNER SUN)
+    assert.ok(R.legs.filter(l => !wellLeg(l)).every(l => l.from === HUB || l.to === HUB), 'every exit touches HOLLOW EARTH');
     assert.ok(R.legs.filter(wellLeg).length === WELLS.length, 'every well is a leg (OPEN WORLD Phase 4: under its own place)');
     assert.ok(R.stations.some(s => s.no === '180'), 'the hub is a station');
     assert.ok(R.stations.find(s => s.room === 'garden').here, 'the viewer in the garden is filled');
@@ -261,7 +262,7 @@ test('THE PARK RULE and the cave’s own light: a rail (a rail, a wall’s top o
     }
 });
 
-test('THE FIELD: every chamber is solvable from every door; the cavern climbs to 5.25 m and drops from it; THE NEEDLE and THE PINNACLE carry the tapes the walker cannot reach; the lava rift is crossed on its span; the river is deep but for the ford and the plank', heavy, () => {
+test('THE FIELD: every chamber is solvable from every door; the cavern climbs to 5.25 m and drops from it; the lava rift is crossed on its span; the river is deep but for the ford and the plank', heavy, () => {
     for (const id of PART_IDS) {
         const room = HQ.rooms[id], info = D.hqTerrainInfo(id);
         const L = room.doors.map(d => D.hqTerrainDoorLanding(room, d));
@@ -271,11 +272,6 @@ test('THE FIELD: every chamber is solvable from every door; the cavern climbs to
     let hi = 0; for (let i = 0; i < gal.H.length; i++) hi = Math.max(hi, gal.H[i]);
     assert.ok(hi >= 5.9, 'the needle is the top of the cavern (' + hi + ')');
     assert.ok(Math.abs(D.hqTerrainHeight(gal, -15, -17.5) - 5.25) < 0.05, 'THE HIGH TIER');
-    const needle = D.DOOR_HQ.finds.find(f => f.room === BOARD + '_gallery' && f.kind === 'tape');
-    assert.ok(needle && needle.hard && needle.y > 5.5, 'the cavern’s tape stands on the needle, out of reach');
-    const ropes = D.DOOR_HQ.finds.filter(f => f.room === BOARD + '_innersun' && f.kind === 'tape');
-    assert.strictEqual(ropes.length, 2, 'SIX ROPES came down with the well room: the inner sun (Hollow Earth’s entry part) carries it beside its own (OPEN WORLD Phase 4)');
-    assert.strictEqual(D.hqFindLegacyId('tape:' + BOARD + '_shaft#0'), 'tape:' + BOARD + '_innersun#1', 'a save that took SIX ROPES in the well room still counts it');
     /* the rift */
     const vent = D.hqTerrainInfo(BOARD + '_vent');
     assert.equal(D.hqTerrainFeet(vent, -3, -0.7, 0), null, 'lava is never entered');

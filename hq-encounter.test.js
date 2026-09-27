@@ -42,9 +42,10 @@ test('THE RULES: a reach you can throw across, a cone, the CLICK with the gun HO
     assert.ok(R.snapMs >= 100 && R.snapMs <= 800, 'the slide onto the cells is a beat, never a wait');
 });
 
-test('WHERE: only a WILD room — a site\'s board room and its complex parts; never the facility (safe by construction, no flag to forget)', () => {
+test('WHERE: only a WILD room — a site\'s complex parts; never the facility (safe by construction, no flag to forget)', () => {
     const ok = g('hqEncounterRoomOk');
-    assert.equal(ok('site_prebuilt_dumb'), true);
+    assert.equal(ok('site_prebuilt_dumb_motorpool'), true, 'the entry part is the site\'s');
+    assert.equal(ok('site_prebuilt_dumb'), false, 'the `site_<id>` alias is no room (the board rooms are gone, 2026-09-27)');
     assert.equal(ok('site_prebuilt_haunted_attic'), true, 'a complex part is the site\'s');
     assert.equal(ok('site_prebuilt_hollow_earth_gallery'), true, 'the cave is Hollow Earth\'s');
     ['central_egress', 'foyer', 'ring_g', 'ring_m', 'cafeteria', 'medical', 'hwing_w', 'garage', 'car', 'executive', 'nope'].forEach(id => assert.equal(ok(id), false, id + ' is safe'));
@@ -84,19 +85,19 @@ test('THE STICKY CONFIG (Delivery 6): the MODE is the encounter\'s own — TDM, 
 });
 
 test('THE LAUNCH: pure and serialisable — the site\'s Δ, the config, the CPU pool led by the native\'s race, the console as the way back, the native on the record; refused off a wild room or for a non-native', () => {
-    const L = g('hqEncounterLaunch')('site_prebuilt_dumb', native(), '{"gm":"arena","teamSize":3}', { gesture: 'magic' });
+    const L = g('hqEncounterLaunch')('site_prebuilt_dumb_motorpool', native(), '{"gm":"arena","teamSize":3}', { gesture: 'magic' });
     assert.ok(L);
     assert.equal(L.site, 'prebuilt_dumb'); assert.equal(L.delta, true); assert.equal(L.gm, 'tdm'); assert.equal(L.teamSize, 3); assert.equal(L.codeRed, false);
-    assert.equal(g('hqEncounterLaunch')('site_prebuilt_dumb', native(), null, { codeRed: true }).gm, 'arena', 'the Code Red response is Arena');
+    assert.equal(g('hqEncounterLaunch')('site_prebuilt_dumb_motorpool', native(), null, { codeRed: true }).gm, 'arena', 'the Code Red response is Arena');
     assert.equal(L.roster[0], 'grey', 'the native leads the pool');
     /* THE GROUP (2026-09-21): the enemy line is the native + the companions the rule drew (1–3 for a lone native), never the crossing's team size */
     assert.ok(L.enemyTeam >= 2 && L.enemyTeam <= 3, 'a lone native brings 1–2 (never one enemy, CAPTURE_PLAN §5.1)'); assert.equal(L.roster.length, L.enemyTeam); assert.equal(new Set(L.roster).size, L.roster.length);
     assert.equal(L.levels.length, L.enemyTeam, 'a level per body'); assert.ok(L.levels.every(x => x >= 1 && x <= 100));
     assert.equal(L.doorId, 'crossing'); assert.equal(L.counterId, 'crossing');
-    assert.equal(L.encounter.race, 'grey'); assert.equal(L.encounter.room, 'site_prebuilt_dumb'); assert.equal(L.encounter.gesture, 'magic');
+    assert.equal(L.encounter.race, 'grey'); assert.equal(L.encounter.room, 'site_prebuilt_dumb_motorpool'); assert.equal(L.encounter.gesture, 'magic');
     assert.equal(JSON.parse(JSON.stringify(L)).encounter.x, 1.5);
     assert.equal(g('hqEncounterLaunch')('central_egress', native(), null), null, 'the hall is safe');
-    assert.equal(g('hqEncounterLaunch')('site_prebuilt_dumb', native({ cast: 'x' }), null), null);
+    assert.equal(g('hqEncounterLaunch')('site_prebuilt_dumb_motorpool', native({ cast: 'x' }), null), null);
     /* a complex part launches ITS site's board */
     const L2 = g('hqEncounterLaunch')('site_prebuilt_haunted_cellar', native({ race: 'ghost' }), null);
     assert.equal(L2.site, 'prebuilt_haunted'); assert.equal(L2.roster[0], 'ghost');
@@ -132,7 +133,7 @@ test('SOURCE · the renderer: no number keys, LEFT CLICK holstered = the attack 
     assert.ok(TR.includes("if (ch.strike) { if (performance.now() < ch.strike.until && ch.jumpT < 0) want = ch.strike.name; else ch.strike = null; }"), 'the clip owns the rig');
     assert.ok(TR.includes("if (_hq !== H || H.paused) return;   // the room changed"), 'a swing that outlives the room never lands');
     assert.ok(TR.includes("        strike: _hqStrikeClick,") && TR.includes("encounterAim: function () { return _hq ? _hqEncounterAim() : null; },"), 'the API');
-    assert.ok(TR.includes("if (H.opts.onEncounter) { try { H.opts.onEncounter({ gesture: gesture, target: target, room: room, x: pl.x, z: pl.z, y: pl.y, yaw: H.cam.yaw, pitch: H.cam.pitch, eye: _hqEncounterEye(), board: _hqEncounterBoard() }); }"), 'the eye + the board ride the event (9.4 seam 2)');
+    assert.ok(TR.includes("if (H.opts.onEncounter) { try { H.opts.onEncounter({ gesture: gesture, target: target, room: room, x: pl.x, z: pl.z, y: pl.y, yaw: H.cam.yaw, pitch: H.cam.pitch, eye: _hqEncounterEye() }); }"), 'the eye rides the event (9.4 seam 2; the board went with the board rooms, 2026-09-27 — map.js chooses the window)');
 });
 
 test('SOURCE · map.js: the enter opts, the guards (wild room · the gun · the switch · never online), the launch, THE LAST ROSTER inside _msConfirm, the sticky config, the ward on a loss, the prompt, the officer row', () => {
@@ -248,29 +249,12 @@ test('THE CLEARED ROOM: a WIN files the native\'s spawn id under the room for TO
     assert.equal(cleared(null, 'x'), null); assert.equal(cleared(p, null), null);
 });
 
-test('THE GUARDED ENVELOPE: in a wild room with natives of its own the pay stands only once the room is cleared today; a roster-only room, a facility room and every tape are never guarded', heavy, () => {
+test('THE GUARDED ROOM: a wild room with natives of its own is guarded; a facility room never is', heavy, () => {
     const guarded = g('hqRoomGuarded');
     const wild = Object.keys(HQ.rooms).filter(id => guarded(id));
     assert.ok(wild.length >= 10, 'the sites with natives: ' + wild.length);
     wild.forEach(id => assert.ok(g('hqRoomSite')(id), id + ' is wild'));
     ['central_egress', 'foyer', 'cafeteria', 'garage', 'locker', 'coldroom', 'hwing_w'].forEach(id => assert.equal(guarded(id), false, id + ' is never guarded'));
-    HQ.finds.forEach(f => {
-        if (f.kind !== 'pay') assert.equal(f.guard, undefined, f.id + ': only the envelope is guarded');
-        else assert.equal(!!f.guard, guarded(f.room), f.id);
-    });
-    const pay = HQ.finds.find(f => f.guard);
-    assert.ok(pay, 'at least one guarded envelope');
-    /* a day the envelope is live */
-    let now = Date.UTC(2026, 9, 1);
-    for (let i = 0; i < 40 && !g('hqFindLiveToday')(pay, g('hqToday')(new Date(now))); i++) now += 86400000;
-    assert.ok(g('hqFindLiveToday')(pay, g('hqToday')(new Date(now))), 'a live day found');
-    const p = profile();
-    assert.ok(D.hqFindsInRoom(pay.room, p, now).every(f => f.id !== pay.id), 'the natives sit on it');
-    g('hqEncounterRecord')(p, { room: pay.room, id: 'hq-native-0', won: true, date: g('hqToday')(new Date(now)) });
-    assert.ok(D.hqFindsInRoom(pay.room, p, now).some(f => f.id === pay.id), 'cleared today — it glows');
-    assert.ok(D.hqFindsInRoom(pay.room, p, now + 86400000 * 3).every(f => f.id !== pay.id), 'tomorrow the room is theirs again');
-    const beat = D.hqCollectFind(p, pay.id, now);
-    assert.equal(beat.ok, true, 'and it is taken like any envelope');
 });
 
 test('THE WARD\'S CHART: exited from a wild room TODAY → RECOVERING (the cot is made up); a win, or yesterday\'s exit, leaves the chart as it was', () => {
@@ -290,11 +274,11 @@ test('THE WARD\'S CHART: exited from a wild room TODAY → RECOVERING (the cot i
     assert.equal(med(p).condition, 'ADMINISTRATIVE LEAVE', 'leave outranks the cot');
 });
 
-test('SOURCE · stage 2: the camera seed (both sync branches, the snap guard, the API), the battle\'s first frame + no VS card for an encounter, the renderer\'s eye / board / the cleared natives, map.js\'s run marker', () => {
+test('SOURCE · stage 2: the camera seed (both sync branches, the snap guard, the API), the battle\'s first frame + no VS card for an encounter, the renderer\'s eye / the cleared natives, map.js\'s run marker', () => {
     ['function seedPose(seed, easeS)', 'function _consumeSeed(nowS)', 'function seedState()', "if (_seedUntil > performance.now() / 1000) return;   // the encounter's seed is easing — never cut it",
      'const seededFp = _seed ? _consumeSeed(nowFp) : false;', 'const seeded = _seed ? _consumeSeed(now) : false;', '} else if (!seeded) {', 'const st = (now < _seedUntil) ? _seedSt : (_smoothOverride > 0 ? SMOOTH_TIME_FAST : SMOOTH_TIME);', '        seedPose,\n        seedState,'].forEach(f => assert.ok(CAM.includes(f), f));
     assert.ok(BT.includes("const _er = _encRun();\n            if (_er) {\n                let eye = _er.eye;") && BT.includes("ThreeCamera.seedPose(eye, _ar.swoopS, _ar.crane)") && BT.includes("if (onDone) onDone();\n                return;\n            }\n\n            /* The cinematic intro replaces the flat VS card"), 'the seed, then no card — before the intro gate (the latched run, Delivery 6)');
-    ['function _hqEncounterEye()', 'function _hqEncounterBoard()', "var st = _hq && _hq.site; if (!st || st.cave) return null;", "if (gone.indexOf('hq-native-' + si) >= 0) return;   // beaten today — the room is yours", "if (gone.indexOf('hq-npc-' + k) >= 0) continue;", "hqEncounterCleared(prof, opts.room)"].forEach(f => assert.ok(TR.includes(f), f));
+    ['function _hqEncounterEye()', "if (gone.indexOf('hq-native-' + si) >= 0) return;   // beaten today — the room is yours", "if (gone.indexOf('hq-npc-' + k) >= 0) continue;", "hqEncounterCleared(prof, opts.room)"].forEach(f => assert.ok(TR.includes(f), f));
     assert.ok(MP.includes("eye = (ev && typeof window.hqEncounterEye === 'function') ? window.hqEncounterEye(field || ev) : null;") && MP.includes("id: L.encounter.id || null,") && MP.includes("eye: eye, walker: ev ?"), 'the run marker');
     /* the ONE reason spawnSide is NOT mirrored: the spawn zones and the nexus points are keyed by seat + row, never by SPAWNS — a lane swap would seat P1 on P2's spawn nexus */
     assert.ok(MP.includes("state.spawnZones[1].push({ x: col, y: p1Row });"), 'the zone rows are the seat\'s (map.js) — the mirror waits on the zone system');
@@ -313,7 +297,7 @@ test('D2 · THE LEAD: the native you hit is P2\'s seat 1 — race + gender + the
     const noName = g('hqEncounterLead')({ race: 'grey', gender: 'male', label: '   ' });
     assert.equal(noName.name, null, 'a blank label is no name');
     assert.equal(g('hqEncounterLead')({ race: 'grey', gender: 'male', name: 'x'.repeat(40) }).name.length, 24, 'capped');
-    const L = g('hqEncounterLaunch')('site_prebuilt_dumb', native({ label: 'The Grey at the Desk' }), null);
+    const L = g('hqEncounterLaunch')('site_prebuilt_dumb_motorpool', native({ label: 'The Grey at the Desk' }), null);
     assert.equal(L.encounter.name, 'The Grey at the Desk', 'the launch carries the room\'s name for it');
     assert.equal(JSON.parse(JSON.stringify(L)).encounter.name, 'The Grey at the Desk');
 });

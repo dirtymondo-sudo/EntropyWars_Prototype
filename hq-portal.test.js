@@ -133,7 +133,7 @@ test('THE CLEAR: a fresh arrival drops the pair and keeps the issue; the safe-ro
     assert.equal(g('hqPortalClear')(profile()), false);
     const safe = g('hqPortalSafeRoom');
     ['foyer', 'central_egress', 'medwing', 'garage', 'car'].forEach(id => { if (HQ.rooms[id]) assert.equal(safe(id), true, id + ' is the facility'); });
-    ['site_prebuilt_dumb', 'site_prebuilt_haunted_cellar', 'site_prebuilt_hollow_earth_gallery'].forEach(id => { assert.ok(HQ.rooms[id], id); assert.equal(safe(id), false, id + ' is wild'); });
+    ['site_prebuilt_dumb_motorpool', 'site_prebuilt_haunted_cellar', 'site_prebuilt_hollow_earth_gallery'].forEach(id => { assert.ok(HQ.rooms[id], id); assert.equal(safe(id), false, id + ' is wild'); });
 });
 
 test('THE RENDERER: the aim against the surface set, the ghost, the placed door as a free box-wall record, the blockers, the hop, the rebuild on entry, the API and the keys', () => {
@@ -419,7 +419,7 @@ test('REV 4 · THE HAND: in first person the gun rides the camera as a viewmodel
 test('REV 4 · THE WALL: the hit snaps onto the shell\'s own plane, the frame\'s centre is the door\'s (on the floor when the aim is low, under the ceiling when high), the fit tests the frame\'s corners with a frame-sized front, a wall is never TOO CLOSE at arm\'s length', () => {
     assert.ok(/function _hqPortalWallSnap\(lo, nx, nz\)/.test(TR) && /_hqPortalWallSnap\(lo, nx, nz\);/.test(TR.slice(TR.indexOf('function _hqPortalWallHit'), TR.indexOf('function _hqPortalWallSnap'))), 'the snap runs on every wall hit');
     const snap = TR.slice(TR.indexOf('function _hqPortalWallSnap'), TR.indexOf('function _hqPortalBasis'));
-    assert.ok(/limX = S\.w \/ 2 \+ roam, limZ = S\.d \/ 2 \+ roam/.test(snap) && /Math\.abs\(r - S\.rOut\) < 0\.6/.test(snap), 'a box room\'s perimeter, a rotunda\'s drums');
+    assert.ok(/limX = S\.w \/ 2, limZ = S\.d \/ 2;/.test(snap) && /Math\.abs\(r - S\.rOut\) < 0\.6/.test(snap), 'a box room\'s perimeter, a rotunda\'s drums');
     const aim = TR.slice(TR.indexOf('function _hqPortalAim'), TR.indexOf('function _hqPortalLedgeSnap'));
     assert.ok(/if \(!H\.fp\) \{ var hx = pl\.x - eye\.x/.test(aim) && /for \(var t = t0, step = HQ_PORTAL_STEP; t <= R\.reach;/.test(aim), 'in third person the march starts at the officer\'s head, never behind it');
     assert.ok(/if \(hit\.surf === 'wall'\) \{\s*\n\s*var ohW = 2\.25, lhW = 0\.22;/.test(aim) && /if \(flW !== null && baseW < flW \+ 0\.02\) baseW = flW;/.test(aim) && /baseW = cfW - 0\.03 - ohW - lhW;/.test(aim) && /hit\.y = baseW \+ ohW \/ 2;/.test(aim), 'the wall door\'s own centre: on the floor, under the ceiling');

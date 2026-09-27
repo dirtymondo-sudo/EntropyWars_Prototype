@@ -90,7 +90,7 @@ test('the sheet: two parts on Room 1954 — THE STREETS (open under Downtown’s
     assert.ok(/function hqCityShell\(o\)/.test(data) && /window\.hqCityShell = hqCityShell/.test(data) && typeof D.hqCityShell === 'function', 'the shell helper');
     const reg = D.hqRoomRegister();
     assert.equal(reg.filter(r => r.mapId === 'prebuilt_downtown').length, 1); assert.ok(!reg.some(r => IDS.includes(r.id) || IDS.includes(r.room)));
-    assert.equal(D.hqSiteComplex('prebuilt_downtown').length, 11, 'the board room, the lobby, THE SHOWROOM (2026-09-21), the platform, the streets, the mall, the supply closet (the second pass) — and THE UNDERWORLD’s four under them (2026-09-18)');
+    assert.equal(D.hqSiteComplex('prebuilt_downtown').length, 10, 'the lobby, THE SHOWROOM (2026-09-21), the platform, the streets, the mall, the supply closet (the second pass) — and THE UNDERWORLD’s four under them (2026-09-18)');
 });
 
 test('THE PLAN (`city`): the streets are the corridors (the ring road a loop, the two avenues), the solid the blocks cut into LOTS (≥ 20 on the streets, ≥ 10 store units in the mall) with FRONTS that look onto a street (the façade standing where the rise begins); a 2.4 m SIDEWALK with a 12 cm kerb on the streets, none in the mall; a podium is a LEVEL, never a stack (the rooftop stays 4.0, the mezzanine 3.4); the plan is deterministic; the outer ring of blocks stands past the ring road', heavy, () => {
@@ -163,7 +163,7 @@ test('THE PLAN (`city`): the streets are the corridors (the ring road a loop, th
     assert.ok(D.hqTerrainHeight(D.hqTerrainInfo(MALL), 0, 6) < 0.05, 'the atrium is open floor');
 });
 
-test('THE WAYS IN: the tower lobby’s AVENUE doors (its east wall, the clock moved) ⇄ the streets’ west wall at z −8; THE METRO stair on the platform’s north wall (the departures board moved over the track) ⇄ the streets’ north wall at x 12; THE MALL’s main entrance on the streets’ south wall ⇄ the mall’s; every pair the same leaf, never gated; the board room’s single back door is untouched', () => {
+test('THE WAYS IN: the tower lobby’s AVENUE doors (its east wall, the clock moved) ⇄ the streets’ west wall at z −8; THE METRO stair on the platform’s north wall (the departures board moved over the track) ⇄ the streets’ north wall at x 12; THE MALL’s main entrance on the streets’ south wall ⇄ the mall’s; every pair the same leaf, never gated', () => {
     const av = at(LOBBY, 'avenue'), tw = at(STREETS, 'tower');
     assert.ok(av && av.wall === 'e' && av.z === 0 && av.leaf === 'leaf_entrance' && av.action.room === STREETS && av.action.at === 'tower', 'the avenue doors');
     assert.ok(tw && tw.wall === 'w' && tw.z === -8 && tw.leaf === 'leaf_entrance' && tw.action.room === LOBBY && tw.action.at === 'avenue', 'the streets’ tower door');
@@ -175,7 +175,6 @@ test('THE WAYS IN: the tower lobby’s AVENUE doors (its east wall, the clock mo
     const ml = at(STREETS, 'mall'), ms = at(MALL, 'street');
     assert.ok(ml && ml.wall === 's' && ml.x === 0 && ml.leaf === 'leaf_glass' && ml.action.room === MALL && ml.action.at === 'street' && ms && ms.wall === 's' && ms.x === 0 && ms.leaf === 'leaf_glass' && ms.action.room === STREETS && ms.action.at === 'mall', 'the mall’s doors');
     for (const d of [av, tw, st, me, ml, ms]) assert.ok(!d.rankDoor && !d.minClearance && D.doorSiteState(d, null) === 'open', d.id + ': never gated');
-    assert.equal(HQ.siteRooms.backDoors.prebuilt_downtown.length, 1, 'the board room keeps its one back door (the tower)');
 });
 
 test('THE SEAMS: the Strip (streets_strip — the chapel’s west wall, a motel leaf, the highway), the Stadium (streets_stadium — Room 50’s last free north lane, the highway), THE TIME MACHINE (timemachine_cyberpunk — a `way` at BOTH ends: free in the mall’s arcade, free on Cyberpunk’s north strip; the ONLY way from the city into Cyberpunk), THE GUTTER (streets_drain — a `way` free in the east kerb ⇄ the storm drain’s own grate on its north wall, on THE SEWERS line); all live, all explained, never a rank leaf; the world graph carries them', () => {
@@ -201,7 +200,7 @@ test('THE SEAMS: the Strip (streets_strip — the chapel’s west wall, a motel 
     const a = at(CLOSET, 'link_timemachine_cyberpunk'), b = at(NOODLE, 'link_timemachine_cyberpunk');
     assert.ok(a && b && a.way === 'timemachine' && b.way === 'timemachine' && a.leaf === null && b.leaf === null && a.wall === 'free' && b.wall === 'free', 'both ends wear the machine');
     assert.ok(a.action.room === NOODLE && a.action.at === b.id && b.action.room === CLOSET && b.action.at === a.id, 'both halves pair');
-    assert.ok(!at(MALL, 'link_timemachine_cyberpunk') && !at(CYBER, 'link_timemachine_cyberpunk'), 'the arcade and the board room\'s strip gave it up');
+    assert.ok(!at(MALL, 'link_timemachine_cyberpunk') && !HQ.rooms[CYBER], 'the arcade gave it up (and Cyberpunk has no board room, 2026-09-27)');
     const DOWN = [STREETS, MALL, CLOSET], CYB = [CYBER, GRID, NOODLE];   // the platform's train is the subway's (a way, one stop back), never the city's door
     assert.ok(!HQ.links.some(l => l.id !== 'timemachine_cyberpunk' && ((CYB.includes(D.hqLinkRoom(l.a)) && DOWN.includes(D.hqLinkRoom(l.b))) || (CYB.includes(D.hqLinkRoom(l.b)) && DOWN.includes(D.hqLinkRoom(l.a))))), 'no regular door joins the city to Cyberpunk');
     for (const id of DOWN) assert.ok(!HQ.rooms[id].doors.some(d => d.action && CYB.includes(d.action.room) && d.way !== 'timemachine'), id + ': the machine is the only way');
@@ -281,7 +280,7 @@ test('THE SOLVER + THE RETURN GUARANTEE + THE PRODUCTION LANDING: in both parts 
     }
 });
 
-test('THE PARK RULE + THE PLATFORMING: the streets have the parking deck (a 3 m tier up a car ramp the walker climbs, a rail round its roof, two quarter pipes) and THE ROOFTOP (4 m, never climbed — a hop from nothing); the mall has THE MEZZANINE (3.4 m up the escalator — smooth collision under the fitted escalator) with its rails and the escalator’s riser; a `railing_1m` in each; the two hard tapes (the rooftop, a store roof) are the door gun’s and each has a shot', heavy, () => {
+test('THE PARK RULE + THE PLATFORMING: the streets have the parking deck (a 3 m tier up a car ramp the walker climbs, a rail round its roof, two quarter pipes) and THE ROOFTOP (4 m, never climbed — a hop from nothing); the mall has THE MEZZANINE (3.4 m up the escalator — smooth collision under the fitted escalator) with its rails and the escalator’s riser; a `railing_1m` in each', heavy, () => {
     const sF = HQ.rooms[STREETS].terrain.features, mF = HQ.rooms[MALL].terrain.features, st = D.hqTerrainInfo(STREETS), ml = D.hqTerrainInfo(MALL);
     const deck = sF.find(f => f.k === 'plateau' && f.h === 3.0), ramp = sF.find(f => f.k === 'ramp' && f.h1 === 3.0), roof = sF.find(f => f.k === 'plateau' && f.h === 4.0);
     assert.ok(deck && ramp && roof && sF.filter(f => f.k === 'rail').length >= 3 && HQ.rooms[STREETS].props.filter(p => p.key === 'quarter_pipe').length === 2 && HQ.rooms[STREETS].props.some(p => p.key === 'railing_1m'), 'the streets’ park');
@@ -293,16 +292,6 @@ test('THE PARK RULE + THE PLATFORMING: the streets have the parking deck (a 3 m 
     assert.ok(mez && esc && esc.h1 === 4.6 && Math.hypot(esc.x1 - esc.x0, esc.z1 - esc.z0) >= 6 && mF.filter(f => f.k === 'rail').length >= 2 && HQ.rooms[MALL].props.some(p => p.key === 'railing_1m') && HQ.rooms[MALL].props.some(p => /^riser_/.test(p.key)), 'the mall’s park');
     const mfoot = D.hqTerrainDoorLanding(HQ.rooms[MALL], at(MALL, 'street')), MR = D.hqTerrainReach(ml, mfoot.x, mfoot.z);
     assert.ok(MR.has(D.hqTerrainNodeKey(ml, mez.x, mez.z)) && Math.abs(MR.get(D.hqTerrainNodeKey(ml, mez.x, mez.z)) - 4.6) < 0.3, 'the upper floor is walked up the escalator');
-    for (const [id, pin] of [[STREETS, HQ.findSpots[STREETS].tape], [MALL, HQ.findSpots[MALL].tape]]) {
-        const rows = D.hqFindsForRoom(id), tape = rows.find(r => /^tape:/.test(r.id));
-        assert.ok(tape && tape.hard === true && tape.x === pin.x && tape.z === pin.z && tape.y >= 3.9, id + ': the tape is pinned high and hard (' + JSON.stringify(tape) + ')');
-        const shot = D.hqFindHardReachTerrain(tape, D.hqFindRoomInfo(id));
-        assert.ok(shot && shot.ok === true && shot.from && shot.hit, id + ': the door gun has a shot at it (' + JSON.stringify(shot) + ')');
-        assert.ok(rows.some(r => /^pay:/.test(r.id) && !r.hard), id + ': the envelope is on the ground');
-    }
-    assert.equal(D.DOOR_TAPES.filter(t => t.where === STREETS).length, 2, 'the streets hold their own tape and the bypassed board’s (THE AREAS, 2026-09-18)'); assert.equal(D.DOOR_TAPES.filter(t => t.where === MALL).length, 1);
-    assert.equal(D.DOOR_TAPES.length, 100, 'the hundred stays a hundred');
-    for (const site of ['prebuilt_stadium']) assert.ok(D.DOOR_TAPES.some(t => t.where === D.hqSiteRoomId(site) || (t.site === site && t.where === D.hqSiteRoomId(site))), site + ' keeps a tape');   // THE LEY LINES (2026-09-18): Cyberpunk's bypassed board gave BILLBOARD to the tunnels
 });
 
 test('THE ALLEYS (2026-09-22): a gap between two buildings on a street face ≥ alleyMinW is CARVED OPEN — a through alley or a dead end ≥ alleyMinD deep — and its floor is walked and reached from the doors; a narrower gap is closed by widening a neighbour or wears a hoarding (fenceMinRun 0.4, sampled at 0.25 m); the readout names every run', heavy, () => {

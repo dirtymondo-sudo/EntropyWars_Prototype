@@ -47,9 +47,9 @@ test('D5 THE BLOB: mergeProgressBlobs carries hq.cleared (the later day; the sam
     const big = {}; for (let i = 0; i < 400; i++) big['room_' + i] = { date: '2026-11-01', ids: Array.from({ length: 60 }, (_, k) => 'id' + k) };
     const c = merge({ v: 2, hq: { cleared: big } }, null);
     assert.ok(Object.keys(c.hq.cleared).length <= 256, 'rooms capped'); assert.ok(c.hq.cleared.room_0.ids.length <= 32, 'ids capped');
-    /* the ledger and the links ride beside them, untouched */
-    const l = merge({ v: 2, hq: { finds: { taken: { 'tape:T001': true } }, links: { seen: { moon_derelict: '2026-11-01' } } } }, null);
-    assert.equal(l.hq.finds.taken['tape:T001'], true); assert.equal(l.hq.links.seen.moon_derelict, '2026-11-01');
+    /* the links ride beside them, untouched */
+    const l = merge({ v: 2, hq: { links: { seen: { moon_derelict: '2026-11-01' } } } }, null);
+    assert.equal(l.hq.links.seen.moon_derelict, '2026-11-01');
 });
 
 test('D5 THE UNION READS: hqEncounterLog / hqEncounterCleared / hqSkateRecord read local ∪ synced; a fresh device with only the blob sees the cleared room, the log and the best line', () => {
@@ -103,7 +103,7 @@ test('D5 THE DUAL WRITES: hqEncounterRecord and hqSkateBank continue from the un
 
 /* ───────────────────────────── D7 ───────────────────────────── */
 const REVEALS = {
-    site_prebuilt_revenge_gundeck: { ids: ['battle_stations'], clock: { battle_stations: [23, 30] }, doorFrom: ['site_prebuilt_revenge', 'companionway'] },
+    site_prebuilt_revenge_gundeck: { ids: ['battle_stations'], clock: { battle_stations: [23, 30] }, doorFrom: ['site_prebuilt_revenge_deck', 'companionway'] },
     site_prebuilt_strip_casino: { ids: ['dead_hour', 'jackpot'], clock: { dead_hour: [4, 0] }, doorFrom: ['site_prebuilt_strip_chapel', 'casino'] },
     site_prebuilt_downtown_subway: { ids: ['rush_hour', 'last_train'], clock: { rush_hour: [8, 30], last_train: [2, 0] }, doorFrom: ['site_prebuilt_downtown_lobby', 'subway'] },
 };

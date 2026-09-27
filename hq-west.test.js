@@ -80,7 +80,8 @@ test('the renderer: a replaced room door builds a trail post (no plate, no recor
  const post = extract('_hqBuildTrailPost');
  assert.ok(/_ew_hqJoined = door\.id/.test(post) && !/_hq\.doors\.push/.test(post), 'the post is no door record');
  const tl = extract('_hqPlantTreeline');
- assert.match(tl, /hqStageNeighbours\(_hq\.opts\.room\)/);
+ assert.match(tl, /_hqStageNearbyOf\(tlId\)/, 'every nearby staged part, joined or not (the trail\'s ring stood in the stair\'s field)');
+ assert.match(tl, /hqStageNearerParts\(tlId, px, pz, nbNear\)\.length > 0/);
  assert.match(tl, /if \(nbRects\.length && inNb\(px, pz\)\) continue;/);
  /* run the post on a stub scene: one group under the door group, beside the lane, 0.6 m in */
  const G = { children: [], add(o) { this.children.push(o); } };
@@ -96,6 +97,43 @@ test('the renderer: a replaced room door builds a trail post (no plate, no recor
  assert.ok(Math.abs(Math.abs(g.position.x) - 2.4) < 1e-9 && Math.abs(g.position.z - -9.4) < 1e-9, 'beside the lane, 0.6 m inside the edge');
 });
 
+test('THE FLOATING GRASS (2026-09-27): every staged part near another owns its own ground — an outer ground or a treeline never runs through a part on the stage, joined or not', () => {
+ /* the trail and the stair touch without a join; both stand beside the clearing, so each one\'s rolling apron (+2.4 m at
+    22 m past its edge) ran through the other\'s field: the long strip of grass in the air, gone at the crossing, back in the
+    part just left. Pure geometry: for every staged part P and every part Q on P\'s stage (P\'s neighbours) or P\'s
+    neighbours\' stages, a point inside Q\'s box (in P\'s metres) has Q among the parts nearer than P — so P\'s side there
+    is hidden while Q is drawn */
+ const near = D.hqStageNearbyParts(P + 'fairy_forest_trail').map(n => n.id);
+ assert.ok(near.includes(P + 'fairy_forest_stair') && near.includes(P + 'fairy_forest_pasture') && near.includes(P + 'fairy_forest_redwoods'), 'the trail sees the unjoined stair, pasture and redwoods: ' + near.join(','));
+ assert.ok(!D.hqStageNeighbours(P + 'fairy_forest_trail').some(n => n.id === P + 'fairy_forest_stair'), 'the trail and the stair are not joined');
+ let checked = 0;
+ HQ_STAGE_RULES.zones.forEach(z => Object.keys(W.zones[z].parts).filter(id => D.hqStagePart(id)).forEach(id => {
+  const S = HQ.rooms[id].shell, drawn = new Set();
+  D.hqStageNeighbours(id).forEach(n => { drawn.add(n.id); D.hqStageNeighbours(n.id).forEach(m => { if (m.id !== id) drawn.add(m.id); }); });
+  const L = D.hqStageNearbyParts(id);
+  drawn.forEach(q => {
+   const nb = L.find(n => n.id === q); if (!nb) return;   // too far to matter (past the outer ground's run)
+   const r = nb.rect;
+   for (let a = 0.1; a < 1; a += 0.2) for (let b = 0.1; b < 1; b += 0.2) {
+    const x = r.x0 + (r.x1 - r.x0) * a, zz = r.z0 + (r.z1 - r.z0) * b;
+    if (Math.abs(x) <= S.w / 2 && Math.abs(zz) <= S.d / 2) continue;   // an overlap of the two boxes is the part\'s own
+    assert.ok(D.hqStageNearerParts(id, x, zz, L).includes(q), id + ' owns a point of ' + q + '\'s box');
+    checked++;
+   }
+  });
+ }));
+ assert.ok(checked > 500, 'points checked: ' + checked);
+ assert.equal(D.hqStageNearerParts(P + 'fairy_forest_clearing', 0, 0).length, 0, 'the part\'s own middle is its own');
+ /* the renderer cuts the outer ground by those parts and hides a side while ANY of its nearer parts is on the stage */
+ const og = extract('_hqBuildOuterGround');
+ assert.match(og, /stNear = _hqStageOff\(\) \? \[\] : _hqStageNearbyOf\(ownId\)/);
+ assert.match(og, /var sk = hqStageNearerKey\(ownId, qx0 \+ cs \/ 2, qz0 \+ cs \/ 2, stNear\);/);
+ assert.equal(D.hqStageNearerKey(P + 'fairy_forest_clearing', 0, 0), '');
+ assert.ok(!near.includes(P + 'skinwalker_fields'), 'a part that never shares a stage with the trail cuts nothing');
+ assert.match(og, /m\._ew_hqOuterSideIds = sideIds0\[id\] \|\| \[id\]/);
+ assert.match(extract('_hqStageOuterSides'), /sm\.visible = !\(sm\._ew_hqOuterSideIds \|\| \[sid\]\)\.some\(function \(i\) \{ return on\[i\]; \}\)/);
+ assert.match(extract('_hqBuildTerrain'), /var stNbs = _hqStageNearbyOf\(roomId\)/, 'the field\'s metre past the shell stands down in any nearby part\'s box');
+});
 test('THE STITCHED MOUTH: the compiler hands the floor plan a mouth per joined span; the plan is open past the wall only there', () => {
  const src = fs.readFileSync(__dirname + '/data.js', 'utf8');
  assert.match(src, /genUse = Object\.assign\(\{\}, T\.gen, \{ open: \(T\.gen\.open \|\| \[\]\)\.concat\(extra\), mouths: extra \}\);/);

@@ -65,7 +65,7 @@ test('the renderer: tileTopY reads the true ground first, the mesher builds no c
     assert.ok(TR.includes(`        if (trueGround) H.floorHole = null;`), 'the room keeps its whole floor');
     assert.ok(TR.includes(`if (!out && !trueGround && isProp && !c._ew_hqWall && _hqBattleRoomCoverAt(`), 'every prop stands');
     assert.ok(TR.includes(`        if (trueGround) _fieldGroundDress(R, room, M, ts);`), 'the room\'s lights + fog stand in the battle');
-    assert.ok(TR.includes(`if (!R || R.site || R.cave || !R.field || !R.field.tops)`), 'a site\'s board and a cave keep their columns');
+    assert.ok(TR.includes(`if (!R || R.cave || !R.field || !R.field.tops)`), 'a cave keeps its columns');
     assert.ok(TR.includes(`        _fieldGroundArmed = !!_fieldGround();`), 'activate arms the gate before the board builds');
     assert.ok(TR.includes(`if (typeof _fieldGroundArmed !== 'undefined') { _fieldGroundArmed = false; _fieldGroundCache.key = null; _fieldGroundCache.G = null; }`), 'deactivate clears it');
     assert.ok(TR.includes(`fieldGroundLive: function () { return _fieldGroundLive(); }`), 'the API');
@@ -184,7 +184,7 @@ test('THE WINDOW on the grounds: every IN cell at THE TIER of its top over the w
 });
 
 test('the sources: map.js says THE GROUND IS THE BOARD and gates the Δ on the rasteriser, the renderer builds the terrain round the field', () => {
-    assert.ok(MAP.includes("if (board && board.terrain) return 'THE GROUND IS THE BOARD';") && MAP.includes("if (!board && !fieldRoom && typeof window.hqAreaDeltaId === 'function'"), 'the copy');
+    assert.ok(MAP.includes("if (fieldRoom && room.terrain) return 'THE GROUND IS THE BOARD';") && MAP.includes("if (!fieldRoom && typeof window.hqAreaDeltaId === 'function'"), 'the copy');
     assert.ok(TR.includes('terrain: !!room.terrain, base: base, field:') && TR.includes('if (R.terrain) { try { _hqBuildTerrain(copy); }') && TR.includes("opts: { room: R.roomId }"), 'the room round the field builds the terrain');
     assert.ok(TR.includes("if (R.terrain && typeof _hqBuildClimbs === 'function')"), 'and its climbs');
 });

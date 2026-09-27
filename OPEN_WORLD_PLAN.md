@@ -74,7 +74,7 @@ that need no frame (the mall's atrium, the basilica, the bunker) can run in para
 - **A PLACE is a ZONE; a ZONE is PARTS on one ground.** `DOOR_HQ.world.zones[id] = { label, sky, clock,
   parts: { roomId: { x, z, y, rot } }, joins: [...] }` (§4.1). A part is an existing room. Its frame is in
   metres in the zone, `rot` in quarter turns. A room in no zone is what it is today (an interior, another
-  dimension, a board room).
+  dimension).
 - **A JOIN is a shared edge, not a door.** Two parts of a zone that touch declare the span they share
   (§4.2). Along it the shell is open, the two height fields are STITCHED to agree, and the walker just
   walks. A join is also allowed indoors (the sewers' four halls, the D.U.M.B.'s six) — a zone needs no sky.
@@ -117,8 +117,17 @@ that need no frame (the mall's atrium, the basilica, the bunker) can run in para
   offline, publish a manifest, raise the store's cap when the browser grants persistence. No service
   worker.
 - **Numbers live in data.js tables** (`HQ_WORLD_RULES`, `HQ_WORLD_CLOCK`, `HQ_STAGE_RULES`), never in a
-  builder. Every phase ships with its own test and `npm test` green; `test:full` when a phase touches
-  rooms (most of them do).
+  builder. Every phase ships with its own test; the end-of-session check is `npm run test:end` (the quick
+  checks + the tests the phase changed) — never `npm test` or `test:full` at the end (CI runs `npm test`).
+- **NO BACKWARD COMPATIBILITY, NO TAPE / FIND GUARDS** (2026-09-27, mondo: "I do not care about the tapes
+  or the finds at all right now. We are literally building the map, the tapes are going to change
+  regardless ... I do not care about save files or old saves at all. I am the only one playing and
+  testing this game right now."). A phase MERGES, RENAMES and DELETES rooms freely: no aliases kept for
+  old saves, no save-key migration, no ledger shims. Tapes and finds follow the map: a find in a deleted
+  room goes, a tape whose room moves is re-placed by the finder or dropped, and no phase spends time
+  proving a tape's spot, a find's reach or the tape count. Tests pin the map (the joins, the stitch, the
+  walker's reach between doors), never the tapes. A "keeps every id / find / tape / save" deviation is
+  never a reason to pick a lesser fork.
 
 ---
 
@@ -865,7 +874,7 @@ chamber, none into a room whose only job is wells"; hq-world.test.js's well seam
 
 | Room(s) | Ruling |
 |---|---|
-| the 38 board rooms | DELETED as rooms; the register number, the console and the map node move to the site's entry part (`hqSiteEntry` already sends everyone there); a site whose board room is its only room (none today) would keep it |
+| the 38 board rooms | **DELETED 2026-09-27** (mondo: "dead code, please delete"): `site_<mapId>` is only an alias `hqSiteEntry` resolves to the entry part, which wears the bay door (`hqSiteEgressDoor`), the marker and the register number |
 | THE WELL ROOM | deleted (§8.3) |
 | the three lift lobbies (works · annex · labs) | MERGED into their floors: each floor becomes one room with partitions (the warehouse floor, the annex floor, the labs floor), the lobby a bay at the car's door, `inner` doors on the leaves (§4.3); ids aliased |
 | the three wing hubs (medical · records · executive) | MERGED (§8.1) |
@@ -880,8 +889,7 @@ chamber, none into a room whose only job is wells"; hq-world.test.js's well seam
 | the ley tunnel, the running tunnels | KEPT: corridors are their families' point; the tunnels gain the garden's well bottom |
 
 **Phase 4 (§12):** THE WELL ROOM deleted; the basement JOINED by doors on the stage (zone `basement`), not
-merged; the woods' stair and the cavern chambers stay parts; the 38 board rooms KEPT (a player never walks
-them; §12 says why).
+merged; the woods' stair and the cavern chambers stay parts; the 38 board rooms kept then, DELETED 2026-09-27 (§12).
 
 ### 8.5 THE WOODS as one field
 
@@ -979,8 +987,8 @@ becomes the west zone's sky; Shasta's cone stays a landmark until Shasta is a pa
 | ∥ | **THE INTERIORS** (§8.1: the mall, the basilica, the bunker, the D.U.M.B. catwalks, then the remaining wing merges): any time from Phase 0, one thread each | data.js, three-renderer.js | one pinning test each, the BUILT checklist, screenshots |
 | ∥ | **THE VATICAN cortile, THE LEY's tell join**: after Phase 2 | | |
 
-`npm test` before every delivery; `test:full` for every phase from 1 on (they all touch rooms); the one
-named test per phase. data.js goes to Render as well as R2 at Phases 0, 2 and 4 (the aliases and the
+`npm run test:end` at the end of every phase (the quick checks + the phase's own tests); never `npm test` or
+`test:full` at the end (CI runs `npm test` on every push). No test pins tapes, finds or old saves (§1). data.js goes to Render as well as R2 at Phases 0, 2 and 4 (the aliases and the
 ledger keys the server's progress merge reads). Every phase from 1 keeps the room-in-no-zone path
 working, so a room the user has not moved is exactly what it was.
 
@@ -1281,3 +1289,65 @@ Line numbers are the 2026-09-26 clone's (token `20260926-bugfix-03-cors`); grep 
     0.35 m across ±3 m of every seam and every door of each woods part is reachable; the basement's joins).
     `hq-stage.test.js` (four zones), `hq-world-map.test.js` (the ritual absorbed) re-pinned. Not walked by a
     person.
+- 2026-09-27 — **THE CLEANUP** (thread "Open world cleanup and Phase 5"; zip `open-world/ENTROPY_WARS_OPEN_WORLD_FIXES.zip`,
+  token `20260927-open-world-06-cors`; data.js, three-renderer.js, map.js to R2, data.js + index.html to Render):
+  - mondo: "I do not care about the tapes or the finds ... I also do not care about the board rooms at all. Those
+    are dead code, please delete ... Grove and skinwalker dont need to have fixed night."
+  - **THE BOARD ROOMS DELETED** (§8.4): the generator, `hqSiteRoom`, the board info, the prop stands, the
+    fluids, the moat, the dressing, the planet ground, the crossing console, `_hqEncounterBoard`. `site_<mapId>`
+    is an alias only: `hqSiteEntry` / `hqSiteEntryOf` / `hqAreaRoomOf` land on the entry part, and the bay's way
+    back is `hqSiteEgressDoor(mapId)`. map.js `_hqGoRoom` resolves the alias (THE WORLD's GO buttons). The
+    tape/find legacy maps (`HQ_FIND_MOVED`, `hqTapeLegacyId`, `hqFindLegacyId`) and hq-finds.test.js are gone.
+  - **THE CLOCK**: the Grove and the skinwalker fields ride the clock (off `HQ_WORLD_CLOCK.lock`, day looks added).
+  - **THE TESTS**: `npm run test:end` (test-end.js) is the end-of-session check; ~45 test files re-pinned from
+    the boards to the entry parts (84 reds → 0 on the fast suite). The heavy complex-count pins were lowered but
+    not run.
+- 2026-09-27 — **PHASE 5 SHIPPED: THE SOUTH** (same thread; zip `open-world/ENTROPY_WARS_OPEN_WORLD_5.zip`, token
+  `20260927-open-world-07-cors`; data.js + three-renderer.js to R2, data.js + index.html to Render):
+  - **THE HIGHWAY** (zone `highway`): two new BUILT parts (family E, no `gen`), 80 × 210 each on flat desert —
+    `site_prebuilt_strip_highway` (DISASTER CITY · THE HIGHWAY: the last diner with its roof, the loading dock
+    tier, the rest stop's kickers and rail) and `site_prebuilt_area51_highway` (THE DESERT MILES: the gas canopy
+    5 m up, the kiosk, the plinth, the crash dip). Painted lines (`marks`), traffic, npcs. Road joins x −8…8:
+    the Strip's south edge (its bay door moved to x −22, a street runs out at x 0) ⇄ the Strip end ⇄ the desert
+    miles, and a border to the gate.
+  - **THE GATE** (zone `desert`, `site_prebuilt_area51_gate`, 60 × 40, BUILT): the fence, the guard post with a
+    roof, the barrier, the watchtower (a 4.5 m block, its stair from inside the fence). A road join onto the
+    flight line's north edge (the flight line gains the gate road and three `open` discs in its plan).
+  - **AREA 51 — DOOR JOINS**: flight line ⇄ hangar 18 ⇄ the white rooms at the doors they already had. The yard
+    gate and the storm drain stay doors.
+  - **THE D.U.M.B. — DEVIATION: DOOR JOINS, not corridor joins** (the medwing / basement precedent): zone `dumb`,
+    six parts round sub-level 7 at y −20; the war room and the bunker stand at their gantry doors' sills (3 m and
+    2.4 m up). Four hub doors shifted 2 m along their walls so the doors face. The dream lab's service door
+    stays a door. **THE BUNKER NOT REBUILT** (§8.1 row stays open).
+  - `hqWorldGraph` walks a staged edge join as an edge (`door: null`, `join: kind`): the highway has no doors;
+    the LAND map draws it as a way.
+  - Test: `hq-south.test.js` (the world valid and staged; the road chain's spans; the BUILT road; the seven door
+    joins 0.2 m apart and facing, the raised sills; `heavy`: the walker end to end in each road part, into the
+    diner, the kiosk, the guard post, up the tower, the Strip's bay door and the flight line's hangar door to
+    their road joins). Re-pinned: hq-stage, hq-world-map, hq-area51, hq-urban, disaster-city-3. Not walked by a
+    person.
+- 2026-09-27 — **PHASE 5 FOLLOW-UP** (zip `open-world/ENTROPY_WARS_OPEN_WORLD_5B.zip`, token `20260927-open-world-08-cors`):
+  the three new parts get their area Δ boards (`_MF_AREA_DELTA_BUILDERS`: the Strip end, the desert miles, the
+  gate), and LAST GAS's pumps are vending machines (a utility box is a board / horizon piece). `npm test` 0 fails.
+- 2026-09-27 — **THE FLOATING GRASS + THE REPO SYNC** (thread "Woods grass, CI, then Phase 6"; zip
+  `open-world/ENTROPY_WARS_OPEN_WORLD_9.zip`, token `20260927-open-world-09-cors`; data.js + three-renderer.js + map.js
+  to R2, data.js + index.html to Render, tests + docs to the repo).
+  - mondo: "the woods stitching areas leaves this grass floating in the air, it goes away when i cross into the next
+    area but comes back right as soon as im in the other area." The cause: a part's OUTER GROUND (`_hqBuildOuterGround`,
+    the roll + the +2.4 m swell 22 m out) was cut only where its JOINED neighbours lie. The trail and the stair touch
+    without a join and both stand beside the clearing, so each one's apron ran through the other's field (and the
+    pasture's / redwoods' through the trail's): the crest of the swell showed as a long strip of grass in the air. Crossing
+    took the other part off the stage (gone), and the part just left then showed its own apron through a new neighbour.
+    The same fault stood between the Strip, Downtown and the Strip end of the highway.
+  - The fix: data.js `hqStageNearbyParts` (every staged part that can share a stage with this one: its neighbours and
+    theirs, within 64 m), `hqStageNearerParts` / `hqStageNearerKey` (the parts whose box is nearer than this part's own).
+    The outer ground is cut into one side mesh per SET of nearer parts and a side hides while ANY of them is on the stage
+    (`_ew_hqOuterSideIds`), so the nearest DRAWN part always owns the ground; the treeline and the field's metre past the
+    shell stand down the same way. Measured offline over the real compiled fields: from the clearing 1112 apron quads stood
+    above another drawn part's ground, now 17 (all in the 1 m seam band where two thicket banks meet); the Strip 1035 → 0,
+    Downtown 61 → 0, the flight line 81 → 25 (the gate's dropped overrun: false positives), the Grove 163 → 5. The headless
+    stage in the clearing draws exactly the sides the offline model predicts (9 drawn of 74). Test: hq-west.test.js
+    "THE FLOATING GRASS".
+  - **THE RED CI**: main had the spell library 11 data.js (built on 5B) but the FIXES zip's files had gone into
+    docs/notes/ and zips 5 / 5B's tests and scripts never reached the root, so 73 old tests ran against the new data.js.
+    This zip carries every root file those zips changed; `npm test` on the rebuilt tree: 0 fails.

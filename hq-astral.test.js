@@ -97,7 +97,7 @@ test('the sheet: four parts on the Looking-Glass\'s site — site + part, no num
     const reg = D.hqRoomRegister();
     assert.equal(reg.filter(r => r.mapId === SITE).length, 1);
     assert.ok(!reg.some(r => IDS.includes(r.id) || IDS.includes(r.room)), 'no part is a register entry');
-    assert.equal(D.hqSiteComplex(SITE).length, 6, 'the board room, the garden and the four parts');
+    assert.equal(D.hqSiteComplex(SITE).length, 5, 'the garden and the four parts');
 });
 
 test('THE SOLVER + THE RETURN GUARANTEE + THE PRODUCTION LANDING: in every field every door reaches every other under the walker\'s rule, nothing traps, every sill is its pad\'s, every landing (the box room\'s too) is inside and clear of every prop and native; check-terrain agrees on all three', heavy, () => {
@@ -168,25 +168,12 @@ test('THE PAIR + THE SEAMS + THE ROUTE + THE HUB: the garden\'s second frame wit
     assert.equal(G.nodes[SEA].hub, 'astral'); assert.equal(G.nodes[NIGHTMARE].hubOf, 'astral');
 });
 
-test('THE TAPES + THE HARD TAPES: one tape per part (four re-homed — the hundred stays a hundred; the wards that gave one keep their board\'s own); THE SPIRE OF THE UNTHOUGHT (7.5 m), THE SPINE (4.6 m) and THE TOP SHELF (3.4 m under a 4.6 m ceiling) are pinned, hard, never walked to, with a door-gun shot from a reachable node; every envelope is guarded', heavy, () => {
-    const T = D.DOOR_TAPES, F = HQ.finds;
-    assert.equal(T.length, 100);
-    for (const id of IDS) assert.equal(T.filter(t => t.where === id).length, 1, id + ': one tape');
-    assert.equal(T.find(t => t.where === WAITING).title, 'NOW SERVING'); assert.equal(T.find(t => t.where === SEA).title, 'THE SPIRE'); assert.match(T.find(t => t.where === NIGHTMARE).title, /NIGHT TERROR/); assert.equal(T.find(t => t.where === LIBRARY).title, 'THE CARD CATALOGUE');
-    for (const id of ['site_prebuilt_camelot_ward', 'site_prebuilt_hell_pit', 'site_prebuilt_cern_ring', 'site_prebuilt_vatican_basilica']) assert.equal(T.filter(t => t.where === id).length, 1, id + ' gave its second tape to the realm');
-    assert.equal(T.filter(t => t.where === GARDEN).length, 1, 'the garden keeps THE TEA PARTY');
-    const pins = { [SEA]: [20, -35, 7.5], [NIGHTMARE]: [32, -22, 4.6], [LIBRARY]: [-40, -20, 3.4] };
-    for (const [id, [x, z, h]] of Object.entries(pins)) {
-        const f = F.find(f => f.room === id && f.kind === 'tape'); assert.ok(f, id + ': the find');
-        assert.ok(Math.abs(f.x - x) < 0.01 && Math.abs(f.z - z) < 0.01 && Math.abs(f.y - h) < 0.05 && f.hard === true, id + ': pinned on the weenie at ' + h + ' m, hard (' + f.x + ',' + f.z + ',' + f.y + ',' + f.hard + ')');
-        const info = D.hqTerrainInfo(id), L0 = D.hqTerrainDoorLanding(HQ.rooms[id], HQ.rooms[id].doors[0]);
-        assert.ok(!D.hqTerrainReach(info, L0.x, L0.z).has(key(info, f.x, f.z)), id + ': the walker never reaches it');
-        assert.ok(D.hqFindHardReachTerrain(f, D.hqFindRoomInfo(id)).ok, id + ': the door gun has a shot');
+test('THE WEENIES: THE SPIRE OF THE UNTHOUGHT (7.5 m), THE SPINE (4.6 m) and THE TOP SHELF (3.4 m under a 4.6 m ceiling) are tiers under the ceiling', heavy, () => {
+    const tiers = { [SEA]: [20, -35, 7.5], [NIGHTMARE]: [32, -22, 4.6], [LIBRARY]: [-40, -20, 3.4] };
+    for (const [id, [x, z, h]] of Object.entries(tiers)) {
         assert.ok(HQ.rooms[id].terrain.features.some(q => q.k === 'plateau' && Math.abs(q.x - x) < 0.01 && Math.abs(q.z - z) < 0.01 && q.h === h), id + ': the weenie is a tier');
-        assert.ok(h < HQ.rooms[id].shell.h - 0.5, id + ': the tape stands under the ceiling');
+        assert.ok(h < HQ.rooms[id].shell.h - 0.5, id + ': the weenie stands under the ceiling');
     }
-    const wt = F.find(f => f.room === WAITING && f.kind === 'tape'); assert.ok(wt && !wt.hard, 'the waiting room\'s tape is on the floor');
-    for (const id of IDS) { const pay = F.find(f => f.room === id && f.kind === 'pay'); assert.ok(pay && pay.guard === true, id + ': a guarded envelope'); }
 });
 
 test('THE PARK RULE + THE LIGHT + THE FAMILIES: every field has a tier or a ramp AND a rail, every stair obeys L ≥ 2.2 h and every floating flight ends inside its floating tier; the sea wades its stream and its pool, never enters the mirror lake, and floats three thoughts; the nightmare\'s maw is ringed with fangs the walker never climbs, its blood is lava the walker never enters, its bed lies at the bottom; the library\'s stacks are traced walls in wood with a gallery up a stair; every room lights itself under the cap and the prefab wears the park rule and a bulb', heavy, () => {
@@ -279,6 +266,6 @@ test('THE RENDERER: four procs (the thought-form breathes on a ticker, the eye t
     assert.ok(/if \(Array\.isArray\(sky\.landmarks\) && sky\.landmarks\.length\) \{ try \{ _hqBuildLandmarks\(H, sky\.landmarks, 6000\); \}/.test(renderer), '_hqBuildSky hangs the watcher');
     assert.ok(/^        screen: function \(U, ctx\)/m.test(renderer) && /^        closet: function \(U, ctx\)/m.test(renderer), 'the screen and the closet builders');
     /* data.js: the shells, the looks, the spec doors, the pins */
-    for (const s of ['function hqAstralShell(o)', 'function hqNightmareShell(o)', 'function hqUnthoughtShell(o)', "astral:     { name: 'THE SEA OF POSSIBILITY'", "nightmare:  { name: 'THE NIGHTMARE'", "site_prebuilt_lookingglass_sea: { tape: { x: 20, z: -35 } }", "action: { room: 'site_prebuilt_lookingglass_waiting', at: 'garden' }"]) assert.ok(data.includes(s), 'data.js: ' + s);
+    for (const s of ['function hqAstralShell(o)', 'function hqNightmareShell(o)', 'function hqUnthoughtShell(o)', "astral:     { name: 'THE SEA OF POSSIBILITY'", "nightmare:  { name: 'THE NIGHTMARE'", "action: { room: 'site_prebuilt_lookingglass_waiting', at: 'garden' }"]) assert.ok(data.includes(s), 'data.js: ' + s);
     assert.ok(/\?v=\d{8}[a-z0-9-]*-cors/.test(fs.readFileSync(__dirname + '/index.html', 'utf8')), 'a live token (RULE #1b — never pin the current token: every delivery bumps it)');
 });

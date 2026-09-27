@@ -266,7 +266,7 @@ test('THE SOURCE: map.js chooses the window in a cave, registers the field and l
     ['const reg = _hqFieldRegister(L.field, field);', 'if (reg) { launchId = reg.id; window._hqEncounterRun.fieldId = reg.id; }', "MS_MAP_LIST.findIndex(m => m.modeId === L.site + '_delta')"].forEach(f => assert.ok(start.includes(f), f));
     const regf = MP.slice(MP.indexOf('function _hqFieldRegister(win, field)'), MP.indexOf('window._hqFieldRegister = _hqFieldRegister;'));
     ['window.hqFieldRegister(win.room, win.ox, win.oz', 'GAME_MODES[reg.id] = {', 'isPrebuilt: true, isDelta: true, field: true', 'MS_MAP_LIST.push(row)', 'MS_MAP_LIST[i] = row'].forEach(f => assert.ok(regf.includes(f), f));
-    assert.ok(MP.includes("if (board && board.cave) return 'THE CAVE IS THE BOARD';"), 'the copy is true in a cave');
+    assert.ok(MP.includes("if (fieldRoom && room.cave) return 'THE CAVE IS THE BOARD';"), 'the copy is true in a cave');
     assert.ok(MS.includes('if (m.field) return false;'), 'the terminal drops a field row');
     ['window.HQ_FIELD_RULES = HQ_FIELD_RULES;', 'window.hqFieldWindow = hqFieldWindow;', 'window.hqFieldRegister = hqFieldRegister;', 'window.hqFieldRaster = hqFieldRaster;'].forEach(f => assert.ok(DJ.includes(f), f));
     assert.ok(DJ.includes("if (s.indexOf('field:') === 0 && typeof hqFieldParse === 'function')"), 'hqSiteId reads a field id');
@@ -472,8 +472,9 @@ test('STAGE C · ACCEPTANCE (§11.3 C, measured): every part yields a window wit
 });
 
 test('STAGE C · THE SOURCE: map.js says THE ROOM IS THE BOARD in a complex part (the copy reads hqFieldRoomOk), the fire / start comments name stage C, data.js exports the box helpers', () => {
-    const copy = MP.slice(MP.indexOf('function _hqEncounterBoardCopy(board)'), MP.indexOf('function _hqEncounterFire(ev)'));
-    ['window.hqFieldRoomOk(_hqCurRoom)', "fieldRoom ? 'THE ROOM IS THE BOARD' : 'THE SITE IS THE BOARD'", "if (board && board.cave) return 'THE CAVE IS THE BOARD';"].forEach(f => assert.ok(copy.includes(f), f));
+    const copy = MP.slice(MP.indexOf('function _hqEncounterBoardCopy()'), MP.indexOf('function _hqEncounterFire(ev)'));
+    assert.ok(copy.length > 0, 'the copy reader');
+    ['window.hqFieldRoomOk(_hqCurRoom)', "fieldRoom ? 'THE ROOM IS THE BOARD' : 'THE SITE IS THE BOARD'", "if (fieldRoom && room.cave) return 'THE CAVE IS THE BOARD';"].forEach(f => assert.ok(copy.includes(f), f));
     ['window.hqFieldBoxInfo = hqFieldBoxInfo;', 'window.hqFieldLattice = hqFieldLattice;', 'window.hqFieldBoxStep = hqFieldBoxStep;', 'window.hqFieldGallery = hqFieldGallery;'].forEach(f => assert.ok(DJ.includes(f), f));
     assert.ok(DJ.includes("if (env && opts.box) { delete env.near; delete env.motion; env.world = { kind: 'room' }; env.scenery = 'none'; }"), 'the box layout rule (+ THE SKY ONCE, delivery 5)');
 });
@@ -632,7 +633,7 @@ test('STAGE E · THE HUD OF THE FIELD: the scoreboard\'s mode line wears THE FIE
     const lab = g('hqEncounterRoomLabel');
     assert.equal(lab('site_prebuilt_haunted_hall'), 'THE HAUNTED HOUSE · THE HALL');
     assert.equal(lab('site_prebuilt_hollow_earth_vent'), 'THE CAVE · THE FISSURE');
-    assert.ok(/CERN/i.test(lab('site_prebuilt_cern')), 'a site\'s board room reads the site\'s label');
+    assert.ok(/CERN/i.test(lab('site_prebuilt_cern_ring')), 'a site\'s entry part reads the site\'s label');
     assert.equal(lab('nope'), null); assert.equal(lab(null), null);
     assert.equal(R.hudLabel, 'THE FIELD');
     const HUD = fs.readFileSync(__dirname + '/hud.js', 'utf8'), BT = fs.readFileSync(__dirname + '/battle.js', 'utf8');

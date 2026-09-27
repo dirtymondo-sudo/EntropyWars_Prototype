@@ -156,7 +156,6 @@ test('THE TEACHING ROOMS (R9): the garage\'s ladder climbs onto THE DOCK OFFICE 
     const L = D.hqWalkLessons();
     assert.equal(L.map(l => l.id + ':' + l.room).join(','), 'climb:garage,skate:locker,swim:natatorium');
     for (const l of L) { assert.ok(l.placed, l.id + ' placed'); assert.ok(l.prop.key === 'lesson_plaque' && (typeof l.prop.wall === 'string' || (typeof l.prop.face === 'number' && typeof l.prop.mount === 'number')), l.id + ': a wall plaque (on a box wall, or standing free on a floor plan\'s wall — THE ROUND GARAGE, 2026-09-20)'); assert.ok(l.draft === true && l.lines.length === 3, l.id + ': three DRAFT lines'); }
-    for (const l of D.hqGunLessons()) assert.ok(l.placed, 'the gun lesson ' + l.id + ' still placed');
 });
 
 test('THE SOURCE SITES: the renderer\'s block, the walker tick + its check, the clips baked, the picker, the plaque reads the walk lessons, map.js hears onClimb, the hint line, the CSS, RULE #2', () => {

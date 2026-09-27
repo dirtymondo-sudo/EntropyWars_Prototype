@@ -1,6 +1,6 @@
 // hq-spaceship.test.js — THE SPACESHIP COMPLEX (HQ plan 9.2 stage 2 — 2026-09-15 rev 18):
-// the THIRD complex. Room 426's generated board room stays THE DORSAL DECK;
-// THE AIRLOCK on its north wall (siteRooms.backDoors.prebuilt_derelict) cycles
+// the THIRD complex. THE MAIN DECK part is the site's entry (the generated
+// board room was deleted 2026-09-27); THE AIRLOCK on its north wall cycles
 // into three hand-authored compartments — the airlock (with the Lunar route's
 // two docking collars, moved off the deck), the cargo hold, the bridge. Guards:
 // the sheet (site + part, no number, the register lists the ship once), the
@@ -21,6 +21,7 @@ const SITE = 'prebuilt_derelict';
 const BOARD = 'site_prebuilt_derelict';
 const PARTS = ['airlock', 'hold', 'bridge'];
 const PART_IDS = PARTS.map(p => BOARD + '_' + p);
+const DECK = BOARD + '_deck';   // THE ENTRY PART: the board room is gone (2026-09-27) — `site_prebuilt_derelict` is an alias for THE MAIN DECK part
 const renderer = fs.readFileSync(__dirname + '/three-renderer.js', 'utf8');
 const dataSrc = fs.readFileSync(__dirname + '/data.js', 'utf8');
 const at = (room, id) => (HQ.rooms[room].doors || []).find(d => d.id === id);
@@ -58,8 +59,9 @@ function propBlocks(room, p, x, z, margin) {
 }
 
 test('the sheet: the Spaceship is a complex of the deck and three compartments, each wearing site + part and no number; the register lists the ship once', () => {
-    const ALL = PART_IDS.concat([BOARD + '_deck']);   // THE AREAS (2026-09-18): THE DECK, the generated area (hq-areas.test.js)
-    assert.strictEqual(D.hqSiteComplex(SITE).join(','), [BOARD].concat(ALL).join(','), 'hqSiteComplex = the deck, then the compartments in sheet order');
+    const ALL = PART_IDS.concat([DECK]);   // THE AREAS (2026-09-18): THE DECK, the generated area (hq-areas.test.js)
+    assert.strictEqual(D.hqSiteComplex(SITE).join(','), ALL.join(','), 'hqSiteComplex = the compartments in sheet order, then the deck');
+    assert.strictEqual(D.hqSiteEntryOf(SITE).room, DECK, 'the deck is the entry part');
     assert.strictEqual(D.hqComplexRooms().filter(id => D.hqRoomSite(id) === SITE).join(','), ALL.join(','), 'the ship’s parts');
     for (const p of PARTS) {
         const id = D.hqComplexRoomId(SITE, p), r = HQ.rooms[id];
@@ -83,26 +85,19 @@ test('the sheet: the Spaceship is a complex of the deck and three compartments, 
     assert.ok(D.hqEncounterRoomOk(BOARD + '_hold'), 'the hold is WILD (9.4)');
 });
 
-test('the airlock: the deck’s back door hangs on the north wall in the old Moon-collar lane, clear of the console lane, the signboard and the masts; the airlock’s inner hatch comes back', () => {
-    const BD = HQ.siteRooms.backDoors[SITE];
-    assert.ok(Array.isArray(BD) && BD.length === 1, 'an ARRAY of one back-door row');
-    const room = HQ.rooms[BOARD], S = room.shell;
-    assert.strictEqual(room.doors.filter(d => !d.link).map(d => d.id).join(','), 'egress,airlock', 'the way in, then the airlock');
-    assert.strictEqual(room.doors.filter(d => d.link).length, 0, 'NO link door is left on the deck — the collars moved into the airlock (9.3 stage 1’s promise)');
-    const air = at(BOARD, 'airlock');
-    assert.ok(air.wall === 'n' && air.x === -6 && air.leaf === 'leaf_bulkhead', 'the north wall, the Moon collar’s old lane, the threshold’s own leaf');
+test('the airlock: THE MAIN DECK part wears the airlock door on its north wall beside the bay door; the airlock’s inner hatch comes back', () => {
+    const room = HQ.rooms[DECK];
+    assert.ok(room, 'the main deck part');
+    assert.strictEqual(room.doors.filter(d => d.link).length, 0, 'NO link door is on the deck — the collar is in the airlock (9.3 stage 1’s promise)');
+    const air = at(DECK, 'airlock');
+    assert.ok(air && air.wall === 'n' && air.leaf === 'leaf_bulkhead', 'the north wall, the threshold’s own leaf');
     assert.strictEqual(air.leaf, HQ.thresholds[SITE].leaf, 'the airlock wears the site’s catalogue leaf');
     assert.ok(air.action.room === BOARD + '_airlock' && air.action.at === 'deck', 'the airlock door walks into the airlock');
-    assert.notStrictEqual(air.action, BD[0].action, 'the generator copies the action');
     const deck = at(BOARD + '_airlock', 'deck');
-    assert.ok(deck && deck.wall === 's' && deck.leaf === 'leaf_bulkhead' && deck.action.room === BOARD && deck.action.at === 'airlock', 'the inner hatch returns to the deck at the airlock door');
+    assert.ok(deck && deck.wall === 's' && deck.leaf === 'leaf_bulkhead' && deck.action.room === DECK && deck.action.at === 'airlock', 'the inner hatch returns to the deck at the airlock door');
     assert.strictEqual(D.doorSiteState(air, null), 'open', 'a room door is never sector-gated (C-12)');
-    assert.ok(air.x + 1.25 + 2.2 < 5 - 2.4, 'clear of the built-in north signboard');
-    const h = landing(room, air), p = h.player;
-    assert.ok(Math.abs(p.x) < S.w / 2 - 0.4 && Math.abs(p.z) < S.d / 2 - 0.4, 'the landing is inside the walls');
-    assert.ok(Math.abs(p.z) > S.grid.cells * S.grid.cell / 2 + 0.4, 'off the battle board');
-    for (const q of [...room.props, ...room.npcSpots]) assert.ok(!propBlocks(room, q, p.x, p.z, 0.4), (q.key || q.race) + ' blocks the airlock’s landing');
-    for (const m of S.lights || []) assert.ok(Math.hypot(p.x - m.x, p.z - m.z) > 1.2, 'a lamp mast stands on the landing');
+    const bay = room.doors.find(d => d.entry === SITE);
+    assert.ok(bay && bay.action.room === D.hqBayId(D.hqSectorOfMap(SITE)) && bay.action.at === 'site_' + SITE, 'the deck wears the bay door back to the threshold');
 });
 
 test('THE SHIP\'S ONE DOOR (2026-09-16): both Lunar-route ends are DOCKED on the airlock\'s single collar, the collar opens on the course the nav console laid in, the far ends land at the collar, and the line still runs Mars → Moon → Spaceship → Saturn → the Singularity', () => {
@@ -156,10 +151,10 @@ test('THE SHIP\'S ONE DOOR (2026-09-16): both Lunar-route ends are DOCKED on the
     for (const needle of ['function hqShipDestinations', 'function hqShipSetCourse', 'function hqShipApplyCourse', 'function hqLinkDockedDoor', 'if (end.door) return;']) assert.ok(dataSrc.includes(needle), 'data.js: ' + needle);
 });
 
-test('every hatch in the ship is reversible, the complex is connected from the deck, and nothing leaves the site but the deck’s egress and the one collar', () => {
-    const DECK = BOARD + '_deck';   // AREA CONTENT D3 (2026-09-19): THE MAIN DECK is the entry part — it wears the bay door and THE CARGO HATCH (a secret pair into the hold)
-    const ROOMS = [BOARD, DECK].concat(PART_IDS);
-    const seen = new Set([BOARD]), queue = [BOARD];
+test('every hatch in the ship is reversible, the complex is connected from the deck, and nothing leaves the site but the deck’s bay door and the one collar', () => {
+    /* AREA CONTENT D3 (2026-09-19): THE MAIN DECK is the entry part — it wears the bay door and THE CARGO HATCH (a secret pair into the hold) */
+    const ROOMS = [DECK].concat(PART_IDS);
+    const seen = new Set([DECK]), queue = [DECK];
     while (queue.length) {
         const id = queue.shift();
         for (const d of HQ.rooms[id].doors) {
@@ -182,10 +177,9 @@ test('every hatch in the ship is reversible, the complex is connected from the d
                 assert.ok(far && far.action.room === id && far.action.at === d.id, id + '/' + d.id + ' ⇄ ' + a.room + ' is a pair');
                 continue;
             }
-            if (HQ.rooms[a.room].kind === 'bay') { assert.ok(id === BOARD || id === DECK, 'only the deck walks back to the bay'); continue; }
+            if (HQ.rooms[a.room].kind === 'bay') { assert.ok(id === DECK && d.entry === SITE, 'only the deck walks back to the bay'); continue; }
             const back = at(a.room, a.at);
-            const same = r => (r === BOARD ? DECK : r);   // THE AREAS (2026-09-18): the board is bypassed — a door into it lands in THE MAIN DECK (hqSiteEntry), so the deck part and the board are one landing
-            assert.ok(back && same(back.action.room) === same(id) && back.action.at === d.id, id + '/' + d.id + ' ⇄ ' + a.room + '/' + (back && back.id) + ' is a pair');
+            assert.ok(back && back.action.room === id && back.action.at === d.id, id + '/' + d.id + ' ⇄ ' + a.room + '/' + (back && back.id) + ' is a pair');
             assert.strictEqual(back.leaf, d.leaf, 'the same leaf on both sides of ' + d.id);
             assert.ok(ROOMS.includes(a.room), id + '/' + d.id + ' stays inside the site');
             if (!seen.has(a.room)) { seen.add(a.room); queue.push(a.room); }
@@ -222,7 +216,7 @@ test('the production renderer lands every hatch inside its compartment, clear of
     }
 });
 
-test('THE PARK RULE + the light: a rail in every compartment, a stepped ramp in every big one; the ship lights itself; every sheet key is real; one tape per compartment and the hundred is still a hundred', () => {
+test('THE PARK RULE + the light: a rail in every compartment, a stepped ramp in every big one; the ship lights itself; every sheet key is real', () => {
     for (const id of PART_IDS) {
         const room = HQ.rooms[id], S = room.shell;
         assert.ok(room.props.some(p => p.key === 'railing_1m'), id + ': a rail to grind');
@@ -231,10 +225,7 @@ test('THE PARK RULE + the light: a rail in every compartment, a stepped ramp in 
         const lit = room.props.filter(p => (HQ.catalogue[p.key] || {}).light).length;
         assert.ok(lit >= 1 && lit <= 10, id + ': ' + lit + ' prop lights');
         for (const n of ['floor', 'wall', 'dado', 'trim', 'ceiling']) assert.ok(HQ.textures[S[n]] || TERRAIN_RULES[S[n]], id + ': texture ' + S[n]);
-        assert.ok([1, 2].includes(D.DOOR_TAPES.filter(t => t.where === id).length) && (D.DOOR_TAPES.filter(t => t.where === id).length === 1 || Object.values(HQ.siteRooms.entry || {}).some(e => e.room === id)), id + ': one tape (two on the part that stands for a bypassed board — THE AREAS, 2026-09-18)');
     }
-    assert.strictEqual(D.DOOR_TAPES.length, 100);
     assert.ok(HQ.rooms[BOARD + '_hold'].props.some(p => p.key === 'iso_tank'), 'THE CRYO POD is still running');
     assert.ok(HQ.rooms[BOARD + '_bridge'].props.some(p => (p.key === 'sun_viewport' || p.key === 'false_window') && p.wall === 'n'), 'THE VIEWPORT looks forward');   // D7 (Phase 9 Delivery 4): the sun in the viewport
-    assert.match(dataSrc, /prebuilt_derelict: \[\n\s+\{ id: 'airlock', wall: 'n', x: -6, leaf: 'leaf_bulkhead',/, 'the back-door row');
 });

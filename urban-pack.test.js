@@ -106,7 +106,7 @@ test('THE ROADS OUT: `road` is a catalogued way (wide, open, a pad the width of 
         assert.ok(da && db && da.way === 'road' && db.way === 'road' && da.action.room === rb && db.action.room === ra && da.action.at === db.id && db.action.at === da.id, id + ': both ends wear the road and pair');
     }
     assert.ok(!L('streets_stadium'), 'Gate C retired');
-    assert.equal(HQ.rooms[D.hqSiteRoomId('prebuilt_downtown')].doors.filter(d => d.link).length, 0, 'the board room\'s north wall is free');
+    assert.ok(!HQ.rooms[D.hqSiteRoomId('prebuilt_downtown')], 'no board room (2026-09-27)');
     for (const id of [STREETS, GRID]) {
         const info = D.hqTerrainInfo(id), pads = info.pads;
         for (const d of HQ.rooms[id].doors.filter(d => d.way === 'road')) { const p = pads.find(q => q.door.id === d.id); assert.ok(p && Math.max(p.w, p.d) >= 10, id + '/' + d.id + ': the landing is the street'); }

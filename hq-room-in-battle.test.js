@@ -49,23 +49,27 @@ test('the marker: battle.js publishes the latched run\'s room, field and field i
     assert.match(TR, /run = \(typeof window\._ewEncounterRoom === 'function'\) \? window\._ewEncounterRoom\(\) : null;/, 'the renderer reads it');
 });
 
-test('the reader: a site\'s board room is drawn at its centred board and a cave chamber at its window; a mismatched board / no run / the kill-switch are not', () => {
+/* a complex part's window, registered (the haunted hall — the reader, the matrix and the cover rule all read it) */
+function hallWindow() {
+    const id = 'site_prebuilt_haunted_hall', room = HQ.rooms[id], sp = room.spawn || { x: 0, z: 0 };
+    const win = g('hqFieldWindow')(id, { x: sp.x || 0, z: sp.z || 0 }, { x: (sp.x || 0) + 1, z: sp.z || 0 });
+    const reg = g('hqFieldRegister')(win.room, win.ox, win.oz, { cells: win.cells });
+    return { id, win, reg };
+}
+
+test('the reader: a complex part is drawn at its window and a cave chamber at its window; the `site_<id>` alias / no run / the hall / the kill-switch are not', () => {
     const { B, W } = bridgeCtx();
-    const site = 'site_prebuilt_camelot', S = HQ.rooms[site].shell;
     assert.equal(B.room(), null, 'no run = no room');
-    W._ewEncounterRoom = () => ({ room: site, field: { board: { N: S.grid.cells, C: S.grid.cell, half: S.grid.cells * S.grid.cell / 2 } }, fieldId: null, site: 'prebuilt_camelot' });
+    const { id, win, reg } = hallWindow();
+    W._ewEncounterRoom = () => ({ room: id, field: { board: win.board }, fieldId: reg.id, site: 'prebuilt_haunted' });
     const R = B.room();
-    assert.ok(R && R.site, 'a site room');
-    assert.equal(R.T.N, S.grid.cells);
-    assert.ok(Math.abs(R.T.x0 + S.grid.cells * S.grid.cell / 2) < 1e-9 && Math.abs(R.T.z0 - R.T.x0) < 1e-9, 'the board is centred: x0 = z0 = −half');
-    assert.equal(R.base, g('hqSiteBoardInfo')('prebuilt_camelot').base, 'the floor stands on the Δ\'s base level');
-    assert.equal(R.field, null, 'a site room has no raster (no covers)');
+    assert.ok(R && R.roomId === id && R.T.N === win.board.N, 'a part is drawn at its window');
     assert.equal(B.room(), R, 'the same run (a fresh marker object each call) → the cached record');
-    assert.match(B.key(), /^hq:site_prebuilt_camelot:-7\.0\d,-7\.0\d$/, 'the scenery key names the room and the window');
+    assert.match(B.key(), new RegExp('^hq:' + id + ':-?\\d+\\.\\d\\d,-?\\d+\\.\\d\\d$'), 'the scenery key names the room and the window');
     assert.match(TR, /var ck = run\.room \+ '\|' \+ \(run\.fieldId \|\| ''\) \+ '\|' \+ \(bd \? \[bd\.N, bd\.C, bd\.x0, bd\.z0, bd\.half\]\.join\(','\) : ''\);/, 'the cache keys on the run\'s content');
-    /* the console filed the FULL site from the room: the board is not the room's */
-    W._ewEncounterRoom = () => ({ room: site, field: { board: { N: 16, C: S.grid.cell, half: 8 * S.grid.cell } } });
-    assert.equal(B.room(), null, 'a 16-wide board is not the room\'s Δ');
+    /* the board rooms are gone (2026-09-27): the `site_<id>` alias is no room to draw */
+    W._ewEncounterRoom = () => ({ room: 'site_prebuilt_camelot', field: { board: { N: 8, C: 1.75, x0: 0, z0: 0 } } });
+    assert.equal(B.room(), null, 'the alias is never drawn');
     /* Phase 9 polish (2026-09-16): a cave chamber IS drawn — its rock, ledges and pools round the window (the
        builder cuts the window out through the scratch record's floorHole; the field's columns fill it) */
     /* THE TERRAIN ROOMS (2026-09-17): no room wears the grid any more — a synthetic chamber keeps the cave path honest */
@@ -73,7 +77,7 @@ test('the reader: a site\'s board room is drawn at its centred board and a cave 
     HQ.rooms[cave] = { kind: 'box', site: 'prebuilt_hollow_earth', part: 'lab', label: 'LAB', shell: { w: 14, d: 14, h: 6 }, cave: { rows: ['########', '#......#', '#......#', '########'] }, doors: [], props: [] };
     W._ewEncounterRoom = () => ({ room: cave, field: { board: { N: 8, C: 1.75, x0: 0, z0: 0, cave: true } } });
     const Rc = B.room();
-    assert.ok(Rc && Rc.cave && !Rc.site && Rc.T && Rc.T.N === 8, 'a cave is drawn at its window');
+    assert.ok(Rc && Rc.cave && Rc.T && Rc.T.N === 8, 'a cave is drawn at its window');
     assert.ok(TR.includes("if (R.cave) { try { _hqBuildCave(copy); }"), 'the cave is built on the scratch record, before the shell');
     assert.ok(TR.includes("var hole = _hq.floorHole || null;") && TR.includes("if (!c.rock && inHole(x, y)) continue;   // the field's column stands for it"), 'the window is cut out of the cave (its rock stays)');
     delete HQ.rooms[cave];
@@ -81,7 +85,7 @@ test('the reader: a site\'s board room is drawn at its centred board and a cave 
     W._ewEncounterRoom = () => ({ room: 'central_egress', field: { board: { N: 8, C: 1.75, x0: 0, z0: 0 } } });
     assert.equal(B.room(), null);
     /* the kill-switch */
-    W._ewEncounterRoom = () => ({ room: site, field: { board: { N: S.grid.cells, C: S.grid.cell } } });
+    W._ewEncounterRoom = () => ({ room: id, field: { board: win.board }, fieldId: reg.id });
     W.EW_HQ_NO_ROOM_IN_BATTLE = true;
     assert.equal(B.room(), null, 'EW_HQ_NO_ROOM_IN_BATTLE');
     assert.equal(B.key(), '', 'no room = an empty key share');
@@ -90,36 +94,26 @@ test('the reader: a site\'s board room is drawn at its centred board and a cave 
 
 test('the matrix: room metres → the battle\'s tiles — the window\'s NW corner on tile (0,0), the floor on the base top, ts / C px per metre', () => {
     const { B, W } = bridgeCtx();
-    const site = 'site_prebuilt_camelot', S = HQ.rooms[site].shell, ts = 128, C = S.grid.cell, U = HQ.units;
-    W._ewEncounterRoom = () => ({ room: site, field: { board: { N: S.grid.cells, C, half: S.grid.cells * C / 2 } } });
-    const R = B.room(), M = B.matrix(R, ts);
+    const ts = 128, U = HQ.units;
+    const { id, win, reg } = hallWindow();
+    W._ewEncounterRoom = () => ({ room: id, field: { board: win.board }, fieldId: reg.id });
+    const R = B.room(), M = B.matrix(R, ts), C = R.T.C;
+    assert.ok(R && R.field && Array.isArray(R.field.cells), 'a part reads its raster');
+    assert.equal(R.base, g('HQ_FIELD_RULES').base);
     const s = M.s.x, P = M.p;
     assert.ok(Math.abs(s - (ts / C) / U) < 1e-12, 'the scale is the battle\'s px per metre over the HQ\'s');
-    /* a room point (xm, zm) lands at (xm − x0)·ts/C: the board's centre at (N/2)·ts, the NW corner at 0 */
+    /* a room point (xm, zm) lands at (xm − x0)·ts/C: the NW corner at 0 */
     const at = (xm, ym, zm) => ({ x: xm * U * s + P.x, y: ym * U * s + P.y, z: zm * U * s + P.z });
-    const nw = at(R.T.x0, 0, R.T.z0), c = at(0, 0, 0), cell = at(R.T.x0 + 2.5 * C, 0, R.T.z0 + 6.5 * C);
-    assert.ok(Math.abs(nw.x) < 1e-6 && Math.abs(nw.z) < 1e-6, 'cell (0,0)\'s NW corner on tile (0,0)\'s');
-    assert.ok(Math.abs(c.x - S.grid.cells * ts / 2) < 1e-6 && Math.abs(c.z - S.grid.cells * ts / 2) < 1e-6, 'the room\'s centre on the board\'s');
+    const nw = at(R.T.x0, 0, R.T.z0), cell = at(R.T.x0 + 2.5 * C, 0, R.T.z0 + 6.5 * C);
+    assert.ok(Math.abs(nw.x) < 1e-6 && Math.abs(nw.z) < 1e-6, 'the window\'s origin on tile (0,0)');
     assert.ok(Math.abs(cell.x - 2.5 * ts) < 1e-6 && Math.abs(cell.z - 6.5 * ts) < 1e-6, 'cell (2,6)\'s centre on tile (2,6)\'s');
     assert.ok(Math.abs(nw.y - R.base * ts) < 1e-9, 'the floor on the base level\'s top (ELEV_STEP_RATIO 1)');
     assert.ok(Math.abs(at(0, 2.7, 0).y - (R.base * ts + 2.7 * ts / C)) < 1e-6, 'a 2.7 m wall top is 2.7 / C tiles up');
-    /* a field's window carries its own origin */
-    const id = 'site_prebuilt_haunted_hall', room = HQ.rooms[id], sp = room.spawn || { x: 0, z: 0 };
-    const win = g('hqFieldWindow')(id, { x: sp.x || 0, z: sp.z || 0 }, { x: (sp.x || 0) + 1, z: sp.z || 0 });
-    const reg = g('hqFieldRegister')(win.room, win.ox, win.oz, { cells: win.cells });
-    W._ewEncounterRoom = () => ({ room: id, field: { board: win.board }, fieldId: reg.id });
-    const R2 = B.room(), M2 = B.matrix(R2, ts);
-    assert.ok(R2 && !R2.site && R2.field && Array.isArray(R2.field.cells), 'a part reads its raster');
-    assert.equal(R2.base, g('HQ_FIELD_RULES').base);
-    const nw2 = { x: win.board.x0 * U * M2.s.x + M2.p.x, z: win.board.z0 * U * M2.s.z + M2.p.z };
-    assert.ok(Math.abs(nw2.x) < 1e-6 && Math.abs(nw2.z) < 1e-6, 'the window\'s origin on tile (0,0)');
 });
 
 test('the cover rule: a prop on a raised IN cell of the raster is left to the column; the floor, rock and the outside are not covers', () => {
     const { B, W } = bridgeCtx();
-    const id = 'site_prebuilt_haunted_hall', room = HQ.rooms[id], sp = room.spawn || { x: 0, z: 0 };
-    const win = g('hqFieldWindow')(id, { x: sp.x || 0, z: sp.z || 0 }, { x: (sp.x || 0) + 1, z: sp.z || 0 });
-    const reg = g('hqFieldRegister')(win.room, win.ox, win.oz, { cells: win.cells });
+    const { id, win, reg } = hallWindow();
     W._ewEncounterRoom = () => ({ room: id, field: { board: win.board }, fieldId: reg.id });
     const R = B.room(), C = R.T.C, cells = R.field.cells;
     let raised = null, floor = null, rock = null;
@@ -135,10 +129,6 @@ test('the cover rule: a prop on a raised IN cell of the raster is left to the co
     assert.equal(B.coverAt(R, ...centre(floor)), false, 'the floor is not');
     assert.equal(B.coverAt(R, ...centre(rock)), false, 'rock is the wall, not a cover');
     assert.equal(B.coverAt(R, R.T.x0 - 5, R.T.z0 - 5), false, 'outside the window is not');
-    /* a site room has no raster: nothing is ever a cover */
-    const site = 'site_prebuilt_camelot', S = HQ.rooms[site].shell;
-    W._ewEncounterRoom = () => ({ room: site, field: { board: { N: S.grid.cells, C: S.grid.cell } } });
-    assert.equal(B.coverAt(B.room(), 0, 0), false);
 });
 
 test('the scenery hook: the key carries the room, the room is built at every scene.add site, after the world', () => {
@@ -152,10 +142,10 @@ test('the scenery hook: the key carries the room, the room is built at every sce
     const bb = TR.slice(TR.indexOf('    function _hqBuildRoomInBattle(ctx) {'), TR.indexOf('    function _hqEnter(opts) {'));
     assert.match(bb, /if \(ctx\.bw !== R\.T\.N \|\| ctx\.bh !== R\.T\.N\) return;/, 'the board the battle built must be the window');
     assert.match(bb, /c\.id !== 'battle' && c\.proc !== 'battle_marker'/, 'no battle marker on the board');
-    for (const f of ['_hqBuildBoxShell(copy)', '_hqBuildGallery(copy)', '_hqBuildSiteDressing(copy)', '_hqBuildDoors(copy)', '_hqBuildCounters(copy)', '_hqPlaceProps(copy)']) assert.ok(bb.includes(f), f);
+    for (const f of ['_hqBuildBoxShell(copy)', '_hqBuildGallery(copy)', '_hqBuildDoors(copy)', '_hqBuildCounters(copy)', '_hqPlaceProps(copy)']) assert.ok(bb.includes(f), f);
     assert.match(bb, /var saved = _hq;[\s\S]*_hq = H;[\s\S]*finally \{ _hq = saved; \}/, 'the live record is restored whatever happens');
-    assert.match(bb, /if \(!R\.site\) H\.floorHole = \{ x0: R\.T\.x0, x1: R\.T\.x0 \+ R\.T\.N \* C, z0: R\.T\.z0, z1: R\.T\.z0 \+ R\.T\.N \* C \};/, 'a box room\'s floor is cut to the window');
-    assert.match(bb, /var drop = R\.site \? \{ floor: true, ceil: true, pipe: true, strip: true, wall: walled \} : \{ ceil: true \};/, 'what a site room / a part drops');
+    assert.match(bb, /\n\s*H\.floorHole = \{ x0: R\.T\.x0, x1: R\.T\.x0 \+ R\.T\.N \* C, z0: R\.T\.z0, z1: R\.T\.z0 \+ R\.T\.N \* C \};/, 'a box room\'s floor is cut to the window');
+    assert.match(bb, /var drop = \{ ceil: true \};/, 'what a part drops (the ceiling)');
     assert.match(bb, /var holder = function \(name\) \{ var h = new THREE\.Group\(\); h\.name = name; h\.applyMatrix4\(M\); h\._ew_occNear = true; return h; \};/, 'every piece rides a holder carrying the one matrix (a GLB prop re-places itself in room units when it lands)');
     assert.match(bb, /if \(c\._ew_hqWall\) wallOf\(c\._ew_hqWall\)\.add\(c\);\s*\n\s*else \{ var h = holder\('hq_piece'\); h\.add\(c\); g\.add\(h\); \}/, 'a wall piece into its side, the rest under its own holder');
     assert.match(bb, /var wg = holder\('hq_wall_' \+ side\); wg\._ew_occWall = side; wg\._ew_occFadeTarget = 0\.04;/, 'per-side occlusion wall groups');
@@ -168,14 +158,13 @@ test('the part tags the bridge filters on: the shell\'s floor / ceiling / walls 
     const sh = TR.slice(TR.indexOf('    function _hqBuildBoxShell(room) {'), TR.indexOf('    function _hqBuildGallery(room) {'));
     assert.match(sh, /ce\._ew_hqPart = 'ceil';/);
     assert.match(sh, /fl\._ew_hqPart = 'floor';/);
-    assert.match(sh, /band\._ew_hqPart = 'floor';/, 'the site frame');
     assert.match(sh, /ap\._ew_hqGround = true; ap\._ew_hqPart = 'floor';/);
     assert.match(sh, /sk\._ew_hqGround = true; sk\._ew_hqPart = 'floor';/);
     assert.match(sh, /m\._ew_hqWall = ws\[0\]; m\._ew_hqPart = \(edge === 'walls'\) \? 'wall' : 'edge';/, 'every slab knows its side and its part');
     assert.equal((sh.match(/_ew_hqPart = 'pipe';/g) || []).length, 4, 'the four conduit pieces');
     assert.equal((sh.match(/_ew_hqPart = 'strip';/g) || []).length, 2, 'the strip and its glow');
     /* the floor hole */
-    assert.match(sh, /\} else if \(_hq\.floorHole\) \{/);
+    assert.match(sh, /else if \(_hq\.floorHole\) \{/);
     assert.match(sh, /var hx0 = Math\.max\(-W \/ 2, FH\.x0\), hx1 = Math\.min\(W \/ 2, FH\.x1\), hz0 = Math\.max\(-Dp \/ 2, FH\.z0\), hz1 = Math\.min\(Dp \/ 2, FH\.z1\);/, 'the hole clipped to the room');
     assert.match(sh, /hb\._ew_hqPart = 'floor';/);
     /* the doors, the ways, the wall props */
@@ -185,19 +174,6 @@ test('the part tags the bridge filters on: the shell\'s floor / ceiling / walls 
     assert.match(wy, /if \(box && !box\.free && typeof door\.wall === 'string'\) grp\._ew_hqWall = door\.wall;/);
     const pp = TR.slice(TR.indexOf('    function _hqPlaceProps(room) {'), TR.indexOf('    function _hqPlaceWedgeRing('));
     assert.match(pp, /if \(box && typeof p\.wall === 'string'\) grp\._ew_hqWall = p\.wall;/);
-});
-
-test('the dressing split off the site board: signs, signboards, masts, lamps and strips build without the board', () => {
-    const a = TR.indexOf('    function _hqBuildSiteBoard(room) {'), b = TR.indexOf('    function _hqBuildSiteDressing(room) {'), c = TR.indexOf('    function _hqBuildSetting(room) {');
-    assert.ok(a > 0 && b > a && c > b, 'board → dressing → setting');
-    const board = TR.slice(a, b), dress = TR.slice(b, c);
-    assert.match(board, /_hqBuildSiteDressing\(room\);\s*\n\s*\}\s*$/m, 'the board ends by calling the dressing');
-    assert.ok(!board.includes("the site's signs"), 'the signs left the board');
-    assert.ok(dress.includes("the site's signs") && dress.includes('lamp masts on the walkway corners') && dress.includes('the containment lamps in the corners') && dress.includes('fluorescent strips near the top'), 'all four sections');
-    /* self-contained: the dressing computes its own kit and never reads the board's locals */
-    assert.match(dress, /var GR = S\.grid \|\| \{ cells: 8, cell: 1\.75 \}, C = GR\.cell, CM = C \* U;/);
-    assert.match(dress, /var pulse = function \(mat, opAmp, spd\)/);
-    for (const bad of [/\binfo\./, /\bcellX\(/, /\bstepTol\b/, /\bmatCache\b/, /\btintOf\(/, /\bhalf\b/]) assert.ok(!bad.test(dress.replace(/\/\*[\s\S]*?\*\//g, '')), 'the dressing does not read ' + bad);
 });
 
 test('the data side: the box field\'s layout says the room is drawn round the window (no near, no motion, the world inert)', () => {

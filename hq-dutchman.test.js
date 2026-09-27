@@ -1,7 +1,6 @@
 // hq-dutchman.test.js — THE FLYING DUTCHMAN COMPLEX (HQ plan 9.2 stage 3 — 2026-09-15 rev 19):
-// the FOURTH complex. Room 1717's generated board room stays THE MAIN DECK on
-// its quay; THE COMPANIONWAY on its north wall (siteRooms.backDoors.
-// prebuilt_revenge) goes below decks into three hand-authored rooms — the gun
+// the FOURTH complex. THE MAIN DECK part is the site's entry (the generated
+// board room was deleted 2026-09-27); THE COMPANIONWAY on its north wall goes below decks into three hand-authored rooms — the gun
 // deck, the captain's cabin aft, the hold (with THE DEEP's hatch to Atlantis,
 // moved off the deck below the waterline). Guards: the sheet (site + part, no
 // number, the register lists the ship once), the companionway's lane on the
@@ -22,6 +21,7 @@ const SITE = 'prebuilt_revenge';
 const BOARD = 'site_prebuilt_revenge';
 const PARTS = ['gundeck', 'cabin', 'hold'];
 const PART_IDS = PARTS.map(p => BOARD + '_' + p);
+const DECK = BOARD + '_deck';   // THE ENTRY PART: the board room is gone (2026-09-27) — `site_prebuilt_revenge` is an alias for THE MAIN DECK part
 const renderer = fs.readFileSync(__dirname + '/three-renderer.js', 'utf8');
 const dataSrc = fs.readFileSync(__dirname + '/data.js', 'utf8');
 const at = (room, id) => (HQ.rooms[room].doors || []).find(d => d.id === id);
@@ -59,8 +59,9 @@ function propBlocks(room, p, x, z, margin) {
 }
 
 test('the sheet: the Dutchman is a complex of the main deck and three decks below, each wearing site + part and no number; the register lists the ship once', () => {
-    const ALL = PART_IDS.concat([BOARD + '_deck']);   // THE AREAS (2026-09-18): THE MAIN DECK, the generated area (hq-areas.test.js)
-    assert.strictEqual(D.hqSiteComplex(SITE).join(','), [BOARD].concat(ALL).join(','), 'hqSiteComplex = the deck, then the decks below in sheet order');
+    const ALL = PART_IDS.concat([DECK]);   // THE AREAS (2026-09-18): THE MAIN DECK, the generated area (hq-areas.test.js)
+    assert.strictEqual(D.hqSiteComplex(SITE).join(','), ALL.join(','), 'hqSiteComplex = the decks below in sheet order, then the main deck');
+    assert.strictEqual(D.hqSiteEntryOf(SITE).room, DECK, 'the main deck is the entry part');
     assert.strictEqual(D.hqComplexRooms().filter(id => D.hqRoomSite(id) === SITE).join(','), ALL.join(','), 'the ship’s parts');
     for (const p of PARTS) {
         const id = D.hqComplexRoomId(SITE, p), r = HQ.rooms[id];
@@ -79,27 +80,20 @@ test('the sheet: the Dutchman is a complex of the main deck and three decks belo
     for (const id of PART_IDS) assert.ok(D.hqEncounterRoomOk(id), id + ' is WILD (9.4)');
 });
 
-test('the companionway: the deck’s back door hangs on the north wall in the old Atlantis-hatch lane, wears the site’s own leaf, clear of the console lane, the signboard and the masts; the gun deck’s way up comes back', () => {
-    const BD = HQ.siteRooms.backDoors[SITE];
-    assert.ok(Array.isArray(BD) && BD.length === 1, 'an ARRAY of one back-door row');
-    const room = HQ.rooms[BOARD], S = room.shell;
-    assert.strictEqual(room.doors.filter(d => !d.link).map(d => d.id).join(','), 'egress,companionway', 'the way in, then the companionway (the board room; THE CAPTAIN’S SKYLIGHT is the deck PART’s — AREA CONTENT D3, 2026-09-19)');
-    assert.strictEqual(room.doors.filter(d => d.link).length, 0, 'NO link door is left on the deck — the hatch moved into the hold');
-    const cw = at(BOARD, 'companionway');
-    assert.ok(cw.wall === 'n' && cw.x === -5 && cw.leaf === 'leaf_shabby_wood', 'the north wall, the Atlantis hatch’s old lane, the threshold’s own leaf');
+test('the companionway: THE MAIN DECK part wears it on its north wall in the site’s own leaf beside the bay door; the gun deck’s way up comes back', () => {
+    const room = HQ.rooms[DECK];
+    assert.ok(room, 'the main deck part');
+    const cw = at(DECK, 'companionway');
+    assert.ok(cw && cw.wall === 'n' && cw.leaf === 'leaf_shabby_wood', 'the north wall, the threshold’s own leaf');
     assert.strictEqual(cw.leaf, HQ.thresholds[SITE].leaf, 'the companionway wears the site’s catalogue leaf');
     assert.ok(!cw.wide && !HQ.catalogue[cw.leaf].wide, 'a single leaf');
     assert.ok(cw.action.room === BOARD + '_gundeck' && cw.action.at === 'deck', 'the companionway walks down onto the gun deck');
-    assert.notStrictEqual(cw.action, BD[0].action, 'the generator copies the action');
     const up = at(BOARD + '_gundeck', 'deck');
-    assert.ok(up && up.wall === 's' && up.leaf === 'leaf_shabby_wood' && up.action.room === BOARD && up.action.at === 'companionway', 'the way up returns to the deck at the companionway');
+    assert.ok(up && up.wall === 's' && up.leaf === 'leaf_shabby_wood' && up.action.room === DECK && up.action.at === 'companionway', 'the way up returns to the deck at the companionway');
     assert.strictEqual(D.doorSiteState(cw, null), 'open', 'a room door is never sector-gated (C-12)');
-    assert.ok(cw.x + 1.25 + 2.2 < 5 - 2.4, 'clear of the built-in north signboard');
-    const h = landing(room, cw), p = h.player;
-    assert.ok(Math.abs(p.x) < S.w / 2 - 0.4 && Math.abs(p.z) < S.d / 2 - 0.4, 'the landing is inside the walls');
-    assert.ok(Math.abs(p.z) > S.grid.cells * S.grid.cell / 2 + (S.moat ? S.moat.gap : 0) + 0.4, 'off the board and the moat — on the quay');
-    for (const q of [...room.props, ...room.npcSpots]) assert.ok(!propBlocks(room, q, p.x, p.z, 0.4), (q.key || q.race) + ' blocks the companionway’s landing');
-    for (const m of S.lights || []) assert.ok(Math.hypot(p.x - m.x, p.z - m.z) > 1.2, 'a lamp mast stands on the landing');
+    assert.strictEqual(room.doors.filter(d => d.link).length, 0, 'NO link door is on the deck — the hatch is in the hold');
+    const bay = room.doors.find(d => d.entry === SITE);
+    assert.ok(bay && bay.action.room === D.hqBayId(D.hqSectorOfMap(SITE)) && bay.action.at === 'site_' + SITE, 'the deck wears the bay door back to the threshold');
 });
 
 test('THE DEEP goes below the waterline: the Atlantis link’s Dutchman end names the hold part on its port wall, the hatch hangs there wide with its own plate line, Atlantis comes back to it, and the line is still walked from 1717', () => {
@@ -115,15 +109,15 @@ test('THE DEEP goes below the waterline: the Atlantis link’s Dutchman end name
     assert.ok(D.hqLinkDoors('site_prebuilt_atlantis_abyss').some(d => d.link === 'revenge_atlantis' && d.action.room === BOARD + '_hold' && d.action.at === dh.id), 'the abyss’s end comes back to the hold');
     const deep = D.hqWorldRoutes('foyer').find(r => r.id === 'deep');
     assert.strictEqual(deep.stations[0].no, '1717', 'the Dutchman is still the end the deep line is walked from — a station is a SITE');
-    assert.strictEqual(deep.stations[0].room, BOARD, 'and its station is the board room');
+    assert.strictEqual(deep.stations[0].room, DECK, 'and its station is the entry part (the main deck)');
     const here = D.hqWorldRoutes(BOARD + '_hold').find(r => r.id === 'deep').stations[0];
     assert.ok(here.here, 'standing in the hold counts as standing on the ship');
     for (const o of hold.doors) if (o !== dh && o.wall === dh.wall) assert.ok(Math.abs(o.z - dh.z) > 2.9, 'a door shares the hatch’s wall');
 });
 
-test('every door below decks is reversible, the complex is connected from the main deck, and nothing leaves the site but the deck’s egress and the hatch', () => {
-    const ROOMS = [BOARD].concat(PART_IDS);
-    const seen = new Set([BOARD]), queue = [BOARD];
+test('every door below decks is reversible, the complex is connected from the main deck, and nothing leaves the site but the deck’s bay door and the seams in the hold', () => {
+    const ROOMS = [DECK].concat(PART_IDS);
+    const seen = new Set([DECK]), queue = [DECK];
     while (queue.length) {
         const id = queue.shift();
         for (const d of HQ.rooms[id].doors) {
@@ -135,9 +129,9 @@ test('every door below decks is reversible, the complex is connected from the ma
                 assert.ok(far && far.action.room === id && far.action.at === d.id, id + '/' + d.id + ' ⇄ ' + a.room + ' is a pair');
                 continue;
             }
-            if (HQ.rooms[a.room].kind === 'bay') { assert.strictEqual(id, BOARD, 'only the main deck walks back to the bay'); continue; }
+            if (HQ.rooms[a.room].kind === 'bay') { assert.ok(id === DECK && d.entry === SITE, 'only the main deck walks back to the bay'); continue; }
             /* AREA CONTENT D3 (2026-09-19): THE CAPTAIN’S SKYLIGHT is a secret PAIR between the cabin and the deck PART (site_prebuilt_revenge_deck, the area that stands for the board) — a pair, never walked into here (the part’s companionway pairs with the gun deck through the bypassed board room) */
-            if (d.secret) { const far = at(a.room, a.at); assert.ok(far && far.secret && far.action.room === id && far.action.at === d.id, id + '/' + d.id + ' ⇄ ' + a.room + ' is a secret pair'); if (d.id === 'skylight') assert.strictEqual(a.room, BOARD + '_deck', 'the skylight opens onto THE POOP of the deck part'); else assert.ok(id === BOARD + '_gundeck' || id === BOARD + '_hold', 'the only other draught below decks is the hold’s hatch under a gun carriage (AREA CONTENT D4, 2026-09-20)'); if (ROOMS.includes(a.room) && !seen.has(a.room)) { seen.add(a.room); queue.push(a.room); } continue; }
+            if (d.secret) { const far = at(a.room, a.at); assert.ok(far && far.secret && far.action.room === id && far.action.at === d.id, id + '/' + d.id + ' ⇄ ' + a.room + ' is a secret pair'); if (d.id === 'skylight') assert.ok(a.room === DECK || id === DECK, 'the skylight opens onto THE POOP of the deck part'); else assert.ok(id === BOARD + '_gundeck' || id === BOARD + '_hold', 'the only other draught below decks is the hold’s hatch under a gun carriage (AREA CONTENT D4, 2026-09-20)'); if (ROOMS.includes(a.room) && !seen.has(a.room)) { seen.add(a.room); queue.push(a.room); } continue; }
             const back = at(a.room, a.at);
             assert.ok(back && back.action.room === id && back.action.at === d.id, id + '/' + d.id + ' ⇄ ' + a.room + '/' + (back && back.id) + ' is a pair');
             assert.strictEqual(back.leaf, d.leaf, 'the same leaf on both sides of ' + d.id);
@@ -186,7 +180,7 @@ test('the production renderer lands every door inside its deck, clear of every b
     }
 });
 
-test('THE PARK RULE + the light + the kit: a rail on every deck, a stepped ramp on every big one; the ship lights itself; the guns, the chests, the anchor and the lanterns are the misc bucket’s own GLBs; one tape per deck and the hundred is still a hundred', () => {
+test('THE PARK RULE + the light + the kit: a rail on every deck, a stepped ramp on every big one; the ship lights itself; the guns, the chests, the anchor and the lanterns are the misc bucket’s own GLBs', () => {
     for (const id of PART_IDS) {
         const room = HQ.rooms[id], S = room.shell;
         assert.ok(room.props.some(p => p.key === 'railing_1m'), id + ': a rail to grind');
@@ -196,9 +190,7 @@ test('THE PARK RULE + the light + the kit: a rail on every deck, a stepped ramp 
         assert.ok(lit >= 1 && lit <= 10, id + ': ' + lit + ' prop lights');
         for (const n of ['floor', 'wall', 'dado', 'trim', 'ceiling']) assert.ok(HQ.textures[S[n]] || TERRAIN_RULES[S[n]], id + ': texture ' + S[n]);
         assert.strictEqual(S.floor, 'wood_planks', id + ': a wooden ship');
-        assert.ok([1, 2].includes(D.DOOR_TAPES.filter(t => t.where === id).length) && (D.DOOR_TAPES.filter(t => t.where === id).length === 1 || Object.values(HQ.siteRooms.entry || {}).some(e => e.room === id)), id + ': one tape (two on the part that stands for a bypassed board — THE AREAS, 2026-09-18)');
     }
-    assert.strictEqual(D.DOOR_TAPES.length, 100);
     /* the misc-kit rows: the same files _MISC_GLB names (the same-thing rule, MODEL_INDEX §9) */
     const misc = renderer.slice(renderer.indexOf('var _MISC_GLB = {'), renderer.indexOf('};', renderer.indexOf('var _MISC_GLB = {')));
     for (const [key, mk] of [['ship_cannon', 'cannon'], ['sea_chest', 'chest'], ['ship_anchor', 'anchor'], ['ship_lantern', 'lantern']]) {
@@ -215,6 +207,5 @@ test('THE PARK RULE + the light + the kit: a rail on every deck, a stepped ramp 
     assert.ok(HQ.rooms[BOARD + '_cabin'].props.some(p => p.key === 'false_window' && p.wall === 'w'), 'THE STERN WINDOWS look aft');
     assert.ok(HQ.rooms[BOARD + '_hold'].props.some(p => p.key === 'ship_anchor'), 'the spare anchor is stowed in the hold');
     assert.ok(HQ.rooms[BOARD + '_hold'].props.filter(p => p.key === 'floor_drain').length >= 2, 'the bilge');
-    assert.match(dataSrc, /prebuilt_revenge: \[\n\s+\{ id: 'companionway', wall: 'n', x: -5, leaf: 'leaf_shabby_wood',/, 'the back-door row');
     assert.match(dataSrc, /a: \{ site: 'prebuilt_revenge', part: 'hold', wall: 'w', z: 0, sub: 'THE HATCH BELOW THE WATERLINE · INTO THE DEEP' \}/, 'the link end');
 });

@@ -94,7 +94,7 @@ test('the sheet: four parts on Room 1954 — site + part, none numbered, every o
     const reg = D.hqRoomRegister();
     assert.equal(reg.filter(r => r.mapId === SITE).length, 1, 'the register lists Downtown once');
     assert.ok(!reg.some(r => IDS.includes(r.id) || IDS.includes(r.room)), 'no part is a register entry');
-    assert.equal(D.hqSiteComplex(SITE).length, 11, 'the board room, six city parts (the showroom since 2026-09-21) and the four underworld parts');
+    assert.equal(D.hqSiteComplex(SITE).length, 10, 'six city parts (the showroom since 2026-09-21) and the four underworld parts');
 });
 
 test('THE WEENIES: THE OUTFALL SHAFT at the main culvert’s east end wears the bulb (the one lit thing down the culvert); the lit train stands in THE DEPOT at the hatch’s end; THE SIGNAL GANTRY stands at the crossing; the bulb over THE CHIMNEY is the workings’ daylight; THE VENT STACK stands in the guardroom', () => {
@@ -149,7 +149,7 @@ test('THE SEAMS + THE ROUTES: THE PUMPING STATION on Downtown’s east wall pair
     const uc = R.find(r => r.id === 'dungeons');
     assert.ok(uc && uc.legs.length === 2 && uc.legs.some(l => l.fromRoom === CELLS || l.toRoom === CELLS) && uc.legs.some(l => l.fromRoom === WORKINGS || l.toRoom === WORKINGS), 'THE DUNGEONS line calls at the cells and the workings');
     assert.ok(!R.find(r => r.id === 'undercroft').legs.some(l => [CELLS, WORKINGS].includes(l.fromRoom) || [CELLS, WORKINGS].includes(l.toRoom)), 'never on THE UNDERCROFT (every leg of that line touches Hollow Earth)');
-    assert.ok(!HQ.rooms[BOARD].doors.some(d => d.link), 'the bypassed board still carries no link door');
+    assert.ok(!HQ.rooms[BOARD], 'no board room (2026-09-27)');
 });
 
 test('ONE PIECE + THE CYCLE: from the pumping station every part is walked; every inside door is a pair with the same opening; nothing leaves the site but a links row or the pumping station; sewers → tunnels; sewers → cells → workings → sewers', () => {
@@ -278,7 +278,7 @@ test('THE ROOMS: the gallery over the confluence is climbed, the outfall shaft n
     assert.ok(wR.has(key(wi, 6, 3)) && wR.get(key(wi, 6, 3)) < -0.5, 'THE FLOOD is waded through');
 });
 
-test('THE PARK RULE + THE LIGHT + THE HARD TAPES: a rail, a stair and a tier in every part; every part lights itself under the cap; one tape per part (four re-homed, the hundred kept, every donor keeps one) on a top the walker never reaches with a shot from reached ground; every envelope guarded', heavy, () => {
+test('THE PARK RULE + THE LIGHT: a rail, a stair and a tier in every part; every part lights itself under the cap; a quarter pipe in the pump room and the depot', heavy, () => {
     const cap = vm.runInContext('typeof HQ_PROP_LIGHT_MAX !== "undefined" ? HQ_PROP_LIGHT_MAX : 10', D);
     for (const id of IDS) {
         const room = HQ.rooms[id], info = D.hqTerrainInfo(id), F = room.terrain.features;
@@ -288,21 +288,6 @@ test('THE PARK RULE + THE LIGHT + THE HARD TAPES: a rail, a stair and a tier in 
         assert.ok(lit >= 4 && lit <= cap, id + ': ' + lit + ' lights');
     }
     assert.ok(HQ.rooms[SEWERS].props.some(p => p.key === 'quarter_pipe') && HQ.rooms[TUNNELS].props.some(p => p.key === 'quarter_pipe'), 'a quarter pipe in the pump room and the depot');
-    const tapes = D.DOOR_TAPES;
-    assert.equal(tapes.length, 100);
-    for (const id of IDS) {
-        assert.ok([1, 2].includes(tapes.filter(t => t.where === id).length) && (tapes.filter(t => t.where === id).length === 1 || Object.values(HQ.siteRooms.entry || {}).some(e => e.room === id)), id + ': one tape (two on the part that stands for a bypassed board — THE AREAS, 2026-09-18)');
-        const rows = HQ.finds.filter(f => f.room === id), tape = rows.find(f => f.kind === 'tape'), pay = rows.find(f => f.kind === 'pay');
-        assert.ok(tape && pay && pay.guard === true, id + ': a tape and a guarded envelope');
-        assert.ok(tape.hard === true && tape.y >= 3.5, id + ': the tape is the door gun’s (' + tape.y + ' m)');
-        const pin = HQ.findSpots[id];
-        assert.ok(pin && pin.tape && tape.x === pin.tape.x && tape.z === pin.tape.z, id + ': the tape stands on its pin');
-        const info = D.hqTerrainInfo(id), L0 = D.hqTerrainDoorLanding(HQ.rooms[id], HQ.rooms[id].doors[0]), reach = D.hqTerrainReach(info, L0.x, L0.z);
-        assert.ok(!reach.has(key(info, tape.x, tape.z)), id + ': the walker never reaches it');
-        assert.ok(D.hqFindHardReachTerrain(tape, { terrain: info, reach, S: HQ.rooms[id].shell }).ok, id + ': the door gun has a shot at its lip');
-    }
-    for (const site of ['prebuilt_dumb', 'prebuilt_hollow_earth', 'prebuilt_haunted', 'prebuilt_lodge']) assert.equal(tapes.filter(t => t.where === 'site_' + site).length, 1, site + ' gave its second tape');
-    for (const [id, title] of [[SEWERS, 'THE OUTFALL'], [TUNNELS, 'THE HEADLIGHT'], [CELLS, 'THE DRUNK TANK'], [WORKINGS, 'THE WELL, FROM UNDER']]) assert.ok(tapes.some(t => t.where === id && t.title === title), title);
 });
 
 test('THE HUB: THE UNDERWORLD claims its four rooms BY ID (an explicit `rooms` list beats the site rule — the city keeps the streets, the lobby, the platform, the mall and the closet); the sewers are the anchor; the graph and the model carry it; a question mark gives no hub away', () => {

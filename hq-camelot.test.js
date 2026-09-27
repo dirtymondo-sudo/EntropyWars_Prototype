@@ -94,7 +94,7 @@ test('the sheet: five parts on Room i — site + part, none numbered, every one 
     const reg = D.hqRoomRegister();
     assert.equal(reg.filter(r => r.mapId === SITE).length, 1, 'the register lists the site once');
     assert.ok(!reg.some(r => IDS.includes(r.id) || IDS.includes(r.room)), 'no part is a register entry');
-    assert.equal(D.hqSiteComplex(SITE).length, 6, 'the board room and five parts');
+    assert.equal(D.hqSiteComplex(SITE).length, 5, 'five parts');
 });
 
 test('THE WEENIES: THE CASTLE IN THE SKY hangs on the ward’s sky over the north-north-east, a third of the way up (a `skycastle` landmark the renderer builds off the castle); Camelot itself stands on the sky castle’s horizon below, facing back; THE KEEP TOWER stands beside the hall door at the end of the avenue; THE ORB is the one lit thing in the undercroft', () => {
@@ -108,15 +108,13 @@ test('THE WEENIES: THE CASTLE IN THE SKY hangs on the ward’s sky over the nort
     assert.ok(HQ.rooms[DUNGEON].props.some(p => p.key === 'floating_orb'), 'the orb');
 });
 
-test('THE ENTRY + THE SEAMS: the board room is bypassed — the portcullis lands you in THE OUTER WARD (the bay door on its south wall is the board’s egress); the spring’s pool surfaces on the moat’s bank, the wardrobe’s snow is in the trees outside the moat, the well stands free in the bailey, the Lodge opens off the great hall, THE SKY BRIDGE joins the castle in the sky to the stairway to heaven; the board carries no link door; the gatehouse arch on the board’s freed lane', () => {
-    const eg = at(BOARD, 'egress'), bay = at(WARD, 'bay');
+test('THE ENTRY + THE SEAMS: `site_prebuilt_camelot` is an alias — the portcullis lands you in THE OUTER WARD (the bay door on its south wall is the site’s egress); the spring’s pool surfaces on the moat’s bank, the wardrobe’s snow is in the trees outside the moat, the well stands free in the bailey, the Lodge opens off the great hall, THE SKY BRIDGE joins the castle in the sky to the stairway to heaven', () => {
+    const eg = D.hqSiteEgressDoor(SITE), bay = at(WARD, 'bay');
     assert.ok(D.hqSiteEntryOf(SITE) && D.hqSiteEntryOf(SITE).room === WARD);
-    assert.ok(bay && bay.entry === SITE && bay.wall === 's' && bay.x === 0 && bay.leaf === eg.leaf && bay.label === eg.label && bay.action.room === eg.action.room && bay.action.at === eg.action.at, 'the bay door is the board’s egress');
+    assert.ok(bay && bay.entry === SITE && bay.wall === 's' && bay.x === 0 && bay.leaf === eg.leaf && bay.label === eg.label && bay.action.room === eg.action.room && bay.action.at === eg.action.at, 'the bay door is the site’s egress');
     assert.equal(HQ.rooms[WARD].doors.filter(d => d.id === 'bay').length, 1, 'once');
     assert.equal(D.hqSiteEntry(BOARD, 'egress').at, 'bay'); assert.equal(D.hqSiteEntry(BOARD, 'crossing').at, 'bay'); assert.equal(D.hqSiteEntry(BOARD, 'hall').at, 'hall', 'an `at` the part has is kept');
-    assert.ok(!HQ.rooms[BOARD].doors.some(d => d.link), 'the bypassed board carries no link door');
-    const gh = at(BOARD, 'gatehouse');
-    assert.ok(gh && gh.wall === 'n' && gh.x === -10 && gh.leaf === 'leaf_portcullis' && gh.action.room === WARD && gh.action.at === 'bay', 'the gatehouse arch walks into the ward');
+    assert.ok(!HQ.rooms[BOARD], 'no board room (2026-09-27)');
     const ends = {
         fairy_camelot:   ['b', WARD, 'free', null, 'pool'],
         haunted_camelot: ['b', WARD, 'w', 28, 'wardrobe'],
@@ -257,7 +255,7 @@ test('THE ROOMS: the parapet walk — the wall’s top is a floor once the terra
     assert.equal(HQ.rooms[SKY].props.filter(p => p.key === 'demon_statue').length, 2, 'the gargoyles');
 });
 
-test('THE PARK RULE + THE LIGHT + THE HARD TAPES: a rail and a stair and a tier in every part; every part lights itself under the cap; one tape per part (five re-homed, the hundred kept, every donor keeps one) on a top the walker never reaches with a shot from reached ground; the board keeps THE ROUND TABLE; every part’s envelope is guarded', heavy, () => {
+test('THE PARK RULE + THE LIGHT: a rail and a stair and a tier in every part; every part lights itself under the cap', heavy, () => {
     const cap = vm.runInContext('typeof HQ_PROP_LIGHT_MAX !== "undefined" ? HQ_PROP_LIGHT_MAX : 10', D);
     for (const id of IDS) {
         const room = HQ.rooms[id], info = D.hqTerrainInfo(id), F = room.terrain.features;
@@ -266,22 +264,6 @@ test('THE PARK RULE + THE LIGHT + THE HARD TAPES: a rail and a stair and a tier 
         const lit = room.props.filter(p => (HQ.catalogue[p.key] || {}).light).length;
         assert.ok(lit >= 4 && lit <= cap, id + ': ' + lit + ' lights');
     }
-    const tapes = D.DOOR_TAPES;
-    assert.equal(tapes.length, 100);
-    for (const id of IDS) {
-        assert.ok([1, 2].includes(tapes.filter(t => t.where === id).length) && (tapes.filter(t => t.where === id).length === 1 || Object.values(HQ.siteRooms.entry || {}).some(e => e.room === id)), id + ': one tape (two on the part that stands for a bypassed board — THE AREAS, 2026-09-18)');
-        const rows = HQ.finds.filter(f => f.room === id), tape = rows.find(f => f.kind === 'tape'), pay = rows.find(f => f.kind === 'pay');
-        assert.ok(tape && pay && pay.guard === true, id + ': a tape and a guarded envelope');
-        assert.ok(tape.hard === true && tape.y >= 3.5, id + ': the tape is the door gun’s (' + tape.y + ' m)');
-        const pin = HQ.findSpots[id];
-        assert.ok(pin && pin.tape && tape.x === pin.tape.x && tape.z === pin.tape.z, id + ': the tape stands on its pin');
-        const info = D.hqTerrainInfo(id), L0 = D.hqTerrainDoorLanding(HQ.rooms[id], HQ.rooms[id].doors[0]), reach = D.hqTerrainReach(info, L0.x, L0.z);
-        assert.ok(!reach.has(key(info, tape.x, tape.z)), id + ': the walker never reaches it');
-        assert.ok(D.hqFindHardReachTerrain(tape, { terrain: info, reach, S: HQ.rooms[id].shell }).ok, id + ': the door gun has a shot at its lip');
-    }
-    assert.equal(tapes.filter(t => t.where === BOARD).length, 1, 'THE ROUND TABLE stays on the board');
-    for (const where of ['site_prebuilt_backrooms', 'site_prebuilt_atlantis_abyss', 'site_prebuilt_revenge', 'site_prebuilt_derelict', 'site_prebuilt_lookingglass']) assert.equal(tapes.filter(t => t.where === where).length, 1, where + ' gave its second tape');   // THE DEEP (2026-09-18): Atlantis's board is bypassed — its one tape sits in THE ABYSS
-    for (const [id, title] of [[WARD, 'THE DRAWBRIDGE, DUSK'], [HALL, 'THE THIRTEENTH CHAIR'], [KEEP, 'THE WATCH'], [DUNGEON, 'MERLIN, BACKWARDS'], [SKY, 'THE CASTLE IN THE SKY']]) assert.ok(tapes.some(t => t.where === id && t.title === title), title);
 });
 
 test('the shell helper, the looks, the four procs, the landmark and the source sites; check-terrain solves all five', heavy, () => {

@@ -19,11 +19,11 @@ test('THE TOOL: the audit is a module with the rules\' numbers (the cave\'s: 0.6
     assert.equal(A.CLIMB.join(','), 'ramp,plateau,deck,wall,climb', 'a climb feature is a climb');
 });
 
-test('R9 THE TEACHING ROOM: every walker mechanic has ONE room with its plaque — the door gun\'s six, the climb, the skate, the swim', () => {
+test('R9 THE TEACHING ROOM: every walker mechanic has ONE room with its plaque — the climb, the skate, the swim', () => {
     const D = loadGameData();
-    const walk = D.hqWalkLessons(), gun = D.hqGunLessons();
+    const walk = D.hqWalkLessons();
     assert.equal(walk.map(l => l.kind).sort().join(','), 'climb,skate,swim');
-    for (const l of walk.concat(gun)) assert.ok(l.placed, l.id + ' has its plaque in ' + l.room);
+    for (const l of walk) assert.ok(l.placed, l.id + ' has its plaque in ' + l.room);
     const rooms = new Set(walk.map(l => l.room)); assert.equal(rooms.size, 3, 'three different rooms');
 });
 

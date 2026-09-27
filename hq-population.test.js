@@ -94,7 +94,6 @@ function sandbox() {
         function _hqNormDeg(d) { d = d % 360; if (d < 0) d += 360; return d; }
         function _hqHeadingOf(vx, vz) { return _hqNormDeg(Math.atan2(vx, -vz) * 180 / Math.PI); }
         function _hqLevelY() { return 0; }
-        function _hqRoamM() { return 0; }
         function _hqHasGround() { return false; }
         function _hqCaveTop() { return null; }
         function _hqPolarW(deg, r, y) { var a = _hqRad(deg); return { x: Math.sin(a) * r * 73, y: (y || 0) * 73, z: -Math.cos(a) * r * 73 }; }

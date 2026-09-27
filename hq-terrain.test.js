@@ -85,24 +85,6 @@ test('THE PARK RULE + THE PLATFORMING: every room has a tier or a ramp AND a rai
     assert.ok(tall >= 5, 'tall platforms: ' + tall);
 });
 
-test('THE HARD TAPES: every find in a terrain room wears its ground height, and `hard` exactly when the walker\'s reach from the first door never gets there; at least six hard tapes stand on pinnacles the door gun reaches', heavy, () => {
-    let hard = 0, seen = 0;
-    for (const f of D.DOOR_HQ.finds) {
-        const room = HQ.rooms[f.room]; if (!room || !room.terrain) continue;
-        seen++;
-        const info = D.hqTerrainInfo(f.room);
-        assert.ok(typeof f.y === 'number', f.id + ': a height');
-        const L0 = D.hqTerrainDoorLanding(room, room.doors[0]);
-        const reach = D.hqTerrainReach(info, L0.x, L0.z);
-        const reached = reach.has(D.hqTerrainNodeKey(info, f.x, f.z, f.y));   // the node AT the find's height (THE BOWL, 2026-09-26: the press box roof is a bridge over the concourse)
-        assert.equal(!!f.hard, !reached, f.id + ': hard ⇔ unreachable');
-        if (f.hard) { hard++; assert.ok(f.y >= 2.0, f.id + ': a hard find stands high (' + f.y + ')'); }
-        else assert.ok(D.hqTerrainFeet(info, f.x, f.z, null) != null, f.id + ': on walkable ground');
-    }
-    assert.ok(seen >= 14, 'finds in the terrain rooms: ' + seen);
-    assert.ok(hard >= 6, 'hard tapes: ' + hard);
-});
-
 test('every floor prop, native, agent and the spawn of a terrain room stands on dry walkable ground (or on a tier it names with y)', () => {
     for (const id of ROOMS) {
         const room = HQ.rooms[id], info = D.hqTerrainInfo(id);
@@ -163,7 +145,6 @@ test('THE RENDERER: the field is built on entry, the walker\'s surface / air / c
     for (const id of ROOMS) assert.equal(D.hqFieldRoomOk(id), !!(D.hqRoomSite(id) && !(HQ.rooms[id].terrain && HQ.rooms[id].terrain.sea)), id + ': THE SEAMLESS FIELD (2026-09-22) — a WILD terrain room rasterises its own window (a sea room keeps the site\'s Δ; the facility\'s garage is no encounter room)');
     assert.ok(HQ.ways.hollowtree && HQ.ways.deadtree && HQ.catalogue.hollow_tree && HQ.catalogue.hollow_dead_tree, 'the two trees with holes in them');
     assert.ok(HQ.rooms.site_prebuilt_fairy_forest_clearing.doors.find(d => d.id === 'forest').way === 'hollowtree', 'the clearing\'s way back is the hollow tree');
-    assert.ok(D.hqSiteRoom('prebuilt_fairy_forest').doors.find(d => d.id === 'woods').way === 'hollowtree', 'and so is the forest\'s way in');
     assert.ok(HQ.links.find(l => l.id === 'ranch_haunted').way === 'deadtree' /* THE RANCH (2026-09-18): the pasture's gate is the ranch's now */ && HQ.links.find(l => l.id === 'deadtree_lookingglass').way === 'deadtree', 'the dead tree leads to the house and to the Looking-Glass');
 });
 
@@ -175,8 +156,8 @@ test('the tool: check-terrain.js prints every room with every door reached and e
 });
 
 test('THE RENDERER on a stub scene: _hqBuildTerrain builds every terrain room — the field mesh with its blend attribute, the sheets, the decks, the walls, the rails on the register, the trees as blockers, the scatter handed to the prop placer — without an error', heavy, () => {
-    const a = renderer.indexOf('    function _hqTerrainMat(info, S) {'), b = renderer.indexOf('    function _hqBuildSiteBoard(room) {');
-    assert.ok(a > 0 && b > a, 'the terrain block stands before _hqBuildSiteBoard');
+    const a = renderer.indexOf('    function _hqTerrainMat(info, S) {'), b = renderer.indexOf('    function _hqBuildLandmarks(H, list, discR) {');
+    assert.ok(a > 0 && b > a, 'the terrain block stands before _hqBuildLandmarks');
     const src = renderer.slice(a, b);
     class Obj { constructor() { this.position = { x: 0, y: 0, z: 0, set(x, y, z) { this.x = x; this.y = y; this.z = z; }, copy(p) { this.x = p.x; this.y = p.y; this.z = p.z; } }; this.rotation = { x: 0, y: 0, z: 0, set(x, y, z) { this.x = x; this.y = y; this.z = z; } }; this.scale = { x: 1, y: 1, z: 1, set(x, y, z) { this.x = x; this.y = y; this.z = z; }, setScalar(s) { this.x = this.y = this.z = s; } }; this.children = []; this.parent = null; this.renderOrder = 0; } add(...o) { for (const c of o) { this.children.push(c); c.parent = this; } } }
     class Mesh extends Obj { constructor(g, m) { super(); this.geometry = g; this.material = m; this.isMesh = true; } }
@@ -259,20 +240,4 @@ test('THE SURVEY: hqTerrainWorkerServe answers a job with a transferable record'
     assert.ok(transfer.length >= 1 && transfer.every(b => b instanceof ArrayBuffer || Object.prototype.toString.call(b) === '[object ArrayBuffer]'), 'the typed arrays are transferred, not copied');
     scope.onmessage({ data: { id: 4, roomId: 'no_such_room' } });
     assert.equal(posted[1].m.err && posted[1].m.info, null);
-});
-
-test('THE SURVEY: hqFindsWarm never compiles an unsurveyed terrain room', () => {
-    const G = loadGameData(), rooms = G.DOOR_HQ.rooms;
-    const tapeRooms = Object.keys(G.hqFindsTapesByRoom());
-    const terrainTape = tapeRooms.filter(k => rooms[k] && rooms[k].terrain);
-    assert.ok(terrainTape.length > 10);
-    terrainTape.forEach(k => assert.equal(rooms[k]._terrainInfo, undefined, 'a fresh sandbox has compiled nothing'));
-    let left = 1, guard = 0;
-    while (left > 0 && guard++ < 400) left = G.hqFindsWarm(50);
-    assert.equal(left, 0);
-    terrainTape.forEach(k => assert.equal(rooms[k]._terrainInfo, undefined, k + ' was compiled by the finds warm'));
-    /* the box rooms with a tape were built (the warm still does its job) */
-    const boxTape = tapeRooms.filter(k => rooms[k] && !rooms[k].terrain && !rooms[k].cave);
-    assert.ok(boxTape.length > 0);
-    assert.ok(G.hqFindsInRoom(boxTape[0], null, new Date()).length >= 0);
 });

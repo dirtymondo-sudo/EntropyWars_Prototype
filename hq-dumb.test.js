@@ -94,20 +94,19 @@ test('the sheet: seven parts on two sites — six on Room 555, the ring on Room 
     const reg = D.hqRoomRegister();
     for (const site of ['prebuilt_dumb', 'prebuilt_cern']) assert.equal(reg.filter(r => r.mapId === site).length, 1, 'the register lists ' + site + ' once');
     assert.ok(!reg.some(r => IDS.includes(r.id) || IDS.includes(r.room)), 'no part is a register entry');
-    assert.equal(D.hqSiteComplex('prebuilt_dumb').length, 7, 'D.U.M.B.: the board room and six parts');
-    assert.equal(D.hqSiteComplex('prebuilt_cern').length, 2, 'CERN: the board room and the ring');
+    assert.equal(D.hqSiteComplex('prebuilt_dumb').length, 6, 'D.U.M.B.: six parts');
+    assert.equal(D.hqSiteComplex('prebuilt_cern').length, 1, 'CERN: the ring');
 });
 
-test('THE WAYS IN = THE ENTRY (2026-09-18): the two board rooms are BYPASSED — the freight lift lands you in the motor pool, the blast door on the ring, each part wearing the board’s egress as its bay door; the tunnel links live on the parts (area51_dumb on the motor pool’s WEST wall from the hangar, dumb_cern EAST to the ring’s WEST, cern_backrooms on the ring, cave_dumb on SUB-LEVEL 7); THE RAMP joins the garage (P1) to the motor pool (P3)', () => {
+test('THE WAYS IN = THE ENTRY (2026-09-18): the two board rooms are gone (aliases) — the freight lift lands you in the motor pool, the blast door on the ring, each part wearing the board’s egress as its bay door; the tunnel links live on the parts (area51_dumb on the motor pool’s WEST wall from the hangar, dumb_cern EAST to the ring’s WEST, cern_backrooms on the ring, cave_dumb on SUB-LEVEL 7); THE RAMP joins the garage (P1) to the motor pool (P3)', () => {
     for (const [site, part, backId] of [['prebuilt_dumb', MOTOR, 'lift'], ['prebuilt_cern', RING, 'ring']]) {
-        const board = 'site_' + site, eg = at(board, 'egress'), bay = at(part, 'bay');
+        const board = 'site_' + site, eg = D.hqSiteEgressDoor(site), bay = at(part, 'bay');
         assert.ok(D.hqSiteEntryOf(site) && D.hqSiteEntryOf(site).room === part, site + ': the entry names ' + part);
-        assert.ok(bay && bay.entry === site && bay.wall === 's' && bay.x === 0 && bay.leaf === eg.leaf && bay.action.room === eg.action.room && bay.action.at === eg.action.at, part + ': the bay door is the board room’s egress');
+        assert.ok(bay && bay.entry === site && bay.wall === 's' && bay.x === 0 && bay.leaf === eg.leaf && bay.action.room === eg.action.room && bay.action.at === eg.action.at, part + ': the bay door is the site’s egress');
         assert.equal(HQ.rooms[part].doors.filter(d => d.id === 'bay').length, 1, part + ': once');
         assert.ok(!HQ.rooms[part].doors.some(d => d.action && d.action.room === board), part + ': no door of its own back onto the bypassed board');
         assert.equal(D.hqSiteEntry(board, 'egress').at, 'bay'); assert.equal(D.hqSiteEntry(board, 'crossing').at, 'bay'); assert.equal(D.hqSiteEntry(board, backId).at, 'bay', site + ': the board’s own back door lands at the bay');
-        assert.ok(at(board, backId) && at(board, backId).action.room === part && at(board, backId).action.at === 'bay', site + ': the board’s back door still names the part (unwalked)');
-        assert.ok(!HQ.rooms[board].doors.some(d => d.link), site + ': the bypassed board carries no link door (it would land at the bay)');
+        assert.ok(!HQ.rooms[board], site + ': no board room (2026-09-27) — `' + board + '` is an alias');
     }
     const L = id => HQ.links.find(l => l.id === id);
     const a51 = L('area51_dumb'), dc = L('dumb_cern'), cb = L('cern_backrooms'), cd = L('cave_dumb'), gm = L('garage_motorpool');
@@ -276,7 +275,7 @@ test('THE ROOMS: the motor pool’s platform is climbed by both stairs and the t
     assert.ok(HQ.rooms[RING].props.some(p => p.key === 'floating_orb' && Math.abs(p.x - 40) < 1 && p.z === 0), 'THE BEAM on the ring’s east vertex');
 });
 
-test('THE PARK RULE + THE LIGHT + THE HARD TAPES: a rail and a tier or ramp in every part; every part lights itself under the cap; one tape per part (seven re-homed, the hundred kept) on a pinnacle the walker never reaches with a door gun shot at its lip; the envelope walked to', heavy, () => {
+test('THE PARK RULE + THE LIGHT: a rail and a tier or ramp in every part; every part lights itself under the cap', heavy, () => {
     const cap = vm.runInContext('typeof HQ_PROP_LIGHT_MAX !== "undefined" ? HQ_PROP_LIGHT_MAX : 10', D);
     for (const id of IDS) {
         const room = HQ.rooms[id], info = D.hqTerrainInfo(id), F = room.terrain.features;
@@ -286,23 +285,6 @@ test('THE PARK RULE + THE LIGHT + THE HARD TAPES: a rail and a tier or ramp in e
         const lit = room.props.filter(p => (HQ.catalogue[p.key] || {}).light).length;
         assert.ok(lit >= 4 && lit <= cap, id + ': ' + lit + ' lights (the room lights itself, under the cap ' + cap + ')');
     }
-    const tapes = D.DOOR_TAPES;
-    assert.equal(tapes.length, 100);
-    for (const id of IDS) {
-        assert.ok([1, 2].includes(tapes.filter(t => t.where === id).length) && (tapes.filter(t => t.where === id).length === 1 || Object.values(HQ.siteRooms.entry || {}).some(e => e.room === id)), id + ': one tape (two on the part that stands for a bypassed board — THE AREAS, 2026-09-18)');
-        const rows = HQ.finds.filter(f => f.room === id), tape = rows.find(f => f.kind === 'tape'), pay = rows.find(f => f.kind === 'pay');
-        assert.ok(tape && pay, id + ': a tape and an envelope');
-        assert.ok(tape.hard === true && tape.y >= 3.5, id + ': the tape is the door gun’s (' + tape.y + ' m)');
-        assert.ok(!pay.hard, id + ': the envelope is walked to');
-        const pin = HQ.findSpots[id];
-        assert.ok(pin && pin.tape && tape.x === pin.tape.x && tape.z === pin.tape.z, id + ': the tape stands on its pin');
-        const info = D.hqTerrainInfo(id), L0 = D.hqTerrainDoorLanding(HQ.rooms[id], HQ.rooms[id].doors[0]), reach = D.hqTerrainReach(info, L0.x, L0.z);
-        assert.ok(!reach.has(D.hqTerrainNodeKey(info, tape.x, tape.z)), id + ': the walker never reaches it');
-        assert.ok(D.hqFindHardReachTerrain(tape, { terrain: info, reach, S: HQ.rooms[id].shell }).ok, id + ': the door gun has a shot at its lip');
-    }
-    for (const site of ['prebuilt_cern', 'prebuilt_antarctica', 'prebuilt_northpole', 'prebuilt_singularity', 'prebuilt_mars', 'prebuilt_saturn', 'prebuilt_moon']) assert.equal(tapes.filter(t => t.where === 'site_' + site).length, 1, site + ' keeps one');   // THE LEY LINES (2026-09-18): Giza's board is bypassed — its tape is on the plateau (hq-leylines)
-    assert.equal(tapes.filter(t => t.where === 'site_prebuilt_dumb').length, 1, 'the base keeps one on the board (THE BLAST DOOR went down the sewers, 2026-09-18)');
-    assert.ok(tapes.some(t => t.where === MOTOR && t.title === 'THE TRAM, 00:00') && tapes.some(t => t.where === SEVEN && t.title === 'SUB-LEVEL 7') && tapes.some(t => t.where === WAR && t.title === 'THE HEXAGON') && tapes.some(t => t.where === BUNKER && t.title === 'EARTHRISE') && tapes.some(t => t.where === RING && t.title === 'BEAM ON'), 'the titles');
 });
 
 test('the shell helper, the looks, the generator table and the source sites: hqBunkerShell is one function (closed, the pack, no strips, the red lamp, a haze, the D.U.M.B. look); four looks; HQ_TERRAIN_GEN.halls; the renderer draws info.planWalls through the one wall path with a keyed material cache and hangs the strip lights; check-terrain solves all seven', heavy, () => {

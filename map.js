@@ -741,8 +741,8 @@
             if (f == null) return undefined;
             return (f === 'none' || f === 'off' || f === '0') ? '' : f;
         }
-        /* the walkable site behind a threshold (HQ plan 7.2): data.js hqSiteRoomId; '' when the helper is missing */
-        function _hqSiteRoomId(mapId) { try { return (typeof window.hqSiteRoomId === 'function') ? window.hqSiteRoomId(mapId) : ''; } catch (e) { return ''; } }
+        /* the walkable site behind a threshold (HQ plan 7.2): its entry part (data.js hqAreaRoomOf); '' when the helper is missing */
+        function _hqSiteRoomId(mapId) { try { return (typeof window.hqAreaRoomOf === 'function') ? (window.hqAreaRoomOf(mapId) || '') : ''; } catch (e) { return ''; } }   // a site's room = its ENTRY PART (the board rooms are gone, 2026-09-27)
         /* HQ plan D13: walk as your most-played vessel (the ID-card photo)
            when it has a rigged model, else as a D.O.O.R. agent in black.
            window.EW_HQ_AVATAR = 'race' | {race, gender} overrides. */
@@ -1056,12 +1056,12 @@
             /* which room: an explicit ask, else the room the player left from
                (a return), else the egress (Play always starts on the floor) */
             let roomId = opts.room || (returning ? _hqLastRoom : (opts.from === 'play' ? _hqArrivalRoom() : 'central_egress'));
-            if (!_hqRoomExists(roomId)) roomId = 'central_egress';
             /* THE ENTRY (2026-09-17 — the user: "if I walk into a door or entry labeled Cyberpunk City it needs to take me to the grid;
                same with the Strip"): a bypassed BOARD ROOM (data.js DOOR_HQ.siteRooms.entry — Cyberpunk City, the Strip, Downtown)
                lands in the part that stands for the site, whatever led here (a threshold, GO on the map, a return from a match,
-               a lobby's street door); an `at` the part has is kept, the rest land at the part's bay door. The board room is
-               marked seen too, so the map's node for the site never stays a question mark. */
+               a lobby's street door); an `at` the part has is kept, the rest land at the part's bay door. Since 2026-09-27 the
+               board rooms are gone: `site_<mapId>` is only an alias, so this runs BEFORE the existence check below. The alias
+               is marked seen too, so the map's node for the site never stays a question mark. */
             try {
                 const ent = (typeof window.hqSiteEntry === 'function') ? window.hqSiteEntry(roomId, opts.at) : null;
                 if (ent && ent.room && _hqRoomExists(ent.room)) {
@@ -1070,6 +1070,7 @@
                     roomId = ent.room; opts.at = ent.at;
                 }
             } catch (e) { console.warn('[HQ] site entry failed', e); }
+            if (!_hqRoomExists(roomId)) roomId = 'central_egress';
             _hqCurRoom = roomId;
             /* ROOM VARIANTS (HQ plan 5.1, 2026-09-11): a fresh arrival rolls the
                building's variants for this visit (Room 86 after hours = the
@@ -1437,6 +1438,8 @@
            the avatar stands at door `at` in the new room with it at their
            back. Returns from screens / matches rebuild the same room. */
         window._hqGoRoom = function (roomId, at) {
+            /* `site_<mapId>` is an alias since the board rooms went (2026-09-27): it walks into the site's entry part */
+            if (!_hqRoomExists(roomId)) { try { const ent = (typeof window.hqSiteEntry === 'function') ? window.hqSiteEntry(roomId, at) : null; if (ent && ent.room) { roomId = ent.room; at = ent.at; } } catch (e) {} }
             if (!_hqRoomExists(roomId)) { console.warn('[HQ] no such room', roomId); return false; }
             if (_hqSuspended) return false;
             /* THE CAR (Phase 8, 2026-09-14): remember the floor it was boarded from — the panel marks it YOU ARE HERE */
@@ -2592,7 +2595,7 @@
         };
         /* ══════════════════════════════════════════════════════════════════
            THE TERMINAL (2026-09-08) — a console's CRT, full screen.
-           E / the prompt at a CROSSING console (a walkable site), the RANGE
+           E / the prompt at the RANGE
            console (Training Room) or DISPATCH pushes the camera onto the
            desk's monitor (three-renderer.js hq.focusScreen) and powers up
            match-select.js's diegetic screen in #hqTerminal: the SITE
@@ -2694,24 +2697,13 @@
             setTimeout(() => { if (!_hqTerm && _hqSuspended && state.gameState === GS.MODE_SELECT) window._hqResume(); }, 120);
             return true;
         };
-        /* a console's screen (E / the prompt): the CROSSING console of a
-           walkable site → the SITE terminal for the room's site; the RANGE
+        /* a console's screen (E / the prompt): the RANGE
            console → the FULL terminal with the range's two boards as
            presets; DISPATCH's desk → the FULL terminal. Returns false where
            the old panel should show instead (a sealed / gated site, no host). */
         function _hqConsoleTerminal(t) {
             const c = t && t.counter;
             const act = (c && c.action) || {};
-            if (act.overlay === 'crossing') {
-                const room = _hqRoom();
-                const id = c.site || (room && room.site);
-                if (!id) return false;
-                const th = (DOOR_HQ.thresholds || {})[id] || {};
-                const door = { id: c.id || 'crossing', label: c.label || 'CROSSING CONSOLE', action: { mission: id }, roomNo: (th.roomNo != null) ? String(th.roomNo) : null, inSite: true };
-                const st = (typeof window.doorSiteState === 'function') ? window.doorSiteState(door, _hqProfile()) : 'unstable';
-                if (st === 'sealed' || st === 'clearance' || st === 'off') return false;
-                return window._hqLaunchMission(id, { delta: true, doorId: c.id || 'crossing', doorLabel: c.label || 'CROSSING CONSOLE', counterId: c.id || 'crossing', variant: 'site' });
-            }
             if (act.overlay === 'training') return _hqRangeTerminal(c.id || 'range');
             if (act.overlay === 'dispatch' && t.viaTerminal) return _hqDeskTerminal(c.id || 'dispatch', c.label || 'DISPATCH');
             return false;
@@ -3706,28 +3698,22 @@
             try { playSfx(ev.gesture === 'attack' ? 'uiButtonConfirm' : 'uiCursorMove'); } catch (e) {}
             if (!ev.armed || !ev.target) return;
             if (!_hqEncounterEnabled() || !_hqEncounterRoomOkNow()) return;
-            _hqToast(`<b>${_hqGestureLabel(ev.gesture)} · ${_hqEsc(ev.target.label || ev.target.race || 'THE NATIVE')}</b><span>ENGAGING · ${_hqEncounterBoardCopy(ev.board)}</span>`, 1600);
+            _hqToast(`<b>${_hqGestureLabel(ev.gesture)} · ${_hqEsc(ev.target.label || ev.target.race || 'THE NATIVE')}</b><span>ENGAGING · ${_hqEncounterBoardCopy()}</span>`, 1600);
         }
         function _hqEncounterRoomOkNow() { try { return (typeof window.hqEncounterRoomOk === 'function') ? window.hqEncounterRoomOk(_hqCurRoom) : false; } catch (e) { return false; } }
         /* the landing: file the crossing */
-        /* PHASE9_QUALITY_PLAN §4 B3 (2026-09-16): the copy tells the truth about the board — a site's BOARD ROOM
-           fights on the board under your feet (THE ROOM IS THE BOARD); since THE FIELD stages B / C a cave chamber
-           fights its own window (THE CAVE IS THE BOARD) and a complex part its own (THE ROOM IS THE BOARD); only a
-           wild room the rasteriser refuses fights the SITE'S Δ from the centre — THE SITE IS THE BOARD */
-        function _hqEncounterBoardCopy(board) {
+        /* PHASE9_QUALITY_PLAN §4 B3 (2026-09-16): the copy tells the truth about the board — since THE FIELD stages
+           B / C a cave chamber fights its own window (THE CAVE IS THE BOARD), a terrain room its own ground (THE GROUND
+           IS THE BOARD) and a complex part its own (THE ROOM IS THE BOARD); a part with a Δ of its own that the
+           rasteriser refuses fights THE ROOM'S OWN BOARD; only a wild room fights the SITE'S Δ — THE SITE IS THE BOARD.
+           (The site BOARD ROOMS are gone, 2026-09-27: the renderer reports no board under the walker any more.) */
+        function _hqEncounterBoardCopy() {
             const room = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.rooms) ? DOOR_HQ.rooms[_hqCurRoom] : null;
-            /* THE FIELD stage B / C: a cave chamber or a complex part fights its own window (data.js hqFieldRoomOk) — the renderer reports no board there, the window is the board */
             const fieldRoom = !!(room && typeof window.hqFieldRoomOk === 'function' && window.hqFieldRoomOk(_hqCurRoom));
-            /* THE AREA BOARDS (2026-09-19): a complex part with a Δ of its own fights it — THE ROOM'S OWN BOARD — only where the rasteriser refuses the room (THE SEAMLESS FIELD, 2026-09-22) */
-            if (!board && !fieldRoom && typeof window.hqAreaDeltaId === 'function' && window.hqAreaDeltaId(_hqCurRoom)) return 'THE ROOM’S OWN BOARD';
-            const caveField = !!(fieldRoom && room.cave);
-            if (board && board.terrain) return 'THE GROUND IS THE BOARD';   // THE SEAMLESS FIELD, delivery 2: a terrain room's window on its own ground
+            if (!fieldRoom && typeof window.hqAreaDeltaId === 'function' && window.hqAreaDeltaId(_hqCurRoom)) return 'THE ROOM’S OWN BOARD';
             if (fieldRoom && room.terrain) return 'THE GROUND IS THE BOARD';
-            if (board && board.cave) return 'THE CAVE IS THE BOARD';
-            if (board === null) return caveField ? 'THE CAVE IS THE BOARD' : fieldRoom ? 'THE ROOM IS THE BOARD' : 'THE SITE IS THE BOARD';
-            if (board) return 'THE ROOM IS THE BOARD';
-            if (caveField) return 'THE CAVE IS THE BOARD';
-            return ((room && room.fx === 'site' && !room.cave) || fieldRoom) ? 'THE ROOM IS THE BOARD' : 'THE SITE IS THE BOARD';
+            if (fieldRoom && room.cave) return 'THE CAVE IS THE BOARD';
+            return fieldRoom ? 'THE ROOM IS THE BOARD' : 'THE SITE IS THE BOARD';
         }
         function _hqEncounterFire(ev) {
             if (!ev || !ev.target) return false;
@@ -3753,7 +3739,7 @@
             /* THE DOOR STRIKE (DOOR_GUN_PLAN §5.3, Phase 4): the door says who it struck */
             if (ev.door) {
                 const dd = (window.DOOR_GUN_DOORS || {})[ev.door.key] || {};
-                _hqToast(`<b>${_hqEsc((dd.icon || '🚪') + ' ' + String(dd.name || ev.door.key).toUpperCase())} · ${_hqEsc(ev.target.label || ev.target.race || 'THE NATIVE')}</b><span>THE DOOR STRUCK FIRST · ENGAGING · ${_hqEncounterBoardCopy(ev.board)}</span>`, 1800);
+                _hqToast(`<b>${_hqEsc((dd.icon || '🚪') + ' ' + String(dd.name || ev.door.key).toUpperCase())} · ${_hqEsc(ev.target.label || ev.target.race || 'THE NATIVE')}</b><span>THE DOOR STRUCK FIRST · ENGAGING · ${_hqEncounterBoardCopy()}</span>`, 1800);
                 try { playSfx('uiButtonConfirm'); } catch (e) {}
             }
             L.codeRedRun = cr ? { date: cr.date, site: cr.site, race: cr.race, label: cr.label, bonus: cr.bonus } : null;
@@ -3761,16 +3747,15 @@
                box rooms): a cave chamber or a complex part has no board under the walker, so THE WINDOW is chosen here
                — the 8 × 8 of the room's own lattice (the cave grid / the box lattice, data.js hqFieldLattice) that
                holds both feet with the most of the walker's reach inside it (data.js hqFieldWindow) — and its frame
-               becomes the event's `board`, so the field record, THE SLIDE, THE SEATS and THE EYE below read it exactly
-               like a site room's board. The window is rasterised into a map entry at the launch (_hqFieldRegister). */
+               becomes the event's `board`, which the field record, THE SLIDE, THE SEATS and THE EYE below read. The window is rasterised into a map entry at the launch (_hqFieldRegister). */
             let win = null;
             /* THE AREA BOARDS (2026-09-19): a part with its own Δ (L.launchId, data.js hqAreaDeltaId) fights that board — no window is rasterised for it */
-            if (!ev.board && !L.launchId && typeof window.hqFieldRoomOk === 'function' && window.hqFieldRoomOk(_hqCurRoom) && typeof window.hqFieldWindow === 'function') {
+            if (!L.launchId && typeof window.hqFieldRoomOk === 'function' && window.hqFieldRoomOk(_hqCurRoom) && typeof window.hqFieldWindow === 'function') {
                 try { win = window.hqFieldWindow(_hqCurRoom, { x: ev.x, z: ev.z }, { x: ev.target.x, z: ev.target.z }); } catch (e) { console.warn('[HQ] the field window failed', e); win = null; }
                 if (win && win.board) { ev = Object.assign({}, ev, { board: win.board }); L.field = win; }
             }
             /* THE FIELD RECORD (data.js hqEncounterField): the board under the room, both feet, the heading, the raw
-               eye — and, on a board room, THE SLIDE: the walker and the native ease onto their cell centres
+               eye — and THE SLIDE: the walker and the native ease onto their cell centres
                (ThreeRenderer.hq.encounterSnap, HQ_ENCOUNTER_RULES.snapMs) and the fight starts on those very
                cells; the eye is read again after the slide so the first battle frame is the camera as it stands */
             const field = (typeof window.hqEncounterField === 'function') ? window.hqEncounterField(ev) : null;
@@ -3873,7 +3858,7 @@
             if (typeof MS_MAP_LIST === 'undefined' || !MS_MAP_LIST.length) return false;
             /* THE FIELD stage B / C: a cave chamber or a complex part fights ITS OWN WINDOW — the rasterised map entry
                registered now under `field:<room>:<ox>,<oz>` (PREBUILT_MAPS / MAP_LAYOUT_PRESETS / GAME_MODES / a hidden
-               MS_MAP_LIST row); a site's board room keeps its Δ (stage A); the site's Δ from the centre is the fallback
+               MS_MAP_LIST row); the site's Δ from the centre is the fallback
                when the window cannot be built */
             let launchId = L.launchId || (L.site + '_delta');   // THE AREA BOARDS (2026-09-19): the part's own Δ when it has one
             if (L.field && !L.launchId) {
@@ -4138,8 +4123,7 @@
         };
         /* a threshold's own door panel opened from anywhere in the building
            (the star chart): the same panel the bay door shows, the door
-           synthesized from the threshold row the way the CROSSING console
-           does it; `o.star` adds ◂ THE CHART. The launch buttons carry the
+           synthesized from the threshold row; `o.star` adds ◂ THE CHART. The launch buttons carry the
            CHART counter as the door, so post-match you stand at the chart. */
         window._hqOpenThreshold = function (mapId, o) {
             o = o || {};
@@ -4172,7 +4156,7 @@
             const bayId = (typeof window.hqBayId === 'function') ? window.hqBayId(cr.sector) : ('bay_' + cr.sector);
             html += '<div class="hq-panel-actions">';
             if (room && room.kind === 'bay' && (room.sector === cr.sector || (room.segments || []).some(sg => sg.sector === cr.sector))) html += `<button class="hq-btn" data-goto="site_${_hqEsc(cr.site)}">WALK TO THE THRESHOLD</button>`;
-            else if (room && room.site === cr.site) html += '<button class="hq-btn" data-goto="crossing">WALK TO THE CONSOLE</button>';
+            else if (room && room.site === cr.site) { /* standing in the site: its BATTLE marker is in the room */ }
             else if (_hqCurRoom === 'central_egress') {
                 const bd = (DOOR_HQ.rooms.central_egress.doors || []).find(d => d.action && d.action.sector === cr.sector);
                 if (bd) html += `<button class="hq-btn" data-goto="${_hqEsc(bd.id)}">WALK TO ${_hqEsc(bd.label)}</button>`;
@@ -4197,7 +4181,7 @@
             const sm = (typeof window.hqSiteMastery === 'function') ? window.hqSiteMastery(id, profile) : null;
             const pool = (typeof window.hqMissionPool === 'function') ? window.hqMissionPool(id, 4) : [];
             const nat = pool.natives || 0;
-            const earnedDoor = (typeof window.hqSiteEarned !== 'function') || window.hqSiteEarned(id, profile) || (t.door && t.door.inSite);   // THE EARNED DOORS: the console INSIDE the site always crosses
+            const earnedDoor = (typeof window.hqSiteEarned !== 'function') || window.hqSiteEarned(id, profile);   // THE EARNED DOORS
             const canCross = st !== 'sealed' && st !== 'clearance' && earnedDoor;
             const caseNo = (typeof window.doorCaseNo === 'function') ? window.doorCaseNo(id) : '';
             const first = (typeof window.doorSiteCanonDate === 'function') ? window.doorSiteCanonDate(id) : '';
@@ -4210,12 +4194,12 @@
             if (d.note) html += `<p class="hq-panel-note">THE DOOR: ${_hqEsc(d.note)}</p>`;
             html += `<div class="hq-chips"><span>ENTITIES ON FILE</span>${nat ? pool.slice(0, nat).map(r => `<i class="hq-chip">${_hqEsc(String(r).toUpperCase())}</i>`).join('') : '<i class="hq-chip dim">NONE — THE BAY FIELDS ITS NEIGHBOURS</i>'}</div>`;
             html += _hqChecklistHtml(id, profile) || (_hqChecksHtml(sm) ? `<div class="hq-chips"><span>ON FILE FOR THIS THRESHOLD${sm ? ` · ${sm.done}/${sm.total}` : ''}</span>${_hqChecksHtml(sm)}</div>` : '');
-            const siteRoom = _hqSiteRoomId(id);
-            const walkIn = (siteRoom && _hqRoomExists(siteRoom) && siteRoom !== _hqCurRoom && t.door && t.door.action && t.door.action.mission) ? `<button class="hq-btn" ${canCross ? '' : 'disabled'} data-room="${_hqEsc(siteRoom)}" data-at="egress" title="The site is a room: walk the board, cross from the console inside">WALK IN ▸ ROOM ${_hqEsc(_hqSiteNo(id) || '')}</button>` : '';
+            const siteEnt = (typeof window.hqSiteEntryOf === 'function') ? window.hqSiteEntryOf(id) : null, siteRoom = siteEnt ? siteEnt.room : '';
+            const walkIn = (siteRoom && _hqRoomExists(siteRoom) && siteRoom !== _hqCurRoom && t.door && t.door.action && t.door.action.mission) ? `<button class="hq-btn" ${canCross ? '' : 'disabled'} data-room="${_hqEsc(siteRoom)}"${siteEnt.door && siteEnt.door.id ? ` data-at="${_hqEsc(siteEnt.door.id)}"` : ''} title="The site is a place: walk in, fight from its BATTLE marker">WALK IN ▸ ROOM ${_hqEsc(_hqSiteNo(id) || '')}</button>` : '';
             html += `<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" ${canCross ? '' : 'disabled'} data-cross="${_hqEsc(id)}" title="Arena · 4v4 on the 8×8 Δ board · CPU fields the site's natives">CROSS ▸ Δ BOARD · 4v4</button><button class="hq-btn" ${canCross ? '' : 'disabled'} data-deep="${_hqEsc(id)}" title="Arena on the full map at its own team size">DEEP CROSSING ▸ FULL SITE${meta && meta.teamSize ? ` · ${meta.teamSize}v${meta.teamSize}` : ''}</button>${walkIn}</div>`;
             if (d.star) html += '<div class="hq-panel-actions"><button class="hq-btn" data-starmap="1">◂ THE CHART · ROOM 360</button></div>';
             if (st === 'sealed') html += '<p class="hq-panel-note">SEALED — this threshold opens with a story chapter.</p>';
-            else if (!earnedDoor) html += '<p class="hq-panel-note">NO DOOR YET — Otto builds a site’s threshold once it is STABILIZED: every win condition filed from INSIDE the site (its BATTLE marker or CROSSING console). Find it in the field.</p>';
+            else if (!earnedDoor) html += '<p class="hq-panel-note">NO DOOR YET — Otto builds a site’s threshold once it is STABILIZED: every win condition filed from INSIDE the site (its BATTLE marker). Find it in the field.</p>';
             else html += '<p class="hq-panel-note">CROSS ▸ Δ = Arena, 4v4 on the site’s 8×8 board, the CPU fielding the entities on file for it. DEEP = the full map. Each ☐ is a win condition still to be filed; all three turn the lamp green.</p>';
             return html;
         }
@@ -5355,7 +5339,7 @@
                     let go = '';
                     const hereId = r.kind === 'site' ? 'site_' + r.id : (r.kind === 'room' ? null : r.id);
                     if (r.room && r.room === _hqCurRoom && hereId) go = `<button class="hq-btn hq-btn-sm" data-goto="${_hqEsc(hereId)}">WALK</button>`;
-                    else if (r.kind === 'site' && r.siteRoom && _hqRoomExists(r.siteRoom)) go = (r.siteRoom === _hqCurRoom) ? '<span>YOU ARE HERE</span>' : `<button class="hq-btn hq-btn-sm" data-room="${_hqEsc(r.siteRoom)}" data-at="egress">GO</button>`;
+                    else if (r.kind === 'site' && r.siteRoom && _hqRoomExists(r.siteRoom)) go = (r.siteRoom === _hqCurRoom) ? '<span>YOU ARE HERE</span>' : `<button class="hq-btn hq-btn-sm" data-room="site_${_hqEsc(r.id)}" data-at="egress">GO</button>`;   // the alias → the entry part's bay door (_hqGoRoom)
                     else if (r.kind === 'site' && r.room && _hqRoomExists(r.room)) go = `<button class="hq-btn hq-btn-sm" data-room="${_hqEsc(r.room)}" data-at="site_${_hqEsc(r.id)}">GO</button>`;
                     else if (r.kind === 'room' && _hqRoomExists(r.id)) go = (r.id === _hqCurRoom) ? '<span>YOU ARE HERE</span>' : `<button class="hq-btn hq-btn-sm" data-room="${_hqEsc(r.id)}">GO</button>`;
                     else if (r.kind === 'facility' && _hqRoomExists('training')) go = `<button class="hq-btn hq-btn-sm" data-room="training" data-at="range">GO</button>`;
@@ -5380,7 +5364,7 @@
            live link (a dashed leg is a seam that is not a door), a double
            ring for an interchange, the room you stand in filled. Under each
            line its stations as rows with GO (the register's own rule: GO
-           takes you to the site's board room at its way in). A leg's `why`
+           takes you to the site's entry part at its way in). A leg's `why`
            is the row's title. Viewer-local (RULE #2). */
         function _hqWorldHtml() {
             /* THE MAP REMEMBERS (D6): the profile decides what is CHARTED — an unseen leg is dotted, an unknown stop unlabelled; GO stays for every stop */
@@ -5416,7 +5400,7 @@
                 html += `<div class="hq-world-line" style="--hq-line:${_hqEsc(r.color)}"><div class="hq-world-hd"><b>${_hqEsc(r.label)}</b><span>${_hqEsc(r.sub)}</span></div>${svg}<div class="hq-rows">`;
                 r.stations.forEach(st => {
                     const board = st.site ? ('site_' + st.site) : st.room;
-                    const go = st.here ? '<span>YOU ARE HERE</span>' : (_hqRoomExists(board) ? `<button class="hq-btn hq-btn-sm" data-room="${_hqEsc(board)}" data-at="egress">GO</button>` : '');
+                    const go = st.here ? '<span>YOU ARE HERE</span>' : (_hqRoomExists(st.site ? _hqSiteRoomId(st.site) : board) ? `<button class="hq-btn hq-btn-sm" data-room="${_hqEsc(board)}" data-at="egress">GO</button>` : '');
                     const other = st.lines.filter(id => id !== r.id).map(id => (DOOR_HQ.routes && DOOR_HQ.routes[id] && DOOR_HQ.routes[id].label) || id.toUpperCase());
                     if (st.known === false) { html += `<div class="hq-row hq-row-tray hq-world-unk"><b>${_hqNoTag('?')}UNCHARTED</b><span>WALK A DOOR TO IT · GO STILL TAKES YOU</span>${go}</div>`; return; }
                     html += `<div class="hq-row hq-row-tray"><b>${_hqNoTag(st.no)}${_hqEsc(st.label)}</b><span>${other.length ? 'INTERCHANGE · ' + _hqEsc(other.join(' · ')) : 'STOP'}</span>${go}</div>`;
@@ -5503,12 +5487,6 @@
             html += '<p class="hq-panel-note">Simulated crossings are INTERNAL: no site file, no mastery, no Code Red. The walls are real; the stakes are not. The grid beside you is the one you will fight on.</p>';
             return html;
         }
-        /* The CROSSING console in a walkable site (HQ plan 7.2): the same
-           site file / CROSS ▸ Δ / DEEP CROSSING panel the bay threshold shows,
-           read for the room's own site (`room.site`, or the counter's), with
-           the threshold's number, note and hook; the Code Red brief rides in
-           when today's is this site. The launch buttons carry the console as
-           the door, so post-match you stand at it again. */
         /* THE MARKER'S PANEL (2026-09-20, the user: "it should just send me into battle with my party"): who is fit, what is
            still to file, and ONE click per mode — WIPEOUT (TDM) or THE CUBE + THE KEYS (Arena) — straight into the fight with
            the officer's party seated (the encounter's own launch: no terminal, no builder, no roster wall). */
@@ -5535,7 +5513,7 @@
             html += _hqChecklistHtml(id, profile);
             html += `<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" ${ready ? '' : 'disabled'} data-marker-fight="tdm" title="Team Deathmatch · the WIPEOUT condition">⚔ FIGHT ▸ WIPEOUT · TDM</button><button class="hq-btn" ${ready ? '' : 'disabled'} data-marker-fight="arena" title="Arena · the Cube and the Keys">⬡ FIGHT ▸ THE CUBE · THE KEYS · ARENA</button><button class="hq-btn" data-close="1">NOT NOW</button></div>`;
             if (pf && pf.total > 0 && !pf.ready) html += '<p class="hq-panel-note">THE PARTY IS DOWN — rest at a HEALING ZONE (every hub) or on the cot in Medical, or heal from the pause menu.</p>';
-            else html += '<p class="hq-panel-note">Health carries between fights and nobody respawns; the second shift fills a fallen seat. A loss wakes you elsewhere. The CROSSING console and DISPATCH still file a full crossing when you want the terminal.</p>';
+            else html += '<p class="hq-panel-note">Health carries between fights and nobody respawns; the second shift fills a fallen seat. A loss wakes you elsewhere. DISPATCH still files a full crossing when you want the terminal.</p>';
             return html;
         }
         /* the marker's FIGHT: the party-seated launch the encounter uses, on the mode picked; returns you to the marker */
@@ -5555,19 +5533,6 @@
             L.codeRedRun = (cr && gm === 'arena') ? { date: cr.date, site: cr.site, race: cr.race, label: cr.label, bonus: cr.bonus } : null;
             return _hqEncounterStart(L, null, null);
         };
-        function _hqCrossingHtml(t) {
-            const room = _hqRoom();
-            const c = t.counter || {};
-            const id = c.site || (room && room.site);
-            if (!id) return `<div class="hq-panel-hd"><b>${_hqEsc(c.label || 'CROSSING CONSOLE')}</b><span>NO SITE ON FILE</span></div><div class="hq-panel-actions"><button class="hq-btn" data-close="1">NOTED</button></div>`;
-            const th = (DOOR_HQ.thresholds || {})[id] || {};
-            const door = { id: c.id || 'crossing', label: (c.label || 'CROSSING CONSOLE'), sub: 'BATTLE SETUP' + (room && room.label ? ' · ' + room.label : ''), action: { mission: id }, inSite: true,   // THE EARNED DOORS: the console INSIDE the site always crosses
-                           note: th.note || '', why: th.why || '', roomNo: (th.roomNo != null) ? String(th.roomNo) : null };
-            const st = (typeof window.doorSiteState === 'function') ? window.doorSiteState(door, _hqProfile()) : 'unstable';
-            let html = _hqThresholdPanelHtml({ kind: 'door', id: door.id, label: door.label, sub: door.sub, door: door }, st);
-            html += '<p class="hq-panel-note">You are standing on the board. The console files the crossing; the door behind you is the way back to the bay.</p>';
-            return html;
-        }
         function _hqCounterPanelHtml(t) {
             const c = t.counter || {};
             const act = c.action || {};
@@ -5587,7 +5552,6 @@
             if (act.overlay === 'nav') return _hqNavHtml();   // THE SHIP'S ONE DOOR: the bridge's nav console
             if (act.overlay === 'training') return _hqTrainingHtml();
             if (act.overlay === 'crossing' && c.proc === 'battle_marker') return _hqMarkerHtml(t);   // THE MARKER (2026-09-20): the party's fight, no terminal
-            if (act.overlay === 'crossing') return _hqCrossingHtml(t);
             let html = `<div class="hq-panel-hd"><b>${_hqEsc(c.label)}</b><span>${_hqEsc(c.sub || '')}</span></div>`;
             /* THE PROJECTOR (Room 360): the tape library's projection — the last tape on file */
             if (c.id === 'projector') html += '<p class="hq-panel-desc">The last crossing on file, projected on the dome. Records sent the tapes up with a note: DO NOT REWIND. The projector rewinds them anyway.</p>';
@@ -6229,11 +6193,11 @@
             const st = (typeof window.doorSiteState === 'function') ? window.doorSiteState(d, _hqProfile()) : 'open';
             if (st === 'sealed' || st === 'clearance' || st === 'off') return null;
             /* a threshold whose site is a walkable room (HQ plan 7.2): the
-               door opens INTO the site — the crossing is launched from the
-               console inside; a site with no room keeps its panel */
+               door opens INTO the site's entry part — the fight is launched from
+               its BATTLE marker; a site with no part keeps its panel */
             if (act.mission) {
-                const sr = _hqSiteRoomId(act.mission);
-                if (sr && _hqRoomExists(sr)) return { room: sr, at: 'egress' };
+                const ent = (typeof window.hqSiteEntryOf === 'function') ? window.hqSiteEntryOf(act.mission) : null;
+                if (ent && _hqRoomExists(ent.room)) return { room: ent.room, at: ent.door ? ent.door.id : null };
                 return null;
             }
             if (d.alt || d.alt2) return null;
@@ -6275,7 +6239,7 @@
             }
             /* THE MARKER (2026-09-20): the floating crystal opens ITS OWN panel — the party, the checklist, FIGHT — never the terminal */
             if (t && t.kind === 'counter' && t.counter && t.counter.proc === 'battle_marker') { _hqOpenPanel(t); return; }
-            if (t && t.kind === 'counter' && t.counter && t.counter.action && (t.counter.action.overlay === 'crossing' || t.counter.action.overlay === 'training')) {
+            if (t && t.kind === 'counter' && t.counter && t.counter.action && t.counter.action.overlay === 'training') {
                 try { if (_hqConsoleTerminal(t)) return; } catch (e) { console.warn('[HQ] terminal failed, panel instead', e); }
             }
             _hqOpenPanel(t);
@@ -6461,10 +6425,8 @@
                 const codeRed = cross.hasAttribute('data-codered');
                 const id = cross.getAttribute(deep ? 'data-deep' : (codeRed ? 'data-codered' : 'data-cross'));
                 const door = (_hqPanelTarget && _hqPanelTarget.kind === 'door') ? _hqPanelTarget : null;
-                /* the CROSSING console of a walkable site (plan 7.2) is the door you left through */
-                const console_ = (_hqPanelTarget && _hqPanelTarget.kind === 'counter' && _hqPanelTarget.counter && _hqPanelTarget.counter.action && _hqPanelTarget.counter.action.overlay === 'crossing') ? _hqPanelTarget : null;
                 window._hqClosePanel({ keepPaused: true });
-                window._hqLaunchMission(id, { delta: !deep, codeRed, doorId: door ? door.id : (console_ ? (console_.counter.id || 'crossing') : null), doorLabel: door ? door.label : (console_ ? console_.label : ''), counterId: console_ ? (console_.counter.id || 'crossing') : null });
+                window._hqLaunchMission(id, { delta: !deep, codeRed, doorId: door ? door.id : null, doorLabel: door ? door.label : '', counterId: null });
                 return;
             }
             /* the RANGE console (HQ plan 6.1a): a facility board with a free
@@ -9027,7 +8989,7 @@
 
         /* the rooms that ask for the `lobby` pool (the foyer = the arrival, the
            main hall, the two containment rings round it); every other facility
-           room asks for `hq`; a WILD room (a site's board room, a complex part,
+           room asks for `hq`; a WILD room (a complex part,
            the cave — hqRoomSite non-null) asks for `exploration` + the site's
            moods. Tag the songs in Settings → Audio → 🎚 Mixer → 🏷 TAGS. */
         const _HQ_LOBBY_MUSIC_ROOMS = new Set(['foyer', 'central_egress', 'ring_g', 'ring_m']);

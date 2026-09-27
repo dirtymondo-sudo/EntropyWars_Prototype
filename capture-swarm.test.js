@@ -74,16 +74,16 @@ test('PHASE 6 §5.2: THE SWARM — the group, the levels, the launch', () => {
     assert.ok(lv.levels[0] >= lv.base - R.lead.below, 'the lead is the ordinary lead');
     assert.deepEqual(J(g('hqEncounterLevels')(20, 'prebuilt_hell', 4, 's').levels), J(g('hqEncounterLevels')(20, 'prebuilt_hell', 4, 's', null).levels), 'no grunts: unchanged');
     /* the launch: every seat the target's race, a level per body, the swarm record rides */
-    const nat = g('hqRoomNatives')('site_prebuilt_dumb');
+    const nat = g('hqRoomNatives')('site_prebuilt_dumb_motorpool');
     assert.ok(nat.length >= 1 && nat.indexOf('grey') >= 0, 'the room\'s natives (' + nat.join(', ') + ')');
     const other = nat.find(r => r !== 'grey') || 'grey';
-    const L = g('hqEncounterLaunch')('site_prebuilt_dumb', { kind: 'npc', id: 'hq-roam-0', race: 'grey', gender: 'male', label: 'A GREY', swarm: { n: 8, race: other } }, '{"teamSize":4}', { partyLevel: 12 });
+    const L = g('hqEncounterLaunch')('site_prebuilt_dumb_motorpool', { kind: 'npc', id: 'hq-roam-0', race: 'grey', gender: 'male', label: 'A GREY', swarm: { n: 8, race: other } }, '{"teamSize":4}', { partyLevel: 12 });
     assert.equal(L.enemyTeam, 8); assert.equal(L.teamSize, 4, 'the officer\'s deploy is untouched');
     assert.deepEqual(J(L.roster), ['grey'].concat(Array(7).fill(other)), 'the target leads, the swarm fills the rest'); assert.equal(L.levels.length, 8);
     assert.ok(L.swarm && L.swarm.n === 8 && L.swarm.race === other && L.swarm.elite >= 1 && L.swarm.turbo === undefined);
     L.levels.slice(L.swarm.elite).forEach(x => assert.ok(x <= 12 + SW.offset + R.band.above, 'grunts under the party'));
     assert.equal(L.encounter.swarm, 8);
-    const plain = g('hqEncounterLaunch')('site_prebuilt_dumb', { kind: 'npc', id: 'hq-roam-0', race: 'grey', gender: 'male', group: [{ id: 'hq-roam-1', race: 'grey' }] }, null, { partyLevel: 12 });
+    const plain = g('hqEncounterLaunch')('site_prebuilt_dumb_motorpool', { kind: 'npc', id: 'hq-roam-0', race: 'grey', gender: 'male', group: [{ id: 'hq-roam-1', race: 'grey' }] }, null, { partyLevel: 12 });
     assert.equal(plain.swarm, null, 'a plain roaming group is no swarm');
 });
 

@@ -14,12 +14,13 @@ const TR = fs.readFileSync(path.join(__dirname, 'three-renderer.js'), 'utf8');
 const D = loadGameData();
 const HQ = D.DOOR_HQ;
 
-test('THE KIT TILE: the misc / door-kit / vehicle helpers size against the build\'s tile, and the site room sets it', () => {
+test('THE KIT TILE: the misc / door-kit / vehicle helpers size against the build\'s tile, and the room builders set it', () => {
     assert.match(TR, /var _hzKitTs = 0;\s*\n\s*function _hzKitTile\(\) \{ return _hzKitTs \|\| CONFIG\.tileSize \|\| BASE_TILE; \}/);
     assert.match(TR, /function _hzMiscKit\(key, o\) \{\s*o = o \|\| \{\};\s*var ts = _hzKitTile\(\)/, '_hzMiscKit reads the kit tile');
     assert.match(TR, /function _hzDoorKitGLB\(key, o\) \{\s*o = o \|\| \{\};\s*var ts = _hzKitTile\(\)/, '_hzDoorKitGLB reads the kit tile');
     assert.match(TR, /_hzVehicleProc\(kind\) \{\s*var V = _VEHICLE_KIT\[kind\] \|\| _VEHICLE_KIT\.suv, ts = \(typeof _hzKitTile === 'function'\) \? _hzKitTile\(\)/, 'the stand-in too');
-    assert.match(TR, /_hzKitTs = ts;\s*\n\s*try \{ build\(g, ctx\); \}[^\n]*\n\s*finally \{ _hzKitTs = 0; \}/, '_hqBuildSetting sets it round the builder and clears it');
+    assert.match(TR, /var lotById = \{\}, prevTs = _hzKitTs; _hzKitTs = TM;/, 'the room builders set it (the city lots)…');
+    assert.match(TR, /\} finally \{ _hzKitTs = prevTs; \}/, '…and restore it');
     assert.ok(!/var ts = CONFIG\.tileSize \|\| BASE_TILE, mPerTs = 1\.75;/.test(TR), 'no kit helper reads the battle tile directly any more');
 });
 

@@ -24,18 +24,15 @@ const css = fs.readFileSync(__dirname + '/styles-base.css', 'utf8');
 const server = fs.readFileSync(__dirname + '/server.js', 'utf8');
 const renderer = fs.readFileSync(__dirname + '/three-renderer.js', 'utf8');
 
-test('NUKETOWN IS RETIRED: no launch map, no threshold, no bay seat, no site room, no link, no tape row, no server pool row, no near builder', () => {
+test('NUKETOWN IS RETIRED: no launch map, no threshold, no bay seat, no site room, no link, no server pool row, no near builder', () => {
     assert.ok(!D.EW_MAP_META.some(m => /nuketown/.test(m.id)), 'no meta row');
     assert.ok(!D.hqSiteBoard('prebuilt_nuketown') && !D.EW_MAP_META.some(m => m.id === 'prebuilt_nuketown_delta'), 'no board');
     assert.ok(!HQ.thresholds.prebuilt_nuketown, 'no threshold');
     for (const s of Object.keys(HQ.sectors)) assert.ok(!(HQ.sectors[s].maps || []).includes('prebuilt_nuketown'), s + ' seats it');
     assert.ok(!HQ.siteRooms.built.includes('prebuilt_nuketown') && !HQ.rooms.site_prebuilt_nuketown, 'no site room');
     assert.ok(!HQ.links.some(l => [l.a, l.b].some(e => e && e.site === 'prebuilt_nuketown')), 'no link stands on it');
-    assert.ok(!D.DOOR_TAPES.some(t => /nuketown/.test(t.where) || /nuketown/.test(t.id)), 'no tape row');
-    assert.equal(D.DOOR_TAPES.length, 100, 'the hundred stays a hundred');
     assert.ok(!/nuketown/i.test(server), 'no server pool row');
     assert.ok(!/_NR_BUILDERS\.nuketown/.test(renderer), 'no near builder');
-    assert.ok(!HQ.siteRooms.near.nuketown && !HQ.siteRooms.shells.prebuilt_nuketown && !(HQ.siteRooms.flavour || {}).prebuilt_nuketown);
 });
 
 test('ANTARCTICA IS ON THE LUNAR ROUTE: docked on the Spaceship\'s one collar — a third course on the nav console', () => {
@@ -63,14 +60,14 @@ test('CAMELOT KINGDOM: the North Pole joins Camelot on a new route; the Lodge an
     assert.ok(routes.find(r => r.id === 'kingdom') && routes.find(r => r.id === 'ranch'), 'the world tab lists the kingdom and the ranch');
 });
 
-test('THE RANCH: THE CORN FIELDS is a terrain part on Room 512, the board is bypassed, the plan solves from every door and nothing traps', () => {
+test('THE RANCH: THE CORN FIELDS is a terrain part on Room 512, the entry part, the plan solves from every door and nothing traps', () => {
     const r = HQ.rooms[FIELDS];
     assert.ok(r && r.site === SITE && r.part === 'fields' && r.kind === 'box' && !r.roomNo, 'the part');
     assert.ok(r.shell.open && r.shell.edge === 'open' && r.shell.sky && r.shell.sky.scenery === 'eyes' && r.shell.look === D.HQ_ROOM_LOOKS.ranch, 'open under the ranch\'s own night, the ranch look');
     assert.ok(r.terrain && r.terrain.gen && r.terrain.gen.kind === 'rooms', 'a rooms plan (the corn is the solid)');
     const ent = D.hqSiteEntryOf(SITE); assert.ok(ent && ent.room === FIELDS, 'the stable door lands in the fields');
-    const bay = at(FIELDS, 'bay'); assert.ok(bay && bay.entry === SITE && bay.wall === 's' && bay.x === 0, 'the bay door is the board\'s egress');
-    assert.ok(!HQ.rooms[BOARD].doors.some(d => d.link), 'the bypassed board carries no link door');
+    const bay = at(FIELDS, 'bay'); assert.ok(bay && bay.entry === SITE && bay.wall === 's' && bay.x === 0, 'the bay door is the site\'s egress');
+    assert.ok(!HQ.rooms[BOARD], 'no board room (2026-09-27)');
     const info = D.hqTerrainInfo(FIELDS);
     assert.ok(info && info.maskD, 'compiled with a plan');
     const doors = r.doors.filter(d => d.action && d.action.room);
@@ -101,12 +98,6 @@ test('THE RANCH\'S GATES: the house\'s dead tree, the Lodge\'s saloon door, the 
     assert.ok(L('woods_grove') && D.hqLinkLive(L('woods_grove')) && L('woods_grove').route === 'woods', 'the grove keeps its owl\'s gate onto the redwood trail — the interchange');
     assert.ok(!L('ranch_graveyard') && !L('ranch_western'), 'the graveyard and the western map wait on their sites (no held rows — every link on the sheet is live)');
     assert.ok(!HQ.rooms[FIELDS].doors.some(d => d.wall === 'e'), 'the east wall is kept for them');
-    /* the tape on THE BUTTE: pinned, hard, reachable by the gun */
-    const tape = D.DOOR_TAPES.find(t => t.where === FIELDS);
-    assert.ok(tape && /SCARECROWS/.test(tape.title), 'Nuketown\'s tape re-homed on the fields');
-    const finds = HQ.finds.filter(f => f.room === FIELDS);
-    const tf = finds.find(f => /^tape:/.test(f.id));
-    assert.ok(tf && tf.hard === true, 'the butte\'s tape is hard');
 });
 
 test('THE HUBS: every hub names a room that exists and gathers its rooms; the graph marks the anchor and the members; the model carries them; map.js draws the ring and the halo', () => {
@@ -140,7 +131,7 @@ test('THE PLATE READS THE ROOM THROUGH THE DOOR: every room door wears the label
     assert.equal(at('ring_g', 'site_prebuilt_skinwalker').label, 'THE ESTATE · THE CORN FIELDS', 'the ring\'s stable door names the fields');
     assert.equal(at('ring_m', 'site_prebuilt_camelot').label, 'CAMELOT · THE OUTER WARD');
     assert.equal(at('central_egress', 'medical').label, 'THE MEDICAL WING');
-    assert.equal(at('site_prebuilt_fairy_forest', 'woods').label, 'THE WOODS · THE CLEARING'); assert.equal(at('site_prebuilt_fairy_forest', 'woods')._own, 'THE WOODS');
+    assert.equal(D.hqDoorThrough({ action: { room: 'site_prebuilt_fairy_forest', at: 'egress' } }), 'site_prebuilt_fairy_forest_clearing', 'the `site_<id>` alias reads through to the entry part');
     assert.equal(at('site_prebuilt_fairy_forest_clearing', 'link_fairy_camelot').label, 'CAMELOT · THE OUTER WARD', 'a link door reads the part, not the site');   // THE AREAS (2026-09-18): the spring stands in the clearing
     assert.equal(at('site_prebuilt_lodge_halls', 'link_ranch_lodge').label, 'THE ESTATE · THE CORN FIELDS');   // THE AREAS (2026-09-18): off THE HALLS
     assert.equal(D.hqDoorThrough({ action: { fn: '_goToShop' } }), null); assert.equal(D.hqDoorThrough({ action: { mission: 'prebuilt_camelot' } }), 'site_prebuilt_camelot_ward'); assert.equal(D.hqDoorThrough({ action: { mission: 'prebuilt_lodge' } }), 'site_prebuilt_lodge_halls');   // THE AREAS (2026-09-18)

@@ -58,7 +58,7 @@ test('THE ROOM-BOX AO: one shared hook on _hqMat and _hqPropMatPick, armed per r
     assert.ok(/if \(!opts\.noAo\) m\.onBeforeCompile = _hqAoHook;/.test(fn(TR, '_hqMat')), '_hqMat wears it');
     assert.ok(/lm\.onBeforeCompile = _hqAoHook;/.test(fn(TR, '_hqPropMatPick')), '_hqPropMatPick wears it');
     const arm = fn(TR, '_hqAoArm');
-    assert.ok(arm.includes('if (H.terrain || (H.site && H.site.cave) || H.planet) k = 0;') && arm.includes("var box = room.kind === 'box' && !S.open;"), 'the field gets no box AO; an open room the floor contact alone');
+    assert.ok(arm.includes('if (H.terrain || (H.site && H.site.cave)) k = 0;') && arm.includes("var box = room.kind === 'box' && !S.open;"), 'the field gets no box AO; an open room the floor contact alone');
     const bt = fn(TR, '_hqBuildTerrain');
     assert.ok(bt.includes("geo.setAttribute('aAO', new THREE.BufferAttribute(ao, 1));") && fn(TR, '_hqTerrainAoAt').includes('var lap = (hL + hR + hU + hD - 4 * h) / res;'), 'the field bakes its concavity');
     assert.ok(fn(TR, '_hqBuildOuterGround').includes("geo.setAttribute('aAO', new THREE.BufferAttribute(aoO, 1));"), 'the outer ground shares the material: the attribute must exist (a missing one reads 0 = black)');

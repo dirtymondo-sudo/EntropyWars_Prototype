@@ -68,7 +68,8 @@ function propBlocks(room, p, x, z, margin) {
 }
 
 test('the sheet: THE WOODS is the Fairy Forest’s complex — seven parts, each site + part, none numbered, open under one sky (the storm drain closed), every one a terrain room, the register lists 420 once', () => {
-    assert.deepEqual(D.hqSiteComplex(SITE).join(','), [BOARD].concat(PART_IDS).join(','), 'the board room, then the parts in sheet order');
+    assert.deepEqual(D.hqSiteComplex(SITE).join(','), PART_IDS.join(','), 'the parts in sheet order (the board room is gone, 2026-09-27)');
+    assert.ok(!HQ.rooms[BOARD] && D.hqSiteEntryOf(SITE).room === HUB, 'the clearing is the entry part');
     for (const p of PARTS) {
         const id = D.hqComplexRoomId(SITE, p), r = HQ.rooms[id];
         assert.ok(r && r.kind === 'box' && r.site === SITE && r.part === p, id + ': a box room wearing site + part');
@@ -88,9 +89,9 @@ test('the sheet: THE WOODS is the Fairy Forest’s complex — seven parts, each
 });
 
 test('the woods are one piece: from THE HOLLOW TREE every part is walked, every inside door is a pair with the same opening on both sides, nothing leaves the complex but a links row, THE CLEARING has seven ways', () => {
-    const back = at(BOARD, 'woods');
-    assert.ok(back && back.wall === 'n' && back.x === -10 && back.way === 'hollowtree' && back.action.room === HUB && back.action.at === 'forest', 'the way in on the forest’s north-west lane is the hollow tree');
-    assert.ok(at(HUB, 'forest').way === 'hollowtree' && at(HUB, 'forest').wall === 's', 'and the way back is the same tree on the clearing’s south wall');
+    const back = at(HUB, 'forest');
+    assert.ok(back && back.way === 'hollowtree' && back.wall === 's' && back.entry === SITE, 'the way in is the hollow tree on the clearing’s south wall — the bay door');
+    assert.ok(back.action.room === D.hqBayId(D.hqSectorOfMap(SITE)) && back.action.at === 'site_' + SITE, 'and it walks back to the threshold');
     assert.ok(!back.rankDoor && !back.minClearance && D.doorSiteState(back, null) === 'open', 'never gated');
     const seen = new Set([HUB]), queue = [HUB];
     while (queue.length) {
@@ -104,11 +105,11 @@ test('the woods are one piece: from THE HOLLOW TREE every part is walked, every 
             assert.ok(other && other.action.room === id && other.action.at === d.id, id + '/' + d.id + ' ⇄ ' + a.room + ' is a pair');
             assert.equal(other.leaf, d.leaf, 'the same opening on both sides of ' + d.id);
             assert.equal(other.way, d.way, 'the same way on both sides of ' + d.id);
-            assert.ok(PART_IDS.includes(a.room) || a.room === BOARD, id + '/' + d.id + ' stays inside the complex');
-            if (!seen.has(a.room)) { seen.add(a.room); if (a.room !== BOARD) queue.push(a.room); }
+            assert.ok(PART_IDS.includes(a.room), id + '/' + d.id + ' stays inside the complex');
+            if (!seen.has(a.room)) { seen.add(a.room); queue.push(a.room); }
         }
     }
-    assert.deepEqual(Array.from(seen).sort().join(','), PART_IDS.slice().sort().join(','), 'every part is reachable from the clearing (THE AREAS, 2026-09-18: the board is bypassed — the hollow tree is the bay door)');
+    assert.deepEqual(Array.from(seen).sort().join(','), PART_IDS.slice().sort().join(','), 'every part is reachable from the clearing (the hollow tree is the bay door)');
     const hub = HQ.rooms[HUB];
     for (const id of ['forest', 'trail', 'stair', 'redwoods', 'deadmans', 'pasture', 'ritual']) assert.ok(at(HUB, id), 'the clearing has the ' + id + ' door');
     assert.equal(hub.doors.filter(d => !d.link).length, 7, 'seven ways off the clearing');
@@ -147,7 +148,7 @@ test('THE PATHS: nine live links — the house behind THE DEAD TREE in the pastu
     const sp = HQ.links.find(l => l.id === 'fairy_camelot');
     assert.ok(sp && sp.way === 'pool' && sp.a.wall === 'free' && sp.b.wall === 'free' && D.hqLinkLive(sp), 'the spring is a live pool seam');
     assert.ok(at(HUB, 'link_fairy_camelot') && at('site_prebuilt_camelot_ward', 'link_fairy_camelot'), 'both pools stand (CAMELOT CASTLE, 2026-09-18: the castle end surfaces on THE OUTER WARD’s moat bank — the board room is bypassed)');
-    assert.equal(HQ.rooms.site_prebuilt_camelot.doors.filter(d => d.link).length, 0, 'Camelot’s bypassed board carries no link door (every seam moved onto a part)');
+    assert.ok(!HQ.rooms.site_prebuilt_camelot, 'Camelot has no board room (every seam stands on a part)');
     const R = D.hqWorldRoutes('foyer'), woods = R.find(r => r.id === 'woods'), sub = R.find(r => r.id === 'subway'), seams = R.find(r => r.id === 'seams');
     assert.ok(woods.stations.some(s => s.site === SITE) && woods.stations.some(s => s.site === 'prebuilt_shasta') && woods.stations.some(s => s.room === 'stairwell') && woods.stations.some(s => s.room === 'ritual'), 'THE WOODS line calls at the forest, the mountain, the stairwell and Room 333');
     assert.ok(sub.stations.some(s => s.site === SITE), 'the storm drain is on the subway line');
@@ -159,7 +160,7 @@ test('THE PATHS: nine live links — the house behind THE DEAD TREE in the pastu
     }
 });
 
-test('the production renderer lands every door inside its part, clear of every blocker, tree and native, facing along its doorway, at its sill on level ground; the hollow tree lands on the forest’s walkway clear of the masts', () => {
+test('the production renderer lands every door inside its part, clear of every blocker, tree and native, facing along its doorway, at its sill on level ground', () => {
     for (const id of PART_IDS) {
         const room = HQ.rooms[id], S = room.shell, info = D.hqTerrainInfo(id);
         for (const door of room.doors) {
@@ -186,11 +187,6 @@ test('the production renderer lands every door inside its part, clear of every b
         for (const n of room.npcSpots) { assert.ok(D.AVAILABLE_RACES.includes(n.race), id + ': native race ' + n.race); assert.ok(D.hqTerrainFeet(info, n.x, n.z, null) != null && !D.hqTerrainFluidAt(info, n.x, n.z), id + ': the ' + n.race + ' stands on dry ground'); }
         for (const p of room.props) { assert.ok(HQ.catalogue[p.key], id + ': prop ' + p.key); if ((p.y || 0) > 0.5 || p.wall || p.ceil) continue; assert.ok(D.hqTerrainFeet(info, p.x, p.z, null) != null, id + ': ' + p.key + ' stands in a hazard'); }
     }
-    const forest = HQ.rooms[BOARD], back = at(BOARD, 'woods'), h = landing(forest, back), p = h.player;
-    assert.ok(Math.abs(p.z) > forest.shell.grid.cells * forest.shell.grid.cell / 2 + 0.4, 'off the battle board');
-    for (const m of forest.shell.lights) assert.ok(Math.hypot(p.x - m.x, p.z - m.z) > 0.5, 'a mast blocks the path in');
-    assert.ok(back.x + 2.2 < 5 - 2.4, 'the path is clear of the signboard');
-    for (const other of forest.doors) if (other.id !== back.id && other.wall === 'n') assert.ok(Math.abs(other.x - back.x) >= 4.4, 'the path shares a lane with ' + other.id);
 });
 
 test('THE PARK RULE and the woods’ own light: a rail and a real ramp or tier in every part (the pasture’s fence is a wall the rider jumps onto, the staircase’s banisters are its rails), no facility strips or masts, torches under the prop-light cap; the graffiti in Dead Man’s Cave', () => {
@@ -233,15 +229,8 @@ test('THE WEENIES: one sky for the woods (hqWoodsShell), two landmarks on its ho
     assert.ok(/if \(Array\.isArray\(sky\.landmarks\) && sky\.landmarks\.length\) \{ try \{ _hqBuildLandmarks\(H, sky\.landmarks, 6000\); \}/.test(renderer), '_hqBuildSky hangs them');
 });
 
-test('THE TAPES: one per part, the hundred kept; the crag, the pinnacle, the stand, the tower and the altar stone carry tapes the walker cannot reach (the door gun’s); the renderer plants the trees on a real kit and the treeline past an open edge', heavy, () => {
-    const T = D.DOOR_TAPES;
-    assert.equal(T.length, 100);
-    for (const id of PART_IDS) assert.ok([1, 2].includes(T.filter(t => t.where === id).length) && (T.filter(t => t.where === id).length === 1 || Object.values(HQ.siteRooms.entry || {}).some(e => e.room === id)), id + ': one tape (two on the part that stands for a bypassed board — THE AREAS, 2026-09-18)');
-    assert.ok(T.some(t => t.where === HUB && t.title === '1618'), 'the names are carved in the old tree');
-    for (const id of PART_IDS) assert.ok(D.DOOR_HQ.finds.some(f => f.room === id && f.kind === 'tape') && D.DOOR_HQ.finds.some(f => f.room === id && f.kind === 'pay'), id + ': a tape and an envelope');
-    const hardIn = id => D.DOOR_HQ.finds.some(f => f.room === id && f.kind === 'tape' && f.hard && f.y > 2.0);
-    for (const p of ['clearing', 'trail', 'redwoods', 'stair', 'ritual']) assert.ok(hardIn(BOARD + '_' + p), p + ': the tape out of reach, up high');
-    const terr = renderer.slice(renderer.indexOf('    function _hqBuildTerrain('), renderer.indexOf('    function _hqBuildSiteBoard('));
+test('THE RENDERER: the renderer plants the trees on a real kit and the treeline past an open edge', heavy, () => {
+    const terr = renderer.slice(renderer.indexOf('    function _hqBuildTerrain('), renderer.indexOf('    function _hqBuildLandmarks('));
     assert.ok(/TK = _nrKit\(G, \{ ts: TM, bw: Math\.round\(S\.w \/ info\.tile\), bh: Math\.round\(S\.d \/ info\.tile\), rng: rng, hq: \{ w: 0, gap: 0, B: 1, tints: null \} \}, \{\}\)/.test(terr) && /tg\._ew_hqTree = true;/.test(terr), 'the trees are the near kit’s foliage on a REAL kit');
     assert.ok(/_hq\.blockers\.push\(\{ obj: blk, y: t\.y, top: null, rad: t\.r \|\| 0\.38, tree: true \}\)/.test(terr), 'a tree is a blocker');
     assert.ok(/if \(TK && S\.forest && S\.open\) _hqPlantTreeline\(room, S, S\.w \/ 2, S\.d \/ 2, plantTree, rng\);/.test(terr), 'THE TREELINE past an open edge');

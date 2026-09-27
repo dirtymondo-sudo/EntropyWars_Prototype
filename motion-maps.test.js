@@ -15,7 +15,7 @@ const REPO = __dirname;
 const { makeSandbox } = require(path.join(REPO, 'load-data.js'));
 const sb = makeSandbox({ quiet: true });
 vm.runInContext(fs.readFileSync(path.join(REPO, 'data.js'), 'utf8'), sb, { filename: 'data.js' });
-const D = vm.runInContext('({ EW_MAP_META, PREBUILT_MAPS, DOOR_HQ, DOOR_TEXT, TERRAIN_RULES, MF_TID, doorSiteCrossings, hqSiteRoom, hqSiteRoomId, hqSectorOfMap })', sb);
+const D = vm.runInContext('({ EW_MAP_META, PREBUILT_MAPS, DOOR_HQ, DOOR_TEXT, TERRAIN_RULES, MF_TID, doorSiteCrossings, hqSiteEntryOf, hqSectorOfMap })', sb);
 const src = f => fs.readFileSync(path.join(REPO, f), 'utf8');
 const TR = src('three-renderer.js'), SV = src('server.js'), AU = src('audio.js');
 
@@ -83,7 +83,6 @@ test('the Looking-Glass: the pieces ARE the cover — chess monuments with a rea
     }
     assert.match(src('data.js'), /const MF_DELTA_SOLID_MONS = new Set\(\[[^\]]*'chess_pawn', 'chess_rook', 'chess_knight', 'chess_bishop', 'chess_queen', 'chess_king'\]\)/, 'the Δ forge allows them');
     assert.match(TR, /try \{ g = fn\(_monRng\(mon\.seed \|\| 1\), mon\); \}/, 'the builder is handed the placement (mon.dark)');
-    assert.match(TR, /try \{ g = fn\(_monRng\(m\.seed \|\| 1\), m\); \}/, '…in the site room too');
     /* both boards: every piece a chess monument, dark + light twins, no raised blocks left */
     for (const id of ['prebuilt_lookingglass', 'prebuilt_lookingglass_delta']) {
         const P = D.PREBUILT_MAPS[id], mons = P.monuments || [];
@@ -107,16 +106,12 @@ test('the sites are in the building: thresholds with numbers, a bay each, walkab
         assert.strictEqual(D.hqSectorOfMap(M.id), M.bay, M.id + ': bay');
         assert.ok(!HQ.sectors[M.bay].locked, M.id + ': its bay is not sealed (the map must be playable from the building)');
         assert.ok(HQ.siteRooms.built.includes(M.id), M.id + ': a walkable site');
-        assert.ok(HQ.siteRooms.near[M.near] && HQ.siteRooms.near[M.near].w >= 1.15, M.id + ': a near row (the walkway is at least two metres)');
-        const room = HQ.rooms[D.hqSiteRoomId(M.id)];
-        assert.ok(room && room.shell.open && room.shell.sky && room.shell.sky.scenery === M.scenery, M.id + ': an outdoor room under the map\'s sky');
-        assert.ok(room.shell.mood.signLines.n[1] === 'ROOM ' + M.roomNo, M.id + ': the north sign wears the number');
+        const ent = D.hqSiteEntryOf(M.id), room = ent && HQ.rooms[ent.room];
+        assert.ok(room && (room.doors || []).some(d => d.entry === M.id && d.action && d.action.room), M.id + ': an entry part wearing the bay door');
         assert.ok(D.DOOR_TEXT.SITE_FILES[M.id] && D.DOOR_TEXT.SITE_FILES[M.id].summary.length > 120, M.id + ': a site file');
         const label = D.EW_MAP_META.find(m => m.id === M.id).label;
         assert.ok(D.doorSiteCrossings(label).length >= 1, M.id + ': at least one native (' + label + ')');
     }
-    const rev = HQ.rooms[D.hqSiteRoomId('prebuilt_revenge')];
-    assert.ok(rev.shell.moat && rev.shell.moat.key === 'deep_water' && rev.shell.moat.quay >= 2, 'the Revenge is a moat room: the deck on a quay over deep water');
     /* every point of entry names a real site label */
     const labels = new Set(D.EW_MAP_META.filter(m => !m.isDelta).map(m => m.label));
     for (const [race, site] of Object.entries(D.DOOR_TEXT.POINT_OF_ENTRY)) assert.ok(labels.has(site), race + ': point of entry ' + site + ' is a site');
@@ -189,7 +184,6 @@ test('source scan: the renderer\'s MOTION system and the three settings', () => 
     for (const M of MOVING) {
         const m = TR.match(new RegExp('_NR_BUILDERS\\.' + M.near + ' = function \\(group, ctx\\) \\{\\s*var K = _nrKit\\(group, ctx, \\{ w: ([0-9.]+)'));
         assert.ok(m, M.near + ': a near builder');
-        assert.strictEqual(+m[1], D.DOOR_HQ.siteRooms.near[M.near].w, M.near + ': the builder\'s w is the room\'s');
     }
     assert.match(TR, /_nrMoat\(K, \{ key: 'deep_water', depth: _NR_SEA_DEPTH, pad: 40, stream: true \}\);/, 'the Revenge sails on a streaming sea');
     assert.strictEqual(+TR.match(/var _NR_SEA_DEPTH = ([0-9.]+);/)[1], D.EW_MAP_META.find(m => m.id === 'prebuilt_revenge').env.motion.seaDepth, 'the setting and the meta row agree on the sea\'s depth');

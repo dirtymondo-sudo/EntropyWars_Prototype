@@ -27,7 +27,7 @@ const TERRAIN_RULES = vm.runInContext('TERRAIN_RULES', D);
 const SPRITES_SRC = fs.readFileSync(require('node:path').join(__dirname, 'sprites.js'), 'utf8');
 const urbanOk = k => typeof k === 'string' && k.startsWith('urban:') && SPRITES_SRC.includes("'" + k.slice(6) + "'");   // THE URBAN PACK (2026-09-17)
 const SITES = {
-    prebuilt_strip:    { no: '21',   board: 'site_prebuilt_strip',    parts: ['streets', 'chapel', 'casino'], back: { id: 'chapel', wall: 'n', x: -0.2, leaf: 'leaf_motel', into: 'chapel', at: 'street', backTo: 'site_prebuilt_strip_streets' } },   // THE THIRD PASS (2026-09-17): the Strip's own streets; the chapel walks back onto them
+    prebuilt_strip:    { no: '21',   board: 'site_prebuilt_strip',    parts: ['streets', 'chapel', 'casino', 'highway'] /* OPEN WORLD Phase 5: the highway's Strip end */, back: { id: 'chapel', wall: 'n', x: -0.2, leaf: 'leaf_motel', into: 'chapel', at: 'street', backTo: 'site_prebuilt_strip_streets' } },   // THE THIRD PASS (2026-09-17): the Strip's own streets; the chapel walks back onto them
     prebuilt_downtown: { no: '1954', board: 'site_prebuilt_downtown', parts: ['lobby', 'showroom', 'subway', 'streets', 'mall', 'closet', 'sewers', 'tunnels', 'cells', 'workings'] /* THE THREE ROOMS (2026-09-21): THE SHOWROOM off the lobby */ /* + THE UNDERWORLD (2026-09-18): four parts under the city */, back: { id: 'tower', wall: 'e', z: 0, leaf: 'leaf_entrance', into: 'lobby', at: 'street' } },   // DISASTER CITY (2026-09-17): THE STREETS + THE MALL hang off the lobby's avenue doors (hq-city.test.js owns them)
 };
 const PART_IDS = [].concat(...Object.entries(SITES).map(([s, S]) => S.parts.map(p => S.board + '_' + p)));
@@ -67,10 +67,11 @@ function propBlocks(room, p, x, z, margin) {
     return Math.hypot(x - px, z - pz) <= Math.max(foot, 0.3) + margin;
 }
 
-test('the sheets: the Strip and Downtown are complexes of a board room and two parts each, every part wearing site + part and no number; the register lists each site once', () => {
+test('the sheets: the Strip and Downtown are complexes of parts, every part wearing site + part and no number; the register lists each site once', () => {
     for (const [site, S] of Object.entries(SITES)) {
         const ids = S.parts.map(p => S.board + '_' + p);
-        assert.strictEqual(D.hqSiteComplex(site).join(','), [S.board].concat(ids).join(','), site + ': hqSiteComplex = the board room, then the parts in sheet order');
+        assert.strictEqual(D.hqSiteComplex(site).join(','), ids.join(','), site + ': hqSiteComplex = the parts in sheet order (the board room is gone, 2026-09-27)');
+        assert.ok(!HQ.rooms[S.board] && ids.includes(D.hqSiteEntryOf(site).room), site + ': `' + S.board + '` is an alias for one of its parts');
         assert.strictEqual(D.hqComplexRooms().filter(id => D.hqRoomSite(id) === site).join(','), ids.join(','), site + '’s parts');
         for (const p of S.parts) {
             const id = D.hqComplexRoomId(site, p), r = HQ.rooms[id];
@@ -90,39 +91,27 @@ test('the sheets: the Strip and Downtown are complexes of a board room and two p
     assert.ok(D.hqComplexRooms().length >= 21, 'six complexes now (the house, the cave, the ship, the Dutchman, the Strip, Downtown)');
 });
 
-test('the back doors: the chapel’s motel door takes the Strip’s one free north lane; the tower’s lobby door hangs on Downtown’s EAST wall because its north wall carries the highway’s three doors; both wear the site’s own leaf and both come back', () => {
-    for (const [site, S] of Object.entries(SITES)) {
-        const BD = HQ.siteRooms.backDoors[site];
-        assert.ok(Array.isArray(BD) && BD.length === 1, site + ': an ARRAY of one back-door row');
-        const room = HQ.rooms[S.board], Sh = room.shell, B = S.back;
-        assert.strictEqual(room.doors.filter(d => !d.link).map(d => d.id).join(','), 'egress,' + B.id, site + ': the way in, then the back door (links append after)');
-        const bd = at(S.board, B.id);
-        assert.strictEqual(bd.wall, B.wall, site + ': the wall');
-        if (B.wall === 'n') assert.strictEqual(bd.x, B.x); else assert.strictEqual(bd.z, B.z);
-        assert.strictEqual(bd.leaf, B.leaf); assert.strictEqual(bd.leaf, HQ.thresholds[site].leaf, site + ': the back door wears the site’s catalogue leaf');
-        assert.strictEqual(!!bd.wide, !!HQ.catalogue[bd.leaf].wide, site + ': the wide flag follows the leaf');
-        assert.ok(bd.action.room === S.board + '_' + B.into && bd.action.at === B.at, site + ': walks into the ' + B.into);
-        assert.notStrictEqual(bd.action, BD[0].action, 'the generator copies the action');
-        const back = at(S.board + '_' + B.into, B.at);
-        assert.ok(back && back.leaf === B.leaf && back.action.room === (B.backTo || S.board) && (B.backTo ? at(B.backTo, back.action.at) : back.action.at === B.id), site + ': the way back returns to ' + (B.backTo || 'the board room at the back door'));
-        if (!B.backTo) assert.strictEqual(back.wall, { n: 's', s: 'n', e: 'w', w: 'e' }[B.wall], site + ': the way back is on the opposite wall');
+test('the entry parts: the Strip’s streets carry the chapel’s motel door, Downtown’s streets the tower’s avenue door; both wear the site’s own leaf, both come back, and each street wears its site’s bay door', () => {
+    const ROWS = [
+        { site: 'prebuilt_strip', room: 'site_prebuilt_strip_streets', id: 'chapel', wall: 'n', leaf: 'leaf_motel', into: 'site_prebuilt_strip_chapel', at: 'street' },
+        { site: 'prebuilt_downtown', room: 'site_prebuilt_downtown_streets', id: 'tower', wall: 'w', leaf: 'leaf_entrance', into: 'site_prebuilt_downtown_lobby', at: 'avenue' },
+    ];
+    for (const B of ROWS) {
+        assert.strictEqual(D.hqSiteEntryOf(B.site).room, B.room, B.site + ': the streets are the entry part');
+        const bd = at(B.room, B.id);
+        assert.ok(bd && bd.wall === B.wall && bd.leaf === B.leaf, B.site + ': ' + B.id + ' on the ' + B.wall + ' wall in ' + B.leaf);
+        assert.strictEqual(bd.leaf, HQ.thresholds[B.site].leaf, B.site + ': the door wears the site’s catalogue leaf');
+        assert.strictEqual(!!bd.wide, !!HQ.catalogue[bd.leaf].wide, B.site + ': the wide flag follows the leaf');
+        assert.ok(bd.action.room === B.into && bd.action.at === B.at, B.site + ': walks into ' + B.into);
+        const back = at(B.into, B.at);
+        assert.ok(back && back.leaf === B.leaf && back.action.room === B.room && back.action.at === B.id, B.site + ': the way back returns to the streets at the ' + B.id + ' door');
         assert.strictEqual(D.doorSiteState(bd, null), 'open', 'a room door is never sector-gated (C-12)');
-        /* the lanes: a north door ≥ 4.4 m from every link door and clear of the x 5 signboard; an east door clear of the corner masts */
-        const links = room.doors.filter(d => d.link);
-        if (B.wall === 'n') {
-            for (const l of links) if (l.wall === 'n') assert.ok(Math.abs(l.x - bd.x) >= 4.4, site + ': ' + B.id + ' shares a lane with ' + l.id);
-            assert.ok(bd.x + 2.2 < 5 - 2.4, site + ': clear of the built-in north signboard');
-        } else {
-            assert.strictEqual(links.filter(d => d.wall === 'n').length, 0, site + ': the highway left the board room for the streets\' ends (THE ROADS OUT, 2026-09-17) — the tower door stays on the east wall');
-        }
-        const h = landing(room, bd), p = h.player;
-        assert.ok(Math.abs(p.x) < Sh.w / 2 - 0.4 && Math.abs(p.z) < Sh.d / 2 - 0.4, site + ': the landing is inside the walls');
-        assert.ok(Math.max(Math.abs(p.x), Math.abs(p.z)) > Sh.grid.cells * Sh.grid.cell / 2 + 0.4, site + ': off the board — on the walkway');
-        for (const q of [...room.props, ...room.npcSpots]) assert.ok(!propBlocks(room, q, p.x, p.z, 0.4), site + ': ' + (q.key || q.race) + ' blocks the back door’s landing');
-        for (const m of Sh.lights || []) assert.ok(Math.hypot(p.x - m.x, p.z - m.z) > 1.2, site + ': a lamp mast stands on the landing');
-        const c = room.counters.find(x => x.id === 'crossing');
-        assert.ok(Math.hypot(p.x - c.x, p.z - c.z) > 3, site + ': the console is clear of the landing');
+        const bay = HQ.rooms[B.room].doors.find(d => d.entry === B.site);
+        assert.ok(bay && bay.action.room === D.hqBayId(D.hqSectorOfMap(B.site)) && bay.action.at === 'site_' + B.site, B.site + ': the streets wear the bay door');
     }
+    /* the lobby's old street door (the board room's tower door) walks onto the streets directly */
+    const st = at('site_prebuilt_downtown_lobby', 'street');
+    assert.ok(st && st.action.room === 'site_prebuilt_downtown_streets' && at(st.action.room, st.action.at), 'the lobby’s street door lands on a real door of the streets');
 });
 
 test('THE SUBWAY’s third station: Downtown’s platform stands its train FREE on its own track (a link end on a complex part), the far end is a plain stair mouth on Cyberpunk’s last free north lane, both ends pair, the line reads tunnel — Cyberpunk — Downtown', () => {
@@ -151,44 +140,45 @@ test('THE SUBWAY’s third station: Downtown’s platform stands its train FREE 
     assert.strictEqual(D.hqDoorNo(st), '1954', 'the stair’s plate reads Downtown’s number');
     assert.strictEqual(D.hqDoorNo(tr), '2047', 'the train’s plate reads Cyberpunk’s number');
     assert.strictEqual(cy.doors.filter(d => d.link).length, 4, 'the grid carries the stair on its north wall, the tunnel\'s train FREE at its station (the second pass), the Strip\'s road at its east end (THE ROADS OUT, 2026-09-17) and THE UNDERCITY\'s sewer (AREA CONTENT D2, 2026-09-19)');
-    assert.strictEqual(HQ.rooms.site_prebuilt_cyberpunk.doors.filter(d => d.link).length, 0, 'the board room carries nothing (the train, the stair, the machine and the highway all moved into the city)');
+    assert.ok(!HQ.rooms.site_prebuilt_cyberpunk, 'no board room (the train, the stair, the machine and the highway all live in the city)');
     assert.strictEqual(cy.doors.filter(d => d.link && d.wall === 'n').length, 1, 'one on the wall');
     for (const o of cy.doors) if (o !== st && o.wall === 'n') assert.ok(Math.abs(o.x - st.x) >= 4.4, 'the stair shares a lane with ' + o.id);
     const sub = D.hqWorldRoutes('foyer').find(r => r.id === 'subway');
-    assert.strictEqual(sub.stations.map(s => s.room).join(' — '), 'site_prebuilt_fairy_forest — tunnel — site_prebuilt_cyberpunk — site_prebuilt_downtown', 'the line is walked from its end — THE WOODS\' storm drain (9.3 stage 3) — through the tunnel; the last stop is Downtown');
+    assert.strictEqual(sub.stations.map(s => s.room).join(' — '), 'site_prebuilt_fairy_forest_clearing — tunnel — site_prebuilt_cyberpunk_streets — site_prebuilt_downtown_streets', 'the line is walked from its end — THE WOODS\' storm drain (9.3 stage 3) — through the tunnel; the last stop is Downtown (a station is its site\'s entry part)');
     assert.strictEqual(sub.legs.length, 5);   // THE WOODS (9.3 stage 3): the storm drain is the third leg; THE UNDERWORLD (2026-09-18): the running tunnels' two legs (the Works' tunnel room, Downtown's platform)
-    const here = D.hqWorldRoutes('site_prebuilt_downtown_subway').find(r => r.id === 'subway').stations.find(s => s.room === 'site_prebuilt_downtown');
+    const here = D.hqWorldRoutes('site_prebuilt_downtown_subway').find(r => r.id === 'subway').stations.find(s => s.site === 'prebuilt_downtown');
     assert.ok(here && here.here, 'standing on the platform counts as standing in Downtown');
     assert.ok(D.hqWorldRoutes('foyer').find(r => r.id === 'highway').stations.some(s => s.site === 'prebuilt_downtown'), 'Downtown is an interchange: the highway and the subway');
 });
 
-test('every door in both complexes is reversible, each complex is connected from its board room, and nothing leaves a site but the board room’s egress and the platform’s train', () => {
+test('every door in both complexes is reversible, each complex is connected from its entry part, and nothing leaves a site but the bay door and the links rows', () => {
     for (const [site, S] of Object.entries(SITES)) {
-        const ROOMS = [S.board].concat(S.parts.map(p => S.board + '_' + p));
-        const seen = new Set([S.board]), queue = [S.board];
+        const ROOMS = S.parts.map(p => S.board + '_' + p), ent = D.hqSiteEntryOf(site);
+        const seen = new Set([ent.room]), queue = [ent.room];
         while (queue.length) {
             const id = queue.shift();
             for (const d of HQ.rooms[id].doors) {
                 const a = d.action || {};
                 assert.ok(a.room && HQ.rooms[a.room], id + '/' + d.id + ' leads to a room');
                 if (d.link) {
-                    if (id === S.board) continue;   // the highway's doors on the board room (hq-world.test.js guards them)
-                    /* the platform's train, and since DISASTER CITY (2026-09-17) the streets' seams (the Strip, the Stadium, the gutter), the mall's time machine and the chapel's parking lot — every one a links row that pairs */
+                    /* the platform's train, the streets' seams (the Strip, the Stadium, the gutter, the highway), the mall's time machine and the chapel's parking lot — every one a links row that pairs */
                     assert.ok(HQ.links.some(l => l.id === d.link), id + '/' + d.id + ' is a links row');
                     const far = at(a.room, a.at);
                     assert.ok(far && far.action.room === id && far.action.at === d.id, id + '/' + d.id + ' ⇄ ' + a.room + ' is a pair');
                     continue;
                 }
-                if (HQ.rooms[a.room].kind === 'bay') { assert.ok(id === S.board || (d.entry && D.hqSiteEntryOf(site) && D.hqSiteEntryOf(site).room === id), 'only the board room — or the part that stands for it (siteRooms.entry, 2026-09-17) — walks back to the bay'); continue; }
-                const back = at(a.room, a.at), ent = D.hqSiteEntryOf(site);
-                const standIn = !!(ent && id === S.board && back && back.action.room === ent.room);   // THE ENTRY (2026-09-17): the board room is bypassed — its parts walk back onto the part that stands for it
-                assert.ok(back && ((back.action.room === id && back.action.at === d.id) || standIn), id + '/' + d.id + ' ⇄ ' + a.room + '/' + (back && back.id) + ' is a pair');
+                if (HQ.rooms[a.room].kind === 'bay') { assert.ok(id === ent.room && d.entry === site, 'only the entry part walks back to the bay'); continue; }
+                const back = at(a.room, a.at);
+                const second = !!(back && a.room === ent.room && back.action.room === id);   // the lobby's old street door (it was the board room's): a second door onto the streets, whose tower door comes back through the avenue
+                assert.ok(back && ((back.action.room === id && back.action.at === d.id) || second), id + '/' + d.id + ' ⇄ ' + a.room + '/' + (back && back.id) + ' is a pair');
                 assert.strictEqual(back.leaf, d.leaf, 'the same leaf on both sides of ' + d.id);
                 assert.ok(ROOMS.includes(a.room), id + '/' + d.id + ' stays inside the site');
                 if (!seen.has(a.room)) { seen.add(a.room); queue.push(a.room); }
             }
+            /* OPEN WORLD Phase 5: a staged edge join (the highway's road on from the streets) is walked like a door */
+            for (const nb of D.hqStageNeighbours(id)) if (ROOMS.includes(nb.id) && !seen.has(nb.id)) { seen.add(nb.id); queue.push(nb.id); }
         }
-        assert.strictEqual(Array.from(seen).sort().join(','), ROOMS.slice().sort().join(','), site + ': every part is reachable from the board room');
+        assert.strictEqual(Array.from(seen).sort().join(','), ROOMS.slice().sort().join(','), site + ': every part is reachable from the entry part');
     }
     assert.ok(at('site_prebuilt_strip_chapel', 'casino').action.room === 'site_prebuilt_strip_casino', 'boulevard → chapel → the casino floor');
     assert.strictEqual(HQ.rooms.site_prebuilt_strip_casino.doors.length, 1, 'the casino floor has ONE door you can see — no clock, no window, the exit through the chapel');
@@ -226,7 +216,7 @@ test('the production renderer lands every door inside its room, clear of every b
     }
 });
 
-test('THE PARK RULE + the light + the procs: a rail in every room, a stepped ramp in every big one; each room lights itself; the machines and the gates are catalogued procs with builders; one tape per part, the hundred still a hundred, the platform’s finds pinned off the track', heavy, () => {
+test('THE PARK RULE + the light + the procs: a rail in every room, a stepped ramp in every big one; each room lights itself; the machines and the gates are catalogued procs with builders', heavy, () => {
     for (const id of PART_IDS) {
         const room = HQ.rooms[id], S = room.shell;
         assert.ok(room.props.some(p => p.key === 'railing_1m'), id + ': a rail to grind');
@@ -235,11 +225,8 @@ test('THE PARK RULE + the light + the procs: a rail in every room, a stepped ram
         const lit = room.props.filter(p => (HQ.catalogue[p.key] || {}).light).length;
         assert.ok(lit >= 1 && lit <= 10, id + ': ' + lit + ' prop lights (HQ_PROP_LIGHT_MAX is 10)');
         for (const n of ['floor', 'wall', 'dado', 'trim', 'ceiling']) assert.ok(HQ.textures[S[n]] || TERRAIN_RULES[S[n]] || urbanOk(S[n]), id + ': texture ' + S[n]);
-        assert.ok([1, 2].includes(D.DOOR_TAPES.filter(t => t.where === id).length) && (D.DOOR_TAPES.filter(t => t.where === id).length === 1 || Object.values(HQ.siteRooms.entry || {}).some(e => e.room === id)), id + ': one tape (two on the part that stands for a bypassed board — THE AREAS, 2026-09-18)');
         for (const n of room.npcSpots) for (const l of n.say || []) assert.ok(typeof l === 'string' && l.length > 10, id + ': a said line');
     }
-    assert.strictEqual(D.DOOR_TAPES.length, 100, 'the hundred stays a hundred');
-    for (const rid of ['garage', 'kitchen', 'coldroom', 'dungeon']) assert.strictEqual(D.DOOR_TAPES.filter(t => t.where === rid).length, 0, rid + ' gave its tape to the urban block');
     /* the casino is lit by its machines — eight, no clock, no window */
     const cas = HQ.rooms.site_prebuilt_strip_casino;
     assert.strictEqual(cas.props.filter(p => p.key === 'slot_machine').length, 8, 'eight machines');
@@ -267,11 +254,6 @@ test('THE PARK RULE + the light + the procs: a rail in every room, a stepped ram
     assert.ok(HQ.catalogue.slot_machine.light && HQ.catalogue.slot_machine.glow, 'a machine lights the floor');
     assert.ok(/reels\[i\]\.rotation\.x \+= dt \* 14/.test(renderer), 'the reels spin on a ticker');
     assert.ok(/tri\.rotation\.x = turn/.test(renderer), 'the tripod turns');
-    /* the finds: the platform's tape and envelope are PINNED onto the platform — the train's body (a way's blockers, laid at build) lies over the track where the generator would otherwise put the far corner */
-    const pins = HQ.findSpots.site_prebuilt_downtown_subway;
-    assert.ok(pins && pins.tape && pins.pay, 'the platform’s finds are pinned');
-    for (const f of HQ.finds.filter(f => f.room === 'site_prebuilt_downtown_subway')) assert.ok(f.x > -1.0 && Math.abs(f.z) < 15 - 0.4, f.id + ' stands on the platform, off the track');
-    for (const id of PART_IDS) assert.ok(HQ.finds.some(f => f.room === id && f.kind === 'tape') && HQ.finds.some(f => f.room === id && f.kind === 'pay'), id + ': a tape and an envelope');
     /* the source: the back-door rows and the link */
     assert.match(dataSrc, /prebuilt_strip: \[\n\s+\{ id: 'chapel', wall: 'n', x: -0\.2, leaf: 'leaf_motel',/, 'the Strip’s back-door row');
     assert.match(dataSrc, /prebuilt_downtown: \[\n\s+\{ id: 'tower', wall: 'e', z: 0, leaf: 'leaf_entrance',/, 'Downtown’s back-door row');

@@ -16,12 +16,13 @@ const at = (id, did) => (HQ.rooms[id].doors || []).find(d => d.id === did);
 const extract = (name) => { const a = rendererSrc.indexOf('    function ' + name + '('); assert.ok(a >= 0, name); return rendererSrc.slice(a, rendererSrc.indexOf('\n    }\n', a) + 6); };
 const ramp = (px, pz, f) => { const dx = f.x1 - f.x0, dz = f.z1 - f.z0, L = Math.hypot(dx, dz); return { t: ((px - f.x0) * dx + (pz - f.z0) * dz) / (L * L), v: (-(px - f.x0) * dz + (pz - f.z0) * dx) / L }; };
 
-test('THE ENTRY: Cyberpunk City IS the grid, the Strip its own streets, Downtown its streets — every landing in a bypassed board room lands in the part (an `at` the part has is kept, the rest land at the bay door), the part wears the board room\'s egress as its bay door, the grid\'s tenement door is gone, map.js redirects at the one entry point', () => {
+test('THE ENTRY: Cyberpunk City IS the grid, the Strip its own streets, Downtown its streets — every landing on the `site_<id>` alias lands in the part (an `at` the part has is kept, the rest land at the bay door), the part wears the site\'s egress as its bay door, the grid\'s tenement door is gone, map.js redirects at the one entry point', () => {
     const E = HQ.siteRooms.entry;
     assert.deepEqual(Object.keys(E).sort().join(','), 'prebuilt_agartha,prebuilt_antarctica,prebuilt_area51,prebuilt_atlantis,prebuilt_babel,prebuilt_backrooms,prebuilt_bermuda,prebuilt_bohemian_grove,prebuilt_camelot,prebuilt_cern,prebuilt_cyberpunk,prebuilt_derelict,prebuilt_downtown,prebuilt_dumb,prebuilt_fairy_forest,prebuilt_flatlands,prebuilt_giza,prebuilt_gobekli,prebuilt_haunted,prebuilt_heaven,prebuilt_hell,prebuilt_hollow_earth,prebuilt_lodge,prebuilt_lookingglass,prebuilt_mars,prebuilt_moon,prebuilt_northpole,prebuilt_olympus,prebuilt_revenge,prebuilt_saturn,prebuilt_shasta,prebuilt_singularity,prebuilt_skinwalker,prebuilt_stadium,prebuilt_stonehenge,prebuilt_strip,prebuilt_technoticlan,prebuilt_vatican');   // THE AREAS (2026-09-18): every built site but Room 64 — hq-areas.test.js owns the rule   // + THE LEY LINES' four ancient sites (2026-09-18: hq-leylines owns them)   // + THE DEEP (2026-09-18: hq-deep owns the sea and the temple)   // + CAMELOT CASTLE (2026-09-18: hq-camelot owns it)   // + THE BASES (2026-09-18: hq-area51 / hq-dumb own those three) + THE DIVINE STAIR (2026-09-18: hq-divine owns those three)
     for (const [site, part] of [['prebuilt_cyberpunk', GRID], ['prebuilt_strip', STRIP], ['prebuilt_downtown', STREETS]]) {
-        const board = HQ.rooms['site_' + site], eg = board.doors.find(d => d.id === 'egress'), bay = at(part, 'bay');
-        assert.ok(bay && bay.entry === site && bay.leaf === eg.leaf && bay.label === eg.label && bay.action.room === eg.action.room && bay.action.at === eg.action.at && bay.wall === E[site].door.wall, part + ': the bay door is the board room\'s egress');
+        const eg = D.hqSiteEgressDoor(site), bay = at(part, 'bay');   // the board rooms are gone (2026-09-27): `site_<id>` is an alias
+        assert.ok(!HQ.rooms['site_' + site], site + ': no board room');
+        assert.ok(bay && bay.entry === site && bay.leaf === eg.leaf && bay.label === eg.label && bay.action.room === eg.action.room && bay.action.at === eg.action.at && bay.wall === E[site].door.wall, part + ': the bay door is the site\'s egress');
         assert.equal(at(part, 'bay') && HQ.rooms[part].doors.filter(d => d.id === 'bay').length, 1, 'once, never accumulating');
         const e1 = D.hqSiteEntry('site_' + site, 'egress'), e2 = D.hqSiteEntry('site_' + site, 'crossing'), e3 = D.hqSiteEntry('site_' + site, { x: 1, z: 2, face: 90 });
         assert.ok(e1.room === part && e1.at === 'bay' && e2.at === 'bay' && e3.at.x === 1, site + ': egress / crossing / a free spot');
@@ -44,7 +45,7 @@ test('THE LABELS: Disaster City is the larger area — every part of Downtown, t
     assert.equal(HQ.rooms[GRID].label, 'DISASTER CITY · CYBERPUNK CITY'); assert.equal(HQ.rooms[STRIP].label, 'DISASTER CITY · THE STRIP'); assert.equal(HQ.rooms[STREETS].label, 'DISASTER CITY · DOWNTOWN');
 });
 
-test('THE STRIP: a city plan on the Strip\'s own night (hqCityShell strip, the strip look), the boulevard\'s two ends the roads out (downtown_strip east, strip_cyberpunk west — docked on the part, live), every door reached and nothing traps, THE MARQUEE ROOF the hard tape with a shot, the circuit + the traffic, the tape re-homed', heavy, () => {
+test('THE STRIP: a city plan on the Strip\'s own night (hqCityShell strip, the strip look), the boulevard\'s two ends the roads out (downtown_strip east, strip_cyberpunk west — docked on the part, live), every door reached and nothing traps, the circuit + the traffic', heavy, () => {
     const r = HQ.rooms[STRIP], S = r.shell, info = D.hqTerrainInfo(STRIP);
     assert.ok(S.open && S.sky && S.sky.night === 1 && S.look === D.HQ_ROOM_LOOKS.strip && S.mood.night === 1, 'the Strip\'s night');
     assert.ok(info.gen && info.gen.kind === 'city' && r.terrain.gen.neon && info.lots.length >= 10 && info.fronts.length >= 6 && info.gen.sidewalk === 3.0, 'the plan: lots ' + info.lots.length);
@@ -57,18 +58,13 @@ test('THE STRIP: a city plan on the Strip\'s own night (hqCityShell strip, the s
     assert.equal(D.hqTerrainTraps(info).length, 0, 'nothing traps');
     const deck = r.terrain.features.find(f => f.k === 'plateau' && f.h === 2.4);
     assert.ok(R.has(D.hqTerrainNodeKey(info, deck.x, deck.z)) && Math.abs(R.get(D.hqTerrainNodeKey(info, deck.x, deck.z)) - 2.4) < 0.3, 'THE VALET DECK is walked up to');
-    const rows = D.hqFindsForRoom(STRIP), tape = rows.find(x => /^tape:/.test(x.id)), pin = HQ.findSpots[STRIP].tape;
-    assert.ok(tape && tape.hard === true && tape.x === pin.x && tape.z === pin.z && tape.y >= 4.4, 'the tape is high and hard');
-    assert.ok(!R.has(D.hqTerrainNodeKey(info, pin.x, pin.z)), 'THE MARQUEE ROOF is the door gun\'s');
-    const shot = D.hqFindHardReachTerrain(tape, D.hqFindRoomInfo(STRIP)); assert.ok(shot && shot.ok === true, JSON.stringify(shot));
     assert.ok(info.race && info.race.gates === 6 && info.traffic.length === 3 && info.traffic.every(t => t.kinds.length), 'the circuit + the traffic');
-    assert.equal(D.DOOR_TAPES.filter(t => t.where === STRIP).length, 2); assert.equal(D.DOOR_TAPES.filter(t => t.where === D.hqSiteRoomId('prebuilt_strip')).length, 0);   // THE AREAS (2026-09-18): the board's tape came onto the streets assert.equal(D.DOOR_TAPES.length, 100);
     assert.ok(r.props.some(p => p.key === 'railing_1m') && r.props.filter(p => p.key === 'quarter_pipe').length === 2 && r.props.some(p => /^riser_/.test(p.key)), 'the park rule');
     for (const p of r.props) if (!p.wall && !p.ceil) assert.ok(!D.hqTerrainSolidAt(info, p.x, p.z, 0) || /^car_/.test(p.key) === false, p.key + ' stands in the open');
     assert.ok(!D.hqTerrainSolidAt(info, r.spawn.x, r.spawn.z, 0.3) && D.hqTerrainFeet(info, r.spawn.x, r.spawn.z, null) !== null && Math.abs(r.spawn.z) > 7, 'the spawn stands off the boulevard\'s lanes');
 });
 
-test('THE MALL: one open box (96 × 64 × 12), no floor plan and no store-unit mass, TWO FLOORS — the galleries at 4.6 m and the east bridge reached up both escalators and both stairs from the street door — the fun box, the grind ledges, the half pipe, THE CLOCK TOWER hard with a shot, eleven shopfront runs, nothing on a ramp, nothing floating', () => {
+test('THE MALL: one open box (96 × 64 × 12), no floor plan and no store-unit mass, TWO FLOORS — the galleries at 4.6 m and the east bridge reached up both escalators and both stairs from the street door — the fun box, the grind ledges, the half pipe, eleven shopfront runs, nothing on a ramp, nothing floating', () => {
     const r = HQ.rooms[MALL], S = r.shell, T = r.terrain, info = D.hqTerrainInfo(MALL);
     assert.ok(S.w === 96 && S.d === 64 && S.h === 12 && !S.open && S.look === D.HQ_ROOM_LOOKS.mall, 'the box');
     assert.ok(!T.gen && !info.gen && !(info.lots || []).length && !info.maskD, 'no plan, no mass');
@@ -83,9 +79,6 @@ test('THE MALL: one open box (96 × 64 × 12), no floor plan and no store-unit m
     assert.equal(D.hqTerrainTraps(info).length, 0, 'nothing traps');
     assert.ok(T.features.some(f => f.k === 'plateau' && f.h === 0.9) && T.features.filter(f => f.k === 'wall' && f.h === 0.45).length === 2 && T.features.filter(f => f.k === 'rail').length >= 9 && r.props.filter(p => p.key === 'quarter_pipe').length === 2, 'the park');
     const box = T.features.find(f => f.k === 'plateau' && f.h === 0.9); assert.ok(Math.abs(R.get(D.hqTerrainNodeKey(info, box.x, box.z)) - 0.9) < 0.2, 'the fun box is walked');
-    const tape = D.hqFindsForRoom(MALL).find(x => /^tape:/.test(x.id)), pin = HQ.findSpots[MALL].tape;
-    assert.ok(tape.hard && tape.x === pin.x && tape.z === pin.z && tape.y >= 8 && !R.has(D.hqTerrainNodeKey(info, pin.x, pin.z)), 'THE CLOCK TOWER');
-    assert.ok(D.hqFindHardReachTerrain(tape, D.hqFindRoomInfo(MALL)).ok === true, 'the door gun has a shot');
     assert.equal(info.shops.length, 11); assert.ok(info.shops.every(s => Math.hypot(s.nx, s.nz) > 0.99 && (s.lip === 4.6 || s.wall)), 'every run faces a way and dresses a lip or a wall');
     for (const s of info.shops.filter(s => s.lip)) { const mx = s.x0 + (s.x1 - s.x0) * 0.15, mz = s.z0 + (s.z1 - s.z0) * 0.15;   /* clear of the stairs and the escalators */ assert.ok(Math.abs(D.hqTerrainHeight(info, mx - s.nx * 0.6, mz - s.nz * 0.6) - 4.6) < 0.05 && D.hqTerrainHeight(info, mx + s.nx * 0.8, mz + s.nz * 0.8) < 0.1, 'a lip run stands on a 4.6 m face (' + mx + ',' + mz + ')'); }
     /* nothing on a ramp, nothing on a slope, nothing in the water */
@@ -98,7 +91,6 @@ test('THE MALL: one open box (96 × 64 × 12), no floor plan and no store-unit m
     const nb = r.props.find(p => p.key === 'notice_board'); assert.ok(nb && nb.wall && nb.mount, 'the directory hangs on a wall');
     for (const p of r.props) if (!p.wall && !p.ceil) for (const f of ramps) { const L = ramp(p.x, p.z, f); assert.ok(!(L.t > -0.1 && L.t < 1.1 && Math.abs(L.v) < f.w / 2 + 0.6), p.key + ' stands on a ramp'); }
     assert.ok(r.npcSpots.every(n => D.hqTerrainFeet(info, n.x, n.z, null) !== null) && D.hqTerrainFeet(info, r.spawn.x, r.spawn.z, null) === 0, 'the natives and the spawn stand');
-    assert.equal(D.DOOR_TAPES.filter(t => t.where === MALL).length, 1);
 });
 
 test('THE KERB RULE: in a city plan the seeded street furniture (bins, hydrants, cones, signposts, benches) stands on the SIDEWALK — never in the roadway, never deep in a yard, never on a ramp — on the streets, the grid and the Strip; a row with its own centre (the collapse\'s rubble) keeps its ground', heavy, () => {

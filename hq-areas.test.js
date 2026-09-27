@@ -8,8 +8,7 @@
 // AREA each (HQ_AREA_SPECS → hqAreaRoom → hqBuildAreas); every entry part
 // carries THE MARKER (a `battle` counter, proc battle_marker, the crossing
 // overlay); the plain-leaf doors between sites are pruned to the designed
-// seams (HQ_AREA_KEPT_LEAVES names the survivors); the boards' tapes moved
-// into the parts.
+// seams (HQ_AREA_KEPT_LEAVES names the survivors).
 'use strict';
 const test = require('node:test');
 const { heavy } = require('./test-heavy.js');
@@ -54,7 +53,7 @@ test('EVERY BOARD IS AN AREA: every built site but Room 64 is bypassed; the entr
     assert.ok(tree && tree.way === 'hollowtree' && !tree.leaf && tree.entry === 'prebuilt_fairy_forest', 'the clearing\'s hollow tree IS the woods\' bay door');
 });
 
-test('THE MARKER: every entry part carries exactly one battle marker — the crossing overlay, the site, the beacon proc; the older parts read HQ_AREA_MARKERS; the renderer stands it on the ground and the terminal opens the site\'s Δ', () => {
+test('THE MARKER: every entry part carries exactly one battle marker — the crossing overlay, the site, the beacon proc; the older parts read HQ_AREA_MARKERS; the renderer stands it on the ground and the marker opens its own panel', () => {
     for (const site of HQ.siteRooms.built) {
         const rid = D.hqAreaRoomOf(site), room = HQ.rooms[rid];
         const mk = (room.counters || []).filter(c => c && c.proc === 'battle_marker');
@@ -67,10 +66,10 @@ test('THE MARKER: every entry part carries exactly one battle marker — the cro
     assert.ok(renderer.includes("if (c.proc === 'battle_marker') {") && renderer.includes('_hqBuildBattleMarker(U)'), 'the renderer draws the beacon');
     assert.ok(renderer.includes("var ccy = _hqCaveTop(c.x || 0, c.z || 0); if (ccy != null) grp.position.y += ccy * U;"), 'a box room\'s counter stands on the ground under it');
     const map = fs.readFileSync(__dirname + '/map.js', 'utf8');
-    assert.ok(map.includes("const id = c.site || (room && room.site);") && map.includes("variant: 'site'"), 'map.js: the crossing terminal reads the counter\'s site');
+    assert.ok(map.includes("if (act.overlay === 'crossing' && c.proc === 'battle_marker') return _hqMarkerHtml(t);"), 'map.js: the marker opens its own panel (the crossing console is gone, 2026-09-27)');
 });
 
-test('THE MARKER stands on walkable, reachable ground in every entry part (the walker\'s own field); every generated area solves from every door and holds no trap; its tape is HARD on the weenie', heavy, () => {
+test('THE MARKER stands on walkable, reachable ground in every entry part (the walker\'s own field); every generated area solves from every door and holds no trap', heavy, () => {
     for (const site of HQ.siteRooms.built) {
         const rid = D.hqAreaRoomOf(site), room = HQ.rooms[rid], m = D.hqAreaMarker(rid);
         if (!room.terrain) continue;
@@ -81,8 +80,6 @@ test('THE MARKER stands on walkable, reachable ground in every entry part (the w
         if (!AREA_ROOMS.includes(rid)) continue;
         for (const d of room.doors) { const l = D.hqTerrainDoorLanding(room, d); assert.ok(reach.has(D.hqTerrainNodeKey(info, l.x, l.z)), rid + '/' + d.id + ' reached'); }
         assert.equal(D.hqTerrainTraps(info).length, 0, rid + ': no trap');
-        const finds = D.hqFindsForRoom(rid);
-        assert.ok(finds.some(f => f.kind === 'tape' && f.hard), rid + ': a hard tape (the door gun\'s)');
         for (const p of (room.props || [])) if (p.y == null) assert.ok(D.hqTerrainFeet(info, p.x, p.z, null) != null, rid + ': ' + p.key + ' on ground');
     }
 });
@@ -125,19 +122,9 @@ test('THE DOOR RULE: no plain-leaf door joins two sites but the designed seams (
     for (const id of ['observatory_stair', 'haunted_camelot', 'mirror_lookingglass', 'northpole_haunted', 'lodge_olympus', 'bermuda_abyss', 'downtown_strip', 'tunnel_cyberpunk', 'well_cellar', 'ranch_haunted', 'deadtree_lookingglass', 'fairy_camelot']) assert.ok(D.hqLinkLive(HQ.links.find(l => l.id === id)), id + ' (a way) is live');
     /* Mars is a course on the ship's collar now */
     assert.equal(D.hqShipDestinations().map(d => d.link).join(','), 'moon_derelict,derelict_saturn,antarctica_derelict,mars_derelict');
-    /* no link stands on a bypassed board room any more */
-    for (const site of HQ.siteRooms.built) assert.ok(!HQ.rooms['site_' + site].doors.some(d => d.link), site + ': the board carries no link door');
+    /* the board rooms are gone (2026-09-27): `site_<id>` is an alias for the entry part */
+    for (const site of HQ.siteRooms.built) assert.ok(!HQ.rooms['site_' + site], site + ': no board room');
     assert.ok(dataSrc.includes('if (link.secret || end.secret) { d.secret = true; d.leaf = null;'), 'hqLinkDoors wears a draught');
-});
-
-test('THE TAPES: no bypassed board keeps a tape — every board\'s tape moved into its entry part; the hundred stays a hundred; every generated area has its hard tape pinned', () => {
-    assert.equal(D.DOOR_TAPES.length, 100);
-    for (const site of HQ.siteRooms.built) {
-        if (site === 'prebuilt_training') continue;
-        assert.equal(D.DOOR_TAPES.filter(t => t.where === 'site_' + site).length, 0, site + ': the board room holds no tape');
-        assert.ok(D.DOOR_TAPES.some(t => D.hqRoomSite(t.where) === site), site + ': its tapes are in its parts');
-    }
-    for (const rid of AREA_ROOMS) assert.ok(HQ.findSpots[rid] && HQ.findSpots[rid].tape, rid + ': the tape pinned on the weenie');
 });
 
 test('every world-graph station still stands: every built site is on at least one line; the lunar line is the collar\'s courses; the map reaches every area from the foyer', () => {

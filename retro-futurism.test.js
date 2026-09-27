@@ -106,9 +106,6 @@ test('THE ROOMS: every round room keeps its doors, its wall props, its floor pro
     /* the bridge's nav console still stands at the desk (the room grew round it) */
     const nav = HQ.rooms.site_prebuilt_derelict_bridge.counters.find(c => c.id === 'nav'), crt = HQ.rooms.site_prebuilt_derelict_bridge.props.find(p => p.key === 'crt_terminal');
     assert.ok(nav && crt && Math.hypot(nav.x - crt.x, nav.z - crt.z) < nav.radius, 'the nav console reaches its screen');
-    /* the finds never land in a fillet */
-    const ri = D.hqFindRoomInfo('foyer');
-    assert.equal(D.hqFindFree(ri, 4.6, 2.6), false, 'a corner of the foyer is wall to the finds');
 });
 
 test('THE MALL: THE FLIGHT TUBE is a bridge ring at the upper floor over the atrium\'s east, open at the west round the clock tower, walked from the street door; the lounge rings, the saucers, the white', () => {

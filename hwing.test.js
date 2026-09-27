@@ -87,21 +87,16 @@ test('the fractal: one office behind eight doors, its way out the first door; th
     assert.ok(HQ.rooms.hwing_home.props.some(p => p.key === 'house_stairs') && HQ.rooms.hwing_home.counters.some(c => c.id === 'phone' && !c.action.fn && !c.action.overlay && !c.action.room), 'the stairs that end at the ceiling, the phone that rings');
 });
 
-test('the crossing: the EXIT at the end of the west leg walks into Room 90’s site room, whose back door comes back — and never through Bay 6', () => {
-    const ex = at('hwing_w', 'exit');
-    assert.ok(ex && ex.wall === 'n' && ex.leaf === 'leaf_exit' && ex.action.room === 'site_prebuilt_backrooms' && ex.action.at === 'hwing', 'EXIT → the Backrooms room');
+test('the crossing: the EXIT at the end of the west leg walks into Room 90’s entry part (THE LEVELS), whose back door comes back — and never through Bay 6', () => {
+    const ex = at('hwing_w', 'exit'), LEVELS = D.hqSiteEntryOf('prebuilt_backrooms').room;
+    assert.ok(ex && ex.wall === 'n' && ex.leaf === 'leaf_exit' && ex.action.room === LEVELS && ex.action.at === 'hwing', 'EXIT → the Backrooms’ entry part (the board room is gone, 2026-09-27)');
     assert.strictEqual(D.doorSiteState(ex, null), 'open', 'a room door: the sealed sector never gates it');
-    const site = HQ.rooms.site_prebuilt_backrooms;
+    const site = HQ.rooms[LEVELS];
     const back = site.doors.find(d => d.id === 'hwing');
-    assert.ok(back && back.wall === 's' && back.leaf === 'leaf_exit' && back.action.room === 'hwing_w' && back.action.at === 'exit', 'the site room’s back door (siteRooms.backDoors) returns to the wing');
-    assert.strictEqual(site.doors[0].id, 'egress', 'the way in is still first');
-    assert.strictEqual(site.doors.filter(d => !d.link).length, 2, 'the way in and the back door (the world-graph links append after — 9.3 rev 7)');
-    assert.ok(Math.abs(back.x) + 1.25 < site.shell.w / 2 && Math.abs(back.x) > 1.25 + 1.65, 'the back door fits the wall clear of the way in');
+    assert.ok(back && back.wall === 's' && back.leaf === 'leaf_exit' && back.action.room === 'hwing_w' && back.action.at === 'exit', 'the part’s back door returns to the wing');
+    const bay = site.doors.find(d => d.entry === 'prebuilt_backrooms');
+    assert.ok(bay && bay.wall === back.wall && Math.abs(bay.x - back.x) > 2.6, 'the back door stands clear of the bay door');
     assert.ok(HQ.sectors.quarantined.locked === true, 'Bay 6 stays sealed — H-Wing is the other way to Room 90 (C-12)');
-    /* a back door is a full box-room door row; since 9.2 (2026-09-15) a map may carry an ARRAY of them (the Haunted House complex) — one row stays legal */
-    for (const [id, bd] of Object.entries(HQ.siteRooms.backDoors)) { assert.ok(HQ.siteRooms.built.includes(id), id + ' is built'); for (const d of (Array.isArray(bd) ? bd : [bd])) assert.ok(d.id && d.wall && d.action && d.action.room && d.action.at, id + ': a door row'); }
-    assert.match(TR, /a second door on the room \(H-WING, 2026-09-14 rev 4/, 'the setting keeps the back door’s lane clear');
-    assert.match(TR, /if \(!d \|\| d\.id === 'egress' \|\| !d\.wall\) return;/);
 });
 
 test('the procs and the panels: the square cubicle and the house stairs are catalogued with builders and rects; the floor plan and the phone are by-id panels', () => {

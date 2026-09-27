@@ -86,13 +86,13 @@ test('THE GROUP: a lone native brings 1–2 (never one enemy, CAPTURE_PLAN §5.1
     const rr = grp({ id: 'hq-roam-0', race: 'grey', group: [{ id: 'hq-roam-1', race: 'nordic' }, { id: 'hq-roam-2', race: 'grey' }, { id: 'hq-roam-0', race: 'grey' }] }, 'x');
     assert.equal(rr.kind, 'roam'); assert.equal(rr.members.length, 2, 'the target itself is never its own companion'); assert.equal(rr.size, 3 + rr.extra);
     /* the launch: the enemy line is the group, the roster leads with the target then its members, a level per body; the OFFICER's teamSize is untouched */
-    const L = g('hqEncounterLaunch')('site_prebuilt_dumb', { kind: 'npc', id: 'hq-roam-0', race: 'grey', gender: 'male', label: 'A GREY', group: [{ id: 'hq-roam-1', race: 'nordic', gender: 'female' }] }, '{"teamSize":4}', { partyLevel: 9 });
+    const L = g('hqEncounterLaunch')('site_prebuilt_dumb_motorpool', { kind: 'npc', id: 'hq-roam-0', race: 'grey', gender: 'male', label: 'A GREY', group: [{ id: 'hq-roam-1', race: 'nordic', gender: 'female' }] }, '{"teamSize":4}', { partyLevel: 9 });
     assert.equal(L.teamSize, 4); assert.ok(L.enemyTeam >= 2 && L.enemyTeam <= 3); assert.equal(L.roster[0], 'grey'); assert.equal(L.roster[1], 'nordic');
     assert.equal(L.roster.length, L.enemyTeam); assert.equal(L.levels.length, L.enemyTeam); assert.equal(L.partyLevel, 9);
     assert.deepEqual(J(L.encounter.members), [{ id: 'hq-roam-1', race: 'nordic', gender: 'female', name: null }]);
     assert.ok(JSON.stringify(L).length > 0, 'serialisable');
     /* the marker's fight is the full line at the party's level */
-    const M = g('hqMarkerLaunch')('site_prebuilt_dumb', null, { gm: 'tdm', partyLevel: 7 });
+    const M = g('hqMarkerLaunch')('site_prebuilt_dumb_motorpool', null, { gm: 'tdm', partyLevel: 7 });
     assert.equal(M.enemyTeam, 4); assert.equal(M.levels.length, 4); assert.equal(M.partyLevel, 7);
     /* the population binds a group in a wild room (never a facility room) */
     let bound = 0, wild = 0;

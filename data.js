@@ -41127,6 +41127,47 @@ function hqStageNeighbours(roomId) {
     });
     return out;
 }
+/* THE NEARBY PARTS (2026-09-27, the woods' floating grass): every OTHER staged part that can stand on ONE stage with this
+   one (a stage is a part + its joined neighbours, so: this part's neighbours and theirs) and whose box lies within `reach` m
+   (default 64: the outer ground's run + a margin), joined or not → [{ id, rect }] in THIS room's metres. A part's outer
+   ground and treeline stand down wherever one of these lies nearer (hqStageNearerParts), so two parts that touch without a
+   join (the trail and the stair, both staged from the clearing) never draw one's rolling apron through the other's field.
+   Cached per room (the world is static). */
+const _hqStageNearbyCache = {};
+function hqStageNearbyParts(roomId, reach) {
+    if (!roomId || !hqStagePart(roomId)) return [];
+    const R = reach > 0 ? reach : 64, key = roomId + '|' + R, W = DOOR_HQ.world;
+    const hit = _hqStageNearbyCache[key]; if (hit && hit.W === W) return hit.out;
+    const A = hqWorldFrame(roomId), SA = DOOR_HQ.rooms[roomId].shell, out = [], co = new Set();
+    hqStageNeighbours(roomId).forEach(n => { co.add(n.id); hqStageNeighbours(n.id).forEach(m => co.add(m.id)); });
+    co.delete(roomId);
+    Object.keys(_hqWorldIndex().part).forEach(id => {
+        if (!co.has(id)) return;
+        const B = hqWorldFrame(id); if (!B || B.ground !== A.ground) return;
+        const rel = hqStageRel(roomId, id); if (!rel) return;
+        const S = DOOR_HQ.rooms[id].shell, hw = S.w / 2, hd = S.d / 2;
+        const cs = [[-hw, -hd], [hw, -hd], [hw, hd], [-hw, hd]].map(p => hqStageToRoom(rel, p[0], p[1]));
+        const rect = { x0: Math.min(...cs.map(p => p.x)), z0: Math.min(...cs.map(p => p.z)), x1: Math.max(...cs.map(p => p.x)), z1: Math.max(...cs.map(p => p.z)) };
+        const gap = Math.max(rect.x0 - SA.w / 2, -SA.w / 2 - rect.x1, rect.z0 - SA.d / 2, -SA.d / 2 - rect.z1, 0);
+        if (gap <= R) out.push({ id, rect });
+    });
+    _hqStageNearbyCache[key] = { W, out };
+    return out;
+}
+/* who owns the ground at (x, z) of roomId's metres: the nearby parts (hqStageNearbyParts) whose box lies NEARER than
+   roomId's own (0 inside a box; roomId wins a tie), nearest first → [] = roomId's own ground. The outer ground stands down
+   where any of them is drawn (the nearest DRAWN part draws it, whichever parts the stage holds) */
+function hqStageNearerParts(roomId, x, z, nearby) {
+    const S = ((DOOR_HQ.rooms || {})[roomId] || {}).shell; if (!S) return [];
+    const L = nearby || hqStageNearbyParts(roomId);
+    const dRect = (r) => Math.hypot(Math.max(r.x0 - x, 0, x - r.x1), Math.max(r.z0 - z, 0, z - r.z1));
+    const own = dRect({ x0: -S.w / 2, x1: S.w / 2, z0: -S.d / 2, z1: S.d / 2 }), out = [];
+    for (let i = 0; i < L.length; i++) { const d = dRect(L[i].rect); if (d < own - 1e-6) out.push({ id: L[i].id, d }); }
+    return out.sort((a, b) => a.d - b.d || (a.id < b.id ? -1 : 1)).map(o => o.id);
+}
+/* the renderer's side key for a point: the SET of nearer parts (sorted by id — the side hides when any is drawn), '' = own */
+function hqStageNearerKey(roomId, x, z, nearby) { return hqStageNearerParts(roomId, x, z, nearby).sort().join('|'); }
+function hqStageNearestPart(roomId, x, z, nearby) { const n = hqStageNearerParts(roomId, x, z, nearby); return n.length ? n[0] : roomId; }
 /* THE OPEN SIDE (Phase 2, §4.2): the spans of a staged part's shell side that stand open onto a neighbour — an edge join's
    span, or a door join's doorway (with `door`). → [{ t0, t1, nb, kind, door? }] (the side's wall is cut there) */
 function hqShellSideOpen(roomId, side) {

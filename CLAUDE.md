@@ -49,16 +49,15 @@ DO NOT `git commit`, DO NOT `git push` (it 403s anyway), DO NOT generate patches
 diffs. The deliverable is always the full edited file, produced in chat.
 
 ### TOOLING (added 2026-07-29; THE SCOPE RULE 2026-09-18 — the user: "why do we even have to test at all, especially if the changes have nothing to do with the maps / areas")
-- **TEST WHAT YOU TOUCHED, NOTHING MORE.** Before delivering: (1) `npm run
-  test:quick` ALWAYS (`node --check` on every JS + the data / server parity
-  and schema checks — ~15 s; a stray brace in data.js takes the whole game
-  down at load, that is the one check that always pays); (2) the ONE
-  `*.test.js` that names the feature you changed, if one exists (`node --test
-  <file>`); (3) `npm run test:full` ONLY when the delivery changed an HQ
-  room / terrain / link / find / tape or the terrain compiler. NEVER run
-  `npm test` or `npm run test:full` as a session-end ritual — every session
-  before this one did, on a VFX or AI change, and it was the whole cost. CI
-  runs the full suite on every push on GitHub's minutes, not the user's.
+- **THE END-OF-SESSION CHECK (2026-09-27, mondo: "update whatever files you need so that the tests run faster at
+  the end or not at all"): `npm run test:end` and NOTHING ELSE** = `test:quick` (`node --check` on every JS, the
+  data / server parity, the content schema, ~15 s — a stray brace in data.js takes the whole game down) plus only
+  the `*.test.js` files this session changed or added (git status), or the ones named: `npm run test:end -- hq-clock`.
+  NEVER run `npm test` or `npm run test:full` at the end of a session, whatever the delivery touched. CI runs
+  `npm test` on every push on GitHub's minutes; a red CI e-mail is fixed when it comes (read its `not ok` lines).
+- **NO TAPE / FIND / OLD-SAVE GUARDS (2026-09-27, mondo):** "I do not care about the tapes or the finds ... I do
+  not care about save files or old saves." Don't write tests that pin tapes, finds, their counts or their spots,
+  don't migrate old save keys, and let tapes/finds move or drop when a room changes.
 - `npm test` — zero-dependency (Node 22 built-in runner): syntax-checks every
   repo JS, validates data.js content schemas (races/spells/abilities/classes),
   and diffs the hand-synced server.js economy copy against data.js (this
@@ -66,21 +65,9 @@ diffs. The deliverable is always the full edited file, produced in chat.
   AVAILABLE_RACES). A server-boot smoke test runs when node_modules exists.
   .github/workflows/ci.yml runs the FULL suite on every push
   (must live at exactly that path — GitHub ignores workflows elsewhere).
-- **THE TWO SPEEDS (2026-09-18 — the user's rule: the end-of-session test
-  run was burning credits).** `npm test` is the FAST suite (~2 min): the
-  fifty heavy HQ GEOMETRY PROOFS (every terrain room compiled + its floor
-  plan generated + the walker's reach solved + every hard tape's door-gun
-  shot, `check-terrain.js` / `check-find-spots.js` spawned) are gated behind
-  `test-heavy.js` — `test('…', heavy, () => …)` — and show as SKIPPED.
-  **`npm run test:full`** (= `EW_FULL_TESTS=1`) runs them; run it ONLY when
-  the delivery touched data.js's `DOOR_HQ` rooms / terrain / links / finds
-  / tapes or the terrain compiler, never as a session-end ritual — CI runs
-  the full suite on every push anyway (the GitHub failure e-mail means a
-  REAL red: read the run's `not ok` lines, never re-run it). A new heavy
-  test (anything that compiles more than one terrain room, reads
-  `DOOR_HQ.finds` for every room, or spawns a check-* tool) takes `heavy`.
-  `hqFindRoomInfo` is CACHED on the room object like `_terrainInfo`
-  (`hqFindsDrop()` clears it) — never recompute a room's reach per find.
+- **THE TWO SPEEDS.** `npm test` is the FAST suite; the heavy HQ geometry proofs (`test('…', heavy, () => …)`,
+  test-heavy.js) are SKIPPED unless `npm run test:full` (`EW_FULL_TESTS=1`). A new test that compiles more than one
+  terrain room or spawns a check-* tool takes `heavy`. Neither suite is a session-end step (above).
 - `npm run test:parity` / `npm run test:syntax` — the individual checks.
   ANY edit to the ACCT_* constants / starter lists / race lists in data.js or
   server.js MUST pass test:parity. Since 2026-07-29 the server RUNTIME derives
@@ -247,29 +234,11 @@ Kill-switches (console): `window.EW_DISABLE_3D_UNITS = true` (all 3D),
   To persist new files, hand them to the user (SendUserFile) to upload via GitHub
   manually. Don't waste time retrying pushes.
 
-## THE RED CI — why every push e-mailed "All jobs have failed", and the rule that stops it (2026-09-20, local delivery)
-`.github/workflows/ci.yml` runs `npm test` (the FAST suite) on EVERY push, and every push
-to main had been red since at least 2026-09-17 (509 runs, the last dozen all `failure`): the
-same 33 tests failed locally and on GitHub. NOT a flaky runner — ACCUMULATED TEST DEBT: the
-scope rule ("test what you touched") plus "the slow suites were not run at the user's word"
-let deliveries land that broke OTHER files' tests, because most of this repo's tests are
-SOURCE PINS — a regex on another file's source, a hard-coded count (secret doors, link doors,
-Δ cells), the CURRENT `?v=` token — and every later delivery moved what they pinned. Fixed in
-one pass (33 → 0): two REAL fixes (data.js `hqFieldBoxInfo`'s edge tie-break — a room whose
-only door is a draught weighted no wall and the residue split both sides; the Downtown
-canal-side tree, the Astral colonnade's SW column, the Bermuda cay's tree, the North Pole
-campfire, the Mare's grey and the Lodge's man in black all stood in water / on a cliff blend —
-moved), two HARNESS stubs (ai-wide-beam's `window`, character-creator's `_alTrack` /
-`_ewRetryUrl` / `setTimeout` + THE RETRY's URL sequence), and the rest stale pins brought to
-what the shipped code does. THE RULES NOW: (1) **before EVERY delivery run `npm test` ONCE**
-(~3.5 min here; it is exactly what CI runs — a red GitHub e-mail is the only other way the
-user finds out) — the scope rule still says which SLOW suites to skip (`test:full`), never the
-fast one; (2) **never pin the CURRENT `?v=` token** — assert `/\?v=\d{8}[a-z0-9-]*-cors/`
-(and, if it matters, that the PREVIOUS token is gone); (3) **a TOTAL lives in ONE test**
-(secret doors = hq-floors.test.js; a room's link doors = that room's own test) — another
-test asserts its own rows exist, never the sum; (4) a test that walks door pairs on a
-BYPASSED board resolves the board to its entry part (`hqSiteEntry`, the deck ⇄ the board are
-one landing); (5) `mobile-audio/` is not in the repo — its test SKIPS when the folder is
-absent (commit the 37 cues or leave it). The workflow's actions are `checkout@v5` /
-`setup-node@v5` (the Node 20 deprecation warning). Once this delivery is on main the run
-is green and the e-mails stop; the next red one is a REAL break in that push.
+## THE RED CI (2026-09-20; the session-end part superseded 2026-09-27 by `npm run test:end`, TOOLING above)
+`.github/workflows/ci.yml` runs `npm test` on every push (`checkout@v5` / `setup-node@v5`). Most tests here are
+SOURCE PINS (a regex on another file's source, a hard-coded count), so a delivery can break another file's test:
+CI is where that shows, and a red run is fixed in the next delivery. Pin rules: (1) never pin the CURRENT `?v=`
+token — assert `/\?v=\d{8}[a-z0-9-]*-cors/`; (2) a TOTAL lives in ONE test (secret doors = hq-floors.test.js);
+(3) a test that walks door pairs on a site resolves `site_<mapId>` to its entry part (`hqSiteEntry`; the board rooms
+were deleted 2026-09-27); (4) `mobile-audio/` is not in the repo — its test SKIPS when the folder is absent. mondo
+uploads a zip across several commits, so check the NEWEST run on main is red before fixing anything.

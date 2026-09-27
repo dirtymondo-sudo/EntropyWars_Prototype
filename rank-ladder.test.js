@@ -88,13 +88,14 @@ test('THE DOOR GUN IS STANDARD ISSUE: hqPortalStatus reports it issued for a rec
     assert.equal(D.hqPortalStatus(prof(0, 0)).issued, true);
 });
 
-test('THE READERS: match-select, the threshold panel (= the console + the marker), the officer sheet and the gate text read the one checklist / the one ladder', () => {
+test('THE READERS: match-select, the threshold panel + the marker, the officer sheet and the gate text read the one checklist / the one ladder', () => {
     const ms = src('match-select.js'), map = src('map.js'), css = src('styles-base.css');
     assert.ok(ms.includes('window.hqSiteChecklist(siteId, profile, { modes: multiplayerModes })'), 'match-select renders hqSiteChecklist');
     assert.ok(ms.includes("h(SiteChecks, { siteId: siteId, multiplayerModes: multiplayerModes })") && !ms.includes("variant === 'site' && h(SiteChecks"), 'the checklist shows on every variant');
     assert.ok(ms.includes('window.hqRankProgress(profile)'), 'match-select states the next rung');
     assert.ok(map.includes('function _hqChecklistHtml(id, profile)') && map.includes('html += _hqChecklistHtml(id, profile)'), 'the threshold panel renders the checklist');
-    assert.ok(map.includes("let html = _hqThresholdPanelHtml({ kind: 'door', id: door.id"), 'the crossing console (and the battle marker) render the threshold panel');
+    assert.ok(map.includes('if (act.mission) return _hqThresholdPanelHtml(t, st);'), 'the threshold door renders the threshold panel');
+    assert.ok(/function _hqMarkerHtml\([\s\S]*?html \+= _hqChecklistHtml\(id, profile\);/.test(map), 'the battle marker renders the checklist (the crossing console is gone, 2026-09-27)');
     assert.ok(map.includes('window.hqRankProgress(profile)') && map.includes('window.HQ_PROMOTION'), 'the officer sheet + the gate text read the ladder');
     assert.ok(css.includes('.ms-tty-check ') && css.includes('.hq-checklist'), 'the CSS');
 });

@@ -122,21 +122,20 @@ test('the sheet: eight parts on three sites — the Vatican’s basilica, archiv
     for (const site of ['prebuilt_vatican', 'prebuilt_hell', 'prebuilt_heaven']) assert.equal(reg.filter(r => r.mapId === site).length, 1, 'the register lists ' + site + ' once');
     assert.ok(!reg.some(r => IDS.includes(r.id) || IDS.includes(r.room)), 'no part is a register entry');
     for (const id of IDS) assert.equal(D.hqSiteComplex(PARTS[id][0]).includes(id), true, id + ' is in its site’s complex');
-    assert.equal(D.hqSiteComplex('prebuilt_vatican').length, 6, 'the Vatican: the board room and five parts');
+    assert.equal(D.hqSiteComplex('prebuilt_vatican').length, 5, 'the Vatican: five parts');
 });
 
-test('THE WAYS IN = THE ENTRY (second pass, 2026-09-18): the three board rooms are BYPASSED — the white door lands you in the basilica, the mouth ON THE RIM of the pit (5 m up), the gate ON THE DAIS (1.75 m) of the cloud fields — each part wearing the board’s egress as its bay door at the entry’s wall and sill, no door of its own back to the board; the bypassed boards carry no link door; the crypt is reached ONLY through the basilica (behind the altar) and the cortile’s cistern', () => {
+test('THE WAYS IN = THE ENTRY (second pass, 2026-09-18): the three board rooms are gone (aliases) — the white door lands you in the basilica, the mouth ON THE RIM of the pit (5 m up), the gate ON THE DAIS (1.75 m) of the cloud fields — each part wearing the board’s egress as its bay door at the entry’s wall and sill, no door of its own back to the alias; the crypt is reached ONLY through the basilica (behind the altar) and the cortile’s cistern', () => {
     for (const [site, [doorId, part, wall, y, leaf]] of Object.entries(BACK)) {
-        const board = 'site_' + site, eg = at(board, 'egress'), bay = at(part, 'bay');
+        const board = 'site_' + site, eg = D.hqSiteEgressDoor(site), bay = at(part, 'bay');
         assert.ok(D.hqSiteEntryOf(site) && D.hqSiteEntryOf(site).room === part, site + ': the entry names ' + part);
-        assert.ok(bay && bay.entry === site && bay.wall === wall && bay.x === 0 && bay.leaf === eg.leaf && bay.leaf === leaf && bay.action.room === eg.action.room && bay.action.at === eg.action.at, part + ': the bay door is the board room’s egress');
+        assert.ok(bay && bay.entry === site && bay.wall === wall && bay.x === 0 && bay.leaf === eg.leaf && bay.leaf === leaf && bay.action.room === eg.action.room && bay.action.at === eg.action.at, part + ': the bay door is the site’s egress');
         assert.equal((bay.y || 0), y, part + ': the bay door’s sill');
         assert.ok(Math.abs(D.hqTerrainDoorY(HQ.rooms[part], bay) - y) < 0.05, part + ': the pad flattens to the sill');
         assert.equal(HQ.rooms[part].doors.filter(d => d.id === 'bay').length, 1, part + ': once');
         assert.ok(!HQ.rooms[part].doors.some(d => d.action && d.action.room === board), part + ': no door of its own back onto the bypassed board');
         assert.equal(D.hqSiteEntry(board, 'egress').at, 'bay'); assert.equal(D.hqSiteEntry(board, 'crossing').at, 'bay'); assert.equal(D.hqSiteEntry(board, doorId).at, 'bay', site + ': the board’s own back door lands at the bay');
-        assert.ok(at(board, doorId) && at(board, doorId).action.room === part && at(board, doorId).action.at === 'bay', site + ': the board’s back door still names the part (unwalked)');
-        assert.ok(!HQ.rooms[board].doors.some(d => d.link), site + ': the bypassed board carries no link door (it would land at the bay)');
+        assert.ok(!HQ.rooms[board], site + ': no board room (2026-09-27) — `' + board + '` is an alias');
         assert.ok(!bay.rankDoor && !bay.minClearance && D.doorSiteState(bay, null) === 'open', site + ': never gated');
     }
     /* the links that stood on the three boards moved onto the parts */
@@ -146,7 +145,7 @@ test('THE WAYS IN = THE ENTRY (second pass, 2026-09-18): the three board rooms a
     assert.ok(!L('vatican_heaven'), 'the archive’s elevator is pruned (THE AREAS, 2026-09-18: the telescope and the stair are the way up)');
     assert.ok(L('bureau_vatican').b.part === 'courtyard' && L('bureau_vatican').b.wall === 'e' && at(CORTILE, 'link_bureau_vatican').minClearance === 5, 'the Bureau’s painting opens on the cortile, its gate on it');
     for (const [room, id] of [[PIT, 'link_cave_hell'], [GATE, 'link_heaven_olympus'], [CORTILE, 'link_bureau_vatican']]) assert.ok(at(room, id), room + '/' + id + ' stands');
-    assert.ok(!at('site_prebuilt_vatican', 'crypt'), 'the board room no longer opens on the crypt');
+    assert.ok(!HQ.rooms.site_prebuilt_vatican, 'no board room opens on the crypt');
     const crypt = at(BASILICA, 'crypt');
     assert.ok(crypt && crypt.wall === 'n' && crypt.y === 0.9 && crypt.leaf === 'leaf_white_wood' && crypt.action.room === CATACOMBS && crypt.action.at === 'stair', 'the crypt door stands on the chancel behind the altar');
     const up = at(CATACOMBS, 'stair'); assert.ok(up && up.action.room === BASILICA && up.action.at === 'crypt', 'the crypt stair comes up behind the altar');
@@ -363,26 +362,6 @@ test('THE PARK RULE + THE HAZARDS + THE LIGHT: a rail and a tier or ramp in ever
     assert.ok(coinfo.thicket.length >= 10 && coinfo.trees.length === 3, 'the cypress maze grows on the plan’s banks (+ three cypresses on the nave door’s sightlines — AREA CONTENT D4, 2026-09-20)');
     const oinfo = D.hqTerrainInfo(DOME), ofoot = D.hqTerrainDoorLanding(HQ.rooms[DOME], at(DOME, 'stair')), oR = D.hqTerrainReach(oinfo, ofoot.x, ofoot.z);
     assert.ok(oR.has(D.hqTerrainNodeKey(oinfo, 0, -2)) && Math.abs(oR.get(D.hqTerrainNodeKey(oinfo, 0, -2)) - 1.2) < 0.2, 'the dais is climbed');
-});
-
-test('THE HARD TAPES: one tape per part (the hundred kept; four more re-homed — Camelot’s, Agartha’s, CERN’s and Area 51’s second), each on a pinnacle the walker never reaches — the skull stack, the plinth, the pinnacle on the lower shelf, the pillar of light, the organ loft, the high shelf, the campanile’s stump, the finial — and the door gun reaches every one; a pay envelope in every part', heavy, () => {
-    const tapes = D.DOOR_TAPES;
-    assert.equal(tapes.length, 100);
-    for (const id of IDS) {
-        assert.ok([1, 2].includes(tapes.filter(t => t.where === id).length) && (tapes.filter(t => t.where === id).length === 1 || Object.values(HQ.siteRooms.entry || {}).some(e => e.room === id)), id + ': one tape (two on the part that stands for a bypassed board — THE AREAS, 2026-09-18)');
-        const rows = HQ.finds.filter(f => f.room === id);
-        const tape = rows.find(f => f.kind === 'tape'), pay = rows.find(f => f.kind === 'pay');
-        assert.ok(tape && pay, id + ': a tape and an envelope');
-        assert.ok(tape.hard === true && tape.y >= 3.0, id + ': the tape is the door gun’s (' + tape.y + ' m)');
-        assert.ok(!pay.hard, id + ': the envelope is walked to');
-        const pin = HQ.findSpots[id];
-        assert.ok(pin && pin.tape && tape.x === pin.tape.x && tape.z === pin.tape.z, id + ': the tape stands on its pin');
-        const info = D.hqTerrainInfo(id), L0 = D.hqTerrainDoorLanding(HQ.rooms[id], HQ.rooms[id].doors[0]);
-        assert.ok(!D.hqTerrainReach(info, L0.x, L0.z).has(D.hqTerrainNodeKey(info, tape.x, tape.z)), id + ': the walker never reaches it');
-        assert.ok(D.hqFindHardReachTerrain(tape, { terrain: info }), id + ': the door gun has a shot at its lip');
-    }
-    for (const site of ['prebuilt_vatican', 'prebuilt_hell', 'prebuilt_olympus', 'prebuilt_camelot', 'prebuilt_agartha', 'prebuilt_cern', 'prebuilt_area51']) assert.equal(tapes.filter(t => t.where === 'site_' + site).length, 1, site + ' keeps one tape in its board room');   // THE DEEP (2026-09-18): Heaven's bypassed board gave its last tape to THE TEMPLE (the stair + the fields keep the site's)
-    assert.ok(tapes.some(t => t.where === PIT && t.title === 'FORM 666') && tapes.some(t => t.where === GATE && t.title === 'THE GATE') && tapes.some(t => t.where === CATACOMBS && t.title === 'THE CONFESSIONAL') && tapes.some(t => t.where === DOME && t.title === 'THE EYEPIECE'), 're-homed by name');
 });
 
 test('the shell helpers, THE VATICAN BATCH and the source sites: hqDivineShell is one function (open, Heaven’s sky, no treeline, the heaven look); hqVaticanShell is one function (open behind a parapet, the Vatican’s sky by day, the night and the landmarks on request); the twenty-four files are catalogue rows on the misc bucket AND _MISC_GLB rows (the same file); the telescope is a way with a builder, a sound and a landmark builder for the stair it sees; check-terrain.js prints every part with every door reached and nothing trapped', heavy, () => {

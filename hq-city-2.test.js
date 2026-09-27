@@ -61,7 +61,7 @@ test('STREET LEVEL: the compiler rule — the city\'s rise begins riseIn inside 
     assert.ok(/dd = \(o\.d \? o\.d : \(o\.w \|\| 2\)\) \* ts/.test(sb) && /var fw = d\[2\] \? w : dd;/.test(sb) && /K\.box\(w - inset \* 2, roofY, dd - inset \* 2, coreMat, 0\.5\)/.test(sb), 'the prism takes a depth');
 });
 
-test('CYBERPUNK CITY · THE GRID: a terrain part on Room 2047 wearing hqCityShell({ neon: true }) — Cyberpunk\'s night, the neon look, the neon mood — and a `city` plan with `neon`; THE LOOP is the circuit with 8 gates and a label, the traffic drives it with taxis and trucks; THE SKYWAY (4.5 m up a car ramp, three rails, two quarter pipes), THE BILLBOARD ROOF (5 m, never climbed — the hard tape with a shot), THE PUDDLE waded, THE MARKET, no thicket; the board room\'s back gate pairs; every door reaches every other, nothing traps', heavy, () => {
+test('CYBERPUNK CITY · THE GRID: a terrain part on Room 2047 wearing hqCityShell({ neon: true }) — Cyberpunk\'s night, the neon look, the neon mood — and a `city` plan with `neon`; THE LOOP is the circuit with 8 gates and a label, the traffic drives it with taxis and trucks; THE SKYWAY (4.5 m up a car ramp, three rails, two quarter pipes), THE BILLBOARD ROOF (5 m, never climbed), THE PUDDLE waded, THE MARKET, no thicket; the board room\'s back gate pairs; every door reaches every other, nothing traps', heavy, () => {
     const r = HQ.rooms[GRID], S = r.shell, gen = r.terrain.gen, info = D.hqTerrainInfo(GRID), meta = D.EW_MAP_META.find(m => m.id === 'prebuilt_cyberpunk').env;
     assert.ok(r.kind === 'box' && r.site === 'prebuilt_cyberpunk' && r.part === 'streets' && r.roomNo === undefined && /CYBERPUNK CITY/.test(r.label) && r.lines.length >= 3 && r.spawn, 'the sheet');
     assert.equal(D.hqRoomNo(GRID), '2047'); assert.equal(D.hqRoomSite(GRID), 'prebuilt_cyberpunk');
@@ -84,22 +84,15 @@ test('CYBERPUNK CITY · THE GRID: a terrain part on Room 2047 wearing hqCityShel
     const R = D.hqTerrainReach(info, L[0].x, L[0].z);
     assert.ok(R.has(D.hqTerrainNodeKey(info, sky.x, sky.z)) && Math.abs(R.get(D.hqTerrainNodeKey(info, sky.x, sky.z)) - 4.5) < 0.3, 'the skyway is walked up to');
     assert.ok(!R.has(D.hqTerrainNodeKey(info, roof.x, roof.z)), 'THE BILLBOARD ROOF is nobody\'s but the door gun\'s');
-    const rows = D.hqFindsForRoom(GRID), tape = rows.find(x => /^tape:/.test(x.id)), pin = HQ.findSpots[GRID].tape;
-    assert.ok(tape && tape.hard === true && tape.x === pin.x && tape.z === pin.z && tape.y >= 4.9, 'the tape on the roof: ' + JSON.stringify(tape));
-    const shot = D.hqFindHardReachTerrain(tape, D.hqFindRoomInfo(GRID));
-    assert.ok(shot && shot.ok === true, 'the door gun has a shot: ' + JSON.stringify(shot));
-    assert.ok(rows.some(x => /^pay:/.test(x.id) && !x.hard), 'the envelope on the ground');
-    /* the board room's back gate: the lane the train stood on */
-    const back = at(CYBER, 'street'), gate = at(GRID, 'bay');   // THE THIRD PASS (2026-09-17): the grid IS Cyberpunk City — the board room is bypassed (siteRooms.entry) and the grid's south door is the bay's
-    assert.ok(back && back.wall === 'n' && back.x === -10 && back.leaf === 'leaf_holographic' && back.action.room === GRID && back.action.at === 'bay', 'the back gate on the board room lands at the grid\'s bay door');
-    assert.ok(gate && gate.wall === 's' && gate.leaf === back.leaf && gate.entry === 'prebuilt_cyberpunk' && HQ.rooms[gate.action.room].kind === 'bay' && !at(GRID, 'board'), 'the bay door stands where the tenement gate stood');
-    for (const o of HQ.rooms[CYBER].doors) if (o !== back && o.wall === 'n') assert.ok(Math.abs(o.x - back.x) >= 4.4, 'the gate shares a lane with ' + o.id);
+    /* the bay door: the grid IS Cyberpunk City (the board room is gone, 2026-09-27) — its south door is the bay's */
+    const gate = at(GRID, 'bay');
+    assert.ok(gate && gate.wall === 's' && gate.leaf === HQ.thresholds.prebuilt_cyberpunk.leaf && gate.entry === 'prebuilt_cyberpunk' && HQ.rooms[gate.action.room].kind === 'bay' && !at(GRID, 'board'), 'the bay door stands where the tenement gate stood');
     assert.ok(!r.doors.some(d => (HQ.catalogue[d.leaf] || {}).rank), 'no rank leaf');
     assert.ok(r.npcSpots.every(n => D.AVAILABLE_RACES.includes(n.race)), 'the natives are races');
-    assert.equal(D.hqSiteComplex('prebuilt_cyberpunk').length, 3, 'the board room, the grid, the noodle bar');
+    assert.equal(D.hqSiteComplex('prebuilt_cyberpunk').length, 2, 'the grid, the noodle bar');
 });
 
-test('THE TRAINS ARRIVE IN THE CITY: the tunnel\'s train stands FREE at THE STATION on the grid\'s siding (a link end on a complex part), the Downtown platform\'s stair comes up on the grid\'s north wall; the subway line still reads the drain — the tunnel — Cyberpunk — Downtown; the board room keeps the highway alone', () => {
+test('THE TRAINS ARRIVE IN THE CITY: the tunnel\'s train stands FREE at THE STATION on the grid\'s siding (a link end on a complex part), the Downtown platform\'s stair comes up on the grid\'s north wall; the subway line still reads the drain — the tunnel — Cyberpunk — Downtown', () => {
     const tun = HQ.links.find(l => l.id === 'tunnel_cyberpunk'), sub = HQ.links.find(l => l.id === 'subway_downtown');
     assert.ok(tun.b.site === 'prebuilt_cyberpunk' && tun.b.part === 'streets' && tun.b.wall === 'free' && tun.b.face === 90 && D.hqLinkLive(tun).b === GRID, 'the tunnel\'s far end');
     assert.ok(sub.b.part === 'streets' && sub.b.wall === 'n' && sub.b.x === 12 && sub.b.leaf === 'leaf_frame_only' && D.hqLinkLive(sub).b === GRID, 'the platform\'s far end');
@@ -110,13 +103,12 @@ test('THE TRAINS ARRIVE IN THE CITY: the tunnel\'s train stands FREE at THE STAT
     assert.ok(siding && siding.pts[0][1] <= tr.z - 15.4 && siding.pts[1][1] >= tr.z + 9, 'the siding runs the whole train');
     for (const z of [tr.z + 9, tr.z, tr.z - 15]) assert.ok(D.hqTerrainMaskAt(info, tr.x, z) > 0.5, 'the siding is open under the train at z ' + z);
     const line = D.hqWorldRoutes('foyer').find(r => r.id === 'subway');
-    assert.equal(line.stations.map(s => s.room).join(' — '), 'site_prebuilt_fairy_forest — tunnel — site_prebuilt_cyberpunk — site_prebuilt_downtown');
-    /* THE ROADS OUT (2026-09-17): the Strip's road lands on the GRID's cross street (its east end, a `road` way) — the board room's north wall carries no link at all now */
-    assert.equal(HQ.rooms[CYBER].doors.filter(d => d.link).length, 0); const rd = at(GRID, 'link_strip_cyberpunk'); assert.ok(rd && rd.way === 'road' && rd.wall === 'e' && rd.z === 0, 'the road out east');
-    assert.ok(!at(CYBER, 'link_tunnel_cyberpunk') && !at(CYBER, 'link_subway_downtown') && !at(CYBER, 'link_timemachine_cyberpunk'), 'the board room\'s strip is clear');
+    assert.equal(line.stations.map(s => s.room).join(' — '), 'site_prebuilt_fairy_forest_clearing — tunnel — site_prebuilt_cyberpunk_streets — site_prebuilt_downtown_streets', 'a station is its site\'s entry part');
+    /* THE ROADS OUT (2026-09-17): the Strip's road lands on the GRID's cross street (its east end, a `road` way); the board room is gone (2026-09-27) */
+    assert.ok(!HQ.rooms[CYBER], 'no board room'); const rd = at(GRID, 'link_strip_cyberpunk'); assert.ok(rd && rd.way === 'road' && rd.wall === 'e' && rd.z === 0, 'the road out east');
 });
 
-test('THE SUPPLY CLOSET ⇄ THE NOODLE BAR: two small box rooms (four cells a side — THE FIELD\'s lattice flush), each a part with no number, lit by their own bulbs, THE TIME MACHINE free in each (the only way over, set for the other\'s year), the closet off the mall\'s north wing, the noodle bar off the market alley; both land at production; the tapes came off three sites and the hundred stays a hundred', () => {
+test('THE SUPPLY CLOSET ⇄ THE NOODLE BAR: two small box rooms (four cells a side — THE FIELD\'s lattice flush), each a part with no number, lit by their own bulbs, THE TIME MACHINE free in each (the only way over, set for the other\'s year), the closet off the mall\'s north wing, the noodle bar off the market alley; both land at production', () => {
     for (const [id, site, part, doorId, into, back] of [[CLOSET, 'prebuilt_downtown', 'closet', 'mall', MALL, 'closet'], [NOODLE, 'prebuilt_cyberpunk', 'noodle', 'alley', GRID, 'noodle']]) {
         const r = HQ.rooms[id];
         assert.ok(r.kind === 'box' && r.site === site && r.part === part && r.roomNo === undefined && r.shell.strips === false && r.shell.lights.length === 0 && r.shell.w <= 9 && r.shell.d <= 8, id + ': the sheet');
@@ -126,13 +118,10 @@ test('THE SUPPLY CLOSET ⇄ THE NOODLE BAR: two small box rooms (four cells a si
         assert.ok(d && o && d.action.room === into && d.action.at === back && o.action.room === id && o.action.at === doorId && d.leaf === o.leaf && !(HQ.catalogue[d.leaf] || {}).rank, id + ': the way in pairs');
         const tm = at(id, 'link_timemachine_cyberpunk');
         assert.ok(tm && tm.way === 'timemachine' && tm.wall === 'free' && tm.leaf === null && /SET FOR (1954|2047)/.test(tm.sub), id + ': the machine');
-        assert.equal(D.DOOR_TAPES.filter(t => t.where === id).length, 1, id + ': a tape');
         assert.ok(r.npcSpots.every(n => D.AVAILABLE_RACES.includes(n.race)));
     }
     assert.ok(at(CLOSET, 'link_timemachine_cyberpunk').action.room === NOODLE && at(NOODLE, 'link_timemachine_cyberpunk').action.room === CLOSET, 'the pair');
     assert.ok(at(MALL, 'closet').wall === 'n' && at(MALL, 'closet').x === 0, 'the closet\'s door at the end of the north wing');
-    assert.equal(D.DOOR_TAPES.length, 100, 'the hundred');
-    for (const site of ['prebuilt_technoticlan', 'prebuilt_flatlands']) assert.ok(D.DOOR_TAPES.filter(t => D.hqRoomSite(t.where) === site).length >= 1 && !D.DOOR_TAPES.some(t => t.where === D.hqSiteRoomId(site)), site + ' keeps one, in its area (THE AREAS, 2026-09-18: the board is bypassed)');   // THE LEY LINES (2026-09-18): Stonehenge's board is bypassed — its tape is on the plain (hq-leylines)
     assert.ok(!HQ.rooms[MALL].doors.some(d => d.way === 'timemachine'), 'the arcade gave the machine up');
 });
 

@@ -81,7 +81,7 @@ test('the sheet: five parts on four ancient sites — site + part, no number, ev
     }
     const reg = D.hqRoomRegister();
     for (const site of SITES) { assert.equal(reg.filter(r => r.mapId === site).length, 1, 'the register lists ' + site + ' once'); assert.ok(!reg.some(r => r.id && IDS.includes(r.id)), 'no part is a register entry'); }
-    assert.equal(D.hqSiteComplex('prebuilt_gobekli').length, 3, 'Göbekli: the board room, the tell, the tunnels');
+    assert.equal(D.hqSiteComplex('prebuilt_gobekli').length, 2, 'Göbekli: the tell, the tunnels');
 });
 
 test('THE GENERATOR (HQ_TERRAIN_GEN.ley): four authored straight lines, generated forks at ley angles that join, run to the rim or end in a niche, a chamber at every crossing and behind every station, the solid a MASS to the ceiling traced into walls; deterministic and seeded; every fork leaves a line at a listed angle and is narrower than a line', heavy, () => {
@@ -151,11 +151,11 @@ test('THE ENTRIES + THE LINE + THE HUB: the four boards are bypassed (the frame 
     const E = HQ.siteRooms.entry;
     for (const [site, part] of [['prebuilt_stonehenge', HENGE], ['prebuilt_gobekli', TELL], ['prebuilt_giza', PLATEAU], ['prebuilt_babel', TOWER]]) {
         assert.deepEqual([E[site].room, E[site].door.wall, E[site].door.x], [part, 's', 0]);
-        const eg = at('site_' + site, 'egress'), bay = at(part, 'bay');
-        assert.ok(bay && bay.entry === site && bay.leaf === eg.leaf && bay.action.room === eg.action.room, part + ': the bay door is the board room\'s egress');
+        const eg = D.hqSiteEgressDoor(site), bay = at(part, 'bay');
+        assert.ok(bay && bay.entry === site && bay.leaf === eg.leaf && bay.action.room === eg.action.room, part + ': the bay door is the site\'s egress');
         assert.equal(D.hqSiteEntry('site_' + site, 'egress').room, part, site + ' is bypassed');
         assert.ok(!HQ.rooms[part].doors.some(d => d.action && d.action.room === 'site_' + site), part + ': no door back to the board');
-        assert.ok(!HQ.rooms['site_' + site].doors.some(d => d.link), site + ': the bypassed board carries no link door');
+        assert.ok(!HQ.rooms['site_' + site], site + ': no board room (2026-09-27)');
     }
     const ends = {
         stonehenge_gobekli:  ['a', HENGE, 'n', -10, 'b', LEY, 'w', -40],
@@ -176,7 +176,8 @@ test('THE ENTRIES + THE LINE + THE HUB: the four boards are bypassed (the frame 
     }
     const R = D.hqWorldRoutes('foyer').find(r => r.id === 'ley');
     assert.ok(R && R.legs.length === 4 && R.stations.length === 5, 'the line: four legs, five stations');
-    assert.ok(R.legs.every(l => l.from === 'site_prebuilt_gobekli' || l.to === 'site_prebuilt_gobekli'), 'a star: every leg is Göbekli\'s');
+    const GOB = D.hqSiteEntryOf('prebuilt_gobekli').room;   // a station is its site's entry part (the tell)
+    assert.ok(R.legs.every(l => l.from === GOB || l.to === GOB), 'a star: every leg is Göbekli\'s');
     assert.ok(R.stations.map(s => s.no).sort().join(',') === ['56', '9600', '444', '11', HQ.thresholds.prebuilt_technoticlan.roomNo].sort().join(','), 'the five numbers');
     const tellDoor = at(TELL, 'ley'), back = at(LEY, 'tell');
     assert.ok(tellDoor && tellDoor.action.room === LEY && tellDoor.action.at === 'tell' && !tellDoor.link && back && back.action.room === TELL && back.action.at === 'ley' && !back.link, 'the tell ⇄ the tunnels: a pair, never a link');
@@ -186,21 +187,9 @@ test('THE ENTRIES + THE LINE + THE HUB: the four boards are bypassed (the frame 
     assert.ok(D.hqMapModel({}, 'foyer', { all: true }).nodes.find(n => n.id === LEY && n.hub), 'the anchor is drawn');
 });
 
-test('THE WEENIES + THE HARD TAPES: THE OMPHALOS in the nexus (2.3 m under the 3.2 m ceiling), THE GREAT TRILITHON, THE SENTINEL in enclosure D, THE SPHINX\'s head, THE LOAD over the tower\'s top — a pinned tape on each, hard, high, with a door-gun shot from a reachable node; every board of the four is bare, every part carries exactly one tape (the tunnels\' came off Cyberpunk\'s bypassed board); the hundred stays a hundred', heavy, () => {
-    const T = D.DOOR_TAPES, F = HQ.finds;
-    assert.equal(T.length, 100);
-    for (const site of SITES) assert.equal(T.filter(t => t.where === 'site_' + site).length, 0, site + '\'s board is bare');
-    assert.equal(T.filter(t => t.where === 'site_prebuilt_cyberpunk').length, 0, 'Cyberpunk\'s bypassed board gave its tape');
-    const pins = { [LEY]: [-50, -25, 2.3, 'THE SURVEY'], [HENGE]: [0, 5.6, 6.6, 'SOLSTICE, FROM THE BANK'], [TELL]: [18.5, 8, 5.4, 'THE PILLARS'], [PLATEAU]: [37, 26, 6.8, 'THE SHAFT'], [TOWER]: [3, -5.5, 18.0, 'ONE VOICE'] };
-    for (const [id, [x, z, h, title]] of Object.entries(pins)) {
-        const tapes = T.filter(t => t.where === id); assert.ok(tapes.length === 1 || (tapes.length === 2 && Object.values(HQ.siteRooms.entry || {}).some(e => e.room === id)), id + ': one tape (two on an entry part — THE AREAS, 2026-09-18)'); assert.ok(tapes.some(t => t.title === title), title);
-        const f = F.find(f => f.room === id && f.kind === 'tape'); assert.ok(f, id + ': the find');
-        assert.ok(Math.abs(f.x - x) < 0.01 && Math.abs(f.z - z) < 0.01 && Math.abs(f.y - h) < 0.05 && f.hard === true, id + ': pinned on the weenie at ' + h + ' m, hard (' + f.x + ',' + f.z + ',' + f.y + ',' + f.hard + ')');
-        const info = D.hqTerrainInfo(id), L0 = D.hqTerrainDoorLanding(HQ.rooms[id], HQ.rooms[id].doors[0]);
-        assert.ok(!D.hqTerrainReach(info, L0.x, L0.z).has(key(info, f.x, f.z)), id + ': the walker never reaches it');
-        assert.ok(D.hqFindHardReachTerrain(f, D.hqFindRoomInfo(id)).ok, id + ': the door gun has a shot');
-        assert.ok(HQ.rooms[id].terrain.features.some(q => q.k === 'plateau' && Math.abs(q.x - x) < 0.01 && Math.abs(q.z - z) < 0.01 && q.h === h), id + ': the weenie is a tier');
-    }
+test('THE WEENIES: THE OMPHALOS in the nexus (2.3 m under the 3.2 m ceiling), THE GREAT TRILITHON, THE SENTINEL in enclosure D, THE SPHINX\'s head, THE LOAD over the tower\'s top — each a tier; the nexus is sunk where the great line crosses the tell\'s', heavy, () => {
+    const tiers = { [LEY]: [-50, -25, 2.3], [HENGE]: [0, 5.6, 6.6], [TELL]: [18.5, 8, 5.4], [PLATEAU]: [37, 26, 6.8], [TOWER]: [3, -5.5, 18.0] };
+    for (const [id, [x, z, h]] of Object.entries(tiers)) assert.ok(HQ.rooms[id].terrain.features.some(q => q.k === 'plateau' && Math.abs(q.x - x) < 0.01 && Math.abs(q.z - z) < 0.01 && q.h === h), id + ': the weenie is a tier');
     assert.ok(HQ.rooms[LEY].terrain.features.some(f => f.k === 'dip' && f.x === -50 && f.z === -25 && f.open), 'the nexus is sunk (the bowl)');
     assert.ok(HQ.rooms[LEY].terrain.gen.chambers.some(c => c.id === 'nexus' && c.x === -50 && c.z === -25), 'the nexus is an authored chamber where the great line crosses the tell\'s');
 });

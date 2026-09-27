@@ -29,7 +29,7 @@ const near = (a, b, e = 1e-6) => Math.abs(a - b) <= e;
 const rotY = (th, x, z) => ({ x: x * Math.cos(th) + z * Math.sin(th), z: -x * Math.sin(th) + z * Math.cos(th) });
 
 test('the stage stands on the city, the medical wing, the woods and the basement, and its parts are the real box rooms of its frames', () => {
- assert.deepEqual([...HQ_STAGE_RULES.zones], ['city', 'medwing', 'woods', 'basement']);   // OPEN WORLD Phase 4 (2026-09-27): the woods (trail joins) + the basement (door joins)
+ assert.deepEqual([...HQ_STAGE_RULES.zones], ['city', 'medwing', 'woods', 'basement', 'highway', 'desert', 'dumb']);   // + OPEN WORLD Phase 5 (2026-09-27): the south (hq-south.test.js)   // OPEN WORLD Phase 4 (2026-09-27): the woods (trail joins) + the basement (door joins)
  for (const id of [DT, STRIP, BOWL]) assert.ok(D.hqStagePart(id), id + ' is a staged part');
  assert.equal(D.hqStagePart('central_egress'), null, 'the building is not staged');
  assert.equal(D.hqStageNeighbours('central_egress').length, 0);
@@ -52,7 +52,7 @@ test('Downtown sees the stadium north and the Strip west, their boxes touching i
  assert.equal(D.hqStageJoinedDoor(DT, 'link_stadium_downtown'), true);
  assert.equal(D.hqStageJoinedDoor(DT, 'link_streets_strip'), false, 'the second street to the Strip stays a door');
  /* the far ends read the same join back */
- assert.deepEqual(plain(D.hqStageNeighbours(STRIP).map(n => [n.id, n.spans[0].side])), [[DT, 'e']]);
+ assert.deepEqual(plain(D.hqStageNeighbours(STRIP).map(n => [n.id, n.spans[0].side])), [[DT, 'e'], ['site_prebuilt_strip_highway', 's']]);   // + the highway south (Phase 5)
  assert.deepEqual(plain(D.hqStageNeighbours(BOWL).map(n => [n.id, n.spans[0].side])), [[DT, 'n']]);
 });
 

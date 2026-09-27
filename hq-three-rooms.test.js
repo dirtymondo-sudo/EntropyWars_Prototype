@@ -73,13 +73,7 @@ test('the people: the floor between and the showroom stand YOU there (clone spot
     assert.ok(seen.size >= 1, 'the roll lands on a variant');
 });
 
-test('the tapes: one per part (THE FIFTH BEDROOM, FLOOR MODEL), the hundred stays a hundred, the Strip and the streets keep one each', () => {
-    const T = D.DOOR_TAPES;
-    assert.equal(T.length, 100);
-    assert.ok(T.some(t => t.where === NURSERY && t.title === 'THE FIFTH BEDROOM'), 'the nursery’s tape');
-    assert.ok(T.some(t => t.where === SHOP && t.title === 'FLOOR MODEL'), 'the showroom’s tape');
-    assert.equal(T.filter(t => t.where === 'site_prebuilt_strip_streets').length, 1); assert.equal(T.filter(t => t.where === 'site_prebuilt_downtown_streets').length, 1);
-    assert.ok(!T.some(t => t.where === FLOOR), 'the floor between has no tape (its purpose is the directory)');
+test('the floor between: THE DIRECTORY is a by-id panel', () => {
     assert.ok(HQ.rooms[FLOOR].counters.some(c => c.id === 'thirteen' && c.action && !c.action.overlay && !c.action.fn), 'THE DIRECTORY is a by-id panel');
 });
 

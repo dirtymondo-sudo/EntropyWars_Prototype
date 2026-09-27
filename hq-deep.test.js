@@ -82,7 +82,7 @@ test('the sheet: three parts on two sites — site + part, no number, every one 
     const reg = D.hqRoomRegister();
     assert.equal(reg.filter(r => r.mapId === 'prebuilt_bermuda').length, 1); assert.equal(reg.filter(r => r.mapId === 'prebuilt_atlantis').length, 1);
     assert.ok(!reg.some(r => IDS.includes(r.id) || IDS.includes(r.room)), 'no part is a register entry');
-    assert.equal(D.hqSiteComplex('prebuilt_bermuda').length, 2); assert.equal(D.hqSiteComplex('prebuilt_atlantis').length, 3);
+    assert.equal(D.hqSiteComplex('prebuilt_bermuda').length, 1); assert.equal(D.hqSiteComplex('prebuilt_atlantis').length, 2);   // the board rooms are gone (2026-09-27)
 });
 
 test('THE SEA RULE (data.js): `terrain.sea` compiles to info.sea; over the open sea the feet are AFLOAT at the surface less swimDraft, a wade in the shallows, the ground on land, and the sea is a pseudo-fluid there; a DROWNED room has no fluid, the feet are the ground everywhere and the solver climbs anything; the fluid read is height-aware (THE ORACLE is dry in its pool); the air and the boom are free under the sea; the dump draws the swim', () => {
@@ -164,7 +164,7 @@ test('THE SOLVER + THE RETURN GUARANTEE + THE PRODUCTION LANDING: from the first
     for (const r of out) { assert.equal(r.unreached.length, 0, r.id + ': ' + r.unreached.join(',')); assert.equal(r.traps.length, 0, r.id + ' traps'); }
 });
 
-test('THE ENTRIES + THE TAPES: the yacht\'s cabin door lands on the cay (bay s x 0), Atlantis\'s wet bulkhead lands DRY in the temple (bay e z 0); the parts wear the boards\' egress; the two bypassed boards carry no tape, each part one (FLIGHT 19 on the lighthouse rock — hard, a shot from the beach; SONAR on the spire — a swim, never hard; the choir on the oracle — hard, a shot from the floor); the hundred is a hundred', heavy, () => {
+test('THE ENTRIES: the yacht\'s cabin door lands on the cay (bay s x 0), Atlantis\'s wet bulkhead lands DRY in the temple (bay e z 0); the parts wear the boards\' egress; THE DEEP is a hub anchored on the abyss', heavy, () => {
     const E = HQ.siteRooms.entry;
     assert.deepEqual([E.prebuilt_bermuda.room, E.prebuilt_bermuda.door.wall, E.prebuilt_bermuda.door.x], [SEA, 's', 0]);
     assert.deepEqual([E.prebuilt_atlantis.room, E.prebuilt_atlantis.door.wall, E.prebuilt_atlantis.door.z], [TEMPLE, 'e', 0]);
@@ -174,17 +174,6 @@ test('THE ENTRIES + THE TAPES: the yacht\'s cabin door lands on the cay (bay s x
         assert.equal(D.hqSiteEntry('site_' + site, 'egress').room, part, site + ' is bypassed');
         assert.ok(!HQ.rooms[part].doors.some(d => d.action && d.action.room === 'site_' + site), part + ': no door back to the board');
     }
-    const T = D.DOOR_TAPES;
-    assert.equal(T.length, 100);
-    assert.equal(T.filter(t => t.where === 'site_prebuilt_bermuda').length, 0); assert.equal(T.filter(t => t.where === 'site_prebuilt_atlantis').length, 0);
-    for (const id of IDS) assert.ok([1, 2].includes(T.filter(t => t.where === id).length) && (T.filter(t => t.where === id).length === 1 || Object.values(HQ.siteRooms.entry || {}).some(e => e.room === id)), id + ': one tape (two on the part that stands for a bypassed board — THE AREAS, 2026-09-18)');
-    assert.equal(T.find(t => t.where === SEA).title, 'FLIGHT 19, 14:10'); assert.equal(T.find(t => t.where === ABYSS).title, 'SONAR, 0400'); assert.match(T.find(t => t.where === TEMPLE).title, /CHOIR/);
-    const F = HQ.finds;
-    const seaT = F.find(f => f.room === SEA && f.kind === 'tape'), abT = F.find(f => f.room === ABYSS && f.kind === 'tape'), tpT = F.find(f => f.room === TEMPLE && f.kind === 'tape');
-    assert.ok(seaT.hard === true && seaT.y > 3 && D.hqFindHardReach(seaT).ok, 'the sea\'s tape on the lighthouse rock: hard, a clear shot');
-    assert.ok(!abT.hard && abT.y > 14, 'the abyss\'s tape on the spire: a swim up, never hard');
-    assert.ok(tpT.hard === true && tpT.y > 5 && D.hqFindHardReach(tpT).ok, 'the temple\'s tape on the oracle: hard, a clear shot');
-    for (const id of IDS) { const pay = F.find(f => f.room === id && f.kind === 'pay'); assert.ok(pay && pay.guard === true, id + ': a guarded envelope'); }
     assert.ok(HQ.hubs.deep && HQ.hubs.deep.room === ABYSS && HQ.hubs.deep.sites.includes('prebuilt_atlantis') && HQ.hubs.deep.sites.includes('prebuilt_bermuda'), 'THE DEEP is a hub anchored on the abyss');
     for (const id of IDS) assert.equal((D.hqHubOf(id) || {}).id, 'deep', id + ' belongs to the hub');
 });
@@ -195,7 +184,7 @@ test('THE SEAMS + THE ROUTE: the Dutchman\'s hatch opens on THE ABYSS (its west 
     const hatch = HQ.rooms[ABYSS].doors.find(d => d.link === 'revenge_atlantis');
     assert.ok(hatch && hatch.wall === 'w' && hatch.wide === true && hatch.action.room === 'site_prebuilt_revenge_hold', 'the abyss end comes back to the hold');
     assert.ok(HQ.rooms[ABYSS].props.some(p => p.key === 'ship_wreck' && p.x < -55), 'the Dutchman below, by the wall her hatch is in');
-    assert.ok(!HQ.rooms.site_prebuilt_atlantis.doors.some(d => d.link), 'no link stands on Atlantis\'s board any more');
+    assert.ok(!HQ.rooms.site_prebuilt_atlantis, 'Atlantis has no board room (2026-09-27)');
     const wl = HQ.links.find(l => l.id === 'bermuda_abyss');
     assert.ok(wl && wl.route === 'deep' && wl.way === 'whirlpool' && wl.a.way === 'whirlpool' && wl.b.way === 'upwelling' && wl.a.wall === 'free' && wl.b.wall === 'free' && D.hqLinkLive(wl) && wl.why && wl.draft === true, 'the whirlpool link');
     const wpA = HQ.rooms[SEA].doors.find(d => d.link === 'bermuda_abyss'), wpB = HQ.rooms[ABYSS].doors.find(d => d.link === 'bermuda_abyss');
@@ -262,7 +251,7 @@ test('THE SWIMMER in a vm sandbox (the renderer\'s own functions on a real compi
         const pl = { x: 0, z: 0, y: -4, visY: -4, yaw: 0, targetYaw: 0, air: false, vy: 0, jumpT: -1, moving: false, running: false, entry: { group: { position: { set() {} } } } };
         const c = {
             _hq: { room: rm, shell: rm.shell, terrain: inf, player: pl, keys: {}, cam: { yaw: 0, pitch: 0, dist: 3.6 }, paused: false, doors: [], blockers: [], opts: { onSea: e => events.push(e) }, vehicle: null, seaFx: null, tickers: [] },
-            _hqUnits: () => HQ.units, _hqRoamM: () => 0, HQ_BODY_R: 0.34, HQ_DOOR_LOCKED: {}, _hqData: () => HQ,
+            _hqUnits: () => HQ.units, HQ_BODY_R: 0.34, HQ_DOOR_LOCKED: {}, _hqData: () => HQ,
             _hqAirClearOfBlockers: () => true, _hqSurface: (x, z) => D.hqTerrainFeet(inf, x, z, null),
             hqTerrainHeight: D.hqTerrainHeight, hqTerrainWallAt: D.hqTerrainWallAt, hqTerrainSolidAt: D.hqTerrainSolidAt, hqTerrainSolidTop: D.hqTerrainSolidTop,
             HQ_SEA_RULES: vm.runInContext('HQ_SEA_RULES', D), window: {}, console, Math, performance,
@@ -325,7 +314,7 @@ test('THE HELM in a vm sandbox: E boards the moored skiff (the walker in the sea
         const pl = { x: at.x + 1, z: at.z, y: at.y, visY: at.y, yaw: 0, targetYaw: 0, air: false, vy: 0, jumpT: -1, moving: false, running: false, entry: { group: { position: { set() {} } } } };
         const c = {
             _hq: { room: rm, shell: rm.shell, terrain: inf, player: pl, keys: {}, cam: { yaw: 0.3, pitch: 0, dist: 3.6 }, paused: false, doors: [], blockers: [], opts: { onSea: e => events.push(e) }, vehicle: null, seaFx: null, tickers: [], boats: [], ride: null, portal: null, dirty: false },
-            _hqUnits: () => HQ.units, _hqRoamM: () => 0, HQ_BODY_R: 0.34, HQ_DOOR_LOCKED: {}, _hqData: () => HQ,
+            _hqUnits: () => HQ.units, HQ_BODY_R: 0.34, HQ_DOOR_LOCKED: {}, _hqData: () => HQ,
             _hqAirClearOfBlockers: () => true, _hqSurface: (x, z) => D.hqTerrainFeet(inf, x, z, null), _hqRideToggle: () => false, _hqPortalDraw: () => {},
             hqTerrainHeight: D.hqTerrainHeight, hqTerrainWallAt: D.hqTerrainWallAt, hqTerrainSolidAt: D.hqTerrainSolidAt, hqTerrainSolidTop: D.hqTerrainSolidTop,
             HQ_SEA_RULES: vm.runInContext('HQ_SEA_RULES', D), window: {}, console, Math, performance,

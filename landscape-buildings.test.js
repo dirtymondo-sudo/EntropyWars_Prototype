@@ -50,12 +50,10 @@ test('the world rim: the city is the map-builder buildings, the tree line is the
     assert.match(nt, /_nrInjectWorld\(K, model\);/, 'a swapped-in rim tree joins the haze');
 });
 
-test('Bohemian Grove: the redwoods and the room\'s board trees are the foliage models', () => {
+test('Bohemian Grove: the redwoods are the foliage models', () => {
     const bg = block('_NR_BUILDERS.bohemian_grove = function (group, ctx) {', 4000);
     const body = bg.slice(0, bg.indexOf('\n    };') + 1);
     assert.match(body, /_nrTree\(K, rng\(\) < 0\.5 \? 'tree' : 'tree_4', \{ h: 4\.2 \+ rng\(\) \* 2\.0 \}\)/, 'the redwoods are _nrTree');
     assert.doesNotMatch(body, /new THREE\.SphereGeometry\(ts \* \(0\.9 \+ rng\(\) \* 0\.5\), 8, 6\)/, 'no sphere canopies');
-    const sb = block('function _hqBuildSiteBoard(room) {', 40000);
-    assert.match(sb, /var t = _nrTree\(treeKit, o\.kind, \{ h: 1\.9 \}\);/, 'the site board plants _nrTree per board tree');
     assert.match(TR, /function _hqTickWorld\(dt, now\) \{[\s\S]*?\n\s*_nrPollPending\(\);/, 'the HQ loop polls the foliage swaps unconditionally');
 });

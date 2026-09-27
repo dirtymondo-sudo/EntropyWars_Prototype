@@ -53,7 +53,7 @@ test('the compass (§4.5): the forecourt at the origin, the city east, the woods
     assert.ok(F('site_prebuilt_downtown_streets').x > 0, 'Downtown east');
     assert.ok(F('site_prebuilt_haunted_grounds').x < 0, 'the estate west');
     assert.ok(F('site_prebuilt_camelot_ward').z < 0, 'Camelot north (north is −z)');
-    assert.ok(F('highway_south').z > 0 && F('site_prebuilt_area51_flightline').z > F('highway_south').z, 'the highway then Area 51 south');
+    assert.ok(F('site_prebuilt_strip_highway').z > 0 && F('site_prebuilt_area51_flightline').z > F('site_prebuilt_strip_highway').z, 'the highway then Area 51 south');
     assert.ok(F('site_prebuilt_olympus_summit').y > F('olympus_foothills').y, 'Olympus climbs');
     for (const id of Object.keys(W.zones.underworld.parts)) assert.equal(F(id).ground, 'under', 'the underworld is under the surface');
 });
