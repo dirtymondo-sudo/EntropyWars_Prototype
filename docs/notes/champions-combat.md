@@ -1029,3 +1029,11 @@ unique family its race's alone. The Freelancer borrows family by family (`flBorr
 own families never). `spellFamilyGroups(ids, race)` folds any id list for the racks. Job pools are still the job's four (job
 families wait for the user's ruling). Legality, the SP / slot / passive caps and the online host check are unchanged
 (`treeLegalSubset` repairs a save holding a row the new pool dropped).
+
+## THE SECOND FAMILY EXPORT (2026-09-27, token 20260927-spell-library-10-cors)
+The user's export re-familied 35 rows and added 23 families; RACE_FAMILIES rows for 52 races changed. RACE_TREE rungs must sit in
+the race's families (spell-families.test.js), so 27 rows swapped rungs for rows of their families, borrowed by id in the movepool
+share table ("SPELL LIBRARY (2026-09-27 …)" block). A rung's ring must equal its tier somewhere (the stamp's min ring), so a
+borrowed lower-tier row on a higher ring needs a ring-matching seat elsewhere (Summon Sandstorm → the martian's ring II twin,
+Fissure → the gnome's ring I). Families on no race must be empty or job-only (Marksmanship, Agriculture today). Full log:
+SPELL_LIBRARY_PLAN.md §11.

@@ -724,3 +724,9 @@ Both borrow windows list family by family under `.pb-socket-fam` / `.hq-circ-fam
 the family fold and its search matches a family's name. The codex dossier's DOCUMENTED CAPABILITIES is the race's families
 (ui.js `_codexBuildFamilies`, `.cdx-fam*` in styles-hud.css), RACE_ABILITIES the fallback. Pins: spell-families.test.js (Phase 7
 block), spell-tree-ux.test.js (the family grid + B0), party-builder.test.js (the borrow window anchor).
+
+## THE IDENTITY GENERATOR, second pass (2026-09-27)
+ui.js SLB IDENTITY block: kits for the 23 families of the user's 2026-09-27 export; archetypes that duplicate a race are cut
+(spell-identity.test.js compares every archetype name with AVAILABLE_RACES and RACE_PROFILES labels, plural-folded) — keep new
+archetypes off race names; 68 new characters from the new families; the list of candidates for new races is in
+/mnt/project-files/spell-library/NEW_CHARACTERS.md.
